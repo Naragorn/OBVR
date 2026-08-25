@@ -1069,13 +1069,23 @@ Three real costs, none of them fatal but all of them the user's problem rather t
   executable, so MO2 users need Root Builder or a manual copy for that one file. The
   property "OBVR needs no Root Builder" survives only for OBVR's own files.
 
-**Still unverified**, and it should be checked before step 4 of 0.0.5 rather than after:
-OpenVR's `VRVulkanTextureData_t` wants a queue family index alongside the queue, and it is
-not established that `ID3D9VkInteropDevice` hands that out. Nor is it established that a
-stock DXVK enables the instance and device extensions OpenVR requires through
-`GetVulkanInstanceExtensionsRequired` / `GetVulkanDeviceExtensionsRequired`. DXVK issue #27
-discusses exactly this and dates from 2018, so it says nothing reliable about current
-builds.
+**Both things that were unverified here are now settled, and both in favour of the route.**
+
+**Every field OpenVR needs is exposed.** `VRVulkanTextureData_t` wants an instance, a
+physical device, a device, a queue, a queue family index, and the image with its format and
+size. `ID3D9VkInteropDevice::GetVulkanHandles` gives the first three;
+`GetSubmissionQueue(VkQueue*, uint32_t* pQueueIndex, uint32_t* pQueueFamilyIndex)` gives the
+next two - the family index was the specific doubt, and it is right there in the signature;
+`ID3D9VkInteropTexture::GetVulkanImageInfo` gives the rest. The same interface also carries
+`TransitionTextureLayout`, `FlushRenderingCommands` and
+`LockSubmissionQueue`/`ReleaseSubmissionQueue`, which is precisely the set needed to hand an
+image over safely. DXVK built this for this.
+
+**DXVK asks OpenVR for its extensions by itself.** `VrInstance` in `src/dxvk/dxvk_openvr.cpp`
+calls `GetVulkanInstanceExtensionsRequired` and `GetVulkanDeviceExtensionsRequired` while
+building the Vulkan instance and enabling adapter extensions. On by default on Windows.
+**Do not set `DXVK_NO_VR=1`** - that is the one switch that turns this off, and it would fail
+late and confusingly.
 
 The choice of route does not block 0.0.5 in any case: proving the compositor connection,
 the frame timing and the projection maths is worth the same either way.
@@ -1127,12 +1137,22 @@ check against the binary, which is the standard `GameAddresses.h` holds addresse
 - the encoding of `mov eax, [0x00B3F928]` - `A1 28 F9 B3 00` - appears **41 times** in
   `Oblivion.exe`. A five byte sequence does not occur that often by chance.
 
-**Confirmed in the game.** `docs/verification/OBVR-d3d9-device.log` has
-`Render: Oblivion's D3D9 device 07F86CE0 is native Direct3D 9` - which is what was
-predicted, since there is no `d3d9.dll` in that game root. Two separate runs reported
-*different* pointer values, both non-null and both answering QueryInterface, which is how a
-heap-allocated COM object should behave; a wrong address would have given either garbage or
-a constant.
+**Confirmed in the game, twice over.** `docs/verification/OBVR-d3d9-device.log` has
+`Render: Oblivion's D3D9 device 07F86CE0 is native Direct3D 9` - the predicted answer, since
+there was no `d3d9.dll` in that game root. Two runs reported *different* pointer values,
+both non-null and both answering QueryInterface, which is how a heap-allocated COM object
+behaves; a wrong address would have given garbage or a constant.
+
+Then the x32 `d3d9.dll` from a DXVK release went next to `Oblivion.exe`, and
+`docs/verification/OBVR-dxvk-confirmed.log` has
+`Render: Oblivion's D3D9 device 0BB34CC0 is DXVK`. **That is the whole route confirmed before
+a line of code was written for it**: the address is right, the IID was transcribed right -
+now proven in the game rather than only against its own text - and stock upstream DXVK
+answers `ID3D9VkInteropDevice` with no fork involved. The run is clean, with no warning of
+any kind, and Oblivion, DXVK and OBVR coexist.
+
+Frame times were 18.4 to 18.7 ms against 18.0 to 18.5 without DXVK. Five samples is too few
+to claim anything, and nothing is claimed.
 
 `render::GameDevice` reads it and asks it one question: does it answer to
 `ID3D9VkInteropDevice` (`2eaa4b89-0107-4bdb-87f7-0f541c493ce0`, from DXVK's
