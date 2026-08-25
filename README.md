@@ -33,6 +33,11 @@ OBVR with SteamVR as a background application and reads the HMD pose. The result
 the head rotates, but it does not move through space — that is deliberate for this
 milestone.
 
+This has been **confirmed in the running game** with SteamVR and a real headset. The camera
+follows head movement in first and third person, the character does not turn along with it,
+and `Del` recenters. The log of that run is
+`docs/verification/OBVR-openvr-headtracking.log`.
+
 Recentering sits on the **Del** key by default. It takes the current head pose as the new
 zero, so you can settle into a comfortable position and make that the forward direction.
 Vanilla Oblivion does not bind Del, so it cannot collide with a game action. The key is

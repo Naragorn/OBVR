@@ -67,22 +67,40 @@ controller.
 | --- | --- | --- |
 | 0.0.1 | plugin loads, logging, version check, camera hook, fixed test rotation | **verified in the game** |
 | 0.0.2 | quaternion layer, recenter, interchangeable head source, config hot reload | **verified in the game** |
-| 0.0.3 | OpenVR wired up, real HMD rotation on the camera | **implemented and covered by tests**, not yet verified in the game ← **continue here** |
-| 0.0.4 | frame loop, left and right swapchain, test images in the headset | open |
+| 0.0.3 | OpenVR wired up, real HMD rotation on the camera | **verified in the game** |
+| 0.0.4 | positional head tracking, vertical look input redirected | open ← **continue here** |
+| 0.0.5 | frame loop, left and right swapchain, test images in the headset | open |
 | 0.1.0 | Oblivion's world as real dual-pass stereo | open |
 
 0.0.1 and 0.0.2 were tested against Oblivion GOTY (Steam, AppID 22330) under Proton with
-xOBSE 22.13. Evidence (screenshots and logs) is under `docs/verification/`.
+xOBSE 22.13. 0.0.3 was tested on Windows 11 with SteamVR and a real headset, against a
+4GB-patched `Oblivion.exe` of the same version. Evidence (screenshots and logs) is under
+`docs/verification/`.
 
-### What 0.0.3 still needs
+### What the 0.0.3 run proved
 
-The maths and the fallback path are covered by tests, but nothing has run against a real
-headset yet. Missing:
+`docs/verification/OBVR-openvr-headtracking.log` is the record of it. The camera followed
+head movement in first and third person, the character did not turn along with it, and
+`Del` recentered. Four things the log settles on its own:
 
-- a run with SteamVR and an HMD, checking that the camera follows head movement
-- a check that recentering on the Del key does what it should with a real headset
-- a check of whether the vanity and dialogue cameras interfere. Both run through branches
-  of their own
+- **the SteamVR connection**: `OpenVR: connected through FnTable:IVRSystem_026`. The
+  interface version and the calling conventions replicated in `src/vr/OpenVRTypes.h` are
+  the right ones.
+- **the Mod Organizer 2 anchor**: `Config: ...\Data\OBSE\Plugins\OBVR.ini`. OBVR found its
+  own INI next to the plugin DLL rather than in the game root, which is the whole point of
+  `platform/PluginPath`.
+- **the recenter edge**: four presses, four log lines, none of them repeating. A held key
+  fires exactly once, which is what `KeyEdge` is for.
+- **the point-of-view transition**: six switches, every one of them reported once and in
+  the right direction.
+
+Two things it does **not** prove, and neither should be claimed:
+
+- **the 4GB path.** The exe carries the LargeAddressAware flag, but the trampoline landed
+  at `0x03B60000`, well below 2 GB. `VirtualAlloc` hands out low addresses first, so a
+  patched exe alone does not force the case. Only `TestLargeAddressAware` covers it.
+- **the vanity and dialogue cameras.** Both run through branches of their own and were not
+  deliberately exercised.
 
 ---
 
