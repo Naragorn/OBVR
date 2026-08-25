@@ -196,10 +196,17 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadFloat("Head", "UnitsPerMetre", config.tracker.unitsPerMetre, path);
 	config.tracker.maxOffsetUnits =
 		ReadFloat("Head", "MaxLeanUnits", config.tracker.maxOffsetUnits, path);
-	config.tracker.smoothPosition =
-		ReadBool("Head", "SmoothPosition", config.tracker.smoothPosition, path);
-	config.tracker.smoothingSpeed =
-		ReadFloat("Head", "SmoothingSpeed", config.tracker.smoothingSpeed, path);
+	config.look.blockVerticalLook =
+		ReadBool("Look", "BlockVerticalLook", config.look.blockVerticalLook, path);
+	config.look.verticalLookRange =
+		ReadFloat("Look", "VerticalLookRange", config.look.verticalLookRange, path);
+	config.look.smoothVerticalLook =
+		ReadBool("Look", "SmoothVerticalLook", config.look.smoothVerticalLook, path);
+	config.look.verticalLookSpeed =
+		ReadFloat("Look", "VerticalLookSpeed", config.look.verticalLookSpeed, path);
+	config.look.smoothTurning =
+		ReadBool("Look", "SmoothTurning", config.look.smoothTurning, path);
+	config.look.turnSpeed = ReadFloat("Look", "TurnSpeed", config.look.turnSpeed, path);
 
 	config.logEveryFrames = ReadUInt("Debug", "LogEveryFrames", config.logEveryFrames, path);
 	config.reloadEveryFrames =
@@ -259,9 +266,14 @@ bool Config::Load(const char* fileName) {
 	         tracker.positionalTracking ? 1 : 0,
 	         static_cast<double>(tracker.unitsPerMetre),
 	         static_cast<double>(tracker.maxOffsetUnits));
-	OBVR_LOG("Config: SmoothPosition=%d SmoothingSpeed=%.1f",
-	         tracker.smoothPosition ? 1 : 0,
-	         static_cast<double>(tracker.smoothingSpeed));
+	OBVR_LOG("Config: BlockVerticalLook=%d VerticalLookRange=%.1f SmoothVerticalLook=%d (%.1f)",
+	         look.blockVerticalLook ? 1 : 0,
+	         static_cast<double>(look.verticalLookRange),
+	         look.smoothVerticalLook ? 1 : 0,
+	         static_cast<double>(look.verticalLookSpeed));
+	OBVR_LOG("Config: SmoothTurning=%d TurnSpeed=%.1f",
+	         look.smoothTurning ? 1 : 0,
+	         static_cast<double>(look.turnSpeed));
 	return true;
 }
 

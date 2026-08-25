@@ -26,11 +26,13 @@ add_library(OBVR SHARED
 	src/camera/CameraHook.cpp
 	src/camera/CameraTrampoline.cpp
 	src/camera/FrameLogic.cpp
+	src/camera/LookControl.cpp
 	src/core/CodeWriter.cpp
 	src/core/Config.cpp
 	src/core/Log.cpp
 	src/core/Memory.cpp
 	src/core/Rotation.cpp
+	src/core/Smoothing.cpp
 	src/platform/Freestanding.cpp
 	src/platform/PluginPath.cpp
 	src/vr/HeadOffset.cpp

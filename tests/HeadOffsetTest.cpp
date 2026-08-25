@@ -3,10 +3,10 @@
 //
 // This is the whole of positional tracking that can be checked without a
 // headset, and it is where the mistakes live. A wrong sign in the change of
-// basis makes leaning forward pull the camera backwards; a missing rotation by
-// the reference makes leaning work only if the seated zero in SteamVR happens
-// to face the same way as the player; a smoothing factor above 1 makes the
-// camera oscillate around the head instead of settling on it.
+// basis makes leaning forward pull the camera backwards, and a missing rotation
+// by the reference makes leaning work only when the seated zero in SteamVR
+// happens to face the same way as the player - which is exactly the case a play
+// session starts in.
 //
 // Pure arithmetic, so this runs on Linux as well.
 
@@ -142,46 +142,6 @@ void TestClamp() {
 	           "a limit of 0 means no limit");
 }
 
-void TestApproach() {
-	std::printf("Smoothing\n");
-
-	using obvr::NiPoint3;
-	using obvr::vr::Approach;
-
-	const NiPoint3 here{0.0f, 0.0f, 0.0f};
-	const NiPoint3 there{0.0f, 100.0f, 0.0f};
-	constexpr float kFrame = 1.0f / 60.0f;
-
-	// Speed 15 per second at 60 fps is a quarter of what is left.
-	CheckPoint(Approach(here, there, 15.0f, kFrame), 0.0f, 25.0f, 0.0f,
-	           "one frame covers speed times delta of the distance");
-
-	// The same setting has to cover twice as much in a frame twice as long.
-	// This is the whole reason the speed is per second rather than per frame,
-	// and it is what UEVR does with t = lerp_speed * delta.
-	CheckPoint(Approach(here, there, 15.0f, kFrame * 2.0f), 0.0f, 50.0f, 0.0f,
-	           "a frame twice as long covers twice as much");
-
-	// It arrives rather than overshooting, however long the frame.
-	CheckPoint(Approach(here, there, 15.0f, 10.0f), 0.0f, 100.0f, 0.0f,
-	           "an absurdly long frame arrives instead of overshooting");
-
-	CheckPoint(Approach(here, there, 0.0f, kFrame), 0.0f, 100.0f, 0.0f,
-	           "a speed of 0 means no smoothing, not a frozen camera");
-	CheckPoint(Approach(here, there, 15.0f, 0.0f), 0.0f, 100.0f, 0.0f,
-	           "no frame time means no smoothing either");
-	CheckPoint(Approach(here, there, 15.0f, -1.0f), 0.0f, 100.0f, 0.0f,
-	           "and neither does a negative one");
-
-	// Repeated application has to converge on the target rather than circle it.
-	NiPoint3 current = here;
-	for (int frame = 0; frame < 120; ++frame) {
-		current = Approach(current, there, 15.0f, kFrame);
-	}
-	Check(current.y > 99.9f && current.y <= 100.0f,
-	      "two seconds of frames arrive at the target without passing it");
-}
-
 }  // namespace
 
 int main() {
@@ -194,8 +154,6 @@ int main() {
 	TestReferenceOrientation();
 	std::printf("\n");
 	TestClamp();
-	std::printf("\n");
-	TestApproach();
 
 	std::printf("\n");
 	if (g_failures == 0) {

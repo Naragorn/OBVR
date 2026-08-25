@@ -20,12 +20,6 @@ namespace {
 
 int g_failures = 0;
 
-// A frame at 60 fps. Only the position smoothing looks at it, and none of
-// these cases feed a position, so the exact value does not matter - it is
-// spelled out rather than passed as 0 so the tests exercise the same path the
-// game does.
-constexpr float kFrameSeconds = 1.0f / 60.0f;
-
 constexpr float kEpsilon = 1e-4f;
 
 void Check(bool condition, const char* what) {
@@ -81,11 +75,11 @@ void TestNoneIsNeutral() {
 
 	HeadTracker tracker;
 	tracker.Configure(settings);
-	tracker.Update(1, kFrameSeconds);
+	tracker.Update(1);
 	CheckMatrixNear(tracker.GetCameraRotation(), obvr::NiMatrix33::Identity(),
 	                "none leaves the camera untouched");
 
-	tracker.Update(5000, kFrameSeconds);
+	tracker.Update(5000);
 	CheckMatrixNear(tracker.GetCameraRotation(), obvr::NiMatrix33::Identity(),
 	                "and keeps doing so as frames pass");
 }
@@ -99,19 +93,19 @@ void TestFixedAnglesUseOblivionAxes() {
 	// these checks is that the detour is invisible from outside.
 	HeadTracker pitch;
 	pitch.Configure(Fixed(20.0f, 0.0f, 0.0f));
-	pitch.Update(1, kFrameSeconds);
+	pitch.Update(1);
 	CheckMatrixNear(pitch.GetCameraRotation(), obvr::EulerToMatrix(20.0f, 0.0f, 0.0f),
 	                "FixedPitch=20 equals EulerToMatrix(20,0,0)");
 
 	HeadTracker roll;
 	roll.Configure(Fixed(0.0f, 20.0f, 0.0f));
-	roll.Update(1, kFrameSeconds);
+	roll.Update(1);
 	CheckMatrixNear(roll.GetCameraRotation(), obvr::EulerToMatrix(0.0f, 20.0f, 0.0f),
 	                "FixedRoll=20 equals EulerToMatrix(0,20,0)");
 
 	HeadTracker yaw;
 	yaw.Configure(Fixed(0.0f, 0.0f, 20.0f));
-	yaw.Update(1, kFrameSeconds);
+	yaw.Update(1);
 	CheckMatrixNear(yaw.GetCameraRotation(), obvr::EulerToMatrix(0.0f, 0.0f, 20.0f),
 	                "FixedYaw=20 equals EulerToMatrix(0,0,20)");
 }
@@ -129,18 +123,18 @@ void TestSimulatedMoves() {
 	tracker.Configure(settings);
 
 	// Frame 0 sits at phase 0, where both sine terms vanish.
-	tracker.Update(0, kFrameSeconds);
+	tracker.Update(0);
 	CheckMatrixNear(tracker.GetCameraRotation(), obvr::NiMatrix33::Identity(),
 	                "phase 0 is the rest position");
 
-	tracker.Update(150, kFrameSeconds);
+	tracker.Update(150);
 	const obvr::NiMatrix33 quarter = tracker.GetCameraRotation();
 	Check(!MatrixNear(quarter, obvr::NiMatrix33::Identity()),
 	      "a quarter period in, the camera has moved");
 
 	// Half a period puts the phase at pi, where both sines are zero again.
 	// This is not a dropout, it is where the figure crosses its own centre.
-	tracker.Update(300, kFrameSeconds);
+	tracker.Update(300);
 	CheckMatrixNear(tracker.GetCameraRotation(), obvr::NiMatrix33::Identity(),
 	                "half a period returns to the rest position");
 
@@ -148,7 +142,7 @@ void TestSimulatedMoves() {
 	settings.simulatedPeriodFrames = 0;
 	HeadTracker guarded;
 	guarded.Configure(settings);
-	guarded.Update(300, kFrameSeconds);
+	guarded.Update(300);
 	CheckMatrixNear(guarded.GetCameraRotation(), obvr::NiMatrix33::Identity(),
 	                "a period of 0 falls back instead of dividing by zero");
 }
@@ -158,19 +152,19 @@ void TestRecenter() {
 
 	HeadTracker tracker;
 	tracker.Configure(Fixed(0.0f, 30.0f, 0.0f));
-	tracker.Update(1, kFrameSeconds);
+	tracker.Update(1);
 	CheckMatrixNear(tracker.GetCameraRotation(), obvr::EulerToMatrix(0.0f, 30.0f, 0.0f),
 	                "before recentering the full angle is applied");
 
 	tracker.Recenter();
-	tracker.Update(2, kFrameSeconds);
+	tracker.Update(2);
 	CheckMatrixNear(tracker.GetCameraRotation(), obvr::NiMatrix33::Identity(),
 	                "after recentering the same pose is the new zero");
 
 	// Moving on from the new zero has to yield the difference, not the
 	// absolute angle.
 	tracker.Configure(Fixed(0.0f, 50.0f, 0.0f));
-	tracker.Update(3, kFrameSeconds);
+	tracker.Update(3);
 	CheckMatrixNear(tracker.GetCameraRotation(), obvr::EulerToMatrix(0.0f, 20.0f, 0.0f),
 	                "50 degrees after a zero at 30 leaves 20 degrees");
 }
@@ -188,15 +182,15 @@ void TestReconfigureKeepsTheRecenterReference() {
 
 	HeadTracker tracker;
 	tracker.Configure(settings);
-	tracker.Update(1, kFrameSeconds);
+	tracker.Update(1);
 	tracker.Recenter();
-	tracker.Update(2, kFrameSeconds);
+	tracker.Update(2);
 	CheckMatrixNear(tracker.GetCameraRotation(), obvr::NiMatrix33::Identity(),
 	                "recentered");
 
 	// The same settings again, as a hot reload delivers them.
 	tracker.Configure(settings);
-	tracker.Update(3, kFrameSeconds);
+	tracker.Update(3);
 	CheckMatrixNear(tracker.GetCameraRotation(), obvr::NiMatrix33::Identity(),
 	                "reconfiguring with unchanged settings keeps the zero");
 
@@ -219,17 +213,17 @@ void TestOpenVrWithoutRuntime() {
 
 	HeadTracker tracker;
 	tracker.Configure(settings);
-	tracker.Update(1, kFrameSeconds);
+	tracker.Update(1);
 	CheckMatrixNear(tracker.GetCameraRotation(), obvr::NiMatrix33::Identity(),
 	                "no runtime means the vanilla camera, not a guess");
 
-	tracker.Update(2, kFrameSeconds);
+	tracker.Update(2);
 	CheckMatrixNear(tracker.GetCameraRotation(), obvr::NiMatrix33::Identity(),
 	                "and it stays that way on later frames");
 
 	// Recentering on a source that reports nothing must also be harmless.
 	tracker.Recenter();
-	tracker.Update(3, kFrameSeconds);
+	tracker.Update(3);
 	CheckMatrixNear(tracker.GetCameraRotation(), obvr::NiMatrix33::Identity(),
 	                "recentering without a runtime is harmless");
 }
@@ -242,7 +236,7 @@ void TestOutputStaysNormalised() {
 	// catch a quaternion that drifted off the unit sphere.
 	HeadTracker tracker;
 	tracker.Configure(Fixed(13.0f, -27.0f, 61.0f));
-	tracker.Update(1, kFrameSeconds);
+	tracker.Update(1);
 
 	const obvr::NiMatrix33& m = tracker.GetCameraRotation();
 	const float rowLength = std::sqrt(m.data[0][0] * m.data[0][0] +

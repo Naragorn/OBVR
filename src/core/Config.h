@@ -1,5 +1,6 @@
 #pragma once
 
+#include "camera/LookControl.h"
 #include "core/Types.h"
 #include "vr/HeadTracker.h"
 
@@ -10,6 +11,11 @@ struct Config {
 	bool cameraHookEnabled = true;
 
 	vr::TrackerSettings tracker;
+
+	// What happens to the look controls once a headset has taken over. Only
+	// applied while one actually is; without a headset the game keeps its own
+	// camera entirely.
+	camera::LookSettings look;
 
 	// Virtual-key code of the key that takes the current head pose as the new
 	// zero. Default is VK_DELETE (0x2E), the Del key above the arrow block,

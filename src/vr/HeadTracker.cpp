@@ -103,7 +103,7 @@ bool HeadTracker::ReadSource(UInt32 frameIndex, Quaternion& orientation,
 	return false;
 }
 
-void HeadTracker::Update(UInt32 frameIndex, float deltaSeconds) {
+void HeadTracker::Update(UInt32 frameIndex) {
 	NiPoint3 position{0.0f, 0.0f, 0.0f};
 	const bool hasPosition = ReadSource(frameIndex, m_rawOrientation, position);
 
@@ -128,15 +128,9 @@ void HeadTracker::Update(UInt32 frameIndex, float deltaSeconds) {
 		return;
 	}
 
-	const NiPoint3 target =
-		ClampOffset(OffsetFromPose(m_reference, m_rawPosition, m_referencePosition,
-		                           m_settings.unitsPerMetre),
-		            m_settings.maxOffsetUnits);
-
-	m_cameraOffset =
-		m_settings.smoothPosition
-			? Approach(m_cameraOffset, target, m_settings.smoothingSpeed, deltaSeconds)
-			: target;
+	m_cameraOffset = ClampOffset(OffsetFromPose(m_reference, m_rawPosition,
+	                                            m_referencePosition, m_settings.unitsPerMetre),
+	                             m_settings.maxOffsetUnits);
 }
 
 void HeadTracker::Recenter() {
@@ -145,9 +139,7 @@ void HeadTracker::Recenter() {
 	m_hasReferencePosition = true;
 
 	// The new zero is the pose being held right now, so the offset is zero by
-	// definition. Setting it here rather than letting the smoothing walk it
-	// down means recentering takes effect at once, which is the whole point
-	// of pressing the key.
+	// definition.
 	m_cameraOffset = NiPoint3{0.0f, 0.0f, 0.0f};
 }
 

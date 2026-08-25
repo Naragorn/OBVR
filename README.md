@@ -42,16 +42,36 @@ and `Del` recenters. The log of that run is
 moves the camera with you. Locomotion stays entirely with the game - this is head movement
 within arm's reach, not room-scale walking.
 
-Three things make it usable rather than merely correct. The offset is measured against a
+Two things make it usable rather than merely correct. The offset is measured against a
 reference position captured on the first valid pose, so the roughly 1.2 m between the
-seated floor origin and a head does not displace the camera permanently. It is capped at
-`MaxLeanUnits`, because a tracking glitch or someone standing up and walking off would
-otherwise drag the camera through the nearest wall. And it is smoothed: the camera eases
-towards the head at `SmoothingSpeed` per second rather than snapping. The speed is per
-second rather than per frame for the reason UEVR computes its camera lerp the same way, as
-`t = m_lerp_camera_speed->value() * delta` - a per-frame share would make the same setting
-feel twice as sluggish at 30 fps as at 60. Recentering is deliberately exempt from the
-smoothing and takes effect at once.
+seated floor origin and a head does not displace the camera permanently. And it is capped
+at `MaxLeanUnits`, because a tracking glitch or someone standing up and walking off would
+otherwise drag the camera through the nearest wall.
+
+The head is deliberately **never** smoothed. Easing a tracked head shows the wearer where
+their head was rather than where it is, and that latency is felt directly in a headset —
+it is the one thing VR cannot trade away.
+
+0.0.4 also takes the vertical look away from the stick, the mouse and the keyboard, and
+this is where easing does belong. With a headset on, the head already decides where the
+camera points; leaving the stick pointed at the same thing gives two answers to one
+question, and the artificial one is what makes people ill — tilting a view that the inner
+ear insists is level is the classic trigger. So in third person the vertical look moves the
+camera up and down instead of tilting it, up above the character's head and down towards
+the feet, and in first person it does nothing at all. Turning left and right stays with the
+player, because there is no other way to face something behind you; it can be eased as
+well, and that is off by default because easing the control still used for aiming puts the
+camera behind where you asked it to be.
+
+The easing speeds are per second rather than per frame, which is how UEVR computes its
+camera lerp too — `t = m_lerp_camera_speed->value() * delta`. A per-frame share would make
+the same setting feel twice as sluggish at 30 fps as at 60.
+
+None of that needs Oblivion's input code. The hook already runs after the camera has been
+computed, so whatever the stick did is sitting in the camera matrix and can be read back
+out and replaced — one less address to keep correct across game versions. Everything in
+`[Look]` applies only while a headset is actually delivering poses: start Oblivion without
+SteamVR and the game is exactly the one you had before.
 
 Recentering sits on the **Del** key by default. It takes the current head pose as the new
 zero, so you can settle into a comfortable position and make that the forward direction.
@@ -195,7 +215,7 @@ verification environment, not a comfortable one — for a release MSVC stays the
 
 ### Tests
 
-Ten test binaries, all without a running Oblivion:
+Eleven test binaries, all without a running Oblivion:
 
 - **`trampoline_test`** checks the generated hook bytes against expected values worked out
   by hand. A mistake there reliably crashes Oblivion. It also covers the 4GB-patched case
@@ -230,6 +250,11 @@ Ten test binaries, all without a running Oblivion:
 - **`plugin_path_test`** checks where OBVR looks for its own files, including the buffer
   being too small — a path is one of the few things in OBVR whose length is not under its
   own control. Windows only.
+- **`look_control_test`** checks what happens to the look controls once a headset takes
+  over. All of it is about comfort rather than correctness, which is a bad reason to leave
+  it untested: a fault there does not crash anything and does not look wrong in a
+  screenshot. It is felt half an hour later by somebody who then puts the mod down and
+  cannot say why.
 - **`head_offset_test`** checks the arithmetic of positional tracking, which is where the
   mistakes live: a wrong sign in the change of basis makes leaning forward pull the camera
   backwards, and a missing rotation by the reference orientation makes leaning work only if

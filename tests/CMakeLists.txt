@@ -36,6 +36,7 @@ add_executable(quaternion_test
 	QuaternionTest.cpp
 	../src/vr/Quaternion.cpp
 	../src/core/Rotation.cpp
+	../src/core/Smoothing.cpp
 )
 
 target_include_directories(quaternion_test PRIVATE ../src)
@@ -49,6 +50,7 @@ add_test(NAME quaternion COMMAND quaternion_test)
 add_executable(rotation_test
 	RotationTest.cpp
 	../src/core/Rotation.cpp
+	../src/core/Smoothing.cpp
 )
 
 target_include_directories(rotation_test PRIVATE ../src)
@@ -77,6 +79,7 @@ add_executable(head_offset_test
 	../src/vr/HeadOffset.cpp
 	../src/vr/Quaternion.cpp
 	../src/core/Rotation.cpp
+	../src/core/Smoothing.cpp
 )
 
 target_include_directories(head_offset_test PRIVATE ../src)
@@ -87,10 +90,26 @@ endif()
 
 add_test(NAME head_offset COMMAND head_offset_test)
 
+add_executable(look_control_test
+	LookControlTest.cpp
+	../src/camera/LookControl.cpp
+	../src/core/Rotation.cpp
+	../src/core/Smoothing.cpp
+)
+
+target_include_directories(look_control_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(look_control_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME look_control COMMAND look_control_test)
+
 add_executable(openvr_pose_test
 	OpenVRPoseTest.cpp
 	../src/vr/Quaternion.cpp
 	../src/core/Rotation.cpp
+	../src/core/Smoothing.cpp
 )
 
 target_include_directories(openvr_pose_test PRIVATE ../src)
@@ -148,6 +167,7 @@ if(WIN32)
 		../src/vr/OpenVRBackend.cpp
 		../src/vr/Quaternion.cpp
 		../src/core/Rotation.cpp
+		../src/core/Smoothing.cpp
 		../src/core/Log.cpp
 		../src/platform/PluginPath.cpp
 	)

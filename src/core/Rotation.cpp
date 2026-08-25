@@ -37,4 +37,45 @@ NiMatrix33 EulerToMatrix(float degreesX, float degreesY, float degreesZ) {
 	return rz * ry * rx;
 }
 
+bool HeadingOf(const NiMatrix33& rotation, Heading& out) {
+	const float x = rotation.data[0][0];
+	const float y = rotation.data[1][0];
+
+	const float lengthSquared = x * x + y * y;
+
+	// Only reachable with a camera rolled close to ninety degrees. Vanilla
+	// Oblivion has no such camera, but a mod or a scripted sequence might.
+	if (lengthSquared < 1.0e-6f) {
+		return false;
+	}
+
+	const float inverseLength = 1.0f / math::Sqrt(lengthSquared);
+	out = Heading{x * inverseLength, y * inverseLength};
+	return true;
+}
+
+NiMatrix33 RotationFromHeading(const Heading& heading) {
+	NiMatrix33 result = NiMatrix33::Identity();
+	result.data[0][0] = heading.cosine;
+	result.data[0][1] = -heading.sine;
+	result.data[1][0] = heading.sine;
+	result.data[1][1] = heading.cosine;
+	return result;
+}
+
+float SinPitchOf(const NiMatrix33& rotation) {
+	// Column 1 is where the camera's forward axis points, and its vertical
+	// component is the sine of the tilt. Clamped because a matrix that has
+	// drifted slightly out of orthonormality can push it past one, and the
+	// caller multiplies it by a distance.
+	const float value = rotation.data[2][1];
+	if (value > 1.0f) {
+		return 1.0f;
+	}
+	if (value < -1.0f) {
+		return -1.0f;
+	}
+	return value;
+}
+
 }  // namespace obvr

@@ -40,20 +40,4 @@ NiPoint3 OffsetFromPose(const Quaternion& reference, const NiPoint3& rawPosition
 // through the nearest wall, and Oblivion's occlusion does not survive that.
 NiPoint3 ClampOffset(const NiPoint3& offset, float maxUnits);
 
-// Eases the camera towards where the head actually is: a fixed share of the
-// remaining distance per second, the share being speedPerSecond * deltaSeconds.
-//
-// Per second rather than per frame, which is how UEVR computes its camera lerp
-// as well ("t = m_lerp_camera_speed->value() * delta" in
-// VR::on_pre_calculate_stereo_view_offset). A per-frame share would make the
-// same setting feel twice as sluggish at 30 fps as at 60.
-//
-// It never quite arrives, which is exactly what makes it smooth, and the
-// residue falls far below what a pixel can show. A missing frame time or a
-// speed of zero means no smoothing rather than a frozen camera - of the ways
-// to handle a caller with no timing, that is the only one that still tracks
-// the head.
-NiPoint3 Approach(const NiPoint3& current, const NiPoint3& target, float speedPerSecond,
-                  float deltaSeconds);
-
 }  // namespace obvr::vr

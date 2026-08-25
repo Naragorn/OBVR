@@ -67,40 +67,21 @@ struct TrackerSettings {
 	// tracking glitch or someone standing up push the camera through a wall.
 	float maxOffsetUnits = 40.0f;
 
-	// Whether the camera eases towards the head position instead of following
-	// it instantly, the way Luke Ross's VR mods do it.
-	//
-	// It costs latency, and latency is normally the enemy in VR. It is on
-	// anyway because what it buys is worth more here: tracking noise stops
-	// reaching the camera as jitter, and a jump - the moment tracking
-	// recovers, or a recenter - becomes a glide rather than a snap.
-	bool smoothPosition = true;
-
-	// How quickly the camera closes the remaining distance, per second.
-	//
-	// Per second, not per frame. UEVR computes its camera lerp the same way -
-	// "t = m_lerp_camera_speed->value() * delta" in
-	// VR::on_pre_calculate_stereo_view_offset - and the reason is that a
-	// per-frame share makes the easing depend on the frame rate: the same
-	// setting would feel twice as sluggish at 30 fps as at 60.
-	//
-	// 15 per second covers a quarter of what is left in each frame at 60 fps,
-	// so roughly 90 per cent of a lean has arrived after 150 ms.
-	float smoothingSpeed = 15.0f;
 };
 
 class HeadTracker {
 public:
 	void Configure(const TrackerSettings& settings);
 
-	// Once per frame.
+	// Once per frame. For the simulated head, frameIndex takes the place of
+	// time - OBVR needs no real clock for that, and without one the behaviour
+	// stays reproducible.
 	//
-	// frameIndex drives the simulated head, which deliberately runs on frame
-	// count rather than time so that it stays reproducible. deltaSeconds is
-	// the real frame time and drives only the position smoothing; 0 means the
-	// caller has no timing to offer, and the camera then follows the head
-	// without smoothing rather than freezing in place.
-	void Update(UInt32 frameIndex, float deltaSeconds);
+	// The head is deliberately never smoothed. Easing a tracked head would
+	// show the user where their head was rather than where it is, and that
+	// latency is felt directly in a headset. What OBVR does ease is the
+	// camera motion it generates itself, in camera/LookControl.
+	void Update(UInt32 frameIndex);
 
 	// Takes the current head pose as the new zero. Everything after that is
 	// reported relative to it.
@@ -115,11 +96,20 @@ public:
 	//
 	// Zero whenever the source delivers no position or positional tracking is
 	// switched off, which leaves the vanilla camera position untouched.
+	//
+	// One to one with the head, never eased. See Update.
 	const NiPoint3& GetCameraOffset() const { return m_cameraOffset; }
 
 	// The orientation last read, still in OpenXR convention. Mostly for
 	// diagnostics in the log.
 	const Quaternion& GetRawOrientation() const { return m_rawOrientation; }
+
+	// Whether a real headset is actually delivering poses. The look controls
+	// are only taken away from the player when this is true - without a
+	// headset there is nothing to hand them to.
+	bool IsHeadsetConnected() const {
+		return m_settings.source == TrackerSource::OpenVR && m_openVR.IsRunning();
+	}
 
 private:
 	// Reads orientation and position from the configured source. Returns

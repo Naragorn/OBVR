@@ -1,6 +1,7 @@
 #include "camera/CameraHook.h"
 
 #include "camera/CameraTrampoline.h"
+#include "camera/LookControl.h"
 #include "core/Config.h"
 #include "core/Log.h"
 #include "core/Memory.h"
@@ -17,6 +18,7 @@ constexpr UInt32 kTrampolineSize = 64;
 
 KeyEdge g_recenterEdge;
 FrameClock g_frameClock;
+LookControl g_lookControl;
 
 bool ReadIsThirdPerson() {
 	auto* player = *reinterpret_cast<UInt8**>(addr::kPlayerPointer);
@@ -34,6 +36,7 @@ void MaybeReloadConfig() {
 
 	if (config.Reload("OBVR.ini")) {
 		g_headTracker.Configure(config.tracker);
+		g_lookControl.Configure(config.look);
 	}
 }
 
@@ -85,6 +88,10 @@ void MaybePollRecenter() {
 
 	if (g_recenterEdge.Update(isDown)) {
 		g_headTracker.Recenter();
+
+		// Recentering is meant to take effect at once. Easing the camera into
+		// the new zero would be the opposite of what the key is pressed for.
+		g_lookControl.Reset();
 		OBVR_LOG("Camera: recentered on key 0x%02X (frame %u)", key, g_state.frameCount);
 	}
 }
@@ -112,6 +119,10 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		         isThirdPerson ? "third person" : "first person");
 		break;
 	case PovEvent::Switched:
+		// First and third person put the camera in entirely different places,
+		// so there is no continuity for the easing to preserve across the
+		// change.
+		g_lookControl.Reset();
 		OBVR_LOG("Camera: switched to %s (frame %u)",
 		         isThirdPerson ? "third person" : "first person",
 		         g_state.frameCount);
@@ -128,7 +139,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
 	const float deltaSeconds = g_frameClock.Tick(ReadPerformanceCounter(), ticksPerSecond);
 
-	g_headTracker.Update(g_state.frameCount, deltaSeconds);
+	g_headTracker.Update(g_state.frameCount);
 
 	// After Update, so that the recenter reference is this frame's
 	// orientation rather than the previous one. The new zero therefore takes
@@ -167,12 +178,29 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// the game computed, without the head laid on top. Taking the product
 	// instead would tie leaning to where the head is looking, and leaning
 	// forward while glancing sideways would slide the camera sideways.
-	const NiMatrix33 vanillaRotation = cameraNode->localTransform.rot;
+	// The look controls are only taken away from the player while a headset is
+	// actually delivering poses. Without one there is nothing to hand them to,
+	// and somebody starting Oblivion without SteamVR has to get the game they
+	// had before.
+	NiMatrix33 baseRotation = cameraNode->localTransform.rot;
+	float verticalOffset = 0.0f;
 
+	if (g_headTracker.IsHeadsetConnected()) {
+		g_lookControl.Update(baseRotation, isThirdPerson, deltaSeconds);
+		baseRotation = g_lookControl.GetRotation();
+		verticalOffset = g_lookControl.GetVerticalOffset();
+	} else {
+		g_lookControl.Reset();
+	}
+
+	// The head offset is measured in the camera's own space, so it is carried
+	// over by the base rotation. The vertical look is not: it is a height, and
+	// heights are along the world up axis whichever way the camera faces.
 	cameraNode->localTransform.pos =
-		cameraNode->localTransform.pos + vanillaRotation * g_headTracker.GetCameraOffset();
+		cameraNode->localTransform.pos + baseRotation * g_headTracker.GetCameraOffset();
+	cameraNode->localTransform.pos.z += verticalOffset;
 
-	cameraNode->localTransform.rot = vanillaRotation * g_headTracker.GetCameraRotation();
+	cameraNode->localTransform.rot = baseRotation * g_headTracker.GetCameraRotation();
 }
 
 vr::HeadTracker& GetHeadTracker() { return g_headTracker; }
@@ -182,6 +210,7 @@ const State& GetState() { return g_state; }
 bool Install() {
 	const Config& config = GetConfig();
 	g_headTracker.Configure(config.tracker);
+	g_lookControl.Configure(config.look);
 
 	// Check first, patch second. If something other than the expected bytes
 	// sits there, it is a different game version or another mod got there

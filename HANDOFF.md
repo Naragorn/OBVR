@@ -68,7 +68,7 @@ controller.
 | 0.0.1 | plugin loads, logging, version check, camera hook, fixed test rotation | **verified in the game** |
 | 0.0.2 | quaternion layer, recenter, interchangeable head source, config hot reload | **verified in the game** |
 | 0.0.3 | OpenVR wired up, real HMD rotation on the camera | **verified in the game** |
-| 0.0.4 | positional head tracking, 6DoF for the head | **implemented and covered by tests**, not yet verified in the game ← **continue here** |
+| 0.0.4 | 6DoF for the head, vertical look taken off the stick | **implemented and covered by tests**, not yet verified in the game ← **continue here** |
 | 0.0.5 | frame loop, left and right swapchain, test images in the headset | open |
 | 0.1.0 | Oblivion's world as real dual-pass stereo | open |
 
@@ -306,7 +306,8 @@ OBVR/
 │   ├── camera/
 │   │   ├── CameraHook.{h,cpp}          callback + hook installation
 │   │   ├── CameraTrampoline.{h,cpp}    byte generation, platform free, tested
-│   │   └── FrameLogic.{h,cpp}          per-frame decisions + frame clock, tested
+│   │   ├── FrameLogic.{h,cpp}          per-frame decisions + frame clock, tested
+│   │   └── LookControl.{h,cpp}         what the stick may still do, tested
 │   ├── core/
 │   │   ├── CodeWriter.{h,cpp}          mini assembler
 │   │   ├── Config.{h,cpp}              INI + hot reload
@@ -314,6 +315,7 @@ OBVR/
 │   │   ├── MathFns.h                   sin/cos/sqrt, freestanding capable
 │   │   ├── Memory.{h,cpp}              SafeWrite / Verify / AllocExecutable
 │   │   ├── Rotation.{h,cpp}            EulerToMatrix (verified in the game)
+│   │   ├── Smoothing.{h,cpp}           easing, for the camera OBVR moves itself
 │   │   └── Types.h
 │   ├── game/
 │   │   ├── GameAddresses.h             every address with its disassembled evidence
@@ -336,6 +338,7 @@ OBVR/
     ├── RotationTest.cpp
     ├── FrameLogicTest.cpp
     ├── HeadOffsetTest.cpp
+    ├── LookControlTest.cpp
     ├── OpenVRPoseTest.cpp
     ├── OpenVRBackendTest.cpp
     ├── ConfigTest.cpp
@@ -423,6 +426,10 @@ ctest --test-dir build-tests --output-on-failure
 - `head_tracker_test` — each source, recenter semantics, and the regression guard that a
   hot reload with unchanged settings must not reset the recenter reference. Windows only.
 - `plugin_path_test` — the two anchors and the buffer-too-small contract. Windows only.
+- `look_control_test` - what happens to the look controls once a headset takes over: that
+  the camera stops tilting, that turning still works, that the vertical look becomes height
+  in third person and nothing at all in first, and the easing of both. It caught a real
+  fault while being written, recorded below. Pure arithmetic, so it runs on Linux too.
 - `head_offset_test` - the arithmetic of positional tracking: which way a lean moves the
   camera, that only the difference against the reference counts, that the lean is read in
   the frame the user recentered in, the lean limit, and the smoothing. Pure arithmetic, so
@@ -446,6 +453,20 @@ ctest --test-dir build-tests --output-on-failure
   `camera/FrameLogic` and is covered by `frame_logic_test`.
 - `core/Log` — writing to a file and to the debugger. Nothing to get wrong that a test
   would catch before a reader would.
+
+### One the tests caught
+
+Worth recording, because the reasoning was wrong rather than the typing. Easing between two
+headings held as a cosine and a sine handles the seam at 360 degrees for free, and the
+degenerate case is two headings pointing opposite ways. The first implementation looked for
+it *after* the easing, on the grounds that the midpoint of the straight line between them is
+the origin.
+
+That is only true for a step of exactly half. At a step of 0.2, easing `(1, 0)` towards
+`(-1, 0)` gives `(0.6, 0)`, which renormalises straight back to `(1, 0)`: the camera would
+have sat still while the game turned, then flipped once the step grew past half. Opposite
+headings are now recognised before the easing, from the dot product. A camera that turns
+right round in one frame was cut rather than panned, so the target is taken as it stands.
 
 ---
 

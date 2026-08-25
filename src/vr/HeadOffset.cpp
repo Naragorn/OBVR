@@ -24,22 +24,4 @@ NiPoint3 ClampOffset(const NiPoint3& offset, float maxUnits) {
 	return offset * (maxUnits / math::Sqrt(lengthSquared));
 }
 
-NiPoint3 Approach(const NiPoint3& current, const NiPoint3& target, float speedPerSecond,
-                  float deltaSeconds) {
-	if (!(deltaSeconds > 0.0f) || !(speedPerSecond > 0.0f)) {
-		return target;
-	}
-
-	float factor = speedPerSecond * deltaSeconds;
-
-	// Above 1 the step would overshoot the target and oscillate around it.
-	// That is reachable with an ordinary setting and a single long frame, not
-	// only with a broken one, which is why it is capped rather than rejected.
-	if (factor > 1.0f) {
-		factor = 1.0f;
-	}
-
-	return current + (target - current) * factor;
-}
-
 }  // namespace obvr::vr
