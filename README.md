@@ -52,9 +52,10 @@ The head is deliberately **never** smoothed. Easing a tracked head shows the wea
 their head was rather than where it is, and that latency is felt directly in a headset —
 it is the one thing VR cannot trade away.
 
-How far the camera moves is `HeadMovementScale`, and it defaults to 1.7 rather than to
-life-size — a figure a headset settled on, not one chosen in advance. That is a deliberate
-compromise with a shelf life: above 1.0 the world moves further than the head that moved
+How far the camera moves is `HeadMovementScale`, and it defaults to 2.0 rather than to
+life-size — a figure a headset settled on across three sessions, having gone 1.0 → 2.0 →
+1.7 → 2.0. That path is worth recording, because it says the number is a preference rather
+than a measurement. It is also a deliberate compromise with a shelf life: above 1.0 the world moves further than the head that moved
 it, which is the very mismatch VR comfort rests on avoiding. It is there because OBVR still renders a single image, so parallax is the only
 depth cue available and a one-to-one lean reads weaker than it will once there are two
 eyes. It is kept separate from `UnitsPerMetre` on purpose — that number is the engine's

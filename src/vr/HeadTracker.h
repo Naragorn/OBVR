@@ -50,8 +50,12 @@ struct TrackerSettings {
 	bool positionalTracking = true;
 
 	// Whether OBVR renders to the headset rather than only reading poses from
-	// it. Off until that actually works, so that an update cannot change a
-	// setup that was fine.
+	// it.
+	//
+	// False here and 1 in the shipped INI, and the two do not disagree: this
+	// value applies when there is no INI at all, which means a broken
+	// installation rather than a configured one. Claiming the VR scene from
+	// one of those turns the headset black with no file present to say why.
 	//
 	// It decides which kind of application OBVR registers as, and the two are
 	// exclusive: submitting a frame requires VRApplication_Scene, which takes
@@ -83,9 +87,14 @@ struct TrackerSettings {
 	// the very mismatch VR comfort rests on avoiding. It is a knob because
 	// OBVR still renders one image rather than two: without stereo, parallax
 	// is the only depth cue there is, and it reads weaker than it will once
-	// there are two eyes. 1.7 is what a headset settled on, not a round number
-	// picked in advance.
-	float movementScale = 1.7f;
+	// there are two eyes.
+	//
+	// 2 is what a headset settled on. It went 1 to 2 to 1.7 and back to 2
+	// across three sessions, which is worth recording because it says the
+	// number is a preference rather than a measurement - and preferences do
+	// not survive a change to the thing they were formed against. Try it at 1
+	// again once stereo renders.
+	float movementScale = 2.0f;
 
 	// The conversion actually applied to head movement, taste included.
 	float EffectiveUnitsPerMetre() const { return unitsPerMetre * movementScale; }

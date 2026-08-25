@@ -120,11 +120,14 @@ What the log settles on its own:
   like leaning sideways" by measurement rather than by argument.
 
 **Frame times are 17.8 to 18.5 ms across the whole run**, with no outlier — about 55 fps and
-no stutter, and nowhere near the 100 ms that a 10 Hz throttle would show. Whether those
-18 ms are Oblivion's own pace or the compositor's is **not established**: the consistency
-suggests pacing, but that is an inference, and the 0.0.4 logs have no `ms` column to compare
-against. One run with `Render.Enabled=0` settles it — if the figure stays at 18 it was
-always the game.
+no stutter, and nowhere near the 100 ms that a 10 Hz throttle would show.
+
+**And they are Oblivion's own, not the compositor's.** `docs/verification/OBVR-framerate-baseline.log`
+is the same session with `Render.Enabled=0`, and it runs at 17.8 to 18.4 ms — the same
+distribution. So submitting costs nothing measurable, and `WaitGetPoses` never gated the
+game: at 55 fps Oblivion is already slower than the headset wants, so the call returns
+immediately and the compositor reprojects. Worth recording that the earlier guess went the
+other way — the consistency of the figures looked like pacing, and it was not.
 
 Also visible: the tester's zero sits about 5 cm forward of where they actually sit. The Y
 component of `lean=` is persistently positive while X straddles zero, which is a reference
@@ -148,11 +151,13 @@ turn works but is unwelcome, so `SmoothTurning` stays off.
 
 Two things it found wrong, both now changed:
 
-- **the lean was far too small** at one to one. Hence `HeadMovementScale`, settled at
-  **1.7** over two sessions in the headset rather than picked as a round number. The honest
-  reading is that this compensates for a missing depth cue rather than fixing a bug: OBVR
-  still renders one image, so parallax is doing the work stereo will do from 0.0.5, and it
-  should be tried at 1.0 again once there are two eyes.
+- **the lean was far too small** at one to one. Hence `HeadMovementScale`, which went
+  1.0 → 2.0 → 1.7 → **2.0** across three sessions in the headset. That path is the useful
+  part: a number that wanders and comes back is a preference, not a measurement, and
+  preferences do not survive a change to the thing they were formed against. The honest
+  reading is that it compensates for a missing depth cue rather than fixing a bug — OBVR
+  still renders one image, so parallax is doing work stereo will take over, and 1.0 is worth
+  trying again once there are two eyes.
 - **one vertical range could not fit both directions.** At 60 units the camera reached
   roughly the character's backside going down, while the same 60 was right going up. The
   camera starts at head height rather than halfway along its travel, so the two directions
