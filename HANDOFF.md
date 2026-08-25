@@ -1005,8 +1005,13 @@ which is why that pattern is worth reusing rather than reinventing.
    now takes the application type; if the scene registration succeeds but the compositor
    cannot be reached, it gives the registration back and reconnects as background, so the
    picture is lost and head tracking is not.
-3. A D3D11 device of OBVR's own, one texture per eye, a generated test image. This is what
-   makes the milestone testable without solving D3D9. ← **next**
+3. ~~A D3D11 device of OBVR's own, one texture per eye, a generated test image~~ — **built,
+   not yet reachable.** `src/render/` holds `D3D11Types.h` (hand-rolled, from Wine's
+   `d3d11.idl` and the `D3D11CreateDevice` reference page), `TestPattern` and `EyeTextures`.
+   `d3d11.dll` is loaded at runtime like `openvr_api.dll`, so the import list is still
+   kernel32, msvcrt and user32 and the SDK-free build is untouched. Nothing calls it yet —
+   the linker discards it, and the DLL is the same size as before. Step 4 is what makes it
+   run. ← **next**
 4. `WaitGetPoses` in a frame loop, and the decision about which clock leads.
 5. `GetProjectionRaw` and `GetEyeToHeadTransform`, so the eyes sit where the headset says
    rather than where a guess puts them.

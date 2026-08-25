@@ -8,6 +8,7 @@ LIBRARY kernel32.dll
 EXPORTS
 VirtualProtect@16
 VirtualAlloc@16
+VirtualFree@12
 GetCurrentProcess@0
 FlushInstructionCache@12
 CreateFileA@28

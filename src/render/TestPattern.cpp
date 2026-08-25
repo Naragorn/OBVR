@@ -1,0 +1,131 @@
+#include "render/TestPattern.h"
+
+namespace obvr::render {
+namespace {
+
+constexpr UInt8 kOpaque = 255;
+
+// White, so a cut edge is obvious against the ramp behind it at either end.
+constexpr Pixel kBorder{255, 255, 255, kOpaque};
+
+// One colour per eye, far enough apart to name without thinking. Not pure red
+// and green: a fully saturated primary makes it hard to tell a dim panel from
+// a dark image, whereas a colour with some of the other channels in it still
+// looks like itself when the brightness is off.
+constexpr Pixel kLeftMarker{230, 60, 60, kOpaque};
+constexpr Pixel kRightMarker{60, 220, 90, kOpaque};
+
+UInt32 Clamp(UInt32 value, UInt32 max) { return value > max ? max : value; }
+
+// Well above any headset in existence and well below where the arithmetic
+// stops being safe. 16384 squared is 268 million pixels, which times four
+// bytes still fits in 32 bits with room to spare - so once both dimensions
+// are past this check the multiplication cannot overflow.
+constexpr UInt32 kMaxDimension = 16384;
+
+// A quarter of a gigabyte for one eye. Nothing legitimate comes near it, and
+// a 32-bit process that tried would fail somewhere far less informative.
+constexpr UInt32 kMaxBufferBytes = 256u * 1024u * 1024u;
+
+}  // namespace
+
+UInt32 PatternBufferBytes(UInt32 width, UInt32 height) {
+	if (width == 0 || height == 0) {
+		return 0;
+	}
+	if (width > kMaxDimension || height > kMaxDimension) {
+		return 0;
+	}
+
+	// Safe by the check above, and in that order: the cap is what makes the
+	// multiplication provable rather than hopeful.
+	const UInt32 bytes = width * height * 4u;
+	if (bytes > kMaxBufferBytes) {
+		return 0;
+	}
+	return bytes;
+}
+
+UInt32 BorderThickness(UInt32 width, UInt32 height) {
+	const UInt32 shorter = width < height ? width : height;
+
+	// A sixty-fourth of the shorter side, but never thinner than two pixels
+	// and never so thick that it swallows the picture. The lower bound
+	// matters: at a small size the division rounds to zero, and a border of
+	// nothing tests nothing while looking like it passed.
+	UInt32 thickness = shorter / 64u;
+	if (thickness < 2u) {
+		thickness = 2u;
+	}
+
+	const UInt32 limit = shorter / 4u;
+	if (limit > 0u && thickness > limit) {
+		thickness = limit;
+	}
+	return thickness;
+}
+
+Pixel PatternPixel(UInt32 x, UInt32 y, UInt32 width, UInt32 height, Eye eye) {
+	if (width == 0u || height == 0u) {
+		return Pixel{0, 0, 0, kOpaque};
+	}
+
+	x = Clamp(x, width - 1u);
+	y = Clamp(y, height - 1u);
+
+	const UInt32 thickness = BorderThickness(width, height);
+	const bool onBorder = x < thickness || y < thickness || x >= width - thickness ||
+	                      y >= height - thickness;
+	if (onBorder) {
+		return kBorder;
+	}
+
+	// The marker sits in the upper third and on its own side. Upper rather
+	// than centred so that a vertical flip shows without anything to compare
+	// against; on its own side so that a mirrored image moves it across.
+	const UInt32 markerTop = height / 6u;
+	const UInt32 markerBottom = height / 3u;
+	const UInt32 markerLeft = eye == Eye::Left ? width / 8u : (width * 5u) / 8u;
+	const UInt32 markerRight = eye == Eye::Left ? (width * 3u) / 8u : (width * 7u) / 8u;
+
+	if (y >= markerTop && y < markerBottom && x >= markerLeft && x < markerRight) {
+		return eye == Eye::Left ? kLeftMarker : kRightMarker;
+	}
+
+	// Everything else is the ramp: black at the top, white at the bottom.
+	//
+	// Scaled across the full height rather than across the area inside the
+	// border, so that the value at a given row does not depend on how thick
+	// the border happens to be. That keeps the ramp checkable by arithmetic
+	// rather than by reproducing the border calculation.
+	const UInt32 span = height > 1u ? height - 1u : 1u;
+	const UInt8 level = static_cast<UInt8>((y * 255u) / span);
+	return Pixel{level, level, level, kOpaque};
+}
+
+void FillPattern(UInt8* pixels, UInt32 width, UInt32 height, UInt32 rowPitch, Eye eye) {
+	if (pixels == nullptr) {
+		return;
+	}
+
+	// A pitch smaller than the row would mean writing each row over the
+	// previous one. Treating it as tightly packed is the only reading that
+	// cannot corrupt memory, and the caller passing zero almost certainly
+	// meant exactly that.
+	if (rowPitch < width * 4u) {
+		rowPitch = width * 4u;
+	}
+
+	for (UInt32 y = 0; y < height; ++y) {
+		UInt8* row = pixels + static_cast<UInt32>(y * rowPitch);
+		for (UInt32 x = 0; x < width; ++x) {
+			const Pixel pixel = PatternPixel(x, y, width, height, eye);
+			row[x * 4u + 0u] = pixel.r;
+			row[x * 4u + 1u] = pixel.g;
+			row[x * 4u + 2u] = pixel.b;
+			row[x * 4u + 3u] = pixel.a;
+		}
+	}
+}
+
+}  // namespace obvr::render

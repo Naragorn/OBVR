@@ -241,7 +241,18 @@ verification environment, not a comfortable one — for a release MSVC stays the
 
 ### Tests
 
-Eleven test binaries, all without a running Oblivion:
+Twelve test binaries, all without a running Oblivion:
+
+- **`test_pattern_test`** checks the picture OBVR puts in the headset before it can put
+  Oblivion there. A test pattern that is itself wrong is worse than none: it would be read
+  as evidence about the compositor, the projection or the eye order, and each of those
+  investigations would then start from a false premise. So every feature is checked for the
+  property it exists to demonstrate — the border reaches all four edges, the ramp is
+  monotonic downwards rather than merely different at two points, and the two eyes are
+  actually distinguishable at the same coordinates. It also covers the padded row pitch,
+  which is the fault worth catching early: Direct3D may make a texture row wider than its
+  pixels, and writing rows back to back regardless shears the picture diagonally — a fault
+  that looks like bad projection rather than bad arithmetic.
 
 - **`trampoline_test`** checks the generated hook bytes against expected values worked out
   by hand. A mistake there reliably crashes Oblivion. It also covers the 4GB-patched case

@@ -101,7 +101,12 @@ static_assert(sizeof(TrackedDevicePose) == 80, "TrackedDevicePose must be 80 byt
 // The leading entries are never called and stay untyped. Every function
 // pointer is four bytes on x86, so the struct still has the right layout.
 struct IVRSystemFnTable {
-	void* unused[12];
+	// Index 0, and the size every eye texture has to be created at. Asking
+	// the headset rather than assuming is the difference between a picture
+	// the compositor takes as it is and one it rescales every frame.
+	void(__stdcall* GetRecommendedRenderTargetSize)(UInt32* width, UInt32* height);
+
+	void* unused[11];
 
 	void(__stdcall* GetDeviceToAbsoluteTrackingPose)(int origin,
 	                                                 float predictedSecondsFromNow,

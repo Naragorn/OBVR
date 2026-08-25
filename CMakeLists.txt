@@ -35,6 +35,8 @@ add_library(OBVR SHARED
 	src/core/Smoothing.cpp
 	src/platform/Freestanding.cpp
 	src/platform/PluginPath.cpp
+	src/render/EyeTextures.cpp
+	src/render/TestPattern.cpp
 	src/vr/HeadOffset.cpp
 	src/vr/HeadTracker.cpp
 	src/vr/OpenVRBackend.cpp

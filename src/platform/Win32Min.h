@@ -27,8 +27,11 @@ using DWORD = unsigned long;
 inline HANDLE InvalidHandle() { return reinterpret_cast<HANDLE>(-1); }
 
 constexpr DWORD PAGE_EXECUTE_READWRITE = 0x40;
+constexpr DWORD PAGE_READWRITE = 0x04;
 constexpr DWORD MEM_COMMIT = 0x1000;
 constexpr DWORD MEM_RESERVE = 0x2000;
+// MEM_RELEASE requires a size of 0 and frees the whole reservation.
+constexpr DWORD MEM_RELEASE = 0x8000;
 constexpr DWORD GENERIC_WRITE = 0x40000000;
 constexpr DWORD FILE_SHARE_READ = 0x1;
 constexpr DWORD CREATE_ALWAYS = 2;
@@ -37,6 +40,7 @@ constexpr DWORD INVALID_FILE_ATTRIBUTES = 0xFFFFFFFF;
 
 OBVR_IMPORT BOOL OBVR_STDCALL VirtualProtect(void* address, UInt32 size, DWORD newProtect, DWORD* oldProtect);
 OBVR_IMPORT void* OBVR_STDCALL VirtualAlloc(void* address, UInt32 size, DWORD allocationType, DWORD protect);
+OBVR_IMPORT BOOL OBVR_STDCALL VirtualFree(void* address, UInt32 size, DWORD freeType);
 OBVR_IMPORT HANDLE OBVR_STDCALL GetCurrentProcess();
 OBVR_IMPORT BOOL OBVR_STDCALL FlushInstructionCache(HANDLE process, const void* baseAddress, UInt32 size);
 OBVR_IMPORT HANDLE OBVR_STDCALL CreateFileA(const char* fileName, DWORD access, DWORD shareMode, void* security, DWORD creation, DWORD flags, HANDLE templateFile);

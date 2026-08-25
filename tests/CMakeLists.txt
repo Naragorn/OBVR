@@ -194,3 +194,16 @@ if(WIN32)
 
 	add_test(NAME plugin_path COMMAND plugin_path_test)
 endif()
+
+add_executable(test_pattern_test
+	TestPatternTest.cpp
+	../src/render/TestPattern.cpp
+)
+
+target_include_directories(test_pattern_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(test_pattern_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME test_pattern COMMAND test_pattern_test)

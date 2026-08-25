@@ -70,6 +70,14 @@ public:
 	// valid pose instead of letting the camera jump.
 	bool ReadHeadPose(Quaternion& orientation, NiPoint3& position) const;
 
+	// The size the headset wants each eye rendered at, in pixels.
+	//
+	// Worth asking rather than assuming: the compositor takes a texture of
+	// this size as it is and rescales anything else, every frame, for as long
+	// as the mod runs. Returns false without a connection, leaving the
+	// arguments untouched.
+	bool GetRecommendedRenderTargetSize(UInt32& width, UInt32& height) const;
+
 private:
 	// Logs a message once. The flag is diagnostic state rather than part of
 	// the backend's state, which is why it is mutable and usable from a const

@@ -174,6 +174,32 @@ void OpenVRBackend::Stop() {
 	OBVR_LOG("OpenVR: disconnected");
 }
 
+bool OpenVRBackend::GetRecommendedRenderTargetSize(UInt32& width, UInt32& height) const {
+	if (m_system == nullptr) {
+		return false;
+	}
+
+	auto* table = static_cast<openvr::IVRSystemFnTable*>(m_system);
+	if (table->GetRecommendedRenderTargetSize == nullptr) {
+		return false;
+	}
+
+	UInt32 w = 0;
+	UInt32 h = 0;
+	table->GetRecommendedRenderTargetSize(&w, &h);
+
+	// A zero from a runtime that answered anyway would otherwise become a
+	// texture of no size, and Direct3D reports that as a generic failure with
+	// nothing pointing back to here.
+	if (w == 0 || h == 0) {
+		return false;
+	}
+
+	width = w;
+	height = h;
+	return true;
+}
+
 bool OpenVRBackend::ReadHeadPose(Quaternion& orientation, NiPoint3& position) const {
 	if (m_system == nullptr) {
 		return false;
