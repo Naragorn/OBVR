@@ -1,0 +1,33 @@
+OBVR 1 - Query
+OBSE version 22, Oblivion version 010201A0
+OBVR 1 - Load
+Config: D:\SteamLibrary\steamapps\common\Oblivion\Data\OBSE\Plugins\OBVR.ini
+Config: HookEnabled=1 Source=openvr Fixed=(P 0.0, R 20.0, Y 0.0)
+Config: Simulated=(Yaw 25.0, Pitch 12.0, Period 600) LogEveryFrames=120 ReloadEveryFrames=120
+Config: RecenterKey=46 (0x2E)
+Config: PositionalTracking=1 UnitsPerMetre=69.99 HeadMovementScale=3.00 (effective 209.97) MaxLeanUnits=120.0
+Config: BlockVerticalLook=1 VerticalLookRange=(up 60.0, down 120.0) SmoothVerticalLook=1 (8.0)
+Config: SmoothTurning=0 TurnSpeed=12.0
+Config: Render.Enabled=1 - OBVR will claim the VR scene
+OpenVR: connected as a scene application through FnTable:IVRSystem_026 and FnTable:IVRCompositor_029
+Camera: hook installed at 0066BE6E, trampoline at 03F30000 (37 bytes)
+OBVR ready
+Camera: first hook pass, CameraNode=1812BCA0, third person
+Render: Oblivion's D3D9 device 0C6DE000 is DXVK
+Render: Vulkan instance=0A735578 physical=0A611518 device=34880078
+Render: Vulkan queue=345E1578 index=0 family=0
+Render: back buffer image=0000000034A33C78 2560x1440 format=44 samples=1 layout=1
+OpenVR: no valid HMD pose yet
+Render: left eye raw=(l -1.1518, r 0.8248, t -1.1991, b 0.7927)
+Render: left eye fov=(h 88.6 deg, v 88.6 deg) asymmetry=(h -0.3270, v -0.4064)
+Render: right eye raw=(l -0.8417, r 1.1419, t -1.1908, b 0.8073)
+Render: right eye fov=(h 88.9 deg, v 88.9 deg) asymmetry=(h 0.3003, v -0.3835)
+Render: eye offsets left=(-0.0310, 0.0000, 0.0000) right=(0.0310, 0.0000, 0.0000)
+Render: IPD 62.0 mm
+Render: two 3560x3560 eye textures ready, cross at u=0.583 and u=0.424
+Camera: frame 120, 3rd, 18.2 ms, pos=(997.4, 1286.4, 325.2), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: recentered on key 0x2E (frame 207)
+Camera: recentered on key 0x2E (frame 218)
+Camera: frame 240, 3rd, 18.3 ms, pos=(996.5, 1287.0, 322.6), head=(0.047, -0.261, 0.059, 0.963), lean=(0.2, -0.7, 0.3) raw=0.7
+Camera: frame 360, 3rd, 18.7 ms, pos=(996.5, 1287.0, 322.6), head=(-0.168, -0.252, -0.029, 0.953), lean=(2.5, -6.7, -6.3) raw=9.5
+Camera: frame 480, 3rd, 18.8 ms, pos=(996.5, 1287.0, 322.6), head=(-0.088, -0.246, -0.009, 0.965), lean=(0.3, -4.2, -6.9) raw=8.1

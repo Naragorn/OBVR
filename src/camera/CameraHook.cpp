@@ -7,6 +7,7 @@
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
 #include "platform/Win32Min.h"
+#include "render/DxvkInterop.h"
 #include "render/GameDevice.h"
 #include "render/HeadsetRenderer.h"
 
@@ -162,6 +163,19 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 				         static_cast<UInt32>(backBuffer.image), backBuffer.width,
 				         backBuffer.height, backBuffer.format, backBuffer.sampleCount,
 				         backBuffer.layout);
+
+				// The line that decides whether Oblivion's own frame can go
+				// to the compositor as it stands. Usage is the part that
+				// cannot be repaired afterwards: it is fixed when the image
+				// is created, so missing bits mean copying the frame rather
+				// than handing it over.
+				OBVR_LOG("Render: back buffer usage=%08X transfer_src=%d sampled=%d, %s",
+				         backBuffer.usage,
+				         (backBuffer.usage & render::dxvk::kImageUsageTransferSrc) != 0 ? 1 : 0,
+				         (backBuffer.usage & render::dxvk::kImageUsageSampled) != 0 ? 1 : 0,
+				         render::IsSubmittableImage(backBuffer)
+				             ? "submittable once transitioned"
+				             : "NOT submittable as it stands");
 			} else {
 				OBVR_LOG("Render: no Vulkan image behind the back buffer");
 			}

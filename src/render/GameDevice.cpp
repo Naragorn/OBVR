@@ -180,7 +180,30 @@ bool GetBackBufferImage(void* device, BackBufferImage& out) {
 	out.width = info.extent.width;
 	out.height = info.extent.height;
 	out.sampleCount = info.samples;
+	out.usage = info.usage;
 	return true;
+}
+
+bool IsSubmittableImage(const BackBufferImage& image) {
+	// Three conditions, all from SteamVR's Vulkan page, and each fails
+	// differently.
+	//
+	// Usage is the one that cannot be repaired: it is fixed when the image is
+	// created, so a back buffer without these bits has to be copied rather
+	// than transitioned.
+	if ((image.usage & dxvk::kImageUsageTransferSrc) == 0 ||
+	    (image.usage & dxvk::kImageUsageSampled) == 0) {
+		return false;
+	}
+
+	// Multisampled images are a separate path in the runtime, and OBVR does
+	// not walk it. A back buffer normally has one sample.
+	if (image.sampleCount != 1) {
+		return false;
+	}
+
+	// An image of no size is not a picture, whatever else is right about it.
+	return image.image != 0 && image.width > 0 && image.height > 0;
 }
 
 const char* DeviceKindName(DeviceKind kind) {

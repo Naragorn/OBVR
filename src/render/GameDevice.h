@@ -126,7 +126,22 @@ struct BackBufferImage {
 	UInt32 width = 0;
 	UInt32 height = 0;
 	UInt32 sampleCount = 0;
+
+	// The usage flags the image was created with, and the one property here
+	// that cannot be fixed afterwards. SteamVR requires TRANSFER_SRC and
+	// SAMPLED; usage is settled when an image is created, so if these are
+	// missing no transition helps and the frame has to be copied into an
+	// image that has them.
+	UInt32 usage = 0;
 };
+
+// Whether an image as described could be handed to the compositor as it is.
+//
+// Separated from the reading so it can be checked without a game: it is
+// three conditions from SteamVR's Vulkan documentation, and getting any of
+// them wrong means either a submit that fails or a copy that was never
+// needed.
+bool IsSubmittableImage(const BackBufferImage& image);
 
 // Reads it. False when the device is not DXVK, when the back buffer cannot be
 // had, or when the surface does not carry a Vulkan image - which DXVK

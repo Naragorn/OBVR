@@ -35,6 +35,36 @@ using VkImageHandle = unsigned long long;
 // GetVulkanImageInfo requires sType to already say what the structure is.
 constexpr UInt32 kStructureTypeImageCreateInfo = 14;
 
+// VkImageLayout (vulkan_core.h). Two values, and the gap between them is a
+// thing OBVR has to close rather than a detail.
+//
+// SteamVR's Vulkan documentation is explicit: an image passed to the runtime
+// "should be in the VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL layout when passed
+// to the SteamVR runtime, and will still be in that state when the submission
+// work has finished executing". Oblivion's back buffer reports GENERAL. That
+// is what ID3D9VkInteropDevice::TransitionTextureLayout is for, and knowing
+// why that method exists is worth more than the constant.
+constexpr UInt32 kImageLayoutGeneral = 1;
+constexpr UInt32 kImageLayoutTransferSrcOptimal = 6;
+
+// VkImageUsageFlagBits (vulkan_core.h). The two SteamVR requires of a
+// submitted image: "must have been created with at least the following
+// VkImageUsageFlags: VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+// VK_IMAGE_USAGE_SAMPLED_BIT".
+//
+// Unlike the layout, this one cannot be fixed after the fact. Usage is fixed
+// when an image is created, so if Oblivion's back buffer lacks these there is
+// no transition that helps - the frame would have to be copied into an image
+// that has them.
+constexpr UInt32 kImageUsageTransferSrc = 0x00000001;
+constexpr UInt32 kImageUsageSampled = 0x00000004;
+
+// VkFormat values SteamVR accepts, of which Oblivion's back buffer reports
+// the third. The full list from the same page is R8G8B8A8_UNORM,
+// R8G8B8A8_SRGB, B8G8R8A8_UNORM, B8G8R8A8_SRGB, R32G32B32A32_SFLOAT,
+// R32G32B32_SFLOAT, R16G16B16A16_SFLOAT and A2R10G10B10_UINT_PACK32.
+constexpr UInt32 kFormatB8G8R8A8Unorm = 44;
+
 // VkExtent3D (vulkan_core.h)
 struct VkExtent3D {
 	UInt32 width;

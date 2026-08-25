@@ -17,6 +17,7 @@
 
 #include <cstdio>
 
+#include "render/DxvkInterop.h"
 #include "render/GameDevice.h"
 
 namespace {
@@ -149,6 +150,55 @@ void TestNaming() {
 	      "a null device is unavailable rather than native");
 }
 
+void TestSubmittability() {
+	std::printf("Whether a frame could go to the compositor as it stands\n");
+
+	// The three conditions come from SteamVR's Vulkan documentation, and the
+	// baseline is what Oblivion's back buffer actually reported through DXVK:
+	// 2560x1440, format 44 (B8G8R8A8_UNORM, which is on SteamVR's accepted
+	// list), one sample, layout GENERAL.
+	obvr::render::BackBufferImage good;
+	good.image = 0x34A33C78;
+	good.width = 2560;
+	good.height = 1440;
+	good.format = 44;
+	good.sampleCount = 1;
+	good.usage = obvr::render::dxvk::kImageUsageTransferSrc |
+	             obvr::render::dxvk::kImageUsageSampled | 0x10;
+	Check(obvr::render::IsSubmittableImage(good), "a real back buffer description passes");
+
+	// Usage is the condition that cannot be repaired. It is fixed when the
+	// image is created, so missing bits mean the frame has to be copied into
+	// an image that has them - a different and much larger piece of work than
+	// a layout transition, which is why it is worth knowing separately.
+	obvr::render::BackBufferImage noTransfer = good;
+	noTransfer.usage &= ~obvr::render::dxvk::kImageUsageTransferSrc;
+	Check(!obvr::render::IsSubmittableImage(noTransfer),
+	      "without TRANSFER_SRC it is refused rather than submitted and failed");
+
+	obvr::render::BackBufferImage noSampled = good;
+	noSampled.usage &= ~obvr::render::dxvk::kImageUsageSampled;
+	Check(!obvr::render::IsSubmittableImage(noSampled), "and without SAMPLED as well");
+
+	// Multisampled images take a different path in the runtime, one OBVR does
+	// not walk.
+	obvr::render::BackBufferImage multisampled = good;
+	multisampled.sampleCount = 4;
+	Check(!obvr::render::IsSubmittableImage(multisampled), "a multisampled image is refused");
+
+	// A layout of GENERAL is deliberately *not* a reason to refuse. OpenVR
+	// wants TRANSFER_SRC_OPTIMAL, but that is a transition away rather than a
+	// property of the image - conflating the two would mean copying a frame
+	// that only needed a barrier.
+	obvr::render::BackBufferImage general = good;
+	general.layout = obvr::render::dxvk::kImageLayoutGeneral;
+	Check(obvr::render::IsSubmittableImage(general),
+	      "the wrong layout is not a reason to refuse, only to transition");
+
+	obvr::render::BackBufferImage empty;
+	Check(!obvr::render::IsSubmittableImage(empty), "a default-constructed image is refused");
+}
+
 }  // namespace
 
 int main() {
@@ -159,6 +209,8 @@ int main() {
 	TestGuidLayout();
 	std::printf("\n");
 	TestNaming();
+	std::printf("\n");
+	TestSubmittability();
 
 	std::printf("\n");
 	if (g_failures == 0) {
