@@ -1124,6 +1124,46 @@ are produced behind one interface with two implementations, choosing between the
 setting rather than a rewrite — the same shape `TrackerSource` already has for head poses,
 which is why that pattern is worth reusing rather than reinventing.
 
+### Alternate eye rendering was tried, and the compositor said no
+
+Built, switched on, and it does not work - `docs/verification/OBVR-aer-refused.log` is the
+record. SteamVR fell back to its Home scene and OBVR showed nothing.
+
+**The log is decisive by what it does not contain.** No `stopped rendering`, no failed
+`Submit`, no error of any kind: every call reported success. The only thing different from
+the working run was that one eye was submitted per frame instead of two.
+
+So the question this document flagged as unestablished has an answer, and it is the
+unfavourable one: **the compositor counts a frame as delivered only when both eyes have been
+submitted.** A single eye returns success and is not a frame, and after ten such non-frames
+the scene fades out exactly as the documentation says it does for an application that has
+stopped submitting.
+
+Worth noting how that failure presented. Nothing failed. Had it not been written down in
+advance as the thing that would decide whether AER works at all, the search would have
+started from "why is Submit silently broken" rather than from "Submit is fine, the frame is
+incomplete".
+
+Confirmed in passing: `Head: eye separation 62.0 mm, half of it 2.17 Oblivion units`. The
+conversion works, and the camera offset it feeds is correct - it simply had nowhere to go.
+
+**What AER needs instead.** Both eyes every frame, with the eye waiting its turn showing a
+kept copy of its own last picture. That means OBVR owning two images rather than borrowing
+one, and copying into them:
+
+- `IDirect3DDevice9::CreateRenderTarget` at vtable index **28**, twice, matching the back
+  buffer
+- `IDirect3DDevice9::StretchRect` at vtable index **34**, once a frame, from the back buffer
+  into the current eye's target
+- each target's `VkImage` through `ID3D9VkInteropTexture`, read once and cached
+- both submitted every frame
+
+Both indices counted from Wine's `include/d3d9.h`, interface facts rather than game ones.
+Whether a render target made this way carries the `TRANSFER_SRC` and `SAMPLED` usage bits
+the compositor requires is **not established** - the back buffer has them, but that is not
+the same claim. `IsSubmittableImage` already answers it at runtime, so it costs one run to
+find out rather than an argument.
+
 ### Where 0.1.0 stands, and the two things left
 
 Oblivion's frame reaches both eyes, aligned, at no measurable cost in frame time.
