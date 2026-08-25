@@ -6,9 +6,11 @@
 // it merely self-consistent.
 
 #include <cmath>
+#include <cstddef>
 #include <cstdio>
 
 #include "core/Rotation.h"
+#include "vr/OpenVRTypes.h"
 #include "vr/Quaternion.h"
 
 namespace {
@@ -189,6 +191,59 @@ void TestNormalization() {
 	          "result is normalised");
 }
 
+void CheckEqual(std::size_t actual, std::size_t expected, const char* what) {
+	if (actual == expected) {
+		std::printf("  ok    %s\n", what);
+	} else {
+		std::printf("  FAIL  %s: %zu, expected %zu\n", what, actual, expected);
+		++g_failures;
+	}
+}
+
+void TestCompositorLayout() {
+	std::printf("The compositor interface, as declared\n");
+
+	namespace openvr = obvr::vr::openvr;
+
+	// Function pointer indices, checked in units of one pointer rather than
+	// in bytes: the DLL that ships is 32 bit and this test binary is not, so
+	// a byte count would be right for one of them and wrong for the other.
+	//
+	// These are worth pinning because getting one wrong does not produce a
+	// wrong picture, it produces a call into a different function with a
+	// different number of arguments. On a 32-bit stdcall stack that corrupts
+	// the stack and crashes somewhere unrelated.
+	CheckEqual(offsetof(openvr::IVRCompositorFnTable, SetTrackingSpace), 0,
+	           "SetTrackingSpace is the first entry");
+	CheckEqual(offsetof(openvr::IVRCompositorFnTable, WaitGetPoses), 2 * sizeof(void*),
+	           "WaitGetPoses is at index 2");
+
+	// The one that a stale listing gets wrong. GetSubmitTexture sits between
+	// GetLastPoseForTrackedDeviceIndex and Submit, and it is missing from
+	// older documentation - leaving Submit one slot early, on
+	// SubmitWithArrayIndex, which takes an extra argument.
+	CheckEqual(offsetof(openvr::IVRCompositorFnTable, Submit), 6 * sizeof(void*),
+	           "Submit is at index 6, not 5");
+
+	// Two structs that cross the boundary by value.
+	CheckEqual(sizeof(openvr::Texture), sizeof(void*) + 2 * sizeof(int),
+	           "Texture_t packs without padding");
+	CheckEqual(sizeof(openvr::VRTextureBounds), 4 * sizeof(float),
+	           "VRTextureBounds_t is four floats");
+	CheckEqual(offsetof(openvr::VRTextureBounds, vMax), 3 * sizeof(float),
+	           "the bounds are in the order uMin, vMin, uMax, vMax");
+
+	// Scene and Background are mutually exclusive, and OBVR needs both at
+	// different times. Pinning the pair here keeps a later edit from
+	// collapsing them into one value.
+	CheckEqual(static_cast<std::size_t>(openvr::kApplicationScene), 1,
+	           "VRApplication_Scene is 1");
+	CheckEqual(static_cast<std::size_t>(openvr::kApplicationBackground), 3,
+	           "VRApplication_Background is 3, and a different thing");
+	CheckEqual(static_cast<std::size_t>(openvr::kCompositorErrorIsNotSceneApplication), 103,
+	           "the error a background application gets from Submit is 103");
+}
+
 }  // namespace
 
 int main() {
@@ -203,6 +258,8 @@ int main() {
 	TestAgainstVerifiedRotation();
 	std::printf("\n");
 	TestNormalization();
+	std::printf("\n");
+	TestCompositorLayout();
 
 	std::printf("\n");
 	if (g_failures == 0) {

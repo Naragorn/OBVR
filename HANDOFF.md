@@ -895,22 +895,98 @@ Oblivion is from 2006 and creates a plain D3D9 device. So the two candidate rout
   been a deliberate property so far. Unverified: whether Oblivion tolerates a 9Ex device —
   the runtimes differ in `D3DPOOL_MANAGED` handling and in device-lost behaviour, and that
   has to be tried rather than argued.
-- **Replace D3D9 with DXVK**, which renders in Vulkan and submits Vulkan textures. Two
-  independent precedents do exactly this for D3D9 games: [openRBRVR](https://github.com/Detegr/openRBRVR)
-  and [l4d2vr](https://github.com/sd805/l4d2vr), the latter shipping a modified DXVK fork as
-  the game's `d3d9.dll` and submitting through a `SharedTextureHolder` per eye. The price is
-  a very large dependency for a project that currently imports nothing beyond kernel32,
-  msvcrt and user32.
+- **Let DXVK render in Vulkan** and submit Vulkan textures. Two independent precedents do
+  this for D3D9 games: [openRBRVR](https://github.com/Detegr/openRBRVR) and
+  [l4d2vr](https://github.com/sd805/l4d2vr).
 
-One point favours DXVK beyond the precedents, and it is about the stated target rather than
-convenience: under Proton, Oblivion's D3D9 is *already* going through DXVK to Vulkan. On
-Linux the translation exists whether OBVR wants it or not, and a route that fights it is a
-route that works on the development machine and not on the destination. Windows is the
-development environment here; Linux is still where this is meant to end up.
+**DXVK is the chosen route.** Two things decided it, and one of them corrects an earlier
+assumption in this document.
 
-**This decision is deliberately left open.** It does not block 0.0.5, because proving the
-compositor connection, the frame timing and the projection maths is worth the same under
-either route.
+**No fork is needed.** l4d2vr ships a modified DXVK, which made the route look like it cost
+a large maintained fork. It does not: stock upstream DXVK already exposes public D3D9
+interop, in `src/d3d9/d3d9_interfaces.h`.
+
+| Interface | Queried from | Yields |
+| --- | --- | --- |
+| `ID3D9VkInteropInterface` / `…1` | `IDirect3D9` | `VkInstance`, `VkPhysicalDevice`, enabled instance extensions |
+| `ID3D9VkInteropDevice` | `IDirect3DDevice9` | `VkInstance`, `VkPhysicalDevice`, `VkDevice`, the render queue, image layout transitions |
+| `ID3D9VkInteropTexture` | `IDirect3DTexture9` / `IDirect3DSurface9` | `VkImage` plus its `VkImageCreateInfo` and `VkImageLayout` |
+
+So OBVR stays a plugin that asks a `QueryInterface` question, rather than a project that
+maintains a graphics driver. That is a different order of cost entirely.
+
+**Under Proton it is already there.** Oblivion's D3D9 goes through DXVK to Vulkan whether
+OBVR wants it or not, so a route that fights that is one that works on the development
+machine and not on the destination. Windows is the development environment here; Linux is
+where this is meant to end up.
+
+#### What "depends on DXVK" actually means
+
+Not an installation. DXVK on Windows is a single `d3d9.dll` beside `Oblivion.exe`, taken
+from the **x32** directory of a release because Oblivion is a 32-bit process. Under Proton
+it ships with Proton and needs nothing. Independently of VR it is already common advice for
+this game — it lifts the 32-bit video memory ceiling and moves work off the single core
+Oblivion is stuck on — and DXVK's own maintainers test against Oblivion 2006 directly
+(issue #4862, 2025).
+
+Three real costs, none of them fatal but all of them the user's problem rather than OBVR's:
+
+- **DXVK does not officially support Windows.** Its own wiki: "While using DXVK on Windows
+  may generally work […] we do not support it officially. Many issues with running DXVK on
+  Windows are outside of our control." Linux is the supported platform, which for this
+  project is the right way round, but it has to be said plainly to anyone on Windows.
+- **`d3d9.dll` is contested ground.** ENB and several other Oblivion mods want to be that
+  same file. Whatever OBVR does here has to coexist with a chain that already exists, or
+  say clearly that it cannot.
+- **The game root is not virtualised by Mod Organizer 2.** OBVR's own files avoid this by
+  anchoring on the plugin DLL under `Data`, but `d3d9.dll` cannot: it has to sit next to the
+  executable, so MO2 users need Root Builder or a manual copy for that one file. The
+  property "OBVR needs no Root Builder" survives only for OBVR's own files.
+
+**Still unverified**, and it should be checked before step 4 of 0.0.5 rather than after:
+OpenVR's `VRVulkanTextureData_t` wants a queue family index alongside the queue, and it is
+not established that `ID3D9VkInteropDevice` hands that out. Nor is it established that a
+stock DXVK enables the instance and device extensions OpenVR requires through
+`GetVulkanInstanceExtensionsRequired` / `GetVulkanDeviceExtensionsRequired`. DXVK issue #27
+discusses exactly this and dates from 2018, so it says nothing reliable about current
+builds.
+
+The choice of route does not block 0.0.5 in any case: proving the compositor connection,
+the frame timing and the projection maths is worth the same either way.
+
+#### Kept open: D3D9Ex, and why both could stand side by side
+
+DXVK is the route to build first, not the route to build only. The D3D9Ex alternative is
+recorded here in full because it may yet be needed, and because the reason to keep it is
+not sentimental.
+
+**The route.** A `d3d9.dll` wrapper hands the game an `IDirect3D9Ex` instead of an
+`IDirect3D9`, which buys the shared surfaces plain D3D9 does not have. From there
+`ID3D11Device::OpenSharedResource` opens the surface on a D3D11 device and `Submit` takes
+it as `TextureType_DirectX`. Restrictions as documented above: 2D, one mip level, default
+usage, write only, no MSAA, `SHADER_RESOURCE | RENDER_TARGET`, and one of `R8G8B8A8_UNORM`,
+`R10G10B10A2_UNORM`, `R16G16B16A16_FLOAT`.
+
+**What it buys.** OBVR stays dependency-free, which has been a deliberate property from the
+start and is why the mod loads on a machine with nothing installed but the game. It also
+needs no file the user has to fetch, and nothing in the game root beyond what a wrapper
+would put there anyway.
+
+**What is unverified, and cannot be argued either way.** Whether Oblivion tolerates a 9Ex
+device at all. The two runtimes differ in `D3DPOOL_MANAGED` handling — 9Ex removes the
+managed pool — and in device-lost behaviour, where 9Ex mostly does not lose devices and a
+game written to expect that it does may take a path that never runs. A 2006 engine has no
+reason to be careful about either. This has to be tried on the actual binary; no amount of
+reading settles it.
+
+**Why both is a real option rather than a hedge.** They fail in different places. DXVK is
+unsupported on Windows by its own maintainers and contests `d3d9.dll` with ENB; D3D9Ex
+depends on a 2006 engine tolerating a runtime it was never written for. Neither risk covers
+the other. And the seam between them is narrow: both end at `Submit` with a texture and
+bounds, differing only in what kind of texture and where it came from. If the eye textures
+are produced behind one interface with two implementations, choosing between them is a
+setting rather than a rewrite — the same shape `TrackerSource` already has for head poses,
+which is why that pattern is worth reusing rather than reinventing.
 
 ### The order of work for 0.0.5
 
