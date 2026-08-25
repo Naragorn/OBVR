@@ -1127,6 +1127,13 @@ check against the binary, which is the standard `GameAddresses.h` holds addresse
 - the encoding of `mov eax, [0x00B3F928]` - `A1 28 F9 B3 00` - appears **41 times** in
   `Oblivion.exe`. A five byte sequence does not occur that often by chance.
 
+**Confirmed in the game.** `docs/verification/OBVR-d3d9-device.log` has
+`Render: Oblivion's D3D9 device 07F86CE0 is native Direct3D 9` - which is what was
+predicted, since there is no `d3d9.dll` in that game root. Two separate runs reported
+*different* pointer values, both non-null and both answering QueryInterface, which is how a
+heap-allocated COM object should behave; a wrong address would have given either garbage or
+a constant.
+
 `render::GameDevice` reads it and asks it one question: does it answer to
 `ID3D9VkInteropDevice` (`2eaa4b89-0107-4bdb-87f7-0f541c493ce0`, from DXVK's
 `d3d9_interfaces.h`)? That single QueryInterface decides which of the two routes in this
