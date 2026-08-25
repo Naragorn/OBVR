@@ -17,3 +17,8 @@ out/
 # docs/verification/ sind dagegen Belege der Spieltests und gehoeren ins Repo.
 *.log
 !docs/verification/*.log
+
+# Maschinenlokales Werkzeug-Beiwerk, kein Projektinhalt
+.claude/settings.local.json
+.claude/worktrees/
+.playwright-mcp/
