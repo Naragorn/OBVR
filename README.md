@@ -14,9 +14,18 @@ relative HMD rotation
 final VR camera
 ```
 
-## Status: 0.0.4 — a head that rotates and moves, and a stick that no longer tilts
+## Status: 0.0.5 — a picture in the headset, and the eyes where the headset says
 
-Still no stereo. 0.0.1 answered the core question:
+OBVR now puts its own picture in the headset, one texture per eye, on the compositor's
+clock — but it is a generated test pattern rather than Oblivion's world. Getting the game's
+own pixels there is 0.1.0, and it is a different and harder problem: Oblivion draws in
+Direct3D 9, and OpenVR's `Submit` has no entry for a Direct3D 9 texture at all.
+
+Splitting those two apart was the point of the milestone. Talking to the compositor
+correctly and getting pixels out of Direct3D 9 would otherwise have failed together and
+been indistinguishable. The first half is now settled independently of the second.
+
+0.0.1 answered the core question:
 
 > Can an additional rotation be applied after Oblivion's vanilla camera calculation,
 > without damaging first person, third person or animations?
@@ -52,13 +61,22 @@ The head is deliberately **never** smoothed. Easing a tracked head shows the wea
 their head was rather than where it is, and that latency is felt directly in a headset —
 it is the one thing VR cannot trade away.
 
-How far the camera moves is `HeadMovementScale`, and it defaults to 2.0 rather than to
-life-size — a figure a headset settled on across three sessions, having gone 1.0 → 2.0 →
-1.7 → 2.0. That path is worth recording, because it says the number is a preference rather
-than a measurement. It is also a deliberate compromise with a shelf life: above 1.0 the world moves further than the head that moved
-it, which is the very mismatch VR comfort rests on avoiding. It is there because OBVR still renders a single image, so parallax is the only
-depth cue available and a one-to-one lean reads weaker than it will once there are two
-eyes. It is kept separate from `UnitsPerMetre` on purpose — that number is the engine's
+How far the camera moves is `HeadMovementScale`, and it defaults to 3.0 rather than to
+life-size — a figure the headset arrived at across four sessions, going 1.0 → 2.0 → 1.7 →
+2.0 → 3.0. That path is the useful part: a number which keeps climbing is chasing something
+the scale cannot supply.
+
+What it is chasing is the second eye. Above 1.0 the world moves further than the head that
+moved it, which is the very mismatch VR comfort rests on avoiding — so this is a knob, not a
+recommendation. It exists because OBVR still renders a single image: parallax is the only
+depth cue available, and it is weakest along the view axis, so leaning forward reads as
+almost nothing at life-size.
+
+That is not a guess. Leaning forward and leaning sideways felt unlike each other for three
+sessions, and raising the scale to 3.0 made them feel alike — while amplifying both equally,
+leaving the measured ratio between them unchanged. So the difference was never unequal
+treatment in the code; forward motion simply sat below the threshold of perception. Expect
+this number to want to come back down a long way once there are two eyes. It is kept separate from `UnitsPerMetre` on purpose — that number is the engine's
 documented figure and stereo will need it for the distance between the eyes, so inflating
 it to taste now would silently shrink the whole world later.
 
@@ -519,7 +537,7 @@ turn out to be reachable no other way.
 | 0.0.2 | quaternion layer, recenter, interchangeable head source, config hot reload | verified in the game |
 | 0.0.3 | OpenVR wired up, real HMD rotation on the camera — still a monitor image | verified in the game |
 | 0.0.4 | 6DoF for the head, vertical look taken off the stick | verified in the game, two settings retuned from what it showed |
-| 0.0.5 | frame loop, left and right swapchain, test images in the headset | in progress — the compositor interface is declared and OBVR can register as a scene application; nothing is submitted yet |
+| 0.0.5 | frame loop, left and right swapchain, test images in the headset | verified in the headset — the pattern arrives whole, upright, unmirrored, on the right eyes, and the two centring crosses fuse into one |
 | 0.1.0 | Oblivion's world as real dual-pass stereo, both eyes in the same game frame | open |
 
 VR is being brought up on Windows first; Linux follows once it works there. That is an

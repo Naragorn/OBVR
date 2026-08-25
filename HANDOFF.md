@@ -69,8 +69,8 @@ controller.
 | 0.0.2 | quaternion layer, recenter, interchangeable head source, config hot reload | **verified in the game** |
 | 0.0.3 | OpenVR wired up, real HMD rotation on the camera | **verified in the game** |
 | 0.0.4 | 6DoF for the head, vertical look taken off the stick | **verified in the game**, two settings retuned from what it showed |
-| 0.0.5 | frame loop, left and right swapchain, test images in the headset | **the picture arrives, confirmed in the headset**; the eye placement of step 5 is still open ← **continue here** |
-| 0.1.0 | Oblivion's world as real dual-pass stereo | open |
+| 0.0.5 | frame loop, left and right swapchain, test images in the headset | **verified in the headset**, every question the pattern was built to ask has been answered |
+| 0.1.0 | Oblivion's world as real dual-pass stereo | open ← **continue here** |
 
 0.0.1 and 0.0.2 were tested against Oblivion GOTY (Steam, AppID 22330) under Proton with
 xOBSE 22.13. 0.0.3 was tested on Windows 11 with SteamVR and a real headset, against a
@@ -91,14 +91,18 @@ ramp ran dark at the top to bright at the bottom, so **it is the right way up**.
 That settles the question the milestone was built to ask, and it settles it independently of
 Direct3D 9: whatever comes next, the way OBVR talks to the compositor is right.
 
-**One thing it also settled was a design fault of mine.** The border was placed at the
-extreme edge of the texture to detect cropping. The tester could see it at the top corners
-and was not sure about the bottom — because the lens optics do not reach the edges of a
-render target and a face gasket covers what is left. The arithmetic was perfect and all
-thirty-four checks passed on it; the feature was simply invisible. There is now a second,
-inset frame in cyan at an eighth of the shorter side, which is inside the visible area, and
-the outer border stays as a coarser check. A test feature that cannot be seen tests nothing,
-and no amount of unit testing was ever going to say so.
+**The border at the extreme edge is hard to see, and I overstated that.** The first report
+was that the top corners were visible and the bottom was uncertain - the frame sits so far
+out that a face gasket and the lens edge make it awkward to look at. I turned that
+uncertainty into a finding and wrote here that the optics do not reach the edges of a
+render target. A later run with the wearer looking deliberately found all four sides, so
+that claim was wrong: the outer border works, it just needs looking for.
+
+The inset cyan frame added in response is still worth having, but for a weaker reason than
+the one recorded: it is *easier* to see, not the only one visible, and being further in it
+also says something about rescaling that the outer one does not. Both earn their place. The
+lesson that does survive is about evidence rather than optics - "I could not see it" and
+"it is not visible" are different claims, and only one of them was made.
 
 What the log settles on its own:
 
@@ -134,8 +138,22 @@ component of `lean=` is persistently positive while X straddles zero, which is a
 captured while leaning back rather than a fault. A recenter fixes it and returns the lean
 range symmetrically.
 
-Still not implemented at all: the eye offsets and projection, which is step 5. Until then
-the picture is head-locked, and that is correct rather than a fault.
+**The eye geometry is confirmed, by the eyes.** With the centring cross moved from the
+middle of the image to the measured optical axis — `u` 0.583 for the left eye, 0.424 for the
+right — the two crosses **fuse into one** when the wearer looks straight ahead. That is the
+check the cross was put there for, and it is a stronger answer than the numbers alone: it
+says the frustum is being read correctly, the eyes are the right way round, and the offsets
+are usable, all from one look.
+
+So every question the pattern was built to ask now has an answer: the whole texture arrives
+(all four edges of the outer border, plus the inset frame), it is the right way up, the eyes
+are not swapped, it is not mirrored, and the optical axes are where the headset says. 0.0.5
+is done.
+
+What remains unknown is deliberately so: the sign convention of `GetProjectionRaw`'s top and
+bottom cannot be settled from the numbers, and does not need to be — 0.1.0 takes a ready made
+matrix from `GetProjectionMatrix` at index 1 instead, and `GetProjectionRaw` is documented as
+being for "something fancy like infinite Z", which OBVR is not doing.
 
 ### What the 0.0.4 run showed, and what it did not
 

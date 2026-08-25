@@ -12,13 +12,14 @@ namespace obvr::render {
 // to answer four at a glance, each by a feature that is wrong in an obvious
 // way if the thing it tests is wrong:
 //
-//   1. Does the whole texture arrive?  An inset frame, well within the lens
-//      field of view. There is a border at the very edge as well, but a real
-//      headset showed that one cannot be relied on: the extreme edges of a
-//      render target fall outside what the optics show, and behind a face
-//      gasket the corners are not visible at all. A test feature that cannot
-//      be seen tests nothing, however correct its arithmetic - which every
-//      check in the suite said it was.
+//   1. Does the whole texture arrive?  Two frames rather than one. A border
+//      at the very edge, which catches gross cropping, and an inset frame
+//      well within the field of view, which is easier to see and - being
+//      further in - also says something about rescaling that the outer one
+//      does not. The outer border is awkward to look at behind a face
+//      gasket, so the first report from a headset was that the bottom edge
+//      might be missing; looking deliberately later found all four. Hard to
+//      see is not the same as absent, which is why both are kept.
 //   2. Is it the right way up?         A vertical ramp, black at the top and
 //      white at the bottom. Upside down is unmistakable, and the ramp doubles
 //      as a look at whether the colour space is being handled sensibly.
