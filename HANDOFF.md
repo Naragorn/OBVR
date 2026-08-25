@@ -1114,6 +1114,31 @@ are produced behind one interface with two implementations, choosing between the
 setting rather than a rewrite — the same shape `TrackerSource` already has for head poses,
 which is why that pattern is worth reusing rather than reinventing.
 
+### 0.1.0, step one: reaching Oblivion's device
+
+Done, and logged rather than acted on. `addr::kRendererPointer` is `0x00B3F928`, a pointer
+to `NiDX9Renderer`, and the device sits at `+0x280` inside it. Two independent sources and a
+check against the binary, which is the standard `GameAddresses.h` holds addresses to:
+
+- the address from OBGEv2's `Nodes/NiDX9Renderer.cpp`, in a namespace named `v1_2_416` -
+  the same build OBVR targets
+- the offset from xOBSE's `obse/obse/NiRenderer.h`, which lays out `NiDX9Renderer` with
+  `IDirect3DDevice9 * device; // 280` and compile-time asserts its size and two offsets
+- the encoding of `mov eax, [0x00B3F928]` - `A1 28 F9 B3 00` - appears **41 times** in
+  `Oblivion.exe`. A five byte sequence does not occur that often by chance.
+
+`render::GameDevice` reads it and asks it one question: does it answer to
+`ID3D9VkInteropDevice` (`2eaa4b89-0107-4bdb-87f7-0f541c493ce0`, from DXVK's
+`d3d9_interfaces.h`)? That single QueryInterface decides which of the two routes in this
+section is actually open on a given machine, and it is written to the log on the first hook
+pass as `Render: Oblivion's D3D9 device XXXXXXXX is ...`.
+
+The identifiers have a test to themselves, because of how they fail. A mistyped IID does not
+crash: QueryInterface answers "no such interface", OBVR concludes DXVK is absent, and the
+project commits to the harder route for no reason and with nothing anywhere saying why. The
+test renders the bytes back into the canonical text form and compares against the string in
+DXVK's header, which is the one thing a transcription error cannot survive.
+
 ### The order of work for 0.0.5
 
 1. ~~`IVRCompositor` in `OpenVRTypes.h`~~ — **done.** Table, indices, `Texture_t`,

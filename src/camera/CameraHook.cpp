@@ -7,6 +7,7 @@
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
 #include "platform/Win32Min.h"
+#include "render/GameDevice.h"
 #include "render/HeadsetRenderer.h"
 
 namespace obvr::camera {
@@ -115,11 +116,23 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	const bool isThirdPerson = ReadIsThirdPerson();
 
 	switch (g_state.ObservePointOfView(isThirdPerson)) {
-	case PovEvent::FirstPass:
+	case PovEvent::FirstPass: {
 		OBVR_LOG("Camera: first hook pass, CameraNode=%08X, %s",
 		         reinterpret_cast<UInt32>(cameraNode),
 		         isThirdPerson ? "third person" : "first person");
+
+		// The first look at Oblivion's own renderer, and the question 0.1.0
+		// turns on: is Direct3D 9 here being served by DXVK, which hands out
+		// the Vulkan objects behind a texture, or by Microsoft's own, which
+		// does not? Asked here because the renderer certainly exists by the
+		// time a frame is being drawn, and asked once because the answer
+		// cannot change within a run.
+		void* device = render::GetGameDevice();
+		const render::DeviceKind kind = render::IdentifyDevice(device);
+		OBVR_LOG("Render: Oblivion's D3D9 device %08X is %s",
+		         reinterpret_cast<UInt32>(device), render::DeviceKindName(kind));
 		break;
+	}
 	case PovEvent::Switched:
 		// First and third person put the camera in entirely different places,
 		// so there is no continuity for the easing to preserve across the

@@ -233,3 +233,16 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME eye_geometry COMMAND eye_geometry_test)
+
+add_executable(game_device_test
+	GameDeviceTest.cpp
+	../src/render/GameDevice.cpp
+)
+
+target_include_directories(game_device_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(game_device_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME game_device COMMAND game_device_test)

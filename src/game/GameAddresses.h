@@ -88,6 +88,29 @@ inline constexpr UInt32 kUpdateSelectedDownwardPass = 0x00707370;
 inline constexpr UInt32 kPlayerPointer = 0x00B333C4;
 inline constexpr UInt32 kPlayerIsThirdPersonOffset = 0x588;
 
+// Pointer to NiDX9Renderer, the object that owns Oblivion's Direct3D 9
+// device. This is where 0.1.0 has to start: the camera hook works on the
+// scene graph and has never touched the renderer, but OpenVR takes a texture
+// and only the device can produce one.
+//
+// Two independent sources, which is the standard this file holds addresses
+// to. The address comes from OBGEv2's Nodes/NiDX9Renderer.cpp, inside a
+// namespace named v1_2_416 - the same build OBVR targets:
+//
+//   mov eax,0x00B3F928
+//   mov eax,[eax]
+//
+// The offset comes from xOBSE's obse/obse/NiRenderer.h, which lays out
+// NiDX9Renderer with "IDirect3DDevice9 * device; // 280" and asserts the
+// struct's size and two of its offsets at compile time.
+//
+// Checked against the binary before adoption, as everything here is: the
+// encoding of "mov eax, [0x00B3F928]" - A1 28 F9 B3 00 - appears 41 times in
+// Oblivion.exe. A five byte sequence does not occur 41 times by chance, and
+// a global read that often is one the renderer is genuinely reached through.
+inline constexpr UInt32 kRendererPointer = 0x00B3F928;
+inline constexpr UInt32 kRendererDeviceOffset = 0x280;
+
 // Expected game version. OBSE reports it as oblivionVersion.
 inline constexpr UInt32 kOblivionVersion_1_2_416 = 0x010201A0;
 
