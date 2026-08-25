@@ -31,6 +31,11 @@ enum class TrackerSource {
 	OpenXR,     // real headset through OpenXR; only with a 32-bit capable runtime
 };
 
+enum class StereoMode {
+	None,           // one image to both eyes, flat
+	AlternateEyes,  // one eye per frame, alternating
+};
+
 struct TrackerSettings {
 	TrackerSource source = TrackerSource::Fixed;
 
@@ -71,6 +76,24 @@ struct TrackerSettings {
 	// compositor path, and keeping it reachable is what makes a fault in the
 	// game frame path attributable rather than merely visible.
 	bool submitGameFrame = false;
+
+	// How the two eyes are given different views of the world.
+	//
+	// None: one image, both eyes, no depth between them. What 0.1.0 reached
+	// first, and still the honest fallback.
+	//
+	// AlternateEyes: the camera is offset to one eye per frame and the frame
+	// goes to that eye alone, alternating. Depth without drawing the world
+	// twice, at the price of the two eyes seeing pictures a frame apart -
+	// which is a disparity in time rather than distance, and shows on
+	// anything moving quickly.
+	//
+	// The offset uses unitsPerMetre and NOT EffectiveUnitsPerMetre. The
+	// distance between two eyes is a fact about a head, not a matter of taste,
+	// and scaling it would change the apparent size of the world rather than
+	// how far leaning moves. Keeping those two apart is why unitsPerMetre was
+	// never allowed to absorb movementScale.
+	StereoMode stereo = StereoMode::None;
 
 	// Oblivion units per metre, for converting the head offset.
 	//
@@ -157,6 +180,20 @@ public:
 	// short, which otherwise look identical from inside the headset.
 	float GetRawOffsetUnits() const { return m_rawOffsetUnits; }
 
+	// Half the distance between the eyes, in Oblivion units. The caller adds
+	// it along the camera's right axis for one eye and subtracts it for the
+	// other.
+	//
+	// Converted with unitsPerMetre rather than EffectiveUnitsPerMetre, and
+	// that is the point of having kept the two apart: how far leaning moves
+	// the camera is a preference, how far apart two eyes are is not. Scaling
+	// this would not make leaning stronger, it would make the world look
+	// smaller.
+	//
+	// Zero until a headset has reported its eye transforms, which makes the
+	// caller's fallback the flat picture rather than a guessed separation.
+	float GetHalfEyeSeparationUnits() const { return m_halfEyeSeparation; }
+
 	// The orientation last read, still in OpenXR convention. Mostly for
 	// diagnostics in the log.
 	const Quaternion& GetRawOrientation() const { return m_rawOrientation; }
@@ -215,6 +252,12 @@ private:
 
 	NiPoint3 m_cameraOffset{0.0f, 0.0f, 0.0f};
 	float m_rawOffsetUnits = 0.0f;
+
+	// Read once from the headset, not per frame. A person's eyes do not move
+	// apart during a session, and the two vtable calls it costs would be two
+	// per frame for an answer that cannot change.
+	float m_halfEyeSeparation = 0.0f;
+	bool m_eyeSeparationRead = false;
 
 	// Only used for TrackerSource::OpenVR, but it belongs here regardless:
 	// the connection to SteamVR has to persist across frames rather than be

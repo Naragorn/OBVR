@@ -133,6 +133,38 @@ void TestIsDue() {
 	Check(IsDue(0, 120), "frame 0 counts as due, which is why counting starts at 1");
 }
 
+void TestEyeAlternation() {
+	std::printf("Which eye a frame belongs to\n");
+
+	// Two places have to agree: the camera hook moves the camera to an eye,
+	// and the renderer gives the finished frame to that eye. If they ever
+	// disagreed the wearer would see each eye showing the other's viewpoint,
+	// which is worse than no depth at all - so both ask this one function
+	// rather than each deciding what "every other frame" means.
+	Check(obvr::camera::IsLeftEyeFrame(0), "frame 0 is the left eye");
+	Check(!obvr::camera::IsLeftEyeFrame(1), "frame 1 is the right");
+	Check(obvr::camera::IsLeftEyeFrame(2), "and it alternates");
+
+	// It has to keep alternating, including where a counter would wrap. A
+	// frame count is 32 bits and a long session reaches large numbers.
+	bool alternates = true;
+	for (UInt32 frame = 0; frame < 1000; ++frame) {
+		if (obvr::camera::IsLeftEyeFrame(frame) == obvr::camera::IsLeftEyeFrame(frame + 1)) {
+			alternates = false;
+			break;
+		}
+	}
+	Check(alternates, "no two consecutive frames go to the same eye");
+
+	// Across the wrap, where an implementation using division or a signed
+	// counter would stumble.
+	Check(obvr::camera::IsLeftEyeFrame(0xFFFFFFFEu) !=
+	          obvr::camera::IsLeftEyeFrame(0xFFFFFFFFu),
+	      "it still alternates at the top of the counter");
+	Check(obvr::camera::IsLeftEyeFrame(0xFFFFFFFFu) != obvr::camera::IsLeftEyeFrame(0u),
+	      "and across the wrap to zero");
+}
+
 void TestFrameClock() {
 	std::printf("Frame clock\n");
 
@@ -208,6 +240,8 @@ int main() {
 	TestFirstPassInThirdPerson();
 	std::printf("\n");
 	TestIsDue();
+	std::printf("\n");
+	TestEyeAlternation();
 	std::printf("\n");
 	TestFrameClock();
 	std::printf("\n");

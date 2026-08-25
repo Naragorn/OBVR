@@ -33,10 +33,25 @@ public:
 	// Creates what is missing and submits both eyes. Safe to call every
 	// frame, and safe to call when there is no headset, no compositor, or no
 	// rendering wanted - it does nothing and says nothing in all three cases.
-	// gameDevice is Oblivion's IDirect3DDevice9, or null. It is only used when
-	// submitGameFrame is on and the device turns out to be DXVK; otherwise the
-	// generated test pattern goes to the headset as before.
-	void Update(const vr::OpenVRBackend& backend, void* gameDevice, bool submitGameFrame);
+	// What this frame is and where its picture should come from.
+	//
+	// A struct rather than four arguments: the last two only mean anything
+	// together, and a call site that passed the wrong eye would compile.
+	struct FrameRequest {
+		// Oblivion's IDirect3DDevice9, or null. Only used when submitGameFrame
+		// is on and the device turns out to be DXVK.
+		void* gameDevice = nullptr;
+		bool submitGameFrame = false;
+
+		// Whether this frame belongs to one eye rather than both, and which.
+		// The camera hook has already moved the camera to that eye - these two
+		// have to agree, which is why both read camera::IsLeftEyeFrame rather
+		// than deciding for themselves.
+		bool alternateEyes = false;
+		bool isLeftEye = true;
+	};
+
+	void Update(const vr::OpenVRBackend& backend, const FrameRequest& request);
 
 	// Throws away the textures and the run of failures. For a change of
 	// configuration, or shutdown.

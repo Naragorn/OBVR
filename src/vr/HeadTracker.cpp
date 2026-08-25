@@ -1,6 +1,7 @@
 #include "vr/HeadTracker.h"
 
 #include "core/MathFns.h"
+#include "core/Log.h"
 #include "core/Rotation.h"
 #include "vr/HeadOffset.h"
 
@@ -114,6 +115,27 @@ bool HeadTracker::ReadSource(UInt32 frameIndex, Quaternion& orientation,
 void HeadTracker::Update(UInt32 frameIndex) {
 	NiPoint3 position{0.0f, 0.0f, 0.0f};
 	const bool hasPosition = ReadSource(frameIndex, m_rawOrientation, position);
+
+	// Once, as soon as a headset is answering. Before that there is nothing to
+	// read, and asking every frame would be two calls for a constant.
+	if (!m_eyeSeparationRead && m_settings.source == TrackerSource::OpenVR &&
+	    m_openVR.IsRunning()) {
+		NiPoint3 leftEye{0.0f, 0.0f, 0.0f};
+		NiPoint3 rightEye{0.0f, 0.0f, 0.0f};
+		if (m_openVR.GetEyeOffset(0, leftEye) && m_openVR.GetEyeOffset(1, rightEye)) {
+			const NiPoint3 between = rightEye - leftEye;
+			const float metres = math::Sqrt(between.LengthSquared());
+
+			// unitsPerMetre, deliberately, not the effective one. See the
+			// accessor: this is a distance between two eyes, which taste does
+			// not get a say in.
+			m_halfEyeSeparation = metres * 0.5f * m_settings.unitsPerMetre;
+			m_eyeSeparationRead = true;
+			OBVR_LOG("Head: eye separation %.1f mm, half of it %.2f Oblivion units",
+			         static_cast<double>(metres) * 1000.0,
+			         static_cast<double>(m_halfEyeSeparation));
+		}
+	}
 
 	// Factor out the reference first, change coordinate system second. Doing
 	// both in OpenXR convention keeps the conversion in one place.

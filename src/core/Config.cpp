@@ -137,6 +137,31 @@ UInt32 ReadKeyCode(const char* section, const char* key, UInt32 fallback, const 
 	return value;
 }
 
+vr::StereoMode ReadStereoMode(vr::StereoMode fallback, const char* path) {
+	char buffer[32];
+	if (GetPrivateProfileStringA("Render", "Stereo", "", buffer, sizeof(buffer), path) == 0) {
+		return fallback;
+	}
+
+	if (EqualsIgnoreCase(buffer, "none") || EqualsIgnoreCase(buffer, "off")) {
+		return vr::StereoMode::None;
+	}
+	if (EqualsIgnoreCase(buffer, "aer") || EqualsIgnoreCase(buffer, "alternate")) {
+		return vr::StereoMode::AlternateEyes;
+	}
+
+	OBVR_LOG("Config: unknown Render.Stereo \"%s\", keeping the previous setting", buffer);
+	return fallback;
+}
+
+const char* StereoModeName(vr::StereoMode mode) {
+	switch (mode) {
+		case vr::StereoMode::None: return "none";
+		case vr::StereoMode::AlternateEyes: return "aer";
+	}
+	return "?";
+}
+
 vr::TrackerSource ReadSource(vr::TrackerSource fallback, const char* path) {
 	char buffer[32];
 	if (GetPrivateProfileStringA("Head", "Source", "", buffer, sizeof(buffer), path) == 0) {
@@ -202,6 +227,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Render", "Enabled", config.tracker.renderToHeadset, path);
 	config.tracker.submitGameFrame =
 		ReadBool("Render", "GameFrame", config.tracker.submitGameFrame, path);
+	config.tracker.stereo = ReadStereoMode(config.tracker.stereo, path);
 	config.look.blockVerticalLook =
 		ReadBool("Look", "BlockVerticalLook", config.look.blockVerticalLook, path);
 
@@ -300,8 +326,9 @@ bool Config::Load(const char* fileName) {
 	// Worth its own line despite being one flag: it is the setting that
 	// decides whether OBVR takes the headset away from whatever else is
 	// using it, and that should be visible in the log without hunting.
-	OBVR_LOG("Config: Render.Enabled=%d GameFrame=%d%s", tracker.renderToHeadset ? 1 : 0,
-	         tracker.submitGameFrame ? 1 : 0,
+	OBVR_LOG("Config: Render.Enabled=%d GameFrame=%d Stereo=%s%s",
+	         tracker.renderToHeadset ? 1 : 0, tracker.submitGameFrame ? 1 : 0,
+	         StereoModeName(tracker.stereo),
 	         tracker.renderToHeadset ? " - OBVR will claim the VR scene" : "");
 	return true;
 }

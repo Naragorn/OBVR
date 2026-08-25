@@ -91,4 +91,25 @@ private:
 // interval of n is frame n rather than frame 0.
 bool IsDue(UInt32 frameCount, UInt32 interval);
 
+// Which eye this frame belongs to, when the two are being rendered on
+// alternate frames.
+//
+// Alternate eye rendering gives depth without drawing the world twice: the
+// camera is offset to one eye, the frame is drawn once, and it goes to that
+// eye alone. The next frame does the other. It is what Luke Ross's mods do -
+// "shifting the in-game camera into the eye positions on alternate frames" -
+// and the reason it is worth trying before dual-pass is that it asks nothing
+// of the engine at all.
+//
+// The price is that each eye sees a picture drawn one frame apart from the
+// other, so anything moving fast has a disparity that is time rather than
+// distance. It is a real artefact and not a small one; it is also cheap
+// enough to find out about by looking.
+//
+// Here rather than in the camera hook because two different places have to
+// agree on the answer - the hook offsets the camera, the renderer submits to
+// one eye - and two implementations of "every other frame" would agree until
+// one of them was edited.
+bool IsLeftEyeFrame(UInt32 frameCount);
+
 }  // namespace obvr::camera

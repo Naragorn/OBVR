@@ -85,8 +85,7 @@ void LogEyeGeometry(const vr::OpenVRBackend& backend, float& crossULeft, float& 
 
 }  // namespace
 
-void HeadsetRenderer::Update(const vr::OpenVRBackend& backend, void* gameDevice,
-                             bool submitGameFrame) {
+void HeadsetRenderer::Update(const vr::OpenVRBackend& backend, const FrameRequest& request) {
 	if (m_policy.HasStopped()) {
 		return;
 	}
@@ -167,10 +166,10 @@ void HeadsetRenderer::Update(const vr::OpenVRBackend& backend, void* gameDevice,
 	int right = vr::openvr::kCompositorErrorNone;
 	bool submittedGameFrame = false;
 
-	if (submitGameFrame) {
+	if (request.submitGameFrame) {
 		if (!m_gameFrameChecked) {
 			m_gameFrameChecked = true;
-			m_gameFrameUsable = GetVulkanContext(gameDevice, m_vulkan);
+			m_gameFrameUsable = GetVulkanContext(request.gameDevice, m_vulkan);
 			OBVR_LOG("Render: the game frame is %s",
 			         m_gameFrameUsable ? "usable, submitting Oblivion's own picture"
 			                           : "unavailable, falling back to the test pattern");
@@ -182,7 +181,7 @@ void HeadsetRenderer::Update(const vr::OpenVRBackend& backend, void* gameDevice,
 			// deadlocks Oblivion against its own renderer, and the symptom is
 			// a frozen game with an empty log.
 			GameFrame frame;
-			if (frame.Acquire(gameDevice)) {
+			if (frame.Acquire(request.gameDevice)) {
 				dxvk::VRVulkanTextureData data{};
 				DescribeForOpenVR(frame.GetImage(), m_vulkan, data);
 
@@ -195,10 +194,34 @@ void HeadsetRenderer::Update(const vr::OpenVRBackend& backend, void* gameDevice,
 				// the picture is. The optical axes sit at different places
 				// across each eye's view, so the whole texture in both puts
 				// Oblivion's centre somewhere neither eye is looking.
-				left = backend.SubmitEye(vr::openvr::kEyeLeft, &data,
-				                         vr::openvr::kTextureTypeVulkan, &m_boundsLeft);
-				right = backend.SubmitEye(vr::openvr::kEyeRight, &data,
-				                          vr::openvr::kTextureTypeVulkan, &m_boundsRight);
+				if (request.alternateEyes) {
+					// This frame was drawn from one eye's position, so it
+					// belongs to that eye and nowhere else. Giving it to both
+					// would show each eye the other's viewpoint half the time,
+					// which is worse than no depth at all.
+					//
+					// What the other eye shows meanwhile is the compositor's
+					// business. It keeps the last texture submitted for an eye,
+					// and each eye here gets a new one every second frame -
+					// nowhere near the ten frames without any Submit that fade
+					// the scene out. Whether it keeps a copy or a reference is
+					// NOT established, and it decides whether this works: a
+					// reference would point at a back buffer the game has since
+					// overwritten, which would show the wrong eye's picture
+					// rather than the previous frame's.
+					const bool isLeft = request.isLeftEye;
+					const int result = backend.SubmitEye(
+						isLeft ? vr::openvr::kEyeLeft : vr::openvr::kEyeRight, &data,
+						vr::openvr::kTextureTypeVulkan,
+						isLeft ? &m_boundsLeft : &m_boundsRight);
+					left = result;
+					right = result;
+				} else {
+					left = backend.SubmitEye(vr::openvr::kEyeLeft, &data,
+					                         vr::openvr::kTextureTypeVulkan, &m_boundsLeft);
+					right = backend.SubmitEye(vr::openvr::kEyeRight, &data,
+					                          vr::openvr::kTextureTypeVulkan, &m_boundsRight);
+				}
 				submittedGameFrame = true;
 			}
 		}

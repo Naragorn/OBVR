@@ -270,7 +270,27 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		cameraNode->localTransform.pos + baseRotation * g_headTracker.GetCameraOffset();
 	cameraNode->localTransform.pos.z += verticalOffset;
 
-	cameraNode->localTransform.rot = baseRotation * g_headTracker.GetCameraRotation();
+	const NiMatrix33 finalRotation = baseRotation * g_headTracker.GetCameraRotation();
+
+	// Alternate eye rendering: the camera steps to one eye, this frame is drawn
+	// from there, and it goes to that eye alone. The next frame does the other.
+	// Depth without drawing the world twice.
+	//
+	// Carried by the final rotation rather than the base one, and the
+	// difference matters. The head offset above is measured in the frame the
+	// wearer recentered in, so the levelled rotation is what belongs under it.
+	// The eyes are attached to the head: where "right" is for them depends on
+	// where the head is looking, which is what the head rotation adds.
+	if (config.tracker.stereo == vr::StereoMode::AlternateEyes &&
+	    g_headTracker.IsHeadsetConnected()) {
+		const float half = g_headTracker.GetHalfEyeSeparationUnits();
+		const float sign = IsLeftEyeFrame(g_state.frameCount) ? -1.0f : 1.0f;
+		const NiPoint3 eyeOffset{sign * half, 0.0f, 0.0f};
+		cameraNode->localTransform.pos =
+			cameraNode->localTransform.pos + finalRotation * eyeOffset;
+	}
+
+	cameraNode->localTransform.rot = finalRotation;
 
 	// Last, and on purpose. This blocks until the compositor wants the next
 	// frame, so from here Oblivion runs on the compositor's clock rather than
@@ -281,8 +301,16 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// It does nothing at all unless rendering was asked for and the
 	// compositor was reached, so the cost on every other machine is one
 	// comparison.
-	g_headsetRenderer.Update(g_headTracker.GetBackend(), render::GetGameDevice(),
-	                         config.tracker.submitGameFrame);
+	render::HeadsetRenderer::FrameRequest request;
+	request.gameDevice = render::GetGameDevice();
+	request.submitGameFrame = config.tracker.submitGameFrame;
+	request.alternateEyes = config.tracker.stereo == vr::StereoMode::AlternateEyes;
+
+	// The same call the camera offset above used, so the eye the camera moved
+	// to and the eye the picture is given to cannot drift apart.
+	request.isLeftEye = IsLeftEyeFrame(g_state.frameCount);
+
+	g_headsetRenderer.Update(g_headTracker.GetBackend(), request);
 }
 
 vr::HeadTracker& GetHeadTracker() { return g_headTracker; }

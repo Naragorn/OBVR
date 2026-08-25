@@ -62,4 +62,10 @@ bool IsDue(UInt32 frameCount, UInt32 interval) {
 	return (frameCount % interval) == 0;
 }
 
+bool IsLeftEyeFrame(UInt32 frameCount) {
+	// Even frames to the left eye. Which one goes first does not matter, only
+	// that the two places asking get the same answer for the same frame.
+	return (frameCount & 1u) == 0u;
+}
+
 }  // namespace obvr::camera
