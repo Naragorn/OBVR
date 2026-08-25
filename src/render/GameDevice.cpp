@@ -99,6 +99,90 @@ bool GetVulkanContext(void* device, VulkanContext& out) {
 	return true;
 }
 
+bool GetBackBufferImage(void* device, BackBufferImage& out) {
+	if (device == nullptr) {
+		return false;
+	}
+
+	// GetBackBuffer is reached through the raw vtable rather than a declared
+	// interface. Replicating IDirect3DDevice9 down to index 18 would mean
+	// eighteen signatures to get right for the sake of calling one of them,
+	// and every one of the other seventeen would be a chance to be wrong
+	// about something OBVR never calls.
+	using GetBackBufferFn = d3d11::ResultCode(__stdcall*)(void* self, UInt32 swapChain,
+	                                                      UInt32 backBuffer, UInt32 type,
+	                                                      void** surface);
+
+	auto** vtbl = *reinterpret_cast<void***>(device);
+	if (vtbl == nullptr) {
+		return false;
+	}
+
+	auto getBackBuffer =
+		reinterpret_cast<GetBackBufferFn>(vtbl[dxvk::kD3D9GetBackBufferIndex]);
+	if (getBackBuffer == nullptr) {
+		return false;
+	}
+
+	void* surface = nullptr;
+	if (d3d11::Failed(getBackBuffer(device, 0, 0, dxvk::kBackBufferTypeMono, &surface)) ||
+	    surface == nullptr) {
+		return false;
+	}
+
+	// From here every path has to release the surface. GetBackBuffer adds a
+	// reference, and this runs once per frame in the end - a leak here would
+	// be a slow one, which is the kind that gets blamed on the game.
+	auto* unknown = static_cast<d3d11::Unknown*>(surface);
+	void* raw = nullptr;
+	if (unknown->vtbl == nullptr || unknown->vtbl->QueryInterface == nullptr ||
+	    d3d11::Failed(
+			unknown->vtbl->QueryInterface(unknown, &kIID_D3D9VkInteropTexture, &raw)) ||
+	    raw == nullptr) {
+		d3d11::Release(surface);
+		return false;
+	}
+
+	auto* texture = static_cast<dxvk::InteropTexture*>(raw);
+	if (texture->vtbl == nullptr || texture->vtbl->GetVulkanImageInfo == nullptr) {
+		d3d11::Release(raw);
+		d3d11::Release(surface);
+		return false;
+	}
+
+	// The structure arrives filled in rather than empty. DXVK requires sType
+	// to already say what it is, and requires queueFamilyIndexCount to match
+	// the array behind pQueueFamilyIndices - zero and a real pointer, since
+	// DXVK documents the sharing mode as always exclusive and writes no
+	// indices. A real pointer with a count of zero rather than a null one:
+	// it costs nothing and removes a way to be wrong.
+	UInt32 families[8] = {0};
+	dxvk::VkImageCreateInfo info{};
+	info.sType = dxvk::kStructureTypeImageCreateInfo;
+	info.queueFamilyIndexCount = 0;
+	info.pQueueFamilyIndices = families;
+
+	unsigned long long image = 0;
+	UInt32 layout = 0;
+	const d3d11::ResultCode result =
+		texture->vtbl->GetVulkanImageInfo(texture, &image, &layout, &info);
+
+	d3d11::Release(raw);
+	d3d11::Release(surface);
+
+	if (d3d11::Failed(result) || image == 0) {
+		return false;
+	}
+
+	out.image = image;
+	out.layout = layout;
+	out.format = info.format;
+	out.width = info.extent.width;
+	out.height = info.extent.height;
+	out.sampleCount = info.samples;
+	return true;
+}
+
 const char* DeviceKindName(DeviceKind kind) {
 	switch (kind) {
 		case DeviceKind::Unavailable: return "unavailable";

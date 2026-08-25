@@ -1,0 +1,38 @@
+OBVR 1 - Query
+OBSE version 22, Oblivion version 010201A0
+OBVR 1 - Load
+Config: D:\SteamLibrary\steamapps\common\Oblivion\Data\OBSE\Plugins\OBVR.ini
+Config: HookEnabled=1 Source=openvr Fixed=(P 0.0, R 20.0, Y 0.0)
+Config: Simulated=(Yaw 25.0, Pitch 12.0, Period 600) LogEveryFrames=120 ReloadEveryFrames=120
+Config: RecenterKey=46 (0x2E)
+Config: PositionalTracking=1 UnitsPerMetre=69.99 HeadMovementScale=3.00 (effective 209.97) MaxLeanUnits=120.0
+Config: BlockVerticalLook=1 VerticalLookRange=(up 60.0, down 120.0) SmoothVerticalLook=1 (8.0)
+Config: SmoothTurning=0 TurnSpeed=12.0
+Config: Render.Enabled=1 - OBVR will claim the VR scene
+OpenVR: connected as a scene application through FnTable:IVRSystem_026 and FnTable:IVRCompositor_029
+Camera: hook installed at 0066BE6E, trampoline at 03F20000 (37 bytes)
+OBVR ready
+Camera: first hook pass, CameraNode=1812BCA0, third person
+Render: Oblivion's D3D9 device 0C6DEF40 is DXVK
+Render: Vulkan instance=0374A3D0 physical=09A5EF00 device=34880078
+Render: Vulkan queue=345E1578 index=0 family=0
+Render: left eye raw=(l -1.1518, r 0.8248, t -1.1991, b 0.7927)
+Render: left eye fov=(h 88.6 deg, v 88.6 deg) asymmetry=(h -0.3270, v -0.4064)
+Render: right eye raw=(l -0.8417, r 1.1419, t -1.1908, b 0.8073)
+Render: right eye fov=(h 88.9 deg, v 88.9 deg) asymmetry=(h 0.3003, v -0.3835)
+Render: eye offsets left=(-0.0310, 0.0000, 0.0000) right=(0.0310, 0.0000, 0.0000)
+Render: IPD 62.0 mm
+Render: two 3560x3560 eye textures ready, cross at u=0.583 and u=0.424
+Camera: recentered on key 0x2E (frame 99)
+Camera: frame 120, 3rd, 18.2 ms, pos=(977.5, 1283.7, 316.7), head=(0.093, -0.208, 0.045, 0.973), lean=(2.2, 0.4, 0.1) raw=2.2
+Camera: recentered on key 0x2E (frame 127)
+Camera: frame 240, 3rd, 18.5 ms, pos=(977.5, 1283.7, 316.9), head=(-0.135, -0.214, -0.011, 0.967), lean=(0.5, -0.2, -8.2) raw=8.2
+Camera: frame 360, 3rd, 18.7 ms, pos=(977.5, 1283.7, 316.9), head=(-0.075, -0.142, 0.010, 0.987), lean=(-2.7, -1.5, -6.9) raw=7.6
+Camera: recentered on key 0x2E (frame 477)
+Camera: frame 480, 3rd, 18.4 ms, pos=(977.5, 1283.7, 316.9), head=(-0.074, -0.292, 0.004, 0.954), lean=(-0.0, -0.2, 0.0) raw=0.2
+Camera: recentered on key 0x2E (frame 515)
+Camera: frame 600, 3rd, 18.4 ms, pos=(977.5, 1283.7, 316.9), head=(-0.093, -0.270, -0.033, 0.958), lean=(0.3, 0.6, -1.4) raw=1.5
+Camera: frame 720, 3rd, 18.2 ms, pos=(977.5, 1283.7, 316.9), head=(-0.098, -0.263, -0.036, 0.959), lean=(0.2, 0.3, -2.5) raw=2.5
+Camera: recentered on key 0x2E (frame 746)
+Camera: recentered on key 0x2E (frame 765)
+Camera: frame 840, 3rd, 18.6 ms, pos=(977.5, 1283.7, 316.9), head=(-0.059, -0.249, -0.020, 0.966), lean=(-1.1, -0.5, 0.1) raw=1.2

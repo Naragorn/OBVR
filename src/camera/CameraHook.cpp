@@ -150,6 +150,21 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			} else {
 				OBVR_LOG("Render: DXVK did not hand over a complete set of Vulkan handles");
 			}
+
+			// The other five fields, and the first look at Oblivion's own
+			// picture as something OpenVR could take. The size is the check
+			// worth reading: it should match the game's window, and anything
+			// else means this is not the surface it appears to be.
+			render::BackBufferImage backBuffer;
+			if (render::GetBackBufferImage(device, backBuffer)) {
+				OBVR_LOG("Render: back buffer image=%08X%08X %ux%u format=%u samples=%u layout=%u",
+				         static_cast<UInt32>(backBuffer.image >> 32),
+				         static_cast<UInt32>(backBuffer.image), backBuffer.width,
+				         backBuffer.height, backBuffer.format, backBuffer.sampleCount,
+				         backBuffer.layout);
+			} else {
+				OBVR_LOG("Render: no Vulkan image behind the back buffer");
+			}
 		}
 		break;
 	}

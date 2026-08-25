@@ -106,4 +106,36 @@ struct VulkanContext {
 // because it would be submitted and fail somewhere unrelated.
 bool GetVulkanContext(void* device, VulkanContext& out);
 
+// The Vulkan image behind Oblivion's back buffer - the picture the game has
+// just drawn, seen as Vulkan rather than as Direct3D 9.
+//
+// These are the other five fields of VRVulkanTextureData_t. Together with the
+// context above, that is everything OpenVR needs to be handed Oblivion's own
+// frame, which is what 0.1.0 is for.
+struct BackBufferImage {
+	// VkImage. Sixty-four bits even here, because Vulkan defines
+	// non-dispatchable handles that way rather than as pointers.
+	unsigned long long image = 0;
+
+	// The layout the image will be in once outstanding commands have been
+	// flushed - which is a promise about the future, not a description of
+	// now, and the reason FlushRenderingCommands exists.
+	UInt32 layout = 0;
+
+	UInt32 format = 0;
+	UInt32 width = 0;
+	UInt32 height = 0;
+	UInt32 sampleCount = 0;
+};
+
+// Reads it. False when the device is not DXVK, when the back buffer cannot be
+// had, or when the surface does not carry a Vulkan image - which DXVK
+// documents as possible for system-memory and scratch pools, though a back
+// buffer is neither.
+//
+// Takes and releases its own references. Nothing is held onto: a back buffer
+// is recreated whenever the device resets, so a stored one would outlive its
+// image and be submitted after the image was gone.
+bool GetBackBufferImage(void* device, BackBufferImage& out);
+
 }  // namespace obvr::render
