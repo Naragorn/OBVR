@@ -15,7 +15,7 @@ vr::HeadTracker g_headTracker;
 
 constexpr UInt32 kTrampolineSize = 64;
 
-bool g_recenterWasDown = false;
+KeyEdge g_recenterEdge;
 
 bool ReadIsThirdPerson() {
 	auto* player = *reinterpret_cast<UInt8**>(addr::kPlayerPointer);
@@ -27,10 +27,7 @@ bool ReadIsThirdPerson() {
 
 void MaybeReloadConfig() {
 	Config& config = GetConfig();
-	if (config.reloadEveryFrames == 0) {
-		return;
-	}
-	if ((g_state.frameCount % config.reloadEveryFrames) != 0) {
+	if (!IsDue(g_state.frameCount, config.reloadEveryFrames)) {
 		return;
 	}
 
@@ -65,10 +62,10 @@ void MaybeReloadConfig() {
 // Cost is not the argument either way: this runs once per frame rather than in
 // a spin loop, so it is a single user32 call every 8 to 16 milliseconds.
 //
-// The edge is detected here through a stored previous state. GetAsyncKeyState
-// does carry a "pressed since the last call" bit, but that bit is consumed
-// process wide by whoever reads it first, so it cannot be relied on next to
-// the game's own input handling.
+// The edge itself is detected by KeyEdge in FrameLogic.h, from a stored
+// previous state. GetAsyncKeyState does carry a "pressed since the last call"
+// bit, but that bit is consumed process wide by whoever reads it first, so it
+// cannot be relied on next to the game's own input handling.
 //
 // The key state is global rather than per window. That is harmless here:
 // Oblivion pauses when it loses focus, so this callback does not run at all
@@ -76,19 +73,19 @@ void MaybeReloadConfig() {
 void MaybePollRecenter() {
 	const UInt32 key = GetConfig().recenterKey;
 	if (key == 0) {
-		// Explicitly disabled in the configuration.
-		g_recenterWasDown = false;
+		// Explicitly disabled in the configuration. Forgetting the previous
+		// state matters here: a key held down while recentering is switched
+		// off would otherwise fire an edge the moment it is switched back on.
+		g_recenterEdge.Reset();
 		return;
 	}
 
 	const bool isDown = (GetAsyncKeyState(static_cast<int>(key)) & 0x8000) != 0;
 
-	if (isDown && !g_recenterWasDown) {
+	if (g_recenterEdge.Update(isDown)) {
 		g_headTracker.Recenter();
 		OBVR_LOG("Camera: recentered on key 0x%02X (frame %u)", key, g_state.frameCount);
 	}
-
-	g_recenterWasDown = isDown;
 }
 
 }  // namespace
@@ -107,17 +104,19 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 
 	const bool isThirdPerson = ReadIsThirdPerson();
 
-	if (!g_state.sawCameraNode) {
-		g_state.sawCameraNode = true;
-		g_state.isThirdPerson = isThirdPerson;
+	switch (g_state.ObservePointOfView(isThirdPerson)) {
+	case PovEvent::FirstPass:
 		OBVR_LOG("Camera: first hook pass, CameraNode=%08X, %s",
 		         reinterpret_cast<UInt32>(cameraNode),
 		         isThirdPerson ? "third person" : "first person");
-	} else if (isThirdPerson != g_state.isThirdPerson) {
-		g_state.isThirdPerson = isThirdPerson;
+		break;
+	case PovEvent::Switched:
 		OBVR_LOG("Camera: switched to %s (frame %u)",
 		         isThirdPerson ? "third person" : "first person",
 		         g_state.frameCount);
+		break;
+	case PovEvent::Unchanged:
+		break;
 	}
 
 	++g_state.frameCount;
@@ -133,7 +132,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	MaybePollRecenter();
 
 	const Config& config = GetConfig();
-	if (config.logEveryFrames != 0 && (g_state.frameCount % config.logEveryFrames) == 0) {
+	if (IsDue(g_state.frameCount, config.logEveryFrames)) {
 		const vr::Quaternion& raw = g_headTracker.GetRawOrientation();
 		const NiPoint3& pos = cameraNode->localTransform.pos;
 		OBVR_LOG("Camera: frame %u, %s, pos=(%.1f, %.1f, %.1f), head=(%.3f, %.3f, %.3f, %.3f)",

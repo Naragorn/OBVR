@@ -59,6 +59,19 @@ endif()
 
 add_test(NAME rotation COMMAND rotation_test)
 
+add_executable(frame_logic_test
+	FrameLogicTest.cpp
+	../src/camera/FrameLogic.cpp
+)
+
+target_include_directories(frame_logic_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(frame_logic_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME frame_logic COMMAND frame_logic_test)
+
 add_executable(openvr_pose_test
 	OpenVRPoseTest.cpp
 	../src/vr/Quaternion.cpp

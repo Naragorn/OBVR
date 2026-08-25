@@ -1,5 +1,6 @@
 #pragma once
 
+#include "camera/FrameLogic.h"
 #include "game/GameTypes.h"
 #include "vr/HeadTracker.h"
 
@@ -23,13 +24,8 @@ namespace obvr::camera {
 // shredded code segment.
 bool Install();
 
-// State of the last hook pass, for logging and later use.
-struct State {
-	bool sawCameraNode = false;
-	bool isThirdPerson = false;
-	UInt32 frameCount = 0;
-};
-
+// State of the last hook pass. Declared in FrameLogic.h, together with the
+// transitions it can report.
 const State& GetState();
 
 // The tracker whose rotation is laid onto the camera.

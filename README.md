@@ -150,6 +150,14 @@ cmake -B build -A Win32
 cmake --build build --config Release
 ```
 
+With a single-config generator such as Ninja the build type has to be named at configure
+time instead, otherwise the DLL comes out unoptimised and roughly seven times its size:
+
+```
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release .
+cmake --build build
+```
+
 ### Verification on Linux, without the Windows SDK
 
 Confirms that everything compiles and links cleanly into a 32-bit Windows DLL, without a
@@ -167,7 +175,7 @@ verification environment, not a comfortable one — for a release MSVC stays the
 
 ### Tests
 
-Eight test binaries, all without a running Oblivion:
+Nine test binaries, all without a running Oblivion:
 
 - **`trampoline_test`** checks the generated hook bytes against expected values worked out
   by hand. A mistake there reliably crashes Oblivion. It also covers the 4GB-patched case
@@ -202,6 +210,12 @@ Eight test binaries, all without a running Oblivion:
 - **`plugin_path_test`** checks where OBVR looks for its own files, including the buffer
   being too small — a path is one of the few things in OBVR whose length is not under its
   own control. Windows only.
+- **`frame_logic_test`** checks the per-frame decisions of the camera hook. The callback
+  itself cannot be tested — it needs a live `CameraNode` — so the decisions were lifted out
+  into `camera/FrameLogic`: the recenter key edge, the point-of-view transition, and whether
+  a periodic action is due this frame. The edge is the important one. Without it a held key
+  would recenter on every frame, taking the current pose as the new zero sixty times a
+  second, and the symptom — a camera that seems frozen — points nowhere near the cause.
 
 ```
 cmake -B build-tests tests -G Ninja

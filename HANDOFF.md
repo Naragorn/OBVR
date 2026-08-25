@@ -287,7 +287,8 @@ OBVR/
 │   ├── Plugin.cpp                      OBSEPlugin_Query / _Load
 │   ├── camera/
 │   │   ├── CameraHook.{h,cpp}          callback + hook installation
-│   │   └── CameraTrampoline.{h,cpp}    byte generation, platform free, tested
+│   │   ├── CameraTrampoline.{h,cpp}    byte generation, platform free, tested
+│   │   └── FrameLogic.{h,cpp}          per-frame decisions, game free, tested
 │   ├── core/
 │   │   ├── CodeWriter.{h,cpp}          mini assembler
 │   │   ├── Config.{h,cpp}              INI + hot reload
@@ -303,6 +304,7 @@ OBVR/
 │   ├── obse/PluginInterface.h          binary-compatible xOBSE replica
 │   ├── platform/
 │   │   ├── Freestanding.cpp            SDK-free build only
+│   │   ├── PluginPath.{h,cpp}          plugin and game anchor, for Mod Organizer 2
 │   │   └── Win32Min.h                  narrow Win32 layer
 │   └── vr/
 │       ├── HeadTracker.{h,cpp}         interchangeable head source
@@ -312,8 +314,13 @@ OBVR/
 └── tests/
     ├── TrampolineTest.cpp
     ├── QuaternionTest.cpp
+    ├── RotationTest.cpp
+    ├── FrameLogicTest.cpp
     ├── OpenVRPoseTest.cpp
-    └── OpenVRBackendTest.cpp
+    ├── OpenVRBackendTest.cpp
+    ├── ConfigTest.cpp
+    ├── HeadTrackerTest.cpp
+    └── PluginPathTest.cpp
 ```
 
 ### Deliberate design decisions
@@ -396,6 +403,12 @@ ctest --test-dir build-tests --output-on-failure
 - `head_tracker_test` — each source, recenter semantics, and the regression guard that a
   hot reload with unchanged settings must not reset the recenter reference. Windows only.
 - `plugin_path_test` — the two anchors and the buffer-too-small contract. Windows only.
+- `frame_logic_test` — the per-frame decisions of the camera hook, lifted out of the
+  callback into `camera/FrameLogic`: the recenter key edge, the point-of-view transition,
+  and whether a periodic action is due. The edge is the one that matters. Without it a held
+  key would recenter on every frame, taking the current pose as the new zero sixty times a
+  second — and the symptom would be a camera that appears frozen, which points nowhere near
+  the cause. Pure logic, so this one runs on Linux too.
 
 **Deliberately not covered**, so nobody goes looking for it:
 
@@ -404,9 +417,9 @@ ctest --test-dir build-tests --output-on-failure
   truncates in a native 64-bit test build, so these are only exercisable from a 32-bit
   build. The bytes they transport are covered by `trampoline_test`.
 - `camera/CameraHook`'s callback — it needs a live `CameraNode` and Oblivion's player
-  pointer. The two pieces of logic inside it that could be tested in isolation, the recenter
-  edge detection and the POV change detection, would have to be lifted out of the callback
-  first. Worth doing if either ever misbehaves.
+  pointer. What is left in it is the reading of game memory, the logging and the one line
+  that multiplies the rotation onto the camera; every decision it used to make has moved to
+  `camera/FrameLogic` and is covered by `frame_logic_test`.
 - `core/Log` — writing to a file and to the debugger. Nothing to get wrong that a test
   would catch before a reader would.
 
