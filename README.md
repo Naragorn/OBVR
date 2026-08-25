@@ -1,9 +1,10 @@
 # OBVR
 
-VR für das originale **The Elder Scrolls IV: Oblivion (2006)** — ausdrücklich nicht für das Remaster.
+VR for the original **The Elder Scrolls IV: Oblivion (2006)** — explicitly not for the
+Remastered edition.
 
-Leitgedanke: *Oblivion bleibt Oblivion.* OBVR ersetzt kein Gameplay, sondern setzt auf die
-bestehende Kamera- und Renderpipeline echtes natives VR auf.
+Guiding idea: *Oblivion stays Oblivion.* OBVR does not replace gameplay; it puts real
+native VR on top of the existing camera and render pipeline.
 
 ```
 Vanilla Oblivion Camera
@@ -13,30 +14,35 @@ relative HMD rotation
 final VR camera
 ```
 
-## Stand: 0.0.2 — Kopfrotation als austauschbare Quelle
+## Status: 0.0.3 — head rotation from a real headset
 
-Noch kein Stereo, noch kein Headset. 0.0.1 hat die Kernfrage beantwortet:
+Still no stereo. 0.0.1 answered the core question:
 
-> Lässt sich nach Oblivions Vanilla-Kameraberechnung eine zusätzliche Rotation aufsetzen,
-> ohne First Person, Third Person oder Animationen zu beschädigen?
+> Can an additional rotation be applied after Oblivion's vanilla camera calculation,
+> without damaging first person, third person or animations?
 
-Ja — im laufenden Spiel bestätigt, siehe unten.
+Yes — confirmed in the running game, see below.
 
-0.0.2 ersetzt den festen Testwinkel durch eine austauschbare Quelle (`vr::HeadTracker`).
-Die Rotation kommt als Quaternion herein, wird gegen eine Recenter-Referenz verrechnet und
-von OpenXR- in Oblivion-Konvention gedreht. Welche Quelle das Quaternion liefert, ist
-Konfiguration: fester Winkel, simulierte Kopfbewegung, oder später ein echtes Headset.
+0.0.2 replaced the fixed test angle with an interchangeable source (`vr::HeadTracker`). The
+rotation arrives as a quaternion, is worked out against a recenter reference and turned
+from OpenXR into Oblivion convention. Which source supplies the quaternion is
+configuration: a fixed angle, a simulated head movement, or a real headset.
 
-Der simulierte Kopf ist kein Spielzeug, sondern die einzige Möglichkeit, die vollständige
-Kette bis zur Kameramatrix ohne HMD im Spiel zu prüfen — und auf einem Linux-System ohne
-funktionierende VR-Kette der einzige Weg überhaupt.
+0.0.3 adds that real headset. `OpenVRBackend` loads `openvr_api.dll` at runtime, registers
+OBVR with SteamVR as a background application and reads the HMD pose. The result is 3DoF:
+the head rotates, but it does not move through space — that is deliberate for this
+milestone.
 
-## Wie der Hook funktioniert
+The simulated head is not a toy. It is the only way to check the whole chain up to the
+camera matrix without an HMD, and on a Linux system without a working VR stack it is the
+only way at all.
 
-Oblivion.exe 1.2.0.416 berechnet die Spielerkamera und schreibt das Ergebnis in den
-`CameraNode` des Szenengraphen. Der Hook sitzt unmittelbar danach, bei `0x0066BE6E`.
+## How the hook works
 
-Der relevante Code in der Binary:
+Oblivion.exe 1.2.0.416 computes the player camera and writes the result into the
+`CameraNode` of the scene graph. The hook sits immediately after that, at `0x0066BE6E`.
+
+The relevant code in the binary:
 
 ```
 0066BE33  mov  eax, [edx]              ; eax = CameraNode (NiAVObject*)
@@ -48,87 +54,129 @@ Der relevante Code in der Binary:
 0066BE63  mov  ecx, 9
 0066BE68  lea  esi, [esp+0x60]
 0066BE6C  rep  movsd                   ; 9 DWORDs = NiMatrix33
-0066BE6E  <-- OBVR hängt sich hier ein
+0066BE6E  <-- OBVR hooks in here
 ```
 
-Ab dieser Stelle stehen Position und Rotation fest und `eax` hält noch den `CameraNode`.
-Die Schreibziele `[eax+0x30]` und `[eax+0x54]` belegen zugleich das `NiAVObject`-Layout
-(`localTransform` bei `0x30`, darin `pos` bei `+0x24`).
+From this point the position and rotation are settled and `eax` still holds the
+`CameraNode`. The write targets `[eax+0x30]` and `[eax+0x54]` also establish the
+`NiAVObject` layout (`localTransform` at `0x30`, with `pos` at `+0x24`).
 
-Kurz darauf ruft das Spiel auf demselben Knoten `NiAVObject::UpdateSelectedDownwardPass`
-auf (`0x00707370`, vtable-Slot `0x64` = Index 25). Deshalb ändert OBVR `localTransform`
-und nicht `worldTransform`: die Welttransformation wird ohnehin neu aus `parent * local`
-berechnet.
+Shortly afterwards the game calls `NiAVObject::UpdateSelectedDownwardPass` on the same node
+(`0x00707370`, vtable slot `0x64` = index 25). That is why OBVR modifies `localTransform`
+and not `worldTransform`: the world transform gets recomputed from `parent * local`
+regardless.
 
-Alle Adressen in `src/game/GameAddresses.h` sind gegen die tatsächliche Binary
-disassembliert und dort mit dem Befund belegt.
+Every address in `src/game/GameAddresses.h` was disassembled from the actual binary and is
+documented there with the evidence.
 
-### Warum kein Inline-Assembly
+### Why no inline assembly
 
-Vergleichbare Mods lösen solche Mid-Function-Hooks mit `__declspec(naked)` und einem
-`__asm`-Block. Das bindet das Projekt an MSVC. OBVR erzeugt die Trampolin-Bytes stattdessen
-zur Laufzeit über einen winzigen `CodeWriter`. Das baut mit MSVC, clang-cl und clang-cross
-gleichermaßen — und lässt sich ohne laufendes Oblivion testen.
+Comparable mods solve mid-function hooks like this with `__declspec(naked)` and an `__asm`
+block. That ties the project to MSVC. OBVR generates the trampoline bytes at runtime
+through a tiny `CodeWriter` instead. That builds with MSVC, clang-cl and clang-cross alike
+— and it can be tested without a running Oblivion.
 
-Das Trampolin sichert alle Register, ruft OBVR auf und führt danach die überschriebene
-Instruktion samt ihrem originalen Kontrollfluss aus:
+The trampoline saves all registers, calls OBVR and then executes the overwritten
+instruction together with its original control flow:
 
 ```
 pushad
 pushfd
-push dword ptr [esp+0x20]       ; das von pushad gesicherte EAX = CameraNode
+push dword ptr [esp+0x20]       ; the EAX saved by pushad = CameraNode
 call OBVR_OnCameraUpdated
 add  esp, 4
 popfd
 popad
-cmp  word ptr [ebx+0xB6], 0     ; Original
-ja   0x0066BE7C                 ; Original
-xor  ecx, ecx                   ; Original
-jmp  0x0066BE84                 ; Original
+cmp  word ptr [ebx+0xB6], 0     ; original
+ja   0x0066BE7C                 ; original
+xor  ecx, ecx                   ; original
+jmp  0x0066BE84                 ; original
 ```
 
-Vor dem Patchen prüft OBVR, dass an der Zieladresse tatsächlich die erwarteten acht Bytes
-stehen. Stimmen sie nicht — andere Spielversion, oder ein anderer Mod war zuerst da —
-unterbleibt der Patch und Oblivion startet unverändert.
+Before patching, OBVR checks that the expected eight bytes really are at the target
+address. If they are not — a different game version, or another mod got there first — no
+patch happens and Oblivion starts unchanged.
 
-## Bauen
+### Works with and without the 4GB patch
 
-### Regulär: MSVC unter Windows
+The 4GB patch (LargeAddressAware) changes two bytes in the PE header of Oblivion.exe, not
+the code, so the hook site is unaffected. What does change is that `VirtualAlloc` may place
+the trampoline above 2 GB, and the jump from the hook then spans more than 2 GB.
 
-Oblivion.exe ist 32 Bit, die DLL muss es also auch sein.
+On x86-64 that would be impossible, because `rel32` is a signed ±2 GB displacement in a
+64-bit address space. On x86-32 the address space is exactly 2³² and the CPU computes
+`EIP = EIP_next + rel32` modulo 2³² — every target is reachable from every source, the
+distance simply wraps. `CodeWriter` computes the displacements in `UInt32` throughout, so
+the wraparound is well defined and matches the CPU. `TestLargeAddressAware` in
+`tests/TrampolineTest.cpp` pins that down.
+
+## The OpenVR backend
+
+`openvr_api.dll` is loaded at runtime rather than linked. That is not a matter of taste:
+OBVR has to load on machines without SteamVR, otherwise starting Oblivion would break for
+every user who does not own a headset. If any step fails, the vanilla camera stays and the
+reason goes into the log.
+
+`src/vr/OpenVRTypes.h` replicates the small part of the OpenVR C interface that OBVR needs
+— one function, three structs, four constants out of a 3200-line header — the same way
+`src/obse/PluginInterface.h` does for xOBSE. Every value is cited with its line in Valve's
+`headers/openvr_capi.h`, because three details there are easy to get wrong and each one
+crashes:
+
+- The global `VR_*` exports are `__cdecl` (`VR_CALLTYPE`), while the FnTable function
+  pointers are `__stdcall` (`OPENVR_FNTABLE_CALLTYPE`). Two different calling conventions
+  in one interface; confusing them pops the wrong number of bytes off a 32-bit stack.
+- The interface version is `IVRSystem_026`.
+- `GetDeviceToAbsoluteTrackingPose` sits at index 12. `ComputeDistortionSet` at position 4
+  is missing from older listings, which leaves anyone working from one an entry short.
+
+`VR_InitInternal` is called with `VRApplication_Background` rather than `Scene`: OBVR only
+reads poses and must not take the scene away from the compositor.
+
+## Building
+
+### Regular: MSVC on Windows
+
+Oblivion.exe is 32 bit, so the DLL has to be as well.
 
 ```
 cmake -B build -A Win32
 cmake --build build --config Release
 ```
 
-### Verifikation unter Linux, ohne Windows SDK
+### Verification on Linux, without the Windows SDK
 
-Prüft, dass alles sauber zu einer 32-Bit-Windows-DLL übersetzt und linkt, ohne
-Windows-Maschine und ohne mehrere Gigabyte SDK. Möglich, weil OBVR außer `kernel32` und
-`msvcrt` nichts braucht und die Importbibliotheken via `llvm-dlltool` selbst erzeugt werden.
-
-Benötigt `clang`, `lld`, `llvm` und `cmake`.
+Confirms that everything compiles and links cleanly into a 32-bit Windows DLL, without a
+Windows machine and without several gigabytes of SDK. That is possible because OBVR needs
+nothing beyond `kernel32` and `msvcrt`, and the import libraries are generated with
+`llvm-dlltool`.
 
 ```
 cmake -B build --toolchain cmake/toolchain-linux-nosdk.cmake -G Ninja
 cmake --build build
 ```
 
-Dieser Weg baut ohne C++-Standardbibliothek und ohne Ausnahmen. Er ist eine Prüfumgebung,
-keine Komfortumgebung — für ein Release bleibt MSVC der Weg.
+This route builds without the C++ standard library and without exceptions. It is a
+verification environment, not a comfortable one — for a release MSVC stays the way.
 
 ### Tests
 
-Zwei Testbinaries, beide ohne laufendes Oblivion:
+Four test binaries, all without a running Oblivion:
 
-- **`trampoline_test`** prüft die erzeugten Hook-Bytes gegen von Hand nachgerechnete
-  Sollwerte. Ein Fehler dort lässt Oblivion zuverlässig abstürzen.
-- **`quaternion_test`** prüft die Quaternion-Mathematik und den Basiswechsel von OpenXR
-  nach Oblivion. Entscheidend ist dort die Gegenprobe gegen `EulerToMatrix`: diese Funktion
-  ist im laufenden Spiel verifiziert, die Quaternion-Route wird also an eine belegte
-  Referenz gebunden statt nur gegen sich selbst geprüft. Beide Implementierungen sind
-  bewusst unabhängig — elementare Achsenmatrizen gegen Quaternion-Formel.
+- **`trampoline_test`** checks the generated hook bytes against expected values worked out
+  by hand. A mistake there reliably crashes Oblivion. It also covers the 4GB-patched case
+  with a trampoline above 2 GB.
+- **`quaternion_test`** checks the quaternion maths and the change of basis from OpenXR to
+  Oblivion. The decisive part is the cross-check against `EulerToMatrix`: that function is
+  verified in the running game, so the quaternion route is tied to established evidence
+  rather than only checked against itself. The two implementations are deliberately
+  independent — elementary axis matrices against the quaternion formula.
+- **`openvr_pose_test`** checks the conversion of an OpenVR pose into a quaternion,
+  including all four branches of the trace case distinction and the full chain from an HMD
+  pose to the Oblivion camera matrix.
+- **`openvr_backend_test`** checks that OBVR falls back cleanly on a machine without
+  SteamVR. That is the case most users meet first. Windows only, since it calls
+  `LoadLibrary`.
 
 ```
 cmake -B build-tests tests -G Ninja
@@ -136,20 +184,23 @@ cmake --build build-tests
 ctest --test-dir build-tests --output-on-failure
 ```
 
-## Installieren
+## Installing
 
-1. [xOBSE](https://github.com/llde/xOBSE/releases/latest) entpacken und
+1. Unpack [xOBSE](https://github.com/llde/xOBSE/releases/latest) and copy
    `obse_1_2_416.dll`, `obse_editor_1_2.dll`, `obse_steam_loader.dll`, `obse_loader.exe`
-   sowie den `Data`-Ordner ins Oblivion-Verzeichnis kopieren (getestet mit 22.13).
-2. `OBVR.dll` nach `Data/OBSE/Plugins/` kopieren.
-3. `OBVR.ini` neben `Oblivion.exe` legen.
-4. Oblivion über den OBSE-Loader starten.
+   and the `Data` folder into the Oblivion directory (tested with 22.13).
+2. Copy `OBVR.dll` into `Data/OBSE/Plugins/`.
+3. Put `OBVR.ini` next to `Oblivion.exe`.
+4. For `Source=openvr`, put the **x86** build of `openvr_api.dll` next to `Oblivion.exe`.
+   SteamVR ships it under `bin/win32/`; the x64 build that comes with most games will not
+   load into Oblivion.
+5. Start Oblivion through the OBSE loader.
 
-`OBVR.log` entsteht neben `Oblivion.exe`.
+`OBVR.log` appears next to `Oblivion.exe`.
 
-### Steam Proton unter Linux
+### Steam Proton on Linux
 
-Für Proton verlangt xOBSE, dass der Loader den Launcher ersetzt:
+For Proton, xOBSE requires the loader to replace the launcher:
 
 ```
 cd ~/.local/share/Steam/steamapps/common/Oblivion
@@ -157,11 +208,11 @@ cp OblivionLauncher.exe OblivionLauncher.exe.vanilla
 cp obse_loader.exe OblivionLauncher.exe
 ```
 
-Danach normal über Steam starten. Proton-CachyOS bringt einen eigenen protonfix mit, der
-`OblivionLauncher.exe` ohnehin auf `obse_loader.exe` umbiegt — beide Wege führen zum Ziel.
+Then start normally through Steam. Proton-CachyOS ships a protonfix of its own that points
+`OblivionLauncher.exe` at `obse_loader.exe` anyway — both routes work.
 
-Zum Starten ohne Steam-Oberfläche muss der Weg über die Steam Linux Runtime gehen; ein
-blosses `proton run` bricht still ab:
+To start without the Steam interface the route has to go through the Steam Linux Runtime;
+a plain `proton run` aborts silently:
 
 ```
 STEAM_COMPAT_DATA_PATH=~/.local/share/Steam/steamapps/compatdata/22330 \
@@ -172,158 +223,167 @@ STEAM_COMPAT_CLIENT_INSTALL_PATH=~/.local/share/Steam \
   ~/.local/share/Steam/steamapps/common/Oblivion/OblivionLauncher.exe
 ```
 
-## Verifikation im Spiel
+## Verification in the game
 
-0.0.1 wurde gegen Oblivion GOTY (Steam, AppID 22330) unter Proton mit xOBSE 22.13
-getestet. Ergebnis:
+0.0.1 was tested against Oblivion GOTY (Steam, AppID 22330) under Proton with xOBSE 22.13.
+Result:
 
-| Prüfung | Ergebnis |
+| Check | Result |
 | --- | --- |
-| xOBSE lädt die DLL | `plugin OBVR.dll (00000003 OBVR 00000001) loaded correctly` |
-| Spielversion | OBSE meldet `010201A0` = 1.2.0.416 |
-| Byte-Vergleich an `0x0066BE6E` | bestanden, Hook gesetzt |
-| Trampolin | 37 Bytes, wie vom Test vorhergesagt |
-| Callback feuert | ja, pro Frame |
-| Third Person | Rotation wirkt sichtbar |
-| First Person | Rotation wirkt sichtbar |
-| POV-Wechsel | in beide Richtungen erkannt und protokolliert |
-| Stabilität | kein Absturz |
+| xOBSE loads the DLL | `plugin OBVR.dll (00000003 OBVR 00000001) loaded correctly` |
+| Game version | OBSE reports `010201A0` = 1.2.0.416 |
+| Byte comparison at `0x0066BE6E` | passed, hook installed |
+| Trampoline | 37 bytes, as predicted by the test |
+| Callback fires | yes, once per frame |
+| Third person | rotation visibly applied |
+| First person | rotation visibly applied |
+| POV switch | detected and logged in both directions |
+| Stability | no crash |
 
-Damit ist die Kernfrage von 0.0.1 beantwortet: Oblivions Vanilla-Kameraberechnung lässt
-sich um eine Zusatzrotation ergänzen, in beiden Kameramodi, ohne Gameplay oder
-Animationen anzufassen.
+That answers the core question of 0.0.1: Oblivion's vanilla camera calculation can be
+extended by an additional rotation, in both camera modes, without touching gameplay or
+animations.
 
-Auszug aus `OBVR.log`:
+Excerpt from `OBVR.log`:
 
 ```
-OBSE-Version 22, Oblivion-Version 010201A0
+OBSE version 22, Oblivion version 010201A0
 Config: HookEnabled=1 Source=fixed Fixed=(P 0.0, R 20.0, Y 0.0)
-Kamera: Hook auf 0066BE6E gesetzt, Trampolin bei 024C0000 (37 Bytes)
-OBVR bereit
-Kamera: erster Hook-Durchlauf, CameraNode=1812BC40, Third Person
-Kamera: Wechsel nach First Person (Frame 1621)
-Kamera: Wechsel nach Third Person (Frame 1745)
+Camera: hook installed at 0066BE6E, trampoline at 024C0000 (37 bytes)
+OBVR ready
+Camera: first hook pass, CameraNode=1812BC40, third person
+Camera: switched to first person (frame 1621)
+Camera: switched to third person (frame 1745)
 ```
 
-### 0.0.2 im Spiel
+### 0.0.2 in the game
 
-Der simulierte Kopf und der Hot-Reload wurden im selben Aufbau geprüft.
+The simulated head and the hot reload were checked in the same setup.
 
-| Prüfung | Ergebnis |
+| Check | Result |
 | --- | --- |
-| Simulierte Kopfbewegung | Kamera schwenkt sichtbar, Charakter dreht sich nicht mit |
-| Quaternion-Werte im Log | stimmen auf drei Nachkommastellen mit einer unabhängigen Nachrechnung überein |
-| Kameraposition | bleibt konstant — reine Rotation, kein Positionsversatz |
-| Kompass | zeigt unverändert dieselbe Richtung, die Spielerausrichtung bleibt also unberührt |
-| Hot-Reload | Quellenwechsel `simulated` → `fixed` im laufenden Spiel, ohne Neustart |
+| Simulated head movement | camera pans visibly, the character does not turn with it |
+| Quaternion values in the log | match an independent calculation to three decimal places |
+| Camera position | stays constant — pure rotation, no positional offset |
+| Compass | keeps pointing the same way, so player orientation is untouched |
+| Hot reload | source switched `simulated` → `fixed` while running, without a restart |
 
-Die geloggten Quaternionen lassen sich direkt nachrechnen. Bei `SimulatedPeriodFrames=600`,
+The logged quaternions can be recomputed directly. With `SimulatedPeriodFrames=600`,
 `SimulatedYawDegrees=25`, `SimulatedPitchDegrees=12`:
 
 ```
-Frame  540  Log (-0.099, -0.127, -0.013, 0.987)   Rechnung (-0.099, -0.127, -0.013, 0.987)
-Frame  720  Log ( 0.060,  0.206, -0.013, 0.977)   Rechnung ( 0.060,  0.206, -0.013, 0.977)
-Frame  900  Log ( 0.000, -0.000,  0.000, 1.000)   Rechnung (-0.000,  0.000,  0.000, 1.000)
+Frame  540  Log (-0.099, -0.127, -0.013, 0.987)   Computed (-0.099, -0.127, -0.013, 0.987)
+Frame  720  Log ( 0.060,  0.206, -0.013, 0.977)   Computed ( 0.060,  0.206, -0.013, 0.977)
+Frame  900  Log ( 0.000, -0.000,  0.000, 1.000)   Computed (-0.000,  0.000,  0.000, 1.000)
 ```
 
-Frame 900 liegt bei Phase π, wo beide Sinusterme null sind — die Identität ist dort also
-das erwartete Ergebnis, kein Aussetzer.
+Frame 900 lands at phase π, where both sine terms are zero — the identity is the expected
+result there, not a dropout.
 
-Nach dem Umschalten auf `Source=fixed` mit `FixedRoll=35` steht das Quaternion konstant bei
-`(0.000, 0.000, -0.301, 0.954)`. Das ist exakt eine Drehung um 35°: sin(−17,5°) = −0,3007,
-cos(17,5°) = 0,9537.
+After switching to `Source=fixed` with `FixedRoll=35` the quaternion sits constantly at
+`(0.000, 0.000, -0.301, 0.954)`. That is exactly a 35° rotation: sin(−17.5°) = −0.3007,
+cos(17.5°) = 0.9537.
 
-Belege liegen unter `docs/verification/`.
+Evidence is under `docs/verification/`.
 
-Zwei Beobachtungen zur Testumgebung: Oblivion pausiert, sobald sein Fenster den Fokus
-verliert — die Frame-Zähler stehen dann still. Und synthetische Klicks kommen im
-Hauptmenü nicht an, im geladenen Spiel dagegen schon.
+Two observations about the test environment: Oblivion pauses as soon as its window loses
+focus — the frame counters stand still then. And synthetic clicks do not arrive in the main
+menu, while they do in a loaded game.
 
-### Achsenzuordnung
+### 0.0.3 in the game
 
-Der lokale Kameraraum folgt der Gamebryo-Konvention: X nach rechts, Y in Blickrichtung,
-Z nach oben. Für `EulerToMatrix(x, y, z)` heißt das:
+Not yet verified in the game. The maths and the fallback path are covered by tests; what is
+still missing is a run with a real headset.
 
-| Achse | INI-Schlüssel | Wirkung | Status |
+### Axis assignment
+
+The local camera space follows the Gamebryo convention: X to the right, Y along the view
+direction, Z up. For `EulerToMatrix(x, y, z)` that means:
+
+| Axis | INI key | Effect | Status |
 | --- | --- | --- | --- |
-| X | `FixedPitch` | Pitch — hoch und runter schauen | im Spiel bestätigt |
-| Y | `FixedRoll` | Roll — Kopf zur Seite neigen | im Spiel bestätigt |
-| Z | `FixedYaw` | Yaw — nach links und rechts schauen | folgt zwingend aus den beiden anderen, nicht einzeln geprüft |
+| X | `FixedPitch` | pitch — looking up and down | confirmed in the game |
+| Y | `FixedRoll` | roll — tilting the head sideways | confirmed in the game |
+| Z | `FixedYaw` | yaw — looking left and right | follows necessarily from the other two, not checked on its own |
 
-Beim Roll-Test steht der Horizont schräg, beim Pitch-Test bleibt er waagerecht und die
-Blickrichtung kippt nach unten. Das HUD bleibt in beiden Fällen unberührt, was bestätigt,
-dass der Eingriff wirklich nur die Kamera betrifft.
+In the roll test the horizon sits at an angle; in the pitch test it stays level and the
+view direction tips down. The HUD is untouched in both cases, which confirms that the
+change really only affects the camera.
 
-Noch offen: ob Vanity- und Dialogkamera stören. Beide laufen über eigene Zweige.
+Still open: whether the vanity and dialogue cameras interfere. Both run through branches of
+their own.
 
-## VR-Backend: warum OpenVR zuerst kommt
+## VR backend: why OpenVR comes first
 
-Der Fahrplan sah ursprünglich OpenXR als einzige Anbindung vor. Die Recherche für 0.0.2 hat
-das korrigiert, und der Grund ist die Bitness.
+The roadmap originally had OpenXR as the only binding. Research for 0.0.2 corrected that,
+and the reason is bitness.
 
-Oblivion.exe ist 32 Bit, OBVR.dll damit auch. Bei OpenXR ist 32-Bit-Unterstützung bis heute
-lückenhaft:
+Oblivion.exe is 32 bit, so OBVR.dll is too. OpenXR's 32-bit support is patchy to this day:
 
-| Runtime | 32-Bit-OpenXR |
+| Runtime | 32-bit OpenXR |
 | --- | --- |
-| SteamVR | erst ab Beta 2.17.2 (Juni 2026); Stable steht bei 2.16 |
-| Meta / Oculus | ja |
-| VDXR (Virtual Desktop) | ja |
-| Pimax | ja |
-| Varjo | nein |
-| WMR | ja, aber von Microsoft eingestellt |
+| SteamVR | only from beta 2.17.2 (June 2026); stable stands at 2.16 |
+| Meta / Oculus | yes |
+| VDXR (Virtual Desktop) | yes |
+| Pimax | yes |
+| Varjo | no |
+| WMR | yes, but discontinued by Microsoft |
 
-Der offizielle Win32-Loader existiert (im NuGet-Paket `OpenXR.Loader`, nicht im ZIP), aber
-er nützt nichts, wenn die Runtime keine 32-Bit-DLL registriert hat.
+The official Win32 loader exists (in the NuGet package `OpenXR.Loader`, not in the ZIP),
+but it is no use if the runtime has not registered a 32-bit DLL.
 
-**OpenVR hat dieses Problem nicht.** `openvr_api.dll` gibt es seit jeher für x86, und Valve
-bestätigt das explizit: *„OpenVR supports 32-bit applications. On the other hand, the OpenXR
-implementation in SteamVR does not support them."* Architektonisch ist OpenVR ohnehin
-out-of-process (`vrclient` ↔ `vrserver.exe`) — die 64/32-Bit-Brücke hat Valve dort schon
-gebaut. Über SteamVR erreicht ein einziges OpenVR-Backend mehr Headsets als alle
-32-Bit-OpenXR-Runtimes zusammen.
+**OpenVR does not have this problem.** `openvr_api.dll` has always shipped for x86, and
+Valve says so explicitly: *"OpenVR supports 32-bit applications. On the other hand, the
+OpenXR implementation in SteamVR does not support them."* Architecturally OpenVR is
+out-of-process anyway (`vrclient` against `vrserver.exe`) — Valve already built the bridge
+between 64 and 32 bit there. Through SteamVR, a single OpenVR backend reaches more headsets
+than all 32-bit OpenXR runtimes combined.
 
-Den engsten Präzedenzfall liefert [openRBRVR](https://github.com/Detegr/openRBRVR):
-Richard Burns Rally von 2004, ebenfalls 32 Bit und D3D9. Es läuft vollständig in-process
-und unterstützt OpenVR *und* OpenXR über eine Backend-Umschaltung.
+The closest precedent is [openRBRVR](https://github.com/Detegr/openRBRVR): Richard Burns
+Rally from 2004, also 32 bit and D3D9. It runs entirely in-process and supports OpenVR
+*and* OpenXR through a backend switch.
 
-Daraus folgt für OBVR: `TrackerSource` ist bewusst eine Aufzählung mit austauschbaren
-Quellen. OpenVR kommt zuerst, OpenXR als zweites Backend. Ein 64-Bit-Hilfsprozess mit
-Shared Memory (wie ihn [fear-vr](https://github.com/DR-89/fear-vr) für F.E.A.R. fährt) wäre
-für das Lesen eines Quaternions deutlich überdimensioniert und bleibt der Notnagel, falls
-sich später doch eine Runtime nur so erreichen lässt.
+Which is why `TrackerSource` is deliberately an enumeration of interchangeable sources.
+OpenVR came first, OpenXR is the second backend. A 64-bit helper process with shared memory
+(the way [fear-vr](https://github.com/DR-89/fear-vr) does it for F.E.A.R.) would be
+oversized for reading a quaternion and stays the last resort, should some runtime later
+turn out to be reachable no other way.
 
-**Unter Proton** fällt OpenXR ohnehin aus: `wineopenxr` wird laut Protons `Makefile.in`
-nicht für i386 gebaut. Dort führt nur OpenVR zum Ziel.
+**Under Proton** OpenXR drops out entirely: according to Proton's `Makefile.in`,
+`wineopenxr` is not built for i386. Only OpenVR leads anywhere there.
 
-## Fahrplan
+## Roadmap
 
-| Version | Inhalt | Stand |
+| Version | Content | Status |
 | --- | --- | --- |
-| 0.0.1 | Plugin lädt, Logging, Versionsprüfung, Kamera-Hook, feste Testrotation | im Spiel verifiziert |
-| 0.0.2 | Quaternion-Schicht, Recenter, austauschbare Kopfquelle, Konfigurations-Hot-Reload | Gerüst steht, Backend fehlt |
-| 0.0.3 | OpenVR anbinden, echte HMD-Rotation auf die Kamera — noch Monitorbild | offen |
-| 0.0.4 | Frameloop, linke und rechte Swapchain, Testbilder im Headset | offen |
-| 0.1.0 | Oblivions Welt als echtes Dual-Pass-Stereo, beide Augen im selben Game-Frame | offen |
+| 0.0.1 | plugin loads, logging, version check, camera hook, fixed test rotation | verified in the game |
+| 0.0.2 | quaternion layer, recenter, interchangeable head source, config hot reload | verified in the game |
+| 0.0.3 | OpenVR wired up, real HMD rotation on the camera — still a monitor image | implemented, not yet verified in the game |
+| 0.0.4 | frame loop, left and right swapchain, test images in the headset | open |
+| 0.1.0 | Oblivion's world as real dual-pass stereo, both eyes in the same game frame | open |
 
-Qualitätsziel für das Stereo-Rendering, in dieser Reihenfolge:
+Quality target for the stereo rendering, in this order:
 
-1. Echtes Dual-Pass-Stereo ← Ziel
-2. Single-Pass/Multiview ← spätere Optimierung
-3. AER ← Plan B
-4. Depth-Reprojection ← Notlösung
+1. Real dual-pass stereo ← the goal
+2. Single-pass / multiview ← a later optimisation
+3. AER ← plan B
+4. Depth reprojection ← last resort
 
-Der eigentliche Knackpunkt ist nicht GPU-Leistung, sondern die Frage, ob Gamebryo innerhalb
-desselben Game-Ticks zweimal die Welt rendern kann, ohne Simulation, Physik, Partikel und
-Animationen zweimal weiterzuschalten.
+The real crux is not GPU performance but whether Gamebryo can render the world twice within
+the same game tick, without advancing simulation, physics, particles and animations twice.
 
-Nicht im ersten Scope: Hände, Motion Controller, Roomscale, 6DoF, IK, physische Interaktion.
+Not in the first scope: hands, motion controllers, roomscale, 6DoF, IK, physical
+interaction.
 
-## Referenzen
+## References
 
-- [llde/xOBSE](https://github.com/llde/xOBSE) — Plugin-Loader; die Plugin-Schnittstelle in
-  `src/obse/PluginInterface.h` ist eine minimale, binärkompatible Nachbildung von
+- [llde/xOBSE](https://github.com/llde/xOBSE) — the plugin loader; the plugin interface in
+  `src/obse/PluginInterface.h` is a minimal, binary-compatible replica of
   `obse/obse/PluginAPI.h`.
-- [mcstfuerson/TES-Reloaded](https://github.com/mcstfuerson/TES-Reloaded) — Reverse-Engineering-Referenz.
-  Der Hook-Punkt stammt von dort, wurde aber gegen die Binary nachgeprüft, bevor er
-  übernommen wurde.
+- [mcstfuerson/TES-Reloaded](https://github.com/mcstfuerson/TES-Reloaded) — reverse
+  engineering reference. The hook point came from there, but it was checked against the
+  binary before being adopted.
+- [ValveSoftware/openvr](https://github.com/ValveSoftware/openvr) — `bin/win32/openvr_api.dll`
+  and `headers/openvr_capi.h`, the source for `src/vr/OpenVRTypes.h`.
+- [openRBRVR](https://github.com/Detegr/openRBRVR) — the closest relative: a 32-bit D3D9
+  game with a VR mod, in-process, OpenVR and OpenXR.
