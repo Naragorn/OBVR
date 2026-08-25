@@ -180,7 +180,35 @@ the four directions through `OffsetFromPose` with the same conversion and checks
 per axis, so a metre forward and a metre sideways demonstrably come out the same size.
 Whatever this is, it is not the change of basis.
 
-The candidates, in the order they are worth checking:
+**The best explanation so far, and it came out of the log rather than out of reasoning.**
+`docs/verification/OBVR-firstperson-lean.log` is a first person session with deliberate
+leaning in both directions, and the vertical component tells a clear story. Leaning forward:
+
+```
+lean=(5.5, 33.5, -14.4)   lean=(8.0, 26.7, -8.1)
+lean=(0.4, 22.7,  -8.2)   lean=(1.0, 18.6, -7.1)      Z/Y ~ -0.35
+```
+
+Leaning sideways:
+
+```
+lean=(30.6, -8.9, -3.0)   lean=(-29.2, -0.9,  0.7)
+lean=(29.1, -1.0, -2.4)   lean=( 30.7, -1.8, -3.3)    Z/X ~ -0.06
+```
+
+**Leaning forward lowers the camera about six times as much as leaning sideways does.** That
+is not a fault, it is a body: leaning forward pivots at the hips and the head travels an arc
+that is forward *and* down, while leaning sideways is closer to a shift than a tilt.
+
+So a forward lean is, to something like a third, a downward movement — and since motion along
+the view axis produces almost no parallax anyway, what is left to perceive is mostly a change
+in height where a change in distance was expected. That would account for the two feeling
+unlike each other without anything being wrong.
+
+It is an explanation, not yet a conclusion: what it predicts is that the difference shrinks
+once stereo supplies the missing depth cue, and that is checkable rather than arguable.
+
+The candidates it was weighed against, in the order they are worth checking:
 
 1. **Geometry, and expected.** Motion along the view axis produces almost no parallax:
    distant things barely shift, they only scale. Sideways motion shifts everything

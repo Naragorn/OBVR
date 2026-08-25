@@ -89,12 +89,12 @@ struct TrackerSettings {
 	// is the only depth cue there is, and it reads weaker than it will once
 	// there are two eyes.
 	//
-	// 2 is what a headset settled on. It went 1 to 2 to 1.7 and back to 2
-	// across three sessions, which is worth recording because it says the
-	// number is a preference rather than a measurement - and preferences do
-	// not survive a change to the thing they were formed against. Try it at 1
-	// again once stereo renders.
-	float movementScale = 2.0f;
+	// 3 is where the headset is now. The path was 1, 2, 1.7, 2, 3 across four
+	// sessions, and the path is the point: a number that keeps climbing is
+	// chasing something the scale cannot supply. What is actually missing is
+	// the second eye - so this should be tried at 1 again once stereo renders,
+	// and the expectation is that it will want to come back down a long way.
+	float movementScale = 3.0f;
 
 	// The conversion actually applied to head movement, taste included.
 	float EffectiveUnitsPerMetre() const { return unitsPerMetre * movementScale; }
@@ -102,10 +102,12 @@ struct TrackerSettings {
 	// How far the camera may be displaced from where the game put it, in
 	// Oblivion units. 0 removes the limit.
 	//
-	// Roughly 80 units is 114 cm of camera travel, which at a movementScale of
-	// 2 is 57 cm of real leaning - enough to lean without letting a tracking
-	// glitch or someone standing up push the camera through a wall.
-	float maxOffsetUnits = 80.0f;
+	// It has to track movementScale, or it quietly becomes the thing deciding
+	// how far a lean reaches. 120 units at a scale of 3 is 57 cm of real
+	// leaning - the same physical headroom 80 gave at a scale of 2, which is
+	// the figure worth holding constant. The limit exists for the tracking
+	// glitch and the person standing up and walking off, not for the lean.
+	float maxOffsetUnits = 120.0f;
 
 };
 

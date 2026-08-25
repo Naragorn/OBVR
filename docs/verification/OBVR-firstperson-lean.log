@@ -1,0 +1,41 @@
+OBVR 1 - Query
+OBSE version 22, Oblivion version 010201A0
+OBVR 1 - Load
+Config: D:\SteamLibrary\steamapps\common\Oblivion\Data\OBSE\Plugins\OBVR.ini
+Config: HookEnabled=1 Source=openvr Fixed=(P 0.0, R 20.0, Y 0.0)
+Config: Simulated=(Yaw 25.0, Pitch 12.0, Period 600) LogEveryFrames=120 ReloadEveryFrames=120
+Config: RecenterKey=46 (0x2E)
+Config: PositionalTracking=1 UnitsPerMetre=69.99 HeadMovementScale=2.00 (effective 139.98) MaxLeanUnits=80.0
+Config: BlockVerticalLook=1 VerticalLookRange=(up 60.0, down 120.0) SmoothVerticalLook=1 (8.0)
+Config: SmoothTurning=0 TurnSpeed=12.0
+Config: Render.Enabled=1 - OBVR will claim the VR scene
+OpenVR: connected as a scene application through FnTable:IVRSystem_026 and FnTable:IVRCompositor_029
+Camera: hook installed at 0066BE6E, trampoline at 03DF0000 (37 bytes)
+OBVR ready
+Camera: first hook pass, CameraNode=1812BCA0, third person
+Render: two 3560x3560 eye textures ready
+Camera: recentered on key 0x2E (frame 107)
+Camera: frame 120, 3rd, 18.4 ms, pos=(977.5, 1283.7, 316.7), head=(0.036, 0.981, -0.079, -0.173), lean=(-0.1, -0.1, -0.0) raw=0.2
+Camera: switched to first person (frame 230)
+Camera: frame 240, 1st, 18.3 ms, pos=(1015.0, 1174.4, 289.4), head=(0.044, 0.984, -0.092, -0.147), lean=(0.4, -0.1, 0.4) raw=0.5
+Camera: recentered on key 0x2E (frame 254)
+Camera: frame 360, 1st, 18.0 ms, pos=(1015.0, 1174.5, 289.3), head=(0.045, 0.985, -0.118, -0.120), lean=(5.5, 33.5, -14.4) raw=36.9
+Camera: frame 480, 1st, 18.1 ms, pos=(1015.0, 1174.5, 289.4), head=(0.014, 0.994, -0.098, -0.039), lean=(12.5, -9.5, 2.9) raw=15.9
+Camera: frame 600, 1st, 18.4 ms, pos=(1015.0, 1174.4, 289.4), head=(0.031, 0.991, -0.101, -0.081), lean=(30.6, -8.9, -3.0) raw=32.0
+Camera: frame 720, 1st, 18.0 ms, pos=(1015.0, 1174.5, 289.3), head=(0.095, 0.979, -0.113, -0.143), lean=(-29.2, -0.9, 0.7) raw=29.2
+Camera: frame 840, 1st, 18.0 ms, pos=(1015.0, 1174.5, 289.4), head=(0.086, 0.961, -0.083, 0.250), lean=(18.2, -2.2, 0.1) raw=18.3
+Camera: frame 960, 1st, 17.9 ms, pos=(1015.0, 1174.4, 289.4), head=(-0.028, 0.991, -0.099, -0.089), lean=(29.1, -1.0, -2.4) raw=29.2
+Camera: frame 1080, 1st, 17.9 ms, pos=(1015.0, 1174.5, 289.3), head=(0.064, 0.989, -0.110, -0.080), lean=(1.9, 2.5, 1.2) raw=3.4
+Camera: frame 1200, 1st, 18.1 ms, pos=(1015.0, 1174.5, 289.4), head=(0.047, 0.988, -0.120, -0.084), lean=(8.0, 26.7, -8.1) raw=29.0
+Camera: switched to third person (frame 1292)
+Camera: frame 1320, 3rd, 17.9 ms, pos=(979.0, 1284.5, 317.2), head=(0.048, 0.989, -0.127, -0.059), lean=(5.4, 0.7, 1.9) raw=5.8
+Camera: frame 1440, 3rd, 18.2 ms, pos=(971.9, 1306.4, 322.4), head=(0.034, 0.994, -0.097, -0.030), lean=(6.6, 0.2, 1.0) raw=6.7
+Camera: frame 1560, 3rd, 18.2 ms, pos=(971.9, 1306.4, 322.4), head=(-0.017, 0.995, -0.095, 0.015), lean=(30.7, -1.8, -3.3) raw=30.9
+Camera: frame 1680, 3rd, 18.4 ms, pos=(971.9, 1306.4, 322.4), head=(0.021, 0.962, -0.075, -0.263), lean=(-2.4, 2.4, 0.7) raw=3.4
+Camera: frame 1800, 3rd, 17.9 ms, pos=(971.9, 1306.4, 322.4), head=(0.052, 0.991, -0.099, -0.075), lean=(-0.9, 2.9, 0.9) raw=3.2
+Camera: recentered on key 0x2E (frame 1825)
+Camera: frame 1920, 3rd, 17.9 ms, pos=(971.9, 1306.4, 322.4), head=(0.046, 0.990, -0.114, -0.065), lean=(0.4, 22.7, -8.2) raw=24.1
+Camera: frame 2040, 3rd, 17.9 ms, pos=(971.9, 1306.4, 322.4), head=(0.014, 0.946, -0.322, -0.043), lean=(1.5, -8.0, 8.2) raw=11.5
+Camera: frame 2160, 3rd, 17.9 ms, pos=(971.9, 1306.4, 322.4), head=(0.052, 0.989, -0.119, -0.068), lean=(1.0, 18.6, -7.1) raw=19.9
+Camera: frame 2280, 3rd, 17.8 ms, pos=(971.9, 1306.4, 322.4), head=(0.048, 0.989, -0.126, -0.063), lean=(1.4, 7.7, -1.8) raw=8.0
+Camera: frame 2400, 3rd, 18.3 ms, pos=(971.9, 1306.4, 322.4), head=(0.034, 0.977, -0.157, -0.138), lean=(-0.5, -14.3, 1.8) raw=14.4
