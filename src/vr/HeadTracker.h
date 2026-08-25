@@ -73,8 +73,9 @@ struct TrackerSettings {
 	// the very mismatch VR comfort rests on avoiding. It is a knob because
 	// OBVR still renders one image rather than two: without stereo, parallax
 	// is the only depth cue there is, and it reads weaker than it will once
-	// there are two eyes.
-	float movementScale = 2.0f;
+	// there are two eyes. 1.7 is what a headset settled on, not a round number
+	// picked in advance.
+	float movementScale = 1.7f;
 
 	// The conversion actually applied to head movement, taste included.
 	float EffectiveUnitsPerMetre() const { return unitsPerMetre * movementScale; }

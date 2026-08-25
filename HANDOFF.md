@@ -91,10 +91,11 @@ turn works but is unwelcome, so `SmoothTurning` stays off.
 
 Two things it found wrong, both now changed:
 
-- **the lean was far too small** at one to one. Hence `HeadMovementScale`, defaulting to
-  2.0. The honest reading is that this compensates for a missing depth cue rather than
-  fixing a bug: OBVR still renders one image, so parallax is doing the work stereo will
-  do from 0.0.5, and it should be tried at 1.0 again once there are two eyes.
+- **the lean was far too small** at one to one. Hence `HeadMovementScale`, settled at
+  **1.7** over two sessions in the headset rather than picked as a round number. The honest
+  reading is that this compensates for a missing depth cue rather than fixing a bug: OBVR
+  still renders one image, so parallax is doing the work stereo will do from 0.0.5, and it
+  should be tried at 1.0 again once there are two eyes.
 - **one vertical range could not fit both directions.** At 60 units the camera reached
   roughly the character's backside going down, while the same 60 was right going up. The
   camera starts at head height rather than halfway along its travel, so the two directions
@@ -103,6 +104,39 @@ Two things it found wrong, both now changed:
 Still not established: whether the vanity and dialogue cameras interfere, and whether the
 lean limit was ever the thing cutting the movement short - which is why the periodic log
 now reports the lean before the limit as well as after it.
+
+#### Open: leaning forward does not feel like leaning sideways
+
+Reported from the headset, deliberately not acted on yet. Recorded here rather than fixed
+because the cause is not known and three candidates would each call for a different fix.
+
+**Not the arithmetic.** `head_offset_test`'s `TestOffsetAxes` puts one metre along each of
+the four directions through `OffsetFromPose` with the same conversion and checks the result
+per axis, so a metre forward and a metre sideways demonstrably come out the same size.
+Whatever this is, it is not the change of basis.
+
+The candidates, in the order they are worth checking:
+
+1. **Geometry, and expected.** Motion along the view axis produces almost no parallax:
+   distant things barely shift, they only scale. Sideways motion shifts everything
+   laterally at rates that differ with distance, which is the strong cue. Forward and back
+   therefore genuinely carry less information than left and right, and with one eye there
+   is nothing else to carry it. If this is the cause it should soften on its own in 0.0.5.
+2. **Third person specifically.** The offset is carried into world space by the camera's
+   own rotation, and in third person the camera faces the character's back. Leaning forward
+   therefore moves the camera *towards* the character, so the dominant change on screen is
+   the character growing rather than the world shifting - while leaning sideways slides
+   around them. Worth checking whether the effect is weaker or absent in first person; that
+   single observation separates this candidate from the one above.
+3. **The levelled rotation.** With `BlockVerticalLook` on, the rotation carrying the offset
+   has had its pitch removed, so "forward" for a lean is horizontal while the camera's
+   actual view axis in third person is not. Deliberate, but it does mean the lean and the
+   view no longer share an axis.
+
+How to tell them apart without guessing: with `LogEveryFrames` on, lean the same distance
+forward and then sideways and compare the `lean=` triples. Equal magnitudes point at 1 or
+3; unequal ones would mean something upstream of the arithmetic, which would be a genuine
+finding since the arithmetic itself is covered.
 
 ### What the 0.0.3 run proved
 
