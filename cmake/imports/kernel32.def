@@ -16,3 +16,6 @@ CloseHandle@4
 OutputDebugStringA@4
 GetPrivateProfileStringA@24
 GetModuleFileNameA@12
+LoadLibraryA@4
+GetProcAddress@8
+FreeLibrary@4

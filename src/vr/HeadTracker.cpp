@@ -11,10 +11,28 @@ constexpr float kTwoPi = 6.28318530718f;
 }  // namespace
 
 void HeadTracker::Configure(const TrackerSettings& settings) {
+	// State is only reset on an actual change of source.
+	//
+	// The hot reload calls Configure again every ReloadEveryFrames, even when
+	// nothing changed. If the reference fell back to identity each time, a
+	// recenter with a real headset would be undone after two seconds at most.
+	// With the existing sources this goes unnoticed because their reference
+	// is the identity anyway - with OpenVR it would be a bug you feel in the
+	// headset and can hardly attribute.
+	const bool sourceChanged = m_settings.source != settings.source;
 	m_settings = settings;
-	m_reference = Quaternion::Identity();
-	m_rawOrientation = Quaternion::Identity();
-	m_cameraRotation = NiMatrix33::Identity();
+
+	if (sourceChanged) {
+		m_reference = Quaternion::Identity();
+		m_rawOrientation = Quaternion::Identity();
+		m_cameraRotation = NiMatrix33::Identity();
+	}
+
+	if (m_settings.source == TrackerSource::OpenVR) {
+		// Calling this repeatedly is harmless, and it makes switching to
+		// openvr while the game is running take effect.
+		m_openVR.Start();
+	}
 }
 
 Quaternion HeadTracker::ReadSource(UInt32 frameIndex) const {
@@ -52,7 +70,18 @@ Quaternion HeadTracker::ReadSource(UInt32 frameIndex) const {
 			return (yaw * pitch).Normalized();
 		}
 
-		case TrackerSource::OpenVR:
+		case TrackerSource::OpenVR: {
+			Quaternion orientation = Quaternion::Identity();
+			if (m_openVR.ReadHeadOrientation(orientation)) {
+				return orientation;
+			}
+			// No valid pose - because SteamVR is not running, or tracking has
+			// not picked up yet. Keep the last orientation instead of letting
+			// the camera snap back to rest. Without a connection that is the
+			// identity, which means the vanilla camera.
+			return m_rawOrientation;
+		}
+
 		case TrackerSource::OpenXR:
 			// Noch nicht angebunden. Bis dahin bleibt die Kamera unveraendert,
 			// statt eine erfundene Orientierung zu liefern.

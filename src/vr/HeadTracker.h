@@ -2,6 +2,7 @@
 
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "vr/OpenVRBackend.h"
 #include "vr/Quaternion.h"
 
 namespace obvr::vr {
@@ -70,6 +71,11 @@ private:
 	Quaternion m_rawOrientation = Quaternion::Identity();
 	Quaternion m_reference = Quaternion::Identity();
 	NiMatrix33 m_cameraRotation = NiMatrix33::Identity();
+
+	// Only used for TrackerSource::OpenVR, but it belongs here regardless:
+	// the connection to SteamVR has to persist across frames rather than be
+	// rebuilt for every query.
+	OpenVRBackend m_openVR;
 };
 
 }  // namespace obvr::vr

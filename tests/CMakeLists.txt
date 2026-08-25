@@ -45,3 +45,37 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME quaternion COMMAND quaternion_test)
+
+add_executable(openvr_pose_test
+	OpenVRPoseTest.cpp
+	../src/vr/Quaternion.cpp
+	../src/core/Rotation.cpp
+)
+
+target_include_directories(openvr_pose_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(openvr_pose_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME openvr_pose COMMAND openvr_pose_test)
+
+# The backend test calls LoadLibrary and therefore only builds on Windows,
+# unlike the other tests which are plain arithmetic. Keeping it behind WIN32
+# preserves the native test run on Linux, where the rest still applies.
+if(WIN32)
+	add_executable(openvr_backend_test
+		OpenVRBackendTest.cpp
+		../src/vr/OpenVRBackend.cpp
+		../src/vr/Quaternion.cpp
+		../src/core/Log.cpp
+	)
+
+	target_include_directories(openvr_backend_test PRIVATE ../src)
+
+	if(NOT MSVC)
+		target_compile_options(openvr_backend_test PRIVATE -Wall -Wextra)
+	endif()
+
+	add_test(NAME openvr_backend COMMAND openvr_backend_test)
+endif()

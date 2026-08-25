@@ -45,6 +45,16 @@ OBVR_IMPORT void OBVR_STDCALL OutputDebugStringA(const char* text);
 OBVR_IMPORT DWORD OBVR_STDCALL GetPrivateProfileStringA(const char* section, const char* key, const char* defaultValue, char* buffer, DWORD size, const char* fileName);
 OBVR_IMPORT DWORD OBVR_STDCALL GetModuleFileNameA(HMODULE module, char* fileName, DWORD size);
 
+// For the OpenVR backend. openvr_api.dll is loaded at runtime rather than
+// linked, so that OBVR still loads without SteamVR installed.
+//
+// GetProcAddress returns void* here instead of FARPROC. The call site casts
+// to the concrete function pointer anyway, and replicating FARPROC would be
+// one more declaration for no gain.
+OBVR_IMPORT HMODULE OBVR_STDCALL LoadLibraryA(const char* fileName);
+OBVR_IMPORT void* OBVR_STDCALL GetProcAddress(HMODULE module, const char* name);
+OBVR_IMPORT BOOL OBVR_STDCALL FreeLibrary(HMODULE module);
+
 // Aus msvcrt.dll. Bewusst sin/cos statt sinf/cosf: die float-Varianten fehlen
 // in aelteren msvcrt-Staenden, die double-Varianten sind ueberall vorhanden.
 extern "C" int __cdecl _snprintf(char* buffer, unsigned int count, const char* format, ...);

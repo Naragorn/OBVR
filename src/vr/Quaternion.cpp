@@ -81,4 +81,52 @@ NiMatrix33 ToMatrix(const Quaternion& rotation) {
 	return result;
 }
 
+Quaternion FromOpenVRMatrix(const float matrix[3][4]) {
+	// Rotation part only; column 3 carries the position and is left alone.
+	const float m00 = matrix[0][0], m01 = matrix[0][1], m02 = matrix[0][2];
+	const float m10 = matrix[1][0], m11 = matrix[1][1], m12 = matrix[1][2];
+	const float m20 = matrix[2][0], m21 = matrix[2][1], m22 = matrix[2][2];
+
+	// The inverse of ToMatrix, branching on the trace.
+	//
+	// The naive route through w = sqrt(1 + trace) / 2 followed by division
+	// falls apart as w approaches zero - precisely at rotations near 180
+	// degrees, which are perfectly ordinary when looking around in a headset.
+	// So the largest component is determined first and the rest derived from
+	// it, which keeps a small number out of the denominator.
+	const float trace = m00 + m11 + m22;
+
+	Quaternion result{};
+
+	if (trace > 0.0f) {
+		const float s = math::Sqrt(trace + 1.0f) * 2.0f;  // s = 4w
+		result.w = 0.25f * s;
+		result.x = (m21 - m12) / s;
+		result.y = (m02 - m20) / s;
+		result.z = (m10 - m01) / s;
+	} else if (m00 > m11 && m00 > m22) {
+		const float s = math::Sqrt(1.0f + m00 - m11 - m22) * 2.0f;  // s = 4x
+		result.w = (m21 - m12) / s;
+		result.x = 0.25f * s;
+		result.y = (m01 + m10) / s;
+		result.z = (m02 + m20) / s;
+	} else if (m11 > m22) {
+		const float s = math::Sqrt(1.0f + m11 - m00 - m22) * 2.0f;  // s = 4y
+		result.w = (m02 - m20) / s;
+		result.x = (m01 + m10) / s;
+		result.y = 0.25f * s;
+		result.z = (m12 + m21) / s;
+	} else {
+		const float s = math::Sqrt(1.0f + m22 - m00 - m11) * 2.0f;  // s = 4z
+		result.w = (m10 - m01) / s;
+		result.x = (m02 + m20) / s;
+		result.y = (m12 + m21) / s;
+		result.z = 0.25f * s;
+	}
+
+	// Floating point drift in the delivered matrix would otherwise come
+	// through as a scaling camera matrix.
+	return result.Normalized();
+}
+
 }  // namespace obvr::vr

@@ -63,4 +63,19 @@ Quaternion FromOpenXR(const Quaternion& openXrOrientation);
 // Erwartet eine bereits normierte Quaternion in Oblivion-Konvention.
 NiMatrix33 ToMatrix(const Quaternion& rotation);
 
+// Converts the rotation part of an OpenVR pose into a quaternion.
+//
+// OpenVR delivers poses as HmdMatrix34_t, that is float m[3][4] in row major
+// order: the left three columns hold the rotation, the fourth holds the
+// position. The position is discarded here - 0.0.3 delivers 3DoF, no head
+// movement through space.
+//
+// The parameter is deliberately a bare float[3][4] rather than an
+// HmdMatrix34_t, which keeps this header free of OpenVR declarations and
+// natively testable like the rest of the maths.
+//
+// The result is in OpenVR convention, which matches OpenXR (X right, Y up,
+// -Z forward) - so it still has to go through FromOpenXR.
+Quaternion FromOpenVRMatrix(const float matrix[3][4]);
+
 }  // namespace obvr::vr

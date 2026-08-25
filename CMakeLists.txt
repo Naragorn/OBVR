@@ -32,6 +32,7 @@ add_library(OBVR SHARED
 	src/core/Rotation.cpp
 	src/platform/Freestanding.cpp
 	src/vr/HeadTracker.cpp
+	src/vr/OpenVRBackend.cpp
 	src/vr/Quaternion.cpp
 )
 
