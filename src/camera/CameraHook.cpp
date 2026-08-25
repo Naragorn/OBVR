@@ -5,6 +5,7 @@
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
+#include "platform/Win32Min.h"
 
 namespace obvr::camera {
 namespace {
@@ -13,6 +14,13 @@ State g_state;
 vr::HeadTracker g_headTracker;
 
 constexpr UInt32 kTrampolineSize = 64;
+
+// VK_DELETE - the Del key above the arrow block. Chosen because vanilla
+// Oblivion does not bind it, so recentering cannot collide with a game
+// action.
+constexpr int kRecenterVirtualKey = 0x2E;
+
+bool g_recenterWasDown = false;
 
 bool ReadIsThirdPerson() {
 	auto* player = *reinterpret_cast<UInt8**>(addr::kPlayerPointer);
@@ -34,6 +42,30 @@ void MaybeReloadConfig() {
 	if (config.Reload("OBVR.ini")) {
 		g_headTracker.Configure(config.tracker);
 	}
+}
+
+// Polls the recenter key once per frame.
+//
+// Polled rather than hooked: OBVR installs no input hook at all, and a single
+// GetAsyncKeyState call per frame is far cheaper than setting one up.
+//
+// The edge is detected here through a stored previous state. GetAsyncKeyState
+// does carry a "pressed since the last call" bit, but that bit is consumed
+// process wide by whoever reads it first, so it cannot be relied on next to
+// the game's own input handling.
+//
+// The key state is global rather than per window. That is harmless here:
+// Oblivion pauses when it loses focus, so this callback does not run at all
+// while another application has the keyboard.
+void MaybePollRecenter() {
+	const bool isDown = (GetAsyncKeyState(kRecenterVirtualKey) & 0x8000) != 0;
+
+	if (isDown && !g_recenterWasDown) {
+		g_headTracker.Recenter();
+		OBVR_LOG("Camera: recentered on Del (frame %u)", g_state.frameCount);
+	}
+
+	g_recenterWasDown = isDown;
 }
 
 }  // namespace
@@ -69,6 +101,13 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	MaybeReloadConfig();
 
 	g_headTracker.Update(g_state.frameCount);
+
+	// After Update, so that the recenter reference is this frame's
+	// orientation rather than the previous one. The new zero therefore takes
+	// effect from the next frame - a single frame of delay that nobody can
+	// see, in exchange for the reference being exactly the pose the user was
+	// holding when they pressed the key.
+	MaybePollRecenter();
 
 	const Config& config = GetConfig();
 	if (config.logEveryFrames != 0 && (g_state.frameCount % config.logEveryFrames) == 0) {

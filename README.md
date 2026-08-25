@@ -33,6 +33,10 @@ OBVR with SteamVR as a background application and reads the HMD pose. The result
 the head rotates, but it does not move through space — that is deliberate for this
 milestone.
 
+Recentering sits on the **Del** key. It takes the current head pose as the new zero, so
+you can settle into a comfortable position and make that the forward direction. Vanilla
+Oblivion does not bind Del, so it cannot collide with a game action.
+
 The simulated head is not a toy. It is the only way to check the whole chain up to the
 camera matrix without an HMD, and on a Linux system without a working VR stack it is the
 only way at all.

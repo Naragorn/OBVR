@@ -1,9 +1,9 @@
 # Generates import libraries from the .def files, so that lld-link can bind
-# against kernel32 and msvcrt without the Windows SDK.
+# against kernel32, msvcrt and user32 without the Windows SDK.
 
 set(OBVR_IMPORT_LIBS "")
 
-foreach(module kernel32 msvcrt)
+foreach(module kernel32 msvcrt user32)
 	set(def "${CMAKE_CURRENT_SOURCE_DIR}/${module}.def")
 	set(lib "${CMAKE_CURRENT_BINARY_DIR}/${module}.lib")
 

@@ -1,0 +1,8 @@
+; Imports from user32.dll for the SDK-free verification build.
+;
+; A single entry: GetAsyncKeyState, used to poll the recenter key. The @4
+; suffix is the stdcall name decoration on x86 and matches the one int
+; argument.
+LIBRARY user32.dll
+EXPORTS
+GetAsyncKeyState@4

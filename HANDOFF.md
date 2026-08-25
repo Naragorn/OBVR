@@ -80,8 +80,7 @@ The maths and the fallback path are covered by tests, but nothing has run agains
 headset yet. Missing:
 
 - a run with SteamVR and an HMD, checking that the camera follows head movement
-- recenter on a key. `HeadTracker::Recenter()` exists, but nothing calls it yet — there is
-  no key handling in OBVR at all so far
+- a check that recentering on the Del key does what it should with a real headset
 - a check of whether the vanity and dialogue cameras interfere. Both run through branches
   of their own
 
@@ -325,8 +324,9 @@ OBVR/
 - **No OpenVR headers either**, for the same reason. `src/vr/OpenVRTypes.h` replicates one
   function, three structs and four constants out of a 3200-line header, each cited with its
   source line.
-- **No `windows.h` in the freestanding path.** `Win32Min.h` declares the ~13 needed imports
-  itself. The DLL only needs `kernel32` and `msvcrt`.
+- **No `windows.h` in the freestanding path.** `Win32Min.h` declares the handful of needed
+  imports itself. The DLL only needs `kernel32`, `msvcrt` and a single function out of
+  `user32` (`GetAsyncKeyState`, for the recenter key).
 - **Maths kept apart from memory layout.** `NiMath.h` contains only float structs and is
   valid on any architecture; `GameTypes.h` with its pointer-bearing structs only checks its
   offsets under `OBVR_TARGET_32BIT`.
@@ -458,6 +458,12 @@ up to the camera matrix **without a headset**.
 Note on the hot reload: `HeadTracker::Configure` only resets the recenter reference when the
 source actually changed. It used to reset unconditionally, which would have undone every
 recenter within `ReloadEveryFrames` once a real headset was attached.
+
+Recentering sits on the **Del** key (`VK_DELETE`, `0x2E`), polled once per frame with
+`GetAsyncKeyState`. Vanilla Oblivion does not bind Del, so it cannot collide with a game
+action. This is the only reason OBVR imports anything from `user32` — the alternative would
+have been another reverse engineered address for Oblivion's own input state. The key is not
+configurable yet.
 
 ---
 
@@ -618,8 +624,7 @@ The code is in place. What is missing is a run with a real headset:
 3. Check `OBVR.log` for the `OpenVR: connected through FnTable:IVRSystem_026` line.
 4. Check the fallback: start once without SteamVR and confirm Oblivion still runs with the
    vanilla camera.
-5. Put recenter on a key. `HeadTracker::Recenter()` exists but is not called from anywhere;
-   OBVR has no key handling at all yet.
+5. Press Del and confirm that the current head pose becomes the new zero.
 
 ### Then 0.0.4
 

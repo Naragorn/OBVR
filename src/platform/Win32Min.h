@@ -8,8 +8,8 @@
 //
 // In the second case there is no <windows.h>. Rather than tie the project to
 // a cross toolchain that carries the SDK, this header declares the handful of
-// needed imports itself. The DLL only needs kernel32 and msvcrt, and both are
-// loaded in the Oblivion process anyway.
+// needed imports itself. The DLL only needs kernel32, msvcrt and one function
+// out of user32, and all three are loaded in the Oblivion process anyway.
 
 #include "core/Types.h"
 
@@ -54,6 +54,13 @@ OBVR_IMPORT DWORD OBVR_STDCALL GetModuleFileNameA(HMODULE module, char* fileName
 OBVR_IMPORT HMODULE OBVR_STDCALL LoadLibraryA(const char* fileName);
 OBVR_IMPORT void* OBVR_STDCALL GetProcAddress(HMODULE module, const char* name);
 OBVR_IMPORT BOOL OBVR_STDCALL FreeLibrary(HMODULE module);
+
+// From user32.dll, for the recenter key. This is the only import outside
+// kernel32 and msvcrt, and it is a deliberate trade: the alternative would be
+// to read Oblivion's own input state, which would mean one more reverse
+// engineered address to keep correct. user32 is loaded in every GUI process,
+// so it costs nothing at runtime.
+OBVR_IMPORT short OBVR_STDCALL GetAsyncKeyState(int virtualKey);
 
 // From msvcrt.dll. Deliberately sin/cos rather than sinf/cosf: the float
 // variants are missing from older msvcrt revisions, the double ones are
