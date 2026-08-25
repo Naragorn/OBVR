@@ -1,0 +1,19 @@
+build/
+build-*/
+extern/
+
+# Visual Studio / MSVC
+.vs/
+out/
+*.user
+
+*.dll
+*.lib
+*.pdb
+*.obj
+*.exp
+
+# Laufzeitprotokolle, wie sie neben Oblivion.exe entstehen. Die Logs unter
+# docs/verification/ sind dagegen Belege der Spieltests und gehoeren ins Repo.
+*.log
+!docs/verification/*.log

@@ -1,0 +1,11 @@
+OBVR 1 - Query
+OBSE-Version 22, Oblivion-Version 010201A0
+OBVR 1 - Load
+Config: Z:\home\nadi\.local\share\Steam\steamapps\common\Oblivion\OBVR.ini
+Config: HookEnabled=1 TestRotation=(0.00, 20.00, 0.00) LogEveryFrames=0
+Kamera: Hook auf 0066BE6E gesetzt, Trampolin bei 024C0000 (37 Bytes)
+OBVR bereit
+Kamera: erster Hook-Durchlauf, CameraNode=1812BC40, Third Person
+Kamera: Wechsel nach First Person (Frame 1621)
+Kamera: Wechsel nach Third Person (Frame 1745)
+Kamera: Wechsel nach First Person (Frame 2886)

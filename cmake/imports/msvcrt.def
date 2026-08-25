@@ -1,0 +1,16 @@
+; Importe aus msvcrt.dll fuer den SDK-freien Verifikationsbau.
+;
+; msvcrt.dll ist in jedem Windows vorhanden und im Oblivion-Prozess ohnehin
+; geladen. Alle Eintraege sind cdecl und tragen deshalb keine Dekoration.
+LIBRARY msvcrt.dll
+EXPORTS
+_snprintf
+_vsnprintf
+atof
+sin
+cos
+sqrt
+; memcpy und memset ruft der Compiler von sich aus auf, sobald Strukturen
+; kopiert oder nullinitialisiert werden.
+memcpy
+memset
