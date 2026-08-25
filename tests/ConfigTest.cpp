@@ -210,11 +210,21 @@ void TestLookRanges() {
 	CheckNear(mixed.look.verticalLookUpRange, 25.0f, "the old key still supplies the missing half");
 	CheckNear(mixed.look.verticalLookDownRange, 99.0f, "and the specific key wins where both apply");
 
+	// Rendering to the headset is off unless a file says otherwise. This is
+	// checked before anything switches it on, because the property that
+	// matters is not that the key works but that its absence is safe: OBVR
+	// must not start claiming the VR scene because someone updated the DLL
+	// and kept their old INI.
+	obvr::Config untouched;
+	Check(!untouched.tracker.renderToHeadset, "rendering to the headset is off by default");
+
 	obvr::Config split;
 	LoadFrom("ConfigTestSplitRange.ini",
 	         "[Look]\nVerticalLookUpRange=40.0\nVerticalLookDownRange=140.0\n"
-	         "[Head]\nHeadMovementScale=1.5\n",
+	         "[Head]\nHeadMovementScale=1.5\n"
+	         "[Render]\nEnabled=1\n",
 	         split);
+	Check(split.tracker.renderToHeadset, "and can be switched on from the [Render] section");
 	CheckNear(split.look.verticalLookUpRange, 40.0f, "the up range is read on its own");
 	CheckNear(split.look.verticalLookDownRange, 140.0f, "the down range is read on its own");
 	CheckNear(split.tracker.movementScale, 1.5f, "HeadMovementScale is read");

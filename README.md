@@ -14,7 +14,7 @@ relative HMD rotation
 final VR camera
 ```
 
-## Status: 0.0.3 — head rotation from a real headset
+## Status: 0.0.4 — a head that rotates and moves, and a stick that no longer tilts
 
 Still no stereo. 0.0.1 answered the core question:
 
@@ -497,9 +497,14 @@ turn out to be reachable no other way.
 | --- | --- | --- |
 | 0.0.1 | plugin loads, logging, version check, camera hook, fixed test rotation | verified in the game |
 | 0.0.2 | quaternion layer, recenter, interchangeable head source, config hot reload | verified in the game |
-| 0.0.3 | OpenVR wired up, real HMD rotation on the camera — still a monitor image | implemented, not yet verified in the game |
-| 0.0.4 | frame loop, left and right swapchain, test images in the headset | open |
+| 0.0.3 | OpenVR wired up, real HMD rotation on the camera — still a monitor image | verified in the game |
+| 0.0.4 | 6DoF for the head, vertical look taken off the stick | verified in the game, two settings retuned from what it showed |
+| 0.0.5 | frame loop, left and right swapchain, test images in the headset | in progress — the compositor interface is declared and OBVR can register as a scene application; nothing is submitted yet |
 | 0.1.0 | Oblivion's world as real dual-pass stereo, both eyes in the same game frame | open |
+
+VR is being brought up on Windows first; Linux follows once it works there. That is an
+order of work rather than a change of destination — see `HANDOFF.md` section 13 for what it
+costs, because it does move one risk from the second platform to the first.
 
 Quality target for the stereo rendering, in this order:
 

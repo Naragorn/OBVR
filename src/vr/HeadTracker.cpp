@@ -38,7 +38,14 @@ void HeadTracker::Configure(const TrackerSettings& settings) {
 	if (m_settings.source == TrackerSource::OpenVR) {
 		// Calling this repeatedly is harmless, and it makes switching to
 		// openvr while the game is running take effect.
-		m_openVR.Start();
+		//
+		// renderToHeadset only counts on the first call that gets through.
+		// Which kind of application OBVR is registers once with SteamVR, and
+		// changing it means unregistering and registering again - not
+		// something to do silently every couple of seconds because a hot
+		// reload noticed an edited line. Turning rendering on therefore needs
+		// a restart, and the INI says so.
+		m_openVR.Start(m_settings.renderToHeadset);
 	}
 }
 

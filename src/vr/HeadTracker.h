@@ -49,6 +49,16 @@ struct TrackerSettings {
 	// other sources leave the camera where the game put it.
 	bool positionalTracking = true;
 
+	// Whether OBVR renders to the headset rather than only reading poses from
+	// it. Off until that actually works, so that an update cannot change a
+	// setup that was fine.
+	//
+	// It decides which kind of application OBVR registers as, and the two are
+	// exclusive: submitting a frame requires VRApplication_Scene, which takes
+	// the headset away from whatever else was showing something. Reading
+	// poses wants VRApplication_Background, which does not.
+	bool renderToHeadset = false;
+
 	// Oblivion units per metre, for converting the head offset.
 	//
 	// The Construction Set wiki gives "21.3 units to a foot ... 64 units per
@@ -136,6 +146,14 @@ public:
 	// headset there is nothing to hand them to.
 	bool IsHeadsetConnected() const {
 		return m_settings.source == TrackerSource::OpenVR && m_openVR.IsRunning();
+	}
+
+	// Whether OBVR actually holds the compositor and could submit a frame.
+	// False whenever rendering is switched off, could not be set up, or the
+	// source is not a real headset - so a caller that checks this never has
+	// to ask why it failed.
+	bool IsRenderingToHeadset() const {
+		return m_settings.source == TrackerSource::OpenVR && m_openVR.IsSceneApplication();
 	}
 
 private:

@@ -48,9 +48,11 @@ int main() {
 	std::printf("\nStarting without SteamVR\n");
 	obvr::vr::OpenVRBackend backend;
 
-	const bool started = backend.Start();
+	const bool started = backend.Start(false);
 	Check(!started, "Start reports false instead of crashing");
 	Check(!backend.IsRunning(), "backend reports itself as not running");
+	Check(!backend.IsSceneApplication(),
+	      "and does not claim to hold the compositor either");
 
 	obvr::vr::Quaternion orientation = obvr::vr::Quaternion::Identity();
 	obvr::NiPoint3 position{0.0f, 0.0f, 0.0f};
@@ -58,7 +60,18 @@ int main() {
 	Check(!read, "ReadHeadPose reports false without a connection");
 
 	// A second attempt must neither crash nor flood the log.
-	Check(!backend.Start(), "second Start stays without effect as well");
+	Check(!backend.Start(false), "second Start stays without effect as well");
+
+	// Asking for the scene changes nothing here, and that is the point: the
+	// route through Connect, the compositor query and the retreat back to
+	// background all have to end in the same harmless place on a machine with
+	// no SteamVR. This is the path most people meet first, and it is also the
+	// one with the most steps to go wrong now.
+	obvr::vr::OpenVRBackend sceneBackend;
+	Check(!sceneBackend.Start(true), "asking for the scene fails just as quietly");
+	Check(!sceneBackend.IsRunning(), "no runtime means no connection, scene or not");
+	Check(!sceneBackend.IsSceneApplication(), "and certainly no compositor");
+	sceneBackend.Stop();
 
 	// Stop on a backend that never started has to be harmless too.
 	backend.Stop();

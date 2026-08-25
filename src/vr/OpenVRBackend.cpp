@@ -28,7 +28,41 @@ void OpenVRBackend::LogOnce(bool& alreadyLogged, const char* message) const {
 	}
 }
 
-bool OpenVRBackend::Start() {
+bool OpenVRBackend::Connect(int applicationType) {
+	auto initInternal = Resolve<openvr::VR_InitInternalFn>(m_module, "VR_InitInternal");
+	auto getInterface =
+		Resolve<openvr::VR_GetGenericInterfaceFn>(m_module, "VR_GetGenericInterface");
+	auto errorText = Resolve<openvr::VR_GetVRInitErrorAsEnglishDescriptionFn>(
+		m_module, "VR_GetVRInitErrorAsEnglishDescription");
+
+	int error = openvr::kInitErrorNone;
+	initInternal(&error, applicationType);
+	if (error != openvr::kInitErrorNone) {
+		OBVR_LOG("OpenVR: VR_InitInternal as type %d failed (%d: %s)", applicationType, error,
+		         errorText != nullptr ? errorText(error) : "no description");
+		return false;
+	}
+
+	error = openvr::kInitErrorNone;
+	m_system = getInterface(openvr::kIVRSystemFnTableVersion, &error);
+	if (m_system == nullptr || error != openvr::kInitErrorNone) {
+		OBVR_LOG("OpenVR: %s unavailable (%d: %s)", openvr::kIVRSystemFnTableVersion, error,
+		         errorText != nullptr ? errorText(error) : "no description");
+
+		// Registered but unusable. Unregistering here rather than leaving it
+		// is what makes a second attempt with a different application type
+		// safe: SteamVR would otherwise still hold the first registration.
+		if (auto shutdown =
+				Resolve<openvr::VR_ShutdownInternalFn>(m_module, "VR_ShutdownInternal")) {
+			shutdown();
+		}
+		return false;
+	}
+
+	return true;
+}
+
+bool OpenVRBackend::Start(bool wantScene) {
 	if (m_system != nullptr) {
 		return true;
 	}
@@ -66,8 +100,6 @@ bool OpenVRBackend::Start() {
 	auto initInternal = Resolve<openvr::VR_InitInternalFn>(m_module, "VR_InitInternal");
 	auto getInterface =
 		Resolve<openvr::VR_GetGenericInterfaceFn>(m_module, "VR_GetGenericInterface");
-	auto errorText = Resolve<openvr::VR_GetVRInitErrorAsEnglishDescriptionFn>(
-		m_module, "VR_GetVRInitErrorAsEnglishDescription");
 
 	if (initInternal == nullptr || getInterface == nullptr) {
 		OBVR_LOG("OpenVR: %s does not have the expected exports", kOpenVRLibrary);
@@ -83,24 +115,41 @@ bool OpenVRBackend::Start() {
 		return false;
 	}
 
-	// Background rather than Scene: OBVR only reads poses and must
-	// not take the scene away from the compositor.
-	int error = openvr::kInitErrorNone;
-	initInternal(&error, openvr::kApplicationBackground);
-	if (error != openvr::kInitErrorNone) {
-		OBVR_LOG("OpenVR: VR_InitInternal failed (%d: %s)", error,
-		         errorText != nullptr ? errorText(error) : "no description");
-		FreeLibrary(static_cast<HMODULE>(m_module));
-		m_module = nullptr;
-		return false;
+	// The scene attempt first, when asked for. It is the only way to submit a
+	// frame, and it is also the only way to take the headset away from
+	// whatever else is using it - which is why it happens on request rather
+	// than by default.
+	if (wantScene && Connect(openvr::kApplicationScene)) {
+		int error = openvr::kInitErrorNone;
+		m_compositor = getInterface(openvr::kIVRCompositorFnTableVersion, &error);
+
+		if (m_compositor != nullptr && error == openvr::kInitErrorNone) {
+			OBVR_LOG("OpenVR: connected as a scene application through %s and %s",
+			         openvr::kIVRSystemFnTableVersion, openvr::kIVRCompositorFnTableVersion);
+			return true;
+		}
+
+		// Registered as a scene application but without a compositor to
+		// submit to. Retreating to background costs the picture and keeps
+		// head tracking, which is the better half to keep: a camera that
+		// still follows the head is a working mod, a headset showing nothing
+		// is not.
+		OBVR_LOG("OpenVR: %s unavailable (%d), falling back to head tracking only",
+		         openvr::kIVRCompositorFnTableVersion, error);
+		m_compositor = nullptr;
+		m_system = nullptr;
+		if (auto shutdown =
+				Resolve<openvr::VR_ShutdownInternalFn>(m_module, "VR_ShutdownInternal")) {
+			shutdown();
+		}
 	}
 
-	error = openvr::kInitErrorNone;
-	m_system = getInterface(openvr::kIVRSystemFnTableVersion, &error);
-	if (m_system == nullptr || error != openvr::kInitErrorNone) {
-		OBVR_LOG("OpenVR: %s unavailable (%d: %s)", openvr::kIVRSystemFnTableVersion,
-		         error, errorText != nullptr ? errorText(error) : "no description");
-		Stop();
+	// Background: reads poses and leaves the compositor alone. Everything up
+	// to 0.0.4 works this way, and it stays the default until rendering is
+	// asked for explicitly.
+	if (!Connect(openvr::kApplicationBackground)) {
+		FreeLibrary(static_cast<HMODULE>(m_module));
+		m_module = nullptr;
 		return false;
 	}
 
@@ -121,6 +170,7 @@ void OpenVRBackend::Stop() {
 	FreeLibrary(static_cast<HMODULE>(m_module));
 	m_module = nullptr;
 	m_system = nullptr;
+	m_compositor = nullptr;
 	OBVR_LOG("OpenVR: disconnected");
 }
 

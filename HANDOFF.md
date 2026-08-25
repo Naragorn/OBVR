@@ -916,9 +916,16 @@ So OBVR stays a plugin that asks a `QueryInterface` question, rather than a proj
 maintains a graphics driver. That is a different order of cost entirely.
 
 **Under Proton it is already there.** Oblivion's D3D9 goes through DXVK to Vulkan whether
-OBVR wants it or not, so a route that fights that is one that works on the development
-machine and not on the destination. Windows is the development environment here; Linux is
-where this is meant to end up.
+OBVR wants it or not, so a route that fights that is one that works on Windows and not on
+Linux.
+
+**But Windows comes first.** The stated order, as of 2026-08-25, is: get VR working on
+Windows, then Linux. That does not change the destination, and it does weaken the argument
+just made — under Proton DXVK costs nothing, on Windows it is an extra file from a project
+that does not support Windows. The remaining case for DXVK still stands on its own: two
+precedents, no fork needed, and it is advice this game gets anyway for reasons that have
+nothing to do with VR. But the risk has moved from the second platform to the first, and
+that is precisely what the D3D9Ex alternative below is being kept for.
 
 #### What "depends on DXVK" actually means
 
@@ -990,11 +997,16 @@ which is why that pattern is worth reusing rather than reinventing.
 
 ### The order of work for 0.0.5
 
-1. `IVRCompositor` in `OpenVRTypes.h` and the backend — table, indices, `Texture_t`,
-   `VRTextureBounds_t`, the submit flags.
-2. Scene rather than background, and a fallback that is at least as safe as today's.
+1. ~~`IVRCompositor` in `OpenVRTypes.h`~~ — **done.** Table, indices, `Texture_t`,
+   `VRTextureBounds_t`, the submit flags, all read out of the header and pinned by
+   `openvr_pose_test`.
+2. ~~Scene rather than background, and a fallback at least as safe as today's~~ — **done.**
+   `Render.Enabled` in the INI, off by default, read at startup only. `OpenVRBackend::Start`
+   now takes the application type; if the scene registration succeeds but the compositor
+   cannot be reached, it gives the registration back and reconnects as background, so the
+   picture is lost and head tracking is not.
 3. A D3D11 device of OBVR's own, one texture per eye, a generated test image. This is what
-   makes the milestone testable without solving D3D9.
+   makes the milestone testable without solving D3D9. ← **next**
 4. `WaitGetPoses` in a frame loop, and the decision about which clock leads.
 5. `GetProjectionRaw` and `GetEyeToHeadTransform`, so the eyes sit where the headset says
    rather than where a guess puts them.

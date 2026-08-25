@@ -24,9 +24,31 @@ public:
 	// Loads openvr_api.dll, registers OBVR with SteamVR and fetches the
 	// system interface. Calling it more than once is harmless.
 	//
+	// wantScene decides which kind of application OBVR registers as, and the
+	// two are mutually exclusive:
+	//
+	//   false - VRApplication_Background. Reads poses and leaves the
+	//           compositor alone, so whatever SteamVR is showing keeps
+	//           showing. This is what 0.0.1 to 0.0.4 do.
+	//   true  - VRApplication_Scene. Required before a frame can be
+	//           submitted: Submit answers a background application with
+	//           VRCompositorError_IsNotSceneApplication and WaitGetPoses
+	//           throttles itself to 10 Hz. It also means taking the scene
+	//           away from whatever was using it.
+	//
+	// If the scene attempt gets as far as registering but the compositor
+	// interface cannot be had, OBVR retreats to background rather than
+	// failing: losing the picture is not a reason to lose head tracking too.
+	// IsSceneApplication then reports false and the caller must not submit.
+	//
 	// Returns false when SteamVR cannot be reached - a normal state, not an
 	// error.
-	bool Start();
+	bool Start(bool wantScene);
+
+	// Whether OBVR registered as a scene application and holds the
+	// compositor. False means submitting is not possible, whatever the
+	// configuration asked for.
+	bool IsSceneApplication() const { return m_compositor != nullptr; }
 
 	// Unregisters OBVR from SteamVR. Deliberately not called from DllMain:
 	// the loader holds its lock there, and VR_ShutdownInternal loads
@@ -54,8 +76,14 @@ private:
 	// method.
 	void LogOnce(bool& alreadyLogged, const char* message) const;
 
-	void* m_module = nullptr;   // openvr_api.dll
-	void* m_system = nullptr;   // IVRSystemFnTable*
+	// One attempt at registering with SteamVR as the given application type.
+	// Leaves nothing behind on failure, which is what makes the retreat from
+	// scene to background safe to attempt.
+	bool Connect(int applicationType);
+
+	void* m_module = nullptr;      // openvr_api.dll
+	void* m_system = nullptr;      // IVRSystemFnTable*
+	void* m_compositor = nullptr;  // IVRCompositorFnTable*, only when scene
 	bool m_startAttempted = false;
 	mutable bool m_loggedNoPose = false;
 };
