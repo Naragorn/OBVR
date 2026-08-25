@@ -1,9 +1,9 @@
-; Importe aus kernel32.dll fuer den SDK-freien Verifikationsbau.
+; Imports from kernel32.dll for the SDK-free verification build.
 ;
-; Die @N-Suffixe sind die stdcall-Namensdekoration auf x86 und muessen der
-; Argumentgroesse in Bytes entsprechen. llvm-dlltool wird mit -k aufgerufen,
-; damit der Importname im DLL-Verzeichnis ohne Suffix steht - so exportiert
-; kernel32 die Funktionen tatsaechlich.
+; The @N suffixes are the stdcall name decoration on x86 and have to match the
+; argument size in bytes. llvm-dlltool is invoked with -k so that the import
+; name in the DLL directory carries no suffix - which is how kernel32 actually
+; exports these functions.
 LIBRARY kernel32.dll
 EXPORTS
 VirtualProtect@16

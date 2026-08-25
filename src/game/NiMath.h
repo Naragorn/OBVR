@@ -2,12 +2,12 @@
 
 #include "core/Types.h"
 
-// Die Rechentypen aus Oblivions Gamebryo-Szenengraph.
+// The arithmetic types from Oblivion's Gamebryo scene graph.
 //
-// Bewusst getrennt von GameTypes.h: diese Typen bestehen nur aus float und
-// haben auf jeder Architektur dasselbe Layout. Damit lassen sich Rotation und
-// Quaternion-Mathematik nativ auf dem Entwicklungsrechner testen, waehrend
-// GameTypes.h mit seinen zeigerbehafteten Strukturen 32-Bit voraussetzt.
+// Deliberately separate from GameTypes.h: these types consist of floats only
+// and have the same layout on every architecture. That makes rotation and
+// quaternion maths testable natively on the development machine, while
+// GameTypes.h with its pointer-bearing structs requires 32 bit.
 
 namespace obvr {
 
@@ -17,9 +17,9 @@ struct NiPoint3 {
 	float z;
 };
 
-static_assert(sizeof(NiPoint3) == 0x0C, "NiPoint3 muss 0x0C gross sein");
+static_assert(sizeof(NiPoint3) == 0x0C, "NiPoint3 must be 0x0C bytes");
 
-// Zeilen-Hauptordnung: data[Zeile][Spalte].
+// Row major: data[row][column].
 struct NiMatrix33 {
 	float data[3][3];
 
@@ -45,7 +45,7 @@ struct NiMatrix33 {
 	}
 };
 
-static_assert(sizeof(NiMatrix33) == 0x24, "NiMatrix33 muss 0x24 gross sein");
+static_assert(sizeof(NiMatrix33) == 0x24, "NiMatrix33 must be 0x24 bytes");
 
 struct NiTransform {
 	NiMatrix33 rot;    // 0x00
@@ -53,13 +53,13 @@ struct NiTransform {
 	float scale;       // 0x30
 };
 
-static_assert(sizeof(NiTransform) == 0x34, "NiTransform muss 0x34 gross sein");
+static_assert(sizeof(NiTransform) == 0x34, "NiTransform must be 0x34 bytes");
 
 struct NiBound {
 	NiPoint3 center;
 	float radius;
 };
 
-static_assert(sizeof(NiBound) == 0x10, "NiBound muss 0x10 gross sein");
+static_assert(sizeof(NiBound) == 0x10, "NiBound must be 0x10 bytes");
 
 }  // namespace obvr

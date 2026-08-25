@@ -41,10 +41,10 @@ Quaternion HeadTracker::ReadSource(UInt32 frameIndex) const {
 			return Quaternion::Identity();
 
 		case TrackerSource::Fixed: {
-			// Die festen Winkel sind bereits in Oblivion-Achsen gedacht. Damit
-			// sie denselben Weg nehmen wie eine echte HMD-Orientierung, werden
-			// sie hier in die OpenXR-Konvention zurueckgerechnet:
-			// Oblivion-Pitch liegt dort auf X, Yaw auf Y, Roll auf -Z.
+			// The fixed angles are already meant in Oblivion axes. So that they
+			// take the same route as a real HMD orientation, they are
+			// converted back into OpenXR convention here: Oblivion pitch sits
+			// on X there, yaw on Y, roll on -Z.
 			const Quaternion pitch = FromAxisAngle(1.0f, 0.0f, 0.0f, m_settings.fixedPitch);
 			const Quaternion yaw = FromAxisAngle(0.0f, 1.0f, 0.0f, m_settings.fixedYaw);
 			const Quaternion roll = FromAxisAngle(0.0f, 0.0f, 1.0f, -m_settings.fixedRoll);
@@ -52,10 +52,10 @@ Quaternion HeadTracker::ReadSource(UInt32 frameIndex) const {
 		}
 
 		case TrackerSource::Simulated: {
-			// Langsames Umherschauen, damit ohne Headset sichtbar wird, dass
-			// die Kamera einer fortlaufenden Orientierung folgt. Der Pitch
-			// laeuft mit leicht anderer Frequenz, sonst waere die Bewegung
-			// eine gerade Linie statt einer Figur.
+			// Slow looking around, so that without a headset it becomes
+			// visible that the camera follows a continuous orientation. Pitch
+			// runs at a slightly different frequency, otherwise the motion
+			// would be a straight line rather than a figure.
 			const UInt32 period =
 				m_settings.simulatedPeriodFrames > 0 ? m_settings.simulatedPeriodFrames : 600;
 			const float phase =
@@ -83,8 +83,8 @@ Quaternion HeadTracker::ReadSource(UInt32 frameIndex) const {
 		}
 
 		case TrackerSource::OpenXR:
-			// Noch nicht angebunden. Bis dahin bleibt die Kamera unveraendert,
-			// statt eine erfundene Orientierung zu liefern.
+			// Not wired up yet. Until then the camera stays unchanged rather
+			// than being fed an invented orientation.
 			return Quaternion::Identity();
 	}
 
@@ -94,8 +94,8 @@ Quaternion HeadTracker::ReadSource(UInt32 frameIndex) const {
 void HeadTracker::Update(UInt32 frameIndex) {
 	m_rawOrientation = ReadSource(frameIndex);
 
-	// Referenz herausrechnen, dann erst das Koordinatensystem wechseln. Beides
-	// in OpenXR-Konvention zu erledigen haelt die Umrechnung an einer Stelle.
+	// Factor out the reference first, change coordinate system second. Doing
+	// both in OpenXR convention keeps the conversion in one place.
 	const Quaternion relative = (m_reference.Conjugate() * m_rawOrientation).Normalized();
 	m_cameraRotation = ToMatrix(FromOpenXR(relative));
 }

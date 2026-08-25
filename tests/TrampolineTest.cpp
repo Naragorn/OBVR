@@ -1,13 +1,13 @@
-// Prueft die erzeugte Bytefolge des Kamera-Hooks.
+// Checks the byte sequence generated for the camera hook.
 //
-// Der Test laeuft nativ auf dem Entwicklungsrechner, nicht in Oblivion. Das
-// geht, weil BuildTrampoline und BuildPatch reine Byteerzeugung sind: sie
-// haengen nur von den uebergebenen Adressen ab, nicht von der Architektur des
-// Hostsystems.
+// The test runs natively on the development machine, not inside Oblivion.
+// That works because BuildTrampoline and BuildPatch are pure byte generation:
+// they depend only on the addresses passed in, not on the architecture of the
+// host system.
 //
-// Geprueft wird gegen von Hand nachgerechnete Sollwerte. Ein Vergleich gegen
-// eine zweite Implementierung derselben Rechnung waere wertlos - der Punkt ist
-// gerade, dass die Sollwerte unabhaengig ermittelt sind.
+// The expected values were worked out by hand. Comparing against a second
+// implementation of the same calculation would be worthless - the whole point
+// is that the expected values were derived independently.
 
 #include <cstdio>
 
@@ -22,7 +22,7 @@ void Check(bool condition, const char* what) {
 	if (condition) {
 		std::printf("  ok    %s\n", what);
 	} else {
-		std::printf("  FEHLT %s\n", what);
+		std::printf("  FAIL  %s\n", what);
 		++g_failures;
 	}
 }
@@ -30,7 +30,7 @@ void Check(bool condition, const char* what) {
 void CheckBytes(const UInt8* actual, const UInt8* expected, UInt32 size, const char* what) {
 	for (UInt32 i = 0; i < size; ++i) {
 		if (actual[i] != expected[i]) {
-			std::printf("  FEHLT %s: Byte %u ist %02X, erwartet %02X\n",
+			std::printf("  FAIL  %s: byte %u is %02X, expected %02X\n",
 			            what, i, actual[i], expected[i]);
 			++g_failures;
 			return;
@@ -50,25 +50,25 @@ void DumpHex(const UInt8* data, UInt32 size) {
 	std::printf("\n");
 }
 
-// Liest ein rel32-Feld an der angegebenen Stelle.
+// Reads a rel32 field at the given position.
 UInt32 ReadRel32(const UInt8* at) {
 	return static_cast<UInt32>(at[0]) | (static_cast<UInt32>(at[1]) << 8) |
 	       (static_cast<UInt32>(at[2]) << 16) | (static_cast<UInt32>(at[3]) << 24);
 }
 
-// Frei gewaehlte Adressen. Sie muessen weit genug von den Zieladressen weg
-// liegen, damit die Relativabstaende nicht zufaellig stimmen.
+// Freely chosen addresses. They have to sit far enough away from the target
+// addresses that the relative distances cannot come out right by accident.
 constexpr UInt32 kTrampolineAddress = 0x20000000;
 constexpr UInt32 kCallbackAddress = 0x30000000;
 
-// Adressen, die es nur in einem LargeAddressAware-Prozess geben kann. Ohne den
-// 4GB-Patch gibt VirtualAlloc einem 32-Bit-Prozess nur Adressen unterhalb
-// 0x80000000; mit dem Patch kann das Trampolin auch darueber landen.
+// Addresses that can only exist in a LargeAddressAware process. Without the
+// 4GB patch VirtualAlloc only hands a 32-bit process addresses below
+// 0x80000000; with the patch the trampoline can land above that.
 constexpr UInt32 kHighTrampolineAddress = 0xC0000000;
 constexpr UInt32 kHighCallbackAddress = 0xD0000000;
 
 void TestTrampoline() {
-	std::printf("Trampolin\n");
+	std::printf("Trampoline\n");
 
 	UInt8 buffer[64] = {};
 	const UInt32 size = obvr::camera::BuildTrampoline(
@@ -78,42 +78,43 @@ void TestTrampoline() {
 
 	// pushad(1) + pushfd(1) + push[esp+0x20](4) + call(5) + add esp(3)
 	// + popfd(1) + popad(1) + cmp(8) + ja(6) + xor(2) + jmp(5) = 37
-	Check(size == 37, "Laenge betraegt 37 Bytes");
+	Check(size == 37, "length is 37 bytes");
 
-	Check(buffer[0] == 0x60, "beginnt mit pushad");
-	Check(buffer[1] == 0x9C, "danach pushfd");
+	Check(buffer[0] == 0x60, "starts with pushad");
+	Check(buffer[1] == 0x9C, "followed by pushfd");
 
-	// push dword ptr [esp+0x20] - holt das von pushad gesicherte EAX, das
-	// nach dem zusaetzlichen pushfd um vier Bytes tiefer liegt.
+	// push dword ptr [esp+0x20] - fetches the EAX saved by pushad, which the
+	// additional pushfd moved four bytes deeper.
 	const UInt8 expectedPush[4] = {0xFF, 0x74, 0x24, 0x20};
 	CheckBytes(buffer + 2, expectedPush, 4, "push dword ptr [esp+0x20]");
 
-	// call rel32 auf den Callback. Ziel = Adresse nach der Instruktion + rel.
-	Check(buffer[6] == 0xE8, "call rel32 folgt");
+	// call rel32 to the callback. Target = address after the instruction plus
+	// the relative displacement.
+	Check(buffer[6] == 0xE8, "call rel32 follows");
 	Check(kTrampolineAddress + 11 + ReadRel32(buffer + 7) == kCallbackAddress,
-	      "call zeigt auf OBVR_OnCameraUpdated");
+	      "call points at OBVR_OnCameraUpdated");
 
 	const UInt8 expectedCleanup[6] = {0x83, 0xC4, 0x04, 0x9D, 0x61, 0x66};
 	CheckBytes(buffer + 11, expectedCleanup, 6, "add esp,4 / popfd / popad");
 
-	// Die ueberschriebene Originalinstruktion muss wortgleich wieder
-	// auftauchen, sonst geht dem Spiel ein Vergleich verloren.
+	// The overwritten original instruction has to reappear verbatim, or the
+	// game loses a comparison.
 	CheckBytes(buffer + 16, obvr::camera::kOriginalBytes, 8,
-	           "Originalinstruktion cmp word ptr [ebx+0xB6],0");
+	           "original instruction cmp word ptr [ebx+0xB6],0");
 
-	// ja rel32 auf den Zweig, den das Original bei nicht leerer Liste nimmt.
-	Check(buffer[24] == 0x0F && buffer[25] == 0x87, "ja rel32 folgt");
+	// ja rel32 to the branch the original takes when the list is not empty.
+	Check(buffer[24] == 0x0F && buffer[25] == 0x87, "ja rel32 follows");
 	Check(kTrampolineAddress + 30 + ReadRel32(buffer + 26) ==
 	          obvr::addr::kHookCameraUpdateResumeTaken,
-	      "ja zeigt auf 0x0066BE7C");
+	      "ja points at 0x0066BE7C");
 
 	Check(buffer[30] == 0x33 && buffer[31] == 0xC9, "xor ecx,ecx");
 
-	// jmp rel32 auf den Zweig fuer die leere Liste.
-	Check(buffer[32] == 0xE9, "jmp rel32 folgt");
+	// jmp rel32 to the branch for the empty list.
+	Check(buffer[32] == 0xE9, "jmp rel32 follows");
 	Check(kTrampolineAddress + 37 + ReadRel32(buffer + 33) ==
 	          obvr::addr::kHookCameraUpdateResumeEmpty,
-	      "jmp zeigt auf 0x0066BE84");
+	      "jmp points at 0x0066BE84");
 }
 
 void TestPatch() {
@@ -125,77 +126,75 @@ void TestPatch() {
 
 	DumpHex(buffer, size);
 
-	// Muss die Originalinstruktion vollstaendig ueberdecken; bliebe ein Rest
-	// stehen, wuerde das Spiel Bruchstuecke ausfuehren.
+	// It has to cover the original instruction completely; if a remnant were
+	// left standing, the game would execute fragments.
 	Check(size == obvr::addr::kHookCameraUpdatePatchSize,
-	      "Laenge deckt die 8 Byte lange Originalinstruktion ab");
+	      "length covers the 8-byte original instruction");
 
-	Check(buffer[0] == 0xE9, "beginnt mit jmp rel32");
+	Check(buffer[0] == 0xE9, "starts with jmp rel32");
 	Check(obvr::addr::kHookCameraUpdate + 5 + ReadRel32(buffer + 1) == kTrampolineAddress,
-	      "jmp zeigt auf das Trampolin");
+	      "jmp points at the trampoline");
 
 	Check(buffer[5] == 0x90 && buffer[6] == 0x90 && buffer[7] == 0x90,
-	      "Rest mit nop aufgefuellt");
+	      "remainder padded with nop");
 }
 
-// Der 4GB-Patch (LargeAddressAware) aendert nur zwei Bytes im PE-Header der
-// Oblivion.exe, nicht den Code - die geprueften acht Bytes an 0x0066BE6E sind
-// in beiden Fassungen identisch, der Hook selbst ist also unberuehrt.
+// The 4GB patch (LargeAddressAware) only changes two bytes in the PE header of
+// Oblivion.exe, not the code - the eight bytes checked at 0x0066BE6E are
+// identical in both variants, so the hook itself is unaffected.
 //
-// Was sich aendert, ist die Lage des Trampolins: VirtualAlloc kann es nun
-// oberhalb 2 GB ablegen, und der Sprung vom Hook dorthin ueberspannt dann mehr
-// als 2 GB.
+// What does change is where the trampoline sits: VirtualAlloc can now place it
+// above 2 GB, and the jump from the hook to it then spans more than 2 GB.
 //
-// Auf x86-64 waere das unmoeglich: rel32 ist dort eine vorzeichenbehaftete
-// Verschiebung von +-2 GB innerhalb eines 64-Bit-Adressraums. Auf x86-32 ist
-// der Adressraum aber exakt 2^32 gross und die CPU rechnet
-// EIP = EIP_next + rel32 modulo 2^32 - jedes Ziel ist von jeder Quelle aus
-// erreichbar, der Abstand laeuft schlicht ueber.
+// On x86-64 that would be impossible: rel32 is a signed displacement of +-2 GB
+// within a 64-bit address space there. On x86-32 the address space is exactly
+// 2^32 and the CPU computes EIP = EIP_next + rel32 modulo 2^32 - every target
+// is reachable from every source, the distance simply wraps.
 //
-// CodeWriter rechnet die Abstaende durchgehend in UInt32. Der Ueberlauf ist
-// damit wohldefiniert und deckt sich exakt mit dem Verhalten der CPU. Wuerde
-// jemand das spaeter auf int32_t umstellen oder eine Reichweitenpruefung
-// einziehen, faellt es hier auf statt erst im Spiel - und dort nur auf
-// Rechnern mit 4GB-Patch, was die Suche unangenehm machen wuerde.
+// CodeWriter computes the displacements in UInt32 throughout. The wraparound
+// is therefore well defined and matches the CPU exactly. If someone later
+// switched this to int32_t or added a range check, it would surface here
+// rather than in the game - and there only on machines with the 4GB patch,
+// which would make the hunt unpleasant.
 void TestLargeAddressAware() {
-	std::printf("4GB-Patch: Trampolin oberhalb 2 GB\n");
+	std::printf("4GB patch: trampoline above 2 GB\n");
 
 	UInt8 buffer[64] = {};
 	const UInt32 size = obvr::camera::BuildTrampoline(
 		buffer, sizeof(buffer), kHighTrampolineAddress, kHighCallbackAddress);
 
-	Check(size == 37, "Laenge unveraendert 37 Bytes");
+	Check(size == 37, "length unchanged at 37 bytes");
 
 	Check(static_cast<UInt32>(kHighTrampolineAddress + 11 + ReadRel32(buffer + 7)) ==
 	          kHighCallbackAddress,
-	      "call erreicht den Callback oberhalb 2 GB");
+	      "call reaches the callback above 2 GB");
 
-	// Die beiden Ruecksprunge fuehren von 0xC0000000 hinunter nach 0x0066BExx,
-	// eine Distanz von rund -3,2 GB. Genau hier zeigt sich der Ueberlauf.
+	// The two return jumps run from 0xC0000000 back down to 0x0066BExx, a
+	// distance of roughly -3.2 GB. This is where the wraparound shows.
 	Check(static_cast<UInt32>(kHighTrampolineAddress + 30 + ReadRel32(buffer + 26)) ==
 	          obvr::addr::kHookCameraUpdateResumeTaken,
-	      "ja springt von oben zurueck nach 0x0066BE7C");
+	      "ja jumps from above back to 0x0066BE7C");
 
 	Check(static_cast<UInt32>(kHighTrampolineAddress + 37 + ReadRel32(buffer + 33)) ==
 	          obvr::addr::kHookCameraUpdateResumeEmpty,
-	      "jmp springt von oben zurueck nach 0x0066BE84");
+	      "jmp jumps from above back to 0x0066BE84");
 
-	// Der Patch an der Hookstelle muss ein hoch gelegenes Trampolin genauso
-	// erreichen wie ein niedriges.
+	// The patch at the hook site has to reach a high trampoline just as well
+	// as a low one.
 	UInt8 patch[8] = {};
 	const UInt32 patchSize = obvr::camera::BuildPatch(
 		patch, sizeof(patch), obvr::addr::kHookCameraUpdate, kHighTrampolineAddress);
 
-	Check(patchSize == obvr::addr::kHookCameraUpdatePatchSize, "Patch weiterhin 8 Bytes");
-	Check(patch[0] == 0xE9, "Patch beginnt mit jmp rel32");
+	Check(patchSize == obvr::addr::kHookCameraUpdatePatchSize, "patch still 8 bytes");
+	Check(patch[0] == 0xE9, "patch starts with jmp rel32");
 	Check(static_cast<UInt32>(obvr::addr::kHookCameraUpdate + 5 + ReadRel32(patch + 1)) ==
 	          kHighTrampolineAddress,
-	      "jmp erreicht das Trampolin oberhalb 2 GB");
+	      "jmp reaches the trampoline above 2 GB");
 
-	// Gegenprobe: die Adresslage darf ausschliesslich die Relativfelder
-	// beeinflussen. Waeren auch Opcodes betroffen, haette die Byteerzeugung
-	// abhaengig von der Adresse andere Instruktionen gewaehlt - ein Fehler,
-	// den die Einzelpruefungen oben nicht sehen wuerden.
+	// Cross-check: the address range may only affect the relative fields. If
+	// opcodes differed too, byte generation would have picked different
+	// instructions depending on the address - a fault the individual checks
+	// above would not see.
 	UInt8 low[64] = {};
 	obvr::camera::BuildTrampoline(low, sizeof(low), kTrampolineAddress, kCallbackAddress);
 
@@ -204,29 +203,29 @@ void TestLargeAddressAware() {
 		const bool isRel32Field =
 			(i >= 7 && i <= 10) || (i >= 26 && i <= 29) || (i >= 33 && i <= 36);
 		if (!isRel32Field && low[i] != buffer[i]) {
-			std::printf("  FEHLT Byte %u weicht ab: %02X gegen %02X\n", i, low[i], buffer[i]);
+			std::printf("  FAIL  byte %u differs: %02X against %02X\n", i, low[i], buffer[i]);
 			opcodesEqual = false;
 		}
 	}
-	Check(opcodesEqual, "identische Opcodes, nur die rel32-Felder unterscheiden sich");
+	Check(opcodesEqual, "identical opcodes, only the rel32 fields differ");
 }
 
 void TestOverflowIsReported() {
-	std::printf("Kapazitaet\n");
+	std::printf("Capacity\n");
 
 	UInt8 tooSmall[16] = {};
 	const UInt32 size = obvr::camera::BuildTrampoline(
 		tooSmall, sizeof(tooSmall), kTrampolineAddress, kCallbackAddress);
 
-	// Ein stillschweigend abgeschnittenes Trampolin waere der schlimmste Fall:
-	// der Hook wuerde gesetzt und mitten im Nichts enden.
-	Check(size == 0, "zu kleiner Puffer meldet 0 statt abzuschneiden");
+	// A silently truncated trampoline would be the worst case: the hook would
+	// be installed and end in the middle of nowhere.
+	Check(size == 0, "a buffer that is too small reports 0 instead of truncating");
 }
 
 }  // namespace
 
 int main() {
-	std::printf("OBVR Trampolin-Test\n\n");
+	std::printf("OBVR trampoline test\n\n");
 
 	TestTrampoline();
 	std::printf("\n");
@@ -238,10 +237,10 @@ int main() {
 
 	std::printf("\n");
 	if (g_failures == 0) {
-		std::printf("Alle Pruefungen bestanden.\n");
+		std::printf("All checks passed.\n");
 		return 0;
 	}
 
-	std::printf("%d Pruefung(en) fehlgeschlagen.\n", g_failures);
+	std::printf("%d check(s) failed.\n", g_failures);
 	return 1;
 }

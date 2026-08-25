@@ -1,10 +1,10 @@
-// Prueft die Quaternion-Mathematik und den Basiswechsel von OpenXR nach
+// Checks the quaternion maths and the change of basis from OpenXR to
 // Oblivion.
 //
-// Der wichtigste Test ist die Gegenprobe gegen EulerToMatrix: diese
-// Funktion wurde im laufenden Spiel verifiziert (Pitch und Roll sichtbar
-// korrekt). Wenn die Quaternion-Route dieselben Matrizen liefert, ist sie an
-// eine belegte Referenz gebunden statt nur in sich stimmig.
+// The most important test is the cross-check against EulerToMatrix: that
+// function was verified in the running game (pitch and roll visibly correct).
+// If the quaternion route produces the same matrices, it is tied to
+// established evidence rather than merely self-consistent.
 
 #include <cmath>
 #include <cstdio>
@@ -22,7 +22,7 @@ void CheckNear(float actual, float expected, const char* what) {
 	if (std::fabs(actual - expected) <= kEpsilon) {
 		std::printf("  ok    %s\n", what);
 	} else {
-		std::printf("  FEHLT %s: %.6f, erwartet %.6f\n", what, actual, expected);
+		std::printf("  FAIL  %s: %.6f, expected %.6f\n", what, actual, expected);
 		++g_failures;
 	}
 }
@@ -32,7 +32,7 @@ void CheckMatrixNear(const obvr::NiMatrix33& actual, const obvr::NiMatrix33& exp
 	for (int row = 0; row < 3; ++row) {
 		for (int col = 0; col < 3; ++col) {
 			if (std::fabs(actual.data[row][col] - expected.data[row][col]) > kEpsilon) {
-				std::printf("  FEHLT %s: [%d][%d] ist %.6f, erwartet %.6f\n",
+				std::printf("  FAIL  %s: [%d][%d] is %.6f, expected %.6f\n",
 				            what, row, col, actual.data[row][col], expected.data[row][col]);
 				++g_failures;
 				return;
@@ -45,105 +45,105 @@ void CheckMatrixNear(const obvr::NiMatrix33& actual, const obvr::NiMatrix33& exp
 using obvr::vr::Quaternion;
 
 void TestBasics() {
-	std::printf("Grundrechnung\n");
+	std::printf("Basic arithmetic\n");
 
 	const Quaternion identity = Quaternion::Identity();
 	CheckMatrixNear(obvr::vr::ToMatrix(identity), obvr::NiMatrix33::Identity(),
-	                "Identitaet ergibt Einheitsmatrix");
+	                "identity yields the unit matrix");
 
-	// Eine Rotation mit ihrer eigenen Inversen verkettet muss sich aufheben.
+	// A rotation composed with its own inverse has to cancel out.
 	const Quaternion rotation = obvr::vr::FromAxisAngle(0.3f, 0.5f, 0.8f, 47.0f);
 	const Quaternion undone = rotation.Conjugate() * rotation;
-	CheckNear(undone.w, 1.0f, "q^-1 * q hat w = 1");
-	CheckNear(undone.x, 0.0f, "q^-1 * q hat x = 0");
-	CheckNear(undone.y, 0.0f, "q^-1 * q hat y = 0");
-	CheckNear(undone.z, 0.0f, "q^-1 * q hat z = 0");
+	CheckNear(undone.w, 1.0f, "q^-1 * q has w = 1");
+	CheckNear(undone.x, 0.0f, "q^-1 * q has x = 0");
+	CheckNear(undone.y, 0.0f, "q^-1 * q has y = 0");
+	CheckNear(undone.z, 0.0f, "q^-1 * q has z = 0");
 
-	// FromAxisAngle muss die Achse selbst normieren, sonst waere das Ergebnis
-	// von der Laenge des uebergebenen Vektors abhaengig.
+	// FromAxisAngle has to normalise the axis itself, otherwise the result
+	// would depend on the length of the vector passed in.
 	const Quaternion fromLongAxis = obvr::vr::FromAxisAngle(0.0f, 0.0f, 5.0f, 30.0f);
 	const Quaternion fromUnitAxis = obvr::vr::FromAxisAngle(0.0f, 0.0f, 1.0f, 30.0f);
-	CheckNear(fromLongAxis.z, fromUnitAxis.z, "Achsenlaenge beeinflusst das Ergebnis nicht");
+	CheckNear(fromLongAxis.z, fromUnitAxis.z, "axis length does not affect the result");
 
 	CheckNear(obvr::vr::FromAxisAngle(1.0f, 2.0f, 3.0f, 90.0f).LengthSquared(), 1.0f,
-	          "Ergebnis ist normiert");
+	          "result is normalised");
 }
 
-// Die entscheidende Bindung an die im Spiel bestaetigte Referenz.
+// The decisive tie to the reference confirmed in the game.
 void TestAgainstVerifiedRotation() {
-	std::printf("Gegenprobe gegen EulerToMatrix (im Spiel verifiziert)\n");
+	std::printf("Cross-check against EulerToMatrix (verified in the game)\n");
 
 	CheckMatrixNear(obvr::vr::ToMatrix(obvr::vr::FromAxisAngle(1.0f, 0.0f, 0.0f, 20.0f)),
 	                obvr::EulerToMatrix(20.0f, 0.0f, 0.0f),
-	                "Drehung um X entspricht BuildRotation(20,0,0) = Pitch");
+	                "rotation about X matches EulerToMatrix(20,0,0) = pitch");
 
 	CheckMatrixNear(obvr::vr::ToMatrix(obvr::vr::FromAxisAngle(0.0f, 1.0f, 0.0f, 20.0f)),
 	                obvr::EulerToMatrix(0.0f, 20.0f, 0.0f),
-	                "Drehung um Y entspricht BuildRotation(0,20,0) = Roll");
+	                "rotation about Y matches EulerToMatrix(0,20,0) = roll");
 
 	CheckMatrixNear(obvr::vr::ToMatrix(obvr::vr::FromAxisAngle(0.0f, 0.0f, 1.0f, 20.0f)),
 	                obvr::EulerToMatrix(0.0f, 0.0f, 20.0f),
-	                "Drehung um Z entspricht BuildRotation(0,0,20) = Yaw");
+	                "rotation about Z matches EulerToMatrix(0,0,20) = yaw");
 }
 
 void TestOpenXrAxisSwap() {
-	std::printf("Basiswechsel OpenXR nach Oblivion\n");
+	std::printf("Change of basis, OpenXR to Oblivion\n");
 
-	// OpenXR: Y ist oben. Nach links und rechts schauen heisst dort, um Y zu
-	// drehen. In Oblivion ist Z oben, das Yaw gehoert also auf Z.
+	// OpenXR: Y is up. Looking left and right means rotating about Y there.
+	// In Oblivion Z is up, so yaw belongs on Z.
 	const Quaternion xrYaw = obvr::vr::FromAxisAngle(0.0f, 1.0f, 0.0f, 25.0f);
 	const Quaternion oblYaw = obvr::vr::FromOpenXR(xrYaw);
 	CheckMatrixNear(obvr::vr::ToMatrix(oblYaw), obvr::EulerToMatrix(0.0f, 0.0f, 25.0f),
-	                "OpenXR-Yaw um Y wird zu Oblivion-Yaw um Z");
+	                "OpenXR yaw about Y becomes Oblivion yaw about Z");
 
-	// OpenXR: X ist rechts, Pitch dreht um X. In Oblivion ebenfalls X.
+	// OpenXR: X is right, pitch rotates about X. Same in Oblivion.
 	const Quaternion xrPitch = obvr::vr::FromAxisAngle(1.0f, 0.0f, 0.0f, 25.0f);
 	CheckMatrixNear(obvr::vr::ToMatrix(obvr::vr::FromOpenXR(xrPitch)),
 	                obvr::EulerToMatrix(25.0f, 0.0f, 0.0f),
-	                "OpenXR-Pitch um X bleibt Pitch um X");
+	                "OpenXR pitch about X stays pitch about X");
 
-	// OpenXR: -Z ist die Blickrichtung, Roll dreht also um Z. In Oblivion ist
-	// die Blickrichtung +Y, und wegen der Umkehrung wird daraus -Y.
+	// OpenXR: -Z is the view direction, so roll rotates about Z. In Oblivion
+	// the view direction is +Y, and because of the inversion that becomes -Y.
 	const Quaternion xrRoll = obvr::vr::FromAxisAngle(0.0f, 0.0f, 1.0f, 25.0f);
 	CheckMatrixNear(obvr::vr::ToMatrix(obvr::vr::FromOpenXR(xrRoll)),
 	                obvr::EulerToMatrix(0.0f, -25.0f, 0.0f),
-	                "OpenXR-Roll um Z wird zu Oblivion-Roll um -Y");
+	                "OpenXR roll about Z becomes Oblivion roll about -Y");
 
-	// Der Basiswechsel darf die Haendigkeit nicht kippen; eine gespiegelte
-	// Kamera waere im Headset sofort als falsch erkennbar.
+	// The change of basis must not flip handedness; a mirrored camera would
+	// be immediately recognisable as wrong in the headset.
 	const Quaternion arbitrary = obvr::vr::FromAxisAngle(0.4f, -0.7f, 0.2f, 63.0f);
 	const obvr::NiMatrix33 m = obvr::vr::ToMatrix(obvr::vr::FromOpenXR(arbitrary));
 	const float determinant =
 		m.data[0][0] * (m.data[1][1] * m.data[2][2] - m.data[1][2] * m.data[2][1]) -
 		m.data[0][1] * (m.data[1][0] * m.data[2][2] - m.data[1][2] * m.data[2][0]) +
 		m.data[0][2] * (m.data[1][0] * m.data[2][1] - m.data[1][1] * m.data[2][0]);
-	CheckNear(determinant, 1.0f, "Determinante bleibt +1, keine Spiegelung");
+	CheckNear(determinant, 1.0f, "determinant stays +1, no mirroring");
 }
 
 void TestRecenter() {
 	std::printf("Recenter\n");
 
-	// Recenter merkt sich die aktuelle Orientierung als neue Null. Direkt
-	// danach muss die relative Rotation die Identitaet sein.
+	// Recentering remembers the current orientation as the new zero. Right
+	// after that the relative rotation has to be the identity.
 	const Quaternion reference = obvr::vr::FromAxisAngle(0.0f, 1.0f, 0.0f, 130.0f);
 	const Quaternion relative = reference.Conjugate() * reference;
 	CheckMatrixNear(obvr::vr::ToMatrix(relative.Normalized()), obvr::NiMatrix33::Identity(),
-	                "unmittelbar nach Recenter ist die Rotation neutral");
+	                "immediately after recentering the rotation is neutral");
 
-	// Dreht der Kopf sich danach um 30 Grad weiter, muessen genau diese
-	// 30 Grad uebrig bleiben - unabhaengig davon, wie die Referenz stand.
+	// If the head then turns another 30 degrees, exactly those 30 degrees
+	// have to remain - regardless of where the reference stood.
 	const Quaternion current =
 		obvr::vr::FromAxisAngle(0.0f, 1.0f, 0.0f, 160.0f);
 	const Quaternion delta = (reference.Conjugate() * current).Normalized();
 	CheckMatrixNear(obvr::vr::ToMatrix(delta),
 	                obvr::vr::ToMatrix(obvr::vr::FromAxisAngle(0.0f, 1.0f, 0.0f, 30.0f)),
-	                "30 Grad nach dem Recenter ergeben 30 Grad Kamerarotation");
+	                "30 degrees after recentering yield 30 degrees of camera rotation");
 }
 
 }  // namespace
 
 int main() {
-	std::printf("OBVR Quaternion-Test\n\n");
+	std::printf("OBVR quaternion test\n\n");
 
 	TestBasics();
 	std::printf("\n");
@@ -155,10 +155,10 @@ int main() {
 
 	std::printf("\n");
 	if (g_failures == 0) {
-		std::printf("Alle Pruefungen bestanden.\n");
+		std::printf("All checks passed.\n");
 		return 0;
 	}
 
-	std::printf("%d Pruefung(en) fehlgeschlagen.\n", g_failures);
+	std::printf("%d check(s) failed.\n", g_failures);
 	return 1;
 }

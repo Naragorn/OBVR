@@ -7,38 +7,39 @@
 
 namespace obvr::vr {
 
-// Liefert die Kopfrotation, die auf die Vanilla-Kamera gelegt wird.
+// Supplies the head rotation that is laid onto the vanilla camera.
 //
-// Die Quelle ist austauschbar, weil die Bitness hier zum Problem wird:
-// Oblivion.exe ist 32 Bit, OBVR.dll damit auch. OpenVR unterstuetzt 32-Bit-
-// Anwendungen seit jeher, OpenXR nur bei einem Teil der Runtimes - SteamVR
-// etwa erst ab Beta 2.17.2 und damit noch nicht im Stable-Zweig. Unter Proton
-// faellt OpenXR ganz aus, weil wineopenxr dort nur fuer 64 Bit gebaut wird.
+// The source is interchangeable because bitness is the problem here:
+// Oblivion.exe is 32 bit, so OBVR.dll is too. OpenVR has always supported
+// 32-bit applications, OpenXR only on some runtimes - SteamVR for instance
+// only from beta 2.17.2, so not on the stable branch yet. Under Proton
+// OpenXR drops out entirely, because wineopenxr is only built for 64 bit
+// there.
 //
-// Deshalb sind mehrere Quellen vorgesehen statt einer festen Anbindung. Der
-// simulierte Kopf erlaubt es zudem, die gesamte Kette von der Quaternion bis
-// zur Kameramatrix ohne Headset im laufenden Spiel zu pruefen.
+// Hence several sources instead of one fixed binding. The simulated head also
+// makes it possible to check the whole chain from quaternion to camera matrix
+// in the running game without a headset.
 //
-// Alle Quellen liefern ihre Orientierung in OpenXR-Konvention (Y oben,
-// -Z vorne), auch das OpenVR-Backend. Die Umrechnung nach Oblivion passiert
-// an genau einer Stelle, damit jede Quelle denselben Weg nimmt.
+// Every source delivers its orientation in OpenXR convention (Y up,
+// -Z forward), the OpenVR backend included. The conversion to Oblivion
+// happens in exactly one place, so that every source takes the same route.
 enum class TrackerSource {
-	None,       // keine Zusatzrotation
-	Fixed,      // feste Testwinkel aus der Konfiguration
-	Simulated,  // langsame Kopfbewegung, zum Pruefen ohne HMD
-	OpenVR,     // echtes Headset ueber SteamVR; deckt 32 Bit zuverlaessig ab
-	OpenXR,     // echtes Headset ueber OpenXR; nur mit 32-Bit-faehiger Runtime
+	None,       // no additional rotation
+	Fixed,      // fixed test angles from the configuration
+	Simulated,  // slow head movement, for checking without an HMD
+	OpenVR,     // real headset through SteamVR; covers 32 bit reliably
+	OpenXR,     // real headset through OpenXR; only with a 32-bit capable runtime
 };
 
 struct TrackerSettings {
 	TrackerSource source = TrackerSource::Fixed;
 
-	// Fuer TrackerSource::Fixed. Grad, in Oblivion-Achsen.
+	// For TrackerSource::Fixed. Degrees, in Oblivion axes.
 	float fixedPitch = 0.0f;
 	float fixedRoll = 0.0f;
 	float fixedYaw = 0.0f;
 
-	// Fuer TrackerSource::Simulated. Grad und Periodenlaenge in Frames.
+	// For TrackerSource::Simulated. Degrees, and period length in frames.
 	float simulatedYawAmplitude = 25.0f;
 	float simulatedPitchAmplitude = 12.0f;
 	UInt32 simulatedPeriodFrames = 600;
@@ -48,20 +49,20 @@ class HeadTracker {
 public:
 	void Configure(const TrackerSettings& settings);
 
-	// Einmal pro Frame. frameIndex ersetzt beim simulierten Kopf die Zeit -
-	// eine echte Uhr braucht OBVR dafuer nicht, und ohne sie bleibt das
-	// Verhalten reproduzierbar.
+	// Once per frame. For the simulated head, frameIndex takes the place of
+	// time - OBVR needs no real clock for that, and without one the behaviour
+	// stays reproducible.
 	void Update(UInt32 frameIndex);
 
-	// Nimmt die aktuelle Kopfhaltung als neue Nullstellung. Alles danach wird
-	// relativ dazu gemeldet.
+	// Takes the current head pose as the new zero. Everything after that is
+	// reported relative to it.
 	void Recenter();
 
-	// Rotation relativ zur Nullstellung, fertig in Oblivions Kameraraum.
+	// Rotation relative to the zero pose, ready in Oblivion's camera space.
 	const NiMatrix33& GetCameraRotation() const { return m_cameraRotation; }
 
-	// Die zuletzt gelesene Orientierung, noch in OpenXR-Konvention. Vor allem
-	// fuer Diagnose im Log.
+	// The orientation last read, still in OpenXR convention. Mostly for
+	// diagnostics in the log.
 	const Quaternion& GetRawOrientation() const { return m_rawOrientation; }
 
 private:

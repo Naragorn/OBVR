@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.20)
 
-# Eigenstaendiges Projekt, bewusst nicht Teil des DLL-Baus.
+# A standalone project, deliberately not part of the DLL build.
 #
-# OBVR.dll wird fuer 32-Bit-Windows uebersetzt, die Tests laufen dagegen nativ
-# auf dem Entwicklungsrechner. Beides in einem CMake-Lauf hiesse, zwei
-# Toolchains gleichzeitig zu fahren. Die geprueften Bausteine sind reine
-# Byteerzeugung und haengen nicht von der Zielarchitektur ab.
+# OBVR.dll is compiled for 32-bit Windows, while the tests run natively on the
+# development machine. Doing both in one CMake run would mean driving two
+# toolchains at once. The building blocks under test are pure byte generation
+# and do not depend on the target architecture.
 #
 #   cmake -B build-tests tests
 #   cmake --build build-tests

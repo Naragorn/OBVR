@@ -11,23 +11,23 @@ const UInt8 kOriginalBytes[8] = {
 
 UInt32 BuildTrampoline(UInt8* buffer, UInt32 capacity, UInt32 trampolineAddress,
                        UInt32 callbackAddress) {
-	// Das Trampolin ruft OBVR auf und fuehrt danach die ueberschriebene
-	// Instruktion samt ihrem Kontrollfluss originalgetreu aus:
+	// The trampoline calls OBVR and then runs the overwritten instruction
+	// together with its original control flow, faithfully reproduced:
 	//
-	//   pushad                          ; Register sichern
-	//   pushfd                          ; Flags sichern
-	//   push dword ptr [esp+0x20]       ; das gesicherte eax = CameraNode
+	//   pushad                          ; save registers
+	//   pushfd                          ; save flags
+	//   push dword ptr [esp+0x20]       ; the saved eax = CameraNode
 	//   call OBVR_OnCameraUpdated
 	//   add  esp, 4
 	//   popfd
 	//   popad
-	//   cmp  word ptr [ebx+0xB6], 0     ; Original
-	//   ja   0x0066BE7C                 ; Original
-	//   xor  ecx, ecx                   ; Original
-	//   jmp  0x0066BE84                 ; Original
+	//   cmp  word ptr [ebx+0xB6], 0     ; original
+	//   ja   0x0066BE7C                 ; original
+	//   xor  ecx, ecx                   ; original
+	//   jmp  0x0066BE84                 ; original
 	//
-	// pushad legt EAX zuoberst ab, danach schiebt pushfd um vier Bytes; das
-	// gesicherte EAX liegt deshalb bei [esp+0x20].
+	// pushad puts EAX on top, then pushfd shifts everything by four bytes, so
+	// the saved EAX sits at [esp+0x20].
 	mem::CodeWriter code(buffer, capacity, trampolineAddress);
 
 	code.PushAllRegisters();
@@ -48,8 +48,8 @@ UInt32 BuildTrampoline(UInt8* buffer, UInt32 capacity, UInt32 trampolineAddress,
 
 UInt32 BuildPatch(UInt8* buffer, UInt32 capacity, UInt32 hookAddress,
                   UInt32 trampolineAddress) {
-	// Fuenf Bytes Sprung, drei Bytes nop: die Originalinstruktion ist acht
-	// Bytes lang und darf nicht halb stehen bleiben.
+	// Five bytes of jump, three bytes of nop: the original instruction is
+	// eight bytes long and must not be left half standing.
 	mem::CodeWriter code(buffer, capacity, hookAddress);
 
 	code.JumpRelative(trampolineAddress);

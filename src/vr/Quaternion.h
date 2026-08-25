@@ -4,9 +4,9 @@
 
 namespace obvr::vr {
 
-// OpenXR liefert Orientierungen als Quaternion. Oblivion rechnet mit
-// 3x3-Matrizen in einem anderen Koordinatensystem. Dieser Header haelt beides
-// auseinander und die Umrechnung an einer Stelle.
+// OpenXR delivers orientations as quaternions. Oblivion works with 3x3
+// matrices in a different coordinate system. This header keeps the two apart
+// and the conversion in one place.
 
 struct Quaternion {
 	float x;
@@ -16,51 +16,51 @@ struct Quaternion {
 
 	static Quaternion Identity() { return Quaternion{0.0f, 0.0f, 0.0f, 1.0f}; }
 
-	// Die Inverse einer Einheitsquaternion. Wird fuer Recenter gebraucht:
-	// die gespeicherte Referenzorientierung wird aus der aktuellen
-	// herausgerechnet.
+	// The inverse of a unit quaternion. Needed for recentering: the stored
+	// reference orientation is factored out of the current one.
 	Quaternion Conjugate() const { return Quaternion{-x, -y, -z, w}; }
 
-	// Hintereinanderausfuehrung. Erst rhs, dann this.
+	// Composition. rhs first, then this.
 	Quaternion operator*(const Quaternion& rhs) const;
 
-	// Gleitkommadrift ueber viele Frames laesst die Laenge weglaufen; eine
-	// nicht normierte Quaternion ergaebe eine skalierende Kameramatrix.
+	// Floating point drift over many frames lets the length wander off; a
+	// quaternion that is not normalised would produce a scaling camera
+	// matrix.
 	Quaternion Normalized() const;
 
 	float LengthSquared() const { return x * x + y * y + z * z + w * w; }
 };
 
-// Baut eine Quaternion aus Achse und Winkel. Vor allem fuer Tests und den
-// simulierten Kopf.
+// Builds a quaternion from an axis and an angle. Mainly for the tests and the
+// simulated head.
 Quaternion FromAxisAngle(float axisX, float axisY, float axisZ, float degrees);
 
-// Rechnet eine Orientierung aus OpenXR in Oblivions Kameraraum um.
+// Converts an orientation from OpenXR into Oblivion's camera space.
 //
-// Die beiden Koordinatensysteme unterscheiden sich in der Achsenbelegung:
+// The two coordinate systems differ in their axis assignment:
 //
 //     OpenXR                   Oblivion / Gamebryo
-//     X = rechts               X = rechts
-//     Y = oben                 Y = vorne
-//     Z = hinten (-Z vorne)    Z = oben
+//     X = right                X = right
+//     Y = up                   Y = forward
+//     Z = back (-Z forward)    Z = up
 //
-// Der Basiswechsel bildet also ab:
+// So the change of basis maps:
 //
 //     x_obl =  x_xr
 //     y_obl = -z_xr
 //     z_obl =  y_xr
 //
-// Die zugehoerige Matrix hat Determinante +1, die Haendigkeit bleibt somit
-// erhalten und der Vektorteil der Quaternion laesst sich direkt umsetzen.
+// The corresponding matrix has determinant +1, so handedness is preserved and
+// the vector part of the quaternion can be carried over directly.
 //
-// Gegenprobe an den im Spiel bestaetigten Achsen: eine Drehung um OpenXRs
-// Y-Achse (nach links und rechts schauen) wird zu einer Drehung um Oblivions
-// Z-Achse, und Z ist dort das Yaw. Eine Drehung um OpenXRs X-Achse bleibt X
-// und damit Pitch.
+// Cross-check against the axes confirmed in the game: a rotation about
+// OpenXR's Y axis (looking left and right) becomes a rotation about
+// Oblivion's Z axis, and Z is yaw there. A rotation about OpenXR's X axis
+// stays X and therefore pitch.
 Quaternion FromOpenXR(const Quaternion& openXrOrientation);
 
-// Wandelt eine Quaternion in die Rotationsmatrix um, die Oblivion erwartet.
-// Erwartet eine bereits normierte Quaternion in Oblivion-Konvention.
+// Turns a quaternion into the rotation matrix Oblivion expects. Expects an
+// already normalised quaternion in Oblivion convention.
 NiMatrix33 ToMatrix(const Quaternion& rotation);
 
 // Converts the rotation part of an OpenVR pose into a quaternion.

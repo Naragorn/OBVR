@@ -2,24 +2,24 @@
 
 #include "core/Types.h"
 
-// Feste Adressen in Oblivion.exe 1.2.0.416 (ImageBase 0x00400000).
+// Fixed addresses in Oblivion.exe 1.2.0.416 (image base 0x00400000).
 //
-// Jede Adresse hier ist gegen die tatsaechliche Binary disassembliert und
-// unten mit dem Befund belegt. Nichts davon ist geraten oder aus einer
-// fremden Quelle uebernommen, ohne es nachzupruefen.
+// Every address here was disassembled from the actual binary and is
+// documented below with the evidence. None of it is guessed, and nothing was
+// taken from another source without checking it first.
 
 namespace obvr::addr {
 
-// Ende der Vanilla-Kameraberechnung.
+// End of the vanilla camera calculation.
 //
-// Der relevante Block sieht so aus:
+// The relevant block reads:
 //
-//   0066BE1B  mov  ebx, [esp+0x14]              ; Kameraobjekt
-//   0066BE1F  cmp  word ptr [ebx+0xB6], 0       ; Knotenliste leer?
+//   0066BE1B  mov  ebx, [esp+0x14]              ; camera object
+//   0066BE1F  cmp  word ptr [ebx+0xB6], 0       ; node list empty?
 //   0066BE27  ja   0066BE2D
 //   0066BE29  xor  eax, eax
 //   0066BE2B  jmp  0066BE35
-//   0066BE2D  mov  edx, [ebx+0xB0]              ; Knotenliste
+//   0066BE2D  mov  edx, [ebx+0xB0]              ; node list
 //   0066BE33  mov  eax, [edx]                   ; eax = CameraNode (NiAVObject*)
 //   0066BE35  mov  ecx, [esp+0x38]
 //   0066BE39  mov  edx, [esp+0x3C]
@@ -39,20 +39,20 @@ namespace obvr::addr {
 //   0066BE6C  rep  movsd                        ; 9 DWORDs = NiMatrix33
 //   0066BE6E  <-- kHookCameraUpdate
 //
-// Ab 0x0066BE6E stehen Position und Rotation der Kamera fest und eax haelt
-// noch den CameraNode: genau der Punkt, an dem OBVR die Kopfrotation
-// aufsetzen will.
+// From 0x0066BE6E onwards the camera's position and rotation are settled and
+// eax still holds the CameraNode: exactly the point where OBVR wants to lay
+// the head rotation on top.
 //
-// Die Schreibziele [eax+0x54] und [eax+0x30] belegen zugleich das
-// NiAVObject-Layout in GameTypes.h.
+// The write targets [eax+0x54] and [eax+0x30] also establish the NiAVObject
+// layout in GameTypes.h.
 inline constexpr UInt32 kHookCameraUpdate = 0x0066BE6E;
 
-// Ueberschriebene Originalinstruktion an kHookCameraUpdate:
+// The original instruction overwritten at kHookCameraUpdate:
 //
 //   0066BE6E  66 83 BB B6 00 00 00 00   cmp word ptr [ebx+0xB6], 0
 //
-// Acht Bytes, also genug Platz fuer einen 5-Byte-jmp. Der nachfolgende
-// Kontrollfluss wird im Trampolin originalgetreu nachgebaut:
+// Eight bytes, so there is room for a 5-byte jmp. The control flow that
+// follows is faithfully rebuilt inside the trampoline:
 //
 //   0066BE76  ja   0066BE7C     -> kHookCameraUpdateResumeTaken
 //   0066BE78  xor  ecx, ecx
@@ -61,7 +61,7 @@ inline constexpr UInt32 kHookCameraUpdatePatchSize = 8;
 inline constexpr UInt32 kHookCameraUpdateResumeTaken = 0x0066BE7C;
 inline constexpr UInt32 kHookCameraUpdateResumeEmpty = 0x0066BE84;
 
-// Kurz nach dem Hook ruft das Spiel auf dem CameraNode auf:
+// Shortly after the hook the game calls, on the CameraNode:
 //
 //   0066BE84  fldz
 //   0066BE86  push 0
@@ -69,26 +69,26 @@ inline constexpr UInt32 kHookCameraUpdateResumeEmpty = 0x0066BE84;
 //   0066BE89  fstp [esp]
 //   0066BE8C  call 00707370
 //
-// und 0x00707370 dispatcht ueber vtable-Slot 0x64:
+// and 0x00707370 dispatches through vtable slot 0x64:
 //
 //   007073A7  mov  eax, [esi]
 //   007073A9  mov  edx, [eax+0x64]
 //   007073B0  call edx
 //
-// Slot 0x64 / 4 = Index 25 = NiAVObject::UpdateSelectedDownwardPass.
+// Slot 0x64 / 4 = index 25 = NiAVObject::UpdateSelectedDownwardPass.
 //
-// Daraus folgt der entscheidende Punkt fuer OBVR: nach dem Hook laeuft noch
-// ein Szenengraph-Update-Pass. OBVR muss deshalb localTransform aendern,
-// nicht worldTransform - die Welttransformation wird ohnehin neu aus
-// parent * local berechnet.
+// Which yields the decisive point for OBVR: a scene graph update pass still
+// runs after the hook. OBVR therefore has to modify localTransform rather
+// than worldTransform - the world transform gets recomputed from
+// parent * local regardless.
 inline constexpr UInt32 kUpdateSelectedDownwardPass = 0x00707370;
 
-// Zeiger auf den Spieler. Belegt durch 0x0066C580 (ToggleCamera), das auf
-// [ecx+0x588] schreibt - dem isThirdPerson-Flag im PlayerCharacter.
+// Pointer to the player. Established by 0x0066C580 (ToggleCamera), which
+// writes to [ecx+0x588] - the isThirdPerson flag in PlayerCharacter.
 inline constexpr UInt32 kPlayerPointer = 0x00B333C4;
 inline constexpr UInt32 kPlayerIsThirdPersonOffset = 0x588;
 
-// Erwartete Spielversion. OBSE meldet sie als oblivionVersion.
+// Expected game version. OBSE reports it as oblivionVersion.
 inline constexpr UInt32 kOblivionVersion_1_2_416 = 0x010201A0;
 
 }  // namespace obvr::addr

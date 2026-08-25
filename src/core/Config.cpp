@@ -8,8 +8,9 @@ namespace {
 
 Config g_config;
 
-// Baut den Pfad zur INI neben Oblivion.exe. GetPrivateProfileString wuerde
-// einen relativen Namen sonst im Windows-Verzeichnis suchen.
+// Builds the path to the INI next to Oblivion.exe. Otherwise
+// GetPrivateProfileString would look for a relative name in the Windows
+// directory.
 bool BuildPath(const char* fileName, char* out, UInt32 outSize) {
 	const DWORD moduleLength = GetModuleFileNameA(nullptr, out, outSize);
 	if (moduleLength == 0 || moduleLength >= outSize) {
@@ -33,8 +34,9 @@ bool BuildPath(const char* fileName, char* out, UInt32 outSize) {
 	return true;
 }
 
-// Eigener Vergleich ohne Gross- und Kleinschreibung: die CRT-Varianten heissen
-// je nach Umgebung anders, und es geht nur um eine Handvoll Schluesselwoerter.
+// A case insensitive comparison of our own: the CRT variants go by different
+// names depending on the environment, and this is only about a handful of
+// keywords.
 bool EqualsIgnoreCase(const char* a, const char* b) {
 	while (*a != '\0' && *b != '\0') {
 		char ca = *a;
@@ -105,7 +107,7 @@ vr::TrackerSource ReadSource(vr::TrackerSource fallback, const char* path) {
 		return vr::TrackerSource::OpenXR;
 	}
 
-	OBVR_LOG("Config: unbekannte Head.Source \"%s\", behalte bisherige Einstellung", buffer);
+	OBVR_LOG("Config: unknown Head.Source \"%s\", keeping the previous setting", buffer);
 	return fallback;
 }
 
@@ -144,7 +146,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 bool Config::Load(const char* fileName) {
 	char path[512];
 	if (!BuildPath(fileName, path, sizeof(path))) {
-		OBVR_LOG("Config: Pfad zu %s nicht ermittelbar, benutze Vorgabewerte", fileName);
+		OBVR_LOG("Config: cannot determine the path to %s, using defaults", fileName);
 		return false;
 	}
 
@@ -158,7 +160,7 @@ bool Config::Load(const char* fileName) {
 	         static_cast<double>(tracker.fixedPitch),
 	         static_cast<double>(tracker.fixedRoll),
 	         static_cast<double>(tracker.fixedYaw));
-	OBVR_LOG("Config: Simuliert=(Yaw %.1f, Pitch %.1f, Periode %u) LogEveryFrames=%u ReloadEveryFrames=%u",
+	OBVR_LOG("Config: Simulated=(Yaw %.1f, Pitch %.1f, Period %u) LogEveryFrames=%u ReloadEveryFrames=%u",
 	         static_cast<double>(tracker.simulatedYawAmplitude),
 	         static_cast<double>(tracker.simulatedPitchAmplitude),
 	         tracker.simulatedPeriodFrames,

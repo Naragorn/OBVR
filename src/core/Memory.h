@@ -4,15 +4,15 @@
 
 namespace obvr::mem {
 
-// Schreibt in Oblivions Codesegment und stellt den urspruenglichen Schutz
-// wieder her. Gibt false zurueck, wenn VirtualProtect scheitert.
+// Writes into Oblivion's code segment and restores the original protection.
+// Returns false when VirtualProtect fails.
 bool SafeWrite(UInt32 address, const void* data, UInt32 size);
 
-// Liest Bytes aus dem Prozess. Dient dazu, vor dem Patchen zu pruefen, dass an
-// der Zieladresse wirklich die erwartete Instruktion steht.
+// Reads bytes from the process. Used to confirm, before patching, that the
+// expected instruction really sits at the target address.
 bool Verify(UInt32 address, const UInt8* expected, UInt32 size);
 
-// Reserviert ausfuehrbaren Speicher fuer ein Trampolin.
+// Reserves executable memory for a trampoline.
 void* AllocExecutable(UInt32 size);
 
 }  // namespace obvr::mem

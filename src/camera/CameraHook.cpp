@@ -38,13 +38,13 @@ void MaybeReloadConfig() {
 
 }  // namespace
 
-// Wird vom Trampolin gerufen, nachdem Oblivion die Kamera fertig berechnet
-// hat. eax hielt dort den CameraNode; das Trampolin reicht ihn als einziges
-// Argument durch.
+// Called from the trampoline after Oblivion has finished computing the
+// camera. eax held the CameraNode there; the trampoline passes it through as
+// the single argument.
 //
-// Alle Register sind zu diesem Zeitpunkt gesichert, diese Funktion darf also
-// normal C++ sein. Sie muss aber schnell und ausnahmefrei bleiben - sie
-// laeuft in jedem gerenderten Frame.
+// All registers are saved at this point, so this function may be ordinary
+// C++. It does have to stay fast and free of exceptions though - it runs on
+// every rendered frame.
 extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	if (cameraNode == nullptr) {
 		return;
@@ -55,13 +55,13 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	if (!g_state.sawCameraNode) {
 		g_state.sawCameraNode = true;
 		g_state.isThirdPerson = isThirdPerson;
-		OBVR_LOG("Kamera: erster Hook-Durchlauf, CameraNode=%08X, %s",
+		OBVR_LOG("Camera: first hook pass, CameraNode=%08X, %s",
 		         reinterpret_cast<UInt32>(cameraNode),
-		         isThirdPerson ? "Third Person" : "First Person");
+		         isThirdPerson ? "third person" : "first person");
 	} else if (isThirdPerson != g_state.isThirdPerson) {
 		g_state.isThirdPerson = isThirdPerson;
-		OBVR_LOG("Kamera: Wechsel nach %s (Frame %u)",
-		         isThirdPerson ? "Third Person" : "First Person",
+		OBVR_LOG("Camera: switched to %s (frame %u)",
+		         isThirdPerson ? "third person" : "first person",
 		         g_state.frameCount);
 	}
 
@@ -74,7 +74,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	if (config.logEveryFrames != 0 && (g_state.frameCount % config.logEveryFrames) == 0) {
 		const vr::Quaternion& raw = g_headTracker.GetRawOrientation();
 		const NiPoint3& pos = cameraNode->localTransform.pos;
-		OBVR_LOG("Kamera: Frame %u, %s, pos=(%.1f, %.1f, %.1f), Kopf=(%.3f, %.3f, %.3f, %.3f)",
+		OBVR_LOG("Camera: frame %u, %s, pos=(%.1f, %.1f, %.1f), head=(%.3f, %.3f, %.3f, %.3f)",
 		         g_state.frameCount,
 		         isThirdPerson ? "3rd" : "1st",
 		         static_cast<double>(pos.x),
@@ -86,8 +86,8 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		         static_cast<double>(raw.w));
 	}
 
-	// Der Kern: die Vanilla-Rotation bleibt die Basis, die Kopfrotation wirkt
-	// im lokalen Kameraraum.
+	// The heart of it: the vanilla rotation stays the base, the head rotation
+	// acts in local camera space.
 	cameraNode->localTransform.rot =
 		cameraNode->localTransform.rot * g_headTracker.GetCameraRotation();
 }
@@ -100,18 +100,18 @@ bool Install() {
 	const Config& config = GetConfig();
 	g_headTracker.Configure(config.tracker);
 
-	// Erst pruefen, dann patchen. Steht dort etwas anderes als erwartet, ist
-	// es eine andere Spielversion oder ein anderer Mod war zuerst da - in
-	// beiden Faellen waere ein Patch ein Schuss ins Blaue.
+	// Check first, patch second. If something other than the expected bytes
+	// sits there, it is a different game version or another mod got there
+	// first - in either case patching would be a shot in the dark.
 	if (!mem::Verify(addr::kHookCameraUpdate, kOriginalBytes, addr::kHookCameraUpdatePatchSize)) {
-		OBVR_LOG("Kamera: Bytes an %08X weichen ab, Hook wird nicht gesetzt",
+		OBVR_LOG("Camera: bytes at %08X differ, hook will not be installed",
 		         addr::kHookCameraUpdate);
 		return false;
 	}
 
 	auto* trampoline = static_cast<UInt8*>(mem::AllocExecutable(kTrampolineSize));
 	if (trampoline == nullptr) {
-		OBVR_LOG("Kamera: kein ausfuehrbarer Speicher fuer das Trampolin");
+		OBVR_LOG("Camera: no executable memory for the trampoline");
 		return false;
 	}
 
@@ -121,7 +121,7 @@ bool Install() {
 		reinterpret_cast<UInt32>(&OBVR_OnCameraUpdated));
 
 	if (trampolineSize == 0) {
-		OBVR_LOG("Kamera: Trampolin passt nicht in %u Bytes", kTrampolineSize);
+		OBVR_LOG("Camera: trampoline does not fit into %u bytes", kTrampolineSize);
 		return false;
 	}
 
@@ -130,16 +130,16 @@ bool Install() {
 		BuildPatch(patch, sizeof(patch), addr::kHookCameraUpdate, trampolineAddress);
 
 	if (patchSize != sizeof(patch)) {
-		OBVR_LOG("Kamera: Patch hat unerwartete Laenge %u", patchSize);
+		OBVR_LOG("Camera: patch has unexpected length %u", patchSize);
 		return false;
 	}
 
 	if (!mem::SafeWrite(addr::kHookCameraUpdate, patch, patchSize)) {
-		OBVR_LOG("Kamera: SafeWrite auf %08X fehlgeschlagen", addr::kHookCameraUpdate);
+		OBVR_LOG("Camera: SafeWrite to %08X failed", addr::kHookCameraUpdate);
 		return false;
 	}
 
-	OBVR_LOG("Kamera: Hook auf %08X gesetzt, Trampolin bei %08X (%u Bytes)",
+	OBVR_LOG("Camera: hook installed at %08X, trampoline at %08X (%u bytes)",
 	         addr::kHookCameraUpdate, trampolineAddress, trampolineSize);
 	return true;
 }

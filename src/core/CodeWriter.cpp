@@ -51,7 +51,13 @@ void CodeWriter::AddStackPointer(UInt8 amount) {
 }
 
 void CodeWriter::CallRelative(UInt32 target) {
-	// e8 <rel32>, gerechnet ab dem Ende der Instruktion
+	// e8 <rel32>, measured from the end of the instruction.
+	//
+	// The arithmetic is unsigned throughout, which is what makes it correct
+	// on a 4GB-patched Oblivion.exe: with LargeAddressAware the trampoline
+	// can sit above 2 GB, and the distance then wraps. On x86 the address
+	// space is exactly 2^32 and the CPU computes EIP = EIP_next + rel32
+	// modulo 2^32, so every target is reachable from every source.
 	Byte(0xE8);
 	const UInt32 next = AddressAt(m_size + 4);
 	DWord(target - next);

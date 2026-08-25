@@ -1,5 +1,5 @@
-# Erzeugt Importbibliotheken aus den .def-Dateien, damit lld-link ohne
-# Windows SDK gegen kernel32 und msvcrt binden kann.
+# Generates import libraries from the .def files, so that lld-link can bind
+# against kernel32 and msvcrt without the Windows SDK.
 
 set(OBVR_IMPORT_LIBS "")
 
@@ -11,7 +11,7 @@ foreach(module kernel32 msvcrt)
 		OUTPUT "${lib}"
 		COMMAND "${OBVR_DLLTOOL}" -m i386 -d "${def}" -l "${lib}" -k
 		DEPENDS "${def}"
-		COMMENT "Importbibliothek ${module}.lib"
+		COMMENT "Import library ${module}.lib"
 		VERBATIM
 	)
 

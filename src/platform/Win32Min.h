@@ -1,15 +1,15 @@
 #pragma once
 
-// Schmale Win32-Schicht.
+// A narrow Win32 layer.
 //
-// OBVR.dll wird in zwei Umgebungen gebaut:
-//   * MSVC / clang-cl unter Windows mit vollem Windows SDK
-//   * clang --target=i686-pc-windows-msvc unter Linux ohne SDK
+// OBVR.dll is built in two environments:
+//   * MSVC / clang-cl on Windows with the full Windows SDK
+//   * clang --target=i686-pc-windows-msvc on Linux without the SDK
 //
-// Im zweiten Fall existiert kein <windows.h>. Statt das Projekt an eine
-// Cross-Toolchain mit SDK zu binden, deklariert dieser Header die wenigen
-// benoetigten Importe selbst. Die DLL braucht nur kernel32 und msvcrt,
-// beide sind im Oblivion-Prozess ohnehin geladen.
+// In the second case there is no <windows.h>. Rather than tie the project to
+// a cross toolchain that carries the SDK, this header declares the handful of
+// needed imports itself. The DLL only needs kernel32 and msvcrt, and both are
+// loaded in the Oblivion process anyway.
 
 #include "core/Types.h"
 
@@ -23,7 +23,7 @@ using DWORD = unsigned long;
 #define OBVR_STDCALL __stdcall
 #define OBVR_IMPORT extern "C" __declspec(dllimport)
 
-// Kein constexpr: reinterpret_cast ist in konstanten Ausdruecken unzulaessig.
+// Not constexpr: reinterpret_cast is not allowed in constant expressions.
 inline HANDLE InvalidHandle() { return reinterpret_cast<HANDLE>(-1); }
 
 constexpr DWORD PAGE_EXECUTE_READWRITE = 0x40;
@@ -55,8 +55,9 @@ OBVR_IMPORT HMODULE OBVR_STDCALL LoadLibraryA(const char* fileName);
 OBVR_IMPORT void* OBVR_STDCALL GetProcAddress(HMODULE module, const char* name);
 OBVR_IMPORT BOOL OBVR_STDCALL FreeLibrary(HMODULE module);
 
-// Aus msvcrt.dll. Bewusst sin/cos statt sinf/cosf: die float-Varianten fehlen
-// in aelteren msvcrt-Staenden, die double-Varianten sind ueberall vorhanden.
+// From msvcrt.dll. Deliberately sin/cos rather than sinf/cosf: the float
+// variants are missing from older msvcrt revisions, the double ones are
+// present everywhere.
 extern "C" int __cdecl _snprintf(char* buffer, unsigned int count, const char* format, ...);
 extern "C" double __cdecl atof(const char* text);
 extern "C" double __cdecl sin(double value);

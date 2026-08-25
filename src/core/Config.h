@@ -5,30 +5,30 @@
 
 namespace obvr {
 
-// Einstellungen aus OBVR.ini neben Oblivion.exe.
+// Settings from OBVR.ini next to Oblivion.exe.
 struct Config {
 	bool cameraHookEnabled = true;
 
 	vr::TrackerSettings tracker;
 
-	// Wie oft der Kamerazustand geloggt wird, in Frames. 0 schaltet das
-	// laufende Logging ab; Zustandswechsel werden trotzdem gemeldet.
+	// How often the camera state is logged, in frames. 0 turns the running
+	// log off; state changes are still reported.
 	UInt32 logEveryFrames = 0;
 
-	// Wie oft die INI im laufenden Spiel neu gelesen wird, in Frames.
-	// 0 schaltet das ab.
+	// How often the INI is re-read while the game runs, in frames.
+	// 0 turns it off.
 	//
-	// Ohne das kostet jede Aenderung an den Testwinkeln einen kompletten
-	// Neustart samt Laden eines Spielstands. Mit Hot-Reload laesst sich die
-	// Kamera im laufenden Spiel abstimmen.
+	// Without this, every change to the test angles costs a full restart plus
+	// loading a save. With the hot reload the camera can be tuned while the
+	// game is running.
 	UInt32 reloadEveryFrames = 0;
 
-	// true, wenn die Datei gefunden und gelesen wurde.
+	// true when the file was found and read.
 	bool Load(const char* fileName);
 
-	// Liest nur die Werte neu, die sich gefahrlos im laufenden Spiel aendern
-	// lassen. cameraHookEnabled bleibt aussen vor: der Hook ist zu diesem
-	// Zeitpunkt laengst gesetzt.
+	// Re-reads only the values that are safe to change while the game runs.
+	// cameraHookEnabled stays out of it: by this point the hook has long been
+	// installed.
 	bool Reload(const char* fileName);
 };
 

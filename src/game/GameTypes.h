@@ -3,15 +3,15 @@
 #include "core/Types.h"
 #include "game/NiMath.h"
 
-// Ausschnitt aus Oblivions Gamebryo/NetImmerse-Szenengraph.
+// An excerpt from Oblivion's Gamebryo/NetImmerse scene graph.
 //
-// OBVR bindet bewusst nicht die vollstaendigen xOBSE- oder TES-Reloaded-Header
-// ein. Der Hook braucht genau einen Objekttyp, und dessen Layout ist gegen
-// Oblivion.exe 1.2.0.416 verifiziert (siehe GameAddresses.h).
+// OBVR deliberately does not include the full xOBSE or TES-Reloaded headers.
+// The hook needs exactly one object type, and its layout is verified against
+// Oblivion.exe 1.2.0.416 (see GameAddresses.h).
 //
-// Die reinen Rechentypen stehen in NiMath.h.
+// The pure arithmetic types live in NiMath.h.
 
-// <cstddef> ist im freestanding Cross-Build nicht verfuegbar.
+// <cstddef> is not available in the freestanding cross build.
 #if defined(__clang__) || defined(__GNUC__)
 #define OBVR_OFFSETOF(type, member) __builtin_offsetof(type, member)
 #else
@@ -21,8 +21,8 @@
 
 namespace obvr {
 
-// Nur so weit ausmodelliert, wie der Kamera-Hook es braucht. Alles hinter
-// worldTransform bleibt undurchsichtig, weil OBVR es nicht anfasst.
+// Modelled out only as far as the camera hook needs. Everything past
+// worldTransform stays opaque because OBVR does not touch it.
 struct NiAVObject {
 	void* vtable;                     // 0x00
 	UInt32 refCount;                  // 0x04
@@ -39,20 +39,20 @@ struct NiAVObject {
 	NiTransform worldTransform;       // 0x64
 };
 
-// Die Offsets sind der Kern der Hook-Annahme. Oblivion.exe schreibt bei
-// 0x0066BE3D..0x0066BE47 nach [eax+0x54/0x58/0x5C] und kopiert bei
-// 0x0066BE60 neun DWORDs nach [eax+0x30]. Das deckt sich exakt mit
-// localTransform.pos = 0x30 + 0x24 = 0x54 und localTransform.rot = 0x30.
+// These offsets are the core of the hook's assumption. Oblivion.exe writes to
+// [eax+0x54/0x58/0x5C] at 0x0066BE3D..0x0066BE47 and copies nine DWORDs to
+// [eax+0x30] at 0x0066BE60. That matches localTransform.pos = 0x30 + 0x24 =
+// 0x54 and localTransform.rot = 0x30 exactly.
 //
-// Die Pruefung gilt nur fuer 32-Bit-Builds: das Layout haengt an der
-// Zeigergroesse, und nur dorthin wird die DLL geladen. Nativ gebaute Tests
-// (64 Bit) benutzen ohnehin nur die Typen aus NiMath.h.
+// The check only applies to 32-bit builds: the layout depends on pointer
+// size, and that is the only place the DLL is loaded into. Natively built
+// tests (64 bit) only use the types from NiMath.h anyway.
 #if defined(OBVR_TARGET_32BIT)
-static_assert(sizeof(void*) == 4, "OBVR_TARGET_32BIT verlangt 32-Bit-Zeiger");
-static_assert(OBVR_OFFSETOF(NiAVObject, parent) == 0x1C, "parent muss bei 0x1C liegen");
-static_assert(OBVR_OFFSETOF(NiAVObject, localTransform) == 0x30, "localTransform muss bei 0x30 liegen");
-static_assert(OBVR_OFFSETOF(NiAVObject, worldTransform) == 0x64, "worldTransform muss bei 0x64 liegen");
-static_assert(sizeof(NiAVObject) == 0x98, "NiAVObject muss bis worldTransform 0x98 gross sein");
+static_assert(sizeof(void*) == 4, "OBVR_TARGET_32BIT requires 32-bit pointers");
+static_assert(OBVR_OFFSETOF(NiAVObject, parent) == 0x1C, "parent must sit at 0x1C");
+static_assert(OBVR_OFFSETOF(NiAVObject, localTransform) == 0x30, "localTransform must sit at 0x30");
+static_assert(OBVR_OFFSETOF(NiAVObject, worldTransform) == 0x64, "worldTransform must sit at 0x64");
+static_assert(sizeof(NiAVObject) == 0x98, "NiAVObject must be 0x98 bytes up to worldTransform");
 #endif
 
 }  // namespace obvr

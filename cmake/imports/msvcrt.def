@@ -1,7 +1,7 @@
-; Importe aus msvcrt.dll fuer den SDK-freien Verifikationsbau.
+; Imports from msvcrt.dll for the SDK-free verification build.
 ;
-; msvcrt.dll ist in jedem Windows vorhanden und im Oblivion-Prozess ohnehin
-; geladen. Alle Eintraege sind cdecl und tragen deshalb keine Dekoration.
+; msvcrt.dll exists on every Windows and is loaded in the Oblivion process
+; anyway. Every entry is cdecl and therefore carries no decoration.
 LIBRARY msvcrt.dll
 EXPORTS
 _snprintf
@@ -10,7 +10,7 @@ atof
 sin
 cos
 sqrt
-; memcpy und memset ruft der Compiler von sich aus auf, sobald Strukturen
-; kopiert oder nullinitialisiert werden.
+; memcpy and memset are called by the compiler on its own as soon as structs
+; are copied or zero initialised.
 memcpy
 memset

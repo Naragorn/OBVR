@@ -3,8 +3,8 @@
 #include "platform/Win32Min.h"
 
 #if defined(OBVR_NO_WINSDK)
-// <cstdarg> fehlt im freestanding Cross-Build; die Compiler-Builtins gibt es
-// trotzdem, und msvcrt liefert _vsnprintf.
+// <cstdarg> is missing in the freestanding cross build; the compiler builtins
+// exist regardless, and msvcrt provides _vsnprintf.
 using va_list = __builtin_va_list;
 #define va_start(ap, param) __builtin_va_start(ap, param)
 #define va_end(ap) __builtin_va_end(ap)
@@ -18,8 +18,8 @@ namespace {
 
 HANDLE g_file = InvalidHandle();
 
-// Reicht fuer eine Logzeile; laengere werden abgeschnitten statt zu wachsen,
-// damit der Logger keinen Heap braucht.
+// Enough for one log line; longer ones are truncated rather than grown, so
+// that the logger needs no heap.
 constexpr UInt32 kLineBufferSize = 1024;
 
 void WriteRaw(const char* text, UInt32 length) {
@@ -41,8 +41,9 @@ UInt32 Length(const char* text) {
 }  // namespace
 
 void Open(const char* fileName) {
-	// Der Pfad wird relativ zum Prozess gebildet, damit die Logdatei neben
-	// Oblivion.exe landet und nicht im jeweiligen Arbeitsverzeichnis.
+	// The path is built relative to the process so that the log file ends up
+	// next to Oblivion.exe rather than in whatever the working directory
+	// happens to be.
 	char path[512];
 	const DWORD moduleLength = GetModuleFileNameA(nullptr, path, sizeof(path));
 	if (moduleLength == 0 || moduleLength >= sizeof(path)) {

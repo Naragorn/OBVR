@@ -1,18 +1,18 @@
 #pragma once
 
-// Die wenigen Gleitkommafunktionen, die OBVR braucht.
+// The handful of floating point functions OBVR needs.
 //
-// Eigener Header statt <cmath> in jeder Datei: im freestanding Cross-Build
-// gibt es keine Standardbibliothek, die Funktionen kommen dort direkt aus
-// msvcrt. Nativ gebaute Tests nehmen den normalen Weg.
+// A header of its own instead of <cmath> in every file: the freestanding
+// cross build has no standard library, and the functions come straight from
+// msvcrt there. Natively built tests take the normal route.
 //
-// Bewusst ohne Windows-Header, damit reine Rechendateien auch auf einem
-// Linux-Host uebersetzen.
+// Deliberately without Windows headers, so that files which only do
+// arithmetic also compile on a Linux host.
 
 #if defined(OBVR_NO_WINSDK)
 
-// Bewusst die double-Varianten: sinf und cosf fehlen in aelteren
-// msvcrt-Staenden, sin und cos sind ueberall vorhanden.
+// Deliberately the double variants: sinf and cosf are missing from older
+// msvcrt revisions, while sin and cos are present everywhere.
 extern "C" double __cdecl sin(double value);
 extern "C" double __cdecl cos(double value);
 extern "C" double __cdecl sqrt(double value);

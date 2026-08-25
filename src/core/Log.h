@@ -2,8 +2,8 @@
 
 namespace obvr::log {
 
-// Legt die Logdatei neben Oblivion.exe an. Schlaegt das fehl, geht alles
-// weiterhin an den Debugger, die DLL bleibt also nutzbar.
+// Creates the log file next to Oblivion.exe. If that fails, everything still
+// goes to the debugger, so the DLL stays usable.
 void Open(const char* fileName);
 void Close();
 

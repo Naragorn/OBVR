@@ -2,14 +2,14 @@
 
 #include "platform/Win32Min.h"
 
-// Minimale Nachbildung der xOBSE-Plugin-Schnittstelle.
+// Minimal replica of the xOBSE plugin interface.
 //
-// OBVR bindet die xOBSE-Header nicht ein: die ziehen den kompletten
-// Spielobjektbaum nach sich und binden das Projekt an MSVC. Gebraucht wird
-// nur das Layout dieser beiden Strukturen, und das muss binaerkompatibel zu
-// xOBSE/obse/PluginAPI.h sein.
+// OBVR does not include the xOBSE headers: they drag in the entire game
+// object tree and tie the project to MSVC. All that is needed is the layout
+// of these two structs, and it has to be binary compatible with
+// xOBSE/obse/PluginAPI.h.
 //
-// Oblivion Reloaded macht es genauso.
+// Oblivion Reloaded does the same thing.
 
 namespace obvr::obse {
 
@@ -23,22 +23,22 @@ struct Interface {
 	void (*SetOpcodeBase)(UInt32 opcode);
 	void* (*QueryInterface)(UInt32 id);
 
-	// Ab OBSE 15.
+	// From OBSE 15 onwards.
 	UInt32 (*GetPluginHandle)();
 
-	// Ab OBSE 18.
+	// From OBSE 18 onwards.
 	bool (*RegisterTypedCommand)(void* info, UInt32 returnType);
 	const char* (*GetOblivionDirectory)();
 
-	// Ab OBSE 21.
+	// From OBSE 21 onwards.
 	bool (*GetPluginLoaded)(const char* pluginName);
 	UInt32 (*GetPluginVersion)(const char* pluginName);
 };
 
 struct Info {
 	enum {
-		// xOBSE lehnt Plugins mit infoVersion < 2 ab; 3 ist der aktuelle Wert
-		// aus obse/PluginAPI.h.
+		// xOBSE rejects plugins with infoVersion < 2; 3 is the current value
+		// from obse/PluginAPI.h.
 		kInfoVersion = 3,
 	};
 

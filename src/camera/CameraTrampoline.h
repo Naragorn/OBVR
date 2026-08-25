@@ -4,31 +4,29 @@
 
 namespace obvr::camera {
 
-// Erzeugung des Hook-Codes, getrennt vom Setzen des Hooks.
+// Generating the hook code, kept apart from installing the hook.
 //
-// Diese Trennung hat einen praktischen Grund: die Bytefolge ist der Teil, bei
-// dem ein Fehler das Spiel zuverlaessig zum Absturz bringt, und zugleich der
-// einzige Teil, der sich ohne laufendes Oblivion pruefen laesst. Beide
-// Funktionen sind deshalb frei von Windows- und Prozessabhaengigkeiten und
-// werden von tests/ direkt geprueft.
+// The split has a practical reason: the byte sequence is the part where a
+// mistake reliably crashes the game, and at the same time the only part that
+// can be checked without a running Oblivion. Both functions are therefore
+// free of Windows and process dependencies, and tests/ exercises them
+// directly.
 
-// Die acht Bytes, die an addr::kHookCameraUpdate stehen muessen:
+// The eight bytes that must sit at addr::kHookCameraUpdate:
 //   cmp word ptr [ebx+0xB6], 0
 extern const UInt8 kOriginalBytes[8];
 
-// Schreibt das Trampolin nach buffer. trampolineAddress ist die Adresse, an
-// der es spaeter liegt; callbackAddress zeigt auf OBVR_OnCameraUpdated.
+// Writes the trampoline into buffer. trampolineAddress is where it will
+// later live; callbackAddress points at OBVR_OnCameraUpdated.
 //
-// Gibt die Anzahl geschriebener Bytes zurueck, oder 0, wenn die Kapazitaet
-// nicht reicht.
+// Returns the number of bytes written, or 0 when the capacity is not enough.
 UInt32 BuildTrampoline(UInt8* buffer, UInt32 capacity, UInt32 trampolineAddress,
                        UInt32 callbackAddress);
 
-// Schreibt den Patch, der an die Hook-Stelle kommt: ein Sprung zum Trampolin,
-// aufgefuellt auf die Laenge der ueberschriebenen Originalinstruktion.
+// Writes the patch that goes to the hook site: a jump to the trampoline,
+// padded out to the length of the overwritten original instruction.
 //
-// Gibt die Anzahl geschriebener Bytes zurueck, oder 0 bei zu kleiner
-// Kapazitaet.
+// Returns the number of bytes written, or 0 when the capacity is too small.
 UInt32 BuildPatch(UInt8* buffer, UInt32 capacity, UInt32 hookAddress,
                   UInt32 trampolineAddress);
 

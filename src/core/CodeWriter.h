@@ -4,27 +4,27 @@
 
 namespace obvr::mem {
 
-// Baut x86-Maschinencode zusammen. Bewusst winzig gehalten: OBVR braucht eine
-// Handvoll Opcodes, keinen Assembler.
+// Assembles x86 machine code. Deliberately tiny: OBVR needs a handful of
+// opcodes, not an assembler.
 //
-// Der Umweg ueber selbst emittierte Bytes statt __declspec(naked) mit
-// __asm-Block ist Absicht. MSVC-Inline-Assembly bindet das Projekt an MSVC,
-// waehrend dieser Weg mit MSVC, clang-cl und clang-cross gleichermassen baut -
-// und sich ausserdem ohne laufendes Oblivion testen laesst.
+// Emitting the bytes here instead of using __declspec(naked) with an __asm
+// block is intentional. MSVC inline assembly ties the project to MSVC, while
+// this route builds with MSVC, clang-cl and clang-cross alike - and it can be
+// tested without a running Oblivion.
 //
-// Bewusst frei von Windows-Abhaengigkeiten.
+// Deliberately free of Windows dependencies.
 class CodeWriter {
 public:
-	// baseAddress ist die Adresse, an der der Code spaeter ausgefuehrt wird.
-	// Sie wird uebergeben statt aus dem Puffer abgeleitet, damit sich die
-	// Byteerzeugung ausserhalb des Spielprozesses pruefen laesst.
+	// baseAddress is the address at which the code will later execute. It is
+	// passed in rather than derived from the buffer, so that byte generation
+	// can be checked outside the game process.
 	CodeWriter(UInt8* buffer, UInt32 capacity, UInt32 baseAddress);
 
 	void Byte(UInt8 value);
 	void Bytes(const UInt8* data, UInt32 size);
 	void DWord(UInt32 value);
 
-	// pushad / popad sichern alle acht Universalregister.
+	// pushad / popad save all eight general purpose registers.
 	void PushAllRegisters();
 	void PopAllRegisters();
 	void PushFlags();
@@ -36,23 +36,23 @@ public:
 	// add esp, amount
 	void AddStackPointer(UInt8 amount);
 
-	// call / jmp mit 32-Bit-Relativziel, ausgehend von der aktuellen Position.
+	// call / jmp with a 32-bit relative target, from the current position.
 	void CallRelative(UInt32 target);
 	void JumpRelative(UInt32 target);
 
-	// ja (jump if above) mit 32-Bit-Relativziel.
+	// ja (jump if above) with a 32-bit relative target.
 	void JumpAboveRelative(UInt32 target);
 
 	// xor ecx, ecx
 	void ClearEcx();
 
-	// nop, zum Auffuellen angebrochener Instruktionen.
+	// nop, to pad out a partially overwritten instruction.
 	void Nop(UInt32 count);
 
 	UInt32 Size() const { return m_size; }
 	bool Overflowed() const { return m_overflowed; }
 
-	// Adresse, die der Code an der angegebenen Position spaeter haette.
+	// The address this code would have at the given position.
 	UInt32 AddressAt(UInt32 offset) const { return m_baseAddress + offset; }
 
 private:

@@ -5,7 +5,7 @@
 namespace obvr::vr {
 
 Quaternion Quaternion::operator*(const Quaternion& rhs) const {
-	// Hamilton-Produkt: erst rhs, dann this.
+	// Hamilton product: rhs first, then this.
 	return Quaternion{
 		w * rhs.x + x * rhs.w + y * rhs.z - z * rhs.y,
 		w * rhs.y - x * rhs.z + y * rhs.w + z * rhs.x,
@@ -17,8 +17,8 @@ Quaternion Quaternion::operator*(const Quaternion& rhs) const {
 Quaternion Quaternion::Normalized() const {
 	const float lengthSquared = LengthSquared();
 	if (lengthSquared <= 0.0f) {
-		// Eine Nullquaternion kann nicht normiert werden. Das ist kein
-		// erwarteter Zustand, darf aber keine NaN in die Kameramatrix tragen.
+		// A zero quaternion cannot be normalised. Not an expected state, but
+		// it must not carry a NaN into the camera matrix.
 		return Identity();
 	}
 
@@ -46,10 +46,10 @@ Quaternion FromAxisAngle(float axisX, float axisY, float axisZ, float degrees) {
 }
 
 Quaternion FromOpenXR(const Quaternion& openXrOrientation) {
-	// Basiswechsel, siehe Herleitung im Header:
+	// Change of basis, see the derivation in the header:
 	//   x_obl = x_xr, y_obl = -z_xr, z_obl = y_xr
-	// Der Skalarteil bleibt unberuehrt, weil die Abbildung die Haendigkeit
-	// erhaelt (Determinante +1).
+	// The scalar part is untouched because the mapping preserves handedness
+	// (determinant +1).
 	return Quaternion{
 		openXrOrientation.x,
 		-openXrOrientation.z,

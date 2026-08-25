@@ -2,11 +2,11 @@ cmake_minimum_required(VERSION 3.20)
 
 project(OBVR VERSION 0.0.1 LANGUAGES CXX)
 
-# OBVR laedt als Plugin in Oblivion.exe. Die ist 32 Bit, also muss auch die
-# DLL 32 Bit sein - daran laesst sich nichts drehen.
+# OBVR loads as a plugin into Oblivion.exe. That is 32 bit, so the DLL has to
+# be 32 bit as well - there is no way around it.
 if(NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
 	message(FATAL_ERROR
-		"OBVR muss fuer x86 (32 Bit) gebaut werden, gefunden: ${CMAKE_SIZEOF_VOID_P}*8 Bit.\n"
+		"OBVR must be built for x86 (32 bit), found: ${CMAKE_SIZEOF_VOID_P}*8 bit.\n"
 		"MSVC:  cmake -A Win32 ...\n"
 		"Linux: cmake --toolchain cmake/toolchain-linux-nosdk.cmake ...")
 endif()
@@ -15,9 +15,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(OBVR_NO_WINSDK)
-	# Muss hier stehen und nicht im Toolchain-File: CMakes Platform-Modul
-	# setzt die Liste danach erneut und wuerde user32, gdi32, ole32 und
-	# weitere anhaengen, die es ohne SDK nicht gibt.
+	# This has to live here rather than in the toolchain file: CMake's
+	# platform module sets the list again afterwards and would append user32,
+	# gdi32, ole32 and others that do not exist without the SDK.
 	set(CMAKE_CXX_STANDARD_LIBRARIES "" CACHE STRING "" FORCE)
 endif()
 
@@ -38,8 +38,8 @@ add_library(OBVR SHARED
 
 target_include_directories(OBVR PRIVATE src)
 
-# Schaltet die Layout-Pruefungen in GameTypes.h scharf. Sie gelten nur fuer
-# 32-Bit, wo die Zeigergroesse stimmt; nativ gebaute Tests lassen sie aus.
+# Arms the layout checks in GameTypes.h. They only hold for 32 bit, where the
+# pointer size matches; natively built tests leave them out.
 target_compile_definitions(OBVR PRIVATE OBVR_TARGET_32BIT)
 
 set_target_properties(OBVR PROPERTIES
@@ -50,8 +50,8 @@ set_target_properties(OBVR PROPERTIES
 
 if(MSVC)
 	target_compile_options(OBVR PRIVATE /W4 /permissive-)
-	# Ohne statische Runtime muesste die passende Redistributable neben
-	# Oblivion liegen; das will man einem Mod-Nutzer nicht zumuten.
+	# Without a static runtime the matching redistributable would have to sit
+	# next to Oblivion; that is not something to ask of a mod user.
 	set_property(TARGET OBVR PROPERTY
 		MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 else()
@@ -59,11 +59,11 @@ else()
 endif()
 
 if(OBVR_NO_WINSDK)
-	# Verifikationsbau unter Linux ohne Windows SDK. Siehe
+	# Verification build on Linux without the Windows SDK. See
 	# cmake/toolchain-linux-nosdk.cmake.
 	target_compile_definitions(OBVR PRIVATE OBVR_NO_WINSDK)
-	# CMake wuerde sonst --dependent-lib=msvcrt anhaengen; die Bibliothek gibt
-	# es hier nicht, und gelinkt wird ohnehin mit -nodefaultlib.
+	# Otherwise CMake would append --dependent-lib=msvcrt; that library does
+	# not exist here, and linking happens with -nodefaultlib anyway.
 	set_property(TARGET OBVR PROPERTY MSVC_RUNTIME_LIBRARY "")
 	add_subdirectory(cmake/imports)
 	target_link_libraries(OBVR PRIVATE obvr_win32_imports)

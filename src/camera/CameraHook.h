@@ -5,25 +5,25 @@
 
 namespace obvr::camera {
 
-// Haengt sich an das Ende von Oblivions Kameraberechnung.
+// Attaches to the end of Oblivion's camera calculation.
 //
-// Ablauf pro Frame:
+// Per frame:
 //
-//   Oblivion berechnet die Vanilla-Kamera
-//        -> schreibt localTransform.pos und .rot des CameraNode
-//        -> OBVR legt die Kopfrotation darauf
-//        -> Oblivion laeuft weiter und aktualisiert den Szenengraph
+//   Oblivion computes the vanilla camera
+//        -> writes localTransform.pos and .rot of the CameraNode
+//        -> OBVR lays the head rotation on top
+//        -> Oblivion carries on and updates the scene graph
 //
-// Damit ist die VR-Formel umgesetzt:
+// Which implements the VR formula:
 //
-//   finale Kamera = Vanilla-Kamera * relative Kopfrotation
+//   final camera = vanilla camera * relative head rotation
 //
-// Gibt false zurueck, wenn die erwarteten Bytes nicht an der Zieladresse
-// stehen. Dann wird nichts gepatcht - eine falsche Spielversion soll kein
-// zerschossenes Codesegment ergeben.
+// Returns false when the expected bytes are not at the target address. In
+// that case nothing is patched - a wrong game version must not end in a
+// shredded code segment.
 bool Install();
 
-// Zustand des letzten Hook-Durchlaufs, fuer Logging und spaetere Nutzung.
+// State of the last hook pass, for logging and later use.
 struct State {
 	bool sawCameraNode = false;
 	bool isThirdPerson = false;
@@ -32,7 +32,7 @@ struct State {
 
 const State& GetState();
 
-// Der Tracker, dessen Rotation auf die Kamera gelegt wird.
+// The tracker whose rotation is laid onto the camera.
 vr::HeadTracker& GetHeadTracker();
 
 }  // namespace obvr::camera

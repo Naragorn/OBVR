@@ -4,16 +4,16 @@
 
 namespace obvr {
 
-// Rotationsmatrix aus Eulerwinkeln in Grad, aufgebaut aus den drei
-// elementaren Achsendrehungen in der Reihenfolge Z * Y * X.
+// Rotation matrix from Euler angles in degrees, composed from the three
+// elementary axis rotations in the order Z * Y * X.
 //
-// Die Achsenbelegung ist im laufenden Spiel bestaetigt:
-//   X = Pitch (hoch und runter schauen)
-//   Y = Roll  (Kopf zur Seite neigen)
-//   Z = Yaw   (nach links und rechts schauen)
+// The axis assignment has been confirmed in the running game:
+//   X = pitch (looking up and down)
+//   Y = roll  (tilting the head sideways)
+//   Z = yaw   (looking left and right)
 //
-// Bewusst frei von Windows-Abhaengigkeiten, damit die Tests sie als Referenz
-// fuer die Quaternion-Route heranziehen koennen.
+// Deliberately free of Windows dependencies, so that the tests can use it as
+// the reference for the quaternion route.
 NiMatrix33 EulerToMatrix(float degreesX, float degreesY, float degreesZ);
 
 }  // namespace obvr
