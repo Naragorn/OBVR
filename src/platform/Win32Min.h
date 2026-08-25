@@ -33,6 +33,7 @@ constexpr DWORD GENERIC_WRITE = 0x40000000;
 constexpr DWORD FILE_SHARE_READ = 0x1;
 constexpr DWORD CREATE_ALWAYS = 2;
 constexpr DWORD FILE_ATTRIBUTE_NORMAL = 0x80;
+constexpr DWORD INVALID_FILE_ATTRIBUTES = 0xFFFFFFFF;
 
 OBVR_IMPORT BOOL OBVR_STDCALL VirtualProtect(void* address, UInt32 size, DWORD newProtect, DWORD* oldProtect);
 OBVR_IMPORT void* OBVR_STDCALL VirtualAlloc(void* address, UInt32 size, DWORD allocationType, DWORD protect);
@@ -44,6 +45,7 @@ OBVR_IMPORT BOOL OBVR_STDCALL CloseHandle(HANDLE object);
 OBVR_IMPORT void OBVR_STDCALL OutputDebugStringA(const char* text);
 OBVR_IMPORT DWORD OBVR_STDCALL GetPrivateProfileStringA(const char* section, const char* key, const char* defaultValue, char* buffer, DWORD size, const char* fileName);
 OBVR_IMPORT DWORD OBVR_STDCALL GetModuleFileNameA(HMODULE module, char* fileName, DWORD size);
+OBVR_IMPORT DWORD OBVR_STDCALL GetFileAttributesA(const char* fileName);
 
 // For the OpenVR backend. openvr_api.dll is loaded at runtime rather than
 // linked, so that OBVR still loads without SteamVR installed.

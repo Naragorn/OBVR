@@ -401,6 +401,54 @@ ctest --test-dir build-tests --output-on-failure
 
 `OBVR.log` appears next to `Oblivion.exe`.
 
+### Mod Organizer 2
+
+MO2 virtualises the game's `Data` folder and nothing else. Its own issue tracker is blunt
+about why the root cannot be virtualised: USVFS is installed after the load-time DLLs, so
+from the game's point of view those files would not exist yet when it needs them. That is
+why the separate [Root Builder](https://kezyma.github.io/?p=rootbuilder) plugin exists — it
+copies or links root files into place for real, and names script extenders (SKSE, OBSE,
+FOSE) as its main use case.
+
+**xOBSE needs Root Builder.** `obse_loader.exe`, `obse_1_2_416.dll` and
+`obse_steam_loader.dll` sit in the game root and cannot be delivered any other way. That is
+xOBSE's constraint rather than OBVR's, and an MO2 user will already have it set up.
+
+**OBVR itself does not.** It anchors its own files on `OBVR.dll` instead of `Oblivion.exe`:
+
+| File | Where OBVR looks | Under MO2 |
+| --- | --- | --- |
+| `OBVR.ini` | next to `OBVR.dll` first, then the game root | virtualised, ships with the mod |
+| `openvr_api.dll` | next to `OBVR.dll` first, then the default search | virtualised, ships with the mod |
+| `OBVR.log` | game root, always | not virtualised, written for real |
+
+Which makes the mod folder an ordinary MO2 mod, with no `Root` folder at all:
+
+```
+OBVR/
+└── OBSE/
+    └── Plugins/
+        ├── OBVR.dll
+        ├── OBVR.ini
+        └── openvr_api.dll        (x86, from SteamVR's bin/win32)
+```
+
+Two reasons for preferring the plugin directory, beyond dropping the Root Builder
+dependency:
+
+- The INI follows the MO2 profile, so different profiles can carry different settings.
+- Root Builder's own documentation lists `.ini files` among the usual exclusions. An
+  `OBVR.ini` placed in a `Root` folder might quietly never be deployed, and OBVR would run
+  on defaults without anyone noticing.
+
+The log stays in the game root deliberately. Written into a virtualised path it would land
+in MO2's Overwrite folder — correct behaviour, but awkward for the one file users get asked
+to attach to a bug report.
+
+Shipping everything through Root Builder instead still works: the layout is a `Root` folder
+alongside the Data contents. Note that Root Builder ignores a mod **entirely** if it finds a
+folder named `Data` inside `Root`.
+
 ### Steam Proton on Linux
 
 xOBSE requires the loader to replace the launcher:

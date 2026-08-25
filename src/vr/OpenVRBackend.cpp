@@ -1,6 +1,7 @@
 #include "vr/OpenVRBackend.h"
 
 #include "core/Log.h"
+#include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
 #include "vr/OpenVRTypes.h"
 #include "vr/Quaternion.h"
@@ -38,10 +39,25 @@ bool OpenVRBackend::Start() {
 	}
 	m_startAttempted = true;
 
-	m_module = LoadLibraryA(kOpenVRLibrary);
+	// Next to OBVR.dll first, which means Data/OBSE/Plugins. That is inside
+	// the folder Mod Organizer 2 virtualises, so the library can ship as part
+	// of the mod rather than needing the Root Builder plugin to place it in
+	// the game root. The load happens long after USVFS has installed its
+	// hooks, so the virtual path resolves.
+	char path[512];
+	if (platform::BuildPluginPath(kOpenVRLibrary, path, sizeof(path))) {
+		m_module = LoadLibraryA(path);
+	}
+
+	// Otherwise the plain name, which LoadLibrary resolves next to
+	// Oblivion.exe - the layout every non-MO2 installation uses.
+	if (m_module == nullptr) {
+		m_module = LoadLibraryA(kOpenVRLibrary);
+	}
+
 	if (m_module == nullptr) {
 		OBVR_LOG("OpenVR: %s not found, camera stays unchanged", kOpenVRLibrary);
-		OBVR_LOG("OpenVR: the x86 build belongs next to Oblivion.exe");
+		OBVR_LOG("OpenVR: the x86 build belongs next to OBVR.dll or next to Oblivion.exe");
 		return false;
 	}
 

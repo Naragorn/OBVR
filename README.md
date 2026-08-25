@@ -196,13 +196,33 @@ ctest --test-dir build-tests --output-on-failure
    `obse_1_2_416.dll`, `obse_editor_1_2.dll`, `obse_steam_loader.dll`, `obse_loader.exe`
    and the `Data` folder into the Oblivion directory (tested with 22.13).
 2. Copy `OBVR.dll` into `Data/OBSE/Plugins/`.
-3. Put `OBVR.ini` next to `Oblivion.exe`.
-4. For `Source=openvr`, put the **x86** build of `openvr_api.dll` next to `Oblivion.exe`.
-   SteamVR ships it under `bin/win32/`; the x64 build that comes with most games will not
-   load into Oblivion.
+3. Put `OBVR.ini` beside it, in `Data/OBSE/Plugins/`. Next to `Oblivion.exe` also works and
+   is what older installations use.
+4. For `Source=openvr`, put the **x86** build of `openvr_api.dll` in `Data/OBSE/Plugins/`
+   as well, or next to `Oblivion.exe`. SteamVR ships it under `bin/win32/`; the x64 build
+   that comes with most games will not load into Oblivion, which is a 32-bit process.
 5. Start Oblivion through the OBSE loader.
 
 `OBVR.log` appears next to `Oblivion.exe`.
+
+### Mod Organizer 2
+
+OBVR is an ordinary MO2 mod — everything of its own lives under `Data`, which is the only
+folder MO2 virtualises:
+
+```
+OBVR/
+└── OBSE/
+    └── Plugins/
+        ├── OBVR.dll
+        ├── OBVR.ini
+        └── openvr_api.dll
+```
+
+No `Root` folder and no [Root Builder](https://kezyma.github.io/?p=rootbuilder) needed for
+OBVR itself. xOBSE still needs Root Builder, because a script extender has to put files in
+the game root and MO2 cannot virtualise those — USVFS is installed after the load-time DLLs,
+so the game would not see them in time. See HANDOFF.md for the details.
 
 ### Steam Proton on Linux
 

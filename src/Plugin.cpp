@@ -3,6 +3,7 @@
 #include "core/Log.h"
 #include "game/GameAddresses.h"
 #include "obse/PluginInterface.h"
+#include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
 
 namespace {
@@ -82,10 +83,18 @@ __declspec(dllexport) bool OBSEPlugin_Load(const obvr::obse::Interface* obse) {
 
 }  // extern "C"
 
-extern "C" int __stdcall DllMain(void* /*module*/, unsigned long reason, void* /*reserved*/) {
+extern "C" int __stdcall DllMain(void* module, unsigned long reason, void* /*reserved*/) {
 	constexpr unsigned long kProcessDetach = 0;
-	if (reason == kProcessDetach) {
+	constexpr unsigned long kProcessAttach = 1;
+
+	if (reason == kProcessAttach) {
+		// The only point at which OBVR is handed its own module handle.
+		// Everything that locates a file next to OBVR.dll depends on it, so it
+		// is stored before any of that can run.
+		obvr::platform::SetPluginModule(module);
+	} else if (reason == kProcessDetach) {
 		obvr::log::Close();
 	}
+
 	return 1;
 }

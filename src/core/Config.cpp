@@ -1,6 +1,7 @@
 #include "core/Config.h"
 
 #include "core/Log.h"
+#include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
 
 namespace obvr {
@@ -8,30 +9,30 @@ namespace {
 
 Config g_config;
 
-// Builds the path to the INI next to Oblivion.exe. Otherwise
-// GetPrivateProfileString would look for a relative name in the Windows
-// directory.
+// Builds the path to the INI. Two locations are tried, in this order:
+//
+//   1. next to OBVR.dll, so Data/OBSE/Plugins/OBVR.ini
+//   2. next to Oblivion.exe, where OBVR looked before
+//
+// The plugin directory comes first because it is the one Mod Organizer 2
+// virtualises. MO2 manages the Data folder and nothing else, so an INI shipped
+// there arrives as part of the mod and follows the active profile. An INI in
+// the game root can only be delivered through the separate Root Builder
+// plugin, and Root Builder's documentation lists .ini files among the usual
+// exclusions - it may quietly never be deployed at all.
+//
+// The game root remains as a fallback so existing installations keep working
+// untouched.
+//
+// An absolute path is needed either way: GetPrivateProfileString resolves a
+// relative name against the Windows directory.
 bool BuildPath(const char* fileName, char* out, UInt32 outSize) {
-	const DWORD moduleLength = GetModuleFileNameA(nullptr, out, outSize);
-	if (moduleLength == 0 || moduleLength >= outSize) {
-		return false;
+	if (platform::BuildPluginPath(fileName, out, outSize) &&
+	    GetFileAttributesA(out) != INVALID_FILE_ATTRIBUTES) {
+		return true;
 	}
 
-	UInt32 cut = moduleLength;
-	while (cut > 0 && out[cut - 1] != '\\' && out[cut - 1] != '/') {
-		--cut;
-	}
-
-	UInt32 i = 0;
-	while (fileName[i] != '\0') {
-		if (cut + i + 1 >= outSize) {
-			return false;
-		}
-		out[cut + i] = fileName[i];
-		++i;
-	}
-	out[cut + i] = '\0';
-	return true;
+	return platform::BuildGamePath(fileName, out, outSize);
 }
 
 // A case insensitive comparison of our own: the CRT variants go by different

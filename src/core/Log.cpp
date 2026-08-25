@@ -1,5 +1,6 @@
 #include "core/Log.h"
 
+#include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
 
 #if defined(OBVR_NO_WINSDK)
@@ -30,37 +31,22 @@ void WriteRaw(const char* text, UInt32 length) {
 	}
 }
 
-UInt32 Length(const char* text) {
-	UInt32 length = 0;
-	while (text[length] != '\0') {
-		++length;
-	}
-	return length;
-}
-
 }  // namespace
 
 void Open(const char* fileName) {
-	// The path is built relative to the process so that the log file ends up
-	// next to Oblivion.exe rather than in whatever the working directory
-	// happens to be.
+	// Deliberately next to Oblivion.exe rather than next to OBVR.dll.
+	//
+	// Under Mod Organizer 2 the plugin directory is virtualised, so a log
+	// written there would be redirected into MO2's Overwrite folder. That is
+	// correct behaviour, but awkward for a diagnostic file: the log is the
+	// first thing a user gets asked to attach to a bug report, and the game
+	// root is where every other script extender already writes its own.
+	//
+	// An absolute path also keeps the file off the working directory, which is
+	// not necessarily the game folder.
 	char path[512];
-	const DWORD moduleLength = GetModuleFileNameA(nullptr, path, sizeof(path));
-	if (moduleLength == 0 || moduleLength >= sizeof(path)) {
+	if (!platform::BuildGamePath(fileName, path, sizeof(path))) {
 		return;
-	}
-
-	UInt32 cut = moduleLength;
-	while (cut > 0 && path[cut - 1] != '\\' && path[cut - 1] != '/') {
-		--cut;
-	}
-
-	const UInt32 nameLength = Length(fileName);
-	if (cut + nameLength + 1 >= sizeof(path)) {
-		return;
-	}
-	for (UInt32 i = 0; i <= nameLength; ++i) {
-		path[cut + i] = fileName[i];
 	}
 
 	g_file = CreateFileA(path, GENERIC_WRITE, FILE_SHARE_READ, nullptr,

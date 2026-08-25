@@ -19,3 +19,4 @@ GetModuleFileNameA@12
 LoadLibraryA@4
 GetProcAddress@8
 FreeLibrary@4
+GetFileAttributesA@4
