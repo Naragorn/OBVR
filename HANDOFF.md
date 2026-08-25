@@ -79,9 +79,8 @@ xOBSE 22.13. 0.0.3 was tested on Windows 11 with SteamVR and a real headset, aga
 
 ### What the 0.0.5 run showed, and what it did not
 
-**OBVR put a picture in a headset.** As with 0.0.4 this is the tester's report rather than a
-log, so it is testimony; but it is testimony about things that are either visible or not,
-which is the kind testimony is good for.
+**OBVR put a picture in a headset.** `docs/verification/OBVR-openvr-first-frames.log` is the
+record — 4320 frames of it. What the wearer saw is testimony; what follows is the log.
 
 Confirmed: the scene registration held, a Direct3D 11 device and two textures were created,
 `Submit` accepted them, and the frame loop ran without `SubmitPolicy` shutting it down. The
@@ -101,11 +100,39 @@ inset frame in cyan at an eighth of the shorter side, which is inside the visibl
 the outer border stays as a coarser check. A test feature that cannot be seen tests nothing,
 and no amount of unit testing was ever going to say so.
 
-Not established: whether the device came from hardware or fell back to WARP, what size the
-headset asked for, and how the game's frame rate behaved once it was on the compositor's
-clock. All three are in `OBVR.log` and none were looked at. The eye offsets and projection
-are not implemented at all, which is step 5 — until then the picture is head-locked, which
-is correct rather than a fault.
+What the log settles on its own:
+
+- **the compositor version was guessed right.** `OpenVR: connected as a scene application
+  through FnTable:IVRSystem_026 and FnTable:IVRCompositor_029`. `IVRCompositor_029` was
+  derived from the header declaring `IVRSystem_026` twelve lines earlier, and the runtime
+  accepts it.
+- **the headset asks for 3560 × 3560 per eye.** That is 48.3 MB a texture, 96.6 MB for the
+  pair — comfortably inside the 256 MB per-eye refusal in `PatternBufferBytes`, which is
+  therefore neither too tight nor decorative.
+- **a hardware device, not WARP.** No fallback line. Worth knowing before 0.1.0, because a
+  software rasteriser would have changed what is worth attempting there.
+- **`SubmitPolicy` never fired.** No `stopped rendering` line in 4320 frames; the compositor
+  took every one.
+- **the lean limit has never once cut anything.** In every line `raw=` equals the magnitude
+  of `lean=`, and the largest across the session is 12.1 units — 10 cm of head movement
+  against a limit of 80. This is what the `raw=` figure was added for, and it earned itself
+  on first use: it removes one of the three candidates under "leaning forward does not feel
+  like leaning sideways" by measurement rather than by argument.
+
+**Frame times are 17.8 to 18.5 ms across the whole run**, with no outlier — about 55 fps and
+no stutter, and nowhere near the 100 ms that a 10 Hz throttle would show. Whether those
+18 ms are Oblivion's own pace or the compositor's is **not established**: the consistency
+suggests pacing, but that is an inference, and the 0.0.4 logs have no `ms` column to compare
+against. One run with `Render.Enabled=0` settles it — if the figure stays at 18 it was
+always the game.
+
+Also visible: the tester's zero sits about 5 cm forward of where they actually sit. The Y
+component of `lean=` is persistently positive while X straddles zero, which is a reference
+captured while leaning back rather than a fault. A recenter fixes it and returns the lean
+range symmetrically.
+
+Still not implemented at all: the eye offsets and projection, which is step 5. Until then
+the picture is head-locked, and that is correct rather than a fault.
 
 ### What the 0.0.4 run showed, and what it did not
 
@@ -131,9 +158,12 @@ Two things it found wrong, both now changed:
   camera starts at head height rather than halfway along its travel, so the two directions
   are asymmetric by geometry. Split into `VerticalLookUpRange` and `VerticalLookDownRange`.
 
-Still not established: whether the vanity and dialogue cameras interfere, and whether the
-lean limit was ever the thing cutting the movement short - which is why the periodic log
-now reports the lean before the limit as well as after it.
+Still not established: whether the vanity and dialogue cameras interfere.
+
+**The lean limit is settled, and it was not the culprit.** The 0.0.5 log has `raw=` equal to
+the magnitude of `lean=` on every line, with a session maximum of 12.1 units against a limit
+of 80 — so `MaxLeanUnits` has never cut anything at all. That was the reason the unclamped
+figure was added to the log, and it answered on first use.
 
 #### Open: leaning forward does not feel like leaning sideways
 

@@ -1,0 +1,53 @@
+OBVR 1 - Query
+OBSE version 22, Oblivion version 010201A0
+OBVR 1 - Load
+Config: D:\SteamLibrary\steamapps\common\Oblivion\Data\OBSE\Plugins\OBVR.ini
+Config: HookEnabled=1 Source=openvr Fixed=(P 0.0, R 20.0, Y 0.0)
+Config: Simulated=(Yaw 25.0, Pitch 12.0, Period 600) LogEveryFrames=120 ReloadEveryFrames=120
+Config: RecenterKey=46 (0x2E)
+Config: PositionalTracking=1 UnitsPerMetre=69.99 HeadMovementScale=1.70 (effective 118.99) MaxLeanUnits=80.0
+Config: BlockVerticalLook=1 VerticalLookRange=(up 60.0, down 120.0) SmoothVerticalLook=1 (8.0)
+Config: SmoothTurning=0 TurnSpeed=12.0
+Config: Render.Enabled=1 - OBVR will claim the VR scene
+OpenVR: connected as a scene application through FnTable:IVRSystem_026 and FnTable:IVRCompositor_029
+Camera: hook installed at 0066BE6E, trampoline at 03DF0000 (37 bytes)
+OBVR ready
+Camera: first hook pass, CameraNode=1812BCA0, third person
+Render: two 3560x3560 eye textures ready
+Camera: frame 120, 3rd, 18.1 ms, pos=(977.5, 1283.7, 316.7), head=(0.016, 0.984, 0.175, -0.016), lean=(0.8, 6.3, -0.5) raw=6.3
+Camera: frame 240, 3rd, 18.0 ms, pos=(977.5, 1283.8, 316.0), head=(0.017, 0.989, 0.130, 0.068), lean=(-2.3, 5.9, 1.5) raw=6.5
+Camera: frame 360, 3rd, 18.5 ms, pos=(977.5, 1283.8, 316.4), head=(0.022, 0.969, 0.243, -0.034), lean=(-1.5, 4.5, -3.1) raw=5.7
+Camera: frame 480, 3rd, 17.8 ms, pos=(977.5, 1283.8, 316.4), head=(-0.002, 0.991, 0.123, 0.056), lean=(-2.4, 4.6, 1.1) raw=5.3
+Camera: frame 600, 3rd, 18.3 ms, pos=(977.5, 1283.8, 316.4), head=(0.001, 0.994, 0.108, 0.034), lean=(-2.1, 4.8, 1.5) raw=5.4
+Camera: frame 720, 3rd, 17.9 ms, pos=(977.5, 1283.8, 316.4), head=(-0.039, 0.981, 0.191, -0.017), lean=(-2.5, 4.0, -0.7) raw=4.8
+Camera: frame 840, 3rd, 18.0 ms, pos=(977.5, 1283.8, 316.4), head=(-0.034, 0.974, 0.119, 0.191), lean=(-7.0, 5.4, 1.0) raw=8.9
+Camera: frame 960, 3rd, 18.0 ms, pos=(977.5, 1283.8, 316.4), head=(-0.048, 0.989, 0.121, 0.063), lean=(-3.6, 4.7, 2.5) raw=6.4
+Camera: frame 1080, 3rd, 18.0 ms, pos=(977.5, 1283.8, 316.4), head=(0.023, 0.996, 0.092, 0.003), lean=(0.1, 1.2, -2.3) raw=2.6
+Camera: frame 1200, 3rd, 17.8 ms, pos=(977.5, 1283.8, 316.4), head=(0.080, 0.992, 0.071, -0.061), lean=(4.5, -3.4, -0.8) raw=5.7
+Camera: frame 1320, 3rd, 18.1 ms, pos=(977.5, 1283.8, 316.4), head=(0.027, 0.982, 0.182, 0.047), lean=(-3.0, 0.2, -2.9) raw=4.1
+Camera: frame 1440, 3rd, 18.1 ms, pos=(977.5, 1283.8, 316.4), head=(-0.029, 0.962, 0.102, 0.253), lean=(-9.6, 5.3, 1.6) raw=11.0
+Camera: frame 1560, 3rd, 18.0 ms, pos=(977.5, 1283.8, 316.4), head=(-0.019, 0.984, 0.123, 0.127), lean=(-6.9, 5.0, 1.5) raw=8.7
+Camera: frame 1680, 3rd, 18.0 ms, pos=(977.5, 1283.8, 316.4), head=(-0.012, 0.995, 0.017, 0.101), lean=(-5.3, 2.8, 3.1) raw=6.8
+Camera: frame 1800, 3rd, 18.2 ms, pos=(977.5, 1283.8, 316.4), head=(0.053, 0.985, 0.161, -0.012), lean=(-0.1, -3.6, -4.5) raw=5.7
+Camera: frame 1920, 3rd, 18.1 ms, pos=(977.5, 1283.8, 316.4), head=(-0.008, 0.968, -0.225, -0.109), lean=(3.6, 3.8, 8.2) raw=9.8
+Camera: frame 2040, 3rd, 18.3 ms, pos=(977.7, 1283.8, 316.4), head=(0.044, 0.997, 0.056, 0.037), lean=(-2.0, -0.3, -0.9) raw=2.2
+Camera: frame 2160, 3rd, 18.2 ms, pos=(977.7, 1283.8, 316.4), head=(0.027, 0.989, 0.141, -0.021), lean=(-1.4, 3.9, 1.2) raw=4.3
+Camera: frame 2280, 3rd, 18.1 ms, pos=(977.7, 1283.8, 316.4), head=(0.048, 0.972, 0.215, 0.080), lean=(-2.1, 4.4, -0.3) raw=4.9
+Camera: frame 2400, 3rd, 17.9 ms, pos=(977.7, 1283.8, 316.4), head=(-0.009, 0.988, 0.139, 0.068), lean=(-3.2, 5.5, 1.2) raw=6.5
+Camera: frame 2520, 3rd, 17.9 ms, pos=(977.7, 1283.8, 316.4), head=(-0.001, 0.992, 0.110, 0.060), lean=(-3.5, 6.5, 1.3) raw=7.5
+Camera: frame 2640, 3rd, 18.4 ms, pos=(977.7, 1283.8, 316.4), head=(-0.020, 0.977, 0.211, 0.035), lean=(-3.5, 6.3, -1.1) raw=7.3
+Camera: frame 2760, 3rd, 18.1 ms, pos=(977.7, 1283.8, 316.4), head=(0.001, 0.967, 0.024, 0.253), lean=(-8.2, 8.1, 3.5) raw=12.1
+Camera: frame 2880, 3rd, 17.9 ms, pos=(977.7, 1283.8, 316.4), head=(-0.007, 0.973, 0.127, 0.192), lean=(-6.5, 8.0, 2.5) raw=10.6
+Camera: frame 3000, 3rd, 18.1 ms, pos=(977.7, 1283.8, 316.4), head=(0.012, 0.987, 0.008, 0.163), lean=(-5.6, 7.6, -1.6) raw=9.6
+Camera: frame 3120, 3rd, 17.8 ms, pos=(977.7, 1283.8, 316.4), head=(0.000, 0.968, 0.117, 0.222), lean=(-7.0, 8.2, 0.6) raw=10.8
+Camera: frame 3240, 3rd, 18.4 ms, pos=(977.7, 1283.8, 316.4), head=(0.074, 0.996, -0.027, -0.049), lean=(3.3, -1.4, 1.2) raw=3.7
+Camera: frame 3360, 3rd, 17.9 ms, pos=(977.7, 1283.8, 316.4), head=(0.046, 0.981, 0.152, 0.115), lean=(-4.6, 4.2, -0.8) raw=6.2
+Camera: frame 3480, 3rd, 17.9 ms, pos=(977.7, 1283.8, 316.4), head=(0.032, 0.981, 0.189, -0.011), lean=(0.4, 3.7, -1.5) raw=4.0
+Camera: frame 3600, 3rd, 18.0 ms, pos=(977.7, 1283.8, 316.4), head=(0.005, 0.982, 0.044, 0.182), lean=(-7.6, 7.2, 1.8) raw=10.6
+Camera: frame 3720, 3rd, 18.3 ms, pos=(977.7, 1283.8, 316.4), head=(0.027, 0.977, 0.065, 0.204), lean=(-8.0, 6.8, 1.2) raw=10.6
+Camera: frame 3840, 3rd, 18.1 ms, pos=(977.7, 1283.8, 316.4), head=(0.023, 0.990, 0.113, 0.077), lean=(-2.6, 5.7, -0.5) raw=6.2
+Camera: frame 3960, 3rd, 17.8 ms, pos=(977.7, 1283.8, 316.4), head=(0.017, 0.988, -0.100, 0.113), lean=(-4.2, 7.0, 1.4) raw=8.3
+Camera: frame 4080, 3rd, 18.2 ms, pos=(977.7, 1283.8, 316.4), head=(0.110, 0.988, 0.105, 0.008), lean=(0.7, -3.0, -4.6) raw=5.6
+OpenVR: no valid HMD pose yet
+Camera: frame 4200, 3rd, 18.0 ms, pos=(977.7, 1283.8, 316.4), head=(0.130, 0.964, 0.227, -0.042), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 4320, 3rd, 18.1 ms, pos=(991.8, 1283.4, 257.1), head=(0.130, 0.964, 0.227, -0.042), lean=(0.0, 0.0, 0.0) raw=0.0
