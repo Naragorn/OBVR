@@ -131,6 +131,42 @@ void TestCentreCross() {
 	      "the arms end well before the edge");
 }
 
+void TestCrossFollowsTheOpticalAxis() {
+	std::printf("Putting the cross where the eye actually looks\n");
+
+	// Measured on a real headset: the optical axis sits at 0.583 across the
+	// left eye's texture and 0.424 across the right, not at 0.5. The frustum
+	// is asymmetric because the lens points slightly outwards. A cross in the
+	// middle of the image is therefore in the wrong place, and the two would
+	// not fuse into one when looking straight ahead.
+	const UInt32 expectedLeft = static_cast<UInt32>(0.583f * kWidth);
+	const Pixel onAxis =
+		obvr::render::PatternPixel(expectedLeft, kHeight / 2, kWidth, kHeight, Eye::Left, 0.583f);
+	Check(onAxis.r == 255 && onAxis.g == 255 && onAxis.b == 255,
+	      "the cross sits at the requested axis rather than the middle");
+
+	const Pixel atMiddle =
+		obvr::render::PatternPixel(kWidth / 2, kHeight / 2, kWidth, kHeight, Eye::Left, 0.583f);
+	Check(IsGrey(atMiddle), "and no longer at the middle of the image");
+
+	// The default has to keep meaning the middle, because that is what to use
+	// when the projection is unknown - and because every other check in this
+	// file relies on it.
+	const Pixel byDefault = At(kWidth / 2, kHeight / 2);
+	Check(byDefault.r == 255, "with no axis given it stays in the middle");
+
+	// A garbled projection must not put the cross outside the texture, where
+	// it would look like no cross at all and be read as a rendering failure.
+	const Pixel wayOff =
+		obvr::render::PatternPixel(kWidth - 1, kHeight / 2, kWidth, kHeight, Eye::Left, 9.0f);
+	Check(SameColour(wayOff, Pixel{255, 255, 255, 255}),
+	      "an absurd axis is clamped into the picture rather than losing the cross");
+
+	const Pixel negative =
+		obvr::render::PatternPixel(0, kHeight / 2, kWidth, kHeight, Eye::Left, -5.0f);
+	Check(SameColour(negative, Pixel{255, 255, 255, 255}), "and so is a negative one");
+}
+
 void TestRampRunsDownwards() {
 	std::printf("The ramp, which says which way up it is\n");
 
@@ -309,6 +345,8 @@ int main() {
 	TestInsetFrameIsWhereItCanBeSeen();
 	std::printf("\n");
 	TestCentreCross();
+	std::printf("\n");
+	TestCrossFollowsTheOpticalAxis();
 	std::printf("\n");
 	TestRampRunsDownwards();
 	std::printf("\n");

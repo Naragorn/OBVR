@@ -66,7 +66,7 @@ bool EyeTextures::CreateDevice() {
 	return true;
 }
 
-bool EyeTextures::CreateEyeTexture(Eye eye, d3d11::Texture2D*& out) {
+bool EyeTextures::CreateEyeTexture(Eye eye, float crossU, d3d11::Texture2D*& out) {
 	const UInt32 bytes = PatternBufferBytes(m_width, m_height);
 	if (bytes == 0) {
 		return false;
@@ -83,7 +83,7 @@ bool EyeTextures::CreateEyeTexture(Eye eye, d3d11::Texture2D*& out) {
 		return false;
 	}
 
-	FillPattern(staging, m_width, m_height, m_width * 4u, eye);
+	FillPattern(staging, m_width, m_height, m_width * 4u, eye, crossU);
 
 	d3d11::Texture2DDesc desc{};
 	desc.width = m_width;
@@ -124,7 +124,7 @@ bool EyeTextures::CreateEyeTexture(Eye eye, d3d11::Texture2D*& out) {
 	return true;
 }
 
-bool EyeTextures::Create(UInt32 width, UInt32 height) {
+bool EyeTextures::Create(UInt32 width, UInt32 height, float crossULeft, float crossURight) {
 	Destroy();
 
 	if (PatternBufferBytes(width, height) == 0) {
@@ -135,13 +135,14 @@ bool EyeTextures::Create(UInt32 width, UInt32 height) {
 	m_width = width;
 	m_height = height;
 
-	if (!CreateDevice() || !CreateEyeTexture(Eye::Left, m_textures[0]) ||
-	    !CreateEyeTexture(Eye::Right, m_textures[1])) {
+	if (!CreateDevice() || !CreateEyeTexture(Eye::Left, crossULeft, m_textures[0]) ||
+	    !CreateEyeTexture(Eye::Right, crossURight, m_textures[1])) {
 		Destroy();
 		return false;
 	}
 
-	OBVR_LOG("Render: two %ux%u eye textures ready", width, height);
+	OBVR_LOG("Render: two %ux%u eye textures ready, cross at u=%.3f and u=%.3f", width, height,
+	         static_cast<double>(crossULeft), static_cast<double>(crossURight));
 	return true;
 }
 

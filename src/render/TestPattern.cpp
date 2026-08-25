@@ -87,7 +87,7 @@ UInt32 InsetFrameOffset(UInt32 width, UInt32 height) {
 	return offset > minimum ? offset : minimum;
 }
 
-Pixel PatternPixel(UInt32 x, UInt32 y, UInt32 width, UInt32 height, Eye eye) {
+Pixel PatternPixel(UInt32 x, UInt32 y, UInt32 width, UInt32 height, Eye eye, float crossU) {
 	if (width == 0u || height == 0u) {
 		return Pixel{0, 0, 0, kOpaque};
 	}
@@ -115,11 +115,31 @@ Pixel PatternPixel(UInt32 x, UInt32 y, UInt32 width, UInt32 height, Eye eye) {
 		}
 	}
 
-	// The centre cross. Not for this milestone but for the projection work
-	// after it: where the two eyes' crosses sit relative to each other is
-	// what says whether the eye offsets are right, and a thin cross is far
-	// easier to judge that against than a ramp or a coloured square.
-	const UInt32 centreX = width / 2u;
+	// The cross, placed on the eye's optical axis rather than in the middle of
+	// the image. A headset's frustum is asymmetric because the lens points
+	// slightly outwards, so the two differ - measured at 0.583 and 0.424 on
+	// the headset this was built against. Putting the cross on the axis makes
+	// the two fuse into one when the wearer looks straight ahead, which turns
+	// a question about eye setup into something answerable by looking.
+	//
+	// Clamped rather than trusted: a garbled projection would otherwise put
+	// the cross outside the texture, where it would look like no cross at all
+	// and be read as a rendering failure.
+	float clampedU = crossU;
+	if (!(clampedU > 0.05f)) {
+		clampedU = 0.05f;
+	}
+	if (clampedU > 0.95f) {
+		clampedU = 0.95f;
+	}
+
+	// Vertically it stays in the middle. The vertical axis would need the sign
+	// convention of GetProjectionRaw's top and bottom, and that is not
+	// determinable from what a headset reports: both readings give identical
+	// numbers and differ only in which way is up. Left at the middle rather
+	// than guessed - and it costs nothing, because 0.1.0 will take a ready
+	// made matrix from GetProjectionMatrix and never ask the question.
+	const UInt32 centreX = static_cast<UInt32>(clampedU * static_cast<float>(width));
 	const UInt32 centreY = height / 2u;
 	const UInt32 arm = (width < height ? width : height) / 12u;
 	const UInt32 halfThickness = thickness > 1u ? thickness / 2u : 1u;
@@ -154,7 +174,8 @@ Pixel PatternPixel(UInt32 x, UInt32 y, UInt32 width, UInt32 height, Eye eye) {
 	return Pixel{level, level, level, kOpaque};
 }
 
-void FillPattern(UInt8* pixels, UInt32 width, UInt32 height, UInt32 rowPitch, Eye eye) {
+void FillPattern(UInt8* pixels, UInt32 width, UInt32 height, UInt32 rowPitch, Eye eye,
+                 float crossU) {
 	if (pixels == nullptr) {
 		return;
 	}
@@ -170,7 +191,7 @@ void FillPattern(UInt8* pixels, UInt32 width, UInt32 height, UInt32 rowPitch, Ey
 	for (UInt32 y = 0; y < height; ++y) {
 		UInt8* row = pixels + static_cast<UInt32>(y * rowPitch);
 		for (UInt32 x = 0; x < width; ++x) {
-			const Pixel pixel = PatternPixel(x, y, width, height, eye);
+			const Pixel pixel = PatternPixel(x, y, width, height, eye, crossU);
 			row[x * 4u + 0u] = pixel.r;
 			row[x * 4u + 1u] = pixel.g;
 			row[x * 4u + 2u] = pixel.b;

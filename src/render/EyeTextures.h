@@ -37,7 +37,14 @@ public:
 	// Returns false on any failure, having cleaned up whatever it got as far
 	// as. Failure here must stay survivable: it costs the picture, not the
 	// head tracking.
-	bool Create(UInt32 width, UInt32 height);
+	// crossULeft and crossURight are where each eye's optical axis lands
+	// across the texture, from render::OpticalCentreU. They put the centring
+	// cross on the axis rather than in the middle of the image, which is not
+	// the same place: a headset's frustum is asymmetric. 0.5 for both leaves
+	// the cross in the middle, which is what to pass when the projection is
+	// unknown.
+	bool Create(UInt32 width, UInt32 height, float crossULeft = 0.5f,
+	            float crossURight = 0.5f);
 
 	void Destroy();
 
@@ -54,7 +61,7 @@ public:
 
 private:
 	bool CreateDevice();
-	bool CreateEyeTexture(Eye eye, d3d11::Texture2D*& out);
+	bool CreateEyeTexture(Eye eye, float crossU, d3d11::Texture2D*& out);
 
 	void* m_module = nullptr;  // d3d11.dll
 	d3d11::Device* m_device = nullptr;

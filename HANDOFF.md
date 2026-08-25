@@ -205,8 +205,16 @@ the view axis produces almost no parallax anyway, what is left to perceive is mo
 in height where a change in distance was expected. That would account for the two feeling
 unlike each other without anything being wrong.
 
-It is an explanation, not yet a conclusion: what it predicts is that the difference shrinks
-once stereo supplies the missing depth cue, and that is checkable rather than arguable.
+**Resolved at a scale of 3.0**, and how it resolved is the confirmation. Raising the gain
+from 2 to 3 amplifies both directions equally - the coupling ratio above is unchanged - and
+the tester reports the two now feel alike. So the asymmetry was never unequal treatment in
+the code: forward motion sat below the threshold of perception while sideways sat above it,
+and more gain lifted both above it.
+
+Which sharpens the prediction rather than ending it. Stereo supplies the depth cue that is
+missing, so after 0.1.0 markedly less gain should be needed - and if leaning still feels
+symmetric at a scale of 1, the explanation is confirmed end to end. If it does not, the
+vertical coupling deserves a damping setting of its own after all.
 
 The candidates it was weighed against, in the order they are worth checking:
 

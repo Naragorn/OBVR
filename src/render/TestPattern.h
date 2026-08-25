@@ -57,7 +57,24 @@ struct Pixel {
 // generator is not the place to discover a bad size, and returning something
 // sensible keeps a fencepost error looking like a fencepost error instead of
 // a crash.
-Pixel PatternPixel(UInt32 x, UInt32 y, UInt32 width, UInt32 height, Eye eye);
+// crossU is where the eye's optical axis lands across the texture, 0 at the
+// left edge and 1 at the right. 0.5 puts the cross in the middle of the
+// image, which is where it went before there was anything better to go on.
+//
+// A real headset does not look at the middle: its frustum is asymmetric
+// because the lens points slightly outwards, and the measured axis sits at
+// 0.583 for the left eye and 0.424 for the right. Putting the cross there
+// makes the two fuse into one when the wearer looks straight ahead, which
+// turns "are the eyes set up correctly" into something a person can answer by
+// looking rather than by reasoning.
+//
+// Only the horizontal centre is used. The vertical one would need the sign
+// convention of GetProjectionRaw's top and bottom, and that is not
+// determinable from the values a headset reports - both readings produce
+// identical numbers and differ only in which way is up. It is left at the
+// middle rather than guessed.
+Pixel PatternPixel(UInt32 x, UInt32 y, UInt32 width, UInt32 height, Eye eye,
+                   float crossU = 0.5f);
 
 // Fills a buffer with the pattern.
 //
@@ -66,7 +83,8 @@ Pixel PatternPixel(UInt32 x, UInt32 y, UInt32 width, UInt32 height, Eye eye);
 // row is padded to whatever alignment the driver wants. Writing rows back to
 // back regardless is the classic way to get a picture that shears diagonally,
 // and it looks like a projection fault rather than a stride fault.
-void FillPattern(UInt8* pixels, UInt32 width, UInt32 height, UInt32 rowPitch, Eye eye);
+void FillPattern(UInt8* pixels, UInt32 width, UInt32 height, UInt32 rowPitch, Eye eye,
+                 float crossU = 0.5f);
 
 // How many bytes a buffer holding one tightly packed eye image needs, and
 // whether that size is usable at all.

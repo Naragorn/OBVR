@@ -8,20 +8,30 @@
 namespace obvr::render {
 namespace {
 
-// Writes what the headset says about the eyes, once, when rendering starts.
+// Writes what the headset says about the eyes, once, when rendering starts,
+// and hands back where each eye's optical axis lands across its texture.
 //
-// It changes nothing. It is here because the next milestone renders the world
-// twice using exactly these numbers, and the sign convention of the frustum
-// is not documented anywhere - so the four values are printed raw, as they
-// arrive, and the log is what settles what they mean. A guess made now would
-// be invisible until a picture came out subtly wrong.
-void LogEyeGeometry(const vr::OpenVRBackend& backend) {
+// The four frustum values are printed raw, as they arrive, because the sign
+// convention of top and bottom is documented nowhere - and it turned out not
+// to need settling: only the horizontal centre is used, which is unambiguous,
+// and 0.1.0 will take a ready made matrix from GetProjectionMatrix rather
+// than build one from these. Printing them anyway costs two lines and means
+// nobody has to run the game again to see what the headset reported.
+void LogEyeGeometry(const vr::OpenVRBackend& backend, float& crossULeft, float& crossURight) {
 	for (int eye = 0; eye < 2; ++eye) {
 		const char* name = eye == vr::openvr::kEyeLeft ? "left" : "right";
 
 		EyeProjection projection;
 		if (backend.GetEyeProjection(eye, projection.left, projection.right, projection.top,
 		                             projection.bottom)) {
+			// Horizontal only, and only because it is unambiguous: left is
+			// the lower edge and right the higher, whatever the signs mean.
+			// The vertical equivalent would need a convention that cannot be
+			// determined from the numbers, so the cross stays vertically
+			// centred rather than guessed.
+			float& target = eye == vr::openvr::kEyeLeft ? crossULeft : crossURight;
+			target = OpticalCentreU(projection);
+
 			OBVR_LOG("Render: %s eye raw=(l %.4f, r %.4f, t %.4f, b %.4f)", name,
 			         static_cast<double>(projection.left),
 			         static_cast<double>(projection.right),
@@ -85,7 +95,14 @@ void HeadsetRenderer::Update(const vr::OpenVRBackend& backend) {
 			return;
 		}
 
-		if (!m_textures.Create(width, height)) {
+		// The geometry first, so the log reads in the order things happened
+		// and so the cross can be put on the optical axis rather than in the
+		// middle of the image.
+		float crossULeft = 0.5f;
+		float crossURight = 0.5f;
+		LogEyeGeometry(backend, crossULeft, crossURight);
+
+		if (!m_textures.Create(width, height, crossULeft, crossURight)) {
 			// Already logged in detail by EyeTextures. Nothing further is
 			// attempted: a machine that cannot make a device this frame will
 			// not make one next frame either, and retrying would turn the log
@@ -93,7 +110,6 @@ void HeadsetRenderer::Update(const vr::OpenVRBackend& backend) {
 			return;
 		}
 
-		LogEyeGeometry(backend);
 	}
 
 	// Blocks until the compositor wants the next frame. From here on Oblivion
