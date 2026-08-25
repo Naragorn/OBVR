@@ -52,6 +52,15 @@ The head is deliberately **never** smoothed. Easing a tracked head shows the wea
 their head was rather than where it is, and that latency is felt directly in a headset —
 it is the one thing VR cannot trade away.
 
+How far the camera moves is `HeadMovementScale`, and it defaults to 2.0 rather than to
+life-size. That is a deliberate compromise with a shelf life: above 1.0 the world moves
+further than the head that moved it, which is the very mismatch VR comfort rests on
+avoiding. It is there because OBVR still renders a single image, so parallax is the only
+depth cue available and a one-to-one lean reads weaker than it will once there are two
+eyes. It is kept separate from `UnitsPerMetre` on purpose — that number is the engine's
+documented figure and stereo will need it for the distance between the eyes, so inflating
+it to taste now would silently shrink the whole world later.
+
 0.0.4 also takes the vertical look away from the stick, the mouse and the keyboard, and
 this is where easing does belong. With a headset on, the head already decides where the
 camera points; leaving the stick pointed at the same thing gives two answers to one
@@ -66,6 +75,23 @@ camera behind where you asked it to be.
 The easing speeds are per second rather than per frame, which is how UEVR computes its
 camera lerp too — `t = m_lerp_camera_speed->value() * delta`. A per-frame share would make
 the same setting feel twice as sluggish at 30 fps as at 60.
+
+Up and down get separate ranges, `VerticalLookUpRange` and `VerticalLookDownRange`, because
+the camera does not start halfway along its travel. It sits at head height, so downwards
+there is exactly one body between it and the ground — a limit the character model sets
+rather than a matter of taste — while upwards nothing bounds it at all. A single symmetric
+range has to be wrong at one end, and in the game it was: sized for looking up, it stopped
+around the character's hips going down.
+
+Worth being clear about what this is not. Luke Ross's R.E.A.L. mod, which the shape of this
+feature was taken from, does not do it this way at all — it *orbits* the camera around the
+character ("decoupled the camera angles from the position, so that the player can look
+around with the headset and separately orbit the camera around the in-game character using
+the mouse/controller",
+[README](https://github.com/LukeRoss00/gta5-real-mod/blob/master/README.md)), and its
+published hotkey list contains no vertical camera offset at all. OBVR translates the camera
+instead. Whether the newer, Patreon-only R.E.A.L. framework added such a setting **could not
+be verified** — those builds are not public.
 
 None of that needs Oblivion's input code. The hook already runs after the camera has been
 computed, so whatever the stick did is sitting in the camera matrix and can be read back
@@ -241,7 +267,9 @@ Eleven test binaries, all without a running Oblivion:
   notations, and every way of writing nonsense that has to leave the previous setting
   alone. A fault there does not crash anything — the key simply stops working, which is the
   hardest kind of fault to attribute. Windows only, since Config reads through
-  `GetPrivateProfileString`.
+  `GetPrivateProfileString`. It also covers the older `VerticalLookRange` spelling, which is
+  still honoured as the fallback for both halves of the split setting — an INI that quietly
+  stops applying is worse than one that fails loudly.
 - **`head_tracker_test`** checks the layer that turns a head orientation into the camera
   matrix: each source, what recentering means, and that a hot reload with unchanged
   settings does not undo a recenter. That last one is a regression guard — `Configure` used
@@ -254,7 +282,9 @@ Eleven test binaries, all without a running Oblivion:
   over. All of it is about comfort rather than correctness, which is a bad reason to leave
   it untested: a fault there does not crash anything and does not look wrong in a
   screenshot. It is felt half an hour later by somebody who then puts the mod down and
-  cannot say why.
+  cannot say why. Since the ranges were split it also pins down the seam between them:
+  level has to come out at zero whichever range claims it, or the camera would jump as the
+  stick crossed the middle.
 - **`head_offset_test`** checks the arithmetic of positional tracking, which is where the
   mistakes live: a wrong sign in the change of basis makes leaning forward pull the camera
   backwards, and a missing rotation by the reference orientation makes leaning work only if

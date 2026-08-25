@@ -58,7 +58,10 @@ float TiltOf(const obvr::NiMatrix33& rotation) { return obvr::SinPitchOf(rotatio
 obvr::camera::LookSettings Blocking() {
 	obvr::camera::LookSettings settings;
 	settings.blockVerticalLook = true;
-	settings.verticalLookRange = 60.0f;
+	// Equal both ways, so that the tests that are not about the split are not
+	// quietly testing it too.
+	settings.verticalLookUpRange = 60.0f;
+	settings.verticalLookDownRange = 60.0f;
 	settings.smoothVerticalLook = false;
 	settings.smoothTurning = false;
 	return settings;
@@ -137,16 +140,55 @@ void TestRangeSign() {
 	// Negative flips it. Oblivion's own third person camera swings vertically
 	// as it tilts, and whether that swing agrees with this one is a question
 	// for a headset - so the sign has to be reachable from the INI.
-	settings.verticalLookRange = -60.0f;
+	settings.verticalLookUpRange = -60.0f;
 	control.Configure(settings);
 	control.Update(Camera(0.0f, 30.0f), kThirdPerson, kFrame);
 	CheckNear(control.GetVerticalOffset(), -30.0f, 0.01f, "a negative range flips the direction");
 
-	settings.verticalLookRange = 0.0f;
+	settings.verticalLookUpRange = 0.0f;
 	control.Configure(settings);
 	control.Update(Camera(0.0f, 30.0f), kThirdPerson, kFrame);
 	CheckNear(control.GetVerticalOffset(), 0.0f, 0.01f,
 	          "a range of 0 leaves only the game's own swing");
+}
+
+void TestAsymmetricRange() {
+	std::printf("Different ranges for up and down\n");
+
+	// The camera sits at head height rather than halfway along its travel, so
+	// the way down is a whole body long and the way up is bounded by nothing.
+	// A single range sized for looking up stops around the hips going down,
+	// which is what a real headset reported before this was split in two.
+	obvr::camera::LookControl control;
+	obvr::camera::LookSettings settings = Blocking();
+	settings.verticalLookUpRange = 60.0f;
+	settings.verticalLookDownRange = 120.0f;
+	control.Configure(settings);
+
+	control.Update(Camera(0.0f, 90.0f), kThirdPerson, kFrame);
+	CheckNear(control.GetVerticalOffset(), 60.0f, 0.01f, "full tilt up uses the up range");
+
+	control.Update(Camera(0.0f, -90.0f), kThirdPerson, kFrame);
+	CheckNear(control.GetVerticalOffset(), -120.0f, 0.01f,
+	          "full tilt down uses the down range, and still goes down");
+
+	// Half tilt, to show the range scales rather than merely switching.
+	control.Update(Camera(0.0f, -30.0f), kThirdPerson, kFrame);
+	CheckNear(control.GetVerticalOffset(), -60.0f, 0.01f, "half tilt down is half the down range");
+
+	// The seam. Level is the one tilt both ranges could claim, and it has to
+	// come out at zero either way - otherwise the camera would jump as the
+	// stick crossed the middle.
+	control.Update(Camera(0.0f, 0.0f), kThirdPerson, kFrame);
+	CheckNear(control.GetVerticalOffset(), 0.0f, 0.001f, "level is zero whichever range applies");
+
+	// One direction switched off while the other stays.
+	settings.verticalLookDownRange = 0.0f;
+	control.Configure(settings);
+	control.Update(Camera(0.0f, -90.0f), kThirdPerson, kFrame);
+	CheckNear(control.GetVerticalOffset(), 0.0f, 0.01f, "a down range of 0 disables only down");
+	control.Update(Camera(0.0f, 90.0f), kThirdPerson, kFrame);
+	CheckNear(control.GetVerticalOffset(), 60.0f, 0.01f, "and leaves up working");
 }
 
 void TestSwitchedOff() {
@@ -265,6 +307,8 @@ int main() {
 	TestVerticalOffset();
 	std::printf("\n");
 	TestRangeSign();
+	std::printf("\n");
+	TestAsymmetricRange();
 	std::printf("\n");
 	TestSwitchedOff();
 	std::printf("\n");

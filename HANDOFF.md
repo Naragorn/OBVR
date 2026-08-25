@@ -68,14 +68,41 @@ controller.
 | 0.0.1 | plugin loads, logging, version check, camera hook, fixed test rotation | **verified in the game** |
 | 0.0.2 | quaternion layer, recenter, interchangeable head source, config hot reload | **verified in the game** |
 | 0.0.3 | OpenVR wired up, real HMD rotation on the camera | **verified in the game** |
-| 0.0.4 | 6DoF for the head, vertical look taken off the stick | **implemented and covered by tests**, not yet verified in the game ← **continue here** |
-| 0.0.5 | frame loop, left and right swapchain, test images in the headset | open |
+| 0.0.4 | 6DoF for the head, vertical look taken off the stick | **verified in the game**, two settings retuned from what it showed |
+| 0.0.5 | frame loop, left and right swapchain, test images in the headset | open ← **continue here** |
 | 0.1.0 | Oblivion's world as real dual-pass stereo | open |
 
 0.0.1 and 0.0.2 were tested against Oblivion GOTY (Steam, AppID 22330) under Proton with
 xOBSE 22.13. 0.0.3 was tested on Windows 11 with SteamVR and a real headset, against a
 4GB-patched `Oblivion.exe` of the same version. Evidence (screenshots and logs) is under
 `docs/verification/`.
+
+### What the 0.0.4 run showed, and what it did not
+
+Weaker evidence than 0.0.3, and it should be read that way: **no log was kept**. What
+exists is the tester's report, so what follows is testimony rather than a record. It is
+recorded here because it drove two changes to the defaults, and a reader deserves to know
+on what basis.
+
+Confirmed by that report: leaning moves the camera the right way; the vertical look does
+move the third person camera up and down rather than tilting it, in the direction intended;
+in first person the vertical look does nothing; the camera no longer tilts; and easing the
+turn works but is unwelcome, so `SmoothTurning` stays off.
+
+Two things it found wrong, both now changed:
+
+- **the lean was far too small** at one to one. Hence `HeadMovementScale`, defaulting to
+  2.0. The honest reading is that this compensates for a missing depth cue rather than
+  fixing a bug: OBVR still renders one image, so parallax is doing the work stereo will
+  do from 0.0.5, and it should be tried at 1.0 again once there are two eyes.
+- **one vertical range could not fit both directions.** At 60 units the camera reached
+  roughly the character's backside going down, while the same 60 was right going up. The
+  camera starts at head height rather than halfway along its travel, so the two directions
+  are asymmetric by geometry. Split into `VerticalLookUpRange` and `VerticalLookDownRange`.
+
+Still not established: whether the vanity and dialogue cameras interfere, and whether the
+lean limit was ever the thing cutting the movement short - which is why the periodic log
+now reports the lean before the limit as well as after it.
 
 ### What the 0.0.3 run proved
 

@@ -36,14 +36,26 @@ struct LookSettings {
 	bool blockVerticalLook = true;
 
 	// How far the vertical look moves the camera in third person, in Oblivion
-	// units, at full tilt. Negative flips the direction.
+	// units, at full tilt. One value for each direction; negative flips that
+	// direction, 0 leaves the game's own swing alone.
 	//
-	// Oblivion's own third person camera already swings vertically as it
-	// tilts, and this is added on top of that. Which of the two dominates, and
-	// whether they agree in direction, is a question for the headset rather
-	// than for a wiki - hence a signed number in the INI rather than a
-	// constant in the code. 0 keeps the game's own swing alone.
-	float verticalLookRange = 60.0f;
+	// Two values rather than one, because the camera does not start in the
+	// middle of its travel. It sits at head height, so downwards there is
+	// exactly one body between it and the ground - a limit the character model
+	// sets, not a matter of taste - while upwards nothing bounds it at all.
+	// A single symmetric range therefore has to be wrong at one end: sized for
+	// the way up it stops at the hips on the way down.
+	//
+	// Measured in the game rather than derived: at 60 units the camera reaches
+	// roughly the character's backside, which puts the feet at about twice
+	// that. The up value is what was already comfortable and is left alone.
+	//
+	// Oblivion's own third person camera swings vertically as it tilts, and
+	// this is added on top of that. Which of the two dominates is a question
+	// for the headset rather than for a wiki - hence signed numbers in the INI
+	// rather than constants in the code.
+	float verticalLookUpRange = 60.0f;
+	float verticalLookDownRange = 120.0f;
 
 	// Whether that vertical movement eases into place rather than tracking the
 	// stick one to one.

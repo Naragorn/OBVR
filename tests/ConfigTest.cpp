@@ -173,6 +173,55 @@ void TestAnglesAndFrames() {
 	CheckEqual(config.recenterKey, 0x2E, "an absent key keeps its default");
 }
 
+void CheckNear(float actual, float expected, const char* what) {
+	const float difference = actual - expected;
+	if (difference < 0.01f && difference > -0.01f) {
+		std::printf("  ok    %s\n", what);
+	} else {
+		std::printf("  FAIL  %s: %.3f, expected %.3f\n", what, static_cast<double>(actual),
+		            static_cast<double>(expected));
+		++g_failures;
+	}
+}
+
+void TestLookRanges() {
+	std::printf("The vertical look ranges, old spelling and new\n");
+
+	// VerticalLookRange was one value for both directions before a headset
+	// showed that a range sized for looking up stops at the hips going down.
+	// An INI written before the split has to keep meaning what it says: the
+	// alternative is that it silently reverts to the defaults, and a setting
+	// that quietly stops applying is worse than one that fails loudly.
+	//
+	// Each case needs its own file name. Windows caches the contents of the
+	// most recently read INI, so rewriting a path and reading it again can
+	// hand back the previous contents.
+	obvr::Config legacy;
+	LoadFrom("ConfigTestLegacyRange.ini", "[Look]\nVerticalLookRange=25.0\n", legacy);
+	CheckNear(legacy.look.verticalLookUpRange, 25.0f, "the old single range still sets up");
+	CheckNear(legacy.look.verticalLookDownRange, 25.0f, "and down as well");
+
+	// Both spellings at once: the specific key wins over the general one,
+	// which is what lets someone add a down range to an existing file without
+	// having to rewrite the line already there.
+	obvr::Config mixed;
+	LoadFrom("ConfigTestMixedRange.ini",
+	         "[Look]\nVerticalLookRange=25.0\nVerticalLookDownRange=99.0\n", mixed);
+	CheckNear(mixed.look.verticalLookUpRange, 25.0f, "the old key still supplies the missing half");
+	CheckNear(mixed.look.verticalLookDownRange, 99.0f, "and the specific key wins where both apply");
+
+	obvr::Config split;
+	LoadFrom("ConfigTestSplitRange.ini",
+	         "[Look]\nVerticalLookUpRange=40.0\nVerticalLookDownRange=140.0\n"
+	         "[Head]\nHeadMovementScale=1.5\n",
+	         split);
+	CheckNear(split.look.verticalLookUpRange, 40.0f, "the up range is read on its own");
+	CheckNear(split.look.verticalLookDownRange, 140.0f, "the down range is read on its own");
+	CheckNear(split.tracker.movementScale, 1.5f, "HeadMovementScale is read");
+	CheckNear(split.tracker.EffectiveUnitsPerMetre(), 69.99125f * 1.5f,
+	          "and multiplies into the effective units per metre");
+}
+
 }  // namespace
 
 int main() {
@@ -187,6 +236,8 @@ int main() {
 	TestSourceParsing();
 	std::printf("\n");
 	TestAnglesAndFrames();
+	std::printf("\n");
+	TestLookRanges();
 
 	std::printf("\n");
 	if (g_failures == 0) {

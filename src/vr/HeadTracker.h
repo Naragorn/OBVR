@@ -60,12 +60,32 @@ struct TrackerSettings {
 	// real headset - and that can only be found by trying it.
 	float unitsPerMetre = 69.99125f;
 
+	// How much further than life the head is allowed to move. 1 is one to one,
+	// 2 moves the camera twice as far as the head really went.
+	//
+	// A separate number rather than an inflated unitsPerMetre, and the reason
+	// is not tidiness: unitsPerMetre is the engine's documented figure and
+	// stereo rendering will need it for the eye separation. Overloading it
+	// with taste now would silently double the eye separation later, and the
+	// world would look like a model railway with no obvious cause.
+	//
+	// Above 1 the world moves further than the head that moved it, which is
+	// the very mismatch VR comfort rests on avoiding. It is a knob because
+	// OBVR still renders one image rather than two: without stereo, parallax
+	// is the only depth cue there is, and it reads weaker than it will once
+	// there are two eyes.
+	float movementScale = 2.0f;
+
+	// The conversion actually applied to head movement, taste included.
+	float EffectiveUnitsPerMetre() const { return unitsPerMetre * movementScale; }
+
 	// How far the camera may be displaced from where the game put it, in
 	// Oblivion units. 0 removes the limit.
 	//
-	// Roughly 40 units is 57 cm, which covers leaning without letting a
-	// tracking glitch or someone standing up push the camera through a wall.
-	float maxOffsetUnits = 40.0f;
+	// Roughly 80 units is 114 cm of camera travel, which at a movementScale of
+	// 2 is 57 cm of real leaning - enough to lean without letting a tracking
+	// glitch or someone standing up push the camera through a wall.
+	float maxOffsetUnits = 80.0f;
 
 };
 
@@ -99,6 +119,12 @@ public:
 	//
 	// One to one with the head, never eased. See Update.
 	const NiPoint3& GetCameraOffset() const { return m_cameraOffset; }
+
+	// How far the head asked to move, in Oblivion units, before maxOffsetUnits
+	// had its say. Only for the log, and it earns its place there: it is the
+	// one way to tell a lean that is genuinely small from one the limit cut
+	// short, which otherwise look identical from inside the headset.
+	float GetRawOffsetUnits() const { return m_rawOffsetUnits; }
 
 	// The orientation last read, still in OpenXR convention. Mostly for
 	// diagnostics in the log.
@@ -137,6 +163,7 @@ private:
 	bool m_hasReferencePosition = false;
 
 	NiPoint3 m_cameraOffset{0.0f, 0.0f, 0.0f};
+	float m_rawOffsetUnits = 0.0f;
 
 	// Only used for TrackerSource::OpenVR, but it belongs here regardless:
 	// the connection to SteamVR has to persist across frames rather than be

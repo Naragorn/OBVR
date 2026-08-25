@@ -32,6 +32,7 @@ void HeadTracker::Configure(const TrackerSettings& settings) {
 		m_referencePosition = NiPoint3{0.0f, 0.0f, 0.0f};
 		m_hasReferencePosition = false;
 		m_cameraOffset = NiPoint3{0.0f, 0.0f, 0.0f};
+		m_rawOffsetUnits = 0.0f;
 	}
 
 	if (m_settings.source == TrackerSource::OpenVR) {
@@ -125,12 +126,17 @@ void HeadTracker::Update(UInt32 frameIndex) {
 
 	if (!hasPosition || !m_settings.positionalTracking) {
 		m_cameraOffset = NiPoint3{0.0f, 0.0f, 0.0f};
+		m_rawOffsetUnits = 0.0f;
 		return;
 	}
 
-	m_cameraOffset = ClampOffset(OffsetFromPose(m_reference, m_rawPosition,
-	                                            m_referencePosition, m_settings.unitsPerMetre),
-	                             m_settings.maxOffsetUnits);
+	// Kept apart on purpose: the offset before the limit is what the head
+	// actually asked for, and the log reports it so that a lean cut short by
+	// maxOffsetUnits can be told from one that was simply small.
+	const NiPoint3 rawOffset = OffsetFromPose(m_reference, m_rawPosition, m_referencePosition,
+	                                          m_settings.EffectiveUnitsPerMetre());
+	m_rawOffsetUnits = math::Sqrt(rawOffset.LengthSquared());
+	m_cameraOffset = ClampOffset(rawOffset, m_settings.maxOffsetUnits);
 }
 
 void HeadTracker::Recenter() {
@@ -141,6 +147,7 @@ void HeadTracker::Recenter() {
 	// The new zero is the pose being held right now, so the offset is zero by
 	// definition.
 	m_cameraOffset = NiPoint3{0.0f, 0.0f, 0.0f};
+	m_rawOffsetUnits = 0.0f;
 }
 
 }  // namespace obvr::vr

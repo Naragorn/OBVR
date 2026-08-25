@@ -194,12 +194,23 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Head", "PositionalTracking", config.tracker.positionalTracking, path);
 	config.tracker.unitsPerMetre =
 		ReadFloat("Head", "UnitsPerMetre", config.tracker.unitsPerMetre, path);
+	config.tracker.movementScale =
+		ReadFloat("Head", "HeadMovementScale", config.tracker.movementScale, path);
 	config.tracker.maxOffsetUnits =
 		ReadFloat("Head", "MaxLeanUnits", config.tracker.maxOffsetUnits, path);
 	config.look.blockVerticalLook =
 		ReadBool("Look", "BlockVerticalLook", config.look.blockVerticalLook, path);
-	config.look.verticalLookRange =
-		ReadFloat("Look", "VerticalLookRange", config.look.verticalLookRange, path);
+
+	// VerticalLookRange was one value for both directions until it turned out
+	// that a range sized for looking up stops at the hips on the way down. It
+	// is still read, as the fallback for both halves, so that an INI written
+	// before the split keeps meaning what it said rather than quietly
+	// reverting to the defaults.
+	const float legacyRange =
+		ReadFloat("Look", "VerticalLookRange", config.look.verticalLookUpRange, path);
+	config.look.verticalLookUpRange = ReadFloat("Look", "VerticalLookUpRange", legacyRange, path);
+	config.look.verticalLookDownRange =
+		ReadFloat("Look", "VerticalLookDownRange", legacyRange, path);
 	config.look.smoothVerticalLook =
 		ReadBool("Look", "SmoothVerticalLook", config.look.smoothVerticalLook, path);
 	config.look.verticalLookSpeed =
@@ -262,13 +273,21 @@ bool Config::Load(const char* fileName) {
 	// use - it saves converting in your head when a binding misbehaves.
 	OBVR_LOG("Config: RecenterKey=%u (0x%02X)%s", recenterKey, recenterKey,
 	         recenterKey == 0 ? " - recentering disabled" : "");
-	OBVR_LOG("Config: PositionalTracking=%d UnitsPerMetre=%.2f MaxLeanUnits=%.1f",
+	// The effective figure is logged alongside the two it comes from, because
+	// that product is what every lean is actually measured in and working it
+	// out by hand while reading a log is exactly the step that gets skipped.
+	OBVR_LOG("Config: PositionalTracking=%d UnitsPerMetre=%.2f HeadMovementScale=%.2f "
+	         "(effective %.2f) MaxLeanUnits=%.1f",
 	         tracker.positionalTracking ? 1 : 0,
 	         static_cast<double>(tracker.unitsPerMetre),
+	         static_cast<double>(tracker.movementScale),
+	         static_cast<double>(tracker.EffectiveUnitsPerMetre()),
 	         static_cast<double>(tracker.maxOffsetUnits));
-	OBVR_LOG("Config: BlockVerticalLook=%d VerticalLookRange=%.1f SmoothVerticalLook=%d (%.1f)",
+	OBVR_LOG("Config: BlockVerticalLook=%d VerticalLookRange=(up %.1f, down %.1f) "
+	         "SmoothVerticalLook=%d (%.1f)",
 	         look.blockVerticalLook ? 1 : 0,
-	         static_cast<double>(look.verticalLookRange),
+	         static_cast<double>(look.verticalLookUpRange),
+	         static_cast<double>(look.verticalLookDownRange),
 	         look.smoothVerticalLook ? 1 : 0,
 	         static_cast<double>(look.verticalLookSpeed));
 	OBVR_LOG("Config: SmoothTurning=%d TurnSpeed=%.1f",

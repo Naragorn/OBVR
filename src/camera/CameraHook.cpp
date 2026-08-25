@@ -153,8 +153,13 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		const vr::Quaternion& raw = g_headTracker.GetRawOrientation();
 		const NiPoint3& pos = cameraNode->localTransform.pos;
 		const NiPoint3& offset = g_headTracker.GetCameraOffset();
+		// The lean is reported twice over: the offset actually applied, and
+		// how far it reached for before MaxLeanUnits cut it. Equal means the
+		// limit never came into play; a raw figure stuck at MaxLeanUnits
+		// across several lines means it is the limit doing the deciding, not
+		// the head - and that is not something the headset can show you.
 		OBVR_LOG("Camera: frame %u, %s, %.1f ms, pos=(%.1f, %.1f, %.1f), "
-		         "head=(%.3f, %.3f, %.3f, %.3f), lean=(%.1f, %.1f, %.1f)",
+		         "head=(%.3f, %.3f, %.3f, %.3f), lean=(%.1f, %.1f, %.1f) raw=%.1f",
 		         g_state.frameCount,
 		         isThirdPerson ? "3rd" : "1st",
 		         static_cast<double>(deltaSeconds) * 1000.0,
@@ -167,7 +172,8 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		         static_cast<double>(raw.w),
 		         static_cast<double>(offset.x),
 		         static_cast<double>(offset.y),
-		         static_cast<double>(offset.z));
+		         static_cast<double>(offset.z),
+		         static_cast<double>(g_headTracker.GetRawOffsetUnits()));
 	}
 
 	// The heart of it: the vanilla rotation stays the base, the head rotation

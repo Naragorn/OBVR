@@ -41,8 +41,16 @@ void LookControl::Update(const NiMatrix33& vanillaRotation, bool isThirdPerson,
 	// The tilt the stick asked for, now that the rotation no longer carries
 	// it. In third person it becomes height; in first person it is dropped,
 	// which is what makes the vertical look keys do nothing there.
-	const float targetOffset =
-		isThirdPerson ? SinPitchOf(vanillaRotation) * m_settings.verticalLookRange : 0.0f;
+	//
+	// Up and down get their own range because the camera starts at head
+	// height rather than halfway along its travel - see LookSettings. The
+	// tilt is positive looking up, so it picks the range and carries the sign
+	// with it: a positive down range with a negative tilt still lowers the
+	// camera.
+	const float tilt = SinPitchOf(vanillaRotation);
+	const float range =
+		tilt >= 0.0f ? m_settings.verticalLookUpRange : m_settings.verticalLookDownRange;
+	const float targetOffset = isThirdPerson ? tilt * range : 0.0f;
 
 	m_verticalOffset =
 		m_settings.smoothVerticalLook
