@@ -83,7 +83,7 @@ bool OpenVRBackend::Start() {
 		return false;
 	}
 
-	// Background rather than Scene: in 0.0.3 OBVR only reads poses and must
+	// Background rather than Scene: OBVR only reads poses and must
 	// not take the scene away from the compositor.
 	int error = openvr::kInitErrorNone;
 	initInternal(&error, openvr::kApplicationBackground);
@@ -124,7 +124,7 @@ void OpenVRBackend::Stop() {
 	OBVR_LOG("OpenVR: disconnected");
 }
 
-bool OpenVRBackend::ReadHeadOrientation(Quaternion& out) const {
+bool OpenVRBackend::ReadHeadPose(Quaternion& orientation, NiPoint3& position) const {
 	if (m_system == nullptr) {
 		return false;
 	}
@@ -140,20 +140,21 @@ bool OpenVRBackend::ReadHeadOrientation(Quaternion& out) const {
 	// base stations.
 	openvr::TrackedDevicePose pose{};
 
-	// No prediction: predictedSecondsFromNow stays zero because in 0.0.3 OBVR
+	// No prediction: predictedSecondsFromNow stays zero because OBVR
 	// has no frame loop of its own and therefore does not know when the image
-	// will be presented. That belongs to 0.0.4.
+	// will be presented. That belongs to the milestone that brings a frame loop.
 	table->GetDeviceToAbsoluteTrackingPose(openvr::kTrackingUniverseSeated, 0.0f, &pose, 1);
 
 	if (!pose.poseIsValid || !pose.deviceIsConnected) {
 		// Happens routinely right after startup while tracking has not picked
-		// up yet. The caller keeps the last valid orientation instead of
-		// letting the camera snap back to rest.
+		// up yet. The caller keeps the last valid pose instead of letting the
+		// camera snap back to rest.
 		LogOnce(m_loggedNoPose, "no valid HMD pose yet");
 		return false;
 	}
 
-	out = FromOpenVRMatrix(pose.deviceToAbsoluteTracking.m);
+	orientation = FromOpenVRMatrix(pose.deviceToAbsoluteTracking.m);
+	position = PositionFromOpenVRMatrix(pose.deviceToAbsoluteTracking.m);
 	return true;
 }
 

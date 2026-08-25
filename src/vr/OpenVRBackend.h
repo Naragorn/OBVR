@@ -35,14 +35,18 @@ public:
 
 	bool IsRunning() const { return m_system != nullptr; }
 
-	// Current head orientation in OpenVR convention (X right, Y up,
-	// -Z forward), which is the same as OpenXR's. The caller still has to
-	// pass it through FromOpenXR.
+	// Current head pose in OpenVR convention (X right, Y up, -Z forward),
+	// which is the same as OpenXR's. The caller still has to pass both parts
+	// through the change of basis.
+	//
+	// The position is in metres and relative to the seated origin the user
+	// set in SteamVR. That origin means nothing to OBVR - only the difference
+	// against a stored reference does.
 	//
 	// Returns false while no valid pose is available - for instance because
 	// tracking has not picked up yet. The caller should then keep the last
-	// valid orientation instead of letting the camera jump.
-	bool ReadHeadOrientation(Quaternion& out) const;
+	// valid pose instead of letting the camera jump.
+	bool ReadHeadPose(Quaternion& orientation, NiPoint3& position) const;
 
 private:
 	// Logs a message once. The flag is diagnostic state rather than part of

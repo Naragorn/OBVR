@@ -54,6 +54,35 @@ struct State {
 	PovEvent ObservePointOfView(bool isThirdPerson);
 };
 
+// Turns successive readings of a high resolution counter into a frame time in
+// seconds.
+//
+// It takes the counter reading rather than reading the clock itself, which is
+// what makes it testable: a test hands it whatever sequence of ticks it wants
+// to describe, including the awkward ones.
+//
+// The upper limit is the point of it. A loading screen, an alt-tab or a
+// breakpoint leaves a gap of seconds between two frames. Fed into an
+// exponential approach, such a delta covers the entire remaining distance at
+// once and the smoothing it was meant to provide disappears exactly where it
+// is most visible - the first frame back.
+class FrameClock {
+public:
+	// Longest frame time this will report, in seconds. Five frames at 20 fps;
+	// anything longer was not a frame but a pause.
+	static constexpr float kMaxDeltaSeconds = 0.25f;
+
+	// Returns 0 on the first call, since there is no previous reading to
+	// measure against, and 0 means "no time information" to the caller.
+	float Tick(long long nowTicks, long long ticksPerSecond);
+
+	void Reset();
+
+private:
+	long long m_lastTicks = 0;
+	bool m_hasLast = false;
+};
+
 // Whether a periodic action is due on this frame.
 //
 // An interval of 0 means the action is switched off, which is why this is not

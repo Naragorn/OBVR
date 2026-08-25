@@ -15,6 +15,20 @@ struct NiPoint3 {
 	float x;
 	float y;
 	float z;
+
+	NiPoint3 operator+(const NiPoint3& rhs) const {
+		return NiPoint3{x + rhs.x, y + rhs.y, z + rhs.z};
+	}
+
+	NiPoint3 operator-(const NiPoint3& rhs) const {
+		return NiPoint3{x - rhs.x, y - rhs.y, z - rhs.z};
+	}
+
+	NiPoint3 operator*(float scale) const {
+		return NiPoint3{x * scale, y * scale, z * scale};
+	}
+
+	float LengthSquared() const { return x * x + y * y + z * z; }
 };
 
 static_assert(sizeof(NiPoint3) == 0x0C, "NiPoint3 must be 0x0C bytes");
@@ -42,6 +56,20 @@ struct NiMatrix33 {
 			}
 		}
 		return result;
+	}
+
+	// Transforms a vector out of the space this matrix describes into its
+	// parent space. Row major, so row i of the matrix meets the whole vector.
+	//
+	// This is what carries a head offset measured in camera space over into
+	// the space the CameraNode's position lives in - the counterpart to the
+	// rotation being multiplied on as rot * head.
+	NiPoint3 operator*(const NiPoint3& v) const {
+		return NiPoint3{
+			data[0][0] * v.x + data[0][1] * v.y + data[0][2] * v.z,
+			data[1][0] * v.x + data[1][1] * v.y + data[1][2] * v.z,
+			data[2][0] * v.x + data[2][1] * v.y + data[2][2] * v.z,
+		};
 	}
 };
 

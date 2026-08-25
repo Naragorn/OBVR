@@ -43,16 +43,64 @@ struct TrackerSettings {
 	float simulatedYawAmplitude = 25.0f;
 	float simulatedPitchAmplitude = 12.0f;
 	UInt32 simulatedPeriodFrames = 600;
+
+	// Whether head movement through space reaches the camera as well, not
+	// only head rotation. Only TrackerSource::OpenVR delivers a position; the
+	// other sources leave the camera where the game put it.
+	bool positionalTracking = true;
+
+	// Oblivion units per metre, for converting the head offset.
+	//
+	// The Construction Set wiki gives "21.3 units to a foot ... 64 units per
+	// yard [~70 units per metre]", the Creation Kit wiki the exact engine
+	// figure hk * 69.99125 = wu with 1 unit = 1.428 cm. Both agree.
+	//
+	// It is configurable regardless, because the number that matters is not
+	// the documented one but the one that makes a real head feel right in a
+	// real headset - and that can only be found by trying it.
+	float unitsPerMetre = 69.99125f;
+
+	// How far the camera may be displaced from where the game put it, in
+	// Oblivion units. 0 removes the limit.
+	//
+	// Roughly 40 units is 57 cm, which covers leaning without letting a
+	// tracking glitch or someone standing up push the camera through a wall.
+	float maxOffsetUnits = 40.0f;
+
+	// Whether the camera eases towards the head position instead of following
+	// it instantly, the way Luke Ross's VR mods do it.
+	//
+	// It costs latency, and latency is normally the enemy in VR. It is on
+	// anyway because what it buys is worth more here: tracking noise stops
+	// reaching the camera as jitter, and a jump - the moment tracking
+	// recovers, or a recenter - becomes a glide rather than a snap.
+	bool smoothPosition = true;
+
+	// How quickly the camera closes the remaining distance, per second.
+	//
+	// Per second, not per frame. UEVR computes its camera lerp the same way -
+	// "t = m_lerp_camera_speed->value() * delta" in
+	// VR::on_pre_calculate_stereo_view_offset - and the reason is that a
+	// per-frame share makes the easing depend on the frame rate: the same
+	// setting would feel twice as sluggish at 30 fps as at 60.
+	//
+	// 15 per second covers a quarter of what is left in each frame at 60 fps,
+	// so roughly 90 per cent of a lean has arrived after 150 ms.
+	float smoothingSpeed = 15.0f;
 };
 
 class HeadTracker {
 public:
 	void Configure(const TrackerSettings& settings);
 
-	// Once per frame. For the simulated head, frameIndex takes the place of
-	// time - OBVR needs no real clock for that, and without one the behaviour
-	// stays reproducible.
-	void Update(UInt32 frameIndex);
+	// Once per frame.
+	//
+	// frameIndex drives the simulated head, which deliberately runs on frame
+	// count rather than time so that it stays reproducible. deltaSeconds is
+	// the real frame time and drives only the position smoothing; 0 means the
+	// caller has no timing to offer, and the camera then follows the head
+	// without smoothing rather than freezing in place.
+	void Update(UInt32 frameIndex, float deltaSeconds);
 
 	// Takes the current head pose as the new zero. Everything after that is
 	// reported relative to it.
@@ -61,17 +109,44 @@ public:
 	// Rotation relative to the zero pose, ready in Oblivion's camera space.
 	const NiMatrix33& GetCameraRotation() const { return m_cameraRotation; }
 
+	// Head displacement relative to the zero pose, in Oblivion units and in
+	// the camera's own space. The caller has to rotate it into the space the
+	// camera's position lives in, exactly as it multiplies the rotation on.
+	//
+	// Zero whenever the source delivers no position or positional tracking is
+	// switched off, which leaves the vanilla camera position untouched.
+	const NiPoint3& GetCameraOffset() const { return m_cameraOffset; }
+
 	// The orientation last read, still in OpenXR convention. Mostly for
 	// diagnostics in the log.
 	const Quaternion& GetRawOrientation() const { return m_rawOrientation; }
 
 private:
-	Quaternion ReadSource(UInt32 frameIndex) const;
+	// Reads orientation and position from the configured source. Returns
+	// false when the source delivers no position, which is every source
+	// except a connected headset.
+	bool ReadSource(UInt32 frameIndex, Quaternion& orientation, NiPoint3& position) const;
 
 	TrackerSettings m_settings;
 	Quaternion m_rawOrientation = Quaternion::Identity();
 	Quaternion m_reference = Quaternion::Identity();
 	NiMatrix33 m_cameraRotation = NiMatrix33::Identity();
+
+	// Positions in metres, in the tracking universe.
+	//
+	// m_hasReferencePosition is what keeps the camera from being flung
+	// upwards on the first frame. The reference orientation can start as the
+	// identity because that simply means "no extra rotation", but there is no
+	// such harmless value for a position: the seated origin sits on the floor,
+	// so an uncalibrated reference would read the head as roughly 1.2 metres
+	// above zero and displace the camera by some 85 units for good. The first
+	// valid pose therefore becomes the reference on its own, without waiting
+	// for the recenter key.
+	NiPoint3 m_rawPosition{0.0f, 0.0f, 0.0f};
+	NiPoint3 m_referencePosition{0.0f, 0.0f, 0.0f};
+	bool m_hasReferencePosition = false;
+
+	NiPoint3 m_cameraOffset{0.0f, 0.0f, 0.0f};
 
 	// Only used for TrackerSource::OpenVR, but it belongs here regardless:
 	// the connection to SteamVR has to persist across frames rather than be

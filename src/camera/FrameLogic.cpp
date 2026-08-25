@@ -25,6 +25,36 @@ PovEvent State::ObservePointOfView(bool thirdPerson) {
 	return PovEvent::Switched;
 }
 
+float FrameClock::Tick(long long nowTicks, long long ticksPerSecond) {
+	const long long lastTicks = m_lastTicks;
+	const bool hadLast = m_hasLast;
+
+	m_lastTicks = nowTicks;
+	m_hasLast = true;
+
+	if (!hadLast || ticksPerSecond <= 0) {
+		return 0.0f;
+	}
+
+	const long long elapsed = nowTicks - lastTicks;
+	if (elapsed <= 0) {
+		// The counter is monotonic, so this means the caller handed in a
+		// stale reading. Reporting a negative frame time would run the
+		// smoothing backwards.
+		return 0.0f;
+	}
+
+	const float seconds =
+		static_cast<float>(static_cast<double>(elapsed) / static_cast<double>(ticksPerSecond));
+
+	return seconds > kMaxDeltaSeconds ? kMaxDeltaSeconds : seconds;
+}
+
+void FrameClock::Reset() {
+	m_lastTicks = 0;
+	m_hasLast = false;
+}
+
 bool IsDue(UInt32 frameCount, UInt32 interval) {
 	if (interval == 0) {
 		return false;

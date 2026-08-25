@@ -2,6 +2,7 @@
 
 #include "core/MathFns.h"
 #include "core/Rotation.h"
+#include "vr/HeadOffset.h"
 
 namespace obvr::vr {
 namespace {
@@ -26,6 +27,11 @@ void HeadTracker::Configure(const TrackerSettings& settings) {
 		m_reference = Quaternion::Identity();
 		m_rawOrientation = Quaternion::Identity();
 		m_cameraRotation = NiMatrix33::Identity();
+
+		m_rawPosition = NiPoint3{0.0f, 0.0f, 0.0f};
+		m_referencePosition = NiPoint3{0.0f, 0.0f, 0.0f};
+		m_hasReferencePosition = false;
+		m_cameraOffset = NiPoint3{0.0f, 0.0f, 0.0f};
 	}
 
 	if (m_settings.source == TrackerSource::OpenVR) {
@@ -35,10 +41,12 @@ void HeadTracker::Configure(const TrackerSettings& settings) {
 	}
 }
 
-Quaternion HeadTracker::ReadSource(UInt32 frameIndex) const {
+bool HeadTracker::ReadSource(UInt32 frameIndex, Quaternion& orientation,
+                             NiPoint3& position) const {
 	switch (m_settings.source) {
 		case TrackerSource::None:
-			return Quaternion::Identity();
+			orientation = Quaternion::Identity();
+			return false;
 
 		case TrackerSource::Fixed: {
 			// The fixed angles are already meant in Oblivion axes. So that they
@@ -48,7 +56,8 @@ Quaternion HeadTracker::ReadSource(UInt32 frameIndex) const {
 			const Quaternion pitch = FromAxisAngle(1.0f, 0.0f, 0.0f, m_settings.fixedPitch);
 			const Quaternion yaw = FromAxisAngle(0.0f, 1.0f, 0.0f, m_settings.fixedYaw);
 			const Quaternion roll = FromAxisAngle(0.0f, 0.0f, 1.0f, -m_settings.fixedRoll);
-			return (yaw * pitch * roll).Normalized();
+			orientation = (yaw * pitch * roll).Normalized();
+			return false;
 		}
 
 		case TrackerSource::Simulated: {
@@ -67,39 +76,79 @@ Quaternion HeadTracker::ReadSource(UInt32 frameIndex) const {
 
 			const Quaternion yaw = FromAxisAngle(0.0f, 1.0f, 0.0f, yawDegrees);
 			const Quaternion pitch = FromAxisAngle(1.0f, 0.0f, 0.0f, pitchDegrees);
-			return (yaw * pitch).Normalized();
+			orientation = (yaw * pitch).Normalized();
+			return false;
 		}
 
 		case TrackerSource::OpenVR: {
-			Quaternion orientation = Quaternion::Identity();
-			if (m_openVR.ReadHeadOrientation(orientation)) {
-				return orientation;
+			if (m_openVR.ReadHeadPose(orientation, position)) {
+				return true;
 			}
 			// No valid pose - because SteamVR is not running, or tracking has
 			// not picked up yet. Keep the last orientation instead of letting
 			// the camera snap back to rest. Without a connection that is the
 			// identity, which means the vanilla camera.
-			return m_rawOrientation;
+			orientation = m_rawOrientation;
+			return false;
 		}
 
 		case TrackerSource::OpenXR:
 			// Not wired up yet. Until then the camera stays unchanged rather
 			// than being fed an invented orientation.
-			return Quaternion::Identity();
+			orientation = Quaternion::Identity();
+			return false;
 	}
 
-	return Quaternion::Identity();
+	orientation = Quaternion::Identity();
+	return false;
 }
 
-void HeadTracker::Update(UInt32 frameIndex) {
-	m_rawOrientation = ReadSource(frameIndex);
+void HeadTracker::Update(UInt32 frameIndex, float deltaSeconds) {
+	NiPoint3 position{0.0f, 0.0f, 0.0f};
+	const bool hasPosition = ReadSource(frameIndex, m_rawOrientation, position);
 
 	// Factor out the reference first, change coordinate system second. Doing
 	// both in OpenXR convention keeps the conversion in one place.
 	const Quaternion relative = (m_reference.Conjugate() * m_rawOrientation).Normalized();
 	m_cameraRotation = ToMatrix(FromOpenXR(relative));
+
+	// The raw position is kept even when positional tracking is switched off,
+	// so that switching it on through the hot reload starts from where the
+	// head actually is rather than from a stale reading.
+	if (hasPosition) {
+		m_rawPosition = position;
+		if (!m_hasReferencePosition) {
+			m_referencePosition = position;
+			m_hasReferencePosition = true;
+		}
+	}
+
+	if (!hasPosition || !m_settings.positionalTracking) {
+		m_cameraOffset = NiPoint3{0.0f, 0.0f, 0.0f};
+		return;
+	}
+
+	const NiPoint3 target =
+		ClampOffset(OffsetFromPose(m_reference, m_rawPosition, m_referencePosition,
+		                           m_settings.unitsPerMetre),
+		            m_settings.maxOffsetUnits);
+
+	m_cameraOffset =
+		m_settings.smoothPosition
+			? Approach(m_cameraOffset, target, m_settings.smoothingSpeed, deltaSeconds)
+			: target;
 }
 
-void HeadTracker::Recenter() { m_reference = m_rawOrientation; }
+void HeadTracker::Recenter() {
+	m_reference = m_rawOrientation;
+	m_referencePosition = m_rawPosition;
+	m_hasReferencePosition = true;
+
+	// The new zero is the pose being held right now, so the offset is zero by
+	// definition. Setting it here rather than letting the smoothing walk it
+	// down means recentering takes effect at once, which is the whole point
+	// of pressing the key.
+	m_cameraOffset = NiPoint3{0.0f, 0.0f, 0.0f};
+}
 
 }  // namespace obvr::vr

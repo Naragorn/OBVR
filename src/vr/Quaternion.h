@@ -67,8 +67,8 @@ NiMatrix33 ToMatrix(const Quaternion& rotation);
 //
 // OpenVR delivers poses as HmdMatrix34_t, that is float m[3][4] in row major
 // order: the left three columns hold the rotation, the fourth holds the
-// position. The position is discarded here - 0.0.3 delivers 3DoF, no head
-// movement through space.
+// position. Only the rotation is read here; PositionFromOpenVRMatrix takes
+// the fourth column.
 //
 // The parameter is deliberately a bare float[3][4] rather than an
 // HmdMatrix34_t, which keeps this header free of OpenVR declarations and
@@ -77,5 +77,38 @@ NiMatrix33 ToMatrix(const Quaternion& rotation);
 // The result is in OpenVR convention, which matches OpenXR (X right, Y up,
 // -Z forward) - so it still has to go through FromOpenXR.
 Quaternion FromOpenVRMatrix(const float matrix[3][4]);
+
+// Reads the position out of an OpenVR pose: the fourth column of the same
+// 3x4 matrix, in metres, still in OpenVR/OpenXR convention.
+//
+// The tracking universe is Seated, so the origin is where the user last set
+// their seated zero in SteamVR. That origin is not OBVR's zero - the
+// difference against a stored reference position is what matters, never the
+// absolute value.
+NiPoint3 PositionFromOpenVRMatrix(const float matrix[3][4]);
+
+// The same change of basis as FromOpenXR, applied to a position rather than
+// an orientation:
+//
+//     x_obl =  x_xr
+//     y_obl = -z_xr
+//     z_obl =  y_xr
+//
+// Leaning forward in the room is -Z in OpenXR and therefore +Y in Oblivion,
+// which is forward there. Standing up is +Y in OpenXR and +Z in Oblivion,
+// which is up. Both match, and they are the two directions a wrong sign would
+// be noticed in first.
+NiPoint3 PositionFromOpenXR(const NiPoint3& openXrPosition);
+
+// Rotates a vector by a quaternion.
+//
+// Needed for recentering the position: the head offset is measured in the
+// tracking universe, whose forward direction is wherever SteamVR's seated
+// zero happens to point. Rotating the offset by the conjugate of the
+// reference orientation expresses it in the frame the user was facing when
+// they pressed the recenter key, which is the frame the camera lives in.
+//
+// v' = v + 2 * cross(q.xyz, cross(q.xyz, v) + q.w * v)
+NiPoint3 Rotate(const Quaternion& rotation, const NiPoint3& v);
 
 }  // namespace obvr::vr

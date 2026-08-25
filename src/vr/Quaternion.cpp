@@ -129,4 +129,32 @@ Quaternion FromOpenVRMatrix(const float matrix[3][4]) {
 	return result.Normalized();
 }
 
+NiPoint3 PositionFromOpenVRMatrix(const float matrix[3][4]) {
+	// The fourth column. Row major, so it is m[row][3] rather than m[3][row].
+	return NiPoint3{matrix[0][3], matrix[1][3], matrix[2][3]};
+}
+
+NiPoint3 PositionFromOpenXR(const NiPoint3& openXrPosition) {
+	return NiPoint3{openXrPosition.x, -openXrPosition.z, openXrPosition.y};
+}
+
+NiPoint3 Rotate(const Quaternion& rotation, const NiPoint3& v) {
+	const float qx = rotation.x;
+	const float qy = rotation.y;
+	const float qz = rotation.z;
+	const float qw = rotation.w;
+
+	// t = cross(q.xyz, v) + w * v
+	const float tx = qy * v.z - qz * v.y + qw * v.x;
+	const float ty = qz * v.x - qx * v.z + qw * v.y;
+	const float tz = qx * v.y - qy * v.x + qw * v.z;
+
+	// v + 2 * cross(q.xyz, t)
+	return NiPoint3{
+		v.x + 2.0f * (qy * tz - qz * ty),
+		v.y + 2.0f * (qz * tx - qx * tz),
+		v.z + 2.0f * (qx * ty - qy * tx),
+	};
+}
+
 }  // namespace obvr::vr

@@ -16,6 +16,7 @@ vr::HeadTracker g_headTracker;
 constexpr UInt32 kTrampolineSize = 64;
 
 KeyEdge g_recenterEdge;
+FrameClock g_frameClock;
 
 bool ReadIsThirdPerson() {
 	auto* player = *reinterpret_cast<UInt8**>(addr::kPlayerPointer);
@@ -122,7 +123,12 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	++g_state.frameCount;
 	MaybeReloadConfig();
 
-	g_headTracker.Update(g_state.frameCount);
+	// The counter frequency is fixed for the lifetime of the process, so it
+	// is read once rather than every frame.
+	static const long long ticksPerSecond = ReadPerformanceFrequency();
+	const float deltaSeconds = g_frameClock.Tick(ReadPerformanceCounter(), ticksPerSecond);
+
+	g_headTracker.Update(g_state.frameCount, deltaSeconds);
 
 	// After Update, so that the recenter reference is this frame's
 	// orientation rather than the previous one. The new zero therefore takes
@@ -135,22 +141,38 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	if (IsDue(g_state.frameCount, config.logEveryFrames)) {
 		const vr::Quaternion& raw = g_headTracker.GetRawOrientation();
 		const NiPoint3& pos = cameraNode->localTransform.pos;
-		OBVR_LOG("Camera: frame %u, %s, pos=(%.1f, %.1f, %.1f), head=(%.3f, %.3f, %.3f, %.3f)",
+		const NiPoint3& offset = g_headTracker.GetCameraOffset();
+		OBVR_LOG("Camera: frame %u, %s, %.1f ms, pos=(%.1f, %.1f, %.1f), "
+		         "head=(%.3f, %.3f, %.3f, %.3f), lean=(%.1f, %.1f, %.1f)",
 		         g_state.frameCount,
 		         isThirdPerson ? "3rd" : "1st",
+		         static_cast<double>(deltaSeconds) * 1000.0,
 		         static_cast<double>(pos.x),
 		         static_cast<double>(pos.y),
 		         static_cast<double>(pos.z),
 		         static_cast<double>(raw.x),
 		         static_cast<double>(raw.y),
 		         static_cast<double>(raw.z),
-		         static_cast<double>(raw.w));
+		         static_cast<double>(raw.w),
+		         static_cast<double>(offset.x),
+		         static_cast<double>(offset.y),
+		         static_cast<double>(offset.z));
 	}
 
 	// The heart of it: the vanilla rotation stays the base, the head rotation
 	// acts in local camera space.
-	cameraNode->localTransform.rot =
-		cameraNode->localTransform.rot * g_headTracker.GetCameraRotation();
+	//
+	// The order matters. The head offset is measured in the camera's own
+	// space, so it has to be carried over by the vanilla rotation - the one
+	// the game computed, without the head laid on top. Taking the product
+	// instead would tie leaning to where the head is looking, and leaning
+	// forward while glancing sideways would slide the camera sideways.
+	const NiMatrix33 vanillaRotation = cameraNode->localTransform.rot;
+
+	cameraNode->localTransform.pos =
+		cameraNode->localTransform.pos + vanillaRotation * g_headTracker.GetCameraOffset();
+
+	cameraNode->localTransform.rot = vanillaRotation * g_headTracker.GetCameraRotation();
 }
 
 vr::HeadTracker& GetHeadTracker() { return g_headTracker; }

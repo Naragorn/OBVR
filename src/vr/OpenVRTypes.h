@@ -36,7 +36,7 @@ constexpr UInt32 kMaxTrackedDeviceCount = 64;
 
 // EVRApplicationType_VRApplication_Background (openvr_capi.h, line 1236)
 //
-// Deliberately Background rather than Scene: in 0.0.3 OBVR only reads poses.
+// Deliberately Background rather than Scene: OBVR only reads poses.
 // As a scene application it would claim the compositor and take the scene
 // away from whatever SteamVR is already showing.
 constexpr int kApplicationBackground = 3;

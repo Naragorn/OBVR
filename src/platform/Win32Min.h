@@ -47,6 +47,21 @@ OBVR_IMPORT DWORD OBVR_STDCALL GetPrivateProfileStringA(const char* section, con
 OBVR_IMPORT DWORD OBVR_STDCALL GetModuleFileNameA(HMODULE module, char* fileName, DWORD size);
 OBVR_IMPORT DWORD OBVR_STDCALL GetFileAttributesA(const char* fileName);
 
+// For the frame time the position smoothing needs. A high resolution counter
+// rather than GetTickCount, whose resolution of 10 to 16 ms is of the same
+// order as a frame itself.
+//
+// The counter is a 64-bit value, declared here as two 32-bit halves so that
+// this header needs no 64-bit integer type of its own. x86 is little endian,
+// so the low half comes first.
+struct LargeInteger {
+	UInt32 low;
+	SInt32 high;
+};
+
+OBVR_IMPORT BOOL OBVR_STDCALL QueryPerformanceCounter(LargeInteger* count);
+OBVR_IMPORT BOOL OBVR_STDCALL QueryPerformanceFrequency(LargeInteger* frequency);
+
 // For the OpenVR backend. openvr_api.dll is loaded at runtime rather than
 // linked, so that OBVR still loads without SteamVR installed.
 //
@@ -82,5 +97,42 @@ extern "C" double __cdecl cos(double value);
 #include <cstring>
 
 inline HANDLE InvalidHandle() { return INVALID_HANDLE_VALUE; }
+
+#endif
+
+// One reading of the high resolution counter, and its frequency, regardless
+// of which branch above supplied the import.
+//
+// The Windows SDK spells the argument LARGE_INTEGER while the SDK-free branch
+// spells it LargeInteger. Both are two 32-bit halves in the same order, so the
+// generated code is identical and only the name differs - which is exactly
+// what these two wrappers hide, so that callers need no #if of their own.
+#if defined(OBVR_NO_WINSDK)
+
+inline long long ReadPerformanceCounter() {
+	LargeInteger value{0, 0};
+	QueryPerformanceCounter(&value);
+	return (static_cast<long long>(value.high) << 32) | value.low;
+}
+
+inline long long ReadPerformanceFrequency() {
+	LargeInteger value{0, 0};
+	QueryPerformanceFrequency(&value);
+	return (static_cast<long long>(value.high) << 32) | value.low;
+}
+
+#else
+
+inline long long ReadPerformanceCounter() {
+	LARGE_INTEGER value{};
+	QueryPerformanceCounter(&value);
+	return value.QuadPart;
+}
+
+inline long long ReadPerformanceFrequency() {
+	LARGE_INTEGER value{};
+	QueryPerformanceFrequency(&value);
+	return value.QuadPart;
+}
 
 #endif

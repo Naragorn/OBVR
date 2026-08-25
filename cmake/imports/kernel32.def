@@ -20,3 +20,5 @@ LoadLibraryA@4
 GetProcAddress@8
 FreeLibrary@4
 GetFileAttributesA@4
+QueryPerformanceCounter@4
+QueryPerformanceFrequency@4

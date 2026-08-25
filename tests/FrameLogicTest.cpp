@@ -133,6 +133,67 @@ void TestIsDue() {
 	Check(IsDue(0, 120), "frame 0 counts as due, which is why counting starts at 1");
 }
 
+void TestFrameClock() {
+	std::printf("Frame clock\n");
+
+	// A counter that ticks a million times a second, so one tick is one
+	// microsecond and every number below reads directly as a duration.
+	constexpr long long kPerSecond = 1000000;
+	obvr::camera::FrameClock clock;
+
+	// Nothing to measure against on the first call. Returning some invented
+	// frame time would be worse than saying so: the caller treats 0 as "no
+	// timing" and skips smoothing for that one frame.
+	Check(clock.Tick(5000000, kPerSecond) == 0.0f, "the first reading reports no frame time");
+
+	const float sixtyFps = clock.Tick(5000000 + 16667, kPerSecond);
+	Check(sixtyFps > 0.0166f && sixtyFps < 0.0167f, "16667 microseconds is about a 60 fps frame");
+
+	const float thirtyFps = clock.Tick(5000000 + 16667 + 33333, kPerSecond);
+	Check(thirtyFps > 0.0333f && thirtyFps < 0.0334f, "and 33333 is about a 30 fps one");
+
+	// A frequency of 0 would divide by zero. It should not happen, but the
+	// value comes from an API call rather than from OBVR.
+	Check(clock.Tick(6000000, 0) == 0.0f, "a frequency of 0 reports no frame time");
+}
+
+void TestFrameClockGaps() {
+	std::printf("Frame clock, pauses and oddities\n");
+
+	constexpr long long kPerSecond = 1000000;
+	obvr::camera::FrameClock clock;
+	clock.Tick(0, kPerSecond);
+
+	// A loading screen, an alt-tab or a breakpoint. Fed unclamped into an
+	// exponential approach, a gap of seconds covers the whole remaining
+	// distance in one step - so the smoothing would vanish precisely on the
+	// first frame back, which is the one frame where a jump is most visible.
+	const float afterPause = clock.Tick(30 * kPerSecond, kPerSecond);
+	Check(afterPause == obvr::camera::FrameClock::kMaxDeltaSeconds,
+	      "a pause of 30 seconds is reported as the maximum, not as 30 seconds");
+
+	// Recovery has to be immediate: the frame after the pause is measured
+	// against the pause, not against the frame before it.
+	const float next = clock.Tick(30 * kPerSecond + 16667, kPerSecond);
+	Check(next > 0.0166f && next < 0.0167f, "the frame after a pause is measured normally");
+
+	// The counter is monotonic, so this means a stale reading rather than
+	// time running backwards. A negative frame time would run the smoothing
+	// the wrong way.
+	Check(clock.Tick(0, kPerSecond) == 0.0f, "a reading that went backwards reports nothing");
+
+	// Two frames so close together that the counter has not moved.
+	clock.Tick(40 * kPerSecond, kPerSecond);
+	Check(clock.Tick(40 * kPerSecond, kPerSecond) == 0.0f,
+	      "two readings at the same tick report nothing");
+
+	// After a reset the next call is a first call again.
+	obvr::camera::FrameClock reset;
+	reset.Tick(1000, kPerSecond);
+	reset.Reset();
+	Check(reset.Tick(2000, kPerSecond) == 0.0f, "after a reset the next reading is a first one");
+}
+
 }  // namespace
 
 int main() {
@@ -147,6 +208,10 @@ int main() {
 	TestFirstPassInThirdPerson();
 	std::printf("\n");
 	TestIsDue();
+	std::printf("\n");
+	TestFrameClock();
+	std::printf("\n");
+	TestFrameClockGaps();
 
 	std::printf("\n");
 	if (g_failures == 0) {

@@ -190,6 +190,17 @@ void ReadRuntimeValues(Config& config, const char* path) {
 
 	config.recenterKey = ReadKeyCode("Head", "RecenterKey", config.recenterKey, path);
 
+	config.tracker.positionalTracking =
+		ReadBool("Head", "PositionalTracking", config.tracker.positionalTracking, path);
+	config.tracker.unitsPerMetre =
+		ReadFloat("Head", "UnitsPerMetre", config.tracker.unitsPerMetre, path);
+	config.tracker.maxOffsetUnits =
+		ReadFloat("Head", "MaxLeanUnits", config.tracker.maxOffsetUnits, path);
+	config.tracker.smoothPosition =
+		ReadBool("Head", "SmoothPosition", config.tracker.smoothPosition, path);
+	config.tracker.smoothingSpeed =
+		ReadFloat("Head", "SmoothingSpeed", config.tracker.smoothingSpeed, path);
+
 	config.logEveryFrames = ReadUInt("Debug", "LogEveryFrames", config.logEveryFrames, path);
 	config.reloadEveryFrames =
 		ReadUInt("Debug", "ReloadEveryFrames", config.reloadEveryFrames, path);
@@ -244,6 +255,13 @@ bool Config::Load(const char* fileName) {
 	// use - it saves converting in your head when a binding misbehaves.
 	OBVR_LOG("Config: RecenterKey=%u (0x%02X)%s", recenterKey, recenterKey,
 	         recenterKey == 0 ? " - recentering disabled" : "");
+	OBVR_LOG("Config: PositionalTracking=%d UnitsPerMetre=%.2f MaxLeanUnits=%.1f",
+	         tracker.positionalTracking ? 1 : 0,
+	         static_cast<double>(tracker.unitsPerMetre),
+	         static_cast<double>(tracker.maxOffsetUnits));
+	OBVR_LOG("Config: SmoothPosition=%d SmoothingSpeed=%.1f",
+	         tracker.smoothPosition ? 1 : 0,
+	         static_cast<double>(tracker.smoothingSpeed));
 	return true;
 }
 

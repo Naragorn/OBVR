@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(OBVR VERSION 0.0.3 LANGUAGES CXX)
+project(OBVR VERSION 0.0.4 LANGUAGES CXX)
 
 # OBVR loads as a plugin into Oblivion.exe. That is 32 bit, so the DLL has to
 # be 32 bit as well - there is no way around it.
@@ -33,6 +33,7 @@ add_library(OBVR SHARED
 	src/core/Rotation.cpp
 	src/platform/Freestanding.cpp
 	src/platform/PluginPath.cpp
+	src/vr/HeadOffset.cpp
 	src/vr/HeadTracker.cpp
 	src/vr/OpenVRBackend.cpp
 	src/vr/Quaternion.cpp

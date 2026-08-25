@@ -38,6 +38,21 @@ follows head movement in first and third person, the character does not turn alo
 and `Del` recenters. The log of that run is
 `docs/verification/OBVR-openvr-headtracking.log`.
 
+0.0.4 turns the 3DoF into 6DoF **for the head**: leaning forward, sideways or standing up
+moves the camera with you. Locomotion stays entirely with the game - this is head movement
+within arm's reach, not room-scale walking.
+
+Three things make it usable rather than merely correct. The offset is measured against a
+reference position captured on the first valid pose, so the roughly 1.2 m between the
+seated floor origin and a head does not displace the camera permanently. It is capped at
+`MaxLeanUnits`, because a tracking glitch or someone standing up and walking off would
+otherwise drag the camera through the nearest wall. And it is smoothed: the camera eases
+towards the head at `SmoothingSpeed` per second rather than snapping. The speed is per
+second rather than per frame for the reason UEVR computes its camera lerp the same way, as
+`t = m_lerp_camera_speed->value() * delta` - a per-frame share would make the same setting
+feel twice as sluggish at 30 fps as at 60. Recentering is deliberately exempt from the
+smoothing and takes effect at once.
+
 Recentering sits on the **Del** key by default. It takes the current head pose as the new
 zero, so you can settle into a comfortable position and make that the forward direction.
 Vanilla Oblivion does not bind Del, so it cannot collide with a game action. The key is
@@ -180,7 +195,7 @@ verification environment, not a comfortable one — for a release MSVC stays the
 
 ### Tests
 
-Nine test binaries, all without a running Oblivion:
+Ten test binaries, all without a running Oblivion:
 
 - **`trampoline_test`** checks the generated hook bytes against expected values worked out
   by hand. A mistake there reliably crashes Oblivion. It also covers the 4GB-patched case
@@ -215,6 +230,11 @@ Nine test binaries, all without a running Oblivion:
 - **`plugin_path_test`** checks where OBVR looks for its own files, including the buffer
   being too small — a path is one of the few things in OBVR whose length is not under its
   own control. Windows only.
+- **`head_offset_test`** checks the arithmetic of positional tracking, which is where the
+  mistakes live: a wrong sign in the change of basis makes leaning forward pull the camera
+  backwards, and a missing rotation by the reference orientation makes leaning work only if
+  the seated zero in SteamVR happens to face the same way as the player - a fault that is
+  invisible in a play session that starts out facing the right way.
 - **`frame_logic_test`** checks the per-frame decisions of the camera hook. The callback
   itself cannot be tested — it needs a live `CameraNode` — so the decisions were lifted out
   into `camera/FrameLogic`: the recenter key edge, the point-of-view transition, and whether

@@ -53,8 +53,9 @@ int main() {
 	Check(!backend.IsRunning(), "backend reports itself as not running");
 
 	obvr::vr::Quaternion orientation = obvr::vr::Quaternion::Identity();
-	const bool read = backend.ReadHeadOrientation(orientation);
-	Check(!read, "ReadHeadOrientation reports false without a connection");
+	obvr::NiPoint3 position{0.0f, 0.0f, 0.0f};
+	const bool read = backend.ReadHeadPose(orientation, position);
+	Check(!read, "ReadHeadPose reports false without a connection");
 
 	// A second attempt must neither crash nor flood the log.
 	Check(!backend.Start(), "second Start stays without effect as well");

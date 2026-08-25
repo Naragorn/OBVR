@@ -72,6 +72,21 @@ endif()
 
 add_test(NAME frame_logic COMMAND frame_logic_test)
 
+add_executable(head_offset_test
+	HeadOffsetTest.cpp
+	../src/vr/HeadOffset.cpp
+	../src/vr/Quaternion.cpp
+	../src/core/Rotation.cpp
+)
+
+target_include_directories(head_offset_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(head_offset_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME head_offset COMMAND head_offset_test)
+
 add_executable(openvr_pose_test
 	OpenVRPoseTest.cpp
 	../src/vr/Quaternion.cpp
@@ -129,6 +144,7 @@ if(WIN32)
 	add_executable(head_tracker_test
 		HeadTrackerTest.cpp
 		../src/vr/HeadTracker.cpp
+		../src/vr/HeadOffset.cpp
 		../src/vr/OpenVRBackend.cpp
 		../src/vr/Quaternion.cpp
 		../src/core/Rotation.cpp

@@ -68,7 +68,7 @@ controller.
 | 0.0.1 | plugin loads, logging, version check, camera hook, fixed test rotation | **verified in the game** |
 | 0.0.2 | quaternion layer, recenter, interchangeable head source, config hot reload | **verified in the game** |
 | 0.0.3 | OpenVR wired up, real HMD rotation on the camera | **verified in the game** |
-| 0.0.4 | positional head tracking, vertical look input redirected | open ← **continue here** |
+| 0.0.4 | positional head tracking, 6DoF for the head | **implemented and covered by tests**, not yet verified in the game ← **continue here** |
 | 0.0.5 | frame loop, left and right swapchain, test images in the headset | open |
 | 0.1.0 | Oblivion's world as real dual-pass stereo | open |
 
@@ -306,7 +306,7 @@ OBVR/
 │   ├── camera/
 │   │   ├── CameraHook.{h,cpp}          callback + hook installation
 │   │   ├── CameraTrampoline.{h,cpp}    byte generation, platform free, tested
-│   │   └── FrameLogic.{h,cpp}          per-frame decisions, game free, tested
+│   │   └── FrameLogic.{h,cpp}          per-frame decisions + frame clock, tested
 │   ├── core/
 │   │   ├── CodeWriter.{h,cpp}          mini assembler
 │   │   ├── Config.{h,cpp}              INI + hot reload
@@ -325,6 +325,7 @@ OBVR/
 │   │   ├── PluginPath.{h,cpp}          plugin and game anchor, for Mod Organizer 2
 │   │   └── Win32Min.h                  narrow Win32 layer
 │   └── vr/
+│       ├── HeadOffset.{h,cpp}          head position to camera offset, tested
 │       ├── HeadTracker.{h,cpp}         interchangeable head source
 │       ├── OpenVRBackend.{h,cpp}       SteamVR connection, loaded at runtime
 │       ├── OpenVRTypes.h               binary-compatible OpenVR replica
@@ -334,6 +335,7 @@ OBVR/
     ├── QuaternionTest.cpp
     ├── RotationTest.cpp
     ├── FrameLogicTest.cpp
+    ├── HeadOffsetTest.cpp
     ├── OpenVRPoseTest.cpp
     ├── OpenVRBackendTest.cpp
     ├── ConfigTest.cpp
@@ -421,6 +423,10 @@ ctest --test-dir build-tests --output-on-failure
 - `head_tracker_test` — each source, recenter semantics, and the regression guard that a
   hot reload with unchanged settings must not reset the recenter reference. Windows only.
 - `plugin_path_test` — the two anchors and the buffer-too-small contract. Windows only.
+- `head_offset_test` - the arithmetic of positional tracking: which way a lean moves the
+  camera, that only the difference against the reference counts, that the lean is read in
+  the frame the user recentered in, the lean limit, and the smoothing. Pure arithmetic, so
+  it runs on Linux too.
 - `frame_logic_test` — the per-frame decisions of the camera hook, lifted out of the
   callback into `camera/FrameLogic`: the recenter key edge, the point-of-view transition,
   and whether a periodic action is due. The edge is the one that matters. Without it a held
