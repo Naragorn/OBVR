@@ -156,6 +156,18 @@ public:
 		return m_settings.source == TrackerSource::OpenVR && m_openVR.IsSceneApplication();
 	}
 
+	// The connection to SteamVR, for whatever else needs it.
+	//
+	// Handed out rather than wrapped in pass-through methods. There has to be
+	// exactly one registration with SteamVR and this class owns it, so the
+	// alternatives are to expose it or to grow a second set of methods here
+	// for every part of OpenVR that has nothing to do with head tracking.
+	// Exposing it is the smaller lie: it says plainly that ownership sits
+	// here for historical reasons rather than good ones, and the day a second
+	// caller needs to change the connection rather than read it, that is the
+	// day this becomes a session object of its own.
+	const OpenVRBackend& GetBackend() const { return m_openVR; }
+
 private:
 	// Reads orientation and position from the configured source. Returns
 	// false when the source delivers no position, which is every source

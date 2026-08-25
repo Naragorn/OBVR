@@ -174,6 +174,54 @@ void OpenVRBackend::Stop() {
 	OBVR_LOG("OpenVR: disconnected");
 }
 
+int OpenVRBackend::WaitGetPoses() const {
+	if (m_compositor == nullptr) {
+		return openvr::kCompositorErrorIsNotSceneApplication;
+	}
+
+	auto* table = static_cast<openvr::IVRCompositorFnTable*>(m_compositor);
+	if (table->WaitGetPoses == nullptr) {
+		return openvr::kCompositorErrorIsNotSceneApplication;
+	}
+
+	// One entry rather than kMaxTrackedDeviceCount, for the same reason
+	// ReadHeadPose asks for one: the HMD is index 0 and the array is filled
+	// from the front, so the rest would be five kilobytes of controllers and
+	// base stations on the stack every frame.
+	//
+	// The game poses are declined outright. They are the poses to run game
+	// logic against, and Oblivion's logic knows nothing about a headset.
+	openvr::TrackedDevicePose renderPose{};
+	return table->WaitGetPoses(&renderPose, 1, nullptr, 0);
+}
+
+int OpenVRBackend::SubmitEye(int eye, void* texture) const {
+	if (m_compositor == nullptr || texture == nullptr) {
+		return openvr::kCompositorErrorIsNotSceneApplication;
+	}
+
+	auto* table = static_cast<openvr::IVRCompositorFnTable*>(m_compositor);
+	if (table->Submit == nullptr) {
+		return openvr::kCompositorErrorIsNotSceneApplication;
+	}
+
+	openvr::Texture description{};
+	description.handle = texture;
+	description.type = openvr::kTextureTypeDirectX;
+
+	// Auto rather than a stated colour space. The texture is
+	// R8G8B8A8_UNORM, and letting the compositor apply its own rule for that
+	// format is more likely to be right than OBVR asserting one - the ramp in
+	// the test pattern is there precisely so that a wrong guess here is
+	// visible rather than merely suspected.
+	description.colorSpace = openvr::kColorSpaceAuto;
+
+	// No bounds: the whole texture is this eye. Submitting both eyes from one
+	// texture would need them, and that is a later optimisation rather than
+	// something to build before there is a picture at all.
+	return table->Submit(eye, &description, nullptr, openvr::kSubmitDefault);
+}
+
 bool OpenVRBackend::GetRecommendedRenderTargetSize(UInt32& width, UInt32& height) const {
 	if (m_system == nullptr) {
 		return false;

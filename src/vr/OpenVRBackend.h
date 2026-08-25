@@ -70,6 +70,31 @@ public:
 	// valid pose instead of letting the camera jump.
 	bool ReadHeadPose(Quaternion& orientation, NiPoint3& position) const;
 
+	// Blocks until the compositor wants the next frame, and returns its error
+	// code - kCompositorErrorNone means go.
+	//
+	// This is what puts Oblivion on the compositor's clock, and that is
+	// deliberate: it is how the picture stays in step with the headset. It is
+	// also why the return value must be acted on rather than ignored. Without
+	// focus the call throttles itself to 10 Hz, and a game thread blocking on
+	// that runs at ten frames a second with nothing on screen to say why.
+	// render::SubmitPolicy is what decides when to give up.
+	//
+	// The render poses it fills are currently discarded. They are the
+	// *predicted* poses for the frame about to be drawn, which is strictly
+	// better than the unpredicted ones ReadHeadPose asks for separately - so
+	// feeding the head tracker from here is an improvement worth making once
+	// the frame loop is settled, rather than in the same change that
+	// introduces it.
+	int WaitGetPoses() const;
+
+	// Hands one eye's texture to the compositor. Returns its error code.
+	//
+	// The texture must be an ID3D11Texture2D, because ETextureType has no
+	// entry for Direct3D 9 and never has. bounds may be null, which means the
+	// whole texture is that eye.
+	int SubmitEye(int eye, void* texture) const;
+
 	// The size the headset wants each eye rendered at, in pixels.
 	//
 	// Worth asking rather than assuming: the compositor takes a texture of

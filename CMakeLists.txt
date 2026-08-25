@@ -36,6 +36,8 @@ add_library(OBVR SHARED
 	src/platform/Freestanding.cpp
 	src/platform/PluginPath.cpp
 	src/render/EyeTextures.cpp
+	src/render/HeadsetRenderer.cpp
+	src/render/SubmitPolicy.cpp
 	src/render/TestPattern.cpp
 	src/vr/HeadOffset.cpp
 	src/vr/HeadTracker.cpp

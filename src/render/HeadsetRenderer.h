@@ -1,0 +1,53 @@
+#pragma once
+
+#include "render/EyeTextures.h"
+#include "render/SubmitPolicy.h"
+
+namespace obvr::vr {
+class OpenVRBackend;
+}
+
+namespace obvr::render {
+
+// Puts a picture in the headset, once per frame.
+//
+// Everything here happens on Oblivion's thread, from inside the camera hook,
+// and that is the deliberate part rather than an accident of where the hook
+// happens to be. WaitGetPoses blocks until the compositor wants the next
+// frame, so calling it there puts the game on the compositor's clock - which
+// is how the picture ends up in step with the world rather than a frame
+// behind it, and it is the arrangement 0.1.0 needs, since the texture
+// submitted then has to be the one the game has just drawn.
+//
+// One thing this arrangement is not yet: correctly placed. The camera hook
+// runs while the camera is being computed, which is before the frame is
+// rendered rather than after. For a generated picture that makes no
+// difference - the pattern is the same every frame. For Oblivion's own
+// pixels it will, and a second hook point at the end of the frame is what
+// 0.1.0 needs. Recorded rather than worked around, because a picture that is
+// one frame stale looks exactly like a picture that is correct.
+class HeadsetRenderer {
+public:
+	// Creates what is missing and submits both eyes. Safe to call every
+	// frame, and safe to call when there is no headset, no compositor, or no
+	// rendering wanted - it does nothing and says nothing in all three cases.
+	void Update(const vr::OpenVRBackend& backend);
+
+	// Throws away the textures and the run of failures. For a change of
+	// configuration, or shutdown.
+	void Reset();
+
+	// Whether a picture is actually going to the headset right now.
+	bool IsActive() const { return m_textures.IsReady() && !m_policy.HasStopped(); }
+
+private:
+	// Everything after the first failure to set up. Without it a machine that
+	// cannot create the device would retry once per frame for ever, and the
+	// log would be the only thing rendering.
+	bool m_setupAttempted = false;
+
+	EyeTextures m_textures;
+	SubmitPolicy m_policy;
+};
+
+}  // namespace obvr::render

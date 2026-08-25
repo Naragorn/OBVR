@@ -53,9 +53,9 @@ their head was rather than where it is, and that latency is felt directly in a h
 it is the one thing VR cannot trade away.
 
 How far the camera moves is `HeadMovementScale`, and it defaults to 1.7 rather than to
-life-size — a figure a headset settled on, not one chosen in advance. That is a deliberate compromise with a shelf life: above 1.0 the world moves
-further than the head that moved it, which is the very mismatch VR comfort rests on
-avoiding. It is there because OBVR still renders a single image, so parallax is the only
+life-size — a figure a headset settled on, not one chosen in advance. That is a deliberate
+compromise with a shelf life: above 1.0 the world moves further than the head that moved
+it, which is the very mismatch VR comfort rests on avoiding. It is there because OBVR still renders a single image, so parallax is the only
 depth cue available and a one-to-one lean reads weaker than it will once there are two
 eyes. It is kept separate from `UnitsPerMetre` on purpose — that number is the engine's
 documented figure and stereo will need it for the distance between the eyes, so inflating
@@ -241,8 +241,16 @@ verification environment, not a comfortable one — for a release MSVC stays the
 
 ### Tests
 
-Twelve test binaries, all without a running Oblivion:
+Thirteen test binaries, all without a running Oblivion:
 
+- **`submit_policy_test`** checks what OBVR does about what the compositor said. The fault
+  it guards against is specific and nasty: `WaitGetPoses` blocks until the compositor wants
+  the next frame, which is what puts the game in step with the headset — but without focus
+  that call throttles itself to 10 Hz, and a game thread blocking on it inherits the rate.
+  Nothing on screen points at VR, so it reads as a driver fault. The policy gives up
+  rendering rather than the frame rate, and the decisive check is that failures must be
+  *consecutive*: over a long session an occasional lost frame would otherwise accumulate
+  into a shutdown.
 - **`test_pattern_test`** checks the picture OBVR puts in the headset before it can put
   Oblivion there. A test pattern that is itself wrong is worse than none: it would be read
   as evidence about the compositor, the projection or the eye order, and each of those

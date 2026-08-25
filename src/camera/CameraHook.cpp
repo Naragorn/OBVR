@@ -7,6 +7,7 @@
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
 #include "platform/Win32Min.h"
+#include "render/HeadsetRenderer.h"
 
 namespace obvr::camera {
 namespace {
@@ -19,6 +20,7 @@ constexpr UInt32 kTrampolineSize = 64;
 KeyEdge g_recenterEdge;
 FrameClock g_frameClock;
 LookControl g_lookControl;
+render::HeadsetRenderer g_headsetRenderer;
 
 bool ReadIsThirdPerson() {
 	auto* player = *reinterpret_cast<UInt8**>(addr::kPlayerPointer);
@@ -207,6 +209,17 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	cameraNode->localTransform.pos.z += verticalOffset;
 
 	cameraNode->localTransform.rot = baseRotation * g_headTracker.GetCameraRotation();
+
+	// Last, and on purpose. This blocks until the compositor wants the next
+	// frame, so from here Oblivion runs on the compositor's clock rather than
+	// its own - which is what keeps the picture in step with the headset, and
+	// is the arrangement 0.1.0 needs, since the texture submitted then has to
+	// be the frame the game has just drawn.
+	//
+	// It does nothing at all unless rendering was asked for and the
+	// compositor was reached, so the cost on every other machine is one
+	// comparison.
+	g_headsetRenderer.Update(g_headTracker.GetBackend());
 }
 
 vr::HeadTracker& GetHeadTracker() { return g_headTracker; }

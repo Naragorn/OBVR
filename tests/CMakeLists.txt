@@ -207,3 +207,16 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME test_pattern COMMAND test_pattern_test)
+
+add_executable(submit_policy_test
+	SubmitPolicyTest.cpp
+	../src/render/SubmitPolicy.cpp
+)
+
+target_include_directories(submit_policy_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(submit_policy_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME submit_policy COMMAND submit_policy_test)

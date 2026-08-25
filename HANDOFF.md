@@ -1012,9 +1012,42 @@ which is why that pattern is worth reusing rather than reinventing.
    kernel32, msvcrt and user32 and the SDK-free build is untouched. Nothing calls it yet —
    the linker discards it, and the DLL is the same size as before. Step 4 is what makes it
    run. ← **next**
-4. `WaitGetPoses` in a frame loop, and the decision about which clock leads.
+4. ~~`WaitGetPoses` in a frame loop, and the decision about which clock leads~~ — **built,
+   not yet run with a headset.** The compositor's clock leads: `WaitGetPoses` is called from
+   the camera hook, on Oblivion's thread, so the game runs at the headset's rate. That is
+   the arrangement 0.1.0 needs, since the texture submitted then has to be the frame the
+   game has just drawn. `render::HeadsetRenderer` does the per-frame work and
+   `render::SubmitPolicy` decides when to give up — see below, because that decision is not
+   optional.
 5. `GetProjectionRaw` and `GetEyeToHeadTransform`, so the eyes sit where the headset says
-   rather than where a guess puts them.
+   rather than where a guess puts them. ← **next**
+6. The in-game run: `Render.Enabled=1`, SteamVR running, and a look at whether the pattern
+   arrives whole, upright, unmirrored and on the right eyes.
+
+#### Two things about step 4 that are known to be imperfect
+
+**The hook point is early.** The camera hook runs while the camera is being computed, which
+is before the frame is drawn rather than after. A generated test pattern is identical every
+frame, so this makes no difference now. Oblivion's own pixels will differ, and submitting
+them from here would show the previous frame — which looks exactly like a correct picture,
+only wrong. 0.1.0 needs a second hook point at the end of the frame.
+
+**Blocking on `WaitGetPoses` is a loaded gun.** It is what puts the game in step with the
+headset, and it is also how the game ends up at ten frames a second: without focus the call
+throttles itself to 10 Hz, and a thread blocking on that inherits the rate. Nothing on
+screen points at VR, so it reads as a driver fault and the person debugging it is not
+looking anywhere near here. `SubmitPolicy` therefore reads the answers and gives up
+rendering rather than the frame rate — immediately for failures that cannot pass
+(`IsNotSceneApplication`, and both texture faults, which are properties of how the texture
+was made), and after ninety consecutive frames for ones that can. The count is consecutive
+rather than total on purpose: over a long session an occasional lost frame would otherwise
+add up to a shutdown.
+
+**The predicted poses are being discarded.** `WaitGetPoses` hands back the poses to render
+this frame with, and they are predicted forward to when it will be shown — strictly better
+than the unpredicted ones `ReadHeadPose` asks for separately. Feeding the head tracker from
+there is a real improvement, deliberately not made in the same change that introduced the
+frame loop.
 
 Steps 1 to 3 are testable without a headset in the same way everything else here is: the
 FnTable indices against the header, the texture arithmetic against known values, the
