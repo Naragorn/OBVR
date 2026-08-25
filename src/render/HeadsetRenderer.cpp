@@ -9,6 +9,20 @@
 namespace obvr::render {
 namespace {
 
+// How much of Oblivion's frame each eye is given, as a fraction of its
+// width.
+//
+// Below 1 because the correction needs room: putting the picture's centre on
+// an optical axis that sits at 0.583 across the view means starting the crop
+// at a negative coordinate if the whole width is used. 0.8 leaves enough
+// margin for the measured axes with room to spare, at the cost of a fifth of
+// the horizontal field of view.
+//
+// A constant rather than a setting, for now. It is only meaningful while a
+// mono image is being shared between two eyes, and that arrangement is meant
+// to be temporary.
+constexpr float kMonoBoundsWidth = 0.8f;
+
 // Writes what the headset says about the eyes, once, when rendering starts,
 // and hands back where each eye's optical axis lands across its texture.
 //
@@ -104,6 +118,19 @@ void HeadsetRenderer::Update(const vr::OpenVRBackend& backend, void* gameDevice,
 		float crossURight = 0.5f;
 		LogEyeGeometry(backend, crossULeft, crossURight);
 
+		// The same two numbers serve twice: they place the cross in the test
+		// pattern, and they decide which part of Oblivion's frame each eye is
+		// shown. Both are the same question - where is this eye looking.
+		const TextureBounds boundsLeft = MonoBounds(crossULeft, kMonoBoundsWidth);
+		const TextureBounds boundsRight = MonoBounds(crossURight, kMonoBoundsWidth);
+		m_boundsLeft = {boundsLeft.uMin, boundsLeft.vMin, boundsLeft.uMax, boundsLeft.vMax};
+		m_boundsRight = {boundsRight.uMin, boundsRight.vMin, boundsRight.uMax,
+		                 boundsRight.vMax};
+		OBVR_LOG("Render: game frame bounds left u=%.3f..%.3f right u=%.3f..%.3f",
+		         static_cast<double>(m_boundsLeft.uMin), static_cast<double>(m_boundsLeft.uMax),
+		         static_cast<double>(m_boundsRight.uMin),
+		         static_cast<double>(m_boundsRight.uMax));
+
 		if (!m_textures.Create(width, height, crossULeft, crossURight)) {
 			// Already logged in detail by EyeTextures. Nothing further is
 			// attempted: a machine that cannot make a device this frame will
@@ -164,10 +191,14 @@ void HeadsetRenderer::Update(const vr::OpenVRBackend& backend, void* gameDevice,
 				// the whole intent of this step. Rendering the world twice is
 				// a separate problem, and doing both at once would mean a
 				// failure with two possible causes.
+				// Different bounds per eye, or the two disagree about where
+				// the picture is. The optical axes sit at different places
+				// across each eye's view, so the whole texture in both puts
+				// Oblivion's centre somewhere neither eye is looking.
 				left = backend.SubmitEye(vr::openvr::kEyeLeft, &data,
-				                         vr::openvr::kTextureTypeVulkan);
+				                         vr::openvr::kTextureTypeVulkan, &m_boundsLeft);
 				right = backend.SubmitEye(vr::openvr::kEyeRight, &data,
-				                          vr::openvr::kTextureTypeVulkan);
+				                          vr::openvr::kTextureTypeVulkan, &m_boundsRight);
 				submittedGameFrame = true;
 			}
 		}
@@ -177,10 +208,13 @@ void HeadsetRenderer::Update(const vr::OpenVRBackend& backend, void* gameDevice,
 	// eye and then giving up on the other would show the compositor half a
 	// frame, which it reprojects into something worse than no frame at all.
 	if (!submittedGameFrame) {
+		// The pattern needs no bounds: it is generated per eye at the full
+		// size the headset asked for, so each eye already has its own picture
+		// rather than a share of one.
 		left = backend.SubmitEye(vr::openvr::kEyeLeft, m_textures.GetTexture(Eye::Left),
-		                         vr::openvr::kTextureTypeDirectX);
+		                         vr::openvr::kTextureTypeDirectX, nullptr);
 		right = backend.SubmitEye(vr::openvr::kEyeRight, m_textures.GetTexture(Eye::Right),
-		                          vr::openvr::kTextureTypeDirectX);
+		                          vr::openvr::kTextureTypeDirectX, nullptr);
 	}
 
 	// The worse of the two decides. A fault that affects one eye affects the

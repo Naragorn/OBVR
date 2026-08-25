@@ -149,6 +149,74 @@ void TestOpticalCentre() {
 	          "a frustum with no width falls back to the middle rather than dividing by zero");
 }
 
+void TestMonoBounds() {
+	std::printf("Sharing one picture between two eyes\n");
+
+	// The numbers are the measured ones: a real headset put the optical axes
+	// at 0.583 across the left eye's view and 0.424 across the right. Handing
+	// both eyes the whole texture put Oblivion's picture at the middle of
+	// each view, which is where neither eye is looking - and the wearer saw
+	// one image displaced against the other.
+	constexpr float kLeftAxis = 0.583f;
+	constexpr float kRightAxis = 0.424f;
+	constexpr float kWidth = 0.8f;
+
+	const auto left = obvr::render::MonoBounds(kLeftAxis, kWidth);
+	const auto right = obvr::render::MonoBounds(kRightAxis, kWidth);
+
+	// The property the whole thing exists for: the centre of the source image
+	// lands on the eye's axis. Everything else is a consequence.
+	CheckNear(left.uMin + kLeftAxis * (left.uMax - left.uMin), 0.5f, 0.001f,
+	          "the picture's centre lands on the left eye's axis");
+	CheckNear(right.uMin + kRightAxis * (right.uMax - right.uMin), 0.5f, 0.001f,
+	          "and on the right eye's");
+
+	// Both eyes must see the same amount of picture. Different widths would
+	// mean different magnifications, and nothing fuses two images at
+	// different sizes - that would be worse than the misalignment it set out
+	// to fix.
+	CheckNear(left.uMax - left.uMin, right.uMax - right.uMin, 0.001f,
+	          "both eyes get the same width, so the two match in scale");
+
+	// The eyes are given different parts, and which way round matters: the
+	// left eye's axis sits further right across its view, so its share of the
+	// texture has to start further left to compensate.
+	Check(left.uMin < right.uMin, "the left eye is given the left part of the picture");
+	Check(left.uMax < right.uMax, "and the right eye the right part");
+
+	// Inside the texture, or the driver samples past the edge and smears the
+	// last pixel across the view.
+	Check(left.uMin >= 0.0f && left.uMax <= 1.0f, "the left bounds stay inside the texture");
+	Check(right.uMin >= 0.0f && right.uMax <= 1.0f, "and the right bounds too");
+
+	// Vertical is untouched. The two eyes' vertical asymmetries were measured
+	// at -0.406 and -0.384, near enough identical that there is nothing
+	// between them to correct - and cropping it would only throw picture away.
+	CheckNear(left.vMin, 0.0f, 0.0001f, "the full height is used");
+	CheckNear(left.vMax, 1.0f, 0.0001f, "top to bottom");
+
+	// An axis at the centre needs no correction at all, which is the case
+	// that says the arithmetic is not doing something arbitrary.
+	const auto centred = obvr::render::MonoBounds(0.5f, 1.0f);
+	CheckNear(centred.uMin, 0.0f, 0.001f, "a centred axis at full width uses the whole texture");
+	CheckNear(centred.uMax, 1.0f, 0.001f, "with nothing cropped");
+
+	// A width of 1 with an off-centre axis would need bounds outside the
+	// texture. Sliding rather than shrinking keeps both eyes the same size,
+	// at the cost of not quite reaching the centre - the lesser of the two
+	// faults.
+	const auto impossible = obvr::render::MonoBounds(0.583f, 1.0f);
+	Check(impossible.uMin >= 0.0f, "an impossible correction is slid into range");
+	CheckNear(impossible.uMax - impossible.uMin, 1.0f, 0.001f, "rather than shrunk");
+
+	// Nonsense widths are clamped rather than obeyed. A width of zero would
+	// leave no picture, and one above 1 would sample off the texture.
+	const auto tooWide = obvr::render::MonoBounds(0.5f, 5.0f);
+	Check(tooWide.uMax - tooWide.uMin <= 1.0f, "a width above 1 is clamped");
+	const auto tooNarrow = obvr::render::MonoBounds(0.5f, 0.0f);
+	Check(tooNarrow.uMax - tooNarrow.uMin >= 0.2f, "and a width of zero does not blank the view");
+}
+
 void TestInterpupillaryDistance() {
 	std::printf("The distance between the eyes\n");
 
@@ -191,6 +259,8 @@ int main() {
 	TestAsymmetry();
 	std::printf("\n");
 	TestOpticalCentre();
+	std::printf("\n");
+	TestMonoBounds();
 	std::printf("\n");
 	TestInterpupillaryDistance();
 

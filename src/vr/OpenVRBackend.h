@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Types.h"
+#include "vr/OpenVRTypes.h"
 #include "vr/Quaternion.h"
 
 namespace obvr::vr {
@@ -94,7 +95,12 @@ public:
 	// kTextureTypeDirectX, a pointer to a VRVulkanTextureData for
 	// kTextureTypeVulkan. There is no entry for Direct3D 9 and never has been,
 	// which is the whole reason the second of those exists here.
-	int SubmitEye(int eye, void* handle, int textureType) const;
+	//
+	// bounds says which part of the texture belongs to this eye, or null for
+	// all of it. Two eyes sharing one image need different bounds or they
+	// disagree about where the picture is - see render::MonoBounds.
+	int SubmitEye(int eye, void* handle, int textureType,
+	              const openvr::VRTextureBounds* bounds) const;
 
 	// The eye's frustum, as tangents of the angles from the view axis.
 	//

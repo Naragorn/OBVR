@@ -3,6 +3,7 @@
 #include "render/EyeTextures.h"
 #include "render/GameDevice.h"
 #include "render/SubmitPolicy.h"
+#include "vr/OpenVRTypes.h"
 
 namespace obvr::vr {
 class OpenVRBackend;
@@ -59,6 +60,12 @@ private:
 	bool m_gameFrameChecked = false;
 	bool m_gameFrameUsable = false;
 	VulkanContext m_vulkan;
+
+	// Which part of Oblivion's frame each eye is shown. Computed once from
+	// the optical axes, because they cannot change within a run, and stored
+	// in OpenVR's own layout so the submit needs no conversion per frame.
+	vr::openvr::VRTextureBounds m_boundsLeft;
+	vr::openvr::VRTextureBounds m_boundsRight;
 };
 
 }  // namespace obvr::render

@@ -245,7 +245,8 @@ int OpenVRBackend::WaitGetPoses() const {
 	return table->WaitGetPoses(&renderPose, 1, nullptr, 0);
 }
 
-int OpenVRBackend::SubmitEye(int eye, void* handle, int textureType) const {
+int OpenVRBackend::SubmitEye(int eye, void* handle, int textureType,
+                             const openvr::VRTextureBounds* bounds) const {
 	if (m_compositor == nullptr || handle == nullptr) {
 		return openvr::kCompositorErrorIsNotSceneApplication;
 	}
@@ -266,10 +267,7 @@ int OpenVRBackend::SubmitEye(int eye, void* handle, int textureType) const {
 	// visible rather than merely suspected.
 	description.colorSpace = openvr::kColorSpaceAuto;
 
-	// No bounds: the whole texture is this eye. Submitting both eyes from one
-	// texture would need them, and that is a later optimisation rather than
-	// something to build before there is a picture at all.
-	return table->Submit(eye, &description, nullptr, openvr::kSubmitDefault);
+	return table->Submit(eye, &description, bounds, openvr::kSubmitDefault);
 }
 
 bool OpenVRBackend::GetRecommendedRenderTargetSize(UInt32& width, UInt32& height) const {

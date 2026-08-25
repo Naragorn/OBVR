@@ -66,6 +66,45 @@ float OpticalCentreV(const EyeProjection& projection, bool topIsNegative) {
 	return topIsNegative ? 1.0f - fromTopEdge : fromTopEdge;
 }
 
+TextureBounds MonoBounds(float opticalCentreU, float width) {
+	TextureBounds bounds;
+
+	// A width outside this range is not a crop, it is a mistake. Below a
+	// quarter there would be almost no picture left; above 1 the bounds would
+	// reach past the texture, which samples whatever the driver decides -
+	// usually the edge pixel smeared across the view.
+	if (!(width > 0.25f)) {
+		width = 0.25f;
+	}
+	if (width > 1.0f) {
+		width = 1.0f;
+	}
+
+	bounds.uMin = 0.5f - opticalCentreU * width;
+	bounds.uMax = bounds.uMin + width;
+
+	// Slide rather than shrink if that ran off an edge. Shrinking would
+	// change the scale between the eyes, which is worse than an imperfect
+	// centre: the two images would no longer be the same size, and nothing
+	// fuses two pictures at different magnifications.
+	if (bounds.uMin < 0.0f) {
+		bounds.uMax -= bounds.uMin;
+		bounds.uMin = 0.0f;
+	}
+	if (bounds.uMax > 1.0f) {
+		bounds.uMin -= bounds.uMax - 1.0f;
+		bounds.uMax = 1.0f;
+	}
+
+	// Vertical is left alone. The vertical asymmetry is nearly identical for
+	// both eyes - measured at -0.406 and -0.384 - so it displaces both by the
+	// same amount and there is nothing between them to correct. Cropping it
+	// would only throw away picture.
+	bounds.vMin = 0.0f;
+	bounds.vMax = 1.0f;
+	return bounds;
+}
+
 float InterpupillaryDistance(const NiPoint3& leftEye, const NiPoint3& rightEye) {
 	const NiPoint3 between = rightEye - leftEye;
 	return math::Sqrt(between.LengthSquared());
