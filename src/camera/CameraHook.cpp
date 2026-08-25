@@ -131,6 +131,26 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		const render::DeviceKind kind = render::IdentifyDevice(device);
 		OBVR_LOG("Render: Oblivion's D3D9 device %08X is %s",
 		         reinterpret_cast<UInt32>(device), render::DeviceKindName(kind));
+
+		// Five of the ten fields OpenVR wants for a Vulkan texture, and the
+		// reason the DXVK route exists. Logged before anything is submitted,
+		// because a handle that arrives null here fails inside the compositor
+		// later - reported as a bad texture, which would send the search to
+		// entirely the wrong place.
+		if (kind == render::DeviceKind::Dxvk) {
+			render::VulkanContext vulkan;
+			if (render::GetVulkanContext(device, vulkan)) {
+				OBVR_LOG("Render: Vulkan instance=%08X physical=%08X device=%08X",
+				         reinterpret_cast<UInt32>(vulkan.instance),
+				         reinterpret_cast<UInt32>(vulkan.physicalDevice),
+				         reinterpret_cast<UInt32>(vulkan.device));
+				OBVR_LOG("Render: Vulkan queue=%08X index=%u family=%u",
+				         reinterpret_cast<UInt32>(vulkan.queue), vulkan.queueIndex,
+				         vulkan.queueFamilyIndex);
+			} else {
+				OBVR_LOG("Render: DXVK did not hand over a complete set of Vulkan handles");
+			}
+		}
 		break;
 	}
 	case PovEvent::Switched:

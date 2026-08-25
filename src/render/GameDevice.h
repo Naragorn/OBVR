@@ -80,4 +80,30 @@ DeviceKind IdentifyDevice(void* device);
 
 const char* DeviceKindName(DeviceKind kind);
 
+// The Vulkan objects behind Oblivion's Direct3D 9, when DXVK is what is
+// serving it.
+//
+// Between them these are five of the ten fields OpenVR's VRVulkanTextureData_t
+// wants; the other five come from the image itself. Which is the whole reason
+// the DXVK route works at all: without these, a Vulkan image would be a handle
+// with no context to interpret it in.
+struct VulkanContext {
+	void* instance = nullptr;
+	void* physicalDevice = nullptr;
+	void* device = nullptr;
+	void* queue = nullptr;
+
+	// Two different numbers with similar names. OpenVR wants the family
+	// index; the queue index is which queue within that family, and is read
+	// only because the call fills both and discarding one silently is how a
+	// mix-up starts.
+	UInt32 queueIndex = 0;
+	UInt32 queueFamilyIndex = 0;
+};
+
+// Fills the context from the device. False if the device is not DXVK, or if
+// any handle comes back null - a partially filled context is worse than none,
+// because it would be submitted and fail somewhere unrelated.
+bool GetVulkanContext(void* device, VulkanContext& out);
+
 }  // namespace obvr::render

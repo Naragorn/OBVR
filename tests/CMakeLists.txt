@@ -246,3 +246,15 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME game_device COMMAND game_device_test)
+
+add_executable(dxvk_interop_test
+	DxvkInteropTest.cpp
+)
+
+target_include_directories(dxvk_interop_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(dxvk_interop_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME dxvk_interop COMMAND dxvk_interop_test)

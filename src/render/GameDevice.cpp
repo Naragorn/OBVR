@@ -2,6 +2,7 @@
 
 #include "game/GameAddresses.h"
 #include "render/D3D11Types.h"
+#include "render/DxvkInterop.h"
 
 namespace obvr::render {
 
@@ -51,6 +52,51 @@ DeviceKind IdentifyDevice(void* device) {
 	// a crash on exit, which nobody attributes correctly.
 	d3d11::Release(interop);
 	return DeviceKind::Dxvk;
+}
+
+bool GetVulkanContext(void* device, VulkanContext& out) {
+	if (device == nullptr) {
+		return false;
+	}
+
+	auto* unknown = static_cast<d3d11::Unknown*>(device);
+	if (unknown->vtbl == nullptr || unknown->vtbl->QueryInterface == nullptr) {
+		return false;
+	}
+
+	void* raw = nullptr;
+	if (d3d11::Failed(
+			unknown->vtbl->QueryInterface(unknown, &kIID_D3D9VkInteropDevice, &raw)) ||
+	    raw == nullptr) {
+		return false;
+	}
+
+	auto* interop = static_cast<dxvk::InteropDevice*>(raw);
+	if (interop->vtbl == nullptr || interop->vtbl->GetVulkanHandles == nullptr ||
+	    interop->vtbl->GetSubmissionQueue == nullptr) {
+		d3d11::Release(raw);
+		return false;
+	}
+
+	VulkanContext filled;
+	interop->vtbl->GetVulkanHandles(interop, &filled.instance, &filled.physicalDevice,
+	                                &filled.device);
+	interop->vtbl->GetSubmissionQueue(interop, &filled.queue, &filled.queueIndex,
+	                                  &filled.queueFamilyIndex);
+
+	d3d11::Release(raw);
+
+	// All or nothing. A context with one null handle would be submitted and
+	// fail inside the compositor, which reports it as a bad texture rather
+	// than as a missing device - and the search would start in the wrong
+	// place entirely.
+	if (filled.instance == nullptr || filled.physicalDevice == nullptr ||
+	    filled.device == nullptr || filled.queue == nullptr) {
+		return false;
+	}
+
+	out = filled;
+	return true;
 }
 
 const char* DeviceKindName(DeviceKind kind) {
