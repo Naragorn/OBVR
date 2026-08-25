@@ -1146,6 +1146,27 @@ project commits to the harder route for no reason and with nothing anywhere sayi
 test renders the bytes back into the canonical text form and compares against the string in
 DXVK's header, which is the one thing a transcription error cannot survive.
 
+### The end of the frame, without another address
+
+The camera hook runs while the camera is being computed, which is before the frame is
+drawn. 0.1.0 needs the other end - the moment the game has finished drawing - and that does
+not need a new address in `Oblivion.exe`.
+
+`IDirect3DDevice9::Present` sits at **vtable index 17**, counted from Wine's `include/d3d9.h`:
+three `IUnknown` entries, then `TestCooperativeLevel`, `GetAvailableTextureMem`,
+`EvictManagedResources`, `GetDirect3D`, `GetDeviceCaps`, `GetDisplayMode`,
+`GetCreationParameters`, the three cursor methods, `CreateAdditionalSwapChain`,
+`GetSwapChain`, `GetNumberOfSwapChains`, `Reset`, and then `Present`.
+
+That is an API fact rather than a game fact, and it is worth more than an address for
+exactly that reason: it holds for every game version, every patch, and every D3D9
+implementation including DXVK. With the device already in hand, the end of the frame is one
+vtable patch away and needs nothing found in the binary.
+
+Not written yet, deliberately. There is nothing to do at the end of a frame until there is a
+texture from the game to submit, and code written before it has a purpose is code written
+against a guess.
+
 ### The order of work for 0.0.5
 
 1. ~~`IVRCompositor` in `OpenVRTypes.h`~~ — **done.** Table, indices, `Texture_t`,
