@@ -13,12 +13,13 @@ out/
 *.obj
 *.exp
 
-# Laufzeitprotokolle, wie sie neben Oblivion.exe entstehen. Die Logs unter
-# docs/verification/ sind dagegen Belege der Spieltests und gehoeren ins Repo.
+# Runtime logs, as they appear next to Oblivion.exe. The logs under
+# docs/verification/ are evidence from the game tests and do belong in the
+# repository, hence the exception below.
 *.log
 !docs/verification/*.log
 
-# Maschinenlokales Werkzeug-Beiwerk, kein Projektinhalt
+# Machine-local tooling, not project content
 .claude/settings.local.json
 .claude/worktrees/
 .playwright-mcp/
