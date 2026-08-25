@@ -2,6 +2,7 @@
 
 #include "core/Log.h"
 #include "render/EyeGeometry.h"
+#include "render/GameFrame.h"
 #include "vr/OpenVRBackend.h"
 #include "vr/OpenVRTypes.h"
 
@@ -70,7 +71,8 @@ void LogEyeGeometry(const vr::OpenVRBackend& backend, float& crossULeft, float& 
 
 }  // namespace
 
-void HeadsetRenderer::Update(const vr::OpenVRBackend& backend) {
+void HeadsetRenderer::Update(const vr::OpenVRBackend& backend, void* gameDevice,
+                             bool submitGameFrame) {
 	if (m_policy.HasStopped()) {
 		return;
 	}
@@ -131,12 +133,55 @@ void HeadsetRenderer::Update(const vr::OpenVRBackend& backend) {
 		return;
 	}
 
+	// Where the picture comes from. Oblivion's own frame is the point of
+	// 0.1.0; the generated pattern is what proved the compositor path in
+	// 0.0.5 and stays as both the fallback and the thing to compare against.
+	int left = vr::openvr::kCompositorErrorNone;
+	int right = vr::openvr::kCompositorErrorNone;
+	bool submittedGameFrame = false;
+
+	if (submitGameFrame) {
+		if (!m_gameFrameChecked) {
+			m_gameFrameChecked = true;
+			m_gameFrameUsable = GetVulkanContext(gameDevice, m_vulkan);
+			OBVR_LOG("Render: the game frame is %s",
+			         m_gameFrameUsable ? "usable, submitting Oblivion's own picture"
+			                           : "unavailable, falling back to the test pattern");
+		}
+
+		if (m_gameFrameUsable) {
+			// Scoped so the bracket closes on every path out, including the
+			// ones that throw nothing and simply return. A queue left locked
+			// deadlocks Oblivion against its own renderer, and the symptom is
+			// a frozen game with an empty log.
+			GameFrame frame;
+			if (frame.Acquire(gameDevice)) {
+				dxvk::VRVulkanTextureData data{};
+				DescribeForOpenVR(frame.GetImage(), m_vulkan, data);
+
+				// The same image to both eyes. This is mono - Oblivion's
+				// picture, flat, with no depth between the eyes - and that is
+				// the whole intent of this step. Rendering the world twice is
+				// a separate problem, and doing both at once would mean a
+				// failure with two possible causes.
+				left = backend.SubmitEye(vr::openvr::kEyeLeft, &data,
+				                         vr::openvr::kTextureTypeVulkan);
+				right = backend.SubmitEye(vr::openvr::kEyeRight, &data,
+				                          vr::openvr::kTextureTypeVulkan);
+				submittedGameFrame = true;
+			}
+		}
+	}
+
 	// Left before right, and both before the answers are read. Submitting one
 	// eye and then giving up on the other would show the compositor half a
 	// frame, which it reprojects into something worse than no frame at all.
-	const int left = backend.SubmitEye(vr::openvr::kEyeLeft, m_textures.GetTexture(Eye::Left));
-	const int right =
-		backend.SubmitEye(vr::openvr::kEyeRight, m_textures.GetTexture(Eye::Right));
+	if (!submittedGameFrame) {
+		left = backend.SubmitEye(vr::openvr::kEyeLeft, m_textures.GetTexture(Eye::Left),
+		                         vr::openvr::kTextureTypeDirectX);
+		right = backend.SubmitEye(vr::openvr::kEyeRight, m_textures.GetTexture(Eye::Right),
+		                          vr::openvr::kTextureTypeDirectX);
+	}
 
 	// The worse of the two decides. A fault that affects one eye affects the
 	// other next frame, and acting on the good half would mean waiting for
@@ -155,6 +200,9 @@ void HeadsetRenderer::Reset() {
 	m_textures.Destroy();
 	m_policy.Reset();
 	m_setupAttempted = false;
+	m_gameFrameChecked = false;
+	m_gameFrameUsable = false;
+	m_vulkan = VulkanContext{};
 }
 
 }  // namespace obvr::render

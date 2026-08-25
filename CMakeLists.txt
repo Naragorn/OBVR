@@ -37,6 +37,7 @@ add_library(OBVR SHARED
 	src/platform/PluginPath.cpp
 	src/render/EyeGeometry.cpp
 	src/render/GameDevice.cpp
+	src/render/GameFrame.cpp
 	src/render/EyeTextures.cpp
 	src/render/HeadsetRenderer.cpp
 	src/render/SubmitPolicy.cpp

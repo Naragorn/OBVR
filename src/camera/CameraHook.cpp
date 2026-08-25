@@ -281,7 +281,8 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// It does nothing at all unless rendering was asked for and the
 	// compositor was reached, so the cost on every other machine is one
 	// comparison.
-	g_headsetRenderer.Update(g_headTracker.GetBackend());
+	g_headsetRenderer.Update(g_headTracker.GetBackend(), render::GetGameDevice(),
+	                         config.tracker.submitGameFrame);
 }
 
 vr::HeadTracker& GetHeadTracker() { return g_headTracker; }

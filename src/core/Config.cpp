@@ -200,6 +200,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadFloat("Head", "MaxLeanUnits", config.tracker.maxOffsetUnits, path);
 	config.tracker.renderToHeadset =
 		ReadBool("Render", "Enabled", config.tracker.renderToHeadset, path);
+	config.tracker.submitGameFrame =
+		ReadBool("Render", "GameFrame", config.tracker.submitGameFrame, path);
 	config.look.blockVerticalLook =
 		ReadBool("Look", "BlockVerticalLook", config.look.blockVerticalLook, path);
 
@@ -298,7 +300,8 @@ bool Config::Load(const char* fileName) {
 	// Worth its own line despite being one flag: it is the setting that
 	// decides whether OBVR takes the headset away from whatever else is
 	// using it, and that should be visible in the log without hunting.
-	OBVR_LOG("Config: Render.Enabled=%d%s", tracker.renderToHeadset ? 1 : 0,
+	OBVR_LOG("Config: Render.Enabled=%d GameFrame=%d%s", tracker.renderToHeadset ? 1 : 0,
+	         tracker.submitGameFrame ? 1 : 0,
 	         tracker.renderToHeadset ? " - OBVR will claim the VR scene" : "");
 	return true;
 }

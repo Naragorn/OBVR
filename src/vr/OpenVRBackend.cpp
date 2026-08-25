@@ -245,8 +245,8 @@ int OpenVRBackend::WaitGetPoses() const {
 	return table->WaitGetPoses(&renderPose, 1, nullptr, 0);
 }
 
-int OpenVRBackend::SubmitEye(int eye, void* texture) const {
-	if (m_compositor == nullptr || texture == nullptr) {
+int OpenVRBackend::SubmitEye(int eye, void* handle, int textureType) const {
+	if (m_compositor == nullptr || handle == nullptr) {
 		return openvr::kCompositorErrorIsNotSceneApplication;
 	}
 
@@ -256,8 +256,8 @@ int OpenVRBackend::SubmitEye(int eye, void* texture) const {
 	}
 
 	openvr::Texture description{};
-	description.handle = texture;
-	description.type = openvr::kTextureTypeDirectX;
+	description.handle = handle;
+	description.type = textureType;
 
 	// Auto rather than a stated colour space. The texture is
 	// R8G8B8A8_UNORM, and letting the compositor apply its own rule for that

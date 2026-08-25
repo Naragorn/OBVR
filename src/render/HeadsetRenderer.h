@@ -1,6 +1,7 @@
 #pragma once
 
 #include "render/EyeTextures.h"
+#include "render/GameDevice.h"
 #include "render/SubmitPolicy.h"
 
 namespace obvr::vr {
@@ -31,7 +32,10 @@ public:
 	// Creates what is missing and submits both eyes. Safe to call every
 	// frame, and safe to call when there is no headset, no compositor, or no
 	// rendering wanted - it does nothing and says nothing in all three cases.
-	void Update(const vr::OpenVRBackend& backend);
+	// gameDevice is Oblivion's IDirect3DDevice9, or null. It is only used when
+	// submitGameFrame is on and the device turns out to be DXVK; otherwise the
+	// generated test pattern goes to the headset as before.
+	void Update(const vr::OpenVRBackend& backend, void* gameDevice, bool submitGameFrame);
 
 	// Throws away the textures and the run of failures. For a change of
 	// configuration, or shutdown.
@@ -48,6 +52,13 @@ private:
 
 	EyeTextures m_textures;
 	SubmitPolicy m_policy;
+
+	// Read once, when the game frame is first wanted. The device does not
+	// change kind within a run, and asking every frame would be a
+	// QueryInterface per frame for an answer that cannot have changed.
+	bool m_gameFrameChecked = false;
+	bool m_gameFrameUsable = false;
+	VulkanContext m_vulkan;
 };
 
 }  // namespace obvr::render

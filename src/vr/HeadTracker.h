@@ -63,6 +63,15 @@ struct TrackerSettings {
 	// poses wants VRApplication_Background, which does not.
 	bool renderToHeadset = false;
 
+	// Whether the picture in the headset is Oblivion's own frame rather than
+	// the generated test pattern. Needs DXVK, and falls back to the pattern
+	// with a line in the log if that is missing.
+	//
+	// Off until it has been seen to work. The pattern is what proved the
+	// compositor path, and keeping it reachable is what makes a fault in the
+	// game frame path attributable rather than merely visible.
+	bool submitGameFrame = false;
+
 	// Oblivion units per metre, for converting the head offset.
 	//
 	// The Construction Set wiki gives "21.3 units to a foot ... 64 units per

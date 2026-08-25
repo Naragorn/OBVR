@@ -90,10 +90,11 @@ public:
 
 	// Hands one eye's texture to the compositor. Returns its error code.
 	//
-	// The texture must be an ID3D11Texture2D, because ETextureType has no
-	// entry for Direct3D 9 and never has. bounds may be null, which means the
-	// whole texture is that eye.
-	int SubmitEye(int eye, void* texture) const;
+	// What the handle is depends on the type: an ID3D11Texture2D for
+	// kTextureTypeDirectX, a pointer to a VRVulkanTextureData for
+	// kTextureTypeVulkan. There is no entry for Direct3D 9 and never has been,
+	// which is the whole reason the second of those exists here.
+	int SubmitEye(int eye, void* handle, int textureType) const;
 
 	// The eye's frustum, as tangents of the angles from the view axis.
 	//

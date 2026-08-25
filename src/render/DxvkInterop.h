@@ -65,11 +65,24 @@ constexpr UInt32 kImageUsageSampled = 0x00000004;
 // R32G32B32_SFLOAT, R16G16B16A16_SFLOAT and A2R10G10B10_UINT_PACK32.
 constexpr UInt32 kFormatB8G8R8A8Unorm = 44;
 
+// VK_IMAGE_ASPECT_COLOR_BIT (vulkan_core.h)
+constexpr UInt32 kImageAspectColor = 0x00000001;
+
 // VkExtent3D (vulkan_core.h)
 struct VkExtent3D {
 	UInt32 width;
 	UInt32 height;
 	UInt32 depth;
+};
+
+// VkImageSubresourceRange (vulkan_core.h). Which part of an image a layout
+// transition applies to - for a back buffer, all of the one and only part.
+struct VkImageSubresourceRange {
+	UInt32 aspectMask;
+	UInt32 baseMipLevel;
+	UInt32 levelCount;
+	UInt32 baseArrayLayer;
+	UInt32 layerCount;
 };
 
 // VkImageCreateInfo (vulkan_core.h), in full.
@@ -151,7 +164,15 @@ struct InteropDeviceVtbl {
 	void(__stdcall* GetSubmissionQueue)(void* self, VkHandle* queue, UInt32* queueIndex,
 	                                    UInt32* queueFamilyIndex);
 
-	void* transitionTextureLayout;
+	// SteamVR wants a submitted image in TRANSFER_SRC_OPTIMAL; a back buffer
+	// is in GENERAL. This is the method that closes that gap, and the reason
+	// DXVK publishes it at all.
+	//
+	// The texture argument is the ID3D9VkInteropTexture, not the surface it
+	// was queried from.
+	void(__stdcall* TransitionTextureLayout)(void* self, void* texture,
+	                                         const VkImageSubresourceRange* subresources,
+	                                         UInt32 oldLayout, UInt32 newLayout);
 
 	// Outstanding work has to reach the queue before the compositor reads the
 	// image, or it reads a frame that has not finished being drawn.
