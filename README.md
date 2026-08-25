@@ -167,7 +167,7 @@ verification environment, not a comfortable one — for a release MSVC stays the
 
 ### Tests
 
-Five test binaries, all without a running Oblivion:
+Eight test binaries, all without a running Oblivion:
 
 - **`trampoline_test`** checks the generated hook bytes against expected values worked out
   by hand. A mistake there reliably crashes Oblivion. It also covers the 4GB-patched case
@@ -177,6 +177,12 @@ Five test binaries, all without a running Oblivion:
   verified in the running game, so the quaternion route is tied to established evidence
   rather than only checked against itself. The two implementations are deliberately
   independent — elementary axis matrices against the quaternion formula.
+- **`rotation_test`** checks `EulerToMatrix` itself. It is the reference every other
+  rotation test compares against, which is exactly why it cannot be checked by comparison —
+  a silent sign flip there would leave the whole suite green while agreeing with a wrong
+  answer. So it is checked against its own definition: the documented `Z * Y * X`
+  composition order, the sign convention of each single axis written out, and the
+  properties every rotation matrix has (determinant +1, orthonormal rows).
 - **`openvr_pose_test`** checks the conversion of an OpenVR pose into a quaternion,
   including all four branches of the trace case distinction and the full chain from an HMD
   pose to the Oblivion camera matrix.
@@ -188,6 +194,14 @@ Five test binaries, all without a running Oblivion:
   alone. A fault there does not crash anything — the key simply stops working, which is the
   hardest kind of fault to attribute. Windows only, since Config reads through
   `GetPrivateProfileString`.
+- **`head_tracker_test`** checks the layer that turns a head orientation into the camera
+  matrix: each source, what recentering means, and that a hot reload with unchanged
+  settings does not undo a recenter. That last one is a regression guard — `Configure` used
+  to reset the reference on every call, which with a real headset would have thrown the
+  zero away every couple of seconds. Windows only.
+- **`plugin_path_test`** checks where OBVR looks for its own files, including the buffer
+  being too small — a path is one of the few things in OBVR whose length is not under its
+  own control. Windows only.
 
 ```
 cmake -B build-tests tests -G Ninja

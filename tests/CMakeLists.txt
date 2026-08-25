@@ -46,6 +46,19 @@ endif()
 
 add_test(NAME quaternion COMMAND quaternion_test)
 
+add_executable(rotation_test
+	RotationTest.cpp
+	../src/core/Rotation.cpp
+)
+
+target_include_directories(rotation_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(rotation_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME rotation COMMAND rotation_test)
+
 add_executable(openvr_pose_test
 	OpenVRPoseTest.cpp
 	../src/vr/Quaternion.cpp
@@ -96,4 +109,39 @@ if(WIN32)
 	endif()
 
 	add_test(NAME config COMMAND config_test)
+
+	# HeadTracker owns an OpenVRBackend, which calls LoadLibrary, so this one
+	# is Windows only too. The OpenVR source is exercised in its unavailable
+	# state, which is the state that matters for users without SteamVR.
+	add_executable(head_tracker_test
+		HeadTrackerTest.cpp
+		../src/vr/HeadTracker.cpp
+		../src/vr/OpenVRBackend.cpp
+		../src/vr/Quaternion.cpp
+		../src/core/Rotation.cpp
+		../src/core/Log.cpp
+		../src/platform/PluginPath.cpp
+	)
+
+	target_include_directories(head_tracker_test PRIVATE ../src)
+
+	if(NOT MSVC)
+		target_compile_options(head_tracker_test PRIVATE -Wall -Wextra)
+	endif()
+
+	add_test(NAME head_tracker COMMAND head_tracker_test)
+
+	# Both anchors are built on GetModuleFileNameA, so Windows only.
+	add_executable(plugin_path_test
+		PluginPathTest.cpp
+		../src/platform/PluginPath.cpp
+	)
+
+	target_include_directories(plugin_path_test PRIVATE ../src)
+
+	if(NOT MSVC)
+		target_compile_options(plugin_path_test PRIVATE -Wall -Wextra)
+	endif()
+
+	add_test(NAME plugin_path COMMAND plugin_path_test)
 endif()

@@ -390,6 +390,25 @@ ctest --test-dir build-tests --output-on-failure
   the key. Windows only, since Config reads through `GetPrivateProfileString`. Each case
   writes its own file name, because Windows caches the contents of the most recently used
   INI.
+- `rotation_test` — `EulerToMatrix` against its own definition rather than against another
+  implementation. It is the reference the rest of the suite compares to, so a silent sign
+  flip there would leave every other test green while agreeing with a wrong answer.
+- `head_tracker_test` — each source, recenter semantics, and the regression guard that a
+  hot reload with unchanged settings must not reset the recenter reference. Windows only.
+- `plugin_path_test` — the two anchors and the buffer-too-small contract. Windows only.
+
+**Deliberately not covered**, so nobody goes looking for it:
+
+- `core/Memory` — `Verify` and `SafeWrite` take an address as a `UInt32` and cast it
+  straight to a pointer. That is right for the 32-bit process OBVR is loaded into and
+  truncates in a native 64-bit test build, so these are only exercisable from a 32-bit
+  build. The bytes they transport are covered by `trampoline_test`.
+- `camera/CameraHook`'s callback — it needs a live `CameraNode` and Oblivion's player
+  pointer. The two pieces of logic inside it that could be tested in isolation, the recenter
+  edge detection and the POV change detection, would have to be lifted out of the callback
+  first. Worth doing if either ever misbehaves.
+- `core/Log` — writing to a file and to the debugger. Nothing to get wrong that a test
+  would catch before a reader would.
 
 ---
 
