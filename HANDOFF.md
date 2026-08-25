@@ -815,35 +815,117 @@ Each of these cost one failed attempt:
 
 ---
 
-## 13. Next step: verify 0.0.3, then 0.0.4
+## 13. Next step: 0.0.5, pictures in the headset
 
-### Verifying 0.0.3
+0.0.1 to 0.0.4 are verified in the game. What remains is the half OBVR has not touched at
+all: it reads from VR but has never written to it. 0.0.5 closes that loop — a frame loop, a
+texture per eye, and a test image visible in the headset. Not Oblivion's world yet; that is
+0.1.0. The point of the intermediate step is that it separates two things which would
+otherwise fail together, and indistinguishably: talking to the compositor correctly, and
+getting Oblivion's pixels out of Direct3D 9.
 
-The code is in place. What is missing is a run with a real headset:
+### What the compositor requires, and where it bites
 
-1. Put the x86 `openvr_api.dll` next to `Oblivion.exe`, start SteamVR, set `Source=openvr`.
-2. Check that the camera follows head movement, in first and third person, and that the
-   character does not turn with it.
-3. Check `OBVR.log` for the `OpenVR: connected through FnTable:IVRSystem_026` line.
-4. Check the fallback: start once without SteamVR and confirm Oblivion still runs with the
-   vanilla camera.
-5. Press Del and confirm that the current head pose becomes the new zero.
+Four findings, each read from a source rather than recalled. They are set down here because
+three of them contradict decisions OBVR has already made.
 
-### Then 0.0.4
+**OBVR has to stop being a background application.** `src/vr/OpenVRTypes.h` picks
+`VRApplication_Background` and says why: as a scene application it would claim the
+compositor and take the scene away from whatever SteamVR is showing. That reasoning was
+right for reading poses and is exactly what has to change now, because claiming the scene
+*is* the feature. This is not a matter of taste. `Submit` checks the application type and
+returns `VRCompositorError_IsNotSceneApplication` to anything that is not
+`VRApplication_Scene`; `WaitGetPoses` does the same, and additionally returns
+`VRCompositorError_DoNotHaveFocus` and throttles itself to 10 Hz when another application
+holds focus. So the fallback path matters more than before, not less: a machine without a
+headset must still get the game it had.
 
-Stereo rendering. The architectural decision there is about the *rendering* strategy, not
-the VR API:
+**`IVRCompositor` is a second FnTable, with its own indices.** From `openvr_capi.h`, in
+order from the top of `VR_IVRCompositor_FnTable`:
 
-- **Root fix (model: openRBRVR):** D3D9 → Vulkan through a DXVK fork with VR support. Stays
-  in-process and 32 bit, delivers Vulkan textures that OpenVR accepts directly, and solves
-  Oblivion's single-threaded D3D9 problems along the way.
-- **Pragmatic:** keep native D3D9, bridge to D3D11 via a D3D9Ex helper device and a shared
-  handle. Also possible in-process; the price is a CPU readback, because classic D3D9 has
-  no shared surfaces.
+| Index | Function |
+| --- | --- |
+| 0 | `SetTrackingSpace` |
+| 1 | `GetTrackingSpace` |
+| 2 | `WaitGetPoses` |
+| 3 | `GetLastPoses` |
+| 4 | `GetLastPoseForTrackedDeviceIndex` |
+| 5 | `GetSubmitTexture` |
+| 6 | `Submit` |
 
-Note on OpenVR: `IVRCompositor::Submit` only accepts `TextureType_DirectX` (ID3D11),
-OpenGL, Vulkan or DirectX12. `TextureType_DXGISharedHandle` is explicitly for overlays
-only. So a bridge out of D3D9 is required either way.
+The same calling-convention trap applies as for `IVRSystem`: the global `VR_*` functions
+are `__cdecl`, the pointers inside the table `__stdcall`. See the warning at the top of
+`OpenVRTypes.h`, which is not repeated per interface.
+
+**The compositor owns the frame loop, not OBVR.** `WaitGetPoses` blocks until the right
+moment to start rendering and hands back the poses to render with; it is the clock. That
+sits awkwardly beside the camera hook, which runs on Oblivion's clock. Which of the two
+drives the other is the open design question of 0.0.5, and it should be answered before any
+code is written rather than discovered afterwards.
+
+**`Submit` takes no Direct3D 9 texture, and there is no flag that makes it.** `ETextureType`
+has no D3D9 entry at all: `TextureType_DirectX` is an `ID3D11Texture`, then OpenGL, Vulkan,
+IOSurface, DirectX12, DXGISharedHandle, Metal, Reserved, SharedTextureHandle.
+`TextureType_DXGISharedHandle` is documented as overlay-only. `GetOutputDevice` lists D3D9
+as "Not Supported". The one D3D9-shaped thing in the API, `GetD3D9AdapterIndex`, is for
+taking the headset over as a fullscreen exclusive display — the old extended mode, not
+compositor submission.
+
+### The D3D9 problem, sharpened
+
+0.0.5 sidesteps this by rendering its test image with a D3D11 device of OBVR's own. 0.1.0
+cannot, and the constraint is tighter than "a bridge is needed":
+
+**Plain Direct3D 9 cannot share surfaces at all.** Microsoft's *Surface sharing between
+Windows graphics APIs* is unambiguous: "Direct3D 10.0, Direct3D 9c, and older Direct3D
+runtimes do not support shared surfaces. System memory copies will continue to be used for
+interoperability." `IDirect3DDevice9::CreateTexture` documents `pSharedHandle` as
+"Reserved. Set this parameter to NULL", shareable only on the Vista-era (9Ex) runtime. An
+attempt on a plain device fails with `Device is not capable of sharing resource`.
+
+D3D9**Ex** can share, unsynchronised, and `ID3D11Device::OpenSharedResource` documents the
+D3D9→D3D11 route with its restrictions: 2D only, one mip level, default usage, write only,
+no MSAA, bind flags `SHADER_RESOURCE | RENDER_TARGET`, and only `R8G8B8A8_UNORM`,
+`R10G10B10A2_UNORM` or `R16G16B16A16_FLOAT`.
+
+Oblivion is from 2006 and creates a plain D3D9 device. So the two candidate routes are:
+
+- **Force the game onto D3D9Ex**, through a `d3d9.dll` wrapper that hands back an
+  `IDirect3D9Ex`, then share into D3D11 and submit. Keeps OBVR dependency-free, which has
+  been a deliberate property so far. Unverified: whether Oblivion tolerates a 9Ex device —
+  the runtimes differ in `D3DPOOL_MANAGED` handling and in device-lost behaviour, and that
+  has to be tried rather than argued.
+- **Replace D3D9 with DXVK**, which renders in Vulkan and submits Vulkan textures. Two
+  independent precedents do exactly this for D3D9 games: [openRBRVR](https://github.com/Detegr/openRBRVR)
+  and [l4d2vr](https://github.com/sd805/l4d2vr), the latter shipping a modified DXVK fork as
+  the game's `d3d9.dll` and submitting through a `SharedTextureHolder` per eye. The price is
+  a very large dependency for a project that currently imports nothing beyond kernel32,
+  msvcrt and user32.
+
+One point favours DXVK beyond the precedents, and it is about the stated target rather than
+convenience: under Proton, Oblivion's D3D9 is *already* going through DXVK to Vulkan. On
+Linux the translation exists whether OBVR wants it or not, and a route that fights it is a
+route that works on the development machine and not on the destination. Windows is the
+development environment here; Linux is still where this is meant to end up.
+
+**This decision is deliberately left open.** It does not block 0.0.5, because proving the
+compositor connection, the frame timing and the projection maths is worth the same under
+either route.
+
+### The order of work for 0.0.5
+
+1. `IVRCompositor` in `OpenVRTypes.h` and the backend — table, indices, `Texture_t`,
+   `VRTextureBounds_t`, the submit flags.
+2. Scene rather than background, and a fallback that is at least as safe as today's.
+3. A D3D11 device of OBVR's own, one texture per eye, a generated test image. This is what
+   makes the milestone testable without solving D3D9.
+4. `WaitGetPoses` in a frame loop, and the decision about which clock leads.
+5. `GetProjectionRaw` and `GetEyeToHeadTransform`, so the eyes sit where the headset says
+   rather than where a guess puts them.
+
+Steps 1 to 3 are testable without a headset in the same way everything else here is: the
+FnTable indices against the header, the texture arithmetic against known values, the
+fallback against a machine with no SteamVR.
 
 ---
 
@@ -859,5 +941,9 @@ only. So a bridge out of D3D9 is required either way.
   game with a VR mod, in-process, OpenVR + OpenXR.
 - [ValveSoftware/openvr](https://github.com/ValveSoftware/openvr) — `bin/win32/openvr_api.dll`,
   `headers/openvr_capi.h`. The source for `src/vr/OpenVRTypes.h`.
+- [sd805/l4d2vr](https://github.com/sd805/l4d2vr) — a second D3D9 precedent, and the more
+  explicit one: it ships a modified DXVK fork as the game's `d3d9.dll` and submits Vulkan
+  textures per eye. Useful mainly as evidence that the DXVK route is walked rather than
+  merely proposed.
 - [DR-89/fear-vr](https://github.com/DR-89/fear-vr) — two-process architecture with shared
   memory, should it ever be needed.
