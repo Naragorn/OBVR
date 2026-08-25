@@ -436,6 +436,7 @@ HookEnabled=1          ; only read at startup
 
 [Head]
 Source=fixed           ; none | fixed | simulated | openvr | openxr
+RecenterKey=46         ; virtual-key code, decimal or 0x hex; 46 = Del, 0 = off
 FixedPitch=0.0
 FixedRoll=20.0
 FixedYaw=0.0
@@ -459,11 +460,22 @@ Note on the hot reload: `HeadTracker::Configure` only resets the recenter refere
 source actually changed. It used to reset unconditionally, which would have undone every
 recenter within `ReloadEveryFrames` once a real headset was attached.
 
-Recentering sits on the **Del** key (`VK_DELETE`, `0x2E`), polled once per frame with
-`GetAsyncKeyState`. Vanilla Oblivion does not bind Del, so it cannot collide with a game
-action. This is the only reason OBVR imports anything from `user32` — the alternative would
-have been another reverse engineered address for Oblivion's own input state. The key is not
-configurable yet.
+Recentering sits on `RecenterKey`, default **Del** (`VK_DELETE`, `0x2E`), which vanilla
+Oblivion leaves unbound so it cannot collide with a game action. `0` disables it. The value
+takes decimal or hex with an `0x` prefix — Microsoft's virtual-key table lists the codes in
+hex, so that is the form people copy, and silently ignoring it would look like the key
+simply not working.
+
+Polled once per frame with `GetAsyncKeyState`, and the reason is robustness rather than
+speed. A `WH_KEYBOARD_LL` hook must be called on a thread that has a message loop, which a
+plugin does not own; it sits in the system-wide input path, so every keystroke in every
+application waits for it; and Microsoft documents that on Windows 7 and later a hook that
+exceeds `LowLevelHooksTimeout` is *silently removed without being called, with no way for
+the application to know*. A stuttering game is exactly where that happens. Microsoft steers
+towards raw input instead, which would need a window to register against and a message
+queue to drain.
+
+This is the only reason OBVR imports anything from `user32`.
 
 ---
 

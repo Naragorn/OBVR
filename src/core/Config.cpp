@@ -85,6 +85,57 @@ bool ReadBool(const char* section, const char* key, bool fallback, const char* p
 	return ReadUInt(section, key, fallback ? 1 : 0, path) != 0;
 }
 
+// Reads a virtual-key code. Accepts decimal (46) as well as hex with an 0x
+// prefix (0x2E).
+//
+// The hex form matters: Microsoft's virtual-key table lists the codes in hex,
+// so that is what people will copy. ReadUInt would quietly fall back on such
+// a value, and the key would then simply appear not to work.
+UInt32 ReadKeyCode(const char* section, const char* key, UInt32 fallback, const char* path) {
+	char buffer[64];
+	const DWORD length = GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), path);
+	if (length == 0) {
+		return fallback;
+	}
+
+	DWORD i = 0;
+	UInt32 base = 10;
+	if (length > 2 && buffer[0] == '0' && (buffer[1] == 'x' || buffer[1] == 'X')) {
+		base = 16;
+		i = 2;
+	}
+
+	UInt32 value = 0;
+	for (; i < length; ++i) {
+		const char c = buffer[i];
+		UInt32 digit = 0;
+
+		if (c >= '0' && c <= '9') {
+			digit = static_cast<UInt32>(c - '0');
+		} else if (base == 16 && c >= 'a' && c <= 'f') {
+			digit = static_cast<UInt32>(c - 'a' + 10);
+		} else if (base == 16 && c >= 'A' && c <= 'F') {
+			digit = static_cast<UInt32>(c - 'A' + 10);
+		} else {
+			OBVR_LOG("Config: %s.%s=\"%s\" is not a number, keeping the previous key",
+			         section, key, buffer);
+			return fallback;
+		}
+
+		value = value * base + digit;
+	}
+
+	// Virtual-key codes fit in a byte. Anything larger is a typo, and polling
+	// a key that cannot exist would look exactly like the key not working.
+	if (value > 0xFF) {
+		OBVR_LOG("Config: %s.%s=%u is not a virtual-key code (0 to 255), keeping the previous key",
+		         section, key, value);
+		return fallback;
+	}
+
+	return value;
+}
+
 vr::TrackerSource ReadSource(vr::TrackerSource fallback, const char* path) {
 	char buffer[32];
 	if (GetPrivateProfileStringA("Head", "Source", "", buffer, sizeof(buffer), path) == 0) {
@@ -136,6 +187,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.tracker.simulatedPeriodFrames =
 		ReadUInt("Head", "SimulatedPeriodFrames", config.tracker.simulatedPeriodFrames, path);
 
+	config.recenterKey = ReadKeyCode("Head", "RecenterKey", config.recenterKey, path);
+
 	config.logEveryFrames = ReadUInt("Debug", "LogEveryFrames", config.logEveryFrames, path);
 	config.reloadEveryFrames =
 		ReadUInt("Debug", "ReloadEveryFrames", config.reloadEveryFrames, path);
@@ -166,6 +219,10 @@ bool Config::Load(const char* fileName) {
 	         tracker.simulatedPeriodFrames,
 	         logEveryFrames,
 	         reloadEveryFrames);
+	// Logged in hex as well, because that is the form the virtual-key tables
+	// use - it saves converting in your head when a binding misbehaves.
+	OBVR_LOG("Config: RecenterKey=%u (0x%02X)%s", recenterKey, recenterKey,
+	         recenterKey == 0 ? " - recentering disabled" : "");
 	return true;
 }
 

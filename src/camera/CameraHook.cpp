@@ -15,11 +15,6 @@ vr::HeadTracker g_headTracker;
 
 constexpr UInt32 kTrampolineSize = 64;
 
-// VK_DELETE - the Del key above the arrow block. Chosen because vanilla
-// Oblivion does not bind it, so recentering cannot collide with a game
-// action.
-constexpr int kRecenterVirtualKey = 0x2E;
-
 bool g_recenterWasDown = false;
 
 bool ReadIsThirdPerson() {
@@ -46,8 +41,29 @@ void MaybeReloadConfig() {
 
 // Polls the recenter key once per frame.
 //
-// Polled rather than hooked: OBVR installs no input hook at all, and a single
-// GetAsyncKeyState call per frame is far cheaper than setting one up.
+// Polled rather than hooked, and the reason is robustness, not speed. The
+// obvious alternative would be a WH_KEYBOARD_LL hook, but Microsoft documents
+// three properties that rule it out here:
+//
+//   * "This hook is called in the context of the thread that installed it.
+//     The call is made by sending a message to the thread that installed the
+//     hook. Therefore, the thread that installed the hook must have a message
+//     loop." OBVR is a plugin inside Oblivion and owns no message loop it can
+//     service on its own terms.
+//   * The hook sits in the system-wide input path. Every keystroke in every
+//     application waits for it to sign off before the key state updates.
+//   * "If the hook procedure times out ... on Windows 7 and later, the hook is
+//     silently removed without being called. There is no way for the
+//     application to know whether the hook is removed." A game that stutters
+//     is precisely where a timeout happens, and OBVR could not even detect
+//     that recentering had stopped working.
+//
+// Microsoft's own advice is to prefer raw input over low-level hooks. That
+// would work, but it needs a window to register against and a message queue to
+// drain - considerably more machinery than one call per rendered frame.
+//
+// Cost is not the argument either way: this runs once per frame rather than in
+// a spin loop, so it is a single user32 call every 8 to 16 milliseconds.
 //
 // The edge is detected here through a stored previous state. GetAsyncKeyState
 // does carry a "pressed since the last call" bit, but that bit is consumed
@@ -58,11 +74,18 @@ void MaybeReloadConfig() {
 // Oblivion pauses when it loses focus, so this callback does not run at all
 // while another application has the keyboard.
 void MaybePollRecenter() {
-	const bool isDown = (GetAsyncKeyState(kRecenterVirtualKey) & 0x8000) != 0;
+	const UInt32 key = GetConfig().recenterKey;
+	if (key == 0) {
+		// Explicitly disabled in the configuration.
+		g_recenterWasDown = false;
+		return;
+	}
+
+	const bool isDown = (GetAsyncKeyState(static_cast<int>(key)) & 0x8000) != 0;
 
 	if (isDown && !g_recenterWasDown) {
 		g_headTracker.Recenter();
-		OBVR_LOG("Camera: recentered on Del (frame %u)", g_state.frameCount);
+		OBVR_LOG("Camera: recentered on key 0x%02X (frame %u)", key, g_state.frameCount);
 	}
 
 	g_recenterWasDown = isDown;

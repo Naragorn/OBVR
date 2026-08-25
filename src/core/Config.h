@@ -11,6 +11,11 @@ struct Config {
 
 	vr::TrackerSettings tracker;
 
+	// Virtual-key code of the key that takes the current head pose as the new
+	// zero. Default is VK_DELETE (0x2E), the Del key above the arrow block,
+	// which vanilla Oblivion leaves unbound. 0 disables recentering.
+	UInt32 recenterKey = 0x2E;
+
 	// How often the camera state is logged, in frames. 0 turns the running
 	// log off; state changes are still reported.
 	UInt32 logEveryFrames = 0;
