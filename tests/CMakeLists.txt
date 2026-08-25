@@ -220,3 +220,16 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME submit_policy COMMAND submit_policy_test)
+
+add_executable(eye_geometry_test
+	EyeGeometryTest.cpp
+	../src/render/EyeGeometry.cpp
+)
+
+target_include_directories(eye_geometry_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(eye_geometry_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME eye_geometry COMMAND eye_geometry_test)

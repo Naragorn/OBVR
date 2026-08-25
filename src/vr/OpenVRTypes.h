@@ -106,7 +106,37 @@ struct IVRSystemFnTable {
 	// the compositor takes as it is and one it rescales every frame.
 	void(__stdcall* GetRecommendedRenderTargetSize)(UInt32* width, UInt32* height);
 
-	void* unused[11];
+	void* getProjectionMatrix;
+
+	// Index 2. The components of the eye's frustum, as tangents of the angles
+	// from the view axis. Void with out-parameters, so it is safe to call in
+	// the ordinary way.
+	//
+	// The sign convention is NOT documented in the header. Valve's wiki holds
+	// that "top" and "bottom" are named backwards - that pfTop is the tangent
+	// to the *bottom* plane and negative, pfBottom the tangent to the top and
+	// positive - but that is a claim to check against a real runtime rather
+	// than to build on. OBVR logs the four numbers as they arrive, and the
+	// log settles it.
+	void(__stdcall* GetProjectionRaw)(int eye, float* left, float* right, float* top,
+	                                  float* bottom);
+
+	void* computeDistortion;
+	void* computeDistortionSet;
+
+	// Index 5, and the awkward one: it returns HmdMatrix34_t **by value**.
+	//
+	// Forty-eight bytes do not fit in a register, so on x86 the caller passes
+	// a hidden pointer to a return buffer as an implicit first argument, and
+	// under __stdcall the callee pops it. Declaring the return type as the
+	// struct lets the compiler generate exactly that, which is the whole
+	// reason it is written this way rather than as a pointer out-parameter -
+	// hand-rolling the hidden argument would be inventing an ABI instead of
+	// using the one both sides already agree on. Getting it wrong does not
+	// return a wrong matrix, it unbalances the stack.
+	HmdMatrix34(__stdcall* GetEyeToHeadTransform)(int eye);
+
+	void* unused[6];
 
 	void(__stdcall* GetDeviceToAbsoluteTrackingPose)(int origin,
 	                                                 float predictedSecondsFromNow,

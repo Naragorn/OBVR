@@ -174,6 +174,56 @@ void OpenVRBackend::Stop() {
 	OBVR_LOG("OpenVR: disconnected");
 }
 
+bool OpenVRBackend::GetEyeProjection(int eye, float& left, float& right, float& top,
+                                     float& bottom) const {
+	if (m_system == nullptr) {
+		return false;
+	}
+
+	auto* table = static_cast<openvr::IVRSystemFnTable*>(m_system);
+	if (table->GetProjectionRaw == nullptr) {
+		return false;
+	}
+
+	float l = 0.0f;
+	float r = 0.0f;
+	float t = 0.0f;
+	float b = 0.0f;
+	table->GetProjectionRaw(eye, &l, &r, &t, &b);
+
+	// A frustum with no width or no height is not a frustum. This catches a
+	// runtime that answered without filling anything in, which would
+	// otherwise turn into a division by zero downstream and be reported as a
+	// projection fault rather than a missing answer.
+	if (r - l == 0.0f || b - t == 0.0f) {
+		return false;
+	}
+
+	left = l;
+	right = r;
+	top = t;
+	bottom = b;
+	return true;
+}
+
+bool OpenVRBackend::GetEyeOffset(int eye, NiPoint3& offsetMetres) const {
+	if (m_system == nullptr) {
+		return false;
+	}
+
+	auto* table = static_cast<openvr::IVRSystemFnTable*>(m_system);
+	if (table->GetEyeToHeadTransform == nullptr) {
+		return false;
+	}
+
+	// Returns by value; see the note in OpenVRTypes.h about the hidden return
+	// pointer. The translation is the fourth column, exactly as in a tracked
+	// device pose, so it goes through the same reader.
+	const openvr::HmdMatrix34 transform = table->GetEyeToHeadTransform(eye);
+	offsetMetres = PositionFromOpenVRMatrix(transform.m);
+	return true;
+}
+
 int OpenVRBackend::WaitGetPoses() const {
 	if (m_compositor == nullptr) {
 		return openvr::kCompositorErrorIsNotSceneApplication;

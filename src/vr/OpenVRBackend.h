@@ -95,6 +95,18 @@ public:
 	// whole texture is that eye.
 	int SubmitEye(int eye, void* texture) const;
 
+	// The eye's frustum, as tangents of the angles from the view axis.
+	//
+	// Reported rather than interpreted: the sign convention is undocumented,
+	// so OBVR hands the four numbers on as they arrive and the log is what
+	// establishes what they mean on a real runtime.
+	bool GetEyeProjection(int eye, float& left, float& right, float& top, float& bottom) const;
+
+	// Where the eye sits relative to the head, in metres, still in OpenVR
+	// convention. The two together give the distance between the eyes, which
+	// is the number stereo rendering is built on.
+	bool GetEyeOffset(int eye, NiPoint3& offsetMetres) const;
+
 	// The size the headset wants each eye rendered at, in pixels.
 	//
 	// Worth asking rather than assuming: the compositor takes a texture of

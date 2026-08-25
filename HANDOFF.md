@@ -1112,8 +1112,12 @@ which is why that pattern is worth reusing rather than reinventing.
    game has just drawn. `render::HeadsetRenderer` does the per-frame work and
    `render::SubmitPolicy` decides when to give up — see below, because that decision is not
    optional.
-5. `GetProjectionRaw` and `GetEyeToHeadTransform`, so the eyes sit where the headset says
-   rather than where a guess puts them. ← **next**
+5. ~~`GetProjectionRaw` and `GetEyeToHeadTransform`~~ - **read and logged, not yet used.**
+   `render::EyeGeometry` turns them into field of view, frustum asymmetry, optical centre
+   and interpupillary distance, and `HeadsetRenderer` writes all of it out once when
+   rendering starts. Deliberately stopping short of acting on them: the sign convention of
+   the frustum is undocumented, and the next in-game log is what settles it. ← **next: use
+   what that log says**
 6. The in-game run: `Render.Enabled=1`, SteamVR running, and a look at whether the pattern
    arrives whole, upright, unmirrored and on the right eyes.
 

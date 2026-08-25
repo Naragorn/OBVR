@@ -1,10 +1,64 @@
 #include "render/HeadsetRenderer.h"
 
 #include "core/Log.h"
+#include "render/EyeGeometry.h"
 #include "vr/OpenVRBackend.h"
 #include "vr/OpenVRTypes.h"
 
 namespace obvr::render {
+namespace {
+
+// Writes what the headset says about the eyes, once, when rendering starts.
+//
+// It changes nothing. It is here because the next milestone renders the world
+// twice using exactly these numbers, and the sign convention of the frustum
+// is not documented anywhere - so the four values are printed raw, as they
+// arrive, and the log is what settles what they mean. A guess made now would
+// be invisible until a picture came out subtly wrong.
+void LogEyeGeometry(const vr::OpenVRBackend& backend) {
+	for (int eye = 0; eye < 2; ++eye) {
+		const char* name = eye == vr::openvr::kEyeLeft ? "left" : "right";
+
+		EyeProjection projection;
+		if (backend.GetEyeProjection(eye, projection.left, projection.right, projection.top,
+		                             projection.bottom)) {
+			OBVR_LOG("Render: %s eye raw=(l %.4f, r %.4f, t %.4f, b %.4f)", name,
+			         static_cast<double>(projection.left),
+			         static_cast<double>(projection.right),
+			         static_cast<double>(projection.top),
+			         static_cast<double>(projection.bottom));
+			OBVR_LOG("Render: %s eye fov=(h %.1f deg, v %.1f deg) asymmetry=(h %.4f, v %.4f)",
+			         name, static_cast<double>(HorizontalFovDegrees(projection)),
+			         static_cast<double>(VerticalFovDegrees(projection)),
+			         static_cast<double>(HorizontalAsymmetry(projection)),
+			         static_cast<double>(VerticalAsymmetry(projection)));
+		} else {
+			OBVR_LOG("Render: %s eye reported no usable projection", name);
+		}
+	}
+
+	NiPoint3 leftEye{0.0f, 0.0f, 0.0f};
+	NiPoint3 rightEye{0.0f, 0.0f, 0.0f};
+	if (backend.GetEyeOffset(vr::openvr::kEyeLeft, leftEye) &&
+	    backend.GetEyeOffset(vr::openvr::kEyeRight, rightEye)) {
+		const float ipd = InterpupillaryDistance(leftEye, rightEye);
+
+		// Flagged rather than merely printed. A misread transform is out by a
+		// factor, not by millimetres, and it would otherwise show up much
+		// later as a world that feels like a doll's house for no stated
+		// reason.
+		OBVR_LOG("Render: eye offsets left=(%.4f, %.4f, %.4f) right=(%.4f, %.4f, %.4f)",
+		         static_cast<double>(leftEye.x), static_cast<double>(leftEye.y),
+		         static_cast<double>(leftEye.z), static_cast<double>(rightEye.x),
+		         static_cast<double>(rightEye.y), static_cast<double>(rightEye.z));
+		OBVR_LOG("Render: IPD %.1f mm%s", static_cast<double>(ipd) * 1000.0,
+		         IsPlausibleIpd(ipd) ? "" : " - outside the human range, so probably misread");
+	} else {
+		OBVR_LOG("Render: the headset reported no eye offsets");
+	}
+}
+
+}  // namespace
 
 void HeadsetRenderer::Update(const vr::OpenVRBackend& backend) {
 	if (m_policy.HasStopped()) {
@@ -38,6 +92,8 @@ void HeadsetRenderer::Update(const vr::OpenVRBackend& backend) {
 			// into the only thing being rendered.
 			return;
 		}
+
+		LogEyeGeometry(backend);
 	}
 
 	// Blocks until the compositor wants the next frame. From here on Oblivion
