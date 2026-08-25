@@ -69,13 +69,43 @@ controller.
 | 0.0.2 | quaternion layer, recenter, interchangeable head source, config hot reload | **verified in the game** |
 | 0.0.3 | OpenVR wired up, real HMD rotation on the camera | **verified in the game** |
 | 0.0.4 | 6DoF for the head, vertical look taken off the stick | **verified in the game**, two settings retuned from what it showed |
-| 0.0.5 | frame loop, left and right swapchain, test images in the headset | open ← **continue here** |
+| 0.0.5 | frame loop, left and right swapchain, test images in the headset | **the picture arrives, confirmed in the headset**; the eye placement of step 5 is still open ← **continue here** |
 | 0.1.0 | Oblivion's world as real dual-pass stereo | open |
 
 0.0.1 and 0.0.2 were tested against Oblivion GOTY (Steam, AppID 22330) under Proton with
 xOBSE 22.13. 0.0.3 was tested on Windows 11 with SteamVR and a real headset, against a
 4GB-patched `Oblivion.exe` of the same version. Evidence (screenshots and logs) is under
 `docs/verification/`.
+
+### What the 0.0.5 run showed, and what it did not
+
+**OBVR put a picture in a headset.** As with 0.0.4 this is the tester's report rather than a
+log, so it is testimony; but it is testimony about things that are either visible or not,
+which is the kind testimony is good for.
+
+Confirmed: the scene registration held, a Direct3D 11 device and two textures were created,
+`Submit` accepted them, and the frame loop ran without `SubmitPolicy` shutting it down. The
+red square appeared to the left eye and the green one to the right — **the eyes are not
+swapped**, and since each marker sits on its own side, **the picture is not mirrored**. The
+ramp ran dark at the top to bright at the bottom, so **it is the right way up**.
+
+That settles the question the milestone was built to ask, and it settles it independently of
+Direct3D 9: whatever comes next, the way OBVR talks to the compositor is right.
+
+**One thing it also settled was a design fault of mine.** The border was placed at the
+extreme edge of the texture to detect cropping. The tester could see it at the top corners
+and was not sure about the bottom — because the lens optics do not reach the edges of a
+render target and a face gasket covers what is left. The arithmetic was perfect and all
+thirty-four checks passed on it; the feature was simply invisible. There is now a second,
+inset frame in cyan at an eighth of the shorter side, which is inside the visible area, and
+the outer border stays as a coarser check. A test feature that cannot be seen tests nothing,
+and no amount of unit testing was ever going to say so.
+
+Not established: whether the device came from hardware or fell back to WARP, what size the
+headset asked for, and how the game's frame rate behaved once it was on the compositor's
+clock. All three are in `OBVR.log` and none were looked at. The eye offsets and projection
+are not implemented at all, which is step 5 — until then the picture is head-locked, which
+is correct rather than a fault.
 
 ### What the 0.0.4 run showed, and what it did not
 

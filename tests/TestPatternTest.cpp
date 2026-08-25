@@ -68,6 +68,69 @@ void TestBorderReachesEveryEdge() {
 	      "and not one that fills it entirely");
 }
 
+void TestInsetFrameIsWhereItCanBeSeen() {
+	std::printf("The inset frame, which exists because the outer one could not be seen\n");
+
+	// Found by wearing the thing. The border at the extreme edge is
+	// arithmetically perfect and every check in this file passed on it, but a
+	// real headset shows neither the corners nor much of the edges: the optics
+	// do not reach them and the face gasket covers what is left. So there is a
+	// second frame, far enough in to be visible.
+	const UInt32 offset = obvr::render::InsetFrameOffset(kWidth, kHeight);
+	const UInt32 thickness = obvr::render::BorderThickness(kWidth, kHeight);
+	const UInt32 shorter = kWidth < kHeight ? kWidth : kHeight;
+
+	Check(offset > thickness * 2 - 1,
+	      "the inset frame is clear of the border, not merged into one thick edge");
+
+	// The two numbers that make it useful: far enough in to be inside the
+	// lens view, far enough out to still say something about the picture.
+	Check(offset >= shorter / 16, "it is far enough from the edge to be visible");
+	Check(offset <= shorter / 4, "and not so far in that it says nothing about the edges");
+
+	// All four sides, because the question it answers is which one is missing.
+	const Pixel onTop = At(kWidth / 2, offset);
+	const Pixel onBottom = At(kWidth / 2, kHeight - offset - 1);
+	const Pixel onLeft = At(offset, kHeight / 2);
+	const Pixel onRight = At(kWidth - offset - 1, kHeight / 2);
+
+	Check(!IsGrey(onTop), "the top of the inset frame is coloured, not ramp");
+	Check(!IsGrey(onBottom), "and the bottom");
+	Check(!IsGrey(onLeft), "and the left");
+	Check(!IsGrey(onRight), "and the right");
+
+	// Cyan, so it cannot be confused with the white border at a glance -
+	// telling which of the two is visible is the entire reason for having both.
+	Check(onTop.b > onTop.r && onTop.g > onTop.r, "it is cyan rather than white");
+	Check(!SameColour(onTop, Pixel{255, 255, 255, 255}), "and definitely not white");
+
+	// It has to be a frame rather than a filled block, or it covers the ramp
+	// and the markers.
+	Check(IsGrey(At(kWidth / 2, offset + thickness + 2)),
+	      "just inside the inset frame is ramp again");
+}
+
+void TestCentreCross() {
+	std::printf("The centre cross, for the projection work after this\n");
+
+	// Not needed to get a picture into the headset. Needed to judge where the
+	// two eyes' pictures sit relative to each other once the eye offsets and
+	// projection go in, which is the next step - and a thin cross is far
+	// easier to judge that against than a ramp or a coloured square.
+	const Pixel centre = At(kWidth / 2, kHeight / 2);
+	Check(!IsGrey(centre) || centre.r > 200, "the exact centre is marked");
+	Check(centre.r == 255 && centre.g == 255 && centre.b == 255, "the cross is white");
+
+	// Arms in both directions, so it reads as a cross rather than a dot.
+	const UInt32 arm = (kWidth < kHeight ? kWidth : kHeight) / 12;
+	Check(At(kWidth / 2, kHeight / 2 - arm + 1).r == 255, "it has a vertical arm");
+	Check(At(kWidth / 2 - arm + 1, kHeight / 2).r == 255, "and a horizontal one");
+
+	// And it stops. A cross reaching across the picture would be a grid.
+	Check(IsGrey(At(kWidth / 2 + arm * 3, kHeight / 2)),
+	      "the arms end well before the edge");
+}
+
 void TestRampRunsDownwards() {
 	std::printf("The ramp, which says which way up it is\n");
 
@@ -242,6 +305,10 @@ int main() {
 	std::printf("OBVR test pattern test\n\n");
 
 	TestBorderReachesEveryEdge();
+	std::printf("\n");
+	TestInsetFrameIsWhereItCanBeSeen();
+	std::printf("\n");
+	TestCentreCross();
 	std::printf("\n");
 	TestRampRunsDownwards();
 	std::printf("\n");

@@ -8,6 +8,15 @@ constexpr UInt8 kOpaque = 255;
 // White, so a cut edge is obvious against the ramp behind it at either end.
 constexpr Pixel kBorder{255, 255, 255, kOpaque};
 
+// Cyan for the inset frame, so it cannot be mistaken for the outer border at
+// a glance - the two answer the same question from different distances, and
+// telling which one is visible is the whole point of having both.
+constexpr Pixel kInsetFrame{0, 200, 230, kOpaque};
+
+// The centre cross, white and thin. Bright against the middle of the ramp,
+// which sits at mid grey.
+constexpr Pixel kCross{255, 255, 255, kOpaque};
+
 // One colour per eye, far enough apart to name without thinking. Not pure red
 // and green: a fully saturated primary makes it hard to tell a dim panel from
 // a dark image, whereas a colour with some of the other channels in it still
@@ -16,6 +25,9 @@ constexpr Pixel kLeftMarker{230, 60, 60, kOpaque};
 constexpr Pixel kRightMarker{60, 220, 90, kOpaque};
 
 UInt32 Clamp(UInt32 value, UInt32 max) { return value > max ? max : value; }
+
+// Distance between two unsigned values without going below zero on the way.
+UInt32 Distance(UInt32 a, UInt32 b) { return a > b ? a - b : b - a; }
 
 // Well above any headset in existence and well below where the arithmetic
 // stops being safe. 16384 squared is 268 million pixels, which times four
@@ -65,6 +77,16 @@ UInt32 BorderThickness(UInt32 width, UInt32 height) {
 	return thickness;
 }
 
+UInt32 InsetFrameOffset(UInt32 width, UInt32 height) {
+	const UInt32 shorter = width < height ? width : height;
+	const UInt32 offset = shorter / 8u;
+
+	// It has to sit outside the border it is inset from, or the two merge
+	// into one thick frame and neither says anything the other does not.
+	const UInt32 minimum = BorderThickness(width, height) * 2u;
+	return offset > minimum ? offset : minimum;
+}
+
 Pixel PatternPixel(UInt32 x, UInt32 y, UInt32 width, UInt32 height, Eye eye) {
 	if (width == 0u || height == 0u) {
 		return Pixel{0, 0, 0, kOpaque};
@@ -78,6 +100,35 @@ Pixel PatternPixel(UInt32 x, UInt32 y, UInt32 width, UInt32 height, Eye eye) {
 	                      y >= height - thickness;
 	if (onBorder) {
 		return kBorder;
+	}
+
+	// The inset frame, which is the one a wearer can actually see. A rectangle
+	// outline: inside the outer rectangle but outside the inner one.
+	const UInt32 offset = InsetFrameOffset(width, height);
+	if (offset * 2u + thickness * 2u < width && offset * 2u + thickness * 2u < height) {
+		const bool insideOuter =
+			x >= offset && x < width - offset && y >= offset && y < height - offset;
+		const bool insideInner = x >= offset + thickness && x < width - offset - thickness &&
+		                         y >= offset + thickness && y < height - offset - thickness;
+		if (insideOuter && !insideInner) {
+			return kInsetFrame;
+		}
+	}
+
+	// The centre cross. Not for this milestone but for the projection work
+	// after it: where the two eyes' crosses sit relative to each other is
+	// what says whether the eye offsets are right, and a thin cross is far
+	// easier to judge that against than a ramp or a coloured square.
+	const UInt32 centreX = width / 2u;
+	const UInt32 centreY = height / 2u;
+	const UInt32 arm = (width < height ? width : height) / 12u;
+	const UInt32 halfThickness = thickness > 1u ? thickness / 2u : 1u;
+
+	const UInt32 fromCentreX = Distance(x, centreX);
+	const UInt32 fromCentreY = Distance(y, centreY);
+	if ((fromCentreX <= halfThickness && fromCentreY <= arm) ||
+	    (fromCentreY <= halfThickness && fromCentreX <= arm)) {
+		return kCross;
 	}
 
 	// The marker sits in the upper third and on its own side. Upper rather

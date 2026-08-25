@@ -12,8 +12,13 @@ namespace obvr::render {
 // to answer four at a glance, each by a feature that is wrong in an obvious
 // way if the thing it tests is wrong:
 //
-//   1. Does the whole texture arrive?  A border frame around all four edges.
-//      Wrong texture bounds cut it, and a missing edge says which side.
+//   1. Does the whole texture arrive?  An inset frame, well within the lens
+//      field of view. There is a border at the very edge as well, but a real
+//      headset showed that one cannot be relied on: the extreme edges of a
+//      render target fall outside what the optics show, and behind a face
+//      gasket the corners are not visible at all. A test feature that cannot
+//      be seen tests nothing, however correct its arithmetic - which every
+//      check in the suite said it was.
 //   2. Is it the right way up?         A vertical ramp, black at the top and
 //      white at the bottom. Upside down is unmistakable, and the ramp doubles
 //      as a look at whether the colour space is being handled sensibly.
@@ -22,6 +27,12 @@ namespace obvr::render {
 //      colour; no measurement needed.
 //   4. Is it mirrored?                 That marker sits off centre
 //      horizontally, on its own side. A mirrored image moves it across.
+//
+// And a fifth, which the projection work needs rather than this milestone: a
+// cross at the exact centre. Where the two eyes' crosses appear relative to
+// each other is what says whether the projection and the eye offsets are
+// right, and it is easier to judge against a thin cross than against
+// anything else in the picture.
 //
 // All integer arithmetic. Not for speed - this runs once - but because the
 // freestanding build has no floating point library, and a pattern that
@@ -77,5 +88,15 @@ UInt32 PatternBufferBytes(UInt32 width, UInt32 height);
 // 320 wide and invisible at 2000, and the headset resolutions this has to
 // work at are not known in advance.
 UInt32 BorderThickness(UInt32 width, UInt32 height);
+
+// How far in from each edge the inset frame sits, in pixels.
+//
+// An eighth of the shorter side, which a real headset put comfortably inside
+// the visible area. The number is a compromise measured rather than derived:
+// far enough in to clear the lens edge and the face gasket, far enough out
+// that it still says something about the picture being cropped or rescaled.
+// If it ever ends up outside the view on some other headset, this is the one
+// number to change.
+UInt32 InsetFrameOffset(UInt32 width, UInt32 height);
 
 }  // namespace obvr::render

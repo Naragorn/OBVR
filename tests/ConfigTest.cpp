@@ -210,13 +210,15 @@ void TestLookRanges() {
 	CheckNear(mixed.look.verticalLookUpRange, 25.0f, "the old key still supplies the missing half");
 	CheckNear(mixed.look.verticalLookDownRange, 99.0f, "and the specific key wins where both apply");
 
-	// Rendering to the headset is off unless a file says otherwise. This is
-	// checked before anything switches it on, because the property that
-	// matters is not that the key works but that its absence is safe: OBVR
-	// must not start claiming the VR scene because someone updated the DLL
-	// and kept their old INI.
+	// The shipped INI has rendering on, because it works. The built-in
+	// default is off, and the two are not in conflict: the built-in default
+	// is what applies when there is no INI at all, which means a broken
+	// installation rather than a configured one. Claiming the VR scene from a
+	// broken install is the harder state to diagnose - the headset goes black
+	// and the reason is a file that is not there to say so.
 	obvr::Config untouched;
-	Check(!untouched.tracker.renderToHeadset, "rendering to the headset is off by default");
+	Check(!untouched.tracker.renderToHeadset,
+	      "with no INI at all, rendering stays off rather than claiming the scene");
 
 	obvr::Config split;
 	LoadFrom("ConfigTestSplitRange.ini",
