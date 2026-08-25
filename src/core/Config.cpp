@@ -204,10 +204,30 @@ bool Config::Load(const char* fileName) {
 		return false;
 	}
 
+	// Whether the file exists has to be asked separately. GetPrivateProfileString
+	// returns the supplied default for a missing file just as it does for a
+	// missing key, so without this check a forgotten OBVR.ini looks exactly
+	// like one that happens to contain the defaults - and OBVR would silently
+	// do nothing at all, since the default source is a fixed rotation of zero
+	// degrees.
+	//
+	// OBVR does not write the file itself. Under Mod Organizer 2 the plugin
+	// directory is virtualised, so a generated INI would be redirected into the
+	// Overwrite folder, which has the highest priority of any mod - it would
+	// shadow the INI shipped with the mod, and editing that one would then have
+	// no effect with nothing to indicate why.
+	const bool exists = GetFileAttributesA(path) != INVALID_FILE_ATTRIBUTES;
+
 	cameraHookEnabled = ReadBool("Camera", "HookEnabled", cameraHookEnabled, path);
 	ReadRuntimeValues(*this, path);
 
-	OBVR_LOG("Config: %s", path);
+	if (exists) {
+		OBVR_LOG("Config: %s", path);
+	} else {
+		OBVR_LOG("Config: %s not found - every value below is a built-in default", path);
+		OBVR_LOG("Config: OBVR.ini belongs next to OBVR.dll, or next to Oblivion.exe");
+	}
+
 	OBVR_LOG("Config: HookEnabled=%d Source=%s Fixed=(P %.1f, R %.1f, Y %.1f)",
 	         cameraHookEnabled ? 1 : 0,
 	         SourceName(tracker.source),

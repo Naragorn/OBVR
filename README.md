@@ -167,7 +167,7 @@ verification environment, not a comfortable one — for a release MSVC stays the
 
 ### Tests
 
-Four test binaries, all without a running Oblivion:
+Five test binaries, all without a running Oblivion:
 
 - **`trampoline_test`** checks the generated hook bytes against expected values worked out
   by hand. A mistake there reliably crashes Oblivion. It also covers the 4GB-patched case
@@ -183,6 +183,11 @@ Four test binaries, all without a running Oblivion:
 - **`openvr_backend_test`** checks that OBVR falls back cleanly on a machine without
   SteamVR. That is the case most users meet first. Windows only, since it calls
   `LoadLibrary`.
+- **`config_test`** checks the INI parsing, above all the virtual-key code parser: both
+  notations, and every way of writing nonsense that has to leave the previous setting
+  alone. A fault there does not crash anything — the key simply stops working, which is the
+  hardest kind of fault to attribute. Windows only, since Config reads through
+  `GetPrivateProfileString`.
 
 ```
 cmake -B build-tests tests -G Ninja

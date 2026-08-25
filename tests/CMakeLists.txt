@@ -69,6 +69,7 @@ if(WIN32)
 		../src/vr/OpenVRBackend.cpp
 		../src/vr/Quaternion.cpp
 		../src/core/Log.cpp
+		../src/platform/PluginPath.cpp
 	)
 
 	target_include_directories(openvr_backend_test PRIVATE ../src)
@@ -78,4 +79,21 @@ if(WIN32)
 	endif()
 
 	add_test(NAME openvr_backend COMMAND openvr_backend_test)
+
+	# Config reads through GetPrivateProfileString, so this one is Windows only
+	# as well.
+	add_executable(config_test
+		ConfigTest.cpp
+		../src/core/Config.cpp
+		../src/core/Log.cpp
+		../src/platform/PluginPath.cpp
+	)
+
+	target_include_directories(config_test PRIVATE ../src)
+
+	if(NOT MSVC)
+		target_compile_options(config_test PRIVATE -Wall -Wextra)
+	endif()
+
+	add_test(NAME config COMMAND config_test)
 endif()

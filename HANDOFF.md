@@ -385,6 +385,11 @@ ctest --test-dir build-tests --output-on-failure
   the trace case distinction, and the full chain to the Oblivion camera matrix.
 - `openvr_backend_test` — the fallback without SteamVR. Windows only, since it calls
   `LoadLibrary`.
+- `config_test` — INI parsing, above all the virtual-key code parser: decimal and hex, and
+  the rejection paths that have to keep the previous setting rather than silently disabling
+  the key. Windows only, since Config reads through `GetPrivateProfileString`. Each case
+  writes its own file name, because Windows caches the contents of the most recently used
+  INI.
 
 ---
 
