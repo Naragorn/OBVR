@@ -14,16 +14,25 @@ relative HMD rotation
 final VR camera
 ```
 
-## Status: 0.0.5 — a picture in the headset, and the eyes where the headset says
+## Status: 0.1.0 in progress — Oblivion is in the headset, flat
 
-OBVR now puts its own picture in the headset, one texture per eye, on the compositor's
-clock — but it is a generated test pattern rather than Oblivion's world. Getting the game's
-own pixels there is 0.1.0, and it is a different and harder problem: Oblivion draws in
-Direct3D 9, and OpenVR's `Submit` has no entry for a Direct3D 9 texture at all.
+**Oblivion's own picture now reaches both eyes.** Confirmed in a real headset, with the
+game's frame taken out of Direct3D 9 as a Vulkan image through DXVK and handed to the
+SteamVR compositor.
 
-Splitting those two apart was the point of the milestone. Talking to the compositor
-correctly and getting pixels out of Direct3D 9 would otherwise have failed together and
-been indistinguishable. The first half is now settled independently of the second.
+It is still one image shown to two eyes, so there is no depth between them — the world is
+in the headset but it is flat, and that is exactly the state the milestone is in rather
+than a fault in it. Rendering the world twice, once per eye, is what remains.
+
+Getting here meant crossing a gap that has no bridge in the API: **OpenVR's `Submit` has no
+entry for a Direct3D 9 texture and never has.** DXVK renders D3D9 in Vulkan and publishes
+the Vulkan objects behind a texture, which turns an impossible conversion into a
+`QueryInterface`. That needs no fork of DXVK — the interop interfaces are in the stock
+upstream build.
+
+0.0.5 came first on purpose, putting a *generated* picture in the headset. Talking to the
+compositor correctly and getting pixels out of Direct3D 9 would otherwise have failed
+together and indistinguishably; splitting them meant each could be settled on its own.
 
 0.0.1 answered the core question:
 
@@ -76,9 +85,11 @@ That is not a guess. Leaning forward and leaning sideways felt unlike each other
 sessions, and raising the scale to 3.0 made them feel alike — while amplifying both equally,
 leaving the measured ratio between them unchanged. So the difference was never unequal
 treatment in the code; forward motion simply sat below the threshold of perception. Expect
-this number to want to come back down a long way once there are two eyes. It is kept separate from `UnitsPerMetre` on purpose — that number is the engine's
-documented figure and stereo will need it for the distance between the eyes, so inflating
-it to taste now would silently shrink the whole world later.
+this number to want to come back down a long way once there are two eyes.
+
+It is kept separate from `UnitsPerMetre` on purpose — that number is the engine's documented
+figure and stereo will need it for the distance between the eyes, so inflating it to taste
+now would silently shrink the whole world later.
 
 0.0.4 also takes the vertical look away from the stick, the mouse and the keyboard, and
 this is where easing does belong. With a headset on, the head already decides where the
@@ -538,7 +549,7 @@ turn out to be reachable no other way.
 | 0.0.3 | OpenVR wired up, real HMD rotation on the camera — still a monitor image | verified in the game |
 | 0.0.4 | 6DoF for the head, vertical look taken off the stick | verified in the game, two settings retuned from what it showed |
 | 0.0.5 | frame loop, left and right swapchain, test images in the headset | verified in the headset — the pattern arrives whole, upright, unmirrored, on the right eyes, and the two centring crosses fuse into one |
-| 0.1.0 | Oblivion's world as real dual-pass stereo, both eyes in the same game frame | open |
+| 0.1.0 | Oblivion's world as real dual-pass stereo, both eyes in the same game frame | the game's own frame now reaches both eyes through DXVK and the two are aligned - but it is one image, so there is no depth between them yet |
 
 VR is being brought up on Windows first; Linux follows once it works there. That is an
 order of work rather than a change of destination — see `HANDOFF.md` section 13 for what it

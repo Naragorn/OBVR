@@ -1,0 +1,106 @@
+OBVR 1 - Query
+OBSE version 22, Oblivion version 010201A0
+OBVR 1 - Load
+Config: D:\SteamLibrary\steamapps\common\Oblivion\Data\OBSE\Plugins\OBVR.ini
+Config: HookEnabled=1 Source=openvr Fixed=(P 0.0, R 20.0, Y 0.0)
+Config: Simulated=(Yaw 25.0, Pitch 12.0, Period 600) LogEveryFrames=120 ReloadEveryFrames=120
+Config: RecenterKey=46 (0x2E)
+Config: PositionalTracking=1 UnitsPerMetre=69.99 HeadMovementScale=3.00 (effective 209.97) MaxLeanUnits=120.0
+Config: BlockVerticalLook=1 VerticalLookRange=(up 60.0, down 120.0) SmoothVerticalLook=1 (8.0)
+Config: SmoothTurning=0 TurnSpeed=12.0
+Config: Render.Enabled=1 GameFrame=1 - OBVR will claim the VR scene
+OpenVR: connected as a scene application through FnTable:IVRSystem_026 and FnTable:IVRCompositor_029
+Camera: hook installed at 0066BE6E, trampoline at 03E00000 (37 bytes)
+OBVR ready
+Camera: first hook pass, CameraNode=1812BCA0, third person
+Render: Oblivion's D3D9 device 0C6CEF80 is DXVK
+Render: Vulkan instance=0A719548 physical=0A643D58 device=34880078
+Render: Vulkan queue=345D1578 index=0 family=0
+Render: back buffer image=0000000034A33C78 2560x1440 format=44 samples=1 layout=1
+Render: back buffer usage=00000017 transfer_src=1 sampled=1, submittable once transitioned
+OpenVR: no valid HMD pose yet
+Render: left eye raw=(l -1.1518, r 0.8248, t -1.1991, b 0.7927)
+Render: left eye fov=(h 88.6 deg, v 88.6 deg) asymmetry=(h -0.3270, v -0.4064)
+Render: right eye raw=(l -0.8417, r 1.1419, t -1.1908, b 0.8073)
+Render: right eye fov=(h 88.9 deg, v 88.9 deg) asymmetry=(h 0.3003, v -0.3835)
+Render: eye offsets left=(-0.0310, 0.0000, 0.0000) right=(0.0310, 0.0000, 0.0000)
+Render: IPD 62.0 mm
+Render: game frame bounds left u=0.034..0.834 right u=0.161..0.961
+Render: two 3560x3560 eye textures ready, cross at u=0.583 and u=0.424
+Render: the game frame is usable, submitting Oblivion's own picture
+Camera: frame 120, 3rd, 18.4 ms, pos=(980.5, 1284.2, 318.5), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: recentered on key 0x2E (frame 167)
+Camera: frame 240, 3rd, 18.6 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 360, 3rd, 18.4 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 480, 3rd, 18.6 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 600, 3rd, 18.4 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 720, 3rd, 18.6 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 840, 3rd, 18.5 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 960, 3rd, 18.6 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 1080, 3rd, 18.9 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: recentered on key 0x2E (frame 1114)
+Camera: recentered on key 0x2E (frame 1194)
+Camera: frame 1200, 3rd, 19.0 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: recentered on key 0x2E (frame 1205)
+Camera: frame 1320, 3rd, 18.8 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: recentered on key 0x2E (frame 1326)
+Camera: recentered on key 0x2E (frame 1427)
+Camera: frame 1440, 3rd, 18.6 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: recentered on key 0x2E (frame 1460)
+Camera: recentered on key 0x2E (frame 1503)
+Camera: recentered on key 0x2E (frame 1524)
+Camera: frame 1560, 3rd, 18.6 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 1680, 3rd, 18.6 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 1800, 3rd, 18.6 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 1920, 3rd, 18.5 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 2040, 3rd, 18.9 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 2160, 3rd, 18.3 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 2280, 3rd, 18.6 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 2400, 3rd, 18.6 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 2520, 3rd, 18.3 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 2640, 3rd, 18.7 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 2760, 3rd, 18.3 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 2880, 3rd, 18.6 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 3000, 3rd, 18.5 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 3120, 3rd, 18.5 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: recentered on key 0x2E (frame 3210)
+Camera: recentered on key 0x2E (frame 3224)
+Camera: frame 3240, 3rd, 18.5 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: recentered on key 0x2E (frame 3272)
+Camera: frame 3360, 3rd, 18.6 ms, pos=(979.9, 1284.1, 318.4), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: recentered on key 0x2E (frame 3368)
+Camera: frame 3480, 3rd, 18.3 ms, pos=(1002.7, 1288.8, 310.2), head=(0.000, 0.000, 0.000, 1.000), lean=(0.0, 0.0, 0.0) raw=0.0
+Camera: frame 3600, 3rd, 18.4 ms, pos=(989.3, 1287.9, 312.6), head=(0.061, -0.224, 0.055, 0.971), lean=(13.5, 3.4, -7.6) raw=15.9
+Camera: frame 3720, 3rd, 18.5 ms, pos=(989.3, 1287.9, 312.6), head=(-0.030, -0.273, 0.004, 0.961), lean=(14.1, -2.4, -10.3) raw=17.6
+Camera: frame 3840, 3rd, 18.8 ms, pos=(989.3, 1287.9, 312.6), head=(-0.049, -0.060, 0.000, 0.997), lean=(5.1, -1.6, -11.0) raw=12.2
+Camera: frame 3960, 3rd, 18.6 ms, pos=(989.3, 1287.9, 312.6), head=(-0.053, -0.641, -0.062, 0.763), lean=(33.1, -21.5, -13.4) raw=41.7
+Camera: frame 4080, 3rd, 18.5 ms, pos=(989.3, 1287.9, 312.6), head=(-0.070, -0.579, -0.059, 0.810), lean=(31.6, -16.1, -14.3) raw=38.2
+Camera: frame 4200, 3rd, 18.7 ms, pos=(989.3, 1287.9, 312.6), head=(-0.067, -0.477, -0.051, 0.875), lean=(28.2, -11.0, -13.9) raw=33.3
+Camera: frame 4320, 3rd, 18.5 ms, pos=(989.3, 1287.9, 312.6), head=(-0.019, -0.398, -0.019, 0.917), lean=(22.5, -6.8, -12.1) raw=26.4
+Camera: frame 4440, 3rd, 18.9 ms, pos=(989.3, 1287.9, 312.6), head=(-0.053, 0.082, 0.001, 0.995), lean=(-1.4, -0.6, -12.3) raw=12.4
+Camera: recentered on key 0x2E (frame 4515)
+Camera: frame 4560, 3rd, 18.5 ms, pos=(989.3, 1287.9, 312.6), head=(-0.067, -0.324, -0.010, 0.944), lean=(1.1, 0.1, -0.3) raw=1.1
+Camera: frame 4680, 3rd, 18.6 ms, pos=(1008.8, 1289.8, 312.9), head=(-0.112, -0.335, -0.013, 0.935), lean=(2.9, 1.1, -2.1) raw=3.7
+Camera: frame 4800, 3rd, 18.5 ms, pos=(1124.6, 1220.6, 316.2), head=(-0.104, -0.324, -0.023, 0.940), lean=(10.6, 5.9, -1.7) raw=12.2
+Camera: frame 4920, 3rd, 18.6 ms, pos=(1132.7, 1151.9, 311.2), head=(-0.115, -0.416, -0.003, 0.902), lean=(9.2, 4.0, -2.3) raw=10.3
+Camera: frame 5040, 3rd, 18.7 ms, pos=(1132.5, 1140.3, 311.2), head=(-0.108, -0.419, -0.023, 0.901), lean=(10.6, 4.1, -2.2) raw=11.6
+Camera: frame 5160, 3rd, 18.5 ms, pos=(1132.8, 1141.2, 310.5), head=(0.115, -0.308, 0.046, 0.943), lean=(3.3, -1.0, 7.5) raw=8.3
+Camera: frame 5280, 3rd, 18.6 ms, pos=(1132.8, 1141.2, 310.5), head=(-0.285, -0.326, -0.044, 0.900), lean=(4.4, 11.3, -11.6) raw=16.8
+Camera: frame 5400, 3rd, 18.5 ms, pos=(1190.0, 1206.1, 269.1), head=(-0.100, -0.321, 0.002, 0.942), lean=(4.6, 2.1, -1.1) raw=5.1
+Camera: frame 5520, 3rd, 18.8 ms, pos=(1149.9, 1056.2, 293.2), head=(-0.101, -0.317, 0.003, 0.943), lean=(4.3, 2.1, -1.2) raw=4.9
+Camera: frame 5640, 3rd, 18.6 ms, pos=(1057.5, 1168.2, 175.0), head=(-0.096, -0.320, 0.003, 0.943), lean=(4.2, 1.4, -1.1) raw=4.6
+Camera: frame 5760, 3rd, 18.6 ms, pos=(1193.8, 1191.0, 308.2), head=(-0.097, -0.326, 0.004, 0.940), lean=(4.0, 1.6, -1.5) raw=4.6
+Camera: frame 5880, 3rd, 18.2 ms, pos=(909.3, 1133.9, 305.1), head=(-0.106, -0.324, 0.001, 0.940), lean=(4.2, 2.1, -2.0) raw=5.2
+Camera: frame 6000, 3rd, 18.4 ms, pos=(1147.2, 1674.7, 306.2), head=(-0.111, -0.311, 0.004, 0.944), lean=(2.8, 2.7, -2.6) raw=4.7
+Camera: frame 6120, 3rd, 17.5 ms, pos=(1133.8, 1875.0, 340.6), head=(-0.110, -0.332, -0.003, 0.937), lean=(3.8, 3.0, -2.6) raw=5.5
+Camera: frame 6240, 3rd, 18.4 ms, pos=(1089.0, 1613.6, 313.8), head=(-0.105, -0.309, -0.007, 0.945), lean=(3.2, 2.5, -2.3) raw=4.7
+Camera: switched to first person (frame 6324)
+Camera: frame 6360, 1st, 18.6 ms, pos=(1037.3, 1494.6, 289.8), head=(-0.095, -0.323, -0.001, 0.942), lean=(5.0, 1.8, -1.2) raw=5.5
+Camera: frame 6480, 1st, 18.5 ms, pos=(1037.4, 1494.5, 289.6), head=(-0.121, -0.121, -0.009, 0.985), lean=(-6.3, 2.0, -3.3) raw=7.4
+Camera: frame 6600, 1st, 18.4 ms, pos=(1037.5, 1494.5, 289.5), head=(-0.254, -0.339, -0.055, 0.904), lean=(5.4, 7.2, -9.9) raw=13.3
+Camera: frame 6720, 1st, 18.5 ms, pos=(1037.6, 1494.3, 288.5), head=(-0.089, -0.356, 0.001, 0.930), lean=(4.3, 5.2, -1.9) raw=7.0
+Camera: frame 6840, 1st, 17.2 ms, pos=(1037.8, 1494.2, 289.7), head=(-0.092, -0.352, -0.001, 0.932), lean=(5.3, 3.7, -1.4) raw=6.6
+Camera: switched to third person (frame 6860)
+Camera: frame 6960, 3rd, 18.6 ms, pos=(1161.3, 1559.8, 290.4), head=(-0.101, -0.367, -0.003, 0.925), lean=(6.4, 2.8, -1.6) raw=7.2
+Camera: frame 7080, 3rd, 17.5 ms, pos=(1148.4, 1583.9, 289.5), head=(-0.090, -0.604, -0.035, 0.791), lean=(21.0, -0.9, -2.0) raw=21.2
+Camera: frame 7200, 3rd, 18.6 ms, pos=(1148.3, 1583.9, 289.5), head=(0.066, -0.279, 0.022, 0.958), lean=(2.9, 2.8, 6.6) raw=7.7

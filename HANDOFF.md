@@ -70,7 +70,7 @@ controller.
 | 0.0.3 | OpenVR wired up, real HMD rotation on the camera | **verified in the game** |
 | 0.0.4 | 6DoF for the head, vertical look taken off the stick | **verified in the game**, two settings retuned from what it showed |
 | 0.0.5 | frame loop, left and right swapchain, test images in the headset | **verified in the headset**, every question the pattern was built to ask has been answered |
-| 0.1.0 | Oblivion's world as real dual-pass stereo | open ← **continue here** |
+| 0.1.0 | Oblivion's world as real dual-pass stereo | **the picture arrives, mono**: the game's own frame reaches both eyes through DXVK, aligned; depth between the eyes is what remains ← **continue here** |
 
 0.0.1 and 0.0.2 were tested against Oblivion GOTY (Steam, AppID 22330) under Proton with
 xOBSE 22.13. 0.0.3 was tested on Windows 11 with SteamVR and a real headset, against a
@@ -1123,6 +1123,42 @@ bounds, differing only in what kind of texture and where it came from. If the ey
 are produced behind one interface with two implementations, choosing between them is a
 setting rather than a rewrite — the same shape `TrackerSource` already has for head poses,
 which is why that pattern is worth reusing rather than reinventing.
+
+### Where 0.1.0 stands, and the two things left
+
+Oblivion's frame reaches both eyes, aligned, at no measurable cost in frame time.
+`docs/verification/OBVR-gameframe-aligned.log` records it, with the computed split
+`game frame bounds left u=0.034..0.834 right u=0.161..0.961` - both inside the texture,
+both the same width, each eye given the side that puts the picture on its own axis.
+
+Two things remain, and they are independent of each other.
+
+**The frame is one frame old.** The camera hook runs while the camera is being computed,
+which is before the frame is drawn - so the back buffer holds the previous frame. With a
+static test pattern that made no difference and it was recorded as harmless; with the game's
+own picture it is a real latency, on top of everything else in the chain. The fix needs no
+new address: `IDirect3DDevice9::Present` is at vtable index 17, an interface fact rather
+than a game one.
+
+**There is no depth between the eyes.** One image shown twice has none, whatever the bounds
+do. Two routes:
+
+- **Dual-pass**, the stated goal: render the world twice per game tick, once per eye. This
+  is where the old open question bites - can Gamebryo be made to draw twice without
+  advancing simulation, physics, particles and animations twice? Unanswered, and it is the
+  question the whole milestone was named for.
+- **Alternate eye rendering**, listed here as plan B and worth more than that label
+  suggests. Offset the camera to one eye per frame and alternate, which is what Luke Ross's
+  mods do - "stereoized the world rendering by shifting the in-game camera into the eye
+  positions on alternate frames". It needs no double rendering at all, and OBVR already
+  moves the camera every frame in exactly the place such an offset would go. What it does
+  need is somewhere to keep the other eye's previous image, and whether OpenVR tolerates one
+  eye being submitted per frame is **not established** - the documentation says only that
+  ten frames without any Submit fades the scene out.
+
+The cheap route is worth trying first for the same reason the mono step came before stereo:
+it gives depth now, and it proves the eye offsets are usable before anything is rebuilt
+around them.
 
 ### 0.1.0, step one: reaching Oblivion's device
 
