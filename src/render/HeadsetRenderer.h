@@ -93,6 +93,10 @@ public:
 		// How large a flat picture is drawn, as a fraction of the world's
 		// placement.
 		float menuScale = 0.7f;
+
+		// The shape a flat picture is given, width over height. 0 keeps the
+		// frame's own.
+		float menuAspect = 1.7778f;
 	};
 
 	// The frame in two halves, so the picture can be submitted after the game

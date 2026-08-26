@@ -120,6 +120,7 @@ void OnFrameEnd() {
 	menu.cameraTanHalfWidth = g_state.cameraTanHalfWidth;
 	menu.cameraTanHalfHeight = g_state.cameraTanHalfHeight;
 	menu.menuScale = GetConfig().tracker.menuScale;
+	menu.menuAspect = GetConfig().tracker.menuAspect;
 
 	if (g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame())) {
 		g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), menu);
@@ -506,6 +507,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	request.cameraTanHalfWidth = g_state.cameraTanHalfWidth;
 	request.cameraTanHalfHeight = g_state.cameraTanHalfHeight;
 	request.menuScale = config.tracker.menuScale;
+	request.menuAspect = config.tracker.menuAspect;
 
 	if (!g_frameOpen) {
 		// BeginFrame declined at the top of this pass: rendering is off, the
@@ -621,7 +623,9 @@ bool Install() {
 	// once at startup and Direct3D fixes the frame's shape when the device is
 	// made. Both of those are long past by the time a plugin loads, so this is
 	// a change for next time and says so rather than appearing to have failed.
-	if (GetConfig().tracker.setRenderSize) {
+	if (!GetConfig().tracker.setRenderSize) {
+		OBVR_LOG("Config: SetGameResolution is off, so the game's resolution is its own");
+	} else {
 		UInt32 width = GetConfig().tracker.renderWidth;
 		UInt32 height = GetConfig().tracker.renderHeight;
 

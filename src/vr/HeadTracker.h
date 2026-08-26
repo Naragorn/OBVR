@@ -171,6 +171,11 @@ struct TrackerSettings {
 	// with black around it instead of pressed against the face.
 	float menuScale = 0.7f;
 
+	// The shape menus and videos are given, width over height. 1.7778 is 16:9 -
+	// a screen in front of you rather than a view wrapped round your face. 0
+	// keeps whatever shape the game is rendering.
+	float menuAspect = 1.7778f;
+
 	// Oblivion units per metre, for converting the head offset.
 	//
 	// The Construction Set wiki gives "21.3 units to a foot ... 64 units per

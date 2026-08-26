@@ -55,7 +55,7 @@ public:
 	bool Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeight,
 	            const EyeProjection& leftEye, const EyeProjection& rightEye,
 	            float gameFovDegrees, bool gameFovIsFor4x3, float cameraTanHalfWidth,
-	            float cameraTanHalfHeight, float menuScale);
+	            float cameraTanHalfHeight, float menuScale, float menuAspect);
 
 	void Destroy();
 
@@ -144,6 +144,10 @@ private:
 	// source rectangle is in its coordinates, not the texture's.
 	UInt32 m_frameWidth = 0;
 	UInt32 m_frameHeight = 0;
+
+	// Which slice of the frame a flat picture takes, so a cinema shape is a
+	// crop rather than a squeeze.
+	d3d9::Rect m_flatSource = {};
 
 	UInt32 m_format = 0;  // D3DFORMAT, taken from the back buffer
 

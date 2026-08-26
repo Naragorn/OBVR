@@ -1,5 +1,7 @@
 #include "vr/OpenVRBackend.h"
 
+#include "core/MathFns.h"
+
 #include "core/Log.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
@@ -376,4 +378,46 @@ bool OpenVRBackend::ReadHeadPose(Quaternion& orientation, NiPoint3& position) co
 	return true;
 }
 
+
+void LevelPose(openvr::HmdMatrix34& pose) {
+	// Backwards is the third column, so forward is its negative.
+	float fx = -pose.m[0][2];
+	float fz = -pose.m[2][2];
+
+	const float lengthSquared = fx * fx + fz * fz;
+	if (!(lengthSquared > 0.0001f)) {
+		// Straight up or straight down: there is no heading to keep, and
+		// inventing one would swing the picture by whatever the arithmetic
+		// happened to produce. Left as it is - tilted, but not arbitrarily so.
+		return;
+	}
+
+	const float length = math::Sqrt(lengthSquared);
+	fx /= length;
+	fz /= length;
+
+	// Right is forward crossed with up, for up = (0, 1, 0). Written out
+	// rather than called, because two cross products and a normalise would be
+	// three chances to get a sign wrong in something whose failure is a world
+	// that is subtly mirrored.
+	//
+	//   right    = ( -fz, 0,  fx )
+	//   up       = (   0, 1,   0 )
+	//   backward = ( -fx, 0, -fz )
+	pose.m[0][0] = -fz;
+	pose.m[1][0] = 0.0f;
+	pose.m[2][0] = fx;
+
+	pose.m[0][1] = 0.0f;
+	pose.m[1][1] = 1.0f;
+	pose.m[2][1] = 0.0f;
+
+	pose.m[0][2] = -fx;
+	pose.m[1][2] = 0.0f;
+	pose.m[2][2] = -fz;
+
+	// The fourth column is the position and is left alone: a menu anchored
+	// where the wearer is standing is right, and moving it would be a second
+	// change hiding inside this one.
+}
 }  // namespace obvr::vr

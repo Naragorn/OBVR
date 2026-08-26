@@ -111,7 +111,7 @@ bool EyeMirror::CreateOne(void* gameDevice, int index) {
 bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeight,
                        const EyeProjection& leftEye, const EyeProjection& rightEye,
                        float gameFovDegrees, bool gameFovIsFor4x3, float cameraTanHalfWidth,
-                       float cameraTanHalfHeight, float menuScale) {
+                       float cameraTanHalfHeight, float menuScale, float menuAspect) {
 	Destroy();
 
 	if (gameDevice == nullptr || textureWidth == 0 || textureHeight == 0) {
@@ -290,6 +290,26 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 	flatWidth = static_cast<SInt32>(static_cast<float>(flatWidth) * menuScale);
 	flatHeight = static_cast<SInt32>(static_cast<float>(flatHeight) * menuScale);
 
+	// A screen shape rather than the headset's.
+	//
+	// The eye's view is nearly square, and a menu filling it is a menu wrapped
+	// around the face. A cinema screen is a rectangle in front of you, and
+	// asking for one is asking for the shape - so the height is cut to match
+	// the aspect rather than the width being stretched to it, which would make
+	// the picture bigger rather than differently shaped.
+	//
+	// The source rectangle follows, taking a matching slice from the middle of
+	// the frame, so what is shown is undistorted. What that costs is the top
+	// and bottom of whatever Oblivion drew - which for a menu centred in the
+	// frame is margin, and for a menu that reaches the edges is not. 0 keeps
+	// the frame's own shape and cuts nothing.
+	if (menuAspect > 0.1f) {
+		const SInt32 wanted = static_cast<SInt32>(static_cast<float>(flatWidth) / menuAspect);
+		if (wanted > 0 && wanted < flatHeight) {
+			flatHeight = wanted;
+		}
+	}
+
 	for (int index = 0; index < 2; ++index) {
 		Eye& eye = m_eye[index];
 		const EyeProjection& projection = index == 0 ? leftEye : rightEye;
@@ -322,6 +342,24 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 		eye.flatDestination.right = eye.flatDestination.left + flatWidth;
 		eye.flatDestination.top = axisY - flatHeight / 2;
 		eye.flatDestination.bottom = eye.flatDestination.top + flatHeight;
+	}
+
+
+	// The slice of the frame a flat picture takes, matching the shape asked
+	// for so the result is a crop rather than a squeeze.
+	m_flatSource.left = 0;
+	m_flatSource.right = static_cast<SInt32>(m_frameWidth);
+	m_flatSource.top = 0;
+	m_flatSource.bottom = static_cast<SInt32>(m_frameHeight);
+
+	if (menuAspect > 0.1f) {
+		const SInt32 wanted =
+			static_cast<SInt32>(static_cast<float>(m_frameWidth) / menuAspect);
+		if (wanted > 0 && wanted < static_cast<SInt32>(m_frameHeight)) {
+			const SInt32 margin = (static_cast<SInt32>(m_frameHeight) - wanted) / 2;
+			m_flatSource.top = margin;
+			m_flatSource.bottom = margin + wanted;
+		}
 	}
 
 	OBVR_LOG("Mirror: the game's %ux%u frame at %.1f degrees sits at left x=%d..%d y=%d..%d, "
@@ -419,8 +457,9 @@ bool EyeMirror::CopyBackBuffer(void* gameDevice, bool isLeft, bool bothEyes) {
 	for (int index = first; index <= last; ++index) {
 		const Eye& eye = m_eye[index];
 		const d3d9::Rect& destination = bothEyes ? eye.flatDestination : eye.destination;
+		const d3d9::Rect& sourceRect = bothEyes ? m_flatSource : eye.source;
 		SInt32 result =
-			stretchRect(gameDevice, source, &eye.source, eye.surface, &destination, m_filter);
+			stretchRect(gameDevice, source, &sourceRect, eye.surface, &destination, m_filter);
 
 		// A device may refuse linear stretching - it is a capability, not a
 		// guarantee. Point filtering is worse to look at and better than no
@@ -429,7 +468,7 @@ bool EyeMirror::CopyBackBuffer(void* gameDevice, bool isLeft, bool bothEyes) {
 		if (d3d11::Failed(result) && m_filter != d3d9::kTexFilterPoint) {
 			OBVR_LOG("Mirror: linear stretching was refused, falling back to point");
 			m_filter = d3d9::kTexFilterPoint;
-			result = stretchRect(gameDevice, source, &eye.source, eye.surface, &destination,
+			result = stretchRect(gameDevice, source, &sourceRect, eye.surface, &destination,
 			                     m_filter);
 		}
 

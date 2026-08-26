@@ -318,7 +318,8 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 		m_mirrorUsable = m_mirror.Create(request.gameDevice, m_eyeWidth, m_eyeHeight,
 		                                 m_leftEye, m_rightEye, request.gameFovDegrees,
 		                                 request.gameFovIsFor4x3, request.cameraTanHalfWidth,
-		                                 request.cameraTanHalfHeight, request.menuScale);
+		                                 request.cameraTanHalfHeight, request.menuScale,
+		                                 request.menuAspect);
 		m_mirrorUsedCamera = haveCamera;
 		OBVR_LOG("Render: alternate eyes are %s",
 		         m_mirrorUsable ? "on, each eye holding its own last picture and its own pose"
@@ -363,6 +364,11 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 		// with black where the head has turned away from it.
 		if (!m_flatPoseValid) {
 			m_flatPoseValid = backend.GetRenderPoseMatrix(m_flatPose);
+			if (m_flatPoseValid) {
+				// Levelled, or the picture hangs at whatever angle the head
+				// happened to be at when it appeared - and stays there.
+				vr::LevelPose(m_flatPose);
+			}
 		}
 
 		left = backend.SubmitEye(vr::openvr::kEyeLeft, &flatLeft,

@@ -6,6 +6,25 @@
 
 namespace obvr::vr {
 
+// Strips pitch and roll from a tracking pose, keeping heading and position.
+//
+// The same reasoning as vr::YawOnly and a different place to apply it: that
+// one levels the camera's reference, this one levels the pose a flat picture
+// is anchored to. Both were reported from the headset as the same complaint -
+// press the key with the head tilted and the thing you were looking at is
+// tilted from then on.
+//
+// A menu hanging at an angle is worse than a tilted world, not better: there
+// is a horizon in the picture and a horizon in the inner ear, and they
+// disagree with nothing to reconcile them.
+//
+// The matrix's columns are the axes in tracking space - right, up, backwards -
+// and the fourth is the position. Rebuilding the first three from a levelled
+// heading is what removes the tilt without going near an Euler angle, which
+// has no answer when the head points straight up.
+void LevelPose(openvr::HmdMatrix34& pose);
+
+
 // Reads the head orientation from SteamVR through OpenVR.
 //
 // Why OpenVR and not OpenXR: Oblivion.exe is 32 bit, so OBVR.dll is too.
