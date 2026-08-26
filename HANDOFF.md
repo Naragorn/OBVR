@@ -1304,12 +1304,20 @@ Oblivion to render at something like 120 degrees across - and the second pushes 
 the edge just as surely. `Render.GameFovDegrees` in the INI is what the sum is done against;
 raising Oblivion's own `fDefaultFOV` and matching it here fills more of the view.
 
-**Still assumed, and flagged in the code:** that the frustum's "top" edge is the one at
-v = 0. OpenVR does not document the convention and Valve's own wiki says the two are named
-backwards. The horizontal half of the same arithmetic has been checked against a person's
-eyes - it is the figure that put the test pattern's cross where it was seen to be - but the
-vertical half has not. If the picture sits about a tenth of the view too high or too low,
-that assumption is the reason and the fix is one sign.
+**The vertical convention is now settled, and it was the other way round.** The reading
+above - "top" at v = 0 - put the picture's centre at 0.602 of the texture's height, and the
+next run reported it sitting too low by about that much. `bottom / height` puts it at 0.398,
+which is where it belongs. So the texture's v grows opposite to the frustum's own vertical
+axis, which is precisely what Valve's wiki means when it says the two edges are named
+backwards.
+
+A consistency check agrees. Both eyes report a larger `|top|` than `|bottom|`, so under this
+reading the eye sees further down than up - the usual shape of a headset frustum, the brow
+sitting closer to the lens than the cheek.
+
+Measured rather than deduced, and it took one run because the assumption had been written
+down beforehand as the thing to look at. `eye_geometry_test` now pins the direction as well
+as the number, so it cannot quietly drift back.
 
 **Unchanged and still true:** the picture is one frame stale, and the two eyes hold pictures
 drawn one frame apart. The first is fixable by submitting from `Present`; the second is what

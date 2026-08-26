@@ -153,19 +153,26 @@ PicturePlacement PlacePicture(const EyeProjection& eye, float fovDegrees, UInt32
 	const float shareU = 2.0f * tanHalfWidth / eyeWidth;
 	const float shareV = 2.0f * tanHalfHeight / eyeHeight;
 
-	// Where the eye's view axis lands in the texture. The horizontal figure
-	// is the same one that placed the test pattern's cross, and that cross
-	// was seen centred in a headset - so this arithmetic has been checked
-	// against a person's eyes, at least in one axis.
+	// Where the eye's view axis lands in the texture.
 	//
-	// The vertical figure assumes v grows in the same direction as the
-	// frustum's own vertical axis, so that the "top" edge is the one at
-	// v = 0. That is NOT established: OpenVR does not document the
-	// convention, and Valve's own wiki says the two edges are named
-	// backwards. If the picture sits too high or too low by about a tenth of
-	// the view, this assumption is the reason and the fix is one sign.
+	// The horizontal figure is the same one that placed the test pattern's
+	// cross, and that cross was seen centred in a headset - so u is checked
+	// against a person's eyes.
+	//
+	// The vertical figure is now checked the same way, and it came out the
+	// other way round from the obvious reading. Taking -top/height put the
+	// axis at 0.602, and the picture was reported sitting too low by about
+	// that much; bottom/height puts it at 0.398 instead. So the texture's v
+	// grows opposite to the frustum's own vertical axis - which is exactly
+	// what Valve's wiki means when it says the two edges are named backwards,
+	// and it is measured here rather than deduced.
+	//
+	// A consistency check that agrees: |top| exceeds |bottom| on both eyes of
+	// this headset, so under this reading the eye sees further down than up.
+	// That is the usual shape of a headset frustum, the brow being closer to
+	// the lens than the cheek.
 	const float centreU = -eye.left / eyeWidth;
-	const float centreV = -eye.top / eyeHeight;
+	const float centreV = eye.bottom / eyeHeight;
 
 	placement.uMin = centreU - shareU * 0.5f;
 	placement.uMax = centreU + shareU * 0.5f;

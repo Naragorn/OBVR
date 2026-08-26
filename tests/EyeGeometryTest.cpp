@@ -284,8 +284,16 @@ void TestPlacePicture() {
 	// checked against a person's eyes.
 	CheckNear((measured.uMin + measured.uMax) * 0.5f, 0.5827f, 0.001f,
 	          "the picture is centred on the eye's view axis, not the texture's middle");
-	CheckNear((measured.vMin + measured.vMax) * 0.5f, 0.6020f, 0.001f,
-	          "vertically too, on the assumption that the top edge is the one at v=0");
+	CheckNear((measured.vMin + measured.vMax) * 0.5f, 0.3980f, 0.001f,
+	          "and vertically, on the convention a headset confirmed: v grows opposite "
+	          "to the frustum's vertical axis");
+
+	// The direction itself, pinned so it cannot quietly drift back. This is
+	// the one number in the placement that was got wrong on the first try,
+	// and it was got wrong by taking the obvious reading of two undocumented
+	// field names.
+	Check((measured.vMin + measured.vMax) * 0.5f < 0.5f,
+	      "and the picture sits above the texture's middle, not below it");
 
 	Check(!measured.cropped, "nothing is cut away, because 75 degrees fits inside 89");
 	CheckNear(measured.sourceUMin, 0.0f, 0.0001f, "so the whole frame is used across");

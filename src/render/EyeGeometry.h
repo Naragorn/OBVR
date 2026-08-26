@@ -63,6 +63,12 @@ float VerticalAsymmetry(const EyeProjection& projection);
 // The horizontal answer is convention-free: it only needs left to be the
 // lower edge and right the higher. The vertical answer is not, which is why
 // it takes a flag rather than deciding for itself.
+//
+// The flag is no longer an open question, though the function keeps it. A
+// headset settled it: pass true. Taking the field names at face value put the
+// picture a fifth of the view too low, and inverting it put it where it
+// belongs - see the comment on centreV in PlacePicture, which is where the
+// answer is actually used.
 float OpticalCentreU(const EyeProjection& projection);
 float OpticalCentreV(const EyeProjection& projection, bool topIsNegative);
 
@@ -147,6 +153,12 @@ struct PicturePlacement {
 // fDefaultFOV, 75 by default - and the frame's aspect ratio gives the
 // vertical half of it. Both are needed: a field of view alone says nothing
 // about how tall the picture is.
+//
+// Both axes are centred on the eye's view axis, and both of those centrings
+// have now been checked against a person's eyes rather than derived: the
+// horizontal one placed the test pattern's cross, and the vertical one was
+// corrected after the picture was reported sitting too low. See the comment
+// on centreV in the implementation.
 //
 // The result normally leaves a black margin, because a 16:9 frame at 75
 // degrees simply does not fill a headset's field of view. That margin is the
