@@ -51,6 +51,13 @@ public:
 		// than deciding for themselves.
 		bool alternateEyes = false;
 
+		// Whether the world was drawn twice this frame, once per eye, and both
+		// pictures already captured through CaptureEye. The submit then has
+		// nothing to copy: both eyes carry a picture drawn this frame, from
+		// this frame's pose, and the one-frame disparity that defines
+		// alternate eyes does not exist.
+		bool dualEyes = false;
+
 		// No camera ran for this frame - a menu, or a loading screen. The
 		// picture is whatever the game drew, given to both eyes flat.
 		//
@@ -110,6 +117,16 @@ public:
 	bool BeginFrame(vr::OpenVRBackend& backend);
 	void EndFrame(const vr::OpenVRBackend& backend, const FrameRequest& request);
 
+	// Copies the back buffer into one eye's own picture, mid-frame, between
+	// the two render passes of a dual-pass frame. The scene render hook calls
+	// this with the finished first-eye picture still in the back buffer -
+	// before the game's 2D layer has drawn on it, which is why the captures
+	// happen here and not at Present.
+	//
+	// False when the mirror cannot be built or the copy fails; EndFrame then
+	// falls back to the mono picture rather than submitting one stale eye.
+	bool CaptureEye(const FrameRequest& request, bool isLeft);
+
 
 	// Throws away the textures and the run of failures. For a change of
 	// configuration, or shutdown.
@@ -148,6 +165,18 @@ private:
 	bool SubmitAlternateEyes(const vr::OpenVRBackend& backend, const FrameRequest& request,
 	                         int& left, int& right);
 
+	// Submits the two pictures CaptureEye filled this frame. No copy, no kept
+	// poses and no bounds: both eyes were drawn from this frame's WaitGetPoses
+	// pose, which is exactly the pose the compositor assumes, so there is
+	// nothing to tell it.
+	bool SubmitDualEyes(const vr::OpenVRBackend& backend, const FrameRequest& request,
+	                    int& left, int& right);
+
+	// Builds or rebuilds the eye copies for the current request. Shared by the
+	// alternate-eye submit and the dual-pass capture, which need the same
+	// pictures at different moments of the frame.
+	void EnsureMirror(const FrameRequest& request);
+
 	// Everything after the first failure to set up. Without it a machine that
 	// cannot create the device would retry once per frame for ever, and the
 	// log would be the only thing rendering.
@@ -184,6 +213,13 @@ private:
 	// frustum turns up, it is rebuilt.
 	bool m_mirrorUsedCamera = false;
 	bool m_copyFailureLogged = false;
+
+	// Which eyes CaptureEye has filled since the last submit, index 0 left.
+	// Cleared at BeginFrame so a frame that turns flat mid-way - a menu
+	// opening between the render and Present - cannot leave stale captures
+	// for a later dual submit to mistake for its own.
+	bool m_dualCaptured[2] = {false, false};
+	bool m_dualReported = false;
 
 	// The pose each eye's picture was actually drawn with, index 0 left.
 	//

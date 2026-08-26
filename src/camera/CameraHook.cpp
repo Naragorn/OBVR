@@ -18,6 +18,7 @@
 #include "render/HeadsetRenderer.h"
 #include "render/PresentHook.h"
 #include "render/ResolutionHook.h"
+#include "render/SceneRenderHook.h"
 
 namespace obvr::camera {
 namespace {
@@ -57,6 +58,17 @@ game::FrustumWatcher g_frustumWatcher;
 // Counts frames delivered with no camera pass behind them, to answer whether
 // Oblivion presents more than once per step while a menu is up.
 UInt32 g_flatFramesSinceCamera = 0;
+
+// What the second render pass of a dual-pass frame needs: the node to move,
+// how far to move it, and whether this frame's camera pass actually set the
+// two up. Armed by the camera hook, consumed by the scene render hook - both
+// on the game's thread, in that order within a frame.
+//
+// The node pointer is only ever used between the camera pass that stored it
+// and the render of the same frame, so its lifetime is the frame's own.
+NiAVObject* g_dualNode = nullptr;
+NiPoint3 g_dualShift{0.0f, 0.0f, 0.0f};
+bool g_dualArmed = false;
 
 // How many of those bursts have been reported.
 UInt32 g_flatBurstsReported = 0;
@@ -273,6 +285,51 @@ bool PollRecenterEdge() {
 
 	const bool isDown = (GetAsyncKeyState(static_cast<int>(key)) & 0x8000) != 0;
 	return g_recenterEdge.Update(isDown);
+}
+
+// The three callbacks of the scene render hook, in the order they run.
+//
+// All three fire on the game's thread, inside the frame whose camera pass
+// armed them - after the camera hook, before Present. g_pendingRequest is
+// therefore this frame's request, and the node pointer is this frame's node.
+
+bool ScenePassWanted() {
+	// The same menu question, asked of the same source, as the flat decision
+	// in OnFrameEnd. The two must agree on what kind of frame this is: a
+	// frame delivered flat ignores the captures, so drawing a second pass for
+	// it would be pure cost.
+	const bool menuIsUp = GetConfig().tracker.showMenus && game::IsMenuMode();
+	return WantsSecondScenePass(g_frameOpen, g_dualArmed, menuIsUp);
+}
+
+void BetweenScenePasses() {
+	// The finished left-eye picture is in the back buffer - tone mapping
+	// done, 2D layer not yet drawn. Captured now, because at Present it will
+	// have been drawn over twice.
+	g_headsetRenderer.CaptureEye(g_pendingRequest, true);
+
+	// To the right eye, the way the game itself moves the camera: edit the
+	// local transform, then have the engine recompute the world transform
+	// downward. Render re-reads the camera node's position at the start of
+	// the pass to place the sky and LOD roots, so those follow on their own.
+	if (g_dualNode != nullptr) {
+		g_dualNode->localTransform.pos = g_dualNode->localTransform.pos + g_dualShift;
+		game::UpdateNodeTransforms(g_dualNode);
+	}
+}
+
+void AfterSecondScenePass() {
+	g_headsetRenderer.CaptureEye(g_pendingRequest, false);
+
+	// Back where the game left it, and updated again, so everything that
+	// reads the camera later in the frame - the 2D layer, next frame's
+	// smoothing - sees the camera the game computed rather than an eye.
+	if (g_dualNode != nullptr) {
+		g_dualNode->localTransform.pos = g_dualNode->localTransform.pos - g_dualShift;
+		game::UpdateNodeTransforms(g_dualNode);
+	}
+
+	g_dualArmed = false;
 }
 
 void MaybePollRecenter() {
@@ -536,22 +593,45 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 
 	const NiMatrix33 finalRotation = baseRotation * g_headTracker.GetCameraRotation();
 
-	// Alternate eye rendering: the camera steps to one eye, this frame is drawn
-	// from there, and it goes to that eye alone. The next frame does the other.
-	// Depth without drawing the world twice.
+	// The camera steps to an eye. Which eye, and for how long, is what
+	// separates the two stereo modes:
+	//
+	//   * alternate eyes: one eye per frame, the other next frame. Depth
+	//     without drawing the world twice, at the price of the two eyes
+	//     holding pictures a frame apart.
+	//   * dual pass: the left eye now, and the scene render hook moves the
+	//     camera to the right eye between the two passes it runs. Both eyes
+	//     drawn this frame, from this frame's pose.
 	//
 	// Carried by the final rotation rather than the base one, and the
 	// difference matters. The head offset above is measured in the frame the
 	// wearer recentered in, so the levelled rotation is what belongs under it.
 	// The eyes are attached to the head: where "right" is for them depends on
 	// where the head is looking, which is what the head rotation adds.
-	if (config.tracker.stereo == vr::StereoMode::AlternateEyes &&
-	    g_headTracker.IsHeadsetConnected()) {
+	const bool stereoAer = config.tracker.stereo == vr::StereoMode::AlternateEyes;
+	const bool stereoDual = config.tracker.stereo == vr::StereoMode::DualPass;
+
+	// Re-decided every camera pass, so a frame whose passes never ran - a
+	// menu opening, a mode change - cannot leave last frame's arming behind.
+	g_dualArmed = false;
+	g_dualNode = nullptr;
+
+	if ((stereoAer || stereoDual) && g_headTracker.IsHeadsetConnected()) {
 		const float half = g_headTracker.GetHalfEyeSeparationUnits();
-		const float sign = IsLeftEyeFrame(g_state.frameCount) ? -1.0f : 1.0f;
+		const float sign =
+			stereoDual ? -1.0f : (IsLeftEyeFrame(g_state.frameCount) ? -1.0f : 1.0f);
 		const NiPoint3 eyeOffset{sign * half, 0.0f, 0.0f};
 		cameraNode->localTransform.pos =
 			cameraNode->localTransform.pos + finalRotation * eyeOffset;
+
+		if (stereoDual && render::IsSceneRenderHooked()) {
+			// From the left eye to the right is the whole interpupillary
+			// distance, along the same head-carried axis the offset above
+			// used.
+			g_dualNode = cameraNode;
+			g_dualShift = finalRotation * NiPoint3{2.0f * half, 0.0f, 0.0f};
+			g_dualArmed = true;
+		}
 	}
 
 	cameraNode->localTransform.rot = finalRotation;
@@ -568,7 +648,13 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	render::HeadsetRenderer::FrameRequest request;
 	request.gameDevice = render::GetGameDevice();
 	request.submitGameFrame = config.tracker.submitGameFrame;
-	request.alternateEyes = config.tracker.stereo == vr::StereoMode::AlternateEyes;
+	request.alternateEyes = stereoAer;
+
+	// Only claimed when the second pass can actually happen. With the scene
+	// render unhooked the captures never arrive, and the submit would fall
+	// back every frame; saying mono from the start keeps the fallback path
+	// the one that was chosen rather than the one that was reached.
+	request.dualEyes = stereoDual && render::IsSceneRenderHooked();
 
 	// The same call the camera offset above used, so the eye the camera moved
 	// to and the eye the picture is given to cannot drift apart.
@@ -692,6 +778,28 @@ bool Install() {
 	// gone in.
 	if (GetConfig().tracker.renderToHeadset && GetConfig().tracker.submitAtFrameEnd) {
 		render::InstallPresentHookWhenReady(&OnFrameEnd);
+	}
+
+	// Dual pass: the world drawn twice per frame, once per eye. The detour
+	// goes in at load; whether a given frame actually runs twice is decided
+	// per frame by ScenePassWanted.
+	if (GetConfig().tracker.renderToHeadset &&
+	    GetConfig().tracker.stereo == vr::StereoMode::DualPass) {
+		if (!GetConfig().tracker.submitAtFrameEnd) {
+			// The captures happen mid-frame and the submit pays them at
+			// Present. Submitting at the start of the frame instead would
+			// hand over pictures that have not been drawn yet.
+			OBVR_LOG("Config: Stereo=dual needs SubmitAtFrameEnd=1, so the world stays "
+			         "single-pass");
+		} else {
+			render::ScenePassCallbacks callbacks;
+			callbacks.wantsSecondPass = &ScenePassWanted;
+			callbacks.betweenPasses = &BetweenScenePasses;
+			callbacks.afterSecondPass = &AfterSecondScenePass;
+			// Logs its own outcome either way; on failure the mode quietly
+			// renders like mono, and request.dualEyes says so per frame.
+			render::InstallSceneRenderHook(callbacks);
+		}
 	}
 
 	// Oblivion's frame size, set where it is decided.

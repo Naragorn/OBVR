@@ -29,6 +29,7 @@ add_library(OBVR SHARED
 	src/camera/LookControl.cpp
 	src/core/CodeWriter.cpp
 	src/core/Config.cpp
+	src/core/EntryDetour.cpp
 	src/core/Log.cpp
 	src/core/Memory.cpp
 	src/core/Rotation.cpp
@@ -48,6 +49,7 @@ add_library(OBVR SHARED
 	src/render/HeadsetRenderer.cpp
 	src/render/PresentHook.cpp
 	src/render/ResolutionHook.cpp
+	src/render/SceneRenderHook.cpp
 	src/render/InteropBracket.cpp
 	src/render/SubmitPolicy.cpp
 	src/render/TestPattern.cpp

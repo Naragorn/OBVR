@@ -1683,6 +1683,84 @@ What it needs, in order:
 
 Deliberately not started. Recorded here so the decision survives the length of the session
 that made it.
+
+### Dual pass is built: the function that sets up a view is the function you call twice
+
+`Stereo=dual` now does what its name says: the world is drawn twice per frame, once per
+eye, both from the same pose. The one-frame disparity that defines alternate eyes does not
+exist on this path, and neither does its ghosting. Built, tests green, **not yet run in the
+game** - the next in-game log is what settles it.
+
+**The find that unlocked it: Oblivion's own render function, with the map read off
+Oblivion Reloaded and verified against the bytes.** `llde/TES-Reloaded-Source-NEW`'s
+RenderHook.cpp names, for this exact build, `kRender = 0x0040C830` - the function that
+draws one frame of the world - and `RenderObject = 0x0070C0B0`, cdecl,
+`(NiCamera*, NiNode*, NiCullingProcess*, NiVisibleArray*)`. The binary agrees three ways
+(the full disassembly evidence is in `GameAddresses.h` at `kRenderScene`):
+
+- Render calls RenderObject exactly twice on the world path - the scene graph and the
+  first person node, with Oblivion Reloaded's own depth-clear patch site between them
+- Render makes the single call in the whole binary to `0x007B48E0`, the image space
+  shaders - so tone mapping is done when it returns, **and the 2D layer is not yet drawn**:
+  the interface renders later, through `0x0057F170`, on a different path
+- Render re-reads the camera node's position itself, each call, through the same
+  scene-graph walk the camera hook site uses, to place the sky and LOD roots - so a second
+  call with the camera moved keeps those consistent for free
+
+That last point, plus the call the game makes right after the camera hook -
+`0x00707370`, UpdateSelectedDownwardPass on the CameraNode, with `(0.0f, 0)` - answers the
+question this milestone was named for. Rendering does not advance the simulation; the
+update step already ran. Moving the camera between passes is the same two steps the game
+itself uses: edit `localTransform`, call `0x00707370`. Whether any per-frame render state
+objects to being read twice is what the in-game run will say.
+
+**The mechanism, in frame order:**
+
+1. The camera hook puts the camera on the **left** eye (under `dual` the offset stops
+   alternating) and arms the pass: node pointer, and the shift to the right eye -
+   `finalRotation * (IPD, 0, 0)`, the same head-carried axis the offset itself uses.
+2. `render::SceneRenderHook` has detoured the entry of `0x0040C830` - seven relocatable
+   bytes (`push -1; push 0x9AA163`), an entry trampoline as the way back in, and a
+   replacement with the same calling convention (`__fastcall` with a dead edx is
+   `__thiscall` with one argument, byte for byte). Only the ordinary world pass is
+   doubled: a non-null argument is a menu texture or the save game screenshot, and
+   `camera::WantsSecondScenePass` (tested) also refuses menu frames, which are delivered
+   flat anyway.
+3. After pass one: `HeadsetRenderer::CaptureEye(left)` copies the finished back buffer -
+   tone mapped, no HUD - into the left eye's picture. Camera to the right eye, update.
+4. After pass two: capture right, camera back, update again.
+5. Present: `SubmitDualEyes` hands both pictures over with **no explicit pose** - both
+   were drawn with this frame's WaitGetPoses pose, which is exactly what the compositor
+   assumes, so for the first time there is nothing to correct for. The kept per-eye poses
+   are an aer artefact and are cleared.
+
+If any piece is missing - hook refused, mirror unavailable, a copy failed - the submit
+falls back to the mono picture rather than pairing a fresh eye with a stale one, and
+`request.dualEyes` is only claimed when the hook is actually installed.
+
+**What it costs:** the whole render pipeline twice per frame - culling, water, HDR - which
+is the honest price of two viewpoints and is what a 2006 game on a modern GPU has headroom
+for. The frame time lines in the next log are the measurement.
+
+**The known limit, stated before the run rather than discovered in it:** the HUD is not in
+the world picture. It draws after both passes, into the frame the monitor gets. Menus,
+videos and loading screens still arrive through the flat path exactly as before. The HUD
+comes back with the piece already decided above - the 2D pass redirected to its own
+target, then an overlay - and dual pass is the prerequisite that makes that work worth
+doing, not a detour around it.
+
+**New pieces, all with their own tests:** `core/EntryDetour` (entry trampoline and patch
+bytes, `entry_detour_test` - including the above-2GB wrap case that guards the 4GB patch,
+and every refusal path), `render/SceneRenderHook` (the detour and the pass sequence),
+`game::UpdateNodeTransforms`, `camera::WantsSecondScenePass` in FrameLogic
+(`frame_logic_test`, all eight flows plus the agreement property with `FrameIsFlat`).
+
+Also checked against a live question: the Cyberpunk 2077 VR route. It is Luke Ross's
+R.E.A.L. framework - closed source, and by his own Patreon description it uses alternate
+eye rendering in every mod, because modern titles cannot render 180 fps. It is what OBVR
+is stepping past, not a source to learn dual pass from; the open precedents remain bo1-vr
+and FEAR2VR, cited above.
+
 ### What is still true and unfixed
 
 - ~~The picture is one frame stale~~ - fixed by Render.SubmitAtFrameEnd, which hooks Present
@@ -1690,9 +1768,10 @@ that made it.
 - **The picture was one frame stale.** The submit ran from the camera hook, before the frame
   is drawn. Moving it to `Present` at vtable index 17 is the fix, and it would invert the
   eye correction in `SubmitAlternateEyes` - the comment there says so.
-- **The two eyes hold pictures drawn one frame apart.** That is what alternate eye rendering
-  is, not a defect in this implementation. Only `Stereo=dual` removes it, and `dual` is not
-  built.
+- ~~The two eyes hold pictures drawn one frame apart~~ - that is what alternate eye
+  rendering is, and `Stereo=dual` now exists to remove it: both eyes drawn in the same
+  tick, from the same pose. It applies only under `dual`; `aer` keeps the disparity,
+  because the disparity is what aer is.
 - **The mono path still uses the old fixed bounds**, so `Stereo=none` shows the magnified,
   stretched picture it always did. Left alone deliberately: it is the fallback, it works as
   it is, and changing the thing being fallen back to would leave two candidates for any new
@@ -1704,11 +1783,12 @@ that made it.
 rather than three flags, so the modes cannot contradict each other.
 
 `dual` is the honest route - drawing the world twice per tick, once per eye, with no time
-disparity between them - and it is **not built**. It is accepted, says so in the log, and
-renders like `none`. A setting that is silently ignored is worse than one that is rejected,
-because the flat picture then reads as stereo having failed instead of as a feature that was
-never written. Whether Gamebryo will render twice without advancing the simulation twice is
-still the open question there, and it is a question about the engine rather than about wiring.
+disparity between them - and it is **built**; see "Dual pass is built" above. It requires
+`SubmitAtFrameEnd=1`, because the captures happen mid-frame and the submit pays them at
+Present; with it off, the log says so and the world stays single-pass. The question this
+section used to hold open - whether Gamebryo renders twice without advancing the simulation
+twice - is answered in that section: rendering does not advance the simulation, and the
+engine's own render function re-reads the camera each call.
 
 ### Where 0.1.0 stands, and the two things left
 

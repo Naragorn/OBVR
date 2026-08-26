@@ -164,4 +164,23 @@ bool BackBufferEyeIsLeft(bool isLeftEye, bool backBufferIsThisFrame);
 // time the menu is up, so nothing alternates.
 bool FrameIsFlat(bool hadCameraPass, bool menuIsUp);
 
+// Whether this frame's world render should run twice, once per eye.
+//
+// Three conditions, and all of them have to hold.
+//
+// frameOpen: the camera hook ran this frame and BeginFrame accepted it, so
+// there is a pose the two passes were asked for and a compositor waiting for
+// their pictures. Without it the second pass would be drawn for nobody.
+//
+// armed: the camera hook actually moved the camera to the left eye and worked
+// out the shift to the right one. Not the same as frameOpen: the headset can
+// be connected for tracking while stereo is off, and then there is no shift
+// to apply and no second viewpoint to draw.
+//
+// menuIsUp: a frame with a menu open is delivered flat whatever the passes
+// do - FrameIsFlat says so - so a second pass would be two renders for a
+// picture that ignores both. The same question, asked of the same source, as
+// the flat decision: the two must agree on what kind of frame this is.
+bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp);
+
 }  // namespace obvr::camera

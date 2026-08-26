@@ -292,6 +292,42 @@ void TestFrameIsFlat() {
 	}
 }
 
+void TestWantsSecondScenePass() {
+	std::printf("When the world render runs twice\n");
+
+	using obvr::camera::FrameIsFlat;
+	using obvr::camera::WantsSecondScenePass;
+
+	// The one combination that draws twice: a frame the compositor accepted,
+	// a camera the hook actually moved to an eye, and no menu in front.
+	Check(WantsSecondScenePass(true, true, false),
+	      "an open frame with an armed camera and no menu draws twice");
+
+	// Every other flow stays single-pass, each for its own reason.
+	Check(!WantsSecondScenePass(false, true, false),
+	      "no open frame means nobody is waiting for the pictures");
+	Check(!WantsSecondScenePass(true, false, false),
+	      "an unarmed camera has no second viewpoint to draw from");
+	Check(!WantsSecondScenePass(true, true, true),
+	      "a menu frame is delivered flat, so a second pass would be waste");
+	Check(!WantsSecondScenePass(false, false, false), "neither open nor armed");
+	Check(!WantsSecondScenePass(false, true, true), "menu up and no open frame");
+	Check(!WantsSecondScenePass(true, false, true), "menu up and unarmed");
+	Check(!WantsSecondScenePass(false, false, true), "all three against it");
+
+	// The property that keeps the render and the delivery agreeing: whenever
+	// the camera pass ran and this says draw twice, the frame is not flat -
+	// so the captures are always submitted. A second pass for a flat frame
+	// would be two renders for a picture that ignores both.
+	for (int menu = 0; menu < 2; ++menu) {
+		const bool menuIsUp = menu != 0;
+		if (WantsSecondScenePass(true, true, menuIsUp)) {
+			Check(!FrameIsFlat(true, menuIsUp),
+			      "a frame that draws twice is never delivered flat");
+		}
+	}
+}
+
 int main() {
 	std::printf("OBVR frame logic test\n\n");
 
@@ -310,6 +346,8 @@ int main() {
 	TestBackBufferEye();
 	std::printf("\n");
 	TestFrameIsFlat();
+	std::printf("\n");
+	TestWantsSecondScenePass();
 	std::printf("\n");
 	TestFrameClock();
 	std::printf("\n");

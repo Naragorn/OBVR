@@ -171,4 +171,70 @@ inline constexpr UInt32 kIsMenuMode = 0x00578F60;
 inline constexpr UInt32 kD3D9Module = 0x00B42150;
 inline constexpr UInt32 kDirect3DCreate9Pointer = 0x00B42158;
 
+// The function that draws one frame of the world: culling, both scene graph
+// passes, water, and the image space shaders, but not the 2D layer - menus
+// and HUD are drawn later, on a different path. __thiscall, one argument (a
+// BSRenderedTexture*, null on the ordinary world pass).
+//
+// Two sources. Oblivion Reloaded's RenderHook.cpp names it kRender for this
+// exact build, and detours it. The bytes agree independently, in three ways:
+//
+//   * inside it, at 0040CCD3 and 0040CE48, are the only two calls in the
+//     whole binary to 0070C0B0 that render a scene graph on the world path -
+//     the function Oblivion Reloaded names RenderObject, and which begins
+//     with mov ecx,[00B3F928], the renderer global this project has already
+//     verified twice over
+//   * at 0040CF6E is the single call in the whole binary to 007B48E0, the
+//     image space shaders (HDR) - so the picture is finished, tone mapping
+//     included, when this function returns
+//   * at 0040C95F it reads the scene graph at 00B333CC and walks the same
+//     node list ([eax+0xB6] count, [eax+0xB0] list, first entry) that the
+//     camera hook site walks - the CameraNode - and copies its position
+//     (+0x54) into two follower nodes before drawing
+//
+// The third point matters beyond verification: Render re-reads the camera
+// node's position itself, each call, to place the sky and LOD roots. A second
+// call with the camera moved therefore keeps everything consistent without
+// further help.
+//
+// Called from three places: 0040D41B (a menu wants the world in a texture),
+// 0040D658 (the ordinary world pass, texture null), 00411CBF (the save game
+// screenshot). Only the ordinary pass is drawn twice; the argument and a
+// once-per-frame guard tell them apart.
+//
+// The entry reads
+//
+//   0040C830  push -1              6A FF
+//   0040C832  push 0x9AA163        68 63 A1 9A 00
+//   0040C837  mov eax,fs:[0]       (the SEH frame; not moved)
+//
+// so the first seven bytes are two whole instructions with nothing relative
+// in them, which is what the entry detour relocates.
+inline constexpr UInt32 kRenderScene = 0x0040C830;
+inline constexpr UInt32 kRenderSceneEntryLength = 7;
+
+// NiAVObject::UpdateSelectedDownwardPass - recomputes world transforms from
+// parent * local, downward from the given node. __thiscall on the node, two
+// arguments: a float time and an int flags, both observed as zero.
+//
+// Two sources. The camera hook site itself: immediately after the hooked
+// instruction the game calls it on the CameraNode it has just written -
+//
+//   0066BE84  fldz
+//   0066BE86  push 0
+//   0066BE88  push ecx
+//   0066BE89  fstp dword ptr [esp]        <- (0.0f, 0)
+//   0066BE8C  call 00707370               <- ecx = CameraNode
+//
+// and Render at 0040C9A5/0040C9F0 makes the identical call, with identical
+// arguments, on the two follower nodes it has just repositioned. HANDOFF
+// section 3 records the same address a third way, as the vtable dispatch that
+// overwrites worldTransform after the hook - which is why the hook writes
+// localTransform.
+//
+// Why OBVR calls it: moving the camera to the second eye between the two
+// render passes edits localTransform, exactly as the camera hook does, and
+// this is the call the game itself uses to make the world transform follow.
+inline constexpr UInt32 kUpdateNodeTransforms = 0x00707370;
+
 }  // namespace obvr::addr

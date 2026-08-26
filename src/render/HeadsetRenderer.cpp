@@ -172,6 +172,13 @@ bool HeadsetRenderer::BeginFrame(vr::OpenVRBackend& backend) {
 
 	// From here a frame is owed to the compositor. EndFrame is what pays it.
 	m_frameOpen = true;
+
+	// Captures belong to exactly one frame. A frame that turned flat after
+	// its passes ran - a menu opening between the render and Present - leaves
+	// its captures unsubmitted, and they must not survive into a later frame
+	// that would submit them as its own.
+	m_dualCaptured[0] = false;
+	m_dualCaptured[1] = false;
 	return true;
 }
 
@@ -202,9 +209,13 @@ void HeadsetRenderer::EndFrame(const vr::OpenVRBackend& backend, const FrameRequ
 		}
 
 		if (m_gameFrameUsable) {
-			submittedGameFrame = (request.alternateEyes || request.flatFrame)
-			                         ? SubmitAlternateEyes(backend, request, left, right)
-			                         : SubmitMono(backend, request, left, right);
+			if (request.dualEyes && !request.flatFrame) {
+				submittedGameFrame = SubmitDualEyes(backend, request, left, right);
+			} else if (request.alternateEyes || request.flatFrame) {
+				submittedGameFrame = SubmitAlternateEyes(backend, request, left, right);
+			} else {
+				submittedGameFrame = SubmitMono(backend, request, left, right);
+			}
 		}
 	}
 
@@ -298,8 +309,7 @@ bool HeadsetRenderer::SubmitMono(const vr::OpenVRBackend& backend, const FrameRe
 	return true;
 }
 
-bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
-                                          const FrameRequest& request, int& left, int& right) {
+void HeadsetRenderer::EnsureMirror(const FrameRequest& request) {
 	// Rebuilt when the camera frustum turns up for the first time.
 	//
 	// The mirror may have been built during a menu, where no camera has run
@@ -321,10 +331,94 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 		                                 request.cameraTanHalfHeight, request.menuScale,
 		                                 request.menuAspect);
 		m_mirrorUsedCamera = haveCamera;
-		OBVR_LOG("Render: alternate eyes are %s",
-		         m_mirrorUsable ? "on, each eye holding its own last picture and its own pose"
+		OBVR_LOG("Render: the eye copies are %s",
+		         m_mirrorUsable ? "ready, one picture owned per eye"
 		                        : "unavailable, falling back to one image for both eyes");
 	}
+}
+
+bool HeadsetRenderer::CaptureEye(const FrameRequest& request, bool isLeft) {
+	// Nothing to capture into before the first BeginFrame has read the eye
+	// geometry, and nothing worth capturing after the policy gave up.
+	if (m_eyeWidth == 0 || m_policy.HasStopped()) {
+		return false;
+	}
+
+	EnsureMirror(request);
+	if (!m_mirrorUsable) {
+		return false;
+	}
+
+	// Plain Direct3D 9, no queue held - this runs mid-frame, on the game's
+	// thread, between two render passes that both still have work to submit.
+	if (!m_mirror.CopyBackBuffer(request.gameDevice, isLeft)) {
+		if (!m_copyFailureLogged) {
+			m_copyFailureLogged = true;
+			OBVR_LOG("Render: the %s eye pass could not be captured, so the mono picture "
+			         "is showing instead",
+			         isLeft ? "left" : "right");
+		}
+		return false;
+	}
+
+	m_dualCaptured[isLeft ? 0 : 1] = true;
+	return true;
+}
+
+bool HeadsetRenderer::SubmitDualEyes(const vr::OpenVRBackend& backend,
+                                     const FrameRequest& request, int& left, int& right) {
+	// Consumed either way: these captures belong to this frame alone.
+	const bool captured = m_dualCaptured[0] && m_dualCaptured[1];
+	m_dualCaptured[0] = false;
+	m_dualCaptured[1] = false;
+
+	if (!m_mirrorUsable || !captured) {
+		// The passes did not both arrive - the hook is not installed, the
+		// mirror could not be built, or a copy failed. The mono picture is
+		// flat but honest; submitting one fresh eye and one stale one would
+		// be the inverted-disparity fault by another route.
+		return SubmitMono(backend, request, left, right);
+	}
+
+	if (!m_dualReported) {
+		m_dualReported = true;
+		OBVR_LOG("Render: dual pass is live - both eyes drawn this frame, from this "
+		         "frame's pose");
+	}
+
+	// Back in the world, so the next flat picture gets a fresh anchor.
+	m_flatPoseValid = false;
+
+	// The kept per-eye poses are an alternate-eyes artefact: they exist to
+	// tell the compositor about a picture drawn a frame ago. Both of these
+	// were drawn with the pose WaitGetPoses handed out this frame, which is
+	// exactly what the compositor assumes - so there is nothing to say, and
+	// the kept poses must not say something else on a later mode switch.
+	m_eyePoseValid[0] = false;
+	m_eyePoseValid[1] = false;
+
+	EyeMirror::Submission held(m_mirror, request.gameDevice);
+	if (!held.IsHeld()) {
+		return false;
+	}
+
+	dxvk::VRVulkanTextureData dataLeft{};
+	dxvk::VRVulkanTextureData dataRight{};
+	DescribeForOpenVR(m_mirror.GetImage(true), m_vulkan, dataLeft);
+	DescribeForOpenVR(m_mirror.GetImage(false), m_vulkan, dataRight);
+
+	// No bounds - each texture already covers exactly its eye's frustum - and
+	// no explicit pose, for the reason above.
+	left = backend.SubmitEye(vr::openvr::kEyeLeft, &dataLeft, vr::openvr::kTextureTypeVulkan,
+	                         nullptr, nullptr);
+	right = backend.SubmitEye(vr::openvr::kEyeRight, &dataRight,
+	                          vr::openvr::kTextureTypeVulkan, nullptr, nullptr);
+	return true;
+}
+
+bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
+                                          const FrameRequest& request, int& left, int& right) {
+	EnsureMirror(request);
 
 	if (!m_mirrorUsable) {
 		// Not a failure to report per frame, and not a reason to stop
@@ -483,6 +577,9 @@ void HeadsetRenderer::Reset() {
 	m_mirrorUsable = false;
 	m_mirrorUsedCamera = false;
 	m_copyFailureLogged = false;
+	m_dualCaptured[0] = false;
+	m_dualCaptured[1] = false;
+	m_dualReported = false;
 	m_eyePoseValid[0] = false;
 	m_eyePoseValid[1] = false;
 	m_flatPoseValid = false;

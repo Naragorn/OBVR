@@ -32,6 +32,20 @@ endif()
 
 add_test(NAME trampoline COMMAND trampoline_test)
 
+add_executable(entry_detour_test
+	EntryDetourTest.cpp
+	../src/core/EntryDetour.cpp
+	../src/core/CodeWriter.cpp
+)
+
+target_include_directories(entry_detour_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(entry_detour_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME entry_detour COMMAND entry_detour_test)
+
 add_executable(quaternion_test
 	QuaternionTest.cpp
 	../src/vr/Quaternion.cpp

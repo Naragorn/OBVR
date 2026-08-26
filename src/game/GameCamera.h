@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Types.h"
+#include "game/GameTypes.h"
 
 namespace obvr::game {
 
@@ -153,5 +154,15 @@ bool ReadGameCameraFrustum(NiFrustum& out);
 
 // Writes one back. False when the camera cannot be reached.
 bool WriteGameCameraFrustum(const NiFrustum& frustum);
+
+// Recomputes the node's world transform from parent * local, downward, by
+// calling the same engine function the game calls right after the camera
+// hook - addr::kUpdateNodeTransforms, with the same (0.0f, 0) arguments.
+//
+// This is what makes moving the camera between the two render passes take:
+// the hook and the passes both edit localTransform, and worldTransform only
+// follows when something recomputes it. The game does that once, after its
+// own camera write; the second eye's move needs the same call made again.
+void UpdateNodeTransforms(NiAVObject* node);
 
 }  // namespace obvr::game

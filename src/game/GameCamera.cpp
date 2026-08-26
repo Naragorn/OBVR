@@ -1,6 +1,7 @@
 #include "game/GameCamera.h"
 
 #include "core/MathFns.h"
+#include "game/GameAddresses.h"
 
 namespace obvr::game {
 namespace {
@@ -167,6 +168,22 @@ bool FrustumWatcher::Observe(const NiFrustum& frustum) {
 	m_last = frustum;
 	++m_reported;
 	return true;
+}
+
+void UpdateNodeTransforms(NiAVObject* node) {
+	if (node == nullptr) {
+		return;
+	}
+
+	// The engine function is __thiscall with a float and an int on the stack.
+	// __fastcall with a dead edx is the same call byte for byte: self lands in
+	// ecx, floats never ride in registers under either convention, and both
+	// have the callee clean up. The same trick, for the same reason, as the
+	// scene render detour.
+	using UpdateFn = void(__fastcall*)(NiAVObject* self, void* unusedEdx, float time,
+	                                   UInt32 flags);
+	auto update = reinterpret_cast<UpdateFn>(addr::kUpdateNodeTransforms);
+	update(node, nullptr, 0.0f, 0);
 }
 
 }  // namespace obvr::game

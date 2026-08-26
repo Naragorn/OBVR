@@ -365,12 +365,14 @@ bool Config::Load(const char* fileName) {
 	         tracker.matchHeadsetFov ? 1 : 0, tracker.setRenderSize ? 1 : 0,
 	         tracker.renderWidth, tracker.renderHeight);
 	if (tracker.stereo == vr::StereoMode::DualPass) {
-		// Said plainly rather than silently ignored. A setting that is
-		// accepted and then does something else is worse than one that is
-		// rejected, because the picture looks like a failure of stereo
-		// instead of a feature that was never built.
-		OBVR_LOG("Config: Render.Stereo=dual is not built yet - rendering one image to "
-		         "both eyes until it is");
+		// The known limit, stated up front rather than discovered in the
+		// headset: the 2D layer draws after both passes, into the frame the
+		// monitor gets, so it is not in either eye's picture yet. Menus and
+		// videos still arrive, through the flat path; what is missing in the
+		// world is the HUD.
+		OBVR_LOG("Config: Render.Stereo=dual - the world is drawn twice per frame, once "
+		         "per eye; the HUD draws after both passes and is not in the world "
+		         "picture yet");
 	}
 	return true;
 }
