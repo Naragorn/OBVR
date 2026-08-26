@@ -3,6 +3,7 @@
 #include "core/Log.h"
 #include "render/D3D11Types.h"
 #include "core/MathFns.h"
+#include "game/GameCamera.h"
 #include "render/D3D9Types.h"
 #include "render/GameProjection.h"
 
@@ -13,6 +14,8 @@ namespace {
 // draws into and which would otherwise show whatever the memory held when the
 // texture was made - in a headset, a border of noise around the world.
 constexpr UInt32 kOpaqueBlack = 0xFF000000;
+
+float Abs(float value) { return value < 0.0f ? -value : value; }
 
 // Reads the back buffer's size and format, so the copy is made from something
 // whose shape is known rather than assumed.
@@ -185,6 +188,47 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 		         "%.1f degrees is used, read as %s",
 		         static_cast<double>(gameFovDegrees),
 		         gameFovIsFor4x3 ? "a 4:3 figure" : "the horizontal field of view");
+	}
+
+
+	// The same frustum, read a second way, and compared.
+	//
+	// Nothing acts on this yet. It is here because writing to Oblivion's own
+	// camera is the next step and the addresses it needs came from
+	// documentation of somebody else's reverse engineering - so the cheap
+	// thing to do first is read through them and check the answer against one
+	// already measured a different way. A wrong address does not announce
+	// itself; it hands back four floats that are some other object's contents.
+	//
+	// If this line says the two agree, the lever for per-eye projection is in
+	// hand: writing this frustum is how the black margin, the geometric
+	// compensation in PlacePicture, and alternate eyes all go away together.
+	game::NiFrustum frustum{};
+	if (!game::ReadGameCameraFrustum(frustum)) {
+		OBVR_LOG("Camera: Oblivion's render camera could not be reached at %08X",
+		         game::kWorldSceneGraph);
+	} else {
+		const bool agrees =
+			measured && game::FrustumLooksRight(frustum, projection.tanHalfWidth,
+			                                    projection.tanHalfHeight);
+		OBVR_LOG("Camera: frustum l=%.4f r=%.4f t=%.4f b=%.4f n=%.4f f=%.1f ortho=%d",
+		         static_cast<double>(frustum.l), static_cast<double>(frustum.r),
+		         static_cast<double>(frustum.t), static_cast<double>(frustum.b),
+		         static_cast<double>(frustum.n), static_cast<double>(frustum.f),
+		         frustum.o ? 1 : 0);
+		if (frustum.n > 0.0f) {
+			OBVR_LOG("Camera: that is %.1f degrees across and %.1f down - %s",
+			         static_cast<double>(2.0f *
+			                             math::Atan((Abs(frustum.l) + Abs(frustum.r)) * 0.5f /
+			                                        frustum.n) *
+			                             math::kRadiansToDegrees),
+			         static_cast<double>(2.0f *
+			                             math::Atan((Abs(frustum.t) + Abs(frustum.b)) * 0.5f /
+			                                        frustum.n) *
+			                             math::kRadiansToDegrees),
+			         agrees ? "agrees with the projection matrix, so the camera is reachable"
+			                : "does NOT agree, so one of the two readings is wrong");
+		}
 	}
 
 	// Where the game's frame goes inside each eye's view. This is what makes

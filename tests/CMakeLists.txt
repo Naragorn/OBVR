@@ -303,3 +303,16 @@ if(WIN32)
 
 	add_test(NAME present_hook COMMAND present_hook_test)
 endif()
+
+add_executable(game_camera_test
+	GameCameraTest.cpp
+	../src/game/GameCamera.cpp
+)
+
+target_include_directories(game_camera_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(game_camera_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME game_camera COMMAND game_camera_test)
