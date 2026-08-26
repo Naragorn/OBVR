@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Types.h"
+#include "render/D3D9Types.h"
 
 namespace obvr::render {
 
@@ -50,5 +51,16 @@ bool IsPlausibleProjection(float m00, float m11);
 // Reads it off the device. False if the matrix cannot be had or does not pass
 // the check above, in which case out is left alone.
 bool ReadGameProjection(void* gameDevice, GameProjection& out);
+
+// The rectangle of the frame Oblivion is actually drawing into.
+//
+// This became a question the moment OBVR started creating the frame at a size
+// the game did not ask for. The back buffer is 3200x3200 because that is what
+// a headset wants; whether Oblivion lays its picture over all of it, or over
+// the 2560x1440 it still believes in, is not something to be reasoned about
+// from the outside. The viewport is the game's own answer.
+//
+// False when the device or its table cannot be read.
+bool ReadViewport(void* gameDevice, d3d9::Viewport& viewport);
 
 }  // namespace obvr::render

@@ -11,8 +11,10 @@
 #include "game/GameCamera.h"
 #include "game/MenuMode.h"
 #include "platform/Win32Min.h"
+#include "render/D3D9Types.h"
 #include "render/DxvkInterop.h"
 #include "render/GameDevice.h"
+#include "render/GameProjection.h"
 #include "render/HeadsetRenderer.h"
 #include "render/PresentHook.h"
 #include "render/ResolutionHook.h"
@@ -55,7 +57,37 @@ game::FrustumWatcher g_frustumWatcher;
 // Counts frames delivered with no camera pass behind them, to answer whether
 // Oblivion presents more than once per step while a menu is up.
 UInt32 g_flatFramesSinceCamera = 0;
+
+// How many of those bursts have been reported.
 UInt32 g_flatBurstsReported = 0;
+
+// Reported once for a menu frame and once for a world frame, because the two
+// can differ and the difference is the whole question.
+bool g_viewportReported[2] = {false, false};
+
+// Says, once, which part of the frame Oblivion is drawing into.
+//
+// OBVR now asks for a frame the game did not choose, so "the frame" and "the
+// picture in it" are no longer the same rectangle by construction. If the
+// viewport is smaller than the back buffer, everything copied outside it is
+// black - and a menu cropped to a cinema shape out of a frame whose picture
+// only fills part of it loses the wrong part.
+void ReportViewportOnce(bool flat) {
+	const int slot = flat ? 1 : 0;
+	if (g_viewportReported[slot]) {
+		return;
+	}
+
+	render::d3d9::Viewport viewport{};
+	if (!render::ReadViewport(render::GetGameDevice(), viewport)) {
+		return;
+	}
+
+	g_viewportReported[slot] = true;
+	OBVR_LOG("Render: on a %s frame Oblivion draws into x=%u..%u y=%u..%u of the frame",
+	         flat ? "menu" : "world", viewport.x, viewport.x + viewport.width, viewport.y,
+	         viewport.y + viewport.height);
+}
 
 float Abs(float value) { return value < 0.0f ? -value : value; }
 
@@ -96,6 +128,8 @@ void OnFrameEnd() {
 	// to hold steady, so the question does not arise.
 	const bool menuIsUp = GetConfig().tracker.showMenus && game::IsMenuMode();
 	const bool flat = FrameIsFlat(hadCameraPass, menuIsUp);
+
+	ReportViewportOnce(flat);
 
 	if (!flat) {
 		g_flatFramesSinceCamera = 0;

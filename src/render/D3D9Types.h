@@ -149,6 +149,28 @@ static_assert(sizeof(SurfaceDesc) == 8 * sizeof(UInt32),
 // projection before it is believed, and logged either way.
 constexpr UInt32 kDeviceGetTransform = 45;
 
+// IDirect3DDevice9::GetViewport. Counted the same way as the others, and
+// cross-checked against two indices already known to be right: the SDK header
+// lists Present five places above where it sits in the table, and SetTransform
+// likewise, so GetViewport at 53 in that listing is 48 here.
+//
+// What it is for: OBVR now creates the frame at a size the game did not ask
+// for, and the question that raises is whether Oblivion draws into all of it.
+// The viewport is where that is answered - it is the rectangle of the frame
+// the game is actually rendering into, and if it is smaller than the frame,
+// everything OBVR copies outside it is black.
+constexpr UInt32 kDeviceGetViewport = 48;
+
+// D3DVIEWPORT9.
+struct Viewport {
+	UInt32 x;
+	UInt32 y;
+	UInt32 width;
+	UInt32 height;
+	float minZ;
+	float maxZ;
+};
+
 // D3DTS_PROJECTION (d3d9types.h)
 constexpr UInt32 kTransformProjection = 3;
 
@@ -204,6 +226,8 @@ static_assert(sizeof(PresentParameters) == 13 * sizeof(UInt32) + sizeof(void*),
 // entries, RegisterSoftwareDevice, then eleven adapter and capability queries,
 // GetAdapterMonitor, and then this.
 constexpr UInt32 kFactoryCreateDevice = 16;
+
+using GetViewportFn = SInt32(__stdcall*)(void* self, Viewport* viewport);
 
 using Direct3DCreate9Fn = void*(__stdcall*)(UInt32 sdkVersion);
 

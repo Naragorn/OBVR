@@ -63,4 +63,13 @@ bool ReadGameProjection(void* gameDevice, GameProjection& out) {
 	return true;
 }
 
+bool ReadViewport(void* gameDevice, d3d9::Viewport& viewport) {
+	auto getViewport =
+	    d3d9::Method<d3d9::GetViewportFn>(gameDevice, d3d9::kDeviceGetViewport);
+	if (getViewport == nullptr) {
+		return false;
+	}
+	return getViewport(gameDevice, &viewport) >= 0;
+}
+
 }  // namespace obvr::render
