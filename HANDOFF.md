@@ -1477,6 +1477,31 @@ drawing once per frame means. Two passes per frame is the fix, and per-eye proje
 the second pass knows what to draw.
 
 
+### The window was step three, and there is no step four worth writing
+
+The window resize worked - `fullscreen cleared, and the window resized from
+320x240 to 2560x1440`, the swapchain came up at 2560x1440, and the game ran
+stably at a 3200x3200 frame. What the run showed instead is that the frame was
+never the whole story. The intro films arrived as a smaller picture in the
+upper part of the view: the 2D layer is laid out at the resolution Oblivion
+believes in, 2560x1440, into the top-left corner of the 3200x3200 frame it was
+actually given. And the menus stopped being clickable, because the mouse is
+mapped against yet another reading of the resolution.
+
+So the resolution is decided in at least three places - the device, the 2D
+layout, the mouse mapping - and CreateDevice only reaches the first. Patching
+the places one at a time is the wrong shape of fix: each patch surfaces the
+next disagreement as a new symptom. The choice is between teaching every place
+the same lie (the internal iSize settings exist, xOBSE reaches them through
+IniSettingCollection) and not needing the lie at all.
+
+Dual pass does not need the lie. The scene renders into OBVR's own eye-sized
+targets at whatever resolution is wanted, the game's frame keeps the size the
+game chose, mouse and 2D layout stay true, and the 2D layer goes to its own
+target and its own overlay - which also fixes menu placement and click
+alignment properly instead of through a flat copy of the back buffer.
+`SetGameResolution=0` until then, and the switch's comment says why.
+
 ### The window was the missing third step
 
 `SetGameResolution` is on again, and now sizes the window as well as the frame.
