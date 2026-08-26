@@ -224,7 +224,9 @@ bool OpenVRBackend::GetEyeOffset(int eye, NiPoint3& offsetMetres) const {
 	return true;
 }
 
-int OpenVRBackend::WaitGetPoses() const {
+int OpenVRBackend::WaitGetPoses() {
+	m_renderPoseValid = false;
+
 	if (m_compositor == nullptr) {
 		return openvr::kCompositorErrorIsNotSceneApplication;
 	}
@@ -242,9 +244,33 @@ int OpenVRBackend::WaitGetPoses() const {
 	// The game poses are declined outright. They are the poses to run game
 	// logic against, and Oblivion's logic knows nothing about a headset.
 	openvr::TrackedDevicePose renderPose{};
-	return table->WaitGetPoses(&renderPose, 1, nullptr, 0);
+	const int result = table->WaitGetPoses(&renderPose, 1, nullptr, 0);
+
+	// Kept, not discarded. This is the pose the compositor will reproject the
+	// submitted picture against, so it is the pose the picture has to be drawn
+	// with - see the comment on the declaration, and Valve's own statement
+	// that rendering with any other pose "will result in incorrect behavior".
+	//
+	// It is also better in its own right: predicted forward to when the image
+	// will be lit, rather than the head's position at the moment of asking.
+	if (renderPose.poseIsValid && renderPose.deviceIsConnected) {
+		m_renderOrientation = FromOpenVRMatrix(renderPose.deviceToAbsoluteTracking.m);
+		m_renderPosition = PositionFromOpenVRMatrix(renderPose.deviceToAbsoluteTracking.m);
+		m_renderPoseValid = true;
+	}
+
+	return result;
 }
 
+bool OpenVRBackend::GetRenderPose(Quaternion& orientation, NiPoint3& position) const {
+	if (!m_renderPoseValid) {
+		return false;
+	}
+
+	orientation = m_renderOrientation;
+	position = m_renderPosition;
+	return true;
+}
 int OpenVRBackend::SubmitEye(int eye, void* handle, int textureType,
                              const openvr::VRTextureBounds* bounds) const {
 	if (m_compositor == nullptr || handle == nullptr) {

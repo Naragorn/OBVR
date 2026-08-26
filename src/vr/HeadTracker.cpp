@@ -90,6 +90,19 @@ bool HeadTracker::ReadSource(UInt32 frameIndex, Quaternion& orientation,
 		}
 
 		case TrackerSource::OpenVR: {
+			// The pose from WaitGetPoses first. It is the one the compositor
+			// will reproject the picture against, and it is predicted forward to
+			// when the image is lit rather than being the head's position at the
+			// moment of asking. Drawing with any other pose is what Valve calls
+			// "incorrect behavior", and it is felt as a world that morphs when
+			// the head moves.
+			if (m_openVR.GetRenderPose(orientation, position)) {
+				return true;
+			}
+
+			// No frame loop this time - rendering is off, or the compositor was
+			// not reached. Head tracking still works, it is simply less well
+			// timed, and that is the whole difference.
 			if (m_openVR.ReadHeadPose(orientation, position)) {
 				return true;
 			}

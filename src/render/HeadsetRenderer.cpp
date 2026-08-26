@@ -88,7 +88,7 @@ void LogEyeGeometry(const vr::OpenVRBackend& backend, EyeProjection& outLeft,
 
 }  // namespace
 
-bool HeadsetRenderer::BeginFrame(const vr::OpenVRBackend& backend) {
+bool HeadsetRenderer::BeginFrame(vr::OpenVRBackend& backend) {
 	// A frame that was opened and never submitted is not an error - the
 	// compositor treats it as a dropped frame - but a frame submitted without
 	// having been opened is, because Submit is only meaningful after
@@ -235,11 +235,6 @@ void HeadsetRenderer::EndFrame(const vr::OpenVRBackend& backend, const FrameRequ
 }
 
 
-void HeadsetRenderer::Update(const vr::OpenVRBackend& backend, const FrameRequest& request) {
-	if (BeginFrame(backend)) {
-		EndFrame(backend, request);
-	}
-}
 
 bool HeadsetRenderer::SubmitMono(const vr::OpenVRBackend& backend, const FrameRequest& request,
                                  int& left, int& right) {

@@ -79,15 +79,12 @@ public:
 	//
 	// BeginFrame waits on the compositor and returns whether a frame is owed;
 	// EndFrame pays it. Between them Oblivion draws. Calling them from one
-	// place - which is what Update does - is the old arrangement, where the
-	// picture submitted is whatever the back buffer held from last time.
-	bool BeginFrame(const vr::OpenVRBackend& backend);
+	// place, one after the other, is the old arrangement, where the picture
+	// submitted is whatever the back buffer held from last time. That is what
+	// Render.SubmitAtFrameEnd=0 still does.
+	bool BeginFrame(vr::OpenVRBackend& backend);
 	void EndFrame(const vr::OpenVRBackend& backend, const FrameRequest& request);
 
-	// Both halves at once, from the camera hook. One frame stale by
-	// construction, and kept because it is the arrangement that is known to
-	// work.
-	void Update(const vr::OpenVRBackend& backend, const FrameRequest& request);
 
 	// Throws away the textures and the run of failures. For a change of
 	// configuration, or shutdown.

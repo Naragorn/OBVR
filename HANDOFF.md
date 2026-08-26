@@ -1393,9 +1393,94 @@ right, it is right, and the fuller view is what being right looks like.
 `eye_geometry_test` pins both readings, their agreement at 4:3, and the exact third between
 them at 16:9.
 
+### The pose the compositor assumes
+
+Reported from the headset: looking straight ahead was good, moving the head made the world
+morph, and it caused motion sickness. That is not alternate eyes and not latency. It is
+drawing with a pose the compositor does not know about.
+
+From Valve, on [ValveSoftware/openvr issue #518](https://github.com/ValveSoftware/openvr/issues/518):
+
+> Reprojection corrections are applied based on the poses returned by WaitGetPoses. **We
+> assume you render the frames passed to Submit using the poses returned by the previous
+> WaitGetPoses. Rendering using other poses will result in incorrect behavior.** [...] We
+> don't have any interface to allow the application to specify which poses were used to
+> render the scene textures passed to Submit, and instead always assume the values returned
+> by WaitGetPoses were used.
+
+OBVR called `WaitGetPoses`, discarded the poses, and asked `GetDeviceToAbsoluteTrackingPose`
+separately with a prediction time of zero. Two faults in one:
+
+1. The compositor reprojected each frame to correct for the difference between the pose it
+   assumed and a pose that was never used. Warping against a wrong reference *is* a world
+   that morphs, and it worsens with how fast the head turns.
+2. The pose asked for described where the head was at the moment of asking, not where it
+   would be when the image lit. Valve's own figure for that gap is around 25 ms - a frame to
+   render, a frame to scan out, plus running start.
+
+The order was half the fault. It was read the head, move the camera, submit, *then* wait -
+so the poses arrived a frame after they were wanted, which is presumably why they looked
+worth discarding. It is now the order the OpenVR overview gives: wait, render, submit.
+
+Fixed. Not yet confirmed in a headset - that is the next run.
+
+### Filling the headset's field of view, and how other mods do it
+
+The black margin is not a bug and it cannot be cropped away. Oblivion renders 75 degrees
+across a 16:9 frame - measured, not assumed: `Mirror: measured Oblivion's own frustum - 75.0
+degrees across, 46.7 down`. Each eye wants about 88.6 degrees in *both* directions. A frame
+that shape does not cover a view that shape, and stretching it to fit is the magnification
+fault that was already removed once.
+
+There are three ways out, and the third is what mods that actually fill the view do.
+
+**Raise `fDefaultFOV`.** At 120 degrees the vertical would finally reach the eye's, at the
+cost of throwing away well over half the width and pushing Oblivion's HUD - which lives at
+the frame edges - entirely out of the cropped region. Cheap, and it trades one complaint for
+another.
+
+**Render square.** `iSize W` and `iSize H` equal makes the frame's shape match the eye's. At
+2560x2560 and 75 degrees the fill goes from 77% x 43% to about 78% x 77%; at 89 degrees it is
+close to complete. Costs 1.78x the pixels and still pushes the HUD outward.
+
+**Replace the projection matrix per eye.** The game is made to render *with the eye's own
+frustum* - asymmetry included - so the frame is the eye's view rather than a rectangle laid
+inside it. No margin, no crop, no magnification, and the asymmetry stops being something
+`PlacePicture` has to compensate for geometrically.
+
+Two mods with architecture close enough to be worth reading:
+
+- **[daniel-lynch/bo1-vr](https://github.com/daniel-lynch/bo1-vr)** — the nearest relative
+  found. A 32-bit D3D9 game, injected in-process, handing frames to the compositor through
+  DXVK's `ID3D9VkInterop*` interfaces, with DXVK's 32-bit `d3d9.dll` required rather than
+  optional. Exactly OBVR's route. Its description states plainly: "**Stereo rendering** —
+  two scene renders per frame, per-eye projection with the headset's own FOV", and head
+  tracking "hooked into the engine's `R_SetViewParms`".
+- **[praydog/FEAR2VR](https://github.com/praydog/FEAR2VR)** — hooks
+  `CLTRenderer_SetupPassPerspective`, described in its own source as "the one call that
+  decides what the next DrawScene sees", taking camera transform, field of view in radians,
+  and a normalised viewport.
+
+The pattern in both: **hook the engine's own view setup, not Direct3D's matrix state.** That
+gets the projection *and* the second render pass from the same place, because the function
+that sets up a view is the function you call twice.
+
+For Oblivion that means finding Gamebryo's equivalent - where `NiCamera`'s frustum is
+established for a render pass. Not found yet, and it is the next thing worth looking for. It
+would replace three things at once: the black margin, the geometric compensation in
+`PlacePicture`, and alternate eyes itself.
+
+**And it is the answer to the flicker too.** Under alternate eyes each eye gets a new picture
+only every second frame - at 55 fps that is roughly 27 Hz per eye, with one eye holding a
+stale image while the other changes. No amount of latency work touches that; it is what
+drawing once per frame means. Two passes per frame is the fix, and per-eye projection is how
+the second pass knows what to draw.
+
 ### What is still true and unfixed
 
-- **The picture is one frame stale.** The submit runs from the camera hook, before the frame
+- ~~The picture is one frame stale~~ - fixed by Render.SubmitAtFrameEnd, which hooks Present
+  at method table entry 17. The old text follows for the reasoning:
+- **The picture was one frame stale.** The submit ran from the camera hook, before the frame
   is drawn. Moving it to `Present` at vtable index 17 is the fix, and it would invert the
   eye correction in `SubmitAlternateEyes` - the comment there says so.
 - **The two eyes hold pictures drawn one frame apart.** That is what alternate eye rendering

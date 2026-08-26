@@ -264,6 +264,11 @@ public:
 	// day this becomes a session object of its own.
 	const OpenVRBackend& GetBackend() const { return m_openVR; }
 
+	// The mutable one, for the frame loop. WaitGetPoses keeps the pose it is
+	// given, so the call that makes it cannot be const - and that is the right
+	// shape: waiting on the compositor changes what the tracker will report.
+	OpenVRBackend& GetBackendForFrame() { return m_openVR; }
+
 private:
 	// Reads orientation and position from the configured source. Returns
 	// false when the source delivers no position, which is every source

@@ -81,13 +81,36 @@ public:
 	// that runs at ten frames a second with nothing on screen to say why.
 	// render::SubmitPolicy is what decides when to give up.
 	//
-	// The render poses it fills are currently discarded. They are the
-	// *predicted* poses for the frame about to be drawn, which is strictly
-	// better than the unpredicted ones ReadHeadPose asks for separately - so
-	// feeding the head tracker from here is an improvement worth making once
-	// the frame loop is settled, rather than in the same change that
-	// introduces it.
-	int WaitGetPoses() const;
+	// The render poses it fills are kept, and using them is not an
+	// optimisation - it is what the compositor assumes was done.
+	//
+	// From Valve, on ValveSoftware/openvr issue #518: "Reprojection
+	// corrections are applied based on the poses returned by WaitGetPoses. We
+	// assume you render the frames passed to Submit using the poses returned
+	// by the previous WaitGetPoses. Rendering using other poses will result in
+	// incorrect behavior. [...] We don't have any interface to allow the
+	// application to specify which poses were used to render the scene
+	// textures passed to Submit, and instead always assume the values returned
+	// by WaitGetPoses were used."
+	//
+	// OBVR used to discard them and ask GetDeviceToAbsoluteTrackingPose for an
+	// unpredicted pose instead. That was wrong twice over: the compositor
+	// reprojected against a pose the picture had not been drawn with, and the
+	// pose asked for was the head's position *now* rather than when the image
+	// would be lit - about 25 ms earlier than it should have been. It was
+	// reported from a headset as a world that morphed when the head moved, and
+	// as motion sickness.
+	int WaitGetPoses();
+
+	// The pose the last WaitGetPoses handed back - the predicted pose for the
+	// frame about to be drawn, and the one the compositor will reproject
+	// against.
+	//
+	// False when there has been no WaitGetPoses this frame, or it reported no
+	// valid pose. The caller then falls back to ReadHeadPose, which is what
+	// happens when rendering is switched off entirely: head tracking still
+	// works, it is simply less well timed.
+	bool GetRenderPose(Quaternion& orientation, NiPoint3& position) const;
 
 	// Hands one eye's texture to the compositor. Returns its error code.
 	//
@@ -138,6 +161,16 @@ private:
 	void* m_compositor = nullptr;  // IVRCompositorFnTable*, only when scene
 	bool m_startAttempted = false;
 	mutable bool m_loggedNoPose = false;
+
+	// The pose from the last WaitGetPoses, and whether it was usable.
+	//
+	// Kept here rather than handed back through the return value because the
+	// return value already carries the compositor error code, and the two
+	// answers have different lifetimes: the error decides whether to keep
+	// rendering at all, the pose is only good for this one frame.
+	Quaternion m_renderOrientation;
+	NiPoint3 m_renderPosition{0.0f, 0.0f, 0.0f};
+	bool m_renderPoseValid = false;
 };
 
 }  // namespace obvr::vr

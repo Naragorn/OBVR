@@ -39,6 +39,10 @@ render::HeadsetRenderer::FrameRequest g_pendingRequest;
 // become writable on the next.
 bool g_presentHookRefused = false;
 
+// Whether BeginFrame opened a frame this pass. The submit at the end - here or
+// from Present - is only owed when it did.
+bool g_frameOpen = false;
+
 // Runs from inside Present, with Oblivion's finished frame in the back buffer.
 //
 // Deliberately does nothing but pay the frame that BeginFrame opened. Anything
@@ -227,6 +231,21 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
 	const float deltaSeconds = g_frameClock.Tick(ReadPerformanceCounter(), ticksPerSecond);
 
+	// The compositor first, before anything asks the tracker where the head
+	// is. This blocks until the headset wants the next frame and hands back
+	// the pose to draw that frame with - and it has to come first, because
+	// the tracker is about to be read and the pose from here is the answer it
+	// should give.
+	//
+	// The order is the one OpenVR's own overview specifies: WaitGetPoses,
+	// render, submit. It used to be render, submit, WaitGetPoses, which
+	// meant the poses arrived a frame after they were wanted and were thrown
+	// away instead. See OpenVRBackend::WaitGetPoses for what that cost.
+	//
+	// Does nothing when rendering is off or the compositor was never reached,
+	// so the cost on a machine without a headset is one comparison.
+	g_frameOpen = g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame());
+
 	g_headTracker.Update(g_state.frameCount);
 
 	// After Update, so that the recenter reference is this frame's
@@ -336,17 +355,26 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	request.gameFovDegrees = config.tracker.gameFovDegrees;
 	request.gameFovIsFor4x3 = config.tracker.gameFovIsFor4x3;
 
-	if (!config.tracker.submitAtFrameEnd) {
-		// Both halves here, which means the picture submitted is whatever the
-		// back buffer held from last time. One frame of latency, and the
-		// arrangement that is known to work.
-		request.backBufferIsThisFrame = false;
-		g_headsetRenderer.Update(g_headTracker.GetBackend(), request);
+	if (!g_frameOpen) {
+		// BeginFrame declined at the top of this pass: rendering is off, the
+		// compositor was never reached, or it asked us to stop. Nothing is
+		// owed, and submitting anyway would be a Submit with no WaitGetPoses
+		// in front of it.
 		return;
 	}
 
-	// The other arrangement: wait on the compositor here, let Oblivion draw,
-	// and hand over the finished picture from Present.
+	if (!config.tracker.submitAtFrameEnd) {
+		// Submitted here, which means the picture is whatever the back buffer
+		// held from last time. One frame of latency, and the arrangement that
+		// is known to work.
+		request.backBufferIsThisFrame = false;
+		g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), request);
+		return;
+	}
+
+	// The other arrangement: the wait already happened at the top of this
+	// pass, Oblivion is about to draw, and Present hands the finished picture
+	// over.
 	//
 	// The request is kept rather than rebuilt at the end, because the eye it
 	// names has to be the eye the camera was moved to a few lines above. Two
@@ -368,12 +396,8 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 
 	if (g_presentHookRefused) {
 		g_pendingRequest.backBufferIsThisFrame = false;
-		g_headsetRenderer.Update(g_headTracker.GetBackend(), g_pendingRequest);
-		return;
+		g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), g_pendingRequest);
 	}
-
-	// Only the waiting half. Present pays the frame.
-	g_headsetRenderer.BeginFrame(g_headTracker.GetBackend());
 }
 
 vr::HeadTracker& GetHeadTracker() { return g_headTracker; }
