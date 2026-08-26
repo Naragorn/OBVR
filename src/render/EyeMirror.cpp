@@ -111,7 +111,7 @@ bool EyeMirror::CreateOne(void* gameDevice, int index) {
 bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeight,
                        const EyeProjection& leftEye, const EyeProjection& rightEye,
                        float gameFovDegrees, bool gameFovIsFor4x3, float cameraTanHalfWidth,
-                       float cameraTanHalfHeight) {
+                       float cameraTanHalfHeight, float menuScale) {
 	Destroy();
 
 	if (gameDevice == nullptr || textureWidth == 0 || textureHeight == 0) {
@@ -242,6 +242,25 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 		eye.source.top = EdgeOf(placement.sourceVMin, m_frameHeight);
 		eye.source.bottom = EdgeOf(placement.sourceVMax, m_frameHeight);
 
+
+		// The same picture, smaller and centred, for anything with no camera
+		// behind it.
+		//
+		// A menu shown at the world's scale fills the view and reads as being
+		// pressed against the face. Shrinking it puts it at arm's length, which
+		// is where a screen belongs - and the margin around it is black, so
+		// there is nothing competing with it.
+		const SInt32 centreX = (eye.destination.left + eye.destination.right) / 2;
+		const SInt32 centreY = (eye.destination.top + eye.destination.bottom) / 2;
+		const SInt32 halfW = static_cast<SInt32>(
+			static_cast<float>(eye.destination.right - eye.destination.left) * menuScale * 0.5f);
+		const SInt32 halfH = static_cast<SInt32>(
+			static_cast<float>(eye.destination.bottom - eye.destination.top) * menuScale * 0.5f);
+		eye.flatDestination.left = centreX - halfW;
+		eye.flatDestination.right = centreX + halfW;
+		eye.flatDestination.top = centreY - halfH;
+		eye.flatDestination.bottom = centreY + halfH;
+
 		if (placement.cropped) {
 			m_cropped = true;
 		}
@@ -336,12 +355,27 @@ bool EyeMirror::CopyBackBuffer(void* gameDevice, bool isLeft, bool bothEyes) {
 	const int first = everyEye ? 0 : (isLeft ? 0 : 1);
 	const int last = everyEye ? 1 : first;
 
+	// The margin has to be blacked out again whenever the placement changes
+	// size, or the larger one leaves pixels standing around the smaller. That
+	// is a ring of stale world around a menu, which looks like a fault rather
+	// than a frame.
+	if (!m_everCopied || m_lastWasFlat != bothEyes) {
+		auto colorFill = d3d9::Method<d3d9::ColorFillFn>(gameDevice, d3d9::kDeviceColorFill);
+		if (colorFill != nullptr) {
+			for (Eye& eye : m_eye) {
+				colorFill(gameDevice, eye.surface, nullptr, kOpaqueBlack);
+			}
+		}
+		m_lastWasFlat = bothEyes;
+		m_everCopied = true;
+	}
+
 	bool ok = true;
 	for (int index = first; index <= last; ++index) {
 		const Eye& eye = m_eye[index];
+		const d3d9::Rect& destination = bothEyes ? eye.flatDestination : eye.destination;
 		SInt32 result =
-			stretchRect(gameDevice, source, &eye.source, eye.surface, &eye.destination,
-		                m_filter);
+			stretchRect(gameDevice, source, &eye.source, eye.surface, &destination, m_filter);
 
 		// A device may refuse linear stretching - it is a capability, not a
 		// guarantee. Point filtering is worse to look at and better than no
@@ -350,8 +384,8 @@ bool EyeMirror::CopyBackBuffer(void* gameDevice, bool isLeft, bool bothEyes) {
 		if (d3d11::Failed(result) && m_filter != d3d9::kTexFilterPoint) {
 			OBVR_LOG("Mirror: linear stretching was refused, falling back to point");
 			m_filter = d3d9::kTexFilterPoint;
-			result = stretchRect(gameDevice, source, &eye.source, eye.surface,
-			                     &eye.destination, m_filter);
+			result = stretchRect(gameDevice, source, &eye.source, eye.surface, &destination,
+			                     m_filter);
 		}
 
 		if (d3d11::Failed(result)) {
@@ -420,6 +454,8 @@ void EyeMirror::Destroy() {
 	m_filter = 0;
 	m_cropped = false;
 	m_primed = false;
+	m_lastWasFlat = false;
+	m_everCopied = false;
 }
 
 }  // namespace obvr::render

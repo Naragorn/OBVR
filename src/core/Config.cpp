@@ -240,6 +240,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.tracker.submitAtFrameEnd =
 		ReadBool("Render", "SubmitAtFrameEnd", config.tracker.submitAtFrameEnd, path);
 	config.tracker.showMenus = ReadBool("Render", "ShowMenus", config.tracker.showMenus, path);
+	config.tracker.gameFovOverride =
+		ReadFloat("Render", "GameFovOverride", config.tracker.gameFovOverride, path);
+	config.tracker.menuScale = ReadFloat("Render", "MenuScale", config.tracker.menuScale, path);
 	config.look.blockVerticalLook =
 		ReadBool("Look", "BlockVerticalLook", config.look.blockVerticalLook, path);
 
@@ -345,6 +348,9 @@ bool Config::Load(const char* fileName) {
 	OBVR_LOG("Config: Render.GameFovDegrees=%.1f IsFor4x3=%d SubmitAtFrameEnd=%d",
 	         static_cast<double>(tracker.gameFovDegrees), tracker.gameFovIsFor4x3 ? 1 : 0,
 	         tracker.submitAtFrameEnd ? 1 : 0);
+	OBVR_LOG("Config: Render.ShowMenus=%d MenuScale=%.2f GameFovOverride=%.1f",
+	         tracker.showMenus ? 1 : 0, static_cast<double>(tracker.menuScale),
+	         static_cast<double>(tracker.gameFovOverride));
 	if (tracker.stereo == vr::StereoMode::DualPass) {
 		// Said plainly rather than silently ignored. A setting that is
 		// accepted and then does something else is worse than one that is

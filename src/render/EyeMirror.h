@@ -55,7 +55,7 @@ public:
 	bool Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeight,
 	            const EyeProjection& leftEye, const EyeProjection& rightEye,
 	            float gameFovDegrees, bool gameFovIsFor4x3, float cameraTanHalfWidth,
-	            float cameraTanHalfHeight);
+	            float cameraTanHalfHeight, float menuScale);
 
 	void Destroy();
 
@@ -123,6 +123,11 @@ private:
 		// the eye's frustum nor the game's can change within a run.
 		d3d9::Rect destination = {};
 		d3d9::Rect source = {};
+
+		// Where a flat picture goes: menus, videos, loading screens. Smaller
+		// and centred, so it reads as a screen in front of the wearer rather
+		// than as the world.
+		d3d9::Rect flatDestination = {};
 	};
 
 	// Index 0 is the left eye, 1 the right. Which eye a frame belongs to is
@@ -150,6 +155,12 @@ private:
 	// Whether any part of Oblivion's frame had to be cut away to fit. Only
 	// happens when the game renders wider than the headset can show.
 	bool m_cropped = false;
+
+	// Whether the last copy was a flat one. A change either way needs the
+	// margin blacking out again, because the two placements are different
+	// sizes and the larger leaves pixels outside the smaller.
+	bool m_lastWasFlat = false;
+	bool m_everCopied = false;
 
 	// Whether both pictures have ever been written to.
 	bool m_primed = false;

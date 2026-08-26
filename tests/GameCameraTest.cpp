@@ -31,6 +31,13 @@ void Check(bool condition, const char* what) {
 
 // Oblivion as measured on this machine: 75 degrees across a 16:9 frame, so
 // tan(37.5) across and 0.5625 of that down.
+void CheckNearRatio(float actual, float expected, const char* what) {
+	const float larger = actual > expected ? actual : expected;
+	Check(larger > 0.0f && (actual > expected ? actual - expected : expected - actual) / larger <
+	                            0.001f,
+	      what);
+}
+
 constexpr float kTanAcross = 0.767327f;
 constexpr float kTanDown = 0.431621f;
 
@@ -129,6 +136,55 @@ void TestLayout() {
 	      "and frustum, minNearPlaneDist and maxFarNearRatio reach the viewport at 0x110");
 }
 
+
+void TestSetFrustumFov() {
+	std::printf("Overwriting the field of view\n");
+
+	using obvr::game::FrustumLooksRight;
+	using obvr::game::SetFrustumFov;
+
+	// The measured 75 degrees, as the game reports it.
+	obvr::game::NiFrustum frustum = MeasuredFrustum();
+	const float aspectBefore = frustum.r / frustum.t;
+
+	SetFrustumFov(frustum, 80.0f);
+
+	// tan(40) x 0.75 is 0.6293, and that x 16/9 is 1.1187 - the same reading
+	// of the number the game itself uses, so 80 here means what 80 would mean
+	// in Oblivion.ini.
+	Check(frustum.r > 1.118f && frustum.r < 1.119f, "80 degrees gives 1.1187 across");
+	Check(frustum.t > 0.629f && frustum.t < 0.630f, "and 0.6293 down");
+
+	// The shape survives. Taking the aspect from the frustum rather than from
+	// the frame is what makes that true for any shape the engine had.
+	CheckNearRatio(frustum.r / frustum.t, aspectBefore,
+	               "and the shape is unchanged");
+
+	// Signs one edge at a time, because which edge carries which is not
+	// settled anywhere in this project.
+	Check(frustum.l < 0.0f && frustum.r > 0.0f, "the horizontal signs are kept");
+	Check(frustum.t > 0.0f && frustum.b < 0.0f, "and the vertical ones");
+
+	// The near and far planes are not a field of view and must not move.
+	Check(frustum.n == 10.0f, "the near plane is untouched");
+	Check(frustum.f == 10000.0f, "and so is the far plane");
+
+	// Values that are not an angle leave it alone rather than producing a
+	// frustum of zero width, which would be a black screen with no message.
+	obvr::game::NiFrustum untouched = MeasuredFrustum();
+	SetFrustumFov(untouched, 0.0f);
+	Check(untouched.r == MeasuredFrustum().r, "zero degrees changes nothing");
+	SetFrustumFov(untouched, 200.0f);
+	Check(untouched.r == MeasuredFrustum().r, "and neither does 200");
+
+	// And the result still passes the check that guards reading, which is what
+	// keeps the two halves honest about each other.
+	obvr::game::NiFrustum wide = MeasuredFrustum();
+	SetFrustumFov(wide, 80.0f);
+	Check(FrustumLooksRight(wide, 1.1187f, 0.6293f),
+	      "the written frustum reads back as the angles asked for");
+}
+
 }  // namespace
 
 int main() {
@@ -139,6 +195,8 @@ int main() {
 	TestRejection();
 	std::printf("\n");
 	TestLayout();
+	std::printf("\n");
+	TestSetFrustumFov();
 
 	std::printf("\n");
 	if (g_failures == 0) {

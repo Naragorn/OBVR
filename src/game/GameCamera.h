@@ -117,8 +117,34 @@ private:
 	UInt32 m_reported = 0;
 };
 
+
+// Overwrites the frustum's field of view, keeping its shape.
+//
+// The first thing OBVR writes into Oblivion rather than reads out of it, and
+// the reason to do it here rather than through the game's own setting is that
+// fDefaultFOV in Oblivion.ini also resizes the menu layer, which produces
+// mouse clicks landing in the wrong place. Writing the frustum leaves the
+// menus alone.
+//
+// fovDegrees is read the way the game reads fDefaultFOV: as a horizontal angle
+// at 4:3, so the vertical is three quarters of its tangent and the horizontal
+// widens with the frame. That is measured, not assumed - the game reported
+// 1.0231 across and 0.5755 down at 75, which is tan(37.5) x 0.75 x 16/9 and
+// tan(37.5) x 0.75 to seven figures.
+//
+// The aspect ratio is taken from the frustum being replaced rather than from
+// the frame, so whatever shape the engine had established survives.
+//
+// It may not stick. The frustum is set by the engine each frame and read here
+// at the start of one, so a later pass may write over it. Whether it holds is
+// what the log reports.
+void SetFrustumFov(NiFrustum& frustum, float fovDegrees);
+
 // Reads it. False when the scene graph or the camera is null, which is normal
 // before the game has built a world.
 bool ReadGameCameraFrustum(NiFrustum& out);
+
+// Writes one back. False when the camera cannot be reached.
+bool WriteGameCameraFrustum(const NiFrustum& frustum);
 
 }  // namespace obvr::game

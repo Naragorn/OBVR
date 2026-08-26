@@ -1,5 +1,7 @@
 #include "game/GameCamera.h"
 
+#include "core/MathFns.h"
+
 namespace obvr::game {
 namespace {
 
@@ -65,6 +67,53 @@ bool ReadGameCameraFrustum(NiFrustum& out) {
 	}
 
 	out = *reinterpret_cast<NiFrustum*>(camera + kNiCameraFrustumOffset);
+	return true;
+}
+
+void SetFrustumFov(NiFrustum& frustum, float fovDegrees) {
+	if (!(fovDegrees > 1.0f) || !(fovDegrees > 0.0f) || fovDegrees >= 179.0f) {
+		return;
+	}
+
+	const float halfWidth = (Abs(frustum.l) + Abs(frustum.r)) * 0.5f;
+	const float halfHeight = (Abs(frustum.t) + Abs(frustum.b)) * 0.5f;
+	if (!(halfWidth > 0.0f) || !(halfHeight > 0.0f)) {
+		return;
+	}
+
+	// Whatever shape the engine had, kept. Taking the aspect from the frustum
+	// rather than from the frame means a letterboxed or otherwise unusual
+	// setup is not quietly squared off.
+	const float aspect = halfWidth / halfHeight;
+
+	const float newHalfHeight =
+		math::Tan(fovDegrees * 0.5f * math::kDegreesToRadians) * 0.75f;
+	const float newHalfWidth = newHalfHeight * aspect;
+
+	// Signs preserved one edge at a time. Which edge carries which sign is not
+	// settled - see the note on the vertical convention in EyeGeometry - and
+	// scaling each in place sidesteps the question entirely.
+	const float scaleX = newHalfWidth / halfWidth;
+	const float scaleY = newHalfHeight / halfHeight;
+
+	frustum.l *= scaleX;
+	frustum.r *= scaleX;
+	frustum.t *= scaleY;
+	frustum.b *= scaleY;
+}
+
+bool WriteGameCameraFrustum(const NiFrustum& frustum) {
+	auto* sceneGraph = *reinterpret_cast<UInt8**>(kWorldSceneGraph);
+	if (sceneGraph == nullptr) {
+		return false;
+	}
+
+	auto* camera = *reinterpret_cast<UInt8**>(sceneGraph + kSceneGraphCameraOffset);
+	if (camera == nullptr) {
+		return false;
+	}
+
+	*reinterpret_cast<NiFrustum*>(camera + kNiCameraFrustumOffset) = frustum;
 	return true;
 }
 

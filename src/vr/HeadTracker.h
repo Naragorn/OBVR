@@ -139,6 +139,18 @@ struct TrackerSettings {
 	// while the main menu is up.
 	bool showMenus = true;
 
+	// Overrides Oblivion's own field of view, in degrees. 0 leaves it alone.
+	//
+	// Written into the camera's frustum rather than into fDefaultFOV, because
+	// that setting also resizes the menu layer and leaves mouse clicks landing
+	// somewhere other than where the buttons appear.
+	float gameFovOverride = 0.0f;
+
+	// How large a flat picture - menu, video, loading screen - is drawn, as a
+	// fraction of the world's own placement. Below 1 puts it at arm's length
+	// with black around it instead of pressed against the face.
+	float menuScale = 0.7f;
+
 	// Oblivion units per metre, for converting the head offset.
 	//
 	// The Construction Set wiki gives "21.3 units to a foot ... 64 units per

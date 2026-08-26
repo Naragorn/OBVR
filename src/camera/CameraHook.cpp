@@ -87,6 +87,7 @@ void OnFrameEnd() {
 	menu.gameFovIsFor4x3 = GetConfig().tracker.gameFovIsFor4x3;
 	menu.cameraTanHalfWidth = g_state.cameraTanHalfWidth;
 	menu.cameraTanHalfHeight = g_state.cameraTanHalfHeight;
+	menu.menuScale = GetConfig().tracker.menuScale;
 
 	if (g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame())) {
 		g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), menu);
@@ -298,6 +299,20 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	if (GetConfig().tracker.renderToHeadset) {
 		game::NiFrustum frustum{};
 		if (game::ReadGameCameraFrustum(frustum)) {
+			// The override, applied before anything is kept. Written back into
+			// the game's own camera so Oblivion renders with it, and read back
+			// out of the same place so the placement follows automatically -
+			// there is only one number and both sides take it from there.
+			const float override = GetConfig().tracker.gameFovOverride;
+			if (override > 1.0f && override < 179.0f) {
+				game::SetFrustumFov(frustum, override);
+				if (!game::WriteGameCameraFrustum(frustum)) {
+					// Cannot happen after a successful read, but silence here
+					// would mean the world quietly kept its old field of view.
+					OBVR_LOG("Camera: the field of view override could not be written");
+				}
+			}
+
 			// Kept for the placement. Absolute values, because which edge
 			// carries which sign is not settled and the half-width does not
 			// depend on it.
@@ -437,6 +452,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// is read after every pass of the frame has had its turn with the camera.
 	request.cameraTanHalfWidth = g_state.cameraTanHalfWidth;
 	request.cameraTanHalfHeight = g_state.cameraTanHalfHeight;
+	request.menuScale = config.tracker.menuScale;
 
 	if (!g_frameOpen) {
 		// BeginFrame declined at the top of this pass: rendering is off, the

@@ -284,7 +284,7 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 		m_mirrorUsable = m_mirror.Create(request.gameDevice, m_eyeWidth, m_eyeHeight,
 		                                 m_leftEye, m_rightEye, request.gameFovDegrees,
 		                                 request.gameFovIsFor4x3, request.cameraTanHalfWidth,
-		                                 request.cameraTanHalfHeight);
+		                                 request.cameraTanHalfHeight, request.menuScale);
 		m_mirrorUsedCamera = haveCamera;
 		OBVR_LOG("Render: alternate eyes are %s",
 		         m_mirrorUsable ? "on, each eye holding its own last picture and its own pose"
@@ -317,10 +317,19 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 		DescribeForOpenVR(m_mirror.GetImage(true), m_vulkan, flatLeft);
 		DescribeForOpenVR(m_mirror.GetImage(false), m_vulkan, flatRight);
 
+		// The pose, even though there is no camera. Without it the compositor
+		// assumes nothing moved and the picture rides the head - which is
+		// exactly what "VR stops when a dialogue opens" felt like. With it, a
+		// menu hangs in the room and the head can look around it.
+		vr::openvr::HmdMatrix34 flatPose{};
+		const bool havePose = backend.GetRenderPoseMatrix(flatPose);
+
 		left = backend.SubmitEye(vr::openvr::kEyeLeft, &flatLeft,
-		                         vr::openvr::kTextureTypeVulkan, nullptr);
+		                         vr::openvr::kTextureTypeVulkan, nullptr,
+		                         havePose ? &flatPose : nullptr);
 		right = backend.SubmitEye(vr::openvr::kEyeRight, &flatRight,
-		                          vr::openvr::kTextureTypeVulkan, nullptr);
+		                          vr::openvr::kTextureTypeVulkan, nullptr,
+		                          havePose ? &flatPose : nullptr);
 		return true;
 	}
 
