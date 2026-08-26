@@ -1,30 +1,30 @@
 OBVR 1 - Query
-OBSE-Version 22, Oblivion-Version 010201A0
+OBSE version 22, Oblivion version 010201A0
 OBVR 1 - Load
 Config: Z:\home\nadi\.local\share\Steam\steamapps\common\Oblivion\OBVR.ini
 Config: HookEnabled=1 Source=simulated Fixed=(P 0.0, R 20.0, Y 0.0)
-Config: Simuliert=(Yaw 25.0, Pitch 12.0, Periode 600) LogEveryFrames=180 ReloadEveryFrames=120
-Kamera: Hook auf 0066BE6E gesetzt, Trampolin bei 024C0000 (37 Bytes)
-OBVR bereit
-Kamera: erster Hook-Durchlauf, CameraNode=1812BC40, Third Person
-Kamera: Frame 180, 3rd, pos=(977.5, 1283.7, 316.7), Kopf=(-0.060, 0.206, 0.013, 0.977)
-Kamera: Frame 360, 3rd, pos=(977.5, 1283.7, 316.7), Kopf=(0.099, -0.127, 0.013, 0.987)
-Kamera: Frame 540, 3rd, pos=(977.5, 1283.7, 316.7), Kopf=(-0.099, -0.127, -0.013, 0.987)
-Kamera: Frame 720, 3rd, pos=(977.5, 1283.7, 316.7), Kopf=(0.060, 0.206, -0.013, 0.977)
-Kamera: Frame 900, 3rd, pos=(977.5, 1283.7, 316.7), Kopf=(0.000, -0.000, 0.000, 1.000)
-Kamera: Frame 1080, 3rd, pos=(977.5, 1283.7, 316.7), Kopf=(-0.060, -0.206, -0.013, 0.977)
-Kamera: Frame 1260, 3rd, pos=(977.5, 1283.7, 316.7), Kopf=(0.099, 0.127, -0.013, 0.987)
-Kamera: Frame 1440, 3rd, pos=(977.5, 1283.7, 316.7), Kopf=(-0.099, 0.127, 0.013, 0.987)
-Kamera: Frame 1620, 3rd, pos=(977.5, 1283.7, 316.7), Kopf=(0.060, -0.206, 0.013, 0.977)
-Kamera: Frame 1800, 3rd, pos=(977.5, 1283.7, 316.7), Kopf=(0.000, 0.000, 0.000, 1.000)
-Kamera: Frame 1980, 3rd, pos=(977.5, 1283.7, 316.7), Kopf=(-0.060, 0.206, 0.013, 0.977)
-Kamera: Frame 2160, 3rd, pos=(977.5, 1283.7, 316.7), Kopf=(0.099, -0.127, 0.013, 0.987)
-Kamera: Frame 2340, 3rd, pos=(977.5, 1283.7, 316.7), Kopf=(-0.099, -0.127, -0.013, 0.987)
-Kamera: Frame 2520, 3rd, pos=(977.5, 1283.7, 316.7), Kopf=(0.060, 0.206, -0.013, 0.977)
-Kamera: Frame 2700, 3rd, pos=(977.5, 1283.7, 316.7), Kopf=(0.000, 0.000, -0.301, 0.954)
-Kamera: Frame 2880, 3rd, pos=(977.5, 1283.7, 316.7), Kopf=(0.000, 0.000, -0.301, 0.954)
-Kamera: Frame 3060, 3rd, pos=(977.5, 1283.7, 316.7), Kopf=(0.000, 0.000, -0.301, 0.954)
-Kamera: Frame 3240, 3rd, pos=(977.5, 1283.7, 316.7), Kopf=(0.000, 0.000, -0.301, 0.954)
-Kamera: Frame 3420, 3rd, pos=(977.5, 1283.7, 316.7), Kopf=(0.000, 0.000, -0.301, 0.954)
-Kamera: Frame 3600, 3rd, pos=(977.5, 1283.7, 316.7), Kopf=(0.000, 0.000, -0.301, 0.954)
-Kamera: Frame 3780, 3rd, pos=(977.5, 1283.7, 316.7), Kopf=(0.000, 0.000, -0.301, 0.954)
+Config: Simulated=(Yaw 25.0, Pitch 12.0, Period 600) LogEveryFrames=180 ReloadEveryFrames=120
+Camera: hook installed at 0066BE6E, trampoline at 024C0000 (37 bytes)
+OBVR ready
+Camera: first hook pass, CameraNode=1812BC40, third person
+Camera: frame 180, 3rd, pos=(977.5, 1283.7, 316.7), head=(-0.060, 0.206, 0.013, 0.977)
+Camera: frame 360, 3rd, pos=(977.5, 1283.7, 316.7), head=(0.099, -0.127, 0.013, 0.987)
+Camera: frame 540, 3rd, pos=(977.5, 1283.7, 316.7), head=(-0.099, -0.127, -0.013, 0.987)
+Camera: frame 720, 3rd, pos=(977.5, 1283.7, 316.7), head=(0.060, 0.206, -0.013, 0.977)
+Camera: frame 900, 3rd, pos=(977.5, 1283.7, 316.7), head=(0.000, -0.000, 0.000, 1.000)
+Camera: frame 1080, 3rd, pos=(977.5, 1283.7, 316.7), head=(-0.060, -0.206, -0.013, 0.977)
+Camera: frame 1260, 3rd, pos=(977.5, 1283.7, 316.7), head=(0.099, 0.127, -0.013, 0.987)
+Camera: frame 1440, 3rd, pos=(977.5, 1283.7, 316.7), head=(-0.099, 0.127, 0.013, 0.987)
+Camera: frame 1620, 3rd, pos=(977.5, 1283.7, 316.7), head=(0.060, -0.206, 0.013, 0.977)
+Camera: frame 1800, 3rd, pos=(977.5, 1283.7, 316.7), head=(0.000, 0.000, 0.000, 1.000)
+Camera: frame 1980, 3rd, pos=(977.5, 1283.7, 316.7), head=(-0.060, 0.206, 0.013, 0.977)
+Camera: frame 2160, 3rd, pos=(977.5, 1283.7, 316.7), head=(0.099, -0.127, 0.013, 0.987)
+Camera: frame 2340, 3rd, pos=(977.5, 1283.7, 316.7), head=(-0.099, -0.127, -0.013, 0.987)
+Camera: frame 2520, 3rd, pos=(977.5, 1283.7, 316.7), head=(0.060, 0.206, -0.013, 0.977)
+Camera: frame 2700, 3rd, pos=(977.5, 1283.7, 316.7), head=(0.000, 0.000, -0.301, 0.954)
+Camera: frame 2880, 3rd, pos=(977.5, 1283.7, 316.7), head=(0.000, 0.000, -0.301, 0.954)
+Camera: frame 3060, 3rd, pos=(977.5, 1283.7, 316.7), head=(0.000, 0.000, -0.301, 0.954)
+Camera: frame 3240, 3rd, pos=(977.5, 1283.7, 316.7), head=(0.000, 0.000, -0.301, 0.954)
+Camera: frame 3420, 3rd, pos=(977.5, 1283.7, 316.7), head=(0.000, 0.000, -0.301, 0.954)
+Camera: frame 3600, 3rd, pos=(977.5, 1283.7, 316.7), head=(0.000, 0.000, -0.301, 0.954)
+Camera: frame 3780, 3rd, pos=(977.5, 1283.7, 316.7), head=(0.000, 0.000, -0.301, 0.954)
