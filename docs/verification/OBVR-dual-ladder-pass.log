@@ -1,0 +1,78 @@
+OBVR 1 - Query
+OBSE version 22, Oblivion version 010201A0
+OBVR 1 - Load
+Config: D:\SteamLibrary\steamapps\common\Oblivion\Data\OBSE\Plugins\OBVR.ini
+Config: HookEnabled=1 Source=openvr Fixed=(P 0.0, R 20.0, Y 0.0)
+Config: Simulated=(Yaw 25.0, Pitch 12.0, Period 600) LogEveryFrames=0 ReloadEveryFrames=120
+Config: RecenterKey=46 (0x2E)
+Config: PositionalTracking=1 UnitsPerMetre=69.99 HeadMovementScale=1.00 (effective 69.99) MaxLeanUnits=120.0
+Config: BlockVerticalLook=1 VerticalLookRange=(up 60.0, down 120.0) SmoothVerticalLook=1 (8.0)
+Config: SmoothTurning=0 TurnSpeed=12.0
+Config: Render.Enabled=1 GameFrame=1 Stereo=dual - OBVR will claim the VR scene
+Config: Render.GameFovDegrees=75.0 IsFor4x3=1 SubmitAtFrameEnd=1
+Config: Render.ShowMenus=1 MenuScale=0.70 GameFovOverride=75.0
+Config: Render.MatchHeadsetFov=1 SetGameResolution=0 (3200x3200)
+Config: Render.HudOverlay=0 Distance=1.20m Width=1.60m
+Config: Render.Stereo=dual - the world is drawn twice per frame, once per eye; the HUD draws after both passes and is not in the world picture yet
+OpenVR: connected as a scene application through FnTable:IVRSystem_026 and FnTable:IVRCompositor_029
+Camera: hook installed at 0066BE6E, trampoline at 03E60000 (37 bytes)
+Render: the scene render is hooked at 0040C830, trampoline at 03FB0000 - the world can now be drawn twice per frame
+Config: SetGameResolution is off, so the frame is the game's own size
+OBVR ready
+Present: hooked at table entry 17, original at 7A24A2A0 - the picture submitted is now the one just drawn
+Render: on a menu frame Oblivion draws into x=0..2560 y=0..1440 of the frame
+Render: left eye raw=(l -1.1518, r 0.8248, t -1.1991, b 0.7927)
+Render: left eye fov=(h 88.6 deg, v 88.6 deg) asymmetry=(h -0.3270, v -0.4064)
+Render: right eye raw=(l -0.8417, r 1.1419, t -1.1908, b 0.8073)
+Render: right eye fov=(h 88.9 deg, v 88.9 deg) asymmetry=(h 0.3003, v -0.3835)
+Render: eye offsets left=(-0.0310, 0.0000, 0.0000) right=(0.0310, 0.0000, 0.0000)
+Render: IPD 62.0 mm
+Render: game frame bounds left u=0.034..0.834 right u=0.161..0.961
+Render: two 3560x3560 eye textures ready, cross at u=0.583 and u=0.424
+Render: the game frame is usable, submitting Oblivion's own picture
+Mirror: 3560x3560 textures, D3DFORMAT 22, Vulkan format 44, usage 0x00000017 - submittable
+Mirror: rendering frustum 91.3 degrees across, 59.8 down, from the configured GameFovDegrees, because neither could be read
+Mirror: the game's 2560x1440 frame at 91.3 degrees sits at left x=232..3560 y=388..2445, right x=0..3347 y=413..2464 - part of the frame did not fit and was cut
+Mirror: the picture fills 93% of the view across and 57% down; the rest is black. Raise Render.GameFovOverride to fill more, at the cost of pushing the HUD further out
+Render: the eye copies are ready, one picture owned per eye
+Render: 2 flat frames since the last camera pass
+Render: 3 flat frames since the last camera pass
+Render: 4 flat frames since the last camera pass
+Render: 5 flat frames since the last camera pass
+Render: 6 flat frames since the last camera pass
+Render: 7 flat frames since the last camera pass
+Camera: first hook pass, CameraNode=1812BCA0, third person
+Render: Oblivion's D3D9 device 0BB8E040 is DXVK
+Render: Vulkan instance=0B9943D8 physical=08DB2168 device=34830078
+Render: Vulkan queue=345E1578 index=0 family=0
+Render: back buffer image=0000000034A3BC78 2560x1440 format=44 samples=1 layout=1
+Render: back buffer usage=00000017 transfer_src=1 sampled=1, submittable once transitioned
+Camera: frustum #1 l=-1.1518 r=1.1518 t=1.1991 b=-1.1991 n=10.0000 f=10240.0 (98.1 deg across)
+OpenVR: no valid HMD pose yet
+Head: eye separation 62.0 mm, half of it 2.17 Oblivion units
+Render: the camera frustum arrived, so the eye copies are being rebuilt with it
+Mirror: 3560x3560 textures, D3DFORMAT 22, Vulkan format 44, usage 0x00000017 - submittable
+Mirror: rendering frustum 98.1 degrees across, 100.3 down, from Oblivion's own camera frustum
+Mirror: the game's 2560x1440 frame at 98.1 degrees sits at left x=0..3560 y=0..3560, right x=0..3560 y=0..3560 - part of the frame did not fit and was cut
+Mirror: the picture fills 100% of the view across and 100% down; the rest is black. Raise Render.GameFovOverride to fill more, at the cost of pushing the HUD further out
+Render: the eye copies are ready, one picture owned per eye
+Render: on a world frame Oblivion draws into x=0..2560 y=0..1440 of the frame
+Dual trace: first pass returned (probe 1)
+Dual trace: second pass returned
+Dual trace: first pass returned (probe 1)
+Dual trace: second pass returned
+Dual trace: first pass returned (probe 1)
+Dual trace: second pass returned
+Camera: recentered on key 0x2E (frame 11256, camera path)
+Camera: recentered on key 0x2E (frame 11280, camera path)
+Camera: recentered on key 0x2E (frame 11809, camera path)
+Render: dual pass is live - both eyes drawn this frame, from this frame's pose
+Dual trace: closing the bracket for the submit
+Dual trace: bracket held
+Dual trace: submitted, left=0 right=0
+Dual trace: closing the bracket for the submit
+Dual trace: bracket held
+Dual trace: submitted, left=0 right=0
+Dual trace: closing the bracket for the submit
+Dual trace: bracket held
+Dual trace: submitted, left=0 right=0

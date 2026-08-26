@@ -1824,6 +1824,23 @@ already kills it, the second render is the problem and the answer is a narrower 
 pass - RenderObject per eye rather than Render per eye - which is more work and was
 always the shape bo1-vr's engine hook implies.
 
+**The ladder was climbed clean, and no rung is guilty.**
+`docs/verification/OBVR-dual-ladder-pass.log` is the record: eleven thousand frames on
+rung 1, then rung 2, then the whole thing - traces show both passes returning, the
+bracket held, and every submit answered 0, with **not one device error in the DXVK log**
+of the entire session. So the full dual pass works in the game, engine question answered:
+Gamebryo renders twice per tick without complaint, camera move and captures included.
+
+What the clean climb does to the crash question: the one difference between the run that
+died and the run that worked is that the dead run's *first world frame* was a full dual
+frame, cold - shader compilation storm, mirror rebuild and first bracket all in the same
+breath - while the working run reached rung 0 warm, minutes into play. The remaining
+candidates are therefore a cold-start race, or the same spurious VK_ERROR_DEVICE_LOST
+the a61f4e0 run produced once with no dual pass anywhere near it. One cold start with
+DualPassProbe=0 separates them: reproducible means a warm-up is owed (the first dual
+frames after a mode change submitting mono while everything settles); a clean run means
+it was the known flake, and watching is the right response.
+
 Also from that run, noted rather than diagnosed: the recenter key during videos was
 reported not working, but the log shows the flat re-anchor firing twice and the code on
 that path is unchanged from the run where it demonstrably worked. Watch, do not chase.
