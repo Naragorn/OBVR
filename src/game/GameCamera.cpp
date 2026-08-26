@@ -102,6 +102,29 @@ void SetFrustumFov(NiFrustum& frustum, float fovDegrees) {
 	frustum.b *= scaleY;
 }
 
+void SetFrustumTangents(NiFrustum& frustum, float tanHalfWidth, float tanHalfHeight) {
+	if (!(tanHalfWidth > 0.0f) || !(tanHalfHeight > 0.0f)) {
+		return;
+	}
+
+	const float halfWidth = (Abs(frustum.l) + Abs(frustum.r)) * 0.5f;
+	const float halfHeight = (Abs(frustum.t) + Abs(frustum.b)) * 0.5f;
+	if (!(halfWidth > 0.0f) || !(halfHeight > 0.0f)) {
+		return;
+	}
+
+	// Scaled in place rather than assigned, so each edge keeps its own sign -
+	// which edge is which is not settled anywhere in this project and does not
+	// need to be for this.
+	const float scaleX = tanHalfWidth / halfWidth;
+	const float scaleY = tanHalfHeight / halfHeight;
+
+	frustum.l *= scaleX;
+	frustum.r *= scaleX;
+	frustum.t *= scaleY;
+	frustum.b *= scaleY;
+}
+
 bool WriteGameCameraFrustum(const NiFrustum& frustum) {
 	auto* sceneGraph = *reinterpret_cast<UInt8**>(kWorldSceneGraph);
 	if (sceneGraph == nullptr) {

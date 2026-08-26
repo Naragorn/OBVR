@@ -236,6 +236,40 @@ void HeadsetRenderer::EndFrame(const vr::OpenVRBackend& backend, const FrameRequ
 
 
 
+
+bool HeadsetRenderer::GetHeadsetFrustum(float& tanHalfWidth, float& tanHalfHeight) const {
+	if (m_eyeWidth == 0) {
+		return false;
+	}
+
+	const auto widest = [](float a, float b, float c, float d) {
+		const float aa = a < 0.0f ? -a : a;
+		const float bb = b < 0.0f ? -b : b;
+		const float cc = c < 0.0f ? -c : c;
+		const float dd = d < 0.0f ? -d : d;
+		float best = aa;
+		if (bb > best) best = bb;
+		if (cc > best) best = cc;
+		if (dd > best) best = dd;
+		return best;
+	};
+
+	// The furthest either eye looks, in each direction. Anything less leaves
+	// one eye seeing past the edge of the picture.
+	const float w =
+		widest(m_leftEye.left, m_leftEye.right, m_rightEye.left, m_rightEye.right);
+	const float h =
+		widest(m_leftEye.top, m_leftEye.bottom, m_rightEye.top, m_rightEye.bottom);
+
+	if (!(w > 0.0f) || !(h > 0.0f)) {
+		return false;
+	}
+
+	tanHalfWidth = w;
+	tanHalfHeight = h;
+	return true;
+}
+
 bool HeadsetRenderer::SubmitMono(const vr::OpenVRBackend& backend, const FrameRequest& request,
                                  int& left, int& right) {
 	// Scoped so the bracket closes on every path out, including the ones that
@@ -317,21 +351,32 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 		DescribeForOpenVR(m_mirror.GetImage(true), m_vulkan, flatLeft);
 		DescribeForOpenVR(m_mirror.GetImage(false), m_vulkan, flatRight);
 
-		// The pose, even though there is no camera. Without it the compositor
-		// assumes nothing moved and the picture rides the head - which is
-		// exactly what "VR stops when a dialogue opens" felt like. With it, a
-		// menu hangs in the room and the head can look around it.
-		vr::openvr::HmdMatrix34 flatPose{};
-		const bool havePose = backend.GetRenderPoseMatrix(flatPose);
+		// The pose held from when the flat picture first appeared, not this
+		// frame's.
+		//
+		// Handing over the current pose every frame is what made menus stick
+		// to the face: the compositor was told the picture had been drawn from
+		// exactly where the head is now, so there was nothing for it to
+		// correct and the image rode along. Freezing the pose tells it the
+		// truth instead - this picture was drawn from over there - and it
+		// reprojects accordingly, which leaves the menu hanging in the room
+		// with black where the head has turned away from it.
+		if (!m_flatPoseValid) {
+			m_flatPoseValid = backend.GetRenderPoseMatrix(m_flatPose);
+		}
 
 		left = backend.SubmitEye(vr::openvr::kEyeLeft, &flatLeft,
 		                         vr::openvr::kTextureTypeVulkan, nullptr,
-		                         havePose ? &flatPose : nullptr);
+		                         m_flatPoseValid ? &m_flatPose : nullptr);
 		right = backend.SubmitEye(vr::openvr::kEyeRight, &flatRight,
 		                          vr::openvr::kTextureTypeVulkan, nullptr,
-		                          havePose ? &flatPose : nullptr);
+		                          m_flatPoseValid ? &m_flatPose : nullptr);
 		return true;
 	}
+
+	// Back in the world, so the next flat picture gets a fresh anchor.
+	m_flatPoseValid = false;
+
 
 	// Which eye the picture in the back buffer actually belongs to, which
 	// depends on where this is being called from - see backBufferIsThisFrame.
@@ -434,6 +479,7 @@ void HeadsetRenderer::Reset() {
 	m_copyFailureLogged = false;
 	m_eyePoseValid[0] = false;
 	m_eyePoseValid[1] = false;
+	m_flatPoseValid = false;
 	m_eyeWidth = 0;
 	m_eyeHeight = 0;
 	m_leftEye = EyeProjection{};

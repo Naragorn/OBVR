@@ -243,6 +243,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.tracker.gameFovOverride =
 		ReadFloat("Render", "GameFovOverride", config.tracker.gameFovOverride, path);
 	config.tracker.menuScale = ReadFloat("Render", "MenuScale", config.tracker.menuScale, path);
+	config.tracker.matchHeadsetFov =
+		ReadBool("Render", "MatchHeadsetFov", config.tracker.matchHeadsetFov, path);
 	config.look.blockVerticalLook =
 		ReadBool("Look", "BlockVerticalLook", config.look.blockVerticalLook, path);
 
@@ -351,6 +353,7 @@ bool Config::Load(const char* fileName) {
 	OBVR_LOG("Config: Render.ShowMenus=%d MenuScale=%.2f GameFovOverride=%.1f",
 	         tracker.showMenus ? 1 : 0, static_cast<double>(tracker.menuScale),
 	         static_cast<double>(tracker.gameFovOverride));
+	OBVR_LOG("Config: Render.MatchHeadsetFov=%d", tracker.matchHeadsetFov ? 1 : 0);
 	if (tracker.stereo == vr::StereoMode::DualPass) {
 		// Said plainly rather than silently ignored. A setting that is
 		// accepted and then does something else is worse than one that is

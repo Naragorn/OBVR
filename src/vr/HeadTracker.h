@@ -146,6 +146,16 @@ struct TrackerSettings {
 	// somewhere other than where the buttons appear.
 	float gameFovOverride = 0.0f;
 
+	// Whether the game is made to render the headset's own field of view rather
+	// than an angle. Outranks gameFovOverride.
+	//
+	// This is the answer to "why 16:9 at all" - nothing forces it once OBVR
+	// writes the frustum, and the eye is nearly square. What it does not fix by
+	// itself is the frame's shape: 2560x1440 pixels spread over a square view
+	// are stretched vertically, so iSize W and H in Oblivion.ini want to be
+	// closer to equal for the resolution to follow the geometry.
+	bool matchHeadsetFov = false;
+
 	// How large a flat picture - menu, video, loading screen - is drawn, as a
 	// fraction of the world's own placement. Below 1 puts it at arm's length
 	// with black around it instead of pressed against the face.

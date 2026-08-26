@@ -57,7 +57,21 @@ float Abs(float value) { return value < 0.0f ? -value : value; }
 // else that wanted doing at the end of a frame would be tempting to put here,
 // and this runs on the renderer's thread inside a call the game is waiting on.
 void OnFrameEnd() {
-	if (g_frameOpen) {
+	// Consumed, not merely read.
+	//
+	// This flag is set by the camera hook and nothing else, so on a frame
+	// where that hook does not run - an inventory, an ESC menu, anything that
+	// pauses the world - it would still be holding last frame's true. Present
+	// would then take the normal path, EndFrame would find no frame open and
+	// return at once, and nothing would reach the headset at all.
+	//
+	// Which is precisely what was reported: menus in game showed nothing,
+	// while the main menu worked. The main menu works because the camera hook
+	// has never run at that point, so the flag is still its initial false.
+	const bool hadCameraPass = g_frameOpen;
+	g_frameOpen = false;
+
+	if (hadCameraPass) {
 		g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), g_pendingRequest);
 		return;
 	}
@@ -299,17 +313,29 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	if (GetConfig().tracker.renderToHeadset) {
 		game::NiFrustum frustum{};
 		if (game::ReadGameCameraFrustum(frustum)) {
-			// The override, applied before anything is kept. Written back into
-			// the game's own camera so Oblivion renders with it, and read back
-			// out of the same place so the placement follows automatically -
-			// there is only one number and both sides take it from there.
-			const float override = GetConfig().tracker.gameFovOverride;
-			if (override > 1.0f && override < 179.0f) {
-				game::SetFrustumFov(frustum, override);
+			// The headset's own view first, because it outranks an angle: an
+			// eye is not a 4:3 frustum and forcing it through one throws away
+			// the shape that is the entire point of matching it.
+			float headsetW = 0.0f;
+			float headsetH = 0.0f;
+			const bool matching = GetConfig().tracker.matchHeadsetFov &&
+			                      g_headsetRenderer.GetHeadsetFrustum(headsetW, headsetH);
+
+			if (matching) {
+				game::SetFrustumTangents(frustum, headsetW, headsetH);
 				if (!game::WriteGameCameraFrustum(frustum)) {
-					// Cannot happen after a successful read, but silence here
-					// would mean the world quietly kept its old field of view.
-					OBVR_LOG("Camera: the field of view override could not be written");
+					OBVR_LOG("Camera: the headset frustum could not be written");
+				}
+			} else {
+				const float override = GetConfig().tracker.gameFovOverride;
+				if (override > 1.0f && override < 179.0f) {
+					game::SetFrustumFov(frustum, override);
+					if (!game::WriteGameCameraFrustum(frustum)) {
+						// Cannot happen after a successful read, but silence
+						// here would mean the world quietly kept its old field
+						// of view.
+						OBVR_LOG("Camera: the field of view override could not be written");
+					}
 				}
 			}
 

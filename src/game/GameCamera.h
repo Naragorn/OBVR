@@ -140,6 +140,13 @@ private:
 // what the log reports.
 void SetFrustumFov(NiFrustum& frustum, float fovDegrees);
 
+// Sets the frustum from tangents directly, which is what matching a headset
+// needs: an eye's view is not an angle at 4:3 and forcing it through one would
+// throw away the shape that is the whole point.
+//
+// Signs are preserved per edge, so whichever convention the engine had is kept.
+void SetFrustumTangents(NiFrustum& frustum, float tanHalfWidth, float tanHalfHeight);
+
 // Reads it. False when the scene graph or the camera is null, which is normal
 // before the game has built a world.
 bool ReadGameCameraFrustum(NiFrustum& out);

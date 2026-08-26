@@ -114,6 +114,15 @@ public:
 	// Whether a picture is actually going to the headset right now.
 	bool IsActive() const { return m_textures.IsReady() && !m_policy.HasStopped(); }
 
+	// The frustum that would cover both eyes completely, as tangents of the
+	// half-angles. False before the headset has been asked.
+	//
+	// The union of the two eyes rather than either one: a single picture shared
+	// between them has to reach the outer edge of both, and the eyes look
+	// outwards in opposite directions. Symmetric, because Oblivion's frustum is
+	// and writing an asymmetric one would be a different change.
+	bool GetHeadsetFrustum(float& tanHalfWidth, float& tanHalfHeight) const;
+
 private:
 	// The two ways Oblivion's own picture reaches the headset. Separate
 	// methods rather than two arms of one if, because they differ in what
@@ -172,6 +181,14 @@ private:
 	// reported on ValveSoftware/openvr issue #1253, from the same technique.
 	vr::openvr::HmdMatrix34 m_eyePose[2] = {};
 	bool m_eyePoseValid[2] = {false, false};
+
+	// The pose a flat picture is anchored to, held from when it first appeared.
+	//
+	// Held rather than refreshed, because a menu that is told it was drawn from
+	// wherever the head is now gives the compositor nothing to correct - and an
+	// image with nothing to correct rides the head instead of staying put.
+	vr::openvr::HmdMatrix34 m_flatPose = {};
+	bool m_flatPoseValid = false;
 
 	// What the headset said about each eye, kept because the picture's place
 	// inside the eye texture is computed from it - and because the eye copies
