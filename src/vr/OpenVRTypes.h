@@ -322,4 +322,155 @@ struct IVRCompositorFnTable {
 	                       int submitFlags);
 };
 
+// ----------------------------------------------------------------- Overlay
+//
+// For the 2D layer: HUD, menus and videos redirected to a texture of OBVR's
+// own and hung in the room, instead of being copied flat out of the back
+// buffer. Declared ahead of the code that will use it, for the same reason
+// the compositor table was: the values were read out of the header in one
+// sitting, and a value read is worth more than a value remembered.
+//
+// The same openvr_capi.h that declares IVRSystem_026 and IVRCompositor_029 -
+// both accepted by the runtime in the game, per the log line "connected as a
+// scene application through FnTable:IVRSystem_026 and FnTable:IVRCompositor_029"
+// - declares IVROverlay_028 five lines after the compositor.
+//
+// A warning that earned its place: an AI summary of this table listed the
+// entries in a plausible order that was wrong. Every index below was counted
+// out of the header text itself, entry 0 at line 3148, one entry per line,
+// nothing skipped. A wrong index calls a different method with this method's
+// arguments, and under __stdcall the callee pops what it expects, so the
+// stack unbalances and the crash lands nowhere near the call.
+
+// IVROverlay_Version (openvr_capi.h, line 135)
+constexpr const char* kIVROverlayFnTableVersion = "FnTable:IVROverlay_028";
+
+// VROverlayHandle_t (openvr_capi.h, line 2000): a 64-bit handle, passed by
+// value - eight bytes on a 32-bit stack, which is why getting these
+// signatures right matters twice over.
+using VROverlayHandle = UInt64;
+
+// k_ulOverlayHandleInvalid (openvr_capi.h, line 118)
+constexpr VROverlayHandle kOverlayHandleInvalid = 0;
+
+// EVROverlayError (openvr_capi.h, lines 1204ff). None is the one acted on;
+// the rest are reported by number.
+constexpr int kOverlayErrorNone = 0;
+
+// Excerpt from VR_IVROverlay_FnTable (openvr_capi.h, struct at line 3146,
+// entries from line 3148), in order from the top:
+//
+//    0 FindOverlay                      33 SetOverlayTransformAbsolute
+//    1 CreateOverlay                    35 SetOverlayTransformTrackedDeviceRelative
+//    3 DestroyOverlay                   43 ShowOverlay
+//   11 SetOverlayFlag                   44 HideOverlay
+//   16 SetOverlayAlpha                  60 SetOverlayTexture
+//   22 SetOverlayWidthInMeters          61 ClearOverlayTexture
+//   24 SetOverlayCurvature
+//   30 SetOverlayTextureBounds
+//
+// The traps between them, for anyone recounting: CreateSubviewOverlay at 2
+// and SetOverlayName at 6 are newer entries older listings lack;
+// SetOverlayPreCurvePitch (26/27) and SetOverlayTransformCursor (39/40) sit
+// mid-table; SetSubviewPosition at 42 comes right before ShowOverlay; and
+// between HideOverlay and SetOverlayTexture lie fifteen input and cursor
+// entries (45..59), so SetOverlayTexture is 60, not somewhere around 50.
+//
+// Untyped entries stay void*. Every function pointer is four bytes on x86,
+// so the layout is right regardless.
+struct IVROverlayFnTable {
+	void* findOverlay;  // 0
+
+	int(__stdcall* CreateOverlay)(const char* key, const char* name,
+	                              VROverlayHandle* handle);  // 1
+
+	void* createSubviewOverlay;  // 2
+
+	int(__stdcall* DestroyOverlay)(VROverlayHandle handle);  // 3
+
+	void* getOverlayKey;                // 4
+	void* getOverlayName;               // 5
+	void* setOverlayName;               // 6
+	void* getOverlayImageData;          // 7
+	void* getOverlayErrorNameFromEnum;  // 8
+	void* setOverlayRenderingPid;       // 9
+	void* getOverlayRenderingPid;       // 10
+
+	int(__stdcall* SetOverlayFlag)(VROverlayHandle handle, int flag, bool enabled);  // 11
+
+	void* getOverlayFlag;   // 12
+	void* getOverlayFlags;  // 13
+	void* setOverlayColor;  // 14
+	void* getOverlayColor;  // 15
+
+	int(__stdcall* SetOverlayAlpha)(VROverlayHandle handle, float alpha);  // 16
+
+	void* getOverlayAlpha;        // 17
+	void* setOverlayTexelAspect;  // 18
+	void* getOverlayTexelAspect;  // 19
+	void* setOverlaySortOrder;    // 20
+	void* getOverlaySortOrder;    // 21
+
+	int(__stdcall* SetOverlayWidthInMeters)(VROverlayHandle handle, float metres);  // 22
+
+	void* getOverlayWidthInMeters;  // 23
+
+	int(__stdcall* SetOverlayCurvature)(VROverlayHandle handle, float curvature);  // 24
+
+	void* getOverlayCurvature;         // 25
+	void* setOverlayPreCurvePitch;     // 26
+	void* getOverlayPreCurvePitch;     // 27
+	void* setOverlayTextureColorSpace; // 28
+	void* getOverlayTextureColorSpace; // 29
+
+	int(__stdcall* SetOverlayTextureBounds)(VROverlayHandle handle,
+	                                        const VRTextureBounds* bounds);  // 30
+
+	void* getOverlayTextureBounds;  // 31
+	void* getOverlayTransformType;  // 32
+
+	int(__stdcall* SetOverlayTransformAbsolute)(
+		VROverlayHandle handle, int trackingOrigin,
+		const HmdMatrix34* trackingOriginToOverlay);  // 33
+
+	void* getOverlayTransformAbsolute;  // 34
+
+	int(__stdcall* SetOverlayTransformTrackedDeviceRelative)(
+		VROverlayHandle handle, UInt32 trackedDevice,
+		const HmdMatrix34* trackedDeviceToOverlay);  // 35
+
+	void* getOverlayTransformTrackedDeviceRelative;   // 36
+	void* setOverlayTransformTrackedDeviceComponent;  // 37
+	void* getOverlayTransformTrackedDeviceComponent;  // 38
+	void* setOverlayTransformCursor;                  // 39
+	void* getOverlayTransformCursor;                  // 40
+	void* setOverlayTransformProjection;              // 41
+	void* setSubviewPosition;                         // 42
+
+	int(__stdcall* ShowOverlay)(VROverlayHandle handle);  // 43
+	int(__stdcall* HideOverlay)(VROverlayHandle handle);  // 44
+
+	void* isOverlayVisible;                    // 45
+	void* getTransformForOverlayCoordinates;   // 46
+	void* waitFrameSync;                       // 47
+	void* pollNextOverlayEvent;                // 48
+	void* getOverlayInputMethod;               // 49
+	void* setOverlayInputMethod;               // 50
+	void* getOverlayMouseScale;                // 51
+	void* setOverlayMouseScale;                // 52
+	void* computeOverlayIntersection;          // 53
+	void* isHoverTargetOverlay;                // 54
+	void* setOverlayIntersectionMask;          // 55
+	void* triggerLaserMouseHapticVibration;    // 56
+	void* setOverlayCursor;                    // 57
+	void* setOverlayCursorPositionOverride;    // 58
+	void* clearOverlayCursorPositionOverride;  // 59
+
+	// The same Texture_t the compositor takes, TextureType_Vulkan included -
+	// so the DXVK route that carries the eyes carries the overlay too.
+	int(__stdcall* SetOverlayTexture)(VROverlayHandle handle, const Texture* texture);  // 60
+
+	int(__stdcall* ClearOverlayTexture)(VROverlayHandle handle);  // 61
+};
+
 }  // namespace obvr::vr::openvr

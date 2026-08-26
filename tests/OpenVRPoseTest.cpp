@@ -245,6 +245,58 @@ void TestCompositorLayout() {
 }
 
 
+void TestOverlayLayout() {
+	std::printf("The overlay interface, as declared\n");
+
+	namespace openvr = obvr::vr::openvr;
+
+	// The same failure mode as the compositor table, with a longer run-up:
+	// this table has eighty entries and OBVR types thirteen of them, so there
+	// are fifteen stretches of padding for one of them to be a pointer short.
+	// Each pinned index below was counted out of openvr_capi.h (entry 0 at
+	// line 3148, one entry per line).
+	CheckEqual(offsetof(openvr::IVROverlayFnTable, CreateOverlay), 1 * sizeof(void*),
+	           "CreateOverlay is at index 1, after FindOverlay");
+	CheckEqual(offsetof(openvr::IVROverlayFnTable, DestroyOverlay), 3 * sizeof(void*),
+	           "DestroyOverlay is at index 3, after CreateSubviewOverlay");
+	CheckEqual(offsetof(openvr::IVROverlayFnTable, SetOverlayFlag), 11 * sizeof(void*),
+	           "SetOverlayFlag is at index 11");
+	CheckEqual(offsetof(openvr::IVROverlayFnTable, SetOverlayAlpha), 16 * sizeof(void*),
+	           "SetOverlayAlpha is at index 16");
+	CheckEqual(offsetof(openvr::IVROverlayFnTable, SetOverlayWidthInMeters),
+	           22 * sizeof(void*), "SetOverlayWidthInMeters is at index 22");
+	CheckEqual(offsetof(openvr::IVROverlayFnTable, SetOverlayCurvature), 24 * sizeof(void*),
+	           "SetOverlayCurvature is at index 24");
+	CheckEqual(offsetof(openvr::IVROverlayFnTable, SetOverlayTextureBounds),
+	           30 * sizeof(void*), "SetOverlayTextureBounds is at index 30");
+	CheckEqual(offsetof(openvr::IVROverlayFnTable, SetOverlayTransformAbsolute),
+	           33 * sizeof(void*), "SetOverlayTransformAbsolute is at index 33");
+	CheckEqual(offsetof(openvr::IVROverlayFnTable, SetOverlayTransformTrackedDeviceRelative),
+	           35 * sizeof(void*),
+	           "SetOverlayTransformTrackedDeviceRelative is at index 35");
+	CheckEqual(offsetof(openvr::IVROverlayFnTable, ShowOverlay), 43 * sizeof(void*),
+	           "ShowOverlay is at index 43, after SetSubviewPosition");
+	CheckEqual(offsetof(openvr::IVROverlayFnTable, HideOverlay), 44 * sizeof(void*),
+	           "HideOverlay is at index 44");
+
+	// The long gap: fifteen input and cursor entries lie between HideOverlay
+	// and SetOverlayTexture. An AI-generated listing of this table placed
+	// SetOverlayTexture right after ShowOverlay, which is what this check is
+	// really about.
+	CheckEqual(offsetof(openvr::IVROverlayFnTable, SetOverlayTexture), 60 * sizeof(void*),
+	           "SetOverlayTexture is at index 60, not just past ShowOverlay");
+	CheckEqual(offsetof(openvr::IVROverlayFnTable, ClearOverlayTexture), 61 * sizeof(void*),
+	           "ClearOverlayTexture is at index 61");
+
+	// The handle crosses the boundary by value: eight bytes on a 32-bit
+	// stack, whatever the pointer size of the build running this test.
+	CheckEqual(sizeof(openvr::VROverlayHandle), 8, "VROverlayHandle_t is 64 bits");
+	CheckEqual(static_cast<std::size_t>(openvr::kOverlayHandleInvalid), 0,
+	           "the invalid handle is zero");
+	CheckEqual(static_cast<std::size_t>(openvr::kOverlayErrorNone), 0,
+	           "VROverlayError_None is zero");
+}
+
 void TestTextureWithPose() {
 	std::printf("The texture that carries its own pose\n");
 
@@ -289,6 +341,8 @@ int main() {
 	TestNormalization();
 	std::printf("\n");
 	TestCompositorLayout();
+	std::printf("\n");
+	TestOverlayLayout();
 	std::printf("\n");
 	TestTextureWithPose();
 

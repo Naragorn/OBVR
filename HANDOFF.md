@@ -1749,11 +1749,16 @@ not assumed, when this is built.
 **Verified for the submission end:** `IVROverlay::SetOverlayTexture` takes the same
 `Texture_t` as the compositor, including `TextureType_Vulkan` with
 `VRVulkanTextureData_t` - read through DeepWiki against ValveSoftware/openvr, so the DXVK
-route OBVR already walks for the eyes carries the overlay too. The FnTable indices are
-deliberately *not* recorded here: DeepWiki's listing order looked unreliable, a wrong
-index calls a different method with this method's arguments, and the project's standard
-for those is counting the actual `openvr_capi.h` first hand, as was done for IVRSystem and
-IVRCompositor.
+route OBVR already walks for the eyes carries the overlay too.
+
+**The overlay table is now replicated and pinned, first hand.** `IVROverlay_028`, from the
+same `openvr_capi.h` revision that declares the two interfaces the runtime already
+accepted; counted entry by entry from line 3148, thirteen entries typed, the rest named
+void* padding. The counting mattered: DeepWiki's summary of the same table listed
+`SetOverlayTexture` right after `ShowOverlay`, when fifteen input and cursor entries lie
+between them - it is index 60, not 44. `openvr_pose_test`'s `TestOverlayLayout` pins every
+typed index, that gap in particular. Nothing calls it yet; it is the route-B groundwork
+that can be checked without a headset, done while the dual pass build waits for its run.
 
 ### Dual pass is built: the function that sets up a view is the function you call twice
 
