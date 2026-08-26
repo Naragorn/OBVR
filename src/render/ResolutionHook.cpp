@@ -19,6 +19,11 @@ using GetProcAddressFn = void*(__stdcall*)(void* module, const char* name);
 GetProcAddressFn g_originalGetProcAddress = nullptr;
 
 bool g_deviceCreated = false;
+
+// A log line per attempt would be four lines for one event, and Oblivion
+// retries. Enough to see what happened, not enough to bury the rest.
+UInt32 g_reportsLeft = 2;
+UInt32 g_fallbacksLeft = 2;
 UInt32 g_createdWidth = 0;
 UInt32 g_createdHeight = 0;
 
@@ -38,30 +43,105 @@ bool Equals(const char* a, const char* b) {
 // Everything else in this file exists to get here before the game does. The
 // parameters are the game's own, changed in place: the runtime reads them
 // after this returns, so a change made here is a change to what is built.
+//
+// Two things are changed, not one, and the second is not optional.
+//
+// In exclusive fullscreen the back buffer is not free: it names a display
+// mode, and the driver has to switch the monitor into it. A headset wants a
+// square frame and no monitor has a square mode, so the switch fails and with
+// it the whole device. That is not a theory - it is what happened, and DXVK
+// said so in as many words:
+//
+//   - Windowed: false
+//   Setting display mode: 3200x3200@0
+//   err: D3D9: EnterFullscreenMode: Failed to change display mode
+//   err: D3D9: Failed to set initial fullscreen state
+//
+// Oblivion retried four times and gave up, which from the outside looked like
+// the game starting and vanishing.
+//
+// Windowed, the back buffer is just a surface. It is created at whatever size
+// is asked for and the result is scaled to the window when it is presented, so
+// no display mode is involved and nothing has to exist for it to be valid.
+// Nothing is lost here either: in VR the monitor shows a mirror, and the
+// window Oblivion already owns covers the screen.
+//
+// And if it still fails, the game gets its own parameters back and its device.
+// A resolution that did not change is a disappointment; a game that does not
+// start is not something to leave to an argument about what should work.
 SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceType,
                                     void* focusWindow, UInt32 behaviourFlags,
                                     d3d9::PresentParameters* parameters, void** device) {
-	if (parameters != nullptr) {
-		const UInt32 wasWidth = parameters->backBufferWidth;
-		const UInt32 wasHeight = parameters->backBufferHeight;
+	if (parameters == nullptr) {
+		return g_originalCreateDevice(self, adapter, deviceType, focusWindow,
+		                              behaviourFlags, parameters, device);
+	}
 
-		if (g_wantedWidth != 0) {
-			parameters->backBufferWidth = g_wantedWidth;
-		}
-		if (g_wantedHeight != 0) {
-			parameters->backBufferHeight = g_wantedHeight;
-		}
+	const d3d9::PresentParameters asTheGameAskedFor = *parameters;
 
+	if (g_wantedWidth != 0) {
+		parameters->backBufferWidth = g_wantedWidth;
+	}
+	if (g_wantedHeight != 0) {
+		parameters->backBufferHeight = g_wantedHeight;
+	}
+
+	const bool sizeChanged =
+	    parameters->backBufferWidth != asTheGameAskedFor.backBufferWidth ||
+	    parameters->backBufferHeight != asTheGameAskedFor.backBufferHeight;
+
+	if (sizeChanged && parameters->windowed == 0) {
+		parameters->windowed = 1;
+	}
+
+	const bool anythingChanged = sizeChanged || parameters->windowed != asTheGameAskedFor.windowed;
+
+	if (g_reportsLeft > 0) {
+		--g_reportsLeft;
+		OBVR_LOG("Resolution: the game asked for %ux%u %s, and is getting %ux%u %s",
+		         asTheGameAskedFor.backBufferWidth, asTheGameAskedFor.backBufferHeight,
+		         asTheGameAskedFor.windowed != 0 ? "windowed" : "fullscreen",
+		         parameters->backBufferWidth, parameters->backBufferHeight,
+		         parameters->windowed != 0 ? "windowed" : "fullscreen");
+	}
+
+	SInt32 result = g_originalCreateDevice(self, adapter, deviceType, focusWindow,
+	                                       behaviourFlags, parameters, device);
+
+	if (result >= 0) {
 		g_deviceCreated = true;
 		g_createdWidth = parameters->backBufferWidth;
 		g_createdHeight = parameters->backBufferHeight;
-
-		OBVR_LOG("Resolution: the game asked for %ux%u, and is getting %ux%u", wasWidth,
-		         wasHeight, g_createdWidth, g_createdHeight);
+		return result;
 	}
 
-	return g_originalCreateDevice(self, adapter, deviceType, focusWindow, behaviourFlags,
-	                              parameters, device);
+	if (!anythingChanged) {
+		return result;
+	}
+
+	// Failed with OBVR's parameters. The game's own go back in - the whole
+	// structure, because the runtime is allowed to have written to it - and it
+	// gets the device it would have had.
+	*parameters = asTheGameAskedFor;
+
+	const SInt32 second = g_originalCreateDevice(self, adapter, deviceType, focusWindow,
+	                                             behaviourFlags, parameters, device);
+
+	if (g_fallbacksLeft > 0) {
+		--g_fallbacksLeft;
+		OBVR_LOG("Resolution: %ux%u was refused (0x%08X), so the game has its own %ux%u "
+		         "back and %s",
+		         g_wantedWidth, g_wantedHeight, static_cast<UInt32>(result),
+		         asTheGameAskedFor.backBufferWidth, asTheGameAskedFor.backBufferHeight,
+		         second >= 0 ? "started" : "could not make a device either way");
+	}
+
+	if (second >= 0) {
+		g_deviceCreated = true;
+		g_createdWidth = parameters->backBufferWidth;
+		g_createdHeight = parameters->backBufferHeight;
+	}
+	return second;
 }
 
 // Catches the factory on its way out of Direct3DCreate9, for the sole purpose
