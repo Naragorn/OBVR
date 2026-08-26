@@ -380,41 +380,65 @@ bool OpenVRBackend::ReadHeadPose(Quaternion& orientation, NiPoint3& position) co
 
 
 void LevelPose(openvr::HmdMatrix34& pose) {
-	// Backwards is the third column, so forward is its negative.
-	float fx = -pose.m[0][2];
-	float fz = -pose.m[2][2];
+	// Roll comes out, pitch and yaw stay.
+	//
+	// This used to throw pitch away as well, and that was wrong in a way that
+	// only showed up in use: a flat picture is anchored to this pose, so with
+	// pitch removed it hangs at eye level however the wearer was looking when
+	// it appeared. Sitting with the head tilted slightly down - which is where
+	// a head rests - put every menu and every film above the line of sight,
+	// with black beneath it, and the recenter key could not bring it down
+	// because it went through here too. It turned the picture to face the
+	// wearer and then levelled the very thing that would have lowered it.
+	//
+	// What was actually asked for was that the picture never be tilted: a
+	// horizon at an angle in a headset is nausea within seconds. That is roll
+	// alone. Keeping pitch puts the picture where the wearer is looking, which
+	// is what pointing at something means.
+	//
+	// Backward is the third column, and it is left exactly as it is: it holds
+	// both the heading and the tilt, and both are being kept.
+	const float bx = pose.m[0][2];
+	const float by = pose.m[1][2];
+	const float bz = pose.m[2][2];
 
-	const float lengthSquared = fx * fx + fz * fz;
+	// Right is world up crossed with backward, which for up = (0, 1, 0) is
+	// ( bz, 0, -bx ). Anything the wearer's own roll had put into it is gone,
+	// because a vector built from world up cannot carry any.
+	float rx = bz;
+	float rz = -bx;
+
+	const float lengthSquared = rx * rx + rz * rz;
 	if (!(lengthSquared > 0.0001f)) {
-		// Straight up or straight down: there is no heading to keep, and
-		// inventing one would swing the picture by whatever the arithmetic
-		// happened to produce. Left as it is - tilted, but not arbitrarily so.
+		// Straight up or straight down: backward is parallel to world up, so
+		// there is no direction left for right to point in and every answer is
+		// as good as any other. Left as it is - tilted, but not arbitrarily.
 		return;
 	}
 
 	const float length = math::Sqrt(lengthSquared);
-	fx /= length;
-	fz /= length;
+	rx /= length;
+	rz /= length;
 
-	// Right is forward crossed with up, for up = (0, 1, 0). Written out
-	// rather than called, because two cross products and a normalise would be
-	// three chances to get a sign wrong in something whose failure is a world
-	// that is subtly mirrored.
+	// Up is backward crossed with right, which is a unit vector already: the
+	// two are perpendicular and both have length one.
 	//
-	//   right    = ( -fz, 0,  fx )
-	//   up       = (   0, 1,   0 )
-	//   backward = ( -fx, 0, -fz )
-	pose.m[0][0] = -fz;
+	//   up = ( by*rz - bz*0, bz*rx - bx*rz, bx*0 - by*rx )
+	//      = ( by*rz, bz*rx - bx*rz, -by*rx )
+	//
+	// written out rather than called, because a sign wrong here is a world
+	// that is subtly mirrored and nothing that says so.
+	const float ux = by * rz;
+	const float uy = bz * rx - bx * rz;
+	const float uz = -by * rx;
+
+	pose.m[0][0] = rx;
 	pose.m[1][0] = 0.0f;
-	pose.m[2][0] = fx;
+	pose.m[2][0] = rz;
 
-	pose.m[0][1] = 0.0f;
-	pose.m[1][1] = 1.0f;
-	pose.m[2][1] = 0.0f;
-
-	pose.m[0][2] = -fx;
-	pose.m[1][2] = 0.0f;
-	pose.m[2][2] = -fz;
+	pose.m[0][1] = ux;
+	pose.m[1][1] = uy;
+	pose.m[2][1] = uz;
 
 	// The fourth column is the position and is left alone: a menu anchored
 	// where the wearer is standing is right, and moving it would be a second

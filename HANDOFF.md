@@ -1477,6 +1477,58 @@ drawing once per frame means. Two passes per frame is the fix, and per-eye proje
 the second pass knows what to draw.
 
 
+### The frame is the game's size again, and the reason is a window nobody sized
+
+`SetGameResolution` is off. It worked - the frame really was created at
+3200x3200, and the picture was visibly better for it, both from the extra
+pixels and from the end of the vertical stretch that a 16:9 frame on a square
+eye had always been. It was turned off because of what came with it:
+
+```
+- Windowed:           true
+Presenter: Actual swapchain properties:
+  Buffer size:  320x240
+err: DxvkSubmissionQueue: Command submission failed: VK_ERROR_DEVICE_LOST
+```
+
+Clearing the fullscreen flag was necessary - a square frame is not a display
+mode and the driver cannot switch a monitor into one. But it was only half the
+change. In exclusive fullscreen Direct3D sizes the game's window itself, so
+Oblivion never had to; windowed, that stops happening and the window stayed at
+the 320x240 it was created with. A 3200x3200 back buffer presenting into a
+320x240 window is what the mouse was mapped against, and the GPU eventually
+lost the device.
+
+So the next attempt at this owes a third step: size the window as well. It is
+the game's own HWND, arriving as `focusWindow` and `hDeviceWindow`, and it
+wants the screen's size with no border. Until that is written, `SetGameResolution=0`
+and the frame is 2560x1440 fullscreen, which is where it was.
+
+What was measured and is worth keeping: the viewport is the whole frame,
+`x=0..3200 y=0..3200`, on menu frames and world frames alike. Oblivion draws
+into all of a frame it did not choose the size of. The theory that it kept
+laying its 2D layer out at 2560x1440 inside a larger frame is wrong.
+
+### Levelling an anchor took the pitch out with the roll
+
+A flat picture is anchored to a pose, and that pose was levelled before use.
+Levelled meant flattened to yaw alone - no pitch, no roll - so the picture
+hung at eye level however the wearer had been looking when it appeared. A head
+at rest tilts slightly down, so every menu and every intro film sat above the
+line of sight with black beneath it. The recenter key could not bring it down,
+because it went through the same function: it turned the picture to face the
+wearer and then levelled away the very thing that would have lowered it.
+
+What had been asked for was that the picture never be tilted, and that is roll
+alone: a horizon at an angle in a headset is nausea within seconds. Pitch is
+not tilt, it is aim. `LevelPose` now rebuilds right as world-up crossed with
+backward and up as backward crossed with right, leaving the third column - the
+view direction, which carries both heading and pitch - exactly as it was.
+
+Straight up and straight down are left alone: backward is then parallel to
+world up, there is no direction left for right to point in, and every answer
+is as good as any other.
+
 ### Oblivion does not import d3d9, and menus flicker because "is a menu open" was guessed
 
 Two faults found the same way - by asking the binary rather than reasoning about it.
