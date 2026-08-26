@@ -1672,17 +1672,88 @@ shape the request had - VR stays 3D, only the menus leave the picture and enter 
 
 What it needs, in order:
 
-1. **Locate the pass.** The one open question, and the same kind of question the camera
-   frustum was: which engine function sets up and draws the 2D layer. TES-Reloaded and xOBSE
-   both work on this renderer and are the places to look.
+1. ~~**Locate the pass.**~~ **Located** - see "The 2D pass is located" below. One function
+   draws the whole layer, everywhere it is drawn.
 2. **Redirect it.** `IDirect3DDevice9::SetRenderTarget` is vtable entry 37, and only for the
    duration of that pass - the world's target has to come back afterwards or the world stops
-   being drawn.
+   being drawn. The located pass adds a twist recorded below: it begins a target group of
+   its own, so a naive wrap would be overridden from inside.
 3. **Submit it as an overlay.** `IVROverlay` is a compositor interface OBVR does not touch
    yet; it is well documented and the smallest of the three pieces.
 
 Deliberately not started. Recorded here so the decision survives the length of the session
 that made it.
+
+### The 2D pass is located, and every road leads through it
+
+Found by walking the binary from Oblivion Reloaded's `kRenderInterface` call site, the way
+the world render was found, and it closes the one open question route B had. Nothing here
+is built yet - this is the map, drawn while the dual pass build waits for its in-game run.
+
+**The function is `0x0057F170`.** `__thiscall`, one stack argument (a rendered texture,
+null on the ordinary path), `ret 4` - the same shape as the world render, and the same
+seven relocatable entry bytes for a detour: `6A FF 68 E6 EA 9B 00` (`push -1; push
+0x9BEAE6`).
+
+**Its `this` is the InterfaceManager singleton** - fetched by its callers through
+`0x00582160`, the same getter `IsMenuMode` at `0x00578F60` uses three times, which this
+project has already verified against xOBSE and the bytes. The wrapper at `0x00579260` even
+checks the same `[manager+0x1C]` field IsMenuMode checks before deciding there is an
+interface to draw. Two already-verified addresses vouching for a third.
+
+**What it does, in order** (full disassembly read, `0x0057F170..0x0057F482`):
+
+1. begins the *default* render target group - through `0x007D71C0`/`0x007D7280` or the
+   renderer virtual at `+0x13C` - with clear flags **6**: depth and stencil, not colour.
+   That is why menus sit on the world instead of on black, and it is the twist for the
+   redirect: the pass sets its own target from inside, so wrapping it and setting a target
+   first would be undone immediately.
+2. if the fade at `[MenuRoot+0x2C]` is nonzero, draws the menu scene graph:
+   `RenderObject(0x0070C0B0)` - the same function the world passes use - with the camera at
+   `[MenuRoot+0xDC]`. The camera offset matches `kSceneGraphCameraOffset = 0xDC`, verified
+   in the game long before this read; `MenuRoot` itself is `[InterfaceManager+4]`.
+3. draws the menus through one of two version-dependent paths (`0x0058FBA0` /
+   `0x005903E0`).
+4. sets the renderer's camera through `0x00701970` - `NiDX9Renderer::SetCameraViewProj`,
+   the address OBGEv2 names - for the scene graph at `[InterfaceManager+0]`, and processes
+   it through `0x0070E0A0` with a culling process on the stack. This is the layer Oblivion
+   Reloaded's kRenderInterface hook appends its own drawing after.
+5. ends the target group and returns.
+
+**Every route to the 2D layer funnels through this one function.** Four call sites in the
+whole binary: `0x0057929E` (inside the wrapper `0x00579260`, which the master frame
+function calls at `0x0040D6F7`, after the world render and the image space shaders),
+`0x00579F39` (inside `0x00579CF0`, reached from the loading paths at `0x0045Cxxx` and from
+`0x0066FF42`), and two inside functions reached only indirectly (`0x005B59B0`,
+`0x005BDDE0` - no static callers, so virtual dispatch, menu-owned). One detour therefore
+covers HUD, menus, dialogues and loading screens alike; the callers only decide when.
+
+**The redirect design that follows from point 1:** detour the entry (the machinery from
+the dual pass - `core/EntryDetour`, a `__fastcall` replacement - is reusable as is), and
+while inside the call, substitute at the *device* level: hook `SetRenderTarget` (vtable
+entry 37) and, whenever render target 0 is being set while the flag is up, hand the device
+OBVR's own A8R8G8B8 target instead. Every Gamebryo wrapper ends at that one device method -
+that is an API fact, not a game fact - so it catches the pass's own target group too. The
+depth stencil surface stays the game's: the flags-6 clear then clears a depth buffer the
+finished world no longer needs, exactly as vanilla does.
+
+Two things the texture needs that the back buffer never did: a once-per-frame clear to
+transparent black (`ColorFill`, vtable 35), and destination alpha that means coverage.
+The second is the subtle one: UI blends `SRCALPHA/INVSRCALPHA`, and without separate alpha
+blending the destination alpha comes out as alpha squared - close, monotone, and slightly
+too transparent. `D3DRS_SEPARATEALPHABLENDENABLE` with `ONE/INVSRCALPHA` on the alpha side
+gives the correct over-operator coverage. A 2006 engine has no reason to touch the
+separate-alpha states itself, so setting them once at pass entry should hold - measured,
+not assumed, when this is built.
+
+**Verified for the submission end:** `IVROverlay::SetOverlayTexture` takes the same
+`Texture_t` as the compositor, including `TextureType_Vulkan` with
+`VRVulkanTextureData_t` - read through DeepWiki against ValveSoftware/openvr, so the DXVK
+route OBVR already walks for the eyes carries the overlay too. The FnTable indices are
+deliberately *not* recorded here: DeepWiki's listing order looked unreliable, a wrong
+index calls a different method with this method's arguments, and the project's standard
+for those is counting the actual `openvr_capi.h` first hand, as was done for IVRSystem and
+IVRCompositor.
 
 ### Dual pass is built: the function that sets up a view is the function you call twice
 
