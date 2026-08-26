@@ -213,13 +213,5 @@ struct InteropTexture {
 	const InteropTextureVtbl* vtbl;
 };
 
-// IDirect3DDevice9::GetBackBuffer sits at vtable index 18, right after
-// Present at 17. Counted from Wine's include/d3d9.h, and an interface fact
-// rather than a game one - it holds for every D3D9 implementation, DXVK
-// included.
-constexpr UInt32 kD3D9GetBackBufferIndex = 18;
-
-// D3DBACKBUFFER_TYPE_MONO
-constexpr UInt32 kBackBufferTypeMono = 0;
 
 }  // namespace obvr::render::dxvk

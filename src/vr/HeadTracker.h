@@ -32,8 +32,22 @@ enum class TrackerSource {
 };
 
 enum class StereoMode {
-	None,           // one image to both eyes, flat
-	AlternateEyes,  // one eye per frame, alternating
+	// One image to both eyes. Oblivion is in the headset, and flat: there is
+	// only one picture, so there is nothing between the eyes to see depth in.
+	None,
+
+	// Alternate eye rendering. The camera steps to one eye, the frame is drawn
+	// once from there, and both eyes are submitted - the drawn one with this
+	// frame's picture, the other with its own last one, kept in a copy OBVR
+	// owns. Both every frame is not an optimisation: the compositor counts a
+	// frame as delivered only when both eyes have arrived.
+	AlternateEyes,
+
+	// Drawing the world twice per tick, once per eye. The honest way, and the
+	// only one without a time disparity between the eyes. Not built: it needs
+	// Gamebryo to render twice without advancing the simulation twice, and
+	// whether it will is an open question rather than a matter of wiring.
+	DualPass,
 };
 
 struct TrackerSettings {

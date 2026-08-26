@@ -1149,20 +1149,96 @@ conversion works, and the camera offset it feeds is correct - it simply had nowh
 
 **What AER needs instead.** Both eyes every frame, with the eye waiting its turn showing a
 kept copy of its own last picture. That means OBVR owning two images rather than borrowing
-one, and copying into them:
+one, and copying into them once a frame.
 
-- `IDirect3DDevice9::CreateRenderTarget` at vtable index **28**, twice, matching the back
-  buffer
-- `IDirect3DDevice9::StretchRect` at vtable index **34**, once a frame, from the back buffer
-  into the current eye's target
-- each target's `VkImage` through `ID3D9VkInteropTexture`, read once and cached
-- both submitted every frame
+### Alternate eye rendering, second attempt
 
-Both indices counted from Wine's `include/d3d9.h`, interface facts rather than game ones.
-Whether a render target made this way carries the `TRANSFER_SRC` and `SAMPLED` usage bits
-the compositor requires is **not established** - the back buffer has them, but that is not
-the same claim. `IsSubmittableImage` already answers it at runtime, so it costs one run to
-find out rather than an argument.
+Built. `src/render/EyeMirror.{h,cpp}` owns two pictures, one per eye; `render::HeadsetRenderer`
+copies the back buffer into whichever eye this frame was drawn for and submits **both** every
+frame. Not yet seen in a headset - the tests pass and the game has not run.
+
+**The plan recorded above was wrong in one place, and the correction is the interesting
+part.** It said `CreateRenderTarget` at index 28. That would have produced an image that is
+perfectly good to draw into and impossible to submit. In DXVK, `D3D9CommonTexture::CreatePrimaryImage`
+adds the sampled bit under
+
+```cpp
+if (!m_desc.IsAttachmentOnly || (!isRT && !isDS))
+  imageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+```
+
+and `CreateRenderTargetEx` sets `IsAttachmentOnly = TRUE` while `CreateTexture` sets it
+`FALSE`. So a standalone render target surface carries `TRANSFER_SRC` but not `SAMPLED`,
+SteamVR requires both, and usage is settled when an image is created - there is no
+transition that repairs it afterwards.
+
+Hence `IDirect3DDevice9::CreateTexture` at index **23**, with `D3DUSAGE_RENDERTARGET`, and
+`GetSurfaceLevel(0)` for the surface `StretchRect` writes into.
+
+That is second hand: read through DeepWiki against `doitsujin/dxvk` rather than out of a
+checked-out tree, and it is flagged as such rather than presented as read. It does not have
+to be trusted. `EyeMirror::Create` reads the usage flags back off the image it actually
+made and writes them to the log whether they pass or fail, and `IsSubmittableImage` refuses
+the frame if the bit is absent. The first line of the next in-game log settles it on the
+machine where it matters, which is better evidence than any source would have been.
+
+**What was read first hand** is every vtable index, out of this machine's own Windows SDK
+header at `C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/shared/d3d9.h`,
+counted from `DECLARE_INTERFACE_` order: `Present` 17, `GetBackBuffer` 18, `CreateTexture`
+23, `CreateRenderTarget` 28, `StretchRect` 34, `IDirect3DTexture9::GetSurfaceLevel` 18,
+`IDirect3DSurface9::GetDesc` 12. All of them live in `src/render/D3D9Types.h` and are pinned
+by `d3d9_types_test`, which also runs the lookup against a fake vtable rather than only
+comparing numbers to themselves.
+
+Those indices are worth a test for how they fail. A wrong slot does not report an error - it
+calls a different method with this method's arguments, and under `__stdcall` the callee pops
+what it thinks it was given, so the stack unbalances and the crash lands somewhere with no
+connection to Direct3D at all.
+
+**The order within a frame matters and is not obvious.** `StretchRect` puts work on the very
+queue the bracket locks, so the copy has to happen *before* the queue is taken:
+
+1. `StretchRect` back buffer into this eye's texture - plain D3D9, nothing held
+2. read both images' layouts, because a layout is where the image *will* be after the flush,
+   and something has drawn into them since they were made
+3. flush, lock the queue, transition both into `TRANSFER_SRC_OPTIMAL`
+4. submit left and right
+5. transition both back, still under the lock, then unlock
+
+Steps 3 and 5 are `render::InteropBracket`, which `GameFrame` was rebuilt on top of at the
+same time. One owner for that sequence rather than two nearly-identical copies: getting the
+undo half wrong does not produce a wrong picture, it produces a frozen game with an empty
+log, and a second copy is exactly how one of the two ends up missing a step.
+
+**The format is asked for, not assumed.** `EyeMirror::Create` reads the back buffer's
+`D3DSURFACE_DESC` and matches it. `StretchRect` between differing formats is a conversion the
+runtime may refuse, and a refusal arrives as one failed call per frame with nothing saying
+which of the two formats was wrong.
+
+**The first frame fills both eyes** rather than one. Otherwise the eye that is not drawn
+first gets submitted once holding whatever an uninitialised render target happens to contain
+- a flash of something in one eye at precisely the moment the wearer is looking for whether
+this works at all.
+
+**What it costs:** one full-screen GPU copy per frame, and two eyes holding pictures drawn one
+frame apart. The second is the real artefact - a disparity that is time rather than distance
+on anything moving quickly. Both were known before this was built and neither is a surprise.
+
+**Still not established:** whether the usage bits come out right (the log answers it), and
+whether the picture is one frame stale, which it still is - the submit happens from the camera
+hook, before the frame is drawn, and moving it to `Present` at index 17 is a separate change.
+
+### The INI switch
+
+`[Render] Stereo` now takes three values rather than two: `none`, `aer`, `dual`. One key
+rather than three flags, so the modes cannot contradict each other.
+
+`dual` is the honest route - drawing the world twice per tick, once per eye, with no time
+disparity between them - and it is **not built**. It is accepted, says so in the log, and
+renders like `none`. A setting that is silently ignored is worse than one that is rejected,
+because the flat picture then reads as stereo having failed instead of as a feature that was
+never written. Whether Gamebryo will render twice without advancing the simulation twice is
+still the open question there, and it is a question about the engine rather than about wiring.
 
 ### Where 0.1.0 stands, and the two things left
 

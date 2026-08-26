@@ -36,10 +36,12 @@ add_library(OBVR SHARED
 	src/platform/Freestanding.cpp
 	src/platform/PluginPath.cpp
 	src/render/EyeGeometry.cpp
+	src/render/EyeMirror.cpp
 	src/render/GameDevice.cpp
 	src/render/GameFrame.cpp
 	src/render/EyeTextures.cpp
 	src/render/HeadsetRenderer.cpp
+	src/render/InteropBracket.cpp
 	src/render/SubmitPolicy.cpp
 	src/render/TestPattern.cpp
 	src/vr/HeadOffset.cpp

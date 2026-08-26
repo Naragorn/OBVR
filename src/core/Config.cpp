@@ -150,6 +150,10 @@ vr::StereoMode ReadStereoMode(vr::StereoMode fallback, const char* path) {
 		return vr::StereoMode::AlternateEyes;
 	}
 
+	if (EqualsIgnoreCase(buffer, "dual") || EqualsIgnoreCase(buffer, "dualpass")) {
+		return vr::StereoMode::DualPass;
+	}
+
 	OBVR_LOG("Config: unknown Render.Stereo \"%s\", keeping the previous setting", buffer);
 	return fallback;
 }
@@ -158,6 +162,7 @@ const char* StereoModeName(vr::StereoMode mode) {
 	switch (mode) {
 		case vr::StereoMode::None: return "none";
 		case vr::StereoMode::AlternateEyes: return "aer";
+		case vr::StereoMode::DualPass: return "dual";
 	}
 	return "?";
 }
@@ -330,6 +335,14 @@ bool Config::Load(const char* fileName) {
 	         tracker.renderToHeadset ? 1 : 0, tracker.submitGameFrame ? 1 : 0,
 	         StereoModeName(tracker.stereo),
 	         tracker.renderToHeadset ? " - OBVR will claim the VR scene" : "");
+	if (tracker.stereo == vr::StereoMode::DualPass) {
+		// Said plainly rather than silently ignored. A setting that is
+		// accepted and then does something else is worse than one that is
+		// rejected, because the picture looks like a failure of stereo
+		// instead of a feature that was never built.
+		OBVR_LOG("Config: Render.Stereo=dual is not built yet - rendering one image to "
+		         "both eyes until it is");
+	}
 	return true;
 }
 

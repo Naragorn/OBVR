@@ -1,5 +1,6 @@
 #pragma once
 
+#include "render/EyeMirror.h"
 #include "render/EyeTextures.h"
 #include "render/GameDevice.h"
 #include "render/SubmitPolicy.h"
@@ -61,6 +62,17 @@ public:
 	bool IsActive() const { return m_textures.IsReady() && !m_policy.HasStopped(); }
 
 private:
+	// The two ways Oblivion's own picture reaches the headset. Separate
+	// methods rather than two arms of one if, because they differ in what
+	// they own: mono borrows the back buffer and hands the same borrowed
+	// image to both eyes, while alternate eyes copies it into pictures OBVR
+	// keeps. Both return whether a game frame actually went out, and both
+	// write into left and right.
+	bool SubmitMono(const vr::OpenVRBackend& backend, const FrameRequest& request, int& left,
+	                int& right);
+	bool SubmitAlternateEyes(const vr::OpenVRBackend& backend, const FrameRequest& request,
+	                         int& left, int& right);
+
 	// Everything after the first failure to set up. Without it a machine that
 	// cannot create the device would retry once per frame for ever, and the
 	// log would be the only thing rendering.
@@ -75,6 +87,14 @@ private:
 	bool m_gameFrameChecked = false;
 	bool m_gameFrameUsable = false;
 	VulkanContext m_vulkan;
+
+	// The two pictures OBVR owns, for alternate eyes. Created on the first
+	// frame that wants them, because the back buffer has to exist before its
+	// size and format can be copied.
+	EyeMirror m_mirror;
+	bool m_mirrorChecked = false;
+	bool m_mirrorUsable = false;
+	bool m_copyFailureLogged = false;
 
 	// Which part of Oblivion's frame each eye is shown. Computed once from
 	// the optical axes, because they cannot change within a run, and stored

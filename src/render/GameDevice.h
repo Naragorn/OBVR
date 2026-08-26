@@ -45,8 +45,8 @@ extern const Guid kIID_D3D9VkInteropDevice;
 // ID3D9VkInteropTexture, same header:
 //   MIDL_INTERFACE("d56344f5-8d35-46fd-806d-94c351b472c1")
 //
-// Not used yet. It is the one that yields the VkImage behind a D3D9 surface,
-// which is what a submitted eye texture will eventually be.
+// The one that yields the VkImage behind a D3D9 surface or texture - both the
+// back buffer OBVR borrows and the two eye copies it owns.
 extern const Guid kIID_D3D9VkInteropTexture;
 
 // What is driving Direct3D 9 in this process.
@@ -142,6 +142,16 @@ struct BackBufferImage {
 // them wrong means either a submit that fails or a copy that was never
 // needed.
 bool IsSubmittableImage(const BackBufferImage& image);
+
+// Reads the Vulkan image behind a D3D9 surface or texture that has already
+// been queried for ID3D9VkInteropTexture.
+//
+// A function called every frame rather than a value read once, and that is
+// the point of it. The handle behind an image does not change, but the layout
+// does - DXVK reports where the image will be once commands are flushed, and
+// that answer is different after something has drawn into it. A layout cached
+// at creation would later be undone into a state the image was never in.
+bool ReadImageInfo(void* interopTexture, BackBufferImage& out);
 
 // Reads it. False when the device is not DXVK, when the back buffer cannot be
 // had, or when the surface does not carry a Vulkan image - which DXVK

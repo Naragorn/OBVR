@@ -133,12 +133,6 @@ void TestVtableIndices() {
 	CheckOffset(offsetof(dxvk::InteropTextureVtbl, GetVulkanImageInfo), slot * 3,
 	            "GetVulkanImageInfo is the texture interface's only own method");
 
-	// GetBackBuffer is one past Present, which is at 17 - both counted from
-	// Wine's d3d9.h. This is an interface fact rather than a game fact, so it
-	// holds for DXVK exactly as for Microsoft's implementation.
-	Check(dxvk::kD3D9GetBackBufferIndex == 18,
-	      "GetBackBuffer is at 18, one past Present at 17");
-	Check(dxvk::kBackBufferTypeMono == 0, "and the mono back buffer type is 0");
 }
 
 }  // namespace

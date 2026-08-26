@@ -176,54 +176,9 @@ void HeadsetRenderer::Update(const vr::OpenVRBackend& backend, const FrameReques
 		}
 
 		if (m_gameFrameUsable) {
-			// Scoped so the bracket closes on every path out, including the
-			// ones that throw nothing and simply return. A queue left locked
-			// deadlocks Oblivion against its own renderer, and the symptom is
-			// a frozen game with an empty log.
-			GameFrame frame;
-			if (frame.Acquire(request.gameDevice)) {
-				dxvk::VRVulkanTextureData data{};
-				DescribeForOpenVR(frame.GetImage(), m_vulkan, data);
-
-				// The same image to both eyes. This is mono - Oblivion's
-				// picture, flat, with no depth between the eyes - and that is
-				// the whole intent of this step. Rendering the world twice is
-				// a separate problem, and doing both at once would mean a
-				// failure with two possible causes.
-				// Different bounds per eye, or the two disagree about where
-				// the picture is. The optical axes sit at different places
-				// across each eye's view, so the whole texture in both puts
-				// Oblivion's centre somewhere neither eye is looking.
-				if (request.alternateEyes) {
-					// This frame was drawn from one eye's position, so it
-					// belongs to that eye and nowhere else. Giving it to both
-					// would show each eye the other's viewpoint half the time,
-					// which is worse than no depth at all.
-					//
-					// What the other eye shows meanwhile is the compositor's
-					// business. It keeps the last texture submitted for an eye,
-					// and each eye here gets a new one every second frame -
-					// nowhere near the ten frames without any Submit that fade
-					// the scene out. Whether it keeps a copy or a reference is
-					// NOT established, and it decides whether this works: a
-					// reference would point at a back buffer the game has since
-					// overwritten, which would show the wrong eye's picture
-					// rather than the previous frame's.
-					const bool isLeft = request.isLeftEye;
-					const int result = backend.SubmitEye(
-						isLeft ? vr::openvr::kEyeLeft : vr::openvr::kEyeRight, &data,
-						vr::openvr::kTextureTypeVulkan,
-						isLeft ? &m_boundsLeft : &m_boundsRight);
-					left = result;
-					right = result;
-				} else {
-					left = backend.SubmitEye(vr::openvr::kEyeLeft, &data,
-					                         vr::openvr::kTextureTypeVulkan, &m_boundsLeft);
-					right = backend.SubmitEye(vr::openvr::kEyeRight, &data,
-					                          vr::openvr::kTextureTypeVulkan, &m_boundsRight);
-				}
-				submittedGameFrame = true;
-			}
+			submittedGameFrame = request.alternateEyes
+			                         ? SubmitAlternateEyes(backend, request, left, right)
+			                         : SubmitMono(backend, request, left, right);
 		}
 	}
 
@@ -253,12 +208,100 @@ void HeadsetRenderer::Update(const vr::OpenVRBackend& backend, const FrameReques
 	}
 }
 
+bool HeadsetRenderer::SubmitMono(const vr::OpenVRBackend& backend, const FrameRequest& request,
+                                 int& left, int& right) {
+	// Scoped so the bracket closes on every path out, including the ones that
+	// throw nothing and simply return. A queue left locked deadlocks Oblivion
+	// against its own renderer, and the symptom is a frozen game with an empty
+	// log.
+	GameFrame frame;
+	if (!frame.Acquire(request.gameDevice)) {
+		return false;
+	}
+
+	dxvk::VRVulkanTextureData data{};
+	DescribeForOpenVR(frame.GetImage(), m_vulkan, data);
+
+	// The same image to both eyes. This is mono - Oblivion's picture, flat,
+	// with no depth between the eyes.
+	//
+	// Different bounds per eye even so, or the two disagree about where the
+	// picture is: the optical axes sit at different places across each eye's
+	// view, so the whole texture in both would put Oblivion's centre somewhere
+	// neither eye is looking.
+	left = backend.SubmitEye(vr::openvr::kEyeLeft, &data, vr::openvr::kTextureTypeVulkan,
+	                         &m_boundsLeft);
+	right = backend.SubmitEye(vr::openvr::kEyeRight, &data, vr::openvr::kTextureTypeVulkan,
+	                          &m_boundsRight);
+	return true;
+}
+
+bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
+                                          const FrameRequest& request, int& left, int& right) {
+	if (!m_mirrorChecked) {
+		m_mirrorChecked = true;
+		m_mirrorUsable = m_mirror.Create(request.gameDevice);
+		OBVR_LOG("Render: alternate eyes are %s",
+		         m_mirrorUsable ? "on, each eye holding its own last picture"
+		                        : "unavailable, falling back to one image for both eyes");
+	}
+
+	if (!m_mirrorUsable) {
+		// Not a failure to report per frame, and not a reason to stop
+		// rendering either. The mono path below still works, so the wearer
+		// keeps a picture and the log has already said why it is flat.
+		return SubmitMono(backend, request, left, right);
+	}
+
+	// The copy first, with no queue held - StretchRect puts work on the very
+	// queue the bracket is about to lock, so doing it inside the bracket would
+	// be asking DXVK to submit while OBVR holds its submission queue.
+	if (!m_mirror.CopyBackBuffer(request.gameDevice, request.isLeftEye)) {
+		// Said once rather than never. The whole reason the first attempt at
+		// alternate eyes cost a session was that nothing failed out loud -
+		// so a path that quietly falls back to the test pattern gets a line,
+		// and gets it exactly once so the log stays readable.
+		if (!m_copyFailureLogged) {
+			m_copyFailureLogged = true;
+			OBVR_LOG("Render: the frame could not be copied into the %s eye, so the test "
+			         "pattern is showing instead",
+			         request.isLeftEye ? "left" : "right");
+		}
+		return false;
+	}
+
+	EyeMirror::Submission held(m_mirror, request.gameDevice);
+	if (!held.IsHeld()) {
+		return false;
+	}
+
+	// Both eyes, every frame, and that is the entire point of this path. The
+	// eye this frame was drawn for carries the picture just copied; the other
+	// carries its own last one. A single eye returns success and is not a
+	// frame - measured, in docs/verification/OBVR-aer-refused.log, where
+	// nothing failed and the scene faded out anyway.
+	dxvk::VRVulkanTextureData dataLeft{};
+	dxvk::VRVulkanTextureData dataRight{};
+	DescribeForOpenVR(m_mirror.GetImage(true), m_vulkan, dataLeft);
+	DescribeForOpenVR(m_mirror.GetImage(false), m_vulkan, dataRight);
+
+	left = backend.SubmitEye(vr::openvr::kEyeLeft, &dataLeft, vr::openvr::kTextureTypeVulkan,
+	                         &m_boundsLeft);
+	right = backend.SubmitEye(vr::openvr::kEyeRight, &dataRight,
+	                          vr::openvr::kTextureTypeVulkan, &m_boundsRight);
+	return true;
+}
+
 void HeadsetRenderer::Reset() {
 	m_textures.Destroy();
 	m_policy.Reset();
 	m_setupAttempted = false;
 	m_gameFrameChecked = false;
 	m_gameFrameUsable = false;
+	m_mirror.Destroy();
+	m_mirrorChecked = false;
+	m_mirrorUsable = false;
+	m_copyFailureLogged = false;
 	m_vulkan = VulkanContext{};
 }
 

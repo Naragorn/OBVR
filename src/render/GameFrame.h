@@ -2,34 +2,32 @@
 
 #include "render/DxvkInterop.h"
 #include "render/GameDevice.h"
+#include "render/InteropBracket.h"
 
 namespace obvr::render {
 
 // Borrows Oblivion's finished frame for long enough to hand it to the
 // compositor, and puts everything back afterwards.
 //
-// One class rather than a handful of calls because the sequence is a bracket,
-// not a list, and every step has an undo that must happen even when a later
-// step fails:
+// The holding-still half - flush, lock, transition, undo - is InteropBracket,
+// because AER needs exactly the same six steps around two images it owns
+// rather than one it borrows. What is left here is the borrowing: find the
+// back buffer, see whether it could be submitted at all, and let go of it
+// afterwards.
 //
-//   flush outstanding commands   so the compositor does not read a half-drawn
-//                                frame
-//   lock the submission queue    because SteamVR will schedule work on DXVK's
-//                                own queue, and Vulkan permits exactly one
-//                                thread on a queue at a time
-//   transition GENERAL to        because SteamVR requires that layout and a
-//   TRANSFER_SRC_OPTIMAL         back buffer is not in it
-//   ... submit ...
-//   transition back              because DXVK expects to find its image the
-//                                way it left it
-//   release the queue            or the game deadlocks on its own renderer
-//
-// Getting the undo half wrong does not produce a wrong picture. It produces a
-// frozen game, which is why the ordering lives in one place with one owner
-// rather than spread across the caller.
+// Borrowed is the operative word, and it is why this class alone is not
+// enough for stereo. The image behind it is the one the game draws the next
+// frame into, so it is only a picture for as long as nothing else has
+// happened. One eye per frame therefore cannot work by keeping the previous
+// frame's back buffer around: there is no previous frame's back buffer, only
+// the same buffer with newer pixels in it. See EyeMirror.
 class GameFrame {
 public:
 	~GameFrame() { Release(); }
+
+	GameFrame() = default;
+	GameFrame(const GameFrame&) = delete;
+	GameFrame& operator=(const GameFrame&) = delete;
 
 	// Takes the back buffer and prepares it for submission. False if
 	// anything is missing, in which case nothing is held and nothing needs
@@ -49,21 +47,14 @@ public:
 	const BackBufferImage& GetImage() const { return m_image; }
 
 private:
-	void* m_surface = nullptr;   // IDirect3DSurface9
-	void* m_texture = nullptr;   // ID3D9VkInteropTexture
-	void* m_interop = nullptr;   // ID3D9VkInteropDevice
+	void* m_surface = nullptr;  // IDirect3DSurface9
+	void* m_texture = nullptr;  // ID3D9VkInteropTexture
 
 	BackBufferImage m_image;
 
-	// Whether the layout was actually changed, and therefore whether it has
-	// to be changed back. Not the same as having acquired: a frame already in
-	// the right layout needs no transition and must not get an undo either.
-	bool m_transitioned = false;
-
-	// Whether the queue lock was taken. Kept apart from the transition flag
-	// because the two are undone in opposite order and a single flag would
-	// eventually be used for both.
-	bool m_queueLocked = false;
+	// Declared last so it is destroyed first: the queue has to be released
+	// before the surface it was locked around goes away.
+	InteropBracket m_bracket;
 };
 
 // Fills in the structure OpenVR wants from a frame and the device it came
@@ -74,5 +65,6 @@ private:
 // is a compositor error that names none of them.
 void DescribeForOpenVR(const BackBufferImage& image, const VulkanContext& context,
                        dxvk::VRVulkanTextureData& out);
+
 
 }  // namespace obvr::render
