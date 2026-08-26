@@ -70,7 +70,10 @@ public:
 	// uninitialised render target happens to contain, which is a flash of
 	// something in one eye at exactly the moment the wearer is looking for
 	// whether this works at all.
-	bool CopyBackBuffer(void* gameDevice, bool isLeft);
+	// bothEyes fills both copies from the same picture, which is what a menu
+	// wants: there is no camera and no eye separation, so anything else would
+	// be inventing depth that is not there.
+	bool CopyBackBuffer(void* gameDevice, bool isLeft, bool bothEyes = false);
 
 	// Brackets both pictures for submission: re-reads their layouts, flushes,
 	// locks the queue and moves both into TRANSFER_SRC_OPTIMAL.

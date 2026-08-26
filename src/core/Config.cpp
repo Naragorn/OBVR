@@ -239,6 +239,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Render", "GameFovIsFor4x3", config.tracker.gameFovIsFor4x3, path);
 	config.tracker.submitAtFrameEnd =
 		ReadBool("Render", "SubmitAtFrameEnd", config.tracker.submitAtFrameEnd, path);
+	config.tracker.showMenus = ReadBool("Render", "ShowMenus", config.tracker.showMenus, path);
 	config.look.blockVerticalLook =
 		ReadBool("Look", "BlockVerticalLook", config.look.blockVerticalLook, path);
 

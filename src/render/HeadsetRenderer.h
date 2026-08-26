@@ -50,6 +50,14 @@ public:
 		// have to agree, which is why both read camera::IsLeftEyeFrame rather
 		// than deciding for themselves.
 		bool alternateEyes = false;
+
+		// No camera ran for this frame - a menu, or a loading screen. The
+		// picture is whatever the game drew, given to both eyes flat.
+		//
+		// Without this the headset shows nothing at all while the main menu is
+		// up, so loading a game means taking it off. Which is a fail, and was
+		// reported as one.
+		bool flatFrame = false;
 		bool isLeftEye = true;
 
 		// Whether the back buffer already holds this frame's picture.
@@ -140,6 +148,15 @@ private:
 	EyeMirror m_mirror;
 	bool m_mirrorChecked = false;
 	bool m_mirrorUsable = false;
+
+	// Whether the mirror was built from Oblivion's own camera frustum rather
+	// than from a fallback.
+	//
+	// It matters because menus reach the headset before any camera has run, so
+	// the first build can happen with no frustum to hand - and a mirror built
+	// that way keeps a placement that was only ever a guess. When the real
+	// frustum turns up, it is rebuilt.
+	bool m_mirrorUsedCamera = false;
 	bool m_copyFailureLogged = false;
 
 	// The pose each eye's picture was actually drawn with, index 0 left.

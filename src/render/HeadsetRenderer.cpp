@@ -202,7 +202,7 @@ void HeadsetRenderer::EndFrame(const vr::OpenVRBackend& backend, const FrameRequ
 		}
 
 		if (m_gameFrameUsable) {
-			submittedGameFrame = request.alternateEyes
+			submittedGameFrame = (request.alternateEyes || request.flatFrame)
 			                         ? SubmitAlternateEyes(backend, request, left, right)
 			                         : SubmitMono(backend, request, left, right);
 		}
@@ -266,12 +266,26 @@ bool HeadsetRenderer::SubmitMono(const vr::OpenVRBackend& backend, const FrameRe
 
 bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
                                           const FrameRequest& request, int& left, int& right) {
+	// Rebuilt when the camera frustum turns up for the first time.
+	//
+	// The mirror may have been built during a menu, where no camera has run
+	// and the placement came from a fallback. Keeping that would throw away
+	// the one measurement that made the world the right size.
+	const bool haveCamera = request.cameraTanHalfWidth > 0.0f;
+	if (m_mirrorChecked && m_mirrorUsable && !m_mirrorUsedCamera && haveCamera) {
+		OBVR_LOG("Render: the camera frustum arrived, so the eye copies are being rebuilt "
+		         "with it");
+		m_mirrorChecked = false;
+		m_mirror.Destroy();
+	}
+
 	if (!m_mirrorChecked) {
 		m_mirrorChecked = true;
 		m_mirrorUsable = m_mirror.Create(request.gameDevice, m_eyeWidth, m_eyeHeight,
 		                                 m_leftEye, m_rightEye, request.gameFovDegrees,
 		                                 request.gameFovIsFor4x3, request.cameraTanHalfWidth,
 		                                 request.cameraTanHalfHeight);
+		m_mirrorUsedCamera = haveCamera;
 		OBVR_LOG("Render: alternate eyes are %s",
 		         m_mirrorUsable ? "on, each eye holding its own last picture and its own pose"
 		                        : "unavailable, falling back to one image for both eyes");
@@ -282,6 +296,32 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 		// rendering either. The mono path still works, so the wearer keeps a
 		// picture and the log has already said why it is flat.
 		return SubmitMono(backend, request, left, right);
+	}
+
+	if (request.flatFrame) {
+		// No camera ran, so there are no eyes and no poses: the same picture
+		// to both, with nothing claimed about where the head was. A menu has
+		// no viewpoint to be wrong about, and asserting one would have the
+		// compositor warp a flat image as the head moved.
+		if (!m_mirror.CopyBackBuffer(request.gameDevice, true, true)) {
+			return false;
+		}
+
+		EyeMirror::Submission flatHeld(m_mirror, request.gameDevice);
+		if (!flatHeld.IsHeld()) {
+			return false;
+		}
+
+		dxvk::VRVulkanTextureData flatLeft{};
+		dxvk::VRVulkanTextureData flatRight{};
+		DescribeForOpenVR(m_mirror.GetImage(true), m_vulkan, flatLeft);
+		DescribeForOpenVR(m_mirror.GetImage(false), m_vulkan, flatRight);
+
+		left = backend.SubmitEye(vr::openvr::kEyeLeft, &flatLeft,
+		                         vr::openvr::kTextureTypeVulkan, nullptr);
+		right = backend.SubmitEye(vr::openvr::kEyeRight, &flatRight,
+		                          vr::openvr::kTextureTypeVulkan, nullptr);
+		return true;
 	}
 
 	// Which eye the picture in the back buffer actually belongs to, which
@@ -381,6 +421,7 @@ void HeadsetRenderer::Reset() {
 	m_mirror.Destroy();
 	m_mirrorChecked = false;
 	m_mirrorUsable = false;
+	m_mirrorUsedCamera = false;
 	m_copyFailureLogged = false;
 	m_eyePoseValid[0] = false;
 	m_eyePoseValid[1] = false;

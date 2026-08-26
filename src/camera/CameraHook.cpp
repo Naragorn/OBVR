@@ -57,7 +57,40 @@ float Abs(float value) { return value < 0.0f ? -value : value; }
 // else that wanted doing at the end of a frame would be tempting to put here,
 // and this runs on the renderer's thread inside a call the game is waiting on.
 void OnFrameEnd() {
-	g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), g_pendingRequest);
+	if (g_frameOpen) {
+		g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), g_pendingRequest);
+		return;
+	}
+
+	// No camera pass for this frame, so this is a menu or a loading screen.
+	//
+	// Deliver it anyway. Without this the headset shows nothing at all while
+	// the main menu is up, which means loading a save requires taking the
+	// headset off - and after ten frames without a submit the compositor drops
+	// to its own Home scene, so it is not even a black screen, it is somebody
+	// else's room.
+	//
+	// Flat, and deliberately so: there is no camera to give the eyes different
+	// viewpoints from, and no pose the picture can be said to have been drawn
+	// with. Menus in the world rather than on a plane are a separate piece of
+	// work and a much larger one.
+	if (!GetConfig().tracker.showMenus) {
+		return;
+	}
+
+	render::HeadsetRenderer::FrameRequest menu;
+	menu.gameDevice = render::GetGameDevice();
+	menu.submitGameFrame = GetConfig().tracker.submitGameFrame;
+	menu.flatFrame = true;
+	menu.backBufferIsThisFrame = true;
+	menu.gameFovDegrees = GetConfig().tracker.gameFovDegrees;
+	menu.gameFovIsFor4x3 = GetConfig().tracker.gameFovIsFor4x3;
+	menu.cameraTanHalfWidth = g_state.cameraTanHalfWidth;
+	menu.cameraTanHalfHeight = g_state.cameraTanHalfHeight;
+
+	if (g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame())) {
+		g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), menu);
+	}
 }
 
 bool ReadIsThirdPerson() {

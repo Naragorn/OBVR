@@ -311,7 +311,7 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 	return true;
 }
 
-bool EyeMirror::CopyBackBuffer(void* gameDevice, bool isLeft) {
+bool EyeMirror::CopyBackBuffer(void* gameDevice, bool isLeft, bool bothEyes) {
 	if (!IsReady() || gameDevice == nullptr) {
 		return false;
 	}
@@ -332,8 +332,9 @@ bool EyeMirror::CopyBackBuffer(void* gameDevice, bool isLeft) {
 	// Both on the first pass. After that only the eye this frame belongs to -
 	// the other one keeps the picture from its own last turn, which is what
 	// makes the two eyes differ at all.
-	const int first = m_primed ? (isLeft ? 0 : 1) : 0;
-	const int last = m_primed ? first : 1;
+	const bool everyEye = bothEyes || !m_primed;
+	const int first = everyEye ? 0 : (isLeft ? 0 : 1);
+	const int last = everyEye ? 1 : first;
 
 	bool ok = true;
 	for (int index = first; index <= last; ++index) {

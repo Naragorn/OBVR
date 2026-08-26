@@ -134,6 +134,11 @@ struct TrackerSettings {
 	// latency, which in a headset is felt rather than seen.
 	bool submitAtFrameEnd = false;
 
+	// Whether menus and loading screens reach the headset. They have no camera,
+	// so they arrive flat - but the alternative is a headset showing nothing
+	// while the main menu is up.
+	bool showMenus = true;
+
 	// Oblivion units per metre, for converting the head offset.
 	//
 	// The Construction Set wiki gives "21.3 units to a foot ... 64 units per
