@@ -102,6 +102,28 @@ OBVR_IMPORT BOOL OBVR_STDCALL FreeLibrary(HMODULE module);
 // so it costs nothing at runtime.
 OBVR_IMPORT short OBVR_STDCALL GetAsyncKeyState(int virtualKey);
 
+// For sizing Oblivion's window when the fullscreen flag is cleared.
+//
+// This is not an extra: in exclusive fullscreen Direct3D sizes the game's
+// window itself, so Oblivion never had to. Windowed, that stops happening and
+// the window keeps whatever it was created with - 320x240, as DXVK reported
+// when it built the swapchain behind a 3200x3200 back buffer. The mouse was
+// mapped against that, and the device was eventually lost.
+//
+// RECT is spelled out here because the SDK-free branch has no windows.h. Its
+// four LONGs are the same four fields in the same order either way.
+struct WindowRect {
+	SInt32 left;
+	SInt32 top;
+	SInt32 right;
+	SInt32 bottom;
+};
+
+OBVR_IMPORT BOOL OBVR_STDCALL GetWindowRect(void* window, WindowRect* rect);
+OBVR_IMPORT BOOL OBVR_STDCALL GetClientRect(void* window, WindowRect* rect);
+OBVR_IMPORT BOOL OBVR_STDCALL SetWindowPos(void* window, void* insertAfter, int x, int y,
+                                           int width, int height, UInt32 flags);
+
 // From msvcrt.dll. Deliberately sin/cos rather than sinf/cosf: the float
 // variants are missing from older msvcrt revisions, the double ones are
 // present everywhere.

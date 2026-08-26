@@ -2,6 +2,7 @@
 
 #include "core/Log.h"
 #include "game/GameAddresses.h"
+#include "platform/GameWindow.h"
 #include "platform/ImportHook.h"
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
@@ -92,6 +93,34 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 
 	if (sizeChanged && parameters->windowed == 0) {
 		parameters->windowed = 1;
+
+		// And the window with it, before the device is made rather than after:
+		// the runtime reads the window's size while it builds the swapchain,
+		// so a window resized afterwards is a swapchain already built wrong.
+		//
+		// This is the step that was missing the first time. Clearing the
+		// fullscreen flag was necessary and correct; what it did not account
+		// for is that in exclusive fullscreen Direct3D sizes the window itself
+		// and Oblivion therefore never does. Windowed, the window kept the
+		// 320x240 it was created with, DXVK built the swapchain at that size
+		// behind a 3200x3200 back buffer, the mouse was mapped against it, and
+		// the device was lost.
+		//
+		// The size asked for is the game's own, not the screen's: Oblivion
+		// lays out its interface and maps its mouse against the resolution it
+		// believes in, and that is what was in these parameters a moment ago.
+		void* window = parameters->deviceWindow != nullptr ? parameters->deviceWindow
+		                                                   : focusWindow;
+		UInt32 wasWidth = 0;
+		UInt32 wasHeight = 0;
+		const bool sized = platform::SizeClientArea(window, asTheGameAskedFor.backBufferWidth,
+		                                            asTheGameAskedFor.backBufferHeight,
+		                                            wasWidth, wasHeight);
+		if (g_reportsLeft > 0) {
+			OBVR_LOG("Resolution: fullscreen cleared, and the window %s from %ux%u to %ux%u",
+			         sized ? "resized" : "COULD NOT BE RESIZED, still", wasWidth, wasHeight,
+			         asTheGameAskedFor.backBufferWidth, asTheGameAskedFor.backBufferHeight);
+		}
 	}
 
 	const bool anythingChanged = sizeChanged || parameters->windowed != asTheGameAskedFor.windowed;

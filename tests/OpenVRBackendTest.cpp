@@ -79,8 +79,8 @@ void CheckNear(float actual, float expected, const char* what) {
 	}
 }
 
-void TestLevelPoseKeepsPitch() {
-	std::printf("Levelling an anchor pose takes out roll and leaves pitch\n");
+void TestLevelPoseKeepsHeadingOnly() {
+	std::printf("Levelling an anchor pose leaves the heading and nothing else\n");
 
 	using obvr::vr::LevelPose;
 
@@ -90,56 +90,44 @@ void TestLevelPoseKeepsPitch() {
 	const float roll = 0.4363f;
 
 	obvr::vr::openvr::HmdMatrix34 pose = PoseLookingAt(pitch, yaw, roll);
-	const obvr::vr::openvr::HmdMatrix34 before = pose;
 	LevelPose(pose);
 
-	// The view direction is untouched, which is what keeping pitch and yaw
-	// means. This is the check that would have failed before: levelling used
-	// to flatten the third column too, and a menu anchored to it hung at eye
-	// level however the wearer was looking.
-	CheckNear(pose.m[0][2], before.m[0][2], "the view direction keeps its x");
-	CheckNear(pose.m[1][2], before.m[1][2], "and its y, which is the pitch");
-	CheckNear(pose.m[2][2], before.m[2][2], "and its z");
+	// Up is world up exactly. Roll would tilt it, and so would pitch.
+	CheckNear(pose.m[0][1], 0.0f, "up has no x");
+	CheckNear(pose.m[1][1], 1.0f, "up is world up");
+	CheckNear(pose.m[2][1], 0.0f, "up has no z");
 
-	// Right is horizontal, which is what having no roll means: the horizon in
-	// the picture runs level however the head is tilted.
-	CheckNear(pose.m[1][0], 0.0f, "right has no vertical component, so nothing is tilted");
+	// The view direction is horizontal: the heading is kept, the aim is not.
+	// This is deliberate - in the world the recenter key turns the wearer and
+	// does not change how high they are looking, and an anchor that kept pitch
+	// would make the same key mean two things.
+	CheckNear(pose.m[1][2], 0.0f, "the view direction is level, so pitch is gone");
 
-	// Still a rotation: the three columns unit length and mutually
-	// perpendicular. A matrix that is not would shear the picture rather than
-	// turn it, and the failure would look like a rendering fault.
+	// The heading itself survives. Forward is the negative of column 2, and
+	// for a yaw of 40 degrees that is ( -sin 40, 0, -cos 40 ).
+	CheckNear(-pose.m[0][2], -std::sin(yaw), "the heading keeps its x");
+	CheckNear(-pose.m[2][2], -std::cos(yaw), "and its z");
+
+	// Still a rotation: unit columns, mutually perpendicular. One that is not
+	// would shear the picture rather than turn it, and the failure would look
+	// like a rendering fault rather than a matrix.
 	const float rr = pose.m[0][0] * pose.m[0][0] + pose.m[1][0] * pose.m[1][0] +
 	                 pose.m[2][0] * pose.m[2][0];
-	const float uu = pose.m[0][1] * pose.m[0][1] + pose.m[1][1] * pose.m[1][1] +
-	                 pose.m[2][1] * pose.m[2][1];
+	const float bb = pose.m[0][2] * pose.m[0][2] + pose.m[1][2] * pose.m[1][2] +
+	                 pose.m[2][2] * pose.m[2][2];
 	CheckNear(rr, 1.0f, "right is a unit vector");
-	CheckNear(uu, 1.0f, "up is a unit vector");
+	CheckNear(bb, 1.0f, "backward is a unit vector");
 
-	const float ru = pose.m[0][0] * pose.m[0][1] + pose.m[1][0] * pose.m[1][1] +
-	                 pose.m[2][0] * pose.m[2][1];
 	const float rb = pose.m[0][0] * pose.m[0][2] + pose.m[1][0] * pose.m[1][2] +
 	                 pose.m[2][0] * pose.m[2][2];
-	const float ub = pose.m[0][1] * pose.m[0][2] + pose.m[1][1] * pose.m[1][2] +
-	                 pose.m[2][1] * pose.m[2][2];
-	CheckNear(ru, 0.0f, "right and up are perpendicular");
 	CheckNear(rb, 0.0f, "right and backward are perpendicular");
-	CheckNear(ub, 0.0f, "up and backward are perpendicular");
-
-	// Up points upwards. With pitch kept it is not (0,1,0) any more, but a
-	// wearer looking 30 degrees down still has up above them.
-	obvr::vr::openvr::HmdMatrix34 level = PoseLookingAt(pitch, yaw, roll);
-	LevelPose(level);
-	std::printf(level.m[1][1] > 0.0f ? "  ok    up still points upwards\n"
-	                                 : "  FAIL  up still points upwards\n");
-	if (!(level.m[1][1] > 0.0f)) {
-		++g_failures;
-	}
 
 	// The position is not an orientation and is left alone.
 	CheckNear(pose.m[0][3], 1.0f, "the position keeps its x");
 	CheckNear(pose.m[1][3], 2.0f, "and its y");
 	CheckNear(pose.m[2][3], 3.0f, "and its z");
 }
+
 
 void TestLevelPoseLookingStraightDown() {
 	std::printf("Levelling a pose that looks straight down\n");
@@ -174,7 +162,7 @@ void TestLevelPoseLookingStraightDown() {
 int main() {
 	std::printf("OBVR OpenVR backend, fallback without SteamVR\n\n");
 
-	TestLevelPoseKeepsPitch();
+	TestLevelPoseKeepsHeadingOnly();
 	std::printf("\n");
 	TestLevelPoseLookingStraightDown();
 	std::printf("\n");

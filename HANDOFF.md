@@ -1477,6 +1477,47 @@ drawing once per frame means. Two passes per frame is the fix, and per-eye proje
 the second pass knows what to draw.
 
 
+### The window was the missing third step
+
+`SetGameResolution` is on again, and now sizes the window as well as the frame.
+
+Three things have to happen together, and the first attempt did two of them:
+
+1. the back buffer is created at the wanted size, in `CreateDevice`
+2. the fullscreen flag is cleared, because a square frame is not a display
+   mode and no driver can switch a monitor into one
+3. **the window is sized to the resolution the game asked for**
+
+Step 3 is not housekeeping. In exclusive fullscreen Direct3D sizes the game's
+window itself, so Oblivion never does - and windowed, that stops happening.
+The window kept the 320x240 it was created with, DXVK built the swapchain at
+that size behind a 3200x3200 back buffer, the mouse was mapped against those
+320x240 pixels, and the device was lost outright.
+
+The size asked for is the game's own, not the screen's. Oblivion lays out its
+interface and maps its mouse against the resolution it believes in, which is
+what stood in `D3DPRESENT_PARAMETERS` before OBVR changed it. Giving the window
+exactly that keeps all of those calculations true and leaves the enlarged back
+buffer doing the one thing it is for: more pixels behind the same picture,
+scaled down on the way to the screen. The client area is what is set, and the
+border is measured rather than assumed to be zero.
+
+### The anchor keeps the heading and nothing else
+
+`LevelPose` is back to yaw alone, by decision rather than by accident.
+
+It briefly kept pitch, to put the picture where the wearer was looking. That
+worked, and was rejected for a better reason than it was written: in the world
+the recenter key turns the wearer to face a direction and does not change how
+high they are looking, because vertical aim belongs to the game. An anchor
+that kept pitch would make one key mean two different things depending on
+whether a menu was open.
+
+What it costs is stated in the code rather than left to be rediscovered: the
+picture hangs at eye level, not where the wearer happens to be looking, so
+pressing the key while looking down leaves it above the line of sight. That is
+what a screen on a wall does.
+
 ### The frame is the game's size again, and the reason is a window nobody sized
 
 `SetGameResolution` is off. It worked - the frame really was created at

@@ -34,6 +34,7 @@ add_library(OBVR SHARED
 	src/core/Rotation.cpp
 	src/core/Smoothing.cpp
 	src/platform/Freestanding.cpp
+	src/platform/GameWindow.cpp
 	src/platform/ImportHook.cpp
 	src/platform/PluginPath.cpp
 	src/render/EyeGeometry.cpp
