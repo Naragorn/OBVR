@@ -408,7 +408,18 @@ void* HudBeginRedirect() {
 		return nullptr;
 	}
 
-	return g_hudLayer.BeginCapture(render::GetGameDevice());
+	// The first few invocations with their frame numbers, because "how often
+	// does this pass run per frame" turned out to be the question: two
+	// invocations sharing a frame number is the wipe that emptied the
+	// texture, written down as numbers.
+	static UInt32 s_invocationsTraced = 0;
+	if (s_invocationsTraced < 6) {
+		++s_invocationsTraced;
+		OBVR_LOG("Hud: redirect invocation %u on frame %u", s_invocationsTraced,
+		         g_state.frameCount);
+	}
+
+	return g_hudLayer.BeginCapture(render::GetGameDevice(), g_state.frameCount);
 }
 
 void HudEndRedirect() { g_hudLayer.EndCapture(); }

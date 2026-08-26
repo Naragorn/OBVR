@@ -127,19 +127,30 @@ bool HudLayer::EnsureTexture(void* gameDevice) {
 	return true;
 }
 
-void* HudLayer::BeginCapture(void* gameDevice) {
-	m_captured = false;
-
+void* HudLayer::BeginCapture(void* gameDevice, UInt32 frameNumber) {
 	if (!EnsureTexture(gameDevice)) {
+		m_captured = false;
 		return nullptr;
 	}
 
-	// Transparent, then drawn on. Without the clear, last frame's HUD shows
-	// through wherever this frame draws nothing - which is most of it.
-	auto colorFill = d3d9::Method<d3d9::ColorFillFn>(gameDevice, d3d9::kDeviceColorFill);
-	if (colorFill == nullptr ||
-	    d3d11::Failed(colorFill(gameDevice, m_surface, nullptr, kTransparentBlack))) {
-		return nullptr;
+	// Transparent, then drawn on - once per frame. The pass runs more than
+	// once in a frame, and every call after the first has to accumulate onto
+	// what the earlier calls drew, not onto a fresh clear: clearing per call
+	// is how twenty-two counted draws became a texture of nothing.
+	//
+	// Without any clear at all, last frame's HUD would show through wherever
+	// this frame draws nothing - which is most of it.
+	if (!m_everCleared || m_lastClearFrame != frameNumber) {
+		auto colorFill =
+			d3d9::Method<d3d9::ColorFillFn>(gameDevice, d3d9::kDeviceColorFill);
+		if (colorFill == nullptr ||
+		    d3d11::Failed(colorFill(gameDevice, m_surface, nullptr, kTransparentBlack))) {
+			m_captured = false;
+			return nullptr;
+		}
+		m_everCleared = true;
+		m_lastClearFrame = frameNumber;
+		m_captured = false;
 	}
 
 	// Save, then set. The restore in EndCapture runs whether or not the pass
@@ -162,14 +173,23 @@ void* HudLayer::BeginCapture(void* gameDevice) {
 	m_statesSaved = true;
 
 	// What the game was running with, once, because it is evidence: a write
-	// mask without the 0x8 bit is a HUD whose alpha never left zero, and this
-	// line is what says so without another run.
+	// mask without the 0x8 bit is a HUD whose alpha never left zero, and a
+	// z test enabled against a depth buffer nobody cleared would reject
+	// every draw without an error anywhere.
 	if (!m_statesReported) {
 		m_statesReported = true;
+		UInt32 zEnable = 0;
+		UInt32 alphaBlend = 0;
+		UInt32 alphaTest = 0;
+		UInt32 scissor = 0;
+		getState(gameDevice, 7, &zEnable);      // D3DRS_ZENABLE
+		getState(gameDevice, 27, &alphaBlend);  // D3DRS_ALPHABLENDENABLE
+		getState(gameDevice, 15, &alphaTest);   // D3DRS_ALPHATESTENABLE
+		getState(gameDevice, 174, &scissor);    // D3DRS_SCISSORTESTENABLE
 		OBVR_LOG("Hud: states before the pass: separate=%u srcA=%u dstA=%u op=%u "
-		         "writeMask=0x%X",
+		         "writeMask=0x%X z=%u blend=%u alphaTest=%u scissor=%u",
 		         m_savedStates[0], m_savedStates[1], m_savedStates[2], m_savedStates[3],
-		         m_savedStates[4]);
+		         m_savedStates[4], zEnable, alphaBlend, alphaTest, scissor);
 	}
 
 	m_captured = true;

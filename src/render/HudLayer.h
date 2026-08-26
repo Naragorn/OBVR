@@ -37,9 +37,15 @@ public:
 	// transparent black, switches the alpha side of blending to the correct
 	// over-operator, and hands back the surface the pass should draw into.
 	//
+	// frameNumber decides the clear: once per frame, not once per call. The
+	// pass can run more than once in a frame, and clearing on every call
+	// wiped the earlier call's drawing - twenty-two draws counted, and a
+	// texture of nothing at Present, because the last caller of the frame
+	// drew nothing over a fresh clear.
+	//
 	// Null when anything is missing - the submit then falls back to hiding
 	// the overlay, and the pass draws into the back buffer as it always did.
-	void* BeginCapture(void* gameDevice);
+	void* BeginCapture(void* gameDevice, UInt32 frameNumber);
 
 	// Called after the redirected pass returned: puts the four blend states
 	// back the way the game had them.
@@ -86,6 +92,11 @@ private:
 	bool m_statesSaved = false;
 	bool m_statesReported = false;
 	bool m_captured = false;
+
+	// The frame the texture was last cleared for. Not an optimisation: see
+	// BeginCapture.
+	UInt32 m_lastClearFrame = 0;
+	bool m_everCleared = false;
 
 	vr::openvr::VROverlayHandle m_overlay = vr::openvr::kOverlayHandleInvalid;
 	bool m_overlayTried = false;
