@@ -88,19 +88,33 @@ bool g_depthChecked = false;
 UInt32 g_depthClearFlags = 0;
 UInt32 g_depthClearTraceLeft = 3;
 
+// The reference measurement. The redirected first draw ran through a
+// perspective projection and a world translation - matrices the interface
+// cannot possibly want - so one pass that would have been redirected runs
+// vanilla instead, watched by the same counters and the same first-draw
+// sample. What the matrices hold when the HUD provably reaches the back
+// buffer is the reference every redirected number now gets compared to.
+// The three hundredth pass rather than the first, so the game is settled
+// and drawing real interface content by then.
+UInt32 g_observeCountdown = 300;
+bool g_observing = false;
+
 d3d9::DrawPrimitiveFn g_originalDrawPrimitive = nullptr;
 d3d9::DrawIndexedPrimitiveFn g_originalDrawIndexed = nullptr;
 d3d9::DrawPrimitiveUPFn g_originalDrawUP = nullptr;
 d3d9::DrawIndexedPrimitiveUPFn g_originalDrawIndexedUP = nullptr;
 
 SInt32 __stdcall HookedSetRenderTarget(void* self, UInt32 index, void* surface) {
-	if (g_redirecting && index == 0 && surface != nullptr && surface == g_backBuffer) {
-		++g_statsMatched;
-		g_lastRequested = surface;
-		surface = g_substitute;
-	} else if (g_redirecting && index == 0 && surface != nullptr &&
-	           surface != g_substitute) {
-		++g_statsOtherTargets;
+	if ((g_redirecting || g_observing) && index == 0 && surface != nullptr) {
+		if (surface == g_backBuffer) {
+			++g_statsMatched;
+			if (g_redirecting) {
+				g_lastRequested = surface;
+				surface = g_substitute;
+			}
+		} else if (surface != g_substitute) {
+			++g_statsOtherTargets;
+		}
 	}
 	return g_originalSetTarget(self, index, surface);
 }
@@ -256,12 +270,12 @@ void SampleFirstDraw(void* device, const char* kind, UInt32 type, UInt32 count) 
 
 SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex,
                                      UInt32 primitiveCount) {
-	if (g_redirecting && g_sampleNextDraw) {
+	if ((g_redirecting || g_observing) && g_sampleNextDraw) {
 		g_sampleNextDraw = false;
 		SampleFirstDraw(self, "dp", type, primitiveCount);
 	}
 	const SInt32 result = g_originalDrawPrimitive(self, type, startVertex, primitiveCount);
-	if (g_redirecting) {
+	if (g_redirecting || g_observing) {
 		++g_statsDraws;
 		++g_statsKind[0];
 		if (result < 0) {
@@ -274,13 +288,13 @@ SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex
 SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 baseVertexIndex,
                                             UInt32 minVertexIndex, UInt32 numVertices,
                                             UInt32 startIndex, UInt32 primCount) {
-	if (g_redirecting && g_sampleNextDraw) {
+	if ((g_redirecting || g_observing) && g_sampleNextDraw) {
 		g_sampleNextDraw = false;
 		SampleFirstDraw(self, "dip", type, primCount);
 	}
 	const SInt32 result = g_originalDrawIndexed(self, type, baseVertexIndex, minVertexIndex,
 	                                            numVertices, startIndex, primCount);
-	if (g_redirecting) {
+	if (g_redirecting || g_observing) {
 		++g_statsDraws;
 		++g_statsKind[1];
 		if (result < 0) {
@@ -292,12 +306,12 @@ SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 base
 
 SInt32 __stdcall HookedDrawPrimitiveUP(void* self, UInt32 type, UInt32 primitiveCount,
                                        const void* vertexData, UInt32 stride) {
-	if (g_redirecting && g_sampleNextDraw) {
+	if ((g_redirecting || g_observing) && g_sampleNextDraw) {
 		g_sampleNextDraw = false;
 		SampleFirstDraw(self, "dpup", type, primitiveCount);
 	}
 	const SInt32 result = g_originalDrawUP(self, type, primitiveCount, vertexData, stride);
-	if (g_redirecting) {
+	if (g_redirecting || g_observing) {
 		++g_statsDraws;
 		++g_statsKind[2];
 		if (result < 0) {
@@ -311,14 +325,14 @@ SInt32 __stdcall HookedDrawIndexedPrimitiveUP(void* self, UInt32 type, UInt32 mi
                                               UInt32 numVertices, UInt32 primitiveCount,
                                               const void* indexData, UInt32 indexFormat,
                                               const void* vertexData, UInt32 stride) {
-	if (g_redirecting && g_sampleNextDraw) {
+	if ((g_redirecting || g_observing) && g_sampleNextDraw) {
 		g_sampleNextDraw = false;
 		SampleFirstDraw(self, "dipup", type, primitiveCount);
 	}
 	const SInt32 result =
 		g_originalDrawIndexedUP(self, type, minVertexIndex, numVertices, primitiveCount,
 	                            indexData, indexFormat, vertexData, stride);
-	if (g_redirecting) {
+	if (g_redirecting || g_observing) {
 		++g_statsDraws;
 		++g_statsKind[3];
 		if (result < 0) {
@@ -333,7 +347,7 @@ SInt32 __stdcall HookedDrawIndexedPrimitiveUP(void* self, UInt32 type, UInt32 mi
 // stay out of their own statistics.
 SInt32 __stdcall HookedClear(void* self, UInt32 count, const d3d9::Rect* rects,
                              UInt32 flags, UInt32 color, float z, UInt32 stencil) {
-	if (g_redirecting) {
+	if (g_redirecting || g_observing) {
 		++g_statsClears;
 		g_statsClearFlagsSeen |= flags;
 	}
@@ -505,6 +519,41 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 	}
 
 	const bool probe = g_callbacks.probeActive != nullptr && g_callbacks.probeActive();
+
+	// The reference pass: one pass that would have been redirected runs
+	// vanilla, watched. The capture the callback just claimed is released
+	// again first - its blend states go back, and the untouched texture it
+	// cleared submits as one transparent frame, which a probe run accepts.
+	// No aim, no substitution, no clears of OBVR's own: the counters and
+	// the first-draw sample see the pass exactly as the game runs it, HUD
+	// provably landing in the back buffer, and the matrices they record are
+	// the reference the redirected numbers get held against.
+	if (probe && g_observeCountdown > 0) {
+		--g_observeCountdown;
+		if (g_observeCountdown == 0) {
+			g_callbacks.endRedirect();
+			g_statsDraws = 0;
+			g_statsFailedDraws = 0;
+			g_statsMatched = 0;
+			g_statsOtherTargets = 0;
+			g_statsKind[0] = g_statsKind[1] = g_statsKind[2] = g_statsKind[3] = 0;
+			g_statsClears = 0;
+			g_statsClearFlagsSeen = 0;
+			OBVR_LOG("Hud observe: watching one vanilla pass");
+			g_sampleNextDraw = true;
+			g_observing = true;
+			g_original(self, unusedEdx, renderedTexture);
+			g_observing = false;
+			g_sampleNextDraw = false;
+			OBVR_LOG("Hud observe (vanilla) trace: draws=%u (failed %u, dp=%u dip=%u "
+			         "dpup=%u dipup=%u), clears=%u (flags seen 0x%X), back buffer "
+			         "matched=%u, other targets=%u",
+			         g_statsDraws, g_statsFailedDraws, g_statsKind[0], g_statsKind[1],
+			         g_statsKind[2], g_statsKind[3], g_statsClears, g_statsClearFlagsSeen,
+			         g_statsMatched, g_statsOtherTargets);
+			return;
+		}
+	}
 
 	// What the device is aiming at now, so it can be put back if the pass
 	// never sets a target of its own. GetRenderTarget adds a reference.
