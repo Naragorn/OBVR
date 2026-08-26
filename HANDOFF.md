@@ -1476,6 +1476,37 @@ stale image while the other changes. No amount of latency work touches that; it 
 drawing once per frame means. Two passes per frame is the fix, and per-eye projection is how
 the second pass knows what to draw.
 
+
+### Decided, not started: the 2D pass gets its own target
+
+The HUD, the menus and the dialogues are one problem and will be solved as one, because in
+Oblivion they are one thing: a 2D layer drawn into the same back buffer as the world, after
+it, with an orthographic projection. By the time OBVR sees the back buffer the pixels are
+already mixed, and there is nothing left to separate.
+
+**The route chosen is B: intercept the pass that draws that layer and point it at a texture
+of OBVR's own.** Not A, which was to snapshot the back buffer before and after the layer and
+take the difference - that fails because alpha blending is not reversible, so the difference
+is not the layer.
+
+With the layer on its own texture, complete with alpha, it becomes an `IVROverlay` and hangs
+wherever it is put: a fixed distance in front of the wearer, or attached to the world. The
+scene keeps rendering in stereo behind it and is not otherwise touched, which is exactly the
+shape the request had - VR stays 3D, only the menus leave the picture and enter the room.
+
+What it needs, in order:
+
+1. **Locate the pass.** The one open question, and the same kind of question the camera
+   frustum was: which engine function sets up and draws the 2D layer. TES-Reloaded and xOBSE
+   both work on this renderer and are the places to look.
+2. **Redirect it.** `IDirect3DDevice9::SetRenderTarget` is vtable entry 37, and only for the
+   duration of that pass - the world's target has to come back afterwards or the world stops
+   being drawn.
+3. **Submit it as an overlay.** `IVROverlay` is a compositor interface OBVR does not touch
+   yet; it is well documented and the smallest of the three pieces.
+
+Deliberately not started. Recorded here so the decision survives the length of the session
+that made it.
 ### What is still true and unfixed
 
 - ~~The picture is one frame stale~~ - fixed by Render.SubmitAtFrameEnd, which hooks Present
