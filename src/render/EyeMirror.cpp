@@ -300,7 +300,7 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 		100 * (m_eye[0].destination.bottom - m_eye[0].destination.top) /
 		static_cast<SInt32>(m_height));
 	OBVR_LOG("Mirror: the picture fills %d%% of the view across and %d%% down; the rest is "
-	         "black. Raise Oblivion's fDefaultFOV to fill more, at the cost of pushing the "
+	         "black. Raise Render.GameFovOverride to fill more, at the cost of pushing the "
 	         "HUD further out",
 	         fillW, fillH);
 
