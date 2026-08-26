@@ -262,7 +262,8 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 
 	OBVR_LOG("Mirror: the game's %ux%u frame at %.1f degrees sits at left x=%d..%d y=%d..%d, "
 	         "right x=%d..%d y=%d..%d%s",
-	         m_frameWidth, m_frameHeight, static_cast<double>(gameFovDegrees),
+	         m_frameWidth, m_frameHeight,
+	         static_cast<double>(2.0f * math::Atan(tanHalfWidth) * math::kRadiansToDegrees),
 	         m_eye[0].destination.left, m_eye[0].destination.right, m_eye[0].destination.top,
 	         m_eye[0].destination.bottom, m_eye[1].destination.left,
 	         m_eye[1].destination.right, m_eye[1].destination.top, m_eye[1].destination.bottom,
