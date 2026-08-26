@@ -1,0 +1,40 @@
+OBVR 1 - Query
+OBSE version 22, Oblivion version 010201A0
+OBVR 1 - Load
+Config: D:\SteamLibrary\steamapps\common\Oblivion\Data\OBSE\Plugins\OBVR.ini
+Config: HookEnabled=1 Source=openvr Fixed=(P 0.0, R 20.0, Y 0.0)
+Config: Simulated=(Yaw 25.0, Pitch 12.0, Period 600) LogEveryFrames=0 ReloadEveryFrames=120
+Config: RecenterKey=46 (0x2E)
+Config: PositionalTracking=1 UnitsPerMetre=69.99 HeadMovementScale=3.00 (effective 209.97) MaxLeanUnits=120.0
+Config: BlockVerticalLook=1 VerticalLookRange=(up 60.0, down 120.0) SmoothVerticalLook=1 (8.0)
+Config: SmoothTurning=0 TurnSpeed=12.0
+Config: Render.Enabled=1 GameFrame=1 Stereo=aer - OBVR will claim the VR scene
+Config: Render.GameFovDegrees=75.0 IsFor4x3=0 SubmitAtFrameEnd=1
+OpenVR: connected as a scene application through FnTable:IVRSystem_026 and FnTable:IVRCompositor_029
+Camera: hook installed at 0066BE6E, trampoline at 04160000 (37 bytes)
+OBVR ready
+Camera: first hook pass, CameraNode=1812BCA0, third person
+Render: Oblivion's D3D9 device 0B6B7140 is DXVK
+Render: Vulkan instance=08C1EE00 physical=08C37C70 device=34880078
+Render: Vulkan queue=345D1578 index=0 family=0
+Render: back buffer image=0000000034A33C78 2560x1440 format=44 samples=1 layout=1
+Render: back buffer usage=00000017 transfer_src=1 sampled=1, submittable once transitioned
+Render: left eye raw=(l -1.1518, r 0.8248, t -1.1991, b 0.7927)
+Render: left eye fov=(h 88.6 deg, v 88.6 deg) asymmetry=(h -0.3270, v -0.4064)
+Render: right eye raw=(l -0.8417, r 1.1419, t -1.1908, b 0.8073)
+Render: right eye fov=(h 88.9 deg, v 88.9 deg) asymmetry=(h 0.3003, v -0.3835)
+Render: eye offsets left=(-0.0310, 0.0000, 0.0000) right=(0.0310, 0.0000, 0.0000)
+Render: IPD 62.0 mm
+Render: game frame bounds left u=0.034..0.834 right u=0.161..0.961
+Render: two 3560x3560 eye textures ready, cross at u=0.583 and u=0.424
+Head: eye separation 62.0 mm, half of it 2.17 Oblivion units
+Present: hooked at table entry 17, original at 784DA2A0 - the picture submitted is now the one just drawn
+Render: the game frame is usable, submitting Oblivion's own picture
+Mirror: 3560x3560 textures, D3DFORMAT 22, Vulkan format 44, usage 0x00000017 - submittable
+Mirror: measured Oblivion's own frustum - 75.0 degrees across, 46.7 down. GameFovDegrees and GameFovIsFor4x3 are not used
+Camera: frustum l=-1.1188 r=1.1188 t=0.6293 b=-0.6293 n=10.0000 f=283840.0 ortho=0
+Camera: that is 12.8 degrees across and 7.2 down - does NOT agree, so one of the two readings is wrong
+Mirror: the game's 2560x1440 frame at 75.0 degrees sits at left x=692..3456 y=645..2188, right x=133..2888 y=669..2207
+Mirror: the picture fills 77% of the view across and 43% down; the rest is black. Raise Oblivion's fDefaultFOV to fill more, at the cost of pushing the HUD further out
+Render: alternate eyes are on, each eye holding its own last picture
+Camera: recentered on key 0x2E (frame 296)

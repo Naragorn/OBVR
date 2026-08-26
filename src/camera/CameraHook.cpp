@@ -5,7 +5,9 @@
 #include "core/Config.h"
 #include "core/Log.h"
 #include "core/Memory.h"
+#include "core/MathFns.h"
 #include "game/GameAddresses.h"
+#include "game/GameCamera.h"
 #include "platform/Win32Min.h"
 #include "render/DxvkInterop.h"
 #include "render/GameDevice.h"
@@ -42,6 +44,10 @@ bool g_presentHookRefused = false;
 // Whether BeginFrame opened a frame this pass. The submit at the end - here or
 // from Present - is only owed when it did.
 bool g_frameOpen = false;
+
+// Watches Oblivion's own render frustum for a few frames, to say whether it is
+// one view or several. See game::FrustumWatcher.
+game::FrustumWatcher g_frustumWatcher;
 
 // Runs from inside Present, with Oblivion's finished frame in the back buffer.
 //
@@ -245,6 +251,28 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// Does nothing when rendering is off or the compositor was never reached,
 	// so the cost on a machine without a headset is one comparison.
 	g_frameOpen = g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame());
+
+
+	// Watch Oblivion's own render frustum, a handful of times.
+	//
+	// Reading it once at startup found a view 1.458 times wider in tangents
+	// than the projection matrix reported - the same factor in both axes. That
+	// is one view at the wrong size rather than a different view, and the two
+	// candidates are a camera meant for something else or the right camera at
+	// the wrong moment. Whether it moves is what separates them.
+	if (GetConfig().tracker.renderToHeadset) {
+		game::NiFrustum frustum{};
+		if (game::ReadGameCameraFrustum(frustum) && g_frustumWatcher.Observe(frustum)) {
+			OBVR_LOG("Camera: frustum #%u l=%.4f r=%.4f t=%.4f b=%.4f n=%.4f f=%.1f "
+			         "(%.1f deg across)",
+			         g_frustumWatcher.Reported(), static_cast<double>(frustum.l),
+			         static_cast<double>(frustum.r), static_cast<double>(frustum.t),
+			         static_cast<double>(frustum.b), static_cast<double>(frustum.n),
+			         static_cast<double>(frustum.f),
+			         static_cast<double>(2.0f * math::Atan(frustum.r) *
+			                             math::kRadiansToDegrees));
+		}
+	}
 
 	g_headTracker.Update(g_state.frameCount);
 

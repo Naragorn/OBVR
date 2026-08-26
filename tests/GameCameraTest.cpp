@@ -40,10 +40,10 @@ obvr::game::NiFrustum MeasuredFrustum() {
 	obvr::game::NiFrustum frustum{};
 	frustum.n = 10.0f;
 	frustum.f = 10000.0f;
-	frustum.l = -10.0f * kTanAcross;
-	frustum.r = 10.0f * kTanAcross;
-	frustum.t = 10.0f * kTanDown;
-	frustum.b = -10.0f * kTanDown;
+	frustum.l = -kTanAcross;
+	frustum.r = kTanAcross;
+	frustum.t = kTanDown;
+	frustum.b = -kTanDown;
 	frustum.o = false;
 	return frustum;
 }
@@ -56,17 +56,16 @@ void TestAgreement() {
 	Check(FrustumLooksRight(MeasuredFrustum(), kTanAcross, kTanDown),
 	      "the frustum Oblivion should have is recognised");
 
-	// The near plane is what the other four are divided by, so the same angles
-	// at a different near distance have to pass just as well. This is the
-	// property that makes the check about angles rather than about distances.
-	obvr::game::NiFrustum far = MeasuredFrustum();
-	far.l *= 7.0f;
-	far.r *= 7.0f;
-	far.t *= 7.0f;
-	far.b *= 7.0f;
-	far.n *= 7.0f;
-	Check(FrustumLooksRight(far, kTanAcross, kTanDown),
-	      "and so is the same view at a different near plane");
+	// The edges are tangents, so the near plane does not enter into the
+	// angles at all. Changing it must change nothing.
+	//
+	// This is the property that was got backwards the first time: dividing by
+	// the near plane turned a 96 degree view into a 12.8 degree one, which no
+	// game renders and which is what made the mistake visible.
+	obvr::game::NiFrustum nearer = MeasuredFrustum();
+	nearer.n = 0.5f;
+	Check(FrustumLooksRight(nearer, kTanAcross, kTanDown),
+	      "the near plane does not enter into the angles");
 
 	// Signs are not settled here and do not need to be: a frustum two units
 	// wide spans the same angle whichever way its edges are signed.

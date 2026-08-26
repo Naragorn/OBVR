@@ -44,10 +44,10 @@ inline constexpr UInt32 kNiCameraFrustumOffset = 0x0EC;
 
 // NiFrustum, as NiTypes.h declares it: six planes and an orthographic flag.
 //
-// The near plane is what makes the other four readable. l, r, t and b are
-// distances on the near plane rather than angles, so a field of view only
-// falls out of them once divided by n - which is also what makes the check
-// against the projection matrix possible.
+// l, r, t and b are the tangents of the half-angles, not distances on the near
+// plane. Read on this machine as l=-1.1188 r=1.1188 t=0.6293 b=-0.6293 n=10:
+// dividing by n would give a 12.8 degree view, while r/t is 1.7778 to four
+// figures - exactly the 16:9 shape of the frame, which settles the reading.
 struct NiFrustum {
 	float l;
 	float r;
@@ -78,6 +78,44 @@ static_assert(sizeof(NiFrustum) == 0x1C, "NiFrustum is six floats, a flag, and p
 // because the claim is soft: a wrong address is out by orders of magnitude,
 // not by a percent.
 bool FrustumLooksRight(const NiFrustum& frustum, float tanHalfWidth, float tanHalfHeight);
+
+
+// Notices when the frustum changes, so a few lines of log can say whether it
+// is one view or many.
+//
+// The question this answers is specific. The first reading found a frustum
+// 1.458 times wider in tangents than the projection matrix reported - the same
+// factor in both axes, so the same view at a different size rather than a
+// different view. Two explanations fit:
+//
+//   * the scene graph's camera is a different camera from the one the frame
+//     was drawn with - a culling frustum deliberately widened so objects at
+//     the edge do not pop, or a pass for shadows or water
+//   * it is the right camera read at the wrong moment, and the value changes
+//     during a frame
+//
+// A frustum that never changes points at the first; one that moves points at
+// the second. Either way the answer is to take the camera in phase - as an
+// argument to the render pass rather than out of a global afterwards - which
+// is what FEAR2VR's source says in as many words about its own engine. This
+// watcher is how that gets decided on evidence rather than by preference.
+class FrustumWatcher {
+public:
+	// True when this frustum is worth a log line: the first one, or one that
+	// differs from the last reported by more than a little. Stops reporting
+	// after a handful, because the point is to see whether it varies and not
+	// to fill the log with proof that it does.
+	bool Observe(const NiFrustum& frustum);
+
+	UInt32 Reported() const { return m_reported; }
+
+private:
+	static constexpr UInt32 kMaxReports = 8;
+
+	NiFrustum m_last{};
+	bool m_seen = false;
+	UInt32 m_reported = 0;
+};
 
 // Reads it. False when the scene graph or the camera is null, which is normal
 // before the game has built a world.

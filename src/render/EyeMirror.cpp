@@ -219,13 +219,11 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 		if (frustum.n > 0.0f) {
 			OBVR_LOG("Camera: that is %.1f degrees across and %.1f down - %s",
 			         static_cast<double>(2.0f *
-			                             math::Atan((Abs(frustum.l) + Abs(frustum.r)) * 0.5f /
-			                                        frustum.n) *
-			                             math::kRadiansToDegrees),
+			                             math::Atan((Abs(frustum.l) + Abs(frustum.r)) * 0.5f) *
+		                             math::kRadiansToDegrees),
 			         static_cast<double>(2.0f *
-			                             math::Atan((Abs(frustum.t) + Abs(frustum.b)) * 0.5f /
-			                                        frustum.n) *
-			                             math::kRadiansToDegrees),
+			                             math::Atan((Abs(frustum.t) + Abs(frustum.b)) * 0.5f) *
+		                             math::kRadiansToDegrees),
 			         agrees ? "agrees with the projection matrix, so the camera is reachable"
 			                : "does NOT agree, so one of the two readings is wrong");
 		}
