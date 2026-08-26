@@ -73,6 +73,21 @@ UInt32 g_statsKind[4] = {};
 bool g_sampleNextDraw = false;
 UInt32 g_probeClearTraceLeft = 3;
 
+// The clear counter, and the depth question. The first draw of the
+// redirected pass ran with the z test on while the texture stayed exactly
+// the colour of the probe clear: every draw succeeded and no pixel arrived,
+// which is what z rejection looks like from the API side. Whether the pass
+// clears depth for itself while redirected - vanilla's begin-target-group
+// clears depth and stencil, but 'back buffer matched=0' says that branch
+// set nothing here - is measured by counting, and the redirect gives the
+// pass the fresh depth vanilla gives it either way.
+d3d9::ClearFn g_originalClear = nullptr;
+UInt32 g_statsClears = 0;
+UInt32 g_statsClearFlagsSeen = 0;
+bool g_depthChecked = false;
+UInt32 g_depthClearFlags = 0;
+UInt32 g_depthClearTraceLeft = 3;
+
 d3d9::DrawPrimitiveFn g_originalDrawPrimitive = nullptr;
 d3d9::DrawIndexedPrimitiveFn g_originalDrawIndexed = nullptr;
 d3d9::DrawPrimitiveUPFn g_originalDrawUP = nullptr;
@@ -235,6 +250,18 @@ SInt32 __stdcall HookedDrawIndexedPrimitiveUP(void* self, UInt32 type, UInt32 mi
 	return result;
 }
 
+// Counts what the pass clears while redirected. Only the game's clears land
+// here: OBVR's own probe and depth clears go through g_originalClear and
+// stay out of their own statistics.
+SInt32 __stdcall HookedClear(void* self, UInt32 count, const d3d9::Rect* rects,
+                             UInt32 flags, UInt32 color, float z, UInt32 stencil) {
+	if (g_redirecting) {
+		++g_statsClears;
+		g_statsClearFlagsSeen |= flags;
+	}
+	return g_originalClear(self, count, rects, flags, color, z, stencil);
+}
+
 // While the pass is redirected, whatever colour write mask it sets keeps the
 // alpha bit. The game's own back buffer has no alpha channel, so the engine
 // is entitled to switch alpha writes off whenever it likes - but everything
@@ -341,6 +368,16 @@ bool EnsureTargetHook() {
 		return false;
 	}
 
+	// The clear counter, same diagnostic rank as the draw counters below.
+	// The original pointer is kept even if the patch fails: OBVR's own
+	// clears go through it either way.
+	g_originalClear = reinterpret_cast<d3d9::ClearFn>(vtable[d3d9::kDeviceClear]);
+	if (g_originalClear != nullptr &&
+	    !WriteTableEntry(vtable, d3d9::kDeviceClear,
+	                     reinterpret_cast<void*>(&HookedClear))) {
+		OBVR_LOG("Hud: the clear counter could not be installed");
+	}
+
 	// The draw counters. Diagnostic rather than load-bearing, so a failure
 	// here only costs the count: the pass-through hooks count while the
 	// redirect flag is up and are inert otherwise.
@@ -409,6 +446,8 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 		g_statsMatched = 0;
 		g_statsOtherTargets = 0;
 		g_statsKind[0] = g_statsKind[1] = g_statsKind[2] = g_statsKind[3] = 0;
+		g_statsClears = 0;
+		g_statsClearFlagsSeen = 0;
 	}
 	g_sampleNextDraw = g_passTraceLeft > 0;
 	g_redirecting = true;
@@ -445,21 +484,68 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 		}
 	}
 
+	// The depth the vanilla begin gives the pass. The orange probe clear
+	// arrived through the binding while all twenty-two successful draws did
+	// not, and the one anomaly in the first draw's pipeline was z=1 - the
+	// z test, the only rejector that discards pixels without an error. If
+	// the pass's own begin-target-group branch skipped its depth clear the
+	// way it skipped its target set ('back buffer matched=0'), the interface
+	// tested orthographic z against the world's perspective depths and lost.
+	// So the redirect clears depth - and stencil, when the surface has one -
+	// exactly as vanilla's begin does, and the clear counter reports whether
+	// the pass also clears for itself.
+	if (!g_depthChecked) {
+		g_depthChecked = true;
+		void* depthStencil = nullptr;
+		if (auto getDepthStencil = d3d9::Method<d3d9::GetDepthStencilSurfaceFn>(
+		        device, d3d9::kDeviceGetDepthStencilSurface)) {
+			getDepthStencil(device, &depthStencil);
+		}
+		if (depthStencil != nullptr) {
+			d3d9::SurfaceDesc desc{};
+			auto getDesc =
+				d3d9::Method<d3d9::GetDescFn>(depthStencil, d3d9::kSurfaceGetDesc);
+			if (getDesc != nullptr && getDesc(depthStencil, &desc) >= 0) {
+				OBVR_LOG("Hud depth: %ux%u format=%u multisample=%u bound at the "
+				         "redirected pass",
+				         desc.width, desc.height, desc.format, desc.multiSampleType);
+				g_depthClearFlags = d3d9::kClearZBuffer;
+				if (desc.format == d3d9::kFormatD24S8) {
+					g_depthClearFlags |= d3d9::kClearStencil;
+				}
+			}
+			using ReleaseFn = UInt32(__stdcall*)(void*);
+			if (auto release = d3d9::Method<ReleaseFn>(depthStencil, 2)) {
+				release(depthStencil);
+			}
+		} else {
+			OBVR_LOG("Hud depth: no depth stencil bound at the redirected pass");
+		}
+	}
+	if (g_depthClearFlags != 0 && g_originalClear != nullptr) {
+		const SInt32 depthResult =
+			g_originalClear(device, 0, nullptr, g_depthClearFlags, 0, 1.0f, 0);
+		if (g_depthClearTraceLeft > 0) {
+			--g_depthClearTraceLeft;
+			OBVR_LOG("Hud depth clear: flags=0x%X result=%08X", g_depthClearFlags,
+			         static_cast<UInt32>(depthResult));
+		}
+	}
+
 	// The probe clear: the smallest write that goes through the render target
 	// binding the draws use. ColorFill writes to the surface by name and its
 	// red square arrives in the headset; if this orange does not arrive the
 	// same way, the binding the device just confirmed does not reach the
 	// texture the compositor shows - and the pass's draws never had a chance.
-	// Alpha 0x60, so the world stays visible behind it.
-	if (probe) {
-		if (auto clear = d3d9::Method<d3d9::ClearFn>(device, d3d9::kDeviceClear)) {
-			const SInt32 clearResult =
-				clear(device, 0, nullptr, d3d9::kClearTarget, 0x60FF8000u, 1.0f, 0);
-			if (g_probeClearTraceLeft > 0) {
-				--g_probeClearTraceLeft;
-				OBVR_LOG("Hud probe clear through the binding: %08X",
-				         static_cast<UInt32>(clearResult));
-			}
+	// Alpha 0x60, so the world stays visible behind it. Through the original:
+	// OBVR's own clears stay out of the clear counter.
+	if (probe && g_originalClear != nullptr) {
+		const SInt32 clearResult =
+			g_originalClear(device, 0, nullptr, d3d9::kClearTarget, 0x60FF8000u, 1.0f, 0);
+		if (g_probeClearTraceLeft > 0) {
+			--g_probeClearTraceLeft;
+			OBVR_LOG("Hud probe clear through the binding: %08X",
+			         static_cast<UInt32>(clearResult));
 		}
 	}
 
@@ -511,9 +597,10 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 	if (g_passTraceLeft > 0) {
 		--g_passTraceLeft;
 		OBVR_LOG("Hud pass trace: draws=%u (failed %u, dp=%u dip=%u dpup=%u dipup=%u), "
-		         "back buffer matched=%u, other targets=%u",
+		         "clears=%u (flags seen 0x%X), back buffer matched=%u, other targets=%u",
 		         g_statsDraws, g_statsFailedDraws, g_statsKind[0], g_statsKind[1],
-		         g_statsKind[2], g_statsKind[3], g_statsMatched, g_statsOtherTargets);
+		         g_statsKind[2], g_statsKind[3], g_statsClears, g_statsClearFlagsSeen,
+		         g_statsMatched, g_statsOtherTargets);
 	}
 
 	g_callbacks.endRedirect();

@@ -288,6 +288,23 @@ constexpr UInt32 kDeviceClear = 43;
 // layout, and the calls here pass none anyway.
 constexpr UInt32 kClearTarget = 0x1;
 
+// D3DCLEAR_ZBUFFER / D3DCLEAR_STENCIL (d3d9types.h, lines 207-208), and
+// D3DFMT_D24S8 (line 1422) - the depth format whose stencil planes may be
+// cleared alongside; the stencil flag on a stencil-less surface fails the
+// whole clear instead of part of it.
+constexpr UInt32 kClearZBuffer = 0x2;
+constexpr UInt32 kClearStencil = 0x4;
+constexpr UInt32 kFormatD24S8 = 75;
+
+// GetDepthStencilSurface (40), counted from the same listing, between the
+// verified GetRenderTarget (38) and Clear (43) with SetDepthStencilSurface
+// and the scene bracket in between. What it is for: the redirected pass's
+// draws run with the z test on, and whether they test against anything - and
+// against what - is a question about the surface the device actually holds.
+constexpr UInt32 kDeviceGetDepthStencilSurface = 40;
+
+using GetDepthStencilSurfaceFn = SInt32(__stdcall*)(void* self, void** surface);
+
 using ClearFn = SInt32(__stdcall*)(void* self, UInt32 count, const Rect* rects,
                                    UInt32 flags, UInt32 color, float z, UInt32 stencil);
 
