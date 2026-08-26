@@ -253,6 +253,12 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadUInt("Render", "GameResolutionHeight", config.tracker.renderHeight, path);
 	config.tracker.matchHeadsetFov =
 		ReadBool("Render", "MatchHeadsetFov", config.tracker.matchHeadsetFov, path);
+	config.tracker.hudOverlay =
+		ReadBool("Render", "HudOverlay", config.tracker.hudOverlay, path);
+	config.tracker.hudDistanceMetres =
+		ReadFloat("Render", "HudDistanceMetres", config.tracker.hudDistanceMetres, path);
+	config.tracker.hudWidthMetres =
+		ReadFloat("Render", "HudWidthMetres", config.tracker.hudWidthMetres, path);
 	config.look.blockVerticalLook =
 		ReadBool("Look", "BlockVerticalLook", config.look.blockVerticalLook, path);
 
@@ -364,6 +370,9 @@ bool Config::Load(const char* fileName) {
 	OBVR_LOG("Config: Render.MatchHeadsetFov=%d SetGameResolution=%d (%ux%u)",
 	         tracker.matchHeadsetFov ? 1 : 0, tracker.setRenderSize ? 1 : 0,
 	         tracker.renderWidth, tracker.renderHeight);
+	OBVR_LOG("Config: Render.HudOverlay=%d Distance=%.2fm Width=%.2fm",
+	         tracker.hudOverlay ? 1 : 0, static_cast<double>(tracker.hudDistanceMetres),
+	         static_cast<double>(tracker.hudWidthMetres));
 	if (tracker.stereo == vr::StereoMode::DualPass) {
 		// The known limit, stated up front rather than discovered in the
 		// headset: the 2D layer draws after both passes, into the frame the

@@ -173,7 +173,47 @@ public:
 	// arguments untouched.
 	bool GetRecommendedRenderTargetSize(UInt32& width, UInt32& height) const;
 
+	// ------------------------------------------------------------- Overlay
+	//
+	// The 2D layer's way into the room: a quad the compositor places and
+	// reprojects itself, fed with the same Vulkan texture description the
+	// eyes use. The interface is fetched on first use rather than at Start,
+	// because most of what the backend does never needs it.
+	//
+	// All of these return the overlay error code - kOverlayErrorNone means
+	// done - except CreateOverlay, which reports through its return value
+	// because a failure there leaves nothing to hold an error against.
+
+	// Makes an overlay and hands back its handle. key must be unique per
+	// process; name is what SteamVR shows in its own UI.
+	bool CreateOverlay(const char* key, const char* name, openvr::VROverlayHandle& handle);
+
+	// Gives the overlay this frame's picture. vulkanData points at a
+	// dxvk::VRVulkanTextureData, exactly as SubmitEye takes for
+	// kTextureTypeVulkan - the header declares both to accept the same
+	// Texture_t, Vulkan included.
+	int SetOverlayTexture(openvr::VROverlayHandle handle, const void* vulkanData) const;
+
+	// Hangs the overlay relative to the head: hmdToOverlay is where the quad
+	// sits in the headset's own frame, typically a translation straight
+	// ahead. The compositor then carries it with the head itself, every
+	// frame, which is what makes a HUD read as attached to the wearer rather
+	// than to the room.
+	int SetOverlayTransformHmdRelative(openvr::VROverlayHandle handle,
+	                                   const openvr::HmdMatrix34& hmdToOverlay) const;
+
+	// The quad's width in the world, in metres. Height follows from the
+	// texture's aspect ratio; there is no separate control for it.
+	int SetOverlayWidthInMetres(openvr::VROverlayHandle handle, float metres) const;
+
+	int ShowOverlay(openvr::VROverlayHandle handle) const;
+	int HideOverlay(openvr::VROverlayHandle handle) const;
+	int DestroyOverlay(openvr::VROverlayHandle handle);
+
 private:
+	// Fetches the overlay interface if it has not been, and reports whether
+	// it is usable. Said once in the log either way.
+	bool EnsureOverlayInterface();
 	// Logs a message once. The flag is diagnostic state rather than part of
 	// the backend's state, which is why it is mutable and usable from a const
 	// method.
@@ -187,6 +227,8 @@ private:
 	void* m_module = nullptr;      // openvr_api.dll
 	void* m_system = nullptr;      // IVRSystemFnTable*
 	void* m_compositor = nullptr;  // IVRCompositorFnTable*, only when scene
+	void* m_overlay = nullptr;     // IVROverlayFnTable*, fetched on first use
+	bool m_overlayTried = false;
 	bool m_startAttempted = false;
 	mutable bool m_loggedNoPose = false;
 

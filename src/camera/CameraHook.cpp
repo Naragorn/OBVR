@@ -16,6 +16,8 @@
 #include "render/GameDevice.h"
 #include "render/GameProjection.h"
 #include "render/HeadsetRenderer.h"
+#include "render/HudLayer.h"
+#include "render/InterfaceRenderHook.h"
 #include "render/PresentHook.h"
 #include "render/ResolutionHook.h"
 #include "render/SceneRenderHook.h"
@@ -70,6 +72,10 @@ NiAVObject* g_dualNode = nullptr;
 NiPoint3 g_dualShift{0.0f, 0.0f, 0.0f};
 bool g_dualArmed = false;
 
+// The 2D layer's own picture and overlay, fed by the interface render hook
+// and paid at Present alongside the eyes.
+render::HudLayer g_hudLayer;
+
 // How many of those bursts have been reported.
 UInt32 g_flatBurstsReported = 0;
 
@@ -110,6 +116,12 @@ float Abs(float value) { return value < 0.0f ? -value : value; }
 // menu, and every menu opened in game.
 bool PollRecenterEdge();
 
+// Pays the HUD overlay at the end of the frame: shows this frame's captured
+// layer on a world frame, hides it on a flat one so a stale HUD does not hang
+// in front of the menu the flat path is showing. Declared ahead of OnFrameEnd,
+// defined next to the redirect callbacks it belongs with.
+void MaybeSubmitHud(bool worldFrame);
+
 // Deliberately does nothing but pay the frame that BeginFrame opened. Anything
 // else that wanted doing at the end of a frame would be tempting to put here,
 // and this runs on the renderer's thread inside a call the game is waiting on.
@@ -146,6 +158,7 @@ void OnFrameEnd() {
 	if (!flat) {
 		g_flatFramesSinceCamera = 0;
 		g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), g_pendingRequest);
+		MaybeSubmitHud(true);
 		return;
 	}
 
@@ -213,6 +226,7 @@ void OnFrameEnd() {
 	// is that it costs nothing extra.
 	if (hadCameraPass || g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame())) {
 		g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), menu);
+		MaybeSubmitHud(false);
 	}
 }
 
@@ -330,6 +344,40 @@ void AfterSecondScenePass() {
 	}
 
 	g_dualArmed = false;
+}
+
+// The two callbacks of the interface render hook, and the submit that pays
+// them. All on the game's thread: the redirect between the world render and
+// Present, the submit inside Present.
+
+void* HudBeginRedirect() {
+	const Config& config = GetConfig();
+	if (!config.tracker.hudOverlay) {
+		return nullptr;
+	}
+
+	// The same menu question as everywhere else, so the redirect, the flat
+	// decision and the dual pass cannot disagree about what kind of frame
+	// this is. On a menu frame the layer stays in the back buffer, which is
+	// exactly what the flat path then shows.
+	const bool menuIsUp = config.tracker.showMenus && game::IsMenuMode();
+	if (!WantsHudRedirect(g_frameOpen, menuIsUp)) {
+		return nullptr;
+	}
+
+	return g_hudLayer.BeginCapture(render::GetGameDevice());
+}
+
+void HudEndRedirect() { g_hudLayer.EndCapture(); }
+
+void MaybeSubmitHud(bool worldFrame) {
+	const Config& config = GetConfig();
+	if (!config.tracker.hudOverlay || !render::IsInterfaceRenderHooked()) {
+		return;
+	}
+	g_hudLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
+	                  worldFrame, config.tracker.hudDistanceMetres,
+	                  config.tracker.hudWidthMetres);
 }
 
 void MaybePollRecenter() {
@@ -799,6 +847,26 @@ bool Install() {
 			// Logs its own outcome either way; on failure the mode quietly
 			// renders like mono, and request.dualEyes says so per frame.
 			render::InstallSceneRenderHook(callbacks);
+		}
+	}
+
+	// The HUD overlay: the 2D layer redirected to its own texture on world
+	// frames and hung in the room. Off by default until seen in a headset;
+	// with the flag off nothing below runs and no hook goes in.
+	if (GetConfig().tracker.renderToHeadset && GetConfig().tracker.hudOverlay) {
+		if (!GetConfig().tracker.submitAtFrameEnd) {
+			// The capture happens between the world render and Present, and
+			// the submit pays it at Present. Submitting at the start of the
+			// frame would hand over a picture that has not been drawn yet.
+			OBVR_LOG("Config: HudOverlay needs SubmitAtFrameEnd=1, so the 2D layer stays "
+			         "in the frame");
+		} else {
+			render::InterfaceRedirect redirect;
+			redirect.beginRedirect = &HudBeginRedirect;
+			redirect.endRedirect = &HudEndRedirect;
+			// Logs its own outcome either way; on failure the HUD simply
+			// stays in the frame, which on a flat frame is still shown.
+			render::InstallInterfaceRenderHook(redirect);
 		}
 	}
 

@@ -1757,8 +1757,45 @@ accepted; counted entry by entry from line 3148, thirteen entries typed, the res
 void* padding. The counting mattered: DeepWiki's summary of the same table listed
 `SetOverlayTexture` right after `ShowOverlay`, when fifteen input and cursor entries lie
 between them - it is index 60, not 44. `openvr_pose_test`'s `TestOverlayLayout` pins every
-typed index, that gap in particular. Nothing calls it yet; it is the route-B groundwork
-that can be checked without a headset, done while the dual pass build waits for its run.
+typed index, that gap in particular.
+
+### Route B is built, behind a switch that is off
+
+The whole redirect is implemented, end to end, and none of it runs: `HudOverlay=0` in the
+INI, and with the flag off neither hook is installed. That is deliberate. The dual pass
+build is still waiting for its in-game run, and two untested features in one binary are
+two candidates for any new fault - gated off, the binary behaves byte for byte like the
+build under test, and turning the HUD on later is one INI edit instead of a session.
+
+The pieces, and where each lives:
+
+- **`render/InterfaceRenderHook`** - the entry detour on `0x0057F170` (same seven-byte
+  shape as the scene render, `mem::Verify` first) plus the device-level substitution: the
+  pass begins its own target group from inside, so `SetRenderTarget` (table entry 37, now
+  in `D3D9Types` with `SetRenderState` 57 and friends, all counted from the SDK header) is
+  replaced lazily on the first redirecting pass, and while the flag is up any colour
+  target the pass sets is swapped for OBVR's surface. The last target the pass asked for
+  is put back before the call returns, so the device ends in the state the game believes.
+- **`render/HudLayer`** - the texture (back buffer size, A8R8G8B8, `CreateTexture` for the
+  sampled bit), cleared to transparent black per capture; the four separate-alpha blend
+  states set around the pass and restored from saved values, so destination alpha means
+  coverage; and the overlay itself - created on first submit as "obvr.hud", hung
+  head-relative at `HudDistanceMetres` straight ahead, `HudWidthMetres` wide, fed through
+  the same `InteropBracket` dance as the eyes and shown or hidden per frame.
+- **`OpenVRBackend`** - `IVROverlay_028` fetched on first use through the same
+  `VR_GetGenericInterface` as the other two tables, with thin typed wrappers.
+- **`camera/FrameLogic::WantsHudRedirect`** (tested, with the agreement property) - the
+  redirect happens on world frames only. Menu frames keep the layer in the back buffer,
+  which is exactly the picture the flat path shows; the redirect, the flat decision and
+  the dual pass all ask `IsMenuMode` the same way and cannot disagree.
+
+What is stated as assumption rather than fact, for the first run with the flag on: that
+`SetOverlayTexture` wants the same flush-lock-transition treatment as `Submit` (both take
+the same `Texture_t`; the bracket gives it the same guarantees), and that the game never
+touches the separate-alpha render states itself (a 2006 engine has no reason to; the
+save-and-restore means even a surprise there costs correctness for one pass, not state
+corruption). Known and accepted: with the redirect on, the monitor shows the world
+without its HUD - the layer has left that picture, which is the feature.
 
 ### Dual pass is built: the function that sets up a view is the function you call twice
 

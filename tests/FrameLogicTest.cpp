@@ -328,6 +328,35 @@ void TestWantsSecondScenePass() {
 	}
 }
 
+void TestWantsHudRedirect() {
+	std::printf("When the 2D pass leaves the frame\n");
+
+	using obvr::camera::FrameIsFlat;
+	using obvr::camera::WantsHudRedirect;
+
+	// The one flow that redirects: a delivered frame with no menu in front.
+	Check(WantsHudRedirect(true, false),
+	      "an open frame with no menu sends the layer to its own texture");
+
+	// The refusals, each for its own reason.
+	Check(!WantsHudRedirect(false, false),
+	      "no open frame means the captured layer would reach nobody");
+	Check(!WantsHudRedirect(true, true),
+	      "a menu frame keeps the layer in the frame the flat path shows");
+	Check(!WantsHudRedirect(false, true), "both against it");
+
+	// The property this exists for: whenever a camera-pass frame is delivered
+	// flat, the redirect declined - so the picture the flat path shows still
+	// contains the menu it exists to show.
+	for (int menu = 0; menu < 2; ++menu) {
+		const bool menuIsUp = menu != 0;
+		if (FrameIsFlat(true, menuIsUp)) {
+			Check(!WantsHudRedirect(true, menuIsUp),
+			      "a flat frame never had its 2D layer taken away");
+		}
+	}
+}
+
 int main() {
 	std::printf("OBVR frame logic test\n\n");
 
@@ -348,6 +377,8 @@ int main() {
 	TestFrameIsFlat();
 	std::printf("\n");
 	TestWantsSecondScenePass();
+	std::printf("\n");
+	TestWantsHudRedirect();
 	std::printf("\n");
 	TestFrameClock();
 	std::printf("\n");

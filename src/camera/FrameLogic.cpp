@@ -78,4 +78,6 @@ bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp) {
 	return frameOpen && armed && !menuIsUp;
 }
 
+bool WantsHudRedirect(bool frameOpen, bool menuIsUp) { return frameOpen && !menuIsUp; }
+
 }  // namespace obvr::camera

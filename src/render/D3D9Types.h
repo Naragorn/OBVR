@@ -174,6 +174,55 @@ struct Viewport {
 // D3DTS_PROJECTION (d3d9types.h)
 constexpr UInt32 kTransformProjection = 3;
 
+// ------------------------------------------------- The 2D layer's redirect
+//
+// Counted the same way as every other index here, and cross-checked against
+// two neighbours already known to be right: the SDK lists StretchRect and
+// ColorFill one apart at 35/36, which sit at 34/35 in the table, and
+// SetRenderTarget two entries later at 38 is therefore 37 - the number
+// HANDOFF's route B section named from the same counting.
+//
+// What they are for: the pass that draws Oblivion's HUD and menus begins its
+// own render target group from inside, so redirecting it to a texture of
+// OBVR's own cannot be done around the call - it has to happen at the one
+// method every Gamebryo wrapper ends at. That is an API fact: there is no
+// other way to change the colour target in Direct3D 9.
+constexpr UInt32 kDeviceSetRenderTarget = 37;
+constexpr UInt32 kDeviceGetRenderTarget = 38;
+
+// SetRenderState / GetRenderState, listed at 58/59 in the SDK header.
+//
+// Needed for one thing: destination alpha that means coverage. The UI blends
+// SRCALPHA/INVSRCALPHA, and without a separate alpha function the alpha
+// written to the target is alpha squared - close, and slightly too
+// transparent everywhere. ONE/INVSRCALPHA on the alpha side is the correct
+// over-operator. The previous values are read first and put back afterwards.
+constexpr UInt32 kDeviceSetRenderState = 57;
+constexpr UInt32 kDeviceGetRenderState = 58;
+
+// D3DRENDERSTATETYPE values (d3d9types.h, lines 450-453 and 364).
+constexpr UInt32 kRenderStateSeparateAlphaBlendEnable = 206;
+constexpr UInt32 kRenderStateSrcBlendAlpha = 207;
+constexpr UInt32 kRenderStateDestBlendAlpha = 208;
+constexpr UInt32 kRenderStateBlendOpAlpha = 209;
+
+// D3DBLEND / D3DBLENDOP values (d3d9types.h, lines 230, 234, 256).
+constexpr UInt32 kBlendOne = 2;
+constexpr UInt32 kBlendInvSrcAlpha = 6;
+constexpr UInt32 kBlendOpAdd = 1;
+
+// D3DFMT_A8R8G8B8 (d3d9types.h, line 1378). The back buffer is X8R8G8B8 - no
+// alpha, because a screen has no use for one. The 2D layer's own texture is
+// the opposite case: the alpha channel is the whole point, it is what lets an
+// overlay be a HUD floating on the world instead of a rectangle in front of
+// it.
+constexpr UInt32 kFormatA8R8G8B8 = 21;
+
+using SetRenderTargetFn = SInt32(__stdcall*)(void* self, UInt32 index, void* surface);
+using GetRenderTargetFn = SInt32(__stdcall*)(void* self, UInt32 index, void** surface);
+using SetRenderStateFn = SInt32(__stdcall*)(void* self, UInt32 state, UInt32 value);
+using GetRenderStateFn = SInt32(__stdcall*)(void* self, UInt32 state, UInt32* value);
+
 // Present, for the hook that moves the submit to the end of the frame.
 // Already declared above as kDevicePresent.
 

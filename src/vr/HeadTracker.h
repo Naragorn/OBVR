@@ -176,6 +176,27 @@ struct TrackerSettings {
 	// keeps whatever shape the game is rendering.
 	float menuAspect = 1.7778f;
 
+	// Whether the 2D layer is redirected to a texture of OBVR's own on world
+	// frames and hung in the room as an overlay, instead of being drawn into
+	// the frame the eyes are copied from.
+	//
+	// This is what puts the HUD back once the world is drawn per eye: under
+	// dual pass the eye pictures are captured before the 2D layer draws, so
+	// without this the HUD exists only on the monitor. It applies on world
+	// frames alone - menus, videos and loading screens keep the flat path,
+	// which is known to work.
+	//
+	// Off by default until it has been seen in a headset.
+	bool hudOverlay = false;
+
+	// Where the overlay hangs: straight ahead of the head, this far away, in
+	// metres. Head-relative, so it rides with the wearer like a cockpit HUD.
+	float hudDistanceMetres = 1.2f;
+
+	// How wide the overlay quad is, in metres, at that distance. Height
+	// follows from the texture's shape.
+	float hudWidthMetres = 1.6f;
+
 	// Oblivion units per metre, for converting the head offset.
 	//
 	// The Construction Set wiki gives "21.3 units to a foot ... 64 units per

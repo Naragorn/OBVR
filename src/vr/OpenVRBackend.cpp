@@ -173,7 +173,120 @@ void OpenVRBackend::Stop() {
 	m_module = nullptr;
 	m_system = nullptr;
 	m_compositor = nullptr;
+	m_overlay = nullptr;
+	m_overlayTried = false;
 	OBVR_LOG("OpenVR: disconnected");
+}
+
+bool OpenVRBackend::EnsureOverlayInterface() {
+	if (m_overlay != nullptr) {
+		return true;
+	}
+	if (m_overlayTried || m_module == nullptr) {
+		return false;
+	}
+	m_overlayTried = true;
+
+	auto getInterface =
+		Resolve<openvr::VR_GetGenericInterfaceFn>(m_module, "VR_GetGenericInterface");
+	if (getInterface == nullptr) {
+		return false;
+	}
+
+	int error = openvr::kInitErrorNone;
+	m_overlay = getInterface(openvr::kIVROverlayFnTableVersion, &error);
+	if (m_overlay == nullptr || error != openvr::kInitErrorNone) {
+		m_overlay = nullptr;
+		OBVR_LOG("OpenVR: %s unavailable (%d), so the 2D layer cannot leave the picture",
+		         openvr::kIVROverlayFnTableVersion, error);
+		return false;
+	}
+
+	OBVR_LOG("OpenVR: overlay interface connected through %s",
+	         openvr::kIVROverlayFnTableVersion);
+	return true;
+}
+
+bool OpenVRBackend::CreateOverlay(const char* key, const char* name,
+                                  openvr::VROverlayHandle& handle) {
+	if (!EnsureOverlayInterface()) {
+		return false;
+	}
+
+	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);
+	if (table->CreateOverlay == nullptr) {
+		return false;
+	}
+
+	openvr::VROverlayHandle created = openvr::kOverlayHandleInvalid;
+	const int error = table->CreateOverlay(key, name, &created);
+	if (error != openvr::kOverlayErrorNone || created == openvr::kOverlayHandleInvalid) {
+		OBVR_LOG("OpenVR: CreateOverlay('%s') failed (%d)", key, error);
+		return false;
+	}
+
+	handle = created;
+	return true;
+}
+
+int OpenVRBackend::SetOverlayTexture(openvr::VROverlayHandle handle,
+                                     const void* vulkanData) const {
+	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);
+	if (table == nullptr || table->SetOverlayTexture == nullptr) {
+		return -1;
+	}
+
+	// The same shape SubmitEye hands the compositor: the handle field carries
+	// the pointer to the Vulkan description, and the type says so.
+	openvr::Texture texture{};
+	texture.handle = const_cast<void*>(vulkanData);
+	texture.type = openvr::kTextureTypeVulkan;
+	texture.colorSpace = openvr::kColorSpaceAuto;
+	return table->SetOverlayTexture(handle, &texture);
+}
+
+int OpenVRBackend::SetOverlayTransformHmdRelative(
+	openvr::VROverlayHandle handle, const openvr::HmdMatrix34& hmdToOverlay) const {
+	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);
+	if (table == nullptr || table->SetOverlayTransformTrackedDeviceRelative == nullptr) {
+		return -1;
+	}
+	return table->SetOverlayTransformTrackedDeviceRelative(
+		handle, openvr::kTrackedDeviceIndexHmd, &hmdToOverlay);
+}
+
+int OpenVRBackend::SetOverlayWidthInMetres(openvr::VROverlayHandle handle,
+                                           float metres) const {
+	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);
+	if (table == nullptr || table->SetOverlayWidthInMeters == nullptr) {
+		return -1;
+	}
+	return table->SetOverlayWidthInMeters(handle, metres);
+}
+
+int OpenVRBackend::ShowOverlay(openvr::VROverlayHandle handle) const {
+	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);
+	if (table == nullptr || table->ShowOverlay == nullptr) {
+		return -1;
+	}
+	return table->ShowOverlay(handle);
+}
+
+int OpenVRBackend::HideOverlay(openvr::VROverlayHandle handle) const {
+	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);
+	if (table == nullptr || table->HideOverlay == nullptr) {
+		return -1;
+	}
+	return table->HideOverlay(handle);
+}
+
+int OpenVRBackend::DestroyOverlay(openvr::VROverlayHandle handle) {
+	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);
+	if (table == nullptr || table->DestroyOverlay == nullptr ||
+	    handle == openvr::kOverlayHandleInvalid) {
+		return -1;
+	}
+	return table->DestroyOverlay(handle);
 }
 
 bool OpenVRBackend::GetEyeProjection(int eye, float& left, float& right, float& top,

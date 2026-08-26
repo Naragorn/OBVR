@@ -183,4 +183,18 @@ bool FrameIsFlat(bool hadCameraPass, bool menuIsUp);
 // the flat decision: the two must agree on what kind of frame this is.
 bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp);
 
+// Whether this frame's 2D pass should be redirected to the HUD texture.
+//
+// The same two questions the second scene pass asks, minus the arming - the
+// redirect needs no camera shift, only a frame somebody will deliver.
+//
+// frameOpen: the compositor accepted this frame, so the captured layer has a
+// way to reach the headset. Without it the redirect would strip the HUD from
+// the monitor's frame and hand it to nobody.
+//
+// menuIsUp: a menu frame is delivered flat, and the flat picture is the back
+// buffer - so the layer has to stay in it, or the menu being shown would be
+// missing from the very picture that exists to show it.
+bool WantsHudRedirect(bool frameOpen, bool menuIsUp);
+
 }  // namespace obvr::camera

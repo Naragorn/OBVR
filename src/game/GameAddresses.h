@@ -237,4 +237,41 @@ inline constexpr UInt32 kRenderSceneEntryLength = 7;
 // this is the call the game itself uses to make the world transform follow.
 inline constexpr UInt32 kUpdateNodeTransforms = 0x00707370;
 
+// The function that draws the 2D layer: HUD, menus, dialogues and loading
+// screens. __thiscall on the InterfaceManager singleton, one argument (a
+// rendered texture, null on the ordinary path), ret 4.
+//
+// Two sources, twice over. Oblivion Reloaded's RenderHook.cpp hooks a call
+// site inside it (its kRenderInterface, 0x0057F3F3) for this exact build.
+// The bytes agree, and they agree through addresses this project has already
+// verified independently:
+//
+//   * its callers fetch `this` through 0x00582160 - the InterfaceManager
+//     singleton getter that kIsMenuMode calls three times - and the wrapper
+//     at 0x00579260 checks the same [manager+0x1C] field IsMenuMode checks
+//   * at 0057F2C3 it draws the menu scene graph through 0x0070C0B0, the same
+//     RenderObject the world passes use, with the camera at [scenegraph+0xDC]
+//     - the offset kSceneGraphCameraOffset already confirmed in the game
+//   * at 0057F3A0 it calls 0x00701970, the SetCameraViewProj OBGEv2 names
+//
+// Every route to the 2D layer in the whole binary funnels through this one
+// function - four call sites, all wrappers deciding when. Full walk in
+// HANDOFF, "The 2D pass is located".
+//
+// One property that matters to the redirect: it begins the *default* render
+// target group from inside itself (clear flags 6 - depth and stencil, not
+// colour, which is why menus sit on the world instead of on black). So a
+// wrapper cannot simply set a target first; the substitution happens at the
+// device's SetRenderTarget while the pass runs.
+//
+// The entry reads
+//
+//   0057F170  push -1              6A FF
+//   0057F172  push 0x9BEAE6        68 E6 EA 9B 00
+//   0057F177  mov eax,fs:[0]       (the SEH frame; not moved)
+//
+// - the same seven-byte relocatable shape as kRenderScene.
+inline constexpr UInt32 kRenderInterface = 0x0057F170;
+inline constexpr UInt32 kRenderInterfaceEntryLength = 7;
+
 }  // namespace obvr::addr
