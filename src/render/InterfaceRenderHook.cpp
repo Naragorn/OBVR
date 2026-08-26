@@ -786,11 +786,25 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 
 	if (window) {
 		g_sampleNextDraw = false;
-		OBVR_LOG("Hud invocation %u (%s): texture=%08X, draws=%u (dp=%u dip=%u dpup=%u "
-		         "dipup=%u), clears=%u (flags 0x%X), set target back=%u other=%u",
-		         invocation, mode, reinterpret_cast<UInt32>(renderedTexture), g_statsDraws,
-		         g_statsKind[0], g_statsKind[1], g_statsKind[2], g_statsKind[3],
-		         g_statsClears, g_statsClearFlagsSeen, g_statsMatched, g_statsOtherTargets);
+
+		// The fade the disassembly shows gating the MenuRoot render:
+		// [this+4]+0x2C, tested against zero at 0057F27A. Zero draws with
+		// the monitor missing its HUD points at the interface never being
+		// asked to draw - and this number is the gate that decides that.
+		float fade = -1.0f;
+		if (self != nullptr) {
+			void* inner = *reinterpret_cast<void**>(static_cast<char*>(self) + 4);
+			if (inner != nullptr) {
+				fade = *reinterpret_cast<float*>(static_cast<char*>(inner) + 0x2C);
+			}
+		}
+
+		OBVR_LOG("Hud invocation %u (%s): texture=%08X, fade=%.3f, draws=%u (dp=%u dip=%u "
+		         "dpup=%u dipup=%u), clears=%u (flags 0x%X), set target back=%u other=%u",
+		         invocation, mode, reinterpret_cast<UInt32>(renderedTexture),
+		         static_cast<double>(fade), g_statsDraws, g_statsKind[0], g_statsKind[1],
+		         g_statsKind[2], g_statsKind[3], g_statsClears, g_statsClearFlagsSeen,
+		         g_statsMatched, g_statsOtherTargets);
 	}
 }
 

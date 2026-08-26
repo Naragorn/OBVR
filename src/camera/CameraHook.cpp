@@ -910,15 +910,21 @@ bool Install() {
 	}
 
 	// The HUD overlay: the 2D layer redirected to its own texture on world
-	// frames and hung in the room. Off by default until seen in a headset;
-	// with the flag off nothing below runs and no hook goes in.
-	if (GetConfig().tracker.renderToHeadset && GetConfig().tracker.hudOverlay) {
+	// frames and hung in the room. The hook itself goes in whenever the
+	// frame-end submit is on, not only when the overlay is: with
+	// HudOverlay=0 every pass runs vanilla - beginRedirect answers null -
+	// and only the invocation window watches. That watching is the point:
+	// the monitor lost its HUD with no redirect installed at all, so what
+	// the untouched pass does is now evidence this hook collects.
+	if (GetConfig().tracker.renderToHeadset) {
 		if (!GetConfig().tracker.submitAtFrameEnd) {
 			// The capture happens between the world render and Present, and
 			// the submit pays it at Present. Submitting at the start of the
 			// frame would hand over a picture that has not been drawn yet.
-			OBVR_LOG("Config: HudOverlay needs SubmitAtFrameEnd=1, so the 2D layer stays "
-			         "in the frame");
+			if (GetConfig().tracker.hudOverlay) {
+				OBVR_LOG("Config: HudOverlay needs SubmitAtFrameEnd=1, so the 2D layer "
+				         "stays in the frame");
+			}
 		} else {
 			render::InterfaceRedirect redirect;
 			redirect.beginRedirect = &HudBeginRedirect;
