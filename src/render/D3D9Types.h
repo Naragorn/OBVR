@@ -241,6 +241,29 @@ struct LockedRect {
 	void* bits;
 };
 
+// The four ways Direct3D 9 draws anything, counted for one diagnostic: the
+// redirected 2D pass produced a texture of nothing, and whether it issued
+// draws at all - and at which targets - is what separates "the HUD is drawn
+// somewhere else entirely" from "it drew and the pixels went astray".
+constexpr UInt32 kDeviceDrawPrimitive = 81;
+constexpr UInt32 kDeviceDrawIndexedPrimitive = 82;
+constexpr UInt32 kDeviceDrawPrimitiveUP = 83;
+constexpr UInt32 kDeviceDrawIndexedPrimitiveUP = 84;
+
+using DrawPrimitiveFn = SInt32(__stdcall*)(void* self, UInt32 type, UInt32 startVertex,
+                                           UInt32 primitiveCount);
+using DrawIndexedPrimitiveFn = SInt32(__stdcall*)(void* self, UInt32 type,
+                                                  SInt32 baseVertexIndex,
+                                                  UInt32 minVertexIndex, UInt32 numVertices,
+                                                  UInt32 startIndex, UInt32 primCount);
+using DrawPrimitiveUPFn = SInt32(__stdcall*)(void* self, UInt32 type, UInt32 primitiveCount,
+                                             const void* vertexData, UInt32 stride);
+using DrawIndexedPrimitiveUPFn = SInt32(__stdcall*)(void* self, UInt32 type,
+                                                    UInt32 minVertexIndex,
+                                                    UInt32 numVertices, UInt32 primitiveCount,
+                                                    const void* indexData, UInt32 indexFormat,
+                                                    const void* vertexData, UInt32 stride);
+
 using GetRenderTargetDataFn = SInt32(__stdcall*)(void* self, void* renderTarget,
                                                  void* destSurface);
 using CreateOffscreenPlainSurfaceFn = SInt32(__stdcall*)(void* self, UInt32 width,

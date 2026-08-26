@@ -55,12 +55,68 @@ void* g_backBuffer = nullptr;
 // game holds its own, and the pointer is used within the same call.
 void* g_lastRequested = nullptr;
 
+// What the redirected pass actually does, counted for the first few passes
+// and reported once each. The texture came back holding nothing at all, so
+// the question is no longer how the pixels look but whether the pass issued
+// a single draw while redirected - and if it did, at which targets it was
+// aiming.
+UInt32 g_statsDraws = 0;
+UInt32 g_statsMatched = 0;
+UInt32 g_statsOtherTargets = 0;
+UInt32 g_passTraceLeft = 3;
+
+d3d9::DrawPrimitiveFn g_originalDrawPrimitive = nullptr;
+d3d9::DrawIndexedPrimitiveFn g_originalDrawIndexed = nullptr;
+d3d9::DrawPrimitiveUPFn g_originalDrawUP = nullptr;
+d3d9::DrawIndexedPrimitiveUPFn g_originalDrawIndexedUP = nullptr;
+
 SInt32 __stdcall HookedSetRenderTarget(void* self, UInt32 index, void* surface) {
 	if (g_redirecting && index == 0 && surface != nullptr && surface == g_backBuffer) {
+		++g_statsMatched;
 		g_lastRequested = surface;
 		surface = g_substitute;
+	} else if (g_redirecting && index == 0 && surface != nullptr &&
+	           surface != g_substitute) {
+		++g_statsOtherTargets;
 	}
 	return g_originalSetTarget(self, index, surface);
+}
+
+SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex,
+                                     UInt32 primitiveCount) {
+	if (g_redirecting) {
+		++g_statsDraws;
+	}
+	return g_originalDrawPrimitive(self, type, startVertex, primitiveCount);
+}
+
+SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 baseVertexIndex,
+                                            UInt32 minVertexIndex, UInt32 numVertices,
+                                            UInt32 startIndex, UInt32 primCount) {
+	if (g_redirecting) {
+		++g_statsDraws;
+	}
+	return g_originalDrawIndexed(self, type, baseVertexIndex, minVertexIndex, numVertices,
+	                             startIndex, primCount);
+}
+
+SInt32 __stdcall HookedDrawPrimitiveUP(void* self, UInt32 type, UInt32 primitiveCount,
+                                       const void* vertexData, UInt32 stride) {
+	if (g_redirecting) {
+		++g_statsDraws;
+	}
+	return g_originalDrawUP(self, type, primitiveCount, vertexData, stride);
+}
+
+SInt32 __stdcall HookedDrawIndexedPrimitiveUP(void* self, UInt32 type, UInt32 minVertexIndex,
+                                              UInt32 numVertices, UInt32 primitiveCount,
+                                              const void* indexData, UInt32 indexFormat,
+                                              const void* vertexData, UInt32 stride) {
+	if (g_redirecting) {
+		++g_statsDraws;
+	}
+	return g_originalDrawIndexedUP(self, type, minVertexIndex, numVertices, primitiveCount,
+	                               indexData, indexFormat, vertexData, stride);
 }
 
 // While the pass is redirected, whatever colour write mask it sets keeps the
@@ -169,6 +225,33 @@ bool EnsureTargetHook() {
 		return false;
 	}
 
+	// The draw counters. Diagnostic rather than load-bearing, so a failure
+	// here only costs the count: the pass-through hooks count while the
+	// redirect flag is up and are inert otherwise.
+	g_originalDrawPrimitive = reinterpret_cast<d3d9::DrawPrimitiveFn>(
+		vtable[d3d9::kDeviceDrawPrimitive]);
+	g_originalDrawIndexed = reinterpret_cast<d3d9::DrawIndexedPrimitiveFn>(
+		vtable[d3d9::kDeviceDrawIndexedPrimitive]);
+	g_originalDrawUP = reinterpret_cast<d3d9::DrawPrimitiveUPFn>(
+		vtable[d3d9::kDeviceDrawPrimitiveUP]);
+	g_originalDrawIndexedUP = reinterpret_cast<d3d9::DrawIndexedPrimitiveUPFn>(
+		vtable[d3d9::kDeviceDrawIndexedPrimitiveUP]);
+	if (g_originalDrawPrimitive != nullptr && g_originalDrawIndexed != nullptr &&
+	    g_originalDrawUP != nullptr && g_originalDrawIndexedUP != nullptr) {
+		const bool drawsHooked =
+			WriteTableEntry(vtable, d3d9::kDeviceDrawPrimitive,
+		                    reinterpret_cast<void*>(&HookedDrawPrimitive)) &&
+			WriteTableEntry(vtable, d3d9::kDeviceDrawIndexedPrimitive,
+		                    reinterpret_cast<void*>(&HookedDrawIndexedPrimitive)) &&
+			WriteTableEntry(vtable, d3d9::kDeviceDrawPrimitiveUP,
+		                    reinterpret_cast<void*>(&HookedDrawPrimitiveUP)) &&
+			WriteTableEntry(vtable, d3d9::kDeviceDrawIndexedPrimitiveUP,
+		                    reinterpret_cast<void*>(&HookedDrawIndexedPrimitiveUP));
+		if (!drawsHooked) {
+			OBVR_LOG("Hud: the draw counters could not all be installed");
+		}
+	}
+
 	OBVR_LOG("Hud: SetRenderTarget and SetRenderState hooked at table entries %u and %u - "
 	         "the 2D pass can be pointed elsewhere, with its alpha kept",
 	         d3d9::kDeviceSetRenderTarget, d3d9::kDeviceSetRenderState);
@@ -202,6 +285,11 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 
 	g_substitute = substitute;
 	g_lastRequested = nullptr;
+	if (g_passTraceLeft > 0) {
+		g_statsDraws = 0;
+		g_statsMatched = 0;
+		g_statsOtherTargets = 0;
+	}
 	g_redirecting = true;
 
 	// Aimed before the pass starts, through the original entry: the pass
@@ -230,6 +318,19 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 	}
 
 	g_substitute = nullptr;
+
+	// What this pass did, for the first few redirected passes: whether it
+	// issued a single draw, and where it aimed. draws=0 means the HUD is not
+	// drawn by this pass on world frames at all, and the search moves
+	// elsewhere; draws with other targets and none at the back buffer means
+	// the interface is composed somewhere else and only arrives here on menu
+	// frames.
+	if (g_passTraceLeft > 0) {
+		--g_passTraceLeft;
+		OBVR_LOG("Hud pass trace: draws=%u, back buffer matched=%u, other targets=%u",
+		         g_statsDraws, g_statsMatched, g_statsOtherTargets);
+	}
+
 	g_callbacks.endRedirect();
 }
 
