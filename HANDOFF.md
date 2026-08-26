@@ -70,7 +70,7 @@ controller.
 | 0.0.3 | OpenVR wired up, real HMD rotation on the camera | **verified in the game** |
 | 0.0.4 | 6DoF for the head, vertical look taken off the stick | **verified in the game**, two settings retuned from what it showed |
 | 0.0.5 | frame loop, left and right swapchain, test images in the headset | **verified in the headset**, every question the pattern was built to ask has been answered |
-| 0.1.0 | Oblivion's world as real dual-pass stereo | **the picture arrives, mono**: the game's own frame reaches both eyes through DXVK, aligned; depth between the eyes is what remains ← **continue here** |
+| 0.1.0 | Oblivion's world as real dual-pass stereo | **verified in the game**: the world drawn twice per frame, once per eye, no ghosting, clean cold start ← **continue with the HUD overlay** |
 
 0.0.1 and 0.0.2 were tested against Oblivion GOTY (Steam, AppID 22330) under Proton with
 xOBSE 22.13. 0.0.3 was tested on Windows 11 with SteamVR and a real headset, against a
@@ -1840,6 +1840,25 @@ the a61f4e0 run produced once with no dual pass anywhere near it. One cold start
 DualPassProbe=0 separates them: reproducible means a warm-up is owed (the first dual
 frames after a mode change submitting mono while everything settles); a clean run means
 it was the known flake, and watching is the right response.
+
+**The cold start ran clean, and dual pass is verified in the game.**
+`docs/verification/OBVR-dual-cold-start-verified.log` is the record: full dual from the
+first world frame, submits answering 0, point-of-view switches exercised, four thousand
+frames and not one error in the DXVK log. So the first run's death was the spurious
+device loss this machine had already produced once without any dual pass - watched, not
+chased. Reported from the headset, same session: **no ghosting, everything clean**,
+performance fine. That is the artefact alternate eyes existed to tolerate, gone the way
+the plan said it would go.
+
+One perceptual note, recorded as perception rather than as a fault: the wearer reports
+AER *felt* deeper, and adds that AER-style modes have felt that way in other titles too.
+The geometry says dual is the honest one - both eyes one interpupillary distance apart,
+same instant, same pose - while AER's extra "depth" is time: each eye holds a picture
+from a different moment, which during head motion reads as exaggerated parallax. Nothing
+to fix; worth remembering when tuning, because turning any knob until dual "feels like
+aer" would be tuning toward the artefact.
+
+Still untested on the dual path: water reflections. Worth a look on the next play.
 
 Also from that run, noted rather than diagnosed: the recenter key during videos was
 reported not working, but the log shows the flat re-anchor firing twice and the code on
