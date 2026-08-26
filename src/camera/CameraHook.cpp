@@ -51,6 +51,11 @@ bool g_frameOpen = false;
 // one view or several. See game::FrustumWatcher.
 game::FrustumWatcher g_frustumWatcher;
 
+// Counts frames delivered with no camera pass behind them, to answer whether
+// Oblivion presents more than once per step while a menu is up.
+UInt32 g_flatFramesSinceCamera = 0;
+UInt32 g_flatBurstsReported = 0;
+
 float Abs(float value) { return value < 0.0f ? -value : value; }
 
 // Runs from inside Present, with Oblivion's finished frame in the back buffer.
@@ -79,6 +84,7 @@ void OnFrameEnd() {
 	g_frameOpen = false;
 
 	if (hadCameraPass) {
+		g_flatFramesSinceCamera = 0;
 		g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), g_pendingRequest);
 		return;
 	}
@@ -97,6 +103,23 @@ void OnFrameEnd() {
 	// work and a much larger one.
 	if (!GetConfig().tracker.showMenus) {
 		return;
+	}
+
+	// How many flat frames go by between one camera pass and the next.
+	//
+	// The question this answers: does Oblivion call Present more than once per
+	// step while a menu is up? On a monitor that would be invisible, because
+	// the frames run together. In a headset it is not - the pose is frozen, so
+	// every submitted picture stands still until the next replaces it, and two
+	// states of a menu shown in succession are two states you actually see.
+	//
+	// Reported when it happens and then a few more times, because the fact of
+	// it is what matters and a line per frame would drown the log.
+	++g_flatFramesSinceCamera;
+	if (g_flatFramesSinceCamera > 1 && g_flatBurstsReported < 6) {
+		++g_flatBurstsReported;
+		OBVR_LOG("Render: %u flat frames since the last camera pass",
+		         g_flatFramesSinceCamera);
 	}
 
 	// The recenter key, polled here because nothing else does on these frames.
