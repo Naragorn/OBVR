@@ -1,0 +1,43 @@
+OBVR 1 - Query
+OBSE version 22, Oblivion version 010201A0
+OBVR 1 - Load
+Config: D:\SteamLibrary\steamapps\common\Oblivion\Data\OBSE\Plugins\OBVR.ini
+Config: HookEnabled=1 Source=openvr Fixed=(P 0.0, R 20.0, Y 0.0)
+Config: Simulated=(Yaw 25.0, Pitch 12.0, Period 600) LogEveryFrames=0 ReloadEveryFrames=120
+Config: RecenterKey=46 (0x2E)
+Config: PositionalTracking=1 UnitsPerMetre=69.99 HeadMovementScale=3.00 (effective 209.97) MaxLeanUnits=120.0
+Config: BlockVerticalLook=1 VerticalLookRange=(up 60.0, down 120.0) SmoothVerticalLook=1 (8.0)
+Config: SmoothTurning=0 TurnSpeed=12.0
+Config: Render.Enabled=1 GameFrame=1 Stereo=aer - OBVR will claim the VR scene
+OpenVR: connected as a scene application through FnTable:IVRSystem_026 and FnTable:IVRCompositor_029
+Camera: hook installed at 0066BE6E, trampoline at 03E30000 (37 bytes)
+OBVR ready
+Camera: first hook pass, CameraNode=1812BCA0, third person
+Render: Oblivion's D3D9 device 0BAEF880 is DXVK
+Render: Vulkan instance=08F2C010 physical=0B9004B8 device=34880078
+Render: Vulkan queue=345E1578 index=0 family=0
+Render: back buffer image=0000000034A33C78 2560x1440 format=44 samples=1 layout=1
+Render: back buffer usage=00000017 transfer_src=1 sampled=1, submittable once transitioned
+Head: eye separation 62.0 mm, half of it 2.17 Oblivion units
+Render: left eye raw=(l -1.1518, r 0.8248, t -1.1991, b 0.7927)
+Render: left eye fov=(h 88.6 deg, v 88.6 deg) asymmetry=(h -0.3270, v -0.4064)
+Render: right eye raw=(l -0.8417, r 1.1419, t -1.1908, b 0.8073)
+Render: right eye fov=(h 88.9 deg, v 88.9 deg) asymmetry=(h 0.3003, v -0.3835)
+Render: eye offsets left=(-0.0310, 0.0000, 0.0000) right=(0.0310, 0.0000, 0.0000)
+Render: IPD 62.0 mm
+Render: game frame bounds left u=0.034..0.834 right u=0.161..0.961
+Render: two 3560x3560 eye textures ready, cross at u=0.583 and u=0.424
+Render: the game frame is usable, submitting Oblivion's own picture
+Mirror: 2560x1440 D3DFORMAT 22, Vulkan format 44, usage 0x00000017 - submittable
+Render: alternate eyes are on, each eye holding its own last picture
+Camera: recentered on key 0x2E (frame 115)
+Camera: recentered on key 0x2E (frame 157)
+Camera: recentered on key 0x2E (frame 210)
+Camera: recentered on key 0x2E (frame 331)
+Camera: recentered on key 0x2E (frame 403)
+Camera: recentered on key 0x2E (frame 797)
+OpenVR: no valid HMD pose yet
+Camera: recentered on key 0x2E (frame 1178)
+Camera: recentered on key 0x2E (frame 2509)
+Camera: recentered on key 0x2E (frame 2697)
+Camera: recentered on key 0x2E (frame 5054)

@@ -109,6 +109,21 @@ struct TrackerSettings {
 	// never allowed to absorb movementScale.
 	StereoMode stereo = StereoMode::None;
 
+	// Oblivion's own horizontal field of view, in degrees. fDefaultFOV out of
+	// Oblivion.ini, which is 75 unless it has been changed.
+	//
+	// Read from OBVR's own file rather than the game's, because the console
+	// command "fov" overrides the setting at runtime and OBVR has no way to
+	// see that it did. A figure that disagrees with the game shows up as a
+	// world that is the wrong size, so the log prints what was used.
+	//
+	// It is needed because the game's picture has to be laid into the eye's
+	// view at the angle it actually covers. Without it the world is magnified
+	// by whatever ratio two unrelated frustums happen to have - measured at
+	// 1.61 times across and 2.31 times down on the headset this was built
+	// against, which is both far too large and visibly stretched.
+	float gameFovDegrees = 75.0f;
+
 	// Oblivion units per metre, for converting the head offset.
 	//
 	// The Construction Set wiki gives "21.3 units to a foot ... 64 units per

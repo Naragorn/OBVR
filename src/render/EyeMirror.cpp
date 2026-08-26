@@ -7,7 +7,13 @@
 namespace obvr::render {
 namespace {
 
-// Reads the back buffer's size and format, so the copies match it exactly.
+// Opaque black. The margin around Oblivion's frame, which the game never
+// draws into and which would otherwise show whatever the memory held when the
+// texture was made - in a headset, a border of noise around the world.
+constexpr UInt32 kOpaqueBlack = 0xFF000000;
+
+// Reads the back buffer's size and format, so the copy is made from something
+// whose shape is known rather than assumed.
 //
 // Asked rather than assumed. Oblivion's back buffer could be X8R8G8B8 or
 // A8R8G8B8 depending on how the device was created, and StretchRect between
@@ -32,6 +38,23 @@ bool DescribeBackBuffer(void* gameDevice, d3d9::SurfaceDesc& out) {
 
 	d3d11::Release(surface);
 	return ok;
+}
+
+// Turns a fraction of an image into a pixel edge.
+//
+// Rounded rather than truncated, and clamped to the image, because these
+// become rectangles handed to Direct3D: an edge one pixel outside its surface
+// is not a picture that overhangs, it is an invalid call.
+SInt32 EdgeOf(float fraction, UInt32 extent) {
+	const float scaled = fraction * static_cast<float>(extent);
+	SInt32 pixel = static_cast<SInt32>(scaled + 0.5f);
+	if (pixel < 0) {
+		pixel = 0;
+	}
+	if (pixel > static_cast<SInt32>(extent)) {
+		pixel = static_cast<SInt32>(extent);
+	}
+	return pixel;
 }
 
 }  // namespace
@@ -80,10 +103,12 @@ bool EyeMirror::CreateOne(void* gameDevice, int index) {
 	return ReadImageInfo(eye.interop, eye.image);
 }
 
-bool EyeMirror::Create(void* gameDevice) {
+bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeight,
+                       const EyeProjection& leftEye, const EyeProjection& rightEye,
+                       float gameFovDegrees) {
 	Destroy();
 
-	if (gameDevice == nullptr) {
+	if (gameDevice == nullptr || textureWidth == 0 || textureHeight == 0) {
 		return false;
 	}
 
@@ -98,8 +123,10 @@ bool EyeMirror::Create(void* gameDevice) {
 		return false;
 	}
 
-	m_width = desc.width;
-	m_height = desc.height;
+	m_width = textureWidth;
+	m_height = textureHeight;
+	m_frameWidth = desc.width;
+	m_frameHeight = desc.height;
 	m_format = desc.format;
 
 	for (int index = 0; index < 2; ++index) {
@@ -120,8 +147,8 @@ bool EyeMirror::Create(void* gameDevice) {
 	// read second hand, out of DeepWiki rather than out of the DXVK source,
 	// and this line is what makes it first hand on the machine it matters on.
 	const BackBufferImage& left = m_eye[0].image;
-	OBVR_LOG("Mirror: %ux%u D3DFORMAT %u, Vulkan format %u, usage 0x%08X - %s", m_width,
-	         m_height, m_format, left.format, left.usage,
+	OBVR_LOG("Mirror: %ux%u textures, D3DFORMAT %u, Vulkan format %u, usage 0x%08X - %s",
+	         m_width, m_height, m_format, left.format, left.usage,
 	         IsSubmittableImage(left) ? "submittable"
 	                                  : "NOT submittable, so alternate eyes cannot work");
 
@@ -132,6 +159,90 @@ bool EyeMirror::Create(void* gameDevice) {
 		return false;
 	}
 
+	// Where the game's frame goes inside each eye's view. This is what makes
+	// the world its real size rather than whatever magnification two
+	// unrelated frustums happen to imply.
+	for (int index = 0; index < 2; ++index) {
+		const EyeProjection& projection = index == 0 ? leftEye : rightEye;
+		const PicturePlacement placement =
+			PlacePicture(projection, gameFovDegrees, m_frameWidth, m_frameHeight);
+
+		Eye& eye = m_eye[index];
+		eye.destination.left = EdgeOf(placement.uMin, m_width);
+		eye.destination.right = EdgeOf(placement.uMax, m_width);
+		eye.destination.top = EdgeOf(placement.vMin, m_height);
+		eye.destination.bottom = EdgeOf(placement.vMax, m_height);
+
+		eye.source.left = EdgeOf(placement.sourceUMin, m_frameWidth);
+		eye.source.right = EdgeOf(placement.sourceUMax, m_frameWidth);
+		eye.source.top = EdgeOf(placement.sourceVMin, m_frameHeight);
+		eye.source.bottom = EdgeOf(placement.sourceVMax, m_frameHeight);
+
+		if (placement.cropped) {
+			m_cropped = true;
+		}
+
+		// A rectangle of no area is not a small picture, it is a failed call.
+		// It would mean the arithmetic above produced nonsense, and one line
+		// here is cheaper than finding that out from a black headset.
+		if (eye.destination.right <= eye.destination.left ||
+		    eye.destination.bottom <= eye.destination.top ||
+		    eye.source.right <= eye.source.left || eye.source.bottom <= eye.source.top) {
+			OBVR_LOG("Mirror: the %s eye's picture came out with no area, so the placement "
+			         "arithmetic is wrong",
+			         index == 0 ? "left" : "right");
+			Destroy();
+			return false;
+		}
+	}
+
+	OBVR_LOG("Mirror: the game's %ux%u frame at %.1f degrees sits at left x=%d..%d y=%d..%d, "
+	         "right x=%d..%d y=%d..%d%s",
+	         m_frameWidth, m_frameHeight, static_cast<double>(gameFovDegrees),
+	         m_eye[0].destination.left, m_eye[0].destination.right, m_eye[0].destination.top,
+	         m_eye[0].destination.bottom, m_eye[1].destination.left,
+	         m_eye[1].destination.right, m_eye[1].destination.top, m_eye[1].destination.bottom,
+	         m_cropped ? " - part of the frame did not fit and was cut" : "");
+
+	// How much of the headset's view the picture actually fills, said as a
+	// percentage because that is the number a person can check against what
+	// they see. A small figure is not a fault: a 16:9 frame at an ordinary
+	// field of view simply does not fill a headset, and the remainder is
+	// black by design rather than by accident.
+	const int fillW = static_cast<int>(
+		100 * (m_eye[0].destination.right - m_eye[0].destination.left) /
+		static_cast<SInt32>(m_width));
+	const int fillH = static_cast<int>(
+		100 * (m_eye[0].destination.bottom - m_eye[0].destination.top) /
+		static_cast<SInt32>(m_height));
+	OBVR_LOG("Mirror: the picture fills %d%% of the view across and %d%% down; the rest is "
+	         "black. Raise Oblivion's fDefaultFOV to fill more, at the cost of pushing the "
+	         "HUD further out",
+	         fillW, fillH);
+
+	// Black once, now, rather than every frame. Nothing draws into the margin
+	// afterwards, so it stays as it is left here - and a per-frame fill would
+	// be a full-screen write for a picture that never changes.
+	auto colorFill = d3d9::Method<d3d9::ColorFillFn>(gameDevice, d3d9::kDeviceColorFill);
+	if (colorFill == nullptr) {
+		OBVR_LOG("Mirror: ColorFill is not reachable, so the margin keeps whatever the "
+		         "memory held");
+	} else {
+		for (Eye& eye : m_eye) {
+			if (d3d11::Failed(colorFill(gameDevice, eye.surface, nullptr, kOpaqueBlack))) {
+				OBVR_LOG("Mirror: the margin could not be blacked out, so it shows whatever "
+				         "the memory held");
+				break;
+			}
+		}
+	}
+
+	// Linear, because the copy scales now - the frame and its place in the
+	// texture are different sizes, and D3DTEXF_NONE is documented as being
+	// for the case where they are not. Which filters StretchRect accepts is a
+	// device capability rather than a certainty, so the answer is taken from
+	// the device on the first copy instead of assumed here.
+	m_filter = d3d9::kTexFilterLinear;
 	return true;
 }
 
@@ -153,19 +264,31 @@ bool EyeMirror::CopyBackBuffer(void* gameDevice, bool isLeft) {
 		return false;
 	}
 
-	// Both on the first pass. After that only the eye this frame was drawn
-	// for - the other one keeps the picture from its own last turn, which is
-	// what makes the two eyes differ at all.
+	// Both on the first pass. After that only the eye this frame belongs to -
+	// the other one keeps the picture from its own last turn, which is what
+	// makes the two eyes differ at all.
 	const int first = m_primed ? (isLeft ? 0 : 1) : 0;
 	const int last = m_primed ? first : 1;
 
 	bool ok = true;
 	for (int index = first; index <= last; ++index) {
-		// No rectangles and no filter: same size in and out, so this is a
-		// copy rather than a resize, and asking for a filter would be asking
-		// the GPU to resample a picture into itself.
-		if (d3d11::Failed(stretchRect(gameDevice, source, nullptr, m_eye[index].surface,
-		                              nullptr, d3d9::kTexFilterNone))) {
+		const Eye& eye = m_eye[index];
+		SInt32 result =
+			stretchRect(gameDevice, source, &eye.source, eye.surface, &eye.destination,
+		                m_filter);
+
+		// A device may refuse linear stretching - it is a capability, not a
+		// guarantee. Point filtering is worse to look at and better than no
+		// picture, and the fallback is remembered so the refusal costs one
+		// extra call rather than one per frame for ever.
+		if (d3d11::Failed(result) && m_filter != d3d9::kTexFilterPoint) {
+			OBVR_LOG("Mirror: linear stretching was refused, falling back to point");
+			m_filter = d3d9::kTexFilterPoint;
+			result = stretchRect(gameDevice, source, &eye.source, eye.surface,
+			                     &eye.destination, m_filter);
+		}
+
+		if (d3d11::Failed(result)) {
 			ok = false;
 		}
 	}
@@ -219,11 +342,17 @@ void EyeMirror::Destroy() {
 		d3d11::Release(eye.surface);
 		d3d11::Release(eye.texture);
 		eye.image = BackBufferImage{};
+		eye.destination = d3d9::Rect{};
+		eye.source = d3d9::Rect{};
 	}
 
 	m_width = 0;
 	m_height = 0;
+	m_frameWidth = 0;
+	m_frameHeight = 0;
 	m_format = 0;
+	m_filter = 0;
+	m_cropped = false;
 	m_primed = false;
 }
 

@@ -69,6 +69,36 @@ constexpr UInt32 kTextureGetSurfaceLevel = 18;
 // IDirect3DSurface9 derives from IDirect3DResource9 directly.
 constexpr UInt32 kSurfaceGetDesc = 12;
 
+
+// Fills a surface, or part of one, with a single colour. Used once per eye
+// picture, to make the margin around Oblivion's frame black rather than
+// whatever the memory happened to hold.
+constexpr UInt32 kDeviceColorFill = 35;
+
+// D3DTEXTUREFILTERTYPE (d3d9types.h). NONE is the right filter only when
+// there is no scaling; the moment a source rectangle and a destination
+// rectangle differ in size, it has to be POINT or LINEAR.
+constexpr UInt32 kTexFilterPoint = 1;
+constexpr UInt32 kTexFilterLinear = 2;
+
+// RECT (windef.h), which StretchRect and ColorFill both take.
+//
+// Four signed 32-bit values, and signed matters: a picture placed off the
+// edge of its texture produces a negative coordinate, and an unsigned type
+// would turn that into an enormous positive one rather than into an error.
+// The edges are half-open, so right minus left is the width.
+struct Rect {
+	SInt32 left;
+	SInt32 top;
+	SInt32 right;
+	SInt32 bottom;
+};
+
+static_assert(sizeof(Rect) == 4 * sizeof(SInt32), "RECT is four 32-bit values");
+
+using ColorFillFn = SInt32(__stdcall*)(void* self, void* surface, const Rect* rect,
+                                       UInt32 colour);
+
 // ---------------------------------------------------------------- Constants
 
 // D3DBACKBUFFER_TYPE_MONO
@@ -118,11 +148,11 @@ using CreateTextureFn = SInt32(__stdcall*)(void* self, UInt32 width, UInt32 heig
                                            UInt32 levels, UInt32 usage, UInt32 format,
                                            UInt32 pool, void** texture, void** sharedHandle);
 
-// The two RECT pointers are always null here - the whole surface, no crop -
-// so they are typed as void* rather than replicating RECT for the sake of two
-// arguments that are never anything else.
-using StretchRectFn = SInt32(__stdcall*)(void* self, void* source, const void* sourceRect,
-                                         void* dest, const void* destRect, UInt32 filter);
+// The two rectangles: null means the whole surface. Both are used now - the
+// source is Oblivion's whole frame and the destination is the part of the eye
+// picture that frame is entitled to at the right angular scale.
+using StretchRectFn = SInt32(__stdcall*)(void* self, void* source, const Rect* sourceRect,
+                                         void* dest, const Rect* destRect, UInt32 filter);
 
 using GetSurfaceLevelFn = SInt32(__stdcall*)(void* self, UInt32 level, void** surface);
 

@@ -118,4 +118,89 @@ bool IsPlausibleIpd(float metres) {
 	return metres > 0.045f && metres < 0.085f;
 }
 
+
+PicturePlacement PlacePicture(const EyeProjection& eye, float fovDegrees, UInt32 frameWidth,
+                              UInt32 frameHeight) {
+	PicturePlacement placement;
+
+	// Nothing sensible can be said about a frame with no size or a field of
+	// view that is not an angle. The default placement fills the texture,
+	// which is what OBVR did before this function existed - wrong, but
+	// wrong in a way that still shows a picture.
+	if (frameWidth == 0 || frameHeight == 0 || !(fovDegrees > 1.0f) ||
+	    !(fovDegrees < 179.0f)) {
+		return placement;
+	}
+
+	const float eyeWidth = eye.right - eye.left;
+	const float eyeHeight = eye.bottom - eye.top;
+	if (!(eyeWidth > 0.0f) || !(eyeHeight > 0.0f)) {
+		return placement;
+	}
+
+	// The game's frustum, as tangents of the half-angles. The vertical half
+	// comes from the aspect ratio, because a horizontal field of view says
+	// nothing on its own about how tall the picture is - and getting this
+	// from the texture's shape instead of the frame's would be the same
+	// mistake in a different place.
+	const float tanHalfWidth = math::Tan(fovDegrees * 0.5f * math::kDegreesToRadians);
+	const float tanHalfHeight =
+		tanHalfWidth * static_cast<float>(frameHeight) / static_cast<float>(frameWidth);
+
+	// What share of the eye's view the game's picture covers, at a scale of
+	// one to one. Under 1 in both axes for any ordinary field of view, and
+	// the remainder is the black margin.
+	const float shareU = 2.0f * tanHalfWidth / eyeWidth;
+	const float shareV = 2.0f * tanHalfHeight / eyeHeight;
+
+	// Where the eye's view axis lands in the texture. The horizontal figure
+	// is the same one that placed the test pattern's cross, and that cross
+	// was seen centred in a headset - so this arithmetic has been checked
+	// against a person's eyes, at least in one axis.
+	//
+	// The vertical figure assumes v grows in the same direction as the
+	// frustum's own vertical axis, so that the "top" edge is the one at
+	// v = 0. That is NOT established: OpenVR does not document the
+	// convention, and Valve's own wiki says the two edges are named
+	// backwards. If the picture sits too high or too low by about a tenth of
+	// the view, this assumption is the reason and the fix is one sign.
+	const float centreU = -eye.left / eyeWidth;
+	const float centreV = -eye.top / eyeHeight;
+
+	placement.uMin = centreU - shareU * 0.5f;
+	placement.uMax = centreU + shareU * 0.5f;
+	placement.vMin = centreV - shareV * 0.5f;
+	placement.vMax = centreV + shareV * 0.5f;
+
+	// A destination rectangle reaching past its texture is not a picture that
+	// hangs over the edge, it is an invalid call - so anything outside is cut
+	// off both here and, in the same proportion, out of the source. Cutting
+	// only one of the two would slide the picture instead of trimming it.
+	const float widthBefore = placement.uMax - placement.uMin;
+	const float heightBefore = placement.vMax - placement.vMin;
+
+	if (placement.uMin < 0.0f) {
+		placement.sourceUMin = -placement.uMin / widthBefore;
+		placement.uMin = 0.0f;
+		placement.cropped = true;
+	}
+	if (placement.uMax > 1.0f) {
+		placement.sourceUMax = 1.0f - (placement.uMax - 1.0f) / widthBefore;
+		placement.uMax = 1.0f;
+		placement.cropped = true;
+	}
+	if (placement.vMin < 0.0f) {
+		placement.sourceVMin = -placement.vMin / heightBefore;
+		placement.vMin = 0.0f;
+		placement.cropped = true;
+	}
+	if (placement.vMax > 1.0f) {
+		placement.sourceVMax = 1.0f - (placement.vMax - 1.0f) / heightBefore;
+		placement.vMax = 1.0f;
+		placement.cropped = true;
+	}
+
+	return placement;
+}
+
 }  // namespace obvr::render

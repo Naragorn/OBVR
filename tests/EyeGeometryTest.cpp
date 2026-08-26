@@ -249,6 +249,171 @@ void TestInterpupillaryDistance() {
 	      "an offset that is not purely sideways still measures the full distance");
 }
 
+// The headset this was built against, as it reported itself. Kept as
+// measurements rather than as round numbers because the arithmetic below is
+// checked against what a person actually saw through these lenses.
+obvr::render::EyeProjection MeasuredLeftEye() {
+	obvr::render::EyeProjection eye;
+	eye.left = -1.1518f;
+	eye.right = 0.8248f;
+	eye.top = -1.1991f;
+	eye.bottom = 0.7927f;
+	return eye;
+}
+
+void TestPlacePicture() {
+	std::printf("Placing the game's picture in an eye's view\n");
+
+	using obvr::render::PicturePlacement;
+	using obvr::render::PlacePicture;
+
+	// Oblivion as it is actually configured on this machine: 2560x1440 at
+	// fDefaultFOV 75.
+	const PicturePlacement measured = PlacePicture(MeasuredLeftEye(), 75.0f, 2560, 1440);
+
+	// tan(37.5) = 0.76733 across, and 0.5625 of that down for a 16:9 frame,
+	// against an eye frustum 1.9766 wide and 1.9918 tall.
+	CheckNear(measured.uMax - measured.uMin, 0.7764f, 0.001f,
+	          "the picture covers 78% of the eye's width");
+	CheckNear(measured.vMax - measured.vMin, 0.4334f, 0.001f,
+	          "and 43% of its height");
+
+	// Centred on the view axis, not on the texture. The horizontal figure is
+	// the same 0.583 that placed the test pattern's cross, and that cross was
+	// seen centred in a headset - so this half of the arithmetic has been
+	// checked against a person's eyes.
+	CheckNear((measured.uMin + measured.uMax) * 0.5f, 0.5827f, 0.001f,
+	          "the picture is centred on the eye's view axis, not the texture's middle");
+	CheckNear((measured.vMin + measured.vMax) * 0.5f, 0.6020f, 0.001f,
+	          "vertically too, on the assumption that the top edge is the one at v=0");
+
+	Check(!measured.cropped, "nothing is cut away, because 75 degrees fits inside 89");
+	CheckNear(measured.sourceUMin, 0.0f, 0.0001f, "so the whole frame is used across");
+	CheckNear(measured.sourceUMax, 1.0f, 0.0001f, "all of it");
+	CheckNear(measured.sourceVMin, 0.0f, 0.0001f, "and all of it down");
+	CheckNear(measured.sourceVMax, 1.0f, 0.0001f, "as well");
+
+	// Everything inside the texture, or the destination rectangle is not a
+	// picture that overhangs but an invalid call.
+	Check(measured.uMin >= 0.0f && measured.uMax <= 1.0f, "and it stays inside the texture");
+	Check(measured.vMin >= 0.0f && measured.vMax <= 1.0f, "in both directions");
+}
+
+void TestPlacePictureScale() {
+	std::printf("The scale that made the world too big\n");
+
+	using obvr::render::PlacePicture;
+
+	const obvr::render::EyeProjection eye = MeasuredLeftEye();
+	const obvr::render::PicturePlacement placement = PlacePicture(eye, 75.0f, 2560, 1440);
+
+	// In tangents, not in degrees. An eye's view is linear in the tangent of
+	// the angle and not in the angle itself, so comparing degrees per fraction
+	// of the view answers a slightly different question and answers it wrong -
+	// by about 10% at these angles, which is enough to make a correct
+	// placement look broken.
+	const float tanHalfWidth = std::tan(37.5f * 3.14159265f / 180.0f);
+	const float tanHalfHeight = tanHalfWidth * 1440.0f / 2560.0f;
+	const float eyeWidth = eye.right - eye.left;
+	const float eyeHeight = eye.bottom - eye.top;
+
+	// Magnification: how much wider the world appears than it should. One
+	// means life-sized, and it has to be one in both axes - a picture that is
+	// merely large can be got used to, one that is stretched cannot.
+	const float across = (2.0f * tanHalfWidth / (placement.uMax - placement.uMin)) / eyeWidth;
+	const float down = (2.0f * tanHalfHeight / (placement.vMax - placement.vMin)) / eyeHeight;
+
+	CheckNear(across, 1.0f, 0.005f, "the world is life-sized across");
+	CheckNear(down, 1.0f, 0.005f, "and life-sized down");
+	CheckNear(across / down, 1.0f, 0.005f, "so it is not stretched in either direction");
+
+	// What it was before, as numbers rather than as a memory. The previous
+	// code gave each eye a fixed 80% of the frame's width and all of its
+	// height, which is where the report of a world that was too big and a HUD
+	// that had left the view came from.
+	const float oldAcross = eyeWidth / (0.8f * 2.0f * tanHalfWidth);
+	const float oldDown = eyeHeight / (1.0f * 2.0f * tanHalfHeight);
+
+	CheckNear(oldAcross, 1.61f, 0.02f, "the fixed bounds magnified the world 1.61 times across");
+	CheckNear(oldDown, 2.31f, 0.02f, "and 2.31 times down");
+	CheckNear(oldDown / oldAcross, 1.43f, 0.02f,
+	          "which stretched it by 1.43 - the fault this replaces");
+}
+void TestPlacePictureCrop() {
+	std::printf("A game wider than the headset can show\n");
+
+	using obvr::render::PicturePlacement;
+	using obvr::render::PlacePicture;
+
+	// A square, symmetric eye two units wide, so a field of view whose tangent
+	// exceeds 1 in an axis cannot fit in that axis.
+	obvr::render::EyeProjection eye;
+	eye.left = -1.0f;
+	eye.right = 1.0f;
+	eye.top = -1.0f;
+	eye.bottom = 1.0f;
+
+	// 140 degrees across a square frame: tan(70) is 2.75, well past the
+	// frustum, so both axes overflow.
+	const PicturePlacement wide = PlacePicture(eye, 140.0f, 1000, 1000);
+
+	Check(wide.cropped, "a field of view wider than the eye's is reported as cropped");
+	Check(wide.uMin >= 0.0f && wide.uMax <= 1.0f, "and the destination is pulled inside");
+	Check(wide.vMin >= 0.0f && wide.vMax <= 1.0f, "in both axes");
+
+	// Cut out of the source in the same proportion. Trimming only the
+	// destination would squeeze the picture instead of cropping it, which
+	// looks like a lens fault rather than like a missing edge.
+	Check(wide.sourceUMin > 0.0f && wide.sourceUMax < 1.0f,
+	      "the source is trimmed to match, rather than the picture being squeezed");
+	CheckNear(wide.sourceUMin, 1.0f - wide.sourceUMax, 0.001f,
+	          "and symmetrically, for a symmetric frustum");
+
+	// A field of view that exactly fills the eye leaves nothing over and cuts
+	// nothing off. tan(45) is 1, which is the frustum's own edge.
+	const PicturePlacement exact = PlacePicture(eye, 90.0f, 1000, 1000);
+	Check(!exact.cropped, "a field of view matching the eye's fits exactly");
+	CheckNear(exact.uMin, 0.0f, 0.001f, "filling the texture from the left edge");
+	CheckNear(exact.uMax, 1.0f, 0.001f, "to the right");
+}
+
+void TestPlacePictureRefusals() {
+	std::printf("Placements that cannot be computed\n");
+
+	using obvr::render::PicturePlacement;
+	using obvr::render::PlacePicture;
+
+	obvr::render::EyeProjection eye;
+	eye.left = -1.0f;
+	eye.right = 1.0f;
+	eye.top = -1.0f;
+	eye.bottom = 1.0f;
+
+	// Nothing sensible can be said about these, and the fallback fills the
+	// texture - wrong, but wrong in a way that still shows a picture rather
+	// than handing Direct3D a rectangle of no area.
+	const PicturePlacement noFrame = PlacePicture(eye, 75.0f, 0, 1440);
+	CheckNear(noFrame.uMax - noFrame.uMin, 1.0f, 0.0001f,
+	          "a frame with no width falls back to the whole texture");
+
+	const PicturePlacement noAngle = PlacePicture(eye, 0.0f, 2560, 1440);
+	CheckNear(noAngle.uMax - noAngle.uMin, 1.0f, 0.0001f,
+	          "and so does a field of view of zero");
+
+	const PicturePlacement straightUp = PlacePicture(eye, 180.0f, 2560, 1440);
+	CheckNear(straightUp.uMax - straightUp.uMin, 1.0f, 0.0001f,
+	          "and one of 180 degrees, whose tangent is not a number");
+
+	// A frustum with no extent, which would divide by zero.
+	obvr::render::EyeProjection flat;
+	flat.left = 0.0f;
+	flat.right = 0.0f;
+	flat.top = -1.0f;
+	flat.bottom = 1.0f;
+	const PicturePlacement noEye = PlacePicture(flat, 75.0f, 2560, 1440);
+	CheckNear(noEye.uMax - noEye.uMin, 1.0f, 0.0001f, "and an eye that sees nothing wide");
+}
+
 }  // namespace
 
 int main() {
@@ -263,6 +428,14 @@ int main() {
 	TestMonoBounds();
 	std::printf("\n");
 	TestInterpupillaryDistance();
+	std::printf("\n");
+	TestPlacePicture();
+	std::printf("\n");
+	TestPlacePictureScale();
+	std::printf("\n");
+	TestPlacePictureCrop();
+	std::printf("\n");
+	TestPlacePictureRefusals();
 
 	std::printf("\n");
 	if (g_failures == 0) {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "render/EyeGeometry.h"
 #include "render/EyeMirror.h"
 #include "render/EyeTextures.h"
 #include "render/GameDevice.h"
@@ -50,6 +51,12 @@ public:
 		// than deciding for themselves.
 		bool alternateEyes = false;
 		bool isLeftEye = true;
+
+		// Oblivion's own horizontal field of view, in degrees - fDefaultFOV out
+		// of Oblivion.ini, 75 unless it has been changed. Needed because a
+		// picture cannot be placed at the right angular size without knowing
+		// what angle it covers.
+		float gameFovDegrees = 75.0f;
 	};
 
 	void Update(const vr::OpenVRBackend& backend, const FrameRequest& request);
@@ -95,6 +102,14 @@ private:
 	bool m_mirrorChecked = false;
 	bool m_mirrorUsable = false;
 	bool m_copyFailureLogged = false;
+
+	// What the headset said about each eye, kept because the picture's place
+	// inside the eye texture is computed from it - and because the eye copies
+	// are made later than the geometry is read.
+	EyeProjection m_leftEye;
+	EyeProjection m_rightEye;
+	UInt32 m_eyeWidth = 0;
+	UInt32 m_eyeHeight = 0;
 
 	// Which part of Oblivion's frame each eye is shown. Computed once from
 	// the optical axes, because they cannot change within a run, and stored

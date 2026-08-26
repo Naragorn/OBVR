@@ -1154,8 +1154,8 @@ one, and copying into them once a frame.
 ### Alternate eye rendering, second attempt
 
 Built. `src/render/EyeMirror.{h,cpp}` owns two pictures, one per eye; `render::HeadsetRenderer`
-copies the back buffer into whichever eye this frame was drawn for and submits **both** every
-frame. Not yet seen in a headset - the tests pass and the game has not run.
+copies the back buffer into whichever eye that frame was drawn for and submits **both** every
+frame. Seen in a headset - see the two faults that first run exposed, below.
 
 **The plan recorded above was wrong in one place, and the correction is the interesting
 part.** It said `CreateRenderTarget` at index 28. That would have produced an image that is
@@ -1227,6 +1227,98 @@ on anything moving quickly. Both were known before this was built and neither is
 **Still not established:** whether the usage bits come out right (the log answers it), and
 whether the picture is one frame stale, which it still is - the submit happens from the camera
 hook, before the frame is drawn, and moving it to `Present` at index 17 is a separate change.
+
+### Alternate eyes reached a headset, and showed two faults
+
+`docs/verification/OBVR-aer-first-light.log` is the record. Both eyes were delivered, the
+compositor kept the scene, and Oblivion was visible in stereo. Reported from the headset:
+the picture was unstable and flickered when the head moved sideways, and the world looked
+too large - the middle of the frame was visible but the HUD had left the view entirely.
+
+Neither symptom needed guessing at. Both follow from what the log says.
+
+**Confirmed first, because it was the open question.** `Mirror: 2560x1440 D3DFORMAT 22,
+Vulkan format 44, usage 0x00000017 - submittable`. `0x17` is `TRANSFER_SRC | TRANSFER_DST |
+SAMPLED | COLOR_ATTACHMENT`, so `CreateTexture` with `D3DUSAGE_RENDERTARGET` does carry the
+sampled bit that a surface from `CreateRenderTarget` would not. The DeepWiki reading was
+right, and it is now read back off the image itself rather than taken on trust.
+
+#### Fault one: each eye was shown the other eye's viewpoint
+
+The submit runs from the camera hook, which fires while the camera is being computed -
+before the frame is drawn, not after. So the back buffer still holds the *previous* frame,
+drawn from the previous frame's camera position, and under alternate eyes that is the other
+eye.
+
+Copying it into `request.isLeftEye` therefore handed the left eye the right eye's view and
+the right eye the left's, every frame. That is not a lost depth cue. It is stereo with the
+disparity inverted, which the eyes cannot fuse, and it presents exactly as reported: an
+unstable picture that gets worse the more the head moves sideways.
+
+`frame_logic_test` warns about precisely this failure - "the wearer would see each eye
+showing the other's viewpoint, which is worse than no depth at all" - and could not catch
+it, because the swap does not happen in the alternation. It happens in the one-frame gap
+between deciding which eye a frame is for and reading the picture that was drawn for the
+previous one.
+
+The fix is `!request.isLeftEye`, with the reasoning written out where it is used. It is
+correct only while the submit stays ahead of the drawing; moving the submit to `Present` at
+vtable index 17 would invert it again, and the comment says so.
+
+#### Fault two: the world was magnified, and stretched
+
+Measured, from the numbers in the log rather than by eye. Oblivion renders 2560x1440 at
+`fDefaultFOV 75`, which is a frustum 1.5347 wide in tangents and 0.8632 tall. The left eye
+asks for 1.9766 by 1.9918.
+
+The old code gave each eye a fixed 80% of the frame's width and all of its height:
+
+| | frame tangents shown | eye tangents filled | magnification |
+|---|---|---|---|
+| across | 0.8 x 1.5347 = 1.2277 | 1.9766 | **1.61x** |
+| down | 1.0 x 0.8632 = 0.8632 | 1.9918 | **2.31x** |
+
+So the world was 1.61 times too large across, 2.31 times too large down, and therefore
+stretched by 1.43 - taller than wide. A HUD that lives at the edges of a 16:9 frame is
+pushed out of sight by either figure on its own.
+
+`render::PlacePicture` replaces the fixed fraction. It takes the eye's frustum and the
+game's field of view and works out where the frame belongs at a scale of one to one:
+
+- the game's frustum in tangents, from its horizontal field of view and the frame's aspect
+  ratio - both are needed, since an angle alone says nothing about how tall a picture is
+- the share of the eye's view that covers: 0.776 across, 0.433 down, on this hardware
+- centred on the eye's view axis rather than on the texture
+- anything reaching past the texture cut out of the destination *and* out of the source in
+  the same proportion, because trimming only one slides the picture instead of cropping it
+
+The eye textures are now the size the headset asked for rather than the size of the back
+buffer, blacked out once with `ColorFill` (vtable index 35), and Oblivion's frame is
+`StretchRect`ed into a destination rectangle inside them. `Submit` is then given no bounds
+at all: the texture already covers exactly that eye's frustum, so cropping it again would
+magnify what was just made life-sized.
+
+**The margin is black by design.** A 16:9 frame at 75 degrees does not fill a headset's
+field of view, and it cannot be made to without either magnifying the world or asking
+Oblivion to render at something like 120 degrees across - and the second pushes the HUD off
+the edge just as surely. `Render.GameFovDegrees` in the INI is what the sum is done against;
+raising Oblivion's own `fDefaultFOV` and matching it here fills more of the view.
+
+**Still assumed, and flagged in the code:** that the frustum's "top" edge is the one at
+v = 0. OpenVR does not document the convention and Valve's own wiki says the two are named
+backwards. The horizontal half of the same arithmetic has been checked against a person's
+eyes - it is the figure that put the test pattern's cross where it was seen to be - but the
+vertical half has not. If the picture sits about a tenth of the view too high or too low,
+that assumption is the reason and the fix is one sign.
+
+**Unchanged and still true:** the picture is one frame stale, and the two eyes hold pictures
+drawn one frame apart. The first is fixable by submitting from `Present`; the second is what
+alternate eye rendering is.
+
+**Also unchanged:** the mono path still uses the old fixed bounds, so `Stereo=none` shows
+the same magnified, stretched picture it always did. Left alone deliberately - it is the
+fallback, it is known to work as it is, and changing the thing being fallen back to in the
+same breath as the thing being fixed would leave two candidates for any new fault.
 
 ### The INI switch
 

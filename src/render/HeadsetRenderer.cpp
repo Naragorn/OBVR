@@ -32,11 +32,12 @@ constexpr float kMonoBoundsWidth = 0.8f;
 // and 0.1.0 will take a ready made matrix from GetProjectionMatrix rather
 // than build one from these. Printing them anyway costs two lines and means
 // nobody has to run the game again to see what the headset reported.
-void LogEyeGeometry(const vr::OpenVRBackend& backend, float& crossULeft, float& crossURight) {
+void LogEyeGeometry(const vr::OpenVRBackend& backend, EyeProjection& outLeft,
+                    EyeProjection& outRight, float& crossULeft, float& crossURight) {
 	for (int eye = 0; eye < 2; ++eye) {
 		const char* name = eye == vr::openvr::kEyeLeft ? "left" : "right";
 
-		EyeProjection projection;
+		EyeProjection& projection = eye == vr::openvr::kEyeLeft ? outLeft : outRight;
 		if (backend.GetEyeProjection(eye, projection.left, projection.right, projection.top,
 		                             projection.bottom)) {
 			// Horizontal only, and only because it is unambiguous: left is
@@ -115,7 +116,9 @@ void HeadsetRenderer::Update(const vr::OpenVRBackend& backend, const FrameReques
 		// middle of the image.
 		float crossULeft = 0.5f;
 		float crossURight = 0.5f;
-		LogEyeGeometry(backend, crossULeft, crossURight);
+		LogEyeGeometry(backend, m_leftEye, m_rightEye, crossULeft, crossURight);
+		m_eyeWidth = width;
+		m_eyeHeight = height;
 
 		// The same two numbers serve twice: they place the cross in the test
 		// pattern, and they decide which part of Oblivion's frame each eye is
@@ -240,7 +243,8 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
                                           const FrameRequest& request, int& left, int& right) {
 	if (!m_mirrorChecked) {
 		m_mirrorChecked = true;
-		m_mirrorUsable = m_mirror.Create(request.gameDevice);
+		m_mirrorUsable = m_mirror.Create(request.gameDevice, m_eyeWidth, m_eyeHeight,
+		                                 m_leftEye, m_rightEye, request.gameFovDegrees);
 		OBVR_LOG("Render: alternate eyes are %s",
 		         m_mirrorUsable ? "on, each eye holding its own last picture"
 		                        : "unavailable, falling back to one image for both eyes");
@@ -248,24 +252,45 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 
 	if (!m_mirrorUsable) {
 		// Not a failure to report per frame, and not a reason to stop
-		// rendering either. The mono path below still works, so the wearer
-		// keeps a picture and the log has already said why it is flat.
+		// rendering either. The mono path still works, so the wearer keeps a
+		// picture and the log has already said why it is flat.
 		return SubmitMono(backend, request, left, right);
 	}
+
+	// Which eye the picture in the back buffer actually belongs to, and it is
+	// NOT the eye this frame is for.
+	//
+	// This runs from the camera hook, which fires while the camera is being
+	// computed - before the frame is drawn, not after. So the back buffer
+	// still holds the previous frame, drawn from the previous frame's camera
+	// position, which under alternate eyes is the other eye.
+	//
+	// Copying it into request.isLeftEye therefore gave each eye the other
+	// eye's viewpoint, every frame. That is not merely a lost depth cue: it
+	// is stereo with the disparity inverted, which the eyes cannot fuse, and
+	// it was reported from the headset as an unstable, flickering picture
+	// that got worse when the head moved sideways. Exactly the failure
+	// frame_logic_test warns about, arriving through the one route that test
+	// cannot see.
+	//
+	// !isLeftEye rather than IsLeftEyeFrame(frameCount - 1) because the two
+	// are the same thing for an alternation of two, including where the frame
+	// counter wraps.
+	const bool backBufferEye = !request.isLeftEye;
 
 	// The copy first, with no queue held - StretchRect puts work on the very
 	// queue the bracket is about to lock, so doing it inside the bracket would
 	// be asking DXVK to submit while OBVR holds its submission queue.
-	if (!m_mirror.CopyBackBuffer(request.gameDevice, request.isLeftEye)) {
+	if (!m_mirror.CopyBackBuffer(request.gameDevice, backBufferEye)) {
 		// Said once rather than never. The whole reason the first attempt at
-		// alternate eyes cost a session was that nothing failed out loud -
-		// so a path that quietly falls back to the test pattern gets a line,
-		// and gets it exactly once so the log stays readable.
+		// alternate eyes cost a session was that nothing failed out loud - so
+		// a path that quietly falls back to the test pattern gets a line, and
+		// gets it exactly once so the log stays readable.
 		if (!m_copyFailureLogged) {
 			m_copyFailureLogged = true;
 			OBVR_LOG("Render: the frame could not be copied into the %s eye, so the test "
 			         "pattern is showing instead",
-			         request.isLeftEye ? "left" : "right");
+			         backBufferEye ? "left" : "right");
 		}
 		return false;
 	}
@@ -276,22 +301,26 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 	}
 
 	// Both eyes, every frame, and that is the entire point of this path. The
-	// eye this frame was drawn for carries the picture just copied; the other
-	// carries its own last one. A single eye returns success and is not a
-	// frame - measured, in docs/verification/OBVR-aer-refused.log, where
-	// nothing failed and the scene faded out anyway.
+	// eye whose turn it was carries the picture just copied; the other carries
+	// its own last one. A single eye returns success and is not a frame -
+	// measured, in docs/verification/OBVR-aer-refused.log, where nothing
+	// failed and the scene faded out anyway.
 	dxvk::VRVulkanTextureData dataLeft{};
 	dxvk::VRVulkanTextureData dataRight{};
 	DescribeForOpenVR(m_mirror.GetImage(true), m_vulkan, dataLeft);
 	DescribeForOpenVR(m_mirror.GetImage(false), m_vulkan, dataRight);
 
+	// The whole texture, with no bounds at all. An eye texture here already
+	// covers exactly that eye's frustum - the game's picture was placed inside
+	// it at the right angular size, with black around it - so cropping the
+	// texture as well would magnify what has just been carefully made
+	// life-sized.
 	left = backend.SubmitEye(vr::openvr::kEyeLeft, &dataLeft, vr::openvr::kTextureTypeVulkan,
-	                         &m_boundsLeft);
+	                         nullptr);
 	right = backend.SubmitEye(vr::openvr::kEyeRight, &dataRight,
-	                          vr::openvr::kTextureTypeVulkan, &m_boundsRight);
+	                          vr::openvr::kTextureTypeVulkan, nullptr);
 	return true;
 }
-
 void HeadsetRenderer::Reset() {
 	m_textures.Destroy();
 	m_policy.Reset();
@@ -302,6 +331,10 @@ void HeadsetRenderer::Reset() {
 	m_mirrorChecked = false;
 	m_mirrorUsable = false;
 	m_copyFailureLogged = false;
+	m_eyeWidth = 0;
+	m_eyeHeight = 0;
+	m_leftEye = EyeProjection{};
+	m_rightEye = EyeProjection{};
 	m_vulkan = VulkanContext{};
 }
 

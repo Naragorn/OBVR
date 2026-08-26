@@ -102,6 +102,60 @@ struct TextureBounds {
 // twice, and these bounds are groundwork for that rather than a substitute.
 TextureBounds MonoBounds(float opticalCentreU, float width);
 
+
+// Where Oblivion's picture belongs inside an eye texture, and how much of
+// that texture it is entitled to.
+//
+// This is the arithmetic that decides whether the world looks its real size.
+// An eye texture covers the eye's whole frustum: u runs from the frustum's
+// left tangent to its right, v from top to bottom. Oblivion's frame covers a
+// different, narrower frustum - 75 degrees across a 16:9 image, against a
+// headset asking for about 89 degrees in both directions. Laying one over the
+// other without doing this sum stretches the picture by whatever ratio
+// happens to fall out, and stretches it by a different ratio in each axis.
+//
+// Measured, on the headset this was built against: the first attempt gave the
+// eye 80% of the frame's width and all of its height, which magnified the
+// world 1.61 times across and 2.31 times down - so it was both far too large
+// and 1.43 times taller than wide. The HUD, which lives at the edges of a
+// 16:9 frame, was pushed out of sight entirely.
+//
+// Fractions of the texture rather than pixels, because the same answer then
+// serves a destination rectangle at any texture size.
+struct PicturePlacement {
+	// Where the picture goes in the eye texture.
+	float uMin = 0.0f;
+	float vMin = 0.0f;
+	float uMax = 1.0f;
+	float vMax = 1.0f;
+
+	// Which part of Oblivion's frame is used. Normally all of it; less only
+	// when the game's field of view is wider than the eye's and the picture
+	// would otherwise reach past the texture.
+	float sourceUMin = 0.0f;
+	float sourceVMin = 0.0f;
+	float sourceUMax = 1.0f;
+	float sourceVMax = 1.0f;
+
+	// Whether anything had to be cut away to make it fit.
+	bool cropped = false;
+};
+
+// Turns a horizontal field of view and a frame size into the placement.
+//
+// fovDegrees is the game's own horizontal field of view - Oblivion's
+// fDefaultFOV, 75 by default - and the frame's aspect ratio gives the
+// vertical half of it. Both are needed: a field of view alone says nothing
+// about how tall the picture is.
+//
+// The result normally leaves a black margin, because a 16:9 frame at 75
+// degrees simply does not fill a headset's field of view. That margin is the
+// honest outcome. Filling the view instead would mean either magnifying the
+// world or asking Oblivion to render at something like 120 degrees across,
+// and the second of those pushes the HUD off the edge just as surely.
+PicturePlacement PlacePicture(const EyeProjection& eye, float fovDegrees, UInt32 frameWidth,
+                              UInt32 frameHeight);
+
 // The distance between the two eyes, in metres.
 //
 // The interpupillary distance, and the number every stereo pair is built on.

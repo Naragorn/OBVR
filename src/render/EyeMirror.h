@@ -1,7 +1,9 @@
 #pragma once
 
 #include "core/Types.h"
+#include "render/D3D9Types.h"
 #include "render/DxvkInterop.h"
+#include "render/EyeGeometry.h"
 #include "render/GameDevice.h"
 #include "render/InteropBracket.h"
 
@@ -37,14 +39,22 @@ public:
 	EyeMirror(const EyeMirror&) = delete;
 	EyeMirror& operator=(const EyeMirror&) = delete;
 
-	// Makes both pictures, matching the back buffer in size and format.
+	// Makes both pictures at the size the headset asked for, works out where
+	// Oblivion's frame belongs inside each of them, and blacks out the rest.
+	//
+	// The texture is the eye's whole field of view; the game's frame occupies
+	// only the part of it the game's own field of view is entitled to. That
+	// is the difference between a world at its real size and a world magnified
+	// by whatever ratio two unrelated frustums happen to have.
 	//
 	// CreateTexture rather than CreateRenderTarget, and the reason is in
 	// D3D9Types.h: in DXVK only the former produces an image carrying
 	// VK_IMAGE_USAGE_SAMPLED_BIT, SteamVR requires it, and usage is settled
 	// when an image is created. A surface from CreateRenderTarget would be
 	// perfectly good to draw into and impossible to submit.
-	bool Create(void* gameDevice);
+	bool Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeight,
+	            const EyeProjection& leftEye, const EyeProjection& rightEye,
+	            float gameFovDegrees);
 
 	void Destroy();
 
@@ -89,6 +99,9 @@ public:
 	UInt32 GetWidth() const { return m_width; }
 	UInt32 GetHeight() const { return m_height; }
 
+	// Whether any part of Oblivion's frame had to be cut away to fit.
+	bool WasCropped() const { return m_cropped; }
+
 private:
 	bool BeginSubmit(void* gameDevice);
 	void EndSubmit() { m_bracket.Release(); }
@@ -100,6 +113,12 @@ private:
 		void* surface = nullptr;  // IDirect3DSurface9, level 0 of that texture
 		void* interop = nullptr;  // ID3D9VkInteropTexture
 		BackBufferImage image;
+
+		// Where Oblivion's frame is copied to inside this eye's texture, and
+		// which part of the frame is used. Worked out once, because neither
+		// the eye's frustum nor the game's can change within a run.
+		d3d9::Rect destination = {};
+		d3d9::Rect source = {};
 	};
 
 	// Index 0 is the left eye, 1 the right. Which eye a frame belongs to is
@@ -108,9 +127,25 @@ private:
 	// two disagreeing would show each eye the other's viewpoint.
 	Eye m_eye[2];
 
+	// The eye texture's size - the eye's whole field of view.
 	UInt32 m_width = 0;
 	UInt32 m_height = 0;
+
+	// Oblivion's own frame, which covers only part of that. Kept because the
+	// source rectangle is in its coordinates, not the texture's.
+	UInt32 m_frameWidth = 0;
+	UInt32 m_frameHeight = 0;
+
 	UInt32 m_format = 0;  // D3DFORMAT, taken from the back buffer
+
+	// The filter StretchRect is given. Linear, because the copy scales now -
+	// but a device that refuses linear stretching falls back to point rather
+	// than losing the picture.
+	UInt32 m_filter = 0;
+
+	// Whether any part of Oblivion's frame had to be cut away to fit. Only
+	// happens when the game renders wider than the headset can show.
+	bool m_cropped = false;
 
 	// Whether both pictures have ever been written to.
 	bool m_primed = false;
