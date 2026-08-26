@@ -72,6 +72,15 @@ public:
 		// what angle it covers.
 		float gameFovDegrees = 75.0f;
 		bool gameFovIsFor4x3 = false;
+
+		// Oblivion's own frustum, read off its NiCamera at the start of this
+		// frame. Zero when it could not be read.
+		//
+		// This outranks both of the settings above and outranks the projection
+		// matrix as well, because it is the frustum the engine composes its
+		// matrices from rather than one of the things it composes.
+		float cameraTanHalfWidth = 0.0f;
+		float cameraTanHalfHeight = 0.0f;
 	};
 
 	// The frame in two halves, so the picture can be submitted after the game

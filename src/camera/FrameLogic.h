@@ -49,6 +49,15 @@ struct State {
 	bool isThirdPerson = false;
 	UInt32 frameCount = 0;
 
+	// Oblivion's own view frustum, as tangents of the half-angles, read off its
+	// NiCamera at the start of the pass. Zero until one has been read.
+	//
+	// Kept here rather than fetched where it is used, because it differs across
+	// a frame - 1.0231 across when the camera is computed, 1.1188 by the time
+	// Present runs - and the placement wants the one that matches fDefaultFOV.
+	float cameraTanHalfWidth = 0.0f;
+	float cameraTanHalfHeight = 0.0f;
+
 	// Records this frame's point of view and reports what changed. The caller
 	// logs; keeping the log out of here is what makes it testable.
 	PovEvent ObservePointOfView(bool isThirdPerson);

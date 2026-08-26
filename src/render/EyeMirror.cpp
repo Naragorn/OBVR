@@ -110,7 +110,8 @@ bool EyeMirror::CreateOne(void* gameDevice, int index) {
 
 bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeight,
                        const EyeProjection& leftEye, const EyeProjection& rightEye,
-                       float gameFovDegrees, bool gameFovIsFor4x3) {
+                       float gameFovDegrees, bool gameFovIsFor4x3, float cameraTanHalfWidth,
+                       float cameraTanHalfHeight) {
 	Destroy();
 
 	if (gameDevice == nullptr || textureWidth == 0 || textureHeight == 0) {
@@ -164,81 +165,71 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 		return false;
 	}
 
-	// What Oblivion is actually rendering, asked of the game rather than
-	// worked out from a number in a file.
+	// Three sources for the same question, in order of how close each sits to
+	// what is actually drawn.
 	//
-	// This is what settles the field-of-view question. The documented figure
-	// is ambiguous once the screen is not 4:3 - the two readings differ by a
-	// third in the size of the world and by nothing at all in its shape, so
-	// there is no distortion to notice and no way to judge it by eye. A
-	// projection matrix has no such ambiguity.
-	GameProjection projection;
-	const bool measured = ReadGameProjection(gameDevice, projection);
+	// 1. Oblivion's own NiCamera frustum, read at the start of this frame.
+	//    This is what Gamebryo composes its matrices from, so it is the
+	//    frustum rather than a consequence of one.
+	// 2. The Direct3D projection matrix. A consequence, and on this game a
+	//    misleading one - see below.
+	// 3. The configured field of view, which is a person typing a number.
+	//
+	// The order was learned the hard way and the numbers are worth keeping.
+	// The device's projection matrix reports 75.0 degrees across and 46.7
+	// down, which is fDefaultFOV read as a horizontal field of view at 16:9.
+	// The camera reports 91.3 and 59.8. And 1.0231 is tan(37.5) x 0.75 x 16/9
+	// to seven figures - fDefaultFOV read as a 4:3 figure with the vertical
+	// held and the horizontal widened, which is what the Widescreen Gaming
+	// Forum's "perfect implementation of widescreen" means and what this
+	// project guessed wrong about twice.
+	//
+	// So the matrix is real, well-formed, passes every plausibility check, and
+	// describes a view the game is not drawing. Believing it made the world
+	// 1.333 times too small - exactly 4/3 - which is also, in hindsight, why
+	// leaning needed a HeadMovementScale of 3 to feel like anything.
+	float tanHalfWidth = 0.0f;
+	float tanHalfHeight = 0.0f;
+	const char* source = nullptr;
 
-	if (measured) {
-		const float degreesAcross =
-			2.0f * math::Atan(projection.tanHalfWidth) * math::kRadiansToDegrees;
-		const float degreesDown =
-			2.0f * math::Atan(projection.tanHalfHeight) * math::kRadiansToDegrees;
-		OBVR_LOG("Mirror: measured Oblivion's own frustum - %.1f degrees across, %.1f down. "
-		         "GameFovDegrees and GameFovIsFor4x3 are not used",
-		         static_cast<double>(degreesAcross), static_cast<double>(degreesDown));
+	if (cameraTanHalfWidth > 0.0f && cameraTanHalfHeight > 0.0f) {
+		tanHalfWidth = cameraTanHalfWidth;
+		tanHalfHeight = cameraTanHalfHeight;
+		source = "Oblivion's own camera frustum";
 	} else {
-		OBVR_LOG("Mirror: Oblivion's projection matrix could not be read, so the configured "
-		         "%.1f degrees is used, read as %s",
-		         static_cast<double>(gameFovDegrees),
-		         gameFovIsFor4x3 ? "a 4:3 figure" : "the horizontal field of view");
-	}
-
-
-	// The same frustum, read a second way, and compared.
-	//
-	// Nothing acts on this yet. It is here because writing to Oblivion's own
-	// camera is the next step and the addresses it needs came from
-	// documentation of somebody else's reverse engineering - so the cheap
-	// thing to do first is read through them and check the answer against one
-	// already measured a different way. A wrong address does not announce
-	// itself; it hands back four floats that are some other object's contents.
-	//
-	// If this line says the two agree, the lever for per-eye projection is in
-	// hand: writing this frustum is how the black margin, the geometric
-	// compensation in PlacePicture, and alternate eyes all go away together.
-	game::NiFrustum frustum{};
-	if (!game::ReadGameCameraFrustum(frustum)) {
-		OBVR_LOG("Camera: Oblivion's render camera could not be reached at %08X",
-		         game::kWorldSceneGraph);
-	} else {
-		const bool agrees =
-			measured && game::FrustumLooksRight(frustum, projection.tanHalfWidth,
-			                                    projection.tanHalfHeight);
-		OBVR_LOG("Camera: frustum l=%.4f r=%.4f t=%.4f b=%.4f n=%.4f f=%.1f ortho=%d",
-		         static_cast<double>(frustum.l), static_cast<double>(frustum.r),
-		         static_cast<double>(frustum.t), static_cast<double>(frustum.b),
-		         static_cast<double>(frustum.n), static_cast<double>(frustum.f),
-		         frustum.o ? 1 : 0);
-		if (frustum.n > 0.0f) {
-			OBVR_LOG("Camera: that is %.1f degrees across and %.1f down - %s",
-			         static_cast<double>(2.0f *
-			                             math::Atan((Abs(frustum.l) + Abs(frustum.r)) * 0.5f) *
-		                             math::kRadiansToDegrees),
-			         static_cast<double>(2.0f *
-			                             math::Atan((Abs(frustum.t) + Abs(frustum.b)) * 0.5f) *
-		                             math::kRadiansToDegrees),
-			         agrees ? "agrees with the projection matrix, so the camera is reachable"
-			                : "does NOT agree, so one of the two readings is wrong");
+		GameProjection projection;
+		if (ReadGameProjection(gameDevice, projection)) {
+			tanHalfWidth = projection.tanHalfWidth;
+			tanHalfHeight = projection.tanHalfHeight;
+			source = "the Direct3D projection matrix, which may not be the view being drawn";
+		} else {
+			const float aspect =
+				static_cast<float>(m_frameWidth) / static_cast<float>(m_frameHeight);
+			if (gameFovIsFor4x3) {
+				tanHalfHeight =
+					math::Tan(gameFovDegrees * 0.5f * math::kDegreesToRadians) * 0.75f;
+				tanHalfWidth = tanHalfHeight * aspect;
+			} else {
+				tanHalfWidth = math::Tan(gameFovDegrees * 0.5f * math::kDegreesToRadians);
+				tanHalfHeight = tanHalfWidth / aspect;
+			}
+			source = "the configured GameFovDegrees, because neither could be read";
 		}
 	}
 
+	OBVR_LOG("Mirror: rendering frustum %.1f degrees across, %.1f down, from %s",
+	         static_cast<double>(2.0f * math::Atan(tanHalfWidth) * math::kRadiansToDegrees),
+	         static_cast<double>(2.0f * math::Atan(tanHalfHeight) * math::kRadiansToDegrees),
+	         source);
+
 	// Where the game's frame goes inside each eye's view. This is what makes
+	// the world its real size rather than whatever magnification two
 	// the world its real size rather than whatever magnification two
 	// unrelated frustums happen to imply.
 	for (int index = 0; index < 2; ++index) {
 		const EyeProjection& eye_projection = index == 0 ? leftEye : rightEye;
 		const PicturePlacement placement =
-			measured ? PlacePictureFromTangents(eye_projection, projection.tanHalfWidth,
-			                                    projection.tanHalfHeight)
-			         : PlacePicture(eye_projection, gameFovDegrees, m_frameWidth,
-			                        m_frameHeight, gameFovIsFor4x3);
+			PlacePictureFromTangents(eye_projection, tanHalfWidth, tanHalfHeight);
 
 		Eye& eye = m_eye[index];
 		eye.destination.left = EdgeOf(placement.uMin, m_width);

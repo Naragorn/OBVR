@@ -270,7 +270,8 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 		m_mirrorChecked = true;
 		m_mirrorUsable = m_mirror.Create(request.gameDevice, m_eyeWidth, m_eyeHeight,
 		                                 m_leftEye, m_rightEye, request.gameFovDegrees,
-		                                 request.gameFovIsFor4x3);
+		                                 request.gameFovIsFor4x3, request.cameraTanHalfWidth,
+		                                 request.cameraTanHalfHeight);
 		OBVR_LOG("Render: alternate eyes are %s",
 		         m_mirrorUsable ? "on, each eye holding its own last picture"
 		                        : "unavailable, falling back to one image for both eyes");

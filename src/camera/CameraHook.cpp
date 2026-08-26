@@ -49,6 +49,8 @@ bool g_frameOpen = false;
 // one view or several. See game::FrustumWatcher.
 game::FrustumWatcher g_frustumWatcher;
 
+float Abs(float value) { return value < 0.0f ? -value : value; }
+
 // Runs from inside Present, with Oblivion's finished frame in the back buffer.
 //
 // Deliberately does nothing but pay the frame that BeginFrame opened. Anything
@@ -262,6 +264,18 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// the wrong moment. Whether it moves is what separates them.
 	if (GetConfig().tracker.renderToHeadset) {
 		game::NiFrustum frustum{};
+		if (game::ReadGameCameraFrustum(frustum)) {
+			// Kept for the placement. Absolute values, because which edge
+			// carries which sign is not settled and the half-width does not
+			// depend on it.
+			const float halfWidth = (Abs(frustum.l) + Abs(frustum.r)) * 0.5f;
+			const float halfHeight = (Abs(frustum.t) + Abs(frustum.b)) * 0.5f;
+			if (halfWidth > 0.0f && halfHeight > 0.0f) {
+				g_state.cameraTanHalfWidth = halfWidth;
+				g_state.cameraTanHalfHeight = halfHeight;
+			}
+		}
+
 		if (game::ReadGameCameraFrustum(frustum) && g_frustumWatcher.Observe(frustum)) {
 			OBVR_LOG("Camera: frustum #%u l=%.4f r=%.4f t=%.4f b=%.4f n=%.4f f=%.1f "
 			         "(%.1f deg across)",
@@ -382,6 +396,14 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	request.isLeftEye = IsLeftEyeFrame(g_state.frameCount);
 	request.gameFovDegrees = config.tracker.gameFovDegrees;
 	request.gameFovIsFor4x3 = config.tracker.gameFovIsFor4x3;
+
+	// Read at the start of this pass, not here at the end. The frustum differs
+	// between the two: 1.0231 across when the camera is computed, 1.1188 by the
+	// time Present runs. Which of those the frame was drawn with is not settled,
+	// but the first is the one that matches fDefaultFOV exactly, and the second
+	// is read after every pass of the frame has had its turn with the camera.
+	request.cameraTanHalfWidth = g_state.cameraTanHalfWidth;
+	request.cameraTanHalfHeight = g_state.cameraTanHalfHeight;
 
 	if (!g_frameOpen) {
 		// BeginFrame declined at the top of this pass: rendering is off, the

@@ -54,7 +54,8 @@ public:
 	// perfectly good to draw into and impossible to submit.
 	bool Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeight,
 	            const EyeProjection& leftEye, const EyeProjection& rightEye,
-	            float gameFovDegrees, bool gameFovIsFor4x3);
+	            float gameFovDegrees, bool gameFovIsFor4x3, float cameraTanHalfWidth,
+	            float cameraTanHalfHeight);
 
 	void Destroy();
 
