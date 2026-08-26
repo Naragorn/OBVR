@@ -157,4 +157,41 @@ NiPoint3 Rotate(const Quaternion& rotation, const NiPoint3& v) {
 	};
 }
 
+
+Quaternion YawOnly(const Quaternion& orientation) {
+	// Where the head is looking, in the tracking space's own axes.
+	const NiPoint3 forward = Rotate(orientation, NiPoint3{0.0f, 0.0f, -1.0f});
+
+	// Flattened onto the horizontal plane. When the head is pointed straight
+	// up or straight down there is nothing left to flatten - the projection is
+	// a point - and the heading is genuinely undefined, so the previous
+	// reference is better than an invented one.
+	const float flatLengthSquared = forward.x * forward.x + forward.z * forward.z;
+	if (!(flatLengthSquared > 0.0001f)) {
+		return Quaternion::Identity();
+	}
+
+	// A rotation about the vertical axis by that heading. Built from the half
+	// angle directly rather than through an arctangent and back: the sine and
+	// cosine of the heading are the flattened vector itself, once normalised,
+	// and the half-angle identities turn those into the quaternion without
+	// ever naming the angle.
+	const float length = math::Sqrt(flatLengthSquared);
+	const float cosYaw = -forward.z / length;
+	const float sinYaw = -forward.x / length;
+
+	// cos(a/2) from cos(a), and sin(a/2) with the sign of sin(a) so that the
+	// half turn either side of straight ahead is distinguished.
+	float halfCos = math::Sqrt((1.0f + cosYaw) * 0.5f);
+	if (halfCos < 0.0001f) {
+		// Facing exactly backwards: the half angle is a quarter turn, where
+		// the formula above loses its sign information entirely.
+		// A half turn about the vertical axis: y is the axis, w is zero.
+		return Quaternion{0.0f, 1.0f, 0.0f, 0.0f};
+	}
+	const float halfSin = sinYaw / (2.0f * halfCos);
+
+	// x, y, z, w - the vertical axis carries the sine, and w the cosine.
+	return Quaternion{0.0f, halfSin, 0.0f, halfCos}.Normalized();
+}
 }  // namespace obvr::vr

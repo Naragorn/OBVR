@@ -140,6 +140,53 @@ void TestRecenter() {
 	                "30 degrees after recentering yield 30 degrees of camera rotation");
 }
 
+
+void TestYawOnly() {
+	std::printf("Recentring keeps the horizon level\n");
+
+	using obvr::vr::FromAxisAngle;
+	using obvr::vr::Rotate;
+	using obvr::vr::YawOnly;
+
+	// A head turned 40 degrees to the left and tilted 25 down and 15 sideways.
+	// What the key is pressed for is the 40; the other two are posture, and
+	// carrying them into the reference tilts the world for as long as it
+	// stands.
+	const obvr::vr::Quaternion tilted =
+		(FromAxisAngle(0.0f, 1.0f, 0.0f, 40.0f) * FromAxisAngle(1.0f, 0.0f, 0.0f, -25.0f) *
+		 FromAxisAngle(0.0f, 0.0f, 1.0f, 15.0f))
+			.Normalized();
+
+	const obvr::vr::Quaternion flat = YawOnly(tilted);
+
+	// The result must be a rotation about the vertical axis only, which for a
+	// quaternion means the x and z parts are gone.
+	CheckNear(flat.x, 0.0f, "no pitch survives");
+	CheckNear(flat.z, 0.0f, "and no roll");
+
+	// Up stays up. This is the property the whole function exists for, and it
+	// is the one a person feels: a reference that tilts the horizon never
+	// stops being wrong, because the inner ear keeps insisting.
+	const obvr::NiPoint3 up = Rotate(flat, obvr::NiPoint3{0.0f, 1.0f, 0.0f});
+	CheckNear(up.x, 0.0f, "the vertical axis is untouched");
+	CheckNear(up.y, 1.0f, "up is still up");
+	CheckNear(up.z, 0.0f, "in every direction");
+
+	// And the heading is the one that was there. Forward, flattened, has to
+	// point the same way it did before the tilt was removed.
+	const obvr::NiPoint3 wasFacing = Rotate(tilted, obvr::NiPoint3{0.0f, 0.0f, -1.0f});
+	const obvr::NiPoint3 nowFacing = Rotate(flat, obvr::NiPoint3{0.0f, 0.0f, -1.0f});
+	const float wasLength = std::sqrt(wasFacing.x * wasFacing.x + wasFacing.z * wasFacing.z);
+	CheckNear(nowFacing.x, wasFacing.x / wasLength, "the heading is kept across");
+	CheckNear(nowFacing.z, wasFacing.z / wasLength, "and along");
+
+	// Straight up has no heading to keep, and inventing one would swing the
+	// world by whatever the arithmetic happened to produce.
+	const obvr::vr::Quaternion straightUp = FromAxisAngle(1.0f, 0.0f, 0.0f, 90.0f);
+	const obvr::vr::Quaternion fromUp = YawOnly(straightUp);
+	CheckNear(fromUp.w, 1.0f, "looking straight up yields no rotation rather than a guess");
+}
+
 }  // namespace
 
 int main() {
@@ -152,6 +199,8 @@ int main() {
 	TestOpenXrAxisSwap();
 	std::printf("\n");
 	TestRecenter();
+	std::printf("\n");
+	TestYawOnly();
 
 	std::printf("\n");
 	if (g_failures == 0) {

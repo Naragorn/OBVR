@@ -150,25 +150,66 @@ void TestSimulatedMoves() {
 void TestRecenter() {
 	std::printf("Recenter\n");
 
+	// Yaw, because that is what recentring is for: deciding which way is
+	// forward. Pitch and roll are posture, and the test below is that they
+	// survive it.
 	HeadTracker tracker;
-	tracker.Configure(Fixed(0.0f, 30.0f, 0.0f));
+	tracker.Configure(Fixed(0.0f, 0.0f, 30.0f));
 	tracker.Update(1);
-	CheckMatrixNear(tracker.GetCameraRotation(), obvr::EulerToMatrix(0.0f, 30.0f, 0.0f),
+	CheckMatrixNear(tracker.GetCameraRotation(), obvr::EulerToMatrix(0.0f, 0.0f, 30.0f),
 	                "before recentering the full angle is applied");
 
 	tracker.Recenter();
 	tracker.Update(2);
 	CheckMatrixNear(tracker.GetCameraRotation(), obvr::NiMatrix33::Identity(),
-	                "after recentering the same pose is the new zero");
+	                "after recentering the same heading is the new zero");
 
 	// Moving on from the new zero has to yield the difference, not the
 	// absolute angle.
-	tracker.Configure(Fixed(0.0f, 50.0f, 0.0f));
+	tracker.Configure(Fixed(0.0f, 0.0f, 50.0f));
 	tracker.Update(3);
-	CheckMatrixNear(tracker.GetCameraRotation(), obvr::EulerToMatrix(0.0f, 20.0f, 0.0f),
+	CheckMatrixNear(tracker.GetCameraRotation(), obvr::EulerToMatrix(0.0f, 0.0f, 20.0f),
 	                "50 degrees after a zero at 30 leaves 20 degrees");
 }
 
+void TestRecenterLeavesTheHorizon() {
+	std::printf("Recentering must not tilt the world\n");
+
+	// The fault this guards against was reported from a headset: press the key
+	// with the head tilted and the horizon tilts with it, for as long as the
+	// reference stands. Every later pose is measured against a tilted zero, so
+	// it never settles - and a horizon that is not level is one of the
+	// reliable ways to make somebody ill, because the inner ear keeps
+	// insisting and the picture keeps disagreeing.
+	//
+	// So the reference keeps the heading and drops the tilt.
+	HeadTracker tracker;
+	tracker.Configure(Fixed(0.0f, 25.0f, 0.0f));
+	tracker.Update(1);
+	tracker.Recenter();
+	tracker.Update(2);
+
+	// The roll is still there, because it was never the key's business.
+	CheckMatrixNear(tracker.GetCameraRotation(), obvr::EulerToMatrix(0.0f, 25.0f, 0.0f),
+	                "a roll of 25 survives recentring");
+
+	HeadTracker pitched;
+	pitched.Configure(Fixed(20.0f, 0.0f, 0.0f));
+	pitched.Update(1);
+	pitched.Recenter();
+	pitched.Update(2);
+	CheckMatrixNear(pitched.GetCameraRotation(), obvr::EulerToMatrix(20.0f, 0.0f, 0.0f),
+	                "and so does a pitch of 20");
+
+	// Heading and tilt together: the heading goes, the tilt stays.
+	HeadTracker both;
+	both.Configure(Fixed(0.0f, 15.0f, 40.0f));
+	both.Update(1);
+	both.Recenter();
+	both.Update(2);
+	CheckMatrixNear(both.GetCameraRotation(), obvr::EulerToMatrix(0.0f, 15.0f, 0.0f),
+	                "with both, the heading is zeroed and the roll is kept");
+}
 void TestReconfigureKeepsTheRecenterReference() {
 	std::printf("Hot reload must not undo a recenter\n");
 
@@ -178,7 +219,7 @@ void TestReconfigureKeepsTheRecenterReference() {
 	// reference is the identity anyway. With a real headset it would have
 	// undone every recenter within two seconds, and the cause would have been
 	// very hard to see from inside the headset.
-	const TrackerSettings settings = Fixed(0.0f, 30.0f, 0.0f);
+	const TrackerSettings settings = Fixed(0.0f, 0.0f, 30.0f);
 
 	HeadTracker tracker;
 	tracker.Configure(settings);
@@ -260,6 +301,8 @@ int main() {
 	TestSimulatedMoves();
 	std::printf("\n");
 	TestRecenter();
+	std::printf("\n");
+	TestRecenterLeavesTheHorizon();
 	std::printf("\n");
 	TestReconfigureKeepsTheRecenterReference();
 	std::printf("\n");

@@ -290,12 +290,37 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 	flatWidth = static_cast<SInt32>(static_cast<float>(flatWidth) * menuScale);
 	flatHeight = static_cast<SInt32>(static_cast<float>(flatHeight) * menuScale);
 
-	for (Eye& eye : m_eye) {
-		const SInt32 centreX = (eye.destination.left + eye.destination.right) / 2;
-		const SInt32 centreY = (eye.destination.top + eye.destination.bottom) / 2;
-		eye.flatDestination.left = centreX - flatWidth / 2;
+	for (int index = 0; index < 2; ++index) {
+		Eye& eye = m_eye[index];
+		const EyeProjection& projection = index == 0 ? leftEye : rightEye;
+
+		// The optical axis, not the middle of the world rectangle.
+		//
+		// This is what puts a flat picture at infinity, and getting it from the
+		// rectangle instead was the doubling. The world rectangle is cropped,
+		// and cropped at opposite edges in the two eyes, so its middle is not
+		// where either eye is looking: measured here, the axes are 566 pixels
+		// apart and the rectangle centres only 222, which places the image at
+		// some arbitrary depth the eyes then fight over.
+		//
+		// Same offset from each eye's own axis means the same direction from
+		// both eyes, which is what infinity is - and where a cinema screen
+		// sits, which is why it reads as one.
+		const float eyeWidth = projection.right - projection.left;
+		const float eyeHeight = projection.bottom - projection.top;
+		const SInt32 axisX =
+			eyeWidth > 0.0f
+				? static_cast<SInt32>(-projection.left / eyeWidth * static_cast<float>(m_width))
+				: static_cast<SInt32>(m_width / 2);
+		const SInt32 axisY =
+			eyeHeight > 0.0f
+				? static_cast<SInt32>(projection.bottom / eyeHeight *
+			                          static_cast<float>(m_height))
+				: static_cast<SInt32>(m_height / 2);
+
+		eye.flatDestination.left = axisX - flatWidth / 2;
 		eye.flatDestination.right = eye.flatDestination.left + flatWidth;
-		eye.flatDestination.top = centreY - flatHeight / 2;
+		eye.flatDestination.top = axisY - flatHeight / 2;
 		eye.flatDestination.bottom = eye.flatDestination.top + flatHeight;
 	}
 

@@ -111,4 +111,22 @@ NiPoint3 PositionFromOpenXR(const NiPoint3& openXrPosition);
 // v' = v + 2 * cross(q.xyz, cross(q.xyz, v) + q.w * v)
 NiPoint3 Rotate(const Quaternion& rotation, const NiPoint3& v);
 
+// The heading part of an orientation, with the horizon left level.
+//
+// What recentring is for is deciding which way is forward. It is not for
+// deciding which way is up - and a reference that carries pitch and roll does
+// exactly that: press the key with the head tilted and the whole world tilts
+// with it, permanently, because every later pose is measured against a tilted
+// zero. A horizon that is not level is one of the reliable ways to make
+// somebody ill in a headset, and unlike most of them it never settles, because
+// the inner ear keeps insisting and the picture keeps disagreeing.
+//
+// So only the heading is kept. Taken from where the head is looking projected
+// onto the horizontal plane, which is the one part of an orientation that
+// survives having its tilt removed - unlike reading an Euler angle out, which
+// has no answer at all when the head is pointed straight up.
+//
+// In OpenVR's convention: X right, Y up, -Z forward.
+Quaternion YawOnly(const Quaternion& orientation);
+
 }  // namespace obvr::vr

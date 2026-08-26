@@ -182,7 +182,11 @@ void HeadTracker::Update(UInt32 frameIndex) {
 }
 
 void HeadTracker::Recenter() {
-	m_reference = m_rawOrientation;
+	// Heading only. Recentring decides which way is forward, not which way is
+	// up - and a reference carrying pitch or roll tilts the whole world for as
+	// long as it stands, because every later pose is measured against it. A
+	// horizon that is not level is reliably sickening and never settles.
+	m_reference = YawOnly(m_rawOrientation);
 	m_referencePosition = m_rawPosition;
 	m_hasReferencePosition = true;
 
