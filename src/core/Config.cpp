@@ -243,6 +243,12 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.tracker.gameFovOverride =
 		ReadFloat("Render", "GameFovOverride", config.tracker.gameFovOverride, path);
 	config.tracker.menuScale = ReadFloat("Render", "MenuScale", config.tracker.menuScale, path);
+	config.tracker.setRenderSize =
+		ReadBool("Render", "SetGameResolution", config.tracker.setRenderSize, path);
+	config.tracker.renderWidth =
+		ReadUInt("Render", "GameResolutionWidth", config.tracker.renderWidth, path);
+	config.tracker.renderHeight =
+		ReadUInt("Render", "GameResolutionHeight", config.tracker.renderHeight, path);
 	config.tracker.matchHeadsetFov =
 		ReadBool("Render", "MatchHeadsetFov", config.tracker.matchHeadsetFov, path);
 	config.look.blockVerticalLook =

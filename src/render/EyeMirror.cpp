@@ -243,23 +243,6 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 		eye.source.bottom = EdgeOf(placement.sourceVMax, m_frameHeight);
 
 
-		// The same picture, smaller and centred, for anything with no camera
-		// behind it.
-		//
-		// A menu shown at the world's scale fills the view and reads as being
-		// pressed against the face. Shrinking it puts it at arm's length, which
-		// is where a screen belongs - and the margin around it is black, so
-		// there is nothing competing with it.
-		const SInt32 centreX = (eye.destination.left + eye.destination.right) / 2;
-		const SInt32 centreY = (eye.destination.top + eye.destination.bottom) / 2;
-		const SInt32 halfW = static_cast<SInt32>(
-			static_cast<float>(eye.destination.right - eye.destination.left) * menuScale * 0.5f);
-		const SInt32 halfH = static_cast<SInt32>(
-			static_cast<float>(eye.destination.bottom - eye.destination.top) * menuScale * 0.5f);
-		eye.flatDestination.left = centreX - halfW;
-		eye.flatDestination.right = centreX + halfW;
-		eye.flatDestination.top = centreY - halfH;
-		eye.flatDestination.bottom = centreY + halfH;
 
 		if (placement.cropped) {
 			m_cropped = true;
@@ -277,6 +260,43 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 			Destroy();
 			return false;
 		}
+	}
+
+	// The flat placement, sized identically in both eyes.
+	//
+	// Derived from the two world placements rather than from each eye's own,
+	// because those differ: the eyes are cropped at opposite edges, so their
+	// rectangles come out 17 pixels apart across and 8 down on this headset.
+	// For the world that is right - each eye is looking somewhere slightly
+	// different. For one flat picture shared between them it is not: an image
+	// shown at two different sizes cannot be fused, and what the eyes make of
+	// it is a doubled edge on everything. Reported as nauseating, and fairly.
+	//
+	// The smaller of the two, so neither is asked for pixels it does not have.
+	// Centred on each eye's own optical axis, which is what puts a flat picture
+	// at infinity - the same place a cinema screen is, and the reason it reads
+	// as one.
+	SInt32 flatWidth = m_eye[0].destination.right - m_eye[0].destination.left;
+	SInt32 flatHeight = m_eye[0].destination.bottom - m_eye[0].destination.top;
+	const SInt32 otherWidth = m_eye[1].destination.right - m_eye[1].destination.left;
+	const SInt32 otherHeight = m_eye[1].destination.bottom - m_eye[1].destination.top;
+	if (otherWidth < flatWidth) {
+		flatWidth = otherWidth;
+	}
+	if (otherHeight < flatHeight) {
+		flatHeight = otherHeight;
+	}
+
+	flatWidth = static_cast<SInt32>(static_cast<float>(flatWidth) * menuScale);
+	flatHeight = static_cast<SInt32>(static_cast<float>(flatHeight) * menuScale);
+
+	for (Eye& eye : m_eye) {
+		const SInt32 centreX = (eye.destination.left + eye.destination.right) / 2;
+		const SInt32 centreY = (eye.destination.top + eye.destination.bottom) / 2;
+		eye.flatDestination.left = centreX - flatWidth / 2;
+		eye.flatDestination.right = eye.flatDestination.left + flatWidth;
+		eye.flatDestination.top = centreY - flatHeight / 2;
+		eye.flatDestination.bottom = eye.flatDestination.top + flatHeight;
 	}
 
 	OBVR_LOG("Mirror: the game's %ux%u frame at %.1f degrees sits at left x=%d..%d y=%d..%d, "

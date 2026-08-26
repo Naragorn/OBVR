@@ -3,6 +3,7 @@
 #include "camera/CameraTrampoline.h"
 #include "camera/LookControl.h"
 #include "core/Config.h"
+#include "core/GameIni.h"
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "core/MathFns.h"
@@ -53,6 +54,11 @@ float Abs(float value) { return value < 0.0f ? -value : value; }
 
 // Runs from inside Present, with Oblivion's finished frame in the back buffer.
 //
+// Declared ahead of OnFrameEnd, which needs it: the recenter key has to work
+// on frames where the camera hook does not run, which is every video, the main
+// menu, and every menu opened in game.
+bool PollRecenterEdge();
+
 // Deliberately does nothing but pay the frame that BeginFrame opened. Anything
 // else that wanted doing at the end of a frame would be tempting to put here,
 // and this runs on the renderer's thread inside a call the game is waiting on.
@@ -90,6 +96,18 @@ void OnFrameEnd() {
 	// work and a much larger one.
 	if (!GetConfig().tracker.showMenus) {
 		return;
+	}
+
+	// The recenter key, polled here because nothing else does on these frames.
+	//
+	// A flat picture is anchored where the head was when it appeared. If that
+	// was mid-turn, or the wearer has since settled into a different position,
+	// the picture hangs somewhere awkward and there is no way to move it - the
+	// camera hook polls the key, and the camera hook is exactly what is not
+	// running. An intro film that started while looking down stays down.
+	if (PollRecenterEdge()) {
+		g_headsetRenderer.ResetFlatAnchor();
+		OBVR_LOG("Render: the flat picture was re-anchored on the recenter key");
 	}
 
 	render::HeadsetRenderer::FrameRequest menu;
@@ -162,26 +180,35 @@ void MaybeReloadConfig() {
 // The key state is global rather than per window. That is harmless here:
 // Oblivion pauses when it loses focus, so this callback does not run at all
 // while another application has the keyboard.
-void MaybePollRecenter() {
+// Whether the recenter key went down this call, without acting on it.
+//
+// Separate from MaybePollRecenter because on a flat frame there is no camera
+// to recenter - the key means "put the picture where I am looking now"
+// instead. Both share one KeyEdge, which is what stops a single press from
+// counting twice when a menu opens on the frame the key is pressed.
+bool PollRecenterEdge() {
 	const UInt32 key = GetConfig().recenterKey;
 	if (key == 0) {
-		// Explicitly disabled in the configuration. Forgetting the previous
-		// state matters here: a key held down while recentering is switched
-		// off would otherwise fire an edge the moment it is switched back on.
 		g_recenterEdge.Reset();
-		return;
+		return false;
 	}
 
 	const bool isDown = (GetAsyncKeyState(static_cast<int>(key)) & 0x8000) != 0;
+	return g_recenterEdge.Update(isDown);
+}
 
-	if (g_recenterEdge.Update(isDown)) {
-		g_headTracker.Recenter();
-
-		// Recentering is meant to take effect at once. Easing the camera into
-		// the new zero would be the opposite of what the key is pressed for.
-		g_lookControl.Reset();
-		OBVR_LOG("Camera: recentered on key 0x%02X (frame %u)", key, g_state.frameCount);
+void MaybePollRecenter() {
+	if (!PollRecenterEdge()) {
+		return;
 	}
+
+	g_headTracker.Recenter();
+
+	// Recentering is meant to take effect at once. Easing the camera into the
+	// new zero would be the opposite of what the key is pressed for.
+	g_lookControl.Reset();
+	OBVR_LOG("Camera: recentered on key 0x%02X (frame %u)", GetConfig().recenterKey,
+	         g_state.frameCount);
 }
 
 }  // namespace
@@ -588,7 +615,52 @@ bool Install() {
 		render::InstallPresentHookWhenReady(&OnFrameEnd);
 	}
 
+	// Oblivion's render resolution, if OBVR is to set it.
+	//
+	// Written now and picked up on the next run, because the game reads its INI
+	// once at startup and Direct3D fixes the frame's shape when the device is
+	// made. Both of those are long past by the time a plugin loads, so this is
+	// a change for next time and says so rather than appearing to have failed.
+	if (GetConfig().tracker.setRenderSize) {
+		UInt32 width = GetConfig().tracker.renderWidth;
+		UInt32 height = GetConfig().tracker.renderHeight;
+
+		if (width == 0 || height == 0) {
+			// Whatever the headset asks for. That figure already accounts for
+			// the distortion margin the compositor needs, so it is the honest
+			// answer to "what can this headset use".
+			if (!g_headTracker.GetBackend().GetRecommendedRenderTargetSize(width, height)) {
+				OBVR_LOG("Config: the headset reported no render size, so the game's "
+				         "resolution was left alone");
+				width = 0;
+			}
+		}
+
+		char iniPath[512];
+		if (width == 0 || height == 0) {
+			// Already reported.
+		} else if (!core::FindOblivionIni(iniPath, sizeof(iniPath))) {
+			OBVR_LOG("Config: Oblivion.ini could not be located, so the game's resolution "
+			         "was left alone");
+		} else {
+			UInt32 currentWidth = 0;
+			UInt32 currentHeight = 0;
+			const bool read = core::ReadRenderSize(iniPath, currentWidth, currentHeight);
+
+			if (read && currentWidth == width && currentHeight == height) {
+				OBVR_LOG("Config: the game already renders at %ux%u", width, height);
+			} else if (core::WriteRenderSize(iniPath, width, height)) {
+				OBVR_LOG("Config: the game's resolution was changed from %ux%u to %ux%u - "
+				         "restart Oblivion for it to take effect",
+				         currentWidth, currentHeight, width, height);
+			} else {
+				OBVR_LOG("Config: %ux%u could not be written to %s", width, height, iniPath);
+			}
+		}
+	}
+
 	return true;
+
 }
 
 }  // namespace obvr::camera

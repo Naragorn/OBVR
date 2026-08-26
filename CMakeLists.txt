@@ -29,6 +29,7 @@ add_library(OBVR SHARED
 	src/camera/LookControl.cpp
 	src/core/CodeWriter.cpp
 	src/core/Config.cpp
+	src/core/GameIni.cpp
 	src/core/Log.cpp
 	src/core/Memory.cpp
 	src/core/Rotation.cpp

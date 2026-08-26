@@ -56,6 +56,13 @@ OBVR_IMPORT HANDLE OBVR_STDCALL CreateThread(void* attributes, UInt32 stackSize,
 OBVR_IMPORT void OBVR_STDCALL Sleep(DWORD milliseconds);
 OBVR_IMPORT void OBVR_STDCALL OutputDebugStringA(const char* text);
 OBVR_IMPORT DWORD OBVR_STDCALL GetPrivateProfileStringA(const char* section, const char* key, const char* defaultValue, char* buffer, DWORD size, const char* fileName);
+
+// For writing Oblivion's own render resolution, which a headset wants square
+// and a monitor wants wide. The game reads its INI once, at startup, so a
+// change made here takes effect on the next run - which is stated in the log
+// rather than hoped to be noticed.
+OBVR_IMPORT BOOL OBVR_STDCALL WritePrivateProfileStringA(const char* section, const char* key, const char* value, const char* fileName);
+OBVR_IMPORT DWORD OBVR_STDCALL GetEnvironmentVariableA(const char* name, char* buffer, DWORD size);
 OBVR_IMPORT DWORD OBVR_STDCALL GetModuleFileNameA(HMODULE module, char* fileName, DWORD size);
 OBVR_IMPORT DWORD OBVR_STDCALL GetFileAttributesA(const char* fileName);
 

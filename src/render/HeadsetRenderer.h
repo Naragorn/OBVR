@@ -123,6 +123,15 @@ public:
 	// and writing an asymmetric one would be a different change.
 	bool GetHeadsetFrustum(float& tanHalfWidth, float& tanHalfHeight) const;
 
+	// Forgets where a flat picture was anchored, so the next one is placed
+	// wherever the head is then looking.
+	//
+	// This is what the recenter key has to reach during a video or a menu. The
+	// key is polled from the camera hook, which does not run there - so an
+	// intro film that started while the head was tilted stayed tilted, and the
+	// only way to watch it was to look up at it.
+	void ResetFlatAnchor() { m_flatPoseValid = false; }
+
 private:
 	// The two ways Oblivion's own picture reaches the headset. Separate
 	// methods rather than two arms of one if, because they differ in what
