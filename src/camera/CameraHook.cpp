@@ -9,6 +9,7 @@
 #include "core/MathFns.h"
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
+#include "game/MenuMode.h"
 #include "platform/Win32Min.h"
 #include "render/DxvkInterop.h"
 #include "render/GameDevice.h"
@@ -83,13 +84,26 @@ void OnFrameEnd() {
 	const bool hadCameraPass = g_frameOpen;
 	g_frameOpen = false;
 
-	if (hadCameraPass) {
+	// What the game says, rather than what its timing suggests.
+	//
+	// A menu open does not stop Oblivion drawing the world behind it, and it
+	// does not make it draw the world every frame either. So the camera hook
+	// runs on some of those frames and not others, and deciding the mode from
+	// that alone made the presentation alternate between a full stereo view
+	// and a small flat rectangle - the menu snapping open and shut, at frame
+	// rate, which is what opening the ESC menu looked like in the headset.
+	// Gated on ShowMenus: with menus switched off there is no flat presentation
+	// to hold steady, so the question does not arise.
+	const bool menuIsUp = GetConfig().tracker.showMenus && game::IsMenuMode();
+	const bool flat = FrameIsFlat(hadCameraPass, menuIsUp);
+
+	if (!flat) {
 		g_flatFramesSinceCamera = 0;
 		g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), g_pendingRequest);
 		return;
 	}
 
-	// No camera pass for this frame, so this is a menu or a loading screen.
+	// Flat: either nothing drew the world this frame, or a menu is up.
 	//
 	// Deliver it anyway. Without this the headset shows nothing at all while
 	// the main menu is up, which means loading a save requires taking the
@@ -105,16 +119,17 @@ void OnFrameEnd() {
 		return;
 	}
 
-	// How many flat frames go by between one camera pass and the next.
+	// How many frames in a row have been flat.
 	//
-	// The question this answers: does Oblivion call Present more than once per
-	// step while a menu is up? On a monitor that would be invisible, because
-	// the frames run together. In a headset it is not - the pose is frozen, so
-	// every submitted picture stands still until the next replaces it, and two
-	// states of a menu shown in succession are two states you actually see.
+	// This was the diagnostic for the menu flicker and it did its job: it
+	// showed bursts of up to seven, which is Oblivion presenting several times
+	// per step. That alone is harmless - a frozen pose means each picture just
+	// stands still until the next replaces it. What was not harmless was the
+	// mode changing between them, and that is now decided by IsMenuMode rather
+	// than by which of those frames happened to carry a camera pass.
 	//
-	// Reported when it happens and then a few more times, because the fact of
-	// it is what matters and a line per frame would drown the log.
+	// Kept, because it is the cheapest way to see that the run of flat frames
+	// is now unbroken while a menu is open.
 	++g_flatFramesSinceCamera;
 	if (g_flatFramesSinceCamera > 1 && g_flatBurstsReported < 6) {
 		++g_flatBurstsReported;
@@ -146,7 +161,11 @@ void OnFrameEnd() {
 	menu.menuScale = GetConfig().tracker.menuScale;
 	menu.menuAspect = GetConfig().tracker.menuAspect;
 
-	if (g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame())) {
+	// A camera pass means BeginFrame has already run for this frame and the
+	// frame is open. Calling it again would call WaitGetPoses a second time,
+	// which blocks until the next frame - the whole point of a menu being flat
+	// is that it costs nothing extra.
+	if (hadCameraPass || g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame())) {
 		g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), menu);
 	}
 }
@@ -670,12 +689,10 @@ bool Install() {
 			if (render::InstallResolutionHook()) {
 				OBVR_LOG("Config: the frame will be created at %ux%u", width, height);
 			} else {
-				// Not a silent fallback. Either the import is not there, or -
-				// far more likely - the device was already created before this
-				// plugin loaded, and then nothing here can reach it.
-				OBVR_LOG("Config: Direct3DCreate9 could not be intercepted, so the frame "
-				         "stays at the game's own size. If the device was already made by "
-				         "the time OBVR loaded, this is why.");
+				// Not a silent fallback. The reason has already been logged by
+				// whichever of the two routes was tried; this says what it cost.
+				OBVR_LOG("Config: neither way into Direct3DCreate9 was open, so the "
+				         "frame stays at the game's own size");
 			}
 		}
 	}

@@ -1477,6 +1477,64 @@ drawing once per frame means. Two passes per frame is the fix, and per-eye proje
 the second pass knows what to draw.
 
 
+### Oblivion does not import d3d9, and menus flicker because "is a menu open" was guessed
+
+Two faults found the same way - by asking the binary rather than reasoning about it.
+
+**The resolution hook could never have worked.** `SetGameResolution` replaced Oblivion's
+import of `Direct3DCreate9`. There is no such import. The import table lists fourteen DLLs
+and d3d9 is not among them - `d3dx9_27.dll` is, which is what made the assumption look
+plausible. Oblivion loads d3d9 by hand, at `0x00761DF0`:
+
+```
+00761DFB  mov  eax,[00B42158]          already resolved? then done
+00761E04  push "D3D9.DLL"
+00761E09  call [00A28118]              LoadLibraryA, from the IAT
+00761E11  mov  [00B42150],eax          the module handle
+00761E18  push "Direct3DCreate9"
+00761E1E  call [00A2811C]              GetProcAddress, from the IAT
+00761E26  mov  [00B42158],eax          the function, cached here
+```
+
+The two IAT slots agree with the import table read separately, so this is two readings, not
+one. `GetProcAddress` is hooked instead, and the cached pointer at `0x00B42158` is the
+second way in for when the lookup has already happened - written only after resolving
+`Direct3DCreate9` independently and finding the same value there, so a wrong address cannot
+pass the test.
+
+The log said `Direct3DCreate9 could not be intercepted` and that was accurate. What was
+missing was the reason, and the reason was not timing.
+
+**Menus flickered because the mode was inferred from the camera hook.** A frame went to the
+headset as a live eye if the camera hook had run that frame, and as a flat rectangle if it
+had not. With a menu open Oblivion still draws the world behind it - but not every frame.
+So the answer alternated, and the presentation alternated with it: the world filling the
+view one frame, a small rectangle in black the next. In a headset that is the menu snapping
+open and shut. On a monitor it is invisible, which is why it only showed up in VR.
+
+The question is now asked of the game. `IsMenuMode` at `0x00578F60`, named by xOBSE's
+`GameAPI.cpp` for 1.2.0.416 and confirmed against the bytes:
+
+```
+00578F60  push 1; push 0; call 00582160     the InterfaceManager singleton,
+00578F6C  add esp,8; test eax,eax; jz +2A   the address xOBSE also names
+00578F70  push 1; push 0; call 00582160
+00578F7C  add esp,8; cmp dword [eax+1C],0; jz +18
+00578F82  push 1; push 0; call 00582160
+00578F8B  xor ecx,ecx; add esp,8
+00578F90  cmp byte [eax+8],1; setne cl; mov al,cl; ret
+00578F9A  xor al,al; ret
+```
+
+Nullary, returns a byte, reaches the interface manager three times. `FrameIsFlat` in
+`FrameLogic` is now `!hadCameraPass || menuIsUp`, which is a pure function of two booleans
+and therefore testable without an Oblivion to call into.
+
+The flat-frame counter that diagnosed this is kept. It showed bursts of up to seven, which
+is Oblivion presenting several times per step - harmless on its own, because a frozen pose
+means each picture simply stands still until the next replaces it. It was the mode changing
+between them that was felt.
+
 ### Decided, not started: the 2D pass gets its own target
 
 The HUD, the menus and the dialogues are one problem and will be solved as one, because in

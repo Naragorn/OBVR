@@ -114,4 +114,61 @@ inline constexpr UInt32 kRendererDeviceOffset = 0x280;
 // Expected game version. OBSE reports it as oblivionVersion.
 inline constexpr UInt32 kOblivionVersion_1_2_416 = 0x010201A0;
 
+// Whether a menu is up: the main menu, a loading screen, an inventory, the
+// ESC menu, a dialogue. A function rather than a flag, and nullary.
+//
+// Two sources, as everything here has. xOBSE names the address in GameAPI.cpp
+// as the target of its _IsMenuMode function pointer for 1.2.0.416. The bytes
+// at that address in Oblivion.exe say the same thing independently:
+//
+//   00578F60  push 1; push 0; call 00582160    <- InterfaceManager singleton,
+//   00578F6C  add esp,8; test eax,eax; jz +2A     the address xOBSE also names
+//   00578F70  push 1; push 0; call 00582160
+//   00578F7C  add esp,8; cmp dword [eax+1C],0; jz +18
+//   00578F82  push 1; push 0; call 00582160
+//   00578F8B  xor ecx,ecx; add esp,8
+//   00578F90  cmp byte [eax+8],1; setne cl; mov al,cl; ret
+//   00578F9A  xor al,al; ret
+//
+// A function that reaches the interface manager three times and returns a
+// byte is the one being described. The ret takes no argument, so it is
+// nullary and the calling convention does not matter.
+//
+// Why OBVR wants it: without it, "is a menu up" has to be guessed from
+// whether the camera hook ran this frame - and in a menu Oblivion still draws
+// the world behind the menu on some frames and not others. The guess
+// therefore flips back and forth, and with it the whole presentation: one
+// frame the world fills the headset, the next a small flat rectangle hangs in
+// black. That is the flicker seen when opening the ESC menu.
+inline constexpr UInt32 kIsMenuMode = 0x00578F60;
+
+// Where Oblivion keeps d3d9.dll and the Direct3DCreate9 it looked up in it.
+//
+// This exists because Oblivion.exe does not import d3d9.dll at all - the
+// import table lists d3dx9_27.dll and thirteen others, and no d3d9. It loads
+// it by hand, at 00761DF0:
+//
+//   00761DF0  push esi; xor esi,esi
+//   00761DF3  cmp [00B42154],esi; jnz +5E
+//   00761DFB  mov eax,[00B42158]           <- already resolved? then done
+//   00761E00  test eax,eax; jnz +29
+//   00761E04  push "D3D9.DLL"
+//   00761E09  call [00A28118]              <- LoadLibraryA, from the IAT
+//   00761E11  mov [00B42150],eax           <- the module handle
+//   00761E18  push "Direct3DCreate9"
+//   00761E1D  push eax
+//   00761E1E  call [00A2811C]              <- GetProcAddress, from the IAT
+//   00761E26  mov [00B42158],eax           <- the function, cached here
+//
+// The two IAT slots agree with the import table read separately, which is
+// what makes this two sources rather than one reading.
+//
+// So an import hook on Direct3DCreate9 can never fire: there is no import to
+// replace. GetProcAddress is imported, and is hooked instead. The cached
+// pointer is the second way in, for the case where the lookup has already
+// happened by the time OBVR loads - and it is validated before being written,
+// by resolving Direct3DCreate9 independently and requiring the same value.
+inline constexpr UInt32 kD3D9Module = 0x00B42150;
+inline constexpr UInt32 kDirect3DCreate9Pointer = 0x00B42158;
+
 }  // namespace obvr::addr

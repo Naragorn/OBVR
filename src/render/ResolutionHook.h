@@ -13,14 +13,27 @@ namespace obvr::render {
 // the device is created and changing it afterwards means destroying every
 // resource the game holds.
 //
-// So this is in the way of the creation. Two hooks, one behind the other:
+// So this is in the way of the creation. Which is harder than it sounds,
+// because Oblivion.exe does not import d3d9.dll at all - its import table
+// lists d3dx9_27.dll and thirteen others, and no d3d9. It calls
+// LoadLibraryA("D3D9.DLL") and GetProcAddress("Direct3DCreate9") by hand and
+// keeps the result in a global. So there is no Direct3DCreate9 import to
+// replace, and an attempt to replace one finds nothing - which is exactly what
+// happened, and why the resolution never changed.
 //
-//   Direct3DCreate9  reached through Oblivion's import table, because that is
-//                    a single pointer rather than instructions to decode. Its
-//                    only job is to catch the factory object on its way past.
-//   CreateDevice     entry 16 of that factory's method table, patched once the
-//                    factory exists. This is where the size actually lives,
-//                    in D3DPRESENT_PARAMETERS, and where it is changed.
+// Two ways in instead, tried in that order:
+//
+//   the cached pointer  if the lookup has already happened, the global that
+//                       holds the result is overwritten - after resolving the
+//                       function independently and checking the global really
+//                       holds it, so a wrong address cannot pass.
+//   GetProcAddress      which Oblivion does import, hooked through its import
+//                       table so the lookup returns OBVR's function instead.
+//
+// Either way the same thing is caught: the factory, on its way out of
+// Direct3DCreate9. Then entry 16 of that factory's method table - CreateDevice
+// - is patched, and that is where the size actually lives, in
+// D3DPRESENT_PARAMETERS, and where it is changed.
 //
 // The alternative was writing iSize into Oblivion.ini and letting the game
 // read it on the next run. That is a detour in the exact sense: it goes around

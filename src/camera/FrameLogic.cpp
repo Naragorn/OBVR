@@ -72,4 +72,6 @@ bool BackBufferEyeIsLeft(bool isLeftEye, bool backBufferIsThisFrame) {
 	return backBufferIsThisFrame ? isLeftEye : !isLeftEye;
 }
 
+bool FrameIsFlat(bool hadCameraPass, bool menuIsUp) { return !hadCameraPass || menuIsUp; }
+
 }  // namespace obvr::camera

@@ -39,6 +39,7 @@ add_library(OBVR SHARED
 	src/render/EyeGeometry.cpp
 	src/render/EyeMirror.cpp
 	src/game/GameCamera.cpp
+	src/game/MenuMode.cpp
 	src/render/GameDevice.cpp
 	src/render/GameProjection.cpp
 	src/render/GameFrame.cpp

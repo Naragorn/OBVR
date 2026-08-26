@@ -142,4 +142,26 @@ bool IsLeftEyeFrame(UInt32 frameCount);
 // when the head moved sideways.
 bool BackBufferEyeIsLeft(bool isLeftEye, bool backBufferIsThisFrame);
 
+// Whether this frame should reach the headset as a flat picture rather than as
+// one eye of a stereo pair.
+//
+// Two reasons, and either one is enough.
+//
+// No camera pass. The camera hook is what supplies a viewpoint, so without it
+// there is nothing to claim a picture was drawn from. Loading screens and the
+// main menu are like this: the world is not being drawn at all.
+//
+// A menu is up. This is the one that was missing, and its absence is what made
+// menus in game flicker. Oblivion keeps drawing the world behind an open menu,
+// but not on every frame - so on the frames it did, the camera hook ran and
+// OBVR treated the frame as a live eye, filling the headset with the world;
+// on the frames it did not, the same menu came back as a small rectangle
+// floating in black. Alternating between those two at frame rate is the menu
+// snapping open and shut, and it is only visible in a headset, because on a
+// monitor both look like the same picture.
+//
+// Asking the game whether a menu is open answers it once and for the whole
+// time the menu is up, so nothing alternates.
+bool FrameIsFlat(bool hadCameraPass, bool menuIsUp);
+
 }  // namespace obvr::camera

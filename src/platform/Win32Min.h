@@ -88,6 +88,10 @@ OBVR_IMPORT BOOL OBVR_STDCALL QueryPerformanceFrequency(LargeInteger* frequency)
 // to the concrete function pointer anyway, and replicating FARPROC would be
 // one more declaration for no gain.
 OBVR_IMPORT HMODULE OBVR_STDCALL LoadLibraryA(const char* fileName);
+
+// For checking whether Oblivion has already loaded d3d9.dll, which decides
+// which of the two ways into its resolution is still open.
+OBVR_IMPORT HMODULE OBVR_STDCALL GetModuleHandleA(const char* moduleName);
 OBVR_IMPORT void* OBVR_STDCALL GetProcAddress(HMODULE module, const char* name);
 OBVR_IMPORT BOOL OBVR_STDCALL FreeLibrary(HMODULE module);
 

@@ -262,6 +262,36 @@ void TestFrameClockGaps() {
 
 }  // namespace
 
+void TestFrameIsFlat() {
+	std::printf("When a frame goes to the headset flat rather than as one eye\n");
+
+	using obvr::camera::FrameIsFlat;
+
+	// Nothing drew the world, so there is no viewpoint to claim. Loading
+	// screens and the main menu are like this.
+	Check(FrameIsFlat(false, false), "no camera pass and no menu is still flat");
+	Check(FrameIsFlat(false, true), "no camera pass with a menu open, likewise");
+
+	// The world is being drawn and nothing is in front of it. This is the only
+	// case that gets a live eye.
+	Check(!FrameIsFlat(true, false), "a camera pass with no menu is a live eye");
+
+	// The case the flicker came from. Oblivion keeps drawing the world behind
+	// an open menu, but not on every frame, so this combination and the one
+	// above alternate while a menu is up. Before the menu was asked about,
+	// this returned false and the presentation changed with it: full stereo
+	// world one frame, a small flat rectangle in black the next.
+	Check(FrameIsFlat(true, true),
+	      "a camera pass with a menu open is flat, so the menu does not flicker");
+
+	// Said as the property rather than as four cases: while a menu is open the
+	// answer does not depend on the camera at all.
+	for (int pass = 0; pass < 2; ++pass) {
+		Check(FrameIsFlat(pass != 0, true),
+		      "with a menu open the answer is flat regardless of the camera");
+	}
+}
+
 int main() {
 	std::printf("OBVR frame logic test\n\n");
 
@@ -278,6 +308,8 @@ int main() {
 	TestEyeAlternation();
 	std::printf("\n");
 	TestBackBufferEye();
+	std::printf("\n");
+	TestFrameIsFlat();
 	std::printf("\n");
 	TestFrameClock();
 	std::printf("\n");
