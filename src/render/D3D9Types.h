@@ -220,6 +220,37 @@ constexpr UInt32 kRenderStateColorWriteEnable = 168;
 constexpr UInt32 kColorWriteAlpha = 0x8;
 constexpr UInt32 kColorWriteAll = 0xF;
 
+// Reading a render target back to the CPU, for one diagnostic: the HUD
+// texture arrived in the headset as nothing while the red probe square
+// showed, so the question became what the texture actually holds - and that
+// is a question about bytes, which only a readback answers. All counted from
+// the same DECLARE_INTERFACE_ listing as everything above.
+constexpr UInt32 kDeviceGetRenderTargetData = 32;
+constexpr UInt32 kDeviceCreateOffscreenPlainSurface = 36;
+constexpr UInt32 kSurfaceLockRect = 13;
+constexpr UInt32 kSurfaceUnlockRect = 14;
+
+// D3DPOOL_SYSTEMMEM (d3d9types.h, line 1525) - the pool GetRenderTargetData
+// copies into - and D3DLOCK_READONLY (line 1695).
+constexpr UInt32 kPoolSystemMem = 2;
+constexpr UInt32 kLockReadOnly = 0x10;
+
+// D3DLOCKED_RECT (d3d9types.h, line 1760): the pitch first, then the bits.
+struct LockedRect {
+	SInt32 pitch;
+	void* bits;
+};
+
+using GetRenderTargetDataFn = SInt32(__stdcall*)(void* self, void* renderTarget,
+                                                 void* destSurface);
+using CreateOffscreenPlainSurfaceFn = SInt32(__stdcall*)(void* self, UInt32 width,
+                                                         UInt32 height, UInt32 format,
+                                                         UInt32 pool, void** surface,
+                                                         void** sharedHandle);
+using LockRectFn = SInt32(__stdcall*)(void* self, LockedRect* locked, const Rect* rect,
+                                      UInt32 flags);
+using UnlockRectFn = SInt32(__stdcall*)(void* self);
+
 // D3DFMT_A8R8G8B8 (d3d9types.h, line 1378). The back buffer is X8R8G8B8 - no
 // alpha, because a screen has no use for one. The 2D layer's own texture is
 // the opposite case: the alpha channel is the whole point, it is what lets an

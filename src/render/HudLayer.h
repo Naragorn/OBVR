@@ -98,6 +98,14 @@ private:
 	bool m_liveReported = false;
 	bool m_failureReported = false;
 
+	// One CPU readback of the texture, a hundred captures in, while the probe
+	// is on: the numbers that say whether the layer's content is there at all
+	// and what its alpha looks like. See DumpContentOnce.
+	UInt32 m_captureCount = 0;
+	bool m_contentDumped = false;
+
+	void DumpContentOnce(void* gameDevice);
+
 	InteropBracket m_bracket;
 };
 

@@ -36,9 +36,19 @@ d3d9::SetRenderTargetFn g_originalSetTarget = nullptr;
 d3d9::SetRenderStateFn g_originalSetState = nullptr;
 bool g_targetHookRefused = false;
 
-// While true, any colour target the pass sets is replaced with the substitute.
+// While true, the back buffer - and only the back buffer - is replaced as a
+// colour target with the substitute.
 bool g_redirecting = false;
 void* g_substitute = nullptr;
+
+// The back buffer's own surface, held with the reference GetBackBuffer added,
+// so the substitution can match it exactly. Matching exactly matters: the
+// pass may render interface elements into intermediate textures of its own
+// before compositing them, and hijacking those would steal the pieces the
+// composite step then reads back - a HUD that vanishes everywhere at once.
+// Only "aim at the back buffer" means "aim at ours instead"; every other
+// target is the pass's own business.
+void* g_backBuffer = nullptr;
 
 // The last target the pass asked for while redirected, so the device can be
 // left in the state the game believes it is in. No reference is held: the
@@ -46,7 +56,7 @@ void* g_substitute = nullptr;
 void* g_lastRequested = nullptr;
 
 SInt32 __stdcall HookedSetRenderTarget(void* self, UInt32 index, void* surface) {
-	if (g_redirecting && index == 0 && surface != nullptr && surface != g_substitute) {
+	if (g_redirecting && index == 0 && surface != nullptr && surface == g_backBuffer) {
 		g_lastRequested = surface;
 		surface = g_substitute;
 	}
@@ -96,6 +106,20 @@ bool EnsureTargetHook() {
 		// Not a refusal: the device can arrive later, and the next pass asks
 		// again.
 		return false;
+	}
+
+	// The surface the substitution matches against. The reference is kept for
+	// the life of the hook: the pointer is compared every SetRenderTarget,
+	// and a released surface could be reallocated as something else.
+	if (g_backBuffer == nullptr) {
+		auto getBackBuffer =
+			d3d9::Method<d3d9::GetBackBufferFn>(device, d3d9::kDeviceGetBackBuffer);
+		if (getBackBuffer == nullptr ||
+		    getBackBuffer(device, 0, 0, d3d9::kBackBufferTypeMono, &g_backBuffer) < 0 ||
+		    g_backBuffer == nullptr) {
+			g_backBuffer = nullptr;
+			return false;
+		}
 	}
 
 	auto** vtable = *reinterpret_cast<void***>(device);

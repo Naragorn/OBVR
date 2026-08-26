@@ -247,6 +247,15 @@ void HudLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool capture
 		return;
 	}
 
+	// The readback before the square, so the square's own opaque pixels do
+	// not pollute the numbers being measured.
+	if (probeSquare) {
+		++m_captureCount;
+		if (m_captureCount == 100) {
+			DumpContentOnce(gameDevice);
+		}
+	}
+
 	// The probe: an opaque red square, 256 pixels, dead centre, painted after
 	// everything the game drew. If it shows in the headset, the overlay path
 	// is fine and the layer's own alpha is what never arrived; if it does
@@ -305,6 +314,96 @@ void HudLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool capture
 	}
 }
 
+void HudLayer::DumpContentOnce(void* gameDevice) {
+	if (m_contentDumped || m_surface == nullptr || m_width == 0 || m_height == 0) {
+		return;
+	}
+	m_contentDumped = true;
+
+	// A render target cannot be read by the CPU; GetRenderTargetData copies
+	// it into a system memory surface that can. The copy stalls the GPU, which
+	// is why this runs exactly once, and only while the probe is on.
+	auto createPlain = d3d9::Method<d3d9::CreateOffscreenPlainSurfaceFn>(
+		gameDevice, d3d9::kDeviceCreateOffscreenPlainSurface);
+	auto getData = d3d9::Method<d3d9::GetRenderTargetDataFn>(
+		gameDevice, d3d9::kDeviceGetRenderTargetData);
+	if (createPlain == nullptr || getData == nullptr) {
+		return;
+	}
+
+	void* staging = nullptr;
+	if (d3d11::Failed(createPlain(gameDevice, m_width, m_height, d3d9::kFormatA8R8G8B8,
+	                              d3d9::kPoolSystemMem, &staging, nullptr)) ||
+	    staging == nullptr) {
+		OBVR_LOG("Hud: no staging surface for the content dump");
+		return;
+	}
+
+	if (d3d11::Failed(getData(gameDevice, m_surface, staging))) {
+		OBVR_LOG("Hud: GetRenderTargetData refused the content dump");
+		d3d11::Release(staging);
+		return;
+	}
+
+	auto lockRect = d3d9::Method<d3d9::LockRectFn>(staging, d3d9::kSurfaceLockRect);
+	auto unlockRect = d3d9::Method<d3d9::UnlockRectFn>(staging, d3d9::kSurfaceUnlockRect);
+	d3d9::LockedRect locked{};
+	if (lockRect == nullptr || unlockRect == nullptr ||
+	    d3d11::Failed(lockRect(staging, &locked, nullptr, d3d9::kLockReadOnly)) ||
+	    locked.bits == nullptr) {
+		OBVR_LOG("Hud: the staging surface could not be locked");
+		d3d11::Release(staging);
+		return;
+	}
+
+	// The four counts that decide the diagnosis. colouredNoAlpha is the
+	// smoking gun for "the content is there and its alpha is not": pixels
+	// with visible colour sitting at alpha zero.
+	UInt32 alphaZero = 0;
+	UInt32 alphaFull = 0;
+	UInt32 alphaMid = 0;
+	UInt32 colouredNoAlpha = 0;
+	UInt32 maxAlpha = 0;
+
+	for (UInt32 y = 0; y < m_height; ++y) {
+		const auto* row = reinterpret_cast<const UInt32*>(
+			static_cast<const UInt8*>(locked.bits) +
+			static_cast<SInt32>(y) * locked.pitch);
+		for (UInt32 x = 0; x < m_width; ++x) {
+			const UInt32 pixel = row[x];
+			const UInt32 alpha = pixel >> 24;
+			if (alpha == 0) {
+				++alphaZero;
+				// "Visible" means any channel above the noise floor.
+				if ((pixel & 0x00F0F0F0u) != 0) {
+					++colouredNoAlpha;
+				}
+			} else if (alpha == 255) {
+				++alphaFull;
+			} else {
+				++alphaMid;
+			}
+			if (alpha > maxAlpha) {
+				maxAlpha = alpha;
+			}
+		}
+	}
+
+	unlockRect(staging);
+	d3d11::Release(staging);
+
+	const UInt32 total = m_width * m_height;
+	OBVR_LOG("Hud: content dump of %ux%u - alpha 0: %u, alpha 255: %u, between: %u, "
+	         "max alpha %u",
+	         m_width, m_height, alphaZero, alphaFull, alphaMid, maxAlpha);
+	OBVR_LOG("Hud: %u of %u pixels carry colour at alpha zero%s", colouredNoAlpha, total,
+	         colouredNoAlpha > total / 100
+	             ? " - the layer is there and its alpha is not"
+	             : (alphaFull + alphaMid == 0
+	                    ? " - and nothing carries alpha, so the layer may not be here at all"
+	                    : ""));
+}
+
 void HudLayer::Destroy() {
 	m_bracket.Release();
 
@@ -321,6 +420,8 @@ void HudLayer::Destroy() {
 	m_statesSaved = false;
 	m_statesReported = false;
 	m_captured = false;
+	m_captureCount = 0;
+	m_contentDumped = false;
 
 	// The overlay handle is deliberately left to the runtime: DestroyOverlay
 	// from DllMain-adjacent shutdown would call into a library that may be
