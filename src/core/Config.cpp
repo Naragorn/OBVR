@@ -235,6 +235,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.tracker.stereo = ReadStereoMode(config.tracker.stereo, path);
 	config.tracker.gameFovDegrees =
 		ReadFloat("Render", "GameFovDegrees", config.tracker.gameFovDegrees, path);
+	config.tracker.gameFovIsFor4x3 =
+		ReadBool("Render", "GameFovIsFor4x3", config.tracker.gameFovIsFor4x3, path);
 	config.look.blockVerticalLook =
 		ReadBool("Look", "BlockVerticalLook", config.look.blockVerticalLook, path);
 
@@ -337,8 +339,8 @@ bool Config::Load(const char* fileName) {
 	         tracker.renderToHeadset ? 1 : 0, tracker.submitGameFrame ? 1 : 0,
 	         StereoModeName(tracker.stereo),
 	         tracker.renderToHeadset ? " - OBVR will claim the VR scene" : "");
-	OBVR_LOG("Config: Render.GameFovDegrees=%.1f",
-	         static_cast<double>(tracker.gameFovDegrees));
+	OBVR_LOG("Config: Render.GameFovDegrees=%.1f IsFor4x3=%d",
+	         static_cast<double>(tracker.gameFovDegrees), tracker.gameFovIsFor4x3 ? 1 : 0);
 	if (tracker.stereo == vr::StereoMode::DualPass) {
 		// Said plainly rather than silently ignored. A setting that is
 		// accepted and then does something else is worse than one that is

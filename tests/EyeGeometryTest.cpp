@@ -269,7 +269,7 @@ void TestPlacePicture() {
 
 	// Oblivion as it is actually configured on this machine: 2560x1440 at
 	// fDefaultFOV 75.
-	const PicturePlacement measured = PlacePicture(MeasuredLeftEye(), 75.0f, 2560, 1440);
+	const PicturePlacement measured = PlacePicture(MeasuredLeftEye(), 75.0f, 2560, 1440, false);
 
 	// tan(37.5) = 0.76733 across, and 0.5625 of that down for a 16:9 frame,
 	// against an eye frustum 1.9766 wide and 1.9918 tall.
@@ -313,7 +313,7 @@ void TestPlacePictureScale() {
 	using obvr::render::PlacePicture;
 
 	const obvr::render::EyeProjection eye = MeasuredLeftEye();
-	const obvr::render::PicturePlacement placement = PlacePicture(eye, 75.0f, 2560, 1440);
+	const obvr::render::PicturePlacement placement = PlacePicture(eye, 75.0f, 2560, 1440, false);
 
 	// In tangents, not in degrees. An eye's view is linear in the tangent of
 	// the angle and not in the angle itself, so comparing degrees per fraction
@@ -347,6 +347,56 @@ void TestPlacePictureScale() {
 	CheckNear(oldDown / oldAcross, 1.43f, 0.02f,
 	          "which stretched it by 1.43 - the fault this replaces");
 }
+void TestPlacePictureAspectScaling() {
+	std::printf("The two ways to read Oblivion's field-of-view number\n");
+
+	using obvr::render::PicturePlacement;
+	using obvr::render::PlacePicture;
+
+	const obvr::render::EyeProjection eye = MeasuredLeftEye();
+
+	// The check that makes the ambiguity legible: at 4:3 the two readings are
+	// the same thing. That is why nobody had to choose while screens were 4:3,
+	// and why the Construction Set wiki can say "horizontal field of view,
+	// vertical at 5:4" without it being wrong.
+	const PicturePlacement narrowA = PlacePicture(eye, 75.0f, 1024, 768, false);
+	const PicturePlacement narrowB = PlacePicture(eye, 75.0f, 1024, 768, true);
+
+	CheckNear(narrowA.uMax - narrowA.uMin, narrowB.uMax - narrowB.uMin, 0.001f,
+	          "at 4:3 the two readings agree across");
+	CheckNear(narrowA.vMax - narrowA.vMin, narrowB.vMax - narrowB.vMin, 0.001f,
+	          "and down");
+
+	// At 16:9 they do not agree, and the gap is a third - evenly in both axes
+	// before anything is trimmed, so the wrong choice makes the world too
+	// large or too small without stretching it. That is what makes it hard to
+	// spot: there is no distortion to notice, only a size, and a size has
+	// nothing to be compared against.
+	const PicturePlacement wideA = PlacePicture(eye, 75.0f, 2560, 1440, false);
+	const PicturePlacement wideB = PlacePicture(eye, 75.0f, 2560, 1440, true);
+
+	// Vertically, where neither reading overflows, the third is plain to see.
+	CheckNear((wideB.vMax - wideB.vMin) / (wideA.vMax - wideA.vMin), 4.0f / 3.0f, 0.01f,
+	          "at 16:9 the two readings differ by exactly a third");
+
+	// Horizontally the same third would take the picture past the eye's own
+	// frustum, so it is cut instead - which is why the ratio measured off the
+	// finished rectangles is smaller, and why the check above uses the axis
+	// that does not overflow.
+	Check(wideB.cropped, "read as a 4:3 figure, 75 degrees is wider than this eye can show");
+	Check(!wideA.cropped, "read as a 16:9 figure it is not");
+	Check(wideB.uMax - wideB.uMin > wideA.uMax - wideA.uMin,
+	      "and even after cutting it still covers more of the view across");
+	CheckNear(wideB.uMax - wideB.uMin, 0.935f, 0.01f,
+	          "93% of it, against 78% for the other reading");
+
+	// Vertically it is short either way. A frame this shape cannot fill a
+	// headset's view whichever reading is taken, so the margin above and below
+	// is evidence for neither.
+	Check(wideB.vMax - wideB.vMin < 0.7f, "and it is short vertically under both readings");
+	Check(wideA.vMax - wideA.vMin < 0.7f, "by different amounts, but short");
+}
+
 void TestPlacePictureCrop() {
 	std::printf("A game wider than the headset can show\n");
 
@@ -363,7 +413,7 @@ void TestPlacePictureCrop() {
 
 	// 140 degrees across a square frame: tan(70) is 2.75, well past the
 	// frustum, so both axes overflow.
-	const PicturePlacement wide = PlacePicture(eye, 140.0f, 1000, 1000);
+	const PicturePlacement wide = PlacePicture(eye, 140.0f, 1000, 1000, false);
 
 	Check(wide.cropped, "a field of view wider than the eye's is reported as cropped");
 	Check(wide.uMin >= 0.0f && wide.uMax <= 1.0f, "and the destination is pulled inside");
@@ -379,7 +429,7 @@ void TestPlacePictureCrop() {
 
 	// A field of view that exactly fills the eye leaves nothing over and cuts
 	// nothing off. tan(45) is 1, which is the frustum's own edge.
-	const PicturePlacement exact = PlacePicture(eye, 90.0f, 1000, 1000);
+	const PicturePlacement exact = PlacePicture(eye, 90.0f, 1000, 1000, false);
 	Check(!exact.cropped, "a field of view matching the eye's fits exactly");
 	CheckNear(exact.uMin, 0.0f, 0.001f, "filling the texture from the left edge");
 	CheckNear(exact.uMax, 1.0f, 0.001f, "to the right");
@@ -400,15 +450,15 @@ void TestPlacePictureRefusals() {
 	// Nothing sensible can be said about these, and the fallback fills the
 	// texture - wrong, but wrong in a way that still shows a picture rather
 	// than handing Direct3D a rectangle of no area.
-	const PicturePlacement noFrame = PlacePicture(eye, 75.0f, 0, 1440);
+	const PicturePlacement noFrame = PlacePicture(eye, 75.0f, 0, 1440, false);
 	CheckNear(noFrame.uMax - noFrame.uMin, 1.0f, 0.0001f,
 	          "a frame with no width falls back to the whole texture");
 
-	const PicturePlacement noAngle = PlacePicture(eye, 0.0f, 2560, 1440);
+	const PicturePlacement noAngle = PlacePicture(eye, 0.0f, 2560, 1440, false);
 	CheckNear(noAngle.uMax - noAngle.uMin, 1.0f, 0.0001f,
 	          "and so does a field of view of zero");
 
-	const PicturePlacement straightUp = PlacePicture(eye, 180.0f, 2560, 1440);
+	const PicturePlacement straightUp = PlacePicture(eye, 180.0f, 2560, 1440, false);
 	CheckNear(straightUp.uMax - straightUp.uMin, 1.0f, 0.0001f,
 	          "and one of 180 degrees, whose tangent is not a number");
 
@@ -418,7 +468,7 @@ void TestPlacePictureRefusals() {
 	flat.right = 0.0f;
 	flat.top = -1.0f;
 	flat.bottom = 1.0f;
-	const PicturePlacement noEye = PlacePicture(flat, 75.0f, 2560, 1440);
+	const PicturePlacement noEye = PlacePicture(flat, 75.0f, 2560, 1440, false);
 	CheckNear(noEye.uMax - noEye.uMin, 1.0f, 0.0001f, "and an eye that sees nothing wide");
 }
 
@@ -440,6 +490,8 @@ int main() {
 	TestPlacePicture();
 	std::printf("\n");
 	TestPlacePictureScale();
+	std::printf("\n");
+	TestPlacePictureAspectScaling();
 	std::printf("\n");
 	TestPlacePictureCrop();
 	std::printf("\n");

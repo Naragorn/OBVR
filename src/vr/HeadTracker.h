@@ -124,6 +124,11 @@ struct TrackerSettings {
 	// against, which is both far too large and visibly stretched.
 	float gameFovDegrees = 75.0f;
 
+	// How to read that number when the frame is not 4:3. See PlacePicture: the
+	// two readings differ by a third, evenly in both axes, so the wrong one
+	// makes the world too large or too small with no stretching to show it.
+	bool gameFovIsFor4x3 = false;
+
 	// Oblivion units per metre, for converting the head offset.
 	//
 	// The Construction Set wiki gives "21.3 units to a foot ... 64 units per

@@ -310,6 +310,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// to and the eye the picture is given to cannot drift apart.
 	request.isLeftEye = IsLeftEyeFrame(g_state.frameCount);
 	request.gameFovDegrees = config.tracker.gameFovDegrees;
+	request.gameFovIsFor4x3 = config.tracker.gameFovIsFor4x3;
 
 	g_headsetRenderer.Update(g_headTracker.GetBackend(), request);
 }

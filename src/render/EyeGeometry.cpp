@@ -120,7 +120,7 @@ bool IsPlausibleIpd(float metres) {
 
 
 PicturePlacement PlacePicture(const EyeProjection& eye, float fovDegrees, UInt32 frameWidth,
-                              UInt32 frameHeight) {
+                              UInt32 frameHeight, bool fovIsFor4x3) {
 	PicturePlacement placement;
 
 	// Nothing sensible can be said about a frame with no size or a field of
@@ -138,14 +138,52 @@ PicturePlacement PlacePicture(const EyeProjection& eye, float fovDegrees, UInt32
 		return placement;
 	}
 
-	// The game's frustum, as tangents of the half-angles. The vertical half
-	// comes from the aspect ratio, because a horizontal field of view says
-	// nothing on its own about how tall the picture is - and getting this
-	// from the texture's shape instead of the frame's would be the same
-	// mistake in a different place.
-	const float tanHalfWidth = math::Tan(fovDegrees * 0.5f * math::kDegreesToRadians);
-	const float tanHalfHeight =
-		tanHalfWidth * static_cast<float>(frameHeight) / static_cast<float>(frameWidth);
+	// The game's frustum, as tangents of the half-angles.
+	//
+	// Which way round this is worked out is an open question, and it changes
+	// the answer by a third. Oblivion's fDefaultFOV is 75, and the Construction
+	// Set wiki says SetCameraFOV "sets the camera's horizontal field of view",
+	// with the vertical following at a fixed 5:4 in degrees - 75 across, 60
+	// down. That ratio is exactly what a 4:3 image gives: tan(30)/tan(37.5) is
+	// 0.7525, which is 3/4 to within rounding. So the documented figure
+	// describes a 4:3 screen, and says nothing certain about what a 16:9 one
+	// does with it.
+	//
+	// The two possibilities differ in which axis is held fixed as the picture
+	// widens:
+	//
+	//   fovIsFor4x3 = false   the number is the horizontal field of view at
+	//                         whatever the current aspect ratio is, and the
+	//                         vertical shrinks to suit. 75 across, 46.7 down
+	//                         at 16:9.
+	//   fovIsFor4x3 = true    the number describes a 4:3 screen, the vertical
+	//                         stays at 60, and the horizontal widens. 91.3
+	//                         across at 16:9.
+	//
+	// At 4:3 the two agree exactly, which is the check below and the reason
+	// the ambiguity exists at all: nobody had to choose while screens were
+	// 4:3.
+	//
+	// This is NOT settled. The Widescreen Gaming Forum calls Oblivion's
+	// widescreen support a "perfect implementation ... whose example should be
+	// studied by all developers", and by their own terms a picture that loses
+	// vertical field of view on a wide screen is a fault rather than a perfect
+	// implementation - which points at the second reading. But the page never
+	// says so, and nothing found says it outright. So both are built, the
+	// setting chooses, and the log prints what was used. Getting it wrong
+	// makes the world a third too large or a third too small, evenly in both
+	// axes, with no stretching to give it away.
+	float tanHalfWidth = 0.0f;
+	float tanHalfHeight = 0.0f;
+	const float aspect = static_cast<float>(frameWidth) / static_cast<float>(frameHeight);
+
+	if (fovIsFor4x3) {
+		tanHalfHeight = math::Tan(fovDegrees * 0.5f * math::kDegreesToRadians) * 0.75f;
+		tanHalfWidth = tanHalfHeight * aspect;
+	} else {
+		tanHalfWidth = math::Tan(fovDegrees * 0.5f * math::kDegreesToRadians);
+		tanHalfHeight = tanHalfWidth / aspect;
+	}
 
 	// What share of the eye's view the game's picture covers, at a scale of
 	// one to one. Under 1 in both axes for any ordinary field of view, and

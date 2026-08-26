@@ -1328,6 +1328,84 @@ the same magnified, stretched picture it always did. Left alone deliberately - i
 fallback, it is known to work as it is, and changing the thing being fallen back to in the
 same breath as the thing being fixed would leave two candidates for any new fault.
 
+### Alternate eyes works
+
+`docs/verification/OBVR-aer-working.log` records the run that came out right. Reported from
+the headset: picture centred, black bars at the edges. Nothing in the log failed - fifty-
+seven lines, and the only one that is not a plain statement of fact is a single
+`OpenVR: no valid HMD pose yet` during startup.
+
+That is the whole of 0.1.0's stereo half working: Oblivion drawn once per frame from
+alternating eye positions, both eyes submitted every frame out of pictures OBVR owns, laid
+into each eye's frustum at the angle the frame actually covers.
+
+Three faults were found and fixed across three runs, and each one was found from the log
+rather than by guessing:
+
+| run | symptom | cause |
+|---|---|---|
+| 1 | nothing, SteamVR Home | one eye per frame is not a frame |
+| 2 | unstable, flickering when the head turned | each eye shown the other eye's viewpoint |
+| 2 | world too large, HUD out of view | fixed 80%/100% bounds, unrelated to either frustum |
+| 3 | picture a fifth of the view too low | frustum's vertical axis runs opposite to the texture's |
+
+The pattern worth keeping: every one of those was written down as a risk *before* it
+happened - the both-eyes question in the first commit, the stale-frame gap in the second,
+the vertical convention in the third. Each symptom therefore arrived already attributed, and
+each cost one line of code rather than a search.
+
+### The black bars, and the one question left open
+
+The bars are not a fault. A 16:9 frame does not fill a headset's field of view, and the
+margin is what honesty about the angular scale looks like. The alternative is magnifying the
+world, which is exactly the fault that was just removed.
+
+What is *not* settled is how to read Oblivion's `fDefaultFOV` when the game is not rendering
+at 4:3, and it changes the size of the world by a third:
+
+- **as a horizontal field of view at the current resolution** - 75 across, 46.7 down at
+  2560x1440. This is what OBVR does today, `Render.GameFovIsFor4x3=0`.
+- **as a 4:3 figure, with the horizontal widening** - 91.3 across, 60 down at the same
+  resolution. `Render.GameFovIsFor4x3=1`.
+
+At 4:3 the two are identical, which is why nobody had to choose and why the documentation
+does not answer it. The Construction Set wiki says `SetCameraFOV` "sets the camera's
+horizontal field of view", vertical following at 5:4 in degrees - and 5:4 in degrees is
+exactly what a 4:3 image gives at 75 degrees, so that sentence describes a 4:3 screen and
+settles nothing about a wide one.
+
+Pointing the other way: the Widescreen Gaming Forum calls Oblivion's widescreen support a
+"perfect implementation ... whose example should be studied by all developers", and by their
+own vocabulary a picture that loses vertical field of view on a wide screen is a fault, not
+a perfect implementation. That argues for the second reading. The page never says it
+outright, so both are built and the setting chooses.
+
+**Why this is hard to see and easy to miss.** Getting it wrong does not stretch anything -
+both readings preserve the shape and change only the size, evenly in both axes. There is no
+distortion to notice, only a scale, and a scale has nothing to be compared against from
+inside. The way to tell is to look at how big things are: doorways, hands, how far away a
+person standing next to you feels.
+
+It also happens to be the answer to the bars. The second reading fills 93% of the view
+across instead of 78%. That is not a way of stretching the picture to fit - if it looks
+right, it is right, and the fuller view is what being right looks like.
+
+`eye_geometry_test` pins both readings, their agreement at 4:3, and the exact third between
+them at 16:9.
+
+### What is still true and unfixed
+
+- **The picture is one frame stale.** The submit runs from the camera hook, before the frame
+  is drawn. Moving it to `Present` at vtable index 17 is the fix, and it would invert the
+  eye correction in `SubmitAlternateEyes` - the comment there says so.
+- **The two eyes hold pictures drawn one frame apart.** That is what alternate eye rendering
+  is, not a defect in this implementation. Only `Stereo=dual` removes it, and `dual` is not
+  built.
+- **The mono path still uses the old fixed bounds**, so `Stereo=none` shows the magnified,
+  stretched picture it always did. Left alone deliberately: it is the fallback, it works as
+  it is, and changing the thing being fallen back to would leave two candidates for any new
+  fault.
+
 ### The INI switch
 
 `[Render] Stereo` now takes three values rather than two: `none`, `aer`, `dual`. One key

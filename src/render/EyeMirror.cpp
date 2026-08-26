@@ -105,7 +105,7 @@ bool EyeMirror::CreateOne(void* gameDevice, int index) {
 
 bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeight,
                        const EyeProjection& leftEye, const EyeProjection& rightEye,
-                       float gameFovDegrees) {
+                       float gameFovDegrees, bool gameFovIsFor4x3) {
 	Destroy();
 
 	if (gameDevice == nullptr || textureWidth == 0 || textureHeight == 0) {
@@ -165,7 +165,8 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 	for (int index = 0; index < 2; ++index) {
 		const EyeProjection& projection = index == 0 ? leftEye : rightEye;
 		const PicturePlacement placement =
-			PlacePicture(projection, gameFovDegrees, m_frameWidth, m_frameHeight);
+			PlacePicture(projection, gameFovDegrees, m_frameWidth, m_frameHeight,
+			             gameFovIsFor4x3);
 
 		Eye& eye = m_eye[index];
 		eye.destination.left = EdgeOf(placement.uMin, m_width);

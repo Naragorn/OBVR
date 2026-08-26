@@ -57,6 +57,7 @@ public:
 		// picture cannot be placed at the right angular size without knowing
 		// what angle it covers.
 		float gameFovDegrees = 75.0f;
+		bool gameFovIsFor4x3 = false;
 	};
 
 	void Update(const vr::OpenVRBackend& backend, const FrameRequest& request);

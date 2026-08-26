@@ -149,6 +149,12 @@ struct PicturePlacement {
 
 // Turns a horizontal field of view and a frame size into the placement.
 //
+// fovDegrees is Oblivion's fDefaultFOV, 75 by default. fovIsFor4x3 says how
+// to read it when the frame is not 4:3, and the two readings differ by a third
+// - see the comment in the implementation, where the evidence and the gap in
+// it are written out. At 4:3 they agree exactly.
+//
+// The old wording, kept because it is the reading fovIsFor4x3 = false takes:
 // fovDegrees is the game's own horizontal field of view - Oblivion's
 // fDefaultFOV, 75 by default - and the frame's aspect ratio gives the
 // vertical half of it. Both are needed: a field of view alone says nothing
@@ -166,7 +172,7 @@ struct PicturePlacement {
 // world or asking Oblivion to render at something like 120 degrees across,
 // and the second of those pushes the HUD off the edge just as surely.
 PicturePlacement PlacePicture(const EyeProjection& eye, float fovDegrees, UInt32 frameWidth,
-                              UInt32 frameHeight);
+                              UInt32 frameHeight, bool fovIsFor4x3);
 
 // The distance between the two eyes, in metres.
 //
