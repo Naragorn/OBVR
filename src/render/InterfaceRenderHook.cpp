@@ -61,6 +61,7 @@ void* g_lastRequested = nullptr;
 // a single draw while redirected - and if it did, at which targets it was
 // aiming.
 UInt32 g_statsDraws = 0;
+UInt32 g_statsFailedDraws = 0;
 UInt32 g_statsMatched = 0;
 UInt32 g_statsOtherTargets = 0;
 UInt32 g_passTraceLeft = 3;
@@ -84,39 +85,56 @@ SInt32 __stdcall HookedSetRenderTarget(void* self, UInt32 index, void* surface) 
 
 SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex,
                                      UInt32 primitiveCount) {
+	const SInt32 result = g_originalDrawPrimitive(self, type, startVertex, primitiveCount);
 	if (g_redirecting) {
 		++g_statsDraws;
+		if (result < 0) {
+			++g_statsFailedDraws;
+		}
 	}
-	return g_originalDrawPrimitive(self, type, startVertex, primitiveCount);
+	return result;
 }
 
 SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 baseVertexIndex,
                                             UInt32 minVertexIndex, UInt32 numVertices,
                                             UInt32 startIndex, UInt32 primCount) {
+	const SInt32 result = g_originalDrawIndexed(self, type, baseVertexIndex, minVertexIndex,
+	                                            numVertices, startIndex, primCount);
 	if (g_redirecting) {
 		++g_statsDraws;
+		if (result < 0) {
+			++g_statsFailedDraws;
+		}
 	}
-	return g_originalDrawIndexed(self, type, baseVertexIndex, minVertexIndex, numVertices,
-	                             startIndex, primCount);
+	return result;
 }
 
 SInt32 __stdcall HookedDrawPrimitiveUP(void* self, UInt32 type, UInt32 primitiveCount,
                                        const void* vertexData, UInt32 stride) {
+	const SInt32 result = g_originalDrawUP(self, type, primitiveCount, vertexData, stride);
 	if (g_redirecting) {
 		++g_statsDraws;
+		if (result < 0) {
+			++g_statsFailedDraws;
+		}
 	}
-	return g_originalDrawUP(self, type, primitiveCount, vertexData, stride);
+	return result;
 }
 
 SInt32 __stdcall HookedDrawIndexedPrimitiveUP(void* self, UInt32 type, UInt32 minVertexIndex,
                                               UInt32 numVertices, UInt32 primitiveCount,
                                               const void* indexData, UInt32 indexFormat,
                                               const void* vertexData, UInt32 stride) {
+	const SInt32 result =
+		g_originalDrawIndexedUP(self, type, minVertexIndex, numVertices, primitiveCount,
+	                            indexData, indexFormat, vertexData, stride);
 	if (g_redirecting) {
 		++g_statsDraws;
+		if (result < 0) {
+			++g_statsFailedDraws;
+		}
 	}
-	return g_originalDrawIndexedUP(self, type, minVertexIndex, numVertices, primitiveCount,
-	                               indexData, indexFormat, vertexData, stride);
+	return result;
 }
 
 // While the pass is redirected, whatever colour write mask it sets keeps the
@@ -287,6 +305,7 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 	g_lastRequested = nullptr;
 	if (g_passTraceLeft > 0) {
 		g_statsDraws = 0;
+		g_statsFailedDraws = 0;
 		g_statsMatched = 0;
 		g_statsOtherTargets = 0;
 	}
@@ -296,9 +315,53 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 	// begins its own target group, and that is intercepted - but a branch
 	// that finds a group already current sets nothing, and the layer would
 	// otherwise land in the frame after all.
-	g_originalSetTarget(device, 0, substitute);
+	const SInt32 aimResult = g_originalSetTarget(device, 0, substitute);
+
+	// Identity, not assumption: twenty-two draws land nowhere visible, so
+	// where the device was actually aiming - as it reports it, not as this
+	// code intended it - is the question. Checked after the aim and after
+	// the pass, against both candidates.
+	const bool tracing = g_passTraceLeft > 0;
+	if (tracing) {
+		void* afterAim = nullptr;
+		if (getTarget != nullptr) {
+			getTarget(device, 0, &afterAim);
+		}
+		OBVR_LOG("Hud aim: SetRenderTarget=%08X, RT0 %s (ours=%08X, back=%08X, got=%08X)",
+		         static_cast<UInt32>(aimResult),
+		         afterAim == substitute ? "is ours"
+		                                : (afterAim == g_backBuffer ? "is the back buffer"
+		                                                            : "is something else"),
+		         reinterpret_cast<UInt32>(substitute),
+		         reinterpret_cast<UInt32>(g_backBuffer),
+		         reinterpret_cast<UInt32>(afterAim));
+		if (afterAim != nullptr) {
+			using ReleaseFn = UInt32(__stdcall*)(void*);
+			if (auto release = d3d9::Method<ReleaseFn>(afterAim, 2)) {
+				release(afterAim);
+			}
+		}
+	}
 
 	g_original(self, unusedEdx, renderedTexture);
+
+	if (tracing) {
+		void* afterPass = nullptr;
+		if (getTarget != nullptr) {
+			getTarget(device, 0, &afterPass);
+		}
+		OBVR_LOG("Hud aim: after the pass RT0 %s (got=%08X)",
+		         afterPass == substitute ? "is still ours"
+		                                 : (afterPass == g_backBuffer ? "is the back buffer"
+		                                                              : "is something else"),
+		         reinterpret_cast<UInt32>(afterPass));
+		if (afterPass != nullptr) {
+			using ReleaseFn = UInt32(__stdcall*)(void*);
+			if (auto release = d3d9::Method<ReleaseFn>(afterPass, 2)) {
+				release(afterPass);
+			}
+		}
+	}
 
 	g_redirecting = false;
 
@@ -327,8 +390,9 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 	// frames.
 	if (g_passTraceLeft > 0) {
 		--g_passTraceLeft;
-		OBVR_LOG("Hud pass trace: draws=%u, back buffer matched=%u, other targets=%u",
-		         g_statsDraws, g_statsMatched, g_statsOtherTargets);
+		OBVR_LOG("Hud pass trace: draws=%u (failed %u), back buffer matched=%u, "
+		         "other targets=%u",
+		         g_statsDraws, g_statsFailedDraws, g_statsMatched, g_statsOtherTargets);
 	}
 
 	g_callbacks.endRedirect();
