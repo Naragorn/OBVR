@@ -10,6 +10,7 @@
 #include "render/DxvkInterop.h"
 #include "render/GameDevice.h"
 #include "render/HeadsetRenderer.h"
+#include "render/PresentHook.h"
 
 namespace obvr::camera {
 namespace {
@@ -23,6 +24,29 @@ KeyEdge g_recenterEdge;
 FrameClock g_frameClock;
 LookControl g_lookControl;
 render::HeadsetRenderer g_headsetRenderer;
+
+// What the camera hook decided about this frame, kept for Present to act on.
+//
+// Kept rather than rebuilt at the end, because the eye it names has to be the
+// eye the camera was actually moved to. Reading the frame counter twice would
+// be two chances to disagree, and disagreeing means each eye showing the
+// other's viewpoint - a fault this project has already had once and does not
+// need a second route to.
+render::HeadsetRenderer::FrameRequest g_pendingRequest;
+
+// Whether hooking the end of the frame was tried and failed. One attempt, not
+// one per frame: a device whose table cannot be written this frame will not
+// become writable on the next.
+bool g_presentHookRefused = false;
+
+// Runs from inside Present, with Oblivion's finished frame in the back buffer.
+//
+// Deliberately does nothing but pay the frame that BeginFrame opened. Anything
+// else that wanted doing at the end of a frame would be tempting to put here,
+// and this runs on the renderer's thread inside a call the game is waiting on.
+void OnFrameEnd() {
+	g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), g_pendingRequest);
+}
 
 bool ReadIsThirdPerson() {
 	auto* player = *reinterpret_cast<UInt8**>(addr::kPlayerPointer);
@@ -312,7 +336,44 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	request.gameFovDegrees = config.tracker.gameFovDegrees;
 	request.gameFovIsFor4x3 = config.tracker.gameFovIsFor4x3;
 
-	g_headsetRenderer.Update(g_headTracker.GetBackend(), request);
+	if (!config.tracker.submitAtFrameEnd) {
+		// Both halves here, which means the picture submitted is whatever the
+		// back buffer held from last time. One frame of latency, and the
+		// arrangement that is known to work.
+		request.backBufferIsThisFrame = false;
+		g_headsetRenderer.Update(g_headTracker.GetBackend(), request);
+		return;
+	}
+
+	// The other arrangement: wait on the compositor here, let Oblivion draw,
+	// and hand over the finished picture from Present.
+	//
+	// The request is kept rather than rebuilt at the end, because the eye it
+	// names has to be the eye the camera was moved to a few lines above. Two
+	// separate readings of the frame counter would be two chances to disagree,
+	// and disagreeing means each eye showing the other's viewpoint.
+	request.backBufferIsThisFrame = true;
+	g_pendingRequest = request;
+
+	if (!render::IsPresentHooked() && !g_presentHookRefused) {
+		if (!render::InstallPresentHook(request.gameDevice, &OnFrameEnd)) {
+			// Said once. Without the hook the end of the frame never arrives,
+			// so falling back to submitting here is better than a headset that
+			// quietly stops being fed.
+			g_presentHookRefused = true;
+			OBVR_LOG("Render: the frame end could not be hooked, so the submit stays at the "
+			         "start of the frame and the picture is one frame old");
+		}
+	}
+
+	if (g_presentHookRefused) {
+		g_pendingRequest.backBufferIsThisFrame = false;
+		g_headsetRenderer.Update(g_headTracker.GetBackend(), g_pendingRequest);
+		return;
+	}
+
+	// Only the waiting half. Present pays the frame.
+	g_headsetRenderer.BeginFrame(g_headTracker.GetBackend());
 }
 
 vr::HeadTracker& GetHeadTracker() { return g_headTracker; }

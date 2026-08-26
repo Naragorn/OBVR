@@ -133,6 +133,43 @@ struct SurfaceDesc {
 static_assert(sizeof(SurfaceDesc) == 8 * sizeof(UInt32),
               "D3DSURFACE_DESC must be eight 32-bit fields with no padding");
 
+
+// GetTransform, which is what settles the field-of-view question by measuring
+// it instead of reading documentation about it.
+//
+// The projection matrix Oblivion hands Direct3D contains the frustum it is
+// actually rendering: for a standard perspective projection, m[0][0] is
+// 1/tan(horizontal half-angle) and m[1][1] is 1/tan(vertical half-angle).
+// Those two numbers are the whole answer, and they come from the game rather
+// than from a wiki page written for 4:3 screens.
+//
+// It may not be there. Oblivion draws most of its world through shaders, and a
+// game that never calls SetTransform leaves the fixed-function projection at
+// identity - which is why what OBVR reads is checked for being a plausible
+// projection before it is believed, and logged either way.
+constexpr UInt32 kDeviceGetTransform = 45;
+
+// D3DTS_PROJECTION (d3d9types.h)
+constexpr UInt32 kTransformProjection = 3;
+
+// Present, for the hook that moves the submit to the end of the frame.
+// Already declared above as kDevicePresent.
+
+// D3DMATRIX (d3d9types.h): sixteen floats, row-major, m[row][column].
+struct Matrix4 {
+	float m[4][4];
+};
+
+static_assert(sizeof(Matrix4) == 16 * sizeof(float), "D3DMATRIX is sixteen floats");
+
+using GetTransformFn = SInt32(__stdcall*)(void* self, UInt32 state, Matrix4* matrix);
+
+// IDirect3DDevice9::Present. Five arguments after this, all of which OBVR
+// passes straight through - it hooks this to learn when a frame is finished,
+// not to change what Present does.
+using PresentFn = SInt32(__stdcall*)(void* self, const Rect* source, const Rect* dest,
+                                     void* destWindowOverride, const void* dirtyRegion);
+
 // ------------------------------------------------------------- Signatures
 //
 // Every one of these is __stdcall with an explicit this, which is what COM

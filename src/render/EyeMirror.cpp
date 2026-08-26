@@ -2,7 +2,9 @@
 
 #include "core/Log.h"
 #include "render/D3D11Types.h"
+#include "core/MathFns.h"
 #include "render/D3D9Types.h"
+#include "render/GameProjection.h"
 
 namespace obvr::render {
 namespace {
@@ -159,14 +161,42 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 		return false;
 	}
 
+	// What Oblivion is actually rendering, asked of the game rather than
+	// worked out from a number in a file.
+	//
+	// This is what settles the field-of-view question. The documented figure
+	// is ambiguous once the screen is not 4:3 - the two readings differ by a
+	// third in the size of the world and by nothing at all in its shape, so
+	// there is no distortion to notice and no way to judge it by eye. A
+	// projection matrix has no such ambiguity.
+	GameProjection projection;
+	const bool measured = ReadGameProjection(gameDevice, projection);
+
+	if (measured) {
+		const float degreesAcross =
+			2.0f * math::Atan(projection.tanHalfWidth) * math::kRadiansToDegrees;
+		const float degreesDown =
+			2.0f * math::Atan(projection.tanHalfHeight) * math::kRadiansToDegrees;
+		OBVR_LOG("Mirror: measured Oblivion's own frustum - %.1f degrees across, %.1f down. "
+		         "GameFovDegrees and GameFovIsFor4x3 are not used",
+		         static_cast<double>(degreesAcross), static_cast<double>(degreesDown));
+	} else {
+		OBVR_LOG("Mirror: Oblivion's projection matrix could not be read, so the configured "
+		         "%.1f degrees is used, read as %s",
+		         static_cast<double>(gameFovDegrees),
+		         gameFovIsFor4x3 ? "a 4:3 figure" : "the horizontal field of view");
+	}
+
 	// Where the game's frame goes inside each eye's view. This is what makes
 	// the world its real size rather than whatever magnification two
 	// unrelated frustums happen to imply.
 	for (int index = 0; index < 2; ++index) {
-		const EyeProjection& projection = index == 0 ? leftEye : rightEye;
+		const EyeProjection& eye_projection = index == 0 ? leftEye : rightEye;
 		const PicturePlacement placement =
-			PlacePicture(projection, gameFovDegrees, m_frameWidth, m_frameHeight,
-			             gameFovIsFor4x3);
+			measured ? PlacePictureFromTangents(eye_projection, projection.tanHalfWidth,
+			                                    projection.tanHalfHeight)
+			         : PlacePicture(eye_projection, gameFovDegrees, m_frameWidth,
+			                        m_frameHeight, gameFovIsFor4x3);
 
 		Eye& eye = m_eye[index];
 		eye.destination.left = EdgeOf(placement.uMin, m_width);

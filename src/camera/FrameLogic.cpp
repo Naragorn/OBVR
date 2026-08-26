@@ -68,4 +68,8 @@ bool IsLeftEyeFrame(UInt32 frameCount) {
 	return (frameCount & 1u) == 0u;
 }
 
+bool BackBufferEyeIsLeft(bool isLeftEye, bool backBufferIsThisFrame) {
+	return backBufferIsThisFrame ? isLeftEye : !isLeftEye;
+}
+
 }  // namespace obvr::camera

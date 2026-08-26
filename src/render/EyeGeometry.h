@@ -171,6 +171,13 @@ struct PicturePlacement {
 // honest outcome. Filling the view instead would mean either magnifying the
 // world or asking Oblivion to render at something like 120 degrees across,
 // and the second of those pushes the HUD off the edge just as surely.
+// The same placement from tangents that were measured rather than computed -
+// what ReadGameProjection returns. Preferred when it is available, because it
+// asks the game what it is rendering instead of reasoning about what a
+// documented number might mean.
+PicturePlacement PlacePictureFromTangents(const EyeProjection& eye, float tanHalfWidth,
+                                          float tanHalfHeight);
+
 PicturePlacement PlacePicture(const EyeProjection& eye, float fovDegrees, UInt32 frameWidth,
                               UInt32 frameHeight, bool fovIsFor4x3);
 

@@ -52,6 +52,20 @@ public:
 		bool alternateEyes = false;
 		bool isLeftEye = true;
 
+		// Whether the back buffer already holds this frame's picture.
+		//
+		// From the camera hook it does not: that runs before the frame is
+		// drawn, so the back buffer still holds the previous one - drawn from
+		// the previous camera position, which under alternate eyes is the other
+		// eye. From the Present hook it does.
+		//
+		// This is the flag that decides which eye a copy belongs to, and getting
+		// it backwards is not a subtle fault: it gives each eye the other eye's
+		// viewpoint, which is stereo the eyes cannot fuse. It was exactly that,
+		// once, and it read from the headset as a picture that would not hold
+		// still.
+		bool backBufferIsThisFrame = false;
+
 		// Oblivion's own horizontal field of view, in degrees - fDefaultFOV out
 		// of Oblivion.ini, 75 unless it has been changed. Needed because a
 		// picture cannot be placed at the right angular size without knowing
@@ -60,6 +74,19 @@ public:
 		bool gameFovIsFor4x3 = false;
 	};
 
+	// The frame in two halves, so the picture can be submitted after the game
+	// has drawn it rather than before.
+	//
+	// BeginFrame waits on the compositor and returns whether a frame is owed;
+	// EndFrame pays it. Between them Oblivion draws. Calling them from one
+	// place - which is what Update does - is the old arrangement, where the
+	// picture submitted is whatever the back buffer held from last time.
+	bool BeginFrame(const vr::OpenVRBackend& backend);
+	void EndFrame(const vr::OpenVRBackend& backend, const FrameRequest& request);
+
+	// Both halves at once, from the camera hook. One frame stale by
+	// construction, and kept because it is the arrangement that is known to
+	// work.
 	void Update(const vr::OpenVRBackend& backend, const FrameRequest& request);
 
 	// Throws away the textures and the run of failures. For a change of
@@ -85,6 +112,11 @@ private:
 	// cannot create the device would retry once per frame for ever, and the
 	// log would be the only thing rendering.
 	bool m_setupAttempted = false;
+
+	// Whether BeginFrame has waited on the compositor and not yet been paid.
+	// Submit is only meaningful after WaitGetPoses, and Present runs on frames
+	// the camera hook never saw.
+	bool m_frameOpen = false;
 
 	EyeTextures m_textures;
 	SubmitPolicy m_policy;

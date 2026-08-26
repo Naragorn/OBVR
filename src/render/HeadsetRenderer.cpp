@@ -1,5 +1,7 @@
 #include "render/HeadsetRenderer.h"
 
+#include "camera/FrameLogic.h"
+
 #include "core/Log.h"
 #include "render/EyeGeometry.h"
 #include "render/GameFrame.h"
@@ -86,21 +88,27 @@ void LogEyeGeometry(const vr::OpenVRBackend& backend, EyeProjection& outLeft,
 
 }  // namespace
 
-void HeadsetRenderer::Update(const vr::OpenVRBackend& backend, const FrameRequest& request) {
+bool HeadsetRenderer::BeginFrame(const vr::OpenVRBackend& backend) {
+	// A frame that was opened and never submitted is not an error - the
+	// compositor treats it as a dropped frame - but a frame submitted without
+	// having been opened is, because Submit is only meaningful after
+	// WaitGetPoses. Clearing this first means every path out of here that
+	// returns false leaves EndFrame with nothing to do.
+	m_frameOpen = false;
+
 	if (m_policy.HasStopped()) {
-		return;
+		return false;
 	}
 
 	// No compositor means rendering was never asked for, or the scene
 	// registration was given back. Either way this is not a failure to report
 	// once per frame - the reason was logged where the decision was taken.
 	if (!backend.IsSceneApplication()) {
-		return;
+		return false;
 	}
-
 	if (!m_textures.IsReady()) {
 		if (m_setupAttempted) {
-			return;
+			return false;
 		}
 		m_setupAttempted = true;
 
@@ -108,7 +116,7 @@ void HeadsetRenderer::Update(const vr::OpenVRBackend& backend, const FrameReques
 		UInt32 height = 0;
 		if (!backend.GetRecommendedRenderTargetSize(width, height)) {
 			OBVR_LOG("Render: the headset did not report a render target size");
-			return;
+			return false;
 		}
 
 		// The geometry first, so the log reads in the order things happened
@@ -138,7 +146,7 @@ void HeadsetRenderer::Update(const vr::OpenVRBackend& backend, const FrameReques
 			// attempted: a machine that cannot make a device this frame will
 			// not make one next frame either, and retrying would turn the log
 			// into the only thing being rendered.
-			return;
+			return false;
 		}
 
 	}
@@ -155,12 +163,27 @@ void HeadsetRenderer::Update(const vr::OpenVRBackend& backend, const FrameReques
 		               "throttles the game to 10 Hz"
 		             : "");
 		m_textures.Destroy();
-		return;
+		return false;
 	}
 
 	if (decision != SubmitDecision::Continue) {
+		return false;
+	}
+
+	// From here a frame is owed to the compositor. EndFrame is what pays it.
+	m_frameOpen = true;
+	return true;
+}
+
+void HeadsetRenderer::EndFrame(const vr::OpenVRBackend& backend, const FrameRequest& request) {
+	// Present can run when the camera hook did not - menus and loading
+	// screens draw without a camera pass. Submitting then would be a Submit
+	// with no WaitGetPoses in front of it, which is not merely wasteful but
+	// out of order.
+	if (!m_frameOpen) {
 		return;
 	}
+	m_frameOpen = false;
 
 	// Where the picture comes from. Oblivion's own frame is the point of
 	// 0.1.0; the generated pattern is what proved the compositor path in
@@ -202,12 +225,19 @@ void HeadsetRenderer::Update(const vr::OpenVRBackend& backend, const FrameReques
 	// other next frame, and acting on the good half would mean waiting for
 	// the failure to happen twice.
 	const int worst = left != vr::openvr::kCompositorErrorNone ? left : right;
-	decision = m_policy.Observe(worst);
+	const SubmitDecision decision = m_policy.Observe(worst);
 
 	if (decision == SubmitDecision::StopRendering) {
 		OBVR_LOG("Render: stopped rendering, Submit returned %d (left %d, right %d)", worst,
 		         left, right);
 		m_textures.Destroy();
+	}
+}
+
+
+void HeadsetRenderer::Update(const vr::OpenVRBackend& backend, const FrameRequest& request) {
+	if (BeginFrame(backend)) {
+		EndFrame(backend, request);
 	}
 }
 
@@ -258,8 +288,9 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 		return SubmitMono(backend, request, left, right);
 	}
 
-	// Which eye the picture in the back buffer actually belongs to, and it is
-	// NOT the eye this frame is for.
+	// Which eye the picture in the back buffer actually belongs to, which
+	// depends on where this is being called from - see backBufferIsThisFrame.
+
 	//
 	// This runs from the camera hook, which fires while the camera is being
 	// computed - before the frame is drawn, not after. So the back buffer
@@ -277,7 +308,8 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 	// !isLeftEye rather than IsLeftEyeFrame(frameCount - 1) because the two
 	// are the same thing for an alternation of two, including where the frame
 	// counter wraps.
-	const bool backBufferEye = !request.isLeftEye;
+	const bool backBufferEye =
+		camera::BackBufferEyeIsLeft(request.isLeftEye, request.backBufferIsThisFrame);
 
 	// The copy first, with no queue held - StretchRect puts work on the very
 	// queue the bracket is about to lock, so doing it inside the bracket would
@@ -326,6 +358,7 @@ void HeadsetRenderer::Reset() {
 	m_textures.Destroy();
 	m_policy.Reset();
 	m_setupAttempted = false;
+	m_frameOpen = false;
 	m_gameFrameChecked = false;
 	m_gameFrameUsable = false;
 	m_mirror.Destroy();

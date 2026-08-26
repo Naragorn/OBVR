@@ -165,6 +165,40 @@ void TestEyeAlternation() {
 	      "and across the wrap to zero");
 }
 
+
+void TestBackBufferEye() {
+	std::printf("Which eye the back buffer's picture belongs to\n");
+
+	using obvr::camera::BackBufferEyeIsLeft;
+
+	// From the camera hook, which runs before the frame is drawn. The back
+	// buffer holds the previous frame, drawn from the previous camera
+	// position, which under alternate eyes is the other eye.
+	Check(!BackBufferEyeIsLeft(true, false),
+	      "before drawing, a left-eye frame finds the right eye's picture waiting");
+	Check(BackBufferEyeIsLeft(false, false), "and a right-eye frame finds the left eye's");
+
+	// From a hook at the end of the frame, where the picture is the one just
+	// drawn.
+	Check(BackBufferEyeIsLeft(true, true), "after drawing, a left-eye frame holds the left");
+	Check(!BackBufferEyeIsLeft(false, true), "and a right-eye frame holds the right");
+
+	// The whole point of the function, said as one property: moving the
+	// submit from one end of the frame to the other inverts the answer. That
+	// is why this is a named function rather than an expression at the call
+	// site - the expression was written once, and when the submit moved it
+	// would have kept quietly meaning the opposite.
+	//
+	// The failure is not a lost depth cue but an inverted one: each eye shown
+	// the other eye's viewpoint, which the eyes cannot fuse. It was reported
+	// from a headset as a picture that would not hold still.
+	for (int eye = 0; eye < 2; ++eye) {
+		const bool isLeft = eye == 0;
+		Check(BackBufferEyeIsLeft(isLeft, true) != BackBufferEyeIsLeft(isLeft, false),
+		      "moving the submit across the frame inverts which eye the picture is for");
+	}
+}
+
 void TestFrameClock() {
 	std::printf("Frame clock\n");
 
@@ -242,6 +276,8 @@ int main() {
 	TestIsDue();
 	std::printf("\n");
 	TestEyeAlternation();
+	std::printf("\n");
+	TestBackBufferEye();
 	std::printf("\n");
 	TestFrameClock();
 	std::printf("\n");

@@ -129,6 +129,11 @@ struct TrackerSettings {
 	// makes the world too large or too small with no stretching to show it.
 	bool gameFovIsFor4x3 = false;
 
+	// Whether the picture is handed to the compositor after Oblivion has drawn
+	// it rather than before. Off is every version up to now: one whole frame of
+	// latency, which in a headset is felt rather than seen.
+	bool submitAtFrameEnd = false;
+
 	// Oblivion units per metre, for converting the head offset.
 	//
 	// The Construction Set wiki gives "21.3 units to a foot ... 64 units per

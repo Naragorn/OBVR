@@ -130,6 +130,7 @@ if(WIN32)
 		../src/vr/Quaternion.cpp
 		../src/core/Log.cpp
 		../src/platform/PluginPath.cpp
+		../src/platform/PluginPath.cpp
 	)
 
 	target_include_directories(openvr_backend_test PRIVATE ../src)
@@ -146,6 +147,7 @@ if(WIN32)
 		ConfigTest.cpp
 		../src/core/Config.cpp
 		../src/core/Log.cpp
+		../src/platform/PluginPath.cpp
 		../src/platform/PluginPath.cpp
 	)
 
@@ -169,6 +171,7 @@ if(WIN32)
 		../src/core/Rotation.cpp
 		../src/core/Smoothing.cpp
 		../src/core/Log.cpp
+		../src/platform/PluginPath.cpp
 		../src/platform/PluginPath.cpp
 	)
 
@@ -270,3 +273,33 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME d3d9_types COMMAND d3d9_types_test)
+
+add_executable(game_projection_test
+	GameProjectionTest.cpp
+	../src/render/GameProjection.cpp
+)
+
+target_include_directories(game_projection_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(game_projection_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME game_projection COMMAND game_projection_test)
+
+if(WIN32)
+	add_executable(present_hook_test
+		PresentHookTest.cpp
+		../src/render/PresentHook.cpp
+		../src/core/Log.cpp
+		../src/platform/PluginPath.cpp
+	)
+
+	target_include_directories(present_hook_test PRIVATE ../src)
+
+	if(NOT MSVC)
+		target_compile_options(present_hook_test PRIVATE -Wall -Wextra)
+	endif()
+
+	add_test(NAME present_hook COMMAND present_hook_test)
+endif()

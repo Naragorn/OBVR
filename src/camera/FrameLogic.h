@@ -112,4 +112,25 @@ bool IsDue(UInt32 frameCount, UInt32 interval);
 // one of them was edited.
 bool IsLeftEyeFrame(UInt32 frameCount);
 
+// Which eye the picture sitting in the back buffer belongs to.
+//
+// Two inputs because the answer depends on when the question is asked, and
+// this is the one decision in the whole alternate-eye path that has already
+// been got wrong once.
+//
+// isLeftEye is the eye the camera was moved to for this frame.
+// backBufferIsThisFrame is whether the game has drawn it yet.
+//
+// From the camera hook the answer is no: that runs while the camera is being
+// computed, so the back buffer still holds the previous frame, drawn from the
+// previous camera position - which under alternate eyes is the other eye. From
+// a hook at the end of the frame the answer is yes, and the eye is simply the
+// one the camera was moved to.
+//
+// Getting this backwards does not lose a depth cue, it inverts one: each eye
+// is shown the other eye's viewpoint, which the eyes cannot fuse. It was
+// reported from a headset as a picture that would not hold still and got worse
+// when the head moved sideways.
+bool BackBufferEyeIsLeft(bool isLeftEye, bool backBufferIsThisFrame);
+
 }  // namespace obvr::camera
