@@ -424,6 +424,11 @@ void* HudBeginRedirect() {
 
 void HudEndRedirect() { g_hudLayer.EndCapture(); }
 
+// Whether the probe instruments should run this pass: the recognisable
+// clear through the binding, and the first-draw pipeline sample. Hot
+// reloaded with the rest of [Debug], like the probe square it belongs to.
+bool HudProbeActive() { return GetConfig().hudProbe; }
+
 void MaybeSubmitHud(bool worldFrame) {
 	const Config& config = GetConfig();
 	if (!config.tracker.hudOverlay || !render::IsInterfaceRenderHooked()) {
@@ -918,6 +923,7 @@ bool Install() {
 			render::InterfaceRedirect redirect;
 			redirect.beginRedirect = &HudBeginRedirect;
 			redirect.endRedirect = &HudEndRedirect;
+			redirect.probeActive = &HudProbeActive;
 			// Logs its own outcome either way; on failure the HUD simply
 			// stays in the frame, which on a flat frame is still shown.
 			render::InstallInterfaceRenderHook(redirect);

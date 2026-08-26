@@ -28,10 +28,17 @@ struct InterfaceRedirect {
 	// should be drawn into, or null to leave this pass alone - null is the
 	// answer for menu frames, for frames with no compositor, and for the
 	// feature being off.
-	void* (*beginRedirect)();
+	void* (*beginRedirect)() = nullptr;
 
 	// Called after a redirected pass returned, targets already restored.
-	void (*endRedirect)();
+	void (*endRedirect)() = nullptr;
+
+	// Whether the diagnostic probe is on this frame. Optional - null means
+	// never. While it answers true, the redirected pass starts from a
+	// recognisable half-transparent clear issued through the render target
+	// binding instead of an invisible one, and the first draw of a traced
+	// pass logs the pipeline state it actually ran with.
+	bool (*probeActive)() = nullptr;
 };
 
 // Verifies the entry bytes and patches the entry. The SetRenderTarget table

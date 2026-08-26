@@ -66,6 +66,13 @@ UInt32 g_statsMatched = 0;
 UInt32 g_statsOtherTargets = 0;
 UInt32 g_passTraceLeft = 3;
 
+// Which of the four draw entries the pass used, whether the next redirected
+// draw should log the pipeline it runs on, and the probe clear's own trace
+// budget.
+UInt32 g_statsKind[4] = {};
+bool g_sampleNextDraw = false;
+UInt32 g_probeClearTraceLeft = 3;
+
 d3d9::DrawPrimitiveFn g_originalDrawPrimitive = nullptr;
 d3d9::DrawIndexedPrimitiveFn g_originalDrawIndexed = nullptr;
 d3d9::DrawPrimitiveUPFn g_originalDrawUP = nullptr;
@@ -83,11 +90,87 @@ SInt32 __stdcall HookedSetRenderTarget(void* self, UInt32 index, void* surface) 
 	return g_originalSetTarget(self, index, surface);
 }
 
+// The pipeline at the moment of the first redirected draw, as one line of
+// evidence. The pass-entry snapshot already showed the rejection states off,
+// but the entry is not the draw: twenty-two successful draws still arrived
+// nowhere, so what the device was set to when the game actually drew is
+// measured rather than assumed - viewport, blending, masks, and whether the
+// draw ran on shaders or fixed function.
+void SampleFirstDraw(void* device, const char* kind, UInt32 type, UInt32 count) {
+	d3d9::Viewport viewport{};
+	if (auto getViewport =
+	        d3d9::Method<d3d9::GetViewportFn>(device, d3d9::kDeviceGetViewport)) {
+		getViewport(device, &viewport);
+	}
+
+	UInt32 blend = 0;
+	UInt32 src = 0;
+	UInt32 dst = 0;
+	UInt32 write = 0;
+	UInt32 zEnable = 0;
+	UInt32 alphaTest = 0;
+	UInt32 scissor = 0;
+	UInt32 stencil = 0;
+	if (auto getState =
+	        d3d9::Method<d3d9::GetRenderStateFn>(device, d3d9::kDeviceGetRenderState)) {
+		getState(device, 27, &blend);      // D3DRS_ALPHABLENDENABLE
+		getState(device, d3d9::kRenderStateSrcBlend, &src);
+		getState(device, d3d9::kRenderStateDestBlend, &dst);
+		getState(device, d3d9::kRenderStateColorWriteEnable, &write);
+		getState(device, 7, &zEnable);     // D3DRS_ZENABLE
+		getState(device, 15, &alphaTest);  // D3DRS_ALPHATESTENABLE
+		getState(device, 174, &scissor);   // D3DRS_SCISSORTESTENABLE
+		getState(device, d3d9::kRenderStateStencilEnable, &stencil);
+	}
+
+	UInt32 fvf = 0;
+	void* vertexShader = nullptr;
+	void* pixelShader = nullptr;
+	if (auto getFvf = d3d9::Method<d3d9::GetFVFFn>(device, d3d9::kDeviceGetFVF)) {
+		getFvf(device, &fvf);
+	}
+	if (auto getShader =
+	        d3d9::Method<d3d9::GetShaderFn>(device, d3d9::kDeviceGetVertexShader)) {
+		getShader(device, &vertexShader);
+	}
+	if (auto getShader =
+	        d3d9::Method<d3d9::GetShaderFn>(device, d3d9::kDeviceGetPixelShader)) {
+		getShader(device, &pixelShader);
+	}
+
+	OBVR_LOG("Hud first draw: %s type=%u count=%u viewport=%ux%u at %u,%u blend=%u "
+	         "src=%u dst=%u write=0x%X z=%u alphaTest=%u scissor=%u stencil=%u "
+	         "fvf=%08X vs=%s ps=%s",
+	         kind, type, count, viewport.width, viewport.height, viewport.x, viewport.y,
+	         blend, src, dst, write, zEnable, alphaTest, scissor, stencil, fvf,
+	         vertexShader != nullptr ? "bound" : "null",
+	         pixelShader != nullptr ? "bound" : "null");
+
+	// The references the two shader getters added. IUnknown's Release is
+	// entry 2 on every COM object.
+	using ReleaseFn = UInt32(__stdcall*)(void*);
+	if (vertexShader != nullptr) {
+		if (auto release = d3d9::Method<ReleaseFn>(vertexShader, 2)) {
+			release(vertexShader);
+		}
+	}
+	if (pixelShader != nullptr) {
+		if (auto release = d3d9::Method<ReleaseFn>(pixelShader, 2)) {
+			release(pixelShader);
+		}
+	}
+}
+
 SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex,
                                      UInt32 primitiveCount) {
+	if (g_redirecting && g_sampleNextDraw) {
+		g_sampleNextDraw = false;
+		SampleFirstDraw(self, "dp", type, primitiveCount);
+	}
 	const SInt32 result = g_originalDrawPrimitive(self, type, startVertex, primitiveCount);
 	if (g_redirecting) {
 		++g_statsDraws;
+		++g_statsKind[0];
 		if (result < 0) {
 			++g_statsFailedDraws;
 		}
@@ -98,10 +181,15 @@ SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex
 SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 baseVertexIndex,
                                             UInt32 minVertexIndex, UInt32 numVertices,
                                             UInt32 startIndex, UInt32 primCount) {
+	if (g_redirecting && g_sampleNextDraw) {
+		g_sampleNextDraw = false;
+		SampleFirstDraw(self, "dip", type, primCount);
+	}
 	const SInt32 result = g_originalDrawIndexed(self, type, baseVertexIndex, minVertexIndex,
 	                                            numVertices, startIndex, primCount);
 	if (g_redirecting) {
 		++g_statsDraws;
+		++g_statsKind[1];
 		if (result < 0) {
 			++g_statsFailedDraws;
 		}
@@ -111,9 +199,14 @@ SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 base
 
 SInt32 __stdcall HookedDrawPrimitiveUP(void* self, UInt32 type, UInt32 primitiveCount,
                                        const void* vertexData, UInt32 stride) {
+	if (g_redirecting && g_sampleNextDraw) {
+		g_sampleNextDraw = false;
+		SampleFirstDraw(self, "dpup", type, primitiveCount);
+	}
 	const SInt32 result = g_originalDrawUP(self, type, primitiveCount, vertexData, stride);
 	if (g_redirecting) {
 		++g_statsDraws;
+		++g_statsKind[2];
 		if (result < 0) {
 			++g_statsFailedDraws;
 		}
@@ -125,11 +218,16 @@ SInt32 __stdcall HookedDrawIndexedPrimitiveUP(void* self, UInt32 type, UInt32 mi
                                               UInt32 numVertices, UInt32 primitiveCount,
                                               const void* indexData, UInt32 indexFormat,
                                               const void* vertexData, UInt32 stride) {
+	if (g_redirecting && g_sampleNextDraw) {
+		g_sampleNextDraw = false;
+		SampleFirstDraw(self, "dipup", type, primitiveCount);
+	}
 	const SInt32 result =
 		g_originalDrawIndexedUP(self, type, minVertexIndex, numVertices, primitiveCount,
 	                            indexData, indexFormat, vertexData, stride);
 	if (g_redirecting) {
 		++g_statsDraws;
+		++g_statsKind[3];
 		if (result < 0) {
 			++g_statsFailedDraws;
 		}
@@ -291,6 +389,8 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 		return;
 	}
 
+	const bool probe = g_callbacks.probeActive != nullptr && g_callbacks.probeActive();
+
 	// What the device is aiming at now, so it can be put back if the pass
 	// never sets a target of its own. GetRenderTarget adds a reference.
 	void* device = GetGameDevice();
@@ -308,7 +408,9 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 		g_statsFailedDraws = 0;
 		g_statsMatched = 0;
 		g_statsOtherTargets = 0;
+		g_statsKind[0] = g_statsKind[1] = g_statsKind[2] = g_statsKind[3] = 0;
 	}
+	g_sampleNextDraw = g_passTraceLeft > 0;
 	g_redirecting = true;
 
 	// Aimed before the pass starts, through the original entry: the pass
@@ -339,6 +441,24 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 			using ReleaseFn = UInt32(__stdcall*)(void*);
 			if (auto release = d3d9::Method<ReleaseFn>(afterAim, 2)) {
 				release(afterAim);
+			}
+		}
+	}
+
+	// The probe clear: the smallest write that goes through the render target
+	// binding the draws use. ColorFill writes to the surface by name and its
+	// red square arrives in the headset; if this orange does not arrive the
+	// same way, the binding the device just confirmed does not reach the
+	// texture the compositor shows - and the pass's draws never had a chance.
+	// Alpha 0x60, so the world stays visible behind it.
+	if (probe) {
+		if (auto clear = d3d9::Method<d3d9::ClearFn>(device, d3d9::kDeviceClear)) {
+			const SInt32 clearResult =
+				clear(device, 0, nullptr, d3d9::kClearTarget, 0x60FF8000u, 1.0f, 0);
+			if (g_probeClearTraceLeft > 0) {
+				--g_probeClearTraceLeft;
+				OBVR_LOG("Hud probe clear through the binding: %08X",
+				         static_cast<UInt32>(clearResult));
 			}
 		}
 	}
@@ -390,9 +510,10 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 	// frames.
 	if (g_passTraceLeft > 0) {
 		--g_passTraceLeft;
-		OBVR_LOG("Hud pass trace: draws=%u (failed %u), back buffer matched=%u, "
-		         "other targets=%u",
-		         g_statsDraws, g_statsFailedDraws, g_statsMatched, g_statsOtherTargets);
+		OBVR_LOG("Hud pass trace: draws=%u (failed %u, dp=%u dip=%u dpup=%u dipup=%u), "
+		         "back buffer matched=%u, other targets=%u",
+		         g_statsDraws, g_statsFailedDraws, g_statsKind[0], g_statsKind[1],
+		         g_statsKind[2], g_statsKind[3], g_statsMatched, g_statsOtherTargets);
 	}
 
 	g_callbacks.endRedirect();

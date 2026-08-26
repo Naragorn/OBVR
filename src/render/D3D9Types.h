@@ -274,6 +274,44 @@ using LockRectFn = SInt32(__stdcall*)(void* self, LockedRect* locked, const Rect
                                       UInt32 flags);
 using UnlockRectFn = SInt32(__stdcall*)(void* self);
 
+// Clear (43), counted from the same DECLARE_INTERFACE_ listing as every
+// index above, cross-checked against the verified GetRenderTarget (38) and
+// GetTransform (45) with the depth stencil pair and BeginScene/EndScene in
+// between. What it is for: the smallest write that goes through the render
+// target *binding* rather than to a surface named directly. ColorFill proved
+// the texture's surface is writable and reaches the compositor; twenty-two
+// successful draws through the binding still left the texture empty, and a
+// Clear uses exactly the binding the draws use.
+constexpr UInt32 kDeviceClear = 43;
+
+// D3DCLEAR_TARGET (d3d9types.h, line 206). The rects share Rect's four-long
+// layout, and the calls here pass none anyway.
+constexpr UInt32 kClearTarget = 0x1;
+
+using ClearFn = SInt32(__stdcall*)(void* self, UInt32 count, const Rect* rects,
+                                   UInt32 flags, UInt32 color, float z, UInt32 stencil);
+
+// D3DRS_SRCBLEND / D3DRS_DESTBLEND (d3d9types.h, lines 357-358) and
+// D3DRS_STENCILENABLE (line 373): the states sampled at the moment of the
+// first redirected draw. The pass-entry snapshot showed every rejection
+// state off, but the pass entry is not the draw - what the state is when
+// the game actually draws is a separate measurement.
+constexpr UInt32 kRenderStateSrcBlend = 19;
+constexpr UInt32 kRenderStateDestBlend = 20;
+constexpr UInt32 kRenderStateStencilEnable = 52;
+
+// GetFVF (90), GetVertexShader (93) and GetPixelShader (108), counted from
+// the same listing, anchored on the verified draw quartet at 81-84 with
+// ProcessVertices and the declaration methods between. They say what kind
+// of pipeline the first redirected draw ran on - fixed function or shaders -
+// which decides where to look when its pixels do not arrive.
+constexpr UInt32 kDeviceGetFVF = 90;
+constexpr UInt32 kDeviceGetVertexShader = 93;
+constexpr UInt32 kDeviceGetPixelShader = 108;
+
+using GetFVFFn = SInt32(__stdcall*)(void* self, UInt32* fvf);
+using GetShaderFn = SInt32(__stdcall*)(void* self, void** shader);
+
 // D3DFMT_A8R8G8B8 (d3d9types.h, line 1378). The back buffer is X8R8G8B8 - no
 // alpha, because a screen has no use for one. The 2D layer's own texture is
 // the opposite case: the alpha channel is the whole point, it is what lets an
