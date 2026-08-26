@@ -174,6 +174,14 @@ struct Viewport {
 // D3DTS_PROJECTION (d3d9types.h)
 constexpr UInt32 kTransformProjection = 3;
 
+// D3DTS_VIEW (d3d9types.h, line 331) and D3DTS_WORLD, which the macro at
+// line 344 defines as world matrix index 0 plus 256. Read at the moment of
+// the first redirected draw: the interface's vertices are untransformed
+// (D3DFVF_XYZ), so these three matrices decide where its pixel coordinates
+// land - and whether they land at all.
+constexpr UInt32 kTransformView = 2;
+constexpr UInt32 kTransformWorld = 256;
+
 // ------------------------------------------------- The 2D layer's redirect
 //
 // Counted the same way as every other index here, and cross-checked against
@@ -316,6 +324,33 @@ using ClearFn = SInt32(__stdcall*)(void* self, UInt32 count, const Rect* rects,
 constexpr UInt32 kRenderStateSrcBlend = 19;
 constexpr UInt32 kRenderStateDestBlend = 20;
 constexpr UInt32 kRenderStateStencilEnable = 52;
+
+// D3DRS_CULLMODE (line 359), D3DRS_TEXTUREFACTOR (line 381) and
+// D3DRS_LIGHTING (line 391): the remaining silent rejectors a fixed-function
+// draw can run into. Culled winding produces nothing; lighting against no
+// lights produces black; a texture factor of zero alpha produces pixels the
+// blend leaves invisible.
+constexpr UInt32 kRenderStateCullMode = 22;
+constexpr UInt32 kRenderStateTextureFactor = 60;
+constexpr UInt32 kRenderStateLighting = 137;
+
+// GetTexture (64) and GetTextureStageState (66), counted from the same
+// listing between the verified state pair (57/58) and the verified draw
+// quartet (81-84), with the state block and clip status methods between.
+// The stage constants are D3DTSS_COLOROP through D3DTSS_ALPHAARG2
+// (d3d9types.h, lines 497-502).
+constexpr UInt32 kDeviceGetTexture = 64;
+constexpr UInt32 kDeviceGetTextureStageState = 66;
+constexpr UInt32 kStageColorOp = 1;
+constexpr UInt32 kStageColorArg1 = 2;
+constexpr UInt32 kStageColorArg2 = 3;
+constexpr UInt32 kStageAlphaOp = 4;
+constexpr UInt32 kStageAlphaArg1 = 5;
+constexpr UInt32 kStageAlphaArg2 = 6;
+
+using GetTextureFn = SInt32(__stdcall*)(void* self, UInt32 stage, void** texture);
+using GetTextureStageStateFn = SInt32(__stdcall*)(void* self, UInt32 stage, UInt32 type,
+                                                  UInt32* value);
 
 // GetFVF (90), GetVertexShader (93) and GetPixelShader (108), counted from
 // the same listing, anchored on the verified draw quartet at 81-84 with

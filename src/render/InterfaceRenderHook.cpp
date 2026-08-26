@@ -105,6 +105,22 @@ SInt32 __stdcall HookedSetRenderTarget(void* self, UInt32 index, void* surface) 
 	return g_originalSetTarget(self, index, surface);
 }
 
+// One matrix as one log line, %.4g wide - enough to tell an orthographic
+// projection (translation in the last row, no perspective terms) from a
+// perspective one (m[2][3] carrying the w divide) at a glance.
+void LogMatrix(const char* name, const d3d9::Matrix4& m) {
+	OBVR_LOG("Hud first draw %s: [%.4g %.4g %.4g %.4g | %.4g %.4g %.4g %.4g | "
+	         "%.4g %.4g %.4g %.4g | %.4g %.4g %.4g %.4g]",
+	         name, static_cast<double>(m.m[0][0]), static_cast<double>(m.m[0][1]),
+	         static_cast<double>(m.m[0][2]), static_cast<double>(m.m[0][3]),
+	         static_cast<double>(m.m[1][0]), static_cast<double>(m.m[1][1]),
+	         static_cast<double>(m.m[1][2]), static_cast<double>(m.m[1][3]),
+	         static_cast<double>(m.m[2][0]), static_cast<double>(m.m[2][1]),
+	         static_cast<double>(m.m[2][2]), static_cast<double>(m.m[2][3]),
+	         static_cast<double>(m.m[3][0]), static_cast<double>(m.m[3][1]),
+	         static_cast<double>(m.m[3][2]), static_cast<double>(m.m[3][3]));
+}
+
 // The pipeline at the moment of the first redirected draw, as one line of
 // evidence. The pass-entry snapshot already showed the rejection states off,
 // but the entry is not the draw: twenty-two successful draws still arrived
@@ -160,6 +176,68 @@ void SampleFirstDraw(void* device, const char* kind, UInt32 type, UInt32 count) 
 	         blend, src, dst, write, zEnable, alphaTest, scissor, stencil, fvf,
 	         vertexShader != nullptr ? "bound" : "null",
 	         pixelShader != nullptr ? "bound" : "null");
+
+	// The transforms. The vertices are untransformed (D3DFVF_XYZ), so the
+	// fixed function clips them against whatever these hold - an interface
+	// drawing pixel coordinates through a leftover perspective projection is
+	// discarded whole, every draw reporting success. And the pass's own
+	// begin branch, the one place its orthographic camera is set, provably
+	// set nothing while redirected.
+	if (auto getTransform =
+	        d3d9::Method<d3d9::GetTransformFn>(device, d3d9::kDeviceGetTransform)) {
+		d3d9::Matrix4 world{};
+		d3d9::Matrix4 view{};
+		d3d9::Matrix4 projection{};
+		getTransform(device, d3d9::kTransformWorld, &world);
+		getTransform(device, d3d9::kTransformView, &view);
+		getTransform(device, d3d9::kTransformProjection, &projection);
+		LogMatrix("world", world);
+		LogMatrix("view", view);
+		LogMatrix("projection", projection);
+	}
+
+	// The remaining silent rejectors, and how stage 0 builds its colour and
+	// alpha: culled winding produces nothing, lighting against no lights
+	// produces black, and an alpha path reading a zero texture factor
+	// produces pixels the blend leaves invisible.
+	UInt32 cull = 0;
+	UInt32 lighting = 0;
+	UInt32 factor = 0;
+	if (auto getState =
+	        d3d9::Method<d3d9::GetRenderStateFn>(device, d3d9::kDeviceGetRenderState)) {
+		getState(device, d3d9::kRenderStateCullMode, &cull);
+		getState(device, d3d9::kRenderStateLighting, &lighting);
+		getState(device, d3d9::kRenderStateTextureFactor, &factor);
+	}
+	UInt32 colorOp = 0;
+	UInt32 colorArg1 = 0;
+	UInt32 colorArg2 = 0;
+	UInt32 alphaOp = 0;
+	UInt32 alphaArg1 = 0;
+	UInt32 alphaArg2 = 0;
+	if (auto getStage = d3d9::Method<d3d9::GetTextureStageStateFn>(
+	        device, d3d9::kDeviceGetTextureStageState)) {
+		getStage(device, 0, d3d9::kStageColorOp, &colorOp);
+		getStage(device, 0, d3d9::kStageColorArg1, &colorArg1);
+		getStage(device, 0, d3d9::kStageColorArg2, &colorArg2);
+		getStage(device, 0, d3d9::kStageAlphaOp, &alphaOp);
+		getStage(device, 0, d3d9::kStageAlphaArg1, &alphaArg1);
+		getStage(device, 0, d3d9::kStageAlphaArg2, &alphaArg2);
+	}
+	void* texture0 = nullptr;
+	if (auto getTexture = d3d9::Method<d3d9::GetTextureFn>(device, d3d9::kDeviceGetTexture)) {
+		getTexture(device, 0, &texture0);
+	}
+	OBVR_LOG("Hud first draw state: cull=%u lighting=%u factor=%08X "
+	         "stage0 colour=%u(%u,%u) alpha=%u(%u,%u) texture=%s",
+	         cull, lighting, factor, colorOp, colorArg1, colorArg2, alphaOp, alphaArg1,
+	         alphaArg2, texture0 != nullptr ? "bound" : "null");
+	if (texture0 != nullptr) {
+		using ReleaseTexFn = UInt32(__stdcall*)(void*);
+		if (auto release = d3d9::Method<ReleaseTexFn>(texture0, 2)) {
+			release(texture0);
+		}
+	}
 
 	// The references the two shader getters added. IUnknown's Release is
 	// entry 2 on every COM object.
