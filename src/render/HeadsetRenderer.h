@@ -142,6 +142,16 @@ private:
 	bool m_mirrorUsable = false;
 	bool m_copyFailureLogged = false;
 
+	// The pose each eye's picture was actually drawn with, index 0 left.
+	//
+	// Under alternate eyes the two are a frame apart, and the compositor has no
+	// way to know that unless it is told - it assumes both were drawn with the
+	// pose from WaitGetPoses, which is right for one eye and out by a frame of
+	// head motion for the other. That is the ghosting the GTA V VR mod's author
+	// reported on ValveSoftware/openvr issue #1253, from the same technique.
+	vr::openvr::HmdMatrix34 m_eyePose[2] = {};
+	bool m_eyePoseValid[2] = {false, false};
+
 	// What the headset said about each eye, kept because the picture's place
 	// inside the eye texture is computed from it - and because the eye copies
 	// are made later than the geometry is read.

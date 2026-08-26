@@ -112,6 +112,10 @@ public:
 	// works, it is simply less well timed.
 	bool GetRenderPose(Quaternion& orientation, NiPoint3& position) const;
 
+	// The same pose in OpenVR's own matrix form, for handing back to Submit.
+	// False when there is none.
+	bool GetRenderPoseMatrix(openvr::HmdMatrix34& out) const;
+
 	// Hands one eye's texture to the compositor. Returns its error code.
 	//
 	// What the handle is depends on the type: an ID3D11Texture2D for
@@ -122,8 +126,13 @@ public:
 	// bounds says which part of the texture belongs to this eye, or null for
 	// all of it. Two eyes sharing one image need different bounds or they
 	// disagree about where the picture is - see render::MonoBounds.
+	// renderPose is the pose the picture was actually drawn with, or null to
+	// let the compositor assume the one from WaitGetPoses. Under alternate
+	// eyes the two eyes were drawn a frame apart, so assuming is wrong for one
+	// of them by a whole frame of head motion - see kSubmitTextureWithPose.
 	int SubmitEye(int eye, void* handle, int textureType,
-	              const openvr::VRTextureBounds* bounds) const;
+	              const openvr::VRTextureBounds* bounds,
+	              const openvr::HmdMatrix34* renderPose = nullptr) const;
 
 	// The eye's frustum, as tangents of the angles from the view axis.
 	//
@@ -171,6 +180,12 @@ private:
 	Quaternion m_renderOrientation;
 	NiPoint3 m_renderPosition{0.0f, 0.0f, 0.0f};
 	bool m_renderPoseValid = false;
+
+	// The same pose as OpenVR gave it, unconverted. Submit wants the matrix
+	// back in its own form, and converting to a quaternion and out again would
+	// be two chances to introduce a difference in something whose whole purpose
+	// is to be identical.
+	openvr::HmdMatrix34 m_renderPoseMatrix{};
 };
 
 }  // namespace obvr::vr

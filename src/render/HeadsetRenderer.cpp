@@ -273,7 +273,7 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 		                                 request.gameFovIsFor4x3, request.cameraTanHalfWidth,
 		                                 request.cameraTanHalfHeight);
 		OBVR_LOG("Render: alternate eyes are %s",
-		         m_mirrorUsable ? "on, each eye holding its own last picture"
+		         m_mirrorUsable ? "on, each eye holding its own last picture and its own pose"
 		                        : "unavailable, falling back to one image for both eyes");
 	}
 
@@ -324,6 +324,26 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 		return false;
 	}
 
+	// Remember the pose this picture was drawn with, for the eye it went to.
+	//
+	// The other eye keeps the pose from its own last turn, a frame ago, which
+	// is precisely the fact the compositor cannot infer and has to be handed.
+	vr::openvr::HmdMatrix34 pose{};
+	if (backend.GetRenderPoseMatrix(pose)) {
+		const int index = backBufferEye ? 0 : 1;
+		m_eyePose[index] = pose;
+		m_eyePoseValid[index] = true;
+
+		// The first copy fills both eyes, so both were drawn with this pose.
+		// Without this the eye that has never had a turn would be submitted
+		// with no pose at all and fall back to the compositor's assumption.
+		const int other = 1 - index;
+		if (!m_eyePoseValid[other]) {
+			m_eyePose[other] = pose;
+			m_eyePoseValid[other] = true;
+		}
+	}
+
 	EyeMirror::Submission held(m_mirror, request.gameDevice);
 	if (!held.IsHeld()) {
 		return false;
@@ -345,9 +365,10 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 	// texture as well would magnify what has just been carefully made
 	// life-sized.
 	left = backend.SubmitEye(vr::openvr::kEyeLeft, &dataLeft, vr::openvr::kTextureTypeVulkan,
-	                         nullptr);
+	                         nullptr, m_eyePoseValid[0] ? &m_eyePose[0] : nullptr);
 	right = backend.SubmitEye(vr::openvr::kEyeRight, &dataRight,
-	                          vr::openvr::kTextureTypeVulkan, nullptr);
+	                          vr::openvr::kTextureTypeVulkan, nullptr,
+	                          m_eyePoseValid[1] ? &m_eyePose[1] : nullptr);
 	return true;
 }
 void HeadsetRenderer::Reset() {
@@ -361,6 +382,8 @@ void HeadsetRenderer::Reset() {
 	m_mirrorChecked = false;
 	m_mirrorUsable = false;
 	m_copyFailureLogged = false;
+	m_eyePoseValid[0] = false;
+	m_eyePoseValid[1] = false;
 	m_eyeWidth = 0;
 	m_eyeHeight = 0;
 	m_leftEye = EyeProjection{};

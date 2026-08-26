@@ -244,6 +244,35 @@ void TestCompositorLayout() {
 	           "the error a background application gets from Submit is 103");
 }
 
+
+void TestTextureWithPose() {
+	std::printf("The texture that carries its own pose\n");
+
+	using obvr::vr::openvr::HmdMatrix34;
+	using obvr::vr::openvr::Texture;
+	using obvr::vr::openvr::VRTextureWithPose;
+
+	// The header declares this as inheritance; OBVR writes it as composition.
+	// The two agree only if the base contributes exactly its own fields at the
+	// front, which it does - no virtuals, no base of its own - and that is
+	// worth pinning rather than assuming, because a mismatch hands the
+	// compositor a matrix read out of whatever follows the structure.
+	CheckEqual(offsetof(VRTextureWithPose, texture), 0, "the texture comes first");
+	CheckEqual(offsetof(VRTextureWithPose, deviceToAbsoluteTracking), sizeof(Texture),
+	           "and the pose follows it with no gap");
+	CheckEqual(sizeof(VRTextureWithPose), sizeof(Texture) + sizeof(HmdMatrix34),
+	           "and nothing is added at the end");
+
+	// The flag and the structure have to travel together. Passing the flag
+	// with a plain Texture makes the compositor read 48 bytes past its end;
+	// passing the structure without the flag silently ignores the pose, which
+	// is the failure that looks like nothing changed at all.
+	CheckEqual(static_cast<std::size_t>(obvr::vr::openvr::kSubmitTextureWithPose), 0x08,
+	           "Submit_TextureWithPose is 0x08");
+	CheckEqual(static_cast<std::size_t>(obvr::vr::openvr::kSubmitDefault), 0,
+	           "and the default is 0");
+}
+
 }  // namespace
 
 int main() {
@@ -260,6 +289,8 @@ int main() {
 	TestNormalization();
 	std::printf("\n");
 	TestCompositorLayout();
+	std::printf("\n");
+	TestTextureWithPose();
 
 	std::printf("\n");
 	if (g_failures == 0) {

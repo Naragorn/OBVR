@@ -204,6 +204,28 @@ constexpr int kColorSpaceLinear = 2;
 // EVRSubmitFlags_Submit_Default (openvr_capi.h, line 819)
 constexpr int kSubmitDefault = 0;
 
+// EVRSubmitFlags_Submit_TextureWithPose.
+//
+// Says that the texture pointer is a VRTextureWithPose rather than a plain
+// Texture, and that the pose inside it - not the one from WaitGetPoses - is
+// what the picture was drawn with.
+//
+// This is the flag alternate eye rendering cannot do without, and the reason
+// is structural. Under AER the two eyes are drawn a frame apart, so they were
+// drawn with two different poses; the compositor otherwise has one pose per
+// frame and reprojects both eyes against it, which is right for one eye and
+// out by a whole frame of head motion for the other. That shows as a picture
+// that will not hold still when the head turns.
+//
+// The author of the GTA V VR mod, which uses the same technique, reported
+// exactly this on ValveSoftware/openvr issue #1253: "The need for the poses to
+// be distinct stems from the fact that the two eyes are rendered at different
+// times." That issue also records a SteamVR bug where only the pose from the
+// second Submit was honoured - and, further down, that it "has already been
+// fixed with the lighthouse driver", which is what this headset tracks
+// through. If the ghosting survives this change, that is where to look first.
+constexpr int kSubmitTextureWithPose = 0x08;
+
 // EVRCompositorError (openvr_capi.h). Only the ones worth telling apart in a
 // log: the rest are reported by number.
 constexpr int kCompositorErrorNone = 0;
@@ -218,6 +240,23 @@ struct Texture {
 	int type;        // ETextureType
 	int colorSpace;  // EColorSpace
 };
+
+
+// VRTextureWithPose_t (openvr.h): a Texture_t with the pose that was actually
+// used to render it appended.
+//
+// Inheritance in the header, plain composition here, which is the same layout:
+// the base class has no virtuals and no base of its own, so its fields simply
+// come first. Writing it out avoids depending on a compiler's choices about
+// empty-base and inheritance layout for something whose bytes have to match
+// exactly.
+struct VRTextureWithPose {
+	Texture texture;
+	HmdMatrix34 deviceToAbsoluteTracking;
+};
+
+static_assert(sizeof(VRTextureWithPose) == sizeof(Texture) + 48,
+              "VRTextureWithPose_t is a Texture_t followed by a 3x4 matrix");
 
 // VRTextureBounds_t (openvr_capi.h, line 2145)
 //

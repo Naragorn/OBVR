@@ -256,6 +256,7 @@ int OpenVRBackend::WaitGetPoses() {
 	if (renderPose.poseIsValid && renderPose.deviceIsConnected) {
 		m_renderOrientation = FromOpenVRMatrix(renderPose.deviceToAbsoluteTracking.m);
 		m_renderPosition = PositionFromOpenVRMatrix(renderPose.deviceToAbsoluteTracking.m);
+		m_renderPoseMatrix = renderPose.deviceToAbsoluteTracking;
 		m_renderPoseValid = true;
 	}
 
@@ -271,8 +272,18 @@ bool OpenVRBackend::GetRenderPose(Quaternion& orientation, NiPoint3& position) c
 	position = m_renderPosition;
 	return true;
 }
+
+bool OpenVRBackend::GetRenderPoseMatrix(openvr::HmdMatrix34& out) const {
+	if (!m_renderPoseValid) {
+		return false;
+	}
+	out = m_renderPoseMatrix;
+	return true;
+}
+
 int OpenVRBackend::SubmitEye(int eye, void* handle, int textureType,
-                             const openvr::VRTextureBounds* bounds) const {
+                             const openvr::VRTextureBounds* bounds,
+                             const openvr::HmdMatrix34* renderPose) const {
 	if (m_compositor == nullptr || handle == nullptr) {
 		return openvr::kCompositorErrorIsNotSceneApplication;
 	}
@@ -282,20 +293,29 @@ int OpenVRBackend::SubmitEye(int eye, void* handle, int textureType,
 		return openvr::kCompositorErrorIsNotSceneApplication;
 	}
 
-	openvr::Texture description{};
-	description.handle = handle;
-	description.type = textureType;
+	// The two shapes share their first three fields, which is why the pose
+	// carrying one can be handed to a parameter typed as the plain one - the
+	// flag is what tells the compositor which it is looking at. Getting the
+	// flag and the structure out of step would have it read a matrix out of
+	// whatever follows.
+	openvr::VRTextureWithPose withPose{};
+	withPose.texture.handle = handle;
+	withPose.texture.type = textureType;
 
 	// Auto rather than a stated colour space. The texture is
 	// R8G8B8A8_UNORM, and letting the compositor apply its own rule for that
 	// format is more likely to be right than OBVR asserting one - the ramp in
 	// the test pattern is there precisely so that a wrong guess here is
 	// visible rather than merely suspected.
-	description.colorSpace = openvr::kColorSpaceAuto;
+	withPose.texture.colorSpace = openvr::kColorSpaceAuto;
 
-	return table->Submit(eye, &description, bounds, openvr::kSubmitDefault);
+	if (renderPose == nullptr) {
+		return table->Submit(eye, &withPose.texture, bounds, openvr::kSubmitDefault);
+	}
+
+	withPose.deviceToAbsoluteTracking = *renderPose;
+	return table->Submit(eye, &withPose.texture, bounds, openvr::kSubmitTextureWithPose);
 }
-
 bool OpenVRBackend::GetRecommendedRenderTargetSize(UInt32& width, UInt32& height) const {
 	if (m_system == nullptr) {
 		return false;
