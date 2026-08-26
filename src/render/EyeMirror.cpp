@@ -431,17 +431,16 @@ bool EyeMirror::CopyBackBuffer(void* gameDevice, bool isLeft, bool bothEyes) {
 		return false;
 	}
 
-	// Both on the first pass. After that only the eye this frame belongs to -
-	// the other one keeps the picture from its own last turn, which is what
-	// makes the two eyes differ at all.
-	const bool everyEye = bothEyes || !m_primed;
-	const int first = everyEye ? 0 : (isLeft ? 0 : 1);
-	const int last = everyEye ? 1 : first;
-
 	// The margin has to be blacked out again whenever the placement changes
 	// size, or the larger one leaves pixels standing around the smaller. That
 	// is a ring of stale world around a menu, which looks like a fault rather
 	// than a frame.
+	//
+	// Before deciding which eyes to fill, not after: blacking out both and
+	// then filling only one leaves the other dark for a frame, which is one
+	// eye going out every time a menu opens or closes. That was reported as
+	// menus appearing to render twice, and it is the same thing seen from
+	// outside.
 	if (!m_everCopied || m_lastWasFlat != bothEyes) {
 		auto colorFill = d3d9::Method<d3d9::ColorFillFn>(gameDevice, d3d9::kDeviceColorFill);
 		if (colorFill != nullptr) {
@@ -451,7 +450,15 @@ bool EyeMirror::CopyBackBuffer(void* gameDevice, bool isLeft, bool bothEyes) {
 		}
 		m_lastWasFlat = bothEyes;
 		m_everCopied = true;
+		m_primed = false;
 	}
+
+	// Both on the first pass, and after any blacking out. After that only the
+	// eye this frame belongs to - the other one keeps the picture from its own
+	// last turn, which is what makes the two eyes differ at all.
+	const bool everyEye = bothEyes || !m_primed;
+	const int first = everyEye ? 0 : (isLeft ? 0 : 1);
+	const int last = everyEye ? 1 : first;
 
 	bool ok = true;
 	for (int index = first; index <= last; ++index) {

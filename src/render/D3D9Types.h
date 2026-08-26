@@ -170,6 +170,47 @@ using GetTransformFn = SInt32(__stdcall*)(void* self, UInt32 state, Matrix4* mat
 using PresentFn = SInt32(__stdcall*)(void* self, const Rect* source, const Rect* dest,
                                      void* destWindowOverride, const void* dirtyRegion);
 
+
+// D3DPRESENT_PARAMETERS (d3d9types.h). The two fields at the front are the
+// whole reason this structure is here: they are where Oblivion's frame size is
+// decided, once, when the device is made.
+//
+// In full rather than truncated, because it is written to - a short structure
+// would be one the runtime reads past the end of.
+struct PresentParameters {
+	UInt32 backBufferWidth;
+	UInt32 backBufferHeight;
+	UInt32 backBufferFormat;  // D3DFORMAT
+	UInt32 backBufferCount;
+
+	UInt32 multiSampleType;
+	UInt32 multiSampleQuality;
+
+	UInt32 swapEffect;
+	void* deviceWindow;
+	SInt32 windowed;
+	SInt32 enableAutoDepthStencil;
+	UInt32 autoDepthStencilFormat;
+	UInt32 flags;
+
+	UInt32 fullScreenRefreshRateInHz;
+	UInt32 presentationInterval;
+};
+
+static_assert(sizeof(PresentParameters) == 13 * sizeof(UInt32) + sizeof(void*),
+              "D3DPRESENT_PARAMETERS is thirteen 32-bit fields and one pointer");
+
+// IDirect3D9::CreateDevice, counted from the SDK header: three IUnknown
+// entries, RegisterSoftwareDevice, then eleven adapter and capability queries,
+// GetAdapterMonitor, and then this.
+constexpr UInt32 kFactoryCreateDevice = 16;
+
+using Direct3DCreate9Fn = void*(__stdcall*)(UInt32 sdkVersion);
+
+using CreateDeviceFn = SInt32(__stdcall*)(void* self, UInt32 adapter, UInt32 deviceType,
+                                          void* focusWindow, UInt32 behaviourFlags,
+                                          PresentParameters* parameters, void** device);
+
 // ------------------------------------------------------------- Signatures
 //
 // Every one of these is __stdcall with an explicit this, which is what COM

@@ -29,12 +29,12 @@ add_library(OBVR SHARED
 	src/camera/LookControl.cpp
 	src/core/CodeWriter.cpp
 	src/core/Config.cpp
-	src/core/GameIni.cpp
 	src/core/Log.cpp
 	src/core/Memory.cpp
 	src/core/Rotation.cpp
 	src/core/Smoothing.cpp
 	src/platform/Freestanding.cpp
+	src/platform/ImportHook.cpp
 	src/platform/PluginPath.cpp
 	src/render/EyeGeometry.cpp
 	src/render/EyeMirror.cpp
@@ -45,6 +45,7 @@ add_library(OBVR SHARED
 	src/render/EyeTextures.cpp
 	src/render/HeadsetRenderer.cpp
 	src/render/PresentHook.cpp
+	src/render/ResolutionHook.cpp
 	src/render/InteropBracket.cpp
 	src/render/SubmitPolicy.cpp
 	src/render/TestPattern.cpp

@@ -3,7 +3,7 @@
 #include "camera/CameraTrampoline.h"
 #include "camera/LookControl.h"
 #include "core/Config.h"
-#include "core/GameIni.h"
+
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "core/MathFns.h"
@@ -14,6 +14,7 @@
 #include "render/GameDevice.h"
 #include "render/HeadsetRenderer.h"
 #include "render/PresentHook.h"
+#include "render/ResolutionHook.h"
 
 namespace obvr::camera {
 namespace {
@@ -107,7 +108,7 @@ void OnFrameEnd() {
 	// running. An intro film that started while looking down stays down.
 	if (PollRecenterEdge()) {
 		g_headsetRenderer.ResetFlatAnchor();
-		OBVR_LOG("Render: the flat picture was re-anchored on the recenter key");
+		OBVR_LOG("Render: the flat picture was re-anchored on the recenter key (flat path)");
 	}
 
 	render::HeadsetRenderer::FrameRequest menu;
@@ -208,7 +209,7 @@ void MaybePollRecenter() {
 	// Recentering is meant to take effect at once. Easing the camera into the
 	// new zero would be the opposite of what the key is pressed for.
 	g_lookControl.Reset();
-	OBVR_LOG("Camera: recentered on key 0x%02X (frame %u)", GetConfig().recenterKey,
+	OBVR_LOG("Camera: recentered on key 0x%02X (frame %u, camera path)", GetConfig().recenterKey,
 	         g_state.frameCount);
 }
 
@@ -617,14 +618,14 @@ bool Install() {
 		render::InstallPresentHookWhenReady(&OnFrameEnd);
 	}
 
-	// Oblivion's render resolution, if OBVR is to set it.
+	// Oblivion's frame size, set where it is decided.
 	//
-	// Written now and picked up on the next run, because the game reads its INI
-	// once at startup and Direct3D fixes the frame's shape when the device is
-	// made. Both of those are long past by the time a plugin loads, so this is
-	// a change for next time and says so rather than appearing to have failed.
+	// This used to write iSize into Oblivion.ini and let the game read it next
+	// time - a detour past the place the decision is made, costing two
+	// restarts and editing a file that belongs to the user. The device
+	// creation is where the size actually lives, so that is where this is now.
 	if (!GetConfig().tracker.setRenderSize) {
-		OBVR_LOG("Config: SetGameResolution is off, so the game's resolution is its own");
+		OBVR_LOG("Config: SetGameResolution is off, so the frame is the game's own size");
 	} else {
 		UInt32 width = GetConfig().tracker.renderWidth;
 		UInt32 height = GetConfig().tracker.renderHeight;
@@ -634,31 +635,24 @@ bool Install() {
 			// the distortion margin the compositor needs, so it is the honest
 			// answer to "what can this headset use".
 			if (!g_headTracker.GetBackend().GetRecommendedRenderTargetSize(width, height)) {
-				OBVR_LOG("Config: the headset reported no render size, so the game's "
-				         "resolution was left alone");
+				OBVR_LOG("Config: the headset reported no render size, so the frame is the "
+				         "game's own");
 				width = 0;
+				height = 0;
 			}
 		}
 
-		char iniPath[512];
-		if (width == 0 || height == 0) {
-			// Already reported.
-		} else if (!core::FindOblivionIni(iniPath, sizeof(iniPath))) {
-			OBVR_LOG("Config: Oblivion.ini could not be located, so the game's resolution "
-			         "was left alone");
-		} else {
-			UInt32 currentWidth = 0;
-			UInt32 currentHeight = 0;
-			const bool read = core::ReadRenderSize(iniPath, currentWidth, currentHeight);
-
-			if (read && currentWidth == width && currentHeight == height) {
-				OBVR_LOG("Config: the game already renders at %ux%u", width, height);
-			} else if (core::WriteRenderSize(iniPath, width, height)) {
-				OBVR_LOG("Config: the game's resolution was changed from %ux%u to %ux%u - "
-				         "restart Oblivion for it to take effect",
-				         currentWidth, currentHeight, width, height);
+		if (width != 0 && height != 0) {
+			render::SetWantedResolution(width, height);
+			if (render::InstallResolutionHook()) {
+				OBVR_LOG("Config: the frame will be created at %ux%u", width, height);
 			} else {
-				OBVR_LOG("Config: %ux%u could not be written to %s", width, height, iniPath);
+				// Not a silent fallback. Either the import is not there, or -
+				// far more likely - the device was already created before this
+				// plugin loaded, and then nothing here can reach it.
+				OBVR_LOG("Config: Direct3DCreate9 could not be intercepted, so the frame "
+				         "stays at the game's own size. If the device was already made by "
+				         "the time OBVR loaded, this is why.");
 			}
 		}
 	}
