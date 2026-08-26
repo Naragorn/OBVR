@@ -533,6 +533,19 @@ bool Install() {
 
 	OBVR_LOG("Camera: hook installed at %08X, trampoline at %08X (%u bytes)",
 	         addr::kHookCameraUpdate, trampolineAddress, trampolineSize);
+
+	// The end of the frame, hooked as soon as there is a device to hook it on
+	// rather than when the first world camera runs.
+	//
+	// The difference is everything before that camera: the intro videos, the
+	// main menu, and the dialogue that loads a save. Installing from the camera
+	// hook meant none of those reached the headset - which was reported as
+	// seeing only the loading screen, and only because by then the hook had
+	// gone in.
+	if (GetConfig().tracker.renderToHeadset && GetConfig().tracker.submitAtFrameEnd) {
+		render::InstallPresentHookWhenReady(&OnFrameEnd);
+	}
+
 	return true;
 }
 

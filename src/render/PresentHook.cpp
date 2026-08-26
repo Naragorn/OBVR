@@ -3,6 +3,7 @@
 #include "core/Log.h"
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
+#include "render/GameDevice.h"
 
 namespace obvr::render {
 namespace {
@@ -130,5 +131,54 @@ void RemovePresentHook() {
 }
 
 bool IsPresentHooked() { return g_vtable != nullptr; }
+
+namespace {
+
+// What the waiting thread will install once there is something to install it
+// on.
+FrameEndCallback g_pendingCallback = nullptr;
+
+DWORD __stdcall WaitForDevice(void*) {
+	// Thirty seconds at fifty milliseconds. Oblivion builds its device while
+	// starting up, so this normally succeeds within a second or two; a device
+	// that has not appeared by then is not going to, and a thread spinning for
+	// ever would hide that rather than report it.
+	for (int attempt = 0; attempt < 600; ++attempt) {
+		void* device = GetGameDevice();
+		if (device != nullptr) {
+			InstallPresentHook(device, g_pendingCallback);
+			return 0;
+		}
+		Sleep(50);
+	}
+
+	OBVR_LOG("Present: no Direct3D device appeared within thirty seconds, so the frame end "
+	         "was never hooked and menus will not reach the headset");
+	return 0;
+}
+
+}  // namespace
+
+bool InstallPresentHookWhenReady(FrameEndCallback callback) {
+	if (callback == nullptr || g_pendingCallback != nullptr) {
+		return false;
+	}
+
+	g_pendingCallback = callback;
+
+	// The handle is closed immediately: it is a reference to the thread, not
+	// the thread itself, and nothing here ever waits on it. Keeping it would
+	// be a handle to leak for the life of the process.
+	HANDLE thread = CreateThread(nullptr, 0, &WaitForDevice, nullptr, 0, nullptr);
+	if (thread == nullptr) {
+		g_pendingCallback = nullptr;
+		OBVR_LOG("Present: the waiting thread could not be started, so the frame end will "
+		         "be hooked later, once a camera runs");
+		return false;
+	}
+
+	CloseHandle(thread);
+	return true;
+}
 
 }  // namespace obvr::render

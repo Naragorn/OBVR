@@ -130,7 +130,9 @@ if(WIN32)
 		../src/vr/Quaternion.cpp
 		../src/core/Log.cpp
 		../src/platform/PluginPath.cpp
+		../src/render/GameDevice.cpp
 		../src/platform/PluginPath.cpp
+		../src/render/GameDevice.cpp
 	)
 
 	target_include_directories(openvr_backend_test PRIVATE ../src)
@@ -148,7 +150,9 @@ if(WIN32)
 		../src/core/Config.cpp
 		../src/core/Log.cpp
 		../src/platform/PluginPath.cpp
+		../src/render/GameDevice.cpp
 		../src/platform/PluginPath.cpp
+		../src/render/GameDevice.cpp
 	)
 
 	target_include_directories(config_test PRIVATE ../src)
@@ -172,7 +176,9 @@ if(WIN32)
 		../src/core/Smoothing.cpp
 		../src/core/Log.cpp
 		../src/platform/PluginPath.cpp
+		../src/render/GameDevice.cpp
 		../src/platform/PluginPath.cpp
+		../src/render/GameDevice.cpp
 	)
 
 	target_include_directories(head_tracker_test PRIVATE ../src)
@@ -187,6 +193,7 @@ if(WIN32)
 	add_executable(plugin_path_test
 		PluginPathTest.cpp
 		../src/platform/PluginPath.cpp
+		../src/render/GameDevice.cpp
 	)
 
 	target_include_directories(plugin_path_test PRIVATE ../src)
@@ -293,6 +300,7 @@ if(WIN32)
 		../src/render/PresentHook.cpp
 		../src/core/Log.cpp
 		../src/platform/PluginPath.cpp
+		../src/render/GameDevice.cpp
 	)
 
 	target_include_directories(present_hook_test PRIVATE ../src)

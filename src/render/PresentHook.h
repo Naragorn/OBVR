@@ -51,6 +51,25 @@ void RemovePresentHook();
 
 bool IsPresentHooked();
 
+// Installs the hook as soon as Oblivion has a Direct3D device, without waiting
+// for anything else to happen.
+//
+// This exists because of what "anything else" used to mean. The hook was
+// installed from the camera hook, which does not run until the game has a
+// world camera - so nothing reached the headset until a save had been loaded.
+// The intro videos, the main menu and every dialogue before the first frame of
+// world were simply absent, and the compositor, given nothing, showed its own
+// Home scene instead. Loading a game meant taking the headset off.
+//
+// A thread rather than a hook, because there is no earlier hook to use: OBSE
+// calls a plugin once at load, when the device does not exist yet, and offers
+// nothing that runs per frame. So this waits, briefly and then gives up.
+//
+// What it writes is one aligned pointer, which x86 stores atomically, into a
+// table Oblivion is only reading. The worst case is a single Present that used
+// the old entry, which is one frame without a picture.
+bool InstallPresentHookWhenReady(FrameEndCallback callback);
+
 // Whether a pointer that is about to be treated as a COM object's method table
 // looks like one at the given depth.
 //

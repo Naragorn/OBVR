@@ -46,6 +46,14 @@ OBVR_IMPORT BOOL OBVR_STDCALL FlushInstructionCache(HANDLE process, const void* 
 OBVR_IMPORT HANDLE OBVR_STDCALL CreateFileA(const char* fileName, DWORD access, DWORD shareMode, void* security, DWORD creation, DWORD flags, HANDLE templateFile);
 OBVR_IMPORT BOOL OBVR_STDCALL WriteFile(HANDLE file, const void* buffer, DWORD bytes, DWORD* written, void* overlapped);
 OBVR_IMPORT BOOL OBVR_STDCALL CloseHandle(HANDLE object);
+
+// For the one thread OBVR runs: a poller that waits for Oblivion to build its
+// Direct3D device, so the end of the frame can be hooked before the main menu
+// is drawn rather than after the first world camera exists.
+OBVR_IMPORT HANDLE OBVR_STDCALL CreateThread(void* attributes, UInt32 stackSize,
+                                             DWORD(OBVR_STDCALL* start)(void*),
+                                             void* parameter, DWORD flags, DWORD* threadId);
+OBVR_IMPORT void OBVR_STDCALL Sleep(DWORD milliseconds);
 OBVR_IMPORT void OBVR_STDCALL OutputDebugStringA(const char* text);
 OBVR_IMPORT DWORD OBVR_STDCALL GetPrivateProfileStringA(const char* section, const char* key, const char* defaultValue, char* buffer, DWORD size, const char* fileName);
 OBVR_IMPORT DWORD OBVR_STDCALL GetModuleFileNameA(HMODULE module, char* fileName, DWORD size);
