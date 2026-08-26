@@ -397,7 +397,18 @@ bool HeadsetRenderer::SubmitDualEyes(const vr::OpenVRBackend& backend,
 	m_eyePoseValid[0] = false;
 	m_eyePoseValid[1] = false;
 
+	// The submit half of the dual trace: the first run died with the GPU
+	// lost somewhere around here, and these lines are what say whether the
+	// bracket was entered, held, and left again.
+	const bool trace = m_dualTraceLeft > 0;
+	if (trace) {
+		OBVR_LOG("Dual trace: closing the bracket for the submit");
+	}
+
 	EyeMirror::Submission held(m_mirror, request.gameDevice);
+	if (trace) {
+		OBVR_LOG("Dual trace: bracket %s", held.IsHeld() ? "held" : "refused");
+	}
 	if (!held.IsHeld()) {
 		return false;
 	}
@@ -413,6 +424,10 @@ bool HeadsetRenderer::SubmitDualEyes(const vr::OpenVRBackend& backend,
 	                         nullptr, nullptr);
 	right = backend.SubmitEye(vr::openvr::kEyeRight, &dataRight,
 	                          vr::openvr::kTextureTypeVulkan, nullptr, nullptr);
+	if (trace) {
+		--m_dualTraceLeft;
+		OBVR_LOG("Dual trace: submitted, left=%d right=%d", left, right);
+	}
 	return true;
 }
 

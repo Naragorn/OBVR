@@ -283,6 +283,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.logEveryFrames = ReadUInt("Debug", "LogEveryFrames", config.logEveryFrames, path);
 	config.reloadEveryFrames =
 		ReadUInt("Debug", "ReloadEveryFrames", config.reloadEveryFrames, path);
+	config.dualPassProbe = ReadUInt("Debug", "DualPassProbe", config.dualPassProbe, path);
 }
 
 }  // namespace

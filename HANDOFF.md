@@ -1801,8 +1801,32 @@ without its HUD - the layer has left that picture, which is the feature.
 
 `Stereo=dual` now does what its name says: the world is drawn twice per frame, once per
 eye, both from the same pose. The one-frame disparity that defines alternate eyes does not
-exist on this path, and neither does its ghosting. Built, tests green, **not yet run in the
-game** - the next in-game log is what settles it.
+exist on this path, and neither does its ghosting. Built, tests green.
+
+**The first run lost the GPU, and the cause is being measured rather than argued.** The
+run itself was almost a success: intro videos and main menu were reported perfect (the
+flat path, hundreds of frames, submissions clean), the hook installed, the first world
+frame ran both passes, captured both eyes and reached the first dual submit - the log's
+last line is `dual pass is live`. Then the game hung on the loading screen for good.
+`Oblivion_d3d9.log` says why nothing moved: `DxvkSubmissionQueue: Command submission
+failed: VK_ERROR_DEVICE_LOST`, repeated forever, with no warning of any kind before the
+first one. A lost device is reported by the next submission rather than by its cause, so
+the log alone cannot name the trigger. Three candidates, none of which reasoning can
+separate: the second engine render itself (no precedent calls 0x0040C830 twice),
+the camera move between the passes, and the mid-frame captures.
+
+**The instrument is `Debug.DualPassProbe`**, a ladder that cuts the mechanism down rung
+by rung - 1 renders twice and does nothing else, 2 adds the camera move, 0 is the whole
+thing - plus a stage-by-stage trace of the first three dual frames on both sides of
+Present. The probe is hot reloaded, so one session can climb the whole ladder by editing
+the INI while the game runs; the rung that kills the run names the culprit. If rung 1
+already kills it, the second render is the problem and the answer is a narrower second
+pass - RenderObject per eye rather than Render per eye - which is more work and was
+always the shape bo1-vr's engine hook implies.
+
+Also from that run, noted rather than diagnosed: the recenter key during videos was
+reported not working, but the log shows the flat re-anchor firing twice and the code on
+that path is unchanged from the run where it demonstrably worked. Watch, do not chase.
 
 **The find that unlocked it: Oblivion's own render function, with the map read off
 Oblivion Reloaded and verified against the bytes.** `llde/TES-Reloaded-Source-NEW`'s

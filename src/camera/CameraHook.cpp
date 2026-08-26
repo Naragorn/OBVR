@@ -316,31 +316,74 @@ bool ScenePassWanted() {
 	return WantsSecondScenePass(g_frameOpen, g_dualArmed, menuIsUp);
 }
 
+// The first dual-pass run lost the GPU (VK_ERROR_DEVICE_LOST) somewhere in
+// its first world frames, and a lost device is reported by the next
+// submission rather than by its cause. These two narrow it down:
+//
+//   * the trace logs each stage of the first few dual frames, so the log
+//     ends at - or shortly after - the stage that killed the run
+//   * Debug.DualPassProbe cuts the mechanism down rung by rung, so one run
+//     per rung names the culprit: the second render itself, the camera move,
+//     or the captures
+UInt32 g_dualTraceFramesLeft = 3;
+
+bool DualTraceOn() { return g_dualTraceFramesLeft > 0; }
+
 void BetweenScenePasses() {
+	const UInt32 probe = GetConfig().dualPassProbe;
+	if (DualTraceOn()) {
+		OBVR_LOG("Dual trace: first pass returned (probe %u)", probe);
+	}
+
 	// The finished left-eye picture is in the back buffer - tone mapping
 	// done, 2D layer not yet drawn. Captured now, because at Present it will
 	// have been drawn over twice.
-	g_headsetRenderer.CaptureEye(g_pendingRequest, true);
+	if (probe != 1 && probe != 2) {
+		g_headsetRenderer.CaptureEye(g_pendingRequest, true);
+		if (DualTraceOn()) {
+			OBVR_LOG("Dual trace: left eye captured");
+		}
+	}
 
 	// To the right eye, the way the game itself moves the camera: edit the
 	// local transform, then have the engine recompute the world transform
 	// downward. Render re-reads the camera node's position at the start of
 	// the pass to place the sky and LOD roots, so those follow on their own.
-	if (g_dualNode != nullptr) {
+	if (probe != 1 && g_dualNode != nullptr) {
 		g_dualNode->localTransform.pos = g_dualNode->localTransform.pos + g_dualShift;
 		game::UpdateNodeTransforms(g_dualNode);
+		if (DualTraceOn()) {
+			OBVR_LOG("Dual trace: camera moved to the right eye");
+		}
 	}
 }
 
 void AfterSecondScenePass() {
-	g_headsetRenderer.CaptureEye(g_pendingRequest, false);
+	const UInt32 probe = GetConfig().dualPassProbe;
+	if (DualTraceOn()) {
+		OBVR_LOG("Dual trace: second pass returned");
+	}
+
+	if (probe != 1 && probe != 2) {
+		g_headsetRenderer.CaptureEye(g_pendingRequest, false);
+		if (DualTraceOn()) {
+			OBVR_LOG("Dual trace: right eye captured");
+		}
+	}
 
 	// Back where the game left it, and updated again, so everything that
 	// reads the camera later in the frame - the 2D layer, next frame's
 	// smoothing - sees the camera the game computed rather than an eye.
-	if (g_dualNode != nullptr) {
+	if (probe != 1 && g_dualNode != nullptr) {
 		g_dualNode->localTransform.pos = g_dualNode->localTransform.pos - g_dualShift;
 		game::UpdateNodeTransforms(g_dualNode);
+		if (DualTraceOn()) {
+			OBVR_LOG("Dual trace: camera restored");
+		}
+	}
+
+	if (g_dualTraceFramesLeft > 0) {
+		--g_dualTraceFramesLeft;
 	}
 
 	g_dualArmed = false;

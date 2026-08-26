@@ -34,6 +34,23 @@ struct Config {
 	// game is running.
 	UInt32 reloadEveryFrames = 0;
 
+	// Cuts the dual pass down to a stage, to find which stage loses the GPU.
+	//
+	// The first dual-pass run died with VK_ERROR_DEVICE_LOST on its first
+	// world frames, and the trigger cannot be told from reasoning: the
+	// candidates are the second engine render itself, the camera move between
+	// the passes, and the mid-frame captures. This ladder separates them,
+	// one run per rung:
+	//
+	//   0  the whole thing (the default)
+	//   1  the world is rendered twice, but the camera never moves and
+	//      nothing is captured - the headset shows mono
+	//   2  rendered twice with the camera moved, still nothing captured
+	//
+	// In the [Debug] section, so the hot reload can change it while the game
+	// runs. Values above 2 behave like 0.
+	UInt32 dualPassProbe = 0;
+
 	// true when the file was found and read.
 	bool Load(const char* fileName);
 

@@ -221,6 +221,11 @@ private:
 	bool m_dualCaptured[2] = {false, false};
 	bool m_dualReported = false;
 
+	// How many dual submits are still traced stage by stage. Diagnostic for a
+	// run that lost the GPU on its first dual frames; see the trace in
+	// SubmitDualEyes.
+	UInt32 m_dualTraceLeft = 3;
+
 	// The pose each eye's picture was actually drawn with, index 0 left.
 	//
 	// Under alternate eyes the two are a frame apart, and the compositor has no
