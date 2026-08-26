@@ -99,6 +99,29 @@ UInt32 g_depthClearTraceLeft = 3;
 UInt32 g_observeCountdown = 300;
 bool g_observing = false;
 
+// Every call to the pass, numbered - and a window around the three hundredth
+// in which every single invocation is logged with what it was and what it
+// did. The per-pass traces only ever saw the first three calls, all inside
+// the loading fade; the reference pass then did nothing at all, so the
+// question became what the pass is called with, and how often, once the
+// game is actually playing.
+UInt32 g_invocation = 0;
+
+// How many first-draw pipeline samples may still be written. The window
+// arms the sample for up to twenty invocations, and six full matrix dumps
+// is what the log can carry before it stops being readable.
+UInt32 g_sampleBudget = 6;
+
+void ResetPassStats() {
+	g_statsDraws = 0;
+	g_statsFailedDraws = 0;
+	g_statsMatched = 0;
+	g_statsOtherTargets = 0;
+	g_statsKind[0] = g_statsKind[1] = g_statsKind[2] = g_statsKind[3] = 0;
+	g_statsClears = 0;
+	g_statsClearFlagsSeen = 0;
+}
+
 d3d9::DrawPrimitiveFn g_originalDrawPrimitive = nullptr;
 d3d9::DrawIndexedPrimitiveFn g_originalDrawIndexed = nullptr;
 d3d9::DrawPrimitiveUPFn g_originalDrawUP = nullptr;
@@ -142,6 +165,11 @@ void LogMatrix(const char* name, const d3d9::Matrix4& m) {
 // measured rather than assumed - viewport, blending, masks, and whether the
 // draw ran on shaders or fixed function.
 void SampleFirstDraw(void* device, const char* kind, UInt32 type, UInt32 count) {
+	if (g_sampleBudget == 0) {
+		return;
+	}
+	--g_sampleBudget;
+
 	d3d9::Viewport viewport{};
 	if (auto getViewport =
 	        d3d9::Method<d3d9::GetViewportFn>(device, d3d9::kDeviceGetViewport)) {
@@ -503,19 +531,38 @@ bool EnsureTargetHook() {
 	return true;
 }
 
-void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* renderedTexture) {
+// Runs one interface pass, choosing the route, and names the route taken
+// for the invocation window's log line. watching: count draws and arm the
+// first-draw sample even when nothing redirects, so the window sees vanilla
+// passes exactly as it sees redirected ones.
+const char* RunInterfacePass(void* self, void* unusedEdx, void* renderedTexture,
+                             bool watching) {
 	// The order matters: the target hook has to exist before the callbacks
 	// change any state, or a pass that could not be redirected would still
 	// have its blend states rearranged and its capture claimed.
 	if (g_callbacks.beginRedirect == nullptr || !EnsureTargetHook()) {
+		g_observing = watching;
 		g_original(self, unusedEdx, renderedTexture);
-		return;
+		g_observing = false;
+		return "unhooked";
+	}
+
+	// A pass aimed at a texture of the game's own - menu-to-texture, not
+	// the frame's 2D layer - is the game's business: redirecting it would
+	// steal a picture some later draw reads back. Watched, never redirected.
+	if (renderedTexture != nullptr) {
+		g_observing = watching;
+		g_original(self, unusedEdx, renderedTexture);
+		g_observing = false;
+		return "texture pass";
 	}
 
 	void* substitute = g_callbacks.beginRedirect();
 	if (substitute == nullptr) {
+		g_observing = watching;
 		g_original(self, unusedEdx, renderedTexture);
-		return;
+		g_observing = false;
+		return "not redirected";
 	}
 
 	const bool probe = g_callbacks.probeActive != nullptr && g_callbacks.probeActive();
@@ -532,13 +579,7 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 		--g_observeCountdown;
 		if (g_observeCountdown == 0) {
 			g_callbacks.endRedirect();
-			g_statsDraws = 0;
-			g_statsFailedDraws = 0;
-			g_statsMatched = 0;
-			g_statsOtherTargets = 0;
-			g_statsKind[0] = g_statsKind[1] = g_statsKind[2] = g_statsKind[3] = 0;
-			g_statsClears = 0;
-			g_statsClearFlagsSeen = 0;
+			ResetPassStats();
 			OBVR_LOG("Hud observe: watching one vanilla pass");
 			g_sampleNextDraw = true;
 			g_observing = true;
@@ -551,7 +592,7 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 			         g_statsDraws, g_statsFailedDraws, g_statsKind[0], g_statsKind[1],
 			         g_statsKind[2], g_statsKind[3], g_statsClears, g_statsClearFlagsSeen,
 			         g_statsMatched, g_statsOtherTargets);
-			return;
+			return "vanilla reference";
 		}
 	}
 
@@ -568,15 +609,9 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 	g_substitute = substitute;
 	g_lastRequested = nullptr;
 	if (g_passTraceLeft > 0) {
-		g_statsDraws = 0;
-		g_statsFailedDraws = 0;
-		g_statsMatched = 0;
-		g_statsOtherTargets = 0;
-		g_statsKind[0] = g_statsKind[1] = g_statsKind[2] = g_statsKind[3] = 0;
-		g_statsClears = 0;
-		g_statsClearFlagsSeen = 0;
+		ResetPassStats();
+		g_sampleNextDraw = true;
 	}
-	g_sampleNextDraw = g_passTraceLeft > 0;
 	g_redirecting = true;
 
 	// Aimed before the pass starts, through the original entry: the pass
@@ -731,6 +766,32 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 	}
 
 	g_callbacks.endRedirect();
+	return "redirected";
+}
+
+// The entry detour target. Numbers the invocations, and for a window around
+// the three hundredth logs what every single call to the pass was and did -
+// including the calls that redirect nothing, which the per-pass traces never
+// saw. Twenty invocations is a handful of frames however many times the
+// pass runs per frame, and the numbers say which it is.
+void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* renderedTexture) {
+	const UInt32 invocation = ++g_invocation;
+	const bool window = invocation > 290 && invocation <= 310;
+	if (window) {
+		ResetPassStats();
+		g_sampleNextDraw = true;
+	}
+
+	const char* mode = RunInterfacePass(self, unusedEdx, renderedTexture, window);
+
+	if (window) {
+		g_sampleNextDraw = false;
+		OBVR_LOG("Hud invocation %u (%s): texture=%08X, draws=%u (dp=%u dip=%u dpup=%u "
+		         "dipup=%u), clears=%u (flags 0x%X), set target back=%u other=%u",
+		         invocation, mode, reinterpret_cast<UInt32>(renderedTexture), g_statsDraws,
+		         g_statsKind[0], g_statsKind[1], g_statsKind[2], g_statsKind[3],
+		         g_statsClears, g_statsClearFlagsSeen, g_statsMatched, g_statsOtherTargets);
+	}
 }
 
 }  // namespace
