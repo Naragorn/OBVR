@@ -277,38 +277,37 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 	// at infinity - the same place a cinema screen is, and the reason it reads
 	// as one.
 	SInt32 flatWidth = m_eye[0].destination.right - m_eye[0].destination.left;
-	SInt32 flatHeight = m_eye[0].destination.bottom - m_eye[0].destination.top;
 	const SInt32 otherWidth = m_eye[1].destination.right - m_eye[1].destination.left;
-	const SInt32 otherHeight = m_eye[1].destination.bottom - m_eye[1].destination.top;
 	if (otherWidth < flatWidth) {
 		flatWidth = otherWidth;
 	}
-	if (otherHeight < flatHeight) {
-		flatHeight = otherHeight;
-	}
 
 	flatWidth = static_cast<SInt32>(static_cast<float>(flatWidth) * menuScale);
-	flatHeight = static_cast<SInt32>(static_cast<float>(flatHeight) * menuScale);
 
-	// A screen shape rather than the headset's.
+	// The height comes from the frame's own pixel shape, never from the
+	// world's angular rectangle - and that distinction was learned from a
+	// report, not foreseen. A flat picture is 2D content: menus and videos
+	// are laid out in the frame's pixels, 2560x1440, and showing them
+	// undistorted means showing them at that shape. The world's rectangle is
+	// something else entirely - the angles the frame covers - and since
+	// MatchHeadsetFov made those angles nearly square, deriving the flat
+	// height from it squeezed every menu into a square. The main menu escaped
+	// because it is placed before the camera frustum arrives, from a 16:9-ish
+	// fallback - which is exactly how the difference was noticed: the ESC and
+	// inventory menus looked wrong and the main menu did not, on the same
+	// settings.
 	//
-	// The eye's view is nearly square, and a menu filling it is a menu wrapped
-	// around the face. A cinema screen is a rectangle in front of you, and
-	// asking for one is asking for the shape - so the height is cut to match
-	// the aspect rather than the width being stretched to it, which would make
-	// the picture bigger rather than differently shaped.
-	//
-	// The source rectangle follows, taking a matching slice from the middle of
-	// the frame, so what is shown is undistorted. What that costs is the top
-	// and bottom of whatever Oblivion drew - which for a menu centred in the
-	// frame is margin, and for a menu that reaches the edges is not. 0 keeps
-	// the frame's own shape and cuts nothing.
-	if (menuAspect > 0.1f) {
-		const SInt32 wanted = static_cast<SInt32>(static_cast<float>(flatWidth) / menuAspect);
-		if (wanted > 0 && wanted < flatHeight) {
-			flatHeight = wanted;
-		}
-	}
+	// menuAspect overrides the shape when set; the source crop below then
+	// takes a matching slice so the result is a crop rather than a squeeze.
+	const float frameAspect = m_frameHeight > 0
+	                              ? static_cast<float>(m_frameWidth) /
+	                                    static_cast<float>(m_frameHeight)
+	                              : 1.7778f;
+	const float displayAspect = menuAspect > 0.1f ? menuAspect : frameAspect;
+	SInt32 flatHeight =
+		displayAspect > 0.1f
+			? static_cast<SInt32>(static_cast<float>(flatWidth) / displayAspect)
+			: flatWidth;
 
 	for (int index = 0; index < 2; ++index) {
 		Eye& eye = m_eye[index];

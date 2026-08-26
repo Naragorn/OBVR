@@ -56,8 +56,15 @@ public:
 	//
 	// The overlay's transform and width are set once, from the configuration,
 	// when the overlay is created.
+	//
+	// probeSquare paints an opaque red square into the middle of the texture
+	// just before it is handed over. It is the instrument for a HUD that
+	// arrives as nothing: if the square reaches the headset, the overlay path
+	// works and what is missing is the layer's own alpha; if even the square
+	// does not, the display path itself is at fault. Hot reloaded through
+	// Debug.HudProbe.
 	void Submit(vr::OpenVRBackend& backend, void* gameDevice, bool captured,
-	            float distanceMetres, float widthMetres);
+	            float distanceMetres, float widthMetres, bool probeSquare);
 
 	void Destroy();
 
@@ -74,9 +81,10 @@ private:
 	UInt32 m_height = 0;
 	bool m_textureTried = false;
 
-	// The four states BeginCapture changes, in the order they are restored.
-	UInt32 m_savedStates[4] = {};
+	// The five states BeginCapture changes, in the order they are restored.
+	UInt32 m_savedStates[5] = {};
 	bool m_statesSaved = false;
+	bool m_statesReported = false;
 	bool m_captured = false;
 
 	vr::openvr::VROverlayHandle m_overlay = vr::openvr::kOverlayHandleInvalid;

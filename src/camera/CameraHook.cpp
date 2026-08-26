@@ -420,7 +420,7 @@ void MaybeSubmitHud(bool worldFrame) {
 	}
 	g_hudLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                  worldFrame, config.tracker.hudDistanceMetres,
-	                  config.tracker.hudWidthMetres);
+	                  config.tracker.hudWidthMetres, config.hudProbe);
 }
 
 void MaybePollRecenter() {

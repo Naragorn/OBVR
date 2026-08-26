@@ -284,6 +284,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.reloadEveryFrames =
 		ReadUInt("Debug", "ReloadEveryFrames", config.reloadEveryFrames, path);
 	config.dualPassProbe = ReadUInt("Debug", "DualPassProbe", config.dualPassProbe, path);
+	config.hudProbe = ReadBool("Debug", "HudProbe", config.hudProbe, path);
 }
 
 }  // namespace

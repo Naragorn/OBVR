@@ -33,6 +33,7 @@ InterfaceRedirect g_callbacks;
 // redirects, because the device this table belongs to does not exist when the
 // entry detour goes in.
 d3d9::SetRenderTargetFn g_originalSetTarget = nullptr;
+d3d9::SetRenderStateFn g_originalSetState = nullptr;
 bool g_targetHookRefused = false;
 
 // While true, any colour target the pass sets is replaced with the substitute.
@@ -50,6 +51,18 @@ SInt32 __stdcall HookedSetRenderTarget(void* self, UInt32 index, void* surface) 
 		surface = g_substitute;
 	}
 	return g_originalSetTarget(self, index, surface);
+}
+
+// While the pass is redirected, whatever colour write mask it sets keeps the
+// alpha bit. The game's own back buffer has no alpha channel, so the engine
+// is entitled to switch alpha writes off whenever it likes - but everything
+// it draws into the redirect texture with the bit off lands at alpha zero,
+// and an overlay renders alpha zero as nothing at all.
+SInt32 __stdcall HookedSetRenderState(void* self, UInt32 state, UInt32 value) {
+	if (g_redirecting && state == d3d9::kRenderStateColorWriteEnable) {
+		value |= d3d9::kColorWriteAlpha;
+	}
+	return g_originalSetState(self, state, value);
 }
 
 // Makes one table entry writable, changes it, and puts the protection back -
@@ -93,21 +106,48 @@ bool EnsureTargetHook() {
 		return false;
 	}
 
-	auto original =
+	auto originalTarget =
 		reinterpret_cast<d3d9::SetRenderTargetFn>(vtable[d3d9::kDeviceSetRenderTarget]);
-	if (original == nullptr ||
-	    !WriteTableEntry(vtable, d3d9::kDeviceSetRenderTarget,
-	                     reinterpret_cast<void*>(&HookedSetRenderTarget))) {
+	auto originalState =
+		reinterpret_cast<d3d9::SetRenderStateFn>(vtable[d3d9::kDeviceSetRenderState]);
+	if (originalTarget == nullptr || originalState == nullptr) {
 		g_targetHookRefused = true;
-		OBVR_LOG("Hud: SetRenderTarget could not be replaced, so the 2D layer stays in "
+		OBVR_LOG("Hud: the device's table holds a null method, so the 2D layer stays in "
 		         "the frame");
 		return false;
 	}
 
-	g_originalSetTarget = original;
-	OBVR_LOG("Hud: SetRenderTarget hooked at table entry %u - the 2D pass can now be "
-	         "pointed elsewhere",
-	         d3d9::kDeviceSetRenderTarget);
+	// The originals before the patches: the first call through a patched
+	// entry can arrive while this function is still on the second one.
+	g_originalSetTarget = originalTarget;
+	g_originalSetState = originalState;
+
+	if (!WriteTableEntry(vtable, d3d9::kDeviceSetRenderTarget,
+	                     reinterpret_cast<void*>(&HookedSetRenderTarget))) {
+		g_targetHookRefused = true;
+		g_originalSetTarget = nullptr;
+		g_originalSetState = nullptr;
+		OBVR_LOG("Hud: SetRenderTarget could not be replaced, so the 2D layer stays in "
+		         "the frame");
+		return false;
+	}
+	if (!WriteTableEntry(vtable, d3d9::kDeviceSetRenderState,
+	                     reinterpret_cast<void*>(&HookedSetRenderState))) {
+		// Nothing half-patched is left behind: the first entry goes back
+		// before this reports failure.
+		WriteTableEntry(vtable, d3d9::kDeviceSetRenderTarget,
+		                reinterpret_cast<void*>(originalTarget));
+		g_targetHookRefused = true;
+		g_originalSetTarget = nullptr;
+		g_originalSetState = nullptr;
+		OBVR_LOG("Hud: SetRenderState could not be replaced, so the 2D layer stays in "
+		         "the frame");
+		return false;
+	}
+
+	OBVR_LOG("Hud: SetRenderTarget and SetRenderState hooked at table entries %u and %u - "
+	         "the 2D pass can be pointed elsewhere, with its alpha kept",
+	         d3d9::kDeviceSetRenderTarget, d3d9::kDeviceSetRenderState);
 	return true;
 }
 

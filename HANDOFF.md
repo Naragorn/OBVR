@@ -1860,6 +1860,48 @@ aer" would be tuning toward the artefact.
 
 Still untested on the dual path: water reflections. Worth a look on the next play.
 
+### The first HUD run: the layer leaves the frame and arrives nowhere
+
+Three findings from one run, each with its cause or its instrument.
+
+**The redirect works and the overlay shows nothing.** The monitor lost its HUD - which is
+the redirect doing exactly what it says - and the headset gained none. Every line in the
+log reports success: pass hooked, targets hooked, texture ready, `IVROverlay_028`
+connected, `Hud: live`, SetOverlayTexture answering 0. A silent failure with two
+candidates, and a probe that separates them in one run:
+
+- *the texture is transparent.* The game's back buffer is X8R8G8B8 - no alpha channel -
+  so the engine is entitled to run with alpha writes off (`D3DRS_COLORWRITEENABLE`
+  without the 0x8 bit), and then everything it draws into OBVR's A8R8G8B8 texture lands
+  at alpha zero, which an overlay renders as nothing. Defended twice now: the write mask
+  is part of the saved-and-set states at capture, and the SetRenderState hook keeps the
+  alpha bit in whatever mask the pass sets mid-way. The mask the game was running with is
+  logged once (`Hud: states before the pass`), which is the evidence line.
+- *the display path itself.* `Debug.HudProbe` paints an opaque red square into the middle
+  of the texture after everything the game drew. Square visible in the headset: the
+  overlay path works and alpha was the whole story. Square absent: the fault is in how
+  the texture reaches the compositor - the leading suspect then is the layout dance,
+  because an overlay, unlike a scene submit, may read its texture again later, after the
+  bracket has transitioned the image back and the game has drawn the next frame into it.
+
+**ESC and inventory menus were squeezed, and the main menu was not - which named the
+bug.** The flat picture's height was derived from the world's angular rectangle, and
+MatchHeadsetFov made those angles nearly square, so every flat picture after the camera
+frustum arrived was a 16:9 frame squeezed into a square. The main menu escaped because it
+is placed before the frustum arrives, from the 16:9-ish fallback - same settings,
+different moment, and that difference is what the report pointed at. Fixed at the cause:
+a flat picture is 2D content in the frame's own pixels, so its displayed shape now comes
+from the frame's pixel aspect (or MenuAspect when set), never from the world's angles.
+
+**Water and foliage misbehave under dual pass, recorded and deliberately not chased yet.**
+Reflections appear to reset when the head moves; leaf cards turn with the view. Both are
+camera-position-dependent render state: the reflection map and the SpeedTree billboards
+are built for *a* camera, and under dual pass there are two per frame plus an engine that
+may only refresh some of that state when the camera moves far enough. The reflection has
+a plausible fix worth trying later - share pass one's reflection with pass two instead of
+re-rendering it - and the billboards are engine behaviour every VR mod of this era fights.
+Neither blocks the HUD work, and neither gets a blind fix.
+
 Also from that run, noted rather than diagnosed: the recenter key during videos was
 reported not working, but the log shows the flat re-anchor firing twice and the code on
 that path is unchanged from the run where it demonstrably worked. Watch, do not chase.

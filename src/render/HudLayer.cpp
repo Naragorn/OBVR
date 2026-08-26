@@ -13,24 +13,32 @@ namespace {
 // everything the interface did not draw should show the world behind it.
 constexpr UInt32 kTransparentBlack = 0x00000000;
 
-// The four render states BeginCapture changes, in one place so the save and
+// The five render states BeginCapture changes, in one place so the save and
 // the restore cannot disagree about which they are.
-constexpr UInt32 kAlphaStates[4] = {
+constexpr UInt32 kAlphaStates[5] = {
 	d3d9::kRenderStateSeparateAlphaBlendEnable,
 	d3d9::kRenderStateSrcBlendAlpha,
 	d3d9::kRenderStateDestBlendAlpha,
 	d3d9::kRenderStateBlendOpAlpha,
+	d3d9::kRenderStateColorWriteEnable,
 };
 
 // What they are set to: alpha accumulates as coverage, one layer over the
-// next. Without this the alpha side inherits the colour side's
-// SRCALPHA/INVSRCALPHA and the target's alpha comes out as alpha squared -
-// close, monotone, and slightly too transparent everywhere.
-constexpr UInt32 kAlphaValues[4] = {
+// next. Without the separate function the alpha side inherits the colour
+// side's SRCALPHA/INVSRCALPHA and the target's alpha comes out as alpha
+// squared - close, monotone, and slightly too transparent everywhere.
+//
+// The write mask is the one that turned out to matter: a game whose back
+// buffer has no alpha channel may run with alpha writes off, and then
+// nothing lands in the channel the overlay renders by. Set here for the
+// state as the pass begins; the SetRenderState hook keeps the bit on
+// whatever the pass sets mid-way.
+constexpr UInt32 kAlphaValues[5] = {
 	1,                        // separate alpha blending on
 	d3d9::kBlendOne,          // source contributes its full alpha
 	d3d9::kBlendInvSrcAlpha,  // what remains of the destination
 	d3d9::kBlendOpAdd,
+	d3d9::kColorWriteAll,
 };
 
 // The back buffer's size, which is the layout space the interface draws in.
@@ -145,13 +153,24 @@ void* HudLayer::BeginCapture(void* gameDevice) {
 		return nullptr;
 	}
 
-	for (int i = 0; i < 4; ++i) {
+	for (int i = 0; i < 5; ++i) {
 		getState(gameDevice, kAlphaStates[i], &m_savedStates[i]);
 	}
-	for (int i = 0; i < 4; ++i) {
+	for (int i = 0; i < 5; ++i) {
 		setState(gameDevice, kAlphaStates[i], kAlphaValues[i]);
 	}
 	m_statesSaved = true;
+
+	// What the game was running with, once, because it is evidence: a write
+	// mask without the 0x8 bit is a HUD whose alpha never left zero, and this
+	// line is what says so without another run.
+	if (!m_statesReported) {
+		m_statesReported = true;
+		OBVR_LOG("Hud: states before the pass: separate=%u srcA=%u dstA=%u op=%u "
+		         "writeMask=0x%X",
+		         m_savedStates[0], m_savedStates[1], m_savedStates[2], m_savedStates[3],
+		         m_savedStates[4]);
+	}
 
 	m_captured = true;
 	return m_surface;
@@ -169,7 +188,7 @@ void HudLayer::EndCapture() {
 	if (setState == nullptr) {
 		return;
 	}
-	for (int i = 0; i < 4; ++i) {
+	for (int i = 0; i < 5; ++i) {
 		setState(gameDevice, kAlphaStates[i], m_savedStates[i]);
 	}
 }
@@ -203,7 +222,7 @@ bool HudLayer::EnsureOverlay(vr::OpenVRBackend& backend, float distanceMetres,
 }
 
 void HudLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool captured,
-                      float distanceMetres, float widthMetres) {
+                      float distanceMetres, float widthMetres, bool probeSquare) {
 	// Consumed either way; the next frame's capture decides afresh.
 	const bool haveCapture = captured && m_captured;
 	m_captured = false;
@@ -226,6 +245,21 @@ void HudLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool capture
 	}
 	if (!m_vulkanUsable) {
 		return;
+	}
+
+	// The probe: an opaque red square, 256 pixels, dead centre, painted after
+	// everything the game drew. If it shows in the headset, the overlay path
+	// is fine and the layer's own alpha is what never arrived; if it does
+	// not, the display path itself is at fault and the alpha was never the
+	// question.
+	if (probeSquare && m_width > 512 && m_height > 512) {
+		auto colorFill = d3d9::Method<d3d9::ColorFillFn>(gameDevice, d3d9::kDeviceColorFill);
+		if (colorFill != nullptr) {
+			const SInt32 cx = static_cast<SInt32>(m_width) / 2;
+			const SInt32 cy = static_cast<SInt32>(m_height) / 2;
+			const d3d9::Rect square{cx - 128, cy - 128, cx + 128, cy + 128};
+			colorFill(gameDevice, m_surface, &square, 0xFFFF0000u);
+		}
 	}
 
 	// The same bracket the eyes go through, because the requirement is the
@@ -285,6 +319,7 @@ void HudLayer::Destroy() {
 	m_height = 0;
 	m_textureTried = false;
 	m_statesSaved = false;
+	m_statesReported = false;
 	m_captured = false;
 
 	// The overlay handle is deliberately left to the runtime: DestroyOverlay

@@ -211,6 +211,15 @@ constexpr UInt32 kBlendOne = 2;
 constexpr UInt32 kBlendInvSrcAlpha = 6;
 constexpr UInt32 kBlendOpAdd = 1;
 
+// D3DRS_COLORWRITEENABLE (d3d9types.h, line 416) and its channel bits
+// (lines 486-489). A game whose back buffer is X8R8G8B8 has no alpha channel
+// to write, so it may legitimately leave the alpha bit off - and everything
+// it draws into OBVR's A8R8G8B8 texture then lands with alpha zero, which an
+// overlay renders as nothing at all.
+constexpr UInt32 kRenderStateColorWriteEnable = 168;
+constexpr UInt32 kColorWriteAlpha = 0x8;
+constexpr UInt32 kColorWriteAll = 0xF;
+
 // D3DFMT_A8R8G8B8 (d3d9types.h, line 1378). The back buffer is X8R8G8B8 - no
 // alpha, because a screen has no use for one. The 2D layer's own texture is
 // the opposite case: the alpha channel is the whole point, it is what lets an

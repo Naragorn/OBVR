@@ -51,6 +51,13 @@ struct Config {
 	// runs. Values above 2 behave like 0.
 	UInt32 dualPassProbe = 0;
 
+	// Paints an opaque red square into the middle of the HUD overlay texture
+	// just before it is handed over - the instrument for a HUD that arrives
+	// as nothing. Square visible: the overlay path works, the layer's alpha
+	// is what is missing. Square absent: the display path itself is at
+	// fault. Hot reloaded, like the rest of [Debug].
+	bool hudProbe = false;
+
 	// true when the file was found and read.
 	bool Load(const char* fileName);
 
