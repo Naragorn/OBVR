@@ -83,6 +83,24 @@ UInt32 g_flatBurstsReported = 0;
 // can differ and the difference is the whole question.
 bool g_viewportReported[2] = {false, false};
 
+// The menu measurement.
+//
+// Menus=world put the menu on the monitor instead of in the headset, and the
+// standing traces could not say why: every one of them is spent within the
+// first second of play, and nobody opens an inventory that fast. So opening or
+// closing a menu reopens a short window, and the log gets its numbers from the
+// frames the question is actually about.
+//
+// What the window has to settle, because the first run's log gave two readings
+// that cannot both be right: the scene counter advanced once per 2D pass, which
+// says the second world render did not run, while every pass reported "already
+// captured", which only happens when the run between the two renders did. One
+// of those is being misread, and the frame line below prints both side by side
+// rather than leaving it to inference.
+UInt32 g_menuTraceLeft = 0;
+bool g_menuTraceWasUp = false;
+UInt32 g_menuTraceLastScene = 0;
+
 // Says, once, which part of the frame Oblivion is drawing into.
 //
 // OBVR now asks for a frame the game did not choose, so "the frame" and "the
@@ -157,6 +175,34 @@ void OnFrameEnd() {
 		g_headsetRenderer.HasHeldEyes());
 
 	ReportViewportOnce(delivery == FrameDelivery::Cinema);
+
+	// One line per frame for a short window after a menu opens or closes, with
+	// every number the question needs in the same place: how the frame was
+	// delivered, whether the camera pass ran, how many world renders happened
+	// since the last frame, and whether the layer OBVR is about to show has
+	// anything in it. A menu that is on the monitor and not in the headset is
+	// one of those going wrong, and guessing which costs a session each time.
+	if (menuIsUp != g_menuTraceWasUp) {
+		g_menuTraceWasUp = menuIsUp;
+		g_menuTraceLeft = 12;
+		render::ArmBetweenTrace();
+		OBVR_LOG("Menu trace: a menu just %s", menuIsUp ? "opened" : "closed");
+	}
+	if (g_menuTraceLeft > 0) {
+		--g_menuTraceLeft;
+		const UInt32 scene = render::CurrentSceneCall();
+		const char* how = delivery == FrameDelivery::Stereo
+		                      ? "stereo"
+		                      : (delivery == FrameDelivery::Cinema ? "cinema" : "held");
+		OBVR_LOG("Menu trace: %s, camera pass=%d, armed=%d, world renders this frame=%u "
+		         "(scene call %u), layer captured=%d, held pair=%d",
+		         how, hadCameraPass ? 1 : 0, g_dualArmed ? 1 : 0, scene - g_menuTraceLastScene,
+		         scene, g_hudLayer.HasCapture() ? 1 : 0,
+		         g_headsetRenderer.HasHeldEyes() ? 1 : 0);
+		g_menuTraceLastScene = scene;
+	} else {
+		g_menuTraceLastScene = render::CurrentSceneCall();
+	}
 
 	if (delivery == FrameDelivery::Stereo) {
 		g_flatFramesSinceCamera = 0;

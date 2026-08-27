@@ -969,6 +969,8 @@ bool RunHudPassBetweenScenes() {
 	return captured;
 }
 
+void ArmBetweenTrace() { g_betweenTraceLeft = 12; }
+
 void TakeInterfaceStats(UInt32& passes, UInt32& draws) {
 	passes = g_passesSinceScene;
 	draws = g_drawsSinceScene;

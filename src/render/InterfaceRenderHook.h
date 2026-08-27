@@ -79,4 +79,14 @@ void TakeInterfaceStats(UInt32& passes, UInt32& draws);
 // was captured and that pass keeps the layer, exactly as before.
 bool RunHudPassBetweenScenes();
 
+// Reopens the between-render trace for a few more runs.
+//
+// The standing budget is spent within the first second of play, which is
+// exactly the wrong second: the question that needs it is what this pass draws
+// when a menu opens, and nobody reaches an inventory that fast. So the moment a
+// menu opens or closes, the window is opened again, and the log gets the draw
+// counts from the frames that matter instead of from the frames that happened
+// to be first.
+void ArmBetweenTrace();
+
 }  // namespace obvr::render
