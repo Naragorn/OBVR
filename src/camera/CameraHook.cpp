@@ -307,13 +307,21 @@ bool PollRecenterEdge() {
 // armed them - after the camera hook, before Present. g_pendingRequest is
 // therefore this frame's request, and the node pointer is this frame's node.
 
+// The rung this frame runs on. Asked rather than read from the config so
+// that DualPassProbe=9 can walk the rungs itself - see SweepProbeStage - and
+// so that the trace, the second pass decision and the two callbacks below
+// cannot disagree about which rung a frame belonged to.
+UInt32 DualProbeRung() {
+	return SweepProbeStage(render::CurrentSceneCall(), GetConfig().dualPassProbe);
+}
+
 bool ScenePassWanted() {
 	// The same menu question, asked of the same source, as the flat decision
 	// in OnFrameEnd. The two must agree on what kind of frame this is: a
 	// frame delivered flat ignores the captures, so drawing a second pass for
 	// it would be pure cost.
 	const bool menuIsUp = GetConfig().tracker.showMenus && game::IsMenuMode();
-	return WantsSecondScenePass(g_frameOpen, g_dualArmed, menuIsUp);
+	return WantsSecondScenePass(g_frameOpen, g_dualArmed, menuIsUp, DualProbeRung());
 }
 
 // The first dual-pass run lost the GPU (VK_ERROR_DEVICE_LOST) somewhere in
@@ -328,14 +336,6 @@ bool ScenePassWanted() {
 UInt32 g_dualTraceFramesLeft = 3;
 
 bool DualTraceOn() { return g_dualTraceFramesLeft > 0; }
-
-// The rung this frame runs on. Asked here rather than read from the config
-// so that DualPassProbe=9 can walk the rungs itself - see SweepProbeStage -
-// and so that the trace and the two callbacks below cannot disagree about
-// which rung a frame belonged to.
-UInt32 DualProbeRung() {
-	return SweepProbeStage(render::CurrentSceneCall(), GetConfig().dualPassProbe);
-}
 
 void BetweenScenePasses() {
 	const UInt32 probe = DualProbeRung();

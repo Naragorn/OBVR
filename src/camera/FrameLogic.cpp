@@ -100,15 +100,19 @@ UInt32 SweepProbeStage(UInt32 sceneCall, UInt32 configured) {
 		return configured;
 	}
 	if (sceneCall < kSweepFirstBand) {
-		return 0;
+		return kProbeSinglePass;
 	}
 	if (sceneCall < kSweepSecondBand) {
 		return 1;
 	}
 	if (sceneCall < kSweepThirdBand) {
-		return 2;
+		return kProbeSinglePass;
 	}
 	return 0;
+}
+
+bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp, UInt32 probeRung) {
+	return probeRung != kProbeSinglePass && WantsSecondScenePass(frameOpen, armed, menuIsUp);
 }
 
 }  // namespace obvr::camera

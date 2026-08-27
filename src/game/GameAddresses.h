@@ -297,4 +297,22 @@ inline constexpr UInt32 kRenderInterfaceEntryLength = 7;
 // diagnosis, never something OBVR writes.
 inline constexpr UInt32 kLoadingThreadHandle = 0x00B33434;
 
+
+// The menu stack the interface pass branches on at 0057F358, and the object
+// whose [+18h] decides which of the two draw calls it makes:
+//
+//   0057F358  cmp word ptr ds:[00B1397A],6
+//   0057F360  jbe 0057F376          ; -> 005903E0
+//   0057F362  mov eax,ds:[00B13974]
+//   0057F367  mov ecx,[eax+18h]
+//   0057F36A  cmp ecx,ebx
+//   0057F36C  je 0057F376           ; -> 005903E0
+//   0057F36F  call 0058FBA0
+//
+// Both arms draw, so this branch cannot be why nothing is drawn - it is
+// logged to say which of the two paths the pass took, so a gate that closed
+// can be looked for in the right one.
+inline constexpr UInt32 kMenuStackCount = 0x00B1397A;
+inline constexpr UInt32 kMenuStackRoot = 0x00B13974;
+
 }  // namespace obvr::addr

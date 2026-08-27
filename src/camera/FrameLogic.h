@@ -220,23 +220,37 @@ bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp);
 // with it on, the 2D pass is entered every frame and draws nothing. Which
 // of the three costs the HUD its draws is the whole question, and the probe
 // answers it by cutting the stack down: 1 leaves only the second render, 2
-// adds the camera move back, 0 is the whole mechanism.
+// adds the camera move back, 0 is the whole mechanism. Rung 3 is the one
+// the ladder was missing - it cuts the second render too, so nothing of the
+// dual pass runs at all while everything around it stays as it is.
 //
-// Asking for that one rung at a time costs three runs of the game, and the
-// person running them is the slow part. So value 9 walks the rungs by world
-// render instead: whole mechanism, then second render alone, then plus the
-// camera move, then whole mechanism again. The scene trace logs the rung
-// beside what the 2D pass drew in that frame, so one run names the culprit
-// and the return to 0 at the end proves the effect follows the rung rather
-// than the passage of time.
+// The first sweep needed rung 3 and did not have it. It ran its bands from
+// world render 260 onward, and the log then showed the HUD drawing its 22
+// primitives up to the frame before the first dual pass and none after it.
+// So the bands never saw a frame with the HUD alive, and cutting the
+// captures and the camera move back off did not bring it back: whatever the
+// dual pass does, it does once and it stays done.
+//
+// Hence these bands. Rung 3 first, from the first frame, so the sweep opens
+// with the HUD drawing and the second render is the only thing that has not
+// yet happened. Then rung 1 - the second render, alone. Then rung 3 again,
+// which asks the question the first sweep could not: does the HUD come
+// back, or is the switch one way? Then the whole mechanism.
 //
 // Any other configured value passes straight through, so the existing
 // one-rung-per-run behaviour is untouched.
 inline constexpr UInt32 kProbeSweep = 9;
+inline constexpr UInt32 kProbeSinglePass = 3;
 inline constexpr UInt32 kSweepFirstBand = 260;
 inline constexpr UInt32 kSweepSecondBand = 320;
 inline constexpr UInt32 kSweepThirdBand = 380;
 UInt32 SweepProbeStage(UInt32 sceneCall, UInt32 configured);
+
+// The same question as above, with the probe rung folded in: rung 3 refuses
+// the second pass whatever the frame would otherwise have wanted. Kept as a
+// separate overload so the three-argument decision stays what it was and
+// the probe cannot quietly change it when it is not running.
+bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp, UInt32 probeRung);
 
 // Whether this frame's 2D pass should be redirected to the HUD texture.
 //

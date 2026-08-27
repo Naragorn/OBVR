@@ -413,6 +413,7 @@ void TestWantsHudRedirect() {
 void TestSweepProbeStage() {
 	std::printf("When the probe walks its own rungs\n");
 
+	using obvr::camera::kProbeSinglePass;
 	using obvr::camera::kProbeSweep;
 	using obvr::camera::kSweepFirstBand;
 	using obvr::camera::kSweepSecondBand;
@@ -432,39 +433,88 @@ void TestSweepProbeStage() {
 	// The sweep itself, band by band, each checked at its first and last
 	// world render so a band that slipped by one is a failure rather than a
 	// surprise in the log.
-	Check(SweepProbeStage(0, kProbeSweep) == 0, "the sweep opens with the whole mechanism");
-	Check(SweepProbeStage(kSweepFirstBand - 1, kProbeSweep) == 0,
+	//
+	// The opening band is the one the first sweep was missing: it has to
+	// start at the very first world render, because by render 260 the HUD
+	// had already stopped drawing and no later band could tell why.
+	Check(SweepProbeStage(0, kProbeSweep) == kProbeSinglePass,
+	      "the sweep opens with no dual pass at all, from the first frame");
+	Check(SweepProbeStage(kSweepFirstBand - 1, kProbeSweep) == kProbeSinglePass,
 	      "and stays there to the last render before the first band");
 
 	Check(SweepProbeStage(kSweepFirstBand, kProbeSweep) == 1,
-	      "the first band cuts back to the second render alone");
+	      "the first band adds the second render, and nothing else");
 	Check(SweepProbeStage(kSweepSecondBand - 1, kProbeSweep) == 1, "for the whole band");
 
-	Check(SweepProbeStage(kSweepSecondBand, kProbeSweep) == 2,
-	      "the second band puts the camera move back");
-	Check(SweepProbeStage(kSweepThirdBand - 1, kProbeSweep) == 2, "for the whole band");
+	Check(SweepProbeStage(kSweepSecondBand, kProbeSweep) == kProbeSinglePass,
+	      "the second band takes the second render away again");
+	Check(SweepProbeStage(kSweepThirdBand - 1, kProbeSweep) == kProbeSinglePass,
+	      "for the whole band");
 
 	Check(SweepProbeStage(kSweepThirdBand, kProbeSweep) == 0,
-	      "and the last band restores the whole mechanism");
+	      "and the last band runs the whole mechanism");
 	Check(SweepProbeStage(kSweepThirdBand + 10000, kProbeSweep) == 0,
-	      "and leaves it restored, however long the person stands there");
+	      "and leaves it there, however long the person stands still");
 
-	// The property the sweep rests on: it must end where it began. A rung
-	// that reads differently at the two ends would mean the log is showing
-	// the passage of time rather than the rung.
-	Check(SweepProbeStage(0, kProbeSweep) == SweepProbeStage(kSweepThirdBand, kProbeSweep),
-	      "the sweep returns to the rung it started from");
+	// The property this sweep rests on, and the one the first sweep could
+	// not test: the rung it opens with comes back partway through. If the
+	// HUD draws in the first band and not in the third, the switch is one
+	// way, and that is a different bug from one the rung keeps setting.
+	Check(SweepProbeStage(0, kProbeSweep) == SweepProbeStage(kSweepSecondBand, kProbeSweep),
+	      "the opening rung returns after the second render has been tried");
 
 	// And every world render has exactly one rung, none of them outside the
-	// three the probe knows.
+	// four the probe knows.
 	for (UInt32 call = 0; call <= kSweepThirdBand + 100; ++call) {
 		const UInt32 stage = SweepProbeStage(call, kProbeSweep);
-		if (stage > 2) {
+		if (stage > kProbeSinglePass) {
 			Check(false, "the sweep named a rung the dual pass does not have");
 			break;
 		}
 	}
 	Check(true, "every world render maps to a rung the dual pass has");
+}
+
+void TestSecondPassUnderProbe() {
+	std::printf("When the probe refuses the second pass\n");
+
+	using obvr::camera::kProbeSinglePass;
+	using obvr::camera::WantsSecondScenePass;
+
+	// Rung 3 refuses, whatever the frame wanted - that is the whole point of
+	// it, and the one flow that would otherwise have run twice.
+	Check(!WantsSecondScenePass(true, true, false, kProbeSinglePass),
+	      "the rung that cuts the second render cuts it on a frame that wanted it");
+
+	// Every other rung leaves the three-argument decision exactly as it was,
+	// across all eight of its input combinations. This is what stops the
+	// probe from changing behaviour when nobody asked it to.
+	for (UInt32 rung = 0; rung < 3; ++rung) {
+		for (int bits = 0; bits < 8; ++bits) {
+			const bool frameOpen = (bits & 1) != 0;
+			const bool armed = (bits & 2) != 0;
+			const bool menuIsUp = (bits & 4) != 0;
+			if (WantsSecondScenePass(frameOpen, armed, menuIsUp, rung) !=
+			    WantsSecondScenePass(frameOpen, armed, menuIsUp)) {
+				Check(false, "a probe rung changed a decision it has no business changing");
+				return;
+			}
+		}
+	}
+	Check(true, "every other rung leaves the decision exactly as it was");
+
+	// And the refusal does not resurrect a frame that had no second pass to
+	// begin with: rung 3 refuses those too, rather than flipping them.
+	for (int bits = 0; bits < 8; ++bits) {
+		const bool frameOpen = (bits & 1) != 0;
+		const bool armed = (bits & 2) != 0;
+		const bool menuIsUp = (bits & 4) != 0;
+		if (WantsSecondScenePass(frameOpen, armed, menuIsUp, kProbeSinglePass)) {
+			Check(false, "the cutting rung let a second pass through");
+			return;
+		}
+	}
+	Check(true, "the cutting rung refuses every frame, however the frame was shaped");
 }
 
 int main() {
@@ -493,6 +543,8 @@ int main() {
 	TestWantsHudRedirect();
 	std::printf("\n");
 	TestSweepProbeStage();
+	std::printf("\n");
+	TestSecondPassUnderProbe();
 	std::printf("\n");
 	TestFrameClock();
 	std::printf("\n");

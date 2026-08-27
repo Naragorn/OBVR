@@ -777,6 +777,59 @@ const char* RunInterfacePass(void* self, void* unusedEdx, void* renderedTexture,
 	return "redirected";
 }
 
+// The gates between entering the pass and drawing anything, read straight
+// out of the object the pass was called on.
+//
+// That object is the interface manager: 0057929E calls the pass with ecx
+// holding what 00582160 just returned. So the gates its own code reads by
+// offset can be read here by offset too, with no call into the game and no
+// guess about which frame the numbers belong to.
+//
+// The gates, in the order the game reaches them:
+//
+//   [+1Ch]   00579280, the wrapper's second gate - null and the pass is
+//            never entered at all
+//   menus    0057F358, which of the two draw calls the pass makes
+//   [+68h]   005903EC, the root 005903E0 hands to the drawing code - null
+//            and it draws nothing and returns
+//   [+68h]+5 0058FBA6, the first thing the drawing code tests; non-zero
+//            and it leaves before drawing or clearing anything
+//   [+B8h]   005903FD, the flag that decides whether 005903E0 tail-calls on
+//            to 004A25F0 afterwards
+//
+// The run this exists for showed 22 primitives at invocation 220 and none
+// from 240 on, with the first dual pass in between - so one of these went
+// from open to shut across that boundary, and stayed shut when the dual
+// pass was cut back off again.
+void LogInterfaceGates(void* self, UInt32 invocation) {
+	if (self == nullptr) {
+		OBVR_LOG("Hud gates at invocation %u: the pass was called on nothing", invocation);
+		return;
+	}
+
+	const auto* manager = static_cast<const char*>(self);
+	const UInt32 wrapperGate = *reinterpret_cast<const UInt32*>(manager + 0x1C);
+	const UInt32 root = *reinterpret_cast<const UInt32*>(manager + 0x68);
+	const UInt32 tailFlag = *reinterpret_cast<const UInt8*>(manager + 0xB8);
+
+	// Only reachable through a root the game itself dereferences one
+	// instruction later, so a null here is the finding rather than a crash.
+	UInt32 rootFlag = 0xFFu;
+	if (root != 0) {
+		rootFlag = *reinterpret_cast<const UInt8*>(root + 5);
+	}
+
+	const UInt32 menuCount = *reinterpret_cast<const UInt16*>(addr::kMenuStackCount);
+	const UInt32 menuRoot = *reinterpret_cast<const UInt32*>(addr::kMenuStackRoot);
+	const UInt32 menuRootEntry =
+		menuRoot != 0 ? *reinterpret_cast<const UInt32*>(menuRoot + 0x18) : 0;
+
+	OBVR_LOG("Hud gates at invocation %u: [+1Ch]=%08X, [+68h]=%08X, [+68h]+5=%02X, "
+	         "[+B8h]=%u, menus=%u root=%08X entry=%08X",
+	         invocation, wrapperGate, root, rootFlag, tailFlag, menuCount, menuRoot,
+	         menuRootEntry);
+}
+
 // The entry detour target. Numbers the invocations, and counts what each one
 // drew - including the calls that redirect nothing, which the per-pass traces
 // never saw.
@@ -802,7 +855,7 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 		g_drawsSinceScene += g_statsDraws;
 	}
 
-	if (window && invocation % 20 == 0) {
+	if (window && invocation % 10 == 0) {
 
 		// The fade at [this+4]+0x2C, read at 0057F27A. Logged as context,
 		// not as a gate: the branch there skips the block at 0057F292 when
@@ -825,6 +878,7 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 		         static_cast<double>(fade), g_statsDraws, g_statsKind[0], g_statsKind[1],
 		         g_statsKind[2], g_statsKind[3], g_statsClears, g_statsClearFlagsSeen,
 		         g_statsMatched, g_statsOtherTargets);
+		LogInterfaceGates(self, invocation);
 	}
 }
 
