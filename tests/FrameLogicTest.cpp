@@ -392,6 +392,35 @@ void TestDeliverFrame() {
 	}
 }
 
+void TestMenusCanReachTheWorld() {
+	std::printf("When a menu asked to hang in the world actually can\n");
+
+	using obvr::camera::DeliverFrame;
+	using obvr::camera::FrameDelivery;
+	using obvr::camera::MenusCanReachTheWorld;
+
+	Check(MenusCanReachTheWorld(true, true), "asked for, and the overlay is there to carry it");
+	Check(!MenusCanReachTheWorld(false, true), "not asked for");
+
+	// The fault this exists to prevent, and it is not a cosmetic one: the eyes
+	// are captured before the 2D pass draws, so without the overlay the world
+	// goes out in stereo with the menu neither in it nor in front of it. The
+	// wearer would be looking at a menu that is simply not there, with nothing
+	// on screen to say why.
+	Check(!MenusCanReachTheWorld(true, false),
+	      "asked for, but with no overlay the menu would arrive nowhere at all");
+	Check(!MenusCanReachTheWorld(false, false), "neither");
+
+	// And the consequence, said through the decision it feeds: with the
+	// overlay off, a menu frame goes to the cinema screen, where the menu is
+	// part of the picture and therefore visible.
+	for (int pass = 0; pass < 2; ++pass) {
+		Check(DeliverFrame(pass != 0, true, MenusCanReachTheWorld(true, false), true) ==
+		          FrameDelivery::Cinema,
+		      "with the overlay off a menu falls back to the screen, where it can be seen");
+	}
+}
+
 void TestWantsSecondScenePass() {
 	std::printf("When the world render runs twice\n");
 
@@ -665,6 +694,8 @@ int main() {
 	TestBackBufferEye();
 	std::printf("\n");
 	TestDeliverFrame();
+	std::printf("\n");
+	TestMenusCanReachTheWorld();
 	std::printf("\n");
 	TestWantsSecondScenePass();
 	std::printf("\n");

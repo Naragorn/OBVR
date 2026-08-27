@@ -434,9 +434,20 @@ bool Config::Load(const char* fileName) {
 	         tracker.hudAnchorWorld ? "world" : "head",
 	         static_cast<double>(tracker.hudDistanceMetres),
 	         static_cast<double>(tracker.hudWidthMetres));
+	// The suppressed case is named rather than silently corrected. Menus=world
+	// without HudOverlay would deliver the world in stereo with the menu
+	// nowhere at all - the eyes are captured before the 2D pass draws, so the
+	// overlay is the only route a menu has - and a person who set it would
+	// otherwise be looking for a menu that was never going to arrive.
 	OBVR_LOG("Config: Render.ShowMenus=%d Menus=%s (videos and loading screens take the "
 	         "cinema screen either way)",
-	         tracker.showMenus ? 1 : 0, tracker.menusInWorld ? "world" : "cinema");
+	         tracker.showMenus ? 1 : 0,
+	         !tracker.menusInWorld ? "cinema"
+	                               : (tracker.hudOverlay
+	                                      ? "world"
+	                                      : "world, but HudOverlay is off, so the cinema "
+	                                        "screen is used - the overlay is the only way a "
+	                                        "menu reaches the headset"));
 	if (tracker.stereo == vr::StereoMode::DualPass) {
 		// The known limit, stated up front rather than discovered in the
 		// headset: the 2D layer draws after both passes, into the frame the

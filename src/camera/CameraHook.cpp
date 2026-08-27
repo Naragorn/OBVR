@@ -151,9 +151,10 @@ void OnFrameEnd() {
 	// Gated on ShowMenus: with menus switched off there is no flat presentation
 	// to hold steady, so the question does not arise.
 	const bool menuIsUp = GetConfig().tracker.showMenus && game::IsMenuMode();
-	const FrameDelivery delivery =
-		DeliverFrame(hadCameraPass, menuIsUp, GetConfig().tracker.menusInWorld,
-	                 g_headsetRenderer.HasHeldEyes());
+	const FrameDelivery delivery = DeliverFrame(
+		hadCameraPass, menuIsUp,
+		MenusCanReachTheWorld(GetConfig().tracker.menusInWorld, GetConfig().tracker.hudOverlay),
+		g_headsetRenderer.HasHeldEyes());
 
 	ReportViewportOnce(delivery == FrameDelivery::Cinema);
 
@@ -356,9 +357,12 @@ bool ScenePassWanted() {
 	// is: a frame bound for the cinema screen ignores the captures, so drawing
 	// a second pass for it would be pure cost - while a menu delivered in the
 	// world is a stereo frame like any other and wants both eyes.
-	const bool menuIsUp = GetConfig().tracker.showMenus && game::IsMenuMode();
-	return WantsSecondScenePass(g_frameOpen, g_dualArmed, menuIsUp,
-	                            GetConfig().tracker.menusInWorld, DualProbeRung());
+	const Config& config = GetConfig();
+	const bool menuIsUp = config.tracker.showMenus && game::IsMenuMode();
+	return WantsSecondScenePass(
+		g_frameOpen, g_dualArmed, menuIsUp,
+		MenusCanReachTheWorld(config.tracker.menusInWorld, config.tracker.hudOverlay),
+		DualProbeRung());
 }
 
 // The first dual-pass run lost the GPU (VK_ERROR_DEVICE_LOST) somewhere in
@@ -466,7 +470,9 @@ void* HudBeginRedirect() {
 	// back buffer, which is exactly what that path then shows; on one bound
 	// for the world the layer is what the overlay exists to carry.
 	const bool menuIsUp = config.tracker.showMenus && game::IsMenuMode();
-	if (!WantsHudRedirect(g_frameOpen, menuIsUp, config.tracker.menusInWorld)) {
+	if (!WantsHudRedirect(
+	        g_frameOpen, menuIsUp,
+	        MenusCanReachTheWorld(config.tracker.menusInWorld, config.tracker.hudOverlay))) {
 		return nullptr;
 	}
 

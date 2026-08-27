@@ -225,6 +225,21 @@ enum class FrameDelivery {
 FrameDelivery DeliverFrame(bool hadCameraPass, bool menuIsUp, bool menusInWorld,
                            bool haveHeldEyes);
 
+// Whether a menu can actually be delivered in the world, given the rest of the
+// configuration.
+//
+// Menus=world without HudOverlay is a menu nobody can see. The eyes are
+// captured before the 2D pass draws, so the only route a menu has into the
+// headset is the overlay - take that away and the world is delivered in stereo
+// with the menu neither in it nor in front of it. On the cinema screen the same
+// combination is harmless, because there the menu is in the picture.
+//
+// So the two settings are asked together, at every point that acts on the
+// choice, rather than being validated once at load: the INI is hot reloaded,
+// and a rule enforced only at load is a rule that stops holding the moment
+// somebody edits the file with the game running.
+bool MenusCanReachTheWorld(bool menusInWorld, bool hudOverlay);
+
 // Whether this frame's world render should run twice, once per eye.
 //
 // Three conditions, and all of them have to hold.

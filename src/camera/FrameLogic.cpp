@@ -118,6 +118,10 @@ FrameDelivery DeliverFrame(bool hadCameraPass, bool menuIsUp, bool menusInWorld,
 	return haveHeldEyes ? FrameDelivery::HeldStereo : FrameDelivery::Cinema;
 }
 
+bool MenusCanReachTheWorld(bool menusInWorld, bool hudOverlay) {
+	return menusInWorld && hudOverlay;
+}
+
 bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp, bool menusInWorld) {
 	return frameOpen && armed && (!menuIsUp || menusInWorld);
 }
