@@ -222,8 +222,26 @@ enum class FrameDelivery {
 // and so is any menu opened while the dual pass is off. Asking here rather
 // than letting the submit discover it means the frame falls back to the cinema
 // screen, which is a picture, instead of to the test pattern, which is not.
+// heldLastFrame closes the seam on the way out of a menu.
+//
+// Closing one costs a frame in which the menu is already gone and the world has
+// not been drawn yet: no camera pass, no menu. That is the cinema screen by
+// every other rule, and for one frame the wearer got the flat picture with its
+// black bars - seen as a picture flashing up in the middle on every close.
+//
+// Worse, the cinema path is where the eye copies are filled with that letterboxed
+// layout, so the pair the next menu went on to hold was not the world at all. The
+// bars were not left over from anything; they were made fresh each time a menu
+// closed.
+//
+// So a frame that follows a menu that was being held keeps holding. It lasts
+// exactly one frame, because the caller only sets this for a held frame that had
+// a menu up - the seam frame itself clears it. A loading screen that opens
+// without a menu before it is unaffected, and one that follows a menu loses a
+// single frame to the world behind it, which is not visible and is the cheaper of
+// the two mistakes.
 FrameDelivery DeliverFrame(bool hadCameraPass, bool menuIsUp, bool menusInWorld,
-                           bool haveHeldEyes);
+                           bool haveHeldEyes, bool heldLastFrame);
 
 // Whether a menu can actually be delivered in the world, given the rest of the
 // configuration.

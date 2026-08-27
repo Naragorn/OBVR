@@ -1716,6 +1716,27 @@ drawn over the last one, smearing the cursor. It is keyed on a presented-frame c
 And the held path submits the overlay only when that frame captured something, because
 submitting an empty capture hides the overlay and would blink the menu in and out.
 
+**The closing seam, and where the black bars came from.** Closing a menu leaves one frame
+with the menu already gone and the world not drawn yet - no camera pass, no menu - which by
+every other rule is the cinema screen. Two faults came out of that single frame.
+
+It was visible directly, as a picture flashing up in the middle of every close. And it was
+visible indirectly, a menu later: the cinema path fills the same two eye copies a held
+submit sends, and it fills them letterboxed, so the pair the *next* menu held was the flat
+picture with black bars rather than the world. The bars were not left over from anything -
+they were made fresh on every close.
+
+So a frame that follows a *held menu* keeps holding, for exactly one frame:
+`g_heldForMenu` is set only for a held frame that had a menu up, and the seam frame has no
+menu of its own, so it clears the flag on its way through. A loading screen reached without
+a menu before it is untouched; one reached through a menu loses a single frame to the world
+behind it, which is not visible and is the cheaper of the two mistakes.
+
+`m_heldPoseValid` is also cleared where the cinema path overwrites the copies, rather than
+left for the held path to discover. Belt and braces on purpose: the seam is closed by the
+delivery rule above, but any future cinema frame between two menus would poison the pair
+the same way, and the fix for that belongs at the overwrite.
+
 Still open from the same log, deliberately not chased here: the frame line reported one
 world render per frame while the dual pass was live and reporting 20 draws between its two
 renders. One of those two readings is wrong and it is not the menu question, so it is

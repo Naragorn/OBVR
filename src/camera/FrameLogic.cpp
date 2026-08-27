@@ -88,11 +88,19 @@ float ScaledEyeHalfSeparation(float halfUnits, float scale) {
 }
 
 FrameDelivery DeliverFrame(bool hadCameraPass, bool menuIsUp, bool menusInWorld,
-                           bool haveHeldEyes) {
+                           bool haveHeldEyes, bool heldLastFrame) {
 	// Nothing drew a world, so there is no viewpoint to claim and no stereo
 	// pair to hold. Videos, loading screens and the main menu land here, and
 	// they land here whatever menusInWorld says.
 	if (!hadCameraPass && !menuIsUp) {
+		// Except for the one frame that closes a menu, where the menu is gone
+		// and the world has not come back yet. Screening that frame is a flash
+		// of the flat picture in the middle of an otherwise smooth close - and
+		// it fills the eye copies with the letterboxed layout, which is where
+		// the next menu's black bars came from. See the header.
+		if (heldLastFrame && haveHeldEyes) {
+			return FrameDelivery::HeldStereo;
+		}
 		return FrameDelivery::Cinema;
 	}
 

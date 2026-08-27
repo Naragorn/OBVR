@@ -115,6 +115,14 @@ UInt32 g_menuTraceLastScene = 0;
 // the same number and the next frame sees a new one.
 UInt32 g_presentedFrame = 0;
 
+// Whether the previous frame was a menu being held in the world.
+//
+// Set only for a held frame that had a menu up, so the seam frame that closes
+// the menu - menu already gone, world not yet drawn - sees it and keeps
+// holding, and then clears it because it has no menu of its own. One frame of
+// grace, which is exactly the length of the seam. See DeliverFrame.
+bool g_heldForMenu = false;
+
 // Says, once, which part of the frame Oblivion is drawing into.
 //
 // OBVR now asks for a frame the game did not choose, so "the frame" and "the
@@ -191,7 +199,12 @@ void OnFrameEnd() {
 	const FrameDelivery delivery = DeliverFrame(
 		hadCameraPass, menuIsUp,
 		MenusCanReachTheWorld(GetConfig().tracker.menusInWorld, GetConfig().tracker.hudOverlay),
-		g_headsetRenderer.HasHeldEyes());
+		g_headsetRenderer.HasHeldEyes(), g_heldForMenu);
+
+	// Armed for the seam frame that closes a menu, and only for that: a held
+	// frame with no menu of its own is the seam, and it clears this on its way
+	// through, so the grace never lasts into a loading screen.
+	g_heldForMenu = delivery == FrameDelivery::HeldStereo && menuIsUp;
 
 	ReportViewportOnce(delivery == FrameDelivery::Cinema);
 
@@ -554,7 +567,7 @@ void* HudBeginRedirect() {
 	const FrameDelivery delivery = DeliverFrame(
 		g_frameOpen, menuIsUp,
 		MenusCanReachTheWorld(config.tracker.menusInWorld, config.tracker.hudOverlay),
-		g_headsetRenderer.HasHeldEyes());
+		g_headsetRenderer.HasHeldEyes(), g_heldForMenu);
 	if (!WantsHudRedirect(delivery)) {
 		return nullptr;
 	}

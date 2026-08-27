@@ -499,6 +499,15 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 		// to both, with nothing claimed about where the head was. A menu has
 		// no viewpoint to be wrong about, and asserting one would have the
 		// compositor warp a flat image as the head moved.
+		//
+		// This copy lands in the same two images a held submit sends, and it
+		// lands there letterboxed - so whatever was being held is gone the
+		// moment one of these runs. Said here, where the overwrite happens,
+		// rather than left for the held path to discover: a stale flag there
+		// meant the next menu held a flat picture with black bars down the
+		// sides and called it the world.
+		m_heldPoseValid = false;
+
 		if (!m_mirror.CopyBackBuffer(request.gameDevice, true, true)) {
 			return false;
 		}
