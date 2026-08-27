@@ -52,4 +52,27 @@ bool BuildGamePath(const char* fileName, char* out, UInt32 outSize) {
 	return BuildFrom(nullptr, fileName, out, outSize);
 }
 
+
+bool AppendToPath(const char* base, const char* suffix, char* out, UInt32 outSize) {
+	UInt32 needed = 0;
+	while (base[needed] != '\0') {
+		++needed;
+	}
+	UInt32 suffixLength = 0;
+	while (suffix[suffixLength] != '\0') {
+		++suffixLength;
+	}
+	if (needed + suffixLength + 1 > outSize) {
+		return false;
+	}
+	for (UInt32 i = 0; i < needed; ++i) {
+		out[i] = base[i];
+	}
+	for (UInt32 i = 0; i < suffixLength; ++i) {
+		out[needed + i] = suffix[i];
+	}
+	out[needed + suffixLength] = '\0';
+	return true;
+}
+
 }  // namespace obvr::platform

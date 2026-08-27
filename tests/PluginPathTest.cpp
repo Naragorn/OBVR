@@ -91,6 +91,28 @@ void TestBufferTooSmall() {
 	      "a buffer that fits the directory but not the file name is refused");
 }
 
+
+// Every flow of AppendToPath: a fit, an exact fit, the miss by one byte,
+// and the untouched-output promise of the refusing flow.
+void TestAppendToPath() {
+	std::printf("Appending a suffix to a path\n");
+
+	char out[16];
+	Check(obvr::platform::AppendToPath("OBVR.log", ".prev", out, sizeof(out)),
+	      "a fitting suffix is accepted");
+	Check(std::strcmp(out, "OBVR.log.prev") == 0, "base and suffix are joined");
+
+	Check(obvr::platform::AppendToPath("123456789", ".12345", out, sizeof(out)),
+	      "an exact fit fills the buffer to its last byte");
+	Check(std::strcmp(out, "123456789.12345") == 0, "fifteen characters and the terminator");
+
+	out[0] = 'x';
+	out[1] = '\0';
+	Check(!obvr::platform::AppendToPath("123456789", ".123456", out, sizeof(out)),
+	      "one byte over is refused");
+	Check(std::strcmp(out, "x") == 0, "a refused append leaves the output untouched");
+}
+
 void TestPluginAnchorOnceKnown() {
 	std::printf("Plugin anchor once the module handle is known\n");
 
@@ -123,6 +145,8 @@ int main() {
 	TestGameAnchor();
 	std::printf("\n");
 	TestBufferTooSmall();
+	std::printf("\n");
+	TestAppendToPath();
 	std::printf("\n");
 	TestPluginAnchorOnceKnown();
 

@@ -44,6 +44,7 @@ OBVR_IMPORT BOOL OBVR_STDCALL VirtualFree(void* address, UInt32 size, DWORD free
 OBVR_IMPORT HANDLE OBVR_STDCALL GetCurrentProcess();
 OBVR_IMPORT BOOL OBVR_STDCALL FlushInstructionCache(HANDLE process, const void* baseAddress, UInt32 size);
 OBVR_IMPORT HANDLE OBVR_STDCALL CreateFileA(const char* fileName, DWORD access, DWORD shareMode, void* security, DWORD creation, DWORD flags, HANDLE templateFile);
+OBVR_IMPORT int OBVR_STDCALL MoveFileExA(const char* existingName, const char* newName, DWORD flags);
 OBVR_IMPORT BOOL OBVR_STDCALL WriteFile(HANDLE file, const void* buffer, DWORD bytes, DWORD* written, void* overlapped);
 OBVR_IMPORT BOOL OBVR_STDCALL CloseHandle(HANDLE object);
 

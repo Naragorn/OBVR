@@ -49,6 +49,16 @@ void Open(const char* fileName) {
 		return;
 	}
 
+
+	// One start ago is often exactly the run a question is about: the game
+	// is restarted, CREATE_ALWAYS truncates, and the log of the run that
+	// showed the fault is gone. So the previous log survives one generation
+	// under its own name. MOVEFILE_REPLACE_EXISTING is winbase.h's 0x1.
+	char previous[512];
+	if (platform::AppendToPath(path, ".prev", previous, sizeof(previous))) {
+		MoveFileExA(path, previous, 0x1);
+	}
+
 	g_file = CreateFileA(path, GENERIC_WRITE, FILE_SHARE_READ, nullptr,
 	                     CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
 }

@@ -33,4 +33,9 @@ bool BuildPluginPath(const char* fileName, char* out, UInt32 outSize);
 // as a log, wrong for anything a mod wants to ship.
 bool BuildGamePath(const char* fileName, char* out, UInt32 outSize);
 
+// "<base><suffix>", for deriving one file's sibling from another's full
+// path - the log's .prev neighbour. Returns false if the result does not
+// fit, and leaves out untouched in that case.
+bool AppendToPath(const char* base, const char* suffix, char* out, UInt32 outSize);
+
 }  // namespace obvr::platform
