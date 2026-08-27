@@ -60,4 +60,23 @@ bool IsInterfaceRenderHooked();
 // entered and left without drawing, which is where the dual pass puts it.
 void TakeInterfaceStats(UInt32& passes, UInt32& draws);
 
+// Runs the 2D pass now, redirected, and says whether anything was captured.
+//
+// For the moment between the two world renders of a dual frame, which the
+// probe sweep showed is the only moment in such a frame when the pass draws
+// at all: with the world rendered once it draws its 21 primitives, with it
+// rendered twice the same pass walks past every open gate and draws and
+// clears nothing, and cutting the second render back off restores it inside
+// the same run. So the layer is taken where it exists rather than waited for
+// where it does not.
+//
+// It also happens to be the right moment for the overlay: the eye pictures
+// are captured just before this, so a layer drawn here is OBVR's alone and
+// never lands in the world picture.
+//
+// True means the game's own later pass will be left alone rather than
+// redirected, so it cannot clear what this one filled. False means nothing
+// was captured and that pass keeps the layer, exactly as before.
+bool RunHudPassBetweenScenes();
+
 }  // namespace obvr::render

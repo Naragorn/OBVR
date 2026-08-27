@@ -200,6 +200,30 @@ struct TrackerSettings {
 	// Off by default until it has been seen in a headset.
 	bool hudOverlay = false;
 
+	// Whether the 2D pass is run between the two world renders rather than
+	// waited for after them.
+	//
+	// This exists because of what the probe sweep measured. With the world
+	// rendered once, the 2D pass draws its 21 primitives; with it rendered
+	// twice, the same pass is entered, walks past every gate with all of
+	// them open, and draws nothing and clears nothing. Cutting the second
+	// render back off restores it within the same run, so the state the pass
+	// depends on is per frame and recovers on its own - it is not a switch
+	// that stays thrown.
+	//
+	// That leaves exactly one moment in a dual frame when the renderer is in
+	// the state the pass needs: after the first render, before the second.
+	// Which is where the overlay wants the layer anyway, because the eye
+	// pictures are captured without it. So instead of asking why the second
+	// render leaves the pass unable to draw - a question the disassembly has
+	// not answered across the interface manager's gates, none of which
+	// close - the pass is run where it demonstrably works.
+	//
+	// The pass the game itself makes later still happens and still draws
+	// nothing; it is left alone rather than suppressed, and the redirect
+	// declines it so it cannot clear the texture this one filled.
+	bool hudBetweenPasses = false;
+
 	// Where the overlay hangs: straight ahead of the head, this far away, in
 	// metres. Head-relative, so it rides with the wearer like a cockpit HUD.
 	float hudDistanceMetres = 1.2f;

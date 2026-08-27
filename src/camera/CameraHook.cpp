@@ -353,6 +353,22 @@ void BetweenScenePasses() {
 		}
 	}
 
+	// The 2D layer, taken here because here is where it still draws. After
+	// the second render the same pass is entered with every gate open and
+	// draws nothing; before it, with one world rendered, it draws exactly
+	// what a mono frame draws. See Tracker::hudBetweenPasses.
+	//
+	// After the capture above, so the layer never reaches the eye pictures,
+	// and before the camera moves, so it is drawn from the viewpoint the
+	// game itself computed.
+	if (GetConfig().tracker.hudBetweenPasses) {
+		const bool captured = render::RunHudPassBetweenScenes();
+		if (DualTraceOn()) {
+			OBVR_LOG("Dual trace: the 2D layer was %s between the renders",
+			         captured ? "captured" : "not captured");
+		}
+	}
+
 	// To the right eye, the way the game itself moves the camera: edit the
 	// local transform, then have the engine recompute the world transform
 	// downward. Render re-reads the camera node's position at the start of

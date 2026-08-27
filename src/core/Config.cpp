@@ -257,6 +257,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Render", "MatchHeadsetFov", config.tracker.matchHeadsetFov, path);
 	config.tracker.hudOverlay =
 		ReadBool("Render", "HudOverlay", config.tracker.hudOverlay, path);
+	config.tracker.hudBetweenPasses =
+		ReadBool("Render", "HudBetweenPasses", config.tracker.hudBetweenPasses, path);
 	config.tracker.hudDistanceMetres =
 		ReadFloat("Render", "HudDistanceMetres", config.tracker.hudDistanceMetres, path);
 	config.tracker.hudWidthMetres =
@@ -375,8 +377,9 @@ bool Config::Load(const char* fileName) {
 	OBVR_LOG("Config: Render.MatchHeadsetFov=%d SetGameResolution=%d (%ux%u)",
 	         tracker.matchHeadsetFov ? 1 : 0, tracker.setRenderSize ? 1 : 0,
 	         tracker.renderWidth, tracker.renderHeight);
-	OBVR_LOG("Config: Render.HudOverlay=%d Distance=%.2fm Width=%.2fm",
-	         tracker.hudOverlay ? 1 : 0, static_cast<double>(tracker.hudDistanceMetres),
+	OBVR_LOG("Config: Render.HudOverlay=%d BetweenPasses=%d Distance=%.2fm Width=%.2fm",
+	         tracker.hudOverlay ? 1 : 0, tracker.hudBetweenPasses ? 1 : 0,
+	         static_cast<double>(tracker.hudDistanceMetres),
 	         static_cast<double>(tracker.hudWidthMetres));
 	if (tracker.stereo == vr::StereoMode::DualPass) {
 		// The known limit, stated up front rather than discovered in the

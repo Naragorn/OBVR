@@ -116,6 +116,29 @@ UInt32 g_invocation = 0;
 UInt32 g_passesSinceScene = 0;
 UInt32 g_drawsSinceScene = 0;
 
+// The last object the game called the pass on - the interface manager, which
+// 0057929E hands over in ecx. Kept so the pass can be run at a moment of
+// OBVR's choosing without calling 00582160 to fetch it: the game has already
+// fetched it, this frame or the one before, and the pointer is a singleton
+// that outlives the frame.
+void* g_lastSelf = nullptr;
+
+// Whether the layer has already been captured this frame by the run between
+// the world renders. The game's own pass still happens afterwards and is
+// left to run, but it must not be redirected a second time: it draws
+// nothing and would clear the texture this one just filled.
+bool g_hudCapturedThisFrame = false;
+
+// The first few between-render runs, reported once each, so the log says
+// whether the pass draws at that moment - which is the whole premise.
+UInt32 g_betweenTraceLeft = 5;
+
+// The one outcome of RunInterfacePass that means something was put into
+// OBVR's texture. Named so the caller can compare pointers rather than
+// first letters: every outcome is a literal from this file, so identity is
+// exact where a character test would quietly match a future "restored".
+const char* const kModeRedirected = "redirected";
+
 // How many first-draw pipeline samples may still be written. The window
 // arms the sample for up to twenty invocations, and six full matrix dumps
 // is what the log can carry before it stops being readable.
@@ -566,6 +589,17 @@ const char* RunInterfacePass(void* self, void* unusedEdx, void* renderedTexture,
 		return "texture pass";
 	}
 
+	// Already captured between the world renders. The game's own pass runs,
+	// watched, but nothing of OBVR's is aimed at: redirecting it would hand
+	// the texture to a pass that draws nothing and clears on its way in.
+	if (g_hudCapturedThisFrame) {
+		g_hudCapturedThisFrame = false;
+		g_observing = watching;
+		g_original(self, unusedEdx, renderedTexture);
+		g_observing = false;
+		return "already captured";
+	}
+
 	void* substitute = g_callbacks.beginRedirect();
 	if (substitute == nullptr) {
 		g_observing = watching;
@@ -775,7 +809,7 @@ const char* RunInterfacePass(void* self, void* unusedEdx, void* renderedTexture,
 	}
 
 	g_callbacks.endRedirect();
-	return "redirected";
+	return kModeRedirected;
 }
 
 // The gates between entering the pass and drawing anything, read straight
@@ -862,6 +896,7 @@ void LogInterfaceGates(void* self, UInt32 invocation) {
 void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* renderedTexture) {
 	const UInt32 invocation = ++g_invocation;
 	++g_passesSinceScene;
+	g_lastSelf = self;
 	const bool window = invocation > 150 && invocation <= 1400;
 	if (window) {
 		ResetPassStats();
@@ -905,6 +940,34 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 }
 
 }  // namespace
+
+bool RunHudPassBetweenScenes() {
+	if (g_original == nullptr || g_lastSelf == nullptr || g_hudCapturedThisFrame) {
+		return false;
+	}
+
+	// The same call the game makes at 0057929E: the interface manager in
+	// ecx, a null texture argument for the frame's own 2D layer. Run through
+	// the same redirect path as a hooked pass, so the layer lands in OBVR's
+	// texture rather than in the back buffer the eyes were just copied from.
+	ResetPassStats();
+	const char* mode = RunInterfacePass(g_lastSelf, nullptr, nullptr, true);
+	const UInt32 drew = g_statsDraws;
+
+	// Only a pass that was actually redirected has put anything anywhere, so
+	// only that one gets to tell the game's later pass to stand down.
+	const bool captured = drew > 0 && mode == kModeRedirected;
+	g_hudCapturedThisFrame = captured;
+
+	if (g_betweenTraceLeft > 0) {
+		--g_betweenTraceLeft;
+		OBVR_LOG("Hud between renders (%s): drew %u, cleared %u (flags 0x%X) - %s", mode,
+		         drew, g_statsClears, g_statsClearFlagsSeen,
+		         captured ? "the layer is OBVR's for this frame"
+		                  : "nothing captured, the game's own pass still owns it");
+	}
+	return captured;
+}
 
 void TakeInterfaceStats(UInt32& passes, UInt32& draws) {
 	passes = g_passesSinceScene;
