@@ -65,6 +65,21 @@ public:
 		// up, so loading a game means taking it off. Which is a fail, and was
 		// reported as one.
 		bool flatFrame = false;
+
+		// Send the last captured pair out again, unchanged.
+		//
+		// For a menu delivered in the world on a frame where Oblivion did not
+		// redraw what is behind it. The alternative - falling back to the
+		// cinema screen for those frames - is the menu flicker: the two
+		// deliveries alternating at frame rate.
+		//
+		// Nothing is stale about it. The world is paused, so the picture is
+		// still true; what has moved is the head, and the compositor corrects
+		// for exactly that, given the pose the pair was drawn from. Which is
+		// why this path hands one over rather than letting the compositor
+		// assume this frame's.
+		bool heldEyes = false;
+
 		bool isLeftEye = true;
 
 		// Whether the back buffer already holds this frame's picture.
@@ -153,6 +168,11 @@ public:
 	// only way to watch it was to look up at it.
 	void ResetFlatAnchor() { m_flatPoseValid = false; }
 
+	// Whether a captured pair is standing by that a held submit could send
+	// again. False until the first dual frame has been captured, which is what
+	// keeps a menu opened before then off the held path. See DeliverFrame.
+	bool HasHeldEyes() const { return m_mirrorUsable && m_heldPoseValid; }
+
 private:
 	// The two ways Oblivion's own picture reaches the headset. Separate
 	// methods rather than two arms of one if, because they differ in what
@@ -170,6 +190,17 @@ private:
 	// pose, which is exactly the pose the compositor assumes, so there is
 	// nothing to tell it.
 	bool SubmitDualEyes(const vr::OpenVRBackend& backend, const FrameRequest& request,
+	                    int& left, int& right);
+
+	// Submits the pair already in the mirror, without capturing anything new.
+	//
+	// Unlike the dual submit this one does hand over a pose, because the
+	// pictures were not drawn from this frame's: they were drawn from
+	// m_heldPose, one or more frames ago, and the compositor reprojects them
+	// for the difference. Refuses when there is nothing held to send, so a
+	// menu opened before the first world render falls back rather than
+	// submitting whatever the mirror happens to contain.
+	bool SubmitHeldEyes(const vr::OpenVRBackend& backend, const FrameRequest& request,
 	                    int& left, int& right);
 
 	// Builds or rebuilds the eye copies for the current request. Shared by the
@@ -243,6 +274,18 @@ private:
 	// image with nothing to correct rides the head instead of staying put.
 	vr::openvr::HmdMatrix34 m_flatPose = {};
 	bool m_flatPoseValid = false;
+
+	// The pose the last dual pair was drawn from, for the held submit.
+	//
+	// Not levelled, unlike the flat one: the flat picture is a screen, and a
+	// screen hanging at the angle the head happened to be at is wrong. This is
+	// the world, and the world was drawn looking exactly where the pose says,
+	// pitch included. Levelling it would tell the compositor the wearer had
+	// been looking level when they were not, and it would correct for a head
+	// movement that never happened.
+	vr::openvr::HmdMatrix34 m_heldPose = {};
+	bool m_heldPoseValid = false;
+	bool m_heldReported = false;
 
 	// What the headset said about each eye, kept because the picture's place
 	// inside the eye texture is computed from it - and because the eye copies

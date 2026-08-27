@@ -87,13 +87,44 @@ float ScaledEyeHalfSeparation(float halfUnits, float scale) {
 	return halfUnits * scale;
 }
 
-bool FrameIsFlat(bool hadCameraPass, bool menuIsUp) { return !hadCameraPass || menuIsUp; }
+FrameDelivery DeliverFrame(bool hadCameraPass, bool menuIsUp, bool menusInWorld,
+                           bool haveHeldEyes) {
+	// Nothing drew a world, so there is no viewpoint to claim and no stereo
+	// pair to hold. Videos, loading screens and the main menu land here, and
+	// they land here whatever menusInWorld says.
+	if (!hadCameraPass && !menuIsUp) {
+		return FrameDelivery::Cinema;
+	}
 
-bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp) {
-	return frameOpen && armed && !menuIsUp;
+	if (!menuIsUp) {
+		return FrameDelivery::Stereo;
+	}
+
+	if (!menusInWorld) {
+		return FrameDelivery::Cinema;
+	}
+
+	// A menu in the world, on a frame where Oblivion redrew what is behind it.
+	if (hadCameraPass) {
+		return FrameDelivery::Stereo;
+	}
+
+	// A menu in the world on a frame where it did not. Holding is the whole
+	// point: switching to the cinema screen here is the flicker.
+	//
+	// Unless there is nothing to hold - the main menu, or a menu opened before
+	// the first pair was ever captured. Then the screen is the only picture
+	// available, and a picture beats the test pattern.
+	return haveHeldEyes ? FrameDelivery::HeldStereo : FrameDelivery::Cinema;
 }
 
-bool WantsHudRedirect(bool frameOpen, bool menuIsUp) { return frameOpen && !menuIsUp; }
+bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp, bool menusInWorld) {
+	return frameOpen && armed && (!menuIsUp || menusInWorld);
+}
+
+bool WantsHudRedirect(bool frameOpen, bool menuIsUp, bool menusInWorld) {
+	return frameOpen && (!menuIsUp || menusInWorld);
+}
 
 UInt32 SweepProbeStage(UInt32 sceneCall, UInt32 configured) {
 	if (configured != kProbeSweep) {
@@ -111,8 +142,10 @@ UInt32 SweepProbeStage(UInt32 sceneCall, UInt32 configured) {
 	return 0;
 }
 
-bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp, UInt32 probeRung) {
-	return probeRung != kProbeSinglePass && WantsSecondScenePass(frameOpen, armed, menuIsUp);
+bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp, bool menusInWorld,
+                          UInt32 probeRung) {
+	return probeRung != kProbeSinglePass &&
+	       WantsSecondScenePass(frameOpen, armed, menuIsUp, menusInWorld);
 }
 
 bool DeliversDualEyes(bool stereoDual, bool sceneHooked, UInt32 probeRung) {

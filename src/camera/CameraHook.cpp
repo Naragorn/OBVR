@@ -151,30 +151,59 @@ void OnFrameEnd() {
 	// Gated on ShowMenus: with menus switched off there is no flat presentation
 	// to hold steady, so the question does not arise.
 	const bool menuIsUp = GetConfig().tracker.showMenus && game::IsMenuMode();
-	const bool flat = FrameIsFlat(hadCameraPass, menuIsUp);
+	const FrameDelivery delivery =
+		DeliverFrame(hadCameraPass, menuIsUp, GetConfig().tracker.menusInWorld,
+	                 g_headsetRenderer.HasHeldEyes());
 
-	ReportViewportOnce(flat);
+	ReportViewportOnce(delivery == FrameDelivery::Cinema);
 
-	if (!flat) {
+	if (delivery == FrameDelivery::Stereo) {
 		g_flatFramesSinceCamera = 0;
+
+		// The layer is the HUD on an ordinary frame and the menu on a menu
+		// one, and either way it is OBVR's to show: the redirect took it out
+		// of the picture the eyes were captured from, so if the overlay does
+		// not show it, nothing does.
 		g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), g_pendingRequest);
 		MaybeSubmitHud(true);
 		return;
 	}
 
-	// Flat: either nothing drew the world this frame, or a menu is up.
+	// Not a stereo frame. Deliver something anyway.
 	//
-	// Deliver it anyway. Without this the headset shows nothing at all while
-	// the main menu is up, which means loading a save requires taking the
-	// headset off - and after ten frames without a submit the compositor drops
-	// to its own Home scene, so it is not even a black screen, it is somebody
-	// else's room.
-	//
-	// Flat, and deliberately so: there is no camera to give the eyes different
-	// viewpoints from, and no pose the picture can be said to have been drawn
-	// with. Menus in the world rather than on a plane are a separate piece of
-	// work and a much larger one.
+	// Without this the headset shows nothing at all while the main menu is up,
+	// which means loading a save requires taking the headset off - and after
+	// ten frames without a submit the compositor drops to its own Home scene,
+	// so it is not even a black screen, it is somebody else's room.
 	if (!GetConfig().tracker.showMenus) {
+		return;
+	}
+
+	// A menu in the world on a frame where Oblivion did not redraw what is
+	// behind it. The last pair of eyes goes out again, unchanged, with the
+	// pose they were actually drawn from - and the overlay is deliberately
+	// left alone, because touching it with nothing captured would hide it and
+	// the menu would blink out on every frame the world did not redraw.
+	//
+	// Nothing here is stale: the world is paused, so the picture is still
+	// true, and the compositor reprojects it for the head movement that did
+	// happen. That is the whole reason this is a delivery of its own rather
+	// than a fall back to the cinema screen, which is what used to make menus
+	// snap open and shut at frame rate.
+	if (delivery == FrameDelivery::HeldStereo) {
+		if (PollRecenterEdge()) {
+			g_hudLayer.ResetAnchor();
+			OBVR_LOG("Render: the menu overlay was re-anchored on the recenter key "
+			         "(held path)");
+		}
+
+		render::HeadsetRenderer::FrameRequest held;
+		held.gameDevice = render::GetGameDevice();
+		held.submitGameFrame = GetConfig().tracker.submitGameFrame;
+		held.heldEyes = true;
+		if (g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame())) {
+			g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), held);
+		}
 		return;
 	}
 
@@ -322,12 +351,14 @@ UInt32 DualProbeRung() {
 }
 
 bool ScenePassWanted() {
-	// The same menu question, asked of the same source, as the flat decision
-	// in OnFrameEnd. The two must agree on what kind of frame this is: a
-	// frame delivered flat ignores the captures, so drawing a second pass for
-	// it would be pure cost.
+	// The same menu question, asked of the same source, as the delivery
+	// decision in OnFrameEnd. The two must agree on what kind of frame this
+	// is: a frame bound for the cinema screen ignores the captures, so drawing
+	// a second pass for it would be pure cost - while a menu delivered in the
+	// world is a stereo frame like any other and wants both eyes.
 	const bool menuIsUp = GetConfig().tracker.showMenus && game::IsMenuMode();
-	return WantsSecondScenePass(g_frameOpen, g_dualArmed, menuIsUp, DualProbeRung());
+	return WantsSecondScenePass(g_frameOpen, g_dualArmed, menuIsUp,
+	                            GetConfig().tracker.menusInWorld, DualProbeRung());
 }
 
 // The first dual-pass run lost the GPU (VK_ERROR_DEVICE_LOST) somewhere in
@@ -429,12 +460,13 @@ void* HudBeginRedirect() {
 		return nullptr;
 	}
 
-	// The same menu question as everywhere else, so the redirect, the flat
-	// decision and the dual pass cannot disagree about what kind of frame
-	// this is. On a menu frame the layer stays in the back buffer, which is
-	// exactly what the flat path then shows.
+	// The same menu question as everywhere else, so the redirect, the delivery
+	// decision and the dual pass cannot disagree about what kind of frame this
+	// is. On a menu frame bound for the cinema screen the layer stays in the
+	// back buffer, which is exactly what that path then shows; on one bound
+	// for the world the layer is what the overlay exists to carry.
 	const bool menuIsUp = config.tracker.showMenus && game::IsMenuMode();
-	if (!WantsHudRedirect(g_frameOpen, menuIsUp)) {
+	if (!WantsHudRedirect(g_frameOpen, menuIsUp, config.tracker.menusInWorld)) {
 		return nullptr;
 	}
 

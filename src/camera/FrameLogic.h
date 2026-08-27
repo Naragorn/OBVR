@@ -171,27 +171,59 @@ constexpr float kMaxEyeSeparationScale = 4.0f;
 
 float ScaledEyeHalfSeparation(float halfUnits, float scale);
 
-// Whether this frame should reach the headset as a flat picture rather than as
-// one eye of a stereo pair.
+// How a frame reaches the headset.
+enum class FrameDelivery {
+	// The world, drawn this frame, as two eyes.
+	Stereo,
+
+	// One flat picture of the back buffer to both eyes, hanging on a held
+	// pose. The cinema screen: no viewpoint is claimed, because there is no
+	// world render to have claimed one from.
+	Cinema,
+
+	// Last frame's two eyes again, unchanged. Nothing new was drawn, and the
+	// compositor reprojects what it already has rather than being handed a
+	// different kind of picture. See DeliverFrame.
+	HeldStereo,
+};
+
+// Which of the three this frame is.
 //
-// Two reasons, and either one is enough.
+// No menu is the simple case: a camera pass means the world was drawn and the
+// frame is stereo; no camera pass means nothing drew a world at all, and the
+// cinema screen is the only honest answer. Videos, loading screens and the
+// main menu are that second case, and they stay on the screen whatever
+// menusInWorld says - there is no world behind them for a menu to hang in
+// front of, so "in the world" would be a quad floating in nothing.
 //
-// No camera pass. The camera hook is what supplies a viewpoint, so without it
-// there is nothing to claim a picture was drawn from. Loading screens and the
-// main menu are like this: the world is not being drawn at all.
+// A menu over a rendered world is the case with a choice in it.
 //
-// A menu is up. This is the one that was missing, and its absence is what made
-// menus in game flicker. Oblivion keeps drawing the world behind an open menu,
-// but not on every frame - so on the frames it did, the camera hook ran and
-// OBVR treated the frame as a live eye, filling the headset with the world;
-// on the frames it did not, the same menu came back as a small rectangle
-// floating in black. Alternating between those two at frame rate is the menu
-// snapping open and shut, and it is only visible in a headset, because on a
-// monitor both look like the same picture.
+// menusInWorld false is what OBVR has always done: the frame goes to the
+// cinema screen, the whole back buffer with the menu already drawn into it.
+// This is deliberately kept - a flat picture is legible in a way a quad at a
+// fixed distance is not, and reading an inventory is the one thing menus are
+// for.
 //
-// Asking the game whether a menu is open answers it once and for the whole
-// time the menu is up, so nothing alternates.
-bool FrameIsFlat(bool hadCameraPass, bool menuIsUp);
+// menusInWorld true delivers the world in stereo and lets the 2D layer reach
+// the headset as its own overlay instead, so the world stays where it is and
+// the menu hangs in front of it.
+//
+// HeldStereo is what makes that second option possible at all, and it is the
+// old flicker bug in disguise. Oblivion keeps drawing the world behind an open
+// menu, but not on every frame. So the camera hook runs on some of those
+// frames and not others, and switching between stereo and the cinema screen at
+// frame rate is exactly the menu snapping open and shut that ShowMenus was
+// gated on IsMenuMode to cure. Holding the last pair instead changes nothing
+// on those frames: the world is paused, so the picture is not stale, and the
+// compositor reprojects it for the head movement that did happen.
+//
+// haveHeldEyes is what keeps that honest. There is nothing to hold before the
+// first world render has been captured - the main menu is exactly that case,
+// and so is any menu opened while the dual pass is off. Asking here rather
+// than letting the submit discover it means the frame falls back to the cinema
+// screen, which is a picture, instead of to the test pattern, which is not.
+FrameDelivery DeliverFrame(bool hadCameraPass, bool menuIsUp, bool menusInWorld,
+                           bool haveHeldEyes);
 
 // Whether this frame's world render should run twice, once per eye.
 //
@@ -206,11 +238,13 @@ bool FrameIsFlat(bool hadCameraPass, bool menuIsUp);
 // be connected for tracking while stereo is off, and then there is no shift
 // to apply and no second viewpoint to draw.
 //
-// menuIsUp: a frame with a menu open is delivered flat whatever the passes
-// do - FrameIsFlat says so - so a second pass would be two renders for a
-// picture that ignores both. The same question, asked of the same source, as
-// the flat decision: the two must agree on what kind of frame this is.
-bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp);
+// menuIsUp and menusInWorld: a menu frame bound for the cinema screen ignores
+// the captures whatever the passes do - DeliverFrame says so - and a second
+// pass would be two renders for a picture that uses neither. A menu delivered
+// in the world is a stereo frame like any other, and wants its second pass.
+// The same question, asked of the same source, as the delivery decision: the
+// two must agree on what kind of frame this is.
+bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp, bool menusInWorld);
 
 // Debug.DualPassProbe = 9: walk the probe rungs on their own instead of
 // asking for one run per rung.
@@ -248,9 +282,10 @@ UInt32 SweepProbeStage(UInt32 sceneCall, UInt32 configured);
 
 // The same question as above, with the probe rung folded in: rung 3 refuses
 // the second pass whatever the frame would otherwise have wanted. Kept as a
-// separate overload so the three-argument decision stays what it was and
-// the probe cannot quietly change it when it is not running.
-bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp, UInt32 probeRung);
+// separate overload so the plain decision stays what it was and the probe
+// cannot quietly change it when it is not running.
+bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp, bool menusInWorld,
+                          UInt32 probeRung);
 
 // Whether this frame will hand the compositor two captured eyes.
 //
@@ -279,9 +314,11 @@ bool DeliversDualEyes(bool stereoDual, bool sceneHooked, UInt32 probeRung);
 // way to reach the headset. Without it the redirect would strip the HUD from
 // the monitor's frame and hand it to nobody.
 //
-// menuIsUp: a menu frame is delivered flat, and the flat picture is the back
-// buffer - so the layer has to stay in it, or the menu being shown would be
-// missing from the very picture that exists to show it.
-bool WantsHudRedirect(bool frameOpen, bool menuIsUp);
+// menuIsUp and menusInWorld: a menu frame bound for the cinema screen shows
+// the back buffer, so the layer has to stay in it - redirecting it would take
+// the menu out of the very picture that exists to show it. A menu delivered in
+// the world is the opposite case: the layer is exactly what should leave the
+// frame, because the overlay is how the menu reaches the headset at all.
+bool WantsHudRedirect(bool frameOpen, bool menuIsUp, bool menusInWorld);
 
 }  // namespace obvr::camera

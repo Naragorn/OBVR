@@ -1644,14 +1644,56 @@ The question is now asked of the game. `IsMenuMode` at `0x00578F60`, named by xO
 00578F9A  xor al,al; ret
 ```
 
-Nullary, returns a byte, reaches the interface manager three times. `FrameIsFlat` in
-`FrameLogic` is now `!hadCameraPass || menuIsUp`, which is a pure function of two booleans
-and therefore testable without an Oblivion to call into.
+Nullary, returns a byte, reaches the interface manager three times. The decision is a pure
+function of plain booleans in `FrameLogic`, and therefore testable without an Oblivion to
+call into.
 
 The flat-frame counter that diagnosed this is kept. It showed bursts of up to seven, which
 is Oblivion presenting several times per step - harmless on its own, because a frozen pose
 means each picture simply stands still until the next replaces it. It was the mode changing
 between them that was felt.
+
+### Menus in the world, as a choice - `Render.Menus`
+
+Once the HUD had its own target and its own overlay, showing a menu the same way stopped
+being a separate piece of work: the route was already there and was simply shut for menu
+frames, because a menu frame showed the back buffer and the layer had to stay in it.
+
+`Menus=cinema` is that behaviour and remains the default. `Menus=world` keeps the world in
+stereo, redirects the 2D layer, and lets the menu arrive as the overlay quad in front of it.
+Both are one INI word, hot reloaded, so the two can be compared without leaving the spot
+being looked at - the same trick that settled the water question.
+
+`FrameIsFlat` became `DeliverFrame`, returning one of three:
+
+| | `hadCameraPass` | delivery |
+|---|---|---|
+| no menu | yes | `Stereo` |
+| no menu | no | `Cinema` |
+| menu, `cinema` | either | `Cinema` |
+| menu, `world` | yes | `Stereo` |
+| menu, `world` | no | `HeldStereo`, or `Cinema` with nothing held |
+
+Two things in that table are load-bearing rather than tidy.
+
+**`HeldStereo` is the old flicker, met a second time.** Oblivion does not redraw the world
+behind an open menu every frame. Delivering those frames on the cinema screen would put the
+alternation straight back, so the last captured pair goes out again instead - with the pose
+it was *drawn* from, held in `m_heldPose`, not this frame's. Handing over this frame's pose
+is what made the flat picture ride the head: the compositor is told there is nothing to
+correct, so it corrects nothing. Nothing about the held pair is stale, because the world is
+paused behind the menu; what moved is the head, and reprojection is exactly the thing that
+answers that.
+
+**Videos and loading screens are excluded by measurement, not by a list.** They are the
+`!hadCameraPass && !menuIsUp` row: no world render happened, so there is no world for a menu
+to hang in front of and a quad would float in an empty room. Because the test is "did a
+camera pass run", it needs no maintenance when a mod adds a menu.
+
+`haveHeldEyes` is the fourth argument and it exists for the main menu, which is a menu with
+no world ever having been captured. Without it that frame would route to `HeldStereo`, find
+nothing, and fall through to the test pattern - a bug the pure function can be asked about
+in a test rather than one found by wearing the headset.
 
 ### Decided, not started: the 2D pass gets its own target
 

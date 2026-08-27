@@ -209,7 +209,11 @@ void HeadsetRenderer::EndFrame(const vr::OpenVRBackend& backend, const FrameRequ
 		}
 
 		if (m_gameFrameUsable) {
-			if (request.dualEyes && !request.flatFrame) {
+			// Held first: it captures nothing and copies nothing, so it must
+			// not be reached through a path that would.
+			if (request.heldEyes) {
+				submittedGameFrame = SubmitHeldEyes(backend, request, left, right);
+			} else if (request.dualEyes && !request.flatFrame) {
 				submittedGameFrame = SubmitDualEyes(backend, request, left, right);
 			} else if (request.alternateEyes || request.flatFrame) {
 				submittedGameFrame = SubmitAlternateEyes(backend, request, left, right);
@@ -377,6 +381,10 @@ bool HeadsetRenderer::SubmitDualEyes(const vr::OpenVRBackend& backend,
 		// mirror could not be built, or a copy failed. The mono picture is
 		// flat but honest; submitting one fresh eye and one stale one would
 		// be the inverted-disparity fault by another route.
+		//
+		// And nothing is left held: a held submit sends the mirror out again,
+		// so it may only be armed by a frame that actually filled it.
+		m_heldPoseValid = false;
 		return SubmitMono(backend, request, left, right);
 	}
 
@@ -396,6 +404,12 @@ bool HeadsetRenderer::SubmitDualEyes(const vr::OpenVRBackend& backend,
 	// the kept poses must not say something else on a later mode switch.
 	m_eyePoseValid[0] = false;
 	m_eyePoseValid[1] = false;
+
+	// The pose this pair was drawn from, kept for a held submit on a later
+	// frame that draws no world of its own. Read here rather than there: by
+	// then WaitGetPoses has moved on, and the whole point of holding is to
+	// tell the compositor where the picture actually came from.
+	m_heldPoseValid = backend.GetRenderPoseMatrix(m_heldPose);
 
 	// The submit half of the dual trace: the first run died with the GPU
 	// lost somewhere around here, and these lines are what say whether the
@@ -427,6 +441,44 @@ bool HeadsetRenderer::SubmitDualEyes(const vr::OpenVRBackend& backend,
 	if (trace) {
 		--m_dualTraceLeft;
 		OBVR_LOG("Dual trace: submitted, left=%d right=%d", left, right);
+	}
+	return true;
+}
+
+bool HeadsetRenderer::SubmitHeldEyes(const vr::OpenVRBackend& backend,
+                                     const FrameRequest& request, int& left, int& right) {
+	// Nothing captured yet. DeliverFrame asks the same question before it ever
+	// routes a frame here, so this is the second line rather than the first -
+	// but the mirror is what actually holds the pictures, and a submit that
+	// sent whatever it last contained would be showing the wearer a frame from
+	// a different part of the session.
+	if (!HasHeldEyes()) {
+		return false;
+	}
+
+	EyeMirror::Submission held(m_mirror, request.gameDevice);
+	if (!held.IsHeld()) {
+		return false;
+	}
+
+	dxvk::VRVulkanTextureData dataLeft{};
+	dxvk::VRVulkanTextureData dataRight{};
+	DescribeForOpenVR(m_mirror.GetImage(true), m_vulkan, dataLeft);
+	DescribeForOpenVR(m_mirror.GetImage(false), m_vulkan, dataRight);
+
+	// The pose the pair was drawn from, handed over explicitly. Without it the
+	// compositor assumes this frame's, finds nothing to correct, and the world
+	// rides the head - the same fault the flat picture had, for the same
+	// reason.
+	left = backend.SubmitEye(vr::openvr::kEyeLeft, &dataLeft, vr::openvr::kTextureTypeVulkan,
+	                         nullptr, &m_heldPose);
+	right = backend.SubmitEye(vr::openvr::kEyeRight, &dataRight,
+	                          vr::openvr::kTextureTypeVulkan, nullptr, &m_heldPose);
+
+	if (!m_heldReported) {
+		m_heldReported = true;
+		OBVR_LOG("Render: a menu is in the world - the last captured pair is held on the "
+		         "frames Oblivion does not redraw the world behind it");
 	}
 	return true;
 }
@@ -598,6 +650,13 @@ void HeadsetRenderer::Reset() {
 	m_eyePoseValid[0] = false;
 	m_eyePoseValid[1] = false;
 	m_flatPoseValid = false;
+
+	// The mirror has just been destroyed, so there is nothing to hold. Said
+	// here as well as implied by m_mirrorUsable: a held submit sends pictures
+	// out again, and "which pictures" must never rest on a second flag
+	// happening to be false too.
+	m_heldPoseValid = false;
+	m_heldReported = false;
 	m_eyeWidth = 0;
 	m_eyeHeight = 0;
 	m_leftEye = EyeProjection{};

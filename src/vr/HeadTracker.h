@@ -150,6 +150,27 @@ struct TrackerSettings {
 	// while the main menu is up.
 	bool showMenus = true;
 
+	// Where an in-game menu is shown: on the cinema screen, or in the world.
+	//
+	// False is the cinema screen, which is what OBVR has always done and
+	// stays the default. The whole back buffer becomes one flat picture on a
+	// held pose, menu and world together, and a flat picture is legible in a
+	// way a quad at a fixed distance is not. Reading an inventory is what
+	// menus are for, so that is not a small thing.
+	//
+	// True delivers the world in stereo and lets the 2D layer reach the
+	// headset through the HUD's own overlay instead, so the world stays where
+	// it is and the menu hangs in front of it. It costs a second world render
+	// per menu frame, which the cinema screen does not pay.
+	//
+	// Only in-game menus are affected. Videos, loading screens and the main
+	// menu take the cinema screen either way: no world render happens behind
+	// them, so there is nothing for a menu to hang in front of, and a quad in
+	// an empty room is worse than a screen. See DeliverFrame, which is where
+	// that distinction is actually made - and it is made on whether a camera
+	// pass ran, not on a list of menu names.
+	bool menusInWorld = false;
+
 	// Overrides Oblivion's own field of view, in degrees. 0 leaves it alone.
 	//
 	// Written into the camera's frustum rather than into fDefaultFOV, because

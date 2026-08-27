@@ -183,6 +183,28 @@ bool ReadAnchorIsWorld(const char* section, const char* key, bool fallback,
 	return fallback;
 }
 
+// Reads Menus, which names a place the same way HudAnchor does: "cinema" or
+// "world". Kept as its own reader rather than folded into the one above,
+// because the words are not the same ones - a menu is not on a head - and a
+// reader who writes "head" here should be told, not quietly given the screen.
+bool ReadMenusInWorld(const char* section, const char* key, bool fallback, const char* path) {
+	char buffer[32];
+	if (GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), path) == 0) {
+		return fallback;
+	}
+
+	if (EqualsIgnoreCase(buffer, "cinema") || EqualsIgnoreCase(buffer, "screen") ||
+	    EqualsIgnoreCase(buffer, "flat")) {
+		return false;
+	}
+	if (EqualsIgnoreCase(buffer, "world") || EqualsIgnoreCase(buffer, "room")) {
+		return true;
+	}
+
+	OBVR_LOG("Config: unknown Render.%s \"%s\", keeping the previous setting", key, buffer);
+	return fallback;
+}
+
 const char* StereoModeName(vr::StereoMode mode) {
 	switch (mode) {
 		case vr::StereoMode::None: return "none";
@@ -286,6 +308,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Render", "HudBetweenPasses", config.tracker.hudBetweenPasses, path);
 	config.tracker.hudAnchorWorld =
 		ReadAnchorIsWorld("Render", "HudAnchor", config.tracker.hudAnchorWorld, path);
+	config.tracker.menusInWorld =
+		ReadMenusInWorld("Render", "Menus", config.tracker.menusInWorld, path);
 	config.tracker.hudDistanceMetres =
 		ReadFloat("Render", "HudDistanceMetres", config.tracker.hudDistanceMetres, path);
 	config.tracker.hudWidthMetres =
@@ -410,6 +434,9 @@ bool Config::Load(const char* fileName) {
 	         tracker.hudAnchorWorld ? "world" : "head",
 	         static_cast<double>(tracker.hudDistanceMetres),
 	         static_cast<double>(tracker.hudWidthMetres));
+	OBVR_LOG("Config: Render.ShowMenus=%d Menus=%s (videos and loading screens take the "
+	         "cinema screen either way)",
+	         tracker.showMenus ? 1 : 0, tracker.menusInWorld ? "world" : "cinema");
 	if (tracker.stereo == vr::StereoMode::DualPass) {
 		// The known limit, stated up front rather than discovered in the
 		// headset: the 2D layer draws after both passes, into the frame the

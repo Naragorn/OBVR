@@ -315,68 +315,129 @@ void TestFrameClockGaps() {
 
 }  // namespace
 
-void TestFrameIsFlat() {
-	std::printf("When a frame goes to the headset flat rather than as one eye\n");
+void TestDeliverFrame() {
+	std::printf("How a frame reaches the headset\n");
 
-	using obvr::camera::FrameIsFlat;
+	using obvr::camera::DeliverFrame;
+	using obvr::camera::FrameDelivery;
 
-	// Nothing drew the world, so there is no viewpoint to claim. Loading
-	// screens and the main menu are like this.
-	Check(FrameIsFlat(false, false), "no camera pass and no menu is still flat");
-	Check(FrameIsFlat(false, true), "no camera pass with a menu open, likewise");
+	// Nothing drew the world, so there is no viewpoint to claim and no pair to
+	// hold. Videos, loading screens and the main menu are this case, and the
+	// menu setting must not reach them: there is no world behind them for a
+	// menu to hang in front of.
+	for (int world = 0; world < 2; ++world) {
+		for (int held = 0; held < 2; ++held) {
+			Check(DeliverFrame(false, false, world != 0, held != 0) == FrameDelivery::Cinema,
+			      "no camera pass and no menu is the cinema screen, whatever the setting");
+		}
+	}
 
-	// The world is being drawn and nothing is in front of it. This is the only
-	// case that gets a live eye.
-	Check(!FrameIsFlat(true, false), "a camera pass with no menu is a live eye");
+	// The world is being drawn and nothing is in front of it.
+	for (int world = 0; world < 2; ++world) {
+		Check(DeliverFrame(true, false, world != 0, true) == FrameDelivery::Stereo,
+		      "a camera pass with no menu is stereo, whatever the setting");
+	}
 
-	// The case the flicker came from. Oblivion keeps drawing the world behind
-	// an open menu, but not on every frame, so this combination and the one
-	// above alternate while a menu is up. Before the menu was asked about,
-	// this returned false and the presentation changed with it: full stereo
-	// world one frame, a small flat rectangle in black the next.
-	Check(FrameIsFlat(true, true),
-	      "a camera pass with a menu open is flat, so the menu does not flicker");
+	// Menus=cinema, which is what OBVR has always done and stays the default.
+	// The case the old flicker came from: Oblivion keeps drawing the world
+	// behind an open menu but not on every frame, so before the menu was asked
+	// about, the delivery changed with the camera - full stereo world one
+	// frame, a small flat rectangle in black the next.
+	Check(DeliverFrame(true, true, false, true) == FrameDelivery::Cinema,
+	      "a menu on the cinema screen stays there even when the world was drawn");
+	Check(DeliverFrame(false, true, false, true) == FrameDelivery::Cinema,
+	      "and on the frames it was not");
 
-	// Said as the property rather than as four cases: while a menu is open the
-	// answer does not depend on the camera at all.
+	// Menus=world. The world is delivered in stereo and the menu reaches the
+	// headset as its own overlay.
+	Check(DeliverFrame(true, true, true, true) == FrameDelivery::Stereo,
+	      "a menu in the world is a stereo frame when the world was drawn");
+
+	// The flow that makes it possible at all. Falling back to the cinema
+	// screen here is the flicker, in its new clothes.
+	Check(DeliverFrame(false, true, true, true) == FrameDelivery::HeldStereo,
+	      "and holds the last pair on the frames the world was not drawn");
+
+	// Nothing captured yet - the main menu, or a menu opened before the first
+	// dual frame. A picture beats the test pattern.
+	Check(DeliverFrame(false, true, true, false) == FrameDelivery::Cinema,
+	      "with no pair to hold, the cinema screen is the only honest picture");
+
+	// The properties, said once rather than case by case.
 	for (int pass = 0; pass < 2; ++pass) {
-		Check(FrameIsFlat(pass != 0, true),
-		      "with a menu open the answer is flat regardless of the camera");
+		for (int menu = 0; menu < 2; ++menu) {
+			for (int world = 0; world < 2; ++world) {
+				for (int held = 0; held < 2; ++held) {
+					const FrameDelivery delivery =
+						DeliverFrame(pass != 0, menu != 0, world != 0, held != 0);
+
+					// Holding requires something held. This is the one that
+					// keeps the main menu off the held path.
+					if (delivery == FrameDelivery::HeldStereo) {
+						Check(held != 0, "a held delivery never happens with nothing held");
+						Check(menu != 0 && world != 0,
+						      "and only ever for a menu asked to hang in the world");
+					}
+
+					// The setting reaches menu frames and nothing else, so
+					// turning it on cannot change what a video does.
+					if (menu == 0) {
+						Check(delivery == DeliverFrame(pass != 0, false, !(world != 0),
+						                               held != 0),
+						      "with no menu open the setting changes nothing");
+					}
+				}
+			}
+		}
 	}
 }
 
 void TestWantsSecondScenePass() {
 	std::printf("When the world render runs twice\n");
 
-	using obvr::camera::FrameIsFlat;
+	using obvr::camera::DeliverFrame;
+	using obvr::camera::FrameDelivery;
 	using obvr::camera::WantsSecondScenePass;
 
-	// The one combination that draws twice: a frame the compositor accepted,
-	// a camera the hook actually moved to an eye, and no menu in front.
-	Check(WantsSecondScenePass(true, true, false),
+	// A frame the compositor accepted, a camera the hook actually moved to an
+	// eye, and no menu in front.
+	Check(WantsSecondScenePass(true, true, false, false),
 	      "an open frame with an armed camera and no menu draws twice");
 
 	// Every other flow stays single-pass, each for its own reason.
-	Check(!WantsSecondScenePass(false, true, false),
+	Check(!WantsSecondScenePass(false, true, false, false),
 	      "no open frame means nobody is waiting for the pictures");
-	Check(!WantsSecondScenePass(true, false, false),
+	Check(!WantsSecondScenePass(true, false, false, false),
 	      "an unarmed camera has no second viewpoint to draw from");
-	Check(!WantsSecondScenePass(true, true, true),
-	      "a menu frame is delivered flat, so a second pass would be waste");
-	Check(!WantsSecondScenePass(false, false, false), "neither open nor armed");
-	Check(!WantsSecondScenePass(false, true, true), "menu up and no open frame");
-	Check(!WantsSecondScenePass(true, false, true), "menu up and unarmed");
-	Check(!WantsSecondScenePass(false, false, true), "all three against it");
+	Check(!WantsSecondScenePass(true, true, true, false),
+	      "a menu on the cinema screen ignores the captures, so a second pass is waste");
+	Check(!WantsSecondScenePass(false, false, false, false), "neither open nor armed");
+	Check(!WantsSecondScenePass(false, true, true, false), "menu up and no open frame");
+	Check(!WantsSecondScenePass(true, false, true, false), "menu up and unarmed");
+	Check(!WantsSecondScenePass(false, false, true, false), "all three against it");
+
+	// A menu in the world is a stereo frame like any other, so it wants both
+	// eyes - this is the flow that pays for the setting.
+	Check(WantsSecondScenePass(true, true, true, true),
+	      "a menu asked to hang in the world draws twice like any stereo frame");
+	Check(!WantsSecondScenePass(false, true, true, true),
+	      "but not on a frame nobody is waiting for");
+	Check(!WantsSecondScenePass(true, false, true, true),
+	      "and not with an unarmed camera");
 
 	// The property that keeps the render and the delivery agreeing: whenever
-	// the camera pass ran and this says draw twice, the frame is not flat -
-	// so the captures are always submitted. A second pass for a flat frame
-	// would be two renders for a picture that ignores both.
+	// this says draw twice, the frame is delivered as stereo - so the captures
+	// are always submitted. A second pass for a cinema frame would be two
+	// renders for a picture that ignores both.
 	for (int menu = 0; menu < 2; ++menu) {
-		const bool menuIsUp = menu != 0;
-		if (WantsSecondScenePass(true, true, menuIsUp)) {
-			Check(!FrameIsFlat(true, menuIsUp),
-			      "a frame that draws twice is never delivered flat");
+		for (int world = 0; world < 2; ++world) {
+			const bool menuIsUp = menu != 0;
+			const bool menusInWorld = world != 0;
+			if (WantsSecondScenePass(true, true, menuIsUp, menusInWorld)) {
+				Check(DeliverFrame(true, menuIsUp, menusInWorld, true) ==
+				          FrameDelivery::Stereo,
+				      "a frame that draws twice is always delivered as stereo");
+			}
 		}
 	}
 }
@@ -384,28 +445,42 @@ void TestWantsSecondScenePass() {
 void TestWantsHudRedirect() {
 	std::printf("When the 2D pass leaves the frame\n");
 
-	using obvr::camera::FrameIsFlat;
+	using obvr::camera::DeliverFrame;
+	using obvr::camera::FrameDelivery;
 	using obvr::camera::WantsHudRedirect;
 
-	// The one flow that redirects: a delivered frame with no menu in front.
-	Check(WantsHudRedirect(true, false),
+	// A delivered frame with no menu in front: the HUD leaves the picture and
+	// reaches the headset as the overlay.
+	Check(WantsHudRedirect(true, false, false),
 	      "an open frame with no menu sends the layer to its own texture");
 
 	// The refusals, each for its own reason.
-	Check(!WantsHudRedirect(false, false),
+	Check(!WantsHudRedirect(false, false, false),
 	      "no open frame means the captured layer would reach nobody");
-	Check(!WantsHudRedirect(true, true),
-	      "a menu frame keeps the layer in the frame the flat path shows");
-	Check(!WantsHudRedirect(false, true), "both against it");
+	Check(!WantsHudRedirect(true, true, false),
+	      "a menu on the cinema screen keeps the layer in the picture that shows it");
+	Check(!WantsHudRedirect(false, true, false), "both against it");
 
-	// The property this exists for: whenever a camera-pass frame is delivered
-	// flat, the redirect declined - so the picture the flat path shows still
-	// contains the menu it exists to show.
+	// A menu asked to hang in the world is the opposite case: the layer is
+	// exactly what should leave the frame, because the overlay is how the menu
+	// reaches the headset at all.
+	Check(WantsHudRedirect(true, true, true),
+	      "a menu in the world sends the layer out, because the overlay is how it arrives");
+	Check(!WantsHudRedirect(false, true, true),
+	      "but not on a frame nobody is waiting for");
+
+	// The property this exists for, and the one that would show up in the
+	// headset as a menu that is simply not there: whenever a frame is
+	// delivered on the cinema screen, the redirect declined - so the picture
+	// that path shows still contains the menu it exists to show.
 	for (int menu = 0; menu < 2; ++menu) {
-		const bool menuIsUp = menu != 0;
-		if (FrameIsFlat(true, menuIsUp)) {
-			Check(!WantsHudRedirect(true, menuIsUp),
-			      "a flat frame never had its 2D layer taken away");
+		for (int world = 0; world < 2; ++world) {
+			const bool menuIsUp = menu != 0;
+			const bool menusInWorld = world != 0;
+			if (DeliverFrame(true, menuIsUp, menusInWorld, true) == FrameDelivery::Cinema) {
+				Check(!WantsHudRedirect(true, menuIsUp, menusInWorld),
+				      "a cinema frame never had its 2D layer taken away");
+			}
 		}
 	}
 }
@@ -482,20 +557,23 @@ void TestSecondPassUnderProbe() {
 	using obvr::camera::WantsSecondScenePass;
 
 	// Rung 3 refuses, whatever the frame wanted - that is the whole point of
-	// it, and the one flow that would otherwise have run twice.
-	Check(!WantsSecondScenePass(true, true, false, kProbeSinglePass),
+	// it, and the two flows that would otherwise have run twice.
+	Check(!WantsSecondScenePass(true, true, false, false, kProbeSinglePass),
 	      "the rung that cuts the second render cuts it on a frame that wanted it");
+	Check(!WantsSecondScenePass(true, true, true, true, kProbeSinglePass),
+	      "including a menu asked to hang in the world");
 
-	// Every other rung leaves the three-argument decision exactly as it was,
-	// across all eight of its input combinations. This is what stops the
-	// probe from changing behaviour when nobody asked it to.
+	// Every other rung leaves the plain decision exactly as it was, across all
+	// sixteen of its input combinations. This is what stops the probe from
+	// changing behaviour when nobody asked it to.
 	for (UInt32 rung = 0; rung < 3; ++rung) {
-		for (int bits = 0; bits < 8; ++bits) {
+		for (int bits = 0; bits < 16; ++bits) {
 			const bool frameOpen = (bits & 1) != 0;
 			const bool armed = (bits & 2) != 0;
 			const bool menuIsUp = (bits & 4) != 0;
-			if (WantsSecondScenePass(frameOpen, armed, menuIsUp, rung) !=
-			    WantsSecondScenePass(frameOpen, armed, menuIsUp)) {
+			const bool menusInWorld = (bits & 8) != 0;
+			if (WantsSecondScenePass(frameOpen, armed, menuIsUp, menusInWorld, rung) !=
+			    WantsSecondScenePass(frameOpen, armed, menuIsUp, menusInWorld)) {
 				Check(false, "a probe rung changed a decision it has no business changing");
 				return;
 			}
@@ -505,11 +583,12 @@ void TestSecondPassUnderProbe() {
 
 	// And the refusal does not resurrect a frame that had no second pass to
 	// begin with: rung 3 refuses those too, rather than flipping them.
-	for (int bits = 0; bits < 8; ++bits) {
+	for (int bits = 0; bits < 16; ++bits) {
 		const bool frameOpen = (bits & 1) != 0;
 		const bool armed = (bits & 2) != 0;
 		const bool menuIsUp = (bits & 4) != 0;
-		if (WantsSecondScenePass(frameOpen, armed, menuIsUp, kProbeSinglePass)) {
+		const bool menusInWorld = (bits & 8) != 0;
+		if (WantsSecondScenePass(frameOpen, armed, menuIsUp, menusInWorld, kProbeSinglePass)) {
 			Check(false, "the cutting rung let a second pass through");
 			return;
 		}
@@ -538,11 +617,13 @@ void TestDeliversDualEyes() {
 	// The property this exists for: whenever the second pass will not run,
 	// the frame must not promise two eyes - or the submit waits on captures
 	// that never arrive and the headset holds the last pair it got.
-	for (int bits = 0; bits < 8; ++bits) {
+	for (int bits = 0; bits < 16; ++bits) {
 		const bool frameOpen = (bits & 1) != 0;
 		const bool armed = (bits & 2) != 0;
 		const bool menuIsUp = (bits & 4) != 0;
-		if (obvr::camera::WantsSecondScenePass(frameOpen, armed, menuIsUp, kProbeSinglePass)) {
+		const bool menusInWorld = (bits & 8) != 0;
+		if (obvr::camera::WantsSecondScenePass(frameOpen, armed, menuIsUp, menusInWorld,
+		                                       kProbeSinglePass)) {
 			Check(false, "the cutting rung ran a second pass after all");
 			return;
 		}
@@ -583,7 +664,7 @@ int main() {
 	std::printf("\n");
 	TestBackBufferEye();
 	std::printf("\n");
-	TestFrameIsFlat();
+	TestDeliverFrame();
 	std::printf("\n");
 	TestWantsSecondScenePass();
 	std::printf("\n");
