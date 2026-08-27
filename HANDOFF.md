@@ -1893,14 +1893,22 @@ different moment, and that difference is what the report pointed at. Fixed at th
 a flat picture is 2D content in the frame's own pixels, so its displayed shape now comes
 from the frame's pixel aspect (or MenuAspect when set), never from the world's angles.
 
-**Water and foliage misbehave under dual pass, recorded and deliberately not chased yet.**
-Reflections appear to reset when the head moves; leaf cards turn with the view. Both are
-camera-position-dependent render state: the reflection map and the SpeedTree billboards
-are built for *a* camera, and under dual pass there are two per frame plus an engine that
-may only refresh some of that state when the camera moves far enough. The reflection has
-a plausible fix worth trying later - share pass one's reflection with pass two instead of
-re-rendering it - and the billboards are engine behaviour every VR mod of this era fights.
-Neither blocks the HUD work, and neither gets a blind fix.
+**Water reflections resetting as the head moves is Oblivion, not the dual pass. Closed.**
+It was recorded during the dual pass work as a suspected regression and left alone. On
+2026-08-27 it was measured instead of guessed: `DualPassProbe=3` cuts the second render
+and leaves everything else standing, and because the config is hot reloaded, 0 and 3 can
+be swapped while standing at the water. The reflection resets identically either way - in
+mono and in stereo. So the dual pass is cleared of it, there is no regression to fix, and
+the "share pass one's reflection with pass two" idea is moot: pass one's reflection has
+the same behaviour. Engine behaviour, lived with.
+
+That rung is worth remembering as a tool. It exists to attribute any
+camera-dependent effect to the second render or clear it, in one session, without leaving
+the spot being looked at - which is what it did here in about a minute.
+
+**Foliage billboards turning with the view is still open**, and still not chased. SpeedTree
+cards are built for *a* camera and there are two per frame; it is engine behaviour every VR
+mod of this era fights, and it gets no blind fix either.
 
 Also from that run, noted rather than diagnosed: the recenter key during videos was
 reported not working, but the log shows the flat re-anchor firing twice and the code on

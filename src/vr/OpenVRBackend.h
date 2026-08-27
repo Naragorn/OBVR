@@ -24,6 +24,20 @@ namespace obvr::vr {
 // has no answer when the head points straight up.
 void LevelPose(openvr::HmdMatrix34& pose);
 
+// Where the HUD quad hangs when it is anchored in the room rather than to
+// the head: the given pose, moved forward along its own facing by the given
+// distance.
+//
+// Forward is the negative third column, the same convention LevelPose reads
+// its heading from and the same one the head-relative transform used with
+// m[2][3] = -distance. The rotation is carried over untouched, so a pose
+// that was levelled before it got here stays level.
+//
+// Kept apart from the anchoring itself so the arithmetic can be checked
+// without a headset: this is what decides where the wearer finds their HUD
+// after turning away from it, and getting it wrong puts it behind them.
+openvr::HmdMatrix34 OverlayPoseAhead(const openvr::HmdMatrix34& pose, float distanceMetres);
+
 
 // Reads the head orientation from SteamVR through OpenVR.
 //
@@ -201,6 +215,15 @@ public:
 	// than to the room.
 	int SetOverlayTransformHmdRelative(openvr::VROverlayHandle handle,
 	                                   const openvr::HmdMatrix34& hmdToOverlay) const;
+
+	// The other anchoring: the quad is placed in the tracking space itself
+	// and stays there while the head turns, so the wearer can look away from
+	// it and back at it.
+	//
+	// The same tracking universe the poses are read in - seated - so a
+	// transform built from a pose read here means in the room what it says.
+	int SetOverlayTransformAbsolute(openvr::VROverlayHandle handle,
+	                                const openvr::HmdMatrix34& trackingToOverlay) const;
 
 	// The quad's width in the world, in metres. Height follows from the
 	// texture's aspect ratio; there is no separate control for it.

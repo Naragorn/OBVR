@@ -205,6 +205,12 @@ void OnFrameEnd() {
 	// running. An intro film that started while looking down stays down.
 	if (PollRecenterEdge()) {
 		g_headsetRenderer.ResetFlatAnchor();
+
+		// The HUD's room anchor goes with it. The layer is hidden on a flat
+		// frame, so nothing moves while the menu is up - but the anchor it
+		// would otherwise come back to is the one from before the menu, and
+		// the key was pressed because that one is in the wrong place.
+		g_hudLayer.ResetAnchor();
 		OBVR_LOG("Render: the flat picture was re-anchored on the recenter key (flat path)");
 	}
 
@@ -460,7 +466,8 @@ void MaybeSubmitHud(bool worldFrame) {
 	}
 	g_hudLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                  worldFrame, config.tracker.hudDistanceMetres,
-	                  config.tracker.hudWidthMetres, config.hudProbe);
+	                  config.tracker.hudWidthMetres, config.tracker.hudAnchorWorld,
+	                  config.hudProbe);
 }
 
 void MaybePollRecenter() {
@@ -469,6 +476,12 @@ void MaybePollRecenter() {
 	}
 
 	g_headTracker.Recenter();
+
+	// A HUD hanging in the room is brought back in front of the wearer by the
+	// same key, because "put things where I am looking now" is the one thing
+	// that key means. Harmless when the HUD rides the head: there is no
+	// anchor to drop.
+	g_hudLayer.ResetAnchor();
 
 	// Recentering is meant to take effect at once. Easing the camera into the
 	// new zero would be the opposite of what the key is pressed for.

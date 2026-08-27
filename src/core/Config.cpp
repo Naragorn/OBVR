@@ -158,6 +158,31 @@ vr::StereoMode ReadStereoMode(vr::StereoMode fallback, const char* path) {
 	return fallback;
 }
 
+// Reads HudAnchor, which names a place rather than answers a yes-or-no: the
+// setting is "head" or "world", and a word is what a reader of the file will
+// understand without looking the key up.
+//
+// An unrecognised word keeps the previous setting and says so, the same way
+// Stereo does - silently defaulting would leave the HUD somewhere the person
+// did not ask for with nothing in the log to explain it.
+bool ReadAnchorIsWorld(const char* section, const char* key, bool fallback,
+                       const char* path) {
+	char buffer[32];
+	if (GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), path) == 0) {
+		return fallback;
+	}
+
+	if (EqualsIgnoreCase(buffer, "head") || EqualsIgnoreCase(buffer, "hmd")) {
+		return false;
+	}
+	if (EqualsIgnoreCase(buffer, "world") || EqualsIgnoreCase(buffer, "room")) {
+		return true;
+	}
+
+	OBVR_LOG("Config: unknown Render.%s \"%s\", keeping the previous setting", key, buffer);
+	return fallback;
+}
+
 const char* StereoModeName(vr::StereoMode mode) {
 	switch (mode) {
 		case vr::StereoMode::None: return "none";
@@ -259,6 +284,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Render", "HudOverlay", config.tracker.hudOverlay, path);
 	config.tracker.hudBetweenPasses =
 		ReadBool("Render", "HudBetweenPasses", config.tracker.hudBetweenPasses, path);
+	config.tracker.hudAnchorWorld =
+		ReadAnchorIsWorld("Render", "HudAnchor", config.tracker.hudAnchorWorld, path);
 	config.tracker.hudDistanceMetres =
 		ReadFloat("Render", "HudDistanceMetres", config.tracker.hudDistanceMetres, path);
 	config.tracker.hudWidthMetres =
@@ -377,8 +404,10 @@ bool Config::Load(const char* fileName) {
 	OBVR_LOG("Config: Render.MatchHeadsetFov=%d SetGameResolution=%d (%ux%u)",
 	         tracker.matchHeadsetFov ? 1 : 0, tracker.setRenderSize ? 1 : 0,
 	         tracker.renderWidth, tracker.renderHeight);
-	OBVR_LOG("Config: Render.HudOverlay=%d BetweenPasses=%d Distance=%.2fm Width=%.2fm",
+	OBVR_LOG("Config: Render.HudOverlay=%d BetweenPasses=%d Anchor=%s Distance=%.2fm "
+	         "Width=%.2fm",
 	         tracker.hudOverlay ? 1 : 0, tracker.hudBetweenPasses ? 1 : 0,
+	         tracker.hudAnchorWorld ? "world" : "head",
 	         static_cast<double>(tracker.hudDistanceMetres),
 	         static_cast<double>(tracker.hudWidthMetres));
 	if (tracker.stereo == vr::StereoMode::DualPass) {

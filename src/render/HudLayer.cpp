@@ -227,9 +227,10 @@ bool HudLayer::EnsureOverlay(vr::OpenVRBackend& backend, float distanceMetres,
 		return false;
 	}
 
-	// Straight ahead of the head, at the configured distance. Identity
-	// rotation, and the translation is negative Z because that is forward in
-	// the headset's own frame.
+	// The head-relative placement, which is also what a world-anchored
+	// overlay falls back to until an anchor pose can be read: straight ahead
+	// of the head at the configured distance, identity rotation, negative Z
+	// because that is forward in the headset's own frame.
 	vr::openvr::HmdMatrix34 hmdToOverlay{};
 	hmdToOverlay.m[0][0] = 1.0f;
 	hmdToOverlay.m[1][1] = 1.0f;
@@ -241,8 +242,48 @@ bool HudLayer::EnsureOverlay(vr::OpenVRBackend& backend, float distanceMetres,
 	return true;
 }
 
+// Places a world-anchored overlay, taking the anchor the first time it can.
+//
+// The anchor is a pose held rather than read each frame, and that is the
+// whole difference between the two anchorings: handing over the current head
+// pose every frame is exactly what head-relative already does, through the
+// compositor and better. Held and levelled, the quad stays in the room and
+// the head moves against it.
+//
+// Until a pose can be read - tracking not up yet - the overlay keeps the
+// head-relative transform it was created with. A HUD riding the head is a
+// far better wrong answer than one nailed to wherever the runtime guessed
+// the origin was.
+void HudLayer::PlaceInRoom(vr::OpenVRBackend& backend, float distanceMetres) {
+	if (!m_anchorValid) {
+		m_anchorValid = backend.GetRenderPoseMatrix(m_anchorPose);
+		if (!m_anchorValid) {
+			return;
+		}
+
+		// Heading only, for the reasons LevelPose gives: a quad carrying the
+		// pitch and roll the head happened to have hangs crooked for as long
+		// as the anchor stands.
+		vr::LevelPose(m_anchorPose);
+
+		const vr::openvr::HmdMatrix34 placed =
+			vr::OverlayPoseAhead(m_anchorPose, distanceMetres);
+		backend.SetOverlayTransformAbsolute(m_overlay, placed);
+
+		if (!m_anchorReported) {
+			m_anchorReported = true;
+			OBVR_LOG("Hud: the layer is anchored in the room at (%.2f, %.2f, %.2f) - "
+			         "the recenter key moves it",
+			         static_cast<double>(placed.m[0][3]),
+			         static_cast<double>(placed.m[1][3]),
+			         static_cast<double>(placed.m[2][3]));
+		}
+	}
+}
+
 void HudLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool captured,
-                      float distanceMetres, float widthMetres, bool probeSquare) {
+                      float distanceMetres, float widthMetres, bool anchorWorld,
+                      bool probeSquare) {
 	// Consumed either way; the next frame's capture decides afresh.
 	const bool haveCapture = captured && m_captured;
 	m_captured = false;
@@ -257,6 +298,21 @@ void HudLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool capture
 
 	if (!EnsureOverlay(backend, distanceMetres, widthMetres)) {
 		return;
+	}
+
+	if (anchorWorld) {
+		PlaceInRoom(backend, distanceMetres);
+	} else if (m_anchorValid) {
+		// Switched back to the head while the game runs. The overlay is
+		// still carrying an absolute transform, so it has to be given the
+		// head-relative one again or it stays hanging in the room.
+		vr::openvr::HmdMatrix34 hmdToOverlay{};
+		hmdToOverlay.m[0][0] = 1.0f;
+		hmdToOverlay.m[1][1] = 1.0f;
+		hmdToOverlay.m[2][2] = 1.0f;
+		hmdToOverlay.m[2][3] = -distanceMetres;
+		backend.SetOverlayTransformHmdRelative(m_overlay, hmdToOverlay);
+		m_anchorValid = false;
 	}
 
 	if (!m_vulkanChecked) {

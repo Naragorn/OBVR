@@ -255,6 +255,16 @@ int OpenVRBackend::SetOverlayTransformHmdRelative(
 		handle, openvr::kTrackedDeviceIndexHmd, &hmdToOverlay);
 }
 
+int OpenVRBackend::SetOverlayTransformAbsolute(
+	openvr::VROverlayHandle handle, const openvr::HmdMatrix34& trackingToOverlay) const {
+	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);
+	if (table == nullptr || table->SetOverlayTransformAbsolute == nullptr) {
+		return -1;
+	}
+	return table->SetOverlayTransformAbsolute(handle, openvr::kTrackingUniverseSeated,
+	                                          &trackingToOverlay);
+}
+
 int OpenVRBackend::SetOverlayWidthInMetres(openvr::VROverlayHandle handle,
                                            float metres) const {
 	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);
@@ -491,6 +501,19 @@ bool OpenVRBackend::ReadHeadPose(Quaternion& orientation, NiPoint3& position) co
 	return true;
 }
 
+
+openvr::HmdMatrix34 OverlayPoseAhead(const openvr::HmdMatrix34& pose,
+                                     float distanceMetres) {
+	openvr::HmdMatrix34 result = pose;
+
+	// Forward is the negative third column. Walking the position along it
+	// leaves the rotation alone, which is what keeps a levelled anchor level
+	// and stops the quad from tipping with wherever the head was.
+	for (int row = 0; row < 3; ++row) {
+		result.m[row][3] = pose.m[row][3] - pose.m[row][2] * distanceMetres;
+	}
+	return result;
+}
 
 void LevelPose(openvr::HmdMatrix34& pose) {
 	// Yaw only: no pitch, no roll.

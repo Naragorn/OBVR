@@ -157,6 +157,64 @@ void TestLevelPoseLookingStraightDown() {
 	Check(unchanged, "straight down leaves the pose exactly as it was");
 }
 
+void TestOverlayPoseAhead() {
+	std::printf("Placing the HUD ahead of its anchor\n");
+
+	using obvr::vr::LevelPose;
+	using obvr::vr::OverlayPoseAhead;
+
+	// Facing straight down negative Z, standing at eye height.
+	obvr::vr::openvr::HmdMatrix34 pose = PoseLookingAt(0.0f, 0.0f, 0.0f);
+	pose.m[0][3] = 0.0f;
+	pose.m[1][3] = 1.7f;
+	pose.m[2][3] = 0.0f;
+
+	const obvr::vr::openvr::HmdMatrix34 ahead = OverlayPoseAhead(pose, 1.2f);
+
+	// Forward is negative Z, so the quad is 1.2 metres that way - and at the
+	// same height, because forward is horizontal for a levelled pose.
+	CheckNear(ahead.m[0][3], 0.0f, "no sideways drift facing forward");
+	CheckNear(ahead.m[1][3], 1.7f, "stays at the anchor's height");
+	CheckNear(ahead.m[2][3], -1.2f, "one distance along negative z");
+
+	// The rotation is carried over untouched. A quad that picked up a
+	// rotation here would hang crooked for as long as the anchor stands.
+	bool rotationKept = true;
+	for (int row = 0; row < 3; ++row) {
+		for (int col = 0; col < 3; ++col) {
+			if (ahead.m[row][col] != pose.m[row][col]) {
+				rotationKept = false;
+			}
+		}
+	}
+	Check(rotationKept, "the anchor's rotation is carried over exactly");
+
+	// Turned a quarter turn, the quad goes round with the heading rather
+	// than staying where it was. This is the flow that decides whether the
+	// wearer finds their HUD after recentering while facing a new way.
+	obvr::vr::openvr::HmdMatrix34 turned = PoseLookingAt(0.0f, 1.5708f, 0.0f);
+	turned.m[0][3] = 0.0f;
+	turned.m[1][3] = 1.7f;
+	turned.m[2][3] = 0.0f;
+	LevelPose(turned);
+
+	const obvr::vr::openvr::HmdMatrix34 aheadTurned = OverlayPoseAhead(turned, 1.2f);
+	CheckNear(aheadTurned.m[1][3], 1.7f, "a turned anchor still hangs at head height");
+
+	// Whichever way it faces, the quad is exactly one distance from the
+	// anchor. That is the property worth holding: distance is what the
+	// setting promises, and it must not depend on the heading.
+	const float dx = aheadTurned.m[0][3] - turned.m[0][3];
+	const float dy = aheadTurned.m[1][3] - turned.m[1][3];
+	const float dz = aheadTurned.m[2][3] - turned.m[2][3];
+	CheckNear(dx * dx + dy * dy + dz * dz, 1.44f, "one distance away whatever the heading");
+
+	// Zero distance leaves the pose alone, which is what a person setting
+	// HudDistanceMetres=0 should get rather than a division or a flip.
+	const obvr::vr::openvr::HmdMatrix34 here = OverlayPoseAhead(pose, 0.0f);
+	CheckNear(here.m[2][3], pose.m[2][3], "no distance means no move");
+}
+
 }  // namespace
 
 int main() {
@@ -165,6 +223,8 @@ int main() {
 	TestLevelPoseKeepsHeadingOnly();
 	std::printf("\n");
 	TestLevelPoseLookingStraightDown();
+	std::printf("\n");
+	TestOverlayPoseAhead();
 	std::printf("\n");
 	std::printf("Struct layout\n");
 	Check(sizeof(obvr::vr::openvr::HmdMatrix34) == 48, "HmdMatrix34 is 48 bytes");

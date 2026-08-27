@@ -224,8 +224,27 @@ struct TrackerSettings {
 	// declines it so it cannot clear the texture this one filled.
 	bool hudBetweenPasses = false;
 
-	// Where the overlay hangs: straight ahead of the head, this far away, in
-	// metres. Head-relative, so it rides with the wearer like a cockpit HUD.
+	// Whether the overlay hangs in the room instead of on the head.
+	//
+	// Off, it is head-relative: the compositor carries it with the head every
+	// frame, so it sits in the same place in the view whatever the wearer
+	// looks at. That is a cockpit HUD, and it is what the layer's first run
+	// used.
+	//
+	// On, it is placed in the tracking space and stays there, so turning the
+	// head looks past it and turning back finds it again. The anchor is
+	// taken the first time the layer appears and again on the recenter key,
+	// levelled to heading only - the same treatment, for the same reasons,
+	// that the flat menu picture gets.
+	//
+	// Turning with the stick does not move it, and that is correct rather
+	// than incidental: the stick turns the character in the world while the
+	// wearer's head has not moved in the room, so a room-anchored quad stays
+	// exactly where they are still looking. What moves it is moving, and the
+	// recenter key is how it is brought back.
+	bool hudAnchorWorld = false;
+
+	// Where the overlay hangs: straight ahead, this far away, in metres.
 	float hudDistanceMetres = 1.2f;
 
 	// How wide the overlay quad is, in metres, at that distance. Height

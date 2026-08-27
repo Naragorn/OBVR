@@ -69,14 +69,24 @@ public:
 	// works and what is missing is the layer's own alpha; if even the square
 	// does not, the display path itself is at fault. Hot reloaded through
 	// Debug.HudProbe.
+	// anchorWorld hangs the quad in the tracking space instead of on the
+	// head, taking its anchor the first time a pose can be read and keeping
+	// it until ResetAnchor. Switching it off mid-session puts the
+	// head-relative transform back rather than leaving the quad in the room.
 	void Submit(vr::OpenVRBackend& backend, void* gameDevice, bool captured,
-	            float distanceMetres, float widthMetres, bool probeSquare);
+	            float distanceMetres, float widthMetres, bool anchorWorld, bool probeSquare);
+
+	// Drops the room anchor, so the next submit takes a fresh one from where
+	// the head is now. This is what the recenter key means for a HUD that
+	// hangs in the room: bring it back in front of me.
+	void ResetAnchor() { m_anchorValid = false; }
 
 	void Destroy();
 
 private:
 	bool EnsureTexture(void* gameDevice);
 	bool EnsureOverlay(vr::OpenVRBackend& backend, float distanceMetres, float widthMetres);
+	void PlaceInRoom(vr::OpenVRBackend& backend, float distanceMetres);
 
 	void* m_texture = nullptr;  // IDirect3DTexture9
 	void* m_surface = nullptr;  // IDirect3DSurface9, level 0
@@ -101,6 +111,12 @@ private:
 	vr::openvr::VROverlayHandle m_overlay = vr::openvr::kOverlayHandleInvalid;
 	bool m_overlayTried = false;
 	bool m_overlayVisible = false;
+
+	// The room anchor: a levelled head pose, held from when the layer was
+	// last placed. Held rather than read per frame - see PlaceInRoom.
+	vr::openvr::HmdMatrix34 m_anchorPose = {};
+	bool m_anchorValid = false;
+	bool m_anchorReported = false;
 
 	VulkanContext m_vulkan;
 	bool m_vulkanChecked = false;
