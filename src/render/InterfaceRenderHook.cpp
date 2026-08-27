@@ -116,6 +116,13 @@ UInt32 g_invocation = 0;
 UInt32 g_passesSinceScene = 0;
 UInt32 g_drawsSinceScene = 0;
 
+// Every draw the game makes, counted whatever it is drawing. The two counters
+// above only run while the 2D pass is being watched, which is exactly the
+// window that cannot answer "did the second world render draw as much as the
+// first". This one runs always, so the scene hook can read it either side of a
+// pass and subtract.
+UInt32 g_drawsTotal = 0;
+
 // The last object the game called the pass on - the interface manager, which
 // 0057929E hands over in ecx. Kept so the pass can be run at a moment of
 // OBVR's choosing without calling 00582160 to fetch it: the game has already
@@ -330,6 +337,7 @@ void SampleFirstDraw(void* device, const char* kind, UInt32 type, UInt32 count) 
 
 SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex,
                                      UInt32 primitiveCount) {
+	++g_drawsTotal;
 	if ((g_redirecting || g_observing) && g_sampleNextDraw) {
 		g_sampleNextDraw = false;
 		SampleFirstDraw(self, "dp", type, primitiveCount);
@@ -348,6 +356,7 @@ SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex
 SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 baseVertexIndex,
                                             UInt32 minVertexIndex, UInt32 numVertices,
                                             UInt32 startIndex, UInt32 primCount) {
+	++g_drawsTotal;
 	if ((g_redirecting || g_observing) && g_sampleNextDraw) {
 		g_sampleNextDraw = false;
 		SampleFirstDraw(self, "dip", type, primCount);
@@ -366,6 +375,7 @@ SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 base
 
 SInt32 __stdcall HookedDrawPrimitiveUP(void* self, UInt32 type, UInt32 primitiveCount,
                                        const void* vertexData, UInt32 stride) {
+	++g_drawsTotal;
 	if ((g_redirecting || g_observing) && g_sampleNextDraw) {
 		g_sampleNextDraw = false;
 		SampleFirstDraw(self, "dpup", type, primitiveCount);
@@ -385,6 +395,7 @@ SInt32 __stdcall HookedDrawIndexedPrimitiveUP(void* self, UInt32 type, UInt32 mi
                                               UInt32 numVertices, UInt32 primitiveCount,
                                               const void* indexData, UInt32 indexFormat,
                                               const void* vertexData, UInt32 stride) {
+	++g_drawsTotal;
 	if ((g_redirecting || g_observing) && g_sampleNextDraw) {
 		g_sampleNextDraw = false;
 		SampleFirstDraw(self, "dipup", type, primitiveCount);
@@ -939,12 +950,80 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 	}
 }
 
+// The device state the second world render inherits.
+//
+// RunHudPassBetweenScenes calls Oblivion's own 2D pass at a point in the frame
+// the engine never puts it: between the two world renders. That pass sets the
+// device up to draw a flat layer - blending, depth, textures, shaders - and
+// leaves it that way. Gamebryo keeps its own record of what the device is set
+// to and skips the calls it believes are redundant, so the second render never
+// puts back what it did not see change. It draws with what the 2D pass left.
+//
+// Which is invisible until it is not: the second render is one eye, so any
+// state that survives the pass and matters to some class of geometry takes
+// that geometry out of that eye alone.
+//
+// Made and released around each pass rather than kept alive. A state block has
+// to be released before the device can be reset - the reference is explicit
+// about it, "an application should release any explicit render targets, depth
+// stencil surfaces, additional swap chains, state blocks, and D3DPOOL_DEFAULT
+// resources" - and Oblivion resets its device whenever the video menu changes
+// a setting. A block held for the life of the process would turn changing the
+// resolution into a reset that fails. One driver allocation per frame is the
+// cheaper of the two mistakes.
+bool g_betweenStateRefused = false;
+bool g_betweenStateReported = false;
+
+// Takes the device state, or returns null. Never fatal: a frame without the
+// guard renders exactly as every frame did before this existed.
+void* CaptureStateBeforePass(void* device) {
+	if (device == nullptr || g_betweenStateRefused) {
+		return nullptr;
+	}
+
+	auto create =
+		d3d9::Method<d3d9::CreateStateBlockFn>(device, d3d9::kDeviceCreateStateBlock);
+	void* block = nullptr;
+	if (create == nullptr || create(device, d3d9::kStateBlockTypeAll, &block) < 0 ||
+	    block == nullptr) {
+		g_betweenStateRefused = true;
+		OBVR_LOG("Hud: no state block - the pass between the world renders will leave its "
+		         "device state to the second render, as it did before");
+		return nullptr;
+	}
+
+	if (!g_betweenStateReported) {
+		g_betweenStateReported = true;
+		OBVR_LOG("Hud: the pass between the world renders now hands the second render the "
+		         "device state the first one finished with");
+	}
+
+	// Creating a block captures the current state as part of creating it, so
+	// there is nothing left to ask for here.
+	return block;
+}
+
+// Puts back what the capture took, and lets the block go again.
+void RestoreStateAfterPass(void* block) {
+	if (auto apply = d3d9::Method<d3d9::StateBlockMethodFn>(block, d3d9::kStateBlockApply)) {
+		apply(block);
+	}
+	using ReleaseFn = UInt32(__stdcall*)(void*);
+	if (auto release = d3d9::Method<ReleaseFn>(block, 2)) {
+		release(block);
+	}
+}
+
 }  // namespace
 
 bool RunHudPassBetweenScenes() {
 	if (g_original == nullptr || g_lastSelf == nullptr || g_hudCapturedThisFrame) {
 		return false;
 	}
+
+	// Everything this pass is about to change, taken first. See the block
+	// above for why the second world render cannot be left to notice.
+	void* const savedState = CaptureStateBeforePass(GetGameDevice());
 
 	// The same call the game makes at 0057929E: the interface manager in
 	// ecx, a null texture argument for the frame's own 2D layer. Run through
@@ -953,6 +1032,10 @@ bool RunHudPassBetweenScenes() {
 	ResetPassStats();
 	const char* mode = RunInterfacePass(g_lastSelf, nullptr, nullptr, true);
 	const UInt32 drew = g_statsDraws;
+
+	if (savedState != nullptr) {
+		RestoreStateAfterPass(savedState);
+	}
 
 	// Only a pass that was actually redirected has put anything anywhere, so
 	// only that one gets to tell the game's later pass to stand down.
@@ -970,6 +1053,8 @@ bool RunHudPassBetweenScenes() {
 }
 
 void ArmBetweenTrace() { g_betweenTraceLeft = 12; }
+
+UInt32 TotalDrawCount() { return g_drawsTotal; }
 
 void TakeInterfaceStats(UInt32& passes, UInt32& draws) {
 	passes = g_passesSinceScene;

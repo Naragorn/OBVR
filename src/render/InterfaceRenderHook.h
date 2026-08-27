@@ -48,6 +48,12 @@ bool InstallInterfaceRenderHook(const InterfaceRedirect& callbacks);
 
 bool IsInterfaceRenderHooked();
 
+// Draws since the process started, all of them - the world renders included.
+// Read either side of a call to subtract: the difference is what that call
+// drew. Wraps at 2^32 like any counter, and a subtraction of two readings
+// survives the wrap.
+UInt32 TotalDrawCount();
+
 // How many times the 2D pass was entered since this was last asked, and how
 // many primitives it drew in those passes; both zero afterwards. The scene
 // render hook asks once per world render, so the two numbers land in the

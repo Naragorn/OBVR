@@ -208,6 +208,24 @@ constexpr UInt32 kDeviceGetRenderTarget = 38;
 constexpr UInt32 kDeviceSetRenderState = 57;
 constexpr UInt32 kDeviceGetRenderState = 58;
 
+// CreateStateBlock, and the two methods of what it returns.
+//
+// The header declares CreateStateBlock immediately after GetRenderState and
+// before BeginStateBlock, which puts it at 59 - and kDeviceGetTexture = 64
+// below is the independent check on that count, since the four entries in
+// between are BeginStateBlock, EndStateBlock, SetClipStatus and GetClipStatus.
+//
+// IDirect3DStateBlock9 derives from IUnknown and declares GetDevice, Capture
+// and Apply, so those are 3, 4 and 5.
+//
+// D3DSBT_ALL is 1. Creating the block already captures, so the first Capture
+// after creation is redundant and harmless - and the code below relies on
+// that rather than on the block being empty.
+constexpr UInt32 kDeviceCreateStateBlock = 59;
+constexpr UInt32 kStateBlockCapture = 4;
+constexpr UInt32 kStateBlockApply = 5;
+constexpr UInt32 kStateBlockTypeAll = 1;
+
 // D3DRENDERSTATETYPE values (d3d9types.h, lines 450-453 and 364).
 constexpr UInt32 kRenderStateSeparateAlphaBlendEnable = 206;
 constexpr UInt32 kRenderStateSrcBlendAlpha = 207;
@@ -375,6 +393,10 @@ using SetRenderTargetFn = SInt32(__stdcall*)(void* self, UInt32 index, void* sur
 using GetRenderTargetFn = SInt32(__stdcall*)(void* self, UInt32 index, void** surface);
 using SetRenderStateFn = SInt32(__stdcall*)(void* self, UInt32 state, UInt32 value);
 using GetRenderStateFn = SInt32(__stdcall*)(void* self, UInt32 state, UInt32* value);
+using CreateStateBlockFn = SInt32(__stdcall*)(void* self, UInt32 type, void** stateBlock);
+
+// Capture and Apply share a signature: both take only the block itself.
+using StateBlockMethodFn = SInt32(__stdcall*)(void* self);
 
 // Present, for the hook that moves the submit to the end of the frame.
 // Already declared above as kDevicePresent.

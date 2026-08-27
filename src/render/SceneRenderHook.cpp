@@ -66,6 +66,29 @@ void TraceFrame(const char* how, UInt32 passesLastFrame, UInt32 drawsLastFrame) 
 	         passesLastFrame, drawsLastFrame, handle);
 }
 
+// The two world renders of a dual frame, measured against each other, on a
+// slow heartbeat.
+//
+// Slow because the question is not what one frame did. Both renders draw the
+// same world, so they are meant to draw the same number of primitives, and a
+// difference is geometry the second render decided it did not need - which is
+// what a right eye missing bodies looks like from here. Equal counts move the
+// fault out of the render and into what happens to the picture afterwards.
+//
+// The middle number is the moment between them, where the eye copy is taken
+// and the 2D layer is captured. It is in the line because that moment sets
+// device state the second render then inherits, so a fault that only ever
+// appears in the second eye has to be read next to it.
+void TracePassDraws(UInt32 entry, UInt32 afterFirst, UInt32 afterBetween, UInt32 afterSecond) {
+	if (g_sceneCall % 120 != 0) {
+		return;
+	}
+	OBVR_LOG("Dual draws at scene call %u: first pass %u, between the passes %u, second "
+	         "pass %u",
+	         g_sceneCall, afterFirst - entry, afterBetween - afterFirst,
+	         afterSecond - afterBetween);
+}
+
 // Stands where the entry of kRenderScene used to be, with the same calling
 // convention. See the type alias above for why __fastcall.
 void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTexture) {
@@ -92,15 +115,26 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 
 	g_rendering = true;
 
+	// What each half of the frame drew. The two renders are the same world from
+	// two places, so they are meant to be the same count - and a right eye
+	// missing bodies is either a second render that drew less or a second render
+	// that drew the same and was not seen afterwards. One subtraction separates
+	// those two, and nothing else in the log can.
+	const UInt32 drawsAtEntry = TotalDrawCount();
+
 	// First eye. The camera hook already moved the camera there.
 	g_original(self, unusedEdx, renderedTexture);
+	const UInt32 drawsAfterFirst = TotalDrawCount();
 	g_callbacks.betweenPasses();
+	const UInt32 drawsAfterBetween = TotalDrawCount();
 
 	// Second eye, from a camera one interpupillary distance over.
 	g_original(self, unusedEdx, renderedTexture);
+	const UInt32 drawsAfterSecond = TotalDrawCount();
 	g_callbacks.afterSecondPass();
 
 	g_rendering = false;
+	TracePassDraws(drawsAtEntry, drawsAfterFirst, drawsAfterBetween, drawsAfterSecond);
 	TraceFrame("dual", passesLastFrame, drawsLastFrame);
 }
 
