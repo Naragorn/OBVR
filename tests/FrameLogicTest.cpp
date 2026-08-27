@@ -478,71 +478,54 @@ void TestWantsHudRedirect() {
 	using obvr::camera::FrameDelivery;
 	using obvr::camera::WantsHudRedirect;
 
-	// A delivered frame with no menu in front: the HUD leaves the picture and
-	// reaches the headset as the overlay.
-	Check(WantsHudRedirect(true, false, false),
-	      "an open frame with no menu sends the layer to its own texture");
+	// The three deliveries, each said once.
+	Check(WantsHudRedirect(FrameDelivery::Stereo),
+	      "a stereo frame sends the layer to its own texture, because the overlay shows it");
+	Check(WantsHudRedirect(FrameDelivery::HeldStereo),
+	      "so does a held frame - the overlay is exactly what is still live on those");
+	Check(!WantsHudRedirect(FrameDelivery::Cinema),
+	      "the cinema screen shows the frame itself, so the layer has to stay in it");
 
-	// The refusals, each for its own reason.
-	Check(!WantsHudRedirect(false, false, false),
-	      "no open frame means the captured layer would reach nobody");
-	Check(!WantsHudRedirect(true, true, false),
-	      "a menu on the cinema screen keeps the layer in the picture that shows it");
-	Check(!WantsHudRedirect(false, true, false), "both against it");
+	// Now the same question asked the way the game asks it, over every input
+	// the decision has - camera pass, menu, setting, and whether a pair is held.
+	//
+	// That last one is why this loop is written out rather than trusted. It was
+	// pinned to true in an earlier version of this test, and the case it left
+	// out is the main menu: a menu, no camera pass, no captured pair. That
+	// falls back to the cinema screen while the redirect went on taking the
+	// layer away, so the title screen had its menu in neither place and the
+	// game looked hung. Sixteen combinations cost nothing; the one that was
+	// missing cost a session.
+	for (int bits = 0; bits < 16; ++bits) {
+		const bool hadCameraPass = (bits & 1) != 0;
+		const bool menuIsUp = (bits & 2) != 0;
+		const bool menusInWorld = (bits & 4) != 0;
+		const bool haveHeldEyes = (bits & 8) != 0;
 
-	// A menu asked to hang in the world is the opposite case: the layer is
-	// exactly what should leave the frame, because the overlay is how the menu
-	// reaches the headset at all.
-	Check(WantsHudRedirect(true, true, true),
-	      "a menu in the world sends the layer out, because the overlay is how it arrives");
+		const FrameDelivery delivery =
+			DeliverFrame(hadCameraPass, menuIsUp, menusInWorld, haveHeldEyes);
 
-	// The correction, and the whole bug in one line. Oblivion stops rendering
-	// the world entirely while an inventory or an ESC menu is up - the scene
-	// counter stands still for as long as the menu is open, measured in a run -
-	// so no menu frame ever carries a camera pass. Requiring one meant the
-	// redirect declined on every single menu frame, the 2D pass drew its 149
-	// primitives straight into the back buffer, and the menu appeared on the
-	// monitor while the headset showed a held world with nothing in front of it.
-	Check(WantsHudRedirect(false, true, true),
-	      "and does so with no camera pass, because a menu frame never has one");
-
-	// Which is safe precisely because those frames are still delivered: the
-	// held path submits every one of them, so there is somebody to hand the
-	// layer to - which is all frameOpen was ever standing in for.
-	for (int pass = 0; pass < 2; ++pass) {
-		Check(WantsHudRedirect(pass != 0, true, true),
-		      "a menu in the world redirects whether or not the world was drawn");
+		// The invariant, both ways round: the layer leaves the frame if and
+		// only if something other than the frame is being shown. A menu that
+		// is in neither place is what breaking it looks like.
+		Check(WantsHudRedirect(delivery) == (delivery != FrameDelivery::Cinema),
+		      "the layer leaves the frame exactly when the frame is not what is shown");
 	}
 
-	// The property this exists for, and the one that would show up in the
-	// headset as a menu that is simply not there: whenever a frame is
-	// delivered on the cinema screen, the redirect declined - so the picture
-	// that path shows still contains the menu it exists to show.
-	for (int pass = 0; pass < 2; ++pass) {
-		for (int menu = 0; menu < 2; ++menu) {
-			for (int world = 0; world < 2; ++world) {
-				const bool hadCameraPass = pass != 0;
-				const bool menuIsUp = menu != 0;
-				const bool menusInWorld = world != 0;
-				const FrameDelivery delivery =
-					DeliverFrame(hadCameraPass, menuIsUp, menusInWorld, true);
+	// The main menu on its own, named rather than left inside the loop, because
+	// it is the flow that broke and the one a future change would break again.
+	Check(DeliverFrame(false, true, true, false) == FrameDelivery::Cinema,
+	      "the main menu asked to hang in the world has no pair, so it takes the screen");
+	Check(!WantsHudRedirect(DeliverFrame(false, true, true, false)),
+	      "and therefore keeps its layer, which is the only copy of it there is");
 
-				if (delivery == FrameDelivery::Cinema) {
-					Check(!WantsHudRedirect(hadCameraPass, menuIsUp, menusInWorld),
-					      "a cinema frame never had its 2D layer taken away");
-				}
-
-				// The converse, which is the half that was broken: a frame
-				// whose layer is taken away must be delivered by a path that
-				// shows the overlay. Held and stereo both do; cinema does not,
-				// and that is what the check above covers from the other side.
-				if (WantsHudRedirect(hadCameraPass, menuIsUp, menusInWorld)) {
-					Check(delivery != FrameDelivery::Cinema,
-					      "a frame that gave up its layer is never shown as the bare frame");
-				}
-			}
-		}
-	}
+	// The in-game menu, which is the case the setting exists for: no camera
+	// pass either, but a pair is held, so the overlay is live and the layer
+	// should leave.
+	Check(DeliverFrame(false, true, true, true) == FrameDelivery::HeldStereo,
+	      "an in-game menu in the world is held rather than screened");
+	Check(WantsHudRedirect(DeliverFrame(false, true, true, true)),
+	      "so its layer leaves the frame and arrives as the overlay");
 }
 
 void TestSweepProbeStage() {

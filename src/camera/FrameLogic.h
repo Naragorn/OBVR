@@ -322,18 +322,18 @@ bool DeliversDualEyes(bool stereoDual, bool sceneHooked, UInt32 probeRung);
 
 // Whether this frame's 2D pass should be redirected to the HUD texture.
 //
-// The same two questions the second scene pass asks, minus the arming - the
-// redirect needs no camera shift, only a frame somebody will deliver.
+// Asked of the delivery rather than of the inputs, and deliberately so. The
+// layer may leave the frame exactly when the frame itself is not what gets
+// shown: the cinema screen shows the back buffer, so on those the layer has to
+// stay in it, or the menu is taken out of the very picture that exists to show
+// it. Stereo and held both show the overlay, so on those it should leave.
 //
-// frameOpen: the compositor accepted this frame, so the captured layer has a
-// way to reach the headset. Without it the redirect would strip the HUD from
-// the monitor's frame and hand it to nobody.
-//
-// menuIsUp and menusInWorld: a menu frame bound for the cinema screen shows
-// the back buffer, so the layer has to stay in it - redirecting it would take
-// the menu out of the very picture that exists to show it. A menu delivered in
-// the world is the opposite case: the layer is exactly what should leave the
-// frame, because the overlay is how the menu reaches the headset at all.
-bool WantsHudRedirect(bool frameOpen, bool menuIsUp, bool menusInWorld);
+// This was its own decision over frameOpen, menuIsUp and menusInWorld once, and
+// the two drifted apart the moment the redirect learned that menu frames never
+// carry a camera pass. The main menu has no captured pair to hold, so it falls
+// back to the cinema screen - while the redirect went on taking its layer away.
+// The menu was then in neither place and the game looked hung at the title
+// screen. Deriving it removes the second rule that could disagree.
+bool WantsHudRedirect(FrameDelivery delivery);
 
 }  // namespace obvr::camera

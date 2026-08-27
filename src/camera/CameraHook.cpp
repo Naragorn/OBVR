@@ -542,15 +542,20 @@ void* HudBeginRedirect() {
 		return nullptr;
 	}
 
-	// The same menu question as everywhere else, so the redirect, the delivery
-	// decision and the dual pass cannot disagree about what kind of frame this
-	// is. On a menu frame bound for the cinema screen the layer stays in the
-	// back buffer, which is exactly what that path then shows; on one bound
-	// for the world the layer is what the overlay exists to carry.
+	// The delivery this frame is heading for, worked out from exactly what
+	// OnFrameEnd will work it out from. Every input is stable across the frame:
+	// g_frameOpen is not cleared until OnFrameEnd reads it, and the held pair
+	// only changes when a dual submit runs, which is later than this.
+	//
+	// Asked here rather than re-deciding, because the redirect and the delivery
+	// disagreeing is not a subtle fault - it is a menu that exists in neither
+	// the frame nor the overlay.
 	const bool menuIsUp = config.tracker.showMenus && game::IsMenuMode();
-	if (!WantsHudRedirect(
-	        g_frameOpen, menuIsUp,
-	        MenusCanReachTheWorld(config.tracker.menusInWorld, config.tracker.hudOverlay))) {
+	const FrameDelivery delivery = DeliverFrame(
+		g_frameOpen, menuIsUp,
+		MenusCanReachTheWorld(config.tracker.menusInWorld, config.tracker.hudOverlay),
+		g_headsetRenderer.HasHeldEyes());
+	if (!WantsHudRedirect(delivery)) {
 		return nullptr;
 	}
 
