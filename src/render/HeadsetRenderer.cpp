@@ -382,9 +382,18 @@ bool HeadsetRenderer::SubmitDualEyes(const vr::OpenVRBackend& backend,
 		// flat but honest; submitting one fresh eye and one stale one would
 		// be the inverted-disparity fault by another route.
 		//
-		// And nothing is left held: a held submit sends the mirror out again,
-		// so it may only be armed by a frame that actually filled it.
-		m_heldPoseValid = false;
+		// What must NOT happen here is discarding the held pair. This frame
+		// captured nothing, but it also wrote nothing: SubmitMono submits the
+		// back buffer directly and never touches the mirror, so whatever was
+		// held is still sitting there, still correct, still the world.
+		//
+		// Clearing it here is what put the black bars back. One frame without
+		// captures - and closing a menu produces exactly one - marked the pair
+		// invalid, so the frame that closes the menu fell to the cinema screen,
+		// which then wrote its letterboxed layout into those same images. Every
+		// menu after that held a flat picture with bars and called it stereo.
+		//
+		// The pair is invalidated where it is overwritten, and nowhere else.
 		return SubmitMono(backend, request, left, right);
 	}
 
