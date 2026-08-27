@@ -166,6 +166,16 @@ d3d9::DrawIndexedPrimitiveFn g_originalDrawIndexed = nullptr;
 d3d9::DrawPrimitiveUPFn g_originalDrawUP = nullptr;
 d3d9::DrawIndexedPrimitiveUPFn g_originalDrawIndexedUP = nullptr;
 
+d3d9::SetTransformFn g_originalSetTransform = nullptr;
+d3d9::SetVertexDeclarationFn g_originalSetVertexDecl = nullptr;
+d3d9::SetFVFFn g_originalSetFVF = nullptr;
+d3d9::SetVertexShaderFn g_originalSetVertexShader = nullptr;
+d3d9::SetVertexShaderConstantFFn g_originalSetVsConstantF = nullptr;
+
+// Counting always, exactly like g_drawsTotal above: the scene hook reads the
+// totals either side of each world render and subtracts.
+StateCallCounts g_stateCalls;
+
 SInt32 __stdcall HookedSetRenderTarget(void* self, UInt32 index, void* surface) {
 	if ((g_redirecting || g_observing) && index == 0 && surface != nullptr) {
 		if (surface == g_backBuffer) {
@@ -437,6 +447,38 @@ SInt32 __stdcall HookedSetRenderState(void* self, UInt32 state, UInt32 value) {
 	return g_originalSetState(self, state, value);
 }
 
+// The five vertex pipeline counters. Nothing is inspected and nothing is
+// gated: one increment, then the game's own method. They stand apart from
+// the draw hooks above because they have no share in the redirect - they
+// exist so the scene hook can compare the setup work of the two world
+// renders of a dual frame.
+SInt32 __stdcall HookedSetTransform(void* self, UInt32 state, const d3d9::Matrix4* matrix) {
+	++g_stateCalls.transforms;
+	return g_originalSetTransform(self, state, matrix);
+}
+
+SInt32 __stdcall HookedSetVertexDeclaration(void* self, void* declaration) {
+	++g_stateCalls.declarations;
+	return g_originalSetVertexDecl(self, declaration);
+}
+
+SInt32 __stdcall HookedSetFVF(void* self, UInt32 fvf) {
+	++g_stateCalls.fvfs;
+	return g_originalSetFVF(self, fvf);
+}
+
+SInt32 __stdcall HookedSetVertexShader(void* self, void* shader) {
+	++g_stateCalls.vertexShaders;
+	return g_originalSetVertexShader(self, shader);
+}
+
+SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const float* data,
+                                      UInt32 vector4fCount) {
+	++g_stateCalls.constantCalls;
+	g_stateCalls.constantVectors += vector4fCount;
+	return g_originalSetVsConstantF(self, startRegister, data, vector4fCount);
+}
+
 // Makes one table entry writable, changes it, and puts the protection back -
 // the same three steps as the Present hook, on the same table, two entries
 // apart.
@@ -565,6 +607,36 @@ bool EnsureTargetHook() {
 		                    reinterpret_cast<void*>(&HookedDrawIndexedPrimitiveUP));
 		if (!drawsHooked) {
 			OBVR_LOG("Hud: the draw counters could not all be installed");
+		}
+	}
+
+	// The vertex pipeline counters, on the draw counters' terms: diagnostic,
+	// and a failure costs only the count.
+	g_originalSetTransform =
+		reinterpret_cast<d3d9::SetTransformFn>(vtable[d3d9::kDeviceSetTransform]);
+	g_originalSetVertexDecl = reinterpret_cast<d3d9::SetVertexDeclarationFn>(
+		vtable[d3d9::kDeviceSetVertexDeclaration]);
+	g_originalSetFVF = reinterpret_cast<d3d9::SetFVFFn>(vtable[d3d9::kDeviceSetFVF]);
+	g_originalSetVertexShader = reinterpret_cast<d3d9::SetVertexShaderFn>(
+		vtable[d3d9::kDeviceSetVertexShader]);
+	g_originalSetVsConstantF = reinterpret_cast<d3d9::SetVertexShaderConstantFFn>(
+		vtable[d3d9::kDeviceSetVertexShaderConstantF]);
+	if (g_originalSetTransform != nullptr && g_originalSetVertexDecl != nullptr &&
+	    g_originalSetFVF != nullptr && g_originalSetVertexShader != nullptr &&
+	    g_originalSetVsConstantF != nullptr) {
+		const bool stateHooked =
+			WriteTableEntry(vtable, d3d9::kDeviceSetTransform,
+		                    reinterpret_cast<void*>(&HookedSetTransform)) &&
+			WriteTableEntry(vtable, d3d9::kDeviceSetVertexDeclaration,
+		                    reinterpret_cast<void*>(&HookedSetVertexDeclaration)) &&
+			WriteTableEntry(vtable, d3d9::kDeviceSetFVF,
+		                    reinterpret_cast<void*>(&HookedSetFVF)) &&
+			WriteTableEntry(vtable, d3d9::kDeviceSetVertexShader,
+		                    reinterpret_cast<void*>(&HookedSetVertexShader)) &&
+			WriteTableEntry(vtable, d3d9::kDeviceSetVertexShaderConstantF,
+		                    reinterpret_cast<void*>(&HookedSetVsConstantF));
+		if (!stateHooked) {
+			OBVR_LOG("Hud: the vertex state counters could not all be installed");
 		}
 	}
 
@@ -983,6 +1055,8 @@ bool RunHudPassBetweenScenes() {
 void ArmBetweenTrace() { g_betweenTraceLeft = 12; }
 
 UInt32 TotalDrawCount() { return g_drawsTotal; }
+
+StateCallCounts TotalStateCalls() { return g_stateCalls; }
 
 void TakeInterfaceStats(UInt32& passes, UInt32& draws) {
 	passes = g_passesSinceScene;

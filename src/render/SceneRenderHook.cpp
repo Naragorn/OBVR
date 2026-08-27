@@ -89,6 +89,33 @@ void TracePassDraws(UInt32 entry, UInt32 afterFirst, UInt32 afterBetween, UInt32
 	         afterSecond - afterBetween);
 }
 
+// The setup work beside the draw counts, on the same heartbeat. The draw
+// line said the geometry is submitted twice; this one says whether it is
+// *set up* twice. A render that uploads far fewer shader constants than its
+// twin while drawing the same primitives is drawing skinned geometry
+// against whatever the registers still held - which is what bodies
+// collapsed onto one point look like from this side of the API.
+void TracePassState(const StateCallCounts& entry, const StateCallCounts& afterFirst,
+                    const StateCallCounts& afterBetween, const StateCallCounts& afterSecond) {
+	if (g_sceneCall % 120 != 0) {
+		return;
+	}
+	OBVR_LOG("Dual state at scene call %u (first pass / second pass): constants %u calls "
+	         "%u vectors / %u calls %u vectors, shaders %u/%u, declarations %u/%u, "
+	         "fvf %u/%u, transforms %u/%u",
+	         g_sceneCall, afterFirst.constantCalls - entry.constantCalls,
+	         afterFirst.constantVectors - entry.constantVectors,
+	         afterSecond.constantCalls - afterBetween.constantCalls,
+	         afterSecond.constantVectors - afterBetween.constantVectors,
+	         afterFirst.vertexShaders - entry.vertexShaders,
+	         afterSecond.vertexShaders - afterBetween.vertexShaders,
+	         afterFirst.declarations - entry.declarations,
+	         afterSecond.declarations - afterBetween.declarations,
+	         afterFirst.fvfs - entry.fvfs, afterSecond.fvfs - afterBetween.fvfs,
+	         afterFirst.transforms - entry.transforms,
+	         afterSecond.transforms - afterBetween.transforms);
+}
+
 // Stands where the entry of kRenderScene used to be, with the same calling
 // convention. See the type alias above for why __fastcall.
 void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTexture) {
@@ -126,20 +153,25 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	// somewhere else, and because a run where it stops being true would be the
 	// most interesting run of all.
 	const UInt32 drawsAtEntry = TotalDrawCount();
+	const StateCallCounts stateAtEntry = TotalStateCalls();
 
 	// First eye. The camera hook already moved the camera there.
 	g_original(self, unusedEdx, renderedTexture);
 	const UInt32 drawsAfterFirst = TotalDrawCount();
+	const StateCallCounts stateAfterFirst = TotalStateCalls();
 	g_callbacks.betweenPasses();
 	const UInt32 drawsAfterBetween = TotalDrawCount();
+	const StateCallCounts stateAfterBetween = TotalStateCalls();
 
 	// Second eye, from a camera one interpupillary distance over.
 	g_original(self, unusedEdx, renderedTexture);
 	const UInt32 drawsAfterSecond = TotalDrawCount();
+	const StateCallCounts stateAfterSecond = TotalStateCalls();
 	g_callbacks.afterSecondPass();
 
 	g_rendering = false;
 	TracePassDraws(drawsAtEntry, drawsAfterFirst, drawsAfterBetween, drawsAfterSecond);
+	TracePassState(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceFrame("dual", passesLastFrame, drawsLastFrame);
 }
 

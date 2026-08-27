@@ -410,6 +410,31 @@ static_assert(sizeof(Matrix4) == 16 * sizeof(float), "D3DMATRIX is sixteen float
 
 using GetTransformFn = SInt32(__stdcall*)(void* self, UInt32 state, Matrix4* matrix);
 
+// The setter side of the same pipeline: SetTransform (44), SetVertexDeclaration
+// (87), SetFVF (89), SetVertexShader (92) and SetVertexShaderConstantF (94),
+// counted from the same listing. Each sits one entry beside an already
+// verified neighbour - its Get half, or the draw quartet - so a miscount
+// here would have moved those too.
+//
+// Counters rather than interventions. The dual pass submits the same skinned
+// bodies twice and one copy collapses onto a point, which is what a draw
+// against missing bone matrices looks like; bone matrices travel through
+// SetVertexShaderConstantF. So the question these settle: does the game run
+// its vertex pipeline setup as often for one world render as for the other,
+// or does one render draw against whatever the registers still hold.
+constexpr UInt32 kDeviceSetTransform = 44;
+constexpr UInt32 kDeviceSetVertexDeclaration = 87;
+constexpr UInt32 kDeviceSetFVF = 89;
+constexpr UInt32 kDeviceSetVertexShader = 92;
+constexpr UInt32 kDeviceSetVertexShaderConstantF = 94;
+
+using SetTransformFn = SInt32(__stdcall*)(void* self, UInt32 state, const Matrix4* matrix);
+using SetVertexDeclarationFn = SInt32(__stdcall*)(void* self, void* declaration);
+using SetFVFFn = SInt32(__stdcall*)(void* self, UInt32 fvf);
+using SetVertexShaderFn = SInt32(__stdcall*)(void* self, void* shader);
+using SetVertexShaderConstantFFn = SInt32(__stdcall*)(void* self, UInt32 startRegister,
+                                                      const float* data, UInt32 vector4fCount);
+
 // IDirect3DDevice9::Present. Five arguments after this, all of which OBVR
 // passes straight through - it hooks this to learn when a frame is finished,
 // not to change what Present does.

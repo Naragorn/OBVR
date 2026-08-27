@@ -54,6 +54,26 @@ bool IsInterfaceRenderHooked();
 // survives the wrap.
 UInt32 TotalDrawCount();
 
+// The vertex pipeline setters since the process started, on the same terms:
+// read either side of a call, subtract, and the difference is what that call
+// set up. All six wrap at 2^32 and the subtraction survives it.
+//
+// Split out per method because they fail differently. Skinned bodies get
+// their bone matrices through SetVertexShaderConstantF, so a render whose
+// constant uploads sit far below its twin's while the draw counts match is
+// drawing skinned geometry against stale registers. The other four say
+// whether such a gap is the constants alone or the whole vertex setup.
+struct StateCallCounts {
+	UInt32 transforms = 0;
+	UInt32 declarations = 0;
+	UInt32 fvfs = 0;
+	UInt32 vertexShaders = 0;
+	UInt32 constantCalls = 0;
+	UInt32 constantVectors = 0;
+};
+
+StateCallCounts TotalStateCalls();
+
 // How many times the 2D pass was entered since this was last asked, and how
 // many primitives it drew in those passes; both zero afterwards. The scene
 // render hook asks once per world render, so the two numbers land in the
