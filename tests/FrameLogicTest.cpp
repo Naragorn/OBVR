@@ -517,6 +517,53 @@ void TestSecondPassUnderProbe() {
 	Check(true, "the cutting rung refuses every frame, however the frame was shaped");
 }
 
+void TestDeliversDualEyes() {
+	std::printf("When the frame promises two captured eyes\n");
+
+	using obvr::camera::DeliversDualEyes;
+	using obvr::camera::kProbeSinglePass;
+
+	// The one flow that promises them: dual stereo, a hooked scene render,
+	// and a rung that lets the second render happen.
+	Check(DeliversDualEyes(true, true, 0), "dual stereo on a hooked render delivers two eyes");
+
+	// Each refusal on its own, so a change that collapses two of them into
+	// one is a failure rather than a subtlety.
+	Check(!DeliversDualEyes(false, true, 0), "another stereo mode captures nothing to submit");
+	Check(!DeliversDualEyes(true, false, 0),
+	      "an unhooked scene render never runs the passes that capture");
+	Check(!DeliversDualEyes(true, true, kProbeSinglePass),
+	      "the rung that cuts the second render leaves only one picture");
+
+	// The property this exists for: whenever the second pass will not run,
+	// the frame must not promise two eyes - or the submit waits on captures
+	// that never arrive and the headset holds the last pair it got.
+	for (int bits = 0; bits < 8; ++bits) {
+		const bool frameOpen = (bits & 1) != 0;
+		const bool armed = (bits & 2) != 0;
+		const bool menuIsUp = (bits & 4) != 0;
+		if (obvr::camera::WantsSecondScenePass(frameOpen, armed, menuIsUp, kProbeSinglePass)) {
+			Check(false, "the cutting rung ran a second pass after all");
+			return;
+		}
+		if (DeliversDualEyes(true, true, kProbeSinglePass)) {
+			Check(false, "a frame promised two eyes on a rung that renders once");
+			return;
+		}
+	}
+	Check(true, "a rung that renders once never promises two eyes");
+
+	// And every other rung keeps the promise it always made, so switching
+	// the probe off restores exactly the previous behaviour.
+	for (UInt32 rung = 0; rung < 3; ++rung) {
+		if (!DeliversDualEyes(true, true, rung)) {
+			Check(false, "an ordinary rung stopped delivering two eyes");
+			return;
+		}
+	}
+	Check(true, "every ordinary rung delivers two eyes exactly as before");
+}
+
 int main() {
 	std::printf("OBVR frame logic test\n\n");
 
@@ -545,6 +592,8 @@ int main() {
 	TestSweepProbeStage();
 	std::printf("\n");
 	TestSecondPassUnderProbe();
+	std::printf("\n");
+	TestDeliversDualEyes();
 	std::printf("\n");
 	TestFrameClock();
 	std::printf("\n");

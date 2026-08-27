@@ -115,4 +115,8 @@ bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp, UInt32 prob
 	return probeRung != kProbeSinglePass && WantsSecondScenePass(frameOpen, armed, menuIsUp);
 }
 
+bool DeliversDualEyes(bool stereoDual, bool sceneHooked, UInt32 probeRung) {
+	return stereoDual && sceneHooked && probeRung != kProbeSinglePass;
+}
+
 }  // namespace obvr::camera

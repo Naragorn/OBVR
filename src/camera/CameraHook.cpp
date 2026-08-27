@@ -789,8 +789,12 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// Only claimed when the second pass can actually happen. With the scene
 	// render unhooked the captures never arrive, and the submit would fall
 	// back every frame; saying mono from the start keeps the fallback path
-	// the one that was chosen rather than the one that was reached.
-	request.dualEyes = stereoDual && render::IsSceneRenderHooked();
+	// the one that was chosen rather than the one that was reached. The
+	// probe rung that cuts the second render counts as the same thing, which
+	// is what lets that rung be switched on and off mid-session against a
+	// live picture rather than a frozen one.
+	request.dualEyes =
+		DeliversDualEyes(stereoDual, render::IsSceneRenderHooked(), DualProbeRung());
 
 	// The same call the camera offset above used, so the eye the camera moved
 	// to and the eye the picture is given to cannot drift apart.

@@ -252,6 +252,24 @@ UInt32 SweepProbeStage(UInt32 sceneCall, UInt32 configured);
 // the probe cannot quietly change it when it is not running.
 bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp, UInt32 probeRung);
 
+// Whether this frame will hand the compositor two captured eyes.
+//
+// The dual submit reads pictures the two passes captured, so it may only be
+// claimed on a frame that will actually run them. Two of the three reasons
+// it might not are long-standing - stereo is not set to dual, or the scene
+// render could not be hooked - and the third is the probe rung that cuts the
+// second render.
+//
+// That third one is what makes rung 3 usable rather than merely quiet. With
+// it folded in, a run on that rung falls back to the mono submit and the
+// headset keeps a live picture instead of freezing on the last pair it
+// captured, so the rung can be switched on and off while the game runs and
+// what changes on screen is the second render alone. That is how a
+// camera-dependent effect - water reflections resetting as the head moves -
+// gets attributed to the dual pass or cleared of it, in one session, without
+// leaving the spot being looked at.
+bool DeliversDualEyes(bool stereoDual, bool sceneHooked, UInt32 probeRung);
+
 // Whether this frame's 2D pass should be redirected to the HUD texture.
 //
 // The same two questions the second scene pass asks, minus the arming - the
