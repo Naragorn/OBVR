@@ -54,7 +54,7 @@ bool g_rendering = false;
 UInt32 g_sceneCall = 0;
 
 void TraceFrame(const char* how, UInt32 passesLastFrame, UInt32 drawsLastFrame) {
-	if (g_sceneCall <= 200 || g_sceneCall > 460 || g_sceneCall % 10 != 0) {
+	if (g_sceneCall <= 150 || g_sceneCall > 500 || g_sceneCall % 10 != 0) {
 		return;
 	}
 	const UInt32 handle = *reinterpret_cast<const UInt32*>(addr::kLoadingThreadHandle);

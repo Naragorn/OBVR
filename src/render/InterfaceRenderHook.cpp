@@ -8,6 +8,7 @@
 #include "render/D3D9Types.h"
 #include "render/GameDevice.h"
 #include "render/PresentHook.h"
+#include "render/SceneRenderHook.h"
 
 namespace obvr::render {
 namespace {
@@ -814,9 +815,19 @@ void LogInterfaceGates(void* self, UInt32 invocation) {
 
 	// Only reachable through a root the game itself dereferences one
 	// instruction later, so a null here is the finding rather than a crash.
+	//
+	// [root+34h] is the gate inside the drawing code that the first reading of
+	// 0058FBA0 walked past: it is the list the traversal at 0058FC60 walks,
+	// and 0058FC4E jumps clean to the end when it is null. An empty list is a
+	// pass that runs from top to bottom and draws nothing - which is exactly
+	// the shape of what the dual pass leaves behind.
 	UInt32 rootFlag = 0xFFu;
+	UInt32 rootChildren = 0;
+	UInt32 rootPeer = 0;
 	if (root != 0) {
 		rootFlag = *reinterpret_cast<const UInt8*>(root + 5);
+		rootChildren = *reinterpret_cast<const UInt32*>(root + 0x34);
+		rootPeer = *reinterpret_cast<const UInt32*>(root + 0x10);
 	}
 
 	const UInt32 menuCount = *reinterpret_cast<const UInt16*>(addr::kMenuStackCount);
@@ -824,25 +835,34 @@ void LogInterfaceGates(void* self, UInt32 invocation) {
 	const UInt32 menuRootEntry =
 		menuRoot != 0 ? *reinterpret_cast<const UInt32*>(menuRoot + 0x18) : 0;
 
-	OBVR_LOG("Hud gates at invocation %u: [+1Ch]=%08X, [+68h]=%08X, [+68h]+5=%02X, "
-	         "[+B8h]=%u, menus=%u root=%08X entry=%08X",
-	         invocation, wrapperGate, root, rootFlag, tailFlag, menuCount, menuRoot,
-	         menuRootEntry);
+	OBVR_LOG("Hud gates at invocation %u: [+1Ch]=%08X, [+68h]=%08X, +5=%02X, +10h=%08X, "
+	         "+34h=%08X, [+B8h]=%u, menus=%u root=%08X entry=%08X",
+	         invocation, wrapperGate, root, rootFlag, rootPeer, rootChildren, tailFlag,
+	         menuCount, menuRoot, menuRootEntry);
 }
 
 // The entry detour target. Numbers the invocations, and counts what each one
 // drew - including the calls that redirect nothing, which the per-pass traces
 // never saw.
 //
-// The counting window spans the whole probe sweep rather than twenty calls
-// around the three hundredth, because what the sweep compares is what the
-// pass drew under each rung of the dual pass. Only every twentieth call
-// writes its own line; the per-frame totals reach the log through the scene
-// trace, which has the rung to put beside them.
+// The counting window has to cover the whole probe sweep, and the first
+// attempt at it did not: it ended at invocation 460, which is exactly where
+// the sweep's second band began.
+//
+// The two counters are not the same clock. This one starts at the first 2D
+// pass of the process - the main menu and the loading screen draw through it
+// long before a world is rendered - while the scene call number starts at the
+// first world render. That run's log put them roughly two hundred apart, and
+// two hundred is not a constant to rely on: it is however many frames the
+// person spent in menus before loading a save.
+//
+// So the window is wide enough to cover any reasonable offset, and every line
+// it writes carries the scene call beside the invocation, so the two clocks
+// can be lined up in the log rather than assumed to agree.
 void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* renderedTexture) {
 	const UInt32 invocation = ++g_invocation;
 	++g_passesSinceScene;
-	const bool window = invocation > 200 && invocation <= 460;
+	const bool window = invocation > 150 && invocation <= 1400;
 	if (window) {
 		ResetPassStats();
 		g_sampleNextDraw = true;
@@ -872,12 +892,14 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 			}
 		}
 
-		OBVR_LOG("Hud invocation %u (%s): texture=%08X, fade=%.3f, draws=%u (dp=%u dip=%u "
-		         "dpup=%u dipup=%u), clears=%u (flags 0x%X), set target back=%u other=%u",
-		         invocation, mode, reinterpret_cast<UInt32>(renderedTexture),
-		         static_cast<double>(fade), g_statsDraws, g_statsKind[0], g_statsKind[1],
-		         g_statsKind[2], g_statsKind[3], g_statsClears, g_statsClearFlagsSeen,
-		         g_statsMatched, g_statsOtherTargets);
+		OBVR_LOG("Hud invocation %u at scene call %u (%s): texture=%08X, fade=%.3f, "
+		         "draws=%u (dp=%u dip=%u dpup=%u dipup=%u), clears=%u (flags 0x%X), "
+		         "set target back=%u other=%u",
+		         invocation, CurrentSceneCall(), mode,
+		         reinterpret_cast<UInt32>(renderedTexture), static_cast<double>(fade),
+		         g_statsDraws, g_statsKind[0], g_statsKind[1], g_statsKind[2],
+		         g_statsKind[3], g_statsClears, g_statsClearFlagsSeen, g_statsMatched,
+		         g_statsOtherTargets);
 		LogInterfaceGates(self, invocation);
 	}
 }
