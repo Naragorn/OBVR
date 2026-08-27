@@ -127,7 +127,20 @@ bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp, bool menusI
 }
 
 bool WantsHudRedirect(bool frameOpen, bool menuIsUp, bool menusInWorld) {
-	return frameOpen && (!menuIsUp || menusInWorld);
+	// A menu frame does not ask whether a camera pass ran, and that is the
+	// whole correction. Oblivion does not redraw the world behind an inventory
+	// or an ESC menu at all - measured, not assumed: the scene counter stands
+	// still for as long as the menu is up - so on those frames there is never
+	// an open frame to require, and requiring one meant the 2D pass drew its
+	// menu straight into the back buffer and onto the monitor.
+	//
+	// There is still somebody to hand the layer to, which is what frameOpen
+	// was standing in for: the held delivery submits every one of those frames,
+	// and the overlay hangs in front of it.
+	if (menuIsUp) {
+		return menusInWorld;
+	}
+	return frameOpen;
 }
 
 UInt32 SweepProbeStage(UInt32 sceneCall, UInt32 configured) {

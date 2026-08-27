@@ -101,6 +101,20 @@ UInt32 g_menuTraceLeft = 0;
 bool g_menuTraceWasUp = false;
 UInt32 g_menuTraceLastScene = 0;
 
+// A frame number that counts every presented frame, not every camera pass.
+//
+// The redirect uses this to decide when to clear its texture - once per frame,
+// never twice - and State::frameCount cannot serve, because the camera hook
+// increments it and the camera hook does not run while a menu is up. The
+// counter would stand still for the whole menu, the clear would never come
+// round, and every frame's menu would be drawn on top of the last one: a
+// cursor that smears a trail behind it, which is precisely the kind of fault
+// that gets blamed on the compositor.
+//
+// Incremented at the end of the frame, so every redirect within one frame sees
+// the same number and the next frame sees a new one.
+UInt32 g_presentedFrame = 0;
+
 // Says, once, which part of the frame Oblivion is drawing into.
 //
 // OBVR now asks for a frame the game did not choose, so "the frame" and "the
@@ -157,6 +171,11 @@ void OnFrameEnd() {
 	// has never run at that point, so the flag is still its initial false.
 	const bool hadCameraPass = g_frameOpen;
 	g_frameOpen = false;
+
+	// Counted here because here is the one place that runs on every frame,
+	// whatever else did or did not happen. Every return below is a frame that
+	// still ended, so the increment goes before all of them.
+	++g_presentedFrame;
 
 	// What the game says, rather than what its timing suggests.
 	//
@@ -250,6 +269,19 @@ void OnFrameEnd() {
 		held.heldEyes = true;
 		if (g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame())) {
 			g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), held);
+		}
+
+		// The menu itself. These frames are where it is drawn - Oblivion stops
+		// rendering the world entirely while a menu is up, so every menu frame
+		// is one of these and none of them carries a camera pass.
+		//
+		// Only submitted when this frame captured something. Submitting with an
+		// empty capture hides the overlay, and on a run of menu frames that
+		// would blink the menu out and back on whatever rhythm the pass happens
+		// to draw at; leaving it alone keeps the last good picture hanging,
+		// which is exactly what a paused menu should do.
+		if (g_hudLayer.HasCapture()) {
+			MaybeSubmitHud(true);
 		}
 		return;
 	}
@@ -533,7 +565,7 @@ void* HudBeginRedirect() {
 		         g_state.frameCount);
 	}
 
-	return g_hudLayer.BeginCapture(render::GetGameDevice(), g_state.frameCount);
+	return g_hudLayer.BeginCapture(render::GetGameDevice(), g_presentedFrame);
 }
 
 void HudEndRedirect() { g_hudLayer.EndCapture(); }

@@ -1676,14 +1676,50 @@ being looked at - the same trick that settled the water question.
 
 Two things in that table are load-bearing rather than tidy.
 
-**`HeldStereo` is the old flicker, met a second time.** Oblivion does not redraw the world
-behind an open menu every frame. Delivering those frames on the cinema screen would put the
-alternation straight back, so the last captured pair goes out again instead - with the pose
-it was *drawn* from, held in `m_heldPose`, not this frame's. Handing over this frame's pose
-is what made the flat picture ride the head: the compositor is told there is nothing to
-correct, so it corrects nothing. Nothing about the held pair is stale, because the world is
-paused behind the menu; what moved is the head, and reprojection is exactly the thing that
-answers that.
+**`HeldStereo` is the old flicker, met a second time.** The last captured pair goes out
+again - with the pose it was *drawn* from, held in `m_heldPose`, not this frame's. Handing
+over this frame's pose is what made the flat picture ride the head: the compositor is told
+there is nothing to correct, so it corrects nothing. Nothing about the held pair is stale,
+because the world is paused behind the menu; what moved is the head, and reprojection is
+exactly the thing that answers that.
+
+**Correction, measured: Oblivion does not redraw the world behind an open menu at all.**
+This section first said "but not on every frame", carried over from the flicker
+investigation, and building on it put the menu on the monitor instead of in the headset.
+The menu trace settles it - the scene counter stands still for the entire time an inventory
+or an ESC menu is up:
+
+```
+Menu trace: a menu just opened
+Menu trace: stereo, camera pass=1, world renders this frame=1 (scene call 548), layer captured=1
+Menu trace: held,   camera pass=0, world renders this frame=1 (scene call 549), layer captured=0
+Menu trace: held,   camera pass=0, world renders this frame=0 (scene call 549), layer captured=0
+Menu trace: held,   camera pass=0, world renders this frame=0 (scene call 549), layer captured=0
+        ... unchanged for as long as the menu is open ...
+Hud invocation 1040 at scene call 549 (not redirected): draws=149
+```
+
+So **no menu frame ever carries a camera pass**, and `WantsHudRedirect` requiring an open
+frame meant it declined on every one of them. The 2D pass then drew its 149 primitives
+straight into the back buffer - and 149 is the menu, where the HUD alone measures 20 to 22.
+That is the whole fault: the menu was being drawn, correctly, into the picture nobody in the
+headset was going to see.
+
+`WantsHudRedirect` now asks `frameOpen` only when no menu is up. What `frameOpen` was
+standing in for is "somebody will deliver this frame", and on a menu frame somebody does:
+the held path submits every one of them.
+
+Two smaller things fell out of the same measurement. `BeginCapture` was keyed on
+`State::frameCount`, which the camera hook increments - so it too stood still for the whole
+menu, the once-per-frame clear never came round, and every frame's menu would have been
+drawn over the last one, smearing the cursor. It is keyed on a presented-frame counter now.
+And the held path submits the overlay only when that frame captured something, because
+submitting an empty capture hides the overlay and would blink the menu in and out.
+
+Still open from the same log, deliberately not chased here: the frame line reported one
+world render per frame while the dual pass was live and reporting 20 draws between its two
+renders. One of those two readings is wrong and it is not the menu question, so it is
+written down rather than folded in.
 
 **Videos and loading screens are excluded by measurement, not by a list.** They are the
 `!hadCameraPass && !menuIsUp` row: no world render happened, so there is no world for a menu

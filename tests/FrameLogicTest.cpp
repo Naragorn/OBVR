@@ -495,20 +495,51 @@ void TestWantsHudRedirect() {
 	// reaches the headset at all.
 	Check(WantsHudRedirect(true, true, true),
 	      "a menu in the world sends the layer out, because the overlay is how it arrives");
-	Check(!WantsHudRedirect(false, true, true),
-	      "but not on a frame nobody is waiting for");
+
+	// The correction, and the whole bug in one line. Oblivion stops rendering
+	// the world entirely while an inventory or an ESC menu is up - the scene
+	// counter stands still for as long as the menu is open, measured in a run -
+	// so no menu frame ever carries a camera pass. Requiring one meant the
+	// redirect declined on every single menu frame, the 2D pass drew its 149
+	// primitives straight into the back buffer, and the menu appeared on the
+	// monitor while the headset showed a held world with nothing in front of it.
+	Check(WantsHudRedirect(false, true, true),
+	      "and does so with no camera pass, because a menu frame never has one");
+
+	// Which is safe precisely because those frames are still delivered: the
+	// held path submits every one of them, so there is somebody to hand the
+	// layer to - which is all frameOpen was ever standing in for.
+	for (int pass = 0; pass < 2; ++pass) {
+		Check(WantsHudRedirect(pass != 0, true, true),
+		      "a menu in the world redirects whether or not the world was drawn");
+	}
 
 	// The property this exists for, and the one that would show up in the
 	// headset as a menu that is simply not there: whenever a frame is
 	// delivered on the cinema screen, the redirect declined - so the picture
 	// that path shows still contains the menu it exists to show.
-	for (int menu = 0; menu < 2; ++menu) {
-		for (int world = 0; world < 2; ++world) {
-			const bool menuIsUp = menu != 0;
-			const bool menusInWorld = world != 0;
-			if (DeliverFrame(true, menuIsUp, menusInWorld, true) == FrameDelivery::Cinema) {
-				Check(!WantsHudRedirect(true, menuIsUp, menusInWorld),
-				      "a cinema frame never had its 2D layer taken away");
+	for (int pass = 0; pass < 2; ++pass) {
+		for (int menu = 0; menu < 2; ++menu) {
+			for (int world = 0; world < 2; ++world) {
+				const bool hadCameraPass = pass != 0;
+				const bool menuIsUp = menu != 0;
+				const bool menusInWorld = world != 0;
+				const FrameDelivery delivery =
+					DeliverFrame(hadCameraPass, menuIsUp, menusInWorld, true);
+
+				if (delivery == FrameDelivery::Cinema) {
+					Check(!WantsHudRedirect(hadCameraPass, menuIsUp, menusInWorld),
+					      "a cinema frame never had its 2D layer taken away");
+				}
+
+				// The converse, which is the half that was broken: a frame
+				// whose layer is taken away must be delivered by a path that
+				// shows the overlay. Held and stereo both do; cinema does not,
+				// and that is what the check above covers from the other side.
+				if (WantsHudRedirect(hadCameraPass, menuIsUp, menusInWorld)) {
+					Check(delivery != FrameDelivery::Cinema,
+					      "a frame that gave up its layer is never shown as the bare frame");
+				}
 			}
 		}
 	}
