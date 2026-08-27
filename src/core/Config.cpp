@@ -233,6 +233,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.tracker.submitGameFrame =
 		ReadBool("Render", "GameFrame", config.tracker.submitGameFrame, path);
 	config.tracker.stereo = ReadStereoMode(config.tracker.stereo, path);
+	config.tracker.eyeSeparationScale =
+		ReadFloat("Render", "EyeSeparationScale", config.tracker.eyeSeparationScale, path);
 	config.tracker.gameFovDegrees =
 		ReadFloat("Render", "GameFovDegrees", config.tracker.gameFovDegrees, path);
 	config.tracker.gameFovIsFor4x3 =
@@ -359,9 +361,10 @@ bool Config::Load(const char* fileName) {
 	// Worth its own line despite being one flag: it is the setting that
 	// decides whether OBVR takes the headset away from whatever else is
 	// using it, and that should be visible in the log without hunting.
-	OBVR_LOG("Config: Render.Enabled=%d GameFrame=%d Stereo=%s%s",
+	OBVR_LOG("Config: Render.Enabled=%d GameFrame=%d Stereo=%s EyeSeparationScale=%.2f%s",
 	         tracker.renderToHeadset ? 1 : 0, tracker.submitGameFrame ? 1 : 0,
 	         StereoModeName(tracker.stereo),
+	         static_cast<double>(tracker.eyeSeparationScale),
 	         tracker.renderToHeadset ? " - OBVR will claim the VR scene" : "");
 	OBVR_LOG("Config: Render.GameFovDegrees=%.1f IsFor4x3=%d SubmitAtFrameEnd=%d",
 	         static_cast<double>(tracker.gameFovDegrees), tracker.gameFovIsFor4x3 ? 1 : 0,

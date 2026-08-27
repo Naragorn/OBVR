@@ -109,6 +109,17 @@ struct TrackerSettings {
 	// never allowed to absorb movementScale.
 	StereoMode stereo = StereoMode::None;
 
+	// How much further apart than the wearer's real eyes the two viewpoints
+	// are placed. 1 is the headset's figure, geometrically true, and the
+	// default; above 1 is hyperstereo - more parallax, more felt depth, and a
+	// world that reads proportionally smaller.
+	//
+	// This is the one sanctioned bend of the rule above. The separation
+	// itself stays a fact - HeadTracker reports what it measured, unscaled -
+	// and this multiplier is applied downstream, in the camera hook, through
+	// ScaledEyeHalfSeparation, which also clamps what taste may ask for.
+	float eyeSeparationScale = 1.0f;
+
 	// Oblivion's own horizontal field of view, in degrees. fDefaultFOV out of
 	// Oblivion.ini, which is 75 unless it has been changed.
 	//

@@ -142,6 +142,35 @@ bool IsLeftEyeFrame(UInt32 frameCount);
 // when the head moved sideways.
 bool BackBufferEyeIsLeft(bool isLeftEye, bool backBufferIsThisFrame);
 
+// Half the eye separation the camera is actually offset by, given the half
+// separation the headset reported and the multiplier from the INI.
+//
+// At 1 the two viewpoints sit exactly where the wearer's eyes are, which is
+// geometrically true and shows the world at its real scale. Above 1 the
+// viewpoints move further apart than any head is wide - hyperstereo. The
+// parallax of everything grows, near things gain depth and presence, and the
+// world as a whole reads as proportionally smaller; the same trade the
+// "3D depth boost" mods for OpenXR make, except applied here to the camera
+// before rendering rather than warped onto finished pictures after.
+//
+// The scale is a preference where the separation itself is not - the reason
+// HeadTracker refuses to scale what it measured, and the reason this function
+// exists apart from it: the tracker keeps reporting the fact, and the taste is
+// applied at the one place the camera steps to an eye, where it can be seen
+// next to the stereo mode it belongs to.
+//
+// A scale that is NaN, zero or negative is not a choice anyone can have meant
+// - zero would stack both eyes in one place and a negative one would cross
+// them - so all of those fall back to the truth of 1. That test also catches
+// what ReadFloat makes of a word in the INI, which is 0. Positive values are
+// clamped to the range below: past 4 the eyes cannot fuse the images and the
+// result is strain rather than depth, and below a quarter the depth is as
+// good as gone while the number looks deliberately set.
+constexpr float kMinEyeSeparationScale = 0.25f;
+constexpr float kMaxEyeSeparationScale = 4.0f;
+
+float ScaledEyeHalfSeparation(float halfUnits, float scale);
+
 // Whether this frame should reach the headset as a flat picture rather than as
 // one eye of a stereo pair.
 //

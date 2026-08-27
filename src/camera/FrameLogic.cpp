@@ -72,6 +72,21 @@ bool BackBufferEyeIsLeft(bool isLeftEye, bool backBufferIsThisFrame) {
 	return backBufferIsThisFrame ? isLeftEye : !isLeftEye;
 }
 
+float ScaledEyeHalfSeparation(float halfUnits, float scale) {
+	// Written as a negated comparison on purpose: NaN fails every comparison,
+	// so this one line rejects NaN, zero and negatives together.
+	if (!(scale > 0.0f)) {
+		return halfUnits;
+	}
+	if (scale < kMinEyeSeparationScale) {
+		scale = kMinEyeSeparationScale;
+	}
+	if (scale > kMaxEyeSeparationScale) {
+		scale = kMaxEyeSeparationScale;
+	}
+	return halfUnits * scale;
+}
+
 bool FrameIsFlat(bool hadCameraPass, bool menuIsUp) { return !hadCameraPass || menuIsUp; }
 
 bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp) {

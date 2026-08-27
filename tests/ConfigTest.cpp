@@ -219,14 +219,18 @@ void TestLookRanges() {
 	obvr::Config untouched;
 	Check(!untouched.tracker.renderToHeadset,
 	      "with no INI at all, rendering stays off rather than claiming the scene");
+	CheckNear(untouched.tracker.eyeSeparationScale, 1.0f,
+	          "and the eye separation scale defaults to the geometric truth of 1");
 
 	obvr::Config split;
 	LoadFrom("ConfigTestSplitRange.ini",
 	         "[Look]\nVerticalLookUpRange=40.0\nVerticalLookDownRange=140.0\n"
 	         "[Head]\nHeadMovementScale=1.5\n"
-	         "[Render]\nEnabled=1\n",
+	         "[Render]\nEnabled=1\nEyeSeparationScale=1.25\n",
 	         split);
 	Check(split.tracker.renderToHeadset, "and can be switched on from the [Render] section");
+	CheckNear(split.tracker.eyeSeparationScale, 1.25f,
+	          "EyeSeparationScale is read from the [Render] section");
 	CheckNear(split.look.verticalLookUpRange, 40.0f, "the up range is read on its own");
 	CheckNear(split.look.verticalLookDownRange, 140.0f, "the down range is read on its own");
 	CheckNear(split.tracker.movementScale, 1.5f, "HeadMovementScale is read");

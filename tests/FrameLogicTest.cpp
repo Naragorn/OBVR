@@ -12,6 +12,7 @@
 // No Windows API here, so this one builds and runs on Linux as well.
 
 #include <cstdio>
+#include <limits>
 
 #include "camera/FrameLogic.h"
 
@@ -165,6 +166,58 @@ void TestEyeAlternation() {
 	      "and across the wrap to zero");
 }
 
+
+void TestScaledEyeSeparation() {
+	std::printf("Eye separation scaling\n");
+
+	using obvr::camera::kMaxEyeSeparationScale;
+	using obvr::camera::kMinEyeSeparationScale;
+	using obvr::camera::ScaledEyeHalfSeparation;
+
+	// 2.17 Oblivion units is what the 62 mm headset this was built against
+	// reports as half its separation, so the numbers below read as the real
+	// thing rather than as round inventions.
+	constexpr float kHalf = 2.17f;
+
+	// The default. Exactly the figure the tracker reported, untouched - the
+	// geometrically true case almost every session runs in.
+	Check(ScaledEyeHalfSeparation(kHalf, 1.0f) == kHalf, "a scale of 1 changes nothing");
+
+	// The depth boost this exists for, and the flattening below 1. Both are
+	// plain multiplication once the value has passed the checks.
+	Check(ScaledEyeHalfSeparation(kHalf, 2.0f) == kHalf * 2.0f, "a scale of 2 doubles it");
+	Check(ScaledEyeHalfSeparation(kHalf, 1.1f) == kHalf * 1.1f,
+	      "the popular mild boost multiplies through");
+	Check(ScaledEyeHalfSeparation(kHalf, 0.5f) == kHalf * 0.5f,
+	      "below 1 flattens rather than being rejected");
+
+	// The clamps. A positive number is a deliberate choice, so it is pulled to
+	// the nearest sane value rather than ignored.
+	Check(ScaledEyeHalfSeparation(kHalf, 0.1f) == kHalf * kMinEyeSeparationScale,
+	      "a tiny positive scale is clamped up to the floor");
+	Check(ScaledEyeHalfSeparation(kHalf, 10.0f) == kHalf * kMaxEyeSeparationScale,
+	      "a huge scale is clamped down to the ceiling");
+	Check(ScaledEyeHalfSeparation(kHalf, std::numeric_limits<float>::infinity()) ==
+	          kHalf * kMaxEyeSeparationScale,
+	      "infinity is just a huge scale and gets the ceiling");
+
+	// The values nobody can have meant. Zero would stack both eyes in one
+	// place, a negative scale would cross them, and NaN is what arithmetic on
+	// garbage produces - all of them keep the measured truth instead. Zero is
+	// also what ReadFloat returns for a word in the INI, so a typo lands here
+	// and not on the floor clamp.
+	Check(ScaledEyeHalfSeparation(kHalf, 0.0f) == kHalf, "zero falls back to the truth");
+	Check(ScaledEyeHalfSeparation(kHalf, -1.0f) == kHalf, "a negative scale falls back too");
+	Check(ScaledEyeHalfSeparation(kHalf, -std::numeric_limits<float>::infinity()) == kHalf,
+	      "negative infinity likewise");
+	Check(ScaledEyeHalfSeparation(kHalf, std::numeric_limits<float>::quiet_NaN()) == kHalf,
+	      "NaN falls back to the truth rather than poisoning the offset");
+
+	// No headset yet means no separation to scale. The caller's fallback is
+	// the flat picture, and no multiplier may invent depth out of it.
+	Check(ScaledEyeHalfSeparation(0.0f, 2.0f) == 0.0f,
+	      "a separation of 0 stays 0 whatever the scale");
+}
 
 void TestBackBufferEye() {
 	std::printf("Which eye the back buffer's picture belongs to\n");
@@ -371,6 +424,8 @@ int main() {
 	TestIsDue();
 	std::printf("\n");
 	TestEyeAlternation();
+	std::printf("\n");
+	TestScaledEyeSeparation();
 	std::printf("\n");
 	TestBackBufferEye();
 	std::printf("\n");

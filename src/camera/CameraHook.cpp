@@ -724,7 +724,12 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	g_dualNode = nullptr;
 
 	if ((stereoAer || stereoDual) && g_headTracker.IsHeadsetConnected()) {
-		const float half = g_headTracker.GetHalfEyeSeparationUnits();
+		// The tracker reports the measured separation; the multiplier from the
+		// INI is a preference and is applied here, where the camera steps to
+		// an eye. Both modes and the dual shift below run off this one figure,
+		// so the scale cannot reach one of them and miss another.
+		const float half = ScaledEyeHalfSeparation(g_headTracker.GetHalfEyeSeparationUnits(),
+		                                           config.tracker.eyeSeparationScale);
 		const float sign =
 			stereoDual ? -1.0f : (IsLeftEyeFrame(g_state.frameCount) ? -1.0f : 1.0f);
 		const NiPoint3 eyeOffset{sign * half, 0.0f, 0.0f};
