@@ -121,6 +121,25 @@ bool IsDue(UInt32 frameCount, UInt32 interval);
 // one of them was edited.
 bool IsLeftEyeFrame(UInt32 frameCount);
 
+// Which eye the first of the dual pass's two world renders draws. False swaps
+// the order, so the right eye is drawn first and the left second.
+//
+// A diagnostic for a fault that sits in one eye. Bodies collapse in the left
+// eye and not the right, and there are two ways for that to be true which no
+// measurement taken from inside one ordering can separate: either the first
+// render is the one that goes wrong - because of what the frame leaves in
+// front of it, or simply because it is first - or the left eye is the one that
+// goes wrong, which would have to be the camera position. Swapping the order
+// tells them apart. A fault that follows the order belongs to the render; a
+// fault that stays in the left eye belongs to the eye.
+//
+// Here rather than at the three places that need it, because three is exactly
+// how many chances there are to disagree: the sign of the camera step that
+// starts the frame, the direction of the step between the passes, and which
+// eye each capture fills. Two of those agreeing and one not is a stereo pair
+// with both pictures taken from the same side of the head.
+bool FirstPassDrawsLeftEye(bool swapEyeOrder);
+
 // Which eye the picture sitting in the back buffer belongs to.
 //
 // Two inputs because the answer depends on when the question is asked, and

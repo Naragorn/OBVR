@@ -51,6 +51,20 @@ struct Config {
 	// runs. Values above 2 behave like 0.
 	UInt32 dualPassProbe = 0;
 
+	// Renders the right eye first and the left eye second, swapping the whole
+	// order of the dual pass.
+	//
+	// A diagnostic for a fault that sits in one eye. There are two ways for
+	// that to be true and no way to tell them apart from inside one ordering:
+	// either the first render goes wrong - because of what the frame leaves in
+	// front of it, or because it is first - or the left eye goes wrong, which
+	// would make it the camera position. Swap the order and the two separate: a
+	// fault that follows the order belongs to the render, a fault that stays in
+	// the left eye belongs to the eye.
+	//
+	// In [Debug] with the rest, so the hot reload can flip it mid-game.
+	bool swapEyeOrder = false;
+
 	// Paints an opaque red square into the middle of the HUD overlay texture
 	// just before it is handed over - the instrument for a HUD that arrives
 	// as nothing. Square visible: the overlay path works, the layer's alpha

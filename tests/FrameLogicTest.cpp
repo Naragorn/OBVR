@@ -533,6 +533,19 @@ void TestWantsSecondScenePass() {
 	}
 }
 
+void TestFirstPassDrawsLeftEye() {
+	std::printf("Which eye the first world render draws\n");
+
+	using obvr::camera::FirstPassDrawsLeftEye;
+
+	// Both flows, because the whole value of the switch is that the three
+	// places reading it move together - and a constant that only ever
+	// returned one answer would look exactly like a working switch until
+	// somebody swapped the order and found the pair unchanged.
+	Check(FirstPassDrawsLeftEye(false), "the left eye is drawn first by default");
+	Check(!FirstPassDrawsLeftEye(true), "swapping the order draws the right eye first");
+}
+
 void TestWantsHudRedirect() {
 	std::printf("When the 2D pass leaves the frame\n");
 
@@ -768,6 +781,8 @@ int main() {
 	TestScaledEyeSeparation();
 	std::printf("\n");
 	TestBackBufferEye();
+	std::printf("\n");
+	TestFirstPassDrawsLeftEye();
 	std::printf("\n");
 	TestDeliverFrame();
 	std::printf("\n");

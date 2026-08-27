@@ -339,6 +339,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.reloadEveryFrames =
 		ReadUInt("Debug", "ReloadEveryFrames", config.reloadEveryFrames, path);
 	config.dualPassProbe = ReadUInt("Debug", "DualPassProbe", config.dualPassProbe, path);
+	config.swapEyeOrder = ReadBool("Debug", "SwapEyeOrder", config.swapEyeOrder, path);
 	config.hudProbe = ReadBool("Debug", "HudProbe", config.hudProbe, path);
 }
 

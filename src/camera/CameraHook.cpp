@@ -475,13 +475,26 @@ void BetweenScenePasses() {
 		OBVR_LOG("Dual trace: first pass returned (probe %u)", probe);
 	}
 
-	// The finished left-eye picture is in the back buffer - tone mapping
+	// The finished first-eye picture is in the back buffer - tone mapping
 	// done, 2D layer not yet drawn. Captured now, because at Present it will
 	// have been drawn over twice.
+	const bool firstIsLeft = FirstPassDrawsLeftEye(GetConfig().swapEyeOrder);
+
+	// Reported whenever it changes, because a diagnostic that can be flipped
+	// mid-game leaves no other mark in the log once the opening trace is
+	// spent - and reading a run without knowing which order it ran in is
+	// reading nothing.
+	static int s_reportedOrder = -1;
+	if (s_reportedOrder != (firstIsLeft ? 1 : 0)) {
+		s_reportedOrder = firstIsLeft ? 1 : 0;
+		OBVR_LOG("Dual pass: the %s eye is drawn first", firstIsLeft ? "left" : "right");
+	}
+
 	if (probe != 1 && probe != 2) {
-		g_headsetRenderer.CaptureEye(g_pendingRequest, true);
+		g_headsetRenderer.CaptureEye(g_pendingRequest, firstIsLeft);
 		if (DualTraceOn()) {
-			OBVR_LOG("Dual trace: left eye captured");
+			OBVR_LOG("Dual trace: %s eye captured from the first pass",
+			         firstIsLeft ? "left" : "right");
 		}
 	}
 
@@ -501,7 +514,7 @@ void BetweenScenePasses() {
 		}
 	}
 
-	// To the right eye, the way the game itself moves the camera: edit the
+	// To the other eye, the way the game itself moves the camera: edit the
 	// local transform, then have the engine recompute the world transform
 	// downward. Render re-reads the camera node's position at the start of
 	// the pass to place the sky and LOD roots, so those follow on their own.
@@ -509,7 +522,8 @@ void BetweenScenePasses() {
 		g_dualNode->localTransform.pos = g_dualNode->localTransform.pos + g_dualShift;
 		game::UpdateNodeTransforms(g_dualNode);
 		if (DualTraceOn()) {
-			OBVR_LOG("Dual trace: camera moved to the right eye");
+			OBVR_LOG("Dual trace: camera moved to the %s eye",
+			         firstIsLeft ? "right" : "left");
 		}
 	}
 }
@@ -520,10 +534,12 @@ void AfterSecondScenePass() {
 		OBVR_LOG("Dual trace: second pass returned");
 	}
 
+	const bool firstIsLeft = FirstPassDrawsLeftEye(GetConfig().swapEyeOrder);
 	if (probe != 1 && probe != 2) {
-		g_headsetRenderer.CaptureEye(g_pendingRequest, false);
+		g_headsetRenderer.CaptureEye(g_pendingRequest, !firstIsLeft);
 		if (DualTraceOn()) {
-			OBVR_LOG("Dual trace: right eye captured");
+			OBVR_LOG("Dual trace: %s eye captured from the second pass",
+			         firstIsLeft ? "right" : "left");
 		}
 	}
 
@@ -901,18 +917,23 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		// so the scale cannot reach one of them and miss another.
 		const float half = ScaledEyeHalfSeparation(g_headTracker.GetHalfEyeSeparationUnits(),
 		                                           config.tracker.eyeSeparationScale);
-		const float sign =
-			stereoDual ? -1.0f : (IsLeftEyeFrame(g_state.frameCount) ? -1.0f : 1.0f);
+		// Which eye this frame steps to first. One answer for the sign here, the
+		// shift below and the captures in the callbacks - see FirstPassDrawsLeftEye.
+		const bool firstIsLeft = FirstPassDrawsLeftEye(config.swapEyeOrder);
+		const float sign = stereoDual ? (firstIsLeft ? -1.0f : 1.0f)
+		                              : (IsLeftEyeFrame(g_state.frameCount) ? -1.0f : 1.0f);
 		const NiPoint3 eyeOffset{sign * half, 0.0f, 0.0f};
 		cameraNode->localTransform.pos =
 			cameraNode->localTransform.pos + finalRotation * eyeOffset;
 
 		if (stereoDual && render::IsSceneRenderHooked()) {
-			// From the left eye to the right is the whole interpupillary
-			// distance, along the same head-carried axis the offset above
-			// used.
+			// From one eye to the other is the whole interpupillary distance,
+			// along the same head-carried axis the offset above used, and in
+			// whichever direction that offset went - so the step always lands on
+			// the eye the first render did not draw.
 			g_dualNode = cameraNode;
-			g_dualShift = finalRotation * NiPoint3{2.0f * half, 0.0f, 0.0f};
+			g_dualShift =
+				finalRotation * NiPoint3{(firstIsLeft ? 2.0f : -2.0f) * half, 0.0f, 0.0f};
 			g_dualArmed = true;
 		}
 	}

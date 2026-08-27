@@ -68,6 +68,8 @@ bool IsLeftEyeFrame(UInt32 frameCount) {
 	return (frameCount & 1u) == 0u;
 }
 
+bool FirstPassDrawsLeftEye(bool swapEyeOrder) { return !swapEyeOrder; }
+
 bool BackBufferEyeIsLeft(bool isLeftEye, bool backBufferIsThisFrame) {
 	return backBufferIsThisFrame ? isLeftEye : !isLeftEye;
 }
