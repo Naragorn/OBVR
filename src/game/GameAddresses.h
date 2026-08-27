@@ -274,4 +274,27 @@ inline constexpr UInt32 kUpdateNodeTransforms = 0x00707370;
 inline constexpr UInt32 kRenderInterface = 0x0057F170;
 inline constexpr UInt32 kRenderInterfaceEntryLength = 7;
 
+// The handle of the loading thread Oblivion runs while a cell streams in,
+// and the reason a frame can end with no 2D layer on it at all.
+//
+// The wrapper that owns the interface pass, 00579260, guards it three ways:
+// the interface manager must exist, its [+1Ch] must be set, and 0040FDA0
+// must answer false. That last one reads this global, and when it is not
+// null asks GetExitCodeThread whether the thread is still 0x103 -
+// STILL_ACTIVE:
+//
+//   0040FDA1  mov eax,ds:[00B33434]
+//   0040FDA6  test eax,eax
+//   0040FDA8  jne 0040FDAE          ; null -> false, the interface draws
+//   0040FDB3  call ds:[00A280E8]    ; GetExitCodeThread(handle, &code)
+//   0040FDBB  cmp dword ptr [esp],103h
+//   0040FDC2  sete al               ; still running -> true
+//
+// and 00579289 turns that true into a jump straight past the interface
+// pass. So while this handle names a living thread, kRenderInterface is
+// never called - which is what a pass with no draws and no clears in it
+// looks like from the outside. Read only, and only to log: the value is a
+// diagnosis, never something OBVR writes.
+inline constexpr UInt32 kLoadingThreadHandle = 0x00B33434;
+
 }  // namespace obvr::addr

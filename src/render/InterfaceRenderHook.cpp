@@ -107,6 +107,13 @@ bool g_observing = false;
 // game is actually playing.
 UInt32 g_invocation = 0;
 
+// Calls to the pass since the scene render last asked. The scene hook runs
+// once per frame whatever else happens, so it can say "this frame drew a
+// world and then called the 2D pass this many times" - and a zero there is
+// the one number this file cannot produce on its own, because a pass that
+// is never entered writes no line at all.
+UInt32 g_passesSinceScene = 0;
+
 // How many first-draw pipeline samples may still be written. The window
 // arms the sample for up to twenty invocations, and six full matrix dumps
 // is what the log can carry before it stops being readable.
@@ -776,6 +783,7 @@ const char* RunInterfacePass(void* self, void* unusedEdx, void* renderedTexture,
 // pass runs per frame, and the numbers say which it is.
 void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* renderedTexture) {
 	const UInt32 invocation = ++g_invocation;
+	++g_passesSinceScene;
 	const bool window = invocation > 290 && invocation <= 310;
 	if (window) {
 		ResetPassStats();
@@ -787,10 +795,13 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 	if (window) {
 		g_sampleNextDraw = false;
 
-		// The fade the disassembly shows gating the MenuRoot render:
-		// [this+4]+0x2C, tested against zero at 0057F27A. Zero draws with
-		// the monitor missing its HUD points at the interface never being
-		// asked to draw - and this number is the gate that decides that.
+		// The fade at [this+4]+0x2C, read at 0057F27A. Logged as context,
+		// not as a gate: the branch there skips the block at 0057F292 when
+		// the fade is zero, and that block is the loading fade overlay -
+		// not the HUD. A run with the HUD on the monitor showed fade 0.000
+		// on every invocation, which is what settles it. The HUD itself is
+		// drawn further down, at 0057F358, where both arms of the branch
+		// draw and no arm skips.
 		float fade = -1.0f;
 		if (self != nullptr) {
 			void* inner = *reinterpret_cast<void**>(static_cast<char*>(self) + 4);
@@ -809,6 +820,12 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 }
 
 }  // namespace
+
+UInt32 TakeInterfacePassCount() {
+	const UInt32 count = g_passesSinceScene;
+	g_passesSinceScene = 0;
+	return count;
+}
 
 bool InstallInterfaceRenderHook(const InterfaceRedirect& callbacks) {
 	if (g_original != nullptr) {

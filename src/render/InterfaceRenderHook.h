@@ -48,4 +48,12 @@ bool InstallInterfaceRenderHook(const InterfaceRedirect& callbacks);
 
 bool IsInterfaceRenderHooked();
 
+// How many times the 2D pass was entered since this was last asked, and
+// zero afterwards. The scene render hook asks once per world render, so it
+// can log the one number this hook cannot log itself: a frame in which the
+// pass was never entered at all. Oblivion skips it whenever the wrapper
+// that owns it - 00579260 - finds addr::kLoadingThreadHandle naming a
+// living thread, and a skipped pass leaves no trace behind.
+UInt32 TakeInterfacePassCount();
+
 }  // namespace obvr::render
