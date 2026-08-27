@@ -435,6 +435,35 @@ using SetVertexShaderFn = SInt32(__stdcall*)(void* self, void* shader);
 using SetVertexShaderConstantFFn = SInt32(__stdcall*)(void* self, UInt32 startRegister,
                                                       const float* data, UInt32 vector4fCount);
 
+// CreateVertexBuffer (26), framed by two verified neighbours: CreateTexture
+// (23) three entries up and CreateRenderTarget (28) two entries down.
+// Hooked so the buffers the game creates can have their Lock counted.
+//
+// IDirect3DVertexBuffer9 inherits IDirect3DResource9, so its own methods
+// start at 11: Lock, then Unlock - the same counting that placed
+// kSurfaceGetDesc. Gamebryo's own documentation says software-skinned
+// geometry is repacked into video-memory vertex buffers as it renders;
+// those repacks are locks, and counting them either side of each world
+// render says whether the packing happens once per frame or once per pass.
+constexpr UInt32 kDeviceCreateVertexBuffer = 26;
+constexpr UInt32 kVertexBufferLock = 11;
+
+// D3DLOCK_DISCARD (d3d9types.h, line 1696). A lock that throws the old
+// contents away. Geometry drawn from a buffer that was discarded and never
+// refilled is one candidate for what bodies collapsed onto a point are.
+constexpr UInt32 kLockDiscard = 0x2000;
+
+// IUnknown::Release, method two of the three every interface starts with.
+// For letting go of the probe buffer that activates the Lock counter.
+constexpr UInt32 kUnknownRelease = 2;
+
+using CreateVertexBufferFn = SInt32(__stdcall*)(void* self, UInt32 length, UInt32 usage,
+                                                UInt32 fvf, UInt32 pool, void** vertexBuffer,
+                                                void** sharedHandle);
+using VertexBufferLockFn = SInt32(__stdcall*)(void* self, UInt32 offset, UInt32 size,
+                                              void** data, UInt32 flags);
+using ReleaseFn = UInt32(__stdcall*)(void* self);
+
 // IDirect3DDevice9::Present. Five arguments after this, all of which OBVR
 // passes straight through - it hooks this to learn when a frame is finished,
 // not to change what Present does.

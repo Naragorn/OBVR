@@ -116,6 +116,29 @@ void TracePassState(const StateCallCounts& entry, const StateCallCounts& afterFi
 	         afterSecond.transforms - afterBetween.transforms);
 }
 
+// The buffer side of the same question. Gamebryo's software skinning path
+// repacks skinned geometry into vertex buffers instead of uploading bone
+// palettes - work that shows up as locks the constant counters cannot see.
+// Zero uploads ride along: a bone palette that was never computed is a
+// palette of zeroes, and the pass that uploads them would be the pass that
+// draws bodies onto one point.
+void TraceBufferLocks(const StateCallCounts& entry, const StateCallCounts& afterFirst,
+                      const StateCallCounts& afterBetween, const StateCallCounts& afterSecond) {
+	if (g_sceneCall % 120 != 0) {
+		return;
+	}
+	OBVR_LOG("Dual buffers at scene call %u: locks first %u (discard %u), between %u (%u), "
+	         "second %u (%u); zero uploads first %u, second %u",
+	         g_sceneCall, afterFirst.vbLocks - entry.vbLocks,
+	         afterFirst.vbDiscardLocks - entry.vbDiscardLocks,
+	         afterBetween.vbLocks - afterFirst.vbLocks,
+	         afterBetween.vbDiscardLocks - afterFirst.vbDiscardLocks,
+	         afterSecond.vbLocks - afterBetween.vbLocks,
+	         afterSecond.vbDiscardLocks - afterBetween.vbDiscardLocks,
+	         afterFirst.zeroUploads - entry.zeroUploads,
+	         afterSecond.zeroUploads - afterBetween.zeroUploads);
+}
+
 // Stands where the entry of kRenderScene used to be, with the same calling
 // convention. See the type alias above for why __fastcall.
 void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTexture) {
@@ -172,6 +195,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	g_rendering = false;
 	TracePassDraws(drawsAtEntry, drawsAfterFirst, drawsAfterBetween, drawsAfterSecond);
 	TracePassState(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
+	TraceBufferLocks(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceFrame("dual", passesLastFrame, drawsLastFrame);
 }
 

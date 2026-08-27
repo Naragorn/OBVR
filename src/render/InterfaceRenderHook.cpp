@@ -176,6 +176,18 @@ d3d9::SetVertexShaderConstantFFn g_originalSetVsConstantF = nullptr;
 // totals either side of each world render and subtracts.
 StateCallCounts g_stateCalls;
 
+d3d9::CreateVertexBufferFn g_originalCreateVertexBuffer = nullptr;
+d3d9::VertexBufferLockFn g_originalVbLock = nullptr;
+
+// The one vertex buffer vtable seen so far. Direct3D implements every
+// buffer as an instance of one class, so the first buffer's vtable is every
+// buffer's vtable - one patch counts them all, existing buffers included.
+// A second, different table would mean that assumption broke; it is
+// reported rather than patched, because the original Lock kept above
+// belongs to the first.
+void** g_vbVtable = nullptr;
+bool g_vbSecondVtableReported = false;
+
 SInt32 __stdcall HookedSetRenderTarget(void* self, UInt32 index, void* surface) {
 	if ((g_redirecting || g_observing) && index == 0 && surface != nullptr) {
 		if (surface == g_backBuffer) {
@@ -476,6 +488,22 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
                                       UInt32 vector4fCount) {
 	++g_stateCalls.constantCalls;
 	g_stateCalls.constantVectors += vector4fCount;
+	if (data != nullptr && vector4fCount > 0) {
+		// A palette that was never computed is a palette of zeroes. Sixteen
+		// floats are enough to tell one apart, and cheap enough to look at
+		// on every upload.
+		const UInt32 floats = vector4fCount >= 4 ? 16 : vector4fCount * 4;
+		bool allZero = true;
+		for (UInt32 i = 0; i < floats; ++i) {
+			if (data[i] != 0.0f) {
+				allZero = false;
+				break;
+			}
+		}
+		if (allZero) {
+			++g_stateCalls.zeroUploads;
+		}
+	}
 	return g_originalSetVsConstantF(self, startRegister, data, vector4fCount);
 }
 
@@ -495,6 +523,48 @@ bool WriteTableEntry(void** vtable, UInt32 index, void* value) {
 	DWORD ignored = 0;
 	VirtualProtect(slot, sizeof(void*), previous, &ignored);
 	return true;
+}
+
+SInt32 __stdcall HookedVbLock(void* self, UInt32 offset, UInt32 size, void** data,
+                              UInt32 flags) {
+	++g_stateCalls.vbLocks;
+	if ((flags & d3d9::kLockDiscard) != 0) {
+		++g_stateCalls.vbDiscardLocks;
+	}
+	return g_originalVbLock(self, offset, size, data, flags);
+}
+
+// Counts Lock on every vertex buffer by patching the class vtable the next
+// created buffer reveals. Software-skinned geometry is repacked into vertex
+// buffers as it renders - locks the constant counters cannot see - and
+// whether that repacking happens once per frame or once per world render is
+// exactly the difference between a healthy eye and a collapsed one.
+SInt32 __stdcall HookedCreateVertexBuffer(void* self, UInt32 length, UInt32 usage, UInt32 fvf,
+                                          UInt32 pool, void** vertexBuffer,
+                                          void** sharedHandle) {
+	const SInt32 result = g_originalCreateVertexBuffer(self, length, usage, fvf, pool,
+	                                                   vertexBuffer, sharedHandle);
+	if (result < 0 || vertexBuffer == nullptr || *vertexBuffer == nullptr) {
+		return result;
+	}
+	auto** vtable = *reinterpret_cast<void***>(*vertexBuffer);
+	if (g_vbVtable == nullptr) {
+		g_originalVbLock =
+			reinterpret_cast<d3d9::VertexBufferLockFn>(vtable[d3d9::kVertexBufferLock]);
+		if (g_originalVbLock != nullptr &&
+		    WriteTableEntry(vtable, d3d9::kVertexBufferLock,
+		                    reinterpret_cast<void*>(&HookedVbLock))) {
+			g_vbVtable = vtable;
+			OBVR_LOG("Hud: vertex buffer Lock counted from table entry %u",
+			         d3d9::kVertexBufferLock);
+		} else {
+			g_originalVbLock = nullptr;
+		}
+	} else if (vtable != g_vbVtable && !g_vbSecondVtableReported) {
+		g_vbSecondVtableReported = true;
+		OBVR_LOG("Hud: a second vertex buffer vtable appeared - its locks are not counted");
+	}
+	return result;
 }
 
 bool EnsureTargetHook() {
@@ -639,6 +709,24 @@ bool EnsureTargetHook() {
 			OBVR_LOG("Hud: the vertex state counters could not all be installed");
 		}
 	}
+
+	// The vertex buffer counter reaches its class vtable through the next
+	// buffer the game creates. To make that now rather than eventually, a
+	// small probe buffer is created and released on the spot - its vtable is
+	// every vertex buffer's vtable, the game's existing ones included.
+	g_originalCreateVertexBuffer = reinterpret_cast<d3d9::CreateVertexBufferFn>(
+		vtable[d3d9::kDeviceCreateVertexBuffer]);
+	if (g_originalCreateVertexBuffer != nullptr &&
+	    WriteTableEntry(vtable, d3d9::kDeviceCreateVertexBuffer,
+	                    reinterpret_cast<void*>(&HookedCreateVertexBuffer))) {
+		void* probe = nullptr;
+		if (HookedCreateVertexBuffer(device, 64, 0, 0, d3d9::kPoolDefault, &probe,
+		                             nullptr) >= 0 &&
+		    probe != nullptr) {
+			d3d9::Method<d3d9::ReleaseFn>(probe, d3d9::kUnknownRelease)(probe);
+		}
+	}
+
 
 	OBVR_LOG("Hud: SetRenderTarget and SetRenderState hooked at table entries %u and %u - "
 	         "the 2D pass can be pointed elsewhere, with its alpha kept",

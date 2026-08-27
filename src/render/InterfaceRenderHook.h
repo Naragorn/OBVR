@@ -70,6 +70,9 @@ struct StateCallCounts {
 	UInt32 vertexShaders = 0;
 	UInt32 constantCalls = 0;
 	UInt32 constantVectors = 0;
+	UInt32 vbLocks = 0;         // vertex buffer Lock calls
+	UInt32 vbDiscardLocks = 0;  // the subset that passed D3DLOCK_DISCARD
+	UInt32 zeroUploads = 0;     // constant uploads whose leading floats are all zero
 };
 
 StateCallCounts TotalStateCalls();
