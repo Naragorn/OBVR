@@ -5,6 +5,8 @@
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
 #include "platform/Win32Min.h"
+#include "render/DeviceState.h"
+#include "render/GameDevice.h"
 #include "render/InterfaceRenderHook.h"
 
 namespace obvr::render {
@@ -115,11 +117,18 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 
 	g_rendering = true;
 
+	// Whatever the device is set to right now, so the second render can be given
+	// the same thing to start from. See DeviceState.h: the dual pass claims the
+	// second render is the first one again from a different camera, and that is
+	// only true for as long as the device agrees.
+	void* const sceneState = CaptureDeviceState(GetGameDevice());
+
 	// What each half of the frame drew. The two renders are the same world from
-	// two places, so they are meant to be the same count - and a right eye
-	// missing bodies is either a second render that drew less or a second render
-	// that drew the same and was not seen afterwards. One subtraction separates
-	// those two, and nothing else in the log can.
+	// two places, so they are meant to be the same count - and the first run of
+	// this said they are, to within the handful of objects that fall out of one
+	// eye's frustum and not the other. That is what moved the missing bodies out
+	// of the render and into the state it was given: the geometry is drawn both
+	// times, and one of the two draws it wrong.
 	const UInt32 drawsAtEntry = TotalDrawCount();
 
 	// First eye. The camera hook already moved the camera there.
@@ -127,6 +136,11 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	const UInt32 drawsAfterFirst = TotalDrawCount();
 	g_callbacks.betweenPasses();
 	const UInt32 drawsAfterBetween = TotalDrawCount();
+
+	// Everything the first render left set, and everything the callbacks set on
+	// top of it, undone. The camera move above is not device state and survives
+	// this, which is the whole point: the same device, a different viewpoint.
+	RestoreDeviceState(sceneState);
 
 	// Second eye, from a camera one interpupillary distance over.
 	g_original(self, unusedEdx, renderedTexture);
