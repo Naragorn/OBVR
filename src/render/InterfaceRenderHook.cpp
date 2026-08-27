@@ -504,6 +504,21 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
 			++g_stateCalls.zeroUploads;
 		}
 	}
+	if (data != nullptr && vector4fCount >= 12) {
+		// Bone palette candidates. A palette is bone-to-model-space and has
+		// no camera in it, so the two world renders must upload identical
+		// bytes - the sum is order-independent and the deltas subtract
+		// cleanly, so if the sums differ, the contents differ.
+		++g_stateCalls.paletteCalls;
+		g_stateCalls.paletteVectors += vector4fCount;
+		const UInt32* bits = reinterpret_cast<const UInt32*>(data);
+		for (UInt32 i = 0; i < vector4fCount * 4; ++i) {
+			g_stateCalls.paletteSum += bits[i];
+		}
+	}
+	if (vector4fCount > g_stateCalls.largestUpload) {
+		g_stateCalls.largestUpload = vector4fCount;
+	}
 	return g_originalSetVsConstantF(self, startRegister, data, vector4fCount);
 }
 

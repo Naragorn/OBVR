@@ -73,6 +73,10 @@ struct StateCallCounts {
 	UInt32 vbLocks = 0;         // vertex buffer Lock calls
 	UInt32 vbDiscardLocks = 0;  // the subset that passed D3DLOCK_DISCARD
 	UInt32 zeroUploads = 0;     // constant uploads whose leading floats are all zero
+	UInt32 paletteCalls = 0;    // uploads of 12 vectors or more - bone palette candidates
+	UInt32 paletteVectors = 0;  // float4 registers across those uploads
+	UInt32 paletteSum = 0;      // their float bits summed - camera-independent data must match
+	UInt32 largestUpload = 0;   // the biggest single upload seen (not a counter; no delta)
 };
 
 StateCallCounts TotalStateCalls();

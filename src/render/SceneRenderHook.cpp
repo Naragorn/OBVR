@@ -139,6 +139,29 @@ void TraceBufferLocks(const StateCallCounts& entry, const StateCallCounts& after
 	         afterSecond.zeroUploads - afterBetween.zeroUploads);
 }
 
+// The contents, at last, after every count came back symmetric. Palette
+// candidates are uploads of twelve vectors or more; bone-to-model matrices
+// carry no camera, so the two renders must upload identical bytes and the
+// two sums must match. A pass whose sum differs while its counts agree is
+// uploading different numbers into the same registers - and that pass is
+// the collapse. The largest upload rides along to say whether big palettes
+// exist at all: if it stays small, the bones travel some other way.
+void TracePaletteSums(const StateCallCounts& entry, const StateCallCounts& afterFirst,
+                      const StateCallCounts& afterBetween, const StateCallCounts& afterSecond) {
+	if (g_sceneCall % 120 != 0) {
+		return;
+	}
+	OBVR_LOG("Dual palettes at scene call %u: first %u uploads %u vectors sum %08X, "
+	         "second %u uploads %u vectors sum %08X, largest upload seen %u",
+	         g_sceneCall, afterFirst.paletteCalls - entry.paletteCalls,
+	         afterFirst.paletteVectors - entry.paletteVectors,
+	         afterFirst.paletteSum - entry.paletteSum,
+	         afterSecond.paletteCalls - afterBetween.paletteCalls,
+	         afterSecond.paletteVectors - afterBetween.paletteVectors,
+	         afterSecond.paletteSum - afterBetween.paletteSum,
+	         afterSecond.largestUpload);
+}
+
 // Stands where the entry of kRenderScene used to be, with the same calling
 // convention. See the type alias above for why __fastcall.
 void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTexture) {
@@ -196,6 +219,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	TracePassDraws(drawsAtEntry, drawsAfterFirst, drawsAfterBetween, drawsAfterSecond);
 	TracePassState(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceBufferLocks(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
+	TracePaletteSums(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceFrame("dual", passesLastFrame, drawsLastFrame);
 }
 
