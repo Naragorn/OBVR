@@ -212,6 +212,32 @@ bool FrameIsFlat(bool hadCameraPass, bool menuIsUp);
 // the flat decision: the two must agree on what kind of frame this is.
 bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp);
 
+// Debug.DualPassProbe = 9: walk the probe rungs on their own instead of
+// asking for one run per rung.
+//
+// The dual pass is three things stacked - the second render itself, the
+// camera move between the passes, and the two back buffer captures - and
+// with it on, the 2D pass is entered every frame and draws nothing. Which
+// of the three costs the HUD its draws is the whole question, and the probe
+// answers it by cutting the stack down: 1 leaves only the second render, 2
+// adds the camera move back, 0 is the whole mechanism.
+//
+// Asking for that one rung at a time costs three runs of the game, and the
+// person running them is the slow part. So value 9 walks the rungs by world
+// render instead: whole mechanism, then second render alone, then plus the
+// camera move, then whole mechanism again. The scene trace logs the rung
+// beside what the 2D pass drew in that frame, so one run names the culprit
+// and the return to 0 at the end proves the effect follows the rung rather
+// than the passage of time.
+//
+// Any other configured value passes straight through, so the existing
+// one-rung-per-run behaviour is untouched.
+inline constexpr UInt32 kProbeSweep = 9;
+inline constexpr UInt32 kSweepFirstBand = 260;
+inline constexpr UInt32 kSweepSecondBand = 320;
+inline constexpr UInt32 kSweepThirdBand = 380;
+UInt32 SweepProbeStage(UInt32 sceneCall, UInt32 configured);
+
 // Whether this frame's 2D pass should be redirected to the HUD texture.
 //
 // The same two questions the second scene pass asks, minus the arming - the

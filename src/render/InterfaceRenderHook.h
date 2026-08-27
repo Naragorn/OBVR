@@ -48,12 +48,16 @@ bool InstallInterfaceRenderHook(const InterfaceRedirect& callbacks);
 
 bool IsInterfaceRenderHooked();
 
-// How many times the 2D pass was entered since this was last asked, and
-// zero afterwards. The scene render hook asks once per world render, so it
-// can log the one number this hook cannot log itself: a frame in which the
-// pass was never entered at all. Oblivion skips it whenever the wrapper
-// that owns it - 00579260 - finds addr::kLoadingThreadHandle naming a
-// living thread, and a skipped pass leaves no trace behind.
-UInt32 TakeInterfacePassCount();
+// How many times the 2D pass was entered since this was last asked, and how
+// many primitives it drew in those passes; both zero afterwards. The scene
+// render hook asks once per world render, so the two numbers land in the
+// same line as the probe rung that frame ran under - which is what turns
+// three runs of the game into one.
+//
+// Two numbers rather than one because they fail differently. Zero passes
+// means Oblivion never entered the pass, and the cause is one of the three
+// gates in the wrapper at 00579260. One pass with zero draws means it was
+// entered and left without drawing, which is where the dual pass puts it.
+void TakeInterfaceStats(UInt32& passes, UInt32& draws);
 
 }  // namespace obvr::render

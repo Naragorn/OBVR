@@ -35,38 +35,35 @@ ScenePassCallbacks g_callbacks;
 // of unbounded recursion.
 bool g_rendering = false;
 
-// World renders, numbered, and a window around the three hundredth in which
-// each one is logged. It exists to answer a question the interface hook
-// cannot answer alone: with the dual pass on, the HUD leaves the monitor,
-// and the 2D pass looked like it drew nothing - but a pass Oblivion never
-// enters writes no line at all, so "drew nothing" and "was never called"
-// are the same silence from inside that hook. This hook runs whatever the
-// frame does, so it can tell those two apart.
+// World renders, numbered, and the clock the probe sweep runs on.
 //
-// Three numbers say which:
+// This trace exists because the interface hook cannot see its own absence.
+// With the dual pass on, the HUD leaves the monitor and that hook reported
+// nothing drawn - but a pass Oblivion never enters writes no line at all, so
+// "drew nothing" and "was never called" were the same silence. This hook
+// runs whatever the frame does, so it can tell them apart, and the first run
+// of it did: the 2D pass is entered once per frame, on one thread, with the
+// loading thread handle null. It is entered and draws nothing.
 //
-//   * 2D passes since the last world render. Zero means the wrapper at
-//     00579260 skipped the interface, and the cause is one of its three
-//     gates rather than anything the redirect does.
-//   * the loading thread handle. Non-null is the third of those gates -
-//     see addr::kLoadingThreadHandle - and would mean the dual pass leaves
-//     Oblivion believing a cell is still streaming in.
-//   * the thread this runs on. kRenderScene has a caller inside the
-//     loading screen module too (00411CBF, in the function at 00411750),
-//     and this detour catches that one as well. A second thread id here
-//     would mean the dual pass runs where D3D9 must not be touched, which
-//     is also what the first dual run's lost device would look like.
+// The handle and the thread id stay in the line because they are what rules
+// out the two explanations that would otherwise still be open - a cell still
+// believed to be streaming in, and a render running where D3D9 must not be
+// touched - and a run where either changed would be worth seeing. What the
+// line is now for is the rung beside the draw count: which part of the dual
+// pass costs the HUD its draws.
 UInt32 g_sceneCall = 0;
 
-void TraceFrame(const char* how, UInt32 passesLastFrame) {
-	if (g_sceneCall <= 280 || g_sceneCall > 310) {
+void TraceFrame(const char* how, UInt32 passesLastFrame, UInt32 drawsLastFrame) {
+	if (g_sceneCall <= 240 || g_sceneCall > 440 || g_sceneCall % 5 != 0) {
 		return;
 	}
 	const UInt32 handle = *reinterpret_cast<const UInt32*>(addr::kLoadingThreadHandle);
-	OBVR_LOG("Scene call %u (%s) on thread %u: 2D passes after the previous one=%u, "
-	         "loading thread handle=%08X",
-	         g_sceneCall, how, static_cast<UInt32>(GetCurrentThreadId()), passesLastFrame,
-	         handle);
+	const UInt32 rung =
+		g_callbacks.probeStage != nullptr ? g_callbacks.probeStage() : 0;
+	OBVR_LOG("Scene call %u (%s, rung %u) on thread %u: after the previous one the 2D pass "
+	         "ran %u time(s) and drew %u, loading thread handle=%08X",
+	         g_sceneCall, how, rung, static_cast<UInt32>(GetCurrentThreadId()),
+	         passesLastFrame, drawsLastFrame, handle);
 }
 
 // Stands where the entry of kRenderScene used to be, with the same calling
@@ -74,11 +71,13 @@ void TraceFrame(const char* how, UInt32 passesLastFrame) {
 void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTexture) {
 	++g_sceneCall;
 
-	// Taken before the render, so it counts the 2D passes that followed the
+	// Taken before the render, so they count the 2D passes that followed the
 	// previous world render - the frame that has finished, rather than the
-	// one about to be drawn. Always taken, window or not, so the count never
-	// carries over from frames nobody is looking at.
-	const UInt32 passesLastFrame = TakeInterfacePassCount();
+	// one about to be drawn. Always taken, window or not, so the counts never
+	// carry over from frames nobody is looking at.
+	UInt32 passesLastFrame = 0;
+	UInt32 drawsLastFrame = 0;
+	TakeInterfaceStats(passesLastFrame, drawsLastFrame);
 
 	// Only the ordinary world pass is drawn twice. A non-null argument is a
 	// menu wanting the world in a texture or the save game screenshot, and
@@ -86,7 +85,8 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	if (g_rendering || renderedTexture != nullptr || g_callbacks.wantsSecondPass == nullptr ||
 	    !g_callbacks.wantsSecondPass()) {
 		g_original(self, unusedEdx, renderedTexture);
-		TraceFrame(renderedTexture != nullptr ? "texture pass" : "single", passesLastFrame);
+		TraceFrame(renderedTexture != nullptr ? "texture pass" : "single", passesLastFrame,
+		           drawsLastFrame);
 		return;
 	}
 
@@ -101,7 +101,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	g_callbacks.afterSecondPass();
 
 	g_rendering = false;
-	TraceFrame("dual", passesLastFrame);
+	TraceFrame("dual", passesLastFrame, drawsLastFrame);
 }
 
 }  // namespace
@@ -170,5 +170,7 @@ bool InstallSceneRenderHook(const ScenePassCallbacks& callbacks) {
 }
 
 bool IsSceneRenderHooked() { return g_original != nullptr; }
+
+UInt32 CurrentSceneCall() { return g_sceneCall; }
 
 }  // namespace obvr::render

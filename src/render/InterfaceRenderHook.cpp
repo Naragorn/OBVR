@@ -113,6 +113,7 @@ UInt32 g_invocation = 0;
 // the one number this file cannot produce on its own, because a pass that
 // is never entered writes no line at all.
 UInt32 g_passesSinceScene = 0;
+UInt32 g_drawsSinceScene = 0;
 
 // How many first-draw pipeline samples may still be written. The window
 // arms the sample for up to twenty invocations, and six full matrix dumps
@@ -776,15 +777,19 @@ const char* RunInterfacePass(void* self, void* unusedEdx, void* renderedTexture,
 	return "redirected";
 }
 
-// The entry detour target. Numbers the invocations, and for a window around
-// the three hundredth logs what every single call to the pass was and did -
-// including the calls that redirect nothing, which the per-pass traces never
-// saw. Twenty invocations is a handful of frames however many times the
-// pass runs per frame, and the numbers say which it is.
+// The entry detour target. Numbers the invocations, and counts what each one
+// drew - including the calls that redirect nothing, which the per-pass traces
+// never saw.
+//
+// The counting window spans the whole probe sweep rather than twenty calls
+// around the three hundredth, because what the sweep compares is what the
+// pass drew under each rung of the dual pass. Only every twentieth call
+// writes its own line; the per-frame totals reach the log through the scene
+// trace, which has the rung to put beside them.
 void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* renderedTexture) {
 	const UInt32 invocation = ++g_invocation;
 	++g_passesSinceScene;
-	const bool window = invocation > 290 && invocation <= 310;
+	const bool window = invocation > 200 && invocation <= 460;
 	if (window) {
 		ResetPassStats();
 		g_sampleNextDraw = true;
@@ -794,6 +799,10 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 
 	if (window) {
 		g_sampleNextDraw = false;
+		g_drawsSinceScene += g_statsDraws;
+	}
+
+	if (window && invocation % 20 == 0) {
 
 		// The fade at [this+4]+0x2C, read at 0057F27A. Logged as context,
 		// not as a gate: the branch there skips the block at 0057F292 when
@@ -821,10 +830,11 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 
 }  // namespace
 
-UInt32 TakeInterfacePassCount() {
-	const UInt32 count = g_passesSinceScene;
+void TakeInterfaceStats(UInt32& passes, UInt32& draws) {
+	passes = g_passesSinceScene;
+	draws = g_drawsSinceScene;
 	g_passesSinceScene = 0;
-	return count;
+	g_drawsSinceScene = 0;
 }
 
 bool InstallInterfaceRenderHook(const InterfaceRedirect& callbacks) {

@@ -95,4 +95,20 @@ bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp) {
 
 bool WantsHudRedirect(bool frameOpen, bool menuIsUp) { return frameOpen && !menuIsUp; }
 
+UInt32 SweepProbeStage(UInt32 sceneCall, UInt32 configured) {
+	if (configured != kProbeSweep) {
+		return configured;
+	}
+	if (sceneCall < kSweepFirstBand) {
+		return 0;
+	}
+	if (sceneCall < kSweepSecondBand) {
+		return 1;
+	}
+	if (sceneCall < kSweepThirdBand) {
+		return 2;
+	}
+	return 0;
+}
+
 }  // namespace obvr::camera

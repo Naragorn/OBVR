@@ -40,6 +40,12 @@ struct ScenePassCallbacks {
 	// After the second pass: the second eye's picture is in the back buffer,
 	// and the camera should go back where the game left it.
 	void (*afterSecondPass)() = nullptr;
+
+	// Which rung of the dual pass this frame is running - see
+	// camera::SweepProbeStage. Optional, and used for nothing but the trace:
+	// the rung has to appear beside what the 2D pass drew in that frame, or
+	// the sweep says nothing.
+	UInt32 (*probeStage)() = nullptr;
 };
 
 // Verifies the entry bytes, builds the way back in, and patches the entry.
@@ -48,5 +54,11 @@ struct ScenePassCallbacks {
 bool InstallSceneRenderHook(const ScenePassCallbacks& callbacks);
 
 bool IsSceneRenderHooked();
+
+// World renders so far. The probe sweep needs a clock that ticks once per
+// frame whatever the frame does, and this is the only one there is: the
+// interface pass is skipped on some frames, and Present is hooked later
+// than this.
+UInt32 CurrentSceneCall();
 
 }  // namespace obvr::render

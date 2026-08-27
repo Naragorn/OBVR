@@ -410,6 +410,63 @@ void TestWantsHudRedirect() {
 	}
 }
 
+void TestSweepProbeStage() {
+	std::printf("When the probe walks its own rungs\n");
+
+	using obvr::camera::kProbeSweep;
+	using obvr::camera::kSweepFirstBand;
+	using obvr::camera::kSweepSecondBand;
+	using obvr::camera::kSweepThirdBand;
+	using obvr::camera::SweepProbeStage;
+
+	// Anything but the sweep value is the setting the person asked for, and
+	// the world render number does not enter into it. This is the flow every
+	// ordinary run takes.
+	for (UInt32 configured = 0; configured < 3; ++configured) {
+		Check(SweepProbeStage(0, configured) == configured,
+		      "a configured rung is used as configured");
+		Check(SweepProbeStage(1000, configured) == configured,
+		      "and stays that rung however long the run goes on");
+	}
+
+	// The sweep itself, band by band, each checked at its first and last
+	// world render so a band that slipped by one is a failure rather than a
+	// surprise in the log.
+	Check(SweepProbeStage(0, kProbeSweep) == 0, "the sweep opens with the whole mechanism");
+	Check(SweepProbeStage(kSweepFirstBand - 1, kProbeSweep) == 0,
+	      "and stays there to the last render before the first band");
+
+	Check(SweepProbeStage(kSweepFirstBand, kProbeSweep) == 1,
+	      "the first band cuts back to the second render alone");
+	Check(SweepProbeStage(kSweepSecondBand - 1, kProbeSweep) == 1, "for the whole band");
+
+	Check(SweepProbeStage(kSweepSecondBand, kProbeSweep) == 2,
+	      "the second band puts the camera move back");
+	Check(SweepProbeStage(kSweepThirdBand - 1, kProbeSweep) == 2, "for the whole band");
+
+	Check(SweepProbeStage(kSweepThirdBand, kProbeSweep) == 0,
+	      "and the last band restores the whole mechanism");
+	Check(SweepProbeStage(kSweepThirdBand + 10000, kProbeSweep) == 0,
+	      "and leaves it restored, however long the person stands there");
+
+	// The property the sweep rests on: it must end where it began. A rung
+	// that reads differently at the two ends would mean the log is showing
+	// the passage of time rather than the rung.
+	Check(SweepProbeStage(0, kProbeSweep) == SweepProbeStage(kSweepThirdBand, kProbeSweep),
+	      "the sweep returns to the rung it started from");
+
+	// And every world render has exactly one rung, none of them outside the
+	// three the probe knows.
+	for (UInt32 call = 0; call <= kSweepThirdBand + 100; ++call) {
+		const UInt32 stage = SweepProbeStage(call, kProbeSweep);
+		if (stage > 2) {
+			Check(false, "the sweep named a rung the dual pass does not have");
+			break;
+		}
+	}
+	Check(true, "every world render maps to a rung the dual pass has");
+}
+
 int main() {
 	std::printf("OBVR frame logic test\n\n");
 
@@ -434,6 +491,8 @@ int main() {
 	TestWantsSecondScenePass();
 	std::printf("\n");
 	TestWantsHudRedirect();
+	std::printf("\n");
+	TestSweepProbeStage();
 	std::printf("\n");
 	TestFrameClock();
 	std::printf("\n");

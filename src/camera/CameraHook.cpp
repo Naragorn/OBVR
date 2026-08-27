@@ -329,8 +329,16 @@ UInt32 g_dualTraceFramesLeft = 3;
 
 bool DualTraceOn() { return g_dualTraceFramesLeft > 0; }
 
+// The rung this frame runs on. Asked here rather than read from the config
+// so that DualPassProbe=9 can walk the rungs itself - see SweepProbeStage -
+// and so that the trace and the two callbacks below cannot disagree about
+// which rung a frame belonged to.
+UInt32 DualProbeRung() {
+	return SweepProbeStage(render::CurrentSceneCall(), GetConfig().dualPassProbe);
+}
+
 void BetweenScenePasses() {
-	const UInt32 probe = GetConfig().dualPassProbe;
+	const UInt32 probe = DualProbeRung();
 	if (DualTraceOn()) {
 		OBVR_LOG("Dual trace: first pass returned (probe %u)", probe);
 	}
@@ -359,7 +367,7 @@ void BetweenScenePasses() {
 }
 
 void AfterSecondScenePass() {
-	const UInt32 probe = GetConfig().dualPassProbe;
+	const UInt32 probe = DualProbeRung();
 	if (DualTraceOn()) {
 		OBVR_LOG("Dual trace: second pass returned");
 	}
@@ -908,6 +916,7 @@ bool Install() {
 			callbacks.wantsSecondPass = &ScenePassWanted;
 			callbacks.betweenPasses = &BetweenScenePasses;
 			callbacks.afterSecondPass = &AfterSecondScenePass;
+			callbacks.probeStage = &DualProbeRung;
 			// Logs its own outcome either way; on failure the mode quietly
 			// renders like mono, and request.dualEyes says so per frame.
 			render::InstallSceneRenderHook(callbacks);
