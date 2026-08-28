@@ -161,6 +161,15 @@ struct StateCallCounts {
 	UInt32 skinnedBaseVertexSum = 0;  // BaseVertexIndex of skinned draws, summed
 	UInt32 skinnedStartIndexSum = 0;  // StartIndex of skinned draws, summed
 	UInt32 skinnedMinVertexSum = 0;   // MinVertexIndex of skinned draws, summed
+
+	// Uploads into the bone register range (c40 and up, where the active
+	// package's shaders keep their Bones arrays), at ANY size. Every
+	// palette probe so far filtered at twelve vectors and would have been
+	// blind to an engine that uploads bones three vectors at a time - the
+	// one hardware-skinning shape never yet measured.
+	UInt32 boneRangeCalls = 0;
+	UInt32 boneRangeVectors = 0;
+	UInt32 boneRangeSum = 0;  // float bits summed - bone matrices carry no camera
 };
 
 StateCallCounts TotalStateCalls();

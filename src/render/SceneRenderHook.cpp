@@ -303,6 +303,14 @@ void TraceZeroMatrixDraws(const StateCallCounts& entry, const StateCallCounts& a
 	         afterSecond.swvpToggles - afterBetween.swvpToggles,
 	         afterFirst.swvpOnDraws - entry.swvpOnDraws,
 	         afterSecond.swvpOnDraws - afterBetween.swvpOnDraws);
+	OBVR_LOG("Dual bone range at scene call %u: first %u calls %u vecs sum %08X, "
+	         "second %u calls %u vecs sum %08X",
+	         g_sceneCall, afterFirst.boneRangeCalls - entry.boneRangeCalls,
+	         afterFirst.boneRangeVectors - entry.boneRangeVectors,
+	         afterFirst.boneRangeSum - entry.boneRangeSum,
+	         afterSecond.boneRangeCalls - afterBetween.boneRangeCalls,
+	         afterSecond.boneRangeVectors - afterBetween.boneRangeVectors,
+	         afterSecond.boneRangeSum - afterBetween.boneRangeSum);
 	OBVR_LOG("Dual draw addressing at scene call %u: base first %08X second %08X, "
 	         "min first %08X second %08X, start first %08X second %08X",
 	         g_sceneCall, afterFirst.skinnedBaseVertexSum - entry.skinnedBaseVertexSum,

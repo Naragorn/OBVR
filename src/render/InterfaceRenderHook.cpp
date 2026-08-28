@@ -684,6 +684,14 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
 			g_lastC0Zero = allZero;
 		}
 	}
+	if (data != nullptr && startRegister >= 40) {
+		++g_stateCalls.boneRangeCalls;
+		g_stateCalls.boneRangeVectors += vector4fCount;
+		const UInt32* bits = reinterpret_cast<const UInt32*>(data);
+		for (UInt32 i = 0; i < vector4fCount * 4; ++i) {
+			g_stateCalls.boneRangeSum += bits[i];
+		}
+	}
 	if (data != nullptr && vector4fCount >= 12) {
 		// Bone palette candidates. A palette is bone-to-model-space and has
 		// no camera in it, so the two world renders must upload identical
