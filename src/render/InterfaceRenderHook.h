@@ -122,6 +122,22 @@ struct StateCallCounts {
 	// shader of the active package) holds an all-zero matrix is a draw
 	// that collapses onto one clip-space point.
 	UInt32 skinnedZeroMatrixDraws = 0;
+
+	// The index side of vertex fetch, mirrored from the vertex side once
+	// that side ran out of suspects. Indices decide which vertex each
+	// triangle corner reads: zeroed indices build every triangle out of
+	// vertex zero, and a stride of zero reads one vertex forever - both
+	// are bodies collapsed onto a point.
+	UInt32 streamStrideSum = 0;   // stream-0 strides summed
+	UInt32 streamFreqCalls = 0;   // SetStreamSourceFreq calls - instancing changes fetch
+	UInt32 indexBinds = 0;        // SetIndices calls
+	UInt32 indexBindSum = 0;      // index buffer pointers, summed
+	UInt32 ibLocks = 0;           // index buffer Lock calls
+	UInt32 ibDiscardLocks = 0;    // the subset that passed DISCARD
+	UInt32 ibWrites = 0;          // fingerprinted index writes
+	UInt32 ibWriteSum = 0;        // their leading bytes summed
+	UInt32 ibWriteSkipped = 0;    // index writes that could not be followed
+	UInt32 skinnedZeroStrideDraws = 0;  // skinned draws bound with stream-0 stride zero
 };
 
 StateCallCounts TotalStateCalls();

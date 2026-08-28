@@ -436,6 +436,20 @@ constexpr UInt32 kDeviceSetVertexShaderConstantF = 94;
 // the pointer itself is the only witness.
 constexpr UInt32 kDeviceSetStreamSource = 100;
 
+// The index side of vertex fetch, from the same listing: CreateIndexBuffer
+// (27) right beside the verified CreateVertexBuffer (26), and
+// SetStreamSourceFreq (102) / SetIndices (104) bracketing the verified
+// SetStreamSource (100). Watched because indices decide which vertex each
+// corner of a triangle reads: a draw against zeroed indices builds every
+// triangle out of vertex zero - a body collapsed onto one point.
+constexpr UInt32 kDeviceCreateIndexBuffer = 27;
+constexpr UInt32 kDeviceSetStreamSourceFreq = 102;
+constexpr UInt32 kDeviceSetIndices = 104;
+
+// D3DFMT_INDEX16 (d3d9types.h, line 1444), for the probe index buffer that
+// activates the class vtable patch the moment the hook is installed.
+constexpr UInt32 kFormatIndex16 = 101;
+
 using SetTransformFn = SInt32(__stdcall*)(void* self, UInt32 state, const Matrix4* matrix);
 using SetVertexDeclarationFn = SInt32(__stdcall*)(void* self, void* declaration);
 using SetFVFFn = SInt32(__stdcall*)(void* self, UInt32 fvf);
@@ -444,6 +458,11 @@ using SetVertexShaderConstantFFn = SInt32(__stdcall*)(void* self, UInt32 startRe
                                                       const float* data, UInt32 vector4fCount);
 using SetStreamSourceFn = SInt32(__stdcall*)(void* self, UInt32 streamNumber, void* streamData,
                                              UInt32 offsetInBytes, UInt32 stride);
+using SetStreamSourceFreqFn = SInt32(__stdcall*)(void* self, UInt32 streamNumber, UInt32 setting);
+using SetIndicesFn = SInt32(__stdcall*)(void* self, void* indexData);
+using CreateIndexBufferFn = SInt32(__stdcall*)(void* self, UInt32 length, UInt32 usage,
+                                               UInt32 format, UInt32 pool, void** indexBuffer,
+                                               void** sharedHandle);
 
 // CreateVertexBuffer (26), framed by two verified neighbours: CreateTexture
 // (23) three entries up and CreateRenderTarget (28) two entries down.

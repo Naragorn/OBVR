@@ -190,6 +190,12 @@ UInt32 g_stream0Offset = 0;
 // unlock. See LockLedger.h for the bounds.
 LockLedger g_openLocks;
 
+// The index-buffer mirror of the vertex pool watch: the buffers ever
+// discard-locked, their open mappings, and what SetIndices last bound.
+PointerSet g_dynamicIndexBuffers;
+LockLedger g_openIbLocks;
+UInt32 g_stream0Stride = 0;
+
 // How many leading bytes of each pool write are fingerprinted. Enough to
 // catch collapsed positions, cheap enough for write-combined memory.
 constexpr UInt32 kWriteFingerprintBytes = 256;
@@ -213,6 +219,9 @@ void CountSkinnedDraw(UInt32 numVertices, UInt32 primCount) {
 	if (g_lastC0Zero) {
 		++g_stateCalls.skinnedZeroMatrixDraws;
 	}
+	if (g_stream0Stride == 0) {
+		++g_stateCalls.skinnedZeroStrideDraws;
+	}
 }
 
 d3d9::CreateVertexBufferFn g_originalCreateVertexBuffer = nullptr;
@@ -227,6 +236,14 @@ d3d9::VertexBufferUnlockFn g_originalVbUnlock = nullptr;
 // belongs to the first.
 void** g_vbVtable = nullptr;
 bool g_vbSecondVtableReported = false;
+
+// The index-buffer class vtable, patched from the first index buffer the
+// game creates - the same one-class argument as the vertex side.
+d3d9::CreateIndexBufferFn g_originalCreateIndexBuffer = nullptr;
+d3d9::VertexBufferLockFn g_originalIbLock = nullptr;
+d3d9::VertexBufferUnlockFn g_originalIbUnlock = nullptr;
+void** g_ibVtable = nullptr;
+bool g_ibSecondVtableReported = false;
 
 SInt32 __stdcall HookedSetRenderTarget(void* self, UInt32 index, void* surface) {
 	if ((g_redirecting || g_observing) && index == 0 && surface != nullptr) {
@@ -538,8 +555,25 @@ SInt32 __stdcall HookedSetStreamSource(void* self, UInt32 streamNumber, void* st
 	if (streamNumber == 0) {
 		g_stream0Buffer = streamData;
 		g_stream0Offset = offsetInBytes;
+		g_stream0Stride = stride;
+		g_stateCalls.streamStrideSum += stride;
 	}
 	return g_originalSetStreamSource(self, streamNumber, streamData, offsetInBytes, stride);
+}
+
+d3d9::SetStreamSourceFreqFn g_originalSetStreamSourceFreq = nullptr;
+
+SInt32 __stdcall HookedSetStreamSourceFreq(void* self, UInt32 streamNumber, UInt32 setting) {
+	++g_stateCalls.streamFreqCalls;
+	return g_originalSetStreamSourceFreq(self, streamNumber, setting);
+}
+
+d3d9::SetIndicesFn g_originalSetIndices = nullptr;
+
+SInt32 __stdcall HookedSetIndices(void* self, void* indexData) {
+	++g_stateCalls.indexBinds;
+	g_stateCalls.indexBindSum += reinterpret_cast<UInt32>(indexData);
+	return g_originalSetIndices(self, indexData);
 }
 
 SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const float* data,
@@ -653,6 +687,79 @@ SInt32 __stdcall HookedVbUnlock(void* self) {
 		g_stateCalls.dynamicWriteSum += SumLeadingBytes(data, size, kWriteFingerprintBytes);
 	}
 	return g_originalVbUnlock(self);
+}
+
+// The index-buffer mirrors of the two hooks above, on their own counters
+// and their own ledger - indices and vertices fail differently, and one
+// shared number would blur exactly the distinction being probed.
+SInt32 __stdcall HookedIbLock(void* self, UInt32 offset, UInt32 size, void** data,
+                              UInt32 flags) {
+	++g_stateCalls.ibLocks;
+	if ((flags & d3d9::kLockDiscard) != 0) {
+		++g_stateCalls.ibDiscardLocks;
+		g_dynamicIndexBuffers.Insert(self);
+	}
+	const bool dynamic = g_dynamicIndexBuffers.Contains(self);
+	const SInt32 result = g_originalIbLock(self, offset, size, data, flags);
+	if (dynamic && result >= 0 && data != nullptr && *data != nullptr) {
+		if (size == 0 || !g_openIbLocks.Begin(self, *data, size)) {
+			++g_stateCalls.ibWriteSkipped;
+		}
+	}
+	return result;
+}
+
+SInt32 __stdcall HookedIbUnlock(void* self) {
+	const void* data = nullptr;
+	UInt32 size = 0;
+	if (g_openIbLocks.End(self, &data, &size)) {
+		++g_stateCalls.ibWrites;
+		g_stateCalls.ibWriteSum += SumLeadingBytes(data, size, kWriteFingerprintBytes);
+	}
+	return g_originalIbUnlock(self);
+}
+
+SInt32 __stdcall HookedCreateIndexBuffer(void* self, UInt32 length, UInt32 usage, UInt32 format,
+                                         UInt32 pool, void** indexBuffer, void** sharedHandle) {
+	const SInt32 result = g_originalCreateIndexBuffer(self, length, usage, format, pool,
+	                                                  indexBuffer, sharedHandle);
+	if (result < 0 || indexBuffer == nullptr || *indexBuffer == nullptr) {
+		return result;
+	}
+	if ((usage & d3d9::kUsageDynamic) != 0) {
+		OBVR_LOG("Hud: dynamic index buffer %p created - length %u, usage %08X, pool %u",
+		         *indexBuffer, length, usage, pool);
+	}
+	auto** vtable = *reinterpret_cast<void***>(*indexBuffer);
+	if (g_ibVtable == nullptr) {
+		g_originalIbLock =
+			reinterpret_cast<d3d9::VertexBufferLockFn>(vtable[d3d9::kVertexBufferLock]);
+		g_originalIbUnlock =
+			reinterpret_cast<d3d9::VertexBufferUnlockFn>(vtable[d3d9::kVertexBufferUnlock]);
+		if (g_originalIbLock != nullptr && g_originalIbUnlock != nullptr &&
+		    WriteTableEntry(vtable, d3d9::kVertexBufferLock,
+		                    reinterpret_cast<void*>(&HookedIbLock))) {
+			if (WriteTableEntry(vtable, d3d9::kVertexBufferUnlock,
+			                    reinterpret_cast<void*>(&HookedIbUnlock))) {
+				g_ibVtable = vtable;
+				OBVR_LOG("Hud: index buffer Lock and Unlock counted from table "
+				         "entries %u and %u",
+				         d3d9::kVertexBufferLock, d3d9::kVertexBufferUnlock);
+			} else {
+				WriteTableEntry(vtable, d3d9::kVertexBufferLock,
+				                reinterpret_cast<void*>(g_originalIbLock));
+				g_originalIbLock = nullptr;
+				g_originalIbUnlock = nullptr;
+			}
+		} else {
+			g_originalIbLock = nullptr;
+			g_originalIbUnlock = nullptr;
+		}
+	} else if (vtable != g_ibVtable && !g_ibSecondVtableReported) {
+		g_ibSecondVtableReported = true;
+		OBVR_LOG("Hud: a second index buffer vtable appeared - its locks are not counted");
+	}
+	return result;
 }
 
 // Counts Lock on every vertex buffer by patching the class vtable the next
@@ -835,9 +942,14 @@ bool EnsureTargetHook() {
 		vtable[d3d9::kDeviceSetVertexShaderConstantF]);
 	g_originalSetStreamSource = reinterpret_cast<d3d9::SetStreamSourceFn>(
 		vtable[d3d9::kDeviceSetStreamSource]);
+	g_originalSetStreamSourceFreq = reinterpret_cast<d3d9::SetStreamSourceFreqFn>(
+		vtable[d3d9::kDeviceSetStreamSourceFreq]);
+	g_originalSetIndices =
+		reinterpret_cast<d3d9::SetIndicesFn>(vtable[d3d9::kDeviceSetIndices]);
 	if (g_originalSetTransform != nullptr && g_originalSetVertexDecl != nullptr &&
 	    g_originalSetFVF != nullptr && g_originalSetVertexShader != nullptr &&
-	    g_originalSetVsConstantF != nullptr && g_originalSetStreamSource != nullptr) {
+	    g_originalSetVsConstantF != nullptr && g_originalSetStreamSource != nullptr &&
+	    g_originalSetStreamSourceFreq != nullptr && g_originalSetIndices != nullptr) {
 		const bool stateHooked =
 			WriteTableEntry(vtable, d3d9::kDeviceSetTransform,
 		                    reinterpret_cast<void*>(&HookedSetTransform)) &&
@@ -850,7 +962,11 @@ bool EnsureTargetHook() {
 			WriteTableEntry(vtable, d3d9::kDeviceSetVertexShaderConstantF,
 		                    reinterpret_cast<void*>(&HookedSetVsConstantF)) &&
 			WriteTableEntry(vtable, d3d9::kDeviceSetStreamSource,
-		                    reinterpret_cast<void*>(&HookedSetStreamSource));
+		                    reinterpret_cast<void*>(&HookedSetStreamSource)) &&
+			WriteTableEntry(vtable, d3d9::kDeviceSetStreamSourceFreq,
+		                    reinterpret_cast<void*>(&HookedSetStreamSourceFreq)) &&
+			WriteTableEntry(vtable, d3d9::kDeviceSetIndices,
+		                    reinterpret_cast<void*>(&HookedSetIndices));
 		if (!stateHooked) {
 			OBVR_LOG("Hud: the vertex state counters could not all be installed");
 		}
@@ -868,6 +984,21 @@ bool EnsureTargetHook() {
 		void* probe = nullptr;
 		if (HookedCreateVertexBuffer(device, 64, 0, 0, d3d9::kPoolDefault, &probe,
 		                             nullptr) >= 0 &&
+		    probe != nullptr) {
+			d3d9::Method<d3d9::ReleaseFn>(probe, d3d9::kUnknownRelease)(probe);
+		}
+	}
+
+	// The index-buffer class, activated the same way: one probe buffer, its
+	// vtable patched, every index buffer counted from then on.
+	g_originalCreateIndexBuffer = reinterpret_cast<d3d9::CreateIndexBufferFn>(
+		vtable[d3d9::kDeviceCreateIndexBuffer]);
+	if (g_originalCreateIndexBuffer != nullptr &&
+	    WriteTableEntry(vtable, d3d9::kDeviceCreateIndexBuffer,
+	                    reinterpret_cast<void*>(&HookedCreateIndexBuffer))) {
+		void* probe = nullptr;
+		if (HookedCreateIndexBuffer(device, 64, 0, d3d9::kFormatIndex16, d3d9::kPoolDefault,
+		                            &probe, nullptr) >= 0 &&
 		    probe != nullptr) {
 			d3d9::Method<d3d9::ReleaseFn>(probe, d3d9::kUnknownRelease)(probe);
 		}

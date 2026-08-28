@@ -299,6 +299,47 @@ void TraceZeroMatrixDraws(const StateCallCounts& entry, const StateCallCounts& a
 	         afterSecond.skinnedZeroMatrixDraws - afterBetween.skinnedZeroMatrixDraws);
 }
 
+// The index side of vertex fetch, mirrored from the vertex side once every
+// vertex-side number came back equal. Zeroed indices build every triangle
+// out of vertex zero and a zero stride reads one vertex forever - both are
+// bodies collapsed onto a point, and neither was watched until now.
+void TraceIndexSide(const StateCallCounts& entry, const StateCallCounts& afterFirst,
+                    const StateCallCounts& afterBetween, const StateCallCounts& afterSecond) {
+	if (g_sceneCall % 120 != 0) {
+		return;
+	}
+	OBVR_LOG("Dual index locks at scene call %u: first %u (discard %u) writes %u sum %08X "
+	         "skipped %u, between %u/%u/%u/%08X/%u, second %u (discard %u) writes %u "
+	         "sum %08X skipped %u",
+	         g_sceneCall, afterFirst.ibLocks - entry.ibLocks,
+	         afterFirst.ibDiscardLocks - entry.ibDiscardLocks,
+	         afterFirst.ibWrites - entry.ibWrites, afterFirst.ibWriteSum - entry.ibWriteSum,
+	         afterFirst.ibWriteSkipped - entry.ibWriteSkipped,
+	         afterBetween.ibLocks - afterFirst.ibLocks,
+	         afterBetween.ibDiscardLocks - afterFirst.ibDiscardLocks,
+	         afterBetween.ibWrites - afterFirst.ibWrites,
+	         afterBetween.ibWriteSum - afterFirst.ibWriteSum,
+	         afterBetween.ibWriteSkipped - afterFirst.ibWriteSkipped,
+	         afterSecond.ibLocks - afterBetween.ibLocks,
+	         afterSecond.ibDiscardLocks - afterBetween.ibDiscardLocks,
+	         afterSecond.ibWrites - afterBetween.ibWrites,
+	         afterSecond.ibWriteSum - afterBetween.ibWriteSum,
+	         afterSecond.ibWriteSkipped - afterBetween.ibWriteSkipped);
+	OBVR_LOG("Dual fetch state at scene call %u: index binds first %u sum %08X second %u "
+	         "sum %08X, stride sums first %08X second %08X, freq calls %u/%u, zero-stride "
+	         "skinned draws %u/%u",
+	         g_sceneCall, afterFirst.indexBinds - entry.indexBinds,
+	         afterFirst.indexBindSum - entry.indexBindSum,
+	         afterSecond.indexBinds - afterBetween.indexBinds,
+	         afterSecond.indexBindSum - afterBetween.indexBindSum,
+	         afterFirst.streamStrideSum - entry.streamStrideSum,
+	         afterSecond.streamStrideSum - afterBetween.streamStrideSum,
+	         afterFirst.streamFreqCalls - entry.streamFreqCalls,
+	         afterSecond.streamFreqCalls - afterBetween.streamFreqCalls,
+	         afterFirst.skinnedZeroStrideDraws - entry.skinnedZeroStrideDraws,
+	         afterSecond.skinnedZeroStrideDraws - afterBetween.skinnedZeroStrideDraws);
+}
+
 // Stands where the entry of kRenderScene used to be, with the same calling
 // convention. See the type alias above for why __fastcall.
 void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTexture) {
@@ -362,6 +403,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	TraceSkinnedDraws(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TracePoolWrites(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceZeroMatrixDraws(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
+	TraceIndexSide(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceFrame("dual", passesLastFrame, drawsLastFrame);
 }
 
