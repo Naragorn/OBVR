@@ -113,10 +113,10 @@ public:
 		float cameraTanHalfHeight = 0.0f;
 
 		// The held pair's menu dressing, applied once per held episode: the
-		// tint colour with its strength already folded in as alpha (0 means
-		// no tint), and whether each eye's picture is trimmed to the window
-		// both eyes show. Only read on the held path - dialogue keeps the
-		// world rendering, so its frames never come here. See MenuShade.h.
+		// sepia tone with its strength folded in as alpha (0 means no shade),
+		// and whether each eye's picture is trimmed to the window both eyes
+		// show. Only read on the held path - dialogue keeps the world
+		// rendering, so its frames never come here. See MenuShade.h.
 		UInt32 menuShadeColor = 0;
 		bool menuSingleBorder = false;
 

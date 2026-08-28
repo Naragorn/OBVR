@@ -7,12 +7,16 @@
 // that applies them so every flow can be exercised without one.
 //
 // Two things happen to the held pair when a pause menu opens, both asked for
-// after seeing them missing. The brown shade is vanilla's own idea: Oblivion
-// dims the paused world behind its menus, and a frozen world shown at full
-// colour reads as a freeze rather than a pause. The single border is a stereo
-// fact: the two eyes' pictures are cropped at opposite edges, so each eye's
-// picture ends at a different angle and the edges cannot be fused - reported
-// as doubled bars at the sides while the top and bottom, whose crops match,
+// after seeing them missing. The shade is vanilla's own static menu
+// background: with bStaticMenuBackground the game shows the paused world
+// desaturated and re-toned sepia - the yellow-brown look every Oblivion
+// player knows - and a frozen world at full colour reads as a freeze rather
+// than a pause. (A flat brown laid over the colours was tried first and
+// looked nothing like it; the desaturation is the part that needs a shader,
+// see EyeMirror::PrepareHeldShade.) The single border is a stereo fact: the
+// two eyes' pictures are cropped at opposite edges, so each eye's picture
+// ends at a different angle and the edges cannot be fused - reported as
+// doubled bars at the sides while the top and bottom, whose crops match,
 // show one. Blacking each picture back to the window BOTH eyes show puts all
 // four edges at the same angles.
 namespace obvr::render {
@@ -56,10 +60,12 @@ inline bool ParseHexColor(const char* text, UInt32& rgbOut) {
 	return true;
 }
 
-// Folds the configured colour and strength into the one ARGB value the tint
-// quad draws with. Zero means "no tint", and the only way to get zero is a
-// strength of zero (or less): even a black shade at full strength carries its
-// alpha, so it still counts as a tint rather than as the feature being off.
+// Folds the configured tone and strength into the one ARGB value the sepia
+// pass is handed - rgb the tone the grey picture is multiplied with, alpha
+// how far the result replaces the original. Zero means "no shade", and the
+// only way to get zero is a strength of zero (or less): even a black tone at
+// full strength carries its alpha, so it still counts as a shade rather than
+// as the feature being off.
 inline UInt32 ComposeShadeColor(UInt32 rgb, float strength) {
 	if (strength <= 0.0f) {
 		return 0;

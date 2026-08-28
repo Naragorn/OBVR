@@ -153,36 +153,31 @@ inline constexpr UInt32 kFrameSecondsAddress = 0x00B33E9C;
 // black. That is the flicker seen when opening the ESC menu.
 inline constexpr UInt32 kIsMenuMode = 0x00578F60;
 
-// PlayerCharacter::SetDialogCamera - the function behind the dialogue zoom,
-// called when a conversation starts (with the NPC) and again when it ends
-// (with null), each time starting the camera transition whose distance
-// fDlgFocus sets. In a headset the zoom itself never shows, because OBVR owns
-// the camera - but the transition is still spent, and it arrives as a dead
-// pause on the way out of every conversation.
+// The value slot of the fDlgFocus INI setting - the distance the dialogue
+// camera zooms to when a conversation starts. Raising it is the community's
+// standard way to push the zoom back (UESP: 4.5 "virtually eliminates" it;
+// the Stop Conversation Zoom mod writes 15): OBVR holds this slot at that
+// figure in memory, so the person's Oblivion.ini stays whatever they wrote.
 //
-// Two sources, as everything here has. TESReloaded (llde/TESReloaded10,
-// Framework/Oblivion/Base.h) names Hooks::SetDialogCamera = 0x0066C6F0 as
-// __thiscall (PlayerCharacter*, Actor*, float, UInt8), and its camera mode
-// detours it without ever calling the original - which is exactly the "no
-// zoom at all" that mod is known for. The bytes in this machine's 1.2.0.416
-// say the same thing independently:
+// Two sources, as everything here has, both from this machine's 1.2.0.416.
+// First, the setting object itself: 00B14F14 holds the pointer to the string
+// "fDlgFocus" at 00A7409C, and the float directly before the name pointer -
+// this address - holds 2.1, the setting's documented default. Second, the
+// function that consumes it: TESReloaded (llde/TESReloaded10, Framework/
+// Oblivion/Base.h) names PlayerCharacter::SetDialogCamera = 0x0066C6F0, the
+// local bytes there carry its declared __thiscall(Actor*, float, UInt8)
+// shape - a null-checked first argument for the conversation's end, the
+// float compared against 1.0 - and its body reads dword [00B14F10] at +1AD.
+// The setting named fDlgFocus, defaulting to 2.1, read by the dialogue
+// camera function, is the one being described.
 //
-//   0066C6F0  sub esp,18; push ebp
-//   0066C6F4  mov ebp,[esp+20]        <- the first stack argument (the Actor)
-//   0066C6F8  test ebp,ebp
-//   0066C6FA  push esi; mov esi,ecx   <- __thiscall
-//   0066C6FD  jz +527                 <- null Actor takes the ending path
-//   0066C703  fld1; fcomp [esp+28]    <- the float argument against 1.0
-//   ...       and at +1AD the body reads dword [00B14F10] - the fDlgFocus
-//             setting's value slot, found from its name string: 00B14F14
-//             holds the pointer to "fDlgFocus" at 00A7409C, and the float
-//             before it holds 2.1, the setting's documented default.
-//
-// A function with that signature, split on a null Actor, reading fDlgFocus,
-// at the very address TESReloaded names, is the one being described. OBVR
-// patches its first bytes to ret 0Ch - three dword arguments, callee-cleaned
-// under __thiscall - so neither transition ever starts.
-inline constexpr UInt32 kSetDialogCamera = 0x0066C6F0;
+// A data slot rather than a code patch, deliberately: an earlier build
+// returned SetDialogCamera outright, and the wish came back as "override the
+// value instead". One consequence is the game's own doing: Oblivion writes
+// its INI back from memory on exit, so fDlgFocus=15 lands in Oblivion.ini
+// after a session. Harmless - the next run reads it and OBVR holds the slot
+// regardless - but it is the game writing it, not OBVR touching the file.
+inline constexpr UInt32 kDlgFocusSetting = 0x00B14F10;
 
 // Where Oblivion keeps d3d9.dll and the Direct3DCreate9 it looked up in it.
 //

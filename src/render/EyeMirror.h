@@ -98,15 +98,20 @@ public:
 		bool m_held = false;
 	};
 
-	// Dresses the held pair for a pause menu: a brown alpha-blended quad over
-	// each eye's world rectangle (shadeColorArgb, 0 meaning no tint), and the
-	// side strips only one eye shows blacked out (trimToSharedWindow), so all
-	// four picture edges sit at angles both eyes agree on. See MenuShade.h for
-	// why each exists.
+	// Dresses the held pair for a pause menu the way vanilla dresses its own
+	// static menu background: the world desaturated and re-toned (the sepia
+	// look bStaticMenuBackground gives), not a colour laid over it. Each
+	// eye's picture is copied aside and drawn back through a small pixel
+	// shader - grey = dot(rgb, luminance), then grey times the tone in
+	// shadeColorArgb's rgb, blended back towards the original by the
+	// strength its alpha carries (0 meaning no shade at all). The side
+	// strips only one eye shows are blacked out too (trimToSharedWindow),
+	// so all four picture edges sit at angles both eyes agree on. See
+	// MenuShade.h for why each piece exists.
 	//
 	// Runs once per held episode: the flag it sets survives until the next
 	// CopyBackBuffer overwrites the pictures, which is also what naturally
-	// undresses them - the world's next frame arrives untinted and untrimmed.
+	// undresses them - the world's next frame arrives untoned and untrimmed.
 	// Pure Direct3D 9, so it must be called with no submission queue held.
 	bool PrepareHeldShade(void* gameDevice, UInt32 shadeColorArgb, bool trimToSharedWindow);
 	bool IsHeldShaded() const { return m_heldShaded; }
@@ -124,6 +129,12 @@ private:
 	void EndSubmit() { m_bracket.Release(); }
 
 	bool CreateOne(void* gameDevice, int index);
+
+	// Builds what the sepia pass needs, once: a scratch copy of the eye
+	// picture for the shader to read - a shader must never sample the surface
+	// it writes - and the ps_2_0 shader itself, assembled at runtime through
+	// d3dx9_27.dll, which Oblivion imports and therefore ships with.
+	bool EnsureShadeResources(void* gameDevice);
 
 	struct Eye {
 		void* texture = nullptr;  // IDirect3DTexture9
@@ -193,9 +204,17 @@ private:
 	// painted on.
 	bool m_heldShaded = false;
 
-	// Said once per run each, so a device that refuses the quad does not
+	// Said once per run each, so a device that refuses the pass does not
 	// refuse it into the log every frame.
 	bool m_shadeFailureLogged = false;
+
+	// The sepia pass's standing pieces, built on first use and kept for the
+	// mirror's lifetime. m_shadeResourcesTried keeps a failed build from
+	// being retried every menu.
+	void* m_scratchTexture = nullptr;  // IDirect3DTexture9
+	void* m_scratchSurface = nullptr;  // its level 0
+	void* m_sepiaShader = nullptr;     // IDirect3DPixelShader9
+	bool m_shadeResourcesTried = false;
 
 	InteropBracket m_bracket;
 };

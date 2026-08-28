@@ -382,37 +382,48 @@ constexpr UInt32 kDeviceGetPixelShader = 108;
 using GetFVFFn = SInt32(__stdcall*)(void* self, UInt32* fvf);
 using GetShaderFn = SInt32(__stdcall*)(void* self, void** shader);
 
-// ------------------------------------------------------ The menu shade quad
+// ----------------------------------------------------- The menu sepia pass
 //
-// The tint over the held pair is one alpha-blended rectangle, drawn with the
-// fixed-function pipeline so no shader has to exist for it. These are the
-// methods that drawing touches beyond the ones above, all counted from the
-// same DECLARE_INTERFACE_ listing, and each sits directly beside an already
-// verified neighbour: SetDepthStencilSurface (39) between GetRenderTarget (38)
-// and GetDepthStencilSurface (40); BeginScene/EndScene (41/42) between that
-// pair and Clear (43); SetTexture (65) beside GetTexture (64);
-// SetTextureStageState (67) beside GetTextureStageState (66); SetPixelShader
-// (107) directly before GetPixelShader (108).
+// Vanilla's pause-menu background is not a colour laid over the world - it
+// is the world desaturated and re-toned (bStaticMenuBackground, the sepia
+// look). Desaturation is a dot product per pixel, which no blend state can
+// express, so the pass is one textured quad through a small pixel shader.
+// These are the methods that drawing touches beyond the ones above, all
+// counted from the same DECLARE_INTERFACE_ listing, and each sits directly
+// beside an already verified neighbour: SetDepthStencilSurface (39) between
+// GetRenderTarget (38) and GetDepthStencilSurface (40); BeginScene/EndScene
+// (41/42) between that pair and Clear (43); SetTexture (65) beside
+// GetTexture (64); SetSamplerState (69) beside GetSamplerState (68), itself
+// two below the verified GetTextureStageState (66); CreatePixelShader (106)
+// and SetPixelShaderConstantF (109) bracketing the verified SetPixelShader/
+// GetPixelShader pair (107/108).
 constexpr UInt32 kDeviceSetDepthStencilSurface = 39;
 constexpr UInt32 kDeviceBeginScene = 41;
 constexpr UInt32 kDeviceEndScene = 42;
 constexpr UInt32 kDeviceSetTexture = 65;
-constexpr UInt32 kDeviceSetTextureStageState = 67;
+constexpr UInt32 kDeviceSetSamplerState = 69;
+constexpr UInt32 kDeviceCreatePixelShader = 106;
 constexpr UInt32 kDeviceSetPixelShader = 107;
+constexpr UInt32 kDeviceSetPixelShaderConstantF = 109;
 
 using SetDepthStencilSurfaceFn = SInt32(__stdcall*)(void* self, void* surface);
 using SceneBracketFn = SInt32(__stdcall*)(void* self);
 using SetTextureFn = SInt32(__stdcall*)(void* self, UInt32 stage, void* texture);
-using SetTextureStageStateFn = SInt32(__stdcall*)(void* self, UInt32 stage, UInt32 type,
-                                                  UInt32 value);
+using SetSamplerStateFn = SInt32(__stdcall*)(void* self, UInt32 sampler, UInt32 type,
+                                             UInt32 value);
+using CreatePixelShaderFn = SInt32(__stdcall*)(void* self, const UInt32* function,
+                                               void** shader);
 using SetPixelShaderFn = SInt32(__stdcall*)(void* self, void* shader);
+using SetPixelShaderConstantFFn = SInt32(__stdcall*)(void* self, UInt32 startRegister,
+                                                     const float* data, UInt32 vector4fCount);
 
-// The render states the quad sets, beyond the ones declared above
-// (d3d9types.h: D3DRS_ZENABLE 7, D3DRS_ZWRITEENABLE 14, D3DRS_ALPHATESTENABLE
-// 15, D3DRS_ALPHABLENDENABLE 27, D3DRS_FOGENABLE 28, D3DRS_CLIPPING 136,
-// D3DRS_CLIPPLANEENABLE 152, D3DRS_SCISSORTESTENABLE 174), with
-// D3DBLEND_SRCALPHA (5), D3DCULL_NONE (1), D3DTOP_SELECTARG1 (2, "the
-// default" per the header comment) and D3DTA_DIFFUSE (0) from the same file.
+// The render states the quad sets (d3d9types.h: D3DRS_ZENABLE 7,
+// D3DRS_ZWRITEENABLE 14, D3DRS_ALPHATESTENABLE 15, D3DRS_ALPHABLENDENABLE
+// 27, D3DRS_FOGENABLE 28, D3DRS_CLIPPING 136, D3DRS_CLIPPLANEENABLE 152,
+// D3DRS_SCISSORTESTENABLE 174), D3DCULL_NONE (1), and the sampler settings
+// for reading the scratch copy back (D3DSAMP_ADDRESSU 1, D3DSAMP_ADDRESSV 2,
+// D3DSAMP_MAGFILTER 5, D3DSAMP_MINFILTER 6 with D3DTADDRESS_CLAMP 3), all
+// from the same file. The filter values are the D3DTEXF_* already declared.
 constexpr UInt32 kRenderStateZEnable = 7;
 constexpr UInt32 kRenderStateZWriteEnable = 14;
 constexpr UInt32 kRenderStateAlphaTestEnable = 15;
@@ -421,17 +432,26 @@ constexpr UInt32 kRenderStateFogEnable = 28;
 constexpr UInt32 kRenderStateClipping = 136;
 constexpr UInt32 kRenderStateClipPlaneEnable = 152;
 constexpr UInt32 kRenderStateScissorTestEnable = 174;
-constexpr UInt32 kBlendSrcAlpha = 5;
 constexpr UInt32 kCullNone = 1;
-constexpr UInt32 kTextureOpSelectArg1 = 2;
-constexpr UInt32 kTextureArgDiffuse = 0;
+constexpr UInt32 kSamplerAddressU = 1;
+constexpr UInt32 kSamplerAddressV = 2;
+constexpr UInt32 kSamplerMagFilter = 5;
+constexpr UInt32 kSamplerMinFilter = 6;
+constexpr UInt32 kTextureAddressClamp = 3;
 
-// D3DPT_TRIANGLESTRIP (5) and the two FVF bits of a pre-transformed coloured
-// vertex: D3DFVF_XYZRHW (0x004) and D3DFVF_DIFFUSE (0x040). XYZRHW is the
-// whole trick - the coordinates are texture pixels, so no transform state can
-// move the quad somewhere else.
+// D3DPT_TRIANGLESTRIP (5) and the FVF of a pre-transformed textured vertex:
+// D3DFVF_XYZRHW (0x004) with D3DFVF_TEX1 (0x100). XYZRHW is the whole trick
+// - the coordinates are texture pixels, so no transform state can move the
+// quad somewhere else.
 constexpr UInt32 kPrimitiveTriangleStrip = 5;
-constexpr UInt32 kFvfXyzRhwDiffuse = 0x004 | 0x040;
+constexpr UInt32 kFvfXyzRhwTex1 = 0x004 | 0x100;
+
+// ID3DXBuffer, what D3DXAssembleShader hands back: IUnknown plus
+// GetBufferPointer then GetBufferSize, in that order (Microsoft's ID3DXBuffer
+// reference, D3DX9Mesh.h) - so the pointer getter is method three. Not a
+// Direct3D interface strictly, but it rides the same vtable convention and
+// the same Method<> reader.
+constexpr UInt32 kBufferGetPointer = 3;
 
 // D3DFMT_A8R8G8B8 (d3d9types.h, line 1378). The back buffer is X8R8G8B8 - no
 // alpha, because a screen has no use for one. The 2D layer's own texture is

@@ -270,14 +270,18 @@ struct TrackerSettings {
 	// keeps all of this out of dialogue, where the world renders on. See
 	// MenuShade.h for what each piece is.
 	//
-	// menuShade is vanilla's brown dim over the paused world; colour and
-	// strength are tunable because the vanilla look is a shader, not a single
-	// colour, and the nearest flat tint is a matter of taste. menuSingleBorder
+	// menuShade is vanilla's own static-menu-background treatment: the
+	// paused world desaturated and re-toned sepia (what bStaticMenuBackground
+	// gives on the monitor), not a colour laid over it - a flat brown tint
+	// was tried first and looked nothing like the game. The colour is the
+	// tone the grey picture is multiplied with, the strength how far the
+	// result replaces the original; both tunable because the exact vanilla
+	// tone lives in a shader, and matching it is done by eye. menuSingleBorder
 	// trims each eye's picture to the window both eyes show, so the frozen
 	// pair's edges fuse into one frame instead of doubling at the sides.
 	bool menuShade = true;
-	UInt32 menuShadeColorRgb = 0x5A452E;
-	float menuShadeStrength = 0.5f;
+	UInt32 menuShadeColorRgb = 0xFFE3B2;
+	float menuShadeStrength = 1.0f;
 	bool menuSingleBorder = true;
 
 	// Where the overlay hangs: straight ahead, this far away, in metres.

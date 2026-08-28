@@ -23,11 +23,11 @@ struct Config {
 	UInt32 recenterKey = 0x2E;
 
 	// Whether the game's dialogue camera zoom is left alive. Off by default:
-	// in a headset the zoom never shows - OBVR owns the camera - but the game
-	// still spends the transition, which arrives as a dead pause on the way
-	// out of every conversation. Off, PlayerCharacter::SetDialogCamera is
-	// patched to return immediately, which is the same treatment Oblivion
-	// Reloaded's camera mode gives it. In [Look], hot-reloadable both ways.
+	// in a headset the zoom itself never shows - OBVR owns the camera - and
+	// what remains of it is unwanted. Off, the fDlgFocus setting is held at
+	// the no-zoom figure in memory, whatever the person's Oblivion.ini says -
+	// the community's own remedy, applied without touching their file. In
+	// [Look], hot-reloadable both ways; on again returns their own value.
 	bool dialogZoom = false;
 
 	// How often the camera state is logged, in frames. 0 turns the running

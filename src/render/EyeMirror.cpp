@@ -7,6 +7,7 @@
 #include "render/D3D9Types.h"
 #include "render/GameProjection.h"
 #include "render/MenuShade.h"
+#include "platform/Win32Min.h"
 
 namespace obvr::render {
 namespace {
@@ -506,6 +507,125 @@ bool EyeMirror::CopyBackBuffer(void* gameDevice, bool isLeft, bool bothEyes) {
 	return ok;
 }
 
+bool EyeMirror::EnsureShadeResources(void* gameDevice) {
+	if (m_sepiaShader != nullptr && m_scratchSurface != nullptr) {
+		return true;
+	}
+	if (m_shadeResourcesTried) {
+		return false;
+	}
+	m_shadeResourcesTried = true;
+
+	// The scratch copy, sized and shaped like the eye pictures. Render-target
+	// usage because it is a StretchRect destination, which Direct3D 9 only
+	// allows onto render targets.
+	auto createTexture =
+		d3d9::Method<d3d9::CreateTextureFn>(gameDevice, d3d9::kDeviceCreateTexture);
+	if (createTexture == nullptr ||
+	    d3d11::Failed(createTexture(gameDevice, m_width, m_height, 1,
+	                                d3d9::kUsageRenderTarget, m_format, d3d9::kPoolDefault,
+	                                &m_scratchTexture, nullptr)) ||
+	    m_scratchTexture == nullptr) {
+		m_scratchTexture = nullptr;
+		OBVR_LOG("Mirror: no scratch texture for the sepia pass, so the menu keeps the "
+		         "world's own colours");
+		return false;
+	}
+	auto getSurfaceLevel =
+		d3d9::Method<d3d9::GetSurfaceLevelFn>(m_scratchTexture, d3d9::kTextureGetSurfaceLevel);
+	if (getSurfaceLevel == nullptr ||
+	    d3d11::Failed(getSurfaceLevel(m_scratchTexture, 0, &m_scratchSurface)) ||
+	    m_scratchSurface == nullptr) {
+		m_scratchSurface = nullptr;
+		OBVR_LOG("Mirror: the scratch texture has no surface, so the menu keeps the "
+		         "world's own colours");
+		return false;
+	}
+
+	// The shader, assembled at runtime. d3dx9_27.dll is in Oblivion's own
+	// import table, so on any installation that runs at all it is present;
+	// GetModuleHandle first because for the same reason it is normally
+	// already loaded.
+	//
+	// What the shader does is vanilla's own recipe rather than a colour over
+	// the picture: grey = dot(rgb, luminance), grey times the tone handed in
+	// c1, and lrp back towards the original by the strength in c2.x - the
+	// desaturation is the part no blend state can express, and the reason
+	// the first attempt at this looked nothing like the game's own menus.
+	using AssembleShaderFn = SInt32(__stdcall*)(const char* source, UInt32 length,
+	                                            const void* defines, const void* includes,
+	                                            UInt32 flags, void** shader, void** errors);
+	using BufferPointerFn = void*(__stdcall*)(void* self);
+
+	HMODULE d3dx = GetModuleHandleA("d3dx9_27.dll");
+	if (d3dx == nullptr) {
+		d3dx = LoadLibraryA("d3dx9_27.dll");
+	}
+	auto assemble = d3dx != nullptr
+	                    ? reinterpret_cast<AssembleShaderFn>(
+	                          GetProcAddress(d3dx, "D3DXAssembleShader"))
+	                    : nullptr;
+	if (assemble == nullptr) {
+		OBVR_LOG("Mirror: D3DXAssembleShader is not reachable, so the menu keeps the "
+		         "world's own colours");
+		return false;
+	}
+
+	static const char kSepiaSource[] =
+		"ps_2_0\n"
+		"def c0, 0.299, 0.587, 0.114, 0.0\n"
+		"dcl t0.xy\n"
+		"dcl_2d s0\n"
+		"texld r0, t0, s0\n"
+		"dp3 r1.rgb, r0, c0\n"
+		"mov r1.a, r0.a\n"
+		"mul r1.rgb, r1, c1\n"
+		"lrp r2, c2.x, r1, r0\n"
+		"mov oC0, r2\n";
+
+	void* shaderBuffer = nullptr;
+	void* errorBuffer = nullptr;
+	const SInt32 assembled = assemble(kSepiaSource, sizeof(kSepiaSource) - 1, nullptr,
+	                                  nullptr, 0, &shaderBuffer, &errorBuffer);
+	if (d3d11::Failed(assembled) || shaderBuffer == nullptr) {
+		// The assembler says why in its own buffer, and that is the one line
+		// worth having when a shader that assembles on one machine does not
+		// on another.
+		auto errorText =
+			errorBuffer != nullptr
+				? d3d9::Method<BufferPointerFn>(errorBuffer, d3d9::kBufferGetPointer)
+				: nullptr;
+		OBVR_LOG("Mirror: the sepia shader did not assemble (%08X)%s%s", assembled,
+		         errorText != nullptr ? ": " : "",
+		         errorText != nullptr ? static_cast<const char*>(errorText(errorBuffer))
+		                              : "");
+		d3d11::Release(errorBuffer);
+		d3d11::Release(shaderBuffer);
+		return false;
+	}
+
+	auto bufferPointer = d3d9::Method<BufferPointerFn>(shaderBuffer, d3d9::kBufferGetPointer);
+	auto createShader = d3d9::Method<d3d9::CreatePixelShaderFn>(
+		gameDevice, d3d9::kDeviceCreatePixelShader);
+	if (bufferPointer == nullptr || createShader == nullptr ||
+	    d3d11::Failed(createShader(gameDevice,
+	                               static_cast<const UInt32*>(bufferPointer(shaderBuffer)),
+	                               &m_sepiaShader)) ||
+	    m_sepiaShader == nullptr) {
+		m_sepiaShader = nullptr;
+		OBVR_LOG("Mirror: the device refused the sepia shader, so the menu keeps the "
+		         "world's own colours");
+	} else {
+		OBVR_LOG("Mirror: the sepia pass is ready - a %ux%u scratch copy and a ps_2_0 "
+		         "shader out of d3dx9_27",
+		         m_width, m_height);
+	}
+
+	d3d11::Release(errorBuffer);
+	d3d11::Release(shaderBuffer);
+	return m_sepiaShader != nullptr;
+}
+
 bool EyeMirror::PrepareHeldShade(void* gameDevice, UInt32 shadeColorArgb,
                                  bool trimToSharedWindow) {
 	if (m_heldShaded) {
@@ -538,11 +658,14 @@ bool EyeMirror::PrepareHeldShade(void* gameDevice, UInt32 shadeColorArgb,
 		return true;
 	}
 
-	// The tint: one alpha-blended quad per eye, over the world rectangle. A
-	// blend cannot come from ColorFill, so this is a draw, and a draw on the
-	// game's device is a guest - everything it touches is captured first and
-	// put back after, and the render target, which no state block carries, is
-	// saved by hand.
+	if (!EnsureShadeResources(gameDevice)) {
+		return false;
+	}
+
+	// The pass itself: per eye, copy the picture aside, then draw it back
+	// through the sepia shader. A draw on the game's device is a guest -
+	// everything it touches is captured first and put back after, and the
+	// render target, which no state block carries, is saved by hand.
 	auto getTarget = d3d9::Method<d3d9::GetRenderTargetFn>(gameDevice, d3d9::kDeviceGetRenderTarget);
 	auto setTarget = d3d9::Method<d3d9::SetRenderTargetFn>(gameDevice, d3d9::kDeviceSetRenderTarget);
 	auto getDepth = d3d9::Method<d3d9::GetDepthStencilSurfaceFn>(
@@ -553,26 +676,30 @@ bool EyeMirror::PrepareHeldShade(void* gameDevice, UInt32 shadeColorArgb,
 		gameDevice, d3d9::kDeviceCreateStateBlock);
 	auto setState = d3d9::Method<d3d9::SetRenderStateFn>(gameDevice, d3d9::kDeviceSetRenderState);
 	auto setTexture = d3d9::Method<d3d9::SetTextureFn>(gameDevice, d3d9::kDeviceSetTexture);
-	auto setStage = d3d9::Method<d3d9::SetTextureStageStateFn>(
-		gameDevice, d3d9::kDeviceSetTextureStageState);
+	auto setSampler = d3d9::Method<d3d9::SetSamplerStateFn>(
+		gameDevice, d3d9::kDeviceSetSamplerState);
 	auto setFvf = d3d9::Method<d3d9::SetFVFFn>(gameDevice, d3d9::kDeviceSetFVF);
 	auto setVertexShader = d3d9::Method<d3d9::SetVertexShaderFn>(
 		gameDevice, d3d9::kDeviceSetVertexShader);
 	auto setPixelShader = d3d9::Method<d3d9::SetPixelShaderFn>(
 		gameDevice, d3d9::kDeviceSetPixelShader);
+	auto setConstant = d3d9::Method<d3d9::SetPixelShaderConstantFFn>(
+		gameDevice, d3d9::kDeviceSetPixelShaderConstantF);
 	auto beginScene = d3d9::Method<d3d9::SceneBracketFn>(gameDevice, d3d9::kDeviceBeginScene);
 	auto endScene = d3d9::Method<d3d9::SceneBracketFn>(gameDevice, d3d9::kDeviceEndScene);
 	auto draw = d3d9::Method<d3d9::DrawPrimitiveUPFn>(gameDevice, d3d9::kDeviceDrawPrimitiveUP);
+	auto stretchRect = d3d9::Method<d3d9::StretchRectFn>(gameDevice, d3d9::kDeviceStretchRect);
 
 	if (getTarget == nullptr || setTarget == nullptr || getDepth == nullptr ||
 	    setDepth == nullptr || createBlock == nullptr || setState == nullptr ||
-	    setTexture == nullptr || setStage == nullptr || setFvf == nullptr ||
-	    setVertexShader == nullptr || setPixelShader == nullptr || beginScene == nullptr ||
-	    endScene == nullptr || draw == nullptr) {
+	    setTexture == nullptr || setSampler == nullptr || setFvf == nullptr ||
+	    setVertexShader == nullptr || setPixelShader == nullptr || setConstant == nullptr ||
+	    beginScene == nullptr || endScene == nullptr || draw == nullptr ||
+	    stretchRect == nullptr) {
 		if (!m_shadeFailureLogged) {
 			m_shadeFailureLogged = true;
-			OBVR_LOG("Mirror: the menu shade could not reach the device, so the held pair "
-			         "stays unshaded");
+			OBVR_LOG("Mirror: the sepia pass could not reach the device, so the menu keeps "
+			         "the world's own colours");
 		}
 		return false;
 	}
@@ -589,31 +716,29 @@ bool EyeMirror::PrepareHeldShade(void* gameDevice, UInt32 shadeColorArgb,
 		d3d11::Release(previousDepth);
 		if (!m_shadeFailureLogged) {
 			m_shadeFailureLogged = true;
-			OBVR_LOG("Mirror: no state block for the menu shade, so the held pair stays "
-			         "unshaded");
+			OBVR_LOG("Mirror: no state block for the sepia pass, so the menu keeps the "
+			         "world's own colours");
 		}
 		return false;
 	}
 
-	// The quad's pipeline: no shaders, no texture, the vertex colour selected
-	// straight through both stages, an ordinary over-blend, and every test
-	// that could silently reject a fixed-function draw switched off. The
-	// coordinates are pre-transformed texture pixels, so no transform is
-	// involved at all.
-	setPixelShader(gameDevice, nullptr);
+	// The pass's pipeline: the sepia shader over a fixed-function vertex path,
+	// the scratch copy on sampler zero read point-and-clamped (source and
+	// destination are the same size), no blending - the shader's output IS
+	// the picture - and every test that could silently reject the draw
+	// switched off. The coordinates are pre-transformed texture pixels, so
+	// no transform is involved at all.
 	setVertexShader(gameDevice, nullptr);
-	setTexture(gameDevice, 0, nullptr);
-	setStage(gameDevice, 0, d3d9::kStageColorOp, d3d9::kTextureOpSelectArg1);
-	setStage(gameDevice, 0, d3d9::kStageColorArg1, d3d9::kTextureArgDiffuse);
-	setStage(gameDevice, 0, d3d9::kStageAlphaOp, d3d9::kTextureOpSelectArg1);
-	setStage(gameDevice, 0, d3d9::kStageAlphaArg1, d3d9::kTextureArgDiffuse);
+	setPixelShader(gameDevice, m_sepiaShader);
+	setTexture(gameDevice, 0, m_scratchTexture);
+	setSampler(gameDevice, 0, d3d9::kSamplerAddressU, d3d9::kTextureAddressClamp);
+	setSampler(gameDevice, 0, d3d9::kSamplerAddressV, d3d9::kTextureAddressClamp);
+	setSampler(gameDevice, 0, d3d9::kSamplerMagFilter, d3d9::kTexFilterPoint);
+	setSampler(gameDevice, 0, d3d9::kSamplerMinFilter, d3d9::kTexFilterPoint);
 	setState(gameDevice, d3d9::kRenderStateZEnable, 0);
 	setState(gameDevice, d3d9::kRenderStateZWriteEnable, 0);
 	setState(gameDevice, d3d9::kRenderStateAlphaTestEnable, 0);
-	setState(gameDevice, d3d9::kRenderStateAlphaBlendEnable, 1);
-	setState(gameDevice, d3d9::kRenderStateSeparateAlphaBlendEnable, 0);
-	setState(gameDevice, d3d9::kRenderStateSrcBlend, d3d9::kBlendSrcAlpha);
-	setState(gameDevice, d3d9::kRenderStateDestBlend, d3d9::kBlendInvSrcAlpha);
+	setState(gameDevice, d3d9::kRenderStateAlphaBlendEnable, 0);
 	setState(gameDevice, d3d9::kRenderStateFogEnable, 0);
 	setState(gameDevice, d3d9::kRenderStateLighting, 0);
 	setState(gameDevice, d3d9::kRenderStateCullMode, d3d9::kCullNone);
@@ -622,7 +747,22 @@ bool EyeMirror::PrepareHeldShade(void* gameDevice, UInt32 shadeColorArgb,
 	setState(gameDevice, d3d9::kRenderStateClipping, 0);
 	setState(gameDevice, d3d9::kRenderStateClipPlaneEnable, 0);
 	setState(gameDevice, d3d9::kRenderStateColorWriteEnable, d3d9::kColorWriteAll);
-	setFvf(gameDevice, d3d9::kFvfXyzRhwDiffuse);
+	setFvf(gameDevice, d3d9::kFvfXyzRhwTex1);
+
+	// c1 is the tone the grey picture is multiplied with, c2.x how far the
+	// result replaces the original - both from the one ARGB the caller
+	// composed out of the INI.
+	const float tone[4] = {
+		static_cast<float>((shadeColorArgb >> 16) & 0xFF) / 255.0f,
+		static_cast<float>((shadeColorArgb >> 8) & 0xFF) / 255.0f,
+		static_cast<float>(shadeColorArgb & 0xFF) / 255.0f,
+		1.0f,
+	};
+	const float strength[4] = {
+		static_cast<float>((shadeColorArgb >> 24) & 0xFF) / 255.0f, 0.0f, 0.0f, 0.0f,
+	};
+	setConstant(gameDevice, 1, tone, 1);
+	setConstant(gameDevice, 2, strength, 1);
 
 	// This runs from the Present hook, where the game's own scene bracket is
 	// closed, so the draw brings its own. If the bracket were already open,
@@ -633,12 +773,20 @@ bool EyeMirror::PrepareHeldShade(void* gameDevice, UInt32 shadeColorArgb,
 
 	struct ShadeVertex {
 		float x, y, z, rhw;
-		UInt32 color;
+		float u, v;
 	};
-	static_assert(sizeof(ShadeVertex) == 20, "XYZRHW|DIFFUSE is a 20-byte vertex");
+	static_assert(sizeof(ShadeVertex) == 24, "XYZRHW|TEX1 is a 24-byte vertex");
 
 	bool drewBoth = true;
 	for (Eye& eye : m_eye) {
+		// The copy the shader reads, taken before the eye becomes the target.
+		// Same size and no filter: this is a copy, not a scale.
+		if (d3d11::Failed(stretchRect(gameDevice, eye.surface, nullptr, m_scratchSurface,
+		                              nullptr, d3d9::kTexFilterNone))) {
+			drewBoth = false;
+			continue;
+		}
+
 		setTarget(gameDevice, 0, eye.surface);
 		setDepth(gameDevice, nullptr);
 
@@ -647,11 +795,20 @@ bool EyeMirror::PrepareHeldShade(void* gameDevice, UInt32 shadeColorArgb,
 		const float top = static_cast<float>(r.top) - 0.5f;
 		const float right = static_cast<float>(r.right) - 0.5f;
 		const float bottom = static_cast<float>(r.bottom) - 0.5f;
+
+		// Texture coordinates over the whole scratch copy, so the quad reads
+		// back exactly the pixels it covers. The -0.5 on the positions is
+		// Direct3D 9's texel-to-pixel alignment.
+		const float u0 = static_cast<float>(r.left) / static_cast<float>(m_width);
+		const float u1 = static_cast<float>(r.right) / static_cast<float>(m_width);
+		const float v0 = static_cast<float>(r.top) / static_cast<float>(m_height);
+		const float v1 = static_cast<float>(r.bottom) / static_cast<float>(m_height);
+
 		const ShadeVertex quad[4] = {
-			{left, top, 0.5f, 1.0f, shadeColorArgb},
-			{right, top, 0.5f, 1.0f, shadeColorArgb},
-			{left, bottom, 0.5f, 1.0f, shadeColorArgb},
-			{right, bottom, 0.5f, 1.0f, shadeColorArgb},
+			{left, top, 0.5f, 1.0f, u0, v0},
+			{right, top, 0.5f, 1.0f, u1, v0},
+			{left, bottom, 0.5f, 1.0f, u0, v1},
+			{right, bottom, 0.5f, 1.0f, u1, v1},
 		};
 
 		if (d3d11::Failed(draw(gameDevice, d3d9::kPrimitiveTriangleStrip, 2, quad,
@@ -679,8 +836,8 @@ bool EyeMirror::PrepareHeldShade(void* gameDevice, UInt32 shadeColorArgb,
 
 	if (!drewBoth && !m_shadeFailureLogged) {
 		m_shadeFailureLogged = true;
-		OBVR_LOG("Mirror: the menu shade quad was refused, so the held pair is only "
-		         "part-shaded");
+		OBVR_LOG("Mirror: the sepia pass was refused mid-way, so the menu background may "
+		         "keep the world's own colours");
 	}
 	return drewBoth;
 }
@@ -736,6 +893,11 @@ void EyeMirror::Destroy() {
 	m_frameHeight = 0;
 	m_format = 0;
 	m_filter = 0;
+	d3d11::Release(m_scratchSurface);
+	d3d11::Release(m_scratchTexture);
+	d3d11::Release(m_sepiaShader);
+	m_shadeResourcesTried = false;
+
 	m_cropped = false;
 	m_primed = false;
 	m_lastWasFlat = false;

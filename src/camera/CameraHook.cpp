@@ -401,7 +401,6 @@ void MaybeReloadConfig() {
 	if (config.Reload("OBVR.ini")) {
 		g_headTracker.Configure(config.tracker);
 		g_lookControl.Configure(config.look);
-		game::ApplyDialogZoom(config.dialogZoom);
 	}
 }
 
@@ -785,6 +784,13 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 
 	++g_state.frameCount;
 	MaybeReloadConfig();
+
+	// Held per frame rather than applied once: the game reads its INI into
+	// the setting slot on its own schedule, and re-asserting a float compare
+	// per frame is cheaper than knowing that schedule. The first frame here
+	// is also the right moment to capture the person's own value - by now
+	// the INI has long been read.
+	game::ApplyDialogZoom(GetConfig().dialogZoom);
 
 	// The counter frequency is fixed for the lifetime of the process, so it
 	// is read once rather than every frame.

@@ -1,8 +1,9 @@
-// Checks the decisions behind the pause-menu dressing and the dialogue-zoom
-// patch: how a colour is read and folded with its strength, where the window
+// Checks the decisions behind the pause-menu dressing and the fDlgFocus
+// override: how a tone is read and folded with its strength, where the window
 // both eyes share lands in each eye, which strips lie outside it, and when
-// the zoom patch acts. The stakes are a frozen world that should look paused
-// rather than broken, and a patch that must act exactly once per change.
+// the override captures, holds and restores. The stakes are a frozen world
+// that should look paused rather than broken, and a setting that must return
+// to the person's own value the moment they ask for vanilla back.
 
 #include <cstdio>
 
@@ -11,8 +12,8 @@
 
 namespace {
 
-using obvr::game::DecideDialogZoom;
-using obvr::game::DialogZoomAction;
+using obvr::game::DecideDialogFocus;
+using obvr::game::DialogFocusAction;
 using obvr::render::CommonWindowInEye;
 using obvr::render::ComposeShadeColor;
 using obvr::render::EdgeStrips;
@@ -135,17 +136,27 @@ void TestEdgeStrips() {
 	      "the four strips cover the four exclusive margins");
 }
 
-void TestDialogZoomDecision() {
-	std::printf("Dialogue zoom decisions\n");
+void TestDialogFocusDecision() {
+	std::printf("Dialogue focus decisions\n");
 
-	Check(DecideDialogZoom(false, false) == DialogZoomAction::Patch,
-	      "zoom unwanted and unpatched patches");
-	Check(DecideDialogZoom(false, true) == DialogZoomAction::Nothing,
-	      "zoom unwanted and already patched rests");
-	Check(DecideDialogZoom(true, true) == DialogZoomAction::Restore,
-	      "zoom wanted again restores");
-	Check(DecideDialogZoom(true, false) == DialogZoomAction::Nothing,
-	      "zoom wanted and untouched rests");
+	// zoomWanted, originalKnown, slotHoldsOverride - every combination.
+	Check(DecideDialogFocus(false, false, false) == DialogFocusAction::CaptureAndHold,
+	      "first unwanted zoom captures the original and holds");
+	Check(DecideDialogFocus(false, false, true) == DialogFocusAction::CaptureAndHold,
+	      "a slot already at the figure still captures - the person may have "
+	      "written it themselves");
+	Check(DecideDialogFocus(false, true, false) == DialogFocusAction::Hold,
+	      "a drifted slot is re-held without re-capturing");
+	Check(DecideDialogFocus(false, true, true) == DialogFocusAction::Nothing,
+	      "a held slot rests");
+	Check(DecideDialogFocus(true, true, true) == DialogFocusAction::Restore,
+	      "zoom wanted again restores the captured value");
+	Check(DecideDialogFocus(true, true, false) == DialogFocusAction::Nothing,
+	      "zoom wanted with the slot already the person's own rests");
+	Check(DecideDialogFocus(true, false, false) == DialogFocusAction::Nothing,
+	      "zoom wanted and never overridden rests");
+	Check(DecideDialogFocus(true, false, true) == DialogFocusAction::Nothing,
+	      "zoom wanted with nothing captured cannot restore");
 }
 
 }  // namespace
@@ -155,7 +166,7 @@ int main() {
 	TestComposeShadeColor();
 	TestCommonWindow();
 	TestEdgeStrips();
-	TestDialogZoomDecision();
+	TestDialogFocusDecision();
 
 	if (g_failures != 0) {
 		std::printf("%d failure(s)\n", g_failures);
