@@ -303,6 +303,9 @@ void TraceZeroMatrixDraws(const StateCallCounts& entry, const StateCallCounts& a
 	         afterSecond.swvpToggles - afterBetween.swvpToggles,
 	         afterFirst.swvpOnDraws - entry.swvpOnDraws,
 	         afterSecond.swvpOnDraws - afterBetween.swvpOnDraws);
+	OBVR_LOG("Bone lock at scene call %u: replaced %u, passthrough %u",
+	         g_sceneCall, afterSecond.boneLockReplaced - entry.boneLockReplaced,
+	         afterSecond.boneLockPassthrough - entry.boneLockPassthrough);
 	OBVR_LOG("Dual bone range at scene call %u: first %u calls %u vecs sum %08X, "
 	         "second %u calls %u vecs sum %08X",
 	         g_sceneCall, afterFirst.boneRangeCalls - entry.boneRangeCalls,
@@ -411,8 +414,11 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		MarkPoolTimeline("first pass begins");
 	}
 
-	// First eye. The camera hook already moved the camera there.
+	// First eye. The camera hook already moved the camera there. The bone
+	// lock records this render's palettes.
+	SetBonePassMode(BonePassMode::Capture);
 	g_original(self, unusedEdx, renderedTexture);
+	SetBonePassMode(BonePassMode::Off);
 	const UInt32 drawsAfterFirst = TotalDrawCount();
 	const StateCallCounts stateAfterFirst = TotalStateCalls();
 	MarkPoolTimeline("between the passes");
@@ -421,8 +427,13 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	const StateCallCounts stateAfterBetween = TotalStateCalls();
 	MarkPoolTimeline("second pass begins");
 
-	// Second eye, from a camera one interpupillary distance over.
+	// Second eye, from a camera one interpupillary distance over. The bone
+	// lock replays the first render's palettes over this one's - bones are
+	// world-space, so both eyes must see the same ones, and the second
+	// render's own re-evaluation is the collapse.
+	SetBonePassMode(BonePassMode::Replace);
 	g_original(self, unusedEdx, renderedTexture);
+	SetBonePassMode(BonePassMode::Off);
 	const UInt32 drawsAfterSecond = TotalDrawCount();
 	const StateCallCounts stateAfterSecond = TotalStateCalls();
 	MarkPoolTimeline("frame ends");

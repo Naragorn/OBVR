@@ -269,28 +269,44 @@ UInt32 g_boneMismatchAt = 0;     // index of the first disagreement
 BonePeek g_boneMismatchFirst;    // the first render's version of it
 BonePeek g_boneMismatchSecond;   // the second render's version
 
-void PeekBoneUpload(UInt32 startRegister, const float* data) {
-	if (!g_timelineArmed) {
-		return;
-	}
-	if (g_timelinePhase == 0) {
+BonePassMode g_boneMode = BonePassMode::Off;
+bool g_boneReplaceStopped = false;
+
+// Called for every bone-shaped upload (register forty and up, exactly
+// three vectors). During the first render it records; during the second
+// it hands back the first render's floats for the same position in the
+// stream - the lock - and keeps the first disagreeing pair as evidence
+// when the timeline recorder is armed. Returns null when the upload is
+// to pass through unchanged.
+const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
+	if (g_boneMode == BonePassMode::Capture) {
 		if (g_boneLogCount < kBoneLogCapacity) {
 			BonePeek& slot = g_boneLog[g_boneLogCount];
 			slot.startRegister = startRegister;
 			std::memcpy(slot.floats, data, sizeof(slot.floats));
 		}
 		++g_boneLogCount;
-	} else if (g_timelinePhase == 2) {
-		const UInt32 index = g_boneCompareIndex;
-		++g_boneCompareIndex;
-		if (index >= g_boneLogCount || index >= kBoneLogCapacity) {
-			return;
-		}
-		const BonePeek& first = g_boneLog[index];
-		if (first.startRegister == startRegister &&
-		    std::memcmp(first.floats, data, sizeof(first.floats)) == 0) {
-			return;
-		}
+		return nullptr;
+	}
+	if (g_boneMode != BonePassMode::Replace) {
+		return nullptr;
+	}
+	const UInt32 index = g_boneCompareIndex;
+	++g_boneCompareIndex;
+	if (g_boneReplaceStopped || index >= g_boneLogCount || index >= kBoneLogCapacity) {
+		++g_stateCalls.boneLockPassthrough;
+		return nullptr;
+	}
+	const BonePeek& first = g_boneLog[index];
+	if (first.startRegister != startRegister) {
+		// The renders stopped agreeing on the upload sequence; from here on
+		// nothing pairs safely, so the lock stands down for the rest of the
+		// frame rather than write bones onto strangers.
+		g_boneReplaceStopped = true;
+		++g_stateCalls.boneLockPassthrough;
+		return nullptr;
+	}
+	if (g_timelineArmed && std::memcmp(first.floats, data, sizeof(first.floats)) != 0) {
 		if (g_boneMismatchCount == 0) {
 			g_boneMismatchAt = index;
 			g_boneMismatchFirst = first;
@@ -300,6 +316,8 @@ void PeekBoneUpload(UInt32 startRegister, const float* data) {
 		}
 		++g_boneMismatchCount;
 	}
+	++g_stateCalls.boneLockReplaced;
+	return first.floats;
 }
 
 void PeekVertices(void* buffer, UInt32 offset, const void* data, UInt32 size) {
@@ -724,6 +742,17 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
                                       UInt32 vector4fCount) {
 	++g_stateCalls.constantCalls;
 	g_stateCalls.constantVectors += vector4fCount;
+
+	// The bone lock. When it hands back the first render's floats, those
+	// are what the device receives and what every counter below sees - so
+	// a locked frame's bone range sums must come back equal, which is the
+	// lock verifying itself in the same line that convicted the bug.
+	if (data != nullptr && startRegister >= 40 && vector4fCount == 3) {
+		const float* replacement = HandleBoneUpload(startRegister, data);
+		if (replacement != nullptr) {
+			data = replacement;
+		}
+	}
 	if (data != nullptr && vector4fCount > 0) {
 		// A palette that was never computed is a palette of zeroes. Sixteen
 		// floats are enough to tell one apart, and cheap enough to look at
@@ -751,9 +780,6 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
 		const UInt32* bits = reinterpret_cast<const UInt32*>(data);
 		for (UInt32 i = 0; i < vector4fCount * 4; ++i) {
 			g_stateCalls.boneRangeSum += bits[i];
-		}
-		if (vector4fCount == 3) {
-			PeekBoneUpload(startRegister, data);
 		}
 	}
 	if (data != nullptr && vector4fCount >= 12) {
@@ -1614,8 +1640,6 @@ void ArmPoolTimeline() {
 	g_timelineCount = 0;
 	g_vertexPeekCount = 0;
 	g_timelinePhase = 0;
-	g_boneLogCount = 0;
-	g_boneCompareIndex = 0;
 	g_boneMismatchCount = 0;
 }
 
@@ -1681,6 +1705,16 @@ void DumpPoolTimeline() {
 }
 
 bool PoolTimelineWasDumped() { return g_timelineDumped; }
+
+void SetBonePassMode(BonePassMode mode) {
+	g_boneMode = mode;
+	if (mode == BonePassMode::Capture) {
+		g_boneLogCount = 0;
+	} else if (mode == BonePassMode::Replace) {
+		g_boneCompareIndex = 0;
+		g_boneReplaceStopped = false;
+	}
+}
 
 void TakeInterfaceStats(UInt32& passes, UInt32& draws) {
 	passes = g_passesSinceScene;

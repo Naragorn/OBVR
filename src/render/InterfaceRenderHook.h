@@ -170,6 +170,12 @@ struct StateCallCounts {
 	UInt32 boneRangeCalls = 0;
 	UInt32 boneRangeVectors = 0;
 	UInt32 boneRangeSum = 0;  // float bits summed - bone matrices carry no camera
+
+	// The bone lock at work: how many second-render bone uploads were
+	// replaced with the first render's values, and how many arrived after
+	// a sequence mismatch stopped the replacing for the rest of the frame.
+	UInt32 boneLockReplaced = 0;
+	UInt32 boneLockPassthrough = 0;
 };
 
 StateCallCounts TotalStateCalls();
@@ -185,6 +191,19 @@ void ArmPoolTimeline();
 void MarkPoolTimeline(const char* label);
 void DumpPoolTimeline();
 bool PoolTimelineWasDumped();
+
+// The bone lock. Oblivion's second world render of a frame re-evaluates
+// its skeletons and uploads partly different bone palettes - and they are
+// wrong: palettes are world-space (the probes showed the first uploads
+// bit-identical between the renders, not eye-offset), so both renders
+// must upload the same ones, and the collapsed bodies are the draws that
+// got the re-evaluated ones. BioShock VR hit the identical failure on its
+// sequential stereo and cured it the same way: keep the first render's
+// bone transforms and reapply them on the second. The scene hook drives
+// the mode per frame: capture during the first render, replace during the
+// second, off in between and outside dual frames.
+enum class BonePassMode { Off, Capture, Replace };
+void SetBonePassMode(BonePassMode mode);
 
 // How many times the 2D pass was entered since this was last asked, and how
 // many primitives it drew in those passes; both zero afterwards. The scene
