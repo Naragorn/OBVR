@@ -250,30 +250,55 @@ UInt32 g_timelinePhase = 0;
 // different sums leave one question: camera-relative palettes differing
 // legitimately by the eye offset, or a second render loading garbage.
 // Twelve floats of the same bone answer it.
-constexpr UInt32 kBonePeeksPerPass = 6;
 struct BonePeek {
 	UInt32 startRegister;
 	float floats[12];
 };
-BonePeek g_bonePeeksFirst[kBonePeeksPerPass];
-BonePeek g_bonePeeksSecond[kBonePeeksPerPass];
-UInt32 g_bonePeekCountFirst = 0;
-UInt32 g_bonePeekCountSecond = 0;
+
+// The whole first render's bone uploads, replayed against the second
+// render's as they arrive. The first six compared equal by hand, so the
+// divergence the sums keep reporting sits somewhere in the hundreds
+// that follow - this finds the first mismatching upload and keeps both
+// versions of it.
+constexpr UInt32 kBoneLogCapacity = 1024;
+BonePeek g_boneLog[kBoneLogCapacity];
+UInt32 g_boneLogCount = 0;       // uploads recorded during the first render
+UInt32 g_boneCompareIndex = 0;   // second-render uploads compared so far
+UInt32 g_boneMismatchCount = 0;  // how many compares disagreed
+UInt32 g_boneMismatchAt = 0;     // index of the first disagreement
+BonePeek g_boneMismatchFirst;    // the first render's version of it
+BonePeek g_boneMismatchSecond;   // the second render's version
 
 void PeekBoneUpload(UInt32 startRegister, const float* data) {
 	if (!g_timelineArmed) {
 		return;
 	}
-	if (g_timelinePhase == 0 && g_bonePeekCountFirst < kBonePeeksPerPass) {
-		BonePeek& peek = g_bonePeeksFirst[g_bonePeekCountFirst];
-		peek.startRegister = startRegister;
-		std::memcpy(peek.floats, data, sizeof(peek.floats));
-		++g_bonePeekCountFirst;
-	} else if (g_timelinePhase == 2 && g_bonePeekCountSecond < kBonePeeksPerPass) {
-		BonePeek& peek = g_bonePeeksSecond[g_bonePeekCountSecond];
-		peek.startRegister = startRegister;
-		std::memcpy(peek.floats, data, sizeof(peek.floats));
-		++g_bonePeekCountSecond;
+	if (g_timelinePhase == 0) {
+		if (g_boneLogCount < kBoneLogCapacity) {
+			BonePeek& slot = g_boneLog[g_boneLogCount];
+			slot.startRegister = startRegister;
+			std::memcpy(slot.floats, data, sizeof(slot.floats));
+		}
+		++g_boneLogCount;
+	} else if (g_timelinePhase == 2) {
+		const UInt32 index = g_boneCompareIndex;
+		++g_boneCompareIndex;
+		if (index >= g_boneLogCount || index >= kBoneLogCapacity) {
+			return;
+		}
+		const BonePeek& first = g_boneLog[index];
+		if (first.startRegister == startRegister &&
+		    std::memcmp(first.floats, data, sizeof(first.floats)) == 0) {
+			return;
+		}
+		if (g_boneMismatchCount == 0) {
+			g_boneMismatchAt = index;
+			g_boneMismatchFirst = first;
+			g_boneMismatchSecond.startRegister = startRegister;
+			std::memcpy(g_boneMismatchSecond.floats, data,
+			            sizeof(g_boneMismatchSecond.floats));
+		}
+		++g_boneMismatchCount;
 	}
 }
 
@@ -1589,8 +1614,9 @@ void ArmPoolTimeline() {
 	g_timelineCount = 0;
 	g_vertexPeekCount = 0;
 	g_timelinePhase = 0;
-	g_bonePeekCountFirst = 0;
-	g_bonePeekCountSecond = 0;
+	g_boneLogCount = 0;
+	g_boneCompareIndex = 0;
+	g_boneMismatchCount = 0;
 }
 
 void MarkPoolTimeline(const char* label) {
@@ -1638,15 +1664,19 @@ void DumpPoolTimeline() {
 		         p.buffer, p.offset, f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7],
 		         f[8], f[9], f[10], f[11], f[12], f[13], f[14], f[15], f[16], f[17]);
 	}
-	for (UInt32 pass = 0; pass < 2; ++pass) {
-		const BonePeek* peeks = pass == 0 ? g_bonePeeksFirst : g_bonePeeksSecond;
-		const UInt32 count = pass == 0 ? g_bonePeekCountFirst : g_bonePeekCountSecond;
-		for (UInt32 i = 0; i < count; ++i) {
-			const float* f = peeks[i].floats;
-			OBVR_LOG("B pass=%u c%u | %g %g %g %g | %g %g %g %g | %g %g %g %g",
-			         pass == 0 ? 1 : 2, peeks[i].startRegister, f[0], f[1], f[2], f[3],
-			         f[4], f[5], f[6], f[7], f[8], f[9], f[10], f[11]);
-		}
+	OBVR_LOG("Bone compare: first render %u uploads, second compared %u, mismatches %u",
+	         g_boneLogCount, g_boneCompareIndex, g_boneMismatchCount);
+	if (g_boneMismatchCount > 0) {
+		const float* a = g_boneMismatchFirst.floats;
+		const float* b = g_boneMismatchSecond.floats;
+		OBVR_LOG("Bone mismatch at upload %u: first c%u | %g %g %g %g | %g %g %g %g | "
+		         "%g %g %g %g",
+		         g_boneMismatchAt, g_boneMismatchFirst.startRegister, a[0], a[1], a[2],
+		         a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11]);
+		OBVR_LOG("Bone mismatch at upload %u: second c%u | %g %g %g %g | %g %g %g %g | "
+		         "%g %g %g %g",
+		         g_boneMismatchAt, g_boneMismatchSecond.startRegister, b[0], b[1], b[2],
+		         b[3], b[4], b[5], b[6], b[7], b[8], b[9], b[10], b[11]);
 	}
 }
 
