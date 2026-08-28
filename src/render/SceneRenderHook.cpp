@@ -53,6 +53,10 @@ bool g_rendering = false;
 // pass costs the HUD its draws.
 UInt32 g_sceneCall = 0;
 
+// Set when a dual frame was busy enough with skinned bodies that the next
+// dual frame deserves the one-shot pool timeline.
+bool g_timelinePending = false;
+
 void TraceFrame(const char* how, UInt32 passesLastFrame, UInt32 drawsLastFrame) {
 	if (g_sceneCall <= 150 || g_sceneCall > 500 || g_sceneCall % 10 != 0) {
 		return;
@@ -379,19 +383,38 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	const UInt32 drawsAtEntry = TotalDrawCount();
 	const StateCallCounts stateAtEntry = TotalStateCalls();
 
+	// The one-shot timeline, armed when the previous dual frame was busy
+	// with skinned bodies - the standing-next-to-an-npc situation the
+	// collapse lives in. Recording the frame after the busy one costs the
+	// trigger nothing and catches the same scene one frame later.
+	if (g_timelinePending && !PoolTimelineWasDumped()) {
+		g_timelinePending = false;
+		ArmPoolTimeline();
+		MarkPoolTimeline("first pass begins");
+	}
+
 	// First eye. The camera hook already moved the camera there.
 	g_original(self, unusedEdx, renderedTexture);
 	const UInt32 drawsAfterFirst = TotalDrawCount();
 	const StateCallCounts stateAfterFirst = TotalStateCalls();
+	MarkPoolTimeline("between the passes");
 	g_callbacks.betweenPasses();
 	const UInt32 drawsAfterBetween = TotalDrawCount();
 	const StateCallCounts stateAfterBetween = TotalStateCalls();
+	MarkPoolTimeline("second pass begins");
 
 	// Second eye, from a camera one interpupillary distance over.
 	g_original(self, unusedEdx, renderedTexture);
 	const UInt32 drawsAfterSecond = TotalDrawCount();
 	const StateCallCounts stateAfterSecond = TotalStateCalls();
+	MarkPoolTimeline("frame ends");
+	DumpPoolTimeline();
 	g_callbacks.afterSecondPass();
+
+	if (!PoolTimelineWasDumped() &&
+	    stateAfterFirst.skinnedDraws - stateAtEntry.skinnedDraws >= 40) {
+		g_timelinePending = true;
+	}
 
 	g_rendering = false;
 	TracePassDraws(drawsAtEntry, drawsAfterFirst, drawsAfterBetween, drawsAfterSecond);

@@ -123,6 +123,13 @@ struct StateCallCounts {
 	// that collapses onto one clip-space point.
 	UInt32 skinnedZeroMatrixDraws = 0;
 
+	// One frame's pool timeline, recorded on demand. Every aggregate above
+	// is blind to order and to which buffer an event hit; the timeline is
+	// the raw sequence - each lock with its flags, each unlock, each
+	// skinned draw with its source - for exactly one dual frame, so a
+	// standalone reproduction can replay the game's true access pattern.
+	// (Counters continue below; the timeline itself lives in the hooks.)
+
 	// The index side of vertex fetch, mirrored from the vertex side once
 	// that side ran out of suspects. Indices decide which vertex each
 	// triangle corner reads: zeroed indices build every triangle out of
@@ -141,6 +148,18 @@ struct StateCallCounts {
 };
 
 StateCallCounts TotalStateCalls();
+
+// The one-shot pool timeline. Arm it and every lock, unlock and skinned
+// draw on the dynamic pool is recorded in order until Dump writes the
+// sequence to the log and retires the recorder for the rest of the run.
+// One frame is the intended span: the scene hook arms it at the top of a
+// dual frame whose predecessor was busy with skinned bodies, drops
+// markers at the pass boundaries, and dumps at the frame's end - the raw
+// access pattern a standalone reproduction has to replay.
+void ArmPoolTimeline();
+void MarkPoolTimeline(const char* label);
+void DumpPoolTimeline();
+bool PoolTimelineWasDumped();
 
 // How many times the 2D pass was entered since this was last asked, and how
 // many primitives it drew in those passes; both zero afterwards. The scene

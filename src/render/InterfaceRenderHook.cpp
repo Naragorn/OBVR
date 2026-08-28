@@ -200,6 +200,30 @@ UInt32 g_stream0Stride = 0;
 // catch collapsed positions, cheap enough for write-combined memory.
 constexpr UInt32 kWriteFingerprintBytes = 256;
 
+// One frame's pool timeline - see the header note. A fixed event array,
+// armed by the scene hook, filled by the hooks below, dumped once.
+struct TimelineEvent {
+	char kind;          // 'L' lock, 'U' unlock, 'D' skinned draw, 'M' marker
+	const char* label;  // markers only; the callers pass string literals
+	void* buffer;
+	UInt32 a;  // lock: offset  | unlock: fingerprint sum | draw: stream offset
+	UInt32 b;  // lock: size    | draw: vertices
+	UInt32 c;  // lock: flags   | draw: primitives
+};
+constexpr UInt32 kTimelineCapacity = 2048;
+TimelineEvent g_timeline[kTimelineCapacity];
+UInt32 g_timelineCount = 0;
+bool g_timelineArmed = false;
+bool g_timelineDumped = false;
+
+void RecordTimeline(char kind, const char* label, void* buffer, UInt32 a, UInt32 b, UInt32 c) {
+	if (!g_timelineArmed || g_timelineCount >= kTimelineCapacity) {
+		return;
+	}
+	g_timeline[g_timelineCount] = TimelineEvent{kind, label, buffer, a, b, c};
+	++g_timelineCount;
+}
+
 // Whether the last upload that started at register 0 - ModelViewProj in
 // every vertex shader of the active package - was an all-zero matrix.
 // Order-sensitive where the counters are not: a draw sees the registers
@@ -222,6 +246,7 @@ void CountSkinnedDraw(UInt32 numVertices, UInt32 primCount) {
 	if (g_stream0Stride == 0) {
 		++g_stateCalls.skinnedZeroStrideDraws;
 	}
+	RecordTimeline('D', nullptr, g_stream0Buffer, g_stream0Offset, numVertices, primCount);
 }
 
 d3d9::CreateVertexBufferFn g_originalCreateVertexBuffer = nullptr;
@@ -665,6 +690,7 @@ SInt32 __stdcall HookedVbLock(void* self, UInt32 offset, UInt32 size, void** dat
 		++g_stateCalls.dynamicLocks;
 		g_stateCalls.dynamicLockOffsetSum += offset;
 		g_stateCalls.dynamicLockSizeSum += size;
+		RecordTimeline('L', nullptr, self, offset, size, flags);
 	}
 	const SInt32 result = g_originalVbLock(self, offset, size, data, flags);
 	if (dynamic && result >= 0 && data != nullptr && *data != nullptr) {
@@ -684,7 +710,9 @@ SInt32 __stdcall HookedVbUnlock(void* self) {
 	UInt32 size = 0;
 	if (g_openLocks.End(self, &data, &size)) {
 		++g_stateCalls.dynamicWrites;
-		g_stateCalls.dynamicWriteSum += SumLeadingBytes(data, size, kWriteFingerprintBytes);
+		const UInt32 sum = SumLeadingBytes(data, size, kWriteFingerprintBytes);
+		g_stateCalls.dynamicWriteSum += sum;
+		RecordTimeline('U', nullptr, self, sum, 0, 0);
 	}
 	return g_originalVbUnlock(self);
 }
@@ -1422,6 +1450,48 @@ void ArmBetweenTrace() { g_betweenTraceLeft = 12; }
 UInt32 TotalDrawCount() { return g_drawsTotal; }
 
 StateCallCounts TotalStateCalls() { return g_stateCalls; }
+
+void ArmPoolTimeline() {
+	if (g_timelineDumped) {
+		return;
+	}
+	g_timelineArmed = true;
+	g_timelineCount = 0;
+}
+
+void MarkPoolTimeline(const char* label) { RecordTimeline('M', label, nullptr, 0, 0, 0); }
+
+void DumpPoolTimeline() {
+	if (!g_timelineArmed) {
+		return;
+	}
+	g_timelineArmed = false;
+	g_timelineDumped = true;
+	OBVR_LOG("Pool timeline: %u events, %u dynamic buffers known%s", g_timelineCount,
+	         g_dynamicBuffers.count,
+	         g_timelineCount >= kTimelineCapacity ? " (capacity reached, tail lost)" : "");
+	for (UInt32 i = 0; i < g_timelineCount; ++i) {
+		const TimelineEvent& e = g_timeline[i];
+		switch (e.kind) {
+			case 'M':
+				OBVR_LOG("T ---- %s", e.label);
+				break;
+			case 'L':
+				OBVR_LOG("T lock   %p o=%u s=%u f=%04X", e.buffer, e.a, e.b, e.c);
+				break;
+			case 'U':
+				OBVR_LOG("T unlock %p sum=%08X", e.buffer, e.a);
+				break;
+			case 'D':
+				OBVR_LOG("T draw   %p o=%u v=%u p=%u", e.buffer, e.a, e.b, e.c);
+				break;
+			default:
+				break;
+		}
+	}
+}
+
+bool PoolTimelineWasDumped() { return g_timelineDumped; }
 
 void TakeInterfaceStats(UInt32& passes, UInt32& draws) {
 	passes = g_passesSinceScene;
