@@ -6,6 +6,7 @@
 #include "game/GameCamera.h"
 #include "render/D3D9Types.h"
 #include "render/GameProjection.h"
+#include "render/MenuShade.h"
 
 namespace obvr::render {
 namespace {
@@ -262,6 +263,15 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 		}
 	}
 
+	// The window both eyes show, per eye, for the held pair's single border.
+	// From the source slices, because those are what differ: each eye crops
+	// the frame at the opposite edge, and the strip only one eye shows is the
+	// edge the other eye cannot fuse.
+	m_eye[0].commonDestination =
+		CommonWindowInEye(m_eye[0].source, m_eye[0].destination, m_eye[1].source);
+	m_eye[1].commonDestination =
+		CommonWindowInEye(m_eye[1].source, m_eye[1].destination, m_eye[0].source);
+
 	// The flat placement, sized identically in both eyes.
 	//
 	// Derived from the two world placements rather than from each eye's own,
@@ -487,8 +497,192 @@ bool EyeMirror::CopyBackBuffer(void* gameDevice, bool isLeft, bool bothEyes) {
 
 	if (ok) {
 		m_primed = true;
+
+		// The copy replaced the pixels any menu dressing was painted on, so
+		// the pair is bare again. This is also the whole exit path: the first
+		// world frame after a menu closes undresses the pair by existing.
+		m_heldShaded = false;
 	}
 	return ok;
+}
+
+bool EyeMirror::PrepareHeldShade(void* gameDevice, UInt32 shadeColorArgb,
+                                 bool trimToSharedWindow) {
+	if (m_heldShaded) {
+		return true;
+	}
+	if (!IsReady() || gameDevice == nullptr) {
+		return false;
+	}
+
+	// Set first, not on success. A device that refuses part of this should
+	// refuse it once per episode, not once per frame - and the pictures are
+	// replaced wholesale by the next copy either way.
+	m_heldShaded = true;
+
+	// The strips first, with ColorFill, which needs no pipeline state at all.
+	if (trimToSharedWindow) {
+		auto colorFill = d3d9::Method<d3d9::ColorFillFn>(gameDevice, d3d9::kDeviceColorFill);
+		if (colorFill != nullptr) {
+			for (Eye& eye : m_eye) {
+				d3d9::Rect strips[4];
+				const int count = EdgeStrips(eye.destination, eye.commonDestination, strips);
+				for (int index = 0; index < count; ++index) {
+					colorFill(gameDevice, eye.surface, &strips[index], kOpaqueBlack);
+				}
+			}
+		}
+	}
+
+	if (shadeColorArgb == 0) {
+		return true;
+	}
+
+	// The tint: one alpha-blended quad per eye, over the world rectangle. A
+	// blend cannot come from ColorFill, so this is a draw, and a draw on the
+	// game's device is a guest - everything it touches is captured first and
+	// put back after, and the render target, which no state block carries, is
+	// saved by hand.
+	auto getTarget = d3d9::Method<d3d9::GetRenderTargetFn>(gameDevice, d3d9::kDeviceGetRenderTarget);
+	auto setTarget = d3d9::Method<d3d9::SetRenderTargetFn>(gameDevice, d3d9::kDeviceSetRenderTarget);
+	auto getDepth = d3d9::Method<d3d9::GetDepthStencilSurfaceFn>(
+		gameDevice, d3d9::kDeviceGetDepthStencilSurface);
+	auto setDepth = d3d9::Method<d3d9::SetDepthStencilSurfaceFn>(
+		gameDevice, d3d9::kDeviceSetDepthStencilSurface);
+	auto createBlock = d3d9::Method<d3d9::CreateStateBlockFn>(
+		gameDevice, d3d9::kDeviceCreateStateBlock);
+	auto setState = d3d9::Method<d3d9::SetRenderStateFn>(gameDevice, d3d9::kDeviceSetRenderState);
+	auto setTexture = d3d9::Method<d3d9::SetTextureFn>(gameDevice, d3d9::kDeviceSetTexture);
+	auto setStage = d3d9::Method<d3d9::SetTextureStageStateFn>(
+		gameDevice, d3d9::kDeviceSetTextureStageState);
+	auto setFvf = d3d9::Method<d3d9::SetFVFFn>(gameDevice, d3d9::kDeviceSetFVF);
+	auto setVertexShader = d3d9::Method<d3d9::SetVertexShaderFn>(
+		gameDevice, d3d9::kDeviceSetVertexShader);
+	auto setPixelShader = d3d9::Method<d3d9::SetPixelShaderFn>(
+		gameDevice, d3d9::kDeviceSetPixelShader);
+	auto beginScene = d3d9::Method<d3d9::SceneBracketFn>(gameDevice, d3d9::kDeviceBeginScene);
+	auto endScene = d3d9::Method<d3d9::SceneBracketFn>(gameDevice, d3d9::kDeviceEndScene);
+	auto draw = d3d9::Method<d3d9::DrawPrimitiveUPFn>(gameDevice, d3d9::kDeviceDrawPrimitiveUP);
+
+	if (getTarget == nullptr || setTarget == nullptr || getDepth == nullptr ||
+	    setDepth == nullptr || createBlock == nullptr || setState == nullptr ||
+	    setTexture == nullptr || setStage == nullptr || setFvf == nullptr ||
+	    setVertexShader == nullptr || setPixelShader == nullptr || beginScene == nullptr ||
+	    endScene == nullptr || draw == nullptr) {
+		if (!m_shadeFailureLogged) {
+			m_shadeFailureLogged = true;
+			OBVR_LOG("Mirror: the menu shade could not reach the device, so the held pair "
+			         "stays unshaded");
+		}
+		return false;
+	}
+
+	void* previousTarget = nullptr;
+	void* previousDepth = nullptr;
+	getTarget(gameDevice, 0, &previousTarget);
+	getDepth(gameDevice, &previousDepth);
+
+	void* block = nullptr;
+	if (d3d11::Failed(createBlock(gameDevice, d3d9::kStateBlockTypeAll, &block)) ||
+	    block == nullptr) {
+		d3d11::Release(previousTarget);
+		d3d11::Release(previousDepth);
+		if (!m_shadeFailureLogged) {
+			m_shadeFailureLogged = true;
+			OBVR_LOG("Mirror: no state block for the menu shade, so the held pair stays "
+			         "unshaded");
+		}
+		return false;
+	}
+
+	// The quad's pipeline: no shaders, no texture, the vertex colour selected
+	// straight through both stages, an ordinary over-blend, and every test
+	// that could silently reject a fixed-function draw switched off. The
+	// coordinates are pre-transformed texture pixels, so no transform is
+	// involved at all.
+	setPixelShader(gameDevice, nullptr);
+	setVertexShader(gameDevice, nullptr);
+	setTexture(gameDevice, 0, nullptr);
+	setStage(gameDevice, 0, d3d9::kStageColorOp, d3d9::kTextureOpSelectArg1);
+	setStage(gameDevice, 0, d3d9::kStageColorArg1, d3d9::kTextureArgDiffuse);
+	setStage(gameDevice, 0, d3d9::kStageAlphaOp, d3d9::kTextureOpSelectArg1);
+	setStage(gameDevice, 0, d3d9::kStageAlphaArg1, d3d9::kTextureArgDiffuse);
+	setState(gameDevice, d3d9::kRenderStateZEnable, 0);
+	setState(gameDevice, d3d9::kRenderStateZWriteEnable, 0);
+	setState(gameDevice, d3d9::kRenderStateAlphaTestEnable, 0);
+	setState(gameDevice, d3d9::kRenderStateAlphaBlendEnable, 1);
+	setState(gameDevice, d3d9::kRenderStateSeparateAlphaBlendEnable, 0);
+	setState(gameDevice, d3d9::kRenderStateSrcBlend, d3d9::kBlendSrcAlpha);
+	setState(gameDevice, d3d9::kRenderStateDestBlend, d3d9::kBlendInvSrcAlpha);
+	setState(gameDevice, d3d9::kRenderStateFogEnable, 0);
+	setState(gameDevice, d3d9::kRenderStateLighting, 0);
+	setState(gameDevice, d3d9::kRenderStateCullMode, d3d9::kCullNone);
+	setState(gameDevice, d3d9::kRenderStateStencilEnable, 0);
+	setState(gameDevice, d3d9::kRenderStateScissorTestEnable, 0);
+	setState(gameDevice, d3d9::kRenderStateClipping, 0);
+	setState(gameDevice, d3d9::kRenderStateClipPlaneEnable, 0);
+	setState(gameDevice, d3d9::kRenderStateColorWriteEnable, d3d9::kColorWriteAll);
+	setFvf(gameDevice, d3d9::kFvfXyzRhwDiffuse);
+
+	// This runs from the Present hook, where the game's own scene bracket is
+	// closed, so the draw brings its own. If the bracket were already open,
+	// BeginScene fails and the draw runs inside the open one - either way the
+	// draw is inside a scene, and EndScene is only owed for the bracket this
+	// opened.
+	const bool openedScene = !d3d11::Failed(beginScene(gameDevice));
+
+	struct ShadeVertex {
+		float x, y, z, rhw;
+		UInt32 color;
+	};
+	static_assert(sizeof(ShadeVertex) == 20, "XYZRHW|DIFFUSE is a 20-byte vertex");
+
+	bool drewBoth = true;
+	for (Eye& eye : m_eye) {
+		setTarget(gameDevice, 0, eye.surface);
+		setDepth(gameDevice, nullptr);
+
+		const d3d9::Rect& r = trimToSharedWindow ? eye.commonDestination : eye.destination;
+		const float left = static_cast<float>(r.left) - 0.5f;
+		const float top = static_cast<float>(r.top) - 0.5f;
+		const float right = static_cast<float>(r.right) - 0.5f;
+		const float bottom = static_cast<float>(r.bottom) - 0.5f;
+		const ShadeVertex quad[4] = {
+			{left, top, 0.5f, 1.0f, shadeColorArgb},
+			{right, top, 0.5f, 1.0f, shadeColorArgb},
+			{left, bottom, 0.5f, 1.0f, shadeColorArgb},
+			{right, bottom, 0.5f, 1.0f, shadeColorArgb},
+		};
+
+		if (d3d11::Failed(draw(gameDevice, d3d9::kPrimitiveTriangleStrip, 2, quad,
+		                       sizeof(ShadeVertex)))) {
+			drewBoth = false;
+		}
+	}
+
+	if (openedScene) {
+		endScene(gameDevice);
+	}
+
+	// The game's world first, then its states: SetRenderTarget resets the
+	// viewport to the target's full size, and the state block's Apply is what
+	// puts the real one back afterwards.
+	setTarget(gameDevice, 0, previousTarget);
+	setDepth(gameDevice, previousDepth);
+	auto apply = d3d9::Method<d3d9::StateBlockMethodFn>(block, d3d9::kStateBlockApply);
+	if (apply != nullptr) {
+		apply(block);
+	}
+	d3d11::Release(block);
+	d3d11::Release(previousTarget);
+	d3d11::Release(previousDepth);
+
+	if (!drewBoth && !m_shadeFailureLogged) {
+		m_shadeFailureLogged = true;
+		OBVR_LOG("Mirror: the menu shade quad was refused, so the held pair is only "
+		         "part-shaded");
+	}
+	return drewBoth;
 }
 
 bool EyeMirror::BeginSubmit(void* gameDevice) {
@@ -546,6 +740,7 @@ void EyeMirror::Destroy() {
 	m_primed = false;
 	m_lastWasFlat = false;
 	m_everCopied = false;
+	m_heldShaded = false;
 }
 
 }  // namespace obvr::render

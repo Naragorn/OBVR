@@ -265,6 +265,21 @@ struct TrackerSettings {
 	// recenter key is how it is brought back.
 	bool hudAnchorWorld = false;
 
+	// The dressing the held world pair wears while a pause menu is up - the
+	// frames where Oblivion stops redrawing the world, which is also what
+	// keeps all of this out of dialogue, where the world renders on. See
+	// MenuShade.h for what each piece is.
+	//
+	// menuShade is vanilla's brown dim over the paused world; colour and
+	// strength are tunable because the vanilla look is a shader, not a single
+	// colour, and the nearest flat tint is a matter of taste. menuSingleBorder
+	// trims each eye's picture to the window both eyes show, so the frozen
+	// pair's edges fuse into one frame instead of doubling at the sides.
+	bool menuShade = true;
+	UInt32 menuShadeColorRgb = 0x5A452E;
+	float menuShadeStrength = 0.5f;
+	bool menuSingleBorder = true;
+
 	// Where the overlay hangs: straight ahead, this far away, in metres.
 	float hudDistanceMetres = 1.2f;
 

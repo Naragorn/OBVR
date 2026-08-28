@@ -98,6 +98,19 @@ public:
 		bool m_held = false;
 	};
 
+	// Dresses the held pair for a pause menu: a brown alpha-blended quad over
+	// each eye's world rectangle (shadeColorArgb, 0 meaning no tint), and the
+	// side strips only one eye shows blacked out (trimToSharedWindow), so all
+	// four picture edges sit at angles both eyes agree on. See MenuShade.h for
+	// why each exists.
+	//
+	// Runs once per held episode: the flag it sets survives until the next
+	// CopyBackBuffer overwrites the pictures, which is also what naturally
+	// undresses them - the world's next frame arrives untinted and untrimmed.
+	// Pure Direct3D 9, so it must be called with no submission queue held.
+	bool PrepareHeldShade(void* gameDevice, UInt32 shadeColorArgb, bool trimToSharedWindow);
+	bool IsHeldShaded() const { return m_heldShaded; }
+
 	const BackBufferImage& GetImage(bool isLeft) const { return m_eye[isLeft ? 0 : 1].image; }
 
 	UInt32 GetWidth() const { return m_width; }
@@ -128,6 +141,12 @@ private:
 		// and centred, so it reads as a screen in front of the wearer rather
 		// than as the world.
 		d3d9::Rect flatDestination = {};
+
+		// The part of destination that shows frame pixels BOTH eyes show.
+		// Worked out once in Create, from the two source slices, because the
+		// placements cannot change within a run. What lies outside it in one
+		// eye has no partner edge in the other - see MenuShade.h.
+		d3d9::Rect commonDestination = {};
 	};
 
 	// Index 0 is the left eye, 1 the right. Which eye a frame belongs to is
@@ -168,6 +187,15 @@ private:
 
 	// Whether both pictures have ever been written to.
 	bool m_primed = false;
+
+	// Whether the held pair currently wears the menu dressing. Cleared by
+	// every copy, because a copy replaces the very pixels the dressing was
+	// painted on.
+	bool m_heldShaded = false;
+
+	// Said once per run each, so a device that refuses the quad does not
+	// refuse it into the log every frame.
+	bool m_shadeFailureLogged = false;
 
 	InteropBracket m_bracket;
 };

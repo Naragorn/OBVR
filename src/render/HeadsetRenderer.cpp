@@ -465,6 +465,15 @@ bool HeadsetRenderer::SubmitHeldEyes(const vr::OpenVRBackend& backend,
 		return false;
 	}
 
+	// The menu dressing, before the submission bracket - it is Direct3D 9
+	// work, and the bracket locks the very queue that work goes to. Once per
+	// episode: the mirror remembers being dressed, and the next world copy
+	// undresses it by overwriting the pixels.
+	if ((request.menuShadeColor != 0 || request.menuSingleBorder) && !m_mirror.IsHeldShaded()) {
+		m_mirror.PrepareHeldShade(request.gameDevice, request.menuShadeColor,
+		                          request.menuSingleBorder);
+	}
+
 	EyeMirror::Submission held(m_mirror, request.gameDevice);
 	if (!held.IsHeld()) {
 		return false;

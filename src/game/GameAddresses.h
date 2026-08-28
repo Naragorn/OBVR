@@ -153,6 +153,37 @@ inline constexpr UInt32 kFrameSecondsAddress = 0x00B33E9C;
 // black. That is the flicker seen when opening the ESC menu.
 inline constexpr UInt32 kIsMenuMode = 0x00578F60;
 
+// PlayerCharacter::SetDialogCamera - the function behind the dialogue zoom,
+// called when a conversation starts (with the NPC) and again when it ends
+// (with null), each time starting the camera transition whose distance
+// fDlgFocus sets. In a headset the zoom itself never shows, because OBVR owns
+// the camera - but the transition is still spent, and it arrives as a dead
+// pause on the way out of every conversation.
+//
+// Two sources, as everything here has. TESReloaded (llde/TESReloaded10,
+// Framework/Oblivion/Base.h) names Hooks::SetDialogCamera = 0x0066C6F0 as
+// __thiscall (PlayerCharacter*, Actor*, float, UInt8), and its camera mode
+// detours it without ever calling the original - which is exactly the "no
+// zoom at all" that mod is known for. The bytes in this machine's 1.2.0.416
+// say the same thing independently:
+//
+//   0066C6F0  sub esp,18; push ebp
+//   0066C6F4  mov ebp,[esp+20]        <- the first stack argument (the Actor)
+//   0066C6F8  test ebp,ebp
+//   0066C6FA  push esi; mov esi,ecx   <- __thiscall
+//   0066C6FD  jz +527                 <- null Actor takes the ending path
+//   0066C703  fld1; fcomp [esp+28]    <- the float argument against 1.0
+//   ...       and at +1AD the body reads dword [00B14F10] - the fDlgFocus
+//             setting's value slot, found from its name string: 00B14F14
+//             holds the pointer to "fDlgFocus" at 00A7409C, and the float
+//             before it holds 2.1, the setting's documented default.
+//
+// A function with that signature, split on a null Actor, reading fDlgFocus,
+// at the very address TESReloaded names, is the one being described. OBVR
+// patches its first bytes to ret 0Ch - three dword arguments, callee-cleaned
+// under __thiscall - so neither transition ever starts.
+inline constexpr UInt32 kSetDialogCamera = 0x0066C6F0;
+
 // Where Oblivion keeps d3d9.dll and the Direct3DCreate9 it looked up in it.
 //
 // This exists because Oblivion.exe does not import d3d9.dll at all - the

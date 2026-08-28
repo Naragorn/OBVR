@@ -7,6 +7,7 @@
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "core/MathFns.h"
+#include "game/DialogZoom.h"
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
 #include "game/MenuMode.h"
@@ -18,6 +19,7 @@
 #include "render/HeadsetRenderer.h"
 #include "render/HudLayer.h"
 #include "render/InterfaceRenderHook.h"
+#include "render/MenuShade.h"
 #include "render/PresentHook.h"
 #include "render/ResolutionHook.h"
 #include "render/SceneRenderHook.h"
@@ -280,6 +282,17 @@ void OnFrameEnd() {
 		held.gameDevice = render::GetGameDevice();
 		held.submitGameFrame = GetConfig().tracker.submitGameFrame;
 		held.heldEyes = true;
+
+		// The pause-menu dressing rides only on this delivery, which is what
+		// keeps it out of dialogue: there the world renders on every frame and
+		// no frame is held. Colour and strength are folded here so the
+		// renderer sees one word - zero, or the ARGB to paint.
+		held.menuShadeColor =
+			GetConfig().tracker.menuShade
+				? render::ComposeShadeColor(GetConfig().tracker.menuShadeColorRgb,
+			                                GetConfig().tracker.menuShadeStrength)
+				: 0;
+		held.menuSingleBorder = GetConfig().tracker.menuSingleBorder;
 		if (g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame())) {
 			g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), held);
 		}
@@ -388,6 +401,7 @@ void MaybeReloadConfig() {
 	if (config.Reload("OBVR.ini")) {
 		g_headTracker.Configure(config.tracker);
 		g_lookControl.Configure(config.look);
+		game::ApplyDialogZoom(config.dialogZoom);
 	}
 }
 

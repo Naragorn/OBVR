@@ -3,6 +3,7 @@
 #include "core/Log.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
+#include "render/MenuShade.h"
 
 namespace obvr {
 namespace {
@@ -205,6 +206,25 @@ bool ReadMenusInWorld(const char* section, const char* key, bool fallback, const
 	return fallback;
 }
 
+// Reads a colour written as six hex digits (RRGGBB, with or without '#').
+// The parse itself lives in MenuShade.h with the rest of the shade logic; a
+// value that does not parse keeps the previous colour and says so, the same
+// way every other worded setting here behaves.
+UInt32 ReadHexColor(const char* section, const char* key, UInt32 fallback, const char* path) {
+	char buffer[32];
+	if (GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), path) == 0) {
+		return fallback;
+	}
+
+	UInt32 rgb = 0;
+	if (!render::ParseHexColor(buffer, rgb)) {
+		OBVR_LOG("Config: %s.%s=\"%s\" is not an RRGGBB colour, keeping the previous one",
+		         section, key, buffer);
+		return fallback;
+	}
+	return rgb;
+}
+
 const char* StereoModeName(vr::StereoMode mode) {
 	switch (mode) {
 		case vr::StereoMode::None: return "none";
@@ -308,6 +328,15 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Render", "HudBetweenPasses", config.tracker.hudBetweenPasses, path);
 	config.tracker.hudAnchorWorld =
 		ReadAnchorIsWorld("Render", "HudAnchor", config.tracker.hudAnchorWorld, path);
+	config.tracker.menuShade =
+		ReadBool("Render", "MenuShade", config.tracker.menuShade, path);
+	config.tracker.menuShadeColorRgb =
+		ReadHexColor("Render", "MenuShadeColor", config.tracker.menuShadeColorRgb, path);
+	config.tracker.menuShadeStrength =
+		ReadFloat("Render", "MenuShadeStrength", config.tracker.menuShadeStrength, path);
+	config.tracker.menuSingleBorder =
+		ReadBool("Render", "MenuSingleBorder", config.tracker.menuSingleBorder, path);
+	config.dialogZoom = ReadBool("Look", "DialogZoom", config.dialogZoom, path);
 	config.tracker.menusInWorld =
 		ReadMenusInWorld("Render", "Menus", config.tracker.menusInWorld, path);
 	config.tracker.hudDistanceMetres =
@@ -435,6 +464,11 @@ bool Config::Load(const char* fileName) {
 	         tracker.hudAnchorWorld ? "world" : "head",
 	         static_cast<double>(tracker.hudDistanceMetres),
 	         static_cast<double>(tracker.hudWidthMetres));
+	OBVR_LOG("Config: Render.MenuShade=%d Color=%06X Strength=%.2f MenuSingleBorder=%d "
+	         "Look.DialogZoom=%d",
+	         tracker.menuShade ? 1 : 0, tracker.menuShadeColorRgb,
+	         static_cast<double>(tracker.menuShadeStrength),
+	         tracker.menuSingleBorder ? 1 : 0, dialogZoom ? 1 : 0);
 	// The suppressed case is named rather than silently corrected. Menus=world
 	// without HudOverlay would deliver the world in stereo with the menu
 	// nowhere at all - the eyes are captured before the 2D pass draws, so the

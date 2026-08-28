@@ -1,6 +1,7 @@
 #include "camera/CameraHook.h"
 #include "core/Config.h"
 #include "core/Log.h"
+#include "game/DialogZoom.h"
 #include "game/GameAddresses.h"
 #include "obse/PluginInterface.h"
 #include "platform/PluginPath.h"
@@ -64,6 +65,11 @@ __declspec(dllexport) bool OBSEPlugin_Load(const obvr::obse::Interface* obse) {
 	}
 
 	obvr::GetConfig().Load("OBVR.ini");
+
+	// Before the hooks and regardless of them: the zoom patch stands on its
+	// own, and a session whose camera hook failed still deserves dialogues
+	// without the dead pause.
+	obvr::game::ApplyDialogZoom(obvr::GetConfig().dialogZoom);
 
 	if (!obvr::GetConfig().cameraHookEnabled) {
 		OBVR_LOG("Camera hook disabled by configuration");
