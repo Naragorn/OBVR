@@ -282,6 +282,23 @@ void TracePoolWrites(const StateCallCounts& entry, const StateCallCounts& afterF
 	         afterSecond.dynamicWriteSkipped - afterBetween.dynamicWriteSkipped);
 }
 
+// The first order-sensitive probe, after every order-independent sum came
+// back equal. A skinned draw issued while c0 holds an all-zero matrix is
+// a body collapsing onto one clip-space point - the very picture in the
+// headset. A second-render count above a first-render zero convicts the
+// interleaving: same uploads, same draws, wrong order between them.
+void TraceZeroMatrixDraws(const StateCallCounts& entry, const StateCallCounts& afterFirst,
+                          const StateCallCounts& afterBetween,
+                          const StateCallCounts& afterSecond) {
+	if (g_sceneCall % 120 != 0) {
+		return;
+	}
+	OBVR_LOG("Dual zero-matrix draws at scene call %u: first %u, between %u, second %u",
+	         g_sceneCall, afterFirst.skinnedZeroMatrixDraws - entry.skinnedZeroMatrixDraws,
+	         afterBetween.skinnedZeroMatrixDraws - afterFirst.skinnedZeroMatrixDraws,
+	         afterSecond.skinnedZeroMatrixDraws - afterBetween.skinnedZeroMatrixDraws);
+}
+
 // Stands where the entry of kRenderScene used to be, with the same calling
 // convention. See the type alias above for why __fastcall.
 void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTexture) {
@@ -344,6 +361,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	TraceBindings(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceSkinnedDraws(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TracePoolWrites(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
+	TraceZeroMatrixDraws(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceFrame("dual", passesLastFrame, drawsLastFrame);
 }
 

@@ -114,6 +114,14 @@ struct StateCallCounts {
 	UInt32 dynamicWrites = 0;       // pool unlocks whose bytes were fingerprinted
 	UInt32 dynamicWriteSum = 0;     // their leading bytes summed
 	UInt32 dynamicWriteSkipped = 0;  // pool locks whose bytes could not be followed
+
+	// Every sum above is order-independent, which is exactly the blind
+	// spot: two renders can upload the same bytes and still interleave
+	// them differently against the draws. This one is order-sensitive -
+	// a skinned draw issued while register c0 (ModelViewProj in every
+	// shader of the active package) holds an all-zero matrix is a draw
+	// that collapses onto one clip-space point.
+	UInt32 skinnedZeroMatrixDraws = 0;
 };
 
 StateCallCounts TotalStateCalls();

@@ -194,6 +194,13 @@ LockLedger g_openLocks;
 // catch collapsed positions, cheap enough for write-combined memory.
 constexpr UInt32 kWriteFingerprintBytes = 256;
 
+// Whether the last upload that started at register 0 - ModelViewProj in
+// every vertex shader of the active package - was an all-zero matrix.
+// Order-sensitive where the counters are not: a draw sees the registers
+// as they stand, and a zero matrix at draw time collapses every vertex
+// onto one clip-space point.
+bool g_lastC0Zero = false;
+
 // The skinned-draw half of the fingerprint, shared by both draw hooks.
 void CountSkinnedDraw(UInt32 numVertices, UInt32 primCount) {
 	if (g_stream0Buffer == nullptr || !g_dynamicBuffers.Contains(g_stream0Buffer)) {
@@ -203,6 +210,9 @@ void CountSkinnedDraw(UInt32 numVertices, UInt32 primCount) {
 	g_stateCalls.skinnedVertexSum += numVertices;
 	g_stateCalls.skinnedPrimSum += primCount;
 	g_stateCalls.skinnedOffsetSum += g_stream0Offset;
+	if (g_lastC0Zero) {
+		++g_stateCalls.skinnedZeroMatrixDraws;
+	}
 }
 
 d3d9::CreateVertexBufferFn g_originalCreateVertexBuffer = nullptr;
@@ -550,6 +560,11 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
 		}
 		if (allZero) {
 			++g_stateCalls.zeroUploads;
+		}
+		// The sixteen floats just examined are exactly c0-c3 when the
+		// upload starts at register 0: the ModelViewProj a draw will use.
+		if (startRegister == 0 && vector4fCount >= 4) {
+			g_lastC0Zero = allZero;
 		}
 	}
 	if (data != nullptr && vector4fCount >= 12) {
