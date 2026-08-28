@@ -126,7 +126,22 @@ bool OpenVRBackend::Start(bool wantScene) {
 		m_compositor = getInterface(openvr::kIVRCompositorFnTableVersion, &error);
 
 		if (m_compositor != nullptr && error == openvr::kInitErrorNone) {
-			OBVR_LOG("OpenVR: connected as a scene application through %s and %s",
+			// One tracking space for everything, declared rather than
+			// defaulted. The camera path reads its poses seated, and the
+			// overlay anchor is interpreted seated - but WaitGetPoses hands
+			// out poses in the compositor's space, which defaults to
+			// standing. Three places seated and one on the default is how
+			// the HUD anchor landed at (-9.2, -8.1, -2.7): a standing-space
+			// pose hung in the seated space, metres from where anyone
+			// looked. Where the seated origin sits does not matter; that
+			// every pose and the overlay agree on it does.
+			auto* compositorTable =
+				static_cast<openvr::IVRCompositorFnTable*>(m_compositor);
+			if (compositorTable->SetTrackingSpace != nullptr) {
+				compositorTable->SetTrackingSpace(openvr::kTrackingUniverseSeated);
+			}
+			OBVR_LOG("OpenVR: connected as a scene application through %s and %s, "
+			         "tracking space set to seated",
 			         openvr::kIVRSystemFnTableVersion, openvr::kIVRCompositorFnTableVersion);
 			return true;
 		}
@@ -261,6 +276,10 @@ int OpenVRBackend::SetOverlayTransformAbsolute(
 	if (table == nullptr || table->SetOverlayTransformAbsolute == nullptr) {
 		return -1;
 	}
+	// Seated, and it must stay the same space the compositor hands poses out
+	// in - Initialize declares that space seated for exactly this call's
+	// sake. An anchor pose from one space hung in another is a HUD nobody
+	// finds.
 	return table->SetOverlayTransformAbsolute(handle, openvr::kTrackingUniverseSeated,
 	                                          &trackingToOverlay);
 }
