@@ -425,9 +425,22 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	DumpPoolTimeline();
 	g_callbacks.afterSecondPass();
 
-	if (!PoolTimelineWasDumped() &&
-	    stateAfterFirst.skinnedDraws - stateAtEntry.skinnedDraws >= 40) {
-		g_timelinePending = true;
+	// Armed only by a frame that actually diverged: same number of skinned
+	// draws in both renders, different base-vertex sums. A busy frame is
+	// not enough - the first recording caught a healthy one and its diff
+	// came back empty while the collapse was on screen two seconds later.
+	{
+		const UInt32 drawsFirst = stateAfterFirst.skinnedDraws - stateAtEntry.skinnedDraws;
+		const UInt32 drawsSecond =
+			stateAfterSecond.skinnedDraws - stateAfterBetween.skinnedDraws;
+		const UInt32 baseFirst =
+			stateAfterFirst.skinnedBaseVertexSum - stateAtEntry.skinnedBaseVertexSum;
+		const UInt32 baseSecond =
+			stateAfterSecond.skinnedBaseVertexSum - stateAfterBetween.skinnedBaseVertexSum;
+		if (!PoolTimelineWasDumped() && drawsFirst == drawsSecond && drawsFirst >= 20 &&
+		    baseFirst != baseSecond) {
+			g_timelinePending = true;
+		}
 	}
 
 	g_rendering = false;
