@@ -283,6 +283,18 @@ endif()
 
 add_test(NAME dxvk_interop COMMAND dxvk_interop_test)
 
+add_executable(lock_ledger_test
+	LockLedgerTest.cpp
+)
+
+target_include_directories(lock_ledger_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(lock_ledger_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME lock_ledger COMMAND lock_ledger_test)
+
 add_executable(pointer_set_test
 	PointerSetTest.cpp
 )

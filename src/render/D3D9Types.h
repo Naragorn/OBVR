@@ -458,6 +458,11 @@ using SetStreamSourceFn = SInt32(__stdcall*)(void* self, UInt32 streamNumber, vo
 constexpr UInt32 kDeviceCreateVertexBuffer = 26;
 constexpr UInt32 kVertexBufferLock = 11;
 
+// Unlock (12), Lock's direct neighbour in the same listing: the moment the
+// game has finished writing a mapped range, and so the last moment the
+// written bytes can still be read for fingerprinting.
+constexpr UInt32 kVertexBufferUnlock = 12;
+
 // D3DLOCK_DISCARD (d3d9types.h, line 1696). A lock that throws the old
 // contents away. Geometry drawn from a buffer that was discarded and never
 // refilled is one candidate for what bodies collapsed onto a point are.
@@ -472,6 +477,7 @@ using CreateVertexBufferFn = SInt32(__stdcall*)(void* self, UInt32 length, UInt3
                                                 void** sharedHandle);
 using VertexBufferLockFn = SInt32(__stdcall*)(void* self, UInt32 offset, UInt32 size,
                                               void** data, UInt32 flags);
+using VertexBufferUnlockFn = SInt32(__stdcall*)(void* self);
 using ReleaseFn = UInt32(__stdcall*)(void* self);
 
 // IDirect3DDevice9::Present. Five arguments after this, all of which OBVR

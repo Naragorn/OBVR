@@ -7,6 +7,7 @@
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
 #include "render/GameDevice.h"
+#include "render/LockLedger.h"
 #include "render/PointerSet.h"
 #include "render/PresentHook.h"
 #include "render/SceneRenderHook.h"
@@ -185,6 +186,14 @@ PointerSet g_dynamicBuffers;
 void* g_stream0Buffer = nullptr;
 UInt32 g_stream0Offset = 0;
 
+// The mapped ranges currently open on the dynamic pool, fingerprinted at
+// unlock. See LockLedger.h for the bounds.
+LockLedger g_openLocks;
+
+// How many leading bytes of each pool write are fingerprinted. Enough to
+// catch collapsed positions, cheap enough for write-combined memory.
+constexpr UInt32 kWriteFingerprintBytes = 256;
+
 // The skinned-draw half of the fingerprint, shared by both draw hooks.
 void CountSkinnedDraw(UInt32 numVertices, UInt32 primCount) {
 	if (g_stream0Buffer == nullptr || !g_dynamicBuffers.Contains(g_stream0Buffer)) {
@@ -198,6 +207,7 @@ void CountSkinnedDraw(UInt32 numVertices, UInt32 primCount) {
 
 d3d9::CreateVertexBufferFn g_originalCreateVertexBuffer = nullptr;
 d3d9::VertexBufferLockFn g_originalVbLock = nullptr;
+d3d9::VertexBufferUnlockFn g_originalVbUnlock = nullptr;
 
 // The one vertex buffer vtable seen so far. Direct3D implements every
 // buffer as an instance of one class, so the first buffer's vtable is every
@@ -601,12 +611,33 @@ SInt32 __stdcall HookedVbLock(void* self, UInt32 offset, UInt32 size, void** dat
 			++g_stateCalls.dynamicBufferOverflow;
 		}
 	}
-	if (g_dynamicBuffers.Contains(self)) {
+	const bool dynamic = g_dynamicBuffers.Contains(self);
+	if (dynamic) {
 		++g_stateCalls.dynamicLocks;
 		g_stateCalls.dynamicLockOffsetSum += offset;
 		g_stateCalls.dynamicLockSizeSum += size;
 	}
-	return g_originalVbLock(self, offset, size, data, flags);
+	const SInt32 result = g_originalVbLock(self, offset, size, data, flags);
+	if (dynamic && result >= 0 && data != nullptr && *data != nullptr) {
+		// Size zero means the whole buffer, whose length this hook does not
+		// know - skipped rather than guessed at.
+		if (size == 0 || !g_openLocks.Begin(self, *data, size)) {
+			++g_stateCalls.dynamicWriteSkipped;
+		}
+	}
+	return result;
+}
+
+SInt32 __stdcall HookedVbUnlock(void* self) {
+	// Read before the unlock goes through: this is the last moment the
+	// range is guaranteed to be mapped.
+	const void* data = nullptr;
+	UInt32 size = 0;
+	if (g_openLocks.End(self, &data, &size)) {
+		++g_stateCalls.dynamicWrites;
+		g_stateCalls.dynamicWriteSum += SumLeadingBytes(data, size, kWriteFingerprintBytes);
+	}
+	return g_originalVbUnlock(self);
 }
 
 // Counts Lock on every vertex buffer by patching the class vtable the next
@@ -626,14 +657,28 @@ SInt32 __stdcall HookedCreateVertexBuffer(void* self, UInt32 length, UInt32 usag
 	if (g_vbVtable == nullptr) {
 		g_originalVbLock =
 			reinterpret_cast<d3d9::VertexBufferLockFn>(vtable[d3d9::kVertexBufferLock]);
-		if (g_originalVbLock != nullptr &&
+		g_originalVbUnlock =
+			reinterpret_cast<d3d9::VertexBufferUnlockFn>(vtable[d3d9::kVertexBufferUnlock]);
+		if (g_originalVbLock != nullptr && g_originalVbUnlock != nullptr &&
 		    WriteTableEntry(vtable, d3d9::kVertexBufferLock,
 		                    reinterpret_cast<void*>(&HookedVbLock))) {
-			g_vbVtable = vtable;
-			OBVR_LOG("Hud: vertex buffer Lock counted from table entry %u",
-			         d3d9::kVertexBufferLock);
+			if (WriteTableEntry(vtable, d3d9::kVertexBufferUnlock,
+			                    reinterpret_cast<void*>(&HookedVbUnlock))) {
+				g_vbVtable = vtable;
+				OBVR_LOG("Hud: vertex buffer Lock and Unlock counted from table "
+				         "entries %u and %u",
+				         d3d9::kVertexBufferLock, d3d9::kVertexBufferUnlock);
+			} else {
+				// Half a patch would leave locks opening entries no unlock
+				// ever closes - put the lock entry back and stand down.
+				WriteTableEntry(vtable, d3d9::kVertexBufferLock,
+				                reinterpret_cast<void*>(g_originalVbLock));
+				g_originalVbLock = nullptr;
+				g_originalVbUnlock = nullptr;
+			}
 		} else {
 			g_originalVbLock = nullptr;
+			g_originalVbUnlock = nullptr;
 		}
 	} else if (vtable != g_vbVtable && !g_vbSecondVtableReported) {
 		g_vbSecondVtableReported = true;

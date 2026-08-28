@@ -106,6 +106,14 @@ struct StateCallCounts {
 	UInt32 dynamicLockOffsetSum = 0;  // their byte offsets summed
 	UInt32 dynamicLockSizeSum = 0;    // their byte sizes summed
 	UInt32 dynamicBufferOverflow = 0;  // discard-locked buffers the set could not hold
+
+	// The bytes those locks actually wrote, fingerprinted at unlock time -
+	// the first moment the written data is complete and the last it is
+	// still mapped. Camera-free like everything else about skinning: two
+	// renders packing the same bodies must write the same leading bytes.
+	UInt32 dynamicWrites = 0;       // pool unlocks whose bytes were fingerprinted
+	UInt32 dynamicWriteSum = 0;     // their leading bytes summed
+	UInt32 dynamicWriteSkipped = 0;  // pool locks whose bytes could not be followed
 };
 
 StateCallCounts TotalStateCalls();

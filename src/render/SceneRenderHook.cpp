@@ -256,6 +256,32 @@ void TraceSkinnedDraws(const StateCallCounts& entry, const StateCallCounts& afte
 	         afterSecond.dynamicBufferOverflow);
 }
 
+// The written bytes of the dynamic pool, fingerprinted at unlock - the
+// last unanswered question on the D3D9 side. Each render packs its own
+// regions with matching counts, offsets and sizes; what no counter has
+// seen yet is whether the second render writes the same bytes. Skinning
+// is camera-free, so matching write sums send the fault past the API
+// into the upload; differing sums mean the engine's own skinning pass
+// computes garbage the second time around, and the fix moves into the
+// game code that packs these buffers.
+void TracePoolWrites(const StateCallCounts& entry, const StateCallCounts& afterFirst,
+                     const StateCallCounts& afterBetween, const StateCallCounts& afterSecond) {
+	if (g_sceneCall % 120 != 0) {
+		return;
+	}
+	OBVR_LOG("Dual pool writes at scene call %u: first %u writes sum %08X skipped %u, "
+	         "between %u/%08X/%u, second %u writes sum %08X skipped %u",
+	         g_sceneCall, afterFirst.dynamicWrites - entry.dynamicWrites,
+	         afterFirst.dynamicWriteSum - entry.dynamicWriteSum,
+	         afterFirst.dynamicWriteSkipped - entry.dynamicWriteSkipped,
+	         afterBetween.dynamicWrites - afterFirst.dynamicWrites,
+	         afterBetween.dynamicWriteSum - afterFirst.dynamicWriteSum,
+	         afterBetween.dynamicWriteSkipped - afterFirst.dynamicWriteSkipped,
+	         afterSecond.dynamicWrites - afterBetween.dynamicWrites,
+	         afterSecond.dynamicWriteSum - afterBetween.dynamicWriteSum,
+	         afterSecond.dynamicWriteSkipped - afterBetween.dynamicWriteSkipped);
+}
+
 // Stands where the entry of kRenderScene used to be, with the same calling
 // convention. See the type alias above for why __fastcall.
 void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTexture) {
@@ -317,6 +343,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	TracePaletteRegisters(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceBindings(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceSkinnedDraws(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
+	TracePoolWrites(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceFrame("dual", passesLastFrame, drawsLastFrame);
 }
 
