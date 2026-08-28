@@ -471,6 +471,7 @@ SInt32 __stdcall HookedSetTransform(void* self, UInt32 state, const d3d9::Matrix
 
 SInt32 __stdcall HookedSetVertexDeclaration(void* self, void* declaration) {
 	++g_stateCalls.declarations;
+	g_stateCalls.declarationSum += reinterpret_cast<UInt32>(declaration);
 	return g_originalSetVertexDecl(self, declaration);
 }
 
@@ -481,7 +482,17 @@ SInt32 __stdcall HookedSetFVF(void* self, UInt32 fvf) {
 
 SInt32 __stdcall HookedSetVertexShader(void* self, void* shader) {
 	++g_stateCalls.vertexShaders;
+	g_stateCalls.vertexShaderSum += reinterpret_cast<UInt32>(shader);
 	return g_originalSetVertexShader(self, shader);
+}
+
+d3d9::SetStreamSourceFn g_originalSetStreamSource = nullptr;
+
+SInt32 __stdcall HookedSetStreamSource(void* self, UInt32 streamNumber, void* streamData,
+                                       UInt32 offsetInBytes, UInt32 stride) {
+	++g_stateCalls.streamSources;
+	g_stateCalls.streamSourceSum += reinterpret_cast<UInt32>(streamData);
+	return g_originalSetStreamSource(self, streamNumber, streamData, offsetInBytes, stride);
 }
 
 SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const float* data,
@@ -720,9 +731,11 @@ bool EnsureTargetHook() {
 		vtable[d3d9::kDeviceSetVertexShader]);
 	g_originalSetVsConstantF = reinterpret_cast<d3d9::SetVertexShaderConstantFFn>(
 		vtable[d3d9::kDeviceSetVertexShaderConstantF]);
+	g_originalSetStreamSource = reinterpret_cast<d3d9::SetStreamSourceFn>(
+		vtable[d3d9::kDeviceSetStreamSource]);
 	if (g_originalSetTransform != nullptr && g_originalSetVertexDecl != nullptr &&
 	    g_originalSetFVF != nullptr && g_originalSetVertexShader != nullptr &&
-	    g_originalSetVsConstantF != nullptr) {
+	    g_originalSetVsConstantF != nullptr && g_originalSetStreamSource != nullptr) {
 		const bool stateHooked =
 			WriteTableEntry(vtable, d3d9::kDeviceSetTransform,
 		                    reinterpret_cast<void*>(&HookedSetTransform)) &&
@@ -733,7 +746,9 @@ bool EnsureTargetHook() {
 			WriteTableEntry(vtable, d3d9::kDeviceSetVertexShader,
 		                    reinterpret_cast<void*>(&HookedSetVertexShader)) &&
 			WriteTableEntry(vtable, d3d9::kDeviceSetVertexShaderConstantF,
-		                    reinterpret_cast<void*>(&HookedSetVsConstantF));
+		                    reinterpret_cast<void*>(&HookedSetVsConstantF)) &&
+			WriteTableEntry(vtable, d3d9::kDeviceSetStreamSource,
+		                    reinterpret_cast<void*>(&HookedSetStreamSource));
 		if (!stateHooked) {
 			OBVR_LOG("Hud: the vertex state counters could not all be installed");
 		}

@@ -428,12 +428,22 @@ constexpr UInt32 kDeviceSetFVF = 89;
 constexpr UInt32 kDeviceSetVertexShader = 92;
 constexpr UInt32 kDeviceSetVertexShaderConstantF = 94;
 
+// SetStreamSource (100), counted from the same listing: the six constant
+// methods 94-99 sit between the verified SetVertexShader (92) pair and it,
+// so a miscount would have moved SetVertexShaderConstantF too. Hooked once
+// the counts all came back symmetric: with software-skinned bodies the
+// question is no longer how often a buffer is bound but which buffer, and
+// the pointer itself is the only witness.
+constexpr UInt32 kDeviceSetStreamSource = 100;
+
 using SetTransformFn = SInt32(__stdcall*)(void* self, UInt32 state, const Matrix4* matrix);
 using SetVertexDeclarationFn = SInt32(__stdcall*)(void* self, void* declaration);
 using SetFVFFn = SInt32(__stdcall*)(void* self, UInt32 fvf);
 using SetVertexShaderFn = SInt32(__stdcall*)(void* self, void* shader);
 using SetVertexShaderConstantFFn = SInt32(__stdcall*)(void* self, UInt32 startRegister,
                                                       const float* data, UInt32 vector4fCount);
+using SetStreamSourceFn = SInt32(__stdcall*)(void* self, UInt32 streamNumber, void* streamData,
+                                             UInt32 offsetInBytes, UInt32 stride);
 
 // CreateVertexBuffer (26), framed by two verified neighbours: CreateTexture
 // (23) three entries up and CreateRenderTarget (28) two entries down.

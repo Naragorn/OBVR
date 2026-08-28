@@ -186,6 +186,33 @@ void TracePaletteRegisters(const StateCallCounts& entry, const StateCallCounts& 
 	         afterSecond.paletteOverflow - entry.paletteOverflow);
 }
 
+// Binding identities per render, after the register split acquitted the
+// constants: the palette registers upload identical bytes to both eyes,
+// and the actors turned out software-skinned - their bones never travel
+// as constants at all. What remains is what each draw is wired to: which
+// vertex buffer, which declaration, which shader. Pointer sums have no
+// camera in them, so the two renders must match sum for sum; the sum that
+// differs names the binding type the second render gets wrong - the
+// declaration slot would be the DXVK issue 2420 shape, the stream slot a
+// repacked buffer the second render does not see.
+void TraceBindings(const StateCallCounts& entry, const StateCallCounts& afterFirst,
+                   const StateCallCounts& afterBetween, const StateCallCounts& afterSecond) {
+	if (g_sceneCall % 120 != 0) {
+		return;
+	}
+	OBVR_LOG("Dual bindings at scene call %u: streams first %u calls sum %08X, second %u "
+	         "calls sum %08X; declarations first %08X second %08X; shaders first %08X "
+	         "second %08X",
+	         g_sceneCall, afterFirst.streamSources - entry.streamSources,
+	         afterFirst.streamSourceSum - entry.streamSourceSum,
+	         afterSecond.streamSources - afterBetween.streamSources,
+	         afterSecond.streamSourceSum - afterBetween.streamSourceSum,
+	         afterFirst.declarationSum - entry.declarationSum,
+	         afterSecond.declarationSum - afterBetween.declarationSum,
+	         afterFirst.vertexShaderSum - entry.vertexShaderSum,
+	         afterSecond.vertexShaderSum - afterBetween.vertexShaderSum);
+}
+
 // Stands where the entry of kRenderScene used to be, with the same calling
 // convention. See the type alias above for why __fastcall.
 void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTexture) {
@@ -245,6 +272,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	TraceBufferLocks(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TracePaletteSums(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TracePaletteRegisters(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
+	TraceBindings(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceFrame("dual", passesLastFrame, drawsLastFrame);
 }
 

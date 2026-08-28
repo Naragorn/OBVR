@@ -83,6 +83,15 @@ struct StateCallCounts {
 	// PaletteBuckets.h for why the split is what makes the sums readable.
 	PaletteRegisterBucket paletteRegisters[kPaletteBucketCount];
 	UInt32 paletteOverflow = 0;  // palette uploads whose register found no bucket
+
+	// Binding identities, not counts. The registers came back clean, so the
+	// question moved to what each render binds: pointer sums are order-
+	// independent fingerprints, and none of these have a camera in them -
+	// two renders of the same scene must produce the same three sums.
+	UInt32 declarationSum = 0;   // vertex declaration pointers, summed
+	UInt32 vertexShaderSum = 0;  // vertex shader pointers, summed
+	UInt32 streamSources = 0;    // SetStreamSource calls
+	UInt32 streamSourceSum = 0;  // stream vertex buffer pointers, summed
 };
 
 StateCallCounts TotalStateCalls();
