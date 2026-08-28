@@ -241,6 +241,42 @@ struct VertexPeek {
 VertexPeek g_vertexPeeks[kVertexPeekSlots];
 UInt32 g_vertexPeekCount = 0;
 
+// Which stretch of the dual frame the recorder is in: 0 first render,
+// 1 between, 2 second render. Set by the pass markers, read by the bone
+// peeks so both renders contribute their share.
+UInt32 g_timelinePhase = 0;
+
+// The first bone-matrix uploads of each render, raw. Equal counts with
+// different sums leave one question: camera-relative palettes differing
+// legitimately by the eye offset, or a second render loading garbage.
+// Twelve floats of the same bone answer it.
+constexpr UInt32 kBonePeeksPerPass = 6;
+struct BonePeek {
+	UInt32 startRegister;
+	float floats[12];
+};
+BonePeek g_bonePeeksFirst[kBonePeeksPerPass];
+BonePeek g_bonePeeksSecond[kBonePeeksPerPass];
+UInt32 g_bonePeekCountFirst = 0;
+UInt32 g_bonePeekCountSecond = 0;
+
+void PeekBoneUpload(UInt32 startRegister, const float* data) {
+	if (!g_timelineArmed) {
+		return;
+	}
+	if (g_timelinePhase == 0 && g_bonePeekCountFirst < kBonePeeksPerPass) {
+		BonePeek& peek = g_bonePeeksFirst[g_bonePeekCountFirst];
+		peek.startRegister = startRegister;
+		std::memcpy(peek.floats, data, sizeof(peek.floats));
+		++g_bonePeekCountFirst;
+	} else if (g_timelinePhase == 2 && g_bonePeekCountSecond < kBonePeeksPerPass) {
+		BonePeek& peek = g_bonePeeksSecond[g_bonePeekCountSecond];
+		peek.startRegister = startRegister;
+		std::memcpy(peek.floats, data, sizeof(peek.floats));
+		++g_bonePeekCountSecond;
+	}
+}
+
 void PeekVertices(void* buffer, UInt32 offset, const void* data, UInt32 size) {
 	if (!g_timelineArmed || g_vertexPeekCount >= kVertexPeekSlots ||
 	    size < kVertexPeekFloats * 4) {
@@ -690,6 +726,9 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
 		const UInt32* bits = reinterpret_cast<const UInt32*>(data);
 		for (UInt32 i = 0; i < vector4fCount * 4; ++i) {
 			g_stateCalls.boneRangeSum += bits[i];
+		}
+		if (vector4fCount == 3) {
+			PeekBoneUpload(startRegister, data);
 		}
 	}
 	if (data != nullptr && vector4fCount >= 12) {
@@ -1549,9 +1588,19 @@ void ArmPoolTimeline() {
 	g_timelineArmed = true;
 	g_timelineCount = 0;
 	g_vertexPeekCount = 0;
+	g_timelinePhase = 0;
+	g_bonePeekCountFirst = 0;
+	g_bonePeekCountSecond = 0;
 }
 
-void MarkPoolTimeline(const char* label) { RecordTimeline('M', label, nullptr, 0, 0, 0); }
+void MarkPoolTimeline(const char* label) {
+	if (std::strcmp(label, "between the passes") == 0) {
+		g_timelinePhase = 1;
+	} else if (std::strcmp(label, "second pass begins") == 0) {
+		g_timelinePhase = 2;
+	}
+	RecordTimeline('M', label, nullptr, 0, 0, 0);
+}
 
 void DumpPoolTimeline() {
 	if (!g_timelineArmed) {
@@ -1588,6 +1637,16 @@ void DumpPoolTimeline() {
 		         "%g %g %g",
 		         p.buffer, p.offset, f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7],
 		         f[8], f[9], f[10], f[11], f[12], f[13], f[14], f[15], f[16], f[17]);
+	}
+	for (UInt32 pass = 0; pass < 2; ++pass) {
+		const BonePeek* peeks = pass == 0 ? g_bonePeeksFirst : g_bonePeeksSecond;
+		const UInt32 count = pass == 0 ? g_bonePeekCountFirst : g_bonePeekCountSecond;
+		for (UInt32 i = 0; i < count; ++i) {
+			const float* f = peeks[i].floats;
+			OBVR_LOG("B pass=%u c%u | %g %g %g %g | %g %g %g %g | %g %g %g %g",
+			         pass == 0 ? 1 : 2, peeks[i].startRegister, f[0], f[1], f[2], f[3],
+			         f[4], f[5], f[6], f[7], f[8], f[9], f[10], f[11]);
+		}
 	}
 }
 
