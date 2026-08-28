@@ -430,7 +430,14 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 			stateAfterFirst.skinnedBaseVertexSum - stateAtEntry.skinnedBaseVertexSum;
 		const UInt32 baseSecond =
 			stateAfterSecond.skinnedBaseVertexSum - stateAfterBetween.skinnedBaseVertexSum;
-		if (drawsFirst == drawsSecond && drawsFirst >= 20 && baseFirst != baseSecond) {
+		// A small base difference is the steady-state collapse - one or two
+		// draws reading a few dozen vertices off. A huge one is a transition
+		// frame (menus reshuffle the pool wholesale) and worth skipping:
+		// the first divergent dump caught an Esc transition whose passes
+		// used different buffers entirely, which is chaos, not the disease.
+		const UInt32 gap = baseFirst > baseSecond ? baseFirst - baseSecond
+		                                          : baseSecond - baseFirst;
+		if (drawsFirst == drawsSecond && drawsFirst >= 20 && gap != 0 && gap <= 2048) {
 			DumpPoolTimeline();
 		}
 	}
