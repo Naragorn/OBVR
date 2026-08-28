@@ -152,6 +152,15 @@ struct StateCallCounts {
 	// the D3D9 implementation than a hardware one.
 	UInt32 swvpToggles = 0;      // SetSoftwareVertexProcessing calls
 	UInt32 swvpOnDraws = 0;      // skinned draws issued while software processing is on
+
+	// The draw addressing itself - the one pair of parameters never
+	// compared. BaseVertexIndex and StartIndex decide which part of a
+	// correct buffer a draw reads; a second render issuing the same draw
+	// with the wrong base reads the wrong vertices out of the right
+	// buffer, and every sum above stays equal while it happens.
+	UInt32 skinnedBaseVertexSum = 0;  // BaseVertexIndex of skinned draws, summed
+	UInt32 skinnedStartIndexSum = 0;  // StartIndex of skinned draws, summed
+	UInt32 skinnedMinVertexSum = 0;   // MinVertexIndex of skinned draws, summed
 };
 
 StateCallCounts TotalStateCalls();

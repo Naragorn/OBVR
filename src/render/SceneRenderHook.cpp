@@ -307,6 +307,14 @@ void TraceZeroMatrixDraws(const StateCallCounts& entry, const StateCallCounts& a
 	         afterSecond.swvpToggles - afterBetween.swvpToggles,
 	         afterFirst.swvpOnDraws - entry.swvpOnDraws,
 	         afterSecond.swvpOnDraws - afterBetween.swvpOnDraws);
+	OBVR_LOG("Dual draw addressing at scene call %u: base first %08X second %08X, "
+	         "min first %08X second %08X, start first %08X second %08X",
+	         g_sceneCall, afterFirst.skinnedBaseVertexSum - entry.skinnedBaseVertexSum,
+	         afterSecond.skinnedBaseVertexSum - afterBetween.skinnedBaseVertexSum,
+	         afterFirst.skinnedMinVertexSum - entry.skinnedMinVertexSum,
+	         afterSecond.skinnedMinVertexSum - afterBetween.skinnedMinVertexSum,
+	         afterFirst.skinnedStartIndexSum - entry.skinnedStartIndexSum,
+	         afterSecond.skinnedStartIndexSum - afterBetween.skinnedStartIndexSum);
 }
 
 // The index side of vertex fetch, mirrored from the vertex side once every

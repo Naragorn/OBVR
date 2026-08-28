@@ -237,6 +237,17 @@ bool g_swvpOn = false;
 d3d9::SetSoftwareVertexProcessingFn g_originalSetSwvp = nullptr;
 
 // The skinned-draw half of the fingerprint, shared by both draw hooks.
+// The indexed hook passes its addressing triple; the plain hook has none.
+void CountSkinnedDrawAddressing(SInt32 baseVertexIndex, UInt32 minVertexIndex,
+                                UInt32 startIndex) {
+	if (g_stream0Buffer == nullptr || !g_dynamicBuffers.Contains(g_stream0Buffer)) {
+		return;
+	}
+	g_stateCalls.skinnedBaseVertexSum += static_cast<UInt32>(baseVertexIndex);
+	g_stateCalls.skinnedMinVertexSum += minVertexIndex;
+	g_stateCalls.skinnedStartIndexSum += startIndex;
+}
+
 void CountSkinnedDraw(UInt32 numVertices, UInt32 primCount) {
 	if (g_stream0Buffer == nullptr || !g_dynamicBuffers.Contains(g_stream0Buffer)) {
 		return;
@@ -478,6 +489,7 @@ SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 base
                                             UInt32 startIndex, UInt32 primCount) {
 	++g_drawsTotal;
 	CountSkinnedDraw(numVertices, primCount);
+	CountSkinnedDrawAddressing(baseVertexIndex, minVertexIndex, startIndex);
 	if ((g_redirecting || g_observing) && g_sampleNextDraw) {
 		g_sampleNextDraw = false;
 		SampleFirstDraw(self, "dip", type, primCount);
