@@ -432,13 +432,19 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	// world-space, so both eyes must see the same ones, and the second
 	// render's own re-evaluation is the collapse.
 	//
-	// The frame clock is zeroed across this render: every time-driven
-	// update inside the walk - animation controllers, the NPC head-aim
-	// that hair and helmets hang from - advances by the frame delta, and
-	// a second render advancing them again is a frame that plays twice.
-	// A delta of zero makes the second walk draw without moving anything.
-	// Touched only when the value reads like a frame delta at all; a
-	// wrong address would read garbage, and garbage is left alone.
+	// The frame clock is all but stopped across this render: every
+	// time-driven update inside the walk - animation controllers, the NPC
+	// head-aim that hair and helmets hang from - advances by the frame
+	// delta, and a second render advancing them again is a frame that
+	// plays twice. But a delta of exactly zero proved too much stillness:
+	// the FaceGen path builds the head parts' render data inside its
+	// time-gated update, and with the gate closed the second render drew
+	// eyes, teeth and hair with the first eye's camera - a parallax
+	// offset that shrank fourfold when the eye separation did. One
+	// microsecond reopens the gate so those rebuilds see the second
+	// eye's camera, while everything animated moves by nothing a human
+	// can see. Touched only when the value reads like a frame delta at
+	// all; a wrong address would read garbage, and garbage is left alone.
 	float* const frameSeconds =
 		reinterpret_cast<float*>(addr::kFrameSecondsAddress);
 	const float savedFrameSeconds = *frameSeconds;
@@ -451,7 +457,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		         clockPlausible ? "zeroed" : "left alone (implausible)");
 	}
 	if (clockPlausible) {
-		*frameSeconds = 0.0f;
+		*frameSeconds = 1.0e-6f;
 	}
 	SetBonePassMode(BonePassMode::Replace);
 	g_original(self, unusedEdx, renderedTexture);
