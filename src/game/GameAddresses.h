@@ -114,6 +114,17 @@ inline constexpr UInt32 kRendererDeviceOffset = 0x280;
 // Expected game version. OBSE reports it as oblivionVersion.
 inline constexpr UInt32 kOblivionVersion_1_2_416 = 0x010201A0;
 
+// The per-frame clock. xOBSE's g_timeInfo points at a TimeInfo structure at
+// 0x00B33E90 whose float at +0x0C is the seconds the last frame took - the
+// delta every time-driven update in the frame advances by. The second world
+// render of a dual frame must not advance anything: animation controllers
+// ticking twice per frame were the player's long-standing stutter, and the
+// NPC head-aim re-running each walk is the sideways helmets. The scene hook
+// zeroes this for the second render and restores it after - guarded by a
+// plausibility check at runtime (a frame delta reads between zero and one),
+// which is the second source for this address.
+inline constexpr UInt32 kFrameSecondsAddress = 0x00B33E9C;
+
 // Whether a menu is up: the main menu, a loading screen, an inventory, the
 // ESC menu, a dialogue. A function rather than a flag, and nullary.
 //

@@ -431,9 +431,34 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	// lock replays the first render's palettes over this one's - bones are
 	// world-space, so both eyes must see the same ones, and the second
 	// render's own re-evaluation is the collapse.
+	//
+	// The frame clock is zeroed across this render: every time-driven
+	// update inside the walk - animation controllers, the NPC head-aim
+	// that hair and helmets hang from - advances by the frame delta, and
+	// a second render advancing them again is a frame that plays twice.
+	// A delta of zero makes the second walk draw without moving anything.
+	// Touched only when the value reads like a frame delta at all; a
+	// wrong address would read garbage, and garbage is left alone.
+	float* const frameSeconds =
+		reinterpret_cast<float*>(addr::kFrameSecondsAddress);
+	const float savedFrameSeconds = *frameSeconds;
+	const bool clockPlausible = savedFrameSeconds >= 0.0f && savedFrameSeconds < 1.0f;
+	static bool s_clockReported = false;
+	if (!s_clockReported) {
+		s_clockReported = true;
+		OBVR_LOG("Dual clock: frame delta reads %.5f s - %s for the second render",
+		         savedFrameSeconds,
+		         clockPlausible ? "zeroed" : "left alone (implausible)");
+	}
+	if (clockPlausible) {
+		*frameSeconds = 0.0f;
+	}
 	SetBonePassMode(BonePassMode::Replace);
 	g_original(self, unusedEdx, renderedTexture);
 	SetBonePassMode(BonePassMode::Off);
+	if (clockPlausible) {
+		*frameSeconds = savedFrameSeconds;
+	}
 	const UInt32 drawsAfterSecond = TotalDrawCount();
 	const StateCallCounts stateAfterSecond = TotalStateCalls();
 	MarkPoolTimeline("frame ends");
