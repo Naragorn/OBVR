@@ -231,7 +231,7 @@ void RecordTimeline(char kind, const char* label, void* buffer, UInt32 a, UInt32
 // for the same body parts; whether those bytes are correct specular for
 // the other camera or a degenerate position is a question sums cannot
 // answer and one vertex can.
-constexpr UInt32 kVertexPeekSlots = 24;
+constexpr UInt32 kVertexPeekSlots = 96;  // both passes' writes, not just the first's
 constexpr UInt32 kVertexPeekFloats = 18;  // one 72-byte vertex
 struct VertexPeek {
 	void* buffer;
