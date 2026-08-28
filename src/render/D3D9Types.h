@@ -450,6 +450,32 @@ constexpr UInt32 kDeviceSetIndices = 104;
 // activates the class vtable patch the moment the hook is installed.
 constexpr UInt32 kFormatIndex16 = 101;
 
+// The vertex processing mode, from the same listing: GetCreationParameters
+// (9, eight entries below the verified Present at 17) says how the device
+// was created, and SetSoftwareVertexProcessing (77, right above the
+// verified SetVertexDeclaration at 87 with nine entries between) is the
+// mid-frame switch a MIXED device may throw per mesh. Watched because a
+// software-vertex-processing draw takes a different path through a D3D9
+// implementation than a hardware one - a difference every counter so far
+// was blind to.
+constexpr UInt32 kDeviceGetCreationParameters = 9;
+constexpr UInt32 kDeviceSetSoftwareVertexProcessing = 77;
+
+// D3DCREATE_* vertex processing bits (d3d9.h, lines 1835-1838).
+constexpr UInt32 kCreateSoftwareVertexProcessing = 0x20;
+constexpr UInt32 kCreateHardwareVertexProcessing = 0x40;
+constexpr UInt32 kCreateMixedVertexProcessing = 0x80;
+
+struct CreationParameters {
+	UInt32 adapterOrdinal;
+	UInt32 deviceType;
+	void* focusWindow;
+	UInt32 behaviorFlags;
+};
+
+using GetCreationParametersFn = SInt32(__stdcall*)(void* self, CreationParameters* parameters);
+using SetSoftwareVertexProcessingFn = SInt32(__stdcall*)(void* self, SInt32 software);
+
 using SetTransformFn = SInt32(__stdcall*)(void* self, UInt32 state, const Matrix4* matrix);
 using SetVertexDeclarationFn = SInt32(__stdcall*)(void* self, void* declaration);
 using SetFVFFn = SInt32(__stdcall*)(void* self, UInt32 fvf);

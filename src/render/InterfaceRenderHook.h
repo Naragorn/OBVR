@@ -145,6 +145,13 @@ struct StateCallCounts {
 	UInt32 ibWriteSum = 0;        // their leading bytes summed
 	UInt32 ibWriteSkipped = 0;    // index writes that could not be followed
 	UInt32 skinnedZeroStrideDraws = 0;  // skinned draws bound with stream-0 stride zero
+
+	// The vertex processing mode, the one axis every counter above was
+	// blind to. A MIXED device may flip SetSoftwareVertexProcessing per
+	// mesh, and a software-processed draw takes a different path through
+	// the D3D9 implementation than a hardware one.
+	UInt32 swvpToggles = 0;      // SetSoftwareVertexProcessing calls
+	UInt32 swvpOnDraws = 0;      // skinned draws issued while software processing is on
 };
 
 StateCallCounts TotalStateCalls();

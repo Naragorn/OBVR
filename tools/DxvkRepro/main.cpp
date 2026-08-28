@@ -32,11 +32,84 @@
 namespace {
 
 // Stride 72 throughout: every recorded lock size divides by its draw's
-// vertex count to exactly 72 bytes. XYZ + normal + three 4D texcoords is
-// 12 + 12 + 48 = 72, which lets fixed function draw the same layout.
+// vertex count to exactly 72 bytes. Position + normal + three 4D texcoords
+// is 12 + 12 + 48 = 72; the declaration below matches, and the vertex
+// shader consumes exactly these inputs.
 constexpr UINT kStride = 72;
-constexpr DWORD kFvf = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3 | D3DFVF_TEXCOORDSIZE4(0) |
-                       D3DFVF_TEXCOORDSIZE4(1) | D3DFVF_TEXCOORDSIZE4(2);
+
+// Iteration three: the game draws through vertex declarations and vs_1_1
+// shaders, never FVF - the live counters showed declarations 58 per pass
+// and fvf 0. This replay does the same: a declaration for the 72-byte
+// layout and a vs_1_1 compiled at startup through d3dcompiler_47, with
+// the ModelViewProj in c0 the way every shader of the game's package
+// declares it, and a 21-vector block at c10 uploaded per draw the way
+// the live traffic does.
+const D3DVERTEXELEMENT9 kDeclaration[] = {
+    {0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+    {0, 12, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_NORMAL, 0},
+    {0, 24, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
+    {0, 40, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 1},
+    {0, 56, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 2},
+    D3DDECL_END()};
+
+const char kShaderSource[] =
+    "float4x4 mvp : register(c0);\n"
+    "struct VSIn { float3 pos : POSITION; float3 n : NORMAL;\n"
+    "              float4 t0 : TEXCOORD0; float4 t1 : TEXCOORD1; float4 t2 : TEXCOORD2; };\n"
+    "struct VSOut { float4 pos : POSITION; float4 color : COLOR0; };\n"
+    "VSOut main(VSIn i) {\n"
+    "  VSOut o;\n"
+    "  o.pos = mul(float4(i.pos, 1.0), mvp);\n"
+    "  o.color = float4(0.5 + 0.5 * i.n, 1.0);\n"
+    "  return o;\n"
+    "}\n";
+
+// d3dcompiler_47, loaded at runtime so no SDK import library is needed.
+struct MiniBlob {
+	void** vtbl;
+	void* Pointer() {
+		using GetPointerFn = void*(__stdcall*)(void*);
+		return reinterpret_cast<GetPointerFn>(vtbl[3])(this);
+	}
+	SIZE_T Size() {
+		using GetSizeFn = SIZE_T(__stdcall*)(void*);
+		return reinterpret_cast<GetSizeFn>(vtbl[4])(this);
+	}
+	void Release() {
+		using ReleaseFn = ULONG(__stdcall*)(void*);
+		reinterpret_cast<ReleaseFn>(vtbl[2])(this);
+	}
+};
+using D3DCompileFn = HRESULT(__stdcall*)(const void* src, SIZE_T srcSize, const char* name,
+                                         const void* defines, void* include, const char* entry,
+                                         const char* target, UINT flags1, UINT flags2,
+                                         MiniBlob** code, MiniBlob** errors);
+
+IDirect3DVertexShader9* CompileShader(IDirect3DDevice9* device) {
+	HMODULE compiler = LoadLibraryA("d3dcompiler_47.dll");
+	if (compiler == nullptr) {
+		std::printf("d3dcompiler_47.dll not found\n");
+		std::exit(2);
+	}
+	auto compile = reinterpret_cast<D3DCompileFn>(GetProcAddress(compiler, "D3DCompile"));
+	MiniBlob* code = nullptr;
+	MiniBlob* errors = nullptr;
+	const HRESULT hr = compile(kShaderSource, sizeof(kShaderSource) - 1, "repro", nullptr,
+	                           nullptr, "main", "vs_1_1", 0, 0, &code, &errors);
+	if (FAILED(hr) || code == nullptr) {
+		std::printf("shader compile failed: %s\n",
+		            errors != nullptr ? static_cast<const char*>(errors->Pointer()) : "?");
+		std::exit(2);
+	}
+	IDirect3DVertexShader9* shader = nullptr;
+	if (FAILED(device->CreateVertexShader(static_cast<const DWORD*>(code->Pointer()),
+	                                      &shader))) {
+		std::printf("CreateVertexShader failed\n");
+		std::exit(2);
+	}
+	code->Release();
+	return shader;
+}
 
 constexpr UINT kTarget = 512;  // backbuffer is kTarget x kTarget
 
@@ -113,8 +186,17 @@ void FillVertices(void* data, const std::string& bufferName, UINT offset, UINT s
 	}
 }
 
+// Identity ModelViewProj for c0 (row-major times mul(v, m) keeps clip
+// coordinates as written), and a deterministic 21-vector block for c10 -
+// the size the live traffic uploads there per draw.
+const float kIdentity[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+
 struct Replayer {
 	IDirect3DDevice9* device = nullptr;
+	IDirect3DVertexDeclaration9* declaration = nullptr;
+	IDirect3DVertexShader9* shader = nullptr;
+	IDirect3DIndexBuffer9* indexBuffers[4] = {};  // index patterns modulo 4/16/64/256
+	float blockC10[21 * 4] = {};
 	std::map<std::string, IDirect3DVertexBuffer9*> buffers;
 	std::map<std::string, UINT> sizes;
 	std::map<std::string, UINT> lastLockOffset;
@@ -159,11 +241,30 @@ struct Replayer {
 		} else if (e.kind == 'D') {
 			IDirect3DVertexBuffer9* buffer = Buffer(e.buffer);
 			device->SetStreamSource(0, buffer, 0, kStride);
-			device->SetFVF(kFvf);
-			const UINT startVertex = lastLockOffset[e.buffer] / kStride;
-			const UINT prims = e.b >= 3 ? (e.b / 3 < e.c ? e.b / 3 : e.c) : 0;
-			if (prims > 0) {
-				device->DrawPrimitive(D3DPT_TRIANGLELIST, startVertex, prims);
+			device->SetVertexDeclaration(declaration);
+			device->SetVertexShader(shader);
+			// The per-draw constant traffic of the live frame: c0 and the
+			// 21-vector block at c10, deterministic on both passes.
+			device->SetVertexShaderConstantF(0, kIdentity, 4);
+			device->SetVertexShaderConstantF(10, blockC10, 21);
+
+			// The largest index pattern that stays inside this draw's
+			// vertex range - the game's meshes reuse vertices heavily, and
+			// modulo patterns imitate that without per-draw index uploads.
+			static const UINT mods[4] = {4, 16, 64, 256};
+			int pick = -1;
+			for (int k = 0; k < 4; ++k) {
+				if (mods[k] <= e.b) {
+					pick = k;
+				}
+			}
+			if (pick >= 0 && e.c > 0) {
+				const UINT primCount = e.c < 4096u / 3u ? e.c : 4096u / 3u;
+				const UINT startVertex = lastLockOffset[e.buffer] / kStride;
+				device->SetIndices(indexBuffers[pick]);
+				device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,
+				                             static_cast<INT>(startVertex), 0, e.b, 0,
+				                             primCount);
 			}
 		}
 	}
@@ -223,6 +324,8 @@ int main(int argc, char** argv) {
 	pp.BackBufferHeight = kTarget;
 	pp.BackBufferFormat = D3DFMT_A8R8G8B8;
 	pp.hDeviceWindow = window;
+	pp.EnableAutoDepthStencil = TRUE;
+	pp.AutoDepthStencilFormat = D3DFMT_D24S8;
 
 	Replayer replay{};
 	if (FAILED(d3d->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, window,
@@ -246,7 +349,39 @@ int main(int argc, char** argv) {
 
 	dev->SetRenderState(D3DRS_LIGHTING, FALSE);
 	dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
-	dev->SetRenderState(D3DRS_ZENABLE, FALSE);
+	dev->SetRenderState(D3DRS_ZENABLE, TRUE);
+
+	if (FAILED(dev->CreateVertexDeclaration(kDeclaration, &replay.declaration))) {
+		std::printf("CreateVertexDeclaration failed\n");
+		return 2;
+	}
+	replay.shader = CompileShader(dev);
+
+	// The static index patterns. Static like the game's own index buffers,
+	// which the live watch showed are never dynamic and never locked.
+	{
+		static const UINT mods[4] = {4, 16, 64, 256};
+		for (int k = 0; k < 4; ++k) {
+			IDirect3DIndexBuffer9* ib = nullptr;
+			if (FAILED(dev->CreateIndexBuffer(4096 * 2, D3DUSAGE_WRITEONLY,
+			                                  D3DFMT_INDEX16, D3DPOOL_DEFAULT, &ib,
+			                                  nullptr))) {
+				std::printf("CreateIndexBuffer failed\n");
+				return 2;
+			}
+			void* data = nullptr;
+			ib->Lock(0, 0, &data, 0);
+			unsigned short* indices = static_cast<unsigned short*>(data);
+			for (UINT i = 0; i < 4096; ++i) {
+				indices[i] = static_cast<unsigned short>(i % mods[k]);
+			}
+			ib->Unlock();
+			replay.indexBuffers[k] = ib;
+		}
+	}
+	for (UINT i = 0; i < 21 * 4; ++i) {
+		replay.blockC10[i] = 0.25f * static_cast<float>(i % 7);
+	}
 
 	std::vector<unsigned char> passOne(kTarget * kTarget * 4);
 	std::vector<unsigned char> passTwo(kTarget * kTarget * 4);
@@ -297,7 +432,7 @@ int main(int argc, char** argv) {
 	const int frames = 10;
 	int worstDiff = 0;
 	for (int frame = 0; frame < frames; ++frame) {
-		dev->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+		dev->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 		dev->BeginScene();
 		for (int r = 0; r < repeat; ++r) {
 			for (const Event& e : passEvents) {
@@ -318,7 +453,7 @@ int main(int argc, char** argv) {
 			replay.RunEvent(e);
 		}
 		dev->EndScene();
-		dev->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+		dev->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 		dev->BeginScene();
 		for (int r = 0; r < repeat; ++r) {
 			for (const Event& e : passEvents) {

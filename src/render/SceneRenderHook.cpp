@@ -301,6 +301,12 @@ void TraceZeroMatrixDraws(const StateCallCounts& entry, const StateCallCounts& a
 	         g_sceneCall, afterFirst.skinnedZeroMatrixDraws - entry.skinnedZeroMatrixDraws,
 	         afterBetween.skinnedZeroMatrixDraws - afterFirst.skinnedZeroMatrixDraws,
 	         afterSecond.skinnedZeroMatrixDraws - afterBetween.skinnedZeroMatrixDraws);
+	OBVR_LOG("Dual vertex processing at scene call %u: toggles first %u second %u, "
+	         "software-processed skinned draws first %u second %u",
+	         g_sceneCall, afterFirst.swvpToggles - entry.swvpToggles,
+	         afterSecond.swvpToggles - afterBetween.swvpToggles,
+	         afterFirst.swvpOnDraws - entry.swvpOnDraws,
+	         afterSecond.swvpOnDraws - afterBetween.swvpOnDraws);
 }
 
 // The index side of vertex fetch, mirrored from the vertex side once every

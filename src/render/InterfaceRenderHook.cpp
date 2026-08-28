@@ -231,6 +231,11 @@ void RecordTimeline(char kind, const char* label, void* buffer, UInt32 a, UInt32
 // onto one clip-space point.
 bool g_lastC0Zero = false;
 
+// Whether software vertex processing is currently on - flipped by the hook
+// below, read at every skinned draw.
+bool g_swvpOn = false;
+d3d9::SetSoftwareVertexProcessingFn g_originalSetSwvp = nullptr;
+
 // The skinned-draw half of the fingerprint, shared by both draw hooks.
 void CountSkinnedDraw(UInt32 numVertices, UInt32 primCount) {
 	if (g_stream0Buffer == nullptr || !g_dynamicBuffers.Contains(g_stream0Buffer)) {
@@ -246,7 +251,16 @@ void CountSkinnedDraw(UInt32 numVertices, UInt32 primCount) {
 	if (g_stream0Stride == 0) {
 		++g_stateCalls.skinnedZeroStrideDraws;
 	}
+	if (g_swvpOn) {
+		++g_stateCalls.swvpOnDraws;
+	}
 	RecordTimeline('D', nullptr, g_stream0Buffer, g_stream0Offset, numVertices, primCount);
+}
+
+SInt32 __stdcall HookedSetSoftwareVertexProcessing(void* self, SInt32 software) {
+	++g_stateCalls.swvpToggles;
+	g_swvpOn = software != 0;
+	return g_originalSetSwvp(self, software);
 }
 
 d3d9::CreateVertexBufferFn g_originalCreateVertexBuffer = nullptr;
@@ -998,6 +1012,28 @@ bool EnsureTargetHook() {
 		if (!stateHooked) {
 			OBVR_LOG("Hud: the vertex state counters could not all be installed");
 		}
+	}
+
+	// The vertex processing axis: how the device was created, and the
+	// mid-frame software/hardware switch a MIXED device may throw.
+	d3d9::CreationParameters creation{};
+	if (d3d9::Method<d3d9::GetCreationParametersFn>(
+	        device, d3d9::kDeviceGetCreationParameters)(device, &creation) >= 0) {
+		OBVR_LOG("Hud: device behavior flags %08X - %s vertex processing",
+		         creation.behaviorFlags,
+		         (creation.behaviorFlags & d3d9::kCreateMixedVertexProcessing) != 0
+		             ? "MIXED"
+		             : (creation.behaviorFlags & d3d9::kCreateSoftwareVertexProcessing) != 0
+		                   ? "SOFTWARE"
+		                   : "HARDWARE");
+	}
+	g_originalSetSwvp = reinterpret_cast<d3d9::SetSoftwareVertexProcessingFn>(
+		vtable[d3d9::kDeviceSetSoftwareVertexProcessing]);
+	if (g_originalSetSwvp == nullptr ||
+	    !WriteTableEntry(vtable, d3d9::kDeviceSetSoftwareVertexProcessing,
+	                     reinterpret_cast<void*>(&HookedSetSoftwareVertexProcessing))) {
+		g_originalSetSwvp = nullptr;
+		OBVR_LOG("Hud: the software vertex processing switch could not be counted");
 	}
 
 	// The vertex buffer counter reaches its class vtable through the next
