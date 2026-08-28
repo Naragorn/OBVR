@@ -31,6 +31,13 @@ struct Config {
 	// In [Look], hot-reloadable both ways.
 	bool dialogZoom = false;
 
+	// Whether the shim keeps vanilla's habit of flipping a third-person
+	// player into first person for a conversation and back after it. On by
+	// default because that is the vanilla feel the zoom removal should not
+	// have taken; off leaves the point of view entirely alone. Read live by
+	// the shim, so the hot reload reaches it mid-session.
+	bool dialogFirstPerson = true;
+
 	// How often the camera state is logged, in frames. 0 turns the running
 	// log off; state changes are still reported.
 	UInt32 logEveryFrames = 0;

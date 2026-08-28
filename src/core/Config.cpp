@@ -337,6 +337,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.tracker.menuSingleBorder =
 		ReadBool("Render", "MenuSingleBorder", config.tracker.menuSingleBorder, path);
 	config.dialogZoom = ReadBool("Look", "DialogZoom", config.dialogZoom, path);
+	config.dialogFirstPerson =
+		ReadBool("Look", "DialogFirstPerson", config.dialogFirstPerson, path);
 	config.tracker.menusInWorld =
 		ReadMenusInWorld("Render", "Menus", config.tracker.menusInWorld, path);
 	config.tracker.hudDistanceMetres =
@@ -465,10 +467,11 @@ bool Config::Load(const char* fileName) {
 	         static_cast<double>(tracker.hudDistanceMetres),
 	         static_cast<double>(tracker.hudWidthMetres));
 	OBVR_LOG("Config: Render.MenuShade=%d Color=%06X Strength=%.2f MenuSingleBorder=%d "
-	         "Look.DialogZoom=%d",
+	         "Look.DialogZoom=%d DialogFirstPerson=%d",
 	         tracker.menuShade ? 1 : 0, tracker.menuShadeColorRgb,
 	         static_cast<double>(tracker.menuShadeStrength),
-	         tracker.menuSingleBorder ? 1 : 0, dialogZoom ? 1 : 0);
+	         tracker.menuSingleBorder ? 1 : 0, dialogZoom ? 1 : 0,
+	         dialogFirstPerson ? 1 : 0);
 	// The suppressed case is named rather than silently corrected. Menus=world
 	// without HudOverlay would deliver the world in stereo with the menu
 	// nowhere at all - the eyes are captured before the 2D pass draws, so the

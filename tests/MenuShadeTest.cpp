@@ -11,7 +11,9 @@
 
 namespace {
 
+using obvr::game::DecideDialogPov;
 using obvr::game::DecideDialogZoom;
+using obvr::game::DialogPovAction;
 using obvr::game::DialogZoomAction;
 using obvr::render::CommonWindowInEye;
 using obvr::render::ComposeShadeColor;
@@ -148,6 +150,41 @@ void TestDialogZoomDecision() {
 	      "zoom wanted and untouched rests");
 }
 
+void TestDialogPovDecision() {
+	std::printf("Dialogue point-of-view decisions\n");
+
+	// A conversation starting with a third-person player flips - and it
+	// flips WHATEVER the latch says. The first version asked the latch too,
+	// and when the game's call pattern left it set, every dialogue after the
+	// first went unflipped. This is the flow that pins the fix.
+	Check(DecideDialogPov(true, true, false, true) == DialogPovAction::FlipToFirst,
+	      "a starting conversation flips a third-person player");
+	Check(DecideDialogPov(true, true, true, true) == DialogPovAction::FlipToFirst,
+	      "even with the latch still set from a lost ending");
+
+	// A first-person player is already where the flip would put them.
+	Check(DecideDialogPov(true, false, false, true) == DialogPovAction::Nothing,
+	      "a first-person player is left alone");
+	Check(DecideDialogPov(true, false, true, true) == DialogPovAction::Nothing,
+	      "also when a flip is still latched - the view is already right");
+
+	// The feature switch gates the flip and only the flip.
+	Check(DecideDialogPov(true, true, false, false) == DialogPovAction::Nothing,
+	      "with the feature off a starting conversation changes nothing");
+	Check(DecideDialogPov(false, false, true, false) == DialogPovAction::FlipBack,
+	      "but a flip already made is still cleaned up when the conversation ends");
+
+	// The end undoes OBVR's own flip and nothing else.
+	Check(DecideDialogPov(false, false, true, true) == DialogPovAction::FlipBack,
+	      "the end flips back what the start flipped");
+	Check(DecideDialogPov(false, false, false, true) == DialogPovAction::Nothing,
+	      "and leaves a player who was never flipped alone");
+	Check(DecideDialogPov(false, true, false, true) == DialogPovAction::Nothing,
+	      "including one already back in third person");
+	Check(DecideDialogPov(false, true, true, true) == DialogPovAction::FlipBack,
+	      "a latched flip is undone even if the view already looks third person");
+}
+
 }  // namespace
 
 int main() {
@@ -156,6 +193,7 @@ int main() {
 	TestCommonWindow();
 	TestEdgeStrips();
 	TestDialogZoomDecision();
+	TestDialogPovDecision();
 
 	if (g_failures != 0) {
 		std::printf("%d failure(s)\n", g_failures);

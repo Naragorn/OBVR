@@ -1,5 +1,6 @@
 #include "game/DialogZoom.h"
 
+#include "core/Config.h"
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "core/Types.h"
@@ -29,6 +30,13 @@ bool g_flippedForDialog = false;
 // and the byte argument travels the stack in both.
 using ToggleCameraFn = void(__fastcall*)(UInt8* self, void* edx, UInt8 firstPerson);
 
+// How many shim invocations are still logged. The game's call pattern for
+// SetDialogCamera - how often, with which arguments, at a conversation's
+// start, middle and end - has never been observed, only assumed, and the
+// first assumption (start once, end once) cost the second dialogue its
+// flip. These lines are what replaces the assumption.
+UInt32 g_shimReportsLeft = 12;
+
 // The stand-in for SetDialogCamera. Reached by jmp, so the register and
 // stack state are exactly the original call's: this in ecx, then the Actor,
 // the float and the byte on the stack - which is precisely what a __fastcall
@@ -39,26 +47,42 @@ using ToggleCameraFn = void(__fastcall*)(UInt8* self, void* edx, UInt8 firstPers
 // starts (a non-null Actor) and back when it ends (null) - vanilla does this
 // through the very same ToggleCamera, and losing it was the bare ret's
 // mistake. Dropped: the camera transition, which is the zoom and the dead
-// time it spends.
-void __fastcall DialogCameraShim(UInt8* player, void* /*edx*/, void* actor, float /*focus*/,
-                                 UInt32 /*flag*/) {
+// time it spends. The flip itself is switchable: Look.DialogFirstPerson,
+// on by default, read live so the hot reload reaches it.
+void __fastcall DialogCameraShim(UInt8* player, void* /*edx*/, void* actor, float focus,
+                                 UInt32 flag) {
 	if (player == nullptr) {
 		return;
 	}
 
-	auto toggleCamera = reinterpret_cast<ToggleCameraFn>(addr::kToggleCamera);
+	const bool isThirdPerson = player[addr::kPlayerIsThirdPersonOffset] != 0;
+	const DialogPovAction action =
+		DecideDialogPov(actor != nullptr, isThirdPerson, g_flippedForDialog,
+	                    GetConfig().dialogFirstPerson);
 
-	if (actor != nullptr) {
-		if (!g_flippedForDialog && player[addr::kPlayerIsThirdPersonOffset] != 0) {
-			g_flippedForDialog = true;
-			toggleCamera(player, nullptr, 1);
-		}
-		return;
+	if (g_shimReportsLeft > 0) {
+		--g_shimReportsLeft;
+		OBVR_LOG("Dialog: SetDialogCamera(actor=%p, focus=%g, flag=%u), third person=%d - "
+		         "%s",
+		         actor, static_cast<double>(focus), flag, isThirdPerson ? 1 : 0,
+		         action == DialogPovAction::FlipToFirst
+		             ? "flipping to first person"
+		             : (action == DialogPovAction::FlipBack ? "flipping back to third"
+		                                                    : "nothing to do"));
 	}
 
-	if (g_flippedForDialog) {
-		g_flippedForDialog = false;
-		toggleCamera(player, nullptr, 0);
+	auto toggleCamera = reinterpret_cast<ToggleCameraFn>(addr::kToggleCamera);
+	switch (action) {
+		case DialogPovAction::Nothing:
+			return;
+		case DialogPovAction::FlipToFirst:
+			g_flippedForDialog = true;
+			toggleCamera(player, nullptr, 1);
+			return;
+		case DialogPovAction::FlipBack:
+			g_flippedForDialog = false;
+			toggleCamera(player, nullptr, 0);
+			return;
 	}
 }
 
