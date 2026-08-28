@@ -803,11 +803,10 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	++g_state.frameCount;
 	MaybeReloadConfig();
 
-	// Held per frame rather than applied once: the game reads its INI into
-	// the setting slot on its own schedule, and re-asserting a float compare
-	// per frame is cheaper than knowing that schedule. The first frame here
-	// is also the right moment to capture the person's own value - by now
-	// the INI has long been read.
+	// Asked per frame, acted on only when the wish and the patch disagree -
+	// which is the first frame, and any frame after the INI hot-reloads the
+	// other way. Applied from here rather than plugin load so the code being
+	// patched has long finished initialising.
 	game::ApplyDialogZoom(GetConfig().dialogZoom);
 
 	// The counter frequency is fixed for the lifetime of the process, so it

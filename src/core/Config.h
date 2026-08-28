@@ -24,10 +24,11 @@ struct Config {
 
 	// Whether the game's dialogue camera zoom is left alive. Off by default:
 	// in a headset the zoom itself never shows - OBVR owns the camera - and
-	// what remains of it is unwanted. Off, the fDlgFocus setting is held at
-	// the no-zoom figure in memory, whatever the person's Oblivion.ini says -
-	// the community's own remedy, applied without touching their file. In
-	// [Look], hot-reloadable both ways; on again returns their own value.
+	// the transition it rides on showed up twice, first as a dead pause and
+	// then as a grey flash at every dialogue's end. Off, SetDialogCamera is
+	// patched to return immediately, so the transition never starts at all;
+	// see DialogZoom.h for why the gentler fDlgFocus override lost this job.
+	// In [Look], hot-reloadable both ways.
 	bool dialogZoom = false;
 
 	// How often the camera state is logged, in frames. 0 turns the running
