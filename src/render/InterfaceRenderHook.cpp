@@ -248,7 +248,10 @@ void CountSkinnedDrawAddressing(SInt32 baseVertexIndex, UInt32 minVertexIndex,
 	g_stateCalls.skinnedStartIndexSum += startIndex;
 }
 
-void CountSkinnedDraw(UInt32 numVertices, UInt32 primCount) {
+// vertexBase is the draw's BaseVertexIndex (StartVertex for the non-indexed
+// hook) - the addressing whose per-pass sums differ while everything else
+// matches, and therefore the one number the timeline has to carry per draw.
+void CountSkinnedDraw(UInt32 vertexBase, UInt32 numVertices, UInt32 primCount) {
 	if (g_stream0Buffer == nullptr || !g_dynamicBuffers.Contains(g_stream0Buffer)) {
 		return;
 	}
@@ -265,7 +268,7 @@ void CountSkinnedDraw(UInt32 numVertices, UInt32 primCount) {
 	if (g_swvpOn) {
 		++g_stateCalls.swvpOnDraws;
 	}
-	RecordTimeline('D', nullptr, g_stream0Buffer, g_stream0Offset, numVertices, primCount);
+	RecordTimeline('D', nullptr, g_stream0Buffer, vertexBase, numVertices, primCount);
 }
 
 SInt32 __stdcall HookedSetSoftwareVertexProcessing(void* self, SInt32 software) {
@@ -468,7 +471,7 @@ SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex
                                      UInt32 primitiveCount) {
 	++g_drawsTotal;
 	// No vertex count in this signature; the primitive count still travels.
-	CountSkinnedDraw(0, primitiveCount);
+	CountSkinnedDraw(startVertex, 0, primitiveCount);
 	if ((g_redirecting || g_observing) && g_sampleNextDraw) {
 		g_sampleNextDraw = false;
 		SampleFirstDraw(self, "dp", type, primitiveCount);
@@ -488,7 +491,7 @@ SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 base
                                             UInt32 minVertexIndex, UInt32 numVertices,
                                             UInt32 startIndex, UInt32 primCount) {
 	++g_drawsTotal;
-	CountSkinnedDraw(numVertices, primCount);
+	CountSkinnedDraw(static_cast<UInt32>(baseVertexIndex), numVertices, primCount);
 	CountSkinnedDrawAddressing(baseVertexIndex, minVertexIndex, startIndex);
 	if ((g_redirecting || g_observing) && g_sampleNextDraw) {
 		g_sampleNextDraw = false;
@@ -1531,7 +1534,7 @@ void DumpPoolTimeline() {
 				OBVR_LOG("T unlock %p sum=%08X", e.buffer, e.a);
 				break;
 			case 'D':
-				OBVR_LOG("T draw   %p o=%u v=%u p=%u", e.buffer, e.a, e.b, e.c);
+				OBVR_LOG("T draw   %p b=%u v=%u p=%u", e.buffer, e.a, e.b, e.c);
 				break;
 			default:
 				break;
