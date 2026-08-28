@@ -7,6 +7,7 @@
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
 #include "platform/Win32Min.h"
+#include "render/BoneRebase.h"
 #include "render/D3D9Types.h"
 #include "render/GameDevice.h"
 #include "render/LockLedger.h"
@@ -271,12 +272,22 @@ BonePeek g_boneMismatchSecond;   // the second render's version
 
 BonePassMode g_boneMode = BonePassMode::Off;
 
-// Called for every bone-shaped upload (register forty and up, exactly
-// three vectors). During the first render it records; during the second
-// it hands back the first render's floats for the same position in the
-// stream - the lock - and keeps the first disagreeing pair as evidence
-// when the timeline recorder is armed. Returns null when the upload is
-// to pass through unchanged.
+// The frame's eye-baseline estimate and the scratch row a rebased upload
+// is served from. One scratch is enough: the device consumes the pointer
+// inside the same SetVertexShaderConstantF call, and the game's D3D9 use
+// is single-threaded.
+EyeDeltaEstimate g_eyeDelta;
+float g_boneRebaseRow[kBoneRowFloats];
+
+// Called for every bone-shaped upload (the three register classes, exactly
+// three vectors). During the first render it records; during the second it
+// pairs each arriving row with the first render's version of the same bone
+// and judges the translation: within the eye baseline means the row is
+// correct for this eye and passes through (and measures the baseline),
+// a body length off means the engine re-evaluated the skeleton onto the
+// wrong instance and the first render's row comes back rebased by the
+// measured baseline. See BoneRebase.h for why blanket replacement was
+// wrong. Returns null when the upload is to pass through unchanged.
 const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 	if (g_boneMode == BonePassMode::Capture) {
 		if (g_boneLogCount < kBoneLogCapacity) {
@@ -321,8 +332,18 @@ const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 		    std::memcmp(f + 8, data + 8, 12) != 0) {
 			continue;
 		}
-		if (g_timelineArmed &&
-		    std::memcmp(f, data, sizeof(candidate.floats)) != 0) {
+		// Same bone. Correct rows differ from their pair by the eye baseline
+		// and keep their own translation - that difference IS the second
+		// eye's parallax; mixed-up rows are a body length off and get the
+		// first render's translation rebased into this eye.
+		const float distSq = BoneTranslationDistSq(data, f);
+		if (JudgeBoneRow(distSq, kBoneMixupThresholdSq) == BoneRowVerdict::Correct) {
+			AddEyeDeltaSample(g_eyeDelta, data, f);
+			g_boneCompareIndex = probe + 1;
+			++g_stateCalls.boneLockKept;
+			return nullptr;
+		}
+		if (g_timelineArmed) {
 			if (g_boneMismatchCount == 0) {
 				g_boneMismatchAt = probe;
 				g_boneMismatchFirst = candidate;
@@ -332,9 +353,12 @@ const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 			}
 			++g_boneMismatchCount;
 		}
+		float delta[3];
+		CurrentEyeDelta(g_eyeDelta, delta);
+		RebaseBoneRow(g_boneRebaseRow, f, delta);
 		g_boneCompareIndex = probe + 1;
 		++g_stateCalls.boneLockReplaced;
-		return f;
+		return g_boneRebaseRow;
 	}
 	++g_stateCalls.boneLockPassthrough;
 	return nullptr;
@@ -1756,7 +1780,13 @@ void SetBonePassMode(BonePassMode mode) {
 		g_boneLogCount = 0;
 	} else if (mode == BonePassMode::Replace) {
 		g_boneCompareIndex = 0;
+		BeginEyeDeltaFrame(g_eyeDelta);
 	}
+}
+
+void GetBoneEyeDelta(float out[3], UInt32& samples) {
+	CurrentEyeDelta(g_eyeDelta, out);
+	samples = g_eyeDelta.samples;
 }
 
 void TakeInterfaceStats(UInt32& passes, UInt32& draws) {

@@ -303,9 +303,15 @@ void TraceZeroMatrixDraws(const StateCallCounts& entry, const StateCallCounts& a
 	         afterSecond.swvpToggles - afterBetween.swvpToggles,
 	         afterFirst.swvpOnDraws - entry.swvpOnDraws,
 	         afterSecond.swvpOnDraws - afterBetween.swvpOnDraws);
-	OBVR_LOG("Bone lock at scene call %u: replaced %u, passthrough %u",
-	         g_sceneCall, afterSecond.boneLockReplaced - entry.boneLockReplaced,
-	         afterSecond.boneLockPassthrough - entry.boneLockPassthrough);
+	float eyeDelta[3];
+	UInt32 eyeDeltaSamples = 0;
+	GetBoneEyeDelta(eyeDelta, eyeDeltaSamples);
+	OBVR_LOG("Bone lock at scene call %u: kept %u, rebased %u, passthrough %u, "
+	         "eye delta %g %g %g from %u rows",
+	         g_sceneCall, afterSecond.boneLockKept - entry.boneLockKept,
+	         afterSecond.boneLockReplaced - entry.boneLockReplaced,
+	         afterSecond.boneLockPassthrough - entry.boneLockPassthrough,
+	         eyeDelta[0], eyeDelta[1], eyeDelta[2], eyeDeltaSamples);
 	OBVR_LOG("Dual bone range at scene call %u: first %u calls %u vecs sum %08X, "
 	         "second %u calls %u vecs sum %08X",
 	         g_sceneCall, afterFirst.boneRangeCalls - entry.boneRangeCalls,
@@ -428,9 +434,12 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	MarkPoolTimeline("second pass begins");
 
 	// Second eye, from a camera one interpupillary distance over. The bone
-	// lock replays the first render's palettes over this one's - bones are
-	// world-space, so both eyes must see the same ones, and the second
-	// render's own re-evaluation is the collapse.
+	// lock judges this render's palettes against the first render's: the
+	// palettes are camera-relative, correct rows differ by exactly the eye
+	// baseline and pass through, and only the instance mixups - the
+	// collapse - get the first render's row back, rebased into this eye.
+	// (The stereo headset exposed what the monitor could not: the earlier
+	// blanket replay froze every skinned body at the first eye's position.)
 	//
 	// The frame clock is zeroed across this render: every time-driven
 	// update inside the walk - animation controllers, the NPC head-aim
@@ -442,12 +451,6 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	// added a vertical component, so zero stands.) Touched only when the
 	// value reads like a frame delta at all; a wrong address would read
 	// garbage, and garbage is left alone.
-	//
-	// Known remainder, tracked as its own task: eyes, teeth and hair sit
-	// one eye-parallax beside the face in the second render, in every lock
-	// variant, scaling with the eye separation. The face itself is the
-	// suspect - a lazily packed FaceGen mesh built once with the first
-	// render's camera - and the fix lives in that path, not here.
 	float* const frameSeconds =
 		reinterpret_cast<float*>(addr::kFrameSecondsAddress);
 	const float savedFrameSeconds = *frameSeconds;

@@ -171,9 +171,12 @@ struct StateCallCounts {
 	UInt32 boneRangeVectors = 0;
 	UInt32 boneRangeSum = 0;  // float bits summed - bone matrices carry no camera
 
-	// The bone lock at work: how many second-render bone uploads were
-	// replaced with the first render's values, and how many arrived after
-	// a sequence mismatch stopped the replacing for the rest of the frame.
+	// The bone lock at work: kept is second-render rows judged correct for
+	// their eye (translation within the eye baseline of their pair) and
+	// passed through untouched; replaced is instance mixups served the
+	// first render's row rebased into this eye; passthrough is rows whose
+	// rotation matched nothing the first render uploaded.
+	UInt32 boneLockKept = 0;
 	UInt32 boneLockReplaced = 0;
 	UInt32 boneLockPassthrough = 0;
 };
@@ -193,17 +196,26 @@ void DumpPoolTimeline();
 bool PoolTimelineWasDumped();
 
 // The bone lock. Oblivion's second world render of a frame re-evaluates
-// its skeletons and uploads partly different bone palettes - and they are
-// wrong: palettes are world-space (the probes showed the first uploads
-// bit-identical between the renders, not eye-offset), so both renders
-// must upload the same ones, and the collapsed bodies are the draws that
-// got the re-evaluated ones. BioShock VR hit the identical failure on its
-// sequential stereo and cured it the same way: keep the first render's
-// bone transforms and reapply them on the second. The scene hook drives
-// the mode per frame: capture during the first render, replace during the
-// second, off in between and outside dual frames.
+// its skeletons and some of the re-evaluated palettes land on the wrong
+// same-posed instance - translation a body length off, rotation intact -
+// and those draws are the collapsed bodies. The palettes turned out
+// camera-relative (matched rows differ between the renders by exactly the
+// eye baseline, ~4.6 units at 66mm IPD), so the cure is selective: rows
+// within the eye baseline of their first-render pair are correct for this
+// eye and pass through, only the mixed-up ones get the first render's row
+// back, rebased by the baseline the correct rows measured. BioShock VR's
+// blanket "reapply cached bone transforms" was the trailhead, but applied
+// wholesale it takes the second eye's parallax away from every skinned
+// body. The scene hook drives the mode per frame: capture during the
+// first render, replace during the second, off in between and outside
+// dual frames.
 enum class BonePassMode { Off, Capture, Replace };
 void SetBonePassMode(BonePassMode mode);
+
+// The current frame's eye-baseline estimate and how many correct rows have
+// measured it so far - the self-verification line reads it after the
+// second render. See BoneRebase.h.
+void GetBoneEyeDelta(float out[3], UInt32& samples);
 
 // How many times the 2D pass was entered since this was last asked, and how
 // many primitives it drew in those passes; both zero afterwards. The scene

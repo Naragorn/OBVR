@@ -319,6 +319,18 @@ endif()
 
 add_test(NAME palette_buckets COMMAND palette_buckets_test)
 
+add_executable(bone_rebase_test
+	BoneRebaseTest.cpp
+)
+
+target_include_directories(bone_rebase_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(bone_rebase_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME bone_rebase COMMAND bone_rebase_test)
+
 add_executable(d3d9_types_test
 	D3D9TypesTest.cpp
 )
