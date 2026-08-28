@@ -1,8 +1,8 @@
-// Checks the decision half of the bone lock: which second-render bone rows
-// are correct for their eye and which are instance mixups, and what a mixup
-// is served instead. The stakes are stereo itself - a Keep verdict on a
-// mixup collapses a body, a Mixup verdict on a correct row takes the
-// second eye's parallax away.
+// Checks the geometry half of the bone lock: which second-render rows count
+// as baseline measurements, how the palette convention's sign is calibrated
+// against the camera shift, which delta a replaced row is shifted by, and
+// that the shift never touches the rotation fingerprint. The stakes are
+// stereo itself - a wrong delta moves every skinned body off its eye.
 
 #include <cstdio>
 #include <cstring>
@@ -13,14 +13,17 @@ namespace {
 
 using obvr::render::AddEyeDeltaSample;
 using obvr::render::BeginEyeDeltaFrame;
-using obvr::render::BoneRowVerdict;
 using obvr::render::BoneTranslationDistSq;
+using obvr::render::CalibrateShiftSign;
+using obvr::render::ChooseRebaseDelta;
 using obvr::render::CurrentEyeDelta;
 using obvr::render::EyeDeltaEstimate;
-using obvr::render::JudgeBoneRow;
+using obvr::render::IsEyeBaselineSample;
 using obvr::render::kBoneMixupThresholdSq;
 using obvr::render::kBoneRowFloats;
+using obvr::render::kBoneStaleThresholdSq;
 using obvr::render::RebaseBoneRow;
+using obvr::render::ShiftSign;
 
 int g_failures = 0;
 
@@ -42,6 +45,15 @@ void MakeRow(float* row, float tx, float ty, float tz) {
 	row[11] = tz;
 }
 
+// Feeds the estimator one sample of exactly (dx, dy, dz).
+void FeedSample(EyeDeltaEstimate& e, float dx, float dy, float dz) {
+	float logged[kBoneRowFloats];
+	float incoming[kBoneRowFloats];
+	MakeRow(logged, 0.0f, 0.0f, 0.0f);
+	MakeRow(incoming, dx, dy, dz);
+	AddEyeDeltaSample(e, incoming, logged);
+}
+
 void TestTranslationDistance() {
 	std::printf("Translation distance\n");
 
@@ -57,28 +69,25 @@ void TestTranslationDistance() {
 	Check(BoneTranslationDistSq(a, b) == 25.0f, "rotation floats do not count");
 }
 
-void TestVerdict() {
-	std::printf("Verdict\n");
+void TestBaselineBand() {
+	std::printf("Baseline band\n");
 
-	Check(JudgeBoneRow(0.0f, kBoneMixupThresholdSq) == BoneRowVerdict::Correct,
-	      "identical translations are correct");
+	Check(!IsEyeBaselineSample(0.0f), "bit-identical rows measure nothing");
+	Check(!IsEyeBaselineSample(kBoneStaleThresholdSq),
+	      "the stale threshold itself is still stale");
 	// The eye baseline measured in the log: (-4.22, -1.87, -0.16).
 	const float eyeSq = 4.22f * 4.22f + 1.87f * 1.87f + 0.16f * 0.16f;
-	Check(JudgeBoneRow(eyeSq, kBoneMixupThresholdSq) == BoneRowVerdict::Correct,
-	      "the measured eye baseline is correct");
-	Check(JudgeBoneRow(kBoneMixupThresholdSq, kBoneMixupThresholdSq) ==
-	          BoneRowVerdict::Correct,
-	      "the threshold itself still passes");
+	Check(IsEyeBaselineSample(eyeSq), "the measured eye baseline is a sample");
+	Check(IsEyeBaselineSample(kBoneMixupThresholdSq),
+	      "the mixup threshold itself still measures");
 	// The instance mixup measured in the probes: ~85 units apart.
-	Check(JudgeBoneRow(85.0f * 85.0f, kBoneMixupThresholdSq) == BoneRowVerdict::Mixup,
-	      "a body length apart is a mixup");
-	Check(JudgeBoneRow(kBoneMixupThresholdSq + 1.0f, kBoneMixupThresholdSq) ==
-	          BoneRowVerdict::Mixup,
-	      "just past the threshold is a mixup");
+	Check(!IsEyeBaselineSample(85.0f * 85.0f), "a body length apart is a mixup");
+	Check(!IsEyeBaselineSample(kBoneMixupThresholdSq + 1.0f),
+	      "just past the mixup threshold measures nothing");
 }
 
-void TestDeltaBeforeAnySample() {
-	std::printf("Delta before any sample\n");
+void TestMeasurementStates() {
+	std::printf("Measurement states\n");
 
 	EyeDeltaEstimate e;
 	float delta[3] = {9.0f, 9.0f, 9.0f};
@@ -87,69 +96,101 @@ void TestDeltaBeforeAnySample() {
 	      "no samples ever means delta zero - the old blanket lock");
 
 	BeginEyeDeltaFrame(e);
-	CurrentEyeDelta(e, delta);
-	Check(delta[0] == 0.0f && delta[1] == 0.0f && delta[2] == 0.0f,
-	      "an empty frame does not invent a fallback");
-}
-
-void TestDeltaWithinFrame() {
-	std::printf("Delta within a frame\n");
-
-	EyeDeltaEstimate e;
-	BeginEyeDeltaFrame(e);
-
-	float logged[kBoneRowFloats];
-	float incoming[kBoneRowFloats];
-	MakeRow(logged, 100.0f, 200.0f, 300.0f);
-	MakeRow(incoming, 96.0f, 198.0f, 300.0f);
-	AddEyeDeltaSample(e, incoming, logged);
-
-	float delta[3];
+	FeedSample(e, -4.0f, -2.0f, 0.0f);
 	CurrentEyeDelta(e, delta);
 	Check(delta[0] == -4.0f && delta[1] == -2.0f && delta[2] == 0.0f,
 	      "one sample is the delta verbatim");
 
-	MakeRow(logged, 0.0f, 0.0f, 0.0f);
-	MakeRow(incoming, -6.0f, -4.0f, 0.0f);
-	AddEyeDeltaSample(e, incoming, logged);
+	FeedSample(e, -6.0f, -4.0f, 0.0f);
 	CurrentEyeDelta(e, delta);
 	Check(delta[0] == -5.0f && delta[1] == -3.0f && delta[2] == 0.0f,
 	      "two samples average");
-	Check(e.samples == 2, "and both are counted");
-}
-
-void TestDeltaAcrossFrames() {
-	std::printf("Delta across frames\n");
-
-	EyeDeltaEstimate e;
-	BeginEyeDeltaFrame(e);
-
-	float logged[kBoneRowFloats];
-	float incoming[kBoneRowFloats];
-	MakeRow(logged, 0.0f, 0.0f, 0.0f);
-	MakeRow(incoming, -4.0f, -2.0f, -0.5f);
-	AddEyeDeltaSample(e, incoming, logged);
 
 	BeginEyeDeltaFrame(e);
 	Check(e.samples == 0, "a new frame starts empty");
-	float delta[3];
 	CurrentEyeDelta(e, delta);
-	Check(delta[0] == -4.0f && delta[1] == -2.0f && delta[2] == -0.5f,
+	Check(delta[0] == -5.0f && delta[1] == -3.0f && delta[2] == 0.0f,
 	      "but falls back to the finished frame's mean");
 
-	// A sample in the new frame takes over from the fallback immediately.
-	MakeRow(incoming, 8.0f, 6.0f, 1.0f);
-	AddEyeDeltaSample(e, incoming, logged);
+	FeedSample(e, 8.0f, 6.0f, 1.0f);
 	CurrentEyeDelta(e, delta);
 	Check(delta[0] == 8.0f && delta[1] == 6.0f && delta[2] == 1.0f,
 	      "a fresh sample outranks the previous frame");
 
-	// A frame that measured nothing keeps the older fallback alive.
 	BeginEyeDeltaFrame(e);
 	BeginEyeDeltaFrame(e);
 	CurrentEyeDelta(e, delta);
 	Check(delta[0] == 8.0f && delta[1] == 6.0f && delta[2] == 1.0f,
 	      "an empty frame does not erase the fallback");
+}
+
+void TestSignCalibration() {
+	std::printf("Sign calibration\n");
+
+	const float shift[3] = {-1.1f, 4.5f, 0.0f};
+
+	EyeDeltaEstimate e;
+	BeginEyeDeltaFrame(e);
+	for (int i = 0; i < 8; ++i) {
+		FeedSample(e, -1.1f, 4.5f, 0.0f);
+	}
+	Check(CalibrateShiftSign(e, shift, 8) == ShiftSign::Positive,
+	      "a measurement along the shift calibrates positive");
+
+	EyeDeltaEstimate n;
+	BeginEyeDeltaFrame(n);
+	for (int i = 0; i < 8; ++i) {
+		FeedSample(n, 1.1f, -4.5f, 0.0f);
+	}
+	Check(CalibrateShiftSign(n, shift, 8) == ShiftSign::Negative,
+	      "a measurement against the shift calibrates negative");
+
+	EyeDeltaEstimate few;
+	BeginEyeDeltaFrame(few);
+	for (int i = 0; i < 7; ++i) {
+		FeedSample(few, -1.1f, 4.5f, 0.0f);
+	}
+	Check(CalibrateShiftSign(few, shift, 8) == ShiftSign::Unknown,
+	      "too few samples stay Unknown");
+
+	const float noShift[3] = {0.0f, 0.0f, 0.0f};
+	Check(CalibrateShiftSign(e, noShift, 8) == ShiftSign::Unknown,
+	      "a camera that did not move calibrates nothing");
+
+	EyeDeltaEstimate ortho;
+	BeginEyeDeltaFrame(ortho);
+	for (int i = 0; i < 8; ++i) {
+		FeedSample(ortho, 4.5f, 1.1f, 0.0f);
+	}
+	Check(CalibrateShiftSign(ortho, shift, 8) == ShiftSign::Unknown,
+	      "a measurement orthogonal to the shift refuses to commit");
+}
+
+void TestChooseRebaseDelta() {
+	std::printf("Choosing the rebase delta\n");
+
+	const float shift[3] = {-1.1f, 4.5f, 0.0f};
+	EyeDeltaEstimate e;
+	BeginEyeDeltaFrame(e);
+	FeedSample(e, 2.0f, 3.0f, 0.5f);
+
+	float delta[3];
+	ChooseRebaseDelta(e, shift, ShiftSign::Unknown, delta);
+	Check(delta[0] == 2.0f && delta[1] == 3.0f && delta[2] == 0.5f,
+	      "uncalibrated falls back to the measurement");
+
+	ChooseRebaseDelta(e, shift, ShiftSign::Positive, delta);
+	Check(delta[0] == -1.1f && delta[1] == 4.5f && delta[2] == 0.0f,
+	      "positive takes the camera shift as is");
+
+	ChooseRebaseDelta(e, shift, ShiftSign::Negative, delta);
+	Check(delta[0] == 1.1f && delta[1] == -4.5f && delta[2] == 0.0f,
+	      "negative takes the camera shift negated");
+
+	const float noShift[3] = {0.0f, 0.0f, 0.0f};
+	ChooseRebaseDelta(e, noShift, ShiftSign::Positive, delta);
+	Check(delta[0] == 0.0f && delta[1] == 0.0f && delta[2] == 0.0f,
+	      "a camera that did not move shifts nothing even when calibrated");
 }
 
 void TestRebase() {
@@ -182,10 +223,10 @@ void TestRebase() {
 
 int main() {
 	TestTranslationDistance();
-	TestVerdict();
-	TestDeltaBeforeAnySample();
-	TestDeltaWithinFrame();
-	TestDeltaAcrossFrames();
+	TestBaselineBand();
+	TestMeasurementStates();
+	TestSignCalibration();
+	TestChooseRebaseDelta();
 	TestRebase();
 
 	if (g_failures != 0) {

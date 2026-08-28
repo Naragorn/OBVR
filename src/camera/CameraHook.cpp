@@ -521,10 +521,17 @@ void BetweenScenePasses() {
 	if (probe != 1 && g_dualNode != nullptr) {
 		g_dualNode->localTransform.pos = g_dualNode->localTransform.pos + g_dualShift;
 		game::UpdateNodeTransforms(g_dualNode);
+		// The bone lock shifts the replayed palettes by the same vector the
+		// camera just moved by - told here, the one place that knows whether
+		// and how far the camera actually stepped this frame.
+		render::SetBoneEyeShift(g_dualShift.x, g_dualShift.y, g_dualShift.z);
 		if (DualTraceOn()) {
 			OBVR_LOG("Dual trace: camera moved to the %s eye",
 			         firstIsLeft ? "right" : "left");
 		}
+	} else {
+		// The camera stays put, so the palettes must too.
+		render::SetBoneEyeShift(0.0f, 0.0f, 0.0f);
 	}
 }
 

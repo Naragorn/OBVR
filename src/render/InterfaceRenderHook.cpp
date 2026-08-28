@@ -272,22 +272,27 @@ BonePeek g_boneMismatchSecond;   // the second render's version
 
 BonePassMode g_boneMode = BonePassMode::Off;
 
-// The frame's eye-baseline estimate and the scratch row a rebased upload
-// is served from. One scratch is enough: the device consumes the pointer
-// inside the same SetVertexShaderConstantF call, and the game's D3D9 use
-// is single-threaded.
+// The frame's eye-baseline measurement, the camera shift the dual pass
+// reported for this frame, the calibrated sign of the palette convention,
+// and the scratch row a rebased upload is served from. One scratch is
+// enough: the device consumes the pointer inside the same
+// SetVertexShaderConstantF call, and the game's D3D9 use is
+// single-threaded.
 EyeDeltaEstimate g_eyeDelta;
+float g_boneEyeShift[3] = {0.0f, 0.0f, 0.0f};
+ShiftSign g_boneShiftSign = ShiftSign::Unknown;
+bool g_boneShiftSignReported = false;
 float g_boneRebaseRow[kBoneRowFloats];
 
 // Called for every bone-shaped upload (the three register classes, exactly
 // three vectors). During the first render it records; during the second it
 // pairs each arriving row with the first render's version of the same bone
-// and judges the translation: within the eye baseline means the row is
-// correct for this eye and passes through (and measures the baseline),
-// a body length off means the engine re-evaluated the skeleton onto the
-// wrong instance and the first render's row comes back rebased by the
-// measured baseline. See BoneRebase.h for why blanket replacement was
-// wrong. Returns null when the upload is to pass through unchanged.
+// and replaces it with that row shifted by the eye baseline - blanket, the
+// semantics that held the collapse down, but landing on the second eye
+// instead of freezing the first. Rows that did re-evaluate measure the
+// baseline on their way through to calibrate the shift sign. See
+// BoneRebase.h for the two failed variants this shape came out of.
+// Returns null when the upload is to pass through unchanged.
 const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 	if (g_boneMode == BonePassMode::Capture) {
 		if (g_boneLogCount < kBoneLogCapacity) {
@@ -332,18 +337,14 @@ const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 		    std::memcmp(f + 8, data + 8, 12) != 0) {
 			continue;
 		}
-		// Same bone. Correct rows differ from their pair by the eye baseline
-		// and keep their own translation - that difference IS the second
-		// eye's parallax; mixed-up rows are a body length off and get the
-		// first render's translation rebased into this eye.
+		// Same bone. Re-evaluated rows sit one eye baseline from their pair
+		// and measure it; the evidence recorder keeps the first pair a body
+		// length apart - a mixup - when the timeline is armed. Either way
+		// the row is replaced with the pair shifted onto the second eye.
 		const float distSq = BoneTranslationDistSq(data, f);
-		if (JudgeBoneRow(distSq, kBoneMixupThresholdSq) == BoneRowVerdict::Correct) {
+		if (IsEyeBaselineSample(distSq)) {
 			AddEyeDeltaSample(g_eyeDelta, data, f);
-			g_boneCompareIndex = probe + 1;
-			++g_stateCalls.boneLockKept;
-			return nullptr;
-		}
-		if (g_timelineArmed) {
+		} else if (g_timelineArmed && distSq > kBoneMixupThresholdSq) {
 			if (g_boneMismatchCount == 0) {
 				g_boneMismatchAt = probe;
 				g_boneMismatchFirst = candidate;
@@ -354,7 +355,7 @@ const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 			++g_boneMismatchCount;
 		}
 		float delta[3];
-		CurrentEyeDelta(g_eyeDelta, delta);
+		ChooseRebaseDelta(g_eyeDelta, g_boneEyeShift, g_boneShiftSign, delta);
 		RebaseBoneRow(g_boneRebaseRow, f, delta);
 		g_boneCompareIndex = probe + 1;
 		++g_stateCalls.boneLockReplaced;
@@ -1775,6 +1776,7 @@ void DumpPoolTimeline() {
 bool PoolTimelineWasDumped() { return g_timelineDumped; }
 
 void SetBonePassMode(BonePassMode mode) {
+	const BonePassMode previous = g_boneMode;
 	g_boneMode = mode;
 	if (mode == BonePassMode::Capture) {
 		g_boneLogCount = 0;
@@ -1782,11 +1784,45 @@ void SetBonePassMode(BonePassMode mode) {
 		g_boneCompareIndex = 0;
 		BeginEyeDeltaFrame(g_eyeDelta);
 	}
+	// A replace pass just finished: its measurement is complete, so judge
+	// the palette convention's sign against the camera shift. Re-judged
+	// every frame - a wrong one-off would heal - but reported once.
+	if (previous == BonePassMode::Replace && mode == BonePassMode::Off) {
+		const ShiftSign sign = CalibrateShiftSign(g_eyeDelta, g_boneEyeShift, 8);
+		if (sign != ShiftSign::Unknown) {
+			g_boneShiftSign = sign;
+			if (!g_boneShiftSignReported) {
+				g_boneShiftSignReported = true;
+				float mean[3];
+				CurrentEyeDelta(g_eyeDelta, mean);
+				OBVR_LOG("Bone lock: shift sign calibrated %s - camera shift "
+				         "%g %g %g, measured baseline %g %g %g from %u rows",
+				         sign == ShiftSign::Positive ? "positive" : "negative",
+				         g_boneEyeShift[0], g_boneEyeShift[1], g_boneEyeShift[2],
+				         mean[0], mean[1], mean[2], g_eyeDelta.samples);
+			}
+		}
+	}
+}
+
+void SetBoneEyeShift(float x, float y, float z) {
+	g_boneEyeShift[0] = x;
+	g_boneEyeShift[1] = y;
+	g_boneEyeShift[2] = z;
 }
 
 void GetBoneEyeDelta(float out[3], UInt32& samples) {
 	CurrentEyeDelta(g_eyeDelta, out);
 	samples = g_eyeDelta.samples;
+}
+
+void GetBoneShiftState(float shift[3], int& sign) {
+	shift[0] = g_boneEyeShift[0];
+	shift[1] = g_boneEyeShift[1];
+	shift[2] = g_boneEyeShift[2];
+	sign = g_boneShiftSign == ShiftSign::Positive
+	           ? 1
+	           : (g_boneShiftSign == ShiftSign::Negative ? -1 : 0);
 }
 
 void TakeInterfaceStats(UInt32& passes, UInt32& draws) {
