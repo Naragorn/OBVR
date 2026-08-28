@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Types.h"
+#include "render/PaletteBuckets.h"
 
 namespace obvr::render {
 
@@ -77,6 +78,11 @@ struct StateCallCounts {
 	UInt32 paletteVectors = 0;  // float4 registers across those uploads
 	UInt32 paletteSum = 0;      // their float bits summed - camera-independent data must match
 	UInt32 largestUpload = 0;   // the biggest single upload seen (not a counter; no delta)
+
+	// The same palette candidates, split by start register - see
+	// PaletteBuckets.h for why the split is what makes the sums readable.
+	PaletteRegisterBucket paletteRegisters[kPaletteBucketCount];
+	UInt32 paletteOverflow = 0;  // palette uploads whose register found no bucket
 };
 
 StateCallCounts TotalStateCalls();

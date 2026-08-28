@@ -283,6 +283,18 @@ endif()
 
 add_test(NAME dxvk_interop COMMAND dxvk_interop_test)
 
+add_executable(palette_buckets_test
+	PaletteBucketsTest.cpp
+)
+
+target_include_directories(palette_buckets_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(palette_buckets_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME palette_buckets COMMAND palette_buckets_test)
+
 add_executable(d3d9_types_test
 	D3D9TypesTest.cpp
 )

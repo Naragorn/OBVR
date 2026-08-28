@@ -162,6 +162,30 @@ void TracePaletteSums(const StateCallCounts& entry, const StateCallCounts& after
 	         afterSecond.largestUpload);
 }
 
+// The same sums, split by start register. Camera blocks and bone palettes
+// live in different constant registers; the per-register split is what
+// separates "the view moved, as it must between two eyes" from "the bones
+// changed, which they must not". A register whose sums differ while its
+// counts agree is where the second render goes wrong - and a run where
+// only the camera registers differ acquits the constants entirely and
+// sends the search into the vertex buffer contents.
+void TracePaletteRegisters(const StateCallCounts& entry, const StateCallCounts& afterFirst,
+                           const StateCallCounts& afterBetween,
+                           const StateCallCounts& afterSecond) {
+	if (g_sceneCall % 120 != 0) {
+		return;
+	}
+	char deltas[832];
+	const UInt32 active = FormatPaletteRegisterDeltas(
+	    entry.paletteRegisters, afterFirst.paletteRegisters, afterBetween.paletteRegisters,
+	    afterSecond.paletteRegisters, kPaletteBucketCount, deltas, sizeof(deltas));
+	if (active == 0) {
+		return;
+	}
+	OBVR_LOG("Dual palette registers at scene call %u: %s (overflow %u)", g_sceneCall, deltas,
+	         afterSecond.paletteOverflow - entry.paletteOverflow);
+}
+
 // Stands where the entry of kRenderScene used to be, with the same calling
 // convention. See the type alias above for why __fastcall.
 void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTexture) {
@@ -220,6 +244,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	TracePassState(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceBufferLocks(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TracePaletteSums(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
+	TracePaletteRegisters(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceFrame("dual", passesLastFrame, drawsLastFrame);
 }
 

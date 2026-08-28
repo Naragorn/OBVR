@@ -512,8 +512,22 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
 		++g_stateCalls.paletteCalls;
 		g_stateCalls.paletteVectors += vector4fCount;
 		const UInt32* bits = reinterpret_cast<const UInt32*>(data);
+		UInt32 sum = 0;
 		for (UInt32 i = 0; i < vector4fCount * 4; ++i) {
-			g_stateCalls.paletteSum += bits[i];
+			sum += bits[i];
+		}
+		g_stateCalls.paletteSum += sum;
+
+		const UInt32 slot =
+		    SelectPaletteBucket(g_stateCalls.paletteRegisters, kPaletteBucketCount, startRegister);
+		if (slot < kPaletteBucketCount) {
+			PaletteRegisterBucket& bucket = g_stateCalls.paletteRegisters[slot];
+			bucket.startRegister = startRegister;
+			++bucket.calls;
+			bucket.vectors += vector4fCount;
+			bucket.sum += sum;
+		} else {
+			++g_stateCalls.paletteOverflow;
 		}
 	}
 	if (vector4fCount > g_stateCalls.largestUpload) {
