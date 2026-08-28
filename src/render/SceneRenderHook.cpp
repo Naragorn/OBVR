@@ -213,6 +213,49 @@ void TraceBindings(const StateCallCounts& entry, const StateCallCounts& afterFir
 	         afterSecond.vertexShaderSum - afterBetween.vertexShaderSum);
 }
 
+// The draw-level fingerprint of the skinned pool, after every pass-level
+// number came back symmetric. Skinned draws are the draws whose stream 0
+// is a discard-locked buffer; their vertex and primitive sums have no
+// camera in them and must match between the renders. The offset sums are
+// the discriminator: equal offset sums mean the second render reads the
+// same buffer regions as the first - packed once, drawn twice, and then
+// whoever locks those buffers between the renders overwrites what the
+// second render is about to read. Distinct sums mean each render packs
+// its own regions, and the fault is inside the write itself.
+void TraceSkinnedDraws(const StateCallCounts& entry, const StateCallCounts& afterFirst,
+                       const StateCallCounts& afterBetween, const StateCallCounts& afterSecond) {
+	if (g_sceneCall % 120 != 0) {
+		return;
+	}
+	OBVR_LOG("Dual skinned draws at scene call %u: first %u draws %u verts %u prims "
+	         "offsets %08X, between %u/%u/%u/%08X, second %u draws %u verts %u prims "
+	         "offsets %08X",
+	         g_sceneCall, afterFirst.skinnedDraws - entry.skinnedDraws,
+	         afterFirst.skinnedVertexSum - entry.skinnedVertexSum,
+	         afterFirst.skinnedPrimSum - entry.skinnedPrimSum,
+	         afterFirst.skinnedOffsetSum - entry.skinnedOffsetSum,
+	         afterBetween.skinnedDraws - afterFirst.skinnedDraws,
+	         afterBetween.skinnedVertexSum - afterFirst.skinnedVertexSum,
+	         afterBetween.skinnedPrimSum - afterFirst.skinnedPrimSum,
+	         afterBetween.skinnedOffsetSum - afterFirst.skinnedOffsetSum,
+	         afterSecond.skinnedDraws - afterBetween.skinnedDraws,
+	         afterSecond.skinnedVertexSum - afterBetween.skinnedVertexSum,
+	         afterSecond.skinnedPrimSum - afterBetween.skinnedPrimSum,
+	         afterSecond.skinnedOffsetSum - afterBetween.skinnedOffsetSum);
+	OBVR_LOG("Dual dynamic locks at scene call %u: first %u offsets %08X sizes %08X, "
+	         "between %u/%08X/%08X, second %u offsets %08X sizes %08X (set overflow %u)",
+	         g_sceneCall, afterFirst.dynamicLocks - entry.dynamicLocks,
+	         afterFirst.dynamicLockOffsetSum - entry.dynamicLockOffsetSum,
+	         afterFirst.dynamicLockSizeSum - entry.dynamicLockSizeSum,
+	         afterBetween.dynamicLocks - afterFirst.dynamicLocks,
+	         afterBetween.dynamicLockOffsetSum - afterFirst.dynamicLockOffsetSum,
+	         afterBetween.dynamicLockSizeSum - afterFirst.dynamicLockSizeSum,
+	         afterSecond.dynamicLocks - afterBetween.dynamicLocks,
+	         afterSecond.dynamicLockOffsetSum - afterBetween.dynamicLockOffsetSum,
+	         afterSecond.dynamicLockSizeSum - afterBetween.dynamicLockSizeSum,
+	         afterSecond.dynamicBufferOverflow);
+}
+
 // Stands where the entry of kRenderScene used to be, with the same calling
 // convention. See the type alias above for why __fastcall.
 void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTexture) {
@@ -273,6 +316,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	TracePaletteSums(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TracePaletteRegisters(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceBindings(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
+	TraceSkinnedDraws(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceFrame("dual", passesLastFrame, drawsLastFrame);
 }
 

@@ -283,6 +283,18 @@ endif()
 
 add_test(NAME dxvk_interop COMMAND dxvk_interop_test)
 
+add_executable(pointer_set_test
+	PointerSetTest.cpp
+)
+
+target_include_directories(pointer_set_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(pointer_set_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME pointer_set COMMAND pointer_set_test)
+
 add_executable(palette_buckets_test
 	PaletteBucketsTest.cpp
 )

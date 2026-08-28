@@ -92,6 +92,20 @@ struct StateCallCounts {
 	UInt32 vertexShaderSum = 0;  // vertex shader pointers, summed
 	UInt32 streamSources = 0;    // SetStreamSource calls
 	UInt32 streamSourceSum = 0;  // stream vertex buffer pointers, summed
+
+	// The draws wired to a discard-locked buffer - the dynamic pool the
+	// software-skinned bodies are packed into - and the writes into that
+	// pool. Together they say, per render, whether the skinned draws read
+	// the regions this render wrote, the regions the other render wrote,
+	// or regions nobody wrote at all.
+	UInt32 skinnedDraws = 0;      // draws whose stream 0 is a discard-locked buffer
+	UInt32 skinnedVertexSum = 0;  // their NumVertices summed - camera-free, must match
+	UInt32 skinnedPrimSum = 0;    // their primitive counts summed - must match
+	UInt32 skinnedOffsetSum = 0;  // stream-0 byte offsets at those draws
+	UInt32 dynamicLocks = 0;      // locks landing on those buffers
+	UInt32 dynamicLockOffsetSum = 0;  // their byte offsets summed
+	UInt32 dynamicLockSizeSum = 0;    // their byte sizes summed
+	UInt32 dynamicBufferOverflow = 0;  // discard-locked buffers the set could not hold
 };
 
 StateCallCounts TotalStateCalls();

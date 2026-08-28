@@ -7,6 +7,7 @@
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
 #include "render/GameDevice.h"
+#include "render/PointerSet.h"
 #include "render/PresentHook.h"
 #include "render/SceneRenderHook.h"
 
@@ -175,6 +176,25 @@ d3d9::SetVertexShaderConstantFFn g_originalSetVsConstantF = nullptr;
 // Counting always, exactly like g_drawsTotal above: the scene hook reads the
 // totals either side of each world render and subtracts.
 StateCallCounts g_stateCalls;
+
+// The buffers ever locked with DISCARD - the dynamic pool software-skinned
+// geometry is packed into - and what stream 0 currently points at. Kept by
+// the lock and stream hooks, read by the draw hooks to tell a skinned draw
+// from a static one.
+PointerSet g_dynamicBuffers;
+void* g_stream0Buffer = nullptr;
+UInt32 g_stream0Offset = 0;
+
+// The skinned-draw half of the fingerprint, shared by both draw hooks.
+void CountSkinnedDraw(UInt32 numVertices, UInt32 primCount) {
+	if (g_stream0Buffer == nullptr || !g_dynamicBuffers.Contains(g_stream0Buffer)) {
+		return;
+	}
+	++g_stateCalls.skinnedDraws;
+	g_stateCalls.skinnedVertexSum += numVertices;
+	g_stateCalls.skinnedPrimSum += primCount;
+	g_stateCalls.skinnedOffsetSum += g_stream0Offset;
+}
 
 d3d9::CreateVertexBufferFn g_originalCreateVertexBuffer = nullptr;
 d3d9::VertexBufferLockFn g_originalVbLock = nullptr;
@@ -360,6 +380,8 @@ void SampleFirstDraw(void* device, const char* kind, UInt32 type, UInt32 count) 
 SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex,
                                      UInt32 primitiveCount) {
 	++g_drawsTotal;
+	// No vertex count in this signature; the primitive count still travels.
+	CountSkinnedDraw(0, primitiveCount);
 	if ((g_redirecting || g_observing) && g_sampleNextDraw) {
 		g_sampleNextDraw = false;
 		SampleFirstDraw(self, "dp", type, primitiveCount);
@@ -379,6 +401,7 @@ SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 base
                                             UInt32 minVertexIndex, UInt32 numVertices,
                                             UInt32 startIndex, UInt32 primCount) {
 	++g_drawsTotal;
+	CountSkinnedDraw(numVertices, primCount);
 	if ((g_redirecting || g_observing) && g_sampleNextDraw) {
 		g_sampleNextDraw = false;
 		SampleFirstDraw(self, "dip", type, primCount);
@@ -492,6 +515,10 @@ SInt32 __stdcall HookedSetStreamSource(void* self, UInt32 streamNumber, void* st
                                        UInt32 offsetInBytes, UInt32 stride) {
 	++g_stateCalls.streamSources;
 	g_stateCalls.streamSourceSum += reinterpret_cast<UInt32>(streamData);
+	if (streamNumber == 0) {
+		g_stream0Buffer = streamData;
+		g_stream0Offset = offsetInBytes;
+	}
 	return g_originalSetStreamSource(self, streamNumber, streamData, offsetInBytes, stride);
 }
 
@@ -570,6 +597,14 @@ SInt32 __stdcall HookedVbLock(void* self, UInt32 offset, UInt32 size, void** dat
 	++g_stateCalls.vbLocks;
 	if ((flags & d3d9::kLockDiscard) != 0) {
 		++g_stateCalls.vbDiscardLocks;
+		if (!g_dynamicBuffers.Insert(self)) {
+			++g_stateCalls.dynamicBufferOverflow;
+		}
+	}
+	if (g_dynamicBuffers.Contains(self)) {
+		++g_stateCalls.dynamicLocks;
+		g_stateCalls.dynamicLockOffsetSum += offset;
+		g_stateCalls.dynamicLockSizeSum += size;
 	}
 	return g_originalVbLock(self, offset, size, data, flags);
 }
