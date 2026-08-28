@@ -1,5 +1,7 @@
 #include "render/HudLayer.h"
 
+#include <cmath>
+
 #include "core/Log.h"
 #include "render/D3D11Types.h"
 #include "render/GameFrame.h"
@@ -242,7 +244,18 @@ bool HudLayer::EnsureOverlay(vr::OpenVRBackend& backend, float distanceMetres,
 	return true;
 }
 
-// Places a world-anchored overlay, taking the anchor the first time it can.
+// An anchor further from the head than this is an anchor taken where the
+// wearer no longer is. Two metres is past any lean and short of any walk:
+// nothing in seated or standing play moves the head that far from where the
+// HUD was placed, so crossing it means the anchor was wrong to begin with -
+// the pose the runtime handed out before the headset was on anyone's head.
+// That is not a hypothetical: on the Dream Air the HUD and every menu were
+// "missing" for a whole session because the first readable pose anchored
+// them somewhere the wearer never looked.
+constexpr float kAnchorReachMetres = 2.0f;
+
+// Places a world-anchored overlay, taking the anchor the first time it can
+// and retaking it whenever the head turns out to be beyond reach of it.
 //
 // The anchor is a pose held rather than read each frame, and that is the
 // whole difference between the two anchorings: handing over the current head
@@ -255,29 +268,47 @@ bool HudLayer::EnsureOverlay(vr::OpenVRBackend& backend, float distanceMetres,
 // far better wrong answer than one nailed to wherever the runtime guessed
 // the origin was.
 void HudLayer::PlaceInRoom(vr::OpenVRBackend& backend, float distanceMetres) {
-	if (!m_anchorValid) {
-		m_anchorValid = backend.GetRenderPoseMatrix(m_anchorPose);
-		if (!m_anchorValid) {
+	vr::openvr::HmdMatrix34 current{};
+	if (!backend.GetRenderPoseMatrix(current)) {
+		return;
+	}
+
+	if (m_anchorValid) {
+		const float distSq = vr::PoseDistanceSq(current, m_anchorPose);
+		if (distSq <= kAnchorReachMetres * kAnchorReachMetres) {
 			return;
 		}
-
-		// Heading only, for the reasons LevelPose gives: a quad carrying the
-		// pitch and roll the head happened to have hangs crooked for as long
-		// as the anchor stands.
-		vr::LevelPose(m_anchorPose);
-
-		const vr::openvr::HmdMatrix34 placed =
-			vr::OverlayPoseAhead(m_anchorPose, distanceMetres);
-		backend.SetOverlayTransformAbsolute(m_overlay, placed);
-
-		if (!m_anchorReported) {
-			m_anchorReported = true;
-			OBVR_LOG("Hud: the layer is anchored in the room at (%.2f, %.2f, %.2f) - "
-			         "the recenter key moves it",
-			         static_cast<double>(placed.m[0][3]),
-			         static_cast<double>(placed.m[1][3]),
-			         static_cast<double>(placed.m[2][3]));
+		// Out of reach: the anchor stands where the wearer is not. Dropped
+		// and retaken below, where the head actually is - the self-heal for
+		// an anchor taken off a pose that predates the headset being worn.
+		m_anchorValid = false;
+		if (m_reanchorsReported < 4) {
+			++m_reanchorsReported;
+			OBVR_LOG("Hud: the room anchor sat %.1f metres from the head - retaken "
+			         "where the head is now",
+			         std::sqrt(static_cast<double>(distSq)));
 		}
+	}
+
+	m_anchorPose = current;
+	m_anchorValid = true;
+
+	// Heading only, for the reasons LevelPose gives: a quad carrying the
+	// pitch and roll the head happened to have hangs crooked for as long
+	// as the anchor stands.
+	vr::LevelPose(m_anchorPose);
+
+	const vr::openvr::HmdMatrix34 placed =
+		vr::OverlayPoseAhead(m_anchorPose, distanceMetres);
+	backend.SetOverlayTransformAbsolute(m_overlay, placed);
+
+	if (!m_anchorReported) {
+		m_anchorReported = true;
+		OBVR_LOG("Hud: the layer is anchored in the room at (%.2f, %.2f, %.2f) - "
+		         "the recenter key moves it",
+		         static_cast<double>(placed.m[0][3]),
+		         static_cast<double>(placed.m[1][3]),
+		         static_cast<double>(placed.m[2][3]));
 	}
 }
 

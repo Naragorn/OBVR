@@ -117,6 +117,7 @@ private:
 	vr::openvr::HmdMatrix34 m_anchorPose = {};
 	bool m_anchorValid = false;
 	bool m_anchorReported = false;
+	UInt32 m_reanchorsReported = 0;  // self-heal log budget - see PlaceInRoom
 
 	VulkanContext m_vulkan;
 	bool m_vulkanChecked = false;

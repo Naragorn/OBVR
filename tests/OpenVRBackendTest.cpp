@@ -215,6 +215,32 @@ void TestOverlayPoseAhead() {
 	CheckNear(here.m[2][3], pose.m[2][3], "no distance means no move");
 }
 
+void TestPoseDistance() {
+	std::printf("Measuring the distance between two poses\n");
+
+	using obvr::vr::PoseDistanceSq;
+
+	obvr::vr::openvr::HmdMatrix34 a = PoseLookingAt(0.0f, 0.0f, 0.0f);
+	a.m[0][3] = 1.0f;
+	a.m[1][3] = 1.7f;
+	a.m[2][3] = -2.0f;
+
+	Check(PoseDistanceSq(a, a) == 0.0f, "a pose is at distance zero from itself");
+
+	obvr::vr::openvr::HmdMatrix34 b = a;
+	b.m[0][3] += 3.0f;
+	b.m[2][3] += 4.0f;
+	CheckNear(PoseDistanceSq(a, b), 25.0f, "3-0-4 apart measures 25 squared");
+
+	// Rotation must not contribute: the anchor self-heal asks where the head
+	// is, not where it looks - turning in place must never drop the anchor.
+	obvr::vr::openvr::HmdMatrix34 turnedInPlace = PoseLookingAt(0.3f, 2.0f, 0.5f);
+	turnedInPlace.m[0][3] = a.m[0][3];
+	turnedInPlace.m[1][3] = a.m[1][3];
+	turnedInPlace.m[2][3] = a.m[2][3];
+	Check(PoseDistanceSq(a, turnedInPlace) == 0.0f, "turning in place is distance zero");
+}
+
 }  // namespace
 
 int main() {
@@ -225,6 +251,8 @@ int main() {
 	TestLevelPoseLookingStraightDown();
 	std::printf("\n");
 	TestOverlayPoseAhead();
+	std::printf("\n");
+	TestPoseDistance();
 	std::printf("\n");
 	std::printf("Struct layout\n");
 	Check(sizeof(obvr::vr::openvr::HmdMatrix34) == 48, "HmdMatrix34 is 48 bytes");

@@ -38,6 +38,11 @@ void LevelPose(openvr::HmdMatrix34& pose);
 // after turning away from it, and getting it wrong puts it behind them.
 openvr::HmdMatrix34 OverlayPoseAhead(const openvr::HmdMatrix34& pose, float distanceMetres);
 
+// Squared distance between two poses' positions, in metres squared. What the
+// room anchor's self-heal compares: an anchor further from the head than a
+// person leans is an anchor taken where the wearer no longer is.
+float PoseDistanceSq(const openvr::HmdMatrix34& a, const openvr::HmdMatrix34& b);
+
 
 // Reads the head orientation from SteamVR through OpenVR.
 //

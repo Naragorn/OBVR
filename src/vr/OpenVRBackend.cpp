@@ -502,6 +502,13 @@ bool OpenVRBackend::ReadHeadPose(Quaternion& orientation, NiPoint3& position) co
 }
 
 
+float PoseDistanceSq(const openvr::HmdMatrix34& a, const openvr::HmdMatrix34& b) {
+	const float dx = a.m[0][3] - b.m[0][3];
+	const float dy = a.m[1][3] - b.m[1][3];
+	const float dz = a.m[2][3] - b.m[2][3];
+	return dx * dx + dy * dy + dz * dz;
+}
+
 openvr::HmdMatrix34 OverlayPoseAhead(const openvr::HmdMatrix34& pose,
                                      float distanceMetres) {
 	openvr::HmdMatrix34 result = pose;
