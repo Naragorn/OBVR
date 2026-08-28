@@ -296,6 +296,20 @@ void OnFrameEnd() {
 		if (g_hudLayer.HasCapture()) {
 			MaybeSubmitHud(true);
 		}
+
+		// Whether the 2D pass ran at all on this held frame, and what it drew.
+		// The menus are reported missing from the headset while the trace shows
+		// held frames submitting as designed, so the open question is this one.
+		// Consuming the stats here steals them from the next scene-call line,
+		// which is acceptable for the trace window's dozen frames.
+		if (g_menuTraceLeft > 0) {
+			UInt32 hudPasses = 0;
+			UInt32 hudDraws = 0;
+			render::TakeInterfaceStats(hudPasses, hudDraws);
+			OBVR_LOG("Menu trace: on this held frame the 2D pass ran %u time(s) "
+			         "and drew %u",
+			         hudPasses, hudDraws);
+		}
 		return;
 	}
 
@@ -592,6 +606,14 @@ void* HudBeginRedirect() {
 		MenusCanReachTheWorld(config.tracker.menusInWorld, config.tracker.hudOverlay),
 		g_headsetRenderer.HasHeldEyes(), g_heldForMenu);
 	if (!WantsHudRedirect(delivery)) {
+		// Part of the menu trace, because "the redirect said no" and "the
+		// pass never ran" look identical from the outside - a menu on the
+		// monitor and not in the headset - and only the log can tell them
+		// apart.
+		if (g_menuTraceLeft > 0) {
+			OBVR_LOG("Menu trace: redirect declined - delivery=%s",
+			         delivery == FrameDelivery::Cinema ? "cinema" : "stereo/held");
+		}
 		return nullptr;
 	}
 
@@ -606,7 +628,12 @@ void* HudBeginRedirect() {
 		         g_state.frameCount);
 	}
 
-	return g_hudLayer.BeginCapture(render::GetGameDevice(), g_presentedFrame);
+	void* const surface = g_hudLayer.BeginCapture(render::GetGameDevice(), g_presentedFrame);
+	if (g_menuTraceLeft > 0) {
+		OBVR_LOG("Menu trace: redirect granted - delivery=%s, surface=%p",
+		         delivery == FrameDelivery::HeldStereo ? "held" : "stereo", surface);
+	}
+	return surface;
 }
 
 void HudEndRedirect() { g_hudLayer.EndCapture(); }
