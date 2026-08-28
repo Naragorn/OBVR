@@ -1,4 +1,4 @@
-// Checks the per-frame bookkeeping of the camera hook.
+﻿// Checks the per-frame bookkeeping of the camera hook.
 //
 // The callback these belong to cannot be tested - it needs a live CameraNode
 // and reads the player through a hard-coded address - so the decisions it makes
@@ -321,20 +321,23 @@ void TestDeliverFrame() {
 	using obvr::camera::DeliverFrame;
 	using obvr::camera::FrameDelivery;
 
-	// Nothing drew the world, so there is no viewpoint to claim and no pair to
-	// hold. Videos, loading screens and the main menu are this case, and the
-	// menu setting must not reach them: there is no world behind them for a
-	// menu to hang in front of.
+	using obvr::camera::kWorldlessBridgeFrames;
+
+	// Nothing drew the world for long enough that this is a presentation, not
+	// a stray frame. Videos, loading screens and the main menu are this case,
+	// and the menu setting must not reach them: there is no world behind them
+	// for a menu to hang in front of.
 	for (int world = 0; world < 2; ++world) {
 		for (int held = 0; held < 2; ++held) {
-			Check(DeliverFrame(false, false, world != 0, held != 0, false) == FrameDelivery::Cinema,
-			      "no camera pass and no menu is the cinema screen, whatever the setting");
+			Check(DeliverFrame(false, false, world != 0, held != 0,
+			                   kWorldlessBridgeFrames) == FrameDelivery::Cinema,
+			      "a sustained flat presentation is the cinema screen, whatever the setting");
 		}
 	}
 
 	// The world is being drawn and nothing is in front of it.
 	for (int world = 0; world < 2; ++world) {
-		Check(DeliverFrame(true, false, world != 0, true, false) == FrameDelivery::Stereo,
+		Check(DeliverFrame(true, false, world != 0, true, 0) == FrameDelivery::Stereo,
 		      "a camera pass with no menu is stereo, whatever the setting");
 	}
 
@@ -343,33 +346,35 @@ void TestDeliverFrame() {
 	// behind an open menu but not on every frame, so before the menu was asked
 	// about, the delivery changed with the camera - full stereo world one
 	// frame, a small flat rectangle in black the next.
-	Check(DeliverFrame(true, true, false, true, false) == FrameDelivery::Cinema,
+	Check(DeliverFrame(true, true, false, true, 0) == FrameDelivery::Cinema,
 	      "a menu on the cinema screen stays there even when the world was drawn");
-	Check(DeliverFrame(false, true, false, true, false) == FrameDelivery::Cinema,
+	Check(DeliverFrame(false, true, false, true, 0) == FrameDelivery::Cinema,
 	      "and on the frames it was not");
 
 	// Menus=world. The world is delivered in stereo and the menu reaches the
 	// headset as its own overlay.
-	Check(DeliverFrame(true, true, true, true, false) == FrameDelivery::Stereo,
+	Check(DeliverFrame(true, true, true, true, 0) == FrameDelivery::Stereo,
 	      "a menu in the world is a stereo frame when the world was drawn");
 
 	// The flow that makes it possible at all. Falling back to the cinema
 	// screen here is the flicker, in its new clothes.
-	Check(DeliverFrame(false, true, true, true, false) == FrameDelivery::HeldStereo,
+	Check(DeliverFrame(false, true, true, true, 0) == FrameDelivery::HeldStereo,
 	      "and holds the last pair on the frames the world was not drawn");
 
 	// Nothing captured yet - the main menu, or a menu opened before the first
 	// dual frame. A picture beats the test pattern.
-	Check(DeliverFrame(false, true, true, false, false) == FrameDelivery::Cinema,
+	Check(DeliverFrame(false, true, true, false, 0) == FrameDelivery::Cinema,
 	      "with no pair to hold, the cinema screen is the only honest picture");
 
-	// The properties, said once rather than case by case.
+	// The properties, said once rather than case by case, with the streak past
+	// the bridge so no stray-frame grace muddies them.
 	for (int pass = 0; pass < 2; ++pass) {
 		for (int menu = 0; menu < 2; ++menu) {
 			for (int world = 0; world < 2; ++world) {
 				for (int held = 0; held < 2; ++held) {
 					const FrameDelivery delivery =
-						DeliverFrame(pass != 0, menu != 0, world != 0, held != 0, false);
+						DeliverFrame(pass != 0, menu != 0, world != 0, held != 0,
+					                 kWorldlessBridgeFrames);
 
 					// Holding requires something held. This is the one that
 					// keeps the main menu off the held path.
@@ -383,7 +388,7 @@ void TestDeliverFrame() {
 					// turning it on cannot change what a video does.
 					if (menu == 0) {
 						Check(delivery == DeliverFrame(pass != 0, false, !(world != 0),
-						                               held != 0, false),
+						                               held != 0, kWorldlessBridgeFrames),
 						      "with no menu open the setting changes nothing");
 					}
 				}
@@ -392,46 +397,51 @@ void TestDeliverFrame() {
 	}
 }
 
-void TestClosingSeam() {
-	std::printf("The frame that closes a menu\n");
+void TestWorldlessBridge() {
+	std::printf("The stray frames with no world in them\n");
 
 	using obvr::camera::DeliverFrame;
 	using obvr::camera::FrameDelivery;
+	using obvr::camera::kWorldlessBridgeFrames;
 
-	// Closing a menu leaves one frame with the menu already gone and the world
-	// not drawn yet. By every other rule that is the cinema screen, and for one
-	// frame the wearer saw the flat picture flash up in the middle.
-	Check(DeliverFrame(false, false, true, true, true) == FrameDelivery::HeldStereo,
-	      "the frame after a held menu keeps holding instead of flashing the screen");
+	// A stray frame with the world simply not drawn - the seam that closes a
+	// menu, the gap a dialogue's exit transition leaves. By every other rule
+	// that is the cinema screen, and it flashed up as exactly that: black bars
+	// mid-close once, a split-second grey flash at every dialogue's end later.
+	for (UInt32 streak = 0; streak < kWorldlessBridgeFrames; ++streak) {
+		Check(DeliverFrame(false, false, true, true, streak) == FrameDelivery::HeldStereo,
+		      "a stray worldless frame inside the bridge holds the pair");
+	}
 
-	// The grace lasts exactly one frame, and this is the check that says so.
-	// The caller sets the flag only for a held frame that had a menu, so the
-	// seam clears it - which matters because a loading screen reached this way
-	// would otherwise never be shown at all, the world being held over it
-	// forever.
-	Check(DeliverFrame(false, false, true, true, false) == FrameDelivery::Cinema,
-	      "and the frame after that is the screen again, so a loading screen still shows");
+	// The bridge ends where a flat presentation begins - a video or a loading
+	// screen reached this way must still be shown, not held over forever.
+	Check(DeliverFrame(false, false, true, true, kWorldlessBridgeFrames) ==
+	          FrameDelivery::Cinema,
+	      "the frame past the bridge is the screen, so a video still shows");
+	Check(DeliverFrame(false, false, true, true, kWorldlessBridgeFrames + 5) ==
+	          FrameDelivery::Cinema,
+	      "and it stays the screen from then on");
 
-	// Nothing to hold: the seam falls back to the screen like any other frame.
-	Check(DeliverFrame(false, false, true, false, true) == FrameDelivery::Cinema,
-	      "a seam with no pair held is still the screen");
+	// Nothing to hold: a stray falls back to the screen like any other frame.
+	Check(DeliverFrame(false, false, true, false, 0) == FrameDelivery::Cinema,
+	      "a stray with no pair held is still the screen");
 
-	// The grace does not reach a frame that drew a world - that is stereo on
+	// The bridge does not reach a frame that drew a world - that is stereo on
 	// its own merits and needs no help.
-	Check(DeliverFrame(true, false, true, true, true) == FrameDelivery::Stereo,
-	      "a world render outranks the grace");
+	Check(DeliverFrame(true, false, true, true, 0) == FrameDelivery::Stereo,
+	      "a world render outranks the bridge");
 
 	// Nor does it change a menu frame, which is decided before it.
-	Check(DeliverFrame(false, true, true, true, true) == FrameDelivery::HeldStereo,
-	      "a menu still held is held for its own reason");
-	Check(DeliverFrame(false, true, false, true, true) == FrameDelivery::Cinema,
-	      "and a menu on the cinema screen stays there, grace or not");
+	Check(DeliverFrame(false, true, true, true, kWorldlessBridgeFrames) ==
+	          FrameDelivery::HeldStereo,
+	      "a menu still held is held for its own reason, streak or no streak");
+	Check(DeliverFrame(false, true, false, true, 0) == FrameDelivery::Cinema,
+	      "and a menu on the cinema screen stays there, bridge or not");
 
-	// The sequence as the game actually runs it, with the flag threaded the way
-	// CameraHook threads it. This is the property the two separate checks above
-	// only imply: play, open, hold, close, and back to play, with no cinema
-	// frame anywhere in the middle.
-	bool heldForMenu = false;
+	// The sequences as the game actually runs them, with the streak threaded
+	// the way CameraHook threads it: read before the frame, advanced after.
+	// First the menu close, then the dialogue exit, then a video - the two
+	// bridged flows and the one that must not be.
 	struct Step {
 		bool cameraPass;
 		bool menuIsUp;
@@ -445,11 +455,22 @@ void TestClosingSeam() {
 		{false, true, FrameDelivery::HeldStereo, "and keeps holding"},
 		{false, false, FrameDelivery::HeldStereo, "the closing seam holds rather than flashes"},
 		{true, false, FrameDelivery::Stereo, "and the world is back"},
+		{false, false, FrameDelivery::HeldStereo,
+		 "a dialogue's exit gap is bridged rather than flashed"},
+		{false, false, FrameDelivery::HeldStereo, "even two frames of it"},
+		{true, false, FrameDelivery::Stereo, "and play resumes"},
+		{false, false, FrameDelivery::HeldStereo, "a video's first frame is bridged"},
+		{false, false, FrameDelivery::HeldStereo, "its second too"},
+		{false, false, FrameDelivery::HeldStereo, "its third too"},
+		{false, false, FrameDelivery::Cinema, "then the video takes the screen"},
+		{false, false, FrameDelivery::Cinema, "and keeps it"},
 	};
+	UInt32 streak = 0;
 	for (const Step& step : steps) {
 		const FrameDelivery delivery =
-			DeliverFrame(step.cameraPass, step.menuIsUp, true, true, heldForMenu);
-		heldForMenu = delivery == FrameDelivery::HeldStereo && step.menuIsUp;
+			DeliverFrame(step.cameraPass, step.menuIsUp, true, true, streak);
+		const bool worldless = !step.cameraPass && !step.menuIsUp;
+		streak = worldless ? streak + 1 : 0;
 		Check(delivery == step.expected, step.what);
 	}
 }
@@ -477,7 +498,7 @@ void TestMenusCanReachTheWorld() {
 	// overlay off, a menu frame goes to the cinema screen, where the menu is
 	// part of the picture and therefore visible.
 	for (int pass = 0; pass < 2; ++pass) {
-		Check(DeliverFrame(pass != 0, true, MenusCanReachTheWorld(true, false), true, false) ==
+		Check(DeliverFrame(pass != 0, true, MenusCanReachTheWorld(true, false), true, 0) ==
 		          FrameDelivery::Cinema,
 		      "with the overlay off a menu falls back to the screen, where it can be seen");
 	}
@@ -525,7 +546,7 @@ void TestWantsSecondScenePass() {
 			const bool menuIsUp = menu != 0;
 			const bool menusInWorld = world != 0;
 			if (WantsSecondScenePass(true, true, menuIsUp, menusInWorld)) {
-				Check(DeliverFrame(true, menuIsUp, menusInWorld, true, false) ==
+				Check(DeliverFrame(true, menuIsUp, menusInWorld, true, 0) ==
 				          FrameDelivery::Stereo,
 				      "a frame that draws twice is always delivered as stereo");
 			}
@@ -578,7 +599,7 @@ void TestWantsHudRedirect() {
 		const bool haveHeldEyes = (bits & 8) != 0;
 
 		const FrameDelivery delivery =
-			DeliverFrame(hadCameraPass, menuIsUp, menusInWorld, haveHeldEyes, false);
+			DeliverFrame(hadCameraPass, menuIsUp, menusInWorld, haveHeldEyes, 0);
 
 		// The invariant, both ways round: the layer leaves the frame if and
 		// only if something other than the frame is being shown. A menu that
@@ -589,17 +610,17 @@ void TestWantsHudRedirect() {
 
 	// The main menu on its own, named rather than left inside the loop, because
 	// it is the flow that broke and the one a future change would break again.
-	Check(DeliverFrame(false, true, true, false, false) == FrameDelivery::Cinema,
+	Check(DeliverFrame(false, true, true, false, 0) == FrameDelivery::Cinema,
 	      "the main menu asked to hang in the world has no pair, so it takes the screen");
-	Check(!WantsHudRedirect(DeliverFrame(false, true, true, false, false)),
+	Check(!WantsHudRedirect(DeliverFrame(false, true, true, false, 0)),
 	      "and therefore keeps its layer, which is the only copy of it there is");
 
 	// The in-game menu, which is the case the setting exists for: no camera
 	// pass either, but a pair is held, so the overlay is live and the layer
 	// should leave.
-	Check(DeliverFrame(false, true, true, true, false) == FrameDelivery::HeldStereo,
+	Check(DeliverFrame(false, true, true, true, 0) == FrameDelivery::HeldStereo,
 	      "an in-game menu in the world is held rather than screened");
-	Check(WantsHudRedirect(DeliverFrame(false, true, true, true, false)),
+	Check(WantsHudRedirect(DeliverFrame(false, true, true, true, 0)),
 	      "so its layer leaves the frame and arrives as the overlay");
 }
 
@@ -786,7 +807,7 @@ int main() {
 	std::printf("\n");
 	TestDeliverFrame();
 	std::printf("\n");
-	TestClosingSeam();
+	TestWorldlessBridge();
 	std::printf("\n");
 	TestMenusCanReachTheWorld();
 	std::printf("\n");

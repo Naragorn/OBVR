@@ -241,26 +241,35 @@ enum class FrameDelivery {
 // and so is any menu opened while the dual pass is off. Asking here rather
 // than letting the submit discover it means the frame falls back to the cinema
 // screen, which is a picture, instead of to the test pattern, which is not.
-// heldLastFrame closes the seam on the way out of a menu.
 //
-// Closing one costs a frame in which the menu is already gone and the world has
-// not been drawn yet: no camera pass, no menu. That is the cinema screen by
-// every other rule, and for one frame the wearer got the flat picture with its
-// black bars - seen as a picture flashing up in the middle on every close.
+// worldlessStreak bridges the stray frames where the world simply is not
+// drawn: no camera pass, no menu. The first was the seam that closes a menu -
+// the menu already gone, the world not back yet. That is the cinema screen by
+// every other rule, and for one frame the wearer got the flat picture with
+// its black bars, seen as a picture flashing up in the middle on every close;
+// worse, the cinema path fills the eye copies with that letterboxed layout,
+// so the pair the next menu held was not the world at all. The second was the
+// end of a dialogue: the exit transition holds a frame or two without a world
+// render, mid-gameplay, no menu anywhere near - reported as a grey flash a
+// split second long. One rule covers both, and any stray frame like them: as
+// long as a held pair exists and fewer than kWorldlessBridgeFrames such
+// frames have come in a row (the streak counts the ones before this frame),
+// the pair is held again and the compositor reprojects it.
 //
-// Worse, the cinema path is where the eye copies are filled with that letterboxed
-// layout, so the pair the next menu went on to hold was not the world at all. The
-// bars were not left over from anything; they were made fresh each time a menu
-// closed.
-//
-// So a frame that follows a menu that was being held keeps holding. It lasts
-// exactly one frame, because the caller only sets this for a held frame that had
-// a menu up - the seam frame itself clears it. A loading screen that opens
-// without a menu before it is unaffected, and one that follows a menu loses a
-// single frame to the world behind it, which is not visible and is the cheaper of
-// the two mistakes.
+// The limit is what keeps a real flat presentation honest. A video or a
+// loading screen is this same shape sustained, and an unlimited bridge would
+// hold the old world in front of it for ever - the streak reaching the limit
+// is how "a stray frame" becomes "a flat presentation", at the price of the
+// first few frames of every video showing the world it interrupted, which is
+// also roughly what the monitor shows.
 FrameDelivery DeliverFrame(bool hadCameraPass, bool menuIsUp, bool menusInWorld,
-                           bool haveHeldEyes, bool heldLastFrame);
+                           bool haveHeldEyes, UInt32 worldlessStreak);
+
+// How many worldless frames in a row are bridged with the held pair before
+// the delivery concedes that a flat presentation has begun. Two to three
+// frames covers every stray gap seen so far; at ordinary frame rates the
+// world a video displaces lingers for under fifty milliseconds.
+inline constexpr UInt32 kWorldlessBridgeFrames = 3;
 
 // Whether a menu can actually be delivered in the world, given the rest of the
 // configuration.

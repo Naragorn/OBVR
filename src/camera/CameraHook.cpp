@@ -119,11 +119,21 @@ UInt32 g_presentedFrame = 0;
 
 // Whether the previous frame was a menu being held in the world.
 //
-// Set only for a held frame that had a menu up, so the seam frame that closes
-// the menu - menu already gone, world not yet drawn - sees it and keeps
-// holding, and then clears it because it has no menu of its own. One frame of
-// grace, which is exactly the length of the seam. See DeliverFrame.
-bool g_heldForMenu = false;
+// How many frames in a row arrived with neither a camera pass nor a menu,
+// counting the ones BEFORE the current frame - the delivery reads it, then
+// OnFrameEnd advances it. Up to kWorldlessBridgeFrames such strays are
+// bridged with the held pair instead of flashing the cinema screen: the seam
+// that closes a menu, and the gap a dialogue's exit transition leaves, which
+// arrived as a split-second grey flash. See DeliverFrame.
+//
+// Advanced only in OnFrameEnd, deliberately: the redirect decision earlier
+// in the same frame must see exactly the value the delivery will.
+UInt32 g_worldlessStreak = 0;
+
+// How many bridged strays are still reported. The line is the evidence for
+// where the strays actually occur - the grey flash was diagnosed from theory
+// because no trace covered it, and this is the trace that would have.
+UInt32 g_bridgesReported = 8;
 
 // Says, once, which part of the frame Oblivion is drawing into.
 //
@@ -201,12 +211,19 @@ void OnFrameEnd() {
 	const FrameDelivery delivery = DeliverFrame(
 		hadCameraPass, menuIsUp,
 		MenusCanReachTheWorld(GetConfig().tracker.menusInWorld, GetConfig().tracker.hudOverlay),
-		g_headsetRenderer.HasHeldEyes(), g_heldForMenu);
+		g_headsetRenderer.HasHeldEyes(), g_worldlessStreak);
 
-	// Armed for the seam frame that closes a menu, and only for that: a held
-	// frame with no menu of its own is the seam, and it clears this on its way
-	// through, so the grace never lasts into a loading screen.
-	g_heldForMenu = delivery == FrameDelivery::HeldStereo && menuIsUp;
+	// The streak the NEXT frame's delivery will see: this frame joins it when
+	// it was worldless, and any frame with a world - or a menu, whose held
+	// run is a picture of its own - starts it over.
+	const bool worldlessFrame = !hadCameraPass && !menuIsUp;
+	if (worldlessFrame && delivery == FrameDelivery::HeldStereo && g_bridgesReported > 0) {
+		--g_bridgesReported;
+		OBVR_LOG("Render: a worldless frame was bridged with the held pair (streak %u, "
+		         "frame %u)",
+		         g_worldlessStreak, g_presentedFrame);
+	}
+	g_worldlessStreak = worldlessFrame ? g_worldlessStreak + 1 : 0;
 
 	ReportViewportOnce(delivery == FrameDelivery::Cinema);
 
@@ -283,16 +300,17 @@ void OnFrameEnd() {
 		held.submitGameFrame = GetConfig().tracker.submitGameFrame;
 		held.heldEyes = true;
 
-		// The pause-menu dressing rides only on this delivery, which is what
-		// keeps it out of dialogue: there the world renders on every frame and
-		// no frame is held. Colour and strength are folded here so the
-		// renderer sees one word - zero, or the ARGB to paint.
+		// The pause-menu dressing rides only on held frames WITH a menu up -
+		// dialogue never holds (the world renders on), and a bridged stray
+		// frame holds the world mid-play, where a sepia flash would be a new
+		// bug in the old one's place. Colour and strength are folded here so
+		// the renderer sees one word - zero, or the ARGB to paint.
 		held.menuShadeColor =
-			GetConfig().tracker.menuShade
+			(menuIsUp && GetConfig().tracker.menuShade)
 				? render::ComposeShadeColor(GetConfig().tracker.menuShadeColorRgb,
 			                                GetConfig().tracker.menuShadeStrength)
 				: 0;
-		held.menuSingleBorder = GetConfig().tracker.menuSingleBorder;
+		held.menuSingleBorder = menuIsUp && GetConfig().tracker.menuSingleBorder;
 		if (g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame())) {
 			g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), held);
 		}
@@ -617,7 +635,7 @@ void* HudBeginRedirect() {
 	const FrameDelivery delivery = DeliverFrame(
 		g_frameOpen, menuIsUp,
 		MenusCanReachTheWorld(config.tracker.menusInWorld, config.tracker.hudOverlay),
-		g_headsetRenderer.HasHeldEyes(), g_heldForMenu);
+		g_headsetRenderer.HasHeldEyes(), g_worldlessStreak);
 	if (!WantsHudRedirect(delivery)) {
 		// Part of the menu trace, because "the redirect said no" and "the
 		// pass never ran" look identical from the outside - a menu on the

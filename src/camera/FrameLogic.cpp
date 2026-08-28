@@ -90,17 +90,18 @@ float ScaledEyeHalfSeparation(float halfUnits, float scale) {
 }
 
 FrameDelivery DeliverFrame(bool hadCameraPass, bool menuIsUp, bool menusInWorld,
-                           bool haveHeldEyes, bool heldLastFrame) {
+                           bool haveHeldEyes, UInt32 worldlessStreak) {
 	// Nothing drew a world, so there is no viewpoint to claim and no stereo
 	// pair to hold. Videos, loading screens and the main menu land here, and
 	// they land here whatever menusInWorld says.
 	if (!hadCameraPass && !menuIsUp) {
-		// Except for the one frame that closes a menu, where the menu is gone
-		// and the world has not come back yet. Screening that frame is a flash
-		// of the flat picture in the middle of an otherwise smooth close - and
-		// it fills the eye copies with the letterboxed layout, which is where
-		// the next menu's black bars came from. See the header.
-		if (heldLastFrame && haveHeldEyes) {
+		// Except for stray frames: the seam that closes a menu, the gap a
+		// dialogue's exit transition leaves - the world missing for a frame
+		// or two, not gone. Screening those is a flash of the flat picture in
+		// the middle of otherwise smooth play, and it fills the eye copies
+		// with the letterboxed layout, which is where black bars come from.
+		// The streak cap is what lets a real video through. See the header.
+		if (haveHeldEyes && worldlessStreak < kWorldlessBridgeFrames) {
 			return FrameDelivery::HeldStereo;
 		}
 		return FrameDelivery::Cinema;
