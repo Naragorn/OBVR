@@ -135,6 +135,14 @@ UInt32 g_worldlessStreak = 0;
 // because no trace covered it, and this is the trace that would have.
 UInt32 g_bridgesReported = 8;
 
+// The frame the current menu opened on, for telling a pause menu's held run
+// from a dialogue's exit fade - see MenuDressingWanted. And one dressing
+// report per menu episode, budgeted, because whether the dressing was
+// granted or skipped is the evidence the washed-grey diagnosis rests on.
+UInt32 g_menuOpenedFrame = 0;
+bool g_dressingReportedThisMenu = false;
+UInt32 g_dressingReportsLeft = 8;
+
 // Says, once, which part of the frame Oblivion is drawing into.
 //
 // OBVR now asks for a frame the game did not choose, so "the frame" and "the
@@ -237,6 +245,10 @@ void OnFrameEnd() {
 		g_menuTraceWasUp = menuIsUp;
 		g_menuTraceLeft = 12;
 		render::ArmBetweenTrace();
+		if (menuIsUp) {
+			g_menuOpenedFrame = g_presentedFrame;
+			g_dressingReportedThisMenu = false;
+		}
 		OBVR_LOG("Menu trace: a menu just %s", menuIsUp ? "opened" : "closed");
 	}
 	if (g_menuTraceLeft > 0) {
@@ -300,17 +312,33 @@ void OnFrameEnd() {
 		held.submitGameFrame = GetConfig().tracker.submitGameFrame;
 		held.heldEyes = true;
 
-		// The pause-menu dressing rides only on held frames WITH a menu up -
-		// dialogue never holds (the world renders on), and a bridged stray
-		// frame holds the world mid-play, where a sepia flash would be a new
-		// bug in the old one's place. Colour and strength are folded here so
+		// The pause-menu dressing rides only on held frames whose menu just
+		// opened. Both gates matter: a bridged stray frame has no menu at
+		// all, and a dialogue - which IS a menu - holds only during its exit
+		// fade, minutes after the DialogMenu opened; dressing that fade
+		// painted it sepia, seen as a half-second washed-grey picture at the
+		// end of every conversation. Colour and strength are folded here so
 		// the renderer sees one word - zero, or the ARGB to paint.
+		const bool dressing =
+			menuIsUp && MenuDressingWanted(g_presentedFrame - g_menuOpenedFrame);
 		held.menuShadeColor =
-			(menuIsUp && GetConfig().tracker.menuShade)
+			(dressing && GetConfig().tracker.menuShade)
 				? render::ComposeShadeColor(GetConfig().tracker.menuShadeColorRgb,
 			                                GetConfig().tracker.menuShadeStrength)
 				: 0;
-		held.menuSingleBorder = menuIsUp && GetConfig().tracker.menuSingleBorder;
+		held.menuSingleBorder = dressing && GetConfig().tracker.menuSingleBorder;
+
+		// Once per menu episode: whether its held run wears the dressing.
+		// This line is the evidence the washed-grey diagnosis rests on - a
+		// dialogue's end should log "skips", a pause menu "carries".
+		if (menuIsUp && !g_dressingReportedThisMenu && g_dressingReportsLeft > 0) {
+			g_dressingReportedThisMenu = true;
+			--g_dressingReportsLeft;
+			OBVR_LOG("Render: held frames %s the menu dressing - the menu opened %u "
+			         "frames ago%s",
+			         dressing ? "carry" : "skip", g_presentedFrame - g_menuOpenedFrame,
+			         dressing ? "" : " (a dialogue's exit fade, most likely)");
+		}
 		if (g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame())) {
 			g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), held);
 		}

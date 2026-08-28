@@ -22,19 +22,15 @@ constexpr DialogZoomAction DecideDialogZoom(bool zoomWanted, bool patched) {
 	return DialogZoomAction::Nothing;
 }
 
-// Applies Look.DialogZoom: patches PlayerCharacter::SetDialogCamera to return
-// immediately when the zoom is unwanted, and puts the original bytes back when
-// it is wanted again. Verifies the bytes before the first patch and refuses -
-// once, out loud - when they are not the ones this build knows. Safe to call
-// every frame; it only acts on a change.
-//
-// This is the second time this patch is the answer, and the history is worth
-// keeping: it was replaced once by holding fDlgFocus at 15 in memory - the
-// gentler intervention - and that brought a split-second grey flash to every
-// dialogue's end, because the exit transition then RAN, merely going nowhere,
-// and its worldless frames outlasted the delivery's stray-frame bridge.
-// Cutting the function is what removes the transition's frames along with
-// its zoom.
+// Applies Look.DialogZoom. Off, SetDialogCamera's entry jumps to a shim that
+// keeps exactly one of the function's two jobs: a third-person player is
+// still flipped into first person when a conversation starts and back when
+// it ends - the vanilla dance, asked back after a bare ret removed it - but
+// the camera transition whose distance fDlgFocus sets is never started, so
+// there is no zoom and no spent transition. On restores the vanilla bytes.
+// Verifies the bytes before the first patch and refuses - once, out loud -
+// when they are not the ones this build knows. Safe to call every frame; it
+// only acts on a change.
 void ApplyDialogZoom(bool zoomWanted);
 
 }  // namespace obvr::game

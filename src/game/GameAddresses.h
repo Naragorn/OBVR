@@ -181,13 +181,29 @@ inline constexpr UInt32 kIsMenuMode = 0x00578F60;
 // A function with that signature, split on a null Actor, reading fDlgFocus,
 // at the very address TESReloaded names, is the one being described.
 //
-// The patch was tried, replaced, and chosen again, and the middle step is the
-// reason it stays: holding fDlgFocus at 15 in memory - the gentler route -
-// let the exit transition RUN, merely going nowhere, and its worldless frames
-// arrived as a split-second grey flash at every dialogue's end, outlasting
-// the delivery's stray-frame bridge. Cutting the function removes the
-// transition's frames along with its zoom.
+// The intervention here went through three shapes, each correcting the last:
+// a bare ret 0Ch (cut everything), then holding fDlgFocus at 15 in memory
+// (the transition ran, going nowhere), then the ret again - and the ret
+// turned out to cut one thing too many. SetDialogCamera is ALSO what flips a
+// third-person player into first person for the conversation and back after
+// it, and that half was wanted. So the entry now jumps to a shim of OBVR's
+// own that does the flip through ToggleCamera below and nothing else: no
+// transition, no zoom, the vanilla point-of-view dance kept.
 inline constexpr UInt32 kSetDialogCamera = 0x0066C6F0;
+
+// PlayerCharacter::ToggleCamera - the game's own "put the player in first or
+// third person", one byte argument, 1 meaning first person.
+//
+// Three sources for once. TESReloaded (Framework/Oblivion/Base.h) names
+// ToggleCamera = 0x0066C580 and calls it __thiscall with a byte; xOBSE
+// (obse/GameObjects.cpp) implements PlayerCharacter::TogglePOV(bool
+// bFirstPerson) as ThisStdCall(0x0066C580, this, bFirstPerson), and its
+// command documentation fixes the meaning: "Passing 1 enables first person
+// view, 0 enables third person". And this file already leaned on the
+// function once: the kPlayerPointer comment below records that 0x0066C580
+// writes the isThirdPerson flag at +0x588, which is how that offset was
+// established.
+inline constexpr UInt32 kToggleCamera = 0x0066C580;
 
 // Where Oblivion keeps d3d9.dll and the Direct3DCreate9 it looked up in it.
 //

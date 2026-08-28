@@ -271,6 +271,23 @@ FrameDelivery DeliverFrame(bool hadCameraPass, bool menuIsUp, bool menusInWorld,
 // world a video displaces lingers for under fifty milliseconds.
 inline constexpr UInt32 kWorldlessBridgeFrames = 3;
 
+// Whether a run of held menu frames gets the pause-menu dressing - the sepia
+// shade and the single border - given how long ago the menu opened.
+//
+// The distinction this draws is pause menu versus dialogue, and it draws it
+// from timing because both are IsMenuMode. Esc and Tab stop the world on the
+// spot: their held frames begin within a frame or two of the menu opening.
+// A dialogue keeps the world rendering for its whole length - its held
+// frames, when they come, are the exit fade, minutes after the DialogMenu
+// opened. Dressing those painted the fade sepia, which the headset reported
+// as a half-second washed-grey picture at the end of every conversation; a
+// fade should show the world as it is.
+inline constexpr UInt32 kMenuDressingWindowFrames = 10;
+
+constexpr bool MenuDressingWanted(UInt32 framesSinceMenuOpened) {
+	return framesSinceMenuOpened <= kMenuDressingWindowFrames;
+}
+
 // Whether a menu can actually be delivered in the world, given the rest of the
 // configuration.
 //

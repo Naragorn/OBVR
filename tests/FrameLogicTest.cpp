@@ -475,6 +475,26 @@ void TestWorldlessBridge() {
 	}
 }
 
+void TestMenuDressingWindow() {
+	std::printf("Which held menus wear the pause dressing\n");
+
+	using obvr::camera::kMenuDressingWindowFrames;
+	using obvr::camera::MenuDressingWanted;
+
+	// A pause menu stops the world on the spot: its held frames begin within
+	// a frame or two of the menu opening.
+	Check(MenuDressingWanted(0), "a menu holding on its opening frame is dressed");
+	Check(MenuDressingWanted(1), "and one frame later");
+	Check(MenuDressingWanted(kMenuDressingWindowFrames), "up to the window's edge");
+
+	// A dialogue is also a menu, but its held frames are the exit fade, long
+	// after the DialogMenu opened - dressing those painted the fade sepia,
+	// seen as a washed-grey half second at the end of every conversation.
+	Check(!MenuDressingWanted(kMenuDressingWindowFrames + 1),
+	      "held frames past the window go undressed");
+	Check(!MenuDressingWanted(3600), "a dialogue's exit fade, minutes in, goes undressed");
+}
+
 void TestMenusCanReachTheWorld() {
 	std::printf("When a menu asked to hang in the world actually can\n");
 
@@ -808,6 +828,8 @@ int main() {
 	TestDeliverFrame();
 	std::printf("\n");
 	TestWorldlessBridge();
+	std::printf("\n");
+	TestMenuDressingWindow();
 	std::printf("\n");
 	TestMenusCanReachTheWorld();
 	std::printf("\n");
