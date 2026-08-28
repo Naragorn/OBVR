@@ -1,5 +1,7 @@
 #include "render/InterfaceRenderHook.h"
 
+#include <cstring>
+
 #include "core/EntryDetour.h"
 #include "core/Log.h"
 #include "core/Memory.h"
@@ -222,6 +224,33 @@ void RecordTimeline(char kind, const char* label, void* buffer, UInt32 a, UInt32
 	}
 	g_timeline[g_timelineCount] = TimelineEvent{kind, label, buffer, a, b, c};
 	++g_timelineCount;
+}
+
+// The first vertex of the first pool writes of the frame, kept raw. The
+// unlock fingerprints showed the second render packing different bytes
+// for the same body parts; whether those bytes are correct specular for
+// the other camera or a degenerate position is a question sums cannot
+// answer and one vertex can.
+constexpr UInt32 kVertexPeekSlots = 24;
+constexpr UInt32 kVertexPeekFloats = 18;  // one 72-byte vertex
+struct VertexPeek {
+	void* buffer;
+	UInt32 offset;
+	float floats[kVertexPeekFloats];
+};
+VertexPeek g_vertexPeeks[kVertexPeekSlots];
+UInt32 g_vertexPeekCount = 0;
+
+void PeekVertices(void* buffer, UInt32 offset, const void* data, UInt32 size) {
+	if (!g_timelineArmed || g_vertexPeekCount >= kVertexPeekSlots ||
+	    size < kVertexPeekFloats * 4) {
+		return;
+	}
+	VertexPeek& peek = g_vertexPeeks[g_vertexPeekCount];
+	peek.buffer = buffer;
+	peek.offset = offset;
+	std::memcpy(peek.floats, data, sizeof(peek.floats));
+	++g_vertexPeekCount;
 }
 
 // Whether the last upload that started at register 0 - ModelViewProj in
@@ -742,6 +771,9 @@ SInt32 __stdcall HookedVbUnlock(void* self) {
 		const UInt32 sum = SumLeadingBytes(data, size, kWriteFingerprintBytes);
 		g_stateCalls.dynamicWriteSum += sum;
 		RecordTimeline('U', nullptr, self, sum, 0, 0);
+		// The peeks land in unlock order, cross-referenced by the same sum
+		// the matching 'U' line carries.
+		PeekVertices(self, sum, data, size);
 	}
 	return g_originalVbUnlock(self);
 }
@@ -1508,6 +1540,7 @@ void ArmPoolTimeline() {
 	}
 	g_timelineArmed = true;
 	g_timelineCount = 0;
+	g_vertexPeekCount = 0;
 }
 
 void MarkPoolTimeline(const char* label) { RecordTimeline('M', label, nullptr, 0, 0, 0); }
@@ -1539,6 +1572,14 @@ void DumpPoolTimeline() {
 			default:
 				break;
 		}
+	}
+	for (UInt32 i = 0; i < g_vertexPeekCount; ++i) {
+		const VertexPeek& p = g_vertexPeeks[i];
+		const float* f = p.floats;
+		OBVR_LOG("V %p sum=%08X | %g %g %g | %g %g %g | %g %g %g %g %g %g | %g %g %g "
+		         "%g %g %g",
+		         p.buffer, p.offset, f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7],
+		         f[8], f[9], f[10], f[11], f[12], f[13], f[14], f[15], f[16], f[17]);
 	}
 }
 
