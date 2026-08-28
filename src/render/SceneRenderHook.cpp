@@ -309,10 +309,11 @@ void TraceZeroMatrixDraws(const StateCallCounts& entry, const StateCallCounts& a
 	float eyeShift[3];
 	int shiftSign = 0;
 	GetBoneShiftState(eyeShift, shiftSign);
-	OBVR_LOG("Bone lock at scene call %u: replaced %u, passthrough %u, camera "
-	         "shift %g %g %g sign %d, measured %g %g %g from %u rows",
+	OBVR_LOG("Bone lock at scene call %u: replaced %u, passthrough %u, offscreen "
+	         "%u, camera shift %g %g %g sign %d, measured %g %g %g from %u rows",
 	         g_sceneCall, afterSecond.boneLockReplaced - entry.boneLockReplaced,
 	         afterSecond.boneLockPassthrough - entry.boneLockPassthrough,
+	         afterSecond.boneOffscreenRows - entry.boneOffscreenRows,
 	         eyeShift[0], eyeShift[1], eyeShift[2], shiftSign, eyeDelta[0],
 	         eyeDelta[1], eyeDelta[2], eyeDeltaSamples);
 	OBVR_LOG("Dual bone range at scene call %u: first %u calls %u vecs sum %08X, "

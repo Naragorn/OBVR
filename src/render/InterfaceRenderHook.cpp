@@ -284,6 +284,18 @@ ShiftSign g_boneShiftSign = ShiftSign::Unknown;
 bool g_boneShiftSignReported = false;
 float g_boneRebaseRow[kBoneRowFloats];
 
+// Whether bone rows are currently heading for the world render's target.
+// Shadow and reflection sub-passes render the same skeletons into their
+// own smaller textures, camera-free - shifting those gave every shadow a
+// body's parallax. Kept by the SetRenderTarget hook while a bone mode is
+// on (see BoneTargetIsWorldSized); rows heading elsewhere pass through
+// untouched, in the capture as in the replace, so the ring stays in step.
+// The main width is measured once from the back buffer; without the HUD
+// hook neither the width nor the target hook exists, and everything
+// degrades to the pre-shift behaviour of locking every row.
+bool g_boneTargetIsMain = true;
+UInt32 g_boneMainWidth = 0;
+
 // Called for every bone-shaped upload (the three register classes, exactly
 // three vectors). During the first render it records; during the second it
 // pairs each arriving row with the first render's version of the same bone
@@ -452,6 +464,20 @@ void** g_ibVtable = nullptr;
 bool g_ibSecondVtableReported = false;
 
 SInt32 __stdcall HookedSetRenderTarget(void* self, UInt32 index, void* surface) {
+	// Where the next bone rows are heading. Only while a bone mode is on -
+	// outside dual frames the answer is never read - and only for target
+	// zero, the one the draws land in. An unreadable surface is treated as
+	// the world's: locking a row too many is the old, survivable behaviour,
+	// while skipping world rows would desynchronise the ring.
+	if (index == 0 && surface != nullptr && g_boneMode != BonePassMode::Off) {
+		d3d9::SurfaceDesc desc{};
+		auto getDesc = d3d9::Method<d3d9::GetDescFn>(surface, d3d9::kSurfaceGetDesc);
+		if (getDesc != nullptr && getDesc(surface, &desc) >= 0) {
+			g_boneTargetIsMain = BoneTargetIsWorldSized(desc.width, g_boneMainWidth);
+		} else {
+			g_boneTargetIsMain = true;
+		}
+	}
 	if ((g_redirecting || g_observing) && index == 0 && surface != nullptr) {
 		if (surface == g_backBuffer) {
 			++g_statsMatched;
@@ -817,9 +843,16 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
 		startRegister >= 14 && startRegister <= 65 && startRegister % 3 == 2;
 	if (data != nullptr && (skinBoneRow || hairBoneRow || headPartBoneRow) &&
 	    vector4fCount == 3) {
-		const float* replacement = HandleBoneUpload(startRegister, data);
-		if (replacement != nullptr) {
-			data = replacement;
+		if (g_boneTargetIsMain) {
+			const float* replacement = HandleBoneUpload(startRegister, data);
+			if (replacement != nullptr) {
+				data = replacement;
+			}
+		} else if (g_boneMode != BonePassMode::Off) {
+			// A shadow or reflection sub-pass: the row is camera-free and
+			// belongs to this pass as it stands. Counted so the log can say
+			// how much of a frame's bone traffic the world never sees.
+			++g_stateCalls.boneOffscreenRows;
 		}
 	}
 	if (data != nullptr && vector4fCount > 0) {
@@ -1778,6 +1811,25 @@ bool PoolTimelineWasDumped() { return g_timelineDumped; }
 void SetBonePassMode(BonePassMode mode) {
 	const BonePassMode previous = g_boneMode;
 	g_boneMode = mode;
+	if (mode == BonePassMode::Capture || mode == BonePassMode::Replace) {
+		// Both passes start on the world target; the SetRenderTarget hook
+		// takes it from here. The world's width is measured once, from the
+		// back buffer the HUD hook already holds - before either exists,
+		// the width stays zero and every target counts as the world's.
+		g_boneTargetIsMain = true;
+		if (g_boneMainWidth == 0 && g_backBuffer != nullptr) {
+			d3d9::SurfaceDesc desc{};
+			auto getDesc =
+				d3d9::Method<d3d9::GetDescFn>(g_backBuffer, d3d9::kSurfaceGetDesc);
+			if (getDesc != nullptr && getDesc(g_backBuffer, &desc) >= 0 &&
+			    desc.width > 0) {
+				g_boneMainWidth = desc.width;
+				OBVR_LOG("Bone lock: world target width %u - bone rows heading "
+				         "for smaller targets (shadows, reflections) pass through",
+				         g_boneMainWidth);
+			}
+		}
+	}
 	if (mode == BonePassMode::Capture) {
 		g_boneLogCount = 0;
 	} else if (mode == BonePassMode::Replace) {

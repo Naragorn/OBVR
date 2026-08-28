@@ -193,6 +193,20 @@ void TestChooseRebaseDelta() {
 	      "a camera that did not move shifts nothing even when calibrated");
 }
 
+void TestWorldSizedTarget() {
+	std::printf("World-sized target\n");
+
+	using obvr::render::BoneTargetIsWorldSized;
+	Check(BoneTargetIsWorldSized(512, 0),
+	      "an unmeasured main width claims every target for the world");
+	Check(BoneTargetIsWorldSized(2560, 2560), "the world target is world-sized");
+	Check(BoneTargetIsWorldSized(4096, 2560), "a larger target still counts");
+	Check(!BoneTargetIsWorldSized(512, 2560),
+	      "a shadow-sized target is a sub-pass");
+	Check(!BoneTargetIsWorldSized(2559, 2560),
+	      "just under the main width is a sub-pass");
+}
+
 void TestRebase() {
 	std::printf("Rebase\n");
 
@@ -227,6 +241,7 @@ int main() {
 	TestMeasurementStates();
 	TestSignCalibration();
 	TestChooseRebaseDelta();
+	TestWorldSizedTarget();
 	TestRebase();
 
 	if (g_failures != 0) {

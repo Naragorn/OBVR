@@ -173,9 +173,13 @@ struct StateCallCounts {
 
 	// The bone lock at work: replaced is second-render rows served the
 	// first render's version shifted onto the second eye; passthrough is
-	// rows whose rotation matched nothing the first render uploaded.
+	// rows whose rotation matched nothing the first render uploaded;
+	// offscreen is rows that were heading for a shadow or reflection
+	// target and were left alone entirely - those sub-passes are
+	// camera-free, and shifting them put every shadow one eye over.
 	UInt32 boneLockReplaced = 0;
 	UInt32 boneLockPassthrough = 0;
+	UInt32 boneOffscreenRows = 0;
 };
 
 StateCallCounts TotalStateCalls();

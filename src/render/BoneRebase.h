@@ -154,6 +154,19 @@ inline void ChooseRebaseDelta(const EyeDeltaEstimate& e, const float shift[3],
 	CurrentEyeDelta(e, out);
 }
 
+// Whether a render target the bone rows are heading for is the world
+// render's. The lock's shift is only right for the world: shadow and
+// reflection sub-passes draw the same skeletons into their own textures
+// from light or mirror viewpoints, camera-free, and shifting those gives
+// every shadow a body's parallax - it stands in the room instead of lying
+// on the ground. The world target is screen-sized and the sub-pass
+// targets are smaller, so size is the divide; an unmeasured main width
+// (zero) claims every target for the world, which is the pre-shift
+// behaviour and the safe degradation.
+inline bool BoneTargetIsWorldSized(UInt32 targetWidth, UInt32 mainWidth) {
+	return mainWidth == 0 || targetWidth >= mainWidth;
+}
+
 // The first render's row, translation shifted into this render's frame of
 // reference. Rotation floats are copied bit-for-bit.
 inline void RebaseBoneRow(float* out, const float* logged, const float delta[3]) {
