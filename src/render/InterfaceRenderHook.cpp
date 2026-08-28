@@ -653,6 +653,13 @@ SInt32 __stdcall HookedCreateVertexBuffer(void* self, UInt32 length, UInt32 usag
 	if (result < 0 || vertexBuffer == nullptr || *vertexBuffer == nullptr) {
 		return result;
 	}
+	if ((usage & d3d9::kUsageDynamic) != 0) {
+		// The dynamic buffers are the discard-locked pool under the collapse;
+		// a handful exist, so each one's creation is worth a line - the
+		// parameters decide which upload path the D3D9 layer puts it on.
+		OBVR_LOG("Hud: dynamic vertex buffer %p created - length %u, usage %08X, pool %u",
+		         *vertexBuffer, length, usage, pool);
+	}
 	auto** vtable = *reinterpret_cast<void***>(*vertexBuffer);
 	if (g_vbVtable == nullptr) {
 		g_originalVbLock =

@@ -468,6 +468,12 @@ constexpr UInt32 kVertexBufferUnlock = 12;
 // refilled is one candidate for what bodies collapsed onto a point are.
 constexpr UInt32 kLockDiscard = 0x2000;
 
+// D3DUSAGE_DYNAMIC (d3d9types.h, line 1617). The creation flag that makes
+// a buffer lockable with DISCARD at all - so the buffers created with it
+// are the pool the collapse investigation watches, and their creation
+// parameters say which upload path the D3D9 implementation puts them on.
+constexpr UInt32 kUsageDynamic = 0x200;
+
 // IUnknown::Release, method two of the three every interface starts with.
 // For letting go of the probe buffer that activates the Lock counter.
 constexpr UInt32 kUnknownRelease = 2;
