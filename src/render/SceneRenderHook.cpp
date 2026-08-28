@@ -53,10 +53,6 @@ bool g_rendering = false;
 // pass costs the HUD its draws.
 UInt32 g_sceneCall = 0;
 
-// Set when a dual frame was busy enough with skinned bodies that the next
-// dual frame deserves the one-shot pool timeline.
-bool g_timelinePending = false;
-
 void TraceFrame(const char* how, UInt32 passesLastFrame, UInt32 drawsLastFrame) {
 	if (g_sceneCall <= 150 || g_sceneCall > 500 || g_sceneCall % 10 != 0) {
 		return;
@@ -397,12 +393,12 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	const UInt32 drawsAtEntry = TotalDrawCount();
 	const StateCallCounts stateAtEntry = TotalStateCalls();
 
-	// The one-shot timeline, armed when the previous dual frame was busy
-	// with skinned bodies - the standing-next-to-an-npc situation the
-	// collapse lives in. Recording the frame after the busy one costs the
-	// trigger nothing and catches the same scene one frame later.
-	if (g_timelinePending && !PoolTimelineWasDumped()) {
-		g_timelinePending = false;
+	// The timeline records every dual frame afresh until one is worth
+	// keeping. Recording the frame after a divergent one missed twice -
+	// the divergence does not repeat on a fixed schedule - so the recorder
+	// now runs always and the decision to dump is made at the end of the
+	// very frame the events belong to.
+	if (!PoolTimelineWasDumped()) {
 		ArmPoolTimeline();
 		MarkPoolTimeline("first pass begins");
 	}
@@ -422,13 +418,10 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	const UInt32 drawsAfterSecond = TotalDrawCount();
 	const StateCallCounts stateAfterSecond = TotalStateCalls();
 	MarkPoolTimeline("frame ends");
-	DumpPoolTimeline();
-	g_callbacks.afterSecondPass();
 
-	// Armed only by a frame that actually diverged: same number of skinned
-	// draws in both renders, different base-vertex sums. A busy frame is
-	// not enough - the first recording caught a healthy one and its diff
-	// came back empty while the collapse was on screen two seconds later.
+	// Kept only when this very frame diverged: same number of skinned
+	// draws in both renders, different base-vertex sums - the collapse's
+	// signature. Anything else is discarded by the next frame's re-arm.
 	{
 		const UInt32 drawsFirst = stateAfterFirst.skinnedDraws - stateAtEntry.skinnedDraws;
 		const UInt32 drawsSecond =
@@ -437,11 +430,11 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 			stateAfterFirst.skinnedBaseVertexSum - stateAtEntry.skinnedBaseVertexSum;
 		const UInt32 baseSecond =
 			stateAfterSecond.skinnedBaseVertexSum - stateAfterBetween.skinnedBaseVertexSum;
-		if (!PoolTimelineWasDumped() && drawsFirst == drawsSecond && drawsFirst >= 20 &&
-		    baseFirst != baseSecond) {
-			g_timelinePending = true;
+		if (drawsFirst == drawsSecond && drawsFirst >= 20 && baseFirst != baseSecond) {
+			DumpPoolTimeline();
 		}
 	}
+	g_callbacks.afterSecondPass();
 
 	g_rendering = false;
 	TracePassDraws(drawsAtEntry, drawsAfterFirst, drawsAfterBetween, drawsAfterSecond);
