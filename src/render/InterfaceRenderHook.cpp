@@ -260,7 +260,7 @@ struct BonePeek {
 // divergence the sums keep reporting sits somewhere in the hundreds
 // that follow - this finds the first mismatching upload and keeps both
 // versions of it.
-constexpr UInt32 kBoneLogCapacity = 1024;
+constexpr UInt32 kBoneLogCapacity = 4096;  // busy frames carry ~1800 bone uploads
 BonePeek g_boneLog[kBoneLogCapacity];
 UInt32 g_boneLogCount = 0;       // uploads recorded during the first render
 UInt32 g_boneCompareIndex = 0;   // second-render uploads compared so far
@@ -747,7 +747,15 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
 	// are what the device receives and what every counter below sees - so
 	// a locked frame's bone range sums must come back equal, which is the
 	// lock verifying itself in the same line that convicted the bug.
-	if (data != nullptr && startRegister >= 40 && vector4fCount == 3) {
+	//
+	// The window is both Bones classes of the active package: c42+54 for
+	// the skin shaders and c31+54 for the hair shaders, rows at three
+	// vectors each, so registers 31 through 93. The package census shows
+	// no other three-vector constant in that range - and the first cut of
+	// this lock, starting at register 40, split the hair palettes in half
+	// and wore the result as permanently displaced helmets.
+	if (data != nullptr && startRegister >= 31 && startRegister <= 93 &&
+	    vector4fCount == 3) {
 		const float* replacement = HandleBoneUpload(startRegister, data);
 		if (replacement != nullptr) {
 			data = replacement;
