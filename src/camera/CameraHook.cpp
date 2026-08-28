@@ -143,6 +143,12 @@ UInt32 g_menuOpenedFrame = 0;
 bool g_dressingReportedThisMenu = false;
 UInt32 g_dressingReportsLeft = 8;
 
+// The menu-world probe's budget for the current menu episode. Refilled when
+// a menu opens, spent one self-initiated render per held frame while
+// Debug.MenuWorldProbe is on - see MenuWorldProbeWanted for why each gate
+// exists.
+UInt32 g_menuProbeAttemptsLeft = 0;
+
 // Says, once, which part of the frame Oblivion is drawing into.
 //
 // OBVR now asks for a frame the game did not choose, so "the frame" and "the
@@ -248,6 +254,7 @@ void OnFrameEnd() {
 		if (menuIsUp) {
 			g_menuOpenedFrame = g_presentedFrame;
 			g_dressingReportedThisMenu = false;
+			g_menuProbeAttemptsLeft = kMenuWorldProbeAttempts;
 		}
 		OBVR_LOG("Menu trace: a menu just %s", menuIsUp ? "opened" : "closed");
 	}
@@ -368,6 +375,40 @@ void OnFrameEnd() {
 			OBVR_LOG("Menu trace: on this held frame the 2D pass ran %u time(s) "
 			         "and drew %u",
 			         hudPasses, hudDraws);
+		}
+
+		// The menu-world probe, last, so this frame's submissions are already
+		// paid whatever the probe does. It runs after the frame's own
+		// EndScene - this is Present - so the render gets a scene bracket of
+		// its own; a draw outside one is an invalid call, not a slow one.
+		// Opened the way the sepia pass opens its bracket: the probe's
+		// EndScene is only owed when the probe's BeginScene was accepted.
+		// The picture lands in the back buffer, which nobody reads on a held
+		// frame - the monitor may show the world instead of the menu for
+		// these few frames, which is the probe being visible, not a fault.
+		if (MenuWorldProbeWanted(GetConfig().menuWorldProbe, delivery, menuIsUp,
+		                         g_menuProbeAttemptsLeft)) {
+			--g_menuProbeAttemptsLeft;
+			void* const device = render::GetGameDevice();
+			auto beginScene = render::d3d9::Method<render::d3d9::SceneBracketFn>(
+				device, render::d3d9::kDeviceBeginScene);
+			auto endScene = render::d3d9::Method<render::d3d9::SceneBracketFn>(
+				device, render::d3d9::kDeviceEndScene);
+			const bool bracketOpened = beginScene != nullptr && beginScene(device) >= 0;
+			UInt32 draws = 0;
+			const bool ran = render::RunMenuWorldProbe(draws);
+			if (bracketOpened && endScene != nullptr) {
+				endScene(device);
+			}
+			// The whole result is this line: a self-initiated render that
+			// draws makes the live menu background an engineering task, one
+			// that runs empty makes it a research task - the 2D pass under
+			// the dual pass set the precedent for a pass that refuses.
+			OBVR_LOG("Menu world probe: a self-initiated world render %s and made %u "
+			         "draw call(s) (bracket %s, %u attempt(s) left, frame %u)",
+			         ran ? "ran" : "was refused", draws,
+			         bracketOpened ? "opened" : "NOT opened", g_menuProbeAttemptsLeft,
+			         g_presentedFrame);
 		}
 		return;
 	}

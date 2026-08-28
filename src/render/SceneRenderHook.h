@@ -61,4 +61,18 @@ bool IsSceneRenderHooked();
 // than this.
 UInt32 CurrentSceneCall();
 
+// One self-initiated world render, for the menu-world probe: calls the
+// engine's render function - through the trampoline, so no second pass and
+// no callbacks run - on the renderer instance remembered from the last real
+// render, with the frame clock zeroed, and reports how many draw calls it
+// produced. False when there is nothing to call yet (no hook, no render seen
+// so far) or a render is already running; drawsOut is 0 then.
+//
+// The caller owns the moment and the scene bracket: this is meant to run on
+// a held menu frame, after the frame's own EndScene, wrapped in a
+// BeginScene/EndScene pair of the caller's making. What it answers is
+// whether a render Oblivion did not schedule draws at all - the question
+// behind keeping the world live behind pause menus.
+bool RunMenuWorldProbe(UInt32& drawsOut);
+
 }  // namespace obvr::render

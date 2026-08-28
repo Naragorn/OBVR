@@ -133,6 +133,12 @@ bool MenusCanReachTheWorld(bool menusInWorld, bool hudOverlay) {
 	return menusInWorld && hudOverlay;
 }
 
+bool MenuWorldProbeWanted(bool probeEnabled, FrameDelivery delivery, bool menuIsUp,
+                          UInt32 attemptsLeft) {
+	return probeEnabled && delivery == FrameDelivery::HeldStereo && menuIsUp &&
+	       attemptsLeft > 0;
+}
+
 bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp, bool menusInWorld) {
 	return frameOpen && armed && (!menuIsUp || menusInWorld);
 }

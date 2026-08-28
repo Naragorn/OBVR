@@ -495,6 +495,44 @@ void TestMenuDressingWindow() {
 	Check(!MenuDressingWanted(3600), "a dialogue's exit fade, minutes in, goes undressed");
 }
 
+void TestMenuWorldProbe() {
+	std::printf("When the menu-world probe runs its self-initiated render\n");
+
+	using obvr::camera::FrameDelivery;
+	using obvr::camera::kMenuWorldProbeAttempts;
+	using obvr::camera::MenuWorldProbeWanted;
+
+	// The one flow that runs: the probe is asked for, the frame is a held
+	// menu frame, and the episode's budget is not spent.
+	Check(MenuWorldProbeWanted(true, FrameDelivery::HeldStereo, true, kMenuWorldProbeAttempts),
+	      "a held menu frame with budget runs the probe");
+	Check(MenuWorldProbeWanted(true, FrameDelivery::HeldStereo, true, 1),
+	      "down to the last attempt");
+
+	// Off means off, whatever the frame looks like.
+	Check(!MenuWorldProbeWanted(false, FrameDelivery::HeldStereo, true, kMenuWorldProbeAttempts),
+	      "switched off, nothing runs");
+
+	// Only held frames: those are the frames a live menu background would
+	// have to be drawn on. A stereo frame already has a world, and a cinema
+	// frame's picture is the back buffer itself - a probe render would draw
+	// over the very picture being shown.
+	Check(!MenuWorldProbeWanted(true, FrameDelivery::Stereo, true, kMenuWorldProbeAttempts),
+	      "a stereo frame has a world already");
+	Check(!MenuWorldProbeWanted(true, FrameDelivery::Cinema, true, kMenuWorldProbeAttempts),
+	      "a cinema frame shows the back buffer the probe would draw over");
+
+	// A held frame can also be a bridged stray with no menu near it - the
+	// seam that closes a menu, a dialogue's exit gap. Probing those would
+	// draw over a back buffer mid-transition for a question about menus.
+	Check(!MenuWorldProbeWanted(true, FrameDelivery::HeldStereo, false, kMenuWorldProbeAttempts),
+	      "a bridged stray frame with no menu is left alone");
+
+	// The budget is the difference between a measurement and a mechanism.
+	Check(!MenuWorldProbeWanted(true, FrameDelivery::HeldStereo, true, 0),
+	      "a spent budget ends the episode's probing");
+}
+
 void TestMenusCanReachTheWorld() {
 	std::printf("When a menu asked to hang in the world actually can\n");
 
@@ -830,6 +868,8 @@ int main() {
 	TestWorldlessBridge();
 	std::printf("\n");
 	TestMenuDressingWindow();
+	std::printf("\n");
+	TestMenuWorldProbe();
 	std::printf("\n");
 	TestMenusCanReachTheWorld();
 	std::printf("\n");

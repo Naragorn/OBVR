@@ -188,12 +188,16 @@ struct TrackerSettings {
 	// closer to equal for the resolution to follow the geometry.
 	bool matchHeadsetFov = false;
 
-	// Oblivion's own render resolution, written into its INI at startup and
-	// picked up on the next run. 0 means the size the headset asks for.
+	// Oblivion's own render resolution, applied where it is decided: the
+	// parameters of CreateDevice, changed in place by the resolution hook.
+	// 0 means the size the headset asks for. Takes effect at the next game
+	// start - the device exists long before any hot reload runs.
 	//
-	// It is here because a headset wants a shape a monitor never does. OBVR can
-	// write the frustum every frame, but not the frame's shape - Direct3D fixes
-	// that when the device is made, long before any of this runs.
+	// It is here because a headset wants a shape a monitor never does. OBVR
+	// can write the frustum every frame, but not the frame's shape - that is
+	// fixed when the device is made. A frame at the headset's own size is
+	// also what makes the eye copies a real resolution rather than an
+	// upscale, and a size typed above it is supersampling.
 	UInt32 renderWidth = 0;
 	UInt32 renderHeight = 0;
 	bool setRenderSize = false;

@@ -29,6 +29,14 @@ using RenderSceneFn = void(__fastcall*)(void* self, void* unusedEdx, void* rende
 RenderSceneFn g_original = nullptr;
 ScenePassCallbacks g_callbacks;
 
+// The renderer instance of the last world render, kept for the menu-world
+// probe. kRenderScene is __thiscall, so calling it needs the object Oblivion
+// calls it on - and the only way to that object from here is to remember it
+// as it passes through. The pointer is the engine's scene renderer, which
+// lives for the whole session; the precedent is the interface hook keeping
+// the InterfaceManager for RunHudPassBetweenScenes the same way.
+void* g_lastRendererSelf = nullptr;
+
 // Whether the passes below are already running. Not reachable through the
 // patched entry - both calls go through the trampoline - but a guard costs a
 // comparison and turns "the engine surprised us" into a pass-through instead
@@ -379,6 +387,7 @@ void TraceIndexSide(const StateCallCounts& entry, const StateCallCounts& afterFi
 // convention. See the type alias above for why __fastcall.
 void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTexture) {
 	++g_sceneCall;
+	g_lastRendererSelf = self;
 
 	// Taken before the render, so they count the 2D passes that followed the
 	// previous world render - the frame that has finished, rather than the
@@ -585,5 +594,42 @@ bool InstallSceneRenderHook(const ScenePassCallbacks& callbacks) {
 bool IsSceneRenderHooked() { return g_original != nullptr; }
 
 UInt32 CurrentSceneCall() { return g_sceneCall; }
+
+bool RunMenuWorldProbe(UInt32& drawsOut) {
+	drawsOut = 0;
+	if (g_original == nullptr || g_lastRendererSelf == nullptr || g_rendering) {
+		return false;
+	}
+
+	// Guarded like the dual pass: if the render somehow reaches the patched
+	// entry again, it passes through instead of recursing.
+	g_rendering = true;
+
+	// The clock is zeroed exactly as it is for the second pass of a dual
+	// frame, and for the same reason: every time-driven update inside the
+	// walk advances by the frame delta, and a render the engine did not
+	// schedule must not advance the world it is only meant to look at. On a
+	// paused menu the delta is likely stale anyway - stale is precisely what
+	// must not be replayed.
+	float* const frameSeconds = reinterpret_cast<float*>(addr::kFrameSecondsAddress);
+	const float savedFrameSeconds = *frameSeconds;
+	const bool clockPlausible = savedFrameSeconds >= 0.0f && savedFrameSeconds < 1.0f;
+	if (clockPlausible) {
+		*frameSeconds = 0.0f;
+	}
+
+	// Through the trampoline, not the patched entry: no second pass, no
+	// callbacks, no scene-call tick - this render is a measurement, not a
+	// frame. A null texture argument is the ordinary world render.
+	const UInt32 before = TotalDrawCount();
+	g_original(g_lastRendererSelf, nullptr, nullptr);
+	drawsOut = TotalDrawCount() - before;
+
+	if (clockPlausible) {
+		*frameSeconds = savedFrameSeconds;
+	}
+	g_rendering = false;
+	return true;
+}
 
 }  // namespace obvr::render

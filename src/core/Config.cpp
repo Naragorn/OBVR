@@ -372,6 +372,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.dualPassProbe = ReadUInt("Debug", "DualPassProbe", config.dualPassProbe, path);
 	config.swapEyeOrder = ReadBool("Debug", "SwapEyeOrder", config.swapEyeOrder, path);
 	config.hudProbe = ReadBool("Debug", "HudProbe", config.hudProbe, path);
+	config.menuWorldProbe = ReadBool("Debug", "MenuWorldProbe", config.menuWorldProbe, path);
 }
 
 }  // namespace
@@ -472,6 +473,13 @@ bool Config::Load(const char* fileName) {
 	         static_cast<double>(tracker.menuShadeStrength),
 	         tracker.menuSingleBorder ? 1 : 0, dialogZoom ? 1 : 0,
 	         dialogFirstPerson ? 1 : 0);
+	if (menuWorldProbe) {
+		// Named at load because the probe changes what the monitor shows on
+		// menu frames, and a run whose log does not say it was a probe run
+		// gets its oddities blamed on the wrong code.
+		OBVR_LOG("Config: Debug.MenuWorldProbe=1 - a few held menu frames will run a "
+		         "self-initiated world render, counted in the log");
+	}
 	// The suppressed case is named rather than silently corrected. Menus=world
 	// without HudOverlay would deliver the world in stereo with the menu
 	// nowhere at all - the eyes are captured before the 2D pass draws, so the

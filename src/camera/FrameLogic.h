@@ -288,6 +288,34 @@ constexpr bool MenuDressingWanted(UInt32 framesSinceMenuOpened) {
 	return framesSinceMenuOpened <= kMenuDressingWindowFrames;
 }
 
+// Whether this held menu frame runs the menu-world probe: one self-initiated
+// world render, its draw calls counted and logged, and nothing else done with
+// the picture.
+//
+// The question it answers is the one keeping the world live behind pause
+// menus turns on. Oblivion stops calling its render function entirely while
+// a pause menu is up - measured, not assumed: the scene counter stands still
+// across every held run - so a live background means OBVR calling that
+// function itself, on frames the engine decided not to. Whether a render the
+// engine did not ask for draws anything is not something to reason out from
+// the outside: the 2D pass already set the precedent of a pass that runs to
+// completion and draws nothing. One counted render answers it.
+//
+// The gates: the probe was asked for; the frame is a held one, because those
+// are exactly the frames a live background would have to be drawn on; the
+// menu is actually up, because a held frame can also be a bridged stray with
+// no menu anywhere near it; and the per-episode budget is not spent - the
+// probe is a measurement, not a mechanism, and a measurement that repeats
+// every frame of every menu is a log nobody can read.
+bool MenuWorldProbeWanted(bool probeEnabled, FrameDelivery delivery, bool menuIsUp,
+                          UInt32 attemptsLeft);
+
+// Attempts per menu episode. A handful rather than one, because the first
+// held frame after a menu opens may be special - the engine may still be
+// mid-transition - and a probe that only ever measured that frame would
+// mistake the transition for the answer.
+inline constexpr UInt32 kMenuWorldProbeAttempts = 5;
+
 // Whether a menu can actually be delivered in the world, given the rest of the
 // configuration.
 //
