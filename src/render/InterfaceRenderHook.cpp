@@ -1728,7 +1728,16 @@ bool RunHudPassBetweenScenes() {
 	return captured;
 }
 
-void ArmBetweenTrace() { g_betweenTraceLeft = 12; }
+void ArmBetweenTrace() {
+	g_betweenTraceLeft = 12;
+	// The per-pass trace answers the menu question the between trace cannot:
+	// on a held frame the between pass never runs, and whether the game's own
+	// 2D pass drew anything - and at which targets it aimed - is exactly what
+	// "the menu is on the monitor and not in the headset" needs to know. Its
+	// startup budget is long spent by the time anyone opens an inventory, so
+	// a menu opening or closing rearms it.
+	g_passTraceLeft = 12;
+}
 
 UInt32 TotalDrawCount() { return g_drawsTotal; }
 
