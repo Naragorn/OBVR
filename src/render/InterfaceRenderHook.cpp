@@ -270,7 +270,6 @@ BonePeek g_boneMismatchFirst;    // the first render's version of it
 BonePeek g_boneMismatchSecond;   // the second render's version
 
 BonePassMode g_boneMode = BonePassMode::Off;
-bool g_boneReplaceStopped = false;
 
 // Called for every bone-shaped upload (register forty and up, exactly
 // three vectors). During the first render it records; during the second
@@ -291,33 +290,46 @@ const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 	if (g_boneMode != BonePassMode::Replace) {
 		return nullptr;
 	}
-	const UInt32 index = g_boneCompareIndex;
-	++g_boneCompareIndex;
-	if (g_boneReplaceStopped || index >= g_boneLogCount || index >= kBoneLogCapacity) {
-		++g_stateCalls.boneLockPassthrough;
-		return nullptr;
-	}
-	const BonePeek& first = g_boneLog[index];
-	if (first.startRegister != startRegister) {
-		// The renders stopped agreeing on the upload sequence; from here on
-		// nothing pairs safely, so the lock stands down for the rest of the
-		// frame rather than write bones onto strangers.
-		g_boneReplaceStopped = true;
-		++g_stateCalls.boneLockPassthrough;
-		return nullptr;
-	}
-	if (g_timelineArmed && std::memcmp(first.floats, data, sizeof(first.floats)) != 0) {
-		if (g_boneMismatchCount == 0) {
-			g_boneMismatchAt = index;
-			g_boneMismatchFirst = first;
-			g_boneMismatchSecond.startRegister = startRegister;
-			std::memcpy(g_boneMismatchSecond.floats, data,
-			            sizeof(g_boneMismatchSecond.floats));
+	// Pairing by content, not position: a bone row's rotation is
+	// bit-identical between the renders (only its translation changes
+	// frame of reference), which makes the nine rotation floats a
+	// fingerprint of the bone. Camera turns reorder the second render's
+	// uploads, so the pair is searched for from the current position
+	// forward - a bounded scan that survives resorting and refuses to
+	// write bones onto strangers when nothing matches.
+	const UInt32 limit = g_boneLogCount < kBoneLogCapacity ? g_boneLogCount
+	                                                       : kBoneLogCapacity;
+	UInt32 probe = g_boneCompareIndex;
+	for (UInt32 step = 0; step < 48 && probe < limit; ++step, ++probe) {
+		const BonePeek& candidate = g_boneLog[probe];
+		if (candidate.startRegister != startRegister) {
+			continue;
 		}
-		++g_boneMismatchCount;
+		const float* f = candidate.floats;
+		// Rows are (rotation, translation) times three: floats 3, 7 and 11
+		// are the translation, everything else the rotation fingerprint.
+		if (std::memcmp(f + 0, data + 0, 12) != 0 ||
+		    std::memcmp(f + 4, data + 4, 12) != 0 ||
+		    std::memcmp(f + 8, data + 8, 12) != 0) {
+			continue;
+		}
+		if (g_timelineArmed &&
+		    std::memcmp(f, data, sizeof(candidate.floats)) != 0) {
+			if (g_boneMismatchCount == 0) {
+				g_boneMismatchAt = probe;
+				g_boneMismatchFirst = candidate;
+				g_boneMismatchSecond.startRegister = startRegister;
+				std::memcpy(g_boneMismatchSecond.floats, data,
+				            sizeof(g_boneMismatchSecond.floats));
+			}
+			++g_boneMismatchCount;
+		}
+		g_boneCompareIndex = probe + 1;
+		++g_stateCalls.boneLockReplaced;
+		return f;
 	}
-	++g_stateCalls.boneLockReplaced;
-	return first.floats;
+	++g_stateCalls.boneLockPassthrough;
+	return nullptr;
 }
 
 void PeekVertices(void* buffer, UInt32 offset, const void* data, UInt32 size) {
@@ -748,14 +760,14 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
 	// a locked frame's bone range sums must come back equal, which is the
 	// lock verifying itself in the same line that convicted the bug.
 	//
-	// The window is both Bones classes of the active package: c42+54 for
-	// the skin shaders and c31+54 for the hair shaders, rows at three
-	// vectors each, so registers 31 through 93. The package census shows
-	// no other three-vector constant in that range - and the first cut of
-	// this lock, starting at register 40, split the hair palettes in half
-	// and wore the result as permanently displaced helmets.
-	if (data != nullptr && startRegister >= 31 && startRegister <= 93 &&
-	    vector4fCount == 3) {
+	// The window is the skin shaders' Bones class alone: c42+54, rows of
+	// three vectors on registers divisible by three (42, 45 ... 93). The
+	// hair shaders' class at c31 lands on the other residue (31, 34 ...)
+	// and is deliberately left alone - hair palettes turned out to be
+	// camera-dependent, and locking them displaced every helmet sideways
+	// by the eye offset while the faces under them stayed put.
+	if (data != nullptr && startRegister >= 42 && startRegister <= 93 &&
+	    startRegister % 3 == 0 && vector4fCount == 3) {
 		const float* replacement = HandleBoneUpload(startRegister, data);
 		if (replacement != nullptr) {
 			data = replacement;
@@ -1720,7 +1732,6 @@ void SetBonePassMode(BonePassMode mode) {
 		g_boneLogCount = 0;
 	} else if (mode == BonePassMode::Replace) {
 		g_boneCompareIndex = 0;
-		g_boneReplaceStopped = false;
 	}
 }
 
