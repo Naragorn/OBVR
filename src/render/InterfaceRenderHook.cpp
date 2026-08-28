@@ -777,11 +777,21 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
 	// instances; helmets kept their sideways offset while the hair class
 	// went unlocked, which is why it is locked again, now that pairing is
 	// by content rather than position.
+	// Three Bones classes on three disjoint residues: skin at c42 (rows on
+	// registers = 0 mod 3), hair at c31 (= 1 mod 3), and the head-part
+	// shaders - eyeballs, teeth, some hair - at c14 (= 2 mod 3). The third
+	// class went unlocked at first and wore it as every NPC's eyes, teeth
+	// and hair sitting beside the face. The residue ranges are census-clean:
+	// the only other three-vector constants in range (LightPosition c16,
+	// LightColor c19, SkinToCubeSpace c27) land on the other residues.
 	const bool skinBoneRow =
 		startRegister >= 42 && startRegister <= 93 && startRegister % 3 == 0;
 	const bool hairBoneRow =
 		startRegister >= 31 && startRegister <= 88 && startRegister % 3 == 1;
-	if (data != nullptr && (skinBoneRow || hairBoneRow) && vector4fCount == 3) {
+	const bool headPartBoneRow =
+		startRegister >= 14 && startRegister <= 65 && startRegister % 3 == 2;
+	if (data != nullptr && (skinBoneRow || hairBoneRow || headPartBoneRow) &&
+	    vector4fCount == 3) {
 		const float* replacement = HandleBoneUpload(startRegister, data);
 		if (replacement != nullptr) {
 			data = replacement;

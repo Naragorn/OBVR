@@ -2293,3 +2293,26 @@ fallback against a machine with no SteamVR.
   merely proposed.
 - [DR-89/fear-vr](https://github.com/DR-89/fear-vr) — two-process architecture with shared
   memory, should it ever be needed.
+
+## 15. Plan B for stereo: hijack the engine's own second camera
+
+The dual pass as built detours kRenderScene and runs the world render twice
+per frame. That works, but everything time-driven inside the render walk is
+built on the assumption of one walk per frame, and OBVR has had to teach the
+second walk not to advance anything: the bone lock replays the first render's
+skinning palettes over the second (three Bones constant classes at c42/c31/
+c14, one residue of three each), and the frame clock (TimeInfo at 0x00B33E90,
+float at +0x0C) is zeroed across the second render so animation controllers
+and the NPC head-aim do not tick twice.
+
+If that whack-a-mole ever grows another head, the structural alternative is
+the way the CyberpunkVR port does stereo on REDengine: do not call the main
+render twice - make the engine render a second *view* of the same frame.
+Gamebryo has exactly this machinery and Oblivion uses it every frame a pond
+is on screen: the water reflection renders the world from a mirrored camera
+into a texture, inside the same frame, without advancing game state. A
+second-eye camera built on that path (an NiCamera + render-to-texture pass
+the way the water reflection does it) would get "draw again, move nothing"
+from the engine itself, with no clock games and no palette locks. The cost is
+real reverse engineering of the reflection render path, which is why it is
+the fallback and not the road taken.
