@@ -1,0 +1,323 @@
+T ---- first pass begins
+T lock   4FD14DD8 o=13392 s=3240 f=1000
+T unlock 4FD14DD8 sum=00006EED
+T draw   4FD14DD8 o=0 v=45 p=109
+T lock   4FD14DD8 o=16632 s=3168 f=1000
+T unlock 4FD14DD8 sum=00007412
+T draw   4FD14DD8 o=0 v=44 p=106
+T lock   4FD14DD8 o=0 s=13392 f=2000
+T unlock 4FD14DD8 sum=00006869
+T draw   4FD14DD8 o=0 v=186 p=465
+T lock   4FD14DD8 o=0 s=13392 f=2000
+T unlock 4FD14DD8 sum=00006A62
+T draw   4FD14DD8 o=0 v=186 p=481
+T lock   4FD14DD8 o=13392 s=1584 f=1000
+T unlock 4FD14DD8 sum=000069D0
+T draw   4FD14DD8 o=0 v=22 p=24
+T lock   4FD14DD8 o=0 s=20160 f=2000
+T unlock 4FD14DD8 sum=00006D51
+T draw   4FD14DD8 o=0 v=280 p=670
+T lock   4FD8E4C8 o=0 s=112200 f=2000
+T unlock 4FD8E4C8 sum=00006139
+T draw   4FD8E4C8 o=0 v=1275 p=3958
+T lock   4FD14DD8 o=0 s=3240 f=2000
+T unlock 4FD14DD8 sum=0000711E
+T draw   4FD14DD8 o=0 v=45 p=109
+T lock   4FD14DD8 o=3240 s=3168 f=1000
+T unlock 4FD14DD8 sum=000075BA
+T draw   4FD14DD8 o=0 v=44 p=106
+T lock   4FD14DD8 o=6408 s=13392 f=1000
+T unlock 4FD14DD8 sum=00007256
+T draw   4FD14DD8 o=0 v=186 p=465
+T lock   4FD14DD8 o=0 s=13392 f=2000
+T unlock 4FD14DD8 sum=00006DAE
+T draw   4FD14DD8 o=0 v=186 p=481
+T draw   4FD14D58 o=0 v=890 p=1715
+T lock   4FD14DD8 o=13392 s=1584 f=1000
+T unlock 4FD14DD8 sum=000070F8
+T draw   4FD14DD8 o=0 v=22 p=24
+T lock   4FD14DD8 o=0 s=20160 f=2000
+T unlock 4FD14DD8 sum=00007383
+T draw   4FD14DD8 o=0 v=280 p=670
+T lock   4FD8E4C8 o=0 s=112200 f=2000
+T unlock 4FD8E4C8 sum=00006398
+T draw   4FD8E4C8 o=0 v=1275 p=3958
+T lock   4FD14DD8 o=0 s=3240 f=2000
+T unlock 4FD14DD8 sum=000071B4
+T draw   4FD14DD8 o=0 v=45 p=109
+T lock   4FD14DD8 o=3240 s=3168 f=1000
+T unlock 4FD14DD8 sum=00007A4F
+T draw   4FD14DD8 o=0 v=44 p=106
+T lock   4FD14DD8 o=6408 s=13392 f=1000
+T unlock 4FD14DD8 sum=0000715A
+T draw   4FD14DD8 o=0 v=186 p=465
+T lock   4FD14DD8 o=0 s=13392 f=2000
+T unlock 4FD14DD8 sum=00006DF8
+T draw   4FD14DD8 o=0 v=186 p=481
+T lock   4FD14DD8 o=13392 s=1584 f=1000
+T unlock 4FD14DD8 sum=00006ED8
+T draw   4FD14DD8 o=0 v=22 p=24
+T lock   4FD14DD8 o=0 s=20160 f=2000
+T unlock 4FD14DD8 sum=00007253
+T draw   4FD14DD8 o=0 v=280 p=670
+T lock   4FD8E4C8 o=0 s=112200 f=2000
+T unlock 4FD8E4C8 sum=0000686F
+T draw   4FD8E4C8 o=0 v=1275 p=3958
+T lock   4FD14DD8 o=0 s=3240 f=2000
+T unlock 4FD14DD8 sum=00007343
+T draw   4FD14DD8 o=0 v=45 p=109
+T lock   4FD14DD8 o=3240 s=1584 f=1000
+T unlock 4FD14DD8 sum=0000731D
+T draw   4FD14DD8 o=0 v=22 p=24
+T lock   4FD14DD8 o=0 s=20160 f=2000
+T unlock 4FD14DD8 sum=000075A8
+T draw   4FD14DD8 o=0 v=280 p=670
+T lock   4FD14DD8 o=0 s=3168 f=2000
+T unlock 4FD14DD8 sum=000077DF
+T draw   4FD14DD8 o=0 v=44 p=106
+T lock   4FD14DD8 o=3168 s=13392 f=1000
+T unlock 4FD14DD8 sum=0000747B
+T draw   4FD14DD8 o=0 v=186 p=465
+T lock   4FD14DD8 o=0 s=13392 f=2000
+T unlock 4FD14DD8 sum=00006FD3
+T draw   4FD14DD8 o=0 v=186 p=481
+T draw   4FD14D58 o=0 v=890 p=1715
+T lock   4FD14DD8 o=13392 s=3240 f=1000
+T unlock 4FD14DD8 sum=0000731C
+T draw   4FD14DD8 o=0 v=45 p=109
+T lock   4FD14DD8 o=16632 s=1584 f=1000
+T unlock 4FD14DD8 sum=00007040
+T draw   4FD14DD8 o=0 v=22 p=24
+T lock   4FD14DD8 o=0 s=20160 f=2000
+T unlock 4FD14DD8 sum=000073BB
+T draw   4FD14DD8 o=0 v=280 p=670
+T lock   4FD14DD8 o=0 s=3168 f=2000
+T unlock 4FD14DD8 sum=00007BB7
+T draw   4FD14DD8 o=0 v=44 p=106
+T lock   4FD14DD8 o=3168 s=13392 f=1000
+T unlock 4FD14DD8 sum=000072C2
+T draw   4FD14DD8 o=0 v=186 p=465
+T lock   4FD14DD8 o=0 s=13392 f=2000
+T unlock 4FD14DD8 sum=00006F60
+T draw   4FD14DD8 o=0 v=186 p=481
+T lock   4FD14DD8 o=13392 s=3240 f=1000
+T unlock 4FD14DD8 sum=000074CA
+T draw   4FD14DD8 o=0 v=45 p=109
+T lock   4FD14DD8 o=16632 s=1584 f=1000
+T unlock 4FD14DD8 sum=00006FAD
+T draw   4FD14DD8 o=0 v=22 p=24
+T lock   4FD14DD8 o=0 s=20160 f=2000
+T unlock 4FD14DD8 sum=0000732E
+T draw   4FD14DD8 o=0 v=280 p=670
+T lock   4FD14DD8 o=0 s=3168 f=2000
+T unlock 4FD14DD8 sum=000079EF
+T draw   4FD14DD8 o=0 v=44 p=106
+T lock   4FD14DD8 o=3168 s=13392 f=1000
+T unlock 4FD14DD8 sum=00006E46
+T draw   4FD14DD8 o=0 v=186 p=465
+T lock   4FD14DD8 o=0 s=13392 f=2000
+T unlock 4FD14DD8 sum=0000703F
+T draw   4FD14DD8 o=0 v=186 p=481
+T lock   4FD8E4C8 o=0 s=112200 f=2000
+T unlock 4FD8E4C8 sum=00006235
+T draw   4FD8E4C8 o=0 v=1275 p=3958
+T lock   4FD8E4C8 o=0 s=112200 f=2000
+T unlock 4FD8E4C8 sum=00006685
+T draw   4FD8E4C8 o=0 v=1275 p=3958
+T lock   4FD8E4C8 o=0 s=112200 f=2000
+T unlock 4FD8E4C8 sum=00006032
+T draw   4FD8E4C8 o=0 v=1275 p=3958
+T lock   4FD8E4C8 o=0 s=112200 f=2000
+T unlock 4FD8E4C8 sum=00006032
+T draw   4FD8E4C8 o=0 v=1275 p=3958
+T lock   4FD14DD8 o=0 s=13392 f=2000
+T unlock 4FD14DD8 sum=00006E1A
+T draw   4FD14DD8 o=0 v=186 p=481
+T ---- between the passes
+T lock   037A9D78 o=160 s=80 f=1000
+T unlock 037A9D78 sum=000003A4
+T draw   037A9D78 o=0 v=4 p=2
+T lock   037A9D78 o=240 s=80 f=1000
+T unlock 037A9D78 sum=00000704
+T draw   037A9D78 o=0 v=4 p=2
+T lock   037A9D78 o=320 s=80 f=1000
+T unlock 037A9D78 sum=000004A4
+T draw   037A9D78 o=0 v=4 p=2
+T lock   037A9D78 o=400 s=80 f=1000
+T unlock 037A9D78 sum=00000544
+T draw   037A9D78 o=0 v=4 p=2
+T lock   037A9D78 o=480 s=80 f=1000
+T unlock 037A9D78 sum=000006E4
+T draw   037A9D78 o=0 v=4 p=2
+T lock   037A9D78 o=560 s=80 f=1000
+T unlock 037A9D78 sum=000005F8
+T draw   037A9D78 o=0 v=4 p=2
+T lock   037A9D78 o=640 s=80 f=1000
+T unlock 037A9D78 sum=000006E4
+T draw   037A9D78 o=0 v=4 p=2
+T lock   037A9D78 o=720 s=80 f=1000
+T unlock 037A9D78 sum=000005F8
+T draw   037A9D78 o=0 v=4 p=2
+T lock   037A9D78 o=800 s=80 f=1000
+T unlock 037A9D78 sum=000005F8
+T draw   037A9D78 o=0 v=4 p=2
+T lock   037A9D78 o=880 s=80 f=1000
+T unlock 037A9D78 sum=00000450
+T draw   037A9D78 o=0 v=4 p=2
+T lock   037A9D78 o=960 s=80 f=1000
+T unlock 037A9D78 sum=00000450
+T draw   037A9D78 o=0 v=4 p=2
+T lock   037A9D78 o=1040 s=80 f=1000
+T unlock 037A9D78 sum=00000450
+T draw   037A9D78 o=0 v=4 p=2
+T lock   037A9D78 o=1120 s=80 f=1000
+T unlock 037A9D78 sum=00000580
+T draw   037A9D78 o=0 v=4 p=2
+T lock   037A9D78 o=1200 s=80 f=1000
+T unlock 037A9D78 sum=00000580
+T draw   037A9D78 o=0 v=4 p=2
+T lock   037A9D78 o=1280 s=80 f=1000
+T unlock 037A9D78 sum=00000580
+T draw   037A9D78 o=0 v=4 p=2
+T lock   037A9D78 o=1360 s=80 f=1000
+T unlock 037A9D78 sum=000005EA
+T draw   037A9D78 o=0 v=4 p=2
+T lock   037A9D78 o=1440 s=80 f=1000
+T unlock 037A9D78 sum=00000616
+T draw   037A9D78 o=0 v=4 p=2
+T ---- second pass begins
+T lock   4FD14DD8 o=13392 s=3240 f=1000
+T unlock 4FD14DD8 sum=00006EED
+T draw   4FD14DD8 o=0 v=45 p=109
+T lock   4FD14DD8 o=16632 s=3168 f=1000
+T unlock 4FD14DD8 sum=00007412
+T draw   4FD14DD8 o=0 v=44 p=106
+T lock   4FD14DD8 o=0 s=13392 f=2000
+T unlock 4FD14DD8 sum=00006869
+T draw   4FD14DD8 o=0 v=186 p=465
+T lock   4FD14DD8 o=0 s=13392 f=2000
+T unlock 4FD14DD8 sum=00006A62
+T draw   4FD14DD8 o=0 v=186 p=481
+T lock   4FD14DD8 o=13392 s=1584 f=1000
+T unlock 4FD14DD8 sum=000069D0
+T draw   4FD14DD8 o=0 v=22 p=24
+T lock   4FD14DD8 o=0 s=20160 f=2000
+T unlock 4FD14DD8 sum=00006D51
+T draw   4FD14DD8 o=0 v=280 p=670
+T lock   4FD8E4C8 o=0 s=112200 f=2000
+T unlock 4FD8E4C8 sum=00006139
+T draw   4FD8E4C8 o=0 v=1275 p=3958
+T lock   4FD14DD8 o=0 s=3240 f=2000
+T unlock 4FD14DD8 sum=0000711E
+T draw   4FD14DD8 o=0 v=45 p=109
+T lock   4FD14DD8 o=3240 s=3168 f=1000
+T unlock 4FD14DD8 sum=000075BA
+T draw   4FD14DD8 o=0 v=44 p=106
+T lock   4FD14DD8 o=6408 s=13392 f=1000
+T unlock 4FD14DD8 sum=00007256
+T draw   4FD14DD8 o=0 v=186 p=465
+T lock   4FD14DD8 o=0 s=13392 f=2000
+T unlock 4FD14DD8 sum=00006DAE
+T draw   4FD14DD8 o=0 v=186 p=481
+T draw   4FD14D58 o=0 v=890 p=1715
+T lock   4FD14DD8 o=13392 s=1584 f=1000
+T unlock 4FD14DD8 sum=000070F8
+T draw   4FD14DD8 o=0 v=22 p=24
+T lock   4FD14DD8 o=0 s=20160 f=2000
+T unlock 4FD14DD8 sum=00007383
+T draw   4FD14DD8 o=0 v=280 p=670
+T lock   4FD8E4C8 o=0 s=112200 f=2000
+T unlock 4FD8E4C8 sum=00006398
+T draw   4FD8E4C8 o=0 v=1275 p=3958
+T lock   4FD14DD8 o=0 s=3240 f=2000
+T unlock 4FD14DD8 sum=000071B4
+T draw   4FD14DD8 o=0 v=45 p=109
+T lock   4FD14DD8 o=3240 s=3168 f=1000
+T unlock 4FD14DD8 sum=00007A4F
+T draw   4FD14DD8 o=0 v=44 p=106
+T lock   4FD14DD8 o=6408 s=13392 f=1000
+T unlock 4FD14DD8 sum=0000715A
+T draw   4FD14DD8 o=0 v=186 p=465
+T lock   4FD14DD8 o=0 s=13392 f=2000
+T unlock 4FD14DD8 sum=00006DF8
+T draw   4FD14DD8 o=0 v=186 p=481
+T lock   4FD14DD8 o=13392 s=1584 f=1000
+T unlock 4FD14DD8 sum=00006ED8
+T draw   4FD14DD8 o=0 v=22 p=24
+T lock   4FD14DD8 o=0 s=20160 f=2000
+T unlock 4FD14DD8 sum=00007253
+T draw   4FD14DD8 o=0 v=280 p=670
+T lock   4FD8E4C8 o=0 s=112200 f=2000
+T unlock 4FD8E4C8 sum=0000686F
+T draw   4FD8E4C8 o=0 v=1275 p=3958
+T lock   4FD14DD8 o=0 s=3240 f=2000
+T unlock 4FD14DD8 sum=00007343
+T draw   4FD14DD8 o=0 v=45 p=109
+T lock   4FD14DD8 o=3240 s=1584 f=1000
+T unlock 4FD14DD8 sum=0000731D
+T draw   4FD14DD8 o=0 v=22 p=24
+T lock   4FD14DD8 o=0 s=20160 f=2000
+T unlock 4FD14DD8 sum=000075A8
+T draw   4FD14DD8 o=0 v=280 p=670
+T lock   4FD14DD8 o=0 s=3168 f=2000
+T unlock 4FD14DD8 sum=000077DF
+T draw   4FD14DD8 o=0 v=44 p=106
+T lock   4FD14DD8 o=3168 s=13392 f=1000
+T unlock 4FD14DD8 sum=0000747B
+T draw   4FD14DD8 o=0 v=186 p=465
+T lock   4FD14DD8 o=0 s=13392 f=2000
+T unlock 4FD14DD8 sum=00006FD3
+T draw   4FD14DD8 o=0 v=186 p=481
+T draw   4FD14D58 o=0 v=890 p=1715
+T lock   4FD14DD8 o=13392 s=3240 f=1000
+T unlock 4FD14DD8 sum=0000731C
+T draw   4FD14DD8 o=0 v=45 p=109
+T lock   4FD14DD8 o=16632 s=1584 f=1000
+T unlock 4FD14DD8 sum=00007040
+T draw   4FD14DD8 o=0 v=22 p=24
+T lock   4FD14DD8 o=0 s=20160 f=2000
+T unlock 4FD14DD8 sum=000073BB
+T draw   4FD14DD8 o=0 v=280 p=670
+T lock   4FD14DD8 o=0 s=3168 f=2000
+T unlock 4FD14DD8 sum=00007BB7
+T draw   4FD14DD8 o=0 v=44 p=106
+T lock   4FD14DD8 o=3168 s=13392 f=1000
+T unlock 4FD14DD8 sum=000072C2
+T draw   4FD14DD8 o=0 v=186 p=465
+T lock   4FD14DD8 o=0 s=13392 f=2000
+T unlock 4FD14DD8 sum=00006F60
+T draw   4FD14DD8 o=0 v=186 p=481
+T lock   4FD14DD8 o=13392 s=3240 f=1000
+T unlock 4FD14DD8 sum=000074CA
+T draw   4FD14DD8 o=0 v=45 p=109
+T lock   4FD14DD8 o=16632 s=1584 f=1000
+T unlock 4FD14DD8 sum=00006FAD
+T draw   4FD14DD8 o=0 v=22 p=24
+T lock   4FD14DD8 o=0 s=20160 f=2000
+T unlock 4FD14DD8 sum=0000732E
+T draw   4FD14DD8 o=0 v=280 p=670
+T lock   4FD14DD8 o=0 s=3168 f=2000
+T unlock 4FD14DD8 sum=000079EF
+T draw   4FD14DD8 o=0 v=44 p=106
+T lock   4FD14DD8 o=3168 s=13392 f=1000
+T unlock 4FD14DD8 sum=00006E46
+T draw   4FD14DD8 o=0 v=186 p=465
+T lock   4FD14DD8 o=0 s=13392 f=2000
+T unlock 4FD14DD8 sum=0000703F
+T draw   4FD14DD8 o=0 v=186 p=481
+T lock   4FD8E4C8 o=0 s=112200 f=2000
+T unlock 4FD8E4C8 sum=00006235
+T draw   4FD8E4C8 o=0 v=1275 p=3958
+T lock   4FD8E4C8 o=0 s=112200 f=2000
+T unlock 4FD8E4C8 sum=00006685
+T draw   4FD8E4C8 o=0 v=1275 p=3958
+T lock   4FD8E4C8 o=0 s=112200 f=2000
+T unlock 4FD8E4C8 sum=00006032
+T draw   4FD8E4C8 o=0 v=1275 p=3958
+T lock   4FD8E4C8 o=0 s=112200 f=2000
+T unlock 4FD8E4C8 sum=00006032
+T draw   4FD8E4C8 o=0 v=1275 p=3958
+T lock   4FD14DD8 o=0 s=13392 f=2000
+T unlock 4FD14DD8 sum=00006E1A
+T draw   4FD14DD8 o=0 v=186 p=481
+T ---- frame ends
