@@ -299,8 +299,16 @@ const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 	// write bones onto strangers when nothing matches.
 	const UInt32 limit = g_boneLogCount < kBoneLogCapacity ? g_boneLogCount
 	                                                       : kBoneLogCapacity;
-	UInt32 probe = g_boneCompareIndex;
-	for (UInt32 step = 0; step < 48 && probe < limit; ++step, ++probe) {
+	if (limit == 0) {
+		++g_stateCalls.boneLockPassthrough;
+		return nullptr;
+	}
+	// A full ring scan starting at the running position: in a steady frame
+	// the very first candidate matches, so the loop costs one step; after a
+	// hard camera turn the pair may sit anywhere, and a bounded window was
+	// exactly what let the twitches through.
+	for (UInt32 step = 0; step < limit; ++step) {
+		const UInt32 probe = (g_boneCompareIndex + step) % limit;
 		const BonePeek& candidate = g_boneLog[probe];
 		if (candidate.startRegister != startRegister) {
 			continue;
@@ -760,14 +768,20 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
 	// a locked frame's bone range sums must come back equal, which is the
 	// lock verifying itself in the same line that convicted the bug.
 	//
-	// The window is the skin shaders' Bones class alone: c42+54, rows of
-	// three vectors on registers divisible by three (42, 45 ... 93). The
-	// hair shaders' class at c31 lands on the other residue (31, 34 ...)
-	// and is deliberately left alone - hair palettes turned out to be
-	// camera-dependent, and locking them displaced every helmet sideways
-	// by the eye offset while the faces under them stayed put.
-	if (data != nullptr && startRegister >= 42 && startRegister <= 93 &&
-	    startRegister % 3 == 0 && vector4fCount == 3) {
+	// The window is both Bones classes of the active package, each on its
+	// own residue: the skin shaders' rows at c42+54 land on registers
+	// divisible by three (42, 45 ... 93), the hair shaders' rows at c31+54
+	// one above (31, 34 ... 88). The mismatch evidence - identical
+	// rotations, translations a body-length apart - is two same-posed NPCs
+	// swapped, so the second render confuses palettes between look-alike
+	// instances; helmets kept their sideways offset while the hair class
+	// went unlocked, which is why it is locked again, now that pairing is
+	// by content rather than position.
+	const bool skinBoneRow =
+		startRegister >= 42 && startRegister <= 93 && startRegister % 3 == 0;
+	const bool hairBoneRow =
+		startRegister >= 31 && startRegister <= 88 && startRegister % 3 == 1;
+	if (data != nullptr && (skinBoneRow || hairBoneRow) && vector4fCount == 3) {
 		const float* replacement = HandleBoneUpload(startRegister, data);
 		if (replacement != nullptr) {
 			data = replacement;
