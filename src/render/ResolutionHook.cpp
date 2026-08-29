@@ -131,24 +131,24 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 		// behind a 3200x3200 back buffer, the mouse was mapped against it, and
 		// the device was lost.
 		//
-		// Sized to the frame, not to what the game asked for. The first
-		// version matched the window to the asked-for size, on the theory that
-		// the mouse is mapped against the size the game believes in - which is
-		// true, and is exactly why the belief itself is moved to the frame's
-		// size above. Window, buffer and belief being one number is the state
-		// a monitor install is in, and the state everything in the game
-		// assumes.
+		// Sized to what the game asked for, not to the frame. Oblivion maps
+		// its mouse against the size it believes in, and that belief stays
+		// the game's own (see above) - so the window stays with it, which is
+		// the arrangement the whole 2D shipped against. The frame behind it
+		// is larger and DXVK scales at present time; one build sized the
+		// window to the frame instead, and nothing about the 2D or the mouse
+		// got better for it.
 		void* window = parameters->deviceWindow != nullptr ? parameters->deviceWindow
 		                                                   : focusWindow;
 		UInt32 wasWidth = 0;
 		UInt32 wasHeight = 0;
-		const bool sized = platform::SizeClientArea(window, parameters->backBufferWidth,
-		                                            parameters->backBufferHeight,
+		const bool sized = platform::SizeClientArea(window, asTheGameAskedFor.backBufferWidth,
+		                                            asTheGameAskedFor.backBufferHeight,
 		                                            wasWidth, wasHeight);
 		if (g_reportsLeft > 0) {
 			OBVR_LOG("Resolution: fullscreen cleared, and the window %s from %ux%u to %ux%u",
 			         sized ? "resized" : "COULD NOT BE RESIZED, still", wasWidth, wasHeight,
-			         parameters->backBufferWidth, parameters->backBufferHeight);
+			         asTheGameAskedFor.backBufferWidth, asTheGameAskedFor.backBufferHeight);
 		}
 	}
 

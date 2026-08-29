@@ -24,6 +24,7 @@
 #include "render/PresentHook.h"
 #include "render/ResolutionHook.h"
 #include "render/SceneRenderHook.h"
+#include "render/UiScreenSize.h"
 
 namespace obvr::camera {
 namespace {
@@ -216,6 +217,23 @@ void OnFrameEnd() {
 	// whatever else did or did not happen. Every return below is a frame that
 	// still ended, so the increment goes before all of them.
 	++g_presentedFrame;
+
+	// The renderer's screen-size pair, corrected once before the first menu
+	// is built - Present is late enough for the renderer to exist and early
+	// enough that no menu does. Retries by itself until the renderer is
+	// there, retires itself after.
+	{
+		UInt32 createdWidth = 0;
+		UInt32 createdHeight = 0;
+		UInt32 believedWidth = 0;
+		UInt32 believedHeight = 0;
+		if (render::WasDeviceCreated(createdWidth, createdHeight) &&
+		    render::GameBelievedSize(believedWidth, believedHeight)) {
+			render::TryLockUiScreenSize(GetConfig().tracker.menuLayoutAtGameSize,
+			                            believedWidth, believedHeight, createdWidth,
+			                            createdHeight);
+		}
+	}
 
 	// What the game says, rather than what its timing suggests.
 	//

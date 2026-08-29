@@ -202,6 +202,15 @@ struct TrackerSettings {
 	UInt32 renderHeight = 0;
 	bool setRenderSize = false;
 
+	// Whether the renderer's own screen-size pair is rewritten to the size
+	// the game believes in, once, at the first presented frame. The
+	// experiment against the last standing split of the eye-sized frame:
+	// in-game menus laying out against the real buffer while the mouse maps
+	// against the believed size, so nothing clicks. See UiScreenSize.h for
+	// the hypothesis and the checks; the value is process-local, so unlike
+	// the INI settings the engine cannot persist it.
+	bool menuLayoutAtGameSize = true;
+
 	// How large a flat picture - menu, video, loading screen - is drawn, as a
 	// fraction of the world's own placement. Below 1 puts it at arm's length
 	// with black around it instead of pressed against the face.

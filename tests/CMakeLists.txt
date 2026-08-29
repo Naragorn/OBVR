@@ -435,4 +435,22 @@ if(WIN32)
 	endif()
 
 	add_test(NAME ini_settings COMMAND ini_settings_test)
+
+	# The decision half is pure; the file also carries the acting half, which
+	# logs, so the same Windows-only linking as ini_settings applies.
+	add_executable(ui_screen_size_test
+		UiScreenSizeTest.cpp
+		../src/render/UiScreenSize.cpp
+		../src/core/Log.cpp
+		../src/platform/PluginPath.cpp
+		../src/render/GameDevice.cpp
+	)
+
+	target_include_directories(ui_screen_size_test PRIVATE ../src)
+
+	if(NOT MSVC)
+		target_compile_options(ui_screen_size_test PRIVATE -Wall -Wextra)
+	endif()
+
+	add_test(NAME ui_screen_size COMMAND ui_screen_size_test)
 endif()

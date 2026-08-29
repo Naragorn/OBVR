@@ -111,6 +111,23 @@ inline constexpr UInt32 kPlayerIsThirdPersonOffset = 0x588;
 inline constexpr UInt32 kRendererPointer = 0x00B3F928;
 inline constexpr UInt32 kRendererDeviceOffset = 0x280;
 
+// The screen size the renderer keeps for itself, in the same NiDX9Renderer:
+// "UInt32 width; // A58" and "UInt32 height; // A5C" in xOBSE's NiRenderer.h,
+// with the height's offset pinned by a STATIC_ASSERT there. Same structure,
+// same source and same runtime proof as the device offset above - every frame
+// OBVR renders goes through +0x280 of this object.
+//
+// Why it matters: this is the prime suspect for where the in-game menus learn
+// the "true" screen size they normalize against. On an eye-sized frame it
+// would read the buffer's size while the game's own settings say the INI's -
+// the measured split. Unlike the INI settings, this value lives and dies with
+// the process; the engine does not write it to disk. It is read and, under
+// Render.MenuLayoutAtGameSize, rewritten - only when it reads exactly the
+// created frame size, which is the runtime check that the offset still means
+// what xOBSE says it means.
+inline constexpr UInt32 kRendererWidthOffset = 0xA58;
+inline constexpr UInt32 kRendererHeightOffset = 0xA5C;
+
 // Expected game version. OBSE reports it as oblivionVersion.
 inline constexpr UInt32 kOblivionVersion_1_2_416 = 0x010201A0;
 

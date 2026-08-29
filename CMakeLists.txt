@@ -40,6 +40,7 @@ add_library(OBVR SHARED
 	src/platform/PluginPath.cpp
 	src/render/EyeGeometry.cpp
 	src/render/EyeMirror.cpp
+	src/render/UiScreenSize.cpp
 	src/game/DialogZoom.cpp
 	src/game/GameCamera.cpp
 	src/game/MenuMode.cpp
