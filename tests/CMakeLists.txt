@@ -423,6 +423,7 @@ if(WIN32)
 		IniSettingsTest.cpp
 		../src/game/IniSettings.cpp
 		../src/core/Log.cpp
+		../src/core/Memory.cpp
 		../src/platform/PluginPath.cpp
 		../src/render/GameDevice.cpp
 	)

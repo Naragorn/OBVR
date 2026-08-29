@@ -1,6 +1,7 @@
 #include "game/IniSettings.h"
 
 #include "core/Log.h"
+#include "core/Memory.h"
 #include "game/GameAddresses.h"
 
 namespace obvr::game {
@@ -94,6 +95,13 @@ bool OverrideSizeSettings(IniSettingEntry* first, UInt32 expectedWidth,
 		return false;
 	}
 
+	// Each step says so before it happens, not after. The first run to get
+	// past the walk crashed the game with nothing in the log - the fault sat
+	// in the one wordless stretch between the checks and the return - and the
+	// log's last line is what names a crash's neighbourhood.
+	OBVR_LOG("IniSettings: found '%s' and '%s', checking their values", width->name,
+	         height->name);
+
 	if (width->i != static_cast<int>(expectedWidth) ||
 	    height->i != static_cast<int>(expectedHeight)) {
 		OBVR_LOG("IniSettings: iSize reads %dx%d where the game just asked for %ux%u - "
@@ -102,8 +110,23 @@ bool OverrideSizeSettings(IniSettingEntry* first, UInt32 expectedWidth,
 		return false;
 	}
 
-	width->i = static_cast<int>(newWidth);
-	height->i = static_cast<int>(newHeight);
+	OBVR_LOG("IniSettings: both read %ux%u as expected - writing %ux%u", expectedWidth,
+	         expectedHeight, newWidth, newHeight);
+
+	// Through VirtualProtect, like a code patch, not a plain store. That
+	// crashed run is the evidence: the value check passed, the write was next,
+	// and the game died wordlessly - a store into a page the process has
+	// write-protected. Where xOBSE stores into these entries plainly and gets
+	// away with it, this path does not, and SafeWrite works on either kind of
+	// page.
+	const int newW = static_cast<int>(newWidth);
+	const int newH = static_cast<int>(newHeight);
+	if (!mem::SafeWrite(reinterpret_cast<UInt32>(&width->i), &newW, sizeof(newW)) ||
+	    !mem::SafeWrite(reinterpret_cast<UInt32>(&height->i), &newH, sizeof(newH))) {
+		OBVR_LOG("IniSettings: the write was refused, so the game keeps its own screen "
+		         "size");
+		return false;
+	}
 	return true;
 }
 
