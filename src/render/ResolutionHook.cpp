@@ -2,7 +2,6 @@
 
 #include "core/Log.h"
 #include "game/GameAddresses.h"
-#include "game/IniSettings.h"
 #include "platform/GameWindow.h"
 #include "platform/ImportHook.h"
 #include "platform/Win32Min.h"
@@ -94,39 +93,23 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 	    parameters->backBufferWidth != asTheGameAskedFor.backBufferWidth ||
 	    parameters->backBufferHeight != asTheGameAskedFor.backBufferHeight;
 
-	// The game's belief follows the frame, at the one source it actually has.
+	// What is deliberately NOT done here, because it was done and it burned.
 	//
-	// The layout probe measured where each part of the 2D really lays out, and
-	// the answer buried two easier theories. Writing the eye size only into
-	// these parameters split the game against itself: films and the main
-	// menu's background kept the INI's 2560x1440 while every menu built after
-	// the device spread over the real buffer, and the mouse fell into the gap
-	// - cursor everywhere, hover nowhere. Writing the game's own numbers BACK
-	// into the parameters after the call changed nothing, measured to the
-	// pixel: nothing reads this structure again. What the early parts read is
-	// "iSize W"/"iSize H", the INI settings alive in memory. So those are
-	// moved to the eye size here, before the device exists and before the
-	// main menu, the films or the mouse mapping are built from them - after
-	// which there is one screen size in the whole process again.
-	//
-	// Refused rather than guessed when validation fails; the consumers that
-	// crop to the believed corner then still have a true answer.
-	bool gameBelievesNewSize = false;
-	if (sizeChanged) {
-		game::IniSettingEntry* list = game::ResolveIniSettingsList();
-		gameBelievesNewSize =
-		    list != nullptr &&
-		    game::OverrideSizeSettings(list, asTheGameAskedFor.backBufferWidth,
-		                               asTheGameAskedFor.backBufferHeight,
-		                               parameters->backBufferWidth,
-		                               parameters->backBufferHeight);
-		if (g_reportsLeft > 0) {
-			OBVR_LOG("Resolution: the in-memory iSize settings %s",
-			         gameBelievesNewSize
-			             ? "now carry the eye size, so the whole 2D lays out against it"
-			             : "were left alone, so the 2D keeps the game's own size");
-		}
-	}
+	// The layout probe showed the game split against itself on an eye-sized
+	// frame: films and the main menu's background lay out against the INI's
+	// size, everything built after the device against the real buffer, and
+	// the mouse falls into the gap. The obvious cure - move the belief to its
+	// source, the in-memory "iSize W:Display"/"iSize H:Display" settings, at
+	// this very moment - was built, validated, and it worked; and the run
+	// that proved it crashed the game in its own code (offset 0x98749, the
+	// fullscreen mode path meeting a size no monitor has) and, worse, the
+	// engine had already written the moved values back into the user's
+	// Oblivion.ini, which then crashed every later start with or without
+	// OBVR until the file was restored. A belief the engine persists on its
+	// own is not a value OBVR can borrow for a session. So the game keeps
+	// its own size, the flat path crops to the corner that size names, and
+	// the split lives on until it can be cut somewhere the engine does not
+	// write to disk.
 
 	// Windowed whenever an eye size is in play, not merely when this call
 	// changed something: an eye-sized frame is not a display mode, and that
@@ -188,18 +171,11 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 		g_createdWidth = parameters->backBufferWidth;
 		g_createdHeight = parameters->backBufferHeight;
 
-		// What the game believes its screen to be from here on. With the
-		// iSize settings moved, belief and frame are the same number and the
-		// content crops downstream turn themselves off; with the move refused,
-		// the early 2D keeps laying out against what the game asked for, and
-		// the crops keep showing that corner.
-		if (gameBelievesNewSize) {
-			g_believedWidth = g_createdWidth;
-			g_believedHeight = g_createdHeight;
-		} else {
-			g_believedWidth = asTheGameAskedFor.backBufferWidth;
-			g_believedHeight = asTheGameAskedFor.backBufferHeight;
-		}
+		// What the game believes its screen to be: what it asked for. The
+		// flat path crops to this corner, because that is where the films
+		// and the main menu's background really draw.
+		g_believedWidth = asTheGameAskedFor.backBufferWidth;
+		g_believedHeight = asTheGameAskedFor.backBufferHeight;
 		return result;
 	}
 
@@ -209,21 +185,7 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 
 	// Failed with OBVR's parameters. The game's own go back in - the whole
 	// structure, because the runtime is allowed to have written to it - and it
-	// gets the device it would have had. The iSize settings go back with it:
-	// a game running at its own size while believing the eye size would be
-	// the measured split brain with the sides swapped.
-	if (gameBelievesNewSize) {
-		game::IniSettingEntry* list = game::ResolveIniSettingsList();
-		if (list == nullptr ||
-		    !game::OverrideSizeSettings(list, parameters->backBufferWidth,
-		                                parameters->backBufferHeight,
-		                                asTheGameAskedFor.backBufferWidth,
-		                                asTheGameAskedFor.backBufferHeight)) {
-			OBVR_LOG("Resolution: the iSize settings could not be put back after the "
-			         "refusal, so the game may believe a size it is not running at");
-		}
-		gameBelievesNewSize = false;
-	}
+	// gets the device it would have had.
 	*parameters = asTheGameAskedFor;
 
 	const SInt32 second = g_originalCreateDevice(self, adapter, deviceType, focusWindow,

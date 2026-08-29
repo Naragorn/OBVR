@@ -16,11 +16,17 @@ namespace obvr::game {
 // is "iSize W" and "iSize H", the INI settings the engine keeps alive in
 // memory as an IniSettingCollection.
 //
-// So instead of teaching every consumer about two sizes, the two settings are
-// rewritten to the eye size at the moment the device is created - before the
-// main menu, the videos, and the mouse mapping are built. From then on there
-// is one screen size in the whole process, which is the state the game shipped
-// in.
+// NOT CALLED FROM THE DLL ANY MORE, and kept as the record of why. The plan
+// was to rewrite the two settings to the eye size at the moment the device is
+// created, so there would be one screen size in the whole process. It was
+// built, the validation worked, the write worked - and the run that proved it
+// crashed the game in its own code (offset 0x98749, its fullscreen mode path
+// meeting a size no monitor has), after the engine had already written the
+// moved values back into the user's own Oblivion.ini, which crashed every
+// later start until the file was restored from backup. A belief the engine
+// persists to disk on its own is not a value that can be borrowed for a
+// session. The walk and its validation stay tested in case a later route
+// wants them at a moment the engine no longer writes the file.
 //
 // Everything here refuses rather than guesses. The collection object is
 // validated before it is believed (vtable inside the executable, an .ini path

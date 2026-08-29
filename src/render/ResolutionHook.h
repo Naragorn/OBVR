@@ -63,11 +63,12 @@ bool InstallResolutionHook();
 // looks exactly like one that is not installed at all.
 bool WasDeviceCreated(UInt32& width, UInt32& height);
 
-// The size the game believes its screen is. When the in-memory iSize settings
-// were successfully moved to the eye size, this is the frame itself and the
-// content crops downstream turn themselves off; when the move was refused,
-// it is what the game asked CreateDevice for - the corner of the larger frame
-// its early 2D actually lays out in. False until a device exists.
+// The size the game believes its screen is: what it asked CreateDevice for -
+// the corner of the larger frame its films and menu backgrounds actually lay
+// out in, measured by the layout probe. (Moving the belief itself to the eye
+// size was tried and is off the table - see the comment in HookedCreateDevice
+// for the crash and the poisoned INI it ended in.) False until a device
+// exists.
 bool GameBelievedSize(UInt32& width, UInt32& height);
 
 }  // namespace obvr::render
