@@ -13,6 +13,7 @@
 #include "render/LockLedger.h"
 #include "render/PointerSet.h"
 #include "render/PresentHook.h"
+#include "render/ResolutionHook.h"
 #include "render/SceneRenderHook.h"
 
 namespace obvr::render {
@@ -478,18 +479,47 @@ SInt32 __stdcall HookedSetRenderTarget(void* self, UInt32 index, void* surface) 
 			g_boneTargetIsMain = true;
 		}
 	}
+	bool substituted = false;
 	if ((g_redirecting || g_observing) && index == 0 && surface != nullptr) {
 		if (surface == g_backBuffer) {
 			++g_statsMatched;
 			if (g_redirecting) {
 				g_lastRequested = surface;
 				surface = g_substitute;
+				substituted = true;
 			}
 		} else if (surface != g_substitute) {
 			++g_statsOtherTargets;
 		}
 	}
-	return g_originalSetTarget(self, index, surface);
+	const SInt32 result = g_originalSetTarget(self, index, surface);
+
+	// The rectangle the pass draws in, put back where its own layout lives.
+	//
+	// SetRenderTarget resets the viewport to the new target's full size - an
+	// API rule - and the substitute texture is frame-sized. The 2D lays out,
+	// and maps its mouse, against the screen-size copy; drawing it through a
+	// full-texture viewport is what stretched every captured menu over the
+	// whole nearly square frame while the game's own back-buffer pass kept
+	// its picture inside the copy's rectangle, measured in both eras of the
+	// probe. So a substituted target gets a viewport of the copy's rectangle
+	// straight away, and the pass lands where its layout, its cursor and the
+	// overlay bounds all agree it is. Where the copy is the whole frame this
+	// writes the same viewport the API just set.
+	if (substituted && result >= 0) {
+		UInt32 believedWidth = 0;
+		UInt32 believedHeight = 0;
+		if (GameBelievedSize(believedWidth, believedHeight)) {
+			auto setViewport =
+				d3d9::Method<d3d9::SetViewportFn>(self, d3d9::kDeviceSetViewport);
+			if (setViewport != nullptr) {
+				const d3d9::Viewport viewport{0, 0, believedWidth, believedHeight,
+				                              0.0f, 1.0f};
+				setViewport(self, &viewport);
+			}
+		}
+	}
+	return result;
 }
 
 // One matrix as one log line, %.4g wide - enough to tell an orthographic

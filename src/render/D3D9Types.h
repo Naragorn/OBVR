@@ -161,6 +161,17 @@ constexpr UInt32 kDeviceGetTransform = 45;
 // everything OBVR copies outside it is black.
 constexpr UInt32 kDeviceGetViewport = 48;
 
+// IDirect3DDevice9::SetViewport - one place above GetViewport in the SDK
+// header (52 to its 53), so 47 here by the same minus-five rule the two
+// cross-checked indices above establish.
+//
+// What it is for: SetRenderTarget resets the viewport to the new target's
+// full size - an API rule - and the interface redirect swaps in a texture the
+// size of the whole frame while the 2D lays out against the screen-size copy.
+// The redirect hook puts the viewport back to the copy's rectangle right
+// after the swap, so the pass draws where its own layout thinks it is.
+constexpr UInt32 kDeviceSetViewport = 47;
+
 // D3DVIEWPORT9.
 struct Viewport {
 	UInt32 x;
@@ -644,6 +655,7 @@ static_assert(sizeof(PresentParameters) == 13 * sizeof(UInt32) + sizeof(void*),
 constexpr UInt32 kFactoryCreateDevice = 16;
 
 using GetViewportFn = SInt32(__stdcall*)(void* self, Viewport* viewport);
+using SetViewportFn = SInt32(__stdcall*)(void* self, const Viewport* viewport);
 
 using Direct3DCreate9Fn = void*(__stdcall*)(UInt32 sdkVersion);
 
