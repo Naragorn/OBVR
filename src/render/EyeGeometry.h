@@ -108,6 +108,25 @@ struct TextureBounds {
 // twice, and these bounds are groundwork for that rather than a substitute.
 TextureBounds MonoBounds(float opticalCentreU, float width);
 
+// The part of a frame the game's 2D actually lies in, when the frame is larger
+// than the size the game believes in.
+//
+// The eye-sized frame split Oblivion's 2D against itself: the game asked for
+// 2560x1440 and was given a 4028x3380 back buffer, and the layout probe showed
+// the parts disagreeing about which of those was the screen - films and the
+// main menu drew into an exact 2560x1440 corner while the in-game menus spread
+// over the whole buffer. The cure upstream is to hand the game its own numbers
+// back after the device is made, so every part believes the same size again;
+// this function is the presentation half of that cure. It names the corner the
+// 2D then lives in, as texture fractions, so an overlay or a copy shows that
+// corner instead of a mostly-empty buffer.
+//
+// Full bounds when nothing is known (a zero believed size means no resize
+// happened) and when the frame is not actually larger - a belief bigger than
+// the frame is clamped, because bounds past 1 sample the driver's imagination.
+TextureBounds ContentBounds(UInt32 believedWidth, UInt32 believedHeight,
+                            UInt32 frameWidth, UInt32 frameHeight);
+
 
 // Where Oblivion's picture belongs inside an eye texture, and how much of
 // that texture it is entitled to.

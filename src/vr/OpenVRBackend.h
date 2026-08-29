@@ -234,6 +234,14 @@ public:
 	// texture's aspect ratio; there is no separate control for it.
 	int SetOverlayWidthInMetres(openvr::VROverlayHandle handle, float metres) const;
 
+	// Which part of the texture the overlay shows. Without this the overlay
+	// shows all of it - which is wrong the moment the texture is bigger than
+	// the picture, as it is when the game lays its 2D into one corner of an
+	// eye-sized frame. The overlay's on-screen aspect follows the bounds, so
+	// cropping to a 16:9 corner also makes the quad 16:9 again.
+	int SetOverlayTextureBounds(openvr::VROverlayHandle handle,
+	                            const openvr::VRTextureBounds& bounds) const;
+
 	int ShowOverlay(openvr::VROverlayHandle handle) const;
 	int HideOverlay(openvr::VROverlayHandle handle) const;
 	int DestroyOverlay(openvr::VROverlayHandle handle);

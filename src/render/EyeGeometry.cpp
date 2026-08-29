@@ -105,6 +105,25 @@ TextureBounds MonoBounds(float opticalCentreU, float width) {
 	return bounds;
 }
 
+TextureBounds ContentBounds(UInt32 believedWidth, UInt32 believedHeight,
+                            UInt32 frameWidth, UInt32 frameHeight) {
+	TextureBounds bounds;
+	bounds.uMin = 0.0f;
+	bounds.vMin = 0.0f;
+	bounds.uMax = 1.0f;
+	bounds.vMax = 1.0f;
+
+	// Each axis on its own: a frame can be wider than believed without being
+	// taller, and the axis that matches stays whole.
+	if (believedWidth != 0 && frameWidth != 0 && believedWidth < frameWidth) {
+		bounds.uMax = static_cast<float>(believedWidth) / static_cast<float>(frameWidth);
+	}
+	if (believedHeight != 0 && frameHeight != 0 && believedHeight < frameHeight) {
+		bounds.vMax = static_cast<float>(believedHeight) / static_cast<float>(frameHeight);
+	}
+	return bounds;
+}
+
 float InterpupillaryDistance(const NiPoint3& leftEye, const NiPoint3& rightEye) {
 	const NiPoint3 between = rightEye - leftEye;
 	return math::Sqrt(between.LengthSquared());

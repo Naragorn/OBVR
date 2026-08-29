@@ -293,6 +293,15 @@ int OpenVRBackend::SetOverlayWidthInMetres(openvr::VROverlayHandle handle,
 	return table->SetOverlayWidthInMeters(handle, metres);
 }
 
+int OpenVRBackend::SetOverlayTextureBounds(openvr::VROverlayHandle handle,
+                                           const openvr::VRTextureBounds& bounds) const {
+	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);
+	if (table == nullptr || table->SetOverlayTextureBounds == nullptr) {
+		return -1;
+	}
+	return table->SetOverlayTextureBounds(handle, &bounds);
+}
+
 int OpenVRBackend::ShowOverlay(openvr::VROverlayHandle handle) const {
 	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);
 	if (table == nullptr || table->ShowOverlay == nullptr) {

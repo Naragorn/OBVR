@@ -7,6 +7,7 @@
 #include "render/D3D9Types.h"
 #include "render/GameProjection.h"
 #include "render/MenuShade.h"
+#include "render/ResolutionHook.h"
 #include "platform/Win32Min.h"
 
 namespace obvr::render {
@@ -136,6 +137,31 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 	m_frameWidth = desc.width;
 	m_frameHeight = desc.height;
 	m_format = desc.format;
+
+	// Where in that frame the game's 2D actually is. On an eye-sized frame the
+	// buffer is larger than the size the game believes in, and its films and
+	// menus land in the believed-size corner - the layout probe measured them
+	// at an exact 2560x1440 out of 4028x3380. A flat picture must show that
+	// corner; showing the whole buffer was the intro films arriving small and
+	// off-centre. The world's own source rectangles below deliberately stay on
+	// the full frame: the same probe run showed the world filling all of it.
+	m_contentWidth = desc.width;
+	m_contentHeight = desc.height;
+	{
+		UInt32 believedWidth = 0;
+		UInt32 believedHeight = 0;
+		if (GameBelievedSize(believedWidth, believedHeight)) {
+			const TextureBounds content =
+				ContentBounds(believedWidth, believedHeight, desc.width, desc.height);
+			m_contentWidth = static_cast<UInt32>(EdgeOf(content.uMax, desc.width));
+			m_contentHeight = static_cast<UInt32>(EdgeOf(content.vMax, desc.height));
+		}
+		if (m_contentWidth != m_frameWidth || m_contentHeight != m_frameHeight) {
+			OBVR_LOG("Mirror: flat pictures show the %ux%u corner the game believes in, "
+			         "out of the %ux%u frame",
+			         m_contentWidth, m_contentHeight, m_frameWidth, m_frameHeight);
+		}
+	}
 
 	for (int index = 0; index < 2; ++index) {
 		if (!CreateOne(gameDevice, index)) {
@@ -310,9 +336,13 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 	//
 	// menuAspect overrides the shape when set; the source crop below then
 	// takes a matching slice so the result is a crop rather than a squeeze.
-	const float frameAspect = m_frameHeight > 0
-	                              ? static_cast<float>(m_frameWidth) /
-	                                    static_cast<float>(m_frameHeight)
+	//
+	// The content's shape, not the buffer's: on an eye-sized frame the buffer
+	// is nearly square while the 2D lives in the believed-size corner, and the
+	// corner's own 16:9 is the shape menus and films are laid out in.
+	const float frameAspect = m_contentHeight > 0
+	                              ? static_cast<float>(m_contentWidth) /
+	                                    static_cast<float>(m_contentHeight)
 	                              : 1.7778f;
 	const float displayAspect = menuAspect > 0.1f ? menuAspect : frameAspect;
 	SInt32 flatHeight =
@@ -356,17 +386,20 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 
 
 	// The slice of the frame a flat picture takes, matching the shape asked
-	// for so the result is a crop rather than a squeeze.
+	// for so the result is a crop rather than a squeeze. The slice is cut from
+	// the content corner, not the buffer: the pixels past the believed size
+	// hold nothing, and a slice centred in the buffer would miss the picture
+	// entirely.
 	m_flatSource.left = 0;
-	m_flatSource.right = static_cast<SInt32>(m_frameWidth);
+	m_flatSource.right = static_cast<SInt32>(m_contentWidth);
 	m_flatSource.top = 0;
-	m_flatSource.bottom = static_cast<SInt32>(m_frameHeight);
+	m_flatSource.bottom = static_cast<SInt32>(m_contentHeight);
 
 	if (menuAspect > 0.1f) {
 		const SInt32 wanted =
-			static_cast<SInt32>(static_cast<float>(m_frameWidth) / menuAspect);
-		if (wanted > 0 && wanted < static_cast<SInt32>(m_frameHeight)) {
-			const SInt32 margin = (static_cast<SInt32>(m_frameHeight) - wanted) / 2;
+			static_cast<SInt32>(static_cast<float>(m_contentWidth) / menuAspect);
+		if (wanted > 0 && wanted < static_cast<SInt32>(m_contentHeight)) {
+			const SInt32 margin = (static_cast<SInt32>(m_contentHeight) - wanted) / 2;
 			m_flatSource.top = margin;
 			m_flatSource.bottom = margin + wanted;
 		}
@@ -891,6 +924,8 @@ void EyeMirror::Destroy() {
 	m_height = 0;
 	m_frameWidth = 0;
 	m_frameHeight = 0;
+	m_contentWidth = 0;
+	m_contentHeight = 0;
 	m_format = 0;
 	m_filter = 0;
 	d3d11::Release(m_scratchSurface);

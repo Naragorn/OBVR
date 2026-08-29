@@ -175,6 +175,13 @@ private:
 	UInt32 m_frameWidth = 0;
 	UInt32 m_frameHeight = 0;
 
+	// The corner of that frame the game lays its 2D in - the size it believes
+	// its screen is. Equal to the frame when no resize happened; smaller when
+	// the frame is eye-sized, and then it is what the flat picture must show
+	// instead of a mostly-empty buffer.
+	UInt32 m_contentWidth = 0;
+	UInt32 m_contentHeight = 0;
+
 	// Which slice of the frame a flat picture takes, so a cinema shape is a
 	// crop rather than a squeeze.
 	d3d9::Rect m_flatSource = {};

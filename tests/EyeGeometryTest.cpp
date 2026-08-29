@@ -217,6 +217,42 @@ void TestMonoBounds() {
 	Check(tooNarrow.uMax - tooNarrow.uMin >= 0.2f, "and a width of zero does not blank the view");
 }
 
+void TestContentBounds() {
+	std::printf("The corner of a frame the game's 2D lies in\n");
+
+	// The measured case: the game believes 2560x1440 of a 4028x3380 frame.
+	const auto corner = obvr::render::ContentBounds(2560, 1440, 4028, 3380);
+	CheckNear(corner.uMin, 0.0f, 0.001f, "the content starts at the frame's origin");
+	CheckNear(corner.vMin, 0.0f, 0.001f, "in both axes");
+	CheckNear(corner.uMax, 2560.0f / 4028.0f, 0.001f, "and ends where the belief ends across");
+	CheckNear(corner.vMax, 1440.0f / 3380.0f, 0.001f, "and down");
+
+	// No resize happened: belief and frame agree, and the bounds are the
+	// whole texture.
+	const auto whole = obvr::render::ContentBounds(2560, 1440, 2560, 1440);
+	CheckNear(whole.uMax, 1.0f, 0.001f, "a matching belief keeps the whole width");
+	CheckNear(whole.vMax, 1.0f, 0.001f, "and the whole height");
+
+	// A belief larger than the frame is clamped, not obeyed: bounds past 1
+	// sample nothing the texture has.
+	const auto tooBig = obvr::render::ContentBounds(5000, 4000, 4028, 3380);
+	CheckNear(tooBig.uMax, 1.0f, 0.001f, "a belief wider than the frame is clamped");
+	CheckNear(tooBig.vMax, 1.0f, 0.001f, "and taller likewise");
+
+	// Each axis on its own: a frame can outgrow the belief in one direction
+	// only, and the axis that matches stays whole.
+	const auto oneAxis = obvr::render::ContentBounds(2560, 3380, 4028, 3380);
+	Check(oneAxis.uMax < 1.0f, "a width-only overhang crops the width");
+	CheckNear(oneAxis.vMax, 1.0f, 0.001f, "and leaves the height whole");
+
+	// Nothing known: a zero belief or a zero frame means full bounds rather
+	// than a division by zero.
+	const auto unknown = obvr::render::ContentBounds(0, 0, 4028, 3380);
+	CheckNear(unknown.uMax, 1.0f, 0.001f, "an unknown belief shows everything");
+	const auto noFrame = obvr::render::ContentBounds(2560, 1440, 0, 0);
+	CheckNear(noFrame.uMax, 1.0f, 0.001f, "and an unknown frame divides by nothing");
+}
+
 void TestInterpupillaryDistance() {
 	std::printf("The distance between the eyes\n");
 
@@ -484,6 +520,8 @@ int main() {
 	TestOpticalCentre();
 	std::printf("\n");
 	TestMonoBounds();
+	std::printf("\n");
+	TestContentBounds();
 	std::printf("\n");
 	TestInterpupillaryDistance();
 	std::printf("\n");

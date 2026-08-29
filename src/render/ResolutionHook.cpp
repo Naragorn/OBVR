@@ -27,6 +27,8 @@ UInt32 g_reportsLeft = 2;
 UInt32 g_fallbacksLeft = 2;
 UInt32 g_createdWidth = 0;
 UInt32 g_createdHeight = 0;
+UInt32 g_believedWidth = 0;
+UInt32 g_believedHeight = 0;
 
 bool Equals(const char* a, const char* b) {
 	if (a == nullptr || b == nullptr) {
@@ -141,6 +143,35 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 		g_deviceCreated = true;
 		g_createdWidth = parameters->backBufferWidth;
 		g_createdHeight = parameters->backBufferHeight;
+		g_believedWidth = asTheGameAskedFor.backBufferWidth;
+		g_believedHeight = asTheGameAskedFor.backBufferHeight;
+
+		// The game's own numbers go back into its structure before it reads
+		// them again.
+		//
+		// Leaving OBVR's numbers in was the split brain the layout probe
+		// measured: the game re-reads this structure after the call, and
+		// whatever reads it then believes the frame's size while everything
+		// laid out before - films, the main menu, the mouse mapping against
+		// the window - believes the INI's. Films and the main menu drew into
+		// an exact 2560x1440 corner of the 4028x3380 buffer; the ESC menu
+		// centred itself on the whole buffer; the cursor moved everywhere and
+		// clicked nothing, because the hit test and the drawn cursor no
+		// longer meant the same place.
+		//
+		// So the game is told it got what it asked for, and only the windowed
+		// flag keeps its true value - the window really is windowed, and a
+		// game believing itself exclusive-fullscreen would argue with the
+		// display about modes it does not own. The buffer itself stays at
+		// OBVR's size; whether the world keeps rendering into all of it is
+		// what the next run has to answer.
+		if (sizeChanged) {
+			parameters->backBufferWidth = asTheGameAskedFor.backBufferWidth;
+			parameters->backBufferHeight = asTheGameAskedFor.backBufferHeight;
+			OBVR_LOG("Resolution: the game's own %ux%u written back into its parameters, "
+			         "so everything it lays out believes one size again",
+			         asTheGameAskedFor.backBufferWidth, asTheGameAskedFor.backBufferHeight);
+		}
 		return result;
 	}
 
@@ -169,6 +200,8 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 		g_deviceCreated = true;
 		g_createdWidth = parameters->backBufferWidth;
 		g_createdHeight = parameters->backBufferHeight;
+		g_believedWidth = g_createdWidth;
+		g_believedHeight = g_createdHeight;
 	}
 	return second;
 }
@@ -307,6 +340,15 @@ bool WasDeviceCreated(UInt32& width, UInt32& height) {
 	}
 	width = g_createdWidth;
 	height = g_createdHeight;
+	return true;
+}
+
+bool GameBelievedSize(UInt32& width, UInt32& height) {
+	if (!g_deviceCreated || g_believedWidth == 0 || g_believedHeight == 0) {
+		return false;
+	}
+	width = g_believedWidth;
+	height = g_believedHeight;
 	return true;
 }
 
