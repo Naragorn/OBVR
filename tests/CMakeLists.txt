@@ -411,3 +411,27 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME game_camera COMMAND game_camera_test)
+
+# Only the pure walk over the setting list; resolving the collection in the
+# game's memory needs the process and stays untested, like the probe's
+# readback. The walk runs over lists this test builds itself, which is the
+# point: every refusal flow can be exercised without an engine. Windows only
+# because the walk logs its refusals, and the log writes through the plugin
+# path - the same shape as config_test.
+if(WIN32)
+	add_executable(ini_settings_test
+		IniSettingsTest.cpp
+		../src/game/IniSettings.cpp
+		../src/core/Log.cpp
+		../src/platform/PluginPath.cpp
+		../src/render/GameDevice.cpp
+	)
+
+	target_include_directories(ini_settings_test PRIVATE ../src)
+
+	if(NOT MSVC)
+		target_compile_options(ini_settings_test PRIVATE -Wall -Wextra)
+	endif()
+
+	add_test(NAME ini_settings COMMAND ini_settings_test)
+endif()

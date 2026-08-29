@@ -114,6 +114,27 @@ inline constexpr UInt32 kRendererDeviceOffset = 0x280;
 // Expected game version. OBSE reports it as oblivionVersion.
 inline constexpr UInt32 kOblivionVersion_1_2_416 = 0x010201A0;
 
+// The engine's INI settings, alive in memory: the IniSettingCollection
+// singleton object - the object itself at this address, not a pointer to it.
+// Its layout, from xOBSE's obse/GameAPI.h: vtable at +0, the INI file's path
+// at +4, and the setting list starting inline at +0x10C as {SettingInfo*,
+// next*} entries whose SettingInfo is {value union, name pointer}.
+//
+// One documented source, from xOBSE's obse/GameAPI.cpp:
+//
+//   static const UInt32 g_IniSettingCollection = 0x00B07BF0;
+//
+// and its GetIniSetting walks exactly the list described above - code this
+// installation runs, since xOBSE 22.13 is what loads OBVR. The second source
+// is the same runtime validation the cached Direct3DCreate9 pointer gets: the
+// object is only trusted after its vtable points into the executable image
+// and its path field reads as an .ini path, and a setting is only written
+// after its name matches exactly and its current value is the very number the
+// game is asking CreateDevice for. A wrong address cannot pass those checks
+// except by holding the right structure, in which case it is not wrong.
+inline constexpr UInt32 kIniSettingCollection = 0x00B07BF0;
+inline constexpr UInt32 kIniSettingListOffset = 0x10C;
+
 // The per-frame clock. xOBSE's g_timeInfo points at a TimeInfo structure at
 // 0x00B33E90 whose float at +0x0C is the seconds the last frame took - the
 // delta every time-driven update in the frame advances by. The second world

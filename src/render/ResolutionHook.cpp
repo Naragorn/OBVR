@@ -2,6 +2,7 @@
 
 #include "core/Log.h"
 #include "game/GameAddresses.h"
+#include "game/IniSettings.h"
 #include "platform/GameWindow.h"
 #include "platform/ImportHook.h"
 #include "platform/Win32Min.h"
@@ -93,7 +94,46 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 	    parameters->backBufferWidth != asTheGameAskedFor.backBufferWidth ||
 	    parameters->backBufferHeight != asTheGameAskedFor.backBufferHeight;
 
-	if (sizeChanged && parameters->windowed == 0) {
+	// The game's belief follows the frame, at the one source it actually has.
+	//
+	// The layout probe measured where each part of the 2D really lays out, and
+	// the answer buried two easier theories. Writing the eye size only into
+	// these parameters split the game against itself: films and the main
+	// menu's background kept the INI's 2560x1440 while every menu built after
+	// the device spread over the real buffer, and the mouse fell into the gap
+	// - cursor everywhere, hover nowhere. Writing the game's own numbers BACK
+	// into the parameters after the call changed nothing, measured to the
+	// pixel: nothing reads this structure again. What the early parts read is
+	// "iSize W"/"iSize H", the INI settings alive in memory. So those are
+	// moved to the eye size here, before the device exists and before the
+	// main menu, the films or the mouse mapping are built from them - after
+	// which there is one screen size in the whole process again.
+	//
+	// Refused rather than guessed when validation fails; the consumers that
+	// crop to the believed corner then still have a true answer.
+	bool gameBelievesNewSize = false;
+	if (sizeChanged) {
+		game::IniSettingEntry* list = game::ResolveIniSettingsList();
+		gameBelievesNewSize =
+		    list != nullptr &&
+		    game::OverrideSizeSettings(list, asTheGameAskedFor.backBufferWidth,
+		                               asTheGameAskedFor.backBufferHeight,
+		                               parameters->backBufferWidth,
+		                               parameters->backBufferHeight);
+		if (g_reportsLeft > 0) {
+			OBVR_LOG("Resolution: the in-memory iSize settings %s",
+			         gameBelievesNewSize
+			             ? "now carry the eye size, so the whole 2D lays out against it"
+			             : "were left alone, so the 2D keeps the game's own size");
+		}
+	}
+
+	// Windowed whenever an eye size is in play, not merely when this call
+	// changed something: an eye-sized frame is not a display mode, and that
+	// stays true on the run after the game saved the eye size into its own
+	// INI and asks for it as exclusive fullscreen all by itself.
+	const bool wantsEyeSize = g_wantedWidth != 0 || g_wantedHeight != 0;
+	if (wantsEyeSize && parameters->windowed == 0) {
 		parameters->windowed = 1;
 
 		// And the window with it, before the device is made rather than after:
@@ -108,20 +148,24 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 		// behind a 3200x3200 back buffer, the mouse was mapped against it, and
 		// the device was lost.
 		//
-		// The size asked for is the game's own, not the screen's: Oblivion
-		// lays out its interface and maps its mouse against the resolution it
-		// believes in, and that is what was in these parameters a moment ago.
+		// Sized to the frame, not to what the game asked for. The first
+		// version matched the window to the asked-for size, on the theory that
+		// the mouse is mapped against the size the game believes in - which is
+		// true, and is exactly why the belief itself is moved to the frame's
+		// size above. Window, buffer and belief being one number is the state
+		// a monitor install is in, and the state everything in the game
+		// assumes.
 		void* window = parameters->deviceWindow != nullptr ? parameters->deviceWindow
 		                                                   : focusWindow;
 		UInt32 wasWidth = 0;
 		UInt32 wasHeight = 0;
-		const bool sized = platform::SizeClientArea(window, asTheGameAskedFor.backBufferWidth,
-		                                            asTheGameAskedFor.backBufferHeight,
+		const bool sized = platform::SizeClientArea(window, parameters->backBufferWidth,
+		                                            parameters->backBufferHeight,
 		                                            wasWidth, wasHeight);
 		if (g_reportsLeft > 0) {
 			OBVR_LOG("Resolution: fullscreen cleared, and the window %s from %ux%u to %ux%u",
 			         sized ? "resized" : "COULD NOT BE RESIZED, still", wasWidth, wasHeight,
-			         asTheGameAskedFor.backBufferWidth, asTheGameAskedFor.backBufferHeight);
+			         parameters->backBufferWidth, parameters->backBufferHeight);
 		}
 	}
 
@@ -143,34 +187,18 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 		g_deviceCreated = true;
 		g_createdWidth = parameters->backBufferWidth;
 		g_createdHeight = parameters->backBufferHeight;
-		g_believedWidth = asTheGameAskedFor.backBufferWidth;
-		g_believedHeight = asTheGameAskedFor.backBufferHeight;
 
-		// The game's own numbers go back into its structure before it reads
-		// them again.
-		//
-		// Leaving OBVR's numbers in was the split brain the layout probe
-		// measured: the game re-reads this structure after the call, and
-		// whatever reads it then believes the frame's size while everything
-		// laid out before - films, the main menu, the mouse mapping against
-		// the window - believes the INI's. Films and the main menu drew into
-		// an exact 2560x1440 corner of the 4028x3380 buffer; the ESC menu
-		// centred itself on the whole buffer; the cursor moved everywhere and
-		// clicked nothing, because the hit test and the drawn cursor no
-		// longer meant the same place.
-		//
-		// So the game is told it got what it asked for, and only the windowed
-		// flag keeps its true value - the window really is windowed, and a
-		// game believing itself exclusive-fullscreen would argue with the
-		// display about modes it does not own. The buffer itself stays at
-		// OBVR's size; whether the world keeps rendering into all of it is
-		// what the next run has to answer.
-		if (sizeChanged) {
-			parameters->backBufferWidth = asTheGameAskedFor.backBufferWidth;
-			parameters->backBufferHeight = asTheGameAskedFor.backBufferHeight;
-			OBVR_LOG("Resolution: the game's own %ux%u written back into its parameters, "
-			         "so everything it lays out believes one size again",
-			         asTheGameAskedFor.backBufferWidth, asTheGameAskedFor.backBufferHeight);
+		// What the game believes its screen to be from here on. With the
+		// iSize settings moved, belief and frame are the same number and the
+		// content crops downstream turn themselves off; with the move refused,
+		// the early 2D keeps laying out against what the game asked for, and
+		// the crops keep showing that corner.
+		if (gameBelievesNewSize) {
+			g_believedWidth = g_createdWidth;
+			g_believedHeight = g_createdHeight;
+		} else {
+			g_believedWidth = asTheGameAskedFor.backBufferWidth;
+			g_believedHeight = asTheGameAskedFor.backBufferHeight;
 		}
 		return result;
 	}
@@ -181,7 +209,21 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 
 	// Failed with OBVR's parameters. The game's own go back in - the whole
 	// structure, because the runtime is allowed to have written to it - and it
-	// gets the device it would have had.
+	// gets the device it would have had. The iSize settings go back with it:
+	// a game running at its own size while believing the eye size would be
+	// the measured split brain with the sides swapped.
+	if (gameBelievesNewSize) {
+		game::IniSettingEntry* list = game::ResolveIniSettingsList();
+		if (list == nullptr ||
+		    !game::OverrideSizeSettings(list, parameters->backBufferWidth,
+		                                parameters->backBufferHeight,
+		                                asTheGameAskedFor.backBufferWidth,
+		                                asTheGameAskedFor.backBufferHeight)) {
+			OBVR_LOG("Resolution: the iSize settings could not be put back after the "
+			         "refusal, so the game may believe a size it is not running at");
+		}
+		gameBelievesNewSize = false;
+	}
 	*parameters = asTheGameAskedFor;
 
 	const SInt32 second = g_originalCreateDevice(self, adapter, deviceType, focusWindow,

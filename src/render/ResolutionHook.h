@@ -63,12 +63,11 @@ bool InstallResolutionHook();
 // looks exactly like one that is not installed at all.
 bool WasDeviceCreated(UInt32& width, UInt32& height);
 
-// The size the game believes its screen is: what it asked CreateDevice for,
-// which the hook writes back into its parameters after the call so that every
-// later read agrees with every earlier one. This is the size Oblivion lays
-// its 2D out against and maps its mouse against, and therefore the corner of
-// the larger frame that actually holds the interface. False until a device
-// exists.
+// The size the game believes its screen is. When the in-memory iSize settings
+// were successfully moved to the eye size, this is the frame itself and the
+// content crops downstream turn themselves off; when the move was refused,
+// it is what the game asked CreateDevice for - the corner of the larger frame
+// its early 2D actually lays out in. False until a device exists.
 bool GameBelievedSize(UInt32& width, UInt32& height);
 
 }  // namespace obvr::render

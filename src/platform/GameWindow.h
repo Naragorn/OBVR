@@ -15,13 +15,14 @@ namespace obvr::platform {
 // The mouse was mapped against those 320x240 pixels, nothing could be clicked,
 // and the device was eventually lost outright.
 //
-// The size to ask for is the one the game itself asked for, not the screen's.
-// Oblivion lays out its interface and maps its mouse against the resolution it
-// believes in, which is what it put in D3DPRESENT_PARAMETERS before OBVR
-// changed it. Giving the window exactly that keeps every one of those
-// calculations true, and leaves the enlarged back buffer doing the one thing
-// it is there for: more pixels behind the same picture, scaled down on the way
-// to the screen.
+// The size to ask for is the frame's. Oblivion lays out its interface and
+// maps its mouse against the resolution it believes in - and OBVR moves that
+// belief (the in-memory iSize settings) to the frame's size when it enlarges
+// the frame, so window, buffer and belief are one number, which is the state
+// a monitor install is in. The first version matched the window to what the
+// game had asked for instead, and the layout probe showed where that ends:
+// half the 2D against one size, half against the other, and the mouse lost
+// between them.
 //
 // The client area is what is asked for, not the window: a window with a border
 // is larger than the area drawn into, and the difference is measured here
