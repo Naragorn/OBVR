@@ -1,5 +1,5 @@
-// Exercises the decision that guards the renderer screen-size rewrite. The
-// write itself needs the game's renderer and stays with the game, like the
+// Exercises the decision that guards the screen-size copy rewrite. The write
+// itself targets an address in the game and stays with the game, like the
 // probe's readback; every way the decision can refuse is covered here,
 // because refusing correctly is what makes the write safe to attempt.
 
@@ -22,32 +22,33 @@ using obvr::render::DecideUiSizeLock;
 using obvr::render::UiSizeLockAction;
 
 void TestDecision() {
-	std::printf("When the renderer's screen size is judged\n");
+	std::printf("When the screen-size copy is judged\n");
 
-	// The measured situation this exists for: the game believes 2560x1440,
-	// the frame is 4028x3380, and the renderer's pair reads the frame.
-	Check(DecideUiSizeLock(true, 2560, 1440, 4028, 3380, 4028, 3380) ==
+	// The measured situation this exists for: the game asked for 2560x1440,
+	// the frame is 4028x3380, and the copy still reads what the game asked
+	// for - which it must, having been copied from the same settings.
+	Check(DecideUiSizeLock(true, 2560, 1440, 4028, 3380, 2560, 1440) ==
 	          UiSizeLockAction::Lock,
-	      "a pair reading the frame's size is locked to the belief");
+	      "a copy reading the asked-for size is raised to the frame");
 
 	// Switched off: nothing else matters.
-	Check(DecideUiSizeLock(false, 2560, 1440, 4028, 3380, 4028, 3380) ==
+	Check(DecideUiSizeLock(false, 2560, 1440, 4028, 3380, 2560, 1440) ==
 	          UiSizeLockAction::NotWanted,
 	      "the switch off means hands off");
 
-	// No resize happened: belief and frame agree, and there is no split.
+	// No resize happened: asked and created agree, and there is no split.
 	Check(DecideUiSizeLock(true, 4028, 3380, 4028, 3380, 4028, 3380) ==
 	          UiSizeLockAction::NothingToDo,
-	      "an agreeing belief needs no lock");
+	      "an agreeing frame needs no raise");
 
-	// The pair does not read as the frame - the offset does not mean what it
-	// is believed to mean, in either axis.
-	Check(DecideUiSizeLock(true, 2560, 1440, 4028, 3380, 2560, 3380) ==
+	// The copy does not read as the asked-for size - it is not the copy this
+	// was built against, in either axis.
+	Check(DecideUiSizeLock(true, 2560, 1440, 4028, 3380, 1920, 1440) ==
 	          UiSizeLockAction::WrongValues,
-	      "a width that is not the frame's refuses");
-	Check(DecideUiSizeLock(true, 2560, 1440, 4028, 3380, 4028, 1440) ==
+	      "a width that is not the asked-for one refuses");
+	Check(DecideUiSizeLock(true, 2560, 1440, 4028, 3380, 2560, 1080) ==
 	          UiSizeLockAction::WrongValues,
-	      "and a height that is not the frame's refuses too");
+	      "and a height that is not the asked-for one refuses too");
 }
 
 }  // namespace

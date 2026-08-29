@@ -322,8 +322,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadUInt("Render", "GameResolutionHeight", config.tracker.renderHeight, path);
 	config.tracker.matchHeadsetFov =
 		ReadBool("Render", "MatchHeadsetFov", config.tracker.matchHeadsetFov, path);
-	config.tracker.menuLayoutAtGameSize = ReadBool("Render", "MenuLayoutAtGameSize",
-	                                               config.tracker.menuLayoutAtGameSize, path);
+	config.tracker.uiFollowsFrameSize = ReadBool("Render", "UiFollowsFrameSize",
+	                                             config.tracker.uiFollowsFrameSize, path);
 	config.tracker.hudOverlay =
 		ReadBool("Render", "HudOverlay", config.tracker.hudOverlay, path);
 	config.tracker.hudBetweenPasses =
@@ -462,10 +462,10 @@ bool Config::Load(const char* fileName) {
 	         tracker.showMenus ? 1 : 0, static_cast<double>(tracker.menuScale),
 	         static_cast<double>(tracker.gameFovOverride));
 	OBVR_LOG("Config: Render.MatchHeadsetFov=%d SetGameResolution=%d (%ux%u) "
-	         "MenuLayoutAtGameSize=%d",
+	         "UiFollowsFrameSize=%d",
 	         tracker.matchHeadsetFov ? 1 : 0, tracker.setRenderSize ? 1 : 0,
 	         tracker.renderWidth, tracker.renderHeight,
-	         tracker.menuLayoutAtGameSize ? 1 : 0);
+	         tracker.uiFollowsFrameSize ? 1 : 0);
 	OBVR_LOG("Config: Render.HudOverlay=%d BetweenPasses=%d Anchor=%s Distance=%.2fm "
 	         "Width=%.2fm",
 	         tracker.hudOverlay ? 1 : 0, tracker.hudBetweenPasses ? 1 : 0,

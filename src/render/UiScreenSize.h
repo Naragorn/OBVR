@@ -4,48 +4,64 @@
 
 namespace obvr::render {
 
-// The renderer's own idea of the screen, and the experiment of correcting it.
+// The one screen size the whole 2D believes in, found by disassembly, and the
+// cut that closes the eye-sized frame's last split.
 //
-// The layout probe left one split standing: on an eye-sized frame the in-game
-// menus lay out against the real buffer size while the mouse maps against the
-// size the game asked for, so the cursor and the hit test never mean the same
-// place and nothing clicks. The INI-settings route to closing that split is
-// off the table - the engine persists those to disk, and the run that proved
-// it also proved what that costs. This is the next candidate: NiDX9Renderer
-// keeps a width and height of its own (+0xA58/+0xA5C, see GameAddresses.h),
-// a value that lives and dies with the process.
+// The trail, because every step of it was paid for. The layout probe showed
+// the 2D split against itself on an eye-sized frame - films and the main
+// menu's background at the game's own 2560x1440, menus and freshly built text
+// spread over the real 4028x3380, the mouse lost between the two, nothing
+// clickable. Rewriting the in-memory iSize settings closed the split and
+// poisoned the user's Oblivion.ini, because the engine persists those; that
+// route is banned. The NiDX9Renderer's own width/height pair was read next
+// and measured already holding the believed size - not the lever either.
+// So the binary was disassembled at the one place UESP describes: the UI
+// normalization to a height of 960. It reads its screen size from a pair of
+// integers that Oblivion fills ONCE, while creating its window, by copying
+// the iSize setting values - a working copy at 0x00B06C4C/0x00B06C50 (see
+// GameAddresses.h for the instruction-level evidence). Some ninety reads all
+// over the interface, input and window code; exactly one write; and the INI
+// is saved from the settings themselves, never from this copy. A value the
+// engine does not persist, which is what the retreat asked for.
 //
-// The hypothesis under test: the menu system reads this pair when it builds a
-// menu, and setting it to the size the game believes in - after the renderer
-// is initialized, before the first menu is built - makes every menu lay out
-// against the same size the mouse maps against, which is the state the game
-// ships in. Present is the moment: by the first presented frame the renderer
-// is built and filled, and no menu exists yet.
+// The cut: after the window and display decisions are made with the game's
+// own numbers - by CreateDevice time they are - the copy is raised to the
+// frame's real size. Every menu built afterwards, the 2D projection, and the
+// cursor checks that read the same copy then live in one coordinate space
+// again, the frame's own, isotropically. The settings keep the INI's
+// numbers, so nothing reaches disk.
 
-// The decision alone, pure so every flow is testable.
+// The decision alone, pure so every flow is testable. asked is what the game
+// requested (and what the copy must still read, having been copied from the
+// same settings); created is the frame the device was given.
 enum class UiSizeLockAction {
 	// The switch is off; nothing is read or written.
 	NotWanted,
-	// Belief and frame agree, so there is no split to close.
+	// Asked and created agree, so there is no split to close.
 	NothingToDo,
-	// The renderer's pair does not read as the frame's size, so the offset
-	// does not mean what it is believed to mean - nothing is written.
+	// The copy does not read as the asked-for size, so it is not the copy
+	// this was built against - nothing is written.
 	WrongValues,
-	// The pair reads exactly the created frame size: rewrite it to the
-	// believed size.
+	// The copy reads exactly the asked-for size: raise it to the frame.
 	Lock,
 };
 
-UiSizeLockAction DecideUiSizeLock(bool enabled, UInt32 believedWidth, UInt32 believedHeight,
+UiSizeLockAction DecideUiSizeLock(bool enabled, UInt32 askedWidth, UInt32 askedHeight,
                                   UInt32 createdWidth, UInt32 createdHeight,
                                   UInt32 readWidth, UInt32 readHeight);
 
-// The acting half: reads the renderer's pair, logs what it found, and applies
-// the decision - once. Safe to call every frame; it retries while the
-// renderer does not exist yet and retires itself after the first real
-// attempt. believed/created come from the resolution hook, handed in rather
-// than fetched so this file stays linkable without it.
-void TryLockUiScreenSize(bool enabled, UInt32 believedWidth, UInt32 believedHeight,
-                         UInt32 createdWidth, UInt32 createdHeight);
+// Reads the copy, logs what it found, applies the decision, and says whether
+// the UI now follows the frame. Called from the CreateDevice hook, where the
+// window is already built (the copy is filled during that) and no menu, film
+// or cursor mapping exists yet.
+bool UiScreenSizeFollowsFrame(bool enabled, UInt32 askedWidth, UInt32 askedHeight,
+                              UInt32 createdWidth, UInt32 createdHeight);
+
+// The way back, for the path where CreateDevice refuses OBVR's parameters and
+// the game gets its own frame after all: a copy raised to a frame that never
+// came to be must be lowered again. Validated the same way - written only
+// when it still reads what the raise left in it.
+bool WriteUiScreenSize(UInt32 expectedWidth, UInt32 expectedHeight, UInt32 newWidth,
+                       UInt32 newHeight);
 
 }  // namespace obvr::render

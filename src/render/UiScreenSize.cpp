@@ -5,68 +5,65 @@
 
 namespace obvr::render {
 
-UiSizeLockAction DecideUiSizeLock(bool enabled, UInt32 believedWidth, UInt32 believedHeight,
+UiSizeLockAction DecideUiSizeLock(bool enabled, UInt32 askedWidth, UInt32 askedHeight,
                                   UInt32 createdWidth, UInt32 createdHeight,
                                   UInt32 readWidth, UInt32 readHeight) {
 	if (!enabled) {
 		return UiSizeLockAction::NotWanted;
 	}
-	if (believedWidth == createdWidth && believedHeight == createdHeight) {
+	if (askedWidth == createdWidth && askedHeight == createdHeight) {
 		return UiSizeLockAction::NothingToDo;
 	}
-	if (readWidth != createdWidth || readHeight != createdHeight) {
+	if (readWidth != askedWidth || readHeight != askedHeight) {
 		return UiSizeLockAction::WrongValues;
 	}
 	return UiSizeLockAction::Lock;
 }
 
-void TryLockUiScreenSize(bool enabled, UInt32 believedWidth, UInt32 believedHeight,
-                         UInt32 createdWidth, UInt32 createdHeight) {
-	// Retired after the first attempt against a real renderer; retried while
-	// there is none, because a renderer that does not exist yet is not an
-	// answer.
-	static bool s_done = false;
-	if (s_done) {
-		return;
+bool WriteUiScreenSize(UInt32 expectedWidth, UInt32 expectedHeight, UInt32 newWidth,
+                       UInt32 newHeight) {
+	auto* width = reinterpret_cast<UInt32*>(addr::kUiScreenWidthCopy);
+	auto* height = reinterpret_cast<UInt32*>(addr::kUiScreenHeightCopy);
+
+	if (*width != expectedWidth || *height != expectedHeight) {
+		OBVR_LOG("UiSize: the copy reads %ux%u where %ux%u was expected, so nothing "
+		         "was written",
+		         *width, *height, expectedWidth, expectedHeight);
+		return false;
 	}
 
-	auto* renderer = *reinterpret_cast<UInt8**>(addr::kRendererPointer);
-	if (renderer == nullptr) {
-		return;
-	}
-	s_done = true;
+	// Said before it happens, learned the hard way: a wordless write was a
+	// crash nobody could place. Plain stores into .data, which the engine
+	// itself stores into at window creation.
+	OBVR_LOG("UiSize: writing %ux%u over the screen-size copy", newWidth, newHeight);
+	*width = newWidth;
+	*height = newHeight;
+	return true;
+}
 
-	// Read first, and said out loud either way: these two lines are the
-	// evidence the next decision stands on, whatever this run's outcome.
-	auto* width = reinterpret_cast<UInt32*>(renderer + addr::kRendererWidthOffset);
-	auto* height = reinterpret_cast<UInt32*>(renderer + addr::kRendererHeightOffset);
-	OBVR_LOG("UiSize: the renderer holds %ux%u as its screen size (frame %ux%u, the game "
-	         "believes %ux%u)",
-	         *width, *height, createdWidth, createdHeight, believedWidth, believedHeight);
+bool UiScreenSizeFollowsFrame(bool enabled, UInt32 askedWidth, UInt32 askedHeight,
+                              UInt32 createdWidth, UInt32 createdHeight) {
+	const UInt32 readWidth = *reinterpret_cast<const UInt32*>(addr::kUiScreenWidthCopy);
+	const UInt32 readHeight = *reinterpret_cast<const UInt32*>(addr::kUiScreenHeightCopy);
 
-	switch (DecideUiSizeLock(enabled, believedWidth, believedHeight, createdWidth,
-	                         createdHeight, *width, *height)) {
+	switch (DecideUiSizeLock(enabled, askedWidth, askedHeight, createdWidth, createdHeight,
+	                         readWidth, readHeight)) {
 		case UiSizeLockAction::NotWanted:
-			OBVR_LOG("UiSize: MenuLayoutAtGameSize is off, so the renderer keeps its own");
-			return;
+			OBVR_LOG("UiSize: UiFollowsFrameSize is off, so the 2D keeps the game's own "
+			         "screen size");
+			return false;
 		case UiSizeLockAction::NothingToDo:
-			return;
+			return false;
 		case UiSizeLockAction::WrongValues:
-			OBVR_LOG("UiSize: that pair is not the frame's size, so the offset does not "
-			         "mean what it is believed to mean and nothing was written");
-			return;
+			OBVR_LOG("UiSize: the screen-size copy reads %ux%u, not the asked-for %ux%u - "
+			         "it is not the copy this was built against, so nothing was written",
+			         readWidth, readHeight, askedWidth, askedHeight);
+			return false;
 		case UiSizeLockAction::Lock:
 			break;
 	}
 
-	// Said before it happens, learned the hard way: a wordless write was a
-	// crash nobody could place.
-	OBVR_LOG("UiSize: writing %ux%u over it, so menus built from here lay out against "
-	         "the size the mouse maps against",
-	         believedWidth, believedHeight);
-	*width = believedWidth;
-	*height = believedHeight;
-	OBVR_LOG("UiSize: written");
+	return WriteUiScreenSize(askedWidth, askedHeight, createdWidth, createdHeight);
 }
 
 }  // namespace obvr::render

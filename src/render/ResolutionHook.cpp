@@ -1,8 +1,10 @@
 #include "render/ResolutionHook.h"
 
+#include "core/Config.h"
 #include "core/Log.h"
 #include "game/GameAddresses.h"
 #include "platform/GameWindow.h"
+#include "render/UiScreenSize.h"
 #include "platform/ImportHook.h"
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
@@ -93,23 +95,28 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 	    parameters->backBufferWidth != asTheGameAskedFor.backBufferWidth ||
 	    parameters->backBufferHeight != asTheGameAskedFor.backBufferHeight;
 
-	// What is deliberately NOT done here, because it was done and it burned.
+	// The 2D's screen size follows the frame - through the working copy, not
+	// the settings.
 	//
-	// The layout probe showed the game split against itself on an eye-sized
-	// frame: films and the main menu's background lay out against the INI's
-	// size, everything built after the device against the real buffer, and
-	// the mouse falls into the gap. The obvious cure - move the belief to its
-	// source, the in-memory "iSize W:Display"/"iSize H:Display" settings, at
-	// this very moment - was built, validated, and it worked; and the run
-	// that proved it crashed the game in its own code (offset 0x98749, the
-	// fullscreen mode path meeting a size no monitor has) and, worse, the
-	// engine had already written the moved values back into the user's
-	// Oblivion.ini, which then crashed every later start with or without
-	// OBVR until the file was restored. A belief the engine persists on its
-	// own is not a value OBVR can borrow for a session. So the game keeps
-	// its own size, the flat path crops to the corner that size names, and
-	// the split lives on until it can be cut somewhere the engine does not
-	// write to disk.
+	// The iSize settings themselves are banned territory: rewriting them
+	// closed the measured split and poisoned the user's Oblivion.ini,
+	// because the engine persists them (and crashed at 0x498749, its
+	// fullscreen mode path meeting a size no monitor has). What the
+	// disassembly then found is that the whole 2D never reads the settings
+	// directly: it reads a copy taken once at window creation - and the INI
+	// is saved from the settings, never from the copy. By the time this hook
+	// runs, the window and the display-mode decisions have already consumed
+	// the game's own numbers, so raising the copy here reaches the menus,
+	// the films and the cursor mapping, and nothing that persists or picks
+	// display modes. See UiScreenSize.h and kUiScreenWidthCopy for the
+	// trail.
+	bool uiFollowsFrame = false;
+	if (sizeChanged) {
+		uiFollowsFrame = UiScreenSizeFollowsFrame(
+		    GetConfig().tracker.uiFollowsFrameSize, asTheGameAskedFor.backBufferWidth,
+		    asTheGameAskedFor.backBufferHeight, parameters->backBufferWidth,
+		    parameters->backBufferHeight);
+	}
 
 	// Windowed whenever an eye size is in play, not merely when this call
 	// changed something: an eye-sized frame is not a display mode, and that
@@ -131,24 +138,25 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 		// behind a 3200x3200 back buffer, the mouse was mapped against it, and
 		// the device was lost.
 		//
-		// Sized to what the game asked for, not to the frame. Oblivion maps
-		// its mouse against the size it believes in, and that belief stays
-		// the game's own (see above) - so the window stays with it, which is
-		// the arrangement the whole 2D shipped against. The frame behind it
-		// is larger and DXVK scales at present time; one build sized the
-		// window to the frame instead, and nothing about the 2D or the mouse
-		// got better for it.
+		// Sized to whatever the 2D believes in. With the copy raised the
+		// whole game lives at the frame's size, and the window joins it;
+		// with the raise refused the game stays at its own size and so does
+		// the window. Window, screen-size copy and mouse mapping being one
+		// number is the arrangement the game shipped against.
+		const UInt32 windowWidth = uiFollowsFrame ? parameters->backBufferWidth
+		                                          : asTheGameAskedFor.backBufferWidth;
+		const UInt32 windowHeight = uiFollowsFrame ? parameters->backBufferHeight
+		                                           : asTheGameAskedFor.backBufferHeight;
 		void* window = parameters->deviceWindow != nullptr ? parameters->deviceWindow
 		                                                   : focusWindow;
 		UInt32 wasWidth = 0;
 		UInt32 wasHeight = 0;
-		const bool sized = platform::SizeClientArea(window, asTheGameAskedFor.backBufferWidth,
-		                                            asTheGameAskedFor.backBufferHeight,
-		                                            wasWidth, wasHeight);
+		const bool sized =
+		    platform::SizeClientArea(window, windowWidth, windowHeight, wasWidth, wasHeight);
 		if (g_reportsLeft > 0) {
 			OBVR_LOG("Resolution: fullscreen cleared, and the window %s from %ux%u to %ux%u",
 			         sized ? "resized" : "COULD NOT BE RESIZED, still", wasWidth, wasHeight,
-			         asTheGameAskedFor.backBufferWidth, asTheGameAskedFor.backBufferHeight);
+			         windowWidth, windowHeight);
 		}
 	}
 
@@ -171,11 +179,18 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 		g_createdWidth = parameters->backBufferWidth;
 		g_createdHeight = parameters->backBufferHeight;
 
-		// What the game believes its screen to be: what it asked for. The
-		// flat path crops to this corner, because that is where the films
-		// and the main menu's background really draw.
-		g_believedWidth = asTheGameAskedFor.backBufferWidth;
-		g_believedHeight = asTheGameAskedFor.backBufferHeight;
+		// What the game's 2D believes its screen to be. With the copy raised
+		// it is the frame itself, and the content crops downstream turn
+		// themselves off; with the raise refused it is what the game asked
+		// for - the corner its films and menu backgrounds draw in - and the
+		// crops keep showing that corner.
+		if (uiFollowsFrame) {
+			g_believedWidth = g_createdWidth;
+			g_believedHeight = g_createdHeight;
+		} else {
+			g_believedWidth = asTheGameAskedFor.backBufferWidth;
+			g_believedHeight = asTheGameAskedFor.backBufferHeight;
+		}
 		return result;
 	}
 
@@ -185,7 +200,15 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 
 	// Failed with OBVR's parameters. The game's own go back in - the whole
 	// structure, because the runtime is allowed to have written to it - and it
-	// gets the device it would have had.
+	// gets the device it would have had. The screen-size copy goes back with
+	// it: a copy raised to a frame that never came to be would be the split
+	// with the sides swapped.
+	if (uiFollowsFrame) {
+		WriteUiScreenSize(parameters->backBufferWidth, parameters->backBufferHeight,
+		                  asTheGameAskedFor.backBufferWidth,
+		                  asTheGameAskedFor.backBufferHeight);
+		uiFollowsFrame = false;
+	}
 	*parameters = asTheGameAskedFor;
 
 	const SInt32 second = g_originalCreateDevice(self, adapter, deviceType, focusWindow,

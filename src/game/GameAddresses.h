@@ -111,22 +111,37 @@ inline constexpr UInt32 kPlayerIsThirdPersonOffset = 0x588;
 inline constexpr UInt32 kRendererPointer = 0x00B3F928;
 inline constexpr UInt32 kRendererDeviceOffset = 0x280;
 
-// The screen size the renderer keeps for itself, in the same NiDX9Renderer:
-// "UInt32 width; // A58" and "UInt32 height; // A5C" in xOBSE's NiRenderer.h,
-// with the height's offset pinned by a STATIC_ASSERT there. Same structure,
-// same source and same runtime proof as the device offset above - every frame
-// OBVR renders goes through +0x280 of this object.
+// The working copy of the screen size that Oblivion's whole 2D reads, found
+// by disassembling this very binary rather than quoted from anyone.
 //
-// Why it matters: this is the prime suspect for where the in-game menus learn
-// the "true" screen size they normalize against. On an eye-sized frame it
-// would read the buffer's size while the game's own settings say the INI's -
-// the measured split. Unlike the INI settings, this value lives and dies with
-// the process; the engine does not write it to disk. It is read and, under
-// Render.MenuLayoutAtGameSize, rewritten - only when it reads exactly the
-// created frame size, which is the runtime check that the offset still means
-// what xOBSE says it means.
-inline constexpr UInt32 kRendererWidthOffset = 0xA58;
-inline constexpr UInt32 kRendererHeightOffset = 0xA5C;
+// (The NiDX9Renderer's own width/height at +0xA58/+0xA5C were the first
+// suspect and were measured in game already holding the believed size - real
+// fields, wrong lever.)
+//
+// The evidence, all from dumpbin /disasm of Oblivion.exe 1.2.0.416:
+//
+//   * The UI normalization UESP describes - height fixed at 960, or width at
+//     1280 in portrait - exists at 0x57D7A0/0x57D7F0: fild [0x00B06C4C],
+//     fild [0x00B06C50], compare, divide, multiply by 960.0. The float
+//     constants 960.0f/1280.0f each occur exactly once in .rdata, which is
+//     what made the functions findable.
+//   * Those two integers are written in exactly ONE place in the whole
+//     executable, 0x4983AC/0x4983B2, inside the window-creation function:
+//     copied from [0x00B06C5C]/[0x00B06C64] - and those are the iSize
+//     SettingInfo objects, proven by the name pointers beside them reading
+//     "iSize W:Display" and "iSize H:Display" in the image.
+//   * Some ninety reads spread over the interface code (0x57xxxx around the
+//     2D pass), the window/display code (0x498xxx) and the input side
+//     (0x682xxx, 0x5DF1B7's cursor-range compares).
+//
+// So: settings -> copied once at window creation -> read everywhere. The INI
+// is saved from the settings themselves, never from this copy, which is what
+// makes the copy patchable where the settings are not (see the ban in
+// IniSettings.h). Rewritten under Render.UiFollowsFrameSize, after the
+// window and display-mode decisions have consumed the game's own numbers,
+// and only when it still reads exactly the asked-for size.
+inline constexpr UInt32 kUiScreenWidthCopy = 0x00B06C4C;
+inline constexpr UInt32 kUiScreenHeightCopy = 0x00B06C50;
 
 // Expected game version. OBSE reports it as oblivionVersion.
 inline constexpr UInt32 kOblivionVersion_1_2_416 = 0x010201A0;
