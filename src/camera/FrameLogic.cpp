@@ -139,6 +139,10 @@ bool MenuWorldProbeWanted(bool probeEnabled, FrameDelivery delivery, bool menuIs
 	       attemptsLeft > 0;
 }
 
+bool LayoutProbeDue(bool probeEnabled, UInt32 presentedFrame, UInt32 lastProbeFrame) {
+	return probeEnabled && presentedFrame - lastProbeFrame >= kLayoutProbeFrameGap;
+}
+
 bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp, bool menusInWorld) {
 	return frameOpen && armed && (!menuIsUp || menusInWorld);
 }

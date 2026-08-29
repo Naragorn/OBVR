@@ -92,6 +92,17 @@ struct Config {
 	// being visible, not a fault. In [Debug], hot-reloadable, off by default.
 	bool menuWorldProbe = false;
 
+	// Measures which rectangle of the frame the 2D actually lands in, every
+	// couple of seconds while it is on: the bounding box of the non-black
+	// pixels in the back buffer on a cinema frame (films, loading screens,
+	// the main menu), and of the alpha-carrying pixels in the menu capture
+	// texture on a held menu frame. The instrument for the eye-sized frame's
+	// 2D symptoms - each measurement says whether that part of the interface
+	// lays out against the size the game believes or the size the frame
+	// really is. Costs a GPU stall per measurement, so it is a switch and
+	// not a default. In [Debug], hot-reloadable, off by default.
+	bool layoutProbe = false;
+
 	// Paints an opaque red square into the middle of the HUD overlay texture
 	// just before it is handed over - the instrument for a HUD that arrives
 	// as nothing. Square visible: the overlay path works, the layer's alpha

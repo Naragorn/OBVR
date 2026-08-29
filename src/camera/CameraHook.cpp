@@ -19,6 +19,7 @@
 #include "render/HeadsetRenderer.h"
 #include "render/HudLayer.h"
 #include "render/InterfaceRenderHook.h"
+#include "render/LayoutProbe.h"
 #include "render/MenuShade.h"
 #include "render/PresentHook.h"
 #include "render/ResolutionHook.h"
@@ -148,6 +149,11 @@ UInt32 g_dressingReportsLeft = 8;
 // Debug.MenuWorldProbe is on - see MenuWorldProbeWanted for why each gate
 // exists.
 UInt32 g_menuProbeAttemptsLeft = 0;
+
+// The frame the layout probe last measured on, shared by both of its
+// measurements - cinema and menu - because the cost being rationed is the
+// same GPU stall either way.
+UInt32 g_lastLayoutProbeFrame = 0;
 
 // Says, once, which part of the frame Oblivion is drawing into.
 //
@@ -360,6 +366,31 @@ void OnFrameEnd() {
 		// to draw at; leaving it alone keeps the last good picture hanging,
 		// which is exactly what a paused menu should do.
 		if (g_hudLayer.HasCapture()) {
+			// Before the submit, which consumes the capture flag. What the box
+			// answers: whether the in-game menus lay out against the frame's
+			// real size or the one the game believes - the two sizes stopped
+			// being the same rectangle when the frame went eye-sized, and the
+			// square-looking unclickable menus are the open symptom.
+			if (LayoutProbeDue(GetConfig().layoutProbe, g_presentedFrame,
+			                   g_lastLayoutProbeFrame)) {
+				g_lastLayoutProbeFrame = g_presentedFrame;
+				render::CoveredRect box{};
+				const bool measured = render::MeasureCoveredRect(
+					render::GetGameDevice(), g_hudLayer.CaptureSurface(),
+					g_hudLayer.CaptureWidth(), g_hudLayer.CaptureHeight(),
+					render::d3d9::kFormatA8R8G8B8, true, box);
+				if (measured && box.covered > 0) {
+					OBVR_LOG("Layout probe: the menu pass drew x=%u..%u y=%u..%u of the "
+					         "%ux%u layer texture (%u px, frame %u)",
+					         box.minX, box.maxX, box.minY, box.maxY,
+					         g_hudLayer.CaptureWidth(), g_hudLayer.CaptureHeight(),
+					         box.covered, g_presentedFrame);
+				} else {
+					OBVR_LOG("Layout probe: the menu measurement %s (frame %u)",
+					         measured ? "found nothing drawn" : "was refused",
+					         g_presentedFrame);
+				}
+			}
 			MaybeSubmitHud(true);
 		}
 
@@ -447,6 +478,29 @@ void OnFrameEnd() {
 		// the key was pressed because that one is in the wrong place.
 		g_hudLayer.ResetAnchor();
 		OBVR_LOG("Render: the flat picture was re-anchored on the recenter key (flat path)");
+	}
+
+	// The cinema-side layout measurement, taken while the finished frame is
+	// still in the back buffer. What the box answers: whether films, loading
+	// screens and the main menu lay out against the frame's real size or the
+	// one the game believes - a picture sitting small in the top-left corner
+	// of the buffer is the second of those, measured rather than presumed.
+	if (LayoutProbeDue(GetConfig().layoutProbe, g_presentedFrame, g_lastLayoutProbeFrame)) {
+		g_lastLayoutProbeFrame = g_presentedFrame;
+		UInt32 bufferWidth = 0;
+		UInt32 bufferHeight = 0;
+		render::CoveredRect box{};
+		const bool measured = render::MeasureBackBufferCoveredRect(
+			render::GetGameDevice(), bufferWidth, bufferHeight, box);
+		if (measured && box.covered > 0) {
+			OBVR_LOG("Layout probe: this cinema frame's picture covers x=%u..%u "
+			         "y=%u..%u of the %ux%u back buffer (%u px, frame %u)",
+			         box.minX, box.maxX, box.minY, box.maxY, bufferWidth, bufferHeight,
+			         box.covered, g_presentedFrame);
+		} else {
+			OBVR_LOG("Layout probe: the cinema measurement %s (frame %u)",
+			         measured ? "found only black" : "was refused", g_presentedFrame);
+		}
 	}
 
 	render::HeadsetRenderer::FrameRequest menu;

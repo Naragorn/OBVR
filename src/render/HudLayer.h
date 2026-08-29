@@ -54,6 +54,14 @@ public:
 	// Whether BeginCapture succeeded since the last Submit.
 	bool HasCapture() const { return m_captured; }
 
+	// The capture texture's surface and size, for the layout probe: which
+	// rectangle of the texture the pass actually drew into is measured on the
+	// texture itself, and the probe lives with the other readback plumbing
+	// rather than in here.
+	void* CaptureSurface() const { return m_surface; }
+	UInt32 CaptureWidth() const { return m_width; }
+	UInt32 CaptureHeight() const { return m_height; }
+
 	// Called at the end of the frame, after the eyes have been submitted.
 	//
 	// captured true: hands this frame's picture to the overlay and shows it,

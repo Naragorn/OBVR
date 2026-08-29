@@ -386,6 +386,19 @@ if(WIN32)
 	add_test(NAME present_hook COMMAND present_hook_test)
 endif()
 
+add_executable(layout_probe_test
+	LayoutProbeTest.cpp
+	../src/render/LayoutProbe.cpp
+)
+
+target_include_directories(layout_probe_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(layout_probe_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME layout_probe COMMAND layout_probe_test)
+
 add_executable(game_camera_test
 	GameCameraTest.cpp
 	../src/game/GameCamera.cpp

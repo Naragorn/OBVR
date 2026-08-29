@@ -316,6 +316,27 @@ bool MenuWorldProbeWanted(bool probeEnabled, FrameDelivery delivery, bool menuIs
 // mistake the transition for the answer.
 inline constexpr UInt32 kMenuWorldProbeAttempts = 5;
 
+// Whether this frame runs a layout-probe measurement: one readback of the
+// frame's 2D, its covered rectangle logged, and nothing else done with it.
+//
+// The question it answers: which screen size does each part of Oblivion's 2D
+// lay out against, now that OBVR asks for a frame the game did not choose -
+// the size the game believes from its INI, or the size the frame really is.
+// The eye-sized frame's first run showed 2D symptoms that split exactly along
+// that line, and the viewport cannot answer it, because the viewport is fully
+// open either way.
+//
+// The gates: the probe was asked for, and the last measurement is at least
+// the gap ago - a readback stalls the GPU, and one measurement every couple
+// of seconds is evidence while one per frame is a slideshow. The counter
+// comparison survives wrap-around by working on the difference.
+bool LayoutProbeDue(bool probeEnabled, UInt32 presentedFrame, UInt32 lastProbeFrame);
+
+// Frames between measurements: about two seconds of them, long enough to
+// stay playable while the probe is on, short enough that a menu opened for a
+// moment still gets measured.
+inline constexpr UInt32 kLayoutProbeFrameGap = 120;
+
 // Whether a menu can actually be delivered in the world, given the rest of the
 // configuration.
 //

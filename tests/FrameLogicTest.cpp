@@ -533,6 +533,33 @@ void TestMenuWorldProbe() {
 	      "a spent budget ends the episode's probing");
 }
 
+void TestLayoutProbeDue() {
+	std::printf("When the layout probe takes its next measurement\n");
+
+	using obvr::camera::kLayoutProbeFrameGap;
+	using obvr::camera::LayoutProbeDue;
+
+	// The flow that measures: asked for, and the last measurement is at
+	// least the gap ago.
+	Check(LayoutProbeDue(true, kLayoutProbeFrameGap, 0),
+	      "the gap has passed, so this frame measures");
+	Check(LayoutProbeDue(true, 1000 + kLayoutProbeFrameGap, 1000),
+	      "exactly at the gap counts as due");
+
+	// Off means off, however long it has been.
+	Check(!LayoutProbeDue(false, 100000, 0), "switched off, nothing measures");
+
+	// Between measurements the probe waits - one readback stall every couple
+	// of seconds, not one per frame.
+	Check(!LayoutProbeDue(true, 1000 + kLayoutProbeFrameGap - 1, 1000),
+	      "one frame short of the gap waits");
+
+	// The frame counter wrapping around must not freeze the probe: the
+	// difference arithmetic keeps working across the wrap.
+	Check(LayoutProbeDue(true, kLayoutProbeFrameGap - 5, 0xFFFFFFFFu - 4),
+	      "a wrapped frame counter still measures");
+}
+
 void TestMenusCanReachTheWorld() {
 	std::printf("When a menu asked to hang in the world actually can\n");
 
@@ -870,6 +897,8 @@ int main() {
 	TestMenuDressingWindow();
 	std::printf("\n");
 	TestMenuWorldProbe();
+	std::printf("\n");
+	TestLayoutProbeDue();
 	std::printf("\n");
 	TestMenusCanReachTheWorld();
 	std::printf("\n");

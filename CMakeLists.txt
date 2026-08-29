@@ -51,6 +51,7 @@ add_library(OBVR SHARED
 	src/render/PresentHook.cpp
 	src/render/HudLayer.cpp
 	src/render/InterfaceRenderHook.cpp
+	src/render/LayoutProbe.cpp
 	src/render/ResolutionHook.cpp
 	src/render/SceneRenderHook.cpp
 	src/render/InteropBracket.cpp
