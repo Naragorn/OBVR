@@ -48,7 +48,9 @@ struct IniSettingEntry {
 	IniSettingEntry* next;
 };
 
-// Finds "iSize W" and "iSize H" in the list and rewrites both - or neither.
+// Finds "iSize W" and "iSize H" in the list - bare or carrying their section
+// as the console spells them, "iSize W:Display" - and rewrites both, or
+// neither.
 //
 // Both are located and checked before either is written, so a refusal can
 // never leave the game believing a screen that is wide like one size and

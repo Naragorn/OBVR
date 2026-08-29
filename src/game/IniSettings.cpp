@@ -10,19 +10,40 @@ namespace {
 // that list.
 constexpr UInt32 kMaxWalk = 4096;
 
-// Exact match, deliberately case-sensitive where xOBSE compares loosely.
-// This code writes into engine memory on the strength of the comparison, and
-// stricter is safer: the engine's own names are fixed strings in the binary,
-// so the exact spelling is known.
-bool Same(const char* a, const char* b) {
-	if (a == nullptr || b == nullptr) {
+// Whether an entry's name names the wanted setting. The engine may store the
+// name bare ("iSize W") or carrying its section ("iSize W:Display") - the
+// game's own console takes the second shape, and a run that searched for the
+// bare name alone found neither setting in the real list. So a name matches
+// when it is the wanted string exactly, or the wanted string followed by a
+// colon and anything. Case-sensitive on the setting's own part, and no
+// looser: this code writes into engine memory on the strength of the match,
+// and the value check behind it wants a candidate, not a guess.
+bool NamesSetting(const char* name, const char* wanted) {
+	if (name == nullptr || wanted == nullptr) {
 		return false;
 	}
-	while (*a != '\0' && *a == *b) {
-		++a;
-		++b;
+	while (*wanted != '\0' && *name == *wanted) {
+		++name;
+		++wanted;
 	}
-	return *a == *b;
+	if (*wanted != '\0') {
+		return false;
+	}
+	return *name == '\0' || *name == ':';
+}
+
+// Case-insensitive "does the name mention size", for the refusal log only:
+// when neither setting is found, the names that ARE there are the evidence
+// the next log needs.
+bool MentionsSize(const char* name) {
+	for (; name[0] != '\0'; ++name) {
+		const char s = name[0] | 0x20;
+		if (s == 's' && (name[1] | 0x20) == 'i' && (name[2] | 0x20) == 'z' &&
+		    (name[3] | 0x20) == 'e') {
+			return true;
+		}
+	}
+	return false;
 }
 
 }  // namespace
@@ -39,9 +60,9 @@ bool OverrideSizeSettings(IniSettingEntry* first, UInt32 expectedWidth,
 		if (data == nullptr || data->name == nullptr) {
 			continue;
 		}
-		if (Same(data->name, "iSize W")) {
+		if (NamesSetting(data->name, "iSize W")) {
 			width = data;
-		} else if (Same(data->name, "iSize H")) {
+		} else if (NamesSetting(data->name, "iSize H")) {
 			height = data;
 		}
 	}
@@ -52,6 +73,24 @@ bool OverrideSizeSettings(IniSettingEntry* first, UInt32 expectedWidth,
 		OBVR_LOG("IniSettings: iSize %s not found in the setting list, so the game keeps "
 		         "its own screen size",
 		         width == nullptr ? (height == nullptr ? "W and iSize H" : "W") : "H");
+
+		// Name what IS there, so the next log answers the question this
+		// refusal leaves open: what the engine really calls these settings.
+		UInt32 shown = 0;
+		UInt32 total = 0;
+		for (IniSettingEntry* entry = first; entry != nullptr && total < kMaxWalk;
+		     entry = entry->next, ++total) {
+			IniSettingInfo* data = entry->data;
+			if (data == nullptr || data->name == nullptr) {
+				continue;
+			}
+			if (shown < 8 && MentionsSize(data->name)) {
+				++shown;
+				OBVR_LOG("IniSettings: the list does hold '%s' (as int: %d)", data->name,
+				         data->i);
+			}
+		}
+		OBVR_LOG("IniSettings: %u entries walked, %u of them naming a size", total, shown);
 		return false;
 	}
 

@@ -59,6 +59,31 @@ void TestRewrite() {
 	Check(list.width.i == 2560 && list.height.i == 1440, "restoring the game's own size");
 }
 
+void TestSectionedNames() {
+	std::printf("When the engine stores names with their section\n");
+
+	// The console's own spelling, and what a real run's list may hold:
+	// "iSize W:Display". The match takes the setting's part exactly and
+	// allows a colon-and-anything tail.
+	{
+		SampleList list(2560, 1440);
+		list.width.name = "iSize W:Display";
+		list.height.name = "iSize H:Display";
+		Check(OverrideSizeSettings(&list.entries[0], 2560, 1440, 4028, 3380),
+		      "sectioned names are the same settings");
+		Check(list.width.i == 4028 && list.height.i == 3380, "and are rewritten");
+	}
+
+	// A name that merely begins the same is not the setting: the tail must
+	// be a section, not more name.
+	{
+		SampleList list(2560, 1440);
+		list.width.name = "iSize Wide";
+		Check(!OverrideSizeSettings(&list.entries[0], 2560, 1440, 4028, 3380),
+		      "a longer name without a colon is a different setting");
+	}
+}
+
 void TestValueMismatch() {
 	std::printf("When the current values are not what the game asked for\n");
 
@@ -133,6 +158,8 @@ int main() {
 	std::printf("OBVR ini settings test\n\n");
 
 	TestRewrite();
+	std::printf("\n");
+	TestSectionedNames();
 	std::printf("\n");
 	TestValueMismatch();
 	std::printf("\n");

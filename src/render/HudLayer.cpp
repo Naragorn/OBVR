@@ -4,9 +4,7 @@
 
 #include "core/Log.h"
 #include "render/D3D11Types.h"
-#include "render/EyeGeometry.h"
 #include "render/GameFrame.h"
-#include "render/ResolutionHook.h"
 #include "vr/OpenVRBackend.h"
 
 namespace obvr::render {
@@ -244,27 +242,13 @@ bool HudLayer::EnsureOverlay(vr::OpenVRBackend& backend, float distanceMetres,
 	backend.SetOverlayTransformHmdRelative(m_overlay, hmdToOverlay);
 	backend.SetOverlayWidthInMetres(m_overlay, widthMetres);
 
-	// Only the corner of the layer texture the game lays its 2D in. The
-	// texture is the back buffer's size, and on an eye-sized frame that is
-	// nearly square while the interface lives in the 16:9 corner the game
-	// believes its screen is - the whole texture as an overlay was the ESC
-	// menu turning square. The bounds also set the quad's aspect, so this is
-	// what gives the menus their shape back.
-	UInt32 believedWidth = 0;
-	UInt32 believedHeight = 0;
-	if (GameBelievedSize(believedWidth, believedHeight)) {
-		const TextureBounds content =
-			ContentBounds(believedWidth, believedHeight, m_width, m_height);
-		if (content.uMax < 1.0f || content.vMax < 1.0f) {
-			const vr::openvr::VRTextureBounds bounds{content.uMin, content.vMin,
-			                                         content.uMax, content.vMax};
-			backend.SetOverlayTextureBounds(m_overlay, bounds);
-			OBVR_LOG("Hud: the overlay shows u=0..%.3f v=0..%.3f of the layer - the "
-			         "%ux%u the game believes in, out of %ux%u",
-			         static_cast<double>(content.uMax), static_cast<double>(content.vMax),
-			         believedWidth, believedHeight, m_width, m_height);
-		}
-	}
+	// The whole texture, deliberately, and this was learned by cropping. One
+	// build showed only the corner the game believes its screen is, on the
+	// theory that the layer's 2D lives there; the layout probe measured the
+	// opposite - the HUD and every in-game menu lay their content out across
+	// the full buffer - and the crop swallowed the HUD whole and cut every
+	// menu down to its upper-left. Whatever size the game believes, this
+	// layer's own content fills its texture, so the overlay shows all of it.
 	return true;
 }
 
