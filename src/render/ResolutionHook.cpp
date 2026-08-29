@@ -110,12 +110,20 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 	// the films and the cursor mapping, and nothing that persists or picks
 	// display modes. See UiScreenSize.h and kUiScreenWidthCopy for the
 	// trail.
+	// Not the whole frame but a cinema window into it, when MenuAspect asks
+	// for one. The full frame closed the split and handed the UI a nearly
+	// square screen - everything 4:3, the main menu too narrow, said the
+	// headset. At the frame width over MenuAspect the UI lays out at the
+	// cinema shape, draws isotropically into the top slice of the frame, and
+	// the mouse still maps against the very same numbers.
+	const UiSize uiSize =
+	    UiSizeForFrame(parameters->backBufferWidth, parameters->backBufferHeight,
+	                   GetConfig().tracker.menuAspect);
 	bool uiFollowsFrame = false;
 	if (sizeChanged) {
 		uiFollowsFrame = UiScreenSizeFollowsFrame(
 		    GetConfig().tracker.uiFollowsFrameSize, asTheGameAskedFor.backBufferWidth,
-		    asTheGameAskedFor.backBufferHeight, parameters->backBufferWidth,
-		    parameters->backBufferHeight);
+		    asTheGameAskedFor.backBufferHeight, uiSize.width, uiSize.height);
 	}
 
 	// Windowed whenever an eye size is in play, not merely when this call
@@ -143,10 +151,10 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 		// with the raise refused the game stays at its own size and so does
 		// the window. Window, screen-size copy and mouse mapping being one
 		// number is the arrangement the game shipped against.
-		const UInt32 windowWidth = uiFollowsFrame ? parameters->backBufferWidth
-		                                          : asTheGameAskedFor.backBufferWidth;
-		const UInt32 windowHeight = uiFollowsFrame ? parameters->backBufferHeight
-		                                           : asTheGameAskedFor.backBufferHeight;
+		const UInt32 windowWidth =
+		    uiFollowsFrame ? uiSize.width : asTheGameAskedFor.backBufferWidth;
+		const UInt32 windowHeight =
+		    uiFollowsFrame ? uiSize.height : asTheGameAskedFor.backBufferHeight;
 		void* window = parameters->deviceWindow != nullptr ? parameters->deviceWindow
 		                                                   : focusWindow;
 		UInt32 wasWidth = 0;
@@ -179,14 +187,13 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 		g_createdWidth = parameters->backBufferWidth;
 		g_createdHeight = parameters->backBufferHeight;
 
-		// What the game's 2D believes its screen to be. With the copy raised
-		// it is the frame itself, and the content crops downstream turn
-		// themselves off; with the raise refused it is what the game asked
-		// for - the corner its films and menu backgrounds draw in - and the
-		// crops keep showing that corner.
+		// What the game's 2D believes its screen to be - and therefore the
+		// slice of the frame its films, menus and cursor live in, which the
+		// flat path and the overlay show. With the raise refused it is what
+		// the game asked for, and the crops keep showing that corner.
 		if (uiFollowsFrame) {
-			g_believedWidth = g_createdWidth;
-			g_believedHeight = g_createdHeight;
+			g_believedWidth = uiSize.width;
+			g_believedHeight = uiSize.height;
 		} else {
 			g_believedWidth = asTheGameAskedFor.backBufferWidth;
 			g_believedHeight = asTheGameAskedFor.backBufferHeight;
@@ -204,8 +211,7 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 	// it: a copy raised to a frame that never came to be would be the split
 	// with the sides swapped.
 	if (uiFollowsFrame) {
-		WriteUiScreenSize(parameters->backBufferWidth, parameters->backBufferHeight,
-		                  asTheGameAskedFor.backBufferWidth,
+		WriteUiScreenSize(uiSize.width, uiSize.height, asTheGameAskedFor.backBufferWidth,
 		                  asTheGameAskedFor.backBufferHeight);
 		uiFollowsFrame = false;
 	}

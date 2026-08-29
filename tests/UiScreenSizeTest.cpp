@@ -19,7 +19,37 @@ void Check(bool condition, const char* what) {
 }
 
 using obvr::render::DecideUiSizeLock;
+using obvr::render::UiSizeForFrame;
 using obvr::render::UiSizeLockAction;
+
+void TestUiSizeForFrame() {
+	std::printf("When the 2D's window into the frame is shaped\n");
+
+	// The cinema case this exists for: 16:9 into a nearly square frame takes
+	// the full width and cuts the height.
+	const auto cinema = UiSizeForFrame(4028, 3380, 1.7778f);
+	Check(cinema.width == 4028, "a 16:9 window keeps the frame's width");
+	Check(cinema.height == 2266, "and stands 2266 tall in a 3380 frame");
+
+	// No aspect asked for: the whole frame.
+	const auto whole = UiSizeForFrame(4028, 3380, 0.0f);
+	Check(whole.width == 4028 && whole.height == 3380, "no aspect means the whole frame");
+
+	// An aspect the frame already has changes nothing.
+	const auto same = UiSizeForFrame(2560, 1440, 1.7778f);
+	Check(same.width == 2560 && same.height == 1440,
+	      "a frame already at the aspect is left whole");
+
+	// An aspect narrower than the frame cuts the width instead - the window
+	// is never larger than the frame in either axis.
+	const auto narrow = UiSizeForFrame(4028, 3380, 1.0f);
+	Check(narrow.width == 3380 && narrow.height == 3380,
+	      "a square window into a wide frame keeps the height");
+
+	// Nothing sensible can be shaped from a frame of no size.
+	const auto empty = UiSizeForFrame(0, 0, 1.7778f);
+	Check(empty.width == 0 && empty.height == 0, "an empty frame stays empty");
+}
 
 void TestDecision() {
 	std::printf("When the screen-size copy is judged\n");
@@ -56,6 +86,8 @@ void TestDecision() {
 int main() {
 	std::printf("OBVR ui screen size test\n\n");
 
+	TestUiSizeForFrame();
+	std::printf("\n");
 	TestDecision();
 
 	std::printf("\n");

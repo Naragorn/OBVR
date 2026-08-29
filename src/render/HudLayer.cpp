@@ -4,7 +4,9 @@
 
 #include "core/Log.h"
 #include "render/D3D11Types.h"
+#include "render/EyeGeometry.h"
 #include "render/GameFrame.h"
+#include "render/ResolutionHook.h"
 #include "vr/OpenVRBackend.h"
 
 namespace obvr::render {
@@ -242,13 +244,30 @@ bool HudLayer::EnsureOverlay(vr::OpenVRBackend& backend, float distanceMetres,
 	backend.SetOverlayTransformHmdRelative(m_overlay, hmdToOverlay);
 	backend.SetOverlayWidthInMetres(m_overlay, widthMetres);
 
-	// The whole texture, deliberately, and this was learned by cropping. One
-	// build showed only the corner the game believes its screen is, on the
-	// theory that the layer's 2D lives there; the layout probe measured the
-	// opposite - the HUD and every in-game menu lay their content out across
-	// the full buffer - and the crop swallowed the HUD whole and cut every
-	// menu down to its upper-left. Whatever size the game believes, this
-	// layer's own content fills its texture, so the overlay shows all of it.
+	// The slice of the layer texture the 2D actually draws in. An earlier
+	// crop to the believed size was wrong and swallowed the HUD, because the
+	// UI then drew across the full buffer; since the screen-size copy is
+	// raised (UiScreenSize.h), the UI draws exactly into the believed
+	// rectangle - the raise is what MAKES the believed size true - and the
+	// texture below and right of it holds nothing. The bounds also set the
+	// quad's aspect, which is what makes menus hang as a cinema screen
+	// rather than a square. When belief and texture agree, no bounds are
+	// set and the overlay shows everything, exactly as before.
+	UInt32 believedWidth = 0;
+	UInt32 believedHeight = 0;
+	if (GameBelievedSize(believedWidth, believedHeight)) {
+		const TextureBounds content =
+			ContentBounds(believedWidth, believedHeight, m_width, m_height);
+		if (content.uMax < 1.0f || content.vMax < 1.0f) {
+			const vr::openvr::VRTextureBounds bounds{content.uMin, content.vMin,
+			                                         content.uMax, content.vMax};
+			backend.SetOverlayTextureBounds(m_overlay, bounds);
+			OBVR_LOG("Hud: the overlay shows u=0..%.3f v=0..%.3f of the layer - the "
+			         "%ux%u the 2D lives in, out of %ux%u",
+			         static_cast<double>(content.uMax), static_cast<double>(content.vMax),
+			         believedWidth, believedHeight, m_width, m_height);
+		}
+	}
 	return true;
 }
 

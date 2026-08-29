@@ -31,31 +31,45 @@ namespace obvr::render {
 // again, the frame's own, isotropically. The settings keep the INI's
 // numbers, so nothing reaches disk.
 
+// The size the 2D is given to believe. The frame itself closes the split but
+// hands the UI a nearly square screen, and the first run in the headset said
+// what that looks like: everything 4:3, the main menu too narrow. A 16:9
+// window into the frame keeps the cure and returns the shape - the UI lays
+// out at the cinema aspect, draws isotropically into the top-left slice of
+// the frame, and the mouse maps against the very same numbers, which is what
+// made clicking work. menuAspect below 0.1 means the whole frame.
+struct UiSize {
+	UInt32 width;
+	UInt32 height;
+};
+
+UiSize UiSizeForFrame(UInt32 frameWidth, UInt32 frameHeight, float menuAspect);
+
 // The decision alone, pure so every flow is testable. asked is what the game
 // requested (and what the copy must still read, having been copied from the
-// same settings); created is the frame the device was given.
+// same settings); the new size is what the 2D is to believe instead.
 enum class UiSizeLockAction {
 	// The switch is off; nothing is read or written.
 	NotWanted,
-	// Asked and created agree, so there is no split to close.
+	// Asked and new agree, so there is no split to close.
 	NothingToDo,
 	// The copy does not read as the asked-for size, so it is not the copy
 	// this was built against - nothing is written.
 	WrongValues,
-	// The copy reads exactly the asked-for size: raise it to the frame.
+	// The copy reads exactly the asked-for size: raise it.
 	Lock,
 };
 
 UiSizeLockAction DecideUiSizeLock(bool enabled, UInt32 askedWidth, UInt32 askedHeight,
-                                  UInt32 createdWidth, UInt32 createdHeight,
-                                  UInt32 readWidth, UInt32 readHeight);
+                                  UInt32 newWidth, UInt32 newHeight, UInt32 readWidth,
+                                  UInt32 readHeight);
 
 // Reads the copy, logs what it found, applies the decision, and says whether
-// the UI now follows the frame. Called from the CreateDevice hook, where the
-// window is already built (the copy is filled during that) and no menu, film
-// or cursor mapping exists yet.
+// the UI now believes the new size. Called from the CreateDevice hook, where
+// the window is already built (the copy is filled during that) and no menu,
+// film or cursor mapping exists yet.
 bool UiScreenSizeFollowsFrame(bool enabled, UInt32 askedWidth, UInt32 askedHeight,
-                              UInt32 createdWidth, UInt32 createdHeight);
+                              UInt32 newWidth, UInt32 newHeight);
 
 // The way back, for the path where CreateDevice refuses OBVR's parameters and
 // the game gets its own frame after all: a copy raised to a frame that never

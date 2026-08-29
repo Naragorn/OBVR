@@ -5,13 +5,38 @@
 
 namespace obvr::render {
 
+UiSize UiSizeForFrame(UInt32 frameWidth, UInt32 frameHeight, float menuAspect) {
+	UiSize size{frameWidth, frameHeight};
+	if (menuAspect <= 0.1f || frameWidth == 0 || frameHeight == 0) {
+		return size;
+	}
+
+	// The full width at the wanted aspect; if the frame is narrower than the
+	// aspect wants, the full height instead. Either way one axis stays the
+	// frame's own and the other shrinks - the window into the frame is never
+	// larger than the frame.
+	const UInt32 wantedHeight =
+		static_cast<UInt32>(static_cast<float>(frameWidth) / menuAspect + 0.5f);
+	if (wantedHeight != 0 && wantedHeight <= frameHeight) {
+		size.height = wantedHeight;
+		return size;
+	}
+
+	const UInt32 wantedWidth =
+		static_cast<UInt32>(static_cast<float>(frameHeight) * menuAspect + 0.5f);
+	if (wantedWidth != 0 && wantedWidth <= frameWidth) {
+		size.width = wantedWidth;
+	}
+	return size;
+}
+
 UiSizeLockAction DecideUiSizeLock(bool enabled, UInt32 askedWidth, UInt32 askedHeight,
-                                  UInt32 createdWidth, UInt32 createdHeight,
-                                  UInt32 readWidth, UInt32 readHeight) {
+                                  UInt32 newWidth, UInt32 newHeight, UInt32 readWidth,
+                                  UInt32 readHeight) {
 	if (!enabled) {
 		return UiSizeLockAction::NotWanted;
 	}
-	if (askedWidth == createdWidth && askedHeight == createdHeight) {
+	if (askedWidth == newWidth && askedHeight == newHeight) {
 		return UiSizeLockAction::NothingToDo;
 	}
 	if (readWidth != askedWidth || readHeight != askedHeight) {
@@ -42,11 +67,11 @@ bool WriteUiScreenSize(UInt32 expectedWidth, UInt32 expectedHeight, UInt32 newWi
 }
 
 bool UiScreenSizeFollowsFrame(bool enabled, UInt32 askedWidth, UInt32 askedHeight,
-                              UInt32 createdWidth, UInt32 createdHeight) {
+                              UInt32 newWidth, UInt32 newHeight) {
 	const UInt32 readWidth = *reinterpret_cast<const UInt32*>(addr::kUiScreenWidthCopy);
 	const UInt32 readHeight = *reinterpret_cast<const UInt32*>(addr::kUiScreenHeightCopy);
 
-	switch (DecideUiSizeLock(enabled, askedWidth, askedHeight, createdWidth, createdHeight,
+	switch (DecideUiSizeLock(enabled, askedWidth, askedHeight, newWidth, newHeight,
 	                         readWidth, readHeight)) {
 		case UiSizeLockAction::NotWanted:
 			OBVR_LOG("UiSize: UiFollowsFrameSize is off, so the 2D keeps the game's own "
@@ -63,7 +88,7 @@ bool UiScreenSizeFollowsFrame(bool enabled, UInt32 askedWidth, UInt32 askedHeigh
 			break;
 	}
 
-	return WriteUiScreenSize(askedWidth, askedHeight, createdWidth, createdHeight);
+	return WriteUiScreenSize(askedWidth, askedHeight, newWidth, newHeight);
 }
 
 }  // namespace obvr::render
