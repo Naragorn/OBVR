@@ -73,6 +73,23 @@ UInt32 CurrentSceneCall();
 // BeginScene/EndScene pair of the caller's making. What it answers is
 // whether a render Oblivion did not schedule draws at all - the question
 // behind keeping the world live behind pause menus.
-bool RunMenuWorldProbe(UInt32& drawsOut);
+// vertexSetupOut separates the two ways a render can produce no draws, and
+// they point at opposite fixes. A render that returns early does no vertex
+// setup either: something upstream refuses, and the work is finding that
+// gate. A render that sets up the pipeline and still draws nothing walked its
+// scene and found it empty: the work is then filling the list it walks, which
+// the engine's update step builds and which does not run while a menu is up.
+// Counted from the same always-on totals the dual pass compares its passes
+// with - transforms, declarations, FVFs, vertex shaders and constant uploads,
+// summed, because here only "did any of it happen" is being asked.
+bool RunMenuWorldProbe(UInt32& drawsOut, UInt32& vertexSetupOut);
+
+// Why the probe would refuse right now, as a phrase for the log. "Refused"
+// on its own reads as a fact about self-initiated renders when it is usually
+// a fact about the run: a probe that fires in the main menu has never seen a
+// world render, so there is no renderer instance to call and nothing has been
+// learnt. Naming the reason keeps the two apart. Valid only alongside a
+// RunMenuWorldProbe that returned false; on the successful path it says so.
+const char* MenuWorldProbeRefusal();
 
 }  // namespace obvr::render

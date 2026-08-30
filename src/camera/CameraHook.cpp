@@ -21,6 +21,7 @@
 #include "render/InterfaceRenderHook.h"
 #include "render/CursorPickHook.h"
 #include "render/CursorProbe.h"
+#include "render/SceneGraphProbe.h"
 #include "render/LayoutProbe.h"
 #include "render/MenuShade.h"
 #include "render/PresentHook.h"
@@ -152,6 +153,13 @@ UInt32 g_dressingReportsLeft = 8;
 // exists.
 UInt32 g_menuProbeAttemptsLeft = 0;
 
+// World frames the scene graph probe still reports on, alongside the menu
+// frames it reports on through the menu-world probe's budget. The comparison
+// is the whole measurement - the same fields read where the render provably
+// works and where it provably draws nothing - so a run has to carry both, and
+// a handful of each is a comparison while every frame is a flood.
+UInt32 g_sceneGraphWorldReportsLeft = 3;
+
 // The frame the layout probe last measured on, shared by both of its
 // measurements - cinema and menu - because the cost being rationed is the
 // same GPU stall either way.
@@ -202,6 +210,76 @@ bool PollRecenterEdge();
 // in front of the menu the flat path is showing. Declared ahead of OnFrameEnd,
 // defined next to the redirect callbacks it belongs with.
 void MaybeSubmitHud(bool worldFrame);
+
+// The menu-world probe, run at the very end of a menu frame so the frame's
+// own submissions are already paid whatever the probe does. It runs after the
+// frame's own EndScene - this is called from Present - so the render gets a
+// scene bracket of its own; a draw outside one is an invalid call, not a slow
+// one. Opened the way the sepia pass opens its bracket: the probe's EndScene
+// is only owed when its BeginScene was accepted.
+//
+// Called from both menu paths, because both sit on the same stopped engine
+// render and the question is about that, not about how the frame is shown.
+// The picture lands in the back buffer - unread on a held frame, and the
+// shown picture itself on a cinema one, so the monitor may show the world
+// instead of the menu for these few frames. That is the probe being visible,
+// not a fault.
+void MaybeRunMenuWorldProbe(FrameDelivery delivery, bool menuIsUp) {
+	if (!MenuWorldProbeWanted(GetConfig().menuWorldProbe, delivery, menuIsUp,
+	                          g_menuProbeAttemptsLeft)) {
+		return;
+	}
+	--g_menuProbeAttemptsLeft;
+
+	// Before the render, so what is reported is the state the render is about
+	// to walk rather than whatever the render left behind.
+	render::ProbeSceneGraph(g_presentedFrame, menuIsUp);
+
+	void* const device = render::GetGameDevice();
+	auto beginScene =
+		render::d3d9::Method<render::d3d9::SceneBracketFn>(device, render::d3d9::kDeviceBeginScene);
+	auto endScene =
+		render::d3d9::Method<render::d3d9::SceneBracketFn>(device, render::d3d9::kDeviceEndScene);
+	const bool bracketOpened = beginScene != nullptr && beginScene(device) >= 0;
+	UInt32 draws = 0;
+	UInt32 vertexSetup = 0;
+	const char* const refusal = render::MenuWorldProbeRefusal();
+	const bool ran = render::RunMenuWorldProbe(draws, vertexSetup);
+	if (bracketOpened && endScene != nullptr) {
+		endScene(device);
+	}
+
+	// The whole result is this line: a self-initiated render that draws makes
+	// the live menu background an engineering task, one that runs empty makes
+	// it a research task - the 2D pass under the dual pass set the precedent
+	// for a pass that refuses. The refusal is named rather than left bare,
+	// because a probe that fires in the main menu refuses for a reason that
+	// says nothing about the question: it has never seen a world render.
+	if (ran) {
+		// The vertex setup beside the draws is what makes a zero readable: no
+		// setup either means the render turned back at some gate upstream, and
+		// the work is finding it; setup without draws means it walked a scene
+		// that had nothing in it, and the work is upstream in a different
+		// place - the list it walks is built by an update step that a menu
+		// stops.
+		OBVR_LOG("Menu world probe: a self-initiated world render ran and made %u draw "
+		         "call(s) with %u vertex setup call(s) - %s (%s frame, bracket %s, %u "
+		         "attempt(s) left, frame %u)",
+		         draws, vertexSetup,
+		         draws > 0 ? "it draws"
+		                   : (vertexSetup > 0 ? "it ran the pipeline but found nothing to draw"
+		                                      : "it turned back before setting anything up"),
+		         delivery == FrameDelivery::HeldStereo ? "held" : "cinema",
+		         bracketOpened ? "opened" : "NOT opened", g_menuProbeAttemptsLeft,
+		         g_presentedFrame);
+	} else {
+		OBVR_LOG("Menu world probe: refused - %s (%s frame, bracket %s, %u attempt(s) "
+		         "left, frame %u)",
+		         refusal, delivery == FrameDelivery::HeldStereo ? "held" : "cinema",
+		         bracketOpened ? "opened" : "NOT opened", g_menuProbeAttemptsLeft,
+		         g_presentedFrame);
+	}
+}
 
 // Deliberately does nothing but pay the frame that BeginFrame opened. Anything
 // else that wanted doing at the end of a frame would be tempting to put here,
@@ -255,6 +333,14 @@ void OnFrameEnd() {
 	g_worldlessStreak = worldlessFrame ? g_worldlessStreak + 1 : 0;
 
 	ReportViewportOnce(delivery == FrameDelivery::Cinema);
+
+	// The world side of the scene graph comparison, taken on frames the engine
+	// drew itself. Its menu side rides the menu-world probe's budget, below.
+	if (GetConfig().menuWorldProbe && !menuIsUp && hadCameraPass &&
+	    g_sceneGraphWorldReportsLeft > 0) {
+		--g_sceneGraphWorldReportsLeft;
+		render::ProbeSceneGraph(g_presentedFrame, false);
+	}
 
 	// One line per frame for a short window after a menu opens or closes, with
 	// every number the question needs in the same place: how the frame was
@@ -438,39 +524,7 @@ void OnFrameEnd() {
 			         hudPasses, hudDraws);
 		}
 
-		// The menu-world probe, last, so this frame's submissions are already
-		// paid whatever the probe does. It runs after the frame's own
-		// EndScene - this is Present - so the render gets a scene bracket of
-		// its own; a draw outside one is an invalid call, not a slow one.
-		// Opened the way the sepia pass opens its bracket: the probe's
-		// EndScene is only owed when the probe's BeginScene was accepted.
-		// The picture lands in the back buffer, which nobody reads on a held
-		// frame - the monitor may show the world instead of the menu for
-		// these few frames, which is the probe being visible, not a fault.
-		if (MenuWorldProbeWanted(GetConfig().menuWorldProbe, delivery, menuIsUp,
-		                         g_menuProbeAttemptsLeft)) {
-			--g_menuProbeAttemptsLeft;
-			void* const device = render::GetGameDevice();
-			auto beginScene = render::d3d9::Method<render::d3d9::SceneBracketFn>(
-				device, render::d3d9::kDeviceBeginScene);
-			auto endScene = render::d3d9::Method<render::d3d9::SceneBracketFn>(
-				device, render::d3d9::kDeviceEndScene);
-			const bool bracketOpened = beginScene != nullptr && beginScene(device) >= 0;
-			UInt32 draws = 0;
-			const bool ran = render::RunMenuWorldProbe(draws);
-			if (bracketOpened && endScene != nullptr) {
-				endScene(device);
-			}
-			// The whole result is this line: a self-initiated render that
-			// draws makes the live menu background an engineering task, one
-			// that runs empty makes it a research task - the 2D pass under
-			// the dual pass set the precedent for a pass that refuses.
-			OBVR_LOG("Menu world probe: a self-initiated world render %s and made %u "
-			         "draw call(s) (bracket %s, %u attempt(s) left, frame %u)",
-			         ran ? "ran" : "was refused", draws,
-			         bracketOpened ? "opened" : "NOT opened", g_menuProbeAttemptsLeft,
-			         g_presentedFrame);
-		}
+		MaybeRunMenuWorldProbe(delivery, menuIsUp);
 		return;
 	}
 
@@ -566,6 +620,15 @@ void OnFrameEnd() {
 		g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), menu);
 		MaybeSubmitHud(false);
 	}
+
+	// After the submit, for the same reason it comes last on a held frame: the
+	// probe's render lands in the back buffer this path has just shown, so
+	// running it earlier would measure the world over the top of the very
+	// picture being delivered. A cinema frame with a menu on it is the case a
+	// run with a sleeping headset produces - stereo never arms, nothing is
+	// ever held - and gating the probe on held frames alone meant it never
+	// fired in exactly those runs.
+	MaybeRunMenuWorldProbe(delivery, menuIsUp);
 }
 
 bool ReadIsThirdPerson() {

@@ -595,8 +595,30 @@ bool IsSceneRenderHooked() { return g_original != nullptr; }
 
 UInt32 CurrentSceneCall() { return g_sceneCall; }
 
-bool RunMenuWorldProbe(UInt32& drawsOut) {
+const char* MenuWorldProbeRefusal() {
+	if (g_original == nullptr) {
+		return "the scene render is not hooked";
+	}
+	if (g_lastRendererSelf == nullptr) {
+		return "no world render has been seen yet, so there is no renderer to call";
+	}
+	if (g_rendering) {
+		return "a render is already running";
+	}
+	return "no reason - it ran";
+}
+
+// The vertex pipeline setup of one moment, as a single number. Only its
+// difference across a call is used, so summing the five is enough to answer
+// "did the pipeline get set up at all" without pretending the sum means more.
+UInt32 VertexSetupTotal(const StateCallCounts& calls) {
+	return calls.transforms + calls.declarations + calls.fvfs + calls.vertexShaders +
+	       calls.constantCalls;
+}
+
+bool RunMenuWorldProbe(UInt32& drawsOut, UInt32& vertexSetupOut) {
 	drawsOut = 0;
+	vertexSetupOut = 0;
 	if (g_original == nullptr || g_lastRendererSelf == nullptr || g_rendering) {
 		return false;
 	}
@@ -622,8 +644,10 @@ bool RunMenuWorldProbe(UInt32& drawsOut) {
 	// callbacks, no scene-call tick - this render is a measurement, not a
 	// frame. A null texture argument is the ordinary world render.
 	const UInt32 before = TotalDrawCount();
+	const UInt32 setupBefore = VertexSetupTotal(TotalStateCalls());
 	g_original(g_lastRendererSelf, nullptr, nullptr);
 	drawsOut = TotalDrawCount() - before;
+	vertexSetupOut = VertexSetupTotal(TotalStateCalls()) - setupBefore;
 
 	if (clockPlausible) {
 		*frameSeconds = savedFrameSeconds;

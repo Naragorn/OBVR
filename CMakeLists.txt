@@ -57,6 +57,7 @@ add_library(OBVR SHARED
 	src/render/LayoutProbe.cpp
 	src/render/ResolutionHook.cpp
 	src/render/SceneRenderHook.cpp
+	src/render/SceneGraphProbe.cpp
 	src/render/InteropBracket.cpp
 	src/render/SubmitPolicy.cpp
 	src/render/TestPattern.cpp

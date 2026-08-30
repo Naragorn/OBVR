@@ -135,7 +135,7 @@ bool MenusCanReachTheWorld(bool menusInWorld, bool hudOverlay) {
 
 bool MenuWorldProbeWanted(bool probeEnabled, FrameDelivery delivery, bool menuIsUp,
                           UInt32 attemptsLeft) {
-	return probeEnabled && delivery == FrameDelivery::HeldStereo && menuIsUp &&
+	return probeEnabled && delivery != FrameDelivery::Stereo && menuIsUp &&
 	       attemptsLeft > 0;
 }
 

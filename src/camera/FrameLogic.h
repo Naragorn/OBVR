@@ -288,7 +288,7 @@ constexpr bool MenuDressingWanted(UInt32 framesSinceMenuOpened) {
 	return framesSinceMenuOpened <= kMenuDressingWindowFrames;
 }
 
-// Whether this held menu frame runs the menu-world probe: one self-initiated
+// Whether this menu frame runs the menu-world probe: one self-initiated
 // world render, its draw calls counted and logged, and nothing else done with
 // the picture.
 //
@@ -301,10 +301,17 @@ constexpr bool MenuDressingWanted(UInt32 framesSinceMenuOpened) {
 // the outside: the 2D pass already set the precedent of a pass that runs to
 // completion and draws nothing. One counted render answers it.
 //
-// The gates: the probe was asked for; the frame is a held one, because those
-// are exactly the frames a live background would have to be drawn on; the
-// menu is actually up, because a held frame can also be a bridged stray with
-// no menu anywhere near it; and the per-episode budget is not spent - the
+// The gates: the probe was asked for; the frame is not a stereo one, because
+// a stereo frame's world was just drawn by the engine and there is nothing to
+// ask - held and cinema menu frames both sit on a stopped engine render,
+// which is the condition the question is about. Held frames are where a live
+// background would run in the headset; the cinema case is what a headless
+// run produces, where a sleeping headset never arms stereo and no pair is
+// ever held. On a cinema frame the probe's render draws over the very back
+// buffer being shown, so the menu vanishes from the monitor for the probe
+// frames - visible, and a measurement artefact, not a fault. The menu must
+// actually be up, because a held frame can also be a bridged stray with no
+// menu anywhere near it; and the per-episode budget is not spent - the
 // probe is a measurement, not a mechanism, and a measurement that repeats
 // every frame of every menu is a log nobody can read.
 bool MenuWorldProbeWanted(bool probeEnabled, FrameDelivery delivery, bool menuIsUp,

@@ -502,25 +502,25 @@ void TestMenuWorldProbe() {
 	using obvr::camera::kMenuWorldProbeAttempts;
 	using obvr::camera::MenuWorldProbeWanted;
 
-	// The one flow that runs: the probe is asked for, the frame is a held
-	// menu frame, and the episode's budget is not spent.
+	// The flows that run: the probe is asked for, the engine's own render is
+	// stopped - a held menu frame, or the cinema fallback a headless run
+	// lands in when a sleeping headset never arms stereo - and the episode's
+	// budget is not spent.
 	Check(MenuWorldProbeWanted(true, FrameDelivery::HeldStereo, true, kMenuWorldProbeAttempts),
 	      "a held menu frame with budget runs the probe");
 	Check(MenuWorldProbeWanted(true, FrameDelivery::HeldStereo, true, 1),
 	      "down to the last attempt");
+	Check(MenuWorldProbeWanted(true, FrameDelivery::Cinema, true, kMenuWorldProbeAttempts),
+	      "a cinema menu frame sits on the same stopped render - the headless case");
 
 	// Off means off, whatever the frame looks like.
 	Check(!MenuWorldProbeWanted(false, FrameDelivery::HeldStereo, true, kMenuWorldProbeAttempts),
 	      "switched off, nothing runs");
 
-	// Only held frames: those are the frames a live menu background would
-	// have to be drawn on. A stereo frame already has a world, and a cinema
-	// frame's picture is the back buffer itself - a probe render would draw
-	// over the very picture being shown.
+	// A stereo frame's world was just drawn by the engine - there is nothing
+	// to ask a self-initiated render.
 	Check(!MenuWorldProbeWanted(true, FrameDelivery::Stereo, true, kMenuWorldProbeAttempts),
 	      "a stereo frame has a world already");
-	Check(!MenuWorldProbeWanted(true, FrameDelivery::Cinema, true, kMenuWorldProbeAttempts),
-	      "a cinema frame shows the back buffer the probe would draw over");
 
 	// A held frame can also be a bridged stray with no menu near it - the
 	// seam that closes a menu, a dialogue's exit gap. Probing those would

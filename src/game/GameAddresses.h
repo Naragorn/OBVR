@@ -387,6 +387,42 @@ inline constexpr UInt32 kDirect3DCreate9Pointer = 0x00B42158;
 inline constexpr UInt32 kRenderScene = 0x0040C830;
 inline constexpr UInt32 kRenderSceneEntryLength = 7;
 
+// g_worldSceneGraph - the pointer to the world's SceneGraph (a NiNode
+// subclass), with its camera and its culling process beside it.
+//
+// Two sources. xOBSE's headers name the global and the two offsets
+// (SceneGraph::camera at 0xDC, SceneGraph::cullingProcess at 0xE4). The
+// second is this machine's runtime: across a whole session the three read
+// back as stable, plausible heap pointers - scene 1812BBA8, camera 187E424C,
+// culling 187E4EE8 - identical on world frames and menu frames alike, and the
+// culling process's first word is a vtable in the executable's read-only data
+// (00A7E610), which a wrong offset would not produce.
+//
+// What they were read to answer, and the answer: whether Oblivion takes the
+// world away while a pause menu is up. It does not. Every one of these fields
+// is unchanged between a frame the engine renders and a frame it refuses to,
+// so a live background is not blocked by a missing scene - see the dead end
+// below for where the emptiness actually comes from.
+inline constexpr UInt32 kWorldSceneGraphPointer = 0x00B333CC;
+inline constexpr UInt32 kSceneGraphCameraOffset = 0xDC;
+inline constexpr UInt32 kSceneGraphCullingOffset = 0xE4;
+
+// DEAD END, measured 2026-08-30: NiCullingProcess + 0x08 is NOT a pointer to
+// the culled-geometry list the renderer consumes. xOBSE's headers put a
+// NiCulledGeoList there, and the reasoning that follows from it - "the list
+// is empty while a menu is up, fill it and the world draws" - is the obvious
+// next step and it is wrong. The field reads null on EVERY frame, including
+// the world frames where the render provably draws the whole scene. Whatever
+// the renderer walks, it is not reached through there.
+//
+// The two facts that stand instead, both from the menu-world probe: a
+// self-initiated render on a menu frame runs to completion, issuing ~344
+// vertex setup calls and not one draw; and the scene graph it walks is intact
+// while it does so. So the geometry is registered somewhere the per-frame
+// update fills - BSShaderAccumulator is the documented candidate - and the
+// list, wherever it is, is not this one.
+inline constexpr UInt32 kCullingProcessListOffsetDeadEnd = 0x08;
+
 // NiAVObject::UpdateSelectedDownwardPass - recomputes world transforms from
 // parent * local, downward from the given node. __thiscall on the node, two
 // arguments: a float time and an int flags, both observed as zero.

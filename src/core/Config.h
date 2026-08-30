@@ -81,15 +81,19 @@ struct Config {
 	// In [Debug] with the rest, so the hot reload can flip it mid-game.
 	bool swapEyeOrder = false;
 
-	// Runs the menu-world probe: on a handful of held frames per menu
-	// episode, OBVR calls the engine's world render itself and logs how many
-	// draw calls came out. The measurement behind keeping the world live in
+	// Runs the menu-world probe: on a handful of menu frames per episode,
+	// OBVR calls the engine's world render itself and logs how many draw
+	// calls came out. The measurement behind keeping the world live in
 	// 3D behind pause menus - Oblivion stops calling that render entirely
 	// while one is up, so a live background means self-initiated renders,
-	// and whether those draw at all is what this answers. The probe's render
-	// lands in the back buffer nobody reads on a held frame; the monitor may
-	// show the world instead of the menu for those frames, which is the probe
-	// being visible, not a fault. In [Debug], hot-reloadable, off by default.
+	// and whether those draw at all is what this answers. Held and cinema
+	// menu frames both qualify, because both sit on the same stopped render;
+	// the cinema case is what a headless run produces, where a sleeping
+	// headset never arms stereo. The probe's render lands in the back buffer,
+	// which nobody reads on a held frame and which IS the picture on a cinema
+	// one - so the monitor may show the world instead of the menu for those
+	// frames, which is the probe being visible, not a fault. In [Debug],
+	// hot-reloadable, off by default.
 	bool menuWorldProbe = false;
 
 	// Measures which rectangle of the frame the 2D actually lands in, every
