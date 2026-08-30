@@ -7,6 +7,7 @@
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
+#include "game/MenuMode.h"
 #include "platform/Win32Min.h"
 #include "render/BoneRebase.h"
 #include "render/D3D9Types.h"
@@ -218,6 +219,8 @@ UInt32 g_afterPassCount = 0;
 // whole wasted world render, and three is enough to see whether the answer is
 // the same one Present gives.
 UInt32 g_placeProbesLeft = 3;
+UInt32 g_placeProbesMenuLeft = 3;
+bool g_placeProbeMenuWasUp = false;
 
 // And the pass's own tail, kept in a ring on the same armed pass: if the
 // cursor is drawn INSIDE the pass it is drawn late, so the last few draws
@@ -2028,19 +2031,47 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 	// declines - and a budget decremented there is a budget entirely used up
 	// before the game is even loaded, which is exactly how the first run of
 	// this measured nothing.
-	if (g_placeProbesLeft > 0 && renderedTexture == nullptr && GetConfig().menuWorldProbe) {
-		UInt32 draws = 0;
-		UInt32 setup = 0;
-		const bool ran = RunMenuWorldProbe(draws, setup);
-		if (ran) {
-			--g_placeProbesLeft;
-			OBVR_LOG("Place probe: from inside the 2D pass a self-initiated world render ran "
-			         "and made %u draw call(s) with %u vertex setup call(s) - %s (invocation "
-			         "%u, scene call %u)",
-			         draws, setup,
-			         draws > 0 ? "IT DRAWS - the moment is what decides it"
-			                   : "still empty, so the moment is not what decides it",
-			         invocation, CurrentSceneCall());
+	// Two budgets, because the two answers are different questions. The world
+	// one settled that the moment decides it: from here the render draws,
+	// where the identical call from Present draws nothing. The menu one is
+	// the question the feature actually turns on - a pause menu is the case
+	// where the engine has stopped rendering entirely, and whether this place
+	// still works THERE is not something the world answer implies.
+	if (renderedTexture == nullptr && GetConfig().menuWorldProbe) {
+		const bool menuIsUp = game::IsMenuMode();
+
+		// Refilled on every menu that opens, because the first menu of a run
+		// is never the one worth measuring. IsMenuMode is true for the main
+		// menu and for the load that follows it, so a budget spent once is
+		// spent there - on a half-built world, at scene call 1, with the
+		// engine still rendering of its own accord. The pause menu, where the
+		// engine has stopped entirely, comes minutes later and had no budget
+		// left to be measured with.
+		if (menuIsUp != g_placeProbeMenuWasUp) {
+			g_placeProbeMenuWasUp = menuIsUp;
+			if (menuIsUp) {
+				g_placeProbesMenuLeft = 3;
+			}
+		}
+
+		UInt32& budget = menuIsUp ? g_placeProbesMenuLeft : g_placeProbesLeft;
+		if (budget > 0) {
+			UInt32 draws = 0;
+			UInt32 setup = 0;
+			// The budget is spent on attempts that actually ran, not on ones
+			// refused. The main menu draws its 2D long before any world render
+			// has been seen, so there is no renderer instance to call and the
+			// probe declines - and a budget decremented there is used up
+			// before the game is even loaded, which is how the first run of
+			// this measured nothing at all.
+			if (RunMenuWorldProbe(draws, setup)) {
+				--budget;
+				OBVR_LOG("Place probe: from inside the 2D pass on a %s frame a self-initiated "
+				         "world render ran and made %u draw call(s) with %u vertex setup "
+				         "call(s) - %s (invocation %u, scene call %u)",
+				         menuIsUp ? "MENU" : "world", draws, setup,
+				         draws > 0 ? "IT DRAWS" : "empty", invocation, CurrentSceneCall());
+			}
 		}
 	}
 	const bool window = invocation > 150 && invocation <= 1400;
