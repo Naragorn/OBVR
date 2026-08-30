@@ -337,27 +337,34 @@ bool MenuWorldProbeWanted(bool probeEnabled, FrameDelivery delivery, bool menuIs
 bool WorldControlProbeWanted(bool probeEnabled, bool menuIsUp, bool hadCameraPass,
                              UInt32 attemptsLeft);
 
-// Whether this 2D pass should draw the world behind the menu first.
+// Whether this menu frame needs OBVR to stand in for the camera pass.
 //
-// What it buys, and why it is worth two extra renders: a menu currently falls
-// back to the held pair - one captured stereo picture, submitted again with
-// the pose it was drawn from. Turning the head works, because the compositor
-// reprojects. Leaning does not, because reprojection has no parallax to give,
-// and a world that does not shift when you move in it is the thing a headset
-// notices first. Drawing it again from where the head actually is restores
-// that, with the world itself still paused.
+// Measured, and reshaped by the measurement. Some menus are drawn over a world
+// Oblivion is still rendering: in the persuasion minigame the scene counter
+// runs on through every frame the menu is open - 5869 to 5877 across nine of
+// them - while the camera hook does not run at all, because it hangs off the
+// camera update the paused simulation never reaches. So the world is redrawn
+// and then thrown away: with no camera pass the frame is delivered as a held
+// still, and the NPC's face stops moving. That face is what the minigame is
+// played by watching, which is how the bug was reported.
+//
+// Standing in is only the arming, never a render. The engine is already
+// drawing; all this adds is the pose it should have been drawn from and the
+// flags the rest of the frame reads.
+//
+// It also costs nothing where it does not apply, and that is structural
+// rather than careful: this is asked from inside the scene render, so by
+// construction the engine is drawing the world as it is called. A menu that
+// shows a snapshot instead never reaches here - the Esc menu's scene counter
+// stands still, measured.
 //
 // The gates:
-//
-// enabled: asked for. Off by default - it costs two world renders on every
-// menu frame, on a machine already drawing two per world frame.
 //
 // stereoDual: the pair is captured the way the dual pass captures it, one
 // eye per render from the back buffer. Alternate-eyes has no second capture
 // to fill and would submit one fresh eye beside one stale one.
 //
-// menuIsUp: this is what the feature is for. Every other frame either has a
-// world render of its own or is a video the world has no business behind.
+// menuIsUp: an ordinary world frame has a camera pass of its own.
 //
 // headsetConnected: without poses there is no head to draw from, and the
 // whole point is drawing from where the head now is.
@@ -367,18 +374,21 @@ bool WorldControlProbeWanted(bool probeEnabled, bool menuIsUp, bool hadCameraPas
 // world render there is none - the main menu is exactly that case.
 //
 // alreadyRanThisFrame: the 2D pass runs more than once per frame, and each
-// entry would otherwise start its own pair of renders and its own compositor
-// frame. One per frame.
-// engineDrewThisFrame is what makes this a fallback rather than a rival. The
-// engine has its own live menu background - clearing its static-background
-// byte stops it taking the one snapshot it otherwise shows, and it then
-// renders the world behind the menu itself, through its own call, with the
-// simulation still paused. When that works there is nothing for OBVR to draw:
-// the camera hook runs, the frame is an ordinary stereo one, and the whole
-// dual pass applies unchanged. This path is for the case where it does not.
-bool MenuLiveBackgroundWanted(bool enabled, bool stereoDual, bool menuIsUp,
-                              bool headsetConnected, bool haveCameraBase,
-                              bool alreadyRanThisFrame, bool engineDrewThisFrame);
+// entry would otherwise arm its own frame. One per frame.
+//
+// engineDrewThisFrame: a menu frame whose camera pass did run is already an
+// ordinary stereo frame and wants nothing added. A dialogue is one, measured
+// at camera pass=1 - which is why dialogues always looked right while the
+// persuasion menu did not.
+//
+// There is deliberately no "enabled" gate here any more. It used to be tied
+// to Render.LiveMenuBackground, which is the different question of whether to
+// make the engine render behind menus that would otherwise show a snapshot.
+// Where the engine renders by itself, refusing to use what it drew is not a
+// feature anyone would switch on - it is a redraw paid for and discarded.
+bool MenuFrameNeedsCameraStandIn(bool stereoDual, bool menuIsUp, bool headsetConnected,
+                                 bool haveCameraBase, bool alreadyRanThisFrame,
+                                 bool engineDrewThisFrame);
 
 // Attempts per menu episode. A handful rather than one, because the first
 // held frame after a menu opens may be special - the engine may still be
@@ -388,12 +398,17 @@ inline constexpr UInt32 kMenuWorldProbeAttempts = 5;
 
 // Whether the crosshair quad is shown this frame.
 //
-// worldFrame carries the whole condition that matters beyond the switch: it is
-// false while a menu is up, and a crosshair hanging in front of an inventory
-// the player is reading is worse than no crosshair at all. It is also false
-// when the world was not drawn, which is the case the held pair covers - and
-// an aiming point over a frozen picture would be aiming at nothing.
-bool CrosshairWanted(bool enabled, bool worldFrame);
+// worldFrame is false when the world was not drawn, which is the case the held
+// pair covers - an aiming point over a frozen picture would be aiming at
+// nothing.
+//
+// menuIsUp is asked separately, and the first version of this got that wrong
+// by assuming worldFrame covered it. It does not: worldFrame means the world
+// was delivered in stereo, and with Menus=world a dialogue is exactly that -
+// a menu, over a world the engine is still drawing. The crosshair stayed up
+// through every conversation, which is what a player reported. Nothing is
+// aimed while a menu is open, whatever the world behind it is doing.
+bool CrosshairWanted(bool enabled, bool worldFrame, bool menuIsUp);
 
 // Where the crosshair quad goes and how big it is there.
 //

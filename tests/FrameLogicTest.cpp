@@ -561,51 +561,47 @@ void TestWorldControlProbe() {
 }
 
 void TestMenuLiveBackground() {
-	std::printf("When a menu frame draws the world behind itself\n");
+	std::printf("When a menu frame needs OBVR to stand in for the camera pass\n");
 
-	using obvr::camera::MenuLiveBackgroundWanted;
+	using obvr::camera::MenuFrameNeedsCameraStandIn;
 
-	// The one flow that runs: asked for, dual pass, a menu is up, a headset is
-	// delivering poses, the camera hook has left a base to build on, this
-	// frame has not already drawn one, and the engine did not draw it either.
-	Check(MenuLiveBackgroundWanted(true, true, true, true, true, false, false),
-	      "a menu frame with everything in place draws the world");
-
-	// Off by default, and off means off: it costs two world renders per menu
-	// frame where the held pair costs none.
-	Check(!MenuLiveBackgroundWanted(false, true, true, true, true, false, false),
-	      "switched off, the held pair keeps the menu");
+	// The one flow that runs, and the persuasion minigame is measured to be
+	// exactly it: dual pass, a menu is up, a headset is delivering poses, the
+	// camera hook has left a base to build on, this frame has not armed one
+	// already, and no camera pass ran - so the world the engine is drawing as
+	// this is called would otherwise be discarded for a held still.
+	Check(MenuFrameNeedsCameraStandIn(true, true, true, true, false, false),
+	      "a menu frame the engine is drawing, with no camera pass, is armed");
 
 	// Alternate eyes has no second capture to fill - it would submit one fresh
 	// eye beside one stale one.
-	Check(!MenuLiveBackgroundWanted(true, false, true, true, true, false, false),
+	Check(!MenuFrameNeedsCameraStandIn(false, true, true, true, false, false),
 	      "only the dual pass captures a pair this way");
 
-	// Every other frame either has a world render of its own or is a video.
-	Check(!MenuLiveBackgroundWanted(true, true, false, true, true, false, false),
-	      "a frame with no menu needs nothing drawn behind one");
+	// An ordinary world frame has a camera pass of its own.
+	Check(!MenuFrameNeedsCameraStandIn(true, false, true, true, false, false),
+	      "a frame with no menu needs no stand-in");
 
 	// Without poses there is no head to draw from, and drawing from where the
 	// head now is was the entire point.
-	Check(!MenuLiveBackgroundWanted(true, true, true, false, true, false, false),
-	      "no headset, no fresh viewpoint worth two renders");
+	Check(!MenuFrameNeedsCameraStandIn(true, true, false, true, false, false),
+	      "no headset, no pose to arm the frame with");
 
 	// The main menu is exactly this: a menu before the first world render, so
 	// no transform the game wrote has ever been seen.
-	Check(!MenuLiveBackgroundWanted(true, true, true, true, false, false, false),
+	Check(!MenuFrameNeedsCameraStandIn(true, true, true, false, false, false),
 	      "no camera base yet - the main menu - falls back");
 
 	// The 2D pass runs more than once per frame; each entry would otherwise
-	// start its own pair of renders and its own compositor frame.
-	Check(!MenuLiveBackgroundWanted(true, true, true, true, true, true, false),
+	// arm its own frame.
+	Check(!MenuFrameNeedsCameraStandIn(true, true, true, true, true, false),
 	      "once per frame, however often the 2D pass runs");
 
-	// And the case that makes this a fallback rather than a rival: with the
-	// engine's static menu background cleared, the engine renders the world
-	// behind the menu itself and the camera hook runs, so the frame is an
-	// ordinary stereo one and there is nothing left here to draw.
-	Check(!MenuLiveBackgroundWanted(true, true, true, true, true, false, true),
-	      "the engine drew it already - stand aside");
+	// A menu frame whose camera pass did run is already an ordinary stereo
+	// frame. A dialogue is measured to be one, which is why dialogues always
+	// looked right while the persuasion menu did not.
+	Check(!MenuFrameNeedsCameraStandIn(true, true, true, true, false, true),
+	      "the camera pass ran already - stand aside");
 }
 
 void TestCrosshair() {
@@ -619,18 +615,25 @@ void TestCrosshair() {
 	// calls below then expand to nothing at all.
 	const auto Near = [](float a, float b) { return a - b < 1e-4f && b - a < 1e-4f; };
 
-	// The one flow that shows it: switched on, and a frame where the world was
-	// actually drawn.
-	Check(CrosshairWanted(true, true), "on, on a world frame, the crosshair is shown");
+	// The one flow that shows it: switched on, a frame where the world was
+	// actually drawn, and no menu over it.
+	Check(CrosshairWanted(true, true, false), "on, on a world frame, the crosshair is shown");
 
 	// Off is off - and off is the default, because Oblivion draws its own
 	// unless bCrossHair is 0 and two crosshairs are worse than one.
-	Check(!CrosshairWanted(false, true), "switched off, nothing is shown");
+	Check(!CrosshairWanted(false, true, false), "switched off, nothing is shown");
 
-	// A menu is up, or the world was not redrawn. An aiming point over an
-	// inventory screen aims at nothing, and over a held picture it lies.
-	Check(!CrosshairWanted(true, false), "no world frame, no crosshair");
-	Check(!CrosshairWanted(false, false), "off and no world frame agree");
+	// The world was not redrawn: over a held picture an aiming point lies.
+	Check(!CrosshairWanted(true, false, false), "no world frame, no crosshair");
+	Check(!CrosshairWanted(false, false, false), "off and no world frame agree");
+
+	// A menu is up. This is the flow the first version got wrong by folding it
+	// into worldFrame: with Menus=world a dialogue is delivered in stereo, so
+	// the world frame is real and the menu is real at the same time, and the
+	// crosshair hung there through every conversation.
+	Check(!CrosshairWanted(true, true, true), "a menu over a live world hides the crosshair");
+	Check(!CrosshairWanted(true, false, true), "a menu over a held world hides it too");
+	Check(!CrosshairWanted(false, true, true), "off and a menu agree");
 
 	// Ordinary values pass through, and the width is the size at one metre
 	// carried out to the distance: 0.025 at ten metres is a quarter of a metre

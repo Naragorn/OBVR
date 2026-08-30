@@ -144,14 +144,16 @@ bool WorldControlProbeWanted(bool probeEnabled, bool menuIsUp, bool hadCameraPas
 	return probeEnabled && !menuIsUp && hadCameraPass && attemptsLeft > 0;
 }
 
-bool MenuLiveBackgroundWanted(bool enabled, bool stereoDual, bool menuIsUp,
-                              bool headsetConnected, bool haveCameraBase,
-                              bool alreadyRanThisFrame, bool engineDrewThisFrame) {
-	return enabled && stereoDual && menuIsUp && headsetConnected && haveCameraBase &&
+bool MenuFrameNeedsCameraStandIn(bool stereoDual, bool menuIsUp, bool headsetConnected,
+                                 bool haveCameraBase, bool alreadyRanThisFrame,
+                                 bool engineDrewThisFrame) {
+	return stereoDual && menuIsUp && headsetConnected && haveCameraBase &&
 	       !alreadyRanThisFrame && !engineDrewThisFrame;
 }
 
-bool CrosshairWanted(bool enabled, bool worldFrame) { return enabled && worldFrame; }
+bool CrosshairWanted(bool enabled, bool worldFrame, bool menuIsUp) {
+	return enabled && worldFrame && !menuIsUp;
+}
 
 CrosshairPlacement PlaceCrosshair(float distanceMetres, float sizeAtOneMetre) {
 	float distance = distanceMetres;

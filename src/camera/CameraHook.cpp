@@ -879,10 +879,10 @@ UInt32 DualProbeRung();
 
 void PrepareMenuFrameIfNeeded(bool menuIsUp) {
 	const Config& config = GetConfig();
-	if (!MenuLiveBackgroundWanted(config.tracker.liveMenuBackground,
-	                              config.tracker.stereo == vr::StereoMode::DualPass, menuIsUp,
-	                              g_headTracker.IsHeadsetConnected(),
-	                              g_menuBaseNode != nullptr, g_menuLiveThisFrame, g_frameOpen)) {
+	if (!MenuFrameNeedsCameraStandIn(config.tracker.stereo == vr::StereoMode::DualPass,
+	                                 menuIsUp, g_headTracker.IsHeadsetConnected(),
+	                                 g_menuBaseNode != nullptr, g_menuLiveThisFrame,
+	                                 g_frameOpen)) {
 		return;
 	}
 
@@ -1141,9 +1141,17 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// and that something is this call.
 	const CrosshairPlacement crosshair = PlaceCrosshair(
 		config.tracker.crosshairDistanceMetres, config.tracker.crosshairSizeAtOneMetre);
-	g_crosshairLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
-	                        CrosshairWanted(config.tracker.crosshair, worldFrame),
-	                        crosshair.distanceMetres, crosshair.widthMetres);
+	//
+	// The menu question is asked here of the same source everything else asks,
+	// rather than inferred from worldFrame. They are not the same thing: with
+	// Menus=world a dialogue is delivered in stereo, so worldFrame is true
+	// with a menu wide open, and the crosshair used to hang there through
+	// every conversation.
+	g_crosshairLayer.Submit(
+		g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
+		CrosshairWanted(config.tracker.crosshair, worldFrame,
+	                    config.tracker.showMenus && game::IsMenuMode()),
+		crosshair.distanceMetres, crosshair.widthMetres);
 
 	if (!config.tracker.hudOverlay || !render::IsInterfaceRenderHooked()) {
 		return;
