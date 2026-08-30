@@ -18,9 +18,6 @@ void Check(bool condition, const char* what) {
 	}
 }
 
-using obvr::render::CursorMapAction;
-using obvr::render::CursorSurfaceAxis;
-using obvr::render::DecideCursorMap;
 using obvr::render::DecideInterfaceViewport;
 using obvr::render::DecideUiSizeLock;
 using obvr::render::InterfaceViewportAction;
@@ -119,34 +116,6 @@ void TestInterfaceViewport() {
 	      "an offset viewport passes through even at frame size");
 }
 
-void TestCursorSurfaceAxis() {
-	std::printf("When the cursor sprite asks for its screen\n");
-
-	// The measured situation this exists for: the sprite's placement asked
-	// the renderer (4028x3380) while everything else read the copy
-	// (4028x2266), and the sprite sat 3380/2266 below its own hit position.
-	// The shim answers with the copy for both axes the placement pushes.
-	Check(CursorSurfaceAxis(1, 4028, 2266) == 4028, "axis 1 answers the copy's width");
-	Check(CursorSurfaceAxis(2, 4028, 2266) == 2266, "axis 2 answers the copy's height");
-
-	// Anything else mirrors the getter it replaces, which answers 0 for an
-	// axis it does not know.
-	Check(CursorSurfaceAxis(3, 4028, 2266) == 0, "an unknown axis answers 0");
-}
-
-void TestCursorMapDecision() {
-	std::printf("When the cursor placement's calls are judged\n");
-
-	Check(DecideCursorMap(true, false) == CursorMapAction::Patch,
-	      "a raised copy with untouched calls redirects them");
-	Check(DecideCursorMap(true, true) == CursorMapAction::Nothing,
-	      "an already redirected pair is left as it is");
-	Check(DecideCursorMap(false, true) == CursorMapAction::Restore,
-	      "a raise taken back takes the redirect back too");
-	Check(DecideCursorMap(false, false) == CursorMapAction::Nothing,
-	      "no raise and no redirect is nothing to do");
-}
-
 }  // namespace
 
 int main() {
@@ -157,10 +126,6 @@ int main() {
 	TestDecision();
 	std::printf("\n");
 	TestInterfaceViewport();
-	std::printf("\n");
-	TestCursorSurfaceAxis();
-	std::printf("\n");
-	TestCursorMapDecision();
 
 	std::printf("\n");
 	if (g_failures == 0) {

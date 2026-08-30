@@ -105,39 +105,4 @@ InterfaceViewportAction DecideInterfaceViewport(UInt32 viewportX, UInt32 viewpor
                                                 UInt32 frameWidth, UInt32 frameHeight,
                                                 UInt32 believedWidth, UInt32 believedHeight);
 
-// The cursor's one crooked read, answered purely.
-//
-// Everything in the 2D reads the screen-size copy - the layout, the
-// projection, the input clamps, the hit test. Except one place: the function
-// that plants the cursor SPRITE (the cursor-node placement at 0x57E7C0,
-// which writes the cursor tile's node translation) converts the cursor
-// position between copy pixels and layout units, and takes the pixel count
-// for that conversion from the renderer's own size getter (0x403190) instead
-// of the copy. In vanilla the two always agree and nothing shows. With the
-// copy raised to a 16:9 slice of a taller frame the sprite lands at
-// frameHeight over believedHeight times its true position - the cinema run's
-// mouse, clicking three buttons above where it visibly pointed, and a main
-// menu whose buttons wanted the sprite past the bottom edge of the screen.
-//
-// The two calls are redirected to a shim that answers with the copy, making
-// the conversion the identity: sprite and hit test become one point again.
-// Axis 1 is the width, axis 2 the height; anything else answers 0 exactly
-// like the getter's own unknown-axis path (only 1 and 2 are pushed at the
-// two patched sites).
-UInt32 CursorSurfaceAxis(UInt32 axis, UInt32 copyWidth, UInt32 copyHeight);
-
-// Whether the two calls get redirected or restored, decided purely. raised
-// says whether the copy currently believes something other than the game's
-// own numbers; patched whether the redirect is already in place.
-enum class CursorMapAction {
-	// Redirected while raised, or untouched while not: nothing to change.
-	Nothing,
-	// The copy was raised and the calls still reach the renderer: redirect.
-	Patch,
-	// The raise was taken back but the redirect is still in: restore.
-	Restore,
-};
-
-CursorMapAction DecideCursorMap(bool raised, bool patched);
-
 }  // namespace obvr::render
