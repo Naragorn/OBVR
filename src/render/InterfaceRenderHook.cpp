@@ -15,6 +15,7 @@
 #include "render/PresentHook.h"
 #include "render/ResolutionHook.h"
 #include "render/SceneRenderHook.h"
+#include "render/UiScreenSize.h"
 
 namespace obvr::render {
 namespace {
@@ -41,7 +42,21 @@ InterfaceRedirect g_callbacks;
 // entry detour goes in.
 d3d9::SetRenderTargetFn g_originalSetTarget = nullptr;
 d3d9::SetRenderStateFn g_originalSetState = nullptr;
+d3d9::SetViewportFn g_originalSetViewport = nullptr;
 bool g_targetHookRefused = false;
+
+// While true, the game is inside its own 2D pass - every run of the original
+// kRenderInterface that draws the frame's layer, redirected or not, main menu
+// included. Not set for the game's menu-to-texture passes: those draw into
+// textures of their own sizes, and their viewports are their own business.
+// Read by the SetViewport hook, which is where the split's drawing half is
+// closed - see DecideInterfaceViewport in UiScreenSize.h.
+bool g_inInterfacePass = false;
+
+// The first few viewports the pass sets, logged with what was done to them:
+// the evidence that the engine does set its own viewport inside the pass, and
+// what it asked for - the measurement this hook was built on top of.
+UInt32 g_viewportTraceLeft = 8;
 
 // While true, the back buffer - and only the back buffer - is replaced as a
 // colour target with the substitute.
@@ -494,32 +509,68 @@ SInt32 __stdcall HookedSetRenderTarget(void* self, UInt32 index, void* surface) 
 	}
 	const SInt32 result = g_originalSetTarget(self, index, surface);
 
-	// The rectangle the pass draws in, put back where its own layout lives.
-	//
-	// SetRenderTarget resets the viewport to the new target's full size - an
-	// API rule - and the substitute texture is frame-sized. The 2D lays out,
-	// and maps its mouse, against the screen-size copy; drawing it through a
-	// full-texture viewport is what stretched every captured menu over the
-	// whole nearly square frame while the game's own back-buffer pass kept
-	// its picture inside the copy's rectangle, measured in both eras of the
-	// probe. So a substituted target gets a viewport of the copy's rectangle
-	// straight away, and the pass lands where its layout, its cursor and the
-	// overlay bounds all agree it is. Where the copy is the whole frame this
-	// writes the same viewport the API just set.
-	if (substituted && result >= 0) {
+	// The API-rule half of the viewport correction. SetRenderTarget resets
+	// the viewport to the new target's full size silently - no SetViewport
+	// call, so the hook below never sees it - and the substitute texture is
+	// frame-sized. The cinema run then measured the engine also setting a
+	// full-frame viewport of its own inside the pass, which is what the
+	// SetViewport hook shrinks; this write covers the passes where it does
+	// not, so both roads end at the believed rectangle. Through the original:
+	// what this sets is already believed, and the hook would only wave it
+	// through.
+	if (substituted && result >= 0 && g_originalSetViewport != nullptr) {
 		UInt32 believedWidth = 0;
 		UInt32 believedHeight = 0;
 		if (GameBelievedSize(believedWidth, believedHeight)) {
-			auto setViewport =
-				d3d9::Method<d3d9::SetViewportFn>(self, d3d9::kDeviceSetViewport);
-			if (setViewport != nullptr) {
-				const d3d9::Viewport viewport{0, 0, believedWidth, believedHeight,
-				                              0.0f, 1.0f};
-				setViewport(self, &viewport);
-			}
+			const d3d9::Viewport viewport{0, 0, believedWidth, believedHeight, 0.0f, 1.0f};
+			g_originalSetViewport(self, &viewport);
 		}
 	}
 	return result;
+}
+
+// The engine's own viewport for the 2D pass, corrected where it is set.
+//
+// The 2D lays out and maps its mouse against the screen-size copy, but its
+// pixels come out of the viewport: untransformed vertices, an orthographic
+// projection built from the copy, and then NDC times the viewport. The
+// engine sets that viewport per pass to the real target's full size from
+// its own bookkeeping - after any target substitution, which is why setting
+// a viewport in the SetRenderTarget hook alone did not hold. The cinema run
+// measured the result: menus drawn at layout times frameHeight over
+// believedHeight, cursor and buttons apart again.
+//
+// So while the interface pass runs, exactly the full-frame viewport becomes
+// the believed rectangle. Partial viewports pass through untouched, and
+// with the belief equal to the frame the decision never fires.
+SInt32 __stdcall HookedSetViewport(void* self, const d3d9::Viewport* viewport) {
+	if (g_inInterfacePass && viewport != nullptr) {
+		UInt32 frameWidth = 0;
+		UInt32 frameHeight = 0;
+		UInt32 believedWidth = 0;
+		UInt32 believedHeight = 0;
+		if (WasDeviceCreated(frameWidth, frameHeight) &&
+		    GameBelievedSize(believedWidth, believedHeight)) {
+			const InterfaceViewportAction action = DecideInterfaceViewport(
+				viewport->x, viewport->y, viewport->width, viewport->height, frameWidth,
+				frameHeight, believedWidth, believedHeight);
+			if (g_viewportTraceLeft > 0) {
+				--g_viewportTraceLeft;
+				OBVR_LOG("Hud viewport: the pass set %ux%u at %u,%u (frame %ux%u, "
+				         "believed %ux%u) - %s",
+				         viewport->width, viewport->height, viewport->x, viewport->y,
+				         frameWidth, frameHeight, believedWidth, believedHeight,
+				         action == InterfaceViewportAction::Shrink ? "shrunk to believed"
+				                                                   : "left alone");
+			}
+			if (action == InterfaceViewportAction::Shrink) {
+				const d3d9::Viewport shrunk{0,    0,      believedWidth, believedHeight,
+				                            viewport->minZ, viewport->maxZ};
+				return g_originalSetViewport(self, &shrunk);
+			}
+		}
+	}
+	return g_originalSetViewport(self, viewport);
 }
 
 // One matrix as one log line, %.4g wide - enough to tell an orthographic
@@ -1211,6 +1262,21 @@ bool EnsureTargetHook() {
 		return false;
 	}
 
+	// The viewport correction. Load-bearing for a believed size smaller than
+	// the frame - without it the pass draws through the engine's own
+	// full-frame viewport and parts from its layout - but a failure to patch
+	// only costs that correction, not the redirect, so it reports rather
+	// than refuses.
+	g_originalSetViewport =
+		reinterpret_cast<d3d9::SetViewportFn>(vtable[d3d9::kDeviceSetViewport]);
+	if (g_originalSetViewport == nullptr ||
+	    !WriteTableEntry(vtable, d3d9::kDeviceSetViewport,
+	                     reinterpret_cast<void*>(&HookedSetViewport))) {
+		g_originalSetViewport = nullptr;
+		OBVR_LOG("Hud: SetViewport could not be replaced - a 2D belief smaller than "
+		         "the frame will draw stretched");
+	}
+
 	// The clear counter, same diagnostic rank as the draw counters below.
 	// The original pointer is kept even if the patch fails: OBVR's own
 	// clears go through it either way.
@@ -1352,6 +1418,17 @@ bool EnsureTargetHook() {
 	return true;
 }
 
+// Runs the game's own 2D pass with the interface-pass window flagged for the
+// viewport hook - redirected or vanilla, main menu included, because the
+// engine sets its full-frame viewport inside the pass either way. Only a
+// frame-layer pass counts: a menu-to-texture pass (renderedTexture not null)
+// draws into a texture of its own size, and its viewports are its own.
+void RunOriginalPassWindowed(void* self, void* unusedEdx, void* renderedTexture) {
+	g_inInterfacePass = renderedTexture == nullptr;
+	g_original(self, unusedEdx, renderedTexture);
+	g_inInterfacePass = false;
+}
+
 // Runs one interface pass, choosing the route, and names the route taken
 // for the invocation window's log line. watching: count draws and arm the
 // first-draw sample even when nothing redirects, so the window sees vanilla
@@ -1363,7 +1440,7 @@ const char* RunInterfacePass(void* self, void* unusedEdx, void* renderedTexture,
 	// have its blend states rearranged and its capture claimed.
 	if (g_callbacks.beginRedirect == nullptr || !EnsureTargetHook()) {
 		g_observing = watching;
-		g_original(self, unusedEdx, renderedTexture);
+		RunOriginalPassWindowed(self, unusedEdx, renderedTexture);
 		g_observing = false;
 		return "unhooked";
 	}
@@ -1373,7 +1450,7 @@ const char* RunInterfacePass(void* self, void* unusedEdx, void* renderedTexture,
 	// steal a picture some later draw reads back. Watched, never redirected.
 	if (renderedTexture != nullptr) {
 		g_observing = watching;
-		g_original(self, unusedEdx, renderedTexture);
+		RunOriginalPassWindowed(self, unusedEdx, renderedTexture);
 		g_observing = false;
 		return "texture pass";
 	}
@@ -1384,7 +1461,7 @@ const char* RunInterfacePass(void* self, void* unusedEdx, void* renderedTexture,
 	if (g_hudCapturedThisFrame) {
 		g_hudCapturedThisFrame = false;
 		g_observing = watching;
-		g_original(self, unusedEdx, renderedTexture);
+		RunOriginalPassWindowed(self, unusedEdx, renderedTexture);
 		g_observing = false;
 		return "already captured";
 	}
@@ -1392,7 +1469,7 @@ const char* RunInterfacePass(void* self, void* unusedEdx, void* renderedTexture,
 	void* substitute = g_callbacks.beginRedirect();
 	if (substitute == nullptr) {
 		g_observing = watching;
-		g_original(self, unusedEdx, renderedTexture);
+		RunOriginalPassWindowed(self, unusedEdx, renderedTexture);
 		g_observing = false;
 		return "not redirected";
 	}
@@ -1415,7 +1492,7 @@ const char* RunInterfacePass(void* self, void* unusedEdx, void* renderedTexture,
 			OBVR_LOG("Hud observe: watching one vanilla pass");
 			g_sampleNextDraw = true;
 			g_observing = true;
-			g_original(self, unusedEdx, renderedTexture);
+			RunOriginalPassWindowed(self, unusedEdx, renderedTexture);
 			g_observing = false;
 			g_sampleNextDraw = false;
 			OBVR_LOG("Hud observe (vanilla) trace: draws=%u (failed %u, dp=%u dip=%u "
@@ -1543,7 +1620,7 @@ const char* RunInterfacePass(void* self, void* unusedEdx, void* renderedTexture,
 		}
 	}
 
-	g_original(self, unusedEdx, renderedTexture);
+	RunOriginalPassWindowed(self, unusedEdx, renderedTexture);
 
 	if (tracing) {
 		void* afterPass = nullptr;

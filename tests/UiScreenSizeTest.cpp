@@ -18,7 +18,9 @@ void Check(bool condition, const char* what) {
 	}
 }
 
+using obvr::render::DecideInterfaceViewport;
 using obvr::render::DecideUiSizeLock;
+using obvr::render::InterfaceViewportAction;
 using obvr::render::UiSizeForFrame;
 using obvr::render::UiSizeLockAction;
 
@@ -81,6 +83,39 @@ void TestDecision() {
 	      "and a height that is not the asked-for one refuses too");
 }
 
+void TestInterfaceViewport() {
+	std::printf("When the pass sets a viewport of its own\n");
+
+	// The measured situation this exists for: the engine sets the frame's
+	// full size from its own bookkeeping while the 2D lays out in the
+	// believed 16:9 slice - the one viewport that must become the belief.
+	Check(DecideInterfaceViewport(0, 0, 4028, 3380, 4028, 3380, 4028, 2266) ==
+	          InterfaceViewportAction::Shrink,
+	      "the full-frame viewport is shrunk to the believed rectangle");
+
+	// The belief is the frame - the whole-frame configuration. Nothing to
+	// shrink, whatever the viewport says.
+	Check(DecideInterfaceViewport(0, 0, 4028, 3380, 4028, 3380, 4028, 3380) ==
+	          InterfaceViewportAction::LeaveAlone,
+	      "a belief equal to the frame leaves every viewport alone");
+
+	// A partial viewport is the pass's own business.
+	Check(DecideInterfaceViewport(100, 200, 640, 480, 4028, 3380, 4028, 2266) ==
+	          InterfaceViewportAction::LeaveAlone,
+	      "a partial viewport passes through");
+
+	// Already the believed rectangle - OBVR's own write from the target
+	// hook arrives here too, and must not be rewritten into a loop.
+	Check(DecideInterfaceViewport(0, 0, 4028, 2266, 4028, 3380, 4028, 2266) ==
+	          InterfaceViewportAction::LeaveAlone,
+	      "a viewport already at the belief passes through");
+
+	// Frame-sized but offset: not the reset-to-full shape, so not ours.
+	Check(DecideInterfaceViewport(0, 100, 4028, 3380, 4028, 3380, 4028, 2266) ==
+	          InterfaceViewportAction::LeaveAlone,
+	      "an offset viewport passes through even at frame size");
+}
+
 }  // namespace
 
 int main() {
@@ -89,6 +124,8 @@ int main() {
 	TestUiSizeForFrame();
 	std::printf("\n");
 	TestDecision();
+	std::printf("\n");
+	TestInterfaceViewport();
 
 	std::printf("\n");
 	if (g_failures == 0) {

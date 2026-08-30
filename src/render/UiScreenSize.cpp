@@ -66,6 +66,20 @@ bool WriteUiScreenSize(UInt32 expectedWidth, UInt32 expectedHeight, UInt32 newWi
 	return true;
 }
 
+InterfaceViewportAction DecideInterfaceViewport(UInt32 viewportX, UInt32 viewportY,
+                                                UInt32 viewportWidth, UInt32 viewportHeight,
+                                                UInt32 frameWidth, UInt32 frameHeight,
+                                                UInt32 believedWidth, UInt32 believedHeight) {
+	if (believedWidth == frameWidth && believedHeight == frameHeight) {
+		return InterfaceViewportAction::LeaveAlone;
+	}
+	if (viewportX != 0 || viewportY != 0 || viewportWidth != frameWidth ||
+	    viewportHeight != frameHeight) {
+		return InterfaceViewportAction::LeaveAlone;
+	}
+	return InterfaceViewportAction::Shrink;
+}
+
 bool UiScreenSizeFollowsFrame(bool enabled, UInt32 askedWidth, UInt32 askedHeight,
                               UInt32 newWidth, UInt32 newHeight) {
 	const UInt32 readWidth = *reinterpret_cast<const UInt32*>(addr::kUiScreenWidthCopy);

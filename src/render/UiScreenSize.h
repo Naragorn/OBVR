@@ -78,4 +78,31 @@ bool UiScreenSizeFollowsFrame(bool enabled, UInt32 askedWidth, UInt32 askedHeigh
 bool WriteUiScreenSize(UInt32 expectedWidth, UInt32 expectedHeight, UInt32 newWidth,
                        UInt32 newHeight);
 
+// The drawing half of the same split, decided per SetViewport call.
+//
+// The copy governs the layout and the mouse, but not the pixels: the 2D
+// draws untransformed vertices through an orthographic projection - built
+// from the copy, unit-free - and the viewport is what turns those into
+// pixels. The engine sets that viewport itself, per pass, to the real
+// render target's full size out of its own bookkeeping, which no copy raise
+// reaches. The cinema run measured the consequence exactly: the Esc menu
+// drawn at the layout rectangle times frameHeight/believedHeight - buttons
+// below their own hit tests, the bottom past the overlay's slice.
+//
+// So while the interface pass runs, a viewport of exactly the frame's full
+// size is shrunk to the believed rectangle, and layout, mouse and pixels
+// agree again. Any other viewport is the pass's own business - and when the
+// belief IS the frame, there is nothing to shrink.
+enum class InterfaceViewportAction {
+	// Not the frame-sized viewport, or nothing believed differently.
+	LeaveAlone,
+	// The full-frame viewport during an interface pass: make it believed.
+	Shrink,
+};
+
+InterfaceViewportAction DecideInterfaceViewport(UInt32 viewportX, UInt32 viewportY,
+                                                UInt32 viewportWidth, UInt32 viewportHeight,
+                                                UInt32 frameWidth, UInt32 frameHeight,
+                                                UInt32 believedWidth, UInt32 believedHeight);
+
 }  // namespace obvr::render
