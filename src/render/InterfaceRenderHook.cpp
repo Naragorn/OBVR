@@ -1573,6 +1573,15 @@ void RunOriginalPassWindowed(void* self, void* unusedEdx, void* renderedTexture)
 		}
 	}
 	g_original(self, unusedEdx, renderedTexture);
+	// Every frame-layer pass leaves one draw behind: the engine paints the
+	// cursor quad after this call returns, through a full-frame viewport it
+	// sets only then, into whatever colour target stands - the back buffer
+	// the cinema shows on the main menu and after a redirect's restore
+	// alike. The one-draw window hands that viewport the same correction as
+	// everything inside the pass; see g_afterRedirectWindow for its bounds.
+	if (g_inInterfacePass) {
+		g_afterRedirectWindow = true;
+	}
 	if (g_inInterfacePass && g_tailArmed) {
 		g_tailArmed = false;
 		const UInt32 held = g_tailSeen < 4 ? g_tailSeen : 4;
@@ -1845,12 +1854,6 @@ const char* RunInterfacePass(void* self, void* unusedEdx, void* renderedTexture,
 	}
 
 	g_callbacks.endRedirect();
-
-	// And the engine's one remaining interface draw - the cursor quad it
-	// paints into the just-restored back buffer through a viewport it sets
-	// only now - gets the same correction as everything inside the pass.
-	// See g_afterRedirectWindow for the measurement and the window's bounds.
-	g_afterRedirectWindow = true;
 	return kModeRedirected;
 }
 
