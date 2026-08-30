@@ -859,18 +859,23 @@ void PlaceMenuCamera(bool leftEye) {
 	NiPoint3 pos = g_menuBasePos + baseRotation * g_headTracker.GetCameraOffset();
 	pos.z += g_menuBaseVerticalOffset;
 
+	// The same two numbers the camera hook uses, from the same place. They were
+	// worked out separately here once, and the shift's sign was backwards: the
+	// camera stepped to the left eye and then moved further left, so both eyes
+	// came from the same side and everything doubled.
 	const float half = ScaledEyeHalfSeparation(g_headTracker.GetHalfEyeSeparationUnits(),
 	                                           config.tracker.eyeSeparationScale);
-	const NiPoint3 eyeStep = finalRotation * NiPoint3{leftEye ? -half : half, 0.0f, 0.0f};
+	const EyeStep step = StereoEyeStep(half, leftEye);
 
-	g_menuBaseNode->localTransform.pos = pos + eyeStep;
+	g_menuBaseNode->localTransform.pos =
+		pos + finalRotation * NiPoint3{step.toFirstEye, 0.0f, 0.0f};
 	g_menuBaseNode->localTransform.rot = finalRotation;
 	game::UpdateNodeTransforms(g_menuBaseNode);
 
 	// The step to the other eye, on the same terms as the dual pass: what the
 	// second pass moves the camera by, and what the bone lock rebases the
 	// replayed palettes by.
-	g_menuEyeShift = finalRotation * NiPoint3{leftEye ? -2.0f * half : 2.0f * half, 0.0f, 0.0f};
+	g_menuEyeShift = finalRotation * NiPoint3{step.toSecondEye, 0.0f, 0.0f};
 }
 
 // Stands in for the camera pass on a menu frame the engine renders itself.
@@ -1162,8 +1167,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// Only on a frame that will actually show it, because the lift erases what
 	// it takes: doing this where no crosshair is wanted would punch a hole in
 	// the middle of a menu for nothing.
-	if (crosshairWanted && config.tracker.crosshairFromGame && config.tracker.hudOverlay &&
-	    g_hudLayer.HasCapture()) {
+	if (crosshairWanted && config.tracker.hudOverlay && g_hudLayer.HasCapture()) {
 		UInt32 believedWidth = 0;
 		UInt32 believedHeight = 0;
 		render::GameBelievedSize(believedWidth, believedHeight);
@@ -1548,12 +1552,16 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		// so the scale cannot reach one of them and miss another.
 		const float half = ScaledEyeHalfSeparation(g_headTracker.GetHalfEyeSeparationUnits(),
 		                                           config.tracker.eyeSeparationScale);
-		// Which eye this frame steps to first. One answer for the sign here, the
-		// shift below and the captures in the callbacks - see FirstPassDrawsLeftEye.
+		// Which eye this frame steps to first. One answer for the offset here,
+		// the shift below and the captures in the callbacks - see
+		// FirstPassDrawsLeftEye. Alternate eyes takes its eye from the frame
+		// number instead, one per frame.
 		const bool firstIsLeft = FirstPassDrawsLeftEye(config.swapEyeOrder);
-		const float sign = stereoDual ? (firstIsLeft ? -1.0f : 1.0f)
-		                              : (IsLeftEyeFrame(g_state.frameCount) ? -1.0f : 1.0f);
-		const NiPoint3 eyeOffset{sign * half, 0.0f, 0.0f};
+		const bool thisEyeIsLeft =
+			stereoDual ? firstIsLeft : IsLeftEyeFrame(g_state.frameCount);
+		const EyeStep step = StereoEyeStep(half, thisEyeIsLeft);
+
+		const NiPoint3 eyeOffset{step.toFirstEye, 0.0f, 0.0f};
 		cameraNode->localTransform.pos =
 			cameraNode->localTransform.pos + finalRotation * eyeOffset;
 
@@ -1561,10 +1569,12 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			// From one eye to the other is the whole interpupillary distance,
 			// along the same head-carried axis the offset above used, and in
 			// whichever direction that offset went - so the step always lands on
-			// the eye the first render did not draw.
+			// the eye the first render did not draw. Worked out in StereoEyeStep
+			// rather than here, because the menu path needs the same two numbers
+			// and the copy of this line that used to live there had the sign
+			// backwards.
 			g_dualNode = cameraNode;
-			g_dualShift =
-				finalRotation * NiPoint3{(firstIsLeft ? 2.0f : -2.0f) * half, 0.0f, 0.0f};
+			g_dualShift = finalRotation * NiPoint3{step.toSecondEye, 0.0f, 0.0f};
 			g_dualArmed = true;
 		}
 	}

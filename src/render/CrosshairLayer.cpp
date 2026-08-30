@@ -12,46 +12,9 @@ namespace {
 // shows through it.
 constexpr UInt32 kTransparent = 0x00000000;
 
-// The bars, and the darker edge around them. The outline is not decoration -
-// a white crosshair against snow or a bright sky is invisible exactly when
-// aiming matters, and a dark rim is what every game's reticle uses to stay
-// readable on both. Partly transparent rather than solid black, so it reads as
-// an edge instead of as a second, thicker crosshair.
-constexpr UInt32 kInk = 0xFFFFFFFF;
-constexpr UInt32 kOutline = 0xC0000000;
-
-// Square, and larger than it needs to be on screen: the compositor scales the
-// quad down far more gracefully than up, and a crosshair with soft edges reads
-// as a smudge rather than as an aiming point.
+// Square, and larger than the lifted square so nothing is thrown away on the
+// way in: the compositor scales the quad down far more gracefully than up.
 constexpr UInt32 kTextureSize = 256;
-
-// The shape, in texture pixels from the centre. Four bars with a hole in the
-// middle, which is the vanilla shape and the useful one: a solid cross hides
-// the very thing being aimed at.
-constexpr SInt32 kCentre = static_cast<SInt32>(kTextureSize) / 2;
-constexpr SInt32 kInkHalf = 3;
-constexpr SInt32 kInkGap = 14;
-constexpr SInt32 kInkReach = 46;
-constexpr SInt32 kEdge = 2;  // how far the outline stands out past the ink
-
-// Paints the four bars in one colour. Called twice - the outline first, the
-// ink over it - which is what makes the rim without any per-pixel work.
-bool FillCross(void* gameDevice, void* surface, d3d9::ColorFillFn colorFill, SInt32 half,
-               SInt32 gap, SInt32 reach, UInt32 colour) {
-	const d3d9::Rect bars[4] = {
-		{kCentre - half, kCentre - reach, kCentre + half, kCentre - gap},  // up
-		{kCentre - half, kCentre + gap, kCentre + half, kCentre + reach},  // down
-		{kCentre - reach, kCentre - half, kCentre - gap, kCentre + half},  // left
-		{kCentre + gap, kCentre - half, kCentre + reach, kCentre + half},  // right
-	};
-
-	for (const d3d9::Rect& bar : bars) {
-		if (d3d11::Failed(colorFill(gameDevice, surface, &bar, colour))) {
-			return false;
-		}
-	}
-	return true;
-}
 
 }  // namespace
 
@@ -104,38 +67,6 @@ bool CrosshairLayer::EnsureTexture(void* gameDevice) {
 	return ReadImageInfo(m_interop, m_image);
 }
 
-bool CrosshairLayer::DrawCrosshair(void* gameDevice) {
-	if (m_drawn) {
-		return true;
-	}
-
-	auto colorFill = d3d9::Method<d3d9::ColorFillFn>(gameDevice, d3d9::kDeviceColorFill);
-	if (colorFill == nullptr) {
-		return false;
-	}
-
-	// Clear to nothing first: everything the cross does not cover has to show
-	// the world, and a render target starts as whatever memory it was handed.
-	if (d3d11::Failed(colorFill(gameDevice, m_surface, nullptr, kTransparent))) {
-		return false;
-	}
-
-	// Outline, then ink over it. The outline reaches one step further in every
-	// direction, which is what leaves a rim rather than a fringe on two sides.
-	if (!FillCross(gameDevice, m_surface, colorFill, kInkHalf + kEdge, kInkGap - kEdge,
-	               kInkReach + kEdge, kOutline)) {
-		return false;
-	}
-	if (!FillCross(gameDevice, m_surface, colorFill, kInkHalf, kInkGap, kInkReach, kInk)) {
-		return false;
-	}
-
-	m_drawn = true;
-	OBVR_LOG("Crosshair: %ux%u texture drawn - four bars around a %u pixel gap", kTextureSize,
-	         kTextureSize, static_cast<UInt32>(kInkGap * 2));
-	return true;
-}
-
 bool CrosshairLayer::TakeFromHud(void* gameDevice, void* hudSurface, UInt32 hudWidth,
                                  UInt32 hudHeight, UInt32 believedWidth, UInt32 believedHeight,
                                  UInt32 sizePixels) {
@@ -184,7 +115,6 @@ bool CrosshairLayer::TakeFromHud(void* gameDevice, void* hudSurface, UInt32 hudW
 	}
 
 	m_takenFromHud = true;
-	m_drawn = false;  // the texture is the game's picture now, not the cross
 
 	if (!m_takeReported) {
 		m_takeReported = true;
@@ -235,11 +165,15 @@ void CrosshairLayer::Place(vr::OpenVRBackend& backend, float distanceMetres,
 
 void CrosshairLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool visible,
                             float distanceMetres, float widthMetres) {
-	// Consumed either way: the next frame takes it again or draws again.
+	// Consumed either way: the next frame lifts it again or it is not shown.
 	const bool taken = m_takenFromHud;
 	m_takenFromHud = false;
 
-	if (!visible) {
+	// Nothing lifted means nothing to show. There is no cross of OBVR's own
+	// to fall back to, deliberately: a hand-drawn one that is nearly the
+	// game's is worse than none, because it looks like the game got it wrong
+	// rather than like the mod is off.
+	if (!visible || !taken) {
 		if (m_overlayVisible) {
 			backend.HideOverlay(m_overlay);
 			m_overlayVisible = false;
@@ -247,11 +181,7 @@ void CrosshairLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool v
 		return;
 	}
 
-	// The drawn cross is the fallback, and only that. When the game's own
-	// crosshair was lifted into this texture, drawing over it would replace
-	// exactly what was worth having - the context icons included.
-	if (!EnsureTexture(gameDevice) || (!taken && !DrawCrosshair(gameDevice)) ||
-	    !EnsureOverlay(backend)) {
+	if (!EnsureTexture(gameDevice) || !EnsureOverlay(backend)) {
 		return;
 	}
 
@@ -321,7 +251,8 @@ void CrosshairLayer::Destroy() {
 	m_texture = nullptr;
 	m_image = BackBufferImage{};
 	m_textureTried = false;
-	m_drawn = false;
+	m_takenFromHud = false;
+	m_takeReported = false;
 
 	// Left to the runtime, for the reason HudLayer::Destroy records: calling
 	// DestroyOverlay from a shutdown next to DllMain would reach into a

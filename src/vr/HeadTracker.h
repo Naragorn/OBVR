@@ -356,26 +356,14 @@ struct TrackerSettings {
 	// the units of the rest of the section. 0.025 is about 1.4 degrees.
 	float crosshairSizeAtOneMetre = 0.025f;
 
-	// Whether to use Oblivion's own crosshair rather than a drawn cross.
-	//
-	// On, OBVR lifts the middle of the captured 2D layer into the depth quad
-	// and erases it there, so what hangs at the right depth is the game's own
-	// picture - context icons included, changing as the player looks at a
-	// door, a lock or a person. Nothing in OBVR needs to know what any of them
-	// mean, which is the reason to prefer this over anything drawn here.
-	//
-	// This one wants bCrossHair=1 under [GamePlay] in Oblivion.ini - the exact
-	// opposite of the drawn cross, which needs it off. On with the setting off
-	// there is nothing in the middle of the layer to take, and the crosshair
-	// is simply missing.
-	bool crosshairFromGame = true;
-
 	// How big a square, centred on the layout the game believes it drew in, is
 	// taken. A setting rather than a constant because the context icons are
 	// larger than the plain cross and neither size is written down anywhere
 	// OBVR can read it: too small clips the icons, too large lifts whatever
 	// else is near the middle of the screen.
-	UInt32 crosshairSourcePixels = 64;
+	// 96 rather than 64: at 64 a few pixels of the flat crosshair were left
+	// behind in the middle of the layer, reported from the headset.
+	UInt32 crosshairSourcePixels = 96;
 
 	// Oblivion units per metre, for converting the head offset.
 	//

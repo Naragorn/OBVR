@@ -151,6 +151,14 @@ bool MenuFrameNeedsCameraStandIn(bool stereoDual, bool menuIsUp, bool headsetCon
 	       !alreadyRanThisFrame && !engineDrewThisFrame;
 }
 
+EyeStep StereoEyeStep(float half, bool firstIsLeft) {
+	// Left is negative along the head's x axis, so the first eye takes the
+	// sign of the eye it is, and the step to the other one is the whole
+	// separation back the other way.
+	const float first = firstIsLeft ? -half : half;
+	return EyeStep{first, -2.0f * first};
+}
+
 bool CrosshairWanted(bool enabled, bool worldFrame, bool menuIsUp) {
 	return enabled && worldFrame && !menuIsUp;
 }

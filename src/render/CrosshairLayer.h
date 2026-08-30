@@ -24,13 +24,18 @@ namespace obvr::render {
 // differently.
 //
 // So the crosshair gets its own overlay, placed straight ahead at a distance
-// this class is told, and the vanilla one is taken out of the flat layer
-// (Oblivion's own bCrossHair setting under [GamePlay] does that).
+// this class is told.
 //
-// The texture is drawn once, procedurally, out of coloured rectangles: four
-// bars around a gap in the middle, each with a dark outline so the thing stays
-// visible against a bright sky as well as against a dungeon wall. No asset, no
-// file to ship, and nothing to go missing.
+// What hangs there is Oblivion's own crosshair, lifted out of the captured 2D
+// layer and erased where it came from - not a copy drawn here. An earlier
+// version did draw one, out of coloured rectangles, and it looked fine and was
+// still wrong: the crosshair Oblivion draws is the context-sensitive one, so
+// the hand, the lock and the speech icons come with it and change as the
+// player looks around, and nothing here has to know what any of them mean.
+//
+// There is no drawn fallback left. It is the game's crosshair or none, which
+// is also the honest failure: a hand-drawn near-miss reads as the game getting
+// it wrong rather than as the mod being off.
 class CrosshairLayer {
 public:
 	~CrosshairLayer() { Destroy(); }
@@ -78,7 +83,6 @@ public:
 
 private:
 	bool EnsureTexture(void* gameDevice);
-	bool DrawCrosshair(void* gameDevice);
 	bool EnsureOverlay(vr::OpenVRBackend& backend);
 	void Place(vr::OpenVRBackend& backend, float distanceMetres, float widthMetres);
 
@@ -88,10 +92,9 @@ private:
 	BackBufferImage m_image;
 
 	bool m_textureTried = false;
-	bool m_drawn = false;
 
-	// Whether the game's own crosshair reached this texture this frame. It
-	// decides what Submit must not do: redraw the cross over the top of it.
+	// Whether the game's own crosshair reached this texture this frame. With
+	// no drawn fallback left, a frame that lifted nothing shows nothing.
 	bool m_takenFromHud = false;
 	bool m_takeReported = false;
 

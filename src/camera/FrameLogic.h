@@ -396,6 +396,31 @@ bool MenuFrameNeedsCameraStandIn(bool stereoDual, bool menuIsUp, bool headsetCon
 // mistake the transition for the answer.
 inline constexpr UInt32 kMenuWorldProbeAttempts = 5;
 
+// Where the camera goes for the first eye, and how far it moves to reach the
+// second.
+//
+// Both numbers together, and from one place, because they were written out
+// twice - once in the camera hook, once for menu frames - and the second copy
+// had the shift's sign backwards. The camera stepped to the left eye and then
+// moved further left, so both eyes were drawn from the same side and the
+// second one three half-separations out. In the headset that is everything
+// doubled, with the right eye's picture pushed right. It went unseen while
+// the menu path was switched off, which is exactly how a duplicated formula
+// fails: not when it is written, but months later when the copy is switched
+// on.
+//
+// So neither path computes it any more, and the invariant that catches this
+// class of mistake is a test rather than a reading: the second eye must land
+// exactly opposite the first.
+struct EyeStep {
+	float toFirstEye;    // along the head-carried x axis, from the centre
+	float toSecondEye;   // added to the above, reaching the other eye
+};
+
+// half is the scaled half-separation; firstIsLeft says which eye this frame's
+// first render draws.
+EyeStep StereoEyeStep(float half, bool firstIsLeft);
+
 // Whether the crosshair quad is shown this frame.
 //
 // worldFrame is false when the world was not drawn, which is the case the held

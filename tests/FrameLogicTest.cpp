@@ -604,6 +604,45 @@ void TestMenuLiveBackground() {
 	      "the camera pass ran already - stand aside");
 }
 
+void TestStereoEyeStep() {
+	std::printf("Where each eye sits, and how far apart they end up\n");
+
+	using obvr::camera::EyeStep;
+	using obvr::camera::StereoEyeStep;
+
+	const auto Near = [](float a, float b) { return a - b < 1e-4f && b - a < 1e-4f; };
+
+	// Left first: the camera steps left, then the whole separation back right.
+	const EyeStep left = StereoEyeStep(2.0f, true);
+	Check(Near(left.toFirstEye, -2.0f), "the left eye sits left of centre");
+	Check(Near(left.toSecondEye, 4.0f), "and the step to the right eye crosses the whole gap");
+
+	// Right first is the mirror of it.
+	const EyeStep right = StereoEyeStep(2.0f, false);
+	Check(Near(right.toFirstEye, 2.0f), "the right eye sits right of centre");
+	Check(Near(right.toSecondEye, -4.0f), "and the step to the left eye crosses back");
+
+	// The invariant, and the reason this function exists at all. The second
+	// eye must land exactly opposite the first - a copy of this arithmetic
+	// with the shift's sign backwards put both eyes on the same side, the
+	// second three half-separations out, and it was months before anything
+	// switched that path on and showed it.
+	Check(Near(left.toFirstEye + left.toSecondEye, -left.toFirstEye),
+	      "left first: the second eye lands opposite the first");
+	Check(Near(right.toFirstEye + right.toSecondEye, -right.toFirstEye),
+	      "right first: the second eye lands opposite the first");
+
+	// However far apart they are, they are that far apart both ways round.
+	Check(Near(left.toSecondEye, -right.toSecondEye),
+	      "the two orders are mirror images, not different separations");
+
+	// No separation is a valid answer - it is what an eye scale of zero asks
+	// for - and it must not become a step to somewhere else.
+	const EyeStep none = StereoEyeStep(0.0f, true);
+	Check(Near(none.toFirstEye, 0.0f) && Near(none.toSecondEye, 0.0f),
+	      "no separation moves neither eye");
+}
+
 void TestCrosshair() {
 	std::printf("Where the crosshair hangs, and how big it is there\n");
 
@@ -1037,6 +1076,8 @@ int main() {
 	TestWorldControlProbe();
 	std::printf("\n");
 	TestMenuLiveBackground();
+	std::printf("\n");
+	TestStereoEyeStep();
 	std::printf("\n");
 	TestCrosshair();
 	std::printf("\n");
