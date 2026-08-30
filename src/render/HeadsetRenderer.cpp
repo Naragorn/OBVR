@@ -553,13 +553,15 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 		if (!m_flatPoseValid) {
 			m_flatPoseValid = backend.GetRenderPoseMatrix(m_flatPose);
 			if (m_flatPoseValid) {
-				// Roll out, heading and pitch kept. The picture appears where
-				// the wearer is looking, which is what the recenter key is
-				// pressed to ask for - including when they are looking down.
-				// Levelling the pitch away as well is right for the world
-				// camera and was wrong here: it made the key do nothing
-				// visible for anyone who had tilted rather than turned.
-				vr::LevelRollOnly(m_flatPose);
+				// Levelled: heading only, no pitch and no roll.
+				//
+				// Keeping the pitch was tried and taken straight back out. It
+				// did not fix what it was aimed at - the second film still
+				// would not recenter - and it broke what did work, because
+				// the recenter key is meant to hold the horizon flat and
+				// recentre, nothing else. A picture that tips with the head
+				// is not what anyone asks that key for.
+				vr::LevelPose(m_flatPose);
 			}
 
 			// Reported, because the recenter key was doing nothing visible
@@ -571,10 +573,15 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 			// where the head is now, and the picture rides the face - which
 			// looks exactly like a key that does nothing.
 			//
-			// Budgeted, because this runs on every flat frame that has no
-			// anchor, and a film is thousands of them.
-			if (m_flatAnchorReportsLeft > 0) {
-				--m_flatAnchorReportsLeft;
+			// Reported on a change of answer rather than on a budget. The
+			// budget was spent twelve times over on the same line - "no pose"
+			// - which established that the read fails early and hid the one
+			// thing worth knowing: when it starts working. A run now says
+			// "there is no pose", once, and then says where the first anchor
+			// landed, which is the moment the key starts meaning something.
+			if (m_flatPoseValid != m_flatAnchorLastAnswer || !m_flatAnchorEverAnswered) {
+				m_flatAnchorEverAnswered = true;
+				m_flatAnchorLastAnswer = m_flatPoseValid;
 				if (m_flatPoseValid) {
 					OBVR_LOG("Render: the flat picture took a fresh anchor at "
 					         "(%.2f, %.2f, %.2f)",
@@ -582,8 +589,9 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 					         static_cast<double>(m_flatPose.m[1][3]),
 					         static_cast<double>(m_flatPose.m[2][3]));
 				} else {
-					OBVR_LOG("Render: no pose to anchor the flat picture to - it will ride "
-					         "the head, and the recenter key has nothing to move");
+					OBVR_LOG("Render: no pose to anchor the flat picture to - it rides the "
+					         "head until one can be read, and the recenter key has nothing "
+					         "to move until then");
 				}
 			}
 		}

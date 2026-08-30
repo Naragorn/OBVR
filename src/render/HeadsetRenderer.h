@@ -283,11 +283,13 @@ private:
 	vr::openvr::HmdMatrix34 m_flatPose = {};
 	bool m_flatPoseValid = false;
 
-	// Lines left for reporting where a flat picture anchored itself, or that
-	// it could not. See the call site: a recenter that drops the anchor but
+	// The last answer the anchor read gave, so a run reports the change rather
+	// than the state. See the call site: a recenter that drops the anchor but
 	// never gets a new one looks, from the headset, like a key that does
-	// nothing at all.
-	UInt32 m_flatAnchorReportsLeft = 12;
+	// nothing at all - and a budget spent on repeats of "no pose" says that it
+	// failed without ever saying when it stopped failing.
+	bool m_flatAnchorLastAnswer = false;
+	bool m_flatAnchorEverAnswered = false;
 
 	// The pose the last dual pair was drawn from, for the held submit.
 	//
