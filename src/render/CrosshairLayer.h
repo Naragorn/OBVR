@@ -52,6 +52,28 @@ public:
 	void Submit(vr::OpenVRBackend& backend, void* gameDevice, bool visible,
 	            float distanceMetres, float widthMetres);
 
+	// Takes Oblivion's own crosshair out of the captured 2D layer and into
+	// this one - copies the middle of the layer here, then clears it there.
+	//
+	// Both halves are one operation, which is why they are one call: what is
+	// lifted out has to be erased where it came from, or the flat crosshair
+	// stays in the HUD quad at its wrong depth and there are two again.
+	//
+	// Worth the trouble over the drawn cross for a reason beyond looking
+	// right: the crosshair Oblivion draws is the context-sensitive one, so the
+	// hand, the lock and the speech icons come along for free, and they change
+	// as the player looks around. Nothing here knows what any of them mean.
+	//
+	// sizePixels is how big a square, centred on the layout the game believes
+	// it drew in, gets taken. It is a setting rather than a constant because
+	// the icons are larger than the plain cross and neither size is written
+	// down anywhere this code can read.
+	//
+	// False when the layer has nothing to give - no capture, no HUD overlay,
+	// or the copy failed - and the caller then keeps the drawn cross.
+	bool TakeFromHud(void* gameDevice, void* hudSurface, UInt32 hudWidth, UInt32 hudHeight,
+	                 UInt32 believedWidth, UInt32 believedHeight, UInt32 sizePixels);
+
 	void Destroy();
 
 private:
@@ -67,6 +89,11 @@ private:
 
 	bool m_textureTried = false;
 	bool m_drawn = false;
+
+	// Whether the game's own crosshair reached this texture this frame. It
+	// decides what Submit must not do: redraw the cross over the top of it.
+	bool m_takenFromHud = false;
+	bool m_takeReported = false;
 
 	vr::openvr::VROverlayHandle m_overlay = vr::openvr::kOverlayHandleInvalid;
 	bool m_overlayTried = false;

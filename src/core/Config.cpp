@@ -356,6 +356,10 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.tracker.crosshairSizeAtOneMetre =
 		ReadFloat("Render", "CrosshairSizeAtOneMetre",
 	              config.tracker.crosshairSizeAtOneMetre, path);
+	config.tracker.crosshairFromGame =
+		ReadBool("Render", "CrosshairFromGame", config.tracker.crosshairFromGame, path);
+	config.tracker.crosshairSourcePixels = ReadUInt(
+		"Render", "CrosshairSourcePixels", config.tracker.crosshairSourcePixels, path);
 	config.look.blockVerticalLook =
 		ReadBool("Look", "BlockVerticalLook", config.look.blockVerticalLook, path);
 

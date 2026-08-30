@@ -136,6 +136,65 @@ bool CrosshairLayer::DrawCrosshair(void* gameDevice) {
 	return true;
 }
 
+bool CrosshairLayer::TakeFromHud(void* gameDevice, void* hudSurface, UInt32 hudWidth,
+                                 UInt32 hudHeight, UInt32 believedWidth, UInt32 believedHeight,
+                                 UInt32 sizePixels) {
+	if (hudSurface == nullptr || sizePixels == 0 || !EnsureTexture(gameDevice)) {
+		return false;
+	}
+
+	// The centre of the rectangle the game believes it drew in, not the centre
+	// of the texture. The layer texture is the back buffer's size while the UI
+	// lays out inside the believed size in its corner (UiScreenSize), so the
+	// middle of the texture is not the middle of the picture anyone is looking
+	// at - and taking the wrong square would lift a piece of empty layer and
+	// leave the crosshair where it was.
+	const UInt32 width = believedWidth > 0 ? believedWidth : hudWidth;
+	const UInt32 height = believedHeight > 0 ? believedHeight : hudHeight;
+	const SInt32 half = static_cast<SInt32>(sizePixels) / 2;
+	const SInt32 cx = static_cast<SInt32>(width) / 2;
+	const SInt32 cy = static_cast<SInt32>(height) / 2;
+
+	const d3d9::Rect source{cx - half, cy - half, cx + half, cy + half};
+	if (source.left < 0 || source.top < 0 || static_cast<UInt32>(source.right) > hudWidth ||
+	    static_cast<UInt32>(source.bottom) > hudHeight) {
+		return false;
+	}
+
+	auto stretchRect = d3d9::Method<d3d9::StretchRectFn>(gameDevice, d3d9::kDeviceStretchRect);
+	auto colorFill = d3d9::Method<d3d9::ColorFillFn>(gameDevice, d3d9::kDeviceColorFill);
+	if (stretchRect == nullptr || colorFill == nullptr) {
+		return false;
+	}
+
+	// Cleared first: the square is stretched across this whole texture, but a
+	// failure half way would otherwise leave the drawn cross showing through
+	// whatever did arrive.
+	if (d3d11::Failed(colorFill(gameDevice, m_surface, nullptr, kTransparent)) ||
+	    d3d11::Failed(stretchRect(gameDevice, hudSurface, &source, m_surface, nullptr,
+	                              d3d9::kTexFilterLinear))) {
+		return false;
+	}
+
+	// And erased where it came from. Without this the flat copy stays in the
+	// HUD quad at the HUD's own distance, and there are two crosshairs again -
+	// which is the entire thing this layer exists to stop.
+	if (d3d11::Failed(colorFill(gameDevice, hudSurface, &source, kTransparent))) {
+		return false;
+	}
+
+	m_takenFromHud = true;
+	m_drawn = false;  // the texture is the game's picture now, not the cross
+
+	if (!m_takeReported) {
+		m_takeReported = true;
+		OBVR_LOG("Crosshair: taking the game's own from the 2D layer - %d,%d..%d,%d of the "
+		         "%ux%u it believes it drew in",
+		         source.left, source.top, source.right, source.bottom, width, height);
+	}
+	return true;
+}
+
 bool CrosshairLayer::EnsureOverlay(vr::OpenVRBackend& backend) {
 	if (m_overlay != vr::openvr::kOverlayHandleInvalid) {
 		return true;
@@ -176,6 +235,10 @@ void CrosshairLayer::Place(vr::OpenVRBackend& backend, float distanceMetres,
 
 void CrosshairLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool visible,
                             float distanceMetres, float widthMetres) {
+	// Consumed either way: the next frame takes it again or draws again.
+	const bool taken = m_takenFromHud;
+	m_takenFromHud = false;
+
 	if (!visible) {
 		if (m_overlayVisible) {
 			backend.HideOverlay(m_overlay);
@@ -184,7 +247,11 @@ void CrosshairLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool v
 		return;
 	}
 
-	if (!EnsureTexture(gameDevice) || !DrawCrosshair(gameDevice) || !EnsureOverlay(backend)) {
+	// The drawn cross is the fallback, and only that. When the game's own
+	// crosshair was lifted into this texture, drawing over it would replace
+	// exactly what was worth having - the context icons included.
+	if (!EnsureTexture(gameDevice) || (!taken && !DrawCrosshair(gameDevice)) ||
+	    !EnsureOverlay(backend)) {
 		return;
 	}
 

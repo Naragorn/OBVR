@@ -1145,19 +1145,38 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// nothing to say about it. Submitted even when switched off, because an
 	// overlay that has been shown once stays shown until something hides it,
 	// and that something is this call.
-	const CrosshairPlacement crosshair = PlaceCrosshair(
-		config.tracker.crosshairDistanceMetres, config.tracker.crosshairSizeAtOneMetre);
 	//
 	// The menu question is asked here of the same source everything else asks,
 	// rather than inferred from worldFrame. They are not the same thing: with
 	// Menus=world a dialogue is delivered in stereo, so worldFrame is true
 	// with a menu wide open, and the crosshair used to hang there through
 	// every conversation.
-	g_crosshairLayer.Submit(
-		g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
+	const bool crosshairWanted =
 		CrosshairWanted(config.tracker.crosshair, worldFrame,
-	                    config.tracker.showMenus && game::IsMenuMode()),
-		crosshair.distanceMetres, crosshair.widthMetres);
+	                    config.tracker.showMenus && game::IsMenuMode());
+
+	// Oblivion's own crosshair, lifted out of the captured layer and into the
+	// depth quad - which is also what takes it out of the flat one, so it is
+	// not shown twice at two distances.
+	//
+	// Only on a frame that will actually show it, because the lift erases what
+	// it takes: doing this where no crosshair is wanted would punch a hole in
+	// the middle of a menu for nothing.
+	if (crosshairWanted && config.tracker.crosshairFromGame && config.tracker.hudOverlay &&
+	    g_hudLayer.HasCapture()) {
+		UInt32 believedWidth = 0;
+		UInt32 believedHeight = 0;
+		render::GameBelievedSize(believedWidth, believedHeight);
+		g_crosshairLayer.TakeFromHud(render::GetGameDevice(), g_hudLayer.CaptureSurface(),
+		                             g_hudLayer.CaptureWidth(), g_hudLayer.CaptureHeight(),
+		                             believedWidth, believedHeight,
+		                             config.tracker.crosshairSourcePixels);
+	}
+
+	const CrosshairPlacement crosshair = PlaceCrosshair(
+		config.tracker.crosshairDistanceMetres, config.tracker.crosshairSizeAtOneMetre);
+	g_crosshairLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
+	                        crosshairWanted, crosshair.distanceMetres, crosshair.widthMetres);
 
 	if (!config.tracker.hudOverlay || !render::IsInterfaceRenderHooked()) {
 		return;
