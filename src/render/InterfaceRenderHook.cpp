@@ -2073,6 +2073,24 @@ bool RunHudPassBetweenScenes() {
 	return captured;
 }
 
+bool GetViewportDirect(void* viewportOut) {
+	void* device = GetGameDevice();
+	if (device == nullptr || viewportOut == nullptr) {
+		return false;
+	}
+	auto getViewport = d3d9::Method<d3d9::GetViewportFn>(device, d3d9::kDeviceGetViewport);
+	return getViewport != nullptr &&
+	       getViewport(device, static_cast<d3d9::Viewport*>(viewportOut)) >= 0;
+}
+
+bool SetViewportDirect(const void* viewport) {
+	void* device = GetGameDevice();
+	if (device == nullptr || viewport == nullptr || g_originalSetViewport == nullptr) {
+		return false;
+	}
+	return g_originalSetViewport(device, static_cast<const d3d9::Viewport*>(viewport)) >= 0;
+}
+
 void ArmBetweenTrace() {
 	g_betweenTraceLeft = 12;
 	// The per-pass trace answers the menu question the between trace cannot:

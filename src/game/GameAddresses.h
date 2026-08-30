@@ -166,6 +166,32 @@ inline constexpr UInt32 kUiScreenHeightCopy = 0x00B06C50;
 // +0x2C/+0x30/+0x34, and reaches the cursor tile's render node through
 // tile+0x24, whose NiAVObject translation sits at +0x54. The probe only ever
 // reads, and only behind null checks.
+// The tile-under-cursor search - what decides the hover highlight, and with
+// it what a click activates. Called from the InterfaceManager update
+// (0x582406, right after GetSingleton at 0x582160) with the cursor position
+// it reads from the manager's own pixel fields (+0x2C/+0x34, clamped
+// against the screen-size copy inside), and answered by a scene-graph pick
+// (0x70D300 on the ui scene at [manager+0xDC]). The pick maps the pixels
+// through the renderer's camera geometry, not through the copy - measured
+// with a cursor ladder: identical spacing to the drawn items, the centre
+// half the height difference lower, and re-asserting the believed viewport
+// around the search is what moves the zones. Detoured at entry so the
+// search runs under the believed viewport and everything downstream of it -
+// highlight and click alike - answers in the drawn space.
+inline constexpr UInt32 kFindTileAtCursor = 0x00581390;
+
+// Where that pick turns pixels into camera coordinates - and the one place
+// the wrong size enters. 0x70D325 (the pick's only normalization call, and
+// this function's only caller) passes the cursor pixels here; the function
+// divides x by the renderer's width getter and y by its height getter
+// (vtable calls through [[0x00B3F928]], slots 0x4C/0x50 on the size source
+// its [renderer+0x20C] flag selects) and hands back 0..1 for the camera's
+// port and frustum test. The pixels live in the screen-size copy's space,
+// so with the copy raised the division is by the wrong height - the
+// measured hover offset. Detoured at entry to divide by the believed size
+// instead; inert while belief and frame agree.
+inline constexpr UInt32 kPickNormalizePoint = 0x00701540;
+
 inline constexpr UInt32 kInterfaceManagerPointer = 0x00B3A6E0;
 inline constexpr UInt32 kInterfaceCursorTileOffset = 0x1C;
 inline constexpr UInt32 kInterfaceCursorPosOffset = 0x20;

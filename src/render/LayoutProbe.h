@@ -63,4 +63,16 @@ bool MeasureCoveredRect(void* gameDevice, void* surface, UInt32 width, UInt32 he
 bool MeasureBackBufferCoveredRect(void* gameDevice, UInt32& widthOut, UInt32& heightOut,
                                   CoveredRect& out);
 
+// Writes a quarter-scale 24-bit BMP of a render-target surface next to the
+// log, overwriting the file each time. For the hunts where a bounding box is
+// not enough and the actual picture is the question - where the cursor
+// stands relative to the menu, in the very texture the overlay shows and the
+// very back buffer the cinema crops. Same GPU stall as the measurements, so
+// the caller throttles it the same way.
+bool DumpSurfaceBmp(void* gameDevice, void* surface, UInt32 width, UInt32 height,
+                    UInt32 format, const char* path);
+
+// The back-buffer flavour, mirroring MeasureBackBufferCoveredRect.
+bool DumpBackBufferBmp(void* gameDevice, const char* path);
+
 }  // namespace obvr::render

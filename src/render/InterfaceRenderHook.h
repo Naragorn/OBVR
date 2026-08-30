@@ -257,6 +257,13 @@ void TakeInterfaceStats(UInt32& passes, UInt32& draws);
 // was captured and that pass keeps the layer, exactly as before.
 bool RunHudPassBetweenScenes();
 
+// Raw viewport access through the ORIGINAL device methods, for wraps that
+// must never be answered by OBVR's own viewport hook - restoring a full-
+// frame viewport through the hooked entry could be shrunk right back.
+// False when the device or the hook's original pointer is missing.
+bool GetViewportDirect(void* viewportOut);
+bool SetViewportDirect(const void* viewport);
+
 // Reopens the between-render trace for a few more runs.
 //
 // The standing budget is spent within the first second of play, which is

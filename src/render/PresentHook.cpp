@@ -4,6 +4,7 @@
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
 #include "render/GameDevice.h"
+#include "render/InterfaceRenderHook.h"
 
 namespace obvr::render {
 namespace {

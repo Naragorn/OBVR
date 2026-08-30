@@ -120,10 +120,13 @@ Start-Sleep -Seconds 5
 # Continue: the main menu has no keyboard focus until an arrow key gives it
 # one (a bare Enter did nothing, measured). Down once, then Enter.
 Focus-Oblivion
-Write-Host "Pressing Down, then Enter for Continue..."
+Write-Host "Pressing Down, Enter for Continue, Enter for the Yes box..."
 [ObvrEsc]::PressExtended(0x28, 0x50)
 Start-Sleep -Milliseconds 800
 Save-Shot "$OutPrefix-keyfocus.png"
+[ObvrEsc]::Press(0x0D, 0x1C)
+Start-Sleep -Seconds 3
+# The confirmation box: Yes carries the focus frame, Enter takes it.
 [ObvrEsc]::Press(0x0D, 0x1C)
 Start-Sleep -Seconds $LoadWaitSec
 
@@ -137,24 +140,37 @@ if ($p -and $p.MainWindowHandle -ne 0) {
 
 	Save-Shot "$OutPrefix-loaded.png"
 
-	Write-Host "Opening the Esc menu..."
-	[ObvrEsc]::Press(0x1B, 0x01)
-	Start-Sleep -Seconds 3
+	# Escape with a receipt: the menu-opened trace line is the proof the
+	# press arrived, and a lost press is simply pressed again.
+	$markBefore = (Select-String -Path $logPath -Pattern "a menu just opened").Count
+	for ($try = 0; $try -lt 4; ++$try) {
+		Focus-Oblivion
+		Start-Sleep -Milliseconds 600
+		Write-Host "Opening the Esc menu (try $($try+1))..."
+		[ObvrEsc]::Press(0x1B, 0x01)
+		Start-Sleep -Seconds 3
+		if ((Select-String -Path $logPath -Pattern "a menu just opened").Count -gt $markBefore) {
+			Write-Host "Menu is open."
+			break
+		}
+	}
 
 	# Park the game cursor on the item column: clamp into the top-left, then
 	# one absolute step (mouse counts land 1:1 in believed pixels, measured).
+	# The measuring ladder: walk the cursor down the item column in believed
+	# pixels, resting longer than the probe cadence at each rung, so the log
+	# pairs every position with the tile the hit test holds there. The fit
+	# of those pairs against the drawn item positions names the hit test's
+	# scale and anchor exactly.
 	[ObvrEsc]::Move(-8000, -8000)
 	Start-Sleep -Milliseconds 1500
-	[ObvrEsc]::Move($ParkX, $ParkY)
-	Start-Sleep -Seconds 4
-
+	[ObvrEsc]::Move($ParkX, 500)
+	Start-Sleep -Milliseconds 1800
+	for ($i = 0; $i -lt 16; ++$i) {
+		[ObvrEsc]::Move(0, 100)
+		Start-Sleep -Milliseconds 1800
+	}
 	Save-Shot "$OutPrefix-hover.png"
-
-	Write-Host "Clicking..."
-	[ObvrEsc]::LeftClick()
-	Start-Sleep -Seconds 4
-
-	Save-Shot "$OutPrefix-clicked.png"
 }
 
 $p = Get-Process Oblivion -ErrorAction SilentlyContinue

@@ -19,6 +19,7 @@
 #include "render/HeadsetRenderer.h"
 #include "render/HudLayer.h"
 #include "render/InterfaceRenderHook.h"
+#include "render/CursorPickHook.h"
 #include "render/CursorProbe.h"
 #include "render/LayoutProbe.h"
 #include "render/MenuShade.h"
@@ -156,6 +157,12 @@ UInt32 g_menuProbeAttemptsLeft = 0;
 // same GPU stall either way.
 UInt32 g_lastLayoutProbeFrame = 0;
 UInt32 g_lastCursorProbeFrame = 0;
+
+// Every fifth cursor probe also writes quarter-scale pictures of the layer
+// texture and the back buffer next to the log - the direct look at where
+// the cursor actually stands in each, for the offset hunt no bounding box
+// could settle.
+UInt32 g_cursorDumpTick = 0;
 
 // Says, once, which part of the frame Oblivion is drawing into.
 //
@@ -404,6 +411,17 @@ void OnFrameEnd() {
 		                   g_lastCursorProbeFrame)) {
 			g_lastCursorProbeFrame = g_presentedFrame;
 			render::ProbeCursor(g_presentedFrame);
+			if (++g_cursorDumpTick % 5 == 0) {
+				const bool layerOk = render::DumpSurfaceBmp(
+					render::GetGameDevice(), g_hudLayer.CaptureSurface(),
+					g_hudLayer.CaptureWidth(), g_hudLayer.CaptureHeight(),
+					render::d3d9::kFormatA8R8G8B8, "OBVR-layer.bmp");
+				const bool backOk =
+					render::DumpBackBufferBmp(render::GetGameDevice(), "OBVR-back.bmp");
+				OBVR_LOG("Cursor dump: layer %s, back buffer %s (frame %u)",
+				         layerOk ? "written" : "refused", backOk ? "written" : "refused",
+				         g_presentedFrame);
+			}
 		}
 
 		// Whether the 2D pass ran at all on this held frame, and what it drew.
@@ -520,6 +538,12 @@ void OnFrameEnd() {
 	if (LayoutProbeDue(GetConfig().cursorProbe, g_presentedFrame, g_lastCursorProbeFrame)) {
 		g_lastCursorProbeFrame = g_presentedFrame;
 		render::ProbeCursor(g_presentedFrame);
+		if (++g_cursorDumpTick % 5 == 0) {
+			const bool backOk =
+				render::DumpBackBufferBmp(render::GetGameDevice(), "OBVR-back.bmp");
+			OBVR_LOG("Cursor dump: back buffer %s (frame %u)",
+			         backOk ? "written" : "refused", g_presentedFrame);
+		}
 	}
 
 	render::HeadsetRenderer::FrameRequest menu;
@@ -1349,6 +1373,11 @@ bool Install() {
 			// stays in the frame, which on a flat frame is still shown.
 			render::InstallInterfaceRenderHook(redirect);
 		}
+
+		// And the hover's other half: the tile search runs under the believed
+		// viewport, so highlight and click answer in the drawn space. Logs its
+		// own outcome; inert while belief and frame agree.
+		render::InstallCursorPickHook();
 	}
 
 	// Oblivion's frame size, set where it is decided.
