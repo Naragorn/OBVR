@@ -22,6 +22,14 @@ namespace obvr::render {
 // them on a live frame, where the render demonstrably works, is the second
 // source; a run whose numbers make no sense is the address being wrong rather
 // than the engine being strange, and this is the cheapest way to tell.
-void ProbeSceneGraph(UInt32 frameIndex, bool menuIsUp);
+// occasion names where in the frame the reading was taken, because that is
+// now the whole comparison. The control run settled that the menu is not what
+// empties the render: the identical self-initiated call, made from Present on
+// an ordinary world frame while the engine was drawing the scene perfectly
+// well, came back with the same 343 setup calls and the same zero draws. So
+// what differs is not the menu but the moment - inside the engine's own
+// render, where it works, against Present, where it does not - and the fields
+// have to be read at both to see which one moved.
+void ProbeSceneGraph(UInt32 frameIndex, const char* occasion);
 
 }  // namespace obvr::render

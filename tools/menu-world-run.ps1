@@ -14,10 +14,24 @@ param(
 $ErrorActionPreference = "Stop"
 $gameDir = "D:\SteamLibrary\steamapps\common\Oblivion"
 $logPath = Join-Path $gameDir "OBVR.log"
+$iniPath = Join-Path $gameDir "Data\OBSE\Plugins\OBVR.ini"
 
 if (Get-Process Oblivion -ErrorAction SilentlyContinue) {
 	throw "Oblivion is already running; this harness never touches a live session."
 }
+
+# The probe is switched on for this run and off again afterwards, so the
+# deployed configuration a person picks up is never left measuring. It costs
+# five self-initiated renders per menu episode and can paint the world over
+# the menu on the monitor - fine for a run nobody is watching, not something
+# to leave behind.
+function Set-Probe([string]$value) {
+	if (-not (Test-Path $iniPath)) { return }
+	$ini = Get-Content $iniPath
+	$ini -replace '^MenuWorldProbe=.*', "MenuWorldProbe=$value" | Set-Content $iniPath -Encoding utf8
+}
+Set-Probe "1"
+try {
 
 Add-Type -AssemblyName System.Drawing
 Add-Type -TypeDefinition @"
@@ -171,3 +185,7 @@ if (Test-Path $logPath) {
 		Select-Object -Last 16 | ForEach-Object { $_.Line }
 }
 Write-Host "Done."
+} finally {
+	Set-Probe "0"
+	Write-Host "Probe switched back off."
+}

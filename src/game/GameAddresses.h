@@ -423,6 +423,42 @@ inline constexpr UInt32 kSceneGraphCullingOffset = 0xE4;
 // list, wherever it is, is not this one.
 inline constexpr UInt32 kCullingProcessListOffsetDeadEnd = 0x08;
 
+// The fields the emptiness has to come from, read from the disassembly of the
+// render path on 2026-08-30.
+//
+// The chain, whole: kRenderScene calls 0x0070C0B0, which reads the culling
+// process's visible set at +0x08, finds the null above, and so calls
+// NiCullingProcess::Process (0x0070E0A0) - which fetches the renderer's
+// accumulator itself, brackets the walk with StartAccumulating and
+// FinishAccumulating (vtable +0x4C and +0x50), and walks the graph through
+// NiAVObject::Cull at 0x007073D0. That walk is four instructions:
+//
+//   007073D0  test byte ptr [ecx+18h],1
+//   007073D4  jne 007073E7            <- set: turn back, register nothing
+//   007073E2  mov eax,[edx+4]         <- clear: NiCullingProcess::Cull
+//   007073E7  ret 4
+//
+// So a render that cannot return early - kRenderScene has exactly one ret,
+// at 0x0040D150 - still comes away with nothing whenever that bit is set,
+// or whenever the world bound at +0x20 fails the frustum planes the walk
+// rebuilds from the camera each time. Those, and a missing accumulator, are
+// the only ways the measured shape happens: full vertex setup, no draws.
+//
+// The flag offset is derived rather than documented: 0x0040C830 sets bit 0 at
+// [node+0x18] on the first-person node at 0x0040C95A and clears it again at
+// 0x0040CDA5, using it as its own visibility switch, and 0x007073D0 tests the
+// same bit on any NiAVObject. Second source is the probe that reads them.
+inline constexpr UInt32 kNiFlagsOffset = 0x18;
+inline constexpr UInt32 kNiWorldBoundOffset = 0x20;
+inline constexpr UInt32 kNiChildCountOffset = 0xB6;
+inline constexpr UInt32 kNiCameraFrustumOffset = 0xEC;
+
+// The accumulator hanging off the renderer singleton (kRendererPointer, well
+// above) at +0x08 - the one the walk registers geometry with. 0x0040CE1B
+// swaps a second accumulator in there for the first-person pass and
+// 0x0040CE79 swaps it back, which is the second source for the offset.
+inline constexpr UInt32 kRendererAccumulatorOffset = 0x08;
+
 // NiAVObject::UpdateSelectedDownwardPass - recomputes world transforms from
 // parent * local, downward from the given node. __thiscall on the node, two
 // arguments: a float time and an int flags, both observed as zero.

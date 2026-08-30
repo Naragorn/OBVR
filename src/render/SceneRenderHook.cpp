@@ -1,5 +1,7 @@
 #include "render/SceneRenderHook.h"
 
+#include "render/SceneGraphProbe.h"
+
 #include "core/EntryDetour.h"
 #include "core/Log.h"
 #include "core/Memory.h"
@@ -42,6 +44,12 @@ void* g_lastRendererSelf = nullptr;
 // comparison and turns "the engine surprised us" into a pass-through instead
 // of unbounded recursion.
 bool g_rendering = false;
+
+// Engine-side scene graph reports still owed. Unconditional rather than
+// gated on the probe setting: this is the reference the probe's own readings
+// are read against, it costs a few log lines once per session, and a run that
+// switched the probe on mid-session would otherwise have no reference at all.
+UInt32 g_engineSideReportsLeft = 3;
 
 // World renders, numbered, and the clock the probe sweep runs on.
 //
@@ -388,6 +396,17 @@ void TraceIndexSide(const StateCallCounts& entry, const StateCallCounts& afterFi
 void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTexture) {
 	++g_sceneCall;
 	g_lastRendererSelf = self;
+
+	// The reading that makes the probe's readings mean something: the same
+	// fields, at the one moment the render provably draws the whole world.
+	// Everything the probe records is taken from Present, where the identical
+	// call comes back empty even on a world frame - so without this side of
+	// the comparison there is nothing to subtract, and a field that looks
+	// wrong in Present might have looked exactly the same here.
+	if (g_engineSideReportsLeft > 0 && renderedTexture == nullptr) {
+		--g_engineSideReportsLeft;
+		ProbeSceneGraph(g_sceneCall, "inside the engine's render (it draws here)");
+	}
 
 	// Taken before the render, so they count the 2D passes that followed the
 	// previous world render - the frame that has finished, rather than the

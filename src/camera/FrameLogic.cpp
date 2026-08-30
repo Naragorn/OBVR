@@ -139,6 +139,11 @@ bool MenuWorldProbeWanted(bool probeEnabled, FrameDelivery delivery, bool menuIs
 	       attemptsLeft > 0;
 }
 
+bool WorldControlProbeWanted(bool probeEnabled, bool menuIsUp, bool hadCameraPass,
+                             UInt32 attemptsLeft) {
+	return probeEnabled && !menuIsUp && hadCameraPass && attemptsLeft > 0;
+}
+
 bool LayoutProbeDue(bool probeEnabled, UInt32 presentedFrame, UInt32 lastProbeFrame) {
 	return probeEnabled && presentedFrame - lastProbeFrame >= kLayoutProbeFrameGap;
 }

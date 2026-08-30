@@ -160,6 +160,12 @@ UInt32 g_menuProbeAttemptsLeft = 0;
 // a handful of each is a comparison while every frame is a flood.
 UInt32 g_sceneGraphWorldReportsLeft = 3;
 
+// The control probe's budget: self-initiated renders on ordinary world
+// frames, where the engine is drawing the scene perfectly well. See
+// MaybeRunWorldControlProbe for what the comparison decides. Each one costs a
+// whole wasted world render, so this stays small.
+UInt32 g_worldControlProbesLeft = 3;
+
 // The frame the layout probe last measured on, shared by both of its
 // measurements - cinema and menu - because the cost being rationed is the
 // same GPU stall either way.
@@ -224,16 +230,13 @@ void MaybeSubmitHud(bool worldFrame);
 // shown picture itself on a cinema one, so the monitor may show the world
 // instead of the menu for these few frames. That is the probe being visible,
 // not a fault.
-void MaybeRunMenuWorldProbe(FrameDelivery delivery, bool menuIsUp) {
-	if (!MenuWorldProbeWanted(GetConfig().menuWorldProbe, delivery, menuIsUp,
-	                          g_menuProbeAttemptsLeft)) {
-		return;
-	}
-	--g_menuProbeAttemptsLeft;
-
+// The probe's one render, wherever it is being asked from. Split out so the
+// control below can ask the identical question at the identical point of the
+// frame, with only the menu differing - which is the whole design of it.
+void RunProbeRender(FrameDelivery delivery, const char* occasion) {
 	// Before the render, so what is reported is the state the render is about
 	// to walk rather than whatever the render left behind.
-	render::ProbeSceneGraph(g_presentedFrame, menuIsUp);
+	render::ProbeSceneGraph(g_presentedFrame, occasion);
 
 	void* const device = render::GetGameDevice();
 	auto beginScene =
@@ -255,30 +258,68 @@ void MaybeRunMenuWorldProbe(FrameDelivery delivery, bool menuIsUp) {
 	// for a pass that refuses. The refusal is named rather than left bare,
 	// because a probe that fires in the main menu refuses for a reason that
 	// says nothing about the question: it has never seen a world render.
+	//
+	// The occasion is what turns the number into evidence. A zero on a menu
+	// frame accuses the menu only if the same call on a world frame, from the
+	// same place, draws.
 	if (ran) {
 		// The vertex setup beside the draws is what makes a zero readable: no
 		// setup either means the render turned back at some gate upstream, and
 		// the work is finding it; setup without draws means it walked a scene
-		// that had nothing in it, and the work is upstream in a different
-		// place - the list it walks is built by an update step that a menu
-		// stops.
-		OBVR_LOG("Menu world probe: a self-initiated world render ran and made %u draw "
-		         "call(s) with %u vertex setup call(s) - %s (%s frame, bracket %s, %u "
-		         "attempt(s) left, frame %u)",
-		         draws, vertexSetup,
+		// that had nothing in it.
+		OBVR_LOG("Menu world probe: on a %s a self-initiated world render ran and made %u "
+		         "draw call(s) with %u vertex setup call(s) - %s (%s frame, bracket %s, "
+		         "frame %u)",
+		         occasion, draws, vertexSetup,
 		         draws > 0 ? "it draws"
 		                   : (vertexSetup > 0 ? "it ran the pipeline but found nothing to draw"
 		                                      : "it turned back before setting anything up"),
 		         delivery == FrameDelivery::HeldStereo ? "held" : "cinema",
-		         bracketOpened ? "opened" : "NOT opened", g_menuProbeAttemptsLeft,
-		         g_presentedFrame);
+		         bracketOpened ? "opened" : "NOT opened", g_presentedFrame);
 	} else {
-		OBVR_LOG("Menu world probe: refused - %s (%s frame, bracket %s, %u attempt(s) "
-		         "left, frame %u)",
-		         refusal, delivery == FrameDelivery::HeldStereo ? "held" : "cinema",
-		         bracketOpened ? "opened" : "NOT opened", g_menuProbeAttemptsLeft,
-		         g_presentedFrame);
+		OBVR_LOG("Menu world probe: on a %s refused - %s (%s frame, bracket %s, frame %u)",
+		         occasion, refusal, delivery == FrameDelivery::HeldStereo ? "held" : "cinema",
+		         bracketOpened ? "opened" : "NOT opened", g_presentedFrame);
 	}
+}
+
+void MaybeRunMenuWorldProbe(FrameDelivery delivery, bool menuIsUp) {
+	if (!MenuWorldProbeWanted(GetConfig().menuWorldProbe, delivery, menuIsUp,
+	                          g_menuProbeAttemptsLeft)) {
+		return;
+	}
+	--g_menuProbeAttemptsLeft;
+	RunProbeRender(delivery, "in Present, menu frame");
+}
+
+// The control the menu measurement was missing.
+//
+// The menu render draws nothing, and the obvious reading is that the menu is
+// why. But the dual pass calls this same engine function twice in a row with
+// no engine update between the two, and its second call draws - that is what
+// stereo IS - so a render repeated without an update is not the problem by
+// itself. What the menu probe changes is not only the menu: it also moves the
+// call out of the engine's own render moment and into Present, after the
+// frame's EndScene, frames away from anything the engine set up.
+//
+// Two suspects, one experiment. This runs the identical call, from the
+// identical place in Present, on frames where the world is being drawn
+// normally and no menu is anywhere near. If it draws here, the menu is the
+// cause and the work is upstream of the menu. If it comes back empty here
+// too, the menu is innocent and what breaks the render is where it is called
+// from - a far cheaper thing to fix, and one that would have been missed by
+// reading the menu numbers alone.
+//
+// The cost is a wasted render on a handful of frames and a back buffer
+// briefly overwritten after both eyes have already been captured, so the
+// headset never sees it; the monitor may flicker for those frames.
+void MaybeRunWorldControlProbe(FrameDelivery delivery, bool menuIsUp, bool hadCameraPass) {
+	if (!WorldControlProbeWanted(GetConfig().menuWorldProbe, menuIsUp, hadCameraPass,
+	                            g_worldControlProbesLeft)) {
+		return;
+	}
+	--g_worldControlProbesLeft;
+	RunProbeRender(delivery, "in Present, world frame (control)");
 }
 
 // Deliberately does nothing but pay the frame that BeginFrame opened. Anything
@@ -339,7 +380,7 @@ void OnFrameEnd() {
 	if (GetConfig().menuWorldProbe && !menuIsUp && hadCameraPass &&
 	    g_sceneGraphWorldReportsLeft > 0) {
 		--g_sceneGraphWorldReportsLeft;
-		render::ProbeSceneGraph(g_presentedFrame, false);
+		render::ProbeSceneGraph(g_presentedFrame, "in Present, world frame");
 	}
 
 	// One line per frame for a short window after a menu opens or closes, with
@@ -384,6 +425,11 @@ void OnFrameEnd() {
 		// not show it, nothing does.
 		g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), g_pendingRequest);
 		MaybeSubmitHud(true);
+
+		// Last, after the eyes and the overlay are paid, exactly as on a menu
+		// frame - the point of the control is that everything about the call
+		// matches except the menu.
+		MaybeRunWorldControlProbe(delivery, menuIsUp, hadCameraPass);
 		return;
 	}
 

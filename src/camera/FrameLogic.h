@@ -317,6 +317,26 @@ constexpr bool MenuDressingWanted(UInt32 framesSinceMenuOpened) {
 bool MenuWorldProbeWanted(bool probeEnabled, FrameDelivery delivery, bool menuIsUp,
                           UInt32 attemptsLeft);
 
+// Whether this frame runs the probe's control: the same self-initiated world
+// render, from the same point in Present, on a frame where the engine drew
+// the world itself and no menu is up.
+//
+// Without it the menu measurement cannot be read. A menu render that draws
+// nothing looks like the menu's doing, but the probe changes two things at
+// once - the menu, and the moment: it calls the engine's render from Present,
+// after the frame's own EndScene, rather than from inside the render moment
+// the engine chose. The dual pass shows a repeated render is not the problem
+// by itself, since it calls the same function twice in a row with no update
+// between and its second call is what stereo is made of. So the control asks
+// the same question with only the menu removed, and the pair of answers
+// separates the two suspects.
+//
+// The gates: the probe is on; no menu, which is what makes this the control;
+// a camera pass happened, so the engine really did draw this frame; and the
+// budget is not spent, because each one costs an entire wasted world render.
+bool WorldControlProbeWanted(bool probeEnabled, bool menuIsUp, bool hadCameraPass,
+                             UInt32 attemptsLeft);
+
 // Attempts per menu episode. A handful rather than one, because the first
 // held frame after a menu opens may be special - the engine may still be
 // mid-transition - and a probe that only ever measured that frame would

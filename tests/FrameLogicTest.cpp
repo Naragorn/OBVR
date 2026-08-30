@@ -533,6 +533,33 @@ void TestMenuWorldProbe() {
 	      "a spent budget ends the episode's probing");
 }
 
+void TestWorldControlProbe() {
+	std::printf("When the probe runs its control on an ordinary world frame\n");
+
+	using obvr::camera::WorldControlProbeWanted;
+
+	// The one flow that runs: asked for, no menu, the engine drew this frame,
+	// and the budget is not spent.
+	Check(WorldControlProbeWanted(true, false, true, 3), "a world frame with budget runs it");
+	Check(WorldControlProbeWanted(true, false, true, 1), "down to the last attempt");
+
+	// Off means off.
+	Check(!WorldControlProbeWanted(false, false, true, 3), "switched off, nothing runs");
+
+	// A menu frame is the thing being controlled FOR, so it can never be the
+	// control - that is the whole point of the pairing.
+	Check(!WorldControlProbeWanted(true, true, true, 3),
+	      "a menu frame is the measurement, not its control");
+
+	// Without a camera pass the engine did not draw this frame either, so a
+	// zero here would prove nothing about the moment the call is made from.
+	Check(!WorldControlProbeWanted(true, false, false, 3),
+	      "a frame the engine did not draw cannot control for one it did");
+
+	// Each control costs an entire wasted world render.
+	Check(!WorldControlProbeWanted(true, false, true, 0), "a spent budget stops it");
+}
+
 void TestLayoutProbeDue() {
 	std::printf("When the layout probe takes its next measurement\n");
 
@@ -897,6 +924,8 @@ int main() {
 	TestMenuDressingWindow();
 	std::printf("\n");
 	TestMenuWorldProbe();
+	std::printf("\n");
+	TestWorldControlProbe();
 	std::printf("\n");
 	TestLayoutProbeDue();
 	std::printf("\n");

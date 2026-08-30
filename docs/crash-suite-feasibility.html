@@ -1,0 +1,952 @@
+<title>Oblivion Crash Suite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
+
+<style>
+:root {
+	--ground:      #fbfcfc;
+	--surface:     #f0f4f4;
+	--surface-2:   #e7edee;
+	--ink:         #14191b;
+	--muted:       #566467;
+	--rule:        #d3dcdd;
+	--rule-strong: #b6c3c5;
+	--accent:      #0d666a;
+	--accent-soft: #d9ecec;
+	--measured:    #2c6a48;
+	--derived:     #8a6212;
+	--open:        #a03a29;
+
+	--f-display: "Archivo", "Segoe UI", system-ui, sans-serif;
+	--f-body:    "Source Serif 4", Georgia, "Times New Roman", serif;
+	--f-mono:    "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+	--col: 68ch;
+	--rail: 5.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--ground:      #0f1315;
+		--surface:     #171d1f;
+		--surface-2:   #1e2528;
+		--ink:         #e4eaeb;
+		--muted:       #96a5a8;
+		--rule:        #293235;
+		--rule-strong: #3b4649;
+		--accent:      #56bec1;
+		--accent-soft: #16302f;
+		--measured:    #74bd93;
+		--derived:     #d3a648;
+		--open:        #e58472;
+	}
+}
+
+:root[data-theme="dark"] {
+	--ground:      #0f1315;
+	--surface:     #171d1f;
+	--surface-2:   #1e2528;
+	--ink:         #e4eaeb;
+	--muted:       #96a5a8;
+	--rule:        #293235;
+	--rule-strong: #3b4649;
+	--accent:      #56bec1;
+	--accent-soft: #16302f;
+	--measured:    #74bd93;
+	--derived:     #d3a648;
+	--open:        #e58472;
+}
+
+* { box-sizing: border-box; }
+
+body {
+	background: var(--ground);
+	color: var(--ink);
+	font-family: var(--f-body);
+	font-size: 17px;
+	line-height: 1.62;
+	margin: 0;
+	padding: 0 1.5rem 6rem;
+	-webkit-font-smoothing: antialiased;
+}
+
+.page {
+	max-width: 78rem;
+	margin: 0 auto;
+}
+
+/* ---------- masthead ---------- */
+
+.masthead {
+	border-bottom: 2px solid var(--ink);
+	padding: 3.5rem 0 1.25rem;
+	margin-bottom: 2.5rem;
+}
+
+.eyebrow {
+	font-family: var(--f-display);
+	font-size: 0.72rem;
+	font-weight: 600;
+	letter-spacing: 0.13em;
+	text-transform: uppercase;
+	color: var(--accent);
+	margin: 0 0 1rem;
+}
+
+h1 {
+	font-family: var(--f-display);
+	font-weight: 700;
+	font-size: clamp(2.4rem, 6vw, 3.9rem);
+	line-height: 1.02;
+	letter-spacing: -0.022em;
+	margin: 0 0 0.9rem;
+	text-wrap: balance;
+}
+
+.standfirst {
+	font-size: 1.2rem;
+	line-height: 1.5;
+	color: var(--muted);
+	max-width: 46ch;
+	margin: 0 0 2rem;
+}
+
+.masthead-meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0 2.5rem;
+	font-family: var(--f-display);
+	font-size: 0.78rem;
+	letter-spacing: 0.04em;
+	color: var(--muted);
+}
+.masthead-meta b {
+	color: var(--ink);
+	font-weight: 600;
+}
+
+/* ---------- verdict ---------- */
+
+.verdict {
+	background: var(--surface);
+	border-left: 3px solid var(--accent);
+	padding: 1.6rem 1.9rem;
+	margin-bottom: 3rem;
+}
+.verdict h2 {
+	font-family: var(--f-display);
+	font-size: 0.75rem;
+	font-weight: 600;
+	letter-spacing: 0.13em;
+	text-transform: uppercase;
+	color: var(--accent);
+	margin: 0 0 0.7rem;
+}
+.verdict p {
+	margin: 0 0 0.85rem;
+	max-width: var(--col);
+}
+.verdict p:last-child { margin-bottom: 0; }
+
+/* ---------- evidence markers ---------- */
+
+.legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1.5rem;
+	padding: 1rem 0 2.5rem;
+	border-bottom: 1px solid var(--rule);
+	margin-bottom: 3rem;
+	font-size: 0.88rem;
+	color: var(--muted);
+}
+.legend div { display: flex; align-items: baseline; gap: 0.55rem; }
+
+.mark {
+	font-family: var(--f-display);
+	font-size: 0.64rem;
+	font-weight: 600;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	padding: 0.18rem 0.45rem;
+	border: 1px solid currentColor;
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+.m-measured { color: var(--measured); }
+.m-derived  { color: var(--derived); }
+.m-open     { color: var(--open); }
+
+/* ---------- sections ---------- */
+
+section {
+	display: grid;
+	grid-template-columns: var(--rail) minmax(0, 1fr);
+	gap: 0 2rem;
+	padding-bottom: 3.25rem;
+	margin-bottom: 3.25rem;
+	border-bottom: 1px solid var(--rule);
+}
+section:last-of-type { border-bottom: none; }
+
+.num {
+	font-family: var(--f-display);
+	font-size: 0.78rem;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	color: var(--rule-strong);
+	padding-top: 0.55rem;
+	font-variant-numeric: tabular-nums;
+}
+
+.body > * { max-width: var(--col); }
+.body > .wide,
+.body > figure,
+.body > .table-wrap,
+.body > .cards,
+.body > .phases { max-width: none; }
+
+h2 {
+	font-family: var(--f-display);
+	font-size: clamp(1.45rem, 3vw, 1.85rem);
+	font-weight: 600;
+	letter-spacing: -0.015em;
+	line-height: 1.15;
+	margin: 0 0 1.1rem;
+	text-wrap: balance;
+}
+
+h3 {
+	font-family: var(--f-display);
+	font-size: 1.02rem;
+	font-weight: 600;
+	letter-spacing: 0.005em;
+	margin: 2.2rem 0 0.6rem;
+}
+
+p { margin: 0 0 1.05rem; }
+
+ul, ol {
+	margin: 0 0 1.15rem;
+	padding-left: 1.2rem;
+}
+li { margin-bottom: 0.5rem; }
+li::marker { color: var(--accent); }
+
+code {
+	font-family: var(--f-mono);
+	font-size: 0.845em;
+	background: var(--surface);
+	padding: 0.1em 0.32em;
+	border-radius: 2px;
+	word-break: break-word;
+}
+
+a {
+	color: var(--accent);
+	text-underline-offset: 0.18em;
+	text-decoration-thickness: 1px;
+}
+a:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+strong { font-weight: 600; }
+
+/* ---------- tables ---------- */
+
+.table-wrap {
+	overflow-x: auto;
+	margin: 0 0 1.5rem;
+	border-top: 1px solid var(--ink);
+	border-bottom: 1px solid var(--rule);
+}
+
+table {
+	border-collapse: collapse;
+	width: 100%;
+	font-size: 0.9rem;
+	min-width: 34rem;
+}
+
+th {
+	font-family: var(--f-display);
+	font-size: 0.68rem;
+	font-weight: 600;
+	letter-spacing: 0.09em;
+	text-transform: uppercase;
+	text-align: left;
+	color: var(--muted);
+	padding: 0.7rem 1rem 0.7rem 0;
+	border-bottom: 1px solid var(--rule);
+	vertical-align: bottom;
+}
+
+td {
+	padding: 0.62rem 1rem 0.62rem 0;
+	border-bottom: 1px solid var(--rule);
+	vertical-align: top;
+	font-variant-numeric: tabular-nums;
+}
+tr:last-child td { border-bottom: none; }
+
+td.mono, th.mono { font-family: var(--f-mono); font-size: 0.82rem; }
+td:last-child, th:last-child { padding-right: 0; }
+
+/* ---------- figures ---------- */
+
+figure {
+	margin: 2rem 0;
+	padding: 1.6rem;
+	background: var(--surface);
+	border: 1px solid var(--rule);
+}
+figure svg {
+	display: block;
+	width: 100%;
+	max-width: 100%;
+	height: auto;
+	color: var(--ink);
+}
+/* The one hue that carries meaning in the diagrams: the proposed path.
+   Driven from the token so it stays legible on either ground. */
+figure svg .hi   { fill: var(--accent); }
+figure svg .hi-s { stroke: var(--accent); fill: none; }
+
+figcaption {
+	font-size: 0.85rem;
+	line-height: 1.5;
+	color: var(--muted);
+	margin-top: 1.1rem;
+	max-width: 62ch;
+}
+
+/* ---------- cards ---------- */
+
+.cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+	gap: 1px;
+	background: var(--rule);
+	border: 1px solid var(--rule);
+	margin: 1.6rem 0 1.8rem;
+}
+.card {
+	background: var(--ground);
+	padding: 1.15rem 1.25rem 1.3rem;
+}
+.card h4 {
+	font-family: var(--f-display);
+	font-size: 0.93rem;
+	font-weight: 600;
+	margin: 0 0 0.45rem;
+}
+.card p {
+	font-size: 0.88rem;
+	line-height: 1.5;
+	margin: 0;
+	color: var(--muted);
+}
+.card .tag {
+	font-family: var(--f-display);
+	font-size: 0.63rem;
+	font-weight: 600;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--accent);
+	display: block;
+	margin-bottom: 0.5rem;
+}
+
+/* ---------- phase list ---------- */
+
+.phases {
+	display: grid;
+	gap: 1px;
+	background: var(--rule);
+	border: 1px solid var(--rule);
+	margin: 1.6rem 0 1.5rem;
+}
+.phase {
+	background: var(--ground);
+	display: grid;
+	grid-template-columns: 3.4rem minmax(0, 1fr) 7.5rem;
+	gap: 1.4rem;
+	padding: 1.15rem 1.25rem;
+	align-items: baseline;
+}
+.phase .p-num {
+	font-family: var(--f-display);
+	font-size: 1.35rem;
+	font-weight: 700;
+	color: var(--accent);
+	font-variant-numeric: tabular-nums;
+	line-height: 1;
+}
+.phase h4 {
+	font-family: var(--f-display);
+	font-size: 0.98rem;
+	font-weight: 600;
+	margin: 0 0 0.3rem;
+}
+.phase p {
+	font-size: 0.88rem;
+	line-height: 1.5;
+	color: var(--muted);
+	margin: 0;
+}
+.phase .p-cost {
+	font-family: var(--f-display);
+	font-size: 0.76rem;
+	color: var(--muted);
+	text-align: right;
+	letter-spacing: 0.03em;
+}
+
+@media (max-width: 46rem) {
+	.phase {
+		grid-template-columns: 2.6rem minmax(0, 1fr);
+	}
+	.phase .p-cost {
+		grid-column: 2;
+		text-align: left;
+		padding-top: 0.4rem;
+	}
+}
+
+/* ---------- callout ---------- */
+
+.note {
+	border-left: 2px solid var(--rule-strong);
+	padding: 0.15rem 0 0.15rem 1.15rem;
+	margin: 1.5rem 0;
+	font-size: 0.93rem;
+	color: var(--muted);
+}
+.note strong { color: var(--ink); }
+
+/* ---------- sources ---------- */
+
+.sources {
+	border-top: 2px solid var(--ink);
+	padding-top: 1.6rem;
+	margin-top: 1rem;
+}
+.sources h2 {
+	font-family: var(--f-display);
+	font-size: 0.75rem;
+	font-weight: 600;
+	letter-spacing: 0.13em;
+	text-transform: uppercase;
+	color: var(--muted);
+	margin-bottom: 1.1rem;
+}
+.sources ol {
+	font-size: 0.85rem;
+	line-height: 1.55;
+	columns: 2;
+	column-gap: 3rem;
+	padding-left: 1.1rem;
+}
+.sources li { margin-bottom: 0.6rem; break-inside: avoid; }
+
+@media (max-width: 52rem) {
+	section { grid-template-columns: 1fr; gap: 0; }
+	.num { padding-top: 0; margin-bottom: 0.5rem; }
+	.sources ol { columns: 1; }
+	body { padding: 0 1.1rem 4rem; }
+}
+</style>
+
+<div class="page">
+
+<header class="masthead">
+	<p class="eyebrow">Feasibility study &middot; OBVR</p>
+	<h1>Oblivion Crash Suite</h1>
+	<p class="standfirst">Catching, symbolicating and permanently fixing crashes in a 2006 x86 game binary &mdash; with tools that did not exist when the existing crash loggers were written.</p>
+	<div class="masthead-meta">
+		<span>Date <b>2026-08-30</b></span>
+		<span>Target <b>Oblivion 1.2.0.416</b></span>
+		<span>Host <b>xOBSE 22.13 plugin</b></span>
+		<span>Status <b>Study, no code written</b></span>
+	</div>
+</header>
+
+<div class="verdict">
+	<h2>Verdict</h2>
+	<p><strong>Feasible, and worth doing &mdash; but the value is not in the catching.</strong> Catching a crash and dumping registers has been solved for Oblivion since at least 2019, and xOBSE already writes a minidump on request. Everything hard sits downstream: turning an address into a function name, turning a stack into a call chain, turning one crash into a class of crashes, and turning that class into a patch you can prove fixed it.</p>
+	<p>Two measurements taken from your own <code>Oblivion.exe</code> decide the design. <strong>Only 3.7% of its functions keep a frame pointer</strong>, so the stack-walking method every existing Oblivion crash logger uses is structurally broken on this binary. And <strong>the executable still carries its original CodeView record</strong>, which means a synthetic PDB can be built that WinDbg and DbgHelp will load for it automatically &mdash; the door to the whole standard Windows debugging toolchain, TTD included, stands open.</p>
+	<p>Recommended shape: four layers, built in order, each useful on its own. Phase&nbsp;1 is roughly a weekend and already beats every existing logger, because it stops guessing at the call stack and records what is actually knowable.</p>
+</div>
+
+<div class="legend">
+	<div><span class="mark m-measured">Measured</span> <span>Read from the binary, a file on this machine, or source code retrieved during this study.</span></div>
+	<div><span class="mark m-derived">Derived</span> <span>A conclusion drawn from those readings.</span></div>
+	<div><span class="mark m-open">Open</span> <span>Not verified. Named, with what would settle it.</span></div>
+</div>
+
+<!-- ===================================================== -->
+<section>
+	<p class="num">01</p>
+	<div class="body">
+		<h2>What already exists, and where it stops</h2>
+
+		<p>Four bodies of prior art matter. None of them is a reason not to build; two of them are a reason to build differently.</p>
+
+		<h3>xOBSE writes minidumps already</h3>
+		<p><span class="mark m-measured">Measured</span> xOBSE installs <code>OBSEUnhandledExceptionFilter</code> during initialisation when the <code>installCrashdump</code> setting is on, and calls <code>CreateExceptionMiniDump</code> to write <code>OBSECrashDump.dmp</code> into the game directory with thread info, unloaded modules, indirectly referenced memory and full memory info.<a href="#s1">&#8202;[1]</a> Your installation has the corresponding INI switch present and <em>off</em>: <code>bCreateCrashDump=0</code> in <code>Data\OBSE\obse.ini</code>.</p>
+		<p><span class="mark m-derived">Derived</span> The cheapest possible improvement to your crash situation costs one character. It is also not enough on its own: a minidump with no symbols for <code>Oblivion.exe</code> gives WinDbg an address and nothing else.</p>
+
+		<h3>Cobb&rsquo;s crash logger &mdash; the ancestor</h3>
+		<p><span class="mark m-measured">Measured</span> <code>DavidJCobb/tes4-crash-logger</code> is an OBSE plugin that calls <code>SetUnhandledExceptionFilter</code> and then patches the game&rsquo;s import slot at <code>0x00A281B4</code> so the game cannot install its own filter over the top.<a href="#s2">&#8202;[2]</a> I verified that slot independently by parsing the import table of your <code>Oblivion.exe</code>: <code>0x00A281B4</code> is indeed <code>KERNEL32!SetUnhandledExceptionFilter</code>, and the game calls it from five sites. It logs a DbgHelp <code>StackWalk</code> trace, EIP, seven registers, 50 stack dwords and the loaded-module list.</p>
+		<p>Its stack walk is seeded with <code>AddrFrame.Offset = Ebp</code>. That is the load-bearing assumption, and section&nbsp;03 shows it does not hold.</p>
+
+		<h3>Yvile / WallSoGB &mdash; the state of the art in this family</h3>
+		<p><span class="mark m-measured">Measured</span> The New Vegas fork (same engine family, same 32-bit problem) adds what actually makes crash logs readable: it walks registers and stack looking for anything that looks like an object, reads its vtable, and resolves the RTTI type name, falling back to PDB symbols.<a href="#s3">&#8202;[3]</a> Its report is sectioned &mdash; exception, thread, calltrace, registry, stack, device, memory, playtime, game data, mods, modules, install. It hooks <code>SetUnhandledExceptionFilter</code> in kernel32 directly with a relative jump rather than through the IAT. Oblivion&rsquo;s &ldquo;Crash Logger Improved&rdquo; descends from this line.<a href="#s4">&#8202;[4]</a></p>
+		<p><span class="mark m-derived">Derived</span> Two loggers that both redirect <code>SetUnhandledExceptionFilter</code> &mdash; one at the IAT, one at the export &mdash; will fight. Any suite built here must detect an already-installed handler and chain to it rather than assume it owns the process.</p>
+
+		<h3>Buffout 4 / CrashLoggerSSE &mdash; the shape to aim at</h3>
+		<p><span class="mark m-measured">Measured</span> The Skyrim/Fallout 64-bit loggers are organised as <code>Crash/Analysis</code>, <code>Crash/Introspection/HeapAnalysis</code>, <code>Crash/Modules/ModuleHandler</code>, <code>Crash/PDB/PdbHandler</code>, <code>Crash/ProblematicModules</code>, <code>Crash/ThreadDump</code>.<a href="#s5">&#8202;[5]</a> PDB symbolication runs through <code>msdia140.dll</code>.</p>
+		<p><span class="mark m-derived">Derived</span> That structure is the right decomposition and transfers. What does <em>not</em> transfer is the easy part underneath it: x64 binaries carry unwind tables in the PE, so a correct call stack is a library call. On x86 there is no such table &mdash; the <code>Exception</code> data directory in <code>Oblivion.exe</code> is empty.</p>
+	</div>
+</section>
+
+<!-- ===================================================== -->
+<section>
+	<p class="num">02</p>
+	<div class="body">
+		<h2>What the binary actually says</h2>
+
+		<p>Everything below was read out of <code>D:\SteamLibrary\steamapps\common\Oblivion\Oblivion.exe</code> during this study by parsing the PE headers and scanning the code section directly.</p>
+
+		<div class="table-wrap">
+		<table>
+			<thead>
+				<tr><th>Property</th><th>Value</th><th>Why it matters</th></tr>
+			</thead>
+			<tbody>
+				<tr><td>Machine</td><td class="mono">0x014C &mdash; i386, PE32</td><td>32-bit. No unwind tables, no CommonLib, no x64 shortcuts.</td></tr>
+				<tr><td>Linker</td><td class="mono">8.0</td><td>MSVC 2005 era, built 2007-04-16. Optimised release build.</td></tr>
+				<tr><td>Image base</td><td class="mono">0x00400000</td><td>Fixed, no relocation directory &mdash; addresses in logs are stable across runs.</td></tr>
+				<tr><td>Code section</td><td class="mono">.text 0x00401000, 6.4&nbsp;MB</td><td>The address range a stack scan must test against.</td></tr>
+				<tr><td>Exception directory</td><td class="mono">absent</td><td>No unwind information in the image. Confirms the core problem.</td></tr>
+				<tr><td>LARGE_ADDRESS_AWARE</td><td class="mono">set (0x0123)</td><td>Your copy is already 4&nbsp;GB-patched.</td></tr>
+				<tr><td>CodeView record</td><td class="mono">RSDS present</td><td class="mono">GUID 7bbd0a3a-8959-474f-aba3-082cd018c220, age&nbsp;1, <code>e:\NetworkProjectsPC\OblivionSE\Oblivion\Game\Oblivion.pdb</code></td></tr>
+				<tr><td>Frame-pointer prologues</td><td class="mono">1182 / 32261 &asymp; 3.7&nbsp;%</td><td>The EBP chain effectively does not exist. See section&nbsp;03.</td></tr>
+				<tr><td>Heap API</td><td class="mono">IAT imports</td><td><code>HeapAlloc/Free/ReAlloc/Create/Destroy</code> are ordinary imports &mdash; hookable without patching code.</td></tr>
+				<tr><td>Heap call sites</td><td class="mono">6 alloc, 6 free, 1 create</td><td>Very few. A game-owned allocator sits on top; see the caveat below.</td></tr>
+			</tbody>
+		</table>
+		</div>
+
+		<div class="note">
+			<p><strong>Method and its uncertainty, for the 3.7% figure.</strong> I scanned <code>.text</code> for byte positions preceded by two <code>0xCC</code> padding bytes &mdash; the compiler&rsquo;s inter-function padding &mdash; and classified the bytes that follow. 32,261 such candidate entry points; 1,182 begin <code>push ebp; mov ebp, esp</code>. The candidate set is a heuristic and certainly contains some jump tables and data, so the denominator is soft. The conclusion is not: frame-pointer omission is the overwhelming default in this build, and no plausible correction to the denominator moves 3.7% anywhere near a usable majority.</p>
+		</div>
+
+		<div class="note">
+			<p><strong>Caveat on the heap figure.</strong> Six <code>HeapAlloc</code> call sites in a 6.4&nbsp;MB binary means Oblivion is not allocating objects through the Win32 heap directly &mdash; it almost certainly draws large blocks and sub-allocates through its own manager, which is what Oblivion Stutter Remover replaces. <span class="mark m-open">Open</span> I have not located or confirmed that allocator in the binary. Until it is found, IAT-level heap instrumentation gives you block-level pressure and OOM proximity, <em>not</em> per-object allocation tracking.</p>
+		</div>
+	</div>
+</section>
+
+<!-- ===================================================== -->
+<section>
+	<p class="num">03</p>
+	<div class="body">
+		<h2>The hard problem: a call stack nobody can walk</h2>
+
+		<p>A crash log is worth having because of the call chain. Everything else &mdash; registers, module list, the faulting address &mdash; tells you where the body fell, not who pushed it. And the call chain is exactly what this binary refuses to give up.</p>
+
+		<figure>
+			<svg viewBox="0 0 780 400" role="img" aria-label="Comparison of stack walking with a frame pointer chain, which fails on 96 percent of Oblivion functions, versus scanning the stack for return addresses preceded by call instructions.">
+				<defs>
+					<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+						<path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+					</marker>
+					<marker id="ar-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+						<path d="M 0 0 L 10 5 L 0 10 z" class="hi"/>
+					</marker>
+				</defs>
+
+				<!-- LEFT: EBP chain -->
+				<text x="0" y="16" font-family="Archivo, sans-serif" font-size="12" font-weight="600" fill="currentColor">A &nbsp;EBP CHAIN WALK &mdash; what every existing logger does</text>
+				<text x="0" y="34" font-family="Archivo, sans-serif" font-size="11" fill="currentColor" opacity="0.65">works on 3.7% of functions</text>
+
+				<rect x="0" y="52" width="150" height="34" fill="none" stroke="currentColor" stroke-width="1"/>
+				<text x="10" y="73" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor">saved ebp</text>
+				<rect x="0" y="86" width="150" height="34" fill="none" stroke="currentColor" stroke-width="1"/>
+				<text x="10" y="107" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor">return addr</text>
+
+				<rect x="0" y="146" width="150" height="34" fill="none" stroke="currentColor" stroke-width="1"/>
+				<text x="10" y="167" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor">saved ebp</text>
+				<rect x="0" y="180" width="150" height="34" fill="none" stroke="currentColor" stroke-width="1"/>
+				<text x="10" y="201" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor">return addr</text>
+
+				<path d="M 155 69 C 185 69, 185 163, 158 163" fill="none" stroke="currentColor" stroke-width="1.2" marker-end="url(#ar)"/>
+				<text x="192" y="118" font-family="Archivo, sans-serif" font-size="10.5" fill="currentColor" opacity="0.75">links</text>
+
+				<rect x="0" y="240" width="150" height="52" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="4 3" opacity="0.5"/>
+				<text x="10" y="262" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity="0.55">sub esp, 0x2C</text>
+				<text x="10" y="280" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity="0.55">no saved ebp</text>
+
+				<path d="M 155 200 C 190 200, 190 262, 160 264" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3" opacity="0.5"/>
+				<text x="196" y="238" font-family="Archivo, sans-serif" font-size="10.5" fill="currentColor" opacity="0.6">chain ends</text>
+
+				<text x="0" y="325" font-family="Archivo, sans-serif" font-size="11.5" font-weight="600" fill="currentColor">Result: 1&ndash;2 frames, then garbage</text>
+				<text x="0" y="344" font-family="Archivo, sans-serif" font-size="11" fill="currentColor" opacity="0.7">EBP is a general-purpose register in an FPO</text>
+				<text x="0" y="360" font-family="Archivo, sans-serif" font-size="11" fill="currentColor" opacity="0.7">function. The walker follows whatever was in it.</text>
+
+				<!-- divider -->
+				<line x1="380" y1="8" x2="380" y2="380" stroke="currentColor" stroke-width="1" opacity="0.25"/>
+
+				<!-- RIGHT: scan -->
+				<text x="415" y="16" font-family="Archivo, sans-serif" font-size="12" font-weight="600" class="hi">B &nbsp;VALIDATED STACK SCAN &mdash; proposed</text>
+				<text x="415" y="34" font-family="Archivo, sans-serif" font-size="11" fill="currentColor" opacity="0.65">every dword tested, no chain assumed</text>
+
+				<rect x="415" y="52" width="150" height="30" fill="none" stroke="currentColor" stroke-width="1" opacity="0.45"/>
+				<text x="425" y="72" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity="0.5">0x00000010</text>
+
+				<rect x="415" y="82" width="150" height="30" fill="none" class="hi-s" stroke-width="1.6"/>
+				<text x="425" y="102" font-family="JetBrains Mono, monospace" font-size="11" class="hi">0x0066BE6E</text>
+
+				<rect x="415" y="112" width="150" height="30" fill="none" stroke="currentColor" stroke-width="1" opacity="0.45"/>
+				<text x="425" y="132" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity="0.5">0x0F3A1C40</text>
+
+				<rect x="415" y="142" width="150" height="30" fill="none" class="hi-s" stroke-width="1.6"/>
+				<text x="425" y="162" font-family="JetBrains Mono, monospace" font-size="11" class="hi">0x004FB1F4</text>
+
+				<rect x="415" y="172" width="150" height="30" fill="none" stroke="currentColor" stroke-width="1" opacity="0.45"/>
+				<text x="425" y="192" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity="0.5">0x00000001</text>
+
+				<path d="M 570 97 L 622 97" fill="none" class="hi-s" stroke-width="1.3" marker-end="url(#ar-a)"/>
+				<path d="M 570 157 L 622 157" fill="none" class="hi-s" stroke-width="1.3" marker-end="url(#ar-a)"/>
+
+				<rect x="626" y="76" width="146" height="42" fill="none" class="hi-s" stroke-width="1"/>
+				<text x="634" y="93" font-family="Archivo, sans-serif" font-size="10.5" class="hi">in .text range?</text>
+				<text x="634" y="109" font-family="Archivo, sans-serif" font-size="10.5" class="hi">preceded by a call?</text>
+
+				<rect x="626" y="136" width="146" height="42" fill="none" class="hi-s" stroke-width="1"/>
+				<text x="634" y="153" font-family="Archivo, sans-serif" font-size="10.5" class="hi">in .text range?</text>
+				<text x="634" y="169" font-family="Archivo, sans-serif" font-size="10.5" class="hi">preceded by a call?</text>
+
+				<text x="415" y="240" font-family="Archivo, sans-serif" font-size="11.5" font-weight="600" fill="currentColor">Result: an ordered candidate list</text>
+				<text x="415" y="259" font-family="Archivo, sans-serif" font-size="11" fill="currentColor" opacity="0.7">Contains stale frames from earlier calls, so it</text>
+				<text x="415" y="275" font-family="Archivo, sans-serif" font-size="11" fill="currentColor" opacity="0.7">over-reports rather than inventing a false chain.</text>
+				<text x="415" y="291" font-family="Archivo, sans-serif" font-size="11" fill="currentColor" opacity="0.7">Each entry is labelled with its confidence.</text>
+
+				<rect x="415" y="312" width="357" height="52" fill="none" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+				<text x="425" y="331" font-family="Archivo, sans-serif" font-size="10.5" font-weight="600" fill="currentColor">Honest about what it is</text>
+				<text x="425" y="349" font-family="Archivo, sans-serif" font-size="10.5" fill="currentColor" opacity="0.7">A scan is evidence, not a call stack. Labelling it as such</text>
+				<text x="425" y="362" font-family="Archivo, sans-serif" font-size="10.5" fill="currentColor" opacity="0.7">is the difference between a useful log and a misleading one.</text>
+			</svg>
+			<figcaption>The chain walk on the left needs each function to have saved EBP. In this build 96.3% of them did not, so the walk terminates or follows an unrelated value after one or two frames. The scan on the right makes no structural assumption: it tests every stack slot for plausibility and reports a ranked candidate set.</figcaption>
+		</figure>
+
+		<h3>Three ways out, and what each really buys</h3>
+
+		<div class="cards">
+			<div class="card">
+				<span class="tag">Option A</span>
+				<h4>Validated stack scan</h4>
+				<p>Test every stack dword: does it point into <code>.text</code>, and do the bytes before it decode as a <code>call</code>? Cheap, no external data, degrades gracefully. Gives a noisy superset of the real chain, never a clean one.</p>
+			</div>
+			<div class="card">
+				<span class="tag">Option B</span>
+				<h4>Synthetic PDB with FPO data</h4>
+				<p>Generate a PDB carrying the frame layout DbgHelp needs for FPO functions. Would give a genuinely correct walk and would fix WinDbg too, not just our logger. Also the only option with a real unknown in it &mdash; see section&nbsp;05.</p>
+			</div>
+			<div class="card">
+				<span class="tag">Option C</span>
+				<h4>Record, don't reconstruct</h4>
+				<p>Time Travel Debugging captures every instruction, so the call stack is a fact rather than an inference. Far too slow to leave on, unbeatable once you can reproduce. This is the repro tool, not the field tool.</p>
+			</div>
+		</div>
+
+		<p><span class="mark m-derived">Derived</span> A&nbsp;and&nbsp;C are complementary and should both be built: A ships in every run, C is armed when you are hunting a specific bucket. B is the research bet that would make A obsolete and is worth one timeboxed experiment, not a dependency.</p>
+	</div>
+</section>
+
+<!-- ===================================================== -->
+<section>
+	<p class="num">04</p>
+	<div class="body">
+		<h2>Proposed architecture</h2>
+
+		<p>Four layers. Each is independently useful, each is testable, and none of them requires the next one to exist.</p>
+
+		<figure>
+			<svg viewBox="0 0 900 330" role="img" aria-label="Pipeline from a crash in the running game through in-process capture, offline symbolication, bucketing, reproduction under time travel debugging, to a binary patch guarded by a regression test.">
+				<defs>
+					<marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+						<path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+					</marker>
+					<marker id="ar2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+						<path d="M 0 0 L 10 5 L 0 10 z" class="hi"/>
+					</marker>
+				</defs>
+
+				<!-- lane labels -->
+				<text x="0" y="14" font-family="Archivo, sans-serif" font-size="10.5" font-weight="600" letter-spacing="1.2" fill="currentColor" opacity="0.55">IN PROCESS &mdash; MUST NOT ALLOCATE</text>
+				<line x1="0" y1="22" x2="900" y2="22" stroke="currentColor" stroke-width="1" opacity="0.2"/>
+
+				<rect x="0" y="38" width="150" height="62" fill="none" stroke="currentColor" stroke-width="1.4"/>
+				<text x="12" y="60" font-family="Archivo, sans-serif" font-size="12" font-weight="600" fill="currentColor">Game process</text>
+				<text x="12" y="78" font-family="Archivo, sans-serif" font-size="10.5" fill="currentColor" opacity="0.7">VEH sees first chance</text>
+				<text x="12" y="92" font-family="Archivo, sans-serif" font-size="10.5" fill="currentColor" opacity="0.7">UEF chained, not stolen</text>
+
+				<path d="M 152 69 L 214 69" stroke="currentColor" stroke-width="1.3" marker-end="url(#ar2)"/>
+				<text x="158" y="61" font-family="Archivo, sans-serif" font-size="10" fill="currentColor" opacity="0.75">faults</text>
+
+				<rect x="218" y="38" width="168" height="62" fill="none" stroke="currentColor" stroke-width="1.4"/>
+				<text x="230" y="60" font-family="Archivo, sans-serif" font-size="12" font-weight="600" fill="currentColor">Capture (L1)</text>
+				<text x="230" y="78" font-family="Archivo, sans-serif" font-size="10.5" fill="currentColor" opacity="0.7">registers, stack scan,</text>
+				<text x="230" y="92" font-family="Archivo, sans-serif" font-size="10.5" fill="currentColor" opacity="0.7">game context, ring buffer</text>
+
+				<path d="M 388 69 L 450 69" stroke="currentColor" stroke-width="1.3" marker-end="url(#ar2)"/>
+				<text x="392" y="61" font-family="Archivo, sans-serif" font-size="10" fill="currentColor" opacity="0.75">writes</text>
+
+				<rect x="454" y="38" width="168" height="62" fill="none" stroke="currentColor" stroke-width="1.4"/>
+				<text x="466" y="60" font-family="Archivo, sans-serif" font-size="12" font-weight="600" fill="currentColor">Two artefacts</text>
+				<text x="466" y="78" font-family="Archivo, sans-serif" font-size="10.5" fill="currentColor" opacity="0.7">.dmp for the machine</text>
+				<text x="466" y="92" font-family="Archivo, sans-serif" font-size="10.5" fill="currentColor" opacity="0.7">.log for the human</text>
+
+				<!-- feedback: instrumentation -->
+				<rect x="672" y="38" width="168" height="62" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="4 3"/>
+				<text x="684" y="60" font-family="Archivo, sans-serif" font-size="12" font-weight="600" fill="currentColor">Instrumentation (L0)</text>
+				<text x="684" y="78" font-family="Archivo, sans-serif" font-size="10.5" fill="currentColor" opacity="0.7">heap pressure, cell + form</text>
+				<text x="684" y="92" font-family="Archivo, sans-serif" font-size="10.5" fill="currentColor" opacity="0.7">breadcrumbs, frame counter</text>
+				<path d="M 756 102 C 756 122, 560 118, 538 102" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#ar2)"/>
+				<text x="600" y="126" font-family="Archivo, sans-serif" font-size="10" fill="currentColor" opacity="0.7">feeds context into every capture</text>
+
+				<!-- lane 2 -->
+				<text x="0" y="168" font-family="Archivo, sans-serif" font-size="10.5" font-weight="600" letter-spacing="1.2" fill="currentColor" opacity="0.55">OFFLINE &mdash; NO TIME LIMIT, FULL TOOLCHAIN</text>
+				<line x1="0" y1="176" x2="900" y2="176" stroke="currentColor" stroke-width="1" opacity="0.2"/>
+
+				<rect x="0" y="192" width="168" height="62" fill="none" class="hi-s" stroke-width="1.4"/>
+				<text x="12" y="214" font-family="Archivo, sans-serif" font-size="12" font-weight="600" class="hi">Symbolicate (L2)</text>
+				<text x="12" y="232" font-family="Archivo, sans-serif" font-size="10.5" class="hi" opacity="0.85">synthetic PDB, matched</text>
+				<text x="12" y="246" font-family="Archivo, sans-serif" font-size="10.5" class="hi" opacity="0.85">to the CodeView GUID</text>
+
+				<path d="M 170 223 L 226 223" stroke="currentColor" stroke-width="1.3" marker-end="url(#ar2)"/>
+				<text x="174" y="215" font-family="Archivo, sans-serif" font-size="10" fill="currentColor" opacity="0.75">names</text>
+
+				<rect x="230" y="192" width="150" height="62" fill="none" stroke="currentColor" stroke-width="1.4"/>
+				<text x="242" y="214" font-family="Archivo, sans-serif" font-size="12" font-weight="600" fill="currentColor">Bucket</text>
+				<text x="242" y="232" font-family="Archivo, sans-serif" font-size="10.5" fill="currentColor" opacity="0.7">signature from top</text>
+				<text x="242" y="246" font-family="Archivo, sans-serif" font-size="10.5" fill="currentColor" opacity="0.7">confident frames</text>
+
+				<path d="M 382 223 L 438 223" stroke="currentColor" stroke-width="1.3" marker-end="url(#ar2)"/>
+				<text x="386" y="215" font-family="Archivo, sans-serif" font-size="10" fill="currentColor" opacity="0.75">arms</text>
+
+				<rect x="442" y="192" width="168" height="62" fill="none" stroke="currentColor" stroke-width="1.4"/>
+				<text x="454" y="214" font-family="Archivo, sans-serif" font-size="12" font-weight="600" fill="currentColor">Reproduce (L3)</text>
+				<text x="454" y="232" font-family="Archivo, sans-serif" font-size="10.5" fill="currentColor" opacity="0.7">TTD trace, PageHeap,</text>
+				<text x="454" y="246" font-family="Archivo, sans-serif" font-size="10.5" fill="currentColor" opacity="0.7">save-state replay</text>
+
+				<path d="M 612 223 L 668 223" class="hi-s" stroke-width="1.3" marker-end="url(#ar2a)"/>
+				<text x="616" y="215" font-family="Archivo, sans-serif" font-size="10" class="hi">root cause</text>
+
+				<rect x="672" y="192" width="168" height="62" fill="none" class="hi-s" stroke-width="1.4"/>
+				<text x="684" y="214" font-family="Archivo, sans-serif" font-size="12" font-weight="600" class="hi">Fix + guard (L4)</text>
+				<text x="684" y="232" font-family="Archivo, sans-serif" font-size="10.5" class="hi" opacity="0.85">binary patch in the plugin</text>
+				<text x="684" y="246" font-family="Archivo, sans-serif" font-size="10.5" class="hi" opacity="0.85">+ unit test on the decision</text>
+
+				<path d="M 756 256 C 756 292, 300 300, 84 258" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#ar2)"/>
+				<text x="370" y="296" font-family="Archivo, sans-serif" font-size="10" fill="currentColor" opacity="0.7">bucket stays registered; a recurrence reopens it</text>
+			</svg>
+			<figcaption>The runtime lane has one rule &mdash; never allocate, never call into a possibly-corrupt heap. The offline lane has no such constraint and is where every expensive tool belongs. The dashed return edge is what makes it a suite rather than a logger: a fixed bucket that reappears is a failed fix, and the system says so.</figcaption>
+		</figure>
+
+		<h3>Layer 1 in detail: what a capture must not do</h3>
+		<p>The existing loggers call <code>calloc</code>, <code>SymInitialize</code> and <code>std::string</code> inside the handler. If the crash was heap corruption &mdash; a large share of Oblivion&rsquo;s crashes, by community consensus &mdash; the handler is now allocating on a broken heap while holding whatever lock the faulting thread held.</p>
+		<p><span class="mark m-derived">Derived</span> The capture path must be preallocated at load time, allocation-free at crash time, and must write with raw <code>WriteFile</code>. <strong>OBVR already has exactly this</strong>: <code>src/core/Log.cpp</code> formats into a fixed 1024-byte stack buffer and writes with <code>WriteFile</code>, explicitly &ldquo;so that the logger needs no heap&rdquo;. And <code>src/platform/ImportHook.cpp</code> already replaces IAT entries by name. The infrastructure that makes a safe crash handler hard is already written and already used in this project.</p>
+
+		<h3>Why VEH as well as the unhandled filter</h3>
+		<p>An unhandled-exception filter, by definition, only sees exceptions nobody handled. A vectored handler installed as first-chance sees them all &mdash; including the ones the engine or another plugin swallows in a <code>__try/__except</code>. xOBSE&rsquo;s own task manager catches exceptions around plugin tasks,<a href="#s1">&#8202;[1]</a> so those faults are invisible to every current logger.</p>
+		<p><span class="mark m-derived">Derived</span> First-chance observation is where the new signal is. It must be sampled and rate-limited, not logged wholesale &mdash; C++ exceptions and probe faults are normal traffic &mdash; but a swallowed access violation that recurs every frame in a specific cell is precisely the kind of thing that later becomes a crash, and no existing tool for this game reports it.</p>
+	</div>
+</section>
+
+<!-- ===================================================== -->
+<section>
+	<p class="num">05</p>
+	<div class="body">
+		<h2>Symbolication: the part that is genuinely new</h2>
+
+		<p>An address like <code>0x0066BE6E</code> is only useful to someone who has the binary open in a disassembler. Turning it into a name is what separates a crash log you can act on from one you can only forward.</p>
+
+		<h3>The CodeView record is the key</h3>
+		<p><span class="mark m-measured">Measured</span> <code>Oblivion.exe</code> still carries an RSDS debug record: GUID <code>7bbd0a3a-8959-474f-aba3-082cd018c220</code>, age 1. <span class="mark m-derived">Derived</span> Any PDB built with that exact signature will be accepted by DbgHelp, WinDbg and every symbol-server-aware tool as <em>the</em> symbols for this executable. Bethesda&rsquo;s original PDB is not available, but its identity is, and identity is all the loader checks.</p>
+		<p><span class="mark m-measured">Measured</span> <code>wandel/pdbgen</code> generates a PDB from a Ghidra database and explicitly relies on this: &ldquo;If the CodeView entry in the DEBUG_DATA_DIRECTORY has been removed, it will fail to generate a pdb &mdash; this is because the path to pdb is dictated by the signature/guid and age values in this entry.&rdquo; It currently generates global function symbols and data types, and states that function names should be resolved in the call stack.<a href="#s6">&#8202;[6]</a></p>
+
+		<h3>Where the names come from</h3>
+		<p>Ghidra&rsquo;s auto-analysis supplies roughly 32,000 function boundaries with generated names. Real names have to come from the modding community&rsquo;s accumulated reverse engineering:</p>
+		<p><span class="mark m-measured">Measured</span> The xOBSE source tree contains <strong>1,574 distinct literal addresses</strong> in Oblivion&rsquo;s address range across 293 source files, of which 266 are named constants &mdash; often with a signature in the comment, e.g. <code>kGridCellArray_GetGridEntry = 0x00482150</code> and <code>kLoadFile_CallAddr = 0x00748100 // __cdecl BSFile* LoadFile(char* path, ...)</code>. <span class="mark m-derived">Derived</span> That is a real seed corpus and it is machine-extractable, but it covers only single-digit percentages of the binary. Symbol coverage is a curve you climb over months, not a dataset you import once. The suite must therefore be designed to be useful at 5% coverage and better at 40%.</p>
+
+		<h3>The open question worth one experiment</h3>
+		<p><span class="mark m-open">Open</span> A PDB can carry FPO/frame-data streams describing how to unwind functions that keep no frame pointer, and DbgHelp historically consumed them for exactly this purpose on x86. I have <em>not</em> verified that current DbgHelp still honours them, nor that Ghidra&rsquo;s per-function stack-depth analysis is accurate enough to generate them, nor that pdbgen can emit them &mdash; its README documents only function symbols and data types.</p>
+		<p><strong>What would settle it:</strong> build a minimal PDB with a hand-written FPO record for one known FPO function, load it in WinDbg against a live Oblivion process, and check whether <code>k</code> unwinds past that frame. Half a day, and the answer decides whether Option&nbsp;B in section&nbsp;03 is a project or a footnote.</p>
+	</div>
+</section>
+
+<!-- ===================================================== -->
+<section>
+	<p class="num">06</p>
+	<div class="body">
+		<h2>Reproduction: what 2026 gives you that 2019 did not</h2>
+
+		<p>A crash you cannot reproduce cannot be root-caused, only guessed at &mdash; and a guessed fix is the workaround this project does not accept. Three tools change the odds, all of them available on this machine and all of them 32-bit capable.</p>
+
+		<h3>Time Travel Debugging</h3>
+		<p><span class="mark m-measured">Measured</span> TTD release 1.11.163 &ldquo;adds support for recording x86 processes on x64 machines&rdquo;. ARM32 recording was later removed; x86 was not. Recording can be restricted to specific modules with <code>-module</code>, which the release notes say can make recording substantially faster and traces smaller. A process can be launched under the monitor with <code>-monitor</code>, and since 1.11.304 there is a public in-process API to control the recorder from inside the recorded process, with <code>-recordMode Manual</code> to inject without recording anything until told.<a href="#s7">&#8202;[7]</a></p>
+		<p><span class="mark m-derived">Derived</span> This is the highest-value item in the whole study. The plugin can inject TTD in manual mode, keep recording off during normal play, and turn it on when the L0 instrumentation sees the precursor conditions of a known bucket &mdash; then the crash is captured with full instruction history and the call stack stops being an inference. <span class="mark m-open">Open</span> I have not measured TTD&rsquo;s slowdown on Oblivion, and a VR title has a hard frame budget; whether module-filtered recording is playable here is an empirical question, not a claim.</p>
+
+		<h3>PageHeap and Application Verifier</h3>
+		<p><span class="mark m-measured">Measured</span> Full PageHeap places inaccessible guard pages at the ends of heap blocks and breaks into the debugger the instant a block is over- or under-run; it is enabled per-executable with <code>gflags /p /enable Oblivion.exe /full</code> and must be run under a debugger.<a href="#s8">&#8202;[8]</a></p>
+		<p><span class="mark m-derived">Derived</span> This converts the worst crash class &mdash; corruption that faults thousands of instructions later, somewhere innocent &mdash; into a fault at the exact instruction that wrote out of bounds. The caveat from section&nbsp;02 applies: it guards Win32 heap blocks, and Oblivion sub-allocates. Expect it to catch corruption in plugin and library allocations reliably, and game-internal object overruns only when they cross a block boundary.</p>
+
+		<h3>WER LocalDumps as the zero-code safety net</h3>
+		<p><span class="mark m-measured">Measured</span> Windows can be configured to write full user-mode dumps for a named executable with no debugger and no code, via <code>HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\Oblivion.exe</code> and <code>DumpType=2</code>.<a href="#s9">&#8202;[9]</a></p>
+		<p><span class="mark m-derived">Derived</span> Worth configuring today, before any of this is built. It catches the cases where our own in-process handler is itself the casualty &mdash; stack exhaustion, heap-corruption fast-fail, a fault inside the handler &mdash; which is exactly the set of crashes an in-process logger is worst at.</p>
+	</div>
+</section>
+
+<!-- ===================================================== -->
+<section>
+	<p class="num">07</p>
+	<div class="body">
+		<h2>From a crash to a fix that stays fixed</h2>
+
+		<p>The stated goal is not logs. It is permanent engine fixes. That imposes three requirements the existing loggers do not meet.</p>
+
+		<h3>Bucketing, so a crash becomes a class</h3>
+		<p>One crash is an anecdote. The unit of work is a bucket: a stable signature computed from the exception code plus the top few high-confidence frames, normalised to module-relative offsets. Every capture is filed under a bucket; a bucket accumulates occurrences, contexts and hypotheses. <span class="mark m-derived">Derived</span> With a scanned rather than walked stack, signature stability is the risk &mdash; noisy frames make unstable signatures. Mitigation: sign only on frames the scanner rated high-confidence, and treat the signature as versioned so it can be recomputed when the scanner improves.</p>
+
+		<h3>The fix goes where the decision is made</h3>
+		<p>The precedent is established and well-trodden: <span class="mark m-measured">Measured</span> EngineBugFixes, AveSithis Engine Fixes and BA_EngineFixes are all OBSE plugins that patch the engine binary in memory, and EngineBugFixes distinguishes &ldquo;fixes&rdquo; from &ldquo;patches&rdquo; and lets each be toggled separately.<a href="#s10">&#8202;[10]</a> xOBSE itself ships engine fixes in every release &mdash; null-parent-cell checks, iterator dereference fixes, container-loop corrections.<a href="#s11">&#8202;[11]</a></p>
+		<p>OBVR already writes into Oblivion&rsquo;s code segment through <code>obvr::mem::SafeWrite</code>, and already verifies expected bytes before patching with <code>obvr::mem::Verify</code>. A crash fix is the same operation as a camera hook, applied to a different address.</p>
+
+		<h3>Every fix carries a test</h3>
+		<p>This project&rsquo;s standing rule is that decisions get extracted into pure functions over plain values and every flow through them is covered &mdash; the <code>FrameLogic</code> pattern, with <code>tests/FrameLogicTest.cpp</code> as the model. That applies here without modification, and it is what stops a fix from silently regressing:</p>
+		<ul>
+			<li>The <em>decision</em> in a crash fix &mdash; is this pointer valid, is this index in range, should this call be skipped &mdash; is a pure function of plain values, and every branch of it is testable off-process.</li>
+			<li>The bucket signature function is pure and must be covered for the degenerate cases: no confident frames, one frame, frames outside any module, a recursive stack.</li>
+			<li>The stack scanner&rsquo;s classifier is pure over a byte buffer and a module map, and every verdict it can return &mdash; confident, plausible, rejected &mdash; needs a case.</li>
+		</ul>
+		<p>A fix without a test that fails before it and passes after it is a fix you will apply again in six months.</p>
+	</div>
+</section>
+
+<!-- ===================================================== -->
+<section>
+	<p class="num">08</p>
+	<div class="body">
+		<h2>Effort and sequence</h2>
+
+		<p>Estimates are for one developer already fluent in this codebase, and assume the suite lives beside OBVR rather than inside it &mdash; it must be usable with the VR mod off, or it cannot be used to debug the VR mod.</p>
+
+		<div class="phases">
+			<div class="phase">
+				<span class="p-num">0</span>
+				<div>
+					<h4>Turn on what already exists</h4>
+					<p>Set <code>bCreateCrashDump=1</code> in <code>obse.ini</code>. Configure WER LocalDumps for <code>Oblivion.exe</code>. Install WinDbg and TTD. Confirm you can open an <code>OBSECrashDump.dmp</code> and see module-relative addresses.</p>
+				</div>
+				<span class="p-cost">1 hour</span>
+			</div>
+			<div class="phase">
+				<span class="p-num">1</span>
+				<div>
+					<h4>Allocation-free capture with an honest stack</h4>
+					<p>VEH plus chained UEF; preallocated buffers; register dump, validated stack scan with per-frame confidence, module map, and the game context you can reach safely. Reuse <code>Log.cpp</code> and <code>ImportHook.cpp</code>. Detect and chain to an existing handler instead of stealing it.</p>
+				</div>
+				<span class="p-cost">2&ndash;3 days</span>
+			</div>
+			<div class="phase">
+				<span class="p-num">2</span>
+				<div>
+					<h4>Offline symbolication</h4>
+					<p>Ghidra headless project for <code>Oblivion.exe</code>; extract the 1,574 xOBSE addresses into named symbols; generate a PDB via pdbgen against the real CodeView GUID; a resolver that turns a capture into named frames. Timebox the FPO experiment here.</p>
+				</div>
+				<span class="p-cost">4&ndash;6 days</span>
+			</div>
+			<div class="phase">
+				<span class="p-num">3</span>
+				<div>
+					<h4>Buckets and context breadcrumbs</h4>
+					<p>Signature computation and an on-disk bucket store. L0 instrumentation: heap block pressure via IAT counters, current cell and worldspace, frame counter, last N script or menu events into a ring buffer that the capture reads.</p>
+				</div>
+				<span class="p-cost">3&ndash;5 days</span>
+			</div>
+			<div class="phase">
+				<span class="p-num">4</span>
+				<div>
+					<h4>Armed reproduction</h4>
+					<p>TTD in manual record mode, armed by bucket precursors; PageHeap runbook; a documented path from trace to root cause. Measure the frame cost before committing to this.</p>
+				</div>
+				<span class="p-cost">3&ndash;5 days, risk-bearing</span>
+			</div>
+			<div class="phase">
+				<span class="p-num">5</span>
+				<div>
+					<h4>Fix, guard, close</h4>
+					<p>Per-bucket binary patch behind its own toggle, a pure-function unit test for the decision it makes, and a recurrence check that reopens the bucket if the signature returns.</p>
+				</div>
+				<span class="p-cost">per bucket</span>
+			</div>
+		</div>
+
+		<p><span class="mark m-derived">Derived</span> Phases 0&ndash;2 are the minimum that beats the existing tools, and they total under two weeks. Phase 1 alone already produces better evidence than any current Oblivion crash logger, because it stops presenting an EBP walk as a call stack.</p>
+	</div>
+</section>
+
+<!-- ===================================================== -->
+<section>
+	<p class="num">09</p>
+	<div class="body">
+		<h2>Risks, and what I could not verify</h2>
+
+		<ul>
+			<li><span class="mark m-open">Open</span> <strong>Whether DbgHelp still honours PDB FPO data on x86.</strong> Decides Option&nbsp;B. Settled by the half-day WinDbg experiment in section&nbsp;05.</li>
+			<li><span class="mark m-open">Open</span> <strong>TTD&rsquo;s runtime cost on Oblivion.</strong> Unmeasured. If module-filtered recording still costs 10&times;, armed recording is a bench tool only, not something usable during real play.</li>
+			<li><span class="mark m-open">Open</span> <strong>The game&rsquo;s internal allocator.</strong> Not located in the binary. Its absence caps how much heap insight L0 can give and how much PageHeap can catch.</li>
+			<li><span class="mark m-open">Open</span> <strong>Whether Crash Logger Improved is already sufficient for your crashes.</strong> I read its lineage and its ancestors&rsquo; source, not its current binary. It may already do more than its ancestors; it cannot have solved the FPO problem, but it may extract enough object context to make many crashes obvious without any of this.</li>
+			<li><span class="mark m-derived">Derived</span> <strong>Handler contention.</strong> Two crash loggers both redirecting <code>SetUnhandledExceptionFilter</code>, one at the IAT and one at the kernel32 export, is an unstudied interaction. If you keep an existing logger installed, chaining must be tested deliberately, not assumed.</li>
+			<li><span class="mark m-derived">Derived</span> <strong>Attribution.</strong> With OBVR installed, OBVR is a defendant in every crash. The suite must record which patches were applied and be runnable with them disabled, or it will keep producing evidence that points at whichever DLL is nearest.</li>
+			<li><span class="mark m-derived">Derived</span> <strong>Scope discipline.</strong> This can absorb unlimited time. The layered plan exists so it can be stopped after any phase with something working, rather than becoming a second project competing with the VR work.</li>
+		</ul>
+	</div>
+</section>
+
+<!-- ===================================================== -->
+<section>
+	<p class="num">10</p>
+	<div class="body">
+		<h2>Recommendation</h2>
+		<p>Build it, in the order above, and start with the hour that costs nothing: enable the xOBSE dump, configure WER, install WinDbg. Then do Phase&nbsp;1, because a capture that is honest about its own uncertainty is worth more than a walked stack that is confidently wrong &mdash; and because OBVR already contains the two pieces (heap-free logging, IAT hooking) that make it a short job.</p>
+		<p>Before Phase&nbsp;2, spend the half day on the FPO experiment. It is the one unknown that changes the architecture rather than the schedule.</p>
+	</div>
+</section>
+
+<div class="sources">
+	<h2>Sources</h2>
+	<ol>
+		<li id="s1">xOBSE source analysis via DeepWiki &mdash; <code>OBSEUnhandledExceptionFilter</code>, <code>CreateExceptionMiniDump</code>, <code>installCrashdump</code>, TaskManager exception handling, <code>PatchCallsInRange</code>. <a href="https://github.com/llde/xOBSE">github.com/llde/xOBSE</a></li>
+		<li id="s2">DavidJCobb, <em>tes4-crash-logger</em>, <code>CrashLog.cpp</code> and <code>StackWalk.cpp</code> read directly. <a href="https://github.com/DavidJCobb/tes4-crash-logger">github.com/DavidJCobb/tes4-crash-logger</a></li>
+		<li id="s3">yvileapsis / WallSoGB, <em>yUI-NVSE CrashLogger</em>, <code>ExceptionHandler.cpp</code> and README read directly. <a href="https://github.com/yvileapsis/yUI-NVSE/tree/main/CrashLogger">github.com/yvileapsis/yUI-NVSE</a></li>
+		<li id="s4">Crash Logger Improved, Oblivion Nexus 54527, and Crash Logger, Nexus 48503. <a href="https://www.nexusmods.com/oblivion/mods/54527">nexusmods.com/oblivion/mods/54527</a></li>
+		<li id="s5">alandtse, <em>CrashLoggerSSE</em> and <em>Buffout4</em> &mdash; repository structure and README. <a href="https://github.com/alandtse/CrashLoggerSSE">github.com/alandtse/CrashLoggerSSE</a></li>
+		<li id="s6">wandel, <em>pdbgen</em> &mdash; README read directly. <a href="https://github.com/wandel/pdbgen">github.com/wandel/pdbgen</a></li>
+		<li id="s7">Microsoft, <em>Time travel debugging release notes</em> &mdash; 1.11.163, 1.11.198, 1.11.291, 1.11.304. <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/time-travel-debugging-release-notes">learn.microsoft.com</a></li>
+		<li id="s8">Microsoft, <em>Application Verifier &mdash; Testing Applications</em>, and PageHeap via <code>gflags</code>. <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/application-verifier-testing-applications">learn.microsoft.com</a></li>
+		<li id="s9">Microsoft, <em>Collecting User-Mode Dumps</em>. <a href="https://learn.microsoft.com/en-us/windows/win32/wer/collecting-user-mode-dumps">learn.microsoft.com</a></li>
+		<li id="s10">EngineBugFixes (Nexus 47085), AveSithis Engine Fixes (Nexus 53911), BA_EngineFixes-obse. <a href="https://www.nexusmods.com/oblivion/mods/47085">nexusmods.com/oblivion/mods/47085</a></li>
+		<li id="s11">xOBSE release notes 21.8&ndash;22.13. <a href="https://github.com/llde/xOBSE/releases">github.com/llde/xOBSE/releases</a></li>
+		<li id="s12">rust-minidump / minidump-stackwalk &mdash; Breakpad-compatible symbolication, considered as the offline analysis backend. <a href="https://github.com/rust-minidump/rust-minidump">github.com/rust-minidump</a></li>
+	</ol>
+	<p style="font-size:0.82rem; color:var(--muted); margin-top:1.5rem; max-width:70ch;">All measurements attributed to <code>Oblivion.exe</code> were taken during this study from the installed copy at <code>D:\SteamLibrary\steamapps\common\Oblivion\Oblivion.exe</code> by parsing its PE headers and scanning its code section. They describe that file and nothing else.</p>
+</div>
+
+</div>

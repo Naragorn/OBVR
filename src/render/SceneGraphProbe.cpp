@@ -7,6 +7,12 @@ namespace obvr::render {
 namespace {
 
 using addr::kCullingProcessListOffsetDeadEnd;
+using addr::kNiCameraFrustumOffset;
+using addr::kNiChildCountOffset;
+using addr::kNiFlagsOffset;
+using addr::kNiWorldBoundOffset;
+using addr::kRendererAccumulatorOffset;
+using addr::kRendererPointer;
 using addr::kSceneGraphCameraOffset;
 using addr::kSceneGraphCullingOffset;
 using addr::kWorldSceneGraphPointer;
@@ -48,12 +54,12 @@ void LogWords(const char* what, const UInt8* base, UInt32 count) {
 
 }  // namespace
 
-void ProbeSceneGraph(UInt32 frameIndex, bool menuIsUp) {
+void ProbeSceneGraph(UInt32 frameIndex, const char* occasion) {
 	const UInt8* const scene =
 		*reinterpret_cast<const UInt8* const*>(kWorldSceneGraphPointer);
 	if (!Plausible(scene)) {
 		OBVR_LOG("Scene graph probe: no world scene graph at %08X (%s, frame %u)",
-		         kWorldSceneGraphPointer, menuIsUp ? "menu" : "world", frameIndex);
+		         kWorldSceneGraphPointer, occasion, frameIndex);
 		return;
 	}
 
@@ -62,14 +68,52 @@ void ProbeSceneGraph(UInt32 frameIndex, bool menuIsUp) {
 	// Kept although the offset is a known dead end: it reads null on world
 	// frames too, and printing that beside a working render is what keeps the
 	// next reader from taking xOBSE's header at its word the way this probe
-	// first did.
+	// first did. The disassembly since explained it - the field is null by
+	// construction and the render path is built for that - so this line is
+	// now a regression check rather than a question.
 	const UInt8* const culledList =
 		culling != nullptr ? Deref(culling, kCullingProcessListOffsetDeadEnd) : nullptr;
 
+	// The four things that can empty a render which cannot return early.
+	//
+	// The render walks the graph itself; there is no list to be short. So the
+	// walk is where it must stop, and the walk is NiAVObject::Cull: four
+	// instructions that test bit 0 of the flags word and turn back if it is
+	// set, leaving the accumulator to start and finish around nothing. That
+	// is the measured shape exactly - constant setup, no draws - which makes
+	// the flags word the first suspect. The world bound is the second: it is
+	// tested against the frustum planes, and a zero radius or a stale centre
+	// culls everything, and it is rebuilt by the update pass a menu stops.
+	// The frustum is the third, rebuilt from the camera on every walk. The
+	// accumulator is the fourth: without one there is nothing to register
+	// with. Exactly one of these should differ between a world frame and a
+	// menu frame, and that one is the cause.
+	const UInt16 flags = *reinterpret_cast<const UInt16*>(scene + kNiFlagsOffset);
+	const UInt16 childCount = *reinterpret_cast<const UInt16*>(scene + kNiChildCountOffset);
+	const float* const bound = reinterpret_cast<const float*>(scene + kNiWorldBoundOffset);
+	const UInt8* const renderer =
+		*reinterpret_cast<const UInt8* const*>(kRendererPointer);
+	const UInt8* const accumulator =
+		Plausible(renderer) ? Deref(renderer, kRendererAccumulatorOffset) : nullptr;
+
+	OBVR_LOG("Scene graph probe: flags=%04X (app culled=%u) children=%u bound centre "
+	         "(%.1f, %.1f, %.1f) radius %.1f accumulator=%p",
+	         flags, static_cast<UInt32>(flags & 1u), childCount, static_cast<double>(bound[0]),
+	         static_cast<double>(bound[1]), static_cast<double>(bound[2]),
+	         static_cast<double>(bound[3]), accumulator);
+
+	if (camera != nullptr) {
+		const float* const frustum = reinterpret_cast<const float*>(camera + kNiCameraFrustumOffset);
+		OBVR_LOG("Scene graph probe: frustum l=%.3f r=%.3f t=%.3f b=%.3f near=%.1f far=%.1f",
+		         static_cast<double>(frustum[0]), static_cast<double>(frustum[1]),
+		         static_cast<double>(frustum[2]), static_cast<double>(frustum[3]),
+		         static_cast<double>(frustum[4]), static_cast<double>(frustum[5]));
+	}
+
 	// NiNode keeps its children in an array; the scene graph having children
 	// at all is the first thing a vanished world would show up in.
-	OBVR_LOG("Scene graph probe: %s frame %u - scene=%p camera=%p culling=%p list=%p",
-	         menuIsUp ? "menu" : "world", frameIndex, scene, camera, culling, culledList);
+	OBVR_LOG("Scene graph probe: %s, frame %u - scene=%p camera=%p culling=%p list=%p",
+	         occasion, frameIndex, scene, camera, culling, culledList);
 	LogWords("culling process", culling, 6);
 	LogWords("culled list", culledList, 6);
 }
