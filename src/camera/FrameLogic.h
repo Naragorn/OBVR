@@ -381,14 +381,18 @@ bool WorldControlProbeWanted(bool probeEnabled, bool menuIsUp, bool hadCameraPas
 // at camera pass=1 - which is why dialogues always looked right while the
 // persuasion menu did not.
 //
-// There is deliberately no "enabled" gate here any more. It used to be tied
-// to Render.LiveMenuBackground, which is the different question of whether to
-// make the engine render behind menus that would otherwise show a snapshot.
-// Where the engine renders by itself, refusing to use what it drew is not a
-// feature anyone would switch on - it is a redraw paid for and discarded.
-bool MenuFrameNeedsCameraStandIn(bool stereoDual, bool menuIsUp, bool headsetConnected,
-                                 bool haveCameraBase, bool alreadyRanThisFrame,
-                                 bool engineDrewThisFrame);
+// enabled is not the old LiveMenuBackground gate, which asked the different
+// question of whether to make the engine render behind menus that would
+// otherwise show a snapshot. This one exists so the path can be switched off
+// from the INI, and the reason is operational rather than about the feature:
+// it opens a compositor frame and arms a second render pass from inside the
+// scene render, on frames the camera hook never saw. When a session ends
+// badly, being able to take one suspect out of the picture without a rebuild
+// is worth an INI key - and a player who hits it should be able to keep
+// playing while it is looked at.
+bool MenuFrameNeedsCameraStandIn(bool enabled, bool stereoDual, bool menuIsUp,
+                                 bool headsetConnected, bool haveCameraBase,
+                                 bool alreadyRanThisFrame, bool engineDrewThisFrame);
 
 // Attempts per menu episode. A handful rather than one, because the first
 // held frame after a menu opens may be special - the engine may still be

@@ -326,6 +326,20 @@ struct TrackerSettings {
 	// follows from the texture's shape.
 	float hudWidthMetres = 1.6f;
 
+	// Whether OBVR stands in for the camera pass on menu frames the engine is
+	// drawing the world on anyway - the persuasion minigame is the measured
+	// case, where the world is redrawn every frame and was being discarded for
+	// a held still, freezing the NPC's face.
+	//
+	// On by default, because off means a known bug is back. The key exists for
+	// a different reason than taste: this path opens a compositor frame and
+	// arms a second render pass from inside the scene render, on frames the
+	// camera hook never saw, and that is the newest and least travelled code
+	// in the plugin. When a session ends in a hang or a crash, being able to
+	// take one suspect out of the picture without a rebuild is what turns a
+	// guess into a bisection - and a player who hits it can keep playing.
+	bool menuStandIn = true;
+
 	// The crosshair, given a quad of its own at the depth it is aiming at.
 	//
 	// What it fixes is a doubled crosshair, and the cause is not a drawing

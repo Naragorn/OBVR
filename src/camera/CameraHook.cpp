@@ -890,7 +890,8 @@ UInt32 DualProbeRung();
 
 void PrepareMenuFrameIfNeeded(bool menuIsUp) {
 	const Config& config = GetConfig();
-	if (!MenuFrameNeedsCameraStandIn(config.tracker.stereo == vr::StereoMode::DualPass,
+	if (!MenuFrameNeedsCameraStandIn(config.tracker.menuStandIn,
+	                                 config.tracker.stereo == vr::StereoMode::DualPass,
 	                                 menuIsUp, g_headTracker.IsHeadsetConnected(),
 	                                 g_menuBaseNode != nullptr, g_menuLiveThisFrame,
 	                                 g_frameOpen)) {

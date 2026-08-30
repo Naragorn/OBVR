@@ -349,6 +349,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadFloat("Render", "HudDistanceMetres", config.tracker.hudDistanceMetres, path);
 	config.tracker.hudWidthMetres =
 		ReadFloat("Render", "HudWidthMetres", config.tracker.hudWidthMetres, path);
+	config.tracker.menuStandIn =
+		ReadBool("Render", "MenuStandIn", config.tracker.menuStandIn, path);
 	config.tracker.crosshair = ReadBool("Render", "Crosshair", config.tracker.crosshair, path);
 	config.tracker.crosshairDistanceMetres =
 		ReadFloat("Render", "CrosshairDistanceMetres",

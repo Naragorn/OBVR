@@ -570,37 +570,43 @@ void TestMenuLiveBackground() {
 	// camera hook has left a base to build on, this frame has not armed one
 	// already, and no camera pass ran - so the world the engine is drawing as
 	// this is called would otherwise be discarded for a held still.
-	Check(MenuFrameNeedsCameraStandIn(true, true, true, true, false, false),
+	Check(MenuFrameNeedsCameraStandIn(true, true, true, true, true, false, false),
 	      "a menu frame the engine is drawing, with no camera pass, is armed");
+
+	// Switched off from the INI. Not a matter of taste - this is the newest
+	// code in the plugin, and taking it out of the picture without a rebuild
+	// is what turns a bad session into a bisection.
+	Check(!MenuFrameNeedsCameraStandIn(false, true, true, true, true, false, false),
+	      "switched off, the held still comes back and nothing is armed");
 
 	// Alternate eyes has no second capture to fill - it would submit one fresh
 	// eye beside one stale one.
-	Check(!MenuFrameNeedsCameraStandIn(false, true, true, true, false, false),
+	Check(!MenuFrameNeedsCameraStandIn(true, false, true, true, true, false, false),
 	      "only the dual pass captures a pair this way");
 
 	// An ordinary world frame has a camera pass of its own.
-	Check(!MenuFrameNeedsCameraStandIn(true, false, true, true, false, false),
+	Check(!MenuFrameNeedsCameraStandIn(true, true, false, true, true, false, false),
 	      "a frame with no menu needs no stand-in");
 
 	// Without poses there is no head to draw from, and drawing from where the
 	// head now is was the entire point.
-	Check(!MenuFrameNeedsCameraStandIn(true, true, false, true, false, false),
+	Check(!MenuFrameNeedsCameraStandIn(true, true, true, false, true, false, false),
 	      "no headset, no pose to arm the frame with");
 
 	// The main menu is exactly this: a menu before the first world render, so
 	// no transform the game wrote has ever been seen.
-	Check(!MenuFrameNeedsCameraStandIn(true, true, true, false, false, false),
+	Check(!MenuFrameNeedsCameraStandIn(true, true, true, true, false, false, false),
 	      "no camera base yet - the main menu - falls back");
 
 	// The 2D pass runs more than once per frame; each entry would otherwise
 	// arm its own frame.
-	Check(!MenuFrameNeedsCameraStandIn(true, true, true, true, true, false),
+	Check(!MenuFrameNeedsCameraStandIn(true, true, true, true, true, true, false),
 	      "once per frame, however often the 2D pass runs");
 
 	// A menu frame whose camera pass did run is already an ordinary stereo
 	// frame. A dialogue is measured to be one, which is why dialogues always
 	// looked right while the persuasion menu did not.
-	Check(!MenuFrameNeedsCameraStandIn(true, true, true, true, false, true),
+	Check(!MenuFrameNeedsCameraStandIn(true, true, true, true, true, false, true),
 	      "the camera pass ran already - stand aside");
 }
 
