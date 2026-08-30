@@ -151,6 +151,29 @@ bool MenuLiveBackgroundWanted(bool enabled, bool stereoDual, bool menuIsUp,
 	       !alreadyRanThisFrame && !engineDrewThisFrame;
 }
 
+bool CrosshairWanted(bool enabled, bool worldFrame) { return enabled && worldFrame; }
+
+CrosshairPlacement PlaceCrosshair(float distanceMetres, float sizeAtOneMetre) {
+	float distance = distanceMetres;
+	if (distance < kCrosshairNearestMetres) {
+		distance = kCrosshairNearestMetres;
+	} else if (distance > kCrosshairFarthestMetres) {
+		distance = kCrosshairFarthestMetres;
+	}
+
+	float size = sizeAtOneMetre;
+	if (size < kCrosshairSmallestAtOneMetre) {
+		size = kCrosshairSmallestAtOneMetre;
+	} else if (size > kCrosshairLargestAtOneMetre) {
+		size = kCrosshairLargestAtOneMetre;
+	}
+
+	// Multiplied after the clamps, not before: clamping the width instead
+	// would tie the two together, so a distance the player raised would come
+	// back as a crosshair that also changed size.
+	return CrosshairPlacement{distance, size * distance};
+}
+
 bool LayoutProbeDue(bool probeEnabled, UInt32 presentedFrame, UInt32 lastProbeFrame) {
 	return probeEnabled && presentedFrame - lastProbeFrame >= kLayoutProbeFrameGap;
 }

@@ -386,6 +386,39 @@ bool MenuLiveBackgroundWanted(bool enabled, bool stereoDual, bool menuIsUp,
 // mistake the transition for the answer.
 inline constexpr UInt32 kMenuWorldProbeAttempts = 5;
 
+// Whether the crosshair quad is shown this frame.
+//
+// worldFrame carries the whole condition that matters beyond the switch: it is
+// false while a menu is up, and a crosshair hanging in front of an inventory
+// the player is reading is worse than no crosshair at all. It is also false
+// when the world was not drawn, which is the case the held pair covers - and
+// an aiming point over a frozen picture would be aiming at nothing.
+bool CrosshairWanted(bool enabled, bool worldFrame);
+
+// Where the crosshair quad goes and how big it is there.
+//
+// Two numbers out rather than one, because they are not independent: the width
+// is the size at one metre multiplied by the distance, which is what keeps the
+// crosshair the same apparent size wherever it is placed. Get that wrong and
+// moving the quad from two metres to ten shrinks it to a fifth on screen - the
+// depth correct, the thing unusable.
+struct CrosshairPlacement {
+	float distanceMetres;
+	float widthMetres;
+};
+
+// The limits are not taste. Below the near end a quad is closer than the eyes
+// can converge on and doubles for a new reason; beyond the far end the depth
+// stops changing anything, because the sight lines are already parallel. Both
+// ends therefore make the value meaningless rather than merely extreme, which
+// is what a clamp is for - and an INI is written by hand.
+inline constexpr float kCrosshairNearestMetres = 0.3f;
+inline constexpr float kCrosshairFarthestMetres = 100.0f;
+inline constexpr float kCrosshairSmallestAtOneMetre = 0.002f;
+inline constexpr float kCrosshairLargestAtOneMetre = 0.5f;
+
+CrosshairPlacement PlaceCrosshair(float distanceMetres, float sizeAtOneMetre);
+
 // Whether this frame runs a layout-probe measurement: one readback of the
 // frame's 2D, its covered rectangle logged, and nothing else done with it.
 //

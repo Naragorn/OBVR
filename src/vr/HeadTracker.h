@@ -326,6 +326,36 @@ struct TrackerSettings {
 	// follows from the texture's shape.
 	float hudWidthMetres = 1.6f;
 
+	// The crosshair, given a quad of its own at the depth it is aiming at.
+	//
+	// What it fixes is a doubled crosshair, and the cause is not a drawing
+	// error: the crosshair rides in the flat 2D overlay above, which hangs at
+	// one fixed distance, and anything outside the plane the eyes are
+	// converged on is seen twice. A crosshair at 1.2 m over a target ten
+	// metres away is doubled by the same optics that let anyone see two
+	// fingers when they focus past their own hand.
+	//
+	// Off by default, and that is not caution but arithmetic: Oblivion draws
+	// its own crosshair unless bCrossHair under [GamePlay] is 0, and switching
+	// this on without switching that off puts two crosshairs on screen. Turn
+	// both, or neither.
+	bool crosshair = false;
+
+	// How far ahead the crosshair quad is placed, in metres.
+	//
+	// A fixed distance for now. The honest version takes the distance the aim
+	// ray actually travels before it hits something, and that is the next step
+	// - but whether the fixed one is already good enough is a question for the
+	// headset, since beyond about ten metres the sight lines are so nearly
+	// parallel that further depth changes nothing anyone can see.
+	float crosshairDistanceMetres = 10.0f;
+
+	// How wide the crosshair would be at one metre. The width actually used is
+	// this times the distance, which is what holds the apparent size steady
+	// however far away the quad is placed - so this number is an angle wearing
+	// the units of the rest of the section. 0.025 is about 1.4 degrees.
+	float crosshairSizeAtOneMetre = 0.025f;
+
 	// Oblivion units per metre, for converting the head offset.
 	//
 	// The Construction Set wiki gives "21.3 units to a foot ... 64 units per

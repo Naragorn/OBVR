@@ -608,6 +608,64 @@ void TestMenuLiveBackground() {
 	      "the engine drew it already - stand aside");
 }
 
+void TestCrosshair() {
+	std::printf("Where the crosshair hangs, and how big it is there\n");
+
+	using obvr::camera::CrosshairPlacement;
+	using obvr::camera::CrosshairWanted;
+	using obvr::camera::PlaceCrosshair;
+
+	// Not called "near": windef.h defines that as an empty macro, and the
+	// calls below then expand to nothing at all.
+	const auto Near = [](float a, float b) { return a - b < 1e-4f && b - a < 1e-4f; };
+
+	// The one flow that shows it: switched on, and a frame where the world was
+	// actually drawn.
+	Check(CrosshairWanted(true, true), "on, on a world frame, the crosshair is shown");
+
+	// Off is off - and off is the default, because Oblivion draws its own
+	// unless bCrossHair is 0 and two crosshairs are worse than one.
+	Check(!CrosshairWanted(false, true), "switched off, nothing is shown");
+
+	// A menu is up, or the world was not redrawn. An aiming point over an
+	// inventory screen aims at nothing, and over a held picture it lies.
+	Check(!CrosshairWanted(true, false), "no world frame, no crosshair");
+	Check(!CrosshairWanted(false, false), "off and no world frame agree");
+
+	// Ordinary values pass through, and the width is the size at one metre
+	// carried out to the distance: 0.025 at ten metres is a quarter of a metre
+	// wide, which subtends the same angle as 0.025 at one.
+	const CrosshairPlacement plain = PlaceCrosshair(10.0f, 0.025f);
+	Check(Near(plain.distanceMetres, 10.0f), "a sane distance is left alone");
+	Check(Near(plain.widthMetres, 0.25f), "the width is the size carried to the distance");
+
+	// Closer than the eyes can comfortably converge on. Clamped, and the width
+	// follows the clamped distance rather than the asked-for one - otherwise a
+	// rejected distance would still change the size.
+	const CrosshairPlacement tooNear = PlaceCrosshair(0.05f, 0.025f);
+	Check(Near(tooNear.distanceMetres, 0.3f), "a distance inside the near limit is clamped");
+	Check(Near(tooNear.widthMetres, 0.0075f), "the width follows the clamped distance");
+
+	// Past the far end the depth stops meaning anything: the sight lines are
+	// parallel long before this.
+	const CrosshairPlacement tooFar = PlaceCrosshair(5000.0f, 0.025f);
+	Check(Near(tooFar.distanceMetres, 100.0f), "a distance past the far limit is clamped");
+	Check(Near(tooFar.widthMetres, 2.5f), "the width follows the far clamp too");
+
+	// A size small enough to be invisible, and one large enough to be a wall.
+	const CrosshairPlacement tiny = PlaceCrosshair(10.0f, 0.0f);
+	Check(Near(tiny.widthMetres, 0.02f), "a vanishing size is clamped to something visible");
+
+	const CrosshairPlacement huge = PlaceCrosshair(10.0f, 40.0f);
+	Check(Near(huge.widthMetres, 5.0f), "an absurd size is clamped before it fills the view");
+
+	// Both ends at once, which is the flow where one clamp could quietly undo
+	// the other.
+	const CrosshairPlacement both = PlaceCrosshair(-3.0f, 900.0f);
+	Check(Near(both.distanceMetres, 0.3f) && Near(both.widthMetres, 0.15f),
+	      "a nonsense pair clamps in both directions independently");
+}
+
 void TestLayoutProbeDue() {
 	std::printf("When the layout probe takes its next measurement\n");
 
@@ -976,6 +1034,8 @@ int main() {
 	TestWorldControlProbe();
 	std::printf("\n");
 	TestMenuLiveBackground();
+	std::printf("\n");
+	TestCrosshair();
 	std::printf("\n");
 	TestLayoutProbeDue();
 	std::printf("\n");

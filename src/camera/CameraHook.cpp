@@ -18,6 +18,7 @@
 #include "render/GameDevice.h"
 #include "render/GameProjection.h"
 #include "render/HeadsetRenderer.h"
+#include "render/CrosshairLayer.h"
 #include "render/HudLayer.h"
 #include "render/InterfaceRenderHook.h"
 #include "render/CursorPickHook.h"
@@ -100,6 +101,7 @@ UInt32 g_menuLiveReportsLeft = 6;
 // The 2D layer's own picture and overlay, fed by the interface render hook
 // and paid at Present alongside the eyes.
 render::HudLayer g_hudLayer;
+render::CrosshairLayer g_crosshairLayer;
 
 // How many of those bursts have been reported.
 UInt32 g_flatBurstsReported = 0;
@@ -234,7 +236,7 @@ bool PollRecenterEdge();
 // layer on a world frame, hides it on a flat one so a stale HUD does not hang
 // in front of the menu the flat path is showing. Declared ahead of OnFrameEnd,
 // defined next to the redirect callbacks it belongs with.
-void MaybeSubmitHud(bool worldFrame);
+void MaybeSubmitOverlays(bool worldFrame);
 
 // The menu-world probe, run at the very end of a menu frame so the frame's
 // own submissions are already paid whatever the probe does. It runs after the
@@ -454,7 +456,7 @@ void OnFrameEnd() {
 		// of the picture the eyes were captured from, so if the overlay does
 		// not show it, nothing does.
 		g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), g_pendingRequest);
-		MaybeSubmitHud(true);
+		MaybeSubmitOverlays(true);
 
 		// Last, after the eyes and the overlay are paid, exactly as on a menu
 		// frame - the point of the control is that everything about the call
@@ -562,7 +564,7 @@ void OnFrameEnd() {
 					         g_presentedFrame);
 				}
 			}
-			MaybeSubmitHud(true);
+			MaybeSubmitOverlays(true);
 		}
 
 		// The cursor's side of the same question, on the same cadence as the
@@ -694,7 +696,7 @@ void OnFrameEnd() {
 	// is that it costs nothing extra.
 	if (hadCameraPass || g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame())) {
 		g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), menu);
-		MaybeSubmitHud(false);
+		MaybeSubmitOverlays(false);
 	}
 
 	// After the submit, for the same reason it comes last on a held frame: the
@@ -1116,8 +1118,20 @@ void HudEndRedirect() { g_hudLayer.EndCapture(); }
 // reloaded with the rest of [Debug], like the probe square it belongs to.
 bool HudProbeActive() { return GetConfig().hudProbe; }
 
-void MaybeSubmitHud(bool worldFrame) {
+void MaybeSubmitOverlays(bool worldFrame) {
 	const Config& config = GetConfig();
+
+	// The crosshair first, and outside the HUD's two gates on purpose: it is
+	// not drawn by the interface pass, so whether that pass is redirected has
+	// nothing to say about it. Submitted even when switched off, because an
+	// overlay that has been shown once stays shown until something hides it,
+	// and that something is this call.
+	const CrosshairPlacement crosshair = PlaceCrosshair(
+		config.tracker.crosshairDistanceMetres, config.tracker.crosshairSizeAtOneMetre);
+	g_crosshairLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
+	                        CrosshairWanted(config.tracker.crosshair, worldFrame),
+	                        crosshair.distanceMetres, crosshair.widthMetres);
+
 	if (!config.tracker.hudOverlay || !render::IsInterfaceRenderHooked()) {
 		return;
 	}
