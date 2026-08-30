@@ -171,6 +171,29 @@ struct TrackerSettings {
 	// pass ran, not on a list of menu names.
 	bool menusInWorld = false;
 
+	// Draws the world again, in stereo, on the frames a pause menu is up -
+	// so the background is a live 3D scene rather than the last stereo pair
+	// held and reprojected.
+	//
+	// What it fixes: the held pair survives a turn of the head, because the
+	// compositor reprojects it, but it has no parallax to give. Lean, and the
+	// world does not shift with you; that mismatch is the thing a headset
+	// notices first. Two fresh renders from where the head now is restore it.
+	//
+	// The world itself stays paused. The renders advance no clock - the frame
+	// delta is zeroed across both, exactly as it is for the second pass of a
+	// dual frame - and Oblivion's update step is not running on these frames
+	// at all. Only the picture moves.
+	//
+	// The one place this can be done from is the 2D pass: a world render OBVR
+	// starts itself draws the full scene from there and nothing whatsoever
+	// from Present, which is where every earlier attempt was made. Measured,
+	// 461 draws against 0 in the same open Esc menu.
+	//
+	// Off by default: it costs two world renders on every menu frame, and the
+	// held pair it replaces costs none.
+	bool liveMenuBackground = false;
+
 	// Overrides Oblivion's own field of view, in degrees. 0 leaves it alone.
 	//
 	// Written into the camera's frustum rather than into fDefaultFOV, because

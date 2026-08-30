@@ -343,6 +343,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Look", "DialogFirstPerson", config.dialogFirstPerson, path);
 	config.tracker.menusInWorld =
 		ReadMenusInWorld("Render", "Menus", config.tracker.menusInWorld, path);
+	config.tracker.liveMenuBackground = ReadBool(
+		"Render", "LiveMenuBackground", config.tracker.liveMenuBackground, path);
 	config.tracker.hudDistanceMetres =
 		ReadFloat("Render", "HudDistanceMetres", config.tracker.hudDistanceMetres, path);
 	config.tracker.hudWidthMetres =

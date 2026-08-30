@@ -337,6 +337,49 @@ bool MenuWorldProbeWanted(bool probeEnabled, FrameDelivery delivery, bool menuIs
 bool WorldControlProbeWanted(bool probeEnabled, bool menuIsUp, bool hadCameraPass,
                              UInt32 attemptsLeft);
 
+// Whether this 2D pass should draw the world behind the menu first.
+//
+// What it buys, and why it is worth two extra renders: a menu currently falls
+// back to the held pair - one captured stereo picture, submitted again with
+// the pose it was drawn from. Turning the head works, because the compositor
+// reprojects. Leaning does not, because reprojection has no parallax to give,
+// and a world that does not shift when you move in it is the thing a headset
+// notices first. Drawing it again from where the head actually is restores
+// that, with the world itself still paused.
+//
+// The gates:
+//
+// enabled: asked for. Off by default - it costs two world renders on every
+// menu frame, on a machine already drawing two per world frame.
+//
+// stereoDual: the pair is captured the way the dual pass captures it, one
+// eye per render from the back buffer. Alternate-eyes has no second capture
+// to fill and would submit one fresh eye beside one stale one.
+//
+// menuIsUp: this is what the feature is for. Every other frame either has a
+// world render of its own or is a video the world has no business behind.
+//
+// headsetConnected: without poses there is no head to draw from, and the
+// whole point is drawing from where the head now is.
+//
+// haveCameraBase: the camera hook has run at least once, so there is a
+// transform the game itself wrote to build the eyes from. Before the first
+// world render there is none - the main menu is exactly that case.
+//
+// alreadyRanThisFrame: the 2D pass runs more than once per frame, and each
+// entry would otherwise start its own pair of renders and its own compositor
+// frame. One per frame.
+// engineDrewThisFrame is what makes this a fallback rather than a rival. The
+// engine has its own live menu background - clearing its static-background
+// byte stops it taking the one snapshot it otherwise shows, and it then
+// renders the world behind the menu itself, through its own call, with the
+// simulation still paused. When that works there is nothing for OBVR to draw:
+// the camera hook runs, the frame is an ordinary stereo one, and the whole
+// dual pass applies unchanged. This path is for the case where it does not.
+bool MenuLiveBackgroundWanted(bool enabled, bool stereoDual, bool menuIsUp,
+                              bool headsetConnected, bool haveCameraBase,
+                              bool alreadyRanThisFrame, bool engineDrewThisFrame);
+
 // Attempts per menu episode. A handful rather than one, because the first
 // held frame after a menu opens may be special - the engine may still be
 // mid-transition - and a probe that only ever measured that frame would

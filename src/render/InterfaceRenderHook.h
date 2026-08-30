@@ -49,6 +49,22 @@ bool InstallInterfaceRenderHook(const InterfaceRedirect& callbacks);
 
 bool IsInterfaceRenderHooked();
 
+// Registers what the 2D pass should run before it draws, on frames where the
+// engine has stopped rendering the world and a menu is up.
+//
+// A callback rather than a direct call because of where the two modules sit:
+// the camera hook already reaches into this one, and the live background
+// needs the traffic to go the other way - it is the camera's business to
+// place the eyes and the renderer's to submit them, while this module owns
+// only the one moment that works.
+//
+// That moment is the whole reason this exists. A world render OBVR starts
+// itself draws the full scene from inside the 2D pass - 461 draws in an open
+// Esc menu, measured - and draws nothing at all from Present, where every
+// earlier attempt was made. The 2D pass also keeps running while a menu is
+// up, which the world render does not. Null clears it.
+void SetMenuBackgroundCallback(void (*run)());
+
 // Draws since the process started, all of them - the world renders included.
 // Read either side of a call to subtract: the difference is what that call
 // drew. Wraps at 2^32 like any counter, and a subtraction of two readings

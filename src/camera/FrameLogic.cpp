@@ -144,6 +144,13 @@ bool WorldControlProbeWanted(bool probeEnabled, bool menuIsUp, bool hadCameraPas
 	return probeEnabled && !menuIsUp && hadCameraPass && attemptsLeft > 0;
 }
 
+bool MenuLiveBackgroundWanted(bool enabled, bool stereoDual, bool menuIsUp,
+                              bool headsetConnected, bool haveCameraBase,
+                              bool alreadyRanThisFrame, bool engineDrewThisFrame) {
+	return enabled && stereoDual && menuIsUp && headsetConnected && haveCameraBase &&
+	       !alreadyRanThisFrame && !engineDrewThisFrame;
+}
+
 bool LayoutProbeDue(bool probeEnabled, UInt32 presentedFrame, UInt32 lastProbeFrame) {
 	return probeEnabled && presentedFrame - lastProbeFrame >= kLayoutProbeFrameGap;
 }

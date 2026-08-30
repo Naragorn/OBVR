@@ -560,6 +560,54 @@ void TestWorldControlProbe() {
 	Check(!WorldControlProbeWanted(true, false, true, 0), "a spent budget stops it");
 }
 
+void TestMenuLiveBackground() {
+	std::printf("When a menu frame draws the world behind itself\n");
+
+	using obvr::camera::MenuLiveBackgroundWanted;
+
+	// The one flow that runs: asked for, dual pass, a menu is up, a headset is
+	// delivering poses, the camera hook has left a base to build on, this
+	// frame has not already drawn one, and the engine did not draw it either.
+	Check(MenuLiveBackgroundWanted(true, true, true, true, true, false, false),
+	      "a menu frame with everything in place draws the world");
+
+	// Off by default, and off means off: it costs two world renders per menu
+	// frame where the held pair costs none.
+	Check(!MenuLiveBackgroundWanted(false, true, true, true, true, false, false),
+	      "switched off, the held pair keeps the menu");
+
+	// Alternate eyes has no second capture to fill - it would submit one fresh
+	// eye beside one stale one.
+	Check(!MenuLiveBackgroundWanted(true, false, true, true, true, false, false),
+	      "only the dual pass captures a pair this way");
+
+	// Every other frame either has a world render of its own or is a video.
+	Check(!MenuLiveBackgroundWanted(true, true, false, true, true, false, false),
+	      "a frame with no menu needs nothing drawn behind one");
+
+	// Without poses there is no head to draw from, and drawing from where the
+	// head now is was the entire point.
+	Check(!MenuLiveBackgroundWanted(true, true, true, false, true, false, false),
+	      "no headset, no fresh viewpoint worth two renders");
+
+	// The main menu is exactly this: a menu before the first world render, so
+	// no transform the game wrote has ever been seen.
+	Check(!MenuLiveBackgroundWanted(true, true, true, true, false, false, false),
+	      "no camera base yet - the main menu - falls back");
+
+	// The 2D pass runs more than once per frame; each entry would otherwise
+	// start its own pair of renders and its own compositor frame.
+	Check(!MenuLiveBackgroundWanted(true, true, true, true, true, true, false),
+	      "once per frame, however often the 2D pass runs");
+
+	// And the case that makes this a fallback rather than a rival: with the
+	// engine's static menu background cleared, the engine renders the world
+	// behind the menu itself and the camera hook runs, so the frame is an
+	// ordinary stereo one and there is nothing left here to draw.
+	Check(!MenuLiveBackgroundWanted(true, true, true, true, true, false, true),
+	      "the engine drew it already - stand aside");
+}
+
 void TestLayoutProbeDue() {
 	std::printf("When the layout probe takes its next measurement\n");
 
@@ -926,6 +974,8 @@ int main() {
 	TestMenuWorldProbe();
 	std::printf("\n");
 	TestWorldControlProbe();
+	std::printf("\n");
+	TestMenuLiveBackground();
 	std::printf("\n");
 	TestLayoutProbeDue();
 	std::printf("\n");

@@ -671,6 +671,51 @@ const char* MenuWorldProbeRefusal() {
 	return "no reason - it ran";
 }
 
+bool RunMenuStereoPasses(void (*moveCamera)(), UInt32& drawsFirst, UInt32& drawsSecond) {
+	drawsFirst = 0;
+	drawsSecond = 0;
+	if (g_original == nullptr || g_lastRendererSelf == nullptr || g_rendering ||
+	    moveCamera == nullptr) {
+		return false;
+	}
+
+	g_rendering = true;
+
+	// Zeroed across both renders, not just the second. The engine is not
+	// running its own render on these frames at all, so every one of these is
+	// an extra pass over a world that is meant to be standing still - and a
+	// time-driven update that advances here advances something the player
+	// asked to pause.
+	float* const frameSeconds = reinterpret_cast<float*>(addr::kFrameSecondsAddress);
+	const float savedFrameSeconds = *frameSeconds;
+	const bool clockPlausible = savedFrameSeconds >= 0.0f && savedFrameSeconds < 1.0f;
+	if (clockPlausible) {
+		*frameSeconds = 0.0f;
+	}
+
+	const UInt32 before = TotalDrawCount();
+	SetBonePassMode(BonePassMode::Capture);
+	g_original(g_lastRendererSelf, nullptr, nullptr);
+	SetBonePassMode(BonePassMode::Off);
+	const UInt32 afterFirst = TotalDrawCount();
+
+	moveCamera();
+
+	SetBonePassMode(BonePassMode::Replace);
+	g_original(g_lastRendererSelf, nullptr, nullptr);
+	SetBonePassMode(BonePassMode::Off);
+	const UInt32 afterSecond = TotalDrawCount();
+
+	if (clockPlausible) {
+		*frameSeconds = savedFrameSeconds;
+	}
+	g_rendering = false;
+
+	drawsFirst = afterFirst - before;
+	drawsSecond = afterSecond - afterFirst;
+	return true;
+}
+
 bool RunMenuWorldProbe(UInt32& drawsOut, UInt32& vertexSetupOut) {
 	drawsOut = 0;
 	vertexSetupOut = 0;

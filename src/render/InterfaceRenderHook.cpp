@@ -222,6 +222,10 @@ UInt32 g_placeProbesLeft = 3;
 UInt32 g_placeProbesMenuLeft = 3;
 bool g_placeProbeMenuWasUp = false;
 
+// What to run before the 2D draws, for the live menu background. See
+// SetMenuBackgroundCallback.
+void (*g_menuBackground)() = nullptr;
+
 // And the pass's own tail, kept in a ring on the same armed pass: if the
 // cursor is drawn INSIDE the pass it is drawn late, so the last few draws
 // with their viewports answer the in-pass half of the question in the same
@@ -2031,6 +2035,13 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 	// declines - and a budget decremented there is a budget entirely used up
 	// before the game is even loaded, which is exactly how the first run of
 	// this measured nothing.
+	// The live background, before the 2D draws over it. Only on the ordinary
+	// pass - a menu asking for the world in a texture, or the save game
+	// screenshot, wants exactly what it asked for and not a stereo pair.
+	if (renderedTexture == nullptr && g_menuBackground != nullptr) {
+		g_menuBackground();
+	}
+
 	// Two budgets, because the two answers are different questions. The world
 	// one settled that the moment decides it: from here the render draws,
 	// where the identical call from Present draws nothing. The menu one is
@@ -2174,6 +2185,8 @@ void ArmBetweenTrace() {
 	// a menu opening or closing rearms it.
 	g_passTraceLeft = 12;
 }
+
+void SetMenuBackgroundCallback(void (*run)()) { g_menuBackground = run; }
 
 UInt32 TotalDrawCount() { return g_drawsTotal; }
 

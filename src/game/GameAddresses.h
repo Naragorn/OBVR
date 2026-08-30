@@ -454,6 +454,49 @@ inline constexpr UInt32 kNiChildrenOffset = 0xB0;
 inline constexpr UInt32 kNiChildCountOffset = 0xB6;
 inline constexpr UInt32 kNiCameraFrustumOffset = 0xEC;
 
+// The engine's own switch for a live world behind menus, and the reason it
+// is normally still.
+//
+// Oblivion does not simply stop rendering while a menu is up. It renders the
+// world ONCE into a texture (0x0040D160), sets a "the snapshot is valid" byte
+// at 0x00B33397, and from then on blits that texture instead of rendering -
+// which is why the scene counter stands still, measured, across every menu
+// frame. The guard is at
+//
+//   0040D5FE  cmp byte ptr ds:[00B33397h],bl
+//   0040D604  jne 0040D662              <- snapshot valid: skip the render
+//   ...
+//   0040D658  call 0040C830             <- otherwise, render the world live
+//
+// and whether the snapshot is ever taken hangs on one byte earlier:
+//
+//   0040DA54  cmp byte ptr ds:[00B33396h],bl
+//   0040DA5A  je  0040DB37              <- zero: never take one
+//
+// kStaticMenuBackground is that byte. It is a copy of Oblivion's own display
+// setting bStaticMenuBackground, written once during start-up by
+//
+//   0040713D  mov dl,byte ptr ds:[00B06DC4h]
+//   00407143  mov byte ptr ds:[00B33396h],dl
+//
+// from a call site that runs a single time in WinMain. Clear it and the
+// engine renders the world live behind every menu, on its own, through its
+// own call - no patched bytes, no self-initiated render.
+//
+// The copy is deliberately the thing OBVR touches rather than the setting at
+// 0x00B06DC4. Writing the setting is the shape that made iSize dangerous:
+// settings can be written back to the user's INI, and a value the game
+// persists is a value that outlives the session. Nothing persists this copy.
+//
+// The simulation is not affected, which is the whole point. Every pause in
+// the update step is guarded by its own fresh IsMenuMode call (0x00578F60 at
+// 0x0040DC61 and seven other sites in 0x0040D800), not by this byte - so the
+// world stays frozen while the picture comes alive. The engine itself already
+// drives this path: with SleepWait open (menu id 0x3F4) it retakes the
+// snapshot every frame because world time is running.
+inline constexpr UInt32 kStaticMenuBackground = 0x00B33396;
+inline constexpr UInt32 kMenuSnapshotValid = 0x00B33397;
+
 // The accumulator hanging off the renderer singleton (kRendererPointer, well
 // above) at +0x08 - the one the walk registers geometry with. 0x0040CE1B
 // swaps a second accumulator in there for the first-person pass and
