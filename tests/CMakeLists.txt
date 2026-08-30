@@ -331,6 +331,22 @@ endif()
 
 add_test(NAME bone_rebase COMMAND bone_rebase_test)
 
+# The name table is pure. ActiveMenuId, in the same file, reads Oblivion's
+# memory through fixed addresses and stays untested - it links here and is
+# never called, which is the same arrangement the other game-side files have.
+add_executable(menu_type_test
+	MenuTypeTest.cpp
+	../src/game/MenuType.cpp
+)
+
+target_include_directories(menu_type_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(menu_type_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME menu_type COMMAND menu_type_test)
+
 add_executable(menu_shade_test
 	MenuShadeTest.cpp
 )

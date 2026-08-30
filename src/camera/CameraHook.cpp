@@ -12,6 +12,7 @@
 #include "game/GameCamera.h"
 #include "game/MenuBackground.h"
 #include "game/MenuMode.h"
+#include "game/MenuType.h"
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
 #include "render/DxvkInterop.h"
@@ -85,6 +86,7 @@ bool g_dualArmed = false;
 NiAVObject* g_menuBaseNode = nullptr;
 NiPoint3 g_menuBasePos{0.0f, 0.0f, 0.0f};
 NiMatrix33 g_menuBaseRot;
+float g_menuBaseVerticalOffset = 0.0f;
 bool g_menuBaseThirdPerson = false;
 
 // The live menu background's frame: the request its two captures are made
@@ -127,6 +129,7 @@ bool g_viewportReported[2] = {false, false};
 UInt32 g_menuTraceLeft = 0;
 bool g_menuTraceWasUp = false;
 UInt32 g_menuTraceLastScene = 0;
+UInt32 g_menuTraceLastId = 0;
 
 // A frame number that counts every presented frame, not every camera pass.
 //
@@ -421,8 +424,22 @@ void OnFrameEnd() {
 	// since the last frame, and whether the layer OBVR is about to show has
 	// anything in it. A menu that is on the monitor and not in the headset is
 	// one of those going wrong, and guessing which costs a session each time.
-	if (menuIsUp != g_menuTraceWasUp) {
+	// Which menu, and not only whether there is one. The persuasion minigame
+	// opens from inside a dialogue, so menuIsUp is already true when it
+	// appears and never changes across the step - which left the trace silent
+	// about the one menu that has a bug in it. A change of type is a change of
+	// menu whatever the flag does.
+	//
+	// A type of none is not a change: the field OBVR reads means "the menu the
+	// mouse is over", so it empties whenever the cursor is not on the menu,
+	// and treating that as a change would retrigger the trace all day.
+	const UInt32 menuId = menuIsUp ? game::ActiveMenuId() : game::kMenuIdNone;
+	const bool menuFlagChanged = menuIsUp != g_menuTraceWasUp;
+	const bool menuTypeChanged = menuId != game::kMenuIdNone && menuId != g_menuTraceLastId;
+
+	if (menuFlagChanged || menuTypeChanged) {
 		g_menuTraceWasUp = menuIsUp;
+		g_menuTraceLastId = menuId;
 		g_menuTraceLeft = 12;
 		render::ArmBetweenTrace();
 		if (menuIsUp) {
@@ -430,7 +447,9 @@ void OnFrameEnd() {
 			g_dressingReportedThisMenu = false;
 			g_menuProbeAttemptsLeft = kMenuWorldProbeAttempts;
 		}
-		OBVR_LOG("Menu trace: a menu just %s", menuIsUp ? "opened" : "closed");
+		OBVR_LOG("Menu trace: a menu just %s - %s (0x%03X)",
+		         menuFlagChanged ? (menuIsUp ? "opened" : "closed") : "changed",
+		         game::MenuIdName(menuId), menuId);
 	}
 	if (g_menuTraceLeft > 0) {
 		--g_menuTraceLeft;
@@ -804,26 +823,20 @@ UInt32 DualProbeRung() {
 // own values, taken at the one moment they can be: after the engine wrote
 // them and before OBVR did.
 //
-// KNOWN WRONG, and this is where to start when the feature is picked back up:
-// the picture sits offset from where the world was the instant before the
-// menu opened - reported from the headset on 2026-08-30, which is why the
-// setting is no longer offered in the INI.
+// The picture used to sit offset from where the world was the instant before
+// the menu opened - reported from the headset on 2026-08-30. The cause was
+// here, and it was the base rotation: this function started from the raw
+// rotation the engine wrote, while a world frame is built on the levelled one
+// the look control hands back, with the vertical tilt lifted out into a
+// height. Since that rotation carries the head offset and the eye step as well
+// as the facing, the whole viewpoint moved.
 //
-// The likely cause, from reading the two paths side by side rather than from
-// a measurement: the camera hook does not build the world frame on the raw
-// engine rotation either. With a headset connected it hands that rotation to
-// the look control and uses what comes back -
-//
-//   baseRotation = g_lookControl.GetRotation();
-//   verticalOffset = g_lookControl.GetVerticalOffset();
-//
-// - which is the levelled rotation, with the vertical look folded in. This
-// function starts from g_menuBaseRot, the rotation before any of that, and
-// only adds the vertical offset back. So the menu's viewpoint differs from
-// the world's by exactly whatever the look control was contributing, which on
-// a third-person frame is a height and a levelling and on any frame is not
-// nothing. Reading the look control's current rotation here, instead of the
-// raw base, is the first thing to try.
+// Fixed at the source instead of here: g_menuBaseRot and
+// g_menuBaseVerticalOffset are now the values the last world frame was
+// actually built on, so this function starts from exactly what the world last
+// looked like. Found by laying the two paths side by side - they agreed on
+// everything else, which is what makes it the cause rather than a candidate -
+// and not yet confirmed in the headset.
 void PlaceMenuCamera(bool leftEye) {
 	if (g_menuBaseNode == nullptr) {
 		return;
@@ -831,14 +844,14 @@ void PlaceMenuCamera(bool leftEye) {
 
 	const Config& config = GetConfig();
 
-	// The look control is read, not stepped. It smooths over time and there is
-	// no time passing here: the world is paused, and driving it from a menu
-	// would let the camera drift on its own while the player reads.
+	// Read, never stepped. The look control smooths over time and no time is
+	// passing here - the world is paused, and driving it from a menu would let
+	// the camera drift on its own while the player reads.
 	const NiMatrix33 baseRotation = g_menuBaseRot;
 	const NiMatrix33 finalRotation = baseRotation * g_headTracker.GetCameraRotation();
 
 	NiPoint3 pos = g_menuBasePos + baseRotation * g_headTracker.GetCameraOffset();
-	pos.z += g_lookControl.GetVerticalOffset();
+	pos.z += g_menuBaseVerticalOffset;
 
 	const float half = ScaledEyeHalfSeparation(g_headTracker.GetHalfEyeSeparationUnits(),
 	                                           config.tracker.eyeSeparationScale);
@@ -1405,7 +1418,6 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// can be read - after the engine has written it, before OBVR has.
 	g_menuBaseNode = cameraNode;
 	g_menuBasePos = cameraNode->localTransform.pos;
-	g_menuBaseRot = cameraNode->localTransform.rot;
 	g_menuBaseThirdPerson = isThirdPerson;
 
 	NiMatrix33 baseRotation = cameraNode->localTransform.rot;
@@ -1418,6 +1430,27 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	} else {
 		g_lookControl.Reset();
 	}
+
+	// The rotation this frame was actually built on - which is not the one the
+	// engine wrote. With a headset connected the look control levels it and
+	// lifts the vertical tilt out into a height, and everything downstream
+	// uses what comes back.
+	//
+	// This is what a menu frame has to start from too. Taking the raw rotation
+	// there instead leaves the menu's viewpoint facing a different way and
+	// sitting at a different height than the world did the instant before the
+	// menu opened - and laying the two paths side by side, that is the only
+	// difference between them: position, head offset, head rotation and eye
+	// step are all built the same way from the same values. So it is the
+	// offset the live menu background was reported with.
+	//
+	// Remembered here rather than read back out of the look control from the
+	// menu path, because the look control is only stepped by this hook. A
+	// session where this hook first ran without a headset would leave it
+	// holding the identity rotation, and the menu path would then place the
+	// camera facing world north for reasons nothing in that path explains.
+	g_menuBaseRot = baseRotation;
+	g_menuBaseVerticalOffset = verticalOffset;
 
 	// The head offset is measured in the camera's own space, so it is carried
 	// over by the base rotation. The vertical look is not: it is a height, and
