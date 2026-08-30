@@ -103,6 +103,14 @@ struct Config {
 	// not a default. In [Debug], hot-reloadable, off by default.
 	bool layoutProbe = false;
 
+	// Logs the interface cursor's internals every couple of seconds while a
+	// menu is up: the InterfaceManager's position triples, the cursor tile's
+	// node translation (where the sprite is planted) and the active tile with
+	// its translation (where the game holds the mouse). The instrument for
+	// the raised copy's mouse offset - clicks landing above the visible
+	// cursor. Read-only. In [Debug], hot-reloadable, off by default.
+	bool cursorProbe = false;
+
 	// Paints an opaque red square into the middle of the HUD overlay texture
 	// just before it is handed over - the instrument for a HUD that arrives
 	// as nothing. Square visible: the overlay path works, the layer's alpha

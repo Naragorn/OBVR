@@ -376,6 +376,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.hudProbe = ReadBool("Debug", "HudProbe", config.hudProbe, path);
 	config.menuWorldProbe = ReadBool("Debug", "MenuWorldProbe", config.menuWorldProbe, path);
 	config.layoutProbe = ReadBool("Debug", "LayoutProbe", config.layoutProbe, path);
+	config.cursorProbe = ReadBool("Debug", "CursorProbe", config.cursorProbe, path);
 }
 
 }  // namespace
@@ -490,6 +491,10 @@ bool Config::Load(const char* fileName) {
 		// stalls every couple of seconds should say in its log why.
 		OBVR_LOG("Config: Debug.LayoutProbe=1 - the covered rectangle of cinema and menu "
 		         "frames is measured and logged every couple of seconds");
+	}
+	if (cursorProbe) {
+		OBVR_LOG("Config: Debug.CursorProbe=1 - the interface cursor's position, sprite "
+		         "node and active tile are logged every couple of seconds");
 	}
 	// The suppressed case is named rather than silently corrected. Menus=world
 	// without HudOverlay would deliver the world in stereo with the menu

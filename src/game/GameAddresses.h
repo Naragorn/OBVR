@@ -155,6 +155,26 @@ inline constexpr UInt32 kUiScreenHeightCopy = 0x00B06C50;
 // vanished. The mouse offset between sprite and hit test under a raised copy
 // comes from somewhere else, still unfound.
 
+// The InterfaceManager singleton pointer, for the read-only cursor probe
+// that hunts that unfound source. Two sources: xOBSE's GameAPI.cpp calls a
+// GetSingleton at 0x582160, and this binary's disassembly of that function
+// reads the pointer from [0x00B3A6E0] (creating a 0x134-byte object into it
+// when null). Field offsets, from xOBSE's GameAPI.h (STATIC_ASSERTed there)
+// and this binary's cursor-movement function 0x57E7C0: +0x1C the cursor
+// Tile*, +0x88 altActiveTile, +0x98 activeTile; the movement function writes
+// the cursor position as floats at +0x20/+0x24/+0x28 and a derived triple at
+// +0x2C/+0x30/+0x34, and reaches the cursor tile's render node through
+// tile+0x24, whose NiAVObject translation sits at +0x54. The probe only ever
+// reads, and only behind null checks.
+inline constexpr UInt32 kInterfaceManagerPointer = 0x00B3A6E0;
+inline constexpr UInt32 kInterfaceCursorTileOffset = 0x1C;
+inline constexpr UInt32 kInterfaceCursorPosOffset = 0x20;
+inline constexpr UInt32 kInterfaceCursorDerivedOffset = 0x2C;
+inline constexpr UInt32 kInterfaceAltActiveTileOffset = 0x88;
+inline constexpr UInt32 kInterfaceActiveTileOffset = 0x98;
+inline constexpr UInt32 kTileRenderNodeOffset = 0x24;
+inline constexpr UInt32 kNiTranslateOffset = 0x54;
+
 // Expected game version. OBSE reports it as oblivionVersion.
 inline constexpr UInt32 kOblivionVersion_1_2_416 = 0x010201A0;
 

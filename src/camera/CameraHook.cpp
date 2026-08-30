@@ -19,6 +19,7 @@
 #include "render/HeadsetRenderer.h"
 #include "render/HudLayer.h"
 #include "render/InterfaceRenderHook.h"
+#include "render/CursorProbe.h"
 #include "render/LayoutProbe.h"
 #include "render/MenuShade.h"
 #include "render/PresentHook.h"
@@ -154,6 +155,7 @@ UInt32 g_menuProbeAttemptsLeft = 0;
 // measurements - cinema and menu - because the cost being rationed is the
 // same GPU stall either way.
 UInt32 g_lastLayoutProbeFrame = 0;
+UInt32 g_lastCursorProbeFrame = 0;
 
 // Says, once, which part of the frame Oblivion is drawing into.
 //
@@ -394,6 +396,16 @@ void OnFrameEnd() {
 			MaybeSubmitHud(true);
 		}
 
+		// The cursor's side of the same question, on the same cadence as the
+		// layout probe but its own switch: where the sprite is planted versus
+		// where the game holds the mouse. Menu frames are where a cursor
+		// exists to measure.
+		if (LayoutProbeDue(GetConfig().cursorProbe, g_presentedFrame,
+		                   g_lastCursorProbeFrame)) {
+			g_lastCursorProbeFrame = g_presentedFrame;
+			render::ProbeCursor(g_presentedFrame);
+		}
+
 		// Whether the 2D pass ran at all on this held frame, and what it drew.
 		// The menus are reported missing from the headset while the trace shows
 		// held frames submitting as designed, so the open question is this one.
@@ -501,6 +513,13 @@ void OnFrameEnd() {
 			OBVR_LOG("Layout probe: the cinema measurement %s (frame %u)",
 			         measured ? "found only black" : "was refused", g_presentedFrame);
 		}
+	}
+
+	// The main menu is a cinema frame, and its unclickable buttons are the
+	// sharpest form of the offset - so the cursor is measured here too.
+	if (LayoutProbeDue(GetConfig().cursorProbe, g_presentedFrame, g_lastCursorProbeFrame)) {
+		g_lastCursorProbeFrame = g_presentedFrame;
+		render::ProbeCursor(g_presentedFrame);
 	}
 
 	render::HeadsetRenderer::FrameRequest menu;
