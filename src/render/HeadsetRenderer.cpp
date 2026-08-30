@@ -557,6 +557,31 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 				// happened to be at when it appeared - and stays there.
 				vr::LevelPose(m_flatPose);
 			}
+
+			// Reported, because the recenter key was doing nothing visible
+			// during the intro films while the log said it had been pressed
+			// and the anchor dropped. Dropping the anchor is only half the
+			// job: something has to take a new one, and if the pose cannot be
+			// read there is nothing to take. Then the submit hands over no
+			// pose at all, the compositor assumes the picture was drawn from
+			// where the head is now, and the picture rides the face - which
+			// looks exactly like a key that does nothing.
+			//
+			// Budgeted, because this runs on every flat frame that has no
+			// anchor, and a film is thousands of them.
+			if (m_flatAnchorReportsLeft > 0) {
+				--m_flatAnchorReportsLeft;
+				if (m_flatPoseValid) {
+					OBVR_LOG("Render: the flat picture took a fresh anchor at "
+					         "(%.2f, %.2f, %.2f)",
+					         static_cast<double>(m_flatPose.m[0][3]),
+					         static_cast<double>(m_flatPose.m[1][3]),
+					         static_cast<double>(m_flatPose.m[2][3]));
+				} else {
+					OBVR_LOG("Render: no pose to anchor the flat picture to - it will ride "
+					         "the head, and the recenter key has nothing to move");
+				}
+			}
 		}
 
 		left = backend.SubmitEye(vr::openvr::kEyeLeft, &flatLeft,
