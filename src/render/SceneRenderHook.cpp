@@ -51,6 +51,17 @@ bool g_rendering = false;
 // switched the probe on mid-session would otherwise have no reference at all.
 UInt32 g_engineSideReportsLeft = 3;
 
+// The engine render's own draw and setup counts, owed the same few times.
+UInt32 g_engineCostReportsLeft = 3;
+
+// The vertex pipeline setup of one moment, as a single number. Only its
+// difference across a call is used, so summing the five is enough to answer
+// "did the pipeline get set up at all" without pretending the sum means more.
+UInt32 VertexSetupTotal(const StateCallCounts& calls) {
+	return calls.transforms + calls.declarations + calls.fvfs + calls.vertexShaders +
+	       calls.constantCalls;
+}
+
 // World renders, numbered, and the clock the probe sweep runs on.
 //
 // This trace exists because the interface hook cannot see its own absence.
@@ -421,7 +432,27 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	// those want exactly what they asked for.
 	if (g_rendering || renderedTexture != nullptr || g_callbacks.wantsSecondPass == nullptr ||
 	    !g_callbacks.wantsSecondPass()) {
+		// What the engine's own render costs, in the same two numbers the
+		// probe reports. Without them the probe's "343 setup calls, no draws"
+		// has nothing to be large or small against - and the difference
+		// between "the walk found nothing and 343 is fixed overhead" and "the
+		// walk found everything and the draws went missing" is the whole
+		// remaining question. Same budget as the scene graph report beside
+		// it, and only for the ordinary pass.
+		const bool measureThisOne = g_engineCostReportsLeft > 0 && renderedTexture == nullptr;
+		const UInt32 drawsBefore = measureThisOne ? TotalDrawCount() : 0;
+		const UInt32 setupBefore = measureThisOne ? VertexSetupTotal(TotalStateCalls()) : 0;
+
 		g_original(self, unusedEdx, renderedTexture);
+
+		if (measureThisOne) {
+			--g_engineCostReportsLeft;
+			OBVR_LOG("Scene render cost: the engine's own render made %u draw call(s) with "
+			         "%u vertex setup call(s) (scene call %u)",
+			         TotalDrawCount() - drawsBefore,
+			         VertexSetupTotal(TotalStateCalls()) - setupBefore, g_sceneCall);
+		}
+
 		TraceFrame(renderedTexture != nullptr ? "texture pass" : "single", passesLastFrame,
 		           drawsLastFrame);
 		return;
@@ -459,6 +490,19 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	SetBonePassMode(BonePassMode::Off);
 	const UInt32 drawsAfterFirst = TotalDrawCount();
 	const StateCallCounts stateAfterFirst = TotalStateCalls();
+
+	// The same reading the single-pass branch takes, because whichever branch
+	// a run happens to take is not the run's subject - the first pass of a
+	// dual frame is the identical engine call, and the probe's numbers need
+	// something to be compared against either way.
+	if (g_engineCostReportsLeft > 0) {
+		--g_engineCostReportsLeft;
+		OBVR_LOG("Scene render cost: the engine's own render made %u draw call(s) with %u "
+		         "vertex setup call(s) (scene call %u, first pass of a dual frame)",
+		         drawsAfterFirst - drawsAtEntry,
+		         VertexSetupTotal(stateAfterFirst) - VertexSetupTotal(stateAtEntry), g_sceneCall);
+	}
+
 	MarkPoolTimeline("between the passes");
 	g_callbacks.betweenPasses();
 	const UInt32 drawsAfterBetween = TotalDrawCount();
@@ -625,14 +669,6 @@ const char* MenuWorldProbeRefusal() {
 		return "a render is already running";
 	}
 	return "no reason - it ran";
-}
-
-// The vertex pipeline setup of one moment, as a single number. Only its
-// difference across a call is used, so summing the five is enough to answer
-// "did the pipeline get set up at all" without pretending the sum means more.
-UInt32 VertexSetupTotal(const StateCallCounts& calls) {
-	return calls.transforms + calls.declarations + calls.fvfs + calls.vertexShaders +
-	       calls.constantCalls;
 }
 
 bool RunMenuWorldProbe(UInt32& drawsOut, UInt32& vertexSetupOut) {

@@ -9,6 +9,7 @@ namespace {
 using addr::kCullingProcessListOffsetDeadEnd;
 using addr::kNiCameraFrustumOffset;
 using addr::kNiChildCountOffset;
+using addr::kNiChildrenOffset;
 using addr::kNiFlagsOffset;
 using addr::kNiWorldBoundOffset;
 using addr::kRendererAccumulatorOffset;
@@ -108,6 +109,37 @@ void ProbeSceneGraph(UInt32 frameIndex, const char* occasion) {
 		         static_cast<double>(frustum[0]), static_cast<double>(frustum[1]),
 		         static_cast<double>(frustum[2]), static_cast<double>(frustum[3]),
 		         static_cast<double>(frustum[4]), static_cast<double>(frustum[5]));
+	}
+
+	// The children, because the root's own flags clear it of nothing.
+	//
+	// The walk turns back per node: NiAVObject::Cull tests bit 0 on whatever
+	// it is handed, and the render sets and clears that very bit on the
+	// first-person node by itself (0x0040C95A, 0x0040CDA5) as its way of
+	// hiding it. A root that is not culled while everything hanging off it
+	// is would produce precisely what has been measured, and reading only
+	// the root - as this probe did at first - cannot tell the two apart.
+	const UInt8* const* const children =
+		reinterpret_cast<const UInt8* const*>(Deref(scene, kNiChildrenOffset));
+	if (children == nullptr) {
+		OBVR_LOG("Scene graph probe: the child array is null");
+		return;
+	}
+	const UInt32 shown = childCount < 8 ? childCount : 8;
+	for (UInt32 i = 0; i < shown; ++i) {
+		const UInt8* const child = Plausible(children[i]) ? children[i] : nullptr;
+		if (child == nullptr) {
+			OBVR_LOG("Scene graph probe: child %u is null", i);
+			continue;
+		}
+		const UInt16 childFlags = *reinterpret_cast<const UInt16*>(child + kNiFlagsOffset);
+		const float* const childBound = reinterpret_cast<const float*>(child + kNiWorldBoundOffset);
+		OBVR_LOG("Scene graph probe: child %u at %p flags=%04X (app culled=%u) grandchildren=%u "
+		         "bound centre (%.1f, %.1f, %.1f) radius %.1f",
+		         i, child, childFlags, static_cast<UInt32>(childFlags & 1u),
+		         *reinterpret_cast<const UInt16*>(child + kNiChildCountOffset),
+		         static_cast<double>(childBound[0]), static_cast<double>(childBound[1]),
+		         static_cast<double>(childBound[2]), static_cast<double>(childBound[3]));
 	}
 
 	// NiNode keeps its children in an array; the scene graph having children

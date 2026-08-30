@@ -214,6 +214,11 @@ UInt32 g_sampleBudget = 6;
 UInt32 g_afterPassSamples = 0;
 UInt32 g_afterPassCount = 0;
 
+// The place experiment's budget - see HookedRenderInterface. Each one costs a
+// whole wasted world render, and three is enough to see whether the answer is
+// the same one Present gives.
+UInt32 g_placeProbesLeft = 3;
+
 // And the pass's own tail, kept in a ring on the same armed pass: if the
 // cursor is drawn INSIDE the pass it is drawn late, so the last few draws
 // with their viewports answer the in-pass half of the question in the same
@@ -2001,6 +2006,43 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 	const UInt32 invocation = ++g_invocation;
 	++g_passesSinceScene;
 	g_lastSelf = self;
+
+	// The place experiment. Everything measured so far says the world render
+	// OBVR calls itself comes back empty because of WHERE it is called from,
+	// not because of the menu: the identical call on an ordinary world frame,
+	// made from Present, draws nothing either, while the engine's own render
+	// of the same scene makes 399 draws with 3216 setup calls against the
+	// probe's 343 and none.
+	//
+	// This is the other place worth trying, and the only other one that is
+	// any use: the 2D pass runs inside the engine's own BeginScene/EndScene -
+	// which is why no bracket is opened here, unlike in Present - and it goes
+	// on running while a pause menu is up, on the very frames a live
+	// background would have to be drawn on. If the render draws from here,
+	// the feature is a matter of moving the call; if it comes back empty here
+	// too, the moment is not what decides it and the search moves on with one
+	// more suspect gone.
+	// The budget is spent on attempts that actually ran, not on attempts that
+	// were refused. The main menu draws its 2D long before any world render
+	// has been seen, so there is no renderer instance to call and the probe
+	// declines - and a budget decremented there is a budget entirely used up
+	// before the game is even loaded, which is exactly how the first run of
+	// this measured nothing.
+	if (g_placeProbesLeft > 0 && renderedTexture == nullptr && GetConfig().menuWorldProbe) {
+		UInt32 draws = 0;
+		UInt32 setup = 0;
+		const bool ran = RunMenuWorldProbe(draws, setup);
+		if (ran) {
+			--g_placeProbesLeft;
+			OBVR_LOG("Place probe: from inside the 2D pass a self-initiated world render ran "
+			         "and made %u draw call(s) with %u vertex setup call(s) - %s (invocation "
+			         "%u, scene call %u)",
+			         draws, setup,
+			         draws > 0 ? "IT DRAWS - the moment is what decides it"
+			                   : "still empty, so the moment is not what decides it",
+			         invocation, CurrentSceneCall());
+		}
+	}
 	const bool window = invocation > 150 && invocation <= 1400;
 	if (window) {
 		ResetPassStats();

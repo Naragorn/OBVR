@@ -450,6 +450,7 @@ inline constexpr UInt32 kCullingProcessListOffsetDeadEnd = 0x08;
 // same bit on any NiAVObject. Second source is the probe that reads them.
 inline constexpr UInt32 kNiFlagsOffset = 0x18;
 inline constexpr UInt32 kNiWorldBoundOffset = 0x20;
+inline constexpr UInt32 kNiChildrenOffset = 0xB0;
 inline constexpr UInt32 kNiChildCountOffset = 0xB6;
 inline constexpr UInt32 kNiCameraFrustumOffset = 0xEC;
 
