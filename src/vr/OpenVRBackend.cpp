@@ -607,4 +607,58 @@ void LevelPose(openvr::HmdMatrix34& pose) {
 	// where the wearer is standing is right, and moving it would be a second
 	// change hiding inside this one.
 }
+
+void LevelRollOnly(openvr::HmdMatrix34& pose) {
+	// Keeps where the wearer is looking, horizontally and vertically, and
+	// takes out only the tilt of the head.
+	//
+	// This is what a flat picture wants and LevelPose is not. LevelPose drops
+	// pitch on purpose, so that the recenter key means the same thing whether
+	// or not a menu is open - which is right for the world camera, where
+	// vertical aim belongs to the game. A picture hanging in the room is a
+	// different question: the key means "put it where I am looking", and a
+	// wearer who is looking down at the time means down. Measured from the
+	// headset: pressing the key during a film moved nothing, and the anchors
+	// it took were within five centimetres of each other - the head had been
+	// tilted, not turned, and tilt was exactly what was being discarded.
+	//
+	// Roll still goes. A horizon at an angle is nausea within seconds, and
+	// nobody presses a key to ask for one.
+	const float bx = pose.m[0][2];
+	const float by = pose.m[1][2];
+	const float bz = pose.m[2][2];
+
+	// Right is horizontal by construction: the cross product of world up with
+	// backward has no vertical component.
+	float rx = bz;
+	float rz = -bx;
+
+	const float lengthSquared = rx * rx + rz * rz;
+	if (!(lengthSquared > 0.0001f)) {
+		// Looking straight up or straight down: there is no horizontal
+		// direction left to square the picture against, and inventing one
+		// would spin it by whatever the arithmetic produced. Left alone.
+		return;
+	}
+
+	const float length = math::Sqrt(lengthSquared);
+	rx /= length;
+	rz /= length;
+
+	// Up completes the frame: backward crossed with right.
+	const float ux = by * rz;
+	const float uy = bz * rx - bx * rz;
+	const float uz = -by * rx;
+
+	pose.m[0][0] = rx;
+	pose.m[1][0] = 0.0f;
+	pose.m[2][0] = rz;
+
+	pose.m[0][1] = ux;
+	pose.m[1][1] = uy;
+	pose.m[2][1] = uz;
+
+	// Backward is untouched, which is what keeps both the heading and the
+	// pitch. The position, as above, is not this function's business.
+}
 }  // namespace obvr::vr

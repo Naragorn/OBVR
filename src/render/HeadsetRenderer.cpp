@@ -553,9 +553,13 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 		if (!m_flatPoseValid) {
 			m_flatPoseValid = backend.GetRenderPoseMatrix(m_flatPose);
 			if (m_flatPoseValid) {
-				// Levelled, or the picture hangs at whatever angle the head
-				// happened to be at when it appeared - and stays there.
-				vr::LevelPose(m_flatPose);
+				// Roll out, heading and pitch kept. The picture appears where
+				// the wearer is looking, which is what the recenter key is
+				// pressed to ask for - including when they are looking down.
+				// Levelling the pitch away as well is right for the world
+				// camera and was wrong here: it made the key do nothing
+				// visible for anyone who had tilted rather than turned.
+				vr::LevelRollOnly(m_flatPose);
 			}
 
 			// Reported, because the recenter key was doing nothing visible

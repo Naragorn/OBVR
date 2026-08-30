@@ -24,6 +24,16 @@ namespace obvr::vr {
 // has no answer when the head points straight up.
 void LevelPose(openvr::HmdMatrix34& pose);
 
+// Keeps the heading AND the pitch, and takes out only the roll.
+//
+// For anything the recenter key is meant to bring in front of the wearer's
+// eyes rather than square with the world: a flat picture, a film. LevelPose
+// drops pitch deliberately, which is right for the world camera and wrong
+// here - a wearer looking down when they press the key is asking for the
+// picture down there. See the comment at the definition for the measurement
+// that separated the two.
+void LevelRollOnly(openvr::HmdMatrix34& pose);
+
 // Where the HUD quad hangs when it is anchored in the room rather than to
 // the head: the given pose, moved forward along its own facing by the given
 // distance.
