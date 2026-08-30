@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include "core/Config.h"
 #include "core/EntryDetour.h"
 #include "core/Log.h"
 #include "core/Memory.h"
@@ -171,6 +172,37 @@ const char* const kModeRedirected = "redirected";
 // arms the sample for up to twenty invocations, and six full matrix dumps
 // is what the log can carry before it stops being readable.
 UInt32 g_sampleBudget = 6;
+
+// The after-pass window for the cursor-draw probe. The cursor probe showed
+// the manager's position, the sprite node and the hit test standing on one
+// point, yet the visible sprite sits low by frameHeight/believedHeight and
+// runs off the picture before the position reaches its own clamp - so the
+// wrong number is in some DRAW's viewport, and the interface pass's draws
+// are already corrected. The suspect is a draw after the pass, outside the
+// viewport hook's window. While Debug.CursorProbe is on, every 120th pass
+// arms a few samples: each draw until the next pass logs its viewport and
+// world translation, which is enough to recognise a cursor quad drawn
+// full-frame.
+UInt32 g_afterPassSamples = 0;
+UInt32 g_afterPassCount = 0;
+
+// And the pass's own tail, kept in a ring on the same armed pass: if the
+// cursor is drawn INSIDE the pass it is drawn late, so the last few draws
+// with their viewports answer the in-pass half of the question in the same
+// run that answers the after-pass half.
+struct ProbedDraw {
+	const char* kind;
+	UInt32 type;
+	UInt32 count;
+	d3d9::Viewport viewport;
+	float worldX;
+	float worldY;
+	float worldZ;
+};
+bool g_tailArmed = false;
+ProbedDraw g_tailRing[4] = {};
+UInt32 g_tailNext = 0;
+UInt32 g_tailSeen = 0;
 
 void ResetPassStats() {
 	g_statsDraws = 0;
@@ -727,6 +759,62 @@ void SampleFirstDraw(void* device, const char* kind, UInt32 type, UInt32 count) 
 	}
 }
 
+// One line per sampled after-pass draw: enough to recognise the cursor - a
+// small primitive count, a world translation matching the cursor's own
+// position - and the viewport it runs through, which is the number on trial.
+void SampleAfterPassDraw(void* device, const char* kind, UInt32 type, UInt32 count) {
+	d3d9::Viewport viewport{};
+	if (auto getViewport =
+	        d3d9::Method<d3d9::GetViewportFn>(device, d3d9::kDeviceGetViewport)) {
+		getViewport(device, &viewport);
+	}
+	d3d9::Matrix4 world{};
+	if (auto getTransform =
+	        d3d9::Method<d3d9::GetTransformFn>(device, d3d9::kDeviceGetTransform)) {
+		getTransform(device, d3d9::kTransformWorld, &world);
+	}
+	OBVR_LOG("Cursor draw probe: %s type=%u count=%u viewport=%ux%u at %u,%u "
+	         "world=(%.1f, %.1f, %.1f)",
+	         kind, type, count, viewport.width, viewport.height, viewport.x, viewport.y,
+	         static_cast<double>(world.m[3][0]), static_cast<double>(world.m[3][1]),
+	         static_cast<double>(world.m[3][2]));
+}
+
+// The shared gate for the four draw hooks: on the armed pass the tail ring
+// records in-pass draws, and after it the sample window logs the draws that
+// run outside the viewport hook's protection. One branch where both are off.
+void MaybeSampleAfterPassDraw(void* device, const char* kind, UInt32 type, UInt32 count) {
+	if (g_inInterfacePass) {
+		if (!g_tailArmed) {
+			return;
+		}
+		ProbedDraw& slot = g_tailRing[g_tailNext];
+		g_tailNext = (g_tailNext + 1) % 4;
+		++g_tailSeen;
+		slot.kind = kind;
+		slot.type = type;
+		slot.count = count;
+		slot.viewport = d3d9::Viewport{};
+		if (auto getViewport =
+		        d3d9::Method<d3d9::GetViewportFn>(device, d3d9::kDeviceGetViewport)) {
+			getViewport(device, &slot.viewport);
+		}
+		d3d9::Matrix4 world{};
+		if (auto getTransform =
+		        d3d9::Method<d3d9::GetTransformFn>(device, d3d9::kDeviceGetTransform)) {
+			getTransform(device, d3d9::kTransformWorld, &world);
+		}
+		slot.worldX = world.m[3][0];
+		slot.worldY = world.m[3][1];
+		slot.worldZ = world.m[3][2];
+		return;
+	}
+	if (g_afterPassSamples > 0) {
+		--g_afterPassSamples;
+		SampleAfterPassDraw(device, kind, type, count);
+	}
+}
+
 SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex,
                                      UInt32 primitiveCount) {
 	++g_drawsTotal;
@@ -736,6 +824,7 @@ SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex
 		g_sampleNextDraw = false;
 		SampleFirstDraw(self, "dp", type, primitiveCount);
 	}
+	MaybeSampleAfterPassDraw(self, "dp", type, primitiveCount);
 	const SInt32 result = g_originalDrawPrimitive(self, type, startVertex, primitiveCount);
 	if (g_redirecting || g_observing) {
 		++g_statsDraws;
@@ -757,6 +846,7 @@ SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 base
 		g_sampleNextDraw = false;
 		SampleFirstDraw(self, "dip", type, primCount);
 	}
+	MaybeSampleAfterPassDraw(self, "dip", type, primCount);
 	const SInt32 result = g_originalDrawIndexed(self, type, baseVertexIndex, minVertexIndex,
 	                                            numVertices, startIndex, primCount);
 	if (g_redirecting || g_observing) {
@@ -776,6 +866,7 @@ SInt32 __stdcall HookedDrawPrimitiveUP(void* self, UInt32 type, UInt32 primitive
 		g_sampleNextDraw = false;
 		SampleFirstDraw(self, "dpup", type, primitiveCount);
 	}
+	MaybeSampleAfterPassDraw(self, "dpup", type, primitiveCount);
 	const SInt32 result = g_originalDrawUP(self, type, primitiveCount, vertexData, stride);
 	if (g_redirecting || g_observing) {
 		++g_statsDraws;
@@ -796,6 +887,7 @@ SInt32 __stdcall HookedDrawIndexedPrimitiveUP(void* self, UInt32 type, UInt32 mi
 		g_sampleNextDraw = false;
 		SampleFirstDraw(self, "dipup", type, primitiveCount);
 	}
+	MaybeSampleAfterPassDraw(self, "dipup", type, primitiveCount);
 	const SInt32 result =
 		g_originalDrawIndexedUP(self, type, minVertexIndex, numVertices, primitiveCount,
 	                            indexData, indexFormat, vertexData, stride);
@@ -1425,7 +1517,35 @@ bool EnsureTargetHook() {
 // draws into a texture of its own size, and its viewports are its own.
 void RunOriginalPassWindowed(void* self, void* unusedEdx, void* renderedTexture) {
 	g_inInterfacePass = renderedTexture == nullptr;
+	if (g_inInterfacePass) {
+		// A fresh frame-layer pass closes any leftover after-pass window, so
+		// the samples name only draws between this pass and the next - and
+		// every 120th pass arms the tail ring for its own draws.
+		g_afterPassSamples = 0;
+		if (GetConfig().cursorProbe && ++g_afterPassCount % 120 == 0) {
+			g_tailArmed = true;
+			g_tailNext = 0;
+			g_tailSeen = 0;
+		}
+	}
 	g_original(self, unusedEdx, renderedTexture);
+	if (g_inInterfacePass && g_tailArmed) {
+		g_tailArmed = false;
+		const UInt32 held = g_tailSeen < 4 ? g_tailSeen : 4;
+		for (UInt32 i = 0; i < held; ++i) {
+			// Oldest first: the ring's next slot is the oldest entry once it
+			// has wrapped.
+			const ProbedDraw& drawn =
+			    g_tailRing[(g_tailNext + 4 - held + i) % 4];
+			OBVR_LOG("Cursor draw probe: pass tail %u/%u %s type=%u count=%u "
+			         "viewport=%ux%u at %u,%u world=(%.1f, %.1f, %.1f)",
+			         i + 1, held, drawn.kind, drawn.type, drawn.count,
+			         drawn.viewport.width, drawn.viewport.height, drawn.viewport.x,
+			         drawn.viewport.y, static_cast<double>(drawn.worldX),
+			         static_cast<double>(drawn.worldY), static_cast<double>(drawn.worldZ));
+		}
+		g_afterPassSamples = 4;
+	}
 	g_inInterfacePass = false;
 }
 
@@ -1435,10 +1555,16 @@ void RunOriginalPassWindowed(void* self, void* unusedEdx, void* renderedTexture)
 // passes exactly as it sees redirected ones.
 const char* RunInterfacePass(void* self, void* unusedEdx, void* renderedTexture,
                              bool watching) {
-	// The order matters: the target hook has to exist before the callbacks
-	// change any state, or a pass that could not be redirected would still
-	// have its blend states rearranged and its capture claimed.
-	if (g_callbacks.beginRedirect == nullptr || !EnsureTargetHook()) {
+	// The hook first, callbacks second - both orders matter. The target hook
+	// has to exist before the callbacks change any state, or a pass that
+	// could not be redirected would still have its blend states rearranged
+	// and its capture claimed. And the hook must not WAIT for the callbacks:
+	// the viewport correction and the probes live in these device hooks, and
+	// a run that never arms the layer - a cold start straight into the main
+	// menu with the headset still asleep, or a headless measuring run -
+	// needs them all the same. EnsureTargetHook is idempotent and defers
+	// itself while the device is missing.
+	if (!EnsureTargetHook() || g_callbacks.beginRedirect == nullptr) {
 		g_observing = watching;
 		RunOriginalPassWindowed(self, unusedEdx, renderedTexture);
 		g_observing = false;
