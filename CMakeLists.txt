@@ -48,6 +48,7 @@ add_library(OBVR SHARED
 	src/game/MenuMode.cpp
 	src/game/MenuBackground.cpp
 	src/game/MenuType.cpp
+	src/game/PlayerAim.cpp
 	src/render/GameDevice.cpp
 	src/render/GameProjection.cpp
 	src/render/GameFrame.cpp

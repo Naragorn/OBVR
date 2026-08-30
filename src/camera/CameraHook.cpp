@@ -11,8 +11,10 @@
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
 #include "game/MenuBackground.h"
+#include "core/Rotation.h"
 #include "game/MenuMode.h"
 #include "game/MenuType.h"
+#include "game/PlayerAim.h"
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
 #include "render/DxvkInterop.h"
@@ -130,6 +132,10 @@ UInt32 g_menuTraceLeft = 0;
 bool g_menuTraceWasUp = false;
 UInt32 g_menuTraceLastScene = 0;
 UInt32 g_menuTraceLastId = 0;
+
+// Lines the aim probe has left. Budgeted rather than endless: a few seconds
+// of looking around is the whole measurement, and the log is read by hand.
+UInt32 g_aimProbeLeft = 60;
 
 // A frame number that counts every presented frame, not every camera pass.
 //
@@ -1468,6 +1474,30 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	cameraNode->localTransform.pos.z += verticalOffset;
 
 	const NiMatrix33 finalRotation = baseRotation * g_headTracker.GetCameraRotation();
+
+	// The three pitches side by side, which is the one measurement that says
+	// how to make an arrow go where the wearer is looking.
+	//
+	// rotX is the player's own, and OBVR never writes it - the mouse still
+	// aims it while the view goes elsewhere, which is why the arrow ignores
+	// the crosshair. What is not known is which way it grows or in what units,
+	// and a pitch written with the sign wrong aims at the floor when the
+	// wearer looks at the sky. Sines rather than degrees because this build
+	// has no asin to call: at 30 degrees up the sine reads 0.5, so a rotX near
+	// +0.524 is radians the same way round and one near -0.524 is inverted.
+	if (GetConfig().aimProbe && g_aimProbeLeft > 0 && (g_state.frameCount % 20) == 0) {
+		game::PlayerRotation player{};
+		if (game::ReadPlayerRotation(player)) {
+			--g_aimProbeLeft;
+			OBVR_LOG("Aim probe: player rotX=%.4f rotZ=%.4f | base sinPitch=%.4f | head "
+			         "sinPitch=%.4f | view sinPitch=%.4f | %s",
+			         static_cast<double>(player.pitch), static_cast<double>(player.yaw),
+			         static_cast<double>(SinPitchOf(baseRotation)),
+			         static_cast<double>(SinPitchOf(g_headTracker.GetCameraRotation())),
+			         static_cast<double>(SinPitchOf(finalRotation)),
+			         isThirdPerson ? "third" : "first");
+		}
+	}
 
 	// The camera steps to an eye. Which eye, and for how long, is what
 	// separates the two stereo modes:

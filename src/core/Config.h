@@ -122,6 +122,18 @@ struct Config {
 	// fault. Hot reloaded, like the rest of [Debug].
 	bool hudProbe = false;
 
+	// Logs the player's own rotation beside the camera's and the head's, a few
+	// times a second.
+	//
+	// The question it settles: an arrow leaves along the player's rotation,
+	// which OBVR never touches, while the view is the camera's, which OBVR
+	// replaces. So the mouse still aims, invisibly, and the arrow ignores where
+	// the wearer is looking. Reading the three angles together says which way
+	// rotX grows and in what units - and writing a pitch with the sign guessed
+	// wrong aims at the floor when the wearer looks at the sky, which is worse
+	// than not aiming at all.
+	bool aimProbe = false;
+
 	// true when the file was found and read.
 	bool Load(const char* fileName);
 

@@ -383,6 +383,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.dualPassProbe = ReadUInt("Debug", "DualPassProbe", config.dualPassProbe, path);
 	config.swapEyeOrder = ReadBool("Debug", "SwapEyeOrder", config.swapEyeOrder, path);
 	config.hudProbe = ReadBool("Debug", "HudProbe", config.hudProbe, path);
+	config.aimProbe = ReadBool("Debug", "AimProbe", config.aimProbe, path);
 	config.menuWorldProbe = ReadBool("Debug", "MenuWorldProbe", config.menuWorldProbe, path);
 	config.layoutProbe = ReadBool("Debug", "LayoutProbe", config.layoutProbe, path);
 	config.cursorProbe = ReadBool("Debug", "CursorProbe", config.cursorProbe, path);
