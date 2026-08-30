@@ -80,6 +80,26 @@ InterfaceViewportAction DecideInterfaceViewport(UInt32 viewportX, UInt32 viewpor
 	return InterfaceViewportAction::Shrink;
 }
 
+UInt32 CursorSurfaceAxis(UInt32 axis, UInt32 copyWidth, UInt32 copyHeight) {
+	if (axis == 1) {
+		return copyWidth;
+	}
+	if (axis == 2) {
+		return copyHeight;
+	}
+	return 0;
+}
+
+CursorMapAction DecideCursorMap(bool raised, bool patched) {
+	if (raised && !patched) {
+		return CursorMapAction::Patch;
+	}
+	if (!raised && patched) {
+		return CursorMapAction::Restore;
+	}
+	return CursorMapAction::Nothing;
+}
+
 bool UiScreenSizeFollowsFrame(bool enabled, UInt32 askedWidth, UInt32 askedHeight,
                               UInt32 newWidth, UInt32 newHeight) {
 	const UInt32 readWidth = *reinterpret_cast<const UInt32*>(addr::kUiScreenWidthCopy);

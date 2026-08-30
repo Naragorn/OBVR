@@ -38,6 +38,7 @@ add_library(OBVR SHARED
 	src/platform/GameWindow.cpp
 	src/platform/ImportHook.cpp
 	src/platform/PluginPath.cpp
+	src/render/CursorMapHook.cpp
 	src/render/EyeGeometry.cpp
 	src/render/EyeMirror.cpp
 	src/render/UiScreenSize.cpp

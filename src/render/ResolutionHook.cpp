@@ -4,6 +4,7 @@
 #include "core/Log.h"
 #include "game/GameAddresses.h"
 #include "platform/GameWindow.h"
+#include "render/CursorMapHook.h"
 #include "render/UiScreenSize.h"
 #include "platform/ImportHook.h"
 #include "platform/Win32Min.h"
@@ -198,6 +199,10 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 			g_believedWidth = asTheGameAskedFor.backBufferWidth;
 			g_believedHeight = asTheGameAskedFor.backBufferHeight;
 		}
+
+		// And the one 2D read that bypasses the copy goes with it: the cursor
+		// sprite's placement, redirected to the copy while the raise stands.
+		ApplyCursorMap(uiFollowsFrame);
 		return result;
 	}
 
@@ -214,6 +219,7 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 		WriteUiScreenSize(uiSize.width, uiSize.height, asTheGameAskedFor.backBufferWidth,
 		                  asTheGameAskedFor.backBufferHeight);
 		uiFollowsFrame = false;
+		ApplyCursorMap(false);
 	}
 	*parameters = asTheGameAskedFor;
 

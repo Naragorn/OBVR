@@ -143,6 +143,28 @@ inline constexpr UInt32 kRendererDeviceOffset = 0x280;
 inline constexpr UInt32 kUiScreenWidthCopy = 0x00B06C4C;
 inline constexpr UInt32 kUiScreenHeightCopy = 0x00B06C50;
 
+// The one 2D read that does NOT go through the copy: the cursor-node
+// placement at 0x57E7C0, the function that writes the cursor tile's NiNode
+// translation (+0x54) from the cursor position. It converts between copy
+// pixels and layout units - through the very 0x57D7A0/0x57D7F0 pair above -
+// but takes the PIXEL COUNT for that conversion from the renderer's size
+// getter instead of the copy: thiscall 0x403190, a three-way switch
+// returning [this+0x1B20]/[+0x1B24]/[+0x1B28] for axis 1/2/3, called on the
+// renderer object at [[0x00B33398]+0x20]. In vanilla getter and copy always
+// agree, so the mix is invisible; with the copy raised to a slice of the
+// frame the sprite lands frameHeight/believedHeight below its own hit
+// position - the measured three-buttons-too-low mouse of the cinema runs,
+// both of them, and the main menu whose buttons wanted the sprite past the
+// bottom edge.
+//
+// kCursorSizeCalls holds the 22 bytes of both calls with their argument
+// pushes (push 1 / push 2), verified byte for byte before either rel32 is
+// redirected - that runtime check is the second source for these addresses.
+inline constexpr UInt32 kCursorSizeCalls = 0x0057E80A;
+inline constexpr UInt32 kCursorSizeCallWidthOffset = 4;    // E8 at 0x57E80E, axis 1
+inline constexpr UInt32 kCursorSizeCallHeightOffset = 17;  // E8 at 0x57E81B, axis 2
+inline constexpr UInt32 kRendererSizeGetter = 0x00403190;
+
 // Expected game version. OBSE reports it as oblivionVersion.
 inline constexpr UInt32 kOblivionVersion_1_2_416 = 0x010201A0;
 
