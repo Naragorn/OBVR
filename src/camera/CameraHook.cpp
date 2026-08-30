@@ -241,6 +241,11 @@ float Abs(float value) { return value < 0.0f ? -value : value; }
 // menu, and every menu opened in game.
 bool PollRecenterEdge();
 
+// Carries out a recenter that something else has already decided happened.
+// Defined next to MaybePollRecenter, declared here because OnFrameEnd needs it
+// for the stereo frames no camera hook ran on.
+void DoRecenter(const char* where);
+
 // Pays the HUD overlay at the end of the frame: shows this frame's captured
 // layer on a world frame, hides it on a flat one so a stale HUD does not hang
 // in front of the menu the flat path is showing. Declared ahead of OnFrameEnd,
@@ -381,6 +386,20 @@ void OnFrameEnd() {
 	const bool hadCameraPass = g_frameOpen;
 	g_frameOpen = false;
 
+	// Polled once, here, and used by whichever branch this frame takes.
+	//
+	// It used to be polled inside the branches, and the stereo branch had no
+	// poll at all. That was invisible for as long as every stereo frame came
+	// from the camera hook, because the hook polls the key itself - but a
+	// stereo frame armed from inside the scene render has no camera pass, so
+	// on those frames the key did nothing. Reported from the headset as not
+	// being able to recenter during the intro films.
+	//
+	// Sharing one edge is what makes polling early safe: the camera hook runs
+	// before this and consumes the press on an ordinary world frame, so this
+	// reads false there and no branch acts twice.
+	const bool recenterPressed = PollRecenterEdge();
+
 	// Counted here because here is the one place that runs on every frame,
 	// whatever else did or did not happen. Every return below is a frame that
 	// still ended, so the increment goes before all of them.
@@ -476,6 +495,16 @@ void OnFrameEnd() {
 	if (delivery == FrameDelivery::Stereo) {
 		g_flatFramesSinceCamera = 0;
 
+		// A stereo frame the camera hook never ran on - armed from inside the
+		// scene render, for a menu the engine is drawing the world behind. On
+		// an ordinary world frame the hook has already consumed the press and
+		// this reads false; on these frames nothing else would act on it at
+		// all, and the key was dead exactly where the wearer is most likely
+		// to reach for it.
+		if (recenterPressed) {
+			DoRecenter("stand-in path");
+		}
+
 		// The layer is the HUD on an ordinary frame and the menu on a menu
 		// one, and either way it is OBVR's to show: the redirect took it out
 		// of the picture the eyes were captured from, so if the overlay does
@@ -512,7 +541,7 @@ void OnFrameEnd() {
 	// than a fall back to the cinema screen, which is what used to make menus
 	// snap open and shut at frame rate.
 	if (delivery == FrameDelivery::HeldStereo) {
-		if (PollRecenterEdge()) {
+		if (recenterPressed) {
 			g_hudLayer.ResetAnchor();
 			OBVR_LOG("Render: the menu overlay was re-anchored on the recenter key "
 			         "(held path)");
@@ -656,7 +685,7 @@ void OnFrameEnd() {
 	// the picture hangs somewhere awkward and there is no way to move it - the
 	// camera hook polls the key, and the camera hook is exactly what is not
 	// running. An intro film that started while looking down stays down.
-	if (PollRecenterEdge()) {
+	if (recenterPressed) {
 		g_headsetRenderer.ResetFlatAnchor();
 
 		// The HUD's room anchor goes with it. The layer is hidden on a flat
@@ -1192,11 +1221,14 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	                  config.hudProbe);
 }
 
-void MaybePollRecenter() {
-	if (!PollRecenterEdge()) {
-		return;
-	}
-
+// What the recenter key does to a frame that has a camera, without asking
+// whether it was pressed.
+//
+// Split from the poll because two callers need the action and only one of them
+// can afford to consume the edge: the camera hook polls it before the frame
+// ends, and a stereo frame armed from inside the scene render has no camera
+// hook to have done so. See the single poll at the top of OnFrameEnd.
+void DoRecenter(const char* where) {
 	g_headTracker.Recenter();
 
 	// A HUD hanging in the room is brought back in front of the wearer by the
@@ -1208,8 +1240,15 @@ void MaybePollRecenter() {
 	// Recentering is meant to take effect at once. Easing the camera into the
 	// new zero would be the opposite of what the key is pressed for.
 	g_lookControl.Reset();
-	OBVR_LOG("Camera: recentered on key 0x%02X (frame %u, camera path)", GetConfig().recenterKey,
-	         g_state.frameCount);
+	OBVR_LOG("Camera: recentered on key 0x%02X (frame %u, %s)", GetConfig().recenterKey,
+	         g_state.frameCount, where);
+}
+
+void MaybePollRecenter() {
+	if (!PollRecenterEdge()) {
+		return;
+	}
+	DoRecenter("camera path");
 }
 
 }  // namespace

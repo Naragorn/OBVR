@@ -17,7 +17,23 @@ constexpr UInt32 kRotationOffset = 0x20;
 
 bool ReadPlayerRotation(PlayerRotation& out) {
 	auto* const player = *reinterpret_cast<UInt8* const*>(addr::kPlayerPointer);
-	if (player == nullptr) {
+
+	// A null check is not enough here, and the reason is a session that ended
+	// in a crash shortly after a loading screen with this probe switched on.
+	// It was not proven to be the cause - but this is the only code OBVR added
+	// that follows a raw pointer into the game's object model, and it does so
+	// on frames where that object is being torn down and rebuilt. A global
+	// caught mid-assignment is not necessarily null.
+	//
+	// So the value has to look like a pointer to a Gamebryo object before it
+	// is followed: inside the 32-bit user address space, past the reserved
+	// low pages that catch null-offset reads, and four-byte aligned as every
+	// allocation here is. That rejects a half-written value, a small integer
+	// and a pointer into kernel space; it cannot reject a plausible pointer
+	// to an object that is not finished, which is why the probe is off by
+	// default and stays a diagnostic.
+	const UInt32 address = reinterpret_cast<UInt32>(player);
+	if (address < 0x00010000u || address > 0x7FFFFFFFu || (address & 3u) != 0u) {
 		return false;
 	}
 
