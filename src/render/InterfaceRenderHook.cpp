@@ -63,6 +63,17 @@ bool g_inInterfacePass = false;
 // headset actually shows, three entries below its own hit test.
 bool g_targetIsSubstitute = false;
 
+// The one-draw window after a redirected pass. Measured on the user's run:
+// once the redirected pass returns and the back buffer is re-aimed, the
+// engine sets one more full-frame viewport and draws one more cursor quad -
+// into the back buffer the cinema shows, at frameHeight over believedHeight
+// times its position. That quad is the pointer the headset shows, three
+// entries below the highlight that tracks the real cursor. The window opens
+// as the redirected pass returns and closes at the next draw or target
+// change, whichever comes first - so the only viewport it can ever shrink
+// is that quad's own.
+bool g_afterRedirectWindow = false;
+
 // The first few viewports the pass sets, logged with what was done to them:
 // the evidence that the engine does set its own viewport inside the pass, and
 // what it asked for - the measurement this hook was built on top of.
@@ -557,6 +568,7 @@ SInt32 __stdcall HookedSetRenderTarget(void* self, UInt32 index, void* surface) 
 
 	if (index == 0 && result >= 0) {
 		g_targetIsSubstitute = surface != nullptr && surface == g_substitute;
+		g_afterRedirectWindow = false;
 	}
 
 	// The API-rule half of the viewport correction. SetRenderTarget resets
@@ -599,7 +611,8 @@ SInt32 __stdcall HookedSetViewport(void* self, const d3d9::Viewport* viewport) {
 	// whose full-frame viewport is set once the pass window has closed. The
 	// 3D never binds the layer texture, so the wider window reaches nothing
 	// else.
-	if ((g_inInterfacePass || g_targetIsSubstitute) && viewport != nullptr) {
+	if ((g_inInterfacePass || g_targetIsSubstitute || g_afterRedirectWindow) &&
+	    viewport != nullptr) {
 		UInt32 frameWidth = 0;
 		UInt32 frameHeight = 0;
 		UInt32 believedWidth = 0;
@@ -840,6 +853,10 @@ void MaybeSampleAfterPassDraw(void* device, const char* kind, UInt32 type, UInt3
 		--g_afterPassSamples;
 		SampleAfterPassDraw(device, kind, type, count);
 	}
+	// Whatever this draw was, the after-redirect window has served its one
+	// customer: the viewport for this draw is already set, and nothing later
+	// belongs to the interface.
+	g_afterRedirectWindow = false;
 }
 
 SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex,
@@ -1828,6 +1845,12 @@ const char* RunInterfacePass(void* self, void* unusedEdx, void* renderedTexture,
 	}
 
 	g_callbacks.endRedirect();
+
+	// And the engine's one remaining interface draw - the cursor quad it
+	// paints into the just-restored back buffer through a viewport it sets
+	// only now - gets the same correction as everything inside the pass.
+	// See g_afterRedirectWindow for the measurement and the window's bounds.
+	g_afterRedirectWindow = true;
 	return kModeRedirected;
 }
 
