@@ -137,6 +137,11 @@ UInt32 g_menuTraceLastId = 0;
 // of looking around is the whole measurement, and the log is read by hand.
 UInt32 g_aimProbeLeft = 60;
 
+// Whether the log has already said that the gaze is now steering the player's
+// pitch. Once per session: it is the confirmation that the write reached the
+// player at all, and repeating it every frame would bury everything else.
+bool g_aimPitchReported = false;
+
 // A frame number that counts every presented frame, not every camera pass.
 //
 // The redirect uses this to decide when to clear its texture - once per frame,
@@ -1556,16 +1561,46 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 
 	const NiMatrix33 finalRotation = baseRotation * g_headTracker.GetCameraRotation();
 
-	// The three pitches side by side, which is the one measurement that says
-	// how to make an arrow go where the wearer is looking.
+	// The player's own pitch, pointed where the view is pointed.
 	//
-	// rotX is the player's own, and OBVR never writes it - the mouse still
-	// aims it while the view goes elsewhere, which is why the arrow ignores
-	// the crosshair. What is not known is which way it grows or in what units,
-	// and a pitch written with the sign wrong aims at the floor when the
-	// wearer looks at the sky. Sines rather than degrees because this build
-	// has no asin to call: at 30 degrees up the sine reads 0.5, so a rotX near
-	// +0.524 is radians the same way round and one near -0.524 is inverted.
+	// This is the half of "the arrow does not go where I am looking" that the
+	// crosshair could not fix. A projectile is a TESObjectREFR and leaves
+	// along the player's rotation; the view is the camera's, which OBVR
+	// replaces wholesale. So the mouse went on aiming invisibly while the
+	// head looked elsewhere, and the probe below measured exactly that: the
+	// head sweeping a sine of -0.32 to +0.24 with rotX sitting at 0.0000
+	// throughout.
+	//
+	// finalRotation rather than the head alone, because it is the rotation
+	// the frame is actually drawn with - the vanilla heading, levelled, with
+	// the head laid on top. That is what the wearer sees down, and an arrow
+	// should leave along what is seen rather than along a component of it.
+	if (AimPitchWanted(GetConfig().aimFollowsGaze, g_headTracker.IsHeadsetConnected(),
+	                   isThirdPerson, game::IsMenuMode())) {
+		const float pitch = PlayerPitchForGaze(SinPitchOf(finalRotation));
+		if (game::WritePlayerPitch(pitch) && !g_aimPitchReported) {
+			g_aimPitchReported = true;
+			OBVR_LOG("Aim: the player's pitch now follows the gaze - first write %.4f rad "
+			         "(%.1f degrees, positive looks down)",
+			         static_cast<double>(pitch),
+			         static_cast<double>(pitch * math::kRadiansToDegrees));
+		}
+	}
+
+	// The three pitches side by side. This measured how to make an arrow go
+	// where the wearer is looking, and the answer is applied just above.
+	//
+	// What it found: rotX is the player's own and OBVR never wrote it, so the
+	// mouse aimed while the view went elsewhere. Units and direction came from
+	// two sources found separately - xOBSE stores the triple in radians with
+	// rotX as pitch, and the Construction Set wiki says a positive value looks
+	// DOWN, which is the opposite of every other pitch in this file. Sines
+	// rather than degrees here because the matrix holds the sine directly; the
+	// one conversion to an angle is math::Asin, built out of atan.
+	//
+	// Kept switched on by default from here rather than removed, because it is
+	// now the way to see whether the write took: rotX following the view means
+	// it did, rotX at 0.0000 while the view moves means it did not.
 	if (GetConfig().aimProbe && g_aimProbeLeft > 0 && (g_state.frameCount % 20) == 0) {
 		game::PlayerRotation player{};
 		if (game::ReadPlayerRotation(player)) {

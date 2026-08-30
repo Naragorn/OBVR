@@ -134,6 +134,20 @@ struct Config {
 	// than not aiming at all.
 	bool aimProbe = false;
 
+	// Points the player where the head is looking, so an arrow leaves along
+	// the gaze instead of along the mouse.
+	//
+	// The answer to what the probe above measured. In [Look] rather than in
+	// [Debug] because it is a feature and not an instrument, and hot-reloaded
+	// like the rest of that section - it can be switched off from inside the
+	// headset if it ever aims somewhere wrong.
+	//
+	// First person only, and camera::AimPitchWanted says why: in third person
+	// the tilt is read back out of the engine's camera and turned into camera
+	// height, so writing it there could feed OBVR's own value into its own
+	// camera a frame later.
+	bool aimFollowsGaze = true;
+
 	// true when the file was found and read.
 	bool Load(const char* fileName);
 

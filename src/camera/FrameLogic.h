@@ -595,4 +595,61 @@ bool DeliversDualEyes(bool stereoDual, bool sceneHooked, UInt32 probeRung);
 // screen. Deriving it removes the second rule that could disagree.
 bool WantsHudRedirect(FrameDelivery delivery);
 
+// Whether the player's own pitch is made to follow the gaze on this frame.
+//
+// This is the other half of "the arrow does not go where I am looking", and
+// the half nothing had been done about. OBVR takes the vertical look away
+// from the mouse and hands the view to the head, but it does that by
+// replacing the camera matrix after the engine computed it. The player's own
+// rotation is never touched - and a projectile is a TESObjectREFR that leaves
+// along that rotation, not along the camera. Measured rather than argued:
+// with the head sweeping from a sine of -0.32 to +0.24, the player's rotX sat
+// at exactly 0.0000 on every line of the probe.
+//
+// The gates:
+//
+// headsetConnected: without poses the head decides nothing and the mouse is
+// still the only way to aim. Writing a pitch then would fight the player for
+// their own aim, on a machine that never asked for VR.
+//
+// isThirdPerson: FIRST PERSON ONLY, and this is a real limit rather than an
+// oversight. LookControl reads the tilt back out of the camera the engine
+// wrote and turns it into camera height - but only in third person, where
+// `isThirdPerson ? tilt * range : 0.0f` decides it. If writing rotX also
+// tilts the engine's camera, as the Construction Set wiki says SetAngle X
+// does, then doing this in third person would feed OBVR's own value back
+// into its camera height a frame later. In first person that term is
+// discarded, so the loop cannot close. Third person is a separate piece of
+// work and wants LookControl taking its tilt from somewhere else first.
+//
+// menuIsUp: nothing is aimed while a menu is open, and a dialogue under
+// Menus=world is still a menu over a live world - the same trap the crosshair
+// fell into.
+bool AimPitchWanted(bool enabled, bool headsetConnected, bool isThirdPerson, bool menuIsUp);
+
+// How far from level the player may be aimed, in radians.
+//
+// 89 degrees rather than 90, and it is Oblivion's own limit rather than a
+// choice: the Construction Set wiki gives GetAngle X a true in-game range of
+// -89 to 89, "with -89 if the player is looking above himself, and 89 if
+// player is looking at his feet" - you cannot look exactly up or exactly down
+// in game. Writing past it would put the player somewhere the engine's own
+// input can never reach, and there is nothing above the pole to aim at.
+inline constexpr float kAimPitchLimitRadians = 1.55334303f;  // 89 degrees
+
+// The player pitch, in radians, that sends a projectile along the view.
+//
+// viewSinPitch is the sine of how far the view is tilted, positive looking up
+// - what SinPitchOf reports, and what LookControl already relies on for its
+// sign ("the tilt is positive looking up").
+//
+// The result is negated, and that is not a guess. Two independent sources say
+// Oblivion's rotX runs the other way: xOBSE's GameObjects.h has the triple at
+// TESObjectREFR+0x20 in radians with rotX as pitch, and the Construction Set
+// wiki's SetAngle page states it outright - "the values are counterintuitive:
+// negative angles force the player look up, positive angles, down". So up is
+// positive here and negative there, and the minus sign is the whole
+// difference between aiming at the sky and aiming at the floor.
+float PlayerPitchForGaze(float viewSinPitch);
+
 }  // namespace obvr::camera

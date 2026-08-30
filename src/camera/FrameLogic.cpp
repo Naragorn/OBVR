@@ -1,5 +1,7 @@
 #include "camera/FrameLogic.h"
 
+#include "core/MathFns.h"
+
 namespace obvr::camera {
 
 bool KeyEdge::Update(bool isDown) {
@@ -232,6 +234,21 @@ bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp, bool menusI
 
 bool DeliversDualEyes(bool stereoDual, bool sceneHooked, UInt32 probeRung) {
 	return stereoDual && sceneHooked && probeRung != kProbeSinglePass;
+}
+
+bool AimPitchWanted(bool enabled, bool headsetConnected, bool isThirdPerson, bool menuIsUp) {
+	return enabled && headsetConnected && !isThirdPerson && !menuIsUp;
+}
+
+float PlayerPitchForGaze(float viewSinPitch) {
+	const float radians = -math::Asin(viewSinPitch);
+	if (radians > kAimPitchLimitRadians) {
+		return kAimPitchLimitRadians;
+	}
+	if (radians < -kAimPitchLimitRadians) {
+		return -kAimPitchLimitRadians;
+	}
+	return radians;
 }
 
 }  // namespace obvr::camera

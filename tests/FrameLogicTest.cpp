@@ -1050,6 +1050,110 @@ void TestDeliversDualEyes() {
 	Check(true, "every ordinary rung delivers two eyes exactly as before");
 }
 
+void TestAimPitchWanted() {
+	std::printf("Aim follows the gaze - when\n");
+
+	using obvr::camera::AimPitchWanted;
+
+	Check(AimPitchWanted(true, true, false, false),
+	      "switched on, headset delivering, first person, no menu: the gaze aims");
+
+	Check(!AimPitchWanted(false, true, false, false), "switched off, nothing is written");
+
+	// Without a headset the head decides nothing, so the mouse is still the
+	// only way to aim. Writing a pitch then would take the player's aim away
+	// on a machine that never asked for VR.
+	Check(!AimPitchWanted(true, false, false, false),
+	      "no headset: the mouse keeps the aim it has always had");
+
+	// The real limit, and the reason it is here rather than assumed: in third
+	// person LookControl turns the camera's tilt into camera height, so a
+	// pitch written into the player could come back as height a frame later.
+	Check(!AimPitchWanted(true, true, true, false),
+	      "third person is left alone, because the tilt is read back there");
+
+	// The trap the crosshair fell into first: with Menus=world a dialogue is a
+	// menu over a world that is still being drawn, so "the world is live" is
+	// not the same question as "nothing is open".
+	Check(!AimPitchWanted(true, true, false, true), "nothing is aimed while a menu is up");
+
+	// Every remaining combination refuses, which is what "all four must hold"
+	// means. Written as a sweep rather than as five more lines, so that a gate
+	// added later without a test still gets exercised here.
+	for (int bits = 0; bits < 16; ++bits) {
+		const bool enabled = (bits & 1) != 0;
+		const bool headset = (bits & 2) != 0;
+		const bool third = (bits & 4) != 0;
+		const bool menu = (bits & 8) != 0;
+		const bool expected = enabled && headset && !third && !menu;
+		if (AimPitchWanted(enabled, headset, third, menu) != expected) {
+			Check(false, "one of the sixteen gate combinations disagrees");
+			return;
+		}
+	}
+	Check(true, "all sixteen combinations of the four gates agree");
+}
+
+void TestPlayerPitchForGaze() {
+	std::printf("Aim follows the gaze - how far\n");
+
+	using obvr::camera::kAimPitchLimitRadians;
+	using obvr::camera::PlayerPitchForGaze;
+
+	const auto Near = [](float a, float b) { return a - b < 1e-3f && b - a < 1e-3f; };
+
+	Check(Near(PlayerPitchForGaze(0.0f), 0.0f), "a level view aims level");
+
+	// THE test of this whole piece of work. OBVR's pitch is positive looking
+	// up; Oblivion's rotX is positive looking DOWN, from two sources found
+	// separately. So the signs must come out opposite, and getting this
+	// backwards aims at the floor when the wearer looks at the sky - which is
+	// worse than not aiming at all, and is why the write waited for evidence.
+	Check(PlayerPitchForGaze(0.5f) < 0.0f, "looking up gives Oblivion a negative pitch");
+	Check(PlayerPitchForGaze(-0.5f) > 0.0f, "looking down gives Oblivion a positive pitch");
+
+	// The magnitude, against a sine anybody can check: 0.5 is 30 degrees, and
+	// 30 degrees is 0.5236 radians.
+	Check(Near(PlayerPitchForGaze(0.5f), -0.5235988f), "a sine of 0.5 is 30 degrees up");
+	Check(Near(PlayerPitchForGaze(-0.5f), 0.5235988f), "and 0.5 down is 30 the other way");
+
+	// Level is level from both sides - a rounding error here would leave the
+	// player permanently aiming a hair off horizontal.
+	Check(Near(PlayerPitchForGaze(0.5f), -PlayerPitchForGaze(-0.5f)),
+	      "up and down are mirror images of each other");
+
+	// Straight up and straight down are outside what Oblivion's own input can
+	// reach: the Construction Set wiki gives the true range as -89 to 89, and
+	// the identity behind Asin divides by a cosine that is zero at the pole.
+	Check(Near(PlayerPitchForGaze(1.0f), -kAimPitchLimitRadians),
+	      "straight up is held at the engine's own 89 degrees");
+	Check(Near(PlayerPitchForGaze(-1.0f), kAimPitchLimitRadians),
+	      "and straight down at 89 the other way");
+
+	// Past the pole is not a view anybody has, but a NaN or a garbage float
+	// reaching here must still come out as an angle rather than as an
+	// infinity written into the player.
+	Check(Near(PlayerPitchForGaze(4.0f), -kAimPitchLimitRadians),
+	      "a sine past 1 is clamped rather than turned into nonsense");
+	Check(Near(PlayerPitchForGaze(-4.0f), kAimPitchLimitRadians),
+	      "and so is one past -1");
+
+	// Monotonic across the range: every step further up must aim further up.
+	// A clamp written as a comparison against the wrong bound would pass every
+	// check above and still flatten one half of the sweep.
+	float previous = PlayerPitchForGaze(-0.95f);
+	for (int step = -18; step <= 19; ++step) {
+		const float sine = static_cast<float>(step) * 0.05f;
+		const float pitch = PlayerPitchForGaze(sine);
+		if (pitch > previous) {
+			Check(false, "the pitch stops falling as the view rises");
+			return;
+		}
+		previous = pitch;
+	}
+	Check(true, "the pitch falls steadily as the view rises, across the whole range");
+}
+
 int main() {
 	std::printf("OBVR frame logic test\n\n");
 
@@ -1100,6 +1204,10 @@ int main() {
 	TestSecondPassUnderProbe();
 	std::printf("\n");
 	TestDeliversDualEyes();
+	std::printf("\n");
+	TestAimPitchWanted();
+	std::printf("\n");
+	TestPlayerPitchForGaze();
 	std::printf("\n");
 	TestFrameClock();
 	std::printf("\n");
