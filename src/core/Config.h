@@ -148,6 +148,19 @@ struct Config {
 	// camera a frame later.
 	bool aimFollowsGaze = true;
 
+	// The control that means "I am aiming", as a Windows virtual-key code.
+	//
+	// While it is held, and only then, the character is turned to face where
+	// the head is looking, so that a shot leaves along the gaze sideways as
+	// well as vertically. Letting go leaves the character facing where the
+	// shot went and stops following again - which is what keeps "character
+	// bleibt" true for ordinary looking around.
+	//
+	// 1 is VK_LBUTTON, Oblivion's attack control at its default binding, and
+	// on a bow that is precisely the drawing of the string. 0 switches the
+	// sideways half off while leaving the vertical one alone.
+	UInt32 aimAttackKey = 1;
+
 	// true when the file was found and read.
 	bool Load(const char* fileName);
 

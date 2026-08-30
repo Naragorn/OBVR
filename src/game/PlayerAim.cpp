@@ -66,7 +66,13 @@ bool ReadPlayerRotation(PlayerRotation& out) {
 	return true;
 }
 
-bool WritePlayerPitch(float radians) {
+namespace {
+
+// The shared body of both writes: check, then put one component.
+//
+// which is 0 for the pitch and 2 for the yaw, matching rotX and rotZ in the
+// order the engine stores them.
+bool WriteRotationComponent(int which, float radians) {
 	auto* const player = PlayerOrNull();
 	if (player == nullptr) {
 		return false;
@@ -95,17 +101,22 @@ bool WritePlayerPitch(float radians) {
 	// cannot do: tell a half-built player from a finished one when both happen
 	// to hold a plausible angle, which is why the switch that reaches here
 	// exists and is documented as the way out.
-	const float existing = rot[0];
+	const float existing = rot[which];
 	if (!(existing > -kPlausibleRotationRadians && existing < kPlausibleRotationRadians)) {
 		return false;
 	}
 
-	// Only the first of the three. The yaw beside it is what the player steers
-	// with, and the whole design rests on leaving it alone; writing the triple
-	// wholesale would take their turning away on a frame where the head
-	// happened to be somewhere else.
-	rot[0] = radians;
+	// One component, never the triple. The roll beside them does nothing on an
+	// actor, and writing all three would mean deciding a value for something
+	// nothing here has an opinion about.
+	rot[which] = radians;
 	return true;
 }
+
+}  // namespace
+
+bool WritePlayerPitch(float radians) { return WriteRotationComponent(0, radians); }
+
+bool WritePlayerYaw(float radians) { return WriteRotationComponent(2, radians); }
 
 }  // namespace obvr::game

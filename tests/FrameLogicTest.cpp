@@ -15,6 +15,7 @@
 #include <limits>
 
 #include "camera/FrameLogic.h"
+#include "core/MathFns.h"
 
 namespace {
 
@@ -1154,6 +1155,157 @@ void TestPlayerPitchForGaze() {
 	Check(true, "the pitch falls steadily as the view rises, across the whole range");
 }
 
+void TestAtan2() {
+	std::printf("Angles from components\n");
+
+	using obvr::math::Atan2;
+	using obvr::math::kHalfPi;
+	using obvr::math::kPi;
+
+	const auto Near = [](float a, float b) { return a - b < 1e-4f && b - a < 1e-4f; };
+
+	// The four axes, where the ratio the single-argument atan works on is
+	// either zero or undefined.
+	Check(Near(Atan2(0.0f, 1.0f), 0.0f), "straight along +x is zero");
+	Check(Near(Atan2(1.0f, 0.0f), kHalfPi), "straight along +y is a quarter turn");
+	Check(Near(Atan2(0.0f, -1.0f), kPi), "straight along -x is half a turn");
+	Check(Near(Atan2(-1.0f, 0.0f), -kHalfPi), "straight along -y is a quarter turn back");
+
+	// The four quadrants. This is the whole reason atan alone will not do: the
+	// ratio y/x cannot tell a direction from its opposite, so the second and
+	// third quadrants would come back as the fourth and first.
+	Check(Near(Atan2(1.0f, 1.0f), kPi / 4.0f), "up and right is an eighth turn");
+	Check(Near(Atan2(1.0f, -1.0f), 3.0f * kPi / 4.0f), "up and left is three eighths");
+	Check(Near(Atan2(-1.0f, -1.0f), -3.0f * kPi / 4.0f), "down and left is three eighths back");
+	Check(Near(Atan2(-1.0f, 1.0f), -kPi / 4.0f), "down and right is an eighth back");
+
+	// No direction at all. Any answer here is arbitrary, so the one that
+	// cannot turn a character is the one to give.
+	Check(Near(Atan2(0.0f, 0.0f), 0.0f), "no direction reads as no turn");
+}
+
+void TestWrapAngle() {
+	std::printf("Angles brought back into range\n");
+
+	using obvr::math::kPi;
+	using obvr::math::WrapAngle;
+
+	const auto Near = [](float a, float b) { return a - b < 1e-4f && b - a < 1e-4f; };
+
+	Check(Near(WrapAngle(0.0f), 0.0f), "zero stays zero");
+	Check(Near(WrapAngle(1.0f), 1.0f), "an angle already in range is untouched");
+
+	// The point of it: a heading a hair past half a turn is a hair short of
+	// half a turn the other way, not most of a turn away.
+	Check(Near(WrapAngle(kPi + 0.1f), -kPi + 0.1f), "just past half a turn comes back the short way");
+	Check(Near(WrapAngle(-kPi - 0.1f), kPi - 0.1f), "and just past it the other way does too");
+
+	Check(WrapAngle(10.0f) <= kPi && WrapAngle(10.0f) >= -kPi, "a large angle lands in range");
+	Check(WrapAngle(-10.0f) <= kPi && WrapAngle(-10.0f) >= -kPi, "so does a large negative one");
+}
+
+void TestAimYaw() {
+	std::printf("The body turned to face the gaze\n");
+
+	using obvr::camera::AimYawWanted;
+	using obvr::camera::PlayerYawForGaze;
+	using obvr::math::kTwoPi;
+
+	const auto Near = [](float a, float b) { return a - b < 1e-4f && b - a < 1e-4f; };
+
+	// The gate is everything the pitch asks, plus the attack control. That
+	// last one is the difference between the two halves: the pitch follows the
+	// head always, the body only while something is being aimed - "character
+	// bleibt" otherwise.
+	Check(AimYawWanted(true, true, false, false, true), "aiming with the attack held turns the body");
+	Check(!AimYawWanted(true, true, false, false, false),
+	      "merely looking around does not turn the body");
+	Check(!AimYawWanted(false, true, false, false, true), "switched off, nothing turns");
+	Check(!AimYawWanted(true, false, false, false, true), "no headset, nothing turns");
+	Check(!AimYawWanted(true, true, true, false, true), "third person is left alone here too");
+	Check(!AimYawWanted(true, true, false, true, true), "and nothing turns while a menu is up");
+
+	// A head that is not turned leaves the heading exactly as the engine had
+	// it. Anything else would nudge the character every frame it aimed.
+	Check(Near(PlayerYawForGaze(1.0f, 0.0f), 1.0f), "a head facing forward changes nothing");
+
+	// The turn is subtracted, because Oblivion's heading grows clockwise while
+	// the matrix column OBVR reads runs the other way.
+	Check(Near(PlayerYawForGaze(1.0f, 0.5f), 0.5f), "a head turned one way takes the body with it");
+	Check(Near(PlayerYawForGaze(1.0f, -0.5f), 1.5f), "and turned the other way, the other way");
+
+	// Across the seam at zero, in both directions. Oblivion reports headings
+	// as 0..360, and a character told to face -0.4 radians is a character
+	// facing an angle the engine never produces.
+	const float belowZero = PlayerYawForGaze(0.1f, 0.5f);
+	Check(belowZero > 0.0f && belowZero < kTwoPi, "a turn past north stays inside a full circle");
+	Check(Near(belowZero, 0.1f - 0.5f + kTwoPi), "and comes out on the far side of it");
+
+	const float aboveTwoPi = PlayerYawForGaze(6.2f, -0.5f);
+	Check(aboveTwoPi >= 0.0f && aboveTwoPi < kTwoPi, "and a turn the other way past north as well");
+	Check(Near(aboveTwoPi, 6.2f + 0.5f - kTwoPi), "landing just past zero");
+
+	// Every combination stays in range, which is the invariant the engine
+	// cares about. Half a circle each way is more than a head can turn.
+	for (int base = 0; base < 64; ++base) {
+		for (int turn = -16; turn <= 16; ++turn) {
+			const float engineYaw = static_cast<float>(base) * (kTwoPi / 64.0f);
+			const float headYaw = static_cast<float>(turn) * 0.1f;
+			const float result = PlayerYawForGaze(engineYaw, headYaw);
+			if (!(result >= 0.0f && result < kTwoPi)) {
+				Check(false, "a heading escaped the circle");
+				return;
+			}
+		}
+	}
+	Check(true, "every heading and turn together stays inside one circle");
+}
+
+void TestJudgeYawWrite() {
+	std::printf("What became of a written heading\n");
+
+	using obvr::camera::JudgeYawWrite;
+	using obvr::camera::YawWriteVerdict;
+	using obvr::math::kTwoPi;
+
+	// Too small a turn to tell anything by. The whole judgement is "did the
+	// field move back by roughly the turn", and with no turn there is no
+	// distance to compare against - the mouse alone would decide it.
+	Check(JudgeYawWrite(1.0f, 1.0f, 0.01f) == YawWriteVerdict::NotYetKnown,
+	      "a turn too small to measure gives no verdict");
+	Check(JudgeYawWrite(1.0f, 1.4f, 0.0f) == YawWriteVerdict::NotYetKnown,
+	      "and no turn at all gives none either");
+
+	// Still there: the engine kept what OBVR wrote, so the camera will read
+	// the turn back and add the head to it again.
+	Check(JudgeYawWrite(1.0f, 1.0f, 0.5f) == YawWriteVerdict::FeedsBack,
+	      "a heading found exactly where it was left feeds back");
+	Check(JudgeYawWrite(1.0f, 1.02f, 0.5f) == YawWriteVerdict::FeedsBack,
+	      "and one the mouse nudged slightly still does");
+
+	// Put back: the engine wrote its own heading over it, which is the case
+	// with no loop in it.
+	Check(JudgeYawWrite(1.0f, 1.5f, 0.5f) == YawWriteVerdict::Safe,
+	      "a heading returned to where the engine had it is safe");
+	Check(JudgeYawWrite(1.0f, 0.5f, -0.5f) == YawWriteVerdict::Safe,
+	      "and so is one returned the other way");
+
+	// Across north, which is where a comparison without a wrap goes wrong: a
+	// heading a hair above zero and one a hair below it are next to each
+	// other, not a whole circle apart.
+	Check(JudgeYawWrite(0.05f, kTwoPi - 0.01f, 0.5f) == YawWriteVerdict::FeedsBack,
+	      "either side of north counts as the same heading");
+	Check(JudgeYawWrite(kTwoPi - 0.05f, 0.02f, 0.5f) == YawWriteVerdict::FeedsBack,
+	      "and the same the other way round");
+
+	// The dividing line sits at half the turn, so a turn of any size splits
+	// the two outcomes with the same room on each side.
+	Check(JudgeYawWrite(1.0f, 1.0f, 2.0f) == YawWriteVerdict::FeedsBack,
+	      "a large turn judges the same way");
+	Check(JudgeYawWrite(1.0f, 3.0f, 2.0f) == YawWriteVerdict::Safe,
+	      "and its opposite outcome too");
+}
+
 int main() {
 	std::printf("OBVR frame logic test\n\n");
 
@@ -1208,6 +1360,14 @@ int main() {
 	TestAimPitchWanted();
 	std::printf("\n");
 	TestPlayerPitchForGaze();
+	std::printf("\n");
+	TestAtan2();
+	std::printf("\n");
+	TestWrapAngle();
+	std::printf("\n");
+	TestAimYaw();
+	std::printf("\n");
+	TestJudgeYawWrite();
 	std::printf("\n");
 	TestFrameClock();
 	std::printf("\n");

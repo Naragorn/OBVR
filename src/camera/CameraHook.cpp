@@ -142,6 +142,28 @@ UInt32 g_aimProbeLeft = 60;
 // player at all, and repeating it every frame would bury everything else.
 bool g_aimPitchReported = false;
 
+// The pitch OBVR put into the player on the last frame it wrote one, and
+// whether it has ever written. Kept so the probe can hold the engine's value
+// up against it: if the two match on the next frame, a written rotation
+// survives, and writing the YAW would feed back into the camera. If they do
+// not, the engine sets the field afresh from its own input each frame and
+// there is no loop to break.
+float g_aimLastWrittenPitch = 0.0f;
+bool g_aimEverWrote = false;
+
+// The sideways half's own state. The heading OBVR last put into the player,
+// how far it turned it to get there, and whether that write is still waiting
+// to be judged next frame.
+float g_aimYawWrote = 0.0f;
+float g_aimYawTurnApplied = 0.0f;
+bool g_aimYawPending = false;
+
+// What the engine did with a written heading, once it is known. Until then the
+// yaw is written and watched; a verdict of FeedsBack stops it for the rest of
+// the session, because carrying on would drive the view round the room.
+YawWriteVerdict g_aimYawVerdict = YawWriteVerdict::NotYetKnown;
+bool g_aimYawReported = false;
+
 // A frame number that counts every presented frame, not every camera pass.
 //
 // The redirect uses this to decide when to clear its texture - once per frame,
@@ -837,6 +859,29 @@ bool PollRecenterEdge() {
 
 	const bool isDown = (GetAsyncKeyState(static_cast<int>(key)) & 0x8000) != 0;
 	return g_recenterEdge.Update(isDown);
+}
+
+// Whether the attack control is being held right now - the moment at which
+// aiming is actually happening, as opposed to merely having a weapon out.
+//
+// Held rather than an edge: this is a state for as long as it lasts, and on a
+// bow it is the whole of the draw. No KeyEdge, therefore, and nothing is
+// consumed - the recenter key is the one that must fire once per press.
+//
+// Read the same way the recenter key is, through GetAsyncKeyState, and for the
+// same reasons: no window to register against, no message queue to drain, one
+// call per frame. The default is the left mouse button, which is Oblivion's
+// attack control unless the player has rebound it - hence the INI key. What
+// this cannot see is a rebinding: it reads a virtual key, not the game's
+// control map, so somebody who moved attack elsewhere has to say so in the
+// INI. That is stated rather than solved, because reading the control map
+// means another address to find.
+bool AttackHeld() {
+	const UInt32 key = GetConfig().aimAttackKey;
+	if (key == 0) {
+		return false;
+	}
+	return (GetAsyncKeyState(static_cast<int>(key)) & 0x8000) != 0;
 }
 
 // The three callbacks of the scene render hook, in the order they run.
@@ -1575,15 +1620,100 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// the frame is actually drawn with - the vanilla heading, levelled, with
 	// the head laid on top. That is what the wearer sees down, and an arrow
 	// should leave along what is seen rather than along a component of it.
+	// Read BEFORE writing, and that ordering is the measurement rather than a
+	// tidiness. What is in the field at this moment is what the engine left
+	// there this frame, which is the one thing the probe could not see while
+	// it read afterwards: it only ever reported OBVR's own value back.
+	//
+	// The question it now answers is the one the sideways half of this turns
+	// on. If a written rotation survives into the next frame, then writing the
+	// YAW would feed back - the camera is built on the player's heading, and
+	// the head's turn is added on top of it, so the view would keep drifting
+	// round for as long as the head stayed turned. If the engine instead sets
+	// the field afresh every frame from its own input state, there is no loop
+	// and the yaw can be written as plainly as the pitch is.
+	//
+	// Not guessed from either side: the log now prints what the engine left
+	// beside what OBVR wrote last frame, and says whether they match.
+	game::PlayerRotation asEngineLeftIt{};
+	const bool readPlayer = game::ReadPlayerRotation(asEngineLeftIt);
+
 	if (AimPitchWanted(GetConfig().aimFollowsGaze, g_headTracker.IsHeadsetConnected(),
 	                   isThirdPerson, game::IsMenuMode())) {
 		const float pitch = PlayerPitchForGaze(SinPitchOf(finalRotation));
-		if (game::WritePlayerPitch(pitch) && !g_aimPitchReported) {
-			g_aimPitchReported = true;
-			OBVR_LOG("Aim: the player's pitch now follows the gaze - first write %.4f rad "
-			         "(%.1f degrees, positive looks down)",
-			         static_cast<double>(pitch),
-			         static_cast<double>(pitch * math::kRadiansToDegrees));
+		if (game::WritePlayerPitch(pitch)) {
+			g_aimLastWrittenPitch = pitch;
+			g_aimEverWrote = true;
+			if (!g_aimPitchReported) {
+				g_aimPitchReported = true;
+				OBVR_LOG("Aim: the player's pitch now follows the gaze - first write %.4f rad "
+				         "(%.1f degrees, positive looks down)",
+				         static_cast<double>(pitch),
+				         static_cast<double>(pitch * math::kRadiansToDegrees));
+			}
+		}
+	}
+
+	// The body turned to face the gaze, but only while something is being
+	// aimed - see AimYawWanted for why this half is gated where the vertical
+	// half is not.
+	//
+	// Last frame's write is judged first, before this frame's is made. What is
+	// in the field right now is the engine's answer to what OBVR put there,
+	// and it is the only place that answer can be read.
+	if (readPlayer && g_aimYawPending) {
+		g_aimYawPending = false;
+		const YawWriteVerdict verdict =
+			JudgeYawWrite(g_aimYawWrote, asEngineLeftIt.yaw, g_aimYawTurnApplied);
+
+		if (verdict != YawWriteVerdict::NotYetKnown &&
+		    g_aimYawVerdict == YawWriteVerdict::NotYetKnown) {
+			g_aimYawVerdict = verdict;
+			if (verdict == YawWriteVerdict::FeedsBack) {
+				OBVR_LOG("Aim: a written heading SURVIVED the frame (wrote %.4f, found %.4f "
+				         "after a turn of %.4f) - the camera is built on it, so writing it "
+				         "again would drive the view round. Turning the body off; the "
+				         "vertical aim is unaffected.",
+				         static_cast<double>(g_aimYawWrote),
+				         static_cast<double>(asEngineLeftIt.yaw),
+				         static_cast<double>(g_aimYawTurnApplied));
+			} else {
+				OBVR_LOG("Aim: the engine replaced the written heading (wrote %.4f, found "
+				         "%.4f after a turn of %.4f) - no feedback into the camera, the "
+				         "body may follow the gaze while aiming.",
+				         static_cast<double>(g_aimYawWrote),
+				         static_cast<double>(asEngineLeftIt.yaw),
+				         static_cast<double>(g_aimYawTurnApplied));
+			}
+		}
+	}
+
+	if (readPlayer && g_aimYawVerdict != YawWriteVerdict::FeedsBack &&
+	    AimYawWanted(GetConfig().aimFollowsGaze, g_headTracker.IsHeadsetConnected(), isThirdPerson,
+	                 game::IsMenuMode(), AttackHeld())) {
+		// How far the head is turned away from the body. The head rotation is
+		// already relative to the camera's base, so its heading is the turn
+		// itself rather than a direction in the world - which is what lets
+		// this be added to the engine's own heading without converting
+		// between the two conventions.
+		Heading headTurn{};
+		if (HeadingOf(g_headTracker.GetCameraRotation(), headTurn)) {
+			const float headYaw = math::Atan2(headTurn.sine, headTurn.cosine);
+			const float target = PlayerYawForGaze(asEngineLeftIt.yaw, headYaw);
+			if (game::WritePlayerYaw(target)) {
+				g_aimYawWrote = target;
+				g_aimYawTurnApplied = headYaw;
+				g_aimYawPending = true;
+
+				if (!g_aimYawReported) {
+					g_aimYawReported = true;
+					OBVR_LOG("Aim: the body now follows the gaze while the attack control is "
+					         "held - first turn %.1f degrees, heading %.4f to %.4f",
+					         static_cast<double>(headYaw * math::kRadiansToDegrees),
+					         static_cast<double>(asEngineLeftIt.yaw),
+					         static_cast<double>(target));
+				}
+			}
 		}
 	}
 
@@ -1601,18 +1731,41 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// Kept switched on by default from here rather than removed, because it is
 	// now the way to see whether the write took: rotX following the view means
 	// it did, rotX at 0.0000 while the view moves means it did not.
-	if (GetConfig().aimProbe && g_aimProbeLeft > 0 && (g_state.frameCount % 20) == 0) {
-		game::PlayerRotation player{};
-		if (game::ReadPlayerRotation(player)) {
-			--g_aimProbeLeft;
-			OBVR_LOG("Aim probe: player rotX=%.4f rotZ=%.4f | base sinPitch=%.4f | head "
-			         "sinPitch=%.4f | view sinPitch=%.4f | %s",
-			         static_cast<double>(player.pitch), static_cast<double>(player.yaw),
-			         static_cast<double>(SinPitchOf(baseRotation)),
-			         static_cast<double>(SinPitchOf(g_headTracker.GetCameraRotation())),
-			         static_cast<double>(SinPitchOf(finalRotation)),
-			         isThirdPerson ? "third" : "first");
-		}
+	if (GetConfig().aimProbe && g_aimProbeLeft > 0 && readPlayer &&
+	    (g_state.frameCount % 20) == 0) {
+		--g_aimProbeLeft;
+
+		// Does a written rotation survive the frame? The engine's value is
+		// held up against what OBVR put there last time. Matching means the
+		// field is kept and added to, which is what would make a written yaw
+		// feed back into the camera it is read from.
+		const float pitchDrift = asEngineLeftIt.pitch - g_aimLastWrittenPitch;
+		const char* const survived =
+			!g_aimEverWrote ? "nothing written yet"
+			                : (Abs(pitchDrift) < 0.0005f ? "KEPT - a written rotation survives"
+			                                             : "REPLACED - the engine sets it afresh");
+
+		// Which way the two headings run against each other. The camera's is
+		// read off the levelled vanilla rotation, so it carries the player's
+		// heading and nothing of the head. If the pair runs the same way their
+		// difference holds still as the player turns; if opposite, their sum
+		// does. One of the two columns standing still across a few lines of
+		// turning is the answer, and it decides the sign in PlayerYawForGaze.
+		Heading vanillaHeading{};
+		const bool haveHeading = HeadingOf(baseRotation, vanillaHeading);
+		const float cameraYaw =
+			haveHeading ? math::Atan2(vanillaHeading.sine, vanillaHeading.cosine) : 0.0f;
+
+		OBVR_LOG("Aim probe: engine left rotX=%.4f rotZ=%.4f | wrote %.4f last frame (%s) | "
+		         "camera yaw=%.4f | sum=%.4f diff=%.4f | view sinPitch=%.4f | %s",
+		         static_cast<double>(asEngineLeftIt.pitch),
+		         static_cast<double>(asEngineLeftIt.yaw),
+		         static_cast<double>(g_aimLastWrittenPitch), survived,
+		         static_cast<double>(cameraYaw),
+		         static_cast<double>(math::WrapAngle(asEngineLeftIt.yaw + cameraYaw)),
+		         static_cast<double>(math::WrapAngle(asEngineLeftIt.yaw - cameraYaw)),
+		         static_cast<double>(SinPitchOf(finalRotation)),
+		         isThirdPerson ? "third" : "first");
 	}
 
 	// The camera steps to an eye. Which eye, and for how long, is what

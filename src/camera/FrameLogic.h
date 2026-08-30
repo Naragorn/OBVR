@@ -652,4 +652,91 @@ inline constexpr float kAimPitchLimitRadians = 1.55334303f;  // 89 degrees
 // difference between aiming at the sky and aiming at the floor.
 float PlayerPitchForGaze(float viewSinPitch);
 
+// Whether the player is turned to face the gaze on this frame.
+//
+// Everything AimPitchWanted asks, and then one more thing: attacking. The
+// sideways half is deliberately not the same deal as the vertical one.
+//
+// Turning the body to follow every glance was offered and refused - "character
+// bleibt". Look left and you look left; the character keeps facing where it
+// was pointed. But then an arrow cannot go where you are looking, because it
+// leaves along the body's heading, and that is the complaint this answers:
+// "head based aiming geht aber nur nach oben und unten".
+//
+// So the body follows the gaze only while the attack control is held, which is
+// exactly the drawing of a bow, the winding up of a swing, or the readying of
+// a spell. Let go and the body is left facing where the shot went and stops
+// following again.
+//
+// The attack control rather than the drawn weapon, and that is a choice with a
+// reason on both sides. Reading whether a weapon is out means calling
+// HighProcess::GetWeaponOut through a pointer at MobileObject+0x58 and a
+// virtual table index of 0xBE - three unverified assumptions deep, and a wrong
+// index is not a wrong answer but a crash. The held control needs no address
+// at all, and it is the better question anyway: a weapon can be out for
+// minutes while nothing is being aimed at.
+bool AimYawWanted(bool enabled, bool headsetConnected, bool isThirdPerson, bool menuIsUp,
+                  bool attacking);
+
+// The heading to put into the player, given the one the engine left there and
+// how far the head is turned away from the body.
+//
+// A difference rather than an absolute angle, and that is what makes it safe
+// to write. An absolute heading would have to be converted out of OBVR's
+// rotation matrix into Oblivion's own convention - zero at north, growing
+// clockwise - and a mistake there points the character at a fixed compass
+// bearing rather than merely off by a few degrees. Adding a turn to the
+// heading the engine itself just wrote needs no such conversion: whatever the
+// zero is, both sides share it.
+//
+// THE SIGN IS DERIVED, NOT MEASURED, and it is the one thing here that a run
+// still has to confirm. Oblivion's rotZ is zero at north and grows clockwise
+// (Construction Set wiki, GetAngle); OBVR reads a heading off column 0 of the
+// rotation matrix, which runs the other way round - at a rotZ of 90 degrees,
+// pointing east, that column points at -y and reads as -90. So the head's turn
+// is subtracted. If an arrow leaves mirrored - the wearer looks left and it
+// goes right - this sign is why, and it is a single character to change.
+//
+// The result is brought into 0..2pi, which is the range Oblivion's own angles
+// are reported in.
+float PlayerYawForGaze(float engineYaw, float headYawRadians);
+
+// What became of a heading OBVR wrote, judged one frame later.
+//
+// The whole sideways mechanism turns on a question about the engine that
+// nothing outside it can answer by reasoning: does a written rotation stay
+// written? If it does, the camera - which is built on the player's heading,
+// with the head's turn added on top - reads OBVR's own turn back next frame
+// and adds the head to it again, and the view creeps round for as long as the
+// head stays turned. If instead the engine sets the field afresh from its own
+// input each frame, there is no loop and nothing to guard against.
+//
+// Rather than assume either, OBVR writes once and looks. That costs a single
+// frame of drift in the bad case, against building a compensation nobody has
+// established is needed - and a compensation for a loop that does not exist
+// would itself drive the view the other way.
+enum class YawWriteVerdict {
+	// Not enough of a turn was applied to tell the two apart. A head barely
+	// off centre writes a heading barely different from the engine's, and then
+	// "unchanged" and "replaced" look alike.
+	NotYetKnown,
+
+	// The engine put its own heading back. Writing is free of consequence
+	// beyond the frame it happens in.
+	Safe,
+
+	// OBVR's heading was still there. Writing it again would feed the camera.
+	FeedsBack,
+};
+
+// How much of a turn has to have been applied before the verdict means
+// anything: about six degrees. Below that the mouse's own movement within one
+// frame is the same size as the signal being looked for.
+inline constexpr float kYawVerdictMinTurn = 0.1f;
+
+// wroteYaw is what OBVR put into the player last frame, engineYawNow is what
+// is in the field before anything is written this frame, and headYawApplied is
+// how far the heading was turned when it was written.
+YawWriteVerdict JudgeYawWrite(float wroteYaw, float engineYawNow, float headYawApplied);
+
 }  // namespace obvr::camera

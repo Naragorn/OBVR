@@ -364,6 +364,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Look", "BlockVerticalLook", config.look.blockVerticalLook, path);
 	config.aimFollowsGaze =
 		ReadBool("Look", "AimFollowsGaze", config.aimFollowsGaze, path);
+	config.aimAttackKey = ReadUInt("Look", "AimAttackKey", config.aimAttackKey, path);
 
 	// VerticalLookRange was one value for both directions until it turned out
 	// that a range sized for looking up stops at the hips on the way down. It

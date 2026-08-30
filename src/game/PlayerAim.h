@@ -51,4 +51,18 @@ bool ReadPlayerRotation(PlayerRotation& out);
 // False when the player could not be reached, on the same terms as the read.
 bool WritePlayerPitch(float radians);
 
+// Turns the player to a heading, in radians, on Oblivion's own reckoning -
+// zero at north, growing clockwise.
+//
+// Written for one frame at a time and put back at the end of it, which is what
+// keeps it from feeding into the camera. The camera is built on the player's
+// heading and the head's turn is added on top, so a heading left standing
+// would be read back next frame with the turn already in it and the view would
+// creep round for as long as the head stayed turned. Restoring the engine's
+// own value before the next camera pass removes that possibility rather than
+// correcting for it - see camera::AimYawWanted and the restore in OnFrameEnd.
+//
+// False on the same terms as the write above.
+bool WritePlayerYaw(float radians);
+
 }  // namespace obvr::game

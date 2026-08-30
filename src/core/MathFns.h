@@ -63,6 +63,59 @@ inline float Asin(float sine) {
 	return Atan(clamped / Sqrt(1.0f - clamped * clamped));
 }
 
+constexpr float kPi = 3.14159265f;
+constexpr float kTwoPi = 6.28318531f;
+constexpr float kHalfPi = 1.57079633f;
+
+// The angle of a direction given as its two components, over the whole circle.
+//
+// Built on the single-argument atan for the same reason Asin is: the names
+// this build imports from msvcrt are a list worth keeping short, and the
+// quadrant work is four comparisons. atan alone only answers over half the
+// circle - it cannot tell a direction from its opposite, because the ratio
+// y/x is the same for both - which is exactly the distinction a heading needs.
+//
+// Argument order follows the standard atan2(y, x), so that anybody reading it
+// against a reference gets the same answer.
+inline float Atan2(float y, float x) {
+	if (x > 0.0f) {
+		return Atan(y / x);
+	}
+	if (x < 0.0f) {
+		return y >= 0.0f ? Atan(y / x) + kPi : Atan(y / x) - kPi;
+	}
+
+	// Straight up or down the y axis, where the ratio is not defined.
+	if (y > 0.0f) {
+		return kHalfPi;
+	}
+	if (y < 0.0f) {
+		return -kHalfPi;
+	}
+
+	// Both zero: no direction at all. Zero is the only answer that is not a
+	// lie, and the callers here treat it as "no turn".
+	return 0.0f;
+}
+
+// Brings an angle back into -pi..pi.
+//
+// Angles that are added together wander out of range, and a heading of 359
+// degrees is a degree from zero rather than 359 from it. Every difference
+// between two headings has to come back through here or the short way round
+// gets mistaken for the long way - which, applied to a player, is a character
+// spinning the wrong way round to reach a heading just beside the one it had.
+inline float WrapAngle(float radians) {
+	float wrapped = radians;
+	while (wrapped > kPi) {
+		wrapped -= kTwoPi;
+	}
+	while (wrapped < -kPi) {
+		wrapped += kTwoPi;
+	}
+	return wrapped;
+}
+
 constexpr float kRadiansToDegrees = 57.29577951f;
 
 }  // namespace obvr::math
