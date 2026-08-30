@@ -54,10 +54,24 @@ bool g_targetHookRefused = false;
 // closed - see DecideInterfaceViewport in UiScreenSize.h.
 bool g_inInterfacePass = false;
 
+// Whether the device's current colour target is the substitute texture -
+// bookkeeping fed by the SetRenderTarget hook, so the viewport hook can
+// protect the layer texture even OUTSIDE the pass window. The measured need:
+// after a redirected pass returns, the engine draws one more cursor quad
+// with a viewport it sets to the full frame first - past the pass window,
+// into the still-bound layer texture - and that quad is the cursor the
+// headset actually shows, three entries below its own hit test.
+bool g_targetIsSubstitute = false;
+
 // The first few viewports the pass sets, logged with what was done to them:
 // the evidence that the engine does set its own viewport inside the pass, and
 // what it asked for - the measurement this hook was built on top of.
 UInt32 g_viewportTraceLeft = 8;
+
+// Its own budget for the wider window's catches: the eight above are spent
+// on the first menu's in-pass viewports long before a redirected pass ever
+// draws its after-pass cursor, and the fix's own evidence must not starve.
+UInt32 g_afterPassViewportTraceLeft = 6;
 
 // While true, the back buffer - and only the back buffer - is replaced as a
 // colour target with the substitute.
@@ -541,6 +555,10 @@ SInt32 __stdcall HookedSetRenderTarget(void* self, UInt32 index, void* surface) 
 	}
 	const SInt32 result = g_originalSetTarget(self, index, surface);
 
+	if (index == 0 && result >= 0) {
+		g_targetIsSubstitute = surface != nullptr && surface == g_substitute;
+	}
+
 	// The API-rule half of the viewport correction. SetRenderTarget resets
 	// the viewport to the new target's full size silently - no SetViewport
 	// call, so the hook below never sees it - and the substitute texture is
@@ -576,7 +594,12 @@ SInt32 __stdcall HookedSetRenderTarget(void* self, UInt32 index, void* surface) 
 // the believed rectangle. Partial viewports pass through untouched, and
 // with the belief equal to the frame the decision never fires.
 SInt32 __stdcall HookedSetViewport(void* self, const d3d9::Viewport* viewport) {
-	if (g_inInterfacePass && viewport != nullptr) {
+	// Inside the pass, or any time the layer texture is the bound target: the
+	// second window is what catches the engine's after-pass cursor quad,
+	// whose full-frame viewport is set once the pass window has closed. The
+	// 3D never binds the layer texture, so the wider window reaches nothing
+	// else.
+	if ((g_inInterfacePass || g_targetIsSubstitute) && viewport != nullptr) {
 		UInt32 frameWidth = 0;
 		UInt32 frameHeight = 0;
 		UInt32 believedWidth = 0;
@@ -586,10 +609,13 @@ SInt32 __stdcall HookedSetViewport(void* self, const d3d9::Viewport* viewport) {
 			const InterfaceViewportAction action = DecideInterfaceViewport(
 				viewport->x, viewport->y, viewport->width, viewport->height, frameWidth,
 				frameHeight, believedWidth, believedHeight);
-			if (g_viewportTraceLeft > 0) {
-				--g_viewportTraceLeft;
-				OBVR_LOG("Hud viewport: the pass set %ux%u at %u,%u (frame %ux%u, "
+			UInt32& traceLeft =
+			    g_inInterfacePass ? g_viewportTraceLeft : g_afterPassViewportTraceLeft;
+			if (traceLeft > 0) {
+				--traceLeft;
+				OBVR_LOG("Hud viewport: %s set %ux%u at %u,%u (frame %ux%u, "
 				         "believed %ux%u) - %s",
+				         g_inInterfacePass ? "the pass" : "the layer's after-pass",
 				         viewport->width, viewport->height, viewport->x, viewport->y,
 				         frameWidth, frameHeight, believedWidth, believedHeight,
 				         action == InterfaceViewportAction::Shrink ? "shrunk to believed"
@@ -774,10 +800,11 @@ void SampleAfterPassDraw(void* device, const char* kind, UInt32 type, UInt32 cou
 		getTransform(device, d3d9::kTransformWorld, &world);
 	}
 	OBVR_LOG("Cursor draw probe: %s type=%u count=%u viewport=%ux%u at %u,%u "
-	         "world=(%.1f, %.1f, %.1f)",
+	         "world=(%.1f, %.1f, %.1f) target=%s",
 	         kind, type, count, viewport.width, viewport.height, viewport.x, viewport.y,
 	         static_cast<double>(world.m[3][0]), static_cast<double>(world.m[3][1]),
-	         static_cast<double>(world.m[3][2]));
+	         static_cast<double>(world.m[3][2]),
+	         g_targetIsSubstitute ? "layer texture" : "other");
 }
 
 // The shared gate for the four draw hooks: on the armed pass the tail ring
