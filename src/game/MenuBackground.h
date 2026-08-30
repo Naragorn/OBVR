@@ -31,6 +31,18 @@ namespace obvr::game {
 // can turn it on and off mid-session.
 bool SetStaticMenuBackground(bool staticBackground);
 
+// The same thing, asked the way the rest of OBVR wants to ask it: turn the
+// live background on, or leave the engine alone.
+//
+// The asymmetry is deliberate. "Off" must not mean "force the static
+// background on" - a player who set bStaticMenuBackground themselves would
+// then have OBVR overrule them for a feature they never switched on. So off
+// touches nothing, unless OBVR itself cleared the byte earlier in the
+// session, in which case the original value goes back.
+//
+// Safe to call every frame; it writes only on a change.
+void ApplyLiveMenuBackground(bool wantLive);
+
 // Whether the engine currently holds a valid world snapshot for the menu.
 // Read-only, and only interesting as evidence: with the static background
 // off this should never become true, which is what makes a run's log show

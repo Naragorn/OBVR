@@ -345,11 +345,11 @@ void MaybeRunWorldControlProbe(FrameDelivery delivery, bool menuIsUp, bool hadCa
 // else that wanted doing at the end of a frame would be tempting to put here,
 // and this runs on the renderer's thread inside a call the game is waiting on.
 void OnFrameEnd() {
-	// The engine's own live menu background, asked for every frame because
-	// the INI is hot reloaded and the call is a byte comparison. This is what
-	// makes the world behind a menu move at all; everything else OBVR does
-	// with menu frames is downstream of it.
-	game::SetStaticMenuBackground(!GetConfig().tracker.liveMenuBackground);
+	// The engine's own live menu background, asked for every frame because the
+	// INI is hot reloaded and the call is a byte comparison. Off leaves the
+	// engine's setting alone rather than forcing the static background on -
+	// see ApplyLiveMenuBackground.
+	game::ApplyLiveMenuBackground(GetConfig().tracker.liveMenuBackground);
 
 	// Cleared for the next frame, exactly as g_frameOpen is: it is the guard
 	// that keeps one menu frame from being armed twice, and a frame that armed
@@ -801,6 +801,27 @@ UInt32 DualProbeRung() {
 // of the room within a second. g_menuBasePos and g_menuBaseRot are the game's
 // own values, taken at the one moment they can be: after the engine wrote
 // them and before OBVR did.
+//
+// KNOWN WRONG, and this is where to start when the feature is picked back up:
+// the picture sits offset from where the world was the instant before the
+// menu opened - reported from the headset on 2026-08-30, which is why the
+// setting is no longer offered in the INI.
+//
+// The likely cause, from reading the two paths side by side rather than from
+// a measurement: the camera hook does not build the world frame on the raw
+// engine rotation either. With a headset connected it hands that rotation to
+// the look control and uses what comes back -
+//
+//   baseRotation = g_lookControl.GetRotation();
+//   verticalOffset = g_lookControl.GetVerticalOffset();
+//
+// - which is the levelled rotation, with the vertical look folded in. This
+// function starts from g_menuBaseRot, the rotation before any of that, and
+// only adds the vertical offset back. So the menu's viewpoint differs from
+// the world's by exactly whatever the look control was contributing, which on
+// a third-person frame is a height and a levelling and on any frame is not
+// nothing. Reading the look control's current rotation here, instead of the
+// raw base, is the first thing to try.
 void PlaceMenuCamera(bool leftEye) {
 	if (g_menuBaseNode == nullptr) {
 		return;

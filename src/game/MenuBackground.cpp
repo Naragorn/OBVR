@@ -12,7 +12,34 @@ namespace {
 bool g_reported = false;
 bool g_reportedValue = false;
 
+// Whether OBVR is the one that cleared the byte, and what the game had in it
+// before. Without this the feature could not be switched off again without
+// also overriding a player who had set bStaticMenuBackground themselves: on
+// the way back OBVR would write a 1 the game never asked for.
+bool g_ourChange = false;
+UInt8 g_valueBeforeUs = 1;
+
 }  // namespace
+
+void ApplyLiveMenuBackground(bool wantLive) {
+	if (wantLive) {
+		if (!g_ourChange) {
+			g_valueBeforeUs = *reinterpret_cast<const UInt8*>(addr::kStaticMenuBackground);
+			g_ourChange = true;
+		}
+		SetStaticMenuBackground(false);
+		return;
+	}
+
+	// Not asked for, so the engine keeps whatever it had - and if OBVR changed
+	// it earlier in this session, it gets its own value back rather than a
+	// guessed default. Untouched otherwise: a player who set
+	// bStaticMenuBackground in their own INI is entitled to it.
+	if (g_ourChange) {
+		g_ourChange = false;
+		SetStaticMenuBackground(g_valueBeforeUs != 0);
+	}
+}
 
 bool SetStaticMenuBackground(bool staticBackground) {
 	auto* const flag = reinterpret_cast<UInt8*>(addr::kStaticMenuBackground);
