@@ -84,6 +84,9 @@ UInt32 g_viewportTraceLeft = 8;
 // draws its after-pass cursor, and the fix's own evidence must not starve.
 UInt32 g_afterPassViewportTraceLeft = 6;
 
+// How many dropped late-cursor quads still get a log line of their own.
+UInt32 g_cursorDropTraceLeft = 4;
+
 // While true, the back buffer - and only the back buffer - is replaced as a
 // colour target with the substitute.
 bool g_redirecting = false;
@@ -853,10 +856,49 @@ void MaybeSampleAfterPassDraw(void* device, const char* kind, UInt32 type, UInt3
 		--g_afterPassSamples;
 		SampleAfterPassDraw(device, kind, type, count);
 	}
-	// Whatever this draw was, the after-redirect window has served its one
-	// customer: the viewport for this draw is already set, and nothing later
-	// belongs to the interface.
+}
+
+// The one-draw window's decision, taken by every draw hook: whether this
+// draw is the engine's late cursor quad, which is then dropped whole.
+//
+// The trail that ends here: the pass draws the cursor correctly (measured -
+// its quad's world translation is the cursor position, its viewport the
+// believed rectangle, and the headless screenshots show the arrow exactly on
+// the button the position points at). Then, after the pass returns, the
+// engine draws the cursor AGAIN - the background-mouse drawing path at
+// 0x410900, which runs whether or not the background-mouse thread does, and
+// which scales through the screen-size copy against a queried real texture
+// size. In vanilla those are equal and the second cursor lands exactly on
+// the first; with the copy raised it lands at frameHeight over
+// believedHeight times the position - the pointer the headset shows, three
+// entries below the highlight. Shrinking its viewport did nothing because
+// its vertices carry finished pixels. So the redundant quad is dropped: the
+// pass's own cursor, already correct everywhere the headset looks, is the
+// one that remains. Every draw closes the window either way.
+bool TakeAfterPassCursorQuad(void* device, UInt32 type, UInt32 primitiveCount) {
+	if (g_inInterfacePass || !g_afterRedirectWindow) {
+		return false;
+	}
 	g_afterRedirectWindow = false;
+	if (type != 4 || primitiveCount != 2) {
+		return false;
+	}
+
+	// A two-triangle strip alone is not identity enough: the same shape
+	// draws water reflections into small render targets right after a pass.
+	// The cursor quad's viewport is frame-wide - the engine's own, or the
+	// believed one the viewport hook already shrank it to.
+	UInt32 frameWidth = 0;
+	UInt32 frameHeight = 0;
+	if (!WasDeviceCreated(frameWidth, frameHeight)) {
+		return false;
+	}
+	d3d9::Viewport viewport{};
+	if (auto getViewport =
+	        d3d9::Method<d3d9::GetViewportFn>(device, d3d9::kDeviceGetViewport)) {
+		getViewport(device, &viewport);
+	}
+	return viewport.width == frameWidth;
 }
 
 SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex,
@@ -869,6 +911,9 @@ SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex
 		SampleFirstDraw(self, "dp", type, primitiveCount);
 	}
 	MaybeSampleAfterPassDraw(self, "dp", type, primitiveCount);
+	if (TakeAfterPassCursorQuad(self, type, primitiveCount)) {
+		return 0;
+	}
 	const SInt32 result = g_originalDrawPrimitive(self, type, startVertex, primitiveCount);
 	if (g_redirecting || g_observing) {
 		++g_statsDraws;
@@ -891,6 +936,14 @@ SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 base
 		SampleFirstDraw(self, "dip", type, primCount);
 	}
 	MaybeSampleAfterPassDraw(self, "dip", type, primCount);
+	if (TakeAfterPassCursorQuad(self, type, primCount)) {
+		if (g_cursorDropTraceLeft > 0) {
+			--g_cursorDropTraceLeft;
+			OBVR_LOG("Hud cursor: the engine's late cursor quad was dropped - the pass's "
+			         "own cursor, drawn in the believed space, is the one that shows");
+		}
+		return 0;
+	}
 	const SInt32 result = g_originalDrawIndexed(self, type, baseVertexIndex, minVertexIndex,
 	                                            numVertices, startIndex, primCount);
 	if (g_redirecting || g_observing) {
@@ -911,6 +964,9 @@ SInt32 __stdcall HookedDrawPrimitiveUP(void* self, UInt32 type, UInt32 primitive
 		SampleFirstDraw(self, "dpup", type, primitiveCount);
 	}
 	MaybeSampleAfterPassDraw(self, "dpup", type, primitiveCount);
+	if (TakeAfterPassCursorQuad(self, type, primitiveCount)) {
+		return 0;
+	}
 	const SInt32 result = g_originalDrawUP(self, type, primitiveCount, vertexData, stride);
 	if (g_redirecting || g_observing) {
 		++g_statsDraws;
@@ -932,6 +988,9 @@ SInt32 __stdcall HookedDrawIndexedPrimitiveUP(void* self, UInt32 type, UInt32 mi
 		SampleFirstDraw(self, "dipup", type, primitiveCount);
 	}
 	MaybeSampleAfterPassDraw(self, "dipup", type, primitiveCount);
+	if (TakeAfterPassCursorQuad(self, type, primitiveCount)) {
+		return 0;
+	}
 	const SInt32 result =
 		g_originalDrawIndexedUP(self, type, minVertexIndex, numVertices, primitiveCount,
 	                            indexData, indexFormat, vertexData, stride);
