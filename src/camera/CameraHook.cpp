@@ -1298,7 +1298,25 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		// so there is no continuity for the easing to preserve across the
 		// change.
 		g_lookControl.Reset();
-		OBVR_LOG("Camera: switched to %s (frame %u)",
+
+		// The remembered menu camera goes with it. It is a raw pointer to the
+		// node the game was drawing through, and a change of view swaps that
+		// node - so what is held here afterwards is a node the game has let go
+		// of. Writing a transform into it and walking the scene graph from it
+		// is not a risk worth carrying for the sake of one menu frame; the
+		// next camera pass puts a fresh one here a frame later.
+		g_menuBaseNode = nullptr;
+
+		// And the frame trace is armed, because a game that froze solid a
+		// moment after this line left nothing else behind: the log's last
+		// entry was the switch itself, and every question about what happened
+		// next was unanswerable. Twelve frames of what the delivery, the
+		// camera pass and the world renders were doing costs nothing and is
+		// the difference between diagnosing that and guessing at it.
+		g_menuTraceLeft = 12;
+		g_menuTraceLastScene = render::CurrentSceneCall();
+
+		OBVR_LOG("Camera: switched to %s (frame %u) - tracing the next frames",
 		         isThirdPerson ? "third person" : "first person",
 		         g_state.frameCount);
 		break;
