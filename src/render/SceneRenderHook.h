@@ -84,23 +84,6 @@ UInt32 CurrentSceneCall();
 // summed, because here only "did any of it happen" is being asked.
 bool RunMenuWorldProbe(UInt32& drawsOut, UInt32& vertexSetupOut);
 
-// Two world renders on a frame the engine has stopped rendering on, for the
-// live background behind pause menus. Called from inside the 2D pass, which
-// is the one place a self-initiated render draws: measured at 461 draws in an
-// open Esc menu from there, against 0 for the identical call made from
-// Present.
-//
-// The shape mirrors the dual pass exactly, and for the same reasons: the bone
-// pass mode captures the first render's palettes and rebases them for the
-// second, without which every skinned body collapses; the frame clock is
-// zeroed so no time-driven update advances a world that is meant to be
-// standing still; and moveCamera runs between the two, owned by the caller,
-// because where the eyes are is the camera's business and not this module's.
-//
-// False when there is nothing to render with - no hook, no remembered
-// renderer, or a render already running.
-bool RunMenuStereoPasses(void (*moveCamera)(), UInt32& drawsFirst, UInt32& drawsSecond);
-
 // Why the probe would refuse right now, as a phrase for the log. "Refused"
 // on its own reads as a fact about self-initiated renders when it is usually
 // a fact about the run: a probe that fires in the main menu has never seen a

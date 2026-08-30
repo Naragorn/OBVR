@@ -351,6 +351,11 @@ void OnFrameEnd() {
 	// with menu frames is downstream of it.
 	game::SetStaticMenuBackground(!GetConfig().tracker.liveMenuBackground);
 
+	// Cleared for the next frame, exactly as g_frameOpen is: it is the guard
+	// that keeps one menu frame from being armed twice, and a frame that armed
+	// itself must not leave that standing.
+	g_menuLiveThisFrame = false;
+
 	// Consumed, not merely read.
 	//
 	// This flag is set by the camera hook and nothing else, so on a frame
@@ -479,21 +484,6 @@ void OnFrameEnd() {
 	// happen. That is the whole reason this is a delivery of its own rather
 	// than a fall back to the cinema screen, which is what used to make menus
 	// snap open and shut at frame rate.
-	// A menu frame whose background was drawn fresh this frame. The pair in
-	// the mirror is this frame's, from this frame's pose, so it goes out as a
-	// stereo frame rather than as a held one - and the compositor is told
-	// nothing about a pose, because both eyes were drawn from the one it
-	// handed out at BeginFrame. The overlay carrying the menu itself is
-	// submitted exactly as it is on any other menu frame.
-	if (g_menuLiveThisFrame) {
-		g_menuLiveThisFrame = false;
-		g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), g_menuRequest);
-		if (g_hudLayer.HasCapture()) {
-			MaybeSubmitHud(true);
-		}
-		return;
-	}
-
 	if (delivery == FrameDelivery::HeldStereo) {
 		if (PollRecenterEdge()) {
 			g_hudLayer.ResetAnchor();
@@ -802,6 +792,107 @@ UInt32 DualProbeRung() {
 	return SweepProbeStage(render::CurrentSceneCall(), GetConfig().dualPassProbe);
 }
 
+// Places the camera on one eye for a menu frame, built from the transform the
+// game itself last wrote rather than from whatever is in the node now.
+//
+// The node still holds the camera hook's last output - head offset and eye
+// step included - and on a menu frame nothing overwrites it, so building on
+// it would add a head pose to a head pose every frame and walk the camera out
+// of the room within a second. g_menuBasePos and g_menuBaseRot are the game's
+// own values, taken at the one moment they can be: after the engine wrote
+// them and before OBVR did.
+void PlaceMenuCamera(bool leftEye) {
+	if (g_menuBaseNode == nullptr) {
+		return;
+	}
+
+	const Config& config = GetConfig();
+
+	// The look control is read, not stepped. It smooths over time and there is
+	// no time passing here: the world is paused, and driving it from a menu
+	// would let the camera drift on its own while the player reads.
+	const NiMatrix33 baseRotation = g_menuBaseRot;
+	const NiMatrix33 finalRotation = baseRotation * g_headTracker.GetCameraRotation();
+
+	NiPoint3 pos = g_menuBasePos + baseRotation * g_headTracker.GetCameraOffset();
+	pos.z += g_lookControl.GetVerticalOffset();
+
+	const float half = ScaledEyeHalfSeparation(g_headTracker.GetHalfEyeSeparationUnits(),
+	                                           config.tracker.eyeSeparationScale);
+	const NiPoint3 eyeStep = finalRotation * NiPoint3{leftEye ? -half : half, 0.0f, 0.0f};
+
+	g_menuBaseNode->localTransform.pos = pos + eyeStep;
+	g_menuBaseNode->localTransform.rot = finalRotation;
+	game::UpdateNodeTransforms(g_menuBaseNode);
+
+	// The step to the other eye, on the same terms as the dual pass: what the
+	// second pass moves the camera by, and what the bone lock rebases the
+	// replayed palettes by.
+	g_menuEyeShift = finalRotation * NiPoint3{leftEye ? -2.0f * half : 2.0f * half, 0.0f, 0.0f};
+}
+
+// Stands in for the camera pass on a menu frame the engine renders itself.
+//
+// Only the arming is done here, not the rendering: the engine is already
+// drawing the world, and all this adds is the pose it should have been drawn
+// from and the two flags the rest of OBVR reads. After it, the frame is
+// indistinguishable from a world frame - ScenePassWanted says yes, the
+// callbacks capture both eyes, and DeliverFrame calls it stereo because
+// g_frameOpen is set.
+UInt32 DualProbeRung();
+
+void PrepareMenuFrameIfNeeded(bool menuIsUp) {
+	const Config& config = GetConfig();
+	if (!MenuLiveBackgroundWanted(config.tracker.liveMenuBackground,
+	                              config.tracker.stereo == vr::StereoMode::DualPass, menuIsUp,
+	                              g_headTracker.IsHeadsetConnected(),
+	                              g_menuBaseNode != nullptr, g_menuLiveThisFrame, g_frameOpen)) {
+		return;
+	}
+
+	if (!g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame())) {
+		return;
+	}
+	g_headTracker.Update(g_state.frameCount);
+
+	g_pendingRequest = render::HeadsetRenderer::FrameRequest{};
+	g_pendingRequest.gameDevice = render::GetGameDevice();
+	g_pendingRequest.submitGameFrame = config.tracker.submitGameFrame;
+	g_pendingRequest.dualEyes = true;
+	g_pendingRequest.gameFovDegrees = config.tracker.gameFovDegrees;
+	g_pendingRequest.gameFovIsFor4x3 = config.tracker.gameFovIsFor4x3;
+	g_pendingRequest.cameraTanHalfWidth = g_state.cameraTanHalfWidth;
+	g_pendingRequest.cameraTanHalfHeight = g_state.cameraTanHalfHeight;
+
+	// The camera onto the first eye, and the step to the other one, on the
+	// same terms the camera hook sets them: the shift is what the second pass
+	// moves by and what the bone lock rebases the replayed palettes by.
+	const bool firstIsLeft = FirstPassDrawsLeftEye(config.swapEyeOrder);
+	PlaceMenuCamera(firstIsLeft);
+	g_dualShift = g_menuEyeShift;
+	g_dualNode = g_menuBaseNode;
+	g_dualArmed = true;
+	g_frameOpen = true;
+	g_menuLiveThisFrame = true;
+
+	if (g_menuLiveReportsLeft > 0) {
+		--g_menuLiveReportsLeft;
+		// Whether the arming actually buys a second pass is the one thing this
+		// cannot be assumed to have done: the same decision is asked again a
+		// moment later with the menu settings folded in, and Menus=cinema or
+		// HudOverlay=0 would answer no - leaving one eye drawn and the frame
+		// delivered as if both were.
+		const bool secondPass = WantsSecondScenePass(
+			g_frameOpen, g_dualArmed, menuIsUp,
+			MenusCanReachTheWorld(config.tracker.menusInWorld, config.tracker.hudOverlay),
+			DualProbeRung());
+		OBVR_LOG("Menu background: the frame was armed for stereo without a camera pass "
+		         "(first eye %s, second pass %s, scene call %u, frame %u)",
+		         firstIsLeft ? "left" : "right", secondPass ? "yes" : "NO - one eye only",
+		         render::CurrentSceneCall(), g_presentedFrame);
+	}
+}
+
 bool ScenePassWanted() {
 	// The same menu question, asked of the same source, as the delivery
 	// decision in OnFrameEnd. The two must agree on what kind of frame this
@@ -810,6 +901,21 @@ bool ScenePassWanted() {
 	// world is a stereo frame like any other and wants both eyes.
 	const Config& config = GetConfig();
 	const bool menuIsUp = config.tracker.showMenus && game::IsMenuMode();
+
+	// A menu frame the engine is rendering by itself. With its static menu
+	// background cleared it draws the world behind the menu on every frame -
+	// measured, the scene counter runs on where it used to stand still - but
+	// the camera hook does not run with it, because that hangs off the
+	// camera update the paused simulation never reaches. So the world is
+	// drawn from wherever the camera stood when the menu opened, and nothing
+	// has opened a compositor frame or armed the second pass.
+	//
+	// This is the first OBVR code inside the render, which makes it the place
+	// to stand in for the missing camera pass: take a pose, put the camera on
+	// the first eye, and arm the frame. Everything after it - the second
+	// pass, the two captures, the stereo delivery - is the ordinary machinery
+	// running on an ordinary armed frame, with nothing added.
+	PrepareMenuFrameIfNeeded(menuIsUp);
 	return WantsSecondScenePass(
 		g_frameOpen, g_dualArmed, menuIsUp,
 		MenusCanReachTheWorld(config.tracker.menusInWorld, config.tracker.hudOverlay),
@@ -926,129 +1032,6 @@ void AfterSecondScenePass() {
 	}
 
 	g_dualArmed = false;
-}
-
-// The live background behind pause menus.
-//
-// Everything below runs on frames where Oblivion has stopped rendering the
-// world entirely - measured, not assumed: the scene counter stands still
-// across every menu frame - and it runs from inside the 2D pass, which is the
-// one place a self-initiated world render actually draws. From Present the
-// identical call comes back with no draws at all; from here it drew 461 in an
-// open Esc menu. The difference is the moment, and nothing else: every field
-// the walk could have turned back on reads the same at both.
-//
-// What this buys over the held pair, which is what menus fall back to: the
-// held pair is one captured stereo picture, reprojected. Turning the head
-// works; leaning does not, because a reprojection has no parallax to give.
-// Drawing the world again from where the head actually is restores it, while
-// the world itself stays paused - the render advances no clock, and the
-// engine's update step is not running at all.
-
-// Places the camera on one eye, built from the transform the game itself last
-// wrote rather than from whatever is in the node now.
-//
-// The node still holds this hook's last output - head offset and eye step
-// included - and on a menu frame nothing overwrites it, so building on it
-// would add a head pose to a head pose every pass and walk the camera out of
-// the room within a second.
-void PlaceMenuCamera(bool leftEye) {
-	if (g_menuBaseNode == nullptr) {
-		return;
-	}
-
-	const Config& config = GetConfig();
-
-	// The look control is read, not stepped. It smooths over time and there is
-	// no time passing here: the world is paused, and driving it from a menu
-	// would let the camera drift on its own while the player reads.
-	const NiMatrix33 baseRotation = g_menuBaseRot;
-	const NiMatrix33 finalRotation = baseRotation * g_headTracker.GetCameraRotation();
-
-	NiPoint3 pos = g_menuBasePos + baseRotation * g_headTracker.GetCameraOffset();
-	pos.z += g_lookControl.GetVerticalOffset();
-
-	const float half = ScaledEyeHalfSeparation(g_headTracker.GetHalfEyeSeparationUnits(),
-	                                           config.tracker.eyeSeparationScale);
-	const NiPoint3 eyeStep = finalRotation * NiPoint3{leftEye ? -half : half, 0.0f, 0.0f};
-
-	g_menuBaseNode->localTransform.pos = pos + eyeStep;
-	g_menuBaseNode->localTransform.rot = finalRotation;
-	game::UpdateNodeTransforms(g_menuBaseNode);
-
-	// What the bone lock has to shift the replayed palettes by, on the same
-	// terms as the dual pass: the vector from the first eye to this one.
-	g_menuEyeShift = finalRotation * NiPoint3{leftEye ? -2.0f * half : 2.0f * half, 0.0f, 0.0f};
-}
-
-// Between the two menu renders: the first eye is finished and in the back
-// buffer, so it is captured before the camera steps over it.
-void MenuBetweenPasses() {
-	g_headsetRenderer.CaptureEye(g_menuRequest, g_menuFirstIsLeft);
-	PlaceMenuCamera(!g_menuFirstIsLeft);
-	render::SetBoneEyeShift(g_menuEyeShift.x, g_menuEyeShift.y, g_menuEyeShift.z);
-}
-
-void RunMenuLiveBackground() {
-	const Config& config = GetConfig();
-	// g_frameOpen is set by the camera hook and cleared when Present reads it,
-	// so on a menu frame it is true only if the engine rendered the world of
-	// its own accord this frame - which is exactly what clearing its
-	// static-background byte makes it do. Then there is nothing to draw here.
-	if (!MenuLiveBackgroundWanted(config.tracker.liveMenuBackground,
-	                              config.tracker.stereo == vr::StereoMode::DualPass,
-	                              config.tracker.showMenus && game::IsMenuMode(),
-	                              g_headTracker.IsHeadsetConnected(),
-	                              g_menuBaseNode != nullptr, g_menuLiveThisFrame,
-	                              g_frameOpen)) {
-		return;
-	}
-
-	// The pose for this picture. BeginFrame waits on the compositor exactly as
-	// it does on a world frame, and OnFrameEnd must not open a second one -
-	// g_menuLiveThisFrame is what tells it the frame is already open.
-	if (!g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame())) {
-		return;
-	}
-	g_headTracker.Update(g_state.frameCount);
-
-	g_menuRequest = render::HeadsetRenderer::FrameRequest{};
-	g_menuRequest.gameDevice = render::GetGameDevice();
-	g_menuRequest.submitGameFrame = config.tracker.submitGameFrame;
-	g_menuRequest.dualEyes = true;
-	g_menuRequest.gameFovDegrees = config.tracker.gameFovDegrees;
-	g_menuRequest.gameFovIsFor4x3 = config.tracker.gameFovIsFor4x3;
-	g_menuRequest.cameraTanHalfWidth = g_state.cameraTanHalfWidth;
-	g_menuRequest.cameraTanHalfHeight = g_state.cameraTanHalfHeight;
-
-	g_menuFirstIsLeft = FirstPassDrawsLeftEye(config.swapEyeOrder);
-	PlaceMenuCamera(g_menuFirstIsLeft);
-	render::SetBoneEyeShift(0.0f, 0.0f, 0.0f);
-
-	UInt32 drawsFirst = 0;
-	UInt32 drawsSecond = 0;
-	const bool ran = render::RunMenuStereoPasses(&MenuBetweenPasses, drawsFirst, drawsSecond);
-
-	if (ran) {
-		g_headsetRenderer.CaptureEye(g_menuRequest, !g_menuFirstIsLeft);
-		g_menuLiveThisFrame = true;
-	}
-
-	// The camera goes back to exactly what the game wrote, whatever happened,
-	// so the 2D pass about to run - and the next world frame, when the menu
-	// closes - finds the camera the engine believes in rather than an eye.
-	g_menuBaseNode->localTransform.pos = g_menuBasePos;
-	g_menuBaseNode->localTransform.rot = g_menuBaseRot;
-	game::UpdateNodeTransforms(g_menuBaseNode);
-	render::SetBoneEyeShift(0.0f, 0.0f, 0.0f);
-
-	if (g_menuLiveReportsLeft > 0) {
-		--g_menuLiveReportsLeft;
-		OBVR_LOG("Menu background: %s - %u draw(s) for the %s eye and %u for the other "
-		         "(frame %u)",
-		         ran ? "the world was drawn twice" : "the renders were refused", drawsFirst,
-		         g_menuFirstIsLeft ? "left" : "right", drawsSecond, g_presentedFrame);
-	}
 }
 
 // The two callbacks of the interface render hook, and the submit that pays
@@ -1660,11 +1643,6 @@ bool Install() {
 			render::InstallInterfaceRenderHook(redirect);
 		}
 
-		// The live menu background rides the 2D pass, because that is the one
-		// moment a self-initiated world render draws. Registered whatever the
-		// setting says: the callback asks for itself, so the INI can be
-		// hot-reloaded into it without reinstalling a hook.
-		render::SetMenuBackgroundCallback(&RunMenuLiveBackground);
 
 		// And the hover's other half: the tile search runs under the believed
 		// viewport, so highlight and click answer in the drawn space. Logs its
