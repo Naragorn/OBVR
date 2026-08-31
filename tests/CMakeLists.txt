@@ -470,3 +470,30 @@ if(WIN32)
 
 	add_test(NAME ui_screen_size COMMAND ui_screen_size_test)
 endif()
+
+add_executable(menu_draw_test
+	MenuDrawTest.cpp
+	../src/ui/MenuFont.cpp
+	../src/ui/MenuCanvas.cpp
+)
+
+target_include_directories(menu_draw_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(menu_draw_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME menu_draw COMMAND menu_draw_test)
+
+add_executable(menu_model_test
+	MenuModelTest.cpp
+	../src/ui/MenuModel.cpp
+)
+
+target_include_directories(menu_model_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(menu_model_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME menu_model COMMAND menu_model_test)
