@@ -79,7 +79,38 @@ public:
 	bool TakeFromHud(void* gameDevice, void* hudSurface, UInt32 hudWidth, UInt32 hudHeight,
 	                 UInt32 believedWidth, UInt32 believedHeight, UInt32 sizePixels);
 
-	// Draws a simple reticle of OBVR's own. FOR THIRD PERSON ONLY.
+	// Keeps a copy of the crosshair currently in the texture, so third person
+	// can show the GAME'S crosshair rather than one drawn here.
+	//
+	// The picture exists - Oblivion draws it every frame in first person - it
+	// simply is not drawn in third person, where the engine leaves the middle
+	// of the layer empty. So it is kept from the view that has one and used in
+	// the view that does not. What third person shows is then the real
+	// crosshair, the player's own replacement texture included, rather than an
+	// approximation of it.
+	//
+	// The caller decides when this is worth doing, and should only call it
+	// while NOTHING is under the crosshair: with a target the lifted square
+	// holds a context icon - a hand, a lock, a speech bubble - and keeping one
+	// of those would freeze the wrong picture into every later frame.
+	//
+	// Refreshed rather than taken once, so the copy follows the game: the sneak
+	// eye replaces the cross while sneaking, and third person then shows the
+	// eye too, which is what vanilla does in that one case.
+	bool RememberCrosshair(void* gameDevice);
+
+	// Puts the kept copy back into the texture and marks it as something to
+	// show. False when nothing has been kept yet - a session that has not been
+	// in first person since it started - and the caller then has the drawn
+	// cross below as a last resort.
+	bool UseRememberedCrosshair(void* gameDevice);
+
+	// Draws a simple reticle of OBVR's own. THIRD PERSON, AND ONLY WHEN THE
+	// KEPT COPY IS NOT AVAILABLE.
+	//
+	// The last resort behind RememberCrosshair, not the first choice: the game's
+	// own picture is better in every way that matters, and this is what is left
+	// when there has not been one yet.
 	//
 	// The class comment above says there is no drawn fallback left, and that a
 	// hand-drawn near-miss reads as the game getting it wrong rather than as
@@ -106,6 +137,7 @@ public:
 
 private:
 	bool EnsureTexture(void* gameDevice);
+	bool EnsureKeptTexture(void* gameDevice);
 	bool EnsureOverlay(vr::OpenVRBackend& backend);
 	void Place(vr::OpenVRBackend& backend, float distanceMetres, float widthMetres);
 
@@ -121,6 +153,15 @@ private:
 	bool m_takenFromHud = false;
 	bool m_takeReported = false;
 	bool m_crossReported = false;
+
+	// The game's own crosshair, kept from first person for third person to use.
+	// No interop and no overlay of its own: it is never handed to the
+	// compositor, only copied back into the texture that is.
+	void* m_kept = nullptr;         // IDirect3DTexture9
+	void* m_keptSurface = nullptr;  // IDirect3DSurface9, level 0
+	bool m_keptTried = false;
+	bool m_haveKept = false;
+	bool m_keptReported = false;
 
 	vr::openvr::VROverlayHandle m_overlay = vr::openvr::kOverlayHandleInvalid;
 	bool m_overlayTried = false;

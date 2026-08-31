@@ -1477,16 +1477,30 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			g_hudLayer.CaptureHeight(), believedWidth, believedHeight, sourcePixels);
 	}
 
-	// Third person gets a cross of OBVR's own, because Oblivion draws none
-	// there - vanilla behaviour, stated on Bethesda's own support page, and so
-	// nothing the lift above can help with: there is nothing in the layer to
-	// lift. See CrosshairLayer::DrawCross for why the project's rule against a
-	// drawn cross does not reach this one.
+	// Third person shows THE GAME'S crosshair, borrowed from first person.
 	//
-	// Drawn OVER what the lift brought rather than instead of it, so a context
-	// icon - if the game shows one in this view - is kept.
+	// Oblivion draws none in third person - vanilla behaviour, stated on
+	// Bethesda's own support page - so there is nothing in the layer to lift
+	// there. But the picture exists: the engine draws it every frame in first
+	// person, where it is lifted anyway. So it is kept from the view that has
+	// one and put back in the view that does not, and what shows is the real
+	// crosshair rather than an approximation of it - the player's own
+	// replacement texture included.
+	//
+	// Kept only while nothing is under the crosshair. With a target the lifted
+	// square holds a context icon instead, and keeping a hand or a speech
+	// bubble would freeze it into every third-person frame afterwards.
+	if (crosshairLifted && !visibility.thirdPerson && !g_crosshairHasTarget) {
+		g_crosshairLayer.RememberCrosshair(render::GetGameDevice());
+	}
+
 	if (crosshairWanted && visibility.thirdPerson && config.tracker.crosshairInThirdPerson) {
-		g_crosshairLayer.DrawCross(render::GetGameDevice(), !crosshairLifted);
+		// The drawn cross is the last resort, not the first choice: it is only
+		// reached before this session has been in first person at all, and
+		// stops being used the moment it has.
+		if (!g_crosshairLayer.UseRememberedCrosshair(render::GetGameDevice())) {
+			g_crosshairLayer.DrawCross(render::GetGameDevice(), !crosshairLifted);
+		}
 	}
 
 	// The depth was decided in the camera pass, where the camera and the frame

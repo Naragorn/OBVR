@@ -137,6 +137,90 @@ bool CrosshairLayer::TakeFromHud(void* gameDevice, void* hudSurface, UInt32 hudW
 	return true;
 }
 
+bool CrosshairLayer::EnsureKeptTexture(void* gameDevice) {
+	if (m_kept != nullptr) {
+		return true;
+	}
+	if (m_keptTried || gameDevice == nullptr) {
+		return false;
+	}
+	m_keptTried = true;
+
+	auto createTexture =
+		d3d9::Method<d3d9::CreateTextureFn>(gameDevice, d3d9::kDeviceCreateTexture);
+	if (createTexture == nullptr) {
+		return false;
+	}
+
+	// A render target like the one it copies from and to, because StretchRect
+	// wants both ends to be one. No interop here: this texture never reaches
+	// the compositor, it only holds a picture until third person asks for it.
+	if (d3d11::Failed(createTexture(gameDevice, kTextureSize, kTextureSize, 1,
+	                                d3d9::kUsageRenderTarget, d3d9::kFormatA8R8G8B8,
+	                                d3d9::kPoolDefault, &m_kept, nullptr)) ||
+	    m_kept == nullptr) {
+		m_kept = nullptr;
+		OBVR_LOG("Crosshair: no second %ux%u target, so third person cannot borrow the "
+		         "game's crosshair",
+		         kTextureSize, kTextureSize);
+		return false;
+	}
+
+	auto getSurfaceLevel =
+		d3d9::Method<d3d9::GetSurfaceLevelFn>(m_kept, d3d9::kTextureGetSurfaceLevel);
+	if (getSurfaceLevel == nullptr || d3d11::Failed(getSurfaceLevel(m_kept, 0, &m_keptSurface)) ||
+	    m_keptSurface == nullptr) {
+		m_keptSurface = nullptr;
+		return false;
+	}
+	return true;
+}
+
+bool CrosshairLayer::RememberCrosshair(void* gameDevice) {
+	if (m_surface == nullptr || !EnsureKeptTexture(gameDevice)) {
+		return false;
+	}
+
+	auto stretchRect = d3d9::Method<d3d9::StretchRectFn>(gameDevice, d3d9::kDeviceStretchRect);
+	if (stretchRect == nullptr) {
+		return false;
+	}
+
+	if (d3d11::Failed(stretchRect(gameDevice, m_surface, nullptr, m_keptSurface, nullptr,
+	                              d3d9::kTexFilterNone))) {
+		return false;
+	}
+
+	m_haveKept = true;
+	if (!m_keptReported) {
+		m_keptReported = true;
+		OBVR_LOG("Crosshair: keeping the game's own crosshair for third person to borrow");
+	}
+	return true;
+}
+
+bool CrosshairLayer::UseRememberedCrosshair(void* gameDevice) {
+	if (!m_haveKept || m_keptSurface == nullptr || !EnsureTexture(gameDevice)) {
+		return false;
+	}
+
+	auto stretchRect = d3d9::Method<d3d9::StretchRectFn>(gameDevice, d3d9::kDeviceStretchRect);
+	if (stretchRect == nullptr) {
+		return false;
+	}
+
+	// Straight over whatever the lift left there. In third person the lifted
+	// square is empty - Oblivion draws nothing in the middle of the layer -
+	// so there is nothing being thrown away.
+	if (d3d11::Failed(stretchRect(gameDevice, m_keptSurface, nullptr, m_surface, nullptr,
+	                              d3d9::kTexFilterNone))) {
+		return false;
+	}
+
+	m_takenFromHud = true;
+	return true;
+}
+
 bool CrosshairLayer::DrawCross(void* gameDevice, bool clearFirst) {
 	if (!EnsureTexture(gameDevice)) {
 		return false;
@@ -312,6 +396,14 @@ void CrosshairLayer::Destroy() {
 	m_textureTried = false;
 	m_takenFromHud = false;
 	m_takeReported = false;
+
+	d3d11::Release(m_keptSurface);
+	d3d11::Release(m_kept);
+	m_keptSurface = nullptr;
+	m_kept = nullptr;
+	m_keptTried = false;
+	m_haveKept = false;
+	m_keptReported = false;
 
 	// Left to the runtime, for the reason HudLayer::Destroy records: calling
 	// DestroyOverlay from a shutdown next to DllMain would reach into a
