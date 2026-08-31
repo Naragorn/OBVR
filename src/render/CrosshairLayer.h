@@ -79,6 +79,29 @@ public:
 	bool TakeFromHud(void* gameDevice, void* hudSurface, UInt32 hudWidth, UInt32 hudHeight,
 	                 UInt32 believedWidth, UInt32 believedHeight, UInt32 sizePixels);
 
+	// Draws a simple reticle of OBVR's own. FOR THIRD PERSON ONLY.
+	//
+	// The class comment above says there is no drawn fallback left, and that a
+	// hand-drawn near-miss reads as the game getting it wrong rather than as
+	// the mod being off. That reasoning is sound and it is why nothing is drawn
+	// in first person - but it rests on the game drawing a crosshair to be
+	// mistaken for. In third person it draws none at all.
+	//
+	// That is vanilla behaviour and not something OBVR does: Bethesda's own
+	// support page states it plainly - "The crosshair is only visible in
+	// Oblivion in First Person mode. It does not appear in 3rd Person mode." -
+	// and the mods that add one (Third Person Crosshair, DarNified UI's toggle)
+	// exist for that reason. So there is nothing here to be confused with, and
+	// lifting cannot help: there is nothing in the layer to lift.
+	//
+	// Deliberately NOT a copy of Oblivion's cross. Four strokes with a gap in
+	// the middle, which reads as a reticle the mod put there.
+	//
+	// clearFirst false draws over whatever the lift already put in the texture,
+	// so a context icon - if the game shows one in third person - is kept and
+	// the cross is added to it.
+	bool DrawCross(void* gameDevice, bool clearFirst);
+
 	void Destroy();
 
 private:
@@ -97,6 +120,7 @@ private:
 	// no drawn fallback left, a frame that lifted nothing shows nothing.
 	bool m_takenFromHud = false;
 	bool m_takeReported = false;
+	bool m_crossReported = false;
 
 	vr::openvr::VROverlayHandle m_overlay = vr::openvr::kOverlayHandleInvalid;
 	bool m_overlayTried = false;

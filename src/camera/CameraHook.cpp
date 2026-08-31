@@ -1440,6 +1440,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	visibility.worldFrame = worldFrame;
 	visibility.menuIsUp = config.tracker.showMenus && game::IsMenuMode();
 	visibility.onlyWhenNeeded = config.tracker.crosshairOnlyWhenNeeded;
+	visibility.onlyWhenNeededThirdPerson = config.tracker.crosshairOnlyWhenNeededThirdPerson;
 	visibility.thirdPerson = ReadIsThirdPerson();
 	visibility.somethingAimedAt = g_crosshairHasTarget;
 
@@ -1458,6 +1459,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// Only on a frame that will actually show it, because the lift erases what
 	// it takes: doing this where no crosshair is wanted would punch a hole in
 	// the middle of a menu for nothing.
+	bool crosshairLifted = false;
 	if (crosshairWanted && config.tracker.hudOverlay && g_hudLayer.HasCapture()) {
 		UInt32 believedWidth = 0;
 		UInt32 believedHeight = 0;
@@ -1470,9 +1472,21 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			believedHeight > 0 ? believedHeight : g_hudLayer.CaptureHeight(),
 			config.tracker.crosshairSourceShare);
 
-		g_crosshairLayer.TakeFromHud(render::GetGameDevice(), g_hudLayer.CaptureSurface(),
-		                             g_hudLayer.CaptureWidth(), g_hudLayer.CaptureHeight(),
-		                             believedWidth, believedHeight, sourcePixels);
+		crosshairLifted = g_crosshairLayer.TakeFromHud(
+			render::GetGameDevice(), g_hudLayer.CaptureSurface(), g_hudLayer.CaptureWidth(),
+			g_hudLayer.CaptureHeight(), believedWidth, believedHeight, sourcePixels);
+	}
+
+	// Third person gets a cross of OBVR's own, because Oblivion draws none
+	// there - vanilla behaviour, stated on Bethesda's own support page, and so
+	// nothing the lift above can help with: there is nothing in the layer to
+	// lift. See CrosshairLayer::DrawCross for why the project's rule against a
+	// drawn cross does not reach this one.
+	//
+	// Drawn OVER what the lift brought rather than instead of it, so a context
+	// icon - if the game shows one in this view - is kept.
+	if (crosshairWanted && visibility.thirdPerson && config.tracker.crosshairInThirdPerson) {
+		g_crosshairLayer.DrawCross(render::GetGameDevice(), !crosshairLifted);
 	}
 
 	// The depth was decided in the camera pass, where the camera and the frame

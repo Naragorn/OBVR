@@ -416,10 +416,33 @@ struct TrackerSettings {
 	// moment Oblivion would put a context icon and a name on screen - or while
 	// a weapon or spell is readied.
 	//
-	// Third person is left alone either way. There the crosshair is the only
-	// indication of where a shot goes, because the character is not standing
-	// where the camera is.
+	// Third person has its own switch below, because the two views start from
+	// opposite places - see crosshairInThirdPerson.
 	bool crosshairOnlyWhenNeeded = false;
+
+	// Whether OBVR draws a crosshair in third person, where Oblivion draws
+	// none.
+	//
+	// It really is none, and it is vanilla rather than anything OBVR does.
+	// Bethesda's own support page: "The crosshair is only visible in Oblivion
+	// in First Person mode. It does not appear in 3rd Person mode." OBVR lifts
+	// the game's crosshair out of the 2D layer rather than drawing one, so with
+	// nothing drawn there is nothing to lift and no setting could switch it on.
+	//
+	// This is therefore the one place a drawn cross is allowed, and the reason
+	// the project's rule against one does not apply: that rule exists so a
+	// hand-drawn near-miss is never mistaken for the game's own, and in third
+	// person there is no game crosshair to mistake it for. It is deliberately
+	// not a copy - four strokes with a gap in the middle.
+	bool crosshairInThirdPerson = false;
+
+	// The "only when it is of use" restriction, for third person.
+	//
+	// Its own switch rather than sharing the first person one: there the
+	// setting takes away a crosshair the game always draws, here it governs one
+	// OBVR puts up in a view that had none, and wanting them set differently is
+	// entirely reasonable.
+	bool crosshairOnlyWhenNeededThirdPerson = false;
 
 	// How big a square is lifted out of the 2D layer, as a percentage of the
 	// height the game believes it drew in.

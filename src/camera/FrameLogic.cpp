@@ -165,7 +165,9 @@ bool CrosshairWanted(const CrosshairVisibility& visibility) {
 	if (!visibility.enabled || !visibility.worldFrame || visibility.menuIsUp) {
 		return false;
 	}
-	if (!visibility.onlyWhenNeeded || visibility.thirdPerson) {
+	const bool onlyWhenNeeded = visibility.thirdPerson ? visibility.onlyWhenNeededThirdPerson
+	                                                   : visibility.onlyWhenNeeded;
+	if (!onlyWhenNeeded) {
 		return true;
 	}
 	return visibility.somethingAimedAt || visibility.weaponDrawn;

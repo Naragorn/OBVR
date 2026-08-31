@@ -150,6 +150,23 @@ const SettingDefinition kSettings[] = {
 		"always", "when needed",
 	},
 	{
+		"Aiming", "Crosshair in 3rd person", "Vanilla draws none there, so OBVR can",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "CrosshairInThirdPerson",
+		+[](const Config& c) { return c.tracker.crosshairInThirdPerson ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.crosshairInThirdPerson = v != 0.0f; },
+	},
+	{
+		"Aiming", "3rd person only when needed", "Same rule, for the drawn one",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "CrosshairOnlyWhenNeeded3rdPerson",
+		+[](const Config& c) {
+			return c.tracker.crosshairOnlyWhenNeededThirdPerson ? 1.0f : 0.0f;
+		},
+		+[](Config& c, float v) { c.tracker.crosshairOnlyWhenNeededThirdPerson = v != 0.0f; },
+		"always", "when needed",
+	},
+	{
 		"Aiming", "Crosshair cutout", "Percent of screen lifted. Raise if bits are left",
 		ItemKind::Number, 1.0f, 10.0f, 0.5f, 1, false,
 		"Render", "CrosshairSourceShare",

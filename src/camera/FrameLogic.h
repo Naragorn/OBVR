@@ -452,10 +452,17 @@ struct CrosshairVisibility {
 	// introduced for.
 	bool onlyWhenNeeded = false;
 
-	// Only first person is affected. In third person the crosshair is the only
-	// indication of where a shot goes at all, since the character is not
-	// standing where the camera is - hiding it there would take away something
-	// the view does not otherwise provide.
+	// The same restriction for third person, under its own switch.
+	//
+	// Two switches rather than one, because the two views start from opposite
+	// places. In first person Oblivion always draws a crosshair, so the setting
+	// takes one away. In third person it draws none at all - Bethesda's own
+	// support page says so - so there the setting governs a crosshair OBVR
+	// itself puts up, and somebody may well want it always in one view and only
+	// when useful in the other.
+	bool onlyWhenNeededThirdPerson = false;
+
+	// Which of the two switches above applies this frame.
 	bool thirdPerson = false;
 
 	// Something activatable is under the crosshair, which is exactly when

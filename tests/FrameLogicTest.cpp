@@ -718,11 +718,52 @@ void TestCrosshair() {
 	Check(CrosshairWanted(Needed(false, false, true)), "so does drawing a weapon");
 	Check(CrosshairWanted(Needed(false, true, true)), "and both at once, without arguing");
 
-	// Third person is untouched by the option. The crosshair is the only
-	// indication of where a shot goes there, because the character is not
-	// standing where the camera is.
+	// Third person listens to its OWN switch, not this one. The two views start
+	// from opposite places: in first person the setting takes away a crosshair
+	// the game always draws, in third person it governs one OBVR puts up in a
+	// view Oblivion leaves empty.
 	Check(CrosshairWanted(Needed(true, false, false)),
-	      "third person keeps its crosshair whatever the option says");
+	      "third person ignores the first person switch");
+
+	const auto NeededThird = [](bool aimedAt, bool weapon) {
+		CrosshairVisibility v;
+		v.enabled = true;
+		v.worldFrame = true;
+		v.menuIsUp = false;
+		v.onlyWhenNeeded = false;
+		v.onlyWhenNeededThirdPerson = true;
+		v.thirdPerson = true;
+		v.somethingAimedAt = aimedAt;
+		v.weaponDrawn = weapon;
+		return v;
+	};
+
+	Check(!CrosshairWanted(NeededThird(false, false)),
+	      "with its own switch on, third person hides it too");
+	Check(CrosshairWanted(NeededThird(true, false)), "and a target brings it back");
+	Check(CrosshairWanted(NeededThird(false, true)), "and so does a drawn weapon");
+
+	// The two switches really are independent - the flow that would break if
+	// they were ever folded back into one.
+	CrosshairVisibility firstOnly;
+	firstOnly.enabled = true;
+	firstOnly.worldFrame = true;
+	firstOnly.onlyWhenNeeded = true;
+	firstOnly.onlyWhenNeededThirdPerson = false;
+
+	firstOnly.thirdPerson = false;
+	Check(!CrosshairWanted(firstOnly), "restricted in first person");
+	firstOnly.thirdPerson = true;
+	Check(CrosshairWanted(firstOnly), "and unrestricted in third, from the same settings");
+
+	CrosshairVisibility thirdOnly = firstOnly;
+	thirdOnly.onlyWhenNeeded = false;
+	thirdOnly.onlyWhenNeededThirdPerson = true;
+
+	thirdOnly.thirdPerson = true;
+	Check(!CrosshairWanted(thirdOnly), "restricted in third person");
+	thirdOnly.thirdPerson = false;
+	Check(CrosshairWanted(thirdOnly), "and unrestricted in first, the other way round");
 
 	// The three original conditions still come first. Something aimed at during
 	// a conversation must not put a crosshair over the dialogue.
