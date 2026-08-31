@@ -156,15 +156,16 @@ bool IsPlayerSneaking() {
 	return (flags & addr::kMovementFlagSneaking) != 0;
 }
 
-bool IsPlayerAttacking() {
+SInt32 ReadPlayerAction() {
 	const auto* const process = PlayerProcessOrNull();
 	if (process == nullptr) {
-		return false;
+		return addr::kActionNone;
 	}
+	return *reinterpret_cast<const SInt16*>(process + addr::kProcessCurrentActionOffset);
+}
 
-	const SInt32 action =
-		*reinterpret_cast<const SInt16*>(process + addr::kProcessCurrentActionOffset);
-
+bool IsPlayerAttacking() {
+	const SInt32 action = ReadPlayerAction();
 	return action == addr::kActionAttack || action == addr::kActionAttackFollowThrough ||
 	       action == addr::kActionAttackBow || action == addr::kActionAttackBowArrowAttached;
 }

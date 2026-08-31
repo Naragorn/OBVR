@@ -230,6 +230,18 @@ struct Config {
 	// would stay, and the fault this avoids would be back a moment later.
 	bool aimTurnOnShotOnly = true;
 
+	// Logs one line a frame for forty frames from the moment the attack control
+	// is released: what the engine says the actor is doing, and whether the body
+	// is being held turned.
+	//
+	// For one measurement. The turn window is currently the whole attack, and
+	// that is visibly too long - the character walks the aimed way for its
+	// length and the bow swings across and springs back. It has to shrink to
+	// the frame the arrow is actually made on, and which action change that is
+	// has been read out of an enum once with nothing to check it against.
+	// Guessing at it would be the thing the project's own notes forbid.
+	bool aimShotTrace = false;
+
 	// The key that opens OBVR's own settings menu in the headset, as a Windows
 	// virtual-key code. 0 disables it entirely.
 	//

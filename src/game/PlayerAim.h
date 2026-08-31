@@ -116,4 +116,18 @@ bool IsPlayerSneaking();
 // feature working.
 bool IsPlayerAttacking();
 
+// The raw action value, for the shot trace and for nothing else.
+//
+// IsPlayerAttacking answers the question the code acts on; this answers the one
+// a person reading a log needs, which is what the sequence of actions during a
+// shot actually looks like. kActionNone when it cannot be read.
+//
+// It exists because the window the body is turned for is currently the whole
+// attack, and that turned out to be visible: the character walks the aimed way
+// for its length, and the bow swings and springs back. Shortening it to the
+// frame the arrow is actually made needs knowing which action change that is,
+// and guessing at it from an enum read once is exactly what the project's own
+// notes say not to do.
+SInt32 ReadPlayerAction();
+
 }  // namespace obvr::game

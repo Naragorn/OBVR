@@ -252,6 +252,23 @@ bool g_aimWasHeld = false;
 // the heading it leaves along.
 float g_aimSecondsSinceRelease = -1.0f;
 
+// Frames left of the shot trace: one line a frame from the moment the attack
+// control goes up, saying what the engine's action is and whether the body is
+// being held turned.
+//
+// It exists to answer one question with a measurement instead of a guess. The
+// body is currently turned for the WHOLE attack, and the headset says that is
+// too long: "fuer den zeitraum des schiessen laeuft er in die richtung wo ich
+// ziele", and the bow "springt nach dem schuss zurueck mittig". The window has
+// to shrink to the frame the arrow is actually made on - and which action
+// change that is has been read out of an enum exactly once, with nothing to
+// check it against.
+//
+// Forty frames is about two thirds of a second at sixty, which comfortably
+// covers a bow release and its follow-through.
+UInt32 g_shotTraceLeft = 0;
+UInt32 g_shotTraceFrame = 0;
+
 // The depth the crosshair quad is hung at, in metres, eased towards whatever
 // is under the crosshair.
 //
@@ -2277,6 +2294,24 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	const bool turnDue =
 		AimTurnDue(onShotMode ? AimTurnMode::OnShot : AimTurnMode::WhileAiming, attackHeld,
 	               attackWasHeld, attackInProgress);
+
+	// The shot trace, armed by the release and running for forty frames. One
+	// line a frame, so the sequence of actions across a real bow shot can be
+	// read off rather than assumed - which is what deciding the shortest
+	// possible window needs.
+	if (readPlayer && GetConfig().aimShotTrace) {
+		if (attackWasHeld && !attackHeld) {
+			g_shotTraceLeft = 40;
+			g_shotTraceFrame = 0;
+		}
+		if (g_shotTraceLeft > 0) {
+			--g_shotTraceLeft;
+			OBVR_LOG("Shot trace %2u: action=%d turning=%d offset=%.1f deg, rotZ=%.4f",
+			         g_shotTraceFrame++, game::ReadPlayerAction(), turnDue ? 1 : 0,
+			         static_cast<double>(g_aimBodyOffset * math::kRadiansToDegrees),
+			         static_cast<double>(asEngineLeftIt.yaw));
+		}
+	}
 
 	if (readPlayer &&
 	    AimYawWanted(GetConfig().aimFollowsGaze, g_headTracker.IsHeadsetConnected(), isThirdPerson,
