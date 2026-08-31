@@ -63,6 +63,10 @@ public:
 	UInt32 Revision() const { return m_revision; }
 
 private:
+	// Pulls the window down until the selected row is one of the lines actually
+	// drawn - see LinesFor, and the note there on why rows and lines differ.
+	void EnsureSelectionFits();
+
 	MenuState m_state;
 	UInt32 m_revision = 1;
 	UInt32 m_visibleRows = 10;

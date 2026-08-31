@@ -334,6 +334,89 @@ void TestRestartMarkAndHelp() {
 	Check(helpNearBottom, "the help line is drawn along the bottom");
 }
 
+SInt32 LastRowWithColour(const Canvas& canvas, Pixel colour) {
+	for (SInt32 y = static_cast<SInt32>(canvas.Height()) - 1; y >= 0; --y) {
+		if (RowHasColour(canvas, y, colour)) {
+			return y;
+		}
+	}
+	return -1;
+}
+
+void TestNothingCollidesWithTheHelpLine() {
+	std::printf("The bottom row and the help line\n");
+
+	MenuTheme theme;
+
+	// Reported from the headset: the bottom row of the list sat on top of the
+	// help text. The cause was that a category heading takes a line and was
+	// never counted as one, so a window holding a couple of them pushed its
+	// last rows past the bottom.
+	//
+	// The check is therefore about where things are relative to each other
+	// rather than about a pixel: the lowest row of the list has to end above
+	// the highest pixel of the help line. Colours make the two tellable apart.
+	MenuItem items[kItemCount];
+	const char* categories[kItemCount];
+	BuildItems(items, categories);
+
+	// The worst case first: every single row starts a new category, so every
+	// row is preceded by a heading. Nothing in the list is allowed to reach the
+	// help line even then.
+	static const char* const kEvery[kItemCount] = {"A", "B", "C", "D", "E", "F",
+	                                              "G", "H", "I", "J", "K", "L"};
+	for (UInt32 at = 0; at < kItemCount; ++at) {
+		categories[at] = kEvery[at];
+	}
+
+	Sheet sheet;
+	Canvas canvas = sheet.Surface();
+	PaintMenu(canvas, items, categories, kItemCount, MenuState{}, 1, theme);
+
+	const SInt32 helpTop = FirstRowWithColour(canvas, theme.help);
+	Check(helpTop > 0, "the help line is drawn");
+
+	const SInt32 lowestValue = LastRowWithColour(canvas, theme.value);
+	const SInt32 lowestCategory = LastRowWithColour(canvas, theme.category);
+
+	Check(lowestValue < helpTop, "no value reaches the help line");
+	Check(lowestCategory < helpTop, "and no category heading does either");
+	Check(sheet.GuardIntact(), "and nothing was written past the canvas");
+
+	// With the selection at the bottom, so the highlight bar - which is drawn a
+	// pixel above its row and is the tallest thing on a line - is in play.
+	Sheet selected;
+	Canvas withBar = selected.Surface();
+
+	MenuState state;
+	state.selected = kItemCount - 1;
+	state.firstVisible = 0;
+	PaintMenu(withBar, items, categories, kItemCount, state, 1, theme);
+
+	const SInt32 barBottom = LastRowWithColour(withBar, theme.highlight);
+	const SInt32 helpTopAgain = FirstRowWithColour(withBar, theme.help);
+	if (barBottom >= 0 && helpTopAgain >= 0) {
+		Check(barBottom < helpTopAgain, "a highlight bar at the bottom stays above the help line");
+	} else {
+		Check(barBottom < 0, "or the bottom row was not drawn at all, which is also correct");
+	}
+
+	// And at a bigger scale, where fewer rows fit and the arithmetic is
+	// different - the size the menu is actually drawn at in the headset.
+	Sheet big;
+	Canvas scaled = big.Surface();
+	PaintMenu(scaled, items, categories, kItemCount, MenuState{}, 3, theme);
+
+	const SInt32 helpAt3 = FirstRowWithColour(scaled, theme.help);
+	const SInt32 valueAt3 = LastRowWithColour(scaled, theme.value);
+	if (helpAt3 >= 0 && valueAt3 >= 0) {
+		Check(valueAt3 < helpAt3, "and the same at the scale the headset uses");
+	} else {
+		Check(true, "and the same at the scale the headset uses");
+	}
+	Check(big.GuardIntact(), "with nothing past the canvas at that scale either");
+}
+
 }  // namespace
 
 int main() {
@@ -352,6 +435,8 @@ int main() {
 	TestCategoryHeadings();
 	std::printf("\n");
 	TestRestartMarkAndHelp();
+	std::printf("\n");
+	TestNothingCollidesWithTheHelpLine();
 
 	std::printf("\n");
 	if (g_failures == 0) {

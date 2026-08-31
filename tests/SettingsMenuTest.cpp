@@ -195,6 +195,120 @@ void TestRows() {
 	Check(menu.BuildRows(config, few, nullptr, 3) == 0, "and no categories array either");
 }
 
+// The painter's own arithmetic, repeated here so the test can say what the
+// menu should be doing rather than ask the menu whether it did it.
+UInt32 DrawnLines(UInt32 first, UInt32 last) {
+	const auto* const settings = SettingDefinitions();
+
+	const auto same = [](const char* a, const char* b) {
+		while (*a != '\0' && *b != '\0') {
+			if (*a != *b) {
+				return false;
+			}
+			++a;
+			++b;
+		}
+		return *a == *b;
+	};
+
+	UInt32 lines = 0;
+	for (UInt32 at = first; at <= last; ++at) {
+		if (at > first && !same(settings[at].category, settings[at - 1].category)) {
+			++lines;
+		}
+		++lines;
+	}
+	return lines;
+}
+
+void TestSelectionStaysVisible() {
+	std::printf("The highlight never leaves the window\n");
+
+	// A category heading takes a drawn line, so a window with room for ten rows
+	// shows fewer than ten settings whenever a boundary falls inside it. Count
+	// the selection in rows and it can end up below the last line the painter
+	// has room for - and then the highlight is simply not drawn, which from
+	// inside a headset looks like the list has stopped responding to the down
+	// key.
+	//
+	// So: walk the whole list, twice round, and check after every single press
+	// that the selection is still among the lines that will actually be drawn.
+	for (UInt32 window = 3; window <= 12; ++window) {
+		SettingsMenu menu;
+		Config config;
+		menu.Toggle();
+		menu.SetVisibleRows(window);
+
+		for (UInt32 press = 0; press < SettingDefinitionCount() * 2; ++press) {
+			menu.Apply(MenuAction::Down, config);
+
+			const auto state = menu.State();
+			if (state.firstVisible > state.selected) {
+				std::printf("        window %u: the window is below the selection\n", window);
+				Check(false, "the window never sits below the selection");
+				return;
+			}
+			if (DrawnLines(state.firstVisible, state.selected) > window) {
+				std::printf("        window %u: row %u needs %u lines of %u\n", window,
+				            state.selected, DrawnLines(state.firstVisible, state.selected),
+				            window);
+				Check(false, "the selection always fits in the lines available");
+				return;
+			}
+		}
+	}
+	Check(true, "the selection always fits in the lines available, at every window size");
+
+	// And the same going up, where the window moves the other way.
+	for (UInt32 window = 3; window <= 12; ++window) {
+		SettingsMenu menu;
+		Config config;
+		menu.Toggle();
+		menu.SetVisibleRows(window);
+
+		for (UInt32 press = 0; press < SettingDefinitionCount() * 2; ++press) {
+			menu.Apply(MenuAction::Up, config);
+
+			const auto state = menu.State();
+			if (state.firstVisible > state.selected ||
+			    DrawnLines(state.firstVisible, state.selected) > window) {
+				Check(false, "and going up as well");
+				return;
+			}
+		}
+	}
+	Check(true, "and going up as well");
+
+	// Paging jumps further than one row, so it is the case most likely to leave
+	// the window behind.
+	for (UInt32 window = 3; window <= 12; ++window) {
+		SettingsMenu menu;
+		Config config;
+		menu.Toggle();
+		menu.SetVisibleRows(window);
+
+		for (UInt32 press = 0; press < 8; ++press) {
+			menu.Apply(MenuAction::PageDown, config);
+			const auto state = menu.State();
+			if (state.firstVisible > state.selected ||
+			    DrawnLines(state.firstVisible, state.selected) > window) {
+				Check(false, "and paging too");
+				return;
+			}
+		}
+		for (UInt32 press = 0; press < 8; ++press) {
+			menu.Apply(MenuAction::PageUp, config);
+			const auto state = menu.State();
+			if (state.firstVisible > state.selected ||
+			    DrawnLines(state.firstVisible, state.selected) > window) {
+				Check(false, "and paging too");
+				return;
+			}
+		}
+	}
+	Check(true, "and paging too");
+}
+
 void TestVisibleRows() {
 	std::printf("How many rows the layer says fit\n");
 
@@ -232,6 +346,8 @@ int main() {
 	TestChangingValues();
 	std::printf("\n");
 	TestRows();
+	std::printf("\n");
+	TestSelectionStaysVisible();
 	std::printf("\n");
 	TestVisibleRows();
 

@@ -78,6 +78,12 @@ void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categor
 
 	const UInt32 visibleRows = VisibleRowsFor(canvas.Height(), scale);
 
+	// The line below which nothing from the list may be drawn. The help line
+	// and the rule above it live there, and a row drawn into that space lands
+	// on top of the text explaining it - which is what the first run in a
+	// headset showed at the bottom of the list.
+	const SInt32 contentBottom = height - margin - static_cast<SInt32>(kHelpLines) * lineHeight;
+
 	// The state is used as given rather than re-derived. AdvanceMenu is what
 	// keeps the selection and the window consistent, and a painter that
 	// corrected them here would hide a fault in the one place it could be seen.
@@ -85,32 +91,39 @@ void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categor
 	// count and not by the window.
 	SInt32 y = margin + kTitleLines * lineHeight;
 
-	for (UInt32 row = 0; row < visibleRows; ++row) {
-		const UInt32 index = state.firstVisible + row;
-		if (index >= count) {
-			break;
-		}
+	// Counted rather than derived from the loop index, because a category
+	// heading takes a line too. That was the bug: headings were drawn without
+	// being counted, so a window holding two of them pushed its last two rows
+	// past the bottom and into the help line.
+	UInt32 linesUsed = 0;
 
+	for (UInt32 index = state.firstVisible; index < count && linesUsed < visibleRows; ++index) {
 		const MenuItem& item = items[index];
 
-		// The heading above the first row of each category. Drawn in the row's
-		// own space rather than in a line of its own, because a headset is
-		// short of rows and a heading that costs a row costs a setting.
+		// The heading above the first row of each category.
 		const bool firstOfCategory =
 			categories != nullptr &&
 			(index == 0 || !SameText(categories[index], categories[index - 1]));
 
-		if (firstOfCategory && row > 0) {
+		if (firstOfCategory && index > state.firstVisible) {
+			// Room for the heading AND the row it introduces, or neither. A
+			// heading alone at the bottom announces rows that are not on
+			// screen, which reads as a menu that has lost its contents.
+			if (linesUsed + 2 > visibleRows || y + 2 * lineHeight > contentBottom) {
+				break;
+			}
+
 			canvas.DrawText(margin, y, categories[index], static_cast<SInt32>(scale),
 			                theme.category);
 			y += lineHeight;
+			++linesUsed;
+		}
 
-			// A heading at the very bottom with nothing under it is a heading
-			// for rows that are not on screen, which reads as a menu that has
-			// lost its contents.
-			if (y + lineHeight > height - margin - static_cast<SInt32>(kHelpLines) * lineHeight) {
-				break;
-			}
+		// The last guard, and the one that makes the collision impossible
+		// rather than merely unlikely: whatever the counting says, nothing is
+		// drawn below the line the help text owns.
+		if (y + lineHeight > contentBottom) {
+			break;
 		}
 
 		const bool selected = index == state.selected;
@@ -147,6 +160,7 @@ void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categor
 		}
 
 		y += lineHeight;
+		++linesUsed;
 	}
 
 	// The help line for whatever is selected, along the bottom. One line,

@@ -2,6 +2,63 @@
 
 namespace obvr::ui {
 
+namespace {
+
+bool SameText(const char* a, const char* b) {
+	if (a == nullptr || b == nullptr) {
+		return a == b;
+	}
+	while (*a != '\0' && *b != '\0') {
+		if (*a != *b) {
+			return false;
+		}
+		++a;
+		++b;
+	}
+	return *a == *b;
+}
+
+// How many DRAWN lines the rows from `first` to `last` take up, headings
+// included.
+//
+// Not the same as the number of rows, and that difference is the whole reason
+// this exists. The painter gives a category heading a line of its own, so a
+// window holding two headings shows two fewer settings than it has room for -
+// and a selection counted in rows can then sit below the bottom of a window
+// measured in lines, with the highlight simply not drawn. The wearer sees a
+// list that stops responding to the down key.
+UInt32 LinesFor(UInt32 first, UInt32 last) {
+	const SettingDefinition* const settings = SettingDefinitions();
+
+	UInt32 lines = 0;
+	for (UInt32 at = first; at <= last; ++at) {
+		if (at > first && !SameText(settings[at].category, settings[at - 1].category)) {
+			++lines;
+		}
+		++lines;
+	}
+	return lines;
+}
+
+}  // namespace
+
+void SettingsMenu::EnsureSelectionFits() {
+	const UInt32 count = SettingDefinitionCount();
+	if (count == 0 || m_state.selected >= count) {
+		return;
+	}
+
+	// The window is pulled down one row at a time until the selection fits in
+	// the lines available. One row at a time rather than by calculation,
+	// because the answer depends on where the category boundaries fall and a
+	// closed form for that is a harder thing to get right than a loop over
+	// twenty entries.
+	while (m_state.firstVisible < m_state.selected &&
+	       LinesFor(m_state.firstVisible, m_state.selected) > m_visibleRows) {
+		++m_state.firstVisible;
+	}
+}
+
 void SettingsMenu::Toggle() {
 	m_open = !m_open;
 
@@ -26,6 +83,7 @@ void SettingsMenu::SetVisibleRows(UInt32 rows) {
 	// routine that puts a window back in range, so it is used rather than
 	// repeated here.
 	m_state = AdvanceMenu(m_state, MenuAction::None, SettingDefinitionCount(), m_visibleRows);
+	EnsureSelectionFits();
 	++m_revision;
 }
 
@@ -74,6 +132,7 @@ const SettingDefinition* SettingsMenu::Apply(MenuAction action, Config& config) 
 	}
 
 	m_state = moved;
+	EnsureSelectionFits();
 	++m_revision;
 	return nullptr;
 }
