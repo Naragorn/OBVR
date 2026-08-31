@@ -113,11 +113,26 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.tracker.crosshair = v != 0.0f; },
 	},
 	{
-		"Aiming", "Crosshair distance", "Metres. Where it hangs in front of you",
+		"Aiming", "Crosshair depth", "Follows what you are aiming at, within reach",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "CrosshairDynamic",
+		+[](const Config& c) { return c.tracker.crosshairDynamic ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.crosshairDynamic = v != 0.0f; },
+		"fixed", "follows",
+	},
+	{
+		"Aiming", "Crosshair distance", "Metres. Where it hangs with nothing in reach",
 		ItemKind::Number, 0.5f, 30.0f, 0.5f, 1, false,
 		"Render", "CrosshairDistanceMetres",
 		+[](const Config& c) { return c.tracker.crosshairDistanceMetres; },
 		+[](Config& c, float v) { c.tracker.crosshairDistanceMetres = v; },
+	},
+	{
+		"Aiming", "Crosshair easing", "How fast the depth follows. Lower is calmer",
+		ItemKind::Number, 1.0f, 30.0f, 1.0f, 0, false,
+		"Render", "CrosshairDepthSpeed",
+		+[](const Config& c) { return c.tracker.crosshairDepthSpeed; },
+		+[](Config& c, float v) { c.tracker.crosshairDepthSpeed = v; },
 	},
 	{
 		"Aiming", "Crosshair size", "Metres wide at one metre away",

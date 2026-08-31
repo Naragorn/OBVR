@@ -602,7 +602,69 @@ inline constexpr UInt32 kLoadingThreadHandle = 0x00B33434;
 // Both arms draw, so this branch cannot be why nothing is drawn - it is
 // logged to say which of the two paths the pass took, so a gate that closed
 // can be looked for in the right one.
-inline constexpr UInt32 kMenuStackCount = 0x00B1397A;
-inline constexpr UInt32 kMenuStackRoot = 0x00B13974;
+//
+// WHAT THIS ACTUALLY IS, established later and from the other direction. It
+// was read here as "the menu stack", which was a guess from the shape of the
+// branch and was wrong. xOBSE's GameMenus.cpp declares
+//
+//   NiTArray<TileMenu*> * g_TileMenuArray = (NiTArray<TileMenu*> *)0x00B13970;
+//
+// and the two addresses above are that object's own fields: the data pointer
+// at +0x04 and the UInt16 count at +0x0A. A decompiled branch in this binary
+// and a modding SDK's source, arrived at years and methods apart, describing
+// the same object - which is the two-source standard this file holds itself
+// to, met without anyone setting out to meet it.
+//
+// It is an array indexed by menu type, not a stack: entry n belongs to the
+// menu with id kMenuIdFirst + n, loaded or not. That is what makes it a second
+// route to any menu by id, and the crosshair depth uses it as the check on the
+// direct pointer below.
+inline constexpr UInt32 kTileMenuArray = 0x00B13970;
+inline constexpr UInt32 kTileMenuArrayData = 0x00B13974;
+inline constexpr UInt32 kTileMenuArrayCount = 0x00B1397A;
+
+// Pointer to the pointer to HUDInfoMenu - the menu that owns crosshairRef,
+// the reference whatever the player is aiming at. From xOBSE's GameMenus.cpp:
+//
+//   HUDInfoMenu ** g_HUDInfoMenu = (HUDInfoMenu**)0x00B3B33C;
+//
+// A double pointer, which matters: reading this address gives the global, and
+// the global holds the menu.
+//
+// HOW IT IS CHECKED, since one document is not the standard this file holds
+// itself to. Not by a second route to the same pointer - reaching the menu
+// through the tile menu array would need TileMenu's layout, which is not
+// recorded here, and a guessed offset into a live pointer crashes rather than
+// answers. Instead the object is asked what it is: every Menu carries its own
+// id at kMenuIdOffset, and the one this address leads to has to answer
+// kMenuIdHudInfo before a single further byte is read from it.
+//
+// That is the stronger check anyway. A second pointer route would only show
+// that two addresses agree; the id shows that the address leads to the RIGHT
+// menu, and it does so using an offset that has been read in the running game
+// for weeks rather than a new one taken on faith.
+inline constexpr UInt32 kHudInfoMenuPointer = 0x00B3B33C;
+
+// Where a Menu keeps its own type id.
+//
+// Already relied on by game::ActiveMenuId, which reads it through the
+// InterfaceManager's activeMenu and has been reporting menu types correctly
+// since the persuasion work. Named here because the crosshair depth uses it
+// for something stricter than logging: as the proof that kHudInfoMenuPointer
+// leads where it claims.
+inline constexpr UInt32 kMenuIdOffset = 0x20;
+
+// TESObjectREFR::crosshairRef inside HUDInfoMenu, from the class layout in
+// xOBSE's GameMenus.h: name 028, valueText 02C ... actionIcon 050,
+// crosshairRef 054, unk058, class size 05C.
+inline constexpr UInt32 kHudInfoCrosshairRefOffset = 0x54;
+
+// TESObjectREFR's world position.
+//
+// Two sources, the second being OBVR's own working code: xOBSE's GameObjects.h
+// puts posX/posY/posZ directly after the rotation triple, and PlayerAim.cpp
+// has been reading that rotation at +0x20 - and writing to it - in the running
+// game for weeks. A rotation at 0x20/0x24/0x28 puts the position at 0x2C.
+inline constexpr UInt32 kRefPositionOffset = 0x2C;
 
 }  // namespace obvr::addr

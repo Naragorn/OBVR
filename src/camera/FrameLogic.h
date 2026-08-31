@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Types.h"
+#include "game/NiMath.h"
 
 namespace obvr::camera {
 
@@ -462,6 +463,59 @@ inline constexpr float kCrosshairSmallestAtOneMetre = 0.002f;
 inline constexpr float kCrosshairLargestAtOneMetre = 0.5f;
 
 CrosshairPlacement PlaceCrosshair(float distanceMetres, float sizeAtOneMetre);
+
+// How far away the thing under the crosshair is, in metres.
+//
+// WHY THIS IS NOT A DISTANCE. The obvious calculation - the length of
+// targetPosition - cameraPosition - is wrong, and wrong in the near field,
+// which is the only field this feature exists for. A reference's position is
+// its ORIGIN, and an actor's origin is between its feet. Look someone in the
+// face from a metre away and the straight line to their origin is close to two
+// metres; place the crosshair there and the eyes are converged at one metre
+// while the quad sits at two, which is most of the doubling back again.
+//
+// What is taken instead is the depth ALONG THE VIEW AXIS, because the plane
+// the eyes converge on is perpendicular to the gaze and only the component
+// along it counts. That is right in both cases that matter: level at a face a
+// metre away it answers 1.0, and looking down at that same actor's feet it
+// answers the true 1.97. The vertical offset of the origin falls out of the
+// projection on its own rather than having to be corrected for.
+//
+// WHAT IS STILL WRONG WITH IT, since a number that looks exact invites being
+// trusted as exact. The origin is inside the body, roughly 20-30 cm behind the
+// surface being looked at, so at one metre this reads about a quarter of a
+// metre too far. That is half the error it replaces, not none of it. No bias is
+// applied to take the rest back: the right size for such a bias depends on what
+// is being looked at, and a constant would be a guess wearing the clothes of a
+// correction.
+//
+// EVERY WAY OUT IS THE FALLBACK. No target, a gaze vector too short to have a
+// direction, nonsense units, or a target behind the camera - each answers
+// fallbackMetres rather than a number derived from bad inputs. A crosshair at
+// the wrong fixed depth is a known, tolerable fault; one placed on arithmetic
+// over garbage is a new one.
+struct CrosshairDepthInput {
+	// Whether there is a target at all. False is the ordinary case, not an
+	// error: most of what a player looks at cannot be activated, and Oblivion
+	// only records a reference for things that can.
+	bool haveTarget = false;
+
+	// Both in Oblivion units, in the same space - which is what makes their
+	// difference meaningful. The gaze is the camera's forward axis and need not
+	// be of unit length; it is normalised here.
+	NiPoint3 cameraPosition{};
+	NiPoint3 gazeDirection{};
+	NiPoint3 targetPosition{};
+
+	float unitsPerMetre = 69.99125f;
+
+	// Where the crosshair goes when there is nothing to measure against. Also
+	// what a player sees for most of a session, so it is still worth setting
+	// well rather than treating as an error value.
+	float fallbackMetres = 3.0f;
+};
+
+float CrosshairDepth(const CrosshairDepthInput& input);
 
 // Whether this frame runs a layout-probe measurement: one readback of the
 // frame's 2D, its covered rectangle logged, and nothing else done with it.

@@ -7,6 +7,7 @@
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "core/MathFns.h"
+#include "game/CrosshairTarget.h"
 #include "game/DialogZoom.h"
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
@@ -203,6 +204,32 @@ float g_aimBodyOffset = 0.0f;
 
 bool g_aimYawReported = false;
 bool g_aimYawLostReported = false;
+
+// The depth the crosshair quad is hung at, in metres, eased towards whatever
+// is under the crosshair.
+//
+// Kept here rather than worked out where the overlay is submitted, because the
+// easing needs the frame time and the projection needs the camera, and both of
+// those live in the camera pass. The overlay pass reads the answer.
+//
+// Zero means "not yet decided", which is how the first frame gets the fallback
+// without easing up to it from nowhere - a crosshair that slid out from the
+// wearer's nose on every load would be a strange way to start.
+float g_crosshairDepthMetres = 0.0f;
+
+// The camera as the ENGINE left it, in world space, from the last pass that
+// ran. Both taken together so they describe the same moment.
+//
+// World rather than local, because the reference under the crosshair has its
+// position in world space and a difference between two spaces is not a
+// distance. Read before OBVR writes the local transform, so this is last
+// frame's world transform - the scene graph recomputes world from local after
+// the hook, which is the whole reason the hook writes local at all. A frame of
+// age is nothing here: the depth is eased over several frames anyway, and a
+// crosshair one frame behind the head is not a thing eyes can see.
+NiPoint3 g_cameraWorldPos{0.0f, 0.0f, 0.0f};
+NiMatrix33 g_cameraWorldRot = NiMatrix33::Identity();
+bool g_cameraWorldValid = false;
 
 // A frame number that counts every presented frame, not every camera pass.
 //
@@ -1406,8 +1433,14 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		                             config.tracker.crosshairSourcePixels);
 	}
 
-	const CrosshairPlacement crosshair = PlaceCrosshair(
-		config.tracker.crosshairDistanceMetres, config.tracker.crosshairSizeAtOneMetre);
+	// The depth was decided in the camera pass, where the camera and the frame
+	// time are. A zero means no camera pass has run yet - the main menu, the
+	// first frames of a load - and the fixed distance stands in until one has.
+	const float crosshairDepth = g_crosshairDepthMetres > 0.0f
+	                                 ? g_crosshairDepthMetres
+	                                 : config.tracker.crosshairDistanceMetres;
+	const CrosshairPlacement crosshair =
+		PlaceCrosshair(crosshairDepth, config.tracker.crosshairSizeAtOneMetre);
 	g_crosshairLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                        crosshairWanted, crosshair.distanceMetres, crosshair.widthMetres);
 
@@ -1448,6 +1481,69 @@ void MaybePollRecenter() {
 		return;
 	}
 	DoRecenter("camera path");
+}
+
+// Moves the crosshair's depth towards whatever is under the crosshair.
+//
+// The reading and the arithmetic are elsewhere on purpose - game::
+// ReadCrosshairTarget goes through the game's own object model and cannot be
+// tested, CrosshairDepth is plain values and is tested exhaustively. What is
+// left here is the joining, the easing, and the log.
+void UpdateCrosshairDepth(const Config& config, float deltaSeconds) {
+	const float fallback = config.tracker.crosshairDistanceMetres;
+
+	if (!config.tracker.crosshairDynamic) {
+		// Straight to the fixed distance rather than eased towards it. Turning
+		// the feature off in the settings menu should show the difference at
+		// once, or the comparison it exists for cannot be made.
+		g_crosshairDepthMetres = fallback;
+		return;
+	}
+
+	const game::CrosshairTarget target = game::ReadCrosshairTarget();
+
+	CrosshairDepthInput input;
+	input.haveTarget = target.haveRef && g_cameraWorldValid;
+	input.cameraPosition = g_cameraWorldPos;
+	input.gazeDirection = ForwardOf(g_cameraWorldRot);
+	input.targetPosition = target.position;
+	input.unitsPerMetre = config.tracker.unitsPerMetre;
+	input.fallbackMetres = fallback;
+
+	const float wanted = CrosshairDepth(input);
+
+	// The first frame arrives rather than eases. Easing from zero would slide
+	// the crosshair out from the wearer's face on every load.
+	if (g_crosshairDepthMetres <= 0.0f) {
+		g_crosshairDepthMetres = wanted;
+	} else {
+		g_crosshairDepthMetres =
+			Approach(g_crosshairDepthMetres, wanted, config.tracker.crosshairDepthSpeed,
+			         deltaSeconds);
+	}
+
+	if (!config.tracker.crosshairProbe || !IsDue(g_state.frameCount, config.logEveryFrames)) {
+		return;
+	}
+
+	// menu/array is the pair worth watching. The menu identified itself by its
+	// own id; the array entry is the same menu reached through a description
+	// that shares none of that reasoning. Both non-zero across a run is the two
+	// agreeing in practice. A menu of 0 with a rejected id says the global at
+	// kHudInfoMenuPointer leads somewhere else in this build, and the rejected
+	// id is the first clue where.
+	OBVR_LOG("Crosshair depth: menu=%08X (rejected id %04X) array=%08X ref=%08X, "
+	         "camera=(%.1f, %.1f, %.1f) gaze=(%.3f, %.3f, %.3f) target=(%.1f, %.1f, %.1f), "
+	         "wanted %.2f m, showing %.2f m",
+	         target.menuAddress, target.rejectedId, target.arrayEntry, target.refAddress,
+	         static_cast<double>(g_cameraWorldPos.x), static_cast<double>(g_cameraWorldPos.y),
+	         static_cast<double>(g_cameraWorldPos.z),
+	         static_cast<double>(input.gazeDirection.x),
+	         static_cast<double>(input.gazeDirection.y),
+	         static_cast<double>(input.gazeDirection.z),
+	         static_cast<double>(target.position.x), static_cast<double>(target.position.y),
+	         static_cast<double>(target.position.z), static_cast<double>(wanted),
+	         static_cast<double>(g_crosshairDepthMetres));
 }
 
 }  // namespace
@@ -1713,6 +1809,16 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	g_menuBaseNode = cameraNode;
 	g_menuBasePos = cameraNode->localTransform.pos;
 	g_menuBaseThirdPerson = isThirdPerson;
+
+	// Taken in the same breath and from the same moment: the engine's camera in
+	// world space, which is the space the thing under the crosshair has its
+	// position in. See the globals for why world and not local, and why a frame
+	// of age costs nothing here.
+	g_cameraWorldPos = cameraNode->worldTransform.pos;
+	g_cameraWorldRot = cameraNode->worldTransform.rot;
+	g_cameraWorldValid = true;
+
+	UpdateCrosshairDepth(config, deltaSeconds);
 
 	NiMatrix33 baseRotation = cameraNode->localTransform.rot;
 	float verticalOffset = 0.0f;

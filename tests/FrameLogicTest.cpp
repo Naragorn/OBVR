@@ -11,6 +11,7 @@
 //
 // No Windows API here, so this one builds and runs on Linux as well.
 
+#include <cmath>
 #include <cstdio>
 #include <limits>
 
@@ -713,6 +714,133 @@ void TestCrosshair() {
 	const CrosshairPlacement both = PlaceCrosshair(-3.0f, 900.0f);
 	Check(Near(both.distanceMetres, 0.3f) && Near(both.widthMetres, 0.15f),
 	      "a nonsense pair clamps in both directions independently");
+}
+
+void TestCrosshairDepth() {
+	std::printf("How deep the crosshair sits\n");
+
+	using obvr::NiPoint3;
+	using obvr::camera::CrosshairDepth;
+	using obvr::camera::CrosshairDepthInput;
+
+	const auto Near = [](float a, float b) { return a - b < 1e-3f && b - a < 1e-3f; };
+
+	// Oblivion's own scale, and a camera at eye height above the origin looking
+	// level along +Y. Every case below is built on this one arrangement so that
+	// the numbers can be compared with each other.
+	constexpr float kUnits = 69.99125f;
+	const NiPoint3 eye{0.0f, 0.0f, 120.0f};
+	const NiPoint3 level{0.0f, 1.0f, 0.0f};
+
+	const auto Base = [&]() {
+		CrosshairDepthInput input;
+		input.haveTarget = true;
+		input.cameraPosition = eye;
+		input.gazeDirection = level;
+		input.unitsPerMetre = kUnits;
+		input.fallbackMetres = 3.0f;
+		return input;
+	};
+
+	// Nothing under the crosshair. The ordinary case, not a failure - most of
+	// what anyone looks at cannot be activated and records no reference.
+	CrosshairDepthInput none = Base();
+	none.haveTarget = false;
+	none.targetPosition = NiPoint3{0.0f, 70.0f, 0.0f};
+	Check(Near(CrosshairDepth(none), 3.0f), "no target falls back to the fixed distance");
+
+	// THE CASE THIS FUNCTION EXISTS FOR. An actor standing one metre ahead: its
+	// origin is between its feet, so it is 70 units along the gaze and 120
+	// units below the eye. The straight line to that origin is 139 units, which
+	// is 1.99 m - and placing the crosshair there while the eyes are converged
+	// on a face one metre away would put back most of the doubling this whole
+	// feature is meant to remove. The projection answers the metre.
+	CrosshairDepthInput atFace = Base();
+	atFace.targetPosition = NiPoint3{0.0f, 70.0f, 0.0f};
+	const float faceDepth = CrosshairDepth(atFace);
+	Check(Near(faceDepth, 1.0f), "an actor a metre ahead reads as a metre, not as its origin");
+	Check(faceDepth < 1.5f, "and specifically not as the 1.99 m straight-line distance");
+
+	// The same actor, looked at down at its feet. Now the gaze really does
+	// point at the origin, and the projection agrees with the straight line -
+	// which is what says the projection is not simply throwing height away.
+	CrosshairDepthInput atFeet = Base();
+	atFeet.targetPosition = NiPoint3{0.0f, 70.0f, 0.0f};
+	atFeet.gazeDirection = NiPoint3{0.0f, 70.0f, -120.0f};
+
+	// The expected value is computed rather than written down. A hand-typed
+	// slant distance was wrong by 0.07 units the first time and still passed,
+	// because the error happened to sit just inside the tolerance - which is
+	// the exact way a test stops testing anything.
+	const float slant = std::sqrt(70.0f * 70.0f + 120.0f * 120.0f) / kUnits;
+	Check(Near(CrosshairDepth(atFeet), slant),
+	      "looking down at the same feet gives the true slant distance");
+	Check(slant > 1.9f, "which is nearly two metres, and so not the same answer as the face");
+
+	// Sideways offset falls out the same way: something a metre ahead and half
+	// a metre to the side is still a metre deep, because depth is measured
+	// along the gaze and not to the object.
+	CrosshairDepthInput beside = Base();
+	beside.targetPosition = NiPoint3{35.0f, 70.0f, 0.0f};
+	Check(Near(CrosshairDepth(beside), 1.0f), "a target off to one side keeps its depth");
+
+	// Behind the camera. Reachable in third person, and for a frame whenever a
+	// reference outlives the look that found it. A negative depth would hang
+	// the quad behind the wearer's head.
+	CrosshairDepthInput behind = Base();
+	behind.targetPosition = NiPoint3{0.0f, -70.0f, 0.0f};
+	Check(Near(CrosshairDepth(behind), 3.0f), "a target behind the camera falls back");
+
+	// Exactly in the eye plane: a depth of zero is not a depth either.
+	CrosshairDepthInput edgeOn = Base();
+	edgeOn.targetPosition = NiPoint3{70.0f, 0.0f, 120.0f};
+	Check(Near(CrosshairDepth(edgeOn), 3.0f), "a target level with the eyes falls back");
+
+	// A gaze with no direction - an identity-shaped world transform on the
+	// first frames of a load, before the scene graph has computed one.
+	CrosshairDepthInput noGaze = Base();
+	noGaze.targetPosition = NiPoint3{0.0f, 70.0f, 0.0f};
+	noGaze.gazeDirection = NiPoint3{0.0f, 0.0f, 0.0f};
+	Check(Near(CrosshairDepth(noGaze), 3.0f), "a gaze of no length falls back");
+
+	// An unnormalised gaze must not scale the answer. This is the fault that
+	// would be hardest to see from inside a headset: the crosshair would sit at
+	// a plausible depth that is consistently wrong.
+	CrosshairDepthInput longGaze = Base();
+	longGaze.targetPosition = NiPoint3{0.0f, 70.0f, 0.0f};
+	longGaze.gazeDirection = NiPoint3{0.0f, 5.0f, 0.0f};
+	Check(Near(CrosshairDepth(longGaze), 1.0f), "a gaze five units long answers the same metre");
+
+	// Units that are not a scale. The INI is written by hand, and dividing by
+	// these would give a depth in nothing at all.
+	CrosshairDepthInput zeroUnits = Base();
+	zeroUnits.targetPosition = NiPoint3{0.0f, 70.0f, 0.0f};
+	zeroUnits.unitsPerMetre = 0.0f;
+	Check(Near(CrosshairDepth(zeroUnits), 3.0f), "units of zero fall back");
+
+	CrosshairDepthInput negativeUnits = Base();
+	negativeUnits.targetPosition = NiPoint3{0.0f, 70.0f, 0.0f};
+	negativeUnits.unitsPerMetre = -70.0f;
+	Check(Near(CrosshairDepth(negativeUnits), 3.0f), "negative units fall back");
+
+	// The units really are applied, rather than the answer happening to be
+	// right at Oblivion's scale.
+	CrosshairDepthInput halfScale = Base();
+	halfScale.targetPosition = NiPoint3{0.0f, 70.0f, 0.0f};
+	halfScale.unitsPerMetre = 35.0f;
+	Check(Near(CrosshairDepth(halfScale), 2.0f), "half the units per metre gives twice the depth");
+
+	// The fallback is whatever the caller says, not a constant hidden in here.
+	CrosshairDepthInput otherFallback = Base();
+	otherFallback.haveTarget = false;
+	otherFallback.fallbackMetres = 7.5f;
+	Check(Near(CrosshairDepth(otherFallback), 7.5f), "the fallback is the caller's value");
+
+	// The near end of the pick, where the vergence error is worst and this
+	// feature earns its place: something at arm's length reads as arm's length.
+	CrosshairDepthInput close = Base();
+	close.targetPosition = NiPoint3{0.0f, 35.0f, 0.0f};
+	Check(Near(CrosshairDepth(close), 0.5f), "half a metre ahead reads as half a metre");
 }
 
 void TestLayoutProbeDue() {
@@ -1466,6 +1594,7 @@ int main() {
 	TestStereoEyeStep();
 	std::printf("\n");
 	TestCrosshair();
+	TestCrosshairDepth();
 	std::printf("\n");
 	TestLayoutProbeDue();
 	std::printf("\n");

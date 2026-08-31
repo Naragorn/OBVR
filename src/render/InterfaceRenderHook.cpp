@@ -1977,8 +1977,8 @@ void LogInterfaceGates(void* self, UInt32 invocation) {
 		rootPeer = *reinterpret_cast<const UInt32*>(root + 0x10);
 	}
 
-	const UInt32 menuCount = *reinterpret_cast<const UInt16*>(addr::kMenuStackCount);
-	const UInt32 menuRoot = *reinterpret_cast<const UInt32*>(addr::kMenuStackRoot);
+	const UInt32 menuCount = *reinterpret_cast<const UInt16*>(addr::kTileMenuArrayCount);
+	const UInt32 menuRoot = *reinterpret_cast<const UInt32*>(addr::kTileMenuArrayData);
 	const UInt32 menuRootEntry =
 		menuRoot != 0 ? *reinterpret_cast<const UInt32*>(menuRoot + 0x18) : 0;
 

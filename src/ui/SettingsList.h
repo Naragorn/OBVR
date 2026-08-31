@@ -24,10 +24,13 @@ namespace obvr::ui {
 // groups that do not appear, so that a later reader can tell a decision from an
 // omission:
 //
-//   * The probes and diagnostics in [Debug], and the fixed and simulated head
-//     angles. They exist to be set while reading the paragraphs in the INI that
-//     explain them, and the simulated ones are for running without a headset -
-//     which is not a state anybody is in while looking at this menu.
+//   * The probes and diagnostics in [Debug], Render.CrosshairProbe, and the
+//     fixed and simulated head angles. They exist to be set while reading the
+//     paragraphs in the INI that explain them, and the simulated ones are for
+//     running without a headset - which is not a state anybody is in while
+//     looking at this menu. A probe's output is a log to be read afterwards,
+//     not something the headset can show, so reaching it from in here would
+//     save nothing.
 //   * Camera.HookEnabled, Render.Enabled and Render.GameFrame. Each of them
 //     switches OBVR off, and a row that removes the camera the menu is being
 //     read through is a row nobody can undo.

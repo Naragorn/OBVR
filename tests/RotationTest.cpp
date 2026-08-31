@@ -158,6 +158,66 @@ void TestRotationProperties() {
 	                "360 degrees is a full turn");
 }
 
+void TestForwardAxis() {
+	std::printf("Which way a rotation looks\n");
+
+	using obvr::EulerToMatrix;
+	using obvr::ForwardOf;
+	using obvr::Heading;
+	using obvr::NiMatrix33;
+	using obvr::NiPoint3;
+	using obvr::RotationFromHeading;
+	using obvr::SinPitchOf;
+
+	// The convention itself: an unrotated camera looks along +Y. Everything
+	// below rests on this, and it is the one claim here that cannot be derived
+	// from another - it comes from the engine, by way of SinPitchOf having read
+	// column 1 correctly in the headset since the vertical look was taken off
+	// the mouse.
+	const NiPoint3 identity = ForwardOf(NiMatrix33::Identity());
+	CheckNear(identity.x, 0.0f, "an unrotated camera looks along +Y, not +X");
+	CheckNear(identity.y, 1.0f, "an unrotated camera looks along +Y");
+	CheckNear(identity.z, 0.0f, "and level");
+
+	// Turned a quarter turn about Z, the forward axis has to leave +Y and land
+	// on an axis - which one says whether the yaw sign matches the rest of
+	// OBVR. EulerToMatrix is the reference the whole suite is built on, so this
+	// ties the forward axis to it rather than asserting a direction twice.
+	const NiMatrix33 quarter = EulerToMatrix(0.0f, 0.0f, 90.0f);
+	const NiPoint3 turned = ForwardOf(quarter);
+	CheckNear(turned.x, -1.0f, "a quarter turn about Z swings forward onto -X");
+	CheckNear(turned.y, 0.0f, "and off +Y entirely");
+	CheckNear(turned.z, 0.0f, "without leaving the horizontal");
+
+	// The relationship SinPitchOf has always relied on, now stated where it can
+	// break loudly: the tilt is the vertical component of the forward axis.
+	// These two disagreeing would mean the crosshair depth and the vertical
+	// look were reading different axes out of the same matrix.
+	for (float pitch = -80.0f; pitch <= 80.0f; pitch += 20.0f) {
+		const NiMatrix33 tilted = EulerToMatrix(pitch, 0.0f, 35.0f);
+		CheckNear(ForwardOf(tilted).z, SinPitchOf(tilted),
+		          "the tilt is the forward axis's vertical component");
+	}
+
+	// Forward and right are perpendicular, which is what says ForwardOf and
+	// HeadingOf are reading two different axes of the same frame rather than
+	// two readings of one. RotationFromHeading builds a levelled rotation from
+	// a heading, so its forward axis must be square to the heading it was made
+	// from.
+	for (int step = 0; step < 8; ++step) {
+		const float degrees = static_cast<float>(step) * 45.0f;
+		const float radians = degrees * 3.14159265358979f / 180.0f;
+		const Heading heading{std::cos(radians), std::sin(radians)};
+		const NiPoint3 forward = ForwardOf(RotationFromHeading(heading));
+
+		CheckNear(forward.x * heading.cosine + forward.y * heading.sine, 0.0f,
+		          "forward is square to the heading's own axis");
+		CheckNear(forward.z, 0.0f, "a rotation built from a heading is level");
+		CheckNear(std::sqrt(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z),
+		          1.0f, "and its forward axis is a unit vector");
+	}
+}
+
 }  // namespace
 
 int main() {
@@ -170,6 +230,8 @@ int main() {
 	TestCompositionOrder();
 	std::printf("\n");
 	TestRotationProperties();
+	std::printf("\n");
+	TestForwardAxis();
 
 	std::printf("\n");
 	if (g_failures == 0) {

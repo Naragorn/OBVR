@@ -5,11 +5,13 @@
 namespace obvr::game {
 namespace {
 
-// Menu::activeMenu inside the InterfaceManager, and Menu::id inside that.
-// Both from xOBSE's GameMenus.h; see the header for why the id is checked
-// rather than trusted.
+// Menu::activeMenu inside the InterfaceManager, from xOBSE's GameMenus.h; see
+// the header for why the id it leads to is checked rather than trusted.
+//
+// The id's own offset moved to GameAddresses.h when the crosshair depth came
+// to need it as well - one place to be wrong in rather than two that could
+// drift apart.
 constexpr UInt32 kActiveMenuOffset = 0x9C;
-constexpr UInt32 kMenuIdOffset = 0x20;
 
 }  // namespace
 
@@ -24,7 +26,7 @@ UInt32 ActiveMenuId() {
 		return kMenuIdNone;
 	}
 
-	const UInt32 id = *reinterpret_cast<const UInt32*>(menu + kMenuIdOffset);
+	const UInt32 id = *reinterpret_cast<const UInt32*>(menu + addr::kMenuIdOffset);
 
 	// Out of range means the offsets are not what this build has, and a number
 	// that is not a menu id is worse than none: it would name the wrong menu
@@ -41,9 +43,13 @@ const char* MenuIdName(UInt32 id) {
 	case kMenuIdMessage: return "Message";
 	case kMenuIdInventory: return "Inventory";
 	case kMenuIdStats: return "Stats";
+	case kMenuIdHudMain: return "HudMain";
+	case kMenuIdHudInfo: return "HudInfo";
+	case kMenuIdHudReticle: return "HudReticle";
 	case kMenuIdLoading: return "Loading";
 	case kMenuIdContainer: return "Container";
 	case kMenuIdDialog: return "Dialog";
+	case kMenuIdHudSubtitle: return "HudSubtitle";
 	case kMenuIdGeneric: return "Generic";
 	case kMenuIdSleepWait: return "SleepWait";
 	case kMenuIdPause: return "Pause";

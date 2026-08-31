@@ -24,9 +24,27 @@ enum : UInt32 {
 	kMenuIdMessage = 0x3E9,
 	kMenuIdInventory = 0x3EA,
 	kMenuIdStats = 0x3EB,
+
+	// The four that are never "opened". They are the interface the game wears
+	// while it is being played, so nothing that asks which menu is up will
+	// ever be told one of these - and that is why they were missing from this
+	// table until the crosshair needed one of them by name.
+	//
+	// HudInfo is the one that matters: it owns crosshairRef, the reference the
+	// aim is resting on, and finding it means finding this id in the tile menu
+	// array. It was briefly believed to be 0x403 - which is LevelUp - from a
+	// summary rather than from the enum. Two sources put it here instead: the
+	// verbatim enum in xOBSE's GameMenus.h, where it is the fifth entry, and
+	// OBSE's own command documentation, which lists the codes in decimal and
+	// gives 1005 for HUDInfo. 1005 is 0x3ED.
+	kMenuIdHudMain = 0x3EC,
+	kMenuIdHudInfo = 0x3ED,
+	kMenuIdHudReticle = 0x3EE,
+
 	kMenuIdLoading = 0x3EF,
 	kMenuIdContainer = 0x3F0,
 	kMenuIdDialog = 0x3F1,
+	kMenuIdHudSubtitle = 0x3F2,
 	kMenuIdGeneric = 0x3F3,
 	kMenuIdSleepWait = 0x3F4,
 	kMenuIdPause = 0x3F5,
@@ -61,6 +79,7 @@ enum : UInt32 {
 // line. Persuasion is the thirty-third, and is the one this was written for.
 static_assert(kMenuIdSleepWait == kMenuIdFirst + 11,
               "SleepWait is the twelfth menu id, and 0x3F4 in this build");
+static_assert(kMenuIdHudInfo == kMenuIdFirst + 4, "HUDInfo is the fifth menu id, 1005 decimal");
 static_assert(kMenuIdDialog == kMenuIdFirst + 8, "Dialog is the ninth menu id");
 static_assert(kMenuIdPersuasion == kMenuIdFirst + 33, "Persuasion is the thirty-fourth");
 static_assert(kMenuIdMain == kMenuIdFirst + 43, "Main is the forty-fourth");

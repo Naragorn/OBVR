@@ -186,6 +186,47 @@ CrosshairPlacement PlaceCrosshair(float distanceMetres, float sizeAtOneMetre) {
 	return CrosshairPlacement{distance, size * distance};
 }
 
+float CrosshairDepth(const CrosshairDepthInput& input) {
+	if (!input.haveTarget) {
+		return input.fallbackMetres;
+	}
+
+	// Nonsense units would divide a number of units by a number that is not a
+	// scale and produce a depth in nothing at all. The INI is written by hand.
+	if (!(input.unitsPerMetre > 0.0f)) {
+		return input.fallbackMetres;
+	}
+
+	// The gaze comes out of a rotation matrix and is orthonormal in practice,
+	// but it is normalised rather than assumed to be: an unnormalised gaze
+	// scales the projection silently, which would read as the crosshair sitting
+	// at a plausible but consistently wrong depth - the hardest kind of fault
+	// to notice from inside a headset.
+	const float gazeLengthSquared = input.gazeDirection.LengthSquared();
+	if (!(gazeLengthSquared > 1.0e-6f)) {
+		return input.fallbackMetres;
+	}
+	const float gazeLength = math::Sqrt(gazeLengthSquared);
+
+	const NiPoint3 toTarget = input.targetPosition - input.cameraPosition;
+	const float alongGaze = (toTarget.x * input.gazeDirection.x +
+	                         toTarget.y * input.gazeDirection.y +
+	                         toTarget.z * input.gazeDirection.z) / gazeLength;
+
+	// Behind the camera. Reachable in third person, where the reference under
+	// the crosshair can be nearer the camera than the player is, and reachable
+	// for a frame whenever the reference outlives the look that found it. A
+	// negative depth would put the quad behind the wearer's head.
+	//
+	// Zero is refused with it, and deliberately: a target exactly in the eye
+	// plane is not a depth the crosshair can be placed at either.
+	if (!(alongGaze > 0.0f)) {
+		return input.fallbackMetres;
+	}
+
+	return alongGaze / input.unitsPerMetre;
+}
+
 bool LayoutProbeDue(bool probeEnabled, UInt32 presentedFrame, UInt32 lastProbeFrame) {
 	return probeEnabled && presentedFrame - lastProbeFrame >= kLayoutProbeFrameGap;
 }

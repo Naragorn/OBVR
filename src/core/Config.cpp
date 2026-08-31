@@ -355,9 +355,15 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.tracker.menuStandIn =
 		ReadBool("Render", "MenuStandIn", config.tracker.menuStandIn, path);
 	config.tracker.crosshair = ReadBool("Render", "Crosshair", config.tracker.crosshair, path);
+	config.tracker.crosshairDynamic =
+		ReadBool("Render", "CrosshairDynamic", config.tracker.crosshairDynamic, path);
 	config.tracker.crosshairDistanceMetres =
 		ReadFloat("Render", "CrosshairDistanceMetres",
 	              config.tracker.crosshairDistanceMetres, path);
+	config.tracker.crosshairDepthSpeed =
+		ReadFloat("Render", "CrosshairDepthSpeed", config.tracker.crosshairDepthSpeed, path);
+	config.tracker.crosshairProbe =
+		ReadBool("Render", "CrosshairProbe", config.tracker.crosshairProbe, path);
 	config.tracker.crosshairSizeAtOneMetre =
 		ReadFloat("Render", "CrosshairSizeAtOneMetre",
 	              config.tracker.crosshairSizeAtOneMetre, path);

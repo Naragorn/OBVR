@@ -63,12 +63,15 @@ NiMatrix33 RotationFromHeading(const Heading& heading) {
 	return result;
 }
 
+NiPoint3 ForwardOf(const NiMatrix33& rotation) {
+	return NiPoint3{rotation.data[0][1], rotation.data[1][1], rotation.data[2][1]};
+}
+
 float SinPitchOf(const NiMatrix33& rotation) {
-	// Column 1 is where the camera's forward axis points, and its vertical
-	// component is the sine of the tilt. Clamped because a matrix that has
-	// drifted slightly out of orthonormality can push it past one, and the
-	// caller multiplies it by a distance.
-	const float value = rotation.data[2][1];
+	// The vertical component of the forward axis is the sine of the tilt.
+	// Clamped because a matrix that has drifted slightly out of orthonormality
+	// can push it past one, and the caller multiplies it by a distance.
+	const float value = ForwardOf(rotation).z;
 	if (value > 1.0f) {
 		return 1.0f;
 	}

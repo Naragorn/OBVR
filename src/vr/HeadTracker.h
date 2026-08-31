@@ -355,14 +355,55 @@ struct TrackerSettings {
 	// both, or neither.
 	bool crosshair = false;
 
-	// How far ahead the crosshair quad is placed, in metres.
+	// Whether the crosshair is placed at the depth of whatever is under it.
 	//
-	// A fixed distance for now. The honest version takes the distance the aim
-	// ray actually travels before it hits something, and that is the next step
-	// - but whether the fixed one is already good enough is a question for the
-	// headset, since beyond about ten metres the sight lines are so nearly
-	// parallel that further depth changes nothing anyone can see.
-	float crosshairDistanceMetres = 10.0f;
+	// The fixed distance below cannot be right everywhere, and not because it
+	// was chosen badly. The vergence error between a crosshair at c and a
+	// target at d goes as IPD * (1/d - 1/c), which is bounded as d grows and
+	// divergent as d shrinks: at 3 m the error never exceeds about a degree
+	// however distant the target, and passes two degrees before the target is
+	// a metre away. So a fixed quad is always fine in the distance and always
+	// fails close up, and raising the distance to help the far case makes the
+	// near one worse. 10 m was tried and read worse than 3 m for exactly that
+	// reason.
+	//
+	// What this switch turns on covers the near half: Oblivion records the
+	// reference under the crosshair, within iActivatePickLength - 150 units by
+	// default, 2.14 m - and the quad follows it. Beyond that range, and for
+	// everything that cannot be activated, the fixed distance below is used,
+	// which is what it is now for.
+	bool crosshairDynamic = true;
+
+	// Where the crosshair goes when there is nothing to measure against: no
+	// reference under it, out of pick range, or the dynamic depth switched off.
+	//
+	// 3.0 rather than the old 10.0. Reported from the headset as the better of
+	// the two, which the arithmetic above agrees with - a lower fixed value
+	// costs little in the distance and helps everywhere nearer.
+	float crosshairDistanceMetres = 3.0f;
+
+	// How fast the crosshair's depth eases towards where it should be, as a
+	// share of the remaining distance per second.
+	//
+	// Not optional decoration. The depth steps whenever the gaze crosses an
+	// edge - onto a person, off them and back to the fallback - and a quad that
+	// jumps between depths reads as breathing, which is more distracting than
+	// a quad at a constant wrong depth. Too slow is its own fault: the
+	// crosshair then lags behind the look and is at the right depth only for
+	// things stared at.
+	float crosshairDepthSpeed = 8.0f;
+
+	// Logs what the crosshair depth is being built from: whether HUDInfoMenu
+	// identified itself, what the tile menu array says about the same menu,
+	// whether a reference is under the crosshair, and the depth that came out.
+	//
+	// Off by default and worth switching on once. The number to look for is how
+	// often there is NO reference during ordinary play: that is the share of
+	// the time the crosshair is back on its fixed distance, and it decides
+	// whether this feature is enough on its own or wants the depth buffer after
+	// all. It is not a thing the headset can show you, because the fallback
+	// looks exactly like the feature working.
+	bool crosshairProbe = false;
 
 	// How wide the crosshair would be at one metre. The width actually used is
 	// this times the distance, which is what holds the apparent size steady

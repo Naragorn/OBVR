@@ -41,6 +41,22 @@ bool HeadingOf(const NiMatrix33& rotation, Heading& out);
 // HeadingOf, up to the tilt it deliberately drops.
 NiMatrix33 RotationFromHeading(const Heading& heading);
 
+// Which way the camera is looking, as a unit vector in the space the matrix
+// is expressed in.
+//
+// Column 1, because that is where Oblivion keeps a camera's forward axis -
+// established here rather than assumed: SinPitchOf has read element [2][1] as
+// the vertical component of the forward axis since the vertical look was first
+// taken off the mouse, and that has been right in the headset for weeks. Column
+// 0 is the right axis, which HeadingOf reads for the same reason. So this
+// function is not a new claim about the convention; it is the claim those two
+// already rest on, given a name and one place to be wrong in.
+//
+// Not renormalised. The matrix comes out of the engine orthonormal and OBVR's
+// own products of orthonormal matrices stay so; a caller that needs the length
+// exactly one for a comparison should say so at the comparison.
+NiPoint3 ForwardOf(const NiMatrix33& rotation);
+
 // How far the camera is tilted, as the sine of the angle: +1 looking straight
 // up, 0 level, -1 straight down.
 //
