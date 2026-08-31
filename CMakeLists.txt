@@ -29,6 +29,8 @@ add_library(OBVR SHARED
 	src/ui/MenuFont.cpp
 	src/ui/MenuCanvas.cpp
 	src/ui/MenuModel.cpp
+	src/ui/MenuPainter.cpp
+	src/ui/SettingsList.cpp
 	src/camera/LookControl.cpp
 	src/core/CodeWriter.cpp
 	src/core/Config.cpp
