@@ -275,6 +275,7 @@ float g_aimSecondsSinceRelease = -1.0f;
 // covers a bow release and its follow-through.
 UInt32 g_shotTraceLeft = 0;
 UInt32 g_shotTraceFrame = 0;
+bool g_shotTraceHeld = false;
 
 // The depth the crosshair quad is hung at, in metres, eased towards whatever
 // is under the crosshair.
@@ -2327,16 +2328,18 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// read off rather than assumed - which is what deciding the shortest
 	// possible window needs.
 	if (readPlayer && GetConfig().aimShotTrace) {
-		if (attackWasHeld && !attackHeld) {
-			g_shotTraceLeft = 40;
+		// Armed on the PRESS as well as the release, so the draw is in the
+		// record too - the jump left is at the moment of letting go, and half
+		// of what decides it happened before that.
+		if (attackHeld && !attackWasHeld) {
+			g_shotTraceLeft = 90;
 			g_shotTraceFrame = 0;
+		} else if (attackWasHeld && !attackHeld && g_shotTraceLeft < 40) {
+			g_shotTraceLeft = 40;
 		}
 		if (g_shotTraceLeft > 0) {
 			--g_shotTraceLeft;
-			OBVR_LOG("Shot trace %2u: action=%d turning=%d offset=%.1f deg, rotZ=%.4f",
-			         g_shotTraceFrame++, game::ReadPlayerAction(), turnDue ? 1 : 0,
-			         static_cast<double>(g_aimBodyOffset * math::kRadiansToDegrees),
-			         static_cast<double>(asEngineLeftIt.yaw));
+			g_shotTraceHeld = attackHeld;
 		}
 	}
 
@@ -2416,6 +2419,28 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			g_weaponTurnRadians = AimYawRemaining(headYaw, g_aimBodyOffset);
 			g_weaponTurnWanted = true;
 		}
+	}
+
+	// The trace line, written HERE rather than where the trace is counted down,
+	// because only at this point are both halves of the aim settled for this
+	// frame. body + weapon is what the wearer actually sees the bow pointing
+	// along, and if that column moves while the head is still, the frame it
+	// moves on is the jump: "der arm oder der bogen springt nach links wenn ich
+	// nach links ziele und dann wieder zum ziel".
+	if (g_shotTraceLeft > 0 || (readPlayer && GetConfig().aimShotTrace && g_shotTraceHeld)) {
+		Heading traceTurn{};
+		const float headYaw = HeadingOf(g_headTracker.GetCameraRotation(), traceTurn)
+		                          ? math::Atan2(traceTurn.sine, traceTurn.cosine)
+		                          : 0.0f;
+		const float weapon = g_weaponTurnWanted ? g_weaponTurnRadians : 0.0f;
+
+		OBVR_LOG("Shot trace %2u: %s action=%d turn=%d | head=%6.1f body=%6.1f weapon=%6.1f "
+		         "sum=%6.1f deg",
+		         g_shotTraceFrame++, attackHeld ? "held" : "----", game::ReadPlayerAction(),
+		         turnDue ? 1 : 0, static_cast<double>(headYaw * math::kRadiansToDegrees),
+		         static_cast<double>(g_aimBodyOffset * math::kRadiansToDegrees),
+		         static_cast<double>(weapon * math::kRadiansToDegrees),
+		         static_cast<double>((g_aimBodyOffset + weapon) * math::kRadiansToDegrees));
 	}
 
 	// The three pitches side by side. This measured how to make an arrow go
