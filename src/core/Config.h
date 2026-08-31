@@ -153,13 +153,27 @@ struct Config {
 	// While it is held, and only then, the character is turned to face where
 	// the head is looking, so that a shot leaves along the gaze sideways as
 	// well as vertically. Letting go leaves the character facing where the
-	// shot went and stops following again - which is what keeps "character
-	// bleibt" true for ordinary looking around.
+	// shot went and stops following again - which is what keeps the body still
+	// during ordinary looking around, as asked for.
 	//
 	// 1 is VK_LBUTTON, Oblivion's attack control at its default binding, and
 	// on a bow that is precisely the drawing of the string. 0 switches the
 	// sideways half off while leaving the vertical one alone.
 	UInt32 aimAttackKey = 1;
+
+	// How fast the body comes round to the gaze, as a share of the remaining
+	// turn per second.
+	//
+	// Zero means all of it at once, and that is the default: the view does not
+	// move while the body turns - the turn is taken back out of the camera at
+	// the base rotation - so there is nothing for easing to smooth away, and a
+	// body that is already round is a body that shoots where the crosshair is.
+	// Easing it only puts a lag between aiming and hitting.
+	//
+	// A value above zero is there for the case the instant turn upsets an
+	// animation or reads badly in third person, where the character is in
+	// view; 8.0 matches the vertical look's own easing.
+	float aimTurnSpeed = 0.0f;
 
 	// true when the file was found and read.
 	bool Load(const char* fileName);

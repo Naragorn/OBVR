@@ -152,17 +152,38 @@ float g_aimLastWrittenPitch = 0.0f;
 bool g_aimEverWrote = false;
 
 // The sideways half's own state. The heading OBVR last put into the player,
-// how far it turned it to get there, and whether that write is still waiting
-// to be judged next frame.
+// the step it took to get there, and whether that write is still waiting to be
+// checked next frame.
 float g_aimYawWrote = 0.0f;
-float g_aimYawTurnApplied = 0.0f;
+float g_aimYawStepTaken = 0.0f;
 bool g_aimYawPending = false;
 
-// What the engine did with a written heading, once it is known. Until then the
-// yaw is written and watched; a verdict of FeedsBack stops it for the rest of
-// the session, because carrying on would drive the view round the room.
-YawWriteVerdict g_aimYawVerdict = YawWriteVerdict::NotYetKnown;
+// How much of the head's turn the body has been given, and never taken back.
+//
+// This is the whole sideways mechanism in one number. A written heading was
+// measured to survive the frame, so the camera - which is built on the player's
+// heading with the head's turn added on top - would read OBVR's own turn back
+// and add the head to it again, and the view would creep round for as long as
+// the head stayed turned. That is not a reason to stop writing; it is a reason
+// to book the turn in one place instead of two.
+//
+// So every step handed to the body is subtracted from the head again, at the
+// base rotation, before the head is laid on it. The view does not move at all:
+// the wearer keeps looking at exactly what they were looking at, and only the
+// body comes round underneath. Turning the head is a glance; turning it while
+// aiming is a glance that the body follows.
+//
+// It is never reset, because the turn it accounts for is never undone either -
+// the body stays where it was turned to, and the head sits on it wherever it
+// happens to be. Its one soft spot is a load or a script that moves the player
+// itself: the offset then describes a turn that is no longer in the player's
+// heading, and the view sits crooked until the next aim brings the two back
+// together. Writes that fail to land are already taken back out below; a load
+// is not, and that is the known limit rather than a solved case.
+float g_aimBodyOffset = 0.0f;
+
 bool g_aimYawReported = false;
+bool g_aimYawLostReported = false;
 
 // A frame number that counts every presented frame, not every camera pass.
 //
@@ -1576,6 +1597,24 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		g_lookControl.Reset();
 	}
 
+	// The turn already handed to the body, taken back out of the base.
+	//
+	// Written into the player below and read back here one frame later, which
+	// is exactly the right way round: the engine builds this rotation from the
+	// heading OBVR wrote last frame, so the offset standing here is the one
+	// that heading contains. Applied on the right of the base and therefore to
+	// the left of everything measured in camera space - the head's rotation,
+	// its offset, the eye step - so all of them come round with it and the
+	// picture holds still while the body turns underneath.
+	//
+	// Only the yaw is taken back. The base has already been levelled by the
+	// look control, so its z axis is the world's up and a rotation about it
+	// cannot disturb the pitch this rotation is being composed with.
+	if (g_aimBodyOffset != 0.0f) {
+		baseRotation = baseRotation * RotationFromHeading(Heading{
+			math::Cos(g_aimBodyOffset), -math::Sin(g_aimBodyOffset)});
+	}
+
 	// The rotation this frame was actually built on - which is not the one the
 	// engine wrote. With a headset connected the look control levels it and
 	// lifts the vertical tilt out into a height, and everything downstream
@@ -1663,55 +1702,71 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// and it is the only place that answer can be read.
 	if (readPlayer && g_aimYawPending) {
 		g_aimYawPending = false;
-		const YawWriteVerdict verdict =
-			JudgeYawWrite(g_aimYawWrote, asEngineLeftIt.yaw, g_aimYawTurnApplied);
 
-		if (verdict != YawWriteVerdict::NotYetKnown &&
-		    g_aimYawVerdict == YawWriteVerdict::NotYetKnown) {
-			g_aimYawVerdict = verdict;
-			if (verdict == YawWriteVerdict::FeedsBack) {
-				OBVR_LOG("Aim: a written heading SURVIVED the frame (wrote %.4f, found %.4f "
-				         "after a turn of %.4f) - the camera is built on it, so writing it "
-				         "again would drive the view round. Turning the body off; the "
-				         "vertical aim is unaffected.",
+		// A step that did not land is a step the body never took, and the
+		// offset above must not go on claiming it - the base would be turned
+		// back for a turn that is not in the player's heading, and the view
+		// would sit crooked by exactly that much. Taking it out again is the
+		// whole correction: the next frame simply finds more turn remaining.
+		if (!YawWriteLanded(g_aimYawWrote, asEngineLeftIt.yaw, g_aimYawStepTaken)) {
+			g_aimBodyOffset = math::WrapAngle(g_aimBodyOffset - g_aimYawStepTaken);
+
+			if (!g_aimYawLostReported) {
+				g_aimYawLostReported = true;
+				OBVR_LOG("Aim: a written heading did not land (wrote %.4f, found %.4f after "
+				         "a step of %.4f) - something else moved the player, so the step is "
+				         "taken back out of the camera and the body will come round again.",
 				         static_cast<double>(g_aimYawWrote),
 				         static_cast<double>(asEngineLeftIt.yaw),
-				         static_cast<double>(g_aimYawTurnApplied));
-			} else {
-				OBVR_LOG("Aim: the engine replaced the written heading (wrote %.4f, found "
-				         "%.4f after a turn of %.4f) - no feedback into the camera, the "
-				         "body may follow the gaze while aiming.",
-				         static_cast<double>(g_aimYawWrote),
-				         static_cast<double>(asEngineLeftIt.yaw),
-				         static_cast<double>(g_aimYawTurnApplied));
+				         static_cast<double>(g_aimYawStepTaken));
 			}
 		}
 	}
 
-	if (readPlayer && g_aimYawVerdict != YawWriteVerdict::FeedsBack &&
+	if (readPlayer &&
 	    AimYawWanted(GetConfig().aimFollowsGaze, g_headTracker.IsHeadsetConnected(), isThirdPerson,
 	                 game::IsMenuMode(), AttackHeld())) {
-		// How far the head is turned away from the body. The head rotation is
-		// already relative to the camera's base, so its heading is the turn
-		// itself rather than a direction in the world - which is what lets
-		// this be added to the engine's own heading without converting
-		// between the two conventions.
+		// How far the head is turned away from the camera's base. The head
+		// rotation is already relative to that base, so its heading is the turn
+		// itself rather than a direction in the world - which is what lets this
+		// be added to the engine's own heading without converting between the
+		// two conventions.
 		Heading headTurn{};
 		if (HeadingOf(g_headTracker.GetCameraRotation(), headTurn)) {
 			const float headYaw = math::Atan2(headTurn.sine, headTurn.cosine);
-			const float target = PlayerYawForGaze(asEngineLeftIt.yaw, headYaw);
-			if (game::WritePlayerYaw(target)) {
-				g_aimYawWrote = target;
-				g_aimYawTurnApplied = headYaw;
-				g_aimYawPending = true;
 
-				if (!g_aimYawReported) {
-					g_aimYawReported = true;
-					OBVR_LOG("Aim: the body now follows the gaze while the attack control is "
-					         "held - first turn %.1f degrees, heading %.4f to %.4f",
-					         static_cast<double>(headYaw * math::kRadiansToDegrees),
-					         static_cast<double>(asEngineLeftIt.yaw),
-					         static_cast<double>(target));
+			// What is left after everything already handed over. With the head
+			// held still this falls to zero and the body stops, facing the
+			// gaze; it is not the head's angle, which would keep turning the
+			// body for as long as the head was off centre.
+			const float remaining = AimYawRemaining(headYaw, g_aimBodyOffset);
+			const float step =
+				Approach(0.0f, remaining, GetConfig().aimTurnSpeed, deltaSeconds);
+
+			if (step != 0.0f) {
+				const float target = PlayerYawForGaze(asEngineLeftIt.yaw, step);
+				if (game::WritePlayerYaw(target)) {
+					// Counted as taken here and checked next frame, rather than
+					// counted only once it is known to have landed. The base
+					// rotation this offset corrects is built by the engine from
+					// the heading just written, so it arrives already turned;
+					// waiting a frame would leave the view lurching by one step
+					// every frame the body moved.
+					g_aimBodyOffset = math::WrapAngle(g_aimBodyOffset + step);
+					g_aimYawWrote = target;
+					g_aimYawStepTaken = step;
+					g_aimYawPending = true;
+
+					if (!g_aimYawReported) {
+						g_aimYawReported = true;
+						OBVR_LOG("Aim: the body now follows the gaze while the attack "
+						         "control is held - first step %.1f degrees of %.1f "
+						         "remaining, heading %.4f to %.4f",
+						         static_cast<double>(step * math::kRadiansToDegrees),
+						         static_cast<double>(remaining * math::kRadiansToDegrees),
+						         static_cast<double>(asEngineLeftIt.yaw),
+						         static_cast<double>(target));
+					}
 				}
 			}
 		}
@@ -1745,27 +1800,42 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			                : (Abs(pitchDrift) < 0.0005f ? "KEPT - a written rotation survives"
 			                                             : "REPLACED - the engine sets it afresh");
 
-		// Which way the two headings run against each other. The camera's is
-		// read off the levelled vanilla rotation, so it carries the player's
-		// heading and nothing of the head. If the pair runs the same way their
-		// difference holds still as the player turns; if opposite, their sum
-		// does. One of the two columns standing still across a few lines of
-		// turning is the answer, and it decides the sign in PlayerYawForGaze.
+		// Which way the two headings run against each other. This measured the
+		// sign the sideways aim is built on: the camera's heading is read off
+		// the levelled vanilla rotation, so it carries the player's heading and
+		// nothing of the head, and their sum held at 0.0000 across sixty frames
+		// while their difference wandered. Opposite conventions, so the step is
+		// subtracted in PlayerYawForGaze.
+		//
+		// The base is now corrected for the turn already handed to the body, so
+		// the sum is no longer expected to be zero while aiming - it is the
+		// negative of that offset, and holding at exactly that is what says the
+		// correction is landing. A sum that instead follows the head is the
+		// correction failing, and the view would be turning with it.
 		Heading vanillaHeading{};
 		const bool haveHeading = HeadingOf(baseRotation, vanillaHeading);
 		const float cameraYaw =
 			haveHeading ? math::Atan2(vanillaHeading.sine, vanillaHeading.cosine) : 0.0f;
 
+		Heading headTurn{};
+		const float headYaw = HeadingOf(g_headTracker.GetCameraRotation(), headTurn)
+			? math::Atan2(headTurn.sine, headTurn.cosine)
+			: 0.0f;
+
 		OBVR_LOG("Aim probe: engine left rotX=%.4f rotZ=%.4f | wrote %.4f last frame (%s) | "
-		         "camera yaw=%.4f | sum=%.4f diff=%.4f | view sinPitch=%.4f | %s",
+		         "camera yaw=%.4f | sum=%.4f | head yaw=%.4f body offset=%.4f remaining=%.4f "
+		         "| view sinPitch=%.4f | %s%s",
 		         static_cast<double>(asEngineLeftIt.pitch),
 		         static_cast<double>(asEngineLeftIt.yaw),
 		         static_cast<double>(g_aimLastWrittenPitch), survived,
 		         static_cast<double>(cameraYaw),
 		         static_cast<double>(math::WrapAngle(asEngineLeftIt.yaw + cameraYaw)),
-		         static_cast<double>(math::WrapAngle(asEngineLeftIt.yaw - cameraYaw)),
+		         static_cast<double>(headYaw),
+		         static_cast<double>(g_aimBodyOffset),
+		         static_cast<double>(AimYawRemaining(headYaw, g_aimBodyOffset)),
 		         static_cast<double>(SinPitchOf(finalRotation)),
-		         isThirdPerson ? "third" : "first");
+		         isThirdPerson ? "third" : "first",
+		         AttackHeld() ? ", aiming" : "");
 	}
 
 	// The camera steps to an eye. Which eye, and for how long, is what

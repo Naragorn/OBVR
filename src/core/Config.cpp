@@ -365,6 +365,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.aimFollowsGaze =
 		ReadBool("Look", "AimFollowsGaze", config.aimFollowsGaze, path);
 	config.aimAttackKey = ReadUInt("Look", "AimAttackKey", config.aimAttackKey, path);
+	config.aimTurnSpeed = ReadFloat("Look", "AimTurnSpeed", config.aimTurnSpeed, path);
 
 	// VerticalLookRange was one value for both directions until it turned out
 	// that a range sized for looking up stops at the hips on the way down. It
@@ -456,13 +457,15 @@ bool Config::Load(const char* fileName) {
 	         static_cast<double>(tracker.EffectiveUnitsPerMetre()),
 	         static_cast<double>(tracker.maxOffsetUnits));
 	OBVR_LOG("Config: BlockVerticalLook=%d VerticalLookRange=(up %.1f, down %.1f) "
-	         "SmoothVerticalLook=%d (%.1f) AimFollowsGaze=%d",
+	         "SmoothVerticalLook=%d (%.1f) AimFollowsGaze=%d AimAttackKey=%u AimTurnSpeed=%.1f",
 	         look.blockVerticalLook ? 1 : 0,
 	         static_cast<double>(look.verticalLookUpRange),
 	         static_cast<double>(look.verticalLookDownRange),
 	         look.smoothVerticalLook ? 1 : 0,
 	         static_cast<double>(look.verticalLookSpeed),
-	         aimFollowsGaze ? 1 : 0);
+	         aimFollowsGaze ? 1 : 0,
+	         aimAttackKey,
+	         static_cast<double>(aimTurnSpeed));
 	OBVR_LOG("Config: SmoothTurning=%d TurnSpeed=%.1f",
 	         look.smoothTurning ? 1 : 0,
 	         static_cast<double>(look.turnSpeed));

@@ -1215,8 +1215,8 @@ void TestAimYaw() {
 
 	// The gate is everything the pitch asks, plus the attack control. That
 	// last one is the difference between the two halves: the pitch follows the
-	// head always, the body only while something is being aimed - "character
-	// bleibt" otherwise.
+	// head always, the body only while something is being aimed, and stands
+	// still for ordinary looking around.
 	Check(AimYawWanted(true, true, false, false, true), "aiming with the attack held turns the body");
 	Check(!AimYawWanted(true, true, false, false, false),
 	      "merely looking around does not turn the body");
@@ -1261,49 +1261,173 @@ void TestAimYaw() {
 	Check(true, "every heading and turn together stays inside one circle");
 }
 
-void TestJudgeYawWrite() {
-	std::printf("What became of a written heading\n");
+void TestAimYawRemaining() {
+	std::printf("How much turn the body still owes the gaze\n");
 
-	using obvr::camera::JudgeYawWrite;
-	using obvr::camera::YawWriteVerdict;
+	using obvr::camera::AimYawRemaining;
+	using obvr::math::kPi;
 	using obvr::math::kTwoPi;
 
-	// Too small a turn to tell anything by. The whole judgement is "did the
-	// field move back by roughly the turn", and with no turn there is no
-	// distance to compare against - the mouse alone would decide it.
-	Check(JudgeYawWrite(1.0f, 1.0f, 0.01f) == YawWriteVerdict::NotYetKnown,
-	      "a turn too small to measure gives no verdict");
-	Check(JudgeYawWrite(1.0f, 1.4f, 0.0f) == YawWriteVerdict::NotYetKnown,
-	      "and no turn at all gives none either");
+	const auto Near = [](float a, float b) { return a - b < 1e-4f && b - a < 1e-4f; };
 
-	// Still there: the engine kept what OBVR wrote, so the camera will read
-	// the turn back and add the head to it again.
-	Check(JudgeYawWrite(1.0f, 1.0f, 0.5f) == YawWriteVerdict::FeedsBack,
-	      "a heading found exactly where it was left feeds back");
-	Check(JudgeYawWrite(1.0f, 1.02f, 0.5f) == YawWriteVerdict::FeedsBack,
-	      "and one the mouse nudged slightly still does");
+	// Nothing handed over yet, so the whole of the head's turn is still owed.
+	Check(Near(AimYawRemaining(0.5f, 0.0f), 0.5f), "with nothing given, all of the turn remains");
+	Check(Near(AimYawRemaining(-0.5f, 0.0f), -0.5f), "and the same turning the other way");
 
-	// Put back: the engine wrote its own heading over it, which is the case
-	// with no loop in it.
-	Check(JudgeYawWrite(1.0f, 1.5f, 0.5f) == YawWriteVerdict::Safe,
-	      "a heading returned to where the engine had it is safe");
-	Check(JudgeYawWrite(1.0f, 0.5f, -0.5f) == YawWriteVerdict::Safe,
-	      "and so is one returned the other way");
+	// Arrived. This is the property the whole design rests on: with the head
+	// held still the remainder falls to zero and the body stops, rather than
+	// turning for as long as the head is off centre.
+	Check(Near(AimYawRemaining(0.5f, 0.5f), 0.0f), "a body already round owes nothing");
+	Check(Near(AimYawRemaining(-1.2f, -1.2f), 0.0f), "and the same the other way");
+
+	// Part way.
+	Check(Near(AimYawRemaining(0.8f, 0.3f), 0.5f), "half handed over leaves the rest");
+	Check(Near(AimYawRemaining(0.3f, 0.8f), -0.5f), "and overshooting owes a turn back");
+
+	// The head came back to centre while the body stayed turned, which is what
+	// letting go of the attack control and looking away leaves behind. The
+	// remainder is the turn back, not a full circle of it.
+	Check(Near(AimYawRemaining(0.0f, 1.0f), -1.0f), "a centred head owes the offset back");
+
+	// Across the seam. An offset just under a full circle and a head just over
+	// zero are next to each other, and a subtraction without a wrap would call
+	// that nearly a whole turn.
+	Check(Near(AimYawRemaining(0.1f, kTwoPi - 0.1f), 0.2f),
+	      "either side of north is a short way apart");
+	Check(Near(AimYawRemaining(kTwoPi - 0.1f, 0.1f), -0.2f), "and the same the other way round");
+
+	// Never more than half a circle, whatever goes in - which is what keeps a
+	// step from sending the body the long way round.
+	for (int h = -20; h <= 20; ++h) {
+		for (int o = -20; o <= 20; ++o) {
+			const float remaining =
+				AimYawRemaining(static_cast<float>(h) * 0.4f, static_cast<float>(o) * 0.4f);
+			if (!(remaining >= -kPi - 0.001f && remaining <= kPi + 0.001f)) {
+				Check(false, "a remainder escaped the short way round");
+				return;
+			}
+		}
+	}
+	Check(true, "every head and offset together stays on the short way round");
+}
+
+void TestYawWriteLanded() {
+	std::printf("Whether a written heading reached the player\n");
+
+	using obvr::camera::kYawLandingMinStep;
+	using obvr::camera::YawWriteLanded;
+	using obvr::math::kTwoPi;
+
+	// Too small a step to tell anything by, and the measured behaviour - that
+	// a written heading does survive - stands. Answering "did not land" here
+	// would take a real turn back out of the camera on the strength of the
+	// mouse's own movement.
+	Check(YawWriteLanded(1.0f, 1.4f, 0.0f), "no step at all counts as landed");
+	Check(YawWriteLanded(1.0f, 1.4f, kYawLandingMinStep * 0.5f),
+	      "and a step too small to measure does too");
+
+	// Found where it was left: the write landed, which is the ordinary case.
+	Check(YawWriteLanded(1.0f, 1.0f, 0.5f), "a heading found where it was left has landed");
+	Check(YawWriteLanded(1.0f, 1.02f, 0.5f), "and one the mouse nudged slightly still has");
+
+	// Moved back by about the step: something else set the player's heading,
+	// so the body never took the turn the offset is claiming.
+	Check(!YawWriteLanded(1.0f, 1.5f, 0.5f), "a heading put back where it was has not landed");
+	Check(!YawWriteLanded(1.0f, 0.5f, -0.5f), "and the same for a step the other way");
 
 	// Across north, which is where a comparison without a wrap goes wrong: a
 	// heading a hair above zero and one a hair below it are next to each
 	// other, not a whole circle apart.
-	Check(JudgeYawWrite(0.05f, kTwoPi - 0.01f, 0.5f) == YawWriteVerdict::FeedsBack,
-	      "either side of north counts as the same heading");
-	Check(JudgeYawWrite(kTwoPi - 0.05f, 0.02f, 0.5f) == YawWriteVerdict::FeedsBack,
-	      "and the same the other way round");
+	Check(YawWriteLanded(0.05f, kTwoPi - 0.01f, 0.5f), "either side of north is the same heading");
+	Check(YawWriteLanded(kTwoPi - 0.05f, 0.02f, 0.5f), "and the same the other way round");
 
-	// The dividing line sits at half the turn, so a turn of any size splits
-	// the two outcomes with the same room on each side.
-	Check(JudgeYawWrite(1.0f, 1.0f, 2.0f) == YawWriteVerdict::FeedsBack,
-	      "a large turn judges the same way");
-	Check(JudgeYawWrite(1.0f, 3.0f, 2.0f) == YawWriteVerdict::Safe,
-	      "and its opposite outcome too");
+	// The dividing line sits at half the step, so a step of any size splits the
+	// two outcomes with the same room on each side.
+	Check(YawWriteLanded(1.0f, 1.0f, 2.0f), "a large step judges the same way");
+	Check(!YawWriteLanded(1.0f, 3.0f, 2.0f), "and its opposite outcome too");
+}
+
+void TestAimYawHoldsTheView() {
+	std::printf("The view holds still while the body turns\n");
+
+	using obvr::camera::AimYawRemaining;
+	using obvr::camera::PlayerYawForGaze;
+	using obvr::math::WrapAngle;
+
+	const auto Near = [](float a, float b, float tolerance = 1e-4f) {
+		return a - b < tolerance && b - a < tolerance;
+	};
+
+	// The invariant the sideways aim is built on, run end to end over the pure
+	// functions. The camera's heading is the negative of the player's - that is
+	// the measurement the aim probe made - with the head's turn added on top
+	// and the offset taken back out again at the base:
+	//
+	//     view = -rotZ - offset + headYaw
+	//
+	// Turning the body means rotZ falls by the step while the offset rises by
+	// it, and those two cancel in that expression. So the wearer keeps looking
+	// at exactly what they were looking at, however far the body comes round.
+	// If they did not cancel, this is the test that would say so.
+	const auto view = [](float rotZ, float offset, float headYaw) {
+		return WrapAngle(-rotZ - offset + headYaw);
+	};
+
+	float rotZ = 2.0f;
+	float offset = 0.0f;
+	const float headYaw = 0.9f;
+	const float before = view(rotZ, offset, headYaw);
+
+	// One frame at full speed, which is the default: the whole remainder in a
+	// single step.
+	const float step = AimYawRemaining(headYaw, offset);
+	rotZ = PlayerYawForGaze(rotZ, step);
+	offset = WrapAngle(offset + step);
+
+	Check(Near(view(rotZ, offset, headYaw), before), "the view is where it was before the turn");
+	Check(Near(AimYawRemaining(headYaw, offset), 0.0f), "and the body faces the gaze");
+
+	// Eased instead, over many frames. Each step is a share of what is left,
+	// and the view has to hold still on every one of them - a correction that
+	// only balanced at the end would show as the body creeping the view round.
+	rotZ = 2.0f;
+	offset = 0.0f;
+	for (int frame = 0; frame < 40; ++frame) {
+		const float eased = AimYawRemaining(headYaw, offset) * 0.25f;
+		rotZ = PlayerYawForGaze(rotZ, eased);
+		offset = WrapAngle(offset + eased);
+		if (!Near(view(rotZ, offset, headYaw), before)) {
+			Check(false, "the view moved during an eased turn");
+			return;
+		}
+	}
+	Check(true, "the view holds still on every frame of an eased turn");
+	Check(Near(AimYawRemaining(headYaw, offset), 0.0f, 0.01f), "and the body arrives");
+
+	// The head turns on while the body is following, which is the real case -
+	// nobody holds their head still while drawing a bow.
+	rotZ = 2.0f;
+	offset = 0.0f;
+	for (int frame = 0; frame < 30; ++frame) {
+		const float movingHead = 0.05f * static_cast<float>(frame);
+		const float expected = view(rotZ, offset, movingHead);
+		const float moved = AimYawRemaining(movingHead, offset);
+		rotZ = PlayerYawForGaze(rotZ, moved);
+		offset = WrapAngle(offset + moved);
+		if (!Near(view(rotZ, offset, movingHead), expected)) {
+			Check(false, "the view moved while the head was turning");
+			return;
+		}
+	}
+	Check(true, "a head turning while the body follows still leaves the view alone");
+
+	// A step that did not land, taken back out again. The offset has to end up
+	// where it started, or the base would be corrected for a turn the body
+	// never made and the view would sit crooked by that much.
+	offset = 0.3f;
+	const float lost = AimYawRemaining(headYaw, offset);
+	const float claimed = WrapAngle(offset + lost);
+	Check(Near(WrapAngle(claimed - lost), 0.3f), "a step taken back leaves the offset as it was");
 }
 
 int main() {
@@ -1367,7 +1491,11 @@ int main() {
 	std::printf("\n");
 	TestAimYaw();
 	std::printf("\n");
-	TestJudgeYawWrite();
+	TestAimYawRemaining();
+	std::printf("\n");
+	TestYawWriteLanded();
+	std::printf("\n");
+	TestAimYawHoldsTheView();
 	std::printf("\n");
 	TestFrameClock();
 	std::printf("\n");

@@ -679,7 +679,7 @@ bool AimYawWanted(bool enabled, bool headsetConnected, bool isThirdPerson, bool 
                   bool attacking);
 
 // The heading to put into the player, given the one the engine left there and
-// how far the head is turned away from the body.
+// the step to turn the body by this frame.
 //
 // A difference rather than an absolute angle, and that is what makes it safe
 // to write. An absolute heading would have to be converted out of OBVR's
@@ -689,54 +689,45 @@ bool AimYawWanted(bool enabled, bool headsetConnected, bool isThirdPerson, bool 
 // heading the engine itself just wrote needs no such conversion: whatever the
 // zero is, both sides share it.
 //
-// THE SIGN IS DERIVED, NOT MEASURED, and it is the one thing here that a run
-// still has to confirm. Oblivion's rotZ is zero at north and grows clockwise
-// (Construction Set wiki, GetAngle); OBVR reads a heading off column 0 of the
-// rotation matrix, which runs the other way round - at a rotZ of 90 degrees,
-// pointing east, that column points at -y and reads as -90. So the head's turn
-// is subtracted. If an arrow leaves mirrored - the wearer looks left and it
-// goes right - this sign is why, and it is a single character to change.
+// The sign follows from the two conventions and was then confirmed by
+// measurement. OBVR reads a heading off column 0 of the rotation matrix, which
+// runs opposite to rotZ, so the camera's heading is the negative of the
+// player's; the aim probe found exactly that, with the two columns summing to
+// zero across sixty frames whenever the head was centred, and to the head's own
+// turn when it was not. So the step is subtracted.
 //
 // The result is brought into 0..2pi, which is the range Oblivion's own angles
 // are reported in.
-float PlayerYawForGaze(float engineYaw, float headYawRadians);
+float PlayerYawForGaze(float engineYaw, float stepRadians);
 
-// What became of a heading OBVR wrote, judged one frame later.
+// How far the body still has to come round before it faces the gaze.
 //
-// The whole sideways mechanism turns on a question about the engine that
-// nothing outside it can answer by reasoning: does a written rotation stay
-// written? If it does, the camera - which is built on the player's heading,
-// with the head's turn added on top - reads OBVR's own turn back next frame
-// and adds the head to it again, and the view creeps round for as long as the
-// head stays turned. If instead the engine sets the field afresh from its own
-// input each frame, there is no loop and nothing to guard against.
+// headYaw is where the head is pointing relative to the camera's base, and
+// bodyOffset is how much of that OBVR has already handed to the body. The
+// difference is what is left, and it is what the body is turned by - so with
+// the head held still the body arrives and then stops, rather than turning for
+// as long as the head is off centre.
 //
-// Rather than assume either, OBVR writes once and looks. That costs a single
-// frame of drift in the bad case, against building a compensation nobody has
-// established is needed - and a compensation for a loop that does not exist
-// would itself drive the view the other way.
-enum class YawWriteVerdict {
-	// Not enough of a turn was applied to tell the two apart. A head barely
-	// off centre writes a heading barely different from the engine's, and then
-	// "unchanged" and "replaced" look alike.
-	NotYetKnown,
+// Wrapped, so a head either side of straight back does not read as most of a
+// circle of remaining turn.
+float AimYawRemaining(float headYaw, float bodyOffset);
 
-	// The engine put its own heading back. Writing is free of consequence
-	// beyond the frame it happens in.
-	Safe,
+// Whether a heading OBVR wrote actually reached the player, judged one frame
+// later against what is in the field before anything is written again.
+//
+// It was measured that a written heading does survive - the log line "a written
+// heading SURVIVED the frame" is that measurement, and the whole compensation
+// downstream is built on it. This is not that question being asked again. It is
+// the case where something else - a load, a script, the engine turning the
+// player itself - takes the write away, because then the camera would be
+// corrected for a turn the body never made and the view would sit crooked.
+//
+// Below kYawLandingMinStep the two answers are not distinguishable from one
+// frame to the next, and the measured behaviour stands.
+bool YawWriteLanded(float wroteYaw, float engineYawNow, float stepTaken);
 
-	// OBVR's heading was still there. Writing it again would feed the camera.
-	FeedsBack,
-};
-
-// How much of a turn has to have been applied before the verdict means
-// anything: about six degrees. Below that the mouse's own movement within one
-// frame is the same size as the signal being looked for.
-inline constexpr float kYawVerdictMinTurn = 0.1f;
-
-// wroteYaw is what OBVR put into the player last frame, engineYawNow is what
-// is in the field before anything is written this frame, and headYawApplied is
-// how far the heading was turned when it was written.
-YawWriteVerdict JudgeYawWrite(float wroteYaw, float engineYawNow, float headYawApplied);
+// The smallest step whose arrival can be told apart from the mouse's own
+// movement within a frame: about half a degree.
+inline constexpr float kYawLandingMinStep = 0.01f;
 
 }  // namespace obvr::camera

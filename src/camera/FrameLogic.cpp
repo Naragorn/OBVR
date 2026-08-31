@@ -245,13 +245,13 @@ bool AimYawWanted(bool enabled, bool headsetConnected, bool isThirdPerson, bool 
 	return AimPitchWanted(enabled, headsetConnected, isThirdPerson, menuIsUp) && attacking;
 }
 
-float PlayerYawForGaze(float engineYaw, float headYawRadians) {
-	float turned = engineYaw - headYawRadians;
+float PlayerYawForGaze(float engineYaw, float stepRadians) {
+	float turned = engineYaw - stepRadians;
 
 	// Into 0..2pi. Written as loops rather than as a remainder because the
-	// input is one turn out at the very most - the head cannot be more than
-	// half a circle from the body - and a remainder on a negative float is
-	// where sign conventions differ between compilers.
+	// input is one turn out at the very most - the step is never more than half
+	// a circle - and a remainder on a negative float is where sign conventions
+	// differ between compilers.
 	while (turned < 0.0f) {
 		turned += math::kTwoPi;
 	}
@@ -261,10 +261,14 @@ float PlayerYawForGaze(float engineYaw, float headYawRadians) {
 	return turned;
 }
 
-YawWriteVerdict JudgeYawWrite(float wroteYaw, float engineYawNow, float headYawApplied) {
-	const float turn = headYawApplied < 0.0f ? -headYawApplied : headYawApplied;
-	if (turn < kYawVerdictMinTurn) {
-		return YawWriteVerdict::NotYetKnown;
+float AimYawRemaining(float headYaw, float bodyOffset) {
+	return math::WrapAngle(headYaw - bodyOffset);
+}
+
+bool YawWriteLanded(float wroteYaw, float engineYawNow, float stepTaken) {
+	const float step = stepTaken < 0.0f ? -stepTaken : stepTaken;
+	if (step < kYawLandingMinStep) {
+		return true;
 	}
 
 	// How far the field has moved away from what OBVR left in it. The wrap is
@@ -273,14 +277,14 @@ YawWriteVerdict JudgeYawWrite(float wroteYaw, float engineYawNow, float headYawA
 	const float moved = math::WrapAngle(engineYawNow - wroteYaw);
 	const float distance = moved < 0.0f ? -moved : moved;
 
-	// Half the applied turn as the dividing line, rather than a fixed
-	// tolerance. The two outcomes are "still here" and "back where it was",
-	// and those are exactly `turn` apart - so half of it separates them with
-	// the most room on either side, whatever the size of the turn. It also
-	// leaves the mouse's own movement on the correct side: a mouse moving fast
-	// enough to cross that line within one frame is turning faster than the
-	// head it is being compared against.
-	return distance < turn * 0.5f ? YawWriteVerdict::FeedsBack : YawWriteVerdict::Safe;
+	// Half the step as the dividing line, rather than a fixed tolerance. The
+	// two outcomes are "still here" and "back where it was", and those are
+	// exactly `step` apart - so half of it separates them with the most room on
+	// either side, whatever the size of the step. It also leaves the mouse's
+	// own movement on the correct side: a mouse moving fast enough to cross
+	// that line within one frame is turning faster than the step it is being
+	// compared against.
+	return distance < step * 0.5f;
 }
 
 float PlayerPitchForGaze(float viewSinPitch) {
