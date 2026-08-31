@@ -367,6 +367,13 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.aimAttackKey = ReadUInt("Look", "AimAttackKey", config.aimAttackKey, path);
 	config.aimTurnSpeed = ReadFloat("Look", "AimTurnSpeed", config.aimTurnSpeed, path);
 
+	config.settingsMenuKey =
+		ReadKeyCode("SettingsMenu", "Key", config.settingsMenuKey, path);
+	config.settingsMenuDistanceMetres =
+		ReadFloat("SettingsMenu", "DistanceMetres", config.settingsMenuDistanceMetres, path);
+	config.settingsMenuWidthMetres =
+		ReadFloat("SettingsMenu", "WidthMetres", config.settingsMenuWidthMetres, path);
+
 	// VerticalLookRange was one value for both directions until it turned out
 	// that a range sized for looking up stops at the hips on the way down. It
 	// is still read, as the fallback for both halves, so that an INI written

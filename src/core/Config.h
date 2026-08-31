@@ -175,6 +175,21 @@ struct Config {
 	// view; 8.0 matches the vertical look's own easing.
 	float aimTurnSpeed = 0.0f;
 
+	// The key that opens OBVR's own settings menu in the headset, as a Windows
+	// virtual-key code. 0 disables it entirely.
+	//
+	// VK_INSERT (0x2D) by default, next to the recenter key on the same block
+	// and unbound in vanilla Oblivion - which is the whole of the requirement,
+	// since a key the game also uses would do both things at once.
+	UInt32 settingsMenuKey = 0x2D;
+
+	// Where that menu hangs, in metres ahead of the head, and how wide it is
+	// there. Reading distance rather than the HUD's, because it is text at a
+	// small size and the wearer is looking at it deliberately rather than
+	// glancing.
+	float settingsMenuDistanceMetres = 1.0f;
+	float settingsMenuWidthMetres = 1.1f;
+
 	// true when the file was found and read.
 	bool Load(const char* fileName);
 

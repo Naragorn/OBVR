@@ -15,7 +15,7 @@ void Canvas::SetPixel(SInt32 x, SInt32 y, render::Pixel colour) {
 		return;
 	}
 
-	m_pixels[static_cast<UInt32>(y) * m_width + static_cast<UInt32>(x)] = colour;
+	m_pixels[static_cast<UInt32>(y) * m_stride + static_cast<UInt32>(x)] = colour;
 }
 
 render::Pixel Canvas::GetPixel(SInt32 x, SInt32 y) const {
@@ -26,7 +26,7 @@ render::Pixel Canvas::GetPixel(SInt32 x, SInt32 y) const {
 		return render::Pixel{0, 0, 0, 0};
 	}
 
-	return m_pixels[static_cast<UInt32>(y) * m_width + static_cast<UInt32>(x)];
+	return m_pixels[static_cast<UInt32>(y) * m_stride + static_cast<UInt32>(x)];
 }
 
 void Canvas::Fill(render::Pixel colour) {
@@ -34,9 +34,15 @@ void Canvas::Fill(render::Pixel colour) {
 		return;
 	}
 
-	const UInt32 count = m_width * m_height;
-	for (UInt32 at = 0; at < count; ++at) {
-		m_pixels[at] = colour;
+	// Row by row rather than one run over the buffer. With a stride wider than
+	// the canvas the two are not the same thing, and filling straight through
+	// would write into whatever the padding belongs to - which on a locked
+	// surface is the driver's business, not ours.
+	for (UInt32 row = 0; row < m_height; ++row) {
+		render::Pixel* const line = m_pixels + row * m_stride;
+		for (UInt32 column = 0; column < m_width; ++column) {
+			line[column] = colour;
+		}
 	}
 }
 

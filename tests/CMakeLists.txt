@@ -527,3 +527,18 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME menu_painter COMMAND menu_painter_test)
+
+add_executable(settings_menu_test
+	SettingsMenuTest.cpp
+	../src/ui/SettingsMenu.cpp
+	../src/ui/SettingsList.cpp
+	../src/ui/MenuModel.cpp
+)
+
+target_include_directories(settings_menu_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(settings_menu_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME settings_menu COMMAND settings_menu_test)

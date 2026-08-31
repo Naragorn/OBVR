@@ -30,8 +30,16 @@ public:
 	// The buffer is borrowed, not owned. It has to outlive the canvas, which
 	// is trivially true for the intended use - a canvas is made, drawn on, and
 	// dropped inside one function.
-	Canvas(render::Pixel* pixels, UInt32 width, UInt32 height)
-		: m_pixels(pixels), m_width(width), m_height(height) {}
+	//
+	// stridePixels is how many pixels one row occupies, which is not always how
+	// many are visible. A locked Direct3D surface hands back a pitch of the
+	// driver's choosing - padded for alignment, and on some drivers padded
+	// differently every time - so a canvas that assumed rows were adjacent
+	// would draw a picture that sheared further to one side with every row.
+	// Zero means the rows are adjacent, which is what a plain buffer wants.
+	Canvas(render::Pixel* pixels, UInt32 width, UInt32 height, UInt32 stridePixels = 0)
+		: m_pixels(pixels), m_width(width), m_height(height),
+		  m_stride(stridePixels == 0 ? width : stridePixels) {}
 
 	UInt32 Width() const { return m_width; }
 	UInt32 Height() const { return m_height; }
@@ -76,6 +84,22 @@ private:
 	render::Pixel* m_pixels = nullptr;
 	UInt32 m_width = 0;
 	UInt32 m_height = 0;
+	UInt32 m_stride = 0;
 };
+
+// The same colour with its red and blue swapped.
+//
+// Pixel is laid out red first, which is what DXGI_FORMAT_R8G8B8A8_UNORM wants
+// and what TestPattern was written against. Direct3D 9's A8R8G8B8 is the other
+// way round in memory - blue, green, red, alpha - so a canvas drawn straight
+// into a locked D3D9 surface comes out with the reds and blues exchanged.
+//
+// Swapping the handful of colours in a theme once is the cheap way to fix that;
+// swapping every pixel of the finished picture is the expensive way, and it
+// would be a second pass over the whole surface every time the menu changed.
+// So this exists to be applied to a palette, not to an image.
+constexpr render::Pixel SwapRedAndBlue(render::Pixel colour) {
+	return render::Pixel{colour.b, colour.g, colour.r, colour.a};
+}
 
 }  // namespace obvr::ui

@@ -23,6 +23,8 @@
 #include "render/HeadsetRenderer.h"
 #include "render/CrosshairLayer.h"
 #include "render/HudLayer.h"
+#include "ui/SettingsMenu.h"
+#include "ui/SettingsMenuLayer.h"
 #include "render/InterfaceRenderHook.h"
 #include "render/CursorPickHook.h"
 #include "render/CursorProbe.h"
@@ -106,6 +108,23 @@ UInt32 g_menuLiveReportsLeft = 6;
 // and paid at Present alongside the eyes.
 render::HudLayer g_hudLayer;
 render::CrosshairLayer g_crosshairLayer;
+
+// OBVR's own settings menu: what it is showing, and the quad it shows it on.
+//
+// Separate objects on purpose. The menu is state and decisions and can be
+// driven from a test; the layer is a texture and an overlay and cannot.
+ui::SettingsMenu g_settingsMenu;
+ui::SettingsMenuLayer g_settingsMenuLayer;
+
+// One edge each for the keys that drive it. Edges rather than held states,
+// because every one of these means "do this once" - a held arrow key that
+// moved the highlight every frame would cross a twenty-row list in a third of
+// a second.
+KeyEdge g_menuToggleEdge;
+KeyEdge g_menuUpEdge;
+KeyEdge g_menuDownEdge;
+KeyEdge g_menuLeftEdge;
+KeyEdge g_menuRightEdge;
 
 // How many of those bursts have been reported.
 UInt32 g_flatBurstsReported = 0;
@@ -1243,8 +1262,77 @@ void HudEndRedirect() { g_hudLayer.EndCapture(); }
 // reloaded with the rest of [Debug], like the probe square it belongs to.
 bool HudProbeActive() { return GetConfig().hudProbe; }
 
+// Reads the keys that drive the settings menu and acts on them, then puts the
+// menu in front of the wearer.
+//
+// Runs on every frame rather than only on world frames, and that is deliberate:
+// the point of a settings menu in the headset is to be reachable without taking
+// it off, which includes while a game menu is up or a film is playing. It is
+// also why the keys are read here through GetAsyncKeyState rather than from
+// anything the game provides - the camera hook does not run on those frames.
+void PollSettingsMenu() {
+	const Config& config = GetConfig();
+
+	const auto down = [](UInt32 key) {
+		return key != 0 && (GetAsyncKeyState(static_cast<int>(key)) & 0x8000) != 0;
+	};
+
+	if (config.settingsMenuKey == 0) {
+		g_menuToggleEdge.Reset();
+	} else if (g_menuToggleEdge.Update(down(config.settingsMenuKey))) {
+		g_settingsMenu.Toggle();
+		OBVR_LOG("Menu: the settings menu is now %s",
+		         g_settingsMenu.IsOpen() ? "open" : "closed");
+	}
+
+	// The arrows are read only while the menu is open. Oblivion leaves them
+	// unbound, but a mod may not, and consuming nothing is the polite way to
+	// share a keyboard.
+	if (g_settingsMenu.IsOpen()) {
+		// The layer owns the texture and therefore knows how many rows fit, so
+		// it is asked rather than told - two places computing this separately
+		// is two places for the highlight to scroll a row early or a row late.
+		g_settingsMenu.SetVisibleRows(g_settingsMenuLayer.VisibleRows());
+
+		Config& writable = GetConfig();
+		if (g_menuUpEdge.Update(down(0x26))) {  // VK_UP
+			g_settingsMenu.Apply(ui::MenuAction::Up, writable);
+		}
+		if (g_menuDownEdge.Update(down(0x28))) {  // VK_DOWN
+			g_settingsMenu.Apply(ui::MenuAction::Down, writable);
+		}
+		if (g_menuLeftEdge.Update(down(0x25))) {  // VK_LEFT
+			g_settingsMenu.Apply(ui::MenuAction::Decrease, writable);
+		}
+		if (g_menuRightEdge.Update(down(0x27))) {  // VK_RIGHT
+			g_settingsMenu.Apply(ui::MenuAction::Increase, writable);
+		}
+	} else {
+		g_menuUpEdge.Reset();
+		g_menuDownEdge.Reset();
+		g_menuLeftEdge.Reset();
+		g_menuRightEdge.Reset();
+	}
+
+	// Built fresh every frame rather than kept, so a value changed from
+	// somewhere else - the INI hot reload, most likely - shows here instead of
+	// the menu holding a stale copy.
+	ui::MenuItem items[64];
+	const char* categories[64];
+	const UInt32 count =
+		g_settingsMenu.BuildRows(GetConfig(), items, categories, 64);
+
+	g_settingsMenuLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
+	                           g_settingsMenu.IsOpen(), items, categories, count,
+	                           g_settingsMenu.State(), g_settingsMenu.Revision(),
+	                           config.settingsMenuDistanceMetres,
+	                           config.settingsMenuWidthMetres);
+}
+
 void MaybeSubmitOverlays(bool worldFrame) {
 	const Config& config = GetConfig();
+
+	PollSettingsMenu();
 
 	// The crosshair first, and outside the HUD's two gates on purpose: it is
 	// not drawn by the interface pass, so whether that pass is redirected has

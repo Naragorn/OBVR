@@ -345,6 +345,110 @@ void TestCanvasText() {
 	Check(Same(canvas.GetPixel(2, 0), kBlack), "text is drawn in the colour asked for");
 }
 
+void TestStride() {
+	std::printf("A canvas whose rows are further apart than they are wide\n");
+
+	// What a locked Direct3D surface hands back: a pitch of the driver's
+	// choosing, wider than the picture. A canvas that assumed rows were
+	// adjacent would draw an image that sheared further sideways with every
+	// row - and it would do it only on hardware that pads, which is the worst
+	// kind of fault to go looking for.
+	constexpr UInt32 kWide = 4;
+	constexpr UInt32 kTall = 3;
+	constexpr UInt32 kStride = 8;
+
+	Pixel buffer[kStride * kTall];
+	for (UInt32 at = 0; at < kStride * kTall; ++at) {
+		buffer[at] = kBlack;
+	}
+
+	obvr::ui::Canvas canvas(buffer, kWide, kTall, kStride);
+	canvas.Fill(kClear);
+
+	// Every visible pixel was filled...
+	bool filled = true;
+	for (UInt32 row = 0; row < kTall && filled; ++row) {
+		for (UInt32 column = 0; column < kWide; ++column) {
+			if (!Same(buffer[row * kStride + column], kClear)) {
+				filled = false;
+				break;
+			}
+		}
+	}
+	Check(filled, "a fill reaches every visible pixel");
+
+	// ...and nothing in the padding was. That padding belongs to the driver on
+	// a locked surface, and writing into it is the fault this test exists for.
+	bool paddingIntact = true;
+	for (UInt32 row = 0; row < kTall && paddingIntact; ++row) {
+		for (UInt32 column = kWide; column < kStride; ++column) {
+			if (!Same(buffer[row * kStride + column], kBlack)) {
+				paddingIntact = false;
+				break;
+			}
+		}
+	}
+	Check(paddingIntact, "and a fill writes nothing into the padding");
+
+	// A pixel lands at its strided position, not its dense one. Row 1 column 3
+	// is index 11 with a stride of 8, and index 7 without - and index 7 is row
+	// 1 column 3 of a dense buffer, so a canvas that ignored the stride would
+	// still write somewhere plausible. That is precisely why this is checked by
+	// index rather than by reading it back through the canvas.
+	canvas.SetPixel(3, 1, kWhite);
+	Check(Same(buffer[1 * kStride + 3], kWhite), "a pixel lands at its strided position");
+	Check(!Same(buffer[1 * kWide + 3], kWhite), "and nothing was written at the dense one");
+	Check(Same(canvas.GetPixel(3, 1), kWhite), "and reads back through the canvas");
+
+	// Clipping still goes by the visible width, not the stride. A canvas that
+	// clipped at the stride would let a rectangle run into the padding.
+	canvas.Fill(kClear);
+	canvas.FillRect(0, 0, 100, 100, kWhite);
+	bool clipped = true;
+	for (UInt32 row = 0; row < kTall && clipped; ++row) {
+		for (UInt32 column = kWide; column < kStride; ++column) {
+			if (!Same(buffer[row * kStride + column], kBlack)) {
+				clipped = false;
+				break;
+			}
+		}
+	}
+	Check(clipped, "a rectangle is clipped to the visible width, not the stride");
+
+	// A stride of zero means the rows are adjacent, which is what a plain
+	// buffer wants and what every other test here relies on.
+	Pixel dense[kWide * kTall];
+	obvr::ui::Canvas tight(dense, kWide, kTall, 0);
+	tight.Fill(kClear);
+	tight.SetPixel(3, 1, kWhite);
+	Check(Same(dense[1 * kWide + 3], kWhite), "a stride of zero means rows are adjacent");
+}
+
+void TestChannelSwap() {
+	std::printf("Red and blue exchanged\n");
+
+	using obvr::ui::SwapRedAndBlue;
+
+	// Pixel is laid out red first; Direct3D 9's A8R8G8B8 is blue first in
+	// memory. A theme drawn straight into a locked D3D9 surface without this
+	// comes out with its reds and blues exchanged - which looks deliberate
+	// enough that it might survive a first look in a headset.
+	const Pixel red{200, 10, 20, 255};
+	const Pixel swapped = SwapRedAndBlue(red);
+	Check(swapped.r == 20 && swapped.g == 10 && swapped.b == 200 && swapped.a == 255,
+	      "red and blue change places and green and alpha do not");
+
+	// Twice is the original, which is the property that makes it safe to apply
+	// to a palette without tracking whether it has been applied.
+	const Pixel back = SwapRedAndBlue(swapped);
+	Check(Same(back, red), "swapping twice gives back what went in");
+
+	// A grey is its own swap, so a monochrome theme cannot tell the two apart -
+	// worth knowing when a test picks a colour to look for.
+	const Pixel grey{128, 128, 128, 255};
+	Check(Same(SwapRedAndBlue(grey), grey), "a grey is unchanged by the swap");
+}
+
 }  // namespace
 
 int main() {
@@ -361,6 +465,10 @@ int main() {
 	TestCanvasRects();
 	std::printf("\n");
 	TestCanvasText();
+	std::printf("\n");
+	TestStride();
+	std::printf("\n");
+	TestChannelSwap();
 
 	std::printf("\n");
 	if (g_failures == 0) {

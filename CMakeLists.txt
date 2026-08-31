@@ -31,6 +31,8 @@ add_library(OBVR SHARED
 	src/ui/MenuModel.cpp
 	src/ui/MenuPainter.cpp
 	src/ui/SettingsList.cpp
+	src/ui/SettingsMenuLayer.cpp
+	src/ui/SettingsMenu.cpp
 	src/camera/LookControl.cpp
 	src/core/CodeWriter.cpp
 	src/core/Config.cpp
