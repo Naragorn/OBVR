@@ -95,6 +95,33 @@ inline constexpr UInt32 kPlayerIsThirdPersonOffset = 0x588;
 // them right in the running game for weeks.
 inline constexpr UInt32 kMobileProcessOffset = 0x058;
 
+// PlayerCharacter::firstPersonNiNode - the root of the skeleton the first
+// person arms and weapon hang from.
+//
+// Wanted so the bow can follow the gaze while it is being drawn, without
+// turning the body: turning the body would take the walking with it, which is
+// the whole fault the aiming work has been circling. The node is only drawn,
+// so rotating it moves the weapon and nothing else - no heading, no
+// projectile, no locomotion.
+//
+// ONE SOURCE, and the one that has been wrong before. xOBSE's GameObjects.h
+// gives the layout as
+//
+//   ActorAnimData * firstPersonAnimData;  // 5CC
+//   NiNode        * firstPersonNiNode;    // 5D0
+//   float           unk5D4;               // 5D4
+//
+// and nothing independent confirms it. So it is checked the way the HUDInfo
+// menu is: the object has to identify itself before anything is written to it.
+// A NiAVObject carries a name at +0x08, and a pointer that leads to a readable
+// name is a scene graph node; one that does not is refused and reported. The
+// neighbouring evidence is that isThirdPerson at +0x588 and the rotation at
+// +0x20 are both from this same layout and both right in the running game.
+inline constexpr UInt32 kPlayerFirstPersonNodeOffset = 0x5D0;
+
+// NiAVObject::name, used only to make a candidate node prove it is one.
+inline constexpr UInt32 kNiObjectNameOffset = 0x08;
+
 // The byte behind BaseProcess::GetWeaponOut - whether the actor is in combat
 // stance, weapon or spell readied.
 //

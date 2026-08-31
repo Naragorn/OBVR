@@ -101,20 +101,37 @@ WeaponState ReadPlayerWeaponState();
 // an eye should be.
 bool IsPlayerSneaking();
 
-// Whether the player is still in the middle of an attack - the swing, or the
-// bow's release with the arrow not yet gone.
+// Whether the shot is still in hand - the arrow on the string, the swing not
+// yet landed.
 //
-// This is the difference between "the control was let go" and "the shot has
-// happened". Releasing the attack control starts the release animation; the
-// arrow spawns several frames later. A heading changed in between is the
-// heading the arrow leaves along, so straightening the body on the release
-// frame would send the shot forwards instead of where it was aimed.
+// This is the difference between "the control was let go" and "the arrow has
+// gone". Releasing starts the release animation; the arrow leaves several
+// frames later, along whatever the heading is at that moment. So the heading
+// has to be held from the release until this turns false, and not one frame
+// longer.
+//
+// MEASURED, not reasoned. The shot trace across real bow shots gives the
+// sequence plainly:
+//
+//   frame 0-6   action=5  kAction_AttackBowArrowAttached - arrow on the string
+//   frame 7     action=3  kAction_AttackFollowThrough    - the arrow has gone
+//   frame 7-39+ action=3  still following through
+//
+// FollowThrough is therefore excluded, and that is the whole point of the
+// measurement. Counting it as "attacking" held the body turned for the entire
+// follow-through, which the trace shows running past forty frames - over half a
+// second of walking the way the shot went, which is exactly what was reported:
+// "fuer den zeitraum des schiessen laeuft er in die richtung wo ich ziele".
+// Ending at the transition instead makes the window seven frames.
+//
+// The same reading also confirms the offset and the action values themselves,
+// which had only one source: 5 and 3 appear exactly where a bow shot should put
+// them, and -1 and 0 appear when nothing is being done.
 //
 // False when it cannot be read. The caller has a time limit behind this, so a
-// false that is wrong costs an early straightening rather than a body that
-// never comes round - and being wrong in that direction at least keeps the
-// feature working.
-bool IsPlayerAttacking();
+// wrong false costs an early straightening rather than a body that never comes
+// round.
+bool IsShotUnreleased();
 
 // The raw action value, for the shot trace and for nothing else.
 //

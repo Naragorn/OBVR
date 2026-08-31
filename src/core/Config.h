@@ -242,6 +242,30 @@ struct Config {
 	// Guessing at it would be the thing the project's own notes forbid.
 	bool aimShotTrace = false;
 
+	// Whether the first person weapon follows the gaze while it is being aimed.
+	//
+	// The missing third piece. Turning the body aims the shot but takes the
+	// walking with it, so the body is only turned for the shot itself - which
+	// leaves the bow pointing forwards while somebody aims elsewhere:
+	// "der bogen zeigt egal wo ich hinschaue nach vorne".
+	//
+	// The bow is only DRAWN. Its direction is a picture, not a fact about the
+	// world: nothing is fired along it and nobody walks along it. So the first
+	// person arm node is turned instead, which moves the weapon and nothing
+	// else.
+	//
+	// The angle is the one already being computed for the aiming -
+	// AimYawRemaining, how far the head is turned beyond what the body has
+	// taken. Drawing: the body has taken nothing, so the arms turn the whole
+	// way. Shooting: the body takes it and the remainder falls to zero as the
+	// arms give it up. The sum stays constant, so the weapon does not jump when
+	// one hands over to the other - which was the other half of the report,
+	// "dann springt er nach dem schuss zurueck mittig".
+	//
+	// First person only. In third person the body is what is being looked at
+	// and the arms belong to it.
+	bool aimWeaponFollowsGaze = true;
+
 	// The key that opens OBVR's own settings menu in the headset, as a Windows
 	// virtual-key code. 0 disables it entirely.
 	//

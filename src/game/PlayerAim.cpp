@@ -164,10 +164,13 @@ SInt32 ReadPlayerAction() {
 	return *reinterpret_cast<const SInt16*>(process + addr::kProcessCurrentActionOffset);
 }
 
-bool IsPlayerAttacking() {
+bool IsShotUnreleased() {
 	const SInt32 action = ReadPlayerAction();
-	return action == addr::kActionAttack || action == addr::kActionAttackFollowThrough ||
-	       action == addr::kActionAttackBow || action == addr::kActionAttackBowArrowAttached;
+
+	// FollowThrough is deliberately NOT here, and that is the whole finding of
+	// the shot trace. See the header.
+	return action == addr::kActionAttack || action == addr::kActionAttackBow ||
+	       action == addr::kActionAttackBowArrowAttached;
 }
 
 WeaponState ReadPlayerWeaponState() {
