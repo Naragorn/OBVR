@@ -194,6 +194,14 @@ CrosshairPlacement PlaceCrosshair(float distanceMetres, float sizeAtOneMetre) {
 	return CrosshairPlacement{distance, size * distance};
 }
 
+bool BorrowedCrosshairWanted(bool thirdPerson, bool enabled, bool somethingAimedAt,
+                             bool sneaking) {
+	if (!thirdPerson || !enabled) {
+		return false;
+	}
+	return !somethingAimedAt && !sneaking;
+}
+
 UInt32 CrosshairSourcePixels(UInt32 believedHeight, float sharePercent) {
 	if (believedHeight == 0) {
 		return 0;
@@ -343,6 +351,31 @@ float PlayerYawForGaze(float engineYaw, float stepRadians) {
 
 float AimYawRemaining(float headYaw, float bodyOffset) {
 	return math::WrapAngle(headYaw - bodyOffset);
+}
+
+bool AimReturnWanted(bool enabled, bool headsetConnected, bool menuIsUp, bool attackHeld,
+                     bool attackWasHeld, float bodyOffset) {
+	if (!enabled || !headsetConnected) {
+		return false;
+	}
+
+	// Nothing to give back. Also the ordinary case for almost every frame, so
+	// it is checked before anything else that could be surprising.
+	if (bodyOffset == 0.0f) {
+		return false;
+	}
+
+	// The falling edge of the attack control, and only that. Held is still
+	// aiming; already released was dealt with on the frame it happened.
+	if (attackHeld || !attackWasHeld) {
+		return false;
+	}
+
+	// Not into a menu. Writing the player's heading while the world is paused
+	// is the same refusal the aiming half makes, and for the same reason: the
+	// engine is not going to rebuild the camera from it until play resumes, so
+	// the compensation and the heading would sit disagreeing until it did.
+	return !menuIsUp;
 }
 
 bool YawWriteLanded(float wroteYaw, float engineYawNow, float stepTaken) {

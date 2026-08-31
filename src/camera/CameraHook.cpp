@@ -204,6 +204,12 @@ float g_aimBodyOffset = 0.0f;
 
 bool g_aimYawReported = false;
 bool g_aimYawLostReported = false;
+bool g_aimReturnReported = false;
+
+// Whether the attack control was held on the previous camera pass, so the
+// frame it is RELEASED on can be recognised. A KeyEdge would answer the
+// opposite question.
+bool g_aimWasHeld = false;
 
 // The depth the crosshair quad is hung at, in metres, eased towards whatever
 // is under the crosshair.
@@ -1494,7 +1500,13 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		g_crosshairLayer.RememberCrosshair(render::GetGameDevice());
 	}
 
-	if (crosshairWanted && visibility.thirdPerson && config.tracker.crosshairInThirdPerson) {
+	// Pasted in only where the game leaves a gap. Oblivion draws no plain
+	// crosshair in third person, which is what this fills - but it DOES draw
+	// the context icons and the sneak eye, and the first version pasted over
+	// both of them.
+	if (crosshairWanted &&
+	    BorrowedCrosshairWanted(visibility.thirdPerson, config.tracker.crosshairInThirdPerson,
+	                            g_crosshairHasTarget, game::IsPlayerSneaking())) {
 		// The drawn cross is the last resort, not the first choice: it is only
 		// reached before this session has been in first person at all, and
 		// stops being used the moment it has.
@@ -2087,9 +2099,41 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		}
 	}
 
+	const bool attackHeld = AttackHeld();
+
+	// The turn given back, in one frame, when the attack control is released -
+	// so the character stops walking the way the shot went. See AimReturnWanted
+	// for why this is one step rather than the eased unwind that made Naragorn ill,
+	// and why the view should not move at all while it happens.
+	if (readPlayer &&
+	    AimReturnWanted(GetConfig().aimReturnOnRelease, g_headTracker.IsHeadsetConnected(),
+	                    game::IsMenuMode(), attackHeld, g_aimWasHeld, g_aimBodyOffset)) {
+		const float step = -g_aimBodyOffset;
+		const float target = PlayerYawForGaze(asEngineLeftIt.yaw, step);
+		if (game::WritePlayerYaw(target)) {
+			// Booked the same way a step of the turn is, so the landing check
+			// next frame covers the return as well: if something else moved the
+			// player in the same frame, the offset comes back rather than the
+			// view being left crooked.
+			g_aimBodyOffset = 0.0f;
+			g_aimYawWrote = target;
+			g_aimYawStepTaken = step;
+			g_aimYawPending = true;
+
+			if (!g_aimReturnReported) {
+				g_aimReturnReported = true;
+				OBVR_LOG("Aim: the body gives the turn back on release - %.1f degrees in one "
+				         "frame, heading %.4f to %.4f, and the view should not move",
+				         static_cast<double>(-step * math::kRadiansToDegrees),
+				         static_cast<double>(asEngineLeftIt.yaw), static_cast<double>(target));
+			}
+		}
+	}
+	g_aimWasHeld = attackHeld;
+
 	if (readPlayer &&
 	    AimYawWanted(GetConfig().aimFollowsGaze, g_headTracker.IsHeadsetConnected(), isThirdPerson,
-	                 game::IsMenuMode(), AttackHeld())) {
+	                 game::IsMenuMode(), attackHeld)) {
 		// How far the head is turned away from the camera's base. The head
 		// rotation is already relative to that base, so its heading is the turn
 		// itself rather than a direction in the world - which is what lets this

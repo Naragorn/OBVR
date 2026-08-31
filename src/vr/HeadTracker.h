@@ -459,7 +459,7 @@ struct TrackerSettings {
 	// from. It is an estimate rather than a measurement - the icon's real size
 	// is not written down anywhere OBVR can read - so it is in the settings
 	// menu, where it can be turned up until nothing is left behind.
-	float crosshairSourceShare = 6.0f;
+	float crosshairSourceShare = 7.5f;
 
 	// Oblivion units per metre, for converting the head offset.
 	//

@@ -813,6 +813,77 @@ void TestCrosshair() {
 	      "a nonsense pair clamps in both directions independently");
 }
 
+void TestAimReturn() {
+	std::printf("Giving the aimed turn back when the shot goes\n");
+
+	using obvr::camera::AimReturnWanted;
+
+	// The one flow that acts: switched on, a headset, no menu, the attack
+	// control just released, and a turn standing that can be given back.
+	Check(AimReturnWanted(true, true, false, false, true, 0.5f),
+	      "releasing the attack control gives the turn back");
+
+	// Held is still aiming. This is the flow that would make the body fight the
+	// turn it is being handed, one frame after the other.
+	Check(!AimReturnWanted(true, true, false, true, true, 0.5f), "still held, still aiming");
+
+	// The edge, not the level. Already released was dealt with on the frame it
+	// happened, and repeating it would write the heading every frame for as
+	// long as nobody pressed anything.
+	Check(!AimReturnWanted(true, true, false, false, false, 0.5f),
+	      "released a while ago is not released now");
+
+	// Nothing to give back. The ordinary case for nearly every frame.
+	Check(!AimReturnWanted(true, true, false, false, true, 0.0f), "no turn standing, nothing to do");
+
+	// Both signs of turn are given back - aiming left is not a special case.
+	Check(AimReturnWanted(true, true, false, false, true, -0.5f), "a turn the other way too");
+
+	// Switched off, which is what somebody reaches for if the sickness comes
+	// back. It has to actually stop it.
+	Check(!AimReturnWanted(false, true, false, false, true, 0.5f), "switched off, nothing happens");
+
+	// No headset means the vanilla game, and OBVR does not touch the player's
+	// heading there at all.
+	Check(!AimReturnWanted(true, false, false, false, true, 0.5f), "no headset, no interference");
+
+	// Not into a paused world. The engine will not rebuild the camera from the
+	// heading until play resumes, so the write and the compensation would sit
+	// disagreeing until it did.
+	Check(!AimReturnWanted(true, true, true, false, true, 0.5f), "not while a menu is up");
+}
+
+void TestBorrowedCrosshair() {
+	std::printf("When third person borrows the crosshair from first person\n");
+
+	using obvr::camera::BorrowedCrosshairWanted;
+
+	// The gap it fills: third person, switched on, nothing under the crosshair
+	// and not sneaking. Oblivion draws no plain crosshair here, so the copy is
+	// the only one there will be.
+	Check(BorrowedCrosshairWanted(true, true, false, false),
+	      "third person with nothing drawn borrows the crosshair");
+
+	// THE TWO FLOWS THE FIRST VERSION GOT WRONG, both reported from the
+	// headset. It pasted the copy in unconditionally, on the belief that
+	// Oblivion draws nothing at all in the middle of the layer in third person.
+	// It draws no plain crosshair - but it does draw these two.
+	Check(!BorrowedCrosshairWanted(true, true, true, false),
+	      "something aimed at is the game's icon, and the copy stays out of the way");
+	Check(!BorrowedCrosshairWanted(true, true, false, true),
+	      "sneaking is the game's eye, and the copy stays out of the way");
+	Check(!BorrowedCrosshairWanted(true, true, true, true),
+	      "and both at once, without arguing");
+
+	// First person never borrows: it is where the crosshair comes FROM.
+	Check(!BorrowedCrosshairWanted(false, true, false, false),
+	      "first person has its own and never borrows");
+	Check(!BorrowedCrosshairWanted(false, true, true, true), "whatever else is going on");
+
+	// Switched off is off.
+	Check(!BorrowedCrosshairWanted(true, false, false, false), "and off is off");
+}
+
 void TestCrosshairCutout() {
 	std::printf("How much of the flat layer the crosshair takes with it\n");
 
@@ -1758,7 +1829,10 @@ int main() {
 	std::printf("\n");
 	TestStereoEyeStep();
 	std::printf("\n");
+	TestAimReturn();
+	std::printf("\n");
 	TestCrosshair();
+	TestBorrowedCrosshair();
 	TestCrosshairCutout();
 	TestCrosshairDepth();
 	std::printf("\n");

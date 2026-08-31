@@ -89,4 +89,16 @@ enum class WeaponState { Unknown, Sheathed, Drawn };
 
 WeaponState ReadPlayerWeaponState();
 
+// Whether the player is sneaking.
+//
+// Needed for one narrow thing: Oblivion draws no crosshair in third person,
+// but it does draw the sneak eye there, so OBVR must not paste its borrowed
+// crosshair over one that the game is drawing after all. See
+// camera::BorrowedCrosshairWanted.
+//
+// False when it cannot be read, which is the answer that does the least harm:
+// the borrowed crosshair is then used, and the worst case is a crosshair where
+// an eye should be.
+bool IsPlayerSneaking();
+
 }  // namespace obvr::game

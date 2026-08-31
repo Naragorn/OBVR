@@ -480,6 +480,29 @@ struct CrosshairVisibility {
 // Whether the crosshair quad is shown this frame.
 bool CrosshairWanted(const CrosshairVisibility& visibility);
 
+// Whether third person should paste in the crosshair borrowed from first
+// person, or leave what the lift brought alone.
+//
+// The first version of the borrowed crosshair pasted it unconditionally, on
+// the belief that Oblivion draws nothing at all in the middle of the layer in
+// third person. That belief was too broad, and the headset showed both ways it
+// was wrong: the context icons vanished, and sneaking showed a crosshair where
+// the eye belongs. The game draws no plain CROSSHAIR there - which is the gap
+// this feature fills - but it does draw the icons, and it does draw the sneak
+// eye.
+//
+// So the borrowed copy is a stand-in for the one thing that is missing, and it
+// gets out of the way whenever the game is drawing something of its own. Both
+// of those are known from elsewhere without any new reading: the reference
+// under the crosshair is the same one the depth uses, and sneaking comes from
+// the movement flags.
+//
+// Erring towards NOT pasting, on both counts. Something the game drew is
+// always more right than the copy, and a missing plain crosshair is a smaller
+// loss than a hand-over-icon that never appears.
+bool BorrowedCrosshairWanted(bool thirdPerson, bool enabled, bool somethingAimedAt,
+                             bool sneaking);
+
 // Where the crosshair quad goes and how big it is there.
 //
 // Two numbers out rather than one, because they are not independent: the width
@@ -832,6 +855,38 @@ float PlayerYawForGaze(float engineYaw, float stepRadians);
 // Wrapped, so a head either side of straight back does not read as most of a
 // circle of remaining turn.
 float AimYawRemaining(float headYaw, float bodyOffset);
+
+// Whether the turn handed to the body should be given back this frame.
+//
+// The fault it fixes: after aiming to one side the body keeps that heading, so
+// the character walks the way the shot went rather than the way the wearer is
+// looking. Naragorn, after firing: "kamera wieder mittig zurücksetzen damit VR
+// nicht gestört wird."
+//
+// THIS IS THE CHANGE THAT CAUSED NAUSEA ONCE, and it is deliberately not the
+// same change. Commit 7e57e69 unwound the body over about a quarter of a
+// second, eased, with the view held still by the base-rotation compensation.
+// It was reverted as a527686. The leading suspect was never the speed but the
+// SHAPE: the compensation is applied from the next frame's base rotation, so
+// during a multi-frame unwind the view can lag the body by one frame every
+// frame - a small continuous drift, which is exactly the signature that makes
+// people ill while being almost invisible to describe.
+//
+// So this gives the turn back in ONE frame. A single frame of lag is not a
+// motion; a drift sustained over thirty frames is. That is a different fix
+// rather than a slower one, which the task notes explicitly warn against
+// re-landing.
+//
+// The view should not move at all: the body turns back by the same angle the
+// compensation stops subtracting, so the two cancel. What moves is the
+// character, which in first person cannot be seen and in third person is the
+// point.
+//
+// On release rather than on the shot itself. Releasing the attack control is
+// what fires an arrow or ends a cast, and it is also what someone does when
+// they change their mind - which wants the same treatment.
+bool AimReturnWanted(bool enabled, bool headsetConnected, bool menuIsUp, bool attackHeld,
+                     bool attackWasHeld, float bodyOffset);
 
 // Whether a heading OBVR wrote actually reached the player, judged one frame
 // later against what is in the field before anything is written again.

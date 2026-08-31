@@ -175,6 +175,28 @@ struct Config {
 	// view; 8.0 matches the vertical look's own easing.
 	float aimTurnSpeed = 0.0f;
 
+	// Whether the turn handed to the body is given back when the attack control
+	// is released.
+	//
+	// Without it the body keeps the heading it was aimed at, so the character
+	// walks the way the shot went rather than the way the wearer is looking.
+	// With it, the body comes back to where it started the moment the arrow
+	// leaves.
+	//
+	// THIS IS THE CHANGE THAT CAUSED NAUSEA ONCE - commit 7e57e69, reverted as
+	// a527686 - and it is deliberately not the same change. That one unwound
+	// the body over about a quarter of a second, and the leading suspect was
+	// the shape rather than the speed: the compensation reads the NEXT frame's
+	// base rotation, so a multi-frame unwind can leave the view lagging the
+	// body by one frame every frame, which is a small continuous drift and
+	// exactly what makes people ill. This gives the whole turn back in ONE
+	// frame, where a single frame of lag is not a motion at all.
+	//
+	// The view should not move while it happens. If it does, or if this brings
+	// the sickness back, switch it off - the walking fault it fixes is
+	// annoying, and being ill is not a trade worth making.
+	bool aimReturnOnRelease = true;
+
 	// The key that opens OBVR's own settings menu in the headset, as a Windows
 	// virtual-key code. 0 disables it entirely.
 	//

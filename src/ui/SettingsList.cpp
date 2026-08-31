@@ -106,6 +106,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.aimTurnSpeed = v; },
 	},
 	{
+		"Aiming", "Straighten up after firing", "Stops you walking the way you aimed",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "AimReturnOnRelease",
+		+[](const Config& c) { return c.aimReturnOnRelease ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.aimReturnOnRelease = v != 0.0f; },
+	},
+	{
 		"Aiming", "Crosshair", "Oblivion's crosshair at its own depth",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Render", "Crosshair",

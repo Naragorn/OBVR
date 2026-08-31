@@ -128,6 +128,33 @@ inline constexpr UInt32 kMobileProcessOffset = 0x058;
 // answer is then "no idea" rather than a number.
 inline constexpr UInt32 kProcessWeaponOutOffset = 0x114;
 
+// The actor's movement flags, which carry whether it is sneaking.
+//
+// Read rather than called, for exactly the reasons above. GetMovementFlags is
+// the virtual at index 0xAF, and the same two readings of the same file agree
+// on what sits behind it - the declaration in GameProcess.h,
+//
+//   virtual UInt32 GetMovementFlags(void) = 0;
+//
+// coming directly after Unk_AE, and the vtable analysis table at the top of
+// that file, built from disassembly:
+//
+//   // 0AF  0  16  retn0  <-  <-  <-  get unk1FC
+//
+// Zero arguments, a 16-bit return, a plain read of unk1FC on HighProcess -
+// which is the process the player always has. The declared return is 32-bit
+// where the table says 16; the field is read as 16, which is what the table
+// says is there and is wide enough for every flag xOBSE names.
+//
+// This one is used for a cosmetic decision only - whether third person needs
+// the borrowed crosshair, or the game is already drawing its own sneak eye -
+// so a wrong offset costs a crosshair that looks wrong, not a crash.
+inline constexpr UInt32 kProcessMovementFlagsOffset = 0x1FC;
+
+// From BaseProcess's own enum in GameProcess.h:
+//   kMovementFlag_Sneaking = 0x00000400
+inline constexpr UInt32 kMovementFlagSneaking = 0x0400;
+
 // Pointer to NiDX9Renderer, the object that owns Oblivion's Direct3D 9
 // device. This is where 0.1.0 has to start: the camera hook works on the
 // scene graph and has never touched the renderer, but OpenVR takes a texture

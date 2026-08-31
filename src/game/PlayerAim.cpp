@@ -119,6 +119,43 @@ bool WritePlayerPitch(float radians) { return WriteRotationComponent(0, radians)
 
 bool WritePlayerYaw(float radians) { return WriteRotationComponent(2, radians); }
 
+namespace {
+
+// The player's BaseProcess, or null when it cannot be reached safely. Shared
+// by the two readers below, which both live behind it.
+const UInt8* PlayerProcessOrNull() {
+	const auto* const player = PlayerOrNull();
+	if (player == nullptr) {
+		return nullptr;
+	}
+
+	// A pointer like any other in this file, and it gets the same test. It can
+	// legitimately be null - an actor without a process is one the game is not
+	// simulating, which is not the player in practice, but the check costs
+	// nothing and the alternative is a null dereference on some frame nobody
+	// predicted.
+	const auto* const process =
+		*reinterpret_cast<const UInt8* const*>(player + addr::kMobileProcessOffset);
+	const UInt32 address = reinterpret_cast<UInt32>(process);
+	if (address < 0x00010000u || address > 0x7FFFFFFFu || (address & 3u) != 0u) {
+		return nullptr;
+	}
+	return process;
+}
+
+}  // namespace
+
+bool IsPlayerSneaking() {
+	const auto* const process = PlayerProcessOrNull();
+	if (process == nullptr) {
+		return false;
+	}
+
+	const UInt16 flags =
+		*reinterpret_cast<const UInt16*>(process + addr::kProcessMovementFlagsOffset);
+	return (flags & addr::kMovementFlagSneaking) != 0;
+}
+
 WeaponState ReadPlayerWeaponState() {
 	const auto* const player = PlayerOrNull();
 	if (player == nullptr) {
