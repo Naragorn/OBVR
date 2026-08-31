@@ -101,4 +101,19 @@ WeaponState ReadPlayerWeaponState();
 // an eye should be.
 bool IsPlayerSneaking();
 
+// Whether the player is still in the middle of an attack - the swing, or the
+// bow's release with the arrow not yet gone.
+//
+// This is the difference between "the control was let go" and "the shot has
+// happened". Releasing the attack control starts the release animation; the
+// arrow spawns several frames later. A heading changed in between is the
+// heading the arrow leaves along, so straightening the body on the release
+// frame would send the shot forwards instead of where it was aimed.
+//
+// False when it cannot be read. The caller has a time limit behind this, so a
+// false that is wrong costs an early straightening rather than a body that
+// never comes round - and being wrong in that direction at least keeps the
+// feature working.
+bool IsPlayerAttacking();
+
 }  // namespace obvr::game

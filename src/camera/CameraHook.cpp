@@ -211,6 +211,15 @@ bool g_aimReturnReported = false;
 // opposite question.
 bool g_aimWasHeld = false;
 
+// How long since the attack control was released, in seconds. Negative means
+// nothing is being waited for - the control is held, or the last release has
+// already been settled.
+//
+// It exists because releasing is not the same moment as shooting. The arrow
+// leaves several frames after the control does, and the heading in between is
+// the heading it leaves along.
+float g_aimSecondsSinceRelease = -1.0f;
+
 // The depth the crosshair quad is hung at, in metres, eased towards whatever
 // is under the crosshair.
 //
@@ -2101,13 +2110,32 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 
 	const bool attackHeld = AttackHeld();
 
-	// The turn given back, in one frame, when the attack control is released -
-	// so the character stops walking the way the shot went. See AimReturnWanted
-	// for why this is one step rather than the eased unwind that made Naragorn ill,
-	// and why the view should not move at all while it happens.
+	// The clock that separates "let go" from "shot". Released starts it, held
+	// stops it, and settling the turn stops it too.
+	if (attackHeld) {
+		g_aimSecondsSinceRelease = -1.0f;
+	} else if (g_aimWasHeld) {
+		g_aimSecondsSinceRelease = 0.0f;
+	} else if (g_aimSecondsSinceRelease >= 0.0f) {
+		g_aimSecondsSinceRelease += deltaSeconds;
+	}
+	g_aimWasHeld = attackHeld;
+
+	// The turn given back once the shot is actually gone, so the character
+	// stops walking the way the arrow went while the view faces forwards.
+	//
+	// AFTER the attack finishes, not on the release - the arrow leaves several
+	// frames later, and the heading in between is the heading it leaves along.
+	// Straightening on the release frame would send the shot forwards instead
+	// of at what was aimed at, which is the aiming this exists to serve.
+	//
+	// In one frame rather than eased, which is the other half of what makes
+	// this different from the version that caused nausea. See AimReturnWanted.
+	const bool attackInProgress = readPlayer && game::IsPlayerAttacking();
 	if (readPlayer &&
 	    AimReturnWanted(GetConfig().aimReturnOnRelease, g_headTracker.IsHeadsetConnected(),
-	                    game::IsMenuMode(), attackHeld, g_aimWasHeld, g_aimBodyOffset)) {
+	                    game::IsMenuMode(), attackHeld, g_aimSecondsSinceRelease,
+	                    attackInProgress, g_aimBodyOffset)) {
 		const float step = -g_aimBodyOffset;
 		const float target = PlayerYawForGaze(asEngineLeftIt.yaw, step);
 		if (game::WritePlayerYaw(target)) {
@@ -2115,21 +2143,31 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			// next frame covers the return as well: if something else moved the
 			// player in the same frame, the offset comes back rather than the
 			// view being left crooked.
+			const float gaveBack = -step;
+			const float waited = g_aimSecondsSinceRelease;
 			g_aimBodyOffset = 0.0f;
 			g_aimYawWrote = target;
 			g_aimYawStepTaken = step;
 			g_aimYawPending = true;
+			g_aimSecondsSinceRelease = -1.0f;
 
 			if (!g_aimReturnReported) {
 				g_aimReturnReported = true;
-				OBVR_LOG("Aim: the body gives the turn back on release - %.1f degrees in one "
-				         "frame, heading %.4f to %.4f, and the view should not move",
-				         static_cast<double>(-step * math::kRadiansToDegrees),
+				// Which of the two ended the wait is the thing worth knowing.
+				// The attack state should be; the limit ending it says the
+				// action values in GameAddresses.h are not this build's.
+				OBVR_LOG("Aim: the body gives the turn back after the shot - %.1f degrees in "
+				         "one frame, %.2f s after the control was released (%s), heading "
+				         "%.4f to %.4f, and the view should not move",
+				         static_cast<double>(gaveBack * math::kRadiansToDegrees),
+				         static_cast<double>(waited),
+				         waited >= kAimReturnLimitSeconds ? "the time limit, so the action "
+				                                            "values are wrong for this build"
+				                                          : "the attack finished",
 				         static_cast<double>(asEngineLeftIt.yaw), static_cast<double>(target));
 			}
 		}
 	}
-	g_aimWasHeld = attackHeld;
 
 	if (readPlayer &&
 	    AimYawWanted(GetConfig().aimFollowsGaze, g_headTracker.IsHeadsetConnected(), isThirdPerson,

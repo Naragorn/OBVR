@@ -882,11 +882,26 @@ float AimYawRemaining(float headYaw, float bodyOffset);
 // character, which in first person cannot be seen and in third person is the
 // point.
 //
-// On release rather than on the shot itself. Releasing the attack control is
-// what fires an arrow or ends a cast, and it is also what someone does when
-// they change their mind - which wants the same treatment.
+// AFTER THE SHOT, NOT ON THE RELEASE. This is the fault the first attempt at
+// this had, and it is not a detail: letting go of the attack control STARTS the
+// shot, and the arrow spawns several frames later at the end of the release
+// animation. The heading in those frames is the heading the arrow leaves along,
+// so a body straightened on the release frame sends the shot forwards instead
+// of where it was aimed - which would have broken the aiming this exists to
+// serve.
+//
+// So the wait ends when the game says the attack is over, or when the safety
+// limit below runs out, whichever comes first. Two conditions because the first
+// one rests on the least certain numbers in GameAddresses.h: if the action
+// values are wrong the limit still ends the wait, and the log says which of the
+// two did.
+inline constexpr float kAimReturnLimitSeconds = 1.5f;
+
+// secondsSinceRelease is negative while the control is held or has already been
+// dealt with, so "not waiting for anything" has a value of its own rather than
+// being confused with "released this very frame".
 bool AimReturnWanted(bool enabled, bool headsetConnected, bool menuIsUp, bool attackHeld,
-                     bool attackWasHeld, float bodyOffset);
+                     float secondsSinceRelease, bool attackInProgress, float bodyOffset);
 
 // Whether a heading OBVR wrote actually reached the player, judged one frame
 // later against what is in the field before anything is written again.

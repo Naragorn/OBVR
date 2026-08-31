@@ -155,6 +155,45 @@ inline constexpr UInt32 kProcessMovementFlagsOffset = 0x1FC;
 //   kMovementFlag_Sneaking = 0x00000400
 inline constexpr UInt32 kMovementFlagSneaking = 0x0400;
 
+// HighProcess::currentAction - what the actor is in the middle of doing.
+//
+// Wanted for one question that a keypress cannot answer: has the arrow
+// actually LEFT the bow? Releasing the attack control starts the shot; the
+// arrow spawns several frames later, at the end of the release animation. Any
+// change to the player's heading in between goes into the arrow, so a body
+// straightened on the release frame sends the shot forwards instead of at what
+// was aimed at.
+//
+// Read as a field, on the same terms and for the same reasons as the two
+// above. GetCurrentAction is the virtual at index 0xB3, and the two readings of
+// GameProcess.h agree: the declaration
+//
+//   virtual SInt16 GetCurrentAction() = 0;
+//
+// and the disassembled vtable table's
+//
+//   // 0B3  0  32  retn-1  <-  <-  <-  get unk1F4
+//
+// A plain read of unk1F4 on HighProcess. The table's default of -1 is itself a
+// third agreement: kAction_None is -1, so an actor with no process answers
+// exactly what an actor doing nothing would.
+inline constexpr UInt32 kProcessCurrentActionOffset = 0x1F4;
+
+// The actions that mean an attack is still in flight, from HighProcess's own
+// kAction_ enum. Bow shots pass through 4 and 5; melee through 2 and 3.
+//
+// These VALUES are the least certain thing in this file - they come from one
+// reading of the enum rather than two, and unlike the offsets above there is no
+// second description to check them against. That is why nothing depends on them
+// alone: the return also has a time limit behind it, so a wrong value here
+// delays the straightening rather than preventing it, and the log says which of
+// the two ended the wait.
+inline constexpr SInt32 kActionNone = -1;
+inline constexpr SInt32 kActionAttack = 2;
+inline constexpr SInt32 kActionAttackFollowThrough = 3;
+inline constexpr SInt32 kActionAttackBow = 4;
+inline constexpr SInt32 kActionAttackBowArrowAttached = 5;
+
 // Pointer to NiDX9Renderer, the object that owns Oblivion's Direct3D 9
 // device. This is where 0.1.0 has to start: the camera hook works on the
 // scene graph and has never touched the renderer, but OpenVR takes a texture

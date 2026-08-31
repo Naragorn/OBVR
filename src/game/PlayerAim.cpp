@@ -156,6 +156,19 @@ bool IsPlayerSneaking() {
 	return (flags & addr::kMovementFlagSneaking) != 0;
 }
 
+bool IsPlayerAttacking() {
+	const auto* const process = PlayerProcessOrNull();
+	if (process == nullptr) {
+		return false;
+	}
+
+	const SInt32 action =
+		*reinterpret_cast<const SInt16*>(process + addr::kProcessCurrentActionOffset);
+
+	return action == addr::kActionAttack || action == addr::kActionAttackFollowThrough ||
+	       action == addr::kActionAttackBow || action == addr::kActionAttackBowArrowAttached;
+}
+
 WeaponState ReadPlayerWeaponState() {
 	const auto* const player = PlayerOrNull();
 	if (player == nullptr) {

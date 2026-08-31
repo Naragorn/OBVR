@@ -817,40 +817,70 @@ void TestAimReturn() {
 	std::printf("Giving the aimed turn back when the shot goes\n");
 
 	using obvr::camera::AimReturnWanted;
+	using obvr::camera::kAimReturnLimitSeconds;
 
-	// The one flow that acts: switched on, a headset, no menu, the attack
-	// control just released, and a turn standing that can be given back.
-	Check(AimReturnWanted(true, true, false, false, true, 0.5f),
-	      "releasing the attack control gives the turn back");
+	// Arguments in order: enabled, headset, menuIsUp, attackHeld,
+	// secondsSinceRelease, attackInProgress, bodyOffset.
 
-	// Held is still aiming. This is the flow that would make the body fight the
-	// turn it is being handed, one frame after the other.
-	Check(!AimReturnWanted(true, true, false, true, true, 0.5f), "still held, still aiming");
+	// THE FLOW THIS WAS REBUILT FOR. The control is released and the attack has
+	// finished, so the arrow has gone and the heading is free to move again.
+	Check(AimReturnWanted(true, true, false, false, 0.2f, false, 0.5f),
+	      "once the shot is done, the body comes back round");
 
-	// The edge, not the level. Already released was dealt with on the frame it
-	// happened, and repeating it would write the heading every frame for as
-	// long as nobody pressed anything.
-	Check(!AimReturnWanted(true, true, false, false, false, 0.5f),
-	      "released a while ago is not released now");
+	// THE FAULT THE FIRST VERSION HAD, and the reason for the rebuild. Letting
+	// go of the control STARTS the shot; the arrow spawns several frames later.
+	// Straightening here would send it forwards instead of at what was aimed
+	// at - breaking the aiming this whole feature serves.
+	Check(!AimReturnWanted(true, true, false, false, 0.0f, true, 0.5f),
+	      "the frame the control is released, the arrow has not left yet");
+	Check(!AimReturnWanted(true, true, false, false, 0.1f, true, 0.5f),
+	      "and it still has not a few frames later");
+
+	// The safety limit, which is what keeps a wrong action value from disabling
+	// the feature rather than merely delaying it. If the attack never appears
+	// to end, the turn is still given back.
+	Check(AimReturnWanted(true, true, false, false, kAimReturnLimitSeconds, true, 0.5f),
+	      "an attack that never ends still lets go at the limit");
+	Check(!AimReturnWanted(true, true, false, false, kAimReturnLimitSeconds - 0.1f, true, 0.5f),
+	      "but not one moment before it");
+
+	// Held is still aiming. The body is being handed the turn on these frames,
+	// and taking it back at the same time would have the two fight.
+	Check(!AimReturnWanted(true, true, false, true, 0.5f, false, 0.5f),
+	      "still held, still aiming");
+	Check(!AimReturnWanted(true, true, false, true, -1.0f, false, 0.5f),
+	      "held with no clock running either");
+
+	// A negative count is "not waiting for anything" - the control is held, or
+	// this release was already settled. Without a value of its own, settled
+	// would be indistinguishable from released-this-instant and the heading
+	// would be written every frame for as long as nobody pressed anything.
+	Check(!AimReturnWanted(true, true, false, false, -1.0f, false, 0.5f),
+	      "nothing being waited for, nothing to do");
 
 	// Nothing to give back. The ordinary case for nearly every frame.
-	Check(!AimReturnWanted(true, true, false, false, true, 0.0f), "no turn standing, nothing to do");
+	Check(!AimReturnWanted(true, true, false, false, 0.5f, false, 0.0f),
+	      "no turn standing, nothing to do");
 
-	// Both signs of turn are given back - aiming left is not a special case.
-	Check(AimReturnWanted(true, true, false, false, true, -0.5f), "a turn the other way too");
+	// Both signs of turn - aiming left is not a special case.
+	Check(AimReturnWanted(true, true, false, false, 0.5f, false, -0.5f),
+	      "a turn the other way too");
 
 	// Switched off, which is what somebody reaches for if the sickness comes
 	// back. It has to actually stop it.
-	Check(!AimReturnWanted(false, true, false, false, true, 0.5f), "switched off, nothing happens");
+	Check(!AimReturnWanted(false, true, false, false, 0.5f, false, 0.5f),
+	      "switched off, nothing happens");
 
 	// No headset means the vanilla game, and OBVR does not touch the player's
 	// heading there at all.
-	Check(!AimReturnWanted(true, false, false, false, true, 0.5f), "no headset, no interference");
+	Check(!AimReturnWanted(true, false, false, false, 0.5f, false, 0.5f),
+	      "no headset, no interference");
 
 	// Not into a paused world. The engine will not rebuild the camera from the
 	// heading until play resumes, so the write and the compensation would sit
 	// disagreeing until it did.
-	Check(!AimReturnWanted(true, true, true, false, true, 0.5f), "not while a menu is up");
+	Check(!AimReturnWanted(true, true, true, false, 0.5f, false, 0.5f),
+	      "not while a menu is up");
 }
 
 void TestBorrowedCrosshair() {

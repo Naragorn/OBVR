@@ -354,7 +354,7 @@ float AimYawRemaining(float headYaw, float bodyOffset) {
 }
 
 bool AimReturnWanted(bool enabled, bool headsetConnected, bool menuIsUp, bool attackHeld,
-                     bool attackWasHeld, float bodyOffset) {
+                     float secondsSinceRelease, bool attackInProgress, float bodyOffset) {
 	if (!enabled || !headsetConnected) {
 		return false;
 	}
@@ -365,9 +365,9 @@ bool AimReturnWanted(bool enabled, bool headsetConnected, bool menuIsUp, bool at
 		return false;
 	}
 
-	// The falling edge of the attack control, and only that. Held is still
-	// aiming; already released was dealt with on the frame it happened.
-	if (attackHeld || !attackWasHeld) {
+	// Still aiming, or never was. A negative count means the control is held or
+	// the last release has already been dealt with.
+	if (attackHeld || secondsSinceRelease < 0.0f) {
 		return false;
 	}
 
@@ -375,7 +375,22 @@ bool AimReturnWanted(bool enabled, bool headsetConnected, bool menuIsUp, bool at
 	// is the same refusal the aiming half makes, and for the same reason: the
 	// engine is not going to rebuild the camera from it until play resumes, so
 	// the compensation and the heading would sit disagreeing until it did.
-	return !menuIsUp;
+	if (menuIsUp) {
+		return false;
+	}
+
+	// THE WAIT. The arrow has not left yet, and the heading it leaves along is
+	// whatever the heading is at that moment - so nothing may move until the
+	// game says the attack is done.
+	//
+	// The limit is what keeps a wrong action value from disabling the feature
+	// rather than merely delaying it. It is generous on purpose: it should
+	// never be what ends the wait during ordinary play, and if the log says it
+	// is, the action values are what to look at.
+	if (attackInProgress && secondsSinceRelease < kAimReturnLimitSeconds) {
+		return false;
+	}
+	return true;
 }
 
 bool YawWriteLanded(float wroteYaw, float engineYawNow, float stepTaken) {
