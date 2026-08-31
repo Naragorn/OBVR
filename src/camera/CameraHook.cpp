@@ -184,15 +184,6 @@ float g_aimBodyOffset = 0.0f;
 
 bool g_aimYawReported = false;
 bool g_aimYawLostReported = false;
-bool g_aimReturnReported = false;
-
-// How long the body still has to hold its aimed heading before starting back.
-//
-// Oblivion fires on the release of the attack control, and the shot and this
-// hook happen in the same frame in an order nothing here decides - so the
-// heading has to stay where it was aimed until the arrow has certainly left
-// along it. See kAimReturnHoldSeconds.
-float g_aimReturnHold = 0.0f;
 
 // A frame number that counts every presented frame, not every camera pass.
 //
@@ -1687,7 +1678,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	const bool readPlayer = game::ReadPlayerRotation(asEngineLeftIt);
 
 	if (AimPitchWanted(GetConfig().aimFollowsGaze, g_headTracker.IsHeadsetConnected(),
-	                   isThirdPerson, GetConfig().aimInThirdPerson, game::IsMenuMode())) {
+	                   isThirdPerson, game::IsMenuMode())) {
 		const float pitch = PlayerPitchForGaze(SinPitchOf(finalRotation));
 		if (game::WritePlayerPitch(pitch)) {
 			g_aimLastWrittenPitch = pitch;
@@ -1732,31 +1723,9 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		}
 	}
 
-	// Whether something is being aimed right now, and - separately - whether
-	// the body may be turned at all.
-	//
-	// The two are not the same, and keeping them apart is what makes the body
-	// come home. Aiming decides where the body is going; the wider gate decides
-	// whether it may move, and the return has to pass the second without the
-	// first or a body left turned would stay turned for the rest of the
-	// session.
-	const bool aiming =
-		AimYawWanted(GetConfig().aimFollowsGaze, g_headTracker.IsHeadsetConnected(), isThirdPerson,
-	                 GetConfig().aimInThirdPerson, game::IsMenuMode(), AttackHeld());
-
-	g_aimReturnHold = AdvanceAimReturnHold(g_aimReturnHold, aiming, deltaSeconds);
-
-	// The return is allowed even where aiming is not - in third person with
-	// AimInThirdPerson off, say. Somebody who aims in first person and then
-	// switches view would otherwise be left with the body and the view at a
-	// permanent angle to each other, and nothing in reach to straighten it.
-	const bool mayTurnBody = GetConfig().aimFollowsGaze &&
-	                         g_headTracker.IsHeadsetConnected() && !game::IsMenuMode();
-
-	const bool returning = !aiming && g_aimBodyOffset != 0.0f &&
-	                       GetConfig().aimBodyReturns && g_aimReturnHold <= 0.0f;
-
-	if (readPlayer && mayTurnBody && (aiming || returning)) {
+	if (readPlayer &&
+	    AimYawWanted(GetConfig().aimFollowsGaze, g_headTracker.IsHeadsetConnected(), isThirdPerson,
+	                 game::IsMenuMode(), AttackHeld())) {
 		// How far the head is turned away from the camera's base. The head
 		// rotation is already relative to that base, so its heading is the turn
 		// itself rather than a direction in the world - which is what lets this
@@ -1766,21 +1735,13 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		if (HeadingOf(g_headTracker.GetCameraRotation(), headTurn)) {
 			const float headYaw = math::Atan2(headTurn.sine, headTurn.cosine);
 
-			// What is left to do: reach the gaze while aiming, and unwind back
-			// to nothing once the shot has gone. With the head held still this
-			// falls to zero and the body stops - it is not the head's angle,
-			// which would keep turning the body for as long as the head was off
-			// centre.
-			const float goal = AimYawGoal(aiming, headYaw);
-			const float remaining = AimYawRemaining(goal, g_aimBodyOffset);
-
-			// Out at whatever speed is set - nothing by default, since the view
-			// does not move and easing only delays the shot. Home always eased,
-			// because the way home has no shot waiting on it and a body that
-			// snapped round the instant the arrow left would be the one moment
-			// of this whole mechanism anybody could see.
-			const float speed = aiming ? GetConfig().aimTurnSpeed : GetConfig().aimReturnSpeed;
-			const float step = Approach(0.0f, remaining, speed, deltaSeconds);
+			// What is left after everything already handed over. With the head
+			// held still this falls to zero and the body stops, facing the
+			// gaze; it is not the head's angle, which would keep turning the
+			// body for as long as the head was off centre.
+			const float remaining = AimYawRemaining(headYaw, g_aimBodyOffset);
+			const float step =
+				Approach(0.0f, remaining, GetConfig().aimTurnSpeed, deltaSeconds);
 
 			if (step != 0.0f) {
 				const float target = PlayerYawForGaze(asEngineLeftIt.yaw, step);
@@ -1796,7 +1757,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 					g_aimYawStepTaken = step;
 					g_aimYawPending = true;
 
-					if (!g_aimYawReported && aiming) {
+					if (!g_aimYawReported) {
 						g_aimYawReported = true;
 						OBVR_LOG("Aim: the body now follows the gaze while the attack "
 						         "control is held - first step %.1f degrees of %.1f "
@@ -1805,14 +1766,6 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 						         static_cast<double>(remaining * math::kRadiansToDegrees),
 						         static_cast<double>(asEngineLeftIt.yaw),
 						         static_cast<double>(target));
-					}
-					if (!g_aimReturnReported && returning) {
-						g_aimReturnReported = true;
-						OBVR_LOG("Aim: the body is coming back to its own heading now the "
-						         "shot has gone - %.1f degrees to unwind. Without this the "
-						         "character keeps walking where it was aimed rather than "
-						         "where the wearer is looking.",
-						         static_cast<double>(remaining * math::kRadiansToDegrees));
 					}
 				}
 			}

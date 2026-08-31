@@ -175,40 +175,6 @@ struct Config {
 	// view; 8.0 matches the vertical look's own easing.
 	float aimTurnSpeed = 0.0f;
 
-	// Whether the body unwinds back to its own heading once the shot has gone.
-	//
-	// It has to, and this exists to be turned off rather than to be chosen.
-	// Turning the body to the gaze and leaving it there keeps the VIEW correct,
-	// because the turn is taken back out of the camera - but walking follows
-	// the character's heading, so aiming thirty degrees right and then looking
-	// back to centre leaves the character walking thirty degrees right of where
-	// its owner is looking. That was the fault reported from the first run that
-	// had sideways aiming working at all.
-	//
-	// The way home uses the same compensation as the way out, so the view does
-	// not move while the body comes round underneath it.
-	bool aimBodyReturns = true;
-
-	// How fast it unwinds, as a share of the remaining turn per second.
-	//
-	// Always eased, unlike the way out, and never instant. There is no shot
-	// waiting on the way home, and a body that snapped round the moment the
-	// arrow left would be the one part of this mechanism anybody could see.
-	float aimReturnSpeed = 6.0f;
-
-	// Whether the head aims in third person as well.
-	//
-	// Held back at first on an argument rather than a measurement: LookControl
-	// turns camera tilt into camera height in third person only, so writing the
-	// player's pitch there might feed OBVR's own value back into its camera a
-	// frame later. That is still only an argument, and holding it back left
-	// third person with no head aiming at all.
-	//
-	// So it is on, and the loop - if it is real - is visible: the camera drifts
-	// up or down while the head is tilted, and does not settle. Turning this
-	// off restores the old behaviour exactly.
-	bool aimInThirdPerson = true;
-
 	// true when the file was found and read.
 	bool Load(const char* fileName);
 

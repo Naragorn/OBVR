@@ -236,18 +236,13 @@ bool DeliversDualEyes(bool stereoDual, bool sceneHooked, UInt32 probeRung) {
 	return stereoDual && sceneHooked && probeRung != kProbeSinglePass;
 }
 
-bool AimPitchWanted(bool enabled, bool headsetConnected, bool isThirdPerson,
-                    bool allowThirdPerson, bool menuIsUp) {
-	if (isThirdPerson && !allowThirdPerson) {
-		return false;
-	}
-	return enabled && headsetConnected && !menuIsUp;
+bool AimPitchWanted(bool enabled, bool headsetConnected, bool isThirdPerson, bool menuIsUp) {
+	return enabled && headsetConnected && !isThirdPerson && !menuIsUp;
 }
 
-bool AimYawWanted(bool enabled, bool headsetConnected, bool isThirdPerson, bool allowThirdPerson,
-                  bool menuIsUp, bool attacking) {
-	return AimPitchWanted(enabled, headsetConnected, isThirdPerson, allowThirdPerson, menuIsUp) &&
-	       attacking;
+bool AimYawWanted(bool enabled, bool headsetConnected, bool isThirdPerson, bool menuIsUp,
+                  bool attacking) {
+	return AimPitchWanted(enabled, headsetConnected, isThirdPerson, menuIsUp) && attacking;
 }
 
 float PlayerYawForGaze(float engineYaw, float stepRadians) {
@@ -268,24 +263,6 @@ float PlayerYawForGaze(float engineYaw, float stepRadians) {
 
 float AimYawRemaining(float headYaw, float bodyOffset) {
 	return math::WrapAngle(headYaw - bodyOffset);
-}
-
-float AimYawGoal(bool aiming, float headYaw) { return aiming ? headYaw : 0.0f; }
-
-float AdvanceAimReturnHold(float holdRemaining, bool aiming, float deltaSeconds) {
-	if (aiming) {
-		return kAimReturnHoldSeconds;
-	}
-
-	// A frame with no time on it - the first frame, or one the clock could not
-	// measure - spends none of the hold. Better a return that starts a frame
-	// late than one that starts before the arrow has left.
-	if (!(deltaSeconds > 0.0f)) {
-		return holdRemaining;
-	}
-
-	const float left = holdRemaining - deltaSeconds;
-	return left > 0.0f ? left : 0.0f;
 }
 
 bool YawWriteLanded(float wroteYaw, float engineYawNow, float stepTaken) {

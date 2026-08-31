@@ -612,28 +612,20 @@ bool WantsHudRedirect(FrameDelivery delivery);
 // still the only way to aim. Writing a pitch then would fight the player for
 // their own aim, on a machine that never asked for VR.
 //
-// isThirdPerson and allowThirdPerson: third person was held back at first, and
-// the reason was specific rather than cautious. LookControl reads the tilt back
-// out of the camera the engine wrote and turns it into camera height - but only
-// in third person, where `isThirdPerson ? tilt * range : 0.0f` decides it. If
-// writing rotX also tilts the engine's camera, as the Construction Set wiki
-// says SetAngle X does, then aiming in third person feeds OBVR's own value back
-// into its camera height a frame later. In first person that term is discarded,
-// so the loop cannot close there.
-//
-// It is now a setting rather than a rule, because holding it back on that
-// reasoning left third person with no head aiming at all, and the reasoning is
-// still only reasoning - whether writing rotX moves the engine's third-person
-// camera has not been measured, and the sideways half taught the lesson that
-// this kind of question is answered by looking rather than by argument. If the
-// loop is real it shows as the camera drifting up or down while the head is
-// tilted, and AimInThirdPerson turns it off again.
+// isThirdPerson: FIRST PERSON ONLY, and this is a real limit rather than an
+// oversight. LookControl reads the tilt back out of the camera the engine
+// wrote and turns it into camera height - but only in third person, where
+// `isThirdPerson ? tilt * range : 0.0f` decides it. If writing rotX also
+// tilts the engine's camera, as the Construction Set wiki says SetAngle X
+// does, then doing this in third person would feed OBVR's own value back
+// into its camera height a frame later. In first person that term is
+// discarded, so the loop cannot close. Third person is a separate piece of
+// work and wants LookControl taking its tilt from somewhere else first.
 //
 // menuIsUp: nothing is aimed while a menu is open, and a dialogue under
 // Menus=world is still a menu over a live world - the same trap the crosshair
 // fell into.
-bool AimPitchWanted(bool enabled, bool headsetConnected, bool isThirdPerson,
-                    bool allowThirdPerson, bool menuIsUp);
+bool AimPitchWanted(bool enabled, bool headsetConnected, bool isThirdPerson, bool menuIsUp);
 
 // How far from level the player may be aimed, in radians.
 //
@@ -683,43 +675,8 @@ float PlayerPitchForGaze(float viewSinPitch);
 // index is not a wrong answer but a crash. The held control needs no address
 // at all, and it is the better question anyway: a weapon can be out for
 // minutes while nothing is being aimed at.
-bool AimYawWanted(bool enabled, bool headsetConnected, bool isThirdPerson, bool allowThirdPerson,
-                  bool menuIsUp, bool attacking);
-
-// Where the body should be pointing relative to the camera's base.
-//
-// While something is aimed, at the gaze. When nothing is, back at the body's
-// own heading - and that second half is the whole of the fix for the fault
-// this feature shipped with.
-//
-// Turning the body to the gaze and leaving it there kept the view correct, but
-// only the view: walking follows the character's heading, so after aiming
-// thirty degrees to the right and looking back to centre, the character walked
-// thirty degrees to the right of where its owner was looking. The turn has to
-// be given back. Nothing is lost by giving it back either, because by then the
-// shot has left.
-//
-// It is given back rather than merely stopped, and the difference matters: the
-// same compensation that holds the view still on the way out holds it still on
-// the way home, so the body comes round underneath a view that does not move.
-float AimYawGoal(bool aiming, float headYaw);
-
-// How much of a delay there is between letting go and the body starting back,
-// in seconds.
-//
-// Not a preference. Oblivion fires on the release of the attack control, and
-// the shot and this hook happen in the same frame in an order nothing here
-// decides - so the heading has to still be the aimed one for long enough that
-// the arrow has certainly left along it. A quarter of a second is many frames
-// at any rate the game runs at, and is under the time it takes to look away.
-inline constexpr float kAimReturnHoldSeconds = 0.25f;
-
-// The hold remaining after a frame: reset while aiming, counted down when not.
-//
-// Counted in the same place the turn is decided rather than by a timer
-// elsewhere, so a frame that does not run the aim logic does not run the clock
-// either - a paused game must not spend the hold while nothing is moving.
-float AdvanceAimReturnHold(float holdRemaining, bool aiming, float deltaSeconds);
+bool AimYawWanted(bool enabled, bool headsetConnected, bool isThirdPerson, bool menuIsUp,
+                  bool attacking);
 
 // The heading to put into the player, given the one the engine left there and
 // the step to turn the body by this frame.
