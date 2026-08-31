@@ -29,6 +29,20 @@ namespace obvr::render {
 // the detour and the sequence, so the callbacks arrive as three functions.
 
 struct ScenePassCallbacks {
+	// Called once per world render, before anything is drawn and before the
+	// pass count is decided.
+	//
+	// This is the LATEST moment anything can change what the picture will show,
+	// and the only one late enough for parts of the player's skeleton: the
+	// engine advances animation in its update step, which is after the camera
+	// hook runs, so a bone turned there is overwritten before it is ever drawn.
+	// That is not a theory - the first person arms were turned from the camera
+	// hook and the headset saw no difference at all.
+	//
+	// Runs whether or not the frame gets a second pass, so it must not depend
+	// on there being one.
+	void (*beforeFirstPass)() = nullptr;
+
 	// Asked once per world render, before anything is drawn. True runs the
 	// render twice; false passes the call through untouched.
 	bool (*wantsSecondPass)() = nullptr;

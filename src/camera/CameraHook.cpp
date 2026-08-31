@@ -239,6 +239,12 @@ bool g_aimYawReported = false;
 bool g_aimYawLostReported = false;
 bool g_aimReturnReported = false;
 
+// How far the first person weapon should be turned, and whether it should be
+// turned at all. Decided in the camera pass, applied at the top of the render -
+// see BeforeFirstScenePass for why those cannot be the same place.
+float g_weaponTurnRadians = 0.0f;
+bool g_weaponTurnWanted = false;
+
 // Whether the attack control was held on the previous camera pass, so the
 // frame it is RELEASED on can be recognised. A KeyEdge would answer the
 // opposite question.
@@ -1181,6 +1187,26 @@ void PrepareMenuFrameIfNeeded(bool menuIsUp) {
 		         "(first eye %s, second pass %s, scene call %u, frame %u)",
 		         firstIsLeft ? "left" : "right", secondPass ? "yes" : "NO - one eye only",
 		         render::CurrentSceneCall(), g_presentedFrame);
+	}
+}
+
+// The first person weapon, turned at the last moment before anything is drawn.
+//
+// It has to be here rather than in the camera pass, and that is a measurement
+// rather than a preference: the engine advances animation AFTER the camera hook
+// runs, so a bone turned there is overwritten before it is ever drawn. The
+// first attempt did exactly that and the headset saw nothing - "nein, er schaut
+// nur nach vorne". By this point the animation has finished and what is written
+// is what gets rendered.
+//
+// The angle was decided in the camera pass, where the head is known.
+void BeforeFirstScenePass() {
+	if (g_weaponTurnWanted) {
+		game::TurnFirstPersonArms(g_weaponTurnRadians);
+	} else {
+		// Third person, a menu, or switched off. Put the arms back rather than
+		// leaving them holding a turn nothing is going to update.
+		game::ReleaseFirstPersonArms();
 	}
 }
 
@@ -2296,29 +2322,28 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		AimTurnDue(onShotMode ? AimTurnMode::OnShot : AimTurnMode::WhileAiming, attackHeld,
 	               attackWasHeld, attackInProgress);
 
-	// The weapon follows the gaze, which the body is deliberately not doing.
+	// How far the weapon should be turned, DECIDED here and APPLIED later.
 	//
-	// The bow is only DRAWN - nothing is fired along it and nobody walks along
-	// it - so turning the arms moves the picture and nothing else. That is what
-	// lets the body stay where the mouse put it while the weapon still points
-	// where the wearer is looking.
+	// The two are split because they belong to different moments. The angle
+	// needs the head, which is only known here; the write has to happen after
+	// the engine's animation step, which runs after this hook and overwrites
+	// anything a bone was set to. Setting it here was the first attempt and the
+	// headset saw no difference at all - "nein, er schaut nur nach vorne".
 	//
 	// The angle is what is LEFT after the body: while drawing the body has
-	// taken nothing and the arms turn the whole way, and during the shot the
-	// body takes it while the remainder falls to zero. The sum is constant, so
-	// there is no jump when one hands over to the other.
-	if (readPlayer && !isThirdPerson && GetConfig().aimFollowsGaze &&
-	    GetConfig().aimWeaponFollowsGaze && g_headTracker.IsHeadsetConnected() &&
+	// taken nothing and the arms turn the whole way; during the shot the body
+	// takes it and the remainder falls to zero as the arms give it up. The sum
+	// is constant, so there is nothing to see at the handover.
+	g_weaponTurnWanted = false;
+	if (readPlayer && !isThirdPerson && config.aimFollowsGaze &&
+	    config.aimWeaponFollowsGaze && g_headTracker.IsHeadsetConnected() &&
 	    !game::IsMenuMode()) {
 		Heading weaponTurn{};
 		if (HeadingOf(g_headTracker.GetCameraRotation(), weaponTurn)) {
 			const float headYaw = math::Atan2(weaponTurn.sine, weaponTurn.cosine);
-			game::TurnFirstPersonArms(AimYawRemaining(headYaw, g_aimBodyOffset));
+			g_weaponTurnRadians = AimYawRemaining(headYaw, g_aimBodyOffset);
+			g_weaponTurnWanted = true;
 		}
-	} else {
-		// Third person, a menu, or switched off - put the arms back rather than
-		// leaving them holding a turn nothing is going to update.
-		game::ReleaseFirstPersonArms();
 	}
 
 	// The shot trace, armed by the release and running for forty frames. One
@@ -2674,6 +2699,7 @@ bool Install() {
 			         "single-pass");
 		} else {
 			render::ScenePassCallbacks callbacks;
+			callbacks.beforeFirstPass = &BeforeFirstScenePass;
 			callbacks.wantsSecondPass = &ScenePassWanted;
 			callbacks.betweenPasses = &BetweenScenePasses;
 			callbacks.afterSecondPass = &AfterSecondScenePass;

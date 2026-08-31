@@ -408,6 +408,16 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	++g_sceneCall;
 	g_lastRendererSelf = self;
 
+	// The last moment anything can still change what gets drawn, and the only
+	// one late enough for the player's own bones - the engine's animation step
+	// runs after the camera hook and overwrites anything set there.
+	//
+	// Only on a real world render. renderedTexture non-null is the engine
+	// drawing into something of its own, and the player is not in those.
+	if (g_callbacks.beforeFirstPass != nullptr && renderedTexture == nullptr) {
+		g_callbacks.beforeFirstPass();
+	}
+
 	// The reading that makes the probe's readings mean something: the same
 	// fields, at the one moment the render provably draws the whole world.
 	// Everything the probe records is taken from Present, where the identical
