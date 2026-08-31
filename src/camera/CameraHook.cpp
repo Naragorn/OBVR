@@ -2322,30 +2322,6 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		AimTurnDue(onShotMode ? AimTurnMode::OnShot : AimTurnMode::WhileAiming, attackHeld,
 	               attackWasHeld, attackInProgress);
 
-	// How far the weapon should be turned, DECIDED here and APPLIED later.
-	//
-	// The two are split because they belong to different moments. The angle
-	// needs the head, which is only known here; the write has to happen after
-	// the engine's animation step, which runs after this hook and overwrites
-	// anything a bone was set to. Setting it here was the first attempt and the
-	// headset saw no difference at all - "nein, er schaut nur nach vorne".
-	//
-	// The angle is what is LEFT after the body: while drawing the body has
-	// taken nothing and the arms turn the whole way; during the shot the body
-	// takes it and the remainder falls to zero as the arms give it up. The sum
-	// is constant, so there is nothing to see at the handover.
-	g_weaponTurnWanted = false;
-	if (readPlayer && !isThirdPerson && config.aimFollowsGaze &&
-	    config.aimWeaponFollowsGaze && g_headTracker.IsHeadsetConnected() &&
-	    !game::IsMenuMode()) {
-		Heading weaponTurn{};
-		if (HeadingOf(g_headTracker.GetCameraRotation(), weaponTurn)) {
-			const float headYaw = math::Atan2(weaponTurn.sine, weaponTurn.cosine);
-			g_weaponTurnRadians = AimYawRemaining(headYaw, g_aimBodyOffset);
-			g_weaponTurnWanted = true;
-		}
-	}
-
 	// The shot trace, armed by the release and running for forty frames. One
 	// line a frame, so the sequence of actions across a real bow shot can be
 	// read off rather than assumed - which is what deciding the shortest
@@ -2410,6 +2386,35 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 					}
 				}
 			}
+		}
+	}
+
+	// How far the weapon should be turned, DECIDED here and APPLIED at the top
+	// of the render.
+	//
+	// LAST IN THIS FUNCTION, AFTER EVERYTHING THAT CAN MOVE THE BODY, and that
+	// position is the whole of the one-frame jump: "nach dem schiessen um genau
+	// zu sein springt die anim".
+	//
+	// The arms take what is LEFT after the body, so the two only add up to the
+	// same total if they are talking about the same frame. Computed before the
+	// body was moved, they used last frame's share: on the frame the shot turns
+	// the body, both were turned; on the frame the turn is given back, neither
+	// was. One frame of double, or of nothing - which is precisely a jump, at
+	// each end of the shot.
+	//
+	// The write itself still cannot happen here. The engine's animation step
+	// runs after this hook and overwrites any bone set in it, which is why the
+	// angle is carried to the render and applied there.
+	g_weaponTurnWanted = false;
+	if (readPlayer && !isThirdPerson && config.aimFollowsGaze &&
+	    config.aimWeaponFollowsGaze && g_headTracker.IsHeadsetConnected() &&
+	    !game::IsMenuMode()) {
+		Heading weaponTurn{};
+		if (HeadingOf(g_headTracker.GetCameraRotation(), weaponTurn)) {
+			const float headYaw = math::Atan2(weaponTurn.sine, weaponTurn.cosine);
+			g_weaponTurnRadians = AimYawRemaining(headYaw, g_aimBodyOffset);
+			g_weaponTurnWanted = true;
 		}
 	}
 
