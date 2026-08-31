@@ -269,6 +269,12 @@ bool g_weaponTurnWanted = false;
 // the share the base actually holds.
 float g_aimBodyOffsetLastFrame = 0.0f;
 
+// The view's heading before and after the compensation takes the body's turn
+// back out. The second is what the wearer is actually looking along, and with
+// the head still it must not move.
+float g_aimViewYawBefore = 0.0f;
+float g_aimViewYawAfter = 0.0f;
+
 // Whether the attack control was held on the previous camera pass, so the
 // frame it is RELEASED on can be recognised. A KeyEdge would answer the
 // opposite question.
@@ -2175,10 +2181,28 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// Only the yaw is taken back. The base has already been levelled by the
 	// look control, so its z axis is the world's up and a rotation about it
 	// cannot disturb the pitch this rotation is being composed with.
+	// Kept for the trace: the view's heading as the engine left it, and again
+	// once the compensation has taken the body's turn back out.
+	//
+	// The second is what the wearer is looking along. Everything else about the
+	// aim has been proved right by reading a result back rather than an
+	// intention, and this is the same measurement applied to the one thing that
+	// was never checked - the picture itself. "es ist die ganze view. das ganze
+	// bild. beim loslassen."
+	Heading traceBefore{};
+	g_aimViewYawBefore =
+		HeadingOf(baseRotation, traceBefore) ? math::Atan2(traceBefore.sine, traceBefore.cosine)
+		                                     : 0.0f;
+
 	if (g_aimBodyOffset != 0.0f) {
 		baseRotation = baseRotation * RotationFromHeading(Heading{
 			math::Cos(g_aimBodyOffset), -math::Sin(g_aimBodyOffset)});
 	}
+
+	Heading traceAfter{};
+	g_aimViewYawAfter =
+		HeadingOf(baseRotation, traceAfter) ? math::Atan2(traceAfter.sine, traceAfter.cosine)
+		                                    : 0.0f;
 
 	// The rotation this frame was actually built on - which is not the one the
 	// engine wrote. With a headset connected the look control levels it and
@@ -2509,13 +2533,18 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		                          : 0.0f;
 		const float weapon = g_weaponTurnWanted ? g_weaponTurnRadians : 0.0f;
 
+		// VIEW is the column that matters now. It is the heading the picture is
+		// built along, read back after the compensation rather than assumed
+		// from it - the same move that found the arms' fault. With the head
+		// held still it must not move, and the frame it does is the jump.
 		OBVR_LOG("Shot trace %2u: %s action=%d turn=%d | head=%6.1f body=%6.1f weapon=%6.1f "
-		         "sum=%6.1f deg",
+		         "| view raw=%7.1f VIEW=%7.1f",
 		         g_shotTraceFrame++, attackHeld ? "held" : "----", game::ReadPlayerAction(),
 		         turnDue ? 1 : 0, static_cast<double>(headYaw * math::kRadiansToDegrees),
 		         static_cast<double>(g_aimBodyOffset * math::kRadiansToDegrees),
 		         static_cast<double>(weapon * math::kRadiansToDegrees),
-		         static_cast<double>((g_aimBodyOffset + weapon) * math::kRadiansToDegrees));
+		         static_cast<double>(g_aimViewYawBefore * math::kRadiansToDegrees),
+		         static_cast<double>(g_aimViewYawAfter * math::kRadiansToDegrees));
 	}
 
 	// The three pitches side by side. This measured how to make an arrow go
