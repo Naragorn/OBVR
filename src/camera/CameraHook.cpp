@@ -1202,6 +1202,26 @@ void PrepareMenuFrameIfNeeded(bool menuIsUp) {
 //
 // The angle was decided in the camera pass, where the head is known.
 void BeforeFirstScenePass() {
+	// The other end of the same frame, and the one measurement left worth
+	// taking. The camera pass logs what the two halves SHOULD be; this logs
+	// what they are at the moment the picture is built - in particular whether
+	// the heading written a moment ago has actually arrived in the player.
+	//
+	// The arithmetic is already known to be right: the trace shows body +
+	// weapon constant across the handover in both directions. So a jump means
+	// the two do not reach the picture together, and rotZ read HERE against
+	// what the camera pass wrote is what says which one is late.
+	if (g_shotTraceLeft > 0 && GetConfig().aimShotTrace) {
+		game::PlayerRotation atRender{};
+		const bool read = game::ReadPlayerRotation(atRender);
+		OBVR_LOG("Shot trace     render: weapon=%6.1f wanted=%d | rotZ now=%.4f (camera pass "
+		         "wrote %.4f, offset %.1f)",
+		         static_cast<double>(g_weaponTurnRadians * math::kRadiansToDegrees),
+		         g_weaponTurnWanted ? 1 : 0, read ? static_cast<double>(atRender.yaw) : -1.0,
+		         static_cast<double>(g_aimYawWrote),
+		         static_cast<double>(g_aimBodyOffset * math::kRadiansToDegrees));
+	}
+
 	if (g_weaponTurnWanted) {
 		game::TurnFirstPersonArms(g_weaponTurnRadians);
 	} else {
