@@ -245,6 +245,30 @@ bool g_aimReturnReported = false;
 float g_weaponTurnRadians = 0.0f;
 bool g_weaponTurnWanted = false;
 
+// The body's share as the ARMS' BASE has it, which is one frame behind the
+// heading itself.
+//
+// Measured, and it is the last piece of the aiming. The arms are turned on top
+// of whatever the engine's animation left, and that base carries the body's
+// rotation - but it carries the rotation the animation ran with, which is the
+// one from BEFORE this frame's heading write. rotZ itself is current at render
+// time; the skeleton built from it is not.
+//
+// The trace shows it directly, in the world angle read back off the arms:
+//
+//   143 drawing   base=-171.0  asked=20.6  ->  168.4   right
+//   144 released  base=-171.0  asked= 0.0  -> -171.0   the base has not caught up
+//   145           base= 168.4  asked= 0.0  ->  168.4   right again
+//   151           base= 168.3  asked= 0.0  ->  168.3
+//   152 given back base=168.3  asked=20.7  ->  147.6   the base has not let go
+//   153           base=-171.0  asked=20.7  ->  168.3   right again
+//
+// One frame of the arms giving up a share the base had not taken, and one of
+// them taking back a share the base had not released. Subtracting the previous
+// frame's offset instead of this one's makes both disappear, because that is
+// the share the base actually holds.
+float g_aimBodyOffsetLastFrame = 0.0f;
+
 // Whether the attack control was held on the previous camera pass, so the
 // frame it is RELEASED on can be recognised. A KeyEdge would answer the
 // opposite question.
@@ -2458,10 +2482,19 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		Heading weaponTurn{};
 		if (HeadingOf(g_headTracker.GetCameraRotation(), weaponTurn)) {
 			const float headYaw = math::Atan2(weaponTurn.sine, weaponTurn.cosine);
-			g_weaponTurnRadians = AimYawRemaining(headYaw, g_aimBodyOffset);
+			// The PREVIOUS frame's offset, because that is the share the base
+			// the arms are turned on top of actually holds. See the global's
+			// note, and the trace lines quoted there.
+			g_weaponTurnRadians = AimYawRemaining(headYaw, g_aimBodyOffsetLastFrame);
 			g_weaponTurnWanted = true;
 		}
 	}
+
+	// Kept for the next frame, after everything that could change it. The arms
+	// are the only thing that reads it: the body's own arithmetic uses the
+	// current value throughout, because the heading it writes takes effect
+	// within the frame - which the trace also settled.
+	g_aimBodyOffsetLastFrame = g_aimBodyOffset;
 
 	// The trace line, written HERE rather than where the trace is counted down,
 	// because only at this point are both halves of the aim settled for this
