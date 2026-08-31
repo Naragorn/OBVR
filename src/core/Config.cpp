@@ -384,6 +384,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.aimTurnSpeed = ReadFloat("Look", "AimTurnSpeed", config.aimTurnSpeed, path);
 	config.aimReturnOnRelease =
 		ReadBool("Look", "AimReturnOnRelease", config.aimReturnOnRelease, path);
+	config.aimTurnOnShotOnly =
+		ReadBool("Look", "AimTurnOnShotOnly", config.aimTurnOnShotOnly, path);
 
 	config.settingsMenuKey =
 		ReadKeyCode("SettingsMenu", "Key", config.settingsMenuKey, path);

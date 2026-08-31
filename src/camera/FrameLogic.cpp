@@ -353,6 +353,24 @@ float AimYawRemaining(float headYaw, float bodyOffset) {
 	return math::WrapAngle(headYaw - bodyOffset);
 }
 
+bool AimTurnDue(AimTurnMode mode, bool attackHeld, bool attackWasHeld, bool attackInProgress) {
+	if (mode == AimTurnMode::WhileAiming) {
+		return attackHeld;
+	}
+
+	// OnShot. The window opens on the release - the frame the shot is started -
+	// and stays open while the attack runs, because that is when the arrow is
+	// made and the heading it is made with is the one it flies along.
+	//
+	// Held is deliberately NOT included. The whole point is that the draw
+	// leaves the body alone, so somebody can hold a bow at full stretch,
+	// looking one way and walking another, for as long as they like.
+	if (attackHeld) {
+		return false;
+	}
+	return (attackWasHeld && !attackHeld) || attackInProgress;
+}
+
 bool AimReturnWanted(bool enabled, bool headsetConnected, bool menuIsUp, bool attackHeld,
                      float secondsSinceRelease, bool attackInProgress, float bodyOffset) {
 	if (!enabled || !headsetConnected) {

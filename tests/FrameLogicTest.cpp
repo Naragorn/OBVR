@@ -813,6 +813,51 @@ void TestCrosshair() {
 	      "a nonsense pair clamps in both directions independently");
 }
 
+void TestAimTurnMode() {
+	std::printf("When the body is turned to the gaze\n");
+
+	using obvr::camera::AimTurnDue;
+	using obvr::camera::AimTurnMode;
+
+	// Arguments: mode, attackHeld, attackWasHeld, attackInProgress.
+
+	// WhileAiming - the original. The control decides it, and nothing else.
+	Check(AimTurnDue(AimTurnMode::WhileAiming, true, false, false),
+	      "held is turning, in the original mode");
+	Check(AimTurnDue(AimTurnMode::WhileAiming, true, true, false), "and stays turning while held");
+	Check(!AimTurnDue(AimTurnMode::WhileAiming, false, true, false),
+	      "and stops the moment it is let go");
+	Check(!AimTurnDue(AimTurnMode::WhileAiming, false, false, true),
+	      "the attack running does not extend it");
+
+	// OnShot - the point of the mode. THE DRAW IS LEFT ALONE, which is what
+	// keeps walking under the mouse's control while somebody aims anywhere they
+	// like, for as long as they like.
+	Check(!AimTurnDue(AimTurnMode::OnShot, true, false, false),
+	      "drawing the bow does not turn the body");
+	Check(!AimTurnDue(AimTurnMode::OnShot, true, true, false),
+	      "and holding it drawn still does not");
+
+	// The release, which is when the arrow starts being made.
+	Check(AimTurnDue(AimTurnMode::OnShot, false, true, false),
+	      "letting go turns the body for the shot");
+
+	// And held through the attack, because the arrow is created some frames
+	// after the release and leaves along the heading of that moment.
+	Check(AimTurnDue(AimTurnMode::OnShot, false, false, true),
+	      "and stays turned while the attack is still running");
+
+	// Once the attack is over, nothing - which is what leaves nothing standing.
+	Check(!AimTurnDue(AimTurnMode::OnShot, false, false, false),
+	      "and lets go again once the shot is done");
+
+	// Held wins over everything in OnShot: an attack still showing as in
+	// progress while the control is down again is somebody starting the next
+	// shot, and their draw should be as free as the last one.
+	Check(!AimTurnDue(AimTurnMode::OnShot, true, false, true),
+	      "a new draw is free even if the last attack is still finishing");
+}
+
 void TestAimReturn() {
 	std::printf("Giving the aimed turn back when the shot goes\n");
 
@@ -1858,6 +1903,8 @@ int main() {
 	TestMenuLiveBackground();
 	std::printf("\n");
 	TestStereoEyeStep();
+	std::printf("\n");
+	TestAimTurnMode();
 	std::printf("\n");
 	TestAimReturn();
 	std::printf("\n");

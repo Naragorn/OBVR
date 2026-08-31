@@ -2179,11 +2179,15 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 
 	const bool attackHeld = AttackHeld();
 
+	// Kept before the flag is updated, because two decisions below need the
+	// EDGE rather than the level - the frame the control went up.
+	const bool attackWasHeld = g_aimWasHeld;
+
 	// The clock that separates "let go" from "shot". Released starts it, held
 	// stops it, and settling the turn stops it too.
 	if (attackHeld) {
 		g_aimSecondsSinceRelease = -1.0f;
-	} else if (g_aimWasHeld) {
+	} else if (attackWasHeld) {
 		g_aimSecondsSinceRelease = 0.0f;
 	} else if (g_aimSecondsSinceRelease >= 0.0f) {
 		g_aimSecondsSinceRelease += deltaSeconds;
@@ -2208,10 +2212,18 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// These conditions are AimReturnWanted's own, repeated here on purpose.
 	// They cannot be left to it: its arguments are evaluated before it runs, so
 	// the read would happen whatever it then decided.
+	//
+	// Two things want it now: the return, and the OnShot turn window. Asked
+	// once, and only when one of them could act on it - which is never while
+	// the control is held, since both are about what happens after it goes up.
+	const bool onShotMode = GetConfig().aimTurnOnShotOnly;
 	const bool waitingOnAShot = readPlayer && GetConfig().aimReturnOnRelease &&
 	                            g_aimBodyOffset != 0.0f && !attackHeld &&
 	                            g_aimSecondsSinceRelease >= 0.0f;
-	const bool attackInProgress = waitingOnAShot && game::IsPlayerAttacking();
+	const bool turningOnShot = readPlayer && onShotMode && GetConfig().aimFollowsGaze &&
+	                           !attackHeld && g_aimSecondsSinceRelease >= 0.0f;
+	const bool attackInProgress =
+		(waitingOnAShot || turningOnShot) && game::IsPlayerAttacking();
 	if (readPlayer &&
 	    AimReturnWanted(GetConfig().aimReturnOnRelease, g_headTracker.IsHeadsetConnected(),
 	                    game::IsMenuMode(), attackHeld, g_aimSecondsSinceRelease,
@@ -2249,9 +2261,26 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		}
 	}
 
+	// WHEN the body is turned, which is the whole of Naragorn's suggestion.
+	//
+	// WhileAiming turns it for as long as the control is held, and leaves it
+	// turned - so walking goes the way the shot went until something puts it
+	// back. OnShot leaves the draw alone entirely and turns only for the few
+	// frames in which the arrow is made, which is the only time the heading has
+	// to be right. Aim anywhere, walk where the mouse says, nothing left
+	// standing afterwards.
+	//
+	// They cannot be separated in space - the arrow and the walking read the
+	// same rotZ, which is what the sideways-walking fault has been saying all
+	// along - but they can be separated in time, because the arrow does not
+	// exist until the shot is released.
+	const bool turnDue =
+		AimTurnDue(onShotMode ? AimTurnMode::OnShot : AimTurnMode::WhileAiming, attackHeld,
+	               attackWasHeld, attackInProgress);
+
 	if (readPlayer &&
 	    AimYawWanted(GetConfig().aimFollowsGaze, g_headTracker.IsHeadsetConnected(), isThirdPerson,
-	                 game::IsMenuMode(), attackHeld)) {
+	                 game::IsMenuMode(), turnDue)) {
 		// How far the head is turned away from the camera's base. The head
 		// rotation is already relative to that base, so its heading is the turn
 		// itself rather than a direction in the world - which is what lets this

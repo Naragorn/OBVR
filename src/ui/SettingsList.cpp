@@ -106,6 +106,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.aimTurnSpeed = v; },
 	},
 	{
+		"Aiming", "Turn body", "Only for the shot leaves your walking free",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "AimTurnOnShotOnly",
+		+[](const Config& c) { return c.aimTurnOnShotOnly ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.aimTurnOnShotOnly = v != 0.0f; },
+		"while aiming", "for the shot",
+	},
+	{
 		"Aiming", "Straighten up after firing", "Stops you walking the way you aimed",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Look", "AimReturnOnRelease",

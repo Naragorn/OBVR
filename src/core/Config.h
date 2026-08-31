@@ -197,6 +197,39 @@ struct Config {
 	// annoying, and being ill is not a trade worth making.
 	bool aimReturnOnRelease = true;
 
+	// WHEN the body is turned to the gaze: only for the shot itself (1), or for
+	// as long as the attack control is held (0).
+	//
+	// Naragorn's suggestion, and the better shape: "wir entkoppeln die ziel kamera
+	// mit der richtung vom char. dann kann ich weiter richtung vom gehen
+	// bestimmen mit maus oder gamepad. und kann froehlich zielen in alle
+	// richtungen und ohne reset wie jetzt."
+	//
+	// The aim and the walking cannot be separated in SPACE. That is measured
+	// rather than assumed: the arrow leaves along rotZ, walking follows rotZ,
+	// and turning it moves both - which is exactly what the sideways-walking
+	// fault has been reporting all along.
+	//
+	// They separate in TIME. The arrow does not exist while the bow is drawn;
+	// it is made when the shot is released. So the heading only has to be right
+	// for the handful of frames between letting go and the arrow leaving, and
+	// for everything else - the whole draw included - the body can be left
+	// exactly where the mouse put it.
+	//
+	// What that gives: aim anywhere, for as long as you like, while still
+	// steering where you walk. Nothing is left standing afterwards, so there is
+	// nothing to reset and no offset to be sick over.
+	//
+	// The cost, said here rather than found later: during the draw the body is
+	// not turned, so the bow points where the character faces rather than where
+	// you are looking. In first person the hands are drawn against the camera
+	// rather than the body, so this may not show at all - but it is not known
+	// yet, and it is the thing to watch for.
+	//
+	// Needs aimReturnOnRelease as well. Without it the turn made for the shot
+	// would stay, and the fault this avoids would be back a moment later.
+	bool aimTurnOnShotOnly = true;
+
 	// The key that opens OBVR's own settings menu in the headset, as a Windows
 	// virtual-key code. 0 disables it entirely.
 	//

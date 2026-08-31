@@ -819,6 +819,51 @@ float PlayerPitchForGaze(float viewSinPitch);
 // index is not a wrong answer but a crash. The held control needs no address
 // at all, and it is the better question anyway: a weapon can be out for
 // minutes while nothing is being aimed at.
+// WHEN THE BODY IS TURNED, which is the whole difference between the two ways
+// this can work.
+//
+// WhileAiming is the original: the body follows the gaze for as long as the
+// attack control is held. It works - shots go where you look - and it has one
+// fault that cannot be tuned away, because it is not a bug but the shape of the
+// thing. Walking follows the body's heading, so a body turned to the gaze is a
+// character walking sideways, and it stays turned until something puts it back.
+// Putting it back is what caused nausea once.
+//
+// OnShot is Naragorn's suggestion and the better shape: "wir entkoppeln die ziel
+// kamera mit der richtung vom char. dann kann ich weiter richtung vom gehen
+// bestimmen mit maus oder gamepad."
+//
+// The two cannot be separated in SPACE - a measurement, not a guess: the arrow
+// leaves along rotZ and walking follows rotZ, one field, and turning it moves
+// both. That is what the sideways-walking fault has been telling us all along.
+//
+// They can be separated in TIME. The arrow does not exist while the bow is
+// being drawn; it is created when the shot is released. So the heading only has
+// to be right for the handful of frames between letting go and the arrow
+// leaving - and for all the rest of the time, including the whole draw, the
+// body can be left exactly where the mouse put it.
+//
+// Which gives, in OnShot mode: aim anywhere, freely, for as long as you like,
+// while still steering where you walk. The heading turns when the shot goes and
+// comes back when the attack is over, and neither is a moment anyone spends
+// walking. No standing offset, and nothing to reset.
+//
+// What it costs, stated rather than discovered later: during the draw the body
+// is NOT turned, so the bow points where the character faces rather than where
+// you are looking. Whether that reads badly in first person - where the hands
+// are drawn against the camera rather than the body - is a question for the
+// headset.
+enum class AimTurnMode {
+	WhileAiming,
+	OnShot,
+};
+
+// Whether the body should be turned to the gaze on this frame, in either mode.
+//
+// In WhileAiming this is just the attack control. In OnShot it is the release
+// and the attack that follows it - the window in which the arrow is made.
+bool AimTurnDue(AimTurnMode mode, bool attackHeld, bool attackWasHeld, bool attackInProgress);
+
 bool AimYawWanted(bool enabled, bool headsetConnected, bool isThirdPerson, bool menuIsUp,
                   bool attacking);
 
