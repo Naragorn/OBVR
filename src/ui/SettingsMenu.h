@@ -41,7 +41,15 @@ public:
 	// on - is advanced in exactly one place. A change that did not bump it
 	// would leave the wearer looking at the old picture and concluding the menu
 	// had stopped responding.
-	void Apply(MenuAction action, Config& config);
+	//
+	// Answers the setting whose value changed, and null when nothing did -
+	// which includes every movement, and a value already at the end of its
+	// range. The caller writes that setting back to the INI.
+	//
+	// Reported rather than written here on purpose. Writing needs the Windows
+	// INI functions, and pulling those in would take this whole class out of
+	// reach of a test for the sake of one line at the call site.
+	const SettingDefinition* Apply(MenuAction action, Config& config);
 
 	// Fills `items` and `categories` from the configuration, and answers how
 	// many rows were written. Never writes more than `capacity`.

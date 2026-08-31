@@ -44,8 +44,34 @@ struct SettingDefinition {
 	// a menu that silently ignores a change teaches people the menu is broken.
 	bool needsRestart = false;
 
+	// Where the value lives in OBVR.ini.
+	//
+	// A change is written back there, and that is not only about surviving a
+	// quit. ReloadEveryFrames re-reads the file while the game runs, so a
+	// change held only in memory is overwritten by the file within a couple of
+	// seconds - which is exactly what the first run of this menu did, and it
+	// looked like the menu was ignoring every keypress. Writing to the file
+	// makes the file agree, and then the reload changes nothing.
+	//
+	// These have to match what Config.cpp reads, character for character. A key
+	// that is written but not read looks identical to no menu at all, so there
+	// is a test that writes through every row into a real INI and loads it back
+	// through Config's own reader.
+	const char* iniSection = "";
+	const char* iniKey = "";
+
 	float (*Read)(const Config& config) = nullptr;
 	void (*Write)(Config& config, float value) = nullptr;
+
+	// For the settings Config reads as a WORD rather than as a number - Menus
+	// is "cinema" or "world", not 0 or 1. Writing a 1 into one of those leaves
+	// a value its own reader rejects, which it reports and then ignores, and
+	// the setting silently never changes.
+	//
+	// Last in the struct so that the rows which do not need them can simply
+	// stop after the writer. Both empty means the value is written as a number.
+	const char* falseWord = "";
+	const char* trueWord = "";
 };
 
 // The table, and its length. A pointer to static data - there is one settings

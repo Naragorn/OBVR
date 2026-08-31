@@ -29,14 +29,14 @@ void SettingsMenu::SetVisibleRows(UInt32 rows) {
 	++m_revision;
 }
 
-void SettingsMenu::Apply(MenuAction action, Config& config) {
+const SettingDefinition* SettingsMenu::Apply(MenuAction action, Config& config) {
 	if (!m_open || action == MenuAction::None) {
-		return;
+		return nullptr;
 	}
 
 	const UInt32 count = SettingDefinitionCount();
 	if (count == 0) {
-		return;
+		return nullptr;
 	}
 
 	if (action == MenuAction::Decrease || action == MenuAction::Increase) {
@@ -48,7 +48,7 @@ void SettingsMenu::Apply(MenuAction action, Config& config) {
 		m_state = AdvanceMenu(m_state, MenuAction::None, count, m_visibleRows);
 		if (m_state.selected >= count) {
 			m_state = before;
-			return;
+			return nullptr;
 		}
 
 		const SettingDefinition& definition = SettingDefinitions()[m_state.selected];
@@ -57,23 +57,25 @@ void SettingsMenu::Apply(MenuAction action, Config& config) {
 
 		// Nothing changed - a value already at the end of its range - so
 		// nothing is written and nothing is repainted. Without this the layer
-		// would repaint on every press of a key that does nothing.
+		// would repaint on every press of a key that does nothing, and the INI
+		// would be written on every one of them too.
 		if (wanted == item.value) {
-			return;
+			return nullptr;
 		}
 
 		ApplySetting(definition, config, wanted);
 		++m_revision;
-		return;
+		return &definition;
 	}
 
 	const MenuState moved = AdvanceMenu(m_state, action, count, m_visibleRows);
 	if (moved.selected == m_state.selected && moved.firstVisible == m_state.firstVisible) {
-		return;
+		return nullptr;
 	}
 
 	m_state = moved;
 	++m_revision;
+	return nullptr;
 }
 
 UInt32 SettingsMenu::BuildRows(const Config& config, MenuItem* items, const char** categories,

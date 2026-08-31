@@ -191,6 +191,37 @@ void FormatInteger(SInt32 value, char* out, UInt32 size) {
 	out[at] = '\0';
 }
 
+void FormatValueForIni(const MenuItem& item, const char* falseWord, const char* trueWord,
+                       char* out, UInt32 size) {
+	if (out == nullptr || size == 0) {
+		return;
+	}
+
+	if (item.kind == ItemKind::Toggle) {
+		const bool on = item.value != 0.0f;
+
+		// A worded setting, where Config's own reader wants "cinema" or
+		// "world" rather than a digit. Only used when both words are given -
+		// half a pair is a table row somebody was in the middle of editing,
+		// and falling back to the number keeps the file readable.
+		if (falseWord != nullptr && trueWord != nullptr && falseWord[0] != '\0' &&
+		    trueWord[0] != '\0') {
+			const UInt32 at = Append(out, size, 0, on ? trueWord : falseWord);
+			out[at] = '\0';
+			return;
+		}
+
+		const UInt32 at = Append(out, size, 0, on ? "1" : "0");
+		out[at] = '\0';
+		return;
+	}
+
+	// A number is written the way it is shown. The INI's own readers accept
+	// what FormatValue produces - atof for a float, digits for an integer -
+	// so there is nothing to translate.
+	FormatValue(item, out, size);
+}
+
 void FormatValue(const MenuItem& item, char* out, UInt32 size) {
 	if (out == nullptr || size == 0) {
 		return;

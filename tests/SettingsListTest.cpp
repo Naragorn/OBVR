@@ -117,6 +117,124 @@ void TestTableIsComplete() {
 	Check(duplicate == nullptr, "no two rows share a label");
 }
 
+void TestIniKeys() {
+	std::printf("Where each row lives in the INI\n");
+
+	const SettingDefinition* const settings = SettingDefinitions();
+	const UInt32 count = SettingDefinitionCount();
+
+	// A row with no INI location cannot be saved, and a change to it is
+	// overwritten by the next reload of the file - which is exactly how this
+	// menu failed on its first run, and from inside a headset it looks like the
+	// keys are being ignored rather than like a missing string.
+	UInt32 missing = 0;
+	for (UInt32 at = 0; at < count; ++at) {
+		if (settings[at].iniSection == nullptr || settings[at].iniSection[0] == '\0' ||
+		    settings[at].iniKey == nullptr || settings[at].iniKey[0] == '\0') {
+			std::printf("        \"%s\" has nowhere to be saved\n", settings[at].label);
+			++missing;
+		}
+	}
+	Check(missing == 0, "every row says where in the INI it lives");
+
+	// Two rows writing the same key means one of them overwrites the other on
+	// every change - the same copied-row mistake as before, one layer further
+	// out, and this time the damage is to the file rather than to memory.
+	UInt32 collisions = 0;
+	for (UInt32 a = 0; a < count; ++a) {
+		for (UInt32 b = a + 1; b < count; ++b) {
+			if (TextIs(settings[a].iniSection, settings[b].iniSection) &&
+			    TextIs(settings[a].iniKey, settings[b].iniKey)) {
+				std::printf("        \"%s\" and \"%s\" both write %s.%s\n", settings[a].label,
+				            settings[b].label, settings[a].iniSection, settings[a].iniKey);
+				++collisions;
+			}
+		}
+	}
+	Check(collisions == 0, "no two rows write the same INI key");
+
+	// A worded setting needs both words or neither. Half a pair is a row
+	// somebody was in the middle of editing, and it would write the word for
+	// one state and a digit for the other.
+	UInt32 halfWorded = 0;
+	for (UInt32 at = 0; at < count; ++at) {
+		const bool hasFalse = settings[at].falseWord != nullptr && settings[at].falseWord[0] != '\0';
+		const bool hasTrue = settings[at].trueWord != nullptr && settings[at].trueWord[0] != '\0';
+		if (hasFalse != hasTrue) {
+			std::printf("        \"%s\" has only one of its two words\n", settings[at].label);
+			++halfWorded;
+		}
+
+		// And only a switch can be worded. A number written as a word is a
+		// value its own reader cannot parse.
+		if (hasFalse && settings[at].kind != ItemKind::Toggle) {
+			std::printf("        \"%s\" is a number but has words\n", settings[at].label);
+			++halfWorded;
+		}
+	}
+	Check(halfWorded == 0, "a worded setting has both its words, and is a switch");
+}
+
+void TestValuesAsWrittenToIni() {
+	std::printf("What gets written into the file\n");
+
+	using obvr::ui::FormatValueForIni;
+	using obvr::ui::MenuItem;
+
+	MenuItem toggle;
+	toggle.kind = ItemKind::Toggle;
+
+	char text[32];
+
+	// A switch shows as "on" and has to be written as 1: Config reads it with a
+	// numeric reader, and "on" would parse as nothing at all.
+	toggle.value = 1.0f;
+	FormatValueForIni(toggle, "", "", text, sizeof(text));
+	Check(TextIs(text, "1"), "a switch that is on is written as 1");
+
+	toggle.value = 0.0f;
+	FormatValueForIni(toggle, "", "", text, sizeof(text));
+	Check(TextIs(text, "0"), "and off, as 0");
+
+	// The worded case. Menus is "cinema" or "world"; a 1 there is a value its
+	// own reader rejects, logs, and then ignores - so the row would appear to
+	// do nothing.
+	toggle.value = 1.0f;
+	FormatValueForIni(toggle, "cinema", "world", text, sizeof(text));
+	Check(TextIs(text, "world"), "a worded switch writes its word");
+
+	toggle.value = 0.0f;
+	FormatValueForIni(toggle, "cinema", "world", text, sizeof(text));
+	Check(TextIs(text, "cinema"), "and the other word for the other state");
+
+	// Half a pair falls back to the number rather than writing an empty value,
+	// which would leave the key present and blank.
+	toggle.value = 1.0f;
+	FormatValueForIni(toggle, "cinema", "", text, sizeof(text));
+	Check(TextIs(text, "1"), "half a word pair falls back to the number");
+
+	// A number is written as it is shown - the INI's readers take exactly that.
+	MenuItem number;
+	number.kind = ItemKind::Number;
+	number.value = 1.25f;
+	number.decimals = 2;
+	FormatValueForIni(number, "", "", text, sizeof(text));
+	Check(TextIs(text, "1.25"), "a number is written as it reads");
+
+	number.value = 4224.0f;
+	number.decimals = 0;
+	FormatValueForIni(number, "", "", text, sizeof(text));
+	Check(TextIs(text, "4224"), "and a whole one without a point");
+
+	// Words are ignored for a number, since a number cannot be either of them.
+	number.value = 2.0f;
+	FormatValueForIni(number, "cinema", "world", text, sizeof(text));
+	Check(TextIs(text, "2"), "a number ignores words");
+
+	FormatValueForIni(number, "", "", nullptr, 0);
+	Check(true, "and no buffer at all is survivable");
+}
+
 void TestCategoriesAreGrouped() {
 	std::printf("Categories are in one piece\n");
 
@@ -279,6 +397,10 @@ int main() {
 	std::printf("OBVR settings list test\n\n");
 
 	TestTableIsComplete();
+	std::printf("\n");
+	TestIniKeys();
+	std::printf("\n");
+	TestValuesAsWrittenToIni();
 	std::printf("\n");
 	TestCategoriesAreGrouped();
 	std::printf("\n");

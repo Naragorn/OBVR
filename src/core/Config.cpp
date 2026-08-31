@@ -562,4 +562,23 @@ bool Config::Reload(const char* fileName) {
 
 Config& GetConfig() { return g_config; }
 
+bool SaveSetting(const char* section, const char* key, const char* value) {
+	if (section == nullptr || key == nullptr || value == nullptr) {
+		return false;
+	}
+	if (section[0] == '\0' || key[0] == '\0') {
+		return false;
+	}
+
+	// The same file Load and Reload read, found the same way. Writing to a
+	// different one would leave the value read from the first and written to
+	// the second, which reads as the setting refusing to change.
+	char path[512];
+	if (!BuildPath("OBVR.ini", path, sizeof(path))) {
+		return false;
+	}
+
+	return WritePrivateProfileStringA(section, key, value, path) != 0;
+}
+
 }  // namespace obvr

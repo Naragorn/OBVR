@@ -133,4 +133,21 @@ void FormatValue(const MenuItem& item, char* out, UInt32 size);
 // Same contract as FormatValue: always terminated, never overruns.
 void FormatInteger(SInt32 value, char* out, UInt32 size);
 
+// The value as it should be written into the INI, which is not the same as the
+// value as it should be shown.
+//
+// A switch reads better as "on" in a menu and has to be written as 1 in a file
+// - Config reads it with a numeric reader, and "on" would parse as nothing. The
+// two spellings are deliberately different functions rather than one with a
+// flag, because getting them the wrong way round produces a menu that looks
+// right and a file the game cannot read.
+//
+// falseWord and trueWord are for the settings Config reads as a word instead:
+// Menus is "cinema" or "world". When either is given, a switch is written as
+// the matching word. Ignored for a number.
+//
+// Same contract as FormatValue: always terminated, never overruns.
+void FormatValueForIni(const MenuItem& item, const char* falseWord, const char* trueWord,
+                       char* out, UInt32 size);
+
 }  // namespace obvr::ui

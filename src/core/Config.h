@@ -201,4 +201,20 @@ struct Config {
 
 Config& GetConfig();
 
+// Writes one value back into OBVR.ini, into the same file Load and Reload read.
+//
+// This is what makes a change from the in-headset settings menu stick, and it
+// is needed for a reason beyond surviving a quit: ReloadEveryFrames re-reads
+// the file while the game runs, so a change held only in memory is overwritten
+// by the file within a couple of seconds. The first run of that menu did
+// exactly this, and it looked like every keypress was being ignored.
+//
+// The file is the one BuildPath finds - beside the plugin if it is there, in
+// the game root otherwise - so the value is written where it will be read.
+//
+// False when the file could not be written: a read-only INI, or one under a
+// mod manager's virtual file system that does not accept writes. The caller
+// should say so once rather than every frame.
+bool SaveSetting(const char* section, const char* key, const char* value);
+
 }  // namespace obvr

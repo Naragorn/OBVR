@@ -179,25 +179,51 @@ bool SettingsMenuLayer::Repaint(const MenuItem* items, const char* const* catego
 
 void SettingsMenuLayer::Place(vr::OpenVRBackend& backend, float distanceMetres,
                               float widthMetres) {
-	if (m_placed && m_placedDistance == distanceMetres && m_placedWidth == widthMetres) {
+	// The width can be set whenever it changes; the position is a separate
+	// question, because it is taken once and then left alone.
+	if (!m_placed || m_placedWidth != widthMetres) {
+		backend.SetOverlayWidthInMetres(m_overlay, widthMetres);
+		m_placedWidth = widthMetres;
+	}
+
+	// Anchored in the room, once, where the head was when the menu opened -
+	// rather than carried on the face.
+	//
+	// A panel fixed to the head cannot be looked at. Every attempt to read the
+	// row below the one in the middle moves the row below it, the eyes have
+	// nothing to converge on that holds still, and the whole thing reads as a
+	// smear that follows you. Left standing in the room it becomes an object:
+	// lean in to read it, turn away and it stays where you put it, look back
+	// and it is still there.
+	//
+	// Heading only, for the reason LevelPose gives - a quad carrying whatever
+	// pitch and roll the head happened to have when the key was pressed hangs
+	// crooked for as long as it stands.
+	if (m_placed && m_placedDistance == distanceMetres) {
 		return;
 	}
-	m_placed = true;
-	m_placedDistance = distanceMetres;
-	m_placedWidth = widthMetres;
 
-	// Straight ahead of the head, negative Z being forward - the same placement
-	// the HUD and the crosshair use. A settings menu belongs where the wearer
-	// is looking rather than where they were looking when they opened it: a
-	// panel left behind in the room is one that has to be found again.
+	vr::openvr::HmdMatrix34 pose{};
+	if (backend.GetRenderPoseMatrix(pose)) {
+		vr::LevelPose(pose);
+		backend.SetOverlayTransformAbsolute(m_overlay,
+		                                    vr::OverlayPoseAhead(pose, distanceMetres));
+		m_placed = true;
+		m_placedDistance = distanceMetres;
+		return;
+	}
+
+	// No pose to anchor to. That happens during the intro films, where
+	// WaitGetPoses has not run yet - and a settings menu that cannot appear
+	// there is a settings menu that cannot fix whatever made the films
+	// unwatchable. So it falls back to the face, which is worse to read but is
+	// present, and the next open takes a real anchor.
 	vr::openvr::HmdMatrix34 hmdToOverlay{};
 	hmdToOverlay.m[0][0] = 1.0f;
 	hmdToOverlay.m[1][1] = 1.0f;
 	hmdToOverlay.m[2][2] = 1.0f;
 	hmdToOverlay.m[2][3] = -distanceMetres;
 	backend.SetOverlayTransformHmdRelative(m_overlay, hmdToOverlay);
-
-	backend.SetOverlayWidthInMetres(m_overlay, widthMetres);
 }
 
 void SettingsMenuLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool visible,
@@ -209,6 +235,12 @@ void SettingsMenuLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, boo
 			backend.HideOverlay(m_overlay);
 			m_overlayVisible = false;
 		}
+
+		// The anchor is dropped on the way out, so the next open takes a fresh
+		// one where the head is then. Keeping it would leave the menu standing
+		// wherever it was last opened - which, after walking away, means
+		// pressing the key and seeing nothing at all.
+		m_placed = false;
 		return;
 	}
 

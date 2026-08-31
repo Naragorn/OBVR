@@ -1270,6 +1270,44 @@ bool HudProbeActive() { return GetConfig().hudProbe; }
 // it off, which includes while a game menu is up or a film is playing. It is
 // also why the keys are read here through GetAsyncKeyState rather than from
 // anything the game provides - the camera hook does not run on those frames.
+// Writes a setting the menu just changed back into OBVR.ini.
+//
+// Not merely so the change survives a quit. ReloadEveryFrames re-reads the file
+// while the game runs, so a value held only in memory is overwritten by the
+// file within a couple of seconds - which is precisely what the first run of
+// this menu did, and from inside the headset it looked like the arrow keys were
+// being ignored. Writing to the file makes the file agree, and then the reload
+// has nothing to undo.
+//
+// Nothing to do when null, which is every movement and every press against the
+// end of a range.
+void SaveChangedSetting(const ui::SettingDefinition* definition, const Config& config) {
+	static bool s_saveFailureReported = false;
+
+	if (definition == nullptr) {
+		return;
+	}
+
+	char text[32];
+	FormatValueForIni(ui::ItemFor(*definition, config), definition->falseWord,
+	                  definition->trueWord, text, sizeof(text));
+
+	if (SaveSetting(definition->iniSection, definition->iniKey, text)) {
+		return;
+	}
+
+	// Once. A read-only INI would otherwise fill the log with one line per
+	// keypress, and the wearer would still be looking at a menu that appears to
+	// work while nothing sticks.
+	if (!s_saveFailureReported) {
+		s_saveFailureReported = true;
+		OBVR_LOG("Menu: could not write %s.%s to OBVR.ini - changes will hold until the next "
+		         "reload of the file and then go back. A read-only INI, or one a mod manager "
+		         "is not passing writes through, would both do this.",
+		         definition->iniSection, definition->iniKey);
+	}
+}
+
 void PollSettingsMenu() {
 	const Config& config = GetConfig();
 
@@ -1302,10 +1340,12 @@ void PollSettingsMenu() {
 			g_settingsMenu.Apply(ui::MenuAction::Down, writable);
 		}
 		if (g_menuLeftEdge.Update(down(0x25))) {  // VK_LEFT
-			g_settingsMenu.Apply(ui::MenuAction::Decrease, writable);
+			SaveChangedSetting(g_settingsMenu.Apply(ui::MenuAction::Decrease, writable),
+			                   writable);
 		}
 		if (g_menuRightEdge.Update(down(0x27))) {  // VK_RIGHT
-			g_settingsMenu.Apply(ui::MenuAction::Increase, writable);
+			SaveChangedSetting(g_settingsMenu.Apply(ui::MenuAction::Increase, writable),
+			                   writable);
 		}
 	} else {
 		g_menuUpEdge.Reset();
