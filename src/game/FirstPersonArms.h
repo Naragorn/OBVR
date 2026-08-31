@@ -59,4 +59,14 @@ bool TurnFirstPersonArms(float radians);
 // a turn nothing is going to update.
 void ReleaseFirstPersonArms();
 
+// Which way the arms actually point in the world, in radians, or 0 when the
+// node cannot be reached.
+//
+// THE ONLY NUMBER THAT IS NOT AN INTENTION. Everything else logged about the
+// aim - the head's angle, the body's share, the arms' share - is what OBVR
+// means to happen. This is read back out of the world transform after the fact,
+// so it is what the wearer is looking at. When a jump is visible and every
+// intention checks out, this is the column that has to move.
+float FirstPersonArmsWorldYaw();
+
 }  // namespace obvr::game

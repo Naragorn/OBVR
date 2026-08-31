@@ -1211,16 +1211,16 @@ void BeforeFirstScenePass() {
 	// weapon constant across the handover in both directions. So a jump means
 	// the two do not reach the picture together, and rotZ read HERE against
 	// what the camera pass wrote is what says which one is late.
-	if (g_shotTraceLeft > 0 && GetConfig().aimShotTrace) {
-		game::PlayerRotation atRender{};
-		const bool read = game::ReadPlayerRotation(atRender);
-		OBVR_LOG("Shot trace     render: weapon=%6.1f wanted=%d | rotZ now=%.4f (camera pass "
-		         "wrote %.4f, offset %.1f)",
-		         static_cast<double>(g_weaponTurnRadians * math::kRadiansToDegrees),
-		         g_weaponTurnWanted ? 1 : 0, read ? static_cast<double>(atRender.yaw) : -1.0,
-		         static_cast<double>(g_aimYawWrote),
-		         static_cast<double>(g_aimBodyOffset * math::kRadiansToDegrees));
-	}
+	// Same condition as the camera-pass line, so the draw is covered too. The
+	// first version of this only ran while the countdown was going, which is
+	// exactly the phase that had already run out during a long draw - so the
+	// interesting frames had no render line at all.
+	const bool tracing =
+		GetConfig().aimShotTrace && (g_shotTraceLeft > 0 || g_shotTraceHeld);
+
+	// Where the arms point BEFORE this frame's turn - which is where the
+	// engine's animation just left them, body rotation and all.
+	const float armsBefore = tracing ? game::FirstPersonArmsWorldYaw() : 0.0f;
 
 	if (g_weaponTurnWanted) {
 		game::TurnFirstPersonArms(g_weaponTurnRadians);
@@ -1228,6 +1228,28 @@ void BeforeFirstScenePass() {
 		// Third person, a menu, or switched off. Put the arms back rather than
 		// leaving them holding a turn nothing is going to update.
 		game::ReleaseFirstPersonArms();
+	}
+
+	if (tracing) {
+		game::PlayerRotation atRender{};
+		const bool read = game::ReadPlayerRotation(atRender);
+
+		// ARMS AFTER is the only figure here that is not an intention: it is
+		// read back out of the world transform once the turn has been applied,
+		// so it is where the bow is actually pointing. With the head still it
+		// must not move, and the frame it does is the jump.
+		//
+		// ARMS BEFORE says what the engine's animation had just left, body
+		// rotation included - which is what tells apart "my turn is wrong" from
+		// "the base I turned from moved under me".
+		OBVR_LOG("Shot trace     render: arms before=%7.1f after=%7.1f | asked %6.1f wanted=%d "
+		         "| rotZ=%.4f (wrote %.4f) offset=%.1f",
+		         static_cast<double>(armsBefore * math::kRadiansToDegrees),
+		         static_cast<double>(game::FirstPersonArmsWorldYaw() * math::kRadiansToDegrees),
+		         static_cast<double>(g_weaponTurnRadians * math::kRadiansToDegrees),
+		         g_weaponTurnWanted ? 1 : 0, read ? static_cast<double>(atRender.yaw) : -1.0,
+		         static_cast<double>(g_aimYawWrote),
+		         static_cast<double>(g_aimBodyOffset * math::kRadiansToDegrees));
 	}
 }
 

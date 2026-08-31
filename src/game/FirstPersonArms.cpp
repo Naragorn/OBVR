@@ -161,6 +161,18 @@ bool TurnFirstPersonArms(float radians) {
 	return true;
 }
 
+float FirstPersonArmsWorldYaw() {
+	NiAVObject* const node = FirstPersonArmsNode();
+	if (node == nullptr) {
+		return 0.0f;
+	}
+
+	// Read out of the WORLD transform, which is what the renderer uses. The
+	// local one is only a request, as this file learned the hard way.
+	const NiPoint3 forward = ForwardOf(node->worldTransform.rot);
+	return math::Atan2(forward.x, forward.y);
+}
+
 void ReleaseFirstPersonArms() {
 	if (g_held == nullptr) {
 		return;
