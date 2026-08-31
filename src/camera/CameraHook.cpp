@@ -1459,11 +1459,21 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	visibility.thirdPerson = ReadIsThirdPerson();
 	visibility.somethingAimedAt = g_crosshairHasTarget;
 
+	// ASKED ONLY WHEN THE ANSWER IS USED, which is the shape every raw read of
+	// the game's object model in OBVR now has. Reading the player's process
+	// means following a pointer into an object the engine tears down and
+	// rebuilds - on a cell change, a load, a point-of-view switch - and the
+	// checks around it cannot tell a half-built object from a finished one.
+	// A question nobody asked is not worth that risk, and with the restriction
+	// switched off nobody is asking.
+	//
 	// Unknown counts as drawn. A crosshair wrongly present is a much smaller
-	// fault than one wrongly missing while somebody is lining up a shot, so the
-	// case OBVR cannot read leans towards showing it.
-	visibility.weaponDrawn =
-		game::ReadPlayerWeaponState() != game::WeaponState::Sheathed;
+	// fault than one wrongly missing while somebody is lining up a shot.
+	visibility.weaponDrawn = true;
+	if (visibility.thirdPerson ? visibility.onlyWhenNeededThirdPerson
+	                           : visibility.onlyWhenNeeded) {
+		visibility.weaponDrawn = game::ReadPlayerWeaponState() != game::WeaponState::Sheathed;
+	}
 
 	const bool crosshairWanted = CrosshairWanted(visibility);
 
@@ -1513,7 +1523,14 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// crosshair in third person, which is what this fills - but it DOES draw
 	// the context icons and the sneak eye, and the first version pasted over
 	// both of them.
-	if (crosshairWanted &&
+	//
+	// The sneak state is read behind this gate rather than passed in as an
+	// argument, because arguments are always evaluated: written the obvious
+	// way, every first-person frame would follow a raw pointer into the
+	// player's process to answer a question only third person asks.
+	const bool couldBorrow = crosshairWanted && visibility.thirdPerson &&
+	                         config.tracker.crosshairInThirdPerson;
+	if (couldBorrow &&
 	    BorrowedCrosshairWanted(visibility.thirdPerson, config.tracker.crosshairInThirdPerson,
 	                            g_crosshairHasTarget, game::IsPlayerSneaking())) {
 		// The drawn cross is the last resort, not the first choice: it is only
@@ -2131,7 +2148,18 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	//
 	// In one frame rather than eased, which is the other half of what makes
 	// this different from the version that caused nausea. See AimReturnWanted.
-	const bool attackInProgress = readPlayer && game::IsPlayerAttacking();
+	// The attack state, asked only on the frames it decides something: the
+	// return is switched on, a turn is standing, the control is released, and
+	// a release is being waited out. On every other frame - which is nearly all
+	// of them - no raw pointer is followed at all.
+	//
+	// These conditions are AimReturnWanted's own, repeated here on purpose.
+	// They cannot be left to it: its arguments are evaluated before it runs, so
+	// the read would happen whatever it then decided.
+	const bool waitingOnAShot = readPlayer && GetConfig().aimReturnOnRelease &&
+	                            g_aimBodyOffset != 0.0f && !attackHeld &&
+	                            g_aimSecondsSinceRelease >= 0.0f;
+	const bool attackInProgress = waitingOnAShot && game::IsPlayerAttacking();
 	if (readPlayer &&
 	    AimReturnWanted(GetConfig().aimReturnOnRelease, g_headTracker.IsHeadsetConnected(),
 	                    game::IsMenuMode(), attackHeld, g_aimSecondsSinceRelease,
