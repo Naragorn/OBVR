@@ -4,6 +4,7 @@
 #include "core/MathFns.h"
 #include "core/Rotation.h"
 #include "game/GameAddresses.h"
+#include "game/GameCamera.h"
 
 namespace obvr::game {
 namespace {
@@ -60,6 +61,7 @@ NiAVObject* g_held = nullptr;
 
 bool g_reported = false;
 bool g_rewriteKnown = false;
+bool g_tookReported = false;
 
 }  // namespace
 
@@ -130,6 +132,32 @@ bool TurnFirstPersonArms(float radians) {
 
 	g_wrote = node->localTransform.rot;
 	g_held = node;
+
+	// AND MADE TO TAKE. A local transform is only a request: what gets drawn is
+	// the world transform, and that follows only when something recomputes it.
+	// UpdateNodeTransforms' own header says so - "the game does that once,
+	// after its own camera write" - and by render time that once has long
+	// happened. Without this the rotation sits in the node changing nothing,
+	// which is exactly what the headset reported twice.
+	const NiMatrix33 worldBefore = node->worldTransform.rot;
+	UpdateNodeTransforms(node);
+
+	// Only once there is a real angle to see the effect of. Reported on a turn
+	// of nearly nothing, this would say "did NOT move" for the honest reason
+	// that nothing was asked of it, and that reading would send the search off
+	// in the wrong direction.
+	if (!g_tookReported && (radians > 0.1f || radians < -0.1f)) {
+		g_tookReported = true;
+		// Whether the recompute reached the world transform is the one thing
+		// that separates "the write does not take" from "the weapon does not
+		// hang off this node". If this says the world transform moved and the
+		// bow still does not, the node is the wrong one and the weapon node
+		// inside the skeleton is next.
+		OBVR_LOG("First person arms: turning by %.1f degrees %s the node's world transform",
+		         static_cast<double>(radians * 57.2957795f),
+		         SameRotation(worldBefore, node->worldTransform.rot) ? "did NOT move"
+		                                                            : "moved");
+	}
 	return true;
 }
 
