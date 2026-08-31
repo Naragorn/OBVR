@@ -231,6 +231,22 @@ NiPoint3 g_cameraWorldPos{0.0f, 0.0f, 0.0f};
 NiMatrix33 g_cameraWorldRot = NiMatrix33::Identity();
 bool g_cameraWorldValid = false;
 
+// The crosshair probe's tally. It counts rather than samples, because the one
+// number it exists for is a SHARE - how much of ordinary play has nothing under
+// the crosshair, and so how much of it the fallback is showing.
+//
+// Roughly five seconds at sixty frames. Long enough that the share means
+// something, short enough that walking into a room and looking round is
+// several readings rather than one.
+constexpr UInt32 kCrosshairProbeWindow = 300;
+
+bool g_crosshairProbeIntroduced = false;
+UInt32 g_crosshairProbeFrames = 0;
+UInt32 g_crosshairProbeWithMenu = 0;
+UInt32 g_crosshairProbeWithRef = 0;
+float g_crosshairProbeNearest = 0.0f;
+float g_crosshairProbeFarthest = 0.0f;
+
 // A frame number that counts every presented frame, not every camera pass.
 //
 // The redirect uses this to decide when to clear its texture - once per frame,
@@ -1522,28 +1538,71 @@ void UpdateCrosshairDepth(const Config& config, float deltaSeconds) {
 			         deltaSeconds);
 	}
 
-	if (!config.tracker.crosshairProbe || !IsDue(g_state.frameCount, config.logEveryFrames)) {
+	if (!config.tracker.crosshairProbe) {
 		return;
 	}
 
-	// menu/array is the pair worth watching. The menu identified itself by its
-	// own id; the array entry is the same menu reached through a description
-	// that shares none of that reasoning. Both non-zero across a run is the two
-	// agreeing in practice. A menu of 0 with a rejected id says the global at
-	// kHudInfoMenuPointer leads somewhere else in this build, and the rejected
-	// id is the first clue where.
-	OBVR_LOG("Crosshair depth: menu=%08X (rejected id %04X) array=%08X ref=%08X, "
-	         "camera=(%.1f, %.1f, %.1f) gaze=(%.3f, %.3f, %.3f) target=(%.1f, %.1f, %.1f), "
-	         "wanted %.2f m, showing %.2f m",
-	         target.menuAddress, target.rejectedId, target.arrayEntry, target.refAddress,
-	         static_cast<double>(g_cameraWorldPos.x), static_cast<double>(g_cameraWorldPos.y),
-	         static_cast<double>(g_cameraWorldPos.z),
-	         static_cast<double>(input.gazeDirection.x),
-	         static_cast<double>(input.gazeDirection.y),
-	         static_cast<double>(input.gazeDirection.z),
-	         static_cast<double>(target.position.x), static_cast<double>(target.position.y),
-	         static_cast<double>(target.position.z), static_cast<double>(wanted),
+	// The first frame says whether this works at all, once and immediately.
+	//
+	// Deliberately not on the periodic clock below: if the global does not lead
+	// to HUDInfoMenu in this build, that is the finding, and waiting several
+	// seconds to be told it - or missing it because the run was short - would
+	// be a poor way to learn it. rejectedId is the first clue where it does
+	// lead instead.
+	if (!g_crosshairProbeIntroduced) {
+		g_crosshairProbeIntroduced = true;
+		if (target.haveMenu) {
+			OBVR_LOG("Crosshair depth: HUDInfoMenu at %08X identified itself, "
+			         "tile menu array entry %08X",
+			         target.menuAddress, target.arrayEntry);
+		} else {
+			OBVR_LOG("Crosshair depth: %08X is not HUDInfoMenu - it answers id %04X, "
+			         "wanted %04X. The crosshair keeps its fixed distance",
+			         target.menuAddress, target.rejectedId,
+			         static_cast<UInt32>(game::kMenuIdHudInfo));
+		}
+	}
+
+	// COUNTED, not sampled. The question this probe exists for is what SHARE of
+	// ordinary play has nothing under the crosshair - that is the share of the
+	// time the fallback is showing, and it decides whether this feature is
+	// enough on its own or wants the depth buffer after all. A line every so
+	// often would answer that only if somebody tallied the lines by hand, and
+	// would answer it badly, because the moments worth counting are exactly the
+	// ones a periodic sample walks past.
+	++g_crosshairProbeFrames;
+	if (target.haveMenu) {
+		++g_crosshairProbeWithMenu;
+	}
+	if (target.haveRef) {
+		++g_crosshairProbeWithRef;
+		if (g_crosshairProbeNearest == 0.0f || wanted < g_crosshairProbeNearest) {
+			g_crosshairProbeNearest = wanted;
+		}
+		if (wanted > g_crosshairProbeFarthest) {
+			g_crosshairProbeFarthest = wanted;
+		}
+	}
+
+	if (g_crosshairProbeFrames < kCrosshairProbeWindow) {
+		return;
+	}
+
+	const float frames = static_cast<float>(g_crosshairProbeFrames);
+	OBVR_LOG("Crosshair depth over %u frames: menu found in %.0f%%, something aimed at in "
+	         "%.0f%% - nearest %.2f m, farthest %.2f m, showing %.2f m now",
+	         g_crosshairProbeFrames,
+	         static_cast<double>(100.0f * static_cast<float>(g_crosshairProbeWithMenu) / frames),
+	         static_cast<double>(100.0f * static_cast<float>(g_crosshairProbeWithRef) / frames),
+	         static_cast<double>(g_crosshairProbeNearest),
+	         static_cast<double>(g_crosshairProbeFarthest),
 	         static_cast<double>(g_crosshairDepthMetres));
+
+	g_crosshairProbeFrames = 0;
+	g_crosshairProbeWithMenu = 0;
+	g_crosshairProbeWithRef = 0;
+	g_crosshairProbeNearest = 0.0f;
+	g_crosshairProbeFarthest = 0.0f;
 }
 
 }  // namespace
