@@ -47,9 +47,13 @@ public:
 	// A repaint happens when `revision` differs from the last one drawn. The
 	// caller advances it on anything that changes the picture; passing a
 	// constant would show the first frame's menu for ever.
+	//
+	// inWorld stands the panel in the room where the head was when it opened;
+	// false carries it on the head instead. See Config::settingsMenuInWorld for
+	// why the room is the default and why the other is kept.
 	void Submit(vr::OpenVRBackend& backend, void* gameDevice, bool visible, const MenuItem* items,
 	            const char* const* categories, UInt32 count, MenuState state, UInt32 revision,
-	            float distanceMetres, float widthMetres);
+	            float distanceMetres, float widthMetres, bool inWorld);
 
 	// How many rows the menu can show, which the caller needs so its scrolling
 	// matches what is drawn. Answered by the layer because the layer owns the
@@ -63,7 +67,8 @@ private:
 	bool EnsureOverlay(vr::OpenVRBackend& backend);
 	bool Repaint(const MenuItem* items, const char* const* categories, UInt32 count,
 	             MenuState state);
-	void Place(vr::OpenVRBackend& backend, float distanceMetres, float widthMetres);
+	void Place(vr::OpenVRBackend& backend, float distanceMetres, float widthMetres,
+	           bool inWorld);
 
 	void* m_texture = nullptr;  // IDirect3DTexture9
 	void* m_surface = nullptr;  // IDirect3DSurface9, level 0

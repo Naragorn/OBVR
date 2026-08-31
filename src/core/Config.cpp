@@ -180,7 +180,10 @@ bool ReadAnchorIsWorld(const char* section, const char* key, bool fallback,
 		return true;
 	}
 
-	OBVR_LOG("Config: unknown Render.%s \"%s\", keeping the previous setting", key, buffer);
+	// The section is named as well as the key. This reader is used from more
+	// than one section now, and "unknown Render.Anchor" for a setting in
+	// [SettingsMenu] sends the reader to the wrong part of the file.
+	OBVR_LOG("Config: unknown %s.%s \"%s\", keeping the previous setting", section, key, buffer);
 	return fallback;
 }
 
@@ -373,6 +376,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadFloat("SettingsMenu", "DistanceMetres", config.settingsMenuDistanceMetres, path);
 	config.settingsMenuWidthMetres =
 		ReadFloat("SettingsMenu", "WidthMetres", config.settingsMenuWidthMetres, path);
+	config.settingsMenuInWorld =
+		ReadAnchorIsWorld("SettingsMenu", "Anchor", config.settingsMenuInWorld, path);
 
 	// VerticalLookRange was one value for both directions until it turned out
 	// that a range sized for looking up stops at the hips on the way down. It

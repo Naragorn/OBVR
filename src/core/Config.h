@@ -190,6 +190,19 @@ struct Config {
 	float settingsMenuDistanceMetres = 1.0f;
 	float settingsMenuWidthMetres = 1.1f;
 
+	// Whether that menu stands in the room or is carried on the head.
+	//
+	// The room by default, and the difference is not cosmetic: a panel fixed to
+	// the head cannot be read, because every attempt to look at the row below
+	// the middle one moves that row with it and the eyes have nothing that
+	// holds still to converge on. Standing in the room it becomes an object -
+	// lean in, turn away, look back and it is where it was left.
+	//
+	// Head is kept because it is what the intro films fall back to anyway,
+	// there being no pose to anchor to before WaitGetPoses has run, and because
+	// a menu that has to be walked back to is worse than one that follows.
+	bool settingsMenuInWorld = true;
+
 	// true when the file was found and read.
 	bool Load(const char* fileName);
 

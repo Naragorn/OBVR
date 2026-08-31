@@ -19,10 +19,28 @@ namespace obvr::ui {
 // own field and writes the one it was copied from - which behaves perfectly
 // until somebody changes the setting, and then quietly changes a different one.
 //
-// Not every setting is here, and that is a choice rather than an oversight.
-// OBVR.ini has sixty-five, and most of the ones left out are probes, addresses
-// and diagnostics that would only be set while reading the file that explains
-// them. What is here is what somebody would want to change with the headset on.
+// Not every setting is here, and the ones left out were left out for reasons
+// rather than forgotten. OBVR.ini holds sixty-seven keys; these are the four
+// groups that do not appear, so that a later reader can tell a decision from an
+// omission:
+//
+//   * The probes and diagnostics in [Debug], and the fixed and simulated head
+//     angles. They exist to be set while reading the paragraphs in the INI that
+//     explain them, and the simulated ones are for running without a headset -
+//     which is not a state anybody is in while looking at this menu.
+//   * Camera.HookEnabled, Render.Enabled and Render.GameFrame. Each of them
+//     switches OBVR off, and a row that removes the camera the menu is being
+//     read through is a row nobody can undo.
+//   * The three key codes - the recenter key, the attack control, and the key
+//     that opens this menu. Setting a virtual-key code by pressing an arrow
+//     twenty times is worse than editing the file, and getting the last of them
+//     wrong locks the menu shut.
+//   * UnitsPerMetre and MenuShadeColor. The first is a calibration the INI
+//     says to leave alone in favour of HeadMovementScale, which IS here; the
+//     second is six hex digits, which arrow keys cannot sensibly reach.
+//
+// Everything else is here, including the two rows that only take effect on the
+// next start - marked rather than hidden.
 
 struct SettingDefinition {
 	// The heading this row sits under. Rows sharing a category are adjacent in

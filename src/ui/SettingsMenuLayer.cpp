@@ -177,13 +177,31 @@ bool SettingsMenuLayer::Repaint(const MenuItem* items, const char* const* catego
 	return true;
 }
 
-void SettingsMenuLayer::Place(vr::OpenVRBackend& backend, float distanceMetres,
-                              float widthMetres) {
+void SettingsMenuLayer::Place(vr::OpenVRBackend& backend, float distanceMetres, float widthMetres,
+                              bool inWorld) {
 	// The width can be set whenever it changes; the position is a separate
 	// question, because it is taken once and then left alone.
 	if (!m_placed || m_placedWidth != widthMetres) {
 		backend.SetOverlayWidthInMetres(m_overlay, widthMetres);
 		m_placedWidth = widthMetres;
+	}
+
+	// Carried on the head, because the setting says so. Reasserted every frame
+	// rather than once: an hmd-relative transform is a standing instruction and
+	// costs a call, but it is the only way a change of this setting from the
+	// menu itself takes effect without closing and reopening.
+	if (!inWorld) {
+		vr::openvr::HmdMatrix34 hmdToOverlay{};
+		hmdToOverlay.m[0][0] = 1.0f;
+		hmdToOverlay.m[1][1] = 1.0f;
+		hmdToOverlay.m[2][2] = 1.0f;
+		hmdToOverlay.m[2][3] = -distanceMetres;
+		backend.SetOverlayTransformHmdRelative(m_overlay, hmdToOverlay);
+
+		// Not counted as placed, so switching back to the room takes a fresh
+		// anchor rather than reusing one from before the menu was ever opened.
+		m_placed = false;
+		return;
 	}
 
 	// Anchored in the room, once, where the head was when the menu opened -
@@ -229,7 +247,7 @@ void SettingsMenuLayer::Place(vr::OpenVRBackend& backend, float distanceMetres,
 void SettingsMenuLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool visible,
                                const MenuItem* items, const char* const* categories, UInt32 count,
                                MenuState state, UInt32 revision, float distanceMetres,
-                               float widthMetres) {
+                               float widthMetres, bool inWorld) {
 	if (!visible) {
 		if (m_overlayVisible) {
 			backend.HideOverlay(m_overlay);
@@ -267,7 +285,7 @@ void SettingsMenuLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, boo
 		m_paintedRevision = revision;
 	}
 
-	Place(backend, distanceMetres, widthMetres);
+	Place(backend, distanceMetres, widthMetres, inWorld);
 
 	if (!render::ReadImageInfo(m_interop, m_image)) {
 		return;

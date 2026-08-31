@@ -1366,7 +1366,7 @@ void PollSettingsMenu() {
 	                           g_settingsMenu.IsOpen(), items, categories, count,
 	                           g_settingsMenu.State(), g_settingsMenu.Revision(),
 	                           config.settingsMenuDistanceMetres,
-	                           config.settingsMenuWidthMetres);
+	                           config.settingsMenuWidthMetres, config.settingsMenuInWorld);
 }
 
 void MaybeSubmitOverlays(bool worldFrame) {

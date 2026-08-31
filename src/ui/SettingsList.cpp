@@ -38,6 +38,20 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return c.look.turnSpeed; },
 		+[](Config& c, float v) { c.look.turnSpeed = v; },
 	},
+	{
+		"Comfort", "Room tracking", "Leaning in the room moves the camera",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Head", "PositionalTracking",
+		+[](const Config& c) { return c.tracker.positionalTracking ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.positionalTracking = v != 0.0f; },
+	},
+	{
+		"Comfort", "Lean limit", "Oblivion units the camera may leave the head at",
+		ItemKind::Number, 0.0f, 400.0f, 10.0f, 0, false,
+		"Head", "MaxLeanUnits",
+		+[](const Config& c) { return c.tracker.maxOffsetUnits; },
+		+[](Config& c, float v) { c.tracker.maxOffsetUnits = v; },
+	},
 
 	// ---- Looking -----------------------------------------------------------
 	{
@@ -67,6 +81,13 @@ const SettingDefinition kSettings[] = {
 		"Look", "SmoothVerticalLook",
 		+[](const Config& c) { return c.look.smoothVerticalLook ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.look.smoothVerticalLook = v != 0.0f; },
+	},
+	{
+		"Looking", "Vertical look speed", "How fast the eased vertical look catches up",
+		ItemKind::Number, 1.0f, 30.0f, 1.0f, 0, false,
+		"Look", "VerticalLookSpeed",
+		+[](const Config& c) { return c.look.verticalLookSpeed; },
+		+[](Config& c, float v) { c.look.verticalLookSpeed = v; },
 	},
 
 	// ---- Aiming ------------------------------------------------------------
@@ -106,7 +127,45 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.tracker.crosshairSizeAtOneMetre = v; },
 	},
 
+	// ---- Dialogue ----------------------------------------------------------
+	{
+		"Dialogue", "Zoom on talking", "Vanilla's zoom into a face. Off in VR by default",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "DialogZoom",
+		+[](const Config& c) { return c.dialogZoom ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.dialogZoom = v != 0.0f; },
+	},
+	{
+		"Dialogue", "First person to talk", "Vanilla flips to first person for a conversation",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "DialogFirstPerson",
+		+[](const Config& c) { return c.dialogFirstPerson ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.dialogFirstPerson = v != 0.0f; },
+	},
+
 	// ---- Screen and menus --------------------------------------------------
+	{
+		"Screen", "Show menus", "Whether OBVR shows the game's menus at all",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "ShowMenus",
+		+[](const Config& c) { return c.tracker.showMenus ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.showMenus = v != 0.0f; },
+	},
+	{
+		"Screen", "HUD overlay", "The flat picture as an overlay quad",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "HudOverlay",
+		+[](const Config& c) { return c.tracker.hudOverlay ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.hudOverlay = v != 0.0f; },
+	},
+	{
+		"Screen", "HUD stands in the room", "Off carries it on your head instead",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "HudAnchor",
+		+[](const Config& c) { return c.tracker.hudAnchorWorld ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.hudAnchorWorld = v != 0.0f; },
+		"head", "world",
+	},
 	{
 		"Screen", "HUD distance", "Metres. How far away the flat picture hangs",
 		ItemKind::Number, 0.4f, 8.0f, 0.1f, 1, false,
@@ -161,6 +220,107 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return c.tracker.gameFovOverride; },
 		+[](Config& c, float v) { c.tracker.gameFovOverride = v; },
 	},
+	{
+		"Screen", "Base field of view", "Degrees the game believes it is drawing at",
+		ItemKind::Number, 30.0f, 140.0f, 1.0f, 0, false,
+		"Render", "GameFovDegrees",
+		+[](const Config& c) { return c.tracker.gameFovDegrees; },
+		+[](Config& c, float v) { c.tracker.gameFovDegrees = v; },
+	},
+	{
+		"Screen", "That FOV is for 4:3", "How the number above is interpreted",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "GameFovIsFor4x3",
+		+[](const Config& c) { return c.tracker.gameFovIsFor4x3 ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.gameFovIsFor4x3 = v != 0.0f; },
+	},
+	{
+		"Screen", "Match headset FOV", "Take the field of view from the headset itself",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "MatchHeadsetFov",
+		+[](const Config& c) { return c.tracker.matchHeadsetFov ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.matchHeadsetFov = v != 0.0f; },
+	},
+	{
+		"Screen", "Menu aspect", "The shape of the menu picture. 0 leaves it alone",
+		ItemKind::Number, 0.0f, 3.0f, 0.05f, 2, false,
+		"Render", "MenuAspect",
+		+[](const Config& c) { return c.tracker.menuAspect; },
+		+[](Config& c, float v) { c.tracker.menuAspect = v; },
+	},
+	{
+		"Screen", "Single menu border", "One border instead of the doubled left and right",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "MenuSingleBorder",
+		+[](const Config& c) { return c.tracker.menuSingleBorder ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.menuSingleBorder = v != 0.0f; },
+	},
+	{
+		"Screen", "Menu stand-in", "Holds the world still behind a menu. Also fixes the "
+		                           "persuasion face",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "MenuStandIn",
+		+[](const Config& c) { return c.tracker.menuStandIn ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.menuStandIn = v != 0.0f; },
+	},
+
+	// ---- This menu ---------------------------------------------------------
+	//
+	// The settings menu's own placement, changeable from inside itself. Worth
+	// having in reach: whether a panel hangs at the right distance is a question
+	// nobody can answer except while looking at it.
+	{
+		"This menu", "Stands in the room", "Off carries this panel on your head instead",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"SettingsMenu", "Anchor",
+		+[](const Config& c) { return c.settingsMenuInWorld ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.settingsMenuInWorld = v != 0.0f; },
+		"head", "world",
+	},
+	{
+		"This menu", "Distance", "Metres in front of you",
+		ItemKind::Number, 0.3f, 4.0f, 0.05f, 2, false,
+		"SettingsMenu", "DistanceMetres",
+		+[](const Config& c) { return c.settingsMenuDistanceMetres; },
+		+[](Config& c, float v) { c.settingsMenuDistanceMetres = v; },
+	},
+	{
+		"This menu", "Width", "Metres wide at that distance",
+		ItemKind::Number, 0.3f, 4.0f, 0.05f, 2, false,
+		"SettingsMenu", "WidthMetres",
+		+[](const Config& c) { return c.settingsMenuWidthMetres; },
+		+[](Config& c, float v) { c.settingsMenuWidthMetres = v; },
+	},
+
+	// ---- Advanced ----------------------------------------------------------
+	{
+		"Advanced", "HUD between passes", "Capture the 2D between the two eye renders",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "HudBetweenPasses",
+		+[](const Config& c) { return c.tracker.hudBetweenPasses ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.hudBetweenPasses = v != 0.0f; },
+	},
+	{
+		"Advanced", "Submit at frame end", "Hand the eyes over at Present instead",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "SubmitAtFrameEnd",
+		+[](const Config& c) { return c.tracker.submitAtFrameEnd ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.submitAtFrameEnd = v != 0.0f; },
+	},
+	{
+		"Advanced", "UI follows frame size", "Lay the 2D out at the real frame size",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "UiFollowsFrameSize",
+		+[](const Config& c) { return c.tracker.uiFollowsFrameSize ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.uiFollowsFrameSize = v != 0.0f; },
+	},
+	{
+		"Advanced", "Re-read the INI", "Frames between reloads of this file. 0 is off",
+		ItemKind::Number, 0.0f, 600.0f, 30.0f, 0, false,
+		"Debug", "ReloadEveryFrames",
+		+[](const Config& c) { return static_cast<float>(c.reloadEveryFrames); },
+		+[](Config& c, float v) { c.reloadEveryFrames = static_cast<UInt32>(v); },
+	},
 
 	// ---- Needs a restart ---------------------------------------------------
 	//
@@ -168,6 +328,13 @@ const SettingDefinition kSettings[] = {
 	// so changing one here has no effect until the game starts again - and
 	// somebody who changes a setting and sees nothing happen concludes the menu
 	// does not work, not that this particular row is different.
+	{
+		"Restart needed", "Set the frame size", "Off leaves the game its own resolution",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, true,
+		"Render", "SetGameResolution",
+		+[](const Config& c) { return c.tracker.setRenderSize ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.setRenderSize = v != 0.0f; },
+	},
 	{
 		"Restart needed", "Render width", "Pixels per eye. 0 asks the headset",
 		ItemKind::Number, 0.0f, 8192.0f, 64.0f, 0, true,
