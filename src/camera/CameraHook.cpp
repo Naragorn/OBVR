@@ -149,6 +149,38 @@ bool g_viewportReported[2] = {false, false};
 // of those is being misread, and the frame line below prints both side by side
 // rather than leaving it to inference.
 UInt32 g_menuTraceLeft = 0;
+
+// Frames for which the blocking steps of a frame are written down as they are
+// reached, armed by a point-of-view switch.
+//
+// A HANG is not a crash and does not leave the same evidence. Nothing is
+// corrupted and nothing throws; some call simply does not return, and the last
+// line in the log is wherever logging happened to stop rather than where the
+// fault is. Twice now a session has ended right after "Camera: switched to
+// third person", and both times the log said only that much.
+//
+// OBVR has exactly one kind of call that can block indefinitely: the ones that
+// talk to the VR compositor. WaitGetPoses waits for the headset to want the
+// next frame, and it waits without a timeout. Oblivion on its own never waits
+// for anything of the sort, which is why a hang is a stronger hint that OBVR is
+// involved than a crash would be.
+//
+// So the steps around those calls now leave a mark while this is armed. If the
+// next hang's log ends on "waiting for poses", the question is answered; if it
+// ends after them, the compositor is cleared and the search moves on.
+//
+// Thirty frames rather than twelve: the last hang came seven frames after the
+// switch, which is well inside the old window but too close to its end to be
+// comfortable.
+UInt32 g_stepTraceLeft = 0;
+
+// Written down only while armed, so this costs one comparison a frame in
+// ordinary play.
+void TraceStep(const char* where) {
+	if (g_stepTraceLeft > 0) {
+		OBVR_LOG("Step: %s", where);
+	}
+}
 bool g_menuTraceWasUp = false;
 UInt32 g_menuTraceLastScene = 0;
 UInt32 g_menuTraceLastId = 0;
@@ -608,6 +640,12 @@ void OnFrameEnd() {
 		         menuFlagChanged ? (menuIsUp ? "opened" : "closed") : "changed",
 		         game::MenuIdName(menuId), menuId);
 	}
+	// Counted down once a frame, here rather than beside each mark: the marks
+	// come several to a frame and would otherwise burn the window in two.
+	if (g_stepTraceLeft > 0) {
+		--g_stepTraceLeft;
+	}
+
 	if (g_menuTraceLeft > 0) {
 		--g_menuTraceLeft;
 		const UInt32 scene = render::CurrentSceneCall();
@@ -641,8 +679,11 @@ void OnFrameEnd() {
 		// one, and either way it is OBVR's to show: the redirect took it out
 		// of the picture the eyes were captured from, so if the overlay does
 		// not show it, nothing does.
+		TraceStep("about to submit the eyes");
 		g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), g_pendingRequest);
+		TraceStep("eyes submitted");
 		MaybeSubmitOverlays(true);
+		TraceStep("overlays submitted");
 
 		// Last, after the eyes and the overlay are paid, exactly as on a menu
 		// frame - the point of the control is that everything about the call
@@ -1819,6 +1860,11 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		g_menuTraceLeft = 12;
 		g_menuTraceLastScene = render::CurrentSceneCall();
 
+		// The blocking steps as well, for the same reason and for longer: two
+		// sessions have now ended within a few frames of this line, and neither
+		// log could say which call did not come back.
+		g_stepTraceLeft = 30;
+
 		OBVR_LOG("Camera: switched to %s (frame %u) - tracing the next frames",
 		         isThirdPerson ? "third person" : "first person",
 		         g_state.frameCount);
@@ -1854,7 +1900,13 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	//
 	// Does nothing when rendering is off or the compositor was never reached,
 	// so the cost on a machine without a headset is one comparison.
+	// THE ONE CALL IN OBVR THAT CAN WAIT FOR EVER. BeginFrame goes into
+	// WaitGetPoses, which blocks until the compositor wants the next frame and
+	// has no timeout. A log that ends on the first of these two lines has
+	// located the hang; one that reaches the second has cleared it.
+	TraceStep("about to wait for poses");
 	g_frameOpen = g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame());
+	TraceStep("poses are in");
 
 
 	// Watch Oblivion's own render frustum, a handful of times.
