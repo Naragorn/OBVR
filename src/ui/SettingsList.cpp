@@ -141,6 +141,21 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return c.tracker.crosshairSizeAtOneMetre; },
 		+[](Config& c, float v) { c.tracker.crosshairSizeAtOneMetre = v; },
 	},
+	{
+		"Aiming", "Crosshair only when needed", "Hide it until you aim or can act",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "CrosshairOnlyWhenNeeded",
+		+[](const Config& c) { return c.tracker.crosshairOnlyWhenNeeded ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.crosshairOnlyWhenNeeded = v != 0.0f; },
+		"always", "when needed",
+	},
+	{
+		"Aiming", "Crosshair cutout", "Percent of screen lifted. Raise if bits are left",
+		ItemKind::Number, 1.0f, 10.0f, 0.5f, 1, false,
+		"Render", "CrosshairSourceShare",
+		+[](const Config& c) { return c.tracker.crosshairSourceShare; },
+		+[](Config& c, float v) { c.tracker.crosshairSourceShare = v; },
+	},
 
 	// ---- Dialogue ----------------------------------------------------------
 	{

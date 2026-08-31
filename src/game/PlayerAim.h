@@ -65,4 +65,28 @@ bool WritePlayerPitch(float radians);
 // False on the same terms as the write above.
 bool WritePlayerYaw(float radians);
 
+// Whether the player has a weapon or spell readied - combat stance rather than
+// walking around.
+//
+// Three answers, not two, and the third is the point: unknown is a real
+// outcome. Before the player exists, or when the byte holds something that is
+// not a boolean, this says so instead of guessing, and the caller then behaves
+// as though a weapon were out - because a crosshair that is wrongly present is
+// a far smaller fault than one that is wrongly missing while somebody is
+// trying to aim.
+//
+// Read as a byte rather than through the virtual that returns it. See
+// addr::kProcessWeaponOutOffset for why, and for the two readings of xOBSE's
+// GameProcess.h that put the field there.
+//
+// A SPELL COUNTS AS A WEAPON HERE, and that is assumed rather than measured.
+// Oblivion's own name for the field is "weapon out", and readying a spell puts
+// the player in the same combat stance, so the expectation is that it covers
+// both - but nothing has confirmed it. If casting turns out not to raise this,
+// the queued magic item is the next place to look (GetQueuedMagicItem, vtable
+// 0xAA, MiddleHighProcess+0x144).
+enum class WeaponState { Unknown, Sheathed, Drawn };
+
+WeaponState ReadPlayerWeaponState();
+
 }  // namespace obvr::game

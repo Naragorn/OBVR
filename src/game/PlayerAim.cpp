@@ -119,4 +119,37 @@ bool WritePlayerPitch(float radians) { return WriteRotationComponent(0, radians)
 
 bool WritePlayerYaw(float radians) { return WriteRotationComponent(2, radians); }
 
+WeaponState ReadPlayerWeaponState() {
+	const auto* const player = PlayerOrNull();
+	if (player == nullptr) {
+		return WeaponState::Unknown;
+	}
+
+	// The process, which is where the combat state lives. It is a pointer like
+	// any other in this file and gets the same test before it is followed - and
+	// it can legitimately be null, since an actor without a process is one the
+	// game is not simulating. That is not the player in practice, but the check
+	// costs nothing and the alternative is a null dereference on some frame
+	// nobody predicted.
+	const auto* const process =
+		*reinterpret_cast<const UInt8* const*>(player + addr::kMobileProcessOffset);
+	const UInt32 address = reinterpret_cast<UInt32>(process);
+	if (address < 0x00010000u || address > 0x7FFFFFFFu || (address & 3u) != 0u) {
+		return WeaponState::Unknown;
+	}
+
+	// A boolean, so it holds 0 or 1 and nothing else. Anything else means this
+	// offset is not the field in this build, and saying so is worth more than
+	// answering: a wrong answer here would show as a crosshair that comes and
+	// goes for no reason anyone could explain from the outside.
+	const UInt8 value = *(process + addr::kProcessWeaponOutOffset);
+	if (value == 0) {
+		return WeaponState::Sheathed;
+	}
+	if (value == 1) {
+		return WeaponState::Drawn;
+	}
+	return WeaponState::Unknown;
+}
+
 }  // namespace obvr::game

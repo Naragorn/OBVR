@@ -88,6 +88,46 @@ inline constexpr UInt32 kUpdateSelectedDownwardPass = 0x00707370;
 inline constexpr UInt32 kPlayerPointer = 0x00B333C4;
 inline constexpr UInt32 kPlayerIsThirdPersonOffset = 0x588;
 
+// MobileObject::process, from xOBSE's GameObjects.h where it is commented
+// "BaseProcess * process; // 058". PlayerCharacter inherits it through Actor,
+// so this counts from the player pointer above - which is the same anchoring
+// the rotation at 0x20 and isThirdPerson at 0x588 already rest on, both of
+// them right in the running game for weeks.
+inline constexpr UInt32 kMobileProcessOffset = 0x058;
+
+// The byte behind BaseProcess::GetWeaponOut - whether the actor is in combat
+// stance, weapon or spell readied.
+//
+// READ DIRECTLY RATHER THAN CALLED, and that is the whole point of this
+// constant existing. GetWeaponOut is a virtual at vtable index 0xBE, and
+// calling it would mean trusting that index: a wrong one calls some other
+// virtual, and the neighbouring entries take arguments and set things. That
+// fails by corrupting the game. Reading a byte at a wrong offset fails by
+// returning a wrong byte, which shows up as a crosshair that appears at the
+// wrong moment - visible, harmless, and easy to correct.
+//
+// Both the offset and what sits behind the call come from the same file read
+// two independent ways. xOBSE's GameProcess.h declares
+//
+//   virtual UInt8 GetWeaponOut(void) = 0;    // 0xBE
+//   virtual UInt8 SetWeaponOut(UInt8 out) = 0;
+//
+// and the vtable analysis table at the top of that same file, which was built
+// from disassembly rather than from the declarations, has for that index:
+//
+//   // 0BE  0  8  retn0  <-  <-  get unk114  <-
+//   // 0BF  1  x  null   <-  <-  set unk114  <-
+//
+// Zero arguments, an 8-bit return, and a plain read of unk114 on
+// MiddleHighProcess - which HighProcess inherits, and the player always has a
+// high process. The getter and the field agree, and so do the two halves of
+// the file.
+//
+// It is still checked before it is believed: the field is a boolean, so
+// anything but 0 or 1 means this offset is not what this build has, and the
+// answer is then "no idea" rather than a number.
+inline constexpr UInt32 kProcessWeaponOutOffset = 0x114;
+
 // Pointer to NiDX9Renderer, the object that owns Oblivion's Direct3D 9
 // device. This is where 0.1.0 has to start: the camera hook works on the
 // scene graph and has never touched the renderer, but OpenVR takes a texture

@@ -662,25 +662,81 @@ void TestCrosshair() {
 	// calls below then expand to nothing at all.
 	const auto Near = [](float a, float b) { return a - b < 1e-4f && b - a < 1e-4f; };
 
-	// The one flow that shows it: switched on, a frame where the world was
-	// actually drawn, and no menu over it.
-	Check(CrosshairWanted(true, true, false), "on, on a world frame, the crosshair is shown");
+	using obvr::camera::CrosshairVisibility;
+
+	// The plain case, spelled out once: switched on, the world was drawn, no
+	// menu over it, and the "only when needed" option off.
+	const auto Plain = [](bool enabled, bool worldFrame, bool menuIsUp) {
+		CrosshairVisibility v;
+		v.enabled = enabled;
+		v.worldFrame = worldFrame;
+		v.menuIsUp = menuIsUp;
+		return v;
+	};
+
+	Check(CrosshairWanted(Plain(true, true, false)),
+	      "on, on a world frame, the crosshair is shown");
 
 	// Off is off - and off is the default, because Oblivion draws its own
 	// unless bCrossHair is 0 and two crosshairs are worse than one.
-	Check(!CrosshairWanted(false, true, false), "switched off, nothing is shown");
+	Check(!CrosshairWanted(Plain(false, true, false)), "switched off, nothing is shown");
 
 	// The world was not redrawn: over a held picture an aiming point lies.
-	Check(!CrosshairWanted(true, false, false), "no world frame, no crosshair");
-	Check(!CrosshairWanted(false, false, false), "off and no world frame agree");
+	Check(!CrosshairWanted(Plain(true, false, false)), "no world frame, no crosshair");
+	Check(!CrosshairWanted(Plain(false, false, false)), "off and no world frame agree");
 
 	// A menu is up. This is the flow the first version got wrong by folding it
 	// into worldFrame: with Menus=world a dialogue is delivered in stereo, so
 	// the world frame is real and the menu is real at the same time, and the
 	// crosshair hung there through every conversation.
-	Check(!CrosshairWanted(true, true, true), "a menu over a live world hides the crosshair");
-	Check(!CrosshairWanted(true, false, true), "a menu over a held world hides it too");
-	Check(!CrosshairWanted(false, true, true), "off and a menu agree");
+	Check(!CrosshairWanted(Plain(true, true, true)),
+	      "a menu over a live world hides the crosshair");
+	Check(!CrosshairWanted(Plain(true, false, true)), "a menu over a held world hides it too");
+	Check(!CrosshairWanted(Plain(false, true, true)), "off and a menu agree");
+
+	// ---- only when needed ---------------------------------------------------
+	//
+	// A crosshair is an aiming aid, and also a small bright thing permanently in
+	// the middle of the view. This option keeps it out of the way until it is
+	// doing its job.
+	const auto Needed = [](bool thirdPerson, bool aimedAt, bool weapon) {
+		CrosshairVisibility v;
+		v.enabled = true;
+		v.worldFrame = true;
+		v.menuIsUp = false;
+		v.onlyWhenNeeded = true;
+		v.thirdPerson = thirdPerson;
+		v.somethingAimedAt = aimedAt;
+		v.weaponDrawn = weapon;
+		return v;
+	};
+
+	Check(!CrosshairWanted(Needed(false, false, false)),
+	      "walking around in first person with nothing to aim at hides it");
+	Check(CrosshairWanted(Needed(false, true, false)),
+	      "something activatable under it brings it back");
+	Check(CrosshairWanted(Needed(false, false, true)), "so does drawing a weapon");
+	Check(CrosshairWanted(Needed(false, true, true)), "and both at once, without arguing");
+
+	// Third person is untouched by the option. The crosshair is the only
+	// indication of where a shot goes there, because the character is not
+	// standing where the camera is.
+	Check(CrosshairWanted(Needed(true, false, false)),
+	      "third person keeps its crosshair whatever the option says");
+
+	// The three original conditions still come first. Something aimed at during
+	// a conversation must not put a crosshair over the dialogue.
+	CrosshairVisibility duringMenu = Needed(false, true, true);
+	duringMenu.menuIsUp = true;
+	Check(!CrosshairWanted(duringMenu), "a menu still hides it, target or no target");
+
+	CrosshairVisibility switchedOff = Needed(false, true, true);
+	switchedOff.enabled = false;
+	Check(!CrosshairWanted(switchedOff), "and switched off still means off");
+
+	CrosshairVisibility heldFrame = Needed(true, true, true);
+	heldFrame.worldFrame = false;
+	Check(!CrosshairWanted(heldFrame), "and a held picture still means no crosshair");
 
 	// Ordinary values pass through, and the width is the size at one metre
 	// carried out to the distance: 0.025 at ten metres is a quarter of a metre
@@ -714,6 +770,74 @@ void TestCrosshair() {
 	const CrosshairPlacement both = PlaceCrosshair(-3.0f, 900.0f);
 	Check(Near(both.distanceMetres, 0.3f) && Near(both.widthMetres, 0.15f),
 	      "a nonsense pair clamps in both directions independently");
+}
+
+void TestCrosshairCutout() {
+	std::printf("How much of the flat layer the crosshair takes with it\n");
+
+	using obvr::camera::CrosshairSourcePixels;
+	using obvr::camera::kCrosshairSourceLargestShare;
+	using obvr::camera::kCrosshairSourceSmallestShare;
+
+	// The measurement this replaced a constant with. A run at 5696x3164 lifted
+	// a 96-pixel square - three per cent of the height, where the same 96 had
+	// been over ten per cent on the ordinary picture it was chosen against. The
+	// game's own crosshair had grown with the frame and the square had not,
+	// which is why fragments were left behind while sneaking.
+	Check(CrosshairSourcePixels(3164, 3.03f) == 94,
+	      "the old fixed 96 was about three per cent of that reported height");
+
+	// Six per cent of that same height is nearly twice the square.
+	const UInt32 wide = CrosshairSourcePixels(3164, 6.0f);
+	Check(wide == 188, "six per cent of 3164 is 188 pixels");
+	Check(wide > 96 * 2 - 10, "which is roughly twice what was being lifted before");
+
+	// THE POINT OF THE CHANGE: the same setting gives the same fraction of the
+	// picture at any resolution, so a value found once stays right.
+	//
+	// Within a couple of pixels rather than exactly: the size is floored and
+	// then pulled to an even number, so doubling the height gives 378 where
+	// twice 188 is 376. That is rounding, not drift - the fraction is what is
+	// being held fixed, and two pixels of a 380-pixel square is nothing.
+	const auto NearPixels = [](UInt32 a, UInt32 b) { return a > b ? a - b <= 2 : b - a <= 2; };
+
+	Check(NearPixels(CrosshairSourcePixels(1582, 6.0f), wide / 2),
+	      "half the height, half the square - the share is what is fixed now");
+	Check(NearPixels(CrosshairSourcePixels(6328, 6.0f), wide * 2),
+	      "and twice the height, twice the square");
+
+	// Even, because the square is centred by halving it. An odd size sits half a
+	// pixel off centre, which is exactly how a one-pixel line gets left behind.
+	for (UInt32 height = 1000; height < 1010; ++height) {
+		Check((CrosshairSourcePixels(height, 6.0f) & 1u) == 0, "the square is always even");
+	}
+
+	// A height of zero means the size is not known yet, and the caller reads
+	// zero as "lift nothing".
+	Check(CrosshairSourcePixels(0, 6.0f) == 0, "an unknown height lifts nothing");
+
+	// Both clamps. Below the low end the lift stops covering the crosshair;
+	// above the high end it starts taking the name of whatever is being looked
+	// at, which is drawn just underneath.
+	Check(CrosshairSourcePixels(3164, 0.0f) ==
+	          CrosshairSourcePixels(3164, kCrosshairSourceSmallestShare),
+	      "a share of nothing is clamped to the smallest useful one");
+	Check(CrosshairSourcePixels(3164, -5.0f) ==
+	          CrosshairSourcePixels(3164, kCrosshairSourceSmallestShare),
+	      "and a negative share with it");
+	Check(CrosshairSourcePixels(3164, 90.0f) ==
+	          CrosshairSourcePixels(3164, kCrosshairSourceLargestShare),
+	      "an absurd share is clamped before it lifts half the screen");
+
+	// NaN fails every comparison it appears in, so the clamp is written to
+	// catch it rather than let it through into the rectangle.
+	Check(CrosshairSourcePixels(3164, std::numeric_limits<float>::quiet_NaN()) ==
+	          CrosshairSourcePixels(3164, kCrosshairSourceSmallestShare),
+	      "a NaN share is clamped rather than passed on");
+
+	// A tiny picture still lifts something. Zero is reserved for "not known".
+	Check(CrosshairSourcePixels(40, 1.0f) >= 8, "a small picture still lifts a usable square");
+	Check(CrosshairSourcePixels(40, 1.0f) != 0, "and specifically not nothing");
 }
 
 void TestCrosshairDepth() {
@@ -1594,6 +1718,7 @@ int main() {
 	TestStereoEyeStep();
 	std::printf("\n");
 	TestCrosshair();
+	TestCrosshairCutout();
 	TestCrosshairDepth();
 	std::printf("\n");
 	TestLayoutProbeDue();

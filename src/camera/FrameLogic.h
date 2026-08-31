@@ -438,7 +438,40 @@ EyeStep StereoEyeStep(float half, bool firstIsLeft);
 // a menu, over a world the engine is still drawing. The crosshair stayed up
 // through every conversation, which is what a player reported. Nothing is
 // aimed while a menu is open, whatever the world behind it is doing.
-bool CrosshairWanted(bool enabled, bool worldFrame, bool menuIsUp);
+struct CrosshairVisibility {
+	// The three that have always decided this.
+	bool enabled = false;
+	bool worldFrame = false;
+	bool menuIsUp = false;
+
+	// Whether the crosshair should stay out of the way until it is of use.
+	//
+	// A crosshair is an aiming aid, and in a headset it is also a small bright
+	// thing permanently in the middle of the view. Off unless it is doing its
+	// job is a reasonable way to want it, and it is the setting this struct was
+	// introduced for.
+	bool onlyWhenNeeded = false;
+
+	// Only first person is affected. In third person the crosshair is the only
+	// indication of where a shot goes at all, since the character is not
+	// standing where the camera is - hiding it there would take away something
+	// the view does not otherwise provide.
+	bool thirdPerson = false;
+
+	// Something activatable is under the crosshair, which is exactly when
+	// Oblivion puts a context icon and a name on screen. The same reference the
+	// depth is taken from, so this costs nothing extra to know.
+	bool somethingAimedAt = false;
+
+	// A weapon or spell is readied. Also true when the state could not be read
+	// at all - see game::WeaponState, and the note there on why unknown leans
+	// towards showing: a crosshair wrongly present is a much smaller fault than
+	// one wrongly missing while somebody is trying to shoot.
+	bool weaponDrawn = false;
+};
+
+// Whether the crosshair quad is shown this frame.
+bool CrosshairWanted(const CrosshairVisibility& visibility);
 
 // Where the crosshair quad goes and how big it is there.
 //
@@ -463,6 +496,33 @@ inline constexpr float kCrosshairSmallestAtOneMetre = 0.002f;
 inline constexpr float kCrosshairLargestAtOneMetre = 0.5f;
 
 CrosshairPlacement PlaceCrosshair(float distanceMetres, float sizeAtOneMetre);
+
+// How big a square to lift out of the 2D layer, in pixels of the size the game
+// believes it drew in.
+//
+// A SHARE RATHER THAN A COUNT OF PIXELS, and that is a correction rather than a
+// preference. The setting used to be an absolute 96 pixels, which was chosen
+// while looking at an ordinary picture - and Oblivion's interface scales with
+// the frame, so the same 96 covers less and less of the crosshair as the
+// resolution rises. On a 5696x3164 layout it is three per cent of the height,
+// where on a 1600x900 one it was over ten, and the crosshair the game draws has
+// grown by the same factor the square has not. What was left over showed as
+// fragments in the middle of the flat layer - reported from the headset while
+// sneaking, where the icon is at its largest.
+//
+// So the square now follows the picture, and a value that is right stays right
+// when the resolution changes.
+//
+// Measured against the HEIGHT, which on every aspect ratio Oblivion is run at
+// is the smaller dimension - so the square stays inside the picture rather than
+// growing past the top and bottom on a wide one.
+inline constexpr float kCrosshairSourceSmallestShare = 1.0f;
+inline constexpr float kCrosshairSourceLargestShare = 10.0f;
+
+// Ten per cent is the upper end for a reason rather than for caution: the name
+// of whatever is being looked at is drawn just below the crosshair, and a
+// square much larger than this starts lifting that text along with it.
+UInt32 CrosshairSourcePixels(UInt32 believedHeight, float sharePercent);
 
 // How far away the thing under the crosshair is, in metres.
 //

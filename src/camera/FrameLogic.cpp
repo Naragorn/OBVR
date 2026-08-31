@@ -161,8 +161,14 @@ EyeStep StereoEyeStep(float half, bool firstIsLeft) {
 	return EyeStep{first, -2.0f * first};
 }
 
-bool CrosshairWanted(bool enabled, bool worldFrame, bool menuIsUp) {
-	return enabled && worldFrame && !menuIsUp;
+bool CrosshairWanted(const CrosshairVisibility& visibility) {
+	if (!visibility.enabled || !visibility.worldFrame || visibility.menuIsUp) {
+		return false;
+	}
+	if (!visibility.onlyWhenNeeded || visibility.thirdPerson) {
+		return true;
+	}
+	return visibility.somethingAimedAt || visibility.weaponDrawn;
 }
 
 CrosshairPlacement PlaceCrosshair(float distanceMetres, float sizeAtOneMetre) {
@@ -184,6 +190,37 @@ CrosshairPlacement PlaceCrosshair(float distanceMetres, float sizeAtOneMetre) {
 	// would tie the two together, so a distance the player raised would come
 	// back as a crosshair that also changed size.
 	return CrosshairPlacement{distance, size * distance};
+}
+
+UInt32 CrosshairSourcePixels(UInt32 believedHeight, float sharePercent) {
+	if (believedHeight == 0) {
+		return 0;
+	}
+
+	float share = sharePercent;
+	if (!(share > kCrosshairSourceSmallestShare)) {
+		// Written so a NaN lands here rather than passing through: it fails the
+		// comparison, and a NaN carried into the rectangle would give a square
+		// with no corners and a lift that silently does nothing.
+		share = kCrosshairSourceSmallestShare;
+	} else if (share > kCrosshairSourceLargestShare) {
+		share = kCrosshairSourceLargestShare;
+	}
+
+	UInt32 pixels = static_cast<UInt32>(static_cast<float>(believedHeight) * share / 100.0f);
+
+	// Even, because the square is centred by halving it. An odd size would sit
+	// half a pixel off centre, which is invisible on its own and exactly the
+	// sort of thing that leaves a one-pixel line of the old crosshair behind.
+	pixels &= ~1u;
+
+	// A floor, so a tiny picture still lifts something rather than nothing. The
+	// caller treats zero as "do not lift", and that answer is reserved for a
+	// height of zero, which means the size is not known yet.
+	if (pixels < 8) {
+		pixels = 8;
+	}
+	return pixels;
 }
 
 float CrosshairDepth(const CrosshairDepthInput& input) {

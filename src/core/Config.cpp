@@ -367,8 +367,10 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.tracker.crosshairSizeAtOneMetre =
 		ReadFloat("Render", "CrosshairSizeAtOneMetre",
 	              config.tracker.crosshairSizeAtOneMetre, path);
-	config.tracker.crosshairSourcePixels = ReadUInt(
-		"Render", "CrosshairSourcePixels", config.tracker.crosshairSourcePixels, path);
+	config.tracker.crosshairSourceShare =
+		ReadFloat("Render", "CrosshairSourceShare", config.tracker.crosshairSourceShare, path);
+	config.tracker.crosshairOnlyWhenNeeded = ReadBool(
+		"Render", "CrosshairOnlyWhenNeeded", config.tracker.crosshairOnlyWhenNeeded, path);
 	config.look.blockVerticalLook =
 		ReadBool("Look", "BlockVerticalLook", config.look.blockVerticalLook, path);
 	config.aimFollowsGaze =

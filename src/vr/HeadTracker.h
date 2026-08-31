@@ -411,14 +411,32 @@ struct TrackerSettings {
 	// the units of the rest of the section. 0.025 is about 1.4 degrees.
 	float crosshairSizeAtOneMetre = 0.025f;
 
-	// How big a square, centred on the layout the game believes it drew in, is
-	// taken. A setting rather than a constant because the context icons are
-	// larger than the plain cross and neither size is written down anywhere
-	// OBVR can read it: too small clips the icons, too large lifts whatever
-	// else is near the middle of the screen.
-	// 96 rather than 64: at 64 a few pixels of the flat crosshair were left
-	// behind in the middle of the layer, reported from the headset.
-	UInt32 crosshairSourcePixels = 96;
+	// Whether the crosshair stays out of the way until it is of use: in first
+	// person it then appears only while something activatable is under it - the
+	// moment Oblivion would put a context icon and a name on screen - or while
+	// a weapon or spell is readied.
+	//
+	// Third person is left alone either way. There the crosshair is the only
+	// indication of where a shot goes, because the character is not standing
+	// where the camera is.
+	bool crosshairOnlyWhenNeeded = false;
+
+	// How big a square is lifted out of the 2D layer, as a percentage of the
+	// height the game believes it drew in.
+	//
+	// A share rather than a count of pixels, because Oblivion's interface
+	// scales with the frame. The old setting was an absolute 96 pixels, picked
+	// while looking at an ordinary picture; on a 5696x3164 layout that is three
+	// per cent of the height where it had been over ten, so the square stopped
+	// covering the crosshair the game had grown to match. The leftovers showed
+	// as fragments in the middle of the flat layer, worst while sneaking, where
+	// the icon is largest.
+	//
+	// 6.0 is roughly twice the old square at the resolution it was reported
+	// from. It is an estimate rather than a measurement - the icon's real size
+	// is not written down anywhere OBVR can read - so it is in the settings
+	// menu, where it can be turned up until nothing is left behind.
+	float crosshairSourceShare = 6.0f;
 
 	// Oblivion units per metre, for converting the head offset.
 	//

@@ -240,6 +240,13 @@ bool g_cameraWorldValid = false;
 // several readings rather than one.
 constexpr UInt32 kCrosshairProbeWindow = 300;
 
+// Whether something activatable was under the crosshair on the last camera
+// pass - which is exactly when Oblivion puts a context icon and a name on
+// screen, and so exactly when the crosshair is of use to somebody who asked
+// for it only then. The same reference the depth is taken from, so knowing
+// this costs nothing.
+bool g_crosshairHasTarget = false;
+
 bool g_crosshairProbeIntroduced = false;
 UInt32 g_crosshairProbeFrames = 0;
 UInt32 g_crosshairProbeWithMenu = 0;
@@ -1428,9 +1435,21 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// Menus=world a dialogue is delivered in stereo, so worldFrame is true
 	// with a menu wide open, and the crosshair used to hang there through
 	// every conversation.
-	const bool crosshairWanted =
-		CrosshairWanted(config.tracker.crosshair, worldFrame,
-	                    config.tracker.showMenus && game::IsMenuMode());
+	CrosshairVisibility visibility;
+	visibility.enabled = config.tracker.crosshair;
+	visibility.worldFrame = worldFrame;
+	visibility.menuIsUp = config.tracker.showMenus && game::IsMenuMode();
+	visibility.onlyWhenNeeded = config.tracker.crosshairOnlyWhenNeeded;
+	visibility.thirdPerson = ReadIsThirdPerson();
+	visibility.somethingAimedAt = g_crosshairHasTarget;
+
+	// Unknown counts as drawn. A crosshair wrongly present is a much smaller
+	// fault than one wrongly missing while somebody is lining up a shot, so the
+	// case OBVR cannot read leans towards showing it.
+	visibility.weaponDrawn =
+		game::ReadPlayerWeaponState() != game::WeaponState::Sheathed;
+
+	const bool crosshairWanted = CrosshairWanted(visibility);
 
 	// Oblivion's own crosshair, lifted out of the captured layer and into the
 	// depth quad - which is also what takes it out of the flat one, so it is
@@ -1443,10 +1462,17 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		UInt32 believedWidth = 0;
 		UInt32 believedHeight = 0;
 		render::GameBelievedSize(believedWidth, believedHeight);
+
+		// The square follows the picture rather than being a fixed count of
+		// pixels - Oblivion's interface scales with the frame, and a fixed
+		// square stopped covering the crosshair as the resolution rose.
+		const UInt32 sourcePixels = CrosshairSourcePixels(
+			believedHeight > 0 ? believedHeight : g_hudLayer.CaptureHeight(),
+			config.tracker.crosshairSourceShare);
+
 		g_crosshairLayer.TakeFromHud(render::GetGameDevice(), g_hudLayer.CaptureSurface(),
 		                             g_hudLayer.CaptureWidth(), g_hudLayer.CaptureHeight(),
-		                             believedWidth, believedHeight,
-		                             config.tracker.crosshairSourcePixels);
+		                             believedWidth, believedHeight, sourcePixels);
 	}
 
 	// The depth was decided in the camera pass, where the camera and the frame
@@ -1508,15 +1534,27 @@ void MaybePollRecenter() {
 void UpdateCrosshairDepth(const Config& config, float deltaSeconds) {
 	const float fallback = config.tracker.crosshairDistanceMetres;
 
+	// Read whenever anything wants it, not only for the depth. Two features now
+	// rest on the same reference - where the crosshair sits, and whether it is
+	// shown at all - and tying the read to the first would have left the second
+	// silently dead whenever the depth was switched off.
+	const bool wantTarget = config.tracker.crosshairDynamic ||
+	                        config.tracker.crosshairOnlyWhenNeeded ||
+	                        config.tracker.crosshairProbe;
+
+	const game::CrosshairTarget target =
+		wantTarget ? game::ReadCrosshairTarget() : game::CrosshairTarget{};
+	g_crosshairHasTarget = target.haveRef;
+
 	if (!config.tracker.crosshairDynamic) {
 		// Straight to the fixed distance rather than eased towards it. Turning
 		// the feature off in the settings menu should show the difference at
 		// once, or the comparison it exists for cannot be made.
 		g_crosshairDepthMetres = fallback;
-		return;
+		if (!config.tracker.crosshairProbe) {
+			return;
+		}
 	}
-
-	const game::CrosshairTarget target = game::ReadCrosshairTarget();
 
 	CrosshairDepthInput input;
 	input.haveTarget = target.haveRef && g_cameraWorldValid;
@@ -1528,14 +1566,19 @@ void UpdateCrosshairDepth(const Config& config, float deltaSeconds) {
 
 	const float wanted = CrosshairDepth(input);
 
-	// The first frame arrives rather than eases. Easing from zero would slide
-	// the crosshair out from the wearer's face on every load.
-	if (g_crosshairDepthMetres <= 0.0f) {
-		g_crosshairDepthMetres = wanted;
-	} else {
-		g_crosshairDepthMetres =
-			Approach(g_crosshairDepthMetres, wanted, config.tracker.crosshairDepthSpeed,
-			         deltaSeconds);
+	// Worked out even with the dynamic depth switched off, because the probe
+	// reports it - but not APPLIED then, or turning the feature off while the
+	// probe ran would quietly turn it back on.
+	if (config.tracker.crosshairDynamic) {
+		// The first frame arrives rather than eases. Easing from zero would
+		// slide the crosshair out from the wearer's face on every load.
+		if (g_crosshairDepthMetres <= 0.0f) {
+			g_crosshairDepthMetres = wanted;
+		} else {
+			g_crosshairDepthMetres =
+				Approach(g_crosshairDepthMetres, wanted, config.tracker.crosshairDepthSpeed,
+				         deltaSeconds);
+		}
 	}
 
 	if (!config.tracker.crosshairProbe) {
