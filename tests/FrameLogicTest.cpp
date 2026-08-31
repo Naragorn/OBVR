@@ -1056,43 +1056,56 @@ void TestAimPitchWanted() {
 
 	using obvr::camera::AimPitchWanted;
 
-	Check(AimPitchWanted(true, true, false, false),
+	Check(AimPitchWanted(true, true, false, false, false),
 	      "switched on, headset delivering, first person, no menu: the gaze aims");
 
-	Check(!AimPitchWanted(false, true, false, false), "switched off, nothing is written");
+	Check(!AimPitchWanted(false, true, false, false, false), "switched off, nothing is written");
 
 	// Without a headset the head decides nothing, so the mouse is still the
 	// only way to aim. Writing a pitch then would take the player's aim away
 	// on a machine that never asked for VR.
-	Check(!AimPitchWanted(true, false, false, false),
+	Check(!AimPitchWanted(true, false, false, false, false),
 	      "no headset: the mouse keeps the aim it has always had");
 
-	// The real limit, and the reason it is here rather than assumed: in third
-	// person LookControl turns the camera's tilt into camera height, so a
-	// pitch written into the player could come back as height a frame later.
-	Check(!AimPitchWanted(true, true, true, false),
-	      "third person is left alone, because the tilt is read back there");
+	// Third person is now a setting rather than a rule. It was held back on an
+	// argument - LookControl turns camera tilt into camera height there, so a
+	// written pitch might come back as height a frame later - and that argument
+	// was never measured, while the cost of it was third person having no head
+	// aiming at all.
+	Check(!AimPitchWanted(true, true, true, false, false),
+	      "third person is left alone when it is switched off");
+	Check(AimPitchWanted(true, true, true, true, false),
+	      "and aims when it is switched on");
+
+	// The permission is about third person only. It must not become a way past
+	// any of the other gates.
+	Check(!AimPitchWanted(false, true, true, true, false),
+	      "allowing third person does not switch the feature on");
+	Check(!AimPitchWanted(true, false, true, true, false),
+	      "nor does it conjure a headset");
+	Check(!AimPitchWanted(true, true, true, true, true), "nor open a menu");
 
 	// The trap the crosshair fell into first: with Menus=world a dialogue is a
 	// menu over a world that is still being drawn, so "the world is live" is
 	// not the same question as "nothing is open".
-	Check(!AimPitchWanted(true, true, false, true), "nothing is aimed while a menu is up");
+	Check(!AimPitchWanted(true, true, false, false, true), "nothing is aimed while a menu is up");
 
-	// Every remaining combination refuses, which is what "all four must hold"
-	// means. Written as a sweep rather than as five more lines, so that a gate
-	// added later without a test still gets exercised here.
-	for (int bits = 0; bits < 16; ++bits) {
+	// Every remaining combination, which is what "all of them must hold" means.
+	// Written as a sweep rather than as more lines, so that a gate added later
+	// without a test still gets exercised here.
+	for (int bits = 0; bits < 32; ++bits) {
 		const bool enabled = (bits & 1) != 0;
 		const bool headset = (bits & 2) != 0;
 		const bool third = (bits & 4) != 0;
-		const bool menu = (bits & 8) != 0;
-		const bool expected = enabled && headset && !third && !menu;
-		if (AimPitchWanted(enabled, headset, third, menu) != expected) {
-			Check(false, "one of the sixteen gate combinations disagrees");
+		const bool allowThird = (bits & 8) != 0;
+		const bool menu = (bits & 16) != 0;
+		const bool expected = enabled && headset && !menu && (!third || allowThird);
+		if (AimPitchWanted(enabled, headset, third, allowThird, menu) != expected) {
+			Check(false, "one of the thirty-two gate combinations disagrees");
 			return;
 		}
 	}
-	Check(true, "all sixteen combinations of the four gates agree");
+	Check(true, "all thirty-two combinations of the five gates agree");
 }
 
 void TestPlayerPitchForGaze() {
@@ -1217,13 +1230,18 @@ void TestAimYaw() {
 	// last one is the difference between the two halves: the pitch follows the
 	// head always, the body only while something is being aimed, and stands
 	// still for ordinary looking around.
-	Check(AimYawWanted(true, true, false, false, true), "aiming with the attack held turns the body");
-	Check(!AimYawWanted(true, true, false, false, false),
+	Check(AimYawWanted(true, true, false, false, false, true),
+	      "aiming with the attack held turns the body");
+	Check(!AimYawWanted(true, true, false, false, false, false),
 	      "merely looking around does not turn the body");
-	Check(!AimYawWanted(false, true, false, false, true), "switched off, nothing turns");
-	Check(!AimYawWanted(true, false, false, false, true), "no headset, nothing turns");
-	Check(!AimYawWanted(true, true, true, false, true), "third person is left alone here too");
-	Check(!AimYawWanted(true, true, false, true, true), "and nothing turns while a menu is up");
+	Check(!AimYawWanted(false, true, false, false, false, true), "switched off, nothing turns");
+	Check(!AimYawWanted(true, false, false, false, false, true), "no headset, nothing turns");
+	Check(!AimYawWanted(true, true, true, false, false, true),
+	      "third person turns nothing while it is switched off");
+	Check(AimYawWanted(true, true, true, true, false, true),
+	      "and turns the body once it is switched on");
+	Check(!AimYawWanted(true, true, false, false, true, true),
+	      "and nothing turns while a menu is up");
 
 	// A head that is not turned leaves the heading exactly as the engine had
 	// it. Anything else would nudge the character every frame it aimed.
@@ -1345,6 +1363,80 @@ void TestYawWriteLanded() {
 	// two outcomes with the same room on each side.
 	Check(YawWriteLanded(1.0f, 1.0f, 2.0f), "a large step judges the same way");
 	Check(!YawWriteLanded(1.0f, 3.0f, 2.0f), "and its opposite outcome too");
+}
+
+void TestAimYawComesHome() {
+	std::printf("The body coming back after the shot\n");
+
+	using obvr::camera::AdvanceAimReturnHold;
+	using obvr::camera::AimYawGoal;
+	using obvr::camera::AimYawRemaining;
+	using obvr::camera::kAimReturnHoldSeconds;
+	using obvr::camera::PlayerYawForGaze;
+	using obvr::math::WrapAngle;
+
+	const auto Near = [](float a, float b, float tolerance = 1e-4f) {
+		return a - b < tolerance && b - a < tolerance;
+	};
+
+	// While aiming the body goes to the gaze; once it stops, back to nothing.
+	Check(Near(AimYawGoal(true, 0.9f), 0.9f), "while aiming the goal is the gaze");
+	Check(Near(AimYawGoal(false, 0.9f), 0.0f), "and afterwards it is the body's own heading");
+
+	// The hold. Oblivion fires on the release, so the aimed heading has to
+	// survive long enough for the arrow to leave along it.
+	Check(Near(AdvanceAimReturnHold(0.0f, true, 0.016f), kAimReturnHoldSeconds),
+	      "aiming keeps the hold charged");
+	Check(Near(AdvanceAimReturnHold(kAimReturnHoldSeconds, false, 0.1f),
+	           kAimReturnHoldSeconds - 0.1f),
+	      "letting go starts it counting down");
+	Check(AdvanceAimReturnHold(0.05f, false, 0.1f) == 0.0f, "and it stops at nothing");
+	Check(AdvanceAimReturnHold(0.05f, false, 100.0f) == 0.0f, "however long the frame was");
+
+	// A frame with no measured time spends none of it. Better a return that
+	// starts a frame late than one that starts before the arrow has left.
+	Check(Near(AdvanceAimReturnHold(0.2f, false, 0.0f), 0.2f),
+	      "a frame with no time spends none of the hold");
+	Check(Near(AdvanceAimReturnHold(0.2f, false, -1.0f), 0.2f), "and neither does a negative one");
+
+	// The fault this fixes, run end to end. Aim thirty degrees to the right,
+	// let go, look back to centre - and the body has to end up facing where it
+	// started, or walking goes somewhere the wearer is not looking.
+	const auto view = [](float rotZ, float offset, float headYaw) {
+		return WrapAngle(-rotZ - offset + headYaw);
+	};
+
+	const float startRotZ = 2.0f;
+	float rotZ = startRotZ;
+	float offset = 0.0f;
+
+	// Aiming: the body comes round to a head turned 0.5 radians.
+	const float aimedHead = 0.5f;
+	const float out = AimYawRemaining(AimYawGoal(true, aimedHead), offset);
+	rotZ = PlayerYawForGaze(rotZ, out);
+	offset = WrapAngle(offset + out);
+	Check(!Near(rotZ, startRotZ), "aiming really did move the body");
+
+	// Released, and the head comes back to centre over the same frames the
+	// body unwinds - which is the real case, and the one where a return that
+	// only worked with the head held still would show up.
+	for (int frame = 0; frame < 60; ++frame) {
+		const float head = aimedHead * (1.0f - static_cast<float>(frame) / 59.0f);
+		const float expected = view(rotZ, offset, head);
+
+		const float home = AimYawRemaining(AimYawGoal(false, head), offset) * 0.2f;
+		rotZ = PlayerYawForGaze(rotZ, home);
+		offset = WrapAngle(offset + home);
+
+		if (!Near(view(rotZ, offset, head), expected)) {
+			Check(false, "the view moved while the body came home");
+			return;
+		}
+	}
+	Check(true, "the view holds still on every frame of the way home");
+	Check(Near(offset, 0.0f, 0.01f), "the body ends up owing nothing");
+	Check(Near(WrapAngle(rotZ - startRotZ), 0.0f, 0.01f),
+	      "and back on the heading it started from, so walking goes where it did before");
 }
 
 void TestAimYawHoldsTheView() {
@@ -1494,6 +1586,8 @@ int main() {
 	TestAimYawRemaining();
 	std::printf("\n");
 	TestYawWriteLanded();
+	std::printf("\n");
+	TestAimYawComesHome();
 	std::printf("\n");
 	TestAimYawHoldsTheView();
 	std::printf("\n");
