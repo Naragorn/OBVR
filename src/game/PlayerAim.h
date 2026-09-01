@@ -157,9 +157,10 @@ SInt32 ReadPlayerAction();
 // known. The offset is the same 0x2C the crosshair already reads references at,
 // so this adds no new address to keep correct.
 //
-// The zero vector when the player cannot be reached, which a caller has to
-// treat as "no centre" rather than as the world origin - turning a camera about
-// 0,0,0 would throw it across the map.
-NiPoint3 PlayerWorldPosition();
+// False when the player cannot be reached, and the caller must then leave the
+// camera alone. Said with a return value rather than with a zero vector,
+// because a caller that mistook "unknown" for the world origin would turn the
+// camera about a point half a map away.
+bool PlayerWorldPosition(NiPoint3& out);
 
 }  // namespace obvr::game

@@ -444,4 +444,34 @@ float PlayerPitchForGaze(float viewSinPitch) {
 	return radians;
 }
 
+NiPoint3 AimArcCorrection(const AimArcInput& input) {
+	if (!input.centreKnown || input.bodyOffset == 0.0f) {
+		return NiPoint3{0.0f, 0.0f, 0.0f};
+	}
+
+	// The arm: from the point the body turns about to where the eye stands,
+	// flattened, because the turn is about the vertical and cannot lift or
+	// lower anything.
+	const float armX = input.cameraPosition.x - input.turnCentre.x;
+	const float armY = input.cameraPosition.y - input.turnCentre.y;
+
+	// A camera standing on the axis is not swung by the turn and needs nothing
+	// putting back. Worth its own exit rather than falling out of the
+	// arithmetic, because it is also what a centre read from a torn-down actor
+	// would look like, and doing nothing is the right answer to both.
+	if (armX == 0.0f && armY == 0.0f) {
+		return NiPoint3{0.0f, 0.0f, 0.0f};
+	}
+
+	// Backwards by the offset - the same rotation the base gets, written the
+	// same way so the two can only ever be wrong together.
+	const float cosine = math::Cos(input.bodyOffset);
+	const float sine = -math::Sin(input.bodyOffset);
+
+	const float turnedX = armX * cosine - armY * sine;
+	const float turnedY = armX * sine + armY * cosine;
+
+	return NiPoint3{turnedX - armX, turnedY - armY, 0.0f};
+}
+
 }  // namespace obvr::camera

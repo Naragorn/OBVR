@@ -1700,6 +1700,102 @@ void TestAimYaw() {
 	Check(true, "every heading and turn together stays inside one circle");
 }
 
+void TestAimArcCorrection() {
+	std::printf("Putting the eye back on the arc the body's turn walked it along\n");
+
+	using obvr::camera::AimArcCorrection;
+	using obvr::camera::AimArcInput;
+	using obvr::NiPoint3;
+	using obvr::math::kPi;
+
+	const auto Near = [](float a, float b, float tolerance = 1e-4f) {
+		return a - b < tolerance && b - a < tolerance;
+	};
+
+	// An arm of 4 units along +x from a centre at the origin, which is the
+	// shape the game gives: the eye standing a few units off the axis the body
+	// turns about.
+	const auto Arm = [](float x, float y, float offset) {
+		AimArcInput input;
+		input.cameraPosition = NiPoint3{x, y, 100.0f};
+		input.turnCentre = NiPoint3{0.0f, 0.0f, 0.0f};
+		input.centreKnown = true;
+		input.bodyOffset = offset;
+		return AimArcCorrection(input);
+	};
+
+	// Nothing to undo. Both refusals matter: the offset is zero for all but a
+	// few frames of a shot, and the centre is unknown whenever the player
+	// cannot be reached.
+	Check(Near(Arm(4.0f, 0.0f, 0.0f).x, 0.0f) && Near(Arm(4.0f, 0.0f, 0.0f).y, 0.0f),
+	      "a body holding no turn moves the eye not at all");
+
+	AimArcInput noCentre;
+	noCentre.cameraPosition = NiPoint3{4.0f, 0.0f, 100.0f};
+	noCentre.centreKnown = false;
+	noCentre.bodyOffset = 0.5f;
+	Check(Near(AimArcCorrection(noCentre).x, 0.0f) && Near(AimArcCorrection(noCentre).y, 0.0f),
+	      "and an unreadable centre leaves the camera alone rather than guessing one");
+
+	// The eye standing exactly on the axis is not swung at all, so there is
+	// nothing to put back however far the body turns.
+	Check(Near(Arm(0.0f, 0.0f, 1.0f).x, 0.0f) && Near(Arm(0.0f, 0.0f, 1.0f).y, 0.0f),
+	      "an eye on the axis needs no correction");
+
+	// A quarter turn, where the answer can be written down. The correction
+	// turns the arm BACKWARDS by the offset, so an arm along +x comes back to
+	// -y, and the move is the difference between the two.
+	const NiPoint3 quarter = Arm(4.0f, 0.0f, kPi * 0.5f);
+	Check(Near(quarter.x, -4.0f) && Near(quarter.y, -4.0f),
+	      "a quarter turn moves the eye from +x to -y");
+
+	// The other way round, which is the same size in the other direction.
+	const NiPoint3 back = Arm(4.0f, 0.0f, -kPi * 0.5f);
+	Check(Near(back.x, -4.0f) && Near(back.y, 4.0f), "and turning the other way mirrors it");
+
+	// The correction is a ROTATION about the centre, so wherever it puts the
+	// eye, it puts it the same distance out. This is the property that makes it
+	// safe: it can never push the camera into or out of the world.
+	for (int step = -6; step <= 6; ++step) {
+		const float offset = static_cast<float>(step) * 0.4f;
+		const NiPoint3 move = Arm(3.0f, 4.0f, offset);
+		const float x = 3.0f + move.x;
+		const float y = 4.0f + move.y;
+		if (!Near(x * x + y * y, 25.0f, 0.01f)) {
+			Check(false, "the corrected eye stays the same distance from the centre");
+			return;
+		}
+	}
+	Check(true, "the corrected eye stays the same distance from the centre, at every angle");
+
+	// The turn is about the vertical, so it cannot change how high the eye
+	// stands - and z belongs to the head tracking, which would fight anything
+	// written here.
+	Check(Near(Arm(4.0f, 0.0f, 1.0f).z, 0.0f), "and it never touches the height");
+
+	// A centre away from the origin, because the game's is: the arm is the
+	// difference, not the camera's own position.
+	AimArcInput offCentre;
+	offCentre.cameraPosition = NiPoint3{2044.0f, 4676.0f, 176.0f};
+	offCentre.turnCentre = NiPoint3{2040.0f, 4676.0f, 57.0f};
+	offCentre.centreKnown = true;
+	offCentre.bodyOffset = kPi * 0.5f;
+	const NiPoint3 shifted = AimArcCorrection(offCentre);
+	Check(Near(shifted.x, -4.0f) && Near(shifted.y, -4.0f),
+	      "the arm is measured from the centre, not from the world origin");
+
+	// The size of the step this exists to cancel, against the numbers the
+	// headset actually produced: an arm of 4.58 units and a give-back of 33
+	// degrees moved the eye 2.6 units, and the correction has to be that same
+	// 2.6 the other way.
+	const float armLength = 4.58f;
+	const float turn = 33.0f * kPi / 180.0f;
+	const NiPoint3 measured = Arm(armLength, 0.0f, turn);
+	const float moved =
+		obvr::math::Sqrt(measured.x * measured.x + measured.y * measured.y);
+	Check(Near(moved, 2.60f, 0.02f), "and it is the size the log measured: 2.6 units at 33 degrees");
+}
+
 void TestAimYawRemaining() {
 	std::printf("How much turn the body still owes the gaze\n");
 
@@ -1938,6 +2034,8 @@ int main() {
 	TestAimYaw();
 	std::printf("\n");
 	TestAimYawRemaining();
+	std::printf("\n");
+	TestAimArcCorrection();
 	std::printf("\n");
 	TestYawWriteLanded();
 	std::printf("\n");

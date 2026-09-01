@@ -966,4 +966,61 @@ bool YawWriteLanded(float wroteYaw, float engineYawNow, float stepTaken);
 // movement within a frame: about half a degree.
 inline constexpr float kYawLandingMinStep = 0.01f;
 
+// What the body's turn did to where the eye stands, so it can be undone.
+struct AimArcInput {
+	// The camera as the engine placed it this frame, before OBVR has added
+	// anything of its own to it.
+	NiPoint3 cameraPosition{0.0f, 0.0f, 0.0f};
+
+	// The point the body turns about: the player's own position.
+	NiPoint3 turnCentre{0.0f, 0.0f, 0.0f};
+
+	// Whether that centre could be read at all. Without it there is no arc and
+	// no correction - see PlayerWorldPosition for why this is not signalled by
+	// a zero vector.
+	bool centreKnown = false;
+
+	// How much turn the body is currently holding, in radians.
+	float bodyOffset = 0.0f;
+};
+
+// How far to move the camera to put it back where it stood before the body
+// turned underneath it.
+//
+// WHY THIS EXISTS, and it is the last piece of the aim's jump. Turning the body
+// to the gaze moves TWO things about the view, and only one of them was ever
+// put back. The rotation was: the compensation in the camera hook takes the
+// body's turn back out of the base, and reading the result back proved it does
+// so exactly, to a tenth of a degree, in every frame of every shot.
+//
+// The position was not. The first person camera does not stand on the axis the
+// body turns about - it stands about 4.6 units off it, measured two ways that
+// agree - so a turn walks it along an arc. The eye steps sideways while the
+// view holds still, and a viewpoint that steps sideways cannot be told from one
+// that turns. "es ist die ganze view. das ganze bild."
+//
+// MEASURED, not assumed, at both ends:
+//   - the step itself: 1.7 units, eighteen times in nine shots, appearing the
+//     frame the body takes the turn and reversing the frame it gives it back;
+//   - the radius that produces it: 1.71 units of chord at 21.4 degrees needs an
+//     arm of 4.60, and the arm read directly out of a later run - the camera's
+//     placement minus the player's position - is 4.58.
+// One number derived from motion, one read from geometry, agreeing to half a
+// percent. That is the mechanism, not a story that fits.
+//
+// The direction the arm turns is read off the same two sources rather than
+// recalled: PlayerYawForGaze writes rotZ = base - offset, and the view's
+// heading was measured RISING by exactly the offset as the body turned, so a
+// vector fixed to the body turns by +offset in the sense RotationFromHeading
+// builds. Undoing it is therefore the very matrix the rotation compensation
+// already uses, applied to the arm instead of composed onto the base.
+//
+// Horizontal only. The body's turn is about the vertical, so it cannot change
+// how high the eye stands, and touching z here would fight the head tracking
+// for the one axis it owns outright.
+//
+// The zero vector when there is nothing to undo, so the caller can add it
+// unconditionally.
+NiPoint3 AimArcCorrection(const AimArcInput& input);
+
 }  // namespace obvr::camera

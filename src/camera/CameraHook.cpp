@@ -335,6 +335,12 @@ NiPoint3 g_cameraWorldPos{0.0f, 0.0f, 0.0f};
 // position. Together they say what the viewpoint's step is measured against.
 NiPoint3 g_cameraLocalPos{0.0f, 0.0f, 0.0f};
 NiPoint3 g_playerWorldPos{0.0f, 0.0f, 0.0f};
+bool g_playerWorldValid = false;
+
+// What the arc correction moved the eye by this frame, for the trace. Its own
+// variable rather than a recomputation, so what the log shows is the vector
+// that was actually applied.
+NiPoint3 g_aimArcApplied{0.0f, 0.0f, 0.0f};
 
 NiMatrix33 g_cameraWorldRot = NiMatrix33::Identity();
 bool g_cameraWorldValid = false;
@@ -2174,7 +2180,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// lands a frame later than the heading's. The local transform is this
 	// frame's, in step with the offset that has to cancel it.
 	g_cameraLocalPos = cameraNode->localTransform.pos;
-	g_playerWorldPos = game::PlayerWorldPosition();
+	g_playerWorldValid = game::PlayerWorldPosition(g_playerWorldPos);
 	g_cameraWorldRot = cameraNode->worldTransform.rot;
 	g_cameraWorldValid = true;
 
@@ -2247,6 +2253,28 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// camera facing world north for reasons nothing in that path explains.
 	g_menuBaseRot = baseRotation;
 	g_menuBaseVerticalOffset = verticalOffset;
+
+	// The other half of taking the body's turn back out - and the half that was
+	// missing for as long as the aim has jumped.
+	//
+	// The compensation above holds the view's DIRECTION still while the body
+	// turns. Nothing held its POSITION still, and the first person camera does
+	// not stand on the axis the body turns about, so every turn walked the eye
+	// along an arc: 1.7 units sideways, in one frame, eighteen times in nine
+	// traced shots. See AimArcCorrection for the two independent measurements
+	// of the arm that produces it.
+	//
+	// Added to the local position rather than to the world one because that is
+	// what this hook writes and what the scene graph recomputes from. The two
+	// are the same space here, which is measured rather than assumed: the
+	// camera's local and world positions differ only by the head offset OBVR
+	// itself added the frame before, so the node's parent neither rotates the
+	// camera nor moves it, and a world vector can go straight into the local
+	// transform. The head offset below has been relying on exactly that since
+	// positional tracking went in.
+	g_aimArcApplied = AimArcCorrection(AimArcInput{g_cameraLocalPos, g_playerWorldPos,
+	                                               g_playerWorldValid, g_aimBodyOffset});
+	cameraNode->localTransform.pos = cameraNode->localTransform.pos + g_aimArcApplied;
 
 	// The head offset is measured in the camera's own space, so it is carried
 	// over by the base rotation. The vertical look is not: it is a height, and
@@ -2597,7 +2625,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		// mistake this search has already paid for three times.
 		OBVR_LOG("Shot trace %2u: %s action=%d turn=%d | head=%6.1f body=%6.1f weapon=%6.1f "
 		         "| view raw=%7.1f VIEW=%7.1f | EYE %8.2f %8.2f %8.2f "
-		         "| LOCAL %8.2f %8.2f %8.2f | FEET %8.2f %8.2f %8.2f",
+		         "| LOCAL %8.2f %8.2f %8.2f | FEET %8.2f %8.2f | ARC %6.2f %6.2f",
 		         g_shotTraceFrame++, attackHeld ? "held" : "----", game::ReadPlayerAction(),
 		         turnDue ? 1 : 0, static_cast<double>(headYaw * math::kRadiansToDegrees),
 		         static_cast<double>(g_aimBodyOffset * math::kRadiansToDegrees),
@@ -2612,7 +2640,8 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		         static_cast<double>(g_cameraLocalPos.z),
 		         static_cast<double>(g_playerWorldPos.x),
 		         static_cast<double>(g_playerWorldPos.y),
-		         static_cast<double>(g_playerWorldPos.z));
+		         static_cast<double>(g_aimArcApplied.x),
+		         static_cast<double>(g_aimArcApplied.y));
 	}
 
 	// The three pitches side by side. This measured how to make an arrow go
