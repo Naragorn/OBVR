@@ -495,11 +495,13 @@ float NextReleaseClock(float current, const ReleaseClockInput& input) {
 	if (input.attackHeld || input.castTurning) {
 		return kReleaseClockIdle;
 	}
-
-	// Let go. The cast half is allowed to do this only when the window is what
-	// turns the body; once the hook does the turning, a cast starting the clock
+	// Let go. The cast half reaches here two ways: the key window closing, back
+	// when the window itself turned the body, and a spell's turn coming due -
+	// which is the moment the body is handed to the machinery that holds the
+	// turn until the action field says the spell has left.
 	// is what hands the body back to the bow's machinery.
-	if (input.attackWasHeld || (input.castWasOpen && input.castFeedsClock)) {
+	if (input.attackWasHeld || (input.castWasOpen && input.castFeedsClock) ||
+	    input.castTurnDue) {
 		return 0.0f;
 	}
 
@@ -538,6 +540,50 @@ NiPoint3 AimArcCorrection(const AimArcInput& input) {
 	const float turnedY = armX * sine + armY * cosine;
 
 	return NiPoint3{turnedX - armX, turnedY - armY, 0.0f};
+}
+
+
+CastArmDecision NextCastArm(const CastArm& current, const CastArmInput& input) {
+	CastArmDecision decision;
+	decision.next = current;
+
+	// A new cast rearms, whatever was standing. Two casts cannot overlap - the
+	// animation of the first has to end before the second can start - so the
+	// later one is simply the one being watched.
+	if (input.castBegan) {
+		decision.next.seconds = 0.0f;
+		return decision;
+	}
+
+	if (decision.next.seconds < 0.0f) {
+		return decision;
+	}
+
+	decision.next.seconds += input.deltaSeconds;
+
+	// The safety rail first, so a cast that never reports an end cannot leave
+	// this armed for the rest of the run.
+	if (decision.next.seconds > input.limitSeconds) {
+		decision.next.seconds = kCastArmIdle;
+		decision.missed = true;
+		return decision;
+	}
+
+	if (decision.next.seconds < input.turnAfterSeconds) {
+		return decision;
+	}
+
+	// The lead time is up. Either the animation is still running, in which case
+	// the turn goes in now and the spell will leave along it, or it has already
+	// ended and the spell has gone - which is not something to paper over, so
+	// it is reported rather than turned.
+	decision.next.seconds = kCastArmIdle;
+	if (input.actionIsAttack) {
+		decision.turnNow = true;
+	} else {
+		decision.missed = true;
+	}
+	return decision;
 }
 
 }  // namespace obvr::camera

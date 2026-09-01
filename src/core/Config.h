@@ -320,6 +320,24 @@ struct Config {
 	// the log says so and the key window takes over again.
 	bool aimCastAtSpawn = true;
 
+	// How long after a cast begins the heading is turned, in seconds.
+	//
+	// A measurement, not a preference. MagicCaster::CastMagicItem is the start
+	// of the cast; the animation that follows was measured at 53 frames of
+	// Attack, about 0.9 s, and the spell leaves at its end. The turn has to be
+	// standing shortly before that and not for the whole of it, because for
+	// the length of the turn the character walks the way the spell is aimed.
+	//
+	// Too long and the spell leaves before the turn goes in - the log says
+	// "the animation had already ended", and this wants lowering. Too short
+	// and the body is turned for longer than it needs to be, which is felt in
+	// the walking rather than seen in the aim.
+	float aimCastTurnAfterSeconds = 0.70f;
+
+	// A cast that never reports an end - interrupted, or an animation that
+	// does not report - must not leave the turn armed for the rest of the run.
+	float aimCastArmLimitSeconds = 3.0f;
+
 	// The key that opens OBVR's own settings menu in the headset, as a Windows
 	// virtual-key code. 0 disables it entirely.
 	//

@@ -291,28 +291,28 @@ CastWindow g_castWindow{};
 // for, and which of the two things ended it.
 bool g_castReported = false;
 
-// What the cast hook needs to know, published by the camera pass each frame so
-// the hook itself decides nothing it would have to look up.
+// Whether a spell of the player's may be aimed at all, published by the camera
+// pass each frame so the hook itself decides nothing it would have to look up.
 //
-// It runs inside the engine, on a call OBVR does not own, and the less it does
-// there the better: read two values, write one field, leave.
+// The hook runs inside the engine, on a call OBVR does not own, and the less it
+// does there the better: read one value, set one flag, leave.
 bool g_castAimWanted = false;
-float g_castAimStep = 0.0f;
 
-// How often the cast hook has turned the heading, and how many of those say so
-// in the log.
+// Set by the hook when the player's own cast begins, cleared by the camera pass
+// that consumes it. It is a signal that a cast has STARTED - the turn itself is
+// made much later, shortly before the animation ends. See NextCastArm.
+bool g_castBegan = false;
+CastArm g_castArm{};
+
+// How often a spell's turn has been armed and made, and how many of those say
+// so in the log.
 //
 // Counted per cast rather than reported once per run, because "the hook fired"
 // was exactly the claim the one-line version could not support: a single line
 // in a log of seven spells says nothing about the other six.
 UInt32 g_castHookTurns = 0;
+UInt32 g_castMisses = 0;
 constexpr UInt32 kCastHookReports = 5;
-
-// Whether the turn now standing was made by the cast hook rather than by the
-// key window. The return treats the two differently: a bow shot has to wait for
-// the action field to say the arrow has gone, while a spell made inside the
-// hook has already gone by the time anything can look.
-bool g_turnFromCastHook = false;
 
 // Whether the hook actually went in. Without it the setting means nothing and
 // the key window has to go on doing the turning - a refusal to patch must not
@@ -1957,15 +1957,25 @@ void InstallCastHook();
 // THIS IS THE WHOLE OF WHAT THE HOOK EXISTS FOR. A spell leaves along the
 // caster's heading, and so does walking, so aiming by turning the heading makes
 // the character walk the way the spell went for as long as the turn stands.
-// Here the turn does not have to stand: the heading only has to be right while
-// this function runs, so it is set on the way in and given back on the next
-// frame rather than held for the length of a cast animation.
+// What this call is good for is saying WHEN, not WHERE.
 //
-// Runs inside the engine, on a call OBVR does not own. So it reads two values
-// the camera pass has already worked out, writes one field, and leaves - no
-// allocation, no logging on the ordinary path, and nothing that can throw.
+// MagicCaster::CastMagicItem is the start of a cast, and the log says so
+// plainly: the hook fires on a frame whose action field still reads None, and
+// the animation that follows runs 53 frames of Attack before the field turns
+// to AttackFollowThrough. A heading turned here is turned nine tenths of a
+// second before the spell leaves, and given back long before it. Two runs in
+// the headset showed exactly that - spells going forwards while the hook
+// reported turn after turn.
+//
+// So nothing is turned here any more. The call arms a clock, the turn is made
+// shortly before the animation is due to end, and from that moment it is held
+// and returned by the machinery the bow already has. See NextCastArm.
+//
+// Runs inside the engine, on a call OBVR does not own. It reads one value the
+// camera pass has already worked out, sets one flag, and leaves - no
+// allocation, no arithmetic, nothing that can throw.
 extern "C" void __cdecl OBVR_OnMagicCastItem(void* caster) {
-	if (!g_castAimWanted || caster == nullptr || g_aimBodyOffset != 0.0f) {
+	if (!g_castAimWanted || caster == nullptr) {
 		return;
 	}
 
@@ -1982,7 +1992,7 @@ extern "C" void __cdecl OBVR_OnMagicCastItem(void* caster) {
 	// Written down rather than learned - see kPlayerMagicCasterOffset. Learning
 	// it needed a cast OBVR could already prove was the player's, which meant
 	// the cast key held; a spell cast without that key went out unturned. In
-	// the recorded run the offset was not learned until the seventh window, so
+	// one recorded run the offset was not learned until the seventh window, so
 	// six spells left before this could do anything at all, and from the
 	// outside that is indistinguishable from a hook that does not work.
 	const UInt32 delta = reinterpret_cast<UInt32>(caster) - playerAddress;
@@ -1990,38 +2000,7 @@ extern "C" void __cdecl OBVR_OnMagicCastItem(void* caster) {
 		return;
 	}
 
-	game::PlayerRotation rotation{};
-	if (!game::ReadPlayerRotation(rotation)) {
-		return;
-	}
-
-	const float target = PlayerYawForGaze(rotation.yaw, g_castAimStep);
-	if (!game::WritePlayerYaw(target)) {
-		return;
-	}
-
-	// Booked exactly as a step of the key-driven turn is, so everything
-	// downstream keeps working without knowing where the turn came from: the
-	// landing check next frame, the compensation that holds the view still,
-	// and the arc correction that holds the eye still.
-	g_aimBodyOffset = math::WrapAngle(g_aimBodyOffset + g_castAimStep);
-	g_aimYawWrote = target;
-	g_aimYawStepTaken = g_castAimStep;
-	g_aimYawPending = true;
-	g_turnFromCastHook = true;
-
-	// Starts the return's clock. Without this the return refuses to act - it
-	// only ever counts from the attack control going up, and a spell never
-	// touches that control.
-	g_aimSecondsSinceRelease = 0.0f;
-
-	++g_castHookTurns;
-	if (g_castHookTurns <= kCastHookReports) {
-		OBVR_LOG("Aim: the cast hook turned the heading %.1f degrees for the length of the "
-		         "call - cast %u of this run",
-		         static_cast<double>(g_castAimStep * math::kRadiansToDegrees),
-		         g_castHookTurns);
-	}
+	g_castBegan = true;
 }
 
 namespace {
@@ -2614,18 +2593,60 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	const bool castAtSpawn = GetConfig().aimCastAtSpawn && g_castHookInstalled;
 	const bool castTurning = g_castWindow.open && !castAtSpawn;
 
-	// What the hook needs, worked out here so it need work out nothing itself.
+	// Whether a spell of the player's may be aimed at all. The hook asks
+	// nothing beyond this - no head reading, no arithmetic - because it runs
+	// inside a call the engine owns.
+	g_castAimWanted = castAtSpawn && readPlayer && !isThirdPerson &&
+	                  GetConfig().aimCastFollowsGaze &&
+	                  g_headTracker.IsHeadsetConnected() && !game::IsMenuMode();
+
+	// When a spell's heading is turned, which is neither where the cast is made
+	// nor where the engine says it left.
 	//
-	// The step is the whole of the head's turn, not the remainder: with the
-	// window no longer turning the body, there is never a share already handed
-	// over for the hook to subtract.
-	g_castAimWanted = false;
-	if (castAtSpawn && readPlayer && !isThirdPerson && GetConfig().aimCastFollowsGaze &&
-	    g_headTracker.IsHeadsetConnected() && !game::IsMenuMode()) {
-		Heading castHeading{};
-		if (HeadingOf(g_headTracker.GetCameraRotation(), castHeading)) {
-			g_castAimStep = math::Atan2(castHeading.sine, castHeading.cosine);
-			g_castAimWanted = true;
+	// MagicCaster::CastMagicItem is the START of the cast - measured: the hook
+	// fires on a frame whose action field still reads None, and the animation
+	// that follows runs 53 frames of Attack. Turning there is nine tenths of a
+	// second early, and two runs in the headset showed the result: spells going
+	// forwards while the log reported turn after turn.
+	//
+	// Waiting for the field to change instead would be too late. OBVR's own
+	// reading of the bow, in PlayerAim.h, records that on the frame the field
+	// first reads AttackFollowThrough the projectile HAS GONE.
+	//
+	// So the turn goes in a set time after the cast, shortly before the
+	// animation is due to end, and from that moment the bow's own machinery
+	// holds it and gives it back the moment the field says the spell has left.
+	CastArmInput armInput;
+	armInput.castBegan = g_castBegan;
+	armInput.deltaSeconds = deltaSeconds;
+	armInput.turnAfterSeconds = GetConfig().aimCastTurnAfterSeconds;
+	armInput.limitSeconds = GetConfig().aimCastArmLimitSeconds;
+
+	// The action field only while a cast is actually being watched, which is
+	// under a second per spell and never on an ordinary frame.
+	armInput.actionIsAttack =
+		g_castArm.seconds >= 0.0f && game::ReadPlayerAction() == addr::kActionAttack;
+	g_castBegan = false;
+
+	const CastArmDecision castArm = NextCastArm(g_castArm, armInput);
+	g_castArm = castArm.next;
+
+	if (castArm.turnNow) {
+		++g_castHookTurns;
+		if (g_castHookTurns <= kCastHookReports) {
+			OBVR_LOG("Aim: a spell's turn goes in %.2f s after the cast, with the "
+			         "animation still running - cast %u of this run",
+			         static_cast<double>(GetConfig().aimCastTurnAfterSeconds),
+			         g_castHookTurns);
+		}
+	}
+
+	if (castArm.missed) {
+		++g_castMisses;
+		if (g_castMisses <= kCastHookReports) {
+			OBVR_LOG("Aim: the cast animation had already ended %.2f s after the cast, so "
+			         "the spell left unaimed - lower Look.AimCastTurnAfterSeconds (miss %u)",
+			         static_cast<double>(GetConfig().aimCastTurnAfterSeconds), g_castMisses);
 		}
 	}
 
@@ -2662,6 +2683,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	clockInput.castTurning = castTurning;
 	clockInput.castWasOpen = castWasOpen;
 	clockInput.castFeedsClock = !castAtSpawn;
+	clockInput.castTurnDue = castArm.turnNow;
 	clockInput.deltaSeconds = deltaSeconds;
 	g_aimSecondsSinceRelease = NextReleaseClock(g_aimSecondsSinceRelease, clockInput);
 	g_aimWasHeld = attackHeld;
@@ -2704,16 +2726,14 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// which is precisely the fault that made every arrow fly forwards when the
 	// return was first tried on the release frame.
 	//
-	// A turn made by the cast hook waits for nothing. The wait exists because
-	// an arrow leaves several frames after the control is released and the
-	// heading in between is the one it flies along - but a spell made inside
-	// the hook has already been made by the time anything here can look, and
-	// the action field would keep the body turned for the rest of the cast
-	// animation, which is the entire fault the hook was written to remove.
+	// A spell now waits on exactly the same answer as an arrow, and that is the
+	// point of arming the turn late rather than making it in the hook. The turn
+	// goes in while the action field still reads Attack, so the field keeps the
+	// body turned for the rest of the animation - which is now a fraction of a
+	// second, not the whole of it - and the moment it reads FollowThrough the
+	// spell has left and the body straightens.
 	const bool attackInProgress =
-		g_turnFromCastHook
-			? false
-			: (((waitingOnAShot || turningOnShot) && game::IsShotUnreleased()) || castTurning);
+		((waitingOnAShot || turningOnShot) && game::IsShotUnreleased()) || castTurning;
 	if (readPlayer &&
 	    AimReturnWanted(GetConfig().aimReturnOnRelease, g_headTracker.IsHeadsetConnected(),
 	                    game::IsMenuMode(), attackHeld, g_aimSecondsSinceRelease,
@@ -2732,7 +2752,6 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			g_aimYawStepTaken = step;
 			g_aimYawPending = true;
 			g_aimSecondsSinceRelease = -1.0f;
-			g_turnFromCastHook = false;
 
 			if (!g_aimReturnReported) {
 				g_aimReturnReported = true;
@@ -2784,16 +2803,23 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		} else if (GetConfig().aimShotTrace && attackWasHeld && !attackHeld &&
 		           g_shotTraceLeft < 40) {
 			g_shotTraceLeft = 40;
-		} else if (GetConfig().aimCastTrace && castHeld && !castWasHeld) {
+		} else if (GetConfig().aimCastTrace && castArm.next.seconds == 0.0f) {
+			// Armed by the cast itself rather than by the key, which is the
+			// only way the record covers the spells a person actually casts.
+			// The key window was never a condition of aiming; while the trace
+			// hung off it, six casts out of seven left no record at all.
+			//
 			// The same instrument pointed at a cast, rather than a second one
 			// beside it. Its columns are already the right columns: the head's
 			// angle, the body's share, the view's heading either side of the
 			// compensation, and the eye's own position - which between them are
 			// what proved the bow's aim correct and found the last jump in it.
 			//
-			// Eighty frames from the press, because a cast has no release to
-			// arm a second stretch from and the whole of it has to fit inside
-			// one arming.
+			// Eighty frames, because the whole of a cast has to fit inside one
+			// arming: the animation is 53 and the turn is made near its end.
+			g_shotTraceLeft = 80;
+			g_shotTraceFrame = 0;
+		} else if (GetConfig().aimCastTrace && castHeld && !castWasHeld) {
 			g_shotTraceLeft = 80;
 			g_shotTraceFrame = 0;
 		}

@@ -1051,6 +1051,12 @@ struct ReleaseClockInput {
 	// See NextReleaseClock.
 	bool castFeedsClock = false;
 
+	// A spell's turn is due this frame - the lead time after the cast is up
+	// and the animation is still running. Starting the clock is what puts the
+	// turn in place: from here the bow's own machinery holds it and gives it
+	// back when the action field says the spell has left. See NextCastArm.
+	bool castTurnDue = false;
+
 	float deltaSeconds = 0.0f;
 };
 
@@ -1078,6 +1084,76 @@ inline constexpr float kReleaseClockIdle = -1.0f;
 // starts nothing and is invisible to all of it; the hook starts the clock
 // itself at the one moment a return is owed.
 float NextReleaseClock(float current, const ReleaseClockInput& input);
+
+// When a spell's heading has to be turned, which is not when the spell is
+// cast.
+//
+// MagicCaster::CastMagicItem is the START of a cast, and this was measured
+// rather than assumed: the hook fires on a frame whose action field still
+// reads None, and the very next frame the field turns to Attack and stays
+// there for 53 frames before becoming AttackFollowThrough. Turning the
+// heading inside that call is therefore about nine tenths of a second too
+// early, and a spell turned there goes out along whatever heading the body
+// happens to have when the animation ends - forwards, which is exactly what
+// the headset showed.
+//
+// The moment that matters is the end of the animation. xOBSE names it: its
+// OnMeleeRelease event is documented as the "release of bow/melee/staff
+// attack, spell cast", and it is raised off changes in
+// HighProcess::currentAction (obse/obse/EventManager.h). The engine's own
+// notion of a spell leaving is that field going from Attack to something
+// else.
+//
+// But the change cannot be waited for. OBVR's own reading of the bow says so
+// in PlayerAim.h: on the frame the field first reads AttackFollowThrough the
+// arrow HAS GONE. A turn made then is a turn made after the projectile has
+// its direction.
+//
+// So the turn is armed by the cast and made a set time later, shortly before
+// the animation is due to end - and from that moment the machinery the bow
+// already has holds it and gives it back when the field says the spell has
+// left. The lead time is the one number here that is a measurement rather
+// than a mechanism, which is why it comes from the INI.
+struct CastArmInput {
+	// The hook saw the player's own cast begin this frame.
+	bool castBegan = false;
+
+	// The cast animation is still running - the action field reads Attack.
+	bool actionIsAttack = false;
+
+	float deltaSeconds = 0.0f;
+
+	// How long after the cast begins the turn is made. The measured animation
+	// is about 0.9 s, so a little under that puts the turn in place before the
+	// spell leaves without holding the body for the whole cast.
+	float turnAfterSeconds = 0.0f;
+
+	// A cast that never ends - a spell interrupted, an animation that does not
+	// report - must not leave this armed for the rest of the run.
+	float limitSeconds = 0.0f;
+};
+
+// Nothing is being watched.
+inline constexpr float kCastArmIdle = -1.0f;
+
+struct CastArm {
+	float seconds = kCastArmIdle;
+};
+
+struct CastArmDecision {
+	CastArm next;
+
+	// Start the release clock now, which is what puts the turn in place and
+	// hands it to the machinery that holds and returns it.
+	bool turnNow = false;
+
+	// The animation ended before the lead time was up, so the spell left
+	// unaimed. Worth saying out loud: it means the lead time is too long for
+	// this cast, and the log is where that gets noticed.
+	bool missed = false;
+};
+
+CastArmDecision NextCastArm(const CastArm& current, const CastArmInput& input);
 
 // What the body's turn did to where the eye stands, so it can be undone.
 struct AimArcInput {

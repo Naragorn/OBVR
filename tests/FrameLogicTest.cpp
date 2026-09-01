@@ -2137,6 +2137,140 @@ void TestAimYawHoldsTheView() {
 	Check(Near(WrapAngle(claimed - lost), 0.3f), "a step taken back leaves the offset as it was");
 }
 
+
+// When a spell's heading is turned - which is not when the spell is cast.
+//
+// This is the correction to a fault the headset found twice. The cast hook
+// turned the heading inside MagicCaster::CastMagicItem, and spells still went
+// out forwards. The log said why: the hook fires on a frame whose action field
+// still reads None, and the animation that follows runs 53 frames of Attack
+// before the field turns to AttackFollowThrough. The turn was nine tenths of a
+// second early and long since given back by the time the spell left.
+//
+// The lead time therefore has to put the turn shortly BEFORE the end of the
+// animation, not at its start and not at the change - OBVR's own reading of
+// the bow records that on the frame the field first reads AttackFollowThrough
+// the projectile has already gone.
+void TestCastArm() {
+	using obvr::camera::CastArm;
+	using obvr::camera::CastArmDecision;
+	using obvr::camera::CastArmInput;
+	using obvr::camera::NextCastArm;
+
+	std::printf("Arming a spell's turn\n");
+
+	const float frame = 1.0f / 60.0f;
+	CastArmInput input;
+	input.deltaSeconds = frame;
+	input.turnAfterSeconds = 0.70f;
+	input.limitSeconds = 3.0f;
+	input.actionIsAttack = true;
+
+	// Nothing is watched until a cast says so.
+	{
+		CastArm arm;
+		const CastArmDecision decision = NextCastArm(arm, input);
+		Check(decision.next.seconds < 0.0f, "an idle arm stays idle");
+		Check(!decision.turnNow, "and turns nothing");
+		Check(!decision.missed, "and reports nothing");
+	}
+
+	// The cast arms it, and does not turn anything on the way in - which is the
+	// whole correction.
+	{
+		CastArmInput began = input;
+		began.castBegan = true;
+		began.actionIsAttack = false;  // the field still reads None here
+		const CastArmDecision decision = NextCastArm(CastArm{}, began);
+		Check(decision.next.seconds == 0.0f, "a cast starts the clock at zero");
+		Check(!decision.turnNow, "and nothing is turned at the cast itself");
+	}
+
+	// Through the animation: counting, and quiet.
+	{
+		CastArm arm;
+		arm.seconds = 0.0f;
+		int turns = 0;
+		for (int i = 0; i < 41; ++i) {
+			const CastArmDecision decision = NextCastArm(arm, input);
+			arm = decision.next;
+			if (decision.turnNow) {
+				++turns;
+			}
+		}
+		Check(turns == 0, "nothing is turned for the first two thirds of a second");
+		Check(arm.seconds > 0.0f, "and the clock is still running");
+	}
+
+	// The lead time comes up while the animation is still going: turn now.
+	{
+		CastArm arm;
+		arm.seconds = 0.0f;
+		int turns = 0;
+		float turnedAt = 0.0f;
+		for (int i = 0; i < 120; ++i) {
+			const CastArmDecision decision = NextCastArm(arm, input);
+			if (decision.turnNow) {
+				++turns;
+				turnedAt = arm.seconds + frame;
+			}
+			arm = decision.next;
+		}
+		Check(turns == 1, "the turn is made exactly once");
+		Check(turnedAt >= 0.70f && turnedAt < 0.70f + frame * 2.0f,
+		      "at the lead time, not before and not late");
+		Check(arm.seconds < 0.0f, "and the arm goes idle afterwards");
+	}
+
+	// The animation ended first. The spell has gone unaimed, and that is worth
+	// saying rather than turning a body for a projectile that no longer exists.
+	{
+		CastArmInput ended = input;
+		ended.actionIsAttack = false;
+		CastArm arm;
+		arm.seconds = 0.69f;
+		const CastArmDecision decision = NextCastArm(arm, ended);
+		Check(!decision.turnNow, "a finished animation is not turned for");
+		Check(decision.missed, "it is reported as missed");
+		Check(decision.next.seconds < 0.0f, "and the arm goes idle");
+	}
+
+	// A cast that never reports an end must not leave this armed for good.
+	{
+		CastArmInput never = input;
+		never.actionIsAttack = true;
+		never.turnAfterSeconds = 100.0f;  // never reached before the limit
+		CastArm arm;
+		arm.seconds = 2.99f;
+		const CastArmDecision decision = NextCastArm(arm, never);
+		Check(decision.next.seconds < 0.0f, "the limit disarms it");
+		Check(decision.missed, "and says so");
+		Check(!decision.turnNow, "without turning anything");
+	}
+
+	// A second cast while one is armed simply becomes the one being watched.
+	{
+		CastArmInput again = input;
+		again.castBegan = true;
+		CastArm arm;
+		arm.seconds = 0.5f;
+		const CastArmDecision decision = NextCastArm(arm, again);
+		Check(decision.next.seconds == 0.0f, "the clock restarts from the newer cast");
+	}
+
+	// A lead time of zero turns on the first frame after the cast, which is the
+	// old behaviour and has to remain reachable from the INI: it is what proves
+	// the measurement, if the animation is ever found to be shorter.
+	{
+		CastArmInput immediate = input;
+		immediate.turnAfterSeconds = 0.0f;
+		CastArm arm;
+		arm.seconds = 0.0f;
+		const CastArmDecision decision = NextCastArm(arm, immediate);
+		Check(decision.turnNow, "a zero lead time turns at once");
+	}
+}
+
 int main() {
 	std::printf("OBVR frame logic test\n\n");
 
@@ -2208,6 +2342,8 @@ int main() {
 	TestAimYawRemaining();
 	std::printf("\n");
 	TestReleaseClock();
+	std::printf("\n");
+	TestCastArm();
 	std::printf("\n");
 	TestCastWindow();
 	std::printf("\n");
