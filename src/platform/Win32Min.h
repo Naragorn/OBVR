@@ -93,6 +93,13 @@ OBVR_IMPORT HMODULE OBVR_STDCALL LoadLibraryA(const char* fileName);
 // For checking whether Oblivion has already loaded d3d9.dll, which decides
 // which of the two ways into its resolution is still open.
 OBVR_IMPORT HMODULE OBVR_STDCALL GetModuleHandleA(const char* moduleName);
+
+// For naming whoever else wrote into the Direct3D factory's method table.
+// The module is asked for by address, because a pointer found in a shared
+// slot says nothing about itself until it is placed in a file on disk.
+constexpr DWORD GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT = 0x00000002;
+constexpr DWORD GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS = 0x00000004;
+OBVR_IMPORT BOOL OBVR_STDCALL GetModuleHandleExA(DWORD flags, const char* name, HMODULE* module);
 OBVR_IMPORT void* OBVR_STDCALL GetProcAddress(HMODULE module, const char* name);
 OBVR_IMPORT BOOL OBVR_STDCALL FreeLibrary(HMODULE module);
 

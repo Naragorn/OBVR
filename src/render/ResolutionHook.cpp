@@ -8,6 +8,7 @@
 #include "platform/ImportHook.h"
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
+#include "render/CreateDeviceGuard.h"
 
 namespace obvr::render {
 namespace {
@@ -22,6 +23,19 @@ using GetProcAddressFn = void*(__stdcall*)(void* module, const char* name);
 GetProcAddressFn g_originalGetProcAddress = nullptr;
 
 bool g_deviceCreated = false;
+
+// The slot OBVR wrote its CreateDevice into, kept so it can be looked at
+// again. Patching it once is not the same as owning it: it is shared with
+// anything else in the process that wants to see the device being made, and
+// a run has been recorded where OBVR's factory reached the game with someone
+// else's pointer in this slot. See CreateDeviceGuard.h.
+void** g_createDeviceSlot = nullptr;
+UInt32 g_slotRepairsLeft = 4;
+
+// Defined below HookedCreateDevice, whose address it needs, and called from
+// the GetProcAddress hook, which runs many times between the factory being
+// made and the device being asked for.
+void GuardTheSlot();
 
 // A log line per attempt would be four lines for one event, and Oblivion
 // retries. Enough to see what happened, not enough to bury the rest.
@@ -267,6 +281,7 @@ void* __stdcall HookedCreate9(UInt32 sdkVersion) {
 
 	g_originalCreateDevice = reinterpret_cast<d3d9::CreateDeviceFn>(*slot);
 	*slot = reinterpret_cast<void*>(&HookedCreateDevice);
+	g_createDeviceSlot = slot;
 
 	DWORD ignored = 0;
 	VirtualProtect(slot, sizeof(void*), protection, &ignored);
@@ -276,6 +291,85 @@ void* __stdcall HookedCreate9(UInt32 sdkVersion) {
 	return factory;
 }
 
+// Names the module a pointer came out of, so the log can say who, not just
+// that. Nothing is done with the name beyond writing it down and comparing it
+// with OBVR's own.
+bool ModuleOf(void* address, HMODULE& module) {
+	module = nullptr;
+	const DWORD flags = GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+	                    GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT;
+	return GetModuleHandleExA(flags, reinterpret_cast<const char*>(address), &module) != 0 &&
+	       module != nullptr;
+}
+
+// Watches the one slot the frame size hangs on, for as long as the device is
+// still to come.
+//
+// This is called from the GetProcAddress hook rather than on a timer, because
+// that is where the calls are: between the factory being made and the device
+// being asked for, DXVK resolves most of Vulkan by name, and Oblivion resolves
+// the rest of what it needs. The cost of being here is one pointer comparison
+// per lookup, which is why the quiet case is written out in full below instead
+// of being left to the decision - naming a module costs a system call, and
+// that price is only paid once something is actually wrong.
+void GuardTheSlot() {
+	if (g_createDeviceSlot == nullptr || g_deviceCreated ||
+	    *g_createDeviceSlot == reinterpret_cast<void*>(&HookedCreateDevice)) {
+		return;
+	}
+
+	void* const foreign = *g_createDeviceSlot;
+
+	HMODULE foreignModule = nullptr;
+	HMODULE ownModule = nullptr;
+	const bool foreignNamed = ModuleOf(foreign, foreignModule);
+	const bool ownNamed = ModuleOf(reinterpret_cast<void*>(&HookedCreateDevice), ownModule);
+
+	SlotGuardInput input;
+	input.slotKnown = true;
+	input.deviceCreated = false;
+	input.slotIsOurs = false;
+	input.foreignIsOurModule = foreignNamed && ownNamed && foreignModule == ownModule;
+	input.repairsLeft = g_slotRepairsLeft;
+
+	const SlotGuardDecision decision = GuardCreateDeviceSlot(input);
+	if (!decision.repair) {
+		return;
+	}
+
+	char name[260];
+	name[0] = '\0';
+	if (foreignNamed) {
+		GetModuleFileNameA(foreignModule, name, sizeof(name));
+	}
+
+	DWORD protection = 0;
+	if (!VirtualProtect(g_createDeviceSlot, sizeof(void*), PAGE_READWRITE, &protection)) {
+		OBVR_LOG("Resolution: the slot changed hands and could not be made writable "
+		         "again, so the frame stays at the game's own size");
+		g_slotRepairsLeft = 0;
+		return;
+	}
+
+	if (decision.adoptForeign) {
+		g_originalCreateDevice = reinterpret_cast<d3d9::CreateDeviceFn>(foreign);
+	}
+	*g_createDeviceSlot = reinterpret_cast<void*>(&HookedCreateDevice);
+
+	DWORD ignored = 0;
+	VirtualProtect(g_createDeviceSlot, sizeof(void*), protection, &ignored);
+
+	--g_slotRepairsLeft;
+
+	if (decision.report) {
+		OBVR_LOG("Resolution: CreateDevice had been taken over by %08X (%s) before the "
+		         "device was made, and OBVR is back in front of %s",
+		         reinterpret_cast<UInt32>(foreign),
+		         name[0] != '\0' ? name : "a module that could not be named",
+		         decision.adoptForeign ? "it" : "the original, that pointer being OBVR's own");
+	}
+}
+
 // The way in, because Oblivion has no d3d9 import to replace.
 //
 // It loads the library by hand and looks the function up by name, so the name
@@ -283,6 +377,10 @@ void* __stdcall HookedCreate9(UInt32 sdkVersion) {
 // through unchanged and unexamined beyond one character.
 void* __stdcall HookedGetProcAddress(void* module, const char* name) {
 	void* real = g_originalGetProcAddress(module, name);
+
+	// The slot is shared property, and this is the only moment OBVR is
+	// running between patching it and the device being built.
+	GuardTheSlot();
 
 	// A name can be an ordinal instead of a string, in which case it arrives
 	// as a small integer in the pointer and must not be dereferenced. The

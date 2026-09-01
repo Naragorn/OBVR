@@ -70,6 +70,7 @@ add_library(OBVR SHARED
 	src/render/InterfaceRenderHook.cpp
 	src/render/LayoutProbe.cpp
 	src/render/ResolutionHook.cpp
+	src/render/CreateDeviceGuard.cpp
 	src/render/SceneRenderHook.cpp
 	src/render/SceneGraphProbe.cpp
 	src/render/InteropBracket.cpp

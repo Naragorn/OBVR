@@ -543,3 +543,16 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME settings_menu COMMAND settings_menu_test)
+
+add_executable(create_device_guard_test
+	CreateDeviceGuardTest.cpp
+	../src/render/CreateDeviceGuard.cpp
+)
+
+target_include_directories(create_device_guard_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(create_device_guard_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME create_device_guard COMMAND create_device_guard_test)
