@@ -299,22 +299,14 @@ bool g_castReported = false;
 bool g_castAimWanted = false;
 float g_castAimStep = 0.0f;
 
-// Where MagicCaster sits inside PlayerCharacter, once it has been seen.
+// How often the cast hook has turned the heading, and how many of those say so
+// in the log.
 //
-// LEARNED RATHER THAN LOOKED UP. The hook is handed a MagicCaster*, and the
-// player is a PlayerCharacter*; MagicCaster is one of its bases, so the two
-// differ by a fixed offset that no source this project has consulted states.
-// Rather than guess it, OBVR waits for a cast it already knows is the player's
-// - the cast key was pressed and its window is standing - and takes the
-// difference then. Anything that is not a small, aligned, forward offset is
-// refused, so a wild pointer cannot teach it a wrong answer.
-//
-// Until it is known, the hook writes nothing at all. After it is known, it
-// writes only for casters that match, so an NPC casting beside the player
-// leaves the player's heading alone.
-constexpr UInt32 kMagicCasterOffsetUnknown = 0xFFFFFFFFu;
-UInt32 g_playerMagicCasterOffset = kMagicCasterOffsetUnknown;
-bool g_castHookReported = false;
+// Counted per cast rather than reported once per run, because "the hook fired"
+// was exactly the claim the one-line version could not support: a single line
+// in a log of seven spells says nothing about the other six.
+UInt32 g_castHookTurns = 0;
+constexpr UInt32 kCastHookReports = 5;
 
 // Whether the turn now standing was made by the cast hook rather than by the
 // key window. The return treats the two differently: a bow shot has to wait for
@@ -1984,21 +1976,17 @@ extern "C" void __cdecl OBVR_OnMagicCastItem(void* caster) {
 	}
 
 	// Unsigned on purpose. A caster that sits BELOW the player wraps to an
-	// enormous number and fails the bound, which is the answer wanted: it is
-	// not a base subobject of the player, so it is somebody else casting.
+	// enormous number and misses, which is the answer wanted: it is not a base
+	// subobject of the player, so it is somebody else casting.
+	//
+	// Written down rather than learned - see kPlayerMagicCasterOffset. Learning
+	// it needed a cast OBVR could already prove was the player's, which meant
+	// the cast key held; a spell cast without that key went out unturned. In
+	// the recorded run the offset was not learned until the seventh window, so
+	// six spells left before this could do anything at all, and from the
+	// outside that is indistinguishable from a hook that does not work.
 	const UInt32 delta = reinterpret_cast<UInt32>(caster) - playerAddress;
-	if (delta >= addr::kMaxPlayerSubobjectOffset || (delta & 3u) != 0u) {
-		return;
-	}
-
-	if (g_playerMagicCasterOffset == kMagicCasterOffsetUnknown) {
-		// Only from a cast OBVR already knows is the player's. The key window
-		// standing is what says so - see g_playerMagicCasterOffset.
-		if (!g_castWindow.open) {
-			return;
-		}
-		g_playerMagicCasterOffset = delta;
-	} else if (delta != g_playerMagicCasterOffset) {
+	if (delta != addr::kPlayerMagicCasterOffset) {
 		return;
 	}
 
@@ -2027,12 +2015,12 @@ extern "C" void __cdecl OBVR_OnMagicCastItem(void* caster) {
 	// touches that control.
 	g_aimSecondsSinceRelease = 0.0f;
 
-	if (!g_castHookReported) {
-		g_castHookReported = true;
-		OBVR_LOG("Aim: the cast hook fired - MagicCaster sits +%X inside the player, and the "
-		         "heading was turned %.1f degrees for the length of the call instead of the "
-		         "length of the animation",
-		         delta, static_cast<double>(g_castAimStep * math::kRadiansToDegrees));
+	++g_castHookTurns;
+	if (g_castHookTurns <= kCastHookReports) {
+		OBVR_LOG("Aim: the cast hook turned the heading %.1f degrees for the length of the "
+		         "call - cast %u of this run",
+		         static_cast<double>(g_castAimStep * math::kRadiansToDegrees),
+		         g_castHookTurns);
 	}
 }
 

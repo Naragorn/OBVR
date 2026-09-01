@@ -105,11 +105,31 @@ inline constexpr UInt32 kHookMagicCastItem = 0x00699190;
 inline constexpr UInt32 kHookMagicCastItemPatchSize = 7;
 inline constexpr UInt32 kHookMagicCastItemResume = 0x00699197;
 
-// A bound on how far a base subobject can sit inside PlayerCharacter, used
-// only to reject a nonsense value while the MagicCaster offset is being
-// learned. Generous on purpose: the point is to refuse a wild pointer, not to
-// second-guess a layout nothing here has measured yet.
-inline constexpr UInt32 kMaxPlayerSubobjectOffset = 0x2000;
+// Where the MagicCaster base subobject sits inside PlayerCharacter.
+//
+// The hook is handed a MagicCaster*, and the player is a PlayerCharacter*;
+// MagicCaster is one of its bases, so telling the player's own casts from an
+// NPC's beside him is a matter of this one number.
+//
+// Two sources, and they were arrived at independently. OBVR measured it at
+// runtime, from a cast it knew was the player's, and wrote the result into the
+// log: "MagicCaster sits +5C inside the player". xOBSE states the same layout
+// in the PlayerCharacter comment block of obse/obse/GameObjects.h:
+//
+//   // [ vtbl ]
+//   // +000 = PlayerCharacter
+//   // +018 = TESChildCell
+//   // +05C = MagicCaster
+//   // +068 = MagicTarget
+//
+// https://github.com/llde/xOBSE/blob/5078a1dc/obse/obse/GameObjects.h
+//
+// Written down rather than learned, because learning it needed a cast OBVR
+// could already prove was the player's - which meant holding the cast key -
+// and a spell cast without that key was left alone. In a recorded run the
+// offset was not learned until the seventh window, so six casts before it went
+// out unturned and the feature looked as though it did nothing.
+inline constexpr UInt32 kPlayerMagicCasterOffset = 0x5C;
 
 // Shortly after the hook the game calls, on the CameraNode:
 //
