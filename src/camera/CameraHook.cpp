@@ -304,6 +304,11 @@ bool g_castAimWanted = false;
 bool g_castBegan = false;
 CastArm g_castArm{};
 
+// How long the last cast animation actually ran, in seconds, or zero until
+// one has been watched to its end. What the next spell turns on - see
+// CastArmDecision::measuredSeconds for why it cannot be a fixed number.
+float g_castMeasuredSeconds = 0.0f;
+
 // How often a spell's turn has been armed and made, and how many of those say
 // so in the log.
 //
@@ -312,6 +317,7 @@ CastArm g_castArm{};
 // in a log of seven spells says nothing about the other six.
 UInt32 g_castHookTurns = 0;
 UInt32 g_castMisses = 0;
+UInt32 g_castMeasurementsReported = 0;
 constexpr UInt32 kCastHookReports = 5;
 
 // Whether the hook actually went in. Without it the setting means nothing and
@@ -2613,13 +2619,25 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// reading of the bow, in PlayerAim.h, records that on the frame the field
 	// first reads AttackFollowThrough the projectile HAS GONE.
 	//
-	// So the turn goes in a set time after the cast, shortly before the
-	// animation is due to end, and from that moment the bow's own machinery
-	// holds it and gives it back the moment the field says the spell has left.
+	// So the turn goes in shortly before the animation is due to end, and from
+	// that moment the bow's own machinery holds it and gives it back the moment
+	// the field says the spell has left.
+	//
+	// "Due to end" is measured rather than written down. A fixed 0.70 s was
+	// wrong five casts out of five, and the reason is that the animation is 53
+	// FRAMES - 0.88 s at 60 Hz, 0.59 s at 90 Hz, and the headset picks the
+	// rate. So each cast is watched to its end and the next one turns that
+	// long after the cast, less a margin.
+	const float measured = g_castMeasuredSeconds;
+	const float margin = GetConfig().aimCastTurnMarginSeconds;
+	const float leadFromMeasurement = measured - margin;
+
 	CastArmInput armInput;
 	armInput.castBegan = g_castBegan;
 	armInput.deltaSeconds = deltaSeconds;
-	armInput.turnAfterSeconds = GetConfig().aimCastTurnAfterSeconds;
+	armInput.turnAfterSeconds =
+		measured > 0.0f ? (leadFromMeasurement > 0.0f ? leadFromMeasurement : 0.0f)
+		                : GetConfig().aimCastTurnAfterSeconds;
 	armInput.limitSeconds = GetConfig().aimCastArmLimitSeconds;
 
 	// The action field only while a cast is actually being watched, which is
@@ -2631,13 +2649,26 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	const CastArmDecision castArm = NextCastArm(g_castArm, armInput);
 	g_castArm = castArm.next;
 
+	if (castArm.measuredSeconds > 0.0f) {
+		const bool first = g_castMeasuredSeconds == 0.0f;
+		g_castMeasuredSeconds = castArm.measuredSeconds;
+		if (g_castMeasurementsReported < kCastHookReports) {
+			++g_castMeasurementsReported;
+			const float next = g_castMeasuredSeconds - margin;
+			OBVR_LOG("Aim: that cast's animation ran %.2f s%s, so the next spell turns "
+			         "%.2f s after the cast",
+			         static_cast<double>(g_castMeasuredSeconds),
+			         first ? " (the first one measured)" : "",
+			         static_cast<double>(next > 0.0f ? next : 0.0f));
+		}
+	}
+
 	if (castArm.turnNow) {
 		++g_castHookTurns;
 		if (g_castHookTurns <= kCastHookReports) {
 			OBVR_LOG("Aim: a spell's turn goes in %.2f s after the cast, with the "
 			         "animation still running - cast %u of this run",
-			         static_cast<double>(GetConfig().aimCastTurnAfterSeconds),
-			         g_castHookTurns);
+			         static_cast<double>(armInput.turnAfterSeconds), g_castHookTurns);
 		}
 	}
 
@@ -2645,8 +2676,8 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		++g_castMisses;
 		if (g_castMisses <= kCastHookReports) {
 			OBVR_LOG("Aim: the cast animation had already ended %.2f s after the cast, so "
-			         "the spell left unaimed - lower Look.AimCastTurnAfterSeconds (miss %u)",
-			         static_cast<double>(GetConfig().aimCastTurnAfterSeconds), g_castMisses);
+			         "the spell left unaimed (miss %u). The next one turns earlier.",
+			         static_cast<double>(armInput.turnAfterSeconds), g_castMisses);
 		}
 	}
 

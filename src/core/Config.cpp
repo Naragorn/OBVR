@@ -404,6 +404,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Look", "AimCastAtSpawn", config.aimCastAtSpawn, path);
 	config.aimCastTurnAfterSeconds =
 		ReadFloat("Look", "AimCastTurnAfterSeconds", config.aimCastTurnAfterSeconds, path);
+	config.aimCastTurnMarginSeconds =
+		ReadFloat("Look", "AimCastTurnMarginSeconds", config.aimCastTurnMarginSeconds, path);
 	config.aimCastArmLimitSeconds =
 		ReadFloat("Look", "AimCastArmLimitSeconds", config.aimCastArmLimitSeconds, path);
 

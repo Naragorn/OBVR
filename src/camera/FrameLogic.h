@@ -1138,6 +1138,15 @@ inline constexpr float kCastArmIdle = -1.0f;
 
 struct CastArm {
 	float seconds = kCastArmIdle;
+
+	// The action field has read Attack at least once, so the animation is
+	// running or has been. Without it the frames before the animation starts -
+	// the field still reads None for one or two - would look like its end.
+	bool sawAttack = false;
+
+	// The turn for this cast has been made, so it is not made twice, and the
+	// animation is watched to its end for the measurement rather than dropped.
+	bool turned = false;
 };
 
 struct CastArmDecision {
@@ -1147,10 +1156,21 @@ struct CastArmDecision {
 	// hands it to the machinery that holds and returns it.
 	bool turnNow = false;
 
-	// The animation ended before the lead time was up, so the spell left
-	// unaimed. Worth saying out loud: it means the lead time is too long for
-	// this cast, and the log is where that gets noticed.
+	// The animation ended without the turn having been made, so the spell left
+	// unaimed.
 	bool missed = false;
+
+	// How long this cast's animation actually ran, on the frame its end is
+	// seen. Greater than zero only on that frame.
+	//
+	// THIS IS THE POINT OF WATCHING TO THE END. The lead time cannot be a
+	// number written down once: 53 frames of animation is 0.88 s at 60 Hz and
+	// 0.59 s at 90 Hz, and a headset picks the rate. A lead time of 0.70 s was
+	// measured wrong for exactly that reason - the animation had ended before
+	// it came up, five casts out of five, and the log said so. So the duration
+	// is measured from the cast that just happened and the next one turns
+	// shortly before that, whatever frame rate the machine is running at.
+	float measuredSeconds = 0.0f;
 };
 
 CastArmDecision NextCastArm(const CastArm& current, const CastArmInput& input);

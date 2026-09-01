@@ -2173,10 +2173,11 @@ void TestCastArm() {
 		Check(decision.next.seconds < 0.0f, "an idle arm stays idle");
 		Check(!decision.turnNow, "and turns nothing");
 		Check(!decision.missed, "and reports nothing");
+		Check(decision.measuredSeconds == 0.0f, "and measures nothing");
 	}
 
 	// The cast arms it, and does not turn anything on the way in - which is the
-	// whole correction.
+	// whole correction to the version that turned inside the hook.
 	{
 		CastArmInput began = input;
 		began.castBegan = true;
@@ -2186,53 +2187,103 @@ void TestCastArm() {
 		Check(!decision.turnNow, "and nothing is turned at the cast itself");
 	}
 
-	// Through the animation: counting, and quiet.
+	// The frames before the animation starts are not its end. The field reads
+	// None for one or two of them, and mistaking that for the end would measure
+	// a cast at nearly nothing and turn every spell after it far too early.
 	{
+		CastArmInput notYet = input;
+		notYet.actionIsAttack = false;
 		CastArm arm;
 		arm.seconds = 0.0f;
-		int turns = 0;
-		for (int i = 0; i < 41; ++i) {
-			const CastArmDecision decision = NextCastArm(arm, input);
-			arm = decision.next;
-			if (decision.turnNow) {
-				++turns;
-			}
-		}
-		Check(turns == 0, "nothing is turned for the first two thirds of a second");
-		Check(arm.seconds > 0.0f, "and the clock is still running");
+		const CastArmDecision decision = NextCastArm(arm, notYet);
+		Check(decision.measuredSeconds == 0.0f, "None before any Attack is not an ending");
+		Check(!decision.missed, "and is not a miss");
+		Check(decision.next.seconds > 0.0f, "the clock keeps running");
 	}
 
-	// The lead time comes up while the animation is still going: turn now.
+	// A whole cast: 53 frames of Attack, then the field changes. The turn goes
+	// in at the lead time and the duration comes back on the closing frame.
 	{
 		CastArm arm;
 		arm.seconds = 0.0f;
+		CastArmInput running = input;
+		running.turnAfterSeconds = 0.70f;
 		int turns = 0;
 		float turnedAt = 0.0f;
-		for (int i = 0; i < 120; ++i) {
-			const CastArmDecision decision = NextCastArm(arm, input);
+		float measured = 0.0f;
+		bool missed = false;
+		for (int i = 0; i < 60; ++i) {
+			running.actionIsAttack = i < 53;
+			const CastArmDecision decision = NextCastArm(arm, running);
 			if (decision.turnNow) {
 				++turns;
 				turnedAt = arm.seconds + frame;
 			}
+			if (decision.measuredSeconds > 0.0f) {
+				measured = decision.measuredSeconds;
+			}
+			missed = missed || decision.missed;
 			arm = decision.next;
 		}
+		// 53 frames at 60 Hz is 0.88 s, so a 0.70 s lead time fits inside it.
 		Check(turns == 1, "the turn is made exactly once");
-		Check(turnedAt >= 0.70f && turnedAt < 0.70f + frame * 2.0f,
-		      "at the lead time, not before and not late");
-		Check(arm.seconds < 0.0f, "and the arm goes idle afterwards");
+		Check(turnedAt >= 0.70f && turnedAt < 0.70f + frame * 2.0f, "at the lead time");
+		Check(!missed, "and nothing is reported as missed");
+		Check(measured > 0.88f && measured < 0.92f,
+		      "the animation is measured at its real length");
 	}
 
-	// The animation ended first. The spell has gone unaimed, and that is worth
-	// saying rather than turning a body for a projectile that no longer exists.
+	// THE FAULT THIS EXISTS FOR. The same 53 frames at 90 Hz last 0.59 s, and a
+	// lead time of 0.70 s never comes up: the spell leaves unaimed. It has to
+	// be reported, and the duration has to come back so the next cast is right.
 	{
-		CastArmInput ended = input;
-		ended.actionIsAttack = false;
+		const float fastFrame = 1.0f / 90.0f;
 		CastArm arm;
-		arm.seconds = 0.69f;
-		const CastArmDecision decision = NextCastArm(arm, ended);
-		Check(!decision.turnNow, "a finished animation is not turned for");
-		Check(decision.missed, "it is reported as missed");
-		Check(decision.next.seconds < 0.0f, "and the arm goes idle");
+		arm.seconds = 0.0f;
+		CastArmInput fast = input;
+		fast.deltaSeconds = fastFrame;
+		fast.turnAfterSeconds = 0.70f;
+		int turns = 0;
+		float measured = 0.0f;
+		bool missed = false;
+		for (int i = 0; i < 60; ++i) {
+			fast.actionIsAttack = i < 53;
+			const CastArmDecision decision = NextCastArm(arm, fast);
+			if (decision.turnNow) {
+				++turns;
+			}
+			if (decision.measuredSeconds > 0.0f) {
+				measured = decision.measuredSeconds;
+			}
+			missed = missed || decision.missed;
+			arm = decision.next;
+		}
+		Check(turns == 0, "a lead time longer than the animation turns nothing");
+		Check(missed, "and says the spell left unaimed");
+		Check(measured > 0.58f && measured < 0.62f,
+		      "while still measuring how long the animation really was");
+
+		// And the next cast, armed from that measurement, does turn.
+		const float lead = measured - 0.12f;
+		CastArm second;
+		second.seconds = 0.0f;
+		CastArmInput next = fast;
+		next.turnAfterSeconds = lead;
+		int secondTurns = 0;
+		float secondTurnedAt = 0.0f;
+		for (int i = 0; i < 60; ++i) {
+			next.actionIsAttack = i < 53;
+			const CastArmDecision decision = NextCastArm(second, next);
+			if (decision.turnNow) {
+				++secondTurns;
+				secondTurnedAt = second.seconds + fastFrame;
+			}
+			second = decision.next;
+		}
+		Check(secondTurns == 1, "the cast after a measurement turns exactly once");
+		Check(secondTurnedAt < 0.59f, "before the animation ends");
+		Check(secondTurnedAt > 0.59f - 0.12f - fastFrame * 2.0f,
+		      "and only a margin before it, so the body is barely turned at all");
 	}
 
 	// A cast that never reports an end must not leave this armed for good.
@@ -2242,10 +2293,21 @@ void TestCastArm() {
 		never.turnAfterSeconds = 100.0f;  // never reached before the limit
 		CastArm arm;
 		arm.seconds = 2.99f;
+		arm.sawAttack = true;
 		const CastArmDecision decision = NextCastArm(arm, never);
 		Check(decision.next.seconds < 0.0f, "the limit disarms it");
 		Check(decision.missed, "and says so");
 		Check(!decision.turnNow, "without turning anything");
+	}
+
+	// The turn is made once, not once per frame for the rest of the animation.
+	{
+		CastArm arm;
+		arm.seconds = 0.70f;
+		arm.sawAttack = true;
+		arm.turned = true;
+		const CastArmDecision decision = NextCastArm(arm, input);
+		Check(!decision.turnNow, "a turn already made is not made again");
 	}
 
 	// A second cast while one is armed simply becomes the one being watched.
@@ -2254,13 +2316,16 @@ void TestCastArm() {
 		again.castBegan = true;
 		CastArm arm;
 		arm.seconds = 0.5f;
+		arm.sawAttack = true;
+		arm.turned = true;
 		const CastArmDecision decision = NextCastArm(arm, again);
 		Check(decision.next.seconds == 0.0f, "the clock restarts from the newer cast");
+		Check(!decision.next.turned, "with nothing carried over from the older one");
+		Check(!decision.next.sawAttack, "and nothing remembered about its animation");
 	}
 
-	// A lead time of zero turns on the first frame after the cast, which is the
-	// old behaviour and has to remain reachable from the INI: it is what proves
-	// the measurement, if the animation is ever found to be shorter.
+	// A lead time of zero turns on the first Attack frame, which is what a
+	// measurement shorter than the margin comes to.
 	{
 		CastArmInput immediate = input;
 		immediate.turnAfterSeconds = 0.0f;

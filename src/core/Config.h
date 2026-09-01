@@ -320,19 +320,25 @@ struct Config {
 	// the log says so and the key window takes over again.
 	bool aimCastAtSpawn = true;
 
-	// How long after a cast begins the heading is turned, in seconds.
+	// Where the lead time starts, before any cast has been measured, in
+	// seconds.
 	//
-	// A measurement, not a preference. MagicCaster::CastMagicItem is the start
-	// of the cast; the animation that follows was measured at 53 frames of
-	// Attack, about 0.9 s, and the spell leaves at its end. The turn has to be
-	// standing shortly before that and not for the whole of it, because for
-	// the length of the turn the character walks the way the spell is aimed.
+	// It only decides the FIRST spell of a run. After that OBVR uses the
+	// animation it just watched, less the margin below, because the length in
+	// seconds depends on the frame rate: 53 frames of cast animation is 0.88 s
+	// at 60 Hz and 0.59 s at 90 Hz, and a headset picks the rate. A fixed
+	// 0.70 s was measured wrong for exactly that reason - five casts out of
+	// five had already ended by the time it came up.
 	//
-	// Too long and the spell leaves before the turn goes in - the log says
-	// "the animation had already ended", and this wants lowering. Too short
-	// and the body is turned for longer than it needs to be, which is felt in
-	// the walking rather than seen in the aim.
-	float aimCastTurnAfterSeconds = 0.70f;
+	// Low on purpose. Turning too early costs a little walking in the wrong
+	// direction; turning too late costs the aim entirely.
+	float aimCastTurnAfterSeconds = 0.40f;
+
+	// How far before the measured end of the animation the turn is made, in
+	// seconds. This is the whole of what the body's turn costs in walking, so
+	// it wants to be small - and large enough that a frame rate dip cannot put
+	// the turn after the spell has left.
+	float aimCastTurnMarginSeconds = 0.12f;
 
 	// A cast that never reports an end - interrupted, or an animation that
 	// does not report - must not leave the turn armed for the rest of the run.

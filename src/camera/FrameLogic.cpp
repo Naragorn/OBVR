@@ -551,6 +551,7 @@ CastArmDecision NextCastArm(const CastArm& current, const CastArmInput& input) {
 	// animation of the first has to end before the second can start - so the
 	// later one is simply the one being watched.
 	if (input.castBegan) {
+		decision.next = CastArm{};
 		decision.next.seconds = 0.0f;
 		return decision;
 	}
@@ -564,24 +565,27 @@ CastArmDecision NextCastArm(const CastArm& current, const CastArmInput& input) {
 	// The safety rail first, so a cast that never reports an end cannot leave
 	// this armed for the rest of the run.
 	if (decision.next.seconds > input.limitSeconds) {
-		decision.next.seconds = kCastArmIdle;
-		decision.missed = true;
+		decision.missed = !decision.next.turned;
+		decision.next = CastArm{};
 		return decision;
 	}
 
-	if (decision.next.seconds < input.turnAfterSeconds) {
-		return decision;
-	}
-
-	// The lead time is up. Either the animation is still running, in which case
-	// the turn goes in now and the spell will leave along it, or it has already
-	// ended and the spell has gone - which is not something to paper over, so
-	// it is reported rather than turned.
-	decision.next.seconds = kCastArmIdle;
 	if (input.actionIsAttack) {
-		decision.turnNow = true;
-	} else {
-		decision.missed = true;
+		decision.next.sawAttack = true;
+		if (!decision.next.turned && decision.next.seconds >= input.turnAfterSeconds) {
+			decision.turnNow = true;
+			decision.next.turned = true;
+		}
+		return decision;
+	}
+
+	// Not attacking. Either the animation has not started yet - the field reads
+	// None for a frame or two after the cast - or it has ended, and only having
+	// seen Attack tells the two apart.
+	if (decision.next.sawAttack) {
+		decision.measuredSeconds = decision.next.seconds;
+		decision.missed = !decision.next.turned;
+		decision.next = CastArm{};
 	}
 	return decision;
 }
