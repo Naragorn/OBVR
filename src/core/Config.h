@@ -266,6 +266,45 @@ struct Config {
 	// and the arms belong to it.
 	bool aimWeaponFollowsGaze = true;
 
+	// Whether spells follow the gaze the way a bow shot does.
+	//
+	// Separate from aimFollowsGaze because the two rest on different ground.
+	// The bow's window is watched through the action field, which says exactly
+	// when the arrow is being made; a spell passes through no action at all, so
+	// its window is opened by the key and closed by a clock. That is a weaker
+	// footing, and a setting of its own lets it be switched off without taking
+	// the bow with it.
+	bool aimCastFollowsGaze = true;
+
+	// The cast control, as a Windows virtual-key code. 0 switches spell aiming
+	// off as surely as the setting above.
+	//
+	// 0x43 is C, which is Oblivion's default for Cast - agreed by the UESP
+	// wiki's control table, StrategyWiki's, and the game's own PC manual. Read
+	// with GetAsyncKeyState like the attack control, not through the game's
+	// binding table, so anyone who has rebound Cast sets this to match.
+	UInt32 aimCastKey = 0x43;
+
+	// How long the body stays turned after the cast key goes down, before
+	// anything else has to justify keeping it turned.
+	//
+	// THE ONE NUMBER IN THE AIM THAT WAS CHOSEN RATHER THAN MEASURED, and it is
+	// marked so on purpose. A spell leaves some frames after the press, and how
+	// many is not written down anywhere this project has found - the action
+	// field, which answered exactly that question for the bow, has no cast in
+	// it. So this is insurance: long enough that the press cannot be over
+	// before the spell leaves, short enough to be invisible once the turn is
+	// compensated out of the view.
+	//
+	// The casting flag should make it redundant. AimCastTrace prints both, and
+	// if the flag proves to track the cast this can go to zero.
+	float aimCastHoldSeconds = 0.25f;
+
+	// Whether to write a line a frame through a cast, the way AimShotTrace does
+	// through a shot. Off by default: it is a measuring instrument, not a
+	// feature, and it writes hard to the log.
+	bool aimCastTrace = false;
+
 	// The key that opens OBVR's own settings menu in the headset, as a Windows
 	// virtual-key code. 0 disables it entirely.
 	//

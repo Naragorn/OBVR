@@ -444,6 +444,50 @@ float PlayerPitchForGaze(float viewSinPitch) {
 	return radians;
 }
 
+CastWindow NextCastWindow(const CastWindow& current, const CastWindowInput& input,
+                          float minimumSeconds) {
+	if (!input.enabled) {
+		return CastWindow{};
+	}
+
+	CastWindow next = current;
+
+	// The press. The only moment about a cast that is certain, so it is the
+	// only thing allowed to open the window.
+	if (input.castHeld && !input.castWasHeld) {
+		next.open = true;
+		next.secondsOpen = 0.0f;
+		return next;
+	}
+
+	if (!next.open) {
+		return next;
+	}
+
+	next.secondsOpen += input.deltaSeconds;
+
+	// The limit, checked before anything can argue with it. A flag stuck true
+	// cannot hold the body turned past this.
+	if (next.secondsOpen >= kCastWindowLimitSeconds) {
+		return CastWindow{};
+	}
+
+	// Below the insurance minimum the window stays open whatever else says,
+	// because a cast key is a tap and the flag may say nothing at all.
+	if (next.secondsOpen < minimumSeconds) {
+		return next;
+	}
+
+	// Past it, something has to be holding it open: the key still down, or the
+	// flag saying the cast is still running. A flag that could not be read
+	// holds nothing - the minimum above was its whole contribution.
+	if (input.castHeld || (input.castingKnown && input.casting)) {
+		return next;
+	}
+
+	return CastWindow{};
+}
+
 NiPoint3 AimArcCorrection(const AimArcInput& input) {
 	if (!input.centreKnown || input.bodyOffset == 0.0f) {
 		return NiPoint3{0.0f, 0.0f, 0.0f};

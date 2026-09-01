@@ -380,7 +380,12 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Look", "BlockVerticalLook", config.look.blockVerticalLook, path);
 	config.aimFollowsGaze =
 		ReadBool("Look", "AimFollowsGaze", config.aimFollowsGaze, path);
-	config.aimAttackKey = ReadUInt("Look", "AimAttackKey", config.aimAttackKey, path);
+	// ReadKeyCode rather than ReadUInt, which takes decimal only and returns the
+	// FALLBACK on anything else - so a virtual-key code written the way every
+	// table prints them would have been silently ignored. That trap was harmless
+	// while this was the only key here and the INI said 1; it stopped being
+	// harmless the moment AimCastKey=0x43 appeared underneath it.
+	config.aimAttackKey = ReadKeyCode("Look", "AimAttackKey", config.aimAttackKey, path);
 	config.aimTurnSpeed = ReadFloat("Look", "AimTurnSpeed", config.aimTurnSpeed, path);
 	config.aimReturnOnRelease =
 		ReadBool("Look", "AimReturnOnRelease", config.aimReturnOnRelease, path);
@@ -389,6 +394,12 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.aimShotTrace = ReadBool("Look", "AimShotTrace", config.aimShotTrace, path);
 	config.aimWeaponFollowsGaze =
 		ReadBool("Look", "AimWeaponFollowsGaze", config.aimWeaponFollowsGaze, path);
+	config.aimCastFollowsGaze =
+		ReadBool("Look", "AimCastFollowsGaze", config.aimCastFollowsGaze, path);
+	config.aimCastKey = ReadKeyCode("Look", "AimCastKey", config.aimCastKey, path);
+	config.aimCastHoldSeconds =
+		ReadFloat("Look", "AimCastHoldSeconds", config.aimCastHoldSeconds, path);
+	config.aimCastTrace = ReadBool("Look", "AimCastTrace", config.aimCastTrace, path);
 
 	config.settingsMenuKey =
 		ReadKeyCode("SettingsMenu", "Key", config.settingsMenuKey, path);

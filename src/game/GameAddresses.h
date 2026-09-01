@@ -209,17 +209,48 @@ inline constexpr UInt32 kProcessCurrentActionOffset = 0x1F4;
 // The actions that mean an attack is still in flight, from HighProcess's own
 // kAction_ enum. Bow shots pass through 4 and 5; melee through 2 and 3.
 //
-// These VALUES are the least certain thing in this file - they come from one
-// reading of the enum rather than two, and unlike the offsets above there is no
-// second description to check them against. That is why nothing depends on them
-// alone: the return also has a time limit behind it, so a wrong value here
-// delays the straightening rather than preventing it, and the log says which of
-// the two ended the wait.
+// Read out twice now, from the same header on two occasions separated by the
+// work on the aim, and unchanged both times - see the note below the values,
+// which also records what the second reading found MISSING. Nothing depends on
+// them alone even so: the return has a time limit behind it, so a wrong value
+// here would delay the straightening rather than prevent it, and the log says
+// which of the two ended the wait.
 inline constexpr SInt32 kActionNone = -1;
 inline constexpr SInt32 kActionAttack = 2;
 inline constexpr SInt32 kActionAttackFollowThrough = 3;
 inline constexpr SInt32 kActionAttackBow = 4;
 inline constexpr SInt32 kActionAttackBowArrowAttached = 5;
+
+// SPELLS ARE NOT IN THAT ENUM, and that is a finding rather than an omission.
+//
+// The whole enum was read out a second time when the aim was extended from the
+// bow to magic, and it runs: None -1, EquipWeapon 0, UnequipWeapon 1, Attack 2,
+// AttackFollowThrough 3, AttackBow 4, AttackBowArrowAttached 5, Block 6,
+// Recoil 7, Stagger 8, Dodge 9, LowerBodyAnim 10, SpecialIdle 11,
+// ScriptAnimation 12. Nothing in it is a cast.
+//
+// Two things follow. The five values above now have the second source this file
+// asks of every address and did not have when they went in - the note above
+// calling them the least certain thing here is out of date, and they came back
+// unchanged. And the machinery that decides how long the body stays turned for
+// a bow shot cannot be pointed at a spell: there is no action to watch.
+//
+// So casting is read from a field of its own.
+
+// MiddleHighProcess::unk14C - a UInt8 that xOBSE's header comments as "looks
+// like true if casting, or possibly a casting state". HighProcess inherits
+// MiddleHighProcess, so it is reachable through the same process pointer as the
+// three fields above.
+//
+// SINGLE-SOURCED AND HEDGED BY ITS OWN AUTHOR, which is below the standard this
+// file holds addresses to - so nothing is allowed to depend on it. It can only
+// hold the cast window OPEN, never open it and never close it: the window is
+// opened by the key and closed by a time limit regardless of what this byte
+// says. A byte that is always zero therefore costs the window nothing but its
+// insurance minimum, and a byte that is always one costs it nothing at all,
+// because the limit ends it either way. The log says which happened, and that
+// is what turns this from a guess into a measurement.
+inline constexpr UInt32 kProcessCastingOffset = 0x14C;
 
 // Pointer to NiDX9Renderer, the object that owns Oblivion's Direct3D 9
 // device. This is where 0.1.0 has to start: the camera hook works on the

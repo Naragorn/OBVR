@@ -1700,6 +1700,119 @@ void TestAimYaw() {
 	Check(true, "every heading and turn together stays inside one circle");
 }
 
+void TestCastWindow() {
+	std::printf("How long the body stays turned for a spell\n");
+
+	using obvr::camera::CastWindow;
+	using obvr::camera::CastWindowInput;
+	using obvr::camera::kCastWindowLimitSeconds;
+	using obvr::camera::NextCastWindow;
+
+	const float minimum = 0.25f;
+	const float frame = 1.0f / 60.0f;
+
+	const auto Step = [&](CastWindow window, bool held, bool wasHeld, bool flagKnown, bool flag) {
+		CastWindowInput input;
+		input.enabled = true;
+		input.castHeld = held;
+		input.castWasHeld = wasHeld;
+		input.castingKnown = flagKnown;
+		input.casting = flag;
+		input.deltaSeconds = frame;
+		return NextCastWindow(window, input, minimum);
+	};
+
+	// Switched off closes it whatever else is true, including a press. The
+	// setting has to be able to take the feature away completely.
+	CastWindowInput off;
+	off.enabled = false;
+	off.castHeld = true;
+	off.deltaSeconds = frame;
+	Check(!NextCastWindow(CastWindow{true, 0.1f}, off, minimum).open,
+	      "switched off, the window is shut even mid-cast");
+
+	// Nothing happening. The ordinary frame, which is nearly all of them.
+	Check(!Step(CastWindow{}, false, false, false, false).open,
+	      "with no press there is no window");
+	Check(!Step(CastWindow{}, true, true, false, false).open,
+	      "and a key already down when this starts does not open one - only the edge does");
+
+	// The press opens it.
+	const CastWindow opened = Step(CastWindow{}, true, false, false, false);
+	Check(opened.open && opened.secondsOpen == 0.0f, "the press opens the window at zero");
+
+	// THE FLAG SAYING NOTHING. This is the case the whole shape is built for:
+	// the offset has one source and its author hedged it, so the window has to
+	// work when it reads as nothing at all.
+	CastWindow blind = opened;
+	int frames = 0;
+	while (blind.open && frames < 600) {
+		blind = Step(blind, false, false, false, false);
+		++frames;
+	}
+	const float blindHeld = static_cast<float>(frames) * frame;
+	Check(blindHeld > minimum - frame && blindHeld < minimum + frame * 2.0f,
+	      "with the flag unreadable the window lasts its fixed minimum and then closes");
+
+	// THE FLAG STUCK TRUE. It must not be able to hold the body turned for
+	// good, because that is the wearer walking sideways for the rest of the
+	// session.
+	CastWindow stuck = opened;
+	frames = 0;
+	while (stuck.open && frames < 6000) {
+		stuck = Step(stuck, false, false, true, true);
+		++frames;
+	}
+	const float stuckHeld = static_cast<float>(frames) * frame;
+	// Within a frame or two of the limit, not to the millisecond: the window
+	// adds a frame time at a go and a sum of ninety of those does not land on
+	// the same float as one multiplication. What is being claimed is that the
+	// window is BOUNDED, and a tighter check would only be testing arithmetic
+	// rounding.
+	Check(stuck.open == false && stuckHeld <= kCastWindowLimitSeconds + frame * 3.0f,
+	      "a flag stuck true cannot hold the body past the limit");
+
+	// THE FLAG WORKING. Held open while it says casting, closed once it stops -
+	// which is the whole point of reading it, and gives a window that fits the
+	// cast rather than a fixed guess.
+	CastWindow tracking = opened;
+	for (int i = 0; i < 30; ++i) {
+		tracking = Step(tracking, false, false, true, true);
+	}
+	Check(tracking.open && tracking.secondsOpen > minimum,
+	      "a flag that says casting holds the window open past the minimum");
+	tracking = Step(tracking, false, false, true, false);
+	Check(!tracking.open, "and closes it the frame the cast is done");
+
+	// The key held keeps it open on its own, for a binding that is held rather
+	// than tapped - a gamepad trigger, or someone leaning on the key.
+	CastWindow leaning = opened;
+	for (int i = 0; i < 30; ++i) {
+		leaning = Step(leaning, true, true, false, false);
+	}
+	Check(leaning.open, "holding the cast key keeps the window open with no flag at all");
+
+	// A second press while the window stands restarts it rather than being
+	// swallowed, so casting twice quickly turns for both.
+	CastWindow again = Step(CastWindow{true, 1.0f}, true, false, false, false);
+	Check(again.open && again.secondsOpen == 0.0f, "a fresh press restarts the window");
+
+	// A minimum of zero is a real setting - what AimCastHoldSeconds becomes if
+	// the flag proves to track the cast - and must not open a window that never
+	// closes or one that closes before it opens.
+	CastWindowInput noMinimum;
+	noMinimum.enabled = true;
+	noMinimum.deltaSeconds = frame;
+	CastWindow bare = NextCastWindow(CastWindow{}, [&] {
+		CastWindowInput press = noMinimum;
+		press.castHeld = true;
+		return press;
+	}(), 0.0f);
+	Check(bare.open, "with no minimum the press still opens the window");
+	bare = NextCastWindow(bare, noMinimum, 0.0f);
+	Check(!bare.open, "and with nothing holding it, it closes at once");
+}
+
 void TestAimArcCorrection() {
 	std::printf("Putting the eye back on the arc the body's turn walked it along\n");
 
@@ -2034,6 +2147,8 @@ int main() {
 	TestAimYaw();
 	std::printf("\n");
 	TestAimYawRemaining();
+	std::printf("\n");
+	TestCastWindow();
 	std::printf("\n");
 	TestAimArcCorrection();
 	std::printf("\n");

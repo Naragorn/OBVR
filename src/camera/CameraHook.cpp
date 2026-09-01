@@ -280,6 +280,17 @@ float g_aimViewYawAfter = 0.0f;
 // opposite question.
 bool g_aimWasHeld = false;
 
+// The cast control last frame, and the window its press opened. Carried across
+// frames because a cast is decided by an EDGE and lasts past it - see
+// NextCastWindow for why a spell cannot be followed the way a bow shot is.
+bool g_castWasHeld = false;
+CastWindow g_castWindow{};
+
+// What the casting flag was reading while the window stood, for the trace and
+// for the one report that says whether the field is worth anything.
+bool g_castFlagSeen = false;
+bool g_castFlagReported = false;
+
 // How long since the attack control was released, in seconds. Negative means
 // nothing is being waited for - the control is held, or the last release has
 // already been settled.
@@ -1092,6 +1103,20 @@ bool PollRecenterEdge() {
 bool AttackHeld() {
 	const UInt32 key = GetConfig().aimAttackKey;
 	if (key == 0) {
+		return false;
+	}
+	return (GetAsyncKeyState(static_cast<int>(key)) & 0x8000) != 0;
+}
+
+// The cast control, read the same way and for the same reason.
+//
+// A separate key rather than a mode of the attack: Oblivion binds Cast on its
+// own, to C by default, and a spell readied does not change what the attack
+// button does. Both can be down at once and it costs nothing - the window each
+// opens is the same window.
+bool CastHeld() {
+	const UInt32 key = GetConfig().aimCastKey;
+	if (key == 0 || !GetConfig().aimCastFollowsGaze) {
 		return false;
 	}
 	return (GetAsyncKeyState(static_cast<int>(key)) & 0x8000) != 0;
@@ -2369,11 +2394,70 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// EDGE rather than the level - the frame the control went up.
 	const bool attackWasHeld = g_aimWasHeld;
 
+	// The cast, stepped alongside it.
+	//
+	// The casting flag is read only while there is something to read it for -
+	// the window standing, or the key just pressed. On every other frame, which
+	// is nearly all of them, no pointer into the process is followed at all;
+	// the same economy the attack state above is written for.
+	const bool castHeld = CastHeld();
+	const bool castWasHeld = g_castWasHeld;
+	g_castWasHeld = castHeld;
+
+	CastWindowInput castInput;
+	castInput.enabled = readPlayer && GetConfig().aimCastFollowsGaze &&
+	                    g_headTracker.IsHeadsetConnected() && !isThirdPerson &&
+	                    !game::IsMenuMode();
+	castInput.castHeld = castHeld;
+	castInput.castWasHeld = castWasHeld;
+	castInput.deltaSeconds = deltaSeconds;
+
+	if (castInput.enabled && (g_castWindow.open || castHeld)) {
+		const game::CastState state = game::ReadPlayerCastState();
+		castInput.castingKnown = state != game::CastState::Unknown;
+		castInput.casting = state == game::CastState::Casting;
+		if (castInput.casting) {
+			g_castFlagSeen = true;
+		}
+	}
+
+	const bool castWasOpen = g_castWindow.open;
+	g_castWindow = NextCastWindow(g_castWindow, castInput, GetConfig().aimCastHoldSeconds);
+
+	// Said once, and it is the whole verdict on a single-sourced offset its own
+	// author hedged. If the flag never comes up true across a session of
+	// casting, it does not track the cast and the window is running on its
+	// minimum alone - which still works, and now says so rather than looking
+	// like it was measured.
+	if (g_castWindow.open && !g_castFlagReported &&
+	    g_castWindow.secondsOpen >= kCastWindowLimitSeconds * 0.5f) {
+		g_castFlagReported = true;
+		OBVR_LOG("Aim: the casting flag at +%02X %s during a cast - the spell window is %s",
+		         addr::kProcessCastingOffset, g_castFlagSeen ? "DID read true" : "never read true",
+		         g_castFlagSeen ? "following the cast itself"
+		                        : "running on its fixed minimum alone");
+	}
+
+	// One window, whichever control opened it. Everything downstream - the
+	// turn, the return, the compensation that holds the view still and the arc
+	// correction that holds the eye still - is written against "is the body
+	// being turned", not against what is in the player's hands, so a spell
+	// needs none of it changed.
+	const bool castTurning = g_castWindow.open;
+
 	// The clock that separates "let go" from "shot". Released starts it, held
 	// stops it, and settling the turn stops it too.
-	if (attackHeld) {
+	//
+	// THE CAST WINDOW COUNTS AS BEING HELD, and its closing counts as a
+	// release. Without that a spell would turn the body and nothing would ever
+	// turn it back: the return refuses to act on a negative count, and the
+	// count only ever left negative because the ATTACK control was never
+	// pressed. The body would hold the cast's heading for good, and the wearer
+	// would walk sideways from then on - the exact fault the return was written
+	// for, reached by a door it did not know was there.
+	if (attackHeld || castTurning) {
 		g_aimSecondsSinceRelease = -1.0f;
-	} else if (attackWasHeld) {
+	} else if (attackWasHeld || castWasOpen) {
 		g_aimSecondsSinceRelease = 0.0f;
 	} else if (g_aimSecondsSinceRelease >= 0.0f) {
 		g_aimSecondsSinceRelease += deltaSeconds;
@@ -2408,8 +2492,17 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	                            g_aimSecondsSinceRelease >= 0.0f;
 	const bool turningOnShot = readPlayer && onShotMode && GetConfig().aimFollowsGaze &&
 	                           !attackHeld && g_aimSecondsSinceRelease >= 0.0f;
+	// A cast counts as an attack in progress for the return, and only for the
+	// return.
+	//
+	// Both are the same question asked once: is there still something being
+	// aimed that the body's heading decides? For an arrow the action field
+	// answers it; for a spell the window does. Giving the turn back while the
+	// window still stands would straighten the body before the spell has left,
+	// which is precisely the fault that made every arrow fly forwards when the
+	// return was first tried on the release frame.
 	const bool attackInProgress =
-		(waitingOnAShot || turningOnShot) && game::IsShotUnreleased();
+		((waitingOnAShot || turningOnShot) && game::IsShotUnreleased()) || castTurning;
 	if (readPlayer &&
 	    AimReturnWanted(GetConfig().aimReturnOnRelease, g_headTracker.IsHeadsetConnected(),
 	                    game::IsMenuMode(), attackHeld, g_aimSecondsSinceRelease,
@@ -2462,21 +2555,35 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// exist until the shot is released.
 	const bool turnDue =
 		AimTurnDue(onShotMode ? AimTurnMode::OnShot : AimTurnMode::WhileAiming, attackHeld,
-	               attackWasHeld, attackInProgress);
+	               attackWasHeld, attackInProgress) ||
+		castTurning;
 
 	// The shot trace, armed by the release and running for forty frames. One
 	// line a frame, so the sequence of actions across a real bow shot can be
 	// read off rather than assumed - which is what deciding the shortest
 	// possible window needs.
-	if (readPlayer && GetConfig().aimShotTrace) {
+	if (readPlayer && (GetConfig().aimShotTrace || GetConfig().aimCastTrace)) {
 		// Armed on the PRESS as well as the release, so the draw is in the
 		// record too - the jump left is at the moment of letting go, and half
 		// of what decides it happened before that.
-		if (attackHeld && !attackWasHeld) {
+		if (GetConfig().aimShotTrace && attackHeld && !attackWasHeld) {
 			g_shotTraceLeft = 90;
 			g_shotTraceFrame = 0;
-		} else if (attackWasHeld && !attackHeld && g_shotTraceLeft < 40) {
+		} else if (GetConfig().aimShotTrace && attackWasHeld && !attackHeld &&
+		           g_shotTraceLeft < 40) {
 			g_shotTraceLeft = 40;
+		} else if (GetConfig().aimCastTrace && castHeld && !castWasHeld) {
+			// The same instrument pointed at a cast, rather than a second one
+			// beside it. Its columns are already the right columns: the head's
+			// angle, the body's share, the view's heading either side of the
+			// compensation, and the eye's own position - which between them are
+			// what proved the bow's aim correct and found the last jump in it.
+			//
+			// Eighty frames from the press, because a cast has no release to
+			// arm a second stretch from and the whole of it has to fit inside
+			// one arming.
+			g_shotTraceLeft = 80;
+			g_shotTraceFrame = 0;
 		}
 		if (g_shotTraceLeft > 0) {
 			--g_shotTraceLeft;

@@ -173,6 +173,30 @@ bool IsShotUnreleased() {
 	       action == addr::kActionAttackBowArrowAttached;
 }
 
+CastState ReadPlayerCastState() {
+	const auto* const process = PlayerProcessOrNull();
+	if (process == nullptr) {
+		return CastState::Unknown;
+	}
+
+	// A flag, so it holds 0 or 1 and nothing else. Anything else is the field
+	// not being what the header says it is, and Unknown is the honest answer -
+	// the caller then falls back on the key and the time limit, which is what
+	// it would have had to do anyway if this offset had never been found.
+	//
+	// The same shape as ReadPlayerWeaponState below, and for the same reason:
+	// a single-sourced offset that reads back a value no boolean can hold is
+	// the one thing that can be told about it from inside the game.
+	const UInt8 value = *(process + addr::kProcessCastingOffset);
+	if (value == 0) {
+		return CastState::Idle;
+	}
+	if (value == 1) {
+		return CastState::Casting;
+	}
+	return CastState::Unknown;
+}
+
 WeaponState ReadPlayerWeaponState() {
 	const auto* const player = PlayerOrNull();
 	if (player == nullptr) {

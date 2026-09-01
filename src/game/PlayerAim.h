@@ -90,6 +90,24 @@ enum class WeaponState { Unknown, Sheathed, Drawn };
 
 WeaponState ReadPlayerWeaponState();
 
+// Whether the player is in the middle of casting a spell.
+//
+// WHY A FIELD OF ITS OWN, when a bow shot is followed through the action. The
+// action enum was read out in full when the aim was extended to magic, and
+// there is no cast in it - Attack, AttackFollowThrough, AttackBow,
+// AttackBowArrowAttached, Block, Recoil, Stagger, Dodge, and the rest are all
+// bodily. A spell passes through none of them, so the machinery that keeps the
+// body turned for the frames a bow shot needs has nothing to watch.
+//
+// Unknown is a real answer, not a failure, and it is what a byte holding
+// anything but 0 or 1 comes back as. The offset has one source and its own
+// author hedged it, so the cast window is built to work WITHOUT this: the key
+// opens it, a time limit closes it, and this can only hold it open in between.
+// See addr::kProcessCastingOffset for the whole of that reasoning.
+enum class CastState { Unknown, Idle, Casting };
+
+CastState ReadPlayerCastState();
+
 // Whether the player is sneaking.
 //
 // Needed for one narrow thing: Oblivion draws no crosshair in third person,

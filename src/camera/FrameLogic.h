@@ -966,6 +966,63 @@ bool YawWriteLanded(float wroteYaw, float engineYawNow, float stepTaken);
 // movement within a frame: about half a degree.
 inline constexpr float kYawLandingMinStep = 0.01f;
 
+// How long the body stays turned to the gaze for a cast, once nothing else
+// holds the window open.
+//
+// The same limit the return already uses for a bow shot, and for the same
+// reason: it is not a duration anybody wants, it is the point past which
+// something has gone wrong and the body must come back regardless. A window
+// that never closed would leave the wearer walking sideways for good.
+inline constexpr float kCastWindowLimitSeconds = 1.5f;
+
+// Everything the cast window is decided from in one frame.
+struct CastWindowInput {
+	// Whether gaze aiming for spells is switched on at all.
+	bool enabled = false;
+
+	// The cast control, now and last frame. The window opens on the DOWN EDGE:
+	// a spell leaves on the press, unlike an arrow which leaves on the release,
+	// so there is nothing to wait for.
+	bool castHeld = false;
+	bool castWasHeld = false;
+
+	// What the casting flag says, if it says anything. Unknown when the field
+	// could not be read or held a value no flag can hold - see
+	// game::CastState, and note that the window is built to work without it.
+	bool castingKnown = false;
+	bool casting = false;
+
+	float deltaSeconds = 0.0f;
+};
+
+// The cast window, carried from frame to frame.
+struct CastWindow {
+	bool open = false;
+	float secondsOpen = 0.0f;
+};
+
+// The window, one frame on.
+//
+// WHY THIS IS SHAPED SO DIFFERENTLY FROM THE BOW'S. A bow shot announces
+// itself: the action field runs 4, 5, 3 and the body can be held turned for
+// exactly as long as the arrow is being made. A spell announces nothing - the
+// action enum has no cast in it - so the only certain moment is the press.
+//
+// So the window is built from what IS certain and hardened against what is
+// not. The press opens it. The limit closes it. The casting flag and the key
+// can only hold it open in between, and neither can extend it past the limit
+// or keep it shut when the key went down. Every way the flag can be wrong -
+// stuck true, stuck false, garbage - lands on a window that is bounded and
+// still covers the press.
+//
+// The minimum is the insurance: the cast key is a tap, and if the flag turns
+// out to say nothing then a window lasting only as long as the key is down
+// might close before the spell has left. Held open for a short fixed time
+// after the press, which is the ONE number here that was chosen rather than
+// measured - the trace exists to replace it.
+CastWindow NextCastWindow(const CastWindow& current, const CastWindowInput& input,
+                          float minimumSeconds);
+
 // What the body's turn did to where the eye stands, so it can be undone.
 struct AimArcInput {
 	// The camera as the engine placed it this frame, before OBVR has added
