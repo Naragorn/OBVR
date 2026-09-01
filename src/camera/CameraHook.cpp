@@ -1,6 +1,7 @@
 #include "camera/CameraHook.h"
 
 #include "camera/CameraTrampoline.h"
+#include "camera/CastTrampoline.h"
 #include "camera/LookControl.h"
 #include "core/Config.h"
 
@@ -289,6 +290,42 @@ CastWindow g_castWindow{};
 // Said once, when a spell has finished holding the body: how long it held it
 // for, and which of the two things ended it.
 bool g_castReported = false;
+
+// What the cast hook needs to know, published by the camera pass each frame so
+// the hook itself decides nothing it would have to look up.
+//
+// It runs inside the engine, on a call OBVR does not own, and the less it does
+// there the better: read two values, write one field, leave.
+bool g_castAimWanted = false;
+float g_castAimStep = 0.0f;
+
+// Where MagicCaster sits inside PlayerCharacter, once it has been seen.
+//
+// LEARNED RATHER THAN LOOKED UP. The hook is handed a MagicCaster*, and the
+// player is a PlayerCharacter*; MagicCaster is one of its bases, so the two
+// differ by a fixed offset that no source this project has consulted states.
+// Rather than guess it, OBVR waits for a cast it already knows is the player's
+// - the cast key was pressed and its window is standing - and takes the
+// difference then. Anything that is not a small, aligned, forward offset is
+// refused, so a wild pointer cannot teach it a wrong answer.
+//
+// Until it is known, the hook writes nothing at all. After it is known, it
+// writes only for casters that match, so an NPC casting beside the player
+// leaves the player's heading alone.
+constexpr UInt32 kMagicCasterOffsetUnknown = 0xFFFFFFFFu;
+UInt32 g_playerMagicCasterOffset = kMagicCasterOffsetUnknown;
+bool g_castHookReported = false;
+
+// Whether the turn now standing was made by the cast hook rather than by the
+// key window. The return treats the two differently: a bow shot has to wait for
+// the action field to say the arrow has gone, while a spell made inside the
+// hook has already gone by the time anything can look.
+bool g_turnFromCastHook = false;
+
+// Whether the hook actually went in. Without it the setting means nothing and
+// the key window has to go on doing the turning - a refusal to patch must not
+// leave spell aiming switched off by a setting that says it is on.
+bool g_castHookInstalled = false;
 
 // How long since the attack control was released, in seconds. Negative means
 // nothing is being waited for - the control is held, or the last release has
@@ -1908,6 +1945,146 @@ void UpdateCrosshairDepth(const Config& config, float deltaSeconds) {
 	g_crosshairProbeFarthest = 0.0f;
 }
 
+// Puts the cast hook in, or explains in the log why it did not go in.
+//
+// A REFUSAL IS NOT A FAILURE HERE. If the bytes are not what this build
+// expects - a different game version, or another mod that got to the same
+// function first - the patch is skipped and spell aiming falls back to the key
+// window it had before. That is worse aiming, not broken aiming, and it is
+// vastly better than writing a jump into an instruction stream that turned out
+// to be somebody else's.
+//
+// Declared before the callback it points at, which is defined below.
+void InstallCastHook();
+
+}  // namespace
+
+// Called from the trampoline at the top of MagicCaster::CastMagicItem, with
+// `this` - the caster - passed through from ecx.
+//
+// THIS IS THE WHOLE OF WHAT THE HOOK EXISTS FOR. A spell leaves along the
+// caster's heading, and so does walking, so aiming by turning the heading makes
+// the character walk the way the spell went for as long as the turn stands.
+// Here the turn does not have to stand: the heading only has to be right while
+// this function runs, so it is set on the way in and given back on the next
+// frame rather than held for the length of a cast animation.
+//
+// Runs inside the engine, on a call OBVR does not own. So it reads two values
+// the camera pass has already worked out, writes one field, and leaves - no
+// allocation, no logging on the ordinary path, and nothing that can throw.
+extern "C" void __cdecl OBVR_OnMagicCastItem(void* caster) {
+	if (!g_castAimWanted || caster == nullptr || g_aimBodyOffset != 0.0f) {
+		return;
+	}
+
+	const auto* const player = *reinterpret_cast<UInt8* const*>(addr::kPlayerPointer);
+	const UInt32 playerAddress = reinterpret_cast<UInt32>(player);
+	if (playerAddress < 0x00010000u || playerAddress > 0x7FFFFFFFu) {
+		return;
+	}
+
+	// Unsigned on purpose. A caster that sits BELOW the player wraps to an
+	// enormous number and fails the bound, which is the answer wanted: it is
+	// not a base subobject of the player, so it is somebody else casting.
+	const UInt32 delta = reinterpret_cast<UInt32>(caster) - playerAddress;
+	if (delta >= addr::kMaxPlayerSubobjectOffset || (delta & 3u) != 0u) {
+		return;
+	}
+
+	if (g_playerMagicCasterOffset == kMagicCasterOffsetUnknown) {
+		// Only from a cast OBVR already knows is the player's. The key window
+		// standing is what says so - see g_playerMagicCasterOffset.
+		if (!g_castWindow.open) {
+			return;
+		}
+		g_playerMagicCasterOffset = delta;
+	} else if (delta != g_playerMagicCasterOffset) {
+		return;
+	}
+
+	game::PlayerRotation rotation{};
+	if (!game::ReadPlayerRotation(rotation)) {
+		return;
+	}
+
+	const float target = PlayerYawForGaze(rotation.yaw, g_castAimStep);
+	if (!game::WritePlayerYaw(target)) {
+		return;
+	}
+
+	// Booked exactly as a step of the key-driven turn is, so everything
+	// downstream keeps working without knowing where the turn came from: the
+	// landing check next frame, the compensation that holds the view still,
+	// and the arc correction that holds the eye still.
+	g_aimBodyOffset = math::WrapAngle(g_aimBodyOffset + g_castAimStep);
+	g_aimYawWrote = target;
+	g_aimYawStepTaken = g_castAimStep;
+	g_aimYawPending = true;
+	g_turnFromCastHook = true;
+
+	// Starts the return's clock. Without this the return refuses to act - it
+	// only ever counts from the attack control going up, and a spell never
+	// touches that control.
+	g_aimSecondsSinceRelease = 0.0f;
+
+	if (!g_castHookReported) {
+		g_castHookReported = true;
+		OBVR_LOG("Aim: the cast hook fired - MagicCaster sits +%X inside the player, and the "
+		         "heading was turned %.1f degrees for the length of the call instead of the "
+		         "length of the animation",
+		         delta, static_cast<double>(g_castAimStep * math::kRadiansToDegrees));
+	}
+}
+
+namespace {
+
+// Big enough for the trampoline above with room to spare; it is under thirty
+// bytes and a page is the smallest thing that can be allocated anyway.
+constexpr UInt32 kCastTrampolineSize = 64;
+
+void InstallCastHook() {
+	if (!mem::Verify(addr::kHookMagicCastItem, kCastOriginalBytes,
+	                 addr::kHookMagicCastItemPatchSize)) {
+		OBVR_LOG("Aim: bytes at %08X are not MagicCaster::CastMagicItem's prologue - the cast "
+		         "hook is not installed, and spells fall back to the key window",
+		         addr::kHookMagicCastItem);
+		return;
+	}
+
+	auto* trampoline = static_cast<UInt8*>(mem::AllocExecutable(kCastTrampolineSize));
+	if (trampoline == nullptr) {
+		OBVR_LOG("Aim: no executable memory for the cast trampoline");
+		return;
+	}
+
+	const UInt32 trampolineAddress = reinterpret_cast<UInt32>(trampoline);
+	const UInt32 trampolineSize =
+		BuildCastTrampoline(trampoline, kCastTrampolineSize, trampolineAddress,
+	                        reinterpret_cast<UInt32>(&OBVR_OnMagicCastItem));
+	if (trampolineSize == 0) {
+		OBVR_LOG("Aim: cast trampoline does not fit into %u bytes", kCastTrampolineSize);
+		return;
+	}
+
+	UInt8 patch[addr::kHookMagicCastItemPatchSize];
+	const UInt32 patchSize =
+		BuildCastPatch(patch, sizeof(patch), addr::kHookMagicCastItem, trampolineAddress);
+	if (patchSize != sizeof(patch)) {
+		OBVR_LOG("Aim: cast patch has unexpected length %u", patchSize);
+		return;
+	}
+
+	if (!mem::SafeWrite(addr::kHookMagicCastItem, patch, patchSize)) {
+		OBVR_LOG("Aim: SafeWrite to %08X failed", addr::kHookMagicCastItem);
+		return;
+	}
+
+	g_castHookInstalled = true;
+	OBVR_LOG("Aim: cast hook installed at %08X, trampoline at %08X (%u bytes) - a spell now "
+	         "turns the heading for the length of one call instead of one animation",
+	         addr::kHookMagicCastItem, trampolineAddress, trampolineSize);
+}
+
 }  // namespace
 
 // Called from the trampoline after Oblivion has finished computing the
@@ -2441,7 +2618,28 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// correction that holds the eye still - is written against "is the body
 	// being turned", not against what is in the player's hands, so a spell
 	// needs none of it changed.
-	const bool castTurning = g_castWindow.open;
+	//
+	// UNLESS THE HOOK IS DOING IT, in which case the window turns nothing and
+	// only keeps its other job: saying that a cast standing right now is the
+	// player's, which is what lets the MagicCaster offset be learned rather
+	// than guessed. The turn itself moves to the one moment it is needed.
+	const bool castAtSpawn = GetConfig().aimCastAtSpawn && g_castHookInstalled;
+	const bool castTurning = g_castWindow.open && !castAtSpawn;
+
+	// What the hook needs, worked out here so it need work out nothing itself.
+	//
+	// The step is the whole of the head's turn, not the remainder: with the
+	// window no longer turning the body, there is never a share already handed
+	// over for the hook to subtract.
+	g_castAimWanted = false;
+	if (castAtSpawn && readPlayer && !isThirdPerson && GetConfig().aimCastFollowsGaze &&
+	    g_headTracker.IsHeadsetConnected() && !game::IsMenuMode()) {
+		Heading castHeading{};
+		if (HeadingOf(g_headTracker.GetCameraRotation(), castHeading)) {
+			g_castAimStep = math::Atan2(castHeading.sine, castHeading.cosine);
+			g_castAimWanted = true;
+		}
+	}
 
 	// The clock that separates "let go" from "shot". Released starts it, held
 	// stops it, and settling the turn stops it too.
@@ -2499,8 +2697,17 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// window still stands would straighten the body before the spell has left,
 	// which is precisely the fault that made every arrow fly forwards when the
 	// return was first tried on the release frame.
+	//
+	// A turn made by the cast hook waits for nothing. The wait exists because
+	// an arrow leaves several frames after the control is released and the
+	// heading in between is the one it flies along - but a spell made inside
+	// the hook has already been made by the time anything here can look, and
+	// the action field would keep the body turned for the rest of the cast
+	// animation, which is the entire fault the hook was written to remove.
 	const bool attackInProgress =
-		((waitingOnAShot || turningOnShot) && game::IsShotUnreleased()) || castTurning;
+		g_turnFromCastHook
+			? false
+			: (((waitingOnAShot || turningOnShot) && game::IsShotUnreleased()) || castTurning);
 	if (readPlayer &&
 	    AimReturnWanted(GetConfig().aimReturnOnRelease, g_headTracker.IsHeadsetConnected(),
 	                    game::IsMenuMode(), attackHeld, g_aimSecondsSinceRelease,
@@ -2519,6 +2726,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			g_aimYawStepTaken = step;
 			g_aimYawPending = true;
 			g_aimSecondsSinceRelease = -1.0f;
+			g_turnFromCastHook = false;
 
 			if (!g_aimReturnReported) {
 				g_aimReturnReported = true;
@@ -3009,6 +3217,8 @@ bool Install() {
 
 	OBVR_LOG("Camera: hook installed at %08X, trampoline at %08X (%u bytes)",
 	         addr::kHookCameraUpdate, trampolineAddress, trampolineSize);
+
+	InstallCastHook();
 
 	// The end of the frame, hooked as soon as there is a device to hook it on
 	// rather than when the first world camera runs.

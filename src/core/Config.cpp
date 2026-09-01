@@ -400,6 +400,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.aimCastHoldSeconds =
 		ReadFloat("Look", "AimCastHoldSeconds", config.aimCastHoldSeconds, path);
 	config.aimCastTrace = ReadBool("Look", "AimCastTrace", config.aimCastTrace, path);
+	config.aimCastAtSpawn =
+		ReadBool("Look", "AimCastAtSpawn", config.aimCastAtSpawn, path);
 
 	config.settingsMenuKey =
 		ReadKeyCode("SettingsMenu", "Key", config.settingsMenuKey, path);

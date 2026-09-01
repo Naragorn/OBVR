@@ -61,6 +61,56 @@ inline constexpr UInt32 kHookCameraUpdatePatchSize = 8;
 inline constexpr UInt32 kHookCameraUpdateResumeTaken = 0x0066BE7C;
 inline constexpr UInt32 kHookCameraUpdateResumeEmpty = 0x0066BE84;
 
+// MagicCaster::CastMagicItem - where a spell actually becomes a thing in the
+// world, and the one moment the caster's heading has to be right.
+//
+// WHY HOOK A FUNCTION AT ALL, when the aim has managed without one until now.
+// Turning the player's heading is what makes a spell go where the wearer looks,
+// but the heading is also what walking follows - one field, two jobs - so for
+// as long as the turn stands the character walks the way the spell went. The
+// window was cut from 1.32 seconds to 0.9 by watching the action field, and
+// that is the floor: nothing outside the engine knows WHEN inside the cast
+// animation the spell is made.
+//
+// This function does. The heading only has to be right while it runs, so
+// setting it here and giving it back leaves walking alone - the cause removed
+// rather than another consequence compensated.
+//
+// TWO SOURCES, as this file requires of every address.
+//
+// The first is xOBSE, which names it: EventManager.cpp declares
+// kMagicCasterCastMagicItemFnAddr = 0x00699190 and calls it through
+// ThisStdCall(addr, caster, magicItem, target, noHitVFX). Its OnMagicCast thunk
+// ends in `retn 0xC`, which fixes the shape as __thiscall with three stack
+// arguments.
+//
+// The second is the executable itself, read out of Oblivion.exe at the file
+// offset that 0x00699190 maps to (.text, ImageBase 0x00400000, so RVA 0x299190
+// -> file 0x298590). It begins:
+//
+//   53              push ebx
+//   56              push esi
+//   57              push edi
+//   8B 7C 24 10     mov  edi, [esp+0x10]     <- first stack argument
+//   8B F1           mov  esi, ecx            <- this
+//
+// Three pushes plus the return address put the first argument at exactly
+// [esp+0x10], and `this` arrives in ecx. That is a __thiscall taking arguments,
+// which is what xOBSE's call shape says it must be - the two descriptions agree
+// without either being derived from the other.
+//
+// Seven bytes are taken rather than five: a jump needs five, and the fourth
+// instruction ends at seven. Half an instruction must never be left standing.
+inline constexpr UInt32 kHookMagicCastItem = 0x00699190;
+inline constexpr UInt32 kHookMagicCastItemPatchSize = 7;
+inline constexpr UInt32 kHookMagicCastItemResume = 0x00699197;
+
+// A bound on how far a base subobject can sit inside PlayerCharacter, used
+// only to reject a nonsense value while the MagicCaster offset is being
+// learned. Generous on purpose: the point is to refuse a wild pointer, not to
+// second-guess a layout nothing here has measured yet.
+inline constexpr UInt32 kMaxPlayerSubobjectOffset = 0x2000;
+
 // Shortly after the hook the game calls, on the CameraNode:
 //
 //   0066BE84  fldz

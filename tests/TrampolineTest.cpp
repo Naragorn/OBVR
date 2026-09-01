@@ -12,6 +12,7 @@
 #include <cstdio>
 
 #include "camera/CameraTrampoline.h"
+#include "camera/CastTrampoline.h"
 #include "game/GameAddresses.h"
 
 namespace {
@@ -222,6 +223,97 @@ void TestOverflowIsReported() {
 	Check(size == 0, "a buffer that is too small reports 0 instead of truncating");
 }
 
+// The cast hook's bytes, worked out by hand the same way.
+//
+// Its own test rather than a variation of the camera's, because the two differ
+// in exactly the places where a mistake is fatal: what gets pushed for the
+// callback, which instructions are displaced, and where control resumes.
+void TestCastTrampoline() {
+	std::printf("Cast hook trampoline\n");
+
+	const UInt32 kTrampoline = 0x10000000;
+	const UInt32 kCallback = 0x10001000;
+
+	UInt8 buffer[64] = {};
+	const UInt32 size =
+		obvr::camera::BuildCastTrampoline(buffer, sizeof(buffer), kTrampoline, kCallback);
+
+	// 60 9C 51 | E8 rel32 | 83 C4 04 | 9D 61 | 53 56 57 8B 7C 24 10 | E9 rel32
+	//  3 + 5 + 3 + 2 + 7 + 5 = 25
+	Check(size == 25, "the trampoline is 25 bytes");
+
+	Check(buffer[0] == 0x60, "it saves the registers first");
+	Check(buffer[1] == 0x9C, "then the flags");
+
+	// push ecx, not a read from the saved block. ecx still holds `this`,
+	// because pushad and pushfd copy registers rather than change them.
+	Check(buffer[2] == 0x51, "then pushes ecx, which is the MagicCaster");
+
+	Check(buffer[3] == 0xE8, "then calls the callback");
+	const UInt32 callTarget = kTrampoline + 8;
+	const UInt32 callRel = kCallback - callTarget;
+	Check(*reinterpret_cast<const UInt32*>(buffer + 4) == callRel,
+	      "with the offset measured from the instruction after the call");
+
+	// The argument comes off again, then the saved state, in reverse order.
+	Check(buffer[8] == 0x83 && buffer[9] == 0xC4 && buffer[10] == 0x04,
+	      "the pushed argument is taken back off the stack");
+	Check(buffer[11] == 0x9D, "the flags come back");
+	Check(buffer[12] == 0x61, "and the registers");
+
+	// THE PART THAT MUST BE EXACT. These four instructions were displaced from
+	// the function and have to run here instead, seeing the stack they would
+	// have seen there - which they do, because everything above them balances.
+	const UInt8 displaced[7] = {0x53, 0x56, 0x57, 0x8B, 0x7C, 0x24, 0x10};
+	CheckBytes(buffer + 13, displaced, sizeof(displaced),
+	           "the four displaced instructions follow, unchanged");
+
+	Check(buffer[20] == 0xE9, "and it jumps back into the function");
+	const UInt32 jumpTarget = kTrampoline + 25;
+	const UInt32 jumpRel = obvr::addr::kHookMagicCastItemResume - jumpTarget;
+	Check(*reinterpret_cast<const UInt32*>(buffer + 21) == jumpRel,
+	      "landing seven bytes past the hook, where the prologue continues");
+
+	// The resume address must be the hook plus exactly what was displaced.
+	// Anything else lands mid-instruction, which is a crash and not a bug.
+	Check(obvr::addr::kHookMagicCastItemResume ==
+	          obvr::addr::kHookMagicCastItem + obvr::addr::kHookMagicCastItemPatchSize,
+	      "the resume address is the hook plus the seven displaced bytes");
+
+	// The bytes the hook expects to find, read out of Oblivion.exe rather than
+	// recalled: push ebx / push esi / push edi / mov edi,[esp+0x10].
+	CheckBytes(obvr::camera::kCastOriginalBytes, displaced, sizeof(displaced),
+	           "and the bytes it verifies before patching are the same four");
+}
+
+void TestCastPatch() {
+	std::printf("Cast hook patch\n");
+
+	const UInt32 kTrampoline = 0x10000000;
+	UInt8 buffer[obvr::addr::kHookMagicCastItemPatchSize] = {};
+
+	const UInt32 size = obvr::camera::BuildCastPatch(
+		buffer, sizeof(buffer), obvr::addr::kHookMagicCastItem, kTrampoline);
+
+	Check(size == obvr::addr::kHookMagicCastItemPatchSize,
+	      "the patch fills all seven displaced bytes");
+	Check(buffer[0] == 0xE9, "it starts with a jump");
+
+	const UInt32 next = obvr::addr::kHookMagicCastItem + 5;
+	Check(*reinterpret_cast<const UInt32*>(buffer + 1) == kTrampoline - next,
+	      "whose offset is measured from the instruction after it");
+
+	// Two nops. Without them, three bytes of `mov edi,[esp+0x10]` would be left
+	// standing where the processor will run them.
+	Check(buffer[5] == 0x90 && buffer[6] == 0x90,
+	      "and the two bytes past the jump are nops, so no half instruction is left");
+
+	UInt8 tooSmall[4] = {};
+	Check(obvr::camera::BuildCastPatch(tooSmall, sizeof(tooSmall),
+	                                   obvr::addr::kHookMagicCastItem, kTrampoline) == 0,
+	      "a buffer too small for the jump reports 0 rather than half a patch");
+}
+
 }  // namespace
 
 int main() {
@@ -234,6 +326,10 @@ int main() {
 	TestLargeAddressAware();
 	std::printf("\n");
 	TestOverflowIsReported();
+	std::printf("\n");
+	TestCastTrampoline();
+	std::printf("\n");
+	TestCastPatch();
 
 	std::printf("\n");
 	if (g_failures == 0) {

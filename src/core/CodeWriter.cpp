@@ -78,6 +78,11 @@ void CodeWriter::JumpAboveRelative(UInt32 target) {
 	DWord(target - next);
 }
 
+void CodeWriter::PushEcx() {
+	// 51
+	Byte(0x51);
+}
+
 void CodeWriter::ClearEcx() {
 	// 33 c9
 	Byte(0x33);

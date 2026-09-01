@@ -25,6 +25,7 @@ add_library(OBVR SHARED
 	src/Plugin.cpp
 	src/camera/CameraHook.cpp
 	src/camera/CameraTrampoline.cpp
+	src/camera/CastTrampoline.cpp
 	src/camera/FrameLogic.cpp
 	src/ui/MenuFont.cpp
 	src/ui/MenuCanvas.cpp

@@ -43,6 +43,9 @@ public:
 	// ja (jump if above) with a 32-bit relative target.
 	void JumpAboveRelative(UInt32 target);
 
+	// push ecx, to hand a thiscall's `this` to a cdecl callback.
+	void PushEcx();
+
 	// xor ecx, ecx
 	void ClearEcx();
 

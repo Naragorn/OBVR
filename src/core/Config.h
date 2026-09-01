@@ -305,6 +305,21 @@ struct Config {
 	// feature, and it writes hard to the log.
 	bool aimCastTrace = false;
 
+	// Whether a spell turns the heading at the moment it is MADE, rather than
+	// for the length of the cast animation.
+	//
+	// This is the difference between compensating a consequence and removing a
+	// cause. With it off, the body is turned from the key press until the action
+	// field says the spell has gone - about nine tenths of a second - and the
+	// character walks the way the spell went for all of it. With it on, OBVR
+	// hooks the function that actually makes the spell and turns the heading
+	// only while that call runs, so walking is left alone.
+	//
+	// Needs the hook to have gone in. If the bytes at the function are not what
+	// this build expects - another game version, or another mod there first -
+	// the log says so and the key window takes over again.
+	bool aimCastAtSpawn = true;
+
 	// The key that opens OBVR's own settings menu in the headset, as a Windows
 	// virtual-key code. 0 disables it entirely.
 	//
