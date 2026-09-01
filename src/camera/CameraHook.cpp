@@ -2533,18 +2533,38 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		                          : 0.0f;
 		const float weapon = g_weaponTurnWanted ? g_weaponTurnRadians : 0.0f;
 
-		// VIEW is the column that matters now. It is the heading the picture is
-		// built along, read back after the compensation rather than assumed
-		// from it - the same move that found the arms' fault. With the head
-		// held still it must not move, and the frame it does is the jump.
+		// VIEW is the heading the picture is built along, read back after the
+		// compensation rather than assumed from it. It has now been measured
+		// across five shots and it does not move: 152.9 in every frame of
+		// every window, through both handovers, while raw swung the body's
+		// whole 32.5 degrees and back. The compensation is exact, and the
+		// frame it lands in is the one its comment claims.
+		//
+		// EYE is where that leaves the search. With the vertical look dropped
+		// in first person the camera's rotation is a pure heading, so VIEW
+		// holding still means the rotation holds still - there is no third
+		// angle left for a jump to hide in. What is left is the one channel
+		// nothing here has ever measured: the camera's POSITION. A body that
+		// turns 32.5 degrees swings anything standing off its axis through an
+		// arc, and a picture whose viewpoint steps sideways for one frame is
+		// indistinguishable from one that turns. "es ist die ganze view. das
+		// ganze bild."
+		//
+		// Read out of the world transform before OBVR writes its own offset
+		// in, so this is the engine's own placement and nothing of OBVR's -
+		// which is exactly the question. If it steps at the release frame and
+		// steps back, the jump is a translation and was never an angle at all.
 		OBVR_LOG("Shot trace %2u: %s action=%d turn=%d | head=%6.1f body=%6.1f weapon=%6.1f "
-		         "| view raw=%7.1f VIEW=%7.1f",
+		         "| view raw=%7.1f VIEW=%7.1f | EYE %8.2f %8.2f %8.2f",
 		         g_shotTraceFrame++, attackHeld ? "held" : "----", game::ReadPlayerAction(),
 		         turnDue ? 1 : 0, static_cast<double>(headYaw * math::kRadiansToDegrees),
 		         static_cast<double>(g_aimBodyOffset * math::kRadiansToDegrees),
 		         static_cast<double>(weapon * math::kRadiansToDegrees),
 		         static_cast<double>(g_aimViewYawBefore * math::kRadiansToDegrees),
-		         static_cast<double>(g_aimViewYawAfter * math::kRadiansToDegrees));
+		         static_cast<double>(g_aimViewYawAfter * math::kRadiansToDegrees),
+		         static_cast<double>(g_cameraWorldPos.x),
+		         static_cast<double>(g_cameraWorldPos.y),
+		         static_cast<double>(g_cameraWorldPos.z));
 	}
 
 	// The three pitches side by side. This measured how to make an arrow go
