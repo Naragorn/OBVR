@@ -2406,6 +2406,66 @@ void TestChaseCamera() {
 	      "third person takes only the share the chase camera has reached");
 }
 
+void TestMeasuredChaseRate() {
+	std::printf("The chase camera's rate, read off the camera\n");
+
+	using obvr::camera::ChaseRateInput;
+	using obvr::camera::kChaseDeltaMult;
+	using obvr::camera::kChaseMinRemainingRadians;
+	using obvr::camera::MeasuredChaseRate;
+
+	const auto Near = [](float a, float b) { return a - b < 1e-4f && b - a < 1e-4f; };
+
+	// The headset's own numbers: the camera at -150.0 degrees, the body
+	// written to -29.3 degrees further, the next frame's camera at -151.8.
+	// That step is 6.1 percent of what was left - not the five the setting
+	// says, and it is the measured number that is used.
+	const float degrees = 3.14159265f / 180.0f;
+	ChaseRateInput input;
+	input.haveBefore = true;
+	input.cameraBefore = -150.0f * degrees;
+	input.target = (-150.0f - 29.3f) * degrees;
+	input.cameraNow = -151.8f * degrees;
+	Check(Near(MeasuredChaseRate(input), 1.8f / 29.3f), "the rate is what the camera moved over what it had left");
+
+	// The frame after, in which the physics did not step: the camera stood
+	// still, and the rate is zero - which is exactly the share of the turn the
+	// camera took in that frame. This is the frame a modelled rate got wrong.
+	input.cameraBefore = -151.8f * degrees;
+	input.cameraNow = -151.9f * degrees;
+	input.target = (-150.0f - 28.6f) * degrees;
+	const float still = MeasuredChaseRate(input);
+	Check(still >= 0.0f && still < 0.005f, "a frame the physics skipped reads as no rate at all");
+
+	// Nothing to measure against.
+	input.haveBefore = false;
+	Check(Near(MeasuredChaseRate(input), kChaseDeltaMult), "no previous frame: the fallback stands in");
+	input.haveBefore = true;
+
+	// Already there: the division would be noise, so the fallback stands in
+	// here too.
+	input.cameraBefore = 1.0f;
+	input.cameraNow = 1.0f;
+	input.target = 1.0f + kChaseMinRemainingRadians * 0.5f;
+	Check(Near(MeasuredChaseRate(input), kChaseDeltaMult), "a camera at its target reports the fallback");
+
+	// The other way, or past the target: neither is the easing.
+	input.cameraBefore = 0.0f;
+	input.target = 0.5f;
+	input.cameraNow = -0.1f;
+	Check(Near(MeasuredChaseRate(input), 0.0f), "a camera moving away from its target is not easing");
+	input.cameraNow = 0.7f;
+	Check(Near(MeasuredChaseRate(input), 1.0f), "and one past its target is clamped to all of it");
+
+	// Across the seam: a target on the far side of pi is a short way round,
+	// and the rate reads the same as anywhere else.
+	const float kPi = 3.14159265f;
+	input.cameraBefore = kPi - 0.05f;
+	input.target = -kPi + 0.15f;   // 0.2 rad further round
+	input.cameraNow = -kPi + 0.05f;  // moved 0.1 of it
+	Check(Near(MeasuredChaseRate(input), 0.5f), "a step across the seam measures by the short arc");
+}
+
 void TestAimPitchHold() {
 	std::printf("The third person pitch, borrowed and given back\n");
 
@@ -2587,6 +2647,8 @@ void TestAimTiltCorrection() {
 
 int main() {
 	TestChaseCamera();
+	std::printf("\n");
+	TestMeasuredChaseRate();
 	std::printf("\n");
 	TestAimPitchHold();
 	std::printf("\n");

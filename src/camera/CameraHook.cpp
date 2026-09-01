@@ -245,12 +245,21 @@ float g_aimBodyOffset = 0.0f;
 //
 // The first person camera is built from the heading the frame it is written,
 // so the offset above is also what the picture carries. The third person
-// camera is not: it eases towards the heading by five percent of what is
-// left each frame (camera::kChaseDeltaMult - measured, and then found as
-// fChaseDeltaMult in Oblivion.ini). So what has to be taken back out of that
-// picture is not the offset but the share of it the camera has reached, and
-// that share is kept here, stepped the way the engine steps the camera.
+// camera is not: it eases towards the heading a few percent of what is left
+// per physics step, at the physics' own rate rather than the renderer's
+// (camera::MeasuredChaseRate has the measurement). So what has to be taken
+// back out of that picture is not the offset but the share of it the camera
+// has reached, and that share is kept here, stepped by the rate the camera
+// itself showed this frame.
 float g_aimChasedOffset = 0.0f;
+
+// The chase camera's own angles last frame, so this frame's step can be
+// measured against them, and the rates that came out - kept for the trace.
+float g_chaseYawBefore = 0.0f;
+float g_chasePitchBefore = 0.0f;
+bool g_chaseHaveBefore = false;
+float g_chaseYawRate = 0.0f;
+float g_chasePitchRate = 0.0f;
 
 // The pitch, which in third person is borrowed rather than written outright
 // - see camera::AimPitchHold. The offset is how far the field stands from
@@ -2401,9 +2410,19 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 
 	UpdateCrosshairDepth(config, deltaSeconds);
 
-	// Kept for the third person probe: the rotation as the engine built it,
-	// before the look control levels it.
+	// The rotation as the engine built it, before the look control levels it
+	// - what the chase camera's own angle is read from.
 	const NiMatrix33 engineRotation = cameraNode->localTransform.rot;
+
+	// The player's rotation as the engine left it this frame. Read BEFORE
+	// anything is written, and that ordering is the measurement rather than
+	// a tidiness: what is in the field at this moment is what the engine left
+	// there, which the probe could not see while it read afterwards.
+	//
+	// Read up here, ahead of the compensation, because the third person
+	// camera's rate is measured against it.
+	game::PlayerRotation asEngineLeftIt{};
+	const bool readPlayer = game::ReadPlayerRotation(asEngineLeftIt);
 
 	// What the CAMERA carries of the aim this frame, which is not the same
 	// question in the two views.
@@ -2411,11 +2430,47 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// The engine built this frame's camera from the fields OBVR wrote last
 	// frame - the offsets standing here are the ones those fields contain. In
 	// first person the camera takes them whole; in third person it eases
-	// towards them, and the share it has reached is stepped here exactly the
-	// way the engine steps the camera, one step per frame, before anything
-	// below reads it. See camera::ChaseStep for the measurement.
-	g_aimChasedOffset = ChaseStep(g_aimChasedOffset, g_aimBodyOffset, kChaseDeltaMult);
-	g_aimChasedPitch = ChaseStep(g_aimChasedPitch, g_aimPitchOffset, kChaseDeltaMult);
+	// towards them, and the share it has reached is stepped here by the rate
+	// the engine applied THIS frame - read off the camera, not assumed. The
+	// headset showed why: the physics steps that camera at sixty hertz under
+	// a ninety hertz renderer, so every third frame it does not move at all,
+	// and a modelled rate turned the picture on exactly those frames. See
+	// camera::MeasuredChaseRate.
+	//
+	// The camera's heading sits at minus rotZ and its pitch at minus rotX
+	// once settled, both measured by the probe, which is where the targets'
+	// signs come from.
+	Heading engineHeading{};
+	const bool haveEngineHeading = HeadingOf(engineRotation, engineHeading);
+	const float engineYaw =
+		haveEngineHeading ? math::Atan2(engineHeading.sine, engineHeading.cosine) : 0.0f;
+	const float enginePitch = math::Asin(SinPitchOf(engineRotation));
+
+	float yawRate = kChaseDeltaMult;
+	float pitchRate = kChaseDeltaMult;
+	if (isThirdPerson && readPlayer && haveEngineHeading) {
+		ChaseRateInput yawInput;
+		yawInput.cameraNow = engineYaw;
+		yawInput.cameraBefore = g_chaseYawBefore;
+		yawInput.haveBefore = g_chaseHaveBefore;
+		yawInput.target = -asEngineLeftIt.yaw;
+		yawRate = MeasuredChaseRate(yawInput);
+
+		ChaseRateInput pitchInput;
+		pitchInput.cameraNow = enginePitch;
+		pitchInput.cameraBefore = g_chasePitchBefore;
+		pitchInput.haveBefore = g_chaseHaveBefore;
+		pitchInput.target = -asEngineLeftIt.pitch;
+		pitchRate = MeasuredChaseRate(pitchInput);
+	}
+	g_chaseYawBefore = engineYaw;
+	g_chasePitchBefore = enginePitch;
+	g_chaseHaveBefore = isThirdPerson && haveEngineHeading;
+	g_chaseYawRate = yawRate;
+	g_chasePitchRate = pitchRate;
+
+	g_aimChasedOffset = ChaseStep(g_aimChasedOffset, g_aimBodyOffset, yawRate);
+	g_aimChasedPitch = ChaseStep(g_aimChasedPitch, g_aimPitchOffset, pitchRate);
 	const float cameraShare = AimCameraShare(isThirdPerson, g_aimBodyOffset, g_aimChasedOffset);
 	const float pitchShare = isThirdPerson ? g_aimChasedPitch : 0.0f;
 
@@ -2564,24 +2619,20 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// the frame is actually drawn with - the vanilla heading, levelled, with
 	// the head laid on top. That is what the wearer sees down, and an arrow
 	// should leave along what is seen rather than along a component of it.
-	// Read BEFORE writing, and that ordering is the measurement rather than a
-	// tidiness. What is in the field at this moment is what the engine left
-	// there this frame, which is the one thing the probe could not see while
-	// it read afterwards: it only ever reported OBVR's own value back.
 	//
-	// The question it now answers is the one the sideways half of this turns
-	// on. If a written rotation survives into the next frame, then writing the
-	// YAW would feed back - the camera is built on the player's heading, and
-	// the head's turn is added on top of it, so the view would keep drifting
-	// round for as long as the head stayed turned. If the engine instead sets
-	// the field afresh every frame from its own input state, there is no loop
-	// and the yaw can be written as plainly as the pitch is.
+	// The field itself was read at the top of the frame, before anything was
+	// written - see asEngineLeftIt. The question that read answers is the one
+	// the sideways half of this turns on. If a written rotation survives into
+	// the next frame, then writing the YAW would feed back - the camera is
+	// built on the player's heading, and the head's turn is added on top of
+	// it, so the view would keep drifting round for as long as the head
+	// stayed turned. If the engine instead sets the field afresh every frame
+	// from its own input state, there is no loop and the yaw can be written
+	// as plainly as the pitch is.
 	//
-	// Not guessed from either side: the log now prints what the engine left
+	// Not guessed from either side: the log prints what the engine left
 	// beside what OBVR wrote last frame, and says whether they match.
-	game::PlayerRotation asEngineLeftIt{};
-	const bool readPlayer = game::ReadPlayerRotation(asEngineLeftIt);
-
+	//
 	// The pitch itself is written further down, once the frame knows whether
 	// something is being aimed - first person does not care, third person
 	// does. What it will write is decided here, from the rotation the frame
@@ -3167,7 +3218,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		OBVR_LOG("Shot trace %2u: %s action=%d turn=%d | head=%6.1f body=%6.1f chase=%6.1f "
 		         "weapon=%6.1f | view raw=%7.1f VIEW=%7.1f | EYE %8.2f %8.2f %8.2f "
 		         "| LOCAL %8.2f %8.2f %8.2f | FEET %8.2f %8.2f | ARC %6.2f %6.2f "
-		         "| pitch %.3f/%.3f TILT %6.2f %6.2f %6.2f",
+		         "| pitch %.3f/%.3f TILT %6.2f %6.2f %6.2f | rate %.3f/%.3f",
 		         g_shotTraceFrame++, attackHeld ? "held" : "----", game::ReadPlayerAction(),
 		         turnDue ? 1 : 0, static_cast<double>(headYaw * math::kRadiansToDegrees),
 		         static_cast<double>(g_aimBodyOffset * math::kRadiansToDegrees),
@@ -3189,7 +3240,9 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		         static_cast<double>(g_aimChasedPitch),
 		         static_cast<double>(g_aimTiltApplied.x),
 		         static_cast<double>(g_aimTiltApplied.y),
-		         static_cast<double>(g_aimTiltApplied.z));
+		         static_cast<double>(g_aimTiltApplied.z),
+		         static_cast<double>(g_chaseYawRate),
+		         static_cast<double>(g_chasePitchRate));
 	}
 
 	// The three pitches side by side. This measured how to make an arrow go
@@ -3279,10 +3332,6 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	if (GetConfig().thirdPersonProbe && g_thirdPersonProbeLeft > 0 && readPlayer &&
 	    isThirdPerson && (g_state.frameCount % 4) == 0) {
 		--g_thirdPersonProbeLeft;
-		Heading engineHeading{};
-		const float engineYaw = HeadingOf(engineRotation, engineHeading)
-		                            ? math::Atan2(engineHeading.sine, engineHeading.cosine)
-		                            : 0.0f;
 		OBVR_LOG("Third person probe: rotX=%8.4f rotZ=%8.4f | CAM yaw=%8.4f sinPitch=%7.4f "
 		         "| LOCAL %8.2f %8.2f %8.2f "
 		         "| ARM %8.2f %8.2f %8.2f | EYE %8.2f %8.2f %8.2f | FEET %8.2f %8.2f %8.2f%s "

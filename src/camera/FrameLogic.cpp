@@ -342,10 +342,29 @@ bool AimYawWanted(bool enabled, bool headsetConnected, bool isThirdPerson,
 	return !isThirdPerson || thirdPersonAllowed;
 }
 
-float ChaseStep(float chased, float target, float deltaMult) {
+float ChaseStep(float chased, float target, float rate) {
 	// The shortest way round, so a turn that wraps past the half circle is
 	// still closed by the short arc rather than the long one.
-	return math::WrapAngle(chased + math::WrapAngle(target - chased) * deltaMult);
+	return math::WrapAngle(chased + math::WrapAngle(target - chased) * rate);
+}
+
+float MeasuredChaseRate(const ChaseRateInput& input) {
+	if (!input.haveBefore) {
+		return input.fallbackRate;
+	}
+	const float remaining = math::WrapAngle(input.target - input.cameraBefore);
+	if (remaining > -kChaseMinRemainingRadians && remaining < kChaseMinRemainingRadians) {
+		return input.fallbackRate;
+	}
+	const float moved = math::WrapAngle(input.cameraNow - input.cameraBefore);
+	const float rate = moved / remaining;
+	// A camera that moved the other way, or past its target, is something
+	// other than the easing - a script, a collision, a wrap. Neither is a
+	// share of the aim.
+	if (rate < 0.0f) {
+		return 0.0f;
+	}
+	return rate > 1.0f ? 1.0f : rate;
 }
 
 float AimCameraShare(bool isThirdPerson, float bodyOffset, float chased) {

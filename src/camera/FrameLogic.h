@@ -764,11 +764,11 @@ bool WantsHudRedirect(FrameDelivery delivery);
 // depend on the player's rotX at all, so writing it there moves nothing. The
 // third person camera is BUILT from it: the engine keeps the camera on a
 // sphere about a point above the player's feet and eases its angle towards
-// rotX by five percent of what is left each frame (fChaseDeltaMult, and the
-// probe's curve agrees to the second decimal). So a written pitch carries the
-// viewpoint with it, a second later - and LookControl then reads that tilt
-// back out and turns it into camera height on top. Writing it every frame
-// would have the head's every nod moving the camera. Writing it only while
+// rotX a few percent of what is left per physics step (fChaseDeltaMult, and
+// the probe's curve and the headset's trace both agree). So a written pitch
+// carries the viewpoint with it, a second later - and LookControl then reads
+// that tilt back out and turns it into camera height on top. Writing it
+// every frame would have the head's every nod moving the camera. Writing it only while
 // aiming, with the share the camera has taken so far compensated the way the
 // body's turn already is, keeps the picture still and sends the shot where
 // the head points.
@@ -878,34 +878,74 @@ bool AimTurnDue(AimTurnMode mode, bool attackHeld, bool attackWasHeld, bool atta
 bool AimYawWanted(bool enabled, bool headsetConnected, bool isThirdPerson,
                   bool thirdPersonAllowed, bool menuIsUp, bool attacking);
 
-// How much of what is left the third person camera closes each frame.
+// How much of what is left the third person camera closes in one of its
+// steps, when the step cannot be measured.
 //
-// MEASURED, and then found in the engine's own settings. The probe tilted the
-// view with the mouse and read the camera back: with rotX standing still the
-// camera's remaining angle shrank by a factor of 0.81 to 0.83 every four
-// frames, the same factor at every point of the curve - which is exponential
-// easing at 0.95 a frame. Oblivion.ini carries fChaseDeltaMult=0.0500 under
-// [Havok]. Five percent of the remainder per frame is 0.95 a frame, and
-// 0.95 to the fourth is 0.815. Two sources, one number.
+// MEASURED twice, and the two measurements disagree in a way that is itself
+// the finding. Without a headset the probe tilted the view with the mouse
+// and read the camera back: the remaining angle shrank by 0.81 to 0.83 every
+// four frames, which is 0.95 a frame, and Oblivion.ini carries
+// fChaseDeltaMult=0.0500 under [Havok]. In the headset the shot trace then
+// read the camera's heading frame by frame during a real turn, and the
+// steps came in a pattern - two frames of movement, one frame of none, over
+// and over - with each moving step closing about six percent of what was
+// left. The camera is stepped by the PHYSICS, at its own sixty hertz, not by
+// the renderer at the headset's ninety; the probe simply ran at a rate where
+// the two coincided.
 //
-// Per FRAME, not per second, and that is the reading of the same evidence:
-// the factor held while the probe ran at whatever rate the run had, and the
-// setting is a bare multiplier with no time in it. If a headset test ever
-// shows the view creeping during a turn, the trace's VIEW column will say so
-// and this is the first constant to question.
+// So this is no longer what the compensation runs on. The rate is measured
+// from the camera itself every frame (MeasuredChaseRate), and this constant
+// is only the fallback for the frames where there is nothing to measure it
+// from.
 inline constexpr float kChaseDeltaMult = 0.05f;
 
-// One frame of the third person camera's easing, applied to OBVR's own record
+// One step of the third person camera's easing, applied to OBVR's own record
 // of the turn: how much of the body's turn the camera has taken so far.
 //
 // The camera eases its angle towards rotZ, and rotZ carries the body's turn.
 // Easing is linear, so the camera's answer to (heading + turn) is its answer
 // to the heading plus its answer to the turn - and the second is this value,
-// stepped the same way the engine steps the whole. It is what the base
+// stepped by the same rate the engine stepped the whole. It is what the base
 // rotation has to be turned back by in third person, and what the camera's
 // arc about the player has to be undone by: not the turn itself, which the
 // camera has not yet taken, but the share of it that has arrived.
-float ChaseStep(float chased, float target, float deltaMult);
+float ChaseStep(float chased, float target, float rate);
+
+// The rate the engine actually applied to its chase camera THIS frame, read
+// off the camera rather than assumed.
+//
+// The camera's angle eases towards the player's rotation - measured, in
+// both axes, with the camera's heading sitting at minus rotZ once settled.
+// So on any frame the engine moved it, the distance it moved divided by the
+// distance it had left to go IS the rate, whatever the rate is and whether
+// or not the physics stepped this frame: a frame with no step reads zero,
+// and zero is exactly the share of the turn the camera took in it. The
+// mouse turning at the same time changes nothing here, because the rate is
+// a property of the easing and not of what is being eased towards - which
+// is what lets the same rate be applied to the aim's share alone.
+//
+// Where the camera is already where it is going there is nothing to divide
+// by, and the fallback rate stands in; the share it is applied to is then
+// small as well, so what it gets wrong is small.
+struct ChaseRateInput {
+	// The camera's angle this frame and last frame, in the same convention
+	// as target - positive the same way round.
+	float cameraNow = 0.0f;
+	float cameraBefore = 0.0f;
+	bool haveBefore = false;
+
+	// Where the camera is easing towards: the player's rotation as the engine
+	// left it this frame, converted to the camera's convention.
+	float target = 0.0f;
+
+	// The rate to report when it cannot be measured.
+	float fallbackRate = kChaseDeltaMult;
+};
+
+// Below this much left to go, the division is noise. Half a degree.
+inline constexpr float kChaseMinRemainingRadians = 0.0087f;
+
+float MeasuredChaseRate(const ChaseRateInput& input);
 
 // The share of the body's turn the CAMERA currently carries, which is what
 // the compensation has to undo.
