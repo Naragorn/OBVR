@@ -206,4 +206,14 @@ WeaponState ReadPlayerWeaponState() {
 	return WeaponState::Unknown;
 }
 
+NiPoint3 PlayerWorldPosition() {
+	const auto* const player = PlayerOrNull();
+	if (player == nullptr) {
+		return NiPoint3{0.0f, 0.0f, 0.0f};
+	}
+
+	const auto* const position = reinterpret_cast<const float*>(player + addr::kRefPositionOffset);
+	return NiPoint3{position[0], position[1], position[2]};
+}
+
 }  // namespace obvr::game

@@ -330,6 +330,12 @@ float g_crosshairDepthMetres = 0.0f;
 // age is nothing here: the depth is eased over several frames anyway, and a
 // crosshair one frame behind the head is not a thing eyes can see.
 NiPoint3 g_cameraWorldPos{0.0f, 0.0f, 0.0f};
+
+// This frame's camera placement as the engine left it, and the player's own
+// position. Together they say what the viewpoint's step is measured against.
+NiPoint3 g_cameraLocalPos{0.0f, 0.0f, 0.0f};
+NiPoint3 g_playerWorldPos{0.0f, 0.0f, 0.0f};
+
 NiMatrix33 g_cameraWorldRot = NiMatrix33::Identity();
 bool g_cameraWorldValid = false;
 
@@ -2152,6 +2158,23 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// position in. See the globals for why world and not local, and why a frame
 	// of age costs nothing here.
 	g_cameraWorldPos = cameraNode->worldTransform.pos;
+
+	// The engine's own placement for THIS frame, before OBVR has added
+	// anything to it, and the point the body turns about.
+	//
+	// EYE found the fault - the viewpoint steps 1.7 units sideways when the
+	// body takes the turn and steps back when it gives it up, eighteen times
+	// in nine shots without an exception. Correcting it means rotating the
+	// camera back about the player, and a rotation needs a centre. These two
+	// are what pins that centre down, so the correction can be arithmetic
+	// rather than another guess.
+	//
+	// Local rather than world for the camera, because EYE is read from the
+	// world transform and is therefore a frame stale - which is why its step
+	// lands a frame later than the heading's. The local transform is this
+	// frame's, in step with the offset that has to cancel it.
+	g_cameraLocalPos = cameraNode->localTransform.pos;
+	g_playerWorldPos = game::PlayerWorldPosition();
 	g_cameraWorldRot = cameraNode->worldTransform.rot;
 	g_cameraWorldValid = true;
 
@@ -2550,12 +2573,31 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		// indistinguishable from one that turns. "es ist die ganze view. das
 		// ganze bild."
 		//
-		// Read out of the world transform before OBVR writes its own offset
-		// in, so this is the engine's own placement and nothing of OBVR's -
-		// which is exactly the question. If it steps at the release frame and
-		// steps back, the jump is a translation and was never an angle at all.
+		// EYE answered that, and the answer was yes. Across nine shots it
+		// stepped 1.7 units sideways when the body took the turn and 1.7 back
+		// when it gave it up - eighteen steps, no exceptions, nothing else in
+		// the log moving at all. Two and a half centimetres of viewpoint, in
+		// one frame, twice a shot. The jump is a TRANSLATION and was never an
+		// angle.
+		//
+		// LOCAL and FEET are what turns that into a correction. Undoing the
+		// step means rotating the camera back about the player, and a rotation
+		// needs a centre; FEET is the centre and LOCAL is the arm's other end.
+		// EYE cannot serve as that end because it is read from the world
+		// transform and so is one frame stale - which is exactly why its step
+		// lands a frame after the heading's, while LOCAL is this frame's and
+		// in step with the offset that has to cancel it.
+		//
+		// What one run of these settles: whether the camera node's parent
+		// carries the player's position or sits at the world origin. LOCAL
+		// near EYE means the origin and the arm is LOCAL minus FEET; LOCAL
+		// near zero means the parent carries it and the arm is LOCAL itself.
+		// Both give exact arithmetic. Guessing between them would put a
+		// rotation centre in the code that nothing measured, which is the one
+		// mistake this search has already paid for three times.
 		OBVR_LOG("Shot trace %2u: %s action=%d turn=%d | head=%6.1f body=%6.1f weapon=%6.1f "
-		         "| view raw=%7.1f VIEW=%7.1f | EYE %8.2f %8.2f %8.2f",
+		         "| view raw=%7.1f VIEW=%7.1f | EYE %8.2f %8.2f %8.2f "
+		         "| LOCAL %8.2f %8.2f %8.2f | FEET %8.2f %8.2f %8.2f",
 		         g_shotTraceFrame++, attackHeld ? "held" : "----", game::ReadPlayerAction(),
 		         turnDue ? 1 : 0, static_cast<double>(headYaw * math::kRadiansToDegrees),
 		         static_cast<double>(g_aimBodyOffset * math::kRadiansToDegrees),
@@ -2564,7 +2606,13 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		         static_cast<double>(g_aimViewYawAfter * math::kRadiansToDegrees),
 		         static_cast<double>(g_cameraWorldPos.x),
 		         static_cast<double>(g_cameraWorldPos.y),
-		         static_cast<double>(g_cameraWorldPos.z));
+		         static_cast<double>(g_cameraWorldPos.z),
+		         static_cast<double>(g_cameraLocalPos.x),
+		         static_cast<double>(g_cameraLocalPos.y),
+		         static_cast<double>(g_cameraLocalPos.z),
+		         static_cast<double>(g_playerWorldPos.x),
+		         static_cast<double>(g_playerWorldPos.y),
+		         static_cast<double>(g_playerWorldPos.z));
 	}
 
 	// The three pitches side by side. This measured how to make an arrow go

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Types.h"
+#include "game/NiMath.h"
 
 namespace obvr::game {
 
@@ -146,5 +147,19 @@ bool IsShotUnreleased();
 // and guessing at it from an enum read once is exactly what the project's own
 // notes say not to do.
 SInt32 ReadPlayerAction();
+
+// Where the player stands, in world units. The origin at the feet, as every
+// TESObjectREFR's position is - see CrosshairTarget, which learned that the
+// hard way when a distance came out at twice what the eye said.
+//
+// Wanted as a rotation CENTRE. The body's turn swings the first person camera
+// through an arc, and an arc is only defined once the point it turns about is
+// known. The offset is the same 0x2C the crosshair already reads references at,
+// so this adds no new address to keep correct.
+//
+// The zero vector when the player cannot be reached, which a caller has to
+// treat as "no centre" rather than as the world origin - turning a camera about
+// 0,0,0 would throw it across the map.
+NiPoint3 PlayerWorldPosition();
 
 }  // namespace obvr::game
