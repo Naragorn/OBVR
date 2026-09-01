@@ -380,6 +380,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Look", "BlockVerticalLook", config.look.blockVerticalLook, path);
 	config.aimFollowsGaze =
 		ReadBool("Look", "AimFollowsGaze", config.aimFollowsGaze, path);
+	config.aimInThirdPerson =
+		ReadBool("Look", "AimInThirdPerson", config.aimInThirdPerson, path);
 	// ReadKeyCode rather than ReadUInt, which takes decimal only and returns the
 	// FALLBACK on anything else - so a virtual-key code written the way every
 	// table prints them would have been silently ignored. That trap was harmless
@@ -443,6 +445,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.swapEyeOrder = ReadBool("Debug", "SwapEyeOrder", config.swapEyeOrder, path);
 	config.hudProbe = ReadBool("Debug", "HudProbe", config.hudProbe, path);
 	config.aimProbe = ReadBool("Debug", "AimProbe", config.aimProbe, path);
+	config.thirdPersonProbe =
+		ReadBool("Debug", "ThirdPersonProbe", config.thirdPersonProbe, path);
 	config.menuWorldProbe = ReadBool("Debug", "MenuWorldProbe", config.menuWorldProbe, path);
 	config.layoutProbe = ReadBool("Debug", "LayoutProbe", config.layoutProbe, path);
 	config.cursorProbe = ReadBool("Debug", "CursorProbe", config.cursorProbe, path);
@@ -508,13 +512,15 @@ bool Config::Load(const char* fileName) {
 	         static_cast<double>(tracker.EffectiveUnitsPerMetre()),
 	         static_cast<double>(tracker.maxOffsetUnits));
 	OBVR_LOG("Config: BlockVerticalLook=%d VerticalLookRange=(up %.1f, down %.1f) "
-	         "SmoothVerticalLook=%d (%.1f) AimFollowsGaze=%d AimAttackKey=%u AimTurnSpeed=%.1f",
+	         "SmoothVerticalLook=%d (%.1f) AimFollowsGaze=%d AimInThirdPerson=%d AimAttackKey=%u "
+	         "AimTurnSpeed=%.1f",
 	         look.blockVerticalLook ? 1 : 0,
 	         static_cast<double>(look.verticalLookUpRange),
 	         static_cast<double>(look.verticalLookDownRange),
 	         look.smoothVerticalLook ? 1 : 0,
 	         static_cast<double>(look.verticalLookSpeed),
 	         aimFollowsGaze ? 1 : 0,
+	         aimInThirdPerson ? 1 : 0,
 	         aimAttackKey,
 	         static_cast<double>(aimTurnSpeed));
 	OBVR_LOG("Config: SmoothTurning=%d TurnSpeed=%.1f",

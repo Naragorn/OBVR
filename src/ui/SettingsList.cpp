@@ -99,6 +99,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.aimFollowsGaze = v != 0.0f; },
 	},
 	{
+		"Aiming", "Aim in third person", "The same aiming with the chase camera",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "AimInThirdPerson",
+		+[](const Config& c) { return c.aimInThirdPerson ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.aimInThirdPerson = v != 0.0f; },
+	},
+	{
 		"Aiming", "Body turn speed", "0 turns the body at once; higher eases it",
 		ItemKind::Number, 0.0f, 30.0f, 1.0f, 0, false,
 		"Look", "AimTurnSpeed",

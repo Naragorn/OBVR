@@ -756,20 +756,28 @@ bool WantsHudRedirect(FrameDelivery delivery);
 // still the only way to aim. Writing a pitch then would fight the player for
 // their own aim, on a machine that never asked for VR.
 //
-// isThirdPerson: FIRST PERSON ONLY, and this is a real limit rather than an
-// oversight. LookControl reads the tilt back out of the camera the engine
-// wrote and turns it into camera height - but only in third person, where
-// `isThirdPerson ? tilt * range : 0.0f` decides it. If writing rotX also
-// tilts the engine's camera, as the Construction Set wiki says SetAngle X
-// does, then doing this in third person would feed OBVR's own value back
-// into its camera height a frame later. In first person that term is
-// discarded, so the loop cannot close. Third person is a separate piece of
-// work and wants LookControl taking its tilt from somewhere else first.
+// isThirdPerson and thirdPersonAllowed: in third person the pitch is written
+// only with the switch on AND only while something is being aimed, where in
+// first person it is written on every frame.
+//
+// The difference is measured, not assumed. The first person camera does not
+// depend on the player's rotX at all, so writing it there moves nothing. The
+// third person camera is BUILT from it: the engine keeps the camera on a
+// sphere about a point above the player's feet and eases its angle towards
+// rotX by five percent of what is left each frame (fChaseDeltaMult, and the
+// probe's curve agrees to the second decimal). So a written pitch carries the
+// viewpoint with it, a second later - and LookControl then reads that tilt
+// back out and turns it into camera height on top. Writing it every frame
+// would have the head's every nod moving the camera. Writing it only while
+// aiming, with the share the camera has taken so far compensated the way the
+// body's turn already is, keeps the picture still and sends the shot where
+// the head points.
 //
 // menuIsUp: nothing is aimed while a menu is open, and a dialogue under
 // Menus=world is still a menu over a live world - the same trap the crosshair
 // fell into.
-bool AimPitchWanted(bool enabled, bool headsetConnected, bool isThirdPerson, bool menuIsUp);
+bool AimPitchWanted(bool enabled, bool headsetConnected, bool isThirdPerson,
+                    bool thirdPersonAllowed, bool menuIsUp, bool attacking);
 
 // How far from level the player may be aimed, in radians.
 //
@@ -864,8 +872,52 @@ enum class AimTurnMode {
 // and the attack that follows it - the window in which the arrow is made.
 bool AimTurnDue(AimTurnMode mode, bool attackHeld, bool attackWasHeld, bool attackInProgress);
 
-bool AimYawWanted(bool enabled, bool headsetConnected, bool isThirdPerson, bool menuIsUp,
-                  bool attacking);
+// thirdPersonAllowed is the switch for the third person - the gates are
+// otherwise the same in both views, and the body is turned the same way. What
+// differs is only how the camera answers, and that is the chase share below.
+bool AimYawWanted(bool enabled, bool headsetConnected, bool isThirdPerson,
+                  bool thirdPersonAllowed, bool menuIsUp, bool attacking);
+
+// How much of what is left the third person camera closes each frame.
+//
+// MEASURED, and then found in the engine's own settings. The probe tilted the
+// view with the mouse and read the camera back: with rotX standing still the
+// camera's remaining angle shrank by a factor of 0.81 to 0.83 every four
+// frames, the same factor at every point of the curve - which is exponential
+// easing at 0.95 a frame. Oblivion.ini carries fChaseDeltaMult=0.0500 under
+// [Havok]. Five percent of the remainder per frame is 0.95 a frame, and
+// 0.95 to the fourth is 0.815. Two sources, one number.
+//
+// Per FRAME, not per second, and that is the reading of the same evidence:
+// the factor held while the probe ran at whatever rate the run had, and the
+// setting is a bare multiplier with no time in it. If a headset test ever
+// shows the view creeping during a turn, the trace's VIEW column will say so
+// and this is the first constant to question.
+inline constexpr float kChaseDeltaMult = 0.05f;
+
+// One frame of the third person camera's easing, applied to OBVR's own record
+// of the turn: how much of the body's turn the camera has taken so far.
+//
+// The camera eases its angle towards rotZ, and rotZ carries the body's turn.
+// Easing is linear, so the camera's answer to (heading + turn) is its answer
+// to the heading plus its answer to the turn - and the second is this value,
+// stepped the same way the engine steps the whole. It is what the base
+// rotation has to be turned back by in third person, and what the camera's
+// arc about the player has to be undone by: not the turn itself, which the
+// camera has not yet taken, but the share of it that has arrived.
+float ChaseStep(float chased, float target, float deltaMult);
+
+// The share of the body's turn the CAMERA currently carries, which is what
+// the compensation has to undo.
+//
+// First person: the whole of it, at once. The engine builds that camera from
+// the heading just written, so the offset is in the picture the same frame it
+// goes into the player - measured, and it is why the compensation there is
+// the raw offset. Third person: the eased share, because that camera swings
+// round over a second and taking the whole turn out of it on the first frame
+// would swing the picture the other way by everything the camera had not
+// yet done.
+float AimCameraShare(bool isThirdPerson, float bodyOffset, float chased);
 
 // The heading to put into the player, given the one the engine left there and
 // the step to turn the body by this frame.
@@ -945,8 +997,13 @@ inline constexpr float kAimReturnLimitSeconds = 1.5f;
 // secondsSinceRelease is negative while the control is held or has already been
 // dealt with, so "not waiting for anything" has a value of its own rather than
 // being confused with "released this very frame".
+//
+// aimStanding is whether there is anything to give back at all: a turn in the
+// body, or the third person's borrowed pitch. Either alone is enough - a shot
+// aimed with the head level sideways still holds the pitch, and still must not
+// be straightened before it has gone.
 bool AimReturnWanted(bool enabled, bool headsetConnected, bool menuIsUp, bool attackHeld,
-                     float secondsSinceRelease, bool attackInProgress, float bodyOffset);
+                     float secondsSinceRelease, bool attackInProgress, bool aimStanding);
 
 // Whether a heading OBVR wrote actually reached the player, judged one frame
 // later against what is in the field before anything is written again.
@@ -1231,5 +1288,105 @@ struct AimArcInput {
 // The zero vector when there is nothing to undo, so the caller can add it
 // unconditionally.
 NiPoint3 AimArcCorrection(const AimArcInput& input);
+
+// THE THIRD PERSON PITCH: OBVR holding the player's rotX while a shot is
+// aimed, and giving it back afterwards.
+//
+// In first person rotX is simply written every frame, because nothing else
+// depends on it. In third person the mouse's tilt is still a thing the
+// player uses - it is what LookControl turns into camera height - so the
+// field is borrowed rather than taken: written with the gaze while aiming,
+// and set back to what the mouse would have made of it once the shot is gone.
+//
+// What "what the mouse would have made of it" is, measured: a written
+// rotation SURVIVES the frame, and the engine then ADDS the mouse's movement
+// to it. So while OBVR holds the field, the mouse's own contribution is the
+// difference between what the engine leaves in the field and what OBVR last
+// put there, and the tilt the mouse would be holding is that difference
+// accumulated. While OBVR does not hold it, the field IS the mouse's tilt.
+struct AimPitchHold {
+	// Whether OBVR has written the field in third person and not yet given it
+	// back.
+	bool held = false;
+
+	// The tilt the mouse would be holding on its own, in the engine's own
+	// convention: radians, positive looking DOWN.
+	float mouseTilt = 0.0f;
+
+	// What the field holds after this frame - OBVR's write if there was one,
+	// otherwise what the engine left there. The next frame's mouse movement
+	// is measured against it.
+	float fieldNow = 0.0f;
+};
+
+struct AimPitchHoldInput {
+	// rotX as the engine left it this frame, before anything is written.
+	float enginePitch = 0.0f;
+
+	// Whether the gaze should be written this frame (AimPitchWanted, in third
+	// person), and the value it would write.
+	bool writeGaze = false;
+	float gazePitch = 0.0f;
+
+	// Whether a held field is to be given back this frame - the same moment
+	// the body's turn is given back.
+	bool returnDue = false;
+};
+
+struct AimPitchHoldDecision {
+	AimPitchHold next;
+
+	// Whether to write the field, and with what.
+	bool write = false;
+	float value = 0.0f;
+
+	// How far the field now stands from the mouse's own tilt, in the engine's
+	// convention. What the camera will ease towards on top of the mouse, and
+	// therefore what the compensation has to take out of it once it has.
+	float offset = 0.0f;
+};
+
+AimPitchHoldDecision NextAimPitchHold(const AimPitchHold& current, const AimPitchHoldInput& input);
+
+// Undoing the third person camera's swing about its pivot for the share of
+// OBVR's pitch it has taken - the vertical counterpart of AimArcCorrection.
+//
+// The geometry is measured, not assumed. The probe put the third person
+// camera on a sphere about a point above the player's feet: at every tilt
+// the camera's height below that point was the sphere's radius times the
+// sine of the camera's own pitch, to a hundredth of a unit, and its distance
+// from the player's axis the radius times the cosine. The camera always
+// LOOKS AT the pivot, so its rotation and its position are one state, and
+// the pivot can be recovered every frame from what is at hand: the camera's
+// position, the player's feet and the camera's own pitch.
+//
+// The radius is read the same way rather than taken from a setting, because
+// it is not a setting: a wall behind the player shortens it, and the run that
+// measured it found 30 units where the game's default is far more.
+struct AimTiltInput {
+	// The camera as the engine placed it this frame, before OBVR has added
+	// anything, and the player's feet - the axis the pivot sits on.
+	NiPoint3 cameraPosition{0.0f, 0.0f, 0.0f};
+	NiPoint3 feet{0.0f, 0.0f, 0.0f};
+	bool centreKnown = false;
+
+	// The sine of the camera's own pitch as the engine built it, positive
+	// looking up - SinPitchOf on the rotation before the look control levels
+	// it.
+	float cameraSinPitch = 0.0f;
+
+	// The share of OBVR's pitch offset the camera has taken so far, in the
+	// engine's convention (positive looking DOWN) - the eased value, the same
+	// way the sideways share is.
+	float pitchShare = 0.0f;
+};
+
+// Beyond this the sphere's geometry cannot be read back safely: the distance
+// from the axis is the radius times the cosine of the pitch, and dividing by
+// a cosine near zero would turn a tenth of a unit of noise into a radius of
+// hundreds. The game itself stops at 89 degrees.
+inline constexpr float kAimTiltMinCosine = 0.05f;
+
+NiPoint3 AimTiltCorrection(const AimTiltInput& input);
 
 }  // namespace obvr::camera

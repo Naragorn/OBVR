@@ -191,6 +191,11 @@ UInt32 g_menuTraceLastId = 0;
 // of looking around is the whole measurement, and the log is read by hand.
 UInt32 g_aimProbeLeft = 60;
 
+// Lines the third person probe has left. Every fourth frame, so six hundred
+// covers the better part of half a minute at the headset's rate - long enough
+// for the mouse to tilt the view through its whole range twice.
+UInt32 g_thirdPersonProbeLeft = 600;
+
 // Whether the log has already said that the gaze is now steering the player's
 // pitch. Once per session: it is the confirmation that the write reached the
 // player at all, and repeating it every frame would bury everything else.
@@ -236,9 +241,37 @@ bool g_aimYawPending = false;
 // is not, and that is the known limit rather than a solved case.
 float g_aimBodyOffset = 0.0f;
 
+// THE THIRD PERSON'S OWN BOOKKEEPING, beside the offset above.
+//
+// The first person camera is built from the heading the frame it is written,
+// so the offset above is also what the picture carries. The third person
+// camera is not: it eases towards the heading by five percent of what is
+// left each frame (camera::kChaseDeltaMult - measured, and then found as
+// fChaseDeltaMult in Oblivion.ini). So what has to be taken back out of that
+// picture is not the offset but the share of it the camera has reached, and
+// that share is kept here, stepped the way the engine steps the camera.
+float g_aimChasedOffset = 0.0f;
+
+// The pitch, which in third person is borrowed rather than written outright
+// - see camera::AimPitchHold. The offset is how far the field stands from
+// the mouse's own tilt after this frame, and the chased value the share of
+// it the camera has eased towards, both in the engine's convention.
+AimPitchHold g_aimPitchHold{};
+float g_aimPitchOffset = 0.0f;
+float g_aimChasedPitch = 0.0f;
+
+// Whether this frame gives a held aim back - decided where the body's return
+// is, and read again where the pitch is written, which comes later in the
+// frame.
+bool g_aimReturnDue = false;
+
+// The vertical counterpart of the arc correction, for the trace.
+NiPoint3 g_aimTiltApplied{0.0f, 0.0f, 0.0f};
+
 bool g_aimYawReported = false;
 bool g_aimYawLostReported = false;
 bool g_aimReturnReported = false;
+bool g_aimThirdPersonReported = false;
 
 // How far the first person weapon should be turned, and whether it should be
 // turned at all. Decided in the camera pass, applied at the top of the render -
@@ -2168,6 +2201,14 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		// log could say which call did not come back.
 		g_stepTraceLeft = 30;
 
+		// The chase camera's record of the aim starts over with the camera it
+		// belongs to. A view change rebuilds that camera outright, so whatever
+		// turn or pitch is standing is taken as already in it - which is an
+		// assumption, and a safe one only because both are almost always zero
+		// here: the turn is given back after every shot.
+		g_aimChasedOffset = g_aimBodyOffset;
+		g_aimChasedPitch = g_aimPitchOffset;
+
 		OBVR_LOG("Camera: switched to %s (frame %u) - tracing the next frames",
 		         isThirdPerson ? "third person" : "first person",
 		         g_state.frameCount);
@@ -2360,11 +2401,29 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 
 	UpdateCrosshairDepth(config, deltaSeconds);
 
+	// Kept for the third person probe: the rotation as the engine built it,
+	// before the look control levels it.
+	const NiMatrix33 engineRotation = cameraNode->localTransform.rot;
+
+	// What the CAMERA carries of the aim this frame, which is not the same
+	// question in the two views.
+	//
+	// The engine built this frame's camera from the fields OBVR wrote last
+	// frame - the offsets standing here are the ones those fields contain. In
+	// first person the camera takes them whole; in third person it eases
+	// towards them, and the share it has reached is stepped here exactly the
+	// way the engine steps the camera, one step per frame, before anything
+	// below reads it. See camera::ChaseStep for the measurement.
+	g_aimChasedOffset = ChaseStep(g_aimChasedOffset, g_aimBodyOffset, kChaseDeltaMult);
+	g_aimChasedPitch = ChaseStep(g_aimChasedPitch, g_aimPitchOffset, kChaseDeltaMult);
+	const float cameraShare = AimCameraShare(isThirdPerson, g_aimBodyOffset, g_aimChasedOffset);
+	const float pitchShare = isThirdPerson ? g_aimChasedPitch : 0.0f;
+
 	NiMatrix33 baseRotation = cameraNode->localTransform.rot;
 	float verticalOffset = 0.0f;
 
 	if (g_headTracker.IsHeadsetConnected()) {
-		g_lookControl.Update(baseRotation, isThirdPerson, deltaSeconds);
+		g_lookControl.Update(baseRotation, isThirdPerson, deltaSeconds, pitchShare);
 		baseRotation = g_lookControl.GetRotation();
 		verticalOffset = g_lookControl.GetVerticalOffset();
 	} else {
@@ -2380,6 +2439,12 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// the left of everything measured in camera space - the head's rotation,
 	// its offset, the eye step - so all of them come round with it and the
 	// picture holds still while the body turns underneath.
+	//
+	// By the CAMERA'S share of it rather than the offset itself, which is the
+	// one line that makes the third person work: its camera swings round over
+	// a second, and taking the whole turn out of it on the first frame would
+	// swing the picture the other way by everything the camera had not yet
+	// done. In first person the two are the same number.
 	//
 	// Only the yaw is taken back. The base has already been levelled by the
 	// look control, so its z axis is the world's up and a rotation about it
@@ -2397,9 +2462,9 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		HeadingOf(baseRotation, traceBefore) ? math::Atan2(traceBefore.sine, traceBefore.cosine)
 		                                     : 0.0f;
 
-	if (g_aimBodyOffset != 0.0f) {
+	if (cameraShare != 0.0f) {
 		baseRotation = baseRotation * RotationFromHeading(Heading{
-			math::Cos(g_aimBodyOffset), -math::Sin(g_aimBodyOffset)});
+			math::Cos(cameraShare), -math::Sin(cameraShare)});
 	}
 
 	Heading traceAfter{};
@@ -2446,9 +2511,35 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// camera nor moves it, and a world vector can go straight into the local
 	// transform. The head offset below has been relying on exactly that since
 	// positional tracking went in.
+	//
+	// The same holds in third person, and it was measured there too before
+	// anything was built on it: the probe's LOCAL and EYE columns differed by
+	// OBVR's own offset and nothing else, through the whole sweep.
+	//
+	// By the camera's share of the turn, as the rotation above - in third
+	// person the eased value, because that is how far round the arc the
+	// camera has actually walked. The arc's centre is the player in both
+	// views: measured in third person as well, where the camera's distance
+	// from the player's axis held at radius times cosine of its pitch at
+	// every tilt.
 	g_aimArcApplied = AimArcCorrection(AimArcInput{g_cameraLocalPos, g_playerWorldPos,
-	                                               g_playerWorldValid, g_aimBodyOffset});
+	                                               g_playerWorldValid, cameraShare});
 	cameraNode->localTransform.pos = cameraNode->localTransform.pos + g_aimArcApplied;
+
+	// And the vertical half, which only third person has: the swing of that
+	// camera about its pivot for the share of OBVR's pitch it has eased
+	// towards. Taken from the position the arc correction has already put
+	// back, because the sphere's arm is read off that position and the turn
+	// about the vertical changes where the arm points without changing its
+	// tilt. See AimTiltCorrection for the sphere and how it is read back.
+	AimTiltInput tiltInput;
+	tiltInput.cameraPosition = g_cameraLocalPos + g_aimArcApplied;
+	tiltInput.feet = g_playerWorldPos;
+	tiltInput.centreKnown = g_playerWorldValid;
+	tiltInput.cameraSinPitch = SinPitchOf(engineRotation);
+	tiltInput.pitchShare = pitchShare;
+	g_aimTiltApplied = AimTiltCorrection(tiltInput);
+	cameraNode->localTransform.pos = cameraNode->localTransform.pos + g_aimTiltApplied;
 
 	// The head offset is measured in the camera's own space, so it is carried
 	// over by the base rotation. The vertical look is not: it is a height, and
@@ -2491,21 +2582,11 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	game::PlayerRotation asEngineLeftIt{};
 	const bool readPlayer = game::ReadPlayerRotation(asEngineLeftIt);
 
-	if (AimPitchWanted(GetConfig().aimFollowsGaze, g_headTracker.IsHeadsetConnected(),
-	                   isThirdPerson, game::IsMenuMode())) {
-		const float pitch = PlayerPitchForGaze(SinPitchOf(finalRotation));
-		if (game::WritePlayerPitch(pitch)) {
-			g_aimLastWrittenPitch = pitch;
-			g_aimEverWrote = true;
-			if (!g_aimPitchReported) {
-				g_aimPitchReported = true;
-				OBVR_LOG("Aim: the player's pitch now follows the gaze - first write %.4f rad "
-				         "(%.1f degrees, positive looks down)",
-				         static_cast<double>(pitch),
-				         static_cast<double>(pitch * math::kRadiansToDegrees));
-			}
-		}
-	}
+	// The pitch itself is written further down, once the frame knows whether
+	// something is being aimed - first person does not care, third person
+	// does. What it will write is decided here, from the rotation the frame
+	// is actually drawn with.
+	const float gazePitch = PlayerPitchForGaze(SinPitchOf(finalRotation));
 
 	// The body turned to face the gaze, but only while something is being
 	// aimed - see AimYawWanted for why this half is gated where the vertical
@@ -2553,9 +2634,13 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	const bool castWasHeld = g_castWasHeld;
 	g_castWasHeld = castHeld;
 
+	// Third person is a view the aim now covers, on its own switch - the same
+	// one the bow's turn answers to.
+	const bool viewAimed = !isThirdPerson || GetConfig().aimInThirdPerson;
+
 	CastWindowInput castInput;
 	castInput.enabled = readPlayer && GetConfig().aimCastFollowsGaze &&
-	                    g_headTracker.IsHeadsetConnected() && !isThirdPerson &&
+	                    g_headTracker.IsHeadsetConnected() && viewAimed &&
 	                    !game::IsMenuMode();
 	castInput.castHeld = castHeld;
 	castInput.castWasHeld = castWasHeld;
@@ -2602,7 +2687,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// Whether a spell of the player's may be aimed at all. The hook asks
 	// nothing beyond this - no head reading, no arithmetic - because it runs
 	// inside a call the engine owns.
-	g_castAimWanted = castAtSpawn && readPlayer && !isThirdPerson &&
+	g_castAimWanted = castAtSpawn && readPlayer && viewAimed &&
 	                  GetConfig().aimCastFollowsGaze &&
 	                  g_headTracker.IsHeadsetConnected() && !game::IsMenuMode();
 
@@ -2742,8 +2827,12 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// once, and only when one of them could act on it - which is never while
 	// the control is held, since both are about what happens after it goes up.
 	const bool onShotMode = GetConfig().aimTurnOnShotOnly;
+	// A turn standing, or the third person's borrowed pitch - either is owed
+	// a return, and a pitch held with the head level sideways is still a shot
+	// that must not be straightened before it has gone.
+	const bool aimStanding = g_aimBodyOffset != 0.0f || g_aimPitchHold.held;
 	const bool waitingOnAShot = readPlayer && GetConfig().aimReturnOnRelease &&
-	                            g_aimBodyOffset != 0.0f && !attackHeld &&
+	                            aimStanding && !attackHeld &&
 	                            g_aimSecondsSinceRelease >= 0.0f;
 	const bool turningOnShot = readPlayer && onShotMode && GetConfig().aimFollowsGaze &&
 	                           !attackHeld && g_aimSecondsSinceRelease >= 0.0f;
@@ -2765,10 +2854,21 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// spell has left and the body straightens.
 	const bool attackInProgress =
 		((waitingOnAShot || turningOnShot) && game::IsShotUnreleased()) || castTurning;
-	if (readPlayer &&
-	    AimReturnWanted(GetConfig().aimReturnOnRelease, g_headTracker.IsHeadsetConnected(),
-	                    game::IsMenuMode(), attackHeld, g_aimSecondsSinceRelease,
-	                    attackInProgress, g_aimBodyOffset)) {
+	// Decided once for both halves of the aim. The pitch is given back further
+	// down, where it is written; it reads this rather than asking again,
+	// because giving the turn back ends the release clock, and a second
+	// asking would find it already ended.
+	g_aimReturnDue =
+		readPlayer &&
+		AimReturnWanted(GetConfig().aimReturnOnRelease, g_headTracker.IsHeadsetConnected(),
+		                game::IsMenuMode(), attackHeld, g_aimSecondsSinceRelease,
+		                attackInProgress, aimStanding);
+	if (g_aimReturnDue && g_aimBodyOffset == 0.0f) {
+		// Only the pitch stood; the clock still has to end, or it would ask
+		// for a return on every frame until the next shot.
+		g_aimSecondsSinceRelease = -1.0f;
+	}
+	if (g_aimReturnDue && g_aimBodyOffset != 0.0f) {
 		const float step = -g_aimBodyOffset;
 		const float target = PlayerYawForGaze(asEngineLeftIt.yaw, step);
 		if (game::WritePlayerYaw(target)) {
@@ -2860,9 +2960,66 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		}
 	}
 
+	// THE PITCH, written where the frame knows whether something is aimed.
+	//
+	// First person: every frame, as it has been since the aim went in - the
+	// camera there does not depend on the field. Third person: borrowed while
+	// aiming and given back with the body's turn, because that camera is built
+	// from the field and the mouse's tilt is still the player's height control
+	// - see camera::AimPitchHold for the bookkeeping, and the compensation
+	// above for how the camera's share of it is taken back out of the picture.
+	const bool pitchWanted =
+		readPlayer && AimPitchWanted(GetConfig().aimFollowsGaze, g_headTracker.IsHeadsetConnected(),
+		                             isThirdPerson, GetConfig().aimInThirdPerson,
+		                             game::IsMenuMode(), turnDue);
+	if (!isThirdPerson) {
+		// Nothing is borrowed in first person, so nothing is owed. A hold left
+		// over from third person ends here; the next third person frame starts
+		// from whatever the field then holds.
+		g_aimPitchHold = AimPitchHold{};
+		g_aimPitchOffset = 0.0f;
+		if (pitchWanted && game::WritePlayerPitch(gazePitch)) {
+			g_aimLastWrittenPitch = gazePitch;
+			g_aimEverWrote = true;
+			if (!g_aimPitchReported) {
+				g_aimPitchReported = true;
+				OBVR_LOG("Aim: the player's pitch now follows the gaze - first write %.4f rad "
+				         "(%.1f degrees, positive looks down)",
+				         static_cast<double>(gazePitch),
+				         static_cast<double>(gazePitch * math::kRadiansToDegrees));
+			}
+		}
+	} else if (readPlayer) {
+		AimPitchHoldInput holdInput;
+		holdInput.enginePitch = asEngineLeftIt.pitch;
+		// The return wins over a write on the one frame both could be due - the
+		// release frame in OnShot mode - so a hold never outlives the clock
+		// that would have ended it.
+		holdInput.writeGaze = pitchWanted && !g_aimReturnDue;
+		holdInput.gazePitch = gazePitch;
+		holdInput.returnDue = g_aimReturnDue;
+		const AimPitchHoldDecision hold = NextAimPitchHold(g_aimPitchHold, holdInput);
+		const bool wasHeld = g_aimPitchHold.held;
+		g_aimPitchHold = hold.next;
+		g_aimPitchOffset = hold.offset;
+
+		if (hold.write && game::WritePlayerPitch(hold.value)) {
+			g_aimLastWrittenPitch = hold.value;
+			g_aimEverWrote = true;
+			if (!g_aimThirdPersonReported && !wasHeld && hold.next.held) {
+				g_aimThirdPersonReported = true;
+				OBVR_LOG("Aim: third person - the pitch is borrowed for the shot, %.4f rad written "
+				         "over the mouse's %.4f, and the chase camera's share of the "
+				         "difference is taken back out of the picture as it arrives",
+				         static_cast<double>(hold.value),
+				         static_cast<double>(hold.next.mouseTilt));
+			}
+		}
+	}
+
 	if (readPlayer &&
 	    AimYawWanted(GetConfig().aimFollowsGaze, g_headTracker.IsHeadsetConnected(), isThirdPerson,
-	                 game::IsMenuMode(), turnDue)) {
+	                 GetConfig().aimInThirdPerson, game::IsMenuMode(), turnDue)) {
 		// How far the head is turned away from the camera's base. The head
 		// rotation is already relative to that base, so its heading is the turn
 		// itself rather than a direction in the world - which is what lets this
@@ -2999,12 +3156,22 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		// Both give exact arithmetic. Guessing between them would put a
 		// rotation centre in the code that nothing measured, which is the one
 		// mistake this search has already paid for three times.
-		OBVR_LOG("Shot trace %2u: %s action=%d turn=%d | head=%6.1f body=%6.1f weapon=%6.1f "
-		         "| view raw=%7.1f VIEW=%7.1f | EYE %8.2f %8.2f %8.2f "
-		         "| LOCAL %8.2f %8.2f %8.2f | FEET %8.2f %8.2f | ARC %6.2f %6.2f",
+		//
+		// CHASE and the pitch pair are the third person's columns. In first
+		// person CHASE trails body by nothing that matters; in third person it
+		// is the share the camera has taken, and VIEW holding still while body
+		// and CHASE part company is the whole proof that the eased
+		// compensation is right. The pitch pair is the borrowed pitch's offset
+		// from the mouse and the camera's share of it, in radians, and TILT
+		// the position put back for that share.
+		OBVR_LOG("Shot trace %2u: %s action=%d turn=%d | head=%6.1f body=%6.1f chase=%6.1f "
+		         "weapon=%6.1f | view raw=%7.1f VIEW=%7.1f | EYE %8.2f %8.2f %8.2f "
+		         "| LOCAL %8.2f %8.2f %8.2f | FEET %8.2f %8.2f | ARC %6.2f %6.2f "
+		         "| pitch %.3f/%.3f TILT %6.2f %6.2f %6.2f",
 		         g_shotTraceFrame++, attackHeld ? "held" : "----", game::ReadPlayerAction(),
 		         turnDue ? 1 : 0, static_cast<double>(headYaw * math::kRadiansToDegrees),
 		         static_cast<double>(g_aimBodyOffset * math::kRadiansToDegrees),
+		         static_cast<double>(g_aimChasedOffset * math::kRadiansToDegrees),
 		         static_cast<double>(weapon * math::kRadiansToDegrees),
 		         static_cast<double>(g_aimViewYawBefore * math::kRadiansToDegrees),
 		         static_cast<double>(g_aimViewYawAfter * math::kRadiansToDegrees),
@@ -3017,7 +3184,12 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		         static_cast<double>(g_playerWorldPos.x),
 		         static_cast<double>(g_playerWorldPos.y),
 		         static_cast<double>(g_aimArcApplied.x),
-		         static_cast<double>(g_aimArcApplied.y));
+		         static_cast<double>(g_aimArcApplied.y),
+		         static_cast<double>(g_aimPitchOffset),
+		         static_cast<double>(g_aimChasedPitch),
+		         static_cast<double>(g_aimTiltApplied.x),
+		         static_cast<double>(g_aimTiltApplied.y),
+		         static_cast<double>(g_aimTiltApplied.z));
 	}
 
 	// The three pitches side by side. This measured how to make an arrow go
@@ -3084,6 +3256,56 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		         static_cast<double>(SinPitchOf(finalRotation)),
 		         isThirdPerson ? "third" : "first",
 		         AttackHeld() ? ", aiming" : "");
+	}
+
+	// Where the engine put the third person camera, beside the rotation it
+	// built it from. Every fourth frame, budgeted, and only in third person:
+	// the whole measurement is a few seconds of the mouse tilting the view up
+	// and down while the columns say how the viewpoint answers.
+	//
+	// LOCAL is the node as the engine left it this frame, before anything
+	// OBVR adds; ARM is that position taken from the player's feet, which is
+	// the number a compensation would have to turn; EYE is the previous
+	// frame's world position, one frame stale and carrying OBVR's own offsets,
+	// kept so LOCAL can be checked against the world it is meant to equal.
+	//
+	// CAM is the engine's own rotation for the camera, as a heading and a
+	// sine of pitch, beside the player's rotX and rotZ it was built from. The
+	// position is known to swing into place over a second; whether the
+	// rotation does the same, or follows the player's field at once, decides
+	// whether a turn written into the player can be taken back out of the
+	// base rotation on the same frame - as the first person aim does - or
+	// has to wait for the camera.
+	if (GetConfig().thirdPersonProbe && g_thirdPersonProbeLeft > 0 && readPlayer &&
+	    isThirdPerson && (g_state.frameCount % 4) == 0) {
+		--g_thirdPersonProbeLeft;
+		Heading engineHeading{};
+		const float engineYaw = HeadingOf(engineRotation, engineHeading)
+		                            ? math::Atan2(engineHeading.sine, engineHeading.cosine)
+		                            : 0.0f;
+		OBVR_LOG("Third person probe: rotX=%8.4f rotZ=%8.4f | CAM yaw=%8.4f sinPitch=%7.4f "
+		         "| LOCAL %8.2f %8.2f %8.2f "
+		         "| ARM %8.2f %8.2f %8.2f | EYE %8.2f %8.2f %8.2f | FEET %8.2f %8.2f %8.2f%s "
+		         "| height %6.2f | head sinPitch=%.4f",
+		         static_cast<double>(asEngineLeftIt.pitch),
+		         static_cast<double>(asEngineLeftIt.yaw),
+		         static_cast<double>(engineYaw),
+		         static_cast<double>(SinPitchOf(engineRotation)),
+		         static_cast<double>(g_cameraLocalPos.x),
+		         static_cast<double>(g_cameraLocalPos.y),
+		         static_cast<double>(g_cameraLocalPos.z),
+		         static_cast<double>(g_cameraLocalPos.x - g_playerWorldPos.x),
+		         static_cast<double>(g_cameraLocalPos.y - g_playerWorldPos.y),
+		         static_cast<double>(g_cameraLocalPos.z - g_playerWorldPos.z),
+		         static_cast<double>(g_cameraWorldPos.x),
+		         static_cast<double>(g_cameraWorldPos.y),
+		         static_cast<double>(g_cameraWorldPos.z),
+		         static_cast<double>(g_playerWorldPos.x),
+		         static_cast<double>(g_playerWorldPos.y),
+		         static_cast<double>(g_playerWorldPos.z),
+		         g_playerWorldValid ? "" : " (feet unknown)",
+		         static_cast<double>(verticalOffset),
+		         static_cast<double>(SinPitchOf(g_headTracker.GetCameraRotation())));
 	}
 
 	// The camera steps to an eye. Which eye, and for how long, is what

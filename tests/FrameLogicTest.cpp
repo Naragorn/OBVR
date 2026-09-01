@@ -869,62 +869,64 @@ void TestAimReturn() {
 
 	// THE FLOW THIS WAS REBUILT FOR. The control is released and the attack has
 	// finished, so the arrow has gone and the heading is free to move again.
-	Check(AimReturnWanted(true, true, false, false, 0.2f, false, 0.5f),
+	Check(AimReturnWanted(true, true, false, false, 0.2f, false, true),
 	      "once the shot is done, the body comes back round");
 
 	// THE FAULT THE FIRST VERSION HAD, and the reason for the rebuild. Letting
 	// go of the control STARTS the shot; the arrow spawns several frames later.
 	// Straightening here would send it forwards instead of at what was aimed
 	// at - breaking the aiming this whole feature serves.
-	Check(!AimReturnWanted(true, true, false, false, 0.0f, true, 0.5f),
+	Check(!AimReturnWanted(true, true, false, false, 0.0f, true, true),
 	      "the frame the control is released, the arrow has not left yet");
-	Check(!AimReturnWanted(true, true, false, false, 0.1f, true, 0.5f),
+	Check(!AimReturnWanted(true, true, false, false, 0.1f, true, true),
 	      "and it still has not a few frames later");
 
 	// The safety limit, which is what keeps a wrong action value from disabling
 	// the feature rather than merely delaying it. If the attack never appears
 	// to end, the turn is still given back.
-	Check(AimReturnWanted(true, true, false, false, kAimReturnLimitSeconds, true, 0.5f),
+	Check(AimReturnWanted(true, true, false, false, kAimReturnLimitSeconds, true, true),
 	      "an attack that never ends still lets go at the limit");
-	Check(!AimReturnWanted(true, true, false, false, kAimReturnLimitSeconds - 0.1f, true, 0.5f),
+	Check(!AimReturnWanted(true, true, false, false, kAimReturnLimitSeconds - 0.1f, true, true),
 	      "but not one moment before it");
 
 	// Held is still aiming. The body is being handed the turn on these frames,
 	// and taking it back at the same time would have the two fight.
-	Check(!AimReturnWanted(true, true, false, true, 0.5f, false, 0.5f),
+	Check(!AimReturnWanted(true, true, false, true, 0.5f, false, true),
 	      "still held, still aiming");
-	Check(!AimReturnWanted(true, true, false, true, -1.0f, false, 0.5f),
+	Check(!AimReturnWanted(true, true, false, true, -1.0f, false, true),
 	      "held with no clock running either");
 
 	// A negative count is "not waiting for anything" - the control is held, or
 	// this release was already settled. Without a value of its own, settled
 	// would be indistinguishable from released-this-instant and the heading
 	// would be written every frame for as long as nobody pressed anything.
-	Check(!AimReturnWanted(true, true, false, false, -1.0f, false, 0.5f),
+	Check(!AimReturnWanted(true, true, false, false, -1.0f, false, true),
 	      "nothing being waited for, nothing to do");
 
 	// Nothing to give back. The ordinary case for nearly every frame.
-	Check(!AimReturnWanted(true, true, false, false, 0.5f, false, 0.0f),
+	Check(!AimReturnWanted(true, true, false, false, 0.5f, false, false),
 	      "no turn standing, nothing to do");
 
-	// Both signs of turn - aiming left is not a special case.
-	Check(AimReturnWanted(true, true, false, false, 0.5f, false, -0.5f),
-	      "a turn the other way too");
+	// The third person's borrowed pitch counts as something standing on its
+	// own - the caller folds it into the same flag, so a shot aimed with the
+	// head level sideways is still given back.
+	Check(AimReturnWanted(true, true, false, false, 0.5f, false, true),
+	      "anything standing - a turn or a borrowed pitch - is given back");
 
 	// Switched off, which is what somebody reaches for if the sickness comes
 	// back. It has to actually stop it.
-	Check(!AimReturnWanted(false, true, false, false, 0.5f, false, 0.5f),
+	Check(!AimReturnWanted(false, true, false, false, 0.5f, false, true),
 	      "switched off, nothing happens");
 
 	// No headset means the vanilla game, and OBVR does not touch the player's
 	// heading there at all.
-	Check(!AimReturnWanted(true, false, false, false, 0.5f, false, 0.5f),
+	Check(!AimReturnWanted(true, false, false, false, 0.5f, false, true),
 	      "no headset, no interference");
 
 	// Not into a paused world. The engine will not rebuild the camera from the
 	// heading until play resumes, so the write and the compensation would sit
 	// disagreeing until it did.
-	Check(!AimReturnWanted(true, true, true, false, 0.5f, false, 0.5f),
+	Check(!AimReturnWanted(true, true, true, false, 0.5f, false, true),
 	      "not while a menu is up");
 }
 
@@ -1495,43 +1497,57 @@ void TestAimPitchWanted() {
 
 	using obvr::camera::AimPitchWanted;
 
-	Check(AimPitchWanted(true, true, false, false),
+	// (enabled, headset, thirdPerson, thirdPersonAllowed, menu, attacking)
+	Check(AimPitchWanted(true, true, false, true, false, false),
 	      "switched on, headset delivering, first person, no menu: the gaze aims");
 
-	Check(!AimPitchWanted(false, true, false, false), "switched off, nothing is written");
+	// First person needs no attack - the pitch is written on every frame
+	// there, because that camera does not depend on it.
+	Check(AimPitchWanted(true, true, false, false, false, false),
+	      "first person aims whether or not anything is being aimed, and whatever the "
+	      "third person switch says");
+
+	Check(!AimPitchWanted(false, true, false, true, false, true), "switched off, nothing is written");
 
 	// Without a headset the head decides nothing, so the mouse is still the
 	// only way to aim. Writing a pitch then would take the player's aim away
 	// on a machine that never asked for VR.
-	Check(!AimPitchWanted(true, false, false, false),
+	Check(!AimPitchWanted(true, false, false, true, false, true),
 	      "no headset: the mouse keeps the aim it has always had");
 
-	// The real limit, and the reason it is here rather than assumed: in third
-	// person LookControl turns the camera's tilt into camera height, so a
-	// pitch written into the player could come back as height a frame later.
-	Check(!AimPitchWanted(true, true, true, false),
-	      "third person is left alone, because the tilt is read back there");
+	// Third person, measured: the engine builds that camera from rotX, so the
+	// field is written only while something is aimed, and only with the
+	// switch on.
+	Check(AimPitchWanted(true, true, true, true, false, true),
+	      "third person, allowed, aiming: the pitch is borrowed for the shot");
+	Check(!AimPitchWanted(true, true, true, true, false, false),
+	      "third person, allowed, not aiming: the mouse keeps its tilt");
+	Check(!AimPitchWanted(true, true, true, false, false, true),
+	      "third person with the switch off is left alone even while aiming");
 
 	// The trap the crosshair fell into first: with Menus=world a dialogue is a
 	// menu over a world that is still being drawn, so "the world is live" is
 	// not the same question as "nothing is open".
-	Check(!AimPitchWanted(true, true, false, true), "nothing is aimed while a menu is up");
+	Check(!AimPitchWanted(true, true, false, true, true, true),
+	      "nothing is aimed while a menu is up");
 
-	// Every remaining combination refuses, which is what "all four must hold"
-	// means. Written as a sweep rather than as five more lines, so that a gate
-	// added later without a test still gets exercised here.
-	for (int bits = 0; bits < 16; ++bits) {
+	// Every combination, so that a gate added later without a test still gets
+	// exercised here.
+	for (int bits = 0; bits < 64; ++bits) {
 		const bool enabled = (bits & 1) != 0;
 		const bool headset = (bits & 2) != 0;
 		const bool third = (bits & 4) != 0;
-		const bool menu = (bits & 8) != 0;
-		const bool expected = enabled && headset && !third && !menu;
-		if (AimPitchWanted(enabled, headset, third, menu) != expected) {
-			Check(false, "one of the sixteen gate combinations disagrees");
+		const bool allowed = (bits & 8) != 0;
+		const bool menu = (bits & 16) != 0;
+		const bool attacking = (bits & 32) != 0;
+		const bool expected =
+			enabled && headset && !menu && (!third || (allowed && attacking));
+		if (AimPitchWanted(enabled, headset, third, allowed, menu, attacking) != expected) {
+			Check(false, "one of the sixty-four gate combinations disagrees");
 			return;
 		}
 	}
-	Check(true, "all sixteen combinations of the four gates agree");
+	Check(true, "all sixty-four combinations of the six gates agree");
 }
 
 void TestPlayerPitchForGaze() {
@@ -1656,13 +1672,22 @@ void TestAimYaw() {
 	// last one is the difference between the two halves: the pitch follows the
 	// head always, the body only while something is being aimed, and stands
 	// still for ordinary looking around.
-	Check(AimYawWanted(true, true, false, false, true), "aiming with the attack held turns the body");
-	Check(!AimYawWanted(true, true, false, false, false),
+	// (enabled, headset, thirdPerson, thirdPersonAllowed, menu, attacking)
+	Check(AimYawWanted(true, true, false, true, false, true),
+	      "aiming with the attack held turns the body");
+	Check(!AimYawWanted(true, true, false, true, false, false),
 	      "merely looking around does not turn the body");
-	Check(!AimYawWanted(false, true, false, false, true), "switched off, nothing turns");
-	Check(!AimYawWanted(true, false, false, false, true), "no headset, nothing turns");
-	Check(!AimYawWanted(true, true, true, false, true), "third person is left alone here too");
-	Check(!AimYawWanted(true, true, false, true, true), "and nothing turns while a menu is up");
+	Check(!AimYawWanted(false, true, false, true, false, true), "switched off, nothing turns");
+	Check(!AimYawWanted(true, false, false, true, false, true), "no headset, nothing turns");
+	Check(AimYawWanted(true, true, true, true, false, true),
+	      "third person turns the body too, on its own switch");
+	Check(!AimYawWanted(true, true, true, false, false, true),
+	      "and with that switch off third person is left alone");
+	Check(!AimYawWanted(true, true, true, true, false, false),
+	      "third person still needs something to be aimed");
+	Check(AimYawWanted(true, true, false, false, false, true),
+	      "the third person switch says nothing about first person");
+	Check(!AimYawWanted(true, true, false, true, true, true), "and nothing turns while a menu is up");
 
 	// A head that is not turned leaves the heading exactly as the engine had
 	// it. Anything else would nudge the character every frame it aimed.
@@ -2336,7 +2361,237 @@ void TestCastArm() {
 	}
 }
 
+void TestChaseCamera() {
+	std::printf("The third person camera's share of the aim\n");
+
+	using obvr::camera::AimCameraShare;
+	using obvr::camera::ChaseStep;
+	using obvr::camera::kChaseDeltaMult;
+
+	const auto Near = [](float a, float b) { return a - b < 1e-4f && b - a < 1e-4f; };
+
+	// One step closes five percent of what is left, which is the measured
+	// easing and the engine's own fChaseDeltaMult.
+	Check(Near(ChaseStep(0.0f, 1.0f, kChaseDeltaMult), 0.05f), "the first frame takes five percent");
+	Check(Near(ChaseStep(0.5f, 1.0f, kChaseDeltaMult), 0.525f),
+	      "and every frame five percent of the remainder");
+	Check(Near(ChaseStep(1.0f, 1.0f, kChaseDeltaMult), 1.0f), "arrived, nothing moves");
+	Check(Near(ChaseStep(0.0f, 0.0f, kChaseDeltaMult), 0.0f), "and no turn at all stays at zero");
+
+	// The curve the probe measured: four frames of easing leave 0.815 of the
+	// remainder, and the log read 0.81 to 0.83 at every point of the sweep.
+	// Written out as the sweep itself rather than a closed form, because the
+	// closed form is what is being checked.
+	float chased = 0.0f;
+	for (int frame = 0; frame < 4; ++frame) {
+		chased = ChaseStep(chased, 1.0f, kChaseDeltaMult);
+	}
+	Check(Near(1.0f - chased, 0.81450625f), "four frames leave 0.815 of the way to go, as measured");
+
+	// Backwards as well, which is the return: a turn given back eases out the
+	// same way it eased in.
+	Check(Near(ChaseStep(1.0f, 0.0f, kChaseDeltaMult), 0.95f), "easing back is the same easing");
+
+	// The short way round the circle. A target across the seam is a small
+	// step, not a spin through the long arc.
+	const float kPi = 3.14159265f;
+	Check(ChaseStep(kPi - 0.1f, -kPi + 0.1f, kChaseDeltaMult) > kPi - 0.1f ||
+	          ChaseStep(kPi - 0.1f, -kPi + 0.1f, kChaseDeltaMult) < -kPi + 0.2f,
+	      "a target across the seam is approached by the short arc");
+
+	// Which value the picture is corrected by, in each view.
+	Check(Near(AimCameraShare(false, 0.4f, 0.1f), 0.4f),
+	      "first person takes the whole offset - that camera has it at once");
+	Check(Near(AimCameraShare(true, 0.4f, 0.1f), 0.1f),
+	      "third person takes only the share the chase camera has reached");
+}
+
+void TestAimPitchHold() {
+	std::printf("The third person pitch, borrowed and given back\n");
+
+	using obvr::camera::AimPitchHold;
+	using obvr::camera::AimPitchHoldDecision;
+	using obvr::camera::AimPitchHoldInput;
+	using obvr::camera::NextAimPitchHold;
+
+	const auto Near = [](float a, float b) { return a - b < 1e-4f && b - a < 1e-4f; };
+
+	// Not aiming: the field is the mouse's, nothing is written, no offset.
+	AimPitchHold hold;
+	AimPitchHoldInput input;
+	input.enginePitch = 0.3f;
+	AimPitchHoldDecision decision = NextAimPitchHold(hold, input);
+	Check(!decision.write && !decision.next.held, "idle in third person writes nothing");
+	Check(Near(decision.next.mouseTilt, 0.3f), "and the mouse's tilt is simply what the field holds");
+	Check(Near(decision.offset, 0.0f), "nothing borrowed, no offset");
+	hold = decision.next;
+
+	// The shot begins: the gaze is written over the mouse, and the offset is
+	// the difference - which is what the camera will ease towards on top.
+	input.writeGaze = true;
+	input.gazePitch = -0.2f;
+	decision = NextAimPitchHold(hold, input);
+	Check(decision.write && Near(decision.value, -0.2f), "aiming writes the gaze");
+	Check(decision.next.held, "and the field is now held");
+	Check(Near(decision.next.mouseTilt, 0.3f), "the mouse's tilt is remembered");
+	Check(Near(decision.offset, -0.5f), "the offset is gaze minus mouse");
+	hold = decision.next;
+
+	// Next frame, no mouse movement: the engine left what was written. Still
+	// aiming, still written, mouse unchanged.
+	input.enginePitch = -0.2f;
+	decision = NextAimPitchHold(hold, input);
+	Check(decision.write && Near(decision.next.mouseTilt, 0.3f),
+	      "a still mouse leaves its tilt where it was");
+	hold = decision.next;
+
+	// The mouse moves while the field is held. Measured: a written rotation
+	// survives and the engine ADDS the movement to it, so the mouse's
+	// contribution is the difference from what was last put there.
+	input.enginePitch = -0.2f + 0.05f;
+	decision = NextAimPitchHold(hold, input);
+	Check(Near(decision.next.mouseTilt, 0.35f), "mouse movement while held is accumulated");
+	Check(Near(decision.offset, -0.2f - 0.35f), "and the offset follows the mouse");
+	hold = decision.next;
+
+	// Released, waiting for the arrow to go: nothing written, the field keeps
+	// what it has plus whatever the mouse adds, and the offset is measured
+	// against the field as the engine now leaves it.
+	input.writeGaze = false;
+	input.enginePitch = -0.15f;
+	decision = NextAimPitchHold(hold, input);
+	Check(!decision.write && decision.next.held, "waiting for the shot: held, not written");
+	Check(Near(decision.next.fieldNow, -0.15f), "the field is what the engine left");
+	Check(Near(decision.next.mouseTilt, 0.40f),
+	      "and the 0.05 the engine added since the last write is the mouse's");
+	Check(Near(decision.offset, -0.15f - 0.40f), "so the offset is field minus mouse");
+	hold = decision.next;
+
+	// Another frame of waiting with the mouse moving: the movement goes to
+	// the mouse's tilt, once, not cumulatively.
+	input.enginePitch = -0.10f;
+	decision = NextAimPitchHold(hold, input);
+	Check(Near(decision.next.mouseTilt, 0.45f), "movement while waiting still reaches the mouse");
+	hold = decision.next;
+
+	// The shot is gone: the field is given back to the mouse, the hold ends,
+	// the offset is zero and the camera eases home from here.
+	input.returnDue = true;
+	decision = NextAimPitchHold(hold, input);
+	Check(decision.write && Near(decision.value, 0.45f), "the return writes the mouse's own tilt");
+	Check(!decision.next.held && Near(decision.offset, 0.0f), "nothing held, nothing offset");
+	hold = decision.next;
+
+	// A return with nothing held is nothing.
+	decision = NextAimPitchHold(hold, input);
+	Check(!decision.write, "a return with nothing held writes nothing");
+
+	// Writing and returning due on the same frame: the caller withholds the
+	// write, so that flow is the return above. But a write asked for wins
+	// here if both are passed, and the test says so rather than leaving it
+	// to be discovered.
+	input.writeGaze = true;
+	input.returnDue = true;
+	hold.held = true;
+	hold.mouseTilt = 0.1f;
+	hold.fieldNow = 0.1f;
+	input.enginePitch = 0.1f;
+	decision = NextAimPitchHold(hold, input);
+	Check(decision.write && Near(decision.value, input.gazePitch) && decision.next.held,
+	      "asked to write and return at once, the write is what happens");
+}
+
+void TestAimTiltCorrection() {
+	std::printf("The third person camera's swing about its pivot, put back\n");
+
+	using obvr::camera::AimTiltCorrection;
+	using obvr::camera::AimTiltInput;
+	using obvr::camera::kAimTiltMinCosine;
+	using obvr::NiPoint3;
+
+	const auto Near = [](float a, float b) { return a - b < 0.02f && b - a < 0.02f; };
+
+	// The sphere the probe measured: feet at (2022.58, 4732.85, 61.16), the
+	// camera 30 units off the axis at head height with the view level, and
+	// with the view 69 degrees up the camera swung down to 11 units out and
+	// 28 below the pivot - r sin(pitch) and r cos(pitch) to a hundredth.
+	AimTiltInput input;
+	input.feet = NiPoint3{2022.58f, 4732.85f, 61.16f};
+	input.centreKnown = true;
+
+	// Nothing to undo.
+	input.cameraPosition = NiPoint3{1993.40f, 4739.80f, 180.96f};
+	input.cameraSinPitch = 0.0f;
+	input.pitchShare = 0.0f;
+	NiPoint3 delta = AimTiltCorrection(input);
+	Check(Near(delta.x, 0.0f) && Near(delta.y, 0.0f) && Near(delta.z, 0.0f),
+	      "no share, no correction");
+
+	// The camera as the probe found it fully swung up (line 171 of the
+	// second run): pitch 1.19 rad, 11.07 out, 91.92 above the feet. If ALL
+	// of that pitch were OBVR's share, putting it back must land the camera
+	// where it stood level: 30 out, 119.8 up.
+	input.cameraPosition = NiPoint3{2011.81f, 4735.42f, 153.06f};
+	input.cameraSinPitch = 0.9294f;
+	input.pitchShare = -1.1932f;  // asin(0.9294), as a rotX: negative is looking up
+	delta = AimTiltCorrection(input);
+	const NiPoint3 put = input.cameraPosition + delta;
+	const float outX = put.x - input.feet.x;
+	const float outY = put.y - input.feet.y;
+	const float out = obvr::math::Sqrt(outX * outX + outY * outY);
+	Check(out > 29.9f && out < 30.1f, "put back level, the camera stands the sphere's radius out");
+	Check(put.z - input.feet.z > 119.6f && put.z - input.feet.z < 120.0f,
+	      "and at the pivot's height, which is the level camera's");
+	Check(Near(outX / out, -29.18f / 30.0f) && Near(outY / out, 6.96f / 30.0f),
+	      "along the same bearing from the feet - the tilt does not turn the camera");
+
+	// Half the share: halfway round the same arc, still on the sphere.
+	input.pitchShare = -0.5966f;
+	delta = AimTiltCorrection(input);
+	const NiPoint3 half = input.cameraPosition + delta;
+	const float hx = half.x - input.feet.x;
+	const float hy = half.y - input.feet.y;
+	const float hz = half.z - 180.94f;
+	const float radius = obvr::math::Sqrt(hx * hx + hy * hy + hz * hz);
+	Check(radius > 29.6f && radius < 30.0f, "half the share keeps the camera on the sphere");
+
+	// The sign: the share is in the engine's convention, positive looking
+	// DOWN. A head looking up writes a negative rotX, the camera swings down
+	// below the pivot to look up at it, and putting that share back raises
+	// the camera towards level. The other sign lowers it.
+	input.pitchShare = -0.3f;
+	delta = AimTiltCorrection(input);
+	Check(delta.z > 0.0f, "the share of a gaze looking up is put back by raising the camera");
+	input.pitchShare = 0.3f;
+	delta = AimTiltCorrection(input);
+	Check(delta.z < 0.0f, "and the share of a gaze looking down by lowering it");
+
+	// The refusals.
+	input.centreKnown = false;
+	delta = AimTiltCorrection(input);
+	Check(Near(delta.x, 0.0f) && Near(delta.z, 0.0f), "no feet, no correction");
+	input.centreKnown = true;
+
+	input.cameraPosition = input.feet;
+	delta = AimTiltCorrection(input);
+	Check(Near(delta.x, 0.0f) && Near(delta.z, 0.0f), "a camera on the axis has no arm to read");
+
+	input.cameraPosition = NiPoint3{2011.81f, 4735.42f, 153.06f};
+	input.cameraSinPitch = 0.9999f;
+	delta = AimTiltCorrection(input);
+	Check(Near(delta.x, 0.0f) && Near(delta.z, 0.0f),
+	      "a camera nearly straight below the pivot is left alone rather than divided by a "
+	      "cosine near zero");
+	Check(kAimTiltMinCosine > 0.0f, "the limit exists");
+}
+
 int main() {
+	TestChaseCamera();
+	std::printf("\n");
+	TestAimPitchHold();
+	std::printf("\n");
+	TestAimTiltCorrection();
+	std::printf("\n");
 	std::printf("OBVR frame logic test\n\n");
 
 	TestKeyEdge();

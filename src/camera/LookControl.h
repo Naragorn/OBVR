@@ -87,7 +87,16 @@ public:
 	//
 	// deltaSeconds of 0 means the caller has no timing, and the easing is then
 	// skipped rather than the camera being frozen.
-	void Update(const NiMatrix33& vanillaRotation, bool isThirdPerson, float deltaSeconds);
+	//
+	// aimPitchShare is how much of the camera's tilt is OBVR's own doing
+	// rather than the stick's: the share of a pitch written for aiming that
+	// the third person camera has eased towards so far, in the engine's
+	// convention (radians, positive looking down). It is taken back out
+	// before the tilt becomes height, so aiming at the floor does not also
+	// drop the camera to the feet. Zero in first person and whenever nothing
+	// is being aimed.
+	void Update(const NiMatrix33& vanillaRotation, bool isThirdPerson, float deltaSeconds,
+	            float aimPitchShare = 0.0f);
 
 	// The rotation to use in place of the one the game computed.
 	const NiMatrix33& GetRotation() const { return m_rotation; }

@@ -1,5 +1,6 @@
 #include "camera/LookControl.h"
 
+#include "core/MathFns.h"
 #include "core/Rotation.h"
 
 namespace obvr::camera {
@@ -12,7 +13,7 @@ void LookControl::Reset() {
 }
 
 void LookControl::Update(const NiMatrix33& vanillaRotation, bool isThirdPerson,
-                         float deltaSeconds) {
+                         float deltaSeconds, float aimPitchShare) {
 	Heading target;
 
 	// Switched off, or a camera whose heading cannot be read because it has
@@ -47,7 +48,14 @@ void LookControl::Update(const NiMatrix33& vanillaRotation, bool isThirdPerson,
 	// tilt is positive looking up, so it picks the range and carries the sign
 	// with it: a positive down range with a negative tilt still lowers the
 	// camera.
-	const float tilt = SinPitchOf(vanillaRotation);
+	//
+	// Less whatever of the tilt is OBVR's own aim rather than the stick's.
+	// The camera's pitch is positive up and the share is in the engine's
+	// convention, positive down, so taking it out adds it - the same sum
+	// AimTiltCorrection makes for the camera's position.
+	const float tilt = aimPitchShare == 0.0f
+	                       ? SinPitchOf(vanillaRotation)
+	                       : math::Sin(math::Asin(SinPitchOf(vanillaRotation)) + aimPitchShare);
 	const float range =
 		tilt >= 0.0f ? m_settings.verticalLookUpRange : m_settings.verticalLookDownRange;
 	const float targetOffset = isThirdPerson ? tilt * range : 0.0f;

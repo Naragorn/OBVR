@@ -134,6 +134,21 @@ struct Config {
 	// than not aiming at all.
 	bool aimProbe = false;
 
+	// Logs, a few times a second while in third person, where the engine put
+	// its camera this frame beside the player's own rotation: rotX and rotZ as
+	// the engine left them, the camera node's local position and its offset
+	// from the player's feet, the world position read back from the previous
+	// frame, and the height the look control added.
+	//
+	// The instrument for aiming with the head in third person. The first
+	// person aim writes rotX every frame; in third person the engine builds
+	// the camera's ORBIT from that field, so a written pitch would move the
+	// viewpoint. How far, about which point, and whether the node's local
+	// space is the world's there - those are what the columns answer, and a
+	// compensation built without them would be a guess. In [Debug],
+	// hot-reloadable, off by default.
+	bool thirdPersonProbe = false;
+
 	// Points the player where the head is looking, so an arrow leaves along
 	// the gaze instead of along the mouse.
 	//
@@ -142,11 +157,19 @@ struct Config {
 	// like the rest of that section - it can be switched off from inside the
 	// headset if it ever aims somewhere wrong.
 	//
-	// First person only, and camera::AimPitchWanted says why: in third person
-	// the tilt is read back out of the engine's camera and turned into camera
-	// height, so writing it there could feed OBVR's own value into its own
-	// camera a frame later.
 	bool aimFollowsGaze = true;
+
+	// Whether the same aiming is done in third person.
+	//
+	// Off, and the third person shot goes where the mouse points while the
+	// crosshair shows where the head does. On, the body and the player's pitch
+	// follow the gaze there too while a shot is aimed - with the engine's own
+	// chase camera compensated for the share of the turn it has eased towards,
+	// measured in camera::kChaseDeltaMult, so the picture holds still. Its own
+	// switch because that camera is a different mechanism from the first
+	// person one, and the day it misbehaves the first person aim should not
+	// have to go with it.
+	bool aimInThirdPerson = true;
 
 	// The control that means "I am aiming", as a Windows virtual-key code.
 	//

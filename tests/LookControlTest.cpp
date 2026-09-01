@@ -131,6 +131,41 @@ void TestVerticalOffset() {
 	          "in first person the vertical look does nothing");
 }
 
+void TestAimShareIsNotHeight() {
+	std::printf("The aim's share of the tilt is not the stick's\n");
+
+	obvr::camera::LookControl control;
+	control.Configure(Blocking());
+
+	// The camera tilted 30 degrees up, all of it the stick's: 30 units.
+	control.Update(Camera(0.0f, 30.0f), kThirdPerson, kFrame, 0.0f);
+	CheckNear(control.GetVerticalOffset(), 30.0f, 0.01f, "with no aim share the tilt is all height");
+
+	// The same camera, but the whole tilt is the aim's - a rotX of -30
+	// degrees written for a shot at the sky and eased into the camera. Taking
+	// it out leaves the stick level, so no height.
+	const float thirtyDown = -30.0f * 3.14159265f / 180.0f;
+	control.Update(Camera(0.0f, 30.0f), kThirdPerson, kFrame, thirtyDown);
+	CheckNear(control.GetVerticalOffset(), 0.0f, 0.01f,
+	          "a tilt that is entirely the aim's share becomes no height at all");
+
+	// Half of it: the stick's 15 degrees remain, sin(15) times 60.
+	control.Update(Camera(0.0f, 30.0f), kThirdPerson, kFrame, thirtyDown * 0.5f);
+	CheckNear(control.GetVerticalOffset(), 15.529f, 0.01f,
+	          "half the share leaves the stick's half of the tilt as height");
+
+	// The other sign: a shot at the floor eased into a camera the stick
+	// holds level reads as a tilt down; taking the share out restores level.
+	control.Update(Camera(0.0f, -30.0f), kThirdPerson, kFrame, -thirtyDown);
+	CheckNear(control.GetVerticalOffset(), 0.0f, 0.01f,
+	          "and a share looking down is taken out the same way");
+
+	// The rotation itself is untouched by the share - it is levelled either
+	// way, so the share only ever decides the height.
+	CheckNear(TiltOf(control.GetRotation()), 0.0f, 0.001f,
+	          "the rotation is level whatever the share");
+}
+
 void TestRangeSign() {
 	std::printf("The range, and its sign\n");
 
@@ -305,6 +340,8 @@ int main() {
 	TestTurningSurvives();
 	std::printf("\n");
 	TestVerticalOffset();
+	std::printf("\n");
+	TestAimShareIsNotHeight();
 	std::printf("\n");
 	TestRangeSign();
 	std::printf("\n");

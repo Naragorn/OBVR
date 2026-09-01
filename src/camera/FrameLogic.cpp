@@ -324,13 +324,32 @@ bool DeliversDualEyes(bool stereoDual, bool sceneHooked, UInt32 probeRung) {
 	return stereoDual && sceneHooked && probeRung != kProbeSinglePass;
 }
 
-bool AimPitchWanted(bool enabled, bool headsetConnected, bool isThirdPerson, bool menuIsUp) {
-	return enabled && headsetConnected && !isThirdPerson && !menuIsUp;
+bool AimPitchWanted(bool enabled, bool headsetConnected, bool isThirdPerson,
+                    bool thirdPersonAllowed, bool menuIsUp, bool attacking) {
+	if (!enabled || !headsetConnected || menuIsUp) {
+		return false;
+	}
+	// First person writes on every frame; third person only while aiming, and
+	// only with the switch on - see the header for the measurement behind it.
+	return !isThirdPerson || (thirdPersonAllowed && attacking);
 }
 
-bool AimYawWanted(bool enabled, bool headsetConnected, bool isThirdPerson, bool menuIsUp,
-                  bool attacking) {
-	return AimPitchWanted(enabled, headsetConnected, isThirdPerson, menuIsUp) && attacking;
+bool AimYawWanted(bool enabled, bool headsetConnected, bool isThirdPerson,
+                  bool thirdPersonAllowed, bool menuIsUp, bool attacking) {
+	if (!enabled || !headsetConnected || menuIsUp || !attacking) {
+		return false;
+	}
+	return !isThirdPerson || thirdPersonAllowed;
+}
+
+float ChaseStep(float chased, float target, float deltaMult) {
+	// The shortest way round, so a turn that wraps past the half circle is
+	// still closed by the short arc rather than the long one.
+	return math::WrapAngle(chased + math::WrapAngle(target - chased) * deltaMult);
+}
+
+float AimCameraShare(bool isThirdPerson, float bodyOffset, float chased) {
+	return isThirdPerson ? chased : bodyOffset;
 }
 
 float PlayerYawForGaze(float engineYaw, float stepRadians) {
@@ -372,14 +391,14 @@ bool AimTurnDue(AimTurnMode mode, bool attackHeld, bool attackWasHeld, bool atta
 }
 
 bool AimReturnWanted(bool enabled, bool headsetConnected, bool menuIsUp, bool attackHeld,
-                     float secondsSinceRelease, bool attackInProgress, float bodyOffset) {
+                     float secondsSinceRelease, bool attackInProgress, bool aimStanding) {
 	if (!enabled || !headsetConnected) {
 		return false;
 	}
 
 	// Nothing to give back. Also the ordinary case for almost every frame, so
 	// it is checked before anything else that could be surprising.
-	if (bodyOffset == 0.0f) {
+	if (!aimStanding) {
 		return false;
 	}
 
@@ -588,6 +607,76 @@ CastArmDecision NextCastArm(const CastArm& current, const CastArmInput& input) {
 		decision.next = CastArm{};
 	}
 	return decision;
+}
+
+AimPitchHoldDecision NextAimPitchHold(const AimPitchHold& current,
+                                      const AimPitchHoldInput& input) {
+	AimPitchHoldDecision decision;
+	decision.next = current;
+
+	// The mouse's own tilt. While the field is held, this frame's movement is
+	// whatever the engine added to what was last there; otherwise the field
+	// is the mouse's and nothing else.
+	if (current.held) {
+		decision.next.mouseTilt =
+			current.mouseTilt + (input.enginePitch - current.fieldNow);
+	} else {
+		decision.next.mouseTilt = input.enginePitch;
+	}
+
+	if (input.writeGaze) {
+		decision.write = true;
+		decision.value = input.gazePitch;
+		decision.next.held = true;
+		decision.next.fieldNow = input.gazePitch;
+	} else if (current.held && input.returnDue) {
+		decision.write = true;
+		decision.value = decision.next.mouseTilt;
+		decision.next.held = false;
+		decision.next.fieldNow = decision.next.mouseTilt;
+	} else {
+		decision.next.fieldNow = input.enginePitch;
+	}
+
+	decision.offset = decision.next.held ? decision.next.fieldNow - decision.next.mouseTilt : 0.0f;
+	return decision;
+}
+
+NiPoint3 AimTiltCorrection(const AimTiltInput& input) {
+	if (!input.centreKnown || input.pitchShare == 0.0f) {
+		return NiPoint3{0.0f, 0.0f, 0.0f};
+	}
+
+	// Where the camera stands off the player's axis, and how far.
+	const float armX = input.cameraPosition.x - input.feet.x;
+	const float armY = input.cameraPosition.y - input.feet.y;
+	const float horizontal = math::Sqrt(armX * armX + armY * armY);
+	if (horizontal <= 0.0f) {
+		return NiPoint3{0.0f, 0.0f, 0.0f};
+	}
+
+	// The camera's own pitch, positive up, and the sphere read back from it:
+	// the horizontal distance is r cos(pitch), so r follows, and the pivot is
+	// r sin(pitch) above the camera when the camera looks up from below.
+	const float pitch = math::Asin(input.cameraSinPitch);
+	const float cosine = math::Cos(pitch);
+	if (cosine < kAimTiltMinCosine) {
+		return NiPoint3{0.0f, 0.0f, 0.0f};
+	}
+	const float radius = horizontal / cosine;
+	const float pivotZ = input.cameraPosition.z + radius * math::Sin(pitch);
+
+	// Where the camera would stand had it eased towards the mouse's tilt
+	// alone. The share is in the engine's convention (positive down) and the
+	// camera's pitch is positive up, so taking the share out ADDS it.
+	const float wanted = pitch + input.pitchShare;
+	const float wantedHorizontal = radius * math::Cos(wanted);
+	const float wantedZ = pivotZ - radius * math::Sin(wanted);
+
+	const float scale = wantedHorizontal / horizontal;
+	return NiPoint3{input.feet.x + armX * scale - input.cameraPosition.x,
+	                input.feet.y + armY * scale - input.cameraPosition.y,
+	                wantedZ - input.cameraPosition.z};
 }
 
 }  // namespace obvr::camera
