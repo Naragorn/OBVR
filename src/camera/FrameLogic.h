@@ -1035,6 +1035,50 @@ struct CastWindow {
 CastWindow NextCastWindow(const CastWindow& current, const CastWindowInput& input,
                           float minimumSeconds);
 
+// Everything the release clock is stepped from in one frame.
+struct ReleaseClockInput {
+	bool attackHeld = false;
+	bool attackWasHeld = false;
+
+	// Whether the cast key's window is itself turning the body, and whether it
+	// was standing at the start of this frame.
+	bool castTurning = false;
+	bool castWasOpen = false;
+
+	// Whether a cast is allowed to start the clock at all.
+	//
+	// FALSE ONCE THE CAST HOOK IS DOING THE TURNING, and that is not a detail.
+	// See NextReleaseClock.
+	bool castFeedsClock = false;
+
+	float deltaSeconds = 0.0f;
+};
+
+// Not counting. A negative clock means the control is held, or the last
+// release has already been dealt with.
+inline constexpr float kReleaseClockIdle = -1.0f;
+
+// The clock that separates "let go" from "the shot has gone", one frame on.
+//
+// WHAT THIS INNOCENT-LOOKING NUMBER ACTUALLY CONTROLS. Starting it is what
+// tells the rest of the aim that a shot is in flight: turningOnShot needs only
+// a started clock, IsShotUnreleased then says whether the thing has left, and
+// AimTurnDue turns the body on that alone. So whoever starts this clock hands
+// the body to the bow's machinery.
+//
+// Which is how a cast kept turning the body for 0.88 seconds after a hook had
+// been written specifically to stop it. A cast reads to the engine as an ATTACK
+// - measured, 53 frames of Attack and then FollowThrough - so the cast window
+// starting the clock was enough for the bow's logic to recognise a shot and
+// hold the body turned for the whole animation. The window was never doing the
+// turning; it was opening a door, and the fix that closed the wrong one changed
+// nothing at all.
+//
+// So castFeedsClock exists to shut that door. With the hook in charge, a cast
+// starts nothing and is invisible to all of it; the hook starts the clock
+// itself at the one moment a return is owed.
+float NextReleaseClock(float current, const ReleaseClockInput& input);
+
 // What the body's turn did to where the eye stands, so it can be undone.
 struct AimArcInput {
 	// The camera as the engine placed it this frame, before OBVR has added

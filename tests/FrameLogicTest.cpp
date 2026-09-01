@@ -1700,6 +1700,63 @@ void TestAimYaw() {
 	Check(true, "every heading and turn together stays inside one circle");
 }
 
+void TestReleaseClock() {
+	std::printf("The clock that says a shot is in flight\n");
+
+	using obvr::camera::kReleaseClockIdle;
+	using obvr::camera::NextReleaseClock;
+	using obvr::camera::ReleaseClockInput;
+
+	const float frame = 1.0f / 60.0f;
+
+	const auto Step = [&](float current, bool held, bool wasHeld, bool castTurning,
+	                      bool castWasOpen, bool castFeeds) {
+		ReleaseClockInput input;
+		input.attackHeld = held;
+		input.attackWasHeld = wasHeld;
+		input.castTurning = castTurning;
+		input.castWasOpen = castWasOpen;
+		input.castFeedsClock = castFeeds;
+		input.deltaSeconds = frame;
+		return NextReleaseClock(current, input);
+	};
+
+	// Held stops it, whichever control is holding.
+	Check(Step(0.5f, true, true, false, false, true) == kReleaseClockIdle,
+	      "holding the attack control stops the clock");
+	Check(Step(0.5f, false, false, true, true, true) == kReleaseClockIdle,
+	      "and so does the cast window while it is turning the body");
+
+	// Letting go starts it.
+	Check(Step(kReleaseClockIdle, false, true, false, false, true) == 0.0f,
+	      "releasing the attack control starts it at zero");
+
+	// THE FLOW THAT WAS WRONG. A cast may start the clock only while the window
+	// is what turns the body. Once the hook does the turning it must not,
+	// because a started clock is what lets the bow's machinery recognise a shot
+	// - and a cast reads to the engine as an attack, so it would hold the body
+	// turned for the whole animation.
+	Check(Step(kReleaseClockIdle, false, false, false, true, true) == 0.0f,
+	      "a cast window starts the clock while it owns the turn");
+	Check(Step(kReleaseClockIdle, false, false, false, true, false) == kReleaseClockIdle,
+	      "and starts nothing once the hook owns it - the fault that made the hook look "
+	      "like it had changed nothing");
+
+	// Counting once started, from either source.
+	const float counting = Step(0.0f, false, false, false, false, false);
+	Check(counting > frame * 0.9f && counting < frame * 1.1f,
+	      "a started clock counts up by the frame time");
+
+	// The hook starts it directly, and nothing must take it away again on the
+	// next frame - that is the one moment a return is owed.
+	Check(Step(0.0f, false, false, false, true, false) > 0.0f,
+	      "a clock the hook started keeps counting even with the cast window still open");
+
+	// Idle stays idle. The ordinary frame, which is nearly every frame.
+	Check(Step(kReleaseClockIdle, false, false, false, false, true) == kReleaseClockIdle,
+	      "with nothing happening it stays stopped");
+}
+
 void TestCastWindow() {
 	std::printf("How long the body stays turned for a spell\n");
 
@@ -2149,6 +2206,8 @@ int main() {
 	TestAimYaw();
 	std::printf("\n");
 	TestAimYawRemaining();
+	std::printf("\n");
+	TestReleaseClock();
 	std::printf("\n");
 	TestCastWindow();
 	std::printf("\n");

@@ -489,6 +489,27 @@ CastWindow NextCastWindow(const CastWindow& current, const CastWindowInput& inpu
 	return CastWindow{};
 }
 
+float NextReleaseClock(float current, const ReleaseClockInput& input) {
+	// Still aiming. Held, or the key window turning the body itself - either
+	// way nothing has been let go of yet.
+	if (input.attackHeld || input.castTurning) {
+		return kReleaseClockIdle;
+	}
+
+	// Let go. The cast half is allowed to do this only when the window is what
+	// turns the body; once the hook does the turning, a cast starting the clock
+	// is what hands the body back to the bow's machinery.
+	if (input.attackWasHeld || (input.castWasOpen && input.castFeedsClock)) {
+		return 0.0f;
+	}
+
+	if (current >= 0.0f) {
+		return current + input.deltaSeconds;
+	}
+
+	return kReleaseClockIdle;
+}
+
 NiPoint3 AimArcCorrection(const AimArcInput& input) {
 	if (!input.centreKnown || input.bodyOffset == 0.0f) {
 		return NiPoint3{0.0f, 0.0f, 0.0f};

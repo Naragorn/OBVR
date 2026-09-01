@@ -2651,13 +2651,31 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// pressed. The body would hold the cast's heading for good, and the wearer
 	// would walk sideways from then on - the exact fault the return was written
 	// for, reached by a door it did not know was there.
-	if (attackHeld || castTurning) {
-		g_aimSecondsSinceRelease = -1.0f;
-	} else if (attackWasHeld || castWasOpen) {
-		g_aimSecondsSinceRelease = 0.0f;
-	} else if (g_aimSecondsSinceRelease >= 0.0f) {
-		g_aimSecondsSinceRelease += deltaSeconds;
-	}
+	//
+	// AND WITH THE HOOK DOING THE TURNING, THE CAST MUST NOT START THIS CLOCK
+	// AT ALL. This is what stopped the hook from changing anything on its first
+	// run, and it is worth writing down because the route was not obvious.
+	//
+	// A cast reads to the engine as an ATTACK - measured, 53 frames of Attack
+	// then FollowThrough. So the moment this clock starts, the bow's own
+	// machinery recognises a shot in flight: turningOnShot needs only a started
+	// clock, IsShotUnreleased says Attack, and AimTurnDue turns the body on
+	// attackInProgress alone. The cast window was never turning the body
+	// directly - it was starting the clock, and the BOW's logic did the rest,
+	// for the full 53 frames, which is exactly the 0.88 seconds the log showed
+	// after the hook had gone in and supposedly taken over.
+	//
+	// So with the hook in charge, a cast is invisible to all of that. The hook
+	// starts the clock itself when it turns, which is the one moment a return
+	// is owed.
+	ReleaseClockInput clockInput;
+	clockInput.attackHeld = attackHeld;
+	clockInput.attackWasHeld = attackWasHeld;
+	clockInput.castTurning = castTurning;
+	clockInput.castWasOpen = castWasOpen;
+	clockInput.castFeedsClock = !castAtSpawn;
+	clockInput.deltaSeconds = deltaSeconds;
+	g_aimSecondsSinceRelease = NextReleaseClock(g_aimSecondsSinceRelease, clockInput);
 	g_aimWasHeld = attackHeld;
 
 	// The turn given back once the shot is actually gone, so the character
