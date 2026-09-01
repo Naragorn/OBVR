@@ -286,10 +286,9 @@ bool g_aimWasHeld = false;
 bool g_castWasHeld = false;
 CastWindow g_castWindow{};
 
-// What the casting flag was reading while the window stood, for the trace and
-// for the one report that says whether the field is worth anything.
-bool g_castFlagSeen = false;
-bool g_castFlagReported = false;
+// Said once, when a spell has finished holding the body: how long it held it
+// for, and which of the two things ended it.
+bool g_castReported = false;
 
 // How long since the attack control was released, in seconds. Negative means
 // nothing is being waited for - the control is held, or the last release has
@@ -2413,29 +2412,28 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	castInput.deltaSeconds = deltaSeconds;
 
 	if (castInput.enabled && (g_castWindow.open || castHeld)) {
-		const game::CastState state = game::ReadPlayerCastState();
-		castInput.castingKnown = state != game::CastState::Unknown;
-		castInput.casting = state == game::CastState::Casting;
-		if (castInput.casting) {
-			g_castFlagSeen = true;
-		}
+		castInput.spellStillLeaving = game::IsShotUnreleased();
 	}
 
 	const bool castWasOpen = g_castWindow.open;
+	const float castHeldSeconds = g_castWindow.secondsOpen;
 	g_castWindow = NextCastWindow(g_castWindow, castInput, GetConfig().aimCastHoldSeconds);
 
-	// Said once, and it is the whole verdict on a single-sourced offset its own
-	// author hedged. If the flag never comes up true across a session of
-	// casting, it does not track the cast and the window is running on its
-	// minimum alone - which still works, and now says so rather than looking
-	// like it was measured.
-	if (g_castWindow.open && !g_castFlagReported &&
-	    g_castWindow.secondsOpen >= kCastWindowLimitSeconds * 0.5f) {
-		g_castFlagReported = true;
-		OBVR_LOG("Aim: the casting flag at +%02X %s during a cast - the spell window is %s",
-		         addr::kProcessCastingOffset, g_castFlagSeen ? "DID read true" : "never read true",
-		         g_castFlagSeen ? "following the cast itself"
-		                        : "running on its fixed minimum alone");
+	// Said once, and what it reports is how long the body was actually held.
+	//
+	// It is the number the wearer feels: for as long as the window stands, the
+	// character walks the way the spell went rather than the way the stick is
+	// pushed. "während des castens laufe ich in die richtung vom cast." So it
+	// is measured and printed rather than left to be estimated from the code.
+	if (castWasOpen && !g_castWindow.open && !g_castReported) {
+		g_castReported = true;
+		OBVR_LOG("Aim: a spell held the body turned for %.2f s - %s",
+		         static_cast<double>(castHeldSeconds),
+		         castHeldSeconds >= kCastWindowLimitSeconds - 0.05f
+		             ? "the LIMIT ended it, so the action field never said FollowThrough and "
+		               "this build is not reading the cast the way the trace measured it"
+		             : "ended by the action field reading FollowThrough, which means the spell "
+		               "had gone");
 	}
 
 	// One window, whichever control opened it. Everything downstream - the

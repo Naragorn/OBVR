@@ -235,22 +235,21 @@ inline constexpr SInt32 kActionAttackBowArrowAttached = 5;
 // unchanged. And the machinery that decides how long the body stays turned for
 // a bow shot cannot be pointed at a spell: there is no action to watch.
 //
-// So casting is read from a field of its own.
-
-// MiddleHighProcess::unk14C - a UInt8 that xOBSE's header comments as "looks
-// like true if casting, or possibly a casting state". HighProcess inherits
-// MiddleHighProcess, so it is reachable through the same process pointer as the
-// three fields above.
+// BUT A CAST STILL DRIVES THE FIELD, which the enum could not have told anyone
+// and only the trace did.
 //
-// SINGLE-SOURCED AND HEDGED BY ITS OWN AUTHOR, which is below the standard this
-// file holds addresses to - so nothing is allowed to depend on it. It can only
-// hold the cast window OPEN, never open it and never close it: the window is
-// opened by the key and closed by a time limit regardless of what this byte
-// says. A byte that is always zero therefore costs the window nothing but its
-// insurance minimum, and a byte that is always one costs it nothing at all,
-// because the limit ends it either way. The log says which happened, and that
-// is what turns this from a guess into a measurement.
-inline constexpr UInt32 kProcessCastingOffset = 0x14C;
+// Reading it a line a frame through six casts: 54 frames of Attack, then 24 to
+// 26 of AttackFollowThrough, then None - that shape every time. A spell is
+// reported as an attack. So the values above cover casting as well, and
+// IsShotUnreleased draws the line in the right place for it without a change.
+//
+// This replaced a field found for the purpose and then measured away.
+// MiddleHighProcess+0x14C, which xOBSE hedges as "looks like true if casting",
+// does read true through a cast - and stands for 79 frames, which is 54 plus 25
+// exactly. It covers Attack AND FollowThrough together and cannot separate
+// them, so it would hold the body turned for four tenths of a second after the
+// spell had already left. Single-sourced, hedged, and superseded by a field
+// this file already had two readings of: not kept.
 
 // Pointer to NiDX9Renderer, the object that owns Oblivion's Direct3D 9
 // device. This is where 0.1.0 has to start: the camera hook works on the

@@ -90,23 +90,23 @@ enum class WeaponState { Unknown, Sheathed, Drawn };
 
 WeaponState ReadPlayerWeaponState();
 
-// Whether the player is in the middle of casting a spell.
+// A NOTE ABOUT SPELLS, because this is where the reader for them used to be.
 //
-// WHY A FIELD OF ITS OWN, when a bow shot is followed through the action. The
-// action enum was read out in full when the aim was extended to magic, and
-// there is no cast in it - Attack, AttackFollowThrough, AttackBow,
-// AttackBowArrowAttached, Block, Recoil, Stagger, Dodge, and the rest are all
-// bodily. A spell passes through none of them, so the machinery that keeps the
-// body turned for the frames a bow shot needs has nothing to watch.
+// The action enum has no cast in it, so extending the aim to magic first went
+// looking for a casting flag of its own - MiddleHighProcess+0x14C, which
+// xOBSE's header hedges as "looks like true if casting". It worked, and then
+// the trace measured what it was worth: the flag stood for 79 frames, and the
+// action field over the same casts read 54 frames of Attack followed by 24 to
+// 26 of AttackFollowThrough. 54 plus 25 is 79.
 //
-// Unknown is a real answer, not a failure, and it is what a byte holding
-// anything but 0 or 1 comes back as. The offset has one source and its own
-// author hedged it, so the cast window is built to work WITHOUT this: the key
-// opens it, a time limit closes it, and this can only hold it open in between.
-// See addr::kProcessCastingOffset for the whole of that reasoning.
-enum class CastState { Unknown, Idle, Casting };
-
-CastState ReadPlayerCastState();
+// So the flag says nothing the action field does not, and says it with less
+// resolution: it cannot tell Attack from FollowThrough, and FollowThrough is
+// exactly the line that matters, because it means the thing has GONE. A cast is
+// simply reported as an attack, and IsShotUnreleased above already draws that
+// line correctly for it.
+//
+// The reader was deleted rather than left standing unused. What it found is
+// here because the finding is worth keeping and the code was not.
 
 // Whether the player is sneaking.
 //

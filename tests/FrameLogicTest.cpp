@@ -1711,13 +1711,14 @@ void TestCastWindow() {
 	const float minimum = 0.25f;
 	const float frame = 1.0f / 60.0f;
 
-	const auto Step = [&](CastWindow window, bool held, bool wasHeld, bool flagKnown, bool flag) {
+	// leaving: the action field reading Attack rather than AttackFollowThrough,
+	// which is the same signal the bow's window closes on.
+	const auto Step = [&](CastWindow window, bool held, bool wasHeld, bool leaving) {
 		CastWindowInput input;
 		input.enabled = true;
 		input.castHeld = held;
 		input.castWasHeld = wasHeld;
-		input.castingKnown = flagKnown;
-		input.casting = flag;
+		input.spellStillLeaving = leaving;
 		input.deltaSeconds = frame;
 		return NextCastWindow(window, input, minimum);
 	};
@@ -1732,35 +1733,35 @@ void TestCastWindow() {
 	      "switched off, the window is shut even mid-cast");
 
 	// Nothing happening. The ordinary frame, which is nearly all of them.
-	Check(!Step(CastWindow{}, false, false, false, false).open,
+	Check(!Step(CastWindow{}, false, false, false).open,
 	      "with no press there is no window");
-	Check(!Step(CastWindow{}, true, true, false, false).open,
+	Check(!Step(CastWindow{}, true, true, false).open,
 	      "and a key already down when this starts does not open one - only the edge does");
 
 	// The press opens it.
-	const CastWindow opened = Step(CastWindow{}, true, false, false, false);
+	const CastWindow opened = Step(CastWindow{}, true, false, false);
 	Check(opened.open && opened.secondsOpen == 0.0f, "the press opens the window at zero");
 
-	// THE FLAG SAYING NOTHING. This is the case the whole shape is built for:
-	// the offset has one source and its author hedged it, so the window has to
-	// work when it reads as nothing at all.
+	// THE ACTION FIELD SAYING NOTHING. A cast that the engine never reports as
+	// an attack at all - which is what was expected before the trace showed
+	// otherwise, and is still what a spell type nobody has cast yet might do.
 	CastWindow blind = opened;
 	int frames = 0;
 	while (blind.open && frames < 600) {
-		blind = Step(blind, false, false, false, false);
+		blind = Step(blind, false, false, false);
 		++frames;
 	}
 	const float blindHeld = static_cast<float>(frames) * frame;
 	Check(blindHeld > minimum - frame && blindHeld < minimum + frame * 2.0f,
-	      "with the flag unreadable the window lasts its fixed minimum and then closes");
+	      "with the action field silent the window lasts its fixed minimum and then closes");
 
-	// THE FLAG STUCK TRUE. It must not be able to hold the body turned for
-	// good, because that is the wearer walking sideways for the rest of the
+	// AN ATTACK THAT NEVER FINISHES. It must not be able to hold the body turned
+	// for good, because that is the wearer walking sideways for the rest of the
 	// session.
 	CastWindow stuck = opened;
 	frames = 0;
 	while (stuck.open && frames < 6000) {
-		stuck = Step(stuck, false, false, true, true);
+		stuck = Step(stuck, false, false, true);
 		++frames;
 	}
 	const float stuckHeld = static_cast<float>(frames) * frame;
@@ -1770,31 +1771,32 @@ void TestCastWindow() {
 	// window is BOUNDED, and a tighter check would only be testing arithmetic
 	// rounding.
 	Check(stuck.open == false && stuckHeld <= kCastWindowLimitSeconds + frame * 3.0f,
-	      "a flag stuck true cannot hold the body past the limit");
+	      "an attack that never finishes cannot hold the body past the limit");
 
-	// THE FLAG WORKING. Held open while it says casting, closed once it stops -
-	// which is the whole point of reading it, and gives a window that fits the
-	// cast rather than a fixed guess.
+	// THE MEASURED CASE. Held open through the Attack frames, closed the frame
+	// the field reads FollowThrough - which is 54 frames in, and is the whole
+	// reason this stopped using a casting flag that could not tell the two
+	// apart.
 	CastWindow tracking = opened;
 	for (int i = 0; i < 30; ++i) {
-		tracking = Step(tracking, false, false, true, true);
+		tracking = Step(tracking, false, false, true);
 	}
 	Check(tracking.open && tracking.secondsOpen > minimum,
-	      "a flag that says casting holds the window open past the minimum");
-	tracking = Step(tracking, false, false, true, false);
-	Check(!tracking.open, "and closes it the frame the cast is done");
+	      "Attack holds the window open past the minimum");
+	tracking = Step(tracking, false, false, false);
+	Check(!tracking.open, "and FollowThrough closes it, because the spell has gone by then");
 
 	// The key held keeps it open on its own, for a binding that is held rather
 	// than tapped - a gamepad trigger, or someone leaning on the key.
 	CastWindow leaning = opened;
 	for (int i = 0; i < 30; ++i) {
-		leaning = Step(leaning, true, true, false, false);
+		leaning = Step(leaning, true, true, false);
 	}
-	Check(leaning.open, "holding the cast key keeps the window open with no flag at all");
+	Check(leaning.open, "holding the cast key keeps the window open with no action at all");
 
 	// A second press while the window stands restarts it rather than being
 	// swallowed, so casting twice quickly turns for both.
-	CastWindow again = Step(CastWindow{true, 1.0f}, true, false, false, false);
+	CastWindow again = Step(CastWindow{true, 1.0f}, true, false, false);
 	Check(again.open && again.secondsOpen == 0.0f, "a fresh press restarts the window");
 
 	// A minimum of zero is a real setting - what AimCastHoldSeconds becomes if

@@ -986,11 +986,12 @@ struct CastWindowInput {
 	bool castHeld = false;
 	bool castWasHeld = false;
 
-	// What the casting flag says, if it says anything. Unknown when the field
-	// could not be read or held a value no flag can hold - see
-	// game::CastState, and note that the window is built to work without it.
-	bool castingKnown = false;
-	bool casting = false;
+	// Whether the spell has still to leave: the engine's action field reading
+	// Attack rather than AttackFollowThrough.
+	//
+	// This is the same signal the bow's window closes on, and that it works for
+	// a cast at all was a measurement rather than a guess - see NextCastWindow.
+	bool spellStillLeaving = false;
 
 	float deltaSeconds = 0.0f;
 };
@@ -1003,23 +1004,34 @@ struct CastWindow {
 
 // The window, one frame on.
 //
-// WHY THIS IS SHAPED SO DIFFERENTLY FROM THE BOW'S. A bow shot announces
-// itself: the action field runs 4, 5, 3 and the body can be held turned for
-// exactly as long as the arrow is being made. A spell announces nothing - the
-// action enum has no cast in it - so the only certain moment is the press.
+// A CAST DRIVES THE ACTION FIELD AFTER ALL, and finding that out is what this
+// function is now built on.
 //
-// So the window is built from what IS certain and hardened against what is
-// not. The press opens it. The limit closes it. The casting flag and the key
-// can only hold it open in between, and neither can extend it past the limit
-// or keep it shut when the key went down. Every way the flag can be wrong -
-// stuck true, stuck false, garbage - lands on a window that is bounded and
-// still covers the press.
+// The enum has no cast in it - that reading was right, and it is why the first
+// version of this went looking for a flag of its own instead. But the trace
+// showed the field moving during a cast anyway, and moving the same way every
+// time: 54 frames of Attack, then 24 to 26 of AttackFollowThrough, then None.
+// Six casts in one session, that shape every time. A cast is simply reported as
+// an attack.
 //
-// The minimum is the insurance: the cast key is a tap, and if the flag turns
-// out to say nothing then a window lasting only as long as the key is down
-// might close before the spell has left. Held open for a short fixed time
-// after the press, which is the ONE number here that was chosen rather than
-// measured - the trace exists to replace it.
+// Which means the bow's own signal works here. IsShotUnreleased counts Attack
+// and not AttackFollowThrough, and the whole reason it draws that line is that
+// FollowThrough means the thing has GONE - the measurement that made the bow
+// aim correctly in the first place. So the body can be let go 25 frames earlier
+// than the casting flag would have let it go.
+//
+// That flag was measured too, and it is what the action field replaced: it read
+// true for 79 frames, which is 54 plus 25 exactly. It covers Attack AND
+// FollowThrough and cannot tell them apart, so it holds the body turned for
+// four tenths of a second after the spell has already left. The action field
+// says the same thing with more resolution, and it has two sources where the
+// flag had one and a hedge.
+//
+// The press still opens the window, because that is the one moment nothing is
+// unsure of, and the limit still closes it whatever else is true. The minimum
+// now covers only the gap between the key going down and the action field
+// catching up - a few frames - rather than standing in for a signal that was
+// missing.
 CastWindow NextCastWindow(const CastWindow& current, const CastWindowInput& input,
                           float minimumSeconds);
 

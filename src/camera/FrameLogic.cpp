@@ -479,9 +479,10 @@ CastWindow NextCastWindow(const CastWindow& current, const CastWindowInput& inpu
 	}
 
 	// Past it, something has to be holding it open: the key still down, or the
-	// flag saying the cast is still running. A flag that could not be read
-	// holds nothing - the minimum above was its whole contribution.
-	if (input.castHeld || (input.castingKnown && input.casting)) {
+	// action field saying the spell has not left yet. The moment it reads
+	// FollowThrough instead, the spell has gone and the body is free - which is
+	// the same line the bow's window is drawn on, and for the same reason.
+	if (input.castHeld || input.spellStillLeaving) {
 		return next;
 	}
 
