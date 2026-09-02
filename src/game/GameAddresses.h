@@ -227,6 +227,40 @@ inline constexpr UInt32 kCallArrowProjectileCreatorConstructor = 0x004604E3;
 inline constexpr UInt32 kTextStart = 0x00401000;
 inline constexpr UInt32 kTextEnd = 0x00A27C39;
 
+// THE CALL THAT ACTUALLY MAKES THE PLAYER'S ATTACK, found from the stack.
+//
+// With the factory wrapped, a spell's callers read, nearest first,
+// 0x0069C087 (inside UseActiveMagicItem), 0x005FCF73 (inside the function
+// below, right after its second UseActiveMagicItem call) and 0x00672E12 -
+// which is inside PlayerCharacter's input handler 0x00671620, the function
+// NorthernUI's notes call "the subroutine that handles most player input".
+// The instruction before that return address is
+//
+//   E8 9E 9C F8 FF   call 005FCAB0      at 00672E0D  (ecx = the player)
+//
+// with two floats pushed from 0x00B14E58 and 0x00B14E5C and, just before,
+// `mov byte ptr [ebx+588h],1` - the player put into third person for the
+// call and taken back out after it, the flip NorthernUI's notes remark on.
+// So 0x005FCAB0 is the attack's own update: given the control's state it
+// advances the attack, and inside it, at the moments the animation says,
+// it makes the arrow (0x005FD47C), calls UseActiveMagicItem (0x005FCE1D,
+// 0x005FCF6E) and AttackHandling (0x005FCE85) - the reading above placed
+// those inside 0x005FC890 because no padding separates the two, but that
+// one ends at its `ret 8` at 0x005FCA87 and is only the virtual wrapper an
+// NPC's animation reaches them through. The player never comes that way:
+// the wrapped slot logged nothing for the bow at all.
+//
+// Thirteen direct calls exist; three are the player's, each with `this` =
+// the player and preceded by the same third-person flip: 0x00672E0D from
+// the input handler with the control's axes, and 0x0066CB49 (in
+// 0x0066C6F0) and 0x006758C6 (in 0x00675880) with 1.0, 1.0. The rest are
+// AI. All three are wrapped; the one from the input handler is the one
+// every frame of an attack goes through.
+inline constexpr UInt32 kAttackUpdate = 0x005FCAB0;
+inline constexpr UInt32 kCallAttackUpdateFromInput = 0x00672E0D;
+inline constexpr UInt32 kCallAttackUpdateFromPlayerA = 0x0066CB49;
+inline constexpr UInt32 kCallAttackUpdateFromPlayerB = 0x006758C6;
+
 // Shortly after the hook the game calls, on the CameraNode:
 //
 //   0066BE84  fldz

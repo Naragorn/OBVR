@@ -14,9 +14,11 @@
 extern "C" void __cdecl OBVR_AimSourceBeforeKey(void* caster);
 extern "C" void __cdecl OBVR_AimSourceBeforeFactory(void* caster);
 extern "C" void __cdecl OBVR_AimSourceBeforeArrow(void* arrow);
+extern "C" void __cdecl OBVR_AimSourceBeforeAttack(void* actor);
 extern "C" void __cdecl OBVR_AimSourceAfterKey();
 extern "C" void __cdecl OBVR_AimSourceAfterFactory();
 extern "C" void __cdecl OBVR_AimSourceAfterArrow();
+extern "C" void __cdecl OBVR_AimSourceAfterAttack();
 
 namespace obvr::game {
 namespace {
@@ -39,6 +41,14 @@ struct Site {
 Site g_key;
 Site g_factory;
 Site g_arrow;
+
+// The attack update, at its three player call sites - three stubs, one
+// owner: they never nest, so one token for all of them is enough for the
+// restore.
+Site g_attackFromInput;
+Site g_attackFromPlayerA;
+Site g_attackFromPlayerB;
+Site g_attackOwner;
 
 AimSourcePose g_pose;
 
@@ -210,12 +220,25 @@ void InstallAimAtSource() {
 	                reinterpret_cast<UInt32>(&OBVR_AimSourceBeforeArrow),
 	                reinterpret_cast<UInt32>(&OBVR_AimSourceAfterArrow),
 	                "the generic creator's arrow constructor probe");
+	InstallCallSite(g_attackFromInput, addr::kCallAttackUpdateFromInput, addr::kAttackUpdate,
+	                reinterpret_cast<UInt32>(&OBVR_AimSourceBeforeAttack),
+	                reinterpret_cast<UInt32>(&OBVR_AimSourceAfterAttack),
+	                "the attack update from the input handler");
+	InstallCallSite(g_attackFromPlayerA, addr::kCallAttackUpdateFromPlayerA, addr::kAttackUpdate,
+	                reinterpret_cast<UInt32>(&OBVR_AimSourceBeforeAttack),
+	                reinterpret_cast<UInt32>(&OBVR_AimSourceAfterAttack),
+	                "the attack update from the player (A)");
+	InstallCallSite(g_attackFromPlayerB, addr::kCallAttackUpdateFromPlayerB, addr::kAttackUpdate,
+	                reinterpret_cast<UInt32>(&OBVR_AimSourceBeforeAttack),
+	                reinterpret_cast<UInt32>(&OBVR_AimSourceAfterAttack),
+	                "the attack update from the player (B)");
 }
 
-// The key handler alone decides whether the turn machinery stands down: it
-// is the site that covers the swing, and the one whose absence would leave
-// nothing else covering it.
-bool AimAtSourceInstalled() { return g_key.installed; }
+// The attack update from the input handler decides whether the turn
+// machinery stands down: it is the call every frame of the player.s attack
+// goes through, and the one whose absence would leave nothing covering the
+// bow and the swing.
+bool AimAtSourceInstalled() { return g_attackFromInput.installed; }
 
 void SetAimSourcePose(const AimSourcePose& pose) { g_pose = pose; }
 
@@ -305,3 +328,27 @@ void Restore(const Site& owner) {
 extern "C" void __cdecl OBVR_AimSourceAfterKey() { obvr::game::Restore(obvr::game::g_key); }
 extern "C" void __cdecl OBVR_AimSourceAfterFactory() { obvr::game::Restore(obvr::game::g_factory); }
 extern "C" void __cdecl OBVR_AimSourceAfterArrow() { obvr::game::Restore(obvr::game::g_arrow); }
+extern "C" void __cdecl OBVR_AimSourceAfterAttack() { obvr::game::Restore(obvr::game::g_attackOwner); }
+
+extern "C" void __cdecl OBVR_AimSourceBeforeAttack(void* actor) {
+	using namespace obvr;
+	const UInt32 player = game::PlayerAddressOrZero();
+	const bool isPlayer = player != 0 && reinterpret_cast<UInt32>(actor) == player;
+	const SInt32 action = game::ReadPlayerAction();
+
+	// Not every entry: the input handler calls this every frame of an
+	// attack. The first few with something in flight are enough to show the
+	// path is the one the stack said it was.
+	static int s_entriesToLog = 8;
+	if (s_entriesToLog > 0 && (action == 2 || action == 5)) {
+		--s_entriesToLog;
+		OBVR_LOG("Aim source: attack update entered - actor %08X, player %08X, action %d, "
+		         "wanted %d, headYaw %.4f",
+		         reinterpret_cast<UInt32>(actor), player, action, game::g_pose.wanted ? 1 : 0,
+		         static_cast<double>(game::g_pose.headYaw));
+	}
+
+	if (camera::AimSourceSwapDue(game::g_pose.wanted, isPlayer, action)) {
+		game::Swap(game::g_attackOwner, "an attack");
+	}
+}
