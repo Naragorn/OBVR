@@ -1,0 +1,14 @@
+22:Aim: the player's animation-key handler wrapped - the vtable slot at 00A739D4 goes through 041F0000 around 005FC890
+23:Aim: the magic projectile factory wrapped - the call at 0069B996 goes through 04200000 around 0069A060
+24:Aim: the generic creator's arrow constructor probe wrapped - the call at 004604E3 goes through 04210000 around 006078E0
+25:Aim: the attack update from the input handler wrapped - the call at 00672E0D goes through 04220000 around 005FCAB0
+26:Aim: the attack update from the player (A) wrapped - the call at 0066CB49 goes through 04230000 around 005FCAB0
+27:Aim: the attack update from the player (B) wrapped - the call at 006758C6 goes through 04240000 around 005FCAB0
+223:Aim gates: player=1 headset=1 menu=1 third=0 atSource=1 viewAimed=1
+275:Aim gates: player=1 headset=1 menu=0 third=0 atSource=1 viewAimed=1
+1017:Aim source: attack update entered - actor 80962990, player 80962990, action 5, wanted 1, headYaw -0.0269
+1018:Aim: an attack takes the gaze at the source - heading 3.1828 set to 3.2097 and pitch 0.0368 to 0.0368 for the length of one engine call, the body never turned
+1021:Aim source: attack update entered - actor 80962990, player 80962990, action 5, wanted 1, headYaw -0.0256
+1026:Aim source: attack update entered - actor 80962990, player 80962990, action 5, wanted 1, headYaw -0.0245
+1029:Aim source: attack update entered - actor 80962990, player 80962990, action 5, wanted 1, headYaw -0.0238
+1032:Aim source: attack update entered - actor 80962990, player 80962990, action 5, wanted 1, headYaw -0.0231
