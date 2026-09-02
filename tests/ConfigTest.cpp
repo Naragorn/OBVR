@@ -184,6 +184,20 @@ void CheckNear(float actual, float expected, const char* what) {
 	}
 }
 
+void TestThirdPersonAimVisualPercent() {
+	std::printf("Third-person aim visual percentage\n");
+
+	obvr::Config untouched;
+	CheckNear(untouched.thirdPersonAimVisualPercent, 70.0f,
+	          "the built-in visual starting point is 70 percent");
+
+	obvr::Config configured;
+	LoadFrom("ConfigTestThirdPersonAim.ini",
+	         "[Look]\nThirdPersonAimVisualPercent=55.5\n", configured);
+	CheckNear(configured.thirdPersonAimVisualPercent, 55.5f,
+	          "ThirdPersonAimVisualPercent is read from Look");
+}
+
 void TestLookRanges() {
 	std::printf("The vertical look ranges, old spelling and new\n");
 
@@ -252,6 +266,8 @@ int main() {
 	TestSourceParsing();
 	std::printf("\n");
 	TestAnglesAndFrames();
+	std::printf("\n");
+	TestThirdPersonAimVisualPercent();
 	std::printf("\n");
 	TestLookRanges();
 

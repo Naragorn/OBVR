@@ -113,6 +113,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.aimAtSource = v != 0.0f; },
 	},
 	{
+		"Aiming", "Third-person body aim", "Upper-body gaze share while weapon is ready",
+		ItemKind::Number, 0.0f, 100.0f, 5.0f, 0, false,
+		"Look", "ThirdPersonAimVisualPercent",
+		+[](const Config& c) { return c.thirdPersonAimVisualPercent; },
+		+[](Config& c, float v) { c.thirdPersonAimVisualPercent = v; },
+	},
+	{
 		"Aiming", "Body turn speed", "0 turns the body at once; higher eases it",
 		ItemKind::Number, 0.0f, 30.0f, 1.0f, 0, false,
 		"Look", "AimTurnSpeed",

@@ -319,6 +319,22 @@ inline constexpr UInt32 kMobileProcessOffset = 0x058;
 // +0x20 are both from this same layout and both right in the running game.
 inline constexpr UInt32 kPlayerFirstPersonNodeOffset = 0x5D0;
 
+// TESObjectREFR::niNode, the actor's third-person scene-graph root.
+//
+// xOBSE's GameObjects.h lays TESObjectREFR out as rot at +0x20, position at
+// +0x2C, scale at +0x38 and `NiNode* niNode` at +0x3C. OBVR already verifies
+// the same class at +0x20 in PlayerAim and the far end at PlayerCharacter
+// +0x588 in the camera switch, so this is the field between two matching
+// anchors, not an isolated borrowed offset.
+inline constexpr UInt32 kReferenceNodeOffset = 0x3C;
+
+// NiAVObject::GetObject(const char* name), used by xOBSE itself in
+// PlayerCharacter::SetSkeletonPath to find Camera01 from the new third-person
+// root: it reads the root's vtable, takes [vtable+0x58], and calls it with the
+// node and name. The same recursive lookup finds Bip01 Spine2 without walking
+// an undocumented child-array layout here.
+inline constexpr UInt32 kNiAVObjectGetObjectVtableOffset = 0x58;
+
 // NiAVObject::name, used only to make a candidate node prove it is one.
 inline constexpr UInt32 kNiObjectNameOffset = 0x08;
 

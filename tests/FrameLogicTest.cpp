@@ -2709,6 +2709,164 @@ void TestAimAtSource() {
 	Check(!LooksLikeReturnAddress(0x0019F260, textStart, textEnd, rel32), "a stack address");
 }
 
+void TestThirdPersonAimVisual() {
+	std::printf("The third-person upper-body share of source aim\n");
+
+	using obvr::camera::NextThirdPersonAimVisual;
+	using obvr::camera::ThirdPersonAimVisualDecision;
+	using obvr::camera::ThirdPersonAimVisualInput;
+	using obvr::camera::ThirdPersonAimVisualState;
+	const auto Near = [](float a, float b) {
+		return a - b < 1.0e-4f && b - a < 1.0e-4f;
+	};
+
+	ThirdPersonAimVisualInput input;
+	input.enabled = true;
+	input.aimAtSource = true;
+	input.headsetConnected = true;
+	input.isThirdPerson = true;
+	input.thirdPersonAllowed = true;
+	input.menuIsUp = false;
+	input.percent = 70.0f;
+	input.gazeYaw = 1.0f;
+	input.playerPitch = 0.5f;
+
+	// Ready is the long-lived state: it begins before a bow draw or sword swing
+	// and survives the gap after an attack until the weapon is sheathed.
+	input.action = -1;
+	input.weaponDrawn = true;
+	ThirdPersonAimVisualDecision decision =
+		NextThirdPersonAimVisual(ThirdPersonAimVisualState{}, input);
+	Check(decision.write && Near(decision.yaw, 0.7f),
+	      "a drawn weapon establishes the gaze pose without an attack");
+	input.gazeYaw = -0.4f;
+	decision = NextThirdPersonAimVisual(decision.next, input);
+	Check(decision.write && Near(decision.yaw, -0.28f),
+	      "a ready weapon continues following between attacks");
+	input.weaponDrawn = false;
+
+	// Intent arrives before Oblivion's animation action. Both controls must be
+	// able to establish the current gaze while the action still reads None.
+	input.action = -1;
+	input.attackHeld = true;
+	input.gazeYaw = 1.0f;
+	decision = NextThirdPersonAimVisual(ThirdPersonAimVisualState{}, input);
+	Check(decision.write && Near(decision.yaw, 0.7f),
+	      "the attack control starts the pose before the bow action appears");
+
+	input.attackHeld = false;
+	input.castActive = true;
+	input.gazeYaw = -0.5f;
+	decision = NextThirdPersonAimVisual(ThirdPersonAimVisualState{}, input);
+	Check(decision.write && Near(decision.yaw, -0.35f),
+	      "the cast control/window starts it before Attack appears");
+
+	input.castActive = false;
+	input.action = 2;
+	input.gazeYaw = 1.0f;
+	decision = NextThirdPersonAimVisual(ThirdPersonAimVisualState{}, input);
+	Check(decision.write && decision.next.active, "Attack starts the visible pose");
+	Check(Near(decision.yaw, 0.7f), "the configured percentage scales yaw");
+	Check(Near(decision.pitch, -0.35f),
+	      "player pitch is converted to the scene-graph sign and scaled");
+	Check(Near(decision.next.gazeYaw, 1.0f) && Near(decision.next.gazePitch, -0.5f),
+	      "the held direction keeps the unscaled live aim");
+
+	// Each live attack action refreshes the held direction. Attack is shared by
+	// melee and casting; the bow adds its draw and arrow-attached phases.
+	input.action = 4;
+	input.gazeYaw = -0.8f;
+	input.playerPitch = -0.2f;
+	decision = NextThirdPersonAimVisual(decision.next, input);
+	Check(decision.write && Near(decision.yaw, -0.56f) && Near(decision.pitch, 0.14f),
+	      "AttackBow follows a changed live direction");
+
+	input.action = 5;
+	input.gazeYaw = 0.6f;
+	input.playerPitch = 0.4f;
+	decision = NextThirdPersonAimVisual(decision.next, input);
+	Check(decision.write && Near(decision.yaw, 0.42f) && Near(decision.pitch, -0.28f),
+	      "ArrowAttached also refreshes it");
+
+	input.action = 3;
+	input.gazeYaw = -2.0f;
+	input.playerPitch = -1.0f;
+	decision = NextThirdPersonAimVisual(decision.next, input);
+	Check(decision.write && Near(decision.yaw, 0.42f) && Near(decision.pitch, -0.28f),
+	      "FollowThrough holds the released direction instead of following a new glance");
+
+	input.percent = 50.0f;
+	decision = NextThirdPersonAimVisual(decision.next, input);
+	Check(Near(decision.yaw, 0.3f) && Near(decision.pitch, -0.2f),
+	      "a hot-reloaded percentage rescales the held direction");
+
+	input.percent = 100.0f;
+	decision = NextThirdPersonAimVisual(decision.next, input);
+	Check(Near(decision.yaw, 0.6f) && Near(decision.pitch, -0.4f),
+	      "100 percent shows the complete direction");
+	input.percent = 250.0f;
+	decision = NextThirdPersonAimVisual(decision.next, input);
+	Check(Near(decision.yaw, 0.6f) && Near(decision.pitch, -0.4f),
+	      "a value above 100 is clamped rather than over-twisting the spine");
+
+	// Follow-through is only a continuation. Seeing it without a preceding live
+	// phase must not invent a direction from an old/default state.
+	decision = NextThirdPersonAimVisual(ThirdPersonAimVisualState{}, input);
+	Check(!decision.write && !decision.next.active,
+	      "FollowThrough without an attack does not start a pose");
+
+	input.action = -1;
+	decision = NextThirdPersonAimVisual(
+		ThirdPersonAimVisualState{true, 0.4f, 0.2f}, input);
+	Check(!decision.write && !decision.next.active, "no action releases the pose");
+	input.action = 0;
+	decision = NextThirdPersonAimVisual(
+		ThirdPersonAimVisualState{true, 0.4f, 0.2f}, input);
+	Check(!decision.write && !decision.next.active,
+	      "an unrelated action releases it as well");
+
+	// Every outer gate is independently capable of releasing an active pose.
+	// This matters on POV/menu/config transitions, where leaving a last bone
+	// write behind would be much more visible than failing to start one.
+	input.action = 2;
+	input.percent = 70.0f;
+	const ThirdPersonAimVisualState active{true, 0.4f, 0.2f};
+	input.enabled = false;
+	decision = NextThirdPersonAimVisual(active, input);
+	Check(!decision.write && !decision.next.active, "aim disabled releases it");
+	input.enabled = true;
+	input.aimAtSource = false;
+	decision = NextThirdPersonAimVisual(active, input);
+	Check(!decision.write && !decision.next.active, "source aim disabled releases it");
+	input.aimAtSource = true;
+	input.headsetConnected = false;
+	decision = NextThirdPersonAimVisual(active, input);
+	Check(!decision.write && !decision.next.active, "a lost headset releases it");
+	input.headsetConnected = true;
+	input.isThirdPerson = false;
+	decision = NextThirdPersonAimVisual(active, input);
+	Check(!decision.write && !decision.next.active, "first person releases it");
+	input.isThirdPerson = true;
+	input.thirdPersonAllowed = false;
+	decision = NextThirdPersonAimVisual(active, input);
+	Check(!decision.write && !decision.next.active, "third-person aiming disabled releases it");
+	input.thirdPersonAllowed = true;
+	input.menuIsUp = true;
+	decision = NextThirdPersonAimVisual(active, input);
+	Check(!decision.write && !decision.next.active, "a menu releases it");
+	input.menuIsUp = false;
+
+	input.percent = 0.0f;
+	decision = NextThirdPersonAimVisual(active, input);
+	Check(!decision.write && !decision.next.active, "zero percent disables and releases it");
+	input.percent = -10.0f;
+	decision = NextThirdPersonAimVisual(active, input);
+	Check(!decision.write && !decision.next.active, "a negative INI value is refused");
+	input.percent = std::numeric_limits<float>::quiet_NaN();
+	decision = NextThirdPersonAimVisual(active, input);
+	Check(!decision.write && !decision.next.active, "NaN is refused rather than reaching a bone");
+}
+
 
 int main() {
 	TestChaseCamera();
@@ -2720,6 +2878,8 @@ int main() {
 	TestAimTiltCorrection();
 	std::printf("\n");
 	TestAimAtSource();
+	std::printf("\n");
+	TestThirdPersonAimVisual();
 	std::printf("\n");
 	std::printf("OBVR frame logic test\n\n");
 

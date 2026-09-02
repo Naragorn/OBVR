@@ -188,6 +188,17 @@ struct Config {
 	// shot goes straight ahead with this build.
 	bool aimAtSource = true;
 
+	// How much of the source aim is shown by the third-person upper body.
+	//
+	// The gameplay direction remains exact at every value: this is only the
+	// additional rotation drawn on Bip01 Spine2 after animation while a weapon
+	// is drawn or a cast is active. Zero disables it, 100 points the upper body
+	// fully along the gaze, and a partial value leaves some of the difference in
+	// the waist for a less rigid-looking pose.
+	// The value is a preference, not an anatomical measurement; 70 is a useful
+	// starting point and is deliberately exposed rather than claimed as truth.
+	float thirdPersonAimVisualPercent = 70.0f;
+
 	// The control that means "I am aiming", as a Windows virtual-key code.
 	//
 	// While it is held, and only then, the character is turned to face where

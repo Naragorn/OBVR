@@ -37,6 +37,30 @@ NiMatrix33 EulerToMatrix(float degreesX, float degreesY, float degreesZ) {
 	return rz * ry * rx;
 }
 
+namespace {
+
+NiMatrix33 Transposed(const NiMatrix33& value) {
+	NiMatrix33 result{};
+	for (int row = 0; row < 3; ++row) {
+		for (int col = 0; col < 3; ++col) {
+			result.data[row][col] = value.data[col][row];
+		}
+	}
+	return result;
+}
+
+}  // namespace
+
+NiMatrix33 RebaseRotation(const NiMatrix33& correction,
+                          const NiMatrix33& fromWorld,
+                          const NiMatrix33& toWorld) {
+	// Move the correction out of its source basis into world, then from world
+	// into the target basis. Rotation matrices are orthonormal, so transpose is
+	// their inverse and introduces no general matrix inversion or failure path.
+	const NiMatrix33 inWorld = fromWorld * correction * Transposed(fromWorld);
+	return Transposed(toWorld) * inWorld * toWorld;
+}
+
 bool HeadingOf(const NiMatrix33& rotation, Heading& out) {
 	const float x = rotation.data[0][0];
 	const float y = rotation.data[1][0];

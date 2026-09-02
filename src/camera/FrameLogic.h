@@ -1456,6 +1456,58 @@ bool AimAtSourceWanted(bool enabled, bool aimAtSource, bool headsetConnected, bo
 // written and unwritten for nothing.
 bool AimSourceSwapDue(bool wanted, bool isPlayer, SInt32 action);
 
+// THE VISIBLE THIRD-PERSON HALF OF SOURCE AIM.
+//
+// AimAtSource deliberately hides the temporary player rotation from every
+// frame, which keeps walking free but also leaves the rendered attack pointing
+// along the body. This state remembers the last live attack direction so the
+// upper body can be turned after animation, without giving rotZ either job
+// back. AttackFollowThrough keeps the last direction rather than following a
+// new glance after the arrow, spell or hit has already gone.
+struct ThirdPersonAimVisualState {
+	bool active = false;
+	float gazeYaw = 0.0f;
+	float gazePitch = 0.0f;  // positive looking up
+};
+
+struct ThirdPersonAimVisualInput {
+	bool enabled = false;
+	bool aimAtSource = false;
+	bool headsetConnected = false;
+	bool isThirdPerson = false;
+	bool thirdPersonAllowed = false;
+	bool menuIsUp = false;
+	// A drawn weapon is already an aiming pose. Keeping the visual alive from
+	// ready to sheathe avoids straightening between bow shots and lets a sword
+	// face the gaze before its short attack action begins.
+	bool weaponDrawn = false;
+	// Controls are included because the animation action field trails intent:
+	// a bow does not report its useful action until the draw is under way, and
+	// MagicCaster begins a cast before HighProcess changes to Attack.
+	bool attackHeld = false;
+	bool castActive = false;
+	SInt32 action = -1;
+	float percent = 0.0f;
+	float gazeYaw = 0.0f;
+	// The player's rotX convention, positive looking down. The visual result
+	// below turns it into the scene graph convention, positive looking up.
+	float playerPitch = 0.0f;
+};
+
+struct ThirdPersonAimVisualDecision {
+	ThirdPersonAimVisualState next{};
+	bool write = false;
+	float yaw = 0.0f;
+	float pitch = 0.0f;
+};
+
+// Every meaningful flow is value-only: all gates, weapon ready, the live
+// attack groups, the held follow-through, reset, percentage scaling and its
+// refusal/clamp. The acting half only applies the two returned angles to
+// Bip01 Spine2.
+ThirdPersonAimVisualDecision NextThirdPersonAimVisual(
+	const ThirdPersonAimVisualState& current, const ThirdPersonAimVisualInput& input);
+
 // Whether a value found on the stack is plausibly a return address: inside
 // the code section, and sitting right after a call instruction. preceding
 // holds the six bytes before the address, preceding[5] being the last one.

@@ -11,6 +11,7 @@
 #include "game/CrosshairTarget.h"
 #include "game/DialogZoom.h"
 #include "game/FirstPersonArms.h"
+#include "game/ThirdPersonAimVisual.h"
 #include "core/AddressSpace.h"
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
@@ -289,6 +290,16 @@ bool g_aimThirdPersonReported = false;
 // see BeforeFirstScenePass for why those cannot be the same place.
 float g_weaponTurnRadians = 0.0f;
 bool g_weaponTurnWanted = false;
+
+// The matching third-person correction. It is decided from the exact same
+// source-aim pose as the wrapped attack call, then written after animation in
+// BeforeFirstScenePass. Unlike g_weaponTurnRadians it is deliberately scaled:
+// the gameplay aim remains exact while the visible torso only takes the share
+// selected in the INI.
+ThirdPersonAimVisualState g_thirdPersonAimVisualState{};
+float g_thirdPersonAimVisualYaw = 0.0f;
+float g_thirdPersonAimVisualPitch = 0.0f;
+bool g_thirdPersonAimVisualWanted = false;
 
 // The body's share as the ARMS' BASE has it, which is one frame behind the
 // heading itself.
@@ -1373,6 +1384,13 @@ void BeforeFirstScenePass() {
 		// Third person, a menu, or switched off. Put the arms back rather than
 		// leaving them holding a turn nothing is going to update.
 		game::ReleaseFirstPersonArms();
+	}
+
+	if (g_thirdPersonAimVisualWanted) {
+		game::TurnThirdPersonAimVisual(g_thirdPersonAimVisualYaw,
+		                               g_thirdPersonAimVisualPitch);
+	} else {
+		game::ReleaseThirdPersonAimVisual();
 	}
 
 	if (tracing) {
@@ -2703,6 +2721,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// left after any turn already handed to it, which is AimYawRemaining -
 	// so that a body the turn has moved is not turned twice.
 	const bool atSource = GetConfig().aimAtSource && game::AimAtSourceInstalled();
+	float sourceAimYaw = 0.0f;
 	{
 		Heading sourceTurn{};
 		const float sourceHeadYaw =
@@ -2717,7 +2736,36 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		pose.headYaw = AimYawRemaining(sourceHeadYaw, g_aimBodyOffset);
 		pose.pitch = gazePitch;
 		game::SetAimSourcePose(pose);
+		sourceAimYaw = pose.headYaw;
 	}
+
+	// The source swap above is intentionally invisible to animation. Supply
+	// only that missing picture in third person: the pure decision owns all
+	// gates and action phases, while the render callback applies its angles to
+	// Spine2 after Oblivion has finished animating it.
+	ThirdPersonAimVisualInput visualInput;
+	visualInput.enabled = readPlayer && config.aimFollowsGaze;
+	visualInput.aimAtSource = atSource;
+	visualInput.headsetConnected = g_headTracker.IsHeadsetConnected();
+	visualInput.isThirdPerson = isThirdPerson;
+	visualInput.thirdPersonAllowed = config.aimInThirdPerson;
+	visualInput.menuIsUp = game::IsMenuMode();
+	visualInput.weaponDrawn =
+		readPlayer && isThirdPerson &&
+		game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
+	visualInput.attackHeld = attackHeld;
+	visualInput.castActive = castHeld || g_castWindow.open || g_castBegan ||
+	                         g_castArm.seconds >= 0.0f;
+	visualInput.action = readPlayer ? game::ReadPlayerAction() : addr::kActionNone;
+	visualInput.percent = config.thirdPersonAimVisualPercent;
+	visualInput.gazeYaw = sourceAimYaw;
+	visualInput.playerPitch = gazePitch;
+	const ThirdPersonAimVisualDecision visualDecision =
+		NextThirdPersonAimVisual(g_thirdPersonAimVisualState, visualInput);
+	g_thirdPersonAimVisualState = visualDecision.next;
+	g_thirdPersonAimVisualWanted = visualDecision.write;
+	g_thirdPersonAimVisualYaw = visualDecision.yaw;
+	g_thirdPersonAimVisualPitch = visualDecision.pitch;
 
 	CastWindowInput castInput;
 	castInput.enabled = readPlayer && GetConfig().aimCastFollowsGaze &&

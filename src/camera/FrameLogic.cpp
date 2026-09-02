@@ -725,6 +725,48 @@ bool AimSourceSwapDue(bool wanted, bool isPlayer, SInt32 action) {
 	return action == 2 || action == 5;
 }
 
+ThirdPersonAimVisualDecision NextThirdPersonAimVisual(
+	const ThirdPersonAimVisualState& current, const ThirdPersonAimVisualInput& input) {
+	ThirdPersonAimVisualDecision decision;
+
+	// Written as positive tests so NaN is refused as surely as a negative
+	// percentage. A value above 100 is accepted but clamped: an INI typo must
+	// not twist the skeleton farther than the gaze itself.
+	if (!input.enabled || !input.aimAtSource || !input.headsetConnected ||
+	    !input.isThirdPerson || !input.thirdPersonAllowed || input.menuIsUp ||
+	    !(input.percent > 0.0f)) {
+		return decision;
+	}
+
+	decision.next = current;
+
+	// A ready weapon owns the pose continuously, so a bow never straightens
+	// between shots and a sword is already facing the gaze before the swing.
+	// Controls cover the frame before HighProcess has caught up, especially for
+	// magic, and the action field keeps short presses alive through animation.
+	const bool live = input.weaponDrawn || input.attackHeld || input.castActive ||
+	                  input.action == 2 || input.action == 4 || input.action == 5;
+	if (live) {
+		decision.next.active = true;
+		decision.next.gazeYaw = input.gazeYaw;
+		decision.next.gazePitch = -input.playerPitch;
+	} else if (input.action != 3 || !decision.next.active) {
+		// FollowThrough (3) keeps the last live direction. Every other action,
+		// and a follow-through first observed without its attack, resets.
+		decision.next = ThirdPersonAimVisualState{};
+	}
+
+	if (!decision.next.active) {
+		return decision;
+	}
+
+	const float fraction = input.percent >= 100.0f ? 1.0f : input.percent * 0.01f;
+	decision.write = true;
+	decision.yaw = decision.next.gazeYaw * fraction;
+	decision.pitch = decision.next.gazePitch * fraction;
+	return decision;
+}
+
 bool LooksLikeReturnAddress(UInt32 value, UInt32 textStart, UInt32 textEnd,
                             const UInt8 preceding[6]) {
 	if (value < textStart || value >= textEnd) {

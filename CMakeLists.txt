@@ -59,6 +59,7 @@ add_library(OBVR SHARED
 	src/game/MenuBackground.cpp
 	src/game/CrosshairTarget.cpp
 	src/game/FirstPersonArms.cpp
+	src/game/ThirdPersonAimVisual.cpp
 	src/game/MenuType.cpp
 	src/game/PlayerAim.cpp
 	src/render/GameDevice.cpp

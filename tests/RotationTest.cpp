@@ -50,6 +50,16 @@ float Determinant(const obvr::NiMatrix33& m) {
 	       m.data[0][2] * (m.data[1][0] * m.data[2][1] - m.data[1][1] * m.data[2][0]);
 }
 
+obvr::NiMatrix33 Transposed(const obvr::NiMatrix33& value) {
+	obvr::NiMatrix33 result{};
+	for (int row = 0; row < 3; ++row) {
+		for (int col = 0; col < 3; ++col) {
+			result.data[row][col] = value.data[col][row];
+		}
+	}
+	return result;
+}
+
 void TestMatrixArithmetic() {
 	std::printf("Matrix arithmetic\n");
 
@@ -119,6 +129,40 @@ void TestCompositionOrder() {
 	                                obvr::EulerToMatrix(px, 0.0f, 0.0f);
 
 	CheckMatrixNear(combined, byHand, "EulerToMatrix(x,y,z) equals Rz * Ry * Rx");
+}
+
+void TestRotationBasisChange() {
+	std::printf("A correction expressed in another coordinate space\n");
+
+	using obvr::EulerToMatrix;
+	using obvr::NiMatrix33;
+	using obvr::RebaseRotation;
+
+	const NiMatrix33 bodyWorld = EulerToMatrix(0.0f, 0.0f, 37.0f);
+	// Deliberately scramble the target axes the way a skeleton hierarchy can:
+	// parent X/Z no longer mean body pitch/yaw.
+	const NiMatrix33 parentWorld =
+		bodyWorld * EulerToMatrix(90.0f, 0.0f, 90.0f);
+
+	const NiMatrix33 corrections[] = {
+		EulerToMatrix(23.0f, 0.0f, 0.0f),
+		EulerToMatrix(0.0f, 0.0f, -41.0f),
+		EulerToMatrix(17.0f, 0.0f, 29.0f),
+	};
+	for (const NiMatrix33& bodyCorrection : corrections) {
+		const NiMatrix33 localCorrection =
+			RebaseRotation(bodyCorrection, bodyWorld, parentWorld);
+		const NiMatrix33 reconstructedWorld =
+			parentWorld * localCorrection * Transposed(parentWorld);
+		const NiMatrix33 expectedWorld =
+			bodyWorld * bodyCorrection * Transposed(bodyWorld);
+		CheckMatrixNear(reconstructedWorld, expectedWorld,
+		                "pitch/yaw survive a parent whose axes are rotated");
+	}
+
+	const NiMatrix33 sameSpace = EulerToMatrix(-13.0f, 0.0f, 52.0f);
+	CheckMatrixNear(RebaseRotation(sameSpace, bodyWorld, bodyWorld), sameSpace,
+	                "rebasing into the same space changes nothing");
 }
 
 void TestRotationProperties() {
@@ -228,6 +272,8 @@ int main() {
 	TestSingleAxisSignConvention();
 	std::printf("\n");
 	TestCompositionOrder();
+	std::printf("\n");
+	TestRotationBasisChange();
 	std::printf("\n");
 	TestRotationProperties();
 	std::printf("\n");

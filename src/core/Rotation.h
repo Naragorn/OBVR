@@ -17,6 +17,17 @@ namespace obvr {
 // the reference for the quaternion route.
 NiMatrix33 EulerToMatrix(float degreesX, float degreesY, float degreesZ);
 
+// Expresses the same physical correction in another coordinate space.
+//
+// fromWorld and toWorld map vectors from their respective local spaces into
+// world space. A skeleton bone's parent axes need not agree with the actor's
+// right/forward/up axes; applying an actor-space X/Z rotation directly there
+// swaps pitch and yaw on Oblivion's Bip01 hierarchy. This basis change is the
+// exact bridge between those spaces.
+NiMatrix33 RebaseRotation(const NiMatrix33& correction,
+                          const NiMatrix33& fromWorld,
+                          const NiMatrix33& toWorld);
+
 // Reads which way a camera faces, ignoring how far it is tilted.
 //
 // This is how OBVR takes the vertical look away from the stick and the
