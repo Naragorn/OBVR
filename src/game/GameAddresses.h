@@ -197,6 +197,36 @@ inline constexpr UInt32 kPlayerMagicCasterOffset = 0x5C;
 inline constexpr UInt32 kAnimationKeyHandler = 0x005FC890;
 inline constexpr UInt32 kPlayerCasterVtableKeyHandlerSlot = 0x00A739D4;
 
+// WHAT A HEADSET RUN THEN SHOWED, and the two sites added for it.
+//
+// With the key handler wrapped, a run on 2026-09-02 logged its entries for
+// swings and casts (action 2) and the swap written - and the spell still
+// left straight ahead. The bow's release never entered the handler at all.
+// So the player's spell and arrow are made through calls the reading above
+// did not follow: the handler is where an NPC's are, the player's take
+// another route. Two further sites, each certain of what it does:
+//
+//   * The projectile factory 0x0069A060 - the function in which the launch
+//     rotation is read off the caster's fields (see above) - has one direct
+//     call, `E8 C5 E6 FF FF` at 0x0069B996 inside ApplyActiveMagicItem, with
+//     ecx = the MagicCaster. Whatever calls ApplyActiveMagicItem for the
+//     player, the projectile passes through here.
+//   * ArrowProjectile's other constructor, 0x006078E0, is called once
+//     directly, `E8 F8 73 1A 00` at 0x004604E3, from the generic reference
+//     creator 0x0045FDA0 (type 1, 0x9C bytes) - TESObjectCELL's virtual at
+//     slot 27, reached through vtables the file cannot trace. If the
+//     player's arrow is made there, the caller that sets its rotation is on
+//     the stack at that moment, and the probe writes the return addresses
+//     it finds.
+inline constexpr UInt32 kMagicProjectileFactory = 0x0069A060;
+inline constexpr UInt32 kCallMagicProjectileFactory = 0x0069B996;
+inline constexpr UInt32 kArrowProjectileCreatorConstructor = 0x006078E0;
+inline constexpr UInt32 kCallArrowProjectileCreatorConstructor = 0x004604E3;
+
+// The code section, for telling a return address from a number.
+inline constexpr UInt32 kTextStart = 0x00401000;
+inline constexpr UInt32 kTextEnd = 0x00A27C39;
+
 // Shortly after the hook the game calls, on the CameraNode:
 //
 //   0066BE84  fldz

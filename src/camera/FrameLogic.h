@@ -1456,4 +1456,16 @@ bool AimAtSourceWanted(bool enabled, bool aimAtSource, bool headsetConnected, bo
 // written and unwritten for nothing.
 bool AimSourceSwapDue(bool wanted, bool isPlayer, SInt32 action);
 
+// Whether a value found on the stack is plausibly a return address: inside
+// the code section, and sitting right after a call instruction. preceding
+// holds the six bytes before the address, preceding[5] being the last one.
+//
+// For the probes that walk the stack for the caller that makes a
+// projectile. Every form a compiler emits a call in is accepted - rel32,
+// through a register, through [reg+disp8], [reg+disp32], [sib] and [disp32]
+// - and a number that merely lands in the code section is not, which is
+// what keeps a probe's log short enough to read.
+bool LooksLikeReturnAddress(UInt32 value, UInt32 textStart, UInt32 textEnd,
+                            const UInt8 preceding[6]);
+
 }  // namespace obvr::camera

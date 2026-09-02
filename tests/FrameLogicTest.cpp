@@ -2681,6 +2681,32 @@ void TestAimAtSource() {
 	Check(!AimSourceSwapDue(true, true, 0), "an equip key is not");
 	Check(!AimSourceSwapDue(true, false, 2), "an NPC's attack is not");
 	Check(!AimSourceSwapDue(false, true, 2), "not wanted, not swapped");
+
+	// The probes' idea of a return address.
+	using obvr::camera::LooksLikeReturnAddress;
+	const UInt32 textStart = 0x00401000;
+	const UInt32 textEnd = 0x00A27C39;
+	const UInt8 rel32[6] = {0x00, 0xE8, 0xF8, 0x73, 0x1A, 0x00};
+	Check(LooksLikeReturnAddress(0x004604E8, textStart, textEnd, rel32),
+	      "after a call rel32 - the arrow constructor's own caller");
+	const UInt8 viaRegister[6] = {0x00, 0x00, 0x00, 0x00, 0xFF, 0xD2};
+	Check(LooksLikeReturnAddress(0x005FCE87, textStart, textEnd, viaRegister), "after call edx");
+	const UInt8 viaDisp8[6] = {0x00, 0x00, 0x00, 0xFF, 0x50, 0x0C};
+	Check(LooksLikeReturnAddress(0x00500000, textStart, textEnd, viaDisp8), "after call [eax+0Ch]");
+	const UInt8 viaSib[6] = {0x00, 0x00, 0x00, 0xFF, 0x14, 0x85};
+	Check(LooksLikeReturnAddress(0x00500000, textStart, textEnd, viaSib), "after call [sib]");
+	const UInt8 viaDisp32[6] = {0xFF, 0x90, 0x74, 0x01, 0x00, 0x00};
+	Check(LooksLikeReturnAddress(0x00500000, textStart, textEnd, viaDisp32),
+	      "after call [eax+174h]");
+	const UInt8 viaMemory[6] = {0xFF, 0x15, 0x8C, 0x80, 0xA2, 0x00};
+	Check(LooksLikeReturnAddress(0x00500000, textStart, textEnd, viaMemory),
+	      "after call [00A2808Ch]");
+	const UInt8 noCall[6] = {0x8B, 0x45, 0x08, 0x89, 0x45, 0xFC};
+	Check(!LooksLikeReturnAddress(0x00500000, textStart, textEnd, noCall),
+	      "code that follows no call is not one");
+	Check(!LooksLikeReturnAddress(0x00400FFF, textStart, textEnd, rel32), "below the code section");
+	Check(!LooksLikeReturnAddress(0x00A27C39, textStart, textEnd, rel32), "at its end");
+	Check(!LooksLikeReturnAddress(0x0019F260, textStart, textEnd, rel32), "a stack address");
 }
 
 

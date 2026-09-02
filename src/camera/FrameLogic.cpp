@@ -725,4 +725,30 @@ bool AimSourceSwapDue(bool wanted, bool isPlayer, SInt32 action) {
 	return action == 2 || action == 5;
 }
 
+bool LooksLikeReturnAddress(UInt32 value, UInt32 textStart, UInt32 textEnd,
+                            const UInt8 preceding[6]) {
+	if (value < textStart || value >= textEnd) {
+		return false;
+	}
+	// call rel32: E8 xx xx xx xx, five bytes.
+	if (preceding[1] == 0xE8) {
+		return true;
+	}
+	// call reg: FF D0..D7, two bytes.
+	if (preceding[4] == 0xFF && preceding[5] >= 0xD0 && preceding[5] <= 0xD7) {
+		return true;
+	}
+	// call [reg+disp8]: FF 50..57 xx, and call [sib]: FF 14 xx, three bytes.
+	if (preceding[3] == 0xFF &&
+	    ((preceding[4] >= 0x50 && preceding[4] <= 0x57) || preceding[4] == 0x14)) {
+		return true;
+	}
+	// call [reg+disp32]: FF 90..97 + 4, and call [disp32]: FF 15 + 4, six bytes.
+	if (preceding[0] == 0xFF &&
+	    ((preceding[1] >= 0x90 && preceding[1] <= 0x97) || preceding[1] == 0x15)) {
+		return true;
+	}
+	return false;
+}
+
 }  // namespace obvr::camera
