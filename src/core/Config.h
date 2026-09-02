@@ -199,6 +199,16 @@ struct Config {
 	// starting point and is deliberately exposed rather than claimed as truth.
 	float thirdPersonAimVisualPercent = 70.0f;
 
+	// Extend the same Spine2 gaze pose to ordinary third-person looking when no
+	// weapon is drawn and no cast is active. Off by default: independent travel
+	// remains visually neutral unless the player explicitly asks for this.
+	bool thirdPersonBodyFollowsGazeUnarmed = false;
+
+	// Let Bip01 Head face the HMD in third person. When Spine2 already carries
+	// part of the gaze, the head receives only the exact remaining rotation so
+	// the two compose to the gaze rather than overshooting it.
+	bool thirdPersonHeadFollowsGaze = true;
+
 	// The control that means "I am aiming", as a Windows virtual-key code.
 	//
 	// While it is held, and only then, the character is turned to face where

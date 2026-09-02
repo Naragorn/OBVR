@@ -1481,6 +1481,7 @@ struct ThirdPersonAimVisualInput {
 	// ready to sheathe avoids straightening between bow shots and lets a sword
 	// face the gaze before its short attack action begins.
 	bool weaponDrawn = false;
+	bool bodyWithoutWeapon = false;
 	// Controls are included because the animation action field trails intent:
 	// a bow does not report its useful action until the draw is under way, and
 	// MagicCaster begins a cast before HighProcess changes to Attack.
@@ -1507,6 +1508,12 @@ struct ThirdPersonAimVisualDecision {
 // Bip01 Spine2.
 ThirdPersonAimVisualDecision NextThirdPersonAimVisual(
 	const ThirdPersonAimVisualState& current, const ThirdPersonAimVisualInput& input);
+
+// The head is a continuous visual rather than an attack state. Kept as a pure
+// gate so POV/menu/config transitions all release it deterministically.
+bool ThirdPersonHeadVisualWanted(bool enabled, bool headFollowsGaze,
+	                             bool headsetConnected, bool isThirdPerson,
+	                             bool thirdPersonAllowed, bool menuIsUp);
 
 // Whether a value found on the stack is plausibly a return address: inside
 // the code section, and sitting right after a call instruction. preceding

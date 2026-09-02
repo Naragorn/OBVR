@@ -386,6 +386,12 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.thirdPersonAimVisualPercent =
 		ReadFloat("Look", "ThirdPersonAimVisualPercent",
 		          config.thirdPersonAimVisualPercent, path);
+	config.thirdPersonBodyFollowsGazeUnarmed =
+		ReadBool("Look", "ThirdPersonBodyFollowsGazeUnarmed",
+		         config.thirdPersonBodyFollowsGazeUnarmed, path);
+	config.thirdPersonHeadFollowsGaze =
+		ReadBool("Look", "ThirdPersonHeadFollowsGaze",
+		         config.thirdPersonHeadFollowsGaze, path);
 	// ReadKeyCode rather than ReadUInt, which takes decimal only and returns the
 	// FALLBACK on anything else - so a virtual-key code written the way every
 	// table prints them would have been silently ignored. That trap was harmless
@@ -516,7 +522,7 @@ bool Config::Load(const char* fileName) {
 	         static_cast<double>(tracker.EffectiveUnitsPerMetre()),
 	         static_cast<double>(tracker.maxOffsetUnits));
 	OBVR_LOG("Config: BlockVerticalLook=%d VerticalLookRange=(up %.1f, down %.1f) "
-	         "SmoothVerticalLook=%d (%.1f) AimFollowsGaze=%d AimInThirdPerson=%d AimAtSource=%d ThirdPersonAimVisual=%.0f%% AimAttackKey=%u "
+	         "SmoothVerticalLook=%d (%.1f) AimFollowsGaze=%d AimInThirdPerson=%d AimAtSource=%d ThirdPersonAimVisual=%.0f%% BodyUnarmed=%d HeadFollows=%d AimAttackKey=%u "
 	         "AimTurnSpeed=%.1f",
 	         look.blockVerticalLook ? 1 : 0,
 	         static_cast<double>(look.verticalLookUpRange),
@@ -527,6 +533,8 @@ bool Config::Load(const char* fileName) {
 	         aimInThirdPerson ? 1 : 0,
 	         aimAtSource ? 1 : 0,
 	         static_cast<double>(thirdPersonAimVisualPercent),
+	         thirdPersonBodyFollowsGazeUnarmed ? 1 : 0,
+	         thirdPersonHeadFollowsGaze ? 1 : 0,
 	         aimAttackKey,
 	         static_cast<double>(aimTurnSpeed));
 	OBVR_LOG("Config: SmoothTurning=%d TurnSpeed=%.1f",

@@ -17,6 +17,10 @@ namespace obvr {
 // the reference for the quaternion route.
 NiMatrix33 EulerToMatrix(float degreesX, float degreesY, float degreesZ);
 
+// The opposite of an orthonormal rotation. Exposed because the head needs the
+// exact rotation left after Spine2's share, including combined pitch and yaw.
+NiMatrix33 InverseRotation(const NiMatrix33& rotation);
+
 // Expresses the same physical correction in another coordinate space.
 //
 // fromWorld and toWorld map vectors from their respective local spaces into

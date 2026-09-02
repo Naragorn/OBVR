@@ -2744,6 +2744,12 @@ void TestThirdPersonAimVisual() {
 	Check(decision.write && Near(decision.yaw, -0.28f),
 	      "a ready weapon continues following between attacks");
 	input.weaponDrawn = false;
+	input.bodyWithoutWeapon = true;
+	input.gazeYaw = 0.25f;
+	decision = NextThirdPersonAimVisual(ThirdPersonAimVisualState{}, input);
+	Check(decision.write && Near(decision.yaw, 0.175f),
+	      "the opt-in unarmed mode keeps the body pose without a weapon");
+	input.bodyWithoutWeapon = false;
 
 	// Intent arrives before Oblivion's animation action. Both controls must be
 	// able to establish the current gaze while the action still reads None.
@@ -2865,6 +2871,24 @@ void TestThirdPersonAimVisual() {
 	input.percent = std::numeric_limits<float>::quiet_NaN();
 	decision = NextThirdPersonAimVisual(active, input);
 	Check(!decision.write && !decision.next.active, "NaN is refused rather than reaching a bone");
+
+	std::printf("The continuous third-person head visual gates\n");
+	using obvr::camera::ThirdPersonHeadVisualWanted;
+	for (int bits = 0; bits < 64; ++bits) {
+		const bool enabled = (bits & 1) != 0;
+		const bool option = (bits & 2) != 0;
+		const bool headset = (bits & 4) != 0;
+		const bool third = (bits & 8) != 0;
+		const bool allowed = (bits & 16) != 0;
+		const bool menu = (bits & 32) != 0;
+		const bool expected = enabled && option && headset && third && allowed && !menu;
+		if (ThirdPersonHeadVisualWanted(enabled, option, headset, third, allowed, menu) !=
+		    expected) {
+			Check(false, "one of the sixty-four head gate combinations disagrees");
+			return;
+		}
+	}
+	Check(true, "all sixty-four head gate combinations agree");
 }
 
 

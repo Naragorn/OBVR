@@ -300,6 +300,9 @@ ThirdPersonAimVisualState g_thirdPersonAimVisualState{};
 float g_thirdPersonAimVisualYaw = 0.0f;
 float g_thirdPersonAimVisualPitch = 0.0f;
 bool g_thirdPersonAimVisualWanted = false;
+float g_thirdPersonHeadVisualYaw = 0.0f;
+float g_thirdPersonHeadVisualPitch = 0.0f;
+bool g_thirdPersonHeadVisualWanted = false;
 
 // The body's share as the ARMS' BASE has it, which is one frame behind the
 // heading itself.
@@ -1386,11 +1389,22 @@ void BeforeFirstScenePass() {
 		game::ReleaseFirstPersonArms();
 	}
 
+	bool thirdPersonBodyApplied = false;
 	if (g_thirdPersonAimVisualWanted) {
-		game::TurnThirdPersonAimVisual(g_thirdPersonAimVisualYaw,
-		                               g_thirdPersonAimVisualPitch);
+		thirdPersonBodyApplied =
+			game::TurnThirdPersonAimVisual(g_thirdPersonAimVisualYaw,
+			                               g_thirdPersonAimVisualPitch);
 	} else {
 		game::ReleaseThirdPersonAimVisual();
+	}
+
+	if (g_thirdPersonHeadVisualWanted) {
+		game::TurnThirdPersonHeadVisual(
+			g_thirdPersonHeadVisualYaw, g_thirdPersonHeadVisualPitch,
+			thirdPersonBodyApplied ? g_thirdPersonAimVisualYaw : 0.0f,
+			thirdPersonBodyApplied ? g_thirdPersonAimVisualPitch : 0.0f);
+	} else {
+		game::ReleaseThirdPersonHeadVisual();
 	}
 
 	if (tracing) {
@@ -2753,6 +2767,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	visualInput.weaponDrawn =
 		readPlayer && isThirdPerson &&
 		game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
+	visualInput.bodyWithoutWeapon = config.thirdPersonBodyFollowsGazeUnarmed;
 	visualInput.attackHeld = attackHeld;
 	visualInput.castActive = castHeld || g_castWindow.open || g_castBegan ||
 	                         g_castArm.seconds >= 0.0f;
@@ -2766,6 +2781,12 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	g_thirdPersonAimVisualWanted = visualDecision.write;
 	g_thirdPersonAimVisualYaw = visualDecision.yaw;
 	g_thirdPersonAimVisualPitch = visualDecision.pitch;
+	g_thirdPersonHeadVisualWanted = ThirdPersonHeadVisualWanted(
+		readPlayer && config.aimFollowsGaze, config.thirdPersonHeadFollowsGaze,
+		g_headTracker.IsHeadsetConnected(), isThirdPerson,
+		config.aimInThirdPerson, game::IsMenuMode());
+	g_thirdPersonHeadVisualYaw = sourceAimYaw;
+	g_thirdPersonHeadVisualPitch = -gazePitch;
 
 	CastWindowInput castInput;
 	castInput.enabled = readPlayer && GetConfig().aimCastFollowsGaze &&

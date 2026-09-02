@@ -135,6 +135,7 @@ void TestRotationBasisChange() {
 	std::printf("A correction expressed in another coordinate space\n");
 
 	using obvr::EulerToMatrix;
+	using obvr::InverseRotation;
 	using obvr::NiMatrix33;
 	using obvr::RebaseRotation;
 
@@ -163,6 +164,14 @@ void TestRotationBasisChange() {
 	const NiMatrix33 sameSpace = EulerToMatrix(-13.0f, 0.0f, 52.0f);
 	CheckMatrixNear(RebaseRotation(sameSpace, bodyWorld, bodyWorld), sameSpace,
 	                "rebasing into the same space changes nothing");
+
+	const NiMatrix33 bodyShare = EulerToMatrix(12.0f, 0.0f, -31.0f);
+	const NiMatrix33 fullGaze = EulerToMatrix(20.0f, 0.0f, -47.0f);
+	const NiMatrix33 remaining = fullGaze * InverseRotation(bodyShare);
+	CheckMatrixNear(remaining * bodyShare, fullGaze,
+	                "the head's exact remainder composes with the body to the full gaze");
+	CheckMatrixNear(InverseRotation(bodyShare) * bodyShare, NiMatrix33::Identity(),
+	                "a rotation multiplied by its inverse cancels");
 }
 
 void TestRotationProperties() {

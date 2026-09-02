@@ -744,7 +744,8 @@ ThirdPersonAimVisualDecision NextThirdPersonAimVisual(
 	// between shots and a sword is already facing the gaze before the swing.
 	// Controls cover the frame before HighProcess has caught up, especially for
 	// magic, and the action field keeps short presses alive through animation.
-	const bool live = input.weaponDrawn || input.attackHeld || input.castActive ||
+	const bool live = input.bodyWithoutWeapon || input.weaponDrawn ||
+	                  input.attackHeld || input.castActive ||
 	                  input.action == 2 || input.action == 4 || input.action == 5;
 	if (live) {
 		decision.next.active = true;
@@ -765,6 +766,13 @@ ThirdPersonAimVisualDecision NextThirdPersonAimVisual(
 	decision.yaw = decision.next.gazeYaw * fraction;
 	decision.pitch = decision.next.gazePitch * fraction;
 	return decision;
+}
+
+bool ThirdPersonHeadVisualWanted(bool enabled, bool headFollowsGaze,
+	                             bool headsetConnected, bool isThirdPerson,
+	                             bool thirdPersonAllowed, bool menuIsUp) {
+	return enabled && headFollowsGaze && headsetConnected && isThirdPerson &&
+	       thirdPersonAllowed && !menuIsUp;
 }
 
 bool LooksLikeReturnAddress(UInt32 value, UInt32 textStart, UInt32 textEnd,

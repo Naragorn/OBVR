@@ -120,6 +120,20 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.thirdPersonAimVisualPercent = v; },
 	},
 	{
+		"Aiming", "Body aim while unarmed", "Keep the upper body following without a weapon",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "ThirdPersonBodyFollowsGazeUnarmed",
+		+[](const Config& c) { return c.thirdPersonBodyFollowsGazeUnarmed ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.thirdPersonBodyFollowsGazeUnarmed = v != 0.0f; },
+	},
+	{
+		"Aiming", "Head follows gaze", "Turn only the player head to the HMD direction",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "ThirdPersonHeadFollowsGaze",
+		+[](const Config& c) { return c.thirdPersonHeadFollowsGaze ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.thirdPersonHeadFollowsGaze = v != 0.0f; },
+	},
+	{
 		"Aiming", "Body turn speed", "0 turns the body at once; higher eases it",
 		ItemKind::Number, 0.0f, 30.0f, 1.0f, 0, false,
 		"Look", "AimTurnSpeed",

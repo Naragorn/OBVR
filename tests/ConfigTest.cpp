@@ -190,12 +190,23 @@ void TestThirdPersonAimVisualPercent() {
 	obvr::Config untouched;
 	CheckNear(untouched.thirdPersonAimVisualPercent, 70.0f,
 	          "the built-in visual starting point is 70 percent");
+	Check(!untouched.thirdPersonBodyFollowsGazeUnarmed,
+	      "the unarmed upper-body pose defaults off");
+	Check(untouched.thirdPersonHeadFollowsGaze,
+	      "the third-person head gaze defaults on");
 
 	obvr::Config configured;
 	LoadFrom("ConfigTestThirdPersonAim.ini",
-	         "[Look]\nThirdPersonAimVisualPercent=55.5\n", configured);
+	         "[Look]\nThirdPersonAimVisualPercent=55.5\n"
+	         "ThirdPersonBodyFollowsGazeUnarmed=1\n"
+	         "ThirdPersonHeadFollowsGaze=0\n",
+	         configured);
 	CheckNear(configured.thirdPersonAimVisualPercent, 55.5f,
 	          "ThirdPersonAimVisualPercent is read from Look");
+	Check(configured.thirdPersonBodyFollowsGazeUnarmed,
+	      "ThirdPersonBodyFollowsGazeUnarmed is read from Look");
+	Check(!configured.thirdPersonHeadFollowsGaze,
+	      "ThirdPersonHeadFollowsGaze is read from Look");
 }
 
 void TestLookRanges() {

@@ -11,6 +11,7 @@ namespace obvr::game {
 namespace {
 
 constexpr const char* kSpineName = "Bip01 Spine2";
+constexpr const char* kHeadName = "Bip01 Head";
 
 bool LooksLikeObject(const void* pointer) {
 	return mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(pointer));
@@ -69,7 +70,8 @@ NiAVObject* ThirdPersonRoot() {
 	return *reinterpret_cast<NiAVObject* const*>(player + addr::kReferenceNodeOffset);
 }
 
-NiAVObject* ThirdPersonSpineNode(NiAVObject** rootOut = nullptr) {
+NiAVObject* ThirdPersonNamedNode(const char* wantedName, bool& missingReported,
+	                            NiAVObject** rootOut = nullptr) {
 	NiAVObject* const root = ThirdPersonRoot();
 	if (!LooksLikeObject(root)) {
 		return nullptr;
@@ -111,27 +113,86 @@ NiAVObject* ThirdPersonSpineNode(NiAVObject** rootOut = nullptr) {
 	using GetObjectFn = NiAVObject*(__fastcall*)(NiAVObject* self, void* unusedEdx,
 	                                           const char* name);
 	const auto getObject = reinterpret_cast<GetObjectFn>(functionAddress);
-	NiAVObject* const spine = getObject(root, nullptr, kSpineName);
-	if (!LooksLikeObject(spine) || !NameIs(spine->name, kSpineName)) {
-		static bool s_spineReported = false;
-		if (!s_spineReported) {
-			s_spineReported = true;
+	NiAVObject* const node = getObject(root, nullptr, wantedName);
+	if (!LooksLikeObject(node) || !NameIs(node->name, wantedName)) {
+		if (!missingReported) {
+			missingReported = true;
 			OBVR_LOG("Third-person aim visual: %s was not found under node \"%s\" - "
 			         "the skeleton is left untouched",
-			         kSpineName, root->name);
+			         wantedName, root->name);
 		}
 		return nullptr;
 	}
 	if (rootOut != nullptr) {
 		*rootOut = root;
 	}
-	return spine;
+	return node;
 }
 
-NiMatrix33 g_wrote{};
-NiMatrix33 g_base{};
-NiAVObject* g_held = nullptr;
-bool g_reported = false;
+NiAVObject* ThirdPersonSpineNode(NiAVObject** rootOut = nullptr) {
+	static bool s_missingReported = false;
+	return ThirdPersonNamedNode(kSpineName, s_missingReported, rootOut);
+}
+
+NiAVObject* ThirdPersonHeadNode(NiAVObject** rootOut = nullptr) {
+	static bool s_missingReported = false;
+	return ThirdPersonNamedNode(kHeadName, s_missingReported, rootOut);
+}
+
+struct BoneWriteState {
+	NiMatrix33 wrote{};
+	NiMatrix33 base{};
+	NiAVObject* held = nullptr;
+	bool parentReported = false;
+	bool appliedReported = false;
+};
+
+BoneWriteState g_spineWrite{};
+BoneWriteState g_headWrite{};
+
+bool ApplyVisualCorrection(NiAVObject* node, NiAVObject* root,
+	                       const NiMatrix33& actorCorrection,
+	                       const char* nodeName, BoneWriteState& state) {
+	NiAVObject* const parent = node->parent;
+	if (!LooksLikeObject(parent)) {
+		if (!state.parentReported) {
+			state.parentReported = true;
+			OBVR_LOG("Third-person aim visual: %s has no readable parent - the skeleton "
+			         "is left untouched",
+			         nodeName);
+		}
+		return false;
+	}
+
+	// If Oblivion left last frame's correction standing, remove it before
+	// taking this frame's animated pose as the base. Otherwise animation has
+	// already supplied a fresh base.
+	if (state.held == node && SameRotation(node->localTransform.rot, state.wrote)) {
+		node->localTransform.rot = state.base;
+	}
+	state.base = node->localTransform.rot;
+
+	const NiMatrix33 localCorrection =
+		RebaseRotation(actorCorrection, root->worldTransform.rot,
+		               parent->worldTransform.rot);
+	node->localTransform.rot = localCorrection * state.base;
+	state.wrote = node->localTransform.rot;
+	state.held = node;
+	UpdateNodeTransforms(node);
+	return true;
+}
+
+void ReleaseVisualCorrection(NiAVObject* current, BoneWriteState& state) {
+	if (state.held == nullptr) {
+		return;
+	}
+	if (current == state.held &&
+	    SameRotation(current->localTransform.rot, state.wrote)) {
+		current->localTransform.rot = state.base;
+		UpdateNodeTransforms(current);
+	}
+	state.held = nullptr;
+}
 
 }  // namespace
 
@@ -144,26 +205,6 @@ bool TurnThirdPersonAimVisual(float yawRadians, float pitchRadians) {
 		// while Release resolves the currently displayed skeleton afresh.
 		return false;
 	}
-	NiAVObject* const parent = spine->parent;
-	if (!LooksLikeObject(parent)) {
-		static bool s_parentReported = false;
-		if (!s_parentReported) {
-			s_parentReported = true;
-			OBVR_LOG("Third-person aim visual: %s has no readable parent - the skeleton "
-			         "is left untouched",
-			         kSpineName);
-		}
-		return false;
-	}
-
-	// If Oblivion left last frame's correction standing, remove it before
-	// taking this frame's animated pose as the base. If it rewrote the bone,
-	// that fresh value already is the base. This is the same self-correcting
-	// rule used by FirstPersonArms.
-	if (g_held == spine && SameRotation(spine->localTransform.rot, g_wrote)) {
-		spine->localTransform.rot = g_base;
-	}
-	g_base = spine->localTransform.rot;
 
 	const NiMatrix33 bodyCorrection =
 		EulerToMatrix(pitchRadians * math::kRadiansToDegrees, 0.0f,
@@ -172,20 +213,13 @@ bool TurnThirdPersonAimVisual(float yawRadians, float pitchRadians) {
 	// became a left/right turn, and actor yaw around Z became up/down. Spine2's
 	// parent axes are not the actor's axes. Re-express the desired actor-space
 	// correction in the actual parent-bone space before touching the local pose.
-	const NiMatrix33 localCorrection =
-		RebaseRotation(bodyCorrection, root->worldTransform.rot,
-		               parent->worldTransform.rot);
-	spine->localTransform.rot = localCorrection * g_base;
-	g_wrote = spine->localTransform.rot;
-	g_held = spine;
+	if (!ApplyVisualCorrection(spine, root, bodyCorrection, kSpineName,
+	                           g_spineWrite)) {
+		return false;
+	}
 
-	// The animation update has already propagated world transforms by this
-	// point. Re-run that propagation from Spine2 so the render sees the local
-	// correction and every arm/weapon child inherits it.
-	UpdateNodeTransforms(spine);
-
-	if (!g_reported) {
-		g_reported = true;
+	if (!g_spineWrite.appliedReported) {
+		g_spineWrite.appliedReported = true;
 		OBVR_LOG("Third-person aim visual: node %08X named \"%s\" follows the gaze "
 		         "after animation (first correction yaw %.1f, pitch %.1f degrees)",
 		         reinterpret_cast<UInt32>(spine), spine->name,
@@ -196,7 +230,7 @@ bool TurnThirdPersonAimVisual(float yawRadians, float pitchRadians) {
 }
 
 void ReleaseThirdPersonAimVisual() {
-	if (g_held == nullptr) {
+	if (g_spineWrite.held == nullptr) {
 		return;
 	}
 
@@ -204,11 +238,48 @@ void ReleaseThirdPersonAimVisual() {
 	// stored pointer across a load or race/skeleton replacement. A different or
 	// absent node means the old one is no longer the object being drawn.
 	NiAVObject* const current = ThirdPersonSpineNode();
-	if (current == g_held && SameRotation(current->localTransform.rot, g_wrote)) {
-		current->localTransform.rot = g_base;
-		UpdateNodeTransforms(current);
+	ReleaseVisualCorrection(current, g_spineWrite);
+}
+
+bool TurnThirdPersonHeadVisual(float fullYawRadians, float fullPitchRadians,
+	                           float bodyYawRadians, float bodyPitchRadians) {
+	NiAVObject* root = nullptr;
+	NiAVObject* const head = ThirdPersonHeadNode(&root);
+	if (head == nullptr) {
+		return false;
 	}
-	g_held = nullptr;
+
+	const NiMatrix33 fullCorrection =
+		EulerToMatrix(fullPitchRadians * math::kRadiansToDegrees, 0.0f,
+		              fullYawRadians * math::kRadiansToDegrees);
+	const NiMatrix33 bodyCorrection =
+		EulerToMatrix(bodyPitchRadians * math::kRadiansToDegrees, 0.0f,
+		              bodyYawRadians * math::kRadiansToDegrees);
+	// Spine2 is an ancestor of Head. If it already carries B and the requested
+	// complete actor-space gaze is F, the head must add R = F * inverse(B):
+	// R * B = F. This stays exact when pitch and yaw are combined.
+	const NiMatrix33 remainingCorrection =
+		fullCorrection * InverseRotation(bodyCorrection);
+	if (!ApplyVisualCorrection(head, root, remainingCorrection, kHeadName,
+	                           g_headWrite)) {
+		return false;
+	}
+
+	if (!g_headWrite.appliedReported) {
+		g_headWrite.appliedReported = true;
+		OBVR_LOG("Third-person head visual: node %08X named \"%s\" follows the HMD "
+		         "after animation",
+		         reinterpret_cast<UInt32>(head), head->name);
+	}
+	return true;
+}
+
+void ReleaseThirdPersonHeadVisual() {
+	if (g_headWrite.held == nullptr) {
+		return;
+	}
+	NiAVObject* const current = ThirdPersonHeadNode();
+	ReleaseVisualCorrection(current, g_headWrite);
 }
 
 }  // namespace obvr::game

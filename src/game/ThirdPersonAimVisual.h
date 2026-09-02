@@ -15,4 +15,12 @@ bool TurnThirdPersonAimVisual(float yawRadians, float pitchRadians);
 // where the visual is not wanted, including a POV switch, menu and hot reload.
 void ReleaseThirdPersonAimVisual();
 
+// Turns Bip01 Head to the complete HMD direction. bodyYaw/bodyPitch are the
+// correction already inherited from Spine2; only the exact remaining rotation
+// is added to the head, so body and head compose to the requested gaze.
+bool TurnThirdPersonHeadVisual(float fullYawRadians, float fullPitchRadians,
+	                           float bodyYawRadians, float bodyPitchRadians);
+
+void ReleaseThirdPersonHeadVisual();
+
 }  // namespace obvr::game
