@@ -1,5 +1,6 @@
 #include "game/PlayerAim.h"
 
+#include "core/AddressSpace.h"
 #include "game/GameAddresses.h"
 
 namespace obvr::game {
@@ -32,11 +33,11 @@ constexpr float kPlausibleRotationRadians = 7.0f;
 // mid-assignment is not necessarily null.
 //
 // So the value has to look like a pointer to a Gamebryo object before it is
-// followed: inside the 32-bit user address space, past the reserved low pages
-// that catch null-offset reads, and four-byte aligned as every allocation
-// here is. That rejects a half-written value, a small integer and a pointer
-// into kernel space; it cannot reject a plausible pointer to an object that
-// is not finished.
+// followed - see mem::LooksLikeObjectAddress, and its note on the day the
+// bound was 0x7FFFFFFF and the player lived above it: the game is allowed
+// large addresses, and the check refused every object for a whole session.
+// It rejects a half-written value, a small integer and an unaligned one; it
+// cannot reject a plausible pointer to an object that is not finished.
 //
 // Shared by the read and the write rather than written twice, because the
 // write is the one that matters: a read of a torn-down object returns
@@ -45,7 +46,7 @@ UInt8* PlayerOrNull() {
 	auto* const player = *reinterpret_cast<UInt8* const*>(addr::kPlayerPointer);
 
 	const UInt32 address = reinterpret_cast<UInt32>(player);
-	if (address < 0x00010000u || address > 0x7FFFFFFFu || (address & 3u) != 0u) {
+	if (!mem::LooksLikeObjectAddress(address)) {
 		return nullptr;
 	}
 	return player;
@@ -137,7 +138,7 @@ const UInt8* PlayerProcessOrNull() {
 	const auto* const process =
 		*reinterpret_cast<const UInt8* const*>(player + addr::kMobileProcessOffset);
 	const UInt32 address = reinterpret_cast<UInt32>(process);
-	if (address < 0x00010000u || address > 0x7FFFFFFFu || (address & 3u) != 0u) {
+	if (!mem::LooksLikeObjectAddress(address)) {
 		return nullptr;
 	}
 	return process;
@@ -188,7 +189,7 @@ WeaponState ReadPlayerWeaponState() {
 	const auto* const process =
 		*reinterpret_cast<const UInt8* const*>(player + addr::kMobileProcessOffset);
 	const UInt32 address = reinterpret_cast<UInt32>(process);
-	if (address < 0x00010000u || address > 0x7FFFFFFFu || (address & 3u) != 0u) {
+	if (!mem::LooksLikeObjectAddress(address)) {
 		return WeaponState::Unknown;
 	}
 

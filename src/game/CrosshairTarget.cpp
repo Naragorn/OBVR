@@ -1,5 +1,6 @@
 #include "game/CrosshairTarget.h"
 
+#include "core/AddressSpace.h"
 #include "game/GameAddresses.h"
 #include "game/MenuType.h"
 
@@ -22,7 +23,7 @@ namespace {
 // finished, which is why the menu is additionally asked to identify itself.
 bool LooksLikeObject(const void* pointer) {
 	const UInt32 address = reinterpret_cast<UInt32>(pointer);
-	return address >= 0x00010000u && address <= 0x7FFFFFFFu && (address & 3u) == 0u;
+	return mem::LooksLikeObjectAddress(address);
 }
 
 // Whether three floats look like a position in Oblivion's world.

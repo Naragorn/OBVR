@@ -11,6 +11,7 @@
 #include "game/CrosshairTarget.h"
 #include "game/DialogZoom.h"
 #include "game/FirstPersonArms.h"
+#include "core/AddressSpace.h"
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
 #include "game/MenuBackground.h"
@@ -2030,7 +2031,7 @@ extern "C" void __cdecl OBVR_OnMagicCastItem(void* caster) {
 
 	const auto* const player = *reinterpret_cast<UInt8* const*>(addr::kPlayerPointer);
 	const UInt32 playerAddress = reinterpret_cast<UInt32>(player);
-	if (playerAddress < 0x00010000u || playerAddress > 0x7FFFFFFFu) {
+	if (!mem::LooksLikeObjectAddress(playerAddress)) {
 		return;
 	}
 
@@ -3199,6 +3200,48 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// current value throughout, because the heading it writes takes effect
 	// within the frame - which the trace also settled.
 	g_aimBodyOffsetLastFrame = g_aimBodyOffset;
+
+	// The aim's gates, written whenever they change and not otherwise. Sitting
+	// at the end of the pass, the line also says the pass got this far: a
+	// session whose log has no gate line at all had every frame stop before
+	// here. Six values, so a headset run that aims nowhere can be read
+	// without a second run.
+	{
+		const UInt32 gates = (readPlayer ? 1u : 0u) | (g_headTracker.IsHeadsetConnected() ? 2u : 0u) |
+		                     (game::IsMenuMode() ? 4u : 0u) | (isThirdPerson ? 8u : 0u) |
+		                     (atSource ? 16u : 0u) | (viewAimed ? 32u : 0u);
+		static UInt32 s_gatesSeen = 0xFFFFFFFFu;
+		static int s_gateLinesLeft = 24;
+		if (gates != s_gatesSeen && s_gateLinesLeft > 0) {
+			s_gatesSeen = gates;
+			--s_gateLinesLeft;
+			OBVR_LOG("Aim gates: player=%d headset=%d menu=%d third=%d atSource=%d viewAimed=%d",
+			         (gates & 1u) ? 1 : 0, (gates & 2u) ? 1 : 0, (gates & 4u) ? 1 : 0,
+			         (gates & 8u) ? 1 : 0, (gates & 16u) ? 1 : 0, (gates & 32u) ? 1 : 0);
+		}
+
+		// Once, the first time the player can be read: where it is, which
+		// method table its MagicCaster base carries, and what that table's
+		// key handler slot holds. The source aim re-points the slot in the
+		// PlayerCharacter table read out of the file; if the object in the
+		// running game carries some other table, this is the line that says so.
+		static bool s_playerReported = false;
+		if (readPlayer && !s_playerReported) {
+			s_playerReported = true;
+			const UInt32 playerAddress = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
+			const UInt32 casterTable =
+				*reinterpret_cast<const UInt32*>(playerAddress + addr::kPlayerMagicCasterOffset);
+			const UInt32 slotValue =
+				mem::LooksLikeObjectAddress(casterTable) || casterTable >= 0x00400000u
+					? *reinterpret_cast<const UInt32*>(casterTable + 0x18)
+					: 0;
+			OBVR_LOG("Aim: player at %08X, its MagicCaster table at %08X (the file's is %08X), "
+			         "key handler slot holds %08X (the file's handler is %08X)",
+			         playerAddress, casterTable,
+			         addr::kPlayerCasterVtableKeyHandlerSlot - 0x18, slotValue,
+			         addr::kAnimationKeyHandler);
+		}
+	}
 
 	// The trace line, written HERE rather than where the trace is counted down,
 	// because only at this point are both halves of the aim settled for this

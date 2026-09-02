@@ -61,6 +61,16 @@ endif()
 
 add_test(NAME around_call COMMAND around_call_test)
 
+add_executable(address_space_test AddressSpaceTest.cpp)
+
+target_include_directories(address_space_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(address_space_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME address_space COMMAND address_space_test)
+
 add_executable(quaternion_test
 	QuaternionTest.cpp
 	../src/vr/Quaternion.cpp

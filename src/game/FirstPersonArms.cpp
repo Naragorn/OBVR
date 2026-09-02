@@ -3,6 +3,7 @@
 #include "core/Log.h"
 #include "core/MathFns.h"
 #include "core/Rotation.h"
+#include "core/AddressSpace.h"
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
 
@@ -14,7 +15,7 @@ namespace {
 // and four-byte aligned.
 bool LooksLikeObject(const void* pointer) {
 	const UInt32 address = reinterpret_cast<UInt32>(pointer);
-	return address >= 0x00010000u && address <= 0x7FFFFFFFu && (address & 3u) == 0u;
+	return mem::LooksLikeObjectAddress(address);
 }
 
 // Whether a pointer leads to something that reads like a node's name.

@@ -4,6 +4,7 @@
 #include "core/AroundCall.h"
 #include "core/Log.h"
 #include "core/Memory.h"
+#include "core/AddressSpace.h"
 #include "game/GameAddresses.h"
 #include "game/PlayerAim.h"
 
@@ -39,7 +40,7 @@ constexpr UInt32 kStubCapacity = 64;
 // does not reach into PlayerAim's internals.
 UInt32 PlayerAddressOrZero() {
 	const UInt32 address = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
-	if (address < 0x00010000u || address > 0x7FFFFFFFu || (address & 3u) != 0u) {
+	if (!mem::LooksLikeObjectAddress(address)) {
 		return 0;
 	}
 	return address;
@@ -112,7 +113,21 @@ extern "C" void __cdecl OBVR_AimSourceBefore(void* caster) {
 	const UInt32 player = game::PlayerAddressOrZero();
 	const bool isPlayer =
 		player != 0 && reinterpret_cast<UInt32>(caster) == player + addr::kPlayerMagicCasterOffset;
-	if (!camera::AimSourceSwapDue(game::g_pose.wanted, isPlayer, game::ReadPlayerAction())) {
+	const SInt32 action = game::ReadPlayerAction();
+
+	// The first entries, whatever they decide. A run in which nothing aims
+	// then says whether the handler was reached at all, with what, and which
+	// of the three gates refused it.
+	static int s_entriesToLog = 8;
+	if (s_entriesToLog > 0) {
+		--s_entriesToLog;
+		OBVR_LOG("Aim source: key handler entered - caster %08X, player %08X, action %d, "
+		         "wanted %d, headYaw %.4f",
+		         reinterpret_cast<UInt32>(caster), player, action, game::g_pose.wanted ? 1 : 0,
+		         static_cast<double>(game::g_pose.headYaw));
+	}
+
+	if (!camera::AimSourceSwapDue(game::g_pose.wanted, isPlayer, action)) {
 		return;
 	}
 	if (!game::ReadPlayerRotation(game::g_saved)) {
