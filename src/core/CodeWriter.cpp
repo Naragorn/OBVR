@@ -95,4 +95,27 @@ void CodeWriter::Nop(UInt32 count) {
 	}
 }
 
+void CodeWriter::PopToMemory(UInt32 address) {
+	// 8F /0 with a moffs32 operand: pop dword ptr [imm32]
+	Byte(0x8F);
+	Byte(0x05);
+	DWord(address);
+}
+
+void CodeWriter::PushFromMemory(UInt32 address) {
+	// FF /6 with a moffs32 operand: push dword ptr [imm32]
+	Byte(0xFF);
+	Byte(0x35);
+	DWord(address);
+}
+
+void CodeWriter::StoreStackPointer(UInt32 address) {
+	// 89 /r, reg = esp (100), rm = disp32 (00 100 101): mov [imm32], esp
+	Byte(0x89);
+	Byte(0x25);
+	DWord(address);
+}
+
+void CodeWriter::Return() { Byte(0xC3); }
+
 }  // namespace obvr::mem

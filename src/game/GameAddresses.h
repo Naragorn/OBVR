@@ -131,6 +131,72 @@ inline constexpr UInt32 kHookMagicCastItemResume = 0x00699197;
 // out unturned and the feature looked as though it did nothing.
 inline constexpr UInt32 kPlayerMagicCasterOffset = 0x5C;
 
+// THE ONE CALL THAT READS THE HEADING FOR EVERY ATTACK, for the aim that sets
+// it only while that call runs.
+//
+// A spell leaves along the caster's rotation, an arrow along the shooter's,
+// a swing is tested against the attacker's heading - and the player walks
+// along the same rotZ. The turn machinery above this file separated those in
+// TIME: the body turned for a few frames around the moment that mattered,
+// and a few frames of walking pulled towards the aim, and of the engine
+// animating a turn, was what remained. This address separates them in PLACE.
+// The rotation is set on the way into the call that reads it and put back
+// on the way out, so no frame ever sees it. What that call is was read out
+// of the binary; the notes give a second source for every part of it.
+//
+// The function at 0x005FC890 is the handler the animation system invokes
+// for an actor's text keys - the attack's hit, the bow's release, the cast.
+// It is a virtual on the actor's MagicCaster base: its first instructions
+// take `this` in ecx and reach the actor as [ecx-0x5C], the same 0x5C the
+// offset above records, and it is reached from nowhere but four vtables -
+// Actor, Character, Creature and PlayerCharacter, the last at 0x00A739D4,
+// which is slot 0x18 of the vtable whose RTTI locator names PlayerCharacter
+// with a subobject offset of 0x5C. (JRoush's Common Oblivion Engine
+// Framework lists that slot as ApplyMagicItemCost; the body below is not
+// that, and the disassembly is what is trusted here.) Inside it, in one
+// invocation each:
+//
+//   * THE BOW. At 0x005FD250 it asks the shooter's heading through the
+//     virtual at +0x1E0, at 0x005FD260 its pitch through 0x004A9720 - which
+//     is `fld dword ptr [ecx+0x20]`, the rotX field xOBSE places at +0x20 -
+//     allocates 0x9C bytes (the size xOBSE gives ArrowProjectile) and at
+//     0x005FD47C calls 0x0060C940, which writes the ArrowProjectile vtable
+//     0x00A6F08C (xOBSE's kVtbl_ArrowProjectile) into the new object. The
+//     arrow's first update, 0x006079A0, then turns the rotation it was given
+//     into its velocity. So the heading the arrow flies along is read here,
+//     before the constructor, and nowhere later.
+//   * THE SPELL. At 0x005FCE1D and 0x005FCF6E it calls 0x0069BEC0 with
+//     ecx = actor + 0x5C. JRoush's MagicCaster.eed exports that address as
+//     MagicCaster::UseActiveMagicItem, in the chain CastMagicItem 0x00699190
+//     (the address xOBSE and this file already agree on) -> animation ->
+//     UseActiveMagicItem -> ApplyActiveMagicItem 0x0069AF30. There the
+//     projectile factory 0x0069A060 takes the launch rotation from the
+//     caster's rotX/rotY/rotZ fields, and a touch spell finds its target
+//     through FindTouchTarget (0x00699500), which uses the hit cone below.
+//   * THE SWING. At 0x005FCE85 it calls the actor virtual at +0x3AC with
+//     three zero arguments - xOBSE's GameObjects.h declares that slot as
+//     AttackHandling(unused, arrowRef, target) and notes "args all null for
+//     melee attacks"; the player's vtable holds 0x005FEBF0 there. Inside,
+//     the hit cone 0x006131D0 compares the direction to each candidate
+//     against the attacker's heading from the virtual at +0x1E0 and the
+//     setting registered as "fCombatHitConeAngle".
+//
+// The heading virtual at +0x1E0 is 0x0065ABB0 for NPCs and creatures - the
+// rotZ field - and 0x0065DA60 for the player: rotZ plus the float at
+// +0x61C, which NorthernUI's PlayerCharacter.h lists as "rotation angle;
+// probably yaw" and the input handler accumulates instead of rotZ while
+// mounted. Every reader above therefore comes back to rotZ and rotX, read
+// during this one call.
+//
+// What walks along rotZ, for completeness: HighProcess::Move (0x0063C730)
+// hands the step, still in the actor's own frame, to the virtual at +0x1B4
+// and MobileObject::Move (0x0065AF30) turns it by MakeZRotation(rotZ)
+// (0x0070FDD0) before adding it to the position. NorthernUI's 360-degree
+// movement patch hooks 0x0063CB35 in exactly that function. It never runs
+// inside the key handler, which is why the swap is invisible to it.
+inline constexpr UInt32 kAnimationKeyHandler = 0x005FC890;
+inline constexpr UInt32 kPlayerCasterVtableKeyHandlerSlot = 0x00A739D4;
+
 // Shortly after the hook the game calls, on the CameraNode:
 //
 //   0066BE84  fldz

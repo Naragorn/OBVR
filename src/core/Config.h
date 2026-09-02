@@ -171,6 +171,23 @@ struct Config {
 	// have to go with it.
 	bool aimInThirdPerson = true;
 
+	// Whether the aim is set AT THE SOURCE - inside the engine calls that read
+	// the heading - rather than by turning the body around them.
+	//
+	// A spell leaves along the caster's rotation, a swing is tested against
+	// the attacker's heading, and the character walks along the same field.
+	// Turning the body to aim, however briefly, is therefore a moment of
+	// walking pulled towards the aim and a turn the engine animates, there and
+	// back - and that moment was what was left of the aim's side effects.
+	// With this on, the rotation is written on the way into the one call that
+	// reads it and put back on the way out (game/AimAtSource.h), so no frame
+	// ever sees it: nothing to compensate, nothing to give back, nothing
+	// animated. Bow, spell and swing all read it inside that one call.
+	//
+	// Off restores the turn for everything, which is the switch to flip if a
+	// shot goes straight ahead with this build.
+	bool aimAtSource = true;
+
 	// The control that means "I am aiming", as a Windows virtual-key code.
 	//
 	// While it is held, and only then, the character is turned to face where

@@ -106,6 +106,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.aimInThirdPerson = v != 0.0f; },
 	},
 	{
+		"Aiming", "Aim at the source", "Set the heading inside the call that reads it",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "AimAtSource",
+		+[](const Config& c) { return c.aimAtSource ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.aimAtSource = v != 0.0f; },
+	},
+	{
 		"Aiming", "Body turn speed", "0 turns the body at once; higher eases it",
 		ItemKind::Number, 0.0f, 30.0f, 1.0f, 0, false,
 		"Look", "AimTurnSpeed",

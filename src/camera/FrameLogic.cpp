@@ -698,4 +698,31 @@ NiPoint3 AimTiltCorrection(const AimTiltInput& input) {
 	                wantedZ - input.cameraPosition.z};
 }
 
+bool AimTurnOwnsAction(bool aimAtSource, SInt32 action) {
+	// Nothing at all once the source aim is in place: the bow, the swing and
+	// the cast are all read inside the one call it wraps. Otherwise the set
+	// IsShotUnreleased has always used - written here as plain numbers so this
+	// stays a function over values: 2 Attack, 4 AttackBow, 5 ArrowAttached.
+	// FollowThrough (3) is never in it; the projectile has gone by then.
+	if (aimAtSource) {
+		return false;
+	}
+	return action == 2 || action == 4 || action == 5;
+}
+
+bool AimAtSourceWanted(bool enabled, bool aimAtSource, bool headsetConnected, bool menuIsUp,
+                       bool viewAimed) {
+	return enabled && aimAtSource && headsetConnected && !menuIsUp && viewAimed;
+}
+
+bool AimSourceSwapDue(bool wanted, bool isPlayer, SInt32 action) {
+	if (!wanted || !isPlayer) {
+		return false;
+	}
+	// Attack (2) is the swing and the cast alike; the bow's release key comes
+	// with the arrow still on the string (5). AttackBow (4) is the draw, whose
+	// keys make nothing.
+	return action == 2 || action == 5;
+}
+
 }  // namespace obvr::camera

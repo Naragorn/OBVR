@@ -37,6 +37,7 @@ add_library(OBVR SHARED
 	src/camera/LookControl.cpp
 	src/core/CodeWriter.cpp
 	src/core/Config.cpp
+	src/core/AroundCall.cpp
 	src/core/EntryDetour.cpp
 	src/core/Log.cpp
 	src/core/Memory.cpp
@@ -51,6 +52,7 @@ add_library(OBVR SHARED
 	src/render/EyeGeometry.cpp
 	src/render/EyeMirror.cpp
 	src/render/UiScreenSize.cpp
+	src/game/AimAtSource.cpp
 	src/game/DialogZoom.cpp
 	src/game/GameCamera.cpp
 	src/game/MenuMode.cpp

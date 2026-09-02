@@ -47,6 +47,20 @@ endif()
 
 add_test(NAME entry_detour COMMAND entry_detour_test)
 
+add_executable(around_call_test
+	AroundCallTest.cpp
+	../src/core/AroundCall.cpp
+	../src/core/CodeWriter.cpp
+)
+
+target_include_directories(around_call_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(around_call_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME around_call COMMAND around_call_test)
+
 add_executable(quaternion_test
 	QuaternionTest.cpp
 	../src/vr/Quaternion.cpp

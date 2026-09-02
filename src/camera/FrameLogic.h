@@ -1429,4 +1429,31 @@ inline constexpr float kAimTiltMinCosine = 0.05f;
 
 NiPoint3 AimTiltCorrection(const AimTiltInput& input);
 
+// THE AIM SET AT THE SOURCE, and what it leaves the turn machinery.
+//
+// With AimAtSource on and its one hook in place, the heading a projectile
+// leaves along and the heading a swing is tested against are set inside the
+// engine call that reads them - the animation-key handler, see
+// game/AimAtSource.h - so nothing above has to turn the body any more, and
+// must not: a body turned for even one frame is a frame of walking pulled
+// sideways and a turn the engine animates. With the source aim off, or its
+// hook refused, the turn owns exactly what IsShotUnreleased always gave it.
+//
+// The action values are HighProcess's own: 2 Attack (melee and casts alike,
+// measured), 4 AttackBow, 5 AttackBowArrowAttached.
+bool AimTurnOwnsAction(bool aimAtSource, SInt32 action);
+
+// Whether the source aim is wanted at all this frame - the gates the yaw and
+// pitch share, and viewAimed is the third-person switch already decided
+// upstream.
+bool AimAtSourceWanted(bool enabled, bool aimAtSource, bool headsetConnected, bool menuIsUp,
+                       bool viewAimed);
+
+// Whether one invocation of the key handler gets the swap: wanted, the
+// player's own, and an attack in flight - Attack for a swing or a cast, the
+// arrow on the string for a bow. The handler also runs for keys that make
+// no attack (a footstep, an equip), and those are left alone rather than
+// written and unwritten for nothing.
+bool AimSourceSwapDue(bool wanted, bool isPlayer, SInt32 action);
+
 }  // namespace obvr::camera

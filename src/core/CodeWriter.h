@@ -52,6 +52,18 @@ public:
 	// nop, to pad out a partially overwritten instruction.
 	void Nop(UInt32 count);
 
+	// pop dword ptr [address] - takes the top of the stack into memory.
+	void PopToMemory(UInt32 address);
+
+	// push dword ptr [address] - puts a memory value on the stack.
+	void PushFromMemory(UInt32 address);
+
+	// mov dword ptr [address], esp - records where the stack stands.
+	void StoreStackPointer(UInt32 address);
+
+	// ret, with nothing popped beyond the return address.
+	void Return();
+
 	UInt32 Size() const { return m_size; }
 	bool Overflowed() const { return m_overflowed; }
 

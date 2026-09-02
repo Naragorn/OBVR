@@ -2645,6 +2645,45 @@ void TestAimTiltCorrection() {
 	Check(kAimTiltMinCosine > 0.0f, "the limit exists");
 }
 
+void TestAimAtSource() {
+	std::printf("The aim set at the source, and what the turn still owns\n");
+
+	using obvr::camera::AimAtSourceWanted;
+	using obvr::camera::AimSourceSwapDue;
+	using obvr::camera::AimTurnOwnsAction;
+
+	// The turn's ownership of actions. Off: the set IsShotUnreleased has
+	// always used - Attack, AttackBow, ArrowAttached. On: nothing, the one
+	// call the source aim wraps reads them all.
+	Check(AimTurnOwnsAction(false, 2), "source off - Attack is the turn's");
+	Check(AimTurnOwnsAction(false, 4), "source off - AttackBow is the turn's");
+	Check(AimTurnOwnsAction(false, 5), "source off - ArrowAttached is the turn's");
+	Check(!AimTurnOwnsAction(false, 3), "source off - FollowThrough never was");
+	Check(!AimTurnOwnsAction(false, -1), "source off - no action, no turn");
+	Check(!AimTurnOwnsAction(true, 2), "source on - Attack is no longer the turn's");
+	Check(!AimTurnOwnsAction(true, 4), "source on - nor the bow");
+	Check(!AimTurnOwnsAction(true, 5), "source on - nor the arrow on the string");
+
+	// Every gate of the wanted flag, one at a time.
+	Check(AimAtSourceWanted(true, true, true, false, true), "all gates open");
+	Check(!AimAtSourceWanted(false, true, true, false, true), "aim disabled");
+	Check(!AimAtSourceWanted(true, false, true, false, true), "source aim off");
+	Check(!AimAtSourceWanted(true, true, false, false, true), "no headset");
+	Check(!AimAtSourceWanted(true, true, true, true, true), "menu up");
+	Check(!AimAtSourceWanted(true, true, true, false, false), "view not aimed (third person off)");
+
+	// The swap per invocation of the key handler.
+	Check(AimSourceSwapDue(true, true, 2), "the player's swing or cast is swapped");
+	Check(AimSourceSwapDue(true, true, 5), "the player's bow release is swapped");
+	Check(!AimSourceSwapDue(true, true, 4), "a key during the draw is not");
+	Check(!AimSourceSwapDue(true, true, 3), "a key in the follow-through is not");
+	Check(!AimSourceSwapDue(true, true, -1), "a footstep with nothing in flight is not");
+	Check(!AimSourceSwapDue(true, true, 0), "an equip key is not");
+	Check(!AimSourceSwapDue(true, false, 2), "an NPC's attack is not");
+	Check(!AimSourceSwapDue(false, true, 2), "not wanted, not swapped");
+}
+
+
 int main() {
 	TestChaseCamera();
 	std::printf("\n");
@@ -2653,6 +2692,8 @@ int main() {
 	TestAimPitchHold();
 	std::printf("\n");
 	TestAimTiltCorrection();
+	std::printf("\n");
+	TestAimAtSource();
 	std::printf("\n");
 	std::printf("OBVR frame logic test\n\n");
 

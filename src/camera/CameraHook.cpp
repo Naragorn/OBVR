@@ -17,6 +17,7 @@
 #include "core/Rotation.h"
 #include "game/MenuMode.h"
 #include "game/MenuType.h"
+#include "game/AimAtSource.h"
 #include "game/PlayerAim.h"
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
@@ -2689,6 +2690,34 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// one the bow's turn answers to.
 	const bool viewAimed = !isThirdPerson || GetConfig().aimInThirdPerson;
 
+	// THE AIM SET AT THE SOURCE. What the wrapped engine call will write is
+	// decided here, once a frame, from the same head reading and the same
+	// pitch the rest of the aim uses; the call itself reads it and does no
+	// arithmetic of its own. Gated on the hook having gone in, because a
+	// slot that could not be written leaves the turn machinery below its old
+	// job - the cast window, the cast hook and the body's turn all answer to
+	// atSource.
+	//
+	// The head's turn is taken relative to where the body NOW faces - what is
+	// left after any turn already handed to it, which is AimYawRemaining -
+	// so that a body the turn has moved is not turned twice.
+	const bool atSource = GetConfig().aimAtSource && game::AimAtSourceInstalled();
+	{
+		Heading sourceTurn{};
+		const float sourceHeadYaw =
+			HeadingOf(g_headTracker.GetCameraRotation(), sourceTurn)
+				? math::Atan2(sourceTurn.sine, sourceTurn.cosine)
+				: 0.0f;
+		game::AimSourcePose pose;
+		pose.wanted = readPlayer &&
+		              AimAtSourceWanted(GetConfig().aimFollowsGaze, GetConfig().aimAtSource,
+		                                g_headTracker.IsHeadsetConnected(), game::IsMenuMode(),
+		                                viewAimed);
+		pose.headYaw = AimYawRemaining(sourceHeadYaw, g_aimBodyOffset);
+		pose.pitch = gazePitch;
+		game::SetAimSourcePose(pose);
+	}
+
 	CastWindowInput castInput;
 	castInput.enabled = readPlayer && GetConfig().aimCastFollowsGaze &&
 	                    g_headTracker.IsHeadsetConnected() && viewAimed &&
@@ -2711,7 +2740,10 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// character walks the way the spell went rather than the way the stick is
 	// pushed. "während des castens laufe ich in die richtung vom cast." So it
 	// is measured and printed rather than left to be estimated from the code.
-	if (castWasOpen && !g_castWindow.open && !g_castReported) {
+	//
+	// Not with the aim set at the source: the window then turns nothing, and
+	// a line saying the body was held would be untrue.
+	if (castWasOpen && !g_castWindow.open && !g_castReported && !atSource) {
 		g_castReported = true;
 		OBVR_LOG("Aim: a spell held the body turned for %.2f s - %s",
 		         static_cast<double>(castHeldSeconds),
@@ -2733,12 +2765,15 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// player's, which is what lets the MagicCaster offset be learned rather
 	// than guessed. The turn itself moves to the one moment it is needed.
 	const bool castAtSpawn = GetConfig().aimCastAtSpawn && g_castHookInstalled;
-	const bool castTurning = g_castWindow.open && !castAtSpawn;
+	// And not when the spell takes the gaze at the source: then neither the
+	// window nor the hook turns anything, and a cast is invisible to all of
+	// the turn machinery below.
+	const bool castTurning = g_castWindow.open && !castAtSpawn && !atSource;
 
 	// Whether a spell of the player's may be aimed at all. The hook asks
 	// nothing beyond this - no head reading, no arithmetic - because it runs
 	// inside a call the engine owns.
-	g_castAimWanted = castAtSpawn && readPlayer && viewAimed &&
+	g_castAimWanted = castAtSpawn && !atSource && readPlayer && viewAimed &&
 	                  GetConfig().aimCastFollowsGaze &&
 	                  g_headTracker.IsHeadsetConnected() && !game::IsMenuMode();
 
@@ -2849,7 +2884,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	clockInput.attackWasHeld = attackWasHeld;
 	clockInput.castTurning = castTurning;
 	clockInput.castWasOpen = castWasOpen;
-	clockInput.castFeedsClock = !castAtSpawn;
+	clockInput.castFeedsClock = !castAtSpawn && !atSource;
 	clockInput.castTurnDue = castArm.turnNow;
 	clockInput.deltaSeconds = deltaSeconds;
 	g_aimSecondsSinceRelease = NextReleaseClock(g_aimSecondsSinceRelease, clockInput);
@@ -2903,8 +2938,13 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// body turned for the rest of the animation - which is now a fraction of a
 	// second, not the whole of it - and the moment it reads FollowThrough the
 	// spell has left and the body straightens.
+	//
+	// With the aim set at the source no action counts - see AimTurnOwnsAction;
+	// with it off this is IsShotUnreleased by another name.
 	const bool attackInProgress =
-		((waitingOnAShot || turningOnShot) && game::IsShotUnreleased()) || castTurning;
+		((waitingOnAShot || turningOnShot) &&
+		 AimTurnOwnsAction(atSource, game::ReadPlayerAction())) ||
+		castTurning;
 	// Decided once for both halves of the aim. The pitch is given back further
 	// down, where it is written; it reads this rather than asking again,
 	// because giving the turn back ends the release clock, and a second
@@ -2966,9 +3006,14 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// same rotZ, which is what the sideways-walking fault has been saying all
 	// along - but they can be separated in time, because the arrow does not
 	// exist until the shot is released.
+	//
+	// With the aim set at the source the turn is off altogether: a release
+	// would otherwise still turn the body for its one frame, which is the
+	// one frame this whole route exists to remove.
 	const bool turnDue =
-		AimTurnDue(onShotMode ? AimTurnMode::OnShot : AimTurnMode::WhileAiming, attackHeld,
-	               attackWasHeld, attackInProgress) ||
+		(!atSource &&
+		 AimTurnDue(onShotMode ? AimTurnMode::OnShot : AimTurnMode::WhileAiming, attackHeld,
+		            attackWasHeld, attackInProgress)) ||
 		castTurning;
 
 	// The shot trace, armed by the release and running for forty frames. One
@@ -3553,6 +3598,7 @@ bool Install() {
 	         addr::kHookCameraUpdate, trampolineAddress, trampolineSize);
 
 	InstallCastHook();
+	game::InstallAimAtSource();
 
 	// The end of the frame, hooked as soon as there is a device to hook it on
 	// rather than when the first world camera runs.
