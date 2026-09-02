@@ -1838,12 +1838,10 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	if (couldBorrow &&
 	    BorrowedCrosshairWanted(visibility.thirdPerson, config.tracker.crosshairInThirdPerson,
 	                            g_crosshairHasTarget, game::IsPlayerSneaking())) {
-		// The drawn cross is the last resort, not the first choice: it is only
-		// reached before this session has been in first person at all, and
-		// stops being used the moment it has.
-		if (!g_crosshairLayer.UseRememberedCrosshair(render::GetGameDevice())) {
-			g_crosshairLayer.DrawCross(render::GetGameDevice(), !crosshairLifted);
-		}
+		// If this session has not captured a clean first-person crosshair yet,
+		// leave the overlay empty. Drawing an OBVR substitute here would make a
+		// mod-made reticle appear instead of the player's Oblivion crosshair.
+		g_crosshairLayer.UseRememberedCrosshair(render::GetGameDevice());
 	}
 
 	// The depth was decided in the camera pass, where the camera and the frame

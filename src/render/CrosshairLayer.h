@@ -75,7 +75,7 @@ public:
 	// down anywhere this code can read.
 	//
 	// False when the layer has nothing to give - no capture, no HUD overlay,
-	// or the copy failed - and the caller then keeps the drawn cross.
+	// or the copy failed.
 	bool TakeFromHud(void* gameDevice, void* hudSurface, UInt32 hudWidth, UInt32 hudHeight,
 	                 UInt32 believedWidth, UInt32 believedHeight, UInt32 sizePixels);
 
@@ -101,37 +101,9 @@ public:
 
 	// Puts the kept copy back into the texture and marks it as something to
 	// show. False when nothing has been kept yet - a session that has not been
-	// in first person since it started - and the caller then has the drawn
-	// cross below as a last resort.
+	// in first person since it started. The caller deliberately shows nothing
+	// then: an OBVR-drawn substitute is not the Oblivion crosshair.
 	bool UseRememberedCrosshair(void* gameDevice);
-
-	// Draws a simple reticle of OBVR's own. THIRD PERSON, AND ONLY WHEN THE
-	// KEPT COPY IS NOT AVAILABLE.
-	//
-	// The last resort behind RememberCrosshair, not the first choice: the game's
-	// own picture is better in every way that matters, and this is what is left
-	// when there has not been one yet.
-	//
-	// The class comment above says there is no drawn fallback left, and that a
-	// hand-drawn near-miss reads as the game getting it wrong rather than as
-	// the mod being off. That reasoning is sound and it is why nothing is drawn
-	// in first person - but it rests on the game drawing a crosshair to be
-	// mistaken for. In third person it draws none at all.
-	//
-	// That is vanilla behaviour and not something OBVR does: Bethesda's own
-	// support page states it plainly - "The crosshair is only visible in
-	// Oblivion in First Person mode. It does not appear in 3rd Person mode." -
-	// and the mods that add one (Third Person Crosshair, DarNified UI's toggle)
-	// exist for that reason. So there is nothing here to be confused with, and
-	// lifting cannot help: there is nothing in the layer to lift.
-	//
-	// Deliberately NOT a copy of Oblivion's cross. Four strokes with a gap in
-	// the middle, which reads as a reticle the mod put there.
-	//
-	// clearFirst false draws over whatever the lift already put in the texture,
-	// so a context icon - if the game shows one in third person - is kept and
-	// the cross is added to it.
-	bool DrawCross(void* gameDevice, bool clearFirst);
 
 	void Destroy();
 
@@ -152,7 +124,6 @@ private:
 	// no drawn fallback left, a frame that lifted nothing shows nothing.
 	bool m_takenFromHud = false;
 	bool m_takeReported = false;
-	bool m_crossReported = false;
 
 	// The game's own crosshair, kept from first person for third person to use.
 	// No interop and no overlay of its own: it is never handed to the

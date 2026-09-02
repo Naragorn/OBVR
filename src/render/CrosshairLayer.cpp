@@ -16,18 +16,6 @@ constexpr UInt32 kTransparent = 0x00000000;
 // way in: the compositor scales the quad down far more gracefully than up.
 constexpr UInt32 kTextureSize = 256;
 
-// The drawn cross, for third person only - see DrawCross for why that
-// exception exists and why it is not one anywhere else.
-constexpr UInt32 kCrossColour = 0xFFFFFFFF;
-
-// Four strokes with a gap in the middle rather than one solid cross. The gap
-// is not decoration: it leaves the thing being aimed at visible, and it makes
-// the shape read as a mod's reticle rather than as a poor copy of Oblivion's
-// own, which is the confusion this file otherwise refuses to risk.
-constexpr SInt32 kCrossArm = static_cast<SInt32>(kTextureSize) / 6;
-constexpr SInt32 kCrossGap = static_cast<SInt32>(kTextureSize) / 14;
-constexpr SInt32 kCrossHalfThickness = static_cast<SInt32>(kTextureSize) / 128;
-
 }  // namespace
 
 bool CrosshairLayer::EnsureTexture(void* gameDevice) {
@@ -111,7 +99,7 @@ bool CrosshairLayer::TakeFromHud(void* gameDevice, void* hudSurface, UInt32 hudW
 	}
 
 	// Cleared first: the square is stretched across this whole texture, but a
-	// failure half way would otherwise leave the drawn cross showing through
+	// failure half way would otherwise leave the previous frame showing through
 	// whatever did arrive.
 	if (d3d11::Failed(colorFill(gameDevice, m_surface, nullptr, kTransparent)) ||
 	    d3d11::Failed(stretchRect(gameDevice, hudSurface, &source, m_surface, nullptr,
@@ -218,53 +206,6 @@ bool CrosshairLayer::UseRememberedCrosshair(void* gameDevice) {
 	}
 
 	m_takenFromHud = true;
-	return true;
-}
-
-bool CrosshairLayer::DrawCross(void* gameDevice, bool clearFirst) {
-	if (!EnsureTexture(gameDevice)) {
-		return false;
-	}
-
-	auto colorFill = d3d9::Method<d3d9::ColorFillFn>(gameDevice, d3d9::kDeviceColorFill);
-	if (colorFill == nullptr) {
-		return false;
-	}
-
-	// Only when the lift brought nothing. When it did - a context icon in
-	// third person, if the game draws one there at all - that is the real
-	// thing and it stays, with the cross drawn over it rather than instead of
-	// it. Which of the two happens cannot be decided here: the lift copies its
-	// square whether or not there was anything in it, and finding out would
-	// mean reading the texture back every frame.
-	if (clearFirst && d3d11::Failed(colorFill(gameDevice, m_surface, nullptr, kTransparent))) {
-		return false;
-	}
-
-	const SInt32 centre = static_cast<SInt32>(kTextureSize) / 2;
-	const SInt32 thick = kCrossHalfThickness < 1 ? 1 : kCrossHalfThickness;
-
-	const d3d9::Rect strokes[4] = {
-		{centre - thick, centre - kCrossGap - kCrossArm, centre + thick, centre - kCrossGap},
-		{centre - thick, centre + kCrossGap, centre + thick, centre + kCrossGap + kCrossArm},
-		{centre - kCrossGap - kCrossArm, centre - thick, centre - kCrossGap, centre + thick},
-		{centre + kCrossGap, centre - thick, centre + kCrossGap + kCrossArm, centre + thick},
-	};
-
-	for (const d3d9::Rect& stroke : strokes) {
-		if (d3d11::Failed(colorFill(gameDevice, m_surface, &stroke, kCrossColour))) {
-			return false;
-		}
-	}
-
-	// Says there is something to show, on the same flag the lift sets. Submit
-	// consumes it either way, so a frame that stops drawing stops showing.
-	m_takenFromHud = true;
-
-	if (!m_crossReported) {
-		m_crossReported = true;
-		OBVR_LOG("Crosshair: drawing OBVR's own, because Oblivion draws none in third person");
-	}
 	return true;
 }
 
