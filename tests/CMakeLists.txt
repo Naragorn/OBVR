@@ -615,3 +615,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME stall_detector COMMAND stall_detector_test)
+
+add_executable(menu_pause_policy_test MenuPausePolicyTest.cpp)
+
+target_include_directories(menu_pause_policy_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(menu_pause_policy_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME menu_pause_policy COMMAND menu_pause_policy_test)

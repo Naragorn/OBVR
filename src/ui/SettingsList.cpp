@@ -311,6 +311,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.tracker.liveMenuBackground = v != 0.0f; },
 	},
 	{
+		"Screen", "Unpaused menus", "The world keeps running behind inventory, map, magic, stats",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "UnpausedMenus",
+		+[](const Config& c) { return c.tracker.unpausedMenus ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.unpausedMenus = v != 0.0f; },
+	},
+	{
 		"Screen", "Menu shade", "The vanilla brown wash behind a menu",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Render", "MenuShade",

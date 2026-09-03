@@ -204,6 +204,13 @@ struct TrackerSettings {
 	// One blended quad per menu frame, and the headset never sees it.
 	bool mirrorMenusToMonitor = true;
 
+	// Whether the world keeps running behind the player's own menus - the
+	// F1-F4 screens, containers, books - instead of pausing as vanilla does.
+	// Everything opened from a conversation, the Esc menu, loading, saving,
+	// sleeping and lockpicking still pause. See MenuPausePolicy.h. Off by
+	// default: it changes how the game plays, not only how it looks.
+	bool unpausedMenus = false;
+
 	// Overrides Oblivion's own field of view, in degrees. 0 leaves it alone.
 	//
 	// Written into the camera's frustum rather than into fDefaultFOV, because

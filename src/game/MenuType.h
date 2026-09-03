@@ -21,6 +21,12 @@ namespace obvr::game {
 enum : UInt32 {
 	kMenuIdNone = 0,
 
+	// How the F1-F4 menus - inventory, magic, map, stats - stand in the
+	// InterfaceManager's active menu stack: as this one value rather than
+	// under their own ids (kMenuType_BigFour in xOBSE's enum, "represented
+	// as 1" in NorthernUI's notes on activeMenuIDs).
+	kMenuIdBigFour = 1,
+
 	kMenuIdMessage = 0x3E9,
 	kMenuIdInventory = 0x3EA,
 	kMenuIdStats = 0x3EB,
@@ -50,8 +56,10 @@ enum : UInt32 {
 	kMenuIdPause = 0x3F5,
 	kMenuIdLockPick = 0x3F6,
 	kMenuIdOptions = 0x3F7,
+	kMenuIdQuantity = 0x3F8,
 	kMenuIdMagic = 0x3FE,
 	kMenuIdMap = 0x3FF,
+	kMenuIdMagicPopup = 0x400,
 	kMenuIdNegotiate = 0x401,
 	kMenuIdBook = 0x402,
 	kMenuIdLevelUp = 0x403,
@@ -83,6 +91,8 @@ static_assert(kMenuIdHudInfo == kMenuIdFirst + 4, "HUDInfo is the fifth menu id,
 static_assert(kMenuIdDialog == kMenuIdFirst + 8, "Dialog is the ninth menu id");
 static_assert(kMenuIdPersuasion == kMenuIdFirst + 33, "Persuasion is the thirty-fourth");
 static_assert(kMenuIdMain == kMenuIdFirst + 43, "Main is the forty-fourth");
+static_assert(kMenuIdQuantity == kMenuIdFirst + 15, "Quantity follows Options");
+static_assert(kMenuIdMagicPopup == kMenuIdFirst + 23, "MagicPopup follows Map");
 
 // The menu the cursor is over, or kMenuIdNone when it cannot be told.
 //

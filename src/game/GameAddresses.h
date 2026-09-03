@@ -643,6 +643,35 @@ inline constexpr UInt32 kFrameSecondsAddress = 0x00B33E9C;
 // black. That is the flicker seen when opening the ESC menu.
 inline constexpr UInt32 kIsMenuMode = 0x00578F60;
 
+// The update step, 0x0040D800, asks IsMenuMode afresh for every subsystem
+// it pauses: fourteen `call 00578F60` sites inside it, counted in this
+// binary's disassembly, and Real Time Menus (Nexus 55800, source on GitHub)
+// redirects a subset of them to keep the world running behind menus. The
+// two sources agree on every address below; what each site gates is Real
+// Time Menus' reading, confirmed here only for the first (it feeds
+// SetHavokPaused, 0x00889A30, directly: `call IsMenuMode; push eax; call
+// 889A30`). The ones left alone are deliberate: 0x0040DC61 gates the
+// player's controls, and a player who can walk while the inventory is
+// open is not what "unpaused" means; 0x0040D9D4 the engine's own menu
+// shading, which OBVR replaces anyway.
+inline constexpr UInt32 kUpdateStepIsMenuModeSites[] = {
+	0x0040D809,  // physics pause - the argument to SetHavokPaused
+	0x0040DB5B,  // animations
+	0x0040DBAB,  // sound
+	0x0040DBFB,  // actors (AI)
+	0x0040DE3F,  // physics step
+	0x0040DE76,  // weather
+	0x00663176,  // scripts, in the script runner rather than the update step
+};
+
+// InterfaceManager::GetTopVisibleMenuID - the id at the top of the active
+// menu stack, or 0 with none. xOBSE names it (GameAPI.cpp, ThisStdCall on
+// 0x0057CF60) and NorthernUI has the same address as GetTopmostMenuID; the
+// disassembly shows it walking the ten dwords at [this+0xE0] and returning
+// the last one that is set. NorthernUI records that the F1-F4 menus stand
+// in that stack as 1 rather than under their own ids.
+inline constexpr UInt32 kGetTopVisibleMenuId = 0x0057CF60;
+
 // PlayerCharacter::SetDialogCamera - the function behind the dialogue zoom,
 // called when a conversation starts (with the NPC) and again when it ends
 // (with null), each time starting the camera transition whose distance

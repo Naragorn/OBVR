@@ -16,6 +16,7 @@
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
 #include "game/MenuBackground.h"
+#include "game/MenuPause.h"
 #include "core/Rotation.h"
 #include "core/Watchdog.h"
 #include "game/MenuMode.h"
@@ -738,6 +739,10 @@ void OnFrameEnd() {
 	// engine's setting alone rather than forcing the static background on -
 	// see ApplyLiveMenuBackground.
 	game::ApplyLiveMenuBackground(liveMenuCanRun);
+
+	// The same shape for the simulation: asked every frame because the INI
+	// is hot reloaded, redirected once, and the answer follows the option.
+	game::ApplyUnpausedMenus(config.tracker.unpausedMenus);
 
 	// Remembered for this frame's delivery before clearing the guard for the
 	// next one. This is what distinguishes a fresh pause-menu stereo pair from

@@ -248,6 +248,17 @@ void TestMirrorMenusToMonitor() {
 	      "MirrorMenusToMonitor=0 leaves the monitor showing the world alone");
 }
 
+void TestUnpausedMenus() {
+	std::printf("Unpaused menus\n");
+
+	obvr::Config untouched;
+	Check(!untouched.tracker.unpausedMenus, "the world pauses behind menus by default");
+
+	obvr::Config configured;
+	LoadFrom("ConfigTestUnpausedMenus.ini", "[Render]\nUnpausedMenus=1\n", configured);
+	Check(configured.tracker.unpausedMenus, "UnpausedMenus=1 keeps it running");
+}
+
 void TestLookRanges() {
 	std::printf("The vertical look ranges, old spelling and new\n");
 
@@ -323,6 +334,7 @@ int main() {
 	std::printf("\n");
 	TestPersistentCrosshairCache();
 	TestMirrorMenusToMonitor();
+	TestUnpausedMenus();
 	std::printf("\n");
 	TestLookRanges();
 

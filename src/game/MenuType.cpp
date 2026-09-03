@@ -40,6 +40,7 @@ UInt32 ActiveMenuId() {
 const char* MenuIdName(UInt32 id) {
 	switch (id) {
 	case kMenuIdNone: return "none";
+	case kMenuIdBigFour: return "F1-F4 stack entry";
 	case kMenuIdMessage: return "Message";
 	case kMenuIdInventory: return "Inventory";
 	case kMenuIdStats: return "Stats";
@@ -55,8 +56,10 @@ const char* MenuIdName(UInt32 id) {
 	case kMenuIdPause: return "Pause";
 	case kMenuIdLockPick: return "LockPick";
 	case kMenuIdOptions: return "Options";
+	case kMenuIdQuantity: return "Quantity";
 	case kMenuIdMagic: return "Magic";
 	case kMenuIdMap: return "Map";
+	case kMenuIdMagicPopup: return "MagicPopup";
 	case kMenuIdNegotiate: return "Negotiate";
 	case kMenuIdBook: return "Book";
 	case kMenuIdLevelUp: return "LevelUp";

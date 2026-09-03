@@ -57,6 +57,7 @@ add_library(OBVR SHARED
 	src/game/DialogZoom.cpp
 	src/game/GameCamera.cpp
 	src/game/MenuMode.cpp
+	src/game/MenuPause.cpp
 	src/game/MenuBackground.cpp
 	src/game/CrosshairTarget.cpp
 	src/game/FirstPersonArms.cpp
