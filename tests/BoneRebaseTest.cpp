@@ -13,7 +13,13 @@ namespace {
 
 using obvr::render::AddEyeDeltaSample;
 using obvr::render::BeginEyeDeltaFrame;
+using obvr::render::BoneMatch;
+using obvr::render::BoneMatchKind;
+using obvr::render::BoneRow;
+using obvr::render::BoneRowsAgree;
 using obvr::render::BoneTranslationDistSq;
+using obvr::render::FindBoneRow;
+using obvr::render::SameBoneRotation;
 using obvr::render::CalibrateShiftSign;
 using obvr::render::ChooseRebaseDelta;
 using obvr::render::CurrentEyeDelta;
@@ -233,6 +239,126 @@ void TestRebase() {
 	Check(rotationIntact, "the rotation floats are untouched");
 }
 
+
+// A log row: rotation fingerprint taken from a "pose" seed so two rows of
+// the same pose match and rows of different poses do not.
+BoneRow LogRow(UInt32 startRegister, UInt32 pose, float tx, float ty, float tz) {
+	BoneRow row;
+	row.startRegister = startRegister;
+	for (UInt32 i = 0; i < kBoneRowFloats; ++i) {
+		row.floats[i] = static_cast<float>(i + pose * 100) * 0.125f;
+	}
+	row.floats[3] = tx;
+	row.floats[7] = ty;
+	row.floats[11] = tz;
+	return row;
+}
+
+void TestFingerprint() {
+	std::printf("Fingerprint\n");
+
+	const BoneRow a = LogRow(42, 1, 0.0f, 0.0f, 0.0f);
+	const BoneRow moved = LogRow(42, 1, 80.0f, 10.0f, 0.0f);
+	const BoneRow other = LogRow(42, 2, 0.0f, 0.0f, 0.0f);
+	Check(SameBoneRotation(a.floats, a.floats), "a row has its own fingerprint");
+	Check(SameBoneRotation(a.floats, moved.floats),
+	      "the translation is not part of the fingerprint");
+	Check(!SameBoneRotation(a.floats, other.floats), "another pose is another fingerprint");
+}
+
+void TestInstanceAgreement() {
+	std::printf("Instance agreement\n");
+
+	const float zero[3] = {0.0f, 0.0f, 0.0f};
+	const float shift[3] = {-18.0f, -8.0f, -0.5f};  // the baseline at a large separation
+	const BoneRow logged = LogRow(42, 1, 100.0f, 200.0f, 30.0f);
+	const BoneRow stale = LogRow(42, 1, 100.0f, 200.0f, 30.0f);
+	const BoneRow eye = LogRow(42, 1, 95.78f, 198.13f, 29.84f);
+	const BoneRow stranger = LogRow(42, 1, 185.0f, 200.0f, 30.0f);
+	const BoneRow farEye = LogRow(42, 1, 82.0f, 192.0f, 29.5f);
+	Check(BoneRowsAgree(stale.floats, logged.floats, zero), "a stale row is the same instance");
+	Check(BoneRowsAgree(eye.floats, logged.floats, zero),
+	      "a row one eye baseline over is the same instance");
+	Check(!BoneRowsAgree(stranger.floats, logged.floats, zero),
+	      "a row a body length over is another instance");
+	Check(!BoneRowsAgree(farEye.floats, logged.floats, zero),
+	      "a large baseline is out of the raw band while the shift is unknown");
+	Check(BoneRowsAgree(farEye.floats, logged.floats, shift),
+	      "but agrees once the camera shift explains it");
+	Check(!BoneRowsAgree(stranger.floats, logged.floats, shift),
+	      "the shift does not turn a stranger into the same instance");
+}
+
+void TestFindBoneRow() {
+	std::printf("Find bone row\n");
+
+	const float zero[3] = {0.0f, 0.0f, 0.0f};
+	// The first render's stream: a guard (pose 1) at 0..1, a same-posed
+	// twin guard at 2..3 a body length over, a differently posed body
+	// (pose 2) at 4, and another register class at 5.
+	BoneRow log[6];
+	log[0] = LogRow(42, 1, 0.0f, 0.0f, 0.0f);
+	log[1] = LogRow(45, 1, 0.0f, 0.0f, 10.0f);
+	log[2] = LogRow(42, 1, 85.0f, 0.0f, 0.0f);
+	log[3] = LogRow(45, 1, 85.0f, 0.0f, 10.0f);
+	log[4] = LogRow(42, 2, 40.0f, 40.0f, 0.0f);
+	log[5] = LogRow(31, 1, 0.0f, 0.0f, 0.0f);
+
+	BoneMatch m = FindBoneRow(log, 0, 0, 42, log[0].floats, zero);
+	Check(m.kind == BoneMatchKind::None, "an empty log pairs nothing");
+
+	// Steady frame: the row at the running position, one baseline over.
+	const BoneRow eye = LogRow(42, 1, -4.2f, -1.9f, -0.2f);
+	m = FindBoneRow(log, 6, 0, 42, eye.floats, zero);
+	Check(m.kind == BoneMatchKind::InPlace && m.index == 0,
+	      "the running position pairs in place");
+
+	// The engine's mixup: the first guard's draw served the twin's
+	// translation. In place, so it is taken - and overwritten - anyway.
+	m = FindBoneRow(log, 6, 0, 42, log[2].floats, zero);
+	Check(m.kind == BoneMatchKind::InPlace && m.index == 0,
+	      "a body length off in place is the mixup and still pairs");
+
+	// The running position holds another register class; the pair sits
+	// further along and agrees.
+	m = FindBoneRow(log, 6, 1, 42, eye.floats, zero);
+	Check(m.kind == BoneMatchKind::Reordered && m.index == 0 && m.strangersRefused == 1,
+	      "off position, the twin is refused and the agreeing row taken around the ring");
+
+	// A row the first render never uploaded - a body only this eye holds -
+	// in the twins' pose but somewhere else entirely: refused, not paired.
+	const BoneRow uncaptured = LogRow(42, 1, 300.0f, -50.0f, 0.0f);
+	m = FindBoneRow(log, 6, 1, 42, uncaptured.floats, zero);
+	Check(m.kind == BoneMatchKind::None && m.strangersRefused == 2,
+	      "a row with no pair is refused every same-posed stranger");
+
+	// Off position with the shift known: a large baseline still agrees.
+	const float shift[3] = {-18.0f, -8.0f, 0.0f};
+	const BoneRow farEye = LogRow(42, 1, 67.0f, -8.0f, 0.0f);  // the twin, one large baseline over
+	m = FindBoneRow(log, 6, 4, 42, farEye.floats, shift);
+	Check(m.kind == BoneMatchKind::Reordered && m.index == 2,
+	      "the camera shift explains a large baseline off position");
+	m = FindBoneRow(log, 6, 4, 42, farEye.floats, zero);
+	Check(m.kind == BoneMatchKind::None && m.strangersRefused == 2,
+	      "without the shift the same row is out of band and refused");
+
+	// The running position one past the end wraps to the start.
+	m = FindBoneRow(log, 6, 6, 42, eye.floats, zero);
+	Check(m.kind == BoneMatchKind::InPlace && m.index == 0,
+	      "a running position past the end wraps to the first row");
+
+	// Nothing with the fingerprint at all.
+	const BoneRow unknown = LogRow(42, 7, 0.0f, 0.0f, 0.0f);
+	m = FindBoneRow(log, 6, 0, 42, unknown.floats, zero);
+	Check(m.kind == BoneMatchKind::None && m.strangersRefused == 0,
+	      "an unknown fingerprint pairs nothing and refuses nothing");
+
+	// The register class is part of the identity: pose 1 at register 31
+	// is not the pose-1 row at register 42.
+	m = FindBoneRow(log, 6, 5, 42, log[5].floats, zero);
+	Check(m.kind == BoneMatchKind::Reordered && m.index == 0,
+	      "a register mismatch in place is skipped for the agreeing row");
+}
 }  // namespace
 
 int main() {
@@ -243,6 +369,9 @@ int main() {
 	TestChooseRebaseDelta();
 	TestWorldSizedTarget();
 	TestRebase();
+	TestFingerprint();
+	TestInstanceAgreement();
+	TestFindBoneRow();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

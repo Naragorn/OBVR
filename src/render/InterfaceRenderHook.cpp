@@ -332,28 +332,19 @@ UInt32 g_vertexPeekCount = 0;
 // peeks so both renders contribute their share.
 UInt32 g_timelinePhase = 0;
 
-// The first bone-matrix uploads of each render, raw. Equal counts with
-// different sums leave one question: camera-relative palettes differing
-// legitimately by the eye offset, or a second render loading garbage.
-// Twelve floats of the same bone answer it.
-struct BonePeek {
-	UInt32 startRegister;
-	float floats[12];
-};
-
 // The whole first render's bone uploads, replayed against the second
 // render's as they arrive. The first six compared equal by hand, so the
 // divergence the sums keep reporting sits somewhere in the hundreds
 // that follow - this finds the first mismatching upload and keeps both
 // versions of it.
 constexpr UInt32 kBoneLogCapacity = 4096;  // busy frames carry ~1800 bone uploads
-BonePeek g_boneLog[kBoneLogCapacity];
+BoneRow g_boneLog[kBoneLogCapacity];
 UInt32 g_boneLogCount = 0;       // uploads recorded during the first render
 UInt32 g_boneCompareIndex = 0;   // second-render uploads compared so far
 UInt32 g_boneMismatchCount = 0;  // how many compares disagreed
 UInt32 g_boneMismatchAt = 0;     // index of the first disagreement
-BonePeek g_boneMismatchFirst;    // the first render's version of it
-BonePeek g_boneMismatchSecond;   // the second render's version
+BoneRow g_boneMismatchFirst;     // the first render's version of it
+BoneRow g_boneMismatchSecond;    // the second render's version
 
 BonePassMode g_boneMode = BonePassMode::Off;
 
@@ -388,12 +379,13 @@ UInt32 g_boneMainWidth = 0;
 // semantics that held the collapse down, but landing on the second eye
 // instead of freezing the first. Rows that did re-evaluate measure the
 // baseline on their way through to calibrate the shift sign. See
-// BoneRebase.h for the two failed variants this shape came out of.
+// BoneRebase.h for the two failed variants this shape came out of, and
+// FindBoneRow there for which row counts as the pair.
 // Returns null when the upload is to pass through unchanged.
 const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 	if (g_boneMode == BonePassMode::Capture) {
 		if (g_boneLogCount < kBoneLogCapacity) {
-			BonePeek& slot = g_boneLog[g_boneLogCount];
+			BoneRow& slot = g_boneLog[g_boneLogCount];
 			slot.startRegister = startRegister;
 			std::memcpy(slot.floats, data, sizeof(slot.floats));
 		}
@@ -408,58 +400,54 @@ const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 	// frame of reference), which makes the nine rotation floats a
 	// fingerprint of the bone. Camera turns reorder the second render's
 	// uploads, so the pair is searched for from the current position
-	// forward - a bounded scan that survives resorting and refuses to
-	// write bones onto strangers when nothing matches.
+	// forward over the whole ring. Off position, only a row that agrees on
+	// the instance is taken: a same-posed stranger is refused, because a
+	// row the first render never uploaded - a body or a part only this
+	// eye's frustum holds - has no pair, and the stranger's translation
+	// would snap it a body length over and drag the running position with
+	// it (the edge-of-view collapse and the cutscene snap-away).
 	const UInt32 limit = g_boneLogCount < kBoneLogCapacity ? g_boneLogCount
 	                                                       : kBoneLogCapacity;
-	if (limit == 0) {
+	float delta[3];
+	ChooseRebaseDelta(g_eyeDelta, g_boneEyeShift, g_boneShiftSign, delta);
+	const BoneMatch match =
+		FindBoneRow(g_boneLog, limit, g_boneCompareIndex, startRegister, data, delta);
+	if (match.kind == BoneMatchKind::None) {
 		++g_stateCalls.boneLockPassthrough;
+		if (match.strangersRefused != 0) {
+			++g_stateCalls.boneLockRefused;
+		}
 		return nullptr;
 	}
-	// A full ring scan starting at the running position: in a steady frame
-	// the very first candidate matches, so the loop costs one step; after a
-	// hard camera turn the pair may sit anywhere, and a bounded window was
-	// exactly what let the twitches through.
-	for (UInt32 step = 0; step < limit; ++step) {
-		const UInt32 probe = (g_boneCompareIndex + step) % limit;
-		const BonePeek& candidate = g_boneLog[probe];
-		if (candidate.startRegister != startRegister) {
-			continue;
-		}
-		const float* f = candidate.floats;
-		// Rows are (rotation, translation) times three: floats 3, 7 and 11
-		// are the translation, everything else the rotation fingerprint.
-		if (std::memcmp(f + 0, data + 0, 12) != 0 ||
-		    std::memcmp(f + 4, data + 4, 12) != 0 ||
-		    std::memcmp(f + 8, data + 8, 12) != 0) {
-			continue;
-		}
-		// Same bone. Re-evaluated rows sit one eye baseline from their pair
-		// and measure it; the evidence recorder keeps the first pair a body
-		// length apart - a mixup - when the timeline is armed. Either way
-		// the row is replaced with the pair shifted onto the second eye.
-		const float distSq = BoneTranslationDistSq(data, f);
-		if (IsEyeBaselineSample(distSq)) {
-			AddEyeDeltaSample(g_eyeDelta, data, f);
-		} else if (g_timelineArmed && distSq > kBoneMixupThresholdSq) {
-			if (g_boneMismatchCount == 0) {
-				g_boneMismatchAt = probe;
-				g_boneMismatchFirst = candidate;
-				g_boneMismatchSecond.startRegister = startRegister;
-				std::memcpy(g_boneMismatchSecond.floats, data,
-				            sizeof(g_boneMismatchSecond.floats));
-			}
-			++g_boneMismatchCount;
-		}
-		float delta[3];
+	const BoneRow& candidate = g_boneLog[match.index];
+	const float* f = candidate.floats;
+	// Same bone. Re-evaluated rows sit one eye baseline from their pair
+	// and measure it; the evidence recorder keeps the first pair a body
+	// length apart - a mixup - when the timeline is armed. Either way
+	// the row is replaced with the pair shifted onto the second eye.
+	const float distSq = BoneTranslationDistSq(data, f);
+	if (IsEyeBaselineSample(distSq)) {
+		AddEyeDeltaSample(g_eyeDelta, data, f);
+		// The sample just taken counts towards this row's own shift while
+		// the sign is still uncalibrated.
 		ChooseRebaseDelta(g_eyeDelta, g_boneEyeShift, g_boneShiftSign, delta);
-		RebaseBoneRow(g_boneRebaseRow, f, delta);
-		g_boneCompareIndex = probe + 1;
-		++g_stateCalls.boneLockReplaced;
-		return g_boneRebaseRow;
+	} else if (g_timelineArmed && distSq > kBoneMixupThresholdSq) {
+		if (g_boneMismatchCount == 0) {
+			g_boneMismatchAt = match.index;
+			g_boneMismatchFirst = candidate;
+			g_boneMismatchSecond.startRegister = startRegister;
+			std::memcpy(g_boneMismatchSecond.floats, data,
+			            sizeof(g_boneMismatchSecond.floats));
+		}
+		++g_boneMismatchCount;
 	}
-	++g_stateCalls.boneLockPassthrough;
-	return nullptr;
+	RebaseBoneRow(g_boneRebaseRow, f, delta);
+	g_boneCompareIndex = match.index + 1;
+	++g_stateCalls.boneLockReplaced;
+	if (match.kind == BoneMatchKind::Reordered) {
+		++g_stateCalls.boneLockReordered;
+	}
+	return g_boneRebaseRow;
 }
 
 void PeekVertices(void* buffer, UInt32 offset, const void* data, UInt32 size) {

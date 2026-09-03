@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstring>
+
 #include "core/Types.h"
 
 namespace obvr::render {
@@ -30,6 +32,23 @@ namespace obvr::render {
 // A bone row is a 4x3 matrix as three float4 vectors; floats 3, 7 and 11
 // are the translation, the other nine the rotation fingerprint.
 inline constexpr UInt32 kBoneRowFloats = 12;
+
+// A bone row as the first render uploaded it, kept for the second render
+// to pair its own rows against.
+struct BoneRow {
+	UInt32 startRegister;
+	float floats[kBoneRowFloats];
+};
+
+// The fingerprint test: the nine rotation floats bit-identical. The
+// rotation of a bone is the same in both renders (only its translation
+// changes frame of reference), and it is also the same for two instances
+// standing in the same pose facing the same way - which is exactly why
+// the fingerprint alone cannot tell instances apart.
+inline bool SameBoneRotation(const float* a, const float* b) {
+	return std::memcmp(a + 0, b + 0, 12) == 0 && std::memcmp(a + 4, b + 4, 12) == 0 &&
+	       std::memcmp(a + 8, b + 8, 12) == 0;
+}
 
 inline float BoneTranslationDistSq(const float* a, const float* b) {
 	const float dx = a[3] - b[3];
@@ -165,6 +184,79 @@ inline void ChooseRebaseDelta(const EyeDeltaEstimate& e, const float shift[3],
 // behaviour and the safe degradation.
 inline bool BoneTargetIsWorldSized(UInt32 targetWidth, UInt32 mainWidth) {
 	return mainWidth == 0 || targetWidth >= mainWidth;
+}
+
+// Whether a second-render row and a first-render row with the same
+// fingerprint belong to the same INSTANCE. The same bone of the same body
+// sits either where the first render left it (stale, not re-evaluated) or
+// one eye baseline over (re-evaluated); another body in the same pose sits
+// a body length away. The camera shift the frame is known to use is tried
+// as well as the raw distance, so the test holds at eye separations where
+// the baseline itself grows past the raw band.
+inline bool BoneRowsAgree(const float* incoming, const float* logged, const float delta[3]) {
+	if (BoneTranslationDistSq(incoming, logged) <= kBoneMixupThresholdSq) {
+		return true;
+	}
+	const float dx = incoming[3] - (logged[3] + delta[0]);
+	const float dy = incoming[7] - (logged[7] + delta[1]);
+	const float dz = incoming[11] - (logged[11] + delta[2]);
+	return dx * dx + dy * dy + dz * dz <= kBoneMixupThresholdSq;
+}
+
+// How a second-render row was paired with the first render's log.
+//
+// InPlace: the row at the running position has the fingerprint. In a steady
+// frame the uploads arrive in the first render's order, so this is the
+// same draw's row whatever its translation says - and a translation a body
+// length off is the engine's instance mixup, the very thing the lock
+// exists to overwrite. Reordered: the running position did not match, but
+// a row further along the ring did and agrees on the instance - the pair
+// after a camera turn resorted the uploads, or a part of the same body the
+// first render did not draw. None: nothing paired. Fingerprint matches off
+// position that DISAGREE on the instance are refused and counted: a row
+// the first render never uploaded (a body only this eye's frustum holds,
+// a part only this eye drew) has no pair, and serving it a same-posed
+// stranger's translation snaps the limb onto that stranger - and drags
+// the running position there, so every same-posed pair after it resolves
+// to the wrong body for the rest of the frame.
+enum class BoneMatchKind { None, InPlace, Reordered };
+
+struct BoneMatch {
+	BoneMatchKind kind = BoneMatchKind::None;
+	UInt32 index = 0;             // the paired row's position in the log
+	UInt32 strangersRefused = 0;  // off-position fingerprint matches that disagreed
+};
+
+// Pairs an incoming row with the first render's log: the running position
+// first, then the first agreeing row along the ring. Strangers along the
+// way are refused, never taken. A count of zero pairs nothing.
+inline BoneMatch FindBoneRow(const BoneRow* log, UInt32 count, UInt32 running,
+                             UInt32 startRegister, const float* incoming,
+                             const float delta[3]) {
+	BoneMatch match;
+	if (count == 0) {
+		return match;
+	}
+	for (UInt32 step = 0; step < count; ++step) {
+		const UInt32 probe = (running + step) % count;
+		const BoneRow& candidate = log[probe];
+		if (candidate.startRegister != startRegister ||
+		    !SameBoneRotation(candidate.floats, incoming)) {
+			continue;
+		}
+		if (step == 0) {
+			match.kind = BoneMatchKind::InPlace;
+			match.index = probe;
+			return match;
+		}
+		if (BoneRowsAgree(incoming, candidate.floats, delta)) {
+			match.kind = BoneMatchKind::Reordered;
+			match.index = probe;
+			return match;
+		}
+		++match.strangersRefused;
+	}
+	return match;
 }
 
 // The first render's row, translation shifted into this render's frame of
