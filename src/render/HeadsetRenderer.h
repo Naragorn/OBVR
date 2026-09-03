@@ -181,6 +181,11 @@ public:
 	// keeps a menu opened before then off the held path. See DeliverFrame.
 	bool HasHeldEyes() const { return m_mirrorUsable && m_heldPoseValid; }
 
+	// The monitor copy of the 2D layer; see EyeMirror::BlendLayerOntoBackBuffer.
+	bool MirrorLayerToMonitor(void* gameDevice, void* layerTexture) {
+		return m_mirror.BlendLayerOntoBackBuffer(gameDevice, layerTexture);
+	}
+
 private:
 	// The two ways Oblivion's own picture reaches the headset. Separate
 	// methods rather than two arms of one if, because they differ in what

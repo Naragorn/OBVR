@@ -236,6 +236,18 @@ void TestPersistentCrosshairCache() {
 	      "CrosshairPersistentCache=0 restores the session-only copy");
 }
 
+void TestMirrorMenusToMonitor() {
+	std::printf("Menus mirrored onto the monitor\n");
+
+	obvr::Config untouched;
+	Check(untouched.tracker.mirrorMenusToMonitor, "the monitor copy of menus defaults on");
+
+	obvr::Config configured;
+	LoadFrom("ConfigTestMirrorMenus.ini", "[Render]\nMirrorMenusToMonitor=0\n", configured);
+	Check(!configured.tracker.mirrorMenusToMonitor,
+	      "MirrorMenusToMonitor=0 leaves the monitor showing the world alone");
+}
+
 void TestLookRanges() {
 	std::printf("The vertical look ranges, old spelling and new\n");
 
@@ -310,6 +322,7 @@ int main() {
 	TestLiveMenuBackground();
 	std::printf("\n");
 	TestPersistentCrosshairCache();
+	TestMirrorMenusToMonitor();
 	std::printf("\n");
 	TestLookRanges();
 

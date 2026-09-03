@@ -375,6 +375,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		"Render", "CrosshairInThirdPerson", config.tracker.crosshairInThirdPerson, path);
 	config.tracker.crosshairPersistentCache = ReadBool(
 		"Render", "CrosshairPersistentCache", config.tracker.crosshairPersistentCache, path);
+	config.tracker.mirrorMenusToMonitor = ReadBool(
+		"Render", "MirrorMenusToMonitor", config.tracker.mirrorMenusToMonitor, path);
 	config.tracker.crosshairOnlyWhenNeededThirdPerson =
 		ReadBool("Render", "CrosshairOnlyWhenNeeded3rdPerson",
 	             config.tracker.crosshairOnlyWhenNeededThirdPerson, path);

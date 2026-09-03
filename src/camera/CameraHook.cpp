@@ -694,6 +694,30 @@ void MaybeRunWorldControlProbe(FrameDelivery delivery, bool menuIsUp, bool hadCa
 // Deliberately does nothing but pay the frame that BeginFrame opened. Anything
 // else that wanted doing at the end of a frame would be tempting to put here,
 // and this runs on the renderer's thread inside a call the game is waiting on.
+void OnFrameEnd();
+
+// The Present hook's entry: the frame's delivery to the headset first, then
+// the monitor's copy of the 2D layer.
+//
+// The copy comes after the delivery on purpose. The flat and held paths take
+// their pictures from the back buffer inside OnFrameEnd, and a menu drawn
+// onto it beforehand would reach the headset twice - once in the picture,
+// once on the overlay. Drawn afterwards, only the monitor sees it.
+//
+// Both facts the copy depends on are read before the delivery: the overlay
+// submit inside it consumes the layer's capture flag, and a menu can close
+// on this very frame.
+void OnPresent() {
+	const Config& config = GetConfig();
+	const bool layerCaptured = g_hudLayer.HasCapture();
+	const bool menuIsUp = config.tracker.showMenus && game::IsMenuMode();
+	OnFrameEnd();
+	if (config.tracker.mirrorMenusToMonitor && menuIsUp && layerCaptured) {
+		g_headsetRenderer.MirrorLayerToMonitor(render::GetGameDevice(),
+		                                       g_hudLayer.CaptureTexture());
+	}
+}
+
 void OnFrameEnd() {
 	const Config& config = GetConfig();
 	const bool liveMenuCanRun = LiveMenuBackgroundCanRun(
@@ -3679,7 +3703,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	g_pendingRequest = request;
 
 	if (!render::IsPresentHooked() && !g_presentHookRefused) {
-		if (!render::InstallPresentHook(request.gameDevice, &OnFrameEnd)) {
+		if (!render::InstallPresentHook(request.gameDevice, &OnPresent)) {
 			// Said once. Without the hook the end of the frame never arrives,
 			// so falling back to submitting here is better than a headset that
 			// quietly stops being fed.
@@ -3759,7 +3783,7 @@ bool Install() {
 	// seeing only the loading screen, and only because by then the hook had
 	// gone in.
 	if (GetConfig().tracker.renderToHeadset && GetConfig().tracker.submitAtFrameEnd) {
-		render::InstallPresentHookWhenReady(&OnFrameEnd);
+		render::InstallPresentHookWhenReady(&OnPresent);
 	}
 
 	// Dual pass: the world drawn twice per frame, once per eye. The detour

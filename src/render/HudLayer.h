@@ -59,6 +59,7 @@ public:
 	// texture itself, and the probe lives with the other readback plumbing
 	// rather than in here.
 	void* CaptureSurface() const { return m_surface; }
+	void* CaptureTexture() const { return m_texture; }
 	UInt32 CaptureWidth() const { return m_width; }
 	UInt32 CaptureHeight() const { return m_height; }
 

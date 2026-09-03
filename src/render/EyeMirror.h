@@ -116,6 +116,14 @@ public:
 	bool PrepareHeldShade(void* gameDevice, UInt32 shadeColorArgb, bool trimToSharedWindow);
 	bool IsHeldShaded() const { return m_heldShaded; }
 
+	// Draws the captured 2D layer over the back buffer the monitor is about
+	// to show, composited with its alpha. The redirect takes menus and the
+	// HUD out of that picture on their way to the headset; this puts a copy
+	// back on the monitor, so the game stays readable there when the headset
+	// does not. Runs from the Present hook after the eyes were copied, so the
+	// headset never sees this draw. Pure Direct3D 9, no queue held.
+	bool BlendLayerOntoBackBuffer(void* gameDevice, void* layerTexture);
+
 	const BackBufferImage& GetImage(bool isLeft) const { return m_eye[isLeft ? 0 : 1].image; }
 
 	UInt32 GetWidth() const { return m_width; }
@@ -214,6 +222,7 @@ private:
 	// Said once per run each, so a device that refuses the pass does not
 	// refuse it into the log every frame.
 	bool m_shadeFailureLogged = false;
+	bool m_monitorFailureLogged = false;
 
 	// The sepia pass's standing pieces, built on first use and kept for the
 	// mirror's lifetime. m_shadeResourcesTried keeps a failed build from

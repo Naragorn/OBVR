@@ -875,6 +875,174 @@ bool EyeMirror::PrepareHeldShade(void* gameDevice, UInt32 shadeColorArgb,
 	return drewBoth;
 }
 
+
+bool EyeMirror::BlendLayerOntoBackBuffer(void* gameDevice, void* layerTexture) {
+	if (gameDevice == nullptr || layerTexture == nullptr || !IsReady()) {
+		return false;
+	}
+	if (!EnsureShadeResources(gameDevice)) {
+		return false;
+	}
+
+	auto getBackBuffer =
+		d3d9::Method<d3d9::GetBackBufferFn>(gameDevice, d3d9::kDeviceGetBackBuffer);
+	auto getTarget = d3d9::Method<d3d9::GetRenderTargetFn>(gameDevice, d3d9::kDeviceGetRenderTarget);
+	auto setTarget = d3d9::Method<d3d9::SetRenderTargetFn>(gameDevice, d3d9::kDeviceSetRenderTarget);
+	auto getDepth = d3d9::Method<d3d9::GetDepthStencilSurfaceFn>(
+		gameDevice, d3d9::kDeviceGetDepthStencilSurface);
+	auto setDepth = d3d9::Method<d3d9::SetDepthStencilSurfaceFn>(
+		gameDevice, d3d9::kDeviceSetDepthStencilSurface);
+	auto createBlock = d3d9::Method<d3d9::CreateStateBlockFn>(
+		gameDevice, d3d9::kDeviceCreateStateBlock);
+	auto setState = d3d9::Method<d3d9::SetRenderStateFn>(gameDevice, d3d9::kDeviceSetRenderState);
+	auto setTexture = d3d9::Method<d3d9::SetTextureFn>(gameDevice, d3d9::kDeviceSetTexture);
+	auto setSampler = d3d9::Method<d3d9::SetSamplerStateFn>(
+		gameDevice, d3d9::kDeviceSetSamplerState);
+	auto setFvf = d3d9::Method<d3d9::SetFVFFn>(gameDevice, d3d9::kDeviceSetFVF);
+	auto setVertexShader = d3d9::Method<d3d9::SetVertexShaderFn>(
+		gameDevice, d3d9::kDeviceSetVertexShader);
+	auto setPixelShader = d3d9::Method<d3d9::SetPixelShaderFn>(
+		gameDevice, d3d9::kDeviceSetPixelShader);
+	auto setConstant = d3d9::Method<d3d9::SetPixelShaderConstantFFn>(
+		gameDevice, d3d9::kDeviceSetPixelShaderConstantF);
+	auto beginScene = d3d9::Method<d3d9::SceneBracketFn>(gameDevice, d3d9::kDeviceBeginScene);
+	auto endScene = d3d9::Method<d3d9::SceneBracketFn>(gameDevice, d3d9::kDeviceEndScene);
+	auto draw = d3d9::Method<d3d9::DrawPrimitiveUPFn>(gameDevice, d3d9::kDeviceDrawPrimitiveUP);
+
+	if (getBackBuffer == nullptr || getTarget == nullptr || setTarget == nullptr ||
+	    getDepth == nullptr || setDepth == nullptr || createBlock == nullptr ||
+	    setState == nullptr || setTexture == nullptr || setSampler == nullptr ||
+	    setFvf == nullptr || setVertexShader == nullptr || setPixelShader == nullptr ||
+	    setConstant == nullptr || beginScene == nullptr || endScene == nullptr ||
+	    draw == nullptr) {
+		if (!m_monitorFailureLogged) {
+			m_monitorFailureLogged = true;
+			OBVR_LOG("Mirror: the monitor copy of the menu could not reach the device, so "
+			         "the monitor keeps showing the world alone");
+		}
+		return false;
+	}
+
+	// The picture the monitor is about to show, and its size: the quad
+	// covers all of it.
+	void* backBuffer = nullptr;
+	if (d3d11::Failed(getBackBuffer(gameDevice, 0, 0, d3d9::kBackBufferTypeMono, &backBuffer)) ||
+	    backBuffer == nullptr) {
+		return false;
+	}
+	d3d9::SurfaceDesc desc{};
+	auto getDesc = d3d9::Method<d3d9::GetDescFn>(backBuffer, d3d9::kSurfaceGetDesc);
+	if (getDesc == nullptr || d3d11::Failed(getDesc(backBuffer, &desc)) || desc.width == 0 ||
+	    desc.height == 0) {
+		d3d11::Release(backBuffer);
+		return false;
+	}
+
+	void* previousTarget = nullptr;
+	void* previousDepth = nullptr;
+	getTarget(gameDevice, 0, &previousTarget);
+	getDepth(gameDevice, &previousDepth);
+
+	void* block = nullptr;
+	if (d3d11::Failed(createBlock(gameDevice, d3d9::kStateBlockTypeAll, &block)) ||
+	    block == nullptr) {
+		d3d11::Release(previousTarget);
+		d3d11::Release(previousDepth);
+		d3d11::Release(backBuffer);
+		if (!m_monitorFailureLogged) {
+			m_monitorFailureLogged = true;
+			OBVR_LOG("Mirror: no state block for the monitor copy of the menu, so the "
+			         "monitor keeps showing the world alone");
+		}
+		return false;
+	}
+
+	// The shade shader at strength zero is a plain copy - lrp by zero hands
+	// the sampled texel through, alpha included - so no second shader is
+	// needed. The layer is composited over the world with premultiplied
+	// blending: the capture is drawn onto transparent black with the game's
+	// own straight-alpha blend, which leaves colour already multiplied by
+	// coverage, and its alpha is the union coverage the separate alpha blend
+	// accumulated. ONE / INVSRCALPHA is the operator that composites such a
+	// picture without darkening its edges twice.
+	setVertexShader(gameDevice, nullptr);
+	setPixelShader(gameDevice, m_sepiaShader);
+	setTexture(gameDevice, 0, layerTexture);
+	setSampler(gameDevice, 0, d3d9::kSamplerAddressU, d3d9::kTextureAddressClamp);
+	setSampler(gameDevice, 0, d3d9::kSamplerAddressV, d3d9::kTextureAddressClamp);
+	setSampler(gameDevice, 0, d3d9::kSamplerMagFilter, d3d9::kTexFilterLinear);
+	setSampler(gameDevice, 0, d3d9::kSamplerMinFilter, d3d9::kTexFilterLinear);
+	setState(gameDevice, d3d9::kRenderStateZEnable, 0);
+	setState(gameDevice, d3d9::kRenderStateZWriteEnable, 0);
+	setState(gameDevice, d3d9::kRenderStateAlphaTestEnable, 0);
+	setState(gameDevice, d3d9::kRenderStateAlphaBlendEnable, 1);
+	setState(gameDevice, d3d9::kRenderStateSeparateAlphaBlendEnable, 0);
+	setState(gameDevice, d3d9::kRenderStateSrcBlend, d3d9::kBlendOne);
+	setState(gameDevice, d3d9::kRenderStateDestBlend, d3d9::kBlendInvSrcAlpha);
+	setState(gameDevice, d3d9::kRenderStateFogEnable, 0);
+	setState(gameDevice, d3d9::kRenderStateLighting, 0);
+	setState(gameDevice, d3d9::kRenderStateCullMode, d3d9::kCullNone);
+	setState(gameDevice, d3d9::kRenderStateStencilEnable, 0);
+	setState(gameDevice, d3d9::kRenderStateScissorTestEnable, 0);
+	setState(gameDevice, d3d9::kRenderStateClipping, 0);
+	setState(gameDevice, d3d9::kRenderStateClipPlaneEnable, 0);
+	setState(gameDevice, d3d9::kRenderStateColorWriteEnable, d3d9::kColorWriteAll);
+	setFvf(gameDevice, d3d9::kFvfXyzRhwTex1);
+
+	const float tone[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+	const float strength[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+	setConstant(gameDevice, 1, tone, 1);
+	setConstant(gameDevice, 2, strength, 1);
+
+	setTarget(gameDevice, 0, backBuffer);
+	setDepth(gameDevice, nullptr);
+
+	// From the Present hook, where the game's scene bracket is closed - see
+	// PrepareHeldShade for the same arrangement.
+	const bool openedScene = !d3d11::Failed(beginScene(gameDevice));
+
+	struct LayerVertex {
+		float x, y, z, rhw;
+		float u, v;
+	};
+	static_assert(sizeof(LayerVertex) == 24, "XYZRHW|TEX1 is a 24-byte vertex");
+
+	const float left = -0.5f;
+	const float top = -0.5f;
+	const float right = static_cast<float>(desc.width) - 0.5f;
+	const float bottom = static_cast<float>(desc.height) - 0.5f;
+	const LayerVertex quad[4] = {
+		{left, top, 0.5f, 1.0f, 0.0f, 0.0f},
+		{right, top, 0.5f, 1.0f, 1.0f, 0.0f},
+		{left, bottom, 0.5f, 1.0f, 0.0f, 1.0f},
+		{right, bottom, 0.5f, 1.0f, 1.0f, 1.0f},
+	};
+	const bool drew = !d3d11::Failed(
+		draw(gameDevice, d3d9::kPrimitiveTriangleStrip, 2, quad, sizeof(LayerVertex)));
+
+	if (openedScene) {
+		endScene(gameDevice);
+	}
+
+	setTarget(gameDevice, 0, previousTarget);
+	setDepth(gameDevice, previousDepth);
+	auto apply = d3d9::Method<d3d9::StateBlockMethodFn>(block, d3d9::kStateBlockApply);
+	if (apply != nullptr) {
+		apply(block);
+	}
+	d3d11::Release(block);
+	d3d11::Release(previousTarget);
+	d3d11::Release(previousDepth);
+	d3d11::Release(backBuffer);
+
+	if (!drew && !m_monitorFailureLogged) {
+		m_monitorFailureLogged = true;
+		OBVR_LOG("Mirror: the monitor copy of the menu was refused by the device, so the "
+		         "monitor keeps showing the world alone");
+	}
+	return drew;
+}
+
 bool EyeMirror::BeginSubmit(void* gameDevice) {
 	if (!IsReady()) {
 		return false;

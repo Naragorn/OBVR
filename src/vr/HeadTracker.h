@@ -196,6 +196,14 @@ struct TrackerSettings {
 	// Oblivion's process-local setting.
 	bool liveMenuBackground = true;
 
+	// Whether an in-game menu is also drawn onto the monitor window while the
+	// overlay carries it to the headset. The redirect that lifts the 2D layer
+	// out of the frame leaves the monitor showing the world with no menu on
+	// it; a copy composited back onto the back buffer keeps the game
+	// readable and controllable from the desk when the headset misbehaves.
+	// One blended quad per menu frame, and the headset never sees it.
+	bool mirrorMenusToMonitor = true;
+
 	// Overrides Oblivion's own field of view, in degrees. 0 leaves it alone.
 	//
 	// Written into the camera's frustum rather than into fDefaultFOV, because
