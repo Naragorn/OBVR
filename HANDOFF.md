@@ -1124,6 +1124,28 @@ are produced behind one interface with two implementations, choosing between the
 setting rather than a rewrite — the same shape `TrackerSource` already has for head poses,
 which is why that pattern is worth reusing rather than reinventing.
 
+**Tried on the binary, 2026-09-03: Oblivion does not tolerate a 9Ex device.** The
+question above was settled the only way it could be. `Debug.D3D9ExProbe=1` makes OBVR hand
+the game an `IDirect3D9Ex` factory (from `Direct3DCreate9Ex`, which both Microsoft's
+runtime and DXVK export) and a device made by `CreateDeviceEx` — the device with the 9Ex
+semantics, no managed pool and no device loss. Three runs through the headless harness,
+each with the crash dump moved aside first:
+
+| Run | `d3d9.dll` | Probe | Result |
+| --- | --- | --- | --- |
+| native control | Microsoft's (DXVK moved aside) | off | main menu reached, 96 log lines, no dump |
+| native 9Ex | Microsoft's | on | `CreateDeviceEx` returned 0, then a crash dump, 52 log lines |
+| DXVK 9Ex | DXVK | on | `CreateDeviceEx` returned 0, then a crash dump, 52 log lines |
+
+Both 9Ex runs die at the same place: the log ends right after the HUD's first dynamic
+vertex buffer is created and before the first 2D pass, on both runtimes alike. The logs are
+in `docs/verification/OBVR-d3d9ex-*.log`. What exactly the engine trips over was not
+taken from the dump; the managed pool is the obvious suspect, since it is the first thing a
+2006 engine does with a device and the one thing 9Ex refuses, but that is a reading, not a
+measurement. Either way the route is closed: the dependency-free alternative to DXVK would
+need a runtime the game cannot run on. The probe stays in the code as the experiment
+anyone can repeat.
+
 ### Alternate eye rendering was tried, and the compositor said no
 
 Built, switched on, and it does not work - `docs/verification/OBVR-aer-refused.log` is the

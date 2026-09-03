@@ -1,0 +1,52 @@
+OBVR 1 - Query
+OBSE version 22, Oblivion version 010201A0
+OBVR 1 - Load
+Config: D:\SteamLibrary\steamapps\common\Oblivion\Data\OBSE\Plugins\OBVR.ini
+Config: HookEnabled=1 Source=openvr Fixed=(P 0.0, R 20.0, Y 0.0)
+Config: Simulated=(Yaw 25.0, Pitch 12.0, Period 600) LogEveryFrames=0 ReloadEveryFrames=120
+Config: RecenterKey=46 (0x2E)
+Config: PositionalTracking=1 UnitsPerMetre=69.99 HeadMovementScale=1.00 (effective 69.99) MaxLeanUnits=120.0
+Config: BlockVerticalLook=1 VerticalLookRange=(up 15.0, down 90.0) SmoothVerticalLook=1 (10.0) AimFollowsGaze=1 AimInThirdPerson=1 AimAtSource=1 ThirdPersonAimVisual=50% BodyUnarmed=1 HeadFollows=1 AimAttackKey=1 AimTurnSpeed=0.0
+Config: SmoothTurning=0 TurnSpeed=12.0
+Config: Render.Enabled=1 GameFrame=1 Stereo=dual EyeSeparationScale=1.05 - OBVR will claim the VR scene
+Config: Render.GameFovDegrees=75.0 IsFor4x3=1 SubmitAtFrameEnd=1
+Config: Render.ShowMenus=1 MenuScale=0.90 GameFovOverride=75.0
+Config: Render.MatchHeadsetFov=1 SetGameResolution=1 (5696x4780) UiFollowsFrameSize=1
+Config: Render.HudOverlay=1 BetweenPasses=1 Anchor=world Distance=1.20m Width=1.60m
+Config: Render.LiveMenuBackground=1 MenuStandIn=1 MenuShade=1 Color=FFE3B2 Strength=1.00 MenuSingleBorder=1 Look.DialogZoom=0 DialogFirstPerson=1
+Config: Render.ShowMenus=1 Menus=world (videos and loading screens take the cinema screen either way)
+Config: Render.Crosshair=1 InThirdPerson=1 PersistentCache=1
+Config: Render.Stereo=dual - the world is drawn twice per frame, once per eye; the HUD draws after both passes and is not in the world picture yet
+OpenVR: VR_InitInternal as type 1 failed (108: Hmd Not Found (108))
+OpenVR: VR_InitInternal as type 3 failed (108: Hmd Not Found (108))
+Camera: hook installed at 0066BE6E, trampoline at 03270000 (37 bytes)
+Aim: cast hook installed at 00699190, trampoline at 03280000 (25 bytes) - a spell now turns the heading for the length of one call instead of one animation
+Aim: the player's animation-key handler wrapped - the vtable slot at 00A739D4 goes through 03290000 around 005FC890
+Aim: the magic projectile factory wrapped - the call at 0069B996 goes through 032A0000 around 0069A060
+Aim: the generic creator's arrow constructor probe wrapped - the call at 004604E3 goes through 032C0000 around 006078E0
+Aim: the attack update from the input handler wrapped - the call at 00672E0D goes through 032D0000 around 005FCAB0
+Aim: the attack update from the player (A) wrapped - the call at 0066CB49 goes through 032E0000 around 005FCAB0
+Aim: the attack update from the player (B) wrapped - the call at 006758C6 goes through 03300000 around 005FCAB0
+Render: the scene render is hooked at 0040C830, trampoline at 038A0000 - the world can now be drawn twice per frame
+Hud: the 2D pass is hooked at 0057F170, trampoline at 038B0000 - the layer can leave the frame
+Cursor pick: point normalization at 00701540 answers in the believed size, trampoline at 038C0000
+Resolution: GetProcAddress is hooked, and d3d9.dll is not loaded yet, which is in time
+Config: the frame will be created at 5696x4780
+OBVR ready
+Resolution: the game looked up Direct3DCreate9 and was handed OBVR's instead
+D3D9Ex probe: the game was handed an IDirect3D9Ex factory
+Resolution: CreateDevice hooked at factory entry 16
+D3D9Ex probe: the game was handed an IDirect3D9Ex factory
+UiSize: writing 5696x3164 over the screen-size copy
+Resolution: fullscreen cleared, and the window resized from 320x240 to 5696x3164
+Resolution: the game asked for 2560x1440 fullscreen, and is getting 5696x4780 windowed
+D3D9Ex probe: CreateDeviceEx returned 00000000 - the game now runs on a 9Ex device
+Present: hooked at table entry 17, original at 68A405D0 - the picture submitted is now the one just drawn
+Hud: device behavior flags 00000054 - HARDWARE vertex processing
+Hud: vertex buffer Lock and Unlock counted from table entries 11 and 12
+Hud: index buffer Lock and Unlock counted from table entries 11 and 12
+Hud: SetRenderTarget and SetRenderState hooked at table entries 37 and 57 - the 2D pass can be pointed elsewhere, with its alpha kept
+Hud viewport: the pass set 5696x4780 at 0,0 (frame 5696x4780, believed 5696x3164) - shrunk to believed
+Hud viewport: the pass set 5696x4780 at 0,0 (frame 5696x4780, believed 5696x3164) - shrunk to believed
+Hud viewport: the pass set 5696x4780 at 0,0 (frame 5696x4780, believed 5696x3164) - shrunk to believed
+Hud: dynamic vertex buffer 089C9100 created - length 2048, usage 00000208, pool 0

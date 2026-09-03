@@ -96,6 +96,12 @@ struct Config {
 	// hot-reloadable, off by default.
 	bool menuWorldProbe = false;
 
+	// Debug.D3D9ExProbe: hand the game an IDirect3D9Ex factory and a device
+	// from CreateDeviceEx, to find out whether Oblivion tolerates the 9Ex
+	// runtime - the one question about the D3D9Ex route that reading cannot
+	// answer. Off by default; see ResolutionHook.cpp.
+	bool d3d9ExProbe = false;
+
 	// Measures which rectangle of the frame the 2D actually lands in, every
 	// couple of seconds while it is on: the bounding box of the non-black
 	// pixels in the back buffer on a cinema frame (films, loading screens,

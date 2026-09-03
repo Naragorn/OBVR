@@ -19,6 +19,13 @@ UInt32 g_wantedHeight = 0;
 d3d9::Direct3DCreate9Fn g_originalCreate9 = nullptr;
 d3d9::CreateDeviceFn g_originalCreateDevice = nullptr;
 
+// Whether the factory the game holds is an IDirect3D9Ex (the D3D9Ex probe),
+// and where CreateDeviceEx sits on it: IDirect3D9's 17 methods, then
+// GetAdapterModeCountEx, EnumAdapterModesEx, GetAdapterDisplayModeEx, and
+// CreateDeviceEx - counted in the Windows SDK's d3d9.h.
+bool g_factoryIsEx = false;
+constexpr UInt32 kFactoryCreateDeviceEx = 20;
+
 using GetProcAddressFn = void*(__stdcall*)(void* module, const char* name);
 GetProcAddressFn g_originalGetProcAddress = nullptr;
 
@@ -193,8 +200,35 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 		         parameters->windowed != 0 ? "windowed" : "fullscreen");
 	}
 
-	SInt32 result = g_originalCreateDevice(self, adapter, deviceType, focusWindow,
-	                                       behaviourFlags, parameters, device);
+	// The D3D9Ex probe: with an IDirect3D9Ex factory in hand, the device is
+	// made through CreateDeviceEx (IDirect3D9Ex's slot 20 in the SDK's
+	// d3d9.h, after the 17 of IDirect3D9 and three Ex mode methods), with
+	// no fullscreen display mode because the frame is windowed. That is the
+	// device with the 9Ex semantics the experiment is about - no managed
+	// pool, no device loss - handed to a game written for the other kind.
+	// If the runtime refuses, the plain CreateDevice below is the fallback.
+	SInt32 result = -1;
+	bool madeEx = false;
+	if (g_factoryIsEx) {
+		using CreateDeviceExFn = SInt32(__stdcall*)(void* self, UInt32 adapter,
+		                                            UInt32 deviceType, void* focusWindow,
+		                                            UInt32 behaviourFlags,
+		                                            d3d9::PresentParameters* parameters,
+		                                            void* fullscreenMode, void** device);
+		auto createEx = d3d9::Method<CreateDeviceExFn>(self, kFactoryCreateDeviceEx);
+		result = createEx != nullptr
+		             ? createEx(self, adapter, deviceType, focusWindow, behaviourFlags,
+		                        parameters, nullptr, device)
+		             : -1;
+		madeEx = result >= 0;
+		OBVR_LOG("D3D9Ex probe: CreateDeviceEx returned %08X - the game %s on a 9Ex device",
+		         static_cast<UInt32>(result),
+		         madeEx ? "now runs" : "does not get one, and the plain CreateDevice is tried");
+	}
+	if (!madeEx) {
+		result = g_originalCreateDevice(self, adapter, deviceType, focusWindow, behaviourFlags,
+		                                parameters, device);
+	}
 
 	if (result >= 0) {
 		g_deviceCreated = true;
@@ -259,7 +293,37 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 // Nothing else about the factory is touched, and the pointer is handed back
 // exactly as it arrived.
 void* __stdcall HookedCreate9(UInt32 sdkVersion) {
-	void* factory = g_originalCreate9 != nullptr ? g_originalCreate9(sdkVersion) : nullptr;
+	void* factory = nullptr;
+
+	// The D3D9Ex probe (Debug.D3D9ExProbe): the factory comes from
+	// Direct3DCreate9Ex instead, out of whichever d3d9.dll the game loaded -
+	// Microsoft's or DXVK's, both export it. An IDirect3D9Ex is an
+	// IDirect3D9 with five methods appended, so the game uses it unchanged;
+	// what changes is the device made from it, see HookedCreateDevice. This
+	// exists to answer the one question about the D3D9Ex route that reading
+	// cannot: whether a 2006 engine tolerates the 9Ex runtime at all.
+	if (GetConfig().d3d9ExProbe) {
+		using Direct3DCreate9ExFn = SInt32(__stdcall*)(UInt32 sdkVersion, void** factory);
+		HMODULE d3d9 = GetModuleHandleA("d3d9.dll");
+		auto createEx = d3d9 != nullptr ? reinterpret_cast<Direct3DCreate9ExFn>(
+		                                      GetProcAddress(d3d9, "Direct3DCreate9Ex"))
+		                                : nullptr;
+		void* exFactory = nullptr;
+		const SInt32 made = createEx != nullptr ? createEx(sdkVersion, &exFactory) : -1;
+		if (made >= 0 && exFactory != nullptr) {
+			factory = exFactory;
+			g_factoryIsEx = true;
+			OBVR_LOG("D3D9Ex probe: the game was handed an IDirect3D9Ex factory");
+		} else {
+			OBVR_LOG("D3D9Ex probe: Direct3DCreate9Ex %s (%08X), so the plain factory is used",
+			         createEx != nullptr ? "failed" : "is not exported by this d3d9.dll",
+			         static_cast<UInt32>(made));
+		}
+	}
+
+	if (factory == nullptr) {
+		factory = g_originalCreate9 != nullptr ? g_originalCreate9(sdkVersion) : nullptr;
+	}
 	if (factory == nullptr || g_originalCreateDevice != nullptr) {
 		return factory;
 	}

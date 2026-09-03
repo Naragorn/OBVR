@@ -55,7 +55,9 @@ being started on its own branch.
   has always shipped one. See "Why OpenVR" below.
 - **DXVK** as the game's `d3d9.dll`. This is not optional. OpenVR's `Submit` has no entry
   for a Direct3D 9 texture, and DXVK is what turns Oblivion's frame into a Vulkan image the
-  compositor accepts. Without it OBVR says so in the log and shows a test pattern.
+  compositor accepts. Without it OBVR says so in the log and shows a test pattern. The
+  dependency-free alternative, a D3D9Ex device shared into D3D11, was tried on the binary
+  and the game crashes on it, on Microsoft's runtime and DXVK alike; see `HANDOFF.md`.
 - Windows. Linux under Proton is the intended second platform, not a supported one yet.
 
 ## Installing
