@@ -557,6 +557,47 @@ bool OpenVRBackend::ReadHeadPose(Quaternion& orientation, NiPoint3& position) co
 	return true;
 }
 
+bool OpenVRBackend::ReadHand(bool rightHand, HandPose& out) const {
+	out = HandPose{};
+	if (m_system == nullptr) {
+		return false;
+	}
+	auto* table = static_cast<openvr::IVRSystemFnTable*>(m_system);
+	if (table->GetTrackedDeviceIndexForControllerRole == nullptr ||
+	    table->GetControllerStateWithPose == nullptr) {
+		return false;
+	}
+
+	const UInt32 device = table->GetTrackedDeviceIndexForControllerRole(
+		rightHand ? openvr::kControllerRoleRightHand : openvr::kControllerRoleLeftHand);
+	if (device == openvr::kTrackedDeviceIndexInvalid) {
+		return false;
+	}
+
+	// The state and the pose from one call, so a trigger pull is paired with
+	// where the hand was when it happened. The seated universe, like the head,
+	// so the two share an origin and the recenter reference cancels out of
+	// any difference between them.
+	openvr::VRControllerState state{};
+	openvr::TrackedDevicePose pose{};
+	if (!table->GetControllerStateWithPose(openvr::kTrackingUniverseSeated, device, &state,
+	                                       sizeof(state), &pose)) {
+		return false;
+	}
+	if (!pose.poseIsValid || !pose.deviceIsConnected) {
+		return false;
+	}
+
+	out.valid = true;
+	out.orientation = FromOpenVRMatrix(pose.deviceToAbsoluteTracking.m);
+	out.position = PositionFromOpenVRMatrix(pose.deviceToAbsoluteTracking.m);
+	out.buttonsPressed = state.buttonPressed;
+	out.trigger = state.axis[openvr::kAxisTrigger].x;
+	out.thumbX = state.axis[openvr::kAxisThumb].x;
+	out.thumbY = state.axis[openvr::kAxisThumb].y;
+	return true;
+}
+
 
 float PoseDistanceSq(const openvr::HmdMatrix34& a, const openvr::HmdMatrix34& b) {
 	const float dx = a.m[0][3] - b.m[0][3];

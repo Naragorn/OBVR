@@ -73,6 +73,27 @@ struct TrackedDevicePose {
 	bool deviceIsConnected;
 };
 
+// VRControllerAxis_t and VRControllerState_t (openvr_capi.h). On Windows the
+// state struct sits outside the header's pack(4) regions, so the two 64-bit
+// masks take their natural eight-byte alignment: 4 bytes of packet number,
+// 4 of padding, 16 of masks, five axes of 8 - 64 bytes, and that size is
+// what GetControllerState is told.
+struct VRControllerAxis {
+	float x;
+	float y;
+};
+
+struct VRControllerState {
+	UInt32 packetNumber;
+	UInt64 buttonPressed;
+	UInt64 buttonTouched;
+	VRControllerAxis axis[5];
+};
+
+static_assert(sizeof(VRControllerAxis) == 8, "VRControllerAxis_t is two floats");
+static_assert(sizeof(VRControllerState) == 64,
+              "VRControllerState_t is 64 bytes with natural alignment on Windows");
+
 // These sizes have to match exactly, otherwise OBVR reads the pose field at
 // an offset. That would show up in the headset as a wild camera and be hard
 // to attribute - so it should fail at compile time instead.
@@ -142,7 +163,60 @@ struct IVRSystemFnTable {
 	                                                 float predictedSecondsFromNow,
 	                                                 TrackedDevicePose* poseArray,
 	                                                 UInt32 poseArrayCount);
+
+	// Indices 13 to 17: ResetSeatedZeroPose, GetSeatedZeroPoseToStanding...,
+	// GetRawZeroPoseToStanding..., GetSortedTrackedDeviceIndicesOfClass,
+	// GetTrackedDeviceActivityLevel. Counted in openvr_capi.h's
+	// VR_IVRSystem_FnTable (IVRSystem_026), from GetDeviceToAbsoluteTrackingPose
+	// at 12 onwards, for the hand-tracked mode.
+	void* unusedAfterPoses[5];
+
+	// Index 18: which device holds a hand - kControllerRoleLeftHand or
+	// RightHand - or kTrackedDeviceIndexInvalid when none does.
+	UInt32(__stdcall* GetTrackedDeviceIndexForControllerRole)(int role);
+
+	// Index 19 and 20, kept so the table stays honest about its layout.
+	int(__stdcall* GetControllerRoleForTrackedDeviceIndex)(UInt32 deviceIndex);
+	int(__stdcall* GetTrackedDeviceClass)(UInt32 deviceIndex);
+
+	// Index 21.
+	bool(__stdcall* IsTrackedDeviceConnected)(UInt32 deviceIndex);
+
+	// Indices 22 to 36: the property getters, the event and hidden-area
+	// queries. Fifteen entries.
+	void* unusedBeforeControllerState[15];
+
+	// Index 37 and 38: the legacy controller state - buttons and axes - and
+	// the same together with the device's pose in one call, which is what a
+	// hand wants: where it is and what it is pressing, from one moment.
+	bool(__stdcall* GetControllerState)(UInt32 deviceIndex, VRControllerState* state,
+	                                    UInt32 stateSize);
+	bool(__stdcall* GetControllerStateWithPose)(int origin, UInt32 deviceIndex,
+	                                            VRControllerState* state, UInt32 stateSize,
+	                                            TrackedDevicePose* pose);
 };
+
+// ETrackedControllerRole (openvr_capi.h): which hand a controller is.
+constexpr int kControllerRoleLeftHand = 1;
+constexpr int kControllerRoleRightHand = 2;
+
+// k_unTrackedDeviceIndexInvalid.
+constexpr UInt32 kTrackedDeviceIndexInvalid = 0xFFFFFFFF;
+
+// EVRButtonId, as bit positions in VRControllerState_t's masks:
+// k_EButton_ApplicationMenu = 1, k_EButton_Grip = 2, k_EButton_A = 7,
+// k_EButton_Axis0 = 32 (the touchpad or thumbstick),
+// k_EButton_SteamVR_Trigger = 33 (the same value as Axis1).
+constexpr UInt32 kButtonApplicationMenu = 1;
+constexpr UInt32 kButtonGrip = 2;
+constexpr UInt32 kButtonA = 7;
+constexpr UInt32 kButtonAxis0 = 32;
+constexpr UInt32 kButtonTrigger = 33;
+
+// Which axis carries what, by the same numbering: rAxis[1] is the trigger's
+// pull (x from 0 to 1), rAxis[0] the touchpad or thumbstick.
+constexpr UInt32 kAxisThumb = 0;
+constexpr UInt32 kAxisTrigger = 1;
 
 // --------------------------------------------------------- DLL exports
 

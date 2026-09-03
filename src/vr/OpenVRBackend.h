@@ -2,6 +2,7 @@
 
 #include "core/Types.h"
 #include "vr/OpenVRTypes.h"
+#include "vr/HandInput.h"
 #include "vr/Quaternion.h"
 
 namespace obvr::vr {
@@ -118,6 +119,14 @@ public:
 	// tracking has not picked up yet. The caller should then keep the last
 	// valid pose instead of letting the camera jump.
 	bool ReadHeadPose(Quaternion& orientation, NiPoint3& position) const;
+
+	// The controller in one hand: its pose in the same seated space the head
+	// is read in, converted the same way, plus the legacy button and axis
+	// state from the same moment (GetControllerStateWithPose). False, with
+	// out.valid false, when no controller holds that role or its pose is not
+	// valid - the caller keeps its last reading or does nothing, as with the
+	// head. The hand-tracked mode's only source of hands.
+	bool ReadHand(bool rightHand, HandPose& out) const;
 
 	// Blocks until the compositor wants the next frame, and returns its error
 	// code - kCompositorErrorNone means go.

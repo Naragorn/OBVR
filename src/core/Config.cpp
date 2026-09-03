@@ -465,6 +465,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Debug", "ThirdPersonProbe", config.thirdPersonProbe, path);
 	config.menuWorldProbe = ReadBool("Debug", "MenuWorldProbe", config.menuWorldProbe, path);
 	config.d3d9ExProbe = ReadBool("Debug", "D3D9ExProbe", config.d3d9ExProbe, path);
+	config.handTracking = ReadBool("Hands", "Enabled", config.handTracking, path);
 	config.layoutProbe = ReadBool("Debug", "LayoutProbe", config.layoutProbe, path);
 	config.cursorProbe = ReadBool("Debug", "CursorProbe", config.cursorProbe, path);
 }

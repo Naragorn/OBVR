@@ -294,6 +294,10 @@ bool g_aimThirdPersonReported = false;
 float g_weaponTurnRadians = 0.0f;
 bool g_weaponTurnWanted = false;
 
+// Whether the right controller was tracked on the last frame that asked, for
+// the hand-tracked mode's log line on change.
+bool g_rightHandTracked = false;
+
 // The matching third-person correction. It is decided from the exact same
 // source-aim pose as the wrapped attack call, then written after animation in
 // BeforeFirstScenePass. Unlike g_weaponTurnRadians it is deliberately scaled:
@@ -3320,7 +3324,39 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// runs after this hook and overwrites any bone set in it, which is why the
 	// angle is carried to the render and applied there.
 	g_weaponTurnWanted = false;
-	if (readPlayer && !isThirdPerson && config.aimFollowsGaze &&
+	// The hand-tracked mode's first rung: the weapon hand follows the right
+	// controller's heading instead of the gaze. The hand and the head are
+	// read in the same seated space and converted the same way, so the turn
+	// is the plain difference of their headings - the recenter reference
+	// cancels out of it - applied on top of the camera, which already faces
+	// the head. Pitch and position of the hand are the next rungs, see
+	// docs/hand-tracked-mode.md. Reported on change of tracking so a run
+	// says when the controller was seen and when it was lost.
+	bool handTookTheTurn = false;
+	if (readPlayer && !isThirdPerson && config.handTracking &&
+	    g_headTracker.IsHeadsetConnected() && !game::IsMenuMode()) {
+		vr::HandPose hand;
+		const bool tracked = g_headTracker.GetBackend().ReadHand(true, hand);
+		if (tracked != g_rightHandTracked) {
+			g_rightHandTracked = tracked;
+			OBVR_LOG("Hands: the right controller is %s",
+			         tracked ? "tracked - the weapon hand follows it" : "not tracked");
+		}
+		vr::Quaternion headOrientation;
+		NiPoint3 headPosition;
+		Heading handHeading{};
+		Heading headHeading{};
+		if (tracked && g_headTracker.GetBackend().GetRenderPose(headOrientation, headPosition) &&
+		    HeadingOf(vr::ToMatrix(hand.orientation), handHeading) &&
+		    HeadingOf(vr::ToMatrix(headOrientation), headHeading)) {
+			const float handYaw = math::Atan2(handHeading.sine, handHeading.cosine);
+			const float headYaw = math::Atan2(headHeading.sine, headHeading.cosine);
+			g_weaponTurnRadians = vr::ShortestTurn(headYaw, handYaw);
+			g_weaponTurnWanted = true;
+			handTookTheTurn = true;
+		}
+	}
+	if (!handTookTheTurn && readPlayer && !isThirdPerson && config.aimFollowsGaze &&
 	    config.aimWeaponFollowsGaze && g_headTracker.IsHeadsetConnected() &&
 	    !game::IsMenuMode()) {
 		Heading weaponTurn{};

@@ -96,6 +96,14 @@ struct Config {
 	// hot-reloadable, off by default.
 	bool menuWorldProbe = false;
 
+	// [Hands] Enabled: the hand-tracked mode. Motion controllers are read
+	// alongside the head, and the first-person weapon hand follows the right
+	// controller instead of the gaze. The first rung of the ladder in
+	// docs/hand-tracked-mode.md; everything above it - swings, blocks, the
+	// bow, spells, wrist menus, grabbing - stands on this reading. Off by
+	// default: without it OBVR is exactly the head-tracked mod it was.
+	bool handTracking = false;
+
 	// Debug.D3D9ExProbe: hand the game an IDirect3D9Ex factory and a device
 	// from CreateDeviceEx, to find out whether Oblivion tolerates the 9Ex
 	// runtime - the one question about the D3D9Ex route that reading cannot

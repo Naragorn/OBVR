@@ -467,6 +467,13 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return static_cast<float>(c.tracker.renderHeight); },
 		+[](Config& c, float v) { c.tracker.renderHeight = static_cast<UInt32>(v); },
 	},
+	{
+		"Hands", "Hand tracking", "The weapon hand follows the right controller",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "Enabled",
+		+[](const Config& c) { return c.handTracking ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.handTracking = v != 0.0f; },
+	},
 };
 
 float Clamp(const SettingDefinition& definition, float value) {

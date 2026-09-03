@@ -625,3 +625,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME menu_pause_policy COMMAND menu_pause_policy_test)
+
+add_executable(hand_input_test HandInputTest.cpp)
+
+target_include_directories(hand_input_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(hand_input_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME hand_input COMMAND hand_input_test)

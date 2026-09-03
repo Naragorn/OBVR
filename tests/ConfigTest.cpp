@@ -259,6 +259,17 @@ void TestUnpausedMenus() {
 	Check(configured.tracker.unpausedMenus, "UnpausedMenus=1 keeps it running");
 }
 
+void TestHandTracking() {
+	std::printf("Hand tracking\n");
+
+	obvr::Config untouched;
+	Check(!untouched.handTracking, "the hand-tracked mode is off by default");
+
+	obvr::Config configured;
+	LoadFrom("ConfigTestHands.ini", "[Hands]\nEnabled=1\n", configured);
+	Check(configured.handTracking, "Hands.Enabled=1 switches it on");
+}
+
 void TestLookRanges() {
 	std::printf("The vertical look ranges, old spelling and new\n");
 
@@ -335,6 +346,7 @@ int main() {
 	TestPersistentCrosshairCache();
 	TestMirrorMenusToMonitor();
 	TestUnpausedMenus();
+	TestHandTracking();
 	std::printf("\n");
 	TestLookRanges();
 
