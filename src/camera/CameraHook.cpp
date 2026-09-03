@@ -11,6 +11,7 @@
 #include "game/CrosshairTarget.h"
 #include "game/DialogZoom.h"
 #include "game/FirstPersonArms.h"
+#include "game/HandControls.h"
 #include "game/ThirdPersonAimVisual.h"
 #include "core/AddressSpace.h"
 #include "game/GameAddresses.h"
@@ -294,9 +295,111 @@ bool g_aimThirdPersonReported = false;
 float g_weaponTurnRadians = 0.0f;
 bool g_weaponTurnWanted = false;
 
-// Whether the right controller was tracked on the last frame that asked, for
-// the hand-tracked mode's log line on change.
+// The hand-tracked mode: its per-frame decision, taken at Present so it runs
+// on menu frames too, and read by the camera pass (the aim) and the render
+// pass (the arms). See vr/HandMode.h and docs/hand-tracked-mode.md.
+vr::HandMode g_handMode;
+vr::HandModeResult g_hand;
+bool g_handArmsWanted = false;
+bool g_handControlsHeld = false;
+long long g_handClockLast = 0;
+
+// For the mode's log lines on change: which controllers are tracked and
+// which gestures are on.
 bool g_rightHandTracked = false;
+bool g_leftHandTracked = false;
+bool g_handBlocking = false;
+bool g_handReachBack = false;
+UInt32 g_handSwingLinesLeft = 20;
+
+bool ReadIsThirdPerson();
+
+// The mode's frame, gathered and decided. Runs from Present, before the
+// frame's delivery, so a wrist placement is in place for the overlay submit
+// and the controls are pressed before the engine's next input read.
+void UpdateHandMode(const Config& config, bool menuIsUp) {
+	static const long long ticksPerSecond = ReadPerformanceFrequency();
+	const long long now = ReadPerformanceCounter();
+	float dt = 0.0f;
+	if (g_handClockLast != 0 && ticksPerSecond > 0) {
+		dt = static_cast<float>(static_cast<double>(now - g_handClockLast) /
+		                        static_cast<double>(ticksPerSecond));
+		if (dt > 0.25f) {
+			dt = 0.25f;
+		}
+	}
+	g_handClockLast = now;
+
+	const bool active = config.handTracking && g_headTracker.IsHeadsetConnected();
+	if (!active) {
+		if (g_handControlsHeld) {
+			game::ReleaseHandControls(config.handKeys);
+			g_handControlsHeld = false;
+		}
+		g_hudLayer.ClearWristPlacement();
+		g_hand = vr::HandModeResult{};
+		g_handMode.Reset();
+		return;
+	}
+
+	vr::OpenVRBackend& backend = g_headTracker.GetBackendForFrame();
+	vr::HandModeFrame frame;
+	frame.dtSeconds = dt;
+	frame.menuMode = menuIsUp;
+	frame.firstPerson = !ReadIsThirdPerson();
+	frame.headValid = backend.GetRenderPose(frame.head, frame.headPosition) ||
+	                  backend.ReadHeadPose(frame.head, frame.headPosition);
+	backend.ReadHand(true, frame.right);
+	backend.ReadHand(false, frame.left);
+	frame.unitsPerMetre = config.tracker.unitsPerMetre;
+	g_hudLayer.ShownPixels(frame.layerPixelsWidth, frame.layerPixelsHeight);
+	frame.cursorValid = game::InterfaceCursorPosition(frame.cursorX, frame.cursorY);
+
+	if (frame.right.valid != g_rightHandTracked || frame.left.valid != g_leftHandTracked) {
+		g_rightHandTracked = frame.right.valid;
+		g_leftHandTracked = frame.left.valid;
+		OBVR_LOG("Hands: right controller %s, left controller %s",
+		         frame.right.valid ? "tracked" : "not tracked",
+		         frame.left.valid ? "tracked" : "not tracked");
+	}
+
+	g_hand = g_handMode.Update(frame, config.hands);
+
+	if (g_hand.blocking != g_handBlocking) {
+		g_handBlocking = g_hand.blocking;
+		OBVR_LOG("Hands: %s", g_handBlocking ? "the left hand is up - blocking"
+		                                      : "the left hand is down - block released");
+	}
+	if (g_hand.reachBack != g_handReachBack) {
+		g_handReachBack = g_hand.reachBack;
+		OBVR_LOG("Hands: the right hand is %s", g_handReachBack ? "reaching back" : "in front");
+	}
+	if (g_hand.swing != vr::SwingVerdict::None && g_handSwingLinesLeft > 0) {
+		--g_handSwingLinesLeft;
+		OBVR_LOG("Hands: a %s swing", g_hand.swing == vr::SwingVerdict::Heavy ? "heavy" : "light");
+	}
+
+	if (g_hand.controlsActive) {
+		game::ApplyHandControls(g_hand.controls, config.handKeys, config.hands.turnSpeed);
+		g_handControlsHeld = true;
+		if (g_hand.laserHit && (g_hand.cursorDx != 0 || g_hand.cursorDy != 0)) {
+			game::MoveMouseBy(g_hand.cursorDx, g_hand.cursorDy);
+		}
+	} else if (g_handControlsHeld) {
+		game::ReleaseHandControls(config.handKeys);
+		g_handControlsHeld = false;
+	}
+
+	if (g_hand.menuOnLeftWrist) {
+		g_hudLayer.SetWristPlacement(backend.HandDeviceIndex(false), g_hand.menuTransform,
+		                             config.hands.wristMenuWidth);
+	} else if (g_hand.hudOnRightWrist) {
+		g_hudLayer.SetWristPlacement(backend.HandDeviceIndex(true), g_hand.hudTransform,
+		                             config.hands.wristHudWidth);
+	} else {
+		g_hudLayer.ClearWristPlacement();
+	}
+}
 
 // The matching third-person correction. It is decided from the exact same
 // source-aim pose as the wrapped attack call, then written after animation in
@@ -720,6 +823,7 @@ void OnPresent() {
 	const Config& config = GetConfig();
 	const bool layerCaptured = g_hudLayer.HasCapture();
 	const bool menuIsUp = config.tracker.showMenus && game::IsMenuMode();
+	UpdateHandMode(config, game::IsMenuMode());
 	OnFrameEnd();
 	if (config.tracker.mirrorMenusToMonitor && menuIsUp && layerCaptured) {
 		g_headsetRenderer.MirrorLayerToMonitor(render::GetGameDevice(),
@@ -1452,7 +1556,9 @@ void BeforeFirstScenePass() {
 	// engine's animation just left them, body rotation and all.
 	const float armsBefore = tracing ? game::FirstPersonArmsWorldYaw() : 0.0f;
 
-	if (g_weaponTurnWanted) {
+	if (g_handArmsWanted) {
+		game::PlaceFirstPersonArms(g_hand.armsRotation, g_hand.armsOffsetUnits);
+	} else if (g_weaponTurnWanted) {
 		game::TurnFirstPersonArms(g_weaponTurnRadians);
 	} else {
 		// Third person, a menu, or switched off. Put the arms back rather than
@@ -1798,10 +1904,10 @@ void PollSettingsMenu() {
 	// Built fresh every frame rather than kept, so a value changed from
 	// somewhere else - the INI hot reload, most likely - shows here instead of
 	// the menu holding a stale copy.
-	ui::MenuItem items[64];
-	const char* categories[64];
+	ui::MenuItem items[96];
+	const char* categories[96];
 	const UInt32 count =
-		g_settingsMenu.BuildRows(GetConfig(), items, categories, 64);
+		g_settingsMenu.BuildRows(GetConfig(), items, categories, 96);
 
 	g_settingsMenuLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                           g_settingsMenu.IsOpen(), items, categories, count,
@@ -2823,6 +2929,13 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		                                viewAimed);
 		pose.headYaw = AimYawRemaining(sourceHeadYaw, g_aimBodyOffset);
 		pose.pitch = gazePitch;
+		// The hand-tracked mode: the shot goes along the right hand instead
+		// of the gaze - its heading as the head's plus the hand's turn from
+		// it, its pitch its own. Same hand-over, same engine sites.
+		if (GetConfig().handTracking && g_hand.aimValid) {
+			pose.headYaw = AimYawRemaining(sourceHeadYaw + g_hand.aimYawTurn, g_aimBodyOffset);
+			pose.pitch = PlayerPitchForGaze(g_hand.aimSinPitch);
+		}
 		game::SetAimSourcePose(pose);
 		sourceAimYaw = pose.headYaw;
 	}
@@ -3332,31 +3445,10 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// the head. Pitch and position of the hand are the next rungs, see
 	// docs/hand-tracked-mode.md. Reported on change of tracking so a run
 	// says when the controller was seen and when it was lost.
-	bool handTookTheTurn = false;
-	if (readPlayer && !isThirdPerson && config.handTracking &&
-	    g_headTracker.IsHeadsetConnected() && !game::IsMenuMode()) {
-		vr::HandPose hand;
-		const bool tracked = g_headTracker.GetBackend().ReadHand(true, hand);
-		if (tracked != g_rightHandTracked) {
-			g_rightHandTracked = tracked;
-			OBVR_LOG("Hands: the right controller is %s",
-			         tracked ? "tracked - the weapon hand follows it" : "not tracked");
-		}
-		vr::Quaternion headOrientation;
-		NiPoint3 headPosition;
-		Heading handHeading{};
-		Heading headHeading{};
-		if (tracked && g_headTracker.GetBackend().GetRenderPose(headOrientation, headPosition) &&
-		    HeadingOf(vr::ToMatrix(hand.orientation), handHeading) &&
-		    HeadingOf(vr::ToMatrix(headOrientation), headHeading)) {
-			const float handYaw = math::Atan2(handHeading.sine, handHeading.cosine);
-			const float headYaw = math::Atan2(headHeading.sine, headHeading.cosine);
-			g_weaponTurnRadians = vr::ShortestTurn(headYaw, handYaw);
-			g_weaponTurnWanted = true;
-			handTookTheTurn = true;
-		}
-	}
-	if (!handTookTheTurn && readPlayer && !isThirdPerson && config.aimFollowsGaze &&
+	g_handArmsWanted = readPlayer && !isThirdPerson && config.handTracking &&
+	                   g_headTracker.IsHeadsetConnected() && !game::IsMenuMode() &&
+	                   g_hand.armsValid;
+	if (!g_handArmsWanted && readPlayer && !isThirdPerson && config.aimFollowsGaze &&
 	    config.aimWeaponFollowsGaze && g_headTracker.IsHeadsetConnected() &&
 	    !game::IsMenuMode()) {
 		Heading weaponTurn{};

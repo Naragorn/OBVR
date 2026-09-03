@@ -472,7 +472,42 @@ const SettingDefinition kSettings[] = {
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "Enabled",
 		+[](const Config& c) { return c.handTracking ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.handTracking = v != 0.0f; },
+		+[](Config& c, float v) { c.handTracking = v != 0.0f; c.hands.enabled = v != 0.0f; },
+	},
+	{
+		"Hands", "Arms follow position", "The arms move with the right hand, not only turn",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "ArmsFollowPosition",
+		+[](const Config& c) { return c.hands.armsFollowPosition ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.armsFollowPosition = v != 0.0f; },
+	},
+	{
+		"Hands", "Arms follow pitch", "The arms tilt with the right hand",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "ArmsFollowPitch",
+		+[](const Config& c) { return c.hands.armsFollowPitch ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.armsFollowPitch = v != 0.0f; },
+	},
+	{
+		"Hands", "HUD on the wrist", "The HUD hangs on the right wrist",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "WristHud",
+		+[](const Config& c) { return c.hands.wristHud ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.wristHud = v != 0.0f; },
+	},
+	{
+		"Hands", "Menus on the wrist", "The Tab menus hang on the left wrist",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "WristMenu",
+		+[](const Config& c) { return c.hands.wristMenu ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.wristMenu = v != 0.0f; },
+	},
+	{
+		"Hands", "Swing speed", "Metres per second that count as a swing",
+		ItemKind::Number, 0.5f, 5.0f, 0.1f, 1, false,
+		"Hands", "SwingLight",
+		+[](const Config& c) { return c.hands.gestures.swingLight; },
+		+[](Config& c, float v) { c.hands.gestures.swingLight = v; },
 	},
 };
 

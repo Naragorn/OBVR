@@ -1,5 +1,6 @@
 #include "game/MenuType.h"
 
+#include "core/AddressSpace.h"
 #include "game/GameAddresses.h"
 
 namespace obvr::game {
@@ -14,6 +15,23 @@ namespace {
 constexpr UInt32 kActiveMenuOffset = 0x9C;
 
 }  // namespace
+
+bool InterfaceCursorPosition(float& x, float& y) {
+	const auto* manager =
+		*reinterpret_cast<const UInt8* const*>(addr::kInterfaceManagerPointer);
+	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(manager))) {
+		return false;
+	}
+	const float* pos = reinterpret_cast<const float*>(manager + addr::kInterfaceCursorPosOffset);
+	// Finite and inside any screen the copy could describe; a NaN fails
+	// every comparison and lands here too.
+	if (!(pos[0] >= -1.0f && pos[0] <= 16384.0f && pos[1] >= -1.0f && pos[1] <= 16384.0f)) {
+		return false;
+	}
+	x = pos[0];
+	y = pos[1];
+	return true;
+}
 
 UInt32 ActiveMenuId() {
 	auto* const manager = *reinterpret_cast<UInt8* const*>(addr::kInterfaceManagerPointer);

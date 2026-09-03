@@ -164,10 +164,10 @@ void TestRows() {
 	SettingsMenu menu;
 	Config config;
 
-	obvr::ui::MenuItem items[64];
-	const char* categories[64];
+	obvr::ui::MenuItem items[96];
+	const char* categories[96];
 
-	const UInt32 count = menu.BuildRows(config, items, categories, 64);
+	const UInt32 count = menu.BuildRows(config, items, categories, 96);
 	Check(count == SettingDefinitionCount(), "every setting becomes a row");
 	Check(count > 0, "and there is at least one");
 

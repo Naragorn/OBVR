@@ -174,6 +174,64 @@ float FirstPersonArmsWorldYaw() {
 	return math::Atan2(forward.x, forward.y);
 }
 
+// The translation half of the placement, with the same remember-and-restore
+// as the rotation: what was written last frame is put back if it is still
+// there, so an offset never accumulates.
+NiPoint3 g_wrotePos{0.0f, 0.0f, 0.0f};
+NiPoint3 g_basePos{0.0f, 0.0f, 0.0f};
+bool g_posHeld = false;
+bool g_parentReported = false;
+
+bool SamePoint(const NiPoint3& a, const NiPoint3& b) {
+	return a.x == b.x && a.y == b.y && a.z == b.z;
+}
+
+bool PlaceFirstPersonArms(const NiMatrix33& rotation, const NiPoint3& offset) {
+	NiAVObject* const node = FirstPersonArmsNode();
+	if (node == nullptr) {
+		return false;
+	}
+
+	if (g_held == node && SameRotation(node->localTransform.rot, g_wrote)) {
+		node->localTransform.rot = g_base;
+	}
+	if (g_held == node && g_posHeld && SamePoint(node->localTransform.pos, g_wrotePos)) {
+		node->localTransform.pos = g_basePos;
+	}
+
+	g_base = node->localTransform.rot;
+	g_basePos = node->localTransform.pos;
+
+	node->localTransform.rot = rotation * g_base;
+	node->localTransform.pos = g_basePos + offset;
+
+	g_wrote = node->localTransform.rot;
+	g_wrotePos = node->localTransform.pos;
+	g_held = node;
+	g_posHeld = true;
+
+	UpdateNodeTransforms(node);
+
+	// Which space the placement lands in is the parent's. Said once, by name,
+	// because the hand-tracked mode assumes it is the camera's and a run is
+	// what confirms or refutes that.
+	if (!g_parentReported) {
+		g_parentReported = true;
+		const char* parentName = nullptr;
+		if (node->parent != nullptr && LooksLikeObject(node->parent)) {
+			const char* candidate = *reinterpret_cast<const char* const*>(
+				reinterpret_cast<const UInt8*>(node->parent) + addr::kNiObjectNameOffset);
+			if (NameLooksReal(candidate)) {
+				parentName = candidate;
+			}
+		}
+		OBVR_LOG("First person arms: placed in the space of parent \"%s\" - the hand-tracked "
+		         "mode assumes that is the camera's",
+		         parentName != nullptr ? parentName : "(unnamed or none)");
+	}
+	return true;
+}
+
 void ReleaseFirstPersonArms() {
 	if (g_held == nullptr) {
 		return;
@@ -182,10 +240,16 @@ void ReleaseFirstPersonArms() {
 	// Only if it is still what was written. Anything else means the engine has
 	// moved on and putting an old rotation back would be the fault rather than
 	// the fix.
-	if (LooksLikeObject(g_held) && SameRotation(g_held->localTransform.rot, g_wrote)) {
-		g_held->localTransform.rot = g_base;
+	if (LooksLikeObject(g_held)) {
+		if (SameRotation(g_held->localTransform.rot, g_wrote)) {
+			g_held->localTransform.rot = g_base;
+		}
+		if (g_posHeld && SamePoint(g_held->localTransform.pos, g_wrotePos)) {
+			g_held->localTransform.pos = g_basePos;
+		}
 	}
 	g_held = nullptr;
+	g_posHeld = false;
 }
 
 }  // namespace obvr::game

@@ -58,6 +58,7 @@ add_library(OBVR SHARED
 	src/game/GameCamera.cpp
 	src/game/MenuMode.cpp
 	src/game/MenuPause.cpp
+	src/game/HandControls.cpp
 	src/game/MenuBackground.cpp
 	src/game/CrosshairTarget.cpp
 	src/game/FirstPersonArms.cpp
@@ -85,6 +86,7 @@ add_library(OBVR SHARED
 	src/vr/HeadOffset.cpp
 	src/vr/HeadTracker.cpp
 	src/vr/OpenVRBackend.cpp
+	src/vr/HandMode.cpp
 	src/vr/Quaternion.cpp
 )
 

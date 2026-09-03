@@ -294,6 +294,31 @@ constexpr float kAnchorReachMetres = 2.0f;
 // head-relative transform it was created with. A HUD riding the head is a
 // far better wrong answer than one nailed to wherever the runtime guessed
 // the origin was.
+void HudLayer::SetWristPlacement(UInt32 deviceIndex,
+                                 const vr::openvr::HmdMatrix34& deviceToOverlay,
+                                 float widthMetres) {
+	if (m_wristSet && m_wristWidth != widthMetres) {
+		m_wristApplied = false;  // a new width to apply
+	}
+	m_wristSet = true;
+	m_wristDevice = deviceIndex;
+	m_wristTransform = deviceToOverlay;
+	m_wristWidth = widthMetres;
+}
+
+void HudLayer::ShownPixels(float& width, float& height) const {
+	UInt32 believedWidth = 0;
+	UInt32 believedHeight = 0;
+	if (GameBelievedSize(believedWidth, believedHeight) && believedWidth <= m_width &&
+	    believedHeight <= m_height) {
+		width = static_cast<float>(believedWidth);
+		height = static_cast<float>(believedHeight);
+		return;
+	}
+	width = static_cast<float>(m_width);
+	height = static_cast<float>(m_height);
+}
+
 void HudLayer::PlaceInRoom(vr::OpenVRBackend& backend, float distanceMetres) {
 	vr::openvr::HmdMatrix34 current{};
 	if (!backend.GetRenderPoseMatrix(current)) {
@@ -358,7 +383,25 @@ void HudLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool capture
 		return;
 	}
 
-	if (anchorWorld) {
+	if (m_wristSet) {
+		// On the wrist: the transform every frame, because the device index
+		// can change when a controller is swapped, and the width once per
+		// change of wrist. The room anchor is marked stale so leaving the
+		// wrist puts the head-relative transform back.
+		backend.SetOverlayTransformDeviceRelative(m_overlay, m_wristDevice, m_wristTransform);
+		if (!m_wristApplied) {
+			m_wristApplied = true;
+			backend.SetOverlayWidthInMetres(m_overlay, m_wristWidth);
+		}
+		m_anchorValid = true;
+	} else if (m_wristApplied) {
+		m_wristApplied = false;
+		backend.SetOverlayWidthInMetres(m_overlay, widthMetres);
+	}
+
+	if (m_wristSet) {
+		// placed above
+	} else if (anchorWorld) {
 		PlaceInRoom(backend, distanceMetres);
 	} else if (m_anchorValid) {
 		// Switched back to the head while the game runs. The overlay is

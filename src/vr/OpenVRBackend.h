@@ -128,6 +128,17 @@ public:
 	// head. The hand-tracked mode's only source of hands.
 	bool ReadHand(bool rightHand, HandPose& out) const;
 
+	// The tracked-device index of the controller in one hand, or
+	// openvr::kTrackedDeviceIndexInvalid. What an overlay is hung on to ride
+	// a wrist.
+	UInt32 HandDeviceIndex(bool rightHand) const;
+
+	// Hangs an overlay on any tracked device - a controller for the wrist
+	// menus - with the given device-to-overlay transform. The HMD case above
+	// is this with the HMD's index.
+	int SetOverlayTransformDeviceRelative(openvr::VROverlayHandle handle, UInt32 deviceIndex,
+	                                      const openvr::HmdMatrix34& deviceToOverlay) const;
+
 	// Blocks until the compositor wants the next frame, and returns its error
 	// code - kCompositorErrorNone means go.
 	//

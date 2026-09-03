@@ -119,6 +119,25 @@ OBVR_IMPORT BOOL OBVR_STDCALL FreeLibrary(HMODULE module);
 // so it costs nothing at runtime.
 OBVR_IMPORT short OBVR_STDCALL GetAsyncKeyState(int virtualKey);
 
+// For the hand-tracked mode: the controllers drive the game through the
+// keys and mouse buttons the player has bound, injected the way the input
+// harness injects them - keybd_event with a scan code, which DirectInput
+// on modern Windows is fed from (measured: the harness's cursor probe
+// follows injected movement). The constants are winuser.h's.
+constexpr DWORD KEYEVENTF_KEYUP = 0x0002;
+constexpr DWORD KEYEVENTF_SCANCODE = 0x0008;
+constexpr DWORD MOUSEEVENTF_MOVE = 0x0001;
+constexpr DWORD MOUSEEVENTF_LEFTDOWN = 0x0002;
+constexpr DWORD MOUSEEVENTF_LEFTUP = 0x0004;
+constexpr DWORD MOUSEEVENTF_RIGHTDOWN = 0x0008;
+constexpr DWORD MOUSEEVENTF_RIGHTUP = 0x0010;
+constexpr UInt32 MAPVK_VK_TO_VSC = 0;
+OBVR_IMPORT void OBVR_STDCALL keybd_event(UInt8 virtualKey, UInt8 scanCode, DWORD flags,
+                                          UInt32 extraInfo);
+OBVR_IMPORT void OBVR_STDCALL mouse_event(DWORD flags, DWORD dx, DWORD dy, DWORD data,
+                                          UInt32 extraInfo);
+OBVR_IMPORT UInt32 OBVR_STDCALL MapVirtualKeyA(UInt32 code, UInt32 mapType);
+
 // For sizing Oblivion's window when the fullscreen flag is cleared.
 //
 // This is not an extra: in exclusive fullscreen Direct3D sizes the game's

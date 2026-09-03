@@ -270,6 +270,28 @@ int OpenVRBackend::SetOverlayTransformHmdRelative(
 		handle, openvr::kTrackedDeviceIndexHmd, &hmdToOverlay);
 }
 
+int OpenVRBackend::SetOverlayTransformDeviceRelative(
+	openvr::VROverlayHandle handle, UInt32 deviceIndex,
+	const openvr::HmdMatrix34& deviceToOverlay) const {
+	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);
+	if (table == nullptr || table->SetOverlayTransformTrackedDeviceRelative == nullptr) {
+		return -1;
+	}
+	return table->SetOverlayTransformTrackedDeviceRelative(handle, deviceIndex, &deviceToOverlay);
+}
+
+UInt32 OpenVRBackend::HandDeviceIndex(bool rightHand) const {
+	if (m_system == nullptr) {
+		return openvr::kTrackedDeviceIndexInvalid;
+	}
+	auto* table = static_cast<openvr::IVRSystemFnTable*>(m_system);
+	if (table->GetTrackedDeviceIndexForControllerRole == nullptr) {
+		return openvr::kTrackedDeviceIndexInvalid;
+	}
+	return table->GetTrackedDeviceIndexForControllerRole(
+		rightHand ? openvr::kControllerRoleRightHand : openvr::kControllerRoleLeftHand);
+}
+
 int OpenVRBackend::SetOverlayTransformAbsolute(
 	openvr::VROverlayHandle handle, const openvr::HmdMatrix34& trackingToOverlay) const {
 	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);

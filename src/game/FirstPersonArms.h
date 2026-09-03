@@ -54,6 +54,15 @@ NiAVObject* FirstPersonArmsNode();
 // alone rather than to try again differently.
 bool TurnFirstPersonArms(float radians);
 
+// The hand-tracked mode's placement: a whole rotation and a translation on
+// top of what the engine and the animation put there this frame, with the
+// same self-correcting base as the turn. The rotation is applied in the
+// node's parent space, the translation added in it, both in game units.
+// Which space the parent is - the camera's, most likely, for a node the
+// first-person arms hang from - is not measured yet; the log names the
+// parent once so the first headset run can settle it.
+bool PlaceFirstPersonArms(const NiMatrix33& rotation, const NiPoint3& offset);
+
 // Puts back whatever the engine had, and forgets the base. For switching the
 // feature off, and for leaving first person, so the arms are not left holding
 // a turn nothing is going to update.

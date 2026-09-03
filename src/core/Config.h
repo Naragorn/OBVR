@@ -2,6 +2,8 @@
 
 #include "camera/LookControl.h"
 #include "core/Types.h"
+#include "game/HandControls.h"
+#include "vr/HandMode.h"
 #include "vr/HeadTracker.h"
 
 namespace obvr {
@@ -103,6 +105,12 @@ struct Config {
 	// bow, spells, wrist menus, grabbing - stands on this reading. Off by
 	// default: without it OBVR is exactly the head-tracked mod it was.
 	bool handTracking = false;
+
+	// The rest of [Hands]: gestures, arms, wrists, laser, sticks (HandMode.h)
+	// and the keys the mode presses on the player's behalf (HandControls.h).
+	// hands.enabled mirrors handTracking after a load.
+	vr::HandSettings hands;
+	game::HandKeyMap handKeys;
 
 	// Debug.D3D9ExProbe: hand the game an IDirect3D9Ex factory and a device
 	// from CreateDeviceEx, to find out whether Oblivion tolerates the 9Ex

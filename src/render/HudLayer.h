@@ -90,6 +90,21 @@ public:
 	// hangs in the room: bring it back in front of me.
 	void ResetAnchor() { m_anchorValid = false; }
 
+	// The hand-tracked mode's wrist placement: hang the layer on a tracked
+	// device (a controller) with the given device-to-overlay transform and
+	// width, on the next Submit and every one after it until cleared. While
+	// set, it overrides both the head-relative and the room anchoring;
+	// clearing it hands the quad back to whichever of those the settings
+	// ask for.
+	void SetWristPlacement(UInt32 deviceIndex, const vr::openvr::HmdMatrix34& deviceToOverlay,
+	                       float widthMetres);
+	void ClearWristPlacement() { m_wristSet = false; }
+
+	// The rectangle of the layer texture the overlay shows, in texture
+	// pixels - the 2D's believed size, or the whole texture when belief and
+	// texture agree. What the laser cursor maps a hit on the quad into.
+	void ShownPixels(float& width, float& height) const;
+
 	void Destroy();
 
 private:
@@ -105,6 +120,12 @@ private:
 	UInt32 m_width = 0;
 	UInt32 m_height = 0;
 	bool m_textureTried = false;
+
+	bool m_wristSet = false;
+	bool m_wristApplied = false;
+	UInt32 m_wristDevice = 0;
+	vr::openvr::HmdMatrix34 m_wristTransform{};
+	float m_wristWidth = 0.0f;
 
 	// The five states BeginCapture changes, in the order they are restored.
 	UInt32 m_savedStates[5] = {};

@@ -6,3 +6,6 @@
 LIBRARY user32.dll
 EXPORTS
 GetAsyncKeyState@4
+keybd_event@16
+mouse_event@20
+MapVirtualKeyA@8

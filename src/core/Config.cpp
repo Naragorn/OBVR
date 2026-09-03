@@ -466,6 +466,56 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.menuWorldProbe = ReadBool("Debug", "MenuWorldProbe", config.menuWorldProbe, path);
 	config.d3d9ExProbe = ReadBool("Debug", "D3D9ExProbe", config.d3d9ExProbe, path);
 	config.handTracking = ReadBool("Hands", "Enabled", config.handTracking, path);
+	{
+		vr::HandSettings& h = config.hands;
+		h.enabled = config.handTracking;
+		h.gestures.blockMinUp = ReadFloat("Hands", "BlockMinUp", h.gestures.blockMinUp, path);
+		h.gestures.blockMinForward =
+			ReadFloat("Hands", "BlockMinForward", h.gestures.blockMinForward, path);
+		h.gestures.reachBackMaxForward =
+			ReadFloat("Hands", "ReachBackMaxForward", h.gestures.reachBackMaxForward, path);
+		h.gestures.reachBackMinUp =
+			ReadFloat("Hands", "ReachBackMinUp", h.gestures.reachBackMinUp, path);
+		h.gestures.swingLight = ReadFloat("Hands", "SwingLight", h.gestures.swingLight, path);
+		h.gestures.swingHeavy = ReadFloat("Hands", "SwingHeavy", h.gestures.swingHeavy, path);
+		h.gestures.heavyHoldSeconds =
+			ReadFloat("Hands", "HeavyHoldSeconds", h.gestures.heavyHoldSeconds, path);
+		h.restHandRight = ReadFloat("Hands", "RestHandRight", h.restHandRight, path);
+		h.restHandForward = ReadFloat("Hands", "RestHandForward", h.restHandForward, path);
+		h.restHandUp = ReadFloat("Hands", "RestHandUp", h.restHandUp, path);
+		h.armsFollowPitch = ReadBool("Hands", "ArmsFollowPitch", h.armsFollowPitch, path);
+		h.armsFollowPosition =
+			ReadBool("Hands", "ArmsFollowPosition", h.armsFollowPosition, path);
+		h.armOffsetScale = ReadFloat("Hands", "ArmOffsetScale", h.armOffsetScale, path);
+		h.wristUp = ReadFloat("Hands", "WristUp", h.wristUp, path);
+		h.wristBack = ReadFloat("Hands", "WristBack", h.wristBack, path);
+		h.wristTiltDegrees = ReadFloat("Hands", "WristTiltDegrees", h.wristTiltDegrees, path);
+		h.wristHudWidth = ReadFloat("Hands", "WristHudWidth", h.wristHudWidth, path);
+		h.wristMenuWidth = ReadFloat("Hands", "WristMenuWidth", h.wristMenuWidth, path);
+		h.wristHud = ReadBool("Hands", "WristHud", h.wristHud, path);
+		h.wristMenu = ReadBool("Hands", "WristMenu", h.wristMenu, path);
+		h.laserGain = ReadFloat("Hands", "LaserGain", h.laserGain, path);
+		h.laserMaxStep = ReadFloat("Hands", "LaserMaxStep", h.laserMaxStep, path);
+		h.stickDeadZone = ReadFloat("Hands", "StickDeadZone", h.stickDeadZone, path);
+		h.turnSpeed = ReadFloat("Hands", "TurnSpeed", h.turnSpeed, path);
+
+		game::HandKeyMap& k = config.handKeys;
+		k.attack = ReadKeyCode("Hands", "AttackKey", k.attack, path);
+		k.block = ReadKeyCode("Hands", "BlockKey", k.block, path);
+		k.cast = ReadKeyCode("Hands", "CastKey", k.cast, path);
+		k.activate = ReadKeyCode("Hands", "ActivateKey", k.activate, path);
+		k.grab = ReadKeyCode("Hands", "GrabKey", k.grab, path);
+		k.jump = ReadKeyCode("Hands", "JumpKey", k.jump, path);
+		k.sneak = ReadKeyCode("Hands", "SneakKey", k.sneak, path);
+		k.readyWeapon = ReadKeyCode("Hands", "ReadyWeaponKey", k.readyWeapon, path);
+		k.menu = ReadKeyCode("Hands", "MenuKey", k.menu, path);
+		k.escape = ReadKeyCode("Hands", "EscapeKey", k.escape, path);
+		k.quickMenu = ReadKeyCode("Hands", "QuickMenuKey", k.quickMenu, path);
+		k.forward = ReadKeyCode("Hands", "ForwardKey", k.forward, path);
+		k.back = ReadKeyCode("Hands", "BackKey", k.back, path);
+		k.left = ReadKeyCode("Hands", "LeftKey", k.left, path);
+		k.right = ReadKeyCode("Hands", "RightKey", k.right, path);
+	}
 	config.layoutProbe = ReadBool("Debug", "LayoutProbe", config.layoutProbe, path);
 	config.cursorProbe = ReadBool("Debug", "CursorProbe", config.cursorProbe, path);
 }

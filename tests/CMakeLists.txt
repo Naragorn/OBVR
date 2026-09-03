@@ -635,3 +635,20 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME hand_input COMMAND hand_input_test)
+
+add_executable(hand_mode_test
+	HandModeTest.cpp
+	../src/vr/HandMode.cpp
+	../src/vr/HeadOffset.cpp
+	../src/vr/Quaternion.cpp
+	../src/core/Rotation.cpp
+	../src/core/Smoothing.cpp
+)
+
+target_include_directories(hand_mode_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(hand_mode_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME hand_mode COMMAND hand_mode_test)
