@@ -399,6 +399,34 @@ int OpenVRBackend::WaitGetPoses() {
 	openvr::TrackedDevicePose renderPose{};
 	const int result = table->WaitGetPoses(&renderPose, 1, nullptr, 0);
 
+	// On change of answer, not on a budget: a run says once what the first
+	// frames returned and again at every transition, which is where the
+	// frame the pose becomes usable on is found. ETrackingResult 200 is
+	// Running_OK; the compositor codes are in the header's comment.
+	if (!m_waitAnswerLogged || result != m_lastWaitResult ||
+	    renderPose.poseIsValid != m_lastPoseValid ||
+	    renderPose.deviceIsConnected != m_lastDeviceConnected ||
+	    renderPose.trackingResult != m_lastTrackingResult) {
+		m_waitAnswerLogged = true;
+		m_lastWaitResult = result;
+		m_lastPoseValid = renderPose.poseIsValid;
+		m_lastDeviceConnected = renderPose.deviceIsConnected;
+		m_lastTrackingResult = renderPose.trackingResult;
+		OBVR_LOG("Poses: WaitGetPoses now returns %d%s, HMD pose valid=%d connected=%d "
+		         "tracking result=%d%s",
+		         result,
+		         result == openvr::kCompositorErrorNone
+		             ? " (ok)"
+		             : (result == openvr::kCompositorErrorDoNotHaveFocus
+		                    ? " (another application holds the scene focus)"
+		                    : (result == openvr::kCompositorErrorIsNotSceneApplication
+		                           ? " (not registered as a scene application)"
+		                           : "")),
+		         renderPose.poseIsValid ? 1 : 0, renderPose.deviceIsConnected ? 1 : 0,
+		         renderPose.trackingResult,
+		         renderPose.trackingResult == 200 ? " (running ok)" : "");
+	}
+
 	// Kept, not discarded. This is the pose the compositor will reproject the
 	// submitted picture against, so it is the pose the picture has to be drawn
 	// with - see the comment on the declaration, and Valve's own statement

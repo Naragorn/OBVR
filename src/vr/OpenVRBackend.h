@@ -288,6 +288,20 @@ private:
 	NiPoint3 m_renderPosition{0.0f, 0.0f, 0.0f};
 	bool m_renderPoseValid = false;
 
+	// The last answer WaitGetPoses gave, logged on change of answer: the
+	// error code, and the HMD pose's validity, connection and tracking
+	// result. This exists for the recenter key doing nothing during the
+	// intro films (task #25): the render pose is unusable for the first
+	// seconds and the flat picture rides the head until it is not, and
+	// what the log lacked was WHY - no focus yet, a headset still settling,
+	// or a compositor not ready. See OpenVR's WaitGetPoses documentation for
+	// the codes: 101 is DoNotHaveFocus, 103 IsNotSceneApplication.
+	int m_lastWaitResult = -1;
+	int m_lastTrackingResult = -1;
+	bool m_lastPoseValid = false;
+	bool m_lastDeviceConnected = false;
+	bool m_waitAnswerLogged = false;
+
 	// The same pose as OpenVR gave it, unconverted. Submit wants the matrix
 	// back in its own form, and converting to a quaternion and out again would
 	// be two chances to introduce a difference in something whose whole purpose
