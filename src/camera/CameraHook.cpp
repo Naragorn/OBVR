@@ -17,6 +17,7 @@
 #include "game/GameCamera.h"
 #include "game/MenuBackground.h"
 #include "core/Rotation.h"
+#include "core/Watchdog.h"
 #include "game/MenuMode.h"
 #include "game/MenuType.h"
 #include "game/AimAtSource.h"
@@ -182,6 +183,7 @@ UInt32 g_stepTraceLeft = 0;
 // Written down only while armed, so this costs one comparison a frame in
 // ordinary play.
 void TraceStep(const char* where) {
+	watchdog::NoteStep(where);
 	if (g_stepTraceLeft > 0) {
 		OBVR_LOG("Step: %s", where);
 	}
@@ -708,6 +710,8 @@ void OnFrameEnd();
 // submit inside it consumes the layer's capture flag, and a menu can close
 // on this very frame.
 void OnPresent() {
+	watchdog::Start();
+	watchdog::NoteFrame();
 	const Config& config = GetConfig();
 	const bool layerCaptured = g_hudLayer.HasCapture();
 	const bool menuIsUp = config.tracker.showMenus && game::IsMenuMode();

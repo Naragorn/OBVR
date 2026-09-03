@@ -605,3 +605,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME branch_decode COMMAND branch_decode_test)
+
+add_executable(stall_detector_test StallDetectorTest.cpp)
+
+target_include_directories(stall_detector_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(stall_detector_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME stall_detector COMMAND stall_detector_test)

@@ -41,6 +41,7 @@ add_library(OBVR SHARED
 	src/core/EntryDetour.cpp
 	src/core/Log.cpp
 	src/core/Memory.cpp
+	src/core/Watchdog.cpp
 	src/core/Rotation.cpp
 	src/core/Smoothing.cpp
 	src/platform/Freestanding.cpp
