@@ -59,6 +59,7 @@ void TestDeviceIndices() {
 	// GetGammaRamp, and then the create methods begin.
 	CheckIndex(kDeviceCreateTexture, 23, "CreateTexture");
 	CheckIndex(kDeviceCreateRenderTarget, 28, "CreateRenderTarget");
+	CheckIndex(kDeviceUpdateSurface, 30, "UpdateSurface");
 	CheckIndex(kDeviceStretchRect, 34, "StretchRect");
 
 	// The gaps, spelled out as arithmetic so a wrong one shows up as a wrong
@@ -163,6 +164,9 @@ void TestMethodLookup() {
 	Check(reinterpret_cast<void*>(Method<Fn>(&object, d3d9::kDeviceCreateTexture)) ==
 	          table[23],
 	      "the CreateTexture index reads entry 23");
+	Check(reinterpret_cast<void*>(Method<Fn>(&object, d3d9::kDeviceUpdateSurface)) ==
+	          table[30],
+	      "the UpdateSurface index reads entry 30");
 	Check(reinterpret_cast<void*>(Method<Fn>(&object, d3d9::kDeviceStretchRect)) ==
 	          table[34],
 	      "the StretchRect index reads entry 34");

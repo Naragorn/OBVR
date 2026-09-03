@@ -55,6 +55,13 @@ constexpr UInt32 kDeviceCreateTexture = 23;
 // the obvious name to reach for, and the comment above is the reason not to.
 constexpr UInt32 kDeviceCreateRenderTarget = 28;
 
+// Copies a system-memory surface into a default-pool surface. This is the
+// inverse of GetRenderTargetData below and is what restores a persisted
+// crosshair into the render-target texture. The SDK lists it immediately
+// after CreateDepthStencilSurface and immediately before UpdateTexture;
+// counted from IUnknown, that is device entry 30.
+constexpr UInt32 kDeviceUpdateSurface = 30;
+
 // Copies one surface into another on the GPU. This is what makes an eye's
 // picture OBVR's own rather than a borrowed view of a back buffer the game
 // is about to draw over.
@@ -98,6 +105,10 @@ static_assert(sizeof(Rect) == 4 * sizeof(SInt32), "RECT is four 32-bit values");
 
 using ColorFillFn = SInt32(__stdcall*)(void* self, void* surface, const Rect* rect,
                                        UInt32 colour);
+using UpdateSurfaceFn = SInt32(__stdcall*)(void* self, void* sourceSurface,
+                                           const Rect* sourceRect,
+                                           void* destinationSurface,
+                                           const void* destinationPoint);
 
 // ---------------------------------------------------------------- Constants
 

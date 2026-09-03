@@ -98,7 +98,7 @@ public:
 		bool m_held = false;
 	};
 
-	// Dresses the held pair for a pause menu the way vanilla dresses its own
+	// Dresses the current pair for a pause menu the way vanilla dresses its own
 	// static menu background: the world desaturated and re-toned (the sepia
 	// look bStaticMenuBackground gives), not a colour laid over it. Each
 	// eye's picture is copied aside and drawn back through a small pixel
@@ -109,7 +109,7 @@ public:
 	// so all four picture edges sit at angles both eyes agree on. See
 	// MenuShade.h for why each piece exists.
 	//
-	// Runs once per held episode: the flag it sets survives until the next
+	// Runs once per captured pair: the flag it sets survives until the next
 	// CopyBackBuffer overwrites the pictures, which is also what naturally
 	// undresses them - the world's next frame arrives untoned and untrimmed.
 	// Pure Direct3D 9, so it must be called with no submission queue held.

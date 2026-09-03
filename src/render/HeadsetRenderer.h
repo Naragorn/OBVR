@@ -112,11 +112,11 @@ public:
 		float cameraTanHalfWidth = 0.0f;
 		float cameraTanHalfHeight = 0.0f;
 
-		// The held pair's menu dressing, applied once per held episode: the
-		// sepia tone with its strength folded in as alpha (0 means no shade),
-		// and whether each eye's picture is trimmed to the window both eyes
-		// show. Only read on the held path - dialogue keeps the world
-		// rendering, so its frames never come here. See MenuShade.h.
+		// The paused world's menu dressing: the sepia tone with its strength
+		// folded in as alpha (0 means no shade), and whether each eye's picture
+		// is trimmed to the window both eyes show. Held pairs may use both;
+		// freshly rendered live menu stereo uses the shade but deliberately not
+		// the held-only border. See MenuDressingForFrame and MenuShade.h.
 		UInt32 menuShadeColor = 0;
 		bool menuSingleBorder = false;
 

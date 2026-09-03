@@ -6,19 +6,21 @@
 // The decisions behind the shaded menu background, kept apart from the device
 // that applies them so every flow can be exercised without one.
 //
-// Two things happen to the held pair when a pause menu opens, both asked for
-// after seeing them missing. The shade is vanilla's own static menu
-// background: with bStaticMenuBackground the game shows the paused world
+// Two things can happen to the paused world's eye pair when a menu opens.
+// The shade applies to held and freshly rendered live pairs alike; the black
+// edge trim below belongs only to held pairs. The shade is vanilla's own
+// static-menu look: with bStaticMenuBackground the game shows the paused world
 // desaturated and re-toned sepia - the yellow-brown look every Oblivion
 // player knows - and a frozen world at full colour reads as a freeze rather
 // than a pause. (A flat brown laid over the colours was tried first and
 // looked nothing like it; the desaturation is the part that needs a shader,
-// see EyeMirror::PrepareHeldShade.) The single border is a stereo fact: the
-// two eyes' pictures are cropped at opposite edges, so each eye's picture
-// ends at a different angle and the edges cannot be fused - reported as
-// doubled bars at the sides while the top and bottom, whose crops match,
-// show one. Blacking each picture back to the window BOTH eyes show puts all
-// four edges at the same angles.
+// see EyeMirror::PrepareHeldShade.) The held pair's single border is a stereo
+// fact: the two eyes' pictures are cropped at opposite edges, so each eye's
+// picture ends at a different angle and the edges cannot be fused - reported
+// as doubled bars at the sides while the top and bottom, whose crops match,
+// show one. Blacking a HELD picture back to the window both eyes show puts all
+// four edges at the same angles. A live pair is current per eye and must not
+// be trimmed to that overlap.
 namespace obvr::render {
 
 // Reads a colour written as six hex digits, with or without a leading '#'.

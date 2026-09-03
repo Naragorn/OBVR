@@ -695,15 +695,26 @@ void MaybeRunWorldControlProbe(FrameDelivery delivery, bool menuIsUp, bool hadCa
 // else that wanted doing at the end of a frame would be tempting to put here,
 // and this runs on the renderer's thread inside a call the game is waiting on.
 void OnFrameEnd() {
+	const Config& config = GetConfig();
+	const bool liveMenuCanRun = LiveMenuBackgroundCanRun(
+		config.tracker.liveMenuBackground, config.tracker.renderToHeadset,
+		config.tracker.showMenus, g_headTracker.IsHeadsetConnected(),
+		config.tracker.stereo == vr::StereoMode::DualPass,
+		config.tracker.menusInWorld, config.tracker.hudOverlay,
+		config.tracker.hudBetweenPasses, config.tracker.menuStandIn);
+
 	// The engine's own live menu background, asked for every frame because the
-	// INI is hot reloaded and the call is a byte comparison. Off leaves the
+	// INI is hot reloaded and the call is a byte comparison. It is enabled
+	// only when the complete stereo-and-overlay path is available; otherwise
+	// two extra world renders would buy an incomplete picture. Off leaves the
 	// engine's setting alone rather than forcing the static background on -
 	// see ApplyLiveMenuBackground.
-	game::ApplyLiveMenuBackground(GetConfig().tracker.liveMenuBackground);
+	game::ApplyLiveMenuBackground(liveMenuCanRun);
 
-	// Cleared for the next frame, exactly as g_frameOpen is: it is the guard
-	// that keeps one menu frame from being armed twice, and a frame that armed
-	// itself must not leave that standing.
+	// Remembered for this frame's delivery before clearing the guard for the
+	// next one. This is what distinguishes a fresh pause-menu stereo pair from
+	// an ordinary stereo dialogue frame when the dressing is applied below.
+	const bool liveMenuFrame = g_menuLiveThisFrame;
 	g_menuLiveThisFrame = false;
 
 	// Consumed, not merely read.
@@ -749,10 +760,10 @@ void OnFrameEnd() {
 	// rate, which is what opening the ESC menu looked like in the headset.
 	// Gated on ShowMenus: with menus switched off there is no flat presentation
 	// to hold steady, so the question does not arise.
-	const bool menuIsUp = GetConfig().tracker.showMenus && game::IsMenuMode();
+	const bool menuIsUp = config.tracker.showMenus && game::IsMenuMode();
 	const FrameDelivery delivery = DeliverFrame(
 		hadCameraPass, menuIsUp,
-		MenusCanReachTheWorld(GetConfig().tracker.menusInWorld, GetConfig().tracker.hudOverlay),
+		MenusCanReachTheWorld(config.tracker.menusInWorld, config.tracker.hudOverlay),
 		g_headsetRenderer.HasHeldEyes(), g_worldlessStreak);
 
 	// The streak the NEXT frame's delivery will see: this frame joins it when
@@ -816,6 +827,17 @@ void OnFrameEnd() {
 		--g_stepTraceLeft;
 	}
 
+	const UInt32 menuAge = menuIsUp ? g_presentedFrame - g_menuOpenedFrame
+	                                : kMenuDressingWindowFrames + 1;
+	const MenuFrameDressing menuDressing = MenuDressingForFrame(
+		delivery, menuIsUp, liveMenuFrame, menuAge, config.tracker.menuShade,
+		config.tracker.menuSingleBorder);
+	const UInt32 menuShadeColor = menuDressing.shade
+	                                  ? render::ComposeShadeColor(
+		                                    config.tracker.menuShadeColorRgb,
+		                                    config.tracker.menuShadeStrength)
+	                                  : 0;
+
 	if (g_menuTraceLeft > 0) {
 		--g_menuTraceLeft;
 		const UInt32 scene = render::CurrentSceneCall();
@@ -834,6 +856,21 @@ void OnFrameEnd() {
 
 	if (delivery == FrameDelivery::Stereo) {
 		g_flatFramesSinceCamera = 0;
+
+		// A live pause-menu pair is fresh stereo, but it still wants the
+		// desaturated sepia treatment that tells the player the world is
+		// paused. The single black border belongs only to a held pair; the pure
+		// decision above refuses it here so the fresh eyes keep their full view.
+		g_pendingRequest.menuShadeColor = menuShadeColor;
+		g_pendingRequest.menuSingleBorder = menuDressing.singleBorder;
+		if (menuIsUp && liveMenuFrame && !g_dressingReportedThisMenu &&
+		    g_dressingReportsLeft > 0) {
+			g_dressingReportedThisMenu = true;
+			--g_dressingReportsLeft;
+			OBVR_LOG("Render: live stereo menu frames %s the sepia dressing and keep "
+			         "their full eye borders",
+			         menuDressing.shade ? "carry" : "skip");
+		}
 
 		// A stereo frame the camera hook never ran on - armed from inside the
 		// scene render, for a menu the engine is drawing the world behind. On
@@ -902,14 +939,8 @@ void OnFrameEnd() {
 		// painted it sepia, seen as a half-second washed-grey picture at the
 		// end of every conversation. Colour and strength are folded here so
 		// the renderer sees one word - zero, or the ARGB to paint.
-		const bool dressing =
-			menuIsUp && MenuDressingWanted(g_presentedFrame - g_menuOpenedFrame);
-		held.menuShadeColor =
-			(dressing && GetConfig().tracker.menuShade)
-				? render::ComposeShadeColor(GetConfig().tracker.menuShadeColorRgb,
-			                                GetConfig().tracker.menuShadeStrength)
-				: 0;
-		held.menuSingleBorder = dressing && GetConfig().tracker.menuSingleBorder;
+		held.menuShadeColor = menuShadeColor;
+		held.menuSingleBorder = menuDressing.singleBorder;
 
 		// Once per menu episode: whether its held run wears the dressing.
 		// This line is the evidence the washed-grey diagnosis rests on - a
@@ -919,8 +950,11 @@ void OnFrameEnd() {
 			--g_dressingReportsLeft;
 			OBVR_LOG("Render: held frames %s the menu dressing - the menu opened %u "
 			         "frames ago%s",
-			         dressing ? "carry" : "skip", g_presentedFrame - g_menuOpenedFrame,
-			         dressing ? "" : " (a dialogue's exit fade, most likely)");
+			         (menuDressing.shade || menuDressing.singleBorder) ? "carry" : "skip",
+			         menuAge,
+			         MenuDressingWanted(menuAge)
+			             ? ""
+			             : " (a dialogue's exit fade, most likely)");
 		}
 		if (g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame())) {
 			g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), held);
@@ -1817,11 +1851,14 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// crosshair rather than an approximation of it - the player's own
 	// replacement texture included.
 	//
-	// Kept only while nothing is under the crosshair. With a target the lifted
-	// square holds a context icon instead, and keeping a hand or a speech
-	// bubble would freeze it into every third-person frame afterwards.
-	if (crosshairLifted && !visibility.thirdPerson && !g_crosshairHasTarget) {
-		g_crosshairLayer.RememberCrosshair(render::GetGameDevice());
+	// Kept only while nothing is under the crosshair and the player is not
+	// sneaking. A target makes the lifted square a context icon; sneaking makes
+	// it the eye. Both are live state, and persisting either would freeze the
+	// wrong picture into a later ordinary third-person frame.
+	if (crosshairLifted && !visibility.thirdPerson && !g_crosshairHasTarget &&
+	    !game::IsPlayerSneaking()) {
+		g_crosshairLayer.RememberCrosshair(render::GetGameDevice(),
+		                                  config.tracker.crosshairPersistentCache);
 	}
 
 	// Pasted in only where the game leaves a gap. Oblivion draws no plain
@@ -1841,7 +1878,8 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		// If this session has not captured a clean first-person crosshair yet,
 		// leave the overlay empty. Drawing an OBVR substitute here would make a
 		// mod-made reticle appear instead of the player's Oblivion crosshair.
-		g_crosshairLayer.UseRememberedCrosshair(render::GetGameDevice());
+		g_crosshairLayer.UseRememberedCrosshair(render::GetGameDevice(),
+		                                      config.tracker.crosshairPersistentCache);
 	}
 
 	// The depth was decided in the camera pass, where the camera and the frame
@@ -1907,9 +1945,9 @@ void UpdateCrosshairDepth(const Config& config, float deltaSeconds) {
 	// rest on the same reference - where the crosshair sits, and whether it is
 	// shown at all - and tying the read to the first would have left the second
 	// silently dead whenever the depth was switched off.
-	const bool wantTarget = config.tracker.crosshairDynamic ||
-	                        config.tracker.crosshairOnlyWhenNeeded ||
-	                        config.tracker.crosshairProbe;
+	const bool wantTarget = CrosshairTargetReadWanted(
+		config.tracker.crosshairDynamic, config.tracker.crosshairOnlyWhenNeeded,
+		config.tracker.crosshairProbe, config.tracker.crosshairInThirdPerson);
 
 	const game::CrosshairTarget target =
 		wantTarget ? game::ReadCrosshairTarget() : game::CrosshairTarget{};

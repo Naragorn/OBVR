@@ -289,6 +289,38 @@ constexpr bool MenuDressingWanted(UInt32 framesSinceMenuOpened) {
 	return framesSinceMenuOpened <= kMenuDressingWindowFrames;
 }
 
+// Whether the live pause-menu world can be complete rather than merely
+// expensive. One switch asks for the feature, but it needs the existing dual
+// world path and the existing menu overlay path together: two fresh eye
+// pictures are no use if the menu itself has nowhere to go.
+//
+// Keeping this decision here makes every refused combination testable and,
+// more importantly, keeps LiveMenuBackground=0 as an exact return to the
+// previous held-pair path.
+bool LiveMenuBackgroundCanRun(bool enabled, bool renderToHeadset, bool showMenus,
+                              bool headsetConnected, bool dualPass,
+                              bool menusInWorld, bool hudOverlay,
+                              bool hudBetweenPasses, bool cameraStandIn);
+
+struct MenuFrameDressing {
+	bool shade = false;
+	bool singleBorder = false;
+};
+
+// Which paused-world pictures receive the menu dressing.
+//
+// A recently opened held pair gets both configured parts: the sepia shader
+// and, optionally, the common black border that makes a frozen pair's two
+// outer edges agree. Its age gate keeps a dialogue's much later exit hold
+// untouched. A freshly rendered live pair gets the shader for every menu
+// frame but never that border: every copy replaces the previous shade, and
+// each eye is current and correct on its own, so trimming them to their
+// overlap would put black strips back into genuine stereo.
+MenuFrameDressing MenuDressingForFrame(FrameDelivery delivery, bool menuIsUp,
+                                       bool liveStereoFrame,
+                                       UInt32 framesSinceMenuOpened,
+                                       bool shadeEnabled, bool singleBorderEnabled);
+
 // Whether this menu frame runs the menu-world probe: one self-initiated
 // world render, its draw calls counted and logged, and nothing else done with
 // the picture.
@@ -382,10 +414,11 @@ bool WorldControlProbeWanted(bool probeEnabled, bool menuIsUp, bool hadCameraPas
 // at camera pass=1 - which is why dialogues always looked right while the
 // persuasion menu did not.
 //
-// enabled is not the old LiveMenuBackground gate, which asked the different
-// question of whether to make the engine render behind menus that would
-// otherwise show a snapshot. This one exists so the path can be switched off
-// from the INI, and the reason is operational rather than about the feature:
+// enabled is MenuStandIn, not LiveMenuBackground. The live switch asks the
+// engine to render behind menus that would otherwise show a snapshot; this
+// stand-in supplies the missing VR camera whenever such a render occurs and
+// is therefore one of the live feature's prerequisites. It remains a separate
+// switch for operational bisection:
 // it opens a compositor frame and arms a second render pass from inside the
 // scene render, on frames the camera hook never saw. When a session ends
 // badly, being able to take one suspect out of the picture without a rebuild
@@ -502,6 +535,12 @@ bool CrosshairWanted(const CrosshairVisibility& visibility);
 // loss than a hand-over-icon that never appears.
 bool BorrowedCrosshairWanted(bool thirdPerson, bool enabled, bool somethingAimedAt,
                              bool sneaking);
+
+// Whether the HUD's target reference has a consumer this frame. Third-person
+// borrowing belongs here as much as dynamic depth does: without the read, a
+// context icon can be mistaken for the plain crosshair and then persisted.
+bool CrosshairTargetReadWanted(bool dynamicDepth, bool onlyWhenNeeded,
+                               bool probeEnabled, bool thirdPersonBorrowing);
 
 // Where the crosshair quad goes and how big it is there.
 //

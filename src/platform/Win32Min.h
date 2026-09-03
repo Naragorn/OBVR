@@ -33,10 +33,15 @@ constexpr DWORD MEM_RESERVE = 0x2000;
 // MEM_RELEASE requires a size of 0 and frees the whole reservation.
 constexpr DWORD MEM_RELEASE = 0x8000;
 constexpr DWORD GENERIC_WRITE = 0x40000000;
+constexpr DWORD GENERIC_READ = 0x80000000;
 constexpr DWORD FILE_SHARE_READ = 0x1;
 constexpr DWORD CREATE_ALWAYS = 2;
+constexpr DWORD OPEN_EXISTING = 3;
 constexpr DWORD FILE_ATTRIBUTE_NORMAL = 0x80;
 constexpr DWORD INVALID_FILE_ATTRIBUTES = 0xFFFFFFFF;
+constexpr DWORD INVALID_FILE_SIZE = 0xFFFFFFFF;
+constexpr DWORD MOVEFILE_REPLACE_EXISTING = 0x1;
+constexpr DWORD MOVEFILE_WRITE_THROUGH = 0x8;
 
 OBVR_IMPORT BOOL OBVR_STDCALL VirtualProtect(void* address, UInt32 size, DWORD newProtect, DWORD* oldProtect);
 OBVR_IMPORT void* OBVR_STDCALL VirtualAlloc(void* address, UInt32 size, DWORD allocationType, DWORD protect);
@@ -45,7 +50,11 @@ OBVR_IMPORT HANDLE OBVR_STDCALL GetCurrentProcess();
 OBVR_IMPORT BOOL OBVR_STDCALL FlushInstructionCache(HANDLE process, const void* baseAddress, UInt32 size);
 OBVR_IMPORT HANDLE OBVR_STDCALL CreateFileA(const char* fileName, DWORD access, DWORD shareMode, void* security, DWORD creation, DWORD flags, HANDLE templateFile);
 OBVR_IMPORT int OBVR_STDCALL MoveFileExA(const char* existingName, const char* newName, DWORD flags);
+OBVR_IMPORT BOOL OBVR_STDCALL DeleteFileA(const char* fileName);
+OBVR_IMPORT DWORD OBVR_STDCALL GetFileSize(HANDLE file, DWORD* highSize);
+OBVR_IMPORT BOOL OBVR_STDCALL ReadFile(HANDLE file, void* buffer, DWORD bytes, DWORD* read, void* overlapped);
 OBVR_IMPORT BOOL OBVR_STDCALL WriteFile(HANDLE file, const void* buffer, DWORD bytes, DWORD* written, void* overlapped);
+OBVR_IMPORT BOOL OBVR_STDCALL FlushFileBuffers(HANDLE file);
 OBVR_IMPORT BOOL OBVR_STDCALL CloseHandle(HANDLE object);
 
 // For the one thread OBVR runs: a poller that waits for Oblivion to build its

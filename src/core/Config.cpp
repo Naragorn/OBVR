@@ -373,6 +373,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		"Render", "CrosshairOnlyWhenNeeded", config.tracker.crosshairOnlyWhenNeeded, path);
 	config.tracker.crosshairInThirdPerson = ReadBool(
 		"Render", "CrosshairInThirdPerson", config.tracker.crosshairInThirdPerson, path);
+	config.tracker.crosshairPersistentCache = ReadBool(
+		"Render", "CrosshairPersistentCache", config.tracker.crosshairPersistentCache, path);
 	config.tracker.crosshairOnlyWhenNeededThirdPerson =
 		ReadBool("Render", "CrosshairOnlyWhenNeeded3rdPerson",
 	             config.tracker.crosshairOnlyWhenNeededThirdPerson, path);
@@ -565,8 +567,9 @@ bool Config::Load(const char* fileName) {
 	         tracker.hudAnchorWorld ? "world" : "head",
 	         static_cast<double>(tracker.hudDistanceMetres),
 	         static_cast<double>(tracker.hudWidthMetres));
-	OBVR_LOG("Config: Render.MenuShade=%d Color=%06X Strength=%.2f MenuSingleBorder=%d "
-	         "Look.DialogZoom=%d DialogFirstPerson=%d",
+	OBVR_LOG("Config: Render.LiveMenuBackground=%d MenuStandIn=%d MenuShade=%d Color=%06X "
+	         "Strength=%.2f MenuSingleBorder=%d Look.DialogZoom=%d DialogFirstPerson=%d",
+	         tracker.liveMenuBackground ? 1 : 0, tracker.menuStandIn ? 1 : 0,
 	         tracker.menuShade ? 1 : 0, tracker.menuShadeColorRgb,
 	         static_cast<double>(tracker.menuShadeStrength),
 	         tracker.menuSingleBorder ? 1 : 0, dialogZoom ? 1 : 0,
@@ -602,6 +605,9 @@ bool Config::Load(const char* fileName) {
 	                                      : "world, but HudOverlay is off, so the cinema "
 	                                        "screen is used - the overlay is the only way a "
 	                                        "menu reaches the headset"));
+	OBVR_LOG("Config: Render.Crosshair=%d InThirdPerson=%d PersistentCache=%d",
+	         tracker.crosshair ? 1 : 0, tracker.crosshairInThirdPerson ? 1 : 0,
+	         tracker.crosshairPersistentCache ? 1 : 0);
 	if (tracker.stereo == vr::StereoMode::DualPass) {
 		// The known limit, stated up front rather than discovered in the
 		// headset: the 2D layer draws after both passes, into the frame the

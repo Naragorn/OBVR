@@ -207,6 +207,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.tracker.crosshairInThirdPerson = v != 0.0f; },
 	},
 	{
+		"Aiming", "Remember crosshair", "Keep the genuine capture across game starts",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "CrosshairPersistentCache",
+		+[](const Config& c) { return c.tracker.crosshairPersistentCache ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.crosshairPersistentCache = v != 0.0f; },
+	},
+	{
 		"Aiming", "3rd person only when needed", "Same rule, for the borrowed one",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Render", "CrosshairOnlyWhenNeeded3rdPerson",
@@ -297,6 +304,13 @@ const SettingDefinition kSettings[] = {
 		"cinema", "world",
 	},
 	{
+		"Screen", "Live 3D pause world", "Redraw the paused Esc/Tab world from the HMD pose",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "LiveMenuBackground",
+		+[](const Config& c) { return c.tracker.liveMenuBackground ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.liveMenuBackground = v != 0.0f; },
+	},
+	{
 		"Screen", "Menu shade", "The vanilla brown wash behind a menu",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Render", "MenuShade",
@@ -353,8 +367,8 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.tracker.menuSingleBorder = v != 0.0f; },
 	},
 	{
-		"Screen", "Menu stand-in", "Holds the world still behind a menu. Also fixes the "
-		                           "persuasion face",
+		"Screen", "Menu stand-in", "Supplies the paused VR camera. Also fixes the persuasion "
+		                           "face",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Render", "MenuStandIn",
 		+[](const Config& c) { return c.tracker.menuStandIn ? 1.0f : 0.0f; },

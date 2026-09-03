@@ -94,22 +94,25 @@ public:
 	// holds a context icon - a hand, a lock, a speech bubble - and keeping one
 	// of those would freeze the wrong picture into every later frame.
 	//
-	// Refreshed rather than taken once, so the copy follows the game: the sneak
-	// eye replaces the cross while sneaking, and third person then shows the
-	// eye too, which is what vanilla does in that one case.
-	bool RememberCrosshair(void* gameDevice);
+	// Refreshed rather than taken once, so a changed genuine reticle replaces
+	// the old one. The caller excludes the sneak eye as well as context icons:
+	// both are live state, not a plain crosshair safe to persist.
+	bool RememberCrosshair(void* gameDevice, bool persistentCache);
 
 	// Puts the kept copy back into the texture and marks it as something to
-	// show. False when nothing has been kept yet - a session that has not been
-	// in first person since it started. The caller deliberately shows nothing
-	// then: an OBVR-drawn substitute is not the Oblivion crosshair.
-	bool UseRememberedCrosshair(void* gameDevice);
+	// show. With persistence on, the first call may restore a previous clean
+	// first-person capture. False when neither disk nor this session has one;
+	// the caller deliberately shows nothing then, since an OBVR-drawn
+	// substitute would not be the player's Oblivion crosshair.
+	bool UseRememberedCrosshair(void* gameDevice, bool persistentCache);
 
 	void Destroy();
 
 private:
 	bool EnsureTexture(void* gameDevice);
 	bool EnsureKeptTexture(void* gameDevice);
+	bool LoadPersistentCrosshair(void* gameDevice);
+	void SavePersistentCrosshair(void* gameDevice);
 	bool EnsureOverlay(vr::OpenVRBackend& backend);
 	void Place(vr::OpenVRBackend& backend, float distanceMetres, float widthMetres);
 
@@ -133,6 +136,8 @@ private:
 	bool m_keptTried = false;
 	bool m_haveKept = false;
 	bool m_keptReported = false;
+	bool m_cacheLoadTried = false;
+	bool m_cacheSaveTried = false;
 
 	vr::openvr::VROverlayHandle m_overlay = vr::openvr::kOverlayHandleInvalid;
 	bool m_overlayTried = false;

@@ -135,6 +135,35 @@ bool MenusCanReachTheWorld(bool menusInWorld, bool hudOverlay) {
 	return menusInWorld && hudOverlay;
 }
 
+bool LiveMenuBackgroundCanRun(bool enabled, bool renderToHeadset, bool showMenus,
+                              bool headsetConnected, bool dualPass,
+                              bool menusInWorld, bool hudOverlay,
+                              bool hudBetweenPasses, bool cameraStandIn) {
+	return enabled && renderToHeadset && showMenus && headsetConnected && dualPass &&
+	       menusInWorld && hudOverlay && hudBetweenPasses && cameraStandIn;
+}
+
+MenuFrameDressing MenuDressingForFrame(FrameDelivery delivery, bool menuIsUp,
+                                       bool liveStereoFrame,
+                                       UInt32 framesSinceMenuOpened,
+                                       bool shadeEnabled, bool singleBorderEnabled) {
+	if (!menuIsUp) {
+		return MenuFrameDressing{};
+	}
+
+	if (delivery == FrameDelivery::HeldStereo) {
+		return MenuDressingWanted(framesSinceMenuOpened)
+		           ? MenuFrameDressing{shadeEnabled, singleBorderEnabled}
+		           : MenuFrameDressing{};
+	}
+
+	if (delivery == FrameDelivery::Stereo && liveStereoFrame) {
+		return MenuFrameDressing{shadeEnabled, false};
+	}
+
+	return MenuFrameDressing{};
+}
+
 bool MenuWorldProbeWanted(bool probeEnabled, FrameDelivery delivery, bool menuIsUp,
                           UInt32 attemptsLeft) {
 	return probeEnabled && delivery != FrameDelivery::Stereo && menuIsUp &&
@@ -200,6 +229,11 @@ bool BorrowedCrosshairWanted(bool thirdPerson, bool enabled, bool somethingAimed
 		return false;
 	}
 	return !somethingAimedAt && !sneaking;
+}
+
+bool CrosshairTargetReadWanted(bool dynamicDepth, bool onlyWhenNeeded,
+                               bool probeEnabled, bool thirdPersonBorrowing) {
+	return dynamicDepth || onlyWhenNeeded || probeEnabled || thirdPersonBorrowing;
 }
 
 UInt32 CrosshairSourcePixels(UInt32 believedHeight, float sharePercent) {

@@ -12,7 +12,12 @@ VirtualFree@12
 GetCurrentProcess@0
 FlushInstructionCache@12
 CreateFileA@28
+MoveFileExA@12
+DeleteFileA@4
+GetFileSize@8
+ReadFile@20
 WriteFile@20
+FlushFileBuffers@4
 CloseHandle@4
 OutputDebugStringA@4
 GetPrivateProfileStringA@24

@@ -69,6 +69,7 @@ add_library(OBVR SHARED
 	src/render/HeadsetRenderer.cpp
 	src/render/PresentHook.cpp
 	src/render/HudLayer.cpp
+	src/render/CrosshairCache.cpp
 	src/render/CrosshairLayer.cpp
 	src/render/InterfaceRenderHook.cpp
 	src/render/LayoutProbe.cpp

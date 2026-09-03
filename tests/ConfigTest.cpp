@@ -209,6 +209,33 @@ void TestThirdPersonAimVisualPercent() {
 	      "ThirdPersonHeadFollowsGaze is read from Look");
 }
 
+void TestLiveMenuBackground() {
+	std::printf("Live 3D pause-menu world\n");
+
+	obvr::Config untouched;
+	Check(untouched.tracker.liveMenuBackground,
+	      "the built-in fallback enables the live 3D menu path");
+
+	obvr::Config configured;
+	LoadFrom("ConfigTestLiveMenu.ini", "[Render]\nLiveMenuBackground=0\n", configured);
+	Check(!configured.tracker.liveMenuBackground,
+	      "LiveMenuBackground=0 restores the held menu path");
+}
+
+void TestPersistentCrosshairCache() {
+	std::printf("Persistent genuine crosshair cache\n");
+
+	obvr::Config untouched;
+	Check(untouched.tracker.crosshairPersistentCache,
+	      "the genuine crosshair cache defaults on");
+
+	obvr::Config configured;
+	LoadFrom("ConfigTestCrosshairCache.ini",
+	         "[Render]\nCrosshairPersistentCache=0\n", configured);
+	Check(!configured.tracker.crosshairPersistentCache,
+	      "CrosshairPersistentCache=0 restores the session-only copy");
+}
+
 void TestLookRanges() {
 	std::printf("The vertical look ranges, old spelling and new\n");
 
@@ -279,6 +306,10 @@ int main() {
 	TestAnglesAndFrames();
 	std::printf("\n");
 	TestThirdPersonAimVisualPercent();
+	std::printf("\n");
+	TestLiveMenuBackground();
+	std::printf("\n");
+	TestPersistentCrosshairCache();
 	std::printf("\n");
 	TestLookRanges();
 

@@ -420,6 +420,17 @@ bool HeadsetRenderer::SubmitDualEyes(const vr::OpenVRBackend& backend,
 	// tell the compositor where the picture actually came from.
 	m_heldPoseValid = backend.GetRenderPoseMatrix(m_heldPose);
 
+	// A live pause-menu background is newly drawn stereo rather than a held
+	// pair, but it still wears the same sepia shader as Oblivion's static menu
+	// snapshot. CopyBackBuffer cleared the previous dressing while capturing
+	// these eyes, so this runs once on each fresh pair before it is submitted.
+	// MenuDressingForFrame keeps the held-only border out of this request.
+	if ((request.menuShadeColor != 0 || request.menuSingleBorder) &&
+	    !m_mirror.IsHeldShaded()) {
+		m_mirror.PrepareHeldShade(request.gameDevice, request.menuShadeColor,
+		                          request.menuSingleBorder);
+	}
+
 	// The submit half of the dual trace: the first run died with the GPU
 	// lost somewhere around here, and these lines are what say whether the
 	// bracket was entered, held, and left again.

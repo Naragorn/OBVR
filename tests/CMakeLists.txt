@@ -242,6 +242,21 @@ if(WIN32)
 	endif()
 
 	add_test(NAME plugin_path COMMAND plugin_path_test)
+
+	add_executable(crosshair_cache_test
+		CrosshairCacheTest.cpp
+		../src/render/CrosshairCache.cpp
+	)
+
+	target_include_directories(crosshair_cache_test PRIVATE ../src)
+
+	if(MSVC)
+		target_compile_options(crosshair_cache_test PRIVATE /EHsc)
+	else()
+		target_compile_options(crosshair_cache_test PRIVATE -Wall -Wextra)
+	endif()
+
+	add_test(NAME crosshair_cache COMMAND crosshair_cache_test)
 endif()
 
 add_executable(test_pattern_test

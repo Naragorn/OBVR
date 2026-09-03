@@ -1,6 +1,8 @@
 #include "render/CrosshairLayer.h"
 
 #include "core/Log.h"
+#include "platform/PluginPath.h"
+#include "render/CrosshairCache.h"
 #include "render/D3D11Types.h"
 #include "render/GameFrame.h"
 #include "vr/OpenVRBackend.h"
@@ -14,7 +16,14 @@ constexpr UInt32 kTransparent = 0x00000000;
 
 // Square, and larger than the lifted square so nothing is thrown away on the
 // way in: the compositor scales the quad down far more gracefully than up.
-constexpr UInt32 kTextureSize = 256;
+constexpr UInt32 kTextureSize = kCrosshairCacheWidth;
+static_assert(kCrosshairCacheWidth == kCrosshairCacheHeight,
+              "the crosshair render target and cache are square");
+static_assert(d3d9::kFormatA8R8G8B8 == kCrosshairCacheFormatA8R8G8B8,
+              "the crosshair render target and cache use the same ARGB format");
+
+constexpr const char* kCacheFileName = "OBVR-crosshair.cache";
+constexpr const char* kCacheTemporaryFileName = "OBVR-crosshair.cache.tmp";
 
 }  // namespace
 
@@ -164,7 +173,133 @@ bool CrosshairLayer::EnsureKeptTexture(void* gameDevice) {
 	return true;
 }
 
-bool CrosshairLayer::RememberCrosshair(void* gameDevice) {
+bool CrosshairLayer::LoadPersistentCrosshair(void* gameDevice) {
+	if (m_haveKept) {
+		return true;
+	}
+	if (m_cacheLoadTried) {
+		return false;
+	}
+	m_cacheLoadTried = true;
+
+	char path[512];
+	if (!platform::BuildPluginPath(kCacheFileName, path, sizeof(path)) ||
+	    !EnsureKeptTexture(gameDevice)) {
+		OBVR_LOG("Crosshair cache: no load was possible - the plugin path or kept texture "
+		         "was unavailable");
+		return false;
+	}
+
+	auto createPlain = d3d9::Method<d3d9::CreateOffscreenPlainSurfaceFn>(
+		gameDevice, d3d9::kDeviceCreateOffscreenPlainSurface);
+	auto updateSurface =
+		d3d9::Method<d3d9::UpdateSurfaceFn>(gameDevice, d3d9::kDeviceUpdateSurface);
+	if (createPlain == nullptr || updateSurface == nullptr) {
+		OBVR_LOG("Crosshair cache: Direct3D cannot stage the saved picture, so it was ignored");
+		return false;
+	}
+
+	void* staging = nullptr;
+	if (d3d11::Failed(createPlain(gameDevice, kTextureSize, kTextureSize,
+	                              d3d9::kFormatA8R8G8B8, d3d9::kPoolSystemMem,
+	                              &staging, nullptr)) ||
+	    staging == nullptr) {
+		OBVR_LOG("Crosshair cache: no system-memory surface, so the saved picture was ignored");
+		return false;
+	}
+
+	auto lockRect = d3d9::Method<d3d9::LockRectFn>(staging, d3d9::kSurfaceLockRect);
+	auto unlockRect = d3d9::Method<d3d9::UnlockRectFn>(staging, d3d9::kSurfaceUnlockRect);
+	d3d9::LockedRect locked{};
+	if (lockRect == nullptr || unlockRect == nullptr ||
+	    d3d11::Failed(lockRect(staging, &locked, nullptr, 0)) || locked.bits == nullptr) {
+		d3d11::Release(staging);
+		OBVR_LOG("Crosshair cache: the staging surface could not be opened, so the saved "
+		         "picture was ignored");
+		return false;
+	}
+
+	const CrosshairCacheResult result = ReadCrosshairCache(path, locked.bits, locked.pitch);
+	const bool unlocked = !d3d11::Failed(unlockRect(staging));
+	bool uploaded = false;
+	if (result == CrosshairCacheResult::Ok && unlocked) {
+		uploaded = !d3d11::Failed(
+			updateSurface(gameDevice, staging, nullptr, m_keptSurface, nullptr));
+	}
+	d3d11::Release(staging);
+
+	if (!uploaded) {
+		OBVR_LOG("Crosshair cache: saved picture not used (%s%s)",
+		         CrosshairCacheResultName(result), unlocked ? "" : ", unlock failed");
+		return false;
+	}
+
+	m_haveKept = true;
+	OBVR_LOG("Crosshair cache: restored the game's own crosshair for third person");
+	return true;
+}
+
+void CrosshairLayer::SavePersistentCrosshair(void* gameDevice) {
+	if (m_cacheSaveTried) {
+		return;
+	}
+	m_cacheSaveTried = true;
+
+	char path[512];
+	char temporary[512];
+	if (!platform::BuildPluginPath(kCacheFileName, path, sizeof(path)) ||
+	    !platform::BuildPluginPath(kCacheTemporaryFileName, temporary, sizeof(temporary))) {
+		OBVR_LOG("Crosshair cache: the plugin path was unavailable, so the picture was not "
+		         "saved");
+		return;
+	}
+
+	auto createPlain = d3d9::Method<d3d9::CreateOffscreenPlainSurfaceFn>(
+		gameDevice, d3d9::kDeviceCreateOffscreenPlainSurface);
+	auto getData = d3d9::Method<d3d9::GetRenderTargetDataFn>(
+		gameDevice, d3d9::kDeviceGetRenderTargetData);
+	if (createPlain == nullptr || getData == nullptr) {
+		OBVR_LOG("Crosshair cache: Direct3D cannot read the genuine picture back, so it was "
+		         "not saved");
+		return;
+	}
+
+	void* staging = nullptr;
+	if (d3d11::Failed(createPlain(gameDevice, kTextureSize, kTextureSize,
+	                              d3d9::kFormatA8R8G8B8, d3d9::kPoolSystemMem,
+	                              &staging, nullptr)) ||
+	    staging == nullptr || d3d11::Failed(getData(gameDevice, m_keptSurface, staging))) {
+		d3d11::Release(staging);
+		OBVR_LOG("Crosshair cache: the genuine picture could not be read back, so it was not "
+		         "saved");
+		return;
+	}
+
+	auto lockRect = d3d9::Method<d3d9::LockRectFn>(staging, d3d9::kSurfaceLockRect);
+	auto unlockRect = d3d9::Method<d3d9::UnlockRectFn>(staging, d3d9::kSurfaceUnlockRect);
+	d3d9::LockedRect locked{};
+	if (lockRect == nullptr || unlockRect == nullptr ||
+	    d3d11::Failed(lockRect(staging, &locked, nullptr, d3d9::kLockReadOnly)) ||
+	    locked.bits == nullptr) {
+		d3d11::Release(staging);
+		OBVR_LOG("Crosshair cache: the readback surface could not be opened, so the picture "
+		         "was not saved");
+		return;
+	}
+
+	const CrosshairCacheResult result =
+		WriteCrosshairCache(path, temporary, locked.bits, locked.pitch);
+	unlockRect(staging);
+	d3d11::Release(staging);
+
+	if (result == CrosshairCacheResult::Ok) {
+		OBVR_LOG("Crosshair cache: saved the game's own crosshair for the next start");
+	} else {
+		OBVR_LOG("Crosshair cache: picture not saved (%s)", CrosshairCacheResultName(result));
+	}
+}
+
+bool CrosshairLayer::RememberCrosshair(void* gameDevice, bool persistentCache) {
 	if (m_surface == nullptr || !EnsureKeptTexture(gameDevice)) {
 		return false;
 	}
@@ -180,6 +315,9 @@ bool CrosshairLayer::RememberCrosshair(void* gameDevice) {
 	}
 
 	m_haveKept = true;
+	if (CrosshairCacheSaveWanted(persistentCache, true, m_cacheSaveTried)) {
+		SavePersistentCrosshair(gameDevice);
+	}
 	if (!m_keptReported) {
 		m_keptReported = true;
 		OBVR_LOG("Crosshair: keeping the game's own crosshair for third person to borrow");
@@ -187,7 +325,10 @@ bool CrosshairLayer::RememberCrosshair(void* gameDevice) {
 	return true;
 }
 
-bool CrosshairLayer::UseRememberedCrosshair(void* gameDevice) {
+bool CrosshairLayer::UseRememberedCrosshair(void* gameDevice, bool persistentCache) {
+	if (CrosshairCacheLoadWanted(persistentCache, m_haveKept, m_cacheLoadTried)) {
+		LoadPersistentCrosshair(gameDevice);
+	}
 	if (!m_haveKept || m_keptSurface == nullptr || !EnsureTexture(gameDevice)) {
 		return false;
 	}
@@ -345,6 +486,8 @@ void CrosshairLayer::Destroy() {
 	m_keptTried = false;
 	m_haveKept = false;
 	m_keptReported = false;
+	m_cacheLoadTried = false;
+	m_cacheSaveTried = false;
 
 	// Left to the runtime, for the reason HudLayer::Destroy records: calling
 	// DestroyOverlay from a shutdown next to DllMain would reach into a

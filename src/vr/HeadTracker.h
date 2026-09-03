@@ -160,8 +160,8 @@ struct TrackerSettings {
 	//
 	// True delivers the world in stereo and lets the 2D layer reach the
 	// headset through the HUD's own overlay instead, so the world stays where
-	// it is and the menu hangs in front of it. It costs a second world render
-	// per menu frame, which the cinema screen does not pay.
+	// it is and the menu hangs in front of it. The liveMenuBackground switch
+	// below decides whether that world is held or freshly rendered every frame.
 	//
 	// Only in-game menus are affected. Videos, loading screens and the main
 	// menu take the cinema screen either way: no world render happens behind
@@ -190,9 +190,11 @@ struct TrackerSettings {
 	// from Present, which is where every earlier attempt was made. Measured,
 	// 461 draws against 0 in the same open Esc menu.
 	//
-	// Off by default: it costs two world renders on every menu frame, and the
-	// held pair it replaces costs none.
-	bool liveMenuBackground = false;
+	// On by default. It costs two world renders on every menu frame, while the
+	// held pair it replaces costs none. Switching it off is the exact revert:
+	// ApplyLiveMenuBackground restores the value it found before OBVR changed
+	// Oblivion's process-local setting.
+	bool liveMenuBackground = true;
 
 	// Overrides Oblivion's own field of view, in degrees. 0 leaves it alone.
 	//
@@ -433,6 +435,13 @@ struct TrackerSettings {
 	// and reuses that picture here. Until such a copy exists, it shows none;
 	// there is deliberately no mod-drawn substitute.
 	bool crosshairInThirdPerson = false;
+
+	// Keeps that genuine first-person capture across game starts. The cache is
+	// raw A8R8G8B8 pixels including alpha, guarded by an exact header and a
+	// checksum; an absent or invalid file is ignored rather than replaced by a
+	// made-up reticle. It is refreshed at most once per session, on the first
+	// clean first-person capture, and read only when third person needs it.
+	bool crosshairPersistentCache = true;
 
 	// The "only when it is of use" restriction, for third person.
 	//

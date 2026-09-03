@@ -497,6 +497,82 @@ void TestMenuDressingWindow() {
 	Check(!MenuDressingWanted(3600), "a dialogue's exit fade, minutes in, goes undressed");
 }
 
+void TestLiveMenuAvailability() {
+	std::printf("When the live 3D pause-menu world is complete enough to run\n");
+
+	using obvr::camera::LiveMenuBackgroundCanRun;
+
+	// Nine independent gates means 512 possible combinations. Exercise
+	// all of them: only the all-on combination may clear Oblivion's static
+	// background byte and cause two extra world renders per menu frame.
+	for (int bits = 0; bits < 512; ++bits) {
+		const bool enabled = (bits & 1) != 0;
+		const bool rendering = (bits & 2) != 0;
+		const bool showMenus = (bits & 4) != 0;
+		const bool headset = (bits & 8) != 0;
+		const bool dual = (bits & 16) != 0;
+		const bool world = (bits & 32) != 0;
+		const bool overlay = (bits & 64) != 0;
+		const bool between = (bits & 128) != 0;
+		const bool standIn = (bits & 256) != 0;
+		const bool expected = enabled && rendering && showMenus && headset && dual && world &&
+		                      overlay && between && standIn;
+		if (LiveMenuBackgroundCanRun(enabled, rendering, showMenus, headset, dual, world,
+		                                 overlay, between, standIn) !=
+		    expected) {
+			Check(false, "one of the 512 live-menu gate combinations disagrees");
+			return;
+		}
+	}
+	Check(true, "all 512 live-menu gate combinations agree");
+}
+
+void TestMenuFrameDressing() {
+	std::printf("How held and live-stereo menu frames are dressed\n");
+
+	using obvr::camera::FrameDelivery;
+	using obvr::camera::kMenuDressingWindowFrames;
+	using obvr::camera::MenuDressingForFrame;
+
+	const FrameDelivery deliveries[] = {
+		FrameDelivery::Stereo,
+		FrameDelivery::Cinema,
+		FrameDelivery::HeldStereo,
+	};
+	const UInt32 ages[] = {0, kMenuDressingWindowFrames + 1};
+
+	// Every combination is meaningful here. In particular, a fresh live pair
+	// takes the sepia shader for the whole menu - every new capture replaces
+	// it - but must always refuse the held pair's black border.
+	for (FrameDelivery delivery : deliveries) {
+		for (int menu = 0; menu < 2; ++menu) {
+			for (int live = 0; live < 2; ++live) {
+				for (UInt32 age : ages) {
+					for (int shade = 0; shade < 2; ++shade) {
+						for (int border = 0; border < 2; ++border) {
+							const auto decision = MenuDressingForFrame(
+								delivery, menu != 0, live != 0, age, shade != 0, border != 0);
+							const bool menuUp = menu != 0;
+							const bool held = delivery == FrameDelivery::HeldStereo;
+							const bool liveStereo = delivery == FrameDelivery::Stereo && live != 0;
+							const bool heldEligible = held && age <= kMenuDressingWindowFrames;
+							const bool expectedShade =
+								menuUp && (heldEligible || liveStereo) && shade != 0;
+							const bool expectedBorder = menuUp && heldEligible && border != 0;
+							if (decision.shade != expectedShade ||
+							    decision.singleBorder != expectedBorder) {
+								Check(false, "one menu-dressing flow disagrees");
+								return;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	Check(true, "all held, live, flat, stale and disabled dressing flows agree");
+}
+
 void TestMenuWorldProbe() {
 	std::printf("When the menu-world probe runs its self-initiated render\n");
 
@@ -959,6 +1035,23 @@ void TestBorrowedCrosshair() {
 
 	// Switched off is off.
 	Check(!BorrowedCrosshairWanted(true, false, false, false), "and off is off");
+}
+
+void TestCrosshairTargetRead() {
+	std::printf("Crosshair target read consumers\n");
+	using obvr::camera::CrosshairTargetReadWanted;
+
+	for (UInt32 mask = 0; mask < 16; ++mask) {
+		const bool dynamicDepth = (mask & 1) != 0;
+		const bool onlyWhenNeeded = (mask & 2) != 0;
+		const bool probe = (mask & 4) != 0;
+		const bool thirdPersonBorrowing = (mask & 8) != 0;
+		const bool expected =
+			dynamicDepth || onlyWhenNeeded || probe || thirdPersonBorrowing;
+		Check(CrosshairTargetReadWanted(dynamicDepth, onlyWhenNeeded, probe,
+		                                      thirdPersonBorrowing) == expected,
+		      "every consumer combination reads exactly when at least one needs it");
+	}
 }
 
 void TestCrosshairCutout() {
@@ -2931,6 +3024,10 @@ int main() {
 	std::printf("\n");
 	TestMenuDressingWindow();
 	std::printf("\n");
+	TestLiveMenuAvailability();
+	std::printf("\n");
+	TestMenuFrameDressing();
+	std::printf("\n");
 	TestMenuWorldProbe();
 	std::printf("\n");
 	TestWorldControlProbe();
@@ -2945,6 +3042,7 @@ int main() {
 	std::printf("\n");
 	TestCrosshair();
 	TestBorrowedCrosshair();
+	TestCrosshairTargetRead();
 	TestCrosshairCutout();
 	TestCrosshairDepth();
 	std::printf("\n");
