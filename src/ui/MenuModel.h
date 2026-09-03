@@ -28,6 +28,12 @@ enum class ItemKind {
 
 	// A number over a range, changed in steps.
 	Number,
+	// A line of text with no value: an explanation in a flow such as the
+	// onboarding. Not something a key changes.
+	Text,
+	// A button: "Next", "Back", "Finish". Left or right on it fires it; the
+	// value carries nothing.
+	Action,
 };
 
 struct MenuItem {

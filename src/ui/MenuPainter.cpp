@@ -53,6 +53,11 @@ UInt32 VisibleRowsFor(UInt32 canvasHeight, UInt32 scale) {
 
 void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categories, UInt32 count,
                MenuState state, UInt32 scale, const MenuTheme& theme) {
+	PaintMenu(canvas, items, categories, count, state, scale, theme, "OBVR settings");
+}
+
+void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categories, UInt32 count,
+               MenuState state, UInt32 scale, const MenuTheme& theme, const char* title) {
 	if (scale == 0) {
 		scale = 1;
 	}
@@ -65,7 +70,8 @@ void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categor
 	canvas.Fill(theme.background);
 	canvas.DrawFrame(0, 0, width, height, static_cast<SInt32>(scale), theme.frame);
 
-	canvas.DrawText(margin, margin, "OBVR settings", static_cast<SInt32>(scale), theme.title);
+	canvas.DrawText(margin, margin, title != nullptr ? title : "OBVR settings",
+	                static_cast<SInt32>(scale), theme.title);
 
 	// A rule under the title, so the eye has somewhere to stop before the list
 	// starts. One pixel at the current scale, like the frame.
@@ -132,7 +138,9 @@ void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categor
 			                lineHeight, theme.highlight);
 		}
 
-		const render::Pixel labelColour = selected ? theme.highlightText : theme.text;
+		const render::Pixel labelColour =
+			selected ? theme.highlightText
+			         : (item.kind == ItemKind::Text ? theme.help : theme.text);
 		const render::Pixel valueColour = selected ? theme.highlightText : theme.value;
 
 		canvas.DrawText(margin + static_cast<SInt32>(scale) * 2, y, item.label,

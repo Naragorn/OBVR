@@ -466,6 +466,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.menuWorldProbe = ReadBool("Debug", "MenuWorldProbe", config.menuWorldProbe, path);
 	config.d3d9ExProbe = ReadBool("Debug", "D3D9ExProbe", config.d3d9ExProbe, path);
 	config.handTracking = ReadBool("Hands", "Enabled", config.handTracking, path);
+	config.onboardingShowAtStart =
+		ReadBool("Onboarding", "ShowAtStart", config.onboardingShowAtStart, path);
 	{
 		vr::HandSettings& h = config.hands;
 		h.enabled = config.handTracking;

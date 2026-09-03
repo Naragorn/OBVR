@@ -68,4 +68,10 @@ UInt32 VisibleRowsFor(UInt32 canvasHeight, UInt32 scale);
 void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categories, UInt32 count,
                MenuState state, UInt32 scale, const MenuTheme& theme);
 
+// The same with a title of the caller's - the onboarding names its pages.
+// Text rows are drawn dimmed and without a value; an Action row carries a
+// marker where the value would be.
+void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categories, UInt32 count,
+               MenuState state, UInt32 scale, const MenuTheme& theme, const char* title);
+
 }  // namespace obvr::ui

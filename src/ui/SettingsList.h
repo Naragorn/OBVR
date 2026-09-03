@@ -98,6 +98,11 @@ struct SettingDefinition {
 // The table, and its length. A pointer to static data - there is one settings
 // list and it does not change.
 const SettingDefinition* SettingDefinitions();
+
+// The definition behind an INI section and key, or null. What lets another
+// flow - the onboarding - offer one of these rows by name and write it back
+// through the same table.
+const SettingDefinition* FindSetting(const char* iniSection, const char* iniKey);
 UInt32 SettingDefinitionCount();
 
 // One row, filled in from the configuration as it stands.

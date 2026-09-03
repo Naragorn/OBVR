@@ -32,6 +32,7 @@
 #include "render/HeadsetRenderer.h"
 #include "render/CrosshairLayer.h"
 #include "render/HudLayer.h"
+#include "ui/Onboarding.h"
 #include "ui/SettingsMenu.h"
 #include "ui/SettingsMenuLayer.h"
 #include "render/InterfaceRenderHook.h"
@@ -124,6 +125,13 @@ render::CrosshairLayer g_crosshairLayer;
 // driven from a test; the layer is a texture and an overlay and cannot.
 ui::SettingsMenu g_settingsMenu;
 ui::SettingsMenuLayer g_settingsMenuLayer;
+
+// The first-start walkthrough, on a layer of its own so it can stand in front
+// of the world while the settings menu stays closed. Offered once per game
+// start, the first time the headset is there to show it.
+ui::OnboardingMenu g_onboarding;
+ui::SettingsMenuLayer g_onboardingLayer;
+bool g_onboardingOffered = false;
 
 // One edge each for the keys that drive it. Edges rather than held states,
 // because every one of these means "do this once" - a held arrow key that
@@ -1864,12 +1872,71 @@ void SaveChangedSetting(const ui::SettingDefinition* definition, const Config& c
 	}
 }
 
+// The walkthrough: opened once per start while [Onboarding] ShowAtStart is
+// on and a headset is connected, steered with the same arrow keys as the
+// settings menu, and drawn on its own layer. While it is open the settings
+// menu leaves the arrows alone. Answers whether it consumed the keys.
+bool PollOnboarding(const Config& config) {
+	if (!g_onboardingOffered && config.onboardingShowAtStart &&
+	    g_headTracker.IsHeadsetConnected()) {
+		g_onboardingOffered = true;
+		g_onboardingLayer.SetIdentity("obvr.onboarding", "OBVR Introduction");
+		g_onboarding.Open();
+		OBVR_LOG("Onboarding: the walkthrough opens - Onboarding.ShowAtStart=0 or its last page "
+		         "keeps it closed next time");
+	}
+
+	const auto down = [](UInt32 key) {
+		return key != 0 && (GetAsyncKeyState(static_cast<int>(key)) & 0x8000) != 0;
+	};
+
+	const bool open = g_onboarding.IsOpen();
+	if (open) {
+		g_onboarding.SetVisibleRows(g_onboardingLayer.VisibleRows());
+		Config& writable = GetConfig();
+		if (g_menuUpEdge.Update(down(0x26))) {
+			g_onboarding.Apply(ui::MenuAction::Up, writable);
+		}
+		if (g_menuDownEdge.Update(down(0x28))) {
+			g_onboarding.Apply(ui::MenuAction::Down, writable);
+		}
+		if (g_menuLeftEdge.Update(down(0x25))) {
+			SaveChangedSetting(g_onboarding.Apply(ui::MenuAction::Decrease, writable), writable);
+		}
+		if (g_menuRightEdge.Update(down(0x27))) {
+			SaveChangedSetting(g_onboarding.Apply(ui::MenuAction::Increase, writable), writable);
+		}
+		if (!g_onboarding.IsOpen()) {
+			OBVR_LOG("Onboarding: finished - the introduction will %s at the next start",
+			         GetConfig().onboardingShowAtStart ? "open again" : "stay closed");
+		}
+	}
+
+	ui::MenuItem items[16];
+	const char* categories[16];
+	const UInt32 count = g_onboarding.BuildRows(GetConfig(), items, categories, 16);
+	g_onboardingLayer.SetTitle(g_onboarding.Title());
+	g_onboardingLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
+	                         g_onboarding.IsOpen(), items, categories, count,
+	                         g_onboarding.State(), g_onboarding.Revision(),
+	                         config.settingsMenuDistanceMetres, config.settingsMenuWidthMetres,
+	                         config.settingsMenuInWorld);
+	return open;
+}
+
 void PollSettingsMenu() {
 	const Config& config = GetConfig();
 
 	const auto down = [](UInt32 key) {
 		return key != 0 && (GetAsyncKeyState(static_cast<int>(key)) & 0x8000) != 0;
 	};
+
+	if (PollOnboarding(config)) {
+		// The walkthrough has the arrows; the settings menu is not opened
+		// over it either, so the two never fight for the same keys.
+		g_menuToggleEdge.Reset();
+		return;
+	}
 
 	if (config.settingsMenuKey == 0) {
 		g_menuToggleEdge.Reset();

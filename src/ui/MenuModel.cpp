@@ -148,6 +148,10 @@ float AdjustValue(const MenuItem& item, MenuAction action) {
 		return item.value;
 	}
 
+	if (item.kind == ItemKind::Text || item.kind == ItemKind::Action) {
+		return item.value;
+	}
+
 	if (item.kind == ItemKind::Toggle) {
 		// Anything not clearly off is on, so a value that arrived from an INI
 		// as 2 does not leave the switch in a third state nobody can name.
@@ -224,6 +228,16 @@ void FormatValueForIni(const MenuItem& item, const char* falseWord, const char* 
 
 void FormatValue(const MenuItem& item, char* out, UInt32 size) {
 	if (out == nullptr || size == 0) {
+		return;
+	}
+
+	if (item.kind == ItemKind::Text) {
+		out[0] = '\0';
+		return;
+	}
+	if (item.kind == ItemKind::Action) {
+		const UInt32 at = Append(out, size, 0, ">");
+		out[at] = '\0';
 		return;
 	}
 

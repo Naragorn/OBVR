@@ -62,6 +62,15 @@ public:
 
 	void Destroy();
 
+	// A second layer with a life of its own needs its own overlay key and a
+	// title of its own - the onboarding. Set before the first Submit; the
+	// title may change between submits and is painted on the next repaint.
+	void SetIdentity(const char* overlayKey, const char* overlayName) {
+		m_overlayKey = overlayKey;
+		m_overlayName = overlayName;
+	}
+	void SetTitle(const char* title) { m_title = title; }
+
 private:
 	bool EnsureTexture(void* gameDevice);
 	bool EnsureOverlay(vr::OpenVRBackend& backend);
@@ -98,6 +107,9 @@ private:
 	float m_placedWidth = 0.0f;
 
 	bool m_failureReported = false;
+	const char* m_overlayKey = "obvr.settings";
+	const char* m_overlayName = "OBVR Settings";
+	const char* m_title = "OBVR settings";
 	bool m_liveReported = false;
 	bool m_lockFailureReported = false;
 };

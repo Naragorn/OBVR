@@ -106,6 +106,12 @@ struct Config {
 	// default: without it OBVR is exactly the head-tracked mod it was.
 	bool handTracking = false;
 
+	// [Onboarding] ShowAtStart: whether the first-start walkthrough opens in
+	// the headset when the game starts. On by default and switched off by
+	// its own last page ("do not show again"), from the settings menu, or
+	// here.
+	bool onboardingShowAtStart = true;
+
 	// The rest of [Hands]: gestures, arms, wrists, laser, sticks (HandMode.h)
 	// and the keys the mode presses on the player's behalf (HandControls.h).
 	// hands.enabled mirrors handTracking after a load.

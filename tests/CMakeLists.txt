@@ -652,3 +652,18 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME hand_mode COMMAND hand_mode_test)
+
+add_executable(onboarding_test
+	OnboardingTest.cpp
+	../src/ui/Onboarding.cpp
+	../src/ui/SettingsList.cpp
+	../src/ui/MenuModel.cpp
+)
+
+target_include_directories(onboarding_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(onboarding_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME onboarding COMMAND onboarding_test)

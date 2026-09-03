@@ -123,7 +123,7 @@ bool SettingsMenuLayer::EnsureOverlay(vr::OpenVRBackend& backend) {
 	}
 	m_overlayTried = true;
 
-	return backend.CreateOverlay("obvr.settings", "OBVR Settings", m_overlay);
+	return backend.CreateOverlay(m_overlayKey, m_overlayName, m_overlay);
 }
 
 bool SettingsMenuLayer::Repaint(const MenuItem* items, const char* const* categories, UInt32 count,
@@ -171,7 +171,7 @@ bool SettingsMenuLayer::Repaint(const MenuItem* items, const char* const* catego
 	              pitch / static_cast<UInt32>(sizeof(render::Pixel)));
 
 	static const MenuTheme theme = MakeTheme();
-	PaintMenu(canvas, items, categories, count, state, kMenuScale, theme);
+	PaintMenu(canvas, items, categories, count, state, kMenuScale, theme, m_title);
 
 	unlockRect(m_surface);
 	return true;

@@ -509,7 +509,26 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return c.hands.gestures.swingLight; },
 		+[](Config& c, float v) { c.hands.gestures.swingLight = v; },
 	},
+	{
+		"Help", "Introduction at start", "Show the first-start walkthrough again next time",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Onboarding", "ShowAtStart",
+		+[](const Config& c) { return c.onboardingShowAtStart ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.onboardingShowAtStart = v != 0.0f; },
+	},
 };
+
+// Two short strings, compared the only way a freestanding build can.
+bool SameKey(const char* a, const char* b) {
+	if (a == nullptr || b == nullptr) {
+		return false;
+	}
+	while (*a != '\0' && *a == *b) {
+		++a;
+		++b;
+	}
+	return *a == *b;
+}
 
 float Clamp(const SettingDefinition& definition, float value) {
 	if (value < definition.minimum) {
@@ -524,6 +543,15 @@ float Clamp(const SettingDefinition& definition, float value) {
 }  // namespace
 
 const SettingDefinition* SettingDefinitions() { return kSettings; }
+
+const SettingDefinition* FindSetting(const char* iniSection, const char* iniKey) {
+	for (const SettingDefinition& definition : kSettings) {
+		if (SameKey(definition.iniSection, iniSection) && SameKey(definition.iniKey, iniKey)) {
+			return &definition;
+		}
+	}
+	return nullptr;
+}
 
 UInt32 SettingDefinitionCount() {
 	return static_cast<UInt32>(sizeof(kSettings) / sizeof(kSettings[0]));
