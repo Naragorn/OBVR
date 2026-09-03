@@ -3381,8 +3381,8 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// because only at this point are both halves of the aim settled for this
 	// frame. body + weapon is what the wearer actually sees the bow pointing
 	// along, and if that column moves while the head is still, the frame it
-	// moves on is the jump: "der arm oder der bogen springt nach links wenn ich
-	// nach links ziele und dann wieder zum ziel".
+	// moves on is the jump, reported as: "the arm or the bow jumps to the left
+	// when I aim left, and then back to the target".
 	if (g_shotTraceLeft > 0 || (readPlayer && GetConfig().aimShotTrace && g_shotTraceHeld)) {
 		Heading traceTurn{};
 		const float headYaw = HeadingOf(g_headTracker.GetCameraRotation(), traceTurn)

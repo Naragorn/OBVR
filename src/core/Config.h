@@ -261,10 +261,10 @@ struct Config {
 	// WHEN the body is turned to the gaze: only for the shot itself (1), or for
 	// as long as the attack control is held (0).
 	//
-	// Naragorn's suggestion, and the better shape: "wir entkoppeln die ziel kamera
-	// mit der richtung vom char. dann kann ich weiter richtung vom gehen
-	// bestimmen mit maus oder gamepad. und kann froehlich zielen in alle
-	// richtungen und ohne reset wie jetzt."
+	// Naragorn's suggestion, and the better shape: "we decouple the aim camera
+	// from the character's heading; then I can keep choosing the walking
+	// direction with the mouse or the gamepad, and happily aim in every
+	// direction without the reset we have now."
 	//
 	// The aim and the walking cannot be separated in SPACE. That is measured
 	// rather than assumed: the arrow leaves along rotZ, walking follows rotZ,
@@ -321,7 +321,7 @@ struct Config {
 	// way. Shooting: the body takes it and the remainder falls to zero as the
 	// arms give it up. The sum stays constant, so the weapon does not jump when
 	// one hands over to the other - which was the other half of the report,
-	// "dann springt er nach dem schuss zurueck mittig".
+	// "then it jumps back to the middle after the shot".
 	//
 	// First person only. In third person the body is what is being looked at
 	// and the arms belong to it.

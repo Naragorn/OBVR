@@ -27,8 +27,8 @@ namespace obvr::game {
 // the body has taken nothing, so the arms turn the whole way; during the shot
 // the body takes it, and the remainder falls to zero as the arms give it up.
 // The sum is constant, so the bow does not jump when one hands over to the
-// other - which is the second half of what was reported: "dann springt er nach
-// dem schuss zurueck mittig".
+// other - which is the second half of what was reported: "then it jumps back
+// to the middle after the shot".
 
 // The node, or null when it cannot be reached or does not prove to be one.
 //

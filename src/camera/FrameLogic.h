@@ -852,7 +852,7 @@ float PlayerPitchForGaze(float viewSinPitch);
 // bleibt". Look left and you look left; the character keeps facing where it
 // was pointed. But then an arrow cannot go where you are looking, because it
 // leaves along the body's heading, and that is the complaint this answers:
-// "head based aiming geht aber nur nach oben und unten".
+// "head-based aiming only works up and down".
 //
 // So the body follows the gaze only while the attack control is held, which is
 // exactly the drawing of a bow, the winding up of a swing, or the readying of
@@ -876,9 +876,9 @@ float PlayerPitchForGaze(float viewSinPitch);
 // character walking sideways, and it stays turned until something puts it back.
 // Putting it back is what caused nausea once.
 //
-// OnShot is Naragorn's suggestion and the better shape: "wir entkoppeln die ziel
-// kamera mit der richtung vom char. dann kann ich weiter richtung vom gehen
-// bestimmen mit maus oder gamepad."
+// OnShot is Naragorn's suggestion and the better shape: "we decouple the aim
+// camera from the character's heading; then I can keep choosing the walking
+// direction with the mouse or the gamepad."
 //
 // The two cannot be separated in SPACE - a measurement, not a guess: the arrow
 // leaves along rotZ and walking follows rotZ, one field, and turning it moves
@@ -1036,8 +1036,8 @@ float AimYawRemaining(float headYaw, float bodyOffset);
 //
 // The fault it fixes: after aiming to one side the body keeps that heading, so
 // the character walks the way the shot went rather than the way the wearer is
-// looking. Naragorn, after firing: "kamera wieder mittig zurücksetzen damit VR
-// nicht gestört wird."
+// looking. Naragorn, after firing: "put the camera back to the middle so the VR
+// is not disturbed."
 //
 // THIS IS THE CHANGE THAT CAUSED NAUSEA ONCE, and it is deliberately not the
 // same change. Commit 7e57e69 unwound the body over about a quarter of a
