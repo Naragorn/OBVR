@@ -132,6 +132,16 @@ void TestPlanner() {
 	oneHand.blockGesture = true;
 	w = PlanHandControls(oneHand, 0.4f);
 	Check(!w.activate && !w.block, "an untracked left hand presses nothing");
+
+	HandFrameInput gated;
+	gated.rightValid = true;
+	gated.rightTrigger = true;
+	gated.drawBlocked = true;
+	w = PlanHandControls(gated, 0.4f);
+	Check(!w.attack, "a blocked draw does not attack on the trigger");
+	gated.swingAttackHeld = true;
+	w = PlanHandControls(gated, 0.4f);
+	Check(w.attack, "but a swing still does");
 }
 
 void TestLaser() {

@@ -43,6 +43,8 @@ void HandMode::Reset() {
 	m_swing = SwingDetector{};
 	m_heavyHold = HeldControl{};
 	m_haveLastRight = false;
+	m_reachArmed = false;
+	m_reachSpent = false;
 }
 
 HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
@@ -137,9 +139,27 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	in.rightThumbX = f.right.thumbX;
 	in.blockGesture = r.blocking;
 	in.swingAttackHeld = swingHeld;
+	// The reach-back gate: armed by the gesture, spent when the trigger comes
+	// up after a draw, so every arrow wants a fresh reach over the shoulder.
+	if (r.reachBack) {
+		m_reachArmed = true;
+	}
+	if (!in.rightTrigger) {
+		m_reachSpent = false;
+	} else if (m_reachArmed) {
+		m_reachSpent = true;
+	}
+	in.drawBlocked = s.gestures.bowNeedsReachBack && !m_reachArmed;
+	if (!in.rightTrigger && m_reachSpent) {
+		m_reachArmed = false;
+	}
 	in.menuMode = f.menuMode;
 	r.controls = PlanHandControls(in, s.stickDeadZone);
 	r.controlsActive = f.right.valid || f.left.valid;
+	r.grabWanted = r.controls.grab;
+	if (f.right.valid) {
+		r.grabDistanceMetres = math::Sqrt(rightRelative.LengthSquared());
+	}
 
 	// The wrists.
 	if (s.wristHud && f.right.valid && !f.menuMode) {

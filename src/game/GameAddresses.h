@@ -259,6 +259,26 @@ inline constexpr UInt32 kTextEnd = 0x00A27C39;
 inline constexpr UInt32 kAttackUpdate = 0x005FCAB0;
 inline constexpr UInt32 kCallAttackUpdateFromInput = 0x00672E0D;
 inline constexpr UInt32 kCallAttackUpdateFromPlayerA = 0x0066CB49;
+// The grab (Z key). PlayerCharacter::HandleInput calls 0x00671170 every
+// frame ("related to Z-keying (Havok-grabbing) objects" in NorthernUI's
+// reading of 0x00671620); with a grab in progress that function calls the
+// per-frame update 0x0066D930 at 0x0067125E (`mov ecx,edi` - the player -
+// then `call 0066D930`). The update checks the grabbed reference at
+// player+0x578 and the spring at +0x574 (NorthernUI: NiPointer
+// telekinesisSpring at 0x574, "constructed shortly before, and assigned at,
+// 0x0066D879"), then loads player+0x584, adds a constant and hands it with
+// two out-pointers to 0x005F11F0 - which builds a rotation from the
+// player's rotation fields through MakeZRotation 0x0070FDD0 and
+// MakeXRotation 0x0070FD30, the same makers the aim work read - and the
+// results become the spring's target. So the target is the eye vector of
+// the player's OWN rotation, scaled by +0x584: +0x584 is the grab distance
+// (written from the grab handler's argument at 0x0066D8EF, zeroed with the
+// spring at 0x0066AD72), and swapping the rotation and that float around
+// the call is what puts the grabbed object where the hand is.
+inline constexpr UInt32 kCallGrabUpdate = 0x0067125E;
+inline constexpr UInt32 kGrabUpdate = 0x0066D930;
+inline constexpr UInt32 kPlayerGrabDistanceOffset = 0x584;
+
 inline constexpr UInt32 kCallAttackUpdateFromPlayerB = 0x006758C6;
 
 // Shortly after the hook the game calls, on the CameraNode:

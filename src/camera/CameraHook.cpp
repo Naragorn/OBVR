@@ -365,6 +365,15 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 
 	g_hand = g_handMode.Update(frame, config.hands);
 
+	// The grab follows the hand: direction through the aim pose the camera
+	// pass hands over, distance from here. A hand at the eyes would put the
+	// object in the face, so the distance has a floor.
+	float grabUnits = g_hand.grabDistanceMetres * config.tracker.unitsPerMetre;
+	if (grabUnits < 0.25f * config.tracker.unitsPerMetre) {
+		grabUnits = 0.25f * config.tracker.unitsPerMetre;
+	}
+	game::SetGrabAtHand(g_hand.grabWanted, grabUnits);
+
 	if (g_hand.blocking != g_handBlocking) {
 		g_handBlocking = g_hand.blocking;
 		OBVR_LOG("Hands: %s", g_handBlocking ? "the left hand is up - blocking"

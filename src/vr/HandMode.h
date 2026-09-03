@@ -98,6 +98,11 @@ struct HandModeResult {
 	int cursorDx = 0;
 	int cursorDy = 0;
 
+	// The grab: whether the right grip holds it, and how far the right hand
+	// is from the eyes in metres - the distance the held object is kept at.
+	bool grabWanted = false;
+	float grabDistanceMetres = 0.0f;
+
 	// For the log.
 	bool blocking = false;
 	bool reachBack = false;
@@ -132,6 +137,8 @@ private:
 	SwingDetector m_swing;
 	HeldControl m_heavyHold;
 	bool m_haveLastRight = false;
+	bool m_reachArmed = false;  // the reach back seen since the last release
+	bool m_reachSpent = false;  // a draw used the armed reach
 	NiPoint3 m_lastRightRelative{0.0f, 0.0f, 0.0f};
 };
 

@@ -480,6 +480,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.gestures.swingHeavy = ReadFloat("Hands", "SwingHeavy", h.gestures.swingHeavy, path);
 		h.gestures.heavyHoldSeconds =
 			ReadFloat("Hands", "HeavyHoldSeconds", h.gestures.heavyHoldSeconds, path);
+		h.gestures.bowNeedsReachBack =
+			ReadBool("Hands", "BowNeedsReachBack", h.gestures.bowNeedsReachBack, path);
 		h.restHandRight = ReadFloat("Hands", "RestHandRight", h.restHandRight, path);
 		h.restHandForward = ReadFloat("Hands", "RestHandForward", h.restHandForward, path);
 		h.restHandUp = ReadFloat("Hands", "RestHandUp", h.restHandUp, path);

@@ -64,9 +64,10 @@ function the gaze uses.
 ## Rung 4 - the bow: draw and loose
 
 Built. The right trigger past 55 % holds the attack control; releasing it below 35 % lets
-go, and vanilla looses on release. The reach-back gesture (`ReachBack*`) is detected and
-logged but not yet a gate on the draw: making it one is a one-line change in
-`PlanHandControls` once the log shows the gesture firing where it should.
+go, and vanilla looses on release. The reach-back gate is built behind
+`BowNeedsReachBack` (off by default): with it on, the trigger draws only after the right
+hand has been behind the head since the last release - one reach per arrow. Switch it on
+once the log shows "Hands: the right hand is reaching back" firing where it should.
 
 ## Rung 5 - melee: swings that register by speed
 
@@ -114,13 +115,26 @@ cursor probe's numbers already suggested.
 
 ## Rung 9 - picking things up and throwing them
 
-Half built. The right grip holds vanilla's grab control (Z): the object lifts and hovers in
-front of the view, as it always did, and the left grip activates. Following the hand and
-throwing are not built: they need the engine's grab code - the point the grabbed
-`bhkRigidBody` is constrained towards and the place its velocity is set on release - and
-that site has not been located. Locating it (two sources, as always) is the first step;
-the aim hand-over pattern (`AimAtSource`) is the shape the fix would take: on the way into
-the grab update, put the hand's position where the engine reads the camera's.
+Built. The right grip holds vanilla's grab control (Z), and the per-frame grab update is
+wrapped the way the attack update is: `PlayerCharacter::HandleInput` calls the grab
+handler `0x00671170` every frame, which with a grab in progress calls the update
+`0x0066D930` at `0x0067125E`. That update takes the grab distance at `player+0x584`, adds a
+constant, and hands it to `0x005F11F0`, which builds the eye vector from the player's own
+rotation fields through the same rotation makers the aim work read; the result is the
+spring's target. So around that one call the rotation is swapped to the hand's direction
+(the aim pose the camera pass already hands over) and `+0x584` to the hand's distance from
+the eyes in game units, both put back on the way out. The held object hovers where the
+hand is; swing the hand and open the grip, and it keeps the spring's velocity - vanilla's
+own fling is the throw. The spring pointer at `+0x574` and its construction site are
+NorthernUI's reading (`telekinesisSpring`, "assigned at 0x0066D879"); the distance field's
+role is this binary's disassembly (written from the grab handler's argument at
+`0x0066D8EF`, zeroed with the spring at `0x0066AD72`, read at `0x0066D9F9`).
+
+To check: pick something up with the grip and move the hand - the object should follow
+the hand, not the gaze. If it follows the gaze but not the distance, the constant added
+to `+0x584` (the qword at `0x00A2FC68`) is larger than assumed; if it snaps to the face,
+the distance floor (a quarter metre) is too small. The log says "Aim: the grab update
+runs with the hand's direction and a distance of ..." once.
 
 ## Rung 10 - the body
 

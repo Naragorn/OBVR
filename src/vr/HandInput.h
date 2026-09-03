@@ -64,6 +64,10 @@ struct GestureThresholds {
 	// How long the attack control is held for a heavy swing, in seconds -
 	// the engine's power attack wants the control held, a tap is a light one.
 	float heavyHoldSeconds = 0.6f;
+	// Whether the bow's draw waits for a reach back over the shoulder first:
+	// the trigger draws only after the right hand has been behind the head
+	// since the last release. Off by default until the gesture is tuned.
+	bool bowNeedsReachBack = false;
 };
 
 inline bool IsBlockGesture(const NiPoint3& leftHandRelative, const GestureThresholds& t) {
@@ -225,6 +229,7 @@ struct HandFrameInput {
 	float rightThumbX = 0.0f;
 	bool blockGesture = false;
 	bool swingAttackHeld = false;  // a swing's attack still being held
+	bool drawBlocked = false;      // the bow wants a reach-back first and has not had one
 	bool menuMode = false;
 };
 
@@ -244,7 +249,7 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 		return out;
 	}
 	if (in.rightValid) {
-		out.attack = in.rightTrigger || in.swingAttackHeld;
+		out.attack = (in.rightTrigger && !in.drawBlocked) || in.swingAttackHeld;
 		out.grab = in.rightGrip;
 		out.jump = in.rightA;
 		out.escape = in.rightMenuButton;

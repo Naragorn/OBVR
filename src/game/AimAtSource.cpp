@@ -19,6 +19,8 @@ extern "C" void __cdecl OBVR_AimSourceAfterKey();
 extern "C" void __cdecl OBVR_AimSourceAfterFactory();
 extern "C" void __cdecl OBVR_AimSourceAfterArrow();
 extern "C" void __cdecl OBVR_AimSourceAfterAttack();
+extern "C" void __cdecl OBVR_AimSourceBeforeGrab(void* actor);
+extern "C" void __cdecl OBVR_AimSourceAfterGrab();
 
 namespace obvr::game {
 namespace {
@@ -49,6 +51,15 @@ Site g_attackFromInput;
 Site g_attackFromPlayerA;
 Site g_attackFromPlayerB;
 Site g_attackOwner;
+
+// The grab update, for the hand-tracked mode: the same rotation swap, plus
+// the grab distance.
+Site g_grab;
+bool g_grabWanted = false;
+float g_grabDistanceUnits = 0.0f;
+bool g_grabDistanceSwapped = false;
+float g_grabDistanceSaved = 0.0f;
+bool g_grabReported = false;
 
 AimSourcePose g_pose;
 
@@ -233,6 +244,15 @@ void InstallAimAtSource() {
 	                reinterpret_cast<UInt32>(&OBVR_AimSourceBeforeAttack),
 	                reinterpret_cast<UInt32>(&OBVR_AimSourceAfterAttack),
 	                "the attack update from the player (B)");
+	InstallCallSite(g_grab, addr::kCallGrabUpdate, addr::kGrabUpdate,
+	                reinterpret_cast<UInt32>(&OBVR_AimSourceBeforeGrab),
+	                reinterpret_cast<UInt32>(&OBVR_AimSourceAfterGrab),
+	                "the grab update from the grab handler");
+}
+
+void SetGrabAtHand(bool wanted, float distanceUnits) {
+	g_grabWanted = wanted;
+	g_grabDistanceUnits = distanceUnits;
 }
 
 // The attack update from the input handler decides whether the turn
@@ -330,6 +350,42 @@ extern "C" void __cdecl OBVR_AimSourceAfterKey() { obvr::game::Restore(obvr::gam
 extern "C" void __cdecl OBVR_AimSourceAfterFactory() { obvr::game::Restore(obvr::game::g_factory); }
 extern "C" void __cdecl OBVR_AimSourceAfterArrow() { obvr::game::Restore(obvr::game::g_arrow); }
 extern "C" void __cdecl OBVR_AimSourceAfterAttack() { obvr::game::Restore(obvr::game::g_attackOwner); }
+
+extern "C" void __cdecl OBVR_AimSourceBeforeGrab(void* actor) {
+	using namespace obvr;
+	const UInt32 player = game::PlayerAddressOrZero();
+	if (!game::g_grabWanted || !game::g_pose.wanted || player == 0 ||
+	    reinterpret_cast<UInt32>(actor) != player) {
+		return;
+	}
+	if (!game::Swap(game::g_grab, "a grab")) {
+		return;
+	}
+	auto* distance = reinterpret_cast<float*>(player + addr::kPlayerGrabDistanceOffset);
+	game::g_grabDistanceSaved = *distance;
+	*distance = game::g_grabDistanceUnits;
+	game::g_grabDistanceSwapped = true;
+	if (!game::g_grabReported) {
+		game::g_grabReported = true;
+		OBVR_LOG("Aim: the grab update runs with the hand's direction and a distance of %.1f "
+		         "units in place of the engine's %.1f - the held object follows the hand",
+		         static_cast<double>(game::g_grabDistanceUnits),
+		         static_cast<double>(game::g_grabDistanceSaved));
+	}
+}
+
+extern "C" void __cdecl OBVR_AimSourceAfterGrab() {
+	using namespace obvr;
+	if (game::g_grabDistanceSwapped) {
+		const UInt32 player = game::PlayerAddressOrZero();
+		if (player != 0) {
+			*reinterpret_cast<float*>(player + addr::kPlayerGrabDistanceOffset) =
+				game::g_grabDistanceSaved;
+		}
+		game::g_grabDistanceSwapped = false;
+	}
+	game::Restore(game::g_grab);
+}
 
 extern "C" void __cdecl OBVR_AimSourceBeforeAttack(void* actor) {
 	using namespace obvr;

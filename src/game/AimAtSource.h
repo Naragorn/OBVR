@@ -51,4 +51,14 @@ struct AimSourcePose {
 
 void SetAimSourcePose(const AimSourcePose& pose);
 
+// The hand-tracked mode's grab: while wanted, the per-frame grab update
+// (kGrabUpdate, called from the grab handler at kCallGrabUpdate) runs with
+// the player's rotation swapped to the aim pose above - the hand's
+// direction - AND the grab distance at kPlayerGrabDistanceOffset set to the
+// given game units, both put back on the way out. The engine then builds
+// the spring's target from the player's eye vector and that distance, so
+// the grabbed object hovers where the hand is; move the hand fast and let
+// go, and the object keeps the spring's velocity - vanilla's own fling.
+void SetGrabAtHand(bool wanted, float distanceUnits);
+
 }  // namespace obvr::game
