@@ -16,3 +16,16 @@ bool Verify(UInt32 address, const UInt8* expected, UInt32 size);
 void* AllocExecutable(UInt32 size);
 
 }  // namespace obvr::mem
+
+namespace obvr::mem {
+
+// Says who was there first. Called at a site whose bytes failed Verify:
+// reads what sits there, decodes a relative jump or call if that is what it
+// is, names the module the target lies in, and writes one log line under the
+// given subsystem prefix. Another plugin's detour at one of OBVR's sites is
+// the documented shape of a mod conflict (Oblivion Reloaded plants one at
+// the scene render entry), and a log that names the DLL turns "OBVR does
+// nothing" into "these two cannot share this function".
+void ReportForeignCode(const char* subsystem, UInt32 address);
+
+}  // namespace obvr::mem

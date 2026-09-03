@@ -107,6 +107,7 @@ void ApplyDialogZoom(bool zoomWanted) {
 					OBVR_LOG("Dialog: the bytes at %08X are not SetDialogCamera as this "
 					         "build knows it, so the dialogue zoom stays alive",
 					         addr::kSetDialogCamera);
+					mem::ReportForeignCode("Dialog", addr::kSetDialogCamera);
 				}
 				return;
 			}

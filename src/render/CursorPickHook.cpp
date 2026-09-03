@@ -69,6 +69,7 @@ bool InstallCursorPickHook() {
 	if (!mem::Verify(addr::kPickNormalizePoint, kEntryBytes, sizeof(kEntryBytes))) {
 		OBVR_LOG("Cursor pick: bytes at %08X differ, the hover keeps its offset",
 		         addr::kPickNormalizePoint);
+		mem::ReportForeignCode("Cursor pick", addr::kPickNormalizePoint);
 		return false;
 	}
 

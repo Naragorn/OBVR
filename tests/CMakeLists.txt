@@ -595,3 +595,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME create_device_guard COMMAND create_device_guard_test)
+
+add_executable(branch_decode_test BranchDecodeTest.cpp)
+
+target_include_directories(branch_decode_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(branch_decode_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME branch_decode COMMAND branch_decode_test)

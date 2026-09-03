@@ -2330,6 +2330,7 @@ bool InstallInterfaceRenderHook(const InterfaceRedirect& callbacks) {
 	                 sizeof(kRenderInterfaceEntry))) {
 		OBVR_LOG("Hud: bytes at %08X differ, the 2D pass will not be hooked",
 		         addr::kRenderInterface);
+		mem::ReportForeignCode("Hud", addr::kRenderInterface);
 		return false;
 	}
 

@@ -187,6 +187,7 @@ void InstallCallSite(Site& site, UInt32 callSite, UInt32 target, UInt32 before, 
 	if (!mem::Verify(callSite, expected, sizeof(expected))) {
 		OBVR_LOG("Aim: the call at %08X is not `call %08X` - %s is left as it is", callSite,
 		         target, name);
+		mem::ReportForeignCode("Aim", callSite);
 		return;
 	}
 	UInt32 stubAddress = 0;

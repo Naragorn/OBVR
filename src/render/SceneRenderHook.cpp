@@ -620,6 +620,7 @@ bool InstallSceneRenderHook(const ScenePassCallbacks& callbacks) {
 	if (!mem::Verify(addr::kRenderScene, kRenderSceneEntry, sizeof(kRenderSceneEntry))) {
 		OBVR_LOG("Render: bytes at %08X differ, the scene render will not be hooked",
 		         addr::kRenderScene);
+		mem::ReportForeignCode("Render", addr::kRenderScene);
 		return false;
 	}
 

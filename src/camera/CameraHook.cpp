@@ -2133,6 +2133,7 @@ void InstallCastHook() {
 		OBVR_LOG("Aim: bytes at %08X are not MagicCaster::CastMagicItem's prologue - the cast "
 		         "hook is not installed, and spells fall back to the key window",
 		         addr::kHookMagicCastItem);
+		mem::ReportForeignCode("Aim", addr::kHookMagicCastItem);
 		return;
 	}
 
@@ -3709,6 +3710,7 @@ bool Install() {
 	if (!mem::Verify(addr::kHookCameraUpdate, kOriginalBytes, addr::kHookCameraUpdatePatchSize)) {
 		OBVR_LOG("Camera: bytes at %08X differ, hook will not be installed",
 		         addr::kHookCameraUpdate);
+		mem::ReportForeignCode("Camera", addr::kHookCameraUpdate);
 		return false;
 	}
 
