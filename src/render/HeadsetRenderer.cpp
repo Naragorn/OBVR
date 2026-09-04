@@ -5,6 +5,7 @@
 #include "core/Log.h"
 #include "render/EyeGeometry.h"
 #include "render/GameFrame.h"
+#include "render/InteropBracket.h"
 #include "vr/OpenVRBackend.h"
 #include "vr/OpenVRTypes.h"
 
@@ -153,7 +154,36 @@ bool HeadsetRenderer::BeginFrame(vr::OpenVRBackend& backend) {
 
 	// Blocks until the compositor wants the next frame. From here on Oblivion
 	// runs on the compositor's clock.
-	const int waited = backend.WaitGetPoses();
+	//
+	// Under DXVK's queue lock, the same one the submits take. In the
+	// compositor's default (implicit) timing mode WaitGetPoses is queue
+	// work: openvr.h says the runtime records its GPU timestamp there, and
+	// offers SetExplicitTimingMode for the case where "the application
+	// needs to access the VkQueue from another thread while WaitGetPoses
+	// is executing" - which is DXVK's case every frame, its CS thread
+	// submitting on that queue whenever it likes. Two threads on one
+	// VkQueue is what Vulkan forbids and what the NVIDIA driver answered
+	// with "Graphics Exception: Class 0xc9c0 Subchannel 0x0 Mismatch",
+	// a corrupted command stream, followed by VK_ERROR_DEVICE_LOST and a
+	// game waiting for ever inside DXVK - dozens of times over a week, at
+	// loading screens, in menus, after view switches. Without the lock
+	// (no DXVK, or no device yet) the wait runs as it always did.
+	int waited = 0;
+	{
+		InteropBracket poses;
+		const bool held = poses.Begin(GetGameDevice());
+		if (held != m_poseLockReported || !m_poseLockEverReported) {
+			m_poseLockEverReported = true;
+			m_poseLockReported = held;
+			OBVR_LOG("Poses: WaitGetPoses runs %s", held
+			         ? "under DXVK's queue lock - the compositor's timestamp cannot "
+			           "collide with DXVK's own submissions"
+			         : "without DXVK's queue lock - no interop device, so the "
+			           "compositor's timestamp may collide with DXVK's submissions");
+		}
+		waited = backend.WaitGetPoses();
+		poses.Release();
+	}
 	SubmitDecision decision = m_policy.Observe(waited);
 
 	if (decision == SubmitDecision::StopRendering) {

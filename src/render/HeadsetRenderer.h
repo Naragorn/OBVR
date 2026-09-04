@@ -225,6 +225,10 @@ private:
 	// cannot create the device would retry once per frame for ever, and the
 	// log would be the only thing rendering.
 	bool m_setupAttempted = false;
+	// Whether WaitGetPoses last ran under DXVK's queue lock, and whether
+	// that has been said yet - one line per change, not per frame.
+	bool m_poseLockReported = false;
+	bool m_poseLockEverReported = false;
 
 	// Whether BeginFrame has waited on the compositor and not yet been paid.
 	// Submit is only meaningful after WaitGetPoses, and Present runs on frames
