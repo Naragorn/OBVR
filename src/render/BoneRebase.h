@@ -186,53 +186,45 @@ inline bool BoneTargetIsWorldSized(UInt32 targetWidth, UInt32 mainWidth) {
 	return mainWidth == 0 || targetWidth >= mainWidth;
 }
 
-// Whether a second-render row and a first-render row with the same
-// fingerprint belong to the same INSTANCE. The same bone of the same body
-// sits either where the first render left it (stale, not re-evaluated) or
-// one eye baseline over (re-evaluated); another body in the same pose sits
-// a body length away. The camera shift the frame is known to use is tried
-// as well as the raw distance, so the test holds at eye separations where
-// the baseline itself grows past the raw band.
-inline bool BoneRowsAgree(const float* incoming, const float* logged, const float delta[3]) {
-	if (BoneTranslationDistSq(incoming, logged) <= kBoneMixupThresholdSq) {
-		return true;
-	}
-	const float dx = incoming[3] - (logged[3] + delta[0]);
-	const float dy = incoming[7] - (logged[7] + delta[1]);
-	const float dz = incoming[11] - (logged[11] + delta[2]);
-	return dx * dx + dy * dy + dz * dz <= kBoneMixupThresholdSq;
-}
-
 // How a second-render row was paired with the first render's log.
 //
 // InPlace: the row at the running position has the fingerprint. In a steady
 // frame the uploads arrive in the first render's order, so this is the
-// same draw's row whatever its translation says - and a translation a body
-// length off is the engine's instance mixup, the very thing the lock
-// exists to overwrite. Reordered: the running position did not match, but
-// a row further along the ring did and agrees on the instance - the pair
-// after a camera turn resorted the uploads, or a part of the same body the
-// first render did not draw. None: nothing paired. Fingerprint matches off
-// position that DISAGREE on the instance are refused and counted: a row
-// the first render never uploaded (a body only this eye's frustum holds,
-// a part only this eye drew) has no pair, and serving it a same-posed
-// stranger's translation snaps the limb onto that stranger - and drags
-// the running position there, so every same-posed pair after it resolves
-// to the wrong body for the rest of the frame.
+// same draw's row whatever its translation says. Reordered: the running
+// position did not match, but a row further along the ring did - the pair
+// after a camera turn resorted the uploads, a part of the same body the
+// first render did not draw, or the ring slipped because the second render
+// skipped a row the first had uploaded. None: nothing in the log carries
+// the fingerprint.
+//
+// The pair is the FIRST fingerprint match along the ring, whatever its
+// translation says. A variant that refused off-position matches whose
+// translation disagreed by more than a body length - meant to keep a row
+// the first render never uploaded from latching onto a same-posed
+// stranger - brought the collapse back and was reverted on the evidence of
+// a headset log: in frames where the second render uploaded fewer rows
+// than the first (1761 against 1793), the ring slipped, every pair after
+// the slip sat off position, and every one of them carried the engine's
+// mixed-up translation - a body length off, as the mixup always is - so
+// 1322 of 1414 rows were refused and passed through as the engine wrote
+// them, which is the collapse itself. The second render's translations are
+// the thing the lock exists to overwrite; they cannot also be the evidence
+// for whether to overwrite them. A stranger's translation is still a wrong
+// translation, but it is one same-posed body's position instead of the
+// mixup's, and the frames that slip are the ones a stranger would have
+// wrecked anyway.
 enum class BoneMatchKind { None, InPlace, Reordered };
 
 struct BoneMatch {
 	BoneMatchKind kind = BoneMatchKind::None;
-	UInt32 index = 0;             // the paired row's position in the log
-	UInt32 strangersRefused = 0;  // off-position fingerprint matches that disagreed
+	UInt32 index = 0;  // the paired row's position in the log
 };
 
 // Pairs an incoming row with the first render's log: the running position
-// first, then the first agreeing row along the ring. Strangers along the
-// way are refused, never taken. A count of zero pairs nothing.
+// first, then the first row along the ring with the same register and
+// fingerprint. A count of zero pairs nothing.
 inline BoneMatch FindBoneRow(const BoneRow* log, UInt32 count, UInt32 running,
-                             UInt32 startRegister, const float* incoming,
-                             const float delta[3]) {
+                             UInt32 startRegister, const float* incoming) {
 	BoneMatch match;
 	if (count == 0) {
 		return match;
@@ -244,17 +236,9 @@ inline BoneMatch FindBoneRow(const BoneRow* log, UInt32 count, UInt32 running,
 		    !SameBoneRotation(candidate.floats, incoming)) {
 			continue;
 		}
-		if (step == 0) {
-			match.kind = BoneMatchKind::InPlace;
-			match.index = probe;
-			return match;
-		}
-		if (BoneRowsAgree(incoming, candidate.floats, delta)) {
-			match.kind = BoneMatchKind::Reordered;
-			match.index = probe;
-			return match;
-		}
-		++match.strangersRefused;
+		match.kind = step == 0 ? BoneMatchKind::InPlace : BoneMatchKind::Reordered;
+		match.index = probe;
+		return match;
 	}
 	return match;
 }

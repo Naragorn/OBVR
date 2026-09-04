@@ -178,14 +178,15 @@ struct StateCallCounts {
 	// target and were left alone entirely - those sub-passes are
 	// camera-free, and shifting them put every shadow one eye over.
 	// Reordered is the subset of replaced rows whose pair sat off the
-	// running position (a resorted upload order, or a part the first
-	// render did not draw); refused is the subset of passthrough rows
-	// that met a same-posed stranger off position and declined it - the
-	// rows that used to snap onto that stranger. See FindBoneRow.
+	// running position (a resorted upload order, a part the first render
+	// did not draw, or a slipped ring); reorderedFar the subset of those
+	// whose own translation sat a body length from the pair - the slipped
+	// ring meeting the mixup, or a row with no pair taking a same-posed
+	// stranger. See FindBoneRow.
 	UInt32 boneLockReplaced = 0;
 	UInt32 boneLockPassthrough = 0;
 	UInt32 boneLockReordered = 0;
-	UInt32 boneLockRefused = 0;
+	UInt32 boneLockReorderedFar = 0;
 	UInt32 boneOffscreenRows = 0;
 };
 

@@ -399,24 +399,18 @@ const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 	// bit-identical between the renders (only its translation changes
 	// frame of reference), which makes the nine rotation floats a
 	// fingerprint of the bone. Camera turns reorder the second render's
-	// uploads, so the pair is searched for from the current position
-	// forward over the whole ring. Off position, only a row that agrees on
-	// the instance is taken: a same-posed stranger is refused, because a
-	// row the first render never uploaded - a body or a part only this
-	// eye's frustum holds - has no pair, and the stranger's translation
-	// would snap it a body length over and drag the running position with
-	// it (the edge-of-view collapse and the cutscene snap-away).
+	// uploads and a skipped row slips the ring, so the pair is searched
+	// for from the current position forward over the whole ring, and the
+	// first fingerprint match is taken whatever its translation says: the
+	// second render's translations are what the lock overwrites, so they
+	// cannot decide the pairing (see FindBoneRow for the headset log that
+	// settled this).
 	const UInt32 limit = g_boneLogCount < kBoneLogCapacity ? g_boneLogCount
 	                                                       : kBoneLogCapacity;
-	float delta[3];
-	ChooseRebaseDelta(g_eyeDelta, g_boneEyeShift, g_boneShiftSign, delta);
 	const BoneMatch match =
-		FindBoneRow(g_boneLog, limit, g_boneCompareIndex, startRegister, data, delta);
+		FindBoneRow(g_boneLog, limit, g_boneCompareIndex, startRegister, data);
 	if (match.kind == BoneMatchKind::None) {
 		++g_stateCalls.boneLockPassthrough;
-		if (match.strangersRefused != 0) {
-			++g_stateCalls.boneLockRefused;
-		}
 		return nullptr;
 	}
 	const BoneRow& candidate = g_boneLog[match.index];
@@ -428,19 +422,29 @@ const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 	const float distSq = BoneTranslationDistSq(data, f);
 	if (IsEyeBaselineSample(distSq)) {
 		AddEyeDeltaSample(g_eyeDelta, data, f);
-		// The sample just taken counts towards this row's own shift while
-		// the sign is still uncalibrated.
-		ChooseRebaseDelta(g_eyeDelta, g_boneEyeShift, g_boneShiftSign, delta);
-	} else if (g_timelineArmed && distSq > kBoneMixupThresholdSq) {
-		if (g_boneMismatchCount == 0) {
-			g_boneMismatchAt = match.index;
-			g_boneMismatchFirst = candidate;
-			g_boneMismatchSecond.startRegister = startRegister;
-			std::memcpy(g_boneMismatchSecond.floats, data,
-			            sizeof(g_boneMismatchSecond.floats));
+	} else if (distSq > kBoneMixupThresholdSq) {
+		if (match.kind == BoneMatchKind::Reordered) {
+			// An off-position pair a body length apart: either the ring
+			// slipped onto the mixup, or a row with no pair of its own
+			// took a same-posed stranger. The count is the instrument
+			// for the edge-of-view collapse of followers.
+			++g_stateCalls.boneLockReorderedFar;
 		}
-		++g_boneMismatchCount;
+		if (g_timelineArmed) {
+			if (g_boneMismatchCount == 0) {
+				g_boneMismatchAt = match.index;
+				g_boneMismatchFirst = candidate;
+				g_boneMismatchSecond.startRegister = startRegister;
+				std::memcpy(g_boneMismatchSecond.floats, data,
+				            sizeof(g_boneMismatchSecond.floats));
+			}
+			++g_boneMismatchCount;
+		}
 	}
+	// The sample just taken counts towards this row's own shift while the
+	// sign is still uncalibrated.
+	float delta[3];
+	ChooseRebaseDelta(g_eyeDelta, g_boneEyeShift, g_boneShiftSign, delta);
 	RebaseBoneRow(g_boneRebaseRow, f, delta);
 	g_boneCompareIndex = match.index + 1;
 	++g_stateCalls.boneLockReplaced;
