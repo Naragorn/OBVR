@@ -18,8 +18,9 @@ namespace obvr::game {
 // or a person appears when it is looked at. It is set only for things that can
 // be ACTIVATED, and only within iActivatePickLength - 150 units by default,
 // which is 2.14 metres. A wall, the ground, the horizon: nothing. There is no
-// hit point and no distance anywhere in it, only the reference, and xOBSE
-// exposes nothing further - no ray cast wrapper, no NiPick, no Havok helper.
+// hit point and no distance anywhere in it, only the reference. OBVR projects
+// that origin along the gaze; it deliberately does not use the scene node's
+// broad bound, whose near edge caused a discontinuous middle-distance error.
 //
 // That sounds thin and is in fact sufficient, because the range where a fixed
 // crosshair fails is the same range. The vergence error between a crosshair at
@@ -72,5 +73,10 @@ struct CrosshairTarget {
 };
 
 CrosshairTarget ReadCrosshairTarget();
+
+// Makes HUDInfoMenu's existing action-icon tile participate in the isolated
+// third-person HUD draw. No icon is invented: Oblivion has already chosen its
+// texture and action; this only exposes that tile for the duration of a draw.
+bool SetHudInfoActionIconVisible(bool visible);
 
 }  // namespace obvr::game

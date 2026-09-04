@@ -550,19 +550,23 @@ void TestMenuFrameDressing() {
 				for (UInt32 age : ages) {
 					for (int shade = 0; shade < 2; ++shade) {
 						for (int border = 0; border < 2; ++border) {
+							for (int dialog = 0; dialog < 2; ++dialog) {
 							const auto decision = MenuDressingForFrame(
-								delivery, menu != 0, live != 0, age, shade != 0, border != 0);
+								delivery, menu != 0, live != 0, age, shade != 0,
+								border != 0, dialog != 0);
 							const bool menuUp = menu != 0;
+							const bool mayDress = menuUp && dialog == 0;
 							const bool held = delivery == FrameDelivery::HeldStereo;
 							const bool liveStereo = delivery == FrameDelivery::Stereo && live != 0;
 							const bool heldEligible = held && age <= kMenuDressingWindowFrames;
 							const bool expectedShade =
-								menuUp && (heldEligible || liveStereo) && shade != 0;
-							const bool expectedBorder = menuUp && heldEligible && border != 0;
+								mayDress && (heldEligible || liveStereo) && shade != 0;
+							const bool expectedBorder = mayDress && heldEligible && border != 0;
 							if (decision.shade != expectedShade ||
 							    decision.singleBorder != expectedBorder) {
 								Check(false, "one menu-dressing flow disagrees");
 								return;
+							}
 							}
 						}
 					}
@@ -571,6 +575,31 @@ void TestMenuFrameDressing() {
 		}
 	}
 	Check(true, "all held, live, flat, stale and disabled dressing flows agree");
+}
+
+void TestDialogMenuEpisode() {
+	std::printf("Dialogue identity through its exit transition\n");
+	using obvr::camera::DialogMenuEpisode;
+	for (UInt32 mask = 0; mask < 8; ++mask) {
+		const bool previous = (mask & 1) != 0;
+		const bool menu = (mask & 2) != 0;
+		const bool observed = (mask & 4) != 0;
+		Check(DialogMenuEpisode(previous, menu, observed) ==
+		          (menu && (previous || observed)),
+		      "every prior-state, menu-mode and observed-dialog flow agrees");
+	}
+	Check(!DialogMenuEpisode(false, false, true),
+	      "outside menu mode even a stale dialogue id is not an episode");
+	Check(!DialogMenuEpisode(false, true, false),
+	      "an ordinary menu does not become a dialogue");
+	Check(DialogMenuEpisode(false, true, true),
+	      "seeing DialogMenu begins the episode");
+	Check(DialogMenuEpisode(true, true, false),
+	      "a transient empty active-menu reading keeps the episode");
+	Check(DialogMenuEpisode(true, true, false),
+	      "a child or exit menu cannot reclassify the dialogue as a pause menu");
+	Check(!DialogMenuEpisode(true, false, false),
+	      "leaving menu mode ends the episode");
 }
 
 void TestMenuWorldProbe() {
@@ -731,6 +760,7 @@ void TestCrosshair() {
 	std::printf("Where the crosshair hangs, and how big it is there\n");
 
 	using obvr::camera::CrosshairPlacement;
+	using obvr::camera::CrosshairCaptureWanted;
 	using obvr::camera::CrosshairWanted;
 	using obvr::camera::PlaceCrosshair;
 
@@ -854,6 +884,24 @@ void TestCrosshair() {
 	CrosshairVisibility heldFrame = Needed(true, true, true);
 	heldFrame.worldFrame = false;
 	Check(!CrosshairWanted(heldFrame), "and a held picture still means no crosshair");
+
+	// Visibility and capture are separate decisions.  In particular, the
+	// hidden branch of only-when-needed still has to erase Oblivion's original
+	// from the flat HUD; otherwise that original is exactly the always-visible
+	// centre crosshair the option promises to remove.
+	for (UInt32 mask = 0; mask < 8; ++mask) {
+		CrosshairVisibility capture;
+		capture.enabled = (mask & 1) != 0;
+		capture.worldFrame = (mask & 2) != 0;
+		capture.menuIsUp = (mask & 4) != 0;
+		capture.onlyWhenNeeded = true;
+		capture.thirdPerson = (mask & 1) != 0;
+		capture.somethingAimedAt = (mask & 4) != 0;
+		capture.weaponDrawn = (mask & 2) == 0;
+		const bool expected = capture.enabled && capture.worldFrame && !capture.menuIsUp;
+		Check(CrosshairCaptureWanted(capture) == expected,
+		      "every capture gate combination ignores visibility but protects non-play frames");
+	}
 
 	// Ordinary values pass through, and the width is the size at one metre
 	// carried out to the distance: 0.025 at ten metres is a quarter of a metre
@@ -1054,6 +1102,89 @@ void TestCrosshairTargetRead() {
 	}
 }
 
+void TestHudCrosshairView() {
+	std::printf("Which POV the isolated HUD draw uses for the crosshair\n");
+	using obvr::camera::HudCrosshairNeedsFirstPersonView;
+
+	for (UInt32 mask = 0; mask < 16; ++mask) {
+		const bool enabled = (mask & 1) != 0;
+		const bool enabledInThirdPerson = (mask & 2) != 0;
+		const bool tooltipsInThirdPerson = (mask & 4) != 0;
+		const bool isThirdPerson = (mask & 8) != 0;
+		const bool expected = isThirdPerson &&
+		                      ((enabled && enabledInThirdPerson) || tooltipsInThirdPerson);
+		Check(HudCrosshairNeedsFirstPersonView(enabled, enabledInThirdPerson,
+		                                          tooltipsInThirdPerson,
+		                                          isThirdPerson) == expected,
+		      "every HUD POV flow includes either requested third-person centre consumer");
+	}
+}
+
+void TestCrosshairTooltipPolicy() {
+	std::printf("Crosshair and contextual tooltip independence\n");
+	using obvr::camera::CrosshairCentreCaptureWanted;
+	using obvr::camera::CrosshairContent;
+	using obvr::camera::CrosshairContentWanted;
+	using obvr::camera::PixelRectangle;
+	using obvr::camera::TooltipAboveNameRectangle;
+
+	for (UInt32 mask = 0; mask < 16; ++mask) {
+		const bool crosshair = (mask & 1) != 0;
+		const bool target = (mask & 2) != 0;
+		const bool tooltips = (mask & 4) != 0;
+		const bool above = (mask & 8) != 0;
+		const CrosshairContent expected =
+			target && tooltips && !above
+				? CrosshairContent::CapturedHudCentre
+				: (!target && crosshair
+				       ? CrosshairContent::CapturedHudCentre
+				       : (crosshair ? CrosshairContent::RememberedCrosshair
+				                    : CrosshairContent::Hidden));
+		Check(CrosshairContentWanted(crosshair, target, tooltips, above) == expected,
+		      "every reticle, target, tooltip and placement combination chooses one picture");
+	}
+
+	for (UInt32 mask = 0; mask < 32; ++mask) {
+		const bool crosshair = (mask & 1) != 0;
+		const bool target = (mask & 2) != 0;
+		const bool tooltips = (mask & 4) != 0;
+		const bool world = (mask & 8) != 0;
+		const bool menu = (mask & 16) != 0;
+		const bool expected = world && !menu && (crosshair || (target && tooltips));
+		Check(CrosshairCentreCaptureWanted(crosshair, target, tooltips, world, menu) ==
+		          expected,
+		      "all tooltip capture flows erase the centre only on a playable frame");
+	}
+
+	const PixelRectangle normal = TooltipAboveNameRectangle(800, 600, 60);
+	Check(normal.left == 700 && normal.right == 760 && normal.top == 420 &&
+	          normal.bottom == 480,
+	      "the normal icon sits above the lower-right target-name area");
+	const PixelRectangle clipped = TooltipAboveNameRectangle(20, 10, 50);
+	Check(clipped.left == 9 && clipped.right == 19 && clipped.top == 0 &&
+	          clipped.bottom == 10,
+	      "a tiny HUD clips the icon without leaving its bounds");
+	const PixelRectangle empty = TooltipAboveNameRectangle(0, 600, 60);
+	Check(empty.left == 0 && empty.top == 0 && empty.right == 0 && empty.bottom == 0,
+	      "an unknown HUD width refuses a destination");
+}
+
+void TestCrosshairTargetDepthArrival() {
+	std::printf("When a tooltip takes its target depth immediately\n");
+	using obvr::camera::CrosshairTargetNeedsImmediateDepth;
+
+	Check(!CrosshairTargetNeedsImmediateDepth(0, 0),
+	      "no target before or now has nothing to snap to");
+	Check(CrosshairTargetNeedsImmediateDepth(0, 0x1000),
+	      "a newly appearing tooltip snaps to its target depth");
+	Check(!CrosshairTargetNeedsImmediateDepth(0x1000, 0x1000),
+	      "the same target keeps the configured depth easing");
+	Check(CrosshairTargetNeedsImmediateDepth(0x1000, 0x2000),
+	      "moving directly to a different target snaps there too");
+	Check(!CrosshairTargetNeedsImmediateDepth(0x1000, 0),
+	      "losing a target may ease back to the fallback distance");
+}
+
 void TestCrosshairCutout() {
 	std::printf("How much of the flat layer the crosshair takes with it\n");
 
@@ -1166,6 +1297,14 @@ void TestCrosshairDepth() {
 	const float faceDepth = CrosshairDepth(atFace);
 	Check(Near(faceDepth, 1.0f), "an actor a metre ahead reads as a metre, not as its origin");
 	Check(faceDepth < 1.5f, "and specifically not as the 1.99 m straight-line distance");
+
+	// No scene-bound near edge is applied. Such a broad sphere starts in front
+	// of doors and actors, then flips back to the origin when the camera enters
+	// it; the measured symptom was a doubled middle range which suddenly merged
+	// again at touching distance. The view-axis origin projection stays one
+	// continuous metre here.
+	Check(Near(CrosshairDepth(atFace), 1.0f),
+	      "target depth stays continuous instead of following a broad bound");
 
 	// The same actor, looked at down at its feet. Now the gaze really does
 	// point at the origin, and the projection agrees with the straight line -
@@ -3027,6 +3166,7 @@ int main() {
 	TestLiveMenuAvailability();
 	std::printf("\n");
 	TestMenuFrameDressing();
+	TestDialogMenuEpisode();
 	std::printf("\n");
 	TestMenuWorldProbe();
 	std::printf("\n");
@@ -3043,6 +3183,9 @@ int main() {
 	TestCrosshair();
 	TestBorrowedCrosshair();
 	TestCrosshairTargetRead();
+	TestHudCrosshairView();
+	TestCrosshairTooltipPolicy();
+	TestCrosshairTargetDepthArrival();
 	TestCrosshairCutout();
 	TestCrosshairDepth();
 	std::printf("\n");

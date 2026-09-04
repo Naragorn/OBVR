@@ -1,6 +1,7 @@
 #include "render/CrosshairLayer.h"
 
 #include "core/Log.h"
+#include "camera/FrameLogic.h"
 #include "platform/PluginPath.h"
 #include "render/CrosshairCache.h"
 #include "render/D3D11Types.h"
@@ -132,6 +133,30 @@ bool CrosshairLayer::TakeFromHud(void* gameDevice, void* hudSurface, UInt32 hudW
 		         source.left, source.top, source.right, source.bottom, width, height);
 	}
 	return true;
+}
+
+bool CrosshairLayer::PutTakenAboveName(void* gameDevice, void* hudSurface,
+                                      UInt32 hudWidth, UInt32 hudHeight,
+                                      UInt32 believedWidth, UInt32 believedHeight,
+                                      UInt32 sizePixels) {
+	if (!m_takenFromHud || m_surface == nullptr || hudSurface == nullptr) {
+		return false;
+	}
+	const UInt32 width = believedWidth > 0 ? believedWidth : hudWidth;
+	const UInt32 height = believedHeight > 0 ? believedHeight : hudHeight;
+	const camera::PixelRectangle wanted =
+		camera::TooltipAboveNameRectangle(width, height, sizePixels);
+	if (wanted.right <= wanted.left || wanted.bottom <= wanted.top ||
+	    static_cast<UInt32>(wanted.right) > hudWidth ||
+	    static_cast<UInt32>(wanted.bottom) > hudHeight) {
+		return false;
+	}
+	const d3d9::Rect destination{wanted.left, wanted.top, wanted.right, wanted.bottom};
+	auto stretchRect = d3d9::Method<d3d9::StretchRectFn>(gameDevice,
+	                                                    d3d9::kDeviceStretchRect);
+	return stretchRect != nullptr &&
+	       !d3d11::Failed(stretchRect(gameDevice, m_surface, nullptr, hudSurface,
+	                                  &destination, d3d9::kTexFilterLinear));
 }
 
 bool CrosshairLayer::EnsureKeptTexture(void* gameDevice) {

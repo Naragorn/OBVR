@@ -407,7 +407,8 @@ struct TrackerSettings {
 	// jumps between depths reads as breathing, which is more distracting than
 	// a quad at a constant wrong depth. Too slow is its own fault: the
 	// crosshair then lags behind the look and is at the right depth only for
-	// things stared at.
+	// things stared at. Zero deliberately bypasses the ease and moves to the
+	// requested depth on the same frame.
 	float crosshairDepthSpeed = 8.0f;
 
 	// Logs what the crosshair depth is being built from: whether HUDInfoMenu
@@ -446,16 +447,27 @@ struct TrackerSettings {
 	// the game's crosshair out of the 2D layer rather than drawing one, so with
 	// nothing drawn there is nothing to lift in that view.
 	//
-	// OBVR instead keeps a clean copy while the game draws it in first person
-	// and reuses that picture here. Until such a copy exists, it shows none;
-	// there is deliberately no mod-drawn substitute.
+	// OBVR makes only its isolated HUD pass see first person, then lifts the
+	// genuine pixels it produced. A clean cached copy remains the fallback
+	// while a target icon has to be replaced by the plain reticle.
 	bool crosshairInThirdPerson = false;
+
+	// The context-sensitive action icon (talk, open, locked, take) is separate
+	// from the plain aiming reticle. Each point of view can keep or suppress it
+	// independently. Third person is on by default even though vanilla hides
+	// the reticle there; OBVR explicitly exposes HUDInfoMenu's current icon.
+	bool crosshairTooltipsFirstPerson = true;
+	bool crosshairTooltipsThirdPerson = true;
+
+	// Moves the captured action icon back into the head-aligned HUD near the
+	// lower-right target name instead of putting it on the depth crosshair quad.
+	bool crosshairTooltipsAboveName = false;
 
 	// Keeps that genuine first-person capture across game starts. The cache is
 	// raw A8R8G8B8 pixels including alpha, guarded by an exact header and a
 	// checksum; an absent or invalid file is ignored rather than replaced by a
 	// made-up reticle. It is refreshed at most once per session, on the first
-	// clean first-person capture, and read only when third person needs it.
+	// clean first-person capture.
 	bool crosshairPersistentCache = true;
 
 	// The "only when it is of use" restriction, for third person.
@@ -477,11 +489,10 @@ struct TrackerSettings {
 	// as fragments in the middle of the flat layer, worst while sneaking, where
 	// the icon is largest.
 	//
-	// 6.0 is roughly twice the old square at the resolution it was reported
-	// from. It is an estimate rather than a measurement - the icon's real size
-	// is not written down anywhere OBVR can read - so it is in the settings
-	// menu, where it can be turned up until nothing is left behind.
-	float crosshairSourceShare = 7.5f;
+	// Ten per cent is the requested safe default and the largest value that
+	// stays clear of most target-name text. It is still configurable because
+	// the icon's real size is not written down anywhere OBVR can read.
+	float crosshairSourceShare = 10.0f;
 
 	// Oblivion units per metre, for converting the head offset.
 	//

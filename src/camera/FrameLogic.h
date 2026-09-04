@@ -319,7 +319,16 @@ struct MenuFrameDressing {
 MenuFrameDressing MenuDressingForFrame(FrameDelivery delivery, bool menuIsUp,
                                        bool liveStereoFrame,
                                        UInt32 framesSinceMenuOpened,
-                                       bool shadeEnabled, bool singleBorderEnabled);
+                                       bool shadeEnabled, bool singleBorderEnabled,
+                                       bool dialogEpisode);
+
+// Dialogue remains a dialogue episode even when ActiveMenuId briefly reports
+// none or another child menu during the exit transition. It ends only when
+// menu mode itself ends, preventing that late transition being reclassified
+// as a freshly opened pause menu and painted sepia.
+constexpr bool DialogMenuEpisode(bool previous, bool menuIsUp, bool observedDialog) {
+	return menuIsUp && (previous || observedDialog);
+}
 
 // Whether this menu frame runs the menu-world probe: one self-initiated
 // world render, its draw calls counted and logged, and nothing else done with
@@ -513,6 +522,57 @@ struct CrosshairVisibility {
 // Whether the crosshair quad is shown this frame.
 bool CrosshairWanted(const CrosshairVisibility& visibility);
 
+// Whether the centre of the captured HUD must be removed from the flat layer.
+//
+// This deliberately does not share CrosshairWanted's "only when needed"
+// decision.  Hiding the depth overlay without taking the game's original out
+// of the HUD merely reveals that original at HudDistanceMetres, which leaves a
+// permanent crosshair in first person.  A playable frame with the feature on
+// must therefore always take the centre; CrosshairWanted decides separately
+// whether the taken pixels are submitted or discarded.
+bool CrosshairCaptureWanted(const CrosshairVisibility& visibility);
+
+// What the depth overlay shows after the centre has been lifted. A tooltip is
+// the game's live action icon. When it is moved above the target name, the
+// overlay may still carry the remembered plain reticle independently.
+enum class CrosshairContent {
+	Hidden,
+	CapturedHudCentre,
+	RememberedCrosshair,
+};
+
+CrosshairContent CrosshairContentWanted(bool crosshairWanted, bool haveTarget,
+	                                    bool tooltipsEnabled, bool tooltipsAboveName);
+
+// Tooltips remain useful with the plain crosshair disabled, so their capture
+// gate is deliberately independent from CrosshairVisibility::enabled.
+bool CrosshairCentreCaptureWanted(bool crosshairEnabled, bool haveTarget,
+	                              bool tooltipsEnabled, bool worldFrame,
+	                              bool menuIsUp);
+
+struct PixelRectangle {
+	SInt32 left = 0;
+	SInt32 top = 0;
+	SInt32 right = 0;
+	SInt32 bottom = 0;
+};
+
+// Fixed HUD-relative home for the action icon when the user asks for it above
+// the lower-right target name. Kept pure so clipping and tiny-frame fallbacks
+// are covered without Direct3D.
+PixelRectangle TooltipAboveNameRectangle(UInt32 width, UInt32 height,
+	                                     UInt32 sizePixels);
+
+// Whether the isolated HUD draw should briefly see first person while the
+// world and player remain in third person. Oblivion suppresses its centre HUD
+// content in third person; the lift needs that draw to obtain both the plain
+// crosshair and the contextual target icon. The caller restores the POV byte
+// immediately after this one HUD pass.
+bool HudCrosshairNeedsFirstPersonView(bool crosshairEnabled,
+                                      bool crosshairInThirdPerson,
+	                                  bool tooltipsInThirdPerson,
+                                      bool isThirdPerson);
+
 // Whether third person should paste in the crosshair borrowed from first
 // person, or leave what the lift brought alone.
 //
@@ -541,6 +601,12 @@ bool BorrowedCrosshairWanted(bool thirdPerson, bool enabled, bool somethingAimed
 // context icon can be mistaken for the plain crosshair and then persisted.
 bool CrosshairTargetReadWanted(bool dynamicDepth, bool onlyWhenNeeded,
                                bool probeEnabled, bool thirdPersonBorrowing);
+
+// Whether a newly read target needs the crosshair depth immediately rather
+// than after easing.  Zero means no target.  Acquiring a target and moving
+// directly from one target to another both snap; holding the same target and
+// losing it keep the calming ease.
+bool CrosshairTargetNeedsImmediateDepth(UInt32 previousTarget, UInt32 currentTarget);
 
 // Where the crosshair quad goes and how big it is there.
 //
@@ -603,20 +669,12 @@ UInt32 CrosshairSourcePixels(UInt32 believedHeight, float sharePercent);
 // metres; place the crosshair there and the eyes are converged at one metre
 // while the quad sits at two, which is most of the doubling back again.
 //
-// What is taken instead is the depth ALONG THE VIEW AXIS, because the plane
-// the eyes converge on is perpendicular to the gaze and only the component
-// along it counts. That is right in both cases that matter: level at a face a
-// metre away it answers 1.0, and looking down at that same actor's feet it
-// answers the true 1.97. The vertical offset of the origin falls out of the
-// projection on its own rather than having to be corrected for.
-//
-// WHAT IS STILL WRONG WITH IT, since a number that looks exact invites being
-// trusted as exact. The origin is inside the body, roughly 20-30 cm behind the
-// surface being looked at, so at one metre this reads about a quarter of a
-// metre too far. That is half the error it replaces, not none of it. No bias is
-// applied to take the rest back: the right size for such a bias depends on what
-// is being looked at, and a constant would be a guess wearing the clothes of a
-// correction.
+// What is taken instead is the origin's depth ALONG THE VIEW AXIS: level at a
+// face a metre away it answers 1.0, and looking down at that same actor's feet
+// it answers the true 1.97. The vertical offset falls out of the projection on
+// its own. A scene-bound sphere was tried as a surface estimate, but its broad
+// near edge sat in front of doors and actors and changed discontinuously when
+// the camera entered it: exactly the middle-distance doubling this avoids.
 //
 // EVERY WAY OUT IS THE FALLBACK. No target, a gaze vector too short to have a
 // direction, nonsense units, or a target behind the camera - each answers

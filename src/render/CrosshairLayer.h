@@ -79,6 +79,13 @@ public:
 	bool TakeFromHud(void* gameDevice, void* hudSurface, UInt32 hudWidth, UInt32 hudHeight,
 	                 UInt32 believedWidth, UInt32 believedHeight, UInt32 sizePixels);
 
+	// Copies the just-lifted action icon back into the HUD at the configured
+	// lower-right home. The centre remains erased, so there cannot be a second
+	// flat copy at the old position.
+	bool PutTakenAboveName(void* gameDevice, void* hudSurface, UInt32 hudWidth,
+	                      UInt32 hudHeight, UInt32 believedWidth,
+	                      UInt32 believedHeight, UInt32 sizePixels);
+
 	// Keeps a copy of the crosshair currently in the texture, so third person
 	// can show the GAME'S crosshair rather than one drawn here.
 	//

@@ -87,6 +87,26 @@ bool ReadBool(const char* section, const char* key, bool fallback, const char* p
 	return ReadUInt(section, key, fallback ? 1 : 0, path) != 0;
 }
 
+// Four toggle rows briefly wrote descriptive words even though their reader
+// was numeric.  Accept those already-written values while the settings menu
+// goes back to writing the canonical 0/1 form.  Keeping this narrow matters:
+// an arbitrary word in an ordinary boolean must remain a rejected typo, not
+// silently become true.
+bool ReadLegacyWordBool(const char* section, const char* key, bool fallback,
+                        const char* falseWord, const char* trueWord, const char* path) {
+	char buffer[64];
+	if (GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), path) == 0) {
+		return fallback;
+	}
+	if (EqualsIgnoreCase(buffer, falseWord)) {
+		return false;
+	}
+	if (EqualsIgnoreCase(buffer, trueWord)) {
+		return true;
+	}
+	return ReadBool(section, key, fallback, path);
+}
+
 // Reads a virtual-key code. Accepts decimal (46) as well as hex with an 0x
 // prefix (0x2E).
 //
@@ -355,8 +375,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.tracker.menuStandIn =
 		ReadBool("Render", "MenuStandIn", config.tracker.menuStandIn, path);
 	config.tracker.crosshair = ReadBool("Render", "Crosshair", config.tracker.crosshair, path);
-	config.tracker.crosshairDynamic =
-		ReadBool("Render", "CrosshairDynamic", config.tracker.crosshairDynamic, path);
+	config.tracker.crosshairDynamic = ReadLegacyWordBool(
+		"Render", "CrosshairDynamic", config.tracker.crosshairDynamic, "fixed", "follows", path);
 	config.tracker.crosshairDistanceMetres =
 		ReadFloat("Render", "CrosshairDistanceMetres",
 	              config.tracker.crosshairDistanceMetres, path);
@@ -369,19 +389,29 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	              config.tracker.crosshairSizeAtOneMetre, path);
 	config.tracker.crosshairSourceShare =
 		ReadFloat("Render", "CrosshairSourceShare", config.tracker.crosshairSourceShare, path);
-	config.tracker.crosshairOnlyWhenNeeded = ReadBool(
-		"Render", "CrosshairOnlyWhenNeeded", config.tracker.crosshairOnlyWhenNeeded, path);
+	config.tracker.crosshairOnlyWhenNeeded = ReadLegacyWordBool(
+		"Render", "CrosshairOnlyWhenNeeded", config.tracker.crosshairOnlyWhenNeeded,
+		"always", "when needed", path);
 	config.tracker.crosshairInThirdPerson = ReadBool(
 		"Render", "CrosshairInThirdPerson", config.tracker.crosshairInThirdPerson, path);
+	config.tracker.crosshairTooltipsFirstPerson = ReadBool(
+		"Render", "CrosshairTooltips1stPerson",
+		config.tracker.crosshairTooltipsFirstPerson, path);
+	config.tracker.crosshairTooltipsThirdPerson = ReadBool(
+		"Render", "CrosshairTooltips3rdPerson",
+		config.tracker.crosshairTooltipsThirdPerson, path);
+	config.tracker.crosshairTooltipsAboveName = ReadBool(
+		"Render", "CrosshairTooltipsAboveName",
+		config.tracker.crosshairTooltipsAboveName, path);
 	config.tracker.crosshairPersistentCache = ReadBool(
 		"Render", "CrosshairPersistentCache", config.tracker.crosshairPersistentCache, path);
 	config.tracker.mirrorMenusToMonitor = ReadBool(
 		"Render", "MirrorMenusToMonitor", config.tracker.mirrorMenusToMonitor, path);
 	config.tracker.unpausedMenus = ReadBool(
 		"Render", "UnpausedMenus", config.tracker.unpausedMenus, path);
-	config.tracker.crosshairOnlyWhenNeededThirdPerson =
-		ReadBool("Render", "CrosshairOnlyWhenNeeded3rdPerson",
-	             config.tracker.crosshairOnlyWhenNeededThirdPerson, path);
+	config.tracker.crosshairOnlyWhenNeededThirdPerson = ReadLegacyWordBool(
+		"Render", "CrosshairOnlyWhenNeeded3rdPerson",
+		config.tracker.crosshairOnlyWhenNeededThirdPerson, "always", "when needed", path);
 	config.look.blockVerticalLook =
 		ReadBool("Look", "BlockVerticalLook", config.look.blockVerticalLook, path);
 	config.aimFollowsGaze =
@@ -407,8 +437,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.aimTurnSpeed = ReadFloat("Look", "AimTurnSpeed", config.aimTurnSpeed, path);
 	config.aimReturnOnRelease =
 		ReadBool("Look", "AimReturnOnRelease", config.aimReturnOnRelease, path);
-	config.aimTurnOnShotOnly =
-		ReadBool("Look", "AimTurnOnShotOnly", config.aimTurnOnShotOnly, path);
+	config.aimTurnOnShotOnly = ReadLegacyWordBool(
+		"Look", "AimTurnOnShotOnly", config.aimTurnOnShotOnly,
+		"while aiming", "for the shot", path);
 	config.aimShotTrace = ReadBool("Look", "AimShotTrace", config.aimShotTrace, path);
 	config.aimWeaponFollowsGaze =
 		ReadBool("Look", "AimWeaponFollowsGaze", config.aimWeaponFollowsGaze, path);
@@ -665,9 +696,13 @@ bool Config::Load(const char* fileName) {
 	                                      : "world, but HudOverlay is off, so the cinema "
 	                                        "screen is used - the overlay is the only way a "
 	                                        "menu reaches the headset"));
-	OBVR_LOG("Config: Render.Crosshair=%d InThirdPerson=%d PersistentCache=%d",
+	OBVR_LOG("Config: Render.Crosshair=%d InThirdPerson=%d PersistentCache=%d "
+	         "Tooltips=(1st %d, 3rd %d, above-name %d)",
 	         tracker.crosshair ? 1 : 0, tracker.crosshairInThirdPerson ? 1 : 0,
-	         tracker.crosshairPersistentCache ? 1 : 0);
+	         tracker.crosshairPersistentCache ? 1 : 0,
+	         tracker.crosshairTooltipsFirstPerson ? 1 : 0,
+	         tracker.crosshairTooltipsThirdPerson ? 1 : 0,
+	         tracker.crosshairTooltipsAboveName ? 1 : 0);
 	if (tracker.stereo == vr::StereoMode::DualPass) {
 		// The known limit, stated up front rather than discovered in the
 		// headset: the 2D layer draws after both passes, into the frame the

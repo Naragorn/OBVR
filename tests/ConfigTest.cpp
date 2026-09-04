@@ -173,6 +173,52 @@ void TestAnglesAndFrames() {
 	CheckEqual(config.recenterKey, 0x2E, "an absent key keeps its default");
 }
 
+void TestLegacyWordBooleans() {
+	std::printf("Legacy words written by toggle rows\n");
+
+	obvr::Config enabled;
+	LoadFrom("ConfigTestLegacyWordsOn.ini",
+	         "[Render]\nCrosshairDynamic=follows\n"
+	         "CrosshairOnlyWhenNeeded=when needed\n"
+	         "CrosshairOnlyWhenNeeded3rdPerson=when needed\n"
+	         "[Look]\nAimTurnOnShotOnly=for the shot\n",
+	         enabled);
+	Check(enabled.tracker.crosshairDynamic, "follows still loads as enabled");
+	Check(enabled.tracker.crosshairOnlyWhenNeeded, "when needed still enables first-person gating");
+	Check(enabled.tracker.crosshairOnlyWhenNeededThirdPerson,
+	      "when needed still enables third-person gating");
+	Check(enabled.aimTurnOnShotOnly, "for the shot still loads as enabled");
+
+	obvr::Config disabled;
+	LoadFrom("ConfigTestLegacyWordsOff.ini",
+	         "[Render]\nCrosshairDynamic=fixed\n"
+	         "CrosshairOnlyWhenNeeded=always\n"
+	         "CrosshairOnlyWhenNeeded3rdPerson=always\n"
+	         "[Look]\nAimTurnOnShotOnly=while aiming\n",
+	         disabled);
+	Check(!disabled.tracker.crosshairDynamic, "fixed still loads as disabled");
+	Check(!disabled.tracker.crosshairOnlyWhenNeeded, "always disables first-person gating");
+	Check(!disabled.tracker.crosshairOnlyWhenNeededThirdPerson,
+	      "always disables third-person gating");
+	Check(!disabled.aimTurnOnShotOnly, "while aiming still loads as disabled");
+
+	// The repaired settings menu writes digits. Exercise that path through the
+	// same four readers as well, so compatibility with the old values cannot
+	// accidentally replace the normal representation.
+	obvr::Config numeric;
+	LoadFrom("ConfigTestLegacyWordsNumeric.ini",
+	         "[Render]\nCrosshairDynamic=0\n"
+	         "CrosshairOnlyWhenNeeded=1\n"
+	         "CrosshairOnlyWhenNeeded3rdPerson=1\n"
+	         "[Look]\nAimTurnOnShotOnly=0\n",
+	         numeric);
+	Check(!numeric.tracker.crosshairDynamic, "numeric 0 still disables dynamic depth");
+	Check(numeric.tracker.crosshairOnlyWhenNeeded, "numeric 1 enables first-person gating");
+	Check(numeric.tracker.crosshairOnlyWhenNeededThirdPerson,
+	      "numeric 1 enables third-person gating");
+	Check(!numeric.aimTurnOnShotOnly, "numeric 0 still disables shot-only turning");
+}
+
 void CheckNear(float actual, float expected, const char* what) {
 	const float difference = actual - expected;
 	if (difference < 0.01f && difference > -0.01f) {
@@ -234,6 +280,38 @@ void TestPersistentCrosshairCache() {
 	         "[Render]\nCrosshairPersistentCache=0\n", configured);
 	Check(!configured.tracker.crosshairPersistentCache,
 	      "CrosshairPersistentCache=0 restores the session-only copy");
+}
+
+void TestCrosshairCutoutDefault() {
+	std::printf("Crosshair cutout default\n");
+
+	obvr::Config untouched;
+	CheckNear(untouched.tracker.crosshairSourceShare, 10.0f,
+	          "the built-in cutout default covers ten percent of the HUD height");
+}
+
+void TestCrosshairTooltips() {
+	std::printf("Crosshair tooltip controls\n");
+
+	obvr::Config untouched;
+	Check(untouched.tracker.crosshairTooltipsFirstPerson,
+	      "first-person tooltips default on");
+	Check(untouched.tracker.crosshairTooltipsThirdPerson,
+	      "third-person tooltips default on");
+	Check(!untouched.tracker.crosshairTooltipsAboveName,
+	      "tooltips default to the depth crosshair");
+
+	obvr::Config configured;
+	LoadFrom("ConfigTestCrosshairTooltips.ini",
+	         "[Render]\nCrosshairTooltips1stPerson=0\n"
+	         "CrosshairTooltips3rdPerson=0\nCrosshairTooltipsAboveName=1\n",
+	         configured);
+	Check(!configured.tracker.crosshairTooltipsFirstPerson,
+	      "first-person tooltips can be disabled independently");
+	Check(!configured.tracker.crosshairTooltipsThirdPerson,
+	      "third-person tooltips can be disabled independently");
+	Check(configured.tracker.crosshairTooltipsAboveName,
+	      "tooltips can be moved above the target name");
 }
 
 void TestMirrorMenusToMonitor() {
@@ -339,11 +417,15 @@ int main() {
 	std::printf("\n");
 	TestAnglesAndFrames();
 	std::printf("\n");
+	TestLegacyWordBooleans();
+	std::printf("\n");
 	TestThirdPersonAimVisualPercent();
 	std::printf("\n");
 	TestLiveMenuBackground();
 	std::printf("\n");
 	TestPersistentCrosshairCache();
+	TestCrosshairCutoutDefault();
+	TestCrosshairTooltips();
 	TestMirrorMenusToMonitor();
 	TestUnpausedMenus();
 	TestHandTracking();

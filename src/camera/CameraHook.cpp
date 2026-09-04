@@ -591,6 +591,12 @@ constexpr UInt32 kCrosshairProbeWindow = 300;
 // this costs nothing.
 bool g_crosshairHasTarget = false;
 
+// The reference whose depth was used on the previous camera pass.  Its
+// identity matters as well as have/don't-have: moving straight from a nearby
+// NPC to a chest is still a new tooltip and must arrive at the new depth in
+// that same frame rather than visibly sliding there.
+UInt32 g_crosshairTargetAddress = 0;
+
 bool g_crosshairProbeIntroduced = false;
 UInt32 g_crosshairProbeFrames = 0;
 UInt32 g_crosshairProbeWithMenu = 0;
@@ -635,6 +641,7 @@ UInt32 g_bridgesReported = 8;
 // report per menu episode, budgeted, because whether the dressing was
 // granted or skipped is the evidence the washed-grey diagnosis rests on.
 UInt32 g_menuOpenedFrame = 0;
+bool g_dialogMenuEpisode = false;
 bool g_dressingReportedThisMenu = false;
 UInt32 g_dressingReportsLeft = 8;
 
@@ -962,6 +969,8 @@ void OnFrameEnd() {
 	// mouse is over", so it empties whenever the cursor is not on the menu,
 	// and treating that as a change would retrigger the trace all day.
 	const UInt32 menuId = menuIsUp ? game::ActiveMenuId() : game::kMenuIdNone;
+	g_dialogMenuEpisode = DialogMenuEpisode(
+		g_dialogMenuEpisode, menuIsUp, menuId == game::kMenuIdDialog);
 	const bool menuFlagChanged = menuIsUp != g_menuTraceWasUp;
 	const bool menuTypeChanged = menuId != game::kMenuIdNone && menuId != g_menuTraceLastId;
 
@@ -989,7 +998,7 @@ void OnFrameEnd() {
 	                                : kMenuDressingWindowFrames + 1;
 	const MenuFrameDressing menuDressing = MenuDressingForFrame(
 		delivery, menuIsUp, liveMenuFrame, menuAge, config.tracker.menuShade,
-		config.tracker.menuSingleBorder);
+		config.tracker.menuSingleBorder, g_dialogMenuEpisode);
 	const UInt32 menuShadeColor = menuDressing.shade
 	                                  ? render::ComposeShadeColor(
 		                                    config.tracker.menuShadeColorRgb,
@@ -1304,6 +1313,45 @@ bool ReadIsThirdPerson() {
 		return false;
 	}
 	return player[addr::kPlayerIsThirdPersonOffset] != 0;
+}
+
+bool RunHudPassWithCrosshairView() {
+	const Config& config = GetConfig();
+	const bool isThirdPerson = ReadIsThirdPerson();
+	if (!HudCrosshairNeedsFirstPersonView(config.tracker.crosshair,
+	                                       config.tracker.crosshairInThirdPerson,
+	                                       config.tracker.crosshairTooltipsThirdPerson,
+	                                       isThirdPerson)) {
+		return render::RunHudPassBetweenScenes();
+	}
+
+	const UInt32 playerAddress = *reinterpret_cast<UInt32*>(addr::kPlayerPointer);
+	if (!mem::LooksLikeObjectAddress(playerAddress)) {
+		return render::RunHudPassBetweenScenes();
+	}
+
+	// The world renders on either side of this call and therefore retains the
+	// real third-person camera. Only the isolated 2D draw sees first person, so
+	// Oblivion supplies the centre HUD pixels that the crosshair lift needs.
+	auto* const thirdPerson = reinterpret_cast<UInt8*>(
+		playerAddress + addr::kPlayerIsThirdPersonOffset);
+	const UInt8 saved = *thirdPerson;
+	*thirdPerson = 0;
+	const bool forcedActionIcon = config.tracker.crosshairTooltipsThirdPerson &&
+	                              g_crosshairHasTarget &&
+	                              game::SetHudInfoActionIconVisible(true);
+	const bool captured = render::RunHudPassBetweenScenes();
+	if (forcedActionIcon) {
+		game::SetHudInfoActionIconVisible(false);
+	}
+	*thirdPerson = saved;
+
+	static bool s_reported = false;
+	if (!s_reported) {
+		s_reported = true;
+		OBVR_LOG("Crosshair: the isolated third-person HUD draw uses its first-person centre");
+	}
+	return captured;
 }
 
 void MaybeReloadConfig() {
@@ -1704,7 +1752,7 @@ void BetweenScenePasses() {
 	// and before the camera moves, so it is drawn from the viewpoint the
 	// game itself computed.
 	if (GetConfig().tracker.hudBetweenPasses) {
-		const bool captured = render::RunHudPassBetweenScenes();
+		const bool captured = RunHudPassWithCrosshairView();
 		if (DualTraceOn()) {
 			OBVR_LOG("Dual trace: the 2D layer was %s between the renders",
 			         captured ? "captured" : "not captured");
@@ -2034,16 +2082,25 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	}
 
 	const bool crosshairWanted = CrosshairWanted(visibility);
+	const bool tooltipsEnabled = visibility.thirdPerson
+	                               ? config.tracker.crosshairTooltipsThirdPerson
+	                               : config.tracker.crosshairTooltipsFirstPerson;
 
 	// Oblivion's own crosshair, lifted out of the captured layer and into the
 	// depth quad - which is also what takes it out of the flat one, so it is
 	// not shown twice at two distances.
 	//
-	// Only on a frame that will actually show it, because the lift erases what
-	// it takes: doing this where no crosshair is wanted would punch a hole in
-	// the middle of a menu for nothing.
+	// On every playable frame with the feature enabled, including the hidden
+	// branch of "only when needed".  Hiding only this overlay would otherwise
+	// leave Oblivion's original crosshair behind in the flat HUD.  Menu and held
+	// frames are excluded by CrosshairCaptureWanted, so their centre is never
+	// punched out.
 	bool crosshairLifted = false;
-	if (crosshairWanted && config.tracker.hudOverlay && g_hudLayer.HasCapture()) {
+	if (CrosshairCentreCaptureWanted(config.tracker.crosshair,
+	                                g_crosshairHasTarget, tooltipsEnabled,
+	                                worldFrame, visibility.menuIsUp) &&
+	    config.tracker.hudOverlay &&
+	    g_hudLayer.HasCapture()) {
 		UInt32 believedWidth = 0;
 		UInt32 believedHeight = 0;
 		render::GameBelievedSize(believedWidth, believedHeight);
@@ -2080,25 +2137,33 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		                                  config.tracker.crosshairPersistentCache);
 	}
 
-	// Pasted in only where the game leaves a gap. Oblivion draws no plain
-	// crosshair in third person, which is what this fills - but it DOES draw
-	// the context icons and the sneak eye, and the first version pasted over
-	// both of them.
-	//
-	// The sneak state is read behind this gate rather than passed in as an
-	// argument, because arguments are always evaluated: written the obvious
-	// way, every first-person frame would follow a raw pointer into the
-	// player's process to answer a question only third person asks.
-	const bool couldBorrow = crosshairWanted && visibility.thirdPerson &&
-	                         config.tracker.crosshairInThirdPerson;
-	if (couldBorrow &&
-	    BorrowedCrosshairWanted(visibility.thirdPerson, config.tracker.crosshairInThirdPerson,
-	                            g_crosshairHasTarget, game::IsPlayerSneaking())) {
+	if (crosshairLifted && g_crosshairHasTarget && tooltipsEnabled &&
+	    config.tracker.crosshairTooltipsAboveName) {
+		UInt32 believedWidth = 0;
+		UInt32 believedHeight = 0;
+		render::GameBelievedSize(believedWidth, believedHeight);
+		const UInt32 sourcePixels = CrosshairSourcePixels(
+			believedHeight > 0 ? believedHeight : g_hudLayer.CaptureHeight(),
+			config.tracker.crosshairSourceShare);
+		g_crosshairLayer.PutTakenAboveName(
+			render::GetGameDevice(), g_hudLayer.CaptureSurface(),
+			g_hudLayer.CaptureWidth(), g_hudLayer.CaptureHeight(), believedWidth,
+			believedHeight, sourcePixels);
+	}
+
+	// The live centre survives when it is already the wanted picture: plain
+	// reticle, sneak eye, or an enabled action tooltip. A remembered clean
+	// reticle replaces it only when a target tooltip was disabled or moved to
+	// the lower-right HUD; that keeps those settings independent.
+	const CrosshairContent content = CrosshairContentWanted(
+		crosshairWanted, g_crosshairHasTarget, tooltipsEnabled,
+		config.tracker.crosshairTooltipsAboveName);
+	if (crosshairLifted && content == CrosshairContent::RememberedCrosshair) {
 		// If this session has not captured a clean first-person crosshair yet,
 		// leave the overlay empty. Drawing an OBVR substitute here would make a
 		// mod-made reticle appear instead of the player's Oblivion crosshair.
-		g_crosshairLayer.UseRememberedCrosshair(render::GetGameDevice(),
-		                                      config.tracker.crosshairPersistentCache);
+		crosshairLifted = g_crosshairLayer.UseRememberedCrosshair(
+			render::GetGameDevice(), config.tracker.crosshairPersistentCache);
 	}
 
 	// The depth was decided in the camera pass, where the camera and the frame
@@ -2110,7 +2175,8 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	const CrosshairPlacement crosshair =
 		PlaceCrosshair(crosshairDepth, config.tracker.crosshairSizeAtOneMetre);
 	g_crosshairLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
-	                        crosshairWanted, crosshair.distanceMetres, crosshair.widthMetres);
+	                        crosshairLifted && content != CrosshairContent::Hidden,
+	                        crosshair.distanceMetres, crosshair.widthMetres);
 
 	if (!config.tracker.hudOverlay || !render::IsInterfaceRenderHooked()) {
 		return;
@@ -2165,12 +2231,21 @@ void UpdateCrosshairDepth(const Config& config, float deltaSeconds) {
 	// shown at all - and tying the read to the first would have left the second
 	// silently dead whenever the depth was switched off.
 	const bool wantTarget = CrosshairTargetReadWanted(
-		config.tracker.crosshairDynamic, config.tracker.crosshairOnlyWhenNeeded,
-		config.tracker.crosshairProbe, config.tracker.crosshairInThirdPerson);
+		config.tracker.crosshairDynamic,
+		config.tracker.crosshairOnlyWhenNeeded ||
+			config.tracker.crosshairOnlyWhenNeededThirdPerson,
+		config.tracker.crosshairProbe,
+		config.tracker.crosshairInThirdPerson ||
+			config.tracker.crosshairTooltipsFirstPerson ||
+			config.tracker.crosshairTooltipsThirdPerson);
 
 	const game::CrosshairTarget target =
 		wantTarget ? game::ReadCrosshairTarget() : game::CrosshairTarget{};
 	g_crosshairHasTarget = target.haveRef;
+	const UInt32 targetAddress = target.haveRef ? target.refAddress : 0;
+	const bool immediateTargetDepth =
+		CrosshairTargetNeedsImmediateDepth(g_crosshairTargetAddress, targetAddress);
+	g_crosshairTargetAddress = targetAddress;
 
 	if (!config.tracker.crosshairDynamic) {
 		// Straight to the fixed distance rather than eased towards it. Turning
@@ -2198,7 +2273,7 @@ void UpdateCrosshairDepth(const Config& config, float deltaSeconds) {
 	if (config.tracker.crosshairDynamic) {
 		// The first frame arrives rather than eases. Easing from zero would
 		// slide the crosshair out from the wearer's face on every load.
-		if (g_crosshairDepthMetres <= 0.0f) {
+		if (g_crosshairDepthMetres <= 0.0f || immediateTargetDepth) {
 			g_crosshairDepthMetres = wanted;
 		} else {
 			g_crosshairDepthMetres =

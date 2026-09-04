@@ -45,6 +45,7 @@ bool TextIs(const char* a, const char* b) {
 
 using obvr::Config;
 using obvr::ui::ApplySetting;
+using obvr::ui::FindSetting;
 using obvr::ui::ItemFor;
 using obvr::ui::ItemKind;
 using obvr::ui::SettingDefinition;
@@ -157,6 +158,8 @@ void TestIniKeys() {
 	// somebody was in the middle of editing, and it would write the word for
 	// one state and a digit for the other.
 	UInt32 halfWorded = 0;
+	UInt32 unexpectedWorded = 0;
+	UInt32 expectedWorded = 0;
 	for (UInt32 at = 0; at < count; ++at) {
 		const bool hasFalse = settings[at].falseWord != nullptr && settings[at].falseWord[0] != '\0';
 		const bool hasTrue = settings[at].trueWord != nullptr && settings[at].trueWord[0] != '\0';
@@ -171,8 +174,33 @@ void TestIniKeys() {
 			std::printf("        \"%s\" is a number but has words\n", settings[at].label);
 			++halfWorded;
 		}
+
+		// Only the three settings whose Config readers deliberately name places
+		// are words. Ordinary boolean readers accept digits, so descriptive
+		// words on their rows would be written successfully and then ignored on
+		// the next reload (the crosshair toggles once did exactly that).
+		const bool mayBeWorded =
+			(TextIs(settings[at].iniSection, "Render") &&
+			 TextIs(settings[at].iniKey, "HudAnchor")) ||
+			(TextIs(settings[at].iniSection, "Render") &&
+			 TextIs(settings[at].iniKey, "Menus")) ||
+			(TextIs(settings[at].iniSection, "SettingsMenu") &&
+			 TextIs(settings[at].iniKey, "Anchor"));
+		if (hasFalse && mayBeWorded) {
+			++expectedWorded;
+		} else if (hasFalse) {
+			std::printf("        \"%s\" writes words but its Config reader expects a number\n",
+			            settings[at].label);
+			++unexpectedWorded;
+		}
 	}
 	Check(halfWorded == 0, "a worded setting has both its words, and is a switch");
+	Check(unexpectedWorded == 0, "only settings with word-aware readers write words");
+	Check(expectedWorded == 3, "all three word-aware settings keep their readable words");
+
+	const SettingDefinition* easing = FindSetting("Render", "CrosshairDepthSpeed");
+	Check(easing != nullptr && easing->minimum == 0.0f,
+	      "crosshair easing exposes 0 for instant depth changes");
 }
 
 void TestValuesAsWrittenToIni() {

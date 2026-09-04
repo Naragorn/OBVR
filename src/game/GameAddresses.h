@@ -1123,6 +1123,17 @@ inline constexpr UInt32 kMenuIdOffset = 0x20;
 // crosshairRef 054, unk058, class size 05C.
 inline constexpr UInt32 kHudInfoCrosshairRefOffset = 0x54;
 
+// HUDInfoMenu::actionIcon, from the same xOBSE class layout. The icon's tile
+// exists independently from the plain crosshair and is what carries talk,
+// open, take and lock feedback.
+inline constexpr UInt32 kHudInfoActionIconOffset = 0x50;
+
+// Tile::UpdateFloat and the standard _visible trait. xOBSE's GameTiles.cpp
+// calls this address as a thiscall, and GameTiles.h records 1 as false and 2
+// as true for boolean tile values.
+inline constexpr UInt32 kTileUpdateFloat = 0x0058CEB0;
+inline constexpr UInt32 kTileValueVisible = 0x0FA1;
+
 // TESObjectREFR's world position.
 //
 // Two sources, the second being OBVR's own working code: xOBSE's GameObjects.h

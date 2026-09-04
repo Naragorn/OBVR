@@ -146,7 +146,6 @@ const SettingDefinition kSettings[] = {
 		"Look", "AimTurnOnShotOnly",
 		+[](const Config& c) { return c.aimTurnOnShotOnly ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.aimTurnOnShotOnly = v != 0.0f; },
-		"while aiming", "for the shot",
 	},
 	{
 		"Aiming", "Straighten up after firing", "Stops you walking the way you aimed",
@@ -168,7 +167,6 @@ const SettingDefinition kSettings[] = {
 		"Render", "CrosshairDynamic",
 		+[](const Config& c) { return c.tracker.crosshairDynamic ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.tracker.crosshairDynamic = v != 0.0f; },
-		"fixed", "follows",
 	},
 	{
 		"Aiming", "Crosshair distance", "Metres. Where it hangs with nothing in reach",
@@ -178,8 +176,8 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.tracker.crosshairDistanceMetres = v; },
 	},
 	{
-		"Aiming", "Crosshair easing", "How fast the depth follows. Lower is calmer",
-		ItemKind::Number, 1.0f, 30.0f, 1.0f, 0, false,
+		"Aiming", "Crosshair easing", "How fast depth follows. 0 moves instantly",
+		ItemKind::Number, 0.0f, 30.0f, 1.0f, 0, false,
 		"Render", "CrosshairDepthSpeed",
 		+[](const Config& c) { return c.tracker.crosshairDepthSpeed; },
 		+[](Config& c, float v) { c.tracker.crosshairDepthSpeed = v; },
@@ -197,7 +195,6 @@ const SettingDefinition kSettings[] = {
 		"Render", "CrosshairOnlyWhenNeeded",
 		+[](const Config& c) { return c.tracker.crosshairOnlyWhenNeeded ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.tracker.crosshairOnlyWhenNeeded = v != 0.0f; },
-		"always", "when needed",
 	},
 	{
 		"Aiming", "Crosshair in 3rd person", "Borrows the game's own, which vanilla hides",
@@ -221,7 +218,27 @@ const SettingDefinition kSettings[] = {
 			return c.tracker.crosshairOnlyWhenNeededThirdPerson ? 1.0f : 0.0f;
 		},
 		+[](Config& c, float v) { c.tracker.crosshairOnlyWhenNeededThirdPerson = v != 0.0f; },
-		"always", "when needed",
+	},
+	{
+		"Aiming", "Tooltips in 1st person", "Show talk, open and take icons in first person",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "CrosshairTooltips1stPerson",
+		+[](const Config& c) { return c.tracker.crosshairTooltipsFirstPerson ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.crosshairTooltipsFirstPerson = v != 0.0f; },
+	},
+	{
+		"Aiming", "Tooltips in 3rd person", "Expose the same action icons in third person",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "CrosshairTooltips3rdPerson",
+		+[](const Config& c) { return c.tracker.crosshairTooltipsThirdPerson ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.crosshairTooltipsThirdPerson = v != 0.0f; },
+	},
+	{
+		"Aiming", "Tooltips above target name", "Move action icons to the lower-right HUD",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "CrosshairTooltipsAboveName",
+		+[](const Config& c) { return c.tracker.crosshairTooltipsAboveName ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.crosshairTooltipsAboveName = v != 0.0f; },
 	},
 	{
 		"Aiming", "Crosshair cutout", "Percent of screen lifted. Raise if bits are left",

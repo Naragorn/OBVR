@@ -19,6 +19,7 @@ UInt32 g_sitesRedirected = 0;
 bool g_lastAnswerLogged = false;
 bool g_lastPaused = false;
 UInt32 g_lastTop = 0;
+UInt32 g_rememberedTop = kMenuIdNone;
 
 UInt32 TopVisibleMenuId() {
 	void* manager = *reinterpret_cast<void* const*>(addr::kInterfaceManagerPointer);
@@ -37,7 +38,9 @@ UInt32 TopVisibleMenuId() {
 // option off the answer is vanilla's own.
 int __cdecl WorldPauseForMenu() {
 	const bool menuMode = IsMenuMode();
-	const UInt32 top = menuMode && g_enabled ? TopVisibleMenuId() : kMenuIdNone;
+	const UInt32 observed = menuMode && g_enabled ? TopVisibleMenuId() : kMenuIdNone;
+	const UInt32 top = StablePauseMenuId(menuMode, observed, g_rememberedTop);
+	g_rememberedTop = top;
 	const bool paused = WorldPausesForMenu(menuMode, g_enabled, top);
 	if (menuMode && g_enabled &&
 	    (!g_lastAnswerLogged || paused != g_lastPaused || top != g_lastTop)) {
@@ -50,12 +53,51 @@ int __cdecl WorldPauseForMenu() {
 	return paused ? 1 : 0;
 }
 
+bool RedirectForeignHook(UInt32 hook) {
+	// Preserve the foreign jump at the game site. Search its short entry stub
+	// for the call it makes to IsMenuMode (directly or through the seven-byte
+	// import thunk used by ConsoleCommands), and redirect only that call.
+	constexpr UInt32 kSearchBytes = 32;
+	for (UInt32 offset = 0; offset + 5 <= kSearchBytes; ++offset) {
+		const UInt32 callAddress = hook + offset;
+		mem::RelativeBranch call;
+		if (!mem::DecodeRelativeBranch(reinterpret_cast<const UInt8*>(callAddress),
+		                               callAddress, call) || !call.isCall) {
+			continue;
+		}
+		const bool direct = call.target == addr::kIsMenuMode;
+		const bool thunk = IsAbsoluteJumpTo(reinterpret_cast<const UInt8*>(call.target),
+		                                    addr::kIsMenuMode);
+		if (!direct && !thunk) {
+			continue;
+		}
+
+		const UInt32 target = reinterpret_cast<UInt32>(&WorldPauseForMenu);
+		const UInt32 rel = target - (callAddress + 5);
+		const UInt8 displacement[4] = {
+			static_cast<UInt8>(rel), static_cast<UInt8>(rel >> 8),
+			static_cast<UInt8>(rel >> 16), static_cast<UInt8>(rel >> 24),
+		};
+		if (!mem::SafeWrite(callAddress + 1, displacement, sizeof(displacement))) {
+			return false;
+		}
+		OBVR_LOG("Menu pause: joined the existing animation hook at %08X without replacing it",
+		         hook);
+		return true;
+	}
+	return false;
+}
+
 // Points one `call IsMenuMode` at the policy. Verified first: the site has
 // to be a relative call whose target is IsMenuMode, or something else is
 // there and the site is left alone and named in the log.
 bool RedirectSite(UInt32 site) {
 	const auto* bytes = reinterpret_cast<const UInt8*>(site);
 	mem::RelativeBranch branch;
+	if (mem::DecodeRelativeBranch(bytes, site, branch) && branch.isJump &&
+	    RedirectForeignHook(branch.target)) {
+		return true;
+	}
 	if (!mem::DecodeRelativeBranch(bytes, site, branch) || !branch.isCall ||
 	    branch.target != addr::kIsMenuMode) {
 		OBVR_LOG("Menu pause: the site at %08X is not a call to IsMenuMode, so it keeps "

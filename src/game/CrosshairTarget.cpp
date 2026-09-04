@@ -108,7 +108,33 @@ CrosshairTarget ReadCrosshairTarget() {
 
 	target.position = read;
 	target.haveRef = true;
+
 	return target;
+}
+
+bool SetHudInfoActionIconVisible(bool visible) {
+	auto* const menu = *reinterpret_cast<UInt8**>(addr::kHudInfoMenuPointer);
+	if (!LooksLikeObject(menu) ||
+	    *reinterpret_cast<const UInt32*>(menu + addr::kMenuIdOffset) != kMenuIdHudInfo) {
+		return false;
+	}
+	void* const tile = *reinterpret_cast<void**>(menu + addr::kHudInfoActionIconOffset);
+	if (!LooksLikeObject(tile)) {
+		return false;
+	}
+
+	UInt32 trait = addr::kTileValueVisible;
+	float value = visible ? 2.0f : 1.0f;
+	UInt32 update = addr::kTileUpdateFloat;
+	__asm {
+		fld [value]
+		push ecx
+		fstp [esp]
+		mov ecx, tile
+		push [trait]
+		call [update]
+	}
+	return true;
 }
 
 }  // namespace obvr::game

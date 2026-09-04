@@ -5,6 +5,15 @@
 
 namespace obvr::game {
 
+// The small import thunk used by one existing menu plugin: mov eax,target;
+// jmp eax. Recognising it lets OBVR redirect only that plugin's call to
+// IsMenuMode while preserving the rest of its animation hook.
+inline bool IsAbsoluteJumpTo(const UInt8* bytes, UInt32 target) {
+	return bytes != nullptr && bytes[0] == 0xB8 && bytes[1] == (target & 0xFF) &&
+	       bytes[2] == ((target >> 8) & 0xFF) && bytes[3] == ((target >> 16) & 0xFF) &&
+	       bytes[4] == ((target >> 24) & 0xFF) && bytes[5] == 0xFF && bytes[6] == 0xE0;
+}
+
 // The decision behind Render.UnpausedMenus, kept apart from the patched
 // call sites so every flow can be exercised without a game.
 //
@@ -46,6 +55,16 @@ inline bool WorldPausesForMenu(bool menuMode, bool unpausedMenus, UInt32 topMenu
 		return true;
 	}
 	return !MenuKeepsWorldRunning(topMenuId);
+}
+
+// GetTopVisibleMenuID can briefly return none while the F1-F4 stack remains
+// open. Keep the last observed menu for that one menu-mode episode so the
+// seven subsystem checks cannot alternate between running and paused answers.
+inline UInt32 StablePauseMenuId(bool menuMode, UInt32 observed, UInt32 remembered) {
+	if (!menuMode) {
+		return kMenuIdNone;
+	}
+	return observed != kMenuIdNone ? observed : remembered;
 }
 
 }  // namespace obvr::game

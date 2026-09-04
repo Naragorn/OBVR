@@ -146,8 +146,9 @@ bool LiveMenuBackgroundCanRun(bool enabled, bool renderToHeadset, bool showMenus
 MenuFrameDressing MenuDressingForFrame(FrameDelivery delivery, bool menuIsUp,
                                        bool liveStereoFrame,
                                        UInt32 framesSinceMenuOpened,
-                                       bool shadeEnabled, bool singleBorderEnabled) {
-	if (!menuIsUp) {
+                                       bool shadeEnabled, bool singleBorderEnabled,
+                                       bool dialogEpisode) {
+	if (!menuIsUp || dialogEpisode) {
 		return MenuFrameDressing{};
 	}
 
@@ -202,6 +203,58 @@ bool CrosshairWanted(const CrosshairVisibility& visibility) {
 	return visibility.somethingAimedAt || visibility.weaponDrawn;
 }
 
+bool CrosshairCaptureWanted(const CrosshairVisibility& visibility) {
+	return visibility.enabled && visibility.worldFrame && !visibility.menuIsUp;
+}
+
+CrosshairContent CrosshairContentWanted(bool crosshairWanted, bool haveTarget,
+                                        bool tooltipsEnabled, bool tooltipsAboveName) {
+	if (haveTarget && tooltipsEnabled && !tooltipsAboveName) {
+		return CrosshairContent::CapturedHudCentre;
+	}
+	if (!haveTarget && crosshairWanted) {
+		return CrosshairContent::CapturedHudCentre;
+	}
+	return crosshairWanted ? CrosshairContent::RememberedCrosshair
+	                       : CrosshairContent::Hidden;
+}
+
+bool CrosshairCentreCaptureWanted(bool crosshairEnabled, bool haveTarget,
+                                  bool tooltipsEnabled, bool worldFrame,
+                                  bool menuIsUp) {
+	return worldFrame && !menuIsUp &&
+	       (crosshairEnabled || (haveTarget && tooltipsEnabled));
+}
+
+PixelRectangle TooltipAboveNameRectangle(UInt32 width, UInt32 height,
+                                         UInt32 sizePixels) {
+	if (width == 0 || height == 0 || sizePixels == 0) {
+		return PixelRectangle{};
+	}
+	UInt32 side = sizePixels;
+	if (side > width) side = width;
+	if (side > height) side = height;
+
+	const UInt32 rightMargin = width / 20;
+	const UInt32 bottomMargin = height / 5;
+	UInt32 right = width > rightMargin ? width - rightMargin : width;
+	UInt32 bottom = height > bottomMargin ? height - bottomMargin : height;
+	if (right < side) right = side;
+	if (bottom < side) bottom = side;
+	return PixelRectangle{static_cast<SInt32>(right - side),
+	                      static_cast<SInt32>(bottom - side),
+	                      static_cast<SInt32>(right),
+	                      static_cast<SInt32>(bottom)};
+}
+
+bool HudCrosshairNeedsFirstPersonView(bool crosshairEnabled,
+                                      bool crosshairInThirdPerson,
+	                                  bool tooltipsInThirdPerson,
+                                      bool isThirdPerson) {
+	return isThirdPerson &&
+	       ((crosshairEnabled && crosshairInThirdPerson) || tooltipsInThirdPerson);
+}
+
 CrosshairPlacement PlaceCrosshair(float distanceMetres, float sizeAtOneMetre) {
 	float distance = distanceMetres;
 	if (distance < kCrosshairNearestMetres) {
@@ -234,6 +287,10 @@ bool BorrowedCrosshairWanted(bool thirdPerson, bool enabled, bool somethingAimed
 bool CrosshairTargetReadWanted(bool dynamicDepth, bool onlyWhenNeeded,
                                bool probeEnabled, bool thirdPersonBorrowing) {
 	return dynamicDepth || onlyWhenNeeded || probeEnabled || thirdPersonBorrowing;
+}
+
+bool CrosshairTargetNeedsImmediateDepth(UInt32 previousTarget, UInt32 currentTarget) {
+	return currentTarget != 0 && currentTarget != previousTarget;
 }
 
 UInt32 CrosshairSourcePixels(UInt32 believedHeight, float sharePercent) {
@@ -288,11 +345,13 @@ float CrosshairDepth(const CrosshairDepthInput& input) {
 		return input.fallbackMetres;
 	}
 	const float gazeLength = math::Sqrt(gazeLengthSquared);
+	const NiPoint3 gaze = input.gazeDirection * (1.0f / gazeLength);
+	const auto Along = [&gaze](const NiPoint3& value) {
+		return value.x * gaze.x + value.y * gaze.y + value.z * gaze.z;
+	};
 
 	const NiPoint3 toTarget = input.targetPosition - input.cameraPosition;
-	const float alongGaze = (toTarget.x * input.gazeDirection.x +
-	                         toTarget.y * input.gazeDirection.y +
-	                         toTarget.z * input.gazeDirection.z) / gazeLength;
+	const float alongGaze = Along(toTarget);
 
 	// Behind the camera. Reachable in third person, where the reference under
 	// the crosshair can be nearer the camera than the player is, and reachable

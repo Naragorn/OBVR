@@ -64,11 +64,38 @@ void TestAnswer() {
 	      "an unreadable stack pauses rather than guesses");
 }
 
+void TestForeignHookThunk() {
+	std::printf("Recognising a foreign hook's IsMenuMode thunk\n");
+	const UInt8 exact[] = {0xB8, 0x60, 0x8F, 0x57, 0x00, 0xFF, 0xE0};
+	Check(IsAbsoluteJumpTo(exact, 0x00578F60), "the exact mov/jump thunk is recognised");
+	for (UInt32 changed = 0; changed < sizeof(exact); ++changed) {
+		UInt8 bytes[sizeof(exact)];
+		for (UInt32 i = 0; i < sizeof(exact); ++i) bytes[i] = exact[i];
+		bytes[changed] ^= 1;
+		Check(!IsAbsoluteJumpTo(bytes, 0x00578F60), "every changed thunk byte is refused");
+	}
+	Check(!IsAbsoluteJumpTo(nullptr, 0x00578F60), "a null thunk is refused");
+}
+
+void TestStableMenuId() {
+	std::printf("Stable menu identity during one menu episode\n");
+	Check(StablePauseMenuId(true, kMenuIdBigFour, kMenuIdNone) == kMenuIdBigFour,
+	      "a visible menu becomes the remembered menu");
+	Check(StablePauseMenuId(true, kMenuIdNone, kMenuIdBigFour) == kMenuIdBigFour,
+	      "a transient empty reading keeps the menu episode running");
+	Check(StablePauseMenuId(true, kMenuIdDialog, kMenuIdBigFour) == kMenuIdDialog,
+	      "a newly observed menu replaces the remembered one");
+	Check(StablePauseMenuId(false, kMenuIdBigFour, kMenuIdBigFour) == kMenuIdNone,
+	      "leaving menu mode clears the episode");
+}
+
 }  // namespace
 
 int main() {
 	TestWhichMenusRun();
 	TestAnswer();
+	TestForeignHookThunk();
+	TestStableMenuId();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);
