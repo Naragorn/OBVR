@@ -75,6 +75,7 @@ add_library(OBVR SHARED
 	src/render/HudLayer.cpp
 	src/render/CrosshairCache.cpp
 	src/render/CrosshairLayer.cpp
+	src/render/CullingHook.cpp
 	src/render/InterfaceRenderHook.cpp
 	src/render/LayoutProbe.cpp
 	src/render/ResolutionHook.cpp

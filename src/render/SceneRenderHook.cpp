@@ -8,6 +8,7 @@
 #include "game/GameAddresses.h"
 #include "platform/Win32Min.h"
 #include "render/InterfaceRenderHook.h"
+#include "render/CullingHook.h"
 
 namespace obvr::render {
 namespace {
@@ -531,7 +532,9 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	// First eye. The camera hook already moved the camera there. The bone
 	// lock records this render's palettes.
 	SetBonePassMode(BonePassMode::Capture);
+	BeginCullingCapture();
 	g_original(self, unusedEdx, renderedTexture);
+	PauseCullingCapture();
 	SetBonePassMode(BonePassMode::Off);
 	const UInt32 drawsAfterFirst = TotalDrawCount();
 	const StateCallCounts stateAfterFirst = TotalStateCalls();
@@ -587,8 +590,10 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		*frameSeconds = 0.0f;
 	}
 	SetBonePassMode(BonePassMode::Replace);
+	BeginCullingReplay();
 	g_original(self, unusedEdx, renderedTexture);
 	SetBonePassMode(BonePassMode::Off);
+	EndCullingSync(g_sceneCall);
 	if (clockPlausible) {
 		*frameSeconds = savedFrameSeconds;
 	}
@@ -645,6 +650,12 @@ bool InstallSceneRenderHook(const ScenePassCallbacks& callbacks) {
 	    callbacks.afterSecondPass == nullptr) {
 		return false;
 	}
+
+	// The dual render remains usable if this refuses (for example because a
+	// different executable owns the entry), but sharing the visible set is the
+	// fix for skinned bodies that straddle one eye's frustum. The culling hook
+	// is pass-through outside the capture/replay bracket below.
+	InstallCullingHook();
 
 	// Check first, patch second - the same contract as the camera hook. A
 	// mismatch means a different game version or another mod's detour already

@@ -47,6 +47,16 @@ endif()
 
 add_test(NAME entry_detour COMMAND entry_detour_test)
 
+add_executable(culling_sync_test CullingSyncTest.cpp)
+
+target_include_directories(culling_sync_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(culling_sync_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME culling_sync COMMAND culling_sync_test)
+
 add_executable(around_call_test
 	AroundCallTest.cpp
 	../src/core/AroundCall.cpp

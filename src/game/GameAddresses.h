@@ -882,6 +882,42 @@ inline constexpr UInt32 kNiChildrenOffset = 0xB0;
 inline constexpr UInt32 kNiChildCountOffset = 0xB6;
 inline constexpr UInt32 kNiCameraFrustumOffset = 0xEC;
 
+// NiCullingProcess::Process(camera, scene, visibleSet) - the walk that
+// decides what each world pass draws. __thiscall, three stack arguments.
+//
+// Two sources. The 2026-08-30 chain above reached it by reading kRenderScene
+// downwards. The 2026-09-04 reading confirmed it from the other side: the
+// culling process's vtable at 00A7E610 (.rdata, read out of the executable)
+// carries 0070E0A0 in slot 2 (+0x8), which is the slot 0070C0B0 - Oblivion
+// Reloaded's RenderObject - calls with (scene, camera, visible set) pushed,
+// and the function itself hands camera+0xEC (the frustum, above) to 0070E040,
+// which copies it and calls 00717A40 with camera+0x64 - the camera's world
+// transform - to build the frustum planes, then walks the scene through
+// NiAVObject::Cull at 007073D0 between the accumulator's StartAccumulating
+// and FinishAccumulating (vtable +0x4C, +0x50). Slot 1 (0070DFB0) is
+// NiCullingProcess::Cull, the one 007073D0 dispatches to.
+//
+// Why it is hooked: the planes come from the camera's world position, which
+// the dual pass moves by one eye baseline between the two renders. A body
+// straddling a frustum plane is therefore culled in one pass and drawn in the
+// other, and a skinned body drawn in the second pass alone has no first-pass
+// palette to be locked to - the edge-of-view collapse of followers, measured
+// in the log as second-render uploads with no pair (1571 first, 1655 second).
+// The hook culls the second pass from the first pass's camera position, so
+// both passes draw the same bodies; the draw itself still uses the moved
+// camera, since the renderer took its view before the cull (00701970 at
+// 0070C0DE) and the position is put back before the walk returns.
+//
+// The entry reads
+//
+//   0070E0A0  push -1              6A FF
+//   0070E0A2  push 0x9AEFA8        68 A8 EF 9A 00
+//   0070E0A7  mov eax,fs:[0]       (the SEH frame; not moved)
+//
+// the same two relocatable instructions as kRenderScene's entry.
+inline constexpr UInt32 kCullingProcessProcess = 0x0070E0A0;
+inline constexpr UInt32 kCullingProcessProcessEntryLength = 7;
+
 // The engine's own switch for a live world behind menus, and the reason it
 // is normally still.
 //
