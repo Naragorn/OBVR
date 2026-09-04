@@ -364,35 +364,35 @@ void TraceZeroMatrixDraws(const StateCallCounts& entry, const StateCallCounts& a
 	         afterSecond.skinnedStartIndexSum - afterBetween.skinnedStartIndexSum);
 }
 
-// The edge-of-view instrument (task #21), on two clocks. Every frame that
-// carries an anomaly - a first-render bone that jumped a body length since
-// the previous frame, or a second-render row with no pair - gets a line,
-// up to a budget, because the collapse lasts a split second and the
-// heartbeat below misses it. The heartbeat carries the totals for scale.
-UInt32 g_boneAnomalyLinesLeft = 80;
+// The edge-of-view instrument (task #21): a line whenever the shape of the
+// second render's pairing changes - rows with no pair, rows paired off
+// position a body length away - up to a budget. On change rather than
+// every frame, because a body at the edge of one eye's view stays there
+// for hundreds of frames and the first budget of per-frame lines was
+// spent within the first second of a session.
+UInt32 g_boneAnomalyLinesLeft = 120;
+UInt32 g_boneAnomalyLastPassthrough = 0;
+UInt32 g_boneAnomalyLastFar = 0;
+UInt32 g_boneAnomalyLastAtPlace = 0;
 
 void TraceBoneAnomaly(const StateCallCounts& entry, const StateCallCounts& afterFirst,
                       const StateCallCounts& afterBetween, const StateCallCounts& afterSecond) {
-	const UInt32 jumps = afterFirst.boneFirstJumps - entry.boneFirstJumps;
 	const UInt32 passthrough = afterSecond.boneLockPassthrough - entry.boneLockPassthrough;
-	if ((jumps != 0 || passthrough != 0) && g_boneAnomalyLinesLeft > 0) {
+	const UInt32 farRows = afterSecond.boneLockReorderedFar - entry.boneLockReorderedFar;
+	const UInt32 atPlace = afterSecond.boneLockFarAtLoggedPlace - entry.boneLockFarAtLoggedPlace;
+	const bool changed = passthrough != g_boneAnomalyLastPassthrough ||
+	                     farRows != g_boneAnomalyLastFar || atPlace != g_boneAnomalyLastAtPlace;
+	g_boneAnomalyLastPassthrough = passthrough;
+	g_boneAnomalyLastFar = farRows;
+	g_boneAnomalyLastAtPlace = atPlace;
+	if (changed && g_boneAnomalyLinesLeft > 0) {
 		--g_boneAnomalyLinesLeft;
-		OBVR_LOG("Bone anomaly at scene call %u: first render jumped %u of %u rows matched "
-		         "to the previous frame, second render passthrough %u, reordered %u (far %u, "
-		         "of them at a logged row's place %u), uploads first %u second %u",
-		         g_sceneCall, jumps, afterFirst.boneFirstMatched - entry.boneFirstMatched,
-		         passthrough, afterSecond.boneLockReordered - entry.boneLockReordered,
-		         afterSecond.boneLockReorderedFar - entry.boneLockReorderedFar,
-		         afterSecond.boneLockFarAtLoggedPlace - entry.boneLockFarAtLoggedPlace,
+		OBVR_LOG("Bone anomaly at scene call %u: second render passthrough %u, reordered %u "
+		         "(far %u, of them at a logged row's place %u), uploads first %u second %u",
+		         g_sceneCall, passthrough,
+		         afterSecond.boneLockReordered - entry.boneLockReordered, farRows, atPlace,
 		         afterFirst.boneRangeCalls - entry.boneRangeCalls,
 		         afterSecond.boneRangeCalls - afterBetween.boneRangeCalls);
-	}
-	if (g_sceneCall % 120 == 0) {
-		OBVR_LOG("Bone temporal at scene call %u: first render matched %u rows to the "
-		         "previous frame, %u jumped a body length; second render far rows at a "
-		         "logged row's place %u",
-		         g_sceneCall, afterFirst.boneFirstMatched - entry.boneFirstMatched, jumps,
-		         afterSecond.boneLockFarAtLoggedPlace - entry.boneLockFarAtLoggedPlace);
 	}
 }
 

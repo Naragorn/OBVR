@@ -340,17 +340,28 @@ UInt32 g_timelinePhase = 0;
 constexpr UInt32 kBoneLogCapacity = kBoneLogRows;
 BoneRow g_boneLog[kBoneLogCapacity];
 
-// The previous frame's first-render log and its fingerprint index, for the
-// edge-of-view instrument (task #21): every first-render row is asked how
-// far its bone stood one frame ago. A jump of a body length in the FIRST
-// render is a collapse the lock cannot cure, because the lock copies the
-// first render - and it is the one place the second render's counters
-// cannot see. Swapped in when a capture begins; the copy is a memcpy of
-// the rows actually logged.
-BoneRow g_bonePrevLog[kBoneLogCapacity];
-UInt32 g_bonePrevCount = 0;
-BoneRowIndex g_bonePrevIndex;
-UInt32 g_boneJumpDetailsLeft = 24;  // the first jumps, one line each
+// The edge-of-view instrument (task #21), in detail: the first rows that
+// arrive a body length from an off-position pair, and the first rows that
+// pair with nothing, each with where it stands against the first render's
+// log. A frame-to-frame comparison was tried first and matched nothing:
+// the rotation fingerprint only holds within a frame, since the animation
+// moves every bone between frames.
+UInt32 g_boneFarDetailsLeft = 30;
+UInt32 g_boneUnpairedDetailsLeft = 12;
+
+// The nearest logged row to a translation, any register, any pose.
+float NearestLoggedDistSq(const BoneRow* log, UInt32 count, const float* floats, UInt32& at) {
+	float best = 1.0e30f;
+	at = 0;
+	for (UInt32 i = 0; i < count; ++i) {
+		const float d = BoneTranslationDistSq(log[i].floats, floats);
+		if (d < best) {
+			best = d;
+			at = i;
+		}
+	}
+	return best;
+}
 UInt32 g_boneLogCount = 0;       // uploads recorded during the first render
 UInt32 g_boneCompareIndex = 0;   // second-render uploads compared so far
 UInt32 g_boneMismatchCount = 0;  // how many compares disagreed
@@ -401,28 +412,6 @@ const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 			slot.startRegister = startRegister;
 			std::memcpy(slot.floats, data, sizeof(slot.floats));
 		}
-		// The temporal instrument: the same bone one frame ago. Bodies
-		// and camera move a few units a frame; a body length is a jump.
-		UInt32 previousIndex = 0;
-		float previousDistSq = 0.0f;
-		if (g_bonePrevIndex.Nearest(startRegister, data, previousIndex, previousDistSq)) {
-			++g_stateCalls.boneFirstMatched;
-			if (previousDistSq > kBoneMixupThresholdSq) {
-				++g_stateCalls.boneFirstJumps;
-				if (g_boneJumpDetailsLeft > 0) {
-					--g_boneJumpDetailsLeft;
-					const float* was = g_bonePrevLog[previousIndex].floats;
-					OBVR_LOG("Bone jump: first-render upload %u (c%u) stands at %g %g %g, "
-					         "the same bone stood at %g %g %g one frame ago - distance "
-					         "squared %g%s",
-					         g_boneLogCount, startRegister, data[3], data[7], data[11],
-					         was[3], was[7], was[11], previousDistSq,
-					         LogHoldsTranslation(g_bonePrevLog, g_bonePrevCount, data)
-					             ? ", where another bone stood last frame"
-					             : ", where nothing stood last frame");
-				}
-			}
-		}
 		++g_boneLogCount;
 		return nullptr;
 	}
@@ -445,6 +434,17 @@ const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 		FindBoneRow(g_boneLog, limit, g_boneCompareIndex, startRegister, data);
 	if (match.kind == BoneMatchKind::None) {
 		++g_stateCalls.boneLockPassthrough;
+		if (g_boneUnpairedDetailsLeft > 0) {
+			g_boneUnpairedDetailsLeft--;
+			UInt32 nearest = 0;
+			const float nearestSq = NearestLoggedDistSq(g_boneLog, limit, data, nearest);
+			OBVR_LOG("Bone unpaired: second-render upload %u (c%u) at %g %g %g has no pose "
+			         "twin in the first render's %u rows; the nearest logged row (%u, c%u) "
+			         "stands %g units squared away, running position %u",
+			         g_boneCompareIndex, startRegister, data[3], data[7], data[11], limit,
+			         nearest, limit > 0 ? g_boneLog[nearest].startRegister : 0, nearestSq,
+			         g_boneCompareIndex);
+		}
 		return nullptr;
 	}
 	const BoneRow& candidate = g_boneLog[match.index];
@@ -467,6 +467,18 @@ const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 			++g_stateCalls.boneLockReorderedFar;
 			if (LogHoldsTranslation(g_boneLog, limit, data)) {
 				++g_stateCalls.boneLockFarAtLoggedPlace;
+			}
+			if (g_boneFarDetailsLeft > 0) {
+				g_boneFarDetailsLeft--;
+				UInt32 nearest = 0;
+				const float nearestSq = NearestLoggedDistSq(g_boneLog, limit, data, nearest);
+				OBVR_LOG("Bone far: second-render row (c%u) at %g %g %g paired off position "
+				         "with logged row %u at %g %g %g (running position was %u, delta "
+				         "%g %g %g); the nearest logged row of any pose is %u at %g units "
+				         "squared",
+				         startRegister, data[3], data[7], data[11], match.index, f[3], f[7],
+				         f[11], g_boneCompareIndex, data[3] - f[3], data[7] - f[7],
+				         data[11] - f[11], nearest, nearestSq);
 			}
 		}
 		if (g_timelineArmed) {
@@ -2308,10 +2320,6 @@ void SetBonePassMode(BonePassMode mode) {
 		}
 	}
 	if (mode == BonePassMode::Capture) {
-		// Last frame's first render becomes the temporal reference.
-		g_bonePrevCount = g_boneLogCount < kBoneLogCapacity ? g_boneLogCount : kBoneLogCapacity;
-		std::memcpy(g_bonePrevLog, g_boneLog, g_bonePrevCount * sizeof(BoneRow));
-		g_bonePrevIndex.Build(g_bonePrevLog, g_bonePrevCount);
 		g_boneLogCount = 0;
 	} else if (mode == BonePassMode::Replace) {
 		g_boneCompareIndex = 0;
