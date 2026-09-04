@@ -2187,8 +2187,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// Unknown counts as drawn. A crosshair wrongly present is a much smaller
 	// fault than one wrongly missing while somebody is lining up a shot.
 	visibility.weaponDrawn = true;
-	if (visibility.thirdPerson ? visibility.onlyWhenNeededThirdPerson
-	                           : visibility.onlyWhenNeeded) {
+	if (CrosshairOnlyWhenNeededApplies(visibility)) {
 		visibility.weaponDrawn = game::ReadPlayerWeaponState() != game::WeaponState::Sheathed;
 	}
 

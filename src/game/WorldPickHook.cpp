@@ -2,8 +2,10 @@
 
 #include "camera/FrameLogic.h"
 #include "core/AddressSpace.h"
+#include "core/Config.h"
 #include "core/Log.h"
 #include "core/Memory.h"
+#include "game/CrosshairTarget.h"
 #include "game/GameAddresses.h"
 #include "game/WorldPickTrampoline.h"
 
@@ -14,7 +16,7 @@ NiPoint3 g_direction{};
 bool g_gazeValid = false;
 bool g_installed = false;
 bool g_reportedUse = false;
-bool g_reportedHudInfo = false;
+bool g_reportedHudReticleUpdate = false;
 
 constexpr UInt32 kTrampolineSize = 64;
 
@@ -41,34 +43,35 @@ bool SaneDirection(const NiPoint3& direction) {
 
 }  // namespace
 
-using HudInfoUpdateFn = UInt8(__cdecl*)(UInt32, void*, UInt32);
+using HudReticleUpdateFn = void(__cdecl*)();
 
-extern "C" UInt8 __cdecl OBVR_UpdateHudInfoForThirdPerson(UInt32 first, void* pickedRef,
-	                                                       UInt32 sameAsPrevious) {
-	auto original = reinterpret_cast<HudInfoUpdateFn>(addr::kWorldPickHudInfoUpdate);
+extern "C" void __cdecl OBVR_UpdateHudReticleForThirdPerson() {
+	auto original = reinterpret_cast<HudReticleUpdateFn>(addr::kHudReticleUpdate);
 	const UInt32 playerAddress = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
 	if (!mem::LooksLikeObjectAddress(playerAddress)) {
-		return original(first, pickedRef, sameAsPrevious);
+		original();
+		return;
 	}
 
 	auto* const thirdPerson = reinterpret_cast<UInt8*>(
 		playerAddress + addr::kPlayerIsThirdPersonOffset);
-	const bool spoof = camera::HudInfoFirstPersonSpoofWanted(
-		*thirdPerson != 0, mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(pickedRef)));
+	const bool haveTarget = ReadCrosshairTarget().haveRef;
+	const bool spoof = camera::HudReticleUpdateFirstPersonSpoofWanted(
+		GetConfig().tracker.crosshairTooltipsThirdPerson, *thirdPerson != 0, haveTarget);
 	if (!spoof) {
-		return original(first, pickedRef, sameAsPrevious);
+		original();
+		return;
 	}
 
 	const UInt8 saved = *thirdPerson;
 	*thirdPerson = 0;
-	const UInt8 result = original(first, pickedRef, sameAsPrevious);
+	original();
 	*thirdPerson = saved;
-	if (!g_reportedHudInfo) {
-		g_reportedHudInfo = true;
-		OBVR_LOG("Crosshair tooltip: third-person target passed through first-person HUDInfo "
-		         "state calculation");
+	if (!g_reportedHudReticleUpdate) {
+		g_reportedHudReticleUpdate = true;
+		OBVR_LOG("Crosshair tooltip: live third-person target kept visible through the "
+		         "HUDReticle opacity update");
 	}
-	return result;
 }
 
 void SetWorldPickDirection(const NiPoint3& direction, bool valid) {
@@ -142,26 +145,26 @@ bool InstallWorldPickHook() {
 	OBVR_LOG("Crosshair target: HMD world-pick hook installed at %08X, trampoline %08X (%u bytes)",
 	         addr::kHookWorldPickRay, trampolineAddress, trampolineSize);
 
-	if (!mem::Verify(addr::kHookWorldPickHudInfoCall, kWorldPickHudInfoOriginalCall,
-	                 sizeof(kWorldPickHudInfoOriginalCall))) {
-		OBVR_LOG("Crosshair tooltip: bytes at %08X are not the world-pick HUDInfo call; "
+	if (!mem::Verify(addr::kHookHudReticleUpdateCall, kHudReticleUpdateOriginalCall,
+	                 sizeof(kHudReticleUpdateOriginalCall))) {
+		OBVR_LOG("Crosshair tooltip: bytes at %08X are not the HUDReticle update call; "
 		         "third-person context icons keep vanilla state",
-		         addr::kHookWorldPickHudInfoCall);
-		mem::ReportForeignCode("Crosshair tooltip", addr::kHookWorldPickHudInfoCall);
+		         addr::kHookHudReticleUpdateCall);
+		mem::ReportForeignCode("Crosshair tooltip", addr::kHookHudReticleUpdateCall);
 		return true;
 	}
 	UInt8 callPatch[5]{};
-	const UInt32 callPatchSize = BuildWorldPickHudInfoCallPatch(
-		callPatch, sizeof(callPatch), addr::kHookWorldPickHudInfoCall,
-		reinterpret_cast<UInt32>(&OBVR_UpdateHudInfoForThirdPerson));
+	const UInt32 callPatchSize = BuildHudReticleUpdateCallPatch(
+		callPatch, sizeof(callPatch), addr::kHookHudReticleUpdateCall,
+		reinterpret_cast<UInt32>(&OBVR_UpdateHudReticleForThirdPerson));
 	if (callPatchSize != sizeof(callPatch) ||
-	    !mem::SafeWrite(addr::kHookWorldPickHudInfoCall, callPatch, callPatchSize)) {
-		OBVR_LOG("Crosshair tooltip: failed to wrap the HUDInfo call at %08X",
-		         addr::kHookWorldPickHudInfoCall);
+	    !mem::SafeWrite(addr::kHookHudReticleUpdateCall, callPatch, callPatchSize)) {
+		OBVR_LOG("Crosshair tooltip: failed to wrap the HUDReticle update at %08X",
+		         addr::kHookHudReticleUpdateCall);
 		return true;
 	}
-	OBVR_LOG("Crosshair tooltip: HUDInfo target-state hook installed at %08X",
-	         addr::kHookWorldPickHudInfoCall);
+	OBVR_LOG("Crosshair tooltip: HUDReticle opacity hook installed at %08X",
+	         addr::kHookHudReticleUpdateCall);
 	return true;
 }
 

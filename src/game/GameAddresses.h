@@ -1140,13 +1140,12 @@ inline constexpr UInt32 kHookWorldPickRay = 0x0058080C;
 inline constexpr UInt32 kHookWorldPickRayPatchSize = 7;
 inline constexpr UInt32 kHookWorldPickRayResume = 0x00580813;
 
-// The one HUDInfo update made by the world-pick function after it has chosen
-// a reference. The call passes (0, pickedRef, sameAsPrevious) to 005A4980.
-// OBVR wraps only this call so a live third-person target gets the same
-// HUDReticle state calculation as first person without changing the camera or
-// the pick itself.
-inline constexpr UInt32 kHookWorldPickHudInfoCall = 0x00580B60;
-inline constexpr UInt32 kWorldPickHudInfoUpdate = 0x005A4980;
+// The per-frame HUDReticle update call. Inside 005A82D0, instruction 005A8322
+// explicitly checks PlayerCharacter+588 and selects zero opacity in third
+// person. OBVR wraps this call so only an enabled live target takes the
+// first-person opacity branch, without changing the camera or world pick.
+inline constexpr UInt32 kHookHudReticleUpdateCall = 0x00582251;
+inline constexpr UInt32 kHudReticleUpdate = 0x005A82D0;
 
 // Tile::UpdateFloat. xOBSE's GameTiles.cpp binds this exact address, and the
 // local disassembly at 005865DD uses it to update HUDReticle's visible trait.

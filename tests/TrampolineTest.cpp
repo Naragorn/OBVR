@@ -361,25 +361,25 @@ void TestWorldPickTrampoline() {
 	          tooSmall, sizeof(tooSmall), kTrampoline, kCallback) == 0,
 	      "a short world-pick trampoline buffer is refused");
 
-	Check(obvr::game::kWorldPickHudInfoOriginalCall[0] == 0xE8,
-	      "the verified HUDInfo instruction is a relative call");
-	Check(obvr::addr::kHookWorldPickHudInfoCall + 5 +
-	          ReadRel32(obvr::game::kWorldPickHudInfoOriginalCall + 1) ==
-	          obvr::addr::kWorldPickHudInfoUpdate,
-	      "the verified original call reaches Oblivion's HUDInfo update");
-	UInt8 hudInfoPatch[5]{};
-	const UInt32 hudInfoPatchSize = obvr::game::BuildWorldPickHudInfoCallPatch(
-		hudInfoPatch, sizeof(hudInfoPatch), obvr::addr::kHookWorldPickHudInfoCall,
+	Check(obvr::game::kHudReticleUpdateOriginalCall[0] == 0xE8,
+	      "the verified HUDReticle instruction is a relative call");
+	Check(obvr::addr::kHookHudReticleUpdateCall + 5 +
+	          ReadRel32(obvr::game::kHudReticleUpdateOriginalCall + 1) ==
+	          obvr::addr::kHudReticleUpdate,
+	      "the verified original call reaches Oblivion's HUDReticle update");
+	UInt8 hudReticlePatch[5]{};
+	const UInt32 hudReticlePatchSize = obvr::game::BuildHudReticleUpdateCallPatch(
+		hudReticlePatch, sizeof(hudReticlePatch), obvr::addr::kHookHudReticleUpdateCall,
 		kCallback);
-	Check(hudInfoPatchSize == sizeof(hudInfoPatch) && hudInfoPatch[0] == 0xE8,
-	      "the HUDInfo wrapper patch is exactly one relative call");
-	Check(obvr::addr::kHookWorldPickHudInfoCall + 5 +
-	          ReadRel32(hudInfoPatch + 1) == kCallback,
-	      "the HUDInfo wrapper call reaches its replacement");
-	Check(obvr::game::BuildWorldPickHudInfoCallPatch(
-	          tooSmall, sizeof(tooSmall), obvr::addr::kHookWorldPickHudInfoCall,
+	Check(hudReticlePatchSize == sizeof(hudReticlePatch) && hudReticlePatch[0] == 0xE8,
+	      "the HUDReticle wrapper patch is exactly one relative call");
+	Check(obvr::addr::kHookHudReticleUpdateCall + 5 +
+	          ReadRel32(hudReticlePatch + 1) == kCallback,
+	      "the HUDReticle wrapper call reaches its replacement");
+	Check(obvr::game::BuildHudReticleUpdateCallPatch(
+	          tooSmall, sizeof(tooSmall), obvr::addr::kHookHudReticleUpdateCall,
 	          kCallback) == 0,
-	      "a short HUDInfo call buffer is refused");
+	      "a short HUDReticle call buffer is refused");
 }
 
 }  // namespace

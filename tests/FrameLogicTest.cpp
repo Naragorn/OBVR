@@ -785,6 +785,7 @@ void TestCrosshair() {
 
 	using obvr::camera::CrosshairPlacement;
 	using obvr::camera::CrosshairCaptureWanted;
+	using obvr::camera::CrosshairOnlyWhenNeededApplies;
 	using obvr::camera::CrosshairWanted;
 	using obvr::camera::PlaceCrosshair;
 
@@ -848,12 +849,9 @@ void TestCrosshair() {
 	Check(CrosshairWanted(Needed(false, false, true)), "so does drawing a weapon");
 	Check(CrosshairWanted(Needed(false, true, true)), "and both at once, without arguing");
 
-	// Third person listens to its OWN switch, not this one. The two views start
-	// from opposite places: in first person the setting takes away a crosshair
-	// the game always draws, in third person it governs one OBVR puts up in a
-	// view Oblivion leaves empty.
-	Check(CrosshairWanted(Needed(true, false, false)),
-	      "third person ignores the first person switch");
+	// The visible main setting applies to both points of view.
+	Check(!CrosshairWanted(Needed(true, false, false)),
+	      "the main only-when-needed switch also restricts third person");
 
 	const auto NeededThird = [](bool aimedAt, bool weapon) {
 		CrosshairVisibility v;
@@ -873,8 +871,8 @@ void TestCrosshair() {
 	Check(CrosshairWanted(NeededThird(true, false)), "and a target brings it back");
 	Check(CrosshairWanted(NeededThird(false, true)), "and so does a drawn weapon");
 
-	// The two switches really are independent - the flow that would break if
-	// they were ever folded back into one.
+	// The legacy third-person switch can add a restriction, but never cancels
+	// the main restriction selected in the settings menu.
 	CrosshairVisibility firstOnly;
 	firstOnly.enabled = true;
 	firstOnly.worldFrame = true;
@@ -884,7 +882,7 @@ void TestCrosshair() {
 	firstOnly.thirdPerson = false;
 	Check(!CrosshairWanted(firstOnly), "restricted in first person");
 	firstOnly.thirdPerson = true;
-	Check(CrosshairWanted(firstOnly), "and unrestricted in third, from the same settings");
+	Check(!CrosshairWanted(firstOnly), "and still restricted in third person");
 
 	CrosshairVisibility thirdOnly = firstOnly;
 	thirdOnly.onlyWhenNeeded = false;
@@ -893,7 +891,27 @@ void TestCrosshair() {
 	thirdOnly.thirdPerson = true;
 	Check(!CrosshairWanted(thirdOnly), "restricted in third person");
 	thirdOnly.thirdPerson = false;
-	Check(CrosshairWanted(thirdOnly), "and unrestricted in first, the other way round");
+	Check(CrosshairWanted(thirdOnly), "while the added third-person switch leaves first alone");
+
+	for (UInt32 mask = 0; mask < 256; ++mask) {
+		CrosshairVisibility all;
+		all.enabled = (mask & 1) != 0;
+		all.worldFrame = (mask & 2) != 0;
+		all.menuIsUp = (mask & 4) != 0;
+		all.onlyWhenNeeded = (mask & 8) != 0;
+		all.onlyWhenNeededThirdPerson = (mask & 16) != 0;
+		all.thirdPerson = (mask & 32) != 0;
+		all.somethingAimedAt = (mask & 64) != 0;
+		all.weaponDrawn = (mask & 128) != 0;
+		const bool restricted = all.onlyWhenNeeded ||
+		                        (all.thirdPerson && all.onlyWhenNeededThirdPerson);
+		Check(CrosshairOnlyWhenNeededApplies(all) == restricted,
+		      "every view and restriction combination chooses the same weapon-read policy");
+		const bool expected = all.enabled && all.worldFrame && !all.menuIsUp &&
+		                      (!restricted || all.somethingAimedAt || all.weaponDrawn);
+		Check(CrosshairWanted(all) == expected,
+		      "every crosshair visibility flag combination follows the shared restriction");
+	}
 
 	// The three original conditions still come first. Something aimed at during
 	// a conversation must not put a crosshair over the dialogue.
@@ -1152,15 +1170,16 @@ void TestHudReticleForce() {
 	}
 }
 
-void TestHudInfoThirdPersonSpoof() {
-	std::printf("When HUDInfo target state briefly uses first person\n");
-	using obvr::camera::HudInfoFirstPersonSpoofWanted;
-	for (UInt32 mask = 0; mask < 4; ++mask) {
-		const bool thirdPerson = (mask & 1) != 0;
-		const bool target = (mask & 2) != 0;
-		Check(HudInfoFirstPersonSpoofWanted(thirdPerson, target) ==
-		          (thirdPerson && target),
-		      "only a real third-person pick needs first-person HUDInfo state");
+void TestHudReticleUpdateThirdPersonSpoof() {
+	std::printf("When HUDReticle opacity briefly uses first person\n");
+	using obvr::camera::HudReticleUpdateFirstPersonSpoofWanted;
+	for (UInt32 mask = 0; mask < 8; ++mask) {
+		const bool enabled = (mask & 1) != 0;
+		const bool thirdPerson = (mask & 2) != 0;
+		const bool target = (mask & 4) != 0;
+		Check(HudReticleUpdateFirstPersonSpoofWanted(enabled, thirdPerson, target) ==
+		          (enabled && thirdPerson && target),
+		      "only an enabled live third-person tooltip bypasses vanilla opacity zero");
 	}
 }
 
@@ -3258,7 +3277,7 @@ int main() {
 	TestCrosshairTargetRead();
 	TestHudCrosshairView();
 	TestHudReticleForce();
-	TestHudInfoThirdPersonSpoof();
+	TestHudReticleUpdateThirdPersonSpoof();
 	TestCrosshairTooltipPolicy();
 	TestCrosshairTargetDepthArrival();
 	TestWorldPickGaze();

@@ -191,13 +191,19 @@ EyeStep StereoEyeStep(float half, bool firstIsLeft) {
 	return EyeStep{first, -2.0f * first};
 }
 
+bool CrosshairOnlyWhenNeededApplies(const CrosshairVisibility& visibility) {
+	// The main switch applies in both views. The legacy third-person switch can
+	// add the restriction for that view, but cannot cancel a restriction the
+	// user enabled in the settings menu.
+	return visibility.onlyWhenNeeded ||
+	       (visibility.thirdPerson && visibility.onlyWhenNeededThirdPerson);
+}
+
 bool CrosshairWanted(const CrosshairVisibility& visibility) {
 	if (!visibility.enabled || !visibility.worldFrame || visibility.menuIsUp) {
 		return false;
 	}
-	const bool onlyWhenNeeded = visibility.thirdPerson ? visibility.onlyWhenNeededThirdPerson
-	                                                   : visibility.onlyWhenNeeded;
-	if (!onlyWhenNeeded) {
+	if (!CrosshairOnlyWhenNeededApplies(visibility)) {
 		return true;
 	}
 	return visibility.somethingAimedAt || visibility.weaponDrawn;
@@ -262,8 +268,9 @@ bool HudReticleForceWanted(bool tooltipsInThirdPerson, bool haveTarget) {
 	return tooltipsInThirdPerson && haveTarget;
 }
 
-bool HudInfoFirstPersonSpoofWanted(bool thirdPerson, bool haveTarget) {
-	return thirdPerson && haveTarget;
+bool HudReticleUpdateFirstPersonSpoofWanted(bool tooltipsInThirdPerson,
+	                                         bool thirdPerson, bool haveTarget) {
+	return tooltipsInThirdPerson && thirdPerson && haveTarget;
 }
 
 CrosshairPlacement PlaceCrosshair(float distanceMetres, float sizeAtOneMetre) {

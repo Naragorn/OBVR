@@ -505,14 +505,11 @@ struct CrosshairVisibility {
 	// introduced for.
 	bool onlyWhenNeeded = false;
 
-	// The same restriction for third person, under its own switch.
+	// An additional restriction for third person, under its own switch.
 	//
-	// Two switches rather than one, because the two views start from opposite
-	// places. In first person Oblivion always draws a crosshair, so the setting
-	// takes one away. In third person it draws none at all - Bethesda's own
-	// support page says so - so there the setting governs a crosshair OBVR
-	// itself puts up, and somebody may well want it always in one view and only
-	// when useful in the other.
+	// The main onlyWhenNeeded switch applies to both views. This legacy switch
+	// can additionally restrict third person for INI users who want first person
+	// always visible; it never overrides the main switch back to "always".
 	bool onlyWhenNeededThirdPerson = false;
 
 	// Which of the two switches above applies this frame.
@@ -529,6 +526,10 @@ struct CrosshairVisibility {
 	// one wrongly missing while somebody is trying to shoot.
 	bool weaponDrawn = false;
 };
+
+// Whether either only-when-needed control restricts this view. Shared by the
+// visibility decision and the guarded weapon-state read.
+bool CrosshairOnlyWhenNeededApplies(const CrosshairVisibility& visibility);
 
 // Whether the crosshair quad is shown this frame.
 bool CrosshairWanted(const CrosshairVisibility& visibility);
@@ -591,10 +592,11 @@ bool HudCrosshairNeedsFirstPersonView(bool tooltipsInThirdPerson,
 // draw. It is never forced merely to obtain a plain crosshair.
 bool HudReticleForceWanted(bool tooltipsInThirdPerson, bool haveTarget);
 
-// Oblivion suppresses the contextual HUDReticle during its HUDInfo update in
-// third person. Spoof first person only for a real picked target; null-target
-// updates must retain vanilla's third-person hide/fade behaviour.
-bool HudInfoFirstPersonSpoofWanted(bool thirdPerson, bool haveTarget);
+// Oblivion's per-frame HUDReticle update explicitly fades the centre tile to
+// zero in third person. Spoof first person around that update only when an
+// enabled contextual tooltip has a real picked target.
+bool HudReticleUpdateFirstPersonSpoofWanted(bool tooltipsInThirdPerson,
+	                                         bool thirdPerson, bool haveTarget);
 
 // Whether third person should paste in the crosshair borrowed from first
 // person, or leave what the lift brought alone.
