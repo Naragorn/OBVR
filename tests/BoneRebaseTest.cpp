@@ -335,9 +335,89 @@ void TestFindBoneRow() {
 	Check(m.kind == BoneMatchKind::InPlace && m.index == 5,
 	      "the hair class pairs in place with its own register");
 }
+void TestLogHoldsTranslation() {
+	std::printf("Log holds translation\n");
+	BoneRow log[3];
+	log[0] = LogRow(42, 1, 0.0f, 0.0f, 0.0f);
+	log[1] = LogRow(45, 2, 85.0f, 0.0f, 10.0f);
+	log[2] = LogRow(31, 3, -40.0f, 60.0f, 0.0f);
+	const BoneRow atFirst = LogRow(42, 7, 3.0f, -2.0f, 1.0f);
+	const BoneRow atSecondOtherPose = LogRow(42, 9, 84.0f, 4.0f, 9.0f);
+	const BoneRow nowhere = LogRow(42, 1, 300.0f, 300.0f, 0.0f);
+	Check(obvr::render::LogHoldsTranslation(log, 3, atFirst.floats),
+	      "a place a logged row stands in is held");
+	Check(obvr::render::LogHoldsTranslation(log, 3, atSecondOtherPose.floats),
+	      "whatever the pose or register of the row standing there");
+	Check(!obvr::render::LogHoldsTranslation(log, 3, nowhere.floats),
+	      "a place nothing stands in is not");
+	Check(!obvr::render::LogHoldsTranslation(log, 0, atFirst.floats), "an empty log holds nothing");
+}
+
+void TestRowIndex() {
+	std::printf("Row index\n");
+	using obvr::render::BoneFingerprintHash;
+	using obvr::render::BoneRowIndex;
+
+	const BoneRow a = LogRow(42, 1, 0.0f, 0.0f, 0.0f);
+	const BoneRow aMoved = LogRow(42, 1, 90.0f, 0.0f, 0.0f);
+	const BoneRow aOtherRegister = LogRow(45, 1, 0.0f, 0.0f, 0.0f);
+	const BoneRow b = LogRow(42, 2, 0.0f, 0.0f, 0.0f);
+	Check(BoneFingerprintHash(42, a.floats) == BoneFingerprintHash(42, aMoved.floats),
+	      "the translation is not part of the hash");
+	Check(BoneFingerprintHash(42, a.floats) != BoneFingerprintHash(45, aOtherRegister.floats),
+	      "the register is");
+	Check(BoneFingerprintHash(42, a.floats) != BoneFingerprintHash(42, b.floats),
+	      "and so is the pose");
+
+	// Last frame: a guard at the origin, a same-posed twin a body length
+	// over, and another pose.
+	BoneRow previous[4];
+	previous[0] = LogRow(42, 1, 0.0f, 0.0f, 0.0f);
+	previous[1] = LogRow(42, 1, 85.0f, 0.0f, 0.0f);
+	previous[2] = LogRow(45, 1, 0.0f, 0.0f, 10.0f);
+	previous[3] = LogRow(42, 2, 40.0f, 40.0f, 0.0f);
+	static BoneRowIndex index;
+	index.Build(previous, 4);
+
+	UInt32 at = 99;
+	float distSq = -1.0f;
+	// This frame: the guard moved two units - the nearest twin is itself.
+	const BoneRow guardNow = LogRow(42, 1, 2.0f, 0.0f, 0.0f);
+	Check(index.Nearest(42, guardNow.floats, at, distSq) && at == 0 && distSq == 4.0f,
+	      "the nearest same-posed row is the bone itself");
+	// The twin moved too: nearest is the twin, not the guard.
+	const BoneRow twinNow = LogRow(42, 1, 83.0f, 1.0f, 0.0f);
+	Check(index.Nearest(42, twinNow.floats, at, distSq) && at == 1 && distSq == 5.0f,
+	      "the twin finds the twin");
+	// The guard handed a body length away: found, but far.
+	const BoneRow guardJumped = LogRow(42, 1, 0.0f, 200.0f, 0.0f);
+	Check(index.Nearest(42, guardJumped.floats, at, distSq) && distSq > 256.0f,
+	      "a jump is found and measured as far");
+	// Same fingerprint, other register: not the same bone.
+	Check(!index.Nearest(31, guardNow.floats, at, distSq),
+	      "another register class holds no such bone");
+	// A pose nobody held last frame.
+	const BoneRow unknown = LogRow(42, 7, 0.0f, 0.0f, 0.0f);
+	Check(!index.Nearest(42, unknown.floats, at, distSq), "an unknown pose finds nothing");
+	// Nothing indexed.
+	index.Build(previous, 0);
+	Check(!index.Nearest(42, guardNow.floats, at, distSq), "an empty index finds nothing");
+	// More rows than the index holds are dropped at the capacity, not overrun.
+	static BoneRow many[obvr::render::kBoneLogRows + 8];
+	for (UInt32 i = 0; i < obvr::render::kBoneLogRows + 8; ++i) {
+		many[i] = LogRow(42, static_cast<int>(i % 7) + 1, static_cast<float>(i), 0.0f, 0.0f);
+	}
+	index.Build(many, obvr::render::kBoneLogRows + 8);
+	Check(index.count == obvr::render::kBoneLogRows, "the index caps at the log's capacity");
+	Check(index.Nearest(42, many[0].floats, at, distSq) && distSq == 0.0f,
+	      "and still finds the rows it kept");
+}
+
 }  // namespace
 
 int main() {
+	TestLogHoldsTranslation();
+	TestRowIndex();
 	TestTranslationDistance();
 	TestBaselineBand();
 	TestMeasurementStates();

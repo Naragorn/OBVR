@@ -667,3 +667,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME onboarding COMMAND onboarding_test)
+
+add_executable(stack_scan_test StackScanTest.cpp)
+
+target_include_directories(stack_scan_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(stack_scan_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME stack_scan COMMAND stack_scan_test)

@@ -105,6 +105,10 @@ set_target_properties(OBVR PROPERTIES
 
 if(MSVC)
 	target_compile_options(OBVR PRIVATE /W4 /permissive-)
+	# A linker map beside the DLL, so an address the hang watchdog names as
+	# OBVR.dll+offset can be read back to a function. Costs nothing in the
+	# DLL itself.
+	target_link_options(OBVR PRIVATE "/MAP:$<TARGET_FILE_DIR:OBVR>/OBVR.map")
 	# Without a static runtime the matching redistributable would have to sit
 	# next to Oblivion; that is not something to ask of a mod user.
 	set_property(TARGET OBVR PROPERTY

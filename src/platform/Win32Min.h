@@ -11,6 +11,8 @@
 // needed imports itself. The DLL only needs kernel32, msvcrt and one function
 // out of user32, and all three are loaded in the Oblivion process anyway.
 
+#include <cstddef>
+
 #include "core/Types.h"
 
 #if defined(OBVR_NO_WINSDK)
@@ -64,6 +66,31 @@ OBVR_IMPORT HANDLE OBVR_STDCALL CreateThread(void* attributes, UInt32 stackSize,
                                              DWORD(OBVR_STDCALL* start)(void*),
                                              void* parameter, DWORD flags, DWORD* threadId);
 OBVR_IMPORT void OBVR_STDCALL Sleep(DWORD milliseconds);
+
+// For the hang watchdog's report: it stops the render thread for a moment,
+// reads where it stands and what return addresses lie on its stack, and
+// lets it go again. The thread context is winnt.h's x86 CONTEXT, spelled
+// out here field by field (SDK 10.0.26100 winnt.h: ContextFlags, six debug
+// registers, the 112-byte 80387 save area, four segment registers, six
+// integer registers, Ebp, Eip, SegCs, EFlags, Esp, SegSs, then 512 bytes of
+// extended registers - 716 bytes), because the SDK-free branch has no
+// windows.h. CONTEXT_CONTROL and CONTEXT_INTEGER carry the i386 flag.
+constexpr DWORD CONTEXT_CONTROL = 0x00010001;
+constexpr DWORD CONTEXT_INTEGER = 0x00010002;
+constexpr DWORD THREAD_SUSPEND_RESUME = 0x0002;
+constexpr DWORD THREAD_GET_CONTEXT = 0x0008;
+constexpr DWORD THREAD_QUERY_INFORMATION = 0x0040;
+constexpr DWORD PAGE_NOACCESS = 0x01;
+constexpr DWORD PAGE_GUARD = 0x100;
+struct ThreadContext;
+struct MemoryBasicInfo;
+OBVR_IMPORT DWORD OBVR_STDCALL GetCurrentThreadId();
+OBVR_IMPORT HANDLE OBVR_STDCALL OpenThread(DWORD access, BOOL inherit, DWORD threadId);
+OBVR_IMPORT DWORD OBVR_STDCALL SuspendThread(HANDLE thread);
+OBVR_IMPORT DWORD OBVR_STDCALL ResumeThread(HANDLE thread);
+OBVR_IMPORT BOOL OBVR_STDCALL GetThreadContext(HANDLE thread, ThreadContext* context);
+OBVR_IMPORT UInt32 OBVR_STDCALL VirtualQuery(const void* address, MemoryBasicInfo* info,
+                                             UInt32 length);
 OBVR_IMPORT void OBVR_STDCALL OutputDebugStringA(const char* text);
 OBVR_IMPORT DWORD OBVR_STDCALL GetPrivateProfileStringA(const char* section, const char* key, const char* defaultValue, char* buffer, DWORD size, const char* fileName);
 
@@ -214,6 +241,75 @@ inline long long ReadPerformanceFrequency() {
 	LARGE_INTEGER value{};
 	QueryPerformanceFrequency(&value);
 	return value.QuadPart;
+}
+
+#endif
+
+// The render thread's registers and one region of its stack, for the hang
+// watchdog's report. Spelled out once for both branches: the x86 CONTEXT of
+// winnt.h (SDK 10.0.26100) is ContextFlags, six debug registers, the
+// 112-byte 80387 save area, four segment registers, six integer registers,
+// Ebp, Eip, SegCs, EFlags, Esp, SegSs and 512 bytes of extended registers -
+// 716 bytes - and MEMORY_BASIC_INFORMATION is seven 32-bit fields. The SDK
+// branch checks both against the real types below.
+struct ThreadContext {
+	DWORD contextFlags;
+	DWORD dr0, dr1, dr2, dr3, dr6, dr7;
+	DWORD floatSave[28];
+	DWORD segGs, segFs, segEs, segDs;
+	DWORD edi, esi, ebx, edx, ecx, eax;
+	DWORD ebp;
+	DWORD eip;
+	DWORD segCs;
+	DWORD eflags;
+	DWORD esp;
+	DWORD segSs;
+	UInt8 extendedRegisters[512];
+};
+static_assert(sizeof(ThreadContext) == 716, "x86 CONTEXT is 716 bytes");
+
+struct MemoryBasicInfo {
+	void* baseAddress;
+	void* allocationBase;
+	DWORD allocationProtect;
+	UInt32 regionSize;
+	DWORD state;
+	DWORD protect;
+	DWORD type;
+};
+static_assert(sizeof(MemoryBasicInfo) == 28, "x86 MEMORY_BASIC_INFORMATION is 28 bytes");
+
+#if defined(OBVR_NO_WINSDK)
+
+inline bool ReadThreadContext(HANDLE thread, ThreadContext& context) {
+	context.contextFlags = CONTEXT_CONTROL | CONTEXT_INTEGER;
+	return GetThreadContext(thread, &context) != 0;
+}
+
+inline bool QueryMemory(const void* address, MemoryBasicInfo& info) {
+	return VirtualQuery(address, &info, sizeof(info)) == sizeof(info);
+}
+
+#else
+
+static_assert(sizeof(ThreadContext) == sizeof(CONTEXT), "ThreadContext mirrors CONTEXT");
+static_assert(offsetof(ThreadContext, eip) == offsetof(CONTEXT, Eip), "Eip offset");
+static_assert(offsetof(ThreadContext, esp) == offsetof(CONTEXT, Esp), "Esp offset");
+static_assert(offsetof(ThreadContext, ebp) == offsetof(CONTEXT, Ebp), "Ebp offset");
+static_assert(sizeof(MemoryBasicInfo) == sizeof(MEMORY_BASIC_INFORMATION),
+              "MemoryBasicInfo mirrors MEMORY_BASIC_INFORMATION");
+static_assert(offsetof(MemoryBasicInfo, protect) == offsetof(MEMORY_BASIC_INFORMATION, Protect),
+              "Protect offset");
+
+inline bool ReadThreadContext(HANDLE thread, ThreadContext& context) {
+	CONTEXT* real = reinterpret_cast<CONTEXT*>(&context);
+	real->ContextFlags = CONTEXT_CONTROL | CONTEXT_INTEGER;
+	return GetThreadContext(thread, real) != 0;
+}
+
+inline bool QueryMemory(const void* address, MemoryBasicInfo& info) {
+	return VirtualQuery(address, reinterpret_cast<MEMORY_BASIC_INFORMATION*>(&info),
+	                    sizeof(info)) == sizeof(info);
 }
 
 #endif

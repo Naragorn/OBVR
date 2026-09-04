@@ -243,6 +243,98 @@ inline BoneMatch FindBoneRow(const BoneRow* log, UInt32 count, UInt32 running,
 	return match;
 }
 
+// Whether any logged row - any fingerprint, any register - has its
+// translation within the mixup band of the given row. Answers, for a row
+// that arrived a body length from its pair, whether the wrong translation
+// is a place some other body stands in (the engine handed it a neighbour's
+// root) or nowhere the first render drew anything.
+inline bool LogHoldsTranslation(const BoneRow* log, UInt32 count, const float* floats) {
+	for (UInt32 i = 0; i < count; ++i) {
+		if (BoneTranslationDistSq(log[i].floats, floats) <= kBoneMixupThresholdSq) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// The capacity of the first-render log, and of the previous frame's copy
+// the temporal instrument keeps.
+inline constexpr UInt32 kBoneLogRows = 4096;  // busy frames carry ~1800 bone uploads
+
+// FNV-1a over the register and the nine rotation floats - the row's
+// fingerprint as one number, so the previous frame's rows can be found by
+// bucket rather than by scanning.
+inline UInt32 BoneFingerprintHash(UInt32 startRegister, const float* floats) {
+	UInt32 h = 2166136261u;
+	const auto mix = [&h](UInt32 word) {
+		h ^= word;
+		h *= 16777619u;
+	};
+	mix(startRegister);
+	UInt32 word = 0;
+	static constexpr UInt32 kRotation[9] = {0, 1, 2, 4, 5, 6, 8, 9, 10};
+	for (UInt32 i = 0; i < 9; ++i) {
+		std::memcpy(&word, floats + kRotation[i], sizeof(word));
+		mix(word);
+	}
+	return h;
+}
+
+// The previous frame's first-render rows, indexed by fingerprint. The
+// edge-of-view instrument asks it, for every row of this frame's first
+// render, how far the same bone stood one frame ago: a body moves a few
+// units a frame and the camera a few more, so a same-fingerprint row a body
+// length away is either a same-posed twin (the nearest one is taken, so
+// twins only fool it when both are far) or the first render itself handing
+// a bone another body's place - the collapse the second render's lock
+// cannot cure because it copies the first render.
+struct BoneRowIndex {
+	static constexpr UInt32 kBuckets = 4096;
+	static constexpr UInt16 kNone = 0xFFFF;
+	UInt16 head[kBuckets];
+	UInt16 next[kBoneLogRows];
+	const BoneRow* rows = nullptr;
+	UInt32 count = 0;
+
+	void Build(const BoneRow* source, UInt32 sourceCount) {
+		rows = source;
+		count = sourceCount < kBoneLogRows ? sourceCount : kBoneLogRows;
+		for (UInt32 b = 0; b < kBuckets; ++b) {
+			head[b] = kNone;
+		}
+		for (UInt32 i = 0; i < count; ++i) {
+			const UInt32 bucket =
+				BoneFingerprintHash(rows[i].startRegister, rows[i].floats) % kBuckets;
+			next[i] = head[bucket];
+			head[bucket] = static_cast<UInt16>(i);
+		}
+	}
+
+	// The nearest row with this register and fingerprint: its index and
+	// translation distance squared. False when the index holds none.
+	bool Nearest(UInt32 startRegister, const float* floats, UInt32& index,
+	             float& distSq) const {
+		if (rows == nullptr || count == 0) {
+			return false;
+		}
+		bool found = false;
+		const UInt32 bucket = BoneFingerprintHash(startRegister, floats) % kBuckets;
+		for (UInt16 i = head[bucket]; i != kNone; i = next[i]) {
+			const BoneRow& row = rows[i];
+			if (row.startRegister != startRegister || !SameBoneRotation(row.floats, floats)) {
+				continue;
+			}
+			const float d = BoneTranslationDistSq(row.floats, floats);
+			if (!found || d < distSq) {
+				found = true;
+				index = i;
+				distSq = d;
+			}
+		}
+		return found;
+	}
+};
+
 // The first render's row, translation shifted into this render's frame of
 // reference. Rotation floats are copied bit-for-bit.
 inline void RebaseBoneRow(float* out, const float* logged, const float delta[3]) {

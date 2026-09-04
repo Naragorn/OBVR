@@ -337,8 +337,20 @@ UInt32 g_timelinePhase = 0;
 // divergence the sums keep reporting sits somewhere in the hundreds
 // that follow - this finds the first mismatching upload and keeps both
 // versions of it.
-constexpr UInt32 kBoneLogCapacity = 4096;  // busy frames carry ~1800 bone uploads
+constexpr UInt32 kBoneLogCapacity = kBoneLogRows;
 BoneRow g_boneLog[kBoneLogCapacity];
+
+// The previous frame's first-render log and its fingerprint index, for the
+// edge-of-view instrument (task #21): every first-render row is asked how
+// far its bone stood one frame ago. A jump of a body length in the FIRST
+// render is a collapse the lock cannot cure, because the lock copies the
+// first render - and it is the one place the second render's counters
+// cannot see. Swapped in when a capture begins; the copy is a memcpy of
+// the rows actually logged.
+BoneRow g_bonePrevLog[kBoneLogCapacity];
+UInt32 g_bonePrevCount = 0;
+BoneRowIndex g_bonePrevIndex;
+UInt32 g_boneJumpDetailsLeft = 24;  // the first jumps, one line each
 UInt32 g_boneLogCount = 0;       // uploads recorded during the first render
 UInt32 g_boneCompareIndex = 0;   // second-render uploads compared so far
 UInt32 g_boneMismatchCount = 0;  // how many compares disagreed
@@ -389,6 +401,28 @@ const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 			slot.startRegister = startRegister;
 			std::memcpy(slot.floats, data, sizeof(slot.floats));
 		}
+		// The temporal instrument: the same bone one frame ago. Bodies
+		// and camera move a few units a frame; a body length is a jump.
+		UInt32 previousIndex = 0;
+		float previousDistSq = 0.0f;
+		if (g_bonePrevIndex.Nearest(startRegister, data, previousIndex, previousDistSq)) {
+			++g_stateCalls.boneFirstMatched;
+			if (previousDistSq > kBoneMixupThresholdSq) {
+				++g_stateCalls.boneFirstJumps;
+				if (g_boneJumpDetailsLeft > 0) {
+					--g_boneJumpDetailsLeft;
+					const float* was = g_bonePrevLog[previousIndex].floats;
+					OBVR_LOG("Bone jump: first-render upload %u (c%u) stands at %g %g %g, "
+					         "the same bone stood at %g %g %g one frame ago - distance "
+					         "squared %g%s",
+					         g_boneLogCount, startRegister, data[3], data[7], data[11],
+					         was[3], was[7], was[11], previousDistSq,
+					         LogHoldsTranslation(g_bonePrevLog, g_bonePrevCount, data)
+					             ? ", where another bone stood last frame"
+					             : ", where nothing stood last frame");
+				}
+			}
+		}
 		++g_boneLogCount;
 		return nullptr;
 	}
@@ -427,8 +461,13 @@ const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 			// An off-position pair a body length apart: either the ring
 			// slipped onto the mixup, or a row with no pair of its own
 			// took a same-posed stranger. The count is the instrument
-			// for the edge-of-view collapse of followers.
+			// for the edge-of-view collapse of followers, and whether the
+			// wrong translation is a place some logged row stands in says
+			// what the mixup wears.
 			++g_stateCalls.boneLockReorderedFar;
+			if (LogHoldsTranslation(g_boneLog, limit, data)) {
+				++g_stateCalls.boneLockFarAtLoggedPlace;
+			}
 		}
 		if (g_timelineArmed) {
 			if (g_boneMismatchCount == 0) {
@@ -2269,6 +2308,10 @@ void SetBonePassMode(BonePassMode mode) {
 		}
 	}
 	if (mode == BonePassMode::Capture) {
+		// Last frame's first render becomes the temporal reference.
+		g_bonePrevCount = g_boneLogCount < kBoneLogCapacity ? g_boneLogCount : kBoneLogCapacity;
+		std::memcpy(g_bonePrevLog, g_boneLog, g_bonePrevCount * sizeof(BoneRow));
+		g_bonePrevIndex.Build(g_bonePrevLog, g_bonePrevCount);
 		g_boneLogCount = 0;
 	} else if (mode == BonePassMode::Replace) {
 		g_boneCompareIndex = 0;

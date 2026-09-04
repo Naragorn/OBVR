@@ -364,6 +364,38 @@ void TraceZeroMatrixDraws(const StateCallCounts& entry, const StateCallCounts& a
 	         afterSecond.skinnedStartIndexSum - afterBetween.skinnedStartIndexSum);
 }
 
+// The edge-of-view instrument (task #21), on two clocks. Every frame that
+// carries an anomaly - a first-render bone that jumped a body length since
+// the previous frame, or a second-render row with no pair - gets a line,
+// up to a budget, because the collapse lasts a split second and the
+// heartbeat below misses it. The heartbeat carries the totals for scale.
+UInt32 g_boneAnomalyLinesLeft = 80;
+
+void TraceBoneAnomaly(const StateCallCounts& entry, const StateCallCounts& afterFirst,
+                      const StateCallCounts& afterBetween, const StateCallCounts& afterSecond) {
+	const UInt32 jumps = afterFirst.boneFirstJumps - entry.boneFirstJumps;
+	const UInt32 passthrough = afterSecond.boneLockPassthrough - entry.boneLockPassthrough;
+	if ((jumps != 0 || passthrough != 0) && g_boneAnomalyLinesLeft > 0) {
+		--g_boneAnomalyLinesLeft;
+		OBVR_LOG("Bone anomaly at scene call %u: first render jumped %u of %u rows matched "
+		         "to the previous frame, second render passthrough %u, reordered %u (far %u, "
+		         "of them at a logged row's place %u), uploads first %u second %u",
+		         g_sceneCall, jumps, afterFirst.boneFirstMatched - entry.boneFirstMatched,
+		         passthrough, afterSecond.boneLockReordered - entry.boneLockReordered,
+		         afterSecond.boneLockReorderedFar - entry.boneLockReorderedFar,
+		         afterSecond.boneLockFarAtLoggedPlace - entry.boneLockFarAtLoggedPlace,
+		         afterFirst.boneRangeCalls - entry.boneRangeCalls,
+		         afterSecond.boneRangeCalls - afterBetween.boneRangeCalls);
+	}
+	if (g_sceneCall % 120 == 0) {
+		OBVR_LOG("Bone temporal at scene call %u: first render matched %u rows to the "
+		         "previous frame, %u jumped a body length; second render far rows at a "
+		         "logged row's place %u",
+		         g_sceneCall, afterFirst.boneFirstMatched - entry.boneFirstMatched, jumps,
+		         afterSecond.boneLockFarAtLoggedPlace - entry.boneLockFarAtLoggedPlace);
+	}
+}
+
 // The index side of vertex fetch, mirrored from the vertex side once every
 // vertex-side number came back equal. Zeroed indices build every triangle
 // out of vertex zero and a zero stride reads one vertex forever - both are
@@ -598,6 +630,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	TraceSkinnedDraws(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TracePoolWrites(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceZeroMatrixDraws(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
+	TraceBoneAnomaly(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceIndexSide(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceFrame("dual", passesLastFrame, drawsLastFrame);
 }

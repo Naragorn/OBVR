@@ -30,3 +30,9 @@ FreeLibrary@4
 GetFileAttributesA@4
 QueryPerformanceCounter@4
 QueryPerformanceFrequency@4
+GetCurrentThreadId@0
+OpenThread@12
+SuspendThread@4
+ResumeThread@4
+GetThreadContext@8
+VirtualQuery@12

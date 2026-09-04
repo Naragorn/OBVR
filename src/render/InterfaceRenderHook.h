@@ -187,6 +187,16 @@ struct StateCallCounts {
 	UInt32 boneLockPassthrough = 0;
 	UInt32 boneLockReordered = 0;
 	UInt32 boneLockReorderedFar = 0;
+	// Of the reorderedFar rows, those whose wrong translation is a place
+	// some logged row stands in - the engine handed the bone a neighbour's
+	// root rather than nowhere.
+	UInt32 boneLockFarAtLoggedPlace = 0;
+	// The temporal instrument for the edge-of-view collapse (task #21):
+	// first-render rows whose same bone was found in the previous frame's
+	// first render, and of those the ones that stood a body length away -
+	// a collapse the first render itself made, which the lock copies.
+	UInt32 boneFirstMatched = 0;
+	UInt32 boneFirstJumps = 0;
 	UInt32 boneOffscreenRows = 0;
 };
 
