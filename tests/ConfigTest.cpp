@@ -14,6 +14,7 @@
 // previous contents.
 
 #include <cstdio>
+#include <cstring>
 
 #include "core/Config.h"
 #include "platform/PluginPath.h"
@@ -368,6 +369,21 @@ void TestHandTracking() {
 	          wrists.hands.poke.press == 0.02f && wrists.hands.poke.release == 0.05f &&
 	          wrists.hands.poke.through == 0.09f,
 	      "and so are the poke's five numbers");
+
+	Check(untouched.hands.forceFirstPerson && untouched.hands.hideArms,
+	      "first person is forced and the arms hidden by default");
+	Check(std::strcmp(untouched.hands.hideNodes, "UpperBody") == 0,
+	      "and the node to hide is UpperBody");
+	obvr::Config body;
+	LoadFrom("ConfigTestBody.ini",
+	         "[Hands]\nForceFirstPerson=0\nHideArms=0\nHideFirstPersonNodes=UpperBody, Hand\n",
+	         body);
+	Check(!body.hands.forceFirstPerson && !body.hands.hideArms, "both switches are read");
+	Check(std::strcmp(body.hands.hideNodes, "UpperBody, Hand") == 0,
+	      "and the list is read as written");
+	obvr::Config cleared;
+	LoadFrom("ConfigTestBodyCleared.ini", "[Hands]\nHideFirstPersonNodes=\n", cleared);
+	Check(cleared.hands.hideNodes[0] == '\0', "an empty list clears the default");
 }
 
 void TestLookRanges() {

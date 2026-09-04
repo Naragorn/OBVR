@@ -646,6 +646,13 @@ endif()
 
 add_test(NAME hand_input COMMAND hand_input_test)
 
+add_executable(node_name_list_test NodeNameListTest.cpp)
+target_include_directories(node_name_list_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(node_name_list_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME node_name_list COMMAND node_name_list_test)
+
 add_executable(hand_mode_test
 	HandModeTest.cpp
 	../src/vr/HandMode.cpp

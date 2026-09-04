@@ -11,6 +11,7 @@
 #include "game/CrosshairTarget.h"
 #include "game/DialogZoom.h"
 #include "game/FirstPersonArms.h"
+#include "game/FirstPersonHide.h"
 #include "game/HandControls.h"
 #include "game/ThirdPersonAimVisual.h"
 #include "core/AddressSpace.h"
@@ -320,6 +321,7 @@ bool g_handBlocking = false;
 bool g_handReachBack = false;
 UInt32 g_handSwingLinesLeft = 20;
 UInt32 g_handPokeLinesLeft = 20;
+UInt32 g_handPovLinesLeft = 20;
 
 bool ReadIsThirdPerson();
 
@@ -346,10 +348,33 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			g_handControlsHeld = false;
 		}
 		g_hudLayer.ClearWristPlacement();
+		game::HideFirstPersonNodes(false, "");
 		g_hand = vr::HandModeResult{};
 		g_handMode.Reset();
 		return;
 	}
+
+	// The hands are only drawn in first person, so the mode keeps the player
+	// there through the game's own switch - the one the dialogue shim uses.
+	// Not while a menu is up: the game flips to third person for the race
+	// menu and the like on purpose, and would be fought every frame.
+	if (config.hands.forceFirstPerson && !menuIsUp && ReadIsThirdPerson()) {
+		auto* const player = *reinterpret_cast<UInt8* const*>(addr::kPlayerPointer);
+		if (mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(player))) {
+			using ToggleCameraFn = void(__fastcall*)(UInt8* self, void* edx, UInt8 firstPerson);
+			reinterpret_cast<ToggleCameraFn>(addr::kToggleCamera)(player, nullptr, 1);
+			if (g_handPovLinesLeft > 0) {
+				--g_handPovLinesLeft;
+				OBVR_LOG("Hands: the player was in third person - put back into first");
+			}
+		}
+	}
+
+	if (config.firstPersonTreeProbe) {
+		game::ProbeFirstPersonTree();
+	}
+	game::HideFirstPersonNodes(config.hands.hideArms && !ReadIsThirdPerson(),
+	                           config.hands.hideNodes);
 
 	vr::OpenVRBackend& backend = g_headTracker.GetBackendForFrame();
 	vr::HandModeFrame frame;

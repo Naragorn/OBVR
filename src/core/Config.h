@@ -177,6 +177,12 @@ struct Config {
 	// hot-reloadable, off by default.
 	bool thirdPersonProbe = false;
 
+	// Prints the first-person model's tree - class, name, flags and children
+	// of every node a few levels down - once, and again after a new model.
+	// What [Hands] HideFirstPersonNodes is written from. In [Debug],
+	// hot-reloadable, off by default.
+	bool firstPersonTreeProbe = false;
+
 	// Points the player where the head is looking, so an arrow leaves along
 	// the gaze instead of along the mouse.
 	//

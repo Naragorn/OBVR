@@ -533,6 +533,20 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.wristMenu = v != 0.0f; },
 	},
 	{
+		"Hands", "Hide the arms", "The animated arms go; hands and weapon stay",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "HideArms",
+		+[](const Config& c) { return c.hands.hideArms ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.hideArms = v != 0.0f; },
+	},
+	{
+		"Hands", "Force first person", "Back to first person whenever the mode finds third",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "ForceFirstPerson",
+		+[](const Config& c) { return c.hands.forceFirstPerson ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.forceFirstPerson = v != 0.0f; },
+	},
+	{
 		"Hands", "Menus on the right hand", "On: right wrist, the left hand presses. Off: the other way",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "MenuOnRight",

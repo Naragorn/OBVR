@@ -42,6 +42,14 @@ struct HandSettings {
 	float pokeTipForward = 0.08f;
 	PokeThresholds poke;
 
+	// The body: keep the player in first person while the mode is on (the
+	// hands are only drawn there), and hide the named parts of the
+	// first-person model - the arms, whose animation the controllers do not
+	// follow - by the comma-separated list of node names.
+	bool forceFirstPerson = true;
+	bool hideArms = true;
+	char hideNodes[128] = "UpperBody";
+
 	// The laser cursor: how much of the remaining distance the game's cursor
 	// is walked per frame, and the largest step.
 	float laserGain = 0.5f;

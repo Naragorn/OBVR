@@ -66,6 +66,26 @@ float ReadFloat(const char* section, const char* key, float fallback, const char
 	return static_cast<float>(atof(buffer));
 }
 
+// A line of text as it stands, into a fixed buffer; the fallback already in
+// the buffer is kept when the key is absent. An empty value is a value - it
+// is how a list is cleared.
+void ReadText(const char* section, const char* key, char* buffer, UInt32 capacity,
+              const char* path) {
+	// The count of characters copied cannot tell an absent key from a present
+	// empty one - both copy nothing - so the default is a sentinel no INI
+	// line carries, and absence is its coming back.
+	char read[256];
+	GetPrivateProfileStringA(section, key, "\x01", read, sizeof(read), path);
+	if (read[0] == '\x01') {
+		return;
+	}
+	UInt32 at = 0;
+	for (; at + 1 < capacity && read[at] != '\0'; ++at) {
+		buffer[at] = read[at];
+	}
+	buffer[at] = '\0';
+}
+
 UInt32 ReadUInt(const char* section, const char* key, UInt32 fallback, const char* path) {
 	char buffer[64];
 	const DWORD length = GetPrivateProfileStringA(section, key, "", buffer, sizeof(buffer), path);
@@ -494,6 +514,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.aimProbe = ReadBool("Debug", "AimProbe", config.aimProbe, path);
 	config.thirdPersonProbe =
 		ReadBool("Debug", "ThirdPersonProbe", config.thirdPersonProbe, path);
+	config.firstPersonTreeProbe =
+		ReadBool("Debug", "FirstPersonTreeProbe", config.firstPersonTreeProbe, path);
 	config.menuWorldProbe = ReadBool("Debug", "MenuWorldProbe", config.menuWorldProbe, path);
 	config.d3d9ExProbe = ReadBool("Debug", "D3D9ExProbe", config.d3d9ExProbe, path);
 	config.handTracking = ReadBool("Hands", "Enabled", config.handTracking, path);
@@ -535,6 +557,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.poke.press = ReadFloat("Hands", "PokePress", h.poke.press, path);
 		h.poke.release = ReadFloat("Hands", "PokeRelease", h.poke.release, path);
 		h.poke.through = ReadFloat("Hands", "PokeThrough", h.poke.through, path);
+		h.forceFirstPerson = ReadBool("Hands", "ForceFirstPerson", h.forceFirstPerson, path);
+		h.hideArms = ReadBool("Hands", "HideArms", h.hideArms, path);
+		ReadText("Hands", "HideFirstPersonNodes", h.hideNodes, sizeof(h.hideNodes), path);
 		h.laserGain = ReadFloat("Hands", "LaserGain", h.laserGain, path);
 		h.laserMaxStep = ReadFloat("Hands", "LaserMaxStep", h.laserMaxStep, path);
 		h.stickDeadZone = ReadFloat("Hands", "StickDeadZone", h.stickDeadZone, path);
