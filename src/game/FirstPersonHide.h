@@ -17,10 +17,13 @@ namespace obvr::game {
 // the bit brings it back.
 //
 // WHICH parts is a list of node names, because the first-person tree is
-// built from the race's body meshes and whatever armour is worn, and the
-// name of the geometry that carries the arms is a fact about those files
-// that this code cannot know in advance. The probe below prints the tree;
-// the list in [Hands] HideFirstPersonNodes names what to hide.
+// built from the race's body meshes and whatever armour is worn. The body
+// meshes keep the arms in a shape named "Arms" - the game hides every
+// shape named "UpperBody" in first person and shows the rest, so the arms
+// need a name of their own (cs.uesp.net, "Fixing the armor incorrectly
+// displayed in 1st person"; seen in upperbody.nif, femaleupperbody.nif).
+// An armour's arms are named by its modder. The probe below prints the
+// tree; the list in [Hands] HideFirstPersonNodes names what to hide.
 
 // Sets the hidden bit on every node under the first-person root whose name
 // is in `list` (see NodeNameList.h), and clears it again on any node it hid

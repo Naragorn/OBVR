@@ -48,7 +48,7 @@ struct HandSettings {
 	// follow - by the comma-separated list of node names.
 	bool forceFirstPerson = true;
 	bool hideArms = true;
-	char hideNodes[128] = "UpperBody";
+	char hideNodes[128] = "Arms";
 
 	// The laser cursor: how much of the remaining distance the game's cursor
 	// is walked per frame, and the largest step.

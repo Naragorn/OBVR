@@ -372,8 +372,8 @@ void TestHandTracking() {
 
 	Check(untouched.hands.forceFirstPerson && untouched.hands.hideArms,
 	      "first person is forced and the arms hidden by default");
-	Check(std::strcmp(untouched.hands.hideNodes, "UpperBody") == 0,
-	      "and the node to hide is UpperBody");
+	Check(std::strcmp(untouched.hands.hideNodes, "Arms") == 0,
+	      "and the shape to hide is Arms");
 	obvr::Config body;
 	LoadFrom("ConfigTestBody.ini",
 	         "[Hands]\nForceFirstPerson=0\nHideArms=0\nHideFirstPersonNodes=UpperBody, Hand\n",
