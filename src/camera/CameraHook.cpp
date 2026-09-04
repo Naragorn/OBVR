@@ -12,6 +12,8 @@
 #include "game/DialogZoom.h"
 #include "game/FirstPersonArms.h"
 #include "game/FirstPersonHide.h"
+#include "game/BonePin.h"
+#include "game/HandBones.h"
 #include "game/HandControls.h"
 #include "game/ThirdPersonAimVisual.h"
 #include "core/AddressSpace.h"
@@ -1656,6 +1658,23 @@ void BeforeFirstScenePass() {
 
 	if (g_handArmsWanted) {
 		game::PlaceFirstPersonArms(g_hand.armsRotation, g_hand.armsOffsetUnits);
+		// After the arms, so the bones' parents carry this frame's placement:
+		// the hand bones go where the controllers are, animation or not.
+		const vr::HandSettings& hands = GetConfig().hands;
+		if (hands.pinHands) {
+			if (g_hand.rightHandValid) {
+				game::PinHandBone(true, hands.rightHandBone, g_hand.rightHandRotation,
+				                  g_hand.rightHandOffsetUnits,
+				                  game::HandCalibration(hands.rightHandRoll, hands.rightHandPitch,
+				                                        hands.rightHandYaw));
+			}
+			if (g_hand.leftHandValid) {
+				game::PinHandBone(false, hands.leftHandBone, g_hand.leftHandRotation,
+				                  g_hand.leftHandOffsetUnits,
+				                  game::HandCalibration(hands.leftHandRoll, hands.leftHandPitch,
+				                                        hands.leftHandYaw));
+			}
+		}
 	} else if (g_weaponTurnWanted) {
 		game::TurnFirstPersonArms(g_weaponTurnRadians);
 	} else {

@@ -321,6 +321,41 @@ void TestMenuHandAndSettingsMenu() {
 	Check(!r.settingsNav.up && !r.settingsNav.down, "menu closed: no arrows");
 }
 
+void TestHandPoses() {
+	std::printf("Hand poses for the bone pin\n");
+	HandSettings settings;
+	settings.enabled = true;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.unitsPerMetre = 70.0f;
+	frame.right.valid = true;
+	frame.right.position = NiPoint3{0.3f, -0.2f, -0.5f};  // OpenVR: right, down, ahead
+	frame.left.valid = false;
+	HandMode mode;
+
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.rightHandValid && !r.leftHandValid, "a tracked right hand and an untracked left");
+	// Game axes: x right, y forward, z up; the offset is metres times units.
+	Check(Near(r.rightHandOffsetUnits.x, 21.0f) && Near(r.rightHandOffsetUnits.y, 35.0f) &&
+	          Near(r.rightHandOffsetUnits.z, -14.0f),
+	      "the right hand's offset is in game axes and units");
+	Check(Near(r.rightHandRotation.data[0][0], 1.0f) && Near(r.rightHandRotation.data[1][1], 1.0f),
+	      "an unturned hand relative to an unturned head is the identity");
+
+	frame.left.valid = true;
+	frame.left.position = NiPoint3{-0.3f, 0.0f, -0.4f};
+	frame.menuMode = true;
+	r = mode.Update(frame, settings);
+	Check(r.leftHandValid && Near(r.leftHandOffsetUnits.x, -21.0f) &&
+	          Near(r.leftHandOffsetUnits.y, 28.0f),
+	      "the left hand too, and in a menu as well");
+	Check(!r.armsValid, "while the arms placement stays off in a menu");
+
+	frame.firstPerson = false;
+	r = mode.Update(frame, settings);
+	Check(!r.rightHandValid && !r.leftHandValid, "no hand poses in third person");
+}
+
 void TestWristTransform() {
 	std::printf("Wrist transform\n");
 	const openvr::HmdMatrix34 m = WristOverlayTransform(0.06f, 0.12f, 0.0f);
@@ -346,6 +381,7 @@ int main() {
 	TestStickChord();
 	TestStickNav();
 	TestMenuHandAndSettingsMenu();
+	TestHandPoses();
 	TestWristTransform();
 
 	if (g_failures != 0) {

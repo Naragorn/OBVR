@@ -551,6 +551,15 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.wristMenuWidth = ReadFloat("Hands", "WristMenuWidth", h.wristMenuWidth, path);
 		h.wristHud = ReadBool("Hands", "WristHud", h.wristHud, path);
 		h.wristMenu = ReadBool("Hands", "WristMenu", h.wristMenu, path);
+		h.pinHands = ReadBool("Hands", "PinHands", h.pinHands, path);
+		ReadText("Hands", "RightHandBone", h.rightHandBone, sizeof(h.rightHandBone), path);
+		ReadText("Hands", "LeftHandBone", h.leftHandBone, sizeof(h.leftHandBone), path);
+		h.rightHandRoll = ReadFloat("Hands", "RightHandRoll", h.rightHandRoll, path);
+		h.rightHandPitch = ReadFloat("Hands", "RightHandPitch", h.rightHandPitch, path);
+		h.rightHandYaw = ReadFloat("Hands", "RightHandYaw", h.rightHandYaw, path);
+		h.leftHandRoll = ReadFloat("Hands", "LeftHandRoll", h.leftHandRoll, path);
+		h.leftHandPitch = ReadFloat("Hands", "LeftHandPitch", h.leftHandPitch, path);
+		h.leftHandYaw = ReadFloat("Hands", "LeftHandYaw", h.leftHandYaw, path);
 		h.menuOnRight = ReadBool("Hands", "MenuOnRight", h.menuOnRight, path);
 		h.pokeTipForward = ReadFloat("Hands", "PokeTipForward", h.pokeTipForward, path);
 		h.poke.hover = ReadFloat("Hands", "PokeHover", h.poke.hover, path);

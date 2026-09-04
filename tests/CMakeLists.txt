@@ -646,6 +646,17 @@ endif()
 
 add_test(NAME hand_input COMMAND hand_input_test)
 
+add_executable(bone_pin_test
+	BonePinTest.cpp
+	../src/core/Rotation.cpp
+	../src/core/Smoothing.cpp
+)
+target_include_directories(bone_pin_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(bone_pin_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME bone_pin COMMAND bone_pin_test)
+
 add_executable(node_name_list_test NodeNameListTest.cpp)
 target_include_directories(node_name_list_test PRIVATE ../src)
 if(NOT MSVC)

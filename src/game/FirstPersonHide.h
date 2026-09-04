@@ -1,8 +1,14 @@
 #pragma once
 
 #include "core/Types.h"
+#include "game/GameTypes.h"
 
 namespace obvr::game {
+
+// The first node under the first-person root with this name, a few levels
+// down, or null. Case does not matter. A fresh walk each call; callers that
+// need it every frame keep the answer.
+NiAVObject* FindFirstPersonNode(const char* name);
 
 // Hiding parts of the first-person model, for the hand-tracked mode: the
 // arms are the animation's and stay where the animation puts them, while the
