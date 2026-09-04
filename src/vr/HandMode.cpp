@@ -80,6 +80,11 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 			r.aimYawTurn = math::Atan2(heading.sine, heading.cosine);
 			r.aimSinPitch = SinPitchOf(absoluteMatrix);
 		}
+		if (f.firstPerson) {
+			r.rightHandValid = true;
+			r.rightHandRotation = relativeMatrix;
+			r.rightHandOffsetUnits = rightRelative * f.unitsPerMetre;
+		}
 		if (f.firstPerson && !f.menuMode) {
 			r.armsValid = true;
 			if (s.armsFollowPitch) {
@@ -92,6 +97,13 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 				r.armsOffsetUnits = (rightRelative - rest) * (f.unitsPerMetre * s.armOffsetScale);
 			}
 		}
+	}
+
+	if (f.left.valid && f.firstPerson) {
+		const Quaternion relative = (f.head.Conjugate() * f.left.orientation).Normalized();
+		r.leftHandValid = true;
+		r.leftHandRotation = ToMatrix(FromOpenXR(relative));
+		r.leftHandOffsetUnits = leftRelative * f.unitsPerMetre;
 	}
 
 	// Gestures.

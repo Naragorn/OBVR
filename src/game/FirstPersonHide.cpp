@@ -188,6 +188,27 @@ void HideMatching(UInt8* node, const char* list, UInt32 depth) {
 	}
 }
 
+UInt8* FindNamed(UInt8* node, const char* name, UInt32 depth) {
+	if (!LooksLikeObject(node)) {
+		return nullptr;
+	}
+	if (NameInList(NameOf(node), name)) {
+		return node;
+	}
+	if (depth >= kMaxDepth || !ClassIsNode(ClassNameOf(node))) {
+		return nullptr;
+	}
+	UInt32 count = 0;
+	UInt8* const* const children = ChildrenOf(node, count);
+	for (UInt32 at = 0; at < count; ++at) {
+		UInt8* const found = FindNamed(children[at], name, depth + 1);
+		if (found != nullptr) {
+			return found;
+		}
+	}
+	return nullptr;
+}
+
 void ProbeNode(const UInt8* node, UInt32 depth) {
 	if (g_probeLinesLeft == 0 || !LooksLikeObject(node)) {
 		return;
@@ -264,6 +285,17 @@ void HideFirstPersonNodes(bool enabled, const char* list) {
 	}
 
 	HideMatching(rootBytes, list, 0);
+}
+
+NiAVObject* FindFirstPersonNode(const char* name) {
+	if (name == nullptr || name[0] == '\0') {
+		return nullptr;
+	}
+	NiAVObject* const root = FirstPersonArmsNode();
+	if (root == nullptr) {
+		return nullptr;
+	}
+	return reinterpret_cast<NiAVObject*>(FindNamed(reinterpret_cast<UInt8*>(root), name, 0));
 }
 
 void ProbeFirstPersonTree() {

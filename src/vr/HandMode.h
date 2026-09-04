@@ -59,6 +59,21 @@ struct HandSettings {
 	// for the turn.
 	float stickDeadZone = 0.4f;
 	float turnSpeed = 12.0f;
+
+	// The hand bones, written each frame to where the controllers are, so
+	// the hands and the weapon stay with the controllers while the animation
+	// swings the hidden arms. The names are the Bip01 skeleton's; the three
+	// angles per hand are the calibration between controller and bone axes
+	// (roll about the bone first, then pitch, then yaw - see BonePin.h).
+	bool pinHands = true;
+	char rightHandBone[64] = "Bip01 R Hand";
+	char leftHandBone[64] = "Bip01 L Hand";
+	float rightHandRoll = 0.0f;
+	float rightHandPitch = 0.0f;
+	float rightHandYaw = 90.0f;
+	float leftHandRoll = 0.0f;
+	float leftHandPitch = 0.0f;
+	float leftHandYaw = 90.0f;
 };
 
 // Everything one frame of the mode needs to know, gathered by the camera
@@ -97,6 +112,17 @@ struct HandModeResult {
 	bool armsValid = false;
 	NiMatrix33 armsRotation{};
 	NiPoint3 armsOffsetUnits{0.0f, 0.0f, 0.0f};
+
+	// The hands themselves, for the bone pin: each controller's rotation
+	// relative to the head and its offset from the eyes in game units, in
+	// the game's convention, whenever it is tracked and the player is in
+	// first person.
+	bool rightHandValid = false;
+	bool leftHandValid = false;
+	NiMatrix33 rightHandRotation{};
+	NiMatrix33 leftHandRotation{};
+	NiPoint3 rightHandOffsetUnits{0.0f, 0.0f, 0.0f};
+	NiPoint3 leftHandOffsetUnits{0.0f, 0.0f, 0.0f};
 
 	// The controls to press, and whether any are to be pressed at all
 	// (false releases everything).

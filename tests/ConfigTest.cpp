@@ -384,6 +384,27 @@ void TestHandTracking() {
 	obvr::Config cleared;
 	LoadFrom("ConfigTestBodyCleared.ini", "[Hands]\nHideFirstPersonNodes=\n", cleared);
 	Check(cleared.hands.hideNodes[0] == '\0', "an empty list clears the default");
+
+	Check(untouched.hands.pinHands && std::strcmp(untouched.hands.rightHandBone, "Bip01 R Hand") == 0 &&
+	          std::strcmp(untouched.hands.leftHandBone, "Bip01 L Hand") == 0,
+	      "the hands are pinned to the Bip01 hand bones by default");
+	Check(untouched.hands.rightHandYaw == 90.0f && untouched.hands.leftHandYaw == 90.0f &&
+	          untouched.hands.rightHandRoll == 0.0f && untouched.hands.rightHandPitch == 0.0f,
+	      "with ninety degrees of yaw and nothing else");
+	obvr::Config pinned;
+	LoadFrom("ConfigTestPin.ini",
+	         "[Hands]\nPinHands=0\nRightHandBone=Bip01 R Finger1\nLeftHandBone=Bip01 L Finger1\n"
+	         "RightHandRoll=15\nRightHandPitch=-5\nRightHandYaw=80\nLeftHandRoll=-15\n"
+	         "LeftHandPitch=5\nLeftHandYaw=100\n",
+	         pinned);
+	Check(!pinned.hands.pinHands, "PinHands=0 is read");
+	Check(std::strcmp(pinned.hands.rightHandBone, "Bip01 R Finger1") == 0 &&
+	          std::strcmp(pinned.hands.leftHandBone, "Bip01 L Finger1") == 0,
+	      "and the bone names");
+	Check(pinned.hands.rightHandRoll == 15.0f && pinned.hands.rightHandPitch == -5.0f &&
+	          pinned.hands.rightHandYaw == 80.0f && pinned.hands.leftHandRoll == -15.0f &&
+	          pinned.hands.leftHandPitch == 5.0f && pinned.hands.leftHandYaw == 100.0f,
+	      "and the six angles");
 }
 
 void TestLookRanges() {

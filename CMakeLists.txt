@@ -66,6 +66,7 @@ add_library(OBVR SHARED
 	src/game/WorldPickTrampoline.cpp
 	src/game/FirstPersonArms.cpp
 	src/game/FirstPersonHide.cpp
+	src/game/HandBones.cpp
 	src/game/ThirdPersonAimVisual.cpp
 	src/game/MenuType.cpp
 	src/game/PlayerAim.cpp
