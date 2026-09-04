@@ -387,27 +387,40 @@ bool CrosshairLayer::EnsureOverlay(vr::OpenVRBackend& backend) {
 	return backend.CreateOverlay("obvr.crosshair", "Oblivion Crosshair", m_overlay);
 }
 
+void CrosshairLayer::SetHandPlacement(bool onHand, UInt32 deviceIndex) {
+	m_onHand = onHand;
+	m_handDevice = deviceIndex;
+}
+
 void CrosshairLayer::Place(vr::OpenVRBackend& backend, float distanceMetres,
                            float widthMetres) {
 	// Nothing moved, so nothing is said. Worth the comparison because this
 	// runs every frame and both calls cross into the compositor.
-	if (m_placed && m_placedDistance == distanceMetres && m_placedWidth == widthMetres) {
+	if (m_placed && m_placedDistance == distanceMetres && m_placedWidth == widthMetres &&
+	    m_placedOnHand == m_onHand && m_placedHandDevice == m_handDevice) {
 		return;
 	}
 	m_placed = true;
 	m_placedDistance = distanceMetres;
 	m_placedWidth = widthMetres;
+	m_placedOnHand = m_onHand;
+	m_placedHandDevice = m_handDevice;
 
 	// Straight ahead of the head, negative Z being forward in the headset's
 	// own frame - the same placement the HUD layer uses, and for the same
 	// reason: the crosshair belongs where the wearer is looking, not where
-	// they were looking.
-	vr::openvr::HmdMatrix34 hmdToOverlay{};
-	hmdToOverlay.m[0][0] = 1.0f;
-	hmdToOverlay.m[1][1] = 1.0f;
-	hmdToOverlay.m[2][2] = 1.0f;
-	hmdToOverlay.m[2][3] = -distanceMetres;
-	backend.SetOverlayTransformHmdRelative(m_overlay, hmdToOverlay);
+	// they were looking. Or, in the hand-tracked mode, straight ahead of the
+	// aiming controller, whose frame points the same way.
+	vr::openvr::HmdMatrix34 toOverlay{};
+	toOverlay.m[0][0] = 1.0f;
+	toOverlay.m[1][1] = 1.0f;
+	toOverlay.m[2][2] = 1.0f;
+	toOverlay.m[2][3] = -distanceMetres;
+	if (m_onHand) {
+		backend.SetOverlayTransformDeviceRelative(m_overlay, m_handDevice, toOverlay);
+	} else {
+		backend.SetOverlayTransformHmdRelative(m_overlay, toOverlay);
+	}
 
 	// The width already grew with the distance, back where it was decided.
 	backend.SetOverlayWidthInMetres(m_overlay, widthMetres);

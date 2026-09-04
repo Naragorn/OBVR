@@ -45,6 +45,13 @@ namespace obvr::ui {
 // Everything else is here, including the two rows that only take effect on the
 // next start - marked rather than hidden.
 
+// What a row of kind Action does when fired. The menu hands the row back;
+// the caller, who owns the thing to do, reads this.
+enum class SettingAction {
+	None,
+	Recenter,
+};
+
 struct SettingDefinition {
 	// The heading this row sits under. Rows sharing a category are adjacent in
 	// the table, and the menu draws the name when it changes.
@@ -93,6 +100,9 @@ struct SettingDefinition {
 	// stop after the writer. Both empty means the value is written as a number.
 	const char* falseWord = "";
 	const char* trueWord = "";
+
+	// For rows of kind Action only: the button this row is.
+	SettingAction action = SettingAction::None;
 };
 
 // The table, and its length. A pointer to static data - there is one settings

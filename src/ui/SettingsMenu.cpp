@@ -110,6 +110,14 @@ const SettingDefinition* SettingsMenu::Apply(MenuAction action, Config& config) 
 		}
 
 		const SettingDefinition& definition = SettingDefinitions()[m_state.selected];
+
+		// A button fires; nothing is written and nothing repaints. The caller
+		// sees which one by the row handed back, the same channel a changed
+		// setting takes, and tells the two apart by the kind.
+		if (definition.kind == ItemKind::Action) {
+			return &definition;
+		}
+
 		const MenuItem item = ItemFor(definition, config);
 		const float wanted = AdjustValue(item, action);
 

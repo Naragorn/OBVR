@@ -327,4 +327,155 @@ inline int CursorStep(float current, float wanted, float gain, float maxStep) {
 	return static_cast<int>(step);
 }
 
+// ------------------------------------------------------------- Poke press
+//
+// The pointing hand's tip against the quad the other wrist carries: a press
+// by touching, the way a finger presses a button, in the same space and
+// with the same quad description LaserOnQuad takes. The tip is the
+// controller's origin carried forward along its pointing axis by however
+// far the index finger reaches past it.
+
+struct PokeSample {
+	bool inside = false;   // the tip's foot on the plane is within the quad
+	float depth = 0.0f;    // metres in front of the quad (negative: pushed through)
+	float pixelX = 0.0f;
+	float pixelY = 0.0f;
+};
+
+inline PokeSample PokeOnQuad(const NiPoint3& tip, const NiPoint3& quadCentre,
+                             const NiPoint3& quadRight, const NiPoint3& quadUp,
+                             float quadWidthMetres, float quadHeightMetres, float pixelWidth,
+                             float pixelHeight) {
+	PokeSample sample;
+	if (quadWidthMetres <= 0.0f || quadHeightMetres <= 0.0f) {
+		return sample;
+	}
+	const NiPoint3 normal = Cross(quadRight, quadUp);
+	const NiPoint3 local = tip - quadCentre;
+	sample.depth = Dot(local, normal);
+	const float u = Dot(local, quadRight) / quadWidthMetres + 0.5f;
+	const float v = 0.5f - Dot(local, quadUp) / quadHeightMetres;
+	if (u < 0.0f || u > 1.0f || v < 0.0f || v > 1.0f) {
+		return sample;
+	}
+	sample.inside = true;
+	sample.pixelX = u * pixelWidth;
+	sample.pixelY = v * pixelHeight;
+	return sample;
+}
+
+// How close counts. Hovering within `hover` metres of the quad puts the
+// cursor under the tip; touching within `press` fires the click once;
+// the tip has to come back out past `release` before it can press again,
+// so a finger resting on the surface does not chatter. A tip pushed
+// through the quad by more than `through` is a hand behind the panel, not
+// a press.
+struct PokeThresholds {
+	float hover = 0.10f;
+	float press = 0.015f;
+	float release = 0.04f;
+	float through = 0.06f;
+};
+
+struct PokeState {
+	bool pressed = false;
+};
+
+struct PokeVerdict {
+	bool hover = false;  // the cursor follows the tip
+	bool press = false;  // the click's rising edge
+	bool held = false;   // the click still held down
+};
+
+inline PokeVerdict StepPoke(PokeState& state, const PokeSample& sample,
+                            const PokeThresholds& t) {
+	PokeVerdict v;
+	if (!sample.inside || sample.depth < -t.through) {
+		state.pressed = false;
+		return v;
+	}
+	if (sample.depth <= t.press) {
+		v.hover = true;
+		v.press = !state.pressed;
+		v.held = true;
+		state.pressed = true;
+		return v;
+	}
+	if (state.pressed && sample.depth <= t.release) {
+		v.hover = true;
+		v.held = true;  // still down, in the hysteresis band
+		return v;
+	}
+	state.pressed = false;
+	v.hover = sample.depth <= t.hover;
+	return v;
+}
+
+// ------------------------------------------------------------ Stick chord
+//
+// Both sticks clicked together is one gesture (OBVR's own menu), so a single
+// stick's click can no longer fire on the way down - the other stick's
+// click may be about to join it. A single click fires on the release
+// instead, and only when the other stick stayed up for the whole press.
+
+struct StickChordState {
+	bool rightDown = false;
+	bool leftDown = false;
+	bool chorded = false;  // both were down at some point in this press
+};
+
+struct StickChordVerdict {
+	bool rightClick = false;  // the right stick, released alone
+	bool leftClick = false;   // the left stick, released alone
+	bool both = false;        // the frame both came to be down
+};
+
+inline StickChordVerdict StepStickChord(StickChordState& s, bool rightDown, bool leftDown) {
+	StickChordVerdict v;
+	const bool bothDown = rightDown && leftDown;
+	if (bothDown && !s.chorded) {
+		v.both = true;
+		s.chorded = true;
+	}
+	if (s.rightDown && !rightDown && !s.chorded) {
+		v.rightClick = true;
+	}
+	if (s.leftDown && !leftDown && !s.chorded) {
+		v.leftClick = true;
+	}
+	if (!rightDown && !leftDown) {
+		s.chorded = false;
+	}
+	s.rightDown = rightDown;
+	s.leftDown = leftDown;
+	return v;
+}
+
+// ----------------------------------------------------------- Stick as keys
+//
+// A stick pushed past the dead zone fires a direction once and again only
+// after it has come back - the arrow keys of OBVR's own menu.
+
+struct StickNavState {
+	StickDirections was;
+};
+
+struct StickNavVerdict {
+	bool up = false;
+	bool down = false;
+	bool left = false;
+	bool right = false;
+};
+
+inline StickNavVerdict StepStickNav(StickNavState& s, float x, float y, float deadZone) {
+	const StickDirections now = StickToDirections(x, y, deadZone);
+	StickNavVerdict v;
+	v.up = now.forward && !s.was.forward;
+	v.down = now.back && !s.was.back;
+	v.left = now.left && !s.was.left;
+	v.right = now.right && !s.was.right;
+	s.was = now;
+	return v;
+}
+
 }  // namespace obvr::vr

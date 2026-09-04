@@ -158,6 +158,47 @@ void TestChangingValues() {
 	Check(settings[movable].Read(config) < pinned, "and it comes back down");
 }
 
+void TestActionRow() {
+	std::printf("A button row\n");
+
+	SettingsMenu menu;
+	Config config;
+	menu.Toggle();
+
+	const auto* const settings = SettingDefinitions();
+	UInt32 button = SettingDefinitionCount();
+	for (UInt32 at = 0; at < SettingDefinitionCount(); ++at) {
+		if (settings[at].kind == obvr::ui::ItemKind::Action) {
+			button = at;
+			break;
+		}
+	}
+	Check(button == 0, "the recenter button is the first row");
+	if (button >= SettingDefinitionCount()) {
+		return;
+	}
+	Check(settings[button].action == obvr::ui::SettingAction::Recenter,
+	      "and says which button it is");
+
+	for (UInt32 at = 0; at < button; ++at) {
+		menu.Apply(MenuAction::Down, config);
+	}
+	const UInt32 revision = menu.Revision();
+	const Config before = config;
+	const auto* fired = menu.Apply(MenuAction::Increase, config);
+	Check(fired == &settings[button], "right on it hands the row back");
+	Check(menu.Apply(MenuAction::Decrease, config) == &settings[button], "so does left");
+	Check(menu.Revision() == revision, "nothing to repaint");
+
+	UInt32 disturbed = 0;
+	for (UInt32 at = 0; at < SettingDefinitionCount(); ++at) {
+		if (settings[at].Read(config) != settings[at].Read(before)) {
+			++disturbed;
+		}
+	}
+	Check(disturbed == 0, "and no setting changed");
+}
+
 void TestRows() {
 	std::printf("Building the rows\n");
 
@@ -344,6 +385,8 @@ int main() {
 	TestMoving();
 	std::printf("\n");
 	TestChangingValues();
+	std::printf("\n");
+	TestActionRow();
 	std::printf("\n");
 	TestRows();
 	std::printf("\n");

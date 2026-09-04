@@ -529,6 +529,12 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.wristMenuWidth = ReadFloat("Hands", "WristMenuWidth", h.wristMenuWidth, path);
 		h.wristHud = ReadBool("Hands", "WristHud", h.wristHud, path);
 		h.wristMenu = ReadBool("Hands", "WristMenu", h.wristMenu, path);
+		h.menuOnRight = ReadBool("Hands", "MenuOnRight", h.menuOnRight, path);
+		h.pokeTipForward = ReadFloat("Hands", "PokeTipForward", h.pokeTipForward, path);
+		h.poke.hover = ReadFloat("Hands", "PokeHover", h.poke.hover, path);
+		h.poke.press = ReadFloat("Hands", "PokePress", h.poke.press, path);
+		h.poke.release = ReadFloat("Hands", "PokeRelease", h.poke.release, path);
+		h.poke.through = ReadFloat("Hands", "PokeThrough", h.poke.through, path);
 		h.laserGain = ReadFloat("Hands", "LaserGain", h.laserGain, path);
 		h.laserMaxStep = ReadFloat("Hands", "LaserMaxStep", h.laserMaxStep, path);
 		h.stickDeadZone = ReadFloat("Hands", "StickDeadZone", h.stickDeadZone, path);

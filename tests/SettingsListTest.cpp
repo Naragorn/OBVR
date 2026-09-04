@@ -130,6 +130,15 @@ void TestIniKeys() {
 	// keys are being ignored rather than like a missing string.
 	UInt32 missing = 0;
 	for (UInt32 at = 0; at < count; ++at) {
+		// A button has nothing to save and therefore nowhere to save it; it
+		// must say so by having no INI location at all.
+		if (settings[at].kind == ItemKind::Action) {
+			if (settings[at].iniKey[0] != '\0' || settings[at].iniSection[0] != '\0') {
+				std::printf("        \"%s\" is a button with an INI home\n", settings[at].label);
+				++missing;
+			}
+			continue;
+		}
 		if (settings[at].iniSection == nullptr || settings[at].iniSection[0] == '\0' ||
 		    settings[at].iniKey == nullptr || settings[at].iniKey[0] == '\0') {
 			std::printf("        \"%s\" has nowhere to be saved\n", settings[at].label);
@@ -143,7 +152,13 @@ void TestIniKeys() {
 	// out, and this time the damage is to the file rather than to memory.
 	UInt32 collisions = 0;
 	for (UInt32 a = 0; a < count; ++a) {
+		if (settings[a].kind == ItemKind::Action) {
+			continue;
+		}
 		for (UInt32 b = a + 1; b < count; ++b) {
+			if (settings[b].kind == ItemKind::Action) {
+				continue;
+			}
 			if (TextIs(settings[a].iniSection, settings[b].iniSection) &&
 			    TextIs(settings[a].iniKey, settings[b].iniKey)) {
 				std::printf("        \"%s\" and \"%s\" both write %s.%s\n", settings[a].label,

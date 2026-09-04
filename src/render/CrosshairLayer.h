@@ -57,6 +57,12 @@ public:
 	void Submit(vr::OpenVRBackend& backend, void* gameDevice, bool visible,
 	            float distanceMetres, float widthMetres);
 
+	// Hangs the quad ahead of a tracked controller instead of ahead of the
+	// head - the hand-tracked mode, where the aim is the hand's and the
+	// crosshair, with the tooltip it carries, belongs where the hand points.
+	// Set before Submit; off puts it back on the head.
+	void SetHandPlacement(bool onHand, UInt32 deviceIndex);
+
 	// Takes Oblivion's own crosshair out of the captured 2D layer and into
 	// this one - copies the middle of the layer here, then clears it there.
 	//
@@ -157,6 +163,10 @@ private:
 	float m_placedDistance = 0.0f;
 	float m_placedWidth = 0.0f;
 	bool m_placed = false;
+	bool m_onHand = false;
+	UInt32 m_handDevice = 0;
+	bool m_placedOnHand = false;
+	UInt32 m_placedHandDevice = 0;
 
 	VulkanContext m_vulkan;
 	bool m_vulkanChecked = false;

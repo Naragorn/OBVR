@@ -9,6 +9,19 @@ namespace {
 // makes the "no row disturbs another" test able to find a mistake at all: there
 // is nothing else to compare against.
 const SettingDefinition kSettings[] = {
+	// ---- Actions -----------------------------------------------------------
+	//
+	// A button, not a setting: it has no value and no INI home, and firing it
+	// is the caller's business (SettingsMenu::Apply hands the row back). The
+	// reader and writer exist so the sweeps over the table stay meaningful.
+	{
+		"Actions", "Recenter view", "Take where the head is now as forward and level",
+		ItemKind::Action, 0.0f, 0.0f, 0.0f, 0, false,
+		"", "",
+		+[](const Config&) { return 0.0f; },
+		+[](Config&, float) {},
+		"", "", SettingAction::Recenter,
+	},
 	// ---- Comfort -----------------------------------------------------------
 	{
 		"Comfort", "Head movement", "How far leaning in the room moves the camera",
@@ -513,11 +526,32 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.wristHud = v != 0.0f; },
 	},
 	{
-		"Hands", "Menus on the wrist", "The Tab menus hang on the left wrist",
+		"Hands", "Menus on the wrist", "The Tab menus hang on a wrist",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "WristMenu",
 		+[](const Config& c) { return c.hands.wristMenu ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.wristMenu = v != 0.0f; },
+	},
+	{
+		"Hands", "Menus on the right hand", "On: right wrist, the left hand presses. Off: the other way",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "MenuOnRight",
+		+[](const Config& c) { return c.hands.menuOnRight ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.menuOnRight = v != 0.0f; },
+	},
+	{
+		"Hands", "HUD size on the wrist", "Width of the wrist HUD in metres",
+		ItemKind::Number, 0.10f, 1.00f, 0.05f, 2, false,
+		"Hands", "WristHudWidth",
+		+[](const Config& c) { return c.hands.wristHudWidth; },
+		+[](Config& c, float v) { c.hands.wristHudWidth = v; },
+	},
+	{
+		"Hands", "Menu size on the wrist", "Width of the wrist menu in metres",
+		ItemKind::Number, 0.20f, 1.50f, 0.05f, 2, false,
+		"Hands", "WristMenuWidth",
+		+[](const Config& c) { return c.hands.wristMenuWidth; },
+		+[](Config& c, float v) { c.hands.wristMenuWidth = v; },
 	},
 	{
 		"Hands", "Swing speed", "Metres per second that count as a swing",

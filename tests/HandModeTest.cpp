@@ -175,6 +175,152 @@ void TestLaser() {
 	Check(CursorStep(10.0f, 10.0f, 0.5f, 60.0f) == 0, "no distance, no step");
 }
 
+void TestPoke() {
+	std::printf("Poke\n");
+	// The same quad the laser test uses: one metre ahead, facing the origin,
+	// half a metre wide, a quarter high, 1000x500 pixels. Its front is +z,
+	// towards the origin.
+	const NiPoint3 centre{0.0f, 0.0f, -1.0f};
+	const NiPoint3 right{1.0f, 0.0f, 0.0f};
+	const NiPoint3 up{0.0f, 1.0f, 0.0f};
+	const auto sample = [&](float x, float y, float z) {
+		return PokeOnQuad(NiPoint3{x, y, z}, centre, right, up, 0.5f, 0.25f, 1000.0f, 500.0f);
+	};
+
+	PokeSample s = sample(0.0f, 0.0f, -0.95f);
+	Check(s.inside && Near(s.depth, 0.05f) && Near(s.pixelX, 500.0f) && Near(s.pixelY, 250.0f),
+	      "a tip five centimetres before the middle is inside, at the middle pixel");
+	s = sample(0.2f, 0.1f, -1.02f);
+	Check(s.inside && Near(s.depth, -0.02f) && Near(s.pixelX, 900.0f) && Near(s.pixelY, 50.0f),
+	      "pushed through by two centimetres is a negative depth at the right pixel");
+	s = sample(0.4f, 0.0f, -0.99f);
+	Check(!s.inside, "past the edge is outside");
+	s = PokeOnQuad(NiPoint3{0, 0, -0.99f}, centre, right, up, 0.0f, 0.25f, 1000.0f, 500.0f);
+	Check(!s.inside, "a quad with no width takes no poke");
+
+	// The state machine.
+	PokeThresholds t;  // hover 0.10, press 0.015, release 0.04, through 0.06
+	PokeState state;
+	PokeVerdict v = StepPoke(state, sample(0.0f, 0.0f, -0.5f), t);
+	Check(!v.hover && !v.press && !v.held, "half a metre out: nothing");
+	v = StepPoke(state, sample(0.0f, 0.0f, -0.92f), t);
+	Check(v.hover && !v.press && !v.held, "within hover: the cursor follows, no click");
+	v = StepPoke(state, sample(0.0f, 0.0f, -0.99f), t);
+	Check(v.hover && v.press && v.held, "touching: one press");
+	v = StepPoke(state, sample(0.0f, 0.0f, -0.995f), t);
+	Check(v.hover && !v.press && v.held, "held on the surface: no second press");
+	v = StepPoke(state, sample(0.0f, 0.0f, -0.97f), t);
+	Check(v.hover && !v.press && v.held, "three centimetres out is still held (hysteresis)");
+	v = StepPoke(state, sample(0.0f, 0.0f, -0.95f), t);
+	Check(v.hover && !v.press && !v.held, "past release: let go, still hovering");
+	v = StepPoke(state, sample(0.0f, 0.0f, -0.99f), t);
+	Check(v.press, "and touching again presses again");
+	v = StepPoke(state, sample(0.0f, 0.0f, -1.1f), t);
+	Check(!v.hover && !v.press && !v.held, "ten centimetres behind the quad is a hand behind it");
+	v = StepPoke(state, sample(0.0f, 0.0f, -0.99f), t);
+	Check(v.press, "coming back from behind presses afresh");
+	v = StepPoke(state, sample(0.4f, 0.0f, -0.99f), t);
+	Check(!v.hover && !v.held, "sliding off the edge releases");
+	state = PokeState{};
+	v = StepPoke(state, sample(0.0f, 0.0f, -1.03f), t);
+	Check(v.press && v.held, "arriving already three centimetres through still presses");
+}
+
+void TestStickChord() {
+	std::printf("Stick chord\n");
+	StickChordState s;
+	StickChordVerdict v = StepStickChord(s, true, false);
+	Check(!v.rightClick && !v.leftClick && !v.both, "the right stick down alone fires nothing yet");
+	v = StepStickChord(s, false, false);
+	Check(v.rightClick && !v.leftClick && !v.both, "released alone: the right click");
+	v = StepStickChord(s, false, true);
+	v = StepStickChord(s, false, false);
+	Check(v.leftClick && !v.rightClick, "the left stick likewise");
+
+	v = StepStickChord(s, true, false);
+	v = StepStickChord(s, true, true);
+	Check(v.both && !v.rightClick && !v.leftClick, "the left joining the right is the chord");
+	v = StepStickChord(s, true, true);
+	Check(!v.both, "held together it fires once");
+	v = StepStickChord(s, true, false);
+	Check(!v.leftClick && !v.both, "the left releasing after a chord is no click");
+	v = StepStickChord(s, false, false);
+	Check(!v.rightClick && !v.both, "nor is the right");
+	v = StepStickChord(s, true, true);
+	Check(v.both, "and both down again from nothing is a chord again");
+	v = StepStickChord(s, false, false);
+	v = StepStickChord(s, false, false);
+	Check(!v.rightClick && !v.leftClick && !v.both, "nothing down, nothing fires");
+}
+
+void TestStickNav() {
+	std::printf("Stick navigation\n");
+	StickNavState s;
+	StickNavVerdict v = StepStickNav(s, 0.0f, 0.9f, 0.4f);
+	Check(v.up && !v.down && !v.left && !v.right, "pushed up: up once");
+	v = StepStickNav(s, 0.0f, 0.9f, 0.4f);
+	Check(!v.up, "held up: nothing more");
+	v = StepStickNav(s, 0.0f, 0.1f, 0.4f);
+	Check(!v.up && !v.down, "in the dead zone: nothing");
+	v = StepStickNav(s, 0.0f, 0.9f, 0.4f);
+	Check(v.up, "up again after coming back");
+	v = StepStickNav(s, -0.9f, -0.9f, 0.4f);
+	Check(v.down && v.left && !v.up && !v.right, "down-left: both directions at once");
+	v = StepStickNav(s, 0.9f, 0.0f, 0.4f);
+	Check(v.right && !v.left && !v.down, "swinging to the right: right, the others let go");
+}
+
+void TestMenuHandAndSettingsMenu() {
+	std::printf("Menu hand and OBVR's menu\n");
+	HandSettings settings;
+	settings.enabled = true;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.menuMode = true;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	HandMode mode;
+
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.menuOnWrist && r.menuWristRight, "by default the menu hangs on the right wrist");
+	settings.menuOnRight = false;
+	r = mode.Update(frame, settings);
+	Check(r.menuOnWrist && !r.menuWristRight, "MenuOnRight=0 hangs it on the left");
+	frame.left.valid = false;
+	r = mode.Update(frame, settings);
+	Check(!r.menuOnWrist, "and with that hand lost the menu leaves the wrist");
+
+	// Both sticks: the chord toggles OBVR's menu; while it is open a stick
+	// scrolls and nothing reaches the game.
+	frame.left.valid = true;
+	frame.menuMode = false;
+	frame.right.buttonsPressed = 1ull << openvr::kButtonAxis0;
+	r = mode.Update(frame, settings);
+	Check(!r.settingsMenuToggle && !r.controls.readyWeapon,
+	      "one stick down: no toggle, and its own click waits");
+	frame.left.buttonsPressed = 1ull << openvr::kButtonAxis0;
+	r = mode.Update(frame, settings);
+	Check(r.settingsMenuToggle, "both down: the toggle");
+	frame.right.buttonsPressed = 0;
+	frame.left.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(!r.settingsMenuToggle && !r.controls.readyWeapon && !r.controls.quickMenu,
+	      "released after a chord: nothing else fires");
+
+	frame.settingsMenuOpen = true;
+	frame.left.thumbY = 0.9f;
+	frame.right.trigger = 1.0f;
+	r = mode.Update(frame, settings);
+	Check(r.settingsNav.up && !r.controls.move.forward && !r.controls.attack,
+	      "menu open: the stick is an arrow key, the trigger and the walk stay off");
+	Check(r.controlsActive, "and the controls are actively released rather than left");
+	frame.settingsMenuOpen = false;
+	frame.left.thumbY = 0.0f;
+	frame.right.trigger = 0.0f;
+	r = mode.Update(frame, settings);
+	Check(!r.settingsNav.up && !r.settingsNav.down, "menu closed: no arrows");
+}
+
 void TestWristTransform() {
 	std::printf("Wrist transform\n");
 	const openvr::HmdMatrix34 m = WristOverlayTransform(0.06f, 0.12f, 0.0f);
@@ -196,6 +342,10 @@ int main() {
 	TestEdges();
 	TestPlanner();
 	TestLaser();
+	TestPoke();
+	TestStickChord();
+	TestStickNav();
+	TestMenuHandAndSettingsMenu();
 	TestWristTransform();
 
 	if (g_failures != 0) {

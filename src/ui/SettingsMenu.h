@@ -44,7 +44,9 @@ public:
 	//
 	// Answers the setting whose value changed, and null when nothing did -
 	// which includes every movement, and a value already at the end of its
-	// range. The caller writes that setting back to the INI.
+	// range. The caller writes that setting back to the INI. A row of kind
+	// Action is answered too, unchanged: it is a button, and the caller is
+	// the one who knows what pressing it does.
 	//
 	// Reported rather than written here on purpose. Writing needs the Windows
 	// INI functions, and pulling those in would take this whole class out of

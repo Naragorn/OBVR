@@ -30,10 +30,17 @@ struct HandSettings {
 	float wristUp = 0.06f;
 	float wristBack = 0.12f;
 	float wristTiltDegrees = 35.0f;
-	float wristHudWidth = 0.16f;   // the HUD on the right wrist
-	float wristMenuWidth = 0.45f;  // the Tab menu on the left wrist
+	float wristHudWidth = 0.35f;   // the HUD on the right wrist
+	float wristMenuWidth = 0.70f;  // the Tab menu on the menu wrist
 	bool wristHud = true;
 	bool wristMenu = true;
+	bool menuOnRight = true;  // the menu wrist; the other hand points and presses
+
+	// The poke: how far the index finger's tip reaches past the controller's
+	// origin, in metres along its pointing axis, and the distances that
+	// count as hovering, pressing and releasing (see PokeThresholds).
+	float pokeTipForward = 0.08f;
+	PokeThresholds poke;
 
 	// The laser cursor: how much of the remaining distance the game's cursor
 	// is walked per frame, and the largest step.
@@ -52,6 +59,7 @@ struct HandSettings {
 struct HandModeFrame {
 	float dtSeconds = 0.0f;
 	bool menuMode = false;
+	bool settingsMenuOpen = false;  // OBVR's own menu: the sticks steer it, nothing else fires
 	bool firstPerson = true;
 	bool headValid = false;
 	Quaternion head = Quaternion::Identity();
@@ -87,16 +95,26 @@ struct HandModeResult {
 	bool controlsActive = false;
 	HandControlsWanted controls;
 
-	// The wrists: device-to-overlay transforms for the HUD and the menu.
+	// The wrists: device-to-overlay transforms for the HUD and the menu, and
+	// which hand carries the menu.
 	bool hudOnRightWrist = false;
-	bool menuOnLeftWrist = false;
+	bool menuOnWrist = false;
+	bool menuWristRight = true;
 	openvr::HmdMatrix34 hudTransform{};
 	openvr::HmdMatrix34 menuTransform{};
 
-	// The laser: the mouse step that walks the cursor towards the hit.
+	// The cursor: the mouse step that walks it towards the laser's hit, or
+	// puts it under the pointing finger's tip; and the poke's click.
 	bool laserHit = false;
+	bool pokeHover = false;
+	bool pokePress = false;  // rising edge: one click
 	int cursorDx = 0;
 	int cursorDy = 0;
+
+	// OBVR's own menu: both sticks clicked together toggle it, and while it
+	// is open the sticks are its arrow keys.
+	bool settingsMenuToggle = false;
+	StickNavVerdict settingsNav;
 
 	// The grab: whether the right grip holds it, and how far the right hand
 	// is from the eyes in metres - the distance the held object is kept at.
@@ -132,8 +150,10 @@ private:
 	TriggerEdge m_leftTrigger;
 	ButtonEdge m_rightMenu;
 	ButtonEdge m_leftMenu;
-	ButtonEdge m_rightStick;
-	ButtonEdge m_leftStick;
+	StickChordState m_sticks;
+	StickNavState m_navRight;
+	StickNavState m_navLeft;
+	PokeState m_poke;
 	SwingDetector m_swing;
 	HeldControl m_heavyHold;
 	bool m_haveLastRight = false;

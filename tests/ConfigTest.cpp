@@ -346,6 +346,28 @@ void TestHandTracking() {
 	obvr::Config configured;
 	LoadFrom("ConfigTestHands.ini", "[Hands]\nEnabled=1\n", configured);
 	Check(configured.handTracking, "Hands.Enabled=1 switches it on");
+
+	Check(untouched.hands.wristHudWidth == 0.35f && untouched.hands.wristMenuWidth == 0.70f,
+	      "the wrist HUD is 35 cm wide and the wrist menu 70 cm by default");
+	Check(untouched.hands.menuOnRight, "and the menu hangs on the right wrist");
+	Check(untouched.hands.pokeTipForward == 0.08f && untouched.hands.poke.hover == 0.10f &&
+	          untouched.hands.poke.press == 0.015f && untouched.hands.poke.release == 0.04f &&
+	          untouched.hands.poke.through == 0.06f,
+	      "the poke's reach and distances have their defaults");
+
+	obvr::Config wrists;
+	LoadFrom("ConfigTestWrists.ini",
+	         "[Hands]\nWristHudWidth=0.5\nWristMenuWidth=1.0\nMenuOnRight=0\n"
+	         "PokeTipForward=0.1\nPokeHover=0.2\nPokePress=0.02\nPokeRelease=0.05\n"
+	         "PokeThrough=0.09\n",
+	         wrists);
+	Check(wrists.hands.wristHudWidth == 0.5f && wrists.hands.wristMenuWidth == 1.0f,
+	      "the wrist widths are read");
+	Check(!wrists.hands.menuOnRight, "MenuOnRight=0 is read");
+	Check(wrists.hands.pokeTipForward == 0.1f && wrists.hands.poke.hover == 0.2f &&
+	          wrists.hands.poke.press == 0.02f && wrists.hands.poke.release == 0.05f &&
+	          wrists.hands.poke.through == 0.09f,
+	      "and so are the poke's five numbers");
 }
 
 void TestLookRanges() {

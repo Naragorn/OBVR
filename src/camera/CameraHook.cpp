@@ -319,6 +319,7 @@ bool g_leftHandTracked = false;
 bool g_handBlocking = false;
 bool g_handReachBack = false;
 UInt32 g_handSwingLinesLeft = 20;
+UInt32 g_handPokeLinesLeft = 20;
 
 bool ReadIsThirdPerson();
 
@@ -354,6 +355,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	vr::HandModeFrame frame;
 	frame.dtSeconds = dt;
 	frame.menuMode = menuIsUp;
+	frame.settingsMenuOpen = g_settingsMenu.IsOpen() || g_onboarding.IsOpen();
 	frame.firstPerson = !ReadIsThirdPerson();
 	frame.headValid = backend.GetRenderPose(frame.head, frame.headPosition) ||
 	                  backend.ReadHeadPose(frame.head, frame.headPosition);
@@ -399,17 +401,23 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	if (g_hand.controlsActive) {
 		game::ApplyHandControls(g_hand.controls, config.handKeys, config.hands.turnSpeed);
 		g_handControlsHeld = true;
-		if (g_hand.laserHit && (g_hand.cursorDx != 0 || g_hand.cursorDy != 0)) {
+		if ((g_hand.laserHit || g_hand.pokeHover) &&
+		    (g_hand.cursorDx != 0 || g_hand.cursorDy != 0)) {
 			game::MoveMouseBy(g_hand.cursorDx, g_hand.cursorDy);
+		}
+		if (g_hand.pokePress && g_handPokeLinesLeft > 0) {
+			--g_handPokeLinesLeft;
+			OBVR_LOG("Hands: the finger pressed the menu at cursor %.0f, %.0f", frame.cursorX,
+			         frame.cursorY);
 		}
 	} else if (g_handControlsHeld) {
 		game::ReleaseHandControls(config.handKeys);
 		g_handControlsHeld = false;
 	}
 
-	if (g_hand.menuOnLeftWrist) {
-		g_hudLayer.SetWristPlacement(backend.HandDeviceIndex(false), g_hand.menuTransform,
-		                             config.hands.wristMenuWidth);
+	if (g_hand.menuOnWrist) {
+		g_hudLayer.SetWristPlacement(backend.HandDeviceIndex(g_hand.menuWristRight),
+		                             g_hand.menuTransform, config.hands.wristMenuWidth);
 	} else if (g_hand.hudOnRightWrist) {
 		g_hudLayer.SetWristPlacement(backend.HandDeviceIndex(true), g_hand.hudTransform,
 		                             config.hands.wristHudWidth);
@@ -1900,6 +1908,15 @@ void SaveChangedSetting(const ui::SettingDefinition* definition, const Config& c
 		return;
 	}
 
+	// A button: fired here, saved nowhere. The only one so far is the
+	// recenter at the top of the menu.
+	if (definition->kind == ui::ItemKind::Action) {
+		if (definition->action == ui::SettingAction::Recenter) {
+			DoRecenter("settings menu");
+		}
+		return;
+	}
+
 	char text[32];
 	FormatValueForIni(ui::ItemFor(*definition, config), definition->falseWord,
 	                  definition->trueWord, text, sizeof(text));
@@ -1920,10 +1937,20 @@ void SaveChangedSetting(const ui::SettingDefinition* definition, const Config& c
 	}
 }
 
+// The sticks' arrow presses the hand-tracked mode decided this frame, taken
+// once: whichever menu polls first gets them, and a second poll in the same
+// frame finds nothing, so one push of a stick moves one highlight.
+vr::StickNavVerdict TakeHandMenuNavigation() {
+	const vr::StickNavVerdict taken = g_hand.settingsNav;
+	g_hand.settingsNav = vr::StickNavVerdict{};
+	return taken;
+}
+
 // The walkthrough: opened once per start while [Onboarding] ShowAtStart is
 // on and a headset is connected, steered with the same arrow keys as the
-// settings menu, and drawn on its own layer. While it is open the settings
-// menu leaves the arrows alone. Answers whether it consumed the keys.
+// settings menu - or the sticks in the hand-tracked mode - and drawn on its
+// own layer. While it is open the settings menu leaves the arrows alone.
+// Answers whether it consumed the keys.
 bool PollOnboarding(const Config& config) {
 	if (!g_onboardingOffered && config.onboardingShowAtStart &&
 	    g_headTracker.IsHeadsetConnected()) {
@@ -1942,16 +1969,17 @@ bool PollOnboarding(const Config& config) {
 	if (open) {
 		g_onboarding.SetVisibleRows(g_onboardingLayer.VisibleRows());
 		Config& writable = GetConfig();
-		if (g_menuUpEdge.Update(down(0x26))) {
+		const vr::StickNavVerdict sticks = TakeHandMenuNavigation();
+		if (g_menuUpEdge.Update(down(0x26)) || sticks.up) {
 			g_onboarding.Apply(ui::MenuAction::Up, writable);
 		}
-		if (g_menuDownEdge.Update(down(0x28))) {
+		if (g_menuDownEdge.Update(down(0x28)) || sticks.down) {
 			g_onboarding.Apply(ui::MenuAction::Down, writable);
 		}
-		if (g_menuLeftEdge.Update(down(0x25))) {
+		if (g_menuLeftEdge.Update(down(0x25)) || sticks.left) {
 			SaveChangedSetting(g_onboarding.Apply(ui::MenuAction::Decrease, writable), writable);
 		}
-		if (g_menuRightEdge.Update(down(0x27))) {
+		if (g_menuRightEdge.Update(down(0x27)) || sticks.right) {
 			SaveChangedSetting(g_onboarding.Apply(ui::MenuAction::Increase, writable), writable);
 		}
 		if (!g_onboarding.IsOpen()) {
@@ -1986,9 +2014,18 @@ void PollSettingsMenu() {
 		return;
 	}
 
+	// The key, or both sticks clicked together in the hand-tracked mode.
+	bool toggled = false;
 	if (config.settingsMenuKey == 0) {
 		g_menuToggleEdge.Reset();
 	} else if (g_menuToggleEdge.Update(down(config.settingsMenuKey))) {
+		toggled = true;
+	}
+	if (g_hand.settingsMenuToggle) {
+		g_hand.settingsMenuToggle = false;  // consumed: one press, one toggle
+		toggled = true;
+	}
+	if (toggled) {
 		g_settingsMenu.Toggle();
 		OBVR_LOG("Menu: the settings menu is now %s",
 		         g_settingsMenu.IsOpen() ? "open" : "closed");
@@ -2004,17 +2041,18 @@ void PollSettingsMenu() {
 		g_settingsMenu.SetVisibleRows(g_settingsMenuLayer.VisibleRows());
 
 		Config& writable = GetConfig();
-		if (g_menuUpEdge.Update(down(0x26))) {  // VK_UP
+		const vr::StickNavVerdict sticks = TakeHandMenuNavigation();
+		if (g_menuUpEdge.Update(down(0x26)) || sticks.up) {  // VK_UP
 			g_settingsMenu.Apply(ui::MenuAction::Up, writable);
 		}
-		if (g_menuDownEdge.Update(down(0x28))) {  // VK_DOWN
+		if (g_menuDownEdge.Update(down(0x28)) || sticks.down) {  // VK_DOWN
 			g_settingsMenu.Apply(ui::MenuAction::Down, writable);
 		}
-		if (g_menuLeftEdge.Update(down(0x25))) {  // VK_LEFT
+		if (g_menuLeftEdge.Update(down(0x25)) || sticks.left) {  // VK_LEFT
 			SaveChangedSetting(g_settingsMenu.Apply(ui::MenuAction::Decrease, writable),
 			                   writable);
 		}
-		if (g_menuRightEdge.Update(down(0x27))) {  // VK_RIGHT
+		if (g_menuRightEdge.Update(down(0x27)) || sticks.right) {  // VK_RIGHT
 			SaveChangedSetting(g_settingsMenu.Apply(ui::MenuAction::Increase, writable),
 			                   writable);
 		}
@@ -2174,6 +2212,10 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	                                 : config.tracker.crosshairDistanceMetres;
 	const CrosshairPlacement crosshair =
 		PlaceCrosshair(crosshairDepth, config.tracker.crosshairSizeAtOneMetre);
+	// In the hand-tracked mode the aim is the right hand's, so the crosshair
+	// and the tooltip it carries hang ahead of that controller.
+	g_crosshairLayer.SetHandPlacement(config.handTracking && g_hand.aimValid,
+	                                  g_headTracker.GetBackendForFrame().HandDeviceIndex(true));
 	g_crosshairLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                        crosshairLifted && content != CrosshairContent::Hidden,
 	                        crosshair.distanceMetres, crosshair.widthMetres);

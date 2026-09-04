@@ -38,8 +38,10 @@ void HandMode::Reset() {
 	m_leftTrigger = TriggerEdge{};
 	m_rightMenu = ButtonEdge{};
 	m_leftMenu = ButtonEdge{};
-	m_rightStick = ButtonEdge{};
-	m_leftStick = ButtonEdge{};
+	m_sticks = StickChordState{};
+	m_navRight = StickNavState{};
+	m_navLeft = StickNavState{};
+	m_poke = PokeState{};
 	m_swing = SwingDetector{};
 	m_heavyHold = HeldControl{};
 	m_haveLastRight = false;
@@ -116,6 +118,32 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	}
 	const bool swingHeld = StepHeld(m_heavyHold, f.dtSeconds);
 
+	// The sticks' clicks: both together is OBVR's own menu, one alone fires on
+	// its release.
+	const StickChordVerdict sticks = StepStickChord(
+		m_sticks, f.right.valid && ButtonDown(f.right.buttonsPressed, openvr::kButtonAxis0),
+		f.left.valid && ButtonDown(f.left.buttonsPressed, openvr::kButtonAxis0));
+	r.settingsMenuToggle = sticks.both;
+
+	// OBVR's own menu open: the sticks are its arrow keys, either hand's, and
+	// nothing reaches the game - a stick that scrolls the menu must not walk
+	// the player at the same time.
+	if (f.settingsMenuOpen) {
+		const StickNavVerdict right = StepStickNav(m_navRight, f.right.thumbX, f.right.thumbY,
+		                                           s.stickDeadZone);
+		const StickNavVerdict left =
+			StepStickNav(m_navLeft, f.left.thumbX, f.left.thumbY, s.stickDeadZone);
+		r.settingsNav.up = right.up || left.up;
+		r.settingsNav.down = right.down || left.down;
+		r.settingsNav.left = right.left || left.left;
+		r.settingsNav.right = right.right || left.right;
+		r.controlsActive = f.right.valid || f.left.valid;
+		m_poke = PokeState{};
+		return r;
+	}
+	m_navRight = StickNavState{};
+	m_navLeft = StickNavState{};
+
 	// The controls.
 	HandFrameInput in;
 	in.rightValid = f.right.valid;
@@ -130,10 +158,8 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		m_rightMenu, f.right.valid && ButtonDown(f.right.buttonsPressed, openvr::kButtonApplicationMenu));
 	in.leftMenuButton = StepRisingEdge(
 		m_leftMenu, f.left.valid && ButtonDown(f.left.buttonsPressed, openvr::kButtonApplicationMenu));
-	in.rightStickClick = StepRisingEdge(
-		m_rightStick, f.right.valid && ButtonDown(f.right.buttonsPressed, openvr::kButtonAxis0));
-	in.leftStickClick = StepRisingEdge(
-		m_leftStick, f.left.valid && ButtonDown(f.left.buttonsPressed, openvr::kButtonAxis0));
+	in.rightStickClick = sticks.rightClick;
+	in.leftStickClick = sticks.leftClick;
 	in.leftThumbX = f.left.thumbX;
 	in.leftThumbY = f.left.thumbY;
 	in.rightThumbX = f.right.thumbX;
@@ -166,33 +192,56 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		r.hudOnRightWrist = true;
 		r.hudTransform = WristOverlayTransform(s.wristUp, s.wristBack, s.wristTiltDegrees);
 	}
-	if (s.wristMenu && f.left.valid && f.menuMode) {
-		r.menuOnLeftWrist = true;
+	const HandPose& menuHand = s.menuOnRight ? f.right : f.left;
+	const HandPose& pointHand = s.menuOnRight ? f.left : f.right;
+	if (s.wristMenu && menuHand.valid && f.menuMode) {
+		r.menuOnWrist = true;
+		r.menuWristRight = s.menuOnRight;
 		r.menuTransform = WristOverlayTransform(s.wristUp, s.wristBack, s.wristTiltDegrees);
 	}
 
-	// The laser, in tracking space: the right hand's ray against the quad the
-	// left wrist carries, then a mouse step towards the pixel it hits.
-	if (r.menuOnLeftWrist && f.right.valid && f.cursorValid && f.layerPixelsWidth > 0.0f &&
+	// The cursor on the menu wrist's quad, in tracking space. The pointing
+	// hand's finger tip pressing the quad comes first - it is the click, and
+	// while it hovers the cursor sits under it; otherwise the hand's ray is
+	// a laser and the cursor walks towards where it hits.
+	if (r.menuOnWrist && pointHand.valid && f.cursorValid && f.layerPixelsWidth > 0.0f &&
 	    f.layerPixelsHeight > 0.0f) {
 		const openvr::HmdMatrix34& t = r.menuTransform;
 		const NiPoint3 localCentre{t.m[0][3], t.m[1][3], t.m[2][3]};
 		const NiPoint3 localRight{t.m[0][0], t.m[1][0], t.m[2][0]};
 		const NiPoint3 localUp{t.m[0][1], t.m[1][1], t.m[2][1]};
-		const NiPoint3 centre = f.left.position + TrackingRotate(f.left.orientation, localCentre);
-		const NiPoint3 right = TrackingRotate(f.left.orientation, localRight);
-		const NiPoint3 up = TrackingRotate(f.left.orientation, localUp);
-		const NiPoint3 rayDirection =
-			TrackingRotate(f.right.orientation, NiPoint3{0.0f, 0.0f, -1.0f});
+		const NiPoint3 centre =
+			menuHand.position + TrackingRotate(menuHand.orientation, localCentre);
+		const NiPoint3 right = TrackingRotate(menuHand.orientation, localRight);
+		const NiPoint3 up = TrackingRotate(menuHand.orientation, localUp);
+		const NiPoint3 pointing =
+			TrackingRotate(pointHand.orientation, NiPoint3{0.0f, 0.0f, -1.0f});
 		const float quadHeight = s.wristMenuWidth * (f.layerPixelsHeight / f.layerPixelsWidth);
-		const LaserHit hit = LaserOnQuad(f.right.position, rayDirection, centre, right, up,
-		                                 s.wristMenuWidth, quadHeight, f.layerPixelsWidth,
-		                                 f.layerPixelsHeight);
-		if (hit.hit) {
-			r.laserHit = true;
-			r.cursorDx = CursorStep(f.cursorX, hit.pixelX, s.laserGain, s.laserMaxStep);
-			r.cursorDy = CursorStep(f.cursorY, hit.pixelY, s.laserGain, s.laserMaxStep);
+
+		const NiPoint3 tip = pointHand.position + pointing * s.pokeTipForward;
+		const PokeSample sample = PokeOnQuad(tip, centre, right, up, s.wristMenuWidth,
+		                                     quadHeight, f.layerPixelsWidth, f.layerPixelsHeight);
+		const PokeVerdict poke = StepPoke(m_poke, sample, s.poke);
+		if (poke.hover) {
+			r.pokeHover = true;
+			r.pokePress = poke.press;
+			r.controls.menuClick = r.controls.menuClick || poke.held;
+			// Straight under the tip, no easing: a finger on a button must not
+			// find the cursor still on its way there.
+			r.cursorDx = CursorStep(f.cursorX, sample.pixelX, 1.0f, 4096.0f);
+			r.cursorDy = CursorStep(f.cursorY, sample.pixelY, 1.0f, 4096.0f);
+		} else {
+			const LaserHit hit =
+				LaserOnQuad(pointHand.position, pointing, centre, right, up, s.wristMenuWidth,
+				            quadHeight, f.layerPixelsWidth, f.layerPixelsHeight);
+			if (hit.hit) {
+				r.laserHit = true;
+				r.cursorDx = CursorStep(f.cursorX, hit.pixelX, s.laserGain, s.laserMaxStep);
+				r.cursorDy = CursorStep(f.cursorY, hit.pixelY, s.laserGain, s.laserMaxStep);
+			}
 		}
+	} else {
+		m_poke = PokeState{};
 	}
 
 	return r;
