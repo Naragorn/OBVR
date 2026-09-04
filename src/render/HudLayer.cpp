@@ -7,6 +7,7 @@
 #include "render/EyeGeometry.h"
 #include "render/GameFrame.h"
 #include "render/ResolutionHook.h"
+#include "vr/HandInput.h"
 #include "vr/OpenVRBackend.h"
 
 namespace obvr::render {
@@ -364,9 +365,37 @@ void HudLayer::PlaceInRoom(vr::OpenVRBackend& backend, float distanceMetres) {
 	}
 }
 
+bool HudLayer::QuadInTracking(const vr::OpenVRBackend& backend, vr::openvr::HmdMatrix34& pose,
+                              float& widthMetres) const {
+	if (m_wristSet || m_overlay == vr::openvr::kOverlayHandleInvalid || !m_overlayVisible ||
+	    m_lastWidth <= 0.0f) {
+		return false;
+	}
+	widthMetres = m_lastWidth;
+	if (m_lastAnchorWorld && m_anchorValid) {
+		pose = vr::OverlayPoseAhead(m_anchorPose, m_lastDistance);
+		return true;
+	}
+	vr::openvr::HmdMatrix34 head{};
+	if (!backend.GetRenderPoseMatrix(head)) {
+		return false;
+	}
+	vr::openvr::HmdMatrix34 hmdToOverlay{};
+	hmdToOverlay.m[0][0] = 1.0f;
+	hmdToOverlay.m[1][1] = 1.0f;
+	hmdToOverlay.m[2][2] = 1.0f;
+	hmdToOverlay.m[2][3] = -m_lastDistance;
+	pose = vr::ComposePose(head, hmdToOverlay);
+	return true;
+}
+
 void HudLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool captured,
                       float distanceMetres, float widthMetres, bool anchorWorld,
                       bool probeSquare) {
+	m_lastDistance = distanceMetres;
+	m_lastWidth = widthMetres;
+	m_lastAnchorWorld = anchorWorld;
+
 	// Consumed either way; the next frame's capture decides afresh.
 	const bool haveCapture = captured && m_captured;
 	m_captured = false;

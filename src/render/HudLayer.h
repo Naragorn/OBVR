@@ -105,6 +105,14 @@ public:
 	// texture agree. What the laser cursor maps a hit on the quad into.
 	void ShownPixels(float& width, float& height) const;
 
+	// Where the quad hangs in tracking space when it is not on a wrist -
+	// ahead of the head at its distance, or where the room anchor put it -
+	// as an overlay pose, with its width. For the laser that points at the
+	// game's menus from a hand. False on a wrist, before the overlay exists,
+	// or without a head pose to hang it from.
+	bool QuadInTracking(const vr::OpenVRBackend& backend, vr::openvr::HmdMatrix34& pose,
+	                    float& widthMetres) const;
+
 	void Destroy();
 
 private:
@@ -126,6 +134,11 @@ private:
 	UInt32 m_wristDevice = 0;
 	vr::openvr::HmdMatrix34 m_wristTransform{};
 	float m_wristWidth = 0.0f;
+
+	// What the last Submit hung the quad by, for QuadInTracking.
+	float m_lastDistance = 0.0f;
+	float m_lastWidth = 0.0f;
+	bool m_lastAnchorWorld = false;
 
 	// The five states BeginCapture changes, in the order they are restored.
 	UInt32 m_savedStates[5] = {};

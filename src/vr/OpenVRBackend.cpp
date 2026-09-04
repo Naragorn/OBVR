@@ -315,6 +315,32 @@ int OpenVRBackend::SetOverlayWidthInMetres(openvr::VROverlayHandle handle,
 	return table->SetOverlayWidthInMeters(handle, metres);
 }
 
+int OpenVRBackend::SetOverlayRaw(openvr::VROverlayHandle handle, const void* rgba, UInt32 width,
+                                 UInt32 height) const {
+	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);
+	if (table == nullptr || table->SetOverlayRaw == nullptr) {
+		return -1;
+	}
+	return table->SetOverlayRaw(handle, const_cast<void*>(rgba), width, height, 4);
+}
+
+int OpenVRBackend::SetOverlayColor(openvr::VROverlayHandle handle, float red, float green,
+                                   float blue) const {
+	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);
+	if (table == nullptr || table->SetOverlayColor == nullptr) {
+		return -1;
+	}
+	return table->SetOverlayColor(handle, red, green, blue);
+}
+
+int OpenVRBackend::SetOverlayAlpha(openvr::VROverlayHandle handle, float alpha) const {
+	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);
+	if (table == nullptr || table->SetOverlayAlpha == nullptr) {
+		return -1;
+	}
+	return table->SetOverlayAlpha(handle, alpha);
+}
+
 int OpenVRBackend::SetOverlayTextureBounds(openvr::VROverlayHandle handle,
                                            const openvr::VRTextureBounds& bounds) const {
 	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);

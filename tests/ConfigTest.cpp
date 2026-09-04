@@ -415,6 +415,12 @@ void TestHandTracking() {
 	Check(!strikes.hands.motionHits, "MotionHits=0 is read");
 	Check(strikes.hands.hitBoundFactor == 0.5f && strikes.hands.hitPadUnits == 12.0f,
 	      "and the factor and the pad");
+
+	Check(untouched.hands.controllerMenus && untouched.hands.laserBeam,
+	      "the controllers steer the menus and draw the beam by default");
+	obvr::Config menus;
+	LoadFrom("ConfigTestControllerMenus.ini", "[Hands]\nControllerMenus=0\nLaserBeam=0\n", menus);
+	Check(!menus.hands.controllerMenus && !menus.hands.laserBeam, "and both switch off");
 }
 
 void TestLookRanges() {

@@ -360,9 +360,16 @@ void TestMenuHandAndSettingsMenu() {
 	settings.menuOnRight = false;
 	r = mode.Update(frame, settings);
 	Check(r.menuOnWrist && !r.menuWristRight, "MenuOnRight=0 hangs it on the left");
+	Check(r.laserVisible && r.laserRight, "the right hand points at it, with the beam");
 	frame.left.valid = false;
 	r = mode.Update(frame, settings);
 	Check(!r.menuOnWrist, "and with that hand lost the menu leaves the wrist");
+	frame.left.valid = true;
+	frame.inWorld = false;
+	r = mode.Update(frame, settings);
+	Check(!r.menuOnWrist, "before a game is loaded the menu stays off the wrist");
+	Check(r.laserVisible && r.laserRight, "and the right hand points at the big quad");
+	frame.inWorld = true;
 
 	// Both sticks: the chord toggles OBVR's menu; while it is open a stick
 	// scrolls and nothing reaches the game.
@@ -393,6 +400,158 @@ void TestMenuHandAndSettingsMenu() {
 	frame.right.trigger = 0.0f;
 	r = mode.Update(frame, settings);
 	Check(!r.settingsNav.up && !r.settingsNav.down, "menu closed: no arrows");
+}
+
+// A quad a metre ahead of an unturned head, 0.8 wide, showing 800x600.
+HandModeFrame BigQuadFrame() {
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.menuMode = true;
+	frame.inWorld = false;
+	frame.layerPixelsWidth = 800.0f;
+	frame.layerPixelsHeight = 600.0f;
+	frame.cursorValid = true;
+	frame.cursorX = 400.0f;
+	frame.cursorY = 300.0f;
+	frame.menuQuad.valid = true;
+	frame.menuQuad.centre = NiPoint3{0.0f, 0.0f, -1.0f};
+	frame.menuQuad.right = NiPoint3{1.0f, 0.0f, 0.0f};
+	frame.menuQuad.up = NiPoint3{0.0f, 1.0f, 0.0f};
+	frame.menuQuad.width = 0.8f;
+	frame.menuQuad.height = 0.6f;
+	frame.right.valid = true;
+	frame.right.position = NiPoint3{0.1f, -0.1f, 0.0f};  // a little right and below the eyes
+	return frame;
+}
+
+void TestLaserOnBigQuad() {
+	std::printf("The laser on the big quad\n");
+	HandSettings settings;
+	settings.enabled = true;
+	HandModeFrame frame = BigQuadFrame();
+	HandMode mode;
+
+	// Pointing straight ahead from 0.1 right, 0.1 down: the hit is 0.1 right
+	// of and 0.1 below the quad's centre - pixel 500, 400 - and the cursor
+	// at the middle steps towards it by the gain.
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.laserHit, "the ray meets the quad");
+	Check(r.cursorDx >= 49 && r.cursorDx <= 50 && r.cursorDy >= 49 && r.cursorDy <= 50,
+	      "and the cursor walks half the way there");
+	Check(r.laserVisible && r.laserRight && Near(r.laserLengthMetres, 1.0f, 0.01f),
+	      "the beam is the right hand's and reaches the quad");
+	Check(!r.menuOnWrist, "nothing on a wrist");
+
+	frame.right.valid = false;
+	frame.left.valid = true;
+	frame.left.position = NiPoint3{0.0f, 0.0f, 0.0f};
+	r = mode.Update(frame, settings);
+	Check(r.laserHit && !r.laserRight && r.cursorDx == 0 && r.cursorDy == 0,
+	      "only the left hand tracked: it points, dead centre");
+
+	// The trigger clicks, the menu buttons are Tab and Escape.
+	frame.right.valid = true;
+	frame.right.trigger = 1.0f;
+	frame.left.buttonsPressed = 1ull << openvr::kButtonApplicationMenu;
+	r = mode.Update(frame, settings);
+	Check(r.controls.menuClick && r.controls.menu, "the trigger clicks, the left menu button is Tab");
+
+	// The left stick is the wheel: a notch on the flick, quiet, then repeats.
+	frame.right.trigger = 0.0f;
+	frame.left.buttonsPressed = 0;
+	frame.left.thumbY = 1.0f;
+	frame.dtSeconds = 0.016f;
+	r = mode.Update(frame, settings);
+	Check(r.menuScroll == 1, "the stick up is a notch up");
+	r = mode.Update(frame, settings);
+	Check(r.menuScroll == 0, "and then waits");
+	frame.dtSeconds = 0.4f;
+	r = mode.Update(frame, settings);
+	Check(r.menuScroll == 1, "until the first delay is over");
+	frame.left.thumbY = -1.0f;
+	r = mode.Update(frame, settings);
+	Check(r.menuScroll == -1, "down is a notch down");
+	frame.left.thumbY = 0.0f;
+	frame.menuMode = false;
+	r = mode.Update(frame, settings);
+	Check(!r.laserHit && r.menuScroll == 0, "no menu: no laser hit, no wheel");
+
+	// A quad the frame does not know: nothing to point at, the beam still
+	// shows at its default length.
+	frame.menuMode = true;
+	frame.menuQuad.valid = false;
+	r = mode.Update(frame, settings);
+	Check(!r.laserHit && r.laserVisible && Near(r.laserLengthMetres, 1.5f, 0.01f),
+	      "no quad: no hit, a beam of default length");
+}
+
+void TestMenusOnly() {
+	std::printf("The mode off, the controllers on the menus\n");
+	HandSettings settings;
+	settings.enabled = false;
+	HandModeFrame frame = BigQuadFrame();
+	frame.menusOnly = true;
+	HandMode mode;
+
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.laserHit && r.cursorDx >= 49 && r.cursorDx <= 50 && r.laserVisible,
+	      "the laser points at the game's menu");
+	Check(!r.aimValid && !r.armsValid && !r.rightHandValid, "with no aim, no arms, no hand poses");
+	frame.right.trigger = 1.0f;
+	r = mode.Update(frame, settings);
+	Check(r.controls.menuClick && r.controlsActive, "the trigger clicks");
+	Check(!r.controls.attack && !r.controls.grab, "and nothing else is pressed");
+
+	// Out of the menu, in the world: nothing at all reaches the game.
+	frame.menuMode = false;
+	frame.right.trigger = 1.0f;
+	frame.right.buttonsPressed = 1ull << openvr::kButtonGrip;
+	frame.left.valid = true;
+	frame.left.thumbY = 1.0f;
+	r = mode.Update(frame, settings);
+	Check(!r.controlsActive && !r.controls.attack && !r.controls.grab &&
+	          !r.controls.move.forward && !r.laserVisible,
+	      "in the world the controllers press nothing and the beam is off");
+
+	// Both sticks: OBVR's menu; in it the sticks and buttons steer.
+	frame.right.buttonsPressed = 1ull << openvr::kButtonAxis0;
+	frame.left.buttonsPressed = 1ull << openvr::kButtonAxis0;
+	frame.left.thumbY = 0.0f;
+	r = mode.Update(frame, settings);
+	Check(r.settingsMenuToggle, "both sticks clicked: the toggle");
+	frame.right.buttonsPressed = 0;
+	frame.left.buttonsPressed = 0;
+	frame.settingsMenuOpen = true;
+	frame.right.trigger = 0.0f;
+	r = mode.Update(frame, settings);
+	Check(!r.settingsNav.right && !r.settingsMenuToggle, "open, nothing pressed: nothing");
+	frame.right.trigger = 1.0f;
+	r = mode.Update(frame, settings);
+	Check(r.settingsNav.right, "the trigger is Right");
+	r = mode.Update(frame, settings);
+	Check(!r.settingsNav.right, "once, while it stays pulled");
+	frame.right.trigger = 0.0f;
+	frame.left.buttonsPressed = 1ull << openvr::kButtonGrip;
+	r = mode.Update(frame, settings);
+	Check(r.settingsNav.left, "a grip is Left");
+	frame.left.buttonsPressed = 1ull << openvr::kButtonA;
+	r = mode.Update(frame, settings);
+	Check(r.settingsNav.right, "an A is Right");
+	frame.left.buttonsPressed = 0;
+	frame.right.thumbY = -1.0f;
+	r = mode.Update(frame, settings);
+	Check(r.settingsNav.down && r.laserVisible, "the stick is Down, and the beam shows");
+	frame.right.thumbY = 0.0f;
+	frame.right.buttonsPressed = 1ull << openvr::kButtonApplicationMenu;
+	r = mode.Update(frame, settings);
+	Check(r.settingsMenuToggle, "a menu button closes it");
+
+	// Switched off entirely: nothing.
+	frame.menusOnly = false;
+	frame.settingsMenuOpen = false;
+	frame.menuMode = true;
+	r = mode.Update(frame, settings);
+	Check(!r.laserHit && !r.laserVisible && !r.controlsActive, "ControllerMenus off: nothing");
 }
 
 void TestHandPoses() {
@@ -458,6 +617,8 @@ int main() {
 	TestHandPoses();
 	TestWristTransform();
 	TestStrikeByMotion();
+	TestLaserOnBigQuad();
+	TestMenusOnly();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

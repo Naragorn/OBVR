@@ -395,6 +395,20 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.motionHits = v != 0.0f; },
 	},
 	{
+		"Hands", "Controllers in menus", "With the mode off: laser at the menus, sticks in this one",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "ControllerMenus",
+		+[](const Config& c) { return c.hands.controllerMenus ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.controllerMenus = v != 0.0f; },
+	},
+	{
+		"Hands", "Laser beam", "Draw the beam from the hand that points at a menu",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "LaserBeam",
+		+[](const Config& c) { return c.hands.laserBeam ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.laserBeam = v != 0.0f; },
+	},
+	{
 		"Hands", "Strike size", "How much of a body's bound the blade has to reach, 0 to 1",
 		ItemKind::Number, 0.0f, 1.0f, 0.05f, 2, false,
 		"Hands", "HitBoundFactor",

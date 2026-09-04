@@ -36,8 +36,16 @@ NiPoint3 TrackingRotate(const Quaternion& q, const NiPoint3& v) { return Rotate(
 void HandMode::Reset() {
 	m_rightTrigger = TriggerEdge{};
 	m_leftTrigger = TriggerEdge{};
+	m_rightTriggerEdge = ButtonEdge{};
+	m_leftTriggerEdge = ButtonEdge{};
+	m_rightGripEdge = ButtonEdge{};
+	m_leftGripEdge = ButtonEdge{};
+	m_rightAEdge = ButtonEdge{};
+	m_leftAEdge = ButtonEdge{};
 	m_rightMenu = ButtonEdge{};
 	m_leftMenu = ButtonEdge{};
+	m_scrollUp = RepeatState{};
+	m_scrollDown = RepeatState{};
 	m_sticks = StickChordState{};
 	m_navRight = StickNavState{};
 	m_navLeft = StickNavState{};
@@ -51,9 +59,12 @@ void HandMode::Reset() {
 
 HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	HandModeResult r;
-	if (!s.enabled || !f.headValid) {
+	if (!f.headValid || (!s.enabled && !f.menusOnly)) {
 		Reset();
 		return r;
+	}
+	if (!s.enabled) {
+		return UpdateMenusOnly(f, s);
 	}
 
 	// The hands relative to the head, in metres, in the game's axes: what
@@ -147,25 +158,13 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 
 	// The sticks' clicks: both together is OBVR's own menu, one alone fires on
 	// its release.
-	const StickChordVerdict sticks = StepStickChord(
-		m_sticks, f.right.valid && ButtonDown(f.right.buttonsPressed, openvr::kButtonAxis0),
-		f.left.valid && ButtonDown(f.left.buttonsPressed, openvr::kButtonAxis0));
-	r.settingsMenuToggle = sticks.both;
+	const StickChordVerdict sticks = StepChord(f, r);
 
 	// OBVR's own menu open: the sticks are its arrow keys, either hand's, and
 	// nothing reaches the game - a stick that scrolls the menu must not walk
 	// the player at the same time.
 	if (f.settingsMenuOpen) {
-		const StickNavVerdict right = StepStickNav(m_navRight, f.right.thumbX, f.right.thumbY,
-		                                           s.stickDeadZone);
-		const StickNavVerdict left =
-			StepStickNav(m_navLeft, f.left.thumbX, f.left.thumbY, s.stickDeadZone);
-		r.settingsNav.up = right.up || left.up;
-		r.settingsNav.down = right.down || left.down;
-		r.settingsNav.left = right.left || left.left;
-		r.settingsNav.right = right.right || left.right;
-		r.controlsActive = f.right.valid || f.left.valid;
-		m_poke = PokeState{};
+		SteerSettingsMenu(f, s, r);
 		return r;
 	}
 	m_navRight = StickNavState{};
@@ -215,40 +214,134 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		r.grabDistanceMetres = math::Sqrt(rightRelative.LengthSquared());
 	}
 
-	// The wrists.
+	// The wrists, and the hands on the menu.
 	if (s.wristHud && f.right.valid && !f.menuMode) {
 		r.hudOnRightWrist = true;
 		r.hudTransform = WristOverlayTransform(s.wristUp, s.wristBack, s.wristTiltDegrees);
 	}
+	PointAtMenu(f, s, r);
+
+	return r;
+}
+
+StickChordVerdict HandMode::StepChord(const HandModeFrame& f, HandModeResult& r) {
+	const StickChordVerdict sticks = StepStickChord(
+		m_sticks, f.right.valid && ButtonDown(f.right.buttonsPressed, openvr::kButtonAxis0),
+		f.left.valid && ButtonDown(f.left.buttonsPressed, openvr::kButtonAxis0));
+	r.settingsMenuToggle = sticks.both;
+	return sticks;
+}
+
+void HandMode::SteerSettingsMenu(const HandModeFrame& f, const HandSettings& s,
+                                 HandModeResult& r) {
+	// The sticks are the arrow keys, either hand's.
+	const StickNavVerdict right =
+		StepStickNav(m_navRight, f.right.thumbX, f.right.thumbY, s.stickDeadZone);
+	const StickNavVerdict left =
+		StepStickNav(m_navLeft, f.left.thumbX, f.left.thumbY, s.stickDeadZone);
+	r.settingsNav.up = right.up || left.up;
+	r.settingsNav.down = right.down || left.down;
+	r.settingsNav.left = right.left || left.left;
+	r.settingsNav.right = right.right || left.right;
+
+	// The buttons: a trigger or an A is Right - the row's next value, the
+	// walkthrough's next page - a grip is Left, and a menu button closes the
+	// menu. Edges, so a held trigger is one step.
+	const bool rightTrigger = f.right.valid && StepTrigger(m_rightTrigger, f.right.trigger);
+	const bool leftTrigger = f.left.valid && StepTrigger(m_leftTrigger, f.left.trigger);
+	const bool accept =
+		StepRisingEdge(m_rightTriggerEdge, rightTrigger) ||
+		StepRisingEdge(m_leftTriggerEdge, leftTrigger) ||
+		StepRisingEdge(m_rightAEdge,
+		               f.right.valid && ButtonDown(f.right.buttonsPressed, openvr::kButtonA)) ||
+		StepRisingEdge(m_leftAEdge,
+		               f.left.valid && ButtonDown(f.left.buttonsPressed, openvr::kButtonA));
+	const bool back =
+		StepRisingEdge(m_rightGripEdge,
+		               f.right.valid && ButtonDown(f.right.buttonsPressed, openvr::kButtonGrip)) ||
+		StepRisingEdge(m_leftGripEdge,
+		               f.left.valid && ButtonDown(f.left.buttonsPressed, openvr::kButtonGrip));
+	const bool close =
+		StepRisingEdge(m_rightMenu, f.right.valid && ButtonDown(f.right.buttonsPressed,
+		                                                        openvr::kButtonApplicationMenu)) ||
+		StepRisingEdge(m_leftMenu, f.left.valid && ButtonDown(f.left.buttonsPressed,
+		                                                      openvr::kButtonApplicationMenu));
+	r.settingsNav.right = r.settingsNav.right || accept;
+	r.settingsNav.left = r.settingsNav.left || back;
+	r.settingsMenuToggle = r.settingsMenuToggle || close;
+
+	// The beam stays on, pointing at the panel, so the hand that presses is
+	// seen; nothing else reaches the game.
+	const bool rightPoints = f.right.valid;
+	if (rightPoints || f.left.valid) {
+		r.laserVisible = true;
+		r.laserRight = rightPoints;
+		r.laserLengthMetres = 1.0f;
+	}
+	r.controlsActive = f.right.valid || f.left.valid;
+	m_poke = PokeState{};
+	m_scrollUp = RepeatState{};
+	m_scrollDown = RepeatState{};
+}
+
+void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandModeResult& r) {
+	// Where the menu is: on the menu wrist while a game is loaded and the
+	// setting says so, otherwise on its big quad. The pointing hand is the
+	// other one for a wrist, and for the big quad the right hand, or the
+	// left when only that is tracked.
 	const HandPose& menuHand = s.menuOnRight ? f.right : f.left;
-	const HandPose& pointHand = s.menuOnRight ? f.left : f.right;
-	if (s.wristMenu && menuHand.valid && f.menuMode) {
+	MenuQuad quad;
+	const HandPose* pointHand = nullptr;
+	bool pointRight = false;
+	if (s.enabled && s.wristMenu && menuHand.valid && f.menuMode && f.inWorld) {
 		r.menuOnWrist = true;
 		r.menuWristRight = s.menuOnRight;
 		r.menuTransform = WristOverlayTransform(s.wristUp, s.wristBack, s.wristTiltDegrees);
-	}
-
-	// The cursor on the menu wrist's quad, in tracking space. The pointing
-	// hand's finger tip pressing the quad comes first - it is the click, and
-	// while it hovers the cursor sits under it; otherwise the hand's ray is
-	// a laser and the cursor walks towards where it hits.
-	if (r.menuOnWrist && pointHand.valid && f.cursorValid && f.layerPixelsWidth > 0.0f &&
-	    f.layerPixelsHeight > 0.0f) {
 		const openvr::HmdMatrix34& t = r.menuTransform;
 		const NiPoint3 localCentre{t.m[0][3], t.m[1][3], t.m[2][3]};
 		const NiPoint3 localRight{t.m[0][0], t.m[1][0], t.m[2][0]};
 		const NiPoint3 localUp{t.m[0][1], t.m[1][1], t.m[2][1]};
-		const NiPoint3 centre =
-			menuHand.position + TrackingRotate(menuHand.orientation, localCentre);
-		const NiPoint3 right = TrackingRotate(menuHand.orientation, localRight);
-		const NiPoint3 up = TrackingRotate(menuHand.orientation, localUp);
-		const NiPoint3 pointing =
-			TrackingRotate(pointHand.orientation, NiPoint3{0.0f, 0.0f, -1.0f});
-		const float quadHeight = s.wristMenuWidth * (f.layerPixelsHeight / f.layerPixelsWidth);
+		quad.valid = f.layerPixelsWidth > 0.0f && f.layerPixelsHeight > 0.0f;
+		quad.centre = menuHand.position + TrackingRotate(menuHand.orientation, localCentre);
+		quad.right = TrackingRotate(menuHand.orientation, localRight);
+		quad.up = TrackingRotate(menuHand.orientation, localUp);
+		quad.width = s.wristMenuWidth;
+		quad.height = quad.valid ? s.wristMenuWidth * (f.layerPixelsHeight / f.layerPixelsWidth)
+		                         : 0.0f;
+		pointHand = s.menuOnRight ? &f.left : &f.right;
+		pointRight = !s.menuOnRight;
+	} else if (f.menuMode) {
+		quad = f.menuQuad;
+		pointHand = f.right.valid ? &f.right : &f.left;
+		pointRight = f.right.valid;
+	}
 
-		const NiPoint3 tip = pointHand.position + pointing * s.pokeTipForward;
-		const PokeSample sample = PokeOnQuad(tip, centre, right, up, s.wristMenuWidth,
-		                                     quadHeight, f.layerPixelsWidth, f.layerPixelsHeight);
+	if (!f.menuMode) {
+		m_poke = PokeState{};
+		m_scrollUp = RepeatState{};
+		m_scrollDown = RepeatState{};
+		return;
+	}
+
+	// The beam from the pointing hand, as long as the way to the quad, or a
+	// default length when the hand points past it.
+	if (pointHand != nullptr && pointHand->valid) {
+		r.laserVisible = true;
+		r.laserRight = pointRight;
+		r.laserLengthMetres = 1.5f;
+	}
+
+	// The cursor on the quad, in tracking space. The pointing hand's finger
+	// tip pressing the quad comes first - it is the click, and while it
+	// hovers the cursor sits under it; otherwise the hand's ray is a laser
+	// and the cursor walks towards where it hits.
+	if (quad.valid && pointHand != nullptr && pointHand->valid && f.cursorValid &&
+	    f.layerPixelsWidth > 0.0f && f.layerPixelsHeight > 0.0f) {
+		const NiPoint3 pointing =
+			TrackingRotate(pointHand->orientation, NiPoint3{0.0f, 0.0f, -1.0f});
+		const NiPoint3 tip = pointHand->position + pointing * s.pokeTipForward;
+		const PokeSample sample = PokeOnQuad(tip, quad.centre, quad.right, quad.up, quad.width,
+		                                     quad.height, f.layerPixelsWidth, f.layerPixelsHeight);
 		const PokeVerdict poke = StepPoke(m_poke, sample, s.poke);
 		if (poke.hover) {
 			r.pokeHover = true;
@@ -258,20 +351,82 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 			// find the cursor still on its way there.
 			r.cursorDx = CursorStep(f.cursorX, sample.pixelX, 1.0f, 4096.0f);
 			r.cursorDy = CursorStep(f.cursorY, sample.pixelY, 1.0f, 4096.0f);
+			r.laserLengthMetres = s.pokeTipForward;
 		} else {
 			const LaserHit hit =
-				LaserOnQuad(pointHand.position, pointing, centre, right, up, s.wristMenuWidth,
-				            quadHeight, f.layerPixelsWidth, f.layerPixelsHeight);
+				LaserOnQuad(pointHand->position, pointing, quad.centre, quad.right, quad.up,
+				            quad.width, quad.height, f.layerPixelsWidth, f.layerPixelsHeight);
 			if (hit.hit) {
 				r.laserHit = true;
 				r.cursorDx = CursorStep(f.cursorX, hit.pixelX, s.laserGain, s.laserMaxStep);
 				r.cursorDy = CursorStep(f.cursorY, hit.pixelY, s.laserGain, s.laserMaxStep);
+				// The way to the quad along the ray: the plane's distance over
+				// the ray's share of the normal.
+				const NiPoint3 normal = Cross(quad.right, quad.up);
+				const float along = Dot(pointing, normal);
+				if (along < -0.0001f || along > 0.0001f) {
+					const float t = Dot(quad.centre - pointHand->position, normal) / along;
+					if (t > 0.0f) {
+						r.laserLengthMetres = t;
+					}
+				}
 			}
 		}
 	} else {
 		m_poke = PokeState{};
 	}
 
+	// The left stick as the mouse wheel: a notch on the flick, then repeats
+	// while it is held.
+	const bool up = f.left.valid && f.left.thumbY >= s.stickDeadZone;
+	const bool down = f.left.valid && f.left.thumbY <= -s.stickDeadZone;
+	if (StepRepeat(m_scrollUp, up, f.dtSeconds, s.scrollFirstDelaySeconds, s.scrollIntervalSeconds)) {
+		r.menuScroll = 1;
+	}
+	if (StepRepeat(m_scrollDown, down, f.dtSeconds, s.scrollFirstDelaySeconds,
+	               s.scrollIntervalSeconds)) {
+		r.menuScroll = -1;
+	}
+}
+
+HandModeResult HandMode::UpdateMenusOnly(const HandModeFrame& f, const HandSettings& s) {
+	// The mode off: no aim, no arms, no gestures, nothing pressed in the
+	// world. The controllers reach only the menus - OBVR's own through the
+	// sticks and buttons, the game's through the laser and the trigger.
+	HandModeResult r;
+	const StickChordVerdict sticks = StepChord(f, r);
+	(void)sticks;
+	if (f.settingsMenuOpen) {
+		SteerSettingsMenu(f, s, r);
+		return r;
+	}
+	m_navRight = StickNavState{};
+	m_navLeft = StickNavState{};
+
+	if (f.menuMode) {
+		HandFrameInput in;
+		in.rightValid = f.right.valid;
+		in.leftValid = f.left.valid;
+		in.rightTrigger = f.right.valid && StepTrigger(m_rightTrigger, f.right.trigger);
+		in.rightMenuButton = StepRisingEdge(
+			m_rightMenu,
+			f.right.valid && ButtonDown(f.right.buttonsPressed, openvr::kButtonApplicationMenu));
+		in.leftMenuButton = StepRisingEdge(
+			m_leftMenu,
+			f.left.valid && ButtonDown(f.left.buttonsPressed, openvr::kButtonApplicationMenu));
+		in.menuMode = true;
+		r.controls = PlanHandControls(in, s.stickDeadZone);
+		r.controlsActive = f.right.valid || f.left.valid;
+	} else {
+		// Kept stepped so a trigger held across the menu's closing does not
+		// fire as it opens again.
+		if (f.right.valid) {
+			StepTrigger(m_rightTrigger, f.right.trigger);
+		}
+		m_rightMenu = ButtonEdge{};
+		m_leftMenu = ButtonEdge{};
+	}
+	PointAtMenu(f, s, r);
 	return r;
 }
 

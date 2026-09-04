@@ -49,4 +49,7 @@ void ReleaseHandControls(const HandKeyMap& keys);
 // A relative mouse movement, for the laser cursor walking the game's cursor.
 void MoveMouseBy(int dx, int dy);
 
+// Mouse wheel notches, up positive - what scrolls the game's menu lists.
+void ScrollMouseWheel(int notches);
+
 }  // namespace obvr::game

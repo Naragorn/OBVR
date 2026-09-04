@@ -438,10 +438,15 @@ constexpr int kOverlayErrorNone = 0;
 //    1 CreateOverlay                    35 SetOverlayTransformTrackedDeviceRelative
 //    3 DestroyOverlay                   43 ShowOverlay
 //   11 SetOverlayFlag                   44 HideOverlay
-//   16 SetOverlayAlpha                  60 SetOverlayTexture
-//   22 SetOverlayWidthInMeters          61 ClearOverlayTexture
+//   14 SetOverlayColor                  60 SetOverlayTexture
+//   16 SetOverlayAlpha                  61 ClearOverlayTexture
+//   22 SetOverlayWidthInMeters          62 SetOverlayRaw
 //   24 SetOverlayCurvature
 //   30 SetOverlayTextureBounds
+//
+// (14 and 62 counted again on 2026-09-04 against the header as fetched from
+// ValveSoftware/openvr master, IVROverlay_028: SetOverlayColor at line 3162,
+// SetOverlayRaw at line 3210, right after ClearOverlayTexture.)
 //
 // The traps between them, for anyone recounting: CreateSubviewOverlay at 2
 // and SetOverlayName at 6 are newer entries older listings lack;
@@ -474,7 +479,11 @@ struct IVROverlayFnTable {
 
 	void* getOverlayFlag;   // 12
 	void* getOverlayFlags;  // 13
-	void* setOverlayColor;  // 14
+
+	// A tint over the texture (openvr_capi.h line 3162: red, green, blue).
+	int(__stdcall* SetOverlayColor)(VROverlayHandle handle, float red, float green,
+	                                float blue);  // 14
+
 	void* getOverlayColor;  // 15
 
 	int(__stdcall* SetOverlayAlpha)(VROverlayHandle handle, float alpha);  // 16
@@ -545,6 +554,12 @@ struct IVROverlayFnTable {
 	int(__stdcall* SetOverlayTexture)(VROverlayHandle handle, const Texture* texture);  // 60
 
 	int(__stdcall* ClearOverlayTexture)(VROverlayHandle handle);  // 61
+
+	// Pixels handed over from memory, no graphics API involved - for a
+	// picture small enough to draw on the CPU, like a laser beam.
+	// openvr_capi.h line 3210: buffer, width, height, bytes per pixel.
+	int(__stdcall* SetOverlayRaw)(VROverlayHandle handle, void* buffer, UInt32 width,
+	                              UInt32 height, UInt32 bytesPerPixel);  // 62
 };
 
 }  // namespace obvr::vr::openvr

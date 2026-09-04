@@ -218,4 +218,13 @@ bool PlayerWorldPosition(NiPoint3& out) {
 	return true;
 }
 
+bool PlayerInWorld() {
+	const auto* const player = PlayerOrNull();
+	if (player == nullptr) {
+		return false;
+	}
+	const UInt32 cell = *reinterpret_cast<const UInt32*>(player + addr::kRefParentCellOffset);
+	return mem::LooksLikeObjectAddress(cell);
+}
+
 }  // namespace obvr::game

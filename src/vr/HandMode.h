@@ -84,6 +84,16 @@ struct HandSettings {
 	bool motionHits = true;
 	float hitBoundFactor = 0.7f;
 	float hitPadUnits = 8.0f;
+
+	// Menus with the controllers even while the mode is off: a laser from a
+	// hand onto whichever quad shows the game's menus, the trigger clicks,
+	// the sticks scroll, and OBVR's own menu takes the sticks and buttons.
+	// The beam is the drawn laser. The scroll repeats while the stick is
+	// held: the first repeat after firstDelay, then every interval.
+	bool controllerMenus = true;
+	bool laserBeam = true;
+	float scrollFirstDelaySeconds = 0.35f;
+	float scrollIntervalSeconds = 0.12f;
 };
 
 // Everything one frame of the mode needs to know, gathered by the camera
@@ -95,6 +105,15 @@ struct HandModeFrame {
 	bool settingsMenuOpen = false;  // OBVR's own menu: the sticks steer it, nothing else fires
 	bool firstPerson = true;
 	bool meleeInHand = false;  // a drawn blade, blunt weapon or bare fists: swung, not shot
+	// The mode is off but the controllers still steer menus (ControllerMenus).
+	bool menusOnly = false;
+	// A game is loaded - the player stands in a cell. Before that (the main
+	// menu, the intro) there is no wrist to hang a menu on, so it stays on
+	// its big quad and the laser points at that.
+	bool inWorld = true;
+	// The quad the game's menus hang on when they are not on a wrist - on
+	// the head or in the room - in tracking space, for the laser.
+	MenuQuad menuQuad;
 	bool headValid = false;
 	Quaternion head = Quaternion::Identity();
 	NiPoint3 headPosition{0.0f, 0.0f, 0.0f};
@@ -156,6 +175,15 @@ struct HandModeResult {
 	int cursorDx = 0;
 	int cursorDy = 0;
 
+	// The drawn beam: from which hand, and how long - to where it meets the
+	// quad, or a default length when it points past it.
+	bool laserVisible = false;
+	bool laserRight = true;
+	float laserLengthMetres = 0.0f;
+
+	// The mouse wheel in a menu, in notches this frame: up positive.
+	int menuScroll = 0;
+
 	// OBVR's own menu: both sticks clicked together toggle it, and while it
 	// is open the sticks are its arrow keys.
 	bool settingsMenuToggle = false;
@@ -200,10 +228,29 @@ public:
 	void Reset();
 
 private:
+	// The mode off, the controllers on the menus alone.
+	HandModeResult UpdateMenusOnly(const HandModeFrame& frame, const HandSettings& settings);
+	// Both sticks clicked: OBVR's menu. Answers its verdict for the clicks.
+	StickChordVerdict StepChord(const HandModeFrame& frame, HandModeResult& r);
+	// OBVR's own menu open: the sticks and buttons steer it, nothing else.
+	void SteerSettingsMenu(const HandModeFrame& frame, const HandSettings& settings,
+	                       HandModeResult& r);
+	// The hands on the game's menu: the wrist quad or the big one, the
+	// finger and the laser, the cursor, the beam, the scroll.
+	void PointAtMenu(const HandModeFrame& frame, const HandSettings& settings, HandModeResult& r);
+
 	TriggerEdge m_rightTrigger;
 	TriggerEdge m_leftTrigger;
+	ButtonEdge m_rightTriggerEdge;
+	ButtonEdge m_leftTriggerEdge;
+	ButtonEdge m_rightGripEdge;
+	ButtonEdge m_leftGripEdge;
+	ButtonEdge m_rightAEdge;
+	ButtonEdge m_leftAEdge;
 	ButtonEdge m_rightMenu;
 	ButtonEdge m_leftMenu;
+	RepeatState m_scrollUp;
+	RepeatState m_scrollDown;
 	StickChordState m_sticks;
 	StickNavState m_navRight;
 	StickNavState m_navLeft;

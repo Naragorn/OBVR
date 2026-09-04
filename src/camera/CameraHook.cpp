@@ -37,6 +37,7 @@
 #include "render/HeadsetRenderer.h"
 #include "render/CrosshairLayer.h"
 #include "render/HudLayer.h"
+#include "render/LaserLayer.h"
 #include "ui/Onboarding.h"
 #include "ui/SettingsMenu.h"
 #include "ui/SettingsMenuLayer.h"
@@ -123,6 +124,7 @@ UInt32 g_menuLiveReportsLeft = 6;
 // and paid at Present alongside the eyes.
 render::HudLayer g_hudLayer;
 render::CrosshairLayer g_crosshairLayer;
+render::LaserLayer g_laserLayer;
 
 // OBVR's own settings menu: what it is showing, and the quad it shows it on.
 //
@@ -345,8 +347,14 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 	g_handClockLast = now;
 
-	const bool active = config.handTracking && g_headTracker.IsHeadsetConnected();
-	if (!active) {
+	// The whole mode, or - with it off - the controllers on the menus alone:
+	// the laser at the game's menus and the sticks in OBVR's own, so a seated
+	// player and the walkthrough on the very first start can be steered from
+	// the controllers before the mode is ever switched on.
+	const bool headset = g_headTracker.IsHeadsetConnected();
+	const bool active = config.handTracking && headset;
+	const bool menusOnly = !active && headset && config.hands.controllerMenus;
+	if (!active && !menusOnly) {
 		if (g_handControlsHeld) {
 			game::ReleaseHandControls(config.handKeys);
 			g_handControlsHeld = false;
@@ -359,27 +367,33 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		return;
 	}
 
-	// The hands are only drawn in first person, so the mode keeps the player
-	// there through the game's own switch - the one the dialogue shim uses.
-	// Not while a menu is up: the game flips to third person for the race
-	// menu and the like on purpose, and would be fought every frame.
-	if (config.hands.forceFirstPerson && !menuIsUp && ReadIsThirdPerson()) {
-		auto* const player = *reinterpret_cast<UInt8* const*>(addr::kPlayerPointer);
-		if (mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(player))) {
-			using ToggleCameraFn = void(__fastcall*)(UInt8* self, void* edx, UInt8 firstPerson);
-			reinterpret_cast<ToggleCameraFn>(addr::kToggleCamera)(player, nullptr, 1);
-			if (g_handPovLinesLeft > 0) {
-				--g_handPovLinesLeft;
-				OBVR_LOG("Hands: the player was in third person - put back into first");
+	if (active) {
+		// The hands are only drawn in first person, so the mode keeps the
+		// player there through the game's own switch - the one the dialogue
+		// shim uses. Not while a menu is up: the game flips to third person
+		// for the race menu and the like on purpose, and would be fought
+		// every frame.
+		if (config.hands.forceFirstPerson && !menuIsUp && ReadIsThirdPerson()) {
+			auto* const player = *reinterpret_cast<UInt8* const*>(addr::kPlayerPointer);
+			if (mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(player))) {
+				using ToggleCameraFn = void(__fastcall*)(UInt8* self, void* edx, UInt8 firstPerson);
+				reinterpret_cast<ToggleCameraFn>(addr::kToggleCamera)(player, nullptr, 1);
+				if (g_handPovLinesLeft > 0) {
+					--g_handPovLinesLeft;
+					OBVR_LOG("Hands: the player was in third person - put back into first");
+				}
 			}
 		}
-	}
 
-	if (config.firstPersonTreeProbe) {
-		game::ProbeFirstPersonTree();
+		if (config.firstPersonTreeProbe) {
+			game::ProbeFirstPersonTree();
+		}
+		game::HideFirstPersonNodes(config.hands.hideArms && !ReadIsThirdPerson(),
+		                           config.hands.hideNodes);
+	} else {
+		game::HideFirstPersonNodes(false, "");
+		game::ForgetStrikes();
 	}
-	game::HideFirstPersonNodes(config.hands.hideArms && !ReadIsThirdPerson(),
-	                           config.hands.hideNodes);
 
 	vr::OpenVRBackend& backend = g_headTracker.GetBackendForFrame();
 	vr::HandModeFrame frame;
@@ -387,7 +401,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.menuMode = menuIsUp;
 	frame.settingsMenuOpen = g_settingsMenu.IsOpen() || g_onboarding.IsOpen();
 	frame.firstPerson = !ReadIsThirdPerson();
-	frame.meleeInHand = config.hands.motionHits && game::MeleeInHand(nullptr);
+	frame.meleeInHand = active && config.hands.motionHits && game::MeleeInHand(nullptr);
+	frame.menusOnly = menusOnly;
+	frame.inWorld = game::PlayerInWorld();
 	frame.headValid = backend.GetRenderPose(frame.head, frame.headPosition) ||
 	                  backend.ReadHeadPose(frame.head, frame.headPosition);
 	backend.ReadHand(true, frame.right);
@@ -395,6 +411,16 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.unitsPerMetre = config.tracker.unitsPerMetre;
 	g_hudLayer.ShownPixels(frame.layerPixelsWidth, frame.layerPixelsHeight);
 	frame.cursorValid = game::InterfaceCursorPosition(frame.cursorX, frame.cursorY);
+	// The quad the game's menus hang on when they are not on a wrist, for
+	// the laser: where the layer last hung it, in tracking space.
+	{
+		vr::openvr::HmdMatrix34 quadPose{};
+		float quadWidth = 0.0f;
+		if (g_hudLayer.QuadInTracking(backend, quadPose, quadWidth)) {
+			frame.menuQuad = vr::QuadFromPose(quadPose, quadWidth, frame.layerPixelsWidth,
+			                                  frame.layerPixelsHeight);
+		}
+	}
 
 	if (frame.right.valid != g_rightHandTracked || frame.left.valid != g_leftHandTracked) {
 		g_rightHandTracked = frame.right.valid;
@@ -413,7 +439,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	if (grabUnits < 0.25f * config.tracker.unitsPerMetre) {
 		grabUnits = 0.25f * config.tracker.unitsPerMetre;
 	}
-	game::SetGrabAtHand(g_hand.grabWanted, grabUnits);
+	game::SetGrabAtHand(active && g_hand.grabWanted, grabUnits);
 
 	if (g_hand.blocking != g_handBlocking) {
 		g_handBlocking = g_hand.blocking;
@@ -434,7 +460,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// one it passes through is handed to the engine's hit function - once per
 	// swing, heavy when the swing has been fast enough. Not in a menu, not in
 	// third person (no hand pose there), and only while the hand is tracked.
-	if (g_hand.strikeByMotion && g_hand.swingActive && g_hand.rightHandValid && !menuIsUp) {
+	if (active && g_hand.strikeByMotion && g_hand.swingActive && g_hand.rightHandValid &&
+	    !menuIsUp) {
 		game::MotionStrike strike;
 		strike.swingSerial = g_hand.swingSerial;
 		strike.heavy = g_hand.swingHeavy;
@@ -451,6 +478,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		if ((g_hand.laserHit || g_hand.pokeHover) &&
 		    (g_hand.cursorDx != 0 || g_hand.cursorDy != 0)) {
 			game::MoveMouseBy(g_hand.cursorDx, g_hand.cursorDy);
+		}
+		if (g_hand.menuScroll != 0) {
+			game::ScrollMouseWheel(g_hand.menuScroll);
 		}
 		if (g_hand.pokePress && g_handPokeLinesLeft > 0) {
 			--g_handPokeLinesLeft;
@@ -2082,8 +2112,11 @@ void PollSettingsMenu() {
 
 	if (PollOnboarding(config)) {
 		// The walkthrough has the arrows; the settings menu is not opened
-		// over it either, so the two never fight for the same keys.
+		// over it either, so the two never fight for the same keys. A stick
+		// chord or a menu button pressed meanwhile is dropped rather than
+		// kept for the moment the walkthrough closes.
 		g_menuToggleEdge.Reset();
+		g_hand.settingsMenuToggle = false;
 		return;
 	}
 
@@ -2299,6 +2332,13 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	g_crosshairLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                        crosshairLifted && content != CrosshairContent::Hidden,
 	                        crosshair.distanceMetres, crosshair.widthMetres);
+
+	// The laser beam from the hand that points at a menu, as long as the way
+	// to it. Its own overlay, raw pixels, no game texture behind it.
+	g_laserLayer.Submit(g_headTracker.GetBackendForFrame(),
+	                    g_hand.laserVisible && config.hands.laserBeam,
+	                    g_headTracker.GetBackendForFrame().HandDeviceIndex(g_hand.laserRight),
+	                    g_hand.laserLengthMetres);
 
 	if (!config.tracker.hudOverlay || !render::IsInterfaceRenderHooked()) {
 		return;

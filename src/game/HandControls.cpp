@@ -105,4 +105,11 @@ void MoveMouseBy(int dx, int dy) {
 	mouse_event(MOUSEEVENTF_MOVE, static_cast<DWORD>(dx), static_cast<DWORD>(dy), 0, 0);
 }
 
+void ScrollMouseWheel(int notches) {
+	if (notches == 0) {
+		return;
+	}
+	mouse_event(MOUSEEVENTF_WHEEL, 0, 0, static_cast<DWORD>(notches * WHEEL_DELTA), 0);
+}
+
 }  // namespace obvr::game

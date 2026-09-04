@@ -181,4 +181,11 @@ SInt32 ReadPlayerAction();
 // camera about a point half a map away.
 bool PlayerWorldPosition(NiPoint3& out);
 
+// Whether the player stands in a cell - a game is loaded. False at the main
+// menu and through the intro, where the player object exists and belongs
+// nowhere. Read from the reference's parent cell pointer
+// (kRefParentCellOffset); decides only where a menu hangs, so a wrong
+// answer is a menu in the wrong place and nothing worse.
+bool PlayerInWorld();
+
 }  // namespace obvr::game

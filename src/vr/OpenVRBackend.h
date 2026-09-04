@@ -264,6 +264,18 @@ public:
 	// texture's aspect ratio; there is no separate control for it.
 	int SetOverlayWidthInMetres(openvr::VROverlayHandle handle, float metres) const;
 
+	// Pixels from memory, RGBA, eight bits each: the picture for an overlay
+	// small enough to draw on the CPU. The runtime copies the buffer.
+	int SetOverlayRaw(openvr::VROverlayHandle handle, const void* rgba, UInt32 width,
+	                  UInt32 height) const;
+
+	// A tint over the overlay's texture, 0..1 per channel.
+	int SetOverlayColor(openvr::VROverlayHandle handle, float red, float green,
+	                    float blue) const;
+
+	// The overlay's opacity, 0..1.
+	int SetOverlayAlpha(openvr::VROverlayHandle handle, float alpha) const;
+
 	// Which part of the texture the overlay shows. Without this the overlay
 	// shows all of it - which is wrong the moment the texture is bigger than
 	// the picture, as it is when the game lays its 2D into one corner of an

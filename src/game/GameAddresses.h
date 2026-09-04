@@ -1161,6 +1161,13 @@ inline constexpr UInt32 kTileUpdateFloat = 0x0058CEB0;
 // game for weeks. A rotation at 0x20/0x24/0x28 puts the position at 0x2C.
 inline constexpr UInt32 kRefPositionOffset = 0x2C;
 
+// TESObjectREFR::parentCell, from the same xOBSE layout that places the
+// position at 0x2C: scale at 0x38, niNode at 0x3C, parentCell at 0x40. One
+// source, read only, and used for one cosmetic decision - whether a game is
+// loaded, so a menu knows whether there is a wrist to hang on. A wrong
+// offset reads as a menu on the big quad instead of the wrist.
+inline constexpr UInt32 kRefParentCellOffset = 0x40;
+
 // THE MELEE HIT, for the hand-tracked mode's strikes by motion.
 //
 // Actor::AttackHandling - the function that resolves one melee hit and

@@ -3,6 +3,7 @@
 #include "core/MathFns.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "vr/OpenVRTypes.h"
 #include "vr/Quaternion.h"
 
 namespace obvr::vr {
@@ -326,6 +327,86 @@ inline int CursorStep(float current, float wanted, float gain, float maxStep) {
 		step = -maxStep;
 	}
 	return static_cast<int>(step);
+}
+
+// ------------------------------------------------------------- Menu quads
+//
+// A quad a menu hangs on, wherever it hangs - a wrist, the head, the room -
+// as the laser and the finger want it: centre, unit right and up axes, and
+// its size, all in tracking space.
+
+struct MenuQuad {
+	bool valid = false;
+	NiPoint3 centre{0.0f, 0.0f, 0.0f};
+	NiPoint3 right{1.0f, 0.0f, 0.0f};
+	NiPoint3 up{0.0f, 1.0f, 0.0f};
+	float width = 0.0f;
+	float height = 0.0f;
+};
+
+// Two OpenVR poses composed, a then b - the product a * b of the 4x4
+// matrices they stand for, rows of three columns of axes and a fourth of
+// position. What puts a head-relative overlay transform into tracking
+// space: the head's pose composed with the overlay's offset from it.
+inline openvr::HmdMatrix34 ComposePose(const openvr::HmdMatrix34& a,
+                                       const openvr::HmdMatrix34& b) {
+	openvr::HmdMatrix34 out{};
+	for (int row = 0; row < 3; ++row) {
+		for (int col = 0; col < 4; ++col) {
+			float sum = a.m[row][0] * b.m[0][col] + a.m[row][1] * b.m[1][col] +
+			            a.m[row][2] * b.m[2][col];
+			if (col == 3) {
+				sum += a.m[row][3];
+			}
+			out.m[row][col] = sum;
+		}
+	}
+	return out;
+}
+
+// The quad an overlay pose describes: its position is the centre, its first
+// two columns the right and up axes, its width is given and its height
+// follows the picture's aspect. Invalid without a width or a picture.
+inline MenuQuad QuadFromPose(const openvr::HmdMatrix34& pose, float widthMetres,
+                             float pixelWidth, float pixelHeight) {
+	MenuQuad quad;
+	if (widthMetres <= 0.0f || pixelWidth <= 0.0f || pixelHeight <= 0.0f) {
+		return quad;
+	}
+	quad.valid = true;
+	quad.centre = NiPoint3{pose.m[0][3], pose.m[1][3], pose.m[2][3]};
+	quad.right = NiPoint3{pose.m[0][0], pose.m[1][0], pose.m[2][0]};
+	quad.up = NiPoint3{pose.m[0][1], pose.m[1][1], pose.m[2][1]};
+	quad.width = widthMetres;
+	quad.height = widthMetres * (pixelHeight / pixelWidth);
+	return quad;
+}
+
+// A held direction that repeats: once when it goes down, then again after
+// the first delay and every interval after that while it stays down - the
+// mouse wheel a stick becomes in a menu list.
+struct RepeatState {
+	bool active = false;
+	float secondsToNext = 0.0f;
+};
+
+inline bool StepRepeat(RepeatState& s, bool held, float dtSeconds, float firstDelay,
+                       float interval) {
+	if (!held) {
+		s.active = false;
+		return false;
+	}
+	if (!s.active) {
+		s.active = true;
+		s.secondsToNext = firstDelay;
+		return true;
+	}
+	s.secondsToNext -= dtSeconds;
+	if (s.secondsToNext <= 0.0f) {
+		s.secondsToNext += interval > 0.0f ? interval : 0.1f;
+		return true;
+	}
+	return false;
 }
 
 // ------------------------------------------------------------- Poke press

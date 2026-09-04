@@ -158,6 +158,8 @@ constexpr DWORD MOUSEEVENTF_LEFTDOWN = 0x0002;
 constexpr DWORD MOUSEEVENTF_LEFTUP = 0x0004;
 constexpr DWORD MOUSEEVENTF_RIGHTDOWN = 0x0008;
 constexpr DWORD MOUSEEVENTF_RIGHTUP = 0x0010;
+constexpr DWORD MOUSEEVENTF_WHEEL = 0x0800;
+constexpr int WHEEL_DELTA = 120;
 constexpr UInt32 MAPVK_VK_TO_VSC = 0;
 OBVR_IMPORT void OBVR_STDCALL keybd_event(UInt8 virtualKey, UInt8 scanCode, DWORD flags,
                                           UInt32 extraInfo);

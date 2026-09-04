@@ -538,6 +538,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.gestures.bowNeedsReachBack =
 			ReadBool("Hands", "BowNeedsReachBack", h.gestures.bowNeedsReachBack, path);
 		h.motionHits = ReadBool("Hands", "MotionHits", h.motionHits, path);
+		h.controllerMenus = ReadBool("Hands", "ControllerMenus", h.controllerMenus, path);
+		h.laserBeam = ReadBool("Hands", "LaserBeam", h.laserBeam, path);
 		h.hitBoundFactor = ReadFloat("Hands", "HitBoundFactor", h.hitBoundFactor, path);
 		h.hitPadUnits = ReadFloat("Hands", "HitPadUnits", h.hitPadUnits, path);
 		h.restHandRight = ReadFloat("Hands", "RestHandRight", h.restHandRight, path);
