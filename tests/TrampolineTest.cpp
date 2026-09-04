@@ -14,6 +14,7 @@
 #include "camera/CameraTrampoline.h"
 #include "camera/CastTrampoline.h"
 #include "game/GameAddresses.h"
+#include "game/WorldPickTrampoline.h"
 
 namespace {
 
@@ -314,6 +315,53 @@ void TestCastPatch() {
 	      "a buffer too small for the jump reports 0 rather than half a patch");
 }
 
+void TestWorldPickTrampoline() {
+	std::printf("World-pick hook trampoline\n");
+	constexpr UInt32 kTrampoline = 0x21000000;
+	constexpr UInt32 kCallback = 0x31000000;
+	UInt8 buffer[64]{};
+	const UInt32 size = obvr::game::BuildWorldPickTrampoline(
+		buffer, sizeof(buffer), kTrampoline, kCallback);
+
+	// pushad, pushfd, lea eax,[esp+24], push eax, call, cleanup, restores,
+	// seven displaced bytes, and the return jump.
+	Check(size == 29, "the world-pick trampoline is 29 bytes");
+	const UInt8 prefix[] = {0x60, 0x9C, 0x8D, 0x44, 0x24, 0x24, 0x50, 0xE8};
+	CheckBytes(buffer, prefix, sizeof(prefix),
+	           "it saves state and passes the interrupted ESP");
+	Check(kTrampoline + 12 + ReadRel32(buffer + 8) == kCallback,
+	      "its call reaches the ray replacement callback");
+	const UInt8 restore[] = {0x83, 0xC4, 0x04, 0x9D, 0x61};
+	CheckBytes(buffer + 12, restore, sizeof(restore),
+	           "it removes the argument and restores flags/registers");
+	CheckBytes(buffer + 17, obvr::game::kWorldPickOriginalBytes, 7,
+	           "it replays both complete x87 instructions");
+	Check(buffer[24] == 0xE9, "it jumps back after the displaced instructions");
+	Check(kTrampoline + 29 + ReadRel32(buffer + 25) ==
+	          obvr::addr::kHookWorldPickRayResume,
+	      "the return jump lands at 0x00580813");
+	Check(obvr::addr::kHookWorldPickRayResume ==
+	          obvr::addr::kHookWorldPickRay + obvr::addr::kHookWorldPickRayPatchSize,
+	      "the resume address follows exactly seven displaced bytes");
+
+	UInt8 patch[obvr::addr::kHookWorldPickRayPatchSize]{};
+	const UInt32 patchSize = obvr::game::BuildWorldPickPatch(
+		patch, sizeof(patch), obvr::addr::kHookWorldPickRay, kTrampoline);
+	Check(patchSize == sizeof(patch), "the world-pick patch fills seven bytes");
+	Check(patch[0] == 0xE9 && patch[5] == 0x90 && patch[6] == 0x90,
+	      "the world-pick patch is a jump followed by two nops");
+	Check(obvr::addr::kHookWorldPickRay + 5 + ReadRel32(patch + 1) == kTrampoline,
+	      "the world-pick patch reaches its trampoline");
+
+	UInt8 tooSmall[4]{};
+	Check(obvr::game::BuildWorldPickPatch(
+	          tooSmall, sizeof(tooSmall), obvr::addr::kHookWorldPickRay, kTrampoline) == 0,
+	      "a short world-pick patch buffer is refused");
+	Check(obvr::game::BuildWorldPickTrampoline(
+	          tooSmall, sizeof(tooSmall), kTrampoline, kCallback) == 0,
+	      "a short world-pick trampoline buffer is refused");
+}
+
 }  // namespace
 
 int main() {
@@ -330,6 +378,8 @@ int main() {
 	TestCastTrampoline();
 	std::printf("\n");
 	TestCastPatch();
+	std::printf("\n");
+	TestWorldPickTrampoline();
 
 	std::printf("\n");
 	if (g_failures == 0) {

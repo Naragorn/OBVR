@@ -208,11 +208,12 @@ bool CrosshairCaptureWanted(const CrosshairVisibility& visibility) {
 }
 
 CrosshairContent CrosshairContentWanted(bool crosshairWanted, bool haveTarget,
-                                        bool tooltipsEnabled, bool tooltipsAboveName) {
+                                        bool tooltipsEnabled, bool tooltipsAboveName,
+	                                    bool thirdPerson) {
 	if (haveTarget && tooltipsEnabled && !tooltipsAboveName) {
 		return CrosshairContent::CapturedHudCentre;
 	}
-	if (!haveTarget && crosshairWanted) {
+	if (!haveTarget && crosshairWanted && !thirdPerson) {
 		return CrosshairContent::CapturedHudCentre;
 	}
 	return crosshairWanted ? CrosshairContent::RememberedCrosshair
@@ -247,12 +248,23 @@ PixelRectangle TooltipAboveNameRectangle(UInt32 width, UInt32 height,
 	                      static_cast<SInt32>(bottom)};
 }
 
+bool TooltipAboveNameWanted(bool settingEnabled, bool thirdPerson,
+                            bool haveTarget, bool tooltipsEnabled) {
+	return settingEnabled && thirdPerson && haveTarget && tooltipsEnabled;
+}
+
 bool HudCrosshairNeedsFirstPersonView(bool crosshairEnabled,
                                       bool crosshairInThirdPerson,
 	                                  bool tooltipsInThirdPerson,
                                       bool isThirdPerson) {
 	return isThirdPerson &&
 	       ((crosshairEnabled && crosshairInThirdPerson) || tooltipsInThirdPerson);
+}
+
+bool HudReticleForceWanted(bool crosshairEnabled, bool crosshairInThirdPerson,
+                           bool tooltipsInThirdPerson, bool haveTarget) {
+	return (crosshairEnabled && crosshairInThirdPerson) ||
+	       (tooltipsInThirdPerson && haveTarget);
 }
 
 CrosshairPlacement PlaceCrosshair(float distanceMetres, float sizeAtOneMetre) {
@@ -291,6 +303,17 @@ bool CrosshairTargetReadWanted(bool dynamicDepth, bool onlyWhenNeeded,
 
 bool CrosshairTargetNeedsImmediateDepth(UInt32 previousTarget, UInt32 currentTarget) {
 	return currentTarget != 0 && currentTarget != previousTarget;
+}
+
+WorldPickOverride WorldPickOverrideWanted(bool thirdPerson, bool gazeValid,
+	                                      bool hookInstalled) {
+	WorldPickOverride result;
+	result.replaceDirection = thirdPerson && gazeValid && hookInstalled;
+	// Keep Oblivion's activation origin at the player. The third-person camera
+	// is behind the body; starting there makes the ray cross the player before
+	// it reaches the object and leaves Activate with no usable hit.
+	result.replaceOrigin = false;
+	return result;
 }
 
 UInt32 CrosshairSourcePixels(UInt32 believedHeight, float sharePercent) {

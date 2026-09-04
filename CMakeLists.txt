@@ -62,6 +62,8 @@ add_library(OBVR SHARED
 	src/game/HandControls.cpp
 	src/game/MenuBackground.cpp
 	src/game/CrosshairTarget.cpp
+	src/game/WorldPickHook.cpp
+	src/game/WorldPickTrampoline.cpp
 	src/game/FirstPersonArms.cpp
 	src/game/FirstPersonHide.cpp
 	src/game/ThirdPersonAimVisual.cpp

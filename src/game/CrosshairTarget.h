@@ -39,7 +39,9 @@ namespace obvr::game {
 // the object model is being torn down and rebuilt, and a global caught
 // mid-assignment is not necessarily null.
 //
-// Nothing here is ever written. This is a read of the game's own state.
+// ReadCrosshairTarget never writes. The separate HUDReticle helper below
+// brackets one isolated draw with a visible value and immediately restores
+// the third-person hidden value.
 struct CrosshairTarget {
 	// The HUDInfoMenu was found and identified itself. False means the global
 	// did not lead to that menu, and everything below is meaningless - the
@@ -74,9 +76,11 @@ struct CrosshairTarget {
 
 CrosshairTarget ReadCrosshairTarget();
 
-// Makes HUDInfoMenu's existing action-icon tile participate in the isolated
-// third-person HUD draw. No icon is invented: Oblivion has already chosen its
-// texture and action; this only exposes that tile for the duration of a draw.
-bool SetHudInfoActionIconVisible(bool visible);
+// Exposes the actual HUDReticle root tile for the isolated third-person HUD
+// draw, then hides it again. This is the same context-sensitive
+// hand/door/talk picture first person uses, not HUDInfoMenu::actionIcon (which
+// is the controller X prompt). HUDReticle is not required to have a Menu
+// back-pointer; the root TileMenu's visible trait is what owns the draw.
+bool SetHudReticleEnabled(bool enabled);
 
 }  // namespace obvr::game

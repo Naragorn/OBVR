@@ -553,7 +553,8 @@ enum class CrosshairContent {
 };
 
 CrosshairContent CrosshairContentWanted(bool crosshairWanted, bool haveTarget,
-	                                    bool tooltipsEnabled, bool tooltipsAboveName);
+	                                    bool tooltipsEnabled, bool tooltipsAboveName,
+	                                    bool thirdPerson);
 
 // Tooltips remain useful with the plain crosshair disabled, so their capture
 // gate is deliberately independent from CrosshairVisibility::enabled.
@@ -574,6 +575,11 @@ struct PixelRectangle {
 PixelRectangle TooltipAboveNameRectangle(UInt32 width, UInt32 height,
 	                                     UInt32 sizePixels);
 
+// The alternate HUD position belongs only to third person. First person
+// always keeps its enabled context icon in the depth reticle.
+bool TooltipAboveNameWanted(bool settingEnabled, bool thirdPerson,
+	                        bool haveTarget, bool tooltipsEnabled);
+
 // Whether the isolated HUD draw should briefly see first person while the
 // world and player remain in third person. Oblivion suppresses its centre HUD
 // content in third person; the lift needs that draw to obtain both the plain
@@ -583,6 +589,11 @@ bool HudCrosshairNeedsFirstPersonView(bool crosshairEnabled,
                                       bool crosshairInThirdPerson,
 	                                  bool tooltipsInThirdPerson,
                                       bool isThirdPerson);
+
+// Whether the hidden third-person HUDReticle root is exposed for the isolated
+// draw. A plain reticle and a live target tooltip are independent consumers.
+bool HudReticleForceWanted(bool crosshairEnabled, bool crosshairInThirdPerson,
+	                       bool tooltipsInThirdPerson, bool haveTarget);
 
 // Whether third person should paste in the crosshair borrowed from first
 // person, or leave what the lift brought alone.
@@ -618,6 +629,17 @@ bool CrosshairTargetReadWanted(bool dynamicDepth, bool onlyWhenNeeded,
 // directly from one target to another both snap; holding the same target and
 // losing it keep the calming ease.
 bool CrosshairTargetNeedsImmediateDepth(UInt32 previousTarget, UInt32 currentTarget);
+
+// The engine's own ray remains authoritative in first person and whenever a
+// complete HMD ray or the hook itself is unavailable. In third person all
+// three conditions are required; this pure gate covers every fallback flow.
+struct WorldPickOverride {
+	bool replaceOrigin = false;
+	bool replaceDirection = false;
+};
+
+WorldPickOverride WorldPickOverrideWanted(bool thirdPerson, bool gazeValid,
+	                                      bool hookInstalled);
 
 // Where the crosshair quad goes and how big it is there.
 //

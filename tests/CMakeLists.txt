@@ -22,6 +22,7 @@ add_executable(trampoline_test
 	TrampolineTest.cpp
 	../src/camera/CameraTrampoline.cpp
 	../src/camera/CastTrampoline.cpp
+	../src/game/WorldPickTrampoline.cpp
 	../src/core/CodeWriter.cpp
 )
 

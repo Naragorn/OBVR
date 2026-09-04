@@ -14,6 +14,7 @@
 #include "game/FirstPersonHide.h"
 #include "game/HandControls.h"
 #include "game/ThirdPersonAimVisual.h"
+#include "game/WorldPickHook.h"
 #include "core/AddressSpace.h"
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
@@ -1375,12 +1376,19 @@ bool RunHudPassWithCrosshairView() {
 		playerAddress + addr::kPlayerIsThirdPersonOffset);
 	const UInt8 saved = *thirdPerson;
 	*thirdPerson = 0;
-	const bool forcedActionIcon = config.tracker.crosshairTooltipsThirdPerson &&
-	                              g_crosshairHasTarget &&
-	                              game::SetHudInfoActionIconVisible(true);
+	const bool wantsReticle = HudReticleForceWanted(
+		config.tracker.crosshair, config.tracker.crosshairInThirdPerson,
+		config.tracker.crosshairTooltipsThirdPerson, g_crosshairHasTarget);
+	const bool forcedReticle = wantsReticle && game::SetHudReticleEnabled(true);
+	static bool s_reticleEnableReported = false;
+	if (wantsReticle && !s_reticleEnableReported) {
+		s_reticleEnableReported = true;
+		OBVR_LOG("Crosshair: HUDReticle menu %s for the isolated third-person draw",
+		         forcedReticle ? "enabled" : "could not be resolved");
+	}
 	const bool captured = render::RunHudPassBetweenScenes();
-	if (forcedActionIcon) {
-		game::SetHudInfoActionIconVisible(false);
+	if (forcedReticle) {
+		game::SetHudReticleEnabled(false);
 	}
 	*thirdPerson = saved;
 
@@ -2153,6 +2161,9 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	const bool tooltipsEnabled = visibility.thirdPerson
 	                               ? config.tracker.crosshairTooltipsThirdPerson
 	                               : config.tracker.crosshairTooltipsFirstPerson;
+	const bool tooltipAboveName = TooltipAboveNameWanted(
+		config.tracker.crosshairTooltipsAboveName, visibility.thirdPerson,
+		g_crosshairHasTarget, tooltipsEnabled);
 
 	// Oblivion's own crosshair, lifted out of the captured layer and into the
 	// depth quad - which is also what takes it out of the flat one, so it is
@@ -2205,18 +2216,23 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		                                  config.tracker.crosshairPersistentCache);
 	}
 
-	if (crosshairLifted && g_crosshairHasTarget && tooltipsEnabled &&
-	    config.tracker.crosshairTooltipsAboveName) {
+	if (crosshairLifted && tooltipAboveName) {
 		UInt32 believedWidth = 0;
 		UInt32 believedHeight = 0;
 		render::GameBelievedSize(believedWidth, believedHeight);
 		const UInt32 sourcePixels = CrosshairSourcePixels(
 			believedHeight > 0 ? believedHeight : g_hudLayer.CaptureHeight(),
 			config.tracker.crosshairSourceShare);
-		g_crosshairLayer.PutTakenAboveName(
+		const bool placedAboveName = g_crosshairLayer.PutTakenAboveName(
 			render::GetGameDevice(), g_hudLayer.CaptureSurface(),
 			g_hudLayer.CaptureWidth(), g_hudLayer.CaptureHeight(), believedWidth,
 			believedHeight, sourcePixels);
+		static bool s_aboveNameReported = false;
+		if (!s_aboveNameReported) {
+			s_aboveNameReported = true;
+			OBVR_LOG("Crosshair: contextual reticle %s the lower-right HUD position",
+			         placedAboveName ? "copied to" : "could not reach");
+		}
 	}
 
 	// The live centre survives when it is already the wanted picture: plain
@@ -2225,7 +2241,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// the lower-right HUD; that keeps those settings independent.
 	const CrosshairContent content = CrosshairContentWanted(
 		crosshairWanted, g_crosshairHasTarget, tooltipsEnabled,
-		config.tracker.crosshairTooltipsAboveName);
+		tooltipAboveName, visibility.thirdPerson);
 	if (crosshairLifted && content == CrosshairContent::RememberedCrosshair) {
 		// If this session has not captured a clean first-person crosshair yet,
 		// leave the overlay empty. Drawing an OBVR substitute here would make a
@@ -3041,6 +3057,14 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	cameraNode->localTransform.pos.z += verticalOffset;
 
 	const NiMatrix33 finalRotation = baseRotation * g_headTracker.GetCameraRotation();
+
+	// This is the cyclopean HMD direction, before the stereo eye step below.
+	// The engine's activation pick runs elsewhere in the frame and consumes
+	// the last complete value through WorldPickHook; its origin deliberately
+	// remains at Oblivion's player-safe position rather than back here at the
+	// chase camera.
+	game::SetWorldPickDirection(ForwardOf(finalRotation),
+	                            g_headTracker.IsHeadsetConnected());
 
 	// The player's own pitch, pointed where the view is pointed.
 	//
@@ -4133,6 +4157,7 @@ bool Install() {
 
 	InstallCastHook();
 	game::InstallAimAtSource();
+	game::InstallWorldPickHook();
 
 	// The end of the frame, hooked as soon as there is a device to hook it on
 	// rather than when the first world camera runs.

@@ -459,8 +459,9 @@ struct TrackerSettings {
 	bool crosshairTooltipsFirstPerson = true;
 	bool crosshairTooltipsThirdPerson = true;
 
-	// Moves the captured action icon back into the head-aligned HUD near the
-	// lower-right target name instead of putting it on the depth crosshair quad.
+	// In third person, moves the captured action icon back into the head-aligned
+	// HUD near the lower-right target name instead of putting it on the depth
+	// crosshair quad. First person deliberately ignores this placement switch.
 	bool crosshairTooltipsAboveName = false;
 
 	// Keeps that genuine first-person capture across game starts. The cache is

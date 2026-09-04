@@ -112,28 +112,29 @@ CrosshairTarget ReadCrosshairTarget() {
 	return target;
 }
 
-bool SetHudInfoActionIconVisible(bool visible) {
-	auto* const menu = *reinterpret_cast<UInt8**>(addr::kHudInfoMenuPointer);
-	if (!LooksLikeObject(menu) ||
-	    *reinterpret_cast<const UInt32*>(menu + addr::kMenuIdOffset) != kMenuIdHudInfo) {
+bool SetHudReticleEnabled(bool enabled) {
+	auto* const data = *reinterpret_cast<UInt32**>(addr::kTileMenuArrayData);
+	if (!LooksLikeObject(data)) {
 		return false;
 	}
-	void* const tile = *reinterpret_cast<void**>(menu + addr::kHudInfoActionIconOffset);
+	const UInt32 count = *reinterpret_cast<const UInt16*>(addr::kTileMenuArrayCount);
+	const UInt32 index = kMenuIdHudReticle - kMenuIdFirst;
+	if (index >= count) {
+		return false;
+	}
+	void* const tile = reinterpret_cast<void*>(data[index]);
 	if (!LooksLikeObject(tile)) {
 		return false;
 	}
 
-	UInt32 trait = addr::kTileValueVisible;
-	float value = visible ? 2.0f : 1.0f;
-	UInt32 update = addr::kTileUpdateFloat;
-	__asm {
-		fld [value]
-		push ecx
-		fstp [esp]
-		mov ecx, tile
-		push [trait]
-		call [update]
-	}
+	// HUDReticle is present in the tile-menu array even though, unlike normal
+	// menus, its TileMenu can have no Menu back-pointer. Requiring +0x44 to be a
+	// Menu is why the old path rejected the very HUD tile it needed in third
+	// person. The XML root owns `visible` directly (1=false, 2=true), and the
+	// game's own HUD code updates it through this same Tile::UpdateFloat entry.
+	using UpdateFloatFn = void(__thiscall*)(void* self, UInt32 trait, float value);
+	reinterpret_cast<UpdateFloatFn>(addr::kTileUpdateFloat)(
+		tile, 0x00000FA1u, enabled ? 2.0f : 1.0f);
 	return true;
 }
 

@@ -1123,16 +1123,28 @@ inline constexpr UInt32 kMenuIdOffset = 0x20;
 // crosshairRef 054, unk058, class size 05C.
 inline constexpr UInt32 kHudInfoCrosshairRefOffset = 0x54;
 
-// HUDInfoMenu::actionIcon, from the same xOBSE class layout. The icon's tile
-// exists independently from the plain crosshair and is what carries talk,
-// open, take and lock feedback.
-inline constexpr UInt32 kHudInfoActionIconOffset = 0x50;
+// Oblivion's activation/HUD target ray is assembled in the middle of
+// InterfaceManager's world-pick update.  Immediately before this address it
+// has written the ray origin to stack offsets 20/24/28 and its unit direction
+// to 34/38/3C; immediately afterwards it multiplies that direction by
+// iActivatePickLength and performs the scene pick.  Patching here changes the
+// one ray consumed by both HUDInfoMenu::crosshairRef and Activate, rather than
+// trying to repair those two consumers independently.
+//
+// Verified from this executable's disassembly:
+//   005807F4..00580808  stores direction x/y/z at esp+34/+38/+3C
+//   0058080C            fild dword ptr [ebx+10]
+//   0058080F            fstp dword ptr [esp+18]
+//   005809F3..00580A01  passes the resulting segment to the scene pick
+inline constexpr UInt32 kHookWorldPickRay = 0x0058080C;
+inline constexpr UInt32 kHookWorldPickRayPatchSize = 7;
+inline constexpr UInt32 kHookWorldPickRayResume = 0x00580813;
 
-// Tile::UpdateFloat and the standard _visible trait. xOBSE's GameTiles.cpp
-// calls this address as a thiscall, and GameTiles.h records 1 as false and 2
-// as true for boolean tile values.
+// Tile::UpdateFloat. xOBSE's GameTiles.cpp binds this exact address, and the
+// local disassembly at 005865DD uses it to update HUDReticle's visible trait.
+// HUDReticle is a TileMenu but does not necessarily own a Menu object, so its
+// root tile is the correct level to enable for an isolated draw.
 inline constexpr UInt32 kTileUpdateFloat = 0x0058CEB0;
-inline constexpr UInt32 kTileValueVisible = 0x0FA1;
 
 // TESObjectREFR's world position.
 //

@@ -1144,6 +1144,22 @@ void TestHudCrosshairView() {
 	}
 }
 
+void TestHudReticleForce() {
+	std::printf("When third-person HUDReticle is exposed\n");
+	using obvr::camera::HudReticleForceWanted;
+	for (UInt32 mask = 0; mask < 16; ++mask) {
+		const bool crosshair = (mask & 1) != 0;
+		const bool crosshairThird = (mask & 2) != 0;
+		const bool tooltipThird = (mask & 4) != 0;
+		const bool target = (mask & 8) != 0;
+		const bool expected = (crosshair && crosshairThird) ||
+		                      (tooltipThird && target);
+		Check(HudReticleForceWanted(crosshair, crosshairThird, tooltipThird, target) ==
+		          expected,
+		      "every plain-reticle and contextual-tooltip consumer combination agrees");
+	}
+}
+
 void TestCrosshairTooltipPolicy() {
 	std::printf("Crosshair and contextual tooltip independence\n");
 	using obvr::camera::CrosshairCentreCaptureWanted;
@@ -1151,20 +1167,32 @@ void TestCrosshairTooltipPolicy() {
 	using obvr::camera::CrosshairContentWanted;
 	using obvr::camera::PixelRectangle;
 	using obvr::camera::TooltipAboveNameRectangle;
+	using obvr::camera::TooltipAboveNameWanted;
 
 	for (UInt32 mask = 0; mask < 16; ++mask) {
+		const bool setting = (mask & 1) != 0;
+		const bool third = (mask & 2) != 0;
+		const bool target = (mask & 4) != 0;
+		const bool tooltips = (mask & 8) != 0;
+		Check(TooltipAboveNameWanted(setting, third, target, tooltips) ==
+		          (setting && third && target && tooltips),
+		      "every above-name gate keeps first-person tooltips in the reticle");
+	}
+
+	for (UInt32 mask = 0; mask < 32; ++mask) {
 		const bool crosshair = (mask & 1) != 0;
 		const bool target = (mask & 2) != 0;
 		const bool tooltips = (mask & 4) != 0;
 		const bool above = (mask & 8) != 0;
+		const bool third = (mask & 16) != 0;
 		const CrosshairContent expected =
 			target && tooltips && !above
 				? CrosshairContent::CapturedHudCentre
-				: (!target && crosshair
+				: (!target && crosshair && !third
 				       ? CrosshairContent::CapturedHudCentre
 				       : (crosshair ? CrosshairContent::RememberedCrosshair
 				                    : CrosshairContent::Hidden));
-		Check(CrosshairContentWanted(crosshair, target, tooltips, above) == expected,
+		Check(CrosshairContentWanted(crosshair, target, tooltips, above, third) == expected,
 		      "every reticle, target, tooltip and placement combination chooses one picture");
 	}
 
@@ -1207,6 +1235,22 @@ void TestCrosshairTargetDepthArrival() {
 	      "moving directly to a different target snaps there too");
 	Check(!CrosshairTargetNeedsImmediateDepth(0x1000, 0),
 	      "losing a target may ease back to the fallback distance");
+}
+
+void TestWorldPickGaze() {
+	std::printf("The third-person world-pick gaze gate\n");
+	using obvr::camera::WorldPickOverrideWanted;
+	for (int bits = 0; bits < 8; ++bits) {
+		const bool third = (bits & 1) != 0;
+		const bool gaze = (bits & 2) != 0;
+		const bool hook = (bits & 4) != 0;
+		const bool expected = third && gaze && hook;
+		const auto policy = WorldPickOverrideWanted(third, gaze, hook);
+		Check(policy.replaceDirection == expected,
+		      "one of all eight direction/fallback combinations");
+		Check(!policy.replaceOrigin,
+		      "every combination retains Oblivion's player-safe activation origin");
+	}
 }
 
 void TestCrosshairCutout() {
@@ -3209,8 +3253,10 @@ int main() {
 	TestBorrowedCrosshair();
 	TestCrosshairTargetRead();
 	TestHudCrosshairView();
+	TestHudReticleForce();
 	TestCrosshairTooltipPolicy();
 	TestCrosshairTargetDepthArrival();
+	TestWorldPickGaze();
 	TestCrosshairCutout();
 	TestCrosshairDepth();
 	std::printf("\n");
