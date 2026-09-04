@@ -120,7 +120,7 @@ void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categor
 	const SInt32 titleWidth = static_cast<SInt32>(TextWidth(shown)) * titleScale;
 	const SInt32 titleX = titleWidth < width - 2 * margin ? (width - titleWidth) / 2 : margin;
 	canvas.DrawText(titleX, margin + s, shown, titleScale, theme.title);
-	const SInt32 ruleY = margin + lineHeight + s * 3;
+	const SInt32 ruleY = margin + lineHeight + s * 5;
 	canvas.FillRect(margin + s * 4, ruleY, width - 2 * margin - s * 8, 1, theme.frameLight);
 	canvas.FillDiamond(width / 2, ruleY, s * 2, theme.frameLight);
 
