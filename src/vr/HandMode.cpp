@@ -112,14 +112,26 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 
 	// The swing, from the right hand's speed across the head-relative frame
 	// (so walking does not swing the sword).
+	//
+	// With a swung weapon in hand and strikes by motion on, the swing presses
+	// nothing: the blade itself strikes what it passes through (MeleeHits),
+	// heavy when the swing has been fast enough by then. Otherwise a swing
+	// taps or holds the attack control and the engine's animation decides.
+	r.strikeByMotion = s.motionHits && f.meleeInHand;
 	if (f.right.valid && !f.menuMode) {
 		if (m_haveLastRight) {
 			const float speed = HandSpeed(m_lastRightRelative, rightRelative, f.dtSeconds);
+			const bool wasSwinging = m_swing.swinging;
 			r.swing = StepSwing(m_swing, speed, s.gestures);
-			if (r.swing == SwingVerdict::Heavy) {
-				HoldFor(m_heavyHold, s.gestures.heavyHoldSeconds);
-			} else if (r.swing == SwingVerdict::Light) {
-				HoldFor(m_heavyHold, 0.05f);  // a tap: down this frame, up soon after
+			if (m_swing.swinging && !wasSwinging) {
+				++m_swingSerial;
+			}
+			if (!r.strikeByMotion) {
+				if (r.swing == SwingVerdict::Heavy) {
+					HoldFor(m_heavyHold, s.gestures.heavyHoldSeconds);
+				} else if (r.swing == SwingVerdict::Light) {
+					HoldFor(m_heavyHold, 0.05f);  // a tap: down this frame, up soon after
+				}
 			}
 		}
 		m_lastRightRelative = rightRelative;
@@ -128,6 +140,9 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		m_haveLastRight = false;
 		m_swing = SwingDetector{};
 	}
+	r.swingActive = m_swing.swinging;
+	r.swingHeavy = m_swing.swinging && m_swing.peakSpeed >= s.gestures.swingHeavy;
+	r.swingSerial = m_swingSerial;
 	const bool swingHeld = StepHeld(m_heavyHold, f.dtSeconds);
 
 	// The sticks' clicks: both together is OBVR's own menu, one alone fires on
@@ -188,6 +203,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		m_reachSpent = true;
 	}
 	in.drawBlocked = s.gestures.bowNeedsReachBack && !m_reachArmed;
+	in.meleeByMotion = r.strikeByMotion;
 	if (!in.rightTrigger && m_reachSpent) {
 		m_reachArmed = false;
 	}

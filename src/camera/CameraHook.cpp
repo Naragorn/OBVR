@@ -15,6 +15,7 @@
 #include "game/BonePin.h"
 #include "game/HandBones.h"
 #include "game/HandControls.h"
+#include "game/MeleeHits.h"
 #include "game/ThirdPersonAimVisual.h"
 #include "game/WorldPickHook.h"
 #include "core/AddressSpace.h"
@@ -352,6 +353,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 		g_hudLayer.ClearWristPlacement();
 		game::HideFirstPersonNodes(false, "");
+		game::ForgetStrikes();
 		g_hand = vr::HandModeResult{};
 		g_handMode.Reset();
 		return;
@@ -385,6 +387,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.menuMode = menuIsUp;
 	frame.settingsMenuOpen = g_settingsMenu.IsOpen() || g_onboarding.IsOpen();
 	frame.firstPerson = !ReadIsThirdPerson();
+	frame.meleeInHand = config.hands.motionHits && game::MeleeInHand(nullptr);
 	frame.headValid = backend.GetRenderPose(frame.head, frame.headPosition) ||
 	                  backend.ReadHeadPose(frame.head, frame.headPosition);
 	backend.ReadHand(true, frame.right);
@@ -424,6 +427,22 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	if (g_hand.swing != vr::SwingVerdict::None && g_handSwingLinesLeft > 0) {
 		--g_handSwingLinesLeft;
 		OBVR_LOG("Hands: a %s swing", g_hand.swing == vr::SwingVerdict::Heavy ? "heavy" : "light");
+	}
+
+	// The strike by motion: while the right hand is swinging a drawn melee
+	// weapon, the blade is tested against the bodies near the player and each
+	// one it passes through is handed to the engine's hit function - once per
+	// swing, heavy when the swing has been fast enough. Not in a menu, not in
+	// third person (no hand pose there), and only while the hand is tracked.
+	if (g_hand.strikeByMotion && g_hand.swingActive && g_hand.rightHandValid && !menuIsUp) {
+		game::MotionStrike strike;
+		strike.swingSerial = g_hand.swingSerial;
+		strike.heavy = g_hand.swingHeavy;
+		strike.handRotation = g_hand.rightHandRotation;
+		strike.handOffsetUnits = g_hand.rightHandOffsetUnits;
+		strike.boundFactor = config.hands.hitBoundFactor;
+		strike.padUnits = config.hands.hitPadUnits;
+		game::StrikeByMotion(strike);
 	}
 
 	if (g_hand.controlsActive) {

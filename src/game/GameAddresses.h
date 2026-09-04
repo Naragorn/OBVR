@@ -1154,4 +1154,103 @@ inline constexpr UInt32 kTileUpdateFloat = 0x0058CEB0;
 // game for weeks. A rotation at 0x20/0x24/0x28 puts the position at 0x2C.
 inline constexpr UInt32 kRefPositionOffset = 0x2C;
 
+// THE MELEE HIT, for the hand-tracked mode's strikes by motion.
+//
+// Actor::AttackHandling - the function that resolves one melee hit and
+// applies it: the damage with the weapon, skill and power attack, the block,
+// the sneak attack, the enchantment, the crime, the OnHit and OnHitWith
+// script events. Two sources for the function and its three arguments:
+//
+//   * xOBSE's GameObjects.h declares Actor's virtual 0xEB as
+//     `AttackHandling(UInt32 unused, TESObjectREFR* arrowRef,
+//     TESObjectREFR* target)` with "args all null for melee attacks", and
+//     EventManager.cpp gives the PlayerCharacter, Character and Creature
+//     vtables as 0x00A73A0C, 0x00A6FC9C and 0x00A710F4. Slot 0xEB is byte
+//     0x3AC, and the executable's .rdata holds 0x005FEBF0 at that slot in
+//     all three tables (read out of the file, section .rdata at VA 0x628000
+//     from raw 0x627400).
+//   * The attack update 0x005FCAB0 (kAttackUpdate) calls that slot at the
+//     animation's hit moments, `[edx+3ACh]` at 0x005FCD96 and 0x005FCE85,
+//     for the player only (`cmp esi,[00B333C4h]` before each) - NPCs go
+//     through slot 0x3B0 - with `push 0, push 0, push 1` at the first and
+//     three zeros at the second: (flag, 0, 0). Inside 0x005FEBF0 the third
+//     argument at [esp+1ECh] is tested at 0x005FEC32 and, at 0x005FF001, a
+//     non-null one is TAKEN AS THE TARGET (`test ebx,ebx; jne` skips the
+//     search 0x006156C0 and `mov esi,ebx`); the function marks the target's
+//     script events with masks 0x100 and 0x80 at 0x005FF5FE..0x005FF630
+//     through MarkEventList 0x004FBF90 - xOBSE's kMarkEvent hook address,
+//     and its GameAPI.h masks kEvent_OnHitWith and kEvent_OnHit - and logs
+//     "%.20s attempts a Sneak Attack on %.20s" (0x00A6EC84) on the way. The
+//     first argument is read as a byte at 0x005FF434 and 0x005FF4C5: when
+//     set, the damage is multiplied by 0x00546BA0 of the skill's value -
+//     the power attack's factor, which is what the 1 at the first call site
+//     stands for. So the call is thiscall with three stack arguments and
+//     `ret 0Ch` at 0x006005E7, and passing the target makes the engine
+//     apply a hit to it without looking for one.
+inline constexpr UInt32 kAttackHandling = 0x005FEBF0;
+inline constexpr UInt32 kVtblPlayerCharacter = 0x00A73A0C;
+inline constexpr UInt32 kVtblCharacter = 0x00A6FC9C;
+inline constexpr UInt32 kVtblCreature = 0x00A710F4;
+
+// The virtuals the hit function itself uses on actors, and that the strike
+// uses to choose whom to hit - each an index xOBSE's GameObjects.h declares
+// and a byte offset the disassembly of 0x005FEBF0 or of the engine's own
+// target search 0x006156C0 calls:
+//
+//   * IsDead(bool): TESObjectREFR index 0x66, `[edx+198h]` with `push 0` at
+//     0x005FF08B (a dead target returns early) and at 0x0061579D in the
+//     search, where a dead candidate is skipped.
+//   * GetNiNode(): TESObjectREFR index 0x55, `[eax+154h]` at 0x005FED5E
+//     (its result + 0x64, the world transform, feeds the debug drawing) and
+//     at 0x006157AF in the search, where a candidate without one is skipped.
+//   * GetHandReachDistance(): Actor index 0x9B, `[edx+26Ch]` at 0x005FEFD3,
+//     the reach when there is no weapon; returned in st(0).
+//   * GetScale(): TESObjectREFR index 0x3B, `[edx+0ECh]` at 0x005FEFE3, the
+//     reach is multiplied by it at 0x005FEFED.
+//   * BaseProcess::GetEquippedWeaponData(bool): index 0x3B in xOBSE's
+//     GameProcess.h, `[edx+0ECh]` with `push 1` on the process at
+//     0x005FEF92; the entry's +8 is the weapon (xOBSE's
+//     ExtraContainerChanges::EntryData: countDelta, extendData, type), and
+//     its byte at +0x90 the weapon type (0x005FF07D), which GameForms.h
+//     places there with the reach as the float at +0x98 (0x005FEFAF).
+inline constexpr UInt32 kActorVtableIsDeadOffset = 0x198;
+inline constexpr UInt32 kActorVtableGetNiNodeOffset = 0x154;
+inline constexpr UInt32 kActorVtableHandReachOffset = 0x26C;
+inline constexpr UInt32 kActorVtableGetScaleOffset = 0x0EC;
+inline constexpr UInt32 kActorVtableAttackHandlingOffset = 0x3AC;
+inline constexpr UInt32 kProcessVtableEquippedWeaponOffset = 0x0EC;
+inline constexpr UInt32 kEntryDataTypeOffset = 0x08;
+inline constexpr UInt32 kWeaponTypeOffset = 0x90;
+inline constexpr UInt32 kWeaponReachOffset = 0x98;
+
+// The reach in game units. 0x00547540 is `fld [00B36F20h]; fmul [esp+4]`:
+// the weapon's reach times a setting, and it is what 0x005FEBF0 calls at
+// 0x005FEFC1 with the weapon's +0x98. The setting lives in the uninitialised
+// data (past .data's raw size), so its name cannot be read out of the file;
+// the strike reads the name pointer the engine's Setting object keeps after
+// the value (xOBSE's GameAPI.h: SettingInfo is vtable, data, name) and logs
+// it once, expecting "fCombatDistance".
+inline constexpr UInt32 kReachInUnits = 0x00547540;
+inline constexpr UInt32 kCombatDistanceSetting = 0x00B36F20;
+
+// The actors the engine considers for a melee target. The search 0x006156C0
+// walks the list returned by `0x00673A50(0x00B3BD00, 0)` at 0x0061573D -
+// a getter on the ActorProcessManager, which xOBSE's GameProcess.cpp binds
+// to 0x00B3BD00 - for the level of processing given: 0 is high (the actors
+// near the player, animated every frame), which the jump table at
+// 0x00673A7C sends to `add eax,68h`; 1, 2 and 3 are the middle-high,
+// middle-low and low lists at +0x00, +0x0C and +0x18, the first three
+// ActorLists in xOBSE's layout. The list is a tList: each node a data
+// pointer and a next pointer, the head node itself the first entry and an
+// empty list a head with neither.
+inline constexpr UInt32 kActorProcessManager = 0x00B3BD00;
+inline constexpr UInt32 kActorListByLevel = 0x00673A50;
+
+// NiAVObject::worldBound - centre and radius of the sphere round the
+// model, at +0x20, before the local transform at +0x30 this project has
+// been writing to for weeks (GameTypes.h). Read only, to decide whether a
+// blade came close: a wrong offset would show as strikes that never land,
+// not as damage to the game.
+inline constexpr UInt32 kNiAVObjectWorldBoundOffset = 0x20;
+
 }  // namespace obvr::addr

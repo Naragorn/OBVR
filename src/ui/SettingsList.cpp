@@ -381,6 +381,27 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.gestures.swingLight = v; },
 	},
 	{
+		"Hands", "Heavy swing speed", "Metres per second that make a swing a power attack",
+		ItemKind::Number, 1.0f, 8.0f, 0.1f, 1, false,
+		"Hands", "SwingHeavy",
+		+[](const Config& c) { return c.hands.gestures.swingHeavy; },
+		+[](Config& c, float v) { c.hands.gestures.swingHeavy = v; },
+	},
+	{
+		"Hands", "Strikes by motion", "The swung blade hits what it passes through, no animation",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "MotionHits",
+		+[](const Config& c) { return c.hands.motionHits ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.motionHits = v != 0.0f; },
+	},
+	{
+		"Hands", "Strike size", "How much of a body's bound the blade has to reach, 0 to 1",
+		ItemKind::Number, 0.0f, 1.0f, 0.05f, 2, false,
+		"Hands", "HitBoundFactor",
+		+[](const Config& c) { return c.hands.hitBoundFactor; },
+		+[](Config& c, float v) { c.hands.hitBoundFactor = v; },
+	},
+	{
 		"Help", "Introduction at start", "Show the first-start walkthrough again next time",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Onboarding", "ShowAtStart",

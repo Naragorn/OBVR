@@ -405,6 +405,16 @@ void TestHandTracking() {
 	          pinned.hands.rightHandYaw == 80.0f && pinned.hands.leftHandRoll == -15.0f &&
 	          pinned.hands.leftHandPitch == 5.0f && pinned.hands.leftHandYaw == 100.0f,
 	      "and the six angles");
+
+	Check(untouched.hands.motionHits && untouched.hands.hitBoundFactor == 0.7f &&
+	          untouched.hands.hitPadUnits == 8.0f,
+	      "strikes by motion are on by default, within 0.7 of the bound plus eight units");
+	obvr::Config strikes;
+	LoadFrom("ConfigTestStrikes.ini", "[Hands]\nMotionHits=0\nHitBoundFactor=0.5\nHitPadUnits=12\n",
+	         strikes);
+	Check(!strikes.hands.motionHits, "MotionHits=0 is read");
+	Check(strikes.hands.hitBoundFactor == 0.5f && strikes.hands.hitPadUnits == 12.0f,
+	      "and the factor and the pad");
 }
 
 void TestLookRanges() {

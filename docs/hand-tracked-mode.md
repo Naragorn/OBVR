@@ -73,13 +73,40 @@ once the log shows "Hands: the right hand is reaching back" firing where it shou
 
 Built. The right hand's speed relative to the head crossing `SwingLight` starts a swing;
 when the hand slows to half of that the swing ends, light or heavy by its peak against
-`SwingHeavy`. A light swing taps the attack control, a heavy one holds it for
-`HeavyHoldSeconds` - the engine's own power attack. Hit detection stays the engine's
-animation, which starts when the control goes down, so the blade lands a little after the
-hand. The log says "Hands: a light/heavy swing" for the first twenty.
+`SwingHeavy`. With `MotionHits=0`, a light swing taps the attack control, a heavy one holds
+it for `HeavyHoldSeconds` - the engine's own power attack - and hit detection stays the
+engine's animation, which starts when the control goes down, so the blade lands a little
+after the hand. The log says "Hands: a light/heavy swing" for the first twenty.
 
 To tune: the two speeds. Walking does not swing, because the speed is measured relative to
 the head.
+
+### Strikes by motion (`MotionHits=1`, the default)
+
+With a blade, a blunt weapon or bare fists drawn, the swing is the attack and nothing is
+pressed: no attack control, no animation, and the trigger does not attack (it still draws a
+bow). While the hand is swinging, `game::StrikeByMotion` draws the blade - the hand's
+position along the controller's pointing axis for the weapon's reach, the reach being the
+engine's own arithmetic (the weapon's reach through `fCombatDistance`, or the hand's reach,
+times the actor's scale) - and tests it against every actor in the engine's high-process
+list, the same list the engine's own target search walks. Each living one whose bound sphere
+the blade passes within `HitBoundFactor` of the radius plus `HitPadUnits` is handed to
+`Actor::AttackHandling` (0x005FEBF0) with that actor as the target and the power-attack flag
+set when the swing's peak has crossed `SwingHeavy`; the engine does the rest - damage, block,
+sneak attack, enchantment, crime, script events. One strike per body per swing
+(`MeleeHit.h`, tested). The evidence for the function and its arguments is in
+`GameAddresses.h` at `kAttackHandling`.
+
+What to look at first: "Hands: strikes by motion armed" names the weapon type, the reach in
+units and the reach setting's name - which should read `fCombatDistance`; anything else
+means the setting address is not what it was read as, and the reach is still the engine's
+helper's answer. Then "Hands: the blade struck ..." per strike, with the distance from the
+body's centre and the bound radius the decision used. Strikes that land too easily want a
+smaller factor; swings through a body that do nothing want a larger one, or a check of the
+hand's yaw calibration, since the blade follows the controller's forward.
+
+Not built: the swing's sound and the fatigue an attack costs (both tied to the animation),
+and NPCs block less, since they read the player's attack animation to decide when.
 
 ## Rung 6 - the shield: raised is blocking
 

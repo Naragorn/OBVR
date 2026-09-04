@@ -230,6 +230,7 @@ struct HandFrameInput {
 	bool blockGesture = false;
 	bool swingAttackHeld = false;  // a swing's attack still being held
 	bool drawBlocked = false;      // the bow wants a reach-back first and has not had one
+	bool meleeByMotion = false;    // a swung weapon strikes by motion: the trigger does not attack
 	bool menuMode = false;
 };
 
@@ -249,7 +250,7 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 		return out;
 	}
 	if (in.rightValid) {
-		out.attack = (in.rightTrigger && !in.drawBlocked) || in.swingAttackHeld;
+		out.attack = (in.rightTrigger && !in.drawBlocked && !in.meleeByMotion) || in.swingAttackHeld;
 		out.grab = in.rightGrip;
 		out.jump = in.rightA;
 		out.escape = in.rightMenuButton;

@@ -658,6 +658,17 @@ if(NOT MSVC)
 endif()
 add_test(NAME bone_pin COMMAND bone_pin_test)
 
+add_executable(melee_hit_test
+	MeleeHitTest.cpp
+	../src/core/Rotation.cpp
+	../src/core/Smoothing.cpp
+)
+target_include_directories(melee_hit_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(melee_hit_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME melee_hit COMMAND melee_hit_test)
+
 add_executable(node_name_list_test NodeNameListTest.cpp)
 target_include_directories(node_name_list_test PRIVATE ../src)
 if(NOT MSVC)

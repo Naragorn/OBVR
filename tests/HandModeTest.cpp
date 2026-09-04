@@ -142,6 +142,80 @@ void TestPlanner() {
 	gated.swingAttackHeld = true;
 	w = PlanHandControls(gated, 0.4f);
 	Check(w.attack, "but a swing still does");
+
+	HandFrameInput motion;
+	motion.rightValid = true;
+	motion.rightTrigger = true;
+	motion.meleeByMotion = true;
+	w = PlanHandControls(motion, 0.4f);
+	Check(!w.attack, "with a swung weapon striking by motion the trigger does not attack");
+	Check(w.turn == 0.0f && !w.grab, "and nothing else changes");
+	motion.rightGrip = true;
+	w = PlanHandControls(motion, 0.4f);
+	Check(w.grab, "the grip still grabs");
+}
+
+void TestStrikeByMotion() {
+	std::printf("The swing for the strikes by motion\n");
+	HandSettings settings;
+	settings.enabled = true;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.dtSeconds = 0.01f;
+	frame.right.valid = true;
+	frame.right.position = NiPoint3{0.3f, -0.2f, -0.5f};
+	frame.meleeInHand = true;
+	HandMode mode;
+
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.strikeByMotion && !r.swingActive && r.swingSerial == 0,
+	      "a melee weapon in hand: strikes by motion, no swing yet");
+
+	// Three centimetres in ten milliseconds: three metres a second, a swing.
+	frame.right.position = NiPoint3{0.33f, -0.2f, -0.5f};
+	r = mode.Update(frame, settings);
+	Check(r.swingActive && r.swingSerial == 1 && !r.swingHeavy, "a fast hand starts swing one, light");
+	Check(!r.controls.attack && r.swing == SwingVerdict::None,
+	      "and presses no attack control");
+	frame.right.position = NiPoint3{0.37f, -0.2f, -0.5f};  // four metres a second
+	r = mode.Update(frame, settings);
+	Check(r.swingActive && r.swingHeavy && r.swingSerial == 1,
+	      "past the heavy speed the same swing is heavy");
+	frame.right.position = NiPoint3{0.371f, -0.2f, -0.5f};  // slowed down
+	r = mode.Update(frame, settings);
+	Check(!r.swingActive && r.swing == SwingVerdict::Heavy && !r.controls.attack,
+	      "the swing ends heavy without holding the control");
+	r = mode.Update(frame, settings);
+	Check(!r.controls.attack, "and nothing is held after it either");
+	frame.right.position = NiPoint3{0.40f, -0.2f, -0.5f};
+	r = mode.Update(frame, settings);
+	Check(r.swingActive && r.swingSerial == 2, "the next swing is number two");
+
+	// The same swing with the attack control: no melee weapon in hand (a
+	// bow, say) or strikes by motion switched off.
+	frame.meleeInHand = false;
+	HandMode byControl;
+	frame.right.position = NiPoint3{0.3f, -0.2f, -0.5f};
+	byControl.Update(frame, settings);
+	frame.right.position = NiPoint3{0.34f, -0.2f, -0.5f};
+	r = byControl.Update(frame, settings);
+	Check(!r.strikeByMotion && r.swingActive, "without a melee weapon the swing is by control");
+	frame.right.position = NiPoint3{0.341f, -0.2f, -0.5f};
+	r = byControl.Update(frame, settings);
+	Check(r.swing == SwingVerdict::Heavy && r.controls.attack,
+	      "and a heavy swing holds the attack control as before");
+
+	settings.motionHits = false;
+	frame.meleeInHand = true;
+	HandMode switchedOff;
+	frame.right.position = NiPoint3{0.3f, -0.2f, -0.5f};
+	switchedOff.Update(frame, settings);
+	frame.right.position = NiPoint3{0.32f, -0.2f, -0.5f};
+	r = switchedOff.Update(frame, settings);
+	Check(!r.strikeByMotion && r.swingActive, "switched off, a melee weapon swings by control");
+	frame.right.position = NiPoint3{0.321f, -0.2f, -0.5f};
+	r = switchedOff.Update(frame, settings);
+	Check(r.swing == SwingVerdict::Light && r.controls.attack, "and a light swing taps it");
 }
 
 void TestLaser() {
@@ -383,6 +457,7 @@ int main() {
 	TestMenuHandAndSettingsMenu();
 	TestHandPoses();
 	TestWristTransform();
+	TestStrikeByMotion();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

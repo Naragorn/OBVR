@@ -74,6 +74,16 @@ struct HandSettings {
 	float leftHandRoll = 0.0f;
 	float leftHandPitch = 0.0f;
 	float leftHandYaw = 90.0f;
+
+	// Strikes by motion: with a swung weapon in hand the swing itself is the
+	// attack - no attack control, no animation - and the blade strikes the
+	// bodies it passes through, heavy when the swing was fast enough. How
+	// close it has to pass is this fraction of a body's bound radius plus
+	// this many game units (see MeleeHit.h). Off, swings press the attack
+	// control and the engine's animation decides the hit.
+	bool motionHits = true;
+	float hitBoundFactor = 0.7f;
+	float hitPadUnits = 8.0f;
 };
 
 // Everything one frame of the mode needs to know, gathered by the camera
@@ -84,6 +94,7 @@ struct HandModeFrame {
 	bool menuMode = false;
 	bool settingsMenuOpen = false;  // OBVR's own menu: the sticks steer it, nothing else fires
 	bool firstPerson = true;
+	bool meleeInHand = false;  // a drawn blade, blunt weapon or bare fists: swung, not shot
 	bool headValid = false;
 	Quaternion head = Quaternion::Identity();
 	NiPoint3 headPosition{0.0f, 0.0f, 0.0f};
@@ -155,6 +166,15 @@ struct HandModeResult {
 	bool grabWanted = false;
 	float grabDistanceMetres = 0.0f;
 
+	// The swing in progress, for the strikes by motion: whether the right
+	// hand is swinging now, whether it has been fast enough for a heavy
+	// attack so far, and which swing this is - counted up as each starts, so
+	// a body is struck once per swing.
+	bool swingActive = false;
+	bool swingHeavy = false;
+	UInt32 swingSerial = 0;
+	bool strikeByMotion = false;  // this frame's swing strikes by motion rather than by control
+
 	// For the log.
 	bool blocking = false;
 	bool reachBack = false;
@@ -190,6 +210,7 @@ private:
 	PokeState m_poke;
 	SwingDetector m_swing;
 	HeldControl m_heavyHold;
+	UInt32 m_swingSerial = 0;
 	bool m_haveLastRight = false;
 	bool m_reachArmed = false;  // the reach back seen since the last release
 	bool m_reachSpent = false;  // a draw used the armed reach
