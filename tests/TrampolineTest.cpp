@@ -360,6 +360,26 @@ void TestWorldPickTrampoline() {
 	Check(obvr::game::BuildWorldPickTrampoline(
 	          tooSmall, sizeof(tooSmall), kTrampoline, kCallback) == 0,
 	      "a short world-pick trampoline buffer is refused");
+
+	Check(obvr::game::kWorldPickHudInfoOriginalCall[0] == 0xE8,
+	      "the verified HUDInfo instruction is a relative call");
+	Check(obvr::addr::kHookWorldPickHudInfoCall + 5 +
+	          ReadRel32(obvr::game::kWorldPickHudInfoOriginalCall + 1) ==
+	          obvr::addr::kWorldPickHudInfoUpdate,
+	      "the verified original call reaches Oblivion's HUDInfo update");
+	UInt8 hudInfoPatch[5]{};
+	const UInt32 hudInfoPatchSize = obvr::game::BuildWorldPickHudInfoCallPatch(
+		hudInfoPatch, sizeof(hudInfoPatch), obvr::addr::kHookWorldPickHudInfoCall,
+		kCallback);
+	Check(hudInfoPatchSize == sizeof(hudInfoPatch) && hudInfoPatch[0] == 0xE8,
+	      "the HUDInfo wrapper patch is exactly one relative call");
+	Check(obvr::addr::kHookWorldPickHudInfoCall + 5 +
+	          ReadRel32(hudInfoPatch + 1) == kCallback,
+	      "the HUDInfo wrapper call reaches its replacement");
+	Check(obvr::game::BuildWorldPickHudInfoCallPatch(
+	          tooSmall, sizeof(tooSmall), obvr::addr::kHookWorldPickHudInfoCall,
+	          kCallback) == 0,
+	      "a short HUDInfo call buffer is refused");
 }
 
 }  // namespace

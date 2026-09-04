@@ -253,18 +253,17 @@ bool TooltipAboveNameWanted(bool settingEnabled, bool thirdPerson,
 	return settingEnabled && thirdPerson && haveTarget && tooltipsEnabled;
 }
 
-bool HudCrosshairNeedsFirstPersonView(bool crosshairEnabled,
-                                      bool crosshairInThirdPerson,
-	                                  bool tooltipsInThirdPerson,
-                                      bool isThirdPerson) {
-	return isThirdPerson &&
-	       ((crosshairEnabled && crosshairInThirdPerson) || tooltipsInThirdPerson);
+bool HudCrosshairNeedsFirstPersonView(bool tooltipsInThirdPerson,
+                                      bool haveTarget, bool isThirdPerson) {
+	return isThirdPerson && tooltipsInThirdPerson && haveTarget;
 }
 
-bool HudReticleForceWanted(bool crosshairEnabled, bool crosshairInThirdPerson,
-                           bool tooltipsInThirdPerson, bool haveTarget) {
-	return (crosshairEnabled && crosshairInThirdPerson) ||
-	       (tooltipsInThirdPerson && haveTarget);
+bool HudReticleForceWanted(bool tooltipsInThirdPerson, bool haveTarget) {
+	return tooltipsInThirdPerson && haveTarget;
+}
+
+bool HudInfoFirstPersonSpoofWanted(bool thirdPerson, bool haveTarget) {
+	return thirdPerson && haveTarget;
 }
 
 CrosshairPlacement PlaceCrosshair(float distanceMetres, float sizeAtOneMetre) {

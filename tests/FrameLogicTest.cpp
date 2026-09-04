@@ -1130,33 +1130,37 @@ void TestHudCrosshairView() {
 	std::printf("Which POV the isolated HUD draw uses for the crosshair\n");
 	using obvr::camera::HudCrosshairNeedsFirstPersonView;
 
-	for (UInt32 mask = 0; mask < 16; ++mask) {
-		const bool enabled = (mask & 1) != 0;
-		const bool enabledInThirdPerson = (mask & 2) != 0;
-		const bool tooltipsInThirdPerson = (mask & 4) != 0;
-		const bool isThirdPerson = (mask & 8) != 0;
-		const bool expected = isThirdPerson &&
-		                      ((enabled && enabledInThirdPerson) || tooltipsInThirdPerson);
-		Check(HudCrosshairNeedsFirstPersonView(enabled, enabledInThirdPerson,
-		                                          tooltipsInThirdPerson,
+	for (UInt32 mask = 0; mask < 8; ++mask) {
+		const bool tooltipsInThirdPerson = (mask & 1) != 0;
+		const bool target = (mask & 2) != 0;
+		const bool isThirdPerson = (mask & 4) != 0;
+		const bool expected = isThirdPerson && tooltipsInThirdPerson && target;
+		Check(HudCrosshairNeedsFirstPersonView(tooltipsInThirdPerson, target,
 		                                          isThirdPerson) == expected,
-		      "every HUD POV flow includes either requested third-person centre consumer");
+		      "only a live third-person tooltip borrows first-person HUD drawing");
 	}
 }
 
 void TestHudReticleForce() {
 	std::printf("When third-person HUDReticle is exposed\n");
 	using obvr::camera::HudReticleForceWanted;
-	for (UInt32 mask = 0; mask < 16; ++mask) {
-		const bool crosshair = (mask & 1) != 0;
-		const bool crosshairThird = (mask & 2) != 0;
-		const bool tooltipThird = (mask & 4) != 0;
-		const bool target = (mask & 8) != 0;
-		const bool expected = (crosshair && crosshairThird) ||
-		                      (tooltipThird && target);
-		Check(HudReticleForceWanted(crosshair, crosshairThird, tooltipThird, target) ==
-		          expected,
-		      "every plain-reticle and contextual-tooltip consumer combination agrees");
+	for (UInt32 mask = 0; mask < 4; ++mask) {
+		const bool tooltipThird = (mask & 1) != 0;
+		const bool target = (mask & 2) != 0;
+		Check(HudReticleForceWanted(tooltipThird, target) == (tooltipThird && target),
+		      "an uninitialised plain reticle is never forced at third-person startup");
+	}
+}
+
+void TestHudInfoThirdPersonSpoof() {
+	std::printf("When HUDInfo target state briefly uses first person\n");
+	using obvr::camera::HudInfoFirstPersonSpoofWanted;
+	for (UInt32 mask = 0; mask < 4; ++mask) {
+		const bool thirdPerson = (mask & 1) != 0;
+		const bool target = (mask & 2) != 0;
+		Check(HudInfoFirstPersonSpoofWanted(thirdPerson, target) ==
+		          (thirdPerson && target),
+		      "only a real third-person pick needs first-person HUDInfo state");
 	}
 }
 
@@ -3254,6 +3258,7 @@ int main() {
 	TestCrosshairTargetRead();
 	TestHudCrosshairView();
 	TestHudReticleForce();
+	TestHudInfoThirdPersonSpoof();
 	TestCrosshairTooltipPolicy();
 	TestCrosshairTargetDepthArrival();
 	TestWorldPickGaze();

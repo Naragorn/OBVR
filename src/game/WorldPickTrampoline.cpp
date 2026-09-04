@@ -10,6 +10,10 @@ const UInt8 kWorldPickOriginalBytes[7] = {
 	0xD9, 0x5C, 0x24, 0x18  // fstp dword ptr [esp+0x18]
 };
 
+const UInt8 kWorldPickHudInfoOriginalCall[5] = {
+	0xE8, 0x1B, 0x3E, 0x02, 0x00  // call 005A4980
+};
+
 UInt32 BuildWorldPickTrampoline(UInt8* buffer, UInt32 capacity,
                                 UInt32 trampolineAddress, UInt32 callbackAddress) {
 	mem::CodeWriter code(buffer, capacity, trampolineAddress);
@@ -39,6 +43,13 @@ UInt32 BuildWorldPickPatch(UInt8* buffer, UInt32 capacity, UInt32 hookAddress,
 	mem::CodeWriter code(buffer, capacity, hookAddress);
 	code.JumpRelative(trampolineAddress);
 	code.Nop(addr::kHookWorldPickRayPatchSize - 5);
+	return code.Overflowed() ? 0 : code.Size();
+}
+
+UInt32 BuildWorldPickHudInfoCallPatch(UInt8* buffer, UInt32 capacity,
+                                      UInt32 callAddress, UInt32 replacementAddress) {
+	mem::CodeWriter code(buffer, capacity, callAddress);
+	code.CallRelative(replacementAddress);
 	return code.Overflowed() ? 0 : code.Size();
 }
 

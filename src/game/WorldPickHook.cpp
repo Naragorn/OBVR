@@ -14,6 +14,7 @@ NiPoint3 g_direction{};
 bool g_gazeValid = false;
 bool g_installed = false;
 bool g_reportedUse = false;
+bool g_reportedHudInfo = false;
 
 constexpr UInt32 kTrampolineSize = 64;
 
@@ -39,6 +40,36 @@ bool SaneDirection(const NiPoint3& direction) {
 }
 
 }  // namespace
+
+using HudInfoUpdateFn = UInt8(__cdecl*)(UInt32, void*, UInt32);
+
+extern "C" UInt8 __cdecl OBVR_UpdateHudInfoForThirdPerson(UInt32 first, void* pickedRef,
+	                                                       UInt32 sameAsPrevious) {
+	auto original = reinterpret_cast<HudInfoUpdateFn>(addr::kWorldPickHudInfoUpdate);
+	const UInt32 playerAddress = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
+	if (!mem::LooksLikeObjectAddress(playerAddress)) {
+		return original(first, pickedRef, sameAsPrevious);
+	}
+
+	auto* const thirdPerson = reinterpret_cast<UInt8*>(
+		playerAddress + addr::kPlayerIsThirdPersonOffset);
+	const bool spoof = camera::HudInfoFirstPersonSpoofWanted(
+		*thirdPerson != 0, mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(pickedRef)));
+	if (!spoof) {
+		return original(first, pickedRef, sameAsPrevious);
+	}
+
+	const UInt8 saved = *thirdPerson;
+	*thirdPerson = 0;
+	const UInt8 result = original(first, pickedRef, sameAsPrevious);
+	*thirdPerson = saved;
+	if (!g_reportedHudInfo) {
+		g_reportedHudInfo = true;
+		OBVR_LOG("Crosshair tooltip: third-person target passed through first-person HUDInfo "
+		         "state calculation");
+	}
+	return result;
+}
 
 void SetWorldPickDirection(const NiPoint3& direction, bool valid) {
 	g_direction = direction;
@@ -110,6 +141,27 @@ bool InstallWorldPickHook() {
 	g_installed = true;
 	OBVR_LOG("Crosshair target: HMD world-pick hook installed at %08X, trampoline %08X (%u bytes)",
 	         addr::kHookWorldPickRay, trampolineAddress, trampolineSize);
+
+	if (!mem::Verify(addr::kHookWorldPickHudInfoCall, kWorldPickHudInfoOriginalCall,
+	                 sizeof(kWorldPickHudInfoOriginalCall))) {
+		OBVR_LOG("Crosshair tooltip: bytes at %08X are not the world-pick HUDInfo call; "
+		         "third-person context icons keep vanilla state",
+		         addr::kHookWorldPickHudInfoCall);
+		mem::ReportForeignCode("Crosshair tooltip", addr::kHookWorldPickHudInfoCall);
+		return true;
+	}
+	UInt8 callPatch[5]{};
+	const UInt32 callPatchSize = BuildWorldPickHudInfoCallPatch(
+		callPatch, sizeof(callPatch), addr::kHookWorldPickHudInfoCall,
+		reinterpret_cast<UInt32>(&OBVR_UpdateHudInfoForThirdPerson));
+	if (callPatchSize != sizeof(callPatch) ||
+	    !mem::SafeWrite(addr::kHookWorldPickHudInfoCall, callPatch, callPatchSize)) {
+		OBVR_LOG("Crosshair tooltip: failed to wrap the HUDInfo call at %08X",
+		         addr::kHookWorldPickHudInfoCall);
+		return true;
+	}
+	OBVR_LOG("Crosshair tooltip: HUDInfo target-state hook installed at %08X",
+	         addr::kHookWorldPickHudInfoCall);
 	return true;
 }
 

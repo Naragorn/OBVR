@@ -1378,10 +1378,8 @@ bool ReadIsThirdPerson() {
 bool RunHudPassWithCrosshairView() {
 	const Config& config = GetConfig();
 	const bool isThirdPerson = ReadIsThirdPerson();
-	if (!HudCrosshairNeedsFirstPersonView(config.tracker.crosshair,
-	                                       config.tracker.crosshairInThirdPerson,
-	                                       config.tracker.crosshairTooltipsThirdPerson,
-	                                       isThirdPerson)) {
+	if (!HudCrosshairNeedsFirstPersonView(config.tracker.crosshairTooltipsThirdPerson,
+	                                       g_crosshairHasTarget, isThirdPerson)) {
 		return render::RunHudPassBetweenScenes();
 	}
 
@@ -1398,7 +1396,6 @@ bool RunHudPassWithCrosshairView() {
 	const UInt8 saved = *thirdPerson;
 	*thirdPerson = 0;
 	const bool wantsReticle = HudReticleForceWanted(
-		config.tracker.crosshair, config.tracker.crosshairInThirdPerson,
 		config.tracker.crosshairTooltipsThirdPerson, g_crosshairHasTarget);
 	const bool forcedReticle = wantsReticle && game::SetHudReticleEnabled(true);
 	static bool s_reticleEnableReported = false;

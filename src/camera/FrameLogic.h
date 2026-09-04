@@ -581,19 +581,20 @@ bool TooltipAboveNameWanted(bool settingEnabled, bool thirdPerson,
 	                        bool haveTarget, bool tooltipsEnabled);
 
 // Whether the isolated HUD draw should briefly see first person while the
-// world and player remain in third person. Oblivion suppresses its centre HUD
-// content in third person; the lift needs that draw to obtain both the plain
-// crosshair and the contextual target icon. The caller restores the POV byte
-// immediately after this one HUD pass.
-bool HudCrosshairNeedsFirstPersonView(bool crosshairEnabled,
-                                      bool crosshairInThirdPerson,
-	                                  bool tooltipsInThirdPerson,
-                                      bool isThirdPerson);
+// world and player remain in third person. Only a live contextual tooltip
+// needs this. The plain third-person crosshair comes from the last validated
+// first-person reticle, so startup cannot expose an uninitialised HUD texture.
+bool HudCrosshairNeedsFirstPersonView(bool tooltipsInThirdPerson,
+                                      bool haveTarget, bool isThirdPerson);
 
 // Whether the hidden third-person HUDReticle root is exposed for the isolated
-// draw. A plain reticle and a live target tooltip are independent consumers.
-bool HudReticleForceWanted(bool crosshairEnabled, bool crosshairInThirdPerson,
-	                       bool tooltipsInThirdPerson, bool haveTarget);
+// draw. It is never forced merely to obtain a plain crosshair.
+bool HudReticleForceWanted(bool tooltipsInThirdPerson, bool haveTarget);
+
+// Oblivion suppresses the contextual HUDReticle during its HUDInfo update in
+// third person. Spoof first person only for a real picked target; null-target
+// updates must retain vanilla's third-person hide/fade behaviour.
+bool HudInfoFirstPersonSpoofWanted(bool thirdPerson, bool haveTarget);
 
 // Whether third person should paste in the crosshair borrowed from first
 // person, or leave what the lift brought alone.
