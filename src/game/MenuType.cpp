@@ -55,6 +55,10 @@ UInt32 ActiveMenuId() {
 	return id;
 }
 
+bool LoadingThreadActive() {
+	return *reinterpret_cast<const UInt32*>(addr::kLoadingThreadHandle) != 0;
+}
+
 const char* MenuIdName(UInt32 id) {
 	switch (id) {
 	case kMenuIdNone: return "none";

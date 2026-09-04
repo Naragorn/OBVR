@@ -571,6 +571,14 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 			return false;
 		}
 
+		// An in-game loading screen may still carry the last, full-colour
+		// world behind its loading art because LiveMenuBackground disabled
+		// Oblivion's static snapshot treatment globally. Dress the flat copy,
+		// inside its cinema rectangle, before it is handed to the compositor.
+		if (request.menuShadeColor != 0) {
+			m_mirror.PrepareFlatShade(request.gameDevice, request.menuShadeColor);
+		}
+
 		EyeMirror::Submission flatHeld(m_mirror, request.gameDevice);
 		if (!flatHeld.IsHeld()) {
 			return false;

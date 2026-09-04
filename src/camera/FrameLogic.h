@@ -322,6 +322,17 @@ MenuFrameDressing MenuDressingForFrame(FrameDelivery delivery, bool menuIsUp,
                                        bool shadeEnabled, bool singleBorderEnabled,
                                        bool dialogEpisode);
 
+// Loading screens are flat presentations rather than paused-world eye pairs,
+// but an in-game one can still show the last world behind its loading art.
+// LiveMenuBackground has disabled Oblivion's own static sepia treatment by
+// then, so the same INI-controlled replacement shade has to follow the frame
+// onto the cinema screen. Other flat presentations (films and the main menu)
+// remain untouched.
+constexpr bool CinemaLoadingShadeWanted(FrameDelivery delivery, bool loadingFrame,
+                                         bool shadeEnabled) {
+	return delivery == FrameDelivery::Cinema && loadingFrame && shadeEnabled;
+}
+
 // Dialogue remains a dialogue episode even when ActiveMenuId briefly reports
 // none or another child menu during the exit transition. It ends only when
 // menu mode itself ends, preventing that late transition being reclassified

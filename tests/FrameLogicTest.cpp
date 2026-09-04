@@ -577,6 +577,30 @@ void TestMenuFrameDressing() {
 	Check(true, "all held, live, flat, stale and disabled dressing flows agree");
 }
 
+void TestCinemaLoadingShade() {
+	std::printf("Which flat presentations receive the loading-screen shade\n");
+
+	using obvr::camera::CinemaLoadingShadeWanted;
+	using obvr::camera::FrameDelivery;
+	const FrameDelivery deliveries[] = {
+		FrameDelivery::Stereo,
+		FrameDelivery::Cinema,
+		FrameDelivery::HeldStereo,
+	};
+
+	for (FrameDelivery delivery : deliveries) {
+		for (int loading = 0; loading < 2; ++loading) {
+			for (int enabled = 0; enabled < 2; ++enabled) {
+				const bool expected = delivery == FrameDelivery::Cinema && loading != 0 &&
+				                      enabled != 0;
+				Check(CinemaLoadingShadeWanted(delivery, loading != 0, enabled != 0) ==
+				          expected,
+				      "every delivery, loading-state and INI-switch flow agrees");
+			}
+		}
+	}
+}
+
 void TestDialogMenuEpisode() {
 	std::printf("Dialogue identity through its exit transition\n");
 	using obvr::camera::DialogMenuEpisode;
@@ -3166,6 +3190,7 @@ int main() {
 	TestLiveMenuAvailability();
 	std::printf("\n");
 	TestMenuFrameDressing();
+	TestCinemaLoadingShade();
 	TestDialogMenuEpisode();
 	std::printf("\n");
 	TestMenuWorldProbe();

@@ -19,6 +19,7 @@ using obvr::render::CommonWindowInEye;
 using obvr::render::ComposeShadeColor;
 using obvr::render::EdgeStrips;
 using obvr::render::ParseHexColor;
+using obvr::render::ShadeRectangleForPicture;
 using obvr::render::d3d9::Rect;
 
 int g_failures = 0;
@@ -66,6 +67,22 @@ void TestComposeShadeColor() {
 	      "a black shade at full strength still counts as a tint");
 	Check(ComposeShadeColor(0xFF5A452E, 1.0f) == 0xFF5A452E,
 	      "stray high bits in the colour are masked off");
+}
+
+void TestShadeRectangle() {
+	std::printf("The rectangle repainted by the shade\n");
+	const Rect eye{10, 20, 990, 700};
+	const Rect common{50, 20, 950, 700};
+	const Rect flat{200, 150, 800, 550};
+
+	Check(&ShadeRectangleForPicture(eye, common, flat, false, false) == &eye,
+	      "a normal untrimmed eye shades its world rectangle");
+	Check(&ShadeRectangleForPicture(eye, common, flat, true, false) == &common,
+	      "a trimmed held eye shades only the shared window");
+	Check(&ShadeRectangleForPicture(eye, common, flat, false, true) == &flat,
+	      "a cinema frame shades its flat rectangle");
+	Check(&ShadeRectangleForPicture(eye, common, flat, true, true) == &flat,
+	      "flat placement outranks an irrelevant held-border request");
 }
 
 void TestCommonWindow() {
@@ -190,6 +207,7 @@ void TestDialogPovDecision() {
 int main() {
 	TestParseHexColor();
 	TestComposeShadeColor();
+	TestShadeRectangle();
 	TestCommonWindow();
 	TestEdgeStrips();
 	TestDialogZoomDecision();

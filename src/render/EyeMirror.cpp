@@ -661,6 +661,15 @@ bool EyeMirror::EnsureShadeResources(void* gameDevice) {
 
 bool EyeMirror::PrepareHeldShade(void* gameDevice, UInt32 shadeColorArgb,
                                  bool trimToSharedWindow) {
+	return PrepareShade(gameDevice, shadeColorArgb, trimToSharedWindow, false);
+}
+
+bool EyeMirror::PrepareFlatShade(void* gameDevice, UInt32 shadeColorArgb) {
+	return PrepareShade(gameDevice, shadeColorArgb, false, true);
+}
+
+bool EyeMirror::PrepareShade(void* gameDevice, UInt32 shadeColorArgb,
+                             bool trimToSharedWindow, bool flatPicture) {
 	if (m_heldShaded) {
 		return true;
 	}
@@ -823,7 +832,9 @@ bool EyeMirror::PrepareHeldShade(void* gameDevice, UInt32 shadeColorArgb,
 		setTarget(gameDevice, 0, eye.surface);
 		setDepth(gameDevice, nullptr);
 
-		const d3d9::Rect& r = trimToSharedWindow ? eye.commonDestination : eye.destination;
+		const d3d9::Rect& r = ShadeRectangleForPicture(
+			eye.destination, eye.commonDestination, eye.flatDestination,
+			trimToSharedWindow, flatPicture);
 		const float left = static_cast<float>(r.left) - 0.5f;
 		const float top = static_cast<float>(r.top) - 0.5f;
 		const float right = static_cast<float>(r.right) - 0.5f;

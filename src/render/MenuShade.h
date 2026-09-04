@@ -82,6 +82,20 @@ inline UInt32 ComposeShadeColor(UInt32 rgb, float strength) {
 	return (alpha << 24) | (rgb & 0x00FFFFFFu);
 }
 
+// Which part of an eye texture the shader repaints. Flat cinema pictures
+// have their own letterboxed rectangle and always outrank the held-pair edge
+// choice; ordinary held pictures optionally use the shared stereo window.
+inline const d3d9::Rect& ShadeRectangleForPicture(const d3d9::Rect& eyeDestination,
+                                                   const d3d9::Rect& commonDestination,
+                                                   const d3d9::Rect& flatDestination,
+                                                   bool trimToSharedWindow,
+                                                   bool flatPicture) {
+	if (flatPicture) {
+		return flatDestination;
+	}
+	return trimToSharedWindow ? commonDestination : eyeDestination;
+}
+
 // Where the frame region that BOTH eyes show lands inside one eye's picture.
 //
 // Each eye shows a slice of the game's frame (mySrc, in frame pixels) placed

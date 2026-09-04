@@ -1002,6 +1002,7 @@ void OnFrameEnd() {
 	// mouse is over", so it empties whenever the cursor is not on the menu,
 	// and treating that as a change would retrigger the trace all day.
 	const UInt32 menuId = menuIsUp ? game::ActiveMenuId() : game::kMenuIdNone;
+	const bool loadingFrame = menuId == game::kMenuIdLoading || game::LoadingThreadActive();
 	g_dialogMenuEpisode = DialogMenuEpisode(
 		g_dialogMenuEpisode, menuIsUp, menuId == game::kMenuIdDialog);
 	const bool menuFlagChanged = menuIsUp != g_menuTraceWasUp;
@@ -1320,6 +1321,10 @@ void OnFrameEnd() {
 	menu.cameraTanHalfHeight = g_state.cameraTanHalfHeight;
 	menu.menuScale = GetConfig().tracker.menuScale;
 	menu.menuAspect = GetConfig().tracker.menuAspect;
+	if (CinemaLoadingShadeWanted(delivery, loadingFrame, config.tracker.menuShade)) {
+		menu.menuShadeColor = render::ComposeShadeColor(
+			config.tracker.menuShadeColorRgb, config.tracker.menuShadeStrength);
+	}
 
 	// A camera pass means BeginFrame has already run for this frame and the
 	// frame is open. Calling it again would call WaitGetPoses a second time,

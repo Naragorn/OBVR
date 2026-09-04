@@ -110,6 +110,12 @@ static_assert(kMenuIdMagicPopup == kMenuIdFirst + 23, "MagicPopup follows Map");
 // menu - IsMenuMode is what answers that.
 UInt32 ActiveMenuId();
 
+// Whether Oblivion currently owns a loading thread. This is the reliable
+// half of loading-screen detection: LoadingMenu is not always ActiveMenu,
+// because that pointer follows the menu under the mouse and a loading screen
+// has no cursor to put over it.
+bool LoadingThreadActive();
+
 // A name for the log, or "unnamed" for an id with no entry here. Pure, so the
 // table can be checked without a game to read from.
 const char* MenuIdName(UInt32 id);

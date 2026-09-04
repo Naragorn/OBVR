@@ -114,6 +114,12 @@ public:
 	// undresses them - the world's next frame arrives untoned and untrimmed.
 	// Pure Direct3D 9, so it must be called with no submission queue held.
 	bool PrepareHeldShade(void* gameDevice, UInt32 shadeColorArgb, bool trimToSharedWindow);
+
+	// The same shader over the rectangle occupied by a flat cinema picture.
+	// Loading screens use this after their letterboxed copy; unlike a held
+	// stereo pair they have neither per-eye world destinations nor a shared
+	// edge window to trim to.
+	bool PrepareFlatShade(void* gameDevice, UInt32 shadeColorArgb);
 	bool IsHeldShaded() const { return m_heldShaded; }
 
 	// Draws the captured 2D layer over the back buffer the monitor is about
@@ -133,6 +139,8 @@ public:
 	bool WasCropped() const { return m_cropped; }
 
 private:
+	bool PrepareShade(void* gameDevice, UInt32 shadeColorArgb,
+	                  bool trimToSharedWindow, bool flatPicture);
 	bool BeginSubmit(void* gameDevice);
 	void EndSubmit() { m_bracket.Release(); }
 
