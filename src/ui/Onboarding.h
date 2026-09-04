@@ -6,10 +6,11 @@
 
 namespace obvr::ui {
 
-// The first-start walkthrough: a few pages in the headset that say what OBVR
-// is, how it is steered, which of its two shapes to play in - head-tracked
-// or hand-tracked - and a couple of comfort settings, ending on "do not show
-// this again".
+// The first-start walkthrough: a few pages in the headset that open on the
+// choice between OBVR's two shapes - the seated experience, Oblivion as it
+// is with keyboard, mouse or gamepad, and the standing one, a full VR port
+// with motion controllers - then say how each is steered, offer a couple of
+// comfort settings, and end on "do not show this again".
 //
 // The same machinery as the settings menu: rows the painter already knows
 // how to draw, settings written through the same table, so a choice made
@@ -19,12 +20,13 @@ namespace obvr::ui {
 // can be walked through in a test.
 //
 // A page is a list of rows: explanatory text (not selectable), settings by
-// INI section and key, and actions - Back, Next, Finish. The highlight
-// skips text rows; Left or Right on a setting changes it and on an action
+// INI section and key, choices with a picture that set a setting and turn
+// the page, and actions - Back, Next, Finish. The highlight skips text
+// rows; Left or Right on a setting changes it, on a choice or an action
 // fires it.
 
-enum class OnboardingRowKind { Text, Setting, Action };
-enum class OnboardingAction { None, Back, Next, Finish };
+enum class OnboardingRowKind { Text, Setting, Choice, Action };
+enum class OnboardingAction { None, Back, Next, Finish, ChooseSeated, ChooseStanding };
 
 struct OnboardingRow {
 	OnboardingRowKind kind = OnboardingRowKind::Text;
@@ -33,6 +35,8 @@ struct OnboardingRow {
 	const char* iniSection = "";
 	const char* iniKey = "";
 	OnboardingAction action = OnboardingAction::None;
+	const char* const* icon = nullptr;
+	UInt32 iconRows = 0;
 };
 
 struct OnboardingPage {
@@ -43,6 +47,10 @@ struct OnboardingPage {
 
 const OnboardingPage* OnboardingPages();
 UInt32 OnboardingPageCount();
+
+// Whether a choice row is the one in force for this configuration: seated
+// while hand tracking is off, standing while it is on.
+bool ChoiceIsCurrent(OnboardingAction choice, const Config& config);
 
 class OnboardingMenu {
 public:
@@ -57,15 +65,17 @@ public:
 	void SetVisibleRows(UInt32 rows);
 
 	// One key press. Movement skips text rows; Left or Right on a setting
-	// changes it and answers the definition to write back; Left or Right on
-	// an action turns the page, and Finish closes the walkthrough. Anything
-	// that changes the picture bumps the revision.
+	// changes it and answers the definition to write back; on a choice it
+	// writes the mode and turns the page, answering the mode's definition;
+	// on an action it turns the page, and Finish closes the walkthrough.
+	// Anything that changes the picture bumps the revision.
 	const SettingDefinition* Apply(MenuAction action, Config& config);
 
 	// The current page as rows for the painter. Text rows come out as
-	// ItemKind::Text, actions as ItemKind::Action, settings as the table's
-	// own items. Categories are the page title, so the painter shows it as
-	// the heading of the list.
+	// ItemKind::Text, choices and actions as ItemKind::Action - the choices
+	// with their picture and the current one marked - and settings as the
+	// table's own items. Categories are the page title, so the painter
+	// shows it as the heading of the list.
 	UInt32 BuildRows(const Config& config, MenuItem* items, const char** categories,
 	                 UInt32 capacity) const;
 
@@ -76,6 +86,7 @@ private:
 	const OnboardingPage& CurrentPage() const;
 	UInt32 FirstSelectable(const OnboardingPage& page) const;
 	UInt32 StepSelection(const OnboardingPage& page, UInt32 from, bool down) const;
+	void TurnTo(UInt32 page);
 
 	bool m_open = false;
 	UInt32 m_page = 0;

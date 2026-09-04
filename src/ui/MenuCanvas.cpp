@@ -94,6 +94,39 @@ void Canvas::DrawFrame(SInt32 x, SInt32 y, SInt32 width, SInt32 height, SInt32 t
 	FillRect(x + width - thickness, y, thickness, height, colour);
 }
 
+void Canvas::FillDiamond(SInt32 cx, SInt32 cy, SInt32 radius, render::Pixel colour) {
+	if (radius <= 0) {
+		return;
+	}
+	// One horizontal bar per row, widening towards the middle: the row at
+	// distance d from the centre spans radius - d pixels either side.
+	for (SInt32 d = -radius; d <= radius; ++d) {
+		const SInt32 half = radius - (d < 0 ? -d : d);
+		FillRect(cx - half, cy + d, 2 * half + 1, 1, colour);
+	}
+}
+
+void Canvas::DrawIcon(SInt32 x, SInt32 y, const char* const* rows, UInt32 rowCount, SInt32 scale,
+                      render::Pixel ink, render::Pixel accent) {
+	if (rows == nullptr || scale <= 0) {
+		return;
+	}
+	for (UInt32 row = 0; row < rowCount; ++row) {
+		const char* const line = rows[row];
+		if (line == nullptr) {
+			continue;
+		}
+		for (UInt32 column = 0; line[column] != '\0'; ++column) {
+			const char c = line[column];
+			if (c != '#' && c != 'o') {
+				continue;
+			}
+			FillRect(x + static_cast<SInt32>(column) * scale, y + static_cast<SInt32>(row) * scale,
+			         scale, scale, c == '#' ? ink : accent);
+		}
+	}
+}
+
 void Canvas::DrawText(SInt32 x, SInt32 y, const char* text, SInt32 scale, render::Pixel colour) {
 	if (text == nullptr || scale <= 0) {
 		return;

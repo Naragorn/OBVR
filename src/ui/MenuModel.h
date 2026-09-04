@@ -65,6 +65,17 @@ struct MenuItem {
 	// size and what is decided with it. The menu says so on the row rather
 	// than letting somebody change it and conclude OBVR is broken.
 	bool needsRestart = false;
+
+	// A picture beside the row: rows of characters, '#' in the text colour
+	// and 'o' in the accent colour, anything else clear (see Canvas::DrawIcon).
+	// A row with one is drawn taller, with its help beside the picture. The
+	// onboarding's two ways to play are the rows that carry these.
+	const char* const* icon = nullptr;
+	UInt32 iconRows = 0;
+
+	// Marked as the choice currently in force - the one of several rows that
+	// is "on". Drawn as a mark before the label.
+	bool chosen = false;
 };
 
 // What a press means. Kept separate from any key code: which key does which of

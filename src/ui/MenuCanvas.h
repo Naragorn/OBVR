@@ -75,6 +75,19 @@ public:
 	// the place to discover a stray byte.
 	void DrawText(SInt32 x, SInt32 y, const char* text, SInt32 scale, render::Pixel colour);
 
+	// A filled diamond centred on (cx, cy), `radius` pixels from centre to
+	// tip - the ornament Oblivion's own menus put at corners and rule ends.
+	// A radius of zero or less draws nothing.
+	void FillDiamond(SInt32 cx, SInt32 cy, SInt32 radius, render::Pixel colour);
+
+	// A picture from rows of characters, (x, y) at its top left, each
+	// character a square of `scale` pixels: '#' in `ink`, 'o' in `accent`,
+	// anything else left as it is. Rows may differ in length; the picture is
+	// as wide as its longest row. The way the walkthrough's pictures are
+	// kept: in the source, readable, with no image file to load.
+	void DrawIcon(SInt32 x, SInt32 y, const char* const* rows, UInt32 rowCount, SInt32 scale,
+	              render::Pixel ink, render::Pixel accent);
+
 	// One pixel, clipped. The primitive the others are built from, exposed
 	// because a test that wants to know what got drawn reads it back.
 	void SetPixel(SInt32 x, SInt32 y, render::Pixel colour);

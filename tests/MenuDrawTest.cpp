@@ -449,10 +449,63 @@ void TestChannelSwap() {
 	Check(Same(SwapRedAndBlue(grey), grey), "a grey is unchanged by the swap");
 }
 
+void TestDiamondAndIcon() {
+	std::printf("Diamonds and pictures\n");
+
+	constexpr UInt32 kWide = 16;
+	constexpr UInt32 kTall = 12;
+	const Pixel kClear{0, 0, 0, 0};
+	const Pixel kInk{200, 200, 200, 255};
+	const Pixel kAccent{250, 200, 50, 255};
+	Pixel pixels[kWide * kTall];
+	obvr::ui::Canvas canvas(pixels, kWide, kTall);
+
+	canvas.Fill(kClear);
+	canvas.FillDiamond(8, 6, 2, kInk);
+	Check(Same(canvas.GetPixel(8, 6), kInk), "the diamond's centre is filled");
+	Check(Same(canvas.GetPixel(8, 4), kInk) && Same(canvas.GetPixel(8, 8), kInk) &&
+	          Same(canvas.GetPixel(6, 6), kInk) && Same(canvas.GetPixel(10, 6), kInk),
+	      "and its four tips");
+	Check(Same(canvas.GetPixel(7, 5), kInk), "and the edge between two tips");
+	Check(Same(canvas.GetPixel(6, 4), kClear), "but not the corner of the bounding box");
+	canvas.Fill(kClear);
+	canvas.FillDiamond(8, 6, 0, kInk);
+	Check(Same(canvas.GetPixel(8, 6), kClear), "a radius of zero draws nothing");
+	canvas.FillDiamond(0, 0, 3, kInk);
+	Check(Same(canvas.GetPixel(0, 0), kInk) && Same(canvas.GetPixel(2, 0), kInk),
+	      "a diamond at the corner is clipped and survives");
+
+	static const char* const kIcon[] = {
+		"#o",
+		" #",
+		"##",
+	};
+	canvas.Fill(kClear);
+	canvas.DrawIcon(2, 3, kIcon, 3, 2, kInk, kAccent);
+	Check(Same(canvas.GetPixel(2, 3), kInk) && Same(canvas.GetPixel(3, 4), kInk),
+	      "a # is a square of ink at the scale");
+	Check(Same(canvas.GetPixel(4, 3), kAccent) && Same(canvas.GetPixel(5, 4), kAccent),
+	      "an o is a square of accent");
+	Check(Same(canvas.GetPixel(2, 5), kClear) && Same(canvas.GetPixel(3, 6), kClear),
+	      "a space leaves the canvas alone");
+	Check(Same(canvas.GetPixel(4, 5), kInk), "the second row's # is one square down");
+	Check(Same(canvas.GetPixel(2, 7), kInk) && Same(canvas.GetPixel(5, 8), kInk),
+	      "and the third row is drawn whole");
+	canvas.Fill(kClear);
+	canvas.DrawIcon(2, 3, kIcon, 3, 0, kInk, kAccent);
+	Check(Same(canvas.GetPixel(2, 3), kClear), "a scale of zero draws nothing");
+	canvas.DrawIcon(2, 3, nullptr, 3, 2, kInk, kAccent);
+	Check(Same(canvas.GetPixel(2, 3), kClear), "and so do no rows");
+	canvas.DrawIcon(14, 10, kIcon, 3, 2, kInk, kAccent);
+	Check(Same(canvas.GetPixel(15, 11), kInk), "a picture past the edge is clipped");
+}
+
 }  // namespace
 
 int main() {
 	std::printf("OBVR menu drawing test\n\n");
+	TestDiamondAndIcon();
+	std::printf("\n");
 
 	TestGlyphBasics();
 	std::printf("\n");

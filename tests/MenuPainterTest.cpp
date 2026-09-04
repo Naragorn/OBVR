@@ -417,10 +417,83 @@ void TestNothingCollidesWithTheHelpLine() {
 	Check(big.GuardIntact(), "with nothing past the canvas at that scale either");
 }
 
+void TestPictureRows() {
+	std::printf("Rows with a picture\n");
+
+	static const char* const kIcon[] = {
+		"####",
+		"#oo#",
+		"####",
+		"####",
+	};
+
+	MenuItem items[3];
+	const char* categories[3] = {"Page", "Page", "Page"};
+	items[0].label = "A line of text";
+	items[0].kind = ItemKind::Text;
+	items[1].label = "Seated";
+	items[1].help = "the first way";
+	items[1].kind = ItemKind::Action;
+	items[1].icon = kIcon;
+	items[1].iconRows = 4;
+	items[1].chosen = true;
+	items[2].label = "Standing";
+	items[2].help = "the other way";
+	items[2].kind = ItemKind::Action;
+	items[2].icon = kIcon;
+	items[2].iconRows = 4;
+
+	MenuTheme theme;
+	MenuState state;
+	state.selected = 1;
+
+	Sheet sheet;
+	Canvas canvas = sheet.Surface();
+	PaintMenu(canvas, items, categories, 3, state, 1, theme, "Welcome");
+	Check(sheet.GuardIntact(), "nothing past the canvas");
+
+	// The picture's accent colour is the value colour, which no plain row of
+	// this menu uses - so finding it means the picture was drawn.
+	Check(FirstRowWithColour(canvas, theme.value) > 0, "the picture is drawn");
+
+	// The highlight bar of a picture row is taller than a line.
+	SInt32 barTop = -1;
+	SInt32 barBottom = -1;
+	for (SInt32 y = 0; y < static_cast<SInt32>(kHeight); ++y) {
+		if (RowHasColour(canvas, y, theme.highlight)) {
+			if (barTop < 0) {
+				barTop = y;
+			}
+			barBottom = y;
+		}
+	}
+	Check(barTop > 0 && barBottom - barTop > 20, "the highlighted picture row is several lines tall");
+
+	// A window too small for the picture row stops rather than running into
+	// the help line.
+	Pixel tiny[60 * 40 + kGuard];
+	for (UInt32 at = 0; at < 60 * 40 + kGuard; ++at) {
+		tiny[at] = kGuardValue;
+	}
+	Canvas little(tiny, 60, 40);
+	PaintMenu(little, items, categories, 3, state, 1, theme, "Welcome");
+	bool guard = true;
+	for (UInt32 at = 60 * 40; at < 60 * 40 + kGuard; ++at) {
+		if (!Same(tiny[at], kGuardValue)) {
+			guard = false;
+		}
+	}
+	Check(guard, "a canvas too small for the picture writes nothing past itself");
+	Check(FirstRowWithColour(little, theme.highlight) < 0,
+	      "and does not draw the picture row it has no room for");
+}
+
 }  // namespace
 
 int main() {
 	std::printf("OBVR menu painter test\n\n");
+	TestPictureRows();
+	std::printf("\n");
 
 	TestVisibleRows();
 	std::printf("\n");

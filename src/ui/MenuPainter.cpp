@@ -19,6 +19,12 @@ constexpr UInt32 kHelpLines = 2;
 
 constexpr UInt32 kChromeLines = kTitleLines + kHelpLines;
 
+// A row with a picture is this many lines tall, and the picture is drawn at
+// twice the text's scale: a 16-row picture is then 32 font pixels, which sits
+// inside five lines of nine with room to breathe.
+constexpr UInt32 kIconLines = 5;
+constexpr UInt32 kIconScale = 2;
+
 bool SameText(const char* a, const char* b) {
 	if (a == nullptr || b == nullptr) {
 		return a == b;
@@ -31,6 +37,40 @@ bool SameText(const char* a, const char* b) {
 		++b;
 	}
 	return *a == *b;
+}
+
+UInt32 IconWidth(const MenuItem& item) {
+	UInt32 widest = 0;
+	for (UInt32 row = 0; row < item.iconRows; ++row) {
+		UInt32 length = 0;
+		while (item.icon[row] != nullptr && item.icon[row][length] != '\0') {
+			++length;
+		}
+		if (length > widest) {
+			widest = length;
+		}
+	}
+	return widest;
+}
+
+UInt32 LinesOf(const MenuItem& item) {
+	return item.icon != nullptr && item.iconRows > 0 ? kIconLines : 1;
+}
+
+// The border: the outer frame, a thin light line inset from it, and a
+// diamond at each inner corner - vanilla's panels, in the strokes a pixel
+// canvas has.
+void PaintChrome(Canvas& canvas, SInt32 scale, const MenuTheme& theme) {
+	const SInt32 width = static_cast<SInt32>(canvas.Width());
+	const SInt32 height = static_cast<SInt32>(canvas.Height());
+	canvas.DrawFrame(0, 0, width, height, scale, theme.frame);
+	const SInt32 inset = scale * 3;
+	canvas.DrawFrame(inset, inset, width - 2 * inset, height - 2 * inset, 1, theme.frameLight);
+	const SInt32 radius = scale * 2;
+	canvas.FillDiamond(inset, inset, radius, theme.frameLight);
+	canvas.FillDiamond(width - 1 - inset, inset, radius, theme.frameLight);
+	canvas.FillDiamond(inset, height - 1 - inset, radius, theme.frameLight);
+	canvas.FillDiamond(width - 1 - inset, height - 1 - inset, radius, theme.frameLight);
 }
 
 }  // namespace
@@ -62,21 +102,27 @@ void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categor
 		scale = 1;
 	}
 
+	const SInt32 s = static_cast<SInt32>(scale);
 	const SInt32 margin = static_cast<SInt32>(kMargin * scale);
 	const SInt32 lineHeight = static_cast<SInt32>(kLineAdvance * scale);
 	const SInt32 width = static_cast<SInt32>(canvas.Width());
 	const SInt32 height = static_cast<SInt32>(canvas.Height());
 
 	canvas.Fill(theme.background);
-	canvas.DrawFrame(0, 0, width, height, static_cast<SInt32>(scale), theme.frame);
+	PaintChrome(canvas, s, theme);
 
-	canvas.DrawText(margin, margin, title != nullptr ? title : "OBVR settings",
-	                static_cast<SInt32>(scale), theme.title);
-
-	// A rule under the title, so the eye has somewhere to stop before the list
-	// starts. One pixel at the current scale, like the frame.
-	canvas.FillRect(margin, margin + lineHeight + static_cast<SInt32>(scale) * 2,
-	                width - 2 * margin, static_cast<SInt32>(scale), theme.frame);
+	// The title, centred, with a rule under it that a diamond sits on - the
+	// eye has somewhere to stop before the list starts.
+	// One step larger than the rows: seven font pixels at scale + 1 still sit
+	// inside the two lines the title owns at any scale.
+	const char* const shown = title != nullptr ? title : "OBVR settings";
+	const SInt32 titleScale = s + 1;
+	const SInt32 titleWidth = static_cast<SInt32>(TextWidth(shown)) * titleScale;
+	const SInt32 titleX = titleWidth < width - 2 * margin ? (width - titleWidth) / 2 : margin;
+	canvas.DrawText(titleX, margin + s, shown, titleScale, theme.title);
+	const SInt32 ruleY = margin + lineHeight + s * 3;
+	canvas.FillRect(margin + s * 4, ruleY, width - 2 * margin - s * 8, 1, theme.frameLight);
+	canvas.FillDiamond(width / 2, ruleY, s * 2, theme.frameLight);
 
 	if (items == nullptr || count == 0) {
 		return;
@@ -98,13 +144,16 @@ void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categor
 	SInt32 y = margin + kTitleLines * lineHeight;
 
 	// Counted rather than derived from the loop index, because a category
-	// heading takes a line too. That was the bug: headings were drawn without
-	// being counted, so a window holding two of them pushed its last two rows
-	// past the bottom and into the help line.
+	// heading takes a line too, and a row with a picture takes several. That
+	// was the bug: headings were drawn without being counted, so a window
+	// holding two of them pushed its last two rows past the bottom and into
+	// the help line.
 	UInt32 linesUsed = 0;
 
 	for (UInt32 index = state.firstVisible; index < count && linesUsed < visibleRows; ++index) {
 		const MenuItem& item = items[index];
+		const UInt32 rowLines = LinesOf(item);
+		const SInt32 rowHeight = static_cast<SInt32>(rowLines) * lineHeight;
 
 		// The heading above the first row of each category.
 		const bool firstOfCategory =
@@ -115,12 +164,12 @@ void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categor
 			// Room for the heading AND the row it introduces, or neither. A
 			// heading alone at the bottom announces rows that are not on
 			// screen, which reads as a menu that has lost its contents.
-			if (linesUsed + 2 > visibleRows || y + 2 * lineHeight > contentBottom) {
+			if (linesUsed + 1 + rowLines > visibleRows ||
+			    y + lineHeight + rowHeight > contentBottom) {
 				break;
 			}
 
-			canvas.DrawText(margin, y, categories[index], static_cast<SInt32>(scale),
-			                theme.category);
+			canvas.DrawText(margin + s * 2, y, categories[index], s, theme.category);
 			y += lineHeight;
 			++linesUsed;
 		}
@@ -128,14 +177,14 @@ void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categor
 		// The last guard, and the one that makes the collision impossible
 		// rather than merely unlikely: whatever the counting says, nothing is
 		// drawn below the line the help text owns.
-		if (y + lineHeight > contentBottom) {
+		if (y + rowHeight > contentBottom) {
 			break;
 		}
 
 		const bool selected = index == state.selected;
 		if (selected) {
-			canvas.FillRect(margin, y - static_cast<SInt32>(scale), width - 2 * margin,
-			                lineHeight, theme.highlight);
+			canvas.FillRect(margin + s * 2, y - s, width - 2 * margin - s * 4, rowHeight,
+			                theme.highlight);
 		}
 
 		const render::Pixel labelColour =
@@ -143,8 +192,37 @@ void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categor
 			         : (item.kind == ItemKind::Text ? theme.help : theme.text);
 		const render::Pixel valueColour = selected ? theme.highlightText : theme.value;
 
-		canvas.DrawText(margin + static_cast<SInt32>(scale) * 2, y, item.label,
-		                static_cast<SInt32>(scale), labelColour);
+		if (rowLines > 1) {
+			// A picture on the left at twice the scale, the label and its help
+			// beside it, centred on the row; the chosen one carries a diamond.
+			const SInt32 iconScale = s * static_cast<SInt32>(kIconScale);
+			const SInt32 iconHeight = static_cast<SInt32>(item.iconRows) * iconScale;
+			const SInt32 iconY = y + (rowHeight - iconHeight) / 2;
+			const SInt32 iconX = margin + s * 4;
+			canvas.DrawIcon(iconX, iconY, item.icon, item.iconRows, iconScale,
+			                selected ? theme.highlightText : theme.text, theme.value);
+			const SInt32 textX =
+				iconX + static_cast<SInt32>(IconWidth(item)) * iconScale + s * 6;
+			const SInt32 labelY = y + (rowHeight - 2 * lineHeight) / 2;
+			if (item.chosen) {
+				canvas.FillDiamond(textX + s * 2, labelY + lineHeight / 2 - s, s * 2,
+				                   selected ? theme.highlightText : theme.value);
+			}
+			canvas.DrawText(textX + s * 7, labelY, item.label, s, labelColour);
+			canvas.DrawText(textX + s * 7, labelY + lineHeight, item.help, s,
+			                selected ? theme.highlightText : theme.help);
+			y += rowHeight;
+			linesUsed += rowLines;
+			continue;
+		}
+
+		SInt32 labelX = margin + s * 4;
+		if (item.chosen) {
+			canvas.FillDiamond(labelX + s, y + lineHeight / 2 - s, s,
+			                   selected ? theme.highlightText : theme.value);
+			labelX += s * 4;
+		}
+		canvas.DrawText(labelX, y, item.label, s, labelColour);
 
 		char text[24];
 		FormatValue(item, text, sizeof(text));
@@ -152,10 +230,9 @@ void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categor
 		// Right-aligned, which is what lets a column of numbers be compared at
 		// a glance. TextWidth deliberately excludes the trailing gap, or every
 		// value would sit one pixel short of where it says it does.
-		const SInt32 valueRight = width - margin - static_cast<SInt32>(scale) * 2;
-		const SInt32 valueX =
-			valueRight - static_cast<SInt32>(TextWidth(text) * scale);
-		canvas.DrawText(valueX, y, text, static_cast<SInt32>(scale), valueColour);
+		const SInt32 valueRight = width - margin - s * 4;
+		const SInt32 valueX = valueRight - static_cast<SInt32>(TextWidth(text) * scale);
+		canvas.DrawText(valueX, y, text, s, valueColour);
 
 		// A row whose value will not take effect until the next start says so
 		// on the row. Somebody who changes a setting and sees nothing happen
@@ -163,8 +240,7 @@ void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categor
 		if (item.needsRestart) {
 			const char* const mark = "*";
 			canvas.DrawText(valueX - static_cast<SInt32>((TextWidth(mark) + 2) * scale), y, mark,
-			                static_cast<SInt32>(scale),
-			                selected ? theme.highlightText : theme.warning);
+			                s, selected ? theme.highlightText : theme.warning);
 		}
 
 		y += lineHeight;
@@ -177,9 +253,9 @@ void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categor
 	if (state.selected < count) {
 		const SInt32 helpY = height - margin - lineHeight;
 
-		canvas.FillRect(margin, helpY - static_cast<SInt32>(scale) * 3, width - 2 * margin,
-		                static_cast<SInt32>(scale), theme.frame);
-		canvas.DrawText(margin, helpY, items[state.selected].help, static_cast<SInt32>(scale),
+		canvas.FillRect(margin + s * 4, helpY - s * 3, width - 2 * margin - s * 8, 1,
+		                theme.frameLight);
+		canvas.DrawText(margin + s * 2, helpY, items[state.selected].help, s,
 		                items[state.selected].needsRestart ? theme.warning : theme.help);
 	}
 }

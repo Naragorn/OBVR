@@ -74,34 +74,6 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return c.look.blockVerticalLook ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.look.blockVerticalLook = v != 0.0f; },
 	},
-	{
-		"Looking", "Look up range", "Degrees of upward look, third person only",
-		ItemKind::Number, 0.0f, 180.0f, 5.0f, 0, false,
-		"Look", "VerticalLookUpRange",
-		+[](const Config& c) { return c.look.verticalLookUpRange; },
-		+[](Config& c, float v) { c.look.verticalLookUpRange = v; },
-	},
-	{
-		"Looking", "Look down range", "Degrees of downward look, third person only",
-		ItemKind::Number, 0.0f, 180.0f, 5.0f, 0, false,
-		"Look", "VerticalLookDownRange",
-		+[](const Config& c) { return c.look.verticalLookDownRange; },
-		+[](Config& c, float v) { c.look.verticalLookDownRange = v; },
-	},
-	{
-		"Looking", "Smooth vertical look", "Eases the vertical look as well",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Look", "SmoothVerticalLook",
-		+[](const Config& c) { return c.look.smoothVerticalLook ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.look.smoothVerticalLook = v != 0.0f; },
-	},
-	{
-		"Looking", "Vertical look speed", "How fast the eased vertical look catches up",
-		ItemKind::Number, 1.0f, 30.0f, 1.0f, 0, false,
-		"Look", "VerticalLookSpeed",
-		+[](const Config& c) { return c.look.verticalLookSpeed; },
-		+[](Config& c, float v) { c.look.verticalLookSpeed = v; },
-	},
 
 	// ---- Aiming ------------------------------------------------------------
 	{
@@ -117,55 +89,6 @@ const SettingDefinition kSettings[] = {
 		"Look", "AimInThirdPerson",
 		+[](const Config& c) { return c.aimInThirdPerson ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.aimInThirdPerson = v != 0.0f; },
-	},
-	{
-		"Aiming", "Aim at the source", "Set the heading inside the call that reads it",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Look", "AimAtSource",
-		+[](const Config& c) { return c.aimAtSource ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.aimAtSource = v != 0.0f; },
-	},
-	{
-		"Aiming", "Third-person body aim", "Upper-body gaze share while weapon is ready",
-		ItemKind::Number, 0.0f, 100.0f, 5.0f, 0, false,
-		"Look", "ThirdPersonAimVisualPercent",
-		+[](const Config& c) { return c.thirdPersonAimVisualPercent; },
-		+[](Config& c, float v) { c.thirdPersonAimVisualPercent = v; },
-	},
-	{
-		"Aiming", "Body aim while unarmed", "Keep the upper body following without a weapon",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Look", "ThirdPersonBodyFollowsGazeUnarmed",
-		+[](const Config& c) { return c.thirdPersonBodyFollowsGazeUnarmed ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.thirdPersonBodyFollowsGazeUnarmed = v != 0.0f; },
-	},
-	{
-		"Aiming", "Head follows gaze", "Turn only the player head to the HMD direction",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Look", "ThirdPersonHeadFollowsGaze",
-		+[](const Config& c) { return c.thirdPersonHeadFollowsGaze ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.thirdPersonHeadFollowsGaze = v != 0.0f; },
-	},
-	{
-		"Aiming", "Body turn speed", "0 turns the body at once; higher eases it",
-		ItemKind::Number, 0.0f, 30.0f, 1.0f, 0, false,
-		"Look", "AimTurnSpeed",
-		+[](const Config& c) { return c.aimTurnSpeed; },
-		+[](Config& c, float v) { c.aimTurnSpeed = v; },
-	},
-	{
-		"Aiming", "Turn body", "Only for the shot leaves your walking free",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Look", "AimTurnOnShotOnly",
-		+[](const Config& c) { return c.aimTurnOnShotOnly ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.aimTurnOnShotOnly = v != 0.0f; },
-	},
-	{
-		"Aiming", "Straighten up after firing", "Stops you walking the way you aimed",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Look", "AimReturnOnRelease",
-		+[](const Config& c) { return c.aimReturnOnRelease ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.aimReturnOnRelease = v != 0.0f; },
 	},
 	{
 		"Aiming", "Crosshair", "Oblivion's crosshair at its own depth",
@@ -217,48 +140,11 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.tracker.crosshairInThirdPerson = v != 0.0f; },
 	},
 	{
-		"Aiming", "Remember crosshair", "Keep the genuine capture across game starts",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Render", "CrosshairPersistentCache",
-		+[](const Config& c) { return c.tracker.crosshairPersistentCache ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.tracker.crosshairPersistentCache = v != 0.0f; },
-	},
-	{
-		"Aiming", "3rd person only when needed", "Same rule, for the borrowed one",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Render", "CrosshairOnlyWhenNeeded3rdPerson",
-		+[](const Config& c) {
-			return c.tracker.crosshairOnlyWhenNeededThirdPerson ? 1.0f : 0.0f;
-		},
-		+[](Config& c, float v) { c.tracker.crosshairOnlyWhenNeededThirdPerson = v != 0.0f; },
-	},
-	{
-		"Aiming", "Tooltips in 1st person", "Show talk, open and take icons in first person",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Render", "CrosshairTooltips1stPerson",
-		+[](const Config& c) { return c.tracker.crosshairTooltipsFirstPerson ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.tracker.crosshairTooltipsFirstPerson = v != 0.0f; },
-	},
-	{
-		"Aiming", "Tooltips in 3rd person", "Expose the same action icons in third person",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Render", "CrosshairTooltips3rdPerson",
-		+[](const Config& c) { return c.tracker.crosshairTooltipsThirdPerson ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.tracker.crosshairTooltipsThirdPerson = v != 0.0f; },
-	},
-	{
 		"Aiming", "Tooltips above target name", "Move action icons to the lower-right HUD",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Render", "CrosshairTooltipsAboveName",
 		+[](const Config& c) { return c.tracker.crosshairTooltipsAboveName ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.tracker.crosshairTooltipsAboveName = v != 0.0f; },
-	},
-	{
-		"Aiming", "Crosshair cutout", "Percent of screen lifted. Raise if bits are left",
-		ItemKind::Number, 1.0f, 10.0f, 0.5f, 1, false,
-		"Render", "CrosshairSourceShare",
-		+[](const Config& c) { return c.tracker.crosshairSourceShare; },
-		+[](Config& c, float v) { c.tracker.crosshairSourceShare = v; },
 	},
 
 	// ---- Dialogue ----------------------------------------------------------
@@ -278,20 +164,6 @@ const SettingDefinition kSettings[] = {
 	},
 
 	// ---- Screen and menus --------------------------------------------------
-	{
-		"Screen", "Show menus", "Whether OBVR shows the game's menus at all",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Render", "ShowMenus",
-		+[](const Config& c) { return c.tracker.showMenus ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.tracker.showMenus = v != 0.0f; },
-	},
-	{
-		"Screen", "HUD overlay", "The flat picture as an overlay quad",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Render", "HudOverlay",
-		+[](const Config& c) { return c.tracker.hudOverlay ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.tracker.hudOverlay = v != 0.0f; },
-	},
 	{
 		"Screen", "HUD stands in the room", "Off carries it on your head instead",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
@@ -361,56 +233,6 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return c.tracker.menuShadeStrength; },
 		+[](Config& c, float v) { c.tracker.menuShadeStrength = v; },
 	},
-	{
-		"Screen", "Field of view", "Degrees. 0 leaves the game's own",
-		ItemKind::Number, 0.0f, 140.0f, 1.0f, 0, false,
-		"Render", "GameFovOverride",
-		+[](const Config& c) { return c.tracker.gameFovOverride; },
-		+[](Config& c, float v) { c.tracker.gameFovOverride = v; },
-	},
-	{
-		"Screen", "Base field of view", "Degrees the game believes it is drawing at",
-		ItemKind::Number, 30.0f, 140.0f, 1.0f, 0, false,
-		"Render", "GameFovDegrees",
-		+[](const Config& c) { return c.tracker.gameFovDegrees; },
-		+[](Config& c, float v) { c.tracker.gameFovDegrees = v; },
-	},
-	{
-		"Screen", "That FOV is for 4:3", "How the number above is interpreted",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Render", "GameFovIsFor4x3",
-		+[](const Config& c) { return c.tracker.gameFovIsFor4x3 ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.tracker.gameFovIsFor4x3 = v != 0.0f; },
-	},
-	{
-		"Screen", "Match headset FOV", "Take the field of view from the headset itself",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Render", "MatchHeadsetFov",
-		+[](const Config& c) { return c.tracker.matchHeadsetFov ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.tracker.matchHeadsetFov = v != 0.0f; },
-	},
-	{
-		"Screen", "Menu aspect", "The shape of the menu picture. 0 leaves it alone",
-		ItemKind::Number, 0.0f, 3.0f, 0.05f, 2, false,
-		"Render", "MenuAspect",
-		+[](const Config& c) { return c.tracker.menuAspect; },
-		+[](Config& c, float v) { c.tracker.menuAspect = v; },
-	},
-	{
-		"Screen", "Single menu border", "One border instead of the doubled left and right",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Render", "MenuSingleBorder",
-		+[](const Config& c) { return c.tracker.menuSingleBorder ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.tracker.menuSingleBorder = v != 0.0f; },
-	},
-	{
-		"Screen", "Menu stand-in", "Supplies the paused VR camera. Also fixes the persuasion "
-		                           "face",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Render", "MenuStandIn",
-		+[](const Config& c) { return c.tracker.menuStandIn ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.tracker.menuStandIn = v != 0.0f; },
-	},
 
 	// ---- This menu ---------------------------------------------------------
 	//
@@ -440,49 +262,12 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.settingsMenuWidthMetres = v; },
 	},
 
-	// ---- Advanced ----------------------------------------------------------
-	{
-		"Advanced", "HUD between passes", "Capture the 2D between the two eye renders",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Render", "HudBetweenPasses",
-		+[](const Config& c) { return c.tracker.hudBetweenPasses ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.tracker.hudBetweenPasses = v != 0.0f; },
-	},
-	{
-		"Advanced", "Submit at frame end", "Hand the eyes over at Present instead",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Render", "SubmitAtFrameEnd",
-		+[](const Config& c) { return c.tracker.submitAtFrameEnd ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.tracker.submitAtFrameEnd = v != 0.0f; },
-	},
-	{
-		"Advanced", "UI follows frame size", "Lay the 2D out at the real frame size",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Render", "UiFollowsFrameSize",
-		+[](const Config& c) { return c.tracker.uiFollowsFrameSize ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.tracker.uiFollowsFrameSize = v != 0.0f; },
-	},
-	{
-		"Advanced", "Re-read the INI", "Frames between reloads of this file. 0 is off",
-		ItemKind::Number, 0.0f, 600.0f, 30.0f, 0, false,
-		"Debug", "ReloadEveryFrames",
-		+[](const Config& c) { return static_cast<float>(c.reloadEveryFrames); },
-		+[](Config& c, float v) { c.reloadEveryFrames = static_cast<UInt32>(v); },
-	},
-
 	// ---- Needs a restart ---------------------------------------------------
 	//
 	// Kept last and marked. These are read while the device is being created,
 	// so changing one here has no effect until the game starts again - and
 	// somebody who changes a setting and sees nothing happen concludes the menu
 	// does not work, not that this particular row is different.
-	{
-		"Restart needed", "Set the frame size", "Off leaves the game its own resolution",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, true,
-		"Render", "SetGameResolution",
-		+[](const Config& c) { return c.tracker.setRenderSize ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.tracker.setRenderSize = v != 0.0f; },
-	},
 	{
 		"Restart needed", "Render width", "Pixels per eye. 0 asks the headset",
 		ItemKind::Number, 0.0f, 8192.0f, 64.0f, 0, true,
@@ -503,20 +288,6 @@ const SettingDefinition kSettings[] = {
 		"Hands", "Enabled",
 		+[](const Config& c) { return c.handTracking ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.handTracking = v != 0.0f; c.hands.enabled = v != 0.0f; },
-	},
-	{
-		"Hands", "Arms follow position", "The arms move with the right hand, not only turn",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Hands", "ArmsFollowPosition",
-		+[](const Config& c) { return c.hands.armsFollowPosition ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.hands.armsFollowPosition = v != 0.0f; },
-	},
-	{
-		"Hands", "Arms follow pitch", "The arms tilt with the right hand",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Hands", "ArmsFollowPitch",
-		+[](const Config& c) { return c.hands.armsFollowPitch ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.hands.armsFollowPitch = v != 0.0f; },
 	},
 	{
 		"Hands", "HUD on the wrist", "The HUD hangs on the right wrist",

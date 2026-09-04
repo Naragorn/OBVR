@@ -1,7 +1,8 @@
 // Checks the first-start walkthrough: every page's rows come out as the
-// painter's kinds, the highlight skips text and wraps, Next and Back turn
-// pages, Finish closes, settings on a page change the configuration and
-// answer the definition to write back, and every setting a page names
+// painter's kinds, the choice between the two ways to play writes the mode
+// and turns the page, the highlight skips text and wraps, Next and Back
+// turn pages, Finish closes, settings on a page change the configuration
+// and answer the definition to write back, and every setting a page names
 // exists in the table.
 
 #include <cstdio>
@@ -28,32 +29,39 @@ void TestPagesAreSound() {
 	std::printf("Pages\n");
 	Check(OnboardingPageCount() == 4, "four pages");
 	bool everySettingKnown = true;
-	bool everyPageHasAnAction = true;
+	bool everyPageHasAWayOn = true;
+	bool everyChoiceHasAPicture = true;
 	for (UInt32 p = 0; p < OnboardingPageCount(); ++p) {
 		const OnboardingPage& page = OnboardingPages()[p];
-		bool action = false;
+		bool wayOn = false;
 		for (UInt32 r = 0; r < page.rowCount; ++r) {
 			const OnboardingRow& row = page.rows[r];
-			if (row.kind == OnboardingRowKind::Setting &&
+			if ((row.kind == OnboardingRowKind::Setting || row.kind == OnboardingRowKind::Choice) &&
 			    FindSetting(row.iniSection, row.iniKey) == nullptr) {
 				std::printf("        unknown setting %s.%s on page %u\n", row.iniSection,
 				            row.iniKey, p);
 				everySettingKnown = false;
 			}
-			if (row.kind == OnboardingRowKind::Action) {
-				action = true;
+			if (row.kind == OnboardingRowKind::Action || row.kind == OnboardingRowKind::Choice) {
+				wayOn = true;
+			}
+			if (row.kind == OnboardingRowKind::Choice && (row.icon == nullptr || row.iconRows == 0)) {
+				everyChoiceHasAPicture = false;
 			}
 		}
-		everyPageHasAnAction = everyPageHasAnAction && action;
+		if (!wayOn) {
+			everyPageHasAWayOn = false;
+		}
 	}
 	Check(everySettingKnown, "every setting a page names is in the table");
-	Check(everyPageHasAnAction, "every page has a way onwards");
+	Check(everyPageHasAWayOn, "every page has a way onwards");
+	Check(everyChoiceHasAPicture, "every choice carries a picture");
 	Check(FindSetting("Onboarding", "ShowAtStart") != nullptr,
 	      "the do-not-show-again switch is a real setting");
 	Check(FindSetting("Hands", "Enabled") != nullptr, "the mode switch is a real setting");
 
-	// The two row kinds the walkthrough added to the model: neither has a
-	// value a key could change, and each formats the way the painter expects.
+	// The kinds the painter is handed: text ignores keys, actions show a
+	// marker and take no value.
 	MenuItem text;
 	text.kind = ItemKind::Text;
 	text.value = 3.0f;
@@ -61,15 +69,15 @@ void TestPagesAreSound() {
 	MenuItem action;
 	action.kind = ItemKind::Action;
 	Check(AdjustValue(action, MenuAction::Decrease) == action.value, "an action row ignores Left");
-	char out[8];
+	char out[16];
 	FormatValue(text, out, sizeof(out));
 	Check(out[0] == '\0', "a text row shows no value");
 	FormatValue(action, out, sizeof(out));
 	Check(std::strcmp(out, ">") == 0, "an action row shows its marker");
 }
 
-void TestNavigation() {
-	std::printf("Navigation\n");
+void TestChoice() {
+	std::printf("The choice of how to play\n");
 	OnboardingMenu menu;
 	Config config;
 	Check(!menu.IsOpen(), "closed to begin with");
@@ -80,36 +88,88 @@ void TestNavigation() {
 	MenuItem items[16];
 	const char* categories[16];
 	const UInt32 count = menu.BuildRows(config, items, categories, 16);
-	Check(count == 5, "the welcome page has five rows");
-	Check(items[0].kind == ItemKind::Text, "text rows are text");
-	Check(items[4].kind == ItemKind::Action, "the last is the Next action");
-	Check(menu.State().selected == 4, "and it is what the highlight starts on");
+	Check(count == 4, "the welcome page has four rows");
+	Check(items[0].kind == ItemKind::Text && items[1].kind == ItemKind::Text,
+	      "two lines of text");
+	Check(items[2].kind == ItemKind::Action && items[2].icon != nullptr && items[2].iconRows > 0,
+	      "then the seated choice, with its picture");
+	Check(items[3].kind == ItemKind::Action && items[3].icon != nullptr,
+	      "and the standing one, with its picture");
+	Check(items[2].chosen && !items[3].chosen, "seated is marked as current while hands are off");
+	Check(menu.State().selected == 2, "the highlight starts on the seated choice");
 	Check(std::strcmp(categories[0], "Welcome") == 0, "rows carry the page title");
 
-	Check(menu.Apply(MenuAction::Up, config) == nullptr && menu.State().selected == 4,
-	      "with one selectable row the highlight stays");
-	menu.Apply(MenuAction::Increase, config);
-	Check(menu.Page() == 1, "Right on Next turns the page");
-	Check(std::strcmp(menu.Title(), "How to play") == 0, "to the mode page");
-	const UInt32 modeRows = menu.BuildRows(config, items, categories, 16);
-	Check(modeRows == 7, "the mode page has seven rows");
-	Check(menu.State().selected == 4, "the highlight starts on the setting, past the text");
-	Check(items[4].kind == ItemKind::Toggle, "which is the hand-tracking toggle");
+	Check(ChoiceIsCurrent(OnboardingAction::ChooseSeated, config), "seated is current by default");
+	Check(!ChoiceIsCurrent(OnboardingAction::ChooseStanding, config), "and standing is not");
+	Check(!ChoiceIsCurrent(OnboardingAction::Next, config), "an action is never current");
 
+	// Down goes to standing, Up wraps back.
 	menu.Apply(MenuAction::Down, config);
-	Check(menu.State().selected == 5, "Down goes to Back");
+	Check(menu.State().selected == 3, "Down goes to the standing choice");
 	menu.Apply(MenuAction::Down, config);
-	Check(menu.State().selected == 6, "then Next");
-	menu.Apply(MenuAction::Down, config);
-	Check(menu.State().selected == 4, "then wraps past the text to the setting");
+	Check(menu.State().selected == 2, "and wraps past the text back to seated");
 	menu.Apply(MenuAction::Up, config);
-	Check(menu.State().selected == 6, "Up wraps the other way");
+	Check(menu.State().selected == 3, "Up wraps the other way");
 
-	menu.Apply(MenuAction::Up, config);
+	// Right on standing switches the mode on, answers the setting, turns the page.
+	const UInt32 before = menu.Revision();
+	const SettingDefinition* changed = menu.Apply(MenuAction::Increase, config);
+	Check(changed != nullptr && std::strcmp(changed->iniKey, "Enabled") == 0,
+	      "Right on standing answers the mode setting to write back");
+	Check(config.handTracking && config.hands.enabled, "and switches hand tracking on");
+	Check(menu.Page() == 1 && std::strcmp(menu.Title(), "Controls") == 0,
+	      "and turns to the controls page");
+	Check(menu.Revision() > before, "and the picture is repainted");
+
+	// Back to the choice: standing is now the one marked.
+	while (menu.Page() == 1) {
+		const OnboardingPage& page = OnboardingPages()[1];
+		if (page.rows[menu.State().selected].action == OnboardingAction::Back) {
+			menu.Apply(MenuAction::Increase, config);
+		} else {
+			menu.Apply(MenuAction::Down, config);
+		}
+	}
+	Check(menu.Page() == 0, "Back returns to the choice");
+	menu.BuildRows(config, items, categories, 16);
+	Check(!items[2].chosen && items[3].chosen, "and standing is marked now");
+
+	// Left works too, and seated is written even though Left is "decrease".
+	menu.Apply(MenuAction::Up, config);  // from seated (first selectable) wraps to standing
+	menu.Apply(MenuAction::Down, config);  // back to seated
+	Check(menu.State().selected == 2, "on seated again");
+	changed = menu.Apply(MenuAction::Decrease, config);
+	Check(changed != nullptr && !config.handTracking && !config.hands.enabled,
+	      "Left on seated switches hand tracking off again");
+	Check(menu.Page() == 1, "and turns the page as well");
+}
+
+void TestNavigation() {
+	std::printf("Navigation\n");
+	OnboardingMenu menu;
+	Config config;
+	menu.Open();
+	menu.Apply(MenuAction::Increase, config);  // choose seated: page 1
+	Check(menu.Page() == 1, "on the controls page");
+	MenuItem items[16];
+	const char* categories[16];
+	const UInt32 count = menu.BuildRows(config, items, categories, 16);
+	Check(count == 8, "the controls page has eight rows");
+	Check(menu.State().selected == 6, "the highlight starts on Back, past the text");
+	Check(items[6].kind == ItemKind::Action && items[7].kind == ItemKind::Action,
+	      "Back and Next are actions");
+	menu.Apply(MenuAction::Down, config);
+	Check(menu.State().selected == 7, "Down goes to Next");
+	menu.Apply(MenuAction::Down, config);
+	Check(menu.State().selected == 6, "and wraps past the text to Back");
 	menu.Apply(MenuAction::Increase, config);
 	Check(menu.Page() == 0, "Right on Back goes back");
 	menu.Apply(MenuAction::Increase, config);
-	Check(menu.Page() == 1, "and Next again forward");
+	Check(menu.Page() == 1, "and the choice forward again");
+	menu.Apply(MenuAction::Down, config);
+	menu.Apply(MenuAction::Increase, config);
+	Check(menu.Page() == 2 && std::strcmp(menu.Title(), "Comfort") == 0,
+	      "Right on Next reaches the comfort page");
 }
 
 void TestSettingsOnPages() {
@@ -117,16 +177,25 @@ void TestSettingsOnPages() {
 	OnboardingMenu menu;
 	Config config;
 	menu.Open();
-	menu.Apply(MenuAction::Increase, config);  // to the mode page
-	Check(!config.handTracking, "hand tracking is off to begin with");
-	const UInt32 before = menu.Revision();
+	menu.Apply(MenuAction::Increase, config);  // seated, to controls
+	menu.Apply(MenuAction::Down, config);      // Next
+	menu.Apply(MenuAction::Increase, config);  // to comfort
+	Check(menu.Page() == 2, "on the comfort page");
+	MenuItem items[16];
+	const char* categories[16];
+	menu.BuildRows(config, items, categories, 16);
+	Check(items[menu.State().selected].kind == ItemKind::Toggle,
+	      "the highlight starts on the smooth-turning toggle");
+	const bool before = config.look.smoothTurning;
+	const UInt32 revision = menu.Revision();
 	const SettingDefinition* changed = menu.Apply(MenuAction::Increase, config);
-	Check(changed != nullptr && std::strcmp(changed->iniKey, "Enabled") == 0,
-	      "Right on the toggle answers the setting to write back");
-	Check(config.handTracking && config.hands.enabled, "and the mode is switched on in both places");
-	Check(menu.Revision() > before, "and the picture is repainted");
-	changed = menu.Apply(MenuAction::Decrease, config);
-	Check(changed != nullptr && !config.handTracking, "Left switches it off again");
+	if (changed == nullptr) {
+		changed = menu.Apply(MenuAction::Decrease, config);
+	}
+	Check(changed != nullptr && std::strcmp(changed->iniKey, "SmoothTurning") == 0,
+	      "Left or Right on the toggle answers the setting to write back");
+	Check(config.look.smoothTurning != before, "and the value changed");
+	Check(menu.Revision() > revision, "and the picture is repainted");
 }
 
 void TestFinish() {
@@ -134,21 +203,20 @@ void TestFinish() {
 	OnboardingMenu menu;
 	Config config;
 	menu.Open();
-	for (int i = 0; i < 3; ++i) {
-		menu.Apply(MenuAction::Increase, config);  // Next on each page's highlighted action
-		// On pages with a setting first, Increase changed the setting; move to Next.
-		while (menu.IsOpen() && menu.Page() == static_cast<UInt32>(i)) {
-			menu.Apply(MenuAction::Down, config);
-			const OnboardingPage& page = OnboardingPages()[menu.Page()];
-			if (page.rows[menu.State().selected].action == OnboardingAction::Next) {
+	menu.Apply(MenuAction::Increase, config);  // seated, to controls
+	for (int page = 1; page <= 2; ++page) {
+		while (menu.IsOpen() && menu.Page() == static_cast<UInt32>(page)) {
+			const OnboardingPage& current = OnboardingPages()[menu.Page()];
+			if (current.rows[menu.State().selected].action == OnboardingAction::Next) {
 				menu.Apply(MenuAction::Increase, config);
+			} else {
+				menu.Apply(MenuAction::Down, config);
 			}
 		}
 	}
-	Check(menu.IsOpen() && menu.Page() == 3, "three Nexts reach the last page");
+	Check(menu.IsOpen() && menu.Page() == 3, "Next on each page reaches the last");
 	Check(std::strcmp(menu.Title(), "Done") == 0, "which is Done");
 
-	// The highlight starts on the do-not-show-again toggle.
 	MenuItem items[16];
 	const char* categories[16];
 	menu.BuildRows(config, items, categories, 16);
@@ -173,6 +241,7 @@ void TestFinish() {
 
 int main() {
 	TestPagesAreSound();
+	TestChoice();
 	TestNavigation();
 	TestSettingsOnPages();
 	TestFinish();

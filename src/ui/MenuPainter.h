@@ -19,30 +19,36 @@ namespace obvr::ui {
 // letter come out uneven, and in a headset that reads as a menu somebody forgot
 // to sharpen.
 
+// The colours are Oblivion's own menus': a dark brown ground, the text in
+// parchment tan, headings and ornaments in old gold, and the chosen row lit
+// rather than boxed - vanilla brightens the selected line to near white and
+// leaves the rest tan.
 struct MenuTheme {
 	// The panel. Alpha is part of it, and it is the only place transparency
 	// comes from - the text and the highlight are drawn opaque on top, so a
 	// letter never fades into what is behind the menu.
-	render::Pixel background{16, 16, 20, 224};
+	render::Pixel background{26, 19, 12, 236};
 
-	render::Pixel frame{90, 80, 60, 255};
-	render::Pixel title{230, 220, 190, 255};
+	// The outer frame, and the thinner light line inside it with the corner
+	// diamonds - the double border every vanilla panel wears.
+	render::Pixel frame{132, 102, 54, 255};
+	render::Pixel frameLight{222, 190, 122, 255};
+	render::Pixel title{240, 218, 160, 255};
 
 	// A category heading, deliberately dimmer than a row: it is a signpost,
 	// not something to be read one word at a time.
-	render::Pixel category{150, 140, 115, 255};
+	render::Pixel category{190, 158, 100, 255};
 
-	render::Pixel text{215, 210, 200, 255};
-	render::Pixel value{235, 225, 175, 255};
+	render::Pixel text{214, 198, 164, 255};
+	render::Pixel value{244, 228, 178, 255};
 
-	// The selected row. The bar is what the eye finds first, so it carries the
-	// colour and the text on it goes dark.
-	render::Pixel highlight{200, 175, 105, 255};
-	render::Pixel highlightText{20, 18, 14, 255};
+	// The selected row: a warm dark bar under text lit to parchment white.
+	render::Pixel highlight{88, 64, 34, 255};
+	render::Pixel highlightText{255, 242, 208, 255};
 
 	// The help line and the note on a row that needs a restart.
-	render::Pixel help{165, 160, 150, 255};
-	render::Pixel warning{210, 150, 110, 255};
+	render::Pixel help{168, 152, 124, 255};
+	render::Pixel warning{226, 162, 108, 255};
 };
 
 // How many rows fit on a canvas of this height at this scale.
