@@ -318,6 +318,14 @@ testing notes that come with them, and from the higher tiers a vote on which gam
 the VR treatment next. Early access is a head start, not a lock: OBVR is GPL-3.0, and
 every build reaches this repository.
 
+Tips in crypto are welcome too:
+
+| Coin | Address |
+| --- | --- |
+| BTC | `bc1q78akvct56ctrgcz0ahzthm3sjayu96tl8fdhc4` |
+| ETH (Ethereum network) | `0x94c3Ec9707a1ac383F40Bb55Bff63d37175AC666` |
+| SOL | `5GYdnxLnKByKuptpHtqkcmCx8LTjaMm5BtkoFN4jvCEU` |
+
 ## License
 
 OBVR is free software under the **GNU General Public License, version 3** (`LICENSE`).
