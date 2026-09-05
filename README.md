@@ -111,8 +111,8 @@ RTX 4090, Windows 11. Anything else is untested, which is exactly what reports a
 2. Install [DXVK](https://github.com/doitsujin/dxvk/releases/latest): from the archive's
    `x32` folder, put `d3d9.dll` next to `Oblivion.exe`. Only that one file.
 3. Download `OBVR-<version>.zip` from this repository's **Releases** page and extract it
-   into Oblivion's `Data` folder. It contains `OBSE/Plugins/OBVR.dll` and
-   `OBSE/Plugins/OBVR.ini`, nothing else.
+   into Oblivion's `Data` folder. It contains `OBSE/Plugins/OBVR.dll`,
+   `OBSE/Plugins/OBVR.ini` and the license text, nothing else.
 4. Copy the **32-bit** `openvr_api.dll` from SteamVR - it is at
    `Steam\steamapps\common\SteamVR\bin\win32\openvr_api.dll` - into `Data/OBSE/Plugins/`
    next to `OBVR.dll`. The 64-bit one from `bin/win64` will not load into Oblivion.
@@ -307,7 +307,19 @@ Everything in the repository - code, comments, commits, documents - is in Englis
 
 ## License
 
-Not chosen yet. Until a license file is added, all rights are reserved by the author.
+OBVR is free software under the **GNU General Public License, version 3** (`LICENSE`).
+Copyright (C) 2026 Naragorn.
+
+In plain words: use it, change it, share it, build on it, show it, fund your own work on it.
+What the license rules out is taking it away from the commons: whoever passes OBVR on,
+changed or not, has to pass the source on with it under this same license, keep the
+copyright notice, and mark what they changed. A closed or paid-for build of OBVR, with or
+without additions, is therefore not possible. The license text is the authority; this
+paragraph is only its summary.
+
+`src/obse/PluginInterface.h` reproduces the layout of two structs from xOBSE's
+`PluginAPI.h` for binary compatibility, the way every OBSE plugin does; xOBSE publishes
+that header without a license of its own.
 
 ## References
 

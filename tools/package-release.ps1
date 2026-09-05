@@ -8,6 +8,7 @@
 #
 #   OBSE/Plugins/OBVR.dll
 #   OBSE/Plugins/OBVR.ini
+#   OBSE/Plugins/OBVR-LICENSE.txt   (the GPL-3.0, which travels with every copy)
 #
 # The linker map is copied beside the archive as OBVR-<version>.map, for
 # reading an OBVR.dll+offset from a report back to a function. Nothing else
@@ -59,6 +60,7 @@ if (Test-Path $stage) {
 New-Item -ItemType Directory -Force $plugins | Out-Null
 Copy-Item $dll (Join-Path $plugins "OBVR.dll")
 Copy-Item $ini (Join-Path $plugins "OBVR.ini")
+Copy-Item (Join-Path $root "LICENSE") (Join-Path $plugins "OBVR-LICENSE.txt")
 
 $zip = Join-Path $root (Join-Path $OutDir "OBVR-$version.zip")
 if (Test-Path $zip) {
@@ -72,7 +74,7 @@ Remove-Item -Recurse -Force $stage
 
 $size = [math]::Round((Get-Item $zip).Length / 1KB)
 Write-Output "OBVR $version packaged: $zip ($size KB)"
-Write-Output "  contains OBSE/Plugins/OBVR.dll (built $($dllTime.ToLocalTime())) and OBSE/Plugins/OBVR.ini"
+Write-Output "  contains OBSE/Plugins/OBVR.dll (built $($dllTime.ToLocalTime())), OBSE/Plugins/OBVR.ini and OBSE/Plugins/OBVR-LICENSE.txt"
 if (Test-Path $map) {
 	Write-Output "  linker map beside it: OBVR-$version.map"
 }
