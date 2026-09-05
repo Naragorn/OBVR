@@ -247,7 +247,10 @@ throughout. Reports either way are welcome.
 
 `HANDOFF.md` is the long version: the coordinate systems, the axis conventions, every
 dead end and why it was a dead end. `docs/hand-tracked-mode.md` is the same for the
-standing experience.
+standing experience. `docs/vr-modding/` is the knowledge base written for coding agents:
+the architecture, the stereo model, the engine facts, the failed approaches and the open
+questions, classified by how well each is established, plus a playbook for bringing
+another flat game into VR.
 
 ## Why OpenVR
 

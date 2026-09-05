@@ -8,6 +8,12 @@ those facts are the evidence behind the code, but it is not a user manual and no
 tutorial. The README is the document for people; this one is the document for the next
 agent.
 
+**Since 2026-09-05 there is also `docs/vr-modding/`**, the consolidated knowledge base
+for coding agents: the same findings classified by status and scope, the dead ends in one
+list, the engine facts in one place, and the reusable porting knowledge. This file stays
+what it is - the chronological handover, with its retractions in place - and is cited
+from there. New durable findings go into both; new session-to-session state goes here.
+
 As of 2026-08-25. This document collects everything that has been worked out, verified and
 decided so far. It is written so that the work can be continued on another machine
 (Windows in particular) without asking questions first.
