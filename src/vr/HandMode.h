@@ -89,8 +89,10 @@ struct HandSettings {
 	// hand onto whichever quad shows the game's menus, the trigger clicks,
 	// the sticks scroll, and OBVR's own menu takes the sticks and buttons.
 	// The beam is the drawn laser. The scroll repeats while the stick is
-	// held: the first repeat after firstDelay, then every interval.
-	bool controllerMenus = true;
+	// held: the first repeat after firstDelay, then every interval. Off by
+	// default until it has been seen to work in a headset: under
+	// construction, like the rest of the mode.
+	bool controllerMenus = false;
 	bool laserBeam = true;
 	float scrollFirstDelaySeconds = 0.35f;
 	float scrollIntervalSeconds = 0.12f;

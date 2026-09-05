@@ -1,0 +1,116 @@
+name: Bug report
+description: Something in the headset, on the monitor or in the log is not right
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing OBVR. The log is the evidence: a report without
+        `OBVR.log` can rarely be acted on. Both `OBVR.log` and `OBVR.log.prev`
+        are next to `Oblivion.exe`; attach them below (drag them into the
+        text box). They contain the install path and nothing else personal.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, and what you saw - in the headset, on the monitor, or in the log's last lines.
+      placeholder: |
+        Loaded a save, drew the bow, aimed at a target with the head...
+        Both eyes showed... / only the left eye... / the monitor window...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: OBVR.log and OBVR.log.prev
+      description: Attach both files from the Oblivion directory. If one is very long, the first fifty lines and the last fifty are the ones that matter.
+    validations:
+      required: true
+
+  - type: input
+    id: obvr-version
+    attributes:
+      label: OBVR version
+      description: The first line of OBVR.log says it ("OBVR 0.1.0 ...").
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: experience
+    attributes:
+      label: Which experience was on
+      description: The standing experience is under construction; reports from it are welcome but read differently.
+      options:
+        - Seated (the default, [Hands] Enabled=0)
+        - Standing (under construction, [Hands] Enabled=1)
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: headset
+    attributes:
+      label: Headset and controllers
+      placeholder: "Valve Index, Index controllers"
+    validations:
+      required: true
+
+  - type: input
+    id: steamvr
+    attributes:
+      label: SteamVR version
+      description: SteamVR's window shows it in its title or under Settings.
+    validations:
+      required: false
+
+  - type: input
+    id: gpu
+    attributes:
+      label: GPU, driver and Windows version
+      placeholder: "RTX 4090, 566.03, Windows 11 24H2"
+    validations:
+      required: true
+
+  - type: input
+    id: dxvk
+    attributes:
+      label: DXVK version
+      description: The one whose d3d9.dll sits next to Oblivion.exe.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: setup
+    attributes:
+      label: Setup
+      options:
+        - label: The 4GB patch is applied to Oblivion.exe
+        - label: Mod Organizer 2 is in use
+        - label: Oblivion Reloaded, ORC, E3, ENB or Enhanced Camera is installed (see Compatibility in the README)
+
+  - type: textarea
+    id: mods
+    attributes:
+      label: Other xOBSE plugins and mods
+      description: The contents of Data/OBSE/Plugins and the load order, or the MO2 mod list. Other renderer and camera mods are the most likely cause of a problem and the least known.
+    validations:
+      required: false
+
+  - type: textarea
+    id: freeze
+    attributes:
+      label: If the game froze rather than crashed
+      description: Did the monitor window still update? Did SteamVR's own view still track? What is the last "Watchdog:" line in the log?
+    validations:
+      required: false

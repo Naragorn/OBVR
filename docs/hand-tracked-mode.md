@@ -6,10 +6,15 @@ other shape - motion controllers in both hands, the weapon in the right one, men
 wrists, the world driven from the sticks - behind one toggle, `[Hands] Enabled` in
 `OBVR.ini` and "Hand tracking" in the headset settings menu.
 
+**Under construction.** The mode is off by default, the first-start walkthrough shows the
+"Standing Experience" but refuses it, and `ControllerMenus` is off with it: nothing here
+has been seen working in a headset, and it is not working as intended. Switching it on in
+`OBVR.ini` or the settings menu is at your own risk; reports from doing so are welcome.
+
 This document is the ladder, rung by rung: what is built, how it works, what it assumes,
-and what the first headset session has to look at. **Nothing on this branch has been in a
-headset.** Every rung was built from the engine facts already established and from the
-OpenVR header, and every number is a starting point.
+and what the first headset session has to look at. Every rung was built from the engine
+facts already established and from the OpenVR header, and every number is a starting
+point.
 
 ## How the mode is wired
 

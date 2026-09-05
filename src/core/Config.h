@@ -104,6 +104,8 @@ struct Config {
 	// docs/hand-tracked-mode.md; everything above it - swings, blocks, the
 	// bow, spells, wrist menus, grabbing - stands on this reading. Off by
 	// default: without it OBVR is exactly the head-tracked mod it was.
+	// Under construction: none of it has been seen working in a headset,
+	// the walkthrough refuses it, and the INI and settings menu say so.
 	bool handTracking = false;
 
 	// [Onboarding] ShowAtStart: whether the first-start walkthrough opens in

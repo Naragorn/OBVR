@@ -49,6 +49,15 @@ constexpr const char* kStandingIcon[] = {
 constexpr UInt32 kSeatedRows = sizeof(kSeatedIcon) / sizeof(kSeatedIcon[0]);
 constexpr UInt32 kStandingRows = sizeof(kStandingIcon) / sizeof(kStandingIcon[0]);
 
+}  // namespace
+
+// The standing experience is not working as intended yet, so the walkthrough
+// shows it and refuses it (see StandingUnderConstruction in the header).
+constexpr bool kStandingUnderConstruction = true;
+bool StandingUnderConstruction() { return kStandingUnderConstruction; }
+
+namespace {
+
 constexpr OnboardingRow kWelcome[] = {
 	{OnboardingRowKind::Text, "Welcome to OBVR: Oblivion in your headset.", "", "", "",
 	 OnboardingAction::None, nullptr, 0},
@@ -57,8 +66,10 @@ constexpr OnboardingRow kWelcome[] = {
 	{OnboardingRowKind::Choice, "Seated Experience", "Keyboard, mouse or gamepad. Oblivion in VR.",
 	 "Hands", "Enabled", OnboardingAction::ChooseSeated, kSeatedIcon, kSeatedRows},
 	{OnboardingRowKind::Choice, "Standing Experience",
-	 "Motion controllers and hands, like Skyrim VR.", "Hands", "Enabled",
-	 OnboardingAction::ChooseStanding, kStandingIcon, kStandingRows},
+	 "Under construction: not working as intended yet, cannot be chosen here.", "Hands",
+	 "Enabled", OnboardingAction::ChooseStanding, kStandingIcon, kStandingRows},
+	{OnboardingRowKind::Text, "Standing (motion controllers) is under construction and stays off.",
+	 "", "", "", OnboardingAction::None, nullptr, 0},
 };
 
 constexpr OnboardingRow kControls[] = {
@@ -66,10 +77,10 @@ constexpr OnboardingRow kControls[] = {
 	 "", "", OnboardingAction::None, nullptr, 0},
 	{OnboardingRowKind::Text, "The arrow keys steer OBVR's menus.", "", "", "",
 	 OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Text, "Standing: click both sticks for the settings menu.", "", "", "",
-	 OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Text, "Touch the wrist menu with a finger to press an entry.", "", "",
-	 "", OnboardingAction::None, nullptr, 0},
+	{OnboardingRowKind::Text, "Standing (motion controllers) is under construction: off here.", "",
+	 "", "", OnboardingAction::None, nullptr, 0},
+	{OnboardingRowKind::Text, "OBVR.ini and the settings menu can switch it on, at your own risk.",
+	 "", "", "", OnboardingAction::None, nullptr, 0},
 	{OnboardingRowKind::Text, "Recenter view is the first row of the settings menu.", "", "",
 	 "", OnboardingAction::None, nullptr, 0},
 	{OnboardingRowKind::Text, "Either way, this can be changed later in the settings.", "", "",
@@ -221,6 +232,13 @@ const SettingDefinition* OnboardingMenu::Apply(MenuAction action, Config& config
 
 	const OnboardingRow& row = page.rows[m_state.selected];
 	if (row.kind == OnboardingRowKind::Choice) {
+		// The standing experience is under construction: the row is shown so
+		// the shape is known, but pressing it neither switches the mode on
+		// nor turns the page. The INI and the settings menu remain the way
+		// in for whoever wants to try it regardless.
+		if (row.action == OnboardingAction::ChooseStanding && kStandingUnderConstruction) {
+			return nullptr;
+		}
 		// The choice writes the mode through the settings table - the same
 		// key the settings menu changes - and goes on to the next page. The
 		// definition is answered so the caller saves it, even when the mode

@@ -1,0 +1,43 @@
+# Builds the 32-bit DLL and runs the native tests on every push and pull
+# request, and keeps the DLL, its linker map and the INI as an artifact - the
+# same files tools/package-release.ps1 puts into a release archive.
+name: Build and test
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The DLL: Oblivion is 32-bit, so this is the one build that matters.
+      - name: Configure the DLL (Win32)
+        run: cmake -B build -A Win32 .
+      - name: Build the DLL
+        run: cmake --build build --config Release
+
+      # The tests are their own project. Built 32-bit as well: the layout
+      # checks on the mirrored Windows and Direct3D structures hold for the
+      # pointer size the DLL is built for.
+      - name: Configure the tests
+        run: cmake -B build-tests tests -A Win32
+      - name: Build the tests
+        run: cmake --build build-tests --config Release
+      - name: Run the tests
+        run: ctest --test-dir build-tests -C Release --output-on-failure
+
+      - name: Keep the DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: OBVR-${{ github.sha }}
+          path: |
+            build/Release/OBVR.dll
+            build/Release/OBVR.map
+            OBVR.ini
+          if-no-files-found: error

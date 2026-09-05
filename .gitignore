@@ -1,6 +1,8 @@
 build/
 build-*/
 extern/
+# Release archives made by tools/package-release.ps1
+dist/
 
 # Visual Studio / MSVC
 .vs/

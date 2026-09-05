@@ -283,7 +283,7 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.tracker.renderHeight = static_cast<UInt32>(v); },
 	},
 	{
-		"Hands", "Hand tracking", "The weapon hand follows the right controller",
+		"Hands", "Hand tracking", "Under construction, not working as intended yet",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "Enabled",
 		+[](const Config& c) { return c.handTracking ? 1.0f : 0.0f; },

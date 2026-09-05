@@ -88,13 +88,17 @@ void TestChoice() {
 	MenuItem items[16];
 	const char* categories[16];
 	const UInt32 count = menu.BuildRows(config, items, categories, 16);
-	Check(count == 4, "the welcome page has four rows");
+	Check(count == 5, "the welcome page has five rows");
 	Check(items[0].kind == ItemKind::Text && items[1].kind == ItemKind::Text,
 	      "two lines of text");
 	Check(items[2].kind == ItemKind::Action && items[2].icon != nullptr && items[2].iconRows > 0,
 	      "then the seated choice, with its picture");
 	Check(items[3].kind == ItemKind::Action && items[3].icon != nullptr,
 	      "and the standing one, with its picture");
+	Check(items[4].kind == ItemKind::Text && std::strstr(items[4].label, "under construction") != nullptr,
+	      "and a line saying standing is under construction");
+	Check(std::strstr(items[3].help, "nder construction") != nullptr,
+	      "the standing choice's help says so too");
 	Check(items[2].chosen && !items[3].chosen, "seated is marked as current while hands are off");
 	Check(menu.State().selected == 2, "the highlight starts on the seated choice");
 	Check(std::strcmp(categories[0], "Welcome") == 0, "rows carry the page title");
@@ -111,17 +115,39 @@ void TestChoice() {
 	menu.Apply(MenuAction::Up, config);
 	Check(menu.State().selected == 3, "Up wraps the other way");
 
-	// Right on standing switches the mode on, answers the setting, turns the page.
+	// Right on standing is refused while the mode is under construction:
+	// nothing is written, the page stays, the picture is not repainted.
+	Check(StandingUnderConstruction(), "the standing experience is under construction");
 	const UInt32 before = menu.Revision();
 	const SettingDefinition* changed = menu.Apply(MenuAction::Increase, config);
+	Check(changed == nullptr, "Right on standing answers nothing to write back");
+	Check(!config.handTracking && !config.hands.enabled, "and hand tracking stays off");
+	Check(menu.Page() == 0 && menu.State().selected == 3, "and the page and the highlight stay");
+	Check(menu.Revision() == before, "and nothing is repainted");
+	changed = menu.Apply(MenuAction::Decrease, config);
+	Check(changed == nullptr && !config.handTracking && menu.Page() == 0,
+	      "Left on standing is refused the same way");
+
+	// A configuration that switched the mode on elsewhere (the INI, the
+	// settings menu) is still shown as such: standing is the marked one.
+	config.handTracking = true;
+	config.hands.enabled = true;
+	menu.BuildRows(config, items, categories, 16);
+	Check(!items[2].chosen && items[3].chosen, "standing is marked when the INI switched it on");
+
+	// Seated is chosen with Right or Left alike - Left is "decrease", and
+	// seated is still written - and switches hand tracking off again.
+	menu.Apply(MenuAction::Down, config);  // from standing wraps past the text to seated
+	Check(menu.State().selected == 2, "on seated again");
+	changed = menu.Apply(MenuAction::Decrease, config);
 	Check(changed != nullptr && std::strcmp(changed->iniKey, "Enabled") == 0,
-	      "Right on standing answers the mode setting to write back");
-	Check(config.handTracking && config.hands.enabled, "and switches hand tracking on");
+	      "Left on seated answers the mode setting to write back");
+	Check(!config.handTracking && !config.hands.enabled, "and switches hand tracking off");
 	Check(menu.Page() == 1 && std::strcmp(menu.Title(), "Controls") == 0,
 	      "and turns to the controls page");
 	Check(menu.Revision() > before, "and the picture is repainted");
 
-	// Back to the choice: standing is now the one marked.
+	// Back to the choice: seated is the one marked now.
 	while (menu.Page() == 1) {
 		const OnboardingPage& page = OnboardingPages()[1];
 		if (page.rows[menu.State().selected].action == OnboardingAction::Back) {
@@ -132,16 +158,10 @@ void TestChoice() {
 	}
 	Check(menu.Page() == 0, "Back returns to the choice");
 	menu.BuildRows(config, items, categories, 16);
-	Check(!items[2].chosen && items[3].chosen, "and standing is marked now");
-
-	// Left works too, and seated is written even though Left is "decrease".
-	menu.Apply(MenuAction::Up, config);  // from seated (first selectable) wraps to standing
-	menu.Apply(MenuAction::Down, config);  // back to seated
-	Check(menu.State().selected == 2, "on seated again");
-	changed = menu.Apply(MenuAction::Decrease, config);
-	Check(changed != nullptr && !config.handTracking && !config.hands.enabled,
-	      "Left on seated switches hand tracking off again");
-	Check(menu.Page() == 1, "and turns the page as well");
+	Check(items[2].chosen && !items[3].chosen, "and seated is marked");
+	changed = menu.Apply(MenuAction::Increase, config);
+	Check(changed != nullptr && !config.handTracking && menu.Page() == 1,
+	      "Right on seated confirms it and turns the page as well");
 }
 
 void TestNavigation() {

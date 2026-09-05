@@ -52,6 +52,12 @@ UInt32 OnboardingPageCount();
 // while hand tracking is off, standing while it is on.
 bool ChoiceIsCurrent(OnboardingAction choice, const Config& config);
 
+// True while the standing experience (the hand-tracked mode) is under
+// construction: the welcome page still shows the choice so people know it
+// is coming, but pressing it does nothing - the mode stays off, the page
+// stays. OBVR.ini and the settings menu can still switch it on.
+bool StandingUnderConstruction();
+
 class OnboardingMenu {
 public:
 	bool IsOpen() const { return m_open; }

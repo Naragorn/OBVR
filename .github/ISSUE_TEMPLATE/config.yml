@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Before reporting
+    url: https://github.com/llde/xOBSE/releases/latest
+    about: OBVR needs xOBSE 22.13 or newer, DXVK's 32-bit d3d9.dll next to Oblivion.exe, and the 32-bit openvr_api.dll next to OBVR.dll. The README's Installing section has the steps.

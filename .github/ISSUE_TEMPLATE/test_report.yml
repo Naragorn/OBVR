@@ -1,0 +1,63 @@
+name: Test report
+description: It worked, or mostly worked - which headset, which setup, what was off
+title: "[Test] "
+labels: ["test report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A report that something works on hardware other than the developer's
+        is as useful as a bug. Attach `OBVR.log` from the Oblivion directory
+        if you can; it says what OBVR saw of the headset and the game.
+
+  - type: input
+    id: obvr-version
+    attributes:
+      label: OBVR version
+      description: The first line of OBVR.log says it.
+    validations:
+      required: true
+
+  - type: input
+    id: headset
+    attributes:
+      label: Headset, controllers, SteamVR version
+    validations:
+      required: true
+
+  - type: input
+    id: gpu
+    attributes:
+      label: GPU, driver, Windows version, DXVK version
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: worked
+    attributes:
+      label: What you tried
+      options:
+        - label: Main menu and loading screens on the cinema screen
+        - label: The first-start walkthrough
+        - label: Stereo in the world, both eyes, no ghosting
+        - label: Head tracking, leaning, recenter (Del)
+        - label: HUD, Tab menus and dialogue in the headset
+        - label: Aiming a bow or a spell with the head
+        - label: Third person
+        - label: OBVR's settings menu (Insert)
+        - label: The standing experience (under construction)
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: What was off, if anything
+      description: Anything that looked wrong, felt wrong, or differed from the README's description. Frame times if you measured them.
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: OBVR.log
+    validations:
+      required: false

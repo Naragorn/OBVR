@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(OBVR VERSION 0.0.4 LANGUAGES CXX)
+project(OBVR VERSION 0.1.0 LANGUAGES CXX)
 
 # OBVR loads as a plugin into Oblivion.exe. That is 32 bit, so the DLL has to
 # be 32 bit as well - there is no way around it.
@@ -103,6 +103,11 @@ target_include_directories(OBVR PRIVATE src)
 # Arms the layout checks in GameTypes.h. They only hold for 32 bit, where the
 # pointer size matches; natively built tests leave them out.
 target_compile_definitions(OBVR PRIVATE OBVR_TARGET_32BIT)
+
+# The version the log opens with, so a report's first line says which build
+# it came from. Bump it here and nowhere else; the release archive takes it
+# from the same place (tools/package-release.ps1).
+target_compile_definitions(OBVR PRIVATE OBVR_VERSION_STRING="${PROJECT_VERSION}")
 
 set_target_properties(OBVR PROPERTIES
 	OUTPUT_NAME "OBVR"

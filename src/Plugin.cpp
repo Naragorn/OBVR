@@ -30,7 +30,7 @@ __declspec(dllexport) bool OBSEPlugin_Query(const obvr::obse::Interface* obse,
 	info->version = kPluginVersion;
 
 	obvr::log::Open("OBVR.log");
-	OBVR_LOG("OBVR %u - Query", kPluginVersion);
+	OBVR_LOG("OBVR %s (plugin version %u) - Query", OBVR_VERSION_STRING, kPluginVersion);
 
 	if (obse->isEditor != 0) {
 		// There is no game camera to hook in the Construction Set. The plugin
