@@ -1,5 +1,13 @@
 # OBVR — handover document
 
+**A note on what this file is.** It was written for the AI coding agents that develop
+OBVR, as the handover between their sessions: the engine facts, the coordinate
+conventions, the addresses and the dead ends, in enough detail that a fresh session can
+continue the work without asking questions first. It is kept in the repository because
+those facts are the evidence behind the code, but it is not a user manual and not a
+tutorial. The README is the document for people; this one is the document for the next
+agent.
+
 As of 2026-08-25. This document collects everything that has been worked out, verified and
 decided so far. It is written so that the work can be continued on another machine
 (Windows in particular) without asking questions first.

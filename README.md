@@ -1,7 +1,7 @@
-# OBVR
+# OBVR - TES4 Oblivion (2008) in VR
 
-Native VR for the original **The Elder Scrolls IV: Oblivion (2006)**. Not for the
-Remastered edition.
+Native VR for the original **The Elder Scrolls IV: Oblivion**. Not for the Remastered
+edition.
 
 Guiding idea: *Oblivion stays Oblivion.* OBVR does not replace gameplay. It puts real
 stereo VR on top of the game's own camera and render pipeline, as an xOBSE plugin, and
