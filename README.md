@@ -308,6 +308,16 @@ Two rules shape every change here, and pull requests are read against them:
 
 Everything in the repository - code, comments, commits, documents - is in English.
 
+## Supporting the work
+
+OBVR is free and stays free. If it puts you in Cyrodiil and you want to buy a coffee for
+the evenings it took, there is a Patreon: https://www.patreon.com/Naragorn
+
+Patrons get new builds of this and future VR mods before they go public, with the
+testing notes that come with them, and from the higher tiers a vote on which game gets
+the VR treatment next. Early access is a head start, not a lock: OBVR is GPL-3.0, and
+every build reaches this repository.
+
 ## License
 
 OBVR is free software under the **GNU General Public License, version 3** (`LICENSE`).
