@@ -1,4 +1,4 @@
-# OBVR - TES4 Oblivion (2008) in VR
+# OBVR - TES4 Oblivion (2006) in VR
 
 Native VR for the original **The Elder Scrolls IV: Oblivion**. Not for the Remastered
 edition.
