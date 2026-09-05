@@ -462,6 +462,17 @@ void TestLookRanges() {
 	CheckNear(untouched.tracker.eyeSeparationScale, 1.0f,
 	          "and the eye separation scale defaults to the geometric truth of 1");
 
+	// The crosshair defaults, as they have stood since 0.1.1: the depth
+	// crosshair on, in third person as well, and in both views only while it
+	// is of use. The shipped INI says the same, so a file with the keys
+	// deleted behaves like the file as shipped.
+	Check(untouched.tracker.crosshair, "the depth crosshair defaults on");
+	Check(untouched.tracker.crosshairInThirdPerson, "and is shown in third person by default");
+	Check(untouched.tracker.crosshairOnlyWhenNeeded,
+	      "first person shows it only while it is of use by default");
+	Check(untouched.tracker.crosshairOnlyWhenNeededThirdPerson,
+	      "and so does third person");
+
 	obvr::Config split;
 	LoadFrom("ConfigTestSplitRange.ini",
 	         "[Look]\nVerticalLookUpRange=40.0\nVerticalLookDownRange=140.0\n"

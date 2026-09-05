@@ -26,7 +26,11 @@ Everything here has been confirmed in a headset.
 
 - **Dual-pass stereo.** The world is rendered twice per game frame, once per eye, from
   cameras one interpupillary distance apart, into eye-sized targets at the headset's own
-  resolution. Skinned bodies stay intact across the second render.
+  resolution. Skinned bodies stay intact across the second render. **Alternate eye
+  rendering** (`Stereo=aer`) is there as well: the world is drawn once per frame from
+  alternating eyes and the other eye keeps its last picture, which costs nothing extra
+  but shows a one-frame disparity on fast motion. Dual is the default; aer is the
+  fallback if dual misbehaves on your setup.
 - **6DoF head tracking.** The head rotates and moves the camera; leaning works. The
   character never turns with the head. Locomotion stays with mouse, keyboard or gamepad.
 - **Head-based aiming.** Bows, spells and melee go where the head looks, in first and
@@ -183,7 +187,8 @@ ones most people touch:
 | --- | --- |
 | `[Head] Source` | `openvr` for a headset; `simulated` or `fixed` to check the camera chain without one |
 | `[Head] RecenterKey` | virtual-key code of the recenter key, `Del` by default |
-| `[Render] Stereo` | `dual` for real stereo |
+| `[Render] Stereo` | `dual` for real stereo; `aer` for alternate eye rendering; `none` for a flat picture |
+| `[Render] EyeSeparationScale` | how far apart the two viewpoints are, as a multiple of your real eye distance; `1.0` is true to life, above it is the depth boost (see below) |
 | `[Render] Menus` | `world` keeps menus in front of the world, `cinema` puts them on a flat screen |
 | `[Render] LiveMenuBackground` | render the paused world freshly per eye behind menus |
 | `[Render] MirrorMenusToMonitor` | composite in-game menus back onto the monitor window |
@@ -191,6 +196,18 @@ ones most people touch:
 | `[Look] *` | what happens to the look controls once a headset drives the camera, smooth turning, and the head-based aiming options |
 | `[Hands] Enabled` | the standing experience, under construction, off |
 | `[Onboarding] ShowAtStart` | the first-start walkthrough |
+
+**Depth boost.** `EyeSeparationScale` is OBVR's version of the "3D Depth Boost" that
+PrimaShock's mod of the OpenXR Toolkit made popular in the flight and racing sim crowd
+(https://primashock.com/openxr-toolkit-mod-by-primashock-vr/). It moves the two
+viewpoints further apart than your real eyes are, so everything gets more parallax: more
+felt depth and separation up close, and a world that reads proportionally smaller. Those
+come as one package. Where the toolkit mod reprojects finished images, OBVR moves the
+camera before each eye is rendered, so there is no warping; each eye is genuinely drawn
+from the wider viewpoint. `1.0` is the default and geometrically true to your headset's
+own eye distance. Values close to 1 are the useful range; past about 1.5 most people
+trade depth for eye strain. It is hot reloaded, so it can be tuned from inside the
+headset.
 
 ## Compatibility
 

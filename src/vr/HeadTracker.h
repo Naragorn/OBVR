@@ -366,11 +366,11 @@ struct TrackerSettings {
 	// metres away is doubled by the same optics that let anyone see two
 	// fingers when they focus past their own hand.
 	//
-	// Off by default, and that is not caution but arithmetic: Oblivion draws
-	// its own crosshair unless bCrossHair under [GamePlay] is 0, and switching
-	// this on without switching that off puts two crosshairs on screen. Turn
-	// both, or neither.
-	bool crosshair = false;
+	// On by default since 0.1.1. What hangs on the quad is the game's own
+	// crosshair, lifted out of the flat layer and erased where it came from,
+	// so this needs bCrossHair=1 under [GamePlay] (the game's default) and
+	// draws nothing twice.
+	bool crosshair = true;
 
 	// Whether the crosshair is placed at the depth of whatever is under it.
 	//
@@ -435,8 +435,8 @@ struct TrackerSettings {
 	// a weapon or spell is readied.
 	//
 	// Third person has its own switch below, because the two views start from
-	// opposite places - see crosshairInThirdPerson.
-	bool crosshairOnlyWhenNeeded = false;
+	// opposite places - see crosshairInThirdPerson. On by default since 0.1.1.
+	bool crosshairOnlyWhenNeeded = true;
 
 	// Whether OBVR shows the game's own crosshair in third person, where
 	// Oblivion draws none.
@@ -450,7 +450,11 @@ struct TrackerSettings {
 	// OBVR makes only its isolated HUD pass see first person, then lifts the
 	// genuine pixels it produced. A clean cached copy remains the fallback
 	// while a target icon has to be replaced by the plain reticle.
-	bool crosshairInThirdPerson = false;
+	//
+	// On by default since 0.1.1: in a headset the character is not standing
+	// where the camera is, and the crosshair is the only sign of where a
+	// shot goes.
+	bool crosshairInThirdPerson = true;
 
 	// The context-sensitive action icon (talk, open, locked, take) is separate
 	// from the plain aiming reticle. Each point of view can keep or suppress it
@@ -476,8 +480,9 @@ struct TrackerSettings {
 	// Its own switch rather than sharing the first person one: there the
 	// setting takes away a crosshair the game always draws, here it governs the
 	// borrowed game crosshair in a view that had none, and wanting them set
-	// differently is entirely reasonable.
-	bool crosshairOnlyWhenNeededThirdPerson = false;
+	// differently is entirely reasonable. On by default since 0.1.1, the same
+	// as the first-person switch.
+	bool crosshairOnlyWhenNeededThirdPerson = true;
 
 	// How big a square is lifted out of the 2D layer, as a percentage of the
 	// height the game believes it drew in.

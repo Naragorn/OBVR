@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(OBVR VERSION 0.1.0 LANGUAGES CXX)
+project(OBVR VERSION 0.1.1 LANGUAGES CXX)
 
 # OBVR loads as a plugin into Oblivion.exe. That is 32 bit, so the DLL has to
 # be 32 bit as well - there is no way around it.
