@@ -311,7 +311,7 @@ Everything in the repository - code, comments, commits, documents - is in Englis
 ## Supporting the work
 
 OBVR is free and stays free. If it puts you in Cyrodiil and you want to buy a coffee for
-the evenings it took, there is a Patreon: https://www.patreon.com/Naragorn
+the evenings it took, there is a Patreon: https://www.patreon.com/naragorn
 
 Patrons get new builds of this and future VR mods before they go public, with the
 testing notes that come with them, and from the higher tiers a vote on which game gets
