@@ -86,8 +86,11 @@ objects by hand, real finger tracking (`IVRInput`), Linux under Proton.
 
 ## Requirements
 
-- Oblivion **1.2.0.416** (the Steam and GOG builds), 32-bit. OBVR checks the version and
-  stays inactive on any other.
+- Oblivion **1.2.0.416**, 32-bit. Every edition that carries this executable version is
+  supported: the original release patched to 1.2.0.416 and the **Game of the Year**
+  edition alike. By store: **Steam (tested)**, **GOG (untested)**, retail disc with the
+  final patch (untested). OBVR checks the version and stays inactive on any other. Not
+  the Remastered edition.
 - [xOBSE](https://github.com/llde/xOBSE/releases/latest) 22.13 or newer.
 - **SteamVR**, and a headset it drives. OBVR talks OpenVR; there is no OpenXR path, and
   the reason is bitness: a 32-bit process needs a 32-bit runtime, and SteamVR's OpenVR
