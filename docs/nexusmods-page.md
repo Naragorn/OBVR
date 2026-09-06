@@ -15,7 +15,7 @@ is updated.
 | Name | `OBVR - Native VR` (Nexus advises against the game name and version in the title) |
 | Category | Utilities (xOBSE and the Graphics Extender live there; "Visuals and Graphics" is the alternative) |
 | Language | English |
-| Version | 0.1.1 |
+| Version | 0.1.2 |
 | Author | Naragorn |
 | Classification | not adult |
 
@@ -108,8 +108,15 @@ llde and the xOBSE team, for the script extender this runs in. The DXVK project,
 
 - **ReadMe**: paste `README.md` as plain text, or the Requirements, Installing,
   Uninstalling and Reporting sections of it.
-- **Changelog**: one entry per release. For 0.1.1:
+- **Changelog**: one entry per release. For 0.1.2:
 
+  > 0.1.2: fixes the first outside report (Quest 3 through Air Link): the cinema picture
+  > for menus and loading screens reached past the eye texture on lenses whose view axis
+  > sits far off centre, the copy was refused, and the headset fell to SteamVR's loading
+  > view for the session as soon as the world appeared. The picture now shrinks to fit
+  > both eyes, and a failed copy shows the plain picture instead of stopping. INI note
+  > under MenuScale.
+  >
   > 0.1.1: defaults now match the tested settings. Crosshair on, shown in third person as
   > well, in both views only while it is of use; EyeSeparationScale 1.0. README describes
   > the depth boost and the alternate eye rendering mode.
@@ -120,13 +127,13 @@ llde and the xOBSE team, for the script extender this runs in. The DXVK project,
 
 | Field | Value |
 | --- | --- |
-| File name | `OBVR 0.1.1` |
-| File version | 0.1.1 |
+| File name | `OBVR 0.1.2` |
+| File version | 0.1.2 |
 | Latest version | yes |
 | Category | Main Files |
 | Main Vortex file | yes |
 | Description | Extracts into Oblivion's Data folder: OBSE/Plugins/OBVR.dll, OBVR.ini and the license. Needs xOBSE, DXVK and SteamVR's 32-bit openvr_api.dll next to the DLL, see the description. |
-| Archive | `dist/OBVR-0.1.1.zip`, the same file as the GitHub release |
+| Archive | `dist/OBVR-0.1.2.zip`, the same file as the GitHub release |
 
 The zip is already laid out the way Nexus recommends: the game-relative folder
 structure, no extra parent folder.
@@ -194,7 +201,7 @@ for this file.)
 
 - [ ] Draft created, game Oblivion, category Utilities.
 - [ ] Short description and BBCode description pasted; preview checked, lists render.
-- [ ] Files: OBVR-0.1.1.zip uploaded as Main File, version 0.1.1, main Vortex file.
+- [ ] Files: OBVR-0.1.2.zip uploaded as Main File, version 0.1.2, main Vortex file.
 - [ ] Requirements: xOBSE linked from the Nexus list, DXVK and SteamVR as external.
 - [ ] Permissions: own text (GPL-3.0), credits, donations with Patreon.
 - [ ] Documentation: readme and changelog.
