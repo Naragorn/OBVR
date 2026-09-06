@@ -567,8 +567,20 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 		// sides and called it the world.
 		m_heldPoseValid = false;
 
+		// A flat copy that fails leaves the game's own picture, flat and
+		// unframed, rather than nothing. Returning false here handed the
+		// frame to the test pattern instead, and on a Quest 3 the compositor
+		// answered that pattern with 105 for the right eye and OBVR gave up
+		// for the session - over a menu it could have shown as mono. The
+		// refusal itself is said once: the mirror logs only its first fallback
+		// to point filtering, and a copy that fails after that was silent.
 		if (!m_mirror.CopyBackBuffer(request.gameDevice, true, true)) {
-			return false;
+			if (!m_flatCopyFailureLogged) {
+				m_flatCopyFailureLogged = true;
+				OBVR_LOG("Render: the flat picture could not be copied into the eye "
+				         "textures, so the back buffer is shown to both eyes as it is");
+			}
+			return SubmitMono(backend, request, left, right);
 		}
 
 		// An in-game loading screen may still carry the last, full-colour

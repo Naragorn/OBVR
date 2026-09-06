@@ -508,6 +508,92 @@ void TestPlacePictureRefusals() {
 	CheckNear(noEye.uMax - noEye.uMin, 1.0f, 0.0001f, "and an eye that sees nothing wide");
 }
 
+void TestFitFlatPicture() {
+	std::printf("Fitting a flat picture around both eyes' view axes\n");
+
+	using obvr::render::FitFlatPicture;
+	using obvr::render::FlatFit;
+	using obvr::render::ViewAxisX;
+	using obvr::render::ViewAxisY;
+
+	// A Quest 3 through Air Link, as one tester's log reported it: 2064x2272
+	// textures, the axes at 62% and 38% of the width, and MenuScale 0.9
+	// asking for 1857x1044. The left eye's rectangle reached to 2211 and the
+	// right eye's started at -147, and DXVK refused both copies.
+	EyeProjection left;
+	left.left = -1.3764f;
+	left.right = 0.8391f;
+	left.top = -1.4281f;
+	left.bottom = 0.9657f;
+	EyeProjection right;
+	right.left = -0.8391f;
+	right.right = 1.3764f;
+	right.top = -1.4281f;
+	right.bottom = 0.9657f;
+
+	Check(ViewAxisX(left, 2064) == 1282, "the left eye's axis sits at 1282 of 2064");
+	Check(ViewAxisX(right, 2064) == 781, "the right eye's axis sits at 781 of 2064");
+	Check(ViewAxisY(left, 2272) == 916, "and both eyes' axes at 916 of 2272 down");
+
+	const FlatFit quest = FitFlatPicture(left, right, 2064, 2272, 1857, 1044);
+	Check(quest.shrunk, "1857x1044 does not fit either eye and is shrunk");
+	Check(quest.width == 1562, "to the 1562 the right eye's axis leaves room for");
+	Check(quest.height == 878, "with the height following in proportion");
+
+	// The rectangles built the way the mirror builds them stay inside.
+	const int leftEdge = ViewAxisX(left, 2064) - quest.width / 2;
+	const int rightEdge = ViewAxisX(right, 2064) - quest.width / 2;
+	Check(leftEdge >= 0 && leftEdge + quest.width <= 2064,
+	      "the left eye's rectangle now lies inside its texture");
+	Check(rightEdge >= 0 && rightEdge + quest.width <= 2064,
+	      "and so does the right eye's");
+	const int topEdge = ViewAxisY(left, 2272) - quest.height / 2;
+	Check(topEdge >= 0 && topEdge + quest.height <= 2272, "vertically as well");
+
+	// A size that already fits is returned as it was.
+	const FlatFit small = FitFlatPicture(left, right, 2064, 2272, 1200, 675);
+	Check(!small.shrunk && small.width == 1200 && small.height == 675,
+	      "a picture that fits is left at its size");
+
+	// Axes near the middle, the way this project's own headset reads: the
+	// full MenuScale size fits and nothing is changed.
+	EyeProjection centredLeft;
+	centredLeft.left = -1.1f;
+	centredLeft.right = 1.0f;
+	centredLeft.top = -1.1f;
+	centredLeft.bottom = 1.0f;
+	EyeProjection centredRight;
+	centredRight.left = -1.0f;
+	centredRight.right = 1.1f;
+	centredRight.top = -1.1f;
+	centredRight.bottom = 1.0f;
+	const FlatFit centred = FitFlatPicture(centredLeft, centredRight, 3560, 3560, 3204, 1802);
+	Check(!centred.shrunk, "near-central axes take the full size");
+
+	// The height can be the tighter axis too.
+	EyeProjection lowLeft = centredLeft;
+	lowLeft.top = -1.8f;
+	lowLeft.bottom = 0.3f;
+	EyeProjection lowRight = centredRight;
+	lowRight.top = -1.8f;
+	lowRight.bottom = 0.3f;
+	const FlatFit low = FitFlatPicture(lowLeft, lowRight, 2000, 2000, 1000, 1000);
+	Check(low.shrunk, "an axis close to the bottom edge limits the height");
+	Check(low.height == 2 * ViewAxisY(lowLeft, 2000) && low.width == low.height,
+	      "to twice the axis's distance from it, and the width follows");
+
+	// Eyes with no extent answer the middle, and nothing to fit stays nothing.
+	EyeProjection none;
+	none.left = 0.0f;
+	none.right = 0.0f;
+	none.top = 0.0f;
+	none.bottom = 0.0f;
+	Check(ViewAxisX(none, 2064) == 1032 && ViewAxisY(none, 2272) == 1136,
+	      "an eye with no extent puts its axis in the middle");
+	const FlatFit nothing = FitFlatPicture(left, right, 2064, 2272, 0, 1044);
+	Check(!nothing.shrunk && nothing.width == 0, "and a picture with no width stays empty");
+}
+
 }  // namespace
 
 int main() {
@@ -534,6 +620,8 @@ int main() {
 	TestPlacePictureCrop();
 	std::printf("\n");
 	TestPlacePictureRefusals();
+	std::printf("\n");
+	TestFitFlatPicture();
 
 	std::printf("\n");
 	if (g_failures == 0) {

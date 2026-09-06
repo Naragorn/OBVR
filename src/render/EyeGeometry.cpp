@@ -282,4 +282,74 @@ PicturePlacement PlacePicture(const EyeProjection& eye, float fovDegrees, UInt32
 	return PlacePictureFromTangents(eye, tanHalfWidth, tanHalfHeight);
 }
 
+SInt32 ViewAxisX(const EyeProjection& eye, UInt32 textureWidth) {
+	const float eyeWidth = eye.right - eye.left;
+	if (!(eyeWidth > 0.0f)) {
+		return static_cast<SInt32>(textureWidth / 2);
+	}
+	return static_cast<SInt32>(-eye.left / eyeWidth * static_cast<float>(textureWidth));
+}
+
+SInt32 ViewAxisY(const EyeProjection& eye, UInt32 textureHeight) {
+	const float eyeHeight = eye.bottom - eye.top;
+	if (!(eyeHeight > 0.0f)) {
+		return static_cast<SInt32>(textureHeight / 2);
+	}
+	return static_cast<SInt32>(eye.bottom / eyeHeight * static_cast<float>(textureHeight));
+}
+
+namespace {
+
+// How wide or tall a picture centred on the axis can be before it reaches
+// the nearer edge. Twice the shorter distance, so always an even number.
+SInt32 RoomAround(SInt32 axis, UInt32 extent) {
+	const SInt32 size = static_cast<SInt32>(extent);
+	SInt32 nearer = axis < size - axis ? axis : size - axis;
+	if (nearer < 0) {
+		nearer = 0;
+	}
+	return 2 * nearer;
+}
+
+}  // namespace
+
+FlatFit FitFlatPicture(const EyeProjection& leftEye, const EyeProjection& rightEye,
+                       UInt32 textureWidth, UInt32 textureHeight, SInt32 wantedWidth,
+                       SInt32 wantedHeight) {
+	FlatFit fit;
+	fit.width = wantedWidth > 0 ? wantedWidth : 0;
+	fit.height = wantedHeight > 0 ? wantedHeight : 0;
+	if (fit.width == 0 || fit.height == 0) {
+		return fit;
+	}
+
+	// The room is what both eyes leave, so the tighter of the two decides.
+	SInt32 roomWidth = RoomAround(ViewAxisX(leftEye, textureWidth), textureWidth);
+	SInt32 roomHeight = RoomAround(ViewAxisY(leftEye, textureHeight), textureHeight);
+	const SInt32 rightRoomWidth = RoomAround(ViewAxisX(rightEye, textureWidth), textureWidth);
+	const SInt32 rightRoomHeight =
+		RoomAround(ViewAxisY(rightEye, textureHeight), textureHeight);
+	if (rightRoomWidth < roomWidth) {
+		roomWidth = rightRoomWidth;
+	}
+	if (rightRoomHeight < roomHeight) {
+		roomHeight = rightRoomHeight;
+	}
+
+	if (fit.width <= roomWidth && fit.height <= roomHeight) {
+		return fit;
+	}
+
+	// One scale for both axes, so the picture keeps its shape.
+	float scale = static_cast<float>(roomWidth) / static_cast<float>(fit.width);
+	const float scaleV = static_cast<float>(roomHeight) / static_cast<float>(fit.height);
+	if (scaleV < scale) {
+		scale = scaleV;
+	}
+	fit.width = static_cast<SInt32>(static_cast<float>(fit.width) * scale);
+	fit.height = static_cast<SInt32>(static_cast<float>(fit.height) * scale);
+	fit.shrunk = true;
+	return fit;
+}
+
 }  // namespace obvr::render

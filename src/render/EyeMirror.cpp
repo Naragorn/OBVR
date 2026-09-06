@@ -350,6 +350,25 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 			? static_cast<SInt32>(static_cast<float>(flatWidth) / displayAspect)
 			: flatWidth;
 
+	// The axes are not in the middle of the textures, and how far off they
+	// sit is the lens's business. A picture that reaches past the near edge
+	// from there is refused by DXVK's StretchRect - measured on a Quest 3
+	// through Air Link, where the axes sit at 62% and 38% of the width and a
+	// MenuScale of 0.9 asked for 1857 of 2064 pixels. Shrunk for both eyes
+	// alike, so the picture stays one size in both.
+	{
+		const FlatFit fit =
+			FitFlatPicture(leftEye, rightEye, m_width, m_height, flatWidth, flatHeight);
+		if (fit.shrunk) {
+			OBVR_LOG("Mirror: the flat picture is shrunk from %dx%d to %dx%d so it stays "
+			         "centred on both eyes' view axes and inside the %ux%u textures - "
+			         "this headset's lens offset leaves no room for MenuScale's size",
+			         flatWidth, flatHeight, fit.width, fit.height, m_width, m_height);
+		}
+		flatWidth = fit.width;
+		flatHeight = fit.height;
+	}
+
 	for (int index = 0; index < 2; ++index) {
 		Eye& eye = m_eye[index];
 		const EyeProjection& projection = index == 0 ? leftEye : rightEye;
@@ -366,17 +385,8 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 		// Same offset from each eye's own axis means the same direction from
 		// both eyes, which is what infinity is - and where a cinema screen
 		// sits, which is why it reads as one.
-		const float eyeWidth = projection.right - projection.left;
-		const float eyeHeight = projection.bottom - projection.top;
-		const SInt32 axisX =
-			eyeWidth > 0.0f
-				? static_cast<SInt32>(-projection.left / eyeWidth * static_cast<float>(m_width))
-				: static_cast<SInt32>(m_width / 2);
-		const SInt32 axisY =
-			eyeHeight > 0.0f
-				? static_cast<SInt32>(projection.bottom / eyeHeight *
-			                          static_cast<float>(m_height))
-				: static_cast<SInt32>(m_height / 2);
+		const SInt32 axisX = ViewAxisX(projection, m_width);
+		const SInt32 axisY = ViewAxisY(projection, m_height);
 
 		eye.flatDestination.left = axisX - flatWidth / 2;
 		eye.flatDestination.right = eye.flatDestination.left + flatWidth;

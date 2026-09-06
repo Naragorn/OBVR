@@ -200,6 +200,41 @@ PicturePlacement PlacePictureFromTangents(const EyeProjection& eye, float tanHal
 PicturePlacement PlacePicture(const EyeProjection& eye, float fovDegrees, UInt32 frameWidth,
                               UInt32 frameHeight, bool fovIsFor4x3);
 
+// Where the eye's view axis lands in a texture of the given size, in pixels.
+//
+// The same readings PlacePictureFromTangents uses for its centre - -left over
+// the width, bottom over the height - so a flat picture centred with these
+// sits where the world's picture sits. An eye with no extent answers the
+// middle of the texture.
+SInt32 ViewAxisX(const EyeProjection& eye, UInt32 textureWidth);
+SInt32 ViewAxisY(const EyeProjection& eye, UInt32 textureHeight);
+
+// The size a flat picture may have when it is centred on both eyes' view
+// axes and must stay inside both textures.
+//
+// A flat picture - a menu, a film, a loading screen - is placed the same way
+// in both eyes: centred on each eye's own view axis, so that it sits at the
+// same angle in each and fuses into one. The axis is not in the middle of
+// the texture; how far off it lies depends on the lens, and on a Quest 3
+// through Air Link it sits at 62% of the width in one eye and 38% in the
+// other. A picture wide enough to reach past the near edge from there is not
+// a picture that hangs over, it is a StretchRect that DXVK refuses with
+// D3DERR_INVALIDCALL - and on that headset it did, which left no flat
+// picture at all. So the picture is shrunk, in both eyes alike and in
+// proportion, until it fits both. Shrinking one eye alone would show the two
+// eyes different sizes, which is worse than a smaller picture.
+struct FlatFit {
+	SInt32 width = 0;
+	SInt32 height = 0;
+
+	// Whether the wanted size had to be reduced.
+	bool shrunk = false;
+};
+
+FlatFit FitFlatPicture(const EyeProjection& leftEye, const EyeProjection& rightEye,
+                       UInt32 textureWidth, UInt32 textureHeight, SInt32 wantedWidth,
+                       SInt32 wantedHeight);
+
 // The distance between the two eyes, in metres.
 //
 // The interpupillary distance, and the number every stereo pair is built on.

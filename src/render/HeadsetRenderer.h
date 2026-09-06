@@ -261,6 +261,7 @@ private:
 	// frustum turns up, it is rebuilt.
 	bool m_mirrorUsedCamera = false;
 	bool m_copyFailureLogged = false;
+	bool m_flatCopyFailureLogged = false;
 
 	// Which eyes CaptureEye has filled since the last submit, index 0 left.
 	// Cleared at BeginFrame so a frame that turns flat mid-way - a menu

@@ -104,6 +104,16 @@ Open question: why the second render leaves the pass unable to draw. See
   screen on a wall. A flat picture is legible in a way a quad at a fixed distance is not; reading an inventory
   is what menus are for. `MenuAspect` and `MenuScale` were the answer to menus squeezed
   into a square (the height was once derived from the world's angular rectangle).
+  The picture is centred on each eye's own view axis (`ViewAxisX`/`ViewAxisY`), which
+  is what puts it at infinity; and the axis is wherever the lens puts it. On a Quest 3
+  through Air Link it sits at 62% and 38% of the texture width, and `MenuScale=0.9`
+  asked for a rectangle that reached past the near edge in both eyes. DXVK's
+  `StretchRect` refuses a rectangle outside the surface (`D3DERR_INVALIDCALL`,
+  `IsBlitRegionInvalid` in `d3d9_device.cpp`), so that headset had no flat picture at
+  all once the copies were rebuilt with the camera frustum. `FitFlatPicture`
+  (`render/EyeGeometry`) shrinks the wanted size for both eyes alike until it fits both,
+  and logs "Mirror: the flat picture is shrunk ..." when it does. `CONFIRMED` by the
+  reporter's numbers in `eye_geometry_test`, not yet by a Quest 3.
 - **HeldStereo**: the last captured pair submitted again with the pose it was drawn from,
   so the compositor reprojects it. Not stale: the world is paused. The old menu flicker
   was exactly the alternative - stereo and cinema alternating at frame rate because "is a

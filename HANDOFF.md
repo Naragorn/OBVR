@@ -2134,6 +2134,19 @@ and FEAR2VR, cited above.
   stretched picture it always did. Left alone deliberately: it is the fallback, it works as
   it is, and changing the thing being fallen back to would leave two candidates for any new
   fault.
+- ~~The flat picture could reach past the eye texture~~ - fixed after 0.1.1, from the first
+  outside report (Nexus, 2026-09-06, a Quest 3 through Air Link). The flat picture is centred
+  on each eye's view axis, and on that headset the axes sit at 62% and 38% of a 2064-wide
+  texture; `MenuScale=0.9` asked for 1857 pixels, so the left eye's rectangle ended at 2211
+  and the right eye's began at -147. DXVK's `StretchRect` refuses such a rectangle, the
+  flat copy failed silently, the frame fell to the D3D11 test pattern, and the compositor
+  answered that pattern with 105 (`TextureUsesUnsupportedFormat`) for the right eye - which
+  the policy rightly treats as permanent, so the headset showed SteamVR's loading view for
+  the rest of the session while the monitor kept playing. Three logs (`dual`, `aer`, `none`)
+  were identical. Now `FitFlatPicture` shrinks the flat picture for both eyes alike until it
+  fits both (the tester's numbers come out at 1562x878), the mirror logs the shrink, and a
+  flat copy that still fails falls back to mono with a log line instead of the pattern. Why
+  the pattern drew a 105 on one eye only is not known; it is no longer reached that way.
 
 ### The INI switch
 
