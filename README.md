@@ -15,7 +15,7 @@ tracked head pose
 the VR camera, rendered once per eye
 ```
 
-**Status: early public test build (0.1.2).** One developer, one headset, one machine so
+**Status: early public test build (0.1.3).** One developer, one headset, one machine so
 far. The seated experience below works and is what this release is for; the standing
 experience with motion controllers is under construction and switched off. Please test,
 and please report what you see - see [Reporting a problem](#reporting-a-problem).
