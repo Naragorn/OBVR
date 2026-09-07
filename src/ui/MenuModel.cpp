@@ -143,6 +143,20 @@ MenuState AdvanceMenu(MenuState state, MenuAction action, UInt32 itemCount, UInt
 	return state;
 }
 
+MenuAction ClickActionFor(const MenuItem& item, float xFraction) {
+	switch (item.kind) {
+	case ItemKind::Toggle:
+		return item.value != 0.0f ? MenuAction::Decrease : MenuAction::Increase;
+	case ItemKind::Number:
+		return xFraction < 0.5f ? MenuAction::Decrease : MenuAction::Increase;
+	case ItemKind::Action:
+		return MenuAction::Increase;
+	case ItemKind::Text:
+	default:
+		return MenuAction::None;
+	}
+}
+
 float AdjustValue(const MenuItem& item, MenuAction action) {
 	if (action != MenuAction::Decrease && action != MenuAction::Increase) {
 		return item.value;

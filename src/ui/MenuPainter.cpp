@@ -260,4 +260,58 @@ void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categor
 	}
 }
 
+SInt32 RowAtPixel(const MenuItem* items, const char* const* categories, UInt32 count,
+                  MenuState state, UInt32 canvasWidth, UInt32 canvasHeight, UInt32 scale,
+                  SInt32 x, SInt32 y) {
+	if (items == nullptr || count == 0 || canvasWidth == 0 || canvasHeight == 0) {
+		return -1;
+	}
+	if (scale == 0) {
+		scale = 1;
+	}
+	const SInt32 s = static_cast<SInt32>(scale);
+	const SInt32 margin = static_cast<SInt32>(kMargin * scale);
+	const SInt32 lineHeight = static_cast<SInt32>(kLineAdvance * scale);
+	const SInt32 width = static_cast<SInt32>(canvasWidth);
+	const SInt32 height = static_cast<SInt32>(canvasHeight);
+
+	// Inside the highlight bar's span across, which is where a row is.
+	if (x < margin + s * 2 || x >= width - margin - s * 2) {
+		return -1;
+	}
+
+	const UInt32 visibleRows = VisibleRowsFor(canvasHeight, scale);
+	const SInt32 contentBottom = height - margin - static_cast<SInt32>(kHelpLines) * lineHeight;
+	SInt32 rowY = margin + kTitleLines * lineHeight;
+	UInt32 linesUsed = 0;
+
+	// The same walk as PaintMenu's, row for row, heading for heading, with
+	// the same two guards against drawing into the help line.
+	for (UInt32 index = state.firstVisible; index < count && linesUsed < visibleRows; ++index) {
+		const UInt32 rowLines = LinesOf(items[index]);
+		const SInt32 rowHeight = static_cast<SInt32>(rowLines) * lineHeight;
+		const bool firstOfCategory =
+			categories != nullptr &&
+			(index == 0 || !SameText(categories[index], categories[index - 1]));
+		if (firstOfCategory && index > state.firstVisible) {
+			if (linesUsed + 1 + rowLines > visibleRows ||
+			    rowY + lineHeight + rowHeight > contentBottom) {
+				break;
+			}
+			rowY += lineHeight;
+			++linesUsed;
+		}
+		if (rowY + rowHeight > contentBottom) {
+			break;
+		}
+		// The highlight bar starts one scale pixel above the row's text.
+		if (y >= rowY - s && y < rowY - s + rowHeight) {
+			return static_cast<SInt32>(index);
+		}
+		rowY += rowHeight;
+		linesUsed += rowLines;
+	}
+	return -1;
+}
+
 }  // namespace obvr::ui

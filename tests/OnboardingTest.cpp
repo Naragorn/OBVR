@@ -182,6 +182,14 @@ void TestNavigation() {
 	Check(menu.State().selected == 7, "Down goes to Next");
 	menu.Apply(MenuAction::Down, config);
 	Check(menu.State().selected == 6, "and wraps past the text to Back");
+	// A pointer over a row: an action takes the highlight, text does not.
+	const UInt32 before = menu.Revision();
+	Check(menu.Hover(7) && menu.State().selected == 7 && menu.Revision() != before,
+	      "hovering Next selects it");
+	Check(!menu.Hover(1) && menu.State().selected == 7, "hovering a text row is refused");
+	Check(!menu.Hover(7), "hovering the selected row again is nothing");
+	Check(!menu.Hover(20) && menu.State().selected == 7, "a row past the page is refused");
+	menu.Hover(6);
 	menu.Apply(MenuAction::Increase, config);
 	Check(menu.Page() == 0, "Right on Back goes back");
 	menu.Apply(MenuAction::Increase, config);

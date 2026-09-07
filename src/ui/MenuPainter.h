@@ -80,4 +80,13 @@ void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categor
 void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categories, UInt32 count,
                MenuState state, UInt32 scale, const MenuTheme& theme, const char* title);
 
+// Which row a canvas pixel lies on, for a laser pointed at the menu: the
+// item's index, or -1 for the title, a heading, the help line, the margins,
+// or anything past the last drawn row. Walks the same layout PaintMenu draws
+// - the test pins the two together by painting each selection and reading
+// the highlight bar back - so a hit is a row that is actually on screen.
+SInt32 RowAtPixel(const MenuItem* items, const char* const* categories, UInt32 count,
+                  MenuState state, UInt32 canvasWidth, UInt32 canvasHeight, UInt32 scale,
+                  SInt32 x, SInt32 y);
+
 }  // namespace obvr::ui

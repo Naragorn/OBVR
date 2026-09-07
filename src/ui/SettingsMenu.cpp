@@ -145,6 +145,15 @@ const SettingDefinition* SettingsMenu::Apply(MenuAction action, Config& config) 
 	return nullptr;
 }
 
+bool SettingsMenu::Hover(UInt32 index) {
+	if (!m_open || index >= SettingDefinitionCount() || index == m_state.selected) {
+		return false;
+	}
+	m_state.selected = index;
+	++m_revision;
+	return true;
+}
+
 UInt32 SettingsMenu::BuildRows(const Config& config, MenuItem* items, const char** categories,
                                UInt32 capacity) const {
 	if (items == nullptr || categories == nullptr) {

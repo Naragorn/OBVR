@@ -449,8 +449,18 @@ void TestLaserOnBigQuad() {
 	Check(r.laserHit && !r.laserRight && r.cursorDx == 0 && r.cursorDy == 0,
 	      "only the left hand tracked: it points, dead centre");
 
-	// The trigger clicks, the menu buttons are Tab and Escape.
+	// The right hand back, its trigger pulled: that pull takes the pointer
+	// back from the left hand and is spent on the move. The menu buttons are
+	// Tab and Escape regardless.
 	frame.right.valid = true;
+	frame.right.trigger = 1.0f;
+	frame.left.buttonsPressed = 1ull << openvr::kButtonApplicationMenu;
+	r = mode.Update(frame, settings);
+	Check(r.laserRight && !r.controls.menuClick && r.controls.menu,
+	      "the pull brings the pointer back without clicking; the left menu button is Tab");
+	frame.right.trigger = 0.0f;
+	frame.left.buttonsPressed = 0;
+	mode.Update(frame, settings);
 	frame.right.trigger = 1.0f;
 	frame.left.buttonsPressed = 1ull << openvr::kButtonApplicationMenu;
 	r = mode.Update(frame, settings);
@@ -655,21 +665,29 @@ void TestMainMenuLaser() {
 	r = mode.Update(frame, settings);
 	Check(!r.controls.menuClick, "and releases");
 
-	// The left trigger takes the pointer to the left hand, and clicks there.
+	// The left trigger takes the pointer to the left hand. That pull is not
+	// a click: the cursor is still where the right hand left it.
 	frame.left.trigger = 1.0f;
 	r = mode.Update(frame, settings);
 	Check(!r.laserRight && r.laserVisible, "a pull on the left takes the pointer left");
-	Check(r.controls.menuClick, "and that pull is a click");
+	Check(!r.controls.menuClick, "and that pull is not a click");
 	Check(r.cursorDx == -240, "the cursor now walks to the left hand's beam");
+	r = mode.Update(frame, settings);
+	Check(!r.controls.menuClick, "nor is holding it");
 	frame.left.trigger = 0.0f;
 	r = mode.Update(frame, settings);
 	Check(!r.laserRight && !r.controls.menuClick, "released, the left hand keeps the pointer");
+	frame.left.trigger = 1.0f;
+	r = mode.Update(frame, settings);
+	Check(!r.laserRight && r.controls.menuClick, "pulled again, the left hand clicks");
+	frame.left.trigger = 0.0f;
+	mode.Update(frame, settings);
 
-	// The right trigger while the left holds the pointer: does not click,
-	// takes the pointer back.
+	// The right trigger while the left holds the pointer: takes it back,
+	// without clicking.
 	frame.right.trigger = 1.0f;
 	r = mode.Update(frame, settings);
-	Check(r.laserRight && r.controls.menuClick, "the right trigger takes it back and clicks");
+	Check(r.laserRight && !r.controls.menuClick, "the right trigger takes it back, no click");
 	frame.right.trigger = 0.0f;
 	r = mode.Update(frame, settings);
 
@@ -716,11 +734,92 @@ void TestMainMenuLaser() {
 	Check(r.laserHit && r.laserRight, "the full mode points at the picture too");
 	frame.left.trigger = 1.0f;
 	r = full.Update(frame, settings);
-	Check(!r.laserRight && r.controls.menuClick, "and switches hands on the left trigger");
+	Check(!r.laserRight && !r.controls.menuClick, "and switches hands on the left trigger, no click");
+	frame.left.trigger = 0.0f;
+	full.Update(frame, settings);
+	frame.left.trigger = 1.0f;
+	r = full.Update(frame, settings);
+	Check(!r.laserRight && r.controls.menuClick, "the next pull clicks");
 	frame.left.trigger = 0.0f;
 	frame.menuMode = false;
 	r = full.Update(frame, settings);
 	Check(!r.laserVisible, "out of the menu: no beam");
+}
+
+void TestLaserOnOwnPanel() {
+	std::printf("The laser on OBVR's own panel\n");
+	HandSettings settings;
+	settings.enabled = false;
+	HandModeFrame frame = MainMenuFrame();
+	frame.settingsMenuOpen = true;
+	// The panel a metre ahead, 0.8 wide, painted on 1024x768.
+	frame.settingsQuad.valid = true;
+	frame.settingsQuad.centre = NiPoint3{0.0f, 0.0f, -1.0f};
+	frame.settingsQuad.right = NiPoint3{1.0f, 0.0f, 0.0f};
+	frame.settingsQuad.up = NiPoint3{0.0f, 1.0f, 0.0f};
+	frame.settingsQuad.width = 0.8f;
+	frame.settingsQuad.height = 0.6f;
+	frame.settingsPixelsWidth = 1024.0f;
+	frame.settingsPixelsHeight = 768.0f;
+	// The right hand at the eyes, pointing a little down and right.
+	frame.right.position = NiPoint3{0.0f, 0.0f, 0.0f};
+	HandMode mode;
+
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.settingsPointerValid && r.laserVisible && r.laserRight,
+	      "the right hand's beam lands on the panel");
+	Check(Near(r.settingsPointerX, 512.0f, 1.0f) && Near(r.settingsPointerY, 384.0f, 1.0f),
+	      "straight ahead is the panel's middle");
+	Check(Near(r.laserLengthMetres, 1.0f, 0.01f), "the beam ends on the panel");
+	Check(!r.settingsClick && !r.settingsNav.right, "nothing pulled: no click, no Right");
+
+	// A pull on the pointing hand is a click on the row, not the stick's Right.
+	frame.right.trigger = 1.0f;
+	r = mode.Update(frame, settings);
+	Check(r.settingsClick && !r.settingsNav.right, "the pull is a click, and not Right");
+	r = mode.Update(frame, settings);
+	Check(!r.settingsClick, "once, while it stays pulled");
+	frame.right.trigger = 0.0f;
+	mode.Update(frame, settings);
+
+	// The left trigger moves the pointer to the left hand without clicking
+	// or stepping; the left hand, held out left, misses the panel.
+	frame.left.position = NiPoint3{-2.0f, 0.0f, 0.0f};
+	frame.left.trigger = 1.0f;
+	r = mode.Update(frame, settings);
+	Check(!r.laserRight && !r.settingsClick && !r.settingsNav.right,
+	      "a pull on the left moves the pointer: no click, no Right");
+	Check(!r.settingsPointerValid && Near(r.laserLengthMetres, 1.0f, 0.01f),
+	      "the left hand misses the panel: a metre of beam, no pixel");
+	frame.left.trigger = 0.0f;
+	mode.Update(frame, settings);
+
+	// Off the panel, a pull is the stick's Right, as before.
+	frame.left.trigger = 1.0f;
+	r = mode.Update(frame, settings);
+	Check(r.settingsNav.right && !r.settingsClick, "off the panel the pull is Right");
+	frame.left.trigger = 0.0f;
+	mode.Update(frame, settings);
+
+	// Back to the right hand with a pull: the pointer moves, nothing fires.
+	frame.right.trigger = 1.0f;
+	r = mode.Update(frame, settings);
+	Check(r.laserRight && !r.settingsClick && !r.settingsNav.right,
+	      "the right pull takes the pointer back, nothing fires");
+	frame.right.trigger = 0.0f;
+	mode.Update(frame, settings);
+
+	// Pointing at the lower right of the panel: the pixel follows.
+	frame.right.position = NiPoint3{0.2f, -0.15f, 0.0f};
+	r = mode.Update(frame, settings);
+	Check(r.settingsPointerValid && r.settingsPointerX > 700.0f && r.settingsPointerY > 500.0f,
+	      "a hand out to the right and below lands right and below");
+
+	// The A button is still Right, panel or no panel.
+	frame.right.buttonsPressed = 1ull << openvr::kButtonA;
+	r = mode.Update(frame, settings);
+	Check(r.settingsNav.right, "A is Right");
+	frame.right.buttonsPressed = 0;
 }
 
 int main() {
@@ -739,6 +838,7 @@ int main() {
 	TestLaserOnBigQuad();
 	TestMenusOnly();
 	TestMainMenuLaser();
+	TestLaserOnOwnPanel();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

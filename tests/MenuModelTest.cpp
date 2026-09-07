@@ -199,6 +199,24 @@ void TestAdjusting() {
 	toggle.value = 0.0f;
 	Check(AdjustValue(toggle, MenuAction::Decrease) == 1.0f, "and either direction flips it");
 
+	// A click on a row, for a laser: a toggle flips whichever way, a number
+	// steps by the half it was clicked on, a button fires, text is nothing.
+	using obvr::ui::ClickActionFor;
+	toggle.value = 0.0f;
+	Check(ClickActionFor(toggle, 0.9f) == MenuAction::Increase, "a click turns a toggle on");
+	toggle.value = 1.0f;
+	Check(ClickActionFor(toggle, 0.1f) == MenuAction::Decrease, "and off");
+	MenuItem clicked;
+	clicked.kind = ItemKind::Number;
+	Check(ClickActionFor(clicked, 0.25f) == MenuAction::Decrease, "the left half steps down");
+	Check(ClickActionFor(clicked, 0.75f) == MenuAction::Increase, "the right half steps up");
+	MenuItem button;
+	button.kind = ItemKind::Action;
+	Check(ClickActionFor(button, 0.1f) == MenuAction::Increase, "a button fires");
+	MenuItem text;
+	text.kind = ItemKind::Text;
+	Check(ClickActionFor(text, 0.5f) == MenuAction::None, "text is nothing");
+
 	// A value from an INI that is neither 0 nor 1. Anything not clearly off is
 	// on, so the switch never sits in a third state nobody can name.
 	toggle.value = 2.0f;

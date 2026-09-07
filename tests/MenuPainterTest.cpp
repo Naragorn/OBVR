@@ -226,6 +226,85 @@ void TestHighlightFollowsSelection() {
 	      "and none of them wrote past the canvas");
 }
 
+// The row under a pixel agrees with the highlight the painter draws: for
+// every selection, the bar's first pixel row is the top of the row RowAtPixel
+// answers, and every pixel of the bar answers that row.
+void TestRowAtPixel() {
+	std::printf("The row under a pixel\n");
+	using obvr::ui::RowAtPixel;
+
+	MenuItem items[kItemCount];
+	const char* categories[kItemCount];
+	BuildItems(items, categories);
+	MenuTheme theme;
+
+	const SInt32 x = kWidth / 2;
+	bool allAgree = true;
+	SInt32 lastTop = -1;
+	UInt32 drawn = 0;
+	for (UInt32 index = 0; index < kItemCount; ++index) {
+		Sheet sheet;
+		Canvas canvas = sheet.Surface();
+		MenuState state;
+		state.selected = index;
+		PaintMenu(canvas, items, categories, kItemCount, state, 1, theme);
+		const SInt32 top = FirstRowWithColour(canvas, theme.highlight);
+		if (top < 0) {
+			break;  // past the window: no highlight drawn
+		}
+		++drawn;
+		if (top <= lastTop) {
+			allAgree = false;
+		}
+		lastTop = top;
+		// Every pixel row of the bar answers this row.
+		for (SInt32 y = top; RowHasColour(canvas, y, theme.highlight); ++y) {
+			if (RowAtPixel(items, categories, kItemCount, state, kWidth, kHeight, 1, x, y) !=
+			    static_cast<SInt32>(index)) {
+				allAgree = false;
+			}
+		}
+		// And the pixel row just above the bar does not.
+		if (RowAtPixel(items, categories, kItemCount, state, kWidth, kHeight, 1, x, top - 1) ==
+		    static_cast<SInt32>(index)) {
+			allAgree = false;
+		}
+	}
+	Check(drawn >= 3, "several rows fit the window");
+	Check(allAgree, "every highlighted pixel answers its row, and the pixel above does not");
+
+	MenuState state;
+	Check(RowAtPixel(items, categories, kItemCount, state, kWidth, kHeight, 1, x, 2) == -1,
+	      "the title is no row");
+	Check(RowAtPixel(items, categories, kItemCount, state, kWidth, kHeight, 1, x, kHeight - 3) == -1,
+	      "the help line is no row");
+	Check(RowAtPixel(items, categories, kItemCount, state, kWidth, kHeight, 1, 1, 30) == -1,
+	      "the margin is no row");
+	Check(RowAtPixel(nullptr, categories, 0, state, kWidth, kHeight, 1, x, 30) == -1,
+	      "an empty menu has no rows");
+
+	// Scrolled: the row at the top of the list is the first visible one.
+	Sheet sheet;
+	Canvas canvas = sheet.Surface();
+	state.selected = 4;
+	state.firstVisible = 4;
+	PaintMenu(canvas, items, categories, kItemCount, state, 1, theme);
+	const SInt32 top = FirstRowWithColour(canvas, theme.highlight);
+	Check(top > 0 && RowAtPixel(items, categories, kItemCount, state, kWidth, kHeight, 1, x, top) == 4,
+	      "a scrolled window answers the scrolled index");
+
+	// The heading between the categories is no row.
+	state.selected = 0;
+	state.firstVisible = 4;
+	Sheet other;
+	Canvas headed = other.Surface();
+	PaintMenu(headed, items, categories, kItemCount, state, 1, theme);
+	const SInt32 heading = FirstRowWithColour(headed, theme.category);
+	Check(heading > 0 &&
+	          RowAtPixel(items, categories, kItemCount, state, kWidth, kHeight, 1, x, heading) == -1,
+	      "a category heading is no row");
+}
+
 void TestOutOfRangeStateIsSurvivable() {
 	std::printf("A state that does not match the list\n");
 
@@ -502,6 +581,8 @@ int main() {
 	TestEmptyMenu();
 	std::printf("\n");
 	TestHighlightFollowsSelection();
+	std::printf("\n");
+	TestRowAtPixel();
 	std::printf("\n");
 	TestOutOfRangeStateIsSurvivable();
 	std::printf("\n");

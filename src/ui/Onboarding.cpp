@@ -295,6 +295,19 @@ const SettingDefinition* OnboardingMenu::Apply(MenuAction action, Config& config
 	return nullptr;
 }
 
+bool OnboardingMenu::Hover(UInt32 index) {
+	if (!m_open) {
+		return false;
+	}
+	const OnboardingPage& page = CurrentPage();
+	if (index >= page.rowCount || !Selectable(page.rows[index]) || index == m_state.selected) {
+		return false;
+	}
+	m_state.selected = index;
+	++m_revision;
+	return true;
+}
+
 UInt32 OnboardingMenu::BuildRows(const Config& config, MenuItem* items, const char** categories,
                                  UInt32 capacity) const {
 	const OnboardingPage& page = CurrentPage();

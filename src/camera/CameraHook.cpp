@@ -428,6 +428,23 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// character creation, a loading screen - which has no quad: the laser
 	// meets the picture the head sees at infinity instead.
 	g_headsetRenderer.FlatPictureInTracking(frame.flat);
+	// OBVR's own panel, whichever is open, so the laser can put the
+	// highlight on the row it points at.
+	if (frame.settingsMenuOpen) {
+		const ui::SettingsMenuLayer& panel =
+			g_onboarding.IsOpen() ? g_onboardingLayer : g_settingsMenuLayer;
+		vr::openvr::HmdMatrix34 panelPose{};
+		float panelWidth = 0.0f;
+		UInt32 canvasWidth = 0;
+		UInt32 canvasHeight = 0;
+		ui::SettingsMenuLayer::CanvasSize(canvasWidth, canvasHeight);
+		frame.settingsPixelsWidth = static_cast<float>(canvasWidth);
+		frame.settingsPixelsHeight = static_cast<float>(canvasHeight);
+		if (panel.QuadInTracking(backend, panelPose, panelWidth)) {
+			frame.settingsQuad = vr::QuadFromPose(panelPose, panelWidth, frame.settingsPixelsWidth,
+			                                      frame.settingsPixelsHeight);
+		}
+	}
 	if (frame.flat.valid != g_flatLaserTargetReported) {
 		g_flatLaserTargetReported = frame.flat.valid;
 		if (frame.flat.valid) {
@@ -2100,6 +2117,47 @@ vr::StickNavVerdict TakeHandMenuNavigation() {
 	return taken;
 }
 
+// The laser on OBVR's own panel: the row it points at takes the highlight,
+// the way a mouse hovers, and the pointing hand's pull is that row's own
+// click - a toggle flips, a number steps down on its left half and up on
+// its right, a button fires. The pixel comes from the hand mode, which
+// met the pointing hand's ray with the panel's quad; which row that pixel
+// is on is the painter's answer, since the painter laid the rows out.
+// Both of OBVR's menus have the same shape here, hence the template.
+template <typename Menu>
+void PointAtPanel(Menu& menu, Config& config, const ui::MenuItem* items,
+                  const char* const* categories, UInt32 count) {
+	if (!g_hand.settingsPointerValid) {
+		g_hand.settingsClick = false;
+		return;
+	}
+	UInt32 canvasWidth = 0;
+	UInt32 canvasHeight = 0;
+	ui::SettingsMenuLayer::CanvasSize(canvasWidth, canvasHeight);
+	const SInt32 row = ui::RowAtPixel(items, categories, count, menu.State(), canvasWidth,
+	                                  canvasHeight, ui::SettingsMenuLayer::Scale(),
+	                                  static_cast<SInt32>(g_hand.settingsPointerX),
+	                                  static_cast<SInt32>(g_hand.settingsPointerY));
+	const bool click = g_hand.settingsClick;
+	g_hand.settingsClick = false;
+	if (row < 0) {
+		return;
+	}
+	menu.Hover(static_cast<UInt32>(row));
+	// Only the row that actually took the highlight is clicked: a text row
+	// the walkthrough refuses stays as it is.
+	if (click && menu.State().selected == static_cast<UInt32>(row)) {
+		const float xFraction = canvasWidth > 0
+		                            ? g_hand.settingsPointerX / static_cast<float>(canvasWidth)
+		                            : 0.5f;
+		const ui::MenuAction action =
+			ui::ClickActionFor(items[static_cast<UInt32>(row)], xFraction);
+		if (action != ui::MenuAction::None) {
+			SaveChangedSetting(menu.Apply(action, config), config);
+		}
+	}
+}
+
 // The walkthrough: opened once per start while [Onboarding] ShowAtStart is
 // on and a headset is connected, steered with the same arrow keys as the
 // settings menu - or the sticks in the hand-tracked mode - and drawn on its
@@ -2123,6 +2181,13 @@ bool PollOnboarding(const Config& config) {
 	if (open) {
 		g_onboarding.SetVisibleRows(g_onboardingLayer.VisibleRows());
 		Config& writable = GetConfig();
+		{
+			ui::MenuItem pointed[16];
+			const char* pointedCategories[16];
+			const UInt32 pointedCount =
+				g_onboarding.BuildRows(GetConfig(), pointed, pointedCategories, 16);
+			PointAtPanel(g_onboarding, writable, pointed, pointedCategories, pointedCount);
+		}
 		const vr::StickNavVerdict sticks = TakeHandMenuNavigation();
 		if (g_menuUpEdge.Update(down(0x26)) || sticks.up) {
 			g_onboarding.Apply(ui::MenuAction::Up, writable);
@@ -2198,6 +2263,13 @@ void PollSettingsMenu() {
 		g_settingsMenu.SetVisibleRows(g_settingsMenuLayer.VisibleRows());
 
 		Config& writable = GetConfig();
+		{
+			ui::MenuItem pointed[96];
+			const char* pointedCategories[96];
+			const UInt32 pointedCount =
+				g_settingsMenu.BuildRows(GetConfig(), pointed, pointedCategories, 96);
+			PointAtPanel(g_settingsMenu, writable, pointed, pointedCategories, pointedCount);
+		}
 		const vr::StickNavVerdict sticks = TakeHandMenuNavigation();
 		if (g_menuUpEdge.Update(down(0x26)) || sticks.up) {  // VK_UP
 			g_settingsMenu.Apply(ui::MenuAction::Up, writable);

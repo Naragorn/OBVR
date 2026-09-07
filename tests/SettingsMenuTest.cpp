@@ -91,6 +91,19 @@ void TestMoving() {
 	const UInt32 still = menu.Revision();
 	menu.Apply(MenuAction::None, config);
 	Check(menu.Revision() == still, "doing nothing repaints nothing");
+
+	// A pointer over a row takes the highlight there without scrolling.
+	const UInt32 window = menu.State().firstVisible;
+	Check(menu.Hover(3) && menu.State().selected == 3 && menu.Revision() != still,
+	      "hovering a row selects it and repaints");
+	Check(menu.State().firstVisible == window, "without moving the window");
+	const UInt32 hovered = menu.Revision();
+	Check(!menu.Hover(3) && menu.Revision() == hovered, "hovering the same row again is nothing");
+	Check(!menu.Hover(SettingDefinitionCount()) && menu.State().selected == 3,
+	      "a row past the end is refused");
+	menu.Toggle();
+	Check(!menu.Hover(1) && menu.State().selected == 3, "closed, a hover does nothing");
+	menu.Toggle();
 }
 
 void TestChangingValues() {

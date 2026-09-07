@@ -5,6 +5,7 @@
 #include "render/D3D9Types.h"
 #include "render/GameFrame.h"
 #include "ui/MenuCanvas.h"
+#include "vr/HandInput.h"
 
 namespace obvr::ui {
 
@@ -57,6 +58,40 @@ MenuTheme MakeTheme() {
 
 UInt32 SettingsMenuLayer::VisibleRows() const {
 	return VisibleRowsFor(kTextureHeight, kMenuScale);
+}
+
+void SettingsMenuLayer::CanvasSize(UInt32& width, UInt32& height) {
+	width = kTextureWidth;
+	height = kTextureHeight;
+}
+
+UInt32 SettingsMenuLayer::Scale() { return kMenuScale; }
+
+bool SettingsMenuLayer::QuadInTracking(const vr::OpenVRBackend& backend,
+                                       vr::openvr::HmdMatrix34& pose, float& widthMetres) const {
+	if (m_overlay == vr::openvr::kOverlayHandleInvalid || !m_overlayVisible ||
+	    m_placedWidth <= 0.0f) {
+		return false;
+	}
+	widthMetres = m_placedWidth;
+	if (m_placedInRoom) {
+		pose = m_placedPose;
+		return true;
+	}
+	if (m_headDistance <= 0.0f) {
+		return false;
+	}
+	vr::openvr::HmdMatrix34 head{};
+	if (!backend.GetRenderPoseMatrix(head)) {
+		return false;
+	}
+	vr::openvr::HmdMatrix34 hmdToOverlay{};
+	hmdToOverlay.m[0][0] = 1.0f;
+	hmdToOverlay.m[1][1] = 1.0f;
+	hmdToOverlay.m[2][2] = 1.0f;
+	hmdToOverlay.m[2][3] = -m_headDistance;
+	pose = vr::ComposePose(head, hmdToOverlay);
+	return true;
 }
 
 bool SettingsMenuLayer::EnsureTexture(void* gameDevice) {
@@ -201,6 +236,8 @@ void SettingsMenuLayer::Place(vr::OpenVRBackend& backend, float distanceMetres, 
 		// Not counted as placed, so switching back to the room takes a fresh
 		// anchor rather than reusing one from before the menu was ever opened.
 		m_placed = false;
+		m_placedInRoom = false;
+		m_headDistance = distanceMetres;
 		return;
 	}
 
@@ -224,9 +261,10 @@ void SettingsMenuLayer::Place(vr::OpenVRBackend& backend, float distanceMetres, 
 	vr::openvr::HmdMatrix34 pose{};
 	if (backend.GetRenderPoseMatrix(pose)) {
 		vr::LevelPose(pose);
-		backend.SetOverlayTransformAbsolute(m_overlay,
-		                                    vr::OverlayPoseAhead(pose, distanceMetres));
+		m_placedPose = vr::OverlayPoseAhead(pose, distanceMetres);
+		backend.SetOverlayTransformAbsolute(m_overlay, m_placedPose);
 		m_placed = true;
+		m_placedInRoom = true;
 		m_placedDistance = distanceMetres;
 		return;
 	}
@@ -242,6 +280,8 @@ void SettingsMenuLayer::Place(vr::OpenVRBackend& backend, float distanceMetres, 
 	hmdToOverlay.m[2][2] = 1.0f;
 	hmdToOverlay.m[2][3] = -distanceMetres;
 	backend.SetOverlayTransformHmdRelative(m_overlay, hmdToOverlay);
+	m_placedInRoom = false;
+	m_headDistance = distanceMetres;
 }
 
 void SettingsMenuLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool visible,

@@ -77,6 +77,11 @@ public:
 	// Anything that changes the picture bumps the revision.
 	const SettingDefinition* Apply(MenuAction action, Config& config);
 
+	// Puts the highlight on a row a pointer is over. Text rows are not
+	// selectable and are refused, as they are for the arrow keys. Answers
+	// whether the picture changed.
+	bool Hover(UInt32 index);
+
 	// The current page as rows for the painter. Text rows come out as
 	// ItemKind::Text, choices and actions as ItemKind::Action - the choices
 	// with their picture and the current one marked - and settings as the

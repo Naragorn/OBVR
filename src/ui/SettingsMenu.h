@@ -53,6 +53,12 @@ public:
 	// reach of a test for the sake of one line at the call site.
 	const SettingDefinition* Apply(MenuAction action, Config& config);
 
+	// Puts the highlight on a row a pointer is over, without scrolling: the
+	// row is on screen already, that is how it was pointed at. Nothing
+	// happens for the row already selected or one past the end. Answers
+	// whether the picture changed.
+	bool Hover(UInt32 index);
+
 	// Fills `items` and `categories` from the configuration, and answers how
 	// many rows were written. Never writes more than `capacity`.
 	UInt32 BuildRows(const Config& config, MenuItem* items, const char** categories,

@@ -119,6 +119,12 @@ struct HandModeFrame {
 	// The cinema screen, when the frame is a flat one - the main menu, a
 	// loading screen, a film - for the laser when there is no quad.
 	FlatPicture flat;
+	// OBVR's own panel - the settings menu or the walkthrough - while it is
+	// open, in tracking space, with the pixels it is painted on: for the
+	// laser to put its highlight on the row it points at.
+	MenuQuad settingsQuad;
+	float settingsPixelsWidth = 0.0f;
+	float settingsPixelsHeight = 0.0f;
 	bool headValid = false;
 	Quaternion head = Quaternion::Identity();
 	NiPoint3 headPosition{0.0f, 0.0f, 0.0f};
@@ -193,6 +199,14 @@ struct HandModeResult {
 	// is open the sticks are its arrow keys.
 	bool settingsMenuToggle = false;
 	StickNavVerdict settingsNav;
+	// The laser on OBVR's own panel: the canvas pixel it points at, and
+	// the pointing hand's trigger pulled on it - a click on that row, which
+	// the caller turns into the row's own action. While the pointer is on
+	// the panel the trigger is a click and not the stick's Right.
+	bool settingsPointerValid = false;
+	float settingsPointerX = 0.0f;
+	float settingsPointerY = 0.0f;
+	bool settingsClick = false;
 
 	// The grab: whether the right grip holds it, and how far the right hand
 	// is from the eyes in metres - the distance the held object is kept at.
@@ -249,6 +263,7 @@ private:
 	// exception - there the hand without the menu points.
 	void StepPointerHand(const HandModeFrame& frame, bool rightTrigger, bool leftTrigger);
 	bool m_pointRight = true;
+	bool m_clickBlocked = false;  // the pull that moved the pointer is not a click
 	ButtonEdge m_rightPointEdge;
 	ButtonEdge m_leftPointEdge;
 

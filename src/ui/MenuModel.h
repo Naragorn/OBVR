@@ -120,6 +120,12 @@ inline constexpr UInt32 kPageContextRows = 2;
 // nobody can track.
 MenuState AdvanceMenu(MenuState state, MenuAction action, UInt32 itemCount, UInt32 visibleRows);
 
+// What a click on a row means, for a laser or a finger rather than a key:
+// a toggle flips, a number steps down on its left half and up on its right
+// (xFraction is where across the row the click landed, 0 to 1), a button
+// fires as Increase, and a line of text is nothing.
+MenuAction ClickActionFor(const MenuItem& item, float xFraction);
+
 // The value after an action, clamped to the item's range.
 //
 // Anything that is not Decrease or Increase leaves the value exactly as it

@@ -183,6 +183,16 @@ loading, character creation, the Tab menus, OBVR's own menu.
 - **OBVR's own menu and the walkthrough:** the sticks are the arrows, a trigger or A is
   Right - the next value, the next page - a grip is Left, a menu button closes the menu.
   Both sticks clicked open it, mode or no mode.
+- **The laser on OBVR's own panel** (2026-09-07): `SettingsMenuLayer::QuadInTracking` hands
+  the panel's quad back (the room anchor, or the head composed with the distance),
+  `HandMode::SteerSettingsMenu` meets the pointing hand's ray with it and answers the canvas
+  pixel; `ui::RowAtPixel` (the painter's own layout, pinned to the highlight bar by
+  `menu_painter_test`) names the row, `SettingsMenu::Hover` / `OnboardingMenu::Hover` put the
+  highlight there, and the pointing hand's pull is `ui::ClickActionFor` on that row - a
+  toggle flips, a number steps by the half it was clicked on, a button fires, text is
+  nothing (`PointAtPanel` in CameraHook). While the beam is on the panel the pull is that
+  click and not the stick's Right; off the panel it is Right as before. The pull that moves
+  the pointer to the other hand is spent on the move, here and on the game's menus.
 
 What to look at first: at the main menu, a beam from the right controller onto the menu
 and the game's cursor following it (the log says "Hands: the laser has the flat picture to

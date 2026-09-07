@@ -60,6 +60,18 @@ public:
 	// texture size.
 	UInt32 VisibleRows() const;
 
+	// The canvas the menu is painted on, in pixels, and the font scale it
+	// is painted at - what RowAtPixel needs to say which row a pixel is on.
+	static void CanvasSize(UInt32& width, UInt32& height);
+	static UInt32 Scale();
+
+	// The quad the panel hangs on, in tracking space, while it is shown: its
+	// pose and its width. The room anchor when it stands in the room; the
+	// head's pose composed with the distance when it is carried on the head.
+	// False while hidden or before it has been placed.
+	bool QuadInTracking(const vr::OpenVRBackend& backend, vr::openvr::HmdMatrix34& pose,
+	                    float& widthMetres) const;
+
 	void Destroy();
 
 	// A second layer with a life of its own needs its own overlay key and a
@@ -105,6 +117,12 @@ private:
 	bool m_placed = false;
 	float m_placedDistance = 0.0f;
 	float m_placedWidth = 0.0f;
+
+	// Where the last Place put it, for QuadInTracking: the absolute pose
+	// when it stands in the room, or the distance ahead of the head.
+	vr::openvr::HmdMatrix34 m_placedPose{};
+	bool m_placedInRoom = false;
+	float m_headDistance = 0.0f;
 
 	bool m_failureReported = false;
 	const char* m_overlayKey = "obvr.settings";

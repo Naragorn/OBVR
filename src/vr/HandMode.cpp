@@ -60,6 +60,7 @@ void HandMode::StepPointerHand(const HandModeFrame& f, bool rightTrigger, bool l
 
 void HandMode::Reset() {
 	m_pointRight = true;
+	m_clickBlocked = false;
 	m_rightPointEdge = ButtonEdge{};
 	m_leftPointEdge = ButtonEdge{};
 	m_rightTrigger = TriggerEdge{};
@@ -236,13 +237,26 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	}
 	in.menuMode = f.menuMode;
 	if (f.menuMode) {
+		const bool wasRight = m_pointRight;
 		StepPointerHand(f, in.rightTrigger, in.leftTrigger);
+		if (m_pointRight != wasRight) {
+			m_clickBlocked = true;
+		}
 	} else {
 		m_rightPointEdge = ButtonEdge{};
 		m_leftPointEdge = ButtonEdge{};
+		m_clickBlocked = false;
 	}
 	in.pointRight = m_pointRight;
 	r.controls = PlanHandControls(in, s.stickDeadZone);
+	// The pull that moved the pointer over is not a click: the cursor is
+	// still where the other hand left it. The trigger has to come up first.
+	if (m_clickBlocked) {
+		if (!(m_pointRight ? in.rightTrigger : in.leftTrigger)) {
+			m_clickBlocked = false;
+		}
+		r.controls.menuClick = false;
+	}
 	r.controlsActive = f.right.valid || f.left.valid;
 	r.grabWanted = r.controls.grab;
 	if (f.right.valid) {
@@ -284,9 +298,50 @@ void HandMode::SteerSettingsMenu(const HandModeFrame& f, const HandSettings& s,
 	// menu. Edges, so a held trigger is one step.
 	const bool rightTrigger = f.right.valid && StepTrigger(m_rightTrigger, f.right.trigger);
 	const bool leftTrigger = f.left.valid && StepTrigger(m_leftTrigger, f.left.trigger);
+	const bool rightPull = StepRisingEdge(m_rightTriggerEdge, rightTrigger);
+	const bool leftPull = StepRisingEdge(m_leftTriggerEdge, leftTrigger);
+	const bool wasRight = m_pointRight ? f.right.valid : !f.left.valid;
+	StepPointerHand(f, rightTrigger, leftTrigger);
+
+	// The laser on the panel: the pointing hand's ray meets the panel's
+	// quad, and the pixel it lands on goes back so the caller can put the
+	// highlight on that row. While it lands, the pointing hand's trigger is
+	// a click on that row rather than the stick's Right.
+	const bool pointRight = m_pointRight ? f.right.valid : !f.left.valid;
+	const HandPose* const pointHand = pointRight ? &f.right : &f.left;
+	// The pull that moved the pointer to the other hand is spent on the
+	// move: the row it lands on a frame later is not the row it was pulled
+	// on, and the row under the old cursor is not what was meant either.
+	const bool handMoved = pointRight != wasRight;
+	if (f.settingsQuad.valid && pointHand->valid && f.settingsPixelsWidth > 0.0f &&
+	    f.settingsPixelsHeight > 0.0f) {
+		const NiPoint3 pointing =
+			TrackingRotate(pointHand->orientation, NiPoint3{0.0f, 0.0f, -1.0f});
+		const LaserHit hit = LaserOnQuad(pointHand->position, pointing, f.settingsQuad.centre,
+		                                 f.settingsQuad.right, f.settingsQuad.up,
+		                                 f.settingsQuad.width, f.settingsQuad.height,
+		                                 f.settingsPixelsWidth, f.settingsPixelsHeight);
+		if (hit.hit) {
+			r.settingsPointerValid = true;
+			r.settingsPointerX = hit.pixelX;
+			r.settingsPointerY = hit.pixelY;
+			const NiPoint3 normal = Cross(f.settingsQuad.right, f.settingsQuad.up);
+			const float along = Dot(pointing, normal);
+			if (along < -0.0001f || along > 0.0001f) {
+				const float t = Dot(f.settingsQuad.centre - pointHand->position, normal) / along;
+				if (t > 0.0f) {
+					r.laserLengthMetres = t;
+				}
+			}
+		}
+	}
+
+	const bool pointingPull = pointRight ? rightPull : leftPull;
+	if (r.settingsPointerValid && pointingPull && !handMoved) {
+		r.settingsClick = true;
+	}
 	const bool accept =
-		StepRisingEdge(m_rightTriggerEdge, rightTrigger) ||
-		StepRisingEdge(m_leftTriggerEdge, leftTrigger) ||
+		(!r.settingsPointerValid && (rightPull || leftPull) && !handMoved) ||
 		StepRisingEdge(m_rightAEdge,
 		               f.right.valid && ButtonDown(f.right.buttonsPressed, openvr::kButtonA)) ||
 		StepRisingEdge(m_leftAEdge,
@@ -305,13 +360,15 @@ void HandMode::SteerSettingsMenu(const HandModeFrame& f, const HandSettings& s,
 	r.settingsNav.left = r.settingsNav.left || back;
 	r.settingsMenuToggle = r.settingsMenuToggle || close;
 
-	// The beam stays on, pointing at the panel, so the hand that presses is
-	// seen; nothing else reaches the game.
-	const bool rightPoints = f.right.valid;
-	if (rightPoints || f.left.valid) {
+	// The beam stays on, from the pointing hand, as long as the way to the
+	// panel when it meets it and a metre otherwise; nothing else reaches
+	// the game.
+	if (pointHand->valid) {
 		r.laserVisible = true;
-		r.laserRight = rightPoints;
-		r.laserLengthMetres = 1.0f;
+		r.laserRight = pointRight;
+		if (!r.settingsPointerValid) {
+			r.laserLengthMetres = 1.0f;
+		}
 	}
 	r.controlsActive = f.right.valid || f.left.valid;
 	m_poke = PokeState{};
@@ -470,9 +527,19 @@ HandModeResult HandMode::UpdateMenusOnly(const HandModeFrame& f, const HandSetti
 			m_leftMenu,
 			f.left.valid && ButtonDown(f.left.buttonsPressed, openvr::kButtonApplicationMenu));
 		in.menuMode = true;
+		const bool wasRight = m_pointRight;
 		StepPointerHand(f, in.rightTrigger, in.leftTrigger);
+		if (m_pointRight != wasRight) {
+			m_clickBlocked = true;
+		}
 		in.pointRight = m_pointRight;
 		r.controls = PlanHandControls(in, s.stickDeadZone);
+		if (m_clickBlocked) {
+			if (!(m_pointRight ? in.rightTrigger : in.leftTrigger)) {
+				m_clickBlocked = false;
+			}
+			r.controls.menuClick = false;
+		}
 		r.controlsActive = f.right.valid || f.left.valid;
 	} else {
 		// Kept stepped so a trigger held across the menu's closing does not
@@ -487,6 +554,7 @@ HandModeResult HandMode::UpdateMenusOnly(const HandModeFrame& f, const HandSetti
 		m_leftMenu = ButtonEdge{};
 		m_rightPointEdge = ButtonEdge{};
 		m_leftPointEdge = ButtonEdge{};
+		m_clickBlocked = false;
 	}
 	PointAtMenu(f, s, r);
 	return r;
