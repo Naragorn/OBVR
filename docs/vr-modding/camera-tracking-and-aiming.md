@@ -230,6 +230,30 @@ straight-line distance doubles the crosshair on a face a metre away), eased at
 `CrosshairDepthSpeed`, snapping on target acquisition. See
 [ui-and-hud.md](ui-and-hud.md#the-crosshair) for how the pixels get there.
 
+## The visible body
+
+`BUILT, NOT SEEN IN A HEADSET` (2026-09-07). `[Body] Visible=1` shows the player's own
+body in first person: `PlayerBody.cpp` takes the hidden bit (`flags & 1`) off the
+third-person root each frame, stands the root where `Bip01 Head` plus an eye offset
+(`EyeForward`/`EyeUp`, Enhanced Camera's 14/6) lands on the cyclopean camera
+(`BodyPlacement.h`, absolute rather than Enhanced Camera's running increment, so it
+cannot drift), propagates with `kUpdateNodeTransforms`, and then collapses `Bip01
+Head` and both clavicles by recomputing their world transform at local scale zero and
+putting the local scale back (Enhanced Camera's `UpdateSkeletonNodes(0)` /
+`ApplyAnimData` / `UpdateSkeletonNodes(1)` sequence). Runs first in
+`BeforeFirstScenePass`, gated by `VisibleBodyWanted` (on, first person, no menu). Two
+POV-switch jumps (`0x00664FC6`, `0x00664FFB`) are NOPed at start after Enhanced Camera
+so the body exists after a load in first person; bytes verified before writing.
+
+Open until a headset run: whether the engine animates the third-person skeleton in
+first person without Enhanced Camera's other hooks (it animates both skeletons through
+`0x006043DC`, which is why Enhanced Camera hooks there - `LIKELY` yes); whether the
+inventory paperdoll survives the collapse (the local scale is restored for that
+reason); the horse, which Enhanced Camera excludes; and the head-tracking IK at
+`0x00603AAA`, which Enhanced Camera disables for the player in first person and OBVR
+leaves running (the head bone is collapsed anyway, but its position feeds the
+placement).
+
 ## The hand-tracked mode (standing experience)
 
 `EXPERIMENTAL` throughout: built, tests green, **not seen working in a headset, not

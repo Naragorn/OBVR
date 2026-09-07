@@ -163,6 +163,36 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.dialogFirstPerson = v != 0.0f; },
 	},
 
+	// ---- Body --------------------------------------------------------------
+	{
+		"Body", "Your own body", "Look down and see a body under the headset",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Body", "Visible",
+		+[](const Config& c) { return c.body.visible ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.body.visible = v != 0.0f; },
+	},
+	{
+		"Body", "Hide its arms", "The body's animated arms go; the first-person arms stay",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Body", "HideArms",
+		+[](const Config& c) { return c.body.hideArms ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.body.hideArms = v != 0.0f; },
+	},
+	{
+		"Body", "Eyes forward", "How far the eyes sit in front of the head bone, in units",
+		ItemKind::Number, -20.0f, 40.0f, 1.0f, 0, false,
+		"Body", "EyeForward",
+		+[](const Config& c) { return c.body.eyeForward; },
+		+[](Config& c, float v) { c.body.eyeForward = v; },
+	},
+	{
+		"Body", "Eyes up", "How far the eyes sit above the head bone, in units",
+		ItemKind::Number, -20.0f, 30.0f, 1.0f, 0, false,
+		"Body", "EyeUp",
+		+[](const Config& c) { return c.body.eyeUp; },
+		+[](Config& c, float v) { c.body.eyeUp = v; },
+	},
+
 	// ---- Screen and menus --------------------------------------------------
 	{
 		"Screen", "HUD stands in the room", "Off carries it on your head instead",

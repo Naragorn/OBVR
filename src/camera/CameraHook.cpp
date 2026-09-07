@@ -17,6 +17,8 @@
 #include "game/HandControls.h"
 #include "game/MeleeHits.h"
 #include "game/ThirdPersonAimVisual.h"
+#include "game/BodyPlacement.h"
+#include "game/PlayerBody.h"
 #include "game/WorldPickHook.h"
 #include "core/AddressSpace.h"
 #include "game/GameAddresses.h"
@@ -515,6 +517,15 @@ bool g_thirdPersonAimVisualWanted = false;
 float g_thirdPersonHeadVisualYaw = 0.0f;
 float g_thirdPersonHeadVisualPitch = 0.0f;
 bool g_thirdPersonHeadVisualWanted = false;
+
+// The visible body, decided in the camera pass and written after animation
+// in BeforeFirstScenePass like the corrections above. The camera node is
+// the one the pass placed; by the time the scene is drawn it stands on the
+// first eye, and g_bodyFirstEyeStep is the step it took from the head so
+// the body can be stood under the head and not under one eye.
+bool g_bodyWanted = false;
+NiAVObject* g_bodyCameraNode = nullptr;
+NiPoint3 g_bodyFirstEyeStep{0.0f, 0.0f, 0.0f};
 
 // The body's share as the ARMS' BASE has it, which is one frame behind the
 // heading itself.
@@ -1714,6 +1725,28 @@ void BeforeFirstScenePass() {
 	// Where the arms point BEFORE this frame's turn - which is where the
 	// engine's animation just left them, body rotation and all.
 	const float armsBefore = tracing ? game::FirstPersonArmsWorldYaw() : 0.0f;
+
+	// The body first: it moves the whole third-person skeleton, and the
+	// corrections below on Spine2 and Head want to sit on top of that. The
+	// menu question is asked again here because the camera pass does not run
+	// on menu frames, and a decision from before the menu opened would stand
+	// the body under a camera the dialogue has since moved.
+	{
+		const Config::BodySettings& body = GetConfig().body;
+		const bool wanted = g_bodyWanted && body.visible && !game::IsMenuMode() &&
+		                    mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(g_bodyCameraNode));
+		if (wanted) {
+			game::BodyFrame frame;
+			frame.cameraWorld = game::CyclopeanCamera(g_bodyCameraNode->worldTransform.pos,
+			                                          g_bodyFirstEyeStep);
+			frame.eyeOffsetUnits = NiPoint3{0.0f, body.eyeForward, body.eyeUp};
+			frame.hideHead = body.hideHead;
+			frame.hideArms = body.hideArms;
+			game::ShowPlayerBody(frame);
+		} else {
+			game::ReleasePlayerBody(ReadIsThirdPerson());
+		}
+	}
 
 	if (g_handArmsWanted) {
 		game::PlaceFirstPersonArms(g_hand.armsRotation, g_hand.armsOffsetUnits);
@@ -3296,6 +3329,11 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	g_thirdPersonHeadVisualYaw = sourceAimYaw;
 	g_thirdPersonHeadVisualPitch = -gazePitch;
 
+	g_bodyWanted = game::VisibleBodyWanted(config.body.visible, isThirdPerson,
+	                                       game::IsMenuMode());
+	g_bodyCameraNode = cameraNode;
+	g_bodyFirstEyeStep = NiPoint3{0.0f, 0.0f, 0.0f};
+
 	CastWindowInput castInput;
 	castInput.enabled = readPlayer && GetConfig().aimCastFollowsGaze &&
 	                    g_headTracker.IsHeadsetConnected() && viewAimed &&
@@ -4075,6 +4113,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		const NiPoint3 eyeOffset{step.toFirstEye, 0.0f, 0.0f};
 		cameraNode->localTransform.pos =
 			cameraNode->localTransform.pos + finalRotation * eyeOffset;
+		g_bodyFirstEyeStep = finalRotation * eyeOffset;
 
 		if (stereoDual && render::IsSceneRenderHooked()) {
 			// From one eye to the other is the whole interpupillary distance,

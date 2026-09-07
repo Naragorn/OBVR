@@ -2,6 +2,7 @@
 #include "core/Config.h"
 #include "core/Log.h"
 #include "game/GameAddresses.h"
+#include "game/PlayerBody.h"
 #include "obse/PluginInterface.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
@@ -75,6 +76,15 @@ __declspec(dllexport) bool OBSEPlugin_Load(const obvr::obse::Interface* obse) {
 		// without the VR camera rather than die while loading.
 		OBVR_LOG("Camera hook not installed, OBVR stays inactive");
 		return true;
+	}
+
+	// The body's POV-switch patches, only with the body on at start: they
+	// are Enhanced Camera's way of having the third-person body present
+	// after a load in first person, and there is no reason to change the
+	// engine for a feature that is off. Failing softly, like everything
+	// else: the body then shows up after one view switch instead.
+	if (obvr::GetConfig().body.visible && obvr::GetConfig().body.povSwitchPatch) {
+		obvr::game::InstallPlayerBodyPatches();
 	}
 
 	OBVR_LOG("OBVR ready");

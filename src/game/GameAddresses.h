@@ -1267,4 +1267,46 @@ inline constexpr UInt32 kActorListByLevel = 0x00673A50;
 // not as damage to the game.
 inline constexpr UInt32 kNiAVObjectWorldBoundOffset = 0x20;
 
+// The visible first-person body (PlayerBody.cpp), after Enhanced Camera 1.4b.
+//
+// Two sources for each: Enhanced Camera's main.cpp names the address and
+// what it is for, and the bytes below were read from this executable's
+// disassembly on 2026-09-07 (the dumpbin listing in the job's tmp folder)
+// and matched Enhanced Camera's expectation at every site.
+//
+// Inside the player's POV switch (the function that runs 0x00664F..0x006651FF
+// and calls 0x005E5480 at 0x006650C9), two branches skip the third-person
+// body's setup while the player is in first person:
+//
+//   00664FBC  mov  eax, [ebp+0x5D0]          ; firstPersonNiNode
+//   00664FC2  test byte ptr [eax+0x18], 1    ; its hidden bit
+//   00664FC6  0F 84 33 02 00 00  je 006651FF ; first person: skip the rest
+//   ...
+//   00664FF2  call 00612220
+//   00664FF7  test byte ptr [eax+0x18], 1
+//   00664FFB  0F 84 FE 01 00 00  je 006651FF
+//
+// Enhanced Camera replaces both six-byte jumps with NOPs when its body is on
+// ("Forces game to load 3rd person body when loading save game in 1st
+// person" / "The switch POV code broke the view switching, this should fix
+// it"). What the skipped code does in detail is not read here; the effect
+// Enhanced Camera relies on, a third-person body present after a load in
+// first person, is taken from its decade in use. The two lines right after,
+// 00665011 `or word ptr [eax+18h],1` / 00665018 `and word ptr [eax+18h],cx`
+// with cx = 0xFFFE, are the engine setting and clearing that same hidden
+// bit on the node 0x00612220 returns - the third source for kNiFlagsOffset
+// and bit 0 as the hide switch.
+inline constexpr UInt32 kPovSwitchSkipBodyA = 0x00664FC6;
+inline constexpr UInt32 kPovSwitchSkipBodyB = 0x00664FFB;
+inline constexpr UInt32 kPovSwitchSkipBodyPatchSize = 6;
+
+// ActorAnimData::ApplyAnimData, 0x00471F20, "applies animData to skeleton"
+// in Enhanced Camera, which calls it after every skeleton edit and hooks
+// the engine's own call to it at 0x006043DC (`mov ecx,ebx; call 00471F20`,
+// ebp the actor). Recorded, not used: OBVR propagates its edits with
+// kUpdateNodeTransforms, the same pass the engine runs after the camera
+// hook, which recomputes world transforms from parent * local without
+// re-applying the animation.
+inline constexpr UInt32 kApplyAnimData = 0x00471F20;
+
 }  // namespace obvr::addr

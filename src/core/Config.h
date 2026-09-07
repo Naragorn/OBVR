@@ -120,6 +120,26 @@ struct Config {
 	vr::HandSettings hands;
 	game::HandKeyMap handKeys;
 
+	// [Body]: the player's own body shown in first person - the third-person
+	// skeleton unhidden and stood under the headset, its head and the
+	// animated arms collapsed for the draw (PlayerBody.cpp, after Enhanced
+	// Camera). The first-person arms and weapon stay. Built 2026-09-07 and
+	// not yet seen in a headset; Visible=0 is the way out.
+	struct BodySettings {
+		bool visible = true;
+		bool hideHead = true;
+		bool hideArms = true;
+		// The eyes relative to Bip01 Head in game units: forward and up.
+		// Enhanced Camera's 14 and 6.
+		float eyeForward = 14.0f;
+		float eyeUp = 6.0f;
+		// The two POV-switch branches Enhanced Camera NOPs so the body is
+		// there after a load in first person. Applied at start when the body
+		// is on; a restart is needed for a change to take.
+		bool povSwitchPatch = true;
+	};
+	BodySettings body;
+
 	// Debug.D3D9ExProbe: hand the game an IDirect3D9Ex factory and a device
 	// from CreateDeviceEx, to find out whether Oblivion tolerates the 9Ex
 	// runtime - the one question about the D3D9Ex route that reading cannot

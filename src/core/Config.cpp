@@ -522,6 +522,15 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.onboardingShowAtStart =
 		ReadBool("Onboarding", "ShowAtStart", config.onboardingShowAtStart, path);
 	{
+		Config::BodySettings& b = config.body;
+		b.visible = ReadBool("Body", "Visible", b.visible, path);
+		b.hideHead = ReadBool("Body", "HideHead", b.hideHead, path);
+		b.hideArms = ReadBool("Body", "HideArms", b.hideArms, path);
+		b.eyeForward = ReadFloat("Body", "EyeForward", b.eyeForward, path);
+		b.eyeUp = ReadFloat("Body", "EyeUp", b.eyeUp, path);
+		b.povSwitchPatch = ReadBool("Body", "PovSwitchPatch", b.povSwitchPatch, path);
+	}
+	{
 		vr::HandSettings& h = config.hands;
 		h.enabled = config.handTracking;
 		h.gestures.blockMinUp = ReadFloat("Hands", "BlockMinUp", h.gestures.blockMinUp, path);
@@ -748,6 +757,11 @@ bool Config::Load(const char* fileName) {
 	         tracker.crosshairTooltipsFirstPerson ? 1 : 0,
 	         tracker.crosshairTooltipsThirdPerson ? 1 : 0,
 	         tracker.crosshairTooltipsAboveName ? 1 : 0);
+	OBVR_LOG("Config: Body.Visible=%d HideHead=%d HideArms=%d Eyes=(forward %.1f, up %.1f) "
+	         "PovSwitchPatch=%d",
+	         body.visible ? 1 : 0, body.hideHead ? 1 : 0, body.hideArms ? 1 : 0,
+	         static_cast<double>(body.eyeForward), static_cast<double>(body.eyeUp),
+	         body.povSwitchPatch ? 1 : 0);
 	if (tracker.stereo == vr::StereoMode::DualPass) {
 		// The known limit, stated up front rather than discovered in the
 		// headset: the 2D layer draws after both passes, into the frame the

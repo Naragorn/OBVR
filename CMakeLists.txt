@@ -69,6 +69,7 @@ add_library(OBVR SHARED
 	src/game/HandBones.cpp
 	src/game/MeleeHits.cpp
 	src/game/ThirdPersonAimVisual.cpp
+	src/game/PlayerBody.cpp
 	src/game/MenuType.cpp
 	src/game/PlayerAim.cpp
 	src/render/GameDevice.cpp
