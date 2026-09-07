@@ -641,8 +641,21 @@ bool OpenVRBackend::ReadHand(bool rightHand, HandPose& out) const {
 	out.position = PositionFromOpenVRMatrix(pose.deviceToAbsoluteTracking.m);
 	out.buttonsPressed = state.buttonPressed;
 	out.trigger = state.axis[openvr::kAxisTrigger].x;
-	out.thumbX = state.axis[openvr::kAxisThumb].x;
-	out.thumbY = state.axis[openvr::kAxisThumb].y;
+	// The stick: rAxis[0] on a wand's touchpad and on most bindings, rAxis[3]
+	// where the runtime puts an Index thumbstick - whichever is deflected.
+	const float x0 = state.axis[openvr::kAxisThumb].x;
+	const float y0 = state.axis[openvr::kAxisThumb].y;
+	const float x3 = state.axis[openvr::kAxisJoystick].x;
+	const float y3 = state.axis[openvr::kAxisJoystick].y;
+	if (x3 * x3 + y3 * y3 > x0 * x0 + y0 * y0) {
+		out.thumbX = x3;
+		out.thumbY = y3;
+		out.thumbFromJoystickAxis = true;
+	} else {
+		out.thumbX = x0;
+		out.thumbY = y0;
+	}
+	out.gripForce = state.axis[2].x;
 	return true;
 }
 

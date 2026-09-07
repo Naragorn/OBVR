@@ -327,6 +327,9 @@ bool g_rightHandTracked = false;
 bool g_leftHandTracked = false;
 bool g_flatLaserTargetReported = false;
 UInt32 g_flatLaserLinesLeft = 6;
+UInt32 g_handMaskLinesLeft = 24;
+UInt64 g_lastRightMask = 0;
+UInt64 g_lastLeftMask = 0;
 bool g_flatCursorInvalidReported = false;
 bool g_handBlocking = false;
 bool g_handReachBack = false;
@@ -461,6 +464,27 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 	}
 
+	// What the controllers report, the first few times a button mask changes:
+	// which bits an Index puts its buttons on under the legacy path is what
+	// the gamepad layout rests on, and a wrong bit shows here as a mask.
+	if (g_handMaskLinesLeft > 0) {
+		for (int side = 0; side < 2; ++side) {
+			const vr::HandPose& hand = side == 0 ? frame.right : frame.left;
+			UInt64& last = side == 0 ? g_lastRightMask : g_lastLeftMask;
+			if (hand.valid && hand.buttonsPressed != last) {
+				last = hand.buttonsPressed;
+				--g_handMaskLinesLeft;
+				OBVR_LOG("Hands: %s buttons=%08X%08X trigger=%.2f stick=%.2f,%.2f (%s) grip=%.2f",
+				         side == 0 ? "right" : "left",
+				         static_cast<UInt32>(hand.buttonsPressed >> 32),
+				         static_cast<UInt32>(hand.buttonsPressed), static_cast<double>(hand.trigger),
+				         static_cast<double>(hand.thumbX), static_cast<double>(hand.thumbY),
+				         hand.thumbFromJoystickAxis ? "axis 3" : "axis 0",
+				         static_cast<double>(hand.gripForce));
+			}
+		}
+	}
+
 	if (frame.right.valid != g_rightHandTracked || frame.left.valid != g_leftHandTracked) {
 		g_rightHandTracked = frame.right.valid;
 		g_leftHandTracked = frame.left.valid;
@@ -519,8 +543,13 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		if (!frame.cursorValid) {
 			if (!g_flatCursorInvalidReported) {
 				g_flatCursorInvalidReported = true;
+				float rawX = 0.0f;
+				float rawY = 0.0f;
+				const bool managerThere = game::InterfaceCursorRaw(rawX, rawY);
 				OBVR_LOG("Hands: the game's cursor position cannot be read on this flat frame, "
-				         "so the laser has nothing to walk");
+				         "so the laser has nothing to walk (interface manager %s, raw %.1f, %.1f)",
+				         managerThere ? "present" : "ABSENT", static_cast<double>(rawX),
+				         static_cast<double>(rawY));
 			}
 		} else if (g_hand.laserHit) {
 			--g_flatLaserLinesLeft;
@@ -2805,6 +2834,32 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		OBVR_LOG("Camera: first hook pass, CameraNode=%08X, %s",
 		         reinterpret_cast<UInt32>(cameraNode),
 		         isThirdPerson ? "third person" : "first person");
+		// The camera's place in the scene graph, for the body: if a bone of
+		// the third-person skeleton is among its ancestors, moving or
+		// collapsing that bone moves the view.
+		{
+			char chain[256];
+			UInt32 at = 0;
+			const NiAVObject* node = cameraNode;
+			for (int depth = 0; depth < 8 && mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(node)); ++depth) {
+				const char* name = node->name;
+				if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(name))) {
+					name = "?";
+				}
+				for (UInt32 i = 0; name[i] != '\0' && i < 40 && at + 4 < sizeof(chain); ++i) {
+					const char c = name[i];
+					chain[at++] = (c >= 0x20 && c <= 0x7E) ? c : '?';
+				}
+				if (at + 4 < sizeof(chain)) {
+					chain[at++] = ' ';
+					chain[at++] = '<';
+					chain[at++] = ' ';
+				}
+				node = node->parent;
+			}
+			chain[at] = '\0';
+			OBVR_LOG("Camera: the camera node's ancestry (child < parent): %s", chain);
+		}
 
 		// The first look at Oblivion's own renderer, and the question 0.1.0
 		// turns on: is Direct3D 9 here being served by DXVK, which hands out

@@ -432,6 +432,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.controllerMenus = v != 0.0f; },
 	},
 	{
+		"Hands", "Controllers as a gamepad", "With the mode off: the pad layout in the world, the head aims",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "GamepadLayout",
+		+[](const Config& c) { return c.hands.gamepadLayout ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.gamepadLayout = v != 0.0f; },
+	},
+	{
 		"Hands", "Laser beam", "Draw the beam from the hand that points at a menu",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "LaserBeam",

@@ -155,6 +155,88 @@ void TestPlanner() {
 	Check(w.grab, "the grip still grabs");
 }
 
+void TestGamepadPlanner() {
+	std::printf("The gamepad layout\n");
+	GamepadInput in;
+	in.rightValid = true;
+	in.leftValid = true;
+	in.rightTrigger = true;
+	in.leftTrigger = true;
+	in.rightGrip = true;
+	in.leftGrip = true;
+	in.rightA = true;
+	in.leftA = true;
+	in.rightB = true;
+	in.leftB = true;
+	in.rightStickClick = true;
+	in.leftStickClick = true;
+	in.rightTrackpadClick = true;
+	in.leftTrackpadClick = true;
+	in.leftThumbX = -0.9f;
+	in.leftThumbY = 0.0f;
+	in.rightThumbX = 0.7f;
+	HandControlsWanted w = PlanGamepadControls(in, 0.4f);
+	Check(w.attack && w.block, "the triggers attack and block");
+	Check(w.cast && w.grab, "the grips cast and grab");
+	Check(w.jump && w.activate, "the A buttons jump and activate");
+	Check(w.escape && w.menu, "the B buttons are Escape and Tab");
+	Check(w.togglePov && w.sneak, "the stick clicks switch the view and sneak");
+	Check(w.readyWeapon && w.quickMenu, "the trackpad clicks ready the weapon and open the quick menu");
+	Check(w.move.left && !w.move.right && !w.move.forward, "the left stick walks");
+	Check(Near(w.turn, 0.7f), "the right stick turns");
+	Check(!w.menuClick, "no menu click in the world");
+
+	GamepadInput one;
+	one.rightValid = true;
+	one.leftTrigger = true;
+	one.leftA = true;
+	one.leftThumbY = 1.0f;
+	w = PlanGamepadControls(one, 0.4f);
+	Check(!w.block && !w.activate && !w.move.forward, "an untracked left hand presses nothing");
+	GamepadInput none;
+	w = PlanGamepadControls(none, 0.4f);
+	Check(!w.attack && !w.jump && w.turn == 0.0f, "nothing tracked presses nothing");
+
+	// The gamepad in the world through the mode itself: the tapped buttons
+	// are edges, held ones are held, the stick chord still opens OBVR's menu.
+	HandSettings settings;
+	settings.enabled = false;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.menusOnly = true;
+	frame.menuMode = false;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	HandMode mode;
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexB;
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexA;
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.controlsActive && r.controls.escape && r.controls.activate, "right B is Escape, left A activates");
+	r = mode.Update(frame, settings);
+	Check(!r.controls.escape && r.controls.activate, "Escape once, activate held");
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	frame.left.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(!r.controls.togglePov, "a stick click waits for its release");
+	frame.right.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(r.controls.togglePov, "released alone, it switches the view");
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexTrackpad;
+	r = mode.Update(frame, settings);
+	Check(r.controls.readyWeapon, "the right trackpad click readies the weapon");
+	frame.right.buttonsPressed = 0;
+	mode.Update(frame, settings);
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	r = mode.Update(frame, settings);
+	Check(r.settingsMenuToggle && !r.controls.togglePov && !r.controls.sneak,
+	      "both sticks together: OBVR's menu, no view switch, no sneak");
+	frame.right.buttonsPressed = 0;
+	frame.left.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(!r.controls.togglePov && !r.controls.sneak, "and their release fires nothing");
+}
+
 void TestStrikeByMotion() {
 	std::printf("The swing for the strikes by motion\n");
 	HandSettings settings;
@@ -515,13 +597,26 @@ void TestMenusOnly() {
 	// Out of the menu, in the world: nothing at all reaches the game.
 	frame.menuMode = false;
 	frame.right.trigger = 1.0f;
-	frame.right.buttonsPressed = 1ull << openvr::kButtonGrip;
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexGrip;
 	frame.left.valid = true;
 	frame.left.thumbY = 1.0f;
+	settings.gamepadLayout = false;
 	r = mode.Update(frame, settings);
 	Check(!r.controlsActive && !r.controls.attack && !r.controls.grab &&
 	          !r.controls.move.forward && !r.laserVisible,
-	      "in the world the controllers press nothing and the beam is off");
+	      "in the world, without the gamepad layout, the controllers press nothing and the beam is off");
+
+	// With the gamepad layout the same hands play: the trigger attacks, the
+	// right grip casts, the left stick walks.
+	settings.gamepadLayout = true;
+	r = mode.Update(frame, settings);
+	Check(r.controlsActive && r.controls.attack && r.controls.cast && r.controls.move.forward &&
+	          !r.controls.grab && !r.laserVisible,
+	      "with the gamepad layout: attack, cast, walk - no grab, no beam");
+	frame.right.trigger = 0.0f;
+	frame.right.buttonsPressed = 0;
+	frame.left.thumbY = 0.0f;
+	mode.Update(frame, settings);
 
 	// Both sticks: OBVR's menu; in it the sticks and buttons steer.
 	frame.right.buttonsPressed = 1ull << openvr::kButtonAxis0;
@@ -541,7 +636,7 @@ void TestMenusOnly() {
 	r = mode.Update(frame, settings);
 	Check(!r.settingsNav.right, "once, while it stays pulled");
 	frame.right.trigger = 0.0f;
-	frame.left.buttonsPressed = 1ull << openvr::kButtonGrip;
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexGrip;
 	r = mode.Update(frame, settings);
 	Check(r.settingsNav.left, "a grip is Left");
 	frame.left.buttonsPressed = 1ull << openvr::kButtonA;
@@ -853,6 +948,7 @@ int main() {
 	TestSpeedAndSwing();
 	TestEdges();
 	TestPlanner();
+	TestGamepadPlanner();
 	TestLaser();
 	TestPoke();
 	TestStickChord();

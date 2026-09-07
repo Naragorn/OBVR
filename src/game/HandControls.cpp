@@ -80,6 +80,7 @@ void ApplyHandControls(const vr::HandControlsWanted& wanted, const HandKeyMap& k
 	SetKey(keys.menu, wanted.menu);
 	SetKey(keys.escape, wanted.escape);
 	SetKey(keys.quickMenu, wanted.quickMenu);
+	SetKey(keys.togglePov, wanted.togglePov);
 	SetKey(keys.forward, wanted.move.forward);
 	SetKey(keys.back, wanted.move.back);
 	SetKey(keys.left, wanted.move.left);

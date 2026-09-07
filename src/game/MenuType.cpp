@@ -16,6 +16,18 @@ constexpr UInt32 kActiveMenuOffset = 0x9C;
 
 }  // namespace
 
+bool InterfaceCursorRaw(float& x, float& y) {
+	const auto* manager =
+		*reinterpret_cast<const UInt8* const*>(addr::kInterfaceManagerPointer);
+	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(manager))) {
+		return false;
+	}
+	const float* pos = reinterpret_cast<const float*>(manager + addr::kInterfaceCursorPosOffset);
+	x = pos[0];
+	y = pos[1];
+	return true;
+}
+
 bool InterfaceCursorPosition(float& x, float& y) {
 	const auto* manager =
 		*reinterpret_cast<const UInt8* const*>(addr::kInterfaceManagerPointer);

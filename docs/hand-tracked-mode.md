@@ -183,6 +183,17 @@ loading, character creation, the Tab menus, OBVR's own menu.
 - **OBVR's own menu and the walkthrough:** the sticks are the arrows, a trigger or A is
   Right - the next value, the next page - a grip is Left, a menu button closes the menu.
   Both sticks clicked open it, mode or no mode.
+- **The controllers as a gamepad in the world** (`GamepadLayout=1`, 2026-09-07): with the
+  mode off and `ControllerMenus` on, `UpdateMenusOnly` runs `PlanGamepadControls` outside
+  the menus - the 360 layout Oblivion has (NorthernUI's "Dutiful" scheme) laid onto an
+  Index: triggers attack and block, grips cast and grab, A jumps / activates, B is Escape /
+  Tab, the stick clicks switch the view (`TogglePovKey`, R) and sneak, the trackpad clicks
+  ready the weapon and open the quick menu, the sticks move and turn, both stick clicks
+  stay OBVR's menu. The button bits are openvr.h's for the Index (A on the grip bit, B on
+  the menu bit, the stick's click on Axis3, the grip on Axis2 - `OpenVRTypes.h`), and the
+  stick is read from whichever of rAxis[0] and rAxis[3] is deflected; the first two dozen
+  mask changes are logged ("Hands: right buttons=...") so a controller that differs shows
+  itself.
 - **The laser on OBVR's own panel** (2026-09-07): `SettingsMenuLayer::QuadInTracking` hands
   the panel's quad back (the room anchor, or the head composed with the distance),
   `HandMode::SteerSettingsMenu` meets the pointing hand's ray with it and answers the canvas

@@ -128,4 +128,8 @@ const char* MenuIdName(UInt32 id);
 // numbers are not finite pixels.
 bool InterfaceCursorPosition(float& x, float& y);
 
+// The same two floats unchecked, for a log line when the checked read
+// refuses them. False only when the manager pointer itself is unreadable.
+bool InterfaceCursorRaw(float& x, float& y);
+
 }  // namespace obvr::game

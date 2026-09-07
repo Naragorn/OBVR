@@ -548,6 +548,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 			ReadBool("Hands", "BowNeedsReachBack", h.gestures.bowNeedsReachBack, path);
 		h.motionHits = ReadBool("Hands", "MotionHits", h.motionHits, path);
 		h.controllerMenus = ReadBool("Hands", "ControllerMenus", h.controllerMenus, path);
+		h.gamepadLayout = ReadBool("Hands", "GamepadLayout", h.gamepadLayout, path);
 		h.laserBeam = ReadBool("Hands", "LaserBeam", h.laserBeam, path);
 		h.hitBoundFactor = ReadFloat("Hands", "HitBoundFactor", h.hitBoundFactor, path);
 		h.hitPadUnits = ReadFloat("Hands", "HitPadUnits", h.hitPadUnits, path);
@@ -600,6 +601,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		k.menu = ReadKeyCode("Hands", "MenuKey", k.menu, path);
 		k.escape = ReadKeyCode("Hands", "EscapeKey", k.escape, path);
 		k.quickMenu = ReadKeyCode("Hands", "QuickMenuKey", k.quickMenu, path);
+		k.togglePov = ReadKeyCode("Hands", "TogglePovKey", k.togglePov, path);
 		k.forward = ReadKeyCode("Hands", "ForwardKey", k.forward, path);
 		k.back = ReadKeyCode("Hands", "BackKey", k.back, path);
 		k.left = ReadKeyCode("Hands", "LeftKey", k.left, path);

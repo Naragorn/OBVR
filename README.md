@@ -64,10 +64,11 @@ headset yet. Reports on them are especially useful.
 - **The freeze fix.** Freezes shortly after a switch to third person were traced to
   OpenVR's pose wait racing DXVK's submissions on the same queue; the fix is in, its
   confirmation is open. If the game freezes, the log's last lines are the evidence.
-- **Your own body** (`[Body] Visible=1`): look down in first person and the character's
-  body is there, standing under the headset, its head and its own arms removed so the
-  first-person arms stay the only ones. Enhanced Camera's mechanism, carried over to a
-  headset camera. `Visible=0` switches it off if it misbehaves.
+- **Your own body** (`[Body] Visible=1`, off by default): look down in first person and
+  the character's body is there, standing under the headset, its head and its own arms
+  removed so the first-person arms stay the only ones. Enhanced Camera's mechanism,
+  carried over to a headset camera. The first headset runs had the view lurch with every
+  look while it was on, so it stays off until that is understood.
 
 ## Under construction - switched off
 

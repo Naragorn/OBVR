@@ -94,6 +94,9 @@ struct HandSettings {
 	// construction, like the rest of the mode.
 	bool controllerMenus = false;
 	bool laserBeam = true;
+	// With ControllerMenus on and the mode off, the controllers in the
+	// WORLD as well, as a gamepad: see PlanGamepadControls for the layout.
+	bool gamepadLayout = true;
 	float scrollFirstDelaySeconds = 0.35f;
 	float scrollIntervalSeconds = 0.12f;
 };
@@ -267,6 +270,11 @@ private:
 	void StepPointerHand(const HandModeFrame& frame, bool rightTrigger, bool leftTrigger);
 	bool m_pointRight = true;
 	bool m_clickBlocked = false;  // the pull that moved the pointer is not a click
+	// The gamepad layout's tapped buttons, edge by edge.
+	ButtonEdge m_gpRightB;
+	ButtonEdge m_gpLeftB;
+	ButtonEdge m_gpRightTrackpad;
+	ButtonEdge m_gpLeftTrackpad;
 	ButtonEdge m_rightPointEdge;
 	ButtonEdge m_leftPointEdge;
 

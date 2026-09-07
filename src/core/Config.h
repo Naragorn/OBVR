@@ -126,7 +126,10 @@ struct Config {
 	// Camera). The first-person arms and weapon stay. Built 2026-09-07 and
 	// not yet seen in a headset; Visible=0 is the way out.
 	struct BodySettings {
-		bool visible = true;
+		// OFF by default since the first headset run (2026-09-07): with it on
+		// the view lurched on every look, cause not yet found - see
+		// docs/vr-modding/open-questions-and-known-issues.md.
+		bool visible = false;
 		bool hideHead = true;
 		bool hideArms = true;
 		// The eyes relative to Bip01 Head in game units: forward and up.

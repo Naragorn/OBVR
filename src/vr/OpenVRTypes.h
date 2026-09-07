@@ -212,11 +212,32 @@ constexpr UInt32 kButtonGrip = 2;
 constexpr UInt32 kButtonA = 7;
 constexpr UInt32 kButtonAxis0 = 32;
 constexpr UInt32 kButtonTrigger = 33;
+constexpr UInt32 kButtonAxis2 = 34;
+constexpr UInt32 kButtonAxis3 = 35;
+
+// The Index controller by the same numbering - openvr.h (ValveSoftware/
+// openvr, headers/openvr.h, EVRButtonId, read 2026-09-07):
+//   k_EButton_IndexController_A        = k_EButton_Grip            (2)
+//   k_EButton_IndexController_B        = k_EButton_ApplicationMenu (1)
+//   k_EButton_IndexController_JoyStick = k_EButton_Axis3           (35)
+// So on an Index the A button arrives as the GRIP bit, B as the menu bit,
+// the thumbstick's click as Axis3, the trackpad's click as Axis0, and the
+// grip squeeze as the Axis2 button (the force sensor, rAxis[2]). Which axis
+// the thumbstick's deflection lands in under the legacy input path is not
+// written down there; ReadHand takes whichever of rAxis[0] and rAxis[3] is
+// deflected, and the hand log says which it saw.
+constexpr UInt32 kButtonIndexA = kButtonGrip;
+constexpr UInt32 kButtonIndexB = kButtonApplicationMenu;
+constexpr UInt32 kButtonIndexJoystick = kButtonAxis3;
+constexpr UInt32 kButtonIndexTrackpad = kButtonAxis0;
+constexpr UInt32 kButtonIndexGrip = kButtonAxis2;
 
 // Which axis carries what, by the same numbering: rAxis[1] is the trigger's
-// pull (x from 0 to 1), rAxis[0] the touchpad or thumbstick.
+// pull (x from 0 to 1), rAxis[0] the touchpad or thumbstick, rAxis[3] the
+// Index thumbstick when the runtime reports it there.
 constexpr UInt32 kAxisThumb = 0;
 constexpr UInt32 kAxisTrigger = 1;
+constexpr UInt32 kAxisJoystick = 3;
 
 // --------------------------------------------------------- DLL exports
 

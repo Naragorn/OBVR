@@ -20,12 +20,31 @@ struct HandPose {
 	float trigger = 0.0f;  // 0 released, 1 pulled through
 	float thumbX = 0.0f;
 	float thumbY = 0.0f;
+	bool thumbFromJoystickAxis = false;  // the stick came from rAxis[3], for the log
+	float gripForce = 0.0f;              // rAxis[2].x on an Index, 0 elsewhere
 };
 
 // Whether a button bit is down in a pressed mask. Bit positions are
 // openvr's EVRButtonId values.
 inline bool ButtonDown(UInt64 pressedMask, UInt32 button) {
 	return (pressedMask >> button) & 1ull;
+}
+
+// The buttons by their role on an Index controller (see OpenVRTypes.h for
+// the numbering, from openvr.h). A is the grip bit there and the A bit on
+// a controller that has one; the grip is the Axis2 button; the stick's
+// click is Axis3 on an Index and Axis0 on a wand's touchpad.
+inline bool ButtonADown(UInt64 mask) {
+	return ButtonDown(mask, openvr::kButtonA) || ButtonDown(mask, openvr::kButtonIndexA);
+}
+inline bool ButtonBDown(UInt64 mask) { return ButtonDown(mask, openvr::kButtonIndexB); }
+inline bool GripDown(UInt64 mask) { return ButtonDown(mask, openvr::kButtonIndexGrip); }
+inline bool StickClickDown(UInt64 mask) {
+	return ButtonDown(mask, openvr::kButtonIndexJoystick) ||
+	       ButtonDown(mask, openvr::kButtonIndexTrackpad);
+}
+inline bool TrackpadClickDown(UInt64 mask) {
+	return ButtonDown(mask, openvr::kButtonIndexTrackpad);
 }
 
 // The turn from one heading to another, as the shortest signed angle in
@@ -206,10 +225,68 @@ struct HandControlsWanted {
 	bool menu = false;       // the menu-mode key (Tab)
 	bool escape = false;
 	bool quickMenu = false;  // F1
+	bool togglePov = false;  // the view switch (R)
 	StickDirections move;
 	float turn = 0.0f;  // -1..1, the right stick's x, for the mouse-driven turn
 	bool menuClick = false;  // the left mouse button, for the laser cursor
 };
+
+// ---------------------------------------------------------- Gamepad layout
+//
+// The controllers as a gamepad, for playing seated with the head as the aim
+// and the mode off: the layout a 360 pad has in Oblivion, laid onto an
+// Index. From NorthernUI's "Dutiful" scheme (NorthernUI.ctrl.txt, read
+// 2026-09-07) and the game's own [Controls]: the triggers attack and block,
+// the grips cast and grab, A jumps and the other A activates, the B buttons
+// are the menus, the stick clicks sneak and switch the view, the trackpad
+// clicks ready the weapon and open the quick menu, the sticks move and
+// turn. Both stick clicks together stay OBVR's own menu (the chord).
+//
+// Held controls are held; the ones the game treats as a toggle - sneak,
+// the view switch, ready weapon, the menus - are given as a press on the
+// frame the button went down, so the key is tapped once.
+struct GamepadInput {
+	bool rightValid = false;
+	bool leftValid = false;
+	bool rightTrigger = false;   // held
+	bool leftTrigger = false;    // held
+	bool rightGrip = false;      // held
+	bool leftGrip = false;       // held
+	bool rightA = false;         // held
+	bool leftA = false;          // held
+	bool rightB = false;         // rising edge
+	bool leftB = false;          // rising edge
+	bool rightStickClick = false;     // released alone (the chord's verdict)
+	bool leftStickClick = false;      // released alone
+	bool rightTrackpadClick = false;  // rising edge
+	bool leftTrackpadClick = false;   // rising edge
+	float leftThumbX = 0.0f;
+	float leftThumbY = 0.0f;
+	float rightThumbX = 0.0f;
+};
+
+inline HandControlsWanted PlanGamepadControls(const GamepadInput& in, float stickDeadZone) {
+	HandControlsWanted out;
+	if (in.rightValid) {
+		out.attack = in.rightTrigger;
+		out.cast = in.rightGrip;
+		out.jump = in.rightA;
+		out.escape = in.rightB;
+		out.togglePov = in.rightStickClick;
+		out.readyWeapon = in.rightTrackpadClick;
+		out.turn = in.rightThumbX;
+	}
+	if (in.leftValid) {
+		out.block = in.leftTrigger;
+		out.grab = in.leftGrip;
+		out.activate = in.leftA;
+		out.menu = in.leftB;
+		out.sneak = in.leftStickClick;
+		out.quickMenu = in.leftTrackpadClick;
+		out.move = StickToDirections(in.leftThumbX, in.leftThumbY, stickDeadZone);
+	}
+	return out;
+}
 
 // The pieces of hand state the planner needs, already stepped this frame.
 struct HandFrameInput {

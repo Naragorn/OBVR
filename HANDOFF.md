@@ -2121,12 +2121,13 @@ and FEAR2VR, cited above.
 
 ### What is still true and unfixed
 
-- **The visible body (2026-09-07) has not been seen in a headset.** `[Body] Visible=1`
-  shows the third-person skeleton in first person under the headset with the head and
-  clavicles collapsed, after Enhanced Camera's mechanism (its 1.4b source is summarised
-  in `docs/vr-modding/ecosystem-and-prior-art.md`). The arithmetic is tested
-  (`body_placement_test`); what the engine does with an unhidden third-person root in
-  first person is not. `Visible=0` puts everything back.
+- **The visible body (2026-09-07) moves the view, cause open, off by default.** `[Body]
+  Visible=1` shows the third-person skeleton in first person under the headset with the
+  head and clavicles collapsed, after Enhanced Camera's mechanism (its 1.4b source is
+  summarised in `docs/vr-modding/ecosystem-and-prior-art.md`). Two headset runs the same
+  day had the view lurch with every look while it was on - with the player root moved and
+  with `Bip01` alone moved. The remaining suspect is the camera node hanging under a bone
+  that is moved or collapsed; the first camera pass now logs the camera's ancestry.
 - ~~The picture is one frame stale~~ - fixed by Render.SubmitAtFrameEnd, which hooks Present
   at method table entry 17. The old text follows for the reasoning:
 - **The picture was one frame stale.** The submit ran from the camera hook, before the frame

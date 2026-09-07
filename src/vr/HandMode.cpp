@@ -211,14 +211,14 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	in.leftValid = f.left.valid;
 	in.rightTrigger = f.right.valid && StepTrigger(m_rightTrigger, f.right.trigger);
 	in.leftTrigger = f.left.valid && StepTrigger(m_leftTrigger, f.left.trigger);
-	in.rightGrip = f.right.valid && ButtonDown(f.right.buttonsPressed, openvr::kButtonGrip);
-	in.leftGrip = f.left.valid && ButtonDown(f.left.buttonsPressed, openvr::kButtonGrip);
-	in.rightA = f.right.valid && ButtonDown(f.right.buttonsPressed, openvr::kButtonA);
-	in.leftA = f.left.valid && ButtonDown(f.left.buttonsPressed, openvr::kButtonA);
+	in.rightGrip = f.right.valid && GripDown(f.right.buttonsPressed);
+	in.leftGrip = f.left.valid && GripDown(f.left.buttonsPressed);
+	in.rightA = f.right.valid && ButtonADown(f.right.buttonsPressed);
+	in.leftA = f.left.valid && ButtonADown(f.left.buttonsPressed);
 	in.rightMenuButton = StepRisingEdge(
-		m_rightMenu, f.right.valid && ButtonDown(f.right.buttonsPressed, openvr::kButtonApplicationMenu));
+		m_rightMenu, f.right.valid && ButtonBDown(f.right.buttonsPressed));
 	in.leftMenuButton = StepRisingEdge(
-		m_leftMenu, f.left.valid && ButtonDown(f.left.buttonsPressed, openvr::kButtonApplicationMenu));
+		m_leftMenu, f.left.valid && ButtonBDown(f.left.buttonsPressed));
 	in.rightStickClick = sticks.rightClick;
 	in.leftStickClick = sticks.leftClick;
 	in.leftThumbX = f.left.thumbX;
@@ -281,8 +281,8 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 
 StickChordVerdict HandMode::StepChord(const HandModeFrame& f, HandModeResult& r) {
 	const StickChordVerdict sticks = StepStickChord(
-		m_sticks, f.right.valid && ButtonDown(f.right.buttonsPressed, openvr::kButtonAxis0),
-		f.left.valid && ButtonDown(f.left.buttonsPressed, openvr::kButtonAxis0));
+		m_sticks, f.right.valid && StickClickDown(f.right.buttonsPressed),
+		f.left.valid && StickClickDown(f.left.buttonsPressed));
 	r.settingsMenuToggle = sticks.both;
 	return sticks;
 }
@@ -362,19 +362,17 @@ void HandMode::SteerSettingsMenu(const HandModeFrame& f, const HandSettings& s,
 	const bool accept =
 		(!r.settingsPointerValid && (rightPull || leftPull) && !handMoved) ||
 		StepRisingEdge(m_rightAEdge,
-		               f.right.valid && ButtonDown(f.right.buttonsPressed, openvr::kButtonA)) ||
+		               f.right.valid && ButtonADown(f.right.buttonsPressed)) ||
 		StepRisingEdge(m_leftAEdge,
-		               f.left.valid && ButtonDown(f.left.buttonsPressed, openvr::kButtonA));
+		               f.left.valid && ButtonADown(f.left.buttonsPressed));
 	const bool back =
 		StepRisingEdge(m_rightGripEdge,
-		               f.right.valid && ButtonDown(f.right.buttonsPressed, openvr::kButtonGrip)) ||
+		               f.right.valid && GripDown(f.right.buttonsPressed)) ||
 		StepRisingEdge(m_leftGripEdge,
-		               f.left.valid && ButtonDown(f.left.buttonsPressed, openvr::kButtonGrip));
+		               f.left.valid && GripDown(f.left.buttonsPressed));
 	const bool close =
-		StepRisingEdge(m_rightMenu, f.right.valid && ButtonDown(f.right.buttonsPressed,
-		                                                        openvr::kButtonApplicationMenu)) ||
-		StepRisingEdge(m_leftMenu, f.left.valid && ButtonDown(f.left.buttonsPressed,
-		                                                      openvr::kButtonApplicationMenu));
+		StepRisingEdge(m_rightMenu, f.right.valid && ButtonBDown(f.right.buttonsPressed)) ||
+		StepRisingEdge(m_leftMenu, f.left.valid && ButtonBDown(f.left.buttonsPressed));
 	r.settingsNav.right = r.settingsNav.right || accept;
 	r.settingsNav.left = r.settingsNav.left || back;
 	r.settingsMenuToggle = r.settingsMenuToggle || close;
@@ -549,10 +547,10 @@ HandModeResult HandMode::UpdateMenusOnly(const HandModeFrame& f, const HandSetti
 		in.leftTrigger = f.left.valid && StepTrigger(m_leftTrigger, f.left.trigger);
 		in.rightMenuButton = StepRisingEdge(
 			m_rightMenu,
-			f.right.valid && ButtonDown(f.right.buttonsPressed, openvr::kButtonApplicationMenu));
+			f.right.valid && ButtonBDown(f.right.buttonsPressed));
 		in.leftMenuButton = StepRisingEdge(
 			m_leftMenu,
-			f.left.valid && ButtonDown(f.left.buttonsPressed, openvr::kButtonApplicationMenu));
+			f.left.valid && ButtonBDown(f.left.buttonsPressed));
 		in.menuMode = true;
 		const bool wasRight = m_pointRight;
 		StepPointerHand(f, in.rightTrigger, in.leftTrigger);
@@ -571,17 +569,40 @@ HandModeResult HandMode::UpdateMenusOnly(const HandModeFrame& f, const HandSetti
 	} else {
 		// Kept stepped so a trigger held across the menu's closing does not
 		// fire as it opens again.
-		if (f.right.valid) {
-			StepTrigger(m_rightTrigger, f.right.trigger);
-		}
-		if (f.left.valid) {
-			StepTrigger(m_leftTrigger, f.left.trigger);
-		}
+		const bool rightTrigger = f.right.valid && StepTrigger(m_rightTrigger, f.right.trigger);
+		const bool leftTrigger = f.left.valid && StepTrigger(m_leftTrigger, f.left.trigger);
 		m_rightMenu = ButtonEdge{};
 		m_leftMenu = ButtonEdge{};
 		m_rightPointEdge = ButtonEdge{};
 		m_leftPointEdge = ButtonEdge{};
 		m_clickBlocked = false;
+
+		// In the world, as a gamepad: the head aims, the controllers are the
+		// pad. Nothing of the hand-tracked mode - no gestures, no arms.
+		if (s.gamepadLayout) {
+			GamepadInput in;
+			in.rightValid = f.right.valid;
+			in.leftValid = f.left.valid;
+			in.rightTrigger = rightTrigger;
+			in.leftTrigger = leftTrigger;
+			in.rightGrip = f.right.valid && GripDown(f.right.buttonsPressed);
+			in.leftGrip = f.left.valid && GripDown(f.left.buttonsPressed);
+			in.rightA = f.right.valid && ButtonADown(f.right.buttonsPressed);
+			in.leftA = f.left.valid && ButtonADown(f.left.buttonsPressed);
+			in.rightB = StepRisingEdge(m_gpRightB, f.right.valid && ButtonBDown(f.right.buttonsPressed));
+			in.leftB = StepRisingEdge(m_gpLeftB, f.left.valid && ButtonBDown(f.left.buttonsPressed));
+			in.rightStickClick = sticks.rightClick;
+			in.leftStickClick = sticks.leftClick;
+			in.rightTrackpadClick = StepRisingEdge(
+				m_gpRightTrackpad, f.right.valid && TrackpadClickDown(f.right.buttonsPressed));
+			in.leftTrackpadClick = StepRisingEdge(
+				m_gpLeftTrackpad, f.left.valid && TrackpadClickDown(f.left.buttonsPressed));
+			in.leftThumbX = f.left.thumbX;
+			in.leftThumbY = f.left.thumbY;
+			in.rightThumbX = f.right.thumbX;
+			r.controls = PlanGamepadControls(in, s.stickDeadZone);
+			r.controlsActive = f.right.valid || f.left.valid;
+		}
 	}
 	PointAtMenu(f, s, r);
 	return r;
