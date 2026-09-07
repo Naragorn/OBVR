@@ -222,7 +222,15 @@ that makes the two coexist.
 
 **ENB**: not tested. ENB replaces `d3d9.dll`, which is where DXVK has to sit.
 
-**Enhanced Camera**: not tested. It patches the first-person camera OBVR also reads.
+**Enhanced Camera**: incompatible. It plants its jump at the camera update (`0x0066BE6E`),
+the site OBVR needs for the head pose. With both loaded the log says "Camera: at 0066BE6E
+another plugin's jump ... inside OBSE_EnhancedCamera.dll" and OBVR stays inactive; the game
+runs flat. Remove `OBSE_EnhancedCamera.dll` to play in VR.
+
+**NorthernUI**: works, tested with 2.0.3. NorthernUI's menus reach the headset like every
+other menu. One shared site goes to NorthernUI: it wraps the HUDReticle update
+(`0x00582251`) first, so OBVR's third-person crosshair tooltips keep vanilla behaviour
+(the log says so, with the DLL's name). Nothing else overlaps.
 
 Other xOBSE plugins that do not touch the renderer or the player camera are expected to
 work; the engine fixes commonly installed alongside have been in the test load order

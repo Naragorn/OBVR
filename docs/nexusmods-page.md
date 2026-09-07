@@ -82,7 +82,8 @@ The first start opens the walkthrough in the headset: choose the seated experien
 [list]
 [*][b]Oblivion Reloaded, Oblivion Reloaded Combined, E3: incompatible.[/b] They take over the same engine functions OBVR needs (scene render, camera update, dialogue camera). OBVR refuses a site that is already patched and names the DLL that got there first in the log. There is no configuration that makes the two coexist.
 [*][b]ENB[/b]: not tested. ENB replaces d3d9.dll, which is where DXVK has to sit.
-[*][b]Enhanced Camera[/b]: not tested. It patches the first-person camera OBVR also reads.
+[*][b]Enhanced Camera: incompatible.[/b] It patches the camera update OBVR needs for the head pose. With both loaded, OBVR stays inactive and the game runs flat; the log names OBSE_EnhancedCamera.dll. Remove it to play in VR.
+[*][b]NorthernUI[/b]: works (tested with 2.0.3). Its menus reach the headset like every other menu. NorthernUI takes the HUD reticle update first, so OBVR's third-person crosshair tooltips keep vanilla behaviour.
 [*]Other xOBSE plugins that do not touch the renderer or the player camera are expected to work; the usual engine fixes have been in the test load order throughout.
 [/list]
 
