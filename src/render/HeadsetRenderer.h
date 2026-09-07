@@ -6,6 +6,7 @@
 #include "render/GameDevice.h"
 #include "render/GameFrame.h"
 #include "render/SubmitPolicy.h"
+#include "vr/HandInput.h"
 #include "vr/OpenVRTypes.h"
 
 namespace obvr::vr {
@@ -181,6 +182,12 @@ public:
 	// again. False until the first dual frame has been captured, which is what
 	// keeps a menu opened before then off the held path. See DeliverFrame.
 	bool HasHeldEyes() const { return m_mirrorUsable && m_heldPoseValid; }
+
+	// The flat picture as a thing to point at, while one is being shown:
+	// its anchor pose's axes, its angular half-extents, and the frame
+	// window it shows. False while the world is up or before the copies
+	// exist. See vr::FlatPicture for how a laser meets it.
+	bool FlatPictureInTracking(vr::FlatPicture& out) const;
 
 	// The monitor copy of the 2D layer; see EyeMirror::BlendLayerOntoBackBuffer.
 	bool MirrorLayerToMonitor(void* gameDevice, void* layerTexture) {

@@ -757,6 +757,45 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 	                          m_eyePoseValid[1] ? &m_eyePose[1] : nullptr);
 	return true;
 }
+bool HeadsetRenderer::FlatPictureInTracking(vr::FlatPicture& out) const {
+	out = vr::FlatPicture{};
+	if (!m_flatPoseValid || !m_mirrorUsable || m_eyeWidth == 0 || m_eyeHeight == 0) {
+		return false;
+	}
+	SInt32 width = 0;
+	SInt32 height = 0;
+	d3d9::Rect source{};
+	if (!m_mirror.FlatPlacement(width, height, source)) {
+		return false;
+	}
+
+	// The picture is a rectangle of eye-texture pixels centred on each eye's
+	// optical axis, and the texture's width covers the eye's whole tangent
+	// range - so its angular half-extent is its pixel half-extent scaled by
+	// tangents per pixel. Both eyes show it at one size; the left's
+	// projection stands for both.
+	const float tanPerPixelX = (m_leftEye.right - m_leftEye.left) / static_cast<float>(m_eyeWidth);
+	const float tanPerPixelY = (m_leftEye.bottom - m_leftEye.top) / static_cast<float>(m_eyeHeight);
+	out.tanHalfWidth = 0.5f * static_cast<float>(width) * tanPerPixelX;
+	out.tanHalfHeight = 0.5f * static_cast<float>(height) * tanPerPixelY;
+
+	// The anchor pose: position in the fourth column, the axes in the first
+	// three - OpenVR looks down -z.
+	const vr::openvr::HmdMatrix34& p = m_flatPose;
+	out.centre = NiPoint3{p.m[0][3], p.m[1][3], p.m[2][3]};
+	out.right = NiPoint3{p.m[0][0], p.m[1][0], p.m[2][0]};
+	out.up = NiPoint3{p.m[0][1], p.m[1][1], p.m[2][1]};
+	out.forward = NiPoint3{-p.m[0][2], -p.m[1][2], -p.m[2][2]};
+
+	out.pixelLeft = static_cast<float>(source.left);
+	out.pixelTop = static_cast<float>(source.top);
+	out.pixelWidth = static_cast<float>(source.right - source.left);
+	out.pixelHeight = static_cast<float>(source.bottom - source.top);
+	out.valid = out.tanHalfWidth > 0.0f && out.tanHalfHeight > 0.0f && out.pixelWidth > 0.0f &&
+	            out.pixelHeight > 0.0f;
+	return out.valid;
+}
+
 void HeadsetRenderer::Reset() {
 	m_textures.Destroy();
 	m_policy.Reset();

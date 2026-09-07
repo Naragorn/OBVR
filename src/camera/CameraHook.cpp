@@ -325,6 +325,7 @@ long long g_handClockLast = 0;
 // which gestures are on.
 bool g_rightHandTracked = false;
 bool g_leftHandTracked = false;
+bool g_flatLaserTargetReported = false;
 bool g_handBlocking = false;
 bool g_handReachBack = false;
 UInt32 g_handSwingLinesLeft = 20;
@@ -421,6 +422,23 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		if (g_hudLayer.QuadInTracking(backend, quadPose, quadWidth)) {
 			frame.menuQuad = vr::QuadFromPose(quadPose, quadWidth, frame.layerPixelsWidth,
 			                                  frame.layerPixelsHeight);
+		}
+	}
+	// And the cinema screen when the frame is a flat one - the main menu,
+	// character creation, a loading screen - which has no quad: the laser
+	// meets the picture the head sees at infinity instead.
+	g_headsetRenderer.FlatPictureInTracking(frame.flat);
+	if (frame.flat.valid != g_flatLaserTargetReported) {
+		g_flatLaserTargetReported = frame.flat.valid;
+		if (frame.flat.valid) {
+			OBVR_LOG("Hands: the laser has the flat picture to point at (%.0fx%.0f frame pixels "
+			         "from %.0f,%.0f; half-extents tan %.3f x %.3f)",
+			         static_cast<double>(frame.flat.pixelWidth),
+			         static_cast<double>(frame.flat.pixelHeight),
+			         static_cast<double>(frame.flat.pixelLeft),
+			         static_cast<double>(frame.flat.pixelTop),
+			         static_cast<double>(frame.flat.tanHalfWidth),
+			         static_cast<double>(frame.flat.tanHalfHeight));
 		}
 	}
 

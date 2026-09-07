@@ -604,6 +604,125 @@ void TestWristTransform() {
 
 }  // namespace
 
+// The main menu: no quad, the cinema screen two metres ahead of an
+// unturned anchor at the origin, showing 1600x900 from pixel 0,100.
+HandModeFrame MainMenuFrame() {
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.menuMode = true;
+	frame.inWorld = false;
+	frame.menusOnly = true;
+	frame.cursorValid = true;
+	frame.cursorX = 800.0f;
+	frame.cursorY = 550.0f;
+	frame.menuQuad.valid = false;
+	frame.flat.valid = true;
+	frame.flat.tanHalfWidth = 0.5f;
+	frame.flat.tanHalfHeight = 0.28f;
+	frame.flat.pixelLeft = 0.0f;
+	frame.flat.pixelTop = 100.0f;
+	frame.flat.pixelWidth = 1600.0f;
+	frame.flat.pixelHeight = 900.0f;
+	frame.right.valid = true;
+	frame.right.position = NiPoint3{0.3f, 0.0f, 0.0f};  // held out to the right
+	frame.left.valid = true;
+	frame.left.position = NiPoint3{-0.3f, 0.0f, 0.0f};
+	return frame;
+}
+
+void TestMainMenuLaser() {
+	std::printf("The laser on the main menu's cinema screen, and the hand that holds it\n");
+	HandSettings settings;
+	settings.enabled = false;
+	settings.laserGain = 1.0f;
+	settings.laserMaxStep = 4096.0f;
+	HandModeFrame frame = MainMenuFrame();
+	HandMode mode;
+
+	// With no quad the beam used to end in the air; now it meets the picture.
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.laserHit && r.laserVisible && r.laserRight, "the right hand's beam hits the picture");
+	Check(Near(r.laserLengthMetres, 2.0f, 0.01f), "and ends at the stand-in plane");
+	Check(r.cursorDx == 240 && r.cursorDy == 0,
+	      "the cursor walks to where the head sees the beam's end: 240 right of centre");
+	Check(!r.pokeHover, "no finger on a picture at infinity");
+
+	// The right trigger: the click, from the right hand.
+	frame.right.trigger = 1.0f;
+	r = mode.Update(frame, settings);
+	Check(r.controls.menuClick && r.laserRight, "the right trigger clicks");
+	frame.right.trigger = 0.0f;
+	r = mode.Update(frame, settings);
+	Check(!r.controls.menuClick, "and releases");
+
+	// The left trigger takes the pointer to the left hand, and clicks there.
+	frame.left.trigger = 1.0f;
+	r = mode.Update(frame, settings);
+	Check(!r.laserRight && r.laserVisible, "a pull on the left takes the pointer left");
+	Check(r.controls.menuClick, "and that pull is a click");
+	Check(r.cursorDx == -240, "the cursor now walks to the left hand's beam");
+	frame.left.trigger = 0.0f;
+	r = mode.Update(frame, settings);
+	Check(!r.laserRight && !r.controls.menuClick, "released, the left hand keeps the pointer");
+
+	// The right trigger while the left holds the pointer: does not click,
+	// takes the pointer back.
+	frame.right.trigger = 1.0f;
+	r = mode.Update(frame, settings);
+	Check(r.laserRight && r.controls.menuClick, "the right trigger takes it back and clicks");
+	frame.right.trigger = 0.0f;
+	r = mode.Update(frame, settings);
+
+	// The pointing hand goes untracked: the other one points.
+	frame.right.valid = false;
+	r = mode.Update(frame, settings);
+	Check(!r.laserRight && r.laserHit, "the right hand lost: the left points");
+	frame.right.valid = true;
+	r = mode.Update(frame, settings);
+	Check(!r.laserRight, "back, but the left keeps the pointer until a pull");
+
+	// Both triggers on one frame: no change of hands.
+	frame.right.trigger = 1.0f;
+	frame.left.trigger = 1.0f;
+	r = mode.Update(frame, settings);
+	Check(!r.laserRight, "both pulled at once: the hand stays");
+	frame.right.trigger = 0.0f;
+	frame.left.trigger = 0.0f;
+	mode.Update(frame, settings);
+
+	// No head pose: the mode stands down as a whole (its first gate), so
+	// neither hit nor beam - the picture's pixel could not be told anyway.
+	frame.headValid = false;
+	r = mode.Update(frame, settings);
+	Check(!r.laserHit && !r.laserVisible && r.cursorDx == 0,
+	      "no head pose: nothing points and nothing moves");
+	frame.headValid = true;
+
+	// A quad present wins over the picture.
+	frame.menuQuad = BigQuadFrame().menuQuad;
+	frame.layerPixelsWidth = 800.0f;
+	frame.layerPixelsHeight = 600.0f;
+	r = mode.Update(frame, settings);
+	Check(r.laserHit && Near(r.laserLengthMetres, 1.0f, 0.05f), "with a quad, the quad is the target");
+
+	// The full mode, in a menu: the same pointer hand and click.
+	settings.enabled = true;
+	frame.menusOnly = false;
+	frame.menuQuad.valid = false;
+	frame.layerPixelsWidth = 0.0f;
+	frame.layerPixelsHeight = 0.0f;
+	HandMode full;
+	r = full.Update(frame, settings);
+	Check(r.laserHit && r.laserRight, "the full mode points at the picture too");
+	frame.left.trigger = 1.0f;
+	r = full.Update(frame, settings);
+	Check(!r.laserRight && r.controls.menuClick, "and switches hands on the left trigger");
+	frame.left.trigger = 0.0f;
+	frame.menuMode = false;
+	r = full.Update(frame, settings);
+	Check(!r.laserVisible, "out of the menu: no beam");
+}
+
 int main() {
 	TestGestures();
 	TestSpeedAndSwing();
@@ -619,6 +738,7 @@ int main() {
 	TestStrikeByMotion();
 	TestLaserOnBigQuad();
 	TestMenusOnly();
+	TestMainMenuLaser();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

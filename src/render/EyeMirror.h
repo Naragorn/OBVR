@@ -132,6 +132,19 @@ public:
 
 	const BackBufferImage& GetImage(bool isLeft) const { return m_eye[isLeft ? 0 : 1].image; }
 
+	// The flat picture's size in eye-texture pixels (one size in both eyes)
+	// and the window of the frame it shows, for a laser to point at it.
+	// False before Create.
+	bool FlatPlacement(SInt32& width, SInt32& height, d3d9::Rect& source) const {
+		if (!IsReady()) {
+			return false;
+		}
+		width = m_eye[0].flatDestination.right - m_eye[0].flatDestination.left;
+		height = m_eye[0].flatDestination.bottom - m_eye[0].flatDestination.top;
+		source = m_flatSource;
+		return width > 0 && height > 0;
+	}
+
 	UInt32 GetWidth() const { return m_width; }
 	UInt32 GetHeight() const { return m_height; }
 

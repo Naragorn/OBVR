@@ -153,10 +153,27 @@ loading, character creation, the Tab menus, OBVR's own menu.
   otherwise at the big quad on the head or in the room: `HudLayer::QuadInTracking` hands
   the quad's pose back in tracking space (the head's pose composed with the head-relative
   offset, or the room anchor's), `QuadFromPose` makes the quad, and the same `LaserOnQuad`
-  and `PokeOnQuad` as on the wrist walk the game's cursor to the hit and click. The right
-  hand points, or the left when only that is tracked. Before a game is loaded
-  (`game::PlayerInWorld`, the reference's parent cell) there is no wrist, so the main menu
-  stays on its big quad whatever `WristMenu` says.
+  and `PokeOnQuad` as on the wrist walk the game's cursor to the hit and click. Before a
+  game is loaded (`game::PlayerInWorld`, the reference's parent cell) there is no wrist, so
+  the main menu stays on its big picture whatever `WristMenu` says.
+- **The laser meets the cinema picture when there is no quad** (2026-09-07). The main menu,
+  character creation, loading screens and films are flat frames: the back buffer in both
+  eye textures, centred on each eye's optical axis, submitted with a frozen levelled pose -
+  a picture at infinity, not a quad in the room, which is why the beam used to end in the
+  air there. `HeadsetRenderer::FlatPictureInTracking` now hands the anchor pose's axes, the
+  picture's angular half-extents (its eye-texture pixels times tangents per pixel, from
+  `EyeMirror::FlatPlacement` and the left eye's projection) and the frame window it shows
+  (the flat source crop, in the cursor's pixel space) to `HandModeFrame::flat`;
+  `LaserOnFlatPicture` meets the hand's ray with a stand-in plane two metres ahead of the
+  anchor, where the beam ends, and takes the pixel from the HEAD's view of that point -
+  tangents against the half-extents - so the cursor lands where the wearer sees the beam
+  end. No finger press there: nothing is at arm's length.
+- **The hand that pulls its trigger holds the pointer** (`HandMode::StepPointerHand`): a
+  pull on the left takes the laser to the left hand, and that pull is also a click; a pull
+  on the right takes it back. Both pulled on one frame changes nothing; a hand that is not
+  tracked cannot hold it. `PlanHandControls` clicks from the pointing hand
+  (`HandFrameInput::pointRight`). The wrist menu is the exception: there the hand without
+  the menu points.
 - **The beam** is drawn: `render::LaserLayer`, an overlay of raw pixels (`SetOverlayRaw`,
   index 62 of `IVROverlay_028`) hung on the pointing controller along its pointing axis for
   as long as the way to the quad - `LaserBeamTransform` - with its width re-derived from the
@@ -168,7 +185,9 @@ loading, character creation, the Tab menus, OBVR's own menu.
   Both sticks clicked open it, mode or no mode.
 
 What to look at first: at the main menu, a beam from the right controller onto the menu
-and the game's cursor following it; the trigger pressing "New"; the walkthrough answering
+and the game's cursor following it (the log says "Hands: the laser has the flat picture to
+point at" when the picture is known); a pull on the left trigger moving the beam to the
+left hand; the trigger pressing "New"; the walkthrough answering
 the trigger with its next page; and in an inventory, the left stick scrolling the list. A
 beam that misses the quad by a constant offset means the quad pose is not where the layer
 hung it - `QuadInTracking` composes the render pose with the same head-relative transform

@@ -116,6 +116,9 @@ struct HandModeFrame {
 	// The quad the game's menus hang on when they are not on a wrist - on
 	// the head or in the room - in tracking space, for the laser.
 	MenuQuad menuQuad;
+	// The cinema screen, when the frame is a flat one - the main menu, a
+	// loading screen, a film - for the laser when there is no quad.
+	FlatPicture flat;
 	bool headValid = false;
 	Quaternion head = Quaternion::Identity();
 	NiPoint3 headPosition{0.0f, 0.0f, 0.0f};
@@ -240,6 +243,14 @@ private:
 	// The hands on the game's menu: the wrist quad or the big one, the
 	// finger and the laser, the cursor, the beam, the scroll.
 	void PointAtMenu(const HandModeFrame& frame, const HandSettings& settings, HandModeResult& r);
+
+	// Which hand holds the pointer on the game's menus: the last one whose
+	// trigger was pulled. Starts on the right. The wrist menu is the
+	// exception - there the hand without the menu points.
+	void StepPointerHand(const HandModeFrame& frame, bool rightTrigger, bool leftTrigger);
+	bool m_pointRight = true;
+	ButtonEdge m_rightPointEdge;
+	ButtonEdge m_leftPointEdge;
 
 	TriggerEdge m_rightTrigger;
 	TriggerEdge m_leftTrigger;

@@ -110,11 +110,89 @@ void TestRepeat() {
 
 }  // namespace
 
+// The cinema screen at infinity: a 1600x900 window, half-extents tan 0.5
+// across and 0.28 down, anchored at the origin looking down -z.
+obvr::vr::FlatPicture Cinema() {
+	obvr::vr::FlatPicture flat;
+	flat.valid = true;
+	flat.tanHalfWidth = 0.5f;
+	flat.tanHalfHeight = 0.28f;
+	flat.pixelLeft = 0.0f;
+	flat.pixelTop = 100.0f;
+	flat.pixelWidth = 1600.0f;
+	flat.pixelHeight = 900.0f;
+	return flat;
+}
+
+void TestFlatLaser() {
+	std::printf("The laser on the flat picture\n");
+	using obvr::NiPoint3;
+	using obvr::vr::FlatLaserHit;
+	using obvr::vr::LaserOnFlatPicture;
+	const obvr::vr::FlatPicture flat = Cinema();
+	const NiPoint3 head{0.0f, 0.0f, 0.0f};
+	const NiPoint3 ahead{0.0f, 0.0f, -1.0f};
+
+	// A hand below the eyes pointing straight ahead: the beam ends on the
+	// stand-in plane two metres out, and the head sees that point a little
+	// below the picture's middle.
+	FlatLaserHit hit = LaserOnFlatPicture(NiPoint3{0.0f, -0.2f, 0.0f}, ahead, head, flat, 2.0f);
+	Check(hit.hit, "straight ahead hits");
+	Check(Near(hit.lengthMetres, 2.0f), "the beam is two metres long");
+	Check(Near(hit.pixelX, 800.0f), "in the middle across");
+	// ty = -0.2/2 = -0.1; v = (1 + 0.1/0.28)/2; y = 100 + v*900
+	Check(hit.pixelY > 100.0f + 450.0f && hit.pixelY < 100.0f + 900.0f,
+	      "and below the middle, as the head sees it");
+
+	// The same hand at the head's height: dead centre.
+	hit = LaserOnFlatPicture(head, ahead, head, flat, 2.0f);
+	Check(hit.hit && Near(hit.pixelX, 800.0f) && Near(hit.pixelY, 550.0f), "from the eyes: dead centre");
+
+	// A hand held out to the right, pointing ahead: the point is 0.3 right
+	// at 2 m, tan 0.15 of the 0.5 half-width, so 65% across.
+	hit = LaserOnFlatPicture(NiPoint3{0.3f, 0.0f, 0.0f}, ahead, head, flat, 2.0f);
+	Check(hit.hit && Near(hit.pixelX, 800.0f + 0.3f * 800.0f), "a hand to the right lands right of centre");
+
+	// Turned past the edge: no hit. tan 0.5 at 2 m is 1 m; 1.2 m is past.
+	const NiPoint3 wide{1.2f, 0.0f, -2.0f};
+	const float wideLength = 2.3323808f;
+	hit = LaserOnFlatPicture(head, NiPoint3{wide.x / wideLength, 0.0f, wide.z / wideLength}, head,
+	                         flat, 2.0f);
+	Check(!hit.hit, "past the picture's edge: no hit");
+
+	// Pointing away, or the plane behind the hand: nothing.
+	hit = LaserOnFlatPicture(head, NiPoint3{0.0f, 0.0f, 1.0f}, head, flat, 2.0f);
+	Check(!hit.hit, "pointing away: no hit");
+	hit = LaserOnFlatPicture(NiPoint3{0.0f, 0.0f, -3.0f}, ahead, head, flat, 2.0f);
+	Check(!hit.hit, "beyond the plane: no hit");
+
+	// Refusals: an invalid picture, no extent, no distance.
+	obvr::vr::FlatPicture bad = flat;
+	bad.valid = false;
+	Check(!LaserOnFlatPicture(head, ahead, head, bad, 2.0f).hit, "an invalid picture: no hit");
+	bad = flat;
+	bad.tanHalfWidth = 0.0f;
+	Check(!LaserOnFlatPicture(head, ahead, head, bad, 2.0f).hit, "no width: no hit");
+	Check(!LaserOnFlatPicture(head, ahead, head, flat, 0.0f).hit, "no plane distance: no hit");
+
+	// The anchor turned: the picture turns with it, and a beam along its
+	// new forward is still its centre.
+	obvr::vr::FlatPicture turned = flat;
+	turned.forward = NiPoint3{1.0f, 0.0f, 0.0f};
+	turned.right = NiPoint3{0.0f, 0.0f, 1.0f};
+	hit = LaserOnFlatPicture(head, NiPoint3{1.0f, 0.0f, 0.0f}, head, turned, 2.0f);
+	Check(hit.hit && Near(hit.pixelX, 800.0f) && Near(hit.pixelY, 550.0f),
+	      "a turned anchor: its forward is still the centre");
+	Check(!LaserOnFlatPicture(head, ahead, head, turned, 2.0f).hit,
+	      "and the old forward now points along the picture: no hit");
+}
+
 int main() {
 	TestButtons();
 	TestShortestTurn();
 	TestPoses();
 	TestRepeat();
+	TestFlatLaser();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

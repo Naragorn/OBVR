@@ -233,19 +233,21 @@ struct HandFrameInput {
 	bool drawBlocked = false;      // the bow wants a reach-back first and has not had one
 	bool meleeByMotion = false;    // a swung weapon strikes by motion: the trigger does not attack
 	bool menuMode = false;
+	bool pointRight = true;        // in a menu: which hand holds the pointer, and so the click
 };
 
 // The mapping. In a menu the hands drive the cursor and nothing else: the
-// right trigger is the click, the left menu button closes the menu, the
-// right one is escape. In the world: right trigger attacks (the bow draws
-// while it is held and looses when it is released, a spell hand casts on
-// the left trigger), swings attack by themselves, the raised left hand
-// blocks, grips grab and activate, A jumps and sneaks, the sticks move and
-// turn, stick clicks ready the weapon and open the quick menu.
+// pointing hand's trigger is the click, the left menu button closes the
+// menu, the right one is escape. In the world: right trigger attacks (the
+// bow draws while it is held and looses when it is released, a spell hand
+// casts on the left trigger), swings attack by themselves, the raised left
+// hand blocks, grips grab and activate, A jumps and sneaks, the sticks move
+// and turn, stick clicks ready the weapon and open the quick menu.
 inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stickDeadZone) {
 	HandControlsWanted out;
 	if (in.menuMode) {
-		out.menuClick = in.rightValid && in.rightTrigger;
+		out.menuClick = in.pointRight ? (in.rightValid && in.rightTrigger)
+		                              : (in.leftValid && in.leftTrigger);
 		out.menu = in.leftMenuButton;
 		out.escape = in.rightMenuButton;
 		return out;
@@ -380,6 +382,83 @@ inline MenuQuad QuadFromPose(const openvr::HmdMatrix34& pose, float widthMetres,
 	quad.width = widthMetres;
 	quad.height = widthMetres * (pixelHeight / pixelWidth);
 	return quad;
+}
+
+// The flat picture - the cinema screen the main menu, the loading screens
+// and the films are shown on - as a thing a laser can point at.
+//
+// It is not a quad in the room. Both eyes are shown the same picture centred
+// on their own optical axis, which puts it at infinity: it has a direction
+// from the head and an angular size, and no distance. So a hit is worked
+// out in two steps: the hand's ray is met with a stand-in plane some way
+// ahead of the anchor pose, which is where the beam is drawn to end, and the
+// pixel under that point is the one the HEAD sees it against - the direction
+// from the head to the point, expressed as tangents in the anchor's axes
+// against the picture's own angular half-extents.
+struct FlatPicture {
+	bool valid = false;
+	// The anchor pose the picture is held at: where the head was when it
+	// appeared, levelled. The picture is centred on forward.
+	NiPoint3 centre{0.0f, 0.0f, 0.0f};
+	NiPoint3 right{1.0f, 0.0f, 0.0f};
+	NiPoint3 up{0.0f, 1.0f, 0.0f};
+	NiPoint3 forward{0.0f, 0.0f, -1.0f};
+	// Half the picture's angular extent, as tangents.
+	float tanHalfWidth = 0.0f;
+	float tanHalfHeight = 0.0f;
+	// The frame pixels the picture shows, in the space the game's cursor
+	// lives in: a window into the frame (the flat source crop).
+	float pixelLeft = 0.0f;
+	float pixelTop = 0.0f;
+	float pixelWidth = 0.0f;
+	float pixelHeight = 0.0f;
+};
+
+struct FlatLaserHit {
+	bool hit = false;
+	float pixelX = 0.0f;
+	float pixelY = 0.0f;
+	float lengthMetres = 0.0f;
+};
+
+inline FlatLaserHit LaserOnFlatPicture(const NiPoint3& rayOrigin, const NiPoint3& rayDirection,
+                                       const NiPoint3& headPosition, const FlatPicture& flat,
+                                       float planeDistanceMetres) {
+	FlatLaserHit hit;
+	if (!flat.valid || flat.tanHalfWidth <= 0.0f || flat.tanHalfHeight <= 0.0f ||
+	    flat.pixelWidth <= 0.0f || flat.pixelHeight <= 0.0f || planeDistanceMetres <= 0.0f) {
+		return hit;
+	}
+	// The stand-in plane, ahead of the anchor and facing it.
+	const NiPoint3 planeCentre = flat.centre + flat.forward * planeDistanceMetres;
+	const float along = Dot(rayDirection, flat.forward);
+	if (along <= 0.0001f) {
+		return hit;  // pointing away from the picture, or along it
+	}
+	const float t = Dot(planeCentre - rayOrigin, flat.forward) / along;
+	if (t <= 0.0f) {
+		return hit;  // the plane is behind the hand
+	}
+	const NiPoint3 point = rayOrigin + rayDirection * t;
+
+	// What the head sees the point against.
+	const NiPoint3 fromHead = point - headPosition;
+	const float depth = Dot(fromHead, flat.forward);
+	if (depth <= 0.0001f) {
+		return hit;
+	}
+	const float tx = Dot(fromHead, flat.right) / depth;
+	const float ty = Dot(fromHead, flat.up) / depth;
+	const float u = (tx / flat.tanHalfWidth + 1.0f) * 0.5f;
+	const float v = (1.0f - ty / flat.tanHalfHeight) * 0.5f;
+	if (u < 0.0f || u > 1.0f || v < 0.0f || v > 1.0f) {
+		return hit;  // past the picture's edge
+	}
+	hit.hit = true;
+	hit.pixelX = flat.pixelLeft + u * flat.pixelWidth;
+	hit.pixelY = flat.pixelTop + v * flat.pixelHeight;
+	hit.lengthMetres = t;
+	return hit;
 }
 
 // A held direction that repeats: once when it goes down, then again after

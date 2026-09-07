@@ -31,9 +31,37 @@ namespace {
 // convention - for the laser, where every point is in tracking space.
 NiPoint3 TrackingRotate(const Quaternion& q, const NiPoint3& v) { return Rotate(q, v); }
 
+// How far ahead of the flat picture's anchor the beam is drawn to end. The
+// picture itself is at infinity, so this is only where the beam stops; the
+// pixel it lands on is worked out from the head's view of that point and
+// does not depend on the figure.
+constexpr float kFlatLaserPlaneMetres = 2.0f;
+
 }  // namespace
 
+void HandMode::StepPointerHand(const HandModeFrame& f, bool rightTrigger, bool leftTrigger) {
+	// A pull, not a hold: the hand that pulls its trigger takes the pointer
+	// with it, and the pull that took it is also the click, so the first
+	// press after a switch lands where the new hand points a frame later.
+	const bool rightPulled = StepRisingEdge(m_rightPointEdge, f.right.valid && rightTrigger);
+	const bool leftPulled = StepRisingEdge(m_leftPointEdge, f.left.valid && leftTrigger);
+	if (rightPulled && !leftPulled) {
+		m_pointRight = true;
+	} else if (leftPulled && !rightPulled) {
+		m_pointRight = false;
+	}
+	// A hand that is not tracked cannot hold the pointer.
+	if (m_pointRight && !f.right.valid && f.left.valid) {
+		m_pointRight = false;
+	} else if (!m_pointRight && !f.left.valid && f.right.valid) {
+		m_pointRight = true;
+	}
+}
+
 void HandMode::Reset() {
+	m_pointRight = true;
+	m_rightPointEdge = ButtonEdge{};
+	m_leftPointEdge = ButtonEdge{};
 	m_rightTrigger = TriggerEdge{};
 	m_leftTrigger = TriggerEdge{};
 	m_rightTriggerEdge = ButtonEdge{};
@@ -207,6 +235,13 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		m_reachArmed = false;
 	}
 	in.menuMode = f.menuMode;
+	if (f.menuMode) {
+		StepPointerHand(f, in.rightTrigger, in.leftTrigger);
+	} else {
+		m_rightPointEdge = ButtonEdge{};
+		m_leftPointEdge = ButtonEdge{};
+	}
+	in.pointRight = m_pointRight;
 	r.controls = PlanHandControls(in, s.stickDeadZone);
 	r.controlsActive = f.right.valid || f.left.valid;
 	r.grabWanted = r.controls.grab;
@@ -311,9 +346,12 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 		pointHand = s.menuOnRight ? &f.left : &f.right;
 		pointRight = !s.menuOnRight;
 	} else if (f.menuMode) {
+		// The big quad, or the cinema screen behind it when there is none:
+		// the hand that last pulled its trigger points, the other one when
+		// that hand is not tracked.
 		quad = f.menuQuad;
-		pointHand = f.right.valid ? &f.right : &f.left;
-		pointRight = f.right.valid;
+		pointRight = m_pointRight ? f.right.valid : !f.left.valid;
+		pointHand = pointRight ? &f.right : &f.left;
 	}
 
 	if (!f.menuMode) {
@@ -372,6 +410,22 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 				}
 			}
 		}
+	} else if (f.flat.valid && pointHand != nullptr && pointHand->valid && f.cursorValid &&
+	           f.headValid) {
+		// No quad: the frame is a flat one and the picture hangs at infinity.
+		// The laser alone, no finger - there is nothing at arm's length to
+		// press. The pixel is the one the head sees the beam's end against.
+		m_poke = PokeState{};
+		const NiPoint3 pointing =
+			TrackingRotate(pointHand->orientation, NiPoint3{0.0f, 0.0f, -1.0f});
+		const FlatLaserHit hit = LaserOnFlatPicture(pointHand->position, pointing, f.headPosition,
+		                                            f.flat, kFlatLaserPlaneMetres);
+		if (hit.hit) {
+			r.laserHit = true;
+			r.cursorDx = CursorStep(f.cursorX, hit.pixelX, s.laserGain, s.laserMaxStep);
+			r.cursorDy = CursorStep(f.cursorY, hit.pixelY, s.laserGain, s.laserMaxStep);
+			r.laserLengthMetres = hit.lengthMetres;
+		}
 	} else {
 		m_poke = PokeState{};
 	}
@@ -408,6 +462,7 @@ HandModeResult HandMode::UpdateMenusOnly(const HandModeFrame& f, const HandSetti
 		in.rightValid = f.right.valid;
 		in.leftValid = f.left.valid;
 		in.rightTrigger = f.right.valid && StepTrigger(m_rightTrigger, f.right.trigger);
+		in.leftTrigger = f.left.valid && StepTrigger(m_leftTrigger, f.left.trigger);
 		in.rightMenuButton = StepRisingEdge(
 			m_rightMenu,
 			f.right.valid && ButtonDown(f.right.buttonsPressed, openvr::kButtonApplicationMenu));
@@ -415,6 +470,8 @@ HandModeResult HandMode::UpdateMenusOnly(const HandModeFrame& f, const HandSetti
 			m_leftMenu,
 			f.left.valid && ButtonDown(f.left.buttonsPressed, openvr::kButtonApplicationMenu));
 		in.menuMode = true;
+		StepPointerHand(f, in.rightTrigger, in.leftTrigger);
+		in.pointRight = m_pointRight;
 		r.controls = PlanHandControls(in, s.stickDeadZone);
 		r.controlsActive = f.right.valid || f.left.valid;
 	} else {
@@ -423,8 +480,13 @@ HandModeResult HandMode::UpdateMenusOnly(const HandModeFrame& f, const HandSetti
 		if (f.right.valid) {
 			StepTrigger(m_rightTrigger, f.right.trigger);
 		}
+		if (f.left.valid) {
+			StepTrigger(m_leftTrigger, f.left.trigger);
+		}
 		m_rightMenu = ButtonEdge{};
 		m_leftMenu = ButtonEdge{};
+		m_rightPointEdge = ButtonEdge{};
+		m_leftPointEdge = ButtonEdge{};
 	}
 	PointAtMenu(f, s, r);
 	return r;
