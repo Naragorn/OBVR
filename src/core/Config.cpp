@@ -439,6 +439,19 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.aimInThirdPerson =
 		ReadBool("Look", "AimInThirdPerson", config.aimInThirdPerson, path);
 	config.aimAtSource = ReadBool("Look", "AimAtSource", config.aimAtSource, path);
+	// AimAtSource writes the player's pitch from the gaze, and with the
+	// vertical look unblocked the engine builds that pitch into the camera -
+	// on top of the headset's own, so every look up or down is counted
+	// twice and a turn of the head tips the view. Seen in a headset on
+	// 2026-09-07 after a laser click had switched BlockVerticalLook off:
+	// "hochschauen zu weit hoch, runter zu weit runter, links/rechts dreht
+	// die Sicht hoch". The two cannot be combined, so the block wins.
+	if (config.aimAtSource && !config.look.blockVerticalLook) {
+		config.look.blockVerticalLook = true;
+		OBVR_LOG("Config: Look.BlockVerticalLook=0 is overridden to 1 because AimAtSource=1 "
+		         "writes the pitch the headset already supplies - unblocked, the camera "
+		         "would carry it twice");
+	}
 	config.thirdPersonAimVisualPercent =
 		ReadFloat("Look", "ThirdPersonAimVisualPercent",
 		          config.thirdPersonAimVisualPercent, path);

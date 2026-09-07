@@ -36,8 +36,11 @@ bool InterfaceCursorPosition(float& x, float& y) {
 	}
 	const float* pos = reinterpret_cast<const float*>(manager + addr::kInterfaceCursorPosOffset);
 	// Finite and inside any screen the copy could describe; a NaN fails
-	// every comparison and lands here too.
-	if (!(pos[0] >= -1.0f && pos[0] <= 16384.0f && pos[1] >= -1.0f && pos[1] <= 16384.0f)) {
+	// every comparison and lands here too. A little above the top is
+	// allowed: at the main menu the game parks the cursor at (0, -16),
+	// measured 2026-09-07, and a laser that could not read it there could
+	// not walk it onto the buttons.
+	if (!(pos[0] >= -64.0f && pos[0] <= 16384.0f && pos[1] >= -64.0f && pos[1] <= 16384.0f)) {
 		return false;
 	}
 	x = pos[0];

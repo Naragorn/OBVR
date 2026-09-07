@@ -2146,6 +2146,11 @@ void SaveChangedSetting(const ui::SettingDefinition* definition, const Config& c
 	                  definition->trueWord, text, sizeof(text));
 
 	if (SaveSetting(definition->iniSection, definition->iniKey, text)) {
+		// Every write, named: a setting changed by a laser click that nobody
+		// meant is otherwise found a day later by reading the INI, as the
+		// 2026-09-07 run's BlockVerticalLook and PositionalTracking were.
+		OBVR_LOG("Menu: wrote %s.%s=%s to OBVR.ini", definition->iniSection, definition->iniKey,
+		         text);
 		return;
 	}
 
