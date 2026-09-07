@@ -322,7 +322,7 @@ bool HeadsetRenderer::SubmitMono(const vr::OpenVRBackend& backend, const FrameRe
 	// against its own renderer, and the symptom is a frozen game with an empty
 	// log.
 	GameFrame frame;
-	if (!frame.Acquire(request.gameDevice)) {
+	if (!frame.Acquire(request.gameDevice, &m_resolve)) {
 		return false;
 	}
 
@@ -765,6 +765,7 @@ void HeadsetRenderer::Reset() {
 	m_gameFrameChecked = false;
 	m_gameFrameUsable = false;
 	m_mirror.Destroy();
+	m_resolve.Destroy();
 	m_mirrorChecked = false;
 	m_mirrorUsable = false;
 	m_mirrorUsedCamera = false;

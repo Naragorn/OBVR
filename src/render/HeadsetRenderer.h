@@ -4,6 +4,7 @@
 #include "render/EyeMirror.h"
 #include "render/EyeTextures.h"
 #include "render/GameDevice.h"
+#include "render/GameFrame.h"
 #include "render/SubmitPolicy.h"
 #include "vr/OpenVRTypes.h"
 
@@ -249,6 +250,10 @@ private:
 	// frame that wants them, because the back buffer has to exist before its
 	// size and format can be copied.
 	EyeMirror m_mirror;
+
+	// The single-sample copy a multisampled back buffer is submitted through
+	// on the mono path; see FrameResolve.
+	FrameResolve m_resolve;
 	bool m_mirrorChecked = false;
 	bool m_mirrorUsable = false;
 

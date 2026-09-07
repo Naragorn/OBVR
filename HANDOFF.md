@@ -2147,6 +2147,17 @@ and FEAR2VR, cited above.
   fits both (the tester's numbers come out at 1562x878), the mirror logs the shrink, and a
   flat copy that still fails falls back to mono with a log line instead of the pattern. Why
   the pattern drew a 105 on one eye only is not known; it is no longer reached that way.
+- ~~The game's antialiasing stopped the headset at the first world frame~~ - fixed after
+  0.1.2, same tester (2026-09-07): with the launcher's 8x antialiasing the back buffer is a
+  multisampled image ("back buffer ... samples=8 ... NOT submittable as it stands"), the
+  mono submit of the first world frame refused it and fell to the test pattern, and the
+  compositor answered "105 (left 0, right 105)" once more - which now reads as the
+  compositor's general "this frame's textures are refused" pair, surfacing on the eye that
+  completes the frame, rather than anything about the right eye. `FrameResolve`
+  (`render/GameFrame`) resolves the back buffer into a single-sample texture of its size and
+  format with a whole-surface `StretchRect` - the shape DXVK resolves directly - and the
+  mono path submits that copy. The eye copies never had the problem: their `StretchRect`
+  into single-sample textures was already a resolve.
 
 ### The INI switch
 

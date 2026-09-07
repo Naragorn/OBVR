@@ -194,7 +194,9 @@ bool IsSubmittableImage(const BackBufferImage& image) {
 	}
 
 	// Multisampled images are a separate path in the runtime, and OBVR does
-	// not walk it. A back buffer normally has one sample.
+	// not walk it: a back buffer with more than one sample - the game's
+	// antialiasing - is resolved into a single-sample copy first (see
+	// FrameResolve) and that copy is what gets submitted.
 	if (image.sampleCount != 1) {
 		return false;
 	}

@@ -122,6 +122,11 @@ constexpr UInt32 kUsageRenderTarget = 0x00000001;
 // in any other pool, and the runtime returns D3DERR_INVALIDCALL if it is.
 constexpr UInt32 kPoolDefault = 0;
 
+// D3DMULTISAMPLE_NONE (d3d9types.h). Anything else in D3DSURFACE_DESC's
+// multiSampleType - NONMASKABLE is 1, the sample counts are 2 to 16 - means
+// the surface is a multisampled image, which the compositor will not take.
+constexpr UInt32 kMultiSampleNone = 0;
+
 // D3DTEXF_NONE (d3d9types.h). The right filter precisely because there is no
 // scaling - source and destination are the same size, so anything else would
 // be resampling a picture into itself.

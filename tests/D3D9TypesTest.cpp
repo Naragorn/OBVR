@@ -129,6 +129,8 @@ void TestSurfaceDesc() {
 	Check(offsetof(SurfaceDesc, usage) == 8, "then Usage");
 	Check(offsetof(SurfaceDesc, pool) == 12, "then Pool");
 	Check(offsetof(SurfaceDesc, multiSampleType) == 16, "then MultiSampleType");
+	Check(obvr::render::d3d9::kMultiSampleNone == 0,
+	      "and D3DMULTISAMPLE_NONE is 0, so any other value there means samples");
 	Check(offsetof(SurfaceDesc, multiSampleQuality) == 20, "then MultiSampleQuality");
 	Check(offsetof(SurfaceDesc, width) == 24, "then Width");
 	Check(offsetof(SurfaceDesc, height) == 28, "and Height last");
