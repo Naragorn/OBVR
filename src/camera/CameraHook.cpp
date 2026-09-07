@@ -326,6 +326,8 @@ long long g_handClockLast = 0;
 bool g_rightHandTracked = false;
 bool g_leftHandTracked = false;
 bool g_flatLaserTargetReported = false;
+UInt32 g_flatLaserLinesLeft = 6;
+bool g_flatCursorInvalidReported = false;
 bool g_handBlocking = false;
 bool g_handReachBack = false;
 UInt32 g_handSwingLinesLeft = 20;
@@ -507,6 +509,28 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		strike.boundFactor = config.hands.hitBoundFactor;
 		strike.padUnits = config.hands.hitPadUnits;
 		game::StrikeByMotion(strike);
+	}
+
+	// What the laser asked of the cursor on a flat frame, a few times, and
+	// the cursor's answer a frame later: whether the hit lands where it
+	// should, whether the cursor can be read at all, and whether the mouse
+	// motion moves it. The first headset run saw the beam and no cursor.
+	if (frame.flat.valid && g_flatLaserLinesLeft > 0) {
+		if (!frame.cursorValid) {
+			if (!g_flatCursorInvalidReported) {
+				g_flatCursorInvalidReported = true;
+				OBVR_LOG("Hands: the game's cursor position cannot be read on this flat frame, "
+				         "so the laser has nothing to walk");
+			}
+		} else if (g_hand.laserHit) {
+			--g_flatLaserLinesLeft;
+			OBVR_LOG("Hands: flat laser hit pixel %.0f,%.0f - cursor at %.0f,%.0f, step %d,%d "
+			         "(controls %s)",
+			         static_cast<double>(g_hand.laserPixelX),
+			         static_cast<double>(g_hand.laserPixelY), static_cast<double>(frame.cursorX),
+			         static_cast<double>(frame.cursorY), g_hand.cursorDx, g_hand.cursorDy,
+			         g_hand.controlsActive ? "active" : "INACTIVE - nothing is sent");
+		}
 	}
 
 	if (g_hand.controlsActive) {
@@ -2124,11 +2148,14 @@ vr::StickNavVerdict TakeHandMenuNavigation() {
 // met the pointing hand's ray with the panel's quad; which row that pixel
 // is on is the painter's answer, since the painter laid the rows out.
 // Both of OBVR's menus have the same shape here, hence the template.
+SInt32 g_panelHoveredRow = -1;
+
 template <typename Menu>
 void PointAtPanel(Menu& menu, Config& config, const ui::MenuItem* items,
                   const char* const* categories, UInt32 count) {
 	if (!g_hand.settingsPointerValid) {
 		g_hand.settingsClick = false;
+		g_panelHoveredRow = -1;
 		return;
 	}
 	UInt32 canvasWidth = 0;
@@ -2141,9 +2168,16 @@ void PointAtPanel(Menu& menu, Config& config, const ui::MenuItem* items,
 	const bool click = g_hand.settingsClick;
 	g_hand.settingsClick = false;
 	if (row < 0) {
+		g_panelHoveredRow = -1;
 		return;
 	}
-	menu.Hover(static_cast<UInt32>(row));
+	// The highlight follows the beam onto a NEW row, and only then: hovered
+	// every frame it would pull the highlight straight back from wherever
+	// the stick just moved it - the first headset run could not scroll.
+	if (row != g_panelHoveredRow) {
+		g_panelHoveredRow = row;
+		menu.Hover(static_cast<UInt32>(row));
+	}
 	// Only the row that actually took the highlight is clicked: a text row
 	// the walkthrough refuses stays as it is.
 	if (click && menu.State().selected == static_cast<UInt32>(row)) {

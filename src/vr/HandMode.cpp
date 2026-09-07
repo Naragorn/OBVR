@@ -37,6 +37,12 @@ NiPoint3 TrackingRotate(const Quaternion& q, const NiPoint3& v) { return Rotate(
 // does not depend on the figure.
 constexpr float kFlatLaserPlaneMetres = 2.0f;
 
+// The share of OBVR's own panel, top and bottom, that scrolls the list
+// while the beam rests on it: the title band and the help band, where no
+// row is drawn (two lines of nine font pixels at scale three, plus the
+// margin, of 768 - a little under a tenth).
+constexpr float kPanelScrollBand = 0.09f;
+
 }  // namespace
 
 void HandMode::StepPointerHand(const HandModeFrame& f, bool rightTrigger, bool leftTrigger) {
@@ -325,6 +331,19 @@ void HandMode::SteerSettingsMenu(const HandModeFrame& f, const HandSettings& s,
 			r.settingsPointerValid = true;
 			r.settingsPointerX = hit.pixelX;
 			r.settingsPointerY = hit.pixelY;
+			// The panel's top and bottom bands - the title and the help line,
+			// where no row is - scroll the list while the beam rests on them:
+			// a notch, then repeats, the way the stick's wheel does.
+			const bool onTop = hit.pixelY < f.settingsPixelsHeight * kPanelScrollBand;
+			const bool onBottom = hit.pixelY > f.settingsPixelsHeight * (1.0f - kPanelScrollBand);
+			if (StepRepeat(m_scrollUp, onTop, f.dtSeconds, s.scrollFirstDelaySeconds,
+			               s.scrollIntervalSeconds)) {
+				r.settingsNav.up = true;
+			}
+			if (StepRepeat(m_scrollDown, onBottom, f.dtSeconds, s.scrollFirstDelaySeconds,
+			               s.scrollIntervalSeconds)) {
+				r.settingsNav.down = true;
+			}
 			const NiPoint3 normal = Cross(f.settingsQuad.right, f.settingsQuad.up);
 			const float along = Dot(pointing, normal);
 			if (along < -0.0001f || along > 0.0001f) {
@@ -372,8 +391,12 @@ void HandMode::SteerSettingsMenu(const HandModeFrame& f, const HandSettings& s,
 	}
 	r.controlsActive = f.right.valid || f.left.valid;
 	m_poke = PokeState{};
-	m_scrollUp = RepeatState{};
-	m_scrollDown = RepeatState{};
+	// The scroll bands keep their repeat state only while the beam rests on
+	// the panel; off it, a fresh notch waits for the next visit.
+	if (!r.settingsPointerValid) {
+		m_scrollUp = RepeatState{};
+		m_scrollDown = RepeatState{};
+	}
 }
 
 void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandModeResult& r) {
@@ -453,6 +476,8 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 				            quad.width, quad.height, f.layerPixelsWidth, f.layerPixelsHeight);
 			if (hit.hit) {
 				r.laserHit = true;
+				r.laserPixelX = hit.pixelX;
+				r.laserPixelY = hit.pixelY;
 				r.cursorDx = CursorStep(f.cursorX, hit.pixelX, s.laserGain, s.laserMaxStep);
 				r.cursorDy = CursorStep(f.cursorY, hit.pixelY, s.laserGain, s.laserMaxStep);
 				// The way to the quad along the ray: the plane's distance over
@@ -479,6 +504,8 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 		                                            f.flat, kFlatLaserPlaneMetres);
 		if (hit.hit) {
 			r.laserHit = true;
+			r.laserPixelX = hit.pixelX;
+			r.laserPixelY = hit.pixelY;
 			r.cursorDx = CursorStep(f.cursorX, hit.pixelX, s.laserGain, s.laserMaxStep);
 			r.cursorDy = CursorStep(f.cursorY, hit.pixelY, s.laserGain, s.laserMaxStep);
 			r.laserLengthMetres = hit.lengthMetres;

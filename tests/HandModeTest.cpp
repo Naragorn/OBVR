@@ -820,6 +820,32 @@ void TestLaserOnOwnPanel() {
 	r = mode.Update(frame, settings);
 	Check(r.settingsNav.right, "A is Right");
 	frame.right.buttonsPressed = 0;
+
+	// The beam on the panel's bottom band scrolls down: a notch at once,
+	// quiet through the first delay, then repeats; the top band scrolls up.
+	// Down and right of the eyes by enough to land in the help band: the
+	// quad is 0.6 high a metre out, so 0.28 below is 7% from the bottom.
+	frame.dtSeconds = 0.05f;
+	frame.right.position = NiPoint3{0.0f, -0.28f, 0.0f};
+	r = mode.Update(frame, settings);
+	Check(r.settingsPointerValid && r.settingsPointerY > 700.0f, "the beam rests on the help band");
+	Check(r.settingsNav.down && !r.settingsNav.up, "and that is a notch down");
+	r = mode.Update(frame, settings);
+	Check(!r.settingsNav.down, "quiet through the first delay");
+	for (int i = 0; i < 12; ++i) {
+		r = mode.Update(frame, settings);
+		if (r.settingsNav.down) {
+			break;
+		}
+	}
+	Check(r.settingsNav.down, "then it repeats");
+	frame.right.position = NiPoint3{0.0f, 0.28f, 0.0f};
+	r = mode.Update(frame, settings);
+	Check(r.settingsPointerValid && r.settingsPointerY < 70.0f && r.settingsNav.up,
+	      "the title band is a notch up");
+	frame.right.position = NiPoint3{0.0f, 0.0f, 0.0f};
+	r = mode.Update(frame, settings);
+	Check(!r.settingsNav.up && !r.settingsNav.down, "the middle scrolls nothing");
 }
 
 int main() {

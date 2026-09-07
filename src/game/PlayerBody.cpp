@@ -12,6 +12,7 @@ namespace obvr::game {
 namespace {
 
 constexpr const char* kHeadName = "Bip01 Head";
+constexpr const char* kSkeletonName = "Bip01";
 constexpr const char* kLeftClavicleName = "Bip01 L Clavicle";
 constexpr const char* kRightClavicleName = "Bip01 R Clavicle";
 constexpr UInt16 kHiddenBit = 0x0001;
@@ -59,6 +60,8 @@ struct Reported {
 	bool root = false;
 	bool method = false;
 	bool head = false;
+	bool skeleton = false;
+	bool skeletonMoved = false;
 	bool leftClavicle = false;
 	bool rightClavicle = false;
 	bool parent = false;
@@ -164,30 +167,43 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 		return false;
 	}
 
-	// Stand the root where the head lands under the headset. Written under
-	// the root's parent, as every node write in OBVR is, and propagated with
+	// Stand the skeleton where the head lands under the headset. The
+	// SKELETON, not the player's root node: the camera hangs under that root
+	// too (xOBSE finds Camera01 from it), so moving the root moved the
+	// camera with the body, and the first headset run had the view lurch
+	// with every look up or down. Bip01 is the skeleton's top bone, the
+	// camera's sibling; moving it moves the body and nothing else. Written
+	// under its parent, as every node write in OBVR is, and propagated with
 	// the engine's own pass so the whole skeleton follows.
-	NiAVObject* const parent = root->parent;
-	if (!LooksLikeObject(parent)) {
-		if (!g_reported.parent) {
+	NiAVObject* const skeleton = NamedNode(root, kSkeletonName, g_reported.skeleton);
+	NiAVObject* const parent = skeleton != nullptr ? skeleton->parent : nullptr;
+	if (skeleton == nullptr || !LooksLikeObject(parent)) {
+		if (skeleton != nullptr && !g_reported.parent) {
 			g_reported.parent = true;
 			OBVR_LOG("Body: node \"%s\" has no readable parent - the body is shown where "
 			         "the engine has it, not under the headset",
-			         root->name);
+			         skeleton->name);
 		}
 	} else {
 		BodyRootInput in;
 		in.cameraWorld = frame.cameraWorld;
 		in.headWorld = head->worldTransform.pos;
-		in.rootWorld = root->worldTransform.pos;
-		in.rootWorldRot = root->worldTransform.rot;
-		in.rootWorldScale = root->worldTransform.scale;
+		in.rootWorld = skeleton->worldTransform.pos;
+		in.rootWorldRot = skeleton->worldTransform.rot;
+		in.rootWorldScale = skeleton->worldTransform.scale;
 		in.eyeOffsetUnits = frame.eyeOffsetUnits;
 		in.parentRot = parent->worldTransform.rot;
 		in.parentPos = parent->worldTransform.pos;
 		in.parentScale = parent->worldTransform.scale;
-		root->localTransform.pos = BodyRootLocalPos(in);
-		UpdateNodeTransforms(root);
+		skeleton->localTransform.pos = BodyRootLocalPos(in);
+		UpdateNodeTransforms(skeleton);
+		if (!g_reported.skeletonMoved) {
+			g_reported.skeletonMoved = true;
+			OBVR_LOG("Body: \"%s\" at %08X under \"%s\" is what moves under the headset; the "
+			         "player root \"%s\" stays where the engine puts it",
+			         skeleton->name, reinterpret_cast<UInt32>(skeleton),
+			         NameLooksReal(parent->name) ? parent->name : "?", root->name);
+		}
 	}
 
 	// The head and the animated arms are collapsed AFTER the move, so the
@@ -208,7 +224,7 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 	if (!g_reported.shown) {
 		g_reported.shown = true;
 		OBVR_LOG("Body: the third-person skeleton \"%s\" at %08X is shown in first person, "
-		         "its root moved under the headset each frame (eyes %.1f forward, %.1f up "
+		         "stood under the headset each frame (eyes %.1f forward, %.1f up "
 		         "from %s), head %s, clavicles %s",
 		         root->name, reinterpret_cast<UInt32>(root),
 		         static_cast<double>(frame.eyeOffsetUnits.y),

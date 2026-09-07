@@ -191,6 +191,9 @@ struct HandModeResult {
 	bool laserVisible = false;
 	bool laserRight = true;
 	float laserLengthMetres = 0.0f;
+	// The pixel the laser's hit asked the cursor to go to, for the log.
+	float laserPixelX = 0.0f;
+	float laserPixelY = 0.0f;
 
 	// The mouse wheel in a menu, in notches this frame: up positive.
 	int menuScroll = 0;

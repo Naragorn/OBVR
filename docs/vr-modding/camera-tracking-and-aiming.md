@@ -234,7 +234,9 @@ straight-line distance doubles the crosshair on a face a metre away), eased at
 
 `BUILT, NOT SEEN IN A HEADSET` (2026-09-07). `[Body] Visible=1` shows the player's own
 body in first person: `PlayerBody.cpp` takes the hidden bit (`flags & 1`) off the
-third-person root each frame, stands the root where `Bip01 Head` plus an eye offset
+third-person root each frame, stands the skeleton (`Bip01`, not the player root - the camera
+hangs under the root as well, and moving the root moved the view with the body, which the
+first headset run felt as a lurch on every look up or down) where `Bip01 Head` plus an eye offset
 (`EyeForward`/`EyeUp`, Enhanced Camera's 14/6) lands on the cyclopean camera
 (`BodyPlacement.h`, absolute rather than Enhanced Camera's running increment, so it
 cannot drift), propagates with `kUpdateNodeTransforms`, and then collapses `Bip01
