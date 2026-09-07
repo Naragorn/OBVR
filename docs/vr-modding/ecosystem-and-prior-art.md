@@ -246,6 +246,69 @@ Quake, Doom 3 BFG, Half-Life 2 (the 32-bit HL2 VR mod is the reason the Proton 3
 OpenXR request exists) - not reviewed in depth; source ports are the model when source
 exists and irrelevant to OBVR's constraint (no source).
 
+### Enhanced Camera 1.4b (LogicDragon) - the first-person body in Oblivion itself
+
+`Scope: Oblivion`. Read on 2026-09-07 from the source that ships on the Nexus files tab
+(mod 44337, "Enhanced Camera Source-44337-1-4b", mirrored at
+https://github.com/figlinafik/OblivionEnhagedCam). One file, `main.cpp`, 1832 lines, plus
+a 3x3 matrix helper. Licence text on the Nexus page: "You can do whatever you want with
+this mod, just give me credits if you use any part of the mod." Not VR, and no inverse
+kinematics anywhere in it, but it is the only published answer to "show the player's
+own body in first person", which a standing mode needs before any arm tracking.
+
+- **The trick:** Oblivion keeps two skeletons for the player, the first-person one
+  (`PlayerCharacter::firstPersonNiNode`, arms only) and the third-person one
+  (`niNode`, the whole body). Enhanced Camera leaves the camera in first person but
+  clears the hide flag (`m_flags & 1`) on the third-person root, hides the
+  first-person root, scales `Bip01 Head` and both `Bip01 * Clavicle` nodes to zero
+  (`UpdateSkeletonNodes`) so the head and the animated third-person arms do not sit in
+  the picture, and moves the third-person root each frame so its head lands under the
+  first-person camera (`TranslateThirdPerson`: root += camera1st.world - (head3rd.world +
+  R_root * fCameraPos)). `RotateArms` optionally pitches the clavicles with `rotX` when
+  a spell, attack, block, or torch is active, working in root-relative bone space
+  (`RotateNode`: node.local = inv(parent.world) * Rz(rad) * node.world, both without
+  the root).
+- **Its hook sites (Oblivion 1.2.0.416), none of which OBVR touches except the first:**
+  `0x0066BE6E` camera update (the site OBVR needs; this is the whole incompatibility,
+  see [open-questions-and-known-issues.md](open-questions-and-known-issues.md));
+  `0x006650C9` after the POV switch call `0x005E5480` (`UpdateSwitchPOV`, root flags);
+  `0x006043DC` the animation apply, wrapping `0x00471F20` (`ApplyAnimData`, "applies
+  animData to skeleton", called with `ActorAnimData*`) for the player only
+  (`UpdateActor`); `0x00603AAA` head-tracking IK, disabled for the player in first
+  person; `0x0065F4E2` player fade-out; `0x0070C159` collision apply and `0x007492BE`
+  particle update, each with a global flag to skip one call; `0x0040C91B` inside the
+  scene render around the shadow call `0x004073D0`; `0x0066C63D`, `0x0066CEEE`,
+  `0x0066CF5D`, `0x0066CCBD`, `0x00600BCC` the forced third-person switches (chair,
+  mount, dismount, vampire feed, death) turned into a "fake first person"; and byte
+  patches at `0x00664FC6`/`0x00664FFB` (load the third-person body in first person),
+  `0x00407519` (first-person shadows), `0x009E8192`/`0x009E8162`/`0x009E7DB2`
+  (looking-down and vanity-distance constants redirected to its own floats).
+- **Globals it reads:** `0x00B3BB0C` first-person camera node pointer, `0x00B3BB04`
+  vanity-mode byte, `0x00B3BB24` third-person zoom, `0x00B13FCC` dialogue zoom percent,
+  `0x00601B80` "evp on the player"; `HighProcess` bytes `unk114` combat mode, `unk11C`
+  knocked, `unk11D` sit/sleep state; `PlayerCharacter+0x71C/0x71D` sit-down and get-up
+  animation flags. All from the 2013 OBSE headers; OBVR verifies its own offsets from
+  the binary (see [engine-behavior.md](engine-behavior.md)) and would have to do the
+  same for these before use.
+- **What OBVR would take and what it would not:** the body part (root flags, node
+  scaling, per-frame root translation under the camera, the ApplyAnimData replay after
+  a skeleton edit, the head-tracking disable) is exactly the fundament for a standing
+  mode and for task #43. The camera part is not needed: OBVR already owns the camera
+  site and places it from the headset. `RotateArms` is a monitor-era substitute for arm
+  tracking and would be replaced by controller poses. The magic-node fix (`magicNode`
+  moved to the first-person hand) matters because OBVR's spell aim already turns the
+  caster ([camera-tracking-and-aiming.md](camera-tracking-and-aiming.md)).
+- **Known coexistence trap:** its shadow hook at `0x0040C91B` collides with Oblivion
+  Reloaded's, which is why XJDHDR's fork made it conditional on `bFirstPersonShadows`
+  (https://github.com/XJDHDR/game-mods, readme in "Enhanced Camera - no shadow hook").
+  OBVR's scene-render hook is at the function entry `0x0040C830`, so that one would not
+  collide, but the ApplyAnimData replay runs inside the scene render and would meet
+  OBVR's dual pass; whether the second pass needs the replay too is `UNKNOWN`.
+
+Oblivion Reloaded's "Immersive Camera / Enhanced Camera" feature (TESReloaded10,
+GPL-3.0-or-later with a section 7 naming clause, https://github.com/llde/TESReloaded10)
+covers the same ground inside a much larger plugin; not read in depth.
+
 ## Comparison
 
 `Scope: General VR`. Ratings are qualitative and from the sources above plus OBVR's own
@@ -268,6 +331,10 @@ mono (the fallback) magnified by design.
 
 - UEVR's **Skip Tick / Skip Draw** vocabulary for what a sequential second render must
   skip; OBVR's version is "zero the frame delta and replay the caches".
+- Enhanced Camera's **third-person body under a first-person camera** (root flags, head
+  and clavicle scaled to zero, root translated so the head sits under the camera,
+  ApplyAnimData replayed after each edit) as the starting point for a standing mode with
+  a visible body; licence is attribution only.
 - FEAR2VR's **64-bit host over shared memory** when a 32-bit runtime is not available.
 - BioShock VR's **dirty-flag discipline** for skeleton writes (write, then clear the
   dirty flag so the engine does not re-evaluate over it) - a possible alternative to
