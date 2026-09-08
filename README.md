@@ -103,7 +103,13 @@ objects by hand, real finger tracking (`IVRInput`), Linux under Proton.
 - [xOBSE](https://github.com/llde/xOBSE/releases/latest) 22.13 or newer.
 - **SteamVR**, and a headset it drives. OBVR talks OpenVR; there is no OpenXR path, and
   the reason is bitness: a 32-bit process needs a 32-bit runtime, and SteamVR's OpenVR
-  has always shipped one. See [Why OpenVR](#why-openvr).
+  has always shipped one. See [Why OpenVR](#why-openvr). **Meta headsets** (Rift, Quest
+  through Link, Air Link or Virtual Desktop) reach OBVR the same way every other SteamVR
+  title does: SteamVR installed from Steam (Library, Tools), "Unknown Sources" switched on
+  in the Meta/Oculus PC app (Settings, General), the Meta app left running, SteamVR started
+  before the game. There is nothing to switch inside OBVR; a headset that only ever ran
+  OpenXR titles will have skipped the SteamVR step. Quest owners can also use Steam Link,
+  which needs no Meta PC app at all.
 - **DXVK** as the game's `d3d9.dll`. This is not optional. OpenVR's `Submit` has no entry
   for a Direct3D 9 texture, and DXVK is what turns Oblivion's frame into a Vulkan image the
   compositor accepts. Without it OBVR says so in the log and shows a test pattern. The

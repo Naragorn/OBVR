@@ -60,7 +60,7 @@ Not built at all: snap turning, teleport, room-scale locomotion, physical intera
 [list]
 [*]Oblivion [b]1.2.0.416[/b], 32-bit. Every edition with this executable version: the original release with the final patch and the Game of the Year edition alike. Steam (tested), GOG (untested), retail disc with the final patch (untested). OBVR checks the version and stays inactive on any other.
 [*][url=https://www.nexusmods.com/oblivion/mods/37952]xOBSE[/url] 22.13 or newer.
-[*][b]SteamVR[/b], and a headset it drives. OBVR talks OpenVR; there is no OpenXR path, because a 32-bit game needs a 32-bit runtime and SteamVR's OpenVR ships one.
+[*][b]SteamVR[/b], and a headset it drives. OBVR talks OpenVR; there is no OpenXR path, because a 32-bit game needs a 32-bit runtime and SteamVR's OpenVR ships one. Meta headsets (Rift, Quest via Link, Air Link or Virtual Desktop) work like with any SteamVR title: SteamVR installed from Steam, "Unknown Sources" on in the Meta PC app, SteamVR started before the game. Quest owners can also use Steam Link, which needs no Meta PC app.
 [*][b]DXVK[/b] as the game's d3d9.dll. Not optional: it is what turns Oblivion's frame into a Vulkan image the SteamVR compositor accepts. Without it OBVR says so in the log and shows a test pattern.
 [*]Windows 10 or 11.
 [/list]
