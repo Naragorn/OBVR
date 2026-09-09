@@ -191,14 +191,20 @@ Suggested shots, in order:
 7. A side-by-side of both eye textures (the SteamVR mirror in "both eyes" mode) as
    proof of real stereo.
 
+Promotional image ready to upload from the repository: `obvr.png`. It shows an
+original-game-style Imperial Legion guard wearing a Quest 3 headset, with the caption
+"Stop right there criminal scum! This is Oblivion in VR!". Use it as an additional media
+image or header only if Nexus accepts the square format; the in-game 16:9 captures above
+remain the primary screenshots.
+
 Header: a wide crop of a landscape shot.
 
 ## Tags
 
 Pick from the list the form offers; the ones that fit OBVR's content are the VR,
-camera, user interface and utility kind. Do not tag generative AI: none was used for
-the mod's assets or images. (The exact tag names on Oblivion Nexus were not checked
-for this file.)
+camera, user interface and utility kind. The promotional `obvr.png` image is AI-generated
+and is not part of the mod; disclose or tag it according to Nexus's current media policy.
+(The exact tag names on Oblivion Nexus were not checked for this file.)
 
 ## Publishing checklist
 

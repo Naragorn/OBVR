@@ -7,6 +7,8 @@ Guiding idea: *Oblivion stays Oblivion.* OBVR does not replace gameplay. It puts
 stereo VR on top of the game's own camera and render pipeline, as an xOBSE plugin, and
 leaves the game exactly as it was on a machine without a headset.
 
+![An Imperial Legion guard wearing a Quest 3 headset](obvr.png)
+
 ```
 Vanilla Oblivion camera
         ×
