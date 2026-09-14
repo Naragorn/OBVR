@@ -177,6 +177,14 @@ To check that everything is in place, `OBVR.log` opens with the OBVR version and
 xOBSE and Oblivion versions found, and says further down whether DXVK answered ("DXVK")
 and whether SteamVR was reached ("OpenVR").
 
+### Disable the Steam Overlay (required)
+
+**You must disable the Steam Overlay before playing OBVR.** In Steam, open
+**Settings > In Game** and turn off **Enable the Steam Overlay while in-game**.
+You can also disable it specifically for Oblivion: in your Steam Library,
+right-click **Oblivion > Properties > General** and turn off the same option.
+Restart Oblivion after changing the setting.
+
 ### Mod Organizer 2
 
 MO2 virtualises `Data` and nothing else. xOBSE's loader files live in the game root and
