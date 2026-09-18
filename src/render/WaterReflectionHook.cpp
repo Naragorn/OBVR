@@ -24,7 +24,29 @@ const UInt8 kEntry[addr::kWaterRenderReflectionsEntryLength] = {
 using RenderFn = void(__fastcall*)(void*, void*, NiAVObject*, void*);
 RenderFn g_original = nullptr;
 bool g_reuseReported = false;
+bool g_captureCacheValid = false;
+bool g_cacheReuseReported = false;
+NiTransform g_captureCacheWorld{};
 constexpr float kCaptureYawDegrees = 60.0f;
+
+bool WaterCaptureTransformMatches(const NiTransform& left, const NiTransform& right) {
+	constexpr float kEpsilon = 1.0e-3f;
+	if (!std::isfinite(left.scale) || !std::isfinite(right.scale) ||
+	    !std::isfinite(left.pos.x) || !std::isfinite(right.pos.x) ||
+	    !std::isfinite(left.pos.y) || !std::isfinite(right.pos.y) ||
+	    !std::isfinite(left.pos.z) || !std::isfinite(right.pos.z) ||
+	    std::fabs(left.scale - right.scale) > kEpsilon ||
+	    std::fabs(left.pos.x - right.pos.x) > kEpsilon ||
+	    std::fabs(left.pos.y - right.pos.y) > kEpsilon ||
+	    std::fabs(left.pos.z - right.pos.z) > kEpsilon) {
+		return false;
+	}
+	for (unsigned row = 0; row < 3; ++row)
+		for (unsigned column = 0; column < 3; ++column)
+			if (std::fabs(left.rot.data[row][column] - right.rot.data[row][column]) > kEpsilon)
+				return false;
+	return true;
+}
 
 class RestoreCameraTransforms {
 public:
@@ -54,6 +76,7 @@ void __fastcall Hooked(void* self, void* edx, NiAVObject* camera, void* shadowSc
 		config.stableWaterReflections, config.waterReflectionMode,
 		WaterReprojectionReady(), camera != nullptr, transformsValid);
 	if (!stable) {
+		g_captureCacheValid = false;
 		SetWaterCaptureProjectionScale(1.0f, 1.0f);
 		SetWaterReflectionCapture(NiTransform{}, false);
 		g_original(self, edx, camera, shadowScene);
@@ -67,6 +90,17 @@ void __fastcall Hooked(void* self, void* edx, NiAVObject* camera, void* shadowSc
 		}
 		return;
 	}
+	if (CanReuseWaterCapture(
+			g_captureCacheValid, WaterReflectionTexturesReady(),
+			WaterCaptureTransformMatches(stableWorld, g_captureCacheWorld))) {
+		NoteWaterReflectionReused();
+		if (!g_cacheReuseReported) {
+			g_cacheReuseReported = true;
+			OBVR_LOG("Water reflection: cached captures reused while body camera is unchanged");
+		}
+		return;
+	}
+	g_cacheReuseReported = false;
 
 	SetWaterCaptureProjectionScale(1.0f, 1.0f);
 	const float yaw[kWaterReflectionCaptureCount] = {
@@ -103,6 +137,12 @@ void __fastcall Hooked(void* self, void* edx, NiAVObject* camera, void* shadowSc
 	EndWaterReflectionTargetProbe();
 	SetWaterReflectionSubpass(false);
 	NoteWaterReflectionRendered();
+	if (stored) {
+		g_captureCacheWorld = stableWorld;
+		g_captureCacheValid = true;
+	} else {
+		g_captureCacheValid = false;
+	}
 	if (!stored) {
 		SetWaterReflectionCapture(NiTransform{}, false);
 		OBVR_LOG("Water reflection: one of three normal-FOV captures could not be stored");

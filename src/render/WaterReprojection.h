@@ -60,6 +60,13 @@ inline bool CanUseStableWaterCapture(bool enabled, WaterReflectionMode mode,
 	       cameraValid && transformsValid;
 }
 
+// HMD pose changes must not restart an otherwise unchanged reflection capture.
+// The hook compares the head-independent world transform before calling this.
+inline bool CanReuseWaterCapture(bool cacheValid, bool texturesReady,
+                                 bool transformMatches) {
+	return cacheValid && texturesReady && transformMatches;
+}
+
 struct WaterMatrix {
 	float m[4][4]{};
 };

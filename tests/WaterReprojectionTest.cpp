@@ -65,6 +65,14 @@ int main() {
                   "all stable-capture gate combinations");
         }
     }
+    for (unsigned cacheValid = 0; cacheValid < 2; ++cacheValid)
+    for (unsigned texturesReady = 0; texturesReady < 2; ++texturesReady)
+    for (unsigned transformMatches = 0; transformMatches < 2; ++transformMatches) {
+        Check(CanReuseWaterCapture(cacheValid != 0, texturesReady != 0,
+                                   transformMatches != 0) ==
+              (cacheValid && texturesReady && transformMatches),
+              "capture cache reuses only a valid unchanged reflection");
+    }
 
 	{
 		NiTransform local=Camera(0.6f,{1,2,3}); local.scale=1.25f;
