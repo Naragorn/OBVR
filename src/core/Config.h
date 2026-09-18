@@ -3,6 +3,7 @@
 #include "camera/LookControl.h"
 #include "core/Types.h"
 #include "game/HandControls.h"
+#include "render/WaterReprojection.h"
 #include "vr/HandMode.h"
 #include "vr/HeadTracker.h"
 
@@ -148,6 +149,16 @@ struct Config {
 	// runtime - the one question about the D3D9Ex route that reading cannot
 	// answer. Off by default; see ResolutionHook.cpp.
 	bool d3d9ExProbe = false;
+
+	// Keep water reflections in world space while preserving the vanilla wave path.
+	bool stableWaterReflections = true;
+	render::WaterReflectionMode waterReflectionMode =
+		render::WaterReflectionMode::CyclopeanCapture;
+
+	// Developer-only water diagnostic controls used by the visual harness.
+	bool vrTestSuite = false;
+	bool vrTestWaterOnly = false;
+	bool vrTestWaterCoverageDiagnostic = false;
 
 	// Measures which rectangle of the frame the 2D actually lands in, every
 	// couple of seconds while it is on: the bounding box of the non-black

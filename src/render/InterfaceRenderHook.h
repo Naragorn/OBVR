@@ -275,6 +275,24 @@ bool RunHudPassBetweenScenes();
 // False when the device or the hook's original pointer is missing.
 bool GetViewportDirect(void* viewportOut);
 bool SetViewportDirect(const void* viewport);
+struct WaterReflectionTargetSnapshot {
+	UInt32 serial = 0;
+	UInt32 candidates = 0;
+	UInt32 width = 0;
+	UInt32 height = 0;
+	UInt32 format = 0;
+	UInt32 viewportX = 0;
+	UInt32 viewportY = 0;
+	UInt32 viewportWidth = 0;
+	UInt32 viewportHeight = 0;
+};
+
+void BeginWaterReflectionTargetProbe();
+void EndWaterReflectionTargetProbe();
+bool GetWaterReflectionTargetSnapshot(WaterReflectionTargetSnapshot& out);
+bool DumpWaterReflectionTarget(void* gameDevice, const char* path);
+bool StoreWaterReflectionTarget(void* gameDevice, unsigned slot);
+bool DumpStoredWaterReflectionTarget(void* gameDevice, unsigned slot, const char* path);
 
 // Reopens the between-render trace for a few more runs.
 //

@@ -37,6 +37,7 @@
 #include "render/GameDevice.h"
 #include "render/GameProjection.h"
 #include "render/HeadsetRenderer.h"
+#include "render/WaterReprojection.h"
 #include "render/CrosshairLayer.h"
 #include "render/HudLayer.h"
 #include "render/LaserLayer.h"
@@ -614,6 +615,9 @@ bool g_thirdPersonHeadVisualWanted = false;
 bool g_bodyWanted = false;
 NiAVObject* g_bodyCameraNode = nullptr;
 NiPoint3 g_bodyFirstEyeStep{0.0f, 0.0f, 0.0f};
+NiTransform g_cyclopeanCameraLocalTransform{};
+NiTransform g_cyclopeanCameraWorldTransform{};
+bool g_cyclopeanCameraWorldValid = false;
 
 // The body's share as the ARMS' BASE has it, which is one frame behind the
 // heading itself.
@@ -1794,6 +1798,13 @@ void PrepareMenuFrameIfNeeded(bool menuIsUp) {
 //
 // The angle was decided in the camera pass, where the head is known.
 void BeforeFirstScenePass() {
+	// Snapshot the cyclopean world camera before the reflection subpass changes it.
+	g_cyclopeanCameraWorldValid = mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(g_bodyCameraNode));
+	if (g_cyclopeanCameraWorldValid) {
+		g_cyclopeanCameraWorldTransform = g_bodyCameraNode->worldTransform;
+		g_cyclopeanCameraWorldTransform.pos = game::CyclopeanCamera(g_bodyCameraNode->worldTransform.pos, g_bodyFirstEyeStep);
+		g_cyclopeanCameraLocalTransform = g_bodyCameraNode->localTransform;
+	}
 	// The other end of the same frame, and the one measurement left worth
 	// taking. The camera pass logs what the two halves SHOULD be; this logs
 	// what they are at the moment the picture is built - in particular whether
@@ -4401,6 +4412,21 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 }
 
 vr::HeadTracker& GetHeadTracker() { return g_headTracker; }
+
+bool GetHeadIndependentWaterCameraTransforms(NiTransform& local, NiTransform& world) {
+	if (!g_cyclopeanCameraWorldValid) return false;
+	NiTransform parentWorld{}; parentWorld.rot = NiMatrix33::Identity(); parentWorld.scale = 1.0f;
+	if (g_bodyCameraNode != nullptr && g_bodyCameraNode->parent != nullptr)
+		parentWorld = g_bodyCameraNode->parent->worldTransform;
+	render::BuildHeadIndependentWaterCamera(g_cyclopeanCameraLocalTransform, g_cyclopeanCameraWorldTransform, parentWorld, g_menuBaseRot, g_menuBasePos, local, world);
+	return true;
+}
+
+bool GetCurrentCameraWorldTransform(NiTransform& transform) {
+	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(g_bodyCameraNode))) return false;
+	transform = g_bodyCameraNode->worldTransform;
+	return true;
+}
 
 const State& GetState() { return g_state; }
 

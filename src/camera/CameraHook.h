@@ -31,4 +31,8 @@ const State& GetState();
 // The tracker whose rotation is laid onto the camera.
 vr::HeadTracker& GetHeadTracker();
 
+// Camera transforms used by the head-independent water reflection capture.
+bool GetHeadIndependentWaterCameraTransforms(NiTransform& local, NiTransform& world);
+bool GetCurrentCameraWorldTransform(NiTransform& transform);
+
 }  // namespace obvr::camera

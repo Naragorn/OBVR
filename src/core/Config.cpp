@@ -371,6 +371,14 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Render", "HudOverlay", config.tracker.hudOverlay, path);
 	config.tracker.hudBetweenPasses =
 		ReadBool("Render", "HudBetweenPasses", config.tracker.hudBetweenPasses, path);
+	config.stableWaterReflections =
+		ReadBool("Render", "StableWaterReflections", config.stableWaterReflections, path);
+	const UInt32 waterMode = ReadUInt("Render", "WaterReflectionMode",
+		static_cast<UInt32>(config.waterReflectionMode), path);
+	if (waterMode <= static_cast<UInt32>(render::WaterReflectionMode::Reprojected))
+		config.waterReflectionMode = static_cast<render::WaterReflectionMode>(waterMode);
+	if (!config.stableWaterReflections)
+		config.waterReflectionMode = render::WaterReflectionMode::Vanilla;
 	config.tracker.hudAnchorWorld =
 		ReadAnchorIsWorld("Render", "HudAnchor", config.tracker.hudAnchorWorld, path);
 	config.tracker.menuShade =
@@ -531,6 +539,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Debug", "FirstPersonTreeProbe", config.firstPersonTreeProbe, path);
 	config.menuWorldProbe = ReadBool("Debug", "MenuWorldProbe", config.menuWorldProbe, path);
 	config.d3d9ExProbe = ReadBool("Debug", "D3D9ExProbe", config.d3d9ExProbe, path);
+	config.vrTestSuite = ReadBool("Debug", "VRTestSuite", config.vrTestSuite, path);
+	config.vrTestWaterOnly = ReadBool("Debug", "VRTestWaterOnly", config.vrTestWaterOnly, path);
+	config.vrTestWaterCoverageDiagnostic = ReadBool("Debug", "VRTestWaterCoverageDiagnostic", config.vrTestWaterCoverageDiagnostic, path);
 	config.handTracking = ReadBool("Hands", "Enabled", config.handTracking, path);
 	config.onboardingShowAtStart =
 		ReadBool("Onboarding", "ShowAtStart", config.onboardingShowAtStart, path);

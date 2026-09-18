@@ -727,3 +727,26 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME stack_scan COMMAND stack_scan_test)
+
+add_executable(water_reflection_test WaterReflectionTest.cpp)
+target_include_directories(water_reflection_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(water_reflection_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME water_reflection COMMAND water_reflection_test)
+
+add_executable(water_reprojection_test
+	WaterReprojectionTest.cpp
+	../src/core/Rotation.cpp
+)
+target_include_directories(water_reprojection_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(water_reprojection_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME water_reprojection COMMAND water_reprojection_test)
+
+find_package(Python3 COMPONENTS Interpreter QUIET)
+if(Python3_Interpreter_FOUND)
+	add_test(NAME water_visual_harness
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/WaterVisualHarnessTest.py)
+endif()

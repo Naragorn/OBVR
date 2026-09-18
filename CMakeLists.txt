@@ -83,6 +83,9 @@ add_library(OBVR SHARED
 	src/render/CrosshairLayer.cpp
 	src/render/LaserLayer.cpp
 	src/render/CullingHook.cpp
+	src/render/WaterReflectionHook.cpp
+	src/render/WaterReflectionBlend.cpp
+	src/render/WaterReprojection.cpp
 	src/render/InterfaceRenderHook.cpp
 	src/render/LayoutProbe.cpp
 	src/render/ResolutionHook.cpp

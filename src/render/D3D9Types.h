@@ -428,6 +428,7 @@ constexpr UInt32 kDeviceSetDepthStencilSurface = 39;
 constexpr UInt32 kDeviceBeginScene = 41;
 constexpr UInt32 kDeviceEndScene = 42;
 constexpr UInt32 kDeviceSetTexture = 65;
+constexpr UInt32 kDeviceGetSamplerState = 68;
 constexpr UInt32 kDeviceSetSamplerState = 69;
 constexpr UInt32 kDeviceCreatePixelShader = 106;
 constexpr UInt32 kDeviceSetPixelShader = 107;
@@ -436,6 +437,7 @@ constexpr UInt32 kDeviceSetPixelShaderConstantF = 109;
 using SetDepthStencilSurfaceFn = SInt32(__stdcall*)(void* self, void* surface);
 using SceneBracketFn = SInt32(__stdcall*)(void* self);
 using SetTextureFn = SInt32(__stdcall*)(void* self, UInt32 stage, void* texture);
+using GetSamplerStateFn = SInt32(__stdcall*)(void* self, UInt32 sampler, UInt32 type, UInt32* value);
 using SetSamplerStateFn = SInt32(__stdcall*)(void* self, UInt32 sampler, UInt32 type,
                                              UInt32 value);
 using CreatePixelShaderFn = SInt32(__stdcall*)(void* self, const UInt32* function,
@@ -523,6 +525,7 @@ using GetTransformFn = SInt32(__stdcall*)(void* self, UInt32 state, Matrix4* mat
 constexpr UInt32 kDeviceSetTransform = 44;
 constexpr UInt32 kDeviceSetVertexDeclaration = 87;
 constexpr UInt32 kDeviceSetFVF = 89;
+constexpr UInt32 kDeviceCreateVertexShader = 91;
 constexpr UInt32 kDeviceSetVertexShader = 92;
 constexpr UInt32 kDeviceSetVertexShaderConstantF = 94;
 
@@ -577,6 +580,7 @@ using SetSoftwareVertexProcessingFn = SInt32(__stdcall*)(void* self, SInt32 soft
 using SetTransformFn = SInt32(__stdcall*)(void* self, UInt32 state, const Matrix4* matrix);
 using SetVertexDeclarationFn = SInt32(__stdcall*)(void* self, void* declaration);
 using SetFVFFn = SInt32(__stdcall*)(void* self, UInt32 fvf);
+using CreateVertexShaderFn = SInt32(__stdcall*)(void* self, const UInt32* function, void** shader);
 using SetVertexShaderFn = SInt32(__stdcall*)(void* self, void* shader);
 using SetVertexShaderConstantFFn = SInt32(__stdcall*)(void* self, UInt32 startRegister,
                                                       const float* data, UInt32 vector4fCount);

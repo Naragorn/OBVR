@@ -9,6 +9,8 @@
 #include "platform/Win32Min.h"
 #include "render/InterfaceRenderHook.h"
 #include "render/CullingHook.h"
+#include "render/WaterReflectionHook.h"
+#include "render/WaterReprojection.h"
 
 namespace obvr::render {
 namespace {
@@ -489,6 +491,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		const UInt32 drawsBefore = measureThisOne ? TotalDrawCount() : 0;
 		const UInt32 setupBefore = measureThisOne ? VertexSetupTotal(TotalStateCalls()) : 0;
 
+		SetWaterStereoPass(WaterStereoPass::Single);
 		g_original(self, unusedEdx, renderedTexture);
 
 		if (measureThisOne) {
@@ -531,6 +534,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 
 	// First eye. The camera hook already moved the camera there. The bone
 	// lock records this render's palettes.
+	SetWaterStereoPass(WaterStereoPass::First);
 	SetBonePassMode(BonePassMode::Capture);
 	BeginCullingCapture();
 	g_original(self, unusedEdx, renderedTexture);
@@ -589,6 +593,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	if (clockPlausible) {
 		*frameSeconds = 0.0f;
 	}
+	SetWaterStereoPass(WaterStereoPass::Second);
 	SetBonePassMode(BonePassMode::Replace);
 	BeginCullingReplay();
 	g_original(self, unusedEdx, renderedTexture);
@@ -623,6 +628,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 			DumpPoolTimeline();
 		}
 	}
+	SetWaterStereoPass(WaterStereoPass::Single);
 	g_callbacks.afterSecondPass();
 
 	g_rendering = false;
@@ -656,6 +662,7 @@ bool InstallSceneRenderHook(const ScenePassCallbacks& callbacks) {
 	// fix for skinned bodies that straddle one eye's frustum. The culling hook
 	// is pass-through outside the capture/replay bracket below.
 	InstallCullingHook();
+	InstallWaterReflectionHook();
 
 	// Check first, patch second - the same contract as the camera hook. A
 	// mismatch means a different game version or another mod's detour already

@@ -917,6 +917,10 @@ inline constexpr UInt32 kNiCameraFrustumOffset = 0xEC;
 // the same two relocatable instructions as kRenderScene's entry.
 inline constexpr UInt32 kCullingProcessProcess = 0x0070E0A0;
 inline constexpr UInt32 kCullingProcessProcessEntryLength = 7;
+// WaterManager::RenderReflections(this, camera, shadowScene), Oblivion 1.2.0.416.
+// The entry bytes are push ebp / mov ebp,esp / and esp,0xFFFFFFF0 / push -1.
+inline constexpr UInt32 kWaterRenderReflections = 0x0049BEF0;
+inline constexpr UInt32 kWaterRenderReflectionsEntryLength = 8;
 
 // The engine's own switch for a live world behind menus, and the reason it
 // is normally still.

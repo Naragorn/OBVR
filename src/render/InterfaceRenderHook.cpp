@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include "core/AddressSpace.h"
 #include "core/Config.h"
 #include "core/EntryDetour.h"
 #include "core/Log.h"
@@ -13,11 +14,15 @@
 #include "render/D3D9Types.h"
 #include "render/GameDevice.h"
 #include "render/LockLedger.h"
+#include "render/LayoutProbe.h"
 #include "render/PointerSet.h"
 #include "render/PresentHook.h"
 #include "render/ResolutionHook.h"
 #include "render/SceneRenderHook.h"
 #include "render/UiScreenSize.h"
+#include "render/WaterReflection.h"
+#include "render/WaterReflectionBlend.h"
+#include "render/WaterReprojection.h"
 
 namespace obvr::render {
 namespace {
@@ -101,6 +106,30 @@ void* g_substitute = nullptr;
 // Only "aim at the back buffer" means "aim at ours instead"; every other
 // target is the pass's own business.
 void* g_backBuffer = nullptr;
+
+bool g_waterTargetProbeActive = false;
+bool g_waterTargetBound = false;
+void* g_waterTarget = nullptr;
+d3d9::SurfaceDesc g_waterTargetDesc{};
+d3d9::Viewport g_waterTargetViewport{};
+UInt32 g_waterTargetCandidates = 0;
+UInt32 g_waterTargetSerial = 0;
+UInt32 g_waterTargetTraceLeft = 24;
+
+using AddRefFn = UInt32(__stdcall*)(void* self);
+
+void ReleaseWaterTarget() {
+	if (g_waterTarget != nullptr) {
+		if (auto release = d3d9::Method<d3d9::ReleaseFn>(
+		        g_waterTarget, d3d9::kUnknownRelease)) {
+			release(g_waterTarget);
+		}
+	}
+	g_waterTarget = nullptr;
+	g_waterTargetBound = false;
+	g_waterTargetDesc = {};
+	g_waterTargetViewport = {};
+}
 
 // The last target the pass asked for while redirected, so the device can be
 // left in the state the game believes it is in. No reference is held: the
@@ -261,6 +290,30 @@ d3d9::SetVertexDeclarationFn g_originalSetVertexDecl = nullptr;
 d3d9::SetFVFFn g_originalSetFVF = nullptr;
 d3d9::SetVertexShaderFn g_originalSetVertexShader = nullptr;
 d3d9::SetVertexShaderConstantFFn g_originalSetVsConstantF = nullptr;
+d3d9::SetPixelShaderFn g_originalSetPixelShader = nullptr;
+d3d9::SetPixelShaderConstantFFn g_originalSetPsConstantF = nullptr;
+bool g_waterPixelShaderActive = false;
+
+bool IsWaterPixelShader(void* shader) {
+	if (shader == nullptr) return false;
+	// WaterShader layout is verified against the local TES Reloaded Oblivion
+	// headers: Pixel[16] begins at 0xC4; NiD3DPixelShader::ShaderHandle is 0x28.
+	constexpr UInt32 kWaterShaderPointer = 0x00B45DCC;
+	constexpr UInt32 kPixelArrayOffset = 0xC4;
+	constexpr UInt32 kPixelCount = 16;
+	constexpr UInt32 kShaderHandleOffset = 0x28;
+	const UInt32 water = *reinterpret_cast<const UInt32*>(kWaterShaderPointer);
+	if (!mem::LooksLikeObjectAddress(water)) return false;
+	for (UInt32 i = 0; i < kPixelCount; ++i) {
+		const UInt32 wrapper =
+			*reinterpret_cast<const UInt32*>(water + kPixelArrayOffset + i * 4);
+		if (mem::LooksLikeObjectAddress(wrapper) &&
+		    *reinterpret_cast<void* const*>(wrapper + kShaderHandleOffset) == shader) {
+			return true;
+		}
+	}
+	return false;
+}
 
 // Counting always, exactly like g_drawsTotal above: the scene hook reads the
 // totals either side of each world render and subtracts.
@@ -620,6 +673,33 @@ SInt32 __stdcall HookedSetRenderTarget(void* self, UInt32 index, void* surface) 
 		}
 	}
 	const SInt32 result = g_originalSetTarget(self, index, surface);
+	if (g_waterTargetProbeActive && index == 0 && result >= 0) {
+		d3d9::SurfaceDesc desc{};
+		auto getDesc = d3d9::Method<d3d9::GetDescFn>(surface, d3d9::kSurfaceGetDesc);
+		const bool readable = surface != nullptr && getDesc != nullptr &&
+		                      getDesc(surface, &desc) >= 0;
+		const bool candidate = IsWaterReflectionTargetCandidate(
+			index, surface != nullptr, surface == g_backBuffer, surface == g_substitute,
+			readable, desc.width, desc.height);
+		if (candidate) {
+			++g_waterTargetCandidates;
+			if (g_waterTargetTraceLeft > 0) {
+				--g_waterTargetTraceLeft;
+				OBVR_LOG("Water target probe: candidate=%u surface=%08X size=%ux%u format=%u",
+				         g_waterTargetCandidates, reinterpret_cast<UInt32>(surface),
+				         desc.width, desc.height, desc.format);
+			}
+			if (g_waterTarget == nullptr) {
+				if (auto addRef = d3d9::Method<AddRefFn>(surface, 1)) {
+					addRef(surface);
+					g_waterTarget = surface;
+					g_waterTargetDesc = desc;
+					g_waterTargetViewport = {0, 0, desc.width, desc.height, 0.0f, 1.0f};
+				}
+			}
+		}
+		g_waterTargetBound = g_waterTarget != nullptr && surface == g_waterTarget;
+	}
 
 	if (index == 0 && result >= 0) {
 		g_targetIsSubstitute = surface != nullptr && surface == g_substitute;
@@ -661,6 +741,9 @@ SInt32 __stdcall HookedSetRenderTarget(void* self, UInt32 index, void* surface) 
 // the believed rectangle. Partial viewports pass through untouched, and
 // with the belief equal to the frame the decision never fires.
 SInt32 __stdcall HookedSetViewport(void* self, const d3d9::Viewport* viewport) {
+	if (g_waterTargetProbeActive && g_waterTargetBound && viewport != nullptr) {
+		g_waterTargetViewport = *viewport;
+	}
 	// Inside the pass, or any time the layer texture is the bound target: the
 	// second window is what catches the engine's after-pass cursor quad,
 	// whose full-frame viewport is set once the pass window has closed. The
@@ -966,7 +1049,9 @@ SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex
 	if (TakeAfterPassCursorQuad(self, type, primitiveCount)) {
 		return 0;
 	}
+	const bool waterBlend = BeginWaterReflectionBlendDraw(self);
 	const SInt32 result = g_originalDrawPrimitive(self, type, startVertex, primitiveCount);
+	if (waterBlend) EndWaterReflectionBlendDraw(self);
 	if (g_redirecting || g_observing) {
 		++g_statsDraws;
 		++g_statsKind[0];
@@ -996,8 +1081,10 @@ SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 base
 		}
 		return 0;
 	}
+	const bool waterBlend = BeginWaterReflectionBlendDraw(self);
 	const SInt32 result = g_originalDrawIndexed(self, type, baseVertexIndex, minVertexIndex,
 	                                            numVertices, startIndex, primCount);
+	if (waterBlend) EndWaterReflectionBlendDraw(self);
 	if (g_redirecting || g_observing) {
 		++g_statsDraws;
 		++g_statsKind[1];
@@ -1019,7 +1106,9 @@ SInt32 __stdcall HookedDrawPrimitiveUP(void* self, UInt32 type, UInt32 primitive
 	if (TakeAfterPassCursorQuad(self, type, primitiveCount)) {
 		return 0;
 	}
+	const bool waterBlend = BeginWaterReflectionBlendDraw(self);
 	const SInt32 result = g_originalDrawUP(self, type, primitiveCount, vertexData, stride);
+	if (waterBlend) EndWaterReflectionBlendDraw(self);
 	if (g_redirecting || g_observing) {
 		++g_statsDraws;
 		++g_statsKind[2];
@@ -1043,9 +1132,11 @@ SInt32 __stdcall HookedDrawIndexedPrimitiveUP(void* self, UInt32 type, UInt32 mi
 	if (TakeAfterPassCursorQuad(self, type, primitiveCount)) {
 		return 0;
 	}
+	const bool waterBlend = BeginWaterReflectionBlendDraw(self);
 	const SInt32 result =
 		g_originalDrawIndexedUP(self, type, minVertexIndex, numVertices, primitiveCount,
 	                            indexData, indexFormat, vertexData, stride);
+	if (waterBlend) EndWaterReflectionBlendDraw(self);
 	if (g_redirecting || g_observing) {
 		++g_statsDraws;
 		++g_statsKind[3];
@@ -1104,7 +1195,59 @@ SInt32 __stdcall HookedSetFVF(void* self, UInt32 fvf) {
 SInt32 __stdcall HookedSetVertexShader(void* self, void* shader) {
 	++g_stateCalls.vertexShaders;
 	g_stateCalls.vertexShaderSum += reinterpret_cast<UInt32>(shader);
-	return g_originalSetVertexShader(self, shader);
+	const Config& config = GetConfig();
+	const WaterReflectionMode mode = config.stableWaterReflections
+		? config.waterReflectionMode : WaterReflectionMode::Vanilla;
+	return g_originalSetVertexShader(
+		self, SelectWaterVertexShader(self, shader, mode));
+}
+
+SInt32 __stdcall HookedSetPixelShader(void* self, void* shader) {
+	g_waterPixelShaderActive = IsWaterPixelShader(shader);
+	static bool dumped = false;
+	if (g_waterPixelShaderActive && !dumped && GetConfig().vrTestSuite) {
+		dumped = DumpWaterShaderBinary(shader, "OBVR-WaterPS.bin");
+		OBVR_LOG("VRTEST water-pixel-shader dump=%u", dumped);
+	}
+	const Config& config = GetConfig();
+	const WaterReflectionMode mode = config.stableWaterReflections
+		? config.waterReflectionMode : WaterReflectionMode::Vanilla;
+	return g_originalSetPixelShader(
+		self, SelectWaterReflectionPixelShader(self, shader, g_waterPixelShaderActive, mode));
+}
+
+SInt32 __stdcall HookedSetPsConstantF(void* self, UInt32 startRegister, const float* data,
+                                     UInt32 vector4fCount) {
+	WaterReflectionConstant replacement;
+	const Config& config = GetConfig();
+	const bool staticColour = config.stableWaterReflections &&
+		config.waterReflectionMode == WaterReflectionMode::StaticColor;
+	const bool colourChanged =
+		BuildStableWaterReflectionConstant(staticColour, g_waterPixelShaderActive,
+		                                   startRegister, data, vector4fCount, replacement);
+	if (!colourChanged) {
+		return g_originalSetPsConstantF(self, startRegister, data, vector4fCount);
+	}
+	const UInt32 before = replacement.registerIndex - startRegister;
+	if (before > 0) {
+		const SInt32 beforeResult =
+			g_originalSetPsConstantF(self, startRegister, data, before);
+		if (beforeResult < 0) return beforeResult;
+	}
+	SInt32 result =
+		g_originalSetPsConstantF(self, replacement.registerIndex, replacement.value, 1);
+	if (result < 0) return result;
+	const UInt32 after = vector4fCount - before - 1;
+	if (after > 0) {
+		result = g_originalSetPsConstantF(self, replacement.registerIndex + 1,
+		                                data + (before + 1) * 4, after);
+	}
+	static bool reported = false;
+	if (!reported) {
+		reported = true;
+		OBVR_LOG("Water reflection: dynamic projective mix disabled; waves and static reflection colour retained");
+	}
+	return result;
 }
 
 d3d9::SetStreamSourceFn g_originalSetStreamSource = nullptr;
@@ -1241,7 +1384,16 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
 	if (vector4fCount > g_stateCalls.largestUpload) {
 		g_stateCalls.largestUpload = vector4fCount;
 	}
-	return g_originalSetVsConstantF(self, startRegister, data, vector4fCount);
+	const SInt32 result =
+		g_originalSetVsConstantF(self, startRegister, data, vector4fCount);
+	if (result < 0) return result;
+	float reflection[16]{};
+	if (BuildWaterReprojectionConstants(startRegister, data, vector4fCount, reflection)) {
+		const SInt32 reflectionResult =
+			g_originalSetVsConstantF(self, 13, reflection, 4);
+		if (reflectionResult < 0) return reflectionResult;
+	}
+	return result;
 }
 
 // Makes one table entry writable, changes it, and puts the protection back -
@@ -1572,6 +1724,10 @@ bool EnsureTargetHook() {
 		vtable[d3d9::kDeviceSetVertexShader]);
 	g_originalSetVsConstantF = reinterpret_cast<d3d9::SetVertexShaderConstantFFn>(
 		vtable[d3d9::kDeviceSetVertexShaderConstantF]);
+	g_originalSetPixelShader = reinterpret_cast<d3d9::SetPixelShaderFn>(
+		vtable[d3d9::kDeviceSetPixelShader]);
+	g_originalSetPsConstantF = reinterpret_cast<d3d9::SetPixelShaderConstantFFn>(
+		vtable[d3d9::kDeviceSetPixelShaderConstantF]);
 	g_originalSetStreamSource = reinterpret_cast<d3d9::SetStreamSourceFn>(
 		vtable[d3d9::kDeviceSetStreamSource]);
 	g_originalSetStreamSourceFreq = reinterpret_cast<d3d9::SetStreamSourceFreqFn>(
@@ -1580,7 +1736,8 @@ bool EnsureTargetHook() {
 		reinterpret_cast<d3d9::SetIndicesFn>(vtable[d3d9::kDeviceSetIndices]);
 	if (g_originalSetTransform != nullptr && g_originalSetVertexDecl != nullptr &&
 	    g_originalSetFVF != nullptr && g_originalSetVertexShader != nullptr &&
-	    g_originalSetVsConstantF != nullptr && g_originalSetStreamSource != nullptr &&
+	    g_originalSetVsConstantF != nullptr && g_originalSetPixelShader != nullptr &&
+	    g_originalSetPsConstantF != nullptr && g_originalSetStreamSource != nullptr &&
 	    g_originalSetStreamSourceFreq != nullptr && g_originalSetIndices != nullptr) {
 		const bool stateHooked =
 			WriteTableEntry(vtable, d3d9::kDeviceSetTransform,
@@ -1593,6 +1750,10 @@ bool EnsureTargetHook() {
 		                    reinterpret_cast<void*>(&HookedSetVertexShader)) &&
 			WriteTableEntry(vtable, d3d9::kDeviceSetVertexShaderConstantF,
 		                    reinterpret_cast<void*>(&HookedSetVsConstantF)) &&
+			WriteTableEntry(vtable, d3d9::kDeviceSetPixelShader,
+		                    reinterpret_cast<void*>(&HookedSetPixelShader)) &&
+			WriteTableEntry(vtable, d3d9::kDeviceSetPixelShaderConstantF,
+		                    reinterpret_cast<void*>(&HookedSetPsConstantF)) &&
 			WriteTableEntry(vtable, d3d9::kDeviceSetStreamSource,
 		                    reinterpret_cast<void*>(&HookedSetStreamSource)) &&
 			WriteTableEntry(vtable, d3d9::kDeviceSetStreamSourceFreq,
@@ -1659,6 +1820,11 @@ bool EnsureTargetHook() {
 	}
 
 
+	const Config& waterConfig = GetConfig();
+	if (waterConfig.stableWaterReflections &&
+	    UsesWaterReprojectionShader(waterConfig.waterReflectionMode)) {
+		PrepareWaterReprojection(device);
+	}
 	OBVR_LOG("Hud: SetRenderTarget and SetRenderState hooked at table entries %u and %u - "
 	         "the 2D pass can be pointed elsewhere, with its alpha kept",
 	         d3d9::kDeviceSetRenderTarget, d3d9::kDeviceSetRenderState);
@@ -2206,6 +2372,53 @@ bool SetViewportDirect(const void* viewport) {
 		return false;
 	}
 	return g_originalSetViewport(device, static_cast<const d3d9::Viewport*>(viewport)) >= 0;
+}
+
+void BeginWaterReflectionTargetProbe() {
+	ReleaseWaterTarget();
+	g_waterTargetCandidates = 0;
+	g_waterTargetProbeActive = true;
+}
+
+void EndWaterReflectionTargetProbe() {
+	g_waterTargetProbeActive = false;
+	g_waterTargetBound = false;
+	if (g_waterTarget != nullptr) ++g_waterTargetSerial;
+}
+
+bool GetWaterReflectionTargetSnapshot(WaterReflectionTargetSnapshot& out) {
+	out = {};
+	if (g_waterTarget == nullptr) return false;
+	out.serial = g_waterTargetSerial;
+	out.candidates = g_waterTargetCandidates;
+	out.width = g_waterTargetDesc.width;
+	out.height = g_waterTargetDesc.height;
+	out.format = g_waterTargetDesc.format;
+	out.viewportX = g_waterTargetViewport.x;
+	out.viewportY = g_waterTargetViewport.y;
+	out.viewportWidth = g_waterTargetViewport.width;
+	out.viewportHeight = g_waterTargetViewport.height;
+	return true;
+}
+
+bool DumpWaterReflectionTarget(void* gameDevice, const char* path) {
+	return g_waterTarget != nullptr && gameDevice != nullptr && path != nullptr &&
+	       DumpSurfaceBmp(gameDevice, g_waterTarget, g_waterTargetDesc.width,
+	                      g_waterTargetDesc.height, g_waterTargetDesc.format, path);
+}
+
+bool StoreWaterReflectionTarget(void* gameDevice, unsigned slot) {
+	return g_waterTarget != nullptr &&
+	       StoreWaterReflectionTexture(gameDevice, g_waterTarget,
+	                                   g_waterTargetDesc.width, g_waterTargetDesc.height,
+	                                   g_waterTargetDesc.format, slot);
+}
+
+bool DumpStoredWaterReflectionTarget(void* gameDevice, unsigned slot, const char* path) {
+	void* surface = GetWaterReflectionStoredSurface(slot);
+	return surface != nullptr && gameDevice != nullptr && path != nullptr &&
+	       DumpSurfaceBmp(gameDevice, surface, g_waterTargetDesc.width,
+	                      g_waterTargetDesc.height, g_waterTargetDesc.format, path);
 }
 
 void ArmBetweenTrace() {
