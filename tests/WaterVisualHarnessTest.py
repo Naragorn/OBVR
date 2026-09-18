@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import struct
 import tempfile
 import unittest
@@ -111,8 +112,43 @@ class WaterVisualHarnessTest(unittest.TestCase):
             bad = good_log().replace("capture=(-10.0,20.0,30.0)", "capture=(-10.0,22.0,30.0)", 1)
             (root / "OBVR.log").write_text(bad, encoding="utf-8")
             self.assertEqual(harness.analyze_runtime_log(root / "OBVR.log")["status"], "fail")
-            (root / "OBVR.log").write_text("", encoding="utf-8")
+            (root / "OBVR.log").write_text(
+                "Water reflection: cached captures reused while body camera is unchanged\n",
+                encoding="utf-8",
+            )
+            cached = harness.analyze_runtime_log(root / "OBVR.log")
+            self.assertEqual(cached["status"], "pass")
+            self.assertEqual(cached["cacheReuseCount"], 1)
+            (root / "OBVR.log").write_text(
+                "Water reflection: cached captures reused while body camera is unchanged\n"
+                "VRTEST water-image fallback=1\n",
+                encoding="utf-8",
+            )
             self.assertEqual(harness.analyze_runtime_log(root / "OBVR.log")["status"], "unavailable")
+
+    def test_run_manifest_requires_second_save_and_complete_captures(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.assertEqual(harness.analyze_run_manifest(root)["status"], "unavailable")
+            manifest = {
+                "schema": 1,
+                "saveIndex": 0,
+                "captureCount": 4,
+                "files": ["ScreenShot001.bmp"] * 4,
+            }
+            (root / "water-vr-result.json").write_text(json.dumps(manifest), encoding="utf-8")
+            self.assertEqual(harness.analyze_run_manifest(root)["status"], "fail")
+            manifest["saveIndex"] = 1
+            manifest["captureCount"] = 3
+            manifest["files"] = ["ScreenShot001.bmp"] * 3
+            (root / "water-vr-result.json").write_text(json.dumps(manifest), encoding="utf-8")
+            self.assertEqual(harness.analyze_run_manifest(root)["status"], "fail")
+            manifest["captureCount"] = 4
+            manifest["files"] = ["ScreenShot001.bmp"] * 4
+            (root / "water-vr-result.json").write_text(json.dumps(manifest), encoding="utf-8")
+            result = harness.analyze_run_manifest(root)
+            self.assertEqual(result["status"], "pass")
+            self.assertEqual(result["saveIndex"], 1)
 
     def test_evaluate_requires_visual_evidence_when_artifact_is_given(self):
         with tempfile.TemporaryDirectory() as directory:

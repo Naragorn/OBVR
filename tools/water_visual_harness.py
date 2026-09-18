@@ -31,6 +31,9 @@ _MATRIX_ROW0 = re.compile(
 _QUEUE_LINE = re.compile(
     r"VRTEST water-image .*?storedDraws=(\d+) replayedDraws=(\d+)"
 )
+_CACHE_REUSE_LINE = re.compile(
+    r"Water reflection: cached captures reused while body camera is unchanged"
+)
 
 
 def _read_bmp(path: Path, max_width: int = 320, max_height: int = 180):
@@ -177,8 +180,25 @@ def analyze_runtime_log(log_path: Path) -> dict:
         (int(match.group(1)), int(match.group(2)))
         for match in _QUEUE_LINE.finditer(text)
     ]
-    if sum(len(values) for values in captures.values()) < 4:
-        return {"status": "unavailable", "reason": "VRTEST water-image capture evidence is missing", "captureSamples": sum(len(v) for v in captures.values())}
+    cache_reuse_count = len(_CACHE_REUSE_LINE.findall(text))
+    fallback = bool(re.search(r"VRTEST water-image .*?fallback=[1-9]", text))
+    capture_samples = sum(len(values) for values in captures.values())
+    if capture_samples < 4:
+        if cache_reuse_count > 0 and not fallback:
+            return {
+                "status": "pass",
+                "reason": "runtime reported cached captures reused with no fallback",
+                "captureSamples": capture_samples,
+                "cacheReuseCount": cache_reuse_count,
+                "fallbackObserved": fallback,
+                "queueCounts": queue_counts,
+            }
+        return {
+            "status": "unavailable",
+            "reason": "VRTEST water-image capture evidence is missing",
+            "captureSamples": capture_samples,
+            "cacheReuseCount": cache_reuse_count,
+        }
     capture_ranges = {}
     for eye, values in captures.items():
         if values:
@@ -189,7 +209,6 @@ def analyze_runtime_log(log_path: Path) -> dict:
             rotation_ranges[eye] = [max(point[i] for point in values) - min(point[i] for point in values) for i in range(3)]
     stable_capture = all(max(ranges) <= 1.5 for ranges in capture_ranges.values())
     stable_rotation = all(max(ranges) <= 0.02 for ranges in rotation_ranges.values()) if rotation_ranges else False
-    fallback = bool(re.search(r"VRTEST water-image .*?fallback=[1-9]", text))
     queue_invalid = bool(queue_counts) and any(
         stored <= 0 and replayed <= 0 for stored, replayed in queue_counts
     )
@@ -197,7 +216,8 @@ def analyze_runtime_log(log_path: Path) -> dict:
     return {
         "status": status,
         "reason": "capture transform and camera-only matrix rotation stay stable" if status == "pass" else "capture transform, matrix rotation, or fallback evidence is unstable",
-        "captureSamples": sum(len(v) for v in captures.values()),
+        "captureSamples": capture_samples,
+        "cacheReuseCount": cache_reuse_count,
         "captureRanges": capture_ranges,
         "rotationRanges": rotation_ranges,
         "fallbackObserved": fallback,
@@ -241,15 +261,60 @@ def shader_contract(source_root: Path) -> dict:
     return {"status": "pass" if all(checks.values()) else "fail", "checks": checks, "files": [str(shader_path), str(reprojection_path), str(vertex_path)]}
 
 
+def analyze_run_manifest(root: Path) -> dict:
+    path = root / "water-vr-result.json"
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except OSError:
+        return {"status": "unavailable", "reason": "water-vr-result.json is missing"}
+    except (TypeError, ValueError) as error:
+        return {"status": "fail", "reason": f"invalid water-vr-result.json: {error}"}
+    save_index = manifest.get("saveIndex")
+    capture_count = manifest.get("captureCount")
+    files = manifest.get("files")
+    if save_index != 1:
+        return {
+            "status": "fail",
+            "reason": "the run did not select the second save entry",
+            "saveIndex": save_index,
+        }
+    if not isinstance(capture_count, int) or capture_count < 4:
+        return {
+            "status": "fail",
+            "reason": "the run captured fewer than four ordered views",
+            "captureCount": capture_count,
+        }
+    if not isinstance(files, list) or len(files) != capture_count:
+        return {
+            "status": "fail",
+            "reason": "capture manifest does not match captureCount",
+            "captureCount": capture_count,
+            "files": files,
+        }
+    return {
+        "status": "pass",
+        "reason": "second-save water run manifest is complete",
+        "saveIndex": save_index,
+        "captureCount": capture_count,
+        "saveEntry": manifest.get("saveEntry"),
+    }
+
+
 def evaluate(source_root: Path, artifact_dir: Optional[Path] = None) -> dict:
     contract = shader_contract(source_root)
     result = {"status": contract["status"], "contract": contract}
     if artifact_dir is not None:
+        manifest = analyze_run_manifest(artifact_dir)
         visual = analyze_screenshots(artifact_dir)
         runtime = analyze_runtime_log(artifact_dir / "OBVR.log")
+        result["manifest"] = manifest
         result["visual"] = visual
         result["runtime"] = runtime
-        if visual["status"] != "pass" or runtime["status"] not in ("pass", "unavailable"):
+        if (
+            manifest["status"] != "pass"
+            or visual["status"] != "pass"
+            or runtime["status"] not in ("pass", "unavailable")
+        ):
             result["status"] = "fail"
     return result
 
