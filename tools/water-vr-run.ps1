@@ -182,7 +182,9 @@ while ((Get-Date) -lt $deadline) {
 		if ($Attach) { continue }
 		$launcher = Get-LauncherProcess
 		if ($launcher -and -not $launcherPlaySent) {
-			Write-Host "OblivionLauncher is open; clicking its Play button."
+			Write-Host "OblivionLauncher is open; waiting for its controls to settle."
+			Start-Sleep -Seconds 4
+			Write-Host "Clicking the launcher Play button."
 			if (Click-LauncherPlay $launcher) {
 				$launcherPlaySent = $true
 			}
