@@ -79,17 +79,13 @@ public static class ObvrWaterRun {
 	[DllImport("user32.dll")]
 	static extern bool GetWindowRect(IntPtr handle, out RECT rect);
 	[DllImport("user32.dll")]
-	static extern bool SetCursorPos(int x, int y);
-	[DllImport("user32.dll")]
-	static extern void mouse_event(uint flags, uint dx, uint dy, uint data, IntPtr extra);
+	static extern IntPtr SendMessage(IntPtr handle, uint message, IntPtr wParam, IntPtr lParam);
 	public static void ClickWindowOffset(IntPtr handle, int x, int y) {
-		RECT rect;
-		if (!GetWindowRect(handle, out rect)) return;
-		SetCursorPos(rect.left + x, rect.top + y);
-		System.Threading.Thread.Sleep(100);
-		mouse_event(2, 0, 0, 0, IntPtr.Zero);
-		System.Threading.Thread.Sleep(80);
-		mouse_event(4, 0, 0, 0, IntPtr.Zero);
+		int packed = (y << 16) | (x & 0xffff);
+		IntPtr point = new IntPtr(packed);
+		SendMessage(handle, 0x0201, new IntPtr(1), point);
+		System.Threading.Thread.Sleep(120);
+		SendMessage(handle, 0x0202, IntPtr.Zero, point);
 	}
 	public static void Press(byte key, byte scan) {
 		keybd_event(key, scan, 0, IntPtr.Zero);
@@ -138,7 +134,8 @@ function Press-Enter {
 
 function Click-LauncherPlay($launcher) {
 	if (-not (Focus-ProcessWindow $launcher)) { return $false }
-	# OblivionLauncher has an image-only Play button at this measured offset.
+	# OblivionLauncher has an image-only Play button; send the click to the
+	# parent because the child is a non-notifying Static bitmap.
 	[ObvrWaterRun]::ClickWindowOffset($launcher.MainWindowHandle, 325, 122)
 	Start-Sleep -Seconds 2
 	return $true
