@@ -6,7 +6,8 @@
 #
 # The headset sweep is deliberately physical: the harness controls save loading
 # and evidence capture, while SteamVR supplies the pose under test. Use -Attach
-# when xOBSE has already reached the in-game main menu on this installation.
+# when xOBSE has already reached the in-game main menu, or
+# -WaitForManualLaunch when you want to click the installer's Play button once.
 
 [CmdletBinding()]
 param(
@@ -18,6 +19,7 @@ param(
 	[int]$LoadWaitSec = 60,
 	[switch]$KeepGameOpen,
 	[switch]$Attach,
+	[switch]$WaitForManualLaunch,
 	[switch]$DryRun
 )
 
@@ -51,6 +53,9 @@ if ($Attach -and -not (Get-Process -Name Oblivion -ErrorAction SilentlyContinue)
 }
 if (-not $Attach -and (Get-Process -Name Oblivion -ErrorAction SilentlyContinue)) {
 	throw "Oblivion is already running; use -Attach to reuse it."
+}
+if ($Attach -and $WaitForManualLaunch) {
+	throw "-Attach and -WaitForManualLaunch cannot be combined."
 }
 if (-not (Test-Path -LiteralPath $ArtifactDir)) {
 	New-Item -ItemType Directory -Path $ArtifactDir -Force | Out-Null
@@ -181,13 +186,16 @@ while ((Get-Date) -lt $deadline) {
 	if (-not $p) {
 		if ($Attach) { continue }
 		$launcher = Get-LauncherProcess
-		if ($launcher -and -not $launcherPlaySent) {
+		if ($launcher -and -not $launcherPlaySent -and -not $WaitForManualLaunch) {
 			Write-Host "OblivionLauncher is open; waiting for its controls to settle."
 			Start-Sleep -Seconds 4
 			Write-Host "Clicking the launcher Play button."
 			if (Click-LauncherPlay $launcher) {
 				$launcherPlaySent = $true
 			}
+		} elseif ($launcher -and $WaitForManualLaunch -and -not $launcherPlaySent) {
+			Write-Host "OblivionLauncher is open; click Play manually. The harness is waiting for Oblivion.exe."
+			$launcherPlaySent = $true
 		}
 		continue
 	}
@@ -250,6 +258,7 @@ if (Test-Path -LiteralPath $logPath) {
 $manifest = [ordered]@{
 	schema = 1
 	attach = [bool]$Attach
+	waitForManualLaunch = [bool]$WaitForManualLaunch
 	saveIndex = $SaveIndex
 	saveEntry = $targetSave.Name
 	saveTimestamp = $targetSave.LastWriteTime.ToString("o")
