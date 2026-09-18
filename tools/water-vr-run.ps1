@@ -5,7 +5,8 @@
 # the resulting BMP sequence plus OBVR.log with water_visual_harness.py.
 #
 # The headset sweep is deliberately physical: the harness controls save loading
-# and evidence capture, while SteamVR supplies the pose under test.
+# and evidence capture, while SteamVR supplies the pose under test. Use -Attach
+# when xOBSE has already reached the in-game main menu on this installation.
 
 [CmdletBinding()]
 param(
@@ -16,6 +17,7 @@ param(
 	[int]$CaptureIntervalMs = 350,
 	[int]$LoadWaitSec = 60,
 	[switch]$KeepGameOpen,
+	[switch]$Attach,
 	[switch]$DryRun
 )
 
@@ -41,11 +43,14 @@ if ($DryRun) {
 	Write-Host "Dry run: no game was started and no files were changed."
 	exit 0
 }
-if (-not (Test-Path -LiteralPath $loaderPath)) {
+if (-not $Attach -and -not (Test-Path -LiteralPath $loaderPath)) {
 	throw "OBSE loader not found: $loaderPath"
 }
-if (Get-Process -Name Oblivion -ErrorAction SilentlyContinue) {
-	throw "Oblivion is already running; stop it before this harness."
+if ($Attach -and -not (Get-Process -Name Oblivion -ErrorAction SilentlyContinue)) {
+	throw "-Attach was requested, but Oblivion.exe is not running."
+}
+if (-not $Attach -and (Get-Process -Name Oblivion -ErrorAction SilentlyContinue)) {
+	throw "Oblivion is already running; use -Attach to reuse it."
 }
 if (-not (Test-Path -LiteralPath $ArtifactDir)) {
 	New-Item -ItemType Directory -Path $ArtifactDir -Force | Out-Null
@@ -158,17 +163,23 @@ function Save-ScreenBmp([string]$path) {
 }
 
 $startedAt = Get-Date
-Write-Host "Starting $loaderPath"
-Start-Process -FilePath $loaderPath -WorkingDirectory $GameDir | Out-Null
+if (-not $Attach) {
+	Write-Host "Starting $loaderPath"
+	Start-Process -FilePath $loaderPath -WorkingDirectory $GameDir | Out-Null
+} else {
+	Write-Host "Attaching to the running Oblivion.exe session."
+}
 
 # Wait for the current run's plugin startup, not an old marker in a retained log.
 $deadline = (Get-Date).AddSeconds(150)
-$startedMarker = $false
+$startedMarker = $Attach
 $launcherPlaySent = $false
+if (-not $Attach) {
 while ((Get-Date) -lt $deadline) {
 	Start-Sleep -Seconds 2
 	$p = Get-GameProcess
 	if (-not $p) {
+		if ($Attach) { continue }
 		$launcher = Get-LauncherProcess
 		if ($launcher -and -not $launcherPlaySent) {
 			Write-Host "OblivionLauncher is open; clicking its Play button."
@@ -187,6 +198,7 @@ while ((Get-Date) -lt $deadline) {
 		break
 	}
 	Focus-Game | Out-Null
+}
 }
 if (-not $startedMarker) {
 	$launcher = Get-LauncherProcess
@@ -235,6 +247,7 @@ if (Test-Path -LiteralPath $logPath) {
 }
 $manifest = [ordered]@{
 	schema = 1
+	attach = [bool]$Attach
 	saveIndex = $SaveIndex
 	saveEntry = $targetSave.Name
 	saveTimestamp = $targetSave.LastWriteTime.ToString("o")
