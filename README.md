@@ -122,9 +122,12 @@ RTX 4090, Windows 11. Anything else is untested, which is exactly what reports a
 5. Copy the **32-bit** `openvr_api.dll` from SteamVR - it is at
    `Steam\steamapps\common\SteamVR\bin\win32\openvr_api.dll` - into `Data/OBSE/Plugins/`
    next to `OBVR.dll`. The 64-bit one from `bin/win64` will not load into Oblivion.
-6. Start SteamVR, then launch Oblivion. On Steam, `obse_steam_loader.dll` loads xOBSE and
+6. **You must disable the Steam Overlay before playing OBVR.** In Steam, in your Steam Library,
+right-click **Oblivion > Properties > General** and turn off the Steam Overlay.
+Restart Oblivion after changing the setting.
+7. Start SteamVR, then launch Oblivion. On Steam, `obse_steam_loader.dll` loads xOBSE and
    OBVR automatically when you use the normal Play button; `obse_loader.exe` is for
-   non-Steam installations.
+   non-Steam installations or if you have trouble starting OBVR via Steam.
 
 ### Disable the Steam Overlay (required)
 
