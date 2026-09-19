@@ -542,6 +542,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.vrTestSuite = ReadBool("Debug", "VRTestSuite", config.vrTestSuite, path);
 	config.vrTestWaterOnly = ReadBool("Debug", "VRTestWaterOnly", config.vrTestWaterOnly, path);
 	config.vrTestWaterCoverageDiagnostic = ReadBool("Debug", "VRTestWaterCoverageDiagnostic", config.vrTestWaterCoverageDiagnostic, path);
+	config.vrTestWaterPitch = ReadFloat("Debug", "VRTestWaterPitch", config.vrTestWaterPitch, path);
 	config.handTracking = ReadBool("Hands", "Enabled", config.handTracking, path);
 	config.onboardingShowAtStart =
 		ReadBool("Onboarding", "ShowAtStart", config.onboardingShowAtStart, path);

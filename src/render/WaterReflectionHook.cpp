@@ -1,6 +1,4 @@
 #include "render/WaterReflectionHook.h"
-#include <cmath>
-
 #include "camera/CameraHook.h"
 #include "core/Config.h"
 #include "core/EntryDetour.h"
@@ -11,9 +9,8 @@
 #include "game/GameTypes.h"
 #include "game/GameCamera.h"
 #include "render/WaterReprojection.h"
-#include "render/WaterReflectionBlend.h"
-#include "render/GameDevice.h"
 #include "render/InterfaceRenderHook.h"
+#include "test/WaterVRTestRuntime.h"
 
 namespace obvr::render {
 namespace {
@@ -24,29 +21,26 @@ const UInt8 kEntry[addr::kWaterRenderReflectionsEntryLength] = {
 using RenderFn = void(__fastcall*)(void*, void*, NiAVObject*, void*);
 RenderFn g_original = nullptr;
 bool g_reuseReported = false;
-bool g_captureCacheValid = false;
-bool g_cacheReuseReported = false;
-NiTransform g_captureCacheWorld{};
-constexpr float kCaptureYawDegrees = 60.0f;
+bool g_captureReported = false;
 
-bool WaterCaptureTransformMatches(const NiTransform& left, const NiTransform& right) {
-	constexpr float kEpsilon = 1.0e-3f;
-	if (!std::isfinite(left.scale) || !std::isfinite(right.scale) ||
-	    !std::isfinite(left.pos.x) || !std::isfinite(right.pos.x) ||
-	    !std::isfinite(left.pos.y) || !std::isfinite(right.pos.y) ||
-	    !std::isfinite(left.pos.z) || !std::isfinite(right.pos.z) ||
-	    std::fabs(left.scale - right.scale) > kEpsilon ||
-	    std::fabs(left.pos.x - right.pos.x) > kEpsilon ||
-	    std::fabs(left.pos.y - right.pos.y) > kEpsilon ||
-	    std::fabs(left.pos.z - right.pos.z) > kEpsilon) {
-		return false;
+class RestoreCameraFrustum {
+public:
+	RestoreCameraFrustum(NiAVObject* camera, float horizontal, float vertical)
+		: frustum_(reinterpret_cast<game::NiFrustum*>(
+			reinterpret_cast<UInt8*>(camera) + game::kNiCameraFrustumOffset)),
+		  original_(*frustum_) {
+		active_ = ScaleWaterCaptureFrustum(*frustum_, horizontal, vertical);
+		if (!active_) frustum_ = nullptr;
 	}
-	for (unsigned row = 0; row < 3; ++row)
-		for (unsigned column = 0; column < 3; ++column)
-			if (std::fabs(left.rot.data[row][column] - right.rot.data[row][column]) > kEpsilon)
-				return false;
-	return true;
-}
+	~RestoreCameraFrustum() {
+		if (frustum_ != nullptr) *frustum_ = original_;
+	}
+	bool Active() const { return active_; }
+private:
+	game::NiFrustum* frustum_;
+	game::NiFrustum original_;
+	bool active_ = false;
+};
 
 class RestoreCameraTransforms {
 public:
@@ -68,84 +62,88 @@ private:
 
 void __fastcall Hooked(void* self, void* edx, NiAVObject* camera, void* shadowScene) {
 	const Config& config = GetConfig();
-	NiTransform stableLocal{}, stableWorld{};
+	NiTransform playerLocal{}, stableWorld{}, captureLocal{};
 	const bool cyclopean = UsesCyclopeanWaterCapture(config.waterReflectionMode);
-	const bool transformsValid = cyclopean && camera != nullptr &&
-		camera::GetHeadIndependentWaterCameraTransforms(stableLocal, stableWorld);
+	const bool playerTransformsValid = cyclopean && camera != nullptr &&
+		camera::GetHeadIndependentWaterCameraTransforms(playerLocal, stableWorld);
+	NiTransform captureParent{};
+	captureParent.rot = NiMatrix33::Identity();
+	captureParent.scale = 1.0f;
+	if (camera != nullptr && camera->parent != nullptr)
+		captureParent = camera->parent->worldTransform;
+	const NiTransform renderWorld = WaterRenderCameraFromBody(stableWorld);
+	const bool transformsValid = playerTransformsValid &&
+		BuildWaterCameraLocalFromParent(captureParent, renderWorld, captureLocal);
 	const bool stable = CanUseStableWaterCapture(
 		config.stableWaterReflections, config.waterReflectionMode,
 		WaterReprojectionReady(), camera != nullptr, transformsValid);
 	if (!stable) {
-		g_captureCacheValid = false;
 		SetWaterCaptureProjectionScale(1.0f, 1.0f);
 		SetWaterReflectionCapture(NiTransform{}, false);
 		g_original(self, edx, camera, shadowScene);
 		return;
 	}
-	if (!ShouldRenderWaterReflection(true, GetWaterStereoPass())) {
+	const WaterStereoPass stereoPass = GetWaterStereoPass();
+	if (test::SuppressWaterVRFirstEyeReflection(stereoPass == WaterStereoPass::First))
+		return;
+	if (!ShouldRenderWaterReflection(true, stereoPass,
+	                                 WaterReflectionRenderedThisStereoPair())) {
 		NoteWaterReflectionReused();
 		if (!g_reuseReported) {
 			g_reuseReported = true;
-			OBVR_LOG("Water reflection: second eye reuses three first-eye captures");
+			OBVR_LOG("Water reflection: second eye reuses the first-eye original target");
 		}
 		return;
 	}
-	if (CanReuseWaterCapture(
-			g_captureCacheValid, WaterReflectionTexturesReady(),
-			WaterCaptureTransformMatches(stableWorld, g_captureCacheWorld))) {
-		NoteWaterReflectionReused();
-		if (!g_cacheReuseReported) {
-			g_cacheReuseReported = true;
-			OBVR_LOG("Water reflection: cached captures reused while body camera is unchanged");
-		}
-		return;
-	}
-	g_cacheReuseReported = false;
 
-	SetWaterCaptureProjectionScale(1.0f, 1.0f);
-	const float yaw[kWaterReflectionCaptureCount] = {
-		-kCaptureYawDegrees, 0.0f, kCaptureYawDegrees
-	};
-	bool stored = true;
-	// Oblivion binds its 256x256 reflection target for the first capture and
-	// then keeps that same target bound for the two following passes. Keep our
-	// reference for the complete fan-out; restarting the probe per slot loses
-	// the source before slots one and two can copy it.
-	//
-	// This is a nested engine scene, not one of the main world draws. The
-	// second stereo eye deliberately skips it, so its water shader calls must
-	// not consume entries from the first-eye main-pass replay queue.
+	// Render exactly once into Oblivion's own reflection target. Only the
+	// camera used by that nested scene is changed; its target, pixel shader,
+	// samplers and wave path stay owned by the game. The main water vertex
+	// shader receives this same camera's projective matrix through c13-c16.
+	constexpr float kHorizontalCaptureScale = 3.0f;
+	constexpr float kVerticalCaptureScale = 1.5f;
+	const game::NiFrustum inputFrustum = *reinterpret_cast<const game::NiFrustum*>(
+		reinterpret_cast<const UInt8*>(camera) + game::kNiCameraFrustumOffset);
+	const NiTransform inputWorld = camera->worldTransform;
+	RestoreCameraFrustum frustum(camera, kHorizontalCaptureScale, kVerticalCaptureScale);
+	const float horizontalScale = frustum.Active() ? kHorizontalCaptureScale : 1.0f;
+	const float verticalScale = frustum.Active() ? kVerticalCaptureScale : 1.0f;
+	SetWaterCaptureProjectionScale(horizontalScale, verticalScale);
+	SetWaterReflectionCapture(stableWorld, true);
 	SetWaterReflectionSubpass(true);
-	BeginWaterReflectionTargetProbe();
-	for (unsigned slot = 0; slot < kWaterReflectionCaptureCount; ++slot) {
-		NiTransform local{}, world{};
-		BuildWaterReflectionCaptureTransform(stableWorld, yaw[slot], world);
-		NiTransform parent{};
-		parent.rot = NiMatrix33::Identity();
-		parent.scale = 1.0f;
-		if (camera->parent != nullptr) parent = camera->parent->worldTransform;
-		if (!BuildWaterCameraLocalFromParent(parent, world, local)) {
-			stored = false;
-			OBVR_LOG("Water reflection: capture slot %u could not derive camera-local transform", slot);
-			break;
-		}
-		SetWaterReflectionCaptureSlot(slot, world, true);
-		RestoreCameraTransforms restore(camera, local);
+	const bool probeTarget = test::WaterVRReplayActive();
+	if (probeTarget) BeginWaterReflectionTargetProbe();
+	{
+		// The water renderer owns a separate camera node. Convert the desired
+		// head-independent world pose through that node's actual parent rather
+		// than assigning the player camera's unrelated local transform.
+		RestoreCameraTransforms restore(camera, captureLocal);
 		g_original(self, edx, camera, shadowScene);
-		stored = StoreWaterReflectionTarget(GetGameDevice(), slot) && stored;
 	}
-	EndWaterReflectionTargetProbe();
 	SetWaterReflectionSubpass(false);
+	if (probeTarget) EndWaterReflectionTargetProbe();
 	NoteWaterReflectionRendered();
-	if (stored) {
-		g_captureCacheWorld = stableWorld;
-		g_captureCacheValid = true;
-	} else {
-		g_captureCacheValid = false;
-	}
-	if (!stored) {
-		SetWaterReflectionCapture(NiTransform{}, false);
-		OBVR_LOG("Water reflection: one of three normal-FOV captures could not be stored");
+	test::ObserveWaterVRReflectionRendered(stereoPass == WaterStereoPass::Second);
+	if (!g_captureReported) {
+		g_captureReported = true;
+		NiTransform liveWorld{};
+		const bool liveValid = camera::GetCurrentCameraWorldTransform(liveWorld);
+		for (unsigned row = 0; row < 3; ++row) {
+			OBVR_LOG("Water reflection axes: row=%u native=(%.9g,%.9g,%.9g) requested=(%.9g,%.9g,%.9g) bodyValid=%u body=(%.9g,%.9g,%.9g)",
+				row, inputWorld.rot.data[row][0], inputWorld.rot.data[row][1], inputWorld.rot.data[row][2],
+				stableWorld.rot.data[row][0], stableWorld.rot.data[row][1], stableWorld.rot.data[row][2],
+				liveValid, liveWorld.rot.data[row][0], liveWorld.rot.data[row][1], liveWorld.rot.data[row][2]);
+		}
+		// Entry camera evidence only: the native routine may create another
+		// camera internally. Do not treat this as its measured render matrix.
+		OBVR_LOG("Water reflection entry: frustum l=%.9g r=%.9g t=%.9g b=%.9g n=%.9g f=%.9g ortho=%u scale=%.9g,%.9g",
+			inputFrustum.l, inputFrustum.r, inputFrustum.t, inputFrustum.b,
+			inputFrustum.n, inputFrustum.f, unsigned(inputFrustum.o),
+			horizontalScale, verticalScale);
+		OBVR_LOG("Water reflection entry: original position=%.9g,%.9g,%.9g requested=%.9g,%.9g,%.9g",
+			inputWorld.pos.x, inputWorld.pos.y, inputWorld.pos.z,
+			stableWorld.pos.x, stableWorld.pos.y, stableWorld.pos.z);
+		OBVR_LOG("Water reflection: head-independent camera rendered into the original target");
 	}
 }
 
@@ -177,7 +175,7 @@ bool InstallWaterReflectionHook() {
 		return false;
 	}
 	SetWaterReflectionHookReady(true);
-	OBVR_LOG("Water reflection: capture/projection coupling hook installed");
+	OBVR_LOG("Water reflection: original-target camera/projection hook installed");
 	return true;
 }
 

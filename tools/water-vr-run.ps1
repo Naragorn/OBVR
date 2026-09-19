@@ -4,10 +4,10 @@
 # the game view while the headset is swept from right to left, and evaluates
 # the resulting BMP sequence plus OBVR.log with water_visual_harness.py.
 #
-# The headset sweep is deliberately physical: the harness controls save loading
-# and evidence capture, while SteamVR supplies the pose under test. Use -Attach
-# when xOBSE has already reached the in-game main menu, or
-# -WaitForManualLaunch when you want to click the installer's Play button once.
+# The DLL supplies a deterministic synthetic HMD yaw sweep after the save has
+# loaded. The runner controls the second-save selection, enables the isolated
+# test mode, waits for the in-game matrix/capture verdict, and evaluates the
+# resulting left/right eye BMPs. Use -Attach when xOBSE is already at the menu.
 
 [CmdletBinding()]
 param(
@@ -17,8 +17,11 @@ param(
 	[int]$CaptureCount = 8,
 	[int]$CaptureIntervalMs = 350,
 	[int]$LoadWaitSec = 60,
+	[ValidateRange(-80,80)][float]$PitchDegrees = -35,
 	[switch]$KeepGameOpen,
 	[switch]$Attach,
+	[switch]$AlreadyInWorld,
+	[switch]$ArmBeforeLoad,
 	[switch]$WaitForManualLaunch,
 	[switch]$DryRun
 )
@@ -57,10 +60,34 @@ if (-not $Attach -and (Get-Process -Name Oblivion -ErrorAction SilentlyContinue)
 if ($Attach -and $WaitForManualLaunch) {
 	throw "-Attach and -WaitForManualLaunch cannot be combined."
 }
+if ($AlreadyInWorld -and -not $Attach) {
+	throw "-AlreadyInWorld requires -Attach."
+}
+$oblivionIni = Join-Path $env:USERPROFILE "Documents\My Games\Oblivion\Oblivion.ini"
+if (-not (Test-Path -LiteralPath $oblivionIni)) {
+	throw "Oblivion.ini not found: $oblivionIni"
+}
+$oblivionIniText = [IO.File]::ReadAllText($oblivionIni)
+$disabledReflectionSettings = @()
+foreach ($key in @(
+	"bUseWaterReflections",
+	"bUseWaterReflectionsTrees",
+	"bUseWaterReflectionsStatics",
+	"bUseWaterReflectionsActors",
+	"bUseWaterReflectionsMisc"
+)) {
+	if (-not [regex]::IsMatch($oblivionIniText,
+		"(?m)^" + [regex]::Escape($key) + "\s*=\s*1\s*$")) {
+		$disabledReflectionSettings += $key
+	}
+}
+if ($disabledReflectionSettings.Count -ne 0) {
+	throw "Oblivion water reflections are disabled: $($disabledReflectionSettings -join ', ')"
+}
 if (-not (Test-Path -LiteralPath $ArtifactDir)) {
 	New-Item -ItemType Directory -Path $ArtifactDir -Force | Out-Null
 }
-Get-ChildItem -LiteralPath $ArtifactDir -Filter "ScreenShot*.bmp" -File -ErrorAction SilentlyContinue |
+Get-ChildItem -LiteralPath $ArtifactDir -Filter "*.bmp" -File -ErrorAction SilentlyContinue |
 	Remove-Item -Force
 @("OBVR.log", "water-vr-result.json") | ForEach-Object {
 	$path = Join-Path $ArtifactDir $_
@@ -72,6 +99,7 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -TypeDefinition @"
 using System;
 using System.Runtime.InteropServices;
+using System.Collections.Generic;
 public static class ObvrWaterRun {
 	[StructLayout(LayoutKind.Sequential)]
 	struct INPUT { public uint type; public MOUSEINPUT mi; }
@@ -89,13 +117,48 @@ public static class ObvrWaterRun {
 	[DllImport("user32.dll")]
 	static extern bool GetWindowRect(IntPtr handle, out RECT rect);
 	[DllImport("user32.dll")]
+	static extern bool GetClientRect(IntPtr handle, out RECT rect);
+	public delegate bool EnumWindowProc(IntPtr handle, IntPtr parameter);
+	[DllImport("user32.dll")]
+	static extern bool EnumChildWindows(IntPtr parent, EnumWindowProc callback, IntPtr parameter);
+	[DllImport("user32.dll")]
 	static extern IntPtr SendMessage(IntPtr handle, uint message, IntPtr wParam, IntPtr lParam);
+	[DllImport("user32.dll")]
+	static extern bool SetCursorPos(int x, int y);
+	[DllImport("user32.dll")]
+	static extern void mouse_event(uint flags, uint x, uint y, uint data, UIntPtr extra);
 	public static void ClickWindowOffset(IntPtr handle, int x, int y) {
 		int packed = (y << 16) | (x & 0xffff);
 		IntPtr point = new IntPtr(packed);
 		SendMessage(handle, 0x0201, new IntPtr(1), point);
 		System.Threading.Thread.Sleep(120);
 		SendMessage(handle, 0x0202, IntPtr.Zero, point);
+	}
+	public static void ClickLauncherPlay(IntPtr handle) {
+		IntPtr target = IntPtr.Zero;
+		RECT best = new RECT();
+		EnumChildWindows(handle, delegate(IntPtr child, IntPtr parameter) {
+			RECT rect;
+			if (!GetWindowRect(child, out rect)) return true;
+			int width = rect.right - rect.left;
+			int height = rect.bottom - rect.top;
+			if (width >= 200 && width <= 300 && height >= 25 && height <= 60 &&
+			    (target == IntPtr.Zero || rect.top < best.top)) {
+				target = child;
+				best = rect;
+			}
+			return true;
+		}, IntPtr.Zero);
+		if (target == IntPtr.Zero) throw new InvalidOperationException("Play bitmap not found");
+		int x = (best.left + best.right) / 2;
+		int y = (best.top + best.bottom) / 2;
+		SetForegroundWindow(handle);
+		System.Threading.Thread.Sleep(250);
+		SetCursorPos(x, y);
+		System.Threading.Thread.Sleep(150);
+		mouse_event(0x0002, 0, 0, 0, UIntPtr.Zero);
+		System.Threading.Thread.Sleep(120);
+		mouse_event(0x0004, 0, 0, 0, UIntPtr.Zero);
 	}
 	public static void Press(byte key, byte scan) {
 		keybd_event(key, scan, 0, IntPtr.Zero);
@@ -142,11 +205,16 @@ function Press-Enter {
 	Start-Sleep -Milliseconds 500
 }
 
+function Press-Right {
+	[ObvrWaterRun]::PressExtended(0x27, 0x4D)
+	Start-Sleep -Milliseconds 250
+}
+
 function Click-LauncherPlay($launcher) {
 	if (-not (Focus-ProcessWindow $launcher)) { return $false }
-	# OblivionLauncher has an image-only Play button; send the click to the
-	# parent because the child is a non-notifying Static bitmap.
-	[ObvrWaterRun]::ClickWindowOffset($launcher.MainWindowHandle, 325, 122)
+	# The image-only Play control has no button notification. Locate its measured
+	# child rectangle and send a real foreground mouse click to its center.
+	[ObvrWaterRun]::ClickLauncherPlay($launcher.MainWindowHandle)
 	Start-Sleep -Seconds 2
 	return $true
 }
@@ -167,6 +235,59 @@ function Save-ScreenBmp([string]$path) {
 	Write-Host "Captured $([IO.Path]::GetFileName($path))"
 }
 
+$pluginIni = Join-Path $GameDir "Data\OBSE\Plugins\OBVR.ini"
+if (-not (Test-Path -LiteralPath $pluginIni)) {
+	throw "OBVR.ini not found: $pluginIni"
+}
+$originalPluginIni = [IO.File]::ReadAllBytes($pluginIni)
+# Attach must only accept markers emitted after this invocation. LastWriteTime
+# alone cannot distinguish an old successful sweep from a new unfinished one.
+$logStartLength = 0
+if ($Attach -and -not $ArmBeforeLoad -and (Test-Path -LiteralPath $logPath)) {
+	$logStartLength = (Get-Content -LiteralPath $logPath -Raw).Length
+}
+function Read-CurrentRunLog {
+	if (-not (Test-Path -LiteralPath $logPath)) { return "" }
+	$text = [string](Get-Content -LiteralPath $logPath -Raw)
+	if ($text.Length -lt $logStartLength) {
+		throw "OBVR.log was truncated during attach; current run evidence is ambiguous."
+	}
+	return $text.Substring($logStartLength)
+}
+try {
+	$testIni = [IO.File]::ReadAllText($pluginIni)
+	foreach ($setting in @(
+		@("VRTestSuite", "1"),
+		@("VRTestWaterOnly", "1"),
+		@("VRTestWaterCoverageDiagnostic", "0"),
+		@("VRTestWaterPitch", $PitchDegrees.ToString([Globalization.CultureInfo]::InvariantCulture)),
+		@("StableWaterReflections", "1"),
+		@("WaterReflectionMode", "2")
+	)) {
+		$key, $value = $setting
+		$pattern = "(?m)^" + [regex]::Escape($key) + "\s*=.*$"
+		if ([regex]::IsMatch($testIni, $pattern)) {
+			$testIni = [regex]::Replace($testIni, $pattern, "$key=$value")
+		} elseif ($key -like "VRTest*") {
+			$debugPattern = "(?m)^\[Debug\]\s*$"
+			if (-not [regex]::IsMatch($testIni, $debugPattern)) {
+				throw "OBVR.ini has no [Debug] section for $key"
+			}
+			$testIni = [regex]::Replace($testIni, $debugPattern, "[Debug]`r`n$key=$value", 1)
+		} else {
+			throw "Required OBVR.ini setting is missing: $key"
+		}
+	}
+	Get-ChildItem -LiteralPath $GameDir -Filter "OBVR-VRTest-water-view-*.bmp" -File -ErrorAction SilentlyContinue |
+		Remove-Item -Force
+	Get-ChildItem -LiteralPath $GameDir -Filter "OBVR-VRTest-first-world-*.bmp" -File -ErrorAction SilentlyContinue |
+		Remove-Item -Force
+	# Keep replay disabled while loading/settling. The armed text is written
+	# only after LoadWaitSec; otherwise the sweep can finish during that wait.
+	$settlingIni = [regex]::Replace($testIni, '(?m)^VRTestSuite\s*=.*$', 'VRTestSuite=0')
+	$initialIni = if ($ArmBeforeLoad) { $testIni } else { $settlingIni }
+	[IO.File]::WriteAllText($pluginIni, $initialIni, [Text.UTF8Encoding]::new($false))
+
 $startedAt = Get-Date
 if (-not $Attach) {
 	Write-Host "Starting $loaderPath"
@@ -177,38 +298,46 @@ if (-not $Attach) {
 
 # Wait for the current run's plugin startup, not an old marker in a retained log.
 $deadline = (Get-Date).AddSeconds(150)
-$startedMarker = $Attach
+$startedMarker = $false
+$testArmed = $false
 $launcherPlaySent = $false
-if (-not $Attach) {
 while ((Get-Date) -lt $deadline) {
 	Start-Sleep -Seconds 2
+	if ($Attach) {
+		$readyProcess = Get-GameProcess
+		if ($readyProcess -and $readyProcess.MainWindowHandle -ne 0) {
+			# Config reload and VR-test installation run from world frames. At the
+			# main menu there are only HUD invocations, so waiting for the armed
+			# marker here deadlocks before the runner can load the test save.
+			$startedMarker = $true
+			break
+		}
+		continue
+	}
+	if (Test-Path -LiteralPath $logPath) {
+		$logItem = Get-Item -LiteralPath $logPath
+		if ($logItem.LastWriteTime -ge $startedAt) {
+			# Startup can emit more than 120 lines before the first poll.
+			$tail = Get-Content -LiteralPath $logPath -ErrorAction SilentlyContinue
+			if ($tail -match "^OBVR ready$") {
+				$readyProcess = Get-GameProcess
+				if ($readyProcess -and $readyProcess.MainWindowHandle -ne 0) {
+					$startedMarker = $true
+					break
+				}
+			}
+		}
+	}
 	$p = Get-GameProcess
 	if (-not $p) {
 		if ($Attach) { continue }
 		$launcher = Get-LauncherProcess
-		if ($launcher -and -not $launcherPlaySent -and -not $WaitForManualLaunch) {
-			Write-Host "OblivionLauncher is open; waiting for its controls to settle."
-			Start-Sleep -Seconds 4
-			Write-Host "Clicking the launcher Play button."
-			if (Click-LauncherPlay $launcher) {
-				$launcherPlaySent = $true
-			}
-		} elseif ($launcher -and $WaitForManualLaunch -and -not $launcherPlaySent) {
-			Write-Host "OblivionLauncher is open; click Play manually. The harness is waiting for Oblivion.exe."
-			$launcherPlaySent = $true
+		if ($launcher) {
+			throw "OBSE redirected to OblivionLauncher; refusing launcher fallback. Start obse_loader.exe from its game-folder Explorer window and use -Attach."
 		}
 		continue
 	}
-	if (-not (Test-Path -LiteralPath $logPath)) { continue }
-	$logItem = Get-Item -LiteralPath $logPath
-	if ($logItem.LastWriteTime -lt $startedAt) { continue }
-	$tail = Get-Content -LiteralPath $logPath -Tail 120 -ErrorAction SilentlyContinue
-	if ($tail -match "hooked at table entries|capture/projection coupling hook installed") {
-		$startedMarker = $true
-		break
-	}
 	Focus-Game | Out-Null
-}
 }
 if (-not $startedMarker) {
 	$launcher = Get-LauncherProcess
@@ -218,58 +347,126 @@ if (-not $startedMarker) {
 	throw "The current run never produced a fresh OBVR startup marker."
 }
 Start-Sleep -Seconds 3
-if (-not (Focus-Game)) { throw "Oblivion has no focusable window." }
+if (-not $AlreadyInWorld -and -not (Focus-Game)) { throw "Oblivion has no focusable window." }
 
-# Main menu: the first Down gives the menu focus on Continue; three Down
-# presses land on Load (Continue, New, Load). The save list starts at its top
-# entry, so SaveIndex=1 selects the second entry from the top.
-Write-Host "Selecting Load, then save entry $($SaveIndex + 1) from the top..."
-Press-Down
-Press-Down
-Press-Down
-Press-Enter
-Start-Sleep -Seconds 2
-for ($i = 0; $i -lt $SaveIndex; ++$i) { Press-Down }
-Press-Enter
+if (-not $AlreadyInWorld) {
+	# Observed main menu is horizontal: Down establishes Continue focus, then
+	# two Right presses select Load. Further Down presses do not move selection.
+	# The save list starts at its top
+	# entry, so SaveIndex=1 selects the second entry from the top.
+	Write-Host "Selecting Load, then save entry $($SaveIndex + 1) from the top..."
+	Press-Down
+	Press-Right
+	Press-Right
+	Press-Enter
+	Start-Sleep -Seconds 2
+	for ($i = 0; $i -lt $SaveIndex; ++$i) { Press-Down }
+	Press-Enter
+	# Main-menu load confirmation defaults to Yes (the in-world dialog does not).
+	Start-Sleep -Seconds 1
+	Press-Enter
+} else {
+	Write-Host "Using the already-loaded world; no menu input will be sent."
+}
 Write-Host "Waiting $LoadWaitSec seconds for the world and water to settle..."
 Start-Sleep -Seconds $LoadWaitSec
-if (-not (Focus-Game)) { throw "Oblivion stopped before capture." }
+if (-not (Get-GameProcess)) { throw "Oblivion stopped before capture." }
+if (-not $AlreadyInWorld) { Focus-Game | Out-Null }
 
-Write-Host "Headset sweep starts in 3 seconds: sweep your view from RIGHT to LEFT across the pond."
-Start-Sleep -Seconds 1
-Write-Host "3"
-Start-Sleep -Seconds 1
-Write-Host "2"
-Start-Sleep -Seconds 1
-Write-Host "1"
-Focus-Game | Out-Null
-$shots = @()
-for ($i = 0; $i -lt $CaptureCount; ++$i) {
-	$name = "ScreenShot{0:D3}.bmp" -f ($i + 1)
-	$path = Join-Path $ArtifactDir $name
-	Save-ScreenBmp $path
-	$shots += $name
-	if ($i + 1 -lt $CaptureCount) { Start-Sleep -Milliseconds $CaptureIntervalMs }
+# Discard pre-arm evidence, including any sweep retained by an attached game.
+# This applies equally to a fresh launch, main-menu attach and in-world attach.
+if (-not $ArmBeforeLoad) {
+	$logStartLength = if (Test-Path -LiteralPath $logPath) {
+		([string](Get-Content -LiteralPath $logPath -Raw)).Length
+	} else { 0 }
+	[IO.File]::WriteAllText($pluginIni, $testIni, [Text.UTF8Encoding]::new($false))
 }
+
+if (-not $testArmed) {
+	Write-Host "Waiting for the in-world config reload to arm the water runner..."
+	$armDeadline = (Get-Date).AddSeconds(60)
+	while ((Get-Date) -lt $armDeadline) {
+		if (-not (Get-GameProcess)) { throw "Oblivion stopped before the water runner armed." }
+		if (Test-Path -LiteralPath $logPath) {
+			$logItem = Get-Item -LiteralPath $logPath
+			if ($logItem.LastWriteTime -ge $startedAt) {
+				$tail = Read-CurrentRunLog
+				if ($tail -match "VRTEST water runner armed schema=21") {
+					$testArmed = $true
+					break
+				}
+			}
+		}
+		Start-Sleep -Seconds 2
+	}
+	if (-not $testArmed) {
+		throw "The in-world config reload never armed the water runner."
+	}
+}
+
+Write-Host "Waiting for the automatic -60 to +60 degree HMD water sweep..."
+$sweepDeadline = (Get-Date).AddSeconds(180)
+$sweepStatus = $null
+while ((Get-Date) -lt $sweepDeadline) {
+	Start-Sleep -Seconds 2
+	if (-not (Get-GameProcess)) { throw "Oblivion stopped during the water sweep." }
+	if (-not (Test-Path -LiteralPath $logPath)) { continue }
+	$tail = Read-CurrentRunLog
+	$statusMatch = [regex]::Match(($tail -join "`n"),
+		"VRTEST water-sweep status=(pass|fail)")
+	if ($statusMatch.Success) {
+		$sweepStatus = $statusMatch.Groups[1].Value
+		break
+	}
+}
+$captured = @(Get-ChildItem -LiteralPath $GameDir -Filter "OBVR-VRTest-water-view-*.bmp" -File |
+	Sort-Object Name)
+$shots = @()
+foreach ($shot in $captured) {
+	Copy-Item -LiteralPath $shot.FullName -Destination (Join-Path $ArtifactDir $shot.Name) -Force
+	$shots += $shot.Name
+}
+$firstWorld = @(Get-ChildItem -LiteralPath $GameDir -Filter "OBVR-VRTest-first-world-*.bmp" -File |
+	Where-Object { $_.LastWriteTime -ge $startedAt } | Sort-Object Name)
+foreach ($shot in $firstWorld) {
+	Copy-Item -LiteralPath $shot.FullName -Destination (Join-Path $ArtifactDir $shot.Name) -Force
+}
+
+# Supplementary native-target evidence, separate from the 28 eye-image gate.
+# Match this run's timestamps so an older DLL cannot contribute stale textures.
+Get-ChildItem -LiteralPath $GameDir -Filter "OBVR-VRTest-reflection-view-*.bmp" -File |
+	Where-Object { $_.LastWriteTime -ge $startedAt } |
+	Copy-Item -Destination $ArtifactDir -Force
 
 if (Test-Path -LiteralPath $logPath) {
 	Copy-Item -LiteralPath $logPath -Destination (Join-Path $ArtifactDir "OBVR.log") -Force
 }
 $manifest = [ordered]@{
-	schema = 1
+	schema = 2
 	attach = [bool]$Attach
+	alreadyInWorld = [bool]$AlreadyInWorld
+	armBeforeLoad = [bool]$ArmBeforeLoad
 	waitForManualLaunch = [bool]$WaitForManualLaunch
 	saveIndex = $SaveIndex
 	saveEntry = $targetSave.Name
 	saveTimestamp = $targetSave.LastWriteTime.ToString("o")
 	captureCount = $shots.Count
-	captureIntervalMs = $CaptureIntervalMs
+	sweep = "synthetic-hmd-yaw--60-to-60"
+	pitchDegrees = $PitchDegrees
 	files = $shots
+	firstWorldFiles = @($firstWorld | ForEach-Object Name)
 	startedAt = $startedAt.ToString("o")
 	completedAt = (Get-Date).ToString("o")
 }
 $manifest | ConvertTo-Json -Depth 4 |
 	Set-Content -LiteralPath (Join-Path $ArtifactDir "water-vr-result.json") -Encoding UTF8
+
+# Preserve failed/partial evidence before reporting the same failure gates.
+if (-not $sweepStatus) { throw "The automatic water sweep did not finish before timeout." }
+if ($sweepStatus -ne "pass") { throw "The in-game water matrix/capture sweep failed." }
+if ($captured.Count -ne 28) {
+	throw "Expected 28 synthetic-yaw eye screenshots, found $($captured.Count)."
+}
 
 $python = "C:\Users\Nadi\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
 $harness = Join-Path $root "tools\water_visual_harness.py"
@@ -294,3 +491,7 @@ if ($analysisExit -ne 0) {
 	throw "Water visual harness did not pass; inspect $ArtifactDir"
 }
 Write-Host "Water VR harness passed: $ArtifactDir"
+} finally {
+	[IO.File]::WriteAllBytes($pluginIni, $originalPluginIni)
+	Write-Host "Restored OBVR.ini after water run."
+}

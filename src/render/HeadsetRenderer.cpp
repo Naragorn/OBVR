@@ -1,4 +1,5 @@
 #include "render/HeadsetRenderer.h"
+#include "test/WaterVRTestRuntime.h"
 
 #include "camera/FrameLogic.h"
 
@@ -396,6 +397,7 @@ bool HeadsetRenderer::CaptureEye(const FrameRequest& request, bool isLeft) {
 	}
 
 	m_dualCaptured[isLeft ? 0 : 1] = true;
+	test::ObserveWaterVREye(isLeft, request.gameDevice);
 	return true;
 }
 

@@ -38,6 +38,7 @@
 #include "render/GameProjection.h"
 #include "render/HeadsetRenderer.h"
 #include "render/WaterReprojection.h"
+#include "test/WaterVRTestRuntime.h"
 #include "render/CrosshairLayer.h"
 #include "render/HudLayer.h"
 #include "render/LaserLayer.h"
@@ -1037,6 +1038,7 @@ void OnPresent() {
 	const bool menuIsUp = config.tracker.showMenus && game::IsMenuMode();
 	UpdateHandMode(config, game::IsMenuMode());
 	OnFrameEnd();
+	test::AdvanceWaterVRTest(game::PlayerInWorld() && !game::IsMenuMode());
 	if (config.tracker.mirrorMenusToMonitor && menuIsUp && layerCaptured) {
 		g_headsetRenderer.MirrorLayerToMonitor(render::GetGameDevice(),
 		                                       g_hudLayer.CaptureTexture());

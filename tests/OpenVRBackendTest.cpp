@@ -16,6 +16,10 @@
 #include "vr/OpenVRBackend.h"
 #include "vr/OpenVRTypes.h"
 
+namespace obvr::test {
+extern bool g_waterReplayActive;
+}  // namespace obvr::test
+
 namespace {
 
 int g_failures = 0;
@@ -281,6 +285,29 @@ int main() {
 	obvr::NiPoint3 position{0.0f, 0.0f, 0.0f};
 	const bool read = backend.ReadHeadPose(orientation, position);
 	Check(!read, "ReadHeadPose reports false without a connection");
+
+	// The developer water harness deliberately overrides all three pose reads
+	// without requiring a running OpenVR service. Keep this test-local replay
+	// deterministic so both the override and normal fallback remain covered.
+	obvr::test::g_waterReplayActive = true;
+	Check(backend.ReadHeadPose(orientation, position),
+	      "water replay supplies a head pose without a runtime");
+	CheckNear(position.x, 4.0f, "water replay head position x");
+	CheckNear(position.y, 5.0f, "water replay head position y");
+	CheckNear(position.z, 6.0f, "water replay head position z");
+	Check(backend.GetRenderPose(orientation, position),
+	      "water replay supplies the render pose");
+	obvr::vr::openvr::HmdMatrix34 replayMatrix{};
+	Check(backend.GetRenderPoseMatrix(replayMatrix),
+	      "water replay supplies the render pose matrix");
+	CheckNear(replayMatrix.m[0][3], 4.0f, "water replay matrix position x");
+	CheckNear(replayMatrix.m[1][3], 5.0f, "water replay matrix position y");
+	CheckNear(replayMatrix.m[2][3], 6.0f, "water replay matrix position z");
+	obvr::test::g_waterReplayActive = false;
+	Check(!backend.GetRenderPose(orientation, position),
+	      "normal render pose fallback remains unavailable without a runtime");
+	Check(!backend.GetRenderPoseMatrix(replayMatrix),
+	      "normal render matrix fallback remains unavailable without a runtime");
 
 	// A second attempt must neither crash nor flood the log.
 	Check(!backend.Start(false), "second Start stays without effect as well");

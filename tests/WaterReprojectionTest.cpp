@@ -38,6 +38,46 @@ NiTransform Camera(float radians, NiPoint3 position) {
 }
 
 int main() {
+	{
+		// Recorded native/body pair from the reflection entry, with all three
+		// axes nontrivial (yaw, pitch and roll). This is not an identity-only test.
+		NiTransform body{};
+		const float measuredBody[3][3] = {
+			{0.980963886f,-0.0830819905f,0.175520539f},
+			{0.0209795609f,0.943907678f,0.329542816f},
+			{-0.193054199f,-0.319587141f,0.927682102f}};
+		const float measuredNative[3][3] = {
+			{-0.0830819905f,0.175520539f,0.980963886f},
+			{0.943907678f,0.329542816f,0.0209795609f},
+			{-0.319587141f,0.927682102f,-0.193054199f}};
+		for(unsigned r=0;r<3;++r) for(unsigned c=0;c<3;++c)
+			body.rot.data[r][c]=measuredBody[r][c];
+		body.pos={13.0f,-27.0f,42.0f}; body.scale=2.0f;
+		const NiTransform native=WaterRenderCameraFromBody(body);
+		for(unsigned r=0;r<3;++r) for(unsigned c=0;c<3;++c)
+			Check(Near(native.rot.data[r][c],measuredNative[r][c]),"native camera axes match recorded engine basis");
+		Check(native.pos.x==13.0f && native.pos.y==-27.0f && native.pos.z==42.0f && native.scale==2.0f,
+		      "camera basis conversion preserves origin and scale");
+		// Exercise the actual composition boundary: the render camera can be
+		// attached to a rotated/scaled parent unrelated to the player camera.
+		for (float parentYaw : {0.0f, 0.7f, -1.2f}) {
+			NiTransform parent=Camera(parentYaw,{103.0f,-207.0f,31.0f});
+			parent.scale=1.5f;
+			NiTransform local{};
+			Check(BuildWaterCameraLocalFromParent(parent,native,local),
+			      "converted native camera accepts independent parent");
+			const WaterMatrix restored=MultiplyWaterMatrix(CameraWorldMatrix(parent),CameraWorldMatrix(local));
+			Check(NearMatrix(restored,CameraWorldMatrix(native)),
+			      "native axes and position survive conversion through actual parent");
+			// Native forward/up/right must equal body forward/up/right, despite
+			// occupying different matrix columns. A direct body copy fails this.
+			for(unsigned r=0;r<3;++r) {
+				Check(Near(restored.m[r][0],2.0f*measuredBody[r][1]),"native forward follows body forward");
+				Check(Near(restored.m[r][1],2.0f*measuredBody[r][2]),"native up follows body up");
+				Check(Near(restored.m[r][2],2.0f*measuredBody[r][0]),"native right follows body right");
+			}
+		}
+	}
     for (unsigned inSubpass = 0; inSubpass < 2; ++inSubpass) {
         Check(ShouldBypassWaterReprojectionInReflectionSubpass(inSubpass != 0) == (inSubpass != 0),
               "reflection subpass bypass follows the nested-scene state");
@@ -50,10 +90,6 @@ int main() {
               "only modes 2 and 3 use the shared cyclopean capture");
         Check(UsesWaterReprojectionShader(mode) == reprojected,
               "modes 2 and 3 replace only the water reflection-coordinate shader");
-        Check(UsesStableWaterReflectionShader(mode, false) == (rawMode == 2 || rawMode == 3),
-              "stable capture modes use the world-space reflection shader");
-        Check(!UsesStableWaterReflectionShader(mode, true),
-              "coverage diagnostics always keep the diagnostic pixel shader");
         for (unsigned enabled = 0; enabled < 2; ++enabled)
         for (unsigned ready = 0; ready < 2; ++ready)
         for (unsigned camera = 0; camera < 2; ++camera)
@@ -64,6 +100,34 @@ int main() {
                                            camera != 0, transforms != 0) == expected,
                   "all stable-capture gate combinations");
         }
+    }
+	for (unsigned deviceChanged = 0; deviceChanged < 2; ++deviceChanged)
+	for (unsigned currentValid = 0; currentValid < 2; ++currentValid)
+	for (unsigned identityMatches = 0; identityMatches < 2; ++identityMatches)
+	for (unsigned ready = 0; ready < 2; ++ready)
+	for (unsigned refused = 0; refused < 2; ++refused) {
+		WaterShaderLifecycleAction expected;
+		if (!currentValid) expected = WaterShaderLifecycleAction::WaitForShaders;
+		else if (deviceChanged || !identityMatches)
+			expected = WaterShaderLifecycleAction::Rebuild;
+		else if (ready) expected = WaterShaderLifecycleAction::KeepReady;
+		else if (refused) expected = WaterShaderLifecycleAction::KeepRefused;
+		else expected = WaterShaderLifecycleAction::Rebuild;
+		Check(DecideWaterShaderLifecycle(
+			deviceChanged != 0, currentValid != 0, identityMatches != 0,
+			ready != 0, refused != 0) == expected,
+			"all live water-shader lifecycle transitions");
+	}
+    for (unsigned rawMode = 0; rawMode < 4; ++rawMode)
+    for (unsigned subpass = 0; subpass < 2; ++subpass)
+    for (unsigned ready = 0; ready < 2; ++ready)
+    for (unsigned capture = 0; capture < 2; ++capture) {
+        const WaterReflectionMode mode = static_cast<WaterReflectionMode>(rawMode);
+        const bool expected = (rawMode == 2 || rawMode == 3) &&
+                              !subpass && ready && capture;
+        Check(ShouldSelectStableWaterVertexShader(
+                  mode, subpass != 0, ready != 0, capture != 0) == expected,
+              "all stable vertex-shader selection gates");
     }
     for (unsigned cacheValid = 0; cacheValid < 2; ++cacheValid)
     for (unsigned texturesReady = 0; texturesReady < 2; ++texturesReady)
@@ -114,9 +178,28 @@ int main() {
 		NiTransform invalid=parent; invalid.scale=0.0f;
 		Check(!BuildWaterCameraLocalFromParent(invalid, desired, local),
 		      "zero parent scale refuses a camera transform");
+		invalid=parent; invalid.scale=1.0e-6f;
+		Check(!BuildWaterCameraLocalFromParent(invalid, desired, local),
+		      "near-zero parent scale refuses an unstable camera transform");
+		invalid=parent; invalid.scale=std::numeric_limits<float>::quiet_NaN();
+		Check(!BuildWaterCameraLocalFromParent(invalid, desired, local),
+		      "nonfinite parent scale refuses a camera transform");
 		desired.scale=std::numeric_limits<float>::quiet_NaN();
 		Check(!BuildWaterCameraLocalFromParent(parent, desired, local),
 		      "nonfinite desired scale refuses a camera transform");
+		desired=Camera(-0.8f,{9,8,7}); desired.scale=1.5f;
+		desired.rot.data[1][2]=std::numeric_limits<float>::quiet_NaN();
+		Check(!BuildWaterCameraLocalFromParent(parent, desired, local),
+		      "nonfinite desired rotation refuses a camera transform");
+		desired=Camera(-0.8f,{9,8,7}); desired.scale=1.5f;
+		desired.pos.y=std::numeric_limits<float>::infinity();
+		Check(!BuildWaterCameraLocalFromParent(parent, desired, local),
+		      "nonfinite desired position refuses a camera transform");
+		desired=Camera(-0.8f,{9,8,7});
+		desired.scale=std::numeric_limits<float>::max();
+		invalid=parent; invalid.scale=1.0e-4f;
+		Check(!BuildWaterCameraLocalFromParent(invalid, desired, local),
+		      "overflowed local scale refuses a camera transform");
 	}
 
 		const float values[]={0.0f,0.5f,1.0f,2.0f,16.0f,17.0f,
@@ -132,56 +215,66 @@ int main() {
 			else Check(NearMatrix(matrix,before),"invalid projection scale leaves matrix untouched");
 		}
 	}
+	{
+		game::NiFrustum valid{-1.0f,1.0f,0.75f,-0.75f,10.0f,10000.0f,false};
+		game::NiFrustum widened=valid;
+		Check(ScaleWaterCaptureFrustum(widened,3.0f,1.5f),
+		      "finite perspective frustum accepts capture widening");
+		Check(Near(widened.l,-3.0f) && Near(widened.r,3.0f) &&
+		      Near(widened.t,1.125f) && Near(widened.b,-1.125f) &&
+		      Near(widened.n,valid.n) && Near(widened.f,valid.f),
+		      "capture widening changes only horizontal and vertical tangents");
+
+		const float invalidScales[]={0.0f,0.5f,17.0f,
+		 std::numeric_limits<float>::infinity(),std::numeric_limits<float>::quiet_NaN()};
+		for(float horizontal:invalidScales) {
+			game::NiFrustum candidate=valid;
+			Check(!ScaleWaterCaptureFrustum(candidate,horizontal,1.0f),
+			      "all invalid horizontal frustum scales are refused");
+			Check(Near(candidate.l,valid.l) && Near(candidate.r,valid.r),
+			      "refused horizontal scale leaves the frustum unchanged");
+		}
+		for(float vertical:invalidScales) {
+			game::NiFrustum candidate=valid;
+			Check(!ScaleWaterCaptureFrustum(candidate,1.0f,vertical),
+			      "all invalid vertical frustum scales are refused");
+			Check(Near(candidate.t,valid.t) && Near(candidate.b,valid.b),
+			      "refused vertical scale leaves the frustum unchanged");
+		}
+		auto Refused=[](game::NiFrustum candidate) {
+			return !ScaleWaterCaptureFrustum(candidate,3.0f,1.5f);
+		};
+		game::NiFrustum candidate=valid; candidate.o=true;
+		Check(Refused(candidate),"orthographic capture frustum is refused");
+		candidate=valid; candidate.n=0.0f;
+		Check(Refused(candidate),"nonpositive near plane is refused");
+		candidate=valid; candidate.f=candidate.n;
+		Check(Refused(candidate),"far plane not beyond near is refused");
+		candidate=valid; candidate.l=0.0f;
+		Check(Refused(candidate),"nonnegative left tangent is refused");
+		candidate=valid; candidate.r=0.0f;
+		Check(Refused(candidate),"nonpositive right tangent is refused");
+		candidate=valid; candidate.b=0.0f;
+		Check(Refused(candidate),"nonnegative bottom tangent is refused");
+		candidate=valid; candidate.t=0.0f;
+		Check(Refused(candidate),"nonpositive top tangent is refused");
+		float game::NiFrustum::* fields[]={&game::NiFrustum::l,&game::NiFrustum::r,
+		 &game::NiFrustum::t,&game::NiFrustum::b,&game::NiFrustum::n,&game::NiFrustum::f};
+		for(auto field:fields) {
+			candidate=valid; candidate.*field=std::numeric_limits<float>::quiet_NaN();
+			Check(Refused(candidate),"every nonfinite frustum field is refused");
+		}
+	}
 
 
-	{
-		const NiTransform center=Camera(0.2f,{2,3,4});
-		NiTransform left{},middle{},right{};
-		BuildWaterReflectionCaptureTransform(center,-60.0f,left);
-		BuildWaterReflectionCaptureTransform(center,0.0f,middle);
-		BuildWaterReflectionCaptureTransform(center,60.0f,right);
-		Check(Near(middle.pos.x,center.pos.x) && Near(middle.pos.y,center.pos.y) &&
-		      Near(middle.pos.z,center.pos.z),"capture fan keeps the camera position");
-		Check(NearMatrix(CameraWorldMatrix(middle),CameraWorldMatrix(center)),
-		      "zero-yaw capture is the original body-fixed camera");
-		Check(!NearMatrix(CameraWorldMatrix(left),CameraWorldMatrix(middle)) &&
-		      !NearMatrix(CameraWorldMatrix(right),CameraWorldMatrix(middle)) &&
-		      !NearMatrix(CameraWorldMatrix(left),CameraWorldMatrix(right)),
-		      "left, center and right captures have distinct orientations");
-		NiTransform tilted=Camera(0.2f,{2,3,4});
-		NiTransform tiltedLeft{},tiltedRight{};
-		tilted.rot=EulerToMatrix(30.0f,0.0f,20.0f);
-		BuildWaterReflectionCaptureTransform(tilted,-60.0f,tiltedLeft);
-		BuildWaterReflectionCaptureTransform(tilted,60.0f,tiltedRight);
-		Check(Near(ForwardOf(tiltedLeft.rot).z,ForwardOf(tilted.rot).z) &&
-		      Near(ForwardOf(tiltedRight.rot).z,ForwardOf(tilted.rot).z),
-		      "world-yaw capture fan retains the centre camera pitch");
-	}
-	{
-		Check(Near(WaterReflectionEdgeWeight(0.5f,0.5f,0.125f),1.0f),
-		      "capture interior receives full weight");
-		Check(Near(WaterReflectionEdgeWeight(0.0625f,0.5f,0.125f),0.5f),
-		      "capture overlap fades linearly at an edge");
-		const float outside[][2]={{-0.1f,0.5f},{1.1f,0.5f},{0.5f,-0.1f},{0.5f,1.1f}};
-		for(const auto& uv:outside)
-			Check(Near(WaterReflectionEdgeWeight(uv[0],uv[1],0.125f),0.0f),
-			      "all four outside directions receive zero weight");
-		const float bad[]={0.0f,-1.0f,std::numeric_limits<float>::infinity(),
-		                   std::numeric_limits<float>::quiet_NaN()};
-		for(float fade:bad)
-			Check(Near(WaterReflectionEdgeWeight(0.5f,0.5f,fade),0.0f),
-			      "invalid fade width refuses the sample");
-		Check(Near(WaterReflectionEdgeWeight(std::numeric_limits<float>::quiet_NaN(),0.5f,0.125f),0.0f) &&
-		      Near(WaterReflectionEdgeWeight(0.5f,std::numeric_limits<float>::infinity(),0.125f),0.0f),
-		      "non-finite texture coordinates receive zero weight");
-	}
 
     for (unsigned stable = 0; stable < 2; ++stable)
-    for (unsigned rawPass = 0; rawPass < 3; ++rawPass) {
+    for (unsigned rawPass = 0; rawPass < 3; ++rawPass)
+    for (unsigned rendered = 0; rendered < 2; ++rendered) {
         const WaterStereoPass pass = static_cast<WaterStereoPass>(rawPass);
-        Check(ShouldRenderWaterReflection(stable != 0, pass) ==
-              (!stable || pass != WaterStereoPass::Second),
-              "stable second eye alone reuses the first reflection texture");
+        const bool expected = !stable || pass != WaterStereoPass::Second || !rendered;
+        Check(ShouldRenderWaterReflection(stable != 0, pass, rendered != 0) == expected,
+              "stable second eye reuses only a reflection rendered by this stereo pair");
     }
     for (unsigned rawMode = 0; rawMode < 4; ++rawMode)
     for (unsigned rawPass = 0; rawPass < 3; ++rawPass)
@@ -207,6 +300,59 @@ int main() {
 		      "shader, refusal and capture-hook readiness gates all combinations" );
 	}
 	const float liveAngles[] = {0.0f, 0.35f, -0.7f};
+	{
+		WaterMatrix absolute = Identity(), projection = Identity();
+		absolute.m[0][0] = 2.0f;
+		absolute.m[0][3] = 120.0f;
+		absolute.m[1][3] = 230.0f;
+		projection.m[0][0] = 1.3f;
+		projection.m[1][1] = 1.7f;
+		projection.m[2][3] = -0.2f;
+		projection.m[3][2] = 1.0f;
+		projection.m[3][3] = 0.0f;
+		const NiTransform capture = Camera(.2f, {20, 30, 4});
+		WaterMatrix inverseCapture{};
+		Check(InvertWaterMatrix(CameraWorldMatrix(capture), inverseCapture), "capture invertible");
+		const WaterMatrix expected = MultiplyWaterMatrix(MultiplyWaterMatrix(projection, inverseCapture), absolute);
+		for (float angle : liveAngles) {
+			const NiTransform live = Camera(angle, {25, 35, 9});
+			WaterMatrix relative = absolute;
+			relative.m[0][3] -= live.pos.x;
+			relative.m[1][3] -= live.pos.y;
+			relative.m[2][3] -= live.pos.z;
+			NiTransform rotationOnly = live;
+			rotationOnly.pos = NiPoint3{};
+			WaterMatrix inverseRotation{}, restored{}, result{}, broken{};
+			Check(InvertWaterMatrix(CameraWorldMatrix(rotationOnly), inverseRotation), "relative camera rotation invertible");
+			const WaterMatrix current = MultiplyWaterMatrix(MultiplyWaterMatrix(projection, inverseRotation), relative);
+			Check(RestoreWaterWorldOrigin(relative, live.pos, restored), "camera-relative WorldMat restores origin");
+			Check(NearMatrix(restored, absolute), "restored mesh is in absolute world coordinates");
+			Check(BuildStableWaterCaptureMvp(current, restored, live, capture, result), "relative engine inputs accepted after origin restoration");
+			Check(NearMatrix(result, expected), "HMD yaw does not change the full capture projection");
+			Check(BuildStableWaterCaptureMvp(current, relative, live, capture, broken) && !NearMatrix(broken, expected),
+			      "regression reproduces incorrect translation without origin restoration");
+		}
+		WaterMatrix relative = Identity(), restored{};
+		relative.m[0][3] = 9075.55957f; relative.m[1][3] = 7778.53125f; relative.m[2][3] = -306.019165f;
+		Check(RestoreWaterWorldOrigin(relative, {-2931.55957f,10653.4688f,306.019165f}, restored), "measured live shader input accepted");
+		Check(Near(restored.m[0][3],6144) && Near(restored.m[1][3],18432) && Near(restored.m[2][3],0),
+		      "measured WorldMat plus camera returns exact water-cell origin");
+		for (unsigned row=0; row<4; ++row) for (unsigned col=0; col<4; ++col) {
+			WaterMatrix bad = Identity(); bad.m[row][col] = std::numeric_limits<float>::quiet_NaN();
+			Check(!RestoreWaterWorldOrigin(bad, {}, restored), "non-finite WorldMat rejected");
+		}
+		for (unsigned col=0; col<4; ++col) {
+			WaterMatrix bad=Identity(); bad.m[3][col] += 1;
+			Check(!RestoreWaterWorldOrigin(bad, {}, restored), "non-affine WorldMat rejected");
+		}
+		for (NiPoint3 bad : {NiPoint3{INFINITY,0,0}, NiPoint3{0,INFINITY,0}, NiPoint3{0,0,INFINITY}})
+			Check(!RestoreWaterWorldOrigin(Identity(),bad,restored), "non-finite camera rejected");
+		for (unsigned axis=0; axis<3; ++axis) {
+			WaterMatrix huge=Identity(); huge.m[axis][3] = std::numeric_limits<float>::max();
+			Check(!RestoreWaterWorldOrigin(huge, {std::numeric_limits<float>::max(),std::numeric_limits<float>::max(),std::numeric_limits<float>::max()}, restored),
+			      "overflow restoring each origin component rejected");
+		}
+	}
 	const float captureAngles[] = {0.0f, 0.2f, -0.5f};
 	for (float liveAngle : liveAngles)
 	for (float captureAngle : captureAngles) {
@@ -352,6 +498,7 @@ int main() {
 	{
 		const UInt32 nativeOriginal[] = {
 			0x00000005,0x800F0000,0x80FF0001,0xA0E40003,
+			0x00000009,0xC0080000,0xA0E40003,0x90E40000,
 			0x00000004,0xE00F0002,0xA0E40000,0x80FF0001,0x80E40000,
 			0x00000004,0xE00F0003,0xA0E40001,0x80FF0001,0x80E40000,
 			0x00000004,0xE00F0004,0xA0E40002,0x80FF0001,0x80E40000,
@@ -366,8 +513,25 @@ int main() {
 		for(UInt32 token:code)
 			if(token==0xA0E4000D || token==0xA0E4000E ||
 			   token==0xA0E4000F || token==0xA0E40010) ++found;
-		Check(found==4,"native reflection rows use the stable c13-c16 matrix while oPos.w stays live");
-		Check(code[3] == 0xA0E40003,"native shader keeps the live oPos.w source for perspective interpolation");
+		Check(found==5,"native reflection rows and half-W bias use the capture matrix");
+		Check(code[3] == 0xA0E40010,"native half-W bias uses capture W");
+		Check(code[4] == nativeOriginal[4] && code[5] == nativeOriginal[5] &&
+		      code[6] == nativeOriginal[6] && code[7] == nativeOriginal[7],
+		      "native dp4 oPos.w remains byte-for-byte live");
+		// Execute the relevant MUL/MAD data flow from the patched operands.
+		// Capture clip X=2, W=4 must give U=(X+W)/(2W)=0.75,
+		// regardless of the live view's W. The old mixed bias gave 1.5
+		// for live W=10, moving the sample outside the reflection texture.
+		for (float liveW : {2.0f, 4.0f, 10.0f}) {
+			float constants[17]{};
+			constants[3]=liveW; constants[13]=2.0f; constants[16]=4.0f;
+			const float bias=0.5f*constants[code[3]&0x7FFu];
+			const float numerator=0.5f*constants[code[10]&0x7FFu]+bias;
+			Check(std::fabs(numerator/constants[16]-0.75f)<1.0e-6f,
+			      "reflection UV stays fixed while live clip W changes");
+			Check(constants[code[6]&0x7FFu]==liveW,
+			      "raster W still follows the live view");
+		}
 		Check(code[sizeof(code)/sizeof(code[0])-1] == 0x90E40000,
 		      "native shader keeps the original local water position in oT0");
 		UInt32 missing[sizeof(nativeOriginal)/sizeof(nativeOriginal[0])];

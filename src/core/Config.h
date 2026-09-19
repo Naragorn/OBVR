@@ -159,6 +159,7 @@ struct Config {
 	bool vrTestSuite = false;
 	bool vrTestWaterOnly = false;
 	bool vrTestWaterCoverageDiagnostic = false;
+	float vrTestWaterPitch = -35.0f;
 
 	// Measures which rectangle of the frame the 2D actually lands in, every
 	// couple of seconds while it is on: the bounding box of the non-black

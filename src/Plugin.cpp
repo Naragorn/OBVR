@@ -6,6 +6,7 @@
 #include "obse/PluginInterface.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
+#include "test/WaterVRTestRuntime.h"
 
 namespace {
 
@@ -87,6 +88,7 @@ __declspec(dllexport) bool OBSEPlugin_Load(const obvr::obse::Interface* obse) {
 		obvr::game::InstallPlayerBodyPatches();
 	}
 
+	obvr::test::InstallWaterVRTest();
 	OBVR_LOG("OBVR ready");
 	return true;
 }

@@ -4,8 +4,23 @@
 
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "game/GameCamera.h"
 
 namespace obvr::render {
+
+constexpr unsigned kWaterReflectionCaptureCount = 3;
+
+// Measured at the native reflection entry: render-camera columns are body
+// columns Y,Z,X. The shader reprojection still uses the body-camera basis.
+inline NiTransform WaterRenderCameraFromBody(const NiTransform& body) {
+	NiTransform camera = body;
+	for (unsigned row = 0; row < 3; ++row) {
+		camera.rot.data[row][0] = body.rot.data[row][1];
+		camera.rot.data[row][1] = body.rot.data[row][2];
+		camera.rot.data[row][2] = body.rot.data[row][0];
+	}
+	return camera;
+}
 
 enum class WaterReflectionMode : UInt32 {
 	Vanilla = 0,
@@ -20,6 +35,26 @@ enum class WaterStereoPass : UInt32 {
 	Second = 2,
 };
 
+enum class WaterShaderLifecycleAction : UInt32 {
+	WaitForShaders = 0,
+	KeepReady = 1,
+	KeepRefused = 2,
+	Rebuild = 3,
+};
+
+// Water settings can destroy and recreate Oblivion's shader wrappers while
+// the D3D device itself stays alive. Decide from the live wrapper state on
+// every shader bind; device identity alone is not a sufficient cache key.
+inline WaterShaderLifecycleAction DecideWaterShaderLifecycle(
+	bool deviceChanged, bool currentValid, bool identityMatches,
+	bool ready, bool refused) {
+	if (!currentValid) return WaterShaderLifecycleAction::WaitForShaders;
+	if (deviceChanged || !identityMatches) return WaterShaderLifecycleAction::Rebuild;
+	if (ready) return WaterShaderLifecycleAction::KeepReady;
+	if (refused) return WaterShaderLifecycleAction::KeepRefused;
+	return WaterShaderLifecycleAction::Rebuild;
+}
+
 inline bool UsesCyclopeanWaterCapture(WaterReflectionMode mode) {
 	return mode == WaterReflectionMode::CyclopeanCapture ||
 	       mode == WaterReflectionMode::Reprojected;
@@ -30,8 +65,21 @@ inline bool UsesWaterReprojectionShader(WaterReflectionMode mode) {
 	       mode == WaterReflectionMode::Reprojected;
 }
 
-inline bool ShouldRenderWaterReflection(bool stable, WaterStereoPass pass) {
-	return !stable || pass != WaterStereoPass::Second;
+inline bool ShouldSelectStableWaterVertexShader(WaterReflectionMode mode,
+                                                bool inReflectionSubpass,
+                                                bool shadersReady,
+                                                bool captureStable) {
+	return !inReflectionSubpass && UsesWaterReprojectionShader(mode) &&
+	       shadersReady && captureStable;
+}
+
+inline bool ShouldRenderWaterReflection(bool stable, WaterStereoPass pass,
+                                        bool renderedThisStereoPair) {
+	// The second eye may reuse only content actually produced by the first eye
+	// of this pair. A live OFF -> ON settings transition can suppress the
+	// first-eye callback entirely; treating an older target as current then
+	// leaves the re-enabled eye sampling stale or uninitialised contents.
+	return !stable || pass != WaterStereoPass::Second || !renderedThisStereoPair;
 }
 
 enum class WaterProjectionPlan : UInt32 {
@@ -73,6 +121,7 @@ struct WaterMatrix {
 
 struct WaterReprojectionSnapshot {
 	WaterMatrix current{};
+	WaterMatrix world{};
 	WaterMatrix reprojected{};
 	NiTransform live{};
 	NiTransform capture{};
@@ -164,6 +213,27 @@ inline bool ScaleWaterProjectionRows(WaterMatrix& matrix,float horizontal,float 
  return true;
 }
 
+inline bool ScaleWaterCaptureFrustum(game::NiFrustum& frustum,
+                                     float horizontal, float vertical) {
+	if (!(horizontal >= 1.0f && horizontal <= 16.0f &&
+	      vertical >= 1.0f && vertical <= 16.0f) ||
+	    !std::isfinite(horizontal) || !std::isfinite(vertical) ||
+	    !std::isfinite(frustum.l) || !std::isfinite(frustum.r) ||
+	    !std::isfinite(frustum.t) || !std::isfinite(frustum.b) ||
+	    !std::isfinite(frustum.n) || !std::isfinite(frustum.f) ||
+	    !(frustum.n > 0.0f) || !(frustum.f > frustum.n) ||
+	    frustum.o || !(frustum.l < 0.0f) || !(frustum.r > 0.0f) ||
+	    !(frustum.b < 0.0f) || !(frustum.t > 0.0f)) {
+		return false;
+	}
+	frustum.l *= horizontal;
+	frustum.r *= horizontal;
+	frustum.t *= vertical;
+	frustum.b *= vertical;
+	return std::isfinite(frustum.l) && std::isfinite(frustum.r) &&
+	       std::isfinite(frustum.t) && std::isfinite(frustum.b);
+}
+
 inline WaterMatrix CameraWorldMatrix(const NiTransform& camera) {
 	WaterMatrix result{};
 	for (unsigned row = 0; row < 3; ++row)
@@ -202,6 +272,29 @@ inline bool BuildWaterCameraLocalFromParent(const NiTransform& parent,
    if (!std::isfinite(localOut.rot.data[row][column])) return false;
  return std::isfinite(localOut.pos.x) && std::isfinite(localOut.pos.y) &&
         std::isfinite(localOut.pos.z) && std::isfinite(localOut.scale);
+}
+
+// Oblivion's water c4-c7 WorldMat has the live camera position subtracted.
+// Convert it back to absolute world space before combining it with absolute
+// NiCamera transforms. Otherwise the recovered projection contains a second,
+// yaw-dependent camera translation. See water-input-projection runtime logs.
+inline bool RestoreWaterWorldOrigin(const WaterMatrix& relativeWorld,
+                                   const NiPoint3& cameraPosition,
+                                   WaterMatrix& absoluteWorld) {
+	if (!std::isfinite(cameraPosition.x) || !std::isfinite(cameraPosition.y) ||
+	    !std::isfinite(cameraPosition.z)) return false;
+	for (unsigned row = 0; row < 4; ++row)
+		for (unsigned column = 0; column < 4; ++column)
+			if (!std::isfinite(relativeWorld.m[row][column])) return false;
+	if (relativeWorld.m[3][0] != 0.0f || relativeWorld.m[3][1] != 0.0f ||
+	    relativeWorld.m[3][2] != 0.0f || relativeWorld.m[3][3] != 1.0f) return false;
+	absoluteWorld = relativeWorld;
+	absoluteWorld.m[0][3] += cameraPosition.x;
+	absoluteWorld.m[1][3] += cameraPosition.y;
+	absoluteWorld.m[2][3] += cameraPosition.z;
+	return std::isfinite(absoluteWorld.m[0][3]) &&
+	       std::isfinite(absoluteWorld.m[1][3]) &&
+	       std::isfinite(absoluteWorld.m[2][3]);
 }
 
 // Mlive = P * inverse(Clive) * W. Recover P from the two matrices Oblivion
@@ -321,7 +414,10 @@ inline bool PatchWaterVertexShaderNative(UInt32* code, UInt32 dwordCount) {
 	};
 	const UInt32 lengths[6] = {4,5,5,5,3,3};
 	const UInt32 sourceSlots[6] = {3,2,2,2,2,2};
-	const UInt32 replacements[6] = {0xA0E40003,0xA0E4000D,0xA0E4000E,0xA0E4000F,0xA0E40010,0x90E40000};
+	// r0 is the common half-W texture-coordinate bias, not oPos.w.
+	// It must use capture W together with the capture X/Y/Z rows below.
+	// The separate dp4 oPos.w, c3, v0 remains untouched for live rasterization.
+	const UInt32 replacements[6] = {0xA0E40010,0xA0E4000D,0xA0E4000E,0xA0E4000F,0xA0E40010,0x90E40000};
 	UInt32 locations[6]{};
 	for (unsigned pattern = 0; pattern < 6; ++pattern) {
 		unsigned matches = 0;
@@ -367,6 +463,7 @@ void SetWaterStereoPass(WaterStereoPass pass);
 WaterStereoPass GetWaterStereoPass();
 void NoteWaterReflectionRendered();
 void NoteWaterReflectionReused();
+bool WaterReflectionRenderedThisStereoPair();
 bool DumpWaterShaderBinary(void* shader, const char* fileName);
 
 }  // namespace obvr::render

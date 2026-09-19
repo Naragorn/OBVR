@@ -1,6 +1,9 @@
 #include "render/InterfaceRenderHook.h"
 
 #include <cstring>
+#include <cstdio>
+#include "test/WaterVRTestRuntime.h"
+#include "test/WaterVRTestPlan.h"
 
 #include "core/AddressSpace.h"
 #include "core/Config.h"
@@ -294,8 +297,8 @@ d3d9::SetPixelShaderFn g_originalSetPixelShader = nullptr;
 d3d9::SetPixelShaderConstantFFn g_originalSetPsConstantF = nullptr;
 bool g_waterPixelShaderActive = false;
 
-bool IsWaterPixelShader(void* shader) {
-	if (shader == nullptr) return false;
+int WaterPixelShaderIndex(void* shader) {
+	if (shader == nullptr) return -1;
 	// WaterShader layout is verified against the local TES Reloaded Oblivion
 	// headers: Pixel[16] begins at 0xC4; NiD3DPixelShader::ShaderHandle is 0x28.
 	constexpr UInt32 kWaterShaderPointer = 0x00B45DCC;
@@ -303,16 +306,16 @@ bool IsWaterPixelShader(void* shader) {
 	constexpr UInt32 kPixelCount = 16;
 	constexpr UInt32 kShaderHandleOffset = 0x28;
 	const UInt32 water = *reinterpret_cast<const UInt32*>(kWaterShaderPointer);
-	if (!mem::LooksLikeObjectAddress(water)) return false;
+	if (!mem::LooksLikeObjectAddress(water)) return -1;
 	for (UInt32 i = 0; i < kPixelCount; ++i) {
 		const UInt32 wrapper =
 			*reinterpret_cast<const UInt32*>(water + kPixelArrayOffset + i * 4);
 		if (mem::LooksLikeObjectAddress(wrapper) &&
 		    *reinterpret_cast<void* const*>(wrapper + kShaderHandleOffset) == shader) {
-			return true;
+			return static_cast<int>(i);
 		}
 	}
-	return false;
+	return -1;
 }
 
 // Counting always, exactly like g_drawsTotal above: the scene hook reads the
@@ -432,7 +435,7 @@ BonePassMode g_boneMode = BonePassMode::Off;
 // single-threaded.
 EyeDeltaEstimate g_eyeDelta;
 float g_boneEyeShift[3] = {0.0f, 0.0f, 0.0f};
-ShiftSign g_boneShiftSign = ShiftSign::Unknown;
+ShiftSign g_boneShiftSign = kInitialBoneShiftSign;
 bool g_boneShiftSignReported = false;
 float g_boneRebaseRow[kBoneRowFloats];
 
@@ -1049,9 +1052,7 @@ SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex
 	if (TakeAfterPassCursorQuad(self, type, primitiveCount)) {
 		return 0;
 	}
-	const bool waterBlend = BeginWaterReflectionBlendDraw(self);
 	const SInt32 result = g_originalDrawPrimitive(self, type, startVertex, primitiveCount);
-	if (waterBlend) EndWaterReflectionBlendDraw(self);
 	if (g_redirecting || g_observing) {
 		++g_statsDraws;
 		++g_statsKind[0];
@@ -1081,10 +1082,8 @@ SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 base
 		}
 		return 0;
 	}
-	const bool waterBlend = BeginWaterReflectionBlendDraw(self);
 	const SInt32 result = g_originalDrawIndexed(self, type, baseVertexIndex, minVertexIndex,
 	                                            numVertices, startIndex, primCount);
-	if (waterBlend) EndWaterReflectionBlendDraw(self);
 	if (g_redirecting || g_observing) {
 		++g_statsDraws;
 		++g_statsKind[1];
@@ -1106,9 +1105,7 @@ SInt32 __stdcall HookedDrawPrimitiveUP(void* self, UInt32 type, UInt32 primitive
 	if (TakeAfterPassCursorQuad(self, type, primitiveCount)) {
 		return 0;
 	}
-	const bool waterBlend = BeginWaterReflectionBlendDraw(self);
 	const SInt32 result = g_originalDrawUP(self, type, primitiveCount, vertexData, stride);
-	if (waterBlend) EndWaterReflectionBlendDraw(self);
 	if (g_redirecting || g_observing) {
 		++g_statsDraws;
 		++g_statsKind[2];
@@ -1132,11 +1129,9 @@ SInt32 __stdcall HookedDrawIndexedPrimitiveUP(void* self, UInt32 type, UInt32 mi
 	if (TakeAfterPassCursorQuad(self, type, primitiveCount)) {
 		return 0;
 	}
-	const bool waterBlend = BeginWaterReflectionBlendDraw(self);
 	const SInt32 result =
 		g_originalDrawIndexedUP(self, type, minVertexIndex, numVertices, primitiveCount,
 	                            indexData, indexFormat, vertexData, stride);
-	if (waterBlend) EndWaterReflectionBlendDraw(self);
 	if (g_redirecting || g_observing) {
 		++g_statsDraws;
 		++g_statsKind[3];
@@ -1203,17 +1198,21 @@ SInt32 __stdcall HookedSetVertexShader(void* self, void* shader) {
 }
 
 SInt32 __stdcall HookedSetPixelShader(void* self, void* shader) {
-	g_waterPixelShaderActive = IsWaterPixelShader(shader);
-	static bool dumped = false;
-	if (g_waterPixelShaderActive && !dumped && GetConfig().vrTestSuite) {
-		dumped = DumpWaterShaderBinary(shader, "OBVR-WaterPS.bin");
-		OBVR_LOG("VRTEST water-pixel-shader dump=%u", dumped);
+	const int waterPixelIndex = WaterPixelShaderIndex(shader);
+	g_waterPixelShaderActive = waterPixelIndex >= 0;
+	static test::WaterShaderDumpLedger dumped;
+	if (dumped.NeedsDump(waterPixelIndex, shader, test::WaterVRReplayActive())) {
+		char name[32]{};
+		std::snprintf(name, sizeof(name), "OBVR-WaterPS-%02d.bin", waterPixelIndex);
+		const bool saved = DumpWaterShaderBinary(shader, name);
+		dumped.Record(waterPixelIndex, shader, saved);
+		OBVR_LOG("VRTEST water-pixel-shader index=%d dump=%u", waterPixelIndex, saved);
 	}
-	const Config& config = GetConfig();
-	const WaterReflectionMode mode = config.stableWaterReflections
-		? config.waterReflectionMode : WaterReflectionMode::Vanilla;
-	return g_originalSetPixelShader(
-		self, SelectWaterReflectionPixelShader(self, shader, g_waterPixelShaderActive, mode));
+	// Keep Oblivion's original water pixel shader and its s0 reflection map.
+	// Stable water changes only the reflection camera and the four projective
+	// rows produced by the vertex shader; waves and reflection sampling remain
+	// byte-for-byte the game's path.
+	return g_originalSetPixelShader(self, shader);
 }
 
 SInt32 __stdcall HookedSetPsConstantF(void* self, UInt32 startRegister, const float* data,

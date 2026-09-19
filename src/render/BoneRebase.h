@@ -125,6 +125,12 @@ inline void CurrentEyeDelta(const EyeDeltaEstimate& e, float out[3]) {
 // measured baseline settles that once, at runtime, from real rows.
 enum class ShiftSign { Unknown, Positive, Negative };
 
+// Oblivion 1.2.0.416 stores these camera-relative palette translations with
+// the opposite sign to the camera step. Runtime captures consistently verify
+// this convention. Starting with it avoids one zero-IPD frame after load;
+// the normal per-frame calibration below can still correct the value.
+inline constexpr ShiftSign kInitialBoneShiftSign = ShiftSign::Negative;
+
 // Judges a finished frame's measurement against the camera shift. Needs
 // enough samples to trust the mean, a shift that actually happened, and a
 // dot product that commits to a side - the measured mean must project onto

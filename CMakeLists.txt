@@ -23,6 +23,7 @@ endif()
 
 add_library(OBVR SHARED
 	src/Plugin.cpp
+	src/test/WaterVRTestRuntime.cpp
 	src/camera/CameraHook.cpp
 	src/camera/CameraTrampoline.cpp
 	src/camera/CastTrampoline.cpp

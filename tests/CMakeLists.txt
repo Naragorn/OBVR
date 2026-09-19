@@ -176,6 +176,7 @@ add_test(NAME openvr_pose COMMAND openvr_pose_test)
 if(WIN32)
 	add_executable(openvr_backend_test
 		OpenVRBackendTest.cpp
+		WaterVRReplayStub.cpp
 		../src/vr/OpenVRBackend.cpp
 		../src/vr/Quaternion.cpp
 		../src/core/Log.cpp
@@ -218,6 +219,7 @@ if(WIN32)
 	# state, which is the state that matters for users without SteamVR.
 	add_executable(head_tracker_test
 		HeadTrackerTest.cpp
+		WaterVRReplayStub.cpp
 		../src/vr/HeadTracker.cpp
 		../src/vr/HeadOffset.cpp
 		../src/vr/OpenVRBackend.cpp
@@ -747,6 +749,21 @@ add_test(NAME water_reprojection COMMAND water_reprojection_test)
 
 find_package(Python3 COMPONENTS Interpreter QUIET)
 if(Python3_Interpreter_FOUND)
+	add_test(NAME water_shader_read
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/WaterShaderReadTest.py)
+	add_test(NAME water_position_control
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/WaterPositionControlTest.py)
+	add_test(NAME water_camera_decode
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/WaterCameraDecodeTest.py)
+	add_test(NAME water_camera_read
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/WaterCameraReadTest.py)
 	add_test(NAME water_visual_harness
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/WaterVisualHarnessTest.py)
 endif()
+
+add_executable(water_vr_test_plan_test WaterVRTestPlanTest.cpp)
+target_include_directories(water_vr_test_plan_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(water_vr_test_plan_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME water_vr_test_plan COMMAND water_vr_test_plan_test)

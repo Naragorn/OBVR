@@ -1,4 +1,5 @@
 #include "vr/OpenVRBackend.h"
+#include "test/WaterVRTestRuntime.h"
 
 #include "core/MathFns.h"
 
@@ -493,6 +494,10 @@ int OpenVRBackend::WaitGetPoses() {
 }
 
 bool OpenVRBackend::GetRenderPose(Quaternion& orientation, NiPoint3& position) const {
+	if (test::WaterVRReplayActive()) {
+		test::GetWaterVRReplayPose(orientation, position);
+		return true;
+	}
 	if (!m_renderPoseValid) {
 		return false;
 	}
@@ -503,6 +508,10 @@ bool OpenVRBackend::GetRenderPose(Quaternion& orientation, NiPoint3& position) c
 }
 
 bool OpenVRBackend::GetRenderPoseMatrix(openvr::HmdMatrix34& out) const {
+	if (test::WaterVRReplayActive()) {
+		test::GetWaterVRReplayPoseMatrix(out);
+		return true;
+	}
 	if (!m_renderPoseValid) {
 		return false;
 	}
@@ -572,6 +581,10 @@ bool OpenVRBackend::GetRecommendedRenderTargetSize(UInt32& width, UInt32& height
 }
 
 bool OpenVRBackend::ReadHeadPose(Quaternion& orientation, NiPoint3& position) const {
+	if (test::WaterVRReplayActive()) {
+		test::GetWaterVRReplayPose(orientation, position);
+		return true;
+	}
 	if (m_system == nullptr) {
 		return false;
 	}

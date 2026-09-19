@@ -27,6 +27,7 @@ using obvr::render::IsEyeBaselineSample;
 using obvr::render::kBoneMixupThresholdSq;
 using obvr::render::kBoneRowFloats;
 using obvr::render::kBoneStaleThresholdSq;
+using obvr::render::kInitialBoneShiftSign;
 using obvr::render::RebaseBoneRow;
 using obvr::render::ShiftSign;
 
@@ -172,6 +173,8 @@ void TestSignCalibration() {
 }
 
 void TestChooseRebaseDelta() {
+	Check(kInitialBoneShiftSign == ShiftSign::Negative,
+	      "the first loaded frame uses Oblivion's measured negative palette convention");
 	std::printf("Choosing the rebase delta\n");
 
 	const float shift[3] = {-1.1f, 4.5f, 0.0f};

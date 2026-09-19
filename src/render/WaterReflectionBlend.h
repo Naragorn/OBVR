@@ -9,8 +9,6 @@
 
 namespace obvr::render {
 
-constexpr unsigned kWaterReflectionCaptureCount = 3;
-
 inline bool UsesStableWaterReflectionShader(WaterReflectionMode mode, bool diagnostic) {
     return UsesWaterReprojectionShader(mode) && !diagnostic;
 }

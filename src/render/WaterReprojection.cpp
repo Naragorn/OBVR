@@ -5,7 +5,6 @@
 #include "core/Config.h"
 #include "core/Log.h"
 #include "render/D3D9Types.h"
-#include "render/WaterReflectionBlend.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
 
@@ -25,7 +24,6 @@ using ReleaseFn = UInt32(__stdcall*)(void* self);
 
 void* g_device = nullptr;
 void* g_original[kVertexCount]{};
-void* g_replacement[kVertexCount]{};
 void* g_nativeReplacement[kVertexCount]{};
 bool g_active = false;
 bool g_ready = false;
@@ -49,6 +47,7 @@ UInt32 g_captureWaterMvpReplay = 0;
 UInt32 g_captureProjectionSerial = 0;
 UInt32 g_reflectionRenderSerial = 0;
 UInt32 g_reflectionReuseSerial = 0;
+bool g_reflectionRenderedThisStereoPair = false;
 float g_captureProjectionHorizontal=1.0f;
 float g_captureProjectionVertical=1.0f;
 
@@ -74,15 +73,10 @@ bool WriteShaderBinary(void* shader, const char* fileName) {
 
 void ReleaseReplacements() {
 	for (unsigned i = 0; i < kVertexCount; ++i) {
-		if (g_replacement[i] != nullptr) {
-			auto release = d3d9::Method<ReleaseFn>(g_replacement[i], kUnknownRelease);
-			if (release != nullptr) release(g_replacement[i]);
-		}
 		if (g_nativeReplacement[i] != nullptr) {
 			auto release = d3d9::Method<ReleaseFn>(g_nativeReplacement[i], kUnknownRelease);
 			if (release != nullptr) release(g_nativeReplacement[i]);
 		}
-		g_replacement[i] = nullptr;
 		g_nativeReplacement[i] = nullptr;
 		g_original[i] = nullptr;
 	}
@@ -90,39 +84,28 @@ void ReleaseReplacements() {
 	g_active = false;
 }
 
-bool ReadOriginalHandles() {
+bool ReadOriginalHandles(void* handles[kVertexCount]) {
 	const UInt32 water = *reinterpret_cast<const UInt32*>(kWaterShaderPointer);
 	if (!mem::LooksLikeObjectAddress(water)) return false;
 	for (unsigned i = 0; i < kVertexCount; ++i) {
 		const UInt32 wrapper =
 			*reinterpret_cast<const UInt32*>(water + kVertexArrayOffset + i * 4);
 		if (!mem::LooksLikeObjectAddress(wrapper)) return false;
-		g_original[i] =
+		handles[i] =
 			*reinterpret_cast<void* const*>(wrapper + kVertexShaderHandleOffset);
-		if (g_original[i] == nullptr) return false;
+		if (handles[i] == nullptr) return false;
 	}
 	return true;
 }
 
-bool CreateReplacement(unsigned index) {
-	UInt32 byteCount = 0;
-	auto getFunction = d3d9::Method<GetFunctionFn>(g_original[index], kShaderGetFunction);
-	if (getFunction == nullptr ||
-	    getFunction(g_original[index], nullptr, &byteCount) < 0 ||
-	    byteCount == 0 || byteCount > kMaxShaderBytes || byteCount % 4 != 0) {
-		return false;
-	}
-	UInt8 codeBytes[kMaxShaderBytes]{};
-	if (getFunction(g_original[index], codeBytes, &byteCount) < 0 ||
-	    !PatchWaterVertexShader(reinterpret_cast<UInt32*>(codeBytes), byteCount / 4)) {
-		return false;
-	}
-	auto create = d3d9::Method<d3d9::CreateVertexShaderFn>(
-		g_device, d3d9::kDeviceCreateVertexShader);
-	return create != nullptr &&
-	       create(g_device, reinterpret_cast<const UInt32*>(codeBytes),
-	              &g_replacement[index]) >= 0 &&
-	       g_replacement[index] != nullptr;
+bool SameOriginalHandles(void* const handles[kVertexCount]) {
+	for (unsigned i = 0; i < kVertexCount; ++i)
+		if (g_original[i] != handles[i]) return false;
+	return true;
+}
+
+void StoreOriginalHandles(void* const handles[kVertexCount]) {
+	for (unsigned i = 0; i < kVertexCount; ++i) g_original[i] = handles[i];
 }
 
 bool CreateNativeReplacement(unsigned index) {
@@ -155,41 +138,42 @@ int OriginalIndex(void* shader) {
 }  // namespace
 
 void PrepareWaterReprojection(void* device) {
-	if (device == nullptr || g_refused) return;
-	if (g_device == device && g_ready) return;
-	if (g_device != device) {
+	if (device == nullptr) return;
+	void* current[kVertexCount]{};
+	const bool currentValid = ReadOriginalHandles(current);
+	const bool deviceChanged = g_device != device;
+	const bool identityMatches = currentValid && SameOriginalHandles(current);
+	const WaterShaderLifecycleAction action = DecideWaterShaderLifecycle(
+		deviceChanged, currentValid, identityMatches, g_ready, g_refused);
+	if (action == WaterShaderLifecycleAction::KeepReady ||
+	    action == WaterShaderLifecycleAction::KeepRefused) return;
+	if (action == WaterShaderLifecycleAction::WaitForShaders) {
 		ReleaseReplacements();
 		g_device = device;
+		g_refused = false;
+		return;
 	}
-	if (!ReadOriginalHandles()) return;
+	ReleaseReplacements();
+	g_device = device;
+	g_refused = false;
+	StoreOriginalHandles(current);
 	if (GetConfig().vrTestSuite) {
 		DumpWaterShaderBinary(g_original[0], "OBVR-WaterVS-0.bin");
 		DumpWaterShaderBinary(g_original[1], "OBVR-WaterVS-1.bin");
 	}
 	for (unsigned i = 0; i < kVertexCount; ++i) {
-		if (g_replacement[i] == nullptr && !CreateReplacement(i)) {
-			ReleaseReplacements();
-			g_refused = true;
-			OBVR_LOG("Water reflection: original vertex shader did not match; reprojected mode falls back to vanilla");
-			return;
-		}
 		if (g_nativeReplacement[i] == nullptr && !CreateNativeReplacement(i)) {
 			ReleaseReplacements();
+			StoreOriginalHandles(current);
 			g_refused = true;
 			OBVR_LOG("Water reflection: stable reflection-coordinate shader did not match; stable water mode falls back to vanilla");
 			return;
 		}
 	}
-	PrepareWaterReflectionBlend(device);
-	if (!WaterReflectionBlendReady()) {
-		ReleaseReplacements();
-		g_refused = true;
-		return;
-	}
 	g_ready = true;
 	if (!g_reported) {
 		g_reported = true;
-		OBVR_LOG("Water reflection: verified two-matrix water vertex shaders created");
+		OBVR_LOG("Water reflection: verified original-pixel-path vertex shaders created");
 	}
 }
 
@@ -203,7 +187,13 @@ void* SelectWaterVertexShader(void* device, void* requested, WaterReflectionMode
 	PrepareWaterReprojection(device);
 	static unsigned unmatchedReports = 0;
 	static unsigned selectedReports = 0;
-	if (!g_ready) return requested;
+	bool capturesStable = true;
+	for (unsigned slot = 0; slot < kWaterReflectionCaptureCount; ++slot)
+		capturesStable = capturesStable && g_captureStable[slot];
+	if (!ShouldSelectStableWaterVertexShader(
+			mode, g_inReflectionSubpass, g_ready, capturesStable)) {
+		return requested;
+	}
 	const int index = OriginalIndex(requested);
 	if (index < 0) {
 		if (unmatchedReports < 4) {
@@ -214,14 +204,12 @@ void* SelectWaterVertexShader(void* device, void* requested, WaterReflectionMode
 		return requested;
 	}
 	g_active = true;
-	const bool stableShader = UsesStableWaterReflectionShader(
-		mode, GetConfig().vrTestWaterCoverageDiagnostic);
-	void* selected = stableShader ? g_nativeReplacement[index] : g_replacement[index];
+	void* selected = g_nativeReplacement[index];
 	if (selectedReports < 4) {
 		++selectedReports;
 		OBVR_LOG("Water reflection: water vertex selected original=%08X replacement=%08X index=%d stable=%u",
 		         reinterpret_cast<UInt32>(requested), reinterpret_cast<UInt32>(selected),
-		         index, stableShader ? 1u : 0u);
+		         index, 1u);
 	}
 	return selected;
 }
@@ -243,20 +231,23 @@ bool BuildWaterReprojectionConstants(UInt32 startRegister, const float* data,
 	}
 	if ((g_registerMask & 0xFFu) != 0xFFu) return false;
 	NiTransform live{};
-	if (!camera::GetCurrentCameraWorldTransform(live)) return false;
+	const bool liveValid = camera::GetCurrentCameraWorldTransform(live);
 	WaterMatrix current{}, world{}, projected[kWaterReflectionCaptureCount]{};
 	for (unsigned row = 0; row < 4; ++row)
 		for (unsigned column = 0; column < 4; ++column) {
 			current.m[row][column] = g_constants[row][column];
 			world.m[row][column] = g_constants[row + 4][column];
 		}
+	WaterMatrix absoluteWorld{};
+	const bool worldValid = liveValid && RestoreWaterWorldOrigin(world, live.pos, absoluteWorld);
+	if (worldValid) world = absoluteWorld;
 	WaterMatrix reflection[kWaterReflectionCaptureCount]{};
 	const bool storedValid = g_captureWaterMvpCount != 0;
-	bool fallback = false;
+	bool fallback = !worldValid;
 	bool reusedCaptureProjection = false;
 	const WaterProjectionPlan plan = ChooseWaterProjectionPlan(
 		g_mode, g_stereoPass, storedValid);
-	if (plan == WaterProjectionPlan::ReuseStored) {
+	if (!fallback && plan == WaterProjectionPlan::ReuseStored) {
 		if (!CanReplayWaterCaptureMvp(g_captureWaterMvpReplay, g_captureWaterMvpCount)) {
 			fallback = true;
 		} else {
@@ -274,19 +265,21 @@ bool BuildWaterReprojectionConstants(UInt32 startRegister, const float* data,
 				reusedCaptureProjection = true;
 			}
 		}
-	} else if (plan == WaterProjectionPlan::MissingStored) {
+	} else if (!fallback && plan == WaterProjectionPlan::MissingStored) {
 		fallback = true;
-	} else {
+	} else if (!fallback) {
 		WaterMatrix inverseWorld{};
 		if (!InvertWaterMatrix(world, inverseWorld)) {
 			fallback = true;
 		} else {
 			for (unsigned slot = 0; slot < kWaterReflectionCaptureCount; ++slot) {
 				if (!BuildStableWaterCaptureMvp(current, world, live, g_capture[slot],
-				                               projected[slot])) {
+				                               projected[slot]) ||
+				    !ScaleWaterProjectionRows(projected[slot],
+				                              g_captureProjectionHorizontal,
+				                              g_captureProjectionVertical)) {
 					fallback = true;
 				} else {
-					// The pixel shader now consumes the complete capture MVP.
 					reflection[slot] = projected[slot];
 				}
 			}
@@ -308,11 +301,11 @@ bool BuildWaterReprojectionConstants(UInt32 startRegister, const float* data,
 			reflection[slot] = current;
 		}
 	}
-	SetWaterReflectionBlendMatrices(reflection[0], reflection[1], reflection[2], !fallback);
 	for (unsigned row = 0; row < 4; ++row)
 		for (unsigned column = 0; column < 4; ++column)
 			output[row * 4 + column] = projected[1].m[row][column];
 	g_snapshot.current = current;
+	g_snapshot.world = world;
 	g_snapshot.reprojected = projected[1];
 	g_snapshot.live = live;
 	g_snapshot.capture = g_capture[1];
@@ -320,8 +313,8 @@ bool BuildWaterReprojectionConstants(UInt32 startRegister, const float* data,
 	g_snapshot.reflectionRenderSerial = g_reflectionRenderSerial;
 	g_snapshot.reflectionReuseSerial = g_reflectionReuseSerial;
 	g_snapshot.pass = g_stereoPass;
-	g_snapshot.captureHorizontalScale = 1.0f;
-	g_snapshot.captureVerticalScale = 1.0f;
+	g_snapshot.captureHorizontalScale = g_captureProjectionHorizontal;
+	g_snapshot.captureVerticalScale = g_captureProjectionVertical;
 	g_snapshot.reusedCaptureProjection = reusedCaptureProjection;
 	g_snapshot.storedWaterDrawCount = g_captureWaterMvpCount;
 	g_snapshot.replayedWaterDrawCount = g_captureWaterMvpReplay;
@@ -330,7 +323,7 @@ bool BuildWaterReprojectionConstants(UInt32 startRegister, const float* data,
 	g_snapshotValid = true;
 	if (!g_constantsReported) {
 		g_constantsReported = true;
-		OBVR_LOG("Water reflection: three normal-FOV capture matrices uploaded");
+		OBVR_LOG("Water reflection: original target projection matrix uploaded");
 	}
 	return true;
 }
@@ -383,13 +376,20 @@ void SetWaterStereoPass(WaterStereoPass pass) {
 	if (pass != WaterStereoPass::Second) {
 		g_captureWaterMvpCount = 0;
 		g_captureWaterMvpReplay = 0;
+		g_reflectionRenderedThisStereoPair = false;
 	}
 }
 
 WaterStereoPass GetWaterStereoPass() { return g_stereoPass; }
 
-void NoteWaterReflectionRendered() { ++g_reflectionRenderSerial; }
+void NoteWaterReflectionRendered() {
+	++g_reflectionRenderSerial;
+	g_reflectionRenderedThisStereoPair = true;
+}
 void NoteWaterReflectionReused() { ++g_reflectionReuseSerial; }
+bool WaterReflectionRenderedThisStereoPair() {
+	return g_reflectionRenderedThisStereoPair;
+}
 bool DumpWaterShaderBinary(void* shader, const char* fileName) {
 	return WriteShaderBinary(shader, fileName);
 }
