@@ -1,6 +1,6 @@
 # OBVR - TES4 Oblivion (2006) in VR
 
-![An Imperial Legion guard wearing a Quest 3 headset](obvr.png)
+<img src="obvr.png" alt="An Imperial Legion guard wearing a Quest 3 headset" width="50%">
 
 Native VR for the original **The Elder Scrolls IV: Oblivion**. Not for the Remastered
 edition.
