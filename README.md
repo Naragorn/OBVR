@@ -3,69 +3,43 @@
 Native VR for the original **The Elder Scrolls IV: Oblivion**. Not for the Remastered
 edition.
 
-Guiding idea: *Oblivion stays Oblivion.* OBVR does not replace gameplay. It puts real
-stereo VR on top of the game's own camera and render pipeline, as an xOBSE plugin, and
-leaves the game exactly as it was on a machine without a headset.
+Guiding idea for now: *Oblivion stays Oblivion.* OBVR does not replace gameplay yet. It puts real
+stereo VR on top of the game's own camera and render pipeline, as an xOBSE plugin.
 
 ![An Imperial Legion guard wearing a Quest 3 headset](obvr.png)
 
-```
-Vanilla Oblivion camera
-        ×
-tracked head pose
-        =
-the VR camera, rendered once per eye
-```
-
-**Status: early public test build (0.1.3).** One developer, one headset, one machine so
-far. The seated experience below works and is what this release is for; the standing
-experience with motion controllers is under construction and switched off. Please test,
-and please report what you see - see [Reporting a problem](#reporting-a-problem).
+**Status: early public test build (0.1.3).** The seated experience below works and is what this release is for; the standing experience with motion controllers is under construction and switched off. Please test, and please report what you see - see [Reporting a problem](#reporting-a-problem).
 
 ## What works
 
 Everything here has been confirmed in a headset.
 
-- **Dual-pass stereo.** The world is rendered twice per game frame, once per eye, from
-  cameras one interpupillary distance apart, into eye-sized targets at the headset's own
-  resolution. Skinned bodies stay intact across the second render. **Alternate eye
-  rendering** (`Stereo=aer`) is there as well: the world is drawn once per frame from
-  alternating eyes and the other eye keeps its last picture, which costs nothing extra
+- **Dual-pass stereo.** **Alternate eye rendering** (`Stereo=aer`) is there as well: which costs    nothing extra in terms of performance 
   but shows a one-frame disparity on fast motion. Dual is the default; aer is the
   fallback if dual misbehaves on your setup.
-- **6DoF head tracking.** The head rotates and moves the camera; leaning works. The
-  character never turns with the head. Locomotion stays with mouse, keyboard or gamepad.
+- **6DoF head tracking.** The head rotates and moves the camera; leaning works. Locomotion stays with mouse, keyboard or gamepad. 
 - **Head-based aiming.** Bows, spells and melee go where the head looks, in first and
   third person, while the walking direction stays with the movement controls. In first
-  person the weapon visibly points where the shot goes.
-- **One crosshair, at the depth the aim ray hits**, instead of a flat reticle that reads
-  as two. Shown in third person and with a weapon drawn as well.
+  person the weapon visibly points where the shot goes. In 3rd person the char looks to where you are looking with the headset.
+- **One crosshair, at the depth the aim ray hits**
 - **HUD, menus and dialogue in the headset.** The 2D layer is lifted out of the frame and
   shown on an overlay in front of the world. In-game menus keep the world behind them in
   stereo with Oblivion's own sepia pause look; the main menu, loading screens and videos
   take a cinema screen. The dialogue zoom is disabled.
 - **Native Oblivion-style onboarding and settings menu** (`Insert`) through MenuQue,
-  using the existing game UI in the headset. The user confirmed the native menus;
-  the latest hover clipping correction still needs an in-game visual check.
-  All 58 previous menu settings remain available, with live INI updates.
+  using the existing game UI in the headset.
 - **Recenter** on a key (`Del` by default).
 - **Smooth turning** as a comfort option for the mouse and stick turn.
 - Works with and without the 4GB patch, and under Mod Organizer 2 without Root Builder.
-- Refuses to patch anything if another plugin got there first, and names it in the log.
 
 ## Built, not yet confirmed in a headset
 
 These are in the build and covered by tests, but nobody has looked at them through a
 headset yet. Reports on them are especially useful.
 
-- **The live world behind the pause menus** (`Render.LiveMenuBackground`) and the option
-  to keep it unpaused (`Render.UnpausedMenus`).
 - **Menus mirrored onto the monitor window** while the overlay carries them
   (`Render.MirrorMenusToMonitor`), so the game stays controllable from the desk.
 - **The hang watchdog**: a thread that writes where a frame stood when frames stop.
-- **The freeze fix.** Freezes shortly after a switch to third person were traced to
-  OpenVR's pose wait racing DXVK's submissions on the same queue; the fix is in, its
-  confirmation is open. If the game freezes, the log's last lines are the evidence.
 - **Your own body** (`[Body] Visible=1`, off by default): look down in first person and
   the character's body is there, standing under the headset, its head and its own arms
   removed so the first-person arms stay the only ones. Enhanced Camera's mechanism,
@@ -109,11 +83,8 @@ Index and Oculus Touch default bindings are included. Touch hardware is untested
 
 ## Requirements
 
-- Oblivion **1.2.0.416**, 32-bit. Every edition that carries this executable version is
-  supported: the original release patched to 1.2.0.416 and the **Game of the Year**
-  edition alike. By store: **Steam (tested)**, **GOG (untested)**, retail disc with the
-  final patch (untested). OBVR checks the version and stays inactive on any other. Not
-  the Remastered edition.
+- Oblivion **1.2.0.416**, 32-bit. By store: **Steam (tested)**, **GOG (untested)**, retail disc with the
+  final patch (untested). Not the Remastered edition.
 - [xOBSE](https://github.com/llde/xOBSE/releases/latest) 22.13 or newer.
 - [MenuQue](https://www.nexusmods.com/oblivion/mods/32200) **v16b**, required for the
   native onboarding and Insert menus. Install it separately; OBVR does not bundle it.
@@ -128,11 +99,7 @@ Index and Oculus Touch default bindings are included. Touch hardware is untested
   before the game. There is nothing to switch inside OBVR; a headset that only ever ran
   OpenXR titles will have skipped the SteamVR step. Quest owners can also use Steam Link,
   which needs no Meta PC app at all.
-- **DXVK** as the game's `d3d9.dll`. This is not optional. OpenVR's `Submit` has no entry
-  for a Direct3D 9 texture, and DXVK is what turns Oblivion's frame into a Vulkan image the
-  compositor accepts. Without it OBVR says so in the log and shows a test pattern. The
-  dependency-free alternative, a D3D9Ex device shared into D3D11, was tried on the binary
-  and the game crashes on it, on Microsoft's runtime and DXVK alike; see `HANDOFF.md`.
+- **DXVK** as the game's `d3d9.dll`. This is not optional.
 - Windows 10 or 11. Linux under Proton is the intended second platform, not a supported
   one yet.
 
@@ -159,30 +126,10 @@ RTX 4090, Windows 11. Anything else is untested, which is exactly what reports a
    OBVR automatically when you use the normal Play button; `obse_loader.exe` is for
    non-Steam installations.
 
-The first start opens the native mode chooser at the main menu. Choose **Keyboard/Gamepad + VR**
-for seated play in first or third person. **Full VR** is selectable and marked experimental. Full VR always uses first person during
-normal gameplay; game-controlled menu views remain exceptions. The old
-`[Hands] ForceFirstPerson` option is ignored and no longer appears in the settings. Press **Insert** for settings: click a label
-for help, use **-/+** to adjust it, and **Previous/Next** or **Page Up/Page Down** to
-browse nine pages. **Close** or **Insert** closes the menu. Changes are saved before
-being applied; a failed save shows an error and keeps the current value.
-
-`[Onboarding] ShowAtStart=0` hides the mode chooser on future starts; the settings menu
-also exposes this switch under Help. `[Onboarding] NativePrototype=0` selects the legacy
-menus after a restart. See [native menu details and validation](docs/native-menus.md).
-`OBVR.log` is written next to `Oblivion.exe`; the previous run survives as `OBVR.log.prev`.
-Both are the first thing to attach to a report.
-
-To check that everything is in place, `OBVR.log` opens with the OBVR version and the
-xOBSE and Oblivion versions found, and says further down whether DXVK answered ("DXVK")
-and whether SteamVR was reached ("OpenVR").
-
 ### Disable the Steam Overlay (required)
 
-**You must disable the Steam Overlay before playing OBVR.** In Steam, open
-**Settings > In Game** and turn off **Enable the Steam Overlay while in-game**.
-You can also disable it specifically for Oblivion: in your Steam Library,
-right-click **Oblivion > Properties > General** and turn off the same option.
+**You must disable the Steam Overlay before playing OBVR.** In Steam, in your Steam Library,
+right-click **Oblivion > Properties > General** and turn off the Steam Overlay.
 Restart Oblivion after changing the setting.
 
 ### Mod Organizer 2
