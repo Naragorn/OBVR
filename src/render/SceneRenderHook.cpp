@@ -9,6 +9,7 @@
 #include "platform/Win32Min.h"
 #include "render/InterfaceRenderHook.h"
 #include "render/CullingHook.h"
+#include "render/LeafFacingHook.h"
 #include "render/WaterReflectionHook.h"
 #include "render/WaterReprojection.h"
 
@@ -536,6 +537,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	// lock records this render's palettes.
 	SetWaterStereoPass(WaterStereoPass::First);
 	SetBonePassMode(BonePassMode::Capture);
+	BeginLeafAudit(false);
 	BeginCullingCapture();
 	g_original(self, unusedEdx, renderedTexture);
 	PauseCullingCapture();
@@ -595,10 +597,12 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	}
 	SetWaterStereoPass(WaterStereoPass::Second);
 	SetBonePassMode(BonePassMode::Replace);
+	BeginLeafAudit(true);
 	BeginCullingReplay();
 	g_original(self, unusedEdx, renderedTexture);
 	SetBonePassMode(BonePassMode::Off);
 	EndCullingSync(g_sceneCall);
+	EndLeafAudit(g_sceneCall);
 	if (clockPlausible) {
 		*frameSeconds = savedFrameSeconds;
 	}
@@ -662,6 +666,7 @@ bool InstallSceneRenderHook(const ScenePassCallbacks& callbacks) {
 	// fix for skinned bodies that straddle one eye's frustum. The culling hook
 	// is pass-through outside the capture/replay bracket below.
 	InstallCullingHook();
+	InstallLeafFacingHook();
 	InstallWaterReflectionHook();
 
 	// Check first, patch second - the same contract as the camera hook. A

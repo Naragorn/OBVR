@@ -730,6 +730,10 @@ endif()
 
 add_test(NAME stack_scan COMMAND stack_scan_test)
 
+add_executable(leaf_batch_test LeafBatchTest.cpp ../src/core/AroundCall.cpp ../src/core/CodeWriter.cpp)
+target_include_directories(leaf_batch_test PRIVATE ../src)
+add_test(NAME leaf_batch COMMAND leaf_batch_test)
+
 add_executable(water_reflection_test WaterReflectionTest.cpp)
 target_include_directories(water_reflection_test PRIVATE ../src)
 if(NOT MSVC)

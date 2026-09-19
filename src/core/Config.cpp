@@ -371,6 +371,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Render", "HudOverlay", config.tracker.hudOverlay, path);
 	config.tracker.hudBetweenPasses =
 		ReadBool("Render", "HudBetweenPasses", config.tracker.hudBetweenPasses, path);
+	config.stableLeafBillboards =
+		ReadBool("Render", "StableLeafBillboards", config.stableLeafBillboards, path);
 	config.stableWaterReflections =
 		ReadBool("Render", "StableWaterReflections", config.stableWaterReflections, path);
 	const UInt32 waterMode = ReadUInt("Render", "WaterReflectionMode",

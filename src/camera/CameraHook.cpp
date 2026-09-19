@@ -4415,6 +4415,12 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 
 vr::HeadTracker& GetHeadTracker() { return g_headTracker; }
 
+bool GetCyclopeanCameraWorldPosition(NiPoint3& position) {
+	if (!g_cyclopeanCameraWorldValid) return false;
+	position = g_cyclopeanCameraWorldTransform.pos;
+	return true;
+}
+
 bool GetHeadIndependentWaterCameraTransforms(NiTransform& local, NiTransform& world) {
 	if (!g_cyclopeanCameraWorldValid) return false;
 	NiTransform parentWorld{}; parentWorld.rot = NiMatrix33::Identity(); parentWorld.scale = 1.0f;

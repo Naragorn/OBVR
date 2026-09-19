@@ -83,6 +83,22 @@ void TestMissingFileKeepsDefaults() {
 	Check(config.cameraHookEnabled, "the camera hook stays enabled");
 }
 
+void TestStableLeafSetting() {
+	obvr::Config defaults;
+	Check(defaults.stableLeafBillboards, "leaf correction defaults on");
+	obvr::Config disabled;
+	Check(LoadFrom("config-leaf-off.ini", "[Render]\nStableLeafBillboards=0\n", disabled), "load leaf off");
+	Check(!disabled.stableLeafBillboards, "leaf correction can be disabled");
+	obvr::Config enabled;
+	enabled.stableLeafBillboards = false;
+	Check(LoadFrom("config-leaf-on.ini", "[Render]\nStableLeafBillboards=1\n", enabled), "load leaf on");
+	Check(enabled.stableLeafBillboards, "leaf correction can be enabled");
+	obvr::Config absent;
+	absent.stableLeafBillboards = false;
+	Check(LoadFrom("config-leaf-absent.ini", "[Render]\n", absent), "load without leaf key");
+	Check(!absent.stableLeafBillboards, "missing leaf key preserves value");
+}
+
 void TestKeyCodeNotations() {
 	std::printf("RecenterKey notations\n");
 
@@ -492,6 +508,7 @@ void TestLookRanges() {
 }  // namespace
 
 int main() {
+	TestStableLeafSetting();
 	std::printf("OBVR config test\n\n");
 
 	TestMissingFileKeepsDefaults();

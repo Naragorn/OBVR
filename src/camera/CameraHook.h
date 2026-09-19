@@ -34,5 +34,6 @@ vr::HeadTracker& GetHeadTracker();
 // Camera transforms used by the head-independent water reflection capture.
 bool GetHeadIndependentWaterCameraTransforms(NiTransform& local, NiTransform& world);
 bool GetCurrentCameraWorldTransform(NiTransform& transform);
+bool GetCyclopeanCameraWorldPosition(NiPoint3& position);
 
 }  // namespace obvr::camera

@@ -151,6 +151,7 @@ struct Config {
 	bool d3d9ExProbe = false;
 
 	// Keep water reflections in world space while preserving the vanilla wave path.
+	bool stableLeafBillboards = true;
 	bool stableWaterReflections = true;
 	render::WaterReflectionMode waterReflectionMode =
 		render::WaterReflectionMode::CyclopeanCapture;
