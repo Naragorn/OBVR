@@ -1,12 +1,12 @@
 # OBVR - TES4 Oblivion (2006) in VR
 
+![An Imperial Legion guard wearing a Quest 3 headset](obvr.png)
+
 Native VR for the original **The Elder Scrolls IV: Oblivion**. Not for the Remastered
 edition.
 
 Guiding idea for now: *Oblivion stays Oblivion.* OBVR does not replace gameplay yet. It puts real
 stereo VR on top of the game's own camera and render pipeline, as an xOBSE plugin.
-
-![An Imperial Legion guard wearing a Quest 3 headset](obvr.png)
 
 **Status: early public test build (0.1.3).** The seated experience below works and is what this release is for; the standing experience with motion controllers is under construction and switched off. Please test, and please report what you see - see [Reporting a problem](#reporting-a-problem).
 
