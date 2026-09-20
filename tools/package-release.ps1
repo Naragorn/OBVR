@@ -7,6 +7,9 @@
 # Organizer 2 mod alike:
 #
 #   OBSE/Plugins/OBVR.dll
+#   Menus/Generic/OBVR_Onboarding.xml
+#   Menus/Generic/OBVR_Settings.xml
+#   Menus/Prefabs/OBVR/button_highlight.xml
 #   OBSE/Plugins/OBVR.ini
 #   OBSE/Plugins/OBVR-LICENSE.txt   (the GPL-3.0, which travels with every copy)
 #
@@ -62,11 +65,13 @@ Copy-Item $dll (Join-Path $plugins "OBVR.dll")
 Copy-Item $ini (Join-Path $plugins "OBVR.ini")
 Copy-Item (Join-Path $root "LICENSE") (Join-Path $plugins "OBVR-LICENSE.txt")
 
+Copy-Item -LiteralPath (Join-Path $root "assets\menus") -Destination (Join-Path $stage "Menus") -Recurse
+
 $zip = Join-Path $root (Join-Path $OutDir "OBVR-$version.zip")
 if (Test-Path $zip) {
 	Remove-Item -Force $zip
 }
-Compress-Archive -Path (Join-Path $stage "OBSE") -DestinationPath $zip
+Compress-Archive -Path @((Join-Path $stage "OBSE"), (Join-Path $stage "Menus")) -DestinationPath $zip
 if (Test-Path $map) {
 	Copy-Item $map (Join-Path $root (Join-Path $OutDir "OBVR-$version.map"))
 }
@@ -74,7 +79,7 @@ Remove-Item -Recurse -Force $stage
 
 $size = [math]::Round((Get-Item $zip).Length / 1KB)
 Write-Output "OBVR $version packaged: $zip ($size KB)"
-Write-Output "  contains OBSE/Plugins/OBVR.dll (built $($dllTime.ToLocalTime())), OBSE/Plugins/OBVR.ini and OBSE/Plugins/OBVR-LICENSE.txt"
+Write-Output "  contains OBSE/Plugins/OBVR.dll (built $($dllTime.ToLocalTime())), OBSE/Plugins/OBVR.ini, OBSE/Plugins/OBVR-LICENSE.txt and native Menus XML"
 if (Test-Path $map) {
 	Write-Output "  linker map beside it: OBVR-$version.map"
 }

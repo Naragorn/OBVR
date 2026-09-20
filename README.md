@@ -115,7 +115,7 @@ RTX 4090, Windows 11. Anything else is untested, which is exactly what reports a
    `x32` folder, put `d3d9.dll` next to `Oblivion.exe`. Only that one file.
 3. Download `OBVR-<version>.zip` from this repository's **[Releases](https://github.com/Naragorn/OBVR/releases)** page and extract it
    into Oblivion's `Data` folder. It contains `OBSE/Plugins/OBVR.dll`,
-   `OBSE/Plugins/OBVR.ini` and the license text, nothing else.
+   `OBSE/Plugins/OBVR.ini`, the native MenuQue XML menus and the license text.
 4. Install [MenuQue v16b](https://www.nexusmods.com/oblivion/mods/32200): merge its
    `Data` folder into Oblivion, preserving `OBSE/Plugins/MenuQue.dll` and the
    `OBSE/Plugins/MenuQue/` subfolder. Under MO2, install and enable it as a separate mod.

@@ -359,6 +359,17 @@ void TestHandTracking() {
 
 	obvr::Config untouched;
 	Check(!untouched.handTracking, "the hand-tracked mode is off by default");
+	Check(untouched.nativeOnboardingPrototype,
+	      "the native MenuQue menus are selected by default");
+
+	obvr::Config legacyMenus;
+	LoadFrom("ConfigTestLegacyMenus.ini", "[Onboarding]\nNativePrototype=0\n", legacyMenus);
+	Check(!legacyMenus.nativeOnboardingPrototype,
+	      "Onboarding.NativePrototype=0 selects the existing overlay menus");
+	obvr::Config nativeMenus;
+	LoadFrom("ConfigTestNativeMenus.ini", "[Onboarding]\nNativePrototype=1\n", nativeMenus);
+	Check(nativeMenus.nativeOnboardingPrototype,
+	      "Onboarding.NativePrototype=1 selects the MenuQue menus");
 
 	obvr::Config configured;
 	LoadFrom("ConfigTestHands.ini", "[Hands]\nEnabled=1\n", configured);

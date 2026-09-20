@@ -115,6 +115,10 @@ struct Config {
 	// here.
 	bool onboardingShowAtStart = true;
 
+	// Startup-only native MenuQue menus. When disabled, unavailable, or an
+	// unsupported MenuQue binary is found, the existing OBVR overlays remain.
+	bool nativeOnboardingPrototype = true;
+
 	// The rest of [Hands]: gestures, arms, wrists, laser, sticks (HandMode.h)
 	// and the keys the mode presses on the player's behalf (HandControls.h).
 	// hands.enabled mirrors handTracking after a load.

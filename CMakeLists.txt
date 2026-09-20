@@ -35,6 +35,7 @@ add_library(OBVR SHARED
 	src/ui/SettingsList.cpp
 	src/ui/SettingsMenuLayer.cpp
 	src/ui/SettingsMenu.cpp
+	src/ui/NativeSettings.cpp
 	src/ui/Onboarding.cpp
 	src/camera/LookControl.cpp
 	src/core/CodeWriter.cpp
@@ -59,6 +60,7 @@ add_library(OBVR SHARED
 	src/game/DialogZoom.cpp
 	src/game/GameCamera.cpp
 	src/game/MenuMode.cpp
+	src/game/NativeMenuPrototype.cpp
 	src/game/MenuPause.cpp
 	src/game/HandControls.cpp
 	src/game/MenuBackground.cpp

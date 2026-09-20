@@ -548,6 +548,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.handTracking = ReadBool("Hands", "Enabled", config.handTracking, path);
 	config.onboardingShowAtStart =
 		ReadBool("Onboarding", "ShowAtStart", config.onboardingShowAtStart, path);
+	config.nativeOnboardingPrototype =
+		ReadBool("Onboarding", "NativePrototype", config.nativeOnboardingPrototype, path);
 	{
 		Config::BodySettings& b = config.body;
 		b.visible = ReadBool("Body", "Visible", b.visible, path);

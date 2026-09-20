@@ -1,0 +1,14 @@
+<!-- Native 64px highlight scaled uniformly to 42px; 3px inset fits 45px buttons.
+     Image height alone crops the texture. Both pieces use the same zoom/y. -->
+<image name="highlight">
+ <visible><copy src="parent()" trait="mouseover"/><eq>1</eq></visible>
+ <filename>Menus\Dialog\dialog_selection_full.dds</filename>
+ <width><copy src="parent()" trait="width"/><sub>10</sub></width>
+ <height>42</height><zoom>65.625</zoom><x>-10</x><y>3</y><depth>1</depth><alpha>255</alpha>
+ <image name="end">
+  <filename>Menus\Dialog\dialog_selection_cut.dds</filename>
+  <width>68.25</width><height>42</height><zoom>65.625</zoom>
+  <x><copy src="parent()" trait="width"/><add>8</add><sub src="me()" trait="width"/></x>
+  <y><copy src="parent()" trait="y"/></y><depth>2</depth><alpha>255</alpha>
+ </image>
+</image>

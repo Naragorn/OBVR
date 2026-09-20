@@ -1,0 +1,71 @@
+<!-- Native MenuQue feasibility prototype. All clickable IDs are OBVR-owned. -->
+<menu name="OBVRWelcome">
+ <class> &GenericMenu; </class>
+ <stackingtype> &no_click_past; </stackingtype>
+ <locus> &true; </locus>
+ <visible> &true; </visible>
+ <alpha> 255 </alpha>
+ <explorefade> 0 </explorefade>
+ <user0> Choose how you wish to explore Cyrodiil. </user0>
+ <rect name="parchment">
+  <include src="generic_background.xml" />
+  <user0> 720 </user0>
+  <user1> 440 </user1>
+  <depth> 15 </depth>
+  <x><copy src="screen()" trait="width"/><sub src="me()" trait="width"/><div>2</div></x>
+  <y><copy src="screen()" trait="height"/><sub src="me()" trait="height"/><div>2</div></y>
+  <text name="title">
+   <font> 1 </font><string> Welcome to Oblivion (OBVR) </string>
+   <x> 36 </x><y> 22 </y><depth> 3 </depth>
+   <red> 70 </red><green> 45 </green><blue> 25 </blue><alpha>255</alpha>
+  </text>
+  <text name="subtitle">
+   <font> 3 </font><string><copy src="OBVRWelcome" trait="user0"/></string>
+   <x>36</x><y>74</y><wrapwidth>648</wrapwidth><depth>3</depth>
+   <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
+  </text>
+  <rect name="classic">
+   <id>9101</id><target>&true;</target><locus>&true;</locus>
+   <x>36</x><y>144</y><width>310</width><height>210</height><depth>4</depth>
+   <xright><ref src="motion" trait="mouseover"/></xright>
+
+   <include src="OBVR/button_highlight.xml" />
+   <text name="heading">
+    <font>3</font><wrapwidth>285</wrapwidth><string>Keyboard/Gamepad + VR</string><x>10</x><y>10</y><depth>7</depth>
+    <red>65</red>
+    <green>45</green><blue>25</blue><alpha>255</alpha>
+   </text>
+   <text name="description">
+    <font>3</font><string>Mouse, keyboard or gamepad. Look around freely in first or third person.</string>
+    <x>10</x><y>70</y><wrapwidth>285</wrapwidth><depth>7</depth>
+    <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
+   </text>
+   <text name="status">
+    <font>3</font><string>Begin your journey</string><x>10</x><y>173</y><depth>7</depth>
+    <red>110</red><green>60</green><blue>25</blue><alpha>255</alpha>
+   </text>
+  </rect>
+  <rect name="motion">
+   <id>9102</id><target>&true;</target><locus>&true;</locus>
+   <x>376</x><y>144</y><width>308</width><height>210</height><depth>4</depth>
+   <xleft><ref src="classic" trait="mouseover"/></xleft>
+
+   <include src="OBVR/button_highlight.xml" />
+   <text name="heading">
+    <font>3</font><wrapwidth>282</wrapwidth><string>Full VR</string><x>10</x><y>10</y><depth>7</depth>
+    <red>65</red>
+    <green>45</green><blue>25</blue><alpha>255</alpha>
+   </text>
+   <text name="description">
+    <font>3</font><string>Experimental. Starts in first person. Left B: inventory.</string>
+    <x>10</x><y>70</y><wrapwidth>282</wrapwidth><depth>7</depth>
+    <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
+   </text>
+   <text name="status">
+    <font>3</font><string>Begin Full VR</string><x>10</x><y>173</y><depth>7</depth>
+    <red>110</red><green>60</green><blue>25</blue><alpha>255</alpha>
+   </text>
+  </rect>
+
+ </rect>
+</menu>

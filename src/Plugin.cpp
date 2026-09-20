@@ -2,6 +2,7 @@
 #include "core/Config.h"
 #include "core/Log.h"
 #include "game/GameAddresses.h"
+#include "game/NativeMenuPrototype.h"
 #include "game/PlayerBody.h"
 #include "obse/PluginInterface.h"
 #include "platform/PluginPath.h"
@@ -89,6 +90,7 @@ __declspec(dllexport) bool OBSEPlugin_Load(const obvr::obse::Interface* obse) {
 	}
 
 	obvr::test::InstallWaterVRTest();
+	obvr::game::InstallNativeMenuPrototype(obse);
 	OBVR_LOG("OBVR ready");
 	return true;
 }

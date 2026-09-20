@@ -28,6 +28,7 @@
 #include "core/Rotation.h"
 #include "core/Watchdog.h"
 #include "game/MenuMode.h"
+#include "game/NativeMenuPrototype.h"
 #include "game/MenuType.h"
 #include "game/AimAtSource.h"
 #include "game/PlayerAim.h"
@@ -2245,6 +2246,9 @@ void PointAtPanel(Menu& menu, Config& config, const ui::MenuItem* items,
 // own layer. While it is open the settings menu leaves the arrows alone.
 // Answers whether it consumed the keys.
 bool PollOnboarding(const Config& config) {
+	if (game::NativeMenuSuppressesLegacy()) {
+		return false;
+	}
 	if (!g_onboardingOffered && config.onboardingShowAtStart &&
 	    g_headTracker.IsHeadsetConnected()) {
 		g_onboardingOffered = true;
@@ -2314,6 +2318,17 @@ void PollSettingsMenu() {
 		// kept for the moment the walkthrough closes.
 		g_menuToggleEdge.Reset();
 		g_hand.settingsMenuToggle = false;
+		return;
+	}
+
+	if (game::NativeSettingsAvailable()) {
+		if (g_hand.settingsMenuToggle) {
+			g_hand.settingsMenuToggle = false;
+			game::RequestNativeSettingsToggle();
+		}
+		if (game::TakeNativeRecenterRequest()) {
+			DoRecenter("native settings menu");
+		}
 		return;
 	}
 

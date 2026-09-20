@@ -720,6 +720,19 @@ endif()
 
 add_test(NAME onboarding COMMAND onboarding_test)
 
+add_executable(native_settings_test
+	NativeSettingsTest.cpp
+	../src/ui/NativeSettings.cpp
+	../src/ui/SettingsList.cpp
+	../src/ui/MenuModel.cpp
+)
+target_include_directories(native_settings_test PRIVATE ../src)
+add_test(NAME native_settings COMMAND native_settings_test)
+
+add_executable(native_onboarding_test NativeOnboardingTest.cpp)
+target_include_directories(native_onboarding_test PRIVATE ../src)
+add_test(NAME native_onboarding COMMAND native_onboarding_test)
+
 add_executable(stack_scan_test StackScanTest.cpp)
 
 target_include_directories(stack_scan_test PRIVATE ../src)
@@ -753,6 +766,8 @@ add_test(NAME water_reprojection COMMAND water_reprojection_test)
 
 find_package(Python3 COMPONENTS Interpreter QUIET)
 if(Python3_Interpreter_FOUND)
+	add_test(NAME native_menu_assets
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/NativeMenuAssetsTest.py)
 	add_test(NAME water_shader_read
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/WaterShaderReadTest.py)
 	add_test(NAME water_position_control
