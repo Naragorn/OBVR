@@ -29,6 +29,16 @@ jobs:
         run: cmake -B build-tests tests -A Win32
       - name: Build the tests
         run: cmake --build build-tests --config Release
+
+      # The visual water regression test imports NumPy and Pillow. They are
+      # test-only dependencies and are not linked into or packaged with OBVR.
+      - name: Set up Python for visual tests
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install visual test dependencies
+        run: python -m pip install --disable-pip-version-check numpy pillow
+
       - name: Run the tests
         run: ctest --test-dir build-tests -C Release --output-on-failure
 
