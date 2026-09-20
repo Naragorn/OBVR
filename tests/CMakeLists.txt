@@ -733,6 +733,13 @@ add_executable(native_onboarding_test NativeOnboardingTest.cpp)
 target_include_directories(native_onboarding_test PRIVATE ../src)
 add_test(NAME native_onboarding COMMAND native_onboarding_test)
 
+add_executable(crosshair_target_test CrosshairTargetTest.cpp)
+target_include_directories(crosshair_target_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(crosshair_target_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME crosshair_target COMMAND crosshair_target_test)
+
 add_executable(stack_scan_test StackScanTest.cpp)
 
 target_include_directories(stack_scan_test PRIVATE ../src)

@@ -136,6 +136,25 @@ public static class ObvrWaterRun {
 	static extern bool SetCursorPos(int x, int y);
 	[DllImport("user32.dll")]
 	static extern void mouse_event(uint flags, uint x, uint y, uint data, UIntPtr extra);
+	[DllImport("user32.dll", SetLastError = true)]
+	static extern uint SendInput(uint count, INPUT[] inputs, int size);
+	public static void Move(int dx, int dy) {
+		INPUT[] one = new INPUT[1];
+		one[0].type = 0;
+		one[0].mi.dx = dx;
+		one[0].mi.dy = dy;
+		one[0].mi.dwFlags = 1;
+		SendInput(1, one, Marshal.SizeOf(typeof(INPUT)));
+	}
+	public static void LeftClick() {
+		INPUT[] one = new INPUT[1];
+		one[0].type = 0;
+		one[0].mi.dwFlags = 2;
+		SendInput(1, one, Marshal.SizeOf(typeof(INPUT)));
+		System.Threading.Thread.Sleep(80);
+		one[0].mi.dwFlags = 4;
+		SendInput(1, one, Marshal.SizeOf(typeof(INPUT)));
+	}
 	public static void ClickWindowOffset(IntPtr handle, int x, int y) {
 		int packed = (y << 16) | (x & 0xffff);
 		IntPtr point = new IntPtr(packed);
@@ -434,8 +453,24 @@ try {
 
 $startedAt = Get-Date
 if (-not $Attach) {
-	Write-Host "Starting $loaderPath"
-	Start-Process -FilePath $loaderPath -WorkingDirectory $GameDir | Out-Null
+	Write-Host "Starting $loaderPath through the verified game-folder Explorer path"
+	# Launching the loader as a background process can open OblivionLauncher
+	# instead of Oblivion.exe. The Explorer open verb is the same path that the
+	# successful main-menu harness uses and refuses that fallback explicitly.
+	$explorerStarter = Join-Path $PSScriptRoot "start-obse-from-explorer.ps1"
+	$explorerWindows = @((New-Object -ComObject Shell.Application).Windows() | Where-Object {
+		try {
+			$fullName = [string]$_.FullName
+			$location = ([Uri][string]$_.LocationURL).AbsoluteUri.TrimEnd('/')
+			[IO.Path]::GetFileName($fullName) -ieq 'explorer.exe' -and
+				$location -ieq ([Uri]$GameDir).AbsoluteUri.TrimEnd('/')
+		} catch { $false }
+	})
+	if ($explorerWindows.Count -eq 0) {
+		Start-Process -FilePath 'explorer.exe' -ArgumentList $GameDir
+		Start-Sleep -Seconds 2
+	}
+	& $explorerStarter -GameDir $GameDir
 } else {
 	Write-Host "Attaching to the running Oblivion.exe session."
 }
@@ -494,6 +529,25 @@ Start-Sleep -Seconds 3
 if (-not $AlreadyInWorld -and -not (Focus-Game)) { throw "Oblivion has no focusable window." }
 
 if (-not $AlreadyInWorld) {
+	# The first run can show OBVR's native onboarding over the generic menu.
+	# Keyboard focus is not assigned to the underlying Oblivion menu until the
+	# measured completion button is clicked, so perform that click before any
+	# load-navigation keys. On later runs the same location is inert.
+	$onboardingSavesBefore = if (Test-Path -LiteralPath $logPath) {
+		@(Select-String -Path $logPath -Pattern 'Native onboarding: .* saved').Count
+	} else { 0 }
+	[ObvrWaterRun]::Move(-8000, -8000)
+	Start-Sleep -Milliseconds 500
+	[ObvrWaterRun]::Move(1500, 1200)
+	Start-Sleep -Milliseconds 1000
+	[ObvrWaterRun]::LeftClick()
+	Start-Sleep -Seconds 3
+	if (Test-Path -LiteralPath $logPath) {
+		$onboardingSavesAfter = @(Select-String -Path $logPath -Pattern 'Native onboarding: .* saved').Count
+		if ($onboardingSavesAfter -gt $onboardingSavesBefore) {
+			Write-Host "Native OBVR onboarding dismissed before load navigation."
+		}
+	}
 	# Observed main menu is horizontal: Down establishes Continue focus, then
 	# two Right presses select Load. Further Down presses do not move selection.
 	# The save list starts at its top

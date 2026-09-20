@@ -2225,13 +2225,16 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 
 	// HUDReticle is a persistent tile rather than a normal menu. Oblivion can
 	// carry its last sneak-eye visibility into the Main Menu, where there is no
-	// player HUD at all. Hide that tile before the game draws the frame layer;
-	// gameplay updates it normally again after loading.
-	if (game::MainMenuHidesHudReticle(renderedTexture == nullptr,
-	                                  game::IsMenuMode(),
-	                                  game::PlayerInWorld(),
-	                                  game::LoadingThreadActive())) {
-		game::SetHudReticleEnabled(false);
+	// player HUD at all. Hide the persistent reticle roots before the game draws
+	// the frame layer; gameplay updates the ordinary HUD path again after loading.
+	const bool frameLayer = renderedTexture == nullptr;
+	const bool menuMode = game::IsMenuMode();
+	const bool playerInWorld = game::PlayerInWorld();
+	const bool loadingThread = game::LoadingThreadActive();
+	const bool hideHudReticle = game::MainMenuHidesHudReticle(
+		frameLayer, menuMode, playerInWorld, loadingThread);
+	if (hideHudReticle) {
+		game::SetHudReticleEnabled(false, game::HudReticleWriteContext::MainMenu);
 	}
 
 	// The place experiment. Everything measured so far says the world render
@@ -2305,6 +2308,14 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 	}
 
 	const char* mode = RunInterfacePass(self, unusedEdx, renderedTexture, window);
+	// Vanilla's HUDReticle updater can run as part of the interface pass when
+	// a native menu is opened or dismissed. Re-assert the main-menu state after
+	// that pass so the frame that follows cannot inherit the sneak-eye value it
+	// just restored. This is still the same persistent root and trait write;
+	// the placement follows the engine's actual update order measured above.
+	if (hideHudReticle) {
+		game::SetHudReticleEnabled(false, game::HudReticleWriteContext::MainMenu);
+	}
 
 	if (window) {
 		g_sampleNextDraw = false;

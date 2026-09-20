@@ -5,6 +5,43 @@
 
 namespace obvr::game {
 
+enum class HudReticleTileSource : UInt8 {
+	None,
+	MenuArray,
+	PersistentRoot,
+};
+
+enum class HudReticleWriteContext : UInt8 {
+	Gameplay,
+	MainMenu,
+};
+
+// HUDReticle is normally absent from the ordinary menu array while the game
+// is at the title screen. The persistent root is the second, engine-proven
+// route; the source choice is kept pure so all fallback combinations are
+// testable without a running game.
+constexpr HudReticleTileSource ChooseHudReticleTileSource(bool arrayEntryValid,
+	                                                        bool persistentRootValid) {
+	if (arrayEntryValid) {
+		return HudReticleTileSource::MenuArray;
+	}
+	return persistentRootValid ? HudReticleTileSource::PersistentRoot
+	                           : HudReticleTileSource::None;
+}
+
+// The title screen keeps three persistent HUD roots alive beside the ordinary
+// menu-array tile. They must be hidden only for the title-screen pass; the
+// gameplay path must not touch any adjacent HUD root.
+constexpr bool PersistentHudRootsWriteWanted(
+	bool enabled, HudReticleWriteContext context) {
+	return !enabled && context == HudReticleWriteContext::MainMenu;
+}
+
+constexpr bool HudReticleOpacityWriteWanted(
+	bool enabled, HudReticleWriteContext context) {
+	return !enabled && context == HudReticleWriteContext::MainMenu;
+}
+
 // What the player is currently aiming at, as far as the engine will say.
 //
 // This exists for one number: how far away the thing under the crosshair is,
@@ -80,7 +117,11 @@ CrosshairTarget ReadCrosshairTarget();
 // draw, then hides it again. This is the same context-sensitive
 // hand/door/talk picture first person uses, not HUDInfoMenu::actionIcon (which
 // is the controller X prompt). HUDReticle is not required to have a Menu
-// back-pointer; the root TileMenu's visible trait is what owns the draw.
-bool SetHudReticleEnabled(bool enabled);
+// back-pointer; the root TileMenu's visible trait is what owns the draw. The
+// MainMenu context also hides the adjacent persistent HUDInfo root that the
+// title-screen update keeps visible beside it.
+bool SetHudReticleEnabled(
+	bool enabled,
+	HudReticleWriteContext context = HudReticleWriteContext::Gameplay);
 
 }  // namespace obvr::game

@@ -112,30 +112,71 @@ CrosshairTarget ReadCrosshairTarget() {
 	return target;
 }
 
-bool SetHudReticleEnabled(bool enabled) {
+bool SetHudReticleEnabled(bool enabled, HudReticleWriteContext context) {
+	void* arrayTile = nullptr;
 	auto* const data = *reinterpret_cast<UInt32**>(addr::kTileMenuArrayData);
-	if (!LooksLikeObject(data)) {
-		return false;
-	}
-	const UInt32 count = *reinterpret_cast<const UInt16*>(addr::kTileMenuArrayCount);
-	const UInt32 index = kMenuIdHudReticle - kMenuIdFirst;
-	if (index >= count) {
-		return false;
-	}
-	void* const tile = reinterpret_cast<void*>(data[index]);
-	if (!LooksLikeObject(tile)) {
-		return false;
+	if (LooksLikeObject(data)) {
+		const UInt32 count = *reinterpret_cast<const UInt16*>(addr::kTileMenuArrayCount);
+		const UInt32 index = kMenuIdHudReticle - kMenuIdFirst;
+		if (index < count) {
+			void* const candidate = reinterpret_cast<void*>(data[index]);
+			if (LooksLikeObject(candidate)) {
+				arrayTile = candidate;
+			}
+		}
 	}
 
-	// HUDReticle is present in the tile-menu array even though, unlike normal
-	// menus, its TileMenu can have no Menu back-pointer. Requiring +0x44 to be a
-	// Menu is why the old path rejected the very HUD tile it needed in third
-	// person. The XML root owns `visible` directly (1=false, 2=true), and the
-	// game's own HUD code updates it through this same Tile::UpdateFloat entry.
+	void* persistentRoot = *reinterpret_cast<void* const*>(addr::kHudReticleRootPointer);
+	if (!LooksLikeObject(persistentRoot)) {
+		persistentRoot = nullptr;
+	}
+	void* infoRoot = *reinterpret_cast<void* const*>(addr::kHudInfoRootPointer);
+	if (!LooksLikeObject(infoRoot)) {
+		infoRoot = nullptr;
+	}
+	void* auxRoot = *reinterpret_cast<void* const*>(addr::kHudAuxRootPointer);
+	if (!LooksLikeObject(auxRoot)) {
+		auxRoot = nullptr;
+	}
+	const HudReticleTileSource source = ChooseHudReticleTileSource(
+		arrayTile != nullptr, persistentRoot != nullptr);
+	void* tile = nullptr;
+	if (source == HudReticleTileSource::MenuArray) {
+		tile = arrayTile;
+	} else if (source == HudReticleTileSource::PersistentRoot) {
+		tile = persistentRoot;
+	}
+	// HUDReticle is a persistent tile. In world frames it can be reached through
+	// the tile-menu array; on the title screen the array slot is null while the
+	// engine's persistent root remains live. The XML root owns `visible`
+	// directly (1=false, 2=true), and this uses the same Tile::UpdateFloat entry
+	// as the game's own HUD code.
 	using UpdateFloatFn = void(__thiscall*)(void* self, UInt32 trait, float value);
-	reinterpret_cast<UpdateFloatFn>(addr::kTileUpdateFloat)(
-		tile, 0x00000FA1u, enabled ? 2.0f : 1.0f);
-	return true;
+	auto update = reinterpret_cast<UpdateFloatFn>(addr::kTileUpdateFloat);
+	if (tile != nullptr) {
+		update(tile, 0x00000FA1u, enabled ? 2.0f : 1.0f);
+	}
+	if (HudReticleOpacityWriteWanted(enabled, context) && tile != nullptr) {
+		// visible=1 suppresses the normal root, while opacity=0 also suppresses
+		// the small upper child that the title-screen tile path leaves behind.
+		update(tile, 0x00000FB0u, 0.0f);
+	}
+	// Vanilla's title-screen update keeps all three persistent HUD children
+	// alive. Hide every valid root in that context; the isolated gameplay draw
+	// never enters this branch and therefore cannot lose HUDInfo state.
+	if (PersistentHudRootsWriteWanted(enabled, context)) {
+		void* roots[] = {persistentRoot, infoRoot, auxRoot};
+		for (void* root : roots) {
+			if (root == nullptr) {
+				continue;
+			}
+			update(root, 0x00000FA1u, 1.0f);
+			update(root, 0x00000FB0u, 0.0f);
+		}
+	}
+	return tile != nullptr || (context == HudReticleWriteContext::MainMenu &&
+	                           (persistentRoot != nullptr || infoRoot != nullptr ||
+	                            auxRoot != nullptr));
 }
 
 }  // namespace obvr::game

@@ -10,6 +10,13 @@ param(
 	[int]$CursorX = 2047,
 	[int]$CursorY = 1742,
 	[switch]$Click,
+	[switch]$KeepGameOpen,
+	# Require fresh main-menu evidence after the optional click. Depending on
+	# whether the native onboarding is active, Oblivion reports either a Main
+	# menu trace or the native onboarding save receipt while returning to the
+	# Generic menu root. This prevents a loaded-world screenshot from being
+	# accepted as a clean main-menu capture.
+	[switch]$RequireMainMenu,
 	# OS-cursor counter-experiment: place the OS cursor absolutely at this
 	# screen position (the game cursor stays parked elsewhere) and click
 	# there. Answers whether the click follows the OS cursor's client
@@ -143,8 +150,40 @@ if ($p -and $p.MainWindowHandle -ne 0) {
 
 	if ($Click) {
 		Write-Host "Clicking at the parked game-cursor position..."
+		$mainMarkersBeforeClick = 0
+		$onboardingSavesBeforeClick = 0
+		if (Test-Path $logPath) {
+			$mainMarkersBeforeClick = @(Select-String -Path $logPath -Pattern 'Menu trace: a menu just (opened|changed) - Main \(').Count
+			$onboardingSavesBeforeClick = @(Select-String -Path $logPath -Pattern 'Native onboarding: .* saved').Count
+		}
 		[ObvrShot]::LeftClick()
 		Start-Sleep -Milliseconds 4000
+
+		if ($RequireMainMenu) {
+			$mainDeadline = (Get-Date).AddSeconds(12)
+			$mainSeenAfterClick = $false
+			while ((Get-Date) -lt $mainDeadline) {
+				if (Test-Path $logPath) {
+					$mainMarkers = @(Select-String -Path $logPath -Pattern 'Menu trace: a menu just (opened|changed) - Main \(').Count
+					$onboardingSaves = @(Select-String -Path $logPath -Pattern 'Native onboarding: .* saved').Count
+					if ($mainMarkers -gt $mainMarkersBeforeClick -or
+						$onboardingSaves -gt $onboardingSavesBeforeClick) {
+						$mainSeenAfterClick = $true
+						break
+					}
+				}
+				Start-Sleep -Milliseconds 300
+			}
+			if (-not $mainSeenAfterClick) {
+				$p = Get-Process Oblivion -ErrorAction SilentlyContinue
+				if ($p) {
+					$p.CloseMainWindow() | Out-Null
+					if (-not $p.WaitForExit(15000)) { Stop-Process -Id $p.Id -Force }
+				}
+				throw "The click did not produce a fresh Main-menu trace; refusing to classify the capture as a main-menu screenshot."
+			}
+			Write-Host "Fresh main-menu/onboarding completion evidence confirmed after the click."
+		}
 	}
 
 	if ($OsClickX -ge 0) {
@@ -164,9 +203,13 @@ if ($p -and $p.MainWindowHandle -ne 0) {
 	Write-Host "Screenshot saved: $OutFile (window shifted $WindowShift, cursor at $CursorX,$CursorY)"
 }
 
-$p = Get-Process Oblivion -ErrorAction SilentlyContinue
-if ($p) {
-	$p.CloseMainWindow() | Out-Null
-	if (-not $p.WaitForExit(15000)) { Stop-Process -Id $p.Id -Force }
+if (-not $KeepGameOpen) {
+	$p = Get-Process Oblivion -ErrorAction SilentlyContinue
+	if ($p) {
+		$p.CloseMainWindow() | Out-Null
+		if (-not $p.WaitForExit(15000)) { Stop-Process -Id $p.Id -Force }
+	}
+} else {
+	Write-Host "Keeping Oblivion open at the verified main menu for an attached harness."
 }
 Write-Host "Done."

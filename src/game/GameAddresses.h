@@ -1097,6 +1097,21 @@ inline constexpr UInt32 kTileMenuArray = 0x00B13970;
 inline constexpr UInt32 kTileMenuArrayData = 0x00B13974;
 inline constexpr UInt32 kTileMenuArrayCount = 0x00B1397A;
 
+// The persistent HUDReticle root used by the game's own update at 005A82D0.
+// It is separate from g_TileMenuArray: the menu-array slot is null on the
+// title screen even while this root still carries the last sneak-eye image.
+// The disassembly reads this pointer at 005A82D6/005A8319 and passes it to
+// the tile trait updater.
+inline constexpr UInt32 kHudReticleRootPointer = 0x00B3B350;
+// The adjacent HUDInfo root updated by the same vanilla routine at 005A8360.
+// The title-screen path keeps this root visible alongside HUDReticle, so the
+// main-menu hide operation updates both persistent roots.
+inline constexpr UInt32 kHudInfoRootPointer = 0x00B3B354;
+// The third persistent HUD child discovered by the same constructor at
+// 005A8000 (trait 0xFA8 value 2). It participates in the title-screen HUD
+// update and can leave the small upper reticle fragment visible by itself.
+inline constexpr UInt32 kHudAuxRootPointer = 0x00B3B358;
+
 // Pointer to the pointer to HUDInfoMenu - the menu that owns crosshairRef,
 // the reference whatever the player is aiming at. From xOBSE's GameMenus.cpp:
 //
