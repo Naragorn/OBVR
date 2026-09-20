@@ -20,6 +20,10 @@ pass, and a package inspection contains the DLL, INI, licence and all three menu
 assets. A fresh in-game run of this exact restored build is still required before
 release acceptance.
 
+Full VR remains visible in onboarding as **Under construction**, but its XML tile
+is not targetable and the lifecycle logic independently refuses its button ID.
+Only Keyboard/Gamepad + VR can complete onboarding on current main.
+
 ## Controller regression correction — 2026-09-11
 
 The preceding partial SteamVR migration was wrong: it called SetActionManifestPath
@@ -96,7 +100,12 @@ navigation is verified; no NorthernUI-specific tile names are hardcoded.
 
 The MenuQue onboarding and Insert settings menu are enabled by default through the startup-only compatibility key `[Onboarding] NativePrototype=1`. Setting it to 0 restores the legacy overlay menus. Missing xOBSE task/console interfaces, missing XML assets or an unrecognized MenuQue poll routine also retain the legacy menus. A failed settings XML open restores the legacy entry point.
 
-The onboarding has two choices, Keyboard/Gamepad + VR and Full VR. Both choices are enabled. Full VR is labelled experimental. Each choice saves Hands.Enabled (0 for Keyboard/Gamepad + VR, 1 for Full VR) before applying it; failed writes offer a retry. There is no Decide later button. Both onboarding and settings use the game's dialog_selection_full.dds and dialog_selection_cut.dds as a background hover effect; text RGB values remain constant.
+The original `dlss5` prototype enabled both Keyboard/Gamepad + VR and Full VR.
+Current main supersedes that behavior: Full VR is shown as under construction and
+refused; Keyboard/Gamepad + VR saves `Hands.Enabled=0`. Failed writes offer a retry.
+There is no Decide later button. Both onboarding and settings use the game's
+dialog_selection_full.dds and dialog_selection_cut.dds as a background hover effect;
+text RGB values remain constant.
 
 Insert opens/closes the native settings menu; its Close button closes it too. Previous/Next buttons or Page Up/Page Down navigate nine pages of seven rows, including all 58 existing SettingDefinitions. Clicking a label selects its help text; minus/plus adjust it. Changes are saved before application, failed saves preserve the current value, and restart-only settings carry a marker. Recenter is handed back to the render callback. In the stereo HUD path, the existing menu width/distance/anchor settings are used while this menu is open. The native menu otherwise uses the game's existing UI presentation, including its cinematic main-menu presentation and tracked wrist placement.
 

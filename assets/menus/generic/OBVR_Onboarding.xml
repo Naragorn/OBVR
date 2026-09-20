@@ -46,23 +46,23 @@
    </text>
   </rect>
   <rect name="motion">
-   <id>9102</id><target>&true;</target><locus>&true;</locus>
+   <id>9102</id><target>&false;</target><locus>&true;</locus>
    <x>376</x><y>144</y><width>308</width><height>210</height><depth>4</depth>
    <xleft><ref src="classic" trait="mouseover"/></xleft>
 
    <include src="OBVR/button_highlight.xml" />
    <text name="heading">
-    <font>3</font><wrapwidth>282</wrapwidth><string>Full VR</string><x>10</x><y>10</y><depth>7</depth>
+    <font>3</font><wrapwidth>282</wrapwidth><string>Full VR - Under construction</string><x>10</x><y>10</y><depth>7</depth>
     <red>65</red>
     <green>45</green><blue>25</blue><alpha>255</alpha>
    </text>
    <text name="description">
-    <font>3</font><string>Experimental. Starts in first person. Left B: inventory.</string>
+    <font>3</font><string>Motion controls are still being built and cannot be selected yet.</string>
     <x>10</x><y>70</y><wrapwidth>282</wrapwidth><depth>7</depth>
     <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
    </text>
    <text name="status">
-    <font>3</font><string>Begin Full VR</string><x>10</x><y>173</y><depth>7</depth>
+    <font>3</font><string>Not available yet</string><x>10</x><y>173</y><depth>7</depth>
     <red>110</red><green>60</green><blue>25</blue><alpha>255</alpha>
    </text>
   </rect>

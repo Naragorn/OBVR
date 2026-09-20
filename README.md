@@ -53,9 +53,9 @@ one, swings that strike what they pass through, a shield raised to block, spells
 left hand, menus on the wrists with a laser and finger presses, controllers steering every
 menu from the main menu on. All of it is built (`docs/hand-tracked-mode.md` is the ladder,
 rung by rung), **none of it has been seen working in a headset, and it is not working as
-intended**. It is off by default and can be selected in the onboarding as **Full VR (experimental)**.
+intended**. It is off by default and appears in onboarding as **Full VR — Under construction**, but cannot be selected there.
 The main menu and onboarding accept controller laser input before choosing a mode,
-even with `[Hands] ControllerMenus=0`. `[Hands] Enabled=1` in `OBVR.ini` or "Full VR" in the settings menu switch it on at your own risk; a report from doing so is
+even with `[Hands] ControllerMenus=0`. `[Hands] Enabled=1` in `OBVR.ini` can still switch the unfinished mode on for development testing; a report from doing so is
 welcome, marked as such.
 
 Not built at all: snap turning, teleport, room-scale locomotion, physical interaction with
