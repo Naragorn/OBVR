@@ -111,14 +111,17 @@ static_assert(kMenuIdMagicPopup == kMenuIdFirst + 23, "MagicPopup follows Map");
 UInt32 ActiveMenuId();
 
 // HUDReticle is a persistent tile, independent of normal menu ownership. The
-// game can therefore leave its sneak eye visible while a worldless menu draws.
-// ActiveMenuId cannot identify that state reliably because it follows the
-// menu below the cursor and legitimately returns None for keyboard input.
-// Loading is kept separate because its interface pass has its own lifecycle.
+// game can therefore leave its sneak eye visible while any menu draws. The
+// player pointer is deliberately not part of this decision: after a save has
+// been loaded it remains valid while the main menu is open. ActiveMenuId cannot
+// identify the state reliably because it follows the menu below the cursor and
+// legitimately returns None for keyboard input. Loading keeps its own
+// interface lifecycle, so the tile is left alone for that pass.
 constexpr bool MainMenuHidesHudReticle(bool frameLayer, bool menuMode,
 	                                    bool playerInWorld,
 	                                    bool loadingThreadActive) {
-	return frameLayer && menuMode && !playerInWorld && !loadingThreadActive;
+	(void)playerInWorld;
+	return frameLayer && menuMode && !loadingThreadActive;
 }
 
 // Whether Oblivion currently owns a loading thread. This is the reliable

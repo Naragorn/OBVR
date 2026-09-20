@@ -60,12 +60,11 @@ int main() {
 		for (unsigned menuMode = 0; menuMode < 2; ++menuMode) {
 			for (unsigned playerInWorld = 0; playerInWorld < 2; ++playerInWorld) {
 				for (unsigned loading = 0; loading < 2; ++loading) {
-					const bool expected = frameLayer != 0 && menuMode != 0 &&
-					                      playerInWorld == 0 && loading == 0;
+					const bool expected = frameLayer != 0 && menuMode != 0 && loading == 0;
 					Check(obvr::game::MainMenuHidesHudReticle(
 					          frameLayer != 0, menuMode != 0,
 					          playerInWorld != 0, loading != 0) == expected,
-					      "only a worldless non-loading frame menu suppresses HUDReticle");
+					      "every non-loading frame menu suppresses HUDReticle, even with a live player pointer");
 				}
 			}
 		}
