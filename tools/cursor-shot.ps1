@@ -86,7 +86,23 @@ $logLengthBefore = 0
 if (Test-Path $logPath) { $logLengthBefore = (Get-Item $logPath).Length }
 
 Write-Host "Starting Oblivion..."
-Start-Process -FilePath (Join-Path $gameDir "obse_loader.exe") -WorkingDirectory $gameDir
+$explorerStarter = Join-Path $PSScriptRoot "start-obse-from-explorer.ps1"
+# Steam's xOBSE loader can fall back to OblivionLauncher when it is launched
+# as a background process. Use the same Explorer open verb as the verified
+# manual start path, and fail if that path does not produce Oblivion.exe.
+$explorerWindows = @((New-Object -ComObject Shell.Application).Windows() | Where-Object {
+	try {
+		$fullName = [string]$_.FullName
+		$location = ([Uri][string]$_.LocationURL).AbsoluteUri.TrimEnd('/')
+		[IO.Path]::GetFileName($fullName) -ieq 'explorer.exe' -and
+			$location -ieq ([Uri]$gameDir).AbsoluteUri.TrimEnd('/')
+	} catch { $false }
+})
+if ($explorerWindows.Count -eq 0) {
+	Start-Process -FilePath 'explorer.exe' -ArgumentList $gameDir
+	Start-Sleep -Seconds 2
+}
+& $explorerStarter -GameDir $gameDir
 
 $deadline = (Get-Date).AddSeconds($MenuWaitSec)
 $menuSeen = $false
@@ -96,7 +112,11 @@ while ((Get-Date) -lt $deadline) {
 	if (-not (Test-Path $logPath)) { continue }
 	if ((Get-Item $logPath).Length -eq $logLengthBefore -and -not $logAlive) { continue }
 	$logAlive = $true
-	if (Select-String -Path $logPath -Pattern "hooked at table entries" -Quiet) {
+	# The current build reports the first menu opening as `none` while the OBVR
+	# onboarding panel is shown, then reports Main after it is dismissed. Either
+	# is a valid startup-menu frame; older builds only exposed the device-hook
+	# marker. Retain all three so the screenshot never waits for a stale phrase.
+	if (Select-String -Path $logPath -Pattern "Menu trace: a menu just (opened - none|changed - Main)|hooked at table entries" -Quiet) {
 		$menuSeen = $true
 		break
 	}
