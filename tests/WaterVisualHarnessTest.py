@@ -174,10 +174,13 @@ class WaterVisualHarnessTest(unittest.TestCase):
     def test_replay_phase_order_and_missing_requirements(self):
         phases = ['WriteAllText($pluginIni, $initialIni',
                   'Start-Sleep -Seconds $LoadWaitSec',
+                  '$focusAfterSettling = Focus-Game',
                   'WriteAllText($pluginIni, $testIni']
         requirements = ["$settlingIni = [regex]::Replace", "'VRTestSuite=0'",
                         '$initialIni = if ($ArmBeforeLoad) { $testIni } else { $settlingIni }',
                         'if (-not $ArmBeforeLoad) {',
+                        'if (-not $focusAfterSettling)',
+                        'Focus-Game | Out-Null',
                         'if ($tail -match "^OBVR ready$")']
         for order in itertools.permutations(phases):
             with self.subTest(order=order):
@@ -341,6 +344,55 @@ class WaterVisualHarnessTest(unittest.TestCase):
             self.assertEqual(harness.analyze_run_manifest(root)["status"], "pass")
             result_path.write_text("\ufeff{invalid", encoding="utf-8")
             self.assertEqual(harness.analyze_run_manifest(root)["status"], "fail")
+
+    def test_toggle_manifest_requires_restore_receipt_and_log_marker(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            files = [f"OBVR-VRTest-water-view-{i // 4}-step-{(i // 2) % 2}-{('left', 'right')[i % 2]}.bmp" for i in range(28)]
+            manifest = {
+                "schema": 2,
+                "saveIndex": 1,
+                "captureCount": 28,
+                "sweep": "synthetic-hmd-yaw--60-to-60",
+                "files": files,
+                "toggleWaterReflections": True,
+                "toggleEvidence": {"restored": True},
+            }
+            result_path = root / "water-vr-result.json"
+            result_path.write_text(json.dumps(manifest), encoding="utf-8")
+            self.assertEqual(harness.analyze_run_manifest(root)["status"], "fail")
+            (root / "OBVR.log").write_text(
+                "Water manager lifecycle: restored reflection resource 1234ABCD after Off -> On\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(harness.analyze_run_manifest(root)["status"], "pass")
+            manifest["toggleEvidence"] = {"restored": False}
+            result_path.write_text(json.dumps(manifest), encoding="utf-8")
+            self.assertEqual(harness.analyze_run_manifest(root)["status"], "fail")
+
+    def test_toggle_only_receipt_requires_runtime_restore_marker(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = {
+                "schema": 1,
+                "mode": "live-water-toggle-only",
+                "toggleWaterReflections": True,
+                "toggleEvidence": {"restored": True},
+            }
+            (root / "water-toggle-result.json").write_text(
+                json.dumps(receipt), encoding="utf-8"
+            )
+            self.assertEqual(harness.analyze_toggle_manifest(root)["status"], "fail")
+            (root / "OBVR.log").write_text(
+                "Water manager lifecycle: restored reflection resource 1234ABCD after Off -> On\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(harness.analyze_toggle_manifest(root)["status"], "pass")
+            receipt["toggleEvidence"] = {"restored": False}
+            (root / "water-toggle-result.json").write_text(
+                json.dumps(receipt), encoding="utf-8"
+            )
+            self.assertEqual(harness.analyze_toggle_manifest(root)["status"], "fail")
 
     def test_evaluate_requires_visual_evidence_when_artifact_is_given(self):
         with tempfile.TemporaryDirectory() as directory:

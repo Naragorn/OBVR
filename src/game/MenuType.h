@@ -110,6 +110,17 @@ static_assert(kMenuIdMagicPopup == kMenuIdFirst + 23, "MagicPopup follows Map");
 // menu - IsMenuMode is what answers that.
 UInt32 ActiveMenuId();
 
+// HUDReticle is a persistent tile, independent of normal menu ownership. The
+// game can therefore leave its sneak eye visible while a worldless menu draws.
+// ActiveMenuId cannot identify that state reliably because it follows the
+// menu below the cursor and legitimately returns None for keyboard input.
+// Loading is kept separate because its interface pass has its own lifecycle.
+constexpr bool MainMenuHidesHudReticle(bool frameLayer, bool menuMode,
+	                                    bool playerInWorld,
+	                                    bool loadingThreadActive) {
+	return frameLayer && menuMode && !playerInWorld && !loadingThreadActive;
+}
+
 // Whether Oblivion currently owns a loading thread. This is the reliable
 // half of loading-screen detection: LoadingMenu is not always ActiveMenu,
 // because that pointer follows the menu under the mouse and a loading screen

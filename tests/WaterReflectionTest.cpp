@@ -5,6 +5,8 @@
 using obvr::render::BuildStableWaterReflectionConstant;
 using obvr::render::IsWaterReflectionTargetCandidate;
 using obvr::render::WaterReflectionConstant;
+using obvr::render::WaterResourceAction;
+using obvr::render::ChooseWaterResourceAction;
 
 namespace {
 
@@ -22,6 +24,21 @@ void Check(bool condition, const char* message) {
 }  // namespace
 
 int main() {
+	for (unsigned enabled = 0; enabled < 2; ++enabled)
+	for (unsigned currentKind = 0; currentKind < 3; ++currentKind)
+	for (unsigned keptKind = 0; keptKind < 2; ++keptKind) {
+		const UInt32 current = currentKind == 0 ? 0u :
+		                       currentKind == 1 ? 0x1111u : 0x2222u;
+		const UInt32 kept = keptKind == 0 ? 0u : 0x1111u;
+		WaterResourceAction expected = WaterResourceAction::None;
+		if (current != 0 && current != kept)
+			expected = WaterResourceAction::Remember;
+		else if (enabled && current == 0 && kept != 0)
+			expected = WaterResourceAction::Restore;
+		Check(ChooseWaterResourceAction(enabled != 0, current, kept) == expected,
+		      "all water-resource lifecycle combinations");
+	}
+
 	for (unsigned index = 0; index < 2; ++index)
 	for (unsigned present = 0; present < 2; ++present)
 	for (unsigned backBuffer = 0; backBuffer < 2; ++backBuffer)

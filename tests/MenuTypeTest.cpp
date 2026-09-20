@@ -56,6 +56,20 @@ constexpr int kKnownCount = static_cast<int>(sizeof(kKnown) / sizeof(kKnown[0]))
 }  // namespace
 
 int main() {
+	for (unsigned frameLayer = 0; frameLayer < 2; ++frameLayer) {
+		for (unsigned menuMode = 0; menuMode < 2; ++menuMode) {
+			for (unsigned playerInWorld = 0; playerInWorld < 2; ++playerInWorld) {
+				for (unsigned loading = 0; loading < 2; ++loading) {
+					const bool expected = frameLayer != 0 && menuMode != 0 &&
+					                      playerInWorld == 0 && loading == 0;
+					Check(obvr::game::MainMenuHidesHudReticle(
+					          frameLayer != 0, menuMode != 0,
+					          playerInWorld != 0, loading != 0) == expected,
+					      "only a worldless non-loading frame menu suppresses HUDReticle");
+				}
+			}
+		}
+	}
 	using obvr::game::MenuIdName;
 
 	std::printf("The menu each id names\n");

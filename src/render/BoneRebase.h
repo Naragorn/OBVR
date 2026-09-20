@@ -192,6 +192,15 @@ inline bool BoneTargetIsWorldSized(UInt32 targetWidth, UInt32 mainWidth) {
 	return mainWidth == 0 || targetWidth >= mainWidth;
 }
 
+// Target size is only a fallback classification. Oblivion may recreate a
+// full-width reflection target after applying video settings; that target is
+// still a nested reflection scene and its camera-space bone rows must never
+// enter the first/second-eye world correspondence.
+inline bool BoneUploadBelongsToWorld(bool targetIsWorldSized,
+	                                 bool reflectionSubpass) {
+	return targetIsWorldSized && !reflectionSubpass;
+}
+
 // How a second-render row was paired with the first render's log.
 //
 // InPlace: the row at the running position has the fingerprint. In a steady

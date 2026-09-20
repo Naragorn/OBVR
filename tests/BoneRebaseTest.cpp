@@ -213,6 +213,14 @@ void TestWorldSizedTarget() {
 	      "a shadow-sized target is a sub-pass");
 	Check(!BoneTargetIsWorldSized(2559, 2560),
 	      "just under the main width is a sub-pass");
+	using obvr::render::BoneUploadBelongsToWorld;
+	for (unsigned targetMain = 0; targetMain < 2; ++targetMain) {
+		for (unsigned reflection = 0; reflection < 2; ++reflection) {
+			Check(BoneUploadBelongsToWorld(targetMain != 0, reflection != 0) ==
+			          (targetMain != 0 && reflection == 0),
+			      "only a world-sized non-reflection target enters eye bone sync");
+		}
+	}
 }
 
 void TestRebase() {

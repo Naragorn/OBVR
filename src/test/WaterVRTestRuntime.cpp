@@ -27,6 +27,7 @@ UInt32 g_matrixMask = 0;
 UInt32 g_fixedCaptureMask = 0;
 UInt32 g_projectionScaleMask = 0;
 UInt32 g_eyeReuseMask = 0;
+UInt32 g_reflectionTargetMask = 0;
 UInt32 g_firstWorldEyeMask = 0;
 UInt32 g_lastSnapshotSerial = 0;
 NiMatrix33 g_captureRotation{};
@@ -59,6 +60,7 @@ void ArmWaterVRTest() {
 	g_fixedCaptureMask = 0;
 	g_projectionScaleMask = 0;
 	g_eyeReuseMask = 0;
+	g_reflectionTargetMask = 0;
 	g_firstWorldEyeMask = 0;
 	g_lastSnapshotSerial = 0;
 	g_captureRotation = NiMatrix33{};
@@ -91,10 +93,11 @@ bool SuppressWaterVRFirstEyeReflection(bool firstEye) {
 	return true;
 }
 
-void ObserveWaterVRReflectionRendered(bool secondEye) {
-	if (g_lifecycleSuppressed && secondEye && !g_lifecycleRecovered) {
+void ObserveWaterVRReflectionRendered() {
+	if (WaterTestLifecycleRecovered(g_frame, g_lifecycleSuppressed) &&
+	    !g_lifecycleRecovered) {
 		g_lifecycleRecovered = true;
-		OBVR_LOG("VRTEST lifecycle recovered by second-eye render frame=%u", g_frame);
+		OBVR_LOG("VRTEST lifecycle recovered by first post-OFF render frame=%u", g_frame);
 	}
 }
 
@@ -160,6 +163,8 @@ void ObserveWaterVREye(bool left, void* device) {
 	                     render::DumpWaterReflectionTarget(device, path);
 	render::WaterReflectionTargetSnapshot target{};
 	const bool targetMeasured = render::GetWaterReflectionTargetSnapshot(target);
+	if (targetOk && targetMeasured && target.candidates != 0)
+		g_reflectionTargetMask |= bit;
 	OBVR_LOG("VRTEST reflection-target view=%u step=%u eye=%s image=%u measured=%u serial=%u candidates=%u size=%ux%u viewport=%u,%u,%u,%u",
 		view, step, left ? "left" : "right", targetOk, targetMeasured,
 		target.serial, target.candidates, target.width, target.height,
@@ -287,14 +292,16 @@ void AdvanceWaterVRTest(bool playerInWorld) {
 
 	const bool passed = WaterTestEvidenceComplete(
 		g_imageMask, g_matrixMask, g_fixedCaptureMask,
-		g_projectionScaleMask, g_eyeReuseMask) && g_lifecycleRecovered;
+		g_projectionScaleMask, g_eyeReuseMask, g_reflectionTargetMask) &&
+		g_lifecycleRecovered;
 	g_finished = true;
 	g_active = false;
 	OBVR_LOG("VRTEST water-sweep status=%s views=%u imageMask=%08X "
 	         "matrixMask=%08X fixedCaptureMask=%08X projectionScaleMask=%08X "
-	         "eyeReuseMask=%08X expected=%08X",
+	         "eyeReuseMask=%08X reflectionTargetMask=%08X expected=%08X",
 	         passed ? "pass" : "fail", kWaterTestViews, g_imageMask, g_matrixMask,
 	         g_fixedCaptureMask, g_projectionScaleMask, g_eyeReuseMask,
+	         g_reflectionTargetMask,
 	         kWaterTestExpectedMask);
 	OBVR_LOG("VRTEST lifecycle status=%s suppressed=%u recovered=%u",
 	         g_lifecycleRecovered ? "pass" : "fail",

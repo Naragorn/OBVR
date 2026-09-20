@@ -4,6 +4,25 @@
 
 namespace obvr::render {
 
+enum class WaterResourceAction {
+	None,
+	Remember,
+	Restore
+};
+
+// Oblivion drops WaterManager's reflection wrapper when the Video-menu switch
+// goes Off. Its On path leaves the slot null even though the global option and
+// renderer are live again. Keep the last valid wrapper, then restore it only
+// for that measured On/null transition. A normal replacement is remembered.
+inline WaterResourceAction ChooseWaterResourceAction(bool reflectionsEnabled,
+                                                      UInt32 current,
+                                                      UInt32 kept) {
+	if (current != 0 && current != kept) return WaterResourceAction::Remember;
+	if (reflectionsEnabled && current == 0 && kept != 0)
+		return WaterResourceAction::Restore;
+	return WaterResourceAction::None;
+}
+
 struct WaterReflectionConstant {
 	UInt32 registerIndex = 8;
 	float value[4]{};

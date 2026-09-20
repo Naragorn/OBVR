@@ -11,7 +11,10 @@
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
+#include "game/CrosshairTarget.h"
 #include "game/MenuMode.h"
+#include "game/MenuType.h"
+#include "game/PlayerAim.h"
 #include "platform/Win32Min.h"
 #include "render/BoneRebase.h"
 #include "render/D3D9Types.h"
@@ -1313,7 +1316,8 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
 		startRegister >= 14 && startRegister <= 65 && startRegister % 3 == 2;
 	if (data != nullptr && (skinBoneRow || hairBoneRow || headPartBoneRow) &&
 	    vector4fCount == 3) {
-		if (g_boneTargetIsMain) {
+		if (BoneUploadBelongsToWorld(g_boneTargetIsMain,
+		                             IsWaterReflectionSubpass())) {
 			const float* replacement = HandleBoneUpload(startRegister, data);
 			if (replacement != nullptr) {
 				data = replacement;
@@ -2218,6 +2222,17 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 	const UInt32 invocation = ++g_invocation;
 	++g_passesSinceScene;
 	g_lastSelf = self;
+
+	// HUDReticle is a persistent tile rather than a normal menu. Oblivion can
+	// carry its last sneak-eye visibility into the Main Menu, where there is no
+	// player HUD at all. Hide that tile before the game draws the frame layer;
+	// gameplay updates it normally again after loading.
+	if (game::MainMenuHidesHudReticle(renderedTexture == nullptr,
+	                                  game::IsMenuMode(),
+	                                  game::PlayerInWorld(),
+	                                  game::LoadingThreadActive())) {
+		game::SetHudReticleEnabled(false);
+	}
 
 	// The place experiment. Everything measured so far says the world render
 	// OBVR calls itself comes back empty because of WHERE it is called from,

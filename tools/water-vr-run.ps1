@@ -21,12 +21,21 @@ param(
 	[switch]$KeepGameOpen,
 	[switch]$Attach,
 	[switch]$AlreadyInWorld,
+	[switch]$ToggleWaterReflections,
+	[switch]$ToggleWaterReflectionsOnly,
+	[switch]$ProbeWaterReflectionsMenu,
+	[ValidateRange(1,4)][int]$WaterMenuProbeStage = 4,
+	[int]$WaterToggleOffWaitSec = 4,
 	[switch]$ArmBeforeLoad,
 	[switch]$WaitForManualLaunch,
 	[switch]$DryRun
 )
 
 $ErrorActionPreference = "Stop"
+$toggleOnlyWithoutToggle = $ToggleWaterReflectionsOnly -and -not $ToggleWaterReflections
+if ($toggleOnlyWithoutToggle) {
+	throw "-ToggleWaterReflectionsOnly requires -ToggleWaterReflections."
+}
 $root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 if ([string]::IsNullOrWhiteSpace($ArtifactDir)) {
 	$ArtifactDir = Join-Path $root "artifacts\water-vr"
@@ -113,7 +122,7 @@ public static class ObvrWaterRun {
 	[DllImport("user32.dll")]
 	public static extern bool SetForegroundWindow(IntPtr handle);
 	[StructLayout(LayoutKind.Sequential)]
-	struct RECT { public int left; public int top; public int right; public int bottom; }
+	public struct RECT { public int left; public int top; public int right; public int bottom; }
 	[DllImport("user32.dll")]
 	static extern bool GetWindowRect(IntPtr handle, out RECT rect);
 	[DllImport("user32.dll")]
@@ -170,6 +179,13 @@ public static class ObvrWaterRun {
 		System.Threading.Thread.Sleep(70);
 		keybd_event(key, scan, 3, IntPtr.Zero);
 	}
+	public static void MoveCursorAway(IntPtr handle) {
+		RECT rect;
+		if (GetWindowRect(handle, out rect)) SetCursorPos(rect.left + 3, rect.top + 3);
+	}
+	public static bool GetWindowRectForCapture(IntPtr handle, out RECT rect) {
+		return GetWindowRect(handle, out rect);
+	}
 }
 "@
 
@@ -200,6 +216,11 @@ function Press-Down {
 	Start-Sleep -Milliseconds 250
 }
 
+function Press-Up {
+	[ObvrWaterRun]::PressExtended(0x26, 0x48)
+	Start-Sleep -Milliseconds 250
+}
+
 function Press-Enter {
 	[ObvrWaterRun]::Press(0x0D, 0x1C)
 	Start-Sleep -Milliseconds 500
@@ -208,6 +229,104 @@ function Press-Enter {
 function Press-Right {
 	[ObvrWaterRun]::PressExtended(0x27, 0x4D)
 	Start-Sleep -Milliseconds 250
+}
+
+function Press-Escape {
+	Focus-Game | Out-Null
+	Start-Sleep -Milliseconds 400
+	[ObvrWaterRun]::Press(0x1B, 0x01)
+	Start-Sleep -Milliseconds 1000
+}
+
+function Open-WaterReflectionsVideoMenu {
+	$p = Get-GameProcess
+	if (-not $p -or $p.MainWindowHandle -eq 0) { throw "Oblivion has no focusable window for the water toggle." }
+	[ObvrWaterRun]::MoveCursorAway($p.MainWindowHandle)
+	Press-Escape
+	# Measured Oblivion path: Return is selected after opening pause; three Down
+	# presses select Options.
+	for ($i = 0; $i -lt 3; ++$i) { Press-Down }
+	Press-Enter
+	# Options root: Return is selected on a fresh world load; two Down presses
+	# select Video.
+	Press-Down
+	Press-Down
+	Press-Enter
+	# On a fresh world load the Video menu opens at its first row; 32 Down
+	# presses select Water Reflections.
+	for ($i = 0; $i -lt 32; ++$i) { Press-Down }
+}
+
+function Probe-WaterReflectionsMenu([string]$probeDir) {
+	$p = Get-GameProcess
+	if (-not $p -or $p.MainWindowHandle -eq 0) { throw "Oblivion has no focusable window for the water menu probe." }
+	[ObvrWaterRun]::MoveCursorAway($p.MainWindowHandle)
+	Press-Escape
+	Save-GameWindowBmp (Join-Path $probeDir "water-menu-stage1-pause.png")
+	if ($WaterMenuProbeStage -eq 1) { return }
+	# Return is selected after opening pause; three Down + Enter selects Options
+	# in the measured menu state.
+	for ($i = 0; $i -lt 3; ++$i) { Press-Down }
+	Press-Enter
+	Save-GameWindowBmp (Join-Path $probeDir "water-menu-stage2-options.png")
+	if ($WaterMenuProbeStage -eq 2) { return }
+	# Options root: Return is selected on a fresh world load; two Down presses
+	# select Video.
+	Press-Down
+	Press-Down
+	Press-Enter
+	Save-GameWindowBmp (Join-Path $probeDir "water-menu-stage3-video-top.png")
+	if ($WaterMenuProbeStage -eq 3) { return }
+	# The fresh-run Video menu starts at its first row; count 32 rows to Water
+	# Reflections and capture the exact selected row before any toggle.
+	for ($i = 0; $i -lt 32; ++$i) { Press-Down }
+	Save-GameWindowBmp (Join-Path $probeDir "water-menu-stage4-reflections.png")
+}
+
+function Toggle-WaterReflectionsLive {
+	if (-not $ToggleWaterReflections) { return $null }
+	$beforeToggleLength = if (Test-Path -LiteralPath $logPath) {
+		([string](Get-Content -LiteralPath $logPath -Raw)).Length
+	} else { 0 }
+	Write-Host "Opening Video -> Water Reflections and performing real Off -> On..."
+	Open-WaterReflectionsVideoMenu
+	Save-GameWindowBmp (Join-Path $ArtifactDir "water-reflections-menu-before-toggle.png")
+	Press-Enter
+	Start-Sleep -Seconds $WaterToggleOffWaitSec
+	Press-Enter
+	Start-Sleep -Seconds 2
+	$afterToggleLength = if (Test-Path -LiteralPath $logPath) {
+		([string](Get-Content -LiteralPath $logPath -Raw)).Length
+	} else { 0 }
+	# Return to the world through the normal menu stack; the first world frame
+	# after this point is where the hook can restore the manager wrapper.
+	Press-Escape
+	Press-Escape
+	Press-Escape
+	Press-Escape
+	$restoreDeadline = (Get-Date).AddSeconds(20)
+	$restored = $false
+	while ((Get-Date) -lt $restoreDeadline) {
+		Start-Sleep -Milliseconds 500
+		if (-not (Test-Path -LiteralPath $logPath)) { continue }
+		$tail = [string](Get-Content -LiteralPath $logPath -Raw)
+		if ($tail.Length -lt $beforeToggleLength) { throw "OBVR.log was truncated during the live water toggle." }
+		$current = $tail.Substring($beforeToggleLength)
+		if ($current -match "Water manager lifecycle: restored reflection resource [0-9A-F]+ after Off -> On") {
+			$restored = $true
+			break
+		}
+	}
+	if (-not $restored) {
+		throw "Live water toggle did not produce a resource-restore marker after Off -> On."
+	}
+	Write-Host "Live water toggle restored the reflection resource."
+	return [ordered]@{
+		requested = $true
+		logOffset = $beforeToggleLength
+		logLengthAfterMenu = $afterToggleLength
+		restored = $true
+	}
 }
 
 function Click-LauncherPlay($launcher) {
@@ -233,6 +352,31 @@ function Save-ScreenBmp([string]$path) {
 		$bmp.Dispose()
 	}
 	Write-Host "Captured $([IO.Path]::GetFileName($path))"
+}
+
+function Save-GameWindowBmp([string]$path) {
+	$p = Get-GameProcess
+	if (-not $p -or $p.MainWindowHandle -eq 0) { throw "Oblivion has no window for client capture." }
+	$rect = New-Object ObvrWaterRun+RECT
+	if (-not [ObvrWaterRun]::GetWindowRectForCapture($p.MainWindowHandle, [ref]$rect)) {
+		throw "GetWindowRect failed for the Oblivion window."
+	}
+	$width = $rect.right - $rect.left
+	$height = $rect.bottom - $rect.top
+	if ($width -lt 320 -or $height -lt 200) {
+		throw "Oblivion window is too small for menu evidence: ${width}x${height}."
+	}
+	$bmp = New-Object System.Drawing.Bitmap(
+		$width, $height, [System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
+	$gfx = [System.Drawing.Graphics]::FromImage($bmp)
+	try {
+		$gfx.CopyFromScreen($rect.left, $rect.top, 0, 0, $bmp.Size)
+		$bmp.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
+	} finally {
+		$gfx.Dispose()
+		$bmp.Dispose()
+	}
+	Write-Host "Captured game window $([IO.Path]::GetFileName($path)) (${width}x${height})"
 }
 
 $pluginIni = Join-Path $GameDir "Data\OBSE\Plugins\OBVR.ini"
@@ -371,7 +515,39 @@ if (-not $AlreadyInWorld) {
 Write-Host "Waiting $LoadWaitSec seconds for the world and water to settle..."
 Start-Sleep -Seconds $LoadWaitSec
 if (-not (Get-GameProcess)) { throw "Oblivion stopped before capture." }
-if (-not $AlreadyInWorld) { Focus-Game | Out-Null }
+# Running this script brings PowerShell to the foreground. Oblivion stops
+# producing world frames while unfocused, so an attached in-world run would
+# otherwise never execute the config hot reload below. Require the game to own
+# the foreground before arming, for both fresh-load and AlreadyInWorld paths.
+$focusAfterSettling = Focus-Game
+if (-not $focusAfterSettling) { throw "Oblivion did not regain focus before arming." }
+
+$menuProbePath = $null
+if ($ProbeWaterReflectionsMenu) {
+	Write-Host "Opening the water menu for visual navigation probe stage $WaterMenuProbeStage; no setting will be changed."
+	Probe-WaterReflectionsMenu $ArtifactDir
+	Write-Host "Water menu probe complete; leaving the game open at the selected stage."
+	return
+}
+
+$toggleEvidence = Toggle-WaterReflectionsLive
+
+if ($ToggleWaterReflectionsOnly) {
+	$toggleManifest = [ordered]@{
+		schema = 1
+		mode = "live-water-toggle-only"
+		toggleWaterReflections = $true
+		toggleEvidence = $toggleEvidence
+		completedAt = (Get-Date).ToString("o")
+	}
+	$toggleManifest | ConvertTo-Json -Depth 4 |
+		Set-Content -LiteralPath (Join-Path $ArtifactDir "water-toggle-result.json") -Encoding UTF8
+	if (Test-Path -LiteralPath $logPath) {
+		Copy-Item -LiteralPath $logPath -Destination (Join-Path $ArtifactDir "OBVR.log") -Force
+	}
+	Write-Host "Live water toggle evidence captured; leaving the menu open by request."
+	return
+}
 
 # Discard pre-arm evidence, including any sweep retained by an attached game.
 # This applies equally to a fresh launch, main-menu attach and in-world attach.
@@ -387,6 +563,7 @@ if (-not $testArmed) {
 	$armDeadline = (Get-Date).AddSeconds(60)
 	while ((Get-Date) -lt $armDeadline) {
 		if (-not (Get-GameProcess)) { throw "Oblivion stopped before the water runner armed." }
+		Focus-Game | Out-Null
 		if (Test-Path -LiteralPath $logPath) {
 			$logItem = Get-Item -LiteralPath $logPath
 			if ($logItem.LastWriteTime -ge $startedAt) {
@@ -446,6 +623,8 @@ $manifest = [ordered]@{
 	attach = [bool]$Attach
 	alreadyInWorld = [bool]$AlreadyInWorld
 	armBeforeLoad = [bool]$ArmBeforeLoad
+	toggleWaterReflections = [bool]$ToggleWaterReflections
+	toggleEvidence = $toggleEvidence
 	waitForManualLaunch = [bool]$WaitForManualLaunch
 	saveIndex = $SaveIndex
 	saveEntry = $targetSave.Name

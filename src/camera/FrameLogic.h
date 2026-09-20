@@ -207,6 +207,24 @@ enum class FrameDelivery {
 	HeldStereo,
 };
 
+struct RecenterPlan {
+	bool tracker = false;
+	bool freshPoseBeforeTracker = false;
+	bool flatAnchor = false;
+	bool hudAnchor = false;
+	bool lookControl = false;
+};
+
+// An explicit recenter always establishes the tracking reference gameplay
+// will use. Cinema additionally owns a flat-screen anchor; stereo and held
+// frames do not. Keeping this decision pure prevents a menu-only recenter
+// from silently becoming a different operation than a gameplay recenter.
+constexpr RecenterPlan PlanRecenter(bool pressed, FrameDelivery delivery) {
+	if (!pressed) return RecenterPlan{};
+	return RecenterPlan{true, delivery != FrameDelivery::Stereo,
+	                    delivery == FrameDelivery::Cinema, true, true};
+}
+
 // Which of the three this frame is.
 //
 // No menu is the simple case: a camera pass means the world was drawn and the

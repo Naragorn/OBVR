@@ -45,7 +45,21 @@ inline bool WaterTestSweepMayAdvance(UInt32 settleFrames) {
 
 inline bool WaterTestShouldSuppressLifecycleCapture(UInt32 frame, bool firstEye,
                                                     bool alreadySuppressed) {
-	return frame == 4 && firstEye && !alreadySuppressed;
+	(void)firstEye;
+	(void)alreadySuppressed;
+	// Model the actual Video-menu OFF interval: Oblivion makes no reflection
+	// callback for either eye across several complete stereo pairs. A one-call
+	// dropout only exercised second-eye recovery and missed stale state that
+	// survives a real OFF -> ON transition.
+	return frame >= 1 && frame < 4;
+}
+
+inline bool WaterTestLifecycleRecovered(UInt32 frame, bool wasSuppressed) {
+	// The stable path normally renders the reflection once, during the first
+	// eye, and reuses it for the second eye. Recovery therefore means that the
+	// first real reflection callback after the simulated OFF interval rendered;
+	// requiring a second-eye render would reject the intended reuse path.
+	return wasSuppressed && frame >= 4;
 }
 
 inline WaterTestEnableAction ChooseWaterTestEnableAction(
@@ -80,12 +94,13 @@ inline UInt32 WaterTestEyeBit(UInt32 view, unsigned phase, bool left) {
 
 inline bool WaterTestEvidenceComplete(UInt32 images, UInt32 matrices,
                                       UInt32 fixedCapture, UInt32 projectionScale,
-                                      UInt32 eyeReuse) {
+                                      UInt32 eyeReuse, UInt32 reflectionTargets) {
 	return images == kWaterTestExpectedMask &&
 	       matrices == kWaterTestExpectedMask &&
 	       fixedCapture == kWaterTestExpectedMask &&
 	       projectionScale == kWaterTestExpectedMask &&
-	       eyeReuse == kWaterTestExpectedMask;
+	       eyeReuse == kWaterTestExpectedMask &&
+	       reflectionTargets == kWaterTestExpectedMask;
 }
 
 }  // namespace obvr::test

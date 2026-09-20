@@ -1121,6 +1121,13 @@ void OnFrameEnd() {
 		hadCameraPass, menuIsUp,
 		MenusCanReachTheWorld(config.tracker.menusInWorld, config.tracker.hudOverlay),
 		g_headsetRenderer.HasHeldEyes(), g_worldlessStreak);
+	const RecenterPlan recenter = PlanRecenter(recenterPressed, delivery);
+	bool recenterFrameOpen = false;
+	if (recenter.freshPoseBeforeTracker && !hadCameraPass) {
+		recenterFrameOpen =
+			g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame());
+		if (recenterFrameOpen) g_headTracker.Update(g_state.frameCount);
+	}
 
 	// The streak the NEXT frame's delivery will see: this frame joins it when
 	// it was worldless, and any frame with a world - or a menu, whose held
@@ -1280,10 +1287,8 @@ void OnFrameEnd() {
 	// than a fall back to the cinema screen, which is what used to make menus
 	// snap open and shut at frame rate.
 	if (delivery == FrameDelivery::HeldStereo) {
-		if (recenterPressed) {
-			g_hudLayer.ResetAnchor();
-			OBVR_LOG("Render: the menu overlay was re-anchored on the recenter key "
-			         "(held path)");
+		if (recenter.tracker && (hadCameraPass || recenterFrameOpen)) {
+			DoRecenter("held-menu path");
 		}
 
 		render::HeadsetRenderer::FrameRequest held;
@@ -1315,7 +1320,8 @@ void OnFrameEnd() {
 			             ? ""
 			             : " (a dialogue's exit fade, most likely)");
 		}
-		if (g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame())) {
+		if (recenterFrameOpen ||
+		    g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame())) {
 			g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), held);
 		}
 
@@ -1421,15 +1427,9 @@ void OnFrameEnd() {
 	// the picture hangs somewhere awkward and there is no way to move it - the
 	// camera hook polls the key, and the camera hook is exactly what is not
 	// running. An intro film that started while looking down stays down.
-	if (recenterPressed) {
-		g_headsetRenderer.ResetFlatAnchor();
-
-		// The HUD's room anchor goes with it. The layer is hidden on a flat
-		// frame, so nothing moves while the menu is up - but the anchor it
-		// would otherwise come back to is the one from before the menu, and
-		// the key was pressed because that one is in the wrong place.
-		g_hudLayer.ResetAnchor();
-		OBVR_LOG("Render: the flat picture was re-anchored on the recenter key (flat path)");
+	if (recenter.tracker && (hadCameraPass || recenterFrameOpen)) {
+		DoRecenter("flat path");
+		if (recenter.flatAnchor) g_headsetRenderer.ResetFlatAnchor();
 	}
 
 	// The cinema-side layout measurement, taken while the finished frame is
@@ -1488,7 +1488,8 @@ void OnFrameEnd() {
 	// frame is open. Calling it again would call WaitGetPoses a second time,
 	// which blocks until the next frame - the whole point of a menu being flat
 	// is that it costs nothing extra.
-	if (hadCameraPass || g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame())) {
+	if (hadCameraPass || recenterFrameOpen ||
+	    g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame())) {
 		g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), menu);
 		MaybeSubmitOverlays(false);
 	}

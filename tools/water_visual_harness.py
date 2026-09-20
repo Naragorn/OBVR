@@ -467,13 +467,16 @@ def replay_armed_after_settling(runner: str) -> bool:
     phases = [runner.find(token) for token in (
         'WriteAllText($pluginIni, $initialIni',
         'Start-Sleep -Seconds $LoadWaitSec',
+        '$focusAfterSettling = Focus-Game',
         'WriteAllText($pluginIni, $testIni',
     )]
     return (all(position >= 0 for position in phases)
-            and phases[0] < phases[1] < phases[2]
+            and all(left < right for left, right in zip(phases, phases[1:]))
             and "$settlingIni = [regex]::Replace" in runner
             and '$initialIni = if ($ArmBeforeLoad) { $testIni } else { $settlingIni }' in runner
             and 'if (-not $ArmBeforeLoad) {' in runner
+            and 'if (-not $focusAfterSettling)' in runner
+            and 'Focus-Game | Out-Null' in runner
             and "'VRTestSuite=0'" in runner
             and 'if ($tail -match "^OBVR ready$")' in runner)
 
@@ -556,6 +559,27 @@ def shader_contract(source_root: Path) -> dict:
                 'Waiting for the in-world config reload to arm the water runner'
             )
         ),
+        "liveWaterToggleRequiresRestoreEvidence": (
+            "ToggleWaterReflections" in runner
+            and "ToggleWaterReflectionsOnly" in runner
+            and "water-toggle-result.json" in runner
+            and "Open-WaterReflectionsVideoMenu" in runner
+            and "Water manager lifecycle: restored reflection resource" in runner
+            and "Live water toggle did not produce a resource-restore marker" in runner
+            and "toggleEvidence = $toggleEvidence" in runner
+        ),
+        "waterMenuProbeCapturesGameWindow": (
+            "ProbeWaterReflectionsMenu" in runner
+            and "Save-GameWindowBmp" in runner
+            and "Probe-WaterReflectionsMenu" in runner
+            and "WaterMenuProbeStage" in runner
+            and "water-menu-stage4-reflections.png" in runner
+            and "GetWindowRectForCapture" in runner
+        ),
+        "liveToggleReturnsToWorld": (
+            "# Return to the world through the normal menu stack" in runner
+            and runner.count("\tPress-Escape\n") >= 3
+        ),
         "replayArmedAfterSettling": replay_armed_after_settling(runner),
         "loaderRedirectRefusesLauncherFallback": (
             "OBSE redirected to OblivionLauncher; refusing launcher fallback." in runner
@@ -614,6 +638,27 @@ def analyze_run_manifest(root: Path) -> dict:
             "captureCount": capture_count,
             "files": files,
         }
+    if manifest.get("toggleWaterReflections"):
+        evidence = manifest.get("toggleEvidence")
+        if not isinstance(evidence, dict) or evidence.get("restored") is not True:
+            return {
+                "status": "fail",
+                "reason": "the live water toggle was requested without restore evidence",
+                "toggleEvidence": evidence,
+            }
+        log_path = root / "OBVR.log"
+        try:
+            log_text = log_path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return {"status": "fail", "reason": "toggle run is missing OBVR.log"}
+        if not re.search(
+            r"Water manager lifecycle: restored reflection resource [0-9A-F]+ after Off -> On",
+            log_text,
+        ):
+            return {
+                "status": "fail",
+                "reason": "toggle run log has no Off -> On resource restoration marker",
+            }
     return {
         "status": "pass",
         "reason": "second-save water run manifest is complete",
@@ -621,6 +666,34 @@ def analyze_run_manifest(root: Path) -> dict:
         "captureCount": capture_count,
         "saveEntry": manifest.get("saveEntry"),
     }
+
+
+def analyze_toggle_manifest(root: Path) -> dict:
+    """Validate the live menu toggle receipt independently of the sweep."""
+    path = root / "water-toggle-result.json"
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8-sig"))
+    except OSError:
+        return {"status": "unavailable", "reason": "water-toggle-result.json is missing"}
+    except (TypeError, ValueError) as error:
+        return {"status": "fail", "reason": f"invalid water-toggle-result.json: {error}"}
+    evidence = manifest.get("toggleEvidence")
+    if manifest.get("schema") != 1 or manifest.get("mode") != "live-water-toggle-only":
+        return {"status": "fail", "reason": "toggle receipt has the wrong schema or mode"}
+    if manifest.get("toggleWaterReflections") is not True:
+        return {"status": "fail", "reason": "toggle receipt does not record a requested toggle"}
+    if not isinstance(evidence, dict) or evidence.get("restored") is not True:
+        return {"status": "fail", "reason": "toggle receipt has no restore evidence"}
+    try:
+        log_text = (root / "OBVR.log").read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return {"status": "fail", "reason": "toggle receipt is missing OBVR.log"}
+    if not re.search(
+        r"Water manager lifecycle: restored reflection resource [0-9A-F]+ after Off -> On",
+        log_text,
+    ):
+        return {"status": "fail", "reason": "toggle log has no Off -> On restore marker"}
+    return {"status": "pass", "reason": "live Off -> On water restore was observed"}
 
 
 def evaluate(source_root: Path, artifact_dir: Optional[Path] = None) -> dict:

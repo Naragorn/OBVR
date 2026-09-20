@@ -1244,6 +1244,26 @@ void TestCrosshairTooltipPolicy() {
 	      "an unknown HUD width refuses a destination");
 }
 
+void TestRecenterPlan() {
+	std::printf("Recenter ownership across frame delivery modes\n");
+	using obvr::camera::FrameDelivery;
+	using obvr::camera::PlanRecenter;
+	for (unsigned raw = 0; raw < 3; ++raw) {
+		const FrameDelivery delivery = static_cast<FrameDelivery>(raw);
+		const auto idle = PlanRecenter(false, delivery);
+		Check(!idle.tracker && !idle.freshPoseBeforeTracker && !idle.flatAnchor &&
+		          !idle.hudAnchor && !idle.lookControl,
+		      "an unpressed recenter changes no reference or anchor");
+		const auto pressed = PlanRecenter(true, delivery);
+		Check(pressed.tracker && pressed.hudAnchor && pressed.lookControl,
+		      "every explicit recenter updates the persistent gameplay reference");
+		Check(pressed.freshPoseBeforeTracker == (delivery != FrameDelivery::Stereo),
+		      "a non-camera menu obtains its current pose before storing the reference");
+		Check(pressed.flatAnchor == (delivery == FrameDelivery::Cinema),
+		      "only cinema delivery also retakes the flat-screen anchor");
+	}
+}
+
 void TestCrosshairTargetDepthArrival() {
 	std::printf("When a tooltip takes its target depth immediately\n");
 	using obvr::camera::CrosshairTargetNeedsImmediateDepth;
@@ -3216,6 +3236,7 @@ void TestThirdPersonAimVisual() {
 
 
 int main() {
+	TestRecenterPlan();
 	TestChaseCamera();
 	std::printf("\n");
 	TestMeasuredChaseRate();

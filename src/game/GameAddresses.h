@@ -921,6 +921,12 @@ inline constexpr UInt32 kCullingProcessProcessEntryLength = 7;
 // The entry bytes are push ebp / mov ebp,esp / and esp,0xFFFFFFF0 / push -1.
 inline constexpr UInt32 kWaterRenderReflections = 0x0049BEF0;
 inline constexpr UInt32 kWaterRenderReflectionsEntryLength = 8;
+// Directly read by WaterManager::RenderReflections at 0x0049BF2A. This is the
+// bUseWaterReflections INI-backed byte, not an OBVR shadow setting.
+inline constexpr UInt32 kUseWaterReflections = 0x00B07050;
+// NiPointer<T>::operator=(T*) used by the same routine for WaterManager's two
+// resource slots at 0x0049BF84 and 0x0049BFBC.
+inline constexpr UInt32 kNiPointerAssign = 0x0075FA90;
 
 // The engine's own switch for a live world behind menus, and the reason it
 // is normally still.

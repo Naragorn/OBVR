@@ -10,6 +10,7 @@
 #include "game/GameCamera.h"
 #include "render/WaterReprojection.h"
 #include "render/InterfaceRenderHook.h"
+#include "render/WaterReflection.h"
 #include "test/WaterVRTestRuntime.h"
 
 namespace obvr::render {
@@ -22,6 +23,38 @@ using RenderFn = void(__fastcall*)(void*, void*, NiAVObject*, void*);
 RenderFn g_original = nullptr;
 bool g_reuseReported = false;
 bool g_captureReported = false;
+bool g_managerStateKnown = false;
+UInt32 g_lastManagerResource0 = 0;
+UInt32 g_lastManagerResource1 = 0;
+bool g_reflectionsOptionKnown = false;
+bool g_lastReflectionsOption = false;
+void* g_keptManagerResource = nullptr;
+
+using NiPointerAssignFn = void(__thiscall*)(void**, void*);
+
+void RecoverWaterManagerResource(void* self) {
+	if (self == nullptr) return;
+	auto* slot = reinterpret_cast<void**>(static_cast<UInt8*>(self) + 4);
+	const bool enabled = *reinterpret_cast<const UInt8*>(addr::kUseWaterReflections) != 0;
+	if (!g_reflectionsOptionKnown || enabled != g_lastReflectionsOption) {
+		OBVR_LOG("Water manager lifecycle: bUseWaterReflections=%u", enabled);
+		g_reflectionsOptionKnown = true;
+		g_lastReflectionsOption = enabled;
+	}
+	const UInt32 current = reinterpret_cast<UInt32>(*slot);
+	const UInt32 kept = reinterpret_cast<UInt32>(g_keptManagerResource);
+	const WaterResourceAction action =
+		ChooseWaterResourceAction(enabled, current, kept);
+	auto assign = reinterpret_cast<NiPointerAssignFn>(addr::kNiPointerAssign);
+	if (action == WaterResourceAction::Remember) {
+		assign(&g_keptManagerResource, *slot);
+		OBVR_LOG("Water manager lifecycle: retained reflection resource %08X", current);
+	} else if (action == WaterResourceAction::Restore) {
+		assign(slot, g_keptManagerResource);
+		OBVR_LOG("Water manager lifecycle: restored reflection resource %08X after Off -> On",
+		         kept);
+	}
+}
 
 class RestoreCameraFrustum {
 public:
@@ -61,6 +94,19 @@ private:
 };
 
 void __fastcall Hooked(void* self, void* edx, NiAVObject* camera, void* shadowScene) {
+	RecoverWaterManagerResource(self);
+	const UInt32 managerResource0 = self != nullptr
+		? *reinterpret_cast<const UInt32*>(self) : 0;
+	const UInt32 managerResource1 = self != nullptr
+		? *reinterpret_cast<const UInt32*>(static_cast<const UInt8*>(self) + 4) : 0;
+	if (!g_managerStateKnown || managerResource0 != g_lastManagerResource0 ||
+	    managerResource1 != g_lastManagerResource1) {
+		OBVR_LOG("Water manager resources: self=%08X first=%08X second=%08X",
+		         reinterpret_cast<UInt32>(self), managerResource0, managerResource1);
+		g_managerStateKnown = true;
+		g_lastManagerResource0 = managerResource0;
+		g_lastManagerResource1 = managerResource1;
+	}
 	const Config& config = GetConfig();
 	NiTransform playerLocal{}, stableWorld{}, captureLocal{};
 	const bool cyclopean = UsesCyclopeanWaterCapture(config.waterReflectionMode);
@@ -123,7 +169,7 @@ void __fastcall Hooked(void* self, void* edx, NiAVObject* camera, void* shadowSc
 	SetWaterReflectionSubpass(false);
 	if (probeTarget) EndWaterReflectionTargetProbe();
 	NoteWaterReflectionRendered();
-	test::ObserveWaterVRReflectionRendered(stereoPass == WaterStereoPass::Second);
+	test::ObserveWaterVRReflectionRendered();
 	if (!g_captureReported) {
 		g_captureReported = true;
 		NiTransform liveWorld{};

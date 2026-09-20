@@ -55,13 +55,20 @@ int main() {
 	      "sweep starts at the settling boundary");
 	Check(WaterTestSweepMayAdvance(kWaterTestSettleFrames + 1),
 	      "sweep stays enabled after settling");
-	for (UInt32 frame : {3u, 4u, 5u})
+	const UInt32 lifecycleFrames[] = {0u, 1u, 3u, 4u};
+	for (UInt32 frame : lifecycleFrames)
 	for (unsigned first = 0; first < 2; ++first)
 	for (unsigned suppressed = 0; suppressed < 2; ++suppressed) {
-		const bool expected = frame == 4 && first != 0 && suppressed == 0;
+		const bool expected = frame >= 1 && frame < 4;
 		Check(WaterTestShouldSuppressLifecycleCapture(frame, first != 0,
 		                                               suppressed != 0) == expected,
-		      "lifecycle injection suppresses exactly one first-eye capture");
+		      "lifecycle injection suppresses both eyes for the complete OFF interval");
+	for (UInt32 frame : lifecycleFrames)
+	for (unsigned suppressed = 0; suppressed < 2; ++suppressed) {
+		const bool expected = frame >= 4 && suppressed != 0;
+		Check(WaterTestLifecycleRecovered(frame, suppressed != 0) == expected,
+		      "only a real render after a prior complete OFF interval proves recovery");
+	}
 	}
 	for (unsigned requested = 0; requested < 2; ++requested)
 	for (unsigned enabled = 0; enabled < 2; ++enabled)
@@ -114,16 +121,17 @@ int main() {
 	Check(WaterTestEyeBit(0, 2, true) == 0,
 	      "out-of-range wave phase is refused");
 
-	Check(WaterTestEvidenceComplete(mask, mask, mask, mask, mask),
+	Check(WaterTestEvidenceComplete(mask, mask, mask, mask, mask, mask),
 	      "complete evidence passes");
 	const UInt32 missing[] = {
-		mask & ~1u, mask & ~2u, mask & ~4u, mask & ~8u, mask & ~16u
+		mask & ~1u, mask & ~2u, mask & ~4u, mask & ~8u, mask & ~16u,
+		mask & ~32u
 	};
-	for (unsigned field = 0; field < 5; ++field) {
-		UInt32 values[5] = {mask, mask, mask, mask, mask};
+	for (unsigned field = 0; field < 6; ++field) {
+		UInt32 values[6] = {mask, mask, mask, mask, mask, mask};
 		values[field] = missing[field];
 		Check(!WaterTestEvidenceComplete(
-		          values[0], values[1], values[2], values[3], values[4]),
+		          values[0], values[1], values[2], values[3], values[4], values[5]),
 		      "each missing evidence class independently fails");
 	}
 

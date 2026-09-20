@@ -13,7 +13,7 @@ namespace obvr::test {
 void InstallWaterVRTest();
 bool WaterVRReplayActive();
 bool SuppressWaterVRFirstEyeReflection(bool firstEye);
-void ObserveWaterVRReflectionRendered(bool secondEye);
+void ObserveWaterVRReflectionRendered();
 void GetWaterVRReplayPose(vr::Quaternion& orientation, NiPoint3& position);
 void GetWaterVRReplayPoseMatrix(vr::openvr::HmdMatrix34& matrix);
 void ObserveWaterVREye(bool left, void* device);
