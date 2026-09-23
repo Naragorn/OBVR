@@ -314,6 +314,24 @@ const char* SourceName(vr::TrackerSource source) {
 	return "?";
 }
 
+Config::LocomotionSettings::TeleportHand ReadTeleportHand(
+	Config::LocomotionSettings::TeleportHand fallback, const char* path) {
+	char buffer[32];
+	if (GetPrivateProfileStringA("Locomotion", "TeleportHand", "", buffer, sizeof(buffer), path) == 0) {
+		return fallback;
+	}
+
+	if (EqualsIgnoreCase(buffer, "right")) {
+		return Config::LocomotionSettings::TeleportHand::Right;
+	}
+	if (EqualsIgnoreCase(buffer, "left")) {
+		return Config::LocomotionSettings::TeleportHand::Left;
+	}
+
+	OBVR_LOG("Config: unknown Locomotion.TeleportHand \"%s\", keeping the previous setting", buffer);
+	return fallback;
+}
+
 void ReadRuntimeValues(Config& config, const char* path) {
 	config.tracker.source = ReadSource(config.tracker.source, path);
 
@@ -581,6 +599,29 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		b.eyeForward = ReadFloat("Body", "EyeForward", b.eyeForward, path);
 		b.eyeUp = ReadFloat("Body", "EyeUp", b.eyeUp, path);
 		b.povSwitchPatch = ReadBool("Body", "PovSwitchPatch", b.povSwitchPatch, path);
+	}
+	{
+		Config::LocomotionSettings& l = config.locomotion;
+		l.roomScaleFactor = ReadFloat("Locomotion", "RoomScaleFactor", l.roomScaleFactor, path);
+		l.roomScaleVertical = ReadBool("Locomotion", "RoomScaleVertical", l.roomScaleVertical, path);
+		l.roomScaleEaseSpeed = ReadFloat("Locomotion", "RoomScaleEaseSpeed", l.roomScaleEaseSpeed, path);
+		l.teleportEnabled = ReadBool("Locomotion", "TeleportEnabled", l.teleportEnabled, path);
+		l.teleportHand = ReadTeleportHand(l.teleportHand, path);
+		l.teleportMaxDistanceUnits = ReadFloat("Locomotion", "TeleportMaxDistanceUnits",
+		                                       l.teleportMaxDistanceUnits, path);
+		l.teleportSnapToGround = ReadBool("Locomotion", "TeleportSnapToGround",
+		                                  l.teleportSnapToGround, path);
+		l.teleportGroundSearchDistanceUnits = ReadFloat(
+			"Locomotion", "TeleportGroundSearchDistanceUnits", l.teleportGroundSearchDistanceUnits,
+			path);
+		l.teleportShowArc = ReadBool("Locomotion", "TeleportShowArc", l.teleportShowArc, path);
+		l.joystickEnabled = ReadBool("Locomotion", "JoystickEnabled", l.joystickEnabled, path);
+		l.joystickSpeedMultiplier = ReadFloat("Locomotion", "JoystickSpeedMultiplier",
+		                                      l.joystickSpeedMultiplier, path);
+		l.joystickSprintEnabled = ReadBool("Locomotion", "JoystickSprintEnabled",
+		                                   l.joystickSprintEnabled, path);
+		l.joystickSprintMultiplier = ReadFloat("Locomotion", "JoystickSprintMultiplier",
+		                                       l.joystickSprintMultiplier, path);
 	}
 	{
 		vr::HandSettings& h = config.hands;

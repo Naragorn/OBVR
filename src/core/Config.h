@@ -159,6 +159,100 @@ struct Config {
 	};
 	BodySettings body;
 
+	// Locomotion in VR. Three modes, each with its own controls: continuous
+	// room-scale walking from head position deltas, teleportation via laser
+	// pointer targeting, and joystick movement with room-scale turning that
+	// uses body/head rotation instead of fixed camera angles.
+	//
+	// Room-scale walking is the default for full VR mode because it gives the
+	// most natural sense of presence: you walk in your play space and the game
+	// world moves with you, one to one. Teleportation exists for people who
+	// cannot or prefer not to move their bodies, and joystick movement with
+	// room-scale turning is a middle ground that keeps the body anchored but
+	// lets head rotation decide which way "forward" means.
+	struct LocomotionSettings {
+		// Room-scale walking is always active as the base locomotion: your head
+		// position deltas move the game camera directly. Teleportation and
+		// joystick movement are additional layers that can be enabled alongside
+		// it, not separate modes.
+
+		// Room-scale walking: how far the game camera moves per metre of head
+		// movement. 1.0 is one to one - walk a metre and move a metre in-game.
+		// Above 1.0 exaggerates movement (useful for small play spaces), below
+		// dampens it (for comfort or large virtual spaces).
+		float roomScaleFactor = 1.0f;
+
+		// Whether the vertical head position affects game camera height, or
+		// only horizontal movement is tracked. Off by default: crouching and
+		// standing up in VR should not make the character float or sink into
+		// the floor unless explicitly wanted.
+		bool roomScaleVertical = false;
+
+		// How fast the game camera eases towards where head tracking says it
+		// should be, as a share of remaining distance per second. Zero moves
+		// instantly (no easing), higher values ease more gradually. A small
+		// amount of easing smooths out tracking jitter without introducing
+		// noticeable lag; too much makes the world feel like it is sliding on
+		// ice under your feet.
+		float roomScaleEaseSpeed = 12.0f;
+
+		// Teleportation: laser pointer targeting layered on top of room-scale
+		// walking. When enabled, you can still walk naturally but also teleport
+		// when you need to reach further than your play space allows.
+		bool teleportEnabled = true;
+
+		// Which controller hand initiates teleports. The laser pointer shows
+		// where you will land, and pulling the trigger commits.
+		enum class TeleportHand { Right, Left };
+		TeleportHand teleportHand = TeleportHand::Right;
+
+		// How far the teleport laser reaches, in Oblivion units. 0 removes the
+		// limit entirely (the ray goes until it hits geometry). A finite range
+		// prevents accidental long-distance teleports when pointing at distant
+		// mountains or skyboxes.
+		float teleportMaxDistanceUnits = 500.0f;
+
+		// Whether the teleport target is placed on the ground beneath the laser
+		// hit point, or exactly where the laser strikes (walls, ceilings). On
+		// by default: landing on a wall is rarely what you want.
+		bool teleportSnapToGround = true;
+
+		// How far down from the laser hit to search for ground, in Oblivion
+		// units. The ray cast starts at the laser target and goes straight
+		// down until it hits something or reaches this distance.
+		float teleportGroundSearchDistanceUnits = 100.0f;
+
+		// Whether a teleport arc is drawn from your feet to the target, giving
+		// visual feedback about where you will land and how far away it is. On
+		// by default because the flat laser dot alone does not convey distance
+		// well in VR.
+		bool teleportShowArc = true;
+
+		// Joystick movement with room-scale turning: layered on top of
+		// room-scale walking for fine control or reaching beyond your play
+		// space. When enabled, "forward" on the stick means where your head/body
+		// is facing (room-scale), not a fixed camera direction. You can walk
+		// naturally and use the stick when you need more precision or range.
+		bool joystickEnabled = true;
+
+		// How fast the character moves when the stick is pushed fully forward,
+		// as a multiplier of vanilla's base walk speed. Vanilla walks at about
+		// 60 units per second; this scales that figure up or down.
+		float joystickSpeedMultiplier = 1.5f;
+
+		// Whether holding both sticks together while moving triggers a sprint,
+		// or if the character always moves at the speed above. Off by default:
+		// sprinting in VR can cause motion sickness for some people.
+		bool joystickSprintEnabled = false;
+
+		// Sprint speed multiplier when both sticks are held together. Applied
+		// on top of joystickSpeedMultiplier, so 1.5 * 2.0 gives three times
+		// vanilla walk speed while sprinting.
+		float joystickSprintMultiplier = 2.0f;
+
+	};
+	LocomotionSettings locomotion;
+
 	// Debug.D3D9ExProbe: hand the game an IDirect3D9Ex factory and a device
 	// from CreateDeviceEx, to find out whether Oblivion tolerates the 9Ex
 	// runtime - the one question about the D3D9Ex route that reading cannot
