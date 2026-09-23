@@ -45,6 +45,9 @@ add_library(OBVR SHARED
 	src/core/Log.cpp
 	src/core/Memory.cpp
 	src/core/Watchdog.cpp
+	src/perf/ProfileLogic.cpp
+	src/perf/Profiler.cpp
+	src/perf/GpuQueries.cpp
 	src/core/Rotation.cpp
 	src/core/Smoothing.cpp
 	src/platform/Freestanding.cpp
@@ -60,6 +63,8 @@ add_library(OBVR SHARED
 	src/game/DialogZoom.cpp
 	src/game/GameCamera.cpp
 	src/game/MenuMode.cpp
+	src/game/VRMenuBridge.cpp
+	src/game/VRMenuIntentStub.cpp
 	src/game/NativeMenuPrototype.cpp
 	src/game/MenuPause.cpp
 	src/game/HandControls.cpp
@@ -84,6 +89,7 @@ add_library(OBVR SHARED
 	src/render/HudLayer.cpp
 	src/render/CrosshairCache.cpp
 	src/render/CrosshairLayer.cpp
+	src/render/VignetteLayer.cpp
 	src/render/LaserLayer.cpp
 	src/render/CullingHook.cpp
 	src/render/LeafFacingHook.cpp

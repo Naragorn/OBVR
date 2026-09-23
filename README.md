@@ -29,7 +29,8 @@ Everything here has been confirmed in a headset.
 - **Native Oblivion-style onboarding and settings menu** (`Insert`) through MenuQue,
   using the existing game UI in the headset.
 - **Recenter** on a key (`Del` by default).
-- **Smooth turning** as a comfort option for the mouse and stick turn.
+- **Snap turning** with adjustable angle, instant or eased rotation, vignette feedback, and configurable dead zone — all settable from the OBVR menu.
+- **Smooth turning** as a comfort option for keyboard VR mode.
 - Works with and without the 4GB patch, and under Mod Organizer 2 without Root Builder.
 
 ## Built, not yet confirmed in a headset
@@ -58,8 +59,8 @@ The main menu and onboarding accept controller laser input before choosing a mod
 even with `[Hands] ControllerMenus=0`. `[Hands] Enabled=1` in `OBVR.ini` can still switch the unfinished mode on for development testing; a report from doing so is
 welcome, marked as such.
 
-Not built at all: snap turning, teleport, room-scale locomotion, physical interaction with
-objects by hand, real finger tracking (`IVRInput`), Linux under Proton.
+Not built at all: teleport, room-scale locomotion, physical interaction with objects by
+hand, real finger tracking (`IVRInput`), Linux under Proton.
 
 ## Known issues
 

@@ -281,7 +281,7 @@ is the ladder; this is the map.
 - Menus: the HUD and Tab menus can hang on the wrists (`SetOverlayTransformTrackedDeviceRelative`),
   a laser from the other hand walks the game's cursor to the hit, the trigger clicks, the
   sticks scroll; `ControllerMenus=1` (off) does the same on the big quad with the mode off.
-- Not built: snap turn, teleport, room-scale locomotion, physical object interaction,
+- Not built: teleport, room-scale locomotion, physical object interaction,
   finger tracking, a body.
 
 Every number in it is a starting point. A future agent picking it up should read

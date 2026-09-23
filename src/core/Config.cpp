@@ -524,6 +524,18 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Look", "SmoothVerticalLook", config.look.smoothVerticalLook, path);
 	config.look.verticalLookSpeed =
 		ReadFloat("Look", "VerticalLookSpeed", config.look.verticalLookSpeed, path);
+	config.look.snapTurning =
+		ReadBool("Look", "SnapTurning", config.look.snapTurning, path);
+	config.look.snapTurnAngle =
+		ReadFloat("Look", "SnapTurnAngle", config.look.snapTurnAngle, path);
+	config.look.snapTurnInstant =
+		ReadBool("Look", "SnapTurnInstant", config.look.snapTurnInstant, path);
+	config.look.snapTurnSpeed =
+		ReadFloat("Look", "SnapTurnSpeed", config.look.snapTurnSpeed, path);
+	config.look.snapTurnVignette =
+		ReadBool("Look", "SnapTurnVignette", config.look.snapTurnVignette, path);
+	config.look.snapTurnDeadZone =
+		ReadFloat("Look", "SnapTurnDeadZone", config.look.snapTurnDeadZone, path);
 	config.look.smoothTurning =
 		ReadBool("Look", "SmoothTurning", config.look.smoothTurning, path);
 	config.look.turnSpeed = ReadFloat("Look", "TurnSpeed", config.look.turnSpeed, path);
@@ -531,6 +543,15 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.logEveryFrames = ReadUInt("Debug", "LogEveryFrames", config.logEveryFrames, path);
 	config.reloadEveryFrames =
 		ReadUInt("Debug", "ReloadEveryFrames", config.reloadEveryFrames, path);
+	config.performance.enabled = ReadBool("Performance", "Enabled",
+	                                      config.performance.enabled, path);
+	config.performance.gpuTiming = ReadBool("Performance", "GpuTiming",
+	                                        config.performance.gpuTiming, path);
+	config.performance.captureSeconds = ReadUInt("Performance", "CaptureSeconds",
+	                                             config.performance.captureSeconds, path);
+	config.performance.maxRecords = ReadUInt("Performance", "MaxRecords",
+	                                        config.performance.maxRecords, path);
+	config.performance = perf::NormalizeSettings(config.performance);
 	config.dualPassProbe = ReadUInt("Debug", "DualPassProbe", config.dualPassProbe, path);
 	config.swapEyeOrder = ReadBool("Debug", "SwapEyeOrder", config.swapEyeOrder, path);
 	config.hudProbe = ReadBool("Debug", "HudProbe", config.hudProbe, path);
@@ -540,6 +561,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.firstPersonTreeProbe =
 		ReadBool("Debug", "FirstPersonTreeProbe", config.firstPersonTreeProbe, path);
 	config.menuWorldProbe = ReadBool("Debug", "MenuWorldProbe", config.menuWorldProbe, path);
+	config.nativeMenuLifecycleProbe =
+		ReadBool("Debug", "NativeMenuLifecycleProbe", config.nativeMenuLifecycleProbe, path);
 	config.d3d9ExProbe = ReadBool("Debug", "D3D9ExProbe", config.d3d9ExProbe, path);
 	config.vrTestSuite = ReadBool("Debug", "VRTestSuite", config.vrTestSuite, path);
 	config.vrTestWaterOnly = ReadBool("Debug", "VRTestWaterOnly", config.vrTestWaterOnly, path);
@@ -685,6 +708,9 @@ bool Config::Load(const char* fileName) {
 	         tracker.simulatedPeriodFrames,
 	         logEveryFrames,
 	         reloadEveryFrames);
+	OBVR_LOG("Config: Performance.Enabled=%d GpuTiming=%d CaptureSeconds=%u MaxRecords=%u",
+	         performance.enabled ? 1 : 0, performance.gpuTiming ? 1 : 0,
+	         performance.captureSeconds, performance.maxRecords);
 	// Logged in hex as well, because that is the form the virtual-key tables
 	// use - it saves converting in your head when a binding misbehaves.
 	OBVR_LOG("Config: RecenterKey=%u (0x%02X)%s", recenterKey, recenterKey,
@@ -715,9 +741,12 @@ bool Config::Load(const char* fileName) {
 	         thirdPersonHeadFollowsGaze ? 1 : 0,
 	         aimAttackKey,
 	         static_cast<double>(aimTurnSpeed));
-	OBVR_LOG("Config: SmoothTurning=%d TurnSpeed=%.1f",
-	         look.smoothTurning ? 1 : 0,
-	         static_cast<double>(look.turnSpeed));
+	OBVR_LOG("Config: SnapTurning=%d Angle=%.0f° Instant=%d Speed=%.1f Vignette=%d DeadZone=%.2f "
+	         "SmoothTurning=%d TurnSpeed=%.1f",
+	         look.snapTurning ? 1 : 0, static_cast<double>(look.snapTurnAngle),
+	         look.snapTurnInstant ? 1 : 0, static_cast<double>(look.snapTurnSpeed),
+	         look.snapTurnVignette ? 1 : 0, static_cast<double>(look.snapTurnDeadZone),
+	         look.smoothTurning ? 1 : 0, static_cast<double>(look.turnSpeed));
 	// Worth its own line despite being one flag: it is the setting that
 	// decides whether OBVR takes the headset away from whatever else is
 	// using it, and that should be visible in the log without hunting.
@@ -756,6 +785,11 @@ bool Config::Load(const char* fileName) {
 		// gets its oddities blamed on the wrong code.
 		OBVR_LOG("Config: Debug.MenuWorldProbe=1 - a few held menu frames will run a "
 		         "self-initiated world render, counted in the log");
+	}
+	OBVR_LOG("Config: Debug.NativeMenuLifecycleProbe=%d", nativeMenuLifecycleProbe ? 1 : 0);
+	if (nativeMenuLifecycleProbe) {
+		OBVR_LOG("Config: Debug.NativeMenuLifecycleProbe=1 - guarded native personal-menu "
+		         "lifecycle diagnostics enabled; F9 requests open and F10 requests close");
 	}
 	if (layoutProbe) {
 		// Named at load for the same reason as the probe above: a run that

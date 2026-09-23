@@ -155,6 +155,6 @@ From OBVR, and from the prior art (see [ecosystem-and-prior-art.md](ecosystem-an
 
 ## What OBVR has no experience of (do not take this playbook as evidence there)
 
-Motion controllers in a headset (built, unseen), room-scale locomotion, snap turn,
+Motion controllers in a headset (built, unseen), room-scale locomotion, teleport,
 OpenXR sessions and swapchains, D3D11/12 games, 64-bit games, engines with temporal
 anti-aliasing, multiplayer.

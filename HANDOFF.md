@@ -40,7 +40,7 @@ final VR camera
 
 - switching between first and third person stays
 - control remains gamepad or keyboard and mouse, **no** VR controllers, **no** hands
-- **no** snap turn; horizontal turning stays on the right stick
+- snap turning is available as a comfort option; horizontal turning stays on the right stick otherwise
 - vertical look on the gamepad should be disabled if possible
 - the HMD determines head rotation (yaw, pitch, optionally roll)
 - initially **no** positional head movement, no roomscale → 3DoF

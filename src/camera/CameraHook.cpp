@@ -41,6 +41,7 @@
 #include "render/WaterReprojection.h"
 #include "test/WaterVRTestRuntime.h"
 #include "render/CrosshairLayer.h"
+#include "render/VignetteLayer.h"
 #include "render/HudLayer.h"
 #include "render/LaserLayer.h"
 #include "ui/Onboarding.h"
@@ -55,6 +56,7 @@
 #include "render/PresentHook.h"
 #include "render/ResolutionHook.h"
 #include "render/SceneRenderHook.h"
+#include "perf/Profiler.h"
 
 namespace obvr::camera {
 namespace {
@@ -66,7 +68,18 @@ constexpr UInt32 kTrampolineSize = 64;
 
 KeyEdge g_recenterEdge;
 FrameClock g_frameClock;
+float g_deltaSeconds = 0.0f;  // last frame's delta, for use by overlay updates
 LookControl g_lookControl;
+
+// Snap turning: tracks the previous turn input to detect edges when the stick
+// crosses a dead zone. The edge fires once per push, so holding the stick does
+// not keep snapping - it has to come back towards centre before it can snap again.
+struct SnapTurnState {
+	float previousTurn = 0.0f;  // last frame's right-stick X (-1..1)
+};
+
+SnapTurnState g_snapTurnState;
+
 render::HeadsetRenderer g_headsetRenderer;
 
 // What the camera hook decided about this frame, kept for Present to act on.
@@ -129,6 +142,7 @@ UInt32 g_menuLiveReportsLeft = 6;
 // and paid at Present alongside the eyes.
 render::HudLayer g_hudLayer;
 render::CrosshairLayer g_crosshairLayer;
+render::VignetteLayer g_vignetteLayer;
 render::LaserLayer g_laserLayer;
 
 // OBVR's own settings menu: what it is showing, and the quad it shows it on.
@@ -566,7 +580,35 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 
 	if (g_hand.controlsActive) {
-		game::ApplyHandControls(g_hand.controls, config.handKeys, config.hands.turnSpeed);
+		// Snap turning: detect edges on the right stick and apply discrete turns.
+		// When active, this replaces continuous mouse-driven turning with snap turns.
+		vr::HandControlsWanted controls = g_hand.controls;
+		const float turnDeadZone = config.look.snapTurnDeadZone;
+		if (config.look.snapTurning) {
+			const float currentTurn = controls.turn;
+			const bool wasRight = g_snapTurnState.previousTurn > turnDeadZone;
+			const bool nowRight = currentTurn > turnDeadZone;
+			const bool wasLeft = g_snapTurnState.previousTurn < -turnDeadZone;
+			const bool nowLeft = currentTurn < -turnDeadZone;
+
+			if (nowRight && !wasRight) {
+				// Edge: stick pushed right past dead zone → snap right
+				const float angleRad = config.look.snapTurnAngle * math::kDegreesToRadians;
+				g_lookControl.ApplySnapTurn(angleRad);
+				g_vignetteLayer.Trigger();
+			} else if (nowLeft && !wasLeft) {
+				// Edge: stick pushed left past dead zone → snap left
+				const float angleRad = -config.look.snapTurnAngle * math::kDegreesToRadians;
+				g_lookControl.ApplySnapTurn(angleRad);
+				g_vignetteLayer.Trigger();
+			}
+
+			// Suppress continuous turning when snap turning is active.
+			controls.turn = 0.0f;
+		}
+		g_snapTurnState.previousTurn = g_hand.controls.turn;
+
+		game::ApplyHandControls(controls, config.handKeys, config.hands.turnSpeed);
 		g_handControlsHeld = true;
 		if ((g_hand.laserHit || g_hand.pokeHover) &&
 		    (g_hand.cursorDx != 0 || g_hand.cursorDy != 0)) {
@@ -1121,6 +1163,22 @@ void OnFrameEnd() {
 		hadCameraPass, menuIsUp,
 		MenusCanReachTheWorld(config.tracker.menusInWorld, config.tracker.hudOverlay),
 		g_headsetRenderer.HasHeldEyes(), g_worldlessStreak);
+	perf::DeliveryMode profileMode = perf::DeliveryMode::Unknown;
+	if (delivery == FrameDelivery::Cinema) {
+		profileMode = perf::DeliveryMode::Flat;
+	} else if (delivery == FrameDelivery::HeldStereo) {
+		profileMode = perf::DeliveryMode::HeldMenu;
+	} else if (menuIsUp) {
+		profileMode = perf::DeliveryMode::LiveMenu;
+	} else if (config.tracker.stereo == vr::StereoMode::DualPass) {
+		profileMode = perf::DeliveryMode::WorldDual;
+	} else if (config.tracker.stereo == vr::StereoMode::AlternateEyes) {
+		profileMode = perf::DeliveryMode::WorldAer;
+	} else {
+		profileMode = perf::DeliveryMode::Mono;
+	}
+	perf::Profiler::Instance().SetFrameDetails(
+		profileMode, perf::Profiler::Instance().CurrentVrFrameId(), -1, 0xFF, 0xFF, 0xFF);
 	const RecenterPlan recenter = PlanRecenter(recenterPressed, delivery);
 	bool recenterFrameOpen = false;
 	if (recenter.freshPoseBeforeTracker && !hadCameraPass) {
@@ -1562,6 +1620,7 @@ void MaybeReloadConfig() {
 	}
 
 	if (config.Reload("OBVR.ini")) {
+		perf::Profiler::Instance().Configure(config.performance);
 		g_headTracker.Configure(config.tracker);
 		g_lookControl.Configure(config.look);
 	}
@@ -1962,6 +2021,11 @@ UInt32 g_dualTraceFramesLeft = 3;
 bool DualTraceOn() { return g_dualTraceFramesLeft > 0; }
 
 void BetweenScenePasses() {
+	perf::EventContext betweenContext{};
+	betweenContext.sceneId = render::CurrentSceneCall();
+	betweenContext.passIndex = 0;
+	perf::Profiler::ScopedSpan between(perf::Profiler::Instance(),
+	                                  perf::EventType::BetweenPasses, betweenContext);
 	const UInt32 probe = DualProbeRung();
 	if (DualTraceOn()) {
 		OBVR_LOG("Dual trace: first pass returned (probe %u)", probe);
@@ -1983,7 +2047,14 @@ void BetweenScenePasses() {
 	}
 
 	if (probe != 1 && probe != 2) {
-		g_headsetRenderer.CaptureEye(g_pendingRequest, firstIsLeft);
+		perf::EventContext captureContext = betweenContext;
+		captureContext.eye = firstIsLeft ? 0 : 1;
+		perf::Profiler::ScopedSpan capture(perf::Profiler::Instance(),
+		                                  perf::EventType::EyeCapture, captureContext);
+		const bool captured = g_headsetRenderer.CaptureEye(g_pendingRequest, firstIsLeft);
+		perf::Profiler::Instance().SetFrameDetails(
+				perf::DeliveryMode::Unknown, perf::Profiler::Instance().CurrentVrFrameId(), -1,
+			captured ? 1 : 0, 0, 2);
 		if (DualTraceOn()) {
 			OBVR_LOG("Dual trace: %s eye captured from the first pass",
 			         firstIsLeft ? "left" : "right");
@@ -1999,6 +2070,8 @@ void BetweenScenePasses() {
 	// and before the camera moves, so it is drawn from the viewpoint the
 	// game itself computed.
 	if (GetConfig().tracker.hudBetweenPasses) {
+		perf::Profiler::ScopedSpan hud(perf::Profiler::Instance(),
+		                              perf::EventType::HudBetween, betweenContext);
 		const bool captured = RunHudPassWithCrosshairView();
 		if (DualTraceOn()) {
 			OBVR_LOG("Dual trace: the 2D layer was %s between the renders",
@@ -2011,6 +2084,8 @@ void BetweenScenePasses() {
 	// downward. Render re-reads the camera node's position at the start of
 	// the pass to place the sky and LOD roots, so those follow on their own.
 	if (probe != 1 && g_dualNode != nullptr) {
+		perf::Profiler::ScopedSpan shift(perf::Profiler::Instance(),
+		                                perf::EventType::EyeCameraShift, betweenContext);
 		g_dualNode->localTransform.pos = g_dualNode->localTransform.pos + g_dualShift;
 		game::UpdateNodeTransforms(g_dualNode);
 		// The bone lock shifts the replayed palettes by the same vector the
@@ -2028,6 +2103,11 @@ void BetweenScenePasses() {
 }
 
 void AfterSecondScenePass() {
+	perf::EventContext afterContext{};
+	afterContext.sceneId = render::CurrentSceneCall();
+	afterContext.passIndex = 1;
+	perf::Profiler::ScopedSpan after(perf::Profiler::Instance(),
+	                               perf::EventType::AfterSecondPass, afterContext);
 	const UInt32 probe = DualProbeRung();
 	if (DualTraceOn()) {
 		OBVR_LOG("Dual trace: second pass returned");
@@ -2035,7 +2115,14 @@ void AfterSecondScenePass() {
 
 	const bool firstIsLeft = FirstPassDrawsLeftEye(GetConfig().swapEyeOrder);
 	if (probe != 1 && probe != 2) {
-		g_headsetRenderer.CaptureEye(g_pendingRequest, !firstIsLeft);
+		perf::EventContext captureContext = afterContext;
+		captureContext.eye = firstIsLeft ? 1 : 0;
+		perf::Profiler::ScopedSpan capture(perf::Profiler::Instance(),
+		                                  perf::EventType::EyeCapture, captureContext);
+		const bool captured = g_headsetRenderer.CaptureEye(g_pendingRequest, !firstIsLeft);
+		perf::Profiler::Instance().SetFrameDetails(
+				perf::DeliveryMode::Unknown, perf::Profiler::Instance().CurrentVrFrameId(), -1, 1,
+			captured ? 1 : 0, 2);
 		if (DualTraceOn()) {
 			OBVR_LOG("Dual trace: %s eye captured from the second pass",
 			         firstIsLeft ? "right" : "left");
@@ -2046,6 +2133,8 @@ void AfterSecondScenePass() {
 	// reads the camera later in the frame - the 2D layer, next frame's
 	// smoothing - sees the camera the game computed rather than an eye.
 	if (probe != 1 && g_dualNode != nullptr) {
+		perf::Profiler::ScopedSpan restore(perf::Profiler::Instance(),
+		                                  perf::EventType::EyeCameraRestore, afterContext);
 		g_dualNode->localTransform.pos = g_dualNode->localTransform.pos - g_dualShift;
 		game::UpdateNodeTransforms(g_dualNode);
 		if (DualTraceOn()) {
@@ -2553,6 +2642,11 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	                        crosshairLifted && content != CrosshairContent::Hidden,
 	                        crosshair.distanceMetres, crosshair.widthMetres);
 
+	// Snap turn vignette: fades in when a snap fires, out after. Updated every frame
+	// so the fade advances even when nothing is happening (keeps it hidden).
+	g_vignetteLayer.Update(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
+	                       config.look.snapTurnVignette && worldFrame, g_deltaSeconds);
+
 	// The laser beam from the hand that points at a menu, as long as the way
 	// to it. Its own overlay, raw pixels, no game texture behind it.
 	g_laserLayer.Submit(g_headTracker.GetBackendForFrame(),
@@ -3012,6 +3106,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// is read once rather than every frame.
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
 	const float deltaSeconds = g_frameClock.Tick(ReadPerformanceCounter(), ticksPerSecond);
+	g_deltaSeconds = deltaSeconds;
 
 	// The compositor first, before anything asks the tracker where the head
 	// is. This blocks until the headset wants the next frame and hands back

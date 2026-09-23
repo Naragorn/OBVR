@@ -71,6 +71,44 @@ struct LookSettings {
 	// calls camera rotation compensation.
 	bool smoothTurning = false;
 	float turnSpeed = 12.0f;
+
+	// Snap turning: discrete rotations triggered by pushing the right stick
+	// left or right past a dead zone, instead of continuous mouse-driven turns.
+	//
+	// Off by default so that existing behaviour is untouched until someone asks
+	// for it - snap turning replaces the stick's turn input rather than adding
+	// to it, and mixing both would be confusing.
+	bool snapTurning = false;
+
+	// How far each snap rotates the player, in degrees. 45° is what most VR
+	// titles ship with as a starting point: small enough that repeated snaps
+	// feel controlled, large enough that turning around does not take forever.
+	float snapTurnAngle = 45.0f;
+
+	// Whether a snap happens instantly or eases into place over a fraction of
+	// a second. Instant is the classic snap turn - one frame you face left,
+	// the next you do not. Eased is gentler for people who find that jump too
+	// abrupt, at the cost of the camera lagging behind where they asked it to be.
+	bool snapTurnInstant = true;
+
+	// How fast an eased snap catches up, in radians per second. Only matters
+	// when snapTurnInstant is off: a value around 15-20 gives a turn that
+	// completes in roughly 30°/second for a 45° snap - quick enough to feel
+	// responsive without the instant jump.
+	float snapTurnSpeed = 18.0f;
+
+	// Whether a vignette (darkening at screen edges) plays when a snap turn fires,
+	// giving visual feedback that the rotation happened. On by default because it
+	// helps orient people who cannot feel their body turning - especially useful
+	// for instant snaps where there is no motion to track.
+	bool snapTurnVignette = true;
+
+	// How far the right stick must be pushed before a snap turn triggers, as a
+	// fraction of full travel (0..1). 0.3 means about a third of the way out -
+	// enough that accidental bumps do not fire turns, but not so much that you
+	// have to fight the spring. Lower for sensitive sticks, higher if your thumb
+	// rests near the edge.
+	float snapTurnDeadZone = 0.3f;
 };
 
 // Turns the camera rotation the game computed into the one OBVR wants, and
@@ -111,6 +149,12 @@ public:
 	// point of view, a recenter.
 	void Reset();
 
+	// Apply a discrete turn by adding angleRadians to the current heading.
+	// Positive turns right (clockwise), negative turns left. The rotation is
+	// either instant or eased depending on snapTurnInstant and snapTurnSpeed.
+	// Does nothing when snap turning is disabled.
+	void ApplySnapTurn(float angleRadians);
+
 private:
 	LookSettings m_settings;
 
@@ -119,6 +163,10 @@ private:
 
 	Heading m_heading;
 	bool m_hasHeading = false;
+
+	// The heading we are easing towards during a snap turn, when not instant.
+	Heading m_snapTarget;
+	bool m_snapping = false;
 };
 
 }  // namespace obvr::camera

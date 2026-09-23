@@ -38,6 +38,48 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.tracker.eyeSeparationScale = v; },
 	},
 	{
+		"Comfort", "Snap turning", "Right stick left/right snaps instead of continuous turn",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "SnapTurning",
+		+[](const Config& c) { return c.look.snapTurning ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.look.snapTurning = v != 0.0f; },
+	},
+	{
+		"Comfort", "Snap angle", "Degrees per snap turn",
+		ItemKind::Number, 15.0f, 90.0f, 5.0f, 0, false,
+		"Look", "SnapTurnAngle",
+		+[](const Config& c) { return c.look.snapTurnAngle; },
+		+[](Config& c, float v) { c.look.snapTurnAngle = v; },
+	},
+	{
+		"Comfort", "Instant snap", "Snaps instantly instead of easing into place",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "SnapTurnInstant",
+		+[](const Config& c) { return c.look.snapTurnInstant ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.look.snapTurnInstant = v != 0.0f; },
+	},
+	{
+		"Comfort", "Snap speed", "How fast an eased snap catches up",
+		ItemKind::Number, 5.0f, 40.0f, 1.0f, 0, false,
+		"Look", "SnapTurnSpeed",
+		+[](const Config& c) { return c.look.snapTurnSpeed; },
+		+[](Config& c, float v) { c.look.snapTurnSpeed = v; },
+	},
+	{
+		"Comfort", "Snap vignette", "Darkens screen edges when a snap turn fires",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "SnapTurnVignette",
+		+[](const Config& c) { return c.look.snapTurnVignette ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.look.snapTurnVignette = v != 0.0f; },
+	},
+	{
+		"Comfort", "Snap dead zone", "How far to push the stick before a snap fires",
+		ItemKind::Number, 0.15f, 0.7f, 0.05f, 2, false,
+		"Look", "SnapTurnDeadZone",
+		+[](const Config& c) { return c.look.snapTurnDeadZone; },
+		+[](Config& c, float v) { c.look.snapTurnDeadZone = v; },
+	},
+	{
 		"Comfort", "Smooth turning", "Eases the mouse turn instead of snapping",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Look", "SmoothTurning",
@@ -528,6 +570,27 @@ void ApplySetting(const SettingDefinition& definition, Config& config, float val
 		return;
 	}
 	definition.Write(config, Clamp(definition, value));
+}
+
+bool CanonicalDefaultValue(const SettingDefinition& definition, float& value) {
+	if (definition.Read == nullptr) {
+		return false;
+	}
+
+	const Config defaults;
+	value = definition.Read(defaults);
+	return true;
+}
+
+bool CanResetSetting(const SettingDefinition& definition, const Config& config) {
+	if (definition.kind == ItemKind::Action || definition.kind == ItemKind::Text ||
+	    definition.Read == nullptr || definition.Write == nullptr) {
+		return false;
+	}
+
+	float defaultValue = 0.0f;
+	return CanonicalDefaultValue(definition, defaultValue) &&
+	       definition.Read(config) != defaultValue;
 }
 
 }  // namespace obvr::ui

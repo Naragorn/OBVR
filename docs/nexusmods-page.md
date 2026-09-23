@@ -54,7 +54,7 @@ Everything here has been confirmed in a headset.
 [size=4][b]Under construction, switched off[/b][/size]
 The standing experience: motion controllers in both hands, swings that strike what they pass through, spells from the left hand, menus on the wrists. All of it is built, [b]none of it has been seen working in a headset, and it is not working as intended[/b]. It is off by default; [i][Hands] Enabled=1[/i] switches it on at your own risk.
 
-Not built at all: snap turning, teleport, room-scale locomotion, physical interaction with objects by hand, Linux under Proton.
+Not built at all: teleport, room-scale locomotion, physical interaction with objects by hand, Linux under Proton.
 
 [size=4][b]Requirements[/b][/size]
 [list]
