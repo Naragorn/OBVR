@@ -22,6 +22,11 @@ struct HandPose {
 	float thumbY = 0.0f;
 	bool thumbFromJoystickAxis = false;  // the stick came from rAxis[3], for the log
 	float gripForce = 0.0f;              // rAxis[2].x on an Index, 0 elsewhere
+	// Action provenance for recording/replay. A failed or inactive action is
+	// represented by neutral controls; these fields retain why it was neutral.
+	bool actionInput = false;
+	UInt32 actionActiveMask = 0;
+	SInt32 actionError = 0;
 };
 
 // Whether a button bit is down in a pressed mask. Bit positions are

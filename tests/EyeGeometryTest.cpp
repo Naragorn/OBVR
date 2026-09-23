@@ -550,6 +550,24 @@ void TestFitFlatPicture() {
 	const int topEdge = ViewAxisY(left, 2272) - quest.height / 2;
 	Check(topEdge >= 0 && topEdge + quest.height <= 2272, "vertically as well");
 
+	// GitHub issue #1's September 20 log has the same lenses but a 2064x2208
+	// target. In 0.1.1 the first camera rebuild asked for an out-of-bounds
+	// 1857x1044 cinema copy, then fell through to the refused test pattern.
+	Check(ViewAxisX(left, 2064) - 1857 / 2 + 1857 > 2064 &&
+	          ViewAxisX(right, 2064) - 1857 / 2 < 0,
+	      "issue #1's unfitted 0.1.1 cinema rectangle overflows both eyes");
+	const FlatFit issueOne = FitFlatPicture(left, right, 2064, 2208, 1857, 1044);
+	Check(issueOne.shrunk && issueOne.width == 1562 && issueOne.height == 878,
+	      "issue #1's 2064x2208 target fits the cinema picture to both lenses");
+	const EyeProjection issueOneEyes[] = {left, right};
+	for (const EyeProjection& eye : issueOneEyes) {
+		const int x = ViewAxisX(eye, 2064) - issueOne.width / 2;
+		const int y = ViewAxisY(eye, 2208) - issueOne.height / 2;
+		Check(x >= 0 && x + issueOne.width <= 2064 &&
+		          y >= 0 && y + issueOne.height <= 2208,
+		      "issue #1's fitted copy stays inside each eye in both dimensions");
+	}
+
 	// A size that already fits is returned as it was.
 	const FlatFit small = FitFlatPicture(left, right, 2064, 2272, 1200, 675);
 	Check(!small.shrunk && small.width == 1200 && small.height == 675,

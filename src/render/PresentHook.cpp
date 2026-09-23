@@ -5,6 +5,7 @@
 #include "render/D3D9Types.h"
 #include "render/GameDevice.h"
 #include "render/InterfaceRenderHook.h"
+#include "perf/Profiler.h"
 
 namespace obvr::render {
 namespace {
@@ -27,14 +28,23 @@ FrameEndCallback g_callback = nullptr;
 // what the camera hook could not reach.
 SInt32 __stdcall HookedPresent(void* self, const d3d9::Rect* source, const d3d9::Rect* dest,
                                void* destWindowOverride, const void* dirtyRegion) {
+	auto& profiler = perf::Profiler::Instance();
+	profiler.OnPresentBegin(perf::DeliveryMode::Unknown, false);
 	if (g_callback != nullptr) {
+		perf::Profiler::ScopedSpan callback(profiler, perf::EventType::FrameEndCallback);
 		g_callback();
 	}
 
 	// Not conditional. If the original is somehow missing, returning a made-up
 	// success would leave the game with no picture at all and no error - so
 	// this is the one place where doing nothing is worse than crashing.
-	return g_original(self, source, dest, destWindowOverride, dirtyRegion);
+	SInt32 result = 0;
+	{
+		perf::Profiler::ScopedSpan monitor(profiler, perf::EventType::MonitorPresent);
+		result = g_original(self, source, dest, destWindowOverride, dirtyRegion);
+	}
+	profiler.OnPresentEnd();
+	return result;
 }
 
 // Makes one table entry writable, changes it, and puts the protection back.

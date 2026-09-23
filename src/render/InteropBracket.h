@@ -2,6 +2,7 @@
 
 #include "core/Types.h"
 #include "render/DxvkInterop.h"
+#include "perf/Profiler.h"
 
 namespace obvr::render {
 
@@ -78,6 +79,7 @@ private:
 	Undo m_undo[kMaxTransitions] = {};
 	int m_undoCount = 0;
 	bool m_queueLocked = false;
+	perf::Profiler::Span m_profileSpan;
 };
 
 }  // namespace obvr::render

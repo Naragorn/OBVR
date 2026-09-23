@@ -1,15 +1,185 @@
 #include <cstdio>
 #include <cstring>
+#include <cstdlib>
 #include "ui/NativeSettings.h"
 #include "core/AtomicFlag.h"
 using namespace obvr::ui;
+using obvr::Config;
 int failures=0;
 void Check(bool b,const char* s) { if(!b) { ++failures; std::printf("FAIL %s\n",s); } }
 struct Writer:NativeSettingWriter {
  bool success=true; int saves=0,recenters=0; char last[32]{};
- bool Save(const SettingDefinition&,const char* s) override { ++saves; std::strcpy(last,s); return success; }
+ Config* live=nullptr; float expectedOld=0.0f; bool inspectOld=false; bool sawExpectedOld=false;
+ bool Save(const SettingDefinition& definition,const char* s) override {
+  ++saves;
+  if (inspectOld && live != nullptr && definition.Read != nullptr &&
+      definition.Read(*live) == expectedOld) {
+   sawExpectedOld=true;
+  }
+  std::strcpy(last,s); return success;
+ }
  void Recenter() override { ++recenters; }
 };
+
+float ChangedFromDefault(const SettingDefinition& definition, float canonical) {
+ if (definition.kind == ItemKind::Toggle) {
+  return canonical == 0.0f ? 1.0f : 0.0f;
+ }
+ return canonical != definition.maximum ? definition.maximum : definition.minimum;
+}
+
+void CheckSerializedCanonical(const SettingDefinition& definition, float canonical,
+                              const Writer& writer) {
+ if (definition.kind == ItemKind::Toggle && definition.falseWord[0] != '\0' &&
+     definition.trueWord[0] != '\0') {
+  const char* expected = canonical == 0.0f ? definition.falseWord : definition.trueWord;
+  Check(std::strcmp(writer.last, expected) == 0, "reset writes the canonical word literal");
+  return;
+ }
+
+ if (definition.kind == ItemKind::Toggle) {
+  Check(std::strcmp(writer.last, canonical == 0.0f ? "0" : "1") == 0,
+        "reset writes a numeric toggle literal");
+  return;
+ }
+
+ char* end = nullptr;
+ const float parsed = std::strtof(writer.last, &end);
+ Check(end != writer.last && end != nullptr && *end == '\0' && parsed == canonical,
+       "reset numeric text parses back to the canonical default");
+}
+
+void CheckOtherSettingsPreserved(const Config& before, const Config& after,
+                                 const SettingDefinition& changed, const char* what) {
+ const SettingDefinition* settings=SettingDefinitions();
+ const UInt32 count=SettingDefinitionCount();
+ bool preserved=true;
+ for(UInt32 at=0;at<count;++at) {
+  const SettingDefinition& definition=settings[at];
+  if(&definition==&changed || definition.Read==nullptr) continue;
+  if(definition.Read(before)!=definition.Read(after)) {
+   preserved=false;
+   std::printf("        reset of \"%s\" changed \"%s\"\n",changed.label,definition.label);
+  }
+ }
+ Check(preserved,what);
+}
+
+void TestResetSelected() {
+ std::printf("Selected reset proposals and transactional commits\n");
+ NativeSettings menu;
+ Writer writer;
+ unsigned visited=0;
+ unsigned editable=0;
+ unsigned refusedAtDefault=0;
+
+ for(unsigned page=0;page<menu.Pages();++page) {
+  for(unsigned slot=0;slot<kNativeSettingsRows;++slot) {
+   const auto* definition=menu.Row(slot);
+   const int labelId=kNativeRowBase+static_cast<int>(slot)*3;
+   if(!definition) {
+    Config empty;
+    const UInt32 selectedBefore=menu.Selected();
+    Check(!menu.Click(labelId,empty).repaint && menu.Selected()==selectedBefore,
+          "an empty page row cannot change selection");
+    continue;
+   }
+   ++visited;
+
+   Config config;
+   float canonical=0.0f;
+   Check(CanonicalDefaultValue(*definition,canonical),"every visible row has a canonical default");
+   menu.Click(labelId,config);
+   const UInt32 selectedBefore=menu.Selected();
+   const int oldSaves=writer.saves;
+   const int oldRecenters=writer.recenters;
+
+   if(definition->kind==ItemKind::Action || definition->kind==ItemKind::Text) {
+    Check(!menu.CanResetSelected(config),"actions and text rows disable reset");
+    const auto proposal=menu.Click(kNativeReset,config);
+    const int savesBeforeCommit=writer.saves;
+    const int recentersBeforeCommit=writer.recenters;
+    Check(proposal.definition==nullptr && menu.Selected()==selectedBefore &&
+          CommitNativeEdit(proposal,config,writer)==NativeEditResult::None &&
+          writer.saves==savesBeforeCommit && writer.recenters==recentersBeforeCommit &&
+          writer.saves==oldSaves && writer.recenters==oldRecenters,
+          "refused action reset changes no selection and performs no operation");
+    continue;
+   }
+
+   ++editable;
+   Check(!menu.CanResetSelected(config),"a value already at default disables reset");
+   const auto atDefault=menu.Click(kNativeReset,config);
+   const int savesBeforeDefault=writer.saves;
+   const int recentersBeforeDefault=writer.recenters;
+   Check(atDefault.definition==nullptr && menu.Selected()==selectedBefore,
+         "reset at default is refused without changing selection");
+   Check(CommitNativeEdit(atDefault,config,writer)==NativeEditResult::None &&
+         writer.saves==savesBeforeDefault && writer.recenters==recentersBeforeDefault,
+         "refused default reset performs no save or action");
+   ++refusedAtDefault;
+
+   const float changed=ChangedFromDefault(*definition,canonical);
+   ApplySetting(*definition,config,changed);
+   Check(ItemFor(*definition,config).value==changed,"test value differs from canonical default");
+   Check(ItemFor(*definition,config).needsRestart==definition->needsRestart,
+         "restart-required metadata remains attached to the selected row");
+   const SettingDefinition* settings=SettingDefinitions();
+   const UInt32 settingCount=SettingDefinitionCount();
+   for(UInt32 other=0;other<settingCount;++other) {
+    const SettingDefinition& otherDefinition=settings[other];
+    if(&otherDefinition==definition || otherDefinition.kind==ItemKind::Action ||
+       otherDefinition.kind==ItemKind::Text || otherDefinition.Write==nullptr) continue;
+    float otherDefault=0.0f;
+    if(CanonicalDefaultValue(otherDefinition,otherDefault)) {
+     ApplySetting(otherDefinition,config,ChangedFromDefault(otherDefinition,otherDefault));
+    }
+   }
+   const Config beforeFailure=config;
+   Check(menu.CanResetSelected(config),"a changed editable value enables reset");
+   const auto proposal=menu.Click(kNativeReset,config);
+   Check(proposal.definition==definition && proposal.value==canonical &&
+         menu.Selected()==selectedBefore && proposal.repaint,
+         "reset proposes the selected row canonical value");
+
+   writer.live=&config;
+   writer.expectedOld=changed;
+   writer.inspectOld=true;
+   writer.sawExpectedOld=false;
+   writer.success=false;
+   Check(CommitNativeEdit(proposal,config,writer)==NativeEditResult::SaveFailed &&
+         ItemFor(*definition,config).value==changed && writer.sawExpectedOld,
+         "save failure preserves live value and observes it before apply");
+   CheckOtherSettingsPreserved(beforeFailure,config,*definition,
+                               "save failure preserves unrelated settings");
+   Check(menu.Selected()==selectedBefore,"save failure preserves selection");
+
+   writer.success=true;
+   writer.sawExpectedOld=false;
+   Check(CommitNativeEdit(proposal,config,writer)==NativeEditResult::Saved &&
+         ItemFor(*definition,config).value==canonical && writer.sawExpectedOld,
+         "retry saves before applying the canonical value");
+   CheckOtherSettingsPreserved(beforeFailure,config,*definition,
+                               "successful reset changes only the selected setting");
+   CheckSerializedCanonical(*definition,canonical,writer);
+   Check(!menu.CanResetSelected(config),"successful reset disables the default-valued row");
+   const int savesAfter=writer.saves;
+   const auto repeated=menu.Click(kNativeReset,config);
+   const int recentersAfter=writer.recenters;
+   Check(repeated.definition==nullptr &&
+         CommitNativeEdit(repeated,config,writer)==NativeEditResult::None &&
+         writer.saves==savesAfter && writer.recenters==recentersAfter &&
+         menu.Selected()==selectedBefore,"repeating reset at default is inert");
+  }
+  Config pageConfig;
+  menu.Click(kNativeNext,pageConfig);
+ }
+
+ Check(visited==SettingDefinitionCount(),"reset test visits every definition across pages");
+ Check(editable+1==visited,"reset test includes the action refusal path");
+ Check(refusedAtDefault==editable,"every editable definition refuses reset at default");
+}
+
 int main() {
  // Exhaust the lifecycle input combinations, including foreign/covered menus.
  for(unsigned mask=0;mask<512;++mask) {
@@ -93,6 +263,7 @@ int main() {
   for(unsigned cap=1;cap<=len;++cap) Check(!build(cap) && !*b,"truncation refused");
   Check(build(len+1),"exact capacity accepted");
  }
+ TestResetSelected();
  std::printf("Native settings: %u definitions, %u pages, %d failures\n",visited,menu.Pages(),failures);
  return failures?1:0;
 }

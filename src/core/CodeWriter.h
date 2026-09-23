@@ -45,6 +45,18 @@ public:
 
 	// push ecx, to hand a thiscall's `this` to a cdecl callback.
 	void PushEcx();
+	void PushEax();
+	void PushEdx();
+
+	// Small stack-relative moves used by call-site stubs.  The offsets are
+	// deliberately byte-sized: the generated frames are fixed and local.
+	void MoveEcxFromStack(UInt8 offset);
+	void MoveEdxFromStack(UInt8 offset);
+	void MoveStackFromEax(UInt8 offset);
+	void LoadEffectiveAddressEax(UInt8 offset);
+
+	// sub esp, amount
+	void SubStackPointer(UInt8 amount);
 
 	// xor ecx, ecx
 	void ClearEcx();
@@ -63,6 +75,7 @@ public:
 
 	// ret, with nothing popped beyond the return address.
 	void Return();
+	void ReturnAndPop(UInt16 bytes);
 
 	UInt32 Size() const { return m_size; }
 	bool Overflowed() const { return m_overflowed; }

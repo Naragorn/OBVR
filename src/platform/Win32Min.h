@@ -58,6 +58,8 @@ OBVR_IMPORT BOOL OBVR_STDCALL ReadFile(HANDLE file, void* buffer, DWORD bytes, D
 OBVR_IMPORT BOOL OBVR_STDCALL WriteFile(HANDLE file, const void* buffer, DWORD bytes, DWORD* written, void* overlapped);
 OBVR_IMPORT BOOL OBVR_STDCALL FlushFileBuffers(HANDLE file);
 OBVR_IMPORT BOOL OBVR_STDCALL CloseHandle(HANDLE object);
+OBVR_IMPORT BOOL OBVR_STDCALL CreateDirectoryA(const char* path, void* security);
+OBVR_IMPORT DWORD OBVR_STDCALL WaitForSingleObject(HANDLE object, DWORD milliseconds);
 
 // For the one thread OBVR runs: a poller that waits for Oblivion to build its
 // Direct3D device, so the end of the frame can be hooked before the main menu
@@ -145,6 +147,9 @@ OBVR_IMPORT BOOL OBVR_STDCALL FreeLibrary(HMODULE module);
 // engineered address to keep correct. user32 is loaded in every GUI process,
 // so it costs nothing at runtime.
 OBVR_IMPORT short OBVR_STDCALL GetAsyncKeyState(int virtualKey);
+OBVR_IMPORT void* OBVR_STDCALL GetForegroundWindow();
+OBVR_IMPORT DWORD OBVR_STDCALL GetWindowThreadProcessId(void* window, DWORD* processId);
+OBVR_IMPORT DWORD OBVR_STDCALL GetCurrentProcessId();
 
 // For the hand-tracked mode: the controllers drive the game through the
 // keys and mouse buttons the player has bound, injected the way the input

@@ -81,6 +81,15 @@ constexpr UInt32 kSurfaceGetDesc = 12;
 // picture, to make the margin around Oblivion's frame black rather than
 // whatever the memory happened to hold.
 constexpr UInt32 kDeviceColorFill = 35;
+// IDirect3DDevice9::CreateQuery, the final method before the interface ends.
+constexpr UInt32 kDeviceCreateQuery = 118;
+constexpr UInt32 kQueryGetData = 5;
+constexpr UInt32 kQueryIssue = 6;
+constexpr UInt32 kQueryTimestamp = 10;
+constexpr UInt32 kQueryTimestampFrequency = 12;
+constexpr UInt32 kIssueEnd = 2;
+constexpr SInt32 kSOk = 0;
+constexpr SInt32 kSFalse = 1;
 
 // D3DTEXTUREFILTERTYPE (d3d9types.h). NONE is the right filter only when
 // there is no scaling; the moment a source rectangle and a destination
@@ -638,6 +647,9 @@ using ReleaseFn = UInt32(__stdcall*)(void* self);
 // not to change what Present does.
 using PresentFn = SInt32(__stdcall*)(void* self, const Rect* source, const Rect* dest,
                                      void* destWindowOverride, const void* dirtyRegion);
+using CreateQueryFn = SInt32(__stdcall*)(void* self, UInt32 type, void** query);
+using QueryGetDataFn = SInt32(__stdcall*)(void* self, void* data, UInt32 size, UInt32 flags);
+using QueryIssueFn = SInt32(__stdcall*)(void* self, UInt32 issue);
 
 
 // D3DPRESENT_PARAMETERS (d3d9types.h). The two fields at the front are the

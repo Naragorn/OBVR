@@ -127,4 +127,14 @@ MenuItem ItemFor(const SettingDefinition& definition, const Config& config);
 // carried in from a saved state that no longer matches the range.
 void ApplySetting(const SettingDefinition& definition, Config& config, float value);
 
+// Reads the built-in value for a row from a freshly default-constructed
+// Config. Keeping this in the table bridge means reset uses the same defaults
+// as Config itself rather than maintaining a second defaults table.
+bool CanonicalDefaultValue(const SettingDefinition& definition, float& value);
+
+// Whether a row can be reset from its current value. Actions, text rows and
+// incomplete table entries have no setting to persist, and a row already at
+// its canonical default has nothing to reset.
+bool CanResetSetting(const SettingDefinition& definition, const Config& config);
+
 }  // namespace obvr::ui

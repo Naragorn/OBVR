@@ -340,6 +340,79 @@ void TestItemsAreBuilt() {
 	Check(true, "and a row with no writer is survivable");
 }
 
+void TestCanonicalResetRules() {
+	std::printf("Canonical defaults and reset eligibility\n");
+
+	const SettingDefinition* const settings = SettingDefinitions();
+	const UInt32 count = SettingDefinitionCount();
+	const Config defaults;
+
+	UInt32 missingDefaults = 0;
+	UInt32 outsideBounds = 0;
+	UInt32 defaultRowsResettable = 0;
+	UInt32 changedRowsNotResettable = 0;
+	for (UInt32 at = 0; at < count; ++at) {
+		const SettingDefinition& one = settings[at];
+		float canonical = 0.0f;
+		if (!obvr::ui::CanonicalDefaultValue(one, canonical)) {
+			++missingDefaults;
+			continue;
+		}
+		if (canonical < one.minimum || canonical > one.maximum) {
+			std::printf("        \"%s\" default is outside its range\n", one.label);
+			++outsideBounds;
+		}
+
+		// Actions have a reader only so the table can be swept uniformly, but
+		// they are not settings and must never become reset proposals.
+		if (one.kind == ItemKind::Action || one.kind == ItemKind::Text) {
+			if (obvr::ui::CanResetSetting(one, defaults)) {
+				++defaultRowsResettable;
+			}
+			continue;
+		}
+
+		if (obvr::ui::CanResetSetting(one, defaults)) {
+			++defaultRowsResettable;
+		}
+
+		Config changed = defaults;
+		ApplySetting(one, changed, DifferentValue(one, canonical));
+		if (!obvr::ui::CanResetSetting(one, changed)) {
+			std::printf("        \"%s\" changed value is not resettable\n", one.label);
+			++changedRowsNotResettable;
+		}
+	}
+	Check(missingDefaults == 0, "every definition can read its canonical default");
+	Check(outsideBounds == 0, "every canonical default lies within its menu bounds");
+	Check(defaultRowsResettable == 0, "actions and default-valued rows refuse reset");
+	Check(changedRowsNotResettable == 0, "every changed editable row becomes resettable");
+
+	SettingDefinition missingReader;
+	missingReader.kind = ItemKind::Number;
+	missingReader.minimum = 0.0f;
+	missingReader.maximum = 1.0f;
+	missingReader.Write = +[](Config&, float) {};
+	float ignored = 0.0f;
+	Check(!obvr::ui::CanonicalDefaultValue(missingReader, ignored),
+	      "a malformed row without a reader has no canonical default");
+	Check(!obvr::ui::CanResetSetting(missingReader, defaults),
+	      "a malformed row without a reader refuses reset");
+
+	SettingDefinition missingWriter;
+	missingWriter.kind = ItemKind::Number;
+	missingWriter.Read = +[](const Config&) { return 1.0f; };
+	Check(!obvr::ui::CanResetSetting(missingWriter, defaults),
+	      "a malformed row without a writer refuses reset");
+
+	SettingDefinition textRow;
+	textRow.kind = ItemKind::Text;
+	textRow.Read = +[](const Config&) { return 0.0f; };
+	textRow.Write = +[](Config&, float) {};
+	Check(!obvr::ui::CanResetSetting(textRow, defaults),
+	      "a text row refuses reset even with reader and writer callbacks");
+}
+
 void TestValuesRoundTrip() {
 	std::printf("A value written is a value read back\n");
 
@@ -448,6 +521,8 @@ int main() {
 	TestCategoriesAreGrouped();
 	std::printf("\n");
 	TestItemsAreBuilt();
+	std::printf("\n");
+	TestCanonicalResetRules();
 	std::printf("\n");
 	TestValuesRoundTrip();
 	std::printf("\n");

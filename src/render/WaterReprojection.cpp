@@ -63,7 +63,7 @@ bool WriteShaderBinary(void* shader, const char* fileName) {
 	if (!platform::BuildGamePath(fileName, path, sizeof(path))) return false;
 	HANDLE file = CreateFileA(path, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
 	                          FILE_ATTRIBUTE_NORMAL, nullptr);
-	if (file == INVALID_HANDLE_VALUE) return false;
+	if (file == InvalidHandle()) return false;
 	DWORD written = 0;
 	const bool ok = WriteFile(file, bytes, byteCount, &written, nullptr) != 0 &&
 	                written == byteCount;

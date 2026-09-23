@@ -178,6 +178,9 @@ if(WIN32)
 		OpenVRBackendTest.cpp
 		WaterVRReplayStub.cpp
 		../src/vr/OpenVRBackend.cpp
+		../src/perf/Profiler.cpp
+		../src/perf/ProfileLogic.cpp
+		../src/perf/GpuQueries.cpp
 		../src/vr/Quaternion.cpp
 		../src/core/Log.cpp
 		../src/platform/PluginPath.cpp
@@ -199,6 +202,7 @@ if(WIN32)
 	add_executable(config_test
 		ConfigTest.cpp
 		../src/core/Config.cpp
+		../src/perf/ProfileLogic.cpp
 		../src/core/Log.cpp
 		../src/platform/PluginPath.cpp
 		../src/render/GameDevice.cpp
@@ -223,6 +227,9 @@ if(WIN32)
 		../src/vr/HeadTracker.cpp
 		../src/vr/HeadOffset.cpp
 		../src/vr/OpenVRBackend.cpp
+		../src/perf/Profiler.cpp
+		../src/perf/ProfileLogic.cpp
+		../src/perf/GpuQueries.cpp
 		../src/vr/Quaternion.cpp
 		../src/core/Rotation.cpp
 		../src/core/Smoothing.cpp
@@ -441,6 +448,9 @@ if(WIN32)
 	add_executable(present_hook_test
 		PresentHookTest.cpp
 		../src/render/PresentHook.cpp
+		../src/perf/Profiler.cpp
+		../src/perf/ProfileLogic.cpp
+		../src/perf/GpuQueries.cpp
 		../src/core/Log.cpp
 		../src/platform/PluginPath.cpp
 		../src/render/GameDevice.cpp
@@ -649,6 +659,13 @@ endif()
 
 add_test(NAME hand_input COMMAND hand_input_test)
 
+add_executable(controller_actions_test ControllerActionsTest.cpp)
+target_include_directories(controller_actions_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(controller_actions_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME controller_actions COMMAND controller_actions_test)
+
 add_executable(bone_pin_test
 	BonePinTest.cpp
 	../src/core/Rotation.cpp
@@ -795,3 +812,62 @@ if(NOT MSVC)
 	target_compile_options(water_vr_test_plan_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME water_vr_test_plan COMMAND water_vr_test_plan_test)
+
+add_executable(profile_logic_test
+	ProfileLogicTest.cpp
+	../src/perf/ProfileLogic.cpp
+)
+target_include_directories(profile_logic_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(profile_logic_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME profile_logic COMMAND profile_logic_test)
+
+add_executable(gpu_queries_test
+	GpuQueriesTest.cpp
+	../src/perf/GpuQueries.cpp
+)
+target_include_directories(gpu_queries_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(gpu_queries_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME gpu_queries COMMAND gpu_queries_test)
+
+if(Python3_Interpreter_FOUND)
+	add_test(NAME analyze_performance
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/AnalyzePerformanceTest.py)
+	add_test(NAME controller_action_assets
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/ControllerActionAssetsTest.py)
+endif()
+
+add_executable(scroll_menu_test ScrollMenuTest.cpp)
+target_include_directories(scroll_menu_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(scroll_menu_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME scroll_menu COMMAND scroll_menu_test)
+
+add_executable(scroll_session_test ScrollSessionTest.cpp)
+target_include_directories(scroll_session_test PRIVATE ../src)
+add_test(NAME scroll_session COMMAND scroll_session_test)
+
+add_executable(vr_menu_input_test VRMenuInputTest.cpp)
+target_include_directories(vr_menu_input_test PRIVATE ../src)
+add_test(NAME vr_menu_input COMMAND vr_menu_input_test)
+
+add_executable(vr_menu_bridge_test VRMenuBridgeTest.cpp)
+	target_sources(vr_menu_bridge_test PRIVATE
+		../src/game/VRMenuBridge.cpp
+		../src/game/VRMenuIntentStub.cpp
+		../src/core/EntryDetour.cpp
+		../src/core/AroundCall.cpp
+		../src/core/CodeWriter.cpp
+		../src/core/Memory.cpp
+		../src/core/Log.cpp
+		../src/platform/PluginPath.cpp
+	)
+target_include_directories(vr_menu_bridge_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(vr_menu_bridge_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME vr_menu_bridge COMMAND vr_menu_bridge_test)

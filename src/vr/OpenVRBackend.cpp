@@ -1,4 +1,6 @@
 #include "vr/OpenVRBackend.h"
+
+#include "perf/Profiler.h"
 #include "test/WaterVRTestRuntime.h"
 
 #include "core/MathFns.h"
@@ -6,6 +8,7 @@
 #include "core/Log.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
+#include "vr/ControllerActions.h"
 #include "vr/OpenVRTypes.h"
 #include "vr/Quaternion.h"
 
@@ -29,6 +32,49 @@ void OpenVRBackend::LogOnce(bool& alreadyLogged, const char* message) const {
 		alreadyLogged = true;
 		OBVR_LOG("OpenVR: %s", message);
 	}
+}
+
+void OpenVRBackend::InitControllerActions() {
+	m_input = nullptr;
+	input::ClearActionSetup(m_actionSet, m_actionHandles);
+	m_actionReadErrorLogged = false;
+
+	char manifest[512]{};
+	bool found = platform::BuildPluginPath("OBVR_Input\\actions.json", manifest,
+	                                       sizeof(manifest)) &&
+	             GetFileAttributesA(manifest) != 0xFFFFFFFFu;
+	if (!found) {
+		found = platform::BuildGamePath("Data\\OBSE\\Plugins\\OBVR_Input\\actions.json",
+		                              manifest, sizeof(manifest)) &&
+		        GetFileAttributesA(manifest) != 0xFFFFFFFFu;
+	}
+	if (!found) {
+		OBVR_LOG("OpenVR input: OBVR_Input/actions.json missing; controller actions unavailable");
+		return;
+	}
+
+	auto getInterface =
+		Resolve<openvr::VR_GetGenericInterfaceFn>(m_module, "VR_GetGenericInterface");
+	if (getInterface == nullptr) {
+		OBVR_LOG("OpenVR input: VR_GetGenericInterface export unavailable");
+		return;
+	}
+
+	int error = 0;
+	auto* table = static_cast<input::Table*>(getInterface("FnTable:IVRInput_011", &error));
+	if (error != 0 || !input::HasSetupMethods(table)) {
+		OBVR_LOG("OpenVR input: IVRInput_011 unavailable (%d)", error);
+		return;
+	}
+
+	error = input::ConfigureActions(table, manifest, m_actionSet, m_actionHandles);
+	if (error != 0) {
+		OBVR_LOG("OpenVR input: controller action setup failed (%d)", error);
+		return;
+	}
+
+	m_input = table;
+	OBVR_LOG("OpenVR input: normalized Touch/Index controller actions ready");
 }
 
 bool OpenVRBackend::Connect(int applicationType) {
@@ -62,6 +108,7 @@ bool OpenVRBackend::Connect(int applicationType) {
 		return false;
 	}
 
+	InitControllerActions();
 	return true;
 }
 
@@ -188,6 +235,13 @@ void OpenVRBackend::Stop() {
 	FreeLibrary(static_cast<HMODULE>(m_module));
 	m_module = nullptr;
 	m_system = nullptr;
+	m_input = nullptr;
+	m_actionSet = 0;
+	for (auto& hand : m_actionHandles) {
+		for (auto& action : hand) {
+			action = 0;
+		}
+	}
 	m_compositor = nullptr;
 	m_overlay = nullptr;
 	m_overlayTried = false;
@@ -522,13 +576,23 @@ bool OpenVRBackend::GetRenderPoseMatrix(openvr::HmdMatrix34& out) const {
 int OpenVRBackend::SubmitEye(int eye, void* handle, int textureType,
                              const openvr::VRTextureBounds* bounds,
                              const openvr::HmdMatrix34* renderPose) const {
+	perf::EventContext context{};
+	context.eye = eye == openvr::kEyeLeft ? 0 : (eye == openvr::kEyeRight ? 1 : 2);
+	perf::Profiler::ScopedSpan submit(perf::Profiler::Instance(),
+		                                 eye == openvr::kEyeLeft ? perf::EventType::SubmitLeft
+		                                                         : perf::EventType::SubmitRight,
+		                                 context);
+	auto record = [&](int result) {
+		perf::Profiler::Instance().SetSubmitResult(context.eye, result);
+		return result;
+	};
 	if (m_compositor == nullptr || handle == nullptr) {
-		return openvr::kCompositorErrorIsNotSceneApplication;
+		return record(openvr::kCompositorErrorIsNotSceneApplication);
 	}
 
 	auto* table = static_cast<openvr::IVRCompositorFnTable*>(m_compositor);
 	if (table->Submit == nullptr) {
-		return openvr::kCompositorErrorIsNotSceneApplication;
+		return record(openvr::kCompositorErrorIsNotSceneApplication);
 	}
 
 	// The two shapes share their first three fields, which is why the pose
@@ -548,11 +612,11 @@ int OpenVRBackend::SubmitEye(int eye, void* handle, int textureType,
 	withPose.texture.colorSpace = openvr::kColorSpaceAuto;
 
 	if (renderPose == nullptr) {
-		return table->Submit(eye, &withPose.texture, bounds, openvr::kSubmitDefault);
+		return record(table->Submit(eye, &withPose.texture, bounds, openvr::kSubmitDefault));
 	}
 
 	withPose.deviceToAbsoluteTracking = *renderPose;
-	return table->Submit(eye, &withPose.texture, bounds, openvr::kSubmitTextureWithPose);
+	return record(table->Submit(eye, &withPose.texture, bounds, openvr::kSubmitTextureWithPose));
 }
 bool OpenVRBackend::GetRecommendedRenderTargetSize(UInt32& width, UInt32& height) const {
 	if (m_system == nullptr) {
@@ -624,8 +688,7 @@ bool OpenVRBackend::ReadHand(bool rightHand, HandPose& out) const {
 		return false;
 	}
 	auto* table = static_cast<openvr::IVRSystemFnTable*>(m_system);
-	if (table->GetTrackedDeviceIndexForControllerRole == nullptr ||
-	    table->GetControllerStateWithPose == nullptr) {
+	if (table->GetTrackedDeviceIndexForControllerRole == nullptr) {
 		return false;
 	}
 
@@ -635,17 +698,56 @@ bool OpenVRBackend::ReadHand(bool rightHand, HandPose& out) const {
 		return false;
 	}
 
-	// The state and the pose from one call, so a trigger pull is paired with
-	// where the hand was when it happened. The seated universe, like the head,
-	// so the two share an origin and the recenter reference cancels out of
-	// any difference between them.
+
+	// Once the action manifest is active, the legacy controller-state calls
+	// are deliberately bypassed. SteamVR can report a valid tracked pose while
+	// an individual action is inactive or failed, so the two paths are read
+	// independently and action failure remains neutral input.
+	if (m_input != nullptr && m_actionSet != 0) {
+		if (table->GetDeviceToAbsoluteTrackingPose == nullptr ||
+		    device >= openvr::kMaxTrackedDeviceCount) {
+			return false;
+		}
+		openvr::TrackedDevicePose poses[openvr::kMaxTrackedDeviceCount]{};
+		table->GetDeviceToAbsoluteTrackingPose(openvr::kTrackingUniverseSeated, 0.0f, poses,
+		                                      openvr::kMaxTrackedDeviceCount);
+		const auto& pose = poses[device];
+		if (!pose.poseIsValid || !pose.deviceIsConnected) {
+			return false;
+		}
+
+		HandPose controls{};
+		input::ActionSet active{};
+		int actionError = input::UpdateActionState(static_cast<input::Table*>(m_input), m_actionSet,
+		                                           active);
+		UInt32 activeMask = 0;
+		if (actionError == 0) {
+			actionError = input::ReadControls(static_cast<input::Table*>(m_input),
+			                                  m_actionHandles[rightHand ? 0 : 1], true,
+			                                  controls, &activeMask);
+		}
+		if (actionError != 0 && !m_actionReadErrorLogged) {
+			m_actionReadErrorLogged = true;
+			OBVR_LOG("OpenVR input: action read failed (%d); controls held neutral", actionError);
+		}
+
+		out.valid = true;
+		out.orientation = FromOpenVRMatrix(pose.deviceToAbsoluteTracking.m);
+		out.position = PositionFromOpenVRMatrix(pose.deviceToAbsoluteTracking.m);
+		input::ApplyActionControls(out, controls, activeMask, actionError);
+		return true;
+	}
+
+	// Keep the established legacy path when no action manifest could be
+	// installed, so a missing optional package does not remove existing input.
+	if (table->GetControllerStateWithPose == nullptr) {
+		return false;
+	}
 	openvr::VRControllerState state{};
 	openvr::TrackedDevicePose pose{};
 	if (!table->GetControllerStateWithPose(openvr::kTrackingUniverseSeated, device, &state,
-	                                       sizeof(state), &pose)) {
-		return false;
-	}
-	if (!pose.poseIsValid || !pose.deviceIsConnected) {
+	                                       sizeof(state), &pose) ||
+	    !pose.poseIsValid || !pose.deviceIsConnected) {
 		return false;
 	}
 
@@ -654,8 +756,6 @@ bool OpenVRBackend::ReadHand(bool rightHand, HandPose& out) const {
 	out.position = PositionFromOpenVRMatrix(pose.deviceToAbsoluteTracking.m);
 	out.buttonsPressed = state.buttonPressed;
 	out.trigger = state.axis[openvr::kAxisTrigger].x;
-	// The stick: rAxis[0] on a wand's touchpad and on most bindings, rAxis[3]
-	// where the runtime puts an Index thumbstick - whichever is deflected.
 	const float x0 = state.axis[openvr::kAxisThumb].x;
 	const float y0 = state.axis[openvr::kAxisThumb].y;
 	const float x3 = state.axis[openvr::kAxisJoystick].x;

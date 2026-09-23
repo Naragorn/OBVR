@@ -296,6 +296,7 @@ private:
 	// the backend's state, which is why it is mutable and usable from a const
 	// method.
 	void LogOnce(bool& alreadyLogged, const char* message) const;
+	void InitControllerActions();
 
 	// One attempt at registering with SteamVR as the given application type.
 	// Leaves nothing behind on failure, which is what makes the retreat from
@@ -304,6 +305,10 @@ private:
 
 	void* m_module = nullptr;      // openvr_api.dll
 	void* m_system = nullptr;      // IVRSystemFnTable*
+	void* m_input = nullptr;       // IVRInput_011, when its manifest is ready
+	UInt64 m_actionSet = 0;
+	UInt64 m_actionHandles[2][7]{};
+	mutable bool m_actionReadErrorLogged = false;
 	void* m_compositor = nullptr;  // IVRCompositorFnTable*, only when scene
 	void* m_overlay = nullptr;     // IVROverlayFnTable*, fetched on first use
 	bool m_overlayTried = false;

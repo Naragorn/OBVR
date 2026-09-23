@@ -13,8 +13,14 @@
 #include <cstddef>
 #include <cstdio>
 
-#include "vr/OpenVRBackend.h"
+#include "core/Types.h"
 #include "vr/OpenVRTypes.h"
+#include "vr/HandInput.h"
+#include "vr/Quaternion.h"
+#define private public
+#include "vr/OpenVRBackend.h"
+#undef private
+#include "vr/ControllerActions.h"
 
 namespace obvr::test {
 extern bool g_waterReplayActive;
@@ -81,6 +87,152 @@ void CheckNear(float actual, float expected, const char* what) {
 	if (!ok) {
 		++g_failures;
 	}
+}
+
+obvr::vr::openvr::IVRSystemFnTable g_fakeSystem{};
+obvr::vr::openvr::TrackedDevicePose g_fakeHandPose{};
+obvr::vr::openvr::VRControllerState g_fakeLegacyState{};
+bool g_fakeLegacyResult = true;
+int g_fakeActionUpdateResult = 0;
+UInt32 g_fakeActionUpdateSize = 0;
+UInt32 g_fakeActionUpdateCount = 0;
+
+UInt32 __stdcall FakeHandRole(int role) {
+	return role == obvr::vr::openvr::kControllerRoleRightHand
+	           ? 3u
+	           : obvr::vr::openvr::kTrackedDeviceIndexInvalid;
+}
+
+void __stdcall FakeHandPoses(int, float, obvr::vr::openvr::TrackedDevicePose* poses,
+                             UInt32 count) {
+	if (poses != nullptr && count > 3) {
+		poses[3] = g_fakeHandPose;
+	}
+}
+
+bool __stdcall FakeLegacyState(int, UInt32, obvr::vr::openvr::VRControllerState* state,
+                               UInt32, obvr::vr::openvr::TrackedDevicePose* pose) {
+	if (state != nullptr) {
+		*state = g_fakeLegacyState;
+	}
+	if (pose != nullptr) {
+		*pose = g_fakeHandPose;
+	}
+	return g_fakeLegacyResult;
+}
+
+int __stdcall FakeActionUpdate(obvr::vr::input::ActionSet*, UInt32 size, UInt32 count) {
+	g_fakeActionUpdateSize = size;
+	g_fakeActionUpdateCount = count;
+	return g_fakeActionUpdateResult;
+}
+
+int __stdcall FakeActionDigital(UInt64, obvr::vr::input::DigitalData* data, UInt32, UInt64) {
+	if (data != nullptr) {
+		*data = obvr::vr::input::DigitalData{};
+		data->active = true;
+	}
+	return 0;
+}
+
+int __stdcall FakeActionAnalog(UInt64, obvr::vr::input::AnalogData* data, UInt32, UInt64) {
+	if (data != nullptr) {
+		*data = obvr::vr::input::AnalogData{};
+		data->active = true;
+		data->x = 0.25f;
+		data->y = -0.5f;
+	}
+	return 0;
+}
+
+obvr::vr::input::Table g_fakeActionTable{};
+
+void ResetHandBackendFakes() {
+	g_fakeSystem = {};
+	g_fakeSystem.GetDeviceToAbsoluteTrackingPose = &FakeHandPoses;
+	g_fakeSystem.GetTrackedDeviceIndexForControllerRole = &FakeHandRole;
+	g_fakeSystem.GetControllerStateWithPose = &FakeLegacyState;
+	g_fakeHandPose = {};
+	g_fakeHandPose.poseIsValid = true;
+	g_fakeHandPose.deviceIsConnected = true;
+	g_fakeHandPose.deviceToAbsoluteTracking.m[0][0] = 1.0f;
+	g_fakeHandPose.deviceToAbsoluteTracking.m[1][1] = 1.0f;
+	g_fakeHandPose.deviceToAbsoluteTracking.m[2][2] = 1.0f;
+	g_fakeHandPose.deviceToAbsoluteTracking.m[0][3] = 4.0f;
+	g_fakeHandPose.deviceToAbsoluteTracking.m[1][3] = 5.0f;
+	g_fakeHandPose.deviceToAbsoluteTracking.m[2][3] = 6.0f;
+	g_fakeLegacyState = {};
+	g_fakeLegacyResult = true;
+	g_fakeActionUpdateResult = 0;
+	g_fakeActionUpdateSize = 0;
+	g_fakeActionUpdateCount = 0;
+	g_fakeActionTable = {};
+	g_fakeActionTable.Update = &FakeActionUpdate;
+	g_fakeActionTable.Digital = &FakeActionDigital;
+	g_fakeActionTable.Analog = &FakeActionAnalog;
+}
+
+void TestReadHandActionAndLegacyBoundaries() {
+	std::printf("ReadHand action pose and legacy fallback boundaries\n");
+	ResetHandBackendFakes();
+
+	obvr::vr::OpenVRBackend actionBackend;
+	actionBackend.m_system = &g_fakeSystem;
+	actionBackend.m_input = &g_fakeActionTable;
+	actionBackend.m_actionSet = 77;
+	for (unsigned action = 0; action < obvr::vr::input::Count; ++action) {
+		actionBackend.m_actionHandles[0][action] = 100 + action;
+	}
+	obvr::vr::HandPose hand{};
+	Check(actionBackend.ReadHand(true, hand) && hand.valid && hand.actionInput &&
+	          hand.actionError == 0 && hand.actionActiveMask == 0x7Fu &&
+	          std::fabs(hand.position.x - 4.0f) < 0.001f &&
+	          std::fabs(hand.position.y - 5.0f) < 0.001f &&
+	          std::fabs(hand.position.z - 6.0f) < 0.001f &&
+	          g_fakeActionUpdateSize == sizeof(obvr::vr::input::ActionSet) &&
+	          g_fakeActionUpdateCount == 1,
+	      "action path updates controls while preserving a valid tracked pose");
+
+	g_fakeHandPose.poseIsValid = false;
+	hand = {};
+	Check(!actionBackend.ReadHand(true, hand) && !hand.valid,
+	      "invalid action-path pose refuses the hand before input is applied");
+
+	ResetHandBackendFakes();
+	actionBackend.m_system = &g_fakeSystem;
+	actionBackend.m_input = &g_fakeActionTable;
+	actionBackend.m_actionSet = 77;
+	for (unsigned action = 0; action < obvr::vr::input::Count; ++action) {
+		actionBackend.m_actionHandles[0][action] = 100 + action;
+	}
+	g_fakeActionUpdateResult = 19;
+	hand = {};
+	Check(actionBackend.ReadHand(true, hand) && hand.valid && hand.actionInput &&
+	          hand.actionError == 19 && hand.buttonsPressed == 0 &&
+	          std::fabs(hand.position.x - 4.0f) < 0.001f,
+	      "failed action update keeps the real pose and neutralizes controls");
+
+	ResetHandBackendFakes();
+	g_fakeLegacyState.buttonPressed = 1ull << obvr::vr::openvr::kButtonA;
+	g_fakeLegacyState.axis[obvr::vr::openvr::kAxisTrigger].x = 0.75f;
+	g_fakeLegacyState.axis[obvr::vr::openvr::kAxisThumb].x = 0.1f;
+	g_fakeLegacyState.axis[obvr::vr::openvr::kAxisThumb].y = 0.2f;
+	g_fakeLegacyState.axis[obvr::vr::openvr::kAxisJoystick].x = 0.8f;
+	g_fakeLegacyState.axis[2].x = 0.4f;
+	obvr::vr::OpenVRBackend legacyBackend;
+	legacyBackend.m_system = &g_fakeSystem;
+	hand = {};
+	Check(legacyBackend.ReadHand(true, hand) && hand.valid && !hand.actionInput &&
+	          (hand.buttonsPressed & (1ull << obvr::vr::openvr::kButtonA)) != 0 &&
+	          std::fabs(hand.trigger - 0.75f) < 0.001f &&
+	          std::fabs(hand.thumbX - 0.8f) < 0.001f && hand.thumbFromJoystickAxis &&
+	          std::fabs(hand.gripForce - 0.4f) < 0.001f,
+	      "missing action manifest preserves the established legacy state path");
+
+	g_fakeHandPose.deviceIsConnected = false;
+	hand = {};
+	Check(!legacyBackend.ReadHand(true, hand) && !hand.valid,
+	      "legacy fallback also refuses a disconnected pose");
 }
 
 void TestLevelPoseKeepsHeadingOnly() {
@@ -257,6 +409,8 @@ int main() {
 	TestOverlayPoseAhead();
 	std::printf("\n");
 	TestPoseDistance();
+	std::printf("\n");
+	TestReadHandActionAndLegacyBoundaries();
 	std::printf("\n");
 	std::printf("Struct layout\n");
 	Check(sizeof(obvr::vr::openvr::HmdMatrix34) == 48, "HmdMatrix34 is 48 bytes");

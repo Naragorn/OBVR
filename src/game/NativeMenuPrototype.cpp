@@ -150,6 +150,9 @@ bool RefreshSettings() {
   ui::NativeRowTrait(slot,"restart\\string",trait,sizeof(trait));
   ok=CachedText(3+slot*3,trait,definition->needsRestart ? "restart required" : " ") && ok;
  }
+ const bool canReset=g_settings.CanResetSelected(GetConfig());
+ ok=Number("parchment\\reset\\target",canReset ? 1 : 0) && ok;
+ ok=Number("parchment\\reset\\alpha",canReset ? 255 : 110) && ok;
  const auto& selected=ui::SettingDefinitions()[g_settings.Selected()];
  char help[512];
  Join(help,sizeof(help),selected.label,": ",selected.help);

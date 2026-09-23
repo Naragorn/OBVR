@@ -51,11 +51,20 @@ bool InteropBracket::Begin(void* gameDevice) {
 	// Outstanding work has to reach the queue before the compositor reads
 	// anything, and before this happens the layouts DXVK reported are still
 	// only promises.
-	interop->vtbl->FlushRenderingCommands(interop);
+	{
+		perf::Profiler::ScopedSpan flush(perf::Profiler::Instance(),
+		                                perf::EventType::InteropFlush);
+		interop->vtbl->FlushRenderingCommands(interop);
+	}
 
 	// From here the queue is ours. Everything below must reach Release.
-	interop->vtbl->LockSubmissionQueue(interop);
+	{
+		perf::Profiler::ScopedSpan lock(perf::Profiler::Instance(),
+		                               perf::EventType::InteropLock);
+		interop->vtbl->LockSubmissionQueue(interop);
+	}
 	m_queueLocked = true;
+	m_profileSpan = perf::Profiler::Instance().Begin(perf::EventType::InteropHeld);
 	return true;
 }
 
@@ -108,6 +117,7 @@ void InteropBracket::Release() {
 		// with nothing in any log.
 		interop->vtbl->ReleaseSubmissionQueue(interop);
 	}
+	perf::Profiler::Instance().End(m_profileSpan);
 	m_queueLocked = false;
 
 	d3d11::Release(m_interop);

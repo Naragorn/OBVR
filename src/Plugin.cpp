@@ -3,10 +3,12 @@
 #include "core/Log.h"
 #include "game/GameAddresses.h"
 #include "game/NativeMenuPrototype.h"
+#include "game/VRMenuBridge.h"
 #include "game/PlayerBody.h"
 #include "obse/PluginInterface.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
+#include "perf/Profiler.h"
 #include "test/WaterVRTestRuntime.h"
 
 namespace {
@@ -67,6 +69,12 @@ __declspec(dllexport) bool OBSEPlugin_Load(const obvr::obse::Interface* obse) {
 	}
 
 	obvr::GetConfig().Load("OBVR.ini");
+	obvr::perf::Profiler::Instance().Configure(obvr::GetConfig().performance);
+	if (obvr::GetConfig().nativeMenuLifecycleProbe) {
+		if (!obvr::game::vrbridge::InstallNativeMenuLifecycleProbe()) {
+			OBVR_LOG("Native menu lifecycle probe was not installed; runtime diagnostics disabled");
+		}
+	}
 
 	if (!obvr::GetConfig().cameraHookEnabled) {
 		OBVR_LOG("Camera hook disabled by configuration");
@@ -107,6 +115,7 @@ extern "C" int __stdcall DllMain(void* module, unsigned long reason, void* /*res
 		// is stored before any of that can run.
 		obvr::platform::SetPluginModule(module);
 	} else if (reason == kProcessDetach) {
+		obvr::perf::Profiler::Instance().Shutdown();
 		obvr::log::Close();
 	}
 

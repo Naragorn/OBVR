@@ -1,0 +1,49 @@
+{
+  "action_sets": [
+    {
+      "name": "/actions/obvr",
+      "usage": "leftright"
+    }
+  ],
+  "actions": [
+    {"name": "/actions/obvr/in/left_stick_click", "type": "boolean", "requirement": "suggested"},
+    {"name": "/actions/obvr/in/left_a", "type": "boolean", "requirement": "suggested"},
+    {"name": "/actions/obvr/in/left_b", "type": "boolean", "requirement": "suggested"},
+    {"name": "/actions/obvr/in/left_grip", "type": "boolean", "requirement": "suggested"},
+    {"name": "/actions/obvr/in/left_trackpad", "type": "boolean", "requirement": "optional"},
+    {"name": "/actions/obvr/in/left_trigger", "type": "vector1", "requirement": "suggested"},
+    {"name": "/actions/obvr/in/left_stick", "type": "vector2", "requirement": "suggested"},
+    {"name": "/actions/obvr/in/right_stick_click", "type": "boolean", "requirement": "suggested"},
+    {"name": "/actions/obvr/in/right_a", "type": "boolean", "requirement": "suggested"},
+    {"name": "/actions/obvr/in/right_b", "type": "boolean", "requirement": "suggested"},
+    {"name": "/actions/obvr/in/right_grip", "type": "boolean", "requirement": "suggested"},
+    {"name": "/actions/obvr/in/right_trackpad", "type": "boolean", "requirement": "optional"},
+    {"name": "/actions/obvr/in/right_trigger", "type": "vector1", "requirement": "suggested"},
+    {"name": "/actions/obvr/in/right_stick", "type": "vector2", "requirement": "suggested"}
+  ],
+  "default_bindings": [
+    {"controller_type": "knuckles", "binding_url": "knuckles.json"},
+    {"controller_type": "oculus_touch", "binding_url": "oculus_touch.json"}
+  ],
+  "localization": [
+    {
+      "language_tag": "en_US",
+      "/actions/obvr": "OBVR controls",
+      "/actions/obvr/in/left_stick_click": "left stick click",
+      "/actions/obvr/in/left_a": "left A",
+      "/actions/obvr/in/left_b": "left B",
+      "/actions/obvr/in/left_grip": "left grip",
+      "/actions/obvr/in/left_trackpad": "left trackpad",
+      "/actions/obvr/in/left_trigger": "left trigger",
+      "/actions/obvr/in/left_stick": "left stick",
+      "/actions/obvr/in/right_stick_click": "right stick click",
+      "/actions/obvr/in/right_a": "right A",
+      "/actions/obvr/in/right_b": "right B",
+      "/actions/obvr/in/right_grip": "right grip",
+      "/actions/obvr/in/right_trackpad": "right trackpad",
+      "/actions/obvr/in/right_trigger": "right trigger",
+      "/actions/obvr/in/right_stick": "right stick"
+    }
+  ],
+  "minimum_required_version": 3
+}

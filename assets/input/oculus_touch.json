@@ -1,0 +1,22 @@
+{
+  "controller_type": "oculus_touch",
+  "action_manifest_version": 3,
+  "name": "OBVR controller input",
+  "description": "Normalized OBVR controller controls. Only physical stick clicks open OBVR.",
+  "bindings": {
+    "/actions/obvr": {
+      "sources": [
+        {"path": "/user/hand/left/input/joystick", "mode": "joystick", "inputs": {"click": {"output": "/actions/obvr/in/left_stick_click"}, "position": {"output": "/actions/obvr/in/left_stick"}}},
+        {"path": "/user/hand/left/input/trigger", "mode": "trigger", "inputs": {"pull": {"output": "/actions/obvr/in/left_trigger"}}},
+        {"path": "/user/hand/left/input/x", "mode": "button", "inputs": {"click": {"output": "/actions/obvr/in/left_a"}}},
+        {"path": "/user/hand/left/input/y", "mode": "button", "inputs": {"click": {"output": "/actions/obvr/in/left_b"}}},
+        {"path": "/user/hand/left/input/grip", "mode": "trigger", "inputs": {"click": {"output": "/actions/obvr/in/left_grip"}}},
+        {"path": "/user/hand/right/input/joystick", "mode": "joystick", "inputs": {"click": {"output": "/actions/obvr/in/right_stick_click"}, "position": {"output": "/actions/obvr/in/right_stick"}}},
+        {"path": "/user/hand/right/input/trigger", "mode": "trigger", "inputs": {"pull": {"output": "/actions/obvr/in/right_trigger"}}},
+        {"path": "/user/hand/right/input/a", "mode": "button", "inputs": {"click": {"output": "/actions/obvr/in/right_a"}}},
+        {"path": "/user/hand/right/input/b", "mode": "button", "inputs": {"click": {"output": "/actions/obvr/in/right_b"}}},
+        {"path": "/user/hand/right/input/grip", "mode": "trigger", "inputs": {"click": {"output": "/actions/obvr/in/right_grip"}}}
+      ]
+    }
+  }
+}

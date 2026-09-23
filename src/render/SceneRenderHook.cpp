@@ -5,9 +5,11 @@
 #include "core/EntryDetour.h"
 #include "core/Log.h"
 #include "core/Memory.h"
+#include "perf/Profiler.h"
 #include "game/GameAddresses.h"
 #include "platform/Win32Min.h"
 #include "render/InterfaceRenderHook.h"
+#include "render/GameDevice.h"
 #include "render/CullingHook.h"
 #include "render/LeafFacingHook.h"
 #include "render/WaterReflectionHook.h"
@@ -493,7 +495,17 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		const UInt32 setupBefore = measureThisOne ? VertexSetupTotal(TotalStateCalls()) : 0;
 
 		SetWaterStereoPass(WaterStereoPass::Single);
-		g_original(self, unusedEdx, renderedTexture);
+		perf::EventContext context{};
+		context.sceneId = g_sceneCall;
+		context.passIndex = 0;
+		{
+			perf::Profiler::Instance().GpuBegin(perf::EventType::ScenePass, context,
+			                                   GetGameDevice());
+			perf::Profiler::ScopedSpan scene(perf::Profiler::Instance(),
+			                                  perf::EventType::ScenePass, context);
+			g_original(self, unusedEdx, renderedTexture);
+			perf::Profiler::Instance().GpuEnd();
+		}
 
 		if (measureThisOne) {
 			--g_engineCostReportsLeft;
@@ -539,7 +551,17 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	SetBonePassMode(BonePassMode::Capture);
 	BeginLeafAudit(false);
 	BeginCullingCapture();
-	g_original(self, unusedEdx, renderedTexture);
+	perf::EventContext firstContext{};
+	firstContext.sceneId = g_sceneCall;
+	firstContext.passIndex = 0;
+	{
+		perf::Profiler::Instance().GpuBegin(perf::EventType::ScenePass, firstContext,
+		                                   GetGameDevice());
+		perf::Profiler::ScopedSpan firstScene(perf::Profiler::Instance(),
+		                                      perf::EventType::ScenePass, firstContext);
+		g_original(self, unusedEdx, renderedTexture);
+		perf::Profiler::Instance().GpuEnd();
+	}
 	PauseCullingCapture();
 	SetBonePassMode(BonePassMode::Off);
 	const UInt32 drawsAfterFirst = TotalDrawCount();
@@ -599,7 +621,17 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	SetBonePassMode(BonePassMode::Replace);
 	BeginLeafAudit(true);
 	BeginCullingReplay();
-	g_original(self, unusedEdx, renderedTexture);
+	perf::EventContext secondContext{};
+	secondContext.sceneId = g_sceneCall;
+	secondContext.passIndex = 1;
+	{
+		perf::Profiler::Instance().GpuBegin(perf::EventType::ScenePass, secondContext,
+		                                   GetGameDevice());
+		perf::Profiler::ScopedSpan secondScene(perf::Profiler::Instance(),
+		                                       perf::EventType::ScenePass, secondContext);
+		g_original(self, unusedEdx, renderedTexture);
+		perf::Profiler::Instance().GpuEnd();
+	}
 	SetBonePassMode(BonePassMode::Off);
 	EndCullingSync(g_sceneCall);
 	EndLeafAudit(g_sceneCall);

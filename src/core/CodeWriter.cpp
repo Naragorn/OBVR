@@ -83,6 +83,48 @@ void CodeWriter::PushEcx() {
 	Byte(0x51);
 }
 
+void CodeWriter::PushEax() { Byte(0x50); }
+void CodeWriter::PushEdx() { Byte(0x52); }
+
+void CodeWriter::MoveEcxFromStack(UInt8 offset) {
+	// 8b 4c 24 <offset>
+	Byte(0x8B);
+	Byte(0x4C);
+	Byte(0x24);
+	Byte(offset);
+}
+
+void CodeWriter::MoveEdxFromStack(UInt8 offset) {
+	// 8b 54 24 <offset>
+	Byte(0x8B);
+	Byte(0x54);
+	Byte(0x24);
+	Byte(offset);
+}
+
+void CodeWriter::MoveStackFromEax(UInt8 offset) {
+	// 89 44 24 <offset>
+	Byte(0x89);
+	Byte(0x44);
+	Byte(0x24);
+	Byte(offset);
+}
+
+void CodeWriter::LoadEffectiveAddressEax(UInt8 offset) {
+	// 8d 44 24 <offset>
+	Byte(0x8D);
+	Byte(0x44);
+	Byte(0x24);
+	Byte(offset);
+}
+
+void CodeWriter::SubStackPointer(UInt8 amount) {
+	// 83 ec <amount>
+	Byte(0x83);
+	Byte(0xEC);
+	Byte(amount);
+}
+
 void CodeWriter::ClearEcx() {
 	// 33 c9
 	Byte(0x33);
@@ -117,5 +159,12 @@ void CodeWriter::StoreStackPointer(UInt32 address) {
 }
 
 void CodeWriter::Return() { Byte(0xC3); }
+
+void CodeWriter::ReturnAndPop(UInt16 bytes) {
+	// c2 <bytes>; the call-site target is responsible for its two arguments.
+	Byte(0xC2);
+	Byte(static_cast<UInt8>(bytes & 0xFF));
+	Byte(static_cast<UInt8>((bytes >> 8) & 0xFF));
+}
 
 }  // namespace obvr::mem

@@ -5,6 +5,7 @@ namespace obvr::ui {
 constexpr UInt32 kNativeSettingsRows = 7;
 constexpr int kNativePrevious = 9201;
 constexpr int kNativeNext = 9202;
+constexpr int kNativeReset = 9203;
 constexpr int kNativeClose = 9299;
 constexpr int kNativeRowBase = 9300; // three IDs per slot: help, minus, plus
 
@@ -38,6 +39,7 @@ public:
  UInt32 Selected() const { return m_selected; }
  UInt32 Pages() const { return (SettingDefinitionCount()+kNativeSettingsRows-1)/kNativeSettingsRows; }
  const SettingDefinition* Row(UInt32 slot) const;
+ bool CanResetSelected(const Config& config) const;
  NativeSettingEdit Click(int id, const Config& config);
 private:
  UInt32 m_first=0;

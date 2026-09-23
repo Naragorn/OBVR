@@ -4,6 +4,7 @@
 #include "core/Types.h"
 #include "game/HandControls.h"
 #include "render/WaterReprojection.h"
+#include "perf/ProfileLogic.h"
 #include "vr/HandMode.h"
 #include "vr/HeadTracker.h"
 
@@ -53,6 +54,11 @@ struct Config {
 	// game is running.
 	UInt32 reloadEveryFrames = 0;
 
+	// Bounded diagnostic capture. Disabled by default; when enabled it records
+	// CPU wall spans and, if requested and supported, non-blocking D3D9 query
+	// results into a session directory beside OBVR.log.
+	perf::ProfileSettings performance;
+
 	// Cuts the dual pass down to a stage, to find which stage loses the GPU.
 	//
 	// The first dual-pass run died with VK_ERROR_DEVICE_LOST on its first
@@ -98,6 +104,11 @@ struct Config {
 	// frames, which is the probe being visible, not a fault. In [Debug],
 	// hot-reloadable, off by default.
 	bool menuWorldProbe = false;
+
+	// Installs the guarded native personal-menu lifecycle probe and exposes
+	// diagnostic F9/F10 open/close requests.  This is a controlled runtime
+	// experiment, never a normal menu setting, and stays off by default.
+	bool nativeMenuLifecycleProbe = false;
 
 	// [Hands] Enabled: the hand-tracked mode. Motion controllers are read
 	// alongside the head, and the first-person weapon hand follows the right

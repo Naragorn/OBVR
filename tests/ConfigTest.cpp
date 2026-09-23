@@ -451,6 +451,20 @@ void TestHandTracking() {
 	      "ControllerMenus=1 switches them on and LaserBeam=0 the beam off");
 }
 
+void TestNativeMenuLifecycleProbe() {
+	std::printf("Native menu lifecycle probe\n");
+
+	obvr::Config untouched;
+	Check(!untouched.nativeMenuLifecycleProbe,
+	      "the native lifecycle runtime probe defaults off");
+
+	obvr::Config configured;
+	LoadFrom("ConfigTestNativeMenuLifecycleProbe.ini",
+	         "[Debug]\nNativeMenuLifecycleProbe=1\n", configured);
+	Check(configured.nativeMenuLifecycleProbe,
+	      "NativeMenuLifecycleProbe=1 enables the controlled diagnostic seam");
+}
+
 void TestLookRanges() {
 	std::printf("The vertical look ranges, old spelling and new\n");
 
@@ -544,6 +558,7 @@ int main() {
 	TestMirrorMenusToMonitor();
 	TestUnpausedMenus();
 	TestHandTracking();
+	TestNativeMenuLifecycleProbe();
 	std::printf("\n");
 	TestLookRanges();
 

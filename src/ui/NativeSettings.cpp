@@ -5,9 +5,26 @@ const SettingDefinition* NativeSettings::Row(UInt32 slot) const {
  if (slot>=kNativeSettingsRows || m_first+slot>=SettingDefinitionCount()) return nullptr;
  return &SettingDefinitions()[m_first+slot];
 }
+bool NativeSettings::CanResetSelected(const Config& config) const {
+ if (m_selected>=SettingDefinitionCount()) return false;
+ return CanResetSetting(SettingDefinitions()[m_selected],config);
+}
 NativeSettingEdit NativeSettings::Click(int id,const Config& config) {
  NativeSettingEdit r;
  if (id==kNativeClose) { r.close=true; return r; }
+ if (id==kNativeReset) {
+  if (!CanResetSelected(config)) return r;
+  const auto* definition=&SettingDefinitions()[m_selected];
+  // CanResetSelected has already established that this definition has a
+  // reader and differs from its canonical default. Read the same default
+  // source directly here so the proposal has no second refusal branch.
+  const Config defaults;
+  const float defaultValue=definition->Read(defaults);
+  r.definition=definition;
+  r.value=defaultValue;
+  r.repaint=true;
+  return r;
+ }
  if (id==kNativePrevious || id==kNativeNext) {
   const UInt32 last=(Pages()-1)*kNativeSettingsRows;
   m_first=id==kNativePrevious ? (m_first==0 ? last : m_first-kNativeSettingsRows)

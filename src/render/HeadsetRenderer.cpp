@@ -4,6 +4,7 @@
 #include "camera/FrameLogic.h"
 
 #include "core/Log.h"
+#include "perf/Profiler.h"
 #include "render/EyeGeometry.h"
 #include "render/GameFrame.h"
 #include "render/InteropBracket.h"
@@ -91,6 +92,11 @@ void LogEyeGeometry(const vr::OpenVRBackend& backend, EyeProjection& outLeft,
 }  // namespace
 
 bool HeadsetRenderer::BeginFrame(vr::OpenVRBackend& backend) {
+	const UInt64 vrFrameId = perf::Profiler::Instance().BeginVrFrame();
+	perf::EventContext beginContext{};
+	beginContext.vrFrameId = vrFrameId;
+	perf::Profiler::ScopedSpan beginFrame(perf::Profiler::Instance(),
+	                                     perf::EventType::BeginFrame, beginContext);
 	// A frame that was opened and never submitted is not an error - the
 	// compositor treats it as a dropped frame - but a frame submitted without
 	// having been opened is, because Submit is only meaningful after
@@ -182,9 +188,12 @@ bool HeadsetRenderer::BeginFrame(vr::OpenVRBackend& backend) {
 			         : "without DXVK's queue lock - no interop device, so the "
 			           "compositor's timestamp may collide with DXVK's submissions");
 		}
+		perf::Profiler::ScopedSpan poseWait(perf::Profiler::Instance(),
+		                                perf::EventType::PosesWait, beginContext);
 		waited = backend.WaitGetPoses();
-		poses.Release();
 	}
+	perf::Profiler::Instance().SetFrameDetails(perf::DeliveryMode::Unknown, vrFrameId,
+	                                           waited, 0xFF, 0xFF, 0xFF);
 	SubmitDecision decision = m_policy.Observe(waited);
 
 	if (decision == SubmitDecision::StopRendering) {
@@ -386,7 +395,14 @@ bool HeadsetRenderer::CaptureEye(const FrameRequest& request, bool isLeft) {
 
 	// Plain Direct3D 9, no queue held - this runs mid-frame, on the game's
 	// thread, between two render passes that both still have work to submit.
-	if (!m_mirror.CopyBackBuffer(request.gameDevice, isLeft)) {
+	perf::EventContext captureContext{};
+	captureContext.vrFrameId = perf::Profiler::Instance().CurrentVrFrameId();
+	captureContext.eye = isLeft ? 0 : 1;
+	perf::Profiler::Instance().GpuBegin(perf::EventType::EyeCapture, captureContext,
+	                                   request.gameDevice);
+	const bool copied = m_mirror.CopyBackBuffer(request.gameDevice, isLeft);
+	perf::Profiler::Instance().GpuEnd();
+	if (!copied) {
 		if (!m_copyFailureLogged) {
 			m_copyFailureLogged = true;
 			OBVR_LOG("Render: the %s eye pass could not be captured, so the mono picture "

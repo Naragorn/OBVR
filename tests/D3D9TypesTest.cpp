@@ -113,6 +113,13 @@ void TestConstants() {
 	// D3DTEXF_NONE, and the right filter here precisely because there is no
 	// scaling: the copy is the same size as the back buffer it comes from.
 	Check(kTexFilterNone == 0, "D3DTEXF_NONE is 0");
+
+	Check(kDeviceCreateQuery == 118, "CreateQuery is the final device vtable slot");
+	Check(kQueryGetData == 5 && kQueryIssue == 6,
+	      "query GetData and Issue use the resource vtable slots");
+	Check(kQueryTimestamp == 10 && kQueryTimestampFrequency == 12 && kIssueEnd == 2,
+	      "timestamp query types and END issue value match D3D9");
+	Check(kSOk == 0 && kSFalse == 1, "S_OK and S_FALSE are preserved for nonblocking polling");
 }
 
 void TestSurfaceDesc() {
