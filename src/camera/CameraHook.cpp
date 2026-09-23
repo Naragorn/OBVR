@@ -45,6 +45,7 @@
 #include "render/HudLayer.h"
 #include "render/LaserLayer.h"
 #include "vr/Locomotion.h"
+#include "vr/ControllerActions.h"
 #include "ui/Onboarding.h"
 #include "ui/SettingsMenu.h"
 #include "ui/SettingsMenuLayer.h"
@@ -1931,6 +1932,91 @@ void BeforeFirstScenePass() {
 				                  game::HandCalibration(hands.leftHandRoll, hands.leftHandPitch,
 				                                        hands.leftHandYaw));
 			}
+
+			// Skeletal finger tracking: after pinning the root hand bones, read
+			// SteamVR's tracked skeleton and pin each finger bone individually.
+			vr::OpenVRBackend& backend = g_headTracker.GetBackendForFrame();
+			if (backend.HasSkeletalTracking()) {
+				vr::input::VRBoneTransform rightBones[vr::input::HandBoneCount]{};
+				const unsigned rightCount = backend.ReadHandSkeleton(true, rightBones,
+				                                                     vr::input::HandBoneCount);
+
+				vr::input::VRBoneTransform leftBones[vr::input::HandBoneCount]{};
+				const unsigned leftCount = backend.ReadHandSkeleton(false, leftBones,
+				                                                    vr::input::HandBoneCount);
+
+				// Map SteamVR bone indices to Oblivion skeleton names. Uses standard
+				// 3ds Max biped naming: Bip01 R FingerX where X encodes finger and phalanx.
+				// Null entries are not pinned. Adjust these names if your skeleton uses
+				// different conventions (Debug.FirstPersonTreeProbe lists available bones).
+				static const char* rightFingerNames[vr::input::HandBoneCount] = {
+					nullptr,                        // HandRoot - already pinned by PinHandBone
+					"Bip01 R Wrist",                // HandWrist
+					"Bip01 R Finger0",              // HandThumb0 (metacarpal)
+					"Bip01 R Finger00",             // HandThumb1 (proximal)
+					"Bip01 R Finger000",            // HandThumb2 (distal)
+					nullptr,                        // HandThumb3 (tip - often no bone in game skeletons)
+					"Bip01 R Finger1",              // HandIndexFinger0
+					"Bip01 R Finger10",             // HandIndexFinger1
+					"Bip01 R Finger100",            // HandIndexFinger2
+					nullptr,                        // HandIndexFinger3 (tip)
+					"Bip01 R Finger2",              // HandMiddleFinger0
+					"Bip01 R Finger20",             // HandMiddleFinger1
+					"Bip01 R Finger200",            // HandMiddleFinger2
+					nullptr,                        // HandMiddleFinger3 (tip)
+					"Bip01 R Finger3",              // HandRingFinger0
+					"Bip01 R Finger30",             // HandRingFinger1
+					"Bip01 R Finger300",            // HandRingFinger2
+					nullptr,                        // HandRingFinger3 (tip)
+					"Bip01 R Finger4",              // HandPinkyFinger0
+					"Bip01 R Finger40",             // HandPinkyFinger1
+					"Bip01 R Finger400",            // HandPinkyFinger2
+					nullptr,                        // HandPinkyFinger3 (tip)
+				};
+
+				static const char* leftFingerNames[vr::input::HandBoneCount] = {
+					nullptr,                        // HandRoot - already pinned by PinHandBone
+					"Bip01 L Wrist",                // HandWrist
+					"Bip01 L Finger0",              // HandThumb0 (metacarpal)
+					"Bip01 L Finger00",             // HandThumb1 (proximal)
+					"Bip01 L Finger000",            // HandThumb2 (distal)
+					nullptr,                        // HandThumb3 (tip)
+					"Bip01 L Finger1",              // HandIndexFinger0
+					"Bip01 L Finger10",             // HandIndexFinger1
+					"Bip01 L Finger100",            // HandIndexFinger2
+					nullptr,                        // HandIndexFinger3 (tip)
+					"Bip01 L Finger2",              // HandMiddleFinger0
+					"Bip01 L Finger20",             // HandMiddleFinger1
+					"Bip01 L Finger200",            // HandMiddleFinger2
+					nullptr,                        // HandMiddleFinger3 (tip)
+					"Bip01 L Finger3",              // HandRingFinger0
+					"Bip01 L Finger30",             // HandRingFinger1
+					"Bip01 L Finger300",            // HandRingFinger2
+					nullptr,                        // HandRingFinger3 (tip)
+					"Bip01 L Finger4",              // HandPinkyFinger0
+					"Bip01 L Finger40",             // HandPinkyFinger1
+					"Bip01 L Finger400",            // HandPinkyFinger2
+					nullptr,                        // HandPinkyFinger3 (tip)
+				};
+
+				const NiMatrix33 rightCal = game::HandCalibration(hands.rightHandRoll,
+				                                                  hands.rightHandPitch,
+				                                                  hands.rightHandYaw);
+				if (g_hand.rightHandValid && rightCount > 0) {
+					game::PinFingerBones(true, g_hand.rightHandRotation,
+					                     g_hand.rightHandOffsetUnits, rightCal,
+					                     rightBones, rightCount, rightFingerNames);
+				}
+
+				const NiMatrix33 leftCal = game::HandCalibration(hands.leftHandRoll,
+				                                                 hands.leftHandPitch,
+				                                                 hands.leftHandYaw);
+				if (g_hand.leftHandValid && leftCount > 0) {
+					game::PinFingerBones(false, g_hand.leftHandRotation,
+					                     g_hand.leftHandOffsetUnits, leftCal,
+					                     leftBones, leftCount, leftFingerNames);
+				}
+			}
 		}
 	} else if (g_weaponTurnWanted) {
 		game::TurnFirstPersonArms(g_weaponTurnRadians);
@@ -3484,6 +3570,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	locoFrame.playerWorldPos = g_playerWorldPos;
 	locoFrame.playerPositionValid = g_playerWorldValid;
 	locoFrame.deltaSeconds = deltaSeconds;
+	const bool menuIsUp = config.tracker.showMenus && game::IsMenuMode();
 	locoFrame.inMenu = menuIsUp;
 
 	if (g_headTracker.IsHeadsetConnected()) {

@@ -110,6 +110,7 @@ add_library(OBVR SHARED
 	src/vr/OpenVRBackend.cpp
 	src/vr/HandMode.cpp
 	src/vr/Quaternion.cpp
+	src/vr/Locomotion.cpp
 )
 
 target_include_directories(OBVR PRIVATE src)

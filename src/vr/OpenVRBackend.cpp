@@ -75,6 +75,21 @@ void OpenVRBackend::InitControllerActions() {
 
 	m_input = table;
 	OBVR_LOG("OpenVR input: normalized Touch/Index controller actions ready");
+
+	// Skeletal hand tracking is optional: if it fails, finger tracking is
+	// unavailable but the rest of the mode still works. The user must bind
+	// /actions/obvr/in/left_hand_skeleton and right_hand_skeleton in SteamVR's
+	// input bindings for their controller type.
+	if (input::HasSkeletalMethods(table)) {
+		const int skelError = input::ConfigureSkeletonActions(table, m_skeletonHandles);
+		if (skelError == 0) {
+			OBVR_LOG("OpenVR input: skeletal hand tracking actions resolved");
+		} else {
+			OBVR_LOG("OpenVR input: skeletal hand tracking unavailable (%d)", skelError);
+		}
+	} else {
+		OBVR_LOG("OpenVR input: IVRInput_011 lacks skeletal methods; finger tracking disabled");
+	}
 }
 
 bool OpenVRBackend::Connect(int applicationType) {
@@ -770,6 +785,27 @@ bool OpenVRBackend::ReadHand(bool rightHand, HandPose& out) const {
 	}
 	out.gripForce = state.axis[2].x;
 	return true;
+}
+
+unsigned OpenVRBackend::ReadHandSkeleton(bool rightHand, input::VRBoneTransform* out,
+                                         unsigned maxBones) const {
+	if (m_input == nullptr || !input::HasSkeletalMethods(static_cast<input::Table*>(m_input))) {
+		return 0;
+	}
+	const UInt64 handle = rightHand ? m_skeletonHandles.right : m_skeletonHandles.left;
+	if (handle == 0) {
+		return 0;
+	}
+
+	auto* table = static_cast<input::Table*>(m_input);
+	input::ActionSet active{};
+	active.set = m_actionSet;
+	const int updateError = table->Update(&active, sizeof(active), 1);
+	if (updateError != 0) {
+		return 0;
+	}
+
+	return input::ReadSkeleton(table, handle, out, maxBones);
 }
 
 

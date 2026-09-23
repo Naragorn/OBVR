@@ -2,6 +2,7 @@
 
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "vr/ControllerActions.h"
 
 namespace obvr::game {
 
@@ -32,5 +33,16 @@ bool PinHandBone(bool rightHand, const char* boneName, const NiMatrix33& relativ
 
 // Forgets the bones found, so a new model is searched afresh.
 void ForgetHandBones();
+
+// Skeletal finger tracking: pin individual finger bones to SteamVR's tracked
+// hand skeleton. Takes the same camera-relative parameters as PinHandBone for
+// the hand bone, plus skeletal transforms from SteamVR in model space (relative
+// to controller grip origin) and OpenVR convention. Each SteamVR bone index is
+// mapped to an Oblivion bone name via fingerBoneNames; a null entry means that
+// bone is not pinned. Returns the number of bones successfully pinned.
+unsigned PinFingerBones(bool rightHand, const NiMatrix33& handRelativeRot,
+                        const NiPoint3& handOffsetUnits, const NiMatrix33& calibration,
+                        const vr::input::VRBoneTransform* skeletalBones, unsigned boneCount,
+                        const char* fingerBoneNames[vr::input::HandBoneCount]);
 
 }  // namespace obvr::game

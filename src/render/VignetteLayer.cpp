@@ -3,6 +3,7 @@
 #include "core/Log.h"
 #include "core/MathFns.h"
 #include "render/D3D11Types.h"
+#include "render/GameFrame.h"
 #include "vr/OpenVRBackend.h"
 
 namespace obvr::render {
@@ -99,17 +100,17 @@ bool VignetteLayer::EnsureTexture(void* gameDevice) {
 		return false;
 	}
 
-	d3d9::Rect locked{};
-	if (d3d11::Failed(lockRect(m_surface, 0, &locked, nullptr, 0))) {
+	d3d9::LockedRect locked{};
+	if (d3d11::Failed(lockRect(m_surface, &locked, nullptr, 0))) {
 		return false;
 	}
 
-	UInt32* pixels = static_cast<UInt32*>(locked.pBits);
+	UInt32* pixels = static_cast<UInt32*>(locked.bits);
 	if (pixels != nullptr) {
 		GenerateVignettePixels(kTextureSize, kTextureSize, pixels);
 	}
 
-	unlockRect(m_surface, nullptr);
+	unlockRect(m_surface);
 
 	return true;
 }

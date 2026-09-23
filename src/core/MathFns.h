@@ -27,6 +27,16 @@ extern "C" double __cdecl tan(double value);
 
 namespace obvr::math {
 
+// Absolute value for floats.
+inline float Abs(float value) { return value < 0.0f ? -value : value; }
+
+// Power function: base raised to the exponent.
+inline float Pow(float base, float exp) {
+	// Simple implementation using log/exp identity: b^e = exp(e * ln(b))
+	if (base <= 0.0f || exp == 0.0f) return 1.0f;
+	return static_cast<float>(::exp(static_cast<double>(exp) * ::log(static_cast<double>(base))));
+}
+
 constexpr float kDegreesToRadians = 0.01745329252f;
 
 inline float Sin(float radians) { return static_cast<float>(sin(static_cast<double>(radians))); }

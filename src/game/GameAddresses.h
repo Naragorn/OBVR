@@ -592,6 +592,12 @@ inline constexpr UInt32 kFindTileAtCursor = 0x00581390;
 inline constexpr UInt32 kPickNormalizePoint = 0x00701540;
 
 inline constexpr UInt32 kInterfaceManagerPointer = 0x00B3A6E0;
+// InterfaceManager::menuRoot, the shared native UI root read by the 2D pass
+// at [this+0x68].  It is not a personal-menu tile identity and is only useful
+// in the bridge when paired with the BigFour stack anchor and a generation.
+// xOBSE's GameAPI.h places menuRoot at +0x68 and the local binary's 005903EC
+// path dereferences the same field before drawing.
+inline constexpr UInt32 kInterfaceMenuRootOffset = 0x68;
 inline constexpr UInt32 kInterfaceCursorTileOffset = 0x1C;
 inline constexpr UInt32 kInterfaceCursorPosOffset = 0x20;
 inline constexpr UInt32 kInterfaceCursorDerivedOffset = 0x2C;
@@ -691,6 +697,25 @@ inline constexpr UInt32 kUpdateStepIsMenuModeSites[] = {
 // the last one that is set. NorthernUI records that the F1-F4 menus stand
 // in that stack as 1 rather than under their own ids.
 inline constexpr UInt32 kGetTopVisibleMenuId = 0x0057CF60;
+
+// InterfaceManager's active menu stack.  The local 1.2.0.416 binary reads
+// ten contiguous dwords at +0xE0..+0x104 in GetTopVisibleMenuID, and the
+// actual mutation routines below use the same range.  Entry bytes are kept
+// here because Verify() refuses to patch another plugin or another game build.
+//
+// 0057D640 inserts one id (ret 4), returning its slot or -1 on a full stack:
+//   56 57 8B 7C 24 0C   push esi; push edi; mov edi,[esp+0C]
+// 0057CFE0 removes one id with a second flag (ret 8), returning -1/-2 on
+// refusal/no match; its call sites test eax < 0 before continuing:
+//   51 53 55 56 8B F1   push ecx; push ebx; push ebp; push esi; mov esi,ecx
+// Both addresses were checked against the installed Oblivion.exe whose SHA256
+// is A8F313845C1545E9A60E1E995961EEF4C033115DA9443F6D756341DF3C2B7DC6.
+inline constexpr UInt32 kInterfaceMenuStackOffset = 0xE0;
+inline constexpr UInt32 kInterfaceMenuStackSlots = 10;
+inline constexpr UInt32 kPushMenuStackEntry = 0x0057D640;
+inline constexpr UInt32 kPushMenuStackEntryPatchSize = 6;
+inline constexpr UInt32 kRemoveMenuStackEntry = 0x0057CFE0;
+inline constexpr UInt32 kRemoveMenuStackEntryPatchSize = 6;
 
 // PlayerCharacter::SetDialogCamera - the function behind the dialogue zoom,
 // called when a conversation starts (with the NPC) and again when it ends

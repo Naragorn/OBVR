@@ -112,9 +112,9 @@ private:
 	// Convert a direction in OpenVR convention to Oblivion world space using base rotation.
 	NiPoint3 ToWorldDirection(const NiPoint3& vrDir, const NiMatrix33& rot) const {
 		return NiPoint3{
-			vrDir.x * rot.m[0][0] + vrDir.y * rot.m[1][0] + vrDir.z * rot.m[2][0],
-			vrDir.x * rot.m[0][1] + vrDir.y * rot.m[1][1] + vrDir.z * rot.m[2][1],
-			vrDir.x * rot.m[0][2] + vrDir.y * rot.m[1][2] + vrDir.z * rot.m[2][2],
+			vrDir.x * rot.data[0][0] + vrDir.y * rot.data[1][0] + vrDir.z * rot.data[2][0],
+			vrDir.x * rot.data[0][1] + vrDir.y * rot.data[1][1] + vrDir.z * rot.data[2][1],
+			vrDir.x * rot.data[0][2] + vrDir.y * rot.data[1][2] + vrDir.z * rot.data[2][2],
 		};
 	}
 

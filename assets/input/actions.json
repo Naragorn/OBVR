@@ -19,7 +19,9 @@
     {"name": "/actions/obvr/in/right_grip", "type": "boolean", "requirement": "suggested"},
     {"name": "/actions/obvr/in/right_trackpad", "type": "boolean", "requirement": "optional"},
     {"name": "/actions/obvr/in/right_trigger", "type": "vector1", "requirement": "suggested"},
-    {"name": "/actions/obvr/in/right_stick", "type": "vector2", "requirement": "suggested"}
+    {"name": "/actions/obvr/in/right_stick", "type": "vector2", "requirement": "suggested"},
+    {"name": "/actions/obvr/in/left_hand_skeleton", "type": "skeletal", "requirement": "optional"},
+    {"name": "/actions/obvr/in/right_hand_skeleton", "type": "skeletal", "requirement": "optional"}
   ],
   "default_bindings": [
     {"controller_type": "knuckles", "binding_url": "knuckles.json"},
@@ -42,7 +44,9 @@
       "/actions/obvr/in/right_grip": "right grip",
       "/actions/obvr/in/right_trackpad": "right trackpad",
       "/actions/obvr/in/right_trigger": "right trigger",
-      "/actions/obvr/in/right_stick": "right stick"
+      "/actions/obvr/in/right_stick": "right stick",
+      "/actions/obvr/in/left_hand_skeleton": "left hand skeleton",
+      "/actions/obvr/in/right_hand_skeleton": "right hand skeleton"
     }
   ],
   "minimum_required_version": 3
