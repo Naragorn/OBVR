@@ -145,11 +145,21 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		}
 	}
 
-	if (f.left.valid && f.firstPerson) {
+	if (f.left.valid) {
 		const Quaternion relative = (f.head.Conjugate() * f.left.orientation).Normalized();
-		r.leftHandValid = true;
-		r.leftHandRotation = ToMatrix(FromOpenXR(relative));
-		r.leftHandOffsetUnits = leftRelative * f.unitsPerMetre;
+		const NiMatrix33 relativeMatrix = ToMatrix(FromOpenXR(relative));
+		const NiMatrix33 absoluteMatrix = ToMatrix(FromOpenXR(f.left.orientation));
+		Heading heading{};
+		if (HeadingOf(relativeMatrix, heading)) {
+			r.leftAimValid = true;
+			r.leftAimYawTurn = math::Atan2(heading.sine, heading.cosine);
+			r.leftAimSinPitch = SinPitchOf(absoluteMatrix);
+		}
+		if (f.firstPerson) {
+			r.leftHandValid = true;
+			r.leftHandRotation = relativeMatrix;
+			r.leftHandOffsetUnits = leftRelative * f.unitsPerMetre;
+		}
 	}
 
 	// Gestures.
@@ -265,8 +275,14 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	}
 	r.controlsActive = f.right.valid || f.left.valid;
 	r.grabWanted = r.controls.grab;
-	if (f.right.valid) {
+	// Use whichever hand is grabbing for distance - right grip takes priority
+	// when both are down (rare, but gives deterministic behaviour).
+	if (f.right.valid && GripDown(f.right.buttonsPressed)) {
 		r.grabDistanceMetres = math::Sqrt(rightRelative.LengthSquared());
+		r.grabWithLeftHand = false;
+	} else if (f.left.valid && GripDown(f.left.buttonsPressed)) {
+		r.grabDistanceMetres = math::Sqrt(leftRelative.LengthSquared());
+		r.grabWithLeftHand = true;
 	}
 
 	// The wrists, and the hands on the menu.

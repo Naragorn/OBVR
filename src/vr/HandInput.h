@@ -336,7 +336,6 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 	}
 	if (in.rightValid) {
 		out.attack = (in.rightTrigger && !in.drawBlocked && !in.meleeByMotion) || in.swingAttackHeld;
-		out.grab = in.rightGrip;
 		out.jump = in.rightA;
 		out.escape = in.rightMenuButton;
 		out.readyWeapon = in.rightStickClick;
@@ -351,6 +350,8 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 		out.move = StickToDirections(in.leftThumbX, in.leftThumbY, stickDeadZone);
 		out.block = in.blockGesture;
 	}
+	// Either grip can grab - both hands share the same Havok grab (Z key)
+	out.grab = (in.rightValid && in.rightGrip) || (in.leftValid && in.leftGrip);
 	return out;
 }
 

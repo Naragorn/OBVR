@@ -515,9 +515,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 
 	g_hand = g_handMode.Update(frame, config.hands);
 
-	// The grab follows the hand: direction through the aim pose the camera
-	// pass hands over, distance from here. A hand at the eyes would put the
-	// object in the face, so the distance has a floor.
+	// The grab follows whichever hand is holding it: direction through the aim
+	// pose (set above based on which grip is down), distance from that hand.
+	// A hand at the eyes would put the object in the face, so the distance has a floor.
 	float grabUnits = g_hand.grabDistanceMetres * config.tracker.unitsPerMetre;
 	if (grabUnits < 0.25f * config.tracker.unitsPerMetre) {
 		grabUnits = 0.25f * config.tracker.unitsPerMetre;
@@ -3786,9 +3786,17 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		// The hand-tracked mode: the shot goes along the right hand instead
 		// of the gaze - its heading as the head's plus the hand's turn from
 		// it, its pitch its own. Same hand-over, same engine sites.
-		if (GetConfig().handTracking && g_hand.aimValid) {
-			pose.headYaw = AimYawRemaining(sourceHeadYaw + g_hand.aimYawTurn, g_aimBodyOffset);
-			pose.pitch = PlayerPitchForGaze(g_hand.aimSinPitch);
+		// For grab: use whichever hand is holding it; for attacks/spells: always right hand.
+		if (GetConfig().handTracking) {
+			if (g_hand.grabWanted && g_hand.grabWithLeftHand && g_hand.leftAimValid) {
+				// Left grip holds the grabbed object - aim through left hand
+				pose.headYaw = AimYawRemaining(sourceHeadYaw + g_hand.leftAimYawTurn, g_aimBodyOffset);
+				pose.pitch = PlayerPitchForGaze(g_hand.leftAimSinPitch);
+			} else if (g_hand.aimValid) {
+				// Right hand: attacks, spells, or right-grip grab
+				pose.headYaw = AimYawRemaining(sourceHeadYaw + g_hand.aimYawTurn, g_aimBodyOffset);
+				pose.pitch = PlayerPitchForGaze(g_hand.aimSinPitch);
+			}
 		}
 		game::SetAimSourcePose(pose);
 		sourceAimYaw = pose.headYaw;

@@ -146,10 +146,18 @@ struct HandModeFrame {
 struct HandModeResult {
 	// The aim, when the right hand is tracked: its heading as a turn from
 	// the head's, and the sine of its pitch (positive up), both in the
-	// game's convention.
+	// game's convention. Used for attacks, spells, and grab direction when
+	// the right grip holds it.
 	bool aimValid = false;
 	float aimYawTurn = 0.0f;
 	float aimSinPitch = 0.0f;
+
+	// Left hand aim: same structure as above, used for grab direction when
+	// the left grip holds an object - allows each hand to independently
+	// control grabbed objects through the shared Havok grab system.
+	bool leftAimValid = false;
+	float leftAimYawTurn = 0.0f;
+	float leftAimSinPitch = 0.0f;
 
 	// The arms: a rotation relative to the head and an offset in game
 	// units, both in the game's convention, to apply in the render pass.
@@ -233,10 +241,13 @@ struct HandModeResult {
 	float settingsPointerY = 0.0f;
 	bool settingsClick = false;
 
-	// The grab: whether the right grip holds it, and how far the right hand
+	// The grab: whether either grip holds it, and how far the grabbing hand
 	// is from the eyes in metres - the distance the held object is kept at.
+	// Both grips share the same Havok grab (Z key); whichever grip is down
+	// determines which hand's position drives the grabbed object.
 	bool grabWanted = false;
 	float grabDistanceMetres = 0.0f;
+	bool grabWithLeftHand = false;  // true when left grip holds it, false for right
 
 	// The swing in progress, for the strikes by motion: whether the right
 	// hand is swinging now, whether it has been fast enough for a heavy
