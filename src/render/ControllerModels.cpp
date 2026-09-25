@@ -7,6 +7,7 @@
 #include "render/ControllerProjection.h"
 #include "render/D3D11Types.h"
 #include "render/D3D9Types.h"
+#include "render/InterfaceRenderHook.h"
 #include "vr/OpenVRBackend.h"
 
 namespace obvr::render {
@@ -361,12 +362,13 @@ bool ControllerModels::DrawIntoWorld(void* device, const WorldView& view, bool l
 	// The projection the eye's picture was drawn with - if what the device
 	// holds is the world camera's. After the world the last matrix set can
 	// belong to anything, so it is recognised before it is used.
-	auto getTransform = d3d9::Method<d3d9::GetTransformFn>(device, d3d9::kDeviceGetTransform);
+	// Not the device's current matrix: by the capture the image-space passes
+	// have set an orthographic one (m00 2, m22 0.0001 in the first run). The
+	// last perspective one the game set is the one the world was drawn with.
 	auto getViewport = d3d9::Method<d3d9::GetViewportFn>(device, d3d9::kDeviceGetViewport);
 	d3d9::Matrix4 projection{};
 	d3d9::Viewport viewport{};
-	if (getTransform == nullptr || getViewport == nullptr ||
-	    d3d11::Failed(getTransform(device, d3d9::kTransformProjection, &projection)) ||
+	if (getViewport == nullptr || !LastPerspectiveProjection(projection.m) ||
 	    d3d11::Failed(getViewport(device, &viewport)) || viewport.width == 0 ||
 	    viewport.height == 0 || !PerspectiveMatchesCamera(projection.m, view.tanHalfWidth)) {
 		if (!m_worldRefusedReported) {
@@ -492,9 +494,20 @@ bool ControllerModels::DrawIntoWorld(void* device, const WorldView& view, bool l
 	m_worldEyes |= leftEye ? 1u : 2u;
 	if (!m_worldReported) {
 		m_worldReported = true;
-		OBVR_LOG("Controllers: drawn into the world with the game's projection and depth "
-		         "(%u models, viewport %ux%u)",
-		         drawn, viewport.width, viewport.height);
+		// Whether there was a depth to test against at all: without one the
+		// test passes everywhere and the models are on top after all.
+		void* depthNow = nullptr;
+		auto getDepth =
+			d3d9::Method<d3d9::GetDepthStencilSurfaceFn>(device, d3d9::kDeviceGetDepthStencilSurface);
+		const bool haveDepth = getDepth != nullptr && !d3d11::Failed(getDepth(device, &depthNow)) &&
+		                       depthNow != nullptr;
+		d3d11::Release(depthNow);
+		OBVR_LOG("Controllers: drawn into the world with the game's projection (%u models, "
+		         "viewport %ux%u, m00 %.4f m22 %.4f m32 %.4f), %s",
+		         drawn, viewport.width, viewport.height,
+		         static_cast<double>(projection.m[0][0]), static_cast<double>(projection.m[2][2]),
+		         static_cast<double>(projection.m[3][2]),
+		         haveDepth ? "against the depth surface bound" : "but NO depth surface is bound");
 	}
 	return true;
 }

@@ -49,6 +49,11 @@ bool InstallInterfaceRenderHook(const InterfaceRedirect& callbacks);
 
 bool IsInterfaceRenderHooked();
 
+// The last perspective projection the game set through SetTransform - the one
+// the world and the hands were drawn with, even after the image-space passes
+// set an orthographic one. False until one has been seen.
+bool LastPerspectiveProjection(float (&out)[4][4]);
+
 // Draws since the process started, all of them - the world renders included.
 // Read either side of a call to subtract: the difference is what that call
 // drew. Wraps at 2^32 like any counter, and a subtraction of two readings

@@ -31,6 +31,20 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.tracker.movementScale = v; },
 	},
 	{
+		"Comfort", "Still death view", "When you die the view stays put instead of sinking",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "DeathViewStill",
+		+[](const Config& c) { return c.look.deathViewStill ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.look.deathViewStill = v != 0.0f; },
+	},
+	{
+		"Comfort", "Grey on death", "The picture turns grey when you die",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "DeathGrey",
+		+[](const Config& c) { return c.look.deathGrey ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.look.deathGrey = v != 0.0f; },
+	},
+	{
 		"Comfort", "Eye separation", "Wider feels smaller, narrower feels larger",
 		ItemKind::Number, 0.7f, 1.3f, 0.01f, 2, false,
 		"Render", "EyeSeparationScale",

@@ -538,6 +538,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	                                             config.look.snapTurnVignetteRadius, path);
 	config.look.snapTurnVignette =
 		ReadBool("Look", "SnapTurnVignette", config.look.snapTurnVignette, path);
+	config.look.deathViewStill = ReadBool("Look", "DeathViewStill", config.look.deathViewStill, path);
+	config.look.deathGrey = ReadBool("Look", "DeathGrey", config.look.deathGrey, path);
 	config.look.snapTurnDeadZone =
 		ReadFloat("Look", "SnapTurnDeadZone", config.look.snapTurnDeadZone, path);
 	config.look.smoothTurning =

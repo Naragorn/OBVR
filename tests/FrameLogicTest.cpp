@@ -1246,6 +1246,29 @@ void TestCrosshairTooltipPolicy() {
 		      "Full VR forces first person only out of menus, in third person, and alive");
 	}
 
+	{
+		using obvr::camera::DeathViewState;
+		using obvr::camera::StepDeathView;
+		auto same = [](const obvr::NiPoint3& p, const obvr::NiPoint3& q) {
+			return p.x == q.x && p.y == q.y && p.z == q.z;
+		};
+		DeathViewState s;
+		const obvr::NiPoint3 a{1.0f, 2.0f, 3.0f};
+		const obvr::NiPoint3 b{1.0f, 2.0f, -5.0f};
+		Check(same(StepDeathView(s, true, false, a), a) && !s.held, "alive: the camera as it is");
+		Check(same(StepDeathView(s, true, true, a), a) && s.held, "the first dead frame holds it there");
+		Check(same(StepDeathView(s, true, true, b), a), "the sinking death view is held off");
+		Check(same(StepDeathView(s, true, false, b), b) && !s.held, "alive again: released");
+		Check(same(StepDeathView(s, false, true, b), b) && !s.held, "switched off: the game's view");
+		using obvr::camera::kDeathGreyShade;
+		using obvr::camera::ShadeForFrame;
+		Check(ShadeForFrame(0x80112233u, true, true) == kDeathGreyShade &&
+		          ShadeForFrame(0x80112233u, false, true) == 0x80112233u &&
+		          ShadeForFrame(0x80112233u, true, false) == 0x80112233u &&
+		          ShadeForFrame(0u, true, true) == kDeathGreyShade,
+		      "dead and grey on: the grey shade over whatever the menus wanted");
+	}
+
 	for (UInt32 mask = 0; mask < 32; ++mask) {
 		const bool crosshair = (mask & 1) != 0;
 		const bool target = (mask & 2) != 0;

@@ -1174,8 +1174,23 @@ SInt32 __stdcall HookedSetRenderState(void* self, UInt32 state, UInt32 value) {
 // the draw hooks above because they have no share in the redirect - they
 // exist so the scene hook can compare the setup work of the two world
 // renders of a dual frame.
+// The last perspective projection the game set (w taken from z): the world
+// camera's, or the first-person pass's after it, which the hands are drawn
+// with. Kept apart from the device's current matrix because the image-space
+// passes after the world set an orthographic one (the 2026-09-25 log: m00 2,
+// m22 0.0001, m23 0 at the eye's capture), and the controllers want the
+// matrix the world was drawn with (render::ControllerModels::DrawIntoWorld).
+d3d9::Matrix4 g_lastPerspective{};
+bool g_haveLastPerspective = false;
+
 SInt32 __stdcall HookedSetTransform(void* self, UInt32 state, const d3d9::Matrix4* matrix) {
 	++g_stateCalls.transforms;
+	if (state == d3d9::kTransformProjection && matrix != nullptr &&
+	    matrix->m[2][3] > 0.99f && matrix->m[2][3] < 1.01f && matrix->m[3][3] > -0.01f &&
+	    matrix->m[3][3] < 0.01f) {
+		g_lastPerspective = *matrix;
+		g_haveLastPerspective = true;
+	}
 	return g_originalSetTransform(self, state, matrix);
 }
 
@@ -2671,5 +2686,17 @@ bool InstallInterfaceRenderHook(const InterfaceRedirect& callbacks) {
 }
 
 bool IsInterfaceRenderHooked() { return g_original != nullptr; }
+
+bool LastPerspectiveProjection(float (&out)[4][4]) {
+	if (!g_haveLastPerspective) {
+		return false;
+	}
+	for (int r = 0; r < 4; ++r) {
+		for (int c = 0; c < 4; ++c) {
+			out[r][c] = g_lastPerspective.m[r][c];
+		}
+	}
+	return true;
+}
 
 }  // namespace obvr::render

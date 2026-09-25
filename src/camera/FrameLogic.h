@@ -582,6 +582,38 @@ CrosshairContent CrosshairContentWanted(bool crosshairWanted, bool haveTarget,
 
 // Tooltips remain useful with the plain crosshair disabled, so their capture
 // gate is deliberately independent from CrosshairVisibility::enabled.
+// The death view held still: the game's death camera sinks and drifts, which
+// in a headset is the motion nobody asked for (2026-09-25). From the first
+// frame the player is dead the camera's position stays where it was then -
+// the head still looks around - until the player lives again (a load).
+// Answers where the camera goes: `current` when nothing is held.
+struct DeathViewState {
+	bool held = false;
+	NiPoint3 position{0.0f, 0.0f, 0.0f};
+};
+
+inline NiPoint3 StepDeathView(DeathViewState& s, bool enabled, bool dead,
+                              const NiPoint3& current) {
+	if (!enabled || !dead) {
+		s.held = false;
+		return current;
+	}
+	if (!s.held) {
+		s.held = true;
+		s.position = current;
+	}
+	return s.position;
+}
+
+// The picture after death: grey, at full strength - the menu shade's pass
+// (render::ComposeShadeColor's ARGB: white tone, alpha 255) over the live
+// stereo. Otherwise whatever shade the menus asked for.
+constexpr UInt32 kDeathGreyShade = 0xFFFFFFFFu;
+
+inline UInt32 ShadeForFrame(UInt32 menuShade, bool playerDead, bool deathGrey) {
+	return playerDead && deathGrey ? kDeathGreyShade : menuShade;
+}
+
 // Whether Full VR puts a third-person player back into first person: only with
 // the setting on, out of menus (the game flips to third person for the race
 // menu on purpose), and not once the player has died - the game shows the

@@ -21,6 +21,8 @@ extern "C" void __cdecl OBVR_AimSourceAfterArrow();
 extern "C" void __cdecl OBVR_AimSourceAfterAttack();
 extern "C" void __cdecl OBVR_AimSourceBeforeGrab(void* actor);
 extern "C" void __cdecl OBVR_AimSourceAfterGrab();
+extern "C" void __cdecl OBVR_AimSourceBeforeGrabHandler(void* actor);
+extern "C" void __cdecl OBVR_AimSourceAfterGrabHandler();
 
 namespace obvr::game {
 namespace {
@@ -55,6 +57,9 @@ Site g_attackOwner;
 // The grab update, for the hand-tracked mode: the same rotation swap, plus
 // the grab distance.
 Site g_grab;
+// The grab handler around it, where the grab starts: the same swap, so the
+// start looks along the hand's line (kCallGrabHandler).
+Site g_grabHandler;
 bool g_grabWanted = false;
 float g_grabDistanceUnits = 0.0f;
 bool g_grabDistanceSwapped = false;
@@ -252,6 +257,10 @@ void InstallAimAtSource() {
 	                reinterpret_cast<UInt32>(&OBVR_AimSourceBeforeGrab),
 	                reinterpret_cast<UInt32>(&OBVR_AimSourceAfterGrab),
 	                "the grab update from the grab handler");
+	InstallCallSite(g_grabHandler, addr::kCallGrabHandler, addr::kGrabHandler,
+	                reinterpret_cast<UInt32>(&OBVR_AimSourceBeforeGrabHandler),
+	                reinterpret_cast<UInt32>(&OBVR_AimSourceAfterGrabHandler),
+	                "the grab handler from the player's input");
 }
 
 UInt32 GrabUpdateCount() { return g_grabUpdates; }
@@ -365,7 +374,8 @@ extern "C" void __cdecl OBVR_AimSourceBeforeGrab(void* actor) {
 	    reinterpret_cast<UInt32>(actor) != player) {
 		return;
 	}
-	if (!game::Swap(game::g_grab, "a grab")) {
+	// Already turned when the handler around this update turned it.
+	if (game::g_swapOwner != &game::g_grabHandler && !game::Swap(game::g_grab, "a grab")) {
 		return;
 	}
 	auto* distance = reinterpret_cast<float*>(player + addr::kPlayerGrabDistanceOffset);
@@ -393,6 +403,22 @@ extern "C" void __cdecl OBVR_AimSourceAfterGrab() {
 	}
 	game::Restore(game::g_grab);
 }
+
+// The grab handler: while OBVR holds the grab key, the whole handler - the
+// start included - runs with the player looking along the hand's line, the
+// line the pick found the object on. The update inside it keeps this turn
+// and only adds the distance.
+extern "C" void __cdecl OBVR_AimSourceBeforeGrabHandler(void* actor) {
+	using namespace obvr;
+	const UInt32 player = game::PlayerAddressOrZero();
+	if (!game::g_grabWanted || !game::g_pose.wanted || player == 0 ||
+	    reinterpret_cast<UInt32>(actor) != player) {
+		return;
+	}
+	game::Swap(game::g_grabHandler, "the grab handler");
+}
+
+extern "C" void __cdecl OBVR_AimSourceAfterGrabHandler() { obvr::game::Restore(obvr::game::g_grabHandler); }
 
 extern "C" void __cdecl OBVR_AimSourceBeforeAttack(void* actor) {
 	using namespace obvr;

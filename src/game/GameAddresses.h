@@ -279,6 +279,18 @@ inline constexpr UInt32 kCallGrabUpdate = 0x0067125E;
 inline constexpr UInt32 kGrabUpdate = 0x0066D930;
 inline constexpr UInt32 kPlayerGrabDistanceOffset = 0x584;
 
+// The grab handler itself, 0x00671170, called once, from HandleInput at
+// 0x0067339B (the only `call rel32` to it in the .text section, found by
+// scanning every E8 for this target). It reads the grab control twice
+// (0x00403520 with 0x1C: held and just pressed), takes the reference under
+// the crosshair (0x00579540), checks its Havok body and weight, and starts
+// the spring through 0x0066D120 at 0x00671327. The start is what has to look
+// along the line the pick found the object on - the update alone, wrapped at
+// kCallGrabUpdate, came too late: most grabs were refused (2026-09-25 log,
+// "the engine did NOT take it" with the object 6-21 units from the hand).
+inline constexpr UInt32 kCallGrabHandler = 0x0067339B;
+inline constexpr UInt32 kGrabHandler = 0x00671170;
+
 inline constexpr UInt32 kCallAttackUpdateFromPlayerB = 0x006758C6;
 
 // Shortly after the hook the game calls, on the CameraNode:

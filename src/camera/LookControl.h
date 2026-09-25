@@ -102,6 +102,10 @@ struct LookSettings {
 	// helps orient people who cannot feel their body turning - especially useful
 	// for instant snaps where there is no motion to track.
 	bool snapTurnVignette = true;
+	// Death: the camera held where it was when the player died, instead of
+	// the game's sinking death view; and the picture turned grey.
+	bool deathViewStill = true;
+	bool deathGrey = true;
 
 	// How much of the view the vignette leaves clear, as the angle from the
 	// centre of view in degrees where the darkening starts; it is full 20

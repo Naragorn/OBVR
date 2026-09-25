@@ -465,7 +465,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		              config.hands.hideArms ? config.hands.hideNodes : "",
 		              config.hands.hideArms ? "," : "",
 		              config.hands.hideSheaths ? "SideWeapon,BackWeapon,Quiver,Scb," : "",
-		              handsAway ? "Hand" : "");
+		              // Away with the hands: whatever they hold - the drawn weapon on the
+		              // Weapon bone, a torch on Torch, a shield on the left forearm twist
+		              // (its Prn, "Bip01 L ForearmTwist") - or it floated in the room
+		              // through a conversation (2026-09-25).
+		              handsAway ? "Hand,Weapon,Torch,Bip01 L ForearmTwist" : "");
 		game::HideFirstPersonNodes(!ReadIsThirdPerson(), hideList);
 		// The hands in the world rather than on top of it (FirstPersonDepth.h).
 		game::KeepFirstPersonDepth(true);
@@ -1540,7 +1544,9 @@ void OnFrameEnd() {
 		// desaturated sepia treatment that tells the player the world is
 		// paused. The single black border belongs only to a held pair; the pure
 		// decision above refuses it here so the fresh eyes keep their full view.
-		g_pendingRequest.menuShadeColor = menuShadeColor;
+		// Dead: the whole picture grey (Look.DeathGrey).
+		g_pendingRequest.menuShadeColor =
+			ShadeForFrame(menuShadeColor, game::PlayerIsDead(), config.look.deathGrey);
 		g_pendingRequest.menuSingleBorder = menuDressing.singleBorder;
 		if (menuIsUp && liveMenuFrame && !g_dressingReportedThisMenu &&
 		    g_dressingReportsLeft > 0) {
@@ -3897,6 +3903,19 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	g_aimTiltApplied = AimTiltCorrection(tiltInput);
 	cameraNode->localTransform.pos = cameraNode->localTransform.pos + g_aimTiltApplied;
 
+	// Dead: the camera stays where it was when the player died, the head
+	// still free (StepDeathView) - the game's death view sinks otherwise.
+	{
+		static DeathViewState s_deathView;
+		const bool dead = game::PlayerIsDead();
+		const bool wasHeld = s_deathView.held;
+		cameraNode->localTransform.pos = StepDeathView(
+			s_deathView, config.look.deathViewStill, dead, cameraNode->localTransform.pos);
+		if (s_deathView.held != wasHeld) {
+			OBVR_LOG("Camera: the death view is %s", s_deathView.held ? "held still" : "released");
+		}
+	}
+
 	// The head offset is measured in the camera's own space, so it is carried
 	// over by the base rotation. The vertical look is not: it is a height, and
 	// heights are along the world up axis whichever way the camera faces.
@@ -4064,7 +4083,10 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		// since the grabbed object is carried along the aim.
 		const bool aimWithHand = GetConfig().hands.aimWithHand;
 		if (GetConfig().handTracking) {
-			if (g_grabKeyDown && g_hand.grabDirectionValid) {
+			// From the reach on, not only once held: the grab starts inside the
+			// engine's grab handler a frame after the key, and that start has to
+			// look along the same line the pick found the object on.
+			if ((g_grabKeyDown || g_grabReachPick) && g_hand.grabDirectionValid) {
 				// Something is held: it goes along the line from the head to
 				// the holding hand, as far as the hand is - so it moves where
 				// the hand moves, and a throw of the hand throws it.
