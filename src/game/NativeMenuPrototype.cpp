@@ -142,6 +142,16 @@ bool RefreshSettings() {
  Join(heading,sizeof(heading),comfort ? "Comfort (OBVR) - " : "VR Settings (OBVR) - ",temporary);
  ok=CachedText(0,"user0",heading) && ok;
  ok=CachedText(24,"parchment\\close\\label\\string",comfort ? "Continue" : "Close") && ok;
+ // One page has nowhere to turn to: no Previous, no Next.
+ const int paging=ui::NativePagingShown(g_settings.Pages()) ? 1 : 0;
+ const char* const pagers[]={"parchment\\previous\\","parchment\\next\\"};
+ for (const char* button:pagers) {
+  char trait[64];
+  Join(trait,sizeof(trait),button,"visible");
+  ok=Number(trait,paging) && ok;
+  Join(trait,sizeof(trait),button,"target");
+  ok=Number(trait,paging) && ok;
+ }
  for (UInt32 slot=0;slot<ui::kNativeSettingsRows;++slot) {
   char trait[96],label[192],value[32];
   const auto* definition=g_settings.Row(slot);

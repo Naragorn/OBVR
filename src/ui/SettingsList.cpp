@@ -404,6 +404,20 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.pinHands = v != 0.0f; },
 	},
 	{
+		"Hands", "Hand height", "Moves both hands along the controller's up axis, metres; lower is negative",
+		ItemKind::Number, -0.15f, 0.10f, 0.01f, 2, false,
+		"Hands", "HandGripUpMetres",
+		+[](const Config& c) { return c.hands.handGripUpMetres; },
+		+[](Config& c, float v) { c.hands.handGripUpMetres = v; },
+	},
+	{
+		"Hands", "Hand forward", "Moves both hands along the controller's forward axis, metres",
+		ItemKind::Number, -0.15f, 0.15f, 0.01f, 2, false,
+		"Hands", "HandGripForwardMetres",
+		+[](const Config& c) { return c.hands.handGripForwardMetres; },
+		+[](Config& c, float v) { c.hands.handGripForwardMetres = v; },
+	},
+	{
 		"Hands", "Right hand roll", "Turns the right palm about the bone, degrees",
 		ItemKind::Number, -180.0f, 180.0f, 5.0f, 0, false,
 		"Hands", "RightHandRoll",
@@ -514,6 +528,13 @@ const SettingDefinition kSettings[] = {
 		"Hands", "LeftHanded",
 		+[](const Config& c) { return c.hands.leftHanded ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.leftHanded = v != 0.0f; },
+	},
+	{
+		"Hands", "Hold to sneak", "Sneak while the right stick is held down; off, a flick down toggles it",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "SneakHold",
+		+[](const Config& c) { return c.hands.sneakHold ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.sneakHold = v != 0.0f; },
 	},
 	{
 		"Hands", "Laser tilt", "Degrees the laser leaves the controller turned down",

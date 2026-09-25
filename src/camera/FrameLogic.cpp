@@ -206,7 +206,7 @@ bool CrosshairWanted(const CrosshairVisibility& visibility) {
 	if (!CrosshairOnlyWhenNeededApplies(visibility)) {
 		return true;
 	}
-	return visibility.somethingAimedAt || visibility.weaponDrawn;
+	return visibility.somethingAimedAt || visibility.weaponDrawn || visibility.sneaking;
 }
 
 bool CrosshairCaptureWanted(const CrosshairVisibility& visibility) {
@@ -215,11 +215,11 @@ bool CrosshairCaptureWanted(const CrosshairVisibility& visibility) {
 
 CrosshairContent CrosshairContentWanted(bool crosshairWanted, bool haveTarget,
                                         bool tooltipsEnabled, bool tooltipsAboveName,
-	                                    bool thirdPerson) {
+	                                    bool thirdPerson, bool sneaking) {
 	if (haveTarget && tooltipsEnabled && !tooltipsAboveName) {
 		return CrosshairContent::CapturedHudCentre;
 	}
-	if (!haveTarget && crosshairWanted && !thirdPerson) {
+	if (!haveTarget && crosshairWanted && (!thirdPerson || sneaking)) {
 		return CrosshairContent::CapturedHudCentre;
 	}
 	return crosshairWanted ? CrosshairContent::RememberedCrosshair

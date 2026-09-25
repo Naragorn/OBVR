@@ -849,6 +849,19 @@ void TestCrosshair() {
 	Check(CrosshairWanted(Needed(false, false, true)), "so does drawing a weapon");
 	Check(CrosshairWanted(Needed(false, true, true)), "and both at once, without arguing");
 
+	// Sneaking: the centre is the game's sneak eye, which must stay in view
+	// with the weapon away and nothing aimed at - in either view.
+	for (UInt32 mask = 0; mask < 8; ++mask) {
+		CrosshairVisibility v = Needed((mask & 1) != 0, (mask & 2) != 0, (mask & 4) != 0);
+		v.sneaking = true;
+		Check(CrosshairWanted(v), "sneaking always shows the centre, whatever else is true");
+		v.menuIsUp = true;
+		Check(!CrosshairWanted(v), "but not over a menu");
+		v.menuIsUp = false;
+		v.enabled = false;
+		Check(!CrosshairWanted(v), "and not with the crosshair switched off");
+	}
+
 	// The visible main setting applies to both points of view.
 	Check(!CrosshairWanted(Needed(true, false, false)),
 	      "the main only-when-needed switch also restricts third person");
@@ -1202,21 +1215,25 @@ void TestCrosshairTooltipPolicy() {
 		      "every above-name gate keeps first-person tooltips in the reticle");
 	}
 
-	for (UInt32 mask = 0; mask < 32; ++mask) {
+	for (UInt32 mask = 0; mask < 64; ++mask) {
 		const bool crosshair = (mask & 1) != 0;
 		const bool target = (mask & 2) != 0;
 		const bool tooltips = (mask & 4) != 0;
 		const bool above = (mask & 8) != 0;
 		const bool third = (mask & 16) != 0;
+		const bool sneaking = (mask & 32) != 0;
+		// Sneaking in third person: the live centre is the sneak eye, not a
+		// remembered plain crosshair.
 		const CrosshairContent expected =
 			target && tooltips && !above
 				? CrosshairContent::CapturedHudCentre
-				: (!target && crosshair && !third
+				: (!target && crosshair && (!third || sneaking)
 				       ? CrosshairContent::CapturedHudCentre
 				       : (crosshair ? CrosshairContent::RememberedCrosshair
 				                    : CrosshairContent::Hidden));
-		Check(CrosshairContentWanted(crosshair, target, tooltips, above, third) == expected,
-		      "every reticle, target, tooltip and placement combination chooses one picture");
+		Check(CrosshairContentWanted(crosshair, target, tooltips, above, third, sneaking) ==
+		          expected,
+		      "every reticle, target, tooltip, placement and sneak combination chooses one picture");
 	}
 
 	for (UInt32 mask = 0; mask < 32; ++mask) {

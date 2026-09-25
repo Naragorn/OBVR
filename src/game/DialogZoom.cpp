@@ -1,5 +1,6 @@
 #include "game/DialogZoom.h"
 
+#include "core/AtomicFlag.h"
 #include "core/Config.h"
 #include "core/Log.h"
 #include "core/Memory.h"
@@ -37,6 +38,10 @@ using ToggleCameraFn = void(__fastcall*)(UInt8* self, void* edx, UInt8 firstPers
 // flip. These lines are what replaces the assumption.
 UInt32 g_shimReportsLeft = 12;
 
+// Set by the shim when the call carries an actor; taken once a frame by the
+// camera hook, which hides the hands for the conversation's approach.
+AtomicFlag g_calledWithActor;
+
 // The stand-in for SetDialogCamera. Reached by jmp, so the register and
 // stack state are exactly the original call's: this in ecx, then the Actor,
 // the float and the byte on the stack - which is precisely what a __fastcall
@@ -55,6 +60,9 @@ void __fastcall DialogCameraShim(UInt8* player, void* /*edx*/, void* actor, floa
 		return;
 	}
 
+	if (actor != nullptr) {
+		g_calledWithActor.Set(true);
+	}
 	const bool isThirdPerson = player[addr::kPlayerIsThirdPersonOffset] != 0;
 	const DialogPovAction action =
 		DecideDialogPov(actor != nullptr, isThirdPerson, g_flippedForDialog,
@@ -141,5 +149,7 @@ void ApplyDialogZoom(bool zoomWanted) {
 			return;
 	}
 }
+
+bool TakeDialogCameraCall() { return g_calledWithActor.Take(); }
 
 }  // namespace obvr::game

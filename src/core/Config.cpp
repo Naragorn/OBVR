@@ -616,6 +616,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.laserDot = ReadBool("Hands", "LaserDot", h.laserDot, path);
 		h.aimWithHand = ReadBool("Hands", "AimWithHand", h.aimWithHand, path);
 		h.leftHanded = ReadBool("Hands", "LeftHanded", h.leftHanded, path);
+		h.sneakHold = ReadBool("Hands", "SneakHold", h.sneakHold, path);
 		if (!h.laserBeam && !h.laserDot) {
 			// The laser needs something to show; the settings menu refuses this
 			// (SettingEditRefusal), a hand-edited INI gets the beam back.
@@ -648,6 +649,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.leftHandRoll = ReadFloat("Hands", "LeftHandRoll", h.leftHandRoll, path);
 		h.leftHandPitch = ReadFloat("Hands", "LeftHandPitch", h.leftHandPitch, path);
 		h.leftHandYaw = ReadFloat("Hands", "LeftHandYaw", h.leftHandYaw, path);
+		h.handGripUpMetres = ReadFloat("Hands", "HandGripUpMetres", h.handGripUpMetres, path);
+		h.handGripForwardMetres =
+			ReadFloat("Hands", "HandGripForwardMetres", h.handGripForwardMetres, path);
 		h.menuOnRight = ReadBool("Hands", "MenuOnRight", h.menuOnRight, path);
 		h.pokeTipForward = ReadFloat("Hands", "PokeTipForward", h.pokeTipForward, path);
 		h.poke.hover = ReadFloat("Hands", "PokeHover", h.poke.hover, path);

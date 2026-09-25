@@ -71,6 +71,26 @@ void TestWorldPose() {
 	const NiPoint3 boneX = pose.rot * NiPoint3{1.0f, 0.0f, 0.0f};
 	Check(NearPoint(boneX, NiPoint3{0.0f, 1.0f, 0.0f}),
 	      "ninety degrees of calibration yaw lays the bone's x along the controller's y");
+
+	// The grip moves the hand in the CONTROLLER's axes: a controller tipped
+	// forward ninety degrees has its "up" pointing where the world's forward
+	// is, so a hand lowered along it goes back, not down. The calibration
+	// does not turn the grip.
+	const NiPoint3 down{0.0f, 0.0f, -4.0f};
+	pose = HandBoneWorld(identity, camera, identity, offset, calibration, down);
+	Check(NearPoint(pose.pos, NiPoint3{110.0f, 220.0f, 291.0f}),
+	      "an upright controller lowers the hand straight down");
+	const NiMatrix33 tipped = EulerToMatrix(90.0f, 0.0f, 0.0f);
+	const NiPoint3 tippedUp = tipped * NiPoint3{0.0f, 0.0f, 1.0f};
+	pose = HandBoneWorld(identity, camera, tipped, offset, identity, down);
+	Check(NearPoint(pose.pos, NiPoint3{110.0f, 220.0f, 295.0f} + tippedUp * -4.0f),
+	      "a tipped controller lowers the hand along its own up");
+	pose = HandBoneWorld(yaw, camera, identity, NiPoint3{0.0f, 0.0f, 0.0f}, identity,
+	                     NiPoint3{0.0f, 10.0f, 0.0f});
+	Check(NearPoint(pose.pos, NiPoint3{90.0f, 200.0f, 300.0f}),
+	      "and the camera's turn carries the grip too");
+	pose = HandBoneWorld(identity, camera, identity, offset, identity);
+	Check(NearPoint(pose.pos, NiPoint3{110.0f, 220.0f, 295.0f}), "no grip, no change");
 }
 
 void TestLocalUnderParent() {

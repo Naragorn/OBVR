@@ -26,13 +26,16 @@ struct BonePose {
 // offset relative to the head, carried through the camera's world transform,
 // with the calibration turned on last - the fixed rotation between the
 // controller's axes (x right, y forward, z up) and the bone's own (x along
-// the fingers on a Bip01 skeleton).
+// the fingers on a Bip01 skeleton). The grip is where the hand sits from the
+// controller's tracked origin, in the controller's own axes: the origin is
+// on the tracking head, above the fingers that hold the handle.
 inline BonePose HandBoneWorld(const NiMatrix33& cameraRot, const NiPoint3& cameraPos,
                               const NiMatrix33& relativeRot, const NiPoint3& offsetUnits,
-                              const NiMatrix33& calibration) {
+                              const NiMatrix33& calibration,
+                              const NiPoint3& gripUnits = NiPoint3{0.0f, 0.0f, 0.0f}) {
 	BonePose pose;
 	pose.rot = cameraRot * relativeRot * calibration;
-	pose.pos = cameraPos + cameraRot * offsetUnits;
+	pose.pos = cameraPos + cameraRot * (offsetUnits + relativeRot * gripUnits);
 	return pose;
 }
 

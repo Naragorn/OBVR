@@ -429,13 +429,19 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		// stayed where the controllers last put them, two hands hanging in the
 		// room through a dialogue (2026-09-25). So in a menu the hand meshes
 		// ("Hand", hand.nif's shape) are hidden along with the arms.
+		// And from the conversation's first frame, not its menu's: see
+		// game::StepDialogApproach.
+		static game::DialogApproachState s_approach;
+		const bool handsAway =
+			game::StepDialogApproach(s_approach, game::TakeDialogCameraCall(), menuIsUp) ||
+			menuIsUp;
 		static char hideList[160];
-		if (menuIsUp) {
+		if (handsAway) {
 			std::snprintf(hideList, sizeof(hideList), "%s,Hand", config.hands.hideNodes);
 		}
 		game::HideFirstPersonNodes(
-			(config.hands.hideArms || menuIsUp) && !ReadIsThirdPerson(),
-			menuIsUp ? hideList : config.hands.hideNodes);
+			(config.hands.hideArms || handsAway) && !ReadIsThirdPerson(),
+			handsAway ? hideList : config.hands.hideNodes);
 	} else {
 		game::HideFirstPersonNodes(false, "");
 		game::ForgetStrikes();
@@ -450,6 +456,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.meleeInHand = active && config.hands.motionHits && game::MeleeInHand(nullptr);
 	frame.menusOnly = menusOnly;
 	frame.inWorld = game::PlayerInWorld();
+	frame.sneaking = active && !menuIsUp && frame.inWorld && config.hands.sneakHold &&
+	                 game::IsPlayerSneaking();
 	frame.headValid = backend.GetRenderPose(frame.head, frame.headPosition) ||
 	                  backend.ReadHeadPose(frame.head, frame.headPosition);
 	backend.ReadHand(true, frame.right);
@@ -560,6 +568,17 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		grabUnits = 0.25f * config.tracker.unitsPerMetre;
 	}
 	game::SetGrabAtHand(active && g_hand.grabWanted, grabUnits);
+	// The 2026-09-25 run left no trace of a grab at all - neither this side
+	// nor the engine's grab update - so whether the grip reached the key is
+	// logged, each press.
+	static bool s_grabLogged = false;
+	const bool grabNow = active && g_hand.grabWanted;
+	if (grabNow != s_grabLogged) {
+		s_grabLogged = grabNow;
+		OBVR_LOG("Hands: grab %s (%s grip, key %02X), %.2f m from the head",
+		         grabNow ? "held" : "released", g_hand.grabWithLeftHand ? "left" : "right",
+		         config.handKeys.grab, static_cast<double>(g_hand.grabDistanceMetres));
+	}
 
 	if (g_hand.blocking != g_handBlocking) {
 		g_handBlocking = g_hand.blocking;
@@ -2019,19 +2038,22 @@ void BeforeFirstScenePass() {
 		if (hands.pinHands && g_cyclopeanCameraWorldValid) {
 			const NiMatrix33& cameraRot = g_cyclopeanCameraWorldTransform.rot;
 			const NiPoint3& cameraPos = g_cyclopeanCameraWorldTransform.pos;
+			const float perMetre = GetConfig().tracker.unitsPerMetre;
+			const NiPoint3 grip{0.0f, hands.handGripForwardMetres * perMetre,
+			                    hands.handGripUpMetres * perMetre};
 			if (g_hand.rightHandValid) {
 				game::PinHandBone(true, hands.rightHandBone, g_hand.rightHandRotation,
 				                  g_hand.rightHandOffsetUnits,
 				                  game::HandCalibration(hands.rightHandRoll, hands.rightHandPitch,
 				                                        hands.rightHandYaw),
-				                  cameraRot, cameraPos);
+				                  cameraRot, cameraPos, grip);
 			}
 			if (g_hand.leftHandValid) {
 				game::PinHandBone(false, hands.leftHandBone, g_hand.leftHandRotation,
 				                  g_hand.leftHandOffsetUnits,
 				                  game::HandCalibration(hands.leftHandRoll, hands.leftHandPitch,
 				                                        hands.leftHandYaw),
-				                  cameraRot, cameraPos);
+				                  cameraRot, cameraPos, grip);
 			}
 			// The hands are where the controllers are, not where the animation
 			// would have them: their bounds follow, so the engine does not cull
@@ -2642,6 +2664,12 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	if (CrosshairOnlyWhenNeededApplies(visibility)) {
 		visibility.weaponDrawn = game::ReadPlayerWeaponState() != game::WeaponState::Sheathed;
 	}
+	// The sneak eye is the game's, drawn where the crosshair is: wanted while
+	// sneaking even with the weapon away, and in third person it is the live
+	// eye rather than the remembered crosshair. Asked on world frames only.
+	if (worldFrame && !visibility.menuIsUp) {
+		visibility.sneaking = game::IsPlayerSneaking();
+	}
 
 	const bool crosshairWanted = CrosshairWanted(visibility);
 	const bool tooltipsEnabled = visibility.thirdPerson
@@ -2697,7 +2725,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// it the eye. Both are live state, and persisting either would freeze the
 	// wrong picture into a later ordinary third-person frame.
 	if (crosshairLifted && !visibility.thirdPerson && !g_crosshairHasTarget &&
-	    !game::IsPlayerSneaking()) {
+	    !visibility.sneaking) {
 		g_crosshairLayer.RememberCrosshair(render::GetGameDevice(),
 		                                  config.tracker.crosshairPersistentCache);
 	}
@@ -2727,7 +2755,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// the lower-right HUD; that keeps those settings independent.
 	const CrosshairContent content = CrosshairContentWanted(
 		crosshairWanted, g_crosshairHasTarget, tooltipsEnabled,
-		tooltipAboveName, visibility.thirdPerson);
+		tooltipAboveName, visibility.thirdPerson, visibility.sneaking);
 	if (crosshairLifted && content == CrosshairContent::RememberedCrosshair) {
 		// If this session has not captured a clean first-person crosshair yet,
 		// leave the overlay empty. Drawing an OBVR substitute here would make a

@@ -1246,6 +1246,52 @@ void TestLaserPress() {
 	Check(!r.controls.menuClick, "for one frame");
 }
 
+void TestSneakTap() {
+	std::printf("Sneak: toggled by a flick, or held on the stick\n");
+	// Toggle mode passes the flick through, whatever the game says.
+	for (UInt32 mask = 0; mask < 8; ++mask) {
+		SneakHoldState s;
+		s.wait = 0.3f;
+		const bool flick = (mask & 1) != 0;
+		Check(StepSneakTap(s, false, flick, (mask & 2) != 0, (mask & 4) != 0, 0.01f) == flick &&
+		          s.wait == 0.0f,
+		      "toggle mode: the flick is the key, and no wait is kept");
+	}
+	// Hold mode, stick and game agree: nothing to tap.
+	{
+		SneakHoldState s;
+		Check(!StepSneakTap(s, true, false, false, false, 0.01f), "hold: standing, stick up - no tap");
+		Check(!StepSneakTap(s, true, true, true, true, 0.01f), "hold: sneaking, stick down - no tap");
+	}
+	// Hold mode: pushing down taps once, waits for the game, then rests.
+	{
+		SneakHoldState s;
+		Check(StepSneakTap(s, true, true, true, false, 0.01f), "hold: stick down while standing taps");
+		Check(!StepSneakTap(s, true, false, true, false, 0.01f), "the game has not followed yet - no second tap");
+		Check(!StepSneakTap(s, true, false, true, true, 0.01f) && s.wait == 0.0f, "the game followed - the wait ends");
+		Check(!StepSneakTap(s, true, false, true, true, 0.01f), "held and sneaking - rests");
+		Check(StepSneakTap(s, true, false, false, true, 0.01f), "releasing the stick taps it off");
+		Check(!StepSneakTap(s, true, false, false, true, 0.01f), "and waits again");
+		Check(!StepSneakTap(s, true, false, false, false, 0.01f), "until the game has stood up");
+	}
+	// Hold mode: a tap the game ignored is repeated after the retry time, not before.
+	{
+		SneakHoldState s;
+		Check(StepSneakTap(s, true, false, true, false, 0.1f), "first tap");
+		bool again = false;
+		int frames = 0;
+		while (!again && frames < 100) {
+			again = StepSneakTap(s, true, false, true, false, 0.1f);
+			++frames;
+		}
+		Check(again && frames >= 6 && frames <= 7, "a lost tap is retried once the wait has run out");
+		SneakHoldState z;
+		z.wait = 0.2f;
+		Check(!StepSneakTap(z, true, false, true, false, 0.0f) && z.wait == 0.2f,
+		      "a frame without time does not use up the wait");
+	}
+}
+
 void TestTapHold() {
 	std::printf("Toggled controls held for a moment\n");
 	TapHoldState s;
@@ -1389,6 +1435,7 @@ int main() {
 	TestMenusOnly();
 	TestMainMenuLaser();
 	TestLaserOnOwnPanel();
+	TestSneakTap();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

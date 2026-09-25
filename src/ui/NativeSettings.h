@@ -34,6 +34,9 @@ inline ComfortPageStep StepComfortPage(bool pending, bool genericRoot, bool main
  return mainMenuOnTop ? ComfortPageStep::Open : ComfortPageStep::Skip;
 }
 
+// Previous and Next only when there is another page to turn to.
+inline bool NativePagingShown(UInt32 pages) { return pages > 1; }
+
 struct NativeSettingEdit {
  const SettingDefinition* definition = nullptr;
  float value = 0;

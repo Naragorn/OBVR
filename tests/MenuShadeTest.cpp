@@ -204,7 +204,38 @@ void TestDialogPovDecision() {
 
 }  // namespace
 
+void TestDialogApproach() {
+	std::printf("Hands away from a conversation's first frame\n");
+	using obvr::game::DialogApproachState;
+	using obvr::game::kDialogApproachHoldFrames;
+	using obvr::game::StepDialogApproach;
+	{
+		DialogApproachState s;
+		Check(!StepDialogApproach(s, false, false), "no call, no menu: the hands stay");
+		Check(StepDialogApproach(s, true, false), "the first call hides them");
+		for (int i = 0; i < 20; ++i) {
+			StepDialogApproach(s, true, false);
+		}
+		Check(StepDialogApproach(s, true, false), "through every frame of the approach");
+		int held = 0;
+		while (StepDialogApproach(s, false, false) && held < 100) {
+			++held;
+		}
+		Check(held == kDialogApproachHoldFrames - 1, "and a few frames after the last call");
+		Check(!StepDialogApproach(s, false, false), "then back");
+	}
+	{
+		DialogApproachState s;
+		StepDialogApproach(s, true, false);
+		Check(!StepDialogApproach(s, false, true) && s.holdFrames == 0,
+		      "once the menu is up the menu hides them, and the hold is dropped");
+		Check(!StepDialogApproach(s, true, true), "a call with the menu up is the menu's too");
+		Check(!StepDialogApproach(s, false, false), "the menu closing does not bring a stale hold back");
+	}
+}
+
 int main() {
+	TestDialogApproach();
 	TestParseHexColor();
 	TestComposeShadeColor();
 	TestShadeRectangle();

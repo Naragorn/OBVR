@@ -955,6 +955,41 @@ inline StickFlickVerdict StepStickFlick(StickFlickState& s, float x, float y) {
 	return v;
 }
 
+// ------------------------------------------------------ Sneak, held or toggled
+//
+// Oblivion's sneak key toggles. In toggle mode a flick down is that key, as
+// before. In hold mode the player sneaks while the right stick is held down:
+// the key is tapped whenever what the stick says differs from what the game
+// says, and then not again until the game has followed or kSneakTapRetrySeconds
+// have passed - a tap takes a few frames to show in the movement flags, and
+// tapping on every one of them would toggle straight back.
+constexpr float kSneakTapRetrySeconds = 0.5f;
+
+struct SneakHoldState {
+	float wait = 0.0f;
+};
+
+inline bool StepSneakTap(SneakHoldState& s, bool holdMode, bool flickDown, bool stickHeldDown,
+                         bool sneaking, float dtSeconds) {
+	if (!holdMode) {
+		s.wait = 0.0f;
+		return flickDown;
+	}
+	if (s.wait > 0.0f) {
+		if (sneaking == stickHeldDown) {
+			s.wait = 0.0f;  // the game followed
+		} else if (dtSeconds > 0.0f) {
+			s.wait -= dtSeconds;
+		}
+		return false;
+	}
+	if (stickHeldDown != sneaking) {
+		s.wait = kSneakTapRetrySeconds;
+		return true;
+	}
+	return false;
+}
+
 // ----------------------------------------------------------- Stick as keys
 //
 // A stick pushed past the dead zone fires a direction once and again only

@@ -543,6 +543,11 @@ struct CrosshairVisibility {
 	// towards showing: a crosshair wrongly present is a much smaller fault than
 	// one wrongly missing while somebody is trying to shoot.
 	bool weaponDrawn = false;
+
+	// The player is sneaking. The game draws its sneak eye where the crosshair
+	// is, and the eye tells whether one is seen - so it is always wanted while
+	// sneaking, whatever "only when needed" would say about a sheathed weapon.
+	bool sneaking = false;
 };
 
 // Whether either only-when-needed control restricts this view. Shared by the
@@ -573,7 +578,7 @@ enum class CrosshairContent {
 
 CrosshairContent CrosshairContentWanted(bool crosshairWanted, bool haveTarget,
 	                                    bool tooltipsEnabled, bool tooltipsAboveName,
-	                                    bool thirdPerson);
+	                                    bool thirdPerson, bool sneaking);
 
 // Tooltips remain useful with the plain crosshair disabled, so their capture
 // gate is deliberately independent from CrosshairVisibility::enabled.

@@ -54,7 +54,8 @@ void ForgetHandBones() {
 
 bool PinHandBone(bool rightHand, const char* boneName, const NiMatrix33& relativeRot,
                  const NiPoint3& offsetUnits, const NiMatrix33& calibration,
-                 const NiMatrix33& cameraRot, const NiPoint3& cameraPos) {
+                 const NiMatrix33& cameraRot, const NiPoint3& cameraPos,
+                 const NiPoint3& gripUnits) {
 	NiAVObject* const root = FirstPersonArmsNode();
 	if (root == nullptr) {
 		return false;
@@ -95,7 +96,7 @@ bool PinHandBone(bool rightHand, const char* boneName, const NiMatrix33& relativ
 	}
 
 	const BonePose wanted = HandBoneWorld(cameraRot, cameraPos, relativeRot, offsetUnits,
-	                                      calibration);
+	                                      calibration, gripUnits);
 	const BonePose parentWorld = ParentForChildAt(wanted, bone->localTransform.rot,
 	                                              bone->localTransform.pos,
 	                                              parent->worldTransform.scale);

@@ -34,7 +34,8 @@ namespace obvr::game {
 // Answers whether the bone was found and written.
 bool PinHandBone(bool rightHand, const char* boneName, const NiMatrix33& relativeRot,
                  const NiPoint3& offsetUnits, const NiMatrix33& calibration,
-                 const NiMatrix33& cameraRot, const NiPoint3& cameraPos);
+                 const NiMatrix33& cameraRot, const NiPoint3& cameraPos,
+                 const NiPoint3& gripUnits);
 
 // Forgets the bones found, so a new model is searched afresh.
 void ForgetHandBones();

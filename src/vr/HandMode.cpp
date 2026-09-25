@@ -280,6 +280,12 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	in.leftHanded = s.leftHanded;
 	r.controls = PlanHandControls(in, s.stickDeadZone);
 	HoldTaps(r.controls, f.dtSeconds);
+	if (!f.menuMode && f.right.valid) {
+		r.controls.sneak = StepSneakTap(m_sneak, s.sneakHold, r.controls.sneak, m_rightFlick.down,
+		                                f.sneaking, f.dtSeconds);
+	} else {
+		m_sneak = SneakHoldState{};
+	}
 	// The pull that moved the pointer over is not a click: the cursor is
 	// still where the other hand left it. The trigger has to come up first.
 	if (m_clickBlocked) {

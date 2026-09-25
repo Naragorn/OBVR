@@ -238,6 +238,8 @@ void TestComfortView() {
  Check(menu.View()==SettingsView::Comfort && menu.Pages()==1 && menu.First()==0,"snap off is one page");
  Check(SameKeys(menu,off,{"SnapTurning","LeftHanded"}),"snap off offers snap turning and left-handed");
  Check(std::strcmp(SettingDefinitions()[menu.Selected()].iniKey,"SnapTurning")==0,"the first row starts selected");
+ Check(!NativePagingShown(menu.Pages()) && NativePagingShown(2) && !NativePagingShown(0),
+       "one page hides Previous and Next; two show them");
 
  // Turning snap on through the page itself: the follow-up rows appear.
  Writer writer;

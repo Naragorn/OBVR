@@ -59,4 +59,35 @@ constexpr DialogPovAction DecideDialogPov(bool conversationStarting, bool isThir
 // a change.
 void ApplyDialogZoom(bool zoomWanted);
 
+// The approach before a conversation: the engine calls SetDialogCamera with
+// the actor once a frame while the speaker turns to the player - a dozen
+// frames and more in the 2026-09-25 log - and only then opens the dialogue
+// menu. The hands, hidden in menus, were still up for that stretch and
+// vanished only with the menu. So they go with the first call instead, and
+// stay gone for kDialogApproachHoldFrames after the last one, which bridges
+// the frame between the last call and the menu.
+constexpr int kDialogApproachHoldFrames = 3;
+
+struct DialogApproachState {
+	int holdFrames = 0;
+};
+
+// Once per frame: whether the dialogue approach is on, so the hands hide.
+inline bool StepDialogApproach(DialogApproachState& s, bool calledWithActor, bool menuIsUp) {
+	if (calledWithActor) {
+		s.holdFrames = kDialogApproachHoldFrames;
+	} else if (s.holdFrames > 0) {
+		--s.holdFrames;
+	}
+	if (menuIsUp) {
+		s.holdFrames = 0;  // the menu hides them from here on
+	}
+	return s.holdFrames > 0;
+}
+
+// Whether SetDialogCamera was called with an actor since the last ask -
+// consumed by the ask. Only while the zoom is off: the shim is what sees
+// the call.
+bool TakeDialogCameraCall();
+
 }  // namespace obvr::game

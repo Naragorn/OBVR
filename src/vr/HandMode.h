@@ -74,6 +74,12 @@ struct HandSettings {
 	float leftHandRoll = 180.0f;  // the left bone's axes are the right's turned about x
 	float leftHandPitch = 0.0f;
 	float leftHandYaw = 90.0f;
+	// Where the hand sits from the controller's tracked origin, in metres
+	// along the controller's own up and forward axes. The origin is on the
+	// tracking head; a hand placed there floated above the handle it holds
+	// (2026-09-25). -0.04 is a first guess to tune in the headset.
+	float handGripUpMetres = -0.04f;
+	float handGripForwardMetres = 0.0f;
 
 	// Strikes by motion: with a swung weapon in hand the swing itself is the
 	// attack - no attack control, no animation - and the blade strikes the
@@ -115,6 +121,9 @@ struct HandSettings {
 	bool aimWithHand = false;
 	// Activate on the left A instead of the right, for a left-handed player.
 	bool leftHanded = false;
+	// Sneak only while the right stick is held down, instead of a flick down
+	// switching it on and the next one off.
+	bool sneakHold = false;
 	// With ControllerMenus on and the mode off, the controllers in the
 	// WORLD as well, as a gamepad: see PlanGamepadControls for the layout.
 	bool gamepadLayout = true;
@@ -137,6 +146,9 @@ struct HandModeFrame {
 	// menu, the intro) there is no wrist to hang a menu on, so it stays on
 	// its big quad and the laser points at that.
 	bool inWorld = true;
+	// The player is sneaking, as the game has it. What hold-to-sneak compares
+	// the stick with.
+	bool sneaking = false;
 	// The quad the game's menus hang on when they are not on a wrist - on
 	// the head or in the room - in tracking space, for the laser.
 	MenuQuad menuQuad;
@@ -297,6 +309,7 @@ private:
 	TapHoldState m_readyHold;
 	TapHoldState m_povHold;
 	TapHoldState m_quickHold;
+	SneakHoldState m_sneak;
 	// OBVR's own menu open: the sticks and buttons steer it, nothing else.
 	void SteerSettingsMenu(const HandModeFrame& frame, const HandSettings& settings,
 	                       HandModeResult& r);
