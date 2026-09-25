@@ -23,6 +23,17 @@ inline NativeSettingsStep SettingsStep(bool opened, bool root, bool foreign,
  return toggle && !root && !loading && ready ? NativeSettingsStep::Open : NativeSettingsStep::Wait;
 }
 
+// The comfort page after Full VR is chosen. The choice's own generic menu
+// closes after the click, and until any generic menu is gone the page waits;
+// then it opens over the main menu, or is dropped when something else is in
+// front by then - a page nobody asked for never opens inside the game.
+enum class ComfortPageStep { None, Wait, Open, Skip };
+inline ComfortPageStep StepComfortPage(bool pending, bool genericRoot, bool mainMenuOnTop) {
+ if (!pending) return ComfortPageStep::None;
+ if (genericRoot) return ComfortPageStep::Wait;
+ return mainMenuOnTop ? ComfortPageStep::Open : ComfortPageStep::Skip;
+}
+
 struct NativeSettingEdit {
  const SettingDefinition* definition = nullptr;
  float value = 0;
@@ -31,17 +42,36 @@ struct NativeSettingEdit {
  bool close = false;
 };
 
+// Which rows the menu offers. All is the Insert menu. Comfort is the
+// onboarding's second page after Full VR is chosen: left-handed and the snap
+// turn with its vignette, each follow-up only while the row it refines is on.
+enum class SettingsView { All, Comfort };
+bool SettingShownIn(SettingsView view, const SettingDefinition& definition, const Config& config);
+constexpr UInt32 kNativeMaxRows = 160;
+
 // The native presentation uses the SAME definitions, bounds and formatters
 // as the original menu. Decisions propose edits; the host saves before applying.
 class NativeSettings {
 public:
+ NativeSettings();
+ SettingsView View() const { return m_view; }
+ // Switches the view and starts it at its first row.
+ void SetView(SettingsView view, const Config& config);
+ // Re-reads which rows the view offers - after an edit, or an INI reload,
+ // turned a row that others depend on. Keeps the page and the selection
+ // where they can stay, moves them where they cannot.
+ void Sync(const Config& config);
  UInt32 First() const { return m_first; }
+ // An index into SettingDefinitions(), always one of the offered rows.
  UInt32 Selected() const { return m_selected; }
- UInt32 Pages() const { return (SettingDefinitionCount()+kNativeSettingsRows-1)/kNativeSettingsRows; }
+ UInt32 Pages() const { return m_count==0 ? 1 : (m_count+kNativeSettingsRows-1)/kNativeSettingsRows; }
  const SettingDefinition* Row(UInt32 slot) const;
  bool CanResetSelected(const Config& config) const;
  NativeSettingEdit Click(int id, const Config& config);
 private:
+ SettingsView m_view=SettingsView::All;
+ UInt32 m_rows[kNativeMaxRows]{};
+ UInt32 m_count=0;
  UInt32 m_first=0;
  UInt32 m_selected=0;
 };

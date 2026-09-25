@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <initializer_list>
 #include "ui/NativeSettings.h"
 #include "core/AtomicFlag.h"
 using namespace obvr::ui;
@@ -180,7 +181,129 @@ void TestResetSelected() {
  Check(refusedAtDefault==editable,"every editable definition refuses reset at default");
 }
 
+const char* Key(const SettingDefinition* d) { return d ? d->iniKey : "(none)"; }
+bool SameKeys(NativeSettings& menu,const Config& c,std::initializer_list<const char*> keys) {
+ (void)c;
+ unsigned index=0; bool same=true;
+ for(unsigned page=0;page<menu.Pages();++page) {
+  for(unsigned slot=0;slot<kNativeSettingsRows;++slot) {
+   const auto* d=menu.Row(slot);
+   if(!d) continue;
+   if(index>=keys.size() || std::strcmp(d->iniKey,keys.begin()[index])!=0) {
+    std::printf("        row %u is %s\n",index,Key(d)); same=false;
+   }
+   ++index;
+  }
+  menu.Click(kNativeNext,c);
+ }
+ return same && index==keys.size();
+}
+
+void TestComfortView() {
+ std::printf("Comfort page view\n");
+ // Every combination of the three rows the others follow.
+ for(unsigned mask=0;mask<8;++mask) {
+  Config c;
+  c.look.snapTurning=mask&1; c.look.snapTurnInstant=mask&2; c.look.snapTurnVignette=mask&4;
+  const bool snap=mask&1, instant=mask&2, vignette=mask&4;
+  unsigned shown=0;
+  for(UInt32 i=0;i<SettingDefinitionCount();++i) {
+   const auto& d=SettingDefinitions()[i];
+   const bool all=SettingShownIn(SettingsView::All,d,c);
+   const bool comfort=SettingShownIn(SettingsView::Comfort,d,c);
+   Check(all,"the whole menu shows every row");
+   bool expected=false;
+   if(!std::strcmp(d.iniKey,"LeftHanded") || !std::strcmp(d.iniKey,"SnapTurning")) expected=true;
+   else if(!std::strcmp(d.iniKey,"SnapTurnAngle") || !std::strcmp(d.iniKey,"SnapTurnInstant") ||
+           !std::strcmp(d.iniKey,"SnapTurnVignette")) expected=snap;
+   else if(!std::strcmp(d.iniKey,"SnapTurnSpeed")) expected=snap && !instant;
+   else if(!std::strcmp(d.iniKey,"SnapTurnVignetteRadius") ||
+           !std::strcmp(d.iniKey,"SnapTurnVignetteStrength")) expected=snap && vignette;
+   Check(comfort==expected,"a comfort row shows exactly when the row it follows is on");
+   shown+=comfort;
+  }
+  const unsigned want=2+(snap ? 3+(instant?0:1)+(vignette?2:0) : 0);
+  Check(shown==want,"the comfort page's row count for each combination");
+ }
+ // A section that matches but a key that does not, and the other way round.
+ SettingDefinition fake; fake.iniSection="Hands"; fake.iniKey="LeftHande";
+ Config c;
+ Check(!SettingShownIn(SettingsView::Comfort,fake,c),"a key prefix is not the key");
+ fake.iniSection="Look"; fake.iniKey="LeftHanded";
+ Check(!SettingShownIn(SettingsView::Comfort,fake,c),"the right key in the wrong section is not it");
+
+ // Snap off: two rows, one page, left-handed and snap turning in table order.
+ Config off; off.look.snapTurning=false;
+ NativeSettings menu; menu.SetView(SettingsView::Comfort,off);
+ Check(menu.View()==SettingsView::Comfort && menu.Pages()==1 && menu.First()==0,"snap off is one page");
+ Check(SameKeys(menu,off,{"SnapTurning","LeftHanded"}),"snap off offers snap turning and left-handed");
+ Check(std::strcmp(SettingDefinitions()[menu.Selected()].iniKey,"SnapTurning")==0,"the first row starts selected");
+
+ // Turning snap on through the page itself: the follow-up rows appear.
+ Writer writer;
+ const int snapPlus=kNativeRowBase+2;
+ const auto edit=menu.Click(snapPlus,off);
+ Check(edit.definition && !std::strcmp(edit.definition->iniKey,"SnapTurning") && edit.value==1.0f,"plus on snap turning proposes on");
+ Check(CommitNativeEdit(edit,off,writer)==NativeEditResult::Saved && off.look.snapTurning,"saved and applied");
+ menu.Sync(off);
+ // The defaults: instant on, vignette on - no speed row.
+ Check(SameKeys(menu,off,{"SnapTurning","SnapTurnAngle","SnapTurnInstant","SnapTurnVignette",
+                          "SnapTurnVignetteRadius","SnapTurnVignetteStrength","LeftHanded"}),
+       "snap on offers the follow-ups in table order");
+ Check(!std::strcmp(SettingDefinitions()[menu.Selected()].iniKey,"SnapTurning"),"the edited row stays selected");
+
+ // Everything on and eased: eight rows, two pages; the last row on page two.
+ Config full; full.look.snapTurning=true; full.look.snapTurnInstant=false; full.look.snapTurnVignette=true;
+ NativeSettings paged; paged.SetView(SettingsView::Comfort,full);
+ Check(paged.Pages()==2,"eight rows need two pages");
+ paged.Click(kNativeNext,full);
+ Check(paged.First()==7 && paged.Row(0) && !std::strcmp(paged.Row(0)->iniKey,"LeftHanded") && !paged.Row(1),
+       "the second page holds the last row");
+ Check(!std::strcmp(SettingDefinitions()[paged.Selected()].iniKey,"LeftHanded"),"paging selects the page's first row");
+ // On page two when snap goes off: the page vanishes, the menu comes back
+ // to the last page there is, and the still-shown selection stays.
+ full.look.snapTurning=false;
+ paged.Sync(full);
+ Check(paged.Pages()==1 && paged.First()==0,"a vanished page is left for the last one");
+ Check(!std::strcmp(SettingDefinitions()[paged.Selected()].iniKey,"LeftHanded"),"its shown selection stays");
+ // Selecting a follow-up row, then switching its parent off: the selection
+ // moves to the page's first row.
+ full.look.snapTurning=true;
+ paged.Sync(full);
+ paged.Click(kNativeRowBase+6*3,full); // the vignette darkness row
+ Check(!std::strcmp(SettingDefinitions()[paged.Selected()].iniKey,"SnapTurnVignetteStrength"),"a follow-up row selected");
+ full.look.snapTurnVignette=false;
+ paged.Sync(full);
+ Check(!std::strcmp(SettingDefinitions()[paged.Selected()].iniKey,"SnapTurning"),"a hidden selection moves to the page's first row");
+ full.look.snapTurning=false;
+ paged.Sync(full);
+ // A selection that stays shown stays selected.
+ paged.Click(kNativeRowBase+1*3,full);
+ const UInt32 kept=paged.Selected();
+ paged.Sync(full);
+ Check(paged.Selected()==kept && !std::strcmp(SettingDefinitions()[kept].iniKey,"LeftHanded"),"a shown selection survives a sync");
+ Check(paged.CanResetSelected(full)==CanResetSetting(SettingDefinitions()[kept],full),"reset follows the selected row");
+
+ // Back to the whole menu: every row, from the first.
+ paged.SetView(SettingsView::All,full);
+ Check(paged.View()==SettingsView::All && paged.First()==0 && paged.Selected()==0 &&
+       paged.Pages()==(SettingDefinitionCount()+kNativeSettingsRows-1)/kNativeSettingsRows,"the whole menu again");
+}
+
+void TestComfortPageStep() {
+ std::printf("Comfort page opening\n");
+ for(unsigned mask=0;mask<8;++mask) {
+  const bool pending=mask&1, root=mask&2, main=mask&4;
+  const auto step=StepComfortPage(pending,root,main);
+  const auto expected=!pending ? ComfortPageStep::None : root ? ComfortPageStep::Wait
+                    : main ? ComfortPageStep::Open : ComfortPageStep::Skip;
+  Check(step==expected,"nothing pending, wait for any generic menu, open over the main menu, else skip");
+ }
+}
+
 int main() {
+ TestComfortView();
+ TestComfortPageStep();
  // Exhaust the lifecycle input combinations, including foreign/covered menus.
  for(unsigned mask=0;mask<512;++mask) {
   bool opened=mask&1,root=mask&2,foreign=mask&4,foreground=mask&8;

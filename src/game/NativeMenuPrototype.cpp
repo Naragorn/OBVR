@@ -22,6 +22,8 @@ bool (*g_poll)(int*)=nullptr;
 ui::NativeOnboarding g_onboarding;
 ui::NativeSettings g_settings;
 bool g_checked=false, g_showOnboarding=false, g_saveFailed=false;
+// Full VR was just chosen: the comfort page follows once the choice has closed.
+bool g_comfortPending=false;
 const char* g_refusal=nullptr; // why the last change was refused, shown in the help line
 void* g_ourRoot=nullptr;
 AtomicFlag g_available, g_suppressLegacy, g_settingsOpen, g_toggleRequested, g_recenterRequested;
@@ -95,6 +97,7 @@ class OnboardingPort final: public ui::NativeMenuPort {
   if (!SaveSetting("Hands","Enabled",fullVR ? "1" : "0")) return false;
   GetConfig().handTracking=fullVR;
   GetConfig().hands.enabled=fullVR;
+  g_comfortPending=fullVR;
   OBVR_LOG("Native onboarding: %s selected and saved",fullVR ? "Full VR" : "Keyboard/Gamepad + VR");
   return true;
  }
@@ -129,12 +132,16 @@ void Join(char* out,UInt32 capacity,const char* a,const char* b,const char* c=""
 }
 bool RefreshSettings() {
  bool ok=true;
+ // An edit or an INI reload may have turned a row that others follow.
+ g_settings.Sync(GetConfig());
+ const bool comfort=g_settings.View()==ui::SettingsView::Comfort;
  char page[16],pages[16],heading[96],temporary[64];
  ui::FormatInteger(static_cast<int>(g_settings.First()/ui::kNativeSettingsRows+1),page,sizeof(page));
  ui::FormatInteger(static_cast<int>(g_settings.Pages()),pages,sizeof(pages));
  Join(temporary,sizeof(temporary),page," / ",pages);
- Join(heading,sizeof(heading),"VR Settings (OBVR) - ",temporary);
+ Join(heading,sizeof(heading),comfort ? "Comfort (OBVR) - " : "VR Settings (OBVR) - ",temporary);
  ok=CachedText(0,"user0",heading) && ok;
+ ok=CachedText(24,"parchment\\close\\label\\string",comfort ? "Continue" : "Close") && ok;
  for (UInt32 slot=0;slot<ui::kNativeSettingsRows;++slot) {
   char trait[96],label[192],value[32];
   const auto* definition=g_settings.Row(slot);
@@ -162,6 +169,8 @@ bool RefreshSettings() {
 }
 void FinishSettings() {
  g_settingsOpen.Set(false); g_ourRoot=nullptr;
+ // The comfort page is a one-off; Insert opens the whole menu again.
+ if (g_settings.View()!=ui::SettingsView::All) g_settings.SetView(ui::SettingsView::All,GetConfig());
  OBVR_LOG("Native settings: closed");
 }
 void CloseSettings() {
@@ -217,6 +226,25 @@ void Tick() {
   if (g_onboarding.State()==ui::NativeState::Failed) g_suppressLegacy.Set(false);
   if (g_onboarding.State()==ui::NativeState::Done) g_ourRoot=nullptr;
   if (g_onboarding.State()==ui::NativeState::Open) return;
+ }
+ switch (ui::StepComfortPage(g_comfortPending,root!=nullptr,top==kMenuIdMain)) {
+ case ui::ComfortPageStep::None: break;
+ case ui::ComfortPageStep::Wait: return;
+ case ui::ComfortPageStep::Skip:
+  g_comfortPending=false;
+  OBVR_LOG("Native onboarding: comfort page skipped - the main menu is no longer in front");
+  break;
+ case ui::ComfortPageStep::Open:
+  g_comfortPending=false;
+  if (OpenMenu(true)) {
+   g_settings.SetView(ui::SettingsView::Comfort,GetConfig());
+   g_settingsOpen.Set(true); g_saveFailed=false; g_refusal=nullptr; InvalidateText();
+   OBVR_LOG("Native onboarding: comfort page open");
+   if (!RefreshSettings()) OBVR_LOG("Native settings: initial UI update failed");
+  } else {
+   OBVR_LOG("Native onboarding: the comfort page could not be opened");
+  }
+  return;
  }
  if (ui::SettingsStep(false,GenericRoot()!=nullptr,false,false,toggle,false,false,
      top==kMenuIdLoading,top!=0 || PlayerInWorld())==ui::NativeSettingsStep::Open) {

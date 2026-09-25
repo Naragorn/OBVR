@@ -893,3 +893,12 @@ if(NOT MSVC)
 	target_compile_options(vr_menu_bridge_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME vr_menu_bridge COMMAND vr_menu_bridge_test)
+
+add_executable(update_notice_test
+	UpdateNoticeTest.cpp
+)
+target_include_directories(update_notice_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(update_notice_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME update_notice COMMAND update_notice_test)

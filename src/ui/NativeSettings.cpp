@@ -1,12 +1,57 @@
 #include "ui/NativeSettings.h"
 
 namespace obvr::ui {
+namespace {
+bool Key(const SettingDefinition& d,const char* section,const char* key) {
+ const char* a=d.iniSection; const char* b=section;
+ while (*a && *a==*b) { ++a; ++b; }
+ if (*a!=*b) return false;
+ a=d.iniKey; b=key;
+ while (*a && *a==*b) { ++a; ++b; }
+ return *a==*b;
+}
+}
+bool SettingShownIn(SettingsView view,const SettingDefinition& d,const Config& c) {
+ if (view==SettingsView::All) return true;
+ const bool snap=c.look.snapTurning;
+ if (Key(d,"Hands","LeftHanded") || Key(d,"Look","SnapTurning")) return true;
+ if (Key(d,"Look","SnapTurnAngle") || Key(d,"Look","SnapTurnInstant") ||
+     Key(d,"Look","SnapTurnVignette")) return snap;
+ // Easing speed means nothing to an instant snap.
+ if (Key(d,"Look","SnapTurnSpeed")) return snap && !c.look.snapTurnInstant;
+ if (Key(d,"Look","SnapTurnVignetteRadius") || Key(d,"Look","SnapTurnVignetteStrength"))
+  return snap && c.look.snapTurnVignette;
+ return false;
+}
+NativeSettings::NativeSettings() {
+ const UInt32 total=SettingDefinitionCount();
+ m_count=total<kNativeMaxRows ? total : kNativeMaxRows;
+ for (UInt32 i=0;i<m_count;++i) m_rows[i]=i;
+}
+void NativeSettings::SetView(SettingsView view,const Config& config) {
+ m_view=view; m_first=0; m_count=0;
+ Sync(config);
+ m_selected=m_count ? m_rows[0] : 0;
+}
+void NativeSettings::Sync(const Config& config) {
+ const UInt32 total=SettingDefinitionCount();
+ m_count=0;
+ bool selectedShown=false;
+ for (UInt32 i=0;i<total && m_count<kNativeMaxRows;++i) {
+  if (!SettingShownIn(m_view,SettingDefinitions()[i],config)) continue;
+  if (i==m_selected) selectedShown=true;
+  m_rows[m_count++]=i;
+ }
+ const UInt32 last=(Pages()-1)*kNativeSettingsRows;
+ if (m_first>last) m_first=last;
+ if (!selectedShown) m_selected=m_first<m_count ? m_rows[m_first] : (m_count ? m_rows[0] : 0);
+}
 const SettingDefinition* NativeSettings::Row(UInt32 slot) const {
- if (slot>=kNativeSettingsRows || m_first+slot>=SettingDefinitionCount()) return nullptr;
- return &SettingDefinitions()[m_first+slot];
+ if (slot>=kNativeSettingsRows || m_first+slot>=m_count) return nullptr;
+ return &SettingDefinitions()[m_rows[m_first+slot]];
 }
 bool NativeSettings::CanResetSelected(const Config& config) const {
- if (m_selected>=SettingDefinitionCount()) return false;
+ if (m_count==0 || m_selected>=SettingDefinitionCount()) return false;
  return CanResetSetting(SettingDefinitions()[m_selected],config);
 }
 NativeSettingEdit NativeSettings::Click(int id,const Config& config) {
@@ -29,7 +74,7 @@ NativeSettingEdit NativeSettings::Click(int id,const Config& config) {
   const UInt32 last=(Pages()-1)*kNativeSettingsRows;
   m_first=id==kNativePrevious ? (m_first==0 ? last : m_first-kNativeSettingsRows)
                              : (m_first==last ? 0 : m_first+kNativeSettingsRows);
-  m_selected=m_first;
+  m_selected=m_count ? m_rows[m_first] : 0;
   r.repaint=true;
   return r;
  }
@@ -37,7 +82,7 @@ NativeSettingEdit NativeSettings::Click(int id,const Config& config) {
  const UInt32 slot=static_cast<UInt32>(id-kNativeRowBase)/3;
  const auto* definition=Row(slot);
  if (!definition) return r;
- m_selected=m_first+slot;
+ m_selected=m_rows[m_first+slot];
  r.repaint=true;
  const int part=(id-kNativeRowBase)%3;
  if (part==0) return r; // label selects help; it does not change a setting

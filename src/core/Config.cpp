@@ -577,6 +577,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Onboarding", "ShowAtStart", config.onboardingShowAtStart, path);
 	config.nativeOnboardingPrototype =
 		ReadBool("Onboarding", "NativePrototype", config.nativeOnboardingPrototype, path);
+	config.forceUpdateNotice =
+		ReadBool("Debug", "ForceUpdateNotice", config.forceUpdateNotice, path);
 	{
 		Config::BodySettings& b = config.body;
 		b.visible = ReadBool("Body", "Visible", b.visible, path);

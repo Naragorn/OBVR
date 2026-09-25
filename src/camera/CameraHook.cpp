@@ -47,6 +47,8 @@
 #include "render/VignetteLayer.h"
 #include "render/HudLayer.h"
 #include "render/LaserLayer.h"
+#include "render/NoticeLayer.h"
+#include "core/UpdateNotice.h"
 #include "vr/LaserGeometry.h"
 #include "ui/Onboarding.h"
 #include "ui/SettingsMenu.h"
@@ -143,6 +145,8 @@ render::HudLayer g_hudLayer;
 render::CrosshairLayer g_crosshairLayer;
 render::VignetteLayer g_vignetteLayer;
 render::LaserLayer g_laserLayer;
+render::NoticeLayer g_noticeLayer;
+update::NoticeState g_noticeState;
 
 // OBVR's own settings menu: what it is showing, and the quad it shows it on.
 //
@@ -2754,6 +2758,19 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	g_vignetteLayer.Update(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                       config.look.snapTurnVignette && worldFrame, g_deltaSeconds,
 	                       config.look.snapTurnVignetteRadius, config.look.snapTurnVignetteStrength);
+
+	// The update notice: in the main menu, and for the first half minute in
+	// the world. See core/UpdateNotice.h. Only the forced notice for now - the
+	// release check against GitHub waits for a decision on network access.
+	{
+		const bool shown = update::StepNotice(g_noticeState, config.forceUpdateNotice,
+		                                      game::PlayerInWorld(), g_deltaSeconds);
+		char line[96] = {};
+		if (shown) {
+			update::FormatNotice(OBVR_VERSION_STRING, line, sizeof(line));
+		}
+		g_noticeLayer.Submit(g_headTracker.GetBackendForFrame(), shown, line);
+	}
 
 	// The laser beam from the hand that points at a menu, as long as the way
 	// to it. Its own overlay, raw pixels, no game texture behind it.

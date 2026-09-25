@@ -130,6 +130,10 @@ struct Config {
 	// unsupported MenuQue binary is found, the existing OBVR overlays remain.
 	bool nativeOnboardingPrototype = true;
 
+	// [Debug] ForceUpdateNotice: show the update notice with the running
+	// version - to see it without a newer release existing.
+	bool forceUpdateNotice = false;
+
 	// The rest of [Hands]: gestures, arms, wrists, laser, sticks (HandMode.h)
 	// and the keys the mode presses on the player's behalf (HandControls.h).
 	// hands.enabled mirrors handTracking after a load.
