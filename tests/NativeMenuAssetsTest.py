@@ -65,7 +65,4 @@ for root in [onboarding,settings]:
 print('Highlight: full native texture height, cap alignment and all button bounds verified')
 
 assert onboarding.find('.//rect[@name="classic"]/text[@name="heading"]/string').text=="Keyboard/Gamepad + VR"
-motion=onboarding.find('.//rect[@name="motion"]')
-assert motion.find('target').text.strip()=='0'
-assert motion.find('text[@name="heading"]/string').text=="Full VR - Under construction"
-assert motion.find('text[@name="status"]/string').text=="Not available yet"
+assert onboarding.find('.//rect[@name="motion"]/text[@name="heading"]/string').text=="Full VR"

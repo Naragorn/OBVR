@@ -14,7 +14,7 @@ struct Port: NativeMenuPort {
 };
 int main() {
  for(int selected: {-1,kNativeClassic,kNativeMotion}) for(int flags=0;flags<8;++flags) {
-  const int expected=(flags&4)?-1:(flags&3)?kNativeClassic:selected;
+  const int expected=(flags&4)?-1:(flags&2)?kNativeMotion:(flags&1)?kNativeClassic:selected;
   Check(NavigateOnboarding(selected,flags&1,flags&2,flags&4)==expected,"native keyboard focus, mouse takeover and simultaneous directions");
  }
 
@@ -33,17 +33,13 @@ int main() {
    p.saveOK=true; n.Tick(true,false,kNativeClassic,p); Check(n.State()==NativeState::Done && p.saves==2,"retry succeeds"); }
  { Port p; NativeOnboarding n; n.Tick(true,false,-1,p); p.saveOK=false; p.openOK=false;
    n.Tick(true,false,kNativeClassic,p); Check(n.State()==NativeState::Failed,"save failure page also fails"); }
- { Port p;NativeOnboarding n;n.Tick(true,false,-1,p);p.saveOK=false;
-   n.Tick(true,false,kNativeClassic,p);Check(n.State()==NativeState::Open && p.last==NativePage::SaveFailed,"classic mode can retry a failed save");
-   p.saveOK=true;n.Tick(true,false,kNativeClassic,p);
-   Check(n.State()==NativeState::Done && !p.selectedMotion,"classic choice saves the seated mode");
-   n.Tick(true,false,kNativeClassic,p);Check(p.saves==2,"completed mode choice cannot repeat"); }
- { Port p;NativeOnboarding n;n.Tick(true,false,-1,p);
-   n.Tick(false,false,kNativeMotion,p);
-   Check(n.State()==NativeState::Open && p.saves==0,"full VR button is refused while under construction");
-   n.Tick(false,false,kNativeClassic,p);
-   Check(n.State()==NativeState::Done && p.saves==1 && !p.selectedMotion,
-         "classic mode remains selectable after a refused full VR report"); }
+ for(int choice: {kNativeClassic,kNativeMotion}) {
+  Port p;NativeOnboarding n;n.Tick(true,false,-1,p);p.saveOK=false;
+  n.Tick(true,false,choice,p);Check(n.State()==NativeState::Open && p.last==NativePage::SaveFailed,"either mode can retry a failed save");
+  p.saveOK=true;n.Tick(true,false,choice,p);
+  Check(n.State()==NativeState::Done && p.selectedMotion==(choice==kNativeMotion),"both choices save the requested mode");
+  n.Tick(true,false,choice,p);Check(p.saves==2,"completed mode choice cannot repeat");
+ }
  { Port p; NativeOnboarding n; n.Tick(true,false,-1,p); n.Tick(true,false,9103,p);
    Check(n.State()==NativeState::Failed && p.saves==0,"removed later ID refused"); }
  { Port p; NativeOnboarding n; n.Tick(true,false,-1,p); n.Tick(false,true,kNativeClassic,p);

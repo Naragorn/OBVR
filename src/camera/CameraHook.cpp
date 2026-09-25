@@ -344,6 +344,12 @@ UInt32 g_handMaskLinesLeft = 24;
 UInt64 g_lastRightMask = 0;
 UInt64 g_lastLeftMask = 0;
 bool g_flatCursorInvalidReported = false;
+// The same for a menu in the world, on its quad: a few lines each time a
+// menu opens. The first Full VR headset run (2026-09-25) had the beam and
+// neither a cursor nor a click on the Tab and pause menus, and nothing in
+// the log could say which input to the laser was missing.
+UInt32 g_quadLaserLinesLeft = 0;
+bool g_quadLaserMenuWasUp = false;
 bool g_handBlocking = false;
 bool g_handReachBack = false;
 UInt32 g_handSwingLinesLeft = 20;
@@ -571,6 +577,34 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			         static_cast<double>(g_hand.laserPixelX),
 			         static_cast<double>(g_hand.laserPixelY), static_cast<double>(frame.cursorX),
 			         static_cast<double>(frame.cursorY), g_hand.cursorDx, g_hand.cursorDy,
+			         g_hand.controlsActive ? "active" : "INACTIVE - nothing is sent");
+		}
+	}
+
+	if (menuIsUp && !g_quadLaserMenuWasUp) {
+		g_quadLaserLinesLeft = 4;
+	}
+	g_quadLaserMenuWasUp = menuIsUp;
+	if (menuIsUp && !frame.flat.valid && g_quadLaserLinesLeft > 0 &&
+	    (g_hand.laserVisible || g_hand.menuOnWrist)) {
+		// Once on the first frame, then only while the trigger is pulled, so
+		// the lines that are left show what a click saw.
+		const bool pulled = frame.right.trigger > 0.5f || frame.left.trigger > 0.5f;
+		if (g_quadLaserLinesLeft == 4 || pulled) {
+			--g_quadLaserLinesLeft;
+			OBVR_LOG("Hands: menu laser - %s quad %s (%.0fx%.0f layer px), cursor %s %.0f,%.0f, "
+			         "%s hand points, hit %s %.0f,%.0f, step %d,%d, triggers %.2f/%.2f, click %d, "
+			         "controls %s",
+			         g_hand.menuOnWrist ? "wrist" : "big", frame.menuQuad.valid || g_hand.menuOnWrist
+			                                                   ? "valid" : "MISSING",
+			         static_cast<double>(frame.layerPixelsWidth),
+			         static_cast<double>(frame.layerPixelsHeight),
+			         frame.cursorValid ? "at" : "UNREADABLE", static_cast<double>(frame.cursorX),
+			         static_cast<double>(frame.cursorY), g_hand.laserRight ? "right" : "left",
+			         g_hand.laserHit ? "at" : "NONE", static_cast<double>(g_hand.laserPixelX),
+			         static_cast<double>(g_hand.laserPixelY), g_hand.cursorDx, g_hand.cursorDy,
+			         static_cast<double>(frame.right.trigger), static_cast<double>(frame.left.trigger),
+			         g_hand.controls.menuClick ? 1 : 0,
 			         g_hand.controlsActive ? "active" : "INACTIVE - nothing is sent");
 		}
 	}

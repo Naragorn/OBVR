@@ -5,9 +5,9 @@
 
 namespace obvr::game {
 
-// The first node under the first-person root with this name, a few levels
-// down, or null. Case does not matter. A fresh walk each call; callers that
-// need it every frame keep the answer.
+// The first node under the first-person root with this name, down to the
+// bones at the end of the arms, or null. Case does not matter. A fresh walk
+// each call; callers that need it every frame keep the answer.
 NiAVObject* FindFirstPersonNode(const char* name);
 
 // Hiding parts of the first-person model, for the hand-tracked mode: the

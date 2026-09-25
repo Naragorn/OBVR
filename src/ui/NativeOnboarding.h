@@ -9,7 +9,8 @@ constexpr int kNativeMotion = 9102;
 // our custom button IDs. Mouse movement releases this focus back to hit testing.
 inline int NavigateOnboarding(int selected,bool previous,bool next,bool mouseMoved) {
  if(mouseMoved) return -1;
- if(previous || next) return kNativeClassic;
+ if(next) return kNativeMotion;
+ if(previous) return kNativeClassic;
  return selected;
 }
 enum class NativePage { Choices, SaveFailed };
@@ -36,14 +37,8 @@ public:
    if (mainMenu) Show(NativePage::Choices, port);
    return;
   }
-  if (button == kNativeMotion) {
-   // Full VR is visible as a roadmap item but cannot change the mode while
-   // it remains under construction. The XML is non-targetable as well; this
-   // guard refuses synthetic/stale button reports from MenuQue.
-   return;
-  }
-  if (button == kNativeClassic) {
-   if (port.SaveMode(false)) m_state = NativeState::Done;
+  if (button == kNativeClassic || button == kNativeMotion) {
+   if (port.SaveMode(button == kNativeMotion)) m_state = NativeState::Done;
    else Show(NativePage::SaveFailed, port);
 
   } else if (button != -1 || mainMenu) {

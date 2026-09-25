@@ -14,6 +14,15 @@ constexpr UInt16 kAppCulledBit = 0x0001;
 constexpr UInt32 kMaxDepth = 6;
 constexpr UInt32 kMaxHidden = 32;
 
+// How deep a search for a named bone may go. The hide list's meshes hang a
+// level or two under the root, which kMaxDepth covers; a bone does not. In a
+// biped the hand is the far end of a chain - Bip01, its pelvis, three spine
+// bones, the neck or clavicle, upper arm, forearm, hand - well past six
+// levels, which is why "Bip01 R Hand" was never found with kMaxDepth (the
+// first Full VR headset run, 2026-09-25: both hands moved as one unit). Deep
+// enough for any skeleton, still a bound against a cycle in a broken tree.
+constexpr UInt32 kMaxFindDepth = 32;
+
 bool LooksLikeObject(const void* pointer) {
 	return mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(pointer));
 }
@@ -195,7 +204,7 @@ UInt8* FindNamed(UInt8* node, const char* name, UInt32 depth) {
 	if (NameInList(NameOf(node), name)) {
 		return node;
 	}
-	if (depth >= kMaxDepth || !ClassIsNode(ClassNameOf(node))) {
+	if (depth >= kMaxFindDepth || !ClassIsNode(ClassNameOf(node))) {
 		return nullptr;
 	}
 	UInt32 count = 0;
@@ -222,11 +231,11 @@ void ProbeNode(const UInt8* node, UInt32 depth) {
 	}
 	static const char* const kIndent[] = {"", "  ", "    ", "      ", "        ", "          ",
 	                                      "            "};
-	OBVR_LOG("First person tree: %s%s \"%s\" flags=%04X children=%u at %08X",
+	OBVR_LOG("First person tree: %2u %s%s \"%s\" flags=%04X children=%u at %08X", depth,
 	         kIndent[depth < 6 ? depth : 6], className, NameOf(node),
 	         *reinterpret_cast<const UInt16*>(node + addr::kNiFlagsOffset), count,
 	         reinterpret_cast<UInt32>(node));
-	if (depth >= kMaxDepth || !isNode) {
+	if (depth >= kMaxFindDepth || !isNode) {
 		return;
 	}
 	UInt8* const* const children = ChildrenOf(node, count);
@@ -304,7 +313,7 @@ void ProbeFirstPersonTree() {
 		return;
 	}
 	g_probedRoot = reinterpret_cast<const UInt8*>(root);
-	g_probeLinesLeft = 200;
+	g_probeLinesLeft = 400;
 	OBVR_LOG("First person tree: root %08X - class, name, flags (bit 0 hidden), children",
 	         reinterpret_cast<UInt32>(root));
 	ProbeNode(g_probedRoot, 0);
