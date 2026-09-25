@@ -148,6 +148,8 @@ render::LaserLayer g_laserLayer;
 // early because the hand mode measures the grab reach from it.
 NiTransform g_cyclopeanCameraWorldTransform{};
 bool g_cyclopeanCameraWorldValid = false;
+// Left-handed in Full VR this frame: "right" in g_hand is the left controller.
+bool g_handRolesSwapped = false;
 // The grab by reach - see vr::StepGrabReach.
 vr::GrabReachState g_grabReach;
 bool g_grabReachPick = false;
@@ -459,7 +461,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		              handsAway ? "Hand" : "");
 		game::HideFirstPersonNodes(!ReadIsThirdPerson(), hideList);
 		// The hands in the world rather than on top of it (FirstPersonDepth.h).
-		game::KeepFirstPersonDepth(config.hands.handsInWorldDepth);
+		game::KeepFirstPersonDepth(true);
 	} else {
 		game::HideFirstPersonNodes(false, "");
 		game::KeepFirstPersonDepth(false);
@@ -490,6 +492,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	                  backend.ReadHeadPose(frame.head, frame.headPosition);
 	backend.ReadHand(true, frame.right);
 	backend.ReadHand(false, frame.left);
+	// Left-handed in Full VR the controllers swap roles as a whole: the
+	// weapon hand is the left controller (vr::AssignHandRoles).
+	g_handRolesSwapped =
+		vr::AssignHandRoles(frame.right, frame.left, active && config.hands.leftHanded);
 	frame.unitsPerMetre = config.tracker.unitsPerMetre;
 	g_hudLayer.ShownPixels(frame.layerPixelsWidth, frame.layerPixelsHeight);
 	frame.cursorValid = game::InterfaceCursorPosition(frame.cursorX, frame.cursorY);
@@ -836,10 +842,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 
 	if (g_hand.menuOnWrist) {
-		g_hudLayer.SetWristPlacement(backend.HandDeviceIndex(g_hand.menuWristRight),
+		g_hudLayer.SetWristPlacement(backend.HandDeviceIndex(vr::HandDeviceForRole(g_hand.menuWristRight, g_handRolesSwapped)),
 		                             g_hand.menuTransform, config.hands.wristMenuWidth);
 	} else if (g_hand.hudOnRightWrist) {
-		g_hudLayer.SetWristPlacement(backend.HandDeviceIndex(true), g_hand.hudTransform,
+		g_hudLayer.SetWristPlacement(backend.HandDeviceIndex(vr::HandDeviceForRole(true, g_handRolesSwapped)), g_hand.hudTransform,
 		                             config.hands.wristHudWidth);
 	} else {
 		g_hudLayer.ClearWristPlacement();
@@ -2970,7 +2976,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// In the hand-tracked mode the aim is the right hand's, so the crosshair
 	// and the tooltip it carries hang ahead of that controller.
 	g_crosshairLayer.SetHandPlacement(config.handTracking && g_hand.aimValid,
-	                                  g_headTracker.GetBackendForFrame().HandDeviceIndex(true),
+	                                  g_headTracker.GetBackendForFrame().HandDeviceIndex(vr::HandDeviceForRole(true, g_handRolesSwapped)),
 	                                  config.hands.laserPitchDegrees, config.hands.laserYawDegrees,
 	                                  config.hands.laserOriginMetres);
 	g_crosshairLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
@@ -2987,7 +2993,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// to it. Its own overlay, raw pixels, no game texture behind it.
 	g_laserLayer.Submit(g_headTracker.GetBackendForFrame(),
 	                    g_hand.laserVisible,
-	                    g_headTracker.GetBackendForFrame().HandDeviceIndex(g_hand.laserRight),
+	                    g_headTracker.GetBackendForFrame().HandDeviceIndex(vr::HandDeviceForRole(g_hand.laserRight, g_handRolesSwapped)),
 	                    config.hands.laserPitchDegrees,
 	                    g_hand.laserRight ? config.hands.laserYawDegrees
 	                                      : -config.hands.laserYawDegrees,

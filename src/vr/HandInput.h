@@ -1051,13 +1051,27 @@ inline ReadyWeaponVerdict StepReadyWeapon(ReadyWeaponState& s, bool click, Weapo
 	return v;
 }
 
-// Left-handed: the controls are read from the other controller, all of them
-// - trigger, grip, A, B, the stick, its click, the trackpad - rather than
-// only activate moving to the left A (2026-09-25: "wir spiegeln einfach alle
-// Controls"). In a menu the pointing hand's trigger is the click whichever
-// side it is on, so nothing is mirrored there.
-inline bool MirroredControls(bool leftHanded, bool menuMode) {
-	return leftHanded && !menuMode;
+// Left-handed in Full VR: the two controllers swap roles as a whole - pose
+// and every button, trigger and stick. The game's weapon hand (its right,
+// "Bip01 R Hand", where the weapon hangs) follows the left controller, the
+// shield and torch hand the right one; the left trigger attacks, the swing
+// and the blade are the left controller's, the right one walks and blocks
+// (2026-09-25: "für Linkshänder auch an den linken Controller wandern").
+// Everything downstream is written for roles; only what is hung on a
+// physical device - the beam, the wrist quads - asks HandDeviceForRole.
+inline bool AssignHandRoles(HandPose& right, HandPose& left, bool leftHanded) {
+	if (leftHanded) {
+		const HandPose physicalRight = right;
+		right = left;
+		left = physicalRight;
+	}
+	return leftHanded;
+}
+
+// Which physical controller plays a role: the right role is the left
+// controller when the roles were swapped.
+inline bool HandDeviceForRole(bool rightRole, bool rolesSwapped) {
+	return rightRole != rolesSwapped;
 }
 
 // Run, held or toggled. Held (the default): the run control is down while

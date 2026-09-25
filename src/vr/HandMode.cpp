@@ -225,15 +225,11 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	m_navRight = StickNavState{};
 	m_navLeft = StickNavState{};
 
-	// The controls. Left-handed, every button, trigger and stick is read from
-	// the other controller (MirroredControls): the plan below stays written
-	// for a right hand, the left controller plays it. Not in a menu, where
-	// the trigger that clicks belongs to whichever hand points; and not the
-	// poses - the hands, the laser, the grab and the gestures stay where
-	// their controllers are.
-	const bool mirror = MirroredControls(s.leftHanded, f.menuMode);
-	const HandPose& cr = mirror ? f.left : f.right;
-	const HandPose& cl = mirror ? f.right : f.left;
+	// The controls. Left-handed the controllers have already swapped roles
+	// before this frame was built (AssignHandRoles): "right" is the weapon
+	// hand, whichever controller that is.
+	const HandPose& cr = f.right;
+	const HandPose& cl = f.left;
 	HandFrameInput in;
 	in.rightValid = cr.valid;
 	in.leftValid = cl.valid;
@@ -247,8 +243,8 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		m_rightMenu, cr.valid && ButtonBDown(cr.buttonsPressed));
 	in.leftMenuButton = StepRisingEdge(
 		m_leftMenu, cl.valid && ButtonBDown(cl.buttonsPressed));
-	in.rightStickClick = mirror ? sticks.leftClick : sticks.rightClick;
-	in.leftStickClick = mirror ? sticks.rightClick : sticks.leftClick;
+	in.rightStickClick = sticks.rightClick;
+	in.leftStickClick = sticks.leftClick;
 	in.leftTrackpadClick = StepRisingEdge(
 		m_leftTrackpad, cl.valid && TrackpadClickDown(cl.buttonsPressed));
 	in.leftStickHeld = cl.valid && StickClickDown(cl.buttonsPressed);
@@ -292,7 +288,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		m_clickBlocked = false;
 	}
 	in.pointRight = m_pointRight;
-	in.leftHanded = false;  // mirrored above: the left A already stands in for the right
+	in.leftHanded = false;  // the roles are swapped before the frame (AssignHandRoles)
 	r.controls = PlanHandControls(in, s.stickDeadZone);
 	r.controls.run = StepRunToggle(m_runLatched, s.runToggle, in.leftStickClick, r.controls.run);
 	HoldTaps(r.controls, f, r);

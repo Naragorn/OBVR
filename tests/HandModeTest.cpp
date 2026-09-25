@@ -1364,13 +1364,34 @@ void TestRunToggle() {
 }
 
 void TestLeftHandedMirror() {
-	std::printf("Left-handed: every control from the other controller\n");
-	Check(MirroredControls(true, false) && !MirroredControls(true, true) &&
-	          !MirroredControls(false, false) && !MirroredControls(false, true),
-	      "mirrored only left-handed and out of a menu");
+	std::printf("Left-handed: the controllers swap roles as a whole\n");
+	HandPose right;
+	right.valid = true;
+	right.position = NiPoint3{0.3f, 0.0f, 0.0f};
+	right.trigger = 0.25f;
+	right.buttonsPressed = 1;
+	HandPose left;
+	left.valid = false;
+	left.position = NiPoint3{-0.3f, 0.0f, 0.0f};
+	left.trigger = 0.75f;
+	left.buttonsPressed = 2;
+	HandPose r = right;
+	HandPose l = left;
+	Check(!AssignHandRoles(r, l, false) && r.position.x > 0.0f && r.trigger == 0.25f &&
+	          l.position.x < 0.0f && !l.valid,
+	      "right-handed: every controller keeps its role");
+	Check(AssignHandRoles(r, l, true) && r.position.x < 0.0f && r.trigger == 0.75f &&
+	          r.buttonsPressed == 2 && !r.valid && l.position.x > 0.0f && l.trigger == 0.25f &&
+	          l.buttonsPressed == 1 && l.valid,
+	      "left-handed: pose, buttons, trigger and tracking all move to the other role");
+	Check(HandDeviceForRole(true, false) && !HandDeviceForRole(false, false),
+	      "unswapped: the right role is the right controller");
+	Check(!HandDeviceForRole(true, true) && HandDeviceForRole(false, true),
+	      "swapped: the right role hangs on the left controller");
+
+	// The whole mode on swapped roles: the left controller's trigger attacks.
 	HandSettings settings;
 	settings.enabled = true;
-	settings.leftHanded = true;
 	settings.motionHits = false;
 	HandModeFrame frame;
 	frame.headValid = true;
@@ -1378,27 +1399,16 @@ void TestLeftHandedMirror() {
 	frame.right.valid = true;
 	frame.left.valid = true;
 	frame.right.position = NiPoint3{0.3f, -0.2f, -0.5f};
-	frame.left.position = NiPoint3{-0.3f, -0.6f, -0.5f};  // low: no block gesture
-	frame.left.trigger = 1.0f;
-	frame.left.buttonsPressed = 1ull << obvr::vr::openvr::kButtonA;
-	frame.right.thumbY = 1.0f;
+	frame.left.position = NiPoint3{-0.3f, -0.6f, -0.5f};
+	frame.left.trigger = 1.0f;  // the physical left trigger
+	frame.right.thumbY = 1.0f;  // the physical right stick
+	AssignHandRoles(frame.right, frame.left, true);
 	HandMode mode;
-	HandModeResult r = mode.Update(frame, settings);
-	Check(r.controls.attack && !r.controls.cast, "the left trigger attacks");
-	Check(r.controls.activate, "the left A activates");
-	Check(r.controls.move.forward, "the right stick walks");
-	frame.left.trigger = 0.0f;
-	frame.right.trigger = 1.0f;
-	frame.left.buttonsPressed = 0;
-	frame.right.thumbY = 0.0f;
-	frame.left.thumbX = 1.0f;
-	r = mode.Update(frame, settings);
-	Check(r.controls.cast && !r.controls.attack, "the right trigger casts");
-	Check(r.controls.turn > 0.5f, "the left stick turns");
-	settings.leftHanded = false;
-	HandMode rightHanded;
-	r = rightHanded.Update(frame, settings);
-	Check(r.controls.attack && !r.controls.cast, "right-handed: the right trigger attacks again");
+	const HandModeResult result = mode.Update(frame, settings);
+	Check(result.controls.attack && !result.controls.cast, "the left trigger attacks");
+	Check(result.controls.move.forward, "the right stick walks");
+	Check(result.rightHandValid && result.rightHandOffsetUnits.x < 0.0f,
+	      "the weapon hand is pinned where the left controller is");
 }
 
 void TestFirstPersonDepthBranch() {
