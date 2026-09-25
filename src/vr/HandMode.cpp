@@ -79,6 +79,7 @@ void HandMode::Reset() {
 	m_leftAEdge = ButtonEdge{};
 	m_rightMenu = ButtonEdge{};
 	m_leftMenu = ButtonEdge{};
+	m_leftTrackpad = ButtonEdge{};
 	m_scrollUp = RepeatState{};
 	m_scrollDown = RepeatState{};
 	m_sticks = StickChordState{};
@@ -231,6 +232,8 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		m_leftMenu, f.left.valid && ButtonBDown(f.left.buttonsPressed));
 	in.rightStickClick = sticks.rightClick;
 	in.leftStickClick = sticks.leftClick;
+	in.leftTrackpadClick = StepRisingEdge(
+		m_leftTrackpad, f.left.valid && TrackpadClickDown(f.left.buttonsPressed));
 	in.leftThumbX = f.left.thumbX;
 	in.leftThumbY = f.left.thumbY;
 	in.rightThumbX = f.right.thumbX;

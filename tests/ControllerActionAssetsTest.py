@@ -8,12 +8,19 @@ INPUT = ROOT / "assets" / "input"
 
 manifest = json.loads((INPUT / "actions.json").read_text())
 names = {action["name"] for action in manifest["actions"]}
-expected = {
+buttons = {
     f"/actions/obvr/in/{hand}_{action}"
     for hand in ("left", "right")
     for action in ("stick_click", "a", "b", "grip", "trackpad", "trigger", "stick")
 }
-assert names == expected
+# The finger tracking reads SteamVR's hand skeleton through its own actions;
+# they are optional and need no binding, SteamVR supplies them per controller.
+skeletons = {f"/actions/obvr/in/{hand}_hand_skeleton" for hand in ("left", "right")}
+assert names == buttons | skeletons, sorted(names ^ (buttons | skeletons))
+for action in manifest["actions"]:
+    if action["name"] in skeletons:
+        assert action["type"] == "skeletal", action
+        assert action["requirement"] == "optional", action
 assert {binding["controller_type"] for binding in manifest["default_bindings"]} == {
     "knuckles",
     "oculus_touch",

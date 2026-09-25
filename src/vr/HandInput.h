@@ -307,6 +307,7 @@ struct HandFrameInput {
 	bool leftMenuButton = false;   // rising edge
 	bool rightStickClick = false;  // rising edge
 	bool leftStickClick = false;   // rising edge
+	bool leftTrackpadClick = false;  // rising edge
 	float leftThumbX = 0.0f;
 	float leftThumbY = 0.0f;
 	float rightThumbX = 0.0f;
@@ -323,8 +324,11 @@ struct HandFrameInput {
 // menu, the right one is escape. In the world: right trigger attacks (the
 // bow draws while it is held and looses when it is released, a spell hand
 // casts on the left trigger), swings attack by themselves, the raised left
-// hand blocks, grips grab and activate, A jumps and sneaks, the sticks move
-// and turn, stick clicks ready the weapon and open the quick menu.
+// hand blocks, either grip grabs, right A jumps and left A activates, the
+// sticks move and turn, the right stick click readies the weapon and the left
+// one sneaks, the left trackpad click opens the quick menu. The left side
+// follows the gamepad layout: a grip that grabbed and activated at once
+// would take the object it was meant to hold.
 inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stickDeadZone) {
 	HandControlsWanted out;
 	if (in.menuMode) {
@@ -343,10 +347,10 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 	}
 	if (in.leftValid) {
 		out.cast = in.leftTrigger;
-		out.activate = in.leftGrip;
-		out.sneak = in.leftA;
+		out.activate = in.leftA;
+		out.sneak = in.leftStickClick;
 		out.menu = in.leftMenuButton;
-		out.quickMenu = in.leftStickClick;
+		out.quickMenu = in.leftTrackpadClick;
 		out.move = StickToDirections(in.leftThumbX, in.leftThumbY, stickDeadZone);
 		out.block = in.blockGesture;
 	}

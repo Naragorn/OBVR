@@ -318,6 +318,7 @@ private:
 	ButtonEdge m_leftAEdge;
 	ButtonEdge m_rightMenu;
 	ButtonEdge m_leftMenu;
+	ButtonEdge m_leftTrackpad;
 	RepeatState m_scrollUp;
 	RepeatState m_scrollDown;
 	StickChordState m_sticks;

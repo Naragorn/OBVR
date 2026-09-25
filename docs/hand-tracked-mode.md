@@ -250,8 +250,11 @@ behaviour with the hand-tracked mode on.
 ## Locomotion and the rest
 
 Built: the left stick walks (WASD with `StickDeadZone`), the right stick turns
-(`TurnSpeed` mouse pixels per frame), right A jumps, left A sneaks, the right stick click
-readies the weapon, the left stick click opens the quick menu (F1).
+(`TurnSpeed` mouse pixels per frame), right A jumps, left A activates, either grip grabs,
+the right stick click readies the weapon, the left stick click sneaks, the left trackpad
+click opens the quick menu (F1). The left side follows the gamepad layout since 504cc2b
+made both grips grab: a left grip that grabbed and activated at once would take the object
+it meant to hold.
 
 Nothing in this mode touches the render pipeline: stereo, the bone lock, the menus in the
 world, the crosshair all carry over unchanged.

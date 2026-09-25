@@ -101,11 +101,30 @@ void TestPlanner() {
 	in.rightThumbX = -0.5f;
 	HandControlsWanted w = PlanHandControls(in, 0.4f);
 	Check(w.attack, "the right trigger attacks");
-	Check(w.activate, "the left grip activates");
+	Check(w.grab, "the left grip grabs");
+	Check(!w.activate, "and does not also activate, which would take the object");
 	Check(w.block, "the raised left hand blocks");
 	Check(w.move.forward, "the left stick walks");
 	Check(Near(w.turn, -0.5f), "the right stick turns");
-	Check(!w.menuClick && !w.cast && !w.grab, "nothing else is pressed");
+	Check(!w.menuClick && !w.cast && !w.sneak && !w.quickMenu, "nothing else is pressed");
+
+	HandFrameInput right;
+	right.rightValid = true;
+	right.leftValid = true;
+	right.rightGrip = true;
+	w = PlanHandControls(right, 0.4f);
+	Check(w.grab && !w.activate, "the right grip grabs too");
+
+	HandFrameInput left;
+	left.rightValid = true;
+	left.leftValid = true;
+	left.leftA = true;
+	left.leftStickClick = true;
+	left.leftTrackpadClick = true;
+	w = PlanHandControls(left, 0.4f);
+	Check(w.activate && !w.grab, "left A activates");
+	Check(w.sneak, "the left stick click sneaks");
+	Check(w.quickMenu, "the left trackpad click opens the quick menu");
 
 	in.rightTrigger = false;
 	in.swingAttackHeld = true;
@@ -129,9 +148,10 @@ void TestPlanner() {
 	oneHand.rightValid = true;
 	oneHand.leftValid = false;
 	oneHand.leftGrip = true;
+	oneHand.leftA = true;
 	oneHand.blockGesture = true;
 	w = PlanHandControls(oneHand, 0.4f);
-	Check(!w.activate && !w.block, "an untracked left hand presses nothing");
+	Check(!w.activate && !w.block && !w.grab, "an untracked left hand presses nothing");
 
 	HandFrameInput gated;
 	gated.rightValid = true;
