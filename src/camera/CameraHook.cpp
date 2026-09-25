@@ -389,6 +389,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_hudLayer.ClearWristPlacement();
 		game::HideFirstPersonNodes(false, "");
 		game::ForgetStrikes();
+		game::SetMenuCursorHidden(false);
 		g_hand = vr::HandModeResult{};
 		g_handMode.Reset();
 		return;
@@ -580,6 +581,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			         g_hand.controlsActive ? "active" : "INACTIVE - nothing is sent");
 		}
 	}
+
+	// The laser is the pointer: the game's own cursor sprite goes while it
+	// points at a game menu, and comes back when it does not.
+	game::SetMenuCursorHidden(menuIsUp && g_hand.laserVisible && !frame.settingsMenuOpen);
 
 	if (menuIsUp && !g_quadLaserMenuWasUp) {
 		g_quadLaserLinesLeft = 4;
@@ -1943,19 +1948,25 @@ void BeforeFirstScenePass() {
 		game::PlaceFirstPersonArms(g_hand.armsRotation, g_hand.armsOffsetUnits);
 		// After the arms, so the bones' parents carry this frame's placement:
 		// the hand bones go where the controllers are, animation or not.
+		// Relative to the head the hands were measured from: the camera the
+		// camera pass wrote, cyclopean, snapshotted above.
 		const vr::HandSettings& hands = GetConfig().hands;
-		if (hands.pinHands) {
+		if (hands.pinHands && g_cyclopeanCameraWorldValid) {
+			const NiMatrix33& cameraRot = g_cyclopeanCameraWorldTransform.rot;
+			const NiPoint3& cameraPos = g_cyclopeanCameraWorldTransform.pos;
 			if (g_hand.rightHandValid) {
 				game::PinHandBone(true, hands.rightHandBone, g_hand.rightHandRotation,
 				                  g_hand.rightHandOffsetUnits,
 				                  game::HandCalibration(hands.rightHandRoll, hands.rightHandPitch,
-				                                        hands.rightHandYaw));
+				                                        hands.rightHandYaw),
+				                  cameraRot, cameraPos);
 			}
 			if (g_hand.leftHandValid) {
 				game::PinHandBone(false, hands.leftHandBone, g_hand.leftHandRotation,
 				                  g_hand.leftHandOffsetUnits,
 				                  game::HandCalibration(hands.leftHandRoll, hands.leftHandPitch,
-				                                        hands.leftHandYaw));
+				                                        hands.leftHandYaw),
+				                  cameraRot, cameraPos);
 			}
 		}
 	} else if (g_weaponTurnWanted) {

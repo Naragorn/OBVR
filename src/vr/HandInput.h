@@ -738,7 +738,9 @@ inline StickChordVerdict StepStickChord(StickChordState& s, bool rightDown, bool
 // jump or a sneak, once per push. Held back to the middle before the next,
 // with some slack, so a thumb resting at the edge does not fire again.
 
-constexpr float kStickFlick = 0.7f;
+// Near the rim and near straight: 0.7 fired on turns and resting thumbs in
+// the first headset run with it.
+constexpr float kStickFlick = 0.9f;
 
 struct StickFlickState {
 	bool up = false;
@@ -758,8 +760,8 @@ inline StickFlickVerdict StepStickFlick(StickFlickState& s, float x, float y) {
 	}
 	const float ax = x < 0.0f ? -x : x;
 	const float ay = y < 0.0f ? -y : y;
-	const bool up = y >= kStickFlick && ay > ax;
-	const bool down = y <= -kStickFlick && ay > ax;
+	const bool up = y >= kStickFlick && ay >= 2.0f * ax;
+	const bool down = y <= -kStickFlick && ay >= 2.0f * ax;
 	v.up = up && !s.up;
 	v.down = down && !s.down;
 	s.up = up || (s.up && y > kStickFlick * 0.5f);

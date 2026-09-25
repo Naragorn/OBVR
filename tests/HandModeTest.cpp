@@ -468,6 +468,8 @@ void TestMenuHandAndSettingsMenu() {
 	std::printf("Menu hand and OBVR's menu\n");
 	HandSettings settings;
 	settings.enabled = true;
+	settings.wristMenu = true;  // off by default; this is the wrist's own test
+	settings.wristHud = true;
 	HandModeFrame frame;
 	frame.headValid = true;
 	frame.menuMode = true;
@@ -1073,10 +1075,12 @@ void TestLeftButtonsInHandMode() {
 void TestStickFlick() {
 	std::printf("Stick flicks\n");
 	StickFlickState s;
-	StickFlickVerdict v = StepStickFlick(s, 0.0f, 0.69f);
-	Check(!v.up, "short of 0.7: nothing");
-	v = StepStickFlick(s, 0.0f, 0.7f);
-	Check(v.up && !v.down, "at 0.7 up: up");
+	StickFlickVerdict v = StepStickFlick(s, 0.0f, 0.89f);
+	Check(!v.up, "short of 0.9: nothing");
+	v = StepStickFlick(s, 0.5f, 0.95f);
+	Check(!v.up, "0.95 up with half as much sideways: still a turn, not a jump");
+	v = StepStickFlick(s, 0.0f, 0.9f);
+	Check(v.up && !v.down, "at 0.9 straight up: up");
 	v = StepStickFlick(s, 0.0f, 1.0f);
 	Check(!v.up, "held: once");
 	v = StepStickFlick(s, 0.0f, 0.5f);
@@ -1088,7 +1092,7 @@ void TestStickFlick() {
 	s = StickFlickState{};
 	v = StepStickFlick(s, 0.9f, 0.8f);
 	Check(!v.up, "more sideways than up is a turn, not a jump");
-	v = StepStickFlick(s, 0.0f, -0.8f);
+	v = StepStickFlick(s, 0.0f, -0.95f);
 	Check(v.down && !v.up, "straight down: down");
 	s = StickFlickState{};
 	volatile float zero = 0.0f;

@@ -25,10 +25,16 @@ namespace obvr::game {
 // Writes one hand bone, found by name under the first-person root. The
 // relative rotation and offset are the controller's relative to the head,
 // in the game's axes and units, the way HandMode answers them; the
-// calibration is the fixed turn between controller and bone axes. Answers
-// whether the bone was found and written.
+// calibration is the fixed turn between controller and bone axes. The head
+// they are relative to is the camera's world transform, handed in by the
+// caller: the first-person root's parent is an unnamed node, not the camera
+// (the log's "placed in the space of parent (unnamed or none)"), and hands
+// carried through it were written somewhere out of sight - the 2026-09-25
+// run that found the bones for the first time lost the hands with it.
+// Answers whether the bone was found and written.
 bool PinHandBone(bool rightHand, const char* boneName, const NiMatrix33& relativeRot,
-                 const NiPoint3& offsetUnits, const NiMatrix33& calibration);
+                 const NiPoint3& offsetUnits, const NiMatrix33& calibration,
+                 const NiMatrix33& cameraRot, const NiPoint3& cameraPos);
 
 // Forgets the bones found, so a new model is searched afresh.
 void ForgetHandBones();

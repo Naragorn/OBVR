@@ -67,6 +67,7 @@ bool VignetteLayer::EnsureTexture(void* gameDevice) {
 	auto createTexture =
 		d3d9::Method<d3d9::CreateTextureFn>(gameDevice, d3d9::kDeviceCreateTexture);
 	if (createTexture == nullptr) {
+		ReportFailure("the device has no CreateTexture");
 		return false;
 	}
 
@@ -75,6 +76,7 @@ bool VignetteLayer::EnsureTexture(void* gameDevice) {
 	                                d3d9::kPoolDefault, &m_texture, nullptr)) ||
 	    m_texture == nullptr) {
 		m_texture = nullptr;
+		ReportFailure("CreateTexture refused the render target");
 		return false;
 	}
 
@@ -85,6 +87,7 @@ bool VignetteLayer::EnsureTexture(void* gameDevice) {
 	if (getSurfaceLevel == nullptr ||
 	    d3d11::Failed(getSurfaceLevel(m_texture, 0, &m_surface)) || m_surface == nullptr) {
 		m_surface = nullptr;
+		ReportFailure("the texture has no surface");
 		DestroyTexture();
 		return false;
 	}
@@ -95,11 +98,13 @@ bool VignetteLayer::EnsureTexture(void* gameDevice) {
 	                                                &m_interop)) ||
 	    m_interop == nullptr) {
 		m_interop = nullptr;
+		ReportFailure("DXVK gave no interop texture");
 		DestroyTexture();
 		return false;
 	}
 
 	if (!ReadImageInfo(m_interop, m_image)) {
+		ReportFailure("the interop texture could not be described");
 		DestroyTexture();
 		return false;
 	}
@@ -110,8 +115,7 @@ bool VignetteLayer::EnsureTexture(void* gameDevice) {
 	// does it. Until that has worked the layer counts as having no texture at
 	// all - an unfilled one would put an arbitrary picture across the view.
 	if (!FillTexture(gameDevice)) {
-		OBVR_LOG("Vignette: the gradient could not be uploaded, so the snap turn vignette "
-		         "stays off");
+		ReportFailure("the gradient could not be uploaded");
 		DestroyTexture();
 		return false;
 	}
@@ -171,15 +175,29 @@ bool VignetteLayer::EnsureOverlay(vr::OpenVRBackend& backend) {
 	}
 	m_overlayTried = true;
 
-	return backend.CreateOverlay("obvr.vignette", "OBVR Snap Turn Vignette", m_overlay);
+	if (!backend.CreateOverlay("obvr.vignette", "OBVR Snap Turn Vignette", m_overlay)) {
+		ReportFailure("SteamVR refused the overlay");
+		return false;
+	}
+	return true;
+}
+
+void VignetteLayer::ReportFailure(const char* why) {
+	if (m_failureReported) {
+		return;
+	}
+	m_failureReported = true;
+	OBVR_LOG("Vignette: %s - the snap turn vignette stays off", why);
 }
 
 void VignetteLayer::Trigger() {
-	// Start fading in from wherever we currently are. If already visible, this just
-	// keeps it going - a rapid double-snap does not reset the effect to zero.
+	// Up at once, held, then faded: the first headset run with the vignette
+	// on saw nothing of a pulse that was gone again in about 0.12 s. A snap
+	// that comes while it is still up starts the hold again.
 	m_fadingIn = true;
+	m_holdSeconds = kHoldSeconds;
 	if (m_alpha < 0.5f) {
-		m_alpha = 0.1f;  // small head start so it appears immediately
+		m_alpha = 0.5f;
 	}
 }
 
@@ -194,6 +212,7 @@ void VignetteLayer::Update(vr::OpenVRBackend& backend, void* gameDevice, bool vi
 		if (m_alpha > 0.0f) {
 			m_alpha = 0.0f;
 			m_fadingIn = false;
+			m_holdSeconds = 0.0f;
 		}
 		if (m_overlayVisible) {
 			backend.HideOverlay(m_overlay);
@@ -209,6 +228,8 @@ void VignetteLayer::Update(vr::OpenVRBackend& backend, void* gameDevice, bool vi
 			m_alpha = 1.0f;
 			m_fadingIn = false;
 		}
+	} else if (m_holdSeconds > 0.0f) {
+		m_holdSeconds -= deltaSeconds;
 	} else {
 		m_alpha -= kFadeOutRate * deltaSeconds;
 		if (m_alpha <= 0.0f) {
@@ -234,6 +255,7 @@ void VignetteLayer::Update(vr::OpenVRBackend& backend, void* gameDevice, bool vi
 		m_vulkanUsable = GetVulkanContext(gameDevice, m_vulkan);
 	}
 	if (!m_vulkanUsable) {
+		ReportFailure("DXVK's Vulkan context could not be read");
 		return;
 	}
 
@@ -255,6 +277,7 @@ void VignetteLayer::Update(vr::OpenVRBackend& backend, void* gameDevice, bool vi
 		return;
 	}
 	if (!m_bracket.Begin(gameDevice)) {
+		ReportFailure("DXVK's queue could not be taken");
 		return;
 	}
 	if (!m_bracket.ToTransferSrc(m_interop, m_image.layout)) {
@@ -269,6 +292,7 @@ void VignetteLayer::Update(vr::OpenVRBackend& backend, void* gameDevice, bool vi
 	m_bracket.Release();
 
 	if (error != vr::openvr::kOverlayErrorNone) {
+		ReportFailure("SteamVR refused the overlay texture");
 		return;
 	}
 
@@ -278,6 +302,10 @@ void VignetteLayer::Update(vr::OpenVRBackend& backend, void* gameDevice, bool vi
 	if (!m_overlayVisible) {
 		backend.ShowOverlay(m_overlay);
 		m_overlayVisible = true;
+		if (!m_shownReported) {
+			m_shownReported = true;
+			OBVR_LOG("Vignette: shown for a snap turn");
+		}
 	}
 }
 
@@ -294,6 +322,7 @@ void VignetteLayer::Destroy() {
 
 	m_alpha = 0.0f;
 	m_fadingIn = false;
+	m_holdSeconds = 0.0f;
 	m_vulkanChecked = false;
 	m_vulkanUsable = false;
 }

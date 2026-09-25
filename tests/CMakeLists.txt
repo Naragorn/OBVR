@@ -397,6 +397,8 @@ add_test(NAME bone_rebase COMMAND bone_rebase_test)
 add_executable(menu_type_test
 	MenuTypeTest.cpp
 	../src/game/MenuType.cpp
+	../src/core/Log.cpp
+	../src/platform/PluginPath.cpp
 )
 
 target_include_directories(menu_type_test PRIVATE ../src)

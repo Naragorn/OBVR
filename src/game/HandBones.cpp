@@ -53,7 +53,8 @@ void ForgetHandBones() {
 }
 
 bool PinHandBone(bool rightHand, const char* boneName, const NiMatrix33& relativeRot,
-                 const NiPoint3& offsetUnits, const NiMatrix33& calibration) {
+                 const NiPoint3& offsetUnits, const NiMatrix33& calibration,
+                 const NiMatrix33& cameraRot, const NiPoint3& cameraPos) {
 	NiAVObject* const root = FirstPersonArmsNode();
 	if (root == nullptr) {
 		return false;
@@ -82,18 +83,15 @@ bool PinHandBone(bool rightHand, const char* boneName, const NiMatrix33& relativ
 		return false;
 	}
 
-	// The camera's frame is the root's parent's, the space the arms are
-	// placed in; the bone's parent's world transform is current because the
-	// arm placement just ran the update pass over the whole tree.
-	NiAVObject* const cameraNode = root->parent;
+	// The bone's parent's world transform is current because the arm
+	// placement just ran the update pass over the whole tree.
 	NiAVObject* const parent = bone->parent;
-	if (!LooksLikeObject(cameraNode) || !LooksLikeObject(parent)) {
+	if (!LooksLikeObject(parent)) {
 		return false;
 	}
 
-	const BonePose wanted =
-		HandBoneWorld(cameraNode->worldTransform.rot, cameraNode->worldTransform.pos,
-		              relativeRot, offsetUnits, calibration);
+	const BonePose wanted = HandBoneWorld(cameraRot, cameraPos, relativeRot, offsetUnits,
+	                                      calibration);
 	const BonePose local = LocalUnderParent(parent->worldTransform.rot,
 	                                        parent->worldTransform.pos,
 	                                        parent->worldTransform.scale, wanted);
@@ -104,9 +102,13 @@ bool PinHandBone(bool rightHand, const char* boneName, const NiMatrix33& relativ
 	if (!hand.reported) {
 		hand.reported = true;
 		OBVR_LOG("Hand bones: the %s hand is \"%s\" at %08X under \"%s\", written each frame "
-		         "to where the controller is (camera frame \"%s\")",
+		         "to where the controller is - at (%.1f, %.1f, %.1f), the camera at "
+		         "(%.1f, %.1f, %.1f)",
 		         rightHand ? "right" : "left", NameOf(bone), reinterpret_cast<UInt32>(bone),
-		         NameOf(parent), NameOf(cameraNode));
+		         NameOf(parent), static_cast<double>(wanted.pos.x),
+		         static_cast<double>(wanted.pos.y), static_cast<double>(wanted.pos.z),
+		         static_cast<double>(cameraPos.x), static_cast<double>(cameraPos.y),
+		         static_cast<double>(cameraPos.z));
 	}
 	return true;
 }

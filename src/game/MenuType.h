@@ -146,4 +146,11 @@ bool InterfaceCursorPosition(float& x, float& y);
 // refuses them. False only when the manager pointer itself is unreadable.
 bool InterfaceCursorRaw(float& x, float& y);
 
+// Hides the game's menu cursor sprite while a controller's laser is the
+// pointer, and shows it again after - only a sprite OBVR itself hid. Called
+// every frame with the wish; the hidden bit is set again each time, since
+// whether the engine clears it between frames is not known (the log says,
+// the first time it finds it cleared).
+void SetMenuCursorHidden(bool hidden);
+
 }  // namespace obvr::game

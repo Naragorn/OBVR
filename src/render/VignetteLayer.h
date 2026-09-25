@@ -47,6 +47,11 @@ private:
 	bool EnsureTexture(void* gameDevice);
 	bool FillTexture(void* gameDevice);
 	void DestroyTexture();
+	// Once per layer: which step kept the vignette from being shown.
+	void ReportFailure(const char* why);
+	bool m_failureReported = false;
+	bool m_shownReported = false;
+	float m_holdSeconds = 0.0f;
 	bool EnsureOverlay(vr::OpenVRBackend& backend);
 
 	// Generate a radial gradient into pixel rows pitch bytes apart: clear at
@@ -71,7 +76,8 @@ private:
 	// Timing constants for the fade curve. Fast in so it feels responsive, slower out
 	// so it does not cut off while the turn is still settling visually.
 	static constexpr float kFadeInRate = 25.0f;   // alpha units per second going up
-	static constexpr float kFadeOutRate = 12.0f;  // alpha units per second going down
+	static constexpr float kHoldSeconds = 0.20f;  // at full after it is up
+	static constexpr float kFadeOutRate = 4.0f;   // alpha units per second going down: 0.25 s
 
 	VulkanContext m_vulkan;
 	bool m_vulkanChecked = false;

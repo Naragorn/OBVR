@@ -32,8 +32,8 @@ struct HandSettings {
 	float wristTiltDegrees = 35.0f;
 	float wristHudWidth = 0.35f;   // the HUD on the right wrist
 	float wristMenuWidth = 0.70f;  // the Tab menu on the menu wrist
-	bool wristHud = true;
-	bool wristMenu = true;
+	bool wristHud = false;  // off: the 2026-09-25 headset run found the wrists awkward
+	bool wristMenu = false;
 	bool menuOnRight = true;  // the menu wrist; the other hand points and presses
 
 	// The poke: how far the index finger's tip reaches past the controller's
