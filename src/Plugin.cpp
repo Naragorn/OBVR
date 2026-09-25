@@ -7,6 +7,7 @@
 #include "game/PlayerBody.h"
 #include "obse/PluginInterface.h"
 #include "platform/PluginPath.h"
+#include "platform/UpdateFetch.h"
 #include "platform/Win32Min.h"
 #include "perf/Profiler.h"
 #include "test/WaterVRTestRuntime.h"
@@ -70,6 +71,11 @@ __declspec(dllexport) bool OBSEPlugin_Load(const obvr::obse::Interface* obse) {
 
 	obvr::GetConfig().Load("OBVR.ini");
 	obvr::perf::Profiler::Instance().Configure(obvr::GetConfig().performance);
+	if (obvr::GetConfig().checkForUpdates) {
+		obvr::platform::StartUpdateCheck();
+	} else {
+		OBVR_LOG("Update check: switched off in OBVR.ini ([Updates] CheckForUpdates=0)");
+	}
 	if (obvr::GetConfig().nativeMenuLifecycleProbe) {
 		if (!obvr::game::vrbridge::InstallNativeMenuLifecycleProbe()) {
 			OBVR_LOG("Native menu lifecycle probe was not installed; runtime diagnostics disabled");

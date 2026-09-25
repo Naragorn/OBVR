@@ -130,6 +130,9 @@ struct Config {
 	// unsupported MenuQue binary is found, the existing OBVR overlays remain.
 	bool nativeOnboardingPrototype = true;
 
+	// [Updates] CheckForUpdates: ask GitHub once per start for the latest
+	// release and say so in the main menu when it is newer. Read at startup.
+	bool checkForUpdates = true;
 	// [Debug] ForceUpdateNotice: show the update notice with the running
 	// version - to see it without a newer release existing.
 	bool forceUpdateNotice = false;

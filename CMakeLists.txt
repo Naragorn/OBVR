@@ -54,6 +54,7 @@ add_library(OBVR SHARED
 	src/platform/GameWindow.cpp
 	src/platform/ImportHook.cpp
 	src/platform/PluginPath.cpp
+	src/platform/UpdateFetch.cpp
 	src/render/CursorPickHook.cpp
 	src/render/CursorProbe.cpp
 	src/render/EyeGeometry.cpp

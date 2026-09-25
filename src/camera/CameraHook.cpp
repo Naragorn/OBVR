@@ -49,6 +49,7 @@
 #include "render/LaserLayer.h"
 #include "render/NoticeLayer.h"
 #include "core/UpdateNotice.h"
+#include "platform/UpdateFetch.h"
 #include "vr/LaserGeometry.h"
 #include "ui/Onboarding.h"
 #include "ui/SettingsMenu.h"
@@ -2760,14 +2761,16 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	                       config.look.snapTurnVignetteRadius, config.look.snapTurnVignetteStrength);
 
 	// The update notice: in the main menu, and for the first half minute in
-	// the world. See core/UpdateNotice.h. Only the forced notice for now - the
-	// release check against GitHub waits for a decision on network access.
+	// the world. See core/UpdateNotice.h and platform/UpdateFetch.h.
 	{
-		const bool shown = update::StepNotice(g_noticeState, config.forceUpdateNotice,
+		char tag[32] = {};
+		const bool newer = platform::LatestReleaseTag(tag, sizeof(tag)) &&
+		                   update::IsNewerVersion(tag, OBVR_VERSION_STRING);
+		const bool shown = update::StepNotice(g_noticeState, newer || config.forceUpdateNotice,
 		                                      game::PlayerInWorld(), g_deltaSeconds);
 		char line[96] = {};
 		if (shown) {
-			update::FormatNotice(OBVR_VERSION_STRING, line, sizeof(line));
+			update::FormatNotice(newer ? tag : OBVR_VERSION_STRING, line, sizeof(line));
 		}
 		g_noticeLayer.Submit(g_headTracker.GetBackendForFrame(), shown, line);
 	}
