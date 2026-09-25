@@ -530,7 +530,7 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.laserDot = v != 0.0f; },
 	},
 	{
-		"Hands", "Left-handed", "Activate on the left A instead of the right",
+		"Hands", "Left-handed", "Every button, trigger and stick mirrored onto the other controller",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "LeftHanded",
 		+[](const Config& c) { return c.hands.leftHanded ? 1.0f : 0.0f; },
@@ -542,6 +542,20 @@ const SettingDefinition kSettings[] = {
 		"Hands", "SneakHold",
 		+[](const Config& c) { return c.hands.sneakHold ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.sneakHold = v != 0.0f; },
+	},
+	{
+		"Hands", "Hands in the world", "Hands go behind what is in front of them; off, drawn on top",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "HandsInWorldDepth",
+		+[](const Config& c) { return c.hands.handsInWorldDepth ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.handsInWorldDepth = v != 0.0f; },
+	},
+	{
+		"Hands", "Adjust hands", "In the game: grip holds a hand still, move the controller to it, let go",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "AdjustHands",
+		+[](const Config& c) { return c.hands.adjustHands ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.adjustHands = v != 0.0f; },
 	},
 	{
 		"Hands", "Toggle run", "A left stick click switches running on and off, instead of holding it in",

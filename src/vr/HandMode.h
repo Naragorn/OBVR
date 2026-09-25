@@ -51,6 +51,10 @@ struct HandSettings {
 	// Hide the sheaths and what hangs in them (the side-weapon, back-weapon and
 	// quiver bones, and any "Scb" scabbard): they rode with the right hand.
 	bool hideSheaths = true;
+	// Draw the hands and what they hold against the world's depth, so they
+	// go behind and into what is in front of them, instead of on top of
+	// everything as vanilla draws the first-person model (FirstPersonDepth.h).
+	bool handsInWorldDepth = true;
 	char hideNodes[128] = "Arms";
 
 	// The laser cursor: how much of the remaining distance the game's cursor
@@ -77,6 +81,21 @@ struct HandSettings {
 	float leftHandRoll = 180.0f;  // the left bone's axes are the right's turned about x
 	float leftHandPitch = 0.0f;
 	float leftHandYaw = 90.0f;
+	// Each hand's own grip, in metres along its controller's right, forward
+	// and up axes, on top of the shared HandGripForwardMetres/UpMetres -
+	// what adjusting the hands writes.
+	float rightHandGripX = 0.0f;
+	float rightHandGripY = 0.0f;
+	float rightHandGripZ = 0.0f;
+	float leftHandGripX = 0.0f;
+	float leftHandGripY = 0.0f;
+	float leftHandGripZ = 0.0f;
+	// Adjusting the hands with the controllers: while on, closing a grip
+	// holds that hand still in the world; move the controller to where the
+	// hand should sit on it and open the grip - the fit is the new
+	// calibration (angles and grip, saved to the INI). The grab is off
+	// meanwhile.
+	bool adjustHands = false;
 	// Where the hand sits from the controller's tracked origin, in metres
 	// along the controller's own up and forward axes. The origin is on the
 	// tracking head; a hand placed there floated above the handle it holds
@@ -279,6 +298,10 @@ struct HandModeResult {
 	bool grabWanted = false;
 	float grabDistanceMetres = 0.0f;
 	bool grabWithLeftHand = false;  // true when left grip holds it, false for right
+	// Each physical grip, whatever the handedness: adjusting the hands holds
+	// the hand whose grip is closed.
+	bool rightGripDown = false;
+	bool leftGripDown = false;
 	// The line from the head to the grabbing hand (ReachDirection): where the
 	// held object is carried, so it moves with the hand and flies with it.
 	bool grabDirectionValid = false;

@@ -225,35 +225,43 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	m_navRight = StickNavState{};
 	m_navLeft = StickNavState{};
 
-	// The controls.
+	// The controls. Left-handed, every button, trigger and stick is read from
+	// the other controller (MirroredControls): the plan below stays written
+	// for a right hand, the left controller plays it. Not in a menu, where
+	// the trigger that clicks belongs to whichever hand points; and not the
+	// poses - the hands, the laser, the grab and the gestures stay where
+	// their controllers are.
+	const bool mirror = MirroredControls(s.leftHanded, f.menuMode);
+	const HandPose& cr = mirror ? f.left : f.right;
+	const HandPose& cl = mirror ? f.right : f.left;
 	HandFrameInput in;
-	in.rightValid = f.right.valid;
-	in.leftValid = f.left.valid;
-	in.rightTrigger = f.right.valid && StepTrigger(m_rightTrigger, f.right.trigger);
-	in.leftTrigger = f.left.valid && StepTrigger(m_leftTrigger, f.left.trigger);
-	in.rightGrip = f.right.valid && GripDown(f.right.buttonsPressed);
-	in.leftGrip = f.left.valid && GripDown(f.left.buttonsPressed);
-	in.rightA = f.right.valid && ButtonADown(f.right.buttonsPressed);
-	in.leftA = f.left.valid && ButtonADown(f.left.buttonsPressed);
+	in.rightValid = cr.valid;
+	in.leftValid = cl.valid;
+	in.rightTrigger = cr.valid && StepTrigger(m_rightTrigger, cr.trigger);
+	in.leftTrigger = cl.valid && StepTrigger(m_leftTrigger, cl.trigger);
+	in.rightGrip = cr.valid && GripDown(cr.buttonsPressed);
+	in.leftGrip = cl.valid && GripDown(cl.buttonsPressed);
+	in.rightA = cr.valid && ButtonADown(cr.buttonsPressed);
+	in.leftA = cl.valid && ButtonADown(cl.buttonsPressed);
 	in.rightMenuButton = StepRisingEdge(
-		m_rightMenu, f.right.valid && ButtonBDown(f.right.buttonsPressed));
+		m_rightMenu, cr.valid && ButtonBDown(cr.buttonsPressed));
 	in.leftMenuButton = StepRisingEdge(
-		m_leftMenu, f.left.valid && ButtonBDown(f.left.buttonsPressed));
-	in.rightStickClick = sticks.rightClick;
-	in.leftStickClick = sticks.leftClick;
+		m_leftMenu, cl.valid && ButtonBDown(cl.buttonsPressed));
+	in.rightStickClick = mirror ? sticks.leftClick : sticks.rightClick;
+	in.leftStickClick = mirror ? sticks.rightClick : sticks.leftClick;
 	in.leftTrackpadClick = StepRisingEdge(
-		m_leftTrackpad, f.left.valid && TrackpadClickDown(f.left.buttonsPressed));
-	in.leftStickHeld = f.left.valid && StickClickDown(f.left.buttonsPressed);
-	if (f.right.valid) {
-		const StickFlickVerdict flick = StepStickFlick(m_rightFlick, f.right.thumbX, f.right.thumbY);
+		m_leftTrackpad, cl.valid && TrackpadClickDown(cl.buttonsPressed));
+	in.leftStickHeld = cl.valid && StickClickDown(cl.buttonsPressed);
+	if (cr.valid) {
+		const StickFlickVerdict flick = StepStickFlick(m_rightFlick, cr.thumbX, cr.thumbY);
 		in.rightStickUp = flick.up;
 		in.rightStickDown = flick.down;
 	} else {
 		m_rightFlick = StickFlickState{};
 	}
-	in.leftThumbX = f.left.thumbX;
-	in.leftThumbY = f.left.thumbY;
-	in.rightThumbX = f.right.thumbX;
+	in.leftThumbX = cl.thumbX;
+	in.leftThumbY = cl.thumbY;
+	in.rightThumbX = cr.thumbX;
 	in.blockGesture = r.blocking;
 	in.swingAttackHeld = swingHeld;
 	// The reach-back gate: armed by the gesture, spent when the trigger comes
@@ -284,11 +292,11 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		m_clickBlocked = false;
 	}
 	in.pointRight = m_pointRight;
-	in.leftHanded = s.leftHanded;
+	in.leftHanded = false;  // mirrored above: the left A already stands in for the right
 	r.controls = PlanHandControls(in, s.stickDeadZone);
 	r.controls.run = StepRunToggle(m_runLatched, s.runToggle, in.leftStickClick, r.controls.run);
 	HoldTaps(r.controls, f, r);
-	if (!f.menuMode && f.right.valid) {
+	if (!f.menuMode && cr.valid) {
 		r.controls.sneak = StepSneakTap(m_sneak, s.sneakHold, r.controls.sneak, m_rightFlick.down,
 		                                f.sneaking, f.dtSeconds);
 	} else {
@@ -303,6 +311,12 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		r.controls.menuClick = false;
 	}
 	r.controlsActive = f.right.valid || f.left.valid;
+	r.rightGripDown = f.right.valid && GripDown(f.right.buttonsPressed);
+	r.leftGripDown = f.left.valid && GripDown(f.left.buttonsPressed);
+	// Adjusting the hands: a closed grip holds the hand, it does not grab.
+	if (s.adjustHands) {
+		r.controls.grab = false;
+	}
 	r.grabWanted = r.controls.grab;
 	// Use whichever hand is grabbing for distance - right grip takes priority
 	// when both are down (rare, but gives deterministic behaviour).

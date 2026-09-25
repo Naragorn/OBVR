@@ -29,6 +29,11 @@ struct MotionStrike {
 	// The right hand relative to the head, as HandMode answers it.
 	NiMatrix33 handRotation = NiMatrix33::Identity();
 	NiPoint3 handOffsetUnits{0.0f, 0.0f, 0.0f};
+	// The world camera the offset is measured from - the one the grab by
+	// reach measures its hand from. Without it no strike is tried.
+	bool cameraValid = false;
+	NiMatrix33 cameraRotation = NiMatrix33::Identity();
+	NiPoint3 cameraPosition{0.0f, 0.0f, 0.0f};
 	// How close to a body's bound centre the blade has to pass: this fraction
 	// of the bound's radius, plus this many units.
 	float boundFactor = 0.7f;

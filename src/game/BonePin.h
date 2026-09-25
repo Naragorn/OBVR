@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/MathFns.h"
 #include "core/Rotation.h"
 #include "game/NiMath.h"
 
@@ -78,6 +79,90 @@ inline BonePose ParentForChildAt(const BonePose& childWanted, const NiMatrix33& 
 // along y, so ninety degrees of yaw with no roll is the starting point.
 inline NiMatrix33 HandCalibration(float rollDegrees, float pitchDegrees, float yawDegrees) {
 	return EulerToMatrix(rollDegrees, pitchDegrees, yawDegrees);
+}
+
+// The three angles back out of a calibration: EulerToMatrix is Z(yaw) *
+// Y(pitch) * X(roll), so element [2][0] is -sin(pitch), [2][1] and [2][2]
+// carry the roll and [1][0] and [0][0] the yaw. At a pitch of +-90 degrees
+// roll and yaw turn about the same axis; the roll is then taken as zero and
+// the whole turn given to the yaw.
+inline void CalibrationAngles(const NiMatrix33& m, float& rollDegrees, float& pitchDegrees,
+                              float& yawDegrees) {
+	float sinePitch = -m.data[2][0];
+	if (sinePitch > 1.0f) {
+		sinePitch = 1.0f;
+	} else if (sinePitch < -1.0f) {
+		sinePitch = -1.0f;
+	}
+	// math::Asin stops short of +-1 on purpose; at the pole the angle is exact.
+	float pitch = math::Asin(sinePitch);
+	float roll = 0.0f;
+	float yaw = 0.0f;
+	if (sinePitch > 0.9999f || sinePitch < -0.9999f) {
+		pitch = sinePitch > 0.0f ? math::kHalfPi : -math::kHalfPi;
+		yaw = math::Atan2(-m.data[0][1], m.data[1][1]);
+	} else {
+		roll = math::Atan2(m.data[2][1], m.data[2][2]);
+		yaw = math::Atan2(m.data[1][0], m.data[0][0]);
+	}
+	const float toDegrees = 1.0f / math::kDegreesToRadians;
+	rollDegrees = roll * toDegrees;
+	pitchDegrees = pitch * toDegrees;
+	yawDegrees = yaw * toDegrees;
+}
+
+// The calibration and grip that put a hand at `wanted` for the controller
+// where it is now - HandBoneWorld solved for its last two arguments. What
+// "grab the hand and let go where it belongs" stores: the hand is held
+// still in the world while the controller moves to it, and on release the
+// difference between the two is the calibration.
+struct HandFit {
+	NiMatrix33 calibration = NiMatrix33::Identity();
+	NiPoint3 gripUnits{0.0f, 0.0f, 0.0f};
+};
+
+inline HandFit FitHandToPose(const NiMatrix33& cameraRot, const NiPoint3& cameraPos,
+                             const NiMatrix33& relativeRot, const NiPoint3& offsetUnits,
+                             const BonePose& wanted) {
+	HandFit fit;
+	const NiMatrix33 inverseCamera = InverseRotation(cameraRot);
+	const NiMatrix33 inverseRelative = InverseRotation(relativeRot);
+	fit.calibration = inverseRelative * (inverseCamera * wanted.rot);
+	fit.gripUnits = inverseRelative * (inverseCamera * (wanted.pos - cameraPos) - offsetUnits);
+	return fit;
+}
+
+// Adjusting the hands: while the option is on, closing a grip holds that
+// hand still in the world, and opening it commits the fit.
+struct HandAdjustState {
+	bool held = false;
+	BonePose frozen;
+};
+
+enum class HandAdjustStep {
+	Follow,  // the hand follows its controller as always
+	Hold,    // the hand stays at `frozen`
+	Commit,  // the grip opened: fit the hand to where it was held
+};
+
+inline HandAdjustStep StepHandAdjust(HandAdjustState& s, bool adjusting, bool gripDown,
+                                     const BonePose& current) {
+	if (!adjusting) {
+		s.held = false;
+		return HandAdjustStep::Follow;
+	}
+	if (gripDown) {
+		if (!s.held) {
+			s.held = true;
+			s.frozen = current;
+		}
+		return HandAdjustStep::Hold;
+	}
+	if (s.held) {
+		s.held = false;
+		return HandAdjustStep::Commit;
+	}
+	return HandAdjustStep::Follow;
 }
 
 }  // namespace obvr::game

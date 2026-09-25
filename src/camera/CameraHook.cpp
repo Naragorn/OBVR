@@ -14,6 +14,7 @@
 #include "game/CrosshairTarget.h"
 #include "game/DialogZoom.h"
 #include "game/FirstPersonArms.h"
+#include "game/FirstPersonDepth.h"
 #include "game/FirstPersonHide.h"
 #include "game/BonePin.h"
 #include "game/HandBones.h"
@@ -402,6 +403,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 		g_hudLayer.ClearWristPlacement();
 		game::HideFirstPersonNodes(false, "");
+		game::KeepFirstPersonDepth(false);
 		game::ForgetStrikes();
 		game::SetMenuCursorHidden(false);
 		g_hand = vr::HandModeResult{};
@@ -456,8 +458,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		              config.hands.hideSheaths ? "SideWeapon,BackWeapon,Quiver,Scb," : "",
 		              handsAway ? "Hand" : "");
 		game::HideFirstPersonNodes(!ReadIsThirdPerson(), hideList);
+		// The hands in the world rather than on top of it (FirstPersonDepth.h).
+		game::KeepFirstPersonDepth(config.hands.handsInWorldDepth);
 	} else {
 		game::HideFirstPersonNodes(false, "");
+		game::KeepFirstPersonDepth(false);
 		game::ForgetStrikes();
 	}
 
@@ -680,6 +685,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		strike.heavy = g_hand.swingHeavy;
 		strike.handRotation = g_hand.rightHandRotation;
 		strike.handOffsetUnits = g_hand.rightHandOffsetUnits;
+		strike.cameraValid = g_cyclopeanCameraWorldValid;
+		strike.cameraRotation = g_cyclopeanCameraWorldTransform.rot;
+		strike.cameraPosition = g_cyclopeanCameraWorldTransform.pos;
 		strike.boundFactor = config.hands.hitBoundFactor;
 		strike.padUnits = config.hands.hitPadUnits;
 		game::StrikeByMotion(strike);
@@ -2072,6 +2080,87 @@ void PrepareMenuFrameIfNeeded(bool menuIsUp) {
 	}
 }
 
+// One hand bone to its controller, or - adjusting the hands - held still in
+// the world while its grip is closed, and fitted to the controller when the
+// grip opens (game::StepHandAdjust, game::FitHandToPose). The fit is kept in
+// the running config and written to the INI.
+void PinAdjustableHand(bool right, const vr::HandSettings& hands, bool handValid, bool gripDown,
+                       const NiMatrix33& relativeRot, const NiPoint3& offsetUnits,
+                       const NiMatrix33& cameraRot, const NiPoint3& cameraPos,
+                       const NiPoint3& sharedGripMetres, float perMetre) {
+	static game::HandAdjustState s_adjust[2];
+	game::HandAdjustState& adjust = s_adjust[right ? 0 : 1];
+	if (!handValid) {
+		adjust = game::HandAdjustState{};
+		return;
+	}
+	const float roll = right ? hands.rightHandRoll : hands.leftHandRoll;
+	const float pitch = right ? hands.rightHandPitch : hands.leftHandPitch;
+	const float yaw = right ? hands.rightHandYaw : hands.leftHandYaw;
+	const NiPoint3 ownGrip = right ? NiPoint3{hands.rightHandGripX, hands.rightHandGripY,
+	                                          hands.rightHandGripZ}
+	                               : NiPoint3{hands.leftHandGripX, hands.leftHandGripY,
+	                                          hands.leftHandGripZ};
+	const NiPoint3 grip = (sharedGripMetres + ownGrip) * perMetre;
+	const NiMatrix33 calibration = game::HandCalibration(roll, pitch, yaw);
+	const char* const bone = right ? hands.rightHandBone : hands.leftHandBone;
+	const game::BonePose current =
+		game::HandBoneWorld(cameraRot, cameraPos, relativeRot, offsetUnits, calibration, grip);
+
+	switch (game::StepHandAdjust(adjust, hands.adjustHands, gripDown, current)) {
+	case game::HandAdjustStep::Follow:
+		game::PinHandBone(right, bone, relativeRot, offsetUnits, calibration, cameraRot,
+		                  cameraPos, grip);
+		return;
+	case game::HandAdjustStep::Hold: {
+		// The held pose through the same pin: a head-relative rotation and
+		// offset that carry the camera to exactly the frozen world pose.
+		const NiMatrix33 inverseCamera = InverseRotation(cameraRot);
+		game::PinHandBone(right, bone, inverseCamera * adjust.frozen.rot,
+		                  inverseCamera * (adjust.frozen.pos - cameraPos),
+		                  NiMatrix33::Identity(), cameraRot, cameraPos, NiPoint3{0.0f, 0.0f, 0.0f});
+		return;
+	}
+	case game::HandAdjustStep::Commit:
+		break;
+	}
+
+	const game::HandFit fit =
+		game::FitHandToPose(cameraRot, cameraPos, relativeRot, offsetUnits, adjust.frozen);
+	float newRoll = 0.0f;
+	float newPitch = 0.0f;
+	float newYaw = 0.0f;
+	game::CalibrationAngles(fit.calibration, newRoll, newPitch, newYaw);
+	const NiPoint3 newOwn = fit.gripUnits * (1.0f / perMetre) - sharedGripMetres;
+	vr::HandSettings& live = GetConfig().hands;
+	(right ? live.rightHandRoll : live.leftHandRoll) = newRoll;
+	(right ? live.rightHandPitch : live.leftHandPitch) = newPitch;
+	(right ? live.rightHandYaw : live.leftHandYaw) = newYaw;
+	(right ? live.rightHandGripX : live.leftHandGripX) = newOwn.x;
+	(right ? live.rightHandGripY : live.leftHandGripY) = newOwn.y;
+	(right ? live.rightHandGripZ : live.leftHandGripZ) = newOwn.z;
+	const char* const side = right ? "Right" : "Left";
+	const float values[] = {newRoll, newPitch, newYaw, newOwn.x, newOwn.y, newOwn.z};
+	const char* const suffixes[] = {"HandRoll", "HandPitch", "HandYaw",
+	                                "HandGripX", "HandGripY", "HandGripZ"};
+	bool saved = true;
+	for (UInt32 i = 0; i < 6; ++i) {
+		char key[32];
+		char value[32];
+		std::snprintf(key, sizeof(key), "%s%s", side, suffixes[i]);
+		std::snprintf(value, sizeof(value), "%.4f", static_cast<double>(values[i]));
+		saved = SaveSetting("Hands", key, value) && saved;
+	}
+	OBVR_LOG("Hands: %s hand adjusted - roll %.1f, pitch %.1f, yaw %.1f degrees, grip "
+	         "%.3f/%.3f/%.3f m on top of the shared one%s",
+	         right ? "right" : "left", static_cast<double>(newRoll), static_cast<double>(newPitch),
+	         static_cast<double>(newYaw), static_cast<double>(newOwn.x),
+	         static_cast<double>(newOwn.y), static_cast<double>(newOwn.z),
+	         saved ? ", saved" : " - COULD NOT SAVE the INI");
+	game::PinHandBone(right, bone, relativeRot, offsetUnits, fit.calibration, cameraRot, cameraPos,
+	                  fit.gripUnits);
+}
+
 // The first person weapon, turned at the last moment before anything is drawn.
 //
 // It has to be here rather than in the camera pass, and that is a measurement
@@ -2154,22 +2243,13 @@ void BeforeFirstScenePass() {
 			const NiMatrix33& cameraRot = g_cyclopeanCameraWorldTransform.rot;
 			const NiPoint3& cameraPos = g_cyclopeanCameraWorldTransform.pos;
 			const float perMetre = GetConfig().tracker.unitsPerMetre;
-			const NiPoint3 grip{0.0f, hands.handGripForwardMetres * perMetre,
-			                    hands.handGripUpMetres * perMetre};
-			if (g_hand.rightHandValid) {
-				game::PinHandBone(true, hands.rightHandBone, g_hand.rightHandRotation,
-				                  g_hand.rightHandOffsetUnits,
-				                  game::HandCalibration(hands.rightHandRoll, hands.rightHandPitch,
-				                                        hands.rightHandYaw),
-				                  cameraRot, cameraPos, grip);
-			}
-			if (g_hand.leftHandValid) {
-				game::PinHandBone(false, hands.leftHandBone, g_hand.leftHandRotation,
-				                  g_hand.leftHandOffsetUnits,
-				                  game::HandCalibration(hands.leftHandRoll, hands.leftHandPitch,
-				                                        hands.leftHandYaw),
-				                  cameraRot, cameraPos, grip);
-			}
+			const NiPoint3 sharedGrip{0.0f, hands.handGripForwardMetres, hands.handGripUpMetres};
+			PinAdjustableHand(true, hands, g_hand.rightHandValid, g_hand.rightGripDown,
+			                  g_hand.rightHandRotation, g_hand.rightHandOffsetUnits, cameraRot,
+			                  cameraPos, sharedGrip, perMetre);
+			PinAdjustableHand(false, hands, g_hand.leftHandValid, g_hand.leftGripDown,
+			                  g_hand.leftHandRotation, g_hand.leftHandOffsetUnits, cameraRot,
+			                  cameraPos, sharedGrip, perMetre);
 			// The hands are where the controllers are, not where the animation
 			// would have them: their bounds follow, so the engine does not cull
 			// a hand in view by an arm swung out of it. Arm's reach around the

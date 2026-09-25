@@ -2,7 +2,6 @@
 
 #include "core/AddressSpace.h"
 #include "core/Log.h"
-#include "game/FirstPersonArms.h"
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
 #include "game/MeleeHit.h"
@@ -227,14 +226,16 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		return 0;
 	}
 
-	// The camera's frame, the space the hand's offset is measured from -
-	// the same the bones are pinned in.
-	NiAVObject* const root = FirstPersonArmsNode();
-	if (root == nullptr || !LooksLikeObject(root->parent)) {
+	// The world camera the hand's offset is measured from. It was the
+	// first-person root's parent, whose world transform is not the world
+	// the bodies stand in: every swing of the 2026-09-25 evening run walked
+	// all the living, bounded actors (282 entries on one swing) and found
+	// not one within 2048 units of the blade. The grab by reach, which
+	// works, measures from the camera the eyes are built on; so does this.
+	if (!strike.cameraValid) {
 		return 0;
 	}
-	const NiAVObject* const camera = root->parent;
-	const Blade blade = BladeInWorld(camera->worldTransform.rot, camera->worldTransform.pos,
+	const Blade blade = BladeInWorld(strike.cameraRotation, strike.cameraPosition,
 	                                 strike.handRotation, strike.handOffsetUnits, reach);
 
 	if (WeaponTypeOf(weapon) != g_armedType && g_armedLinesLeft > 0) {
@@ -316,7 +317,7 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		++s_missBounded;
 		{
 			const float distance = SegmentPointDistance(blade.base, blade.tip, bound.center);
-			if (distance < 2048.0f) {
+			if (distance == distance) {  // any finite distance: how far is the finding
 				++s_missBodies;
 				if (s_missNearest < 0.0f || distance < s_missNearest) {
 					s_missNearest = distance;

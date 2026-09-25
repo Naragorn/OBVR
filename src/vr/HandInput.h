@@ -1051,6 +1051,15 @@ inline ReadyWeaponVerdict StepReadyWeapon(ReadyWeaponState& s, bool click, Weapo
 	return v;
 }
 
+// Left-handed: the controls are read from the other controller, all of them
+// - trigger, grip, A, B, the stick, its click, the trackpad - rather than
+// only activate moving to the left A (2026-09-25: "wir spiegeln einfach alle
+// Controls"). In a menu the pointing hand's trigger is the click whichever
+// side it is on, so nothing is mirrored there.
+inline bool MirroredControls(bool leftHanded, bool menuMode) {
+	return leftHanded && !menuMode;
+}
+
 // Run, held or toggled. Held (the default): the run control is down while
 // the left stick is pressed in. Toggled: a click of the left stick - one
 // released alone, so both sticks together still open OBVR's menu - switches

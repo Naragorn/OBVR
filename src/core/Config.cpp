@@ -650,6 +650,13 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.leftHandRoll = ReadFloat("Hands", "LeftHandRoll", h.leftHandRoll, path);
 		h.leftHandPitch = ReadFloat("Hands", "LeftHandPitch", h.leftHandPitch, path);
 		h.leftHandYaw = ReadFloat("Hands", "LeftHandYaw", h.leftHandYaw, path);
+		h.rightHandGripX = ReadFloat("Hands", "RightHandGripX", h.rightHandGripX, path);
+		h.rightHandGripY = ReadFloat("Hands", "RightHandGripY", h.rightHandGripY, path);
+		h.rightHandGripZ = ReadFloat("Hands", "RightHandGripZ", h.rightHandGripZ, path);
+		h.leftHandGripX = ReadFloat("Hands", "LeftHandGripX", h.leftHandGripX, path);
+		h.leftHandGripY = ReadFloat("Hands", "LeftHandGripY", h.leftHandGripY, path);
+		h.leftHandGripZ = ReadFloat("Hands", "LeftHandGripZ", h.leftHandGripZ, path);
+		h.adjustHands = ReadBool("Hands", "AdjustHands", h.adjustHands, path);
 		h.handGripUpMetres = ReadFloat("Hands", "HandGripUpMetres", h.handGripUpMetres, path);
 		h.handGripForwardMetres =
 			ReadFloat("Hands", "HandGripForwardMetres", h.handGripForwardMetres, path);
@@ -664,6 +671,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.hideArms = ReadBool("Hands", "HideArms", h.hideArms, path);
 		ReadText("Hands", "HideFirstPersonNodes", h.hideNodes, sizeof(h.hideNodes), path);
 		h.hideSheaths = ReadBool("Hands", "HideSheaths", h.hideSheaths, path);
+		h.handsInWorldDepth = ReadBool("Hands", "HandsInWorldDepth", h.handsInWorldDepth, path);
 		h.laserGain = ReadFloat("Hands", "LaserGain", h.laserGain, path);
 		h.laserMaxStep = ReadFloat("Hands", "LaserMaxStep", h.laserMaxStep, path);
 		h.stickDeadZone = ReadFloat("Hands", "StickDeadZone", h.stickDeadZone, path);

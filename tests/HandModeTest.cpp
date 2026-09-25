@@ -5,6 +5,7 @@
 
 #include <cstdio>
 
+#include "game/FirstPersonDepth.h"
 #include "game/KeyScanCodes.h"
 #include "vr/HandInput.h"
 #include "vr/HandMode.h"
@@ -1362,6 +1363,55 @@ void TestRunToggle() {
 	Check(!StepRunToggle(latched, true, true, false) && !latched, "the next click switches it off");
 }
 
+void TestLeftHandedMirror() {
+	std::printf("Left-handed: every control from the other controller\n");
+	Check(MirroredControls(true, false) && !MirroredControls(true, true) &&
+	          !MirroredControls(false, false) && !MirroredControls(false, true),
+	      "mirrored only left-handed and out of a menu");
+	HandSettings settings;
+	settings.enabled = true;
+	settings.leftHanded = true;
+	settings.motionHits = false;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.dtSeconds = 0.01f;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	frame.right.position = NiPoint3{0.3f, -0.2f, -0.5f};
+	frame.left.position = NiPoint3{-0.3f, -0.6f, -0.5f};  // low: no block gesture
+	frame.left.trigger = 1.0f;
+	frame.left.buttonsPressed = 1ull << obvr::vr::openvr::kButtonA;
+	frame.right.thumbY = 1.0f;
+	HandMode mode;
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.controls.attack && !r.controls.cast, "the left trigger attacks");
+	Check(r.controls.activate, "the left A activates");
+	Check(r.controls.move.forward, "the right stick walks");
+	frame.left.trigger = 0.0f;
+	frame.right.trigger = 1.0f;
+	frame.left.buttonsPressed = 0;
+	frame.right.thumbY = 0.0f;
+	frame.left.thumbX = 1.0f;
+	r = mode.Update(frame, settings);
+	Check(r.controls.cast && !r.controls.attack, "the right trigger casts");
+	Check(r.controls.turn > 0.5f, "the left stick turns");
+	settings.leftHanded = false;
+	HandMode rightHanded;
+	r = rightHanded.Update(frame, settings);
+	Check(r.controls.attack && !r.controls.cast, "right-handed: the right trigger attacks again");
+}
+
+void TestFirstPersonDepthBranch() {
+	std::printf("First-person depth: the branch before the clear\n");
+	using obvr::game::FirstPersonDepthBranchByte;
+	Check(FirstPersonDepthBranchByte(0x75, true) == 0xEB, "vanilla's jne becomes a jmp to keep the depth");
+	Check(FirstPersonDepthBranchByte(0xEB, true) == 0xEB, "already a jmp: stays");
+	Check(FirstPersonDepthBranchByte(0xEB, false) == 0x75, "switched off: the jne comes back");
+	Check(FirstPersonDepthBranchByte(0x75, false) == 0x75, "vanilla stays vanilla");
+	Check(FirstPersonDepthBranchByte(0x90, true) == 0 && FirstPersonDepthBranchByte(0xE9, false) == 0,
+	      "any other byte is not this branch: left alone");
+}
+
 void TestUsScanCodes() {
 	std::printf("Keys by US scan code, whatever the layout\n");
 	// The game's own [Controls] block (Oblivion.ini) for its defaults.
@@ -1639,6 +1689,8 @@ int main() {
 	TestSwingPressesAttack();
 	TestRunToggle();
 	TestUsScanCodes();
+	TestFirstPersonDepthBranch();
+	TestLeftHandedMirror();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

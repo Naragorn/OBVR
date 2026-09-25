@@ -165,7 +165,80 @@ void TestParentForChild() {
 
 }  // namespace
 
+void TestAdjust() {
+	std::printf("Adjusting the hands: angles back, fit, hold and commit\n");
+	using obvr::game::CalibrationAngles;
+	using obvr::game::FitHandToPose;
+	using obvr::game::HandAdjustState;
+	using obvr::game::HandAdjustStep;
+	using obvr::game::HandFit;
+	using obvr::game::StepHandAdjust;
+
+	const float angles[][3] = {{0, 0, 90}, {180, 0, 90}, {30, -20, 75}, {-45, 60, -120}, {10, 5, 0}};
+	for (const auto& a : angles) {
+		float roll = 0.0f;
+		float pitch = 0.0f;
+		float yaw = 0.0f;
+		const NiMatrix33 m = HandCalibration(a[0], a[1], a[2]);
+		CalibrationAngles(m, roll, pitch, yaw);
+		Check(NearMatrix(HandCalibration(roll, pitch, yaw), m),
+		      "the angles read back rebuild the same calibration");
+	}
+	{
+		float roll = 0.0f;
+		float pitch = 0.0f;
+		float yaw = 0.0f;
+		const NiMatrix33 m = HandCalibration(25.0f, 90.0f, 40.0f);
+		const NiMatrix33 down = HandCalibration(-35.0f, -90.0f, 10.0f);
+		float r2 = 0.0f, p2 = 0.0f, y2 = 0.0f;
+		CalibrationAngles(down, r2, p2, y2);
+		Check(NearMatrix(HandCalibration(r2, p2, y2), down), "and at -90 degrees as well");
+		CalibrationAngles(m, roll, pitch, yaw);
+		Check(NearMatrix(HandCalibration(roll, pitch, yaw), m) && Near(roll, 0.0f),
+		      "at a pitch of 90 degrees the roll goes to zero and the turn still matches");
+	}
+
+	// A hand posed by one calibration and grip is fitted back to exactly it.
+	const NiMatrix33 cameraRot = EulerToMatrix(5.0f, -10.0f, 70.0f);
+	const NiPoint3 cameraPos{1000.0f, -200.0f, 50.0f};
+	const NiMatrix33 relative = EulerToMatrix(-30.0f, 15.0f, 20.0f);
+	const NiPoint3 offset{12.0f, 30.0f, -20.0f};
+	const NiMatrix33 calibration = HandCalibration(20.0f, 10.0f, 95.0f);
+	const NiPoint3 grip{1.0f, -2.0f, -3.0f};
+	const BonePose wanted = HandBoneWorld(cameraRot, cameraPos, relative, offset, calibration, grip);
+	const HandFit fit = FitHandToPose(cameraRot, cameraPos, relative, offset, wanted);
+	Check(NearMatrix(fit.calibration, calibration) && NearPoint(fit.gripUnits, grip),
+	      "the fit finds the calibration and grip that made the pose");
+	const BonePose again =
+		HandBoneWorld(cameraRot, cameraPos, relative, offset, fit.calibration, fit.gripUnits);
+	Check(NearMatrix(again.rot, wanted.rot) && NearPoint(again.pos, wanted.pos),
+	      "and posing with the fit puts the hand where it was held");
+
+	HandAdjustState s;
+	BonePose first;
+	first.pos = NiPoint3{1.0f, 2.0f, 3.0f};
+	BonePose later;
+	later.pos = NiPoint3{9.0f, 9.0f, 9.0f};
+	Check(StepHandAdjust(s, false, true, first) == HandAdjustStep::Follow && !s.held,
+	      "not adjusting: a grip changes nothing");
+	Check(StepHandAdjust(s, true, false, first) == HandAdjustStep::Follow,
+	      "adjusting, grip open: the hand follows");
+	Check(StepHandAdjust(s, true, true, first) == HandAdjustStep::Hold && s.held &&
+	          NearPoint(s.frozen.pos, first.pos),
+	      "the grip closes: held where it was");
+	Check(StepHandAdjust(s, true, true, later) == HandAdjustStep::Hold &&
+	          NearPoint(s.frozen.pos, first.pos),
+	      "held: the controller moving does not move it");
+	Check(StepHandAdjust(s, true, false, later) == HandAdjustStep::Commit && !s.held,
+	      "the grip opens: commit");
+	Check(StepHandAdjust(s, true, false, later) == HandAdjustStep::Follow, "once");
+	StepHandAdjust(s, true, true, first);
+	Check(StepHandAdjust(s, false, false, later) == HandAdjustStep::Follow && !s.held,
+	      "switched off while held: nothing committed");
+}
+
 int main() {
+	TestAdjust();
 	TestWorldPose();
 	TestLocalUnderParent();
 	TestCalibration();
