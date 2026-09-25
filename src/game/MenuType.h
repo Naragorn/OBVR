@@ -135,11 +135,11 @@ bool LoadingThreadActive();
 const char* MenuIdName(UInt32 id);
 
 // Where the game's menu cursor is, in the pixels of the screen-size copy the
-// 2D lays out in (the believed size). Read from the InterfaceManager's
-// position floats at kInterfaceCursorPosOffset - the fields the cursor
-// probe has been logging since the hover-offset work, and the same ones the
-// tile search is fed from. False when the manager cannot be reached or the
-// numbers are not finite pixels.
+// 2D lays out in (the believed size), y down. Read from the two floats the
+// engine's own tile search takes (kInterfaceCursorXOffset,
+// kInterfaceCursorYOffset), so the laser walks the cursor the hit test
+// actually uses. False when the manager cannot be reached or the numbers are
+// not finite pixels.
 bool InterfaceCursorPosition(float& x, float& y);
 
 // The same two floats unchecked, for a log line when the checked read

@@ -22,29 +22,26 @@ bool InterfaceCursorRaw(float& x, float& y) {
 	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(manager))) {
 		return false;
 	}
-	const float* pos = reinterpret_cast<const float*>(manager + addr::kInterfaceCursorPosOffset);
-	x = pos[0];
-	y = pos[1];
+	x = *reinterpret_cast<const float*>(manager + addr::kInterfaceCursorXOffset);
+	y = *reinterpret_cast<const float*>(manager + addr::kInterfaceCursorYOffset);
 	return true;
 }
 
 bool InterfaceCursorPosition(float& x, float& y) {
-	const auto* manager =
-		*reinterpret_cast<const UInt8* const*>(addr::kInterfaceManagerPointer);
-	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(manager))) {
+	float readX = 0.0f;
+	float readY = 0.0f;
+	if (!InterfaceCursorRaw(readX, readY)) {
 		return false;
 	}
-	const float* pos = reinterpret_cast<const float*>(manager + addr::kInterfaceCursorPosOffset);
 	// Finite and inside any screen the copy could describe; a NaN fails
-	// every comparison and lands here too. A little above the top is
-	// allowed: at the main menu the game parks the cursor at (0, -16),
-	// measured 2026-09-07, and a laser that could not read it there could
-	// not walk it onto the buttons.
-	if (!(pos[0] >= -64.0f && pos[0] <= 16384.0f && pos[1] >= -64.0f && pos[1] <= 16384.0f)) {
+	// every comparison and lands here too. The engine clamps these to the
+	// screen itself for its hit test (see kInterfaceCursorXOffset), so a
+	// little slack either side is only for a frame caught mid-update.
+	if (!(readX >= -64.0f && readX <= 16384.0f && readY >= -64.0f && readY <= 16384.0f)) {
 		return false;
 	}
-	x = pos[0];
-	y = pos[1];
+	x = readX;
+	y = readY;
 	return true;
 }
 

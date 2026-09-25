@@ -20,6 +20,7 @@ struct HandKeyMap {
 	UInt32 grab = 0x5A;        // Z
 	UInt32 jump = 0x45;        // E
 	UInt32 sneak = 0x11;       // Ctrl
+	UInt32 run = 0x10;         // Shift - Oblivion.ini [Controls] "Run=002AFFFF", scancode 0x2A
 	UInt32 readyWeapon = 0x46; // F
 	UInt32 menu = 0x09;        // Tab
 	UInt32 escape = 0x1B;      // Esc

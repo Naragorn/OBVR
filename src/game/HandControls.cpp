@@ -76,6 +76,7 @@ void ApplyHandControls(const vr::HandControlsWanted& wanted, const HandKeyMap& k
 	SetKey(keys.grab, wanted.grab);
 	SetKey(keys.jump, wanted.jump);
 	SetKey(keys.sneak, wanted.sneak);
+	SetKey(keys.run, wanted.run);
 	SetKey(keys.readyWeapon, wanted.readyWeapon);
 	SetKey(keys.menu, wanted.menu);
 	SetKey(keys.escape, wanted.escape);

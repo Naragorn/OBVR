@@ -120,11 +120,29 @@ void TestPlanner() {
 	left.leftValid = true;
 	left.leftA = true;
 	left.leftStickClick = true;
+	left.leftStickHeld = true;
 	left.leftTrackpadClick = true;
 	w = PlanHandControls(left, 0.4f);
 	Check(w.activate && !w.grab, "left A activates");
-	Check(w.sneak, "the left stick click sneaks");
+	Check(w.run && !w.sneak, "the left stick held in runs, and its click no longer sneaks");
 	Check(w.quickMenu, "the left trackpad click opens the quick menu");
+
+	HandFrameInput flicks;
+	flicks.rightValid = true;
+	flicks.leftValid = true;
+	flicks.rightA = true;
+	flicks.rightStickUp = true;
+	w = PlanHandControls(flicks, 0.4f);
+	Check(w.jump && !w.sneak, "the right stick flicked up jumps");
+	flicks.rightStickUp = false;
+	w = PlanHandControls(flicks, 0.4f);
+	Check(!w.jump, "and right A no longer does");
+	flicks.rightStickDown = true;
+	w = PlanHandControls(flicks, 0.4f);
+	Check(w.sneak && !w.jump, "flicked down sneaks");
+	flicks.rightValid = false;
+	w = PlanHandControls(flicks, 0.4f);
+	Check(!w.sneak, "an untracked right hand neither jumps nor sneaks");
 
 	in.rightTrigger = false;
 	in.swingAttackHeld = true;
@@ -1018,15 +1036,86 @@ void TestLeftButtonsInHandMode() {
 	Check(!r.controls.quickMenu && !r.controls.sneak,
 	      "and its release is not a stick click - nothing sneaks");
 
+	frame.dtSeconds = 1.0f / 90.0f;
 	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
 	r = mode.Update(frame, settings);
+	Check(r.controls.run && !r.controls.sneak, "the left stick pressed in runs");
+	for (int i = 0; i < 45; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	Check(r.controls.run, "for as long as it is held");
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	r = mode.Update(frame, settings);
+	Check(!r.settingsMenuToggle, "a right click half a second into running is not OBVR's menu");
+	frame.right.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(r.controls.readyWeapon, "it readies the weapon on release");
 	frame.left.buttonsPressed = 0;
 	r = mode.Update(frame, settings);
-	Check(r.controls.sneak && !r.controls.quickMenu, "the stick click, on release, sneaks");
+	Check(!r.controls.run && !r.controls.sneak, "let go: walking again, nothing else");
+
+	frame.right.thumbY = 0.9f;
+	r = mode.Update(frame, settings);
+	Check(r.controls.jump && !r.controls.sneak, "the right stick flicked up jumps");
+	r = mode.Update(frame, settings);
+	Check(!r.controls.jump, "once per flick");
+	frame.right.thumbY = -0.9f;
+	r = mode.Update(frame, settings);
+	Check(r.controls.sneak && !r.controls.jump, "flicked down sneaks");
+	frame.right.thumbY = 0.0f;
+	mode.Update(frame, settings);
 
 	frame.left.buttonsPressed = 1ull << openvr::kButtonA;
 	r = mode.Update(frame, settings);
 	Check(r.controls.activate && !r.controls.grab, "A activates");
+}
+
+void TestStickFlick() {
+	std::printf("Stick flicks\n");
+	StickFlickState s;
+	StickFlickVerdict v = StepStickFlick(s, 0.0f, 0.69f);
+	Check(!v.up, "short of 0.7: nothing");
+	v = StepStickFlick(s, 0.0f, 0.7f);
+	Check(v.up && !v.down, "at 0.7 up: up");
+	v = StepStickFlick(s, 0.0f, 1.0f);
+	Check(!v.up, "held: once");
+	v = StepStickFlick(s, 0.0f, 0.5f);
+	v = StepStickFlick(s, 0.0f, 0.9f);
+	Check(!v.up, "back only to 0.5, above half: not re-armed");
+	v = StepStickFlick(s, 0.0f, 0.2f);
+	v = StepStickFlick(s, 0.0f, 0.9f);
+	Check(v.up, "back to 0.2, then up again: up again");
+	s = StickFlickState{};
+	v = StepStickFlick(s, 0.9f, 0.8f);
+	Check(!v.up, "more sideways than up is a turn, not a jump");
+	v = StepStickFlick(s, 0.0f, -0.8f);
+	Check(v.down && !v.up, "straight down: down");
+	s = StickFlickState{};
+	volatile float zero = 0.0f;
+	v = StepStickFlick(s, zero / zero, zero / zero);
+	Check(!v.up && !v.down, "a NaN stick is a centred stick");
+}
+
+void TestChordWindow() {
+	std::printf("The chord only when both come together\n");
+	StickChordState s;
+	StickChordVerdict v = StepStickChord(s, false, true, 0.011f);
+	for (int i = 0; i < 30; ++i) {
+		v = StepStickChord(s, false, true, 0.011f);
+	}
+	v = StepStickChord(s, true, true, 0.011f);
+	Check(!v.both, "the right a quarter second after the left: no chord");
+	v = StepStickChord(s, false, true, 0.011f);
+	Check(v.rightClick && !v.both, "the right released: its own click");
+	v = StepStickChord(s, false, false, 0.011f);
+	Check(v.leftClick, "and the left released: its own click");
+
+	v = StepStickChord(s, false, true, 0.011f);
+	v = StepStickChord(s, false, true, 0.011f);
+	v = StepStickChord(s, true, true, 0.011f);
+	Check(v.both, "the right a couple of frames after the left: the chord");
+	v = StepStickChord(s, false, false, 0.011f);
+	Check(!v.rightClick && !v.leftClick, "and no clicks after it");
 }
 
 void TestLegacyButtons() {
@@ -1048,6 +1137,8 @@ int main() {
 	TestGrabHand();
 	TestLeftButtonsInHandMode();
 	TestLegacyButtons();
+	TestStickFlick();
+	TestChordWindow();
 	TestSpeedAndSwing();
 	TestEdges();
 	TestPlanner();

@@ -601,6 +601,18 @@ inline constexpr UInt32 kInterfaceMenuRootOffset = 0x68;
 inline constexpr UInt32 kInterfaceCursorTileOffset = 0x1C;
 inline constexpr UInt32 kInterfaceCursorPosOffset = 0x20;
 inline constexpr UInt32 kInterfaceCursorDerivedOffset = 0x2C;
+// Where the cursor is for the engine's own hit test, in the pixels of the
+// screen-size copy, y counted down from the top. Both triples are (x, depth,
+// y), not (x, y, depth): the tile search 0x00581390 loads [this+2Ch] and
+// clamps it to 0..[00B06C4Ch] (the width) at 00581425-00581478, loads
+// [this+34h] and clamps it to 0..[00B06C50h] (the height) at
+// 0058147C-005814C7, and hands the pair to the pick at 0070D300, whose
+// normalisation 0x00701540 takes y downwards (1 - y/h). +0x30 is not read
+// there. Reading the middle float as y was the laser's "cursor stuck at the
+// top" in the 2026-09-25 Full VR run: it sat at -2 or -3 whatever the
+// mouse did, and at -16 on the main menu.
+inline constexpr UInt32 kInterfaceCursorXOffset = 0x2C;
+inline constexpr UInt32 kInterfaceCursorYOffset = 0x34;
 inline constexpr UInt32 kInterfaceAltActiveTileOffset = 0x88;
 inline constexpr UInt32 kInterfaceActiveTileOffset = 0x98;
 inline constexpr UInt32 kTileRenderNodeOffset = 0x24;

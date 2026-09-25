@@ -80,6 +80,7 @@ void HandMode::Reset() {
 	m_rightMenu = ButtonEdge{};
 	m_leftMenu = ButtonEdge{};
 	m_leftTrackpad = ButtonEdge{};
+	m_rightFlick = StickFlickState{};
 	m_scrollUp = RepeatState{};
 	m_scrollDown = RepeatState{};
 	m_sticks = StickChordState{};
@@ -234,6 +235,14 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	in.leftStickClick = sticks.leftClick;
 	in.leftTrackpadClick = StepRisingEdge(
 		m_leftTrackpad, f.left.valid && TrackpadClickDown(f.left.buttonsPressed));
+	in.leftStickHeld = f.left.valid && StickClickDown(f.left.buttonsPressed);
+	if (f.right.valid) {
+		const StickFlickVerdict flick = StepStickFlick(m_rightFlick, f.right.thumbX, f.right.thumbY);
+		in.rightStickUp = flick.up;
+		in.rightStickDown = flick.down;
+	} else {
+		m_rightFlick = StickFlickState{};
+	}
 	in.leftThumbX = f.left.thumbX;
 	in.leftThumbY = f.left.thumbY;
 	in.rightThumbX = f.right.thumbX;
@@ -301,7 +310,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 StickChordVerdict HandMode::StepChord(const HandModeFrame& f, HandModeResult& r) {
 	const StickChordVerdict sticks = StepStickChord(
 		m_sticks, f.right.valid && StickClickDown(f.right.buttonsPressed),
-		f.left.valid && StickClickDown(f.left.buttonsPressed));
+		f.left.valid && StickClickDown(f.left.buttonsPressed), f.dtSeconds);
 	r.settingsMenuToggle = sticks.both;
 	return sticks;
 }

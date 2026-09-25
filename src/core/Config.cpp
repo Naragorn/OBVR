@@ -649,6 +649,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		k.grab = ReadKeyCode("Hands", "GrabKey", k.grab, path);
 		k.jump = ReadKeyCode("Hands", "JumpKey", k.jump, path);
 		k.sneak = ReadKeyCode("Hands", "SneakKey", k.sneak, path);
+		k.run = ReadKeyCode("Hands", "RunKey", k.run, path);
 		k.readyWeapon = ReadKeyCode("Hands", "ReadyWeaponKey", k.readyWeapon, path);
 		k.menu = ReadKeyCode("Hands", "MenuKey", k.menu, path);
 		k.escape = ReadKeyCode("Hands", "EscapeKey", k.escape, path);

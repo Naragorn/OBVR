@@ -238,6 +238,7 @@ struct HandControlsWanted {
 	bool grab = false;      // grab held
 	bool jump = false;
 	bool sneak = false;
+	bool run = false;        // the run control held
 	bool readyWeapon = false;
 	bool menu = false;       // the menu-mode key (Tab)
 	bool escape = false;
@@ -319,6 +320,9 @@ struct HandFrameInput {
 	bool leftMenuButton = false;   // rising edge
 	bool rightStickClick = false;  // rising edge
 	bool leftStickClick = false;   // rising edge
+	bool leftStickHeld = false;    // level: the left stick pressed in
+	bool rightStickUp = false;     // rising edge of a flick up
+	bool rightStickDown = false;   // rising edge of a flick down
 	bool leftTrackpadClick = false;  // rising edge
 	float leftThumbX = 0.0f;
 	float leftThumbY = 0.0f;
@@ -336,11 +340,11 @@ struct HandFrameInput {
 // menu, the right one is escape. In the world: right trigger attacks (the
 // bow draws while it is held and looses when it is released, a spell hand
 // casts on the left trigger), swings attack by themselves, the raised left
-// hand blocks, either grip grabs, right A jumps and left A activates, the
-// sticks move and turn, the right stick click readies the weapon and the left
-// one sneaks, the left trackpad click opens the quick menu. The left side
-// follows the gamepad layout: a grip that grabbed and activated at once
-// would take the object it was meant to hold.
+// hand blocks, either grip grabs, left A activates, the left stick walks
+// and runs while it is pressed in, the right stick turns, jumps on a flick
+// up and sneaks on a flick down, its click readies the weapon, the left
+// trackpad click opens the quick menu. The left grip only grabs: one that
+// grabbed and activated at once would take the object it was meant to hold.
 inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stickDeadZone) {
 	HandControlsWanted out;
 	if (in.menuMode) {
@@ -352,7 +356,8 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 	}
 	if (in.rightValid) {
 		out.attack = (in.rightTrigger && !in.drawBlocked && !in.meleeByMotion) || in.swingAttackHeld;
-		out.jump = in.rightA;
+		out.jump = in.rightStickUp;
+		out.sneak = in.rightStickDown;
 		out.escape = in.rightMenuButton;
 		out.readyWeapon = in.rightStickClick;
 		out.turn = in.rightThumbX;
@@ -360,7 +365,7 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 	if (in.leftValid) {
 		out.cast = in.leftTrigger;
 		out.activate = in.leftA;
-		out.sneak = in.leftStickClick;
+		out.run = in.leftStickHeld;
 		out.menu = in.leftMenuButton;
 		out.quickMenu = in.leftTrackpadClick;
 		out.move = StickToDirections(in.leftThumbX, in.leftThumbY, stickDeadZone);
@@ -682,6 +687,7 @@ struct StickChordState {
 	bool rightDown = false;
 	bool leftDown = false;
 	bool chorded = false;  // both were down at some point in this press
+	float sinceFirst = 0.0f;  // seconds since the first of the two went down
 };
 
 struct StickChordVerdict {
@@ -690,12 +696,27 @@ struct StickChordVerdict {
 	bool both = false;        // the frame both came to be down
 };
 
-inline StickChordVerdict StepStickChord(StickChordState& s, bool rightDown, bool leftDown) {
+// Both sticks count as the chord only when the second goes down within this
+// of the first. The left stick held in is running: a right click while
+// running readies the weapon, and must not open OBVR's menu instead.
+constexpr float kStickChordWindowSeconds = 0.25f;
+
+inline StickChordVerdict StepStickChord(StickChordState& s, bool rightDown, bool leftDown,
+                                        float dtSeconds = 0.0f) {
 	StickChordVerdict v;
 	const bool bothDown = rightDown && leftDown;
-	if (bothDown && !s.chorded) {
-		v.both = true;
-		s.chorded = true;
+	if (!s.rightDown && !s.leftDown) {
+		s.sinceFirst = 0.0f;
+	} else if (dtSeconds > 0.0f) {
+		s.sinceFirst += dtSeconds;
+	}
+	if (bothDown && !s.chorded && !(s.rightDown && s.leftDown)) {
+		// Both are down for the first time in this press: a chord if the
+		// second came quickly, otherwise a click held under a running stick.
+		if (s.sinceFirst <= kStickChordWindowSeconds) {
+			v.both = true;
+			s.chorded = true;
+		}
 	}
 	if (s.rightDown && !rightDown && !s.chorded) {
 		v.rightClick = true;
@@ -708,6 +729,41 @@ inline StickChordVerdict StepStickChord(StickChordState& s, bool rightDown, bool
 	}
 	s.rightDown = rightDown;
 	s.leftDown = leftDown;
+	return v;
+}
+
+// ---------------------------------------------------------- Stick flicks
+//
+// The right stick pushed well up or down, more up or down than sideways: a
+// jump or a sneak, once per push. Held back to the middle before the next,
+// with some slack, so a thumb resting at the edge does not fire again.
+
+constexpr float kStickFlick = 0.7f;
+
+struct StickFlickState {
+	bool up = false;
+	bool down = false;
+};
+
+struct StickFlickVerdict {
+	bool up = false;
+	bool down = false;
+};
+
+inline StickFlickVerdict StepStickFlick(StickFlickState& s, float x, float y) {
+	StickFlickVerdict v;
+	if (!(x == x) || !(y == y)) {
+		x = 0.0f;
+		y = 0.0f;
+	}
+	const float ax = x < 0.0f ? -x : x;
+	const float ay = y < 0.0f ? -y : y;
+	const bool up = y >= kStickFlick && ay > ax;
+	const bool down = y <= -kStickFlick && ay > ax;
+	v.up = up && !s.up;
+	v.down = down && !s.down;
+	s.up = up || (s.up && y > kStickFlick * 0.5f);
+	s.down = down || (s.down && y < -kStickFlick * 0.5f);
 	return v;
 }
 
