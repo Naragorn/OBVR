@@ -71,7 +71,7 @@ struct HandSettings {
 	float rightHandRoll = 0.0f;
 	float rightHandPitch = 0.0f;
 	float rightHandYaw = 90.0f;
-	float leftHandRoll = 0.0f;
+	float leftHandRoll = 180.0f;  // the left bone's axes are the right's turned about x
 	float leftHandPitch = 0.0f;
 	float leftHandYaw = 90.0f;
 
@@ -94,6 +94,11 @@ struct HandSettings {
 	// construction, like the rest of the mode.
 	bool controllerMenus = false;
 	bool laserBeam = true;
+	// How far the laser leaves the controller turned down from its tracked
+	// forward (-z), in degrees about the controller's own x axis. 60 is the
+	// tilt asked for after the 2026-09-25 run - the way SteamVR Home's laser
+	// leaves an Index; 0 is the tracked axis as it is.
+	float laserPitchDegrees = 60.0f;
 	// With ControllerMenus on and the mode off, the controllers in the
 	// WORLD as well, as a gamepad: see PlanGamepadControls for the layout.
 	bool gamepadLayout = true;

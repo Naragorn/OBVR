@@ -45,6 +45,13 @@ inline bool ButtonADown(UInt64 mask) {
 inline bool ButtonBDown(UInt64 mask) { return ButtonDown(mask, openvr::kButtonIndexB); }
 inline bool GripDown(UInt64 mask) { return ButtonDown(mask, openvr::kButtonIndexGrip); }
 inline bool StickClickDown(UInt64 mask) { return ButtonDown(mask, openvr::kButtonIndexJoystick); }
+// The laser's direction in the controller's own frame (x right, y up, -z
+// forward): forward turned down by pitchDegrees about x. At 0 it is -z.
+inline NiPoint3 LaserDirectionLocal(float pitchDegrees) {
+	const float radians = pitchDegrees * math::kDegreesToRadians;
+	return NiPoint3{0.0f, -math::Sin(radians), -math::Cos(radians)};
+}
+
 inline bool TrackpadClickDown(UInt64 mask) {
 	return ButtonDown(mask, openvr::kButtonIndexTrackpad);
 }

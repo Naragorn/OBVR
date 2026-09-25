@@ -2692,7 +2692,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	g_laserLayer.Submit(g_headTracker.GetBackendForFrame(),
 	                    g_hand.laserVisible && config.hands.laserBeam,
 	                    g_headTracker.GetBackendForFrame().HandDeviceIndex(g_hand.laserRight),
-	                    g_hand.laserLengthMetres);
+	                    config.hands.laserPitchDegrees, g_hand.laserLengthMetres);
 
 	if (!config.tracker.hudOverlay || !render::IsInterfaceRenderHooked()) {
 		return;

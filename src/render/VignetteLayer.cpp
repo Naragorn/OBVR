@@ -19,12 +19,17 @@ void VignetteLayer::GenerateVignettePixels(UInt32 width, UInt32 height, UInt8* r
 	const float halfW = static_cast<float>(width) * 0.5f;
 	const float halfH = static_cast<float>(height) * 0.5f;
 
-	// How far from centre the vignette starts becoming visible (as a fraction of
-	// half-width). Below this radius is fully clear, above it darkens towards edges.
-	constexpr float kStartRadius = 0.45f;
-	// Maximum darkness at the corners (alpha channel, 0-255). Not fully opaque so
-	// the world behind still shows through - a vignette, not a blackout.
-	constexpr UInt32 kMaxAlpha = 180u;
+	// Where the darkening starts and where it is full, as fractions of the
+	// half-width. The quad is 8 m wide at 1.5 m, so a fraction r sits at
+	// atan(4 r / 1.5) from the centre of view: 0.17 is about 25 degrees, 0.375
+	// about 45. The first values, 0.45 up to the rim, put the whole ramp past
+	// 50 degrees once the quad was widened - at the edge of an Index's view,
+	// and the headset run saw no vignette at all.
+	constexpr float kStartRadius = 0.17f;
+	constexpr float kFullRadius = 0.375f;
+	// Maximum darkness (alpha channel, 0-255). Not fully opaque so the world
+	// behind still shows through - a vignette, not a blackout.
+	constexpr UInt32 kMaxAlpha = 220u;
 
 	for (UInt32 y = 0; y < height; ++y) {
 		// Row by row at the surface's own pitch, which may be wider than the
@@ -42,10 +47,10 @@ void VignetteLayer::GenerateVignettePixels(UInt32 width, UInt32 height, UInt8* r
 			if (norm <= kStartRadius) {
 				pixels[x] = 0x00000000u;  // fully transparent at centre
 			} else {
-				// Smooth ramp from clear to dark using a quadratic curve.
-				// Held at full beyond the inscribed circle: the corners reach
-				// 1.41, and an unclamped square would overflow the alpha byte.
-				float t = (norm - kStartRadius) / (1.0f - kStartRadius);
+				// Smooth ramp from clear to dark using a quadratic curve, held
+				// at full beyond kFullRadius - an unclamped square would also
+				// overflow the alpha byte.
+				float t = (norm - kStartRadius) / (kFullRadius - kStartRadius);
 				t = t > 1.0f ? 1.0f : t;
 				const float alpha = t * t;
 				const UInt32 a = static_cast<UInt32>(alpha * static_cast<float>(kMaxAlpha) + 0.5f);

@@ -117,6 +117,7 @@ namespace {
 
 // The cursor sprite OBVR hid, so it can be shown again - and only it.
 UInt8* g_hiddenCursorNode = nullptr;
+bool g_cursorHideWanted = false;
 bool g_cursorHideReported = false;
 bool g_cursorReshowReported = false;
 
@@ -153,7 +154,14 @@ UInt8* CursorNode() {
 
 }  // namespace
 
+void ReapplyMenuCursorHidden() {
+	if (g_cursorHideWanted) {
+		SetMenuCursorHidden(true);
+	}
+}
+
 void SetMenuCursorHidden(bool hidden) {
+	g_cursorHideWanted = hidden;
 	if (!hidden) {
 		ShowHiddenCursor();
 		return;

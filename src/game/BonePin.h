@@ -49,6 +49,26 @@ inline BonePose LocalUnderParent(const NiMatrix33& parentRot, const NiPoint3& pa
 	return local;
 }
 
+// Where a bone's parent has to be for the bone, keeping its own local
+// transform, to land at `childWanted`. The world of a child is
+// parent.rot * local.rot and parent.pos + parent.rot * (parent.scale *
+// local.pos); solved for the parent.
+//
+// For the hands: moving the hand bone alone leaves the forearm where the
+// animation has it, and the skin between the two - the wrist, weighted to
+// both - stretches across the gap, which the 2026-09-25 run saw as hands
+// "stretching several centimetres past the hand". Placing the forearm this
+// way carries the hand with it rigidly; the only stretch left is at the
+// elbow, under the hidden arm mesh.
+inline BonePose ParentForChildAt(const BonePose& childWanted, const NiMatrix33& childLocalRot,
+                                 const NiPoint3& childLocalPos, float parentScale) {
+	BonePose parent;
+	parent.rot = childWanted.rot * InverseRotation(childLocalRot);
+	const float scale = parentScale > 0.0f ? parentScale : 1.0f;
+	parent.pos = childWanted.pos - parent.rot * (childLocalPos * scale);
+	return parent;
+}
+
 // The calibration from three angles in degrees: the roll about the bone's
 // own axis first, then pitch, then yaw - EulerToMatrix's Z * Y * X order
 // with X the roll. A Bip01 hand bone runs along x and the controller points

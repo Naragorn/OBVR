@@ -1,6 +1,7 @@
 #include "render/LaserLayer.h"
 
 #include "core/Log.h"
+#include "core/MathFns.h"
 #include "vr/OpenVRBackend.h"
 
 namespace obvr::render {
@@ -26,16 +27,24 @@ void PaintBeam(UInt8* rgba) {
 
 }  // namespace
 
-vr::openvr::HmdMatrix34 LaserBeamTransform(float lengthMetres) {
+vr::openvr::HmdMatrix34 LaserBeamTransform(float lengthMetres, float pitchDegrees) {
 	// Columns are the quad's axes in the controller's frame: its right stays
-	// the controller's right; its up is the controller's forward (-z); its
-	// front is then the controller's up, which keeps the frame right-handed
-	// (right x up = front: x cross -z = +y). The centre sits half way out.
+	// the controller's right; its up is the beam's direction, the
+	// controller's forward (-z) turned down by the pitch (LaserDirectionLocal,
+	// the same the hit test uses); its front is right x up, which keeps the
+	// frame right-handed - at no pitch the controller's up (x cross -z = +y).
+	// The centre sits half way out along the beam.
+	const float radians = pitchDegrees * math::kDegreesToRadians;
+	const float s = math::Sin(radians);
+	const float c = math::Cos(radians);
 	vr::openvr::HmdMatrix34 m{};
 	m.m[0][0] = 1.0f;
-	m.m[2][1] = -1.0f;
-	m.m[1][2] = 1.0f;
-	m.m[2][3] = -0.5f * lengthMetres;
+	m.m[1][1] = -s;
+	m.m[2][1] = -c;
+	m.m[1][2] = c;
+	m.m[2][2] = -s;
+	m.m[1][3] = -0.5f * lengthMetres * s;
+	m.m[2][3] = -0.5f * lengthMetres * c;
 	return m;
 }
 
@@ -70,7 +79,7 @@ bool LaserLayer::EnsureOverlay(vr::OpenVRBackend& backend) {
 }
 
 void LaserLayer::Submit(vr::OpenVRBackend& backend, bool visible, UInt32 deviceIndex,
-                        float lengthMetres) {
+                        float pitchDegrees, float lengthMetres) {
 	if (!visible || deviceIndex == vr::openvr::kTrackedDeviceIndexInvalid ||
 	    !(lengthMetres > 0.01f)) {
 		if (m_overlayVisible && m_overlay != vr::openvr::kOverlayHandleInvalid) {
@@ -90,13 +99,15 @@ void LaserLayer::Submit(vr::OpenVRBackend& backend, bool visible, UInt32 deviceI
 	// but one resting on a wrist panel does not have to talk to the
 	// compositor twice a frame for nothing.
 	const float delta = lengthMetres - m_placedLength;
-	if (!m_placed || m_placedDevice != deviceIndex || delta > 0.01f || delta < -0.01f) {
+	if (!m_placed || m_placedDevice != deviceIndex || delta > 0.01f || delta < -0.01f ||
+	    pitchDegrees != m_placedPitch) {
 		backend.SetOverlayTransformDeviceRelative(m_overlay, deviceIndex,
-		                                          LaserBeamTransform(lengthMetres));
+		                                          LaserBeamTransform(lengthMetres, pitchDegrees));
 		backend.SetOverlayWidthInMetres(m_overlay, LaserBeamWidth(lengthMetres));
 		m_placed = true;
 		m_placedDevice = deviceIndex;
 		m_placedLength = lengthMetres;
+		m_placedPitch = pitchDegrees;
 	}
 	if (!m_overlayVisible) {
 		backend.ShowOverlay(m_overlay);

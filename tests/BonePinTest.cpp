@@ -3,6 +3,7 @@
 // onto the controller's, and the guards hold.
 
 #include <cstdio>
+#include <initializer_list>
 
 #include "core/Rotation.h"
 #include "game/BonePin.h"
@@ -16,6 +17,7 @@ using obvr::game::BonePose;
 using obvr::game::HandBoneWorld;
 using obvr::game::HandCalibration;
 using obvr::game::LocalUnderParent;
+using obvr::game::ParentForChildAt;
 
 int g_failures = 0;
 
@@ -114,12 +116,40 @@ void TestCalibration() {
 	Check(!NearMatrix(rolled, yaw), "but is a different rotation");
 }
 
+void TestParentForChild() {
+	std::printf("The forearm that puts the hand where it is wanted\n");
+	BonePose handWanted;
+	handWanted.rot = EulerToMatrix(30.0f, -20.0f, 75.0f);
+	handWanted.pos = NiPoint3{12.0f, -4.0f, 90.0f};
+	const NiMatrix33 handLocalRot = EulerToMatrix(-10.0f, 25.0f, 5.0f);
+	const NiPoint3 handLocalPos{18.0f, 0.5f, -0.3f};
+
+	for (float scale : {1.0f, 1.3f}) {
+		const BonePose forearm = ParentForChildAt(handWanted, handLocalRot, handLocalPos, scale);
+		// Carried forward the engine's way: the hand's world from the forearm's.
+		const NiMatrix33 handRot = forearm.rot * handLocalRot;
+		const NiPoint3 handPos = forearm.pos + forearm.rot * (handLocalPos * scale);
+		Check(NearMatrix(handRot, handWanted.rot), "the hand lands at the wanted rotation");
+		Check(NearPoint(handPos, handWanted.pos), "and at the wanted position, scaled or not");
+	}
+
+	const BonePose guarded = ParentForChildAt(handWanted, handLocalRot, handLocalPos, 0.0f);
+	const BonePose unit = ParentForChildAt(handWanted, handLocalRot, handLocalPos, 1.0f);
+	Check(NearPoint(guarded.pos, unit.pos), "a zero parent scale is taken as one");
+
+	const BonePose atRest =
+		ParentForChildAt(handWanted, NiMatrix33::Identity(), NiPoint3{0, 0, 0}, 1.0f);
+	Check(NearMatrix(atRest.rot, handWanted.rot) && NearPoint(atRest.pos, handWanted.pos),
+	      "a child sitting on its parent puts the parent where the child is wanted");
+}
+
 }  // namespace
 
 int main() {
 	TestWorldPose();
 	TestLocalUnderParent();
 	TestCalibration();
+	TestParentForChild();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

@@ -2236,6 +2236,8 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 	if (hideHudReticle) {
 		game::SetHudReticleEnabled(false, game::HudReticleWriteContext::MainMenu);
 	}
+	// The menu cursor while a laser is the pointer - see ReapplyMenuCursorHidden.
+	game::ReapplyMenuCursorHidden();
 
 	// The place experiment. Everything measured so far says the world render
 	// OBVR calls itself comes back empty because of WHERE it is called from,

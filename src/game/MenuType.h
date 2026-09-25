@@ -153,4 +153,10 @@ bool InterfaceCursorRaw(float& x, float& y);
 // the first time it finds it cleared).
 void SetMenuCursorHidden(bool hidden);
 
+// The same wish set again, from the 2D pass's entry: the engine shows the
+// sprite again every frame (measured 2026-09-25, "the engine showed the
+// sprite again since the last frame"), so the bit set at Present was gone
+// again by the time the pass drew. Set here, it holds for the draw.
+void ReapplyMenuCursorHidden();
+
 }  // namespace obvr::game

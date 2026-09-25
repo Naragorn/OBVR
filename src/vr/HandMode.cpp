@@ -350,7 +350,7 @@ void HandMode::SteerSettingsMenu(const HandModeFrame& f, const HandSettings& s,
 	if (f.settingsQuad.valid && pointHand->valid && f.settingsPixelsWidth > 0.0f &&
 	    f.settingsPixelsHeight > 0.0f) {
 		const NiPoint3 pointing =
-			TrackingRotate(pointHand->orientation, NiPoint3{0.0f, 0.0f, -1.0f});
+			TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees));
 		const LaserHit hit = LaserOnQuad(pointHand->position, pointing, f.settingsQuad.centre,
 		                                 f.settingsQuad.right, f.settingsQuad.up,
 		                                 f.settingsQuad.width, f.settingsQuad.height,
@@ -482,7 +482,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 	if (quad.valid && pointHand != nullptr && pointHand->valid && f.cursorValid &&
 	    f.layerPixelsWidth > 0.0f && f.layerPixelsHeight > 0.0f) {
 		const NiPoint3 pointing =
-			TrackingRotate(pointHand->orientation, NiPoint3{0.0f, 0.0f, -1.0f});
+			TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees));
 		const NiPoint3 tip = pointHand->position + pointing * s.pokeTipForward;
 		const PokeSample sample = PokeOnQuad(tip, quad.centre, quad.right, quad.up, quad.width,
 		                                     quad.height, f.layerPixelsWidth, f.layerPixelsHeight);
@@ -525,7 +525,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 		// press. The pixel is the one the head sees the beam's end against.
 		m_poke = PokeState{};
 		const NiPoint3 pointing =
-			TrackingRotate(pointHand->orientation, NiPoint3{0.0f, 0.0f, -1.0f});
+			TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees));
 		const FlatLaserHit hit = LaserOnFlatPicture(pointHand->position, pointing, f.headPosition,
 		                                            f.flat, kFlatLaserPlaneMetres);
 		if (hit.hit) {

@@ -238,6 +238,7 @@ void TestGamepadPlanner() {
 	// The gamepad in the world through the mode itself: the tapped buttons
 	// are edges, held ones are held, the stick chord still opens OBVR's menu.
 	HandSettings settings;
+	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.enabled = false;
 	HandModeFrame frame;
 	frame.headValid = true;
@@ -278,6 +279,7 @@ void TestGamepadPlanner() {
 void TestStrikeByMotion() {
 	std::printf("The swing for the strikes by motion\n");
 	HandSettings settings;
+	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.enabled = true;
 	HandModeFrame frame;
 	frame.headValid = true;
@@ -467,6 +469,7 @@ void TestStickNav() {
 void TestMenuHandAndSettingsMenu() {
 	std::printf("Menu hand and OBVR's menu\n");
 	HandSettings settings;
+	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.enabled = true;
 	settings.wristMenu = true;  // off by default; this is the wrist's own test
 	settings.wristHud = true;
@@ -549,6 +552,7 @@ HandModeFrame BigQuadFrame() {
 void TestLaserOnBigQuad() {
 	std::printf("The laser on the big quad\n");
 	HandSettings settings;
+	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.enabled = true;
 	HandModeFrame frame = BigQuadFrame();
 	HandMode mode;
@@ -620,6 +624,7 @@ void TestLaserOnBigQuad() {
 void TestMenusOnly() {
 	std::printf("The mode off, the controllers on the menus\n");
 	HandSettings settings;
+	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.enabled = false;
 	HandModeFrame frame = BigQuadFrame();
 	frame.menusOnly = true;
@@ -702,6 +707,7 @@ void TestMenusOnly() {
 void TestHandPoses() {
 	std::printf("Hand poses for the bone pin\n");
 	HandSettings settings;
+	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.enabled = true;
 	HandModeFrame frame;
 	frame.headValid = true;
@@ -778,6 +784,7 @@ HandModeFrame MainMenuFrame() {
 void TestMainMenuLaser() {
 	std::printf("The laser on the main menu's cinema screen, and the hand that holds it\n");
 	HandSettings settings;
+	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.enabled = false;
 	settings.laserGain = 1.0f;
 	settings.laserMaxStep = 4096.0f;
@@ -884,6 +891,7 @@ void TestMainMenuLaser() {
 void TestLaserOnOwnPanel() {
 	std::printf("The laser on OBVR's own panel\n");
 	HandSettings settings;
+	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.enabled = false;
 	HandModeFrame frame = MainMenuFrame();
 	frame.settingsMenuOpen = true;
@@ -986,6 +994,7 @@ void TestLaserOnOwnPanel() {
 void TestGrabHand() {
 	std::printf("The grab follows the hand whose grip holds it\n");
 	HandSettings settings;
+	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.enabled = true;
 	HandModeFrame frame;
 	frame.headValid = true;
@@ -1021,6 +1030,7 @@ void TestGrabHand() {
 void TestLeftButtonsInHandMode() {
 	std::printf("The left hand's buttons in the hand-tracked mode\n");
 	HandSettings settings;
+	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.enabled = true;
 	HandModeFrame frame;
 	frame.headValid = true;
@@ -1100,6 +1110,34 @@ void TestStickFlick() {
 	Check(!v.up && !v.down, "a NaN stick is a centred stick");
 }
 
+void TestLaserTilt() {
+	std::printf("The laser's tilt\n");
+	const NiPoint3 straight = LaserDirectionLocal(0.0f);
+	Check(Near(straight.x, 0.0f) && Near(straight.y, 0.0f) && Near(straight.z, -1.0f),
+	      "no tilt: the tracked forward, -z");
+	const NiPoint3 sixty = LaserDirectionLocal(60.0f);
+	Check(Near(sixty.x, 0.0f) && Near(sixty.y, -0.8660f) && Near(sixty.z, -0.5f),
+	      "60 degrees: turned down about the controller's x");
+	const NiPoint3 up = LaserDirectionLocal(-30.0f);
+	Check(up.y > 0.0f, "a negative tilt turns it up");
+	Check(Near(sixty.x * sixty.x + sixty.y * sixty.y + sixty.z * sixty.z, 1.0f),
+	      "and it stays a unit direction");
+
+	// On the big quad: a hand level with the quad's centre, held so that its
+	// tracked forward points 60 degrees ABOVE the quad, hits the centre
+	// once the laser is tilted down by 60.
+	HandSettings settings;
+	settings.laserPitchDegrees = 60.0f;
+	HandModeFrame frame = BigQuadFrame();
+	frame.menusOnly = true;
+	settings.enabled = false;
+	const float half = 0.5f * 60.0f * 0.01745329252f;
+	frame.right.orientation = Quaternion{obvr::math::Sin(half), 0.0f, 0.0f, obvr::math::Cos(half)};
+	HandMode mode;
+	const HandModeResult r = mode.Update(frame, settings);
+	Check(r.laserHit, "a hand tipped up 60 degrees still hits the quad ahead with the tilt");
+}
+
 void TestChordWindow() {
 	std::printf("The chord only when both come together\n");
 	StickChordState s;
@@ -1143,6 +1181,7 @@ int main() {
 	TestLegacyButtons();
 	TestStickFlick();
 	TestChordWindow();
+	TestLaserTilt();
 	TestSpeedAndSwing();
 	TestEdges();
 	TestPlanner();

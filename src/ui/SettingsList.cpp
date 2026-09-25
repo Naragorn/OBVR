@@ -488,6 +488,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.laserBeam = v != 0.0f; },
 	},
 	{
+		"Hands", "Laser tilt", "Degrees the laser leaves the controller turned down",
+		ItemKind::Number, -90.0f, 90.0f, 5.0f, 0, false,
+		"Hands", "LaserPitchDegrees",
+		+[](const Config& c) { return c.hands.laserPitchDegrees; },
+		+[](Config& c, float v) { c.hands.laserPitchDegrees = v; },
+	},
+	{
 		"Hands", "Strike size", "How much of a body's bound the blade has to reach, 0 to 1",
 		ItemKind::Number, 0.0f, 1.0f, 0.05f, 2, false,
 		"Hands", "HitBoundFactor",

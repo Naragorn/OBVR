@@ -83,21 +83,28 @@ bool PinHandBone(bool rightHand, const char* boneName, const NiMatrix33& relativ
 		return false;
 	}
 
-	// The bone's parent's world transform is current because the arm
-	// placement just ran the update pass over the whole tree.
+	// The hand is carried by its parent, the forearm: the forearm is placed so
+	// that the hand, with the local transform the animation gave it, lands
+	// where the controller is - see ParentForChildAt for why not the hand
+	// alone. The world transforms read are current because the arm placement
+	// just ran the update pass over the whole tree.
 	NiAVObject* const parent = bone->parent;
-	if (!LooksLikeObject(parent)) {
+	NiAVObject* const grandparent = LooksLikeObject(parent) ? parent->parent : nullptr;
+	if (!LooksLikeObject(parent) || !LooksLikeObject(grandparent)) {
 		return false;
 	}
 
 	const BonePose wanted = HandBoneWorld(cameraRot, cameraPos, relativeRot, offsetUnits,
 	                                      calibration);
-	const BonePose local = LocalUnderParent(parent->worldTransform.rot,
-	                                        parent->worldTransform.pos,
-	                                        parent->worldTransform.scale, wanted);
-	bone->localTransform.rot = local.rot;
-	bone->localTransform.pos = local.pos;
-	UpdateNodeTransforms(bone);
+	const BonePose parentWorld = ParentForChildAt(wanted, bone->localTransform.rot,
+	                                              bone->localTransform.pos,
+	                                              parent->worldTransform.scale);
+	const BonePose local = LocalUnderParent(grandparent->worldTransform.rot,
+	                                        grandparent->worldTransform.pos,
+	                                        grandparent->worldTransform.scale, parentWorld);
+	parent->localTransform.rot = local.rot;
+	parent->localTransform.pos = local.pos;
+	UpdateNodeTransforms(parent);
 
 	if (!hand.reported) {
 		hand.reported = true;
