@@ -92,6 +92,69 @@ inline bool ProjectToEyePixel(const NiPoint3& eyeSpace, const EyeProjection& fru
 	return true;
 }
 
+// Drawing into the world instead, while an eye's picture is still in the back
+// buffer with the game's depth beside it: the point goes through the game's
+// own projection, so the model is hidden by what stands in front of it
+// exactly as the hands are. The point is in the camera node's frame as OBVR
+// uses it everywhere (x right, y forward, z up, game units); Direct3D's view
+// space is x right, y up, z forward, row vectors times the matrix.
+inline bool ProjectThroughD3D(const NiPoint3& cameraSpace, const float (&p)[4][4], float viewX,
+                              float viewY, float viewWidth, float viewHeight, float minZ,
+                              float maxZ, EyePixel& out) {
+	const float vx = cameraSpace.x;
+	const float vy = cameraSpace.z;
+	const float vz = cameraSpace.y;
+	const float cx = vx * p[0][0] + vy * p[1][0] + vz * p[2][0] + p[3][0];
+	const float cy = vx * p[0][1] + vy * p[1][1] + vz * p[2][1] + p[3][1];
+	const float cz = vx * p[0][2] + vy * p[1][2] + vz * p[2][2] + p[3][2];
+	const float cw = vx * p[0][3] + vy * p[1][3] + vz * p[2][3] + p[3][3];
+	if (!(cw > 1.0e-4f)) {
+		return false;
+	}
+	const float nx = cx / cw;
+	const float ny = cy / cw;
+	float nz = cz / cw;
+	// Nearer than the near plane - with a hair of slack for a point on it,
+	// which float rounding can leave a millionth short.
+	if (!(nz >= -1.0e-4f)) {
+		return false;
+	}
+	if (nz < 0.0f) {
+		nz = 0.0f;
+	}
+	out.x = viewX + (nx + 1.0f) * 0.5f * viewWidth;
+	out.y = viewY + (1.0f - ny) * 0.5f * viewHeight;
+	out.depth = minZ + (nz > 1.0f ? 1.0f : nz) * (maxZ - minZ);
+	out.rhw = 1.0f / cw;
+	return true;
+}
+
+// Whether a matrix read off the device is the world camera's perspective
+// projection: w taken from the forward distance, and a width that matches
+// the camera's own tangent within a tenth (the device's matrix is the last
+// one set, which after the world may belong to something else entirely).
+inline bool PerspectiveMatchesCamera(const float (&p)[4][4], float tanHalfWidth) {
+	const float wFromZ = p[2][3];
+	const float wConstant = p[3][3];
+	if (!(wFromZ > 0.99f && wFromZ < 1.01f) || !(wConstant > -0.01f && wConstant < 0.01f) ||
+	    !(p[0][0] > 0.0f) || !(p[1][1] > 0.0f) || !(p[2][2] > 0.0f)) {
+		return false;
+	}
+	if (!(tanHalfWidth > 0.0f)) {
+		return false;
+	}
+	const float tangent = 1.0f / p[0][0];
+	const float difference = tangent - tanHalfWidth;
+	return difference < tanHalfWidth * 0.1f && -difference < tanHalfWidth * 0.1f;
+}
+
+// A render model's vertex (OpenVR controller frame: x right, y up, z back,
+// metres) in the game's controller axes (x right, y forward, z up) - the
+// axes HandMode's relative rotations are written in.
+inline NiPoint3 ControllerVertexToGame(const vr::openvr::HmdVector3& v) {
+	return NiPoint3{v.v[0], -v.v[2], v.v[1]};
+}
+
 // A model drawn in one colour, shaded by a light fixed to the model: lit
 // from above and in front of the controller, never darker than a third, so
 // every face reads.

@@ -61,4 +61,8 @@ void SetAimSourcePose(const AimSourcePose& pose);
 // go, and the object keeps the spring's velocity - vanilla's own fling.
 void SetGrabAtHand(bool wanted, float distanceUnits);
 
+// How many times the engine's grab update has run - only while it holds
+// something. For telling a grab the engine took from one it did not.
+UInt32 GrabUpdateCount();
+
 }  // namespace obvr::game

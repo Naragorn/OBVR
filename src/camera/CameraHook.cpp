@@ -421,7 +421,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		// shim uses. Not while a menu is up: the game flips to third person
 		// for the race menu and the like on purpose, and would be fought
 		// every frame.
-		if (config.hands.forceFirstPerson && !menuIsUp && ReadIsThirdPerson()) {
+		// Nor when the player has died: the game shows the death in third
+		// person, the body falling, and forcing first person back showed the
+		// character standing (2026-09-25 log: "switched to third person" at the
+		// death, "put back into first" thirteen lines later).
+		if (HandModeForcesFirstPerson(config.hands.forceFirstPerson, menuIsUp,
+		                              ReadIsThirdPerson(), game::PlayerIsDead())) {
 			auto* const player = *reinterpret_cast<UInt8* const*>(addr::kPlayerPointer);
 			if (mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(player))) {
 				using ToggleCameraFn = void(__fastcall*)(UInt8* self, void* edx, UInt8 firstPerson);
@@ -654,6 +659,37 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	g_grabKeyDown = reach.key;
 	g_hand.controls.grab = reach.key;
 	game::SetGrabAtHand(reach.key, grabUnits);
+	// Whether the engine took it: its grab update runs only while it holds
+	// something, so a count unchanged a quarter of a second after the key
+	// went down is a grab it refused - with where the target was then, the
+	// question behind "the hand has to hover in front of it" (2026-09-25).
+	{
+		static UInt32 s_updatesAtKey = 0;
+		static int s_framesHeld = -1;
+		static UInt32 s_takeLinesLeft = 12;
+		if (reach.key && s_framesHeld < 0) {
+			s_framesHeld = 0;
+			s_updatesAtKey = game::GrabUpdateCount();
+		} else if (!reach.key) {
+			s_framesHeld = -1;
+		} else if (s_framesHeld >= 0 && ++s_framesHeld == 22 && s_takeLinesLeft > 0) {
+			--s_takeLinesLeft;
+			const bool took = game::GrabUpdateCount() != s_updatesAtKey;
+			const game::CrosshairTarget target = game::ReadCrosshairTarget();
+			const NiPoint3& offset =
+				g_hand.grabWithLeftHand ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits;
+			const NiPoint3 handWorld = g_cyclopeanCameraWorldTransform.pos +
+			                           g_cyclopeanCameraWorldTransform.rot * offset;
+			const NiPoint3 toTarget = target.position - g_cyclopeanCameraWorldTransform.pos;
+			const NiPoint3 handToTarget = target.position - handWorld;
+			OBVR_LOG("Hands: grab - the engine %s it (target now %08X, %.0f units from the eyes, "
+			         "%.0f from the hand, the hand %.0f from the eyes)",
+			         took ? "TOOK" : "did NOT take", target.haveRef ? target.refAddress : 0u,
+			         static_cast<double>(math::Sqrt(toTarget.LengthSquared())),
+			         static_cast<double>(math::Sqrt(handToTarget.LengthSquared())),
+			         static_cast<double>(math::Sqrt(offset.LengthSquared())));
+		}
+	}
 	// Each step logged: the 2026-09-25 run left no trace of a grab at all.
 	static int s_grabPhase = 0;  // 0 open, 1 reaching, 2 holding
 	const int grabPhase = reach.key ? 2 : (reach.reachPick ? 1 : 0);
@@ -2368,6 +2404,37 @@ UInt32 g_dualTraceFramesLeft = 3;
 
 bool DualTraceOn() { return g_dualTraceFramesLeft > 0; }
 
+// Where the real controllers and this eye's camera stand in the world, for the
+// headset renderer to draw the controllers into the eye's picture against its
+// depth (render::ControllerModels::DrawIntoWorld). The controllers go through
+// the same cyclopean camera the hands are pinned from; the eye is the camera
+// node as this pass drew with it.
+void HandWorldControllersToRenderer() {
+	render::ControllerModels::WorldView view;
+	const NiAVObject* const eye = g_dualNode != nullptr ? g_dualNode : g_bodyCameraNode;
+	view.eyeValid = g_cyclopeanCameraWorldValid &&
+	                mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(eye));
+	if (view.eyeValid) {
+		view.eyeRot = eye->worldTransform.rot;
+		view.eyePos = eye->worldTransform.pos;
+		const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+		const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
+		// Role right is the physical right controller unless left-handed
+		// swapped the roles.
+		view.hands[0].valid = g_hand.rightHandValid;
+		view.hands[0].rightModel = !g_handRolesSwapped;
+		view.hands[0].rot = camRot * g_hand.rightHandRotation;
+		view.hands[0].pos = camPos + camRot * g_hand.rightHandOffsetUnits;
+		view.hands[1].valid = g_hand.leftHandValid;
+		view.hands[1].rightModel = g_handRolesSwapped;
+		view.hands[1].rot = camRot * g_hand.leftHandRotation;
+		view.hands[1].pos = camPos + camRot * g_hand.leftHandOffsetUnits;
+	}
+	view.unitsPerMetre = GetConfig().tracker.unitsPerMetre;
+	view.tanHalfWidth = g_state.cameraTanHalfWidth;
+	g_headsetRenderer.SetWorldControllers(view);
+}
+
 void BetweenScenePasses() {
 	perf::EventContext betweenContext{};
 	betweenContext.sceneId = render::CurrentSceneCall();
@@ -2399,6 +2466,7 @@ void BetweenScenePasses() {
 		captureContext.eye = firstIsLeft ? 0 : 1;
 		perf::Profiler::ScopedSpan capture(perf::Profiler::Instance(),
 		                                  perf::EventType::EyeCapture, captureContext);
+		HandWorldControllersToRenderer();
 		const bool captured = g_headsetRenderer.CaptureEye(g_pendingRequest, firstIsLeft);
 		perf::Profiler::Instance().SetFrameDetails(
 				perf::DeliveryMode::Unknown, perf::Profiler::Instance().CurrentVrFrameId(), -1,
@@ -2467,6 +2535,7 @@ void AfterSecondScenePass() {
 		captureContext.eye = firstIsLeft ? 1 : 0;
 		perf::Profiler::ScopedSpan capture(perf::Profiler::Instance(),
 		                                  perf::EventType::EyeCapture, captureContext);
+		HandWorldControllersToRenderer();
 		const bool captured = g_headsetRenderer.CaptureEye(g_pendingRequest, !firstIsLeft);
 		perf::Profiler::Instance().SetFrameDetails(
 				perf::DeliveryMode::Unknown, perf::Profiler::Instance().CurrentVrFrameId(), -1, 1,

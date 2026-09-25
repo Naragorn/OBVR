@@ -657,6 +657,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.leftHandGripY = ReadFloat("Hands", "LeftHandGripY", h.leftHandGripY, path);
 		h.leftHandGripZ = ReadFloat("Hands", "LeftHandGripZ", h.leftHandGripZ, path);
 		h.adjustHands = ReadBool("Hands", "AdjustHands", h.adjustHands, path);
+		h.handsAdjusted = ReadBool("Hands", "HandsAdjusted", h.handsAdjusted, path);
 		h.handGripUpMetres = ReadFloat("Hands", "HandGripUpMetres", h.handGripUpMetres, path);
 		h.handGripForwardMetres =
 			ReadFloat("Hands", "HandGripForwardMetres", h.handGripForwardMetres, path);

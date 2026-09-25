@@ -400,6 +400,10 @@ bool HeadsetRenderer::CaptureEye(const FrameRequest& request, bool isLeft) {
 	captureContext.eye = isLeft ? 0 : 1;
 	perf::Profiler::Instance().GpuBegin(perf::EventType::EyeCapture, captureContext,
 	                                   request.gameDevice);
+	// The real controllers, in the world, while the eye's depth is still there.
+	if (m_controllersWanted) {
+		m_controllers.DrawIntoWorld(request.gameDevice, m_worldControllers, isLeft);
+	}
 	const bool copied = m_mirror.CopyBackBuffer(request.gameDevice, isLeft);
 	perf::Profiler::Instance().GpuEnd();
 	if (!copied) {
@@ -482,11 +486,19 @@ bool HeadsetRenderer::SubmitDualEyes(const vr::OpenVRBackend& backend,
 	// The real controllers, while the hands are being adjusted: drawn into
 	// both fresh eyes before they go, so the in-game hand can be lined up
 	// with the controller the player sees.
+	// Into the world at each eye's capture when the game's projection could be
+	// used (CaptureEye); on top of the picture here only when neither eye
+	// could.
 	if (m_controllersWanted) {
-		void* const surfaces[2] = {m_mirror.EyeSurface(true), m_mirror.EyeSurface(false)};
-		const EyeProjection eyes[2] = {m_leftEye, m_rightEye};
-		m_controllers.Draw(backend, request.gameDevice, surfaces, m_eyeWidth, m_eyeHeight, eyes);
+		m_controllers.Prepare(backend);
+		if (!m_controllers.DrewAnyInWorld()) {
+			void* const surfaces[2] = {m_mirror.EyeSurface(true), m_mirror.EyeSurface(false)};
+			const EyeProjection eyes[2] = {m_leftEye, m_rightEye};
+			m_controllers.Draw(backend, request.gameDevice, surfaces, m_eyeWidth, m_eyeHeight,
+			                   eyes);
+		}
 	}
+	m_controllers.BeginFrame();
 
 	// The submit half of the dual trace: the first run died with the GPU
 	// lost somewhere around here, and these lines are what say whether the

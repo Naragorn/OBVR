@@ -108,6 +108,9 @@ class OnboardingPort final: public ui::NativeMenuPort {
  }
  bool SaveMode(bool fullVR) override {
   if (!SaveSetting("Hands","Enabled",fullVR ? "1" : "0")) return false;
+  // Chosen once: the walkthrough does not come back at the next start. It
+  // can be switched on again in the settings (Onboarding / Show at start).
+  if (SaveSetting("Onboarding","ShowAtStart","0")) GetConfig().onboardingShowAtStart=false;
   GetConfig().handTracking=fullVR;
   GetConfig().hands.enabled=fullVR;
   g_comfortPending=fullVR;
@@ -315,6 +318,19 @@ void Tick() {
   static ui::HandAdjustPage s_page=ui::HandAdjustPage::Guide;
   if (game::TakeHandAdjustGuideRequest()) s_guidePending=true;
   if (game::TakeHandAdjustFinishRequest()) s_finishPending=true;
+  // The first fit in Full VR, by itself, once per start until one is kept.
+  // Hands already given their own grips (an older fit) count as fitted.
+  static bool s_firstOffered=false, s_firstFit=false;
+  {
+   const vr::HandSettings& h=GetConfig().hands;
+   const bool fitted=h.handsAdjusted || h.rightHandGripX!=0.0f || h.rightHandGripY!=0.0f ||
+    h.rightHandGripZ!=0.0f || h.leftHandGripX!=0.0f || h.leftHandGripY!=0.0f || h.leftHandGripZ!=0.0f;
+   if (ui::FirstHandFitDue(GetConfig().handTracking,fitted,PlayerInWorld() && top==0,s_firstOffered,
+                           s_open || s_guidePending || s_finishPending || game::HandAdjustActive())) {
+    s_firstOffered=true; s_firstFit=true; s_guidePending=true;
+    OBVR_LOG("Native menus: the hands have never been fitted - the guide opens by itself");
+   }
+  }
   if (s_open) {
    if (!root || foreign) {
     // Closed from outside (Esc): the guide is a cancel, the finish a keep.
@@ -334,6 +350,8 @@ void Tick() {
    case ui::HandAdjustChoice::Reset: game::ResetHandsToDefaults(); game::StopHandAdjust(); break;
    case ui::HandAdjustChoice::Cancel: case ui::HandAdjustChoice::None: break;
    }
+   if (ui::ChoiceSettlesFit(choice) && SaveSetting("Hands","HandsAdjusted","1")) GetConfig().hands.handsAdjusted=true;
+   if (choice!=ui::HandAdjustChoice::Start && choice!=ui::HandAdjustChoice::Again) s_firstFit=false;
    OBVR_LOG("Native menus: adjust-hands window - button %d",button);
    s_open=false; g_ourRoot=nullptr;
    Run("ClickMenuButton \"parchment\\close\" 1011");
@@ -361,7 +379,7 @@ void Tick() {
      ? "Both hands are fitted to your controllers. Keep this fit, adjust again, or put both hands back to their defaults."
      : "Your real controllers are shown where your hands are. Close a grip and that hand stays still. Move the controller into the hand the way you hold it, then open the grip. Do it for both hands. The grab is off meanwhile.");
     Text("user2",finish ? "Keep" : "Start");
-    Text("user3",finish ? "Adjust again" : "Cancel");
+    Text("user3",finish ? "Adjust again" : (s_firstFit ? "Later" : "Cancel"));
     Text("user4",finish ? "Reset" : " ");
     Number("parchment\\reset\\target",ui::kXmlBool[finish ? 1 : 0]);
     Number("parchment\\reset\\alpha",finish ? 255 : 0);

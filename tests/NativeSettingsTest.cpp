@@ -312,6 +312,16 @@ void TestHandAdjust() {
        "the finish keeps, adjusts again or resets");
  Check(ChooseHandAdjust(HandAdjustPage::Finish,-1)==HandAdjustChoice::None,"the finish ignores no click");
 
+ for(unsigned mask=0;mask<32;++mask) {
+  const bool full=mask&1, fitted=mask&2, world=mask&4, offered=mask&8, busy=mask&16;
+  Check(FirstHandFitDue(full,fitted,world,offered,busy)==(full && !fitted && world && !offered && !busy),
+        "the first fit: Full VR, never fitted, in the world, not yet offered this start, nothing else on the way");
+ }
+ Check(ChoiceSettlesFit(HandAdjustChoice::Keep) && ChoiceSettlesFit(HandAdjustChoice::Reset) &&
+       !ChoiceSettlesFit(HandAdjustChoice::Again) && !ChoiceSettlesFit(HandAdjustChoice::Cancel) &&
+       !ChoiceSettlesFit(HandAdjustChoice::Start) && !ChoiceSettlesFit(HandAdjustChoice::None),
+       "only keeping or resetting settles the fit; later asks again next start");
+
  HandAdjustSession s;
  Check(!StepHandAdjustSession(s,true,true,false,1.0f) && !s.rightDone,"no session: nothing counts");
  StartHandAdjustSession(s);

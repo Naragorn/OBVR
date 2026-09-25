@@ -1411,6 +1411,44 @@ void TestLeftHandedMirror() {
 	      "the weapon hand is pinned where the left controller is");
 }
 
+void TestWeaponGuard() {
+	std::printf("The weapon's guard blocks\n");
+	GestureThresholds t;
+	const NiPoint3 raised{0.1f, 0.35f, -0.1f};
+	const NiPoint3 across{-0.9f, 0.3f, 0.2f};
+	Check(IsWeaponGuard(raised, across, false, t), "raised, the blade across the body: a guard");
+	Check(!IsWeaponGuard(raised, across, true, t), "not while swinging through the same place");
+	Check(!IsWeaponGuard(NiPoint3{0.1f, 0.35f, -0.4f}, across, false, t), "held low: no guard");
+	Check(!IsWeaponGuard(NiPoint3{0.1f, 0.05f, -0.1f}, across, false, t), "at the chest: no guard");
+	Check(!IsWeaponGuard(raised, NiPoint3{0.1f, 0.99f, 0.0f}, false, t),
+	      "the blade pointing ahead, as when thrusting: no guard");
+	Check(!IsWeaponGuard(raised, NiPoint3{0.6f, 0.0f, 0.8f}, false, t),
+	      "the blade upright: no guard");
+	Check(IsWeaponGuard(raised, NiPoint3{0.8f, 0.2f, -0.45f}, false, t),
+	      "either way across, a little tilted: a guard");
+
+	HandSettings settings;
+	settings.enabled = true;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.dtSeconds = 0.01f;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	frame.right.position = NiPoint3{0.1f, -0.1f, -0.35f};  // up and ahead (OpenVR: -z ahead)
+	frame.left.position = NiPoint3{-0.3f, -0.6f, -0.2f};   // left hand down
+	// The controller turned a quarter to the left: its forward now across.
+	const float half = 0.70710678f;
+	frame.right.orientation = obvr::vr::Quaternion{0.0f, half, 0.0f, half};
+	frame.weaponSeen = WeaponSeen::Drawn;
+	HandMode mode;
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.blocking, "in the mode: the drawn weapon held across blocks");
+	frame.weaponSeen = WeaponSeen::Sheathed;
+	HandMode sheathed;
+	r = sheathed.Update(frame, settings);
+	Check(!r.blocking, "sheathed: the same hand does not block");
+}
+
 void TestFirstPersonDepthBranch() {
 	std::printf("First-person depth: the branch before the clear\n");
 	using obvr::game::FirstPersonDepthBranchByte;
@@ -1701,6 +1739,7 @@ int main() {
 	TestRunToggle();
 	TestUsScanCodes();
 	TestFirstPersonDepthBranch();
+	TestWeaponGuard();
 	TestLeftHandedMirror();
 
 	if (g_failures != 0) {

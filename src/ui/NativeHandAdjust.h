@@ -47,6 +47,21 @@ inline HandAdjustChoice ChooseHandAdjust(HandAdjustPage page, int button) {
 	return HandAdjustChoice::None;
 }
 
+// The first fit, asked for by itself: in Full VR, once the player stands in
+// the world, until a fit has been kept ([Hands] HandsAdjusted) - once per
+// start, so "Later" puts it off to the next one rather than for good. Not
+// while another of OBVR's windows or menus is on the way.
+inline bool FirstHandFitDue(bool fullVR, bool handsAdjusted, bool inWorld, bool offeredThisStart,
+                            bool busy) {
+	return fullVR && !handsAdjusted && inWorld && !offeredThisStart && !busy;
+}
+
+// Whether a choice settles the fit for good: kept, or put back to the
+// defaults on purpose. Cancel/Later and Again do not.
+inline bool ChoiceSettlesFit(HandAdjustChoice choice) {
+	return choice == HandAdjustChoice::Keep || choice == HandAdjustChoice::Reset;
+}
+
 // The session behind it, stepped every frame while the hands are being
 // adjusted: a committed fit marks its hand done, and once both are done and
 // no grip has been closed for kHandAdjustQuietSeconds, the finish page is

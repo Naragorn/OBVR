@@ -1236,6 +1236,16 @@ void TestCrosshairTooltipPolicy() {
 		      "every reticle, target, tooltip, placement and sneak combination chooses one picture");
 	}
 
+	for (UInt32 mask = 0; mask < 16; ++mask) {
+		const bool setting = (mask & 1) != 0;
+		const bool menu = (mask & 2) != 0;
+		const bool third = (mask & 4) != 0;
+		const bool dead = (mask & 8) != 0;
+		Check(obvr::camera::HandModeForcesFirstPerson(setting, menu, third, dead) ==
+		          (setting && !menu && third && !dead),
+		      "Full VR forces first person only out of menus, in third person, and alive");
+	}
+
 	for (UInt32 mask = 0; mask < 32; ++mask) {
 		const bool crosshair = (mask & 1) != 0;
 		const bool target = (mask & 2) != 0;

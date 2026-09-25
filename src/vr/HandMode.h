@@ -92,6 +92,9 @@ struct HandSettings {
 	// calibration (angles and grip, saved to the INI). The grab is off
 	// meanwhile.
 	bool adjustHands = false;
+	// A fit has been kept (or the defaults chosen) in the guided window: the
+	// first-fit guide is not offered again. Written by the window.
+	bool handsAdjusted = false;
 	// Where the hand sits from the controller's tracked origin, in metres
 	// along the controller's own up and forward axes. The origin is on the
 	// tracking head; a hand placed there floated above the handle it holds

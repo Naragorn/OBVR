@@ -162,6 +162,9 @@ public:
 	// the hands are being adjusted (render::ControllerModels). Stereo pairs
 	// drawn this frame only.
 	void SetControllersWanted(bool wanted) { m_controllersWanted = wanted; }
+	// Where the controllers and the eye camera stand in the game's world, for
+	// the next capture - set before each eye is captured.
+	void SetWorldControllers(const ControllerModels::WorldView& view) { m_worldControllers = view; }
 
 	// Whether a picture is actually going to the headset right now.
 	bool IsActive() const { return m_textures.IsReady() && !m_policy.HasStopped(); }
@@ -265,6 +268,7 @@ private:
 	EyeMirror m_mirror;
 	ControllerModels m_controllers;
 	bool m_controllersWanted = false;
+	ControllerModels::WorldView m_worldControllers;
 
 	// The single-sample copy a multisampled back buffer is submitted through
 	// on the mono path; see FrameResolve.

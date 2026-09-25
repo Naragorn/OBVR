@@ -60,6 +60,10 @@ float g_grabDistanceUnits = 0.0f;
 bool g_grabDistanceSwapped = false;
 float g_grabDistanceSaved = 0.0f;
 bool g_grabReported = false;
+// How often the engine's grab update has run: it runs only while something
+// is held, so a count that does not move after the key went down means the
+// engine took nothing.
+UInt32 g_grabUpdates = 0;
 
 AimSourcePose g_pose;
 
@@ -250,6 +254,8 @@ void InstallAimAtSource() {
 	                "the grab update from the grab handler");
 }
 
+UInt32 GrabUpdateCount() { return g_grabUpdates; }
+
 void SetGrabAtHand(bool wanted, float distanceUnits) {
 	g_grabWanted = wanted;
 	g_grabDistanceUnits = distanceUnits;
@@ -352,6 +358,7 @@ extern "C" void __cdecl OBVR_AimSourceAfterArrow() { obvr::game::Restore(obvr::g
 extern "C" void __cdecl OBVR_AimSourceAfterAttack() { obvr::game::Restore(obvr::game::g_attackOwner); }
 
 extern "C" void __cdecl OBVR_AimSourceBeforeGrab(void* actor) {
+	++obvr::game::g_grabUpdates;
 	using namespace obvr;
 	const UInt32 player = game::PlayerAddressOrZero();
 	if (!game::g_grabWanted || !game::g_pose.wanted || player == 0 ||

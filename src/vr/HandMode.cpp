@@ -170,6 +170,14 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 
 	// Gestures.
 	r.blocking = f.left.valid && !f.menuMode && IsBlockGesture(leftRelative, s.gestures);
+	// Or the weapon raised across the body (IsWeaponGuard), with the weapon
+	// drawn - fists included.
+	if (!r.blocking && !f.menuMode && f.right.valid && r.rightHandValid &&
+	    f.weaponSeen == WeaponSeen::Drawn) {
+		const NiPoint3 blade{r.rightHandRotation.data[0][1], r.rightHandRotation.data[1][1],
+		                     r.rightHandRotation.data[2][1]};
+		r.blocking = IsWeaponGuard(rightRelative, blade, m_swing.swinging, s.gestures);
+	}
 	r.reachBack = f.right.valid && IsReachBackGesture(rightRelative, s.gestures);
 
 	// The swing, from the right hand's speed across the head-relative frame

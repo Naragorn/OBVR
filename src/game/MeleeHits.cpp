@@ -206,6 +206,18 @@ bool MeleeInHand(SInt32* weaponType) {
 	return WeaponIsSwung(type) && ReadPlayerWeaponState() == WeaponState::Drawn;
 }
 
+bool PlayerIsDead() {
+	UInt8* const player = PlayerOrNull();
+	if (player == nullptr) {
+		return false;
+	}
+	const UInt32 isDead = VirtualAt(player, addr::kActorVtableIsDeadOffset);
+	if (isDead == 0) {
+		return false;
+	}
+	return (reinterpret_cast<ThisBoolArgFn>(isDead)(player, nullptr, 0) & 1) != 0;
+}
+
 UInt32 StrikeByMotion(const MotionStrike& strike) {
 	UInt8* const player = PlayerOrNull();
 	if (player == nullptr) {

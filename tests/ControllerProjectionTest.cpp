@@ -109,6 +109,70 @@ void TestProjection() {
 	      "a far plane before the near one: refused");
 }
 
+void TestWorldProjection() {
+	std::printf("Through the game's projection\n");
+	// A standard left-handed Direct3D perspective: tangent 1 across and down,
+	// near 10, far 1000 (row vectors).
+	const float n = 10.0f;
+	const float f = 1000.0f;
+	float p[4][4] = {};
+	p[0][0] = 1.0f;
+	p[1][1] = 1.0f;
+	p[2][2] = f / (f - n);
+	p[2][3] = 1.0f;
+	p[3][2] = -n * f / (f - n);
+	EyePixel px;
+	// Camera frame: x right, y forward, z up.
+	Check(ProjectThroughD3D(NiPoint3{0.0f, 100.0f, 0.0f}, p, 0.0f, 0.0f, 800.0f, 600.0f, 0.0f, 1.0f,
+	                        px) &&
+	          Near(px.x, 400.0f) && Near(px.y, 300.0f) && Near(px.rhw, 0.01f),
+	      "straight ahead lands in the middle of the viewport");
+	Check(ProjectThroughD3D(NiPoint3{100.0f, 100.0f, 0.0f}, p, 0.0f, 0.0f, 800.0f, 600.0f, 0.0f,
+	                        1.0f, px) &&
+	          Near(px.x, 800.0f),
+	      "45 degrees right is the right edge");
+	Check(ProjectThroughD3D(NiPoint3{0.0f, 100.0f, 100.0f}, p, 0.0f, 0.0f, 800.0f, 600.0f, 0.0f,
+	                        1.0f, px) &&
+	          Near(px.y, 0.0f),
+	      "up is the top row");
+	Check(ProjectThroughD3D(NiPoint3{0.0f, 10.0f, 0.0f}, p, 0.0f, 0.0f, 800.0f, 600.0f, 0.0f, 1.0f,
+	                        px) &&
+	          Near(px.depth, 0.0f) &&
+	          ProjectThroughD3D(NiPoint3{0.0f, 1000.0f, 0.0f}, p, 0.0f, 0.0f, 800.0f, 600.0f, 0.0f,
+	                            1.0f, px) &&
+	          Near(px.depth, 1.0f),
+	      "the depth is the game's: 0 at the near plane, 1 at the far");
+	Check(ProjectThroughD3D(NiPoint3{0.0f, 100.0f, 0.0f}, p, 50.0f, 20.0f, 800.0f, 600.0f, 0.0f,
+	                        1.0f, px) &&
+	          Near(px.x, 450.0f) && Near(px.y, 320.0f),
+	      "the viewport's corner moves the picture with it");
+	Check(!ProjectThroughD3D(NiPoint3{0.0f, 5.0f, 0.0f}, p, 0.0f, 0.0f, 800.0f, 600.0f, 0.0f, 1.0f,
+	                         px),
+	      "nearer than the near plane: refused");
+	Check(!ProjectThroughD3D(NiPoint3{0.0f, -50.0f, 0.0f}, p, 0.0f, 0.0f, 800.0f, 600.0f, 0.0f,
+	                         1.0f, px),
+	      "behind the camera: refused");
+
+	Check(PerspectiveMatchesCamera(p, 1.0f) && PerspectiveMatchesCamera(p, 1.05f),
+	      "the world camera's projection is recognised, within a tenth");
+	Check(!PerspectiveMatchesCamera(p, 1.5f), "a different width is not the world camera's");
+	Check(!PerspectiveMatchesCamera(p, 0.0f), "no camera tangent to compare with: not used");
+	float identity[4][4] = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+	Check(!PerspectiveMatchesCamera(identity, 1.0f), "an image-space pass's identity is refused");
+	float flipped[4][4] = {};
+	for (int r = 0; r < 4; ++r) {
+		for (int c = 0; c < 4; ++c) {
+			flipped[r][c] = p[r][c];
+		}
+	}
+	flipped[2][2] = -flipped[2][2];
+	Check(!PerspectiveMatchesCamera(flipped, 1.0f), "a depth running the other way is refused");
+
+	obvr::vr::openvr::HmdVector3 v{{0.1f, 0.2f, 0.3f}};
+	Check(NearPoint(ControllerVertexToGame(v), NiPoint3{0.1f, -0.3f, 0.2f}),
+	      "a model's up becomes the game's up, its back the game's backward");
+}
+
 void TestShade() {
 	std::printf("Shading\n");
 	const UInt32 lit = ShadedModelColour(NiPoint3{0.0f, 0.8f, 0.6f});
@@ -123,6 +187,7 @@ void TestShade() {
 int main() {
 	TestRigid();
 	TestProjection();
+	TestWorldProjection();
 	TestShade();
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

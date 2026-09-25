@@ -582,6 +582,15 @@ CrosshairContent CrosshairContentWanted(bool crosshairWanted, bool haveTarget,
 
 // Tooltips remain useful with the plain crosshair disabled, so their capture
 // gate is deliberately independent from CrosshairVisibility::enabled.
+// Whether Full VR puts a third-person player back into first person: only with
+// the setting on, out of menus (the game flips to third person for the race
+// menu on purpose), and not once the player has died - the game shows the
+// death in third person, the body falling.
+inline bool HandModeForcesFirstPerson(bool setting, bool menuIsUp, bool thirdPerson,
+                                      bool playerDead) {
+	return setting && !menuIsUp && thirdPerson && !playerDead;
+}
+
 bool CrosshairCentreCaptureWanted(bool crosshairEnabled, bool haveTarget,
 	                              bool tooltipsEnabled, bool worldFrame,
 	                              bool menuIsUp);

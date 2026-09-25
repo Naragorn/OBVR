@@ -129,6 +129,28 @@ inline bool IsBlockGesture(const NiPoint3& leftHandRelative, const GestureThresh
 	return leftHandRelative.z >= t.blockMinUp && leftHandRelative.y >= t.blockMinForward;
 }
 
+// The weapon's guard: the weapon hand up and out in front, the blade held
+// across the body - more sideways than along the view, nearly level - the
+// way a sword is raised against a blow. Blocks like the raised left hand,
+// with or without a shield (2026-09-25: "Waffe ... gegen die Gegner-Attacke
+// heben soll auch blocken"). The blade is the controller's forward axis, the
+// same one the strike by motion runs along. Not while the hand is swinging:
+// a swing passes through the same place on its way.
+constexpr float kGuardMinUp = -0.20f;       // no lower than 20 cm below the eyes
+constexpr float kGuardMinAcross = 0.70f;    // the blade at least this far sideways
+constexpr float kGuardMaxTilt = 0.50f;      // and at most this far up or down
+
+inline bool IsWeaponGuard(const NiPoint3& weaponHandRelative, const NiPoint3& bladeDirection,
+                          bool swinging, const GestureThresholds& t) {
+	if (swinging) {
+		return false;
+	}
+	const float across = bladeDirection.x < 0.0f ? -bladeDirection.x : bladeDirection.x;
+	const float tilt = bladeDirection.z < 0.0f ? -bladeDirection.z : bladeDirection.z;
+	return weaponHandRelative.z >= kGuardMinUp && weaponHandRelative.y >= t.blockMinForward &&
+	       across >= kGuardMinAcross && tilt <= kGuardMaxTilt;
+}
+
 inline bool IsReachBackGesture(const NiPoint3& rightHandRelative, const GestureThresholds& t) {
 	return rightHandRelative.y <= t.reachBackMaxForward && rightHandRelative.z >= t.reachBackMinUp;
 }

@@ -23,6 +23,10 @@ namespace obvr::game {
 // weapon's type code as well (-1 for none) for the log.
 bool MeleeInHand(SInt32* weaponType);
 
+// Whether the player has died (Actor::IsDead through the same table entry the
+// strike uses for its targets). False when the player cannot be read.
+bool PlayerIsDead();
+
 struct MotionStrike {
 	UInt32 swingSerial = 0;  // the swing this frame belongs to
 	bool heavy = false;      // a power attack
