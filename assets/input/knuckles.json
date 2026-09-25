@@ -10,13 +10,13 @@
         {"path": "/user/hand/left/input/trigger", "mode": "trigger", "inputs": {"pull": {"output": "/actions/obvr/in/left_trigger"}}},
         {"path": "/user/hand/left/input/a", "mode": "button", "inputs": {"click": {"output": "/actions/obvr/in/left_a"}}},
         {"path": "/user/hand/left/input/b", "mode": "button", "inputs": {"click": {"output": "/actions/obvr/in/left_b"}}},
-        {"path": "/user/hand/left/input/grip", "mode": "button", "inputs": {"click": {"output": "/actions/obvr/in/left_grip"}}, "parameters": {"click_activate_threshold": "0.8", "force_input": "force"}},
+        {"path": "/user/hand/left/input/grip", "mode": "button", "inputs": {"click": {"output": "/actions/obvr/in/left_grip"}}, "parameters": {"click_activate_threshold": "0.3", "click_deactivate_threshold": "0.2", "force_input": "force"}},
         {"path": "/user/hand/left/input/trackpad", "mode": "trackpad", "inputs": {"click": {"output": "/actions/obvr/in/left_trackpad"}}},
         {"path": "/user/hand/right/input/thumbstick", "mode": "joystick", "inputs": {"click": {"output": "/actions/obvr/in/right_stick_click"}, "position": {"output": "/actions/obvr/in/right_stick"}}},
         {"path": "/user/hand/right/input/trigger", "mode": "trigger", "inputs": {"pull": {"output": "/actions/obvr/in/right_trigger"}}},
         {"path": "/user/hand/right/input/a", "mode": "button", "inputs": {"click": {"output": "/actions/obvr/in/right_a"}}},
         {"path": "/user/hand/right/input/b", "mode": "button", "inputs": {"click": {"output": "/actions/obvr/in/right_b"}}},
-        {"path": "/user/hand/right/input/grip", "mode": "button", "inputs": {"click": {"output": "/actions/obvr/in/right_grip"}}, "parameters": {"click_activate_threshold": "0.8", "force_input": "force"}},
+        {"path": "/user/hand/right/input/grip", "mode": "button", "inputs": {"click": {"output": "/actions/obvr/in/right_grip"}}, "parameters": {"click_activate_threshold": "0.3", "click_deactivate_threshold": "0.2", "force_input": "force"}},
         {"path": "/user/hand/right/input/trackpad", "mode": "trackpad", "inputs": {"click": {"output": "/actions/obvr/in/right_trackpad"}}}
     ]
   }

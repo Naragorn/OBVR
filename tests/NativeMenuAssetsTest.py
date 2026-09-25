@@ -66,3 +66,18 @@ print('Highlight: full native texture height, cap alignment and all button bound
 
 assert onboarding.find('.//rect[@name="classic"]/text[@name="heading"]/string').text=="Keyboard/Gamepad + VR"
 assert onboarding.find('.//rect[@name="motion"]/text[@name="heading"]/string').text=="Full VR"
+
+# The update notice: one OK, which is the closing ID the host opens it with.
+update=parse(base/'generic/OBVR_Update.xml')
+assert sorted(int(x.text) for x in update.iter('id'))==[9401]
+assert update.find('.//rect[@name="ok"]/target').text.strip()=='1'
+assert update.find('.//text[@name="message"]/string/copy').attrib=={'src':'OBVRUpdate','trait':'user0'}
+for inc in update.iter('include'):
+    name=inc.attrib['src']
+    if name=='generic_background.xml': continue
+    assert (base/'prefabs'/name).is_file(),name
+for txt in update.iter('text'):
+    for channel in ['red','green','blue']:
+        trait=txt.find(channel)
+        assert trait is not None and len(trait)==0
+print('Update notice XML: OK button 9401, message bound to user0, includes present')

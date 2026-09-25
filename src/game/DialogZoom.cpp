@@ -151,5 +151,6 @@ void ApplyDialogZoom(bool zoomWanted) {
 }
 
 bool TakeDialogCameraCall() { return g_calledWithActor.Take(); }
+bool DialogCameraCallPending() { return g_calledWithActor.Get(); }
 
 }  // namespace obvr::game

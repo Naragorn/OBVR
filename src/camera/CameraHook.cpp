@@ -47,9 +47,6 @@
 #include "render/VignetteLayer.h"
 #include "render/HudLayer.h"
 #include "render/LaserLayer.h"
-#include "render/NoticeLayer.h"
-#include "core/UpdateNotice.h"
-#include "platform/UpdateFetch.h"
 #include "vr/LaserGeometry.h"
 #include "ui/Onboarding.h"
 #include "ui/SettingsMenu.h"
@@ -146,8 +143,17 @@ render::HudLayer g_hudLayer;
 render::CrosshairLayer g_crosshairLayer;
 render::VignetteLayer g_vignetteLayer;
 render::LaserLayer g_laserLayer;
-render::NoticeLayer g_noticeLayer;
-update::NoticeState g_noticeState;
+// The cyclopean camera, snapshotted in the camera pass (see there); declared
+// early because the hand mode measures the grab reach from it.
+NiTransform g_cyclopeanCameraWorldTransform{};
+bool g_cyclopeanCameraWorldValid = false;
+// The grab by reach - see vr::StepGrabReach.
+vr::GrabReachState g_grabReach;
+bool g_grabReachPick = false;
+bool g_grabKeyDown = false;
+// The conversation approach is on (game::StepDialogApproach), as last decided
+// at Present - read again before the next world render.
+bool g_handsAwayForDialog = false;
 
 // OBVR's own settings menu: what it is showing, and the quad it shows it on.
 //
@@ -432,9 +438,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		// And from the conversation's first frame, not its menu's: see
 		// game::StepDialogApproach.
 		static game::DialogApproachState s_approach;
-		const bool handsAway =
-			game::StepDialogApproach(s_approach, game::TakeDialogCameraCall(), menuIsUp) ||
-			menuIsUp;
+		g_handsAwayForDialog =
+			game::StepDialogApproach(s_approach, game::TakeDialogCameraCall(), menuIsUp);
+		const bool handsAway = g_handsAwayForDialog || menuIsUp;
 		static char hideList[160];
 		if (handsAway) {
 			std::snprintf(hideList, sizeof(hideList), "%s,Hand", config.hands.hideNodes);
@@ -550,6 +556,30 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 	}
 
+	// The grips and which actions SteamVR has bound, whenever either changes:
+	// the 2026-09-25 evening run closed a grip on an object with nothing to
+	// show for it, and the mask lines above had run out by then.
+	{
+		static bool s_grip[2] = {false, false};
+		static UInt32 s_active[2] = {0xFFFFFFFFu, 0xFFFFFFFFu};
+		for (int side = 0; side < 2; ++side) {
+			const vr::HandPose& hand = side == 0 ? frame.right : frame.left;
+			if (!hand.valid) {
+				continue;
+			}
+			const bool grip = vr::GripDown(hand.buttonsPressed);
+			if (grip != s_grip[side] || hand.actionActiveMask != s_active[side]) {
+				s_grip[side] = grip;
+				s_active[side] = hand.actionActiveMask;
+				OBVR_LOG("Hands: %s grip %s, actions %s, bound mask %02X (stick click, A, B, grip, "
+				         "trackpad from bit 0)",
+				         side == 0 ? "right" : "left", grip ? "CLOSED" : "open",
+				         hand.actionInput ? "in use" : "not in use (legacy input)",
+				         hand.actionActiveMask);
+			}
+		}
+	}
+
 	if (frame.right.valid != g_rightHandTracked || frame.left.valid != g_leftHandTracked) {
 		g_rightHandTracked = frame.right.valid;
 		g_leftHandTracked = frame.left.valid;
@@ -567,17 +597,44 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	if (grabUnits < 0.25f * config.tracker.unitsPerMetre) {
 		grabUnits = 0.25f * config.tracker.unitsPerMetre;
 	}
-	game::SetGrabAtHand(active && g_hand.grabWanted, grabUnits);
-	// The 2026-09-25 run left no trace of a grab at all - neither this side
-	// nor the engine's grab update - so whether the grip reached the key is
-	// logged, each press.
-	static bool s_grabLogged = false;
-	const bool grabNow = active && g_hand.grabWanted;
-	if (grabNow != s_grabLogged) {
-		s_grabLogged = grabNow;
-		OBVR_LOG("Hands: grab %s (%s grip, key %02X), %.2f m from the head",
-		         grabNow ? "held" : "released", g_hand.grabWithLeftHand ? "left" : "right",
-		         config.handKeys.grab, static_cast<double>(g_hand.grabDistanceMetres));
+	// The grab by reach (vr::StepGrabReach): the grip arms it, the pick runs
+	// through the hand, and the key goes down once what it found is within
+	// reach of that hand - measured from the camera the hands are pinned to.
+	const bool gripHeld = active && !menuIsUp && g_hand.grabWanted;
+	bool inReach = false;
+	UInt32 reachRef = 0;
+	if (gripHeld && g_grabReachPick && g_cyclopeanCameraWorldValid) {
+		const game::CrosshairTarget target = game::ReadCrosshairTarget();
+		const NiPoint3& offset =
+			g_hand.grabWithLeftHand ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits;
+		const NiPoint3 handWorld = g_cyclopeanCameraWorldTransform.pos +
+		                           g_cyclopeanCameraWorldTransform.rot * offset;
+		inReach = target.haveRef &&
+		          vr::WithinReach(handWorld, target.position,
+		                          config.hands.grabReachMetres * config.tracker.unitsPerMetre);
+		reachRef = target.haveRef ? target.refAddress : 0;
+	}
+	const vr::GrabReachVerdict reach = vr::StepGrabReach(g_grabReach, gripHeld, inReach);
+	g_grabReachPick = reach.reachPick;
+	g_grabKeyDown = reach.key;
+	g_hand.controls.grab = reach.key;
+	game::SetGrabAtHand(reach.key, grabUnits);
+	// Each step logged: the 2026-09-25 run left no trace of a grab at all.
+	static int s_grabPhase = 0;  // 0 open, 1 reaching, 2 holding
+	const int grabPhase = reach.key ? 2 : (reach.reachPick ? 1 : 0);
+	if (grabPhase != s_grabPhase) {
+		if (grabPhase == 2) {
+			OBVR_LOG("Hands: grab - %s grip took %08X within %.2f m, key %02X down",
+			         g_hand.grabWithLeftHand ? "left" : "right", reachRef,
+			         static_cast<double>(config.hands.grabReachMetres), config.handKeys.grab);
+		} else if (grabPhase == 1) {
+			OBVR_LOG("Hands: grab - %s grip closed, reaching for something within %.2f m",
+			         g_hand.grabWithLeftHand ? "left" : "right",
+			         static_cast<double>(config.hands.grabReachMetres));
+		} else {
+			OBVR_LOG("Hands: grab - grip open%s", s_grabPhase == 2 ? ", the object let go" : "");
+		}
+		s_grabPhase = grabPhase;
 	}
 
 	if (g_hand.blocking != g_handBlocking) {
@@ -778,8 +835,6 @@ bool g_bodyWanted = false;
 NiAVObject* g_bodyCameraNode = nullptr;
 NiPoint3 g_bodyFirstEyeStep{0.0f, 0.0f, 0.0f};
 NiTransform g_cyclopeanCameraLocalTransform{};
-NiTransform g_cyclopeanCameraWorldTransform{};
-bool g_cyclopeanCameraWorldValid = false;
 
 // The body's share as the ARMS' BASE has it, which is one frame behind the
 // heading itself.
@@ -1979,6 +2034,17 @@ void PrepareMenuFrameIfNeeded(bool menuIsUp) {
 //
 // The angle was decided in the camera pass, where the head is known.
 void BeforeFirstScenePass() {
+	// The hands go the moment a menu or a conversation starts, in the frame
+	// that draws it: the decision at Present comes after that frame's world
+	// is drawn, and a book or a dialogue opened with a weapon drawn showed the
+	// hands for that one frame (2026-09-25). Present decides the same again
+	// and keeps it; this only moves the first frame earlier.
+	if (GetConfig().handTracking && !ReadIsThirdPerson() &&
+	    (game::IsMenuMode() || game::DialogCameraCallPending() || g_handsAwayForDialog)) {
+		static char list[160];
+		std::snprintf(list, sizeof(list), "%s,Hand", GetConfig().hands.hideNodes);
+		game::HideFirstPersonNodes(true, list);
+	}
 	// Snapshot the cyclopean world camera before the reflection subpass changes it.
 	g_cyclopeanCameraWorldValid = mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(g_bodyCameraNode));
 	if (g_cyclopeanCameraWorldValid) {
@@ -2787,21 +2853,6 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	g_vignetteLayer.Update(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                       config.look.snapTurnVignette && worldFrame, g_deltaSeconds,
 	                       config.look.snapTurnVignetteRadius, config.look.snapTurnVignetteStrength);
-
-	// The update notice: in the main menu, and for the first half minute in
-	// the world. See core/UpdateNotice.h and platform/UpdateFetch.h.
-	{
-		char tag[32] = {};
-		const bool newer = platform::LatestReleaseTag(tag, sizeof(tag)) &&
-		                   update::IsNewerVersion(tag, OBVR_VERSION_STRING);
-		const bool shown = update::StepNotice(g_noticeState, newer || config.forceUpdateNotice,
-		                                      game::PlayerInWorld(), g_deltaSeconds);
-		char line[96] = {};
-		if (shown) {
-			update::FormatNotice(newer ? tag : OBVR_VERSION_STRING, line, sizeof(line));
-		}
-		g_noticeLayer.Submit(g_headTracker.GetBackendForFrame(), shown, line);
-	}
 
 	// The laser beam from the hand that points at a menu, as long as the way
 	// to it. Its own overlay, raw pixels, no game texture behind it.
@@ -3648,7 +3699,18 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		const vr::HandSettings& hands = config.hands;
 		const bool handRay = config.handTracking && g_headTracker.IsHeadsetConnected() &&
 		                     g_hand.rightHandValid;
-		if (handRay) {
+		const bool reachRay = config.handTracking && g_headTracker.IsHeadsetConnected() &&
+		                      g_grabReachPick &&
+		                      (g_hand.grabWithLeftHand ? g_hand.leftHandValid : g_hand.rightHandValid);
+		if (reachRay) {
+			// A grip closed and nothing held yet: the pick runs from the head
+			// through that hand, for what the hand has reached.
+			const vr::LaserWorldRay ray = vr::HandReachWorldRay(
+				finalRotation, cameraNode->localTransform.pos,
+				g_hand.grabWithLeftHand ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits,
+				hands.grabReachMetres * config.tracker.unitsPerMetre);
+			game::SetWorldPickHandRay(ray.origin, ray.direction, true);
+		} else if (handRay) {
 			const vr::LaserWorldRay ray = vr::HandLaserWorldRay(
 				finalRotation, cameraNode->localTransform.pos, g_hand.rightHandRotation,
 				g_hand.rightHandOffsetUnits, hands.laserPitchDegrees, hands.laserYawDegrees,
@@ -3780,12 +3842,14 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		// since the grabbed object is carried along the aim.
 		const bool aimWithHand = GetConfig().hands.aimWithHand;
 		if (GetConfig().handTracking) {
-			if (g_hand.grabWanted && g_hand.grabWithLeftHand && g_hand.leftAimValid) {
-				// Left grip holds the grabbed object - aim through left hand
-				pose.headYaw = AimYawRemaining(sourceHeadYaw + g_hand.leftAimYawTurn, g_aimBodyOffset);
-				pose.pitch = PlayerPitchForGaze(g_hand.leftAimSinPitch);
-			} else if (g_hand.aimValid && (aimWithHand || g_hand.grabWanted)) {
-				// Right hand: attacks, spells, or right-grip grab
+			if (g_grabKeyDown && g_hand.grabDirectionValid) {
+				// Something is held: it goes along the line from the head to
+				// the holding hand, as far as the hand is - so it moves where
+				// the hand moves, and a throw of the hand throws it.
+				pose.headYaw = AimYawRemaining(sourceHeadYaw + g_hand.grabYawTurn, g_aimBodyOffset);
+				pose.pitch = PlayerPitchForGaze(g_hand.grabSinPitch);
+			} else if (g_hand.aimValid && aimWithHand) {
+				// Right hand: attacks and spells, with Hands.AimWithHand
 				pose.headYaw = AimYawRemaining(sourceHeadYaw + g_hand.aimYawTurn, g_aimBodyOffset);
 				pose.pitch = PlayerPitchForGaze(g_hand.aimSinPitch);
 			}

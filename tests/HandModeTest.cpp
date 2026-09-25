@@ -1246,6 +1246,70 @@ void TestLaserPress() {
 	Check(!r.controls.menuClick, "for one frame");
 }
 
+void TestReadyWeaponBeforeBlock() {
+	std::printf("Ready weapon lets go of the block\n");
+	for (UInt32 mask = 0; mask < 4; ++mask) {
+		HandControlsWanted c;
+		c.readyWeapon = (mask & 1) != 0;
+		c.block = (mask & 2) != 0;
+		c.attack = true;
+		ReadyWeaponBeforeBlock(c);
+		Check(c.block == (!c.readyWeapon && (mask & 2) != 0) && c.attack && c.readyWeapon == ((mask & 1) != 0),
+		      "the tap drops the block and nothing else; without a tap the block stands");
+	}
+}
+
+void TestGrabReach() {
+	std::printf("Grab by reach: grip arms, the reach decides, the grip lets go\n");
+	{
+		GrabReachState s;
+		GrabReachVerdict v = StepGrabReach(s, false, true);
+		Check(!v.reachPick && !v.key, "an open grip does nothing, whatever is in reach");
+		// The first frames only turn the pick: what it found was found along
+		// the laser, not through the hand.
+		for (int i = 0; i < kGrabReachSettleFrames; ++i) {
+			v = StepGrabReach(s, true, true);
+			Check(v.reachPick && !v.key, "the pick settles through the hand before anything is taken");
+		}
+		v = StepGrabReach(s, true, true);
+		Check(!v.reachPick && v.key && s.grabbing, "then something in reach is taken");
+		v = StepGrabReach(s, true, false);
+		Check(v.key && !v.reachPick, "and held, wherever it is, while the grip stays closed");
+		v = StepGrabReach(s, false, false);
+		Check(!v.key && !v.reachPick && !s.grabbing && s.armedFrames == 0,
+		      "the grip opening lets go - the throw - and starts over");
+	}
+	{
+		GrabReachState s;
+		GrabReachVerdict v{};
+		for (int i = 0; i < 50; ++i) {
+			v = StepGrabReach(s, true, false);
+		}
+		Check(v.reachPick && !v.key && s.armedFrames == kGrabReachSettleFrames,
+		      "a grip closed on nothing keeps reaching and takes nothing");
+		v = StepGrabReach(s, true, true);
+		Check(v.key, "until the hand is moved to something");
+	}
+	{
+		// The direction: forward and down, to the right.
+		float yaw = 0.0f;
+		float pitch = 0.0f;
+		Check(ReachDirection(NiPoint3{0.0f, 0.4f, -0.3f}, NiPoint3{0.0f, -0.3f, -0.4f}, yaw, pitch) &&
+		          Near(yaw, 0.0f) && Near(pitch, -0.6f),
+		      "straight ahead and below: no turn, the pitch from the room's vertical");
+		Check(ReachDirection(NiPoint3{0.5f, 0.5f, 0.0f}, NiPoint3{0.5f, 0.0f, -0.5f}, yaw, pitch) &&
+		          Near(yaw, -0.7853982f) && Near(pitch, 0.0f),
+		      "to the right is a clockwise turn, negative");
+		Check(ReachDirection(NiPoint3{-0.5f, 0.5f, 0.0f}, NiPoint3{-0.5f, 0.0f, -0.5f}, yaw, pitch) &&
+		          Near(yaw, 0.7853982f),
+		      "to the left is counter-clockwise, positive");
+		Check(!ReachDirection(NiPoint3{0.0f, 0.0f, 0.3f}, NiPoint3{0.0f, 0.3f, 0.0f}, yaw, pitch),
+		      "straight above the head has no heading");
+		Check(!ReachDirection(NiPoint3{0.0f, 0.1f, 0.0f}, NiPoint3{0.0f, 0.0f, 0.0f}, yaw, pitch),
+		      "no room offset, no pitch");
+	}
+}
+
 void TestSneakTap() {
 	std::printf("Sneak: toggled by a flick, or held on the stick\n");
 	// Toggle mode passes the flick through, whatever the game says.
@@ -1436,6 +1500,8 @@ int main() {
 	TestMainMenuLaser();
 	TestLaserOnOwnPanel();
 	TestSneakTap();
+	TestGrabReach();
+	TestReadyWeaponBeforeBlock();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

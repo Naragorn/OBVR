@@ -7,13 +7,10 @@
 // The network side (platform/UpdateFetch) asks GitHub for the latest release
 // once per start and hands back the release's tag. Everything that decides
 // something about it lives here, over plain values: reading the tag out of
-// the answer, comparing it with the running version, and the notice's own
-// lifetime - shown in the main menu, kept for the first thirty seconds in the
-// world, then gone for the rest of the session.
+// the answer, comparing it with the running version, and the line the notice
+// shows. The notice itself is a native window in the main menu - see
+// ui::StepUpdateWindow.
 namespace obvr::update {
-
-// How long the notice stays once the player is in the world.
-constexpr float kNoticeWorldSeconds = 30.0f;
 
 // "v0.2.3" or "0.2.3" into up to four numbers; missing ones are zero. Refuses
 // anything else - an empty string, a letter, a fifth number, a number that
@@ -145,25 +142,6 @@ inline bool FormatNotice(const char* tag, char* out, UInt32 capacity) {
 	}
 	out[at] = '\0';
 	return true;
-}
-
-struct NoticeState {
-	bool everInWorld = false;
-	float worldSeconds = 0.0f;
-};
-
-// Once per frame. Whether the notice is up: only when an update is known, and
-// then until the player has spent kNoticeWorldSeconds in the world. Time in the
-// main menu or on a loading screen does not count; going back to the main menu
-// afterwards does not bring the notice back.
-inline bool StepNotice(NoticeState& state, bool updateAvailable, bool inWorld, float deltaSeconds) {
-	if (inWorld) {
-		state.everInWorld = true;
-		if (deltaSeconds > 0.0f) {
-			state.worldSeconds += deltaSeconds;
-		}
-	}
-	return updateAvailable && (!state.everInWorld || state.worldSeconds < kNoticeWorldSeconds);
 }
 
 }  // namespace obvr::update

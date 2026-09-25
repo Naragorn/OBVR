@@ -93,6 +93,32 @@ inline LaserWorldRay HandLaserWorldRay(const NiMatrix33& headRot, const NiPoint3
 	return ray;
 }
 
+// The pick for a grab by reach: from the head through the hand, starting
+// backUnits short of the hand so an object the hand is already inside is
+// still in front of the ray. A hand at the eyes gives the head's forward.
+inline LaserWorldRay HandReachWorldRay(const NiMatrix33& headRot, const NiPoint3& headPos,
+                                       const NiPoint3& handOffsetUnits, float backUnits) {
+	LaserWorldRay ray;
+	const NiPoint3 toHand = headRot * handOffsetUnits;
+	const float lengthSquared = toHand.LengthSquared();
+	if (!(lengthSquared > 1.0e-4f)) {
+		ray.direction = headRot * NiPoint3{0.0f, 1.0f, 0.0f};
+		ray.origin = headPos;
+		return ray;
+	}
+	const float length = math::Sqrt(lengthSquared);
+	ray.direction = toHand * (1.0f / length);
+	const float back = backUnits < length ? backUnits : length;
+	ray.origin = headPos + ray.direction * (length - back);
+	return ray;
+}
+
+// Whether what the pick found is close enough to the hand to be taken.
+inline bool WithinReach(const NiPoint3& hand, const NiPoint3& target, float reachUnits) {
+	const NiPoint3 d{target.x - hand.x, target.y - hand.y, target.z - hand.z};
+	return reachUnits > 0.0f && d.LengthSquared() <= reachUnits * reachUnits;
+}
+
 // How wide the dot at the beam's end is: the same apparent size near and
 // far, about 0.9 degrees, and never smaller than 8 mm.
 inline float LaserDotWidth(float distanceMetres) {

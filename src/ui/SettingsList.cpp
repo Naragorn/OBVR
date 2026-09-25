@@ -404,6 +404,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.pinHands = v != 0.0f; },
 	},
 	{
+		"Hands", "Grab reach", "How close the hand has to be for the grip to pick a thing up, metres",
+		ItemKind::Number, 0.1f, 0.8f, 0.05f, 2, false,
+		"Hands", "GrabReachMetres",
+		+[](const Config& c) { return c.hands.grabReachMetres; },
+		+[](Config& c, float v) { c.hands.grabReachMetres = v; },
+	},
+	{
 		"Hands", "Hand height", "Moves both hands along the controller's up axis, metres; lower is negative",
 		ItemKind::Number, -0.15f, 0.10f, 0.01f, 2, false,
 		"Hands", "HandGripUpMetres",

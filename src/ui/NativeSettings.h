@@ -34,6 +34,35 @@ inline ComfortPageStep StepComfortPage(bool pending, bool genericRoot, bool main
  return mainMenuOnTop ? ComfortPageStep::Open : ComfortPageStep::Skip;
 }
 
+// The update notice, a small native window in the main menu with an OK that
+// closes it. Once per session: it waits for the answer from GitHub, for the
+// main menu to be in front and for the walkthrough, its comfort page and
+// the settings to be done with - any generic menu up means wait - and once
+// it has been up and is gone it never comes back. Never in the game.
+enum class UpdateWindowStep { None, Wait, Open };
+struct UpdateWindowState {
+ bool shown=false;
+ bool done=false;
+};
+inline UpdateWindowStep StepUpdateWindow(UpdateWindowState& s,bool updateKnown,bool mainMenuOnTop,
+                                         bool genericRoot,bool busy) {
+ if (s.done || !updateKnown) return UpdateWindowStep::None;
+ if (s.shown) {
+  if (!genericRoot) s.done=true;  // OK clicked, or closed some other way
+  return s.done ? UpdateWindowStep::None : UpdateWindowStep::Wait;
+ }
+ if (!mainMenuOnTop) return UpdateWindowStep::None;
+ if (genericRoot || busy) return UpdateWindowStep::Wait;
+ s.shown=true;
+ return UpdateWindowStep::Open;
+}
+constexpr int kNativeUpdateOk = 9401;
+
+// Oblivion's XML booleans: &false; is 1 and &true; is 2, and any number
+// other than 2 reads as false (UESP, Oblivion Mod:Oblivion XML/Entities;
+// CS wiki, Operator Element). Index by the bool.
+constexpr int kXmlBool[2] = {1, 2};
+
 // Previous and Next only when there is another page to turn to.
 inline bool NativePagingShown(UInt32 pages) { return pages > 1; }
 

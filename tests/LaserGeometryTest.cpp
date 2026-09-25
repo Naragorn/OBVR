@@ -104,7 +104,41 @@ void TestWorldRay() {
 
 }  // namespace
 
+void TestReach() {
+	std::printf("Grab by reach: the pick through the hand, and the reach\n");
+	const NiMatrix33 identity = NiMatrix33::Identity();
+	const NiPoint3 head{10.0f, 20.0f, 100.0f};
+	// A hand 40 units ahead and 30 down: the ray runs from the head through
+	// it, starting 20 units short of the hand.
+	LaserWorldRay ray = HandReachWorldRay(identity, head, NiPoint3{0.0f, 40.0f, -30.0f}, 20.0f);
+	Check(NearPoint(ray.direction, NiPoint3{0.0f, 0.8f, -0.6f}), "from the head through the hand");
+	Check(NearPoint(ray.origin, NiPoint3{10.0f, 20.0f + 0.8f * 30.0f, 100.0f - 0.6f * 30.0f}),
+	      "starting the back distance short of the hand");
+	// Back longer than the reach to the hand: starts at the head, never behind it.
+	ray = HandReachWorldRay(identity, head, NiPoint3{0.0f, 10.0f, 0.0f}, 50.0f);
+	Check(NearPoint(ray.origin, head) && NearPoint(ray.direction, NiPoint3{0.0f, 1.0f, 0.0f}),
+	      "a hand closer than the back distance starts the ray at the head");
+	// The head's turn carries the hand's offset.
+	const NiMatrix33 turned = EulerToMatrix(0.0f, 0.0f, 90.0f);
+	ray = HandReachWorldRay(turned, head, NiPoint3{0.0f, 10.0f, 0.0f}, 0.0f);
+	Check(NearPoint(ray.direction, turned * NiPoint3{0.0f, 1.0f, 0.0f}) &&
+	          NearPoint(ray.origin, head + turned * NiPoint3{0.0f, 10.0f, 0.0f}),
+	      "a turned head turns the ray, and zero back starts at the hand");
+	// A hand at the eyes: the head's forward, from the head.
+	ray = HandReachWorldRay(turned, head, NiPoint3{0.0f, 0.0f, 0.001f}, 20.0f);
+	Check(NearPoint(ray.origin, head) && NearPoint(ray.direction, turned * NiPoint3{0.0f, 1.0f, 0.0f}),
+	      "a hand at the eyes falls back to the head's forward");
+
+	Check(WithinReach(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{3.0f, 4.0f, 0.0f}, 5.0f),
+	      "exactly at the reach is within it");
+	Check(!WithinReach(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{3.0f, 4.0f, 0.1f}, 5.0f),
+	      "a hair beyond is not");
+	Check(!WithinReach(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 0.0f}, 0.0f),
+	      "no reach takes nothing, not even what the hand is in");
+}
+
 int main() {
+	TestReach();
 	TestBeam();
 	TestPoint();
 	TestWorldRay();

@@ -13,6 +13,8 @@
 #include "platform/Win32Min.h"
 #include "ui/NativeOnboarding.h"
 #include "ui/NativeSettings.h"
+#include "core/UpdateNotice.h"
+#include "platform/UpdateFetch.h"
 #include "vr/HandInput.h"
 
 namespace obvr::game {
@@ -142,15 +144,19 @@ bool RefreshSettings() {
  Join(heading,sizeof(heading),comfort ? "Comfort (OBVR) - " : "VR Settings (OBVR) - ",temporary);
  ok=CachedText(0,"user0",heading) && ok;
  ok=CachedText(24,"parchment\\close\\label\\string",comfort ? "Continue" : "Close") && ok;
- // One page has nowhere to turn to: no Previous, no Next.
- const int paging=ui::NativePagingShown(g_settings.Pages()) ? 1 : 0;
+ // One page has nowhere to turn to: no Previous, no Next. Oblivion's XML
+ // booleans are &true; = 2 and &false; = 1, any other number false (UESP,
+ // Oblivion XML/Entities) - a target written as 1 switched both buttons
+ // off in the full menu (2026-09-25). Hidden by alpha, which the reset
+ // button already dims by; visible = 0 left them drawn.
+ const bool paging=ui::NativePagingShown(g_settings.Pages());
  const char* const pagers[]={"parchment\\previous\\","parchment\\next\\"};
  for (const char* button:pagers) {
   char trait[64];
-  Join(trait,sizeof(trait),button,"visible");
-  ok=Number(trait,paging) && ok;
+  Join(trait,sizeof(trait),button,"alpha");
+  ok=Number(trait,paging ? 255 : 0) && ok;
   Join(trait,sizeof(trait),button,"target");
-  ok=Number(trait,paging) && ok;
+  ok=Number(trait,ui::kXmlBool[paging ? 1 : 0]) && ok;
  }
  for (UInt32 slot=0;slot<ui::kNativeSettingsRows;++slot) {
   char trait[96],label[192],value[32];
@@ -169,7 +175,7 @@ bool RefreshSettings() {
   ok=CachedText(3+slot*3,trait,definition->needsRestart ? "restart required" : " ") && ok;
  }
  const bool canReset=g_settings.CanResetSelected(GetConfig());
- ok=Number("parchment\\reset\\target",canReset ? 1 : 0) && ok;
+ ok=Number("parchment\\reset\\target",ui::kXmlBool[canReset ? 1 : 0]) && ok;
  ok=Number("parchment\\reset\\alpha",canReset ? 255 : 110) && ok;
  const auto& selected=ui::SettingDefinitions()[g_settings.Selected()];
  char help[512];
@@ -255,6 +261,36 @@ void Tick() {
    OBVR_LOG("Native onboarding: the comfort page could not be opened");
   }
   return;
+ }
+ // The update notice (ui::StepUpdateWindow): a native window in the main
+ // menu, the answer from GitHub or Debug.ForceUpdateNotice behind it.
+ {
+  static ui::UpdateWindowState s_update;
+  static bool s_assetChecked=false, s_assetMissing=false;
+  char tag[32]={};
+  const bool newer=platform::LatestReleaseTag(tag,sizeof(tag)) &&
+                   update::IsNewerVersion(tag,OBVR_VERSION_STRING);
+  const bool known=(newer || GetConfig().forceUpdateNotice) && !s_assetMissing;
+  const bool busy=g_comfortPending || g_settingsOpen.Get() ||
+   (g_showOnboarding && g_onboarding.State()!=ui::NativeState::Done &&
+    g_onboarding.State()!=ui::NativeState::Failed);
+  if (known && !s_assetChecked) {
+   s_assetChecked=true;
+   s_assetMissing=!AssetExists("Data\\Menus\\Generic\\OBVR_Update.xml");
+   if (s_assetMissing) OBVR_LOG("Native menus: OBVR_Update.xml missing - no update notice");
+  }
+  const auto step=ui::StepUpdateWindow(s_update,known && !s_assetMissing,top==kMenuIdMain,
+                                       root!=nullptr,busy);
+  if (step==ui::UpdateWindowStep::Wait) return;
+  if (step==ui::UpdateWindowStep::Open) {
+   char line[96]={};
+   update::FormatNotice(newer ? tag : OBVR_VERSION_STRING,line,sizeof(line));
+   int stale=-1; g_poll(&stale);
+   const bool executed=Run("ShowGenericMenu \"OBVR_Update.xml\" 9401");
+   const bool texted=executed && GenericRoot() && Text("user0",line);
+   OBVR_LOG("Native menus: update notice \"%s\" - open executed=%d text=%d",line,executed,texted);
+   return;
+  }
  }
  if (ui::SettingsStep(false,GenericRoot()!=nullptr,false,false,toggle,false,false,
      top==kMenuIdLoading,top!=0 || PlayerInWorld())==ui::NativeSettingsStep::Open) {

@@ -652,6 +652,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.handGripUpMetres = ReadFloat("Hands", "HandGripUpMetres", h.handGripUpMetres, path);
 		h.handGripForwardMetres =
 			ReadFloat("Hands", "HandGripForwardMetres", h.handGripForwardMetres, path);
+		h.grabReachMetres = ReadFloat("Hands", "GrabReachMetres", h.grabReachMetres, path);
 		h.menuOnRight = ReadBool("Hands", "MenuOnRight", h.menuOnRight, path);
 		h.pokeTipForward = ReadFloat("Hands", "PokeTipForward", h.pokeTipForward, path);
 		h.poke.hover = ReadFloat("Hands", "PokeHover", h.poke.hover, path);

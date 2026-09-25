@@ -955,6 +955,85 @@ inline StickFlickVerdict StepStickFlick(StickFlickState& s, float x, float y) {
 	return v;
 }
 
+// The game does not ready or sheathe a weapon while block is held, and the
+// block is a gesture - a left hand held up in front of the chest - which is
+// easily up while the right thumb clicks the stick: every ready-weapon tap
+// of the 2026-09-25 evening run fell inside one such block and did nothing.
+// The tap wins: block lets go for as long as the tap is held.
+inline void ReadyWeaponBeforeBlock(HandControlsWanted& controls) {
+	if (controls.readyWeapon) {
+		controls.block = false;
+	}
+}
+
+// ------------------------------------------------------------ Grab by reach
+//
+// The grab is the game's own (Z): it takes the reference the activation pick
+// found, holds it on a Havok spring and, let go, leaves it with the spring's
+// speed - which is the throw. What OBVR adds is how it starts: the hand goes
+// to the object and the grip closes. While a grip is held and nothing is
+// held yet, the pick runs from the head through that hand (reachPick); once
+// the pick has had kGrabReachSettleFrames to run that way and what it found
+// lies within reach of the hand, the key goes down and stays down until the
+// grip opens. A grip closed on nothing within reach grabs nothing.
+constexpr int kGrabReachSettleFrames = 2;
+
+struct GrabReachState {
+	bool grabbing = false;
+	int armedFrames = 0;
+};
+
+struct GrabReachVerdict {
+	bool reachPick = false;  // the pick runs through the grabbing hand
+	bool key = false;        // the grab key is down
+};
+
+inline GrabReachVerdict StepGrabReach(GrabReachState& s, bool gripHeld, bool targetInReach) {
+	GrabReachVerdict v;
+	if (!gripHeld) {
+		s = GrabReachState{};
+		return v;
+	}
+	if (s.grabbing) {
+		v.key = true;
+		return v;
+	}
+	if (s.armedFrames >= kGrabReachSettleFrames && targetInReach) {
+		s.grabbing = true;
+		v.key = true;
+		return v;
+	}
+	if (s.armedFrames < kGrabReachSettleFrames) {
+		++s.armedFrames;
+	}
+	v.reachPick = true;
+	return v;
+}
+
+// Where the held object goes: along the line from the head to the hand, as
+// far as the hand is. headRelative is the hand's offset in the head's frame
+// (game axes: x right, y forward, z up); trackingDelta is the same offset in
+// the room (OpenVR axes, y up), for the pitch against the true vertical. The
+// turn is counter-clockwise positive, the way HeadingOf reads the hand's
+// orientation; the sine is up positive, the way SinPitchOf reads a forward
+// axis. False for a hand at the eyes, whose direction is not a direction.
+inline bool ReachDirection(const NiPoint3& headRelative, const NiPoint3& trackingDelta,
+                           float& yawTurn, float& sinPitch) {
+	const float flat = headRelative.x * headRelative.x + headRelative.y * headRelative.y;
+	const float lengthSquared = trackingDelta.LengthSquared();
+	if (!(flat > 1.0e-6f) || !(lengthSquared > 1.0e-6f)) {
+		return false;
+	}
+	yawTurn = math::Atan2(-headRelative.x, headRelative.y);
+	sinPitch = trackingDelta.y / math::Sqrt(lengthSquared);
+	if (sinPitch > 1.0f) {
+		sinPitch = 1.0f;
+	} else if (sinPitch < -1.0f) {
+		sinPitch = -1.0f;
+	}
+	return true;
+}
+
 // ------------------------------------------------------ Sneak, held or toggled
 //
 // Oblivion's sneak key toggles. In toggle mode a flick down is that key, as

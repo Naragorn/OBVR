@@ -92,7 +92,6 @@ add_library(OBVR SHARED
 	src/render/CrosshairLayer.cpp
 	src/render/VignetteLayer.cpp
 	src/render/LaserLayer.cpp
-	src/render/NoticeLayer.cpp
 	src/render/CullingHook.cpp
 	src/render/LeafFacingHook.cpp
 	src/render/WaterReflectionHook.cpp

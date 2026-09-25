@@ -301,9 +301,13 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	if (f.right.valid && GripDown(f.right.buttonsPressed)) {
 		r.grabDistanceMetres = math::Sqrt(rightRelative.LengthSquared());
 		r.grabWithLeftHand = false;
+		r.grabDirectionValid = ReachDirection(rightRelative, f.right.position - f.headPosition,
+		                                       r.grabYawTurn, r.grabSinPitch);
 	} else if (f.left.valid && GripDown(f.left.buttonsPressed)) {
 		r.grabDistanceMetres = math::Sqrt(leftRelative.LengthSquared());
 		r.grabWithLeftHand = true;
+		r.grabDirectionValid = ReachDirection(leftRelative, f.left.position - f.headPosition,
+		                                       r.grabYawTurn, r.grabSinPitch);
 	}
 
 	// The wrists, and the hands on the menu.
@@ -320,6 +324,7 @@ void HandMode::HoldTaps(HandControlsWanted& controls, float dtSeconds) {
 	controls.readyWeapon = StepTapHold(m_readyHold, controls.readyWeapon, dtSeconds);
 	controls.togglePov = StepTapHold(m_povHold, controls.togglePov, dtSeconds);
 	controls.quickMenu = StepTapHold(m_quickHold, controls.quickMenu, dtSeconds);
+	ReadyWeaponBeforeBlock(controls);
 }
 
 StickChordVerdict HandMode::StepChord(const HandModeFrame& f, HandModeResult& r) {

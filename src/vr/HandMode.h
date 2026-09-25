@@ -80,6 +80,9 @@ struct HandSettings {
 	// (2026-09-25). -0.04 is a first guess to tune in the headset.
 	float handGripUpMetres = -0.04f;
 	float handGripForwardMetres = 0.0f;
+	// How close the hand has to be to an object for the grip to take it,
+	// metres from the hand to the object's origin.
+	float grabReachMetres = 0.3f;
 
 	// Strikes by motion: with a swung weapon in hand the swing itself is the
 	// attack - no attack control, no animation - and the blade strikes the
@@ -265,6 +268,11 @@ struct HandModeResult {
 	bool grabWanted = false;
 	float grabDistanceMetres = 0.0f;
 	bool grabWithLeftHand = false;  // true when left grip holds it, false for right
+	// The line from the head to the grabbing hand (ReachDirection): where the
+	// held object is carried, so it moves with the hand and flies with it.
+	bool grabDirectionValid = false;
+	float grabYawTurn = 0.0f;
+	float grabSinPitch = 0.0f;
 
 	// The swing in progress, for the strikes by motion: whether the right
 	// hand is swinging now, whether it has been fast enough for a heavy

@@ -89,5 +89,7 @@ inline bool StepDialogApproach(DialogApproachState& s, bool calledWithActor, boo
 // consumed by the ask. Only while the zoom is off: the shim is what sees
 // the call.
 bool TakeDialogCameraCall();
+// The same, without consuming it: for the render that comes before the ask.
+bool DialogCameraCallPending();
 
 }  // namespace obvr::game

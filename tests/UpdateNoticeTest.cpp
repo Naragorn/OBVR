@@ -1,5 +1,5 @@
 // Checks the update notice's decisions: reading a release tag out of GitHub's
-// answer, comparing versions, the line it shows, and how long it stays.
+// answer, comparing versions, and the line it shows.
 
 #include <cstdio>
 #include <cstring>
@@ -88,38 +88,6 @@ void TestFormat() {
 	Check(!FormatNotice("v1", nullptr, 8) && !FormatNotice("v1", out, 0), "no room");
 }
 
-void TestLifetime() {
-	std::printf("Lifetime\n");
-	{
-		NoticeState s;
-		Check(!StepNotice(s, false, false, 0.1f), "nothing to say in the main menu");
-		Check(!StepNotice(s, false, true, 0.1f), "nothing to say in the world");
-	}
-	{
-		NoticeState s;
-		bool shown = true;
-		for (int i = 0; i < 1000; ++i) {
-			shown = StepNotice(s, true, false, 1.0f) && shown;
-		}
-		Check(shown, "the main menu keeps it however long one stays");
-		Check(StepNotice(s, true, true, 29.0f), "still up 29 s into the world");
-		Check(StepNotice(s, true, false, 0.0f), "a loading screen after that keeps it");
-		Check(!StepNotice(s, true, true, 1.0f), "gone at 30 s in the world");
-		Check(!StepNotice(s, true, false, 1.0f), "back in the main menu it stays gone");
-	}
-	{
-		NoticeState s;
-		StepNotice(s, false, true, 40.0f);
-		Check(!StepNotice(s, true, false, 0.1f), "an answer that arrives after 30 s in the world is not shown");
-	}
-	{
-		NoticeState s;
-		StepNotice(s, true, true, 10.0f);
-		Check(StepNotice(s, true, false, 100.0f), "time outside the world does not count");
-		Check(StepNotice(s, true, true, -5.0f) && s.worldSeconds == 10.0f, "a negative step is ignored");
-	}
-}
-
 }  // namespace
 
 int main() {
@@ -127,7 +95,6 @@ int main() {
 	TestNewer();
 	TestTag();
 	TestFormat();
-	TestLifetime();
 	std::printf("Update notice: %d failures\n", g_failures);
 	return g_failures == 0 ? 0 : 1;
 }

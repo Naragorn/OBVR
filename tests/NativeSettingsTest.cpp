@@ -240,6 +240,7 @@ void TestComfortView() {
  Check(std::strcmp(SettingDefinitions()[menu.Selected()].iniKey,"SnapTurning")==0,"the first row starts selected");
  Check(!NativePagingShown(menu.Pages()) && NativePagingShown(2) && !NativePagingShown(0),
        "one page hides Previous and Next; two show them");
+ Check(kXmlBool[0]==1 && kXmlBool[1]==2,"XML booleans are &false; 1 and &true; 2, never 0 and 1");
 
  // Turning snap on through the page itself: the follow-up rows appear.
  Writer writer;
@@ -292,6 +293,33 @@ void TestComfortView() {
        paged.Pages()==(SettingDefinitionCount()+kNativeSettingsRows-1)/kNativeSettingsRows,"the whole menu again");
 }
 
+void TestUpdateWindow() {
+ std::printf("Update window\n");
+ // Not shown yet: every combination of the four inputs.
+ for(unsigned mask=0;mask<16;++mask) {
+  const bool known=mask&1, main=mask&2, root=mask&4, busy=mask&8;
+  UpdateWindowState s;
+  const auto step=StepUpdateWindow(s,known,main,root,busy);
+  const auto expected=!known ? UpdateWindowStep::None : !main ? UpdateWindowStep::None
+                    : (root||busy) ? UpdateWindowStep::Wait : UpdateWindowStep::Open;
+  Check(step==expected,"no answer or no main menu: nothing; a menu or the walkthrough: wait; else open");
+  Check(s.shown==(expected==UpdateWindowStep::Open) && !s.done,"only an opening marks it shown");
+ }
+ // The whole life: open, up, OK, never again - not even back in the main menu.
+ UpdateWindowState s;
+ Check(StepUpdateWindow(s,true,true,false,false)==UpdateWindowStep::Open,"opens");
+ Check(StepUpdateWindow(s,true,true,true,false)==UpdateWindowStep::Wait,"stays while it is up");
+ Check(StepUpdateWindow(s,true,false,true,false)==UpdateWindowStep::Wait,"whatever is on top");
+ Check(StepUpdateWindow(s,true,true,false,false)==UpdateWindowStep::None && s.done,"OK closes it for good");
+ for(unsigned mask=0;mask<16;++mask)
+  Check(StepUpdateWindow(s,mask&1,mask&2,mask&4,mask&8)==UpdateWindowStep::None,"a closed notice never comes back");
+ // An answer that comes while the game is running waits for the main menu.
+ UpdateWindowState late;
+ Check(StepUpdateWindow(late,true,false,false,false)==UpdateWindowStep::None && !late.shown,
+       "in the game: nothing, and nothing spent");
+ Check(StepUpdateWindow(late,true,true,false,false)==UpdateWindowStep::Open,"back in the main menu: shown");
+}
+
 void TestComfortPageStep() {
  std::printf("Comfort page opening\n");
  for(unsigned mask=0;mask<8;++mask) {
@@ -306,6 +334,7 @@ void TestComfortPageStep() {
 int main() {
  TestComfortView();
  TestComfortPageStep();
+ TestUpdateWindow();
  // Exhaust the lifecycle input combinations, including foreign/covered menus.
  for(unsigned mask=0;mask<512;++mask) {
   bool opened=mask&1,root=mask&2,foreign=mask&4,foreground=mask&8;
