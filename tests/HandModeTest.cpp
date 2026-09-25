@@ -239,6 +239,9 @@ void TestGamepadPlanner() {
 	// are edges, held ones are held, the stick chord still opens OBVR's menu.
 	HandSettings settings;
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
+	settings.laserYawDegrees = 0.0f;
+	settings.laserOriginMetres = 0.0f;
+	settings.laserDragScroll = false;  // these check the click on the pull; see TestLaserPress
 	settings.enabled = false;
 	HandModeFrame frame;
 	frame.headValid = true;
@@ -280,6 +283,9 @@ void TestStrikeByMotion() {
 	std::printf("The swing for the strikes by motion\n");
 	HandSettings settings;
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
+	settings.laserYawDegrees = 0.0f;
+	settings.laserOriginMetres = 0.0f;
+	settings.laserDragScroll = false;  // these check the click on the pull; see TestLaserPress
 	settings.enabled = true;
 	HandModeFrame frame;
 	frame.headValid = true;
@@ -470,6 +476,9 @@ void TestMenuHandAndSettingsMenu() {
 	std::printf("Menu hand and OBVR's menu\n");
 	HandSettings settings;
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
+	settings.laserYawDegrees = 0.0f;
+	settings.laserOriginMetres = 0.0f;
+	settings.laserDragScroll = false;  // these check the click on the pull; see TestLaserPress
 	settings.enabled = true;
 	settings.wristMenu = true;  // off by default; this is the wrist's own test
 	settings.wristHud = true;
@@ -553,6 +562,9 @@ void TestLaserOnBigQuad() {
 	std::printf("The laser on the big quad\n");
 	HandSettings settings;
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
+	settings.laserYawDegrees = 0.0f;
+	settings.laserOriginMetres = 0.0f;
+	settings.laserDragScroll = false;  // these check the click on the pull; see TestLaserPress
 	settings.enabled = true;
 	HandModeFrame frame = BigQuadFrame();
 	HandMode mode;
@@ -625,6 +637,9 @@ void TestMenusOnly() {
 	std::printf("The mode off, the controllers on the menus\n");
 	HandSettings settings;
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
+	settings.laserYawDegrees = 0.0f;
+	settings.laserOriginMetres = 0.0f;
+	settings.laserDragScroll = false;  // these check the click on the pull; see TestLaserPress
 	settings.enabled = false;
 	HandModeFrame frame = BigQuadFrame();
 	frame.menusOnly = true;
@@ -708,6 +723,9 @@ void TestHandPoses() {
 	std::printf("Hand poses for the bone pin\n");
 	HandSettings settings;
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
+	settings.laserYawDegrees = 0.0f;
+	settings.laserOriginMetres = 0.0f;
+	settings.laserDragScroll = false;  // these check the click on the pull; see TestLaserPress
 	settings.enabled = true;
 	HandModeFrame frame;
 	frame.headValid = true;
@@ -785,6 +803,9 @@ void TestMainMenuLaser() {
 	std::printf("The laser on the main menu's cinema screen, and the hand that holds it\n");
 	HandSettings settings;
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
+	settings.laserYawDegrees = 0.0f;
+	settings.laserOriginMetres = 0.0f;
+	settings.laserDragScroll = false;  // these check the click on the pull; see TestLaserPress
 	settings.enabled = false;
 	settings.laserGain = 1.0f;
 	settings.laserMaxStep = 4096.0f;
@@ -892,6 +913,9 @@ void TestLaserOnOwnPanel() {
 	std::printf("The laser on OBVR's own panel\n");
 	HandSettings settings;
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
+	settings.laserYawDegrees = 0.0f;
+	settings.laserOriginMetres = 0.0f;
+	settings.laserDragScroll = false;  // these check the click on the pull; see TestLaserPress
 	settings.enabled = false;
 	HandModeFrame frame = MainMenuFrame();
 	frame.settingsMenuOpen = true;
@@ -995,6 +1019,9 @@ void TestGrabHand() {
 	std::printf("The grab follows the hand whose grip holds it\n");
 	HandSettings settings;
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
+	settings.laserYawDegrees = 0.0f;
+	settings.laserOriginMetres = 0.0f;
+	settings.laserDragScroll = false;  // these check the click on the pull; see TestLaserPress
 	settings.enabled = true;
 	HandModeFrame frame;
 	frame.headValid = true;
@@ -1031,6 +1058,9 @@ void TestLeftButtonsInHandMode() {
 	std::printf("The left hand's buttons in the hand-tracked mode\n");
 	HandSettings settings;
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
+	settings.laserYawDegrees = 0.0f;
+	settings.laserOriginMetres = 0.0f;
+	settings.laserDragScroll = false;  // these check the click on the pull; see TestLaserPress
 	settings.enabled = true;
 	HandModeFrame frame;
 	frame.headValid = true;
@@ -1138,6 +1168,77 @@ void TestLaserTilt() {
 	Check(r.laserHit, "a hand tipped up 60 degrees still hits the quad ahead with the tilt");
 }
 
+void TestLaserPress() {
+	std::printf("The laser's trigger as a finger on a touch screen\n");
+	const float h = 1000.0f;  // layer height: drag start 20 px, a notch 40 px
+	LaserPressState s;
+	LaserPressVerdict v = StepLaserPress(s, true, true, 500.0f, 500.0f, h);
+	Check(!v.mouseDown && v.wheel == 0, "pulled: nothing yet");
+	v = StepLaserPress(s, true, true, 505.0f, 510.0f, h);
+	Check(!v.mouseDown && v.wheel == 0, "a wobble under the threshold: still nothing");
+	v = StepLaserPress(s, false, true, 505.0f, 510.0f, h);
+	Check(v.mouseDown && v.wheel == 0, "let go without a drag: the click goes down");
+	v = StepLaserPress(s, false, true, 505.0f, 510.0f, h);
+	Check(!v.mouseDown, "and comes up the next frame");
+
+	s = LaserPressState{};
+	StepLaserPress(s, true, true, 500.0f, 500.0f, h);
+	v = StepLaserPress(s, true, true, 500.0f, 530.0f, h);
+	Check(!v.mouseDown && v.wheel == 0, "dragged down 30 px: scrolling, not a notch yet");
+	v = StepLaserPress(s, true, true, 500.0f, 590.0f, h);
+	Check(v.wheel == 2 && !v.mouseDown, "90 px down: two notches up, the list follows the beam");
+	v = StepLaserPress(s, true, true, 500.0f, 460.0f, h);
+	Check(v.wheel == -3, "back to 40 px above the start: three notches the other way");
+	v = StepLaserPress(s, false, true, 500.0f, 460.0f, h);
+	Check(!v.mouseDown && v.wheel == 0, "let go after a drag: no click");
+
+	s = LaserPressState{};
+	StepLaserPress(s, true, true, 500.0f, 500.0f, h);
+	v = StepLaserPress(s, true, true, 540.0f, 505.0f, h);
+	Check(v.mouseDown && v.wheel == 0, "dragged sideways: the button is held, for a slider");
+	v = StepLaserPress(s, true, true, 700.0f, 600.0f, h);
+	Check(v.mouseDown && v.wheel == 0, "and stays held, whatever the beam does");
+	v = StepLaserPress(s, false, true, 700.0f, 600.0f, h);
+	Check(!v.mouseDown, "let go: up, and no extra click");
+
+	s = LaserPressState{};
+	v = StepLaserPress(s, true, false, 0.0f, 0.0f, h);
+	Check(!v.mouseDown && s.phase == LaserPressPhase::Idle, "pulled off every target: nothing");
+	StepLaserPress(s, true, true, 500.0f, 500.0f, h);
+	v = StepLaserPress(s, false, false, 0.0f, 0.0f, h);
+	Check(!v.mouseDown, "pulled on it, let go off it: no click");
+
+	// Through the mode: a pull is no click until it is let go.
+	HandSettings settings;
+	settings.enabled = false;
+	settings.laserPitchDegrees = 0.0f;
+	settings.laserYawDegrees = 0.0f;
+	settings.laserOriginMetres = 0.0f;
+	HandModeFrame frame = BigQuadFrame();
+	frame.menusOnly = true;
+	HandMode mode;
+	mode.Update(frame, settings);
+	frame.right.trigger = 1.0f;
+	HandModeResult r = mode.Update(frame, settings);
+	Check(!r.controls.menuClick, "in the mode: the pull alone does not click");
+	frame.right.trigger = 0.0f;
+	r = mode.Update(frame, settings);
+	Check(r.controls.menuClick, "its release does");
+	r = mode.Update(frame, settings);
+	Check(!r.controls.menuClick, "for one frame");
+}
+
+void TestLaserYaw() {
+	std::printf("The laser turned inwards\n");
+	const NiPoint3 left = LaserDirectionLocal(0.0f, 5.0f);
+	Check(left.x < 0.0f && Near(left.y, 0.0f) && left.z < 0.0f, "a positive yaw turns it left");
+	const NiPoint3 both = LaserDirectionLocal(40.0f, 5.0f);
+	Check(Near(both.x * both.x + both.y * both.y + both.z * both.z, 1.0f), "still a unit direction");
+	const NiPoint3 right = LaserRightLocal(5.0f);
+	Check(Near(right.x * both.x + right.y * both.y + right.z * both.z, 0.0f),
+	      "the beam's right stays square to it");
+}
+
 void TestChordWindow() {
 	std::printf("The chord only when both come together\n");
 	StickChordState s;
@@ -1182,6 +1283,8 @@ int main() {
 	TestStickFlick();
 	TestChordWindow();
 	TestLaserTilt();
+	TestLaserPress();
+	TestLaserYaw();
 	TestSpeedAndSwing();
 	TestEdges();
 	TestPlanner();

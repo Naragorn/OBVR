@@ -94,11 +94,18 @@ struct HandSettings {
 	// construction, like the rest of the mode.
 	bool controllerMenus = false;
 	bool laserBeam = true;
-	// How far the laser leaves the controller turned down from its tracked
-	// forward (-z), in degrees about the controller's own x axis. 60 is the
-	// tilt asked for after the 2026-09-25 run - the way SteamVR Home's laser
-	// leaves an Index; 0 is the tracked axis as it is.
-	float laserPitchDegrees = 60.0f;
+	// How the laser leaves the controller: turned down from its tracked
+	// forward (-z) by the pitch, about the controller's own x; turned inwards
+	// by the yaw - the right hand's to the left, the left hand's mirrored to
+	// the right; and starting this far along the beam from the tracked
+	// origin, negative back towards the controller. Tuned in the headset on
+	// 2026-09-25: 40 degrees down, 5 in, 2 cm back.
+	float laserPitchDegrees = 40.0f;
+	float laserYawDegrees = 5.0f;
+	float laserOriginMetres = -0.02f;
+	// The laser's trigger as a finger on a touch screen: click on release,
+	// drag to scroll - see StepLaserPress. Off, it clicks on the pull.
+	bool laserDragScroll = true;
 	// With ControllerMenus on and the mode off, the controllers in the
 	// WORLD as well, as a gamepad: see PlanGamepadControls for the layout.
 	bool gamepadLayout = true;
@@ -306,6 +313,7 @@ private:
 	ButtonEdge m_leftMenu;
 	ButtonEdge m_leftTrackpad;
 	StickFlickState m_rightFlick;
+	LaserPressState m_press;
 	RepeatState m_scrollUp;
 	RepeatState m_scrollDown;
 	StickChordState m_sticks;

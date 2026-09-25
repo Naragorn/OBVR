@@ -103,6 +103,11 @@ struct LookSettings {
 	// for instant snaps where there is no motion to track.
 	bool snapTurnVignette = true;
 
+	// How much of the view the vignette leaves clear, as the angle from the
+	// centre of view in degrees where the darkening starts; it is full 20
+	// degrees further out. 25 leaves a cone of 50 degrees clear.
+	float snapTurnVignetteRadius = 25.0f;
+
 	// How far the right stick must be pushed before a snap turn triggers, as a
 	// fraction of full travel (0..1). 0.3 means about a third of the way out -
 	// enough that accidental bumps do not fire turns, but not so much that you

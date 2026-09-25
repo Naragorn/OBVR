@@ -12,21 +12,46 @@ namespace {
 // Texture size: square, large enough that the compositor scales down cleanly.
 constexpr UInt32 kTextureSize = 512;
 
+// The quad: this far ahead of the head and this wide. 8 m at 1.5 m spans
+// 2 * atan(4 / 1.5) = 139 degrees, past the field of view of the headsets
+// OBVR is used with (an Index's is quoted around 108 horizontally), so the
+// dark rim never shows its own edge.
+constexpr float kQuadDistanceMetres = 1.5f;
+constexpr float kQuadWidthMetres = 8.0f;
+
+// How far out the darkening is full, beyond where it starts.
+constexpr float kRampDegrees = 20.0f;
+
+// An angle from the centre of view as a fraction of the quad's half-width.
+float FractionAt(float degrees) {
+	if (degrees < 1.0f) {
+		degrees = 1.0f;
+	}
+	if (degrees > 80.0f) {
+		degrees = 80.0f;
+	}
+	const float radians = degrees * math::kDegreesToRadians;
+	return math::Sin(radians) / math::Cos(radians) * kQuadDistanceMetres /
+	       (0.5f * kQuadWidthMetres);
+}
+
 }  // namespace
 
 void VignetteLayer::GenerateVignettePixels(UInt32 width, UInt32 height, UInt8* rows,
-                                           UInt32 pitch) {
+                                           UInt32 pitch, float clearDegrees) {
 	const float halfW = static_cast<float>(width) * 0.5f;
 	const float halfH = static_cast<float>(height) * 0.5f;
 
 	// Where the darkening starts and where it is full, as fractions of the
-	// half-width. The quad is 8 m wide at 1.5 m, so a fraction r sits at
-	// atan(4 r / 1.5) from the centre of view: 0.17 is about 25 degrees, 0.375
-	// about 45. The first values, 0.45 up to the rim, put the whole ramp past
-	// 50 degrees once the quad was widened - at the edge of an Index's view,
-	// and the headset run saw no vignette at all.
-	constexpr float kStartRadius = 0.17f;
-	constexpr float kFullRadius = 0.375f;
+	// half-width: clearDegrees from the centre of view, and kRampDegrees
+	// beyond. A fixed start at 0.45 of the half-width once put the whole
+	// ramp past 50 degrees on the widened quad - the edge of an Index's
+	// view - and the headset run saw no vignette at all.
+	const float kStartRadius = FractionAt(clearDegrees);
+	float kFullRadius = FractionAt(clearDegrees + kRampDegrees);
+	if (kFullRadius <= kStartRadius) {
+		kFullRadius = kStartRadius + 0.01f;
+	}
 	// Maximum darkness (alpha channel, 0-255). Not fully opaque so the world
 	// behind still shows through - a vignette, not a blackout.
 	constexpr UInt32 kMaxAlpha = 220u;
@@ -153,15 +178,19 @@ bool VignetteLayer::FillTexture(void* gameDevice) {
 		return false;
 	}
 	GenerateVignettePixels(kTextureSize, kTextureSize, static_cast<UInt8*>(locked.bits),
-	                       static_cast<UInt32>(locked.pitch));
+	                       static_cast<UInt32>(locked.pitch), m_clearDegrees);
 	const bool unlocked = !d3d11::Failed(unlockRect(staging));
 	const bool uploaded =
 		unlocked && !d3d11::Failed(updateSurface(gameDevice, staging, nullptr, m_surface, nullptr));
 	d3d11::Release(staging);
+	if (uploaded) {
+		m_builtDegrees = m_clearDegrees;
+	}
 	return uploaded;
 }
 
 void VignetteLayer::DestroyTexture() {
+	m_builtDegrees = -1.0f;
 	d3d11::Release(m_interop);
 	d3d11::Release(m_surface);
 	d3d11::Release(m_texture);
@@ -207,7 +236,8 @@ void VignetteLayer::Trigger() {
 }
 
 void VignetteLayer::Update(vr::OpenVRBackend& backend, void* gameDevice, bool visible,
-                           float deltaSeconds) {
+                           float deltaSeconds, float clearDegrees) {
+	m_clearDegrees = clearDegrees;
 	if (deltaSeconds <= 0.0f || deltaSeconds > 0.1f) {
 		return;
 	}
@@ -254,6 +284,13 @@ void VignetteLayer::Update(vr::OpenVRBackend& backend, void* gameDevice, bool vi
 	if (!EnsureTexture(gameDevice) || !EnsureOverlay(backend)) {
 		return;
 	}
+	// A new radius from the settings: the gradient is drawn again.
+	if (m_builtDegrees != m_clearDegrees) {
+		if (!FillTexture(gameDevice)) {
+			ReportFailure("the gradient could not be drawn again for a new radius");
+			return;
+		}
+	}
 
 	if (!m_vulkanChecked) {
 		m_vulkanChecked = true;
@@ -270,13 +307,10 @@ void VignetteLayer::Update(vr::OpenVRBackend& backend, void* gameDevice, bool vi
 	toOverlay.m[0][0] = 1.0f;
 	toOverlay.m[1][1] = 1.0f;
 	toOverlay.m[2][2] = 1.0f;
-	toOverlay.m[2][3] = -1.5f;  // 1.5m ahead, close enough to fill the view
+	toOverlay.m[2][3] = -kQuadDistanceMetres;
 
 	backend.SetOverlayTransformHmdRelative(m_overlay, toOverlay);
-	// 8 m at 1.5 m spans 2 * atan(4 / 1.5) = 139 degrees, past the field of
-	// view of the headsets OBVR is used with (the Index's is quoted around
-	// 108 horizontally), so the dark rim never shows its own edge.
-	backend.SetOverlayWidthInMetres(m_overlay, 8.0f);
+	backend.SetOverlayWidthInMetres(m_overlay, kQuadWidthMetres);
 
 	if (!ReadImageInfo(m_interop, m_image)) {
 		return;

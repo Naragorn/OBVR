@@ -582,9 +582,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 	}
 
-	// The laser is the pointer: the game's own cursor sprite goes while it
-	// points at a game menu, and comes back when it does not.
-	game::SetMenuCursorHidden(menuIsUp && g_hand.laserVisible && !frame.settingsMenuOpen);
+	// The laser is the pointer: the game's own cursor sprite goes for as long
+	// as the hand-tracked mode runs - it showed on the HUD in game as well -
+	// and, with only the menus on the controllers, while a laser points at a
+	// game menu. It comes back when neither holds.
+	game::SetMenuCursorHidden(
+		(active || (menuIsUp && g_hand.laserVisible)) && !frame.settingsMenuOpen);
 
 	if (menuIsUp && !g_quadLaserMenuWasUp) {
 		g_quadLaserLinesLeft = 4;
@@ -650,6 +653,16 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 		if (g_hand.menuScroll != 0) {
 			game::ScrollMouseWheel(g_hand.menuScroll);
+			// Said a few times: the headset run of 2026-09-25 had the lists not
+			// scroll, and whether the notches are sent at all is the first
+			// question.
+			static UInt32 wheelLinesLeft = 6;
+			if (wheelLinesLeft > 0) {
+				--wheelLinesLeft;
+				OBVR_LOG("Hands: mouse wheel %+d notch(es) sent to the %s menu at cursor %.0f,%.0f",
+				         g_hand.menuScroll, game::MenuIdName(game::ActiveMenuId()),
+				         static_cast<double>(frame.cursorX), static_cast<double>(frame.cursorY));
+			}
 		}
 		if (g_hand.pokePress && g_handPokeLinesLeft > 0) {
 			--g_handPokeLinesLeft;
@@ -2685,14 +2698,18 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// Snap turn vignette: fades in when a snap fires, out after. Updated every frame
 	// so the fade advances even when nothing is happening (keeps it hidden).
 	g_vignetteLayer.Update(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
-	                       config.look.snapTurnVignette && worldFrame, g_deltaSeconds);
+	                       config.look.snapTurnVignette && worldFrame, g_deltaSeconds,
+	                       config.look.snapTurnVignetteRadius);
 
 	// The laser beam from the hand that points at a menu, as long as the way
 	// to it. Its own overlay, raw pixels, no game texture behind it.
 	g_laserLayer.Submit(g_headTracker.GetBackendForFrame(),
 	                    g_hand.laserVisible && config.hands.laserBeam,
 	                    g_headTracker.GetBackendForFrame().HandDeviceIndex(g_hand.laserRight),
-	                    config.hands.laserPitchDegrees, g_hand.laserLengthMetres);
+	                    config.hands.laserPitchDegrees,
+	                    g_hand.laserRight ? config.hands.laserYawDegrees
+	                                      : -config.hands.laserYawDegrees,
+	                    config.hands.laserOriginMetres, g_hand.laserLengthMetres);
 
 	if (!config.tracker.hudOverlay || !render::IsInterfaceRenderHooked()) {
 		return;

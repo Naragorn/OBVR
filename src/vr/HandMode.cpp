@@ -81,6 +81,7 @@ void HandMode::Reset() {
 	m_leftMenu = ButtonEdge{};
 	m_leftTrackpad = ButtonEdge{};
 	m_rightFlick = StickFlickState{};
+	m_press = LaserPressState{};
 	m_scrollUp = RepeatState{};
 	m_scrollDown = RepeatState{};
 	m_sticks = StickChordState{};
@@ -350,8 +351,9 @@ void HandMode::SteerSettingsMenu(const HandModeFrame& f, const HandSettings& s,
 	if (f.settingsQuad.valid && pointHand->valid && f.settingsPixelsWidth > 0.0f &&
 	    f.settingsPixelsHeight > 0.0f) {
 		const NiPoint3 pointing =
-			TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees));
-		const LaserHit hit = LaserOnQuad(pointHand->position, pointing, f.settingsQuad.centre,
+			TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees, pointRight ? s.laserYawDegrees : -s.laserYawDegrees));
+		const NiPoint3 origin = pointHand->position + pointing * s.laserOriginMetres;
+		const LaserHit hit = LaserOnQuad(origin, pointing, f.settingsQuad.centre,
 		                                 f.settingsQuad.right, f.settingsQuad.up,
 		                                 f.settingsQuad.width, f.settingsQuad.height,
 		                                 f.settingsPixelsWidth, f.settingsPixelsHeight);
@@ -375,7 +377,7 @@ void HandMode::SteerSettingsMenu(const HandModeFrame& f, const HandSettings& s,
 			const NiPoint3 normal = Cross(f.settingsQuad.right, f.settingsQuad.up);
 			const float along = Dot(pointing, normal);
 			if (along < -0.0001f || along > 0.0001f) {
-				const float t = Dot(f.settingsQuad.centre - pointHand->position, normal) / along;
+				const float t = Dot(f.settingsQuad.centre - origin, normal) / along;
 				if (t > 0.0f) {
 					r.laserLengthMetres = t;
 				}
@@ -462,6 +464,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 
 	if (!f.menuMode) {
 		m_poke = PokeState{};
+		m_press = LaserPressState{};
 		m_scrollUp = RepeatState{};
 		m_scrollDown = RepeatState{};
 		return;
@@ -475,6 +478,14 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 		r.laserLengthMetres = 1.5f;
 	}
 
+	// What the laser hit this frame, for the drag-scroll below: only a frame
+	// the beam decides (not the finger, not no target at all) goes through it.
+	bool laserPath = false;
+	bool pressHit = false;
+	float pressX = 0.0f;
+	float pressY = 0.0f;
+	float pressHeight = f.layerPixelsHeight;
+
 	// The cursor on the quad, in tracking space. The pointing hand's finger
 	// tip pressing the quad comes first - it is the click, and while it
 	// hovers the cursor sits under it; otherwise the hand's ray is a laser
@@ -482,7 +493,8 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 	if (quad.valid && pointHand != nullptr && pointHand->valid && f.cursorValid &&
 	    f.layerPixelsWidth > 0.0f && f.layerPixelsHeight > 0.0f) {
 		const NiPoint3 pointing =
-			TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees));
+			TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees, pointRight ? s.laserYawDegrees : -s.laserYawDegrees));
+		const NiPoint3 origin = pointHand->position + pointing * s.laserOriginMetres;
 		const NiPoint3 tip = pointHand->position + pointing * s.pokeTipForward;
 		const PokeSample sample = PokeOnQuad(tip, quad.centre, quad.right, quad.up, quad.width,
 		                                     quad.height, f.layerPixelsWidth, f.layerPixelsHeight);
@@ -498,8 +510,12 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 			r.laserLengthMetres = s.pokeTipForward;
 		} else {
 			const LaserHit hit =
-				LaserOnQuad(pointHand->position, pointing, quad.centre, quad.right, quad.up,
+				LaserOnQuad(origin, pointing, quad.centre, quad.right, quad.up,
 				            quad.width, quad.height, f.layerPixelsWidth, f.layerPixelsHeight);
+			laserPath = true;
+			pressHit = hit.hit;
+			pressX = hit.pixelX;
+			pressY = hit.pixelY;
 			if (hit.hit) {
 				r.laserHit = true;
 				r.laserPixelX = hit.pixelX;
@@ -511,7 +527,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 				const NiPoint3 normal = Cross(quad.right, quad.up);
 				const float along = Dot(pointing, normal);
 				if (along < -0.0001f || along > 0.0001f) {
-					const float t = Dot(quad.centre - pointHand->position, normal) / along;
+					const float t = Dot(quad.centre - origin, normal) / along;
 					if (t > 0.0f) {
 						r.laserLengthMetres = t;
 					}
@@ -525,9 +541,15 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 		// press. The pixel is the one the head sees the beam's end against.
 		m_poke = PokeState{};
 		const NiPoint3 pointing =
-			TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees));
-		const FlatLaserHit hit = LaserOnFlatPicture(pointHand->position, pointing, f.headPosition,
+			TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees, pointRight ? s.laserYawDegrees : -s.laserYawDegrees));
+		const NiPoint3 origin = pointHand->position + pointing * s.laserOriginMetres;
+		const FlatLaserHit hit = LaserOnFlatPicture(origin, pointing, f.headPosition,
 		                                            f.flat, kFlatLaserPlaneMetres);
+		laserPath = true;
+		pressHit = hit.hit;
+		pressX = hit.pixelX;
+		pressY = hit.pixelY;
+		pressHeight = f.flat.pixelHeight;
 		if (hit.hit) {
 			r.laserHit = true;
 			r.laserPixelX = hit.pixelX;
@@ -538,6 +560,21 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 		}
 	} else {
 		m_poke = PokeState{};
+	}
+
+	// The trigger on the laser as a finger on a touch screen - see
+	// StepLaserPress: a click on the release, a drag that scrolls, a sideways
+	// drag that holds. The trigger's own level (after the hand switch's
+	// block) is what it steps on; the finger and a frame with no target keep
+	// the plain held click.
+	int dragWheel = 0;
+	if (s.laserDragScroll && laserPath) {
+		const LaserPressVerdict press = StepLaserPress(m_press, r.controls.menuClick, pressHit,
+		                                               pressX, pressY, pressHeight);
+		r.controls.menuClick = press.mouseDown;
+		dragWheel = press.wheel;
+	} else {
+		m_press = LaserPressState{};
 	}
 
 	// The left stick as the mouse wheel: a notch on the flick, then repeats
@@ -551,6 +588,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 	               s.scrollIntervalSeconds)) {
 		r.menuScroll = -1;
 	}
+	r.menuScroll += dragWheel;
 }
 
 HandModeResult HandMode::UpdateMenusOnly(const HandModeFrame& f, const HandSettings& s) {

@@ -532,6 +532,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Look", "SnapTurnInstant", config.look.snapTurnInstant, path);
 	config.look.snapTurnSpeed =
 		ReadFloat("Look", "SnapTurnSpeed", config.look.snapTurnSpeed, path);
+	config.look.snapTurnVignetteRadius = ReadFloat("Look", "SnapTurnVignetteRadius",
+	                                             config.look.snapTurnVignetteRadius, path);
 	config.look.snapTurnVignette =
 		ReadBool("Look", "SnapTurnVignette", config.look.snapTurnVignette, path);
 	config.look.snapTurnDeadZone =
@@ -603,6 +605,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.gamepadLayout = ReadBool("Hands", "GamepadLayout", h.gamepadLayout, path);
 		h.laserBeam = ReadBool("Hands", "LaserBeam", h.laserBeam, path);
 		h.laserPitchDegrees = ReadFloat("Hands", "LaserPitchDegrees", h.laserPitchDegrees, path);
+		h.laserYawDegrees = ReadFloat("Hands", "LaserYawDegrees", h.laserYawDegrees, path);
+		h.laserOriginMetres = ReadFloat("Hands", "LaserOriginMetres", h.laserOriginMetres, path);
+		h.laserDragScroll = ReadBool("Hands", "LaserDragScroll", h.laserDragScroll, path);
 		h.hitBoundFactor = ReadFloat("Hands", "HitBoundFactor", h.hitBoundFactor, path);
 		h.hitPadUnits = ReadFloat("Hands", "HitPadUnits", h.hitPadUnits, path);
 		h.restHandRight = ReadFloat("Hands", "RestHandRight", h.restHandRight, path);

@@ -3,6 +3,7 @@
 #include "core/AddressSpace.h"
 #include "game/GameAddresses.h"
 #include "core/Log.h"
+#include "game/GameTypes.h"
 
 namespace obvr::game {
 namespace {
@@ -115,8 +116,16 @@ const char* MenuIdName(UInt32 id) {
 
 namespace {
 
-// The cursor sprite OBVR hid, so it can be shown again - and only it.
-UInt8* g_hiddenCursorNode = nullptr;
+// What OBVR hid of the cursor sprite, so exactly that is shown again: the
+// sprite's node and the geometry directly under it. The node alone was not
+// enough in game: the engine clears the node's hidden bit again every frame
+// (the log's "the engine showed the sprite again") and, in game menus and
+// the HUD, before the 2D pass draws it. The geometry under the node keeps
+// what is written to it.
+constexpr UInt32 kMaxHiddenCursorParts = 9;
+UInt8* g_hiddenCursorParts[kMaxHiddenCursorParts]{};
+UInt32 g_hiddenCursorCount = 0;
+const UInt8* g_hiddenCursorNode = nullptr;
 bool g_cursorHideWanted = false;
 bool g_cursorHideReported = false;
 bool g_cursorReshowReported = false;
@@ -127,13 +136,37 @@ UInt16& NodeFlags(UInt8* node) {
 	return *reinterpret_cast<UInt16*>(node + addr::kNiFlagsOffset);
 }
 
+bool LooksLikeObject(const void* pointer) {
+	return mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(pointer));
+}
+
 void ShowHiddenCursor() {
-	if (g_hiddenCursorNode != nullptr &&
-	    mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(g_hiddenCursorNode))) {
-		NodeFlags(g_hiddenCursorNode) =
-			static_cast<UInt16>(NodeFlags(g_hiddenCursorNode) & ~kHiddenBit);
+	for (UInt32 at = 0; at < g_hiddenCursorCount; ++at) {
+		UInt8* const part = g_hiddenCursorParts[at];
+		if (LooksLikeObject(part)) {
+			NodeFlags(part) = static_cast<UInt16>(NodeFlags(part) & ~kHiddenBit);
+		}
+		g_hiddenCursorParts[at] = nullptr;
 	}
+	g_hiddenCursorCount = 0;
 	g_hiddenCursorNode = nullptr;
+}
+
+void HidePart(UInt8* part) {
+	if (!LooksLikeObject(part)) {
+		return;
+	}
+	for (UInt32 at = 0; at < g_hiddenCursorCount; ++at) {
+		if (g_hiddenCursorParts[at] == part) {
+			NodeFlags(part) = static_cast<UInt16>(NodeFlags(part) | kHiddenBit);
+			return;
+		}
+	}
+	if (g_hiddenCursorCount >= kMaxHiddenCursorParts || (NodeFlags(part) & kHiddenBit) != 0) {
+		return;  // hidden already by the engine: not OBVR's to show again later
+	}
+	NodeFlags(part) = static_cast<UInt16>(NodeFlags(part) | kHiddenBit);
+	g_hiddenCursorParts[g_hiddenCursorCount++] = part;
 }
 
 // The cursor tile's render node: InterfaceManager+0x1C is the cursor tile,
@@ -141,15 +174,15 @@ void ShowHiddenCursor() {
 // sprite's position from during the hover-offset work.
 UInt8* CursorNode() {
 	auto* const manager = *reinterpret_cast<UInt8* const*>(addr::kInterfaceManagerPointer);
-	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(manager))) {
+	if (!LooksLikeObject(manager)) {
 		return nullptr;
 	}
 	auto* const tile = *reinterpret_cast<UInt8* const*>(manager + addr::kInterfaceCursorTileOffset);
-	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(tile))) {
+	if (!LooksLikeObject(tile)) {
 		return nullptr;
 	}
 	auto* const node = *reinterpret_cast<UInt8* const*>(tile + addr::kTileRenderNodeOffset);
-	return mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(node)) ? node : nullptr;
+	return LooksLikeObject(node) ? node : nullptr;
 }
 
 }  // namespace
@@ -171,18 +204,34 @@ void SetMenuCursorHidden(bool hidden) {
 		ShowHiddenCursor();  // a different sprite now; the old one is let go
 	} else if (node != nullptr && (NodeFlags(node) & kHiddenBit) == 0 && !g_cursorReshowReported) {
 		g_cursorReshowReported = true;
-		OBVR_LOG("Menu cursor: the engine showed the sprite again since the last frame - hidden "
-		         "again every frame");
+		OBVR_LOG("Menu cursor: the engine showed the sprite again since the last frame - its "
+		         "geometry is hidden as well");
 	}
 	if (node == nullptr) {
 		return;
 	}
-	NodeFlags(node) = static_cast<UInt16>(NodeFlags(node) | kHiddenBit);
 	g_hiddenCursorNode = node;
+	HidePart(node);
+	// And what hangs under it - a node's children, when the sprite is one.
+	UInt8* const* const children =
+		*reinterpret_cast<UInt8* const* const*>(node + addr::kNiChildrenOffset);
+	const UInt16 count = *reinterpret_cast<const UInt16*>(node + addr::kNiChildCountOffset);
+	if (LooksLikeObject(children) && count <= 64) {
+		for (UInt16 at = 0; at < count; ++at) {
+			// Only a real child: one whose parent is this node. If the sprite
+			// is geometry rather than a node, these words are not a children
+			// array, and nothing that does not point back is touched.
+			UInt8* const child = children[at];
+			if (LooksLikeObject(child) &&
+			    reinterpret_cast<const UInt8*>(reinterpret_cast<NiAVObject*>(child)->parent) == node) {
+				HidePart(child);
+			}
+		}
+	}
 	if (!g_cursorHideReported) {
 		g_cursorHideReported = true;
-		OBVR_LOG("Menu cursor: the sprite (node %08X) is hidden while a laser points",
-		         reinterpret_cast<UInt32>(node));
+		OBVR_LOG("Menu cursor: the sprite (node %08X, %u part(s)) is hidden while the "
+		         "controllers point", reinterpret_cast<UInt32>(node), g_hiddenCursorCount);
 	}
 }
 

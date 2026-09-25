@@ -46,10 +46,21 @@ inline bool ButtonBDown(UInt64 mask) { return ButtonDown(mask, openvr::kButtonIn
 inline bool GripDown(UInt64 mask) { return ButtonDown(mask, openvr::kButtonIndexGrip); }
 inline bool StickClickDown(UInt64 mask) { return ButtonDown(mask, openvr::kButtonIndexJoystick); }
 // The laser's direction in the controller's own frame (x right, y up, -z
-// forward): forward turned down by pitchDegrees about x. At 0 it is -z.
-inline NiPoint3 LaserDirectionLocal(float pitchDegrees) {
-	const float radians = pitchDegrees * math::kDegreesToRadians;
-	return NiPoint3{0.0f, -math::Sin(radians), -math::Cos(radians)};
+// forward): forward turned down by pitchDegrees about x, then turned left
+// by yawDegrees about the controller's y (negative turns it right). At no
+// angles it is -z.
+inline NiPoint3 LaserDirectionLocal(float pitchDegrees, float yawDegrees = 0.0f) {
+	const float pitch = pitchDegrees * math::kDegreesToRadians;
+	const float yaw = yawDegrees * math::kDegreesToRadians;
+	const float level = math::Cos(pitch);
+	return NiPoint3{-level * math::Sin(yaw), -math::Sin(pitch), -level * math::Cos(yaw)};
+}
+
+// The beam's right in the same frame: the controller's x turned by the same
+// yaw, so it stays square to the direction whatever the pitch.
+inline NiPoint3 LaserRightLocal(float yawDegrees) {
+	const float yaw = yawDegrees * math::kDegreesToRadians;
+	return NiPoint3{math::Cos(yaw), 0.0f, -math::Sin(yaw)};
 }
 
 inline bool TrackpadClickDown(UInt64 mask) {
@@ -736,6 +747,93 @@ inline StickChordVerdict StepStickChord(StickChordState& s, bool rightDown, bool
 	}
 	s.rightDown = rightDown;
 	s.leftDown = leftDown;
+	return v;
+}
+
+// ------------------------------------------------------ Laser drag-scroll
+//
+// The laser's trigger the way a finger works a touch screen: pulled and let
+// go without moving, it is a click, sent on the release; pulled and dragged
+// up or down, the list scrolls with the beam as mouse wheel notches and no
+// click is sent; dragged sideways, the button is held down from there on so
+// a slider can be pulled. Distances are fractions of the layer's height, so
+// the feel does not depend on the resolution.
+
+enum class LaserPressPhase { Idle, Pressed, Scrolling, Holding };
+
+struct LaserPressState {
+	LaserPressPhase phase = LaserPressPhase::Idle;
+	float startX = 0.0f;
+	float startY = 0.0f;
+	int notchesSent = 0;
+	bool clickPending = false;  // the release's click, down now and up next
+};
+
+struct LaserPressVerdict {
+	bool mouseDown = false;  // the left button, this frame
+	int wheel = 0;           // notches, positive up
+};
+
+constexpr float kLaserDragStart = 0.02f;     // of the layer height: a drag, not a wobble
+constexpr float kLaserPixelsPerNotch = 0.04f;  // of the layer height, per wheel notch
+
+inline LaserPressVerdict StepLaserPress(LaserPressState& s, bool triggerDown, bool hit,
+                                        float x, float y, float layerHeight) {
+	LaserPressVerdict v;
+	if (s.clickPending) {
+		// The release's click went down last frame; this frame it comes up.
+		s.clickPending = false;
+		s.phase = LaserPressPhase::Idle;
+		return v;
+	}
+	const float height = layerHeight > 1.0f ? layerHeight : 1.0f;
+	if (!triggerDown) {
+		if (s.phase == LaserPressPhase::Pressed && hit) {
+			v.mouseDown = true;
+			s.clickPending = true;
+			return v;
+		}
+		s = LaserPressState{};
+		return v;
+	}
+	switch (s.phase) {
+	case LaserPressPhase::Idle:
+		if (hit) {
+			s.phase = LaserPressPhase::Pressed;
+			s.startX = x;
+			s.startY = y;
+			s.notchesSent = 0;
+		}
+		break;
+	case LaserPressPhase::Pressed: {
+		if (!hit) {
+			break;
+		}
+		const float dx = x - s.startX;
+		const float dy = y - s.startY;
+		const float ax = dx < 0.0f ? -dx : dx;
+		const float ay = dy < 0.0f ? -dy : dy;
+		if (ay >= kLaserDragStart * height && ay >= ax) {
+			s.phase = LaserPressPhase::Scrolling;
+		} else if (ax >= kLaserDragStart * height) {
+			s.phase = LaserPressPhase::Holding;
+			v.mouseDown = true;
+		}
+		break;
+	}
+	case LaserPressPhase::Holding:
+		v.mouseDown = true;
+		break;
+	case LaserPressPhase::Scrolling:
+		break;
+	}
+	if (s.phase == LaserPressPhase::Scrolling && hit) {
+		// The list follows the beam: dragged down, the earlier entries come
+		// into view - a wheel notch up - as on a touch screen.
+		const int wanted = static_cast<int>((y - s.startY) / (kLaserPixelsPerNotch * height));
+		v.wheel = wanted - s.notchesSent;
+		s.notchesSent = wanted;
+	}
 	return v;
 }
 

@@ -30,6 +30,7 @@ public:
 	// Once per frame, after the eyes. visible false hides the beam; visible
 	// true hangs it on the given tracked device for the given length.
 	void Submit(vr::OpenVRBackend& backend, bool visible, UInt32 deviceIndex, float pitchDegrees,
+	            float yawDegrees, float originMetres,
 	            float lengthMetres);
 
 	void Destroy();
@@ -44,6 +45,8 @@ private:
 	UInt32 m_placedDevice = 0;
 	float m_placedLength = 0.0f;
 	float m_placedPitch = 0.0f;
+	float m_placedYaw = 0.0f;
+	float m_placedOrigin = 0.0f;
 	bool m_reported = false;
 };
 
@@ -51,7 +54,8 @@ private:
 // controller's pointing direction (-z), its centre half the length out, so
 // the quad runs from the controller's origin to the length. Pure, so the
 // axes can be checked without a headset.
-vr::openvr::HmdMatrix34 LaserBeamTransform(float lengthMetres, float pitchDegrees);
+vr::openvr::HmdMatrix34 LaserBeamTransform(float lengthMetres, float pitchDegrees,
+                                           float yawDegrees, float originMetres);
 
 // The quad's width for a beam of this length: the texture is kLaserTextureWidth
 // by kLaserTextureHeight, so the compositor draws it length / aspect wide.
