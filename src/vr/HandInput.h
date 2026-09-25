@@ -358,7 +358,7 @@ struct HandFrameInput {
 // menu, the right one is escape. In the world: right trigger attacks (the
 // bow draws while it is held and looses when it is released, a spell hand
 // casts on the left trigger), swings attack by themselves, the raised left
-// hand blocks, either grip grabs, left A activates, the left stick walks
+// hand blocks, either grip grabs, right A activates, the left stick walks
 // and runs while it is pressed in, the right stick turns, jumps on a flick
 // up and sneaks on a flick down, its click readies the weapon, the left
 // trackpad click opens the quick menu. The left grip only grabs: one that
@@ -377,12 +377,12 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 		out.jump = in.rightStickUp;
 		out.sneak = in.rightStickDown;
 		out.escape = in.rightMenuButton;
+		out.activate = in.rightA;  // the pointing hand's A, for a right-handed player
 		out.readyWeapon = in.rightStickClick;
 		out.turn = in.rightThumbX;
 	}
 	if (in.leftValid) {
 		out.cast = in.leftTrigger;
-		out.activate = in.leftA;
 		out.run = in.leftStickHeld;
 		out.menu = in.leftMenuButton;
 		out.quickMenu = in.leftTrackpadClick;

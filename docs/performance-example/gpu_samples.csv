@@ -1,0 +1,3 @@
+sample_id,present_id,vr_frame_id,event_type,pass_index,eye,status,start_tick,end_tick,frequency,age_presents
+1,1,1,scene_pass,0,0,ready,100,220,1000000,0
+2,1,1,scene_pass,1,1,ready,230,370,1000000,0

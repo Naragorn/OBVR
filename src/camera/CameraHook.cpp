@@ -45,6 +45,7 @@
 #include "render/VignetteLayer.h"
 #include "render/HudLayer.h"
 #include "render/LaserLayer.h"
+#include "vr/LaserGeometry.h"
 #include "ui/Onboarding.h"
 #include "ui/SettingsMenu.h"
 #include "ui/SettingsMenuLayer.h"
@@ -2724,7 +2725,9 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// In the hand-tracked mode the aim is the right hand's, so the crosshair
 	// and the tooltip it carries hang ahead of that controller.
 	g_crosshairLayer.SetHandPlacement(config.handTracking && g_hand.aimValid,
-	                                  g_headTracker.GetBackendForFrame().HandDeviceIndex(true));
+	                                  g_headTracker.GetBackendForFrame().HandDeviceIndex(true),
+	                                  config.hands.laserPitchDegrees, config.hands.laserYawDegrees,
+	                                  config.hands.laserOriginMetres);
 	g_crosshairLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                        crosshairLifted && content != CrosshairContent::Hidden,
 	                        crosshair.distanceMetres, crosshair.widthMetres);
@@ -2743,7 +2746,8 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	                    config.hands.laserPitchDegrees,
 	                    g_hand.laserRight ? config.hands.laserYawDegrees
 	                                      : -config.hands.laserYawDegrees,
-	                    config.hands.laserOriginMetres, g_hand.laserLengthMetres);
+	                    config.hands.laserOriginMetres, g_hand.laserLengthMetres,
+	                    config.hands.laserDot);
 
 	if (!config.tracker.hudOverlay || !render::IsInterfaceRenderHooked()) {
 		return;
@@ -3571,6 +3575,24 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// chase camera.
 	game::SetWorldPickDirection(ForwardOf(finalRotation),
 	                            g_headTracker.IsHeadsetConnected());
+	// In the hand-tracked mode the pick is the right hand's laser instead -
+	// the same ray the menus are pointed with and the crosshair is hung on -
+	// so the tooltip, Activate and the grab take what the laser points at.
+	// From last frame's hand, as the hand mode runs at Present.
+	{
+		const vr::HandSettings& hands = config.hands;
+		const bool handRay = config.handTracking && g_headTracker.IsHeadsetConnected() &&
+		                     g_hand.rightHandValid;
+		if (handRay) {
+			const vr::LaserWorldRay ray = vr::HandLaserWorldRay(
+				finalRotation, cameraNode->localTransform.pos, g_hand.rightHandRotation,
+				g_hand.rightHandOffsetUnits, hands.laserPitchDegrees, hands.laserYawDegrees,
+				hands.laserOriginMetres, config.tracker.unitsPerMetre);
+			game::SetWorldPickHandRay(ray.origin, ray.direction, true);
+		} else {
+			game::SetWorldPickHandRay(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 1.0f, 0.0f}, false);
+		}
+	}
 
 	// The player's own pitch, pointed where the view is pointed.
 	//
@@ -3686,12 +3708,18 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		// of the gaze - its heading as the head's plus the hand's turn from
 		// it, its pitch its own. Same hand-over, same engine sites.
 		// For grab: use whichever hand is holding it; for attacks/spells: always right hand.
+		// The hand's aim turns the player - rotX and the body's heading - to
+		// where the hand points, and the NPCs then looked at the hand rather
+		// than at the wearer's eyes (2026-09-25). So it is a switch,
+		// Hands.AimWithHand, off by default; the grab keeps its hand either way,
+		// since the grabbed object is carried along the aim.
+		const bool aimWithHand = GetConfig().hands.aimWithHand;
 		if (GetConfig().handTracking) {
 			if (g_hand.grabWanted && g_hand.grabWithLeftHand && g_hand.leftAimValid) {
 				// Left grip holds the grabbed object - aim through left hand
 				pose.headYaw = AimYawRemaining(sourceHeadYaw + g_hand.leftAimYawTurn, g_aimBodyOffset);
 				pose.pitch = PlayerPitchForGaze(g_hand.leftAimSinPitch);
-			} else if (g_hand.aimValid) {
+			} else if (g_hand.aimValid && (aimWithHand || g_hand.grabWanted)) {
 				// Right hand: attacks, spells, or right-grip grab
 				pose.headYaw = AimYawRemaining(sourceHeadYaw + g_hand.aimYawTurn, g_aimBodyOffset);
 				pose.pitch = PlayerPitchForGaze(g_hand.aimSinPitch);

@@ -6,6 +6,7 @@
 #include "render/CrosshairCache.h"
 #include "render/D3D11Types.h"
 #include "render/GameFrame.h"
+#include "vr/LaserGeometry.h"
 #include "vr/OpenVRBackend.h"
 
 namespace obvr::render {
@@ -387,9 +388,13 @@ bool CrosshairLayer::EnsureOverlay(vr::OpenVRBackend& backend) {
 	return backend.CreateOverlay("obvr.crosshair", "Oblivion Crosshair", m_overlay);
 }
 
-void CrosshairLayer::SetHandPlacement(bool onHand, UInt32 deviceIndex) {
+void CrosshairLayer::SetHandPlacement(bool onHand, UInt32 deviceIndex, float pitchDegrees,
+                                      float yawDegrees, float originMetres) {
 	m_onHand = onHand;
 	m_handDevice = deviceIndex;
+	m_handPitch = pitchDegrees;
+	m_handYaw = yawDegrees;
+	m_handOrigin = originMetres;
 }
 
 void CrosshairLayer::Place(vr::OpenVRBackend& backend, float distanceMetres,
@@ -397,7 +402,9 @@ void CrosshairLayer::Place(vr::OpenVRBackend& backend, float distanceMetres,
 	// Nothing moved, so nothing is said. Worth the comparison because this
 	// runs every frame and both calls cross into the compositor.
 	if (m_placed && m_placedDistance == distanceMetres && m_placedWidth == widthMetres &&
-	    m_placedOnHand == m_onHand && m_placedHandDevice == m_handDevice) {
+	    m_placedOnHand == m_onHand && m_placedHandDevice == m_handDevice &&
+	    m_placedPitch == m_handPitch && m_placedYaw == m_handYaw &&
+	    m_placedOrigin == m_handOrigin) {
 		return;
 	}
 	m_placed = true;
@@ -405,19 +412,25 @@ void CrosshairLayer::Place(vr::OpenVRBackend& backend, float distanceMetres,
 	m_placedWidth = widthMetres;
 	m_placedOnHand = m_onHand;
 	m_placedHandDevice = m_handDevice;
+	m_placedPitch = m_handPitch;
+	m_placedYaw = m_handYaw;
+	m_placedOrigin = m_handOrigin;
 
 	// Straight ahead of the head, negative Z being forward in the headset's
 	// own frame - the same placement the HUD layer uses, and for the same
 	// reason: the crosshair belongs where the wearer is looking, not where
-	// they were looking. Or, in the hand-tracked mode, straight ahead of the
-	// aiming controller, whose frame points the same way.
+	// they were looking. Or, in the hand-tracked mode, on the laser: the same
+	// tilted ray the menus are pointed with and the world pick is taken
+	// along, so what the crosshair sits on is what is activated.
 	vr::openvr::HmdMatrix34 toOverlay{};
 	toOverlay.m[0][0] = 1.0f;
 	toOverlay.m[1][1] = 1.0f;
 	toOverlay.m[2][2] = 1.0f;
 	toOverlay.m[2][3] = -distanceMetres;
 	if (m_onHand) {
-		backend.SetOverlayTransformDeviceRelative(m_overlay, m_handDevice, toOverlay);
+		backend.SetOverlayTransformDeviceRelative(
+			m_overlay, m_handDevice,
+			vr::LaserPointMatrix(distanceMetres, m_handPitch, m_handYaw, m_handOrigin));
 	} else {
 		backend.SetOverlayTransformHmdRelative(m_overlay, toOverlay);
 	}

@@ -2,7 +2,7 @@
 
 #include "core/Log.h"
 #include "core/MathFns.h"
-#include "vr/HandInput.h"
+#include "vr/LaserGeometry.h"
 #include "vr/OpenVRBackend.h"
 
 namespace obvr::render {
@@ -26,35 +26,30 @@ void PaintBeam(UInt8* rgba) {
 	}
 }
 
+// The dot at the beam's end: the beam's gold, bright in the middle and
+// soft at the rim, round within its square.
+void PaintDot(UInt8* rgba) {
+	const float half = 0.5f * static_cast<float>(kLaserDotTexture);
+	for (UInt32 row = 0; row < kLaserDotTexture; ++row) {
+		for (UInt32 col = 0; col < kLaserDotTexture; ++col) {
+			const float dx = (static_cast<float>(col) + 0.5f - half) / half;
+			const float dy = (static_cast<float>(row) + 0.5f - half) / half;
+			const float r = math::Sqrt(dx * dx + dy * dy);
+			float alpha = r < 0.6f ? 1.0f : (r < 1.0f ? (1.0f - r) / 0.4f : 0.0f);
+			UInt8* const pixel = rgba + (row * kLaserDotTexture + col) * 4;
+			pixel[0] = 255;
+			pixel[1] = static_cast<UInt8>(r < 0.35f ? 250 : 220);
+			pixel[2] = static_cast<UInt8>(r < 0.35f ? 225 : 140);
+			pixel[3] = static_cast<UInt8>(alpha * 255.0f);
+		}
+	}
+}
+
 }  // namespace
 
 vr::openvr::HmdMatrix34 LaserBeamTransform(float lengthMetres, float pitchDegrees,
                                            float yawDegrees, float originMetres) {
-	// Columns are the quad's axes in the controller's frame: its up is the
-	// beam's direction (LaserDirectionLocal, the same the hit test uses), its
-	// right the controller's x turned by the same yaw (LaserRightLocal), its
-	// front right x up, which keeps the frame right-handed - with no angles
-	// the controller's up (x cross -z = +y). The beam starts originMetres
-	// along its direction and its centre sits half its length further out.
-	const NiPoint3 up = vr::LaserDirectionLocal(pitchDegrees, yawDegrees);
-	const NiPoint3 right = vr::LaserRightLocal(yawDegrees);
-	const NiPoint3 front{right.y * up.z - right.z * up.y, right.z * up.x - right.x * up.z,
-	                     right.x * up.y - right.y * up.x};
-	const float along = originMetres + 0.5f * lengthMetres;
-	vr::openvr::HmdMatrix34 m{};
-	m.m[0][0] = right.x;
-	m.m[1][0] = right.y;
-	m.m[2][0] = right.z;
-	m.m[0][1] = up.x;
-	m.m[1][1] = up.y;
-	m.m[2][1] = up.z;
-	m.m[0][2] = front.x;
-	m.m[1][2] = front.y;
-	m.m[2][2] = front.z;
-	m.m[0][3] = up.x * along;
-	m.m[1][3] = up.y * along;
-	m.m[2][3] = up.z * along;
-	return m;
+	return vr::LaserBeamMatrix(lengthMetres, pitchDegrees, yawDegrees, originMetres);
 }
 
 float LaserBeamWidth(float lengthMetres) {
@@ -89,15 +84,19 @@ bool LaserLayer::EnsureOverlay(vr::OpenVRBackend& backend) {
 
 void LaserLayer::Submit(vr::OpenVRBackend& backend, bool visible, UInt32 deviceIndex,
                         float pitchDegrees, float yawDegrees, float originMetres,
-                        float lengthMetres) {
+                        float lengthMetres, bool withDot) {
 	if (!visible || deviceIndex == vr::openvr::kTrackedDeviceIndexInvalid ||
 	    !(lengthMetres > 0.01f)) {
 		if (m_overlayVisible && m_overlay != vr::openvr::kOverlayHandleInvalid) {
 			backend.HideOverlay(m_overlay);
 			m_overlayVisible = false;
 		}
+		SubmitDot(backend, false, deviceIndex, pitchDegrees, yawDegrees, originMetres,
+		          lengthMetres);
 		return;
 	}
+	SubmitDot(backend, withDot, deviceIndex, pitchDegrees, yawDegrees, originMetres,
+	          lengthMetres > 5.0f ? 5.0f : lengthMetres);
 	if (!EnsureOverlay(backend)) {
 		return;
 	}
@@ -134,10 +133,54 @@ void LaserLayer::Submit(vr::OpenVRBackend& backend, bool visible, UInt32 deviceI
 	}
 }
 
+void LaserLayer::SubmitDot(vr::OpenVRBackend& backend, bool visible, UInt32 deviceIndex,
+                           float pitchDegrees, float yawDegrees, float originMetres,
+                           float lengthMetres) {
+	if (!visible || deviceIndex == vr::openvr::kTrackedDeviceIndexInvalid ||
+	    !(lengthMetres > 0.01f)) {
+		if (m_dotVisible && m_dot != vr::openvr::kOverlayHandleInvalid) {
+			backend.HideOverlay(m_dot);
+			m_dotVisible = false;
+		}
+		return;
+	}
+	if (m_dot == vr::openvr::kOverlayHandleInvalid) {
+		if (m_dotTried) {
+			return;
+		}
+		m_dotTried = true;
+		if (!backend.CreateOverlay("obvr.laser.dot", "OBVR laser dot", m_dot)) {
+			OBVR_LOG("Laser: the dot's overlay could not be created - the beam goes without it");
+			return;
+		}
+		static UInt8 pixels[kLaserDotTexture * kLaserDotTexture * 4];
+		PaintDot(pixels);
+		const int error = backend.SetOverlayRaw(m_dot, pixels, kLaserDotTexture, kLaserDotTexture);
+		if (error != vr::openvr::kOverlayErrorNone) {
+			OBVR_LOG("Laser: SetOverlayRaw failed for the dot (%d) - the beam goes without it",
+			         error);
+			backend.DestroyOverlay(m_dot);
+			m_dot = vr::openvr::kOverlayHandleInvalid;
+			return;
+		}
+	}
+	// Every frame: the end of a beam that follows a hand moves every frame.
+	backend.SetOverlayTransformDeviceRelative(
+		m_dot, deviceIndex,
+		vr::LaserPointMatrix(lengthMetres, pitchDegrees, yawDegrees, originMetres));
+	backend.SetOverlayWidthInMetres(m_dot, vr::LaserDotWidth(lengthMetres));
+	if (!m_dotVisible) {
+		backend.ShowOverlay(m_dot);
+		m_dotVisible = true;
+	}
+}
+
 void LaserLayer::Destroy() {
 	m_overlay = vr::openvr::kOverlayHandleInvalid;
 	m_overlayVisible = false;
 	m_placed = false;
+	m_dot = vr::openvr::kOverlayHandleInvalid;
+	m_dotVisible = false;
 }
 
 }  // namespace obvr::render

@@ -1,0 +1,5 @@
+event_id,event_type,present_id,scene_id,vr_frame_id,pass_index,eye,mode,start_tick,end_tick,status
+1,scene_pass,1,10,1,0,0,world_dual,1000,1120,0
+2,scene_pass,1,10,1,1,1,world_dual,1125,1260,0
+3,between_passes,1,10,1,0,2,world_dual,1120,1125,0
+4,monitor_present,1,0,1,0,2,world_dual,1265,1275,0

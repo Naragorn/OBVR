@@ -312,8 +312,16 @@ bool CrosshairTargetNeedsImmediateDepth(UInt32 previousTarget, UInt32 currentTar
 }
 
 WorldPickOverride WorldPickOverrideWanted(bool thirdPerson, bool gazeValid,
-	                                      bool hookInstalled) {
+	                                      bool hookInstalled, bool handRayValid) {
 	WorldPickOverride result;
+	if (hookInstalled && handRayValid) {
+		// The hand-tracked mode points with the hand's laser in both views: its
+		// own origin at the controller, clear of the player's body, and its
+		// direction.
+		result.replaceDirection = true;
+		result.replaceOrigin = true;
+		return result;
+	}
 	result.replaceDirection = thirdPerson && gazeValid && hookInstalled;
 	// Keep Oblivion's activation origin at the player. The third-person camera
 	// is behind the body; starting there makes the ray cross the player before

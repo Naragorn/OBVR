@@ -123,7 +123,14 @@ void TestPlanner() {
 	left.leftStickHeld = true;
 	left.leftTrackpadClick = true;
 	w = PlanHandControls(left, 0.4f);
-	Check(w.activate && !w.grab, "left A activates");
+	Check(!w.activate && !w.grab, "left A no longer activates");
+	HandFrameInput rightA;
+	rightA.rightValid = true;
+	rightA.leftValid = true;
+	rightA.rightA = true;
+	Check(PlanHandControls(rightA, 0.4f).activate, "right A activates, for a right-handed player");
+	rightA.rightValid = false;
+	Check(!PlanHandControls(rightA, 0.4f).activate, "not from an untracked right hand");
 	Check(w.run && !w.sneak, "the left stick held in runs, and its click no longer sneaks");
 	Check(w.quickMenu, "the left trackpad click opens the quick menu");
 
@@ -1107,9 +1114,9 @@ void TestLeftButtonsInHandMode() {
 	frame.right.thumbY = 0.0f;
 	mode.Update(frame, settings);
 
-	frame.left.buttonsPressed = 1ull << openvr::kButtonA;
+	frame.right.buttonsPressed = 1ull << openvr::kButtonA;
 	r = mode.Update(frame, settings);
-	Check(r.controls.activate && !r.controls.grab, "A activates");
+	Check(r.controls.activate && !r.controls.grab, "right A activates");
 }
 
 void TestStickFlick() {

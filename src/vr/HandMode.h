@@ -106,6 +106,13 @@ struct HandSettings {
 	// The laser's trigger as a finger on a touch screen: click on release,
 	// drag to scroll - see StepLaserPress. Off, it clicks on the pull.
 	bool laserDragScroll = true;
+	// A dot at the end of the laser, wherever the laser is.
+	bool laserDot = true;
+	// Whether the right hand also aims: attacks, spells and the player's own
+	// rotation follow it. Off, they follow the head - the NPCs looked at the
+	// hand with it on (2026-09-25). The pick, the crosshair and the tooltip
+	// follow the laser either way.
+	bool aimWithHand = false;
 	// With ControllerMenus on and the mode off, the controllers in the
 	// WORLD as well, as a gamepad: see PlanGamepadControls for the layout.
 	bool gamepadLayout = true;

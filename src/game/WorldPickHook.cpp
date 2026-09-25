@@ -14,6 +14,12 @@ namespace {
 
 NiPoint3 g_direction{};
 bool g_gazeValid = false;
+// The hand's laser, when the hand-tracked mode points with it: origin and
+// direction both, in first and third person alike.
+NiPoint3 g_handOrigin{};
+NiPoint3 g_handDirection{};
+bool g_handValid = false;
+bool g_reportedHand = false;
 bool g_installed = false;
 bool g_reportedUse = false;
 bool g_reportedHudReticleUpdate = false;
@@ -79,6 +85,13 @@ void SetWorldPickDirection(const NiPoint3& direction, bool valid) {
 	g_gazeValid = valid && SaneDirection(direction);
 }
 
+void SetWorldPickHandRay(const NiPoint3& origin, const NiPoint3& direction, bool valid) {
+	g_handOrigin = origin;
+	g_handDirection = direction;
+	g_handValid = valid && SaneDirection(direction) && Sane(origin.x) && Sane(origin.y) &&
+	              Sane(origin.z);
+}
+
 // `stack` is the ESP that Oblivion had at 0058080C. These offsets are the
 // values proved by the surrounding instructions documented in GameAddresses.
 extern "C" void __cdecl OBVR_ReplaceWorldPickRay(UInt8* stack) {
@@ -86,14 +99,30 @@ extern "C" void __cdecl OBVR_ReplaceWorldPickRay(UInt8* stack) {
 		return;
 	}
 	const camera::WorldPickOverride policy =
-		camera::WorldPickOverrideWanted(IsThirdPerson(), g_gazeValid, g_installed);
+		camera::WorldPickOverrideWanted(IsThirdPerson(), g_gazeValid, g_installed, g_handValid);
 	if (!policy.replaceDirection) {
 		return;
 	}
-
 	auto write = [stack](UInt32 offset, float value) {
 		*reinterpret_cast<float*>(stack + offset) = value;
 	};
+	if (policy.replaceOrigin) {
+		// The hand's laser: from the controller, along the beam the menus are
+		// pointed with, so the crosshair on it marks what Activate takes.
+		write(0x20, g_handOrigin.x);
+		write(0x24, g_handOrigin.y);
+		write(0x28, g_handOrigin.z);
+		write(0x34, g_handDirection.x);
+		write(0x38, g_handDirection.y);
+		write(0x3C, g_handDirection.z);
+		if (!g_reportedHand) {
+			g_reportedHand = true;
+			OBVR_LOG("Crosshair target: Activate, the grab and HUDInfo take the hand's laser "
+			         "(%s person)", IsThirdPerson() ? "third" : "first");
+		}
+		return;
+	}
+
 	// Deliberately leave esp+20/+24/+28 untouched. Those are Oblivion's player
 	// activation origin; replacing them with the chase camera behind the actor
 	// makes the ray collide with the player's own body before reaching a chest.

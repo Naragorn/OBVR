@@ -251,7 +251,7 @@ behaviour with the hand-tracked mode on.
 
 Built: the left stick walks (WASD with `StickDeadZone`), the right stick turns
 (`TurnSpeed` mouse pixels per frame), the left stick held pressed in runs (`RunKey`), the
-right stick flicked up jumps and flicked down sneaks, left A activates, either grip grabs,
+right stick flicked up jumps and flicked down sneaks, right A activates, either grip grabs,
 the right stick click readies the weapon, the left trackpad click opens the quick menu
 (F1). Both stick clicks count as OBVR's menu only within a quarter second of each other,
 so a click while running is a click. The left side follows the gamepad layout since 504cc2b

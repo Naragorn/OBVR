@@ -61,7 +61,8 @@ public:
 	// head - the hand-tracked mode, where the aim is the hand's and the
 	// crosshair, with the tooltip it carries, belongs where the hand points.
 	// Set before Submit; off puts it back on the head.
-	void SetHandPlacement(bool onHand, UInt32 deviceIndex);
+	void SetHandPlacement(bool onHand, UInt32 deviceIndex, float pitchDegrees = 0.0f,
+	                      float yawDegrees = 0.0f, float originMetres = 0.0f);
 
 	// Takes Oblivion's own crosshair out of the captured 2D layer and into
 	// this one - copies the middle of the layer here, then clears it there.
@@ -167,6 +168,13 @@ private:
 	UInt32 m_handDevice = 0;
 	bool m_placedOnHand = false;
 	UInt32 m_placedHandDevice = 0;
+	// The laser's angles and start, the crosshair on the hand stands on its ray.
+	float m_handPitch = 0.0f;
+	float m_handYaw = 0.0f;
+	float m_handOrigin = 0.0f;
+	float m_placedPitch = 0.0f;
+	float m_placedYaw = 0.0f;
+	float m_placedOrigin = 0.0f;
 
 	VulkanContext m_vulkan;
 	bool m_vulkanChecked = false;

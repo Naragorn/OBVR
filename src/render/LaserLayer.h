@@ -31,12 +31,18 @@ public:
 	// true hangs it on the given tracked device for the given length.
 	void Submit(vr::OpenVRBackend& backend, bool visible, UInt32 deviceIndex, float pitchDegrees,
 	            float yawDegrees, float originMetres,
-	            float lengthMetres);
+	            float lengthMetres, bool withDot = true);
 
 	void Destroy();
 
 private:
 	bool EnsureOverlay(vr::OpenVRBackend& backend);
+	// The dot at the beam's end, its own small overlay facing back along the beam.
+	void SubmitDot(vr::OpenVRBackend& backend, bool visible, UInt32 deviceIndex, float pitchDegrees,
+	               float yawDegrees, float originMetres, float lengthMetres);
+	vr::openvr::VROverlayHandle m_dot = vr::openvr::kOverlayHandleInvalid;
+	bool m_dotTried = false;
+	bool m_dotVisible = false;
 
 	vr::openvr::VROverlayHandle m_overlay = vr::openvr::kOverlayHandleInvalid;
 	bool m_overlayTried = false;
@@ -61,6 +67,7 @@ vr::openvr::HmdMatrix34 LaserBeamTransform(float lengthMetres, float pitchDegree
 // by kLaserTextureHeight, so the compositor draws it length / aspect wide.
 constexpr UInt32 kLaserTextureWidth = 4;
 constexpr UInt32 kLaserTextureHeight = 1024;
+constexpr UInt32 kLaserDotTexture = 32;
 float LaserBeamWidth(float lengthMetres);
 
 }  // namespace obvr::render

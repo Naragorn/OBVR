@@ -1,0 +1,2 @@
+present_id,vr_frame_id,start_tick,end_tick,interval_tick,requested_mode,delivered_mode,pose_result,left_captured,right_captured,pass_count,setup,status,submit_left,submit_right
+1,1,1000,1275,1000,world_dual,world_dual,0,1,1,2,0,0,0,0

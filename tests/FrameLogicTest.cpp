@@ -1294,6 +1294,14 @@ void TestWorldPickGaze() {
 		Check(!policy.replaceOrigin,
 		      "every combination retains Oblivion's player-safe activation origin");
 	}
+	for (int bits = 0; bits < 8; ++bits) {
+		const bool third = (bits & 1) != 0;
+		const bool gaze = (bits & 2) != 0;
+		const bool hook = (bits & 4) != 0;
+		const auto policy = WorldPickOverrideWanted(third, gaze, hook, true);
+		Check(policy.replaceDirection == hook && policy.replaceOrigin == hook,
+		      "the hand's laser takes origin and direction in either view, with the hook in");
+	}
 }
 
 void TestCrosshairCutout() {

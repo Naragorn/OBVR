@@ -610,6 +610,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.laserYawDegrees = ReadFloat("Hands", "LaserYawDegrees", h.laserYawDegrees, path);
 		h.laserOriginMetres = ReadFloat("Hands", "LaserOriginMetres", h.laserOriginMetres, path);
 		h.laserDragScroll = ReadBool("Hands", "LaserDragScroll", h.laserDragScroll, path);
+		h.laserDot = ReadBool("Hands", "LaserDot", h.laserDot, path);
+		h.aimWithHand = ReadBool("Hands", "AimWithHand", h.aimWithHand, path);
 		h.hitBoundFactor = ReadFloat("Hands", "HitBoundFactor", h.hitBoundFactor, path);
 		h.hitPadUnits = ReadFloat("Hands", "HitPadUnits", h.hitPadUnits, path);
 		h.restHandRight = ReadFloat("Hands", "RestHandRight", h.restHandRight, path);

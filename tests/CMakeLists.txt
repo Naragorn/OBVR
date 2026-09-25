@@ -679,6 +679,16 @@ if(NOT MSVC)
 endif()
 add_test(NAME bone_pin COMMAND bone_pin_test)
 
+add_executable(laser_geometry_test
+	LaserGeometryTest.cpp
+	../src/core/Rotation.cpp
+)
+target_include_directories(laser_geometry_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(laser_geometry_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME laser_geometry COMMAND laser_geometry_test)
+
 add_executable(snap_turn_test
 	SnapTurnTest.cpp
 	../src/core/Rotation.cpp

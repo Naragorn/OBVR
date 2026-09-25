@@ -660,7 +660,7 @@ struct WorldPickOverride {
 };
 
 WorldPickOverride WorldPickOverrideWanted(bool thirdPerson, bool gazeValid,
-	                                      bool hookInstalled);
+	                                      bool hookInstalled, bool handRayValid = false);
 
 // Where the crosshair quad goes and how big it is there.
 //
