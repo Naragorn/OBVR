@@ -176,25 +176,6 @@ struct HandModeResult {
 	NiPoint3 rightHandOffsetUnits{0.0f, 0.0f, 0.0f};
 	NiPoint3 leftHandOffsetUnits{0.0f, 0.0f, 0.0f};
 
-	// Skeletal finger tracking: transforms for each tracked finger bone in
-	// model space (relative to the hand skeleton root). Each entry is a
-	// position and quaternion that places the bone relative to the controller's
-	// grip origin. The caller maps SteamVR bone indices to game bones and pins
-	// them after pinning the root hand bone. FingerBoneCount entries per hand,
-	// indexed by SteamVR HandSkeletonBone enum values.
-	struct FingerBoneTransform {
-		NiPoint3 position{0.0f, 0.0f, 0.0f};   // metres from skeleton root
-		Quaternion orientation{};               // rotation in model space
-		bool valid = false;                     // true if this bone was read successfully
-	};
-
-	static constexpr unsigned FingerBoneCount = 25u;  // matches SteamVR HandSkeletonBone count
-
-	FingerBoneTransform rightFingers[FingerBoneCount]{};
-	FingerBoneTransform leftFingers[FingerBoneCount]{};
-	bool rightSkeletalValid = false;   // true if skeletal tracking active for right hand
-	bool leftSkeletalValid = false;    // true if skeletal tracking active for left hand
-
 	// The controls to press, and whether any are to be pressed at all
 	// (false releases everything).
 	bool controlsActive = false;

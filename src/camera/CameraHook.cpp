@@ -3,6 +3,7 @@
 #include "camera/CameraTrampoline.h"
 #include "camera/CastTrampoline.h"
 #include "camera/LookControl.h"
+#include "camera/SnapTurn.h"
 #include "core/Config.h"
 
 #include "core/Log.h"
@@ -44,8 +45,6 @@
 #include "render/VignetteLayer.h"
 #include "render/HudLayer.h"
 #include "render/LaserLayer.h"
-#include "vr/Locomotion.h"
-#include "vr/ControllerActions.h"
 #include "ui/Onboarding.h"
 #include "ui/SettingsMenu.h"
 #include "ui/SettingsMenuLayer.h"
@@ -65,7 +64,6 @@ namespace {
 
 State g_state;
 vr::HeadTracker g_headTracker;
-vr::LocomotionManager g_locomotionManager;
 
 constexpr UInt32 kTrampolineSize = 64;
 
@@ -74,14 +72,9 @@ FrameClock g_frameClock;
 float g_deltaSeconds = 0.0f;  // last frame's delta, for use by overlay updates
 LookControl g_lookControl;
 
-// Snap turning: tracks the previous turn input to detect edges when the stick
-// crosses a dead zone. The edge fires once per push, so holding the stick does
-// not keep snapping - it has to come back towards centre before it can snap again.
-struct SnapTurnState {
-	float previousTurn = 0.0f;  // last frame's right-stick X (-1..1)
-};
-
+// Snap turning, stepped once per frame with the controls - see SnapTurn.h.
 SnapTurnState g_snapTurnState;
+bool g_snapTurnReported = false;
 
 render::HeadsetRenderer g_headsetRenderer;
 
@@ -583,33 +576,32 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 
 	if (g_hand.controlsActive) {
-		// Snap turning: detect edges on the right stick and apply discrete turns.
-		// When active, this replaces continuous mouse-driven turning with snap turns.
+		// Snap turning: the stick's turn becomes whole steps written into the
+		// player's heading, and the continuous mouse turn is dropped. Written
+		// here, at Present, so the next camera pass builds the view on it.
 		vr::HandControlsWanted controls = g_hand.controls;
-		const float turnDeadZone = config.look.snapTurnDeadZone;
-		if (config.look.snapTurning) {
-			const float currentTurn = controls.turn;
-			const bool wasRight = g_snapTurnState.previousTurn > turnDeadZone;
-			const bool nowRight = currentTurn > turnDeadZone;
-			const bool wasLeft = g_snapTurnState.previousTurn < -turnDeadZone;
-			const bool nowLeft = currentTurn < -turnDeadZone;
-
-			if (nowRight && !wasRight) {
-				// Edge: stick pushed right past dead zone → snap right
-				const float angleRad = config.look.snapTurnAngle * math::kDegreesToRadians;
-				g_lookControl.ApplySnapTurn(angleRad);
-				g_vignetteLayer.Trigger();
-			} else if (nowLeft && !wasLeft) {
-				// Edge: stick pushed left past dead zone → snap left
-				const float angleRad = -config.look.snapTurnAngle * math::kDegreesToRadians;
-				g_lookControl.ApplySnapTurn(angleRad);
-				g_vignetteLayer.Trigger();
-			}
-
-			// Suppress continuous turning when snap turning is active.
+		const SnapTurnStep snap =
+			StepSnapTurn(g_snapTurnState, controls.turn, config.look, g_deltaSeconds,
+			             !menuIsUp && game::PlayerInWorld());
+		if (snap.ownsStick) {
 			controls.turn = 0.0f;
 		}
-		g_snapTurnState.previousTurn = g_hand.controls.turn;
+		if (snap.fired && config.look.snapTurnVignette) {
+			g_vignetteLayer.Trigger();
+		}
+		if (snap.yawRadians != 0.0f) {
+			game::PlayerRotation rotation{};
+			// rotZ grows clockwise and PlayerYawForGaze subtracts its step,
+			// so a turn to the right goes in negated.
+			const bool turned = game::ReadPlayerRotation(rotation) &&
+			                    game::WritePlayerYaw(PlayerYawForGaze(rotation.yaw, -snap.yawRadians));
+			if (snap.fired && !g_snapTurnReported) {
+				g_snapTurnReported = true;
+				OBVR_LOG("Look: snap turn %.0f degrees %s", static_cast<double>(config.look.snapTurnAngle),
+				         turned ? "written into the player's heading"
+				                : "could not be written - the player could not be reached");
+			}
+		}
 
 		game::ApplyHandControls(controls, config.handKeys, config.hands.turnSpeed);
 		g_handControlsHeld = true;
@@ -1625,7 +1617,6 @@ void MaybeReloadConfig() {
 	if (config.Reload("OBVR.ini")) {
 		perf::Profiler::Instance().Configure(config.performance);
 		g_headTracker.Configure(config.tracker);
-		g_locomotionManager.Configure(config.locomotion);
 		g_lookControl.Configure(config.look);
 	}
 }
@@ -1931,91 +1922,6 @@ void BeforeFirstScenePass() {
 				                  g_hand.leftHandOffsetUnits,
 				                  game::HandCalibration(hands.leftHandRoll, hands.leftHandPitch,
 				                                        hands.leftHandYaw));
-			}
-
-			// Skeletal finger tracking: after pinning the root hand bones, read
-			// SteamVR's tracked skeleton and pin each finger bone individually.
-			vr::OpenVRBackend& backend = g_headTracker.GetBackendForFrame();
-			if (backend.HasSkeletalTracking()) {
-				vr::input::VRBoneTransform rightBones[vr::input::HandBoneCount]{};
-				const unsigned rightCount = backend.ReadHandSkeleton(true, rightBones,
-				                                                     vr::input::HandBoneCount);
-
-				vr::input::VRBoneTransform leftBones[vr::input::HandBoneCount]{};
-				const unsigned leftCount = backend.ReadHandSkeleton(false, leftBones,
-				                                                    vr::input::HandBoneCount);
-
-				// Map SteamVR bone indices to Oblivion skeleton names. Uses standard
-				// 3ds Max biped naming: Bip01 R FingerX where X encodes finger and phalanx.
-				// Null entries are not pinned. Adjust these names if your skeleton uses
-				// different conventions (Debug.FirstPersonTreeProbe lists available bones).
-				static const char* rightFingerNames[vr::input::HandBoneCount] = {
-					nullptr,                        // HandRoot - already pinned by PinHandBone
-					"Bip01 R Wrist",                // HandWrist
-					"Bip01 R Finger0",              // HandThumb0 (metacarpal)
-					"Bip01 R Finger00",             // HandThumb1 (proximal)
-					"Bip01 R Finger000",            // HandThumb2 (distal)
-					nullptr,                        // HandThumb3 (tip - often no bone in game skeletons)
-					"Bip01 R Finger1",              // HandIndexFinger0
-					"Bip01 R Finger10",             // HandIndexFinger1
-					"Bip01 R Finger100",            // HandIndexFinger2
-					nullptr,                        // HandIndexFinger3 (tip)
-					"Bip01 R Finger2",              // HandMiddleFinger0
-					"Bip01 R Finger20",             // HandMiddleFinger1
-					"Bip01 R Finger200",            // HandMiddleFinger2
-					nullptr,                        // HandMiddleFinger3 (tip)
-					"Bip01 R Finger3",              // HandRingFinger0
-					"Bip01 R Finger30",             // HandRingFinger1
-					"Bip01 R Finger300",            // HandRingFinger2
-					nullptr,                        // HandRingFinger3 (tip)
-					"Bip01 R Finger4",              // HandPinkyFinger0
-					"Bip01 R Finger40",             // HandPinkyFinger1
-					"Bip01 R Finger400",            // HandPinkyFinger2
-					nullptr,                        // HandPinkyFinger3 (tip)
-				};
-
-				static const char* leftFingerNames[vr::input::HandBoneCount] = {
-					nullptr,                        // HandRoot - already pinned by PinHandBone
-					"Bip01 L Wrist",                // HandWrist
-					"Bip01 L Finger0",              // HandThumb0 (metacarpal)
-					"Bip01 L Finger00",             // HandThumb1 (proximal)
-					"Bip01 L Finger000",            // HandThumb2 (distal)
-					nullptr,                        // HandThumb3 (tip)
-					"Bip01 L Finger1",              // HandIndexFinger0
-					"Bip01 L Finger10",             // HandIndexFinger1
-					"Bip01 L Finger100",            // HandIndexFinger2
-					nullptr,                        // HandIndexFinger3 (tip)
-					"Bip01 L Finger2",              // HandMiddleFinger0
-					"Bip01 L Finger20",             // HandMiddleFinger1
-					"Bip01 L Finger200",            // HandMiddleFinger2
-					nullptr,                        // HandMiddleFinger3 (tip)
-					"Bip01 L Finger3",              // HandRingFinger0
-					"Bip01 L Finger30",             // HandRingFinger1
-					"Bip01 L Finger300",            // HandRingFinger2
-					nullptr,                        // HandRingFinger3 (tip)
-					"Bip01 L Finger4",              // HandPinkyFinger0
-					"Bip01 L Finger40",             // HandPinkyFinger1
-					"Bip01 L Finger400",            // HandPinkyFinger2
-					nullptr,                        // HandPinkyFinger3 (tip)
-				};
-
-				const NiMatrix33 rightCal = game::HandCalibration(hands.rightHandRoll,
-				                                                  hands.rightHandPitch,
-				                                                  hands.rightHandYaw);
-				if (g_hand.rightHandValid && rightCount > 0) {
-					game::PinFingerBones(true, g_hand.rightHandRotation,
-					                     g_hand.rightHandOffsetUnits, rightCal,
-					                     rightBones, rightCount, rightFingerNames);
-				}
-
-				const NiMatrix33 leftCal = game::HandCalibration(hands.leftHandRoll,
-				                                                 hands.leftHandPitch,
-				                                                 hands.leftHandYaw);
-				if (g_hand.leftHandValid && leftCount > 0) {
-					game::PinFingerBones(false, g_hand.leftHandRotation,
-					                     g_hand.leftHandOffsetUnits, leftCal,
-					                     leftBones, leftCount, leftFingerNames);
-				}
 			}
 		}
 	} else if (g_weaponTurnWanted) {
@@ -3556,112 +3462,9 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// The head offset is measured in the camera's own space, so it is carried
 	// over by the base rotation. The vertical look is not: it is a height, and
 	// heights are along the world up axis whichever way the camera faces.
-	//
-	// Locomotion manager computes room-scale walking offsets from head position
-	// deltas, handles teleportation commits, and signals joystick turning mode.
-	// For RoomScale mode its offset replaces the lean-only offset; for other
-	// modes the existing lean behaviour is kept while teleport commits are still
-	// handled (they adjust the reference so the next frame's offset jumps).
-	vr::LocomotionFrame locoFrame{};
-	locoFrame.headsetConnected = g_headTracker.IsHeadsetConnected();
-	locoFrame.positionalTracking = config.tracker.positionalTracking;
-	locoFrame.unitsPerMetre = config.tracker.unitsPerMetre;
-	locoFrame.baseRotation = baseRotation;
-	locoFrame.playerWorldPos = g_playerWorldPos;
-	locoFrame.playerPositionValid = g_playerWorldValid;
-	locoFrame.deltaSeconds = deltaSeconds;
-	const bool menuIsUp = config.tracker.showMenus && game::IsMenuMode();
-	locoFrame.inMenu = menuIsUp;
-
-	if (g_headTracker.IsHeadsetConnected()) {
-		vr::OpenVRBackend& backend = g_headTracker.GetBackendForFrame();
-		// Prefer the render pose from WaitGetPoses for timing accuracy.
-		backend.GetRenderPose(locoFrame.headOrientation, locoFrame.headPosition) ||
-			backend.ReadHeadPose(locoFrame.headOrientation, locoFrame.headPosition);
-
-		vr::HandPose rightHand{};
-		vr::HandPose leftHand{};
-		backend.ReadHand(true, rightHand);
-		backend.ReadHand(false, leftHand);
-
-		locoFrame.rightValid = rightHand.valid;
-		locoFrame.leftValid = leftHand.valid;
-		locoFrame.rightPosition = rightHand.position;
-		locoFrame.leftPosition = leftHand.position;
-		locoFrame.rightOrientation = rightHand.orientation;
-		locoFrame.leftOrientation = leftHand.orientation;
-		locoFrame.rightTrigger = rightHand.trigger;
-		locoFrame.leftTrigger = leftHand.trigger;
-		locoFrame.leftThumbX = leftHand.thumbX;
-		locoFrame.leftThumbY = leftHand.thumbY;
-	}
-
-	vr::LocomotionResult locoResult = g_locomotionManager.Update(locoFrame);
-
-	// Room-scale walking is always active as the base locomotion layer.
-	// The locomotion manager computes eased camera offsets from head position deltas.
-	NiPoint3 headOffset = locoResult.cameraOffset;
-
 	cameraNode->localTransform.pos =
-		cameraNode->localTransform.pos + baseRotation * headOffset;
+		cameraNode->localTransform.pos + baseRotation * g_headTracker.GetCameraOffset();
 	cameraNode->localTransform.pos.z += verticalOffset;
-
-	// Handle teleport commit: move the camera directly to the target position.
-	if (locoResult.teleportCommitThisFrame) {
-		NiPoint3 deltaWorld = locoResult.teleportTargetWorld - g_cameraWorldPos;
-		cameraNode->localTransform.pos.x += deltaWorld.x;
-		cameraNode->localTransform.pos.y += deltaWorld.y;
-		cameraNode->localTransform.pos.z += deltaWorld.z;
-	}
-
-	// Joystick room-scale turning: when joystick movement is enabled and the
-	// stick is active, continuously adjust player heading toward head direction
-	// so WASD movement goes where the player faces. This runs independently of
-	// the aim-yaw system (which only works while attacking) and uses a similar
-	// incremental approach for smoothness.
-	if (readPlayer && config.locomotion.joystickEnabled && !game::IsMenuMode() &&
-	    g_headTracker.IsHeadsetConnected()) {
-		// Check if the movement stick is active (past deadzone). The left thumb
-		// axes are in -1..1 range; use a small threshold to avoid turning when
-		// the stick is centred.
-		constexpr float kStickDeadZone = 0.2f;
-		const bool movingWithStick = math::Abs(locoFrame.leftThumbX) > kStickDeadZone ||
-		                             math::Abs(locoFrame.leftThumbY) > kStickDeadZone;
-
-		if (movingWithStick) {
-			// Extract the head's yaw from camera rotation, using the same method
-			// as the aim-yaw system. The head rotation is relative to baseRotation,
-			// so its heading is the turn itself rather than a world direction.
-			Heading headTurn{};
-			if (HeadingOf(g_headTracker.GetCameraRotation(), headTurn)) {
-				const float headYaw = math::Atan2(headTurn.sine, headTurn.cosine);
-
-				// Current player yaw from engine state. We want to turn the player
-				// so that their forward direction matches where they're looking.
-				// The shortest signed angle between current heading and desired heading.
-				float turnNeeded = math::WrapAngle(headYaw - asEngineLeftIt.yaw);
-
-				// Apply a limited step toward the target, using the same approach
-				// speed as aim turning for consistency. This prevents snapping and
-				// gives smooth body rotation that follows head direction.
-				const float maxTurnPerSecond = GetConfig().aimTurnSpeed;
-				float step = Approach(0.0f, turnNeeded, maxTurnPerSecond, deltaSeconds);
-
-				if (math::Abs(step) > 0.001f) {
-					const float target = PlayerYawForGaze(asEngineLeftIt.yaw, -step);
-					if (game::WritePlayerYaw(target)) {
-						// Log once on first successful turn so the wearer knows it's working.
-						static bool g_joystickTurningReported = false;
-						if (!g_joystickTurningReported) {
-							g_joystickTurningReported = true;
-							OBVR_LOG("Locomotion: joystick room-scale turning active - body "
-							         "now follows head direction while moving with stick");
-						}
-					}
-				}
-			}
-		}
-	}
 
 	const NiMatrix33 finalRotation = baseRotation * g_headTracker.GetCameraRotation();
 
@@ -4752,7 +4555,6 @@ const State& GetState() { return g_state; }
 bool Install() {
 	const Config& config = GetConfig();
 	g_headTracker.Configure(config.tracker);
-	g_locomotionManager.Configure(config.locomotion);
 	g_lookControl.Configure(config.look);
 
 	// Check first, patch second. If something other than the expected bytes

@@ -44,12 +44,24 @@ inline bool ButtonADown(UInt64 mask) {
 }
 inline bool ButtonBDown(UInt64 mask) { return ButtonDown(mask, openvr::kButtonIndexB); }
 inline bool GripDown(UInt64 mask) { return ButtonDown(mask, openvr::kButtonIndexGrip); }
-inline bool StickClickDown(UInt64 mask) {
-	return ButtonDown(mask, openvr::kButtonIndexJoystick) ||
-	       ButtonDown(mask, openvr::kButtonIndexTrackpad);
-}
+inline bool StickClickDown(UInt64 mask) { return ButtonDown(mask, openvr::kButtonIndexJoystick); }
 inline bool TrackpadClickDown(UInt64 mask) {
 	return ButtonDown(mask, openvr::kButtonIndexTrackpad);
+}
+
+// The legacy controller state, brought to the bits the action path reports.
+// There the stick click is its own action (Axis3, 35) and the trackpad click
+// another (Axis0, 32). The legacy state reports the Index stick's click on
+// Axis0 - measured on an Index, the stick deflected in rAxis[0] and clicked on
+// bit 32 - and a wand's touchpad click there too, so on this path bit 32 is
+// the stick click and is moved to 35. A real trackpad click cannot be told
+// from it here; with the action manifest installed it can.
+inline UInt64 NormalizeLegacyButtons(UInt64 pressed) {
+	const UInt64 trackpad = 1ull << openvr::kButtonIndexTrackpad;
+	if ((pressed & trackpad) != 0) {
+		pressed = (pressed & ~trackpad) | (1ull << openvr::kButtonIndexJoystick);
+	}
+	return pressed;
 }
 
 // The turn from one heading to another, as the shortest signed angle in

@@ -3,7 +3,6 @@
 #include "core/Types.h"
 #include "vr/OpenVRTypes.h"
 #include "vr/HandInput.h"
-#include "vr/ControllerActions.h"
 #include "vr/Quaternion.h"
 
 namespace obvr::vr {
@@ -128,18 +127,6 @@ public:
 	// valid - the caller keeps its last reading or does nothing, as with the
 	// head. The hand-tracked mode's only source of hands.
 	bool ReadHand(bool rightHand, HandPose& out) const;
-
-	// Skeletal hand tracking: read bone transforms for one hand into the given
-	// array. Returns the number of bones written (up to maxBones), or 0 if
-	// skeletal tracking is unavailable, unbound, or inactive for this hand.
-	// Transforms are in parent space by default - each bone's pose relative to
-	// its predecessor in the chain. The caller must map SteamVR bone indices
-	// to game bones and apply them after pinning the root hand bone.
-	unsigned ReadHandSkeleton(bool rightHand, input::VRBoneTransform* out,
-	                          unsigned maxBones) const;
-
-	// Whether skeletal tracking is available (API present and actions resolved).
-	bool HasSkeletalTracking() const { return m_skeletonHandles.left != 0 || m_skeletonHandles.right != 0; }
 
 	// The tracked-device index of the controller in one hand, or
 	// openvr::kTrackedDeviceIndexInvalid. What an overlay is hung on to ride
@@ -321,7 +308,6 @@ private:
 	void* m_input = nullptr;       // IVRInput_011, when its manifest is ready
 	UInt64 m_actionSet = 0;
 	UInt64 m_actionHandles[2][7]{};
-	input::SkeletonHandles m_skeletonHandles{};
 	mutable bool m_actionReadErrorLogged = false;
 	void* m_compositor = nullptr;  // IVRCompositorFnTable*, only when scene
 	void* m_overlay = nullptr;     // IVROverlayFnTable*, fetched on first use

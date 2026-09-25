@@ -477,11 +477,11 @@ void TestMenuHandAndSettingsMenu() {
 	// scrolls and nothing reaches the game.
 	frame.left.valid = true;
 	frame.menuMode = false;
-	frame.right.buttonsPressed = 1ull << openvr::kButtonAxis0;
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
 	r = mode.Update(frame, settings);
 	Check(!r.settingsMenuToggle && !r.controls.readyWeapon,
 	      "one stick down: no toggle, and its own click waits");
-	frame.left.buttonsPressed = 1ull << openvr::kButtonAxis0;
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
 	r = mode.Update(frame, settings);
 	Check(r.settingsMenuToggle, "both down: the toggle");
 	frame.right.buttonsPressed = 0;
@@ -639,8 +639,8 @@ void TestMenusOnly() {
 	mode.Update(frame, settings);
 
 	// Both sticks: OBVR's menu; in it the sticks and buttons steer.
-	frame.right.buttonsPressed = 1ull << openvr::kButtonAxis0;
-	frame.left.buttonsPressed = 1ull << openvr::kButtonAxis0;
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
 	frame.left.thumbY = 0.0f;
 	r = mode.Update(frame, settings);
 	Check(r.settingsMenuToggle, "both sticks clicked: the toggle");
@@ -963,8 +963,91 @@ void TestLaserOnOwnPanel() {
 	Check(!r.settingsNav.up && !r.settingsNav.down, "the middle scrolls nothing");
 }
 
+void TestGrabHand() {
+	std::printf("The grab follows the hand whose grip holds it\n");
+	HandSettings settings;
+	settings.enabled = true;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.inWorld = true;
+	frame.unitsPerMetre = 70.0f;
+	frame.right.valid = true;
+	frame.right.position = NiPoint3{0.3f, 0.0f, -0.4f};  // 0.5 m from the eyes
+	frame.left.valid = true;
+	frame.left.position = NiPoint3{-0.6f, 0.0f, -0.8f};  // 1.0 m
+	HandMode mode;
+
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexGrip;
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.grabWanted && r.grabWithLeftHand && Near(r.grabDistanceMetres, 1.0f, 0.01f),
+	      "the left grip: the left hand holds it, at the left hand's distance");
+	Check(r.leftAimValid, "and the left hand has an aim to carry it along");
+	Check(!r.controls.activate, "the left grip does not also activate");
+
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexGrip;
+	r = mode.Update(frame, settings);
+	Check(r.grabWanted && !r.grabWithLeftHand && Near(r.grabDistanceMetres, 0.5f, 0.01f),
+	      "both grips: the right hand wins, at its own distance");
+
+	frame.left.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(r.grabWanted && !r.grabWithLeftHand, "the right grip alone");
+
+	frame.right.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(!r.grabWanted, "no grip: no grab");
+}
+
+void TestLeftButtonsInHandMode() {
+	std::printf("The left hand's buttons in the hand-tracked mode\n");
+	HandSettings settings;
+	settings.enabled = true;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.inWorld = true;
+	frame.unitsPerMetre = 70.0f;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	HandMode mode;
+
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexTrackpad;
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.controls.quickMenu, "the trackpad click opens the quick menu");
+	frame.left.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(!r.controls.quickMenu && !r.controls.sneak,
+	      "and its release is not a stick click - nothing sneaks");
+
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	r = mode.Update(frame, settings);
+	frame.left.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(r.controls.sneak && !r.controls.quickMenu, "the stick click, on release, sneaks");
+
+	frame.left.buttonsPressed = 1ull << openvr::kButtonA;
+	r = mode.Update(frame, settings);
+	Check(r.controls.activate && !r.controls.grab, "A activates");
+}
+
+void TestLegacyButtons() {
+	std::printf("The legacy controller state, normalised\n");
+	const UInt64 trackpad = 1ull << openvr::kButtonIndexTrackpad;
+	const UInt64 stick = 1ull << openvr::kButtonIndexJoystick;
+	const UInt64 b = 1ull << openvr::kButtonIndexB;
+	Check(NormalizeLegacyButtons(trackpad) == stick, "Axis0's click is the stick click there");
+	Check(NormalizeLegacyButtons(trackpad | b) == (stick | b), "and the other bits stay");
+	Check(NormalizeLegacyButtons(stick) == stick, "a real Axis3 click stays as it is");
+	Check(NormalizeLegacyButtons(0) == 0, "nothing stays nothing");
+	Check(StickClickDown(NormalizeLegacyButtons(trackpad)) &&
+	          !TrackpadClickDown(NormalizeLegacyButtons(trackpad)),
+	      "so a legacy click is a stick click and never both");
+}
+
 int main() {
 	TestGestures();
+	TestGrabHand();
+	TestLeftButtonsInHandMode();
+	TestLegacyButtons();
 	TestSpeedAndSwing();
 	TestEdges();
 	TestPlanner();

@@ -45,10 +45,13 @@ public:
 
 private:
 	bool EnsureTexture(void* gameDevice);
+	bool FillTexture(void* gameDevice);
+	void DestroyTexture();
 	bool EnsureOverlay(vr::OpenVRBackend& backend);
 
-	// Generate a radial gradient into pixel data: clear at centre, darkening towards edges.
-	static void GenerateVignettePixels(UInt32 width, UInt32 height, UInt32* pixels);
+	// Generate a radial gradient into pixel rows pitch bytes apart: clear at
+	// centre, darkening towards edges.
+	static void GenerateVignettePixels(UInt32 width, UInt32 height, UInt8* rows, UInt32 pitch);
 
 	void* m_texture = nullptr;  // IDirect3DTexture9
 	void* m_surface = nullptr;  // IDirect3DSurface9, level 0

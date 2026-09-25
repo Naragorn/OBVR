@@ -25,3 +25,6 @@ out/
 .claude/settings.local.json
 .claude/worktrees/
 .playwright-mcp/
+
+# Local release archives from packaging experiments
+dist-*/

@@ -91,11 +91,11 @@ struct LookSettings {
 	// abrupt, at the cost of the camera lagging behind where they asked it to be.
 	bool snapTurnInstant = true;
 
-	// How fast an eased snap catches up, in radians per second. Only matters
-	// when snapTurnInstant is off: a value around 15-20 gives a turn that
-	// completes in roughly 30°/second for a 45° snap - quick enough to feel
-	// responsive without the instant jump.
-	float snapTurnSpeed = 18.0f;
+	// How fast an eased snap turns, in radians per second. Only matters when
+	// snapTurnInstant is off: at 6 a 45° snap takes about an eighth of a
+	// second (0.785 rad / 6), at 18 it is over in two or three frames and
+	// hardly differs from an instant one.
+	float snapTurnSpeed = 6.0f;
 
 	// Whether a vignette (darkening at screen edges) plays when a snap turn fires,
 	// giving visual feedback that the rotation happened. On by default because it
@@ -149,12 +149,6 @@ public:
 	// point of view, a recenter.
 	void Reset();
 
-	// Apply a discrete turn by adding angleRadians to the current heading.
-	// Positive turns right (clockwise), negative turns left. The rotation is
-	// either instant or eased depending on snapTurnInstant and snapTurnSpeed.
-	// Does nothing when snap turning is disabled.
-	void ApplySnapTurn(float angleRadians);
-
 private:
 	LookSettings m_settings;
 
@@ -163,10 +157,6 @@ private:
 
 	Heading m_heading;
 	bool m_hasHeading = false;
-
-	// The heading we are easing towards during a snap turn, when not instant.
-	Heading m_snapTarget;
-	bool m_snapping = false;
 };
 
 }  // namespace obvr::camera

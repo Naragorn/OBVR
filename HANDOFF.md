@@ -40,7 +40,7 @@ final VR camera
 
 - switching between first and third person stays
 - control remains gamepad or keyboard and mouse, **no** VR controllers, **no** hands
-- snap turning is available as a comfort option; horizontal turning stays on the right stick otherwise
+- **no** snap turn; horizontal turning stays on the right stick
 - vertical look on the gamepad should be disabled if possible
 - the HMD determines head rotation (yaw, pitch, optionally roll)
 - initially **no** positional head movement, no roomscale → 3DoF
@@ -2121,13 +2121,42 @@ and FEAR2VR, cited above.
 
 ### What is still true and unfixed
 
-- **The visible body (2026-09-07) moves the view, cause open, off by default.** `[Body]
+- **The visible body (2026-09-07), off by default, waiting for a second look.** `[Body]
   Visible=1` shows the third-person skeleton in first person under the headset with the
   head and clavicles collapsed, after Enhanced Camera's mechanism (its 1.4b source is
   summarised in `docs/vr-modding/ecosystem-and-prior-art.md`). Two headset runs the same
-  day had the view lurch with every look while it was on - with the player root moved and
-  with `Bip01` alone moved. The remaining suspect is the camera node hanging under a bone
-  that is moved or collapsed; the first camera pass now logs the camera's ancestry.
+  day had the view lurch with every look while it was on. The body was not the cause: the
+  camera's ancestry log showed the camera under `WorldRoot`, not under the skeleton, and
+  the live INI had `[Look] BlockVerticalLook=0` written into it by laser clicks in OBVR's
+  menu - with `AimAtSource=1` that doubles the pitch. `BlockVerticalLook` is now forced on
+  under `AimAtSource` (`2b5ec02`). The body has not been in a headset since.
+- **The commits of 2026-09-23 were reviewed on 2026-09-25**, before any of them had been
+  in a headset. What was kept, changed or taken out:
+  - *Room-scale locomotion* (`5b04417`) replaced the head tracker's offset with its own,
+    which dropped the recenter orientation, `HeadMovementScale` and `MaxLeanUnits`, put
+    OpenVR's z (back) on Oblivion's z (up), and never reset. Its *joystick turning*
+    turned the body towards the head's yaw without booking the turn, so the head's
+    relative yaw never fell and the body would have kept turning - and it reversed the
+    "character bleibt" decision in `PlayerAim.h`. Its *teleport* had no ray: a point in
+    tracking space times 70 used as a world position, on every right-trigger pull. All
+    three were taken out; the head tracker's offset is back.
+  - *Finger tracking* (`3f045c5`) assumed 22 skeleton bones where SteamVR has 31
+    (openvr wiki, Hand-Skeleton), named bones like `Bip01 R Finger00` and `Bip01 R Wrist`,
+    and composed parent-space transforms as if they were model-space. Taken out; to be
+    built again against the bone names the first-person tree probe lists.
+  - *Snap turning* (`b58932a`) turned only the camera heading, which `LookControl::Update`
+    rebuilds from the game's every frame, so nothing turned. Rebuilt: `camera/SnapTurn.h`
+    steps it, the turn is written into rotZ at Present.
+  - *The vignette* locked a default-pool render target, which Direct3D 9 does not allow,
+    and still counted the unfilled texture as ready; filled through a system-memory
+    surface now, and its 4 m quad (106 degrees at 1.5 m) widened to 8 m.
+  - *Either grip grabs* (`504cc2b`) left the left grip activating as well; the left hand
+    follows the gamepad layout now (`60a8748`).
+  - *The action input* (`3b883d9`) reports the trackpad click on bit 32, which
+    `StickClickDown` also read as a stick click; the legacy state is normalised
+    instead (`NormalizeLegacyButtons`).
+  - Kept as they were: the profiler (off), the menu bridge and lifecycle probe (off), the
+    scroll-menu logic (not wired), two-handed grab.
 - ~~The picture is one frame stale~~ - fixed by Render.SubmitAtFrameEnd, which hooks Present
   at method table entry 17. The old text follows for the reasoning:
 - **The picture was one frame stale.** The submit ran from the camera hook, before the frame

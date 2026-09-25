@@ -677,6 +677,16 @@ if(NOT MSVC)
 endif()
 add_test(NAME bone_pin COMMAND bone_pin_test)
 
+add_executable(snap_turn_test
+	SnapTurnTest.cpp
+	../src/core/Rotation.cpp
+)
+target_include_directories(snap_turn_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(snap_turn_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME snap_turn COMMAND snap_turn_test)
+
 add_executable(body_placement_test
 	BodyPlacementTest.cpp
 	../src/core/Rotation.cpp

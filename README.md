@@ -8,15 +8,16 @@ edition.
 Guiding idea for now: *Oblivion stays Oblivion.* OBVR does not replace gameplay yet. It puts real
 stereo VR on top of the game's own camera and render pipeline, as an xOBSE plugin.
 
-**Status: early public test build (0.1.3).** The seated experience below works and is what this release is for; the standing experience with motion controllers is under construction and switched off. Please test, and please report what you see - see [Reporting a problem](#reporting-a-problem).
+**Status: early public test build (0.2.1).** The seated experience below works and is what this release is for; the standing experience with motion controllers is under construction and switched off. Please test, and please report what you see - see [Reporting a problem](#reporting-a-problem).
 
 ## What works
 
 Everything here has been confirmed in a headset.
 
-- **Dual-pass stereo.** **Alternate eye rendering** (`Stereo=aer`) is there as well: which costs    nothing extra in terms of performance 
-  but shows a one-frame disparity on fast motion. Dual is the default; aer is the
-  fallback if dual misbehaves on your setup.
+- **Dual-pass stereo.** The world is drawn twice per frame, once from each eye.
+  **Alternate eye rendering** (`Stereo=aer`) is there as well: it costs nothing extra in
+  performance but shows a one-frame disparity on fast motion. Dual is the default; aer is
+  the fallback if dual misbehaves on your setup.
 - **6DoF head tracking.** The head rotates and moves the camera; leaning works. Locomotion stays with mouse, keyboard or gamepad. 
 - **Head-based aiming.** Bows, spells and melee go where the head looks, in first and
   third person, while the walking direction stays with the movement controls. In first
@@ -29,7 +30,6 @@ Everything here has been confirmed in a headset.
 - **Native Oblivion-style onboarding and settings menu** (`Insert`) through MenuQue,
   using the existing game UI in the headset.
 - **Recenter** on a key (`Del` by default).
-- **Snap turning** with adjustable angle, instant or eased rotation, vignette feedback, and configurable dead zone — all settable from the OBVR menu.
 - **Smooth turning** as a comfort option for keyboard VR mode.
 - Works with and without the 4GB patch, and under Mod Organizer 2 without Root Builder.
 
@@ -44,8 +44,16 @@ headset yet. Reports on them are especially useful.
 - **Your own body** (`[Body] Visible=1`, off by default): look down in first person and
   the character's body is there, standing under the headset, its head and its own arms
   removed so the first-person arms stay the only ones. Enhanced Camera's mechanism,
-  carried over to a headset camera. The first headset runs had the view lurch with every
-  look while it was on, so it stays off until that is understood.
+  carried over to a headset camera. The view lurch seen in the first runs came from
+  `BlockVerticalLook=0` in the INI, not from the body; it stays off until it has been
+  looked at again.
+- **Snap turning** for the controllers (`[Look] SnapTurning=1`, or Comfort in the
+  settings menu): the right stick turns the character by a fixed angle per push, instantly
+  or eased, with a brief vignette. The turn goes into the character's heading, so walking
+  and aiming follow it.
+- **SteamVR input actions** (`Data/OBSE/Plugins/OBVR_Input`): the controllers are read
+  through SteamVR's action system with default bindings for Index and Touch, which keeps
+  a stick click apart from a trackpad click. Touch hardware is untested.
 
 ## Under construction - switched off
 
@@ -59,8 +67,9 @@ The main menu and onboarding accept controller laser input before choosing a mod
 even with `[Hands] ControllerMenus=0`. `[Hands] Enabled=1` in `OBVR.ini` can still switch the unfinished mode on for development testing; a report from doing so is
 welcome, marked as such.
 
-Not built at all: teleport, room-scale locomotion, physical interaction with objects by
-hand, real finger tracking (`IVRInput`), Linux under Proton.
+Not built at all: teleport, room-scale locomotion beyond the head's own lean
+(`[Head] MaxLeanUnits`), physical interaction with objects by hand, finger tracking from
+SteamVR's hand skeleton, Linux under Proton.
 
 ## Known issues
 
@@ -69,6 +78,8 @@ hand, real finger tracking (`IVRInput`), Linux under Proton.
 - Text entry (a character's name) still needs the keyboard.
 - Oblivion Reloaded and its derivatives are incompatible; see
   [Compatibility](#compatibility).
+
+### Controllers in the menus
 
 Menu placement is selectable in the OBVR settings: **Wrist menus (off: floating)**.
 With **Menus in the world** enabled (`Render.Menus=world`), switch wrist menus off
@@ -116,7 +127,8 @@ RTX 4090, Windows 11. Anything else is untested, which is exactly what reports a
    `x32` folder, put `d3d9.dll` next to `Oblivion.exe`. Only that one file.
 3. Download `OBVR-<version>.zip` from this repository's **[Releases](https://github.com/Naragorn/OBVR/releases)** page and extract it
    into Oblivion's `Data` folder. It contains `OBSE/Plugins/OBVR.dll`,
-   `OBSE/Plugins/OBVR.ini`, the native MenuQue XML menus and the license text.
+   `OBSE/Plugins/OBVR.ini`, the controller bindings in `OBSE/Plugins/OBVR_Input/` (from
+   0.2.2 on), the native MenuQue XML menus and the license text.
 4. Install [MenuQue v16b](https://www.nexusmods.com/oblivion/mods/32200): merge its
    `Data` folder into Oblivion, preserving `OBSE/Plugins/MenuQue.dll` and the
    `OBSE/Plugins/MenuQue/` subfolder. Under MO2, install and enable it as a separate mod.
@@ -301,8 +313,8 @@ The tests are a separate CMake project that runs natively on the development mac
 Every decision the hooks make is lifted into pure functions over plain values so it can be
 exercised without a running game: trampoline bytes, rotation maths, the frame decisions,
 the INI parser, the bone-lock pairing, the compositor submit policy, the watchdog, the
-menus, the walkthrough, the hand mode, and so on. Fifty test binaries at the time of
-writing.
+menus, the walkthrough, the hand mode, and so on. About seventy test binaries at the
+time of writing.
 
 ```
 cmake -B build-tests tests -G Ninja -DCMAKE_BUILD_TYPE=Release

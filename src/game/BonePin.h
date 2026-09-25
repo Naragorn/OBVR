@@ -2,13 +2,8 @@
 
 #include "core/Rotation.h"
 #include "game/NiMath.h"
-#include "vr/Quaternion.h"
 
 namespace obvr::game {
-
-// Use vr namespace's quaternion type and conversion functions for coordinate conversions.
-using Quaternion = vr::Quaternion;
-using vr::ToMatrix;
 
 // The arithmetic of holding a skeleton bone where a controller is.
 //
@@ -60,31 +55,6 @@ inline BonePose LocalUnderParent(const NiMatrix33& parentRot, const NiPoint3& pa
 // along y, so ninety degrees of yaw with no roll is the starting point.
 inline NiMatrix33 HandCalibration(float rollDegrees, float pitchDegrees, float yawDegrees) {
 	return EulerToMatrix(rollDegrees, pitchDegrees, yawDegrees);
-}
-
-// Compose a child pose (relative to some parent frame) into world space given
-// the parent's world transform. The child's rotation is applied after the
-// parent's, and its position is translated by the parent's orientation then
-// added to the parent's position. Used for finger bones relative to hand bone.
-inline BonePose ComposeWorld(const NiMatrix33& parentRot, const NiPoint3& parentPos,
-                             const NiMatrix33& childRelRot, const NiPoint3& childRelPos) {
-	BonePose pose;
-	pose.rot = parentRot * childRelRot;
-	pose.pos = parentPos + parentRot * childRelPos;
-	return pose;
-}
-
-// Convert a position from OpenVR convention (X right, Y up, -Z forward) to
-// Oblivion game convention (X right, Y forward, Z up). The mapping is:
-// x_game = x_vr, y_game = -z_vr, z_game = y_vr.
-inline NiPoint3 PositionFromOpenVR(float vx, float vy, float vz) {
-	return NiPoint3{vx, -vz, vy};
-}
-
-// Convert a quaternion from OpenVR convention to Oblivion game convention.
-// Same axis mapping as FromOpenXR: x_obl = x_vr, y_obl = -z_vr, z_obl = y_vr.
-inline Quaternion QuatFromOpenVR(float vx, float vy, float vz, float vw) {
-	return Quaternion{vx, -vz, vy, vw};
 }
 
 }  // namespace obvr::game

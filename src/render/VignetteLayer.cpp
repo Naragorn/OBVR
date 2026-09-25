@@ -14,7 +14,8 @@ constexpr UInt32 kTextureSize = 512;
 
 }  // namespace
 
-void VignetteLayer::GenerateVignettePixels(UInt32 width, UInt32 height, UInt32* pixels) {
+void VignetteLayer::GenerateVignettePixels(UInt32 width, UInt32 height, UInt8* rows,
+                                           UInt32 pitch) {
 	const float halfW = static_cast<float>(width) * 0.5f;
 	const float halfH = static_cast<float>(height) * 0.5f;
 
@@ -26,6 +27,9 @@ void VignetteLayer::GenerateVignettePixels(UInt32 width, UInt32 height, UInt32* 
 	constexpr UInt32 kMaxAlpha = 180u;
 
 	for (UInt32 y = 0; y < height; ++y) {
+		// Row by row at the surface's own pitch, which may be wider than the
+		// picture.
+		UInt32* const pixels = reinterpret_cast<UInt32*>(rows + y * pitch);
 		for (UInt32 x = 0; x < width; ++x) {
 			const float dx = static_cast<float>(x) - halfW;
 			const float dy = static_cast<float>(y) - halfH;
@@ -36,13 +40,16 @@ void VignetteLayer::GenerateVignettePixels(UInt32 width, UInt32 height, UInt32* 
 			const float norm = maxDist > 0.0f ? dist / maxDist : 0.0f;
 
 			if (norm <= kStartRadius) {
-				pixels[y * width + x] = 0x00000000u;  // fully transparent at centre
+				pixels[x] = 0x00000000u;  // fully transparent at centre
 			} else {
 				// Smooth ramp from clear to dark using a quadratic curve.
-				const float t = (norm - kStartRadius) / (1.0f - kStartRadius);
+				// Held at full beyond the inscribed circle: the corners reach
+				// 1.41, and an unclamped square would overflow the alpha byte.
+				float t = (norm - kStartRadius) / (1.0f - kStartRadius);
+				t = t > 1.0f ? 1.0f : t;
 				const float alpha = t * t;
 				const UInt32 a = static_cast<UInt32>(alpha * static_cast<float>(kMaxAlpha) + 0.5f);
-				pixels[y * width + x] = (a << 24u) | 0x00000000u;  // black with alpha
+				pixels[x] = (a << 24u) | 0x00000000u;  // black with alpha
 			}
 		}
 	}
@@ -71,11 +78,14 @@ bool VignetteLayer::EnsureTexture(void* gameDevice) {
 		return false;
 	}
 
+	// Every failure from here on takes the texture away again: the check at
+	// the top treats a texture that exists as one that is ready.
 	auto getSurfaceLevel =
 		d3d9::Method<d3d9::GetSurfaceLevelFn>(m_texture, d3d9::kTextureGetSurfaceLevel);
 	if (getSurfaceLevel == nullptr ||
 	    d3d11::Failed(getSurfaceLevel(m_texture, 0, &m_surface)) || m_surface == nullptr) {
 		m_surface = nullptr;
+		DestroyTexture();
 		return false;
 	}
 
@@ -85,34 +95,71 @@ bool VignetteLayer::EnsureTexture(void* gameDevice) {
 	                                                &m_interop)) ||
 	    m_interop == nullptr) {
 		m_interop = nullptr;
+		DestroyTexture();
 		return false;
 	}
 
 	if (!ReadImageInfo(m_interop, m_image)) {
+		DestroyTexture();
 		return false;
 	}
 
-	// Fill the texture with the radial gradient. Lock, write, unlock.
-	auto lockRect = d3d9::Method<d3d9::LockRectFn>(m_surface, d3d9::kSurfaceLockRect);
-	auto unlockRect = d3d9::Method<d3d9::UnlockRectFn>(m_surface, d3d9::kSurfaceUnlockRect);
-
-	if (lockRect == nullptr || unlockRect == nullptr) {
+	// Fill it with the radial gradient. Not by locking it: a render target in
+	// the default pool cannot be locked in Direct3D 9, so the picture is drawn
+	// into a system-memory surface and uploaded, the way the crosshair cache
+	// does it. Until that has worked the layer counts as having no texture at
+	// all - an unfilled one would put an arbitrary picture across the view.
+	if (!FillTexture(gameDevice)) {
+		OBVR_LOG("Vignette: the gradient could not be uploaded, so the snap turn vignette "
+		         "stays off");
+		DestroyTexture();
 		return false;
 	}
-
-	d3d9::LockedRect locked{};
-	if (d3d11::Failed(lockRect(m_surface, &locked, nullptr, 0))) {
-		return false;
-	}
-
-	UInt32* pixels = static_cast<UInt32*>(locked.bits);
-	if (pixels != nullptr) {
-		GenerateVignettePixels(kTextureSize, kTextureSize, pixels);
-	}
-
-	unlockRect(m_surface);
-
 	return true;
+}
+
+bool VignetteLayer::FillTexture(void* gameDevice) {
+	auto createPlain = d3d9::Method<d3d9::CreateOffscreenPlainSurfaceFn>(
+		gameDevice, d3d9::kDeviceCreateOffscreenPlainSurface);
+	auto updateSurface =
+		d3d9::Method<d3d9::UpdateSurfaceFn>(gameDevice, d3d9::kDeviceUpdateSurface);
+	if (createPlain == nullptr || updateSurface == nullptr) {
+		return false;
+	}
+
+	void* staging = nullptr;
+	if (d3d11::Failed(createPlain(gameDevice, kTextureSize, kTextureSize, d3d9::kFormatA8R8G8B8,
+	                              d3d9::kPoolSystemMem, &staging, nullptr)) ||
+	    staging == nullptr) {
+		return false;
+	}
+
+	auto lockRect = d3d9::Method<d3d9::LockRectFn>(staging, d3d9::kSurfaceLockRect);
+	auto unlockRect = d3d9::Method<d3d9::UnlockRectFn>(staging, d3d9::kSurfaceUnlockRect);
+	d3d9::LockedRect locked{};
+	if (lockRect == nullptr || unlockRect == nullptr ||
+	    d3d11::Failed(lockRect(staging, &locked, nullptr, 0)) || locked.bits == nullptr ||
+	    locked.pitch < static_cast<SInt32>(kTextureSize * 4)) {
+		d3d11::Release(staging);
+		return false;
+	}
+	GenerateVignettePixels(kTextureSize, kTextureSize, static_cast<UInt8*>(locked.bits),
+	                       static_cast<UInt32>(locked.pitch));
+	const bool unlocked = !d3d11::Failed(unlockRect(staging));
+	const bool uploaded =
+		unlocked && !d3d11::Failed(updateSurface(gameDevice, staging, nullptr, m_surface, nullptr));
+	d3d11::Release(staging);
+	return uploaded;
+}
+
+void VignetteLayer::DestroyTexture() {
+	d3d11::Release(m_interop);
+	d3d11::Release(m_surface);
+	d3d11::Release(m_texture);
+	m_interop = nullptr;
+	m_surface = nullptr;
+	m_texture = nullptr;
+	m_image = BackBufferImage{};
 }
 
 bool VignetteLayer::EnsureOverlay(vr::OpenVRBackend& backend) {
@@ -156,7 +203,6 @@ void VignetteLayer::Update(vr::OpenVRBackend& backend, void* gameDevice, bool vi
 	}
 
 	// Advance the fade state.
-	const float oldAlpha = m_alpha;
 	if (m_fadingIn) {
 		m_alpha += kFadeInRate * deltaSeconds;
 		if (m_alpha >= 1.0f) {
@@ -200,7 +246,10 @@ void VignetteLayer::Update(vr::OpenVRBackend& backend, void* gameDevice, bool vi
 	toOverlay.m[2][3] = -1.5f;  // 1.5m ahead, close enough to fill the view
 
 	backend.SetOverlayTransformHmdRelative(m_overlay, toOverlay);
-	backend.SetOverlayWidthInMetres(m_overlay, 4.0f);  // wide enough to cover both eyes
+	// 8 m at 1.5 m spans 2 * atan(4 / 1.5) = 139 degrees, past the field of
+	// view of the headsets OBVR is used with (the Index's is quoted around
+	// 108 horizontally), so the dark rim never shows its own edge.
+	backend.SetOverlayWidthInMetres(m_overlay, 8.0f);
 
 	if (!ReadImageInfo(m_interop, m_image)) {
 		return;
@@ -235,13 +284,7 @@ void VignetteLayer::Update(vr::OpenVRBackend& backend, void* gameDevice, bool vi
 void VignetteLayer::Destroy() {
 	m_bracket.Release();
 
-	d3d11::Release(m_interop);
-	d3d11::Release(m_surface);
-	d3d11::Release(m_texture);
-	m_interop = nullptr;
-	m_surface = nullptr;
-	m_texture = nullptr;
-	m_image = BackBufferImage{};
+	DestroyTexture();
 	m_textureTried = false;
 
 	// Left to the runtime, same reason as CrosshairLayer and HudLayer.
