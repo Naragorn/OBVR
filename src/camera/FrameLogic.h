@@ -586,23 +586,6 @@ bool CrosshairCentreCaptureWanted(bool crosshairEnabled, bool haveTarget,
 	                              bool tooltipsEnabled, bool worldFrame,
 	                              bool menuIsUp);
 
-// Whether a menu that has just opened is still showing the HUD. The game
-// fades its HUD out while the menu comes in, and both are in the one layer
-// OBVR captures: the 2026-09-25 log has 20 HUD draws per frame for the first
-// menu frames of a dialogue (no dialogue drawn yet) and 81 against the
-// container's own 64 for a container's first 16. On world frames the
-// centre - crosshair and action tooltip - is lifted out of that layer into
-// the depth quad; a menu frame stopped lifting it, so the tooltip jumped into
-// the menu's picture for those frames. While this answers true, the centre is
-// still taken out (and the depth quad stays hidden, as on any menu frame).
-//
-// True for the first kMenuOpeningLiftFrames of a menu, and for up to
-// kMenuOpeningEmptyStackFrames while the game's menu stack has nothing on it
-// yet - the dialogue's approach, where only the HUD is drawn.
-constexpr UInt32 kMenuOpeningLiftFrames = 30;
-constexpr UInt32 kMenuOpeningEmptyStackFrames = 90;
-bool MenuOpeningKeepsHud(bool menuIsUp, UInt32 framesSinceOpen, bool menuStackEmpty);
-
 struct PixelRectangle {
 	SInt32 left = 0;
 	SInt32 top = 0;

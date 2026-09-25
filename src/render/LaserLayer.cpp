@@ -86,21 +86,21 @@ bool LaserLayer::EnsureOverlay(vr::OpenVRBackend& backend) {
 	return true;
 }
 
-void LaserLayer::Submit(vr::OpenVRBackend& backend, bool visible, UInt32 deviceIndex,
+void LaserLayer::Submit(vr::OpenVRBackend& backend, bool pointing, UInt32 deviceIndex,
                         float pitchDegrees, float yawDegrees, float originMetres,
-                        float lengthMetres, bool withDot) {
-	if (!visible || deviceIndex == vr::openvr::kTrackedDeviceIndexInvalid ||
-	    !(lengthMetres > 0.01f)) {
+                        float lengthMetres, bool withBeam, bool withDot) {
+	const vr::LaserParts parts = vr::LaserPartsShown(
+		pointing, withBeam, withDot, deviceIndex != vr::openvr::kTrackedDeviceIndexInvalid,
+		lengthMetres);
+	SubmitDot(backend, parts.dot, deviceIndex, pitchDegrees, yawDegrees, originMetres,
+	          lengthMetres > 5.0f ? 5.0f : lengthMetres);
+	if (!parts.beam) {
 		if (m_overlayVisible && m_overlay != vr::openvr::kOverlayHandleInvalid) {
 			backend.HideOverlay(m_overlay);
 			m_overlayVisible = false;
 		}
-		SubmitDot(backend, false, deviceIndex, pitchDegrees, yawDegrees, originMetres,
-		          lengthMetres);
 		return;
 	}
-	SubmitDot(backend, withDot, deviceIndex, pitchDegrees, yawDegrees, originMetres,
-	          lengthMetres > 5.0f ? 5.0f : lengthMetres);
 	if (!EnsureOverlay(backend)) {
 		return;
 	}

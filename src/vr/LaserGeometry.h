@@ -126,4 +126,23 @@ inline float LaserDotWidth(float distanceMetres) {
 	return width > 0.008f ? width : 0.008f;
 }
 
+// Which pieces of the laser are shown. The beam and the dot are switched
+// separately: the beam's switch used to decide both - the dot hid with the
+// beam, so with the beam off there was no laser at all (2026-09-25 log:
+// "saved Hands.LaserBeam=0", then nothing to point with). Both need a hand
+// that points, a tracked device and some length to the hit.
+struct LaserParts {
+	bool beam = false;
+	bool dot = false;
+};
+
+inline LaserParts LaserPartsShown(bool pointing, bool beamOn, bool dotOn, bool deviceValid,
+                                  float lengthMetres) {
+	LaserParts parts;
+	const bool can = pointing && deviceValid && lengthMetres > 0.01f;
+	parts.beam = can && beamOn;
+	parts.dot = can && dotOn;
+	return parts;
+}
+
 }  // namespace obvr::vr

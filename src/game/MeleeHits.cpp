@@ -255,6 +255,10 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 	static UInt32 s_missSerial = 0;
 	static bool s_missStruck = false;
 	static UInt32 s_missBodies = 0;
+	// Where the walk lost them: list entries seen, of those Characters or
+	// Creatures, alive, with a readable bound - and the first other table.
+	static UInt32 s_missEntries = 0, s_missActors = 0, s_missAlive = 0, s_missBounded = 0;
+	static UInt32 s_missOtherVtable = 0;
 	static float s_missNearest = -1.0f;
 	static float s_missNeeded = 0.0f;
 	static float s_missReach = 0.0f;
@@ -263,14 +267,18 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 	if (strike.swingSerial != s_missSerial) {
 		if (s_missSerial != 0 && !s_missStruck && s_missLinesLeft > 0) {
 			--s_missLinesLeft;
-			OBVR_LOG("Hands: swing %u struck nothing - weapon type %d, reach %.0f; %u bodies "
+			OBVR_LOG("Hands: swing %u struck nothing - weapon type %d, reach %.0f; list entries %u, "
+			         "actors %u, alive %u, bounded %u (first other table %08X); %u bodies "
 			         "near, the nearest %.0f units from the blade, %.0f needed",
-			         s_missSerial, s_missType, s_missReach, s_missBodies, s_missNearest,
+			         s_missSerial, s_missType, s_missReach, s_missEntries, s_missActors, s_missAlive,
+			         s_missBounded, s_missOtherVtable, s_missBodies, s_missNearest,
 			         s_missNeeded);
 		}
 		s_missSerial = strike.swingSerial;
 		s_missStruck = false;
 		s_missBodies = 0;
+		s_missEntries = s_missActors = s_missAlive = s_missBounded = 0;
+		s_missOtherVtable = 0;
 		s_missNearest = -1.0f;
 	}
 	s_missReach = reach;
@@ -286,16 +294,26 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		}
 		void* const actor = node->data;
 		node = node->next;
-		if (actor == nullptr || actor == player || !LooksLikeObject(actor) || !IsActorObject(actor)) {
+		if (actor == nullptr || actor == player || !LooksLikeObject(actor)) {
 			continue;
 		}
+		++s_missEntries;
+		if (!IsActorObject(actor)) {
+			if (s_missOtherVtable == 0) {
+				s_missOtherVtable = *reinterpret_cast<const UInt32*>(actor);
+			}
+			continue;
+		}
+		++s_missActors;
 		if (ActorIsDead(actor)) {
 			continue;
 		}
+		++s_missAlive;
 		NiBound bound;
 		if (!ActorBound(actor, &bound)) {
 			continue;
 		}
+		++s_missBounded;
 		{
 			const float distance = SegmentPointDistance(blade.base, blade.tip, bound.center);
 			if (distance < 2048.0f) {

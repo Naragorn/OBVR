@@ -1771,6 +1771,30 @@ bool ReadIsThirdPerson() {
 bool RunHudPassWithCrosshairView() {
 	const Config& config = GetConfig();
 	const bool isThirdPerson = ReadIsThirdPerson();
+
+	// A menu frame: the reticle - crosshair and action icon - is not drawn
+	// into the layer at all. While a menu comes in the game still draws its
+	// fading HUD into the same layer (the 2026-09-25 log: 20 HUD draws on a
+	// dialogue's first frames, 81 against a container's own 64), and with
+	// the centre no longer lifted out on a menu frame, the action icon
+	// flashed into the menu's picture. Lifting the centre on those frames
+	// instead cut a square out of the lock-pick menu. HUDReticle is hidden
+	// for this one draw and put back as vanilla keeps it: shown in first
+	// person, hidden in third (the root the third-person draw has to expose).
+	if (game::IsMenuMode()) {
+		const bool hid = game::SetHudReticleEnabled(false);
+		const bool captured = render::RunHudPassBetweenScenes();
+		if (hid) {
+			game::SetHudReticleEnabled(!isThirdPerson);
+		}
+		static bool s_reported = false;
+		if (!s_reported) {
+			s_reported = true;
+			OBVR_LOG("Crosshair: HUDReticle %s for the menu frames' 2D layer",
+			         hid ? "hidden" : "could not be resolved - not hidden");
+		}
+		return captured;
+	}
 	if (!HudCrosshairNeedsFirstPersonView(config.tracker.crosshairTooltipsThirdPerson,
 	                                       g_crosshairHasTarget, isThirdPerson)) {
 		return render::RunHudPassBetweenScenes();
@@ -2780,14 +2804,9 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// frames are excluded by CrosshairCaptureWanted, so their centre is never
 	// punched out.
 	bool crosshairLifted = false;
-	// A menu just opened still carries the fading HUD: its centre keeps being
-	// lifted out, so the tooltip does not flash into the menu's picture.
-	const bool menuOpeningHud = MenuOpeningKeepsHud(
-		visibility.menuIsUp, g_presentedFrame - g_menuOpenedFrame,
-		visibility.menuIsUp && game::TopVisibleMenu() == game::kMenuIdNone);
 	if (CrosshairCentreCaptureWanted(config.tracker.crosshair,
 	                                g_crosshairHasTarget, tooltipsEnabled,
-	                                worldFrame, visibility.menuIsUp && !menuOpeningHud) &&
+	                                worldFrame, visibility.menuIsUp) &&
 	    config.tracker.hudOverlay &&
 	    g_hudLayer.HasCapture()) {
 		UInt32 believedWidth = 0;
@@ -2887,13 +2906,13 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// The laser beam from the hand that points at a menu, as long as the way
 	// to it. Its own overlay, raw pixels, no game texture behind it.
 	g_laserLayer.Submit(g_headTracker.GetBackendForFrame(),
-	                    g_hand.laserVisible && config.hands.laserBeam,
+	                    g_hand.laserVisible,
 	                    g_headTracker.GetBackendForFrame().HandDeviceIndex(g_hand.laserRight),
 	                    config.hands.laserPitchDegrees,
 	                    g_hand.laserRight ? config.hands.laserYawDegrees
 	                                      : -config.hands.laserYawDegrees,
 	                    config.hands.laserOriginMetres, g_hand.laserLengthMetres,
-	                    config.hands.laserDot);
+	                    config.hands.laserBeam, config.hands.laserDot);
 
 	if (!config.tracker.hudOverlay || !render::IsInterfaceRenderHooked()) {
 		return;

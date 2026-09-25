@@ -137,7 +137,27 @@ void TestReach() {
 	      "no reach takes nothing, not even what the hand is in");
 }
 
+void TestParts() {
+	std::printf("Beam and dot on their own switches\n");
+	for (unsigned mask = 0; mask < 32; ++mask) {
+		const bool pointing = (mask & 1) != 0;
+		const bool beam = (mask & 2) != 0;
+		const bool dot = (mask & 4) != 0;
+		const bool device = (mask & 8) != 0;
+		const float length = (mask & 16) != 0 ? 1.5f : 0.0f;
+		const LaserParts parts = LaserPartsShown(pointing, beam, dot, device, length);
+		const bool can = pointing && device && length > 0.01f;
+		Check(parts.beam == (can && beam) && parts.dot == (can && dot),
+		      "each piece follows its own switch, both need a pointing hand, a device and a length");
+	}
+	const LaserParts dotOnly = LaserPartsShown(true, false, true, true, 1.0f);
+	Check(!dotOnly.beam && dotOnly.dot, "the beam off leaves the dot");
+	const LaserParts beamOnly = LaserPartsShown(true, true, false, true, 1.0f);
+	Check(beamOnly.beam && !beamOnly.dot, "the dot off leaves the beam");
+}
+
 int main() {
+	TestParts();
 	TestReach();
 	TestBeam();
 	TestPoint();

@@ -252,6 +252,14 @@ void Tick() {
   if (step==ui::NativeSettingsStep::Close) { CloseSettings(); return; }
   if (previous) button=ui::kNativePrevious;
   if (next) button=ui::kNativeNext;
+  // Which button a click reached and which row stood there: "I switched the
+  // dot off and the beam went" (2026-09-25) had only the saved key to go by.
+  if (button>=ui::kNativeRowBase && button<ui::kNativeRowBase+static_cast<int>(ui::kNativeSettingsRows)*3) {
+   const auto* row=g_settings.Row(static_cast<UInt32>(button-ui::kNativeRowBase)/3);
+   static const char* const kParts[]={"label","-","+"};
+   OBVR_LOG("Native settings: clicked %s on row %d (%s)",kParts[(button-ui::kNativeRowBase)%3],
+            (button-ui::kNativeRowBase)/3,row ? row->label : "empty");
+  }
   const auto edit=g_settings.Click(button,GetConfig());
   SettingWriter writer;
   const auto result=ui::CommitNativeEdit(edit,GetConfig(),writer);

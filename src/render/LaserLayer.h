@@ -27,11 +27,13 @@ public:
 	LaserLayer(const LaserLayer&) = delete;
 	LaserLayer& operator=(const LaserLayer&) = delete;
 
-	// Once per frame, after the eyes. visible false hides the beam; visible
-	// true hangs it on the given tracked device for the given length.
-	void Submit(vr::OpenVRBackend& backend, bool visible, UInt32 deviceIndex, float pitchDegrees,
-	            float yawDegrees, float originMetres,
-	            float lengthMetres, bool withDot = true);
+	// Once per frame, after the eyes. pointing false hides the laser; true
+	// hangs the beam (withBeam) and the dot at its end (withDot) on the given
+	// tracked device for the given length - each on its own switch
+	// (vr::LaserPartsShown).
+	void Submit(vr::OpenVRBackend& backend, bool pointing, UInt32 deviceIndex, float pitchDegrees,
+	            float yawDegrees, float originMetres, float lengthMetres, bool withBeam,
+	            bool withDot);
 
 	void Destroy();
 
