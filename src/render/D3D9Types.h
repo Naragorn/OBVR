@@ -484,6 +484,36 @@ constexpr UInt32 kTextureAddressClamp = 3;
 constexpr UInt32 kPrimitiveTriangleStrip = 5;
 constexpr UInt32 kFvfXyzRhwTex1 = 0x004 | 0x100;
 
+// For the controller models (render::ControllerModels): D3DPT_TRIANGLELIST
+// (4); a pre-transformed vertex with a colour, D3DFVF_XYZRHW (0x004) with
+// D3DFVF_DIFFUSE (0x040); D3DRS_ZFUNC (23) with D3DCMP_LESSEQUAL (4)
+// (d3d9types.h); and IDirect3DDevice9::CreateDepthStencilSurface, the entry
+// after CreateRenderTarget (28) in the SDK's listing: width, height, format,
+// multisample type and quality, discard, the surface out, a shared handle.
+constexpr UInt32 kPrimitiveTriangleList = 4;
+constexpr UInt32 kFvfXyzRhwDiffuse = 0x004 | 0x040;
+constexpr UInt32 kRenderStateZFunc = 23;
+constexpr UInt32 kCmpLessEqual = 4;
+constexpr UInt32 kDeviceCreateDepthStencilSurface = 29;
+// SetTextureStageState, the entry after GetTextureStageState (66), and the
+// stage-0 setup that takes the vertex colour alone: D3DTSS_COLOROP (1),
+// COLORARG1 (2), ALPHAOP (4), ALPHAARG1 (5); D3DTOP_DISABLE (1),
+// D3DTOP_SELECTARG1 (2); D3DTA_DIFFUSE (0).
+constexpr UInt32 kDeviceSetTextureStageState = 67;
+using SetTextureStageStateFn = SInt32(__stdcall*)(void* self, UInt32 stage, UInt32 type,
+                                                 UInt32 value);
+constexpr UInt32 kTssColorOp = 1;
+constexpr UInt32 kTssColorArg1 = 2;
+constexpr UInt32 kTssAlphaOp = 4;
+constexpr UInt32 kTssAlphaArg1 = 5;
+constexpr UInt32 kTopDisable = 1;
+constexpr UInt32 kTopSelectArg1 = 2;
+constexpr UInt32 kTaDiffuse = 0;
+using CreateDepthStencilSurfaceFn = SInt32(__stdcall*)(void* self, UInt32 width, UInt32 height,
+                                                      UInt32 format, UInt32 multiSample,
+                                                      UInt32 multiSampleQuality, int discard,
+                                                      void** surface, void* sharedHandle);
+
 // ID3DXBuffer, what D3DXAssembleShader hands back: IUnknown plus
 // GetBufferPointer then GetBufferSize, in that order (Microsoft's ID3DXBuffer
 // reference, D3DX9Mesh.h) - so the pointer getter is method three. Not a

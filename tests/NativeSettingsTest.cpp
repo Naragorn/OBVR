@@ -2,6 +2,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <initializer_list>
+#include "ui/NativeHandAdjust.h"
 #include "ui/NativeSettings.h"
 #include "core/AtomicFlag.h"
 using namespace obvr::ui;
@@ -20,6 +21,8 @@ struct Writer:NativeSettingWriter {
   std::strcpy(last,s); return success;
  }
  void Recenter() override { ++recenters; }
+ void AdjustHands() override { ++adjusts; }
+ int adjusts=0;
 };
 
 float ChangedFromDefault(const SettingDefinition& definition, float canonical) {
@@ -177,7 +180,7 @@ void TestResetSelected() {
  }
 
  Check(visited==SettingDefinitionCount(),"reset test visits every definition across pages");
- Check(editable+1==visited,"reset test includes the action refusal path");
+ Check(editable+2==visited,"reset test includes the two action rows' refusal paths");
  Check(refusedAtDefault==editable,"every editable definition refuses reset at default");
 }
 
@@ -293,6 +296,56 @@ void TestComfortView() {
        paged.Pages()==(SettingDefinitionCount()+kNativeSettingsRows-1)/kNativeSettingsRows,"the whole menu again");
 }
 
+void TestHandAdjust() {
+ std::printf("Adjusting the hands: the window's choices and the session\n");
+ using namespace obvr::ui;
+ Check(ChooseHandAdjust(HandAdjustPage::Guide,kAdjustHandsPrimary)==HandAdjustChoice::Start &&
+       ChooseHandAdjust(HandAdjustPage::Guide,kAdjustHandsSecondary)==HandAdjustChoice::Cancel,
+       "the guide starts or cancels");
+ Check(ChooseHandAdjust(HandAdjustPage::Guide,kAdjustHandsReset)==HandAdjustChoice::None &&
+       ChooseHandAdjust(HandAdjustPage::Guide,-1)==HandAdjustChoice::None &&
+       ChooseHandAdjust(HandAdjustPage::Guide,kAdjustHandsClose)==HandAdjustChoice::None,
+       "the guide ignores the reset, no click and the hidden close");
+ Check(ChooseHandAdjust(HandAdjustPage::Finish,kAdjustHandsPrimary)==HandAdjustChoice::Keep &&
+       ChooseHandAdjust(HandAdjustPage::Finish,kAdjustHandsSecondary)==HandAdjustChoice::Again &&
+       ChooseHandAdjust(HandAdjustPage::Finish,kAdjustHandsReset)==HandAdjustChoice::Reset,
+       "the finish keeps, adjusts again or resets");
+ Check(ChooseHandAdjust(HandAdjustPage::Finish,-1)==HandAdjustChoice::None,"the finish ignores no click");
+
+ HandAdjustSession s;
+ Check(!StepHandAdjustSession(s,true,true,false,1.0f) && !s.rightDone,"no session: nothing counts");
+ StartHandAdjustSession(s);
+ Check(s.active && !s.rightDone && !s.leftDone,"started clean");
+ Check(!StepHandAdjustSession(s,true,false,false,5.0f) && s.rightDone,"one hand is not enough");
+ Check(!StepHandAdjustSession(s,false,true,true,5.0f) && s.leftDone,"both done, but a grip is closed");
+ Check(!StepHandAdjustSession(s,false,false,false,1.0f),"resting, not long enough yet");
+ Check(!StepHandAdjustSession(s,false,false,true,1.0f) && s.quietSeconds==0.0f,"a grip closing starts the rest again");
+ Check(!StepHandAdjustSession(s,false,false,false,1.0f),"one second of rest");
+ Check(StepHandAdjustSession(s,false,false,false,0.6f) && s.finishAsked,"a second and a half: the finish");
+ Check(!StepHandAdjustSession(s,false,false,false,5.0f),"asked once");
+ StartHandAdjustSession(s);
+ Check(!s.finishAsked && !s.rightDone,"adjusting again starts over");
+ StepHandAdjustSession(s,true,true,false,0.0f);
+ Check(!StepHandAdjustSession(s,false,false,false,0.0f) && s.quietSeconds==0.0f,"a frame without time adds no rest");
+
+ obvr::Config config; NativeSettings menu; Writer writer;
+ bool fired=false;
+ for(unsigned page=0;page<menu.Pages() && !fired;++page) {
+  for(unsigned slot=0;slot<7;++slot) {
+   const auto* d=menu.Row(slot);
+   if(d && d->action==SettingAction::AdjustHands) {
+    const auto edit=menu.Click(kNativeRowBase+static_cast<int>(slot)*3+2,config);
+    Check(CommitNativeEdit(edit,config,writer)==NativeEditResult::Action && writer.adjusts==1 &&
+          writer.recenters==0 && writer.saves==0,"the Adjust hands row hands over to the guide, saves nothing");
+    fired=true;
+    break;
+   }
+  }
+  if(!fired) menu.Click(kNativeNext,config);
+ }
+ Check(fired,"the Adjust hands row is in the menu");
+}
+
 void TestUpdateWindow() {
  std::printf("Update window\n");
  // Not shown yet: every combination of the four inputs.
@@ -335,6 +388,7 @@ int main() {
  TestComfortView();
  TestComfortPageStep();
  TestUpdateWindow();
+ TestHandAdjust();
  // Exhaust the lifecycle input combinations, including foreign/covered menus.
  for(unsigned mask=0;mask<512;++mask) {
   bool opened=mask&1,root=mask&2,foreign=mask&4,foreground=mask&8;

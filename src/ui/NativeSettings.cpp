@@ -98,6 +98,7 @@ NativeEditResult CommitNativeEdit(const NativeSettingEdit& edit,Config& config,N
  if (!edit.definition) return NativeEditResult::None;
  if (edit.action) {
   if (edit.definition->action==SettingAction::Recenter) writer.Recenter();
+  if (edit.definition->action==SettingAction::AdjustHands) writer.AdjustHands();
   return NativeEditResult::Action;
  }
  if (SettingEditRefusal(*edit.definition,config,edit.value)) return NativeEditResult::Refused;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "render/EyeGeometry.h"
+#include "render/ControllerModels.h"
 #include "render/EyeMirror.h"
 #include "render/EyeTextures.h"
 #include "render/GameDevice.h"
@@ -157,6 +158,11 @@ public:
 	// configuration, or shutdown.
 	void Reset();
 
+	// Whether the real controllers are drawn into the eyes this frame - while
+	// the hands are being adjusted (render::ControllerModels). Stereo pairs
+	// drawn this frame only.
+	void SetControllersWanted(bool wanted) { m_controllersWanted = wanted; }
+
 	// Whether a picture is actually going to the headset right now.
 	bool IsActive() const { return m_textures.IsReady() && !m_policy.HasStopped(); }
 
@@ -257,6 +263,8 @@ private:
 	// frame that wants them, because the back buffer has to exist before its
 	// size and format can be copied.
 	EyeMirror m_mirror;
+	ControllerModels m_controllers;
+	bool m_controllersWanted = false;
 
 	// The single-sample copy a multisampled back buffer is submitted through
 	// on the mono path; see FrameResolve.

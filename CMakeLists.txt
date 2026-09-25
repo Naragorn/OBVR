@@ -77,6 +77,7 @@ add_library(OBVR SHARED
 	src/game/FirstPersonHide.cpp
 	src/game/FirstPersonDepth.cpp
 	src/game/HandBones.cpp
+	src/game/HandAdjust.cpp
 	src/game/MeleeHits.cpp
 	src/game/ThirdPersonAimVisual.cpp
 	src/game/PlayerBody.cpp
@@ -93,6 +94,7 @@ add_library(OBVR SHARED
 	src/render/CrosshairLayer.cpp
 	src/render/VignetteLayer.cpp
 	src/render/LaserLayer.cpp
+	src/render/ControllerModels.cpp
 	src/render/CullingHook.cpp
 	src/render/LeafFacingHook.cpp
 	src/render/WaterReflectionHook.cpp

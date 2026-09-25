@@ -50,6 +50,7 @@ namespace obvr::ui {
 enum class SettingAction {
 	None,
 	Recenter,
+	AdjustHands,  // opens the guided window for fitting the hands to the controllers
 };
 
 struct SettingDefinition {

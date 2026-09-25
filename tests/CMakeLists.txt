@@ -902,3 +902,12 @@ if(NOT MSVC)
 	target_compile_options(update_notice_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME update_notice COMMAND update_notice_test)
+
+add_executable(controller_projection_test
+	ControllerProjectionTest.cpp
+)
+target_include_directories(controller_projection_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(controller_projection_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME controller_projection COMMAND controller_projection_test)

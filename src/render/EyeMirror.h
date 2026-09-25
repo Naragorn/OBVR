@@ -131,6 +131,9 @@ public:
 	bool BlendLayerOntoBackBuffer(void* gameDevice, void* layerTexture);
 
 	const BackBufferImage& GetImage(bool isLeft) const { return m_eye[isLeft ? 0 : 1].image; }
+	// The eye texture's level-0 surface, for drawing into the picture before
+	// the submit (render::ControllerModels).
+	void* EyeSurface(bool isLeft) const { return m_eye[isLeft ? 0 : 1].surface; }
 
 	// The flat picture's size in eye-texture pixels (one size in both eyes)
 	// and the window of the frame it shows, for a laser to point at it.

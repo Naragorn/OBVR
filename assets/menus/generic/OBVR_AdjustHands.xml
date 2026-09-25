@@ -1,0 +1,67 @@
+<!-- OBVR's guide for adjusting the hands. One window, two pages: the guide
+     (Start / Cancel) and the finish (Keep / Adjust again / Reset). The words
+     are OBVR's (user0 title, user1 text, user2..user4 button labels); the
+     buttons report 9501..9503, and the hidden 9500 is the closing ID OBVR
+     clicks once it has acted on a choice. -->
+<menu name="OBVRAdjustHands">
+ <class> &GenericMenu; </class>
+ <stackingtype> &no_click_past; </stackingtype>
+ <locus> &true; </locus>
+ <visible> &true; </visible>
+ <alpha> 255 </alpha>
+ <explorefade> 0 </explorefade>
+ <user0> Adjust your hands </user0>
+ <user1> </user1>
+ <user2> Start </user2>
+ <user3> Cancel </user3>
+ <user4> </user4>
+ <rect name="parchment">
+  <include src="generic_background.xml" />
+  <user0> 720 </user0>
+  <user1> 420 </user1>
+  <depth> 15 </depth>
+  <x><copy src="screen()" trait="width"/><sub src="me()" trait="width"/><div>2</div></x>
+  <y><copy src="screen()" trait="height"/><sub src="me()" trait="height"/><div>2</div></y>
+  <text name="title">
+   <font> 1 </font><string><copy src="OBVRAdjustHands" trait="user0"/></string>
+   <x> 36 </x><y> 22 </y><depth> 3 </depth>
+   <red> 70 </red><green> 45 </green><blue> 25 </blue><alpha>255</alpha>
+  </text>
+  <text name="message">
+   <font>3</font><string><copy src="OBVRAdjustHands" trait="user1"/></string>
+   <x>36</x><y>80</y><wrapwidth>648</wrapwidth><depth>3</depth>
+   <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
+  </text>
+  <rect name="primary">
+   <id>9501</id><target>&true;</target><locus>&true;</locus>
+   <x>36</x><y>345</y><width>200</width><height>45</height><depth>4</depth>
+   <include src="OBVR/button_highlight.xml" />
+   <text name="label">
+    <font>3</font><string><copy src="OBVRAdjustHands" trait="user2"/></string><x>12</x><y>8</y><wrapwidth>176</wrapwidth><depth>7</depth>
+    <red>70</red><green>45</green><blue>25</blue><alpha>255</alpha>
+   </text>
+  </rect>
+  <rect name="secondary">
+   <id>9502</id><target>&true;</target><locus>&true;</locus>
+   <x>260</x><y>345</y><width>200</width><height>45</height><depth>4</depth>
+   <include src="OBVR/button_highlight.xml" />
+   <text name="label">
+    <font>3</font><string><copy src="OBVRAdjustHands" trait="user3"/></string><x>12</x><y>8</y><wrapwidth>176</wrapwidth><depth>7</depth>
+    <red>70</red><green>45</green><blue>25</blue><alpha>255</alpha>
+   </text>
+  </rect>
+  <rect name="reset">
+   <id>9503</id><target>&true;</target><locus>&true;</locus>
+   <x>484</x><y>345</y><width>200</width><height>45</height><depth>4</depth>
+   <include src="OBVR/button_highlight.xml" />
+   <text name="label">
+    <font>3</font><string><copy src="OBVRAdjustHands" trait="user4"/></string><x>12</x><y>8</y><wrapwidth>176</wrapwidth><depth>7</depth>
+    <red>70</red><green>45</green><blue>25</blue><alpha>255</alpha>
+   </text>
+  </rect>
+  <rect name="close">
+   <id>9500</id><target>&true;</target><locus>&false;</locus>
+   <x>0</x><y>0</y><width>1</width><height>1</height><depth>1</depth><alpha>0</alpha>
+  </rect>
+ </rect>
+</menu>

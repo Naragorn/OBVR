@@ -17,6 +17,7 @@
 #include "game/FirstPersonDepth.h"
 #include "game/FirstPersonHide.h"
 #include "game/BonePin.h"
+#include "game/HandAdjust.h"
 #include "game/HandBones.h"
 #include "game/HandControls.h"
 #include "game/MeleeHits.h"
@@ -406,6 +407,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_hudLayer.ClearWristPlacement();
 		game::HideFirstPersonNodes(false, "");
 		game::KeepFirstPersonDepth(false);
+		g_headsetRenderer.SetControllersWanted(false);
 		game::ForgetStrikes();
 		game::SetMenuCursorHidden(false);
 		g_hand = vr::HandModeResult{};
@@ -462,9 +464,13 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		game::HideFirstPersonNodes(!ReadIsThirdPerson(), hideList);
 		// The hands in the world rather than on top of it (FirstPersonDepth.h).
 		game::KeepFirstPersonDepth(true);
+		// The real controllers in the eyes while the hands are being adjusted.
+		g_headsetRenderer.SetControllersWanted(
+			(config.hands.adjustHands || game::HandAdjustActive()) && !menuIsUp);
 	} else {
 		game::HideFirstPersonNodes(false, "");
 		game::KeepFirstPersonDepth(false);
+		g_headsetRenderer.SetControllersWanted(false);
 		game::ForgetStrikes();
 	}
 
@@ -477,6 +483,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.meleeInHand = active && config.hands.motionHits && game::MeleeInHand(nullptr);
 	frame.menusOnly = menusOnly;
 	frame.inWorld = game::PlayerInWorld();
+	frame.adjustingHands = config.hands.adjustHands || game::HandAdjustActive();
 	// The weapon and the player's action: what the ready-weapon click follows
 	// and whether a swing may attack. World frames only, like the sneak.
 	if (!menuIsUp && frame.inWorld) {
@@ -2090,7 +2097,8 @@ void PrepareMenuFrameIfNeeded(bool menuIsUp) {
 // the world while its grip is closed, and fitted to the controller when the
 // grip opens (game::StepHandAdjust, game::FitHandToPose). The fit is kept in
 // the running config and written to the INI.
-void PinAdjustableHand(bool right, const vr::HandSettings& hands, bool handValid, bool gripDown,
+bool PinAdjustableHand(bool right, const vr::HandSettings& hands, bool adjusting, bool handValid,
+                       bool gripDown,
                        const NiMatrix33& relativeRot, const NiPoint3& offsetUnits,
                        const NiMatrix33& cameraRot, const NiPoint3& cameraPos,
                        const NiPoint3& sharedGripMetres, float perMetre) {
@@ -2098,7 +2106,7 @@ void PinAdjustableHand(bool right, const vr::HandSettings& hands, bool handValid
 	game::HandAdjustState& adjust = s_adjust[right ? 0 : 1];
 	if (!handValid) {
 		adjust = game::HandAdjustState{};
-		return;
+		return false;
 	}
 	const float roll = right ? hands.rightHandRoll : hands.leftHandRoll;
 	const float pitch = right ? hands.rightHandPitch : hands.leftHandPitch;
@@ -2113,11 +2121,11 @@ void PinAdjustableHand(bool right, const vr::HandSettings& hands, bool handValid
 	const game::BonePose current =
 		game::HandBoneWorld(cameraRot, cameraPos, relativeRot, offsetUnits, calibration, grip);
 
-	switch (game::StepHandAdjust(adjust, hands.adjustHands, gripDown, current)) {
+	switch (game::StepHandAdjust(adjust, adjusting, gripDown, current)) {
 	case game::HandAdjustStep::Follow:
 		game::PinHandBone(right, bone, relativeRot, offsetUnits, calibration, cameraRot,
 		                  cameraPos, grip);
-		return;
+		return false;
 	case game::HandAdjustStep::Hold: {
 		// The held pose through the same pin: a head-relative rotation and
 		// offset that carry the camera to exactly the frozen world pose.
@@ -2125,7 +2133,7 @@ void PinAdjustableHand(bool right, const vr::HandSettings& hands, bool handValid
 		game::PinHandBone(right, bone, inverseCamera * adjust.frozen.rot,
 		                  inverseCamera * (adjust.frozen.pos - cameraPos),
 		                  NiMatrix33::Identity(), cameraRot, cameraPos, NiPoint3{0.0f, 0.0f, 0.0f});
-		return;
+		return false;
 	}
 	case game::HandAdjustStep::Commit:
 		break;
@@ -2165,6 +2173,7 @@ void PinAdjustableHand(bool right, const vr::HandSettings& hands, bool handValid
 	         saved ? ", saved" : " - COULD NOT SAVE the INI");
 	game::PinHandBone(right, bone, relativeRot, offsetUnits, fit.calibration, cameraRot, cameraPos,
 	                  fit.gripUnits);
+	return true;
 }
 
 // The first person weapon, turned at the last moment before anything is drawn.
@@ -2250,12 +2259,18 @@ void BeforeFirstScenePass() {
 			const NiPoint3& cameraPos = g_cyclopeanCameraWorldTransform.pos;
 			const float perMetre = GetConfig().tracker.unitsPerMetre;
 			const NiPoint3 sharedGrip{0.0f, hands.handGripForwardMetres, hands.handGripUpMetres};
-			PinAdjustableHand(true, hands, g_hand.rightHandValid, g_hand.rightGripDown,
+			// Adjusting: from the INI switch or the guided window (game::HandAdjust).
+			const bool adjusting = hands.adjustHands || game::HandAdjustActive();
+			const bool rightCommitted = PinAdjustableHand(
+				true, hands, adjusting, g_hand.rightHandValid, g_hand.rightGripDown,
 			                  g_hand.rightHandRotation, g_hand.rightHandOffsetUnits, cameraRot,
 			                  cameraPos, sharedGrip, perMetre);
-			PinAdjustableHand(false, hands, g_hand.leftHandValid, g_hand.leftGripDown,
+			const bool leftCommitted = PinAdjustableHand(
+				false, hands, adjusting, g_hand.leftHandValid, g_hand.leftGripDown,
 			                  g_hand.leftHandRotation, g_hand.leftHandOffsetUnits, cameraRot,
 			                  cameraPos, sharedGrip, perMetre);
+			game::NoteHandAdjustFrame(rightCommitted, leftCommitted,
+			                          g_hand.rightGripDown || g_hand.leftGripDown, g_deltaSeconds);
 			// The hands are where the controllers are, not where the animation
 			// would have them: their bounds follow, so the engine does not cull
 			// a hand in view by an arm swung out of it. Arm's reach around the
@@ -2572,6 +2587,9 @@ void SaveChangedSetting(const ui::SettingDefinition* definition, const Config& c
 	// A button: fired here, saved nowhere. The only one so far is the
 	// recenter at the top of the menu.
 	if (definition->kind == ui::ItemKind::Action) {
+		if (definition->action == ui::SettingAction::AdjustHands) {
+			game::StartHandAdjust();
+		}
 		if (definition->action == ui::SettingAction::Recenter) {
 			DoRecenter("settings menu");
 		}

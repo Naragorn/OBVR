@@ -182,9 +182,20 @@ struct IVRSystemFnTable {
 	// Index 21.
 	bool(__stdcall* IsTrackedDeviceConnected)(UInt32 deviceIndex);
 
-	// Indices 22 to 36: the property getters, the event and hidden-area
-	// queries. Fifteen entries.
-	void* unusedBeforeControllerState[15];
+	// Indices 22 to 27: the bool, float, int32, uint64, matrix and array
+	// property getters (openvr_capi.h, VR_IVRSystem_FnTable, IVRSystem_026).
+	void* unusedPropertyGetters[6];
+
+	// Index 28: a string property, written into value with its terminator;
+	// answers the length needed, terminator included. For the render model's
+	// name (kPropRenderModelName).
+	UInt32(__stdcall* GetStringTrackedDeviceProperty)(UInt32 deviceIndex, int property,
+	                                                  char* value, UInt32 bufferSize,
+	                                                  int* error);
+
+	// Indices 29 to 36: the property error names, the event polls, the event
+	// names, the hidden-area mesh and the two foveation queries.
+	void* unusedBeforeControllerState[8];
 
 	// Index 37 and 38: the legacy controller state - buttons and axes - and
 	// the same together with the device's pose in one call, which is what a
@@ -194,6 +205,40 @@ struct IVRSystemFnTable {
 	bool(__stdcall* GetControllerStateWithPose)(int origin, UInt32 deviceIndex,
 	                                            VRControllerState* state, UInt32 stateSize,
 	                                            TrackedDevicePose* pose);
+};
+
+// Prop_RenderModelName_String (openvr_capi.h: ETrackedDeviceProperty 1003):
+// the name IVRRenderModels loads a device's model by.
+constexpr int kPropRenderModelName = 1003;
+
+// IVRRenderModels_006 (openvr_capi.h, VR_IVRRenderModels_FnTable, and
+// RenderModel_t / RenderModel_Vertex_t). Only the model itself is loaded:
+// the texture is not, the model is drawn in one shaded colour.
+constexpr const char* kIVRRenderModelsFnTableVersion = "FnTable:IVRRenderModels_006";
+constexpr int kRenderModelErrorNone = 0;
+constexpr int kRenderModelErrorLoading = 100;
+
+struct RenderModelVertex {
+	HmdVector3 position;
+	HmdVector3 normal;
+	float textureCoord[2];
+};
+static_assert(sizeof(RenderModelVertex) == 32, "RenderModel_Vertex_t is 32 bytes");
+
+struct RenderModel {
+	const RenderModelVertex* vertexData;
+	UInt32 vertexCount;
+	const UInt16* indexData;
+	UInt32 triangleCount;
+	int diffuseTextureId;
+};
+
+struct IVRRenderModelsFnTable {
+	// Index 0: Loading (100) until the model is ready, then None with the
+	// model, which stays valid until FreeRenderModel.
+	int(__stdcall* LoadRenderModel_Async)(const char* name, RenderModel** model);
+	// Index 1.
+	void(__stdcall* FreeRenderModel)(RenderModel* model);
 };
 
 // ETrackedControllerRole (openvr_capi.h): which hand a controller is.

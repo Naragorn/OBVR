@@ -479,6 +479,15 @@ bool HeadsetRenderer::SubmitDualEyes(const vr::OpenVRBackend& backend,
 		                          request.menuSingleBorder);
 	}
 
+	// The real controllers, while the hands are being adjusted: drawn into
+	// both fresh eyes before they go, so the in-game hand can be lined up
+	// with the controller the player sees.
+	if (m_controllersWanted) {
+		void* const surfaces[2] = {m_mirror.EyeSurface(true), m_mirror.EyeSurface(false)};
+		const EyeProjection eyes[2] = {m_leftEye, m_rightEye};
+		m_controllers.Draw(backend, request.gameDevice, surfaces, m_eyeWidth, m_eyeHeight, eyes);
+	}
+
 	// The submit half of the dual trace: the first run died with the GPU
 	// lost somewhere around here, and these lines are what say whether the
 	// bracket was entered, held, and left again.
@@ -822,6 +831,7 @@ void HeadsetRenderer::Reset() {
 	m_gameFrameChecked = false;
 	m_gameFrameUsable = false;
 	m_mirror.Destroy();
+	m_controllers.Release(nullptr);  // the depth surface belongs to the device going away
 	m_resolve.Destroy();
 	m_mirrorChecked = false;
 	m_mirrorUsable = false;

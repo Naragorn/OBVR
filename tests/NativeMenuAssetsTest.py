@@ -81,3 +81,19 @@ for txt in update.iter('text'):
         trait=txt.find(channel)
         assert trait is not None and len(trait)==0
 print('Update notice XML: OK button 9401, message bound to user0, includes present')
+
+# The adjust-hands guide: three buttons and the hidden closing ID 9500, every
+# word bound to the menu's user traits so OBVR can write both pages.
+adjust=parse(base/'generic/OBVR_AdjustHands.xml')
+assert sorted(int(x.text) for x in adjust.iter('id'))==[9500,9501,9502,9503]
+for name in ['primary','secondary','reset']:
+    assert adjust.find('.//rect[@name="%s"]/target' % name).text.strip()=='1'
+assert adjust.find('.//text[@name="title"]/string/copy').attrib=={'src':'OBVRAdjustHands','trait':'user0'}
+assert adjust.find('.//text[@name="message"]/string/copy').attrib=={'src':'OBVRAdjustHands','trait':'user1'}
+for name,trait in [('primary','user2'),('secondary','user3'),('reset','user4')]:
+    assert adjust.find('.//rect[@name="%s"]/text[@name="label"]/string/copy' % name).attrib=={'src':'OBVRAdjustHands','trait':trait}
+for inc in adjust.iter('include'):
+    name=inc.attrib['src']
+    if name=='generic_background.xml': continue
+    assert (base/'prefabs'/name).is_file(),name
+print('Adjust-hands XML: buttons 9501-9503, closing ID 9500, words bound to user0-user4')

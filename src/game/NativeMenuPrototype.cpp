@@ -5,6 +5,7 @@
 #include "core/Config.h"
 #include "core/Log.h"
 #include "game/GameAddresses.h"
+#include "game/HandAdjust.h"
 #include "game/MenuType.h"
 #include "game/MenuMode.h"
 #include "game/PlayerAim.h"
@@ -12,6 +13,7 @@
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
 #include "ui/NativeOnboarding.h"
+#include "ui/NativeHandAdjust.h"
 #include "ui/NativeSettings.h"
 #include "core/UpdateNotice.h"
 #include "platform/UpdateFetch.h"
@@ -26,6 +28,8 @@ ui::NativeSettings g_settings;
 bool g_checked=false, g_showOnboarding=false, g_saveFailed=false;
 // Full VR was just chosen: the comfort page follows once the choice has closed.
 bool g_comfortPending=false;
+// "Adjust hands" was chosen: the settings menu closes, the guide opens after.
+bool g_closeForAdjust=false;
 const char* g_refusal=nullptr; // why the last change was refused, shown in the help line
 void* g_ourRoot=nullptr;
 AtomicFlag g_available, g_suppressLegacy, g_settingsOpen, g_toggleRequested, g_recenterRequested;
@@ -118,6 +122,7 @@ class SettingWriter final: public ui::NativeSettingWriter {
   return saved;
  }
  void Recenter() override { g_recenterRequested.Set(true); }
+ void AdjustHands() override { game::RequestHandAdjustGuide(); g_closeForAdjust=true; }
 };
 
 // Only changed text is sent through the script compiler. INI reloads appear
@@ -268,6 +273,7 @@ void Tick() {
    g_refusal=result==ui::NativeEditResult::Refused
     ? ui::SettingEditRefusal(*edit.definition,GetConfig(),edit.value) : nullptr;
   }
+  if (g_closeForAdjust) { g_closeForAdjust=false; CloseSettings(); return; }
   if (edit.repaint || ++g_refreshTicks>=30) {
    g_refreshTicks=0;
    if (!RefreshSettings()) OBVR_LOG("Native settings: a UI update command failed");
@@ -301,6 +307,68 @@ void Tick() {
    OBVR_LOG("Native onboarding: the comfort page could not be opened");
   }
   return;
+ }
+ // The guided window for adjusting the hands (ui/NativeHandAdjust.h): the
+ // guide when "Adjust hands" was chosen, the finish once both hands fit.
+ {
+  static bool s_open=false, s_guidePending=false, s_finishPending=false, s_assetMissing=false;
+  static ui::HandAdjustPage s_page=ui::HandAdjustPage::Guide;
+  if (game::TakeHandAdjustGuideRequest()) s_guidePending=true;
+  if (game::TakeHandAdjustFinishRequest()) s_finishPending=true;
+  if (s_open) {
+   if (!root || foreign) {
+    // Closed from outside (Esc): the guide is a cancel, the finish a keep.
+    s_open=false; g_ourRoot=nullptr;
+    if (s_page==ui::HandAdjustPage::Finish) game::StopHandAdjust();
+    OBVR_LOG("Native menus: adjust-hands window closed from outside");
+    return;
+   }
+   int button=-1;
+   if (top==kMenuIdGeneric && !g_poll(&button)) button=-1;
+   const ui::HandAdjustChoice choice=ui::ChooseHandAdjust(s_page,button);
+   if (choice==ui::HandAdjustChoice::None) return;
+   switch (choice) {
+   case ui::HandAdjustChoice::Start: game::StartHandAdjust(); break;
+   case ui::HandAdjustChoice::Again: game::StartHandAdjust(); break;
+   case ui::HandAdjustChoice::Keep: game::StopHandAdjust(); break;
+   case ui::HandAdjustChoice::Reset: game::ResetHandsToDefaults(); game::StopHandAdjust(); break;
+   case ui::HandAdjustChoice::Cancel: case ui::HandAdjustChoice::None: break;
+   }
+   OBVR_LOG("Native menus: adjust-hands window - button %d",button);
+   s_open=false; g_ourRoot=nullptr;
+   Run("ClickMenuButton \"parchment\\close\" 1011");
+   return;
+  }
+  if ((s_guidePending || s_finishPending) && !root && top==0 && PlayerInWorld() && !s_assetMissing) {
+   if (!AssetExists("Data\\Menus\\Generic\\OBVR_AdjustHands.xml")) {
+    s_assetMissing=true;
+    OBVR_LOG("Native menus: OBVR_AdjustHands.xml missing - adjusting starts without the guide");
+    if (s_guidePending) game::StartHandAdjust();
+    if (s_finishPending) game::StopHandAdjust();
+    s_guidePending=s_finishPending=false;
+    return;
+   }
+   s_page=s_finishPending ? ui::HandAdjustPage::Finish : ui::HandAdjustPage::Guide;
+   s_guidePending=s_finishPending=false;
+   int stale=-1; g_poll(&stale);
+   const bool executed=Run("ShowGenericMenu \"OBVR_AdjustHands.xml\" 9500");
+   s_open=executed && GenericRoot();
+   if (s_open) g_ourRoot=GenericRoot();
+   const bool finish=s_page==ui::HandAdjustPage::Finish;
+   if (s_open) {
+    Text("user0",finish ? "Your hands fit" : "Adjust your hands");
+    Text("user1",finish
+     ? "Both hands are fitted to your controllers. Keep this fit, adjust again, or put both hands back to their defaults."
+     : "Your real controllers are shown where your hands are. Close a grip and that hand stays still. Move the controller into the hand the way you hold it, then open the grip. Do it for both hands. The grab is off meanwhile.");
+    Text("user2",finish ? "Keep" : "Start");
+    Text("user3",finish ? "Adjust again" : "Cancel");
+    Text("user4",finish ? "Reset" : " ");
+    Number("parchment\\reset\\target",ui::kXmlBool[finish ? 1 : 0]);
+    Number("parchment\\reset\\alpha",finish ? 255 : 0);
+   }
+   OBVR_LOG("Native menus: adjust-hands %s page - open executed=%d",finish ? "finish" : "guide",executed);
+   return;
+  }
  }
  // The update notice (ui::StepUpdateWindow): a native window in the main
  // menu, the answer from GitHub or Debug.ForceUpdateNotice behind it.

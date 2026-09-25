@@ -133,6 +133,16 @@ public:
 	// a wrist.
 	UInt32 HandDeviceIndex(bool rightHand) const;
 
+	// For drawing the real controllers (render::ControllerModels): the pose
+	// of the controller in one hand as OpenVR's own matrix, in the seated
+	// space and from the same unpredicted read ReadHand makes; the eye's full
+	// transform from the head; the name its render model loads by; and
+	// IVRRenderModels itself, fetched on first use.
+	bool HandPoseMatrix(bool rightHand, openvr::HmdMatrix34& out) const;
+	bool GetEyeToHead(int eye, openvr::HmdMatrix34& out) const;
+	bool HandRenderModelName(bool rightHand, char* out, UInt32 capacity) const;
+	openvr::IVRRenderModelsFnTable* RenderModels() const;
+
 	// Hangs an overlay on any tracked device - a controller for the wrist
 	// menus - with the given device-to-overlay transform. The HMD case above
 	// is this with the HMD's index.
@@ -314,6 +324,8 @@ private:
 	void* m_compositor = nullptr;  // IVRCompositorFnTable*, only when scene
 	void* m_overlay = nullptr;     // IVROverlayFnTable*, fetched on first use
 	bool m_overlayTried = false;
+	mutable void* m_renderModels = nullptr;  // IVRRenderModelsFnTable*, fetched on first use
+	mutable bool m_renderModelsTried = false;
 	bool m_startAttempted = false;
 	mutable bool m_loggedNoPose = false;
 

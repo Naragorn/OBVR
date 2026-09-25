@@ -544,11 +544,12 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.sneakHold = v != 0.0f; },
 	},
 	{
-		"Hands", "Adjust hands", "In the game: grip holds a hand still, move the controller to it, let go",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Hands", "AdjustHands",
-		+[](const Config& c) { return c.hands.adjustHands ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.hands.adjustHands = v != 0.0f; },
+		"Hands", "Adjust hands", "A guided fit of the in-game hands to the controllers you hold",
+		ItemKind::Action, 0.0f, 0.0f, 0.0f, 0, false,
+		"", "",
+		+[](const Config&) { return 0.0f; },
+		+[](Config&, float) {},
+		"", "", SettingAction::AdjustHands,
 	},
 	{
 		"Hands", "Toggle run", "A left stick click switches running on and off, instead of holding it in",

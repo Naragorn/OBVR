@@ -112,6 +112,8 @@ struct NativeSettingWriter {
  virtual ~NativeSettingWriter() = default;
  virtual bool Save(const SettingDefinition&, const char* value) = 0;
  virtual void Recenter() = 0;
+ // The "Adjust hands" row: the settings menu closes and the guide opens.
+ virtual void AdjustHands() {}
 };
 enum class NativeEditResult { None, Saved, Action, SaveFailed, Refused };
 NativeEditResult CommitNativeEdit(const NativeSettingEdit&, Config&, NativeSettingWriter&);

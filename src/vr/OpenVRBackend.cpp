@@ -347,6 +347,89 @@ UInt32 OpenVRBackend::HandDeviceIndex(bool rightHand) const {
 		rightHand ? openvr::kControllerRoleRightHand : openvr::kControllerRoleLeftHand);
 }
 
+bool OpenVRBackend::HandPoseMatrix(bool rightHand, openvr::HmdMatrix34& out) const {
+	const UInt32 device = HandDeviceIndex(rightHand);
+	if (device == openvr::kTrackedDeviceIndexInvalid || device >= openvr::kMaxTrackedDeviceCount) {
+		return false;
+	}
+	auto* table = static_cast<openvr::IVRSystemFnTable*>(m_system);
+	if (table->GetDeviceToAbsoluteTrackingPose == nullptr) {
+		return false;
+	}
+	// The same read ReadHand makes on the action path: seated, unpredicted,
+	// so the model drawn and the hand pinned come from one moment.
+	openvr::TrackedDevicePose poses[openvr::kMaxTrackedDeviceCount]{};
+	table->GetDeviceToAbsoluteTrackingPose(openvr::kTrackingUniverseSeated, 0.0f, poses,
+	                                      openvr::kMaxTrackedDeviceCount);
+	if (!poses[device].poseIsValid || !poses[device].deviceIsConnected) {
+		return false;
+	}
+	out = poses[device].deviceToAbsoluteTracking;
+	return true;
+}
+
+bool OpenVRBackend::GetEyeToHead(int eye, openvr::HmdMatrix34& out) const {
+	if (m_system == nullptr) {
+		return false;
+	}
+	auto* table = static_cast<openvr::IVRSystemFnTable*>(m_system);
+	if (table->GetEyeToHeadTransform == nullptr) {
+		return false;
+	}
+	out = table->GetEyeToHeadTransform(eye);
+	return true;
+}
+
+bool OpenVRBackend::HandRenderModelName(bool rightHand, char* out, UInt32 capacity) const {
+	if (out == nullptr || capacity == 0) {
+		return false;
+	}
+	out[0] = '\0';
+	const UInt32 device = HandDeviceIndex(rightHand);
+	if (device == openvr::kTrackedDeviceIndexInvalid) {
+		return false;
+	}
+	auto* table = static_cast<openvr::IVRSystemFnTable*>(m_system);
+	if (table->GetStringTrackedDeviceProperty == nullptr) {
+		return false;
+	}
+	int error = 0;
+	const UInt32 length = table->GetStringTrackedDeviceProperty(
+		device, openvr::kPropRenderModelName, out, capacity, &error);
+	if (error != 0 || length == 0 || length > capacity) {
+		out[0] = '\0';
+		return false;
+	}
+	out[capacity - 1] = '\0';
+	return out[0] != '\0';
+}
+
+openvr::IVRRenderModelsFnTable* OpenVRBackend::RenderModels() const {
+	if (m_renderModels != nullptr) {
+		return static_cast<openvr::IVRRenderModelsFnTable*>(m_renderModels);
+	}
+	if (m_renderModelsTried || m_module == nullptr) {
+		return nullptr;
+	}
+	m_renderModelsTried = true;
+	auto getInterface =
+		Resolve<openvr::VR_GetGenericInterfaceFn>(m_module, "VR_GetGenericInterface");
+	if (getInterface == nullptr) {
+		return nullptr;
+	}
+	int error = openvr::kInitErrorNone;
+	m_renderModels = getInterface(openvr::kIVRRenderModelsFnTableVersion, &error);
+	if (m_renderModels == nullptr || error != openvr::kInitErrorNone) {
+		m_renderModels = nullptr;
+		OBVR_LOG("OpenVR: %s unavailable (%d), so the controllers cannot be drawn",
+		         openvr::kIVRRenderModelsFnTableVersion, error);
+		return nullptr;
+	}
+	OBVR_LOG("OpenVR: render models connected through %s",
+	         openvr::kIVRRenderModelsFnTableVersion);
+	return static_cast<openvr::IVRRenderModelsFnTable*>(m_renderModels);
+}
+
 int OpenVRBackend::SetOverlayTransformAbsolute(
 	openvr::VROverlayHandle handle, const openvr::HmdMatrix34& trackingToOverlay) const {
 	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);

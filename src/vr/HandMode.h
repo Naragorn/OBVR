@@ -178,6 +178,9 @@ struct HandModeFrame {
 	// follows, and whether a swing may press attack.
 	WeaponSeen weaponSeen = WeaponSeen::Unknown;
 	SInt32 playerAction = -1;
+	// The hands are being adjusted (the INI switch or the guided window): a
+	// closed grip holds a hand, it does not grab.
+	bool adjustingHands = false;
 	// The quad the game's menus hang on when they are not on a wrist - on
 	// the head or in the room - in tracking space, for the laser.
 	MenuQuad menuQuad;
