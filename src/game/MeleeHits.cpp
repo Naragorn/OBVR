@@ -179,7 +179,10 @@ bool ActorBound(void* actor, NiBound* out) {
 }
 
 SwingLedger g_ledger;
-bool g_armedReported = false;
+// The weapon type the armed line was last written for: again on each change,
+// the first run only ever said "fists" (type -1).
+SInt32 g_armedType = -1000;
+UInt32 g_armedLinesLeft = 8;
 bool g_refusedReported = false;
 UInt32 g_strikeLinesLeft = 20;
 
@@ -234,14 +237,44 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 	const Blade blade = BladeInWorld(camera->worldTransform.rot, camera->worldTransform.pos,
 	                                 strike.handRotation, strike.handOffsetUnits, reach);
 
-	if (!g_armedReported) {
-		g_armedReported = true;
+	if (WeaponTypeOf(weapon) != g_armedType && g_armedLinesLeft > 0) {
+		g_armedType = WeaponTypeOf(weapon);
+		--g_armedLinesLeft;
 		OBVR_LOG("Hands: strikes by motion armed - weapon type %d, reach %.1f units (the reach "
 		         "setting is \"%s\" = %.1f), within %.2f of a body's bound plus %.1f units",
 		         WeaponTypeOf(weapon), reach, SettingNameOrEmpty(addr::kCombatDistanceSetting),
 		         *reinterpret_cast<const float*>(addr::kCombatDistanceSetting), strike.boundFactor,
 		         strike.padUnits);
 	}
+
+	// A swing that struck nothing, said once when the next swing starts: how
+	// close the blade came to the nearest living body and how close it had to
+	// come. No run has logged a strike yet ("the blade struck" never appears),
+	// and whether the blade misses by a hand's width or by metres is the
+	// first thing to know.
+	static UInt32 s_missSerial = 0;
+	static bool s_missStruck = false;
+	static UInt32 s_missBodies = 0;
+	static float s_missNearest = -1.0f;
+	static float s_missNeeded = 0.0f;
+	static float s_missReach = 0.0f;
+	static SInt32 s_missType = 0;
+	static UInt32 s_missLinesLeft = 20;
+	if (strike.swingSerial != s_missSerial) {
+		if (s_missSerial != 0 && !s_missStruck && s_missLinesLeft > 0) {
+			--s_missLinesLeft;
+			OBVR_LOG("Hands: swing %u struck nothing - weapon type %d, reach %.0f; %u bodies "
+			         "near, the nearest %.0f units from the blade, %.0f needed",
+			         s_missSerial, s_missType, s_missReach, s_missBodies, s_missNearest,
+			         s_missNeeded);
+		}
+		s_missSerial = strike.swingSerial;
+		s_missStruck = false;
+		s_missBodies = 0;
+		s_missNearest = -1.0f;
+	}
+	s_missReach = reach;
+	s_missType = WeaponTypeOf(weapon);
 
 	auto* const manager = reinterpret_cast<void*>(addr::kActorProcessManager);
 	auto* node = static_cast<ListNode*>(
@@ -263,6 +296,16 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		if (!ActorBound(actor, &bound)) {
 			continue;
 		}
+		{
+			const float distance = SegmentPointDistance(blade.base, blade.tip, bound.center);
+			if (distance < 2048.0f) {
+				++s_missBodies;
+				if (s_missNearest < 0.0f || distance < s_missNearest) {
+					s_missNearest = distance;
+					s_missNeeded = bound.radius * strike.boundFactor + strike.padUnits;
+				}
+			}
+		}
 		if (!BladeStrikes(blade, bound.center, bound.radius, strike.boundFactor, strike.padUnits)) {
 			continue;
 		}
@@ -273,6 +316,7 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		                                                          strike.heavy ? 1u : 0u, nullptr,
 		                                                          actor);
 		++struck;
+		s_missStruck = true;
 		if (g_strikeLinesLeft > 0) {
 			--g_strikeLinesLeft;
 			OBVR_LOG("Hands: the blade struck %08X (%s, bound radius %.0f, %.0f units from its "

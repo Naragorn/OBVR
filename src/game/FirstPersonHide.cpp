@@ -11,16 +11,17 @@ namespace obvr::game {
 namespace {
 
 constexpr UInt16 kAppCulledBit = 0x0001;
-constexpr UInt32 kMaxDepth = 6;
 constexpr UInt32 kMaxHidden = 32;
 
-// How deep a search for a named bone may go. The hide list's meshes hang a
-// level or two under the root, which kMaxDepth covers; a bone does not. In a
+// How deep a search for a named bone - and the hide walk - may go. The hide
+// list's meshes hang a level or two under the root; a bone does not. In a
 // biped the hand is the far end of a chain - Bip01, its pelvis, three spine
 // bones, the neck or clavicle, upper arm, forearm, hand - well past six
-// levels, which is why "Bip01 R Hand" was never found with kMaxDepth (the
-// first Full VR headset run, 2026-09-25: both hands moved as one unit). Deep
-// enough for any skeleton, still a bound against a cycle in a broken tree.
+// levels, which is why "Bip01 R Hand" was never found with a limit of six
+// (the first Full VR headset run, 2026-09-25: both hands moved as one unit).
+// The bones a sheathed weapon hangs on (SideWeapon, BackWeapon, Quiver) are
+// as deep, so the hide walk shares the limit. Deep enough for any skeleton,
+// still a bound against a cycle in a broken tree.
 constexpr UInt32 kMaxFindDepth = 32;
 
 bool LooksLikeObject(const void* pointer) {
@@ -157,7 +158,7 @@ bool StillUnder(const UInt8* root, const UInt8* node, UInt32 depth) {
 	if (root == node) {
 		return true;
 	}
-	if (depth >= kMaxDepth || !ClassIsNode(ClassNameOf(root))) {
+	if (depth >= kMaxFindDepth || !ClassIsNode(ClassNameOf(root))) {
 		return false;
 	}
 	UInt32 count = 0;
@@ -187,7 +188,7 @@ void HideMatching(UInt8* node, const char* list, UInt32 depth) {
 			}
 		}
 	}
-	if (depth >= kMaxDepth || !ClassIsNode(ClassNameOf(node))) {
+	if (depth >= kMaxFindDepth || !ClassIsNode(ClassNameOf(node))) {
 		return;
 	}
 	UInt32 count = 0;

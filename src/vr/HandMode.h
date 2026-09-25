@@ -48,6 +48,9 @@ struct HandSettings {
 	// follow - by the comma-separated list of node names.
 	bool forceFirstPerson = true;
 	bool hideArms = true;
+	// Hide the sheaths and what hangs in them (the side-weapon, back-weapon and
+	// quiver bones, and any "Scb" scabbard): they rode with the right hand.
+	bool hideSheaths = true;
 	char hideNodes[128] = "Arms";
 
 	// The laser cursor: how much of the remaining distance the game's cursor

@@ -441,13 +441,21 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_handsAwayForDialog =
 			game::StepDialogApproach(s_approach, game::TakeDialogCameraCall(), menuIsUp);
 		const bool handsAway = g_handsAwayForDialog || menuIsUp;
-		static char hideList[160];
-		if (handsAway) {
-			std::snprintf(hideList, sizeof(hideList), "%s,Hand", config.hands.hideNodes);
-		}
-		game::HideFirstPersonNodes(
-			(config.hands.hideArms || handsAway) && !ReadIsThirdPerson(),
-			handsAway ? hideList : config.hands.hideNodes);
+		// The sheaths: a weapon's scabbard is its own node, "Scb", which the
+		// engine hangs on the skeleton's side-weapon bone (cs.uesp.net,
+		// NifSkope Comprehensive Guide, "Scabbards"), and a sheathed weapon
+		// hangs there with it. In the first-person skeleton that bone moved
+		// with the right hand, so the scabbard floated in the room beside it
+		// (2026-09-25). The bones a sheathed weapon, a bow or a quiver hang on
+		// are hidden with everything under them; "Scb" is named too, for a
+		// scabbard hung anywhere else.
+		static char hideList[256];
+		std::snprintf(hideList, sizeof(hideList), "%s%s%s%s",
+		              config.hands.hideArms ? config.hands.hideNodes : "",
+		              config.hands.hideArms ? "," : "",
+		              config.hands.hideSheaths ? "SideWeapon,BackWeapon,Quiver,Scb," : "",
+		              handsAway ? "Hand" : "");
+		game::HideFirstPersonNodes(!ReadIsThirdPerson(), hideList);
 	} else {
 		game::HideFirstPersonNodes(false, "");
 		game::ForgetStrikes();
