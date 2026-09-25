@@ -71,12 +71,12 @@ Tested on one headset (a Dream Air) with Valve Index controllers through SteamVR
 [*]Install [url=https://www.nexusmods.com/oblivion/mods/37952]xOBSE[/url] as its page describes.
 [*]Install [url=https://github.com/doitsujin/dxvk/releases/latest]DXVK[/url]: from the archive's [i]x32[/i] folder, put [i]d3d9.dll[/i] next to Oblivion.exe. Only that one file.
 [*]Extract the OBVR archive into Oblivion's [i]Data[/i] folder. It contains OBSE/Plugins/OBVR.dll, OBSE/Plugins/OBVR.ini and the license text, nothing else. Under Mod Organizer 2 install it from the archive as an ordinary mod.
-[*]Copy the [b]32-bit[/b] [i]openvr_api.dll[/i] from SteamVR, at [i]Steam\steamapps\common\SteamVR\bin\win32\openvr_api.dll[/i], into [i]Data\OBSE\Plugins\[/i] next to OBVR.dll. The 64-bit one from bin\win64 will not load. Under MO2 put it into the same folder of the OBVR mod.
+[*]Nothing to copy from SteamVR: from 0.2.2 on the archive brings the [b]32-bit[/b] [i]openvr_api.dll[/i] (OpenVR 2.15.6, BSD-3-Clause, its license beside it).
 [*]Start SteamVR, then start the game through the OBSE loader (Steam users: the Steam loader DLL does this for the normal Play button).
 [/list]
 The first start opens the walkthrough in the headset: choose the seated experience, set the comfort basics, done. [i]OBVR.log[/i] is written next to Oblivion.exe and opens with the OBVR, xOBSE and Oblivion versions found; further down it says whether DXVK answered ("DXVK") and whether SteamVR was reached ("OpenVR").
 
-[b]Uninstalling:[/b] delete OBVR.dll, OBVR.ini, OBVR-crosshair.cache and openvr_api.dll from Data\OBSE\Plugins. OBVR writes nothing else and touches no save.
+[b]Uninstalling:[/b] delete OBVR.dll, OBVR.ini, OBVR-LICENSE.txt, OBVR-crosshair.cache, openvr_api.dll, openvr_api-LICENSE.txt and the OBVR_Input folder from Data\OBSE\Plugins, and the OBVR XML files from Data\Menus. OBVR writes nothing else and touches no save.
 
 [size=4][b]Compatibility[/b][/size]
 [list]
@@ -135,7 +135,7 @@ llde and the xOBSE team, for the script extender this runs in. The DXVK project,
 | Latest version | yes |
 | Category | Main Files |
 | Main Vortex file | yes |
-| Description | Extracts into Oblivion's Data folder: OBSE/Plugins/OBVR.dll, OBVR.ini and the license. Needs xOBSE, DXVK and SteamVR's 32-bit openvr_api.dll next to the DLL, see the description. |
+| Description | Extracts into Oblivion's Data folder: OBSE/Plugins/OBVR.dll, OBVR.ini, the controller bindings, the 32-bit openvr_api.dll, the licenses and the MenuQue menus. Needs xOBSE, DXVK, MenuQue and SteamVR, see the description. |
 | Archive | `dist/OBVR-0.1.3.zip`, the same file as the GitHub release |
 
 The zip is already laid out the way Nexus recommends: the game-relative folder
@@ -147,7 +147,7 @@ structure, no extra parent folder.
 | --- | --- | --- |
 | Oblivion Script Extender (OBSE xOBSE) | https://www.nexusmods.com/oblivion/mods/37952 | 22.13 or newer; pick it from the Nexus list so it links |
 | DXVK | https://github.com/doitsujin/dxvk/releases/latest | 32-bit d3d9.dll next to Oblivion.exe, from the x32 folder |
-| SteamVR | https://store.steampowered.com/app/250820/SteamVR/ | and its 32-bit openvr_api.dll next to OBVR.dll |
+| SteamVR | https://store.steampowered.com/app/250820/SteamVR/ | installed and running; its client library ships with OBVR |
 
 Official DLC requirements: none.
 
@@ -164,9 +164,9 @@ own permissions" and use this text:
 > under the same license, and say what you changed. No further permission is needed and
 > none will be refused. Source: https://github.com/Naragorn/OBVR
 
-- Third-party content: none. The archive contains only OBVR's own DLL, INI and the GPL
-  text. `openvr_api.dll` is deliberately not included; the description tells users to
-  take it from their SteamVR install.
+- Third-party content: Valve's `openvr_api.dll` (OpenVR 2.15.6, BSD-3-Clause), shipped
+  with its license as `openvr_api-LICENSE.txt`; see `third_party/openvr/README.md`.
+  Everything else is OBVR's own.
 - Credits field: the same names as the Credits section of the description.
 - Donations: on, with the Patreon link. (Whether Nexus lets a mod page link Patreon as
   the donation target or only shows a generic switch is something to confirm in the

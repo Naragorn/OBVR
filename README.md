@@ -127,12 +127,14 @@ RTX 4090, Windows 11. Anything else is untested, which is exactly what reports a
    `x32` folder, put `d3d9.dll` next to `Oblivion.exe`. Only that one file.
 3. Download `OBVR-<version>.zip` from this repository's **[Releases](https://github.com/Naragorn/OBVR/releases)** page and extract it
    into Oblivion's `Data` folder. It contains `OBSE/Plugins/OBVR.dll`,
-   `OBSE/Plugins/OBVR.ini`, the controller bindings in `OBSE/Plugins/OBVR_Input/` (from
-   0.2.2 on), the native MenuQue XML menus and the license text.
+   `OBSE/Plugins/OBVR.ini`, the controller bindings in `OBSE/Plugins/OBVR_Input/` and
+   Valve's 32-bit `openvr_api.dll` with its license (both from 0.2.2 on), the native
+   MenuQue XML menus and the license text.
 4. Install [MenuQue v16b](https://www.nexusmods.com/oblivion/mods/32200): merge its
    `Data` folder into Oblivion, preserving `OBSE/Plugins/MenuQue.dll` and the
    `OBSE/Plugins/MenuQue/` subfolder. Under MO2, install and enable it as a separate mod.
-5. Copy the **32-bit** `openvr_api.dll` from SteamVR - it is at
+5. From 0.2.2 on the archive brings the **32-bit** `openvr_api.dll` (OpenVR 2.15.6).
+   For 0.2.1 and older, copy it from SteamVR - it is at
    `Steam\steamapps\common\SteamVR\bin\win32\openvr_api.dll` - into `Data/OBSE/Plugins/`
    next to `OBVR.dll`. The 64-bit one from `bin/win64` will not load into Oblivion.
 6. **You must disable the Steam Overlay before playing OBVR.** In Steam, in your Steam Library,
@@ -157,17 +159,18 @@ anchors its own files on `OBVR.dll`:
 | File | Where OBVR looks | Under MO2 |
 | --- | --- | --- |
 | `OBVR.ini` | next to `OBVR.dll` first, then the game root | virtualised, ships with the mod |
-| `openvr_api.dll` | next to `OBVR.dll` first, then the default search | virtualised, put it in the mod |
+| `openvr_api.dll` | next to `OBVR.dll` first, then the default search | virtualised, ships with the mod from 0.2.2 |
 | `OBVR-crosshair.cache` | next to `OBVR.dll` | virtualised |
 | `OBVR.log` | game root, always | written for real |
 
 So the release archive is an ordinary MO2 mod: install it from the archive as it is, with
-`OBSE/Plugins/` and `Menus/` inside and no `Root` folder, and drop `openvr_api.dll` into the same
-`OBSE/Plugins/` folder of that mod.
+`OBSE/Plugins/` and `Menus/` inside and no `Root` folder. Up to 0.2.1, drop
+`openvr_api.dll` into the same `OBSE/Plugins/` folder of that mod.
 
 ### Uninstalling
 
-Delete `OBVR.dll`, `OBVR.ini`, `OBVR-crosshair.cache` and `openvr_api.dll` from
+Delete `OBVR.dll`, `OBVR.ini`, `OBVR-LICENSE.txt`, `OBVR-crosshair.cache`,
+`openvr_api.dll`, `openvr_api-LICENSE.txt` and the `OBVR_Input` folder from
 `Data/OBSE/Plugins/`. Also remove `Data/Menus/Generic/OBVR_Onboarding.xml`,
 `Data/Menus/Generic/OBVR_Settings.xml`, and `Data/Menus/Prefabs/OBVR/button_highlight.xml`.
 Keep MenuQue if other mods use it. OBVR touches no save. `[Camera] HookEnabled=0`
