@@ -1128,13 +1128,21 @@ inline GrabReachVerdict StepGrabReach(GrabReachState& s, bool gripHeld, bool tar
 		s = GrabReachState{};
 		return v;
 	}
+	// The pick stays through the hand while the key is down. The key is sent
+	// at Present and read by the game's input on a later frame; the pick went
+	// back to the laser the moment the key went down, so by the time the game
+	// looked for what to take, the target had moved off the object: the
+	// 2026-09-25 late run sent the key twenty times ("took ... key 5A down")
+	// and the grab update never ran once.
 	if (s.grabbing) {
 		v.key = true;
+		v.reachPick = true;
 		return v;
 	}
 	if (s.armedFrames >= kGrabReachSettleFrames && targetInReach) {
 		s.grabbing = true;
 		v.key = true;
+		v.reachPick = true;
 		return v;
 	}
 	if (s.armedFrames < kGrabReachSettleFrames) {

@@ -1466,9 +1466,10 @@ void TestGrabReach() {
 			Check(v.reachPick && !v.key, "the pick settles through the hand before anything is taken");
 		}
 		v = StepGrabReach(s, true, true);
-		Check(!v.reachPick && v.key && s.grabbing, "then something in reach is taken");
+		Check(v.reachPick && v.key && s.grabbing,
+		      "then something in reach is taken - the pick stays on it while the key is read");
 		v = StepGrabReach(s, true, false);
-		Check(v.key && !v.reachPick, "and held, wherever it is, while the grip stays closed");
+		Check(v.key && v.reachPick, "and held, wherever it is, while the grip stays closed");
 		v = StepGrabReach(s, false, false);
 		Check(!v.key && !v.reachPick && !s.grabbing && s.armedFrames == 0,
 		      "the grip opening lets go - the throw - and starts over");
