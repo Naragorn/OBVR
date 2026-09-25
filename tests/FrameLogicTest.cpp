@@ -1,4 +1,4 @@
-﻿// Checks the per-frame bookkeeping of the camera hook.
+// Checks the per-frame bookkeeping of the camera hook.
 //
 // The callback these belong to cannot be tested - it needs a live CameraNode
 // and reads the player through a hard-coded address - so the decisions it makes
@@ -1286,6 +1286,15 @@ void TestCrosshairTooltipPolicy() {
 		Check(same(StepDeathView(s, true, true, b), a), "the sinking death view is held off");
 		Check(same(StepDeathView(s, true, false, b), b) && !s.held, "alive again: released");
 		Check(same(StepDeathView(s, false, true, b), b) && !s.held, "switched off: the game's view");
+		using obvr::camera::MenuCameraBase;
+		DeathViewState held;
+		StepDeathView(held, true, true, a);
+		Check(same(MenuCameraBase(b, held, false), a),
+		      "the load menu at the end of a death: the held place, not the game's death camera");
+		Check(same(MenuCameraBase(b, held, true), b), "the body view asked for: the game's camera");
+		Check(same(MenuCameraBase(b, DeathViewState{}, false), b) &&
+		          same(MenuCameraBase(b, DeathViewState{}, true), b),
+		      "nothing held: the game's camera either way");
 		using obvr::camera::kDeathGreyShade;
 		using obvr::camera::ShadeForFrame;
 		Check(ShadeForFrame(0x80112233u, true, true) == kDeathGreyShade &&
@@ -1979,6 +1988,32 @@ void TestAimPitchWanted() {
 		}
 	}
 	Check(true, "all sixty-four combinations of the six gates agree");
+}
+
+void TestGrabStartRotation() {
+	std::printf("The grab's start looks at the point the pick hit\n");
+	using obvr::camera::GrabStartRotation;
+	using obvr::camera::kAimPitchLimitRadians;
+	const auto Near = [](float a, float b) { return a - b < 1e-3f && b - a < 1e-3f; };
+	const obvr::NiPoint3 eye{100.0f, 200.0f, 50.0f};
+	float z = -1.0f;
+	float x = -1.0f;
+	Check(GrabStartRotation(eye, obvr::NiPoint3{100.0f, 260.0f, 50.0f}, z, x) && Near(z, 0.0f) &&
+	          Near(x, 0.0f),
+	      "straight north, level: heading 0, pitch 0");
+	Check(GrabStartRotation(eye, obvr::NiPoint3{160.0f, 200.0f, 50.0f}, z, x) &&
+	          Near(z, 1.5707963f),
+	      "east is a quarter turn clockwise");
+	Check(GrabStartRotation(eye, obvr::NiPoint3{40.0f, 200.0f, 50.0f}, z, x) &&
+	          Near(z, 4.7123890f),
+	      "west is three quarters, kept in 0..2pi");
+	Check(GrabStartRotation(eye, obvr::NiPoint3{100.0f, 230.0f, 20.0f}, z, x) && Near(z, 0.0f) &&
+	          Near(x, 0.7853982f),
+	      "down at 45 degrees: rotX positive, looking down");
+	Check(GrabStartRotation(eye, obvr::NiPoint3{100.0f, 200.0f, 10.0f}, z, x) &&
+	          Near(x, kAimPitchLimitRadians),
+	      "straight down: held at the aim's limit");
+	Check(!GrabStartRotation(eye, eye, z, x), "the same point: no direction");
 }
 
 void TestPlayerPitchForGaze() {
@@ -3324,6 +3359,7 @@ void TestThirdPersonAimVisual() {
 
 
 int main() {
+	TestGrabStartRotation();
 	TestRecenterPlan();
 	TestChaseCamera();
 	std::printf("\n");

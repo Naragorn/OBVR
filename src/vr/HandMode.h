@@ -107,6 +107,10 @@ struct HandSettings {
 	// A light-brown ring on the object a closed grip would take, while it is
 	// within reach (render::ReachMarker).
 	bool reachMarker = true;
+	// How close a hand has to be for the ring to show, metres, and how
+	// opaque it is (0 to 1).
+	float reachMarkerMetres = 0.3f;
+	float reachMarkerOpacity = 0.85f;
 
 	// Strikes by motion: with a swung weapon in hand the swing itself is the
 	// attack - no attack control, no animation - and the blade strikes the

@@ -601,6 +601,21 @@ bool YawWriteLanded(float wroteYaw, float engineYawNow, float stepTaken) {
 	return distance < step * 0.5f;
 }
 
+bool GrabStartRotation(const NiPoint3& from, const NiPoint3& to, float& rotZ, float& rotX) {
+	const NiPoint3 d{to.x - from.x, to.y - from.y, to.z - from.z};
+	const float lengthSquared = d.LengthSquared();
+	if (!(lengthSquared > 1.0e-6f)) {
+		return false;
+	}
+	float heading = math::Atan2(d.x, d.y);
+	if (heading < 0.0f) {
+		heading += math::kTwoPi;
+	}
+	rotZ = heading;
+	rotX = PlayerPitchForGaze(d.z / math::Sqrt(lengthSquared));
+	return true;
+}
+
 float PlayerPitchForGaze(float viewSinPitch) {
 	const float radians = -math::Asin(viewSinPitch);
 	if (radians > kAimPitchLimitRadians) {

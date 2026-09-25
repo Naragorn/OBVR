@@ -288,6 +288,23 @@ inline constexpr UInt32 kPlayerGrabDistanceOffset = 0x584;
 // along the line the pick found the object on - the update alone, wrapped at
 // kCallGrabUpdate, came too late: most grabs were refused (2026-09-25 log,
 // "the engine did NOT take it" with the object 6-21 units from the hand).
+// The start itself (0x0066D120, called at 0x00671327) does not take the
+// pick's line: it casts its own ray, 1000 units from the first-person camera
+// node's world translation ([0x00B3BB0C]+0x88, called at 0x0066D26B through
+// 0x005F11F0) along the player's rotation fields, and grabs whatever body
+// that ray hits - a table or the floor refuses the grab (release at
+// 0x0066D5C4..0x0066D5F2, motion types 6 and 7), another loose object is
+// taken in its place. Only when the ray misses everything does it fall back
+// to the crosshair ref's own body (0x0066D4BC). So the rotation swapped
+// around the handler has to point from that origin at the point the pick
+// hit: InterfaceManager+0xD0, written by the pick 0x005806D0 from the same
+// origin and direction the world-pick hook replaces, beside the ref at +0xC8.
+inline constexpr UInt32 kFirstPersonCameraNodePointer = 0x00B3BB0C;
+// The grab's mode, non-zero while a grab runs (tested at 0x0067127F).
+inline constexpr UInt32 kPlayerGrabModeOffset = 0x57C;
+inline constexpr UInt32 kNodeWorldTranslateOffset = 0x88;
+inline constexpr UInt32 kInterfaceManagerPickRefOffset = 0xC8;
+inline constexpr UInt32 kInterfaceManagerPickHitOffset = 0xD0;
 inline constexpr UInt32 kCallGrabHandler = 0x0067339B;
 inline constexpr UInt32 kGrabHandler = 0x00671170;
 

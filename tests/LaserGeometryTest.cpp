@@ -3,8 +3,10 @@
 // the overlays need, and the same ray carried into the world for the pick.
 
 #include <cstdio>
+#include <limits>
 
 #include "core/Rotation.h"
+#include "render/ReachMarker.h"
 #include "vr/LaserGeometry.h"
 
 namespace {
@@ -105,30 +107,7 @@ void TestWorldRay() {
 }  // namespace
 
 void TestReach() {
-	std::printf("Grab by reach: the pick through the hand, and the reach\n");
-	const NiMatrix33 identity = NiMatrix33::Identity();
-	const NiPoint3 head{10.0f, 20.0f, 100.0f};
-	// A hand 40 units ahead and 30 down: the ray runs from the head through
-	// it, starting 20 units short of the hand.
-	LaserWorldRay ray = HandReachWorldRay(identity, head, NiPoint3{0.0f, 40.0f, -30.0f}, 20.0f);
-	Check(NearPoint(ray.direction, NiPoint3{0.0f, 0.8f, -0.6f}), "from the head through the hand");
-	Check(NearPoint(ray.origin, NiPoint3{10.0f, 20.0f + 0.8f * 30.0f, 100.0f - 0.6f * 30.0f}),
-	      "starting the back distance short of the hand");
-	// Back longer than the reach to the hand: starts at the head, never behind it.
-	ray = HandReachWorldRay(identity, head, NiPoint3{0.0f, 10.0f, 0.0f}, 50.0f);
-	Check(NearPoint(ray.origin, head) && NearPoint(ray.direction, NiPoint3{0.0f, 1.0f, 0.0f}),
-	      "a hand closer than the back distance starts the ray at the head");
-	// The head's turn carries the hand's offset.
-	const NiMatrix33 turned = EulerToMatrix(0.0f, 0.0f, 90.0f);
-	ray = HandReachWorldRay(turned, head, NiPoint3{0.0f, 10.0f, 0.0f}, 0.0f);
-	Check(NearPoint(ray.direction, turned * NiPoint3{0.0f, 1.0f, 0.0f}) &&
-	          NearPoint(ray.origin, head + turned * NiPoint3{0.0f, 10.0f, 0.0f}),
-	      "a turned head turns the ray, and zero back starts at the hand");
-	// A hand at the eyes: the head's forward, from the head.
-	ray = HandReachWorldRay(turned, head, NiPoint3{0.0f, 0.0f, 0.001f}, 20.0f);
-	Check(NearPoint(ray.origin, head) && NearPoint(ray.direction, turned * NiPoint3{0.0f, 1.0f, 0.0f}),
-	      "a hand at the eyes falls back to the head's forward");
-
+	std::printf("Grab by reach: the hand within reach of what the laser touched\n");
 	Check(WithinReach(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{3.0f, 4.0f, 0.0f}, 5.0f),
 	      "exactly at the reach is within it");
 	Check(!WithinReach(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{3.0f, 4.0f, 0.1f}, 5.0f),
@@ -186,7 +165,18 @@ void TestWorldInTracking() {
 	      "the marker is turned like the head, placed at the point");
 }
 
+void TestMarkerAlpha() {
+	std::printf("The reach marker's opacity\n");
+	using obvr::render::ReachMarkerAlpha;
+	Check(Near(ReachMarkerAlpha(0.85f), 0.85f), "a setting in range is the alpha");
+	Check(ReachMarkerAlpha(1.7f) == 1.0f && ReachMarkerAlpha(1.0f) == 1.0f, "above 1: fully opaque");
+	Check(ReachMarkerAlpha(-0.2f) == 0.0f && ReachMarkerAlpha(0.0f) == 0.0f, "0 or below: invisible");
+	const float nan = std::numeric_limits<float>::quiet_NaN();
+	Check(ReachMarkerAlpha(nan) == 0.0f, "not a number: invisible, never passed on");
+}
+
 int main() {
+	TestMarkerAlpha();
 	TestWorldInTracking();
 	TestParts();
 	TestReach();

@@ -64,6 +64,27 @@ UInt32 HudInfoArrayEntry() {
 
 }  // namespace
 
+bool ReadPickHit(NiPoint3& hit) {
+	const auto* const manager =
+		*reinterpret_cast<const UInt8* const*>(addr::kInterfaceManagerPointer);
+	if (!LooksLikeObject(manager)) {
+		return false;
+	}
+	const auto* const ref =
+		*reinterpret_cast<const UInt8* const*>(manager + addr::kInterfaceManagerPickRefOffset);
+	if (!LooksLikeObject(ref)) {
+		return false;
+	}
+	const auto* const at =
+		reinterpret_cast<const float*>(manager + addr::kInterfaceManagerPickHitOffset);
+	const NiPoint3 read{at[0], at[1], at[2]};
+	if (!LooksLikePosition(read)) {
+		return false;
+	}
+	hit = read;
+	return true;
+}
+
 CrosshairTarget ReadCrosshairTarget() {
 	CrosshairTarget target;
 

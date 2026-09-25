@@ -541,6 +541,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.look.deathViewStill = ReadBool("Look", "DeathViewStill", config.look.deathViewStill, path);
 	config.look.deathGrey = ReadBool("Look", "DeathGrey", config.look.deathGrey, path);
 	config.look.deathMenuTint = ReadBool("Look", "DeathMenuTint", config.look.deathMenuTint, path);
+	config.look.deathBodyView = ReadBool("Look", "DeathBodyView", config.look.deathBodyView, path);
 	config.look.snapTurnDeadZone =
 		ReadFloat("Look", "SnapTurnDeadZone", config.look.snapTurnDeadZone, path);
 	config.look.smoothTurning =
@@ -666,6 +667,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 			ReadFloat("Hands", "HandGripForwardMetres", h.handGripForwardMetres, path);
 		h.grabReachMetres = ReadFloat("Hands", "GrabReachMetres", h.grabReachMetres, path);
 		h.reachMarker = ReadBool("Hands", "ReachMarker", h.reachMarker, path);
+		h.reachMarkerMetres = ReadFloat("Hands", "ReachMarkerMetres", h.reachMarkerMetres, path);
+		h.reachMarkerOpacity = ReadFloat("Hands", "ReachMarkerOpacity", h.reachMarkerOpacity, path);
 		h.menuOnRight = ReadBool("Hands", "MenuOnRight", h.menuOnRight, path);
 		h.pokeTipForward = ReadFloat("Hands", "PokeTipForward", h.pokeTipForward, path);
 		h.poke.hover = ReadFloat("Hands", "PokeHover", h.poke.hover, path);

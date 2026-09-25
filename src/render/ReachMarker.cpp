@@ -29,7 +29,7 @@ void PaintRing(UInt8* rgba) {
 			pixel[0] = 222;
 			pixel[1] = 190;
 			pixel[2] = 140;
-			pixel[3] = static_cast<UInt8>(alpha * 220.0f);
+			pixel[3] = static_cast<UInt8>(alpha * 255.0f);
 		}
 	}
 }
@@ -37,7 +37,7 @@ void PaintRing(UInt8* rgba) {
 }  // namespace
 
 void ReachMarker::Submit(vr::OpenVRBackend& backend, bool visible,
-                         const vr::openvr::HmdMatrix34& trackingToMarker) {
+                         const vr::openvr::HmdMatrix34& trackingToMarker, float opacity) {
 	if (!visible) {
 		if (m_visible && m_overlay != vr::openvr::kOverlayHandleInvalid) {
 			backend.HideOverlay(m_overlay);
@@ -63,6 +63,11 @@ void ReachMarker::Submit(vr::OpenVRBackend& backend, bool visible,
 			return;
 		}
 		backend.SetOverlayWidthInMetres(m_overlay, kReachMarkerWidthMetres);
+	}
+	const float alpha = ReachMarkerAlpha(opacity);
+	if (alpha != m_alpha) {
+		backend.SetOverlayAlpha(m_overlay, alpha);
+		m_alpha = alpha;
 	}
 	backend.SetOverlayTransformAbsolute(m_overlay, trackingToMarker);
 	if (!m_visible) {

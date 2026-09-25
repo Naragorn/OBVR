@@ -5,6 +5,7 @@
 #include "core/AroundCall.h"
 #include "core/Log.h"
 #include "core/Memory.h"
+#include "game/CrosshairTarget.h"
 #include "game/GameAddresses.h"
 #include "game/PlayerAim.h"
 
@@ -225,6 +226,33 @@ void InstallCallSite(Site& site, UInt32 callSite, UInt32 target, UInt32 before, 
 	         stubAddress, target);
 }
 
+// Sets the player's rotation to the given one and remembers what it was -
+// Swap with the rotation handed in rather than taken from the gaze.
+bool SwapTo(const Site& owner, float rotZ, float rotX) {
+	if (g_swapped || !ReadPlayerRotation(g_saved)) {
+		return false;
+	}
+	if (!WritePlayerYaw(rotZ)) {
+		return false;
+	}
+	WritePlayerPitch(rotX);
+	g_swapped = true;
+	g_swapOwner = &owner;
+	return true;
+}
+
+// Where the grab's start casts its ray from: the first-person camera node's
+// world translation (kFirstPersonCameraNodePointer).
+bool ReadGrabRayOrigin(NiPoint3& origin) {
+	const UInt32 node = *reinterpret_cast<const UInt32*>(addr::kFirstPersonCameraNodePointer);
+	if (!mem::LooksLikeObjectAddress(node)) {
+		return false;
+	}
+	const auto* at = reinterpret_cast<const float*>(node + addr::kNodeWorldTranslateOffset);
+	origin = NiPoint3{at[0], at[1], at[2]};
+	return true;
+}
+
 }  // namespace
 
 void InstallAimAtSource() {
@@ -414,6 +442,38 @@ extern "C" void __cdecl OBVR_AimSourceBeforeGrabHandler(void* actor) {
 	if (!game::g_grabWanted || !game::g_pose.wanted || player == 0 ||
 	    reinterpret_cast<UInt32>(actor) != player) {
 		return;
+	}
+	// The start casts its own ray from the first-person camera along the
+	// player's rotation and takes what it hits (kCallGrabHandler), so the
+	// rotation looks at the point the pick hit - the laser's point, where
+	// the object is. The line from the head through the hand passed beside
+	// the object and hit the table or the floor behind it: the refusals.
+	// Only for the start: with a grab running (the mode at +0x57C set, the
+	// handler's own "already grabbing" test at 0x0067127F) the held object
+	// goes along the hand's line, as the update inside is carried by this swap.
+	const bool grabRunning =
+		*reinterpret_cast<const UInt32*>(player + addr::kPlayerGrabModeOffset) != 0;
+	NiPoint3 origin{};
+	NiPoint3 hit{};
+	float rotZ = 0.0f;
+	float rotX = 0.0f;
+	static int s_linesLeft = 6;
+	if (!grabRunning && game::ReadGrabRayOrigin(origin) && game::ReadPickHit(hit) &&
+	    camera::GrabStartRotation(origin, hit, rotZ, rotX)) {
+		if (game::SwapTo(game::g_grabHandler, rotZ, rotX) && s_linesLeft > 0) {
+			--s_linesLeft;
+			OBVR_LOG("Aim: the grab's start looks at the pick's hit (%.0f, %.0f, %.0f) from the "
+			         "camera (%.0f, %.0f, %.0f) - heading %.4f, pitch %.4f",
+			         static_cast<double>(hit.x), static_cast<double>(hit.y),
+			         static_cast<double>(hit.z), static_cast<double>(origin.x),
+			         static_cast<double>(origin.y), static_cast<double>(origin.z),
+			         static_cast<double>(rotZ), static_cast<double>(rotX));
+		}
+		return;
+	}
+	if (!grabRunning && s_linesLeft > 0) {
+		--s_linesLeft;
+		OBVR_LOG("Aim: the grab's start found no pick hit - it looks along the hand's line");
 	}
 	game::Swap(game::g_grabHandler, "the grab handler");
 }

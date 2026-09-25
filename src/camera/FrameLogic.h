@@ -655,6 +655,26 @@ inline NiPoint3 StepDeathView(DeathViewState& s, bool enabled, bool dead,
 	return s.position;
 }
 
+// Where a menu frame's camera starts before the head is laid on
+// (PlaceMenuCamera). Normally the game's own camera of the last world frame;
+// while the death view is held, the held place - the load menu the game
+// opens at the end of a death is drawn over the world, and from the game's
+// camera that world was its sunk death view over the body, a cut on the
+// last frames before the loading screen (2026-09-25). Look.DeathBodyView
+// asks for that view.
+inline NiPoint3 MenuCameraBase(const NiPoint3& gameCamera, const DeathViewState& death,
+                               bool bodyView) {
+	return death.held && !bodyView ? death.position : gameCamera;
+}
+
+// The player's rotation that looks from `from` at `to`, for the grab's start
+// (GameAddresses.h, kCallGrabHandler): the engine casts its own ray from the
+// first-person camera along the player's rotation and takes what that ray
+// hits, so it has to point at the point the laser's pick hit. rotZ zero at
+// north (+y) growing clockwise, rotX positive looking down, through
+// PlayerPitchForGaze's limit. False when the two points coincide.
+bool GrabStartRotation(const NiPoint3& from, const NiPoint3& to, float& rotZ, float& rotX);
+
 // The picture after death, through the menu shade's pass at full strength
 // (render::ComposeShadeColor's ARGB, alpha 255) over the live stereo: grey
 // (a white tone), or - Look.DeathMenuTint - the menus' own tone, the brown of

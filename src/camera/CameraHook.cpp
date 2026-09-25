@@ -125,6 +125,8 @@ bool g_dualArmed = false;
 // See where they are written for why the node's own transform cannot serve.
 NiAVObject* g_menuBaseNode = nullptr;
 NiPoint3 g_menuBasePos{0.0f, 0.0f, 0.0f};
+// The death view held still (StepDeathView), read by the menu camera too.
+DeathViewState g_deathView;
 NiMatrix33 g_menuBaseRot;
 float g_menuBaseVerticalOffset = 0.0f;
 bool g_menuBaseThirdPerson = false;
@@ -653,8 +655,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			g_hand.grabWithLeftHand ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits;
 		const NiPoint3 handWorld = g_cyclopeanCameraWorldTransform.pos +
 		                           g_cyclopeanCameraWorldTransform.rot * offset;
+		// The point the laser touched, not the object's origin: the hand has
+		// to be at the object itself.
+		NiPoint3 hit = target.position;
+		game::ReadPickHit(hit);
 		inReach = target.haveRef &&
-		          vr::WithinReach(handWorld, target.position,
+		          vr::WithinReach(handWorld, hit,
 		                          config.hands.grabReachMetres * config.tracker.unitsPerMetre);
 		reachRef = target.haveRef ? target.refAddress : 0;
 	}
@@ -665,8 +671,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	game::SetGrabAtHand(reach.key, grabUnits);
 
 	// The reach marker ([Hands] ReachMarker): a light-brown ring on the object
-	// under the pick when it is within the grab's reach of either hand - the
-	// object a closed grip would take. The pick is the laser's with the grip
+	// under the pick when it is within ReachMarkerMetres of either hand - the
+	// object a closed grip would reach for. The pick is the laser's with the grip
 	// open and the hand's while reaching; either way what it found is asked.
 	{
 		bool markerShown = false;
@@ -675,25 +681,27 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		if (active && !menuIsUp && config.hands.reachMarker && g_cyclopeanCameraWorldValid &&
 		    backend.GetRenderPoseMatrix(head)) {
 			const game::CrosshairTarget target = game::ReadCrosshairTarget();
-			const float reachUnits = config.hands.grabReachMetres * config.tracker.unitsPerMetre;
+			NiPoint3 hit = target.position;
+			game::ReadPickHit(hit);
+			const float reachUnits = config.hands.reachMarkerMetres * config.tracker.unitsPerMetre;
 			const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
 			const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
 			const bool nearRight =
 				g_hand.rightHandValid &&
-				vr::WithinReach(camPos + camRot * g_hand.rightHandOffsetUnits, target.position,
+				vr::WithinReach(camPos + camRot * g_hand.rightHandOffsetUnits, hit,
 				                reachUnits);
 			const bool nearLeft =
 				g_hand.leftHandValid &&
-				vr::WithinReach(camPos + camRot * g_hand.leftHandOffsetUnits, target.position,
+				vr::WithinReach(camPos + camRot * g_hand.leftHandOffsetUnits, hit,
 				                reachUnits);
 			if (target.haveRef && (nearRight || nearLeft)) {
 				markerShown = true;
 				markerPose = vr::FacingHeadAt(
-					head, vr::WorldPointInTracking(head, camRot, camPos, target.position,
+					head, vr::WorldPointInTracking(head, camRot, camPos, hit,
 					                               config.tracker.unitsPerMetre));
 			}
 		}
-		g_reachMarker.Submit(backend, markerShown, markerPose);
+		g_reachMarker.Submit(backend, markerShown, markerPose, config.hands.reachMarkerOpacity);
 	}
 	// Whether the engine took it: its grab update runs only while it holds
 	// something, so a count unchanged a quarter of a second after the key
@@ -717,9 +725,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			const NiPoint3 handWorld = g_cyclopeanCameraWorldTransform.pos +
 			                           g_cyclopeanCameraWorldTransform.rot * offset;
 			const NiPoint3 toTarget = target.position - g_cyclopeanCameraWorldTransform.pos;
-			const NiPoint3 handToTarget = target.position - handWorld;
+			NiPoint3 hit = target.position;
+			game::ReadPickHit(hit);
+			const NiPoint3 handToTarget = hit - handWorld;
 			OBVR_LOG("Hands: grab - the engine %s it (target now %08X, %.0f units from the eyes, "
-			         "%.0f from the hand, the hand %.0f from the eyes)",
+			         "the laser's point %.0f from the hand, the hand %.0f from the eyes)",
 			         took ? "TOOK" : "did NOT take", target.haveRef ? target.refAddress : 0u,
 			         static_cast<double>(math::Sqrt(toTarget.LengthSquared())),
 			         static_cast<double>(math::Sqrt(handToTarget.LengthSquared())),
@@ -2083,7 +2093,8 @@ void PlaceMenuCamera(bool leftEye) {
 	const NiMatrix33 baseRotation = g_menuBaseRot;
 	const NiMatrix33 finalRotation = baseRotation * g_headTracker.GetCameraRotation();
 
-	NiPoint3 pos = g_menuBasePos + baseRotation * g_headTracker.GetCameraOffset();
+	NiPoint3 pos = MenuCameraBase(g_menuBasePos, g_deathView, config.look.deathBodyView) +
+	               baseRotation * g_headTracker.GetCameraOffset();
 	pos.z += g_menuBaseVerticalOffset;
 
 	// The same two numbers the camera hook uses, from the same place. They were
@@ -3940,13 +3951,12 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// Dead: the camera stays where it was when the player died, the head
 	// still free (StepDeathView) - the game's death view sinks otherwise.
 	{
-		static DeathViewState s_deathView;
 		const bool dead = game::PlayerIsDead();
-		const bool wasHeld = s_deathView.held;
+		const bool wasHeld = g_deathView.held;
 		cameraNode->localTransform.pos = StepDeathView(
-			s_deathView, config.look.deathViewStill, dead, cameraNode->localTransform.pos);
-		if (s_deathView.held != wasHeld) {
-			OBVR_LOG("Camera: the death view is %s", s_deathView.held ? "held still" : "released");
+			g_deathView, config.look.deathViewStill, dead, cameraNode->localTransform.pos);
+		if (g_deathView.held != wasHeld) {
+			OBVR_LOG("Camera: the death view is %s", g_deathView.held ? "held still" : "released");
 		}
 	}
 
@@ -3978,12 +3988,17 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		                      g_grabReachPick &&
 		                      (g_hand.grabWithLeftHand ? g_hand.leftHandValid : g_hand.rightHandValid);
 		if (reachRay) {
-			// A grip closed and nothing held yet: the pick runs from the head
-			// through that hand, for what the hand has reached.
-			const vr::LaserWorldRay ray = vr::HandReachWorldRay(
+			// A grip closed: the pick runs along that hand's laser - the beam
+			// the settings tilt, not the line from the head - starting the
+			// grab's reach behind the hand, so an object the hand is already
+			// inside is still ahead of the ray.
+			const bool left = g_hand.grabWithLeftHand;
+			const vr::LaserWorldRay ray = vr::HandLaserWorldRay(
 				finalRotation, cameraNode->localTransform.pos,
-				g_hand.grabWithLeftHand ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits,
-				hands.grabReachMetres * config.tracker.unitsPerMetre);
+				left ? g_hand.leftHandRotation : g_hand.rightHandRotation,
+				left ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits,
+				hands.laserPitchDegrees, left ? -hands.laserYawDegrees : hands.laserYawDegrees,
+				hands.laserOriginMetres - hands.grabReachMetres, config.tracker.unitsPerMetre);
 			game::SetWorldPickHandRay(ray.origin, ray.direction, true);
 		} else if (handRay) {
 			const vr::LaserWorldRay ray = vr::HandLaserWorldRay(

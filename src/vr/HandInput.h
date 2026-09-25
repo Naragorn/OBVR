@@ -1127,10 +1127,10 @@ inline bool SwingPressesAttack(bool strikeByMotion, bool weaponDrawn, bool gripH
 // The grab is the game's own (Z): it takes the reference the activation pick
 // found, holds it on a Havok spring and, let go, leaves it with the spring's
 // speed - which is the throw. What OBVR adds is how it starts: the hand goes
-// to the object and the grip closes. While a grip is held and nothing is
-// held yet, the pick runs from the head through that hand (reachPick); once
-// the pick has had kGrabReachSettleFrames to run that way and what it found
-// lies within reach of the hand, the key goes down and stays down until the
+// to the object and the grip closes. While a grip is held, the pick runs
+// along that hand's laser, started a reach behind the hand (reachPick); once
+// the pick has had kGrabReachSettleFrames to run that way and the point it
+// touched lies within reach of the hand, the key goes down and stays down until the
 // grip opens. A grip closed on nothing within reach grabs nothing.
 constexpr int kGrabReachSettleFrames = 2;
 

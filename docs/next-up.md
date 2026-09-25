@@ -60,10 +60,12 @@ taken from the player's Fatigue actor value per strike.
 
 ## Also open
 
-- **Grab reliability.** The start of the grab now looks along the hand's
-  line; the engine still refused most grabs in the 2026-09-25 late run (two
-  of twelve taken). The log line "the engine TOOK / did NOT take it" is the
-  measure.
+- **Grab reliability.** Cause found in the disassembly: the grab's start
+  casts its own ray from the first-person camera along the player's rotation
+  and takes what that ray hits (GameAddresses.h, kCallGrabHandler); the head-
+  to-hand line passed beside the object into the table or floor. The start now
+  looks at the point the laser's pick hit. Headset confirmation open; the log
+  line "the engine TOOK / did NOT take it" is the measure.
 - **Shield bash.** Not a vanilla action (UESP, Oblivion:Block: the Expert
   and Master perks give a chance of a stagger or disarm on a block; a manual
   bash exists only in Oblivion Remastered). A VR bash would be OBVR's own:

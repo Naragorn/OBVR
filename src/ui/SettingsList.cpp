@@ -52,6 +52,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.look.deathMenuTint = v != 0.0f; },
 	},
 	{
+		"Comfort", "Body view before load", "At the end of a death the view goes to your body",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "DeathBodyView",
+		+[](const Config& c) { return c.look.deathBodyView ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.look.deathBodyView = v != 0.0f; },
+	},
+	{
 		"Comfort", "Eye separation", "Wider feels smaller, narrower feels larger",
 		ItemKind::Number, 0.7f, 1.3f, 0.01f, 2, false,
 		"Render", "EyeSeparationScale",
@@ -437,6 +444,20 @@ const SettingDefinition kSettings[] = {
 		"Hands", "ReachMarker",
 		+[](const Config& c) { return c.hands.reachMarker ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.reachMarker = v != 0.0f; },
+	},
+	{
+		"Hands", "Reach marker distance", "How close a hand has to be for the ring to show, metres",
+		ItemKind::Number, 0.05f, 1.0f, 0.05f, 2, false,
+		"Hands", "ReachMarkerMetres",
+		+[](const Config& c) { return c.hands.reachMarkerMetres; },
+		+[](Config& c, float v) { c.hands.reachMarkerMetres = v; },
+	},
+	{
+		"Hands", "Reach marker opacity", "How solid the ring is, 0 to 1",
+		ItemKind::Number, 0.1f, 1.0f, 0.05f, 2, false,
+		"Hands", "ReachMarkerOpacity",
+		+[](const Config& c) { return c.hands.reachMarkerOpacity; },
+		+[](Config& c, float v) { c.hands.reachMarkerOpacity = v; },
 	},
 	{
 		"Hands", "Hand height", "Moves both hands along the controller's up axis, metres; lower is negative",

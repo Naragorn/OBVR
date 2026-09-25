@@ -113,6 +113,12 @@ struct CrosshairTarget {
 
 CrosshairTarget ReadCrosshairTarget();
 
+// The point the activation pick's ray hit its reference at, in world units
+// (InterfaceManager+0xD0, beside the ref at +0xC8). False with no ref or
+// nothing readable. The surface the laser touches, where the reference's
+// position is its origin.
+bool ReadPickHit(NiPoint3& hit);
+
 // Exposes the actual HUDReticle root tile for the isolated third-person HUD
 // draw, then hides it again. This is the same context-sensitive
 // hand/door/talk picture first person uses, not HUDInfoMenu::actionIcon (which
