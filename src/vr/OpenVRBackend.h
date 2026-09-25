@@ -275,6 +275,8 @@ public:
 
 	// The overlay's opacity, 0..1.
 	int SetOverlayAlpha(openvr::VROverlayHandle handle, float alpha) const;
+	// Higher draws over lower; the same order draws back to front by distance.
+	int SetOverlaySortOrder(openvr::VROverlayHandle handle, UInt32 sortOrder) const;
 
 	// Which part of the texture the overlay shows. Without this the overlay
 	// shows all of it - which is wrong the moment the texture is bigger than

@@ -388,6 +388,14 @@ int OpenVRBackend::SetOverlayColor(openvr::VROverlayHandle handle, float red, fl
 	return table->SetOverlayColor(handle, red, green, blue);
 }
 
+int OpenVRBackend::SetOverlaySortOrder(openvr::VROverlayHandle handle, UInt32 sortOrder) const {
+	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);
+	if (table == nullptr || table->SetOverlaySortOrder == nullptr) {
+		return -1;
+	}
+	return table->SetOverlaySortOrder(handle, sortOrder);
+}
+
 int OpenVRBackend::SetOverlayAlpha(openvr::VROverlayHandle handle, float alpha) const {
 	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);
 	if (table == nullptr || table->SetOverlayAlpha == nullptr) {

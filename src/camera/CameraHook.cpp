@@ -1,5 +1,7 @@
 #include "camera/CameraHook.h"
 
+#include <cstdio>
+
 #include "camera/CameraTrampoline.h"
 #include "camera/CastTrampoline.h"
 #include "camera/LookControl.h"
@@ -417,8 +419,18 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		if (config.firstPersonTreeProbe) {
 			game::ProbeFirstPersonTree();
 		}
-		game::HideFirstPersonNodes(config.hands.hideArms && !ReadIsThirdPerson(),
-		                           config.hands.hideNodes);
+		// In a menu the hands are not pinned (the arms placement stands down
+		// there), and with the game paused nothing animates them either: they
+		// stayed where the controllers last put them, two hands hanging in the
+		// room through a dialogue (2026-09-25). So in a menu the hand meshes
+		// ("Hand", hand.nif's shape) are hidden along with the arms.
+		static char hideList[160];
+		if (menuIsUp) {
+			std::snprintf(hideList, sizeof(hideList), "%s,Hand", config.hands.hideNodes);
+		}
+		game::HideFirstPersonNodes(
+			(config.hands.hideArms || menuIsUp) && !ReadIsThirdPerson(),
+			menuIsUp ? hideList : config.hands.hideNodes);
 	} else {
 		game::HideFirstPersonNodes(false, "");
 		game::ForgetStrikes();
@@ -2016,6 +2028,11 @@ void BeforeFirstScenePass() {
 				                                        hands.leftHandYaw),
 				                  cameraRot, cameraPos);
 			}
+			// The hands are where the controllers are, not where the animation
+			// would have them: their bounds follow, so the engine does not cull
+			// a hand in view by an arm swung out of it. Arm's reach around the
+			// camera - 100 units is about 1.4 m.
+			game::KeepFirstPersonNodesInView("Hand", cameraPos, 100.0f);
 		}
 	} else if (g_weaponTurnWanted) {
 		game::TurnFirstPersonArms(g_weaponTurnRadians);

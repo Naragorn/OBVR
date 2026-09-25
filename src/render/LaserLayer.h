@@ -68,6 +68,8 @@ vr::openvr::HmdMatrix34 LaserBeamTransform(float lengthMetres, float pitchDegree
 constexpr UInt32 kLaserTextureWidth = 4;
 constexpr UInt32 kLaserTextureHeight = 1024;
 constexpr UInt32 kLaserDotTexture = 32;
+// The beam over the menus and the HUD (order 0), the dot over the beam.
+constexpr UInt32 kLaserSortOrder = 10;
 float LaserBeamWidth(float lengthMetres);
 
 }  // namespace obvr::render

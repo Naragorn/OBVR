@@ -113,6 +113,8 @@ struct HandSettings {
 	// hand with it on (2026-09-25). The pick, the crosshair and the tooltip
 	// follow the laser either way.
 	bool aimWithHand = false;
+	// Activate on the left A instead of the right, for a left-handed player.
+	bool leftHanded = false;
 	// With ControllerMenus on and the mode off, the controllers in the
 	// WORLD as well, as a gamepad: see PlanGamepadControls for the layout.
 	bool gamepadLayout = true;

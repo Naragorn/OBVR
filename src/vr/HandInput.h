@@ -351,6 +351,7 @@ struct HandFrameInput {
 	bool meleeByMotion = false;    // a swung weapon strikes by motion: the trigger does not attack
 	bool menuMode = false;
 	bool pointRight = true;        // in a menu: which hand holds the pointer, and so the click
+	bool leftHanded = false;       // activate on the left A rather than the right
 };
 
 // The mapping. In a menu the hands drive the cursor and nothing else: the
@@ -377,12 +378,15 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 		out.jump = in.rightStickUp;
 		out.sneak = in.rightStickDown;
 		out.escape = in.rightMenuButton;
-		out.activate = in.rightA;  // the pointing hand's A, for a right-handed player
+		out.activate = !in.leftHanded && in.rightA;  // the pointing hand's A
 		out.readyWeapon = in.rightStickClick;
 		out.turn = in.rightThumbX;
 	}
 	if (in.leftValid) {
 		out.cast = in.leftTrigger;
+		if (in.leftHanded) {
+			out.activate = in.leftA;  // left-handed: the left A activates instead
+		}
 		out.run = in.leftStickHeld;
 		out.menu = in.leftMenuButton;
 		out.quickMenu = in.leftTrackpadClick;

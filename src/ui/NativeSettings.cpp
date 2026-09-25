@@ -55,6 +55,7 @@ NativeEditResult CommitNativeEdit(const NativeSettingEdit& edit,Config& config,N
   if (edit.definition->action==SettingAction::Recenter) writer.Recenter();
   return NativeEditResult::Action;
  }
+ if (SettingEditRefusal(*edit.definition,config,edit.value)) return NativeEditResult::Refused;
  MenuItem item=ItemFor(*edit.definition,config);
  item.value=edit.value;
  char value[32];

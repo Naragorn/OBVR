@@ -385,7 +385,13 @@ bool CrosshairLayer::EnsureOverlay(vr::OpenVRBackend& backend) {
 	}
 	m_overlayTried = true;
 
-	return backend.CreateOverlay("obvr.crosshair", "Oblivion Crosshair", m_overlay);
+	if (!backend.CreateOverlay("obvr.crosshair", "Oblivion Crosshair", m_overlay)) {
+		return false;
+	}
+	// Over the HUD: at the same order it was seen under the HUD's items where
+	// the two stood at about the same distance.
+	backend.SetOverlaySortOrder(m_overlay, 5);
+	return true;
 }
 
 void CrosshairLayer::SetHandPlacement(bool onHand, UInt32 deviceIndex, float pitchDegrees,

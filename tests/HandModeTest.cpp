@@ -131,6 +131,17 @@ void TestPlanner() {
 	Check(PlanHandControls(rightA, 0.4f).activate, "right A activates, for a right-handed player");
 	rightA.rightValid = false;
 	Check(!PlanHandControls(rightA, 0.4f).activate, "not from an untracked right hand");
+	HandFrameInput lefty;
+	lefty.rightValid = true;
+	lefty.leftValid = true;
+	lefty.leftHanded = true;
+	lefty.rightA = true;
+	Check(!PlanHandControls(lefty, 0.4f).activate, "left-handed: the right A no longer activates");
+	lefty.rightA = false;
+	lefty.leftA = true;
+	Check(PlanHandControls(lefty, 0.4f).activate, "the left A does");
+	lefty.leftValid = false;
+	Check(!PlanHandControls(lefty, 0.4f).activate, "not from an untracked left hand");
 	Check(w.run && !w.sneak, "the left stick held in runs, and its click no longer sneaks");
 	Check(w.quickMenu, "the left trackpad click opens the quick menu");
 

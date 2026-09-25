@@ -137,4 +137,12 @@ bool CanonicalDefaultValue(const SettingDefinition& definition, float& value);
 // its canonical default has nothing to reset.
 bool CanResetSetting(const SettingDefinition& definition, const Config& config);
 
+// Why a change may not be made, or null when it may. The one rule so far:
+// the laser needs something to show - the beam and the dot cannot both be
+// switched off, or the controllers would point at menus with nothing to
+// see where.
+const char* SettingEditRefusal(const SettingDefinition& definition, const Config& config,
+                               float value);
+
+
 }  // namespace obvr::ui

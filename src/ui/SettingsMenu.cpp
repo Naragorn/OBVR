@@ -128,6 +128,11 @@ const SettingDefinition* SettingsMenu::Apply(MenuAction action, Config& config) 
 		if (wanted == item.value) {
 			return nullptr;
 		}
+		// A change the rules refuse (the laser's beam and dot both off) is
+		// not made; the row's help already says why.
+		if (SettingEditRefusal(definition, config, wanted) != nullptr) {
+			return nullptr;
+		}
 
 		ApplySetting(definition, config, wanted);
 		++m_revision;

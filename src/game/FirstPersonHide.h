@@ -45,4 +45,14 @@ void ReleaseHiddenFirstPersonNodes();
 // model after a race change or a load). For Debug.FirstPersonTreeProbe.
 void ProbeFirstPersonTree();
 
+// For the pinned hands: the engine culls a shape by the world bound it
+// computed from the animation, and a hand the controller holds in view
+// could be thrown away because the animated arm had swung out of it - the
+// hands vanishing while running, 2026-09-25 (the cause is a hypothesis; the
+// log's "kept in view" line and the next run are its test). Sets the bound
+// of every node named in the list, and of the nodes above it, to a sphere of
+// this radius around the camera, after the engine's update and before the
+// draw. Answers how many named nodes it found.
+UInt32 KeepFirstPersonNodesInView(const char* list, const NiPoint3& centre, float radius);
+
 }  // namespace obvr::game

@@ -22,6 +22,7 @@ bool (*g_poll)(int*)=nullptr;
 ui::NativeOnboarding g_onboarding;
 ui::NativeSettings g_settings;
 bool g_checked=false, g_showOnboarding=false, g_saveFailed=false;
+const char* g_refusal=nullptr; // why the last change was refused, shown in the help line
 void* g_ourRoot=nullptr;
 AtomicFlag g_available, g_suppressLegacy, g_settingsOpen, g_toggleRequested, g_recenterRequested;
 vr::ButtonEdge g_insertEdge, g_escapeEdge, g_previousEdge, g_nextEdge;
@@ -156,7 +157,7 @@ bool RefreshSettings() {
  const auto& selected=ui::SettingDefinitions()[g_settings.Selected()];
  char help[512];
  Join(help,sizeof(help),selected.label,": ",selected.help);
- ok=CachedText(23,"user1",g_saveFailed ? "Could not save OBVR.ini. The setting was not changed. Check file permissions and try again." : help) && ok;
+ ok=CachedText(23,"user1",g_refusal ? g_refusal : g_saveFailed ? "Could not save OBVR.ini. The setting was not changed. Check file permissions and try again." : help) && ok;
  return ok;
 }
 void FinishSettings() {
@@ -197,7 +198,11 @@ void Tick() {
   const auto edit=g_settings.Click(button,GetConfig());
   SettingWriter writer;
   const auto result=ui::CommitNativeEdit(edit,GetConfig(),writer);
-  if (result!=ui::NativeEditResult::None) g_saveFailed=result==ui::NativeEditResult::SaveFailed;
+  if (result!=ui::NativeEditResult::None) {
+   g_saveFailed=result==ui::NativeEditResult::SaveFailed;
+   g_refusal=result==ui::NativeEditResult::Refused
+    ? ui::SettingEditRefusal(*edit.definition,GetConfig(),edit.value) : nullptr;
+  }
   if (edit.repaint || ++g_refreshTicks>=30) {
    g_refreshTicks=0;
    if (!RefreshSettings()) OBVR_LOG("Native settings: a UI update command failed");
@@ -216,7 +221,7 @@ void Tick() {
  if (ui::SettingsStep(false,GenericRoot()!=nullptr,false,false,toggle,false,false,
      top==kMenuIdLoading,top!=0 || PlayerInWorld())==ui::NativeSettingsStep::Open) {
   if (OpenMenu(true)) {
-   g_settingsOpen.Set(true); g_saveFailed=false; InvalidateText();
+   g_settingsOpen.Set(true); g_saveFailed=false; g_refusal=nullptr; InvalidateText();
    if (!RefreshSettings()) OBVR_LOG("Native settings: initial UI update failed");
   } else if (!GenericRoot()) {
    // A failed ShowGenericMenu must not permanently swallow Insert.

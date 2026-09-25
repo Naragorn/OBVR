@@ -509,6 +509,35 @@ void TestRowsDoNotDisturbEachOther() {
 
 }  // namespace
 
+void TestLaserNeedsBeamOrDot() {
+	std::printf("The laser keeps the beam or the dot\n");
+	using obvr::ui::SettingEditRefusal;
+	const SettingDefinition* beam = FindSetting("Hands", "LaserBeam");
+	const SettingDefinition* dot = FindSetting("Hands", "LaserDot");
+	Check(beam != nullptr && dot != nullptr, "both are rows in the menu");
+	if (beam == nullptr || dot == nullptr) {
+		return;
+	}
+	Config config;
+	config.hands.laserBeam = true;
+	config.hands.laserDot = true;
+	Check(SettingEditRefusal(*beam, config, 0.0f) == nullptr, "the beam off with the dot on: fine");
+	Check(SettingEditRefusal(*dot, config, 0.0f) == nullptr, "the dot off with the beam on: fine");
+	config.hands.laserDot = false;
+	Check(SettingEditRefusal(*beam, config, 0.0f) != nullptr, "the beam off with the dot off: refused");
+	Check(SettingEditRefusal(*beam, config, 1.0f) == nullptr, "the beam on: always fine");
+	config.hands.laserDot = true;
+	config.hands.laserBeam = false;
+	Check(SettingEditRefusal(*dot, config, 0.0f) != nullptr, "the dot off with the beam off: refused");
+	const SettingDefinition* other = FindSetting("Hands", "LeftHanded");
+	Check(other != nullptr && SettingEditRefusal(*other, config, 0.0f) == nullptr,
+	      "other rows are never refused by it");
+	const SettingDefinition* radius = FindSetting("Look", "SnapTurnVignetteRadius");
+	Check(radius != nullptr && radius->minimum == 5.0f && radius->maximum == 30.0f &&
+	          radius->step == 1.0f,
+	      "the vignette radius goes 5 to 30 in steps of one");
+}
+
 int main() {
 	std::printf("OBVR settings list test\n\n");
 
@@ -527,6 +556,8 @@ int main() {
 	TestValuesRoundTrip();
 	std::printf("\n");
 	TestRowsDoNotDisturbEachOther();
+	std::printf("\n");
+	TestLaserNeedsBeamOrDot();
 
 	std::printf("\n");
 	if (g_failures == 0) {

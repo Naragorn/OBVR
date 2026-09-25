@@ -307,6 +307,62 @@ NiAVObject* FindFirstPersonNode(const char* name) {
 	return reinterpret_cast<NiAVObject*>(FindNamed(reinterpret_cast<UInt8*>(root), name, 0));
 }
 
+namespace {
+
+// Sets the world bound of every node named in the list, and of the nodes
+// above it up to the root, to a sphere around the camera. Answers how many
+// named nodes it found.
+UInt32 KeepMatchingInView(UInt8* node, const char* list, const float* centre, float radius,
+                          UInt8** chain, UInt32 depth) {
+	if (!LooksLikeObject(node) || depth > kMaxFindDepth) {
+		return 0;
+	}
+	chain[depth] = node;
+	UInt32 found = 0;
+	if (NameInList(NameOf(node), list)) {
+		++found;
+		for (UInt32 up = 0; up <= depth; ++up) {
+			float* const bound = reinterpret_cast<float*>(chain[up] + addr::kNiWorldBoundOffset);
+			bound[0] = centre[0];
+			bound[1] = centre[1];
+			bound[2] = centre[2];
+			if (bound[3] < radius) {
+				bound[3] = radius;
+			}
+		}
+	}
+	if (!ClassIsNode(ClassNameOf(node))) {
+		return found;
+	}
+	UInt32 count = 0;
+	UInt8* const* const children = ChildrenOf(node, count);
+	for (UInt32 at = 0; at < count; ++at) {
+		found += KeepMatchingInView(children[at], list, centre, radius, chain, depth + 1);
+	}
+	return found;
+}
+
+UInt32 g_keepReportsLeft = 2;
+
+}  // namespace
+
+UInt32 KeepFirstPersonNodesInView(const char* list, const NiPoint3& centre, float radius) {
+	NiAVObject* const root = FirstPersonArmsNode();
+	if (root == nullptr || list == nullptr || ListIsEmpty(list)) {
+		return 0;
+	}
+	UInt8* chain[kMaxFindDepth + 2]{};
+	const float point[3] = {centre.x, centre.y, centre.z};
+	const UInt32 found =
+		KeepMatchingInView(reinterpret_cast<UInt8*>(root), list, point, radius, chain, 0);
+	if (g_keepReportsLeft > 0) {
+		--g_keepReportsLeft;
+		OBVR_LOG("First person hide: %u node(s) named \"%s\" kept in view - their bound centred "
+		         "on the camera, %.0f units wide", found, list, static_cast<double>(radius));
+	}
+	return found;
+}
+
 void ProbeFirstPersonTree() {
 	NiAVObject* const root = FirstPersonArmsNode();
 	if (root == nullptr || reinterpret_cast<const UInt8*>(root) == g_probedRoot) {

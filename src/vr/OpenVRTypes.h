@@ -512,7 +512,9 @@ struct IVROverlayFnTable {
 	void* getOverlayAlpha;        // 17
 	void* setOverlayTexelAspect;  // 18
 	void* getOverlayTexelAspect;  // 19
-	void* setOverlaySortOrder;    // 20
+	// Lowest to highest, the same sort order rendered back to front by
+	// distance (openvr.h, SetOverlaySortOrder).
+	int(__stdcall* SetOverlaySortOrder)(VROverlayHandle handle, UInt32 sortOrder);  // 20
 	void* getOverlaySortOrder;    // 21
 
 	int(__stdcall* SetOverlayWidthInMeters)(VROverlayHandle handle, float metres);  // 22

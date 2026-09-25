@@ -78,6 +78,10 @@ bool LaserLayer::EnsureOverlay(vr::OpenVRBackend& backend) {
 		m_overlay = vr::openvr::kOverlayHandleInvalid;
 		return false;
 	}
+	// Over the menus and the HUD: at the same order an overlay at the same
+	// distance as the menu quad is drawn before or after it by a hair, and
+	// the dot at the beam's end was seen under the text (2026-09-25).
+	backend.SetOverlaySortOrder(m_overlay, kLaserSortOrder);
 	backend.SetOverlayAlpha(m_overlay, 0.9f);
 	return true;
 }
@@ -155,6 +159,7 @@ void LaserLayer::SubmitDot(vr::OpenVRBackend& backend, bool visible, UInt32 devi
 		}
 		static UInt8 pixels[kLaserDotTexture * kLaserDotTexture * 4];
 		PaintDot(pixels);
+		backend.SetOverlaySortOrder(m_dot, kLaserSortOrder + 1);
 		const int error = backend.SetOverlayRaw(m_dot, pixels, kLaserDotTexture, kLaserDotTexture);
 		if (error != vr::openvr::kOverlayErrorNone) {
 			OBVR_LOG("Laser: SetOverlayRaw failed for the dot (%d) - the beam goes without it",

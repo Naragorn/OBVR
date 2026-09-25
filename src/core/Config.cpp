@@ -612,6 +612,14 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.laserDragScroll = ReadBool("Hands", "LaserDragScroll", h.laserDragScroll, path);
 		h.laserDot = ReadBool("Hands", "LaserDot", h.laserDot, path);
 		h.aimWithHand = ReadBool("Hands", "AimWithHand", h.aimWithHand, path);
+		h.leftHanded = ReadBool("Hands", "LeftHanded", h.leftHanded, path);
+		if (!h.laserBeam && !h.laserDot) {
+			// The laser needs something to show; the settings menu refuses this
+			// (SettingEditRefusal), a hand-edited INI gets the beam back.
+			h.laserBeam = true;
+			OBVR_LOG("Config: Hands.LaserBeam=0 and LaserDot=0 - the beam is kept on, the laser "
+			         "needs one of the two");
+		}
 		h.hitBoundFactor = ReadFloat("Hands", "HitBoundFactor", h.hitBoundFactor, path);
 		h.hitPadUnits = ReadFloat("Hands", "HitPadUnits", h.hitPadUnits, path);
 		h.restHandRight = ReadFloat("Hands", "RestHandRight", h.restHandRight, path);

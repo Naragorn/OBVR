@@ -51,7 +51,7 @@ struct NativeSettingWriter {
  virtual bool Save(const SettingDefinition&, const char* value) = 0;
  virtual void Recenter() = 0;
 };
-enum class NativeEditResult { None, Saved, Action, SaveFailed };
+enum class NativeEditResult { None, Saved, Action, SaveFailed, Refused };
 NativeEditResult CommitNativeEdit(const NativeSettingEdit&, Config&, NativeSettingWriter&);
 
 // RunScriptLine2 uses console separators. Text is a format-string operand,

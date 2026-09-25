@@ -74,7 +74,7 @@ const SettingDefinition kSettings[] = {
 	},
 	{
 		"Comfort", "Vignette radius", "Degrees of clear view from the centre before it darkens",
-		ItemKind::Number, 5.0f, 60.0f, 5.0f, 0, false,
+		ItemKind::Number, 5.0f, 30.0f, 1.0f, 0, false,
 		"Look", "SnapTurnVignetteRadius",
 		+[](const Config& c) { return c.look.snapTurnVignetteRadius; },
 		+[](Config& c, float v) { c.look.snapTurnVignetteRadius = v; },
@@ -502,6 +502,20 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.laserBeam = v != 0.0f; },
 	},
 	{
+		"Hands", "Laser dot", "A dot at the end of the laser; the beam or the dot has to stay on",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "LaserDot",
+		+[](const Config& c) { return c.hands.laserDot ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.laserDot = v != 0.0f; },
+	},
+	{
+		"Hands", "Left-handed", "Activate on the left A instead of the right",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "LeftHanded",
+		+[](const Config& c) { return c.hands.leftHanded ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.leftHanded = v != 0.0f; },
+	},
+	{
 		"Hands", "Laser tilt", "Degrees the laser leaves the controller turned down",
 		ItemKind::Number, -90.0f, 90.0f, 5.0f, 0, false,
 		"Hands", "LaserPitchDegrees",
@@ -612,6 +626,33 @@ bool CanResetSetting(const SettingDefinition& definition, const Config& config) 
 	float defaultValue = 0.0f;
 	return CanonicalDefaultValue(definition, defaultValue) &&
 	       definition.Read(config) != defaultValue;
+}
+
+namespace {
+
+bool KeyIs(const char* key, const char* wanted) {
+	if (key == nullptr) {
+		return false;
+	}
+	while (*key != '\0' && *wanted != '\0' && *key == *wanted) {
+		++key;
+		++wanted;
+	}
+	return *key == '\0' && *wanted == '\0';
+}
+
+}  // namespace
+
+const char* SettingEditRefusal(const SettingDefinition& definition, const Config& config,
+                               float value) {
+	const bool off = value == 0.0f;
+	if (off && KeyIs(definition.iniKey, "LaserBeam") && !config.hands.laserDot) {
+		return "The laser needs the beam or the dot: switch the dot on first.";
+	}
+	if (off && KeyIs(definition.iniKey, "LaserDot") && !config.hands.laserBeam) {
+		return "The laser needs the beam or the dot: switch the beam on first.";
+	}
+	return nullptr;
 }
 
 }  // namespace obvr::ui

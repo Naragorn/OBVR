@@ -264,6 +264,17 @@ int main() {
   Check(build(len+1),"exact capacity accepted");
  }
  TestResetSelected();
+ {
+  // A refused change is neither saved nor applied.
+  obvr::Config laser; laser.hands.laserBeam=true; laser.hands.laserDot=false;
+  Writer refusedWriter;
+  NativeSettingEdit off; off.definition=FindSetting("Hands","LaserBeam"); off.value=0.0f;
+  Check(CommitNativeEdit(off,laser,refusedWriter)==NativeEditResult::Refused,"beam off with no dot is refused");
+  Check(refusedWriter.saves==0 && laser.hands.laserBeam,"and neither saved nor applied");
+  laser.hands.laserDot=true;
+  Check(CommitNativeEdit(off,laser,refusedWriter)==NativeEditResult::Saved && !laser.hands.laserBeam,
+        "with the dot on it goes through");
+ }
  std::printf("Native settings: %u definitions, %u pages, %d failures\n",visited,menu.Pages(),failures);
  return failures?1:0;
 }

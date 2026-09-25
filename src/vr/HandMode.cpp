@@ -277,6 +277,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		m_clickBlocked = false;
 	}
 	in.pointRight = m_pointRight;
+	in.leftHanded = s.leftHanded;
 	r.controls = PlanHandControls(in, s.stickDeadZone);
 	HoldTaps(r.controls, f.dtSeconds);
 	// The pull that moved the pointer over is not a click: the cursor is
