@@ -278,6 +278,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	}
 	in.pointRight = m_pointRight;
 	r.controls = PlanHandControls(in, s.stickDeadZone);
+	HoldTaps(r.controls, f.dtSeconds);
 	// The pull that moved the pointer over is not a click: the cursor is
 	// still where the other hand left it. The trigger has to come up first.
 	if (m_clickBlocked) {
@@ -306,6 +307,12 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	PointAtMenu(f, s, r);
 
 	return r;
+}
+
+void HandMode::HoldTaps(HandControlsWanted& controls, float dtSeconds) {
+	controls.readyWeapon = StepTapHold(m_readyHold, controls.readyWeapon, dtSeconds);
+	controls.togglePov = StepTapHold(m_povHold, controls.togglePov, dtSeconds);
+	controls.quickMenu = StepTapHold(m_quickHold, controls.quickMenu, dtSeconds);
 }
 
 StickChordVerdict HandMode::StepChord(const HandModeFrame& f, HandModeResult& r) {
@@ -570,17 +577,21 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 	int dragWheel = 0;
 	if (s.laserDragScroll && laserPath) {
 		const LaserPressVerdict press = StepLaserPress(m_press, r.controls.menuClick, pressHit,
-		                                               pressX, pressY, pressHeight);
+		                                               pressX, pressY, pressHeight, f.dtSeconds,
+		                                               f.cursorOnScrollBar);
 		r.controls.menuClick = press.mouseDown;
 		dragWheel = press.wheel;
 	} else {
 		m_press = LaserPressState{};
 	}
 
-	// The left stick as the mouse wheel: a notch on the flick, then repeats
-	// while it is held.
-	const bool up = f.left.valid && f.left.thumbY >= s.stickDeadZone;
-	const bool down = f.left.valid && f.left.thumbY <= -s.stickDeadZone;
+	// Either stick as the mouse wheel: a notch on the flick, then repeats
+	// while it is held. In a menu the right stick turns nothing, so it is
+	// free for this as well.
+	const bool up = (f.left.valid && f.left.thumbY >= s.stickDeadZone) ||
+	                (f.right.valid && f.right.thumbY >= s.stickDeadZone);
+	const bool down = (f.left.valid && f.left.thumbY <= -s.stickDeadZone) ||
+	                  (f.right.valid && f.right.thumbY <= -s.stickDeadZone);
 	if (StepRepeat(m_scrollUp, up, f.dtSeconds, s.scrollFirstDelaySeconds, s.scrollIntervalSeconds)) {
 		r.menuScroll = 1;
 	}
@@ -667,6 +678,7 @@ HandModeResult HandMode::UpdateMenusOnly(const HandModeFrame& f, const HandSetti
 			in.leftThumbY = f.left.thumbY;
 			in.rightThumbX = f.right.thumbX;
 			r.controls = PlanGamepadControls(in, s.stickDeadZone);
+			HoldTaps(r.controls, f.dtSeconds);
 			r.controlsActive = f.right.valid || f.left.valid;
 		}
 	}

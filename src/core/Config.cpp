@@ -532,6 +532,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Look", "SnapTurnInstant", config.look.snapTurnInstant, path);
 	config.look.snapTurnSpeed =
 		ReadFloat("Look", "SnapTurnSpeed", config.look.snapTurnSpeed, path);
+	config.look.snapTurnVignetteStrength = ReadFloat("Look", "SnapTurnVignetteStrength",
+	                                               config.look.snapTurnVignetteStrength, path);
 	config.look.snapTurnVignetteRadius = ReadFloat("Look", "SnapTurnVignetteRadius",
 	                                             config.look.snapTurnVignetteRadius, path);
 	config.look.snapTurnVignette =

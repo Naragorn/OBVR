@@ -52,9 +52,9 @@ void VignetteLayer::GenerateVignettePixels(UInt32 width, UInt32 height, UInt8* r
 	if (kFullRadius <= kStartRadius) {
 		kFullRadius = kStartRadius + 0.01f;
 	}
-	// Maximum darkness (alpha channel, 0-255). Not fully opaque so the world
-	// behind still shows through - a vignette, not a blackout.
-	constexpr UInt32 kMaxAlpha = 220u;
+	// Black at the rim; how dark that ends up is the overlay's alpha, the
+	// strength setting, so it can change without drawing this again.
+	constexpr UInt32 kMaxAlpha = 255u;
 
 	for (UInt32 y = 0; y < height; ++y) {
 		// Row by row at the surface's own pitch, which may be wider than the
@@ -236,8 +236,10 @@ void VignetteLayer::Trigger() {
 }
 
 void VignetteLayer::Update(vr::OpenVRBackend& backend, void* gameDevice, bool visible,
-                           float deltaSeconds, float clearDegrees) {
+                           float deltaSeconds, float clearDegrees,
+                           float strength) {
 	m_clearDegrees = clearDegrees;
+	m_strength = strength < 0.0f ? 0.0f : (strength > 1.0f ? 1.0f : strength);
 	if (deltaSeconds <= 0.0f || deltaSeconds > 0.1f) {
 		return;
 	}
@@ -336,7 +338,7 @@ void VignetteLayer::Update(vr::OpenVRBackend& backend, void* gameDevice, bool vi
 	}
 
 	// Update alpha - this is what actually controls visibility.
-	backend.SetOverlayAlpha(m_overlay, m_alpha);
+	backend.SetOverlayAlpha(m_overlay, m_alpha * m_strength);
 
 	if (!m_overlayVisible) {
 		backend.ShowOverlay(m_overlay);

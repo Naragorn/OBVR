@@ -616,6 +616,12 @@ inline constexpr UInt32 kInterfaceCursorYOffset = 0x34;
 inline constexpr UInt32 kInterfaceAltActiveTileOffset = 0x88;
 inline constexpr UInt32 kInterfaceActiveTileOffset = 0x98;
 inline constexpr UInt32 kTileRenderNodeOffset = 0x24;
+// Tile::name (a BSStringT, its character pointer first) and Tile::parent,
+// from xOBSE's GameTiles.h, the same layout that puts the render node at
+// +0x24 - read there as "UInt32 unk24; // 24 // NiNode *", the offset
+// kTileRenderNodeOffset has been read at since the hover-offset work.
+inline constexpr UInt32 kTileNameOffset = 0x08;
+inline constexpr UInt32 kTileParentOffset = 0x10;
 inline constexpr UInt32 kNiTranslateOffset = 0x54;
 
 // Expected game version. OBSE reports it as oblivionVersion.

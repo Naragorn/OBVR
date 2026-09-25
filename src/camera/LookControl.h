@@ -108,6 +108,9 @@ struct LookSettings {
 	// degrees further out. 25 leaves a cone of 50 degrees clear.
 	float snapTurnVignetteRadius = 25.0f;
 
+	// How dark the vignette gets at its darkest, 0 to 1. 1 is black at the rim.
+	float snapTurnVignetteStrength = 0.85f;
+
 	// How far the right stick must be pushed before a snap turn triggers, as a
 	// fraction of full travel (0..1). 0.3 means about a third of the way out -
 	// enough that accidental bumps do not fire turns, but not so much that you

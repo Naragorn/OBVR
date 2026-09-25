@@ -1075,7 +1075,7 @@ void TestLeftButtonsInHandMode() {
 	Check(r.controls.quickMenu, "the trackpad click opens the quick menu");
 	frame.left.buttonsPressed = 0;
 	r = mode.Update(frame, settings);
-	Check(!r.controls.quickMenu && !r.controls.sneak,
+	Check(!r.controls.sneak,
 	      "and its release is not a stick click - nothing sneaks");
 
 	frame.dtSeconds = 1.0f / 90.0f;
@@ -1228,6 +1228,74 @@ void TestLaserPress() {
 	Check(!r.controls.menuClick, "for one frame");
 }
 
+void TestTapHold() {
+	std::printf("Toggled controls held for a moment\n");
+	TapHoldState s;
+	const float dt = 1.0f / 90.0f;
+	Check(StepTapHold(s, true, dt), "the tap itself is down");
+	int frames = 1;
+	while (StepTapHold(s, false, dt) && frames < 100) {
+		++frames;
+	}
+	Check(frames == 11, "and stays down about 0.12 s at 90 Hz (11 frames)");
+	Check(!StepTapHold(s, false, dt), "then up");
+	TapHoldState t;
+	StepTapHold(t, true, 0.0f);
+	Check(!StepTapHold(t, false, 0.0f) || !StepTapHold(t, false, 0.0f),
+	      "with no time to count it does not stay down");
+}
+
+void TestLaserCoast() {
+	std::printf("A flick coasts on\n");
+	const float h = 1000.0f;
+	const float dt = 1.0f / 90.0f;
+	LaserPressState s;
+	StepLaserPress(s, true, true, 500.0f, 500.0f, h, dt);
+	// A fast flick down: 30 px a frame, 2700 px a second.
+	float y = 500.0f;
+	for (int i = 0; i < 6; ++i) {
+		y += 30.0f;
+		StepLaserPress(s, true, true, 500.0f, y, h, dt);
+	}
+	int coasted = 0;
+	int frames = 0;
+	LaserPressVerdict v = StepLaserPress(s, false, true, 500.0f, y, h, dt);
+	Check(!v.mouseDown, "let go mid-flick: no click");
+	coasted += v.wheel;
+	while (s.coastVelocity != 0.0f && frames < 1000) {
+		v = StepLaserPress(s, false, true, 500.0f, y, h, dt);
+		coasted += v.wheel;
+		++frames;
+	}
+	Check(coasted > 5, "the list goes on scrolling up after the release");
+	Check(frames > 10 && frames < 1000, "and comes to a stop by itself");
+
+	LaserPressState slow;
+	StepLaserPress(slow, true, true, 500.0f, 500.0f, h, dt);
+	StepLaserPress(slow, true, true, 500.0f, 525.0f, h, dt);
+	for (int i = 0; i < 30; ++i) {
+		StepLaserPress(slow, true, true, 500.0f, 525.0f, h, dt);  // held still
+	}
+	StepLaserPress(slow, false, true, 500.0f, 525.0f, h, dt);
+	Check(slow.coastVelocity == 0.0f, "let go after holding still: no coasting");
+
+	LaserPressState stop;
+	StepLaserPress(stop, true, true, 500.0f, 500.0f, h, dt);
+	for (int i = 0; i < 6; ++i) {
+		StepLaserPress(stop, true, true, 500.0f, 500.0f + 30.0f * (i + 1), h, dt);
+	}
+	StepLaserPress(stop, false, true, 500.0f, 680.0f, h, dt);
+	Check(stop.coastVelocity != 0.0f, "coasting");
+	v = StepLaserPress(stop, true, true, 500.0f, 680.0f, h, dt);
+	Check(stop.coastVelocity == 0.0f && v.wheel == 0, "a new pull stops it, like a finger on it");
+
+	LaserPressState bar;
+	v = StepLaserPress(bar, true, true, 500.0f, 500.0f, h, dt, true);
+	Check(v.mouseDown, "pulled on a scroll bar: the button goes down at once");
+	v = StepLaserPress(bar, true, true, 500.0f, 700.0f, h, dt, true);
+	Check(v.mouseDown && v.wheel == 0, "and stays down while dragging, the bar's own way");
+}
+
 void TestLaserYaw() {
 	std::printf("The laser turned inwards\n");
 	const NiPoint3 left = LaserDirectionLocal(0.0f, 5.0f);
@@ -1285,6 +1353,8 @@ int main() {
 	TestLaserTilt();
 	TestLaserPress();
 	TestLaserYaw();
+	TestTapHold();
+	TestLaserCoast();
 	TestSpeedAndSwing();
 	TestEdges();
 	TestPlanner();

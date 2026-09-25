@@ -755,9 +755,12 @@ inline StickChordVerdict StepStickChord(StickChordState& s, bool rightDown, bool
 // The laser's trigger the way a finger works a touch screen: pulled and let
 // go without moving, it is a click, sent on the release; pulled and dragged
 // up or down, the list scrolls with the beam as mouse wheel notches and no
-// click is sent; dragged sideways, the button is held down from there on so
-// a slider can be pulled. Distances are fractions of the layer's height, so
-// the feel does not depend on the resolution.
+// click is sent - and let go while still moving, it coasts on, further the
+// faster the flick, slowing to a stop; dragged sideways, the button is held
+// down from there on so a slider can be pulled. Pulled on a scroll bar, the
+// button is held at once, so the bar's marker is dragged the game's own way.
+// Distances are fractions of the layer's height, so the feel does not depend
+// on the resolution.
 
 enum class LaserPressPhase { Idle, Pressed, Scrolling, Holding };
 
@@ -767,6 +770,10 @@ struct LaserPressState {
 	float startY = 0.0f;
 	int notchesSent = 0;
 	bool clickPending = false;  // the release's click, down now and up next
+	float lastY = 0.0f;
+	float velocity = 0.0f;      // layer pixels a second, smoothed, while scrolling
+	float coastVelocity = 0.0f; // after a flick's release
+	float coastPixels = 0.0f;   // travelled while coasting, not yet a notch
 };
 
 struct LaserPressVerdict {
@@ -774,35 +781,71 @@ struct LaserPressVerdict {
 	int wheel = 0;           // notches, positive up
 };
 
-constexpr float kLaserDragStart = 0.02f;     // of the layer height: a drag, not a wobble
+constexpr float kLaserDragStart = 0.02f;       // of the layer height: a drag, not a wobble
 constexpr float kLaserPixelsPerNotch = 0.04f;  // of the layer height, per wheel notch
+constexpr float kLaserCoastMinSpeed = 0.5f;    // layer heights a second: slower stops dead
+constexpr float kLaserCoastFriction = 3.0f;    // a second: the speed falls by e every third
+constexpr float kLaserVelocitySmoothing = 0.5f;  // of each new frame's speed in the average
 
 inline LaserPressVerdict StepLaserPress(LaserPressState& s, bool triggerDown, bool hit,
-                                        float x, float y, float layerHeight) {
+                                        float x, float y, float layerHeight,
+                                        float dtSeconds = 0.0f, bool onScrollBar = false) {
 	LaserPressVerdict v;
+	const float height = layerHeight > 1.0f ? layerHeight : 1.0f;
+	const float notchPixels = kLaserPixelsPerNotch * height;
+	const bool dtValid = dtSeconds > 0.0f && dtSeconds <= 0.1f;
 	if (s.clickPending) {
 		// The release's click went down last frame; this frame it comes up.
 		s.clickPending = false;
 		s.phase = LaserPressPhase::Idle;
 		return v;
 	}
-	const float height = layerHeight > 1.0f ? layerHeight : 1.0f;
 	if (!triggerDown) {
 		if (s.phase == LaserPressPhase::Pressed && hit) {
 			v.mouseDown = true;
 			s.clickPending = true;
+			s.coastVelocity = 0.0f;
 			return v;
 		}
-		s = LaserPressState{};
+		if (s.phase == LaserPressPhase::Scrolling) {
+			// Let go while moving: the list coasts on in the same direction.
+			const float speed = s.velocity < 0.0f ? -s.velocity : s.velocity;
+			s.coastVelocity = speed >= kLaserCoastMinSpeed * height ? s.velocity : 0.0f;
+			s.coastPixels = 0.0f;
+		}
+		s.phase = LaserPressPhase::Idle;
+		s.notchesSent = 0;
+		s.velocity = 0.0f;
+		if (s.coastVelocity != 0.0f && dtValid) {
+			s.coastPixels += s.coastVelocity * dtSeconds;
+			const int notches = static_cast<int>(s.coastPixels / notchPixels);
+			v.wheel = notches;
+			s.coastPixels -= static_cast<float>(notches) * notchPixels;
+			float decay = 1.0f - kLaserCoastFriction * dtSeconds;
+			decay = decay < 0.0f ? 0.0f : decay;
+			s.coastVelocity *= decay;
+			const float speed = s.coastVelocity < 0.0f ? -s.coastVelocity : s.coastVelocity;
+			if (speed < kLaserCoastMinSpeed * 0.5f * height) {
+				s.coastVelocity = 0.0f;
+			}
+		}
 		return v;
 	}
 	switch (s.phase) {
 	case LaserPressPhase::Idle:
+		s.coastVelocity = 0.0f;  // a new touch stops a coasting list
 		if (hit) {
-			s.phase = LaserPressPhase::Pressed;
 			s.startX = x;
 			s.startY = y;
+			s.lastY = y;
 			s.notchesSent = 0;
+			s.velocity = 0.0f;
+			if (onScrollBar) {
+				s.phase = LaserPressPhase::Holding;
+				v.mouseDown = true;
+			} else {
+				s.phase = LaserPressPhase::Pressed;
+			}
 		}
 		break;
 	case LaserPressPhase::Pressed: {
@@ -830,11 +873,45 @@ inline LaserPressVerdict StepLaserPress(LaserPressState& s, bool triggerDown, bo
 	if (s.phase == LaserPressPhase::Scrolling && hit) {
 		// The list follows the beam: dragged down, the earlier entries come
 		// into view - a wheel notch up - as on a touch screen.
-		const int wanted = static_cast<int>((y - s.startY) / (kLaserPixelsPerNotch * height));
+		const int wanted = static_cast<int>((y - s.startY) / notchPixels);
 		v.wheel = wanted - s.notchesSent;
 		s.notchesSent = wanted;
+		if (dtValid) {
+			const float now = (y - s.lastY) / dtSeconds;
+			s.velocity += (now - s.velocity) * kLaserVelocitySmoothing;
+		}
+	}
+	if (hit) {
+		s.lastY = y;
 	}
 	return v;
+}
+
+// ------------------------------------------------------------ Tap holds
+//
+// A control the game toggles on a press - ready weapon, the view switch, the
+// quick menu - held down for a short while rather than a single frame: the
+// ready weapon tap did not always take in the 2026-09-25 run, and a key
+// held for a tenth of a second is what a finger on a keyboard gives anyway.
+
+constexpr float kTapHoldSeconds = 0.12f;
+
+struct TapHoldState {
+	float left = 0.0f;
+};
+
+inline bool StepTapHold(TapHoldState& s, bool tap, float dtSeconds,
+                        float seconds = kTapHoldSeconds) {
+	if (tap) {
+		s.left = seconds;
+	}
+	const bool held = s.left > 0.0f;
+	if (dtSeconds > 0.0f) {
+		s.left -= dtSeconds;
+	} else if (!tap) {
+		s.left = 0.0f;  // no time to count: one frame, as before
+	}
+	return held;
 }
 
 // ---------------------------------------------------------- Stick flicks

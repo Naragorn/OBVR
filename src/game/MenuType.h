@@ -159,4 +159,10 @@ void SetMenuCursorHidden(bool hidden);
 // again by the time the pass drew. Set here, it holds for the draw.
 void ReapplyMenuCursorHidden();
 
+// Whether the tile under the game's cursor - the InterfaceManager's active
+// tile - or one of the few tiles above it has "scroll" in its name, the
+// way the game's own menus name the parts of a scroll bar. The name of the
+// tile under the cursor goes into nameOut, for the log.
+bool CursorOverScrollBar(char* nameOut, UInt32 nameSize);
+
 }  // namespace obvr::game

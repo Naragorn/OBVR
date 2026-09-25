@@ -99,10 +99,10 @@ struct HandSettings {
 	// by the yaw - the right hand's to the left, the left hand's mirrored to
 	// the right; and starting this far along the beam from the tracked
 	// origin, negative back towards the controller. Tuned in the headset on
-	// 2026-09-25: 40 degrees down, 5 in, 2 cm back.
+	// 2026-09-25: 40 degrees down, 5 in, 4 cm back (2 was still too far out).
 	float laserPitchDegrees = 40.0f;
 	float laserYawDegrees = 5.0f;
-	float laserOriginMetres = -0.02f;
+	float laserOriginMetres = -0.04f;
 	// The laser's trigger as a finger on a touch screen: click on release,
 	// drag to scroll - see StepLaserPress. Off, it clicks on the pull.
 	bool laserDragScroll = true;
@@ -151,6 +151,9 @@ struct HandModeFrame {
 	float layerPixelsWidth = 0.0f;
 	float layerPixelsHeight = 0.0f;
 	bool cursorValid = false;
+	// Whether the tile under the game's cursor is a scroll bar's: pulled there,
+	// the laser holds the button at once so the marker can be dragged.
+	bool cursorOnScrollBar = false;
 	float cursorX = 0.0f;
 	float cursorY = 0.0f;
 };
@@ -280,6 +283,11 @@ private:
 	HandModeResult UpdateMenusOnly(const HandModeFrame& frame, const HandSettings& settings);
 	// Both sticks clicked: OBVR's menu. Answers its verdict for the clicks.
 	StickChordVerdict StepChord(const HandModeFrame& frame, HandModeResult& r);
+	// The toggled controls held for kTapHoldSeconds rather than one frame.
+	void HoldTaps(HandControlsWanted& controls, float dtSeconds);
+	TapHoldState m_readyHold;
+	TapHoldState m_povHold;
+	TapHoldState m_quickHold;
 	// OBVR's own menu open: the sticks and buttons steer it, nothing else.
 	void SteerSettingsMenu(const HandModeFrame& frame, const HandSettings& settings,
 	                       HandModeResult& r);

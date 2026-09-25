@@ -439,6 +439,25 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.unitsPerMetre = config.tracker.unitsPerMetre;
 	g_hudLayer.ShownPixels(frame.layerPixelsWidth, frame.layerPixelsHeight);
 	frame.cursorValid = game::InterfaceCursorPosition(frame.cursorX, frame.cursorY);
+	if (menuIsUp) {
+		char tileName[48];
+		frame.cursorOnScrollBar = game::CursorOverScrollBar(tileName, sizeof(tileName));
+		// Which tile a pull lands on, the first several times: the scroll bar
+		// is recognised by its name, and the log is where a name that is
+		// missed shows up.
+		static UInt32 pullLinesLeft = 10;
+		static bool wasPulled = false;
+		const bool pulled = (frame.right.valid && frame.right.trigger > 0.5f) ||
+		                    (frame.left.valid && frame.left.trigger > 0.5f);
+		if (pulled && !wasPulled && pullLinesLeft > 0) {
+			--pullLinesLeft;
+			OBVR_LOG("Hands: pulled over tile \"%s\" in the %s menu - %s", tileName,
+			         game::MenuIdName(game::ActiveMenuId()),
+			         frame.cursorOnScrollBar ? "a scroll bar, the button is held"
+			                                 : "not a scroll bar");
+		}
+		wasPulled = pulled;
+	}
 	// The quad the game's menus hang on when they are not on a wrist, for
 	// the laser: where the layer last hung it, in tracking space.
 	{
@@ -644,6 +663,21 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				                : "could not be written - the player could not be reached");
 			}
 		}
+
+		// The ready weapon tap, the first several times, with where the
+		// weapon stood: "the button does nothing" was reported on
+		// 2026-09-25, and this says whether the press left OBVR at all.
+		static bool readyWasWanted = false;
+		static UInt32 readyLinesLeft = 8;
+		if (controls.readyWeapon && !readyWasWanted && readyLinesLeft > 0) {
+			--readyLinesLeft;
+			const game::WeaponState weapon = game::ReadPlayerWeaponState();
+			OBVR_LOG("Hands: ready weapon sent (the weapon was %s)",
+			         weapon == game::WeaponState::Drawn      ? "drawn"
+			         : weapon == game::WeaponState::Sheathed ? "sheathed"
+			                                                 : "unknown");
+		}
+		readyWasWanted = controls.readyWeapon;
 
 		game::ApplyHandControls(controls, config.handKeys, config.hands.turnSpeed);
 		g_handControlsHeld = true;
@@ -2699,7 +2733,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// so the fade advances even when nothing is happening (keeps it hidden).
 	g_vignetteLayer.Update(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                       config.look.snapTurnVignette && worldFrame, g_deltaSeconds,
-	                       config.look.snapTurnVignetteRadius);
+	                       config.look.snapTurnVignetteRadius, config.look.snapTurnVignetteStrength);
 
 	// The laser beam from the hand that points at a menu, as long as the way
 	// to it. Its own overlay, raw pixels, no game texture behind it.

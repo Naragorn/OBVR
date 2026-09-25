@@ -80,6 +80,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.look.snapTurnVignetteRadius = v; },
 	},
 	{
+		"Comfort", "Vignette darkness", "How dark the vignette gets at the edge, 0 to 1",
+		ItemKind::Number, 0.1f, 1.0f, 0.05f, 2, false,
+		"Look", "SnapTurnVignetteStrength",
+		+[](const Config& c) { return c.look.snapTurnVignetteStrength; },
+		+[](Config& c, float v) { c.look.snapTurnVignetteStrength = v; },
+	},
+	{
 		"Comfort", "Snap dead zone", "How far to push the stick before a snap fires",
 		ItemKind::Number, 0.15f, 0.7f, 0.05f, 2, false,
 		"Look", "SnapTurnDeadZone",

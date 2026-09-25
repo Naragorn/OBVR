@@ -39,7 +39,7 @@ public:
 	// visible controls whether vignettes are allowed at all (user setting). When
 	// false, any in-progress fade is cancelled immediately.
 	void Update(vr::OpenVRBackend& backend, void* gameDevice, bool visible, float deltaSeconds,
-	            float clearDegrees);
+	            float clearDegrees, float strength);
 
 	// Throws away the texture and overlay handle. For configuration changes or shutdown.
 	void Destroy();
@@ -61,6 +61,7 @@ private:
 	                                   float clearDegrees);
 	float m_clearDegrees = 25.0f;   // wanted, from the settings
 	float m_builtDegrees = -1.0f;   // what the texture holds
+	float m_strength = 0.85f;       // the overlay's alpha at full, from the settings
 
 	void* m_texture = nullptr;  // IDirect3DTexture9
 	void* m_surface = nullptr;  // IDirect3DSurface9, level 0

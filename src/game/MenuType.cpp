@@ -235,4 +235,72 @@ void SetMenuCursorHidden(bool hidden) {
 	}
 }
 
+namespace {
+
+// A tile's name, when it reads like one: printable, bounded.
+const char* TileName(const UInt8* tile) {
+	const char* const name = *reinterpret_cast<const char* const*>(tile + addr::kTileNameOffset);
+	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(name))) {
+		return nullptr;
+	}
+	for (UInt32 at = 0; at < 64; ++at) {
+		if (name[at] == '\0') {
+			return at > 0 ? name : nullptr;
+		}
+		if (name[at] < 0x20 || name[at] > 0x7E) {
+			return nullptr;
+		}
+	}
+	return nullptr;
+}
+
+bool HasScroll(const char* name) {
+	for (const char* at = name; *at != '\0'; ++at) {
+		const char* a = at;
+		const char* b = "scroll";
+		while (*b != '\0' && *a != '\0' &&
+		       ((*a >= 'A' && *a <= 'Z') ? *a + ('a' - 'A') : *a) == *b) {
+			++a;
+			++b;
+		}
+		if (*b == '\0') {
+			return true;
+		}
+	}
+	return false;
+}
+
+}  // namespace
+
+bool CursorOverScrollBar(char* nameOut, UInt32 nameSize) {
+	if (nameOut != nullptr && nameSize > 0) {
+		nameOut[0] = '\0';
+	}
+	const auto* const manager =
+		*reinterpret_cast<const UInt8* const*>(addr::kInterfaceManagerPointer);
+	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(manager))) {
+		return false;
+	}
+	const auto* tile =
+		*reinterpret_cast<const UInt8* const*>(manager + addr::kInterfaceActiveTileOffset);
+	// The tile itself and three above it: a scroll bar's marker sits inside
+	// the bar, and either may be what the cursor is over.
+	for (int level = 0; level < 4 && mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(tile));
+	     ++level) {
+		const char* const name = TileName(tile);
+		if (level == 0 && name != nullptr && nameOut != nullptr && nameSize > 0) {
+			UInt32 at = 0;
+			for (; at + 1 < nameSize && name[at] != '\0'; ++at) {
+				nameOut[at] = name[at];
+			}
+			nameOut[at] = '\0';
+		}
+		if (name != nullptr && HasScroll(name)) {
+			return true;
+		}
+		tile = *reinterpret_cast<const UInt8* const*>(tile + addr::kTileParentOffset);
+	}
+	return false;
+}
+
 }  // namespace obvr::game
