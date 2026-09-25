@@ -1,5 +1,6 @@
 #include "game/HandControls.h"
 
+#include "game/KeyScanCodes.h"
 #include "platform/Win32Min.h"
 
 namespace obvr::game {
@@ -45,7 +46,12 @@ void SendKey(UInt32 key, bool down) {
 		mouse_event(down ? MOUSEEVENTF_RIGHTDOWN : MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
 		return;
 	}
-	const UInt32 scan = MapVirtualKeyA(key, MAPVK_VK_TO_VSC);
+	// The US scan code: the game binds physical keys, named for a US
+	// keyboard (see KeyScanCodes.h). The layout only for keys not in the table.
+	UInt32 scan = UsScanCode(key);
+	if (scan == 0) {
+		scan = MapVirtualKeyA(key, MAPVK_VK_TO_VSC);
+	}
 	keybd_event(static_cast<UInt8>(key), static_cast<UInt8>(scan),
 	            KEYEVENTF_SCANCODE | (down ? 0 : KEYEVENTF_KEYUP), 0);
 }

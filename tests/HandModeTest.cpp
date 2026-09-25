@@ -5,6 +5,7 @@
 
 #include <cstdio>
 
+#include "game/KeyScanCodes.h"
 #include "vr/HandInput.h"
 #include "vr/HandMode.h"
 #include "vr/OpenVRTypes.h"
@@ -338,8 +339,22 @@ void TestStrikeByMotion() {
 	Check(r.swingActive && r.swingSerial == 2, "the next swing is number two");
 
 	// The same swing with the attack control: no melee weapon in hand (a
-	// bow, say) or strikes by motion switched off.
+	// bow, say) or strikes by motion switched off. Drawn: a sheathed weapon
+	// is readied by the attack control, so there a swing presses nothing.
 	frame.meleeInHand = false;
+	frame.weaponSeen = WeaponSeen::Sheathed;
+	{
+		HandMode sheathed;
+		frame.right.position = NiPoint3{0.3f, -0.2f, -0.5f};
+		sheathed.Update(frame, settings);
+		frame.right.position = NiPoint3{0.34f, -0.2f, -0.5f};
+		sheathed.Update(frame, settings);
+		frame.right.position = NiPoint3{0.341f, -0.2f, -0.5f};
+		r = sheathed.Update(frame, settings);
+		Check(r.swing == SwingVerdict::Heavy && !r.controls.attack,
+		      "sheathed: the same swing does not attack, so it cannot draw the fists");
+	}
+	frame.weaponSeen = WeaponSeen::Drawn;
 	HandMode byControl;
 	frame.right.position = NiPoint3{0.3f, -0.2f, -0.5f};
 	byControl.Update(frame, settings);
@@ -1246,17 +1261,136 @@ void TestLaserPress() {
 	Check(!r.controls.menuClick, "for one frame");
 }
 
-void TestReadyWeaponBeforeBlock() {
-	std::printf("Ready weapon lets go of the block\n");
-	for (UInt32 mask = 0; mask < 4; ++mask) {
-		HandControlsWanted c;
-		c.readyWeapon = (mask & 1) != 0;
-		c.block = (mask & 2) != 0;
-		c.attack = true;
-		ReadyWeaponBeforeBlock(c);
-		Check(c.block == (!c.readyWeapon && (mask & 2) != 0) && c.attack && c.readyWeapon == ((mask & 1) != 0),
-		      "the tap drops the block and nothing else; without a tap the block stands");
+void TestReadyWeapon() {
+	std::printf("Ready weapon: the click followed until the game shows it\n");
+	const float dt = 1.0f / 90.0f;
+	const SInt32 none = -1;
+	{
+		ReadyWeaponState s;
+		ReadyWeaponVerdict v = StepReadyWeapon(s, false, WeaponSeen::Drawn, none, dt);
+		Check(!v.key && !v.dropBlock && !s.pending, "no click: nothing");
+		v = StepReadyWeapon(s, true, WeaponSeen::Unknown, none, dt);
+		Check(v.key && !v.dropBlock && !s.pending, "state unreadable: a plain tap, block untouched");
+		int frames = 1;
+		while (StepReadyWeapon(s, false, WeaponSeen::Unknown, none, dt).key) {
+			++frames;
+		}
+		Check(frames >= 10 && frames <= 12, "held for the tap's tenth of a second");
+		v = StepReadyWeapon(s, true, WeaponSeen::Unknown, none, 0.0f);
+		Check(v.key, "a frame without a time still taps");
 	}
+	{
+		ReadyWeaponState s;
+		ReadyWeaponVerdict v = StepReadyWeapon(s, true, WeaponSeen::Drawn, none, dt);
+		Check(v.key && v.dropBlock && s.pending && !s.wantDrawn,
+		      "drawn: the click wants it sheathed, the key goes down at once, block off");
+		for (int i = 0; i < 5; ++i) {
+			v = StepReadyWeapon(s, false, WeaponSeen::Drawn, none, dt);
+		}
+		Check(v.key && v.dropBlock, "the key held for the tap");
+		v = StepReadyWeapon(s, false, WeaponSeen::Drawn, kPlayerActionUnequipWeapon, dt);
+		v = StepReadyWeapon(s, false, WeaponSeen::Sheathed, kPlayerActionUnequipWeapon, dt);
+		for (int i = 0; i < 20; ++i) {
+			v = StepReadyWeapon(s, false, WeaponSeen::Sheathed, kPlayerActionUnequipWeapon, dt);
+		}
+		Check(!v.key && v.dropBlock && s.pending, "while the game sheathes: waiting, block still off");
+		v = StepReadyWeapon(s, false, WeaponSeen::Sheathed, none, dt);
+		Check(v.reached && !v.key && !v.dropBlock && !s.pending, "sheathed and done: the wish ends");
+	}
+	{
+		ReadyWeaponState s;
+		ReadyWeaponVerdict v = StepReadyWeapon(s, true, WeaponSeen::Sheathed, kPlayerActionBlock, dt);
+		Check(!v.key && v.dropBlock && s.wantDrawn, "blocking: no key yet, the block let go");
+		for (int i = 0; i < 30; ++i) {
+			v = StepReadyWeapon(s, false, WeaponSeen::Sheathed, kPlayerActionBlock, dt);
+		}
+		Check(!v.key && v.dropBlock, "not while the block action lasts");
+		v = StepReadyWeapon(s, false, WeaponSeen::Sheathed, none, dt);
+		Check(v.key, "the key the frame the block is over");
+	}
+	{
+		ReadyWeaponState s;
+		StepReadyWeapon(s, true, WeaponSeen::Sheathed, none, dt);
+		int presses = 1;
+		bool was = true;
+		bool gaveUp = false;
+		for (int i = 0; i < 400 && !gaveUp; ++i) {
+			const ReadyWeaponVerdict v = StepReadyWeapon(s, false, WeaponSeen::Sheathed, none, dt);
+			if (v.key && !was) {
+				++presses;
+			}
+			was = v.key;
+			gaveUp = v.gaveUp;
+		}
+		Check(presses == 4 && gaveUp && !s.pending,
+		      "ignored: pressed again every 0.6 s, given up after 2.5 s");
+	}
+	{
+		ReadyWeaponState s;
+		StepReadyWeapon(s, true, WeaponSeen::Sheathed, kPlayerActionBlock, dt);
+		ReadyWeaponVerdict v = StepReadyWeapon(s, true, WeaponSeen::Sheathed, kPlayerActionBlock, dt);
+		Check(!s.wantDrawn && v.reached && !s.pending,
+		      "a second click takes the wish back: already there, done");
+		StepReadyWeapon(s, true, WeaponSeen::Drawn, none, dt);
+		StepReadyWeapon(s, false, WeaponSeen::Drawn, kPlayerActionUnequipWeapon, dt);
+		v = StepReadyWeapon(s, true, WeaponSeen::Drawn, kPlayerActionUnequipWeapon, dt);
+		Check(s.pending && s.wantDrawn && !v.reached,
+		      "taken back mid-animation: waits for the animation before calling it done");
+	}
+}
+
+void TestSwingPressesAttack() {
+	std::printf("Swing presses attack only with a drawn weapon and open grips\n");
+	for (UInt32 mask = 0; mask < 8; ++mask) {
+		const bool motion = (mask & 1) != 0;
+		const bool drawn = (mask & 2) != 0;
+		const bool grip = (mask & 4) != 0;
+		Check(SwingPressesAttack(motion, drawn, grip) == (!motion && drawn && !grip),
+		      "attack only when not striking by motion, drawn, and no grip closed");
+	}
+}
+
+void TestRunToggle() {
+	std::printf("Run held or toggled\n");
+	bool latched = true;
+	Check(StepRunToggle(latched, false, true, false) == false && !latched,
+	      "hold mode: the stick's own level, a latch forgotten");
+	Check(StepRunToggle(latched, false, false, true), "hold mode: pressed in, running");
+	Check(StepRunToggle(latched, true, true, false) && latched, "toggle: a click switches running on");
+	Check(StepRunToggle(latched, true, false, false), "and it stays on without the stick");
+	Check(StepRunToggle(latched, true, false, true), "the stick held alone changes nothing");
+	Check(!StepRunToggle(latched, true, true, false) && !latched, "the next click switches it off");
+}
+
+void TestUsScanCodes() {
+	std::printf("Keys by US scan code, whatever the layout\n");
+	// The game's own [Controls] block (Oblivion.ini) for its defaults.
+	Check(obvr::game::UsScanCode('Z') == 0x2C, "Z is 0x2C: the game's Grab=002CFFFF");
+	Check(obvr::game::UsScanCode('Y') == 0x15, "Y is 0x15");
+	Check(obvr::game::UsScanCode('W') == 0x11 && obvr::game::UsScanCode('S') == 0x1F &&
+	          obvr::game::UsScanCode('A') == 0x1E && obvr::game::UsScanCode('D') == 0x20,
+	      "WASD as the game binds them");
+	Check(obvr::game::UsScanCode('C') == 0x2E && obvr::game::UsScanCode('F') == 0x21 &&
+	          obvr::game::UsScanCode('E') == 0x12 && obvr::game::UsScanCode('R') == 0x13,
+	      "cast, ready, jump, view");
+	Check(obvr::game::UsScanCode(0x20) == 0x39 && obvr::game::UsScanCode(0x11) == 0x1D &&
+	          obvr::game::UsScanCode(0x10) == 0x2A && obvr::game::UsScanCode(0x09) == 0x0F &&
+	          obvr::game::UsScanCode(0x70) == 0x3B && obvr::game::UsScanCode(0x1B) == 0x01,
+	      "space, ctrl, shift, tab, F1, esc");
+	Check(obvr::game::UsScanCode('1') == 0x02 && obvr::game::UsScanCode('9') == 0x0A &&
+	          obvr::game::UsScanCode('0') == 0x0B,
+	      "digits: Quick1=0002 in the game's block");
+	Check(obvr::game::UsScanCode(0x79) == 0x44 && obvr::game::UsScanCode(0x7A) == 0x57 &&
+	          obvr::game::UsScanCode(0x7B) == 0x58,
+	      "F10, F11, F12");
+	Check(obvr::game::UsScanCode(0x08) == 0x0E && obvr::game::UsScanCode(0x0D) == 0x1C &&
+	          obvr::game::UsScanCode(0xA0) == 0x2A && obvr::game::UsScanCode(0xA1) == 0x36 &&
+	          obvr::game::UsScanCode(0xA2) == 0x1D && obvr::game::UsScanCode(0x12) == 0x38 &&
+	          obvr::game::UsScanCode(0xA4) == 0x38 && obvr::game::UsScanCode(0x14) == 0x3A,
+	      "backspace, enter, the shifts, ctrl, alt, caps lock");
+	Check(obvr::game::UsScanCode(0x01) == 0 && obvr::game::UsScanCode(0x26) == 0 &&
+	          obvr::game::UsScanCode('a') == 0,
+	      "anything else is left to the layout");
 }
 
 void TestGrabReach() {
@@ -1501,7 +1635,10 @@ int main() {
 	TestLaserOnOwnPanel();
 	TestSneakTap();
 	TestGrabReach();
-	TestReadyWeaponBeforeBlock();
+	TestReadyWeapon();
+	TestSwingPressesAttack();
+	TestRunToggle();
+	TestUsScanCodes();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

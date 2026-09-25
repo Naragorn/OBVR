@@ -155,4 +155,6 @@ void ApplyUnpausedMenus(bool wanted) {
 	}
 }
 
+UInt32 TopVisibleMenu() { return TopVisibleMenuId(); }
+
 }  // namespace obvr::game

@@ -544,6 +544,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.sneakHold = v != 0.0f; },
 	},
 	{
+		"Hands", "Toggle run", "A left stick click switches running on and off, instead of holding it in",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "RunToggle",
+		+[](const Config& c) { return c.hands.runToggle ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.runToggle = v != 0.0f; },
+	},
+	{
 		"Hands", "Laser tilt", "Degrees the laser leaves the controller turned down",
 		ItemKind::Number, -90.0f, 90.0f, 5.0f, 0, false,
 		"Hands", "LaserPitchDegrees",

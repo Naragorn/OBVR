@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/Types.h"
+
 namespace obvr::game {
 
 // Render.UnpausedMenus: the world keeps running behind the player's own
@@ -18,5 +20,10 @@ namespace obvr::game {
 // from then on, so switching it off in the INI restores vanilla answers
 // without touching code again.
 void ApplyUnpausedMenus(bool wanted);
+
+// The id at the top of the interface manager's menu stack
+// (GetTopVisibleMenuID), kMenuIdNone with none - unlike ActiveMenuId, which
+// is the menu under the mouse and empties whenever the cursor is off it.
+UInt32 TopVisibleMenu();
 
 }  // namespace obvr::game

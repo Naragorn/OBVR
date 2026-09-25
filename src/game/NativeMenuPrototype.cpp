@@ -45,7 +45,14 @@ UInt32 TopMenu() {
  using Fn=UInt32(__fastcall*)(void*,void*);
  return reinterpret_cast<Fn>(addr::kGetTopVisibleMenuId)(manager,nullptr);
 }
-bool Run(const char* command) { return g_console->RunScriptLine2(command,nullptr,true); }
+bool Run(const char* command) {
+ const bool ran=g_console->RunScriptLine2(command,nullptr,true);
+ // Which line, the first several times: "a UI update command failed" alone
+ // left the semicolon to be found by elimination (2026-09-25).
+ static UInt32 s_failLinesLeft=8;
+ if (!ran && s_failLinesLeft>0) { --s_failLinesLeft; OBVR_LOG("Native menus: script line failed: %s",command); }
+ return ran;
+}
 bool Text(const char* trait,const char* text) {
  char command[1024];
  return ui::NativeTextCommand(trait,text,command,sizeof(command)) && Run(command);
@@ -115,7 +122,7 @@ class SettingWriter final: public ui::NativeSettingWriter {
 
 // Only changed text is sent through the script compiler. INI reloads appear
 // on the next refresh without reopening the menu or resetting its selection.
-char g_lastText[32][512]{};
+char g_lastText[48][512]{};
 void InvalidateText() { for (auto& row:g_lastText) row[0]='\0'; }
 bool SameText(const char* a,const char* b) { while (*a && *a==*b) { ++a; ++b; } return *a==*b; }
 bool CachedText(UInt32 slot,const char* trait,const char* text) {
@@ -158,12 +165,37 @@ bool RefreshSettings() {
   Join(trait,sizeof(trait),button,"target");
   ok=Number(trait,ui::kXmlBool[paging ? 1 : 0]) && ok;
  }
+ // And the words themselves, in case the alpha does not reach the label.
+ ok=CachedText(40,"parchment\\previous\\label\\string",paging ? "Previous" : " ") && ok;
+ ok=CachedText(41,"parchment\\next\\label\\string",paging ? "Next" : " ") && ok;
  for (UInt32 slot=0;slot<ui::kNativeSettingsRows;++slot) {
   char trait[96],label[192],value[32];
   const auto* definition=g_settings.Row(slot);
-  ui::NativeRowTrait(slot,"visible",trait,sizeof(trait));
-  ok=Number(trait,definition ? 1 : 0) && ok;
-  if (!definition) continue;
+  // A slot past the last row is emptied rather than hidden: visible was
+  // written as 1/0, which are both false to the XML (&true; is 2), and the
+  // rows stayed drawn - with the text of whatever stood there before, so a
+  // comfort page that lost a row showed "Left-handed" twice (2026-09-25).
+  // Blank text, and not a target, is what an empty slot is made of.
+  const char* const parts[]={"","minus\\","plus\\"};
+  for (const char* part:parts) {
+   char suffix[32];
+   Join(suffix,sizeof(suffix),part,"target");
+   ui::NativeRowTrait(slot,suffix,trait,sizeof(trait));
+   ok=Number(trait,ui::kXmlBool[definition ? 1 : 0]) && ok;
+  }
+  ui::NativeRowTrait(slot,"minus\\label\\string",trait,sizeof(trait));
+  ok=CachedText(25+slot*2,trait,definition ? "-" : " ") && ok;
+  ui::NativeRowTrait(slot,"plus\\label\\string",trait,sizeof(trait));
+  ok=CachedText(26+slot*2,trait,definition ? "+" : " ") && ok;
+  if (!definition) {
+   ui::NativeRowTrait(slot,"label\\string",trait,sizeof(trait));
+   ok=CachedText(1+slot*3,trait," ") && ok;
+   ui::NativeRowTrait(slot,"value\\string",trait,sizeof(trait));
+   ok=CachedText(2+slot*3,trait," ") && ok;
+   ui::NativeRowTrait(slot,"restart\\string",trait,sizeof(trait));
+   ok=CachedText(3+slot*3,trait," ") && ok;
+   continue;
+  }
   Join(label,sizeof(label),definition->category," / ",definition->label);
   const auto item=ui::ItemFor(*definition,GetConfig());
   ui::FormatValue(item,value,sizeof(value));

@@ -127,6 +127,9 @@ struct HandSettings {
 	// Sneak only while the right stick is held down, instead of a flick down
 	// switching it on and the next one off.
 	bool sneakHold = false;
+	// Run switched on and off by a click of the left stick, instead of held
+	// while the stick is pressed in.
+	bool runToggle = false;
 	// With ControllerMenus on and the mode off, the controllers in the
 	// WORLD as well, as a gamepad: see PlanGamepadControls for the layout.
 	bool gamepadLayout = true;
@@ -152,6 +155,11 @@ struct HandModeFrame {
 	// The player is sneaking, as the game has it. What hold-to-sneak compares
 	// the stick with.
 	bool sneaking = false;
+	// The player's weapon, drawn or not, and the action the player's process
+	// is in (HighProcess kAction_, -1 none): what the ready-weapon click
+	// follows, and whether a swing may press attack.
+	WeaponSeen weaponSeen = WeaponSeen::Unknown;
+	SInt32 playerAction = -1;
 	// The quad the game's menus hang on when they are not on a wrist - on
 	// the head or in the room - in tracking space, for the laser.
 	MenuQuad menuQuad;
@@ -283,6 +291,9 @@ struct HandModeResult {
 	UInt32 swingSerial = 0;
 	bool strikeByMotion = false;  // this frame's swing strikes by motion rather than by control
 
+	// The ready-weapon click's progress this frame.
+	ReadyWeaponVerdict ready;
+
 	// For the log.
 	bool blocking = false;
 	bool reachBack = false;
@@ -313,8 +324,10 @@ private:
 	// Both sticks clicked: OBVR's menu. Answers its verdict for the clicks.
 	StickChordVerdict StepChord(const HandModeFrame& frame, HandModeResult& r);
 	// The toggled controls held for kTapHoldSeconds rather than one frame.
-	void HoldTaps(HandControlsWanted& controls, float dtSeconds);
-	TapHoldState m_readyHold;
+	// The ready-weapon click followed until the game shows it (StepReadyWeapon).
+	void HoldTaps(HandControlsWanted& controls, const HandModeFrame& frame, HandModeResult& r);
+	ReadyWeaponState m_ready;
+	bool m_runLatched = false;
 	TapHoldState m_povHold;
 	TapHoldState m_quickHold;
 	SneakHoldState m_sneak;

@@ -462,6 +462,15 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.meleeInHand = active && config.hands.motionHits && game::MeleeInHand(nullptr);
 	frame.menusOnly = menusOnly;
 	frame.inWorld = game::PlayerInWorld();
+	// The weapon and the player's action: what the ready-weapon click follows
+	// and whether a swing may attack. World frames only, like the sneak.
+	if (!menuIsUp && frame.inWorld) {
+		const game::WeaponState weapon = game::ReadPlayerWeaponState();
+		frame.weaponSeen = weapon == game::WeaponState::Drawn      ? vr::WeaponSeen::Drawn
+		                   : weapon == game::WeaponState::Sheathed ? vr::WeaponSeen::Sheathed
+		                                                           : vr::WeaponSeen::Unknown;
+		frame.playerAction = game::ReadPlayerAction();
+	}
 	frame.sneaking = active && !menuIsUp && frame.inWorld && config.hands.sneakHold &&
 	                 game::IsPlayerSneaking();
 	frame.headValid = backend.GetRenderPose(frame.head, frame.headPosition) ||
@@ -772,6 +781,14 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			                                                 : "unknown");
 		}
 		readyWasWanted = controls.readyWeapon;
+		static UInt32 readyEndLinesLeft = 12;
+		if ((g_hand.ready.reached || g_hand.ready.gaveUp) && readyEndLinesLeft > 0) {
+			--readyEndLinesLeft;
+			OBVR_LOG("Hands: ready weapon %s", g_hand.ready.reached
+			                                        ? "done - the game shows the wanted state"
+			                                        : "given up - the game did not follow within "
+			                                          "2.5 s");
+		}
 
 		game::ApplyHandControls(controls, config.handKeys, config.hands.turnSpeed);
 		g_handControlsHeld = true;
@@ -1414,9 +1431,9 @@ void OnFrameEnd() {
 			g_dressingReportedThisMenu = false;
 			g_menuProbeAttemptsLeft = kMenuWorldProbeAttempts;
 		}
-		OBVR_LOG("Menu trace: a menu just %s - %s (0x%03X)",
+		OBVR_LOG("Menu trace: a menu just %s - %s (0x%03X), top of the stack 0x%03X",
 		         menuFlagChanged ? (menuIsUp ? "opened" : "closed") : "changed",
-		         game::MenuIdName(menuId), menuId);
+		         game::MenuIdName(menuId), menuId, menuIsUp ? game::TopVisibleMenu() : 0u);
 	}
 	// Counted down once a frame, here rather than beside each mark: the marks
 	// come several to a frame and would otherwise burn the window in two.
@@ -2755,9 +2772,14 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// frames are excluded by CrosshairCaptureWanted, so their centre is never
 	// punched out.
 	bool crosshairLifted = false;
+	// A menu just opened still carries the fading HUD: its centre keeps being
+	// lifted out, so the tooltip does not flash into the menu's picture.
+	const bool menuOpeningHud = MenuOpeningKeepsHud(
+		visibility.menuIsUp, g_presentedFrame - g_menuOpenedFrame,
+		visibility.menuIsUp && game::TopVisibleMenu() == game::kMenuIdNone);
 	if (CrosshairCentreCaptureWanted(config.tracker.crosshair,
 	                                g_crosshairHasTarget, tooltipsEnabled,
-	                                worldFrame, visibility.menuIsUp) &&
+	                                worldFrame, visibility.menuIsUp && !menuOpeningHud) &&
 	    config.tracker.hudOverlay &&
 	    g_hudLayer.HasCapture()) {
 		UInt32 believedWidth = 0;

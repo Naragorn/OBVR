@@ -1248,6 +1248,23 @@ void TestCrosshairTooltipPolicy() {
 		      "all tooltip capture flows erase the centre only on a playable frame");
 	}
 
+	{
+		using obvr::camera::kMenuOpeningEmptyStackFrames;
+		using obvr::camera::kMenuOpeningLiftFrames;
+		using obvr::camera::MenuOpeningKeepsHud;
+		Check(!MenuOpeningKeepsHud(false, 0, true), "no menu: nothing to keep");
+		Check(MenuOpeningKeepsHud(true, 0, false) &&
+		          MenuOpeningKeepsHud(true, kMenuOpeningLiftFrames - 1, false),
+		      "a menu's first frames still carry the HUD, whatever the stack");
+		Check(!MenuOpeningKeepsHud(true, kMenuOpeningLiftFrames, false),
+		      "after them, with a menu on the stack, the menu is the picture");
+		Check(MenuOpeningKeepsHud(true, kMenuOpeningLiftFrames, true) &&
+		          MenuOpeningKeepsHud(true, kMenuOpeningEmptyStackFrames - 1, true),
+		      "an empty stack (the dialogue's approach) keeps it longer");
+		Check(!MenuOpeningKeepsHud(true, kMenuOpeningEmptyStackFrames, true),
+		      "but not for ever");
+	}
+
 	const PixelRectangle normal = TooltipAboveNameRectangle(800, 600, 60);
 	Check(normal.left == 700 && normal.right == 760 && normal.top == 420 &&
 	          normal.bottom == 480,

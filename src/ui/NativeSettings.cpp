@@ -136,6 +136,9 @@ bool NativeTextCommand(const char* trait,const char* text,char* out,UInt32 capac
  for (const char* p=text; *p; ++p) {
   if (*p=='%' ) b.Text("%%");
   else if (*p=='"') b.Text("%q");
+  // The script compiler ends the line at a semicolon, quotes or not: every
+  // help line with one failed to compile (2026-09-25 log, Hold to sneak).
+  else if (*p==';') b.Add(',');
   else if (*p=='@' || *p=='|' || static_cast<unsigned char>(*p)<32) { out[0]='\0'; return false; }
   else b.Add(*p);
  }

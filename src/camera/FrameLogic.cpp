@@ -233,6 +233,14 @@ bool CrosshairCentreCaptureWanted(bool crosshairEnabled, bool haveTarget,
 	       (crosshairEnabled || (haveTarget && tooltipsEnabled));
 }
 
+bool MenuOpeningKeepsHud(bool menuIsUp, UInt32 framesSinceOpen, bool menuStackEmpty) {
+	if (!menuIsUp) {
+		return false;
+	}
+	return framesSinceOpen < kMenuOpeningLiftFrames ||
+	       (menuStackEmpty && framesSinceOpen < kMenuOpeningEmptyStackFrames);
+}
+
 PixelRectangle TooltipAboveNameRectangle(UInt32 width, UInt32 height,
                                          UInt32 sizePixels) {
 	if (width == 0 || height == 0 || sizePixels == 0) {

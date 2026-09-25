@@ -955,15 +955,126 @@ inline StickFlickVerdict StepStickFlick(StickFlickState& s, float x, float y) {
 	return v;
 }
 
-// The game does not ready or sheathe a weapon while block is held, and the
-// block is a gesture - a left hand held up in front of the chest - which is
-// easily up while the right thumb clicks the stick: every ready-weapon tap
-// of the 2026-09-25 evening run fell inside one such block and did nothing.
-// The tap wins: block lets go for as long as the tap is held.
-inline void ReadyWeaponBeforeBlock(HandControlsWanted& controls) {
-	if (controls.readyWeapon) {
-		controls.block = false;
+// ------------------------------------------------------------ Ready weapon
+//
+// The ready-weapon click as a wish for the other state, followed until the
+// game shows it. A plain key tap was not enough: the game does not ready or
+// sheathe while the player blocks, and the block is a gesture - a left hand
+// up in front of the chest - that is easily up while the right thumb clicks.
+// Every tap of the 2026-09-25 evening run fell inside one; letting go of
+// block for the tap's own frames did not help either (the late run: eight
+// taps, each "the weapon was drawn", all inside a block from 1090 to 1248),
+// because the player is still in the block action until its animation has
+// lowered the shield.
+//
+// So: the click decides which state is wanted. Block is kept off while the
+// wish stands; the key goes down once the player is in neither the block nor
+// an equip/unequip action; and if the state has not changed kReadyRetrySeconds
+// after that, the key goes down again - up to kReadyGiveUpSeconds in all.
+// The actions are HighProcess's kAction_ values (xOBSE obse/GameProcess.h:
+// EquipWeapon 0, UnequipWeapon 1, Block 6; IsBlocking() is action == Block).
+// With the weapon's state unreadable the click is a plain tap, as before.
+constexpr SInt32 kPlayerActionEquipWeapon = 0;
+constexpr SInt32 kPlayerActionUnequipWeapon = 1;
+constexpr SInt32 kPlayerActionBlock = 6;
+constexpr float kReadyRetrySeconds = 0.6f;
+constexpr float kReadyGiveUpSeconds = 2.5f;
+// For a frame without a time: the headset's 90 Hz.
+constexpr float kReadyNominalFrameSeconds = 1.0f / 90.0f;
+
+enum class WeaponSeen { Unknown, Sheathed, Drawn };
+
+struct ReadyWeaponState {
+	bool pending = false;
+	bool wantDrawn = false;
+	float hold = 0.0f;   // the key still down for this long
+	float wait = 0.0f;   // until the next press may go
+	float left = 0.0f;   // until the wish is given up
+};
+
+struct ReadyWeaponVerdict {
+	bool key = false;        // the ready-weapon key down this frame
+	bool dropBlock = false;  // block kept off this frame
+	bool gaveUp = false;     // the wish was given up this frame, for the log
+	bool reached = false;    // the game showed the wanted state this frame
+};
+
+inline ReadyWeaponVerdict StepReadyWeapon(ReadyWeaponState& s, bool click, WeaponSeen seen,
+                                          SInt32 action, float dtSeconds) {
+	ReadyWeaponVerdict v;
+	const float dt = dtSeconds > 0.0f ? dtSeconds : kReadyNominalFrameSeconds;
+	if (click) {
+		if (seen == WeaponSeen::Unknown) {
+			s = ReadyWeaponState{};
+			s.hold = kTapHoldSeconds;  // nothing to follow: a plain tap
+		} else if (s.pending) {
+			s.wantDrawn = !s.wantDrawn;  // a second click takes the wish back
+			s.left = kReadyGiveUpSeconds;
+		} else {
+			s = ReadyWeaponState{};
+			s.pending = true;
+			s.wantDrawn = seen == WeaponSeen::Sheathed;
+			s.left = kReadyGiveUpSeconds;
+		}
 	}
+	if (!s.pending) {
+		v.key = s.hold > 0.0f;
+		s.hold = v.key ? s.hold - dt : 0.0f;
+		return v;
+	}
+	const bool animating =
+		action == kPlayerActionEquipWeapon || action == kPlayerActionUnequipWeapon;
+	const bool there = seen == (s.wantDrawn ? WeaponSeen::Drawn : WeaponSeen::Sheathed);
+	if (there && !animating && s.hold <= 0.0f) {
+		s = ReadyWeaponState{};
+		v.reached = true;
+		return v;
+	}
+	v.dropBlock = true;
+	if (s.hold > 0.0f) {
+		v.key = true;
+		s.hold -= dt;
+	} else if (animating) {
+		s.wait = kReadyRetrySeconds;  // the game is on it: the retry counts from its end
+	} else if (s.wait > 0.0f) {
+		s.wait -= dt;
+	} else if (action != kPlayerActionBlock && !there) {
+		v.key = true;
+		s.hold = kTapHoldSeconds - dt;
+		s.wait = kReadyRetrySeconds;
+	}
+	s.left -= dt;
+	if (s.left <= 0.0f) {
+		s = ReadyWeaponState{};
+		v.gaveUp = true;
+	}
+	return v;
+}
+
+// Run, held or toggled. Held (the default): the run control is down while
+// the left stick is pressed in. Toggled: a click of the left stick - one
+// released alone, so both sticks together still open OBVR's menu - switches
+// running on, the next one off; OBVR holds the run control in between.
+inline bool StepRunToggle(bool& latched, bool toggleMode, bool click, bool held) {
+	if (!toggleMode) {
+		latched = false;
+		return held;
+	}
+	if (click) {
+		latched = !latched;
+	}
+	return latched;
+}
+
+// Whether a swing presses the attack control. Not when the swung weapon
+// strikes by motion (the blade itself hits), and not with the weapon away:
+// the attack control readies a sheathed weapon (a player on the gamesas
+// forum, 2011: "if my weapon was sheathed, one left-click would draw
+// (ready) my weapon"), so a hand moved quickly to reach for or throw
+// something drew the fists (2026-09-25). Not while a grip is closed either:
+// that hand is holding or reaching, not striking.
+inline bool SwingPressesAttack(bool strikeByMotion, bool weaponDrawn, bool gripHeld) {
+	return !strikeByMotion && weaponDrawn && !gripHeld;
 }
 
 // ------------------------------------------------------------ Grab by reach

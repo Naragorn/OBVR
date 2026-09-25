@@ -34,8 +34,9 @@ struct HandKeyMap {
 
 // Presses and releases the game's controls to match what the hands want,
 // sending only the edges: a key that is already down is left down. Mouse
-// buttons go through mouse_event, keys through keybd_event with the scan
-// code the layout maps them to - the form DirectInput sees.
+// buttons go through mouse_event, keys through keybd_event with the key's
+// US scan code (UsScanCode) - the form DirectInput sees, and the physical
+// key the game's bindings name whatever the keyboard layout.
 //
 // The turn is a relative mouse movement, scaled by turnSpeed pixels per
 // frame at full deflection. A menu click is the left mouse button, which is

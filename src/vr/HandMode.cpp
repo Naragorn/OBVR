@@ -93,6 +93,9 @@ void HandMode::Reset() {
 	m_haveLastRight = false;
 	m_reachArmed = false;
 	m_reachSpent = false;
+	m_ready = ReadyWeaponState{};
+	m_sneak = SneakHoldState{};
+	m_runLatched = false;
 }
 
 HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
@@ -175,7 +178,8 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	// With a swung weapon in hand and strikes by motion on, the swing presses
 	// nothing: the blade itself strikes what it passes through (MeleeHits),
 	// heavy when the swing has been fast enough by then. Otherwise a swing
-	// taps or holds the attack control and the engine's animation decides.
+	// taps or holds the attack control and the engine's animation decides -
+	// only with the weapon drawn and no grip closed (SwingPressesAttack).
 	r.strikeByMotion = s.motionHits && f.meleeInHand;
 	if (f.right.valid && !f.menuMode) {
 		if (m_haveLastRight) {
@@ -185,7 +189,10 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 			if (m_swing.swinging && !wasSwinging) {
 				++m_swingSerial;
 			}
-			if (!r.strikeByMotion) {
+			const bool gripHeld = (f.right.valid && GripDown(f.right.buttonsPressed)) ||
+			                      (f.left.valid && GripDown(f.left.buttonsPressed));
+			if (SwingPressesAttack(r.strikeByMotion, f.weaponSeen == WeaponSeen::Drawn,
+			                       gripHeld)) {
 				if (r.swing == SwingVerdict::Heavy) {
 					HoldFor(m_heavyHold, s.gestures.heavyHoldSeconds);
 				} else if (r.swing == SwingVerdict::Light) {
@@ -279,7 +286,8 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	in.pointRight = m_pointRight;
 	in.leftHanded = s.leftHanded;
 	r.controls = PlanHandControls(in, s.stickDeadZone);
-	HoldTaps(r.controls, f.dtSeconds);
+	r.controls.run = StepRunToggle(m_runLatched, s.runToggle, in.leftStickClick, r.controls.run);
+	HoldTaps(r.controls, f, r);
 	if (!f.menuMode && f.right.valid) {
 		r.controls.sneak = StepSneakTap(m_sneak, s.sneakHold, r.controls.sneak, m_rightFlick.down,
 		                                f.sneaking, f.dtSeconds);
@@ -320,11 +328,16 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	return r;
 }
 
-void HandMode::HoldTaps(HandControlsWanted& controls, float dtSeconds) {
-	controls.readyWeapon = StepTapHold(m_readyHold, controls.readyWeapon, dtSeconds);
-	controls.togglePov = StepTapHold(m_povHold, controls.togglePov, dtSeconds);
-	controls.quickMenu = StepTapHold(m_quickHold, controls.quickMenu, dtSeconds);
-	ReadyWeaponBeforeBlock(controls);
+void HandMode::HoldTaps(HandControlsWanted& controls, const HandModeFrame& f,
+                        HandModeResult& r) {
+	r.ready = StepReadyWeapon(m_ready, controls.readyWeapon, f.weaponSeen, f.playerAction,
+	                          f.dtSeconds);
+	controls.readyWeapon = r.ready.key;
+	if (r.ready.dropBlock) {
+		controls.block = false;
+	}
+	controls.togglePov = StepTapHold(m_povHold, controls.togglePov, f.dtSeconds);
+	controls.quickMenu = StepTapHold(m_quickHold, controls.quickMenu, f.dtSeconds);
 }
 
 StickChordVerdict HandMode::StepChord(const HandModeFrame& f, HandModeResult& r) {
@@ -690,7 +703,7 @@ HandModeResult HandMode::UpdateMenusOnly(const HandModeFrame& f, const HandSetti
 			in.leftThumbY = f.left.thumbY;
 			in.rightThumbX = f.right.thumbX;
 			r.controls = PlanGamepadControls(in, s.stickDeadZone);
-			HoldTaps(r.controls, f.dtSeconds);
+			HoldTaps(r.controls, f, r);
 			r.controlsActive = f.right.valid || f.left.valid;
 		}
 	}

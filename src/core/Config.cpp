@@ -617,6 +617,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.aimWithHand = ReadBool("Hands", "AimWithHand", h.aimWithHand, path);
 		h.leftHanded = ReadBool("Hands", "LeftHanded", h.leftHanded, path);
 		h.sneakHold = ReadBool("Hands", "SneakHold", h.sneakHold, path);
+		h.runToggle = ReadBool("Hands", "RunToggle", h.runToggle, path);
 		if (!h.laserBeam && !h.laserDot) {
 			// The laser needs something to show; the settings menu refuses this
 			// (SettingEditRefusal), a hand-edited INI gets the beam back.

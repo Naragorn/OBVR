@@ -396,6 +396,7 @@ int main() {
  char b[512];
  Check(NativeTextCommand("parchment\\row0\\label\\string","50% \"test\"",b,sizeof(b)) && std::strcmp(b,"SetMenuStringValue \"parchment\\row0\\label\\string@50%% %qtest%q\" 1011")==0,"console separator and format escaping");
  Check(!NativeTextCommand("user0","",b,sizeof(b)) && !*b,"empty operand refused: xOBSE would discard it");
+ Check(NativeTextCommand("user1","a; b",b,sizeof(b)) && std::strcmp(b,"SetMenuStringValue \"user1@a, b\" 1011")==0,"a semicolon becomes a comma: the compiler would end the line there");
  const char* bad[]={"@","|","\n","\r","\t"};
  for(auto s:bad) Check(!NativeTextCommand("user0",s,b,sizeof(b)) && !*b,"unsafe text refused");
  const char* traits[]={nullptr,"","bad\"","bad@","bad|","bad space","bad;"};
