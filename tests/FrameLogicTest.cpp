@@ -13,6 +13,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <limits>
 
 #include "camera/FrameLogic.h"
@@ -1247,6 +1248,31 @@ void TestCrosshairTooltipPolicy() {
 	}
 
 	{
+		using obvr::camera::ComposeHandsHideList;
+		char list[128];
+		Check(ComposeHandsHideList(list, sizeof(list), true, "Arms", true, true) &&
+		          std::strcmp(list, "Arms,SideWeapon,BackWeapon,Quiver,Scb,Hand,Weapon,Torch,"
+		                            "Bip01 L ForearmTwist") == 0,
+		      "everything: arms, sheaths, and the hands with what they hold");
+		Check(ComposeHandsHideList(list, sizeof(list), false, "Arms", false, true) &&
+		          std::strcmp(list, "Hand,Weapon,Torch,Bip01 L ForearmTwist") == 0,
+		      "hands away alone: the held weapon goes with the hands");
+		Check(ComposeHandsHideList(list, sizeof(list), true, "Arms", false, false) &&
+		          std::strcmp(list, "Arms") == 0,
+		      "in the world: the arms only, the weapon in hand stays");
+		Check(ComposeHandsHideList(list, sizeof(list), false, "Arms", false, false) && list[0] == '\0',
+		      "nothing to hide: an empty list");
+		Check(ComposeHandsHideList(list, sizeof(list), true, "", true, false) &&
+		          std::strcmp(list, "SideWeapon,BackWeapon,Quiver,Scb") == 0,
+		      "an empty arm list adds no stray comma");
+		Check(!ComposeHandsHideList(list, 8, true, "Arms", true, true) && std::strlen(list) < 8,
+		      "too long: refused, still terminated");
+		Check(!ComposeHandsHideList(nullptr, 8, true, "Arms", true, true) &&
+		          !ComposeHandsHideList(list, 0, true, "Arms", true, true),
+		      "no room at all: refused");
+	}
+
+	{
 		using obvr::camera::DeathViewState;
 		using obvr::camera::StepDeathView;
 		auto same = [](const obvr::NiPoint3& p, const obvr::NiPoint3& q) {
@@ -1267,6 +1293,10 @@ void TestCrosshairTooltipPolicy() {
 		          ShadeForFrame(0x80112233u, true, false) == 0x80112233u &&
 		          ShadeForFrame(0u, true, true) == kDeathGreyShade,
 		      "dead and grey on: the grey shade over whatever the menus wanted");
+		Check(ShadeForFrame(0u, true, true, true, 0x12FFE3B2u) == 0xFFFFE3B2u &&
+		          ShadeForFrame(0x80112233u, true, false, true, 0xFFE3B2u) == 0x80112233u &&
+		          ShadeForFrame(0x80112233u, false, true, true, 0xFFE3B2u) == 0x80112233u,
+		      "the menu tone instead: full strength in the menus' colour, only when dead and on");
 	}
 
 	for (UInt32 mask = 0; mask < 32; ++mask) {

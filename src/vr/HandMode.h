@@ -104,6 +104,9 @@ struct HandSettings {
 	// How close the hand has to be to an object for the grip to take it,
 	// metres from the hand to the object's origin.
 	float grabReachMetres = 0.3f;
+	// A light-brown ring on the object a closed grip would take, while it is
+	// within reach (render::ReachMarker).
+	bool reachMarker = true;
 
 	// Strikes by motion: with a swung weapon in hand the swing itself is the
 	// attack - no attack control, no animation - and the blade strikes the

@@ -582,6 +582,56 @@ CrosshairContent CrosshairContentWanted(bool crosshairWanted, bool haveTarget,
 
 // Tooltips remain useful with the plain crosshair disabled, so their capture
 // gate is deliberately independent from CrosshairVisibility::enabled.
+// The first-person nodes Full VR hides, as one comma-separated list - built in
+// one place because two callers hide from it (Present, and the scene pass
+// that hides the hands a frame earlier), and HideFirstPersonNodes shows again
+// whatever a call no longer lists: a shorter list in one of them un-hid the
+// drawn weapon every frame of a conversation (2026-09-25).
+//
+//   * the arms' meshes (armNodes), with HideArms
+//   * the sheaths: a weapon's scabbard is its own node, "Scb", hung on the
+//     side-weapon bone with the sheathed weapon (cs.uesp.net, NifSkope
+//     Comprehensive Guide, "Scabbards"); the bones a sheathed weapon, a bow
+//     or a quiver hang on moved with the right hand, so they floated
+//   * with the hands away (menus, dialogue): the hands and what they hold -
+//     the drawn weapon (Weapon bone), a torch (Torch), a shield (its Prn,
+//     "Bip01 L ForearmTwist")
+inline bool ComposeHandsHideList(char* out, UInt32 capacity, bool hideArms, const char* armNodes,
+                                 bool hideSheaths, bool handsAway) {
+	if (out == nullptr || capacity == 0) {
+		return false;
+	}
+	UInt32 at = 0;
+	bool fits = true;
+	auto append = [&](const char* text) {
+		if (at > 0 && text[0] != '\0') {
+			if (at + 1 >= capacity) {
+				fits = false;
+				return;
+			}
+			out[at++] = ',';
+		}
+		for (; *text != '\0'; ++text) {
+			if (at + 1 >= capacity) {
+				fits = false;
+				return;
+			}
+			out[at++] = *text;
+		}
+	};
+	if (hideArms && armNodes != nullptr) {
+		append(armNodes);
+	}
+	if (hideSheaths) {
+		append("SideWeapon,BackWeapon,Quiver,Scb");
+	}
+	if (handsAway) {
+		append("Hand,Weapon,Torch,Bip01 L ForearmTwist");
+	}
+	out[at] = '\0';
+	return fits;
+}
+
 // The death view held still: the game's death camera sinks and drifts, which
 // in a headset is the motion nobody asked for (2026-09-25). From the first
 // frame the player is dead the camera's position stays where it was then -
@@ -605,13 +655,18 @@ inline NiPoint3 StepDeathView(DeathViewState& s, bool enabled, bool dead,
 	return s.position;
 }
 
-// The picture after death: grey, at full strength - the menu shade's pass
-// (render::ComposeShadeColor's ARGB: white tone, alpha 255) over the live
-// stereo. Otherwise whatever shade the menus asked for.
+// The picture after death, through the menu shade's pass at full strength
+// (render::ComposeShadeColor's ARGB, alpha 255) over the live stereo: grey
+// (a white tone), or - Look.DeathMenuTint - the menus' own tone, the brown of
+// a paused menu. Otherwise whatever shade the menus asked for.
 constexpr UInt32 kDeathGreyShade = 0xFFFFFFFFu;
 
-inline UInt32 ShadeForFrame(UInt32 menuShade, bool playerDead, bool deathGrey) {
-	return playerDead && deathGrey ? kDeathGreyShade : menuShade;
+inline UInt32 ShadeForFrame(UInt32 menuShade, bool playerDead, bool deathTint,
+                            bool useMenuTone = false, UInt32 menuToneRgb = 0xFFFFFFu) {
+	if (!playerDead || !deathTint) {
+		return menuShade;
+	}
+	return useMenuTone ? (0xFF000000u | (menuToneRgb & 0x00FFFFFFu)) : kDeathGreyShade;
 }
 
 // Whether Full VR puts a third-person player back into first person: only with

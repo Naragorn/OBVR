@@ -45,6 +45,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.look.deathGrey = v != 0.0f; },
 	},
 	{
+		"Comfort", "Death tint: menu colour", "Tint in the menus' brown when you die, not grey",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "DeathMenuTint",
+		+[](const Config& c) { return c.look.deathMenuTint ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.look.deathMenuTint = v != 0.0f; },
+	},
+	{
 		"Comfort", "Eye separation", "Wider feels smaller, narrower feels larger",
 		ItemKind::Number, 0.7f, 1.3f, 0.01f, 2, false,
 		"Render", "EyeSeparationScale",
@@ -423,6 +430,13 @@ const SettingDefinition kSettings[] = {
 		"Hands", "GrabReachMetres",
 		+[](const Config& c) { return c.hands.grabReachMetres; },
 		+[](Config& c, float v) { c.hands.grabReachMetres = v; },
+	},
+	{
+		"Hands", "Reach marker", "A light-brown ring on what a closed grip would pick up",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "ReachMarker",
+		+[](const Config& c) { return c.hands.reachMarker ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.reachMarker = v != 0.0f; },
 	},
 	{
 		"Hands", "Hand height", "Moves both hands along the controller's up axis, metres; lower is negative",

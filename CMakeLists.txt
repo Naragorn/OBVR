@@ -95,6 +95,7 @@ add_library(OBVR SHARED
 	src/render/VignetteLayer.cpp
 	src/render/LaserLayer.cpp
 	src/render/ControllerModels.cpp
+	src/render/ReachMarker.cpp
 	src/render/CullingHook.cpp
 	src/render/LeafFacingHook.cpp
 	src/render/WaterReflectionHook.cpp

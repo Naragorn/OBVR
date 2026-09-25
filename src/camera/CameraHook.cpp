@@ -49,6 +49,7 @@
 #include "render/VignetteLayer.h"
 #include "render/HudLayer.h"
 #include "render/LaserLayer.h"
+#include "render/ReachMarker.h"
 #include "vr/LaserGeometry.h"
 #include "ui/Onboarding.h"
 #include "ui/SettingsMenu.h"
@@ -145,6 +146,7 @@ render::HudLayer g_hudLayer;
 render::CrosshairLayer g_crosshairLayer;
 render::VignetteLayer g_vignetteLayer;
 render::LaserLayer g_laserLayer;
+render::ReachMarker g_reachMarker;
 // The cyclopean camera, snapshotted in the camera pass (see there); declared
 // early because the hand mode measures the grab reach from it.
 NiTransform g_cyclopeanCameraWorldTransform{};
@@ -379,6 +381,14 @@ bool ReadIsThirdPerson();
 // The mode's frame, gathered and decided. Runs from Present, before the
 // frame's delivery, so a wrist placement is in place for the overlay submit
 // and the controls are pressed before the engine's next input read.
+// The one list of first-person nodes Full VR hides (ComposeHandsHideList).
+const char* HandsHideList(const vr::HandSettings& hands, bool handsAway) {
+	static char list[256];
+	ComposeHandsHideList(list, sizeof(list), hands.hideArms, hands.hideNodes, hands.hideSheaths,
+	                     handsAway);
+	return list;
+}
+
 void UpdateHandMode(const Config& config, bool menuIsUp) {
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
 	const long long now = ReadPerformanceCounter();
@@ -460,17 +470,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		// (2026-09-25). The bones a sheathed weapon, a bow or a quiver hang on
 		// are hidden with everything under them; "Scb" is named too, for a
 		// scabbard hung anywhere else.
-		static char hideList[256];
-		std::snprintf(hideList, sizeof(hideList), "%s%s%s%s",
-		              config.hands.hideArms ? config.hands.hideNodes : "",
-		              config.hands.hideArms ? "," : "",
-		              config.hands.hideSheaths ? "SideWeapon,BackWeapon,Quiver,Scb," : "",
-		              // Away with the hands: whatever they hold - the drawn weapon on the
-		              // Weapon bone, a torch on Torch, a shield on the left forearm twist
-		              // (its Prn, "Bip01 L ForearmTwist") - or it floated in the room
-		              // through a conversation (2026-09-25).
-		              handsAway ? "Hand,Weapon,Torch,Bip01 L ForearmTwist" : "");
-		game::HideFirstPersonNodes(!ReadIsThirdPerson(), hideList);
+		game::HideFirstPersonNodes(!ReadIsThirdPerson(), HandsHideList(config.hands, handsAway));
 		// The hands in the world rather than on top of it (FirstPersonDepth.h).
 		game::KeepFirstPersonDepth(true);
 		// The real controllers in the eyes while the hands are being adjusted.
@@ -663,6 +663,38 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	g_grabKeyDown = reach.key;
 	g_hand.controls.grab = reach.key;
 	game::SetGrabAtHand(reach.key, grabUnits);
+
+	// The reach marker ([Hands] ReachMarker): a light-brown ring on the object
+	// under the pick when it is within the grab's reach of either hand - the
+	// object a closed grip would take. The pick is the laser's with the grip
+	// open and the hand's while reaching; either way what it found is asked.
+	{
+		bool markerShown = false;
+		vr::openvr::HmdMatrix34 markerPose{};
+		vr::openvr::HmdMatrix34 head{};
+		if (active && !menuIsUp && config.hands.reachMarker && g_cyclopeanCameraWorldValid &&
+		    backend.GetRenderPoseMatrix(head)) {
+			const game::CrosshairTarget target = game::ReadCrosshairTarget();
+			const float reachUnits = config.hands.grabReachMetres * config.tracker.unitsPerMetre;
+			const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+			const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
+			const bool nearRight =
+				g_hand.rightHandValid &&
+				vr::WithinReach(camPos + camRot * g_hand.rightHandOffsetUnits, target.position,
+				                reachUnits);
+			const bool nearLeft =
+				g_hand.leftHandValid &&
+				vr::WithinReach(camPos + camRot * g_hand.leftHandOffsetUnits, target.position,
+				                reachUnits);
+			if (target.haveRef && (nearRight || nearLeft)) {
+				markerShown = true;
+				markerPose = vr::FacingHeadAt(
+					head, vr::WorldPointInTracking(head, camRot, camPos, target.position,
+					                               config.tracker.unitsPerMetre));
+			}
+		}
+		g_reachMarker.Submit(backend, markerShown, markerPose);
+	}
 	// Whether the engine took it: its grab update runs only while it holds
 	// something, so a count unchanged a quarter of a second after the key
 	// went down is a grab it refused - with where the target was then, the
@@ -1546,7 +1578,8 @@ void OnFrameEnd() {
 		// decision above refuses it here so the fresh eyes keep their full view.
 		// Dead: the whole picture grey (Look.DeathGrey).
 		g_pendingRequest.menuShadeColor =
-			ShadeForFrame(menuShadeColor, game::PlayerIsDead(), config.look.deathGrey);
+			ShadeForFrame(menuShadeColor, game::PlayerIsDead(), config.look.deathGrey,
+			              config.look.deathMenuTint, config.tracker.menuShadeColorRgb);
 		g_pendingRequest.menuSingleBorder = menuDressing.singleBorder;
 		if (menuIsUp && liveMenuFrame && !g_dressingReportedThisMenu &&
 		    g_dressingReportsLeft > 0) {
@@ -2236,9 +2269,10 @@ void BeforeFirstScenePass() {
 	// and keeps it; this only moves the first frame earlier.
 	if (GetConfig().handTracking && !ReadIsThirdPerson() &&
 	    (game::IsMenuMode() || game::DialogCameraCallPending() || g_handsAwayForDialog)) {
-		static char list[160];
-		std::snprintf(list, sizeof(list), "%s,Hand", GetConfig().hands.hideNodes);
-		game::HideFirstPersonNodes(true, list);
+		// The same list Present builds with the hands away. A shorter one here
+		// un-hid the drawn weapon every frame (HideFirstPersonNodes shows again
+		// what is no longer listed), so it floated through the conversation.
+		game::HideFirstPersonNodes(true, HandsHideList(GetConfig().hands, true));
 	}
 	// Snapshot the cyclopean world camera before the reflection subpass changes it.
 	g_cyclopeanCameraWorldValid = mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(g_bodyCameraNode));

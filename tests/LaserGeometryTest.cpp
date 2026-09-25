@@ -156,7 +156,38 @@ void TestParts() {
 	Check(beamOnly.beam && !beamOnly.dot, "the dot off leaves the beam");
 }
 
+void TestWorldInTracking() {
+	std::printf("A world point in the tracking space, for the reach marker\n");
+	// The head at (1, 1.5, 2) in the room, unturned; the camera at the world
+	// origin, unturned; 70 units a metre.
+	obvr::vr::openvr::HmdMatrix34 head{};
+	head.m[0][0] = head.m[1][1] = head.m[2][2] = 1.0f;
+	head.m[0][3] = 1.0f;
+	head.m[1][3] = 1.5f;
+	head.m[2][3] = 2.0f;
+	const NiMatrix33 identity = NiMatrix33::Identity();
+	const NiPoint3 camera{0.0f, 0.0f, 0.0f};
+	// 70 units ahead is a metre ahead: OpenVR's -z.
+	Check(NearPoint(WorldPointInTracking(head, identity, camera, NiPoint3{0.0f, 70.0f, 0.0f}, 70.0f),
+	                NiPoint3{1.0f, 1.5f, 1.0f}),
+	      "ahead in the game is ahead of the head in the room");
+	Check(NearPoint(WorldPointInTracking(head, identity, camera, NiPoint3{35.0f, 0.0f, 70.0f}, 70.0f),
+	                NiPoint3{1.5f, 2.5f, 2.0f}),
+	      "right and up carry over");
+	// The camera turned a quarter left in the game: a point to its right in
+	// the world is ahead of it.
+	const NiMatrix33 turned = EulerToMatrix(0.0f, 0.0f, 90.0f);
+	const NiPoint3 ahead = turned * NiPoint3{0.0f, 70.0f, 0.0f};
+	Check(NearPoint(WorldPointInTracking(head, turned, camera, ahead, 70.0f), NiPoint3{1.0f, 1.5f, 1.0f}),
+	      "the camera's own turn is taken out");
+	const obvr::vr::openvr::HmdMatrix34 facing = FacingHeadAt(head, NiPoint3{3.0f, 4.0f, 5.0f});
+	Check(facing.m[0][0] == 1.0f && facing.m[0][3] == 3.0f && facing.m[1][3] == 4.0f &&
+	          facing.m[2][3] == 5.0f,
+	      "the marker is turned like the head, placed at the point");
+}
+
 int main() {
+	TestWorldInTracking();
 	TestParts();
 	TestReach();
 	TestBeam();

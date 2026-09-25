@@ -119,6 +119,39 @@ inline bool WithinReach(const NiPoint3& hand, const NiPoint3& target, float reac
 	return reachUnits > 0.0f && d.LengthSquared() <= reachUnits * reachUnits;
 }
 
+// Where a point of the game's world stands in the tracking space, for an
+// overlay hung there. The cyclopean camera is the head: its world frame
+// (game axes x right, y forward, z up, units) is the head's render pose in
+// the room (OpenVR axes x right, y up, z back, metres).
+inline NiPoint3 WorldPointInTracking(const openvr::HmdMatrix34& head, const NiMatrix33& cameraRot,
+                                     const NiPoint3& cameraPos, const NiPoint3& world,
+                                     float unitsPerMetre) {
+	const NiPoint3 d = world - cameraPos;
+	// The camera's rotation undone: its transpose.
+	const float right = cameraRot.data[0][0] * d.x + cameraRot.data[1][0] * d.y +
+	                    cameraRot.data[2][0] * d.z;
+	const float forward = cameraRot.data[0][1] * d.x + cameraRot.data[1][1] * d.y +
+	                      cameraRot.data[2][1] * d.z;
+	const float up = cameraRot.data[0][2] * d.x + cameraRot.data[1][2] * d.y +
+	                 cameraRot.data[2][2] * d.z;
+	const float perMetre = unitsPerMetre > 0.0f ? 1.0f / unitsPerMetre : 0.0f;
+	const float hx = right * perMetre;
+	const float hy = up * perMetre;
+	const float hz = -forward * perMetre;
+	return NiPoint3{head.m[0][0] * hx + head.m[0][1] * hy + head.m[0][2] * hz + head.m[0][3],
+	                head.m[1][0] * hx + head.m[1][1] * hy + head.m[1][2] * hz + head.m[1][3],
+	                head.m[2][0] * hx + head.m[2][1] * hy + head.m[2][2] * hz + head.m[2][3]};
+}
+
+// An overlay at a point, turned the way the head is - facing the wearer.
+inline openvr::HmdMatrix34 FacingHeadAt(const openvr::HmdMatrix34& head, const NiPoint3& at) {
+	openvr::HmdMatrix34 m = head;
+	m.m[0][3] = at.x;
+	m.m[1][3] = at.y;
+	m.m[2][3] = at.z;
+	return m;
+}
+
 // How wide the dot at the beam's end is: the same apparent size near and
 // far, about 0.9 degrees, and never smaller than 8 mm.
 inline float LaserDotWidth(float distanceMetres) {

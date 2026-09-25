@@ -106,6 +106,9 @@ struct LookSettings {
 	// the game's sinking death view; and the picture turned grey.
 	bool deathViewStill = true;
 	bool deathGrey = true;
+	// The death tint in the menus' own colour (Render.MenuShadeColor) instead
+	// of grey.
+	bool deathMenuTint = false;
 
 	// How much of the view the vignette leaves clear, as the angle from the
 	// centre of view in degrees where the darkening starts; it is full 20
