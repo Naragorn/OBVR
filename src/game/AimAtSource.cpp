@@ -64,6 +64,8 @@ Site g_grabHandler;
 bool g_grabWanted = false;
 float g_grabDistanceUnits = 0.0f;
 bool g_grabHavePoint = false;
+bool g_grabStartHitValid = false;
+NiPoint3 g_grabStartHit{0.0f, 0.0f, 0.0f};
 NiPoint3 g_grabPoint{0.0f, 0.0f, 0.0f};
 float g_grabMinUnits = 0.0f;
 bool g_grabDistanceSwapped = false;
@@ -296,8 +298,25 @@ void InstallAimAtSource() {
 
 UInt32 GrabUpdateCount() { return g_grabUpdates; }
 
+bool PlayerHoldsGrab() {
+	const UInt32 player = PlayerAddressOrZero();
+	return player != 0 &&
+	       *reinterpret_cast<const UInt32*>(player + addr::kPlayerGrabModeOffset) != 0;
+}
+
+bool GrabStartHit(NiPoint3& hit) {
+	if (!g_grabStartHitValid) {
+		return false;
+	}
+	hit = g_grabStartHit;
+	return true;
+}
+
 void SetGrabAtHand(bool wanted, float distanceUnits, bool havePoint, const NiPoint3& point,
                    float minUnits) {
+	if (!wanted) {
+		g_grabStartHitValid = false;
+	}
 	g_grabWanted = wanted;
 	g_grabDistanceUnits = distanceUnits;
 	g_grabHavePoint = havePoint;
@@ -491,7 +510,12 @@ extern "C" void __cdecl OBVR_AimSourceBeforeGrabHandler(void* actor) {
 	static int s_linesLeft = 6;
 	if (!grabRunning && game::ReadGrabRayOrigin(origin) && game::ReadPickHit(hit) &&
 	    camera::GrabStartRotation(origin, hit, rotZ, rotX)) {
-		if (game::SwapTo(game::g_grabHandler, rotZ, rotX) && s_linesLeft > 0) {
+		const bool swapped = game::SwapTo(game::g_grabHandler, rotZ, rotX);
+		if (swapped) {
+			game::g_grabStartHit = hit;
+			game::g_grabStartHitValid = true;
+		}
+		if (swapped && s_linesLeft > 0) {
 			--s_linesLeft;
 			OBVR_LOG("Aim: the grab's start looks at the pick's hit (%.0f, %.0f, %.0f) from the "
 			         "camera (%.0f, %.0f, %.0f) - heading %.4f, pitch %.4f",

@@ -10,6 +10,12 @@ namespace obvr::game {
 // each call; callers that need it every frame keep the answer.
 NiAVObject* FindFirstPersonNode(const char* name);
 
+// The nodes under under (itself excluded) whose names contain part,
+// case-insensitively, in tree order, at most capacity of them - a hand's
+// finger bones, whatever the skeleton calls each one. Answers how many.
+UInt32 CollectNodesContaining(NiAVObject* under, const char* part, NiAVObject** out,
+                              UInt32 capacity);
+
 // Hiding parts of the first-person model, for the hand-tracked mode: the
 // arms are the animation's and stay where the animation puts them, while the
 // hands are the controllers', so the arms go and the hands and what they

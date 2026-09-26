@@ -40,4 +40,8 @@ bool PinHandBone(bool rightHand, const char* boneName, const NiMatrix33& relativ
 // Forgets the bones found, so a new model is searched afresh.
 void ForgetHandBones();
 
+// Where a pinned hand bone is in the world now, as the last pin left it.
+// False before the bone has been found and written.
+bool ReadHandBoneWorld(bool rightHand, NiMatrix33& rot, NiPoint3& pos);
+
 }  // namespace obvr::game

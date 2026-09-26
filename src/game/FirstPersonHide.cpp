@@ -297,6 +297,63 @@ void HideFirstPersonNodes(bool enabled, const char* list) {
 	HideMatching(rootBytes, list, 0);
 }
 
+namespace {
+
+bool ContainsIgnoringCase(const char* text, const char* part) {
+	for (; *text != '\0'; ++text) {
+		UInt32 at = 0;
+		while (part[at] != '\0' && text[at] != '\0') {
+			char a = text[at];
+			char b = part[at];
+			if (a >= 'A' && a <= 'Z') {
+				a = static_cast<char>(a - 'A' + 'a');
+			}
+			if (b >= 'A' && b <= 'Z') {
+				b = static_cast<char>(b - 'A' + 'a');
+			}
+			if (a != b) {
+				break;
+			}
+			++at;
+		}
+		if (part[at] == '\0') {
+			return true;
+		}
+	}
+	return false;
+}
+
+void CollectContaining(UInt8* node, const char* part, NiAVObject** out, UInt32 capacity,
+                       UInt32& found, UInt32 depth) {
+	if (depth >= kMaxFindDepth || found >= capacity || !ClassIsNode(ClassNameOf(node))) {
+		return;
+	}
+	UInt32 count = 0;
+	UInt8* const* const children = ChildrenOf(node, count);
+	for (UInt32 at = 0; at < count && found < capacity; ++at) {
+		UInt8* const child = children[at];
+		if (!LooksLikeObject(child)) {
+			continue;
+		}
+		if (ContainsIgnoringCase(NameOf(child), part)) {
+			out[found++] = reinterpret_cast<NiAVObject*>(child);
+		}
+		CollectContaining(child, part, out, capacity, found, depth + 1);
+	}
+}
+
+}  // namespace
+
+UInt32 CollectNodesContaining(NiAVObject* under, const char* part, NiAVObject** out,
+                              UInt32 capacity) {
+	if (!LooksLikeObject(under) || part == nullptr || part[0] == '\0' || out == nullptr) {
+		return 0;
+	}
+	UInt32 found = 0;
+	CollectContaining(reinterpret_cast<UInt8*>(under), part, out, capacity, found, 0);
+	return found;
+}
+
 NiAVObject* FindFirstPersonNode(const char* name) {
 	if (name == nullptr || name[0] == '\0') {
 		return nullptr;

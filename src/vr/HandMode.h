@@ -104,9 +104,15 @@ struct HandSettings {
 	// How close the hand has to be to an object for the grip to take it,
 	// metres from the hand to the object's origin.
 	float grabReachMetres = 0.3f;
-	// Where a held object sits: this many metres out from the hand along its
-	// laser; 0 is in the hand, negative pulls it back towards the wrist.
+	// Where a held object sits: this many metres from the palm along the
+	// fingers; 0 is the palm, negative pulls it back towards the wrist.
 	float heldObjectMetres = 0.0f;
+	// Small things (potions, keys, ingredients ...) fixed in the palm and
+	// turned with the wrist instead of hanging on the spring (game::HeldObject).
+	bool attachSmallObjects = true;
+	// How far each finger link bends while the hand holds something, degrees
+	// (game::HandGrip); negative bends the other way, 0 leaves the hand open.
+	float gripCurlDegrees = 45.0f;
 	// A light-brown ring on the object a closed grip would take, while it is
 	// within reach (render::ReachMarker).
 	bool reachMarker = true;

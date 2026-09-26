@@ -302,6 +302,8 @@ inline constexpr UInt32 kPlayerGrabDistanceOffset = 0x584;
 inline constexpr UInt32 kFirstPersonCameraNodePointer = 0x00B3BB0C;
 // The grab's mode, non-zero while a grab runs (tested at 0x0067127F).
 inline constexpr UInt32 kPlayerGrabModeOffset = 0x57C;
+// The grabbed reference (the update's own check at 0x0066D974).
+inline constexpr UInt32 kPlayerGrabbedRefOffset = 0x578;
 inline constexpr UInt32 kNodeWorldTranslateOffset = 0x88;
 inline constexpr UInt32 kInterfaceManagerPickRefOffset = 0xC8;
 inline constexpr UInt32 kInterfaceManagerPickHitOffset = 0xD0;
@@ -1257,6 +1259,12 @@ inline constexpr UInt32 kTileUpdateFloat = 0x0058CEB0;
 // has been reading that rotation at +0x20 - and writing to it - in the running
 // game for weeks. A rotation at 0x20/0x24/0x28 puts the position at 0x2C.
 inline constexpr UInt32 kRefPositionOffset = 0x2C;
+// TESObjectREFR's base form and scene node (xOBSE GameObjects.h: baseForm
+// 0x01C, niNode 0x03C - the node is what vtbl+0x154, 0x00422DE0, returns),
+// and TESForm's type byte (GameForms.h: typeID at +0x04).
+inline constexpr UInt32 kRefBaseFormOffset = 0x1C;
+inline constexpr UInt32 kRefNiNodeOffset = 0x3C;
+inline constexpr UInt32 kFormTypeOffset = 0x04;
 
 // TESObjectREFR::parentCell, from the same xOBSE layout that places the
 // position at 0x2C: scale at 0x38, niNode at 0x3C, parentCell at 0x40. One

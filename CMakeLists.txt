@@ -77,6 +77,8 @@ add_library(OBVR SHARED
 	src/game/FirstPersonHide.cpp
 	src/game/FirstPersonDepth.cpp
 	src/game/PlayerStagger.cpp
+	src/game/HandGrip.cpp
+	src/game/HeldObject.cpp
 	src/game/HandBones.cpp
 	src/game/HandAdjust.cpp
 	src/game/MeleeHits.cpp

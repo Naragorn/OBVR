@@ -114,6 +114,7 @@ add_test(NAME rotation COMMAND rotation_test)
 add_executable(frame_logic_test
 	FrameLogicTest.cpp
 	../src/camera/FrameLogic.cpp
+	../src/core/Rotation.cpp
 )
 
 target_include_directories(frame_logic_test PRIVATE ../src)

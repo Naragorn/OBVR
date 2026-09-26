@@ -79,7 +79,8 @@ taken from the player's Fatigue actor value per strike.
   (vanilla stagger back); whether any lurch remains from another path (the
   recoil 0x005F4F00 when the player's own attack is blocked is not touched,
   nor a knockdown).
-- **Holding objects for real.** The held object floats at the hand; the
-  hand does not close around it. Options brainstormed on 2026-09-26: a grip
-  pose on the hand while holding, snapping the object's grab point to the
-  palm, per-size grips.
+- **Holding objects for real.** docs/holding-objects-spec.md: parts 1 (grip
+  pose), 2 (touched point in the palm) and 4 (small objects fixed in the hand)
+  built 2026-09-26; 3 (rotation for large objects) and 5 (grips by size) open.
+- **Block and stagger.** docs/combat-comfort-spec.md holds the problems and
+  every proposal.

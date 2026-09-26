@@ -121,4 +121,14 @@ bool PinHandBone(bool rightHand, const char* boneName, const NiMatrix33& relativ
 	return true;
 }
 
+bool ReadHandBoneWorld(bool rightHand, NiMatrix33& rot, NiPoint3& pos) {
+	const HandBone& hand = g_hands[rightHand ? 0 : 1];
+	if (!hand.reported || !LooksLikeObject(hand.bone) || hand.root != FirstPersonArmsNode()) {
+		return false;
+	}
+	rot = hand.bone->worldTransform.rot;
+	pos = hand.bone->worldTransform.pos;
+	return true;
+}
+
 }  // namespace obvr::game

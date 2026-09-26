@@ -669,6 +669,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 			ReadFloat("Hands", "HandGripForwardMetres", h.handGripForwardMetres, path);
 		h.grabReachMetres = ReadFloat("Hands", "GrabReachMetres", h.grabReachMetres, path);
 		h.heldObjectMetres = ReadFloat("Hands", "HeldObjectMetres", h.heldObjectMetres, path);
+		h.gripCurlDegrees = ReadFloat("Hands", "GripCurlDegrees", h.gripCurlDegrees, path);
+		h.attachSmallObjects =
+			ReadBool("Hands", "AttachSmallObjects", h.attachSmallObjects, path);
 		h.reachMarker = ReadBool("Hands", "ReachMarker", h.reachMarker, path);
 		h.reachMarkerMetres = ReadFloat("Hands", "ReachMarkerMetres", h.reachMarkerMetres, path);
 		h.reachMarkerOpacity = ReadFloat("Hands", "ReachMarkerOpacity", h.reachMarkerOpacity, path);

@@ -446,11 +446,25 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.grabReachMetres = v; },
 	},
 	{
-		"Hands", "Held object distance", "How far out from the hand a held object sits, metres",
+		"Hands", "Held object distance", "How far from the palm along the fingers a held object sits, metres",
 		ItemKind::Number, -0.2f, 0.4f, 0.02f, 2, false,
 		"Hands", "HeldObjectMetres",
 		+[](const Config& c) { return c.hands.heldObjectMetres; },
 		+[](Config& c, float v) { c.hands.heldObjectMetres = v; },
+	},
+	{
+		"Hands", "Grip curl", "How far the fingers close around a held object; negative flips",
+		ItemKind::Number, -90.0f, 90.0f, 5.0f, 0, false,
+		"Hands", "GripCurlDegrees",
+		+[](const Config& c) { return c.hands.gripCurlDegrees; },
+		+[](Config& c, float v) { c.hands.gripCurlDegrees = v; },
+	},
+	{
+		"Hands", "Small objects in the hand", "Potions, keys and the like sit fixed in the palm",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "AttachSmallObjects",
+		+[](const Config& c) { return c.hands.attachSmallObjects ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.attachSmallObjects = v != 0.0f; },
 	},
 	{
 		"Hands", "Reach marker", "A light-brown ring on what a closed grip would pick up",

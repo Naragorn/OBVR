@@ -38,6 +38,8 @@
 #include "game/AimAtSource.h"
 #include "game/PlayerAim.h"
 #include "game/PlayerStagger.h"
+#include "game/HandGrip.h"
+#include "game/HeldObject.h"
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
 #include "render/DxvkInterop.h"
@@ -672,12 +674,21 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	g_grabReachPick = reach.reachPick;
 	g_grabKeyDown = reach.key;
 	g_hand.controls.grab = reach.key;
-	// Where the held object goes: the grabbing hand in the world, moved out
-	// along its laser by [Hands] HeldObjectMetres - handed to the engine's
+	// Where the held object goes: the palm of the grabbing hand's pinned bone
+	// (game::HeldObject - the spring pulls the touched point there), moved
+	// along the fingers by [Hands] HeldObjectMetres; without a pinned bone,
+	// the controller moved along its laser by as much. Handed to the engine's
 	// update as a point, which it looks at from its own camera origin.
 	bool haveHoldPoint = false;
 	NiPoint3 holdPoint{0.0f, 0.0f, 0.0f};
-	if (reach.key && g_cyclopeanCameraWorldValid &&
+	NiMatrix33 palmRot;
+	NiPoint3 palmBone;
+	if (reach.key && game::ReadHandBoneWorld(!g_hand.grabWithLeftHand, palmRot, palmBone)) {
+		holdPoint = game::PalmPoint(palmRot, palmBone,
+		                            (game::kPalmAlongMetres + config.hands.heldObjectMetres) *
+		                                config.tracker.unitsPerMetre);
+		haveHoldPoint = true;
+	} else if (reach.key && g_cyclopeanCameraWorldValid &&
 	    (g_hand.grabWithLeftHand ? g_hand.leftHandValid : g_hand.rightHandValid)) {
 		const bool left = g_hand.grabWithLeftHand;
 		const vr::LaserWorldRay ray = vr::HandLaserWorldRay(
@@ -2382,6 +2393,22 @@ void BeforeFirstScenePass() {
 				false, hands, adjusting, g_hand.leftHandValid, g_hand.leftGripDown,
 			                  g_hand.leftHandRotation, g_hand.leftHandOffsetUnits, cameraRot,
 			                  cameraPos, sharedGrip, perMetre);
+			// The fingers close around what the engine holds for this hand.
+			const bool holding = g_grabKeyDown && game::PlayerHoldsGrab();
+			game::StepHandGrip(true, hands.rightHandBone,
+			                   game::HandGripWanted(true, holding, g_hand.grabWithLeftHand),
+			                   hands.gripCurlDegrees);
+			game::StepHandGrip(false, hands.leftHandBone,
+			                   game::HandGripWanted(false, holding, g_hand.grabWithLeftHand),
+			                   hands.gripCurlDegrees);
+			// And a small held object sits fixed in that palm.
+			{
+				NiPoint3 touched{0.0f, 0.0f, 0.0f};
+				const bool haveTouched = game::GrabStartHit(touched);
+				game::StepHeldObject(hands.attachSmallObjects, holding, !g_hand.grabWithLeftHand,
+				                     haveTouched, touched,
+				                     (game::kPalmAlongMetres + hands.heldObjectMetres) * perMetre);
+			}
 			game::NoteHandAdjustFrame(rightCommitted, leftCommitted,
 			                          g_hand.rightGripDown || g_hand.leftGripDown, g_deltaSeconds);
 			// The hands are where the controllers are, not where the animation
@@ -2391,10 +2418,16 @@ void BeforeFirstScenePass() {
 			game::KeepFirstPersonNodesInView("Hand", cameraPos, 100.0f);
 		}
 	} else if (g_weaponTurnWanted) {
+		game::StepHandGrip(true, GetConfig().hands.rightHandBone, false, 0.0f);
+		game::StepHandGrip(false, GetConfig().hands.leftHandBone, false, 0.0f);
+		game::StepHeldObject(false, false, true, false, NiPoint3{0.0f, 0.0f, 0.0f}, 0.0f);
 		game::TurnFirstPersonArms(g_weaponTurnRadians);
 	} else {
 		// Third person, a menu, or switched off. Put the arms back rather than
 		// leaving them holding a turn nothing is going to update.
+		game::StepHandGrip(true, GetConfig().hands.rightHandBone, false, 0.0f);
+		game::StepHandGrip(false, GetConfig().hands.leftHandBone, false, 0.0f);
+		game::StepHeldObject(false, false, true, false, NiPoint3{0.0f, 0.0f, 0.0f}, 0.0f);
 		game::ReleaseFirstPersonArms();
 	}
 

@@ -17,6 +17,8 @@
 #include <limits>
 
 #include "camera/FrameLogic.h"
+#include "game/HandGrip.h"
+#include "game/HeldObject.h"
 #include "game/PlayerStagger.h"
 #include "core/MathFns.h"
 
@@ -1991,6 +1993,92 @@ void TestAimPitchWanted() {
 	Check(true, "all sixty-four combinations of the six gates agree");
 }
 
+void TestHandGrip() {
+	std::printf("The fingers close around a held object\n");
+	using obvr::game::CurledAboutZ;
+	using obvr::game::FingerCurlDegrees;
+	using obvr::game::HandGripWanted;
+	const auto Near = [](float a, float b) { return a - b < 1e-4f && b - a < 1e-4f; };
+	for (int mask = 0; mask < 8; ++mask) {
+		const bool right = (mask & 1) != 0;
+		const bool holding = (mask & 2) != 0;
+		const bool left = (mask & 4) != 0;
+		Check(HandGripWanted(right, holding, left) == (holding && right != left),
+		      "only the hand that grabbed, only while the engine holds");
+	}
+	Check(FingerCurlDegrees("Bip01 R Finger1", 40.0f) == 40.0f &&
+	          FingerCurlDegrees("Bip01 R Finger12", 40.0f) == 40.0f,
+	      "a finger's links bend the full curl");
+	Check(FingerCurlDegrees("Bip01 R Finger0", 40.0f) == 20.0f &&
+	          FingerCurlDegrees("Bip01 L Finger02", 40.0f) == 20.0f,
+	      "the thumb's links half of it");
+	Check(FingerCurlDegrees("Bip01 R Hand", 40.0f) == 40.0f && FingerCurlDegrees(nullptr, 40.0f) == 40.0f,
+	      "no finger in the name: the curl as given");
+	const obvr::NiMatrix33 bent = CurledAboutZ(obvr::NiMatrix33::Identity(), 90.0f);
+	Check(Near(bent.data[0][0], 0.0f) && Near(bent.data[1][0], 1.0f) && Near(bent.data[2][2], 1.0f),
+	      "90 degrees about z takes the link's x (along the finger) to y, z unchanged");
+	obvr::NiMatrix33 base = CurledAboutZ(obvr::NiMatrix33::Identity(), 30.0f);
+	const obvr::NiMatrix33 twice = CurledAboutZ(base, 30.0f);
+	const obvr::NiMatrix33 once = CurledAboutZ(obvr::NiMatrix33::Identity(), 60.0f);
+	Check(Near(twice.data[0][0], once.data[0][0]) && Near(twice.data[1][0], once.data[1][0]),
+	      "bent on top of the link's own rotation");
+	const obvr::NiMatrix33 zero = CurledAboutZ(base, 0.0f);
+	Check(Near(zero.data[0][0], base.data[0][0]) && Near(zero.data[0][1], base.data[0][1]),
+	      "no curl: the rotation it had");
+}
+
+void TestHeldObject() {
+	std::printf("A held object in the palm\n");
+	using namespace obvr::game;
+	const auto Near = [](float a, float b) { return a - b < 1e-3f && b - a < 1e-3f; };
+	const auto NearP = [&](const obvr::NiPoint3& a, const obvr::NiPoint3& b) {
+		return Near(a.x, b.x) && Near(a.y, b.y) && Near(a.z, b.z);
+	};
+	const obvr::NiMatrix33 identity = obvr::NiMatrix33::Identity();
+	const obvr::NiMatrix33 quarter = obvr::EulerToMatrix(0.0f, 0.0f, 90.0f);
+	Check(NearP(PalmPoint(identity, obvr::NiPoint3{1, 2, 3}, 5.0f), obvr::NiPoint3{6, 2, 3}),
+	      "the palm: along the hand bone's x from the wrist");
+	Check(NearP(PalmPoint(quarter, obvr::NiPoint3{0, 0, 0}, 5.0f), quarter * obvr::NiPoint3{5, 0, 0}),
+	      "and turned with the hand");
+
+	const UInt8 small[] = {kFormApparatus, kFormBook, kFormIngredient, kFormMisc, kFormAmmo,
+	                       kFormSoulGem, kFormKey, kFormPotion, kFormSigilStone};
+	bool allSmall = true;
+	for (UInt8 type : small) {
+		allSmall = allSmall && IsSmallHeldObject(type, 5.0f) &&
+		           IsSmallHeldObject(type, kSmallObjectMaxRadiusUnits) &&
+		           !IsSmallHeldObject(type, kSmallObjectMaxRadiusUnits + 0.1f) &&
+		           !IsSmallHeldObject(type, 0.0f);
+	}
+	Check(allSmall, "the one-hand types are small up to the radius, and need a bound");
+	Check(!IsSmallHeldObject(0x21, 5.0f) && !IsSmallHeldObject(0x14, 5.0f) &&
+	          !IsSmallHeldObject(0x1A, 5.0f),
+	      "weapons, armour and lights stay on the spring whatever their size");
+
+	// An object 10 units ahead of the hand, turned a quarter, touched 2 units
+	// along its own x from its origin.
+	const obvr::NiPoint3 objectPos{10.0f, 0.0f, 0.0f};
+	const obvr::NiPoint3 touched = objectPos + quarter * obvr::NiPoint3{2.0f, 0.0f, 0.0f};
+	const HeldAttachment a = CaptureAttachment(identity, quarter, objectPos, 1.0f, touched);
+	Check(NearP(a.pivotLocal, obvr::NiPoint3{2.0f, 0.0f, 0.0f}), "the touched point in the object's own space");
+	HeldPose p = AttachedPose(identity, obvr::NiPoint3{0.0f, 0.0f, 0.0f}, a, 1.0f);
+	Check(NearP(p.pos + p.rot * a.pivotLocal, obvr::NiPoint3{0.0f, 0.0f, 0.0f}),
+	      "the touched point lands on the palm");
+	Check(Near(p.rot.data[0][0], quarter.data[0][0]) && Near(p.rot.data[1][0], quarter.data[1][0]),
+	      "turned against the hand as it was when taken");
+	p = AttachedPose(quarter, obvr::NiPoint3{5.0f, 5.0f, 5.0f}, a, 1.0f);
+	const obvr::NiMatrix33 both = quarter * quarter;
+	Check(Near(p.rot.data[0][0], both.data[0][0]) && Near(p.rot.data[1][0], both.data[1][0]) &&
+	          NearP(p.pos + p.rot * a.pivotLocal, obvr::NiPoint3{5.0f, 5.0f, 5.0f}),
+	      "a turned wrist turns the object with it, the touched point still in the palm");
+	const HeldAttachment scaled = CaptureAttachment(identity, identity, objectPos, 2.0f,
+	                                                objectPos + obvr::NiPoint3{4.0f, 0.0f, 0.0f});
+	p = AttachedPose(identity, obvr::NiPoint3{0.0f, 0.0f, 0.0f}, scaled, 2.0f);
+	Check(NearP(scaled.pivotLocal, obvr::NiPoint3{2.0f, 0.0f, 0.0f}) &&
+	          NearP(p.pos, obvr::NiPoint3{-4.0f, 0.0f, 0.0f}),
+	      "a scaled object: the point kept unscaled, placed scaled");
+}
+
 void TestNoPlayerStagger() {
 	std::printf("No stagger for the player\n");
 	using obvr::game::SkipForPlayer;
@@ -3379,6 +3467,8 @@ void TestThirdPersonAimVisual() {
 
 
 int main() {
+	TestHeldObject();
+	TestHandGrip();
 	TestNoPlayerStagger();
 	TestGrabStartRotation();
 	TestRecenterPlan();

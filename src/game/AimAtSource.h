@@ -71,4 +71,12 @@ void SetGrabAtHand(bool wanted, float distanceUnits, bool havePoint = false,
 // something. For telling a grab the engine took from one it did not.
 UInt32 GrabUpdateCount();
 
+// Whether the engine holds something for the player now: the grab's mode at
+// player+0x57C is set (kPlayerGrabModeOffset).
+bool PlayerHoldsGrab();
+
+// The point the grab's start looked at - the pick's hit, the point the
+// spring holds - while the grab key is down. False otherwise.
+bool GrabStartHit(NiPoint3& hit);
+
 }  // namespace obvr::game
