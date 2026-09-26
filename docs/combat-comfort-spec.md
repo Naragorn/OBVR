@@ -6,6 +6,114 @@ else is a proposal. Addresses are this binary's.
 
 ## 1. Blocking
 
+### How vanilla decides a block (researched 2026-09-26)
+
+Read in the hit handler 0x005FEBF0 and its helpers, checked against the wikis.
+What is read in code says so; names and meanings marked "inferred" are not
+confirmed.
+
+**When a hit counts as blocked.** All four must hold:
+
+1. The target is not paralysed (vtable +0x1A0 = 0x005E17E0, actor value
+   0x30).
+2. The hit is not a Master-Sneak sneak attack (Sneak mastery 4, the flag that
+   also ignores armour; UESP, Oblivion:The Complete Damage Formula).
+3. The target's process action is Block, 6 (0x005E5670: action via process
+   vtable +0x2D0 `== 6`). This is the same state xOBSE's `IsBlocking` reads
+   (xOBSE Commands_AI.cpp). Nothing about timing or pose is checked. Whoever
+   is in the Block action when the blow resolves blocks it.
+4. **The attacker is in front** (0x006131D0, called at 0x005FF83E only when
+   1 to 3 hold):
+   - It takes the heading of the line from target to attacker, minus the
+     target's own heading (vtable +0x1E0), in degrees, folded into 0..180.
+   - The block counts only if that angle is at most `fCombatHitConeAngle`
+     (the GMST's value at 0x00B36F28, named by its constructor call; default
+     35 per the Dynamic Oblivion Combat description, nexusmods.com/oblivion/
+     mods/49873).
+   - This confirms the players' "only from the front" (reddit.com/r/oblivion/
+     comments/1p0e2cv), which was only anecdotal until now.
+   - For the player, the heading is the **body's** heading, not the
+     headset's.
+
+**How much it stops** (0x005474A0; GMST names from their constructor calls):
+
+- blocked = min(fBlockMax, (base + mult × luck-modified Block skill / 100)
+  × item × fatigue factor).
+- item is 1 with a shield, `fBlockAmountWeaponMult` (0.5) with a weapon and
+  no shield, and `fBlockAmountHandToHandMult` with neither.
+- The two constants at 0x00B36EE8 and 0x00B36EF0 are inferred to be
+  `fBlockSkillBase` (0) and `fBlockSkillMult` (1); the names were not found
+  by the constructor search.
+- `fBlockMax` defaults to 0.75 (cs.uesp.net/wiki/FBlockMax).
+- Hand to hand stops nothing against an armed attacker (0x005FF885). This
+  matches UESP, Oblivion:Block.
+- The damage is scaled by (1 − blocked). What is left then goes through armour
+  as usual.
+
+**What a blocked hit sets off** (from 0x005FFEEA when the blocked share is
+above 0):
+
+- The blocker plays a block reaction (0x005F4E10). The anim group is 0x1C, or
+  0x1D for a counterattack; these are inferred to be BlockHit and
+  BlockAttack, from the order next to 0x1E Recoil and 0x1F Stagger.
+- **Counterattack roll** (0x005F3C30), for melee only:
+  - With a shield at Block Expert or better, or empty-handed at Hand to Hand
+    Expert or better.
+  - Chance `iPerkBlockStaggerChance` (0x00B37238; 25 per UESP).
+- **Disarm roll** (0x005FC2B0):
+  - With a shield at Block Master, or at Hand to Hand Master.
+  - Chance `iPerkBlockDisarmChance` (0x00B37230; 5 per UESP).
+- **The attacker recoils** (0x005F4F00 at 0x00600565, anim 0x1E, action 7):
+  - after every blocked melee blow without a counterattack;
+  - after a blocked ranged hit only when the disarm roll succeeded.
+  - This is the recoil CS wiki's Combat Style page means ("An actor is
+    recoiling when their strike is blocked").
+- **Hand-to-hand block recoil**: an empty-handed block against an unarmed
+  attacker makes the attacker recoil (0x005FFF4D) in either of two cases:
+  - the blocker is at Hand to Hand Journeyman or better;
+  - the blocker is at Block Journeyman or better and wins
+    `iPerkHandToHandBlockRecoilChance` (0x00B37250).
+- **For the player as the blocker**: 0x007EB010(1) is called (0x00600574).
+  It sets two floats behind a flag and is probably the gamepad rumble; this
+  is a guess.
+- Blocking costs fatigue and wears the shield or weapon down below the
+  Apprentice and Journeyman perks (UESP, Oblivion:Block; the fatigue formula
+  on cs.uesp.net/wiki/FFatigueBlockBase). The code for these was not read.
+
+**What an unsuccessful block is.** Vanilla has no failed block as an event.
+Either the hit meets the four conditions and is reduced, or it lands in full:
+not in the Block action, attacker outside the cone, paralysed, or a hand block
+against a weapon. A blocked blow is never fully stopped: at most `fBlockMax`
+(75 %).
+
+**Consequences for OBVR:**
+
+- The player's block already has a direction: 35° either side of the body's
+  heading. With the walking direction decoupled from the view, the body may
+  not face where the player looks. A guard raised towards an attacker at the
+  side can still fail.
+  - The 90-degree blade check (proposal A) would be a second, stricter
+    condition on top of this cone.
+  - The veto belongs at the same place. 0x006131D0 is one call with one
+    boolean result (0x005FF83E), a clean hook point for "blocked only if the
+    blades cross".
+- NPCs blocking OBVR's motion strikes go through the same code. A strike into
+  an NPC that is in the Block action and facing the player makes the
+  **player** recoil (0x005F4F00 on the attacker). This is the open recoil
+  point under Stagger.
+- The counterattack and disarm need the perks, so a low-skill player sees
+  neither.
+
+**Mods that change it** (for comparison, none installed here):
+
+- Timed block: Deadly Reflex; Dynamic Oblivion Combat (mods/49873): a block
+  raised in the last second stops everything, a block held too long stops
+  nothing.
+- All-or-nothing blocks: Better Blocking (mods/27947).
+- Recoil and stagger by a score: Doc Block Recoil Stagger (mods/35933).
+- All of them work by script, polling `IsBlocking` and patching skill or
+  health afterwards. None hooks the decision itself.
+
 ### What is built
 
 - **Shield or left hand raised** (`vr::IsBlockGesture`): the left hand at
@@ -81,7 +189,10 @@ A hit can do two separate things to its target:
     and 0x005FCCC8 after a reach search. Both have the form
     `mov ecx, <target>; call 005F4FD0`.
   - It fires on a power attack's disarm or stagger roll (0x005FC090,
-    iPerkAttackDisarmChance) and on the knockdown result of 0x006131D0.
+    iPerkAttackDisarmChance). A second path at 0x006004D2 sets it when the
+    attacker is inside the target's front cone (0x006131D0,
+    `fCombatHitConeAngle`). This corrects the reading of 2026-09-26, which
+    took it for a knockdown result.
 - **The knockback.**
   - Every qualifying hit computes a force (0x00547690: fKnockback*, capped
     by fKnockbackForceMax, for fKnockbackTime).
@@ -96,7 +207,8 @@ There are two more reactions:
 
 - **Recoil** (0x005F4F00, anim group 0x1E, action 7): it hits the
   *attacker* when its blow is blocked (0x00600565, 0x005FFF4D).
-- **Knockdown** (0x006131D0, fKnockdown*): the ragdoll fall.
+- **Knockdown** (fKnockdown*): the ragdoll fall. Its function was not
+  identified in this pass.
 
 ### The problem
 
