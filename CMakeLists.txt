@@ -80,6 +80,7 @@ add_library(OBVR SHARED
 	src/game/HandGrip.cpp
 	src/game/DeathBody.cpp
 	src/game/HeldObject.cpp
+	src/game/PlayerLookAt.cpp
 	src/game/GrabPhysics.cpp
 	src/game/GrabNearBody.cpp
 	src/game/NearbyItems.cpp

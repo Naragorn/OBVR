@@ -178,6 +178,27 @@ verify this from code; a headset test with each switched off would settle it.
   built: a fade-in of the body.
 - `[Look] DeathBodyUpMetres` (default 0) raises (negative: lowers) the body
   drawn ahead, at the tester's request.
+- **Flung body and hovering fall (researched 2026-09-26, nothing built).**
+  - The killing blow's push on a ragdoll is vanilla: game settings
+    `fDeathForceForceMin` (35) and `fDeathForceForceMax` (85) cap it
+    (cs.uesp.net/wiki/FDeathForceForceMax: "determines how much force is
+    allowed when someone dies"). Players report corpses "sent to the
+    stratosphere" in vanilla (reddit.com/r/oblivion/comments/1f3j305).
+    Realistic Ragdolls and Force (nexusmods.com/oblivion/mods/5011) tames it.
+    Nothing specific to the player's own corpse was found.
+  - Slow or hovering falls are credited to vanilla ragdoll collision shapes
+    and damping by Ragdolls for Oblivion (nexusmods.com/oblivion/mods/51844:
+    "All ragdolls will no longer fall down slowly"). Not verified as the
+    cause here.
+  - High frame rate: Havok steps at `[HAVOK] fMaxTime` (0.0167, 60 Hz).
+    The installed Oblivion Display Tweaks has `bfMaxTime=1`, which adjusts it
+    to the frame rate, so 90 Hz physics should already be covered. No source
+    ties Oblivion ragdoll launches to high fps.
+  - OBVR's own share, not excluded: `DeathBodyAheadMetres` draws the body
+    level along the heading, so on a slope it can look above (or in) the
+    ground. Setting it to 0 for one death tells the two apart.
+  - Possible later: a player-only death force, scaling the push where the
+    death force is applied (not yet found in the exe).
 - `[Look] HideHudWhenDead` (default on) hides the HUD and the crosshair
   while dead, until the load menu opens; the game kept drawing its HUD for
   seconds (`camera::HudHiddenForDeath`).

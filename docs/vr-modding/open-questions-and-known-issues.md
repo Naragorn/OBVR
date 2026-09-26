@@ -148,3 +148,15 @@ Status: UNKNOWN. Priority: medium for the public build.
 
 Status: partly answered (dialogue: the zoom is cut, the flip kept; the world keeps
 rendering). The vanity (idle) camera: `UNKNOWN`.
+
+## NPCs looking at the hand (fixed 2026-09-26, untested)
+
+An NPC's head tracking (0x00603500) aims at the point the player answers
+through PlayerCharacter vtable slot +0x11C (entry 0x00A73B28 = 0x006604C0):
+in first person the world position of the first-person `Camera01`
+([0x00B3BB0C]) less 6 units. Camera01 hangs under the first-person root that
+the hand mode moves with the right controller, so NPCs looked at the hand;
+in a dialogue the arms are released and it was right. OBVR replaces the slot
+(`game::PlayerLookAt`) to answer the headset's eyes less 6 units in first
+person with a headset. `LIKELY`: derived from the disassembly, not yet seen
+in the headset.

@@ -21,6 +21,7 @@
 #include "game/HandGrip.h"
 #include "game/HeldObject.h"
 #include "game/NearbyItems.h"
+#include "game/PlayerLookAt.h"
 #include "game/PlayerStagger.h"
 #include "core/MathFns.h"
 
@@ -2241,6 +2242,18 @@ void TestFloatToHand() {
 	Check(Near(p.x, 2.5f) && Near(p.y, 5.0f), "the held point along the way");
 }
 
+void TestPlayerLookAt() {
+	std::printf("Where NPCs look at the player\n");
+	using namespace obvr::game;
+	Check(LookAtFromEyes(true, true, false), "first person with the headset's eyes known: the eyes");
+	Check(!LookAtFromEyes(true, true, true), "third person: the game's own head");
+	Check(!LookAtFromEyes(true, false, false), "no eyes this frame: the game's own point");
+	Check(!LookAtFromEyes(false, true, false), "no headset: the game's own point");
+	const obvr::NiPoint3 p = LookAtPointFromEyes(obvr::NiPoint3{10.0f, 20.0f, 130.0f});
+	Check(p.x == 10.0f && p.y == 20.0f && p.z == 124.0f,
+	      "six units under the eyes, as the game takes it under Camera01");
+}
+
 void TestAttachesInHand() {
 	std::printf("Which holds sit in the hand, as they lay\n");
 	using namespace obvr::game;
@@ -3819,6 +3832,7 @@ void TestThirdPersonAimVisual() {
 int main() {
 	TestNearItems();
 	TestAttachesInHand();
+	TestPlayerLookAt();
 	TestFloatToHand();
 	TestHavokQuaternion();
 	TestThrow();

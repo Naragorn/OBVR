@@ -41,6 +41,7 @@
 #include "game/HandGrip.h"
 #include "game/DeathBody.h"
 #include "game/HeldObject.h"
+#include "game/PlayerLookAt.h"
 #include "game/GrabPhysics.h"
 #include "game/GrabNearBody.h"
 #include "game/NearbyItems.h"
@@ -2425,6 +2426,10 @@ void BeforeFirstScenePass() {
 		g_cyclopeanCameraWorldTransform.pos = game::CyclopeanCamera(g_bodyCameraNode->worldTransform.pos, g_bodyFirstEyeStep);
 		g_cyclopeanCameraLocalTransform = g_bodyCameraNode->localTransform;
 	}
+	// And where NPCs look at the player (game::PlayerLookAt): these eyes,
+	// not the first-person Camera01 that the hand mode carries with the arms.
+	game::SetPlayerLookAtEyes(g_headTracker.IsHeadsetConnected(), g_cyclopeanCameraWorldValid,
+	                          g_cyclopeanCameraWorldTransform.pos);
 	// The other end of the same frame, and the one measurement left worth
 	// taking. The camera pass logs what the two halves SHOULD be; this logs
 	// what they are at the moment the picture is built - in particular whether
@@ -5382,6 +5387,7 @@ bool Install() {
 	InstallCastHook();
 	game::InstallAimAtSource();
 	game::InstallPlayerStagger();
+	game::InstallPlayerLookAt();
 	game::InstallWorldPickHook();
 
 	// The end of the frame, hooked as soon as there is a device to hook it on
