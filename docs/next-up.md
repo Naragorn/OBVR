@@ -24,6 +24,13 @@ Shields always block when raised (the left-hand gesture, unchanged).
   action is an attack, `kActionAttack`, and its combat target is the player).
 - Whether holding the block key only while the angle is right is enough, or
   whether the engine's "blocked" decision has to be hooked to veto a hit.
+  Since 2026-09-26 the decision is known (docs/combat-comfort-spec.md, "How
+  vanilla decides a block"):
+  - A hit is blocked when the target is in the Block action and the attacker
+    is within `fCombatHitConeAngle` of the target's body heading
+    (0x006131D0).
+  - That check is one call with a yes or no answer at 0x005FF83E, the place
+    for a veto per blow.
 
 ## 2. Directional power attacks
 
@@ -57,6 +64,57 @@ animation charges is not charged. Not verified that nothing is charged.
 **To find out.** The game settings behind the attack's fatigue cost (the
 fFatigueAttack... family) and the call that applies it, so the same cost is
 taken from the player's Fatigue actor value per strike.
+
+## 4. A held object collides with the world
+
+**Wanted (2026-09-26).** An object in the hand collides with other objects
+while it is held, as it already does once it is thrown.
+
+**Known.**
+- A held object that is attached in the hand is placed every frame with
+  `SetTranslationAndRotation` (bhk vtable +0xA0, inside the Havok lock), as
+  a teleport, not as a motion. Havok does not resolve a teleport against what
+  it lands in, so the object passes through others. This is derived from
+  how it is placed. I have not verified whether Havok pushes the others aside
+  or ignores them entirely.
+- While held, the body also carries the player's collision group
+  (`GrabPhysics`) until it is clear of the capsule; that group does not
+  collide with the player.
+
+**To find out.** Whether driving the body by velocity towards the hand
+(setLinearVelocity, hkMotion vtable +0x54, with the same target point) keeps
+the feel of the hand hold while letting Havok stop it at other objects, as
+Alyx-style hands do. The price is a lag behind the hand when something is in
+the way, and the throw has to come from that motion.
+
+## 5. Thrown objects deal hand-to-hand damage
+
+**Wanted (2026-09-26).** An object thrown at an NPC deals the player's
+hand-to-hand damage, scaled by how hard it was thrown:
+- up to a throw speed that can be set, the damage of a normal hand-to-hand
+  strike, rising with the speed;
+- above it, the damage of a power hand-to-hand strike.
+
+**Known.**
+- Vanilla hand-to-hand damage (UESP, Oblivion:The Complete Damage Formula):
+  Health = fHandHealthMin + (fHandHealthMax − fHandHealthMin) ×
+  (Strength/100 × fHandDamageStrengthMult) × (skill/100 × fHandDamageSkillMult),
+  by default 1 + 10.5 × Strength/100 × skill/100. The skill is luck-modified.
+  A power attack multiplies it by 2.5, or by 3 for a standing one from the
+  Apprentice perk. It also damages fatigue by 1 + 0.5 × Health.
+- The strike by motion already calls `AttackHandling` (0x005FEBF0) with an
+  NPC as the target and a power-attack flag. That path computes the damage
+  from what the player has equipped, so with a weapon drawn it would deal
+  weapon damage, not hand-to-hand damage.
+
+**To find out.**
+- How to notice that a thrown object has hit an NPC:
+  - a Havok contact between the thrown body and the NPC's character proxy;
+  - or a test along the flight, as the strike by motion does along the blade.
+- Whether `AttackHandling` can be made to take hand to hand for this one
+  call, or whether the damage should be computed from the formula above and
+  applied directly, with the hit reaction, crime and aggression the engine's
+  own hit brings.
 
 ## Also open
 
