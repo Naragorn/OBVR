@@ -218,10 +218,12 @@ void TestRows() {
 	SettingsMenu menu;
 	Config config;
 
-	obvr::ui::MenuItem items[96];
-	const char* categories[96];
+	obvr::ui::MenuItem items[SettingsMenu::kRowCapacity];
+	const char* categories[SettingsMenu::kRowCapacity];
 
-	const UInt32 count = menu.BuildRows(config, items, categories, 96);
+	const UInt32 count = menu.BuildRows(config, items, categories, SettingsMenu::kRowCapacity);
+	Check(SettingDefinitionCount() <= SettingsMenu::kRowCapacity,
+	      "every setting fits in the rows the headset menu builds");
 	Check(count == SettingDefinitionCount(), "every setting becomes a row");
 	Check(count > 0, "and there is at least one");
 

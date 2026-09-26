@@ -361,6 +361,20 @@ torch.
   the middle is eased out, fastest at first: five centimetres in from a
   metre it has moved a fifth of the way.
 
+### Ninth test (2026-09-26): the float's speed, the ring evenly
+
+- **Faster float, adjustable.** `[Hands] PullSpeedMetres` (default 4, 0.5
+  to 10 m/s; 2 before): a metre in a quarter second. The float lasts
+  0.05 to 0.6 s (`game::FloatSeconds`).
+- **The ring evenly with the hand.** The eased-out move jumped too soon, the
+  smooth one moved too late: the weight is now linear from the marker's
+  distance to `ReachNearSideMetres`, whose default is 5 cm - very near the
+  hand, very near the edge; half way, half way (`game::NearSideWeight`).
+- The headset settings menu built at most 96 rows; with the new setting
+  there are more, so the last would have had no row. It builds up to
+  `ui::SettingsMenu::kRowCapacity` (160), and SettingsMenuTest checks that
+  every setting fits.
+
 ### Up to the mouth and the body
 
 Held objects stopped about 25 cm from the head (2026-09-26). Eating by

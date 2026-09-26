@@ -61,19 +61,18 @@ inline bool ReachMarkerWanted(bool haveRef, UInt8 baseFormType, bool nearRight, 
 // The pick is aimed from the hand at a point between the item's middle and
 // its surface point nearest the hand: all the middle while the hand is at
 // the marker's distance, all the near side from [Hands] ReachNearSideMetres
-// in, between them eased out - it starts moving as soon as the hand comes
-// closer (2026-09-26: a smooth start and 10 cm moved it "much too late").
+// in, and evenly in between: the nearer the hand, the nearer the edge
+// (2026-09-26: a smooth start moved it too late, an eased-out one too soon).
 // The pick's hit is where the ring sits and what the grip takes.
 
-// 0 at `farUnits` or beyond, 1 at `nearUnits` or closer, eased out between:
-// fastest at the start.
+// 0 at `farUnits` or beyond, 1 at `nearUnits` or closer, linear between.
 inline float NearSideWeight(float distanceUnits, float farUnits, float nearUnits) {
 	if (!(farUnits > nearUnits)) {
 		return distanceUnits <= nearUnits ? 1.0f : 0.0f;
 	}
 	float t = (farUnits - distanceUnits) / (farUnits - nearUnits);
 	t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
-	return 1.0f - (1.0f - t) * (1.0f - t);
+	return t;
 }
 
 // Whether a closed grip takes what the pick found at `distanceUnits` from the

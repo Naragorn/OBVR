@@ -2132,11 +2132,11 @@ void TestNearItems() {
 	      "at the marker's distance or beyond: the middle");
 	Check(Near(NearSideWeight(7.0f, 21.0f, 7.0f), 1.0f) && Near(NearSideWeight(0.0f, 21.0f, 7.0f), 1.0f),
 	      "from the threshold in: the near side wins");
-	Check(Near(NearSideWeight(14.0f, 21.0f, 7.0f), 0.75f) &&
+	Check(Near(NearSideWeight(14.0f, 21.0f, 7.0f), 0.5f) &&
 	          NearSideWeight(10.0f, 21.0f, 7.0f) > NearSideWeight(18.0f, 21.0f, 7.0f),
-	      "between: the closer the hand, the closer the ring - three quarters there at half way");
-	Check(NearSideWeight(66.5f, 70.0f, 35.0f) > 0.18f,
-	      "eased out: 5 cm in from a metre it has already moved a fifth of the way");
+	      "between: the closer the hand, the closer the ring - half way there at half way");
+	Check(Near(NearSideWeight(36.75f, 70.0f, 3.5f), 0.5f) && Near(NearSideWeight(66.675f, 70.0f, 3.5f), 0.05f),
+	      "evenly from a metre to 5 cm: no jump at the start");
 	Check(GripTakes(20.0f, false, 21.0f, 70.0f) && GripTakes(20.0f, true, 21.0f, 0.0f),
 	      "within the grab's reach: anything, pull or not");
 	Check(GripTakes(65.0f, true, 21.0f, 70.0f), "an item 93 cm away with a metre of pull: taken, it floats in");
@@ -2223,11 +2223,14 @@ void TestFloatToHand() {
 	using namespace obvr::game;
 	using obvr::NiPoint3;
 	const auto Near = [](float a, float b) { return a - b < 1e-4f && b - a < 1e-4f; };
-	Check(Near(FloatSeconds(0.0f), kFloatMinSeconds) && Near(FloatSeconds(-5.0f), kFloatMinSeconds),
+	Check(Near(FloatSeconds(0.0f, 140.0f), kFloatMinSeconds) && Near(FloatSeconds(-5.0f, 140.0f), kFloatMinSeconds),
 	      "an object already in the hand: the shortest float");
-	Check(Near(FloatSeconds(21.0f), 0.15f), "30 cm away: 0.15 s, at about 2 m/s");
-	Check(Near(FloatSeconds(70.0f), 0.5f), "pulled from a metre: half a second");
-	Check(Near(FloatSeconds(1000.0f), kFloatMaxSeconds), "never longer than the most");
+	Check(Near(FloatSeconds(21.0f, 140.0f), 0.15f), "30 cm away at 2 m/s: 0.15 s");
+	Check(Near(FloatSeconds(70.0f, 0.0f), 0.25f) && Near(FloatSeconds(70.0f, -3.0f), 0.25f),
+	      "no speed set: the default 4 m/s, a metre in a quarter second");
+	Check(Near(FloatSeconds(70.0f, 140.0f), 0.5f) && Near(FloatSeconds(70.0f, 700.0f), 0.1f),
+	      "the speed sets the time: a metre at 2 m/s half a second, at 10 m/s a tenth");
+	Check(Near(FloatSeconds(1000.0f, 140.0f), kFloatMaxSeconds), "never longer than the most");
 	Check(Near(FloatWeight(0.0f, 0.2f), 0.0f) && Near(FloatWeight(0.2f, 0.2f), 1.0f) &&
 	          Near(FloatWeight(5.0f, 0.2f), 1.0f) && Near(FloatWeight(-1.0f, 0.2f), 0.0f),
 	      "from where it lay to the grip, and there it stays");

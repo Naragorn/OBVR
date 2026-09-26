@@ -118,14 +118,16 @@ inline bool AttachesInHand(bool attachAll, bool isSmall, bool haveTouched) {
 // grip travels from where it lay to the grip, eased, while the object keeps
 // the turn it had and follows the wrist, so closing the grip moves nothing
 // and the object then glides in - from as far as the pull reaches (game::
-// GripTakes). It takes the distance at about 2 m/s,
-// never less than a tenth of a second nor more than 0.6.
-constexpr float kFloatUnitsPerSecond = 140.0f;
-constexpr float kFloatMinSeconds = 0.10f;
+// GripTakes). It takes the distance at [Hands] PullSpeedMetres a second
+// (2 m/s at first, "faster" on 2026-09-26: 4 by default), never less than
+// 0.05 s nor more than 0.6 s. A speed of 0 or less is the default.
+constexpr float kFloatDefaultUnitsPerSecond = 280.0f;
+constexpr float kFloatMinSeconds = 0.05f;
 constexpr float kFloatMaxSeconds = 0.6f;
 
-inline float FloatSeconds(float distanceUnits) {
-	const float s = (distanceUnits > 0.0f ? distanceUnits : 0.0f) / kFloatUnitsPerSecond;
+inline float FloatSeconds(float distanceUnits, float unitsPerSecond) {
+	const float speed = unitsPerSecond > 0.0f ? unitsPerSecond : kFloatDefaultUnitsPerSecond;
+	const float s = (distanceUnits > 0.0f ? distanceUnits : 0.0f) / speed;
 	return s < kFloatMinSeconds ? kFloatMinSeconds : (s > kFloatMaxSeconds ? kFloatMaxSeconds : s);
 }
 
@@ -153,6 +155,8 @@ struct HeldHand {
 	// the held point goes there instead of the palm.
 	bool haveGripPoint = false;
 	NiPoint3 gripPoint{0.0f, 0.0f, 0.0f};
+	// How fast a new hold floats in, units a second (FloatSeconds).
+	float floatUnitsPerSecond = kFloatDefaultUnitsPerSecond;
 };
 
 // Once per frame in the draw pass, after the hands are pinned: fixes a small

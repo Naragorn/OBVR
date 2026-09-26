@@ -2504,6 +2504,7 @@ void BeforeFirstScenePass() {
 				game::HeldHand held;
 				held.rightHand = !g_hand.grabWithLeftHand;
 				held.palmAlongUnits = (game::kPalmAlongMetres + hands.heldObjectMetres) * perMetre;
+				held.floatUnitsPerSecond = hands.pullSpeedMetres * perMetre;
 				// The weapon's grip, the right hand's Weapon node, only while holding.
 				if (holding && held.rightHand && !hands.levitateObjects) {
 					const NiAVObject* const weaponNode = game::FindFirstPersonNode("Weapon");
@@ -3102,10 +3103,11 @@ void PollSettingsMenu() {
 
 		Config& writable = GetConfig();
 		{
-			ui::MenuItem pointed[96];
-			const char* pointedCategories[96];
+			ui::MenuItem pointed[ui::SettingsMenu::kRowCapacity];
+			const char* pointedCategories[ui::SettingsMenu::kRowCapacity];
 			const UInt32 pointedCount =
-				g_settingsMenu.BuildRows(GetConfig(), pointed, pointedCategories, 96);
+				g_settingsMenu.BuildRows(GetConfig(), pointed, pointedCategories,
+				                         ui::SettingsMenu::kRowCapacity);
 			PointAtPanel(g_settingsMenu, writable, pointed, pointedCategories, pointedCount);
 		}
 		const vr::StickNavVerdict sticks = TakeHandMenuNavigation();
@@ -3133,10 +3135,10 @@ void PollSettingsMenu() {
 	// Built fresh every frame rather than kept, so a value changed from
 	// somewhere else - the INI hot reload, most likely - shows here instead of
 	// the menu holding a stale copy.
-	ui::MenuItem items[96];
-	const char* categories[96];
+	ui::MenuItem items[ui::SettingsMenu::kRowCapacity];
+	const char* categories[ui::SettingsMenu::kRowCapacity];
 	const UInt32 count =
-		g_settingsMenu.BuildRows(GetConfig(), items, categories, 96);
+		g_settingsMenu.BuildRows(GetConfig(), items, categories, ui::SettingsMenu::kRowCapacity);
 
 	g_settingsMenuLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                           g_settingsMenu.IsOpen(), items, categories, count,

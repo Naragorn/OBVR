@@ -96,7 +96,8 @@ void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveT
 	// timed from the first frame it is placed.
 	if (!g_hold.floatStarted) {
 		g_hold.floatStarted = true;
-		g_hold.floatSeconds = FloatSeconds(math::Sqrt((grip - g_hold.floatFrom).LengthSquared()));
+		g_hold.floatSeconds = FloatSeconds(math::Sqrt((grip - g_hold.floatFrom).LengthSquared()),
+		                                   hand.floatUnitsPerSecond);
 		g_hold.floatElapsed = 0.0f;
 	} else if (dtSeconds > 0.0f && dtSeconds < 0.5f) {
 		g_hold.floatElapsed += dtSeconds;

@@ -481,6 +481,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.pullReachMetres = v; },
 	},
 	{
+		"Hands", "Pull speed", "How fast an item floats into the hand, metres a second",
+		ItemKind::Number, 0.5f, 10.0f, 0.5f, 1, false,
+		"Hands", "PullSpeedMetres",
+		+[](const Config& c) { return c.hands.pullSpeedMetres; },
+		+[](Config& c, float v) { c.hands.pullSpeedMetres = v; },
+	},
+	{
 		"Hands", "Held object distance", "How far from the palm along the fingers a held object sits, metres",
 		ItemKind::Number, -0.2f, 0.4f, 0.02f, 2, false,
 		"Hands", "HeldObjectMetres",
