@@ -675,6 +675,18 @@ inline NiPoint3 MenuCameraBase(const NiPoint3& gameCamera, const DeathViewState&
 // PlayerPitchForGaze's limit. False when the two points coincide.
 bool GrabStartRotation(const NiPoint3& from, const NiPoint3& to, float& rotZ, float& rotX);
 
+// Where the held object is carried: the engine's update puts the spring's
+// target at the same camera origin plus its rotation's forward times the
+// grab distance (the constant it adds, the double at 0x00A2FC68, is 0.0).
+// So the hand's point is reached with the rotation looking at it from that
+// origin and the distance to it - never less than minUnits, which keeps the
+// object out of the player's own body. The hand's line from the HMD with
+// the HMD's distance, laid on the engine's origin, missed by the distance
+// between the two (2026-09-26 log: the pick's hit 1 unit from the hand, 61
+// units from the engine's camera, 50 from the eyes) - the object floated
+// ahead of the hand.
+bool GrabHoldTarget(const NiPoint3& from, const NiPoint3& to, float minUnits, float& rotZ,
+                    float& rotX, float& distance);
 // The picture after death, through the menu shade's pass at full strength
 // (render::ComposeShadeColor's ARGB, alpha 255) over the live stereo: grey
 // (a white tone), or - Look.DeathMenuTint - the menus' own tone, the brown of

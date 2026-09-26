@@ -104,6 +104,9 @@ struct HandSettings {
 	// How close the hand has to be to an object for the grip to take it,
 	// metres from the hand to the object's origin.
 	float grabReachMetres = 0.3f;
+	// Where a held object sits: this many metres out from the hand along its
+	// laser; 0 is in the hand, negative pulls it back towards the wrist.
+	float heldObjectMetres = 0.0f;
 	// A light-brown ring on the object a closed grip would take, while it is
 	// within reach (render::ReachMarker).
 	bool reachMarker = true;

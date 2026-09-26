@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Types.h"
+#include "game/NiMath.h"
 
 namespace obvr::game {
 
@@ -59,7 +60,12 @@ void SetAimSourcePose(const AimSourcePose& pose);
 // the spring's target from the player's eye vector and that distance, so
 // the grabbed object hovers where the hand is; move the hand fast and let
 // go, and the object keeps the spring's velocity - vanilla's own fling.
-void SetGrabAtHand(bool wanted, float distanceUnits);
+// With a hand point in the world (havePoint), the update instead looks from
+// the engine's own camera origin at that point and takes the distance to
+// it, at least minUnits (camera::GrabHoldTarget) - the target lands on the
+// hand, whatever separates the engine's camera from the HMD.
+void SetGrabAtHand(bool wanted, float distanceUnits, bool havePoint = false,
+                   const NiPoint3& point = NiPoint3{0.0f, 0.0f, 0.0f}, float minUnits = 0.0f);
 
 // How many times the engine's grab update has run - only while it holds
 // something. For telling a grab the engine took from one it did not.

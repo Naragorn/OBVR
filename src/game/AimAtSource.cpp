@@ -63,6 +63,9 @@ Site g_grab;
 Site g_grabHandler;
 bool g_grabWanted = false;
 float g_grabDistanceUnits = 0.0f;
+bool g_grabHavePoint = false;
+NiPoint3 g_grabPoint{0.0f, 0.0f, 0.0f};
+float g_grabMinUnits = 0.0f;
 bool g_grabDistanceSwapped = false;
 float g_grabDistanceSaved = 0.0f;
 bool g_grabReported = false;
@@ -293,9 +296,13 @@ void InstallAimAtSource() {
 
 UInt32 GrabUpdateCount() { return g_grabUpdates; }
 
-void SetGrabAtHand(bool wanted, float distanceUnits) {
+void SetGrabAtHand(bool wanted, float distanceUnits, bool havePoint, const NiPoint3& point,
+                   float minUnits) {
 	g_grabWanted = wanted;
 	g_grabDistanceUnits = distanceUnits;
+	g_grabHavePoint = havePoint;
+	g_grabPoint = point;
+	g_grabMinUnits = minUnits;
 }
 
 // The attack update from the input handler decides whether the turn
@@ -406,15 +413,39 @@ extern "C" void __cdecl OBVR_AimSourceBeforeGrab(void* actor) {
 	if (game::g_swapOwner != &game::g_grabHandler && !game::Swap(game::g_grab, "a grab")) {
 		return;
 	}
+	// The hand's point, looked at from the engine's own origin: the rotation
+	// swapped above is overwritten while it stands (the saved one is what
+	// goes back), and the distance is the distance to the point.
+	float units = game::g_grabDistanceUnits;
+	NiPoint3 origin{};
+	float rotZ = 0.0f;
+	float rotX = 0.0f;
+	float toPoint = 0.0f;
+	const bool atPoint = game::g_grabHavePoint && game::ReadGrabRayOrigin(origin) &&
+	                     camera::GrabHoldTarget(origin, game::g_grabPoint, game::g_grabMinUnits,
+	                                            rotZ, rotX, toPoint) &&
+	                     game::WritePlayerYaw(rotZ);
+	if (atPoint) {
+		game::WritePlayerPitch(rotX);
+		units = toPoint;
+	}
+	static bool s_pointReported = false;
+	if (!s_pointReported) {
+		s_pointReported = true;
+		OBVR_LOG("Aim: the held object is carried %s - %.1f units from the engine's camera",
+		         atPoint ? "to the hand's point, looked at from the engine's own camera"
+		                 : "along the hand's line from the eyes (no hand point)",
+		         static_cast<double>(units));
+	}
 	auto* distance = reinterpret_cast<float*>(player + addr::kPlayerGrabDistanceOffset);
 	game::g_grabDistanceSaved = *distance;
-	*distance = game::g_grabDistanceUnits;
+	*distance = units;
 	game::g_grabDistanceSwapped = true;
 	if (!game::g_grabReported) {
 		game::g_grabReported = true;
 		OBVR_LOG("Aim: the grab update runs with the hand's direction and a distance of %.1f "
 		         "units in place of the engine's %.1f - the held object follows the hand",
-		         static_cast<double>(game::g_grabDistanceUnits),
+		         static_cast<double>(units),
 		         static_cast<double>(game::g_grabDistanceSaved));
 	}
 }

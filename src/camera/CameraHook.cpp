@@ -668,7 +668,26 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	g_grabReachPick = reach.reachPick;
 	g_grabKeyDown = reach.key;
 	g_hand.controls.grab = reach.key;
-	game::SetGrabAtHand(reach.key, grabUnits);
+	// Where the held object goes: the grabbing hand in the world, moved out
+	// along its laser by [Hands] HeldObjectMetres - handed to the engine's
+	// update as a point, which it looks at from its own camera origin.
+	bool haveHoldPoint = false;
+	NiPoint3 holdPoint{0.0f, 0.0f, 0.0f};
+	if (reach.key && g_cyclopeanCameraWorldValid &&
+	    (g_hand.grabWithLeftHand ? g_hand.leftHandValid : g_hand.rightHandValid)) {
+		const bool left = g_hand.grabWithLeftHand;
+		const vr::LaserWorldRay ray = vr::HandLaserWorldRay(
+			g_cyclopeanCameraWorldTransform.rot, g_cyclopeanCameraWorldTransform.pos,
+			left ? g_hand.leftHandRotation : g_hand.rightHandRotation,
+			left ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits,
+			config.hands.laserPitchDegrees,
+			left ? -config.hands.laserYawDegrees : config.hands.laserYawDegrees,
+			config.hands.heldObjectMetres, config.tracker.unitsPerMetre);
+		holdPoint = ray.origin;
+		haveHoldPoint = true;
+	}
+	game::SetGrabAtHand(reach.key, grabUnits, haveHoldPoint, holdPoint,
+	                    0.25f * config.tracker.unitsPerMetre);
 
 	// The reach marker ([Hands] ReachMarker): a light-brown ring on the object
 	// under the pick when it is within ReachMarkerMetres of either hand - the

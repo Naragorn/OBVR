@@ -616,6 +616,17 @@ bool GrabStartRotation(const NiPoint3& from, const NiPoint3& to, float& rotZ, fl
 	return true;
 }
 
+bool GrabHoldTarget(const NiPoint3& from, const NiPoint3& to, float minUnits, float& rotZ,
+                    float& rotX, float& distance) {
+	if (!GrabStartRotation(from, to, rotZ, rotX)) {
+		return false;
+	}
+	const NiPoint3 d{to.x - from.x, to.y - from.y, to.z - from.z};
+	const float length = math::Sqrt(d.LengthSquared());
+	distance = length > minUnits ? length : minUnits;
+	return true;
+}
+
 float PlayerPitchForGaze(float viewSinPitch) {
 	const float radians = -math::Asin(viewSinPitch);
 	if (radians > kAimPitchLimitRadians) {

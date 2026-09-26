@@ -2014,6 +2014,16 @@ void TestGrabStartRotation() {
 	          Near(x, kAimPitchLimitRadians),
 	      "straight down: held at the aim's limit");
 	Check(!GrabStartRotation(eye, eye, z, x), "the same point: no direction");
+
+	using obvr::camera::GrabHoldTarget;
+	float d = -1.0f;
+	Check(GrabHoldTarget(eye, obvr::NiPoint3{100.0f, 240.0f, 20.0f}, 17.5f, z, x, d) &&
+	          Near(d, 50.0f) && Near(z, 0.0f) && Near(x, 0.6435011f),
+	      "held: looking at the hand from the engine's origin, as far as the hand is");
+	Check(GrabHoldTarget(eye, obvr::NiPoint3{100.0f, 205.0f, 50.0f}, 17.5f, z, x, d) &&
+	          Near(d, 17.5f),
+	      "a hand nearer than the floor: the object stays out of the body");
+	Check(!GrabHoldTarget(eye, eye, 17.5f, z, x, d), "the hand at the origin: nothing to aim at");
 }
 
 void TestPlayerPitchForGaze() {
