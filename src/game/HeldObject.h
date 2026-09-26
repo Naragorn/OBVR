@@ -105,8 +105,9 @@ inline HeldPose AttachedPose(const NiMatrix33& handRot, const NiPoint3& palm,
 // The in-hand mode's grip, held the way the sword is (docs/holding-objects-
 // spec.md, "A"): whatever way it was picked up, the object's own up (its
 // local z) runs along the blade - the controller's forward, the axis a swung
-// weapon strikes along - and its x across the fingers; its middle (the scene
-// bound's centre) sits where the weapon's grip is.
+// weapon strikes along - and its x across the fingers; the side the marker
+// showed (the point the pick touched) sits where the weapon's grip is, the
+// middle when there is no such point.
 // Columns: x the fingers made square to the blade, y = z x x, z the blade.
 // A blade along the fingers (no square part) takes the world's up instead.
 inline NiMatrix33 SwordGripRotation(const NiPoint3& blade, const NiPoint3& fingers) {
@@ -139,8 +140,8 @@ inline NiMatrix33 SwordGripRotation(const NiPoint3& blade, const NiPoint3& finge
 	return m;
 }
 
-// The sword grip's attachment: no turn against the grip frame, and the
-// object's middle as the point held.
+// The sword grip's attachment: no turn against the grip frame, and the given
+// point of the object as the point held.
 inline HeldAttachment CaptureSwordGrip(const NiMatrix33& objectRot, const NiPoint3& objectPos,
                                        float objectScale, const NiPoint3& middleWorld) {
 	return CaptureAttachment(objectRot, objectRot, objectPos, objectScale, middleWorld);

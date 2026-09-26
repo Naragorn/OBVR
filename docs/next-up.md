@@ -84,3 +84,8 @@ taken from the player's Fatigue actor value per strike.
   built 2026-09-26; 3 (rotation for large objects) and 5 (grips by size) open.
 - **Block and stagger.** docs/combat-comfort-spec.md holds the problems and
   every proposal.
+- **Death view, to look at again later.** Since 2026-09-26 the held death
+  view stands `[Look] DeathViewBackMetres` (0.8) behind the living eyes and
+  keeps their turn and height, so the body is seen falling in front of it.
+  The tester: "sieht ok aus", but not sure it is the final form - revisit
+  (how far back, whether to follow the body, a fade to the load).

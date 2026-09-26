@@ -16,6 +16,10 @@ struct HandPose {
 	bool valid = false;
 	Quaternion orientation = Quaternion::Identity();
 	NiPoint3 position{0.0f, 0.0f, 0.0f};
+	// SteamVR's own velocity of the controller, tracking axes: metres and
+	// radians a second (TrackedDevicePose's vVelocity and vAngularVelocity).
+	NiPoint3 velocity{0.0f, 0.0f, 0.0f};
+	NiPoint3 angularVelocity{0.0f, 0.0f, 0.0f};
 	UInt64 buttonsPressed = 0;
 	float trigger = 0.0f;  // 0 released, 1 pulled through
 	float thumbX = 0.0f;

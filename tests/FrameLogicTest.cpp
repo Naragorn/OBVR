@@ -2226,30 +2226,39 @@ void TestThrow() {
 	const auto Near = [](float a, float b) { return a - b < 1e-2f && b - a < 1e-2f; };
 	Check(FilterGroup(0x0009000Au) == 9u && FilterGroup(0x0000000Au) == 0u,
 	      "the system group is the filter's high half");
-	PalmHistory h;
-	Check(ThrowVelocity(h, 1.0f).LengthSquared() == 0.0f, "no history: no throw");
-	PushPalm(h, obvr::NiPoint3{0.0f, 0.0f, 0.0f}, 0.011f);
-	Check(ThrowVelocity(h, 1.0f).LengthSquared() == 0.0f, "one frame: no speed yet");
-	// 2 units a frame at 100 frames a second: 200 units/s along y.
-	for (int i = 1; i <= 6; ++i) {
-		PushPalm(h, obvr::NiPoint3{0.0f, 2.0f * static_cast<float>(i), 0.0f}, 0.01f);
+	VelocityHistory h;
+	Check(ThrowVelocity(h, 1.0f).LengthSquared() == 0.0f, "no samples: no throw");
+	for (int i = 0; i < 12; ++i) {
+		PushVelocity(h, obvr::NiPoint3{0.0f, 50.0f + 20.0f * static_cast<float>(i), 0.0f});
 	}
 	Check(h.count == kThrowHistory, "the history keeps the last frames only");
+	PushVelocity(h, obvr::NiPoint3{0.0f, 80.0f, 0.0f});  // slowing as the grip opens
 	obvr::NiPoint3 v = ThrowVelocity(h, 1.0f);
-	Check(Near(v.y, 200.0f) && Near(v.x, 0.0f), "the palm's speed over the frames kept");
-	v = ThrowVelocity(h, 1.5f);
-	Check(Near(v.y, 300.0f), "times the strength");
-	Check(ThrowVelocity(h, 0.0f).LengthSquared() == 0.0f, "strength 0: the engine's own drop");
-	PalmHistory slow;
-	for (int i = 0; i < 5; ++i) {
-		PushPalm(slow, obvr::NiPoint3{0.0f, 0.2f * static_cast<float>(i), 0.0f}, 0.01f);
-	}
+	Check(Near(v.y, 270.0f), "the peak of the last frames, a hand already slowing still throws");
+	Check(Near(ThrowVelocity(h, 0.5f).y, 135.0f), "times the strength");
+	Check(ThrowVelocity(h, 0.0f).LengthSquared() == 0.0f, "strength 0: nothing given");
+	VelocityHistory slow;
+	PushVelocity(slow, obvr::NiPoint3{20.0f, 0.0f, 0.0f});
 	Check(ThrowVelocity(slow, 1.0f).LengthSquared() == 0.0f,
 	      "a hand slower than half a metre a second sets it down");
-	PalmHistory frozen;
-	PushPalm(frozen, obvr::NiPoint3{0.0f, 0.0f, 0.0f}, 0.0f);
-	PushPalm(frozen, obvr::NiPoint3{0.0f, 50.0f, 0.0f}, 0.0f);
-	Check(ThrowVelocity(frozen, 1.0f).LengthSquared() == 0.0f, "no time passed: no throw");
+	Check(Near(ThrowEase(0.0f), 0.1f) && Near(ThrowEase(kThrowFullSpeedUnits), 1.0f) &&
+	          Near(ThrowEase(10.0f * kThrowFullSpeedUnits), 1.0f),
+	      "the ease: a tenth at rest, all of it from full speed on");
+	Check(ThrowEase(70.0f) < 0.4f && ThrowEase(140.0f) > ThrowEase(70.0f),
+	      "a quick short flick of a metre a second is damped, and rises with speed");
+	VelocityHistory toss;
+	PushVelocity(toss, obvr::NiPoint3{70.0f, 0.0f, 0.0f});
+	Check(Near(ThrowVelocity(toss, 1.0f).x, 70.0f * ThrowEase(70.0f)), "a toss: eased");
+	const obvr::NiPoint3 still = PointVelocity(obvr::NiPoint3{1.0f, 2.0f, 3.0f},
+	                                           obvr::NiPoint3{0.0f, 0.0f, 0.0f},
+	                                           obvr::NiPoint3{5.0f, 0.0f, 0.0f});
+	Check(Near(still.x, 1.0f) && Near(still.y, 2.0f) && Near(still.z, 3.0f),
+	      "no turn: the point moves with the controller");
+	const obvr::NiPoint3 turning = PointVelocity(obvr::NiPoint3{0.0f, 0.0f, 0.0f},
+	                                             obvr::NiPoint3{0.0f, 0.0f, 2.0f},
+	                                             obvr::NiPoint3{10.0f, 0.0f, 0.0f});
+	Check(Near(turning.x, 0.0f) && Near(turning.y, 20.0f) && Near(turning.z, 0.0f),
+	      "a wrist flick: w x r, the point further out moves faster");
 }
 
 void TestHeldObject() {

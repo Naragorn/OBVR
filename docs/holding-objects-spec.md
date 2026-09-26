@@ -238,7 +238,32 @@ torch.
   - This replaces the "hand that has been moving" rule of the second test.
   - **Limit:** only the player's own cell is searched. In the open world an
     item just across a cell border is not found.
-- **Throw strength** default 0.6 (1.0 was "zu stark").
+- **Throw strength** default 0.6 (1.0 was "zu stark"); see the fourth test.
+
+### Fourth test (2026-09-26): the marked side in the grip, the throw's speed
+
+- **The marked side in the grip.** The hand sat in the object's middle. The
+  point the marker showed (the pick's hit when the grip closed) now goes
+  into the grip, so the side that was reached for is the side held. The
+  middle is used when there is no such point.
+- **Objects shot away on short, quick moves.** The speed came from five
+  frames of palm positions, and a short jerk made a spike. It now follows
+  the SteamVR Interaction System's throwable (Throwable.cs, ReleaseStyle
+  AdvancedEstimation and scaleReleaseVelocityCurve,
+  github.com/ValveSoftware/steamvr_unity_plugin):
+  - **SteamVR's own controller velocity.** TrackedDevicePose vVelocity and
+    vAngularVelocity, filtered in the tracking, is carried to the held point
+    as v + ω × r. The Normal VR studio found SteamVR's values more consistent
+    than any velocity they measured themselves (normalvr.com/blog/throwing-
+    throw-down).
+  - **The fastest of the last 8 frames**, so a hand already slowing as the
+    grip opens still throws.
+  - **Eased in:** 10 % of the speed at rest, rising smoothly to all of it at
+    3 m/s, so a drop, a toss and a throw stay apart. A short flick at 1 m/s
+    gives about a third.
+  - **Throw strength** back to 1.0 by default.
+- How Half-Life: Alyx itself computes a throw: I could not verify this; no
+  published source was found.
 
 ### Up to the mouth and the body
 

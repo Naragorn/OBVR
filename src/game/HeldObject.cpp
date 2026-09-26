@@ -62,8 +62,11 @@ void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveT
 		const bool small = IsSmallHeldObject(type, radius);
 		const NiTransform& world = g_hold.node->worldTransform;
 		if (swordGrip) {
-			g_hold.attachment = CaptureSwordGrip(world.rot, world.pos, world.scale,
-			                                     g_hold.node->worldBound.center);
+			// The side the marker showed - the point the pick touched when the
+			// grip closed - goes into the grip; the middle when there is none.
+			g_hold.attachment = CaptureSwordGrip(
+				world.rot, world.pos, world.scale,
+				haveTouched ? touched : g_hold.node->worldBound.center);
 			g_hold.attached = true;
 			g_hold.swordGrip = true;
 		} else if ((small || attachAll) && haveTouched) {
@@ -75,8 +78,8 @@ void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveT
 			--g_reportsLeft;
 			OBVR_LOG("Hands: holding %08X (form type %02X, bound radius %.1f units) - %s", ref,
 			         type, static_cast<double>(radius),
-			         g_hold.swordGrip  ? "in the hand like the sword: up along the blade, its "
-			                             "middle in the grip"
+			         g_hold.swordGrip  ? "in the hand like the sword: up along the blade, the "
+			                             "marked side in the grip"
 			         : g_hold.attached ? "fixed in the palm, turning with the wrist"
 			         : small           ? "small, but no touched point: on the spring"
 			                           : "not small: on the spring");

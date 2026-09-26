@@ -436,7 +436,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_headsetRenderer.SetControllersWanted(false);
 		game::ForgetStrikes();
 		game::SetMenuCursorHidden(false);
-		game::StepGrabPhysics(false, 0.0f, false, NiPoint3{0.0f, 0.0f, 0.0f}, dt);
+		game::StepGrabPhysics(false, 0.0f, false, NiPoint3{0.0f, 0.0f, 0.0f});
 		g_hand = vr::HandModeResult{};
 		g_reachIconShown = false;
 		g_nearItem = game::NearItem{};
@@ -738,7 +738,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	game::SetGrabAtHand(reach.key, grabUnits, haveHoldPoint, holdPoint, 0.0f);
 	// The held body's physics: always through the player's body while held
 	// (gameplay will build on it: an object brought to the body), thrown
-	// with the palm's speed when let go (game::GrabPhysics).
+	// with the hand's speed when let go (game::GrabPhysics).
 	{
 		// The hand that held it, kept past the grip opening: the engine lets
 		// go a frame or two after the key, and the throw is that hand's speed.
@@ -746,15 +746,25 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		if (reach.key) {
 			s_holdLeft = g_hand.grabWithLeftHand;
 		}
-		NiMatrix33 throwRot;
-		NiPoint3 throwBone;
-		const bool palmValid = game::ReadHandBoneWorld(!s_holdLeft, throwRot, throwBone);
-		game::StepGrabPhysics(
-			true, config.hands.throwStrength, palmValid,
-			palmValid ? game::PalmPoint(throwRot, throwBone,
-			                            game::kPalmAlongMetres * config.tracker.unitsPerMetre)
-			          : NiPoint3{0.0f, 0.0f, 0.0f},
-			dt);
+		// SteamVR's velocity of that controller, into the world, carried to
+		// the held point: v + w x r (game::PointVelocity).
+		const bool throwValid = g_cyclopeanCameraWorldValid &&
+		                        (s_holdLeft ? g_hand.leftHandValid : g_hand.rightHandValid);
+		NiPoint3 throwVelocity{0.0f, 0.0f, 0.0f};
+		if (throwValid) {
+			const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+			const float perMetre = config.tracker.unitsPerMetre;
+			const NiPoint3 v =
+				camRot * (s_holdLeft ? g_hand.leftVelocity : g_hand.rightVelocity) * perMetre;
+			const NiPoint3 w =
+				camRot * (s_holdLeft ? g_hand.leftAngularVelocity : g_hand.rightAngularVelocity);
+			const NiPoint3 controller =
+				g_cyclopeanCameraWorldTransform.pos +
+				camRot * (s_holdLeft ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits);
+			const NiPoint3 r = haveHoldPoint ? holdPoint - controller : NiPoint3{0.0f, 0.0f, 0.0f};
+			throwVelocity = game::PointVelocity(v, w, r);
+		}
+		game::StepGrabPhysics(true, config.hands.throwStrength, throwValid, throwVelocity);
 	}
 
 	// The reach marker ([Hands] ReachMarker): a light-brown ring on the object

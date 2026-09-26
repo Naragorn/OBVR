@@ -825,6 +825,9 @@ bool OpenVRBackend::ReadHand(bool rightHand, HandPose& out) const {
 		out.valid = true;
 		out.orientation = FromOpenVRMatrix(pose.deviceToAbsoluteTracking.m);
 		out.position = PositionFromOpenVRMatrix(pose.deviceToAbsoluteTracking.m);
+	out.velocity = NiPoint3{pose.velocity.v[0], pose.velocity.v[1], pose.velocity.v[2]};
+	out.angularVelocity = NiPoint3{pose.angularVelocity.v[0], pose.angularVelocity.v[1],
+	                               pose.angularVelocity.v[2]};
 		input::ApplyActionControls(out, controls, activeMask, actionError);
 		return true;
 	}
@@ -845,6 +848,9 @@ bool OpenVRBackend::ReadHand(bool rightHand, HandPose& out) const {
 	out.valid = true;
 	out.orientation = FromOpenVRMatrix(pose.deviceToAbsoluteTracking.m);
 	out.position = PositionFromOpenVRMatrix(pose.deviceToAbsoluteTracking.m);
+	out.velocity = NiPoint3{pose.velocity.v[0], pose.velocity.v[1], pose.velocity.v[2]};
+	out.angularVelocity = NiPoint3{pose.angularVelocity.v[0], pose.angularVelocity.v[1],
+	                               pose.angularVelocity.v[2]};
 	out.buttonsPressed = NormalizeLegacyButtons(state.buttonPressed);
 	out.trigger = state.axis[openvr::kAxisTrigger].x;
 	const float x0 = state.axis[openvr::kAxisThumb].x;

@@ -19,7 +19,7 @@ struct Held {
 	UInt32 wrapper = 0;      // bhkRigidBody
 	UInt32 savedGroup = 0;
 	bool grouped = false;
-	PalmHistory palms;
+	VelocityHistory velocities;
 };
 
 Held g_held;
@@ -107,7 +107,7 @@ void Released(Held& h, float throwStrength) {
 		}
 	}
 	g_seen = SeenPose{};
-	const NiPoint3 v = ThrowVelocity(h.palms, throwStrength);
+	const NiPoint3 v = ThrowVelocity(h.velocities, throwStrength);
 	const bool thrown = v.LengthSquared() > 0.0f;
 	if (thrown) {
 		const UInt32 motion = Read(h.body + kBodyMotionOffset);
@@ -125,7 +125,7 @@ void Released(Held& h, float throwStrength) {
 		--g_linesLeft;
 		OBVR_LOG("Hands: let go of %08X - group %u put back, %s%s (%.0f units/s)", h.ref,
 		         h.savedGroup, placed ? "placed where it was seen, " : "",
-		         thrown ? "thrown with the palm's speed" : "set down",
+		         thrown ? "thrown with the hand's speed" : "set down",
 		         static_cast<double>(math::Sqrt(v.LengthSquared())));
 	}
 }
@@ -139,8 +139,8 @@ void NoteHeldPose(UInt32 ref, const NiMatrix33& rot, const NiPoint3& pos) {
 	g_seen.valid = true;
 }
 
-void StepGrabPhysics(bool passBody, float throwStrength, bool palmValid, const NiPoint3& palm,
-                     float dtSeconds) {
+void StepGrabPhysics(bool passBody, float throwStrength, bool velocityValid,
+                     const NiPoint3& velocityUnits) {
 	const UInt32 player = PlayerOrZero();
 	const UInt32 body = player != 0 ? GrabbedBody(player) : 0;
 	const UInt32 ref = player != 0 ? Read(player + addr::kPlayerGrabbedRefOffset) : 0;
@@ -174,8 +174,8 @@ void StepGrabPhysics(bool passBody, float throwStrength, bool palmValid, const N
 			}
 		}
 	}
-	if (palmValid) {
-		PushPalm(g_held.palms, palm, dtSeconds);
+	if (velocityValid) {
+		PushVelocity(g_held.velocities, velocityUnits);
 	}
 }
 

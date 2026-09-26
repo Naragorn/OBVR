@@ -118,7 +118,7 @@ struct HandSettings {
 	bool levitateObjects = false;
 	// Letting go mid-swing throws with the palm's speed times this; 0 leaves
 	// the engine's soft drop.
-	float throwStrength = 0.6f;  // 1.0 threw "zu stark" (2026-09-26)
+	float throwStrength = 1.0f;
 	// How far each finger link bends while the hand holds something, degrees
 	// (game::HandGrip); negative bends the other way, 0 leaves the hand open.
 	float gripCurlDegrees = 45.0f;
@@ -279,6 +279,12 @@ struct HandModeResult {
 	NiMatrix33 leftHandRotation{};
 	NiPoint3 rightHandOffsetUnits{0.0f, 0.0f, 0.0f};
 	NiPoint3 leftHandOffsetUnits{0.0f, 0.0f, 0.0f};
+	// SteamVR's velocity of each controller, relative to the head's frame in
+	// the game's axes: metres and radians a second (for the throw).
+	NiPoint3 rightVelocity{0.0f, 0.0f, 0.0f};
+	NiPoint3 rightAngularVelocity{0.0f, 0.0f, 0.0f};
+	NiPoint3 leftVelocity{0.0f, 0.0f, 0.0f};
+	NiPoint3 leftAngularVelocity{0.0f, 0.0f, 0.0f};
 
 	// The controls to press, and whether any are to be pressed at all
 	// (false releases everything).
