@@ -447,4 +447,10 @@ void ProbeFirstPersonTree() {
 	ProbeNode(g_probedRoot, 0);
 }
 
+const char* NiClassNameOf(const void* object) {
+	return ClassNameOf(reinterpret_cast<const UInt8*>(object));
+}
+
+bool NiClassIsNode(const char* className) { return ClassIsNode(className); }
+
 }  // namespace obvr::game

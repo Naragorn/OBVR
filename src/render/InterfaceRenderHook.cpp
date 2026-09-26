@@ -2370,6 +2370,42 @@ void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* rendere
 
 }  // namespace
 
+void PrepareWorldViewport(const char* where) {
+	static UInt32 s_windowLinesLeft = 6;
+	static UInt32 s_restoreLinesLeft = 8;
+	if (g_afterRedirectWindow) {
+		g_afterRedirectWindow = false;
+		if (s_windowLinesLeft > 0) {
+			--s_windowLinesLeft;
+			OBVR_LOG("Hud viewport: the after-pass window was still open as %s began - closed",
+			         where);
+		}
+	}
+	if (g_targetIsSubstitute) {
+		return;
+	}
+	d3d9::Viewport current{};
+	UInt32 frameWidth = 0;
+	UInt32 frameHeight = 0;
+	UInt32 believedWidth = 0;
+	UInt32 believedHeight = 0;
+	if (!GetViewportDirect(&current) || !WasDeviceCreated(frameWidth, frameHeight) ||
+	    !GameBelievedSize(believedWidth, believedHeight) ||
+	    !WorldViewportLeftShrunk(current.x, current.y, current.width, current.height,
+	                             frameWidth, frameHeight, believedWidth, believedHeight)) {
+		return;
+	}
+	const d3d9::Viewport full{0, 0, frameWidth, frameHeight, current.minZ, current.maxZ};
+	const bool restored = SetViewportDirect(&full);
+	if (s_restoreLinesLeft > 0) {
+		--s_restoreLinesLeft;
+		OBVR_LOG("Hud viewport: %s began in the 2D pass's %ux%u - %s", where, current.width,
+		         current.height,
+		         restored ? "the full frame put back for the world"
+		                  : "could not be put back (no original SetViewport)");
+	}
+}
+
 bool RunHudPassBetweenScenes() {
 	if (g_original == nullptr || g_lastSelf == nullptr || g_hudCapturedThisFrame) {
 		return false;

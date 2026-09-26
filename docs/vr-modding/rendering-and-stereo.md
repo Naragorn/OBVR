@@ -430,6 +430,15 @@ cursor detours. That is the current state; the mouse now clicks where the button
   open gate and draws nothing). Not explained; worked around by drawing the layer between
   the passes. See [open-questions-and-known-issues.md](open-questions-and-known-issues.md).
 - Water reflection resets with head movement in mono as well; not a leak.
+- The 2D pass between the eye renders shrinks the engine's full-frame viewport to the
+  believed 16:9 rows, and its after-pass window stayed open into the second eye's render.
+  Outdoors a water or shadow target change reset the viewport first; indoors, the tester
+  saw "only an upper image" (2026-09-26). Each eye's world render (the dual pass only;
+  a single render may be the flat picture, meant to fill the believed corner) now begins
+  with the window closed and the full frame put back if the believed rectangle stands
+  (`render::PrepareWorldViewport`, decision `WorldViewportLeftShrunk`). `LIKELY`: the
+  cause is derived from code and log, not yet seen fixed in the headset; the log says
+  when it acts ("Hud viewport: ... began in the 2D pass's ...").
 
 ## Foliage, LOD, sky, post-processing
 

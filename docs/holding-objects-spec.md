@@ -180,12 +180,13 @@ with it.
 
 Vanilla's release leaves the spring's damped speed, a soft drop.
 
-- Until the fifth test, once the engine had let go, OBVR did what the
-  engine's Telekinesis throw (0x006A7830) does: it activated the body
-  (0x008A6410), then set its linear velocity (hkMotion vtable +0x54, in
+- Once the engine has let go, OBVR does what the engine's Telekinesis
+  throw (0x006A7830) does: it activates the body (0x008A6410), then sets
+  its linear velocity (hkMotion vtable +0x54, in
   Havok units = game units × 0.142877).
-- Replaced twice: first the palm's speed, then SteamVR's (fourth test);
-  since the fifth test OBVR sets no speed and leaves the throw to Havok.
+- The velocity: the palm's speed first, SteamVR's since the fourth test;
+  taken out in the fifth test and back since the sixth, with
+  `[Hands] ThrowStrength` (0 leaves Havok's own release).
 - A body that went away with its hold (picked into the inventory, say) is
   not touched: the check is the ref still having a scene node and the body
   its vtable and wrapper.
@@ -205,7 +206,7 @@ torch.
     bhkRigidBody vtable +0xA0 (SetTranslationAndRotation, 0x008A2FB0), inside
     the Havok critical section at 0x00BA7B00, as the engine's own
     node-to-Havok push does (0x0089EAE0).
-  - Then it is activated; its speed is Havok's (fifth test).
+  - Then it is activated and given the hand's speed.
   - The rotation goes over as a quaternion (x, y, z, w;
     `game::QuaternionFromRotation`, tested against the rotation it came from).
 - **Levitated** (`LevitateObjects=1`): the behaviour of parts 1–4 above.
@@ -290,6 +291,39 @@ torch.
   (`game::ReachMarkerWanted`, the same item types as the distance search).
   A dead body can still be grabbed with the grip, but shows no ring.
 
+### Sixth test (2026-09-26): the flick is not the throw, the ring to the hand
+
+- **Havok alone threw neither well.** With no speed of OBVR's own, a real
+  throw was only a soft drop, and a short flick of the wrist still shot the
+  object away. So the flick never came from OBVR's velocity: it happened
+  with the palm's speed, with SteamVR's and with none.
+- **The likeliest cause: letting go inside the player's capsule.** While
+  held, the body is in the player's group and passes through the capsule.
+  At the release the old group went back at once. A flick lets go near the
+  chest, inside the capsule, and Havok pushes an overlapping body out. A
+  throw with the arm lets go outside it. Not yet confirmed.
+  - The old group now waits until the object's bound is clear of the
+    capsule on the horizontal (`game::InsidePlayerCapsule`). The radius is
+    the one the grab update uses: the controller (0x0065A2C0) asked for its
+    shape's radius (0x008913C0), times 6.999, plus 5 units.
+  - An object taken again while it waits keeps its first group.
+  - The log says at each release whether it was inside, how far from the
+    player's axis, when its group went back, and the object's speed over
+    the 12 frames after the release ("flight of ...").
+- **OBVR's throw is back** (a1ce300: SteamVR's velocity, the peak of 8
+  frames, eased), with `[Hands] ThrowStrength` (0 leaves Havok's own
+  release).
+- **The ring moves to the hand.** The pick is aimed from the hand at a point
+  between the item's middle and the vertex of its geometry nearest the
+  hand: the middle at the marker's distance, the near side from 10 cm in
+  (`game::NearSideWeight`, `NearSideAimPoint`, `kNearSideMetres`). The pick's
+  hit is where the ring sits and what the grip takes.
+  - The vertices are read from NiGeometry's data (+0xB4, xOBSE NiObjects.h).
+    The data's own layout (count +0x08, bound +0x10, vertices +0x20) is not
+    in xOBSE; it is checked, not trusted: every vertex must lie in the
+    data's bound, else the middle is kept and the log says so once
+    (`game::NearestVertexOf`, `VertexInBound`).
+
 ### Up to the mouth and the body
 
 Held objects stopped about 25 cm from the head (2026-09-26). Eating by
@@ -321,5 +355,5 @@ headset (curl axis and sign, palm offset), then 3(a) for large objects, then
    sideways, the axis is wrong; report that.
 4. **Object in the wrist or too far out?** Move Held object distance in
    2 cm steps.
-5. **Let go and throw.** Havok throws it with the speed the spring gave it.
-   Watch for a jolt at the release.
+5. **Let go and throw.** It flies with the hand's speed. Watch for a jolt
+   at the release.

@@ -66,4 +66,10 @@ void ProbeFirstPersonTree();
 // draw. Answers how many named nodes it found.
 UInt32 KeepFirstPersonNodesInView(const char* list, const NiPoint3& centre, float radius);
 
+// The compiled class of a scene object, from MSVC's RTTI records ("NiNode@@",
+// "NiTriShape@@"), or "?" when it cannot be read; and whether such a name is
+// a node that keeps children.
+const char* NiClassNameOf(const void* object);
+bool NiClassIsNode(const char* className);
+
 }  // namespace obvr::game

@@ -274,6 +274,20 @@ void TakeInterfaceStats(UInt32& passes, UInt32& draws);
 // was captured and that pass keeps the layer, exactly as before.
 bool RunHudPassBetweenScenes();
 
+// As an eye's world render of the dual pass begins (not a single render,
+// which may be the flat picture meant to fill the believed corner): closes
+// the after-pass viewport window (see g_afterRedirectWindow) and puts the
+// full-frame viewport back if the 2D pass left its believed rectangle
+// standing. The window is for the engine's cursor quad, which follows its
+// own 2D pass; a world render never draws it.
+// The pass OBVR runs between the two eye renders is not followed by that quad
+// at all, and the pass itself shrinks the full-frame viewport to the belief;
+// outdoors a water or shadow target change reset it before the second eye,
+// indoors nothing did, so - the hypothesis, not yet seen in the headset - the
+// eye was drawn into the believed rows only and the bottom went missing
+// (2026-09-26: "only an upper image"). The log says when either happens.
+void PrepareWorldViewport(const char* where);
+
 // Raw viewport access through the ORIGINAL device methods, for wraps that
 // must never be answered by OBVR's own viewport hook - restoring a full-
 // frame viewport through the hooked entry could be shrunk right back.

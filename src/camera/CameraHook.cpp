@@ -436,7 +436,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_headsetRenderer.SetControllersWanted(false);
 		game::ForgetStrikes();
 		game::SetMenuCursorHidden(false);
-		game::StepGrabPhysics(false);
+		game::StepGrabPhysics(false, 0.0f, false, NiPoint3{0.0f, 0.0f, 0.0f}, g_deltaSeconds);
 		g_hand = vr::HandModeResult{};
 		g_reachIconShown = false;
 		g_nearItem = game::NearItem{};
@@ -737,9 +737,36 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 	game::SetGrabAtHand(reach.key, grabUnits, haveHoldPoint, holdPoint, 0.0f);
 	// The held body's physics: always through the player's body while held
-	// (gameplay will build on it: an object brought to the body); a throw is
-	// Havok's own, from the speed the spring gave the body (game::GrabPhysics).
-	game::StepGrabPhysics(true);
+	// (gameplay will build on it: an object brought to the body), thrown
+	// with the hand's speed when let go (game::GrabPhysics).
+	{
+		// The hand that held it, kept past the grip opening: the engine lets
+		// go a frame or two after the key, and the throw is that hand's speed.
+		static bool s_holdLeft = false;
+		if (reach.key) {
+			s_holdLeft = g_hand.grabWithLeftHand;
+		}
+		// SteamVR's velocity of that controller, into the world, carried to
+		// the held point: v + w x r (game::PointVelocity).
+		const bool throwValid = g_cyclopeanCameraWorldValid &&
+		                        (s_holdLeft ? g_hand.leftHandValid : g_hand.rightHandValid);
+		NiPoint3 throwVelocity{0.0f, 0.0f, 0.0f};
+		if (throwValid) {
+			const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+			const float perMetre = config.tracker.unitsPerMetre;
+			const NiPoint3 v =
+				camRot * (s_holdLeft ? g_hand.leftVelocity : g_hand.rightVelocity) * perMetre;
+			const NiPoint3 w =
+				camRot * (s_holdLeft ? g_hand.leftAngularVelocity : g_hand.rightAngularVelocity);
+			const NiPoint3 controller =
+				g_cyclopeanCameraWorldTransform.pos +
+				camRot * (s_holdLeft ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits);
+			const NiPoint3 r = haveHoldPoint ? holdPoint - controller : NiPoint3{0.0f, 0.0f, 0.0f};
+			throwVelocity = game::PointVelocity(v, w, r);
+		}
+		game::StepGrabPhysics(true, config.hands.throwStrength, throwValid, throwVelocity,
+		                      g_deltaSeconds);
+	}
 
 	// The reach marker ([Hands] ReachMarker): a light-brown ring on the object
 	// under the pick when it is within ReachMarkerMetres of either hand - the
@@ -4123,8 +4150,21 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			const NiPoint3 from = cameraNode->localTransform.pos +
 			                      finalRotation * (pickLeft ? g_hand.leftHandOffsetUnits
 			                                                : g_hand.rightHandOffsetUnits);
+			// Towards the side nearest the hand as it comes closer
+			// (game::NearSideWeight): the ring moves to the hand, and from
+			// kNearSideMetres in the near side is what the grip takes.
+			NiPoint3 aim = g_nearItem.centre;
+			NiPoint3 nearSurface;
+			float nearDistance = 0.0f;
+			if (game::NearestVertexOf(g_nearItem.ref, from, nearSurface, nearDistance)) {
+				const float perMetre = config.tracker.unitsPerMetre;
+				aim = game::NearSideAimPoint(
+					g_nearItem.centre, nearSurface,
+					game::NearSideWeight(nearDistance, hands.reachMarkerMetres * perMetre,
+					                     game::kNearSideMetres * perMetre));
+			}
 			const vr::LaserWorldRay ray = vr::RayTowards(
-				from, g_nearItem.centre, hands.grabReachMetres * config.tracker.unitsPerMetre,
+				from, aim, hands.grabReachMetres * config.tracker.unitsPerMetre,
 				ForwardOf(finalRotation));
 			game::SetWorldPickHandRay(ray.origin, ray.direction, true);
 		} else if (reachRay) {

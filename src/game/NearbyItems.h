@@ -55,6 +55,48 @@ inline bool ReachMarkerWanted(bool haveRef, UInt8 baseFormType, bool nearRight, 
 	return haveRef && IsHandItemType(baseFormType) && (nearRight || nearLeft);
 }
 
+// The side of the item nearest the hand (2026-09-26: the closer the hand
+// comes, the closer the ring should move to it, and from a threshold on the
+// side nearest the hand wins).
+// The pick is aimed from the hand at a point between the item's middle and
+// its surface point nearest the hand: all the middle while the hand is at
+// the marker's distance, all the near side from kNearSideMetres in, eased
+// between. The pick's hit is where the ring sits and what the grip takes.
+constexpr float kNearSideMetres = 0.10f;
+
+// 0 at `farUnits` or beyond, 1 at `nearUnits` or closer, smooth between.
+inline float NearSideWeight(float distanceUnits, float farUnits, float nearUnits) {
+	if (!(farUnits > nearUnits)) {
+		return distanceUnits <= nearUnits ? 1.0f : 0.0f;
+	}
+	float t = (farUnits - distanceUnits) / (farUnits - nearUnits);
+	t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
+	return t * t * (3.0f - 2.0f * t);
+}
+
+// Where the pick aims: from the middle towards the near surface point by
+// `weight`. The surface point is taken a little inside (a tenth of the way
+// to the middle), so a ray at an edge point still meets the object.
+inline NiPoint3 NearSideAimPoint(const NiPoint3& centre, const NiPoint3& nearSurface,
+                                 float weight) {
+	const NiPoint3 inside = nearSurface + (centre - nearSurface) * 0.1f;
+	return centre + (inside - centre) * weight;
+}
+
+// Whether a vertex read from a geometry's data lies in that data's own bound
+// sphere (with a little slack): the check that the layout read is the real
+// one before any of it is used.
+inline bool VertexInBound(const NiPoint3& v, const NiPoint3& boundCentre, float boundRadius) {
+	const NiPoint3 d = v - boundCentre;
+	const float r = boundRadius * 1.05f + 1.0f;
+	return boundRadius >= 0.0f && d.LengthSquared() <= r * r;
+}
+
+// The vertex of the item's geometry nearest `hand`, in the world, and its
+// distance. False when the item has no geometry this can read, or the read
+// fails its checks (VertexInBound); the caller then keeps the middle.
+bool NearestVertexOf(UInt32 ref, const NiPoint3& hand, NiPoint3& out, float& distanceOut);
+
 // The type of a reference's base form, 0 when it cannot be read.
 UInt8 RefBaseFormType(UInt32 ref);
 

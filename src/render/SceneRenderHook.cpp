@@ -559,6 +559,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		                                   GetGameDevice());
 		perf::Profiler::ScopedSpan firstScene(perf::Profiler::Instance(),
 		                                      perf::EventType::ScenePass, firstContext);
+		PrepareWorldViewport("the first eye's render");
 		g_original(self, unusedEdx, renderedTexture);
 		perf::Profiler::Instance().GpuEnd();
 	}
@@ -629,6 +630,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		                                   GetGameDevice());
 		perf::Profiler::ScopedSpan secondScene(perf::Profiler::Instance(),
 		                                       perf::EventType::ScenePass, secondContext);
+		PrepareWorldViewport("the second eye's render");
 		g_original(self, unusedEdx, renderedTexture);
 		perf::Profiler::Instance().GpuEnd();
 	}

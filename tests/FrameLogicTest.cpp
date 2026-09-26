@@ -2116,6 +2116,28 @@ void TestNearItems() {
 	      "an NPC or creature under the pick in a fight: no ring, no tooltip");
 	Check(!ReachMarkerWanted(true, 0x28, false, false), "an item out of reach: none");
 	Check(!ReachMarkerWanted(false, 0x28, true, true), "nothing under the pick: none");
+	Check(Near(NearSideWeight(30.0f, 21.0f, 7.0f), 0.0f) && Near(NearSideWeight(21.0f, 21.0f, 7.0f), 0.0f),
+	      "at the marker's distance or beyond: the middle");
+	Check(Near(NearSideWeight(7.0f, 21.0f, 7.0f), 1.0f) && Near(NearSideWeight(0.0f, 21.0f, 7.0f), 1.0f),
+	      "from the threshold in: the near side wins");
+	Check(Near(NearSideWeight(14.0f, 21.0f, 7.0f), 0.5f) &&
+	          NearSideWeight(10.0f, 21.0f, 7.0f) > NearSideWeight(18.0f, 21.0f, 7.0f),
+	      "between: the closer the hand, the closer the ring");
+	Check(Near(NearSideWeight(5.0f, 7.0f, 7.0f), 1.0f) && Near(NearSideWeight(9.0f, 7.0f, 7.0f), 0.0f),
+	      "a marker distance no larger than the threshold: a step at it");
+	const obvr::NiPoint3 middle{0.0f, 0.0f, 0.0f};
+	const obvr::NiPoint3 neck{10.0f, 0.0f, 0.0f};
+	const obvr::NiPoint3 atMiddle = NearSideAimPoint(middle, neck, 0.0f);
+	const obvr::NiPoint3 atNeck = NearSideAimPoint(middle, neck, 1.0f);
+	const obvr::NiPoint3 halfway = NearSideAimPoint(middle, neck, 0.5f);
+	Check(Near(atMiddle.x, 0.0f) && Near(atNeck.x, 9.0f) && Near(halfway.x, 4.5f),
+	      "the aim moves from the middle to just inside the near side");
+	Check(VertexInBound(obvr::NiPoint3{3.0f, 4.0f, 0.0f}, middle, 5.0f) &&
+	          VertexInBound(obvr::NiPoint3{0.0f, 0.0f, 6.2f}, middle, 5.0f),
+	      "a vertex on its bound, with a little slack: the read is trusted");
+	Check(!VertexInBound(obvr::NiPoint3{0.0f, 0.0f, 50.0f}, middle, 5.0f) &&
+	          !VertexInBound(middle, middle, -1.0f),
+	      "a vertex far outside, or a nonsense radius: the read is refused");
 	const obvr::NiPoint3 hand{0.0f, 0.0f, 0.0f};
 	Check(Near(SurfaceDistance(hand, obvr::NiPoint3{10.0f, 0.0f, 0.0f}, 4.0f), 6.0f),
 	      "the distance is to the bound's surface");
@@ -2226,11 +2248,62 @@ void TestHavokQuaternion() {
 	Check(all, "any turn, the half turns included: a unit quaternion of the same rotation");
 }
 
-void TestFilterGroup() {
-	std::printf("The held body's collision group\n");
-	using obvr::game::FilterGroup;
+void TestThrow() {
+	std::printf("Letting go: a set-down or a throw\n");
+	using namespace obvr::game;
+	const auto Near = [](float a, float b) { return a - b < 1e-2f && b - a < 1e-2f; };
 	Check(FilterGroup(0x0009000Au) == 9u && FilterGroup(0x0000000Au) == 0u,
 	      "the system group is the filter's high half");
+	VelocityHistory h;
+	Check(ThrowVelocity(h, 1.0f).LengthSquared() == 0.0f, "no samples: no throw");
+	for (int i = 0; i < 12; ++i) {
+		PushVelocity(h, obvr::NiPoint3{0.0f, 50.0f + 20.0f * static_cast<float>(i), 0.0f});
+	}
+	Check(h.count == kThrowHistory, "the history keeps the last frames only");
+	PushVelocity(h, obvr::NiPoint3{0.0f, 80.0f, 0.0f});  // slowing as the grip opens
+	obvr::NiPoint3 v = ThrowVelocity(h, 1.0f);
+	Check(Near(v.y, 270.0f), "the peak of the last frames, a hand already slowing still throws");
+	Check(Near(ThrowVelocity(h, 0.5f).y, 135.0f), "times the strength");
+	Check(ThrowVelocity(h, 0.0f).LengthSquared() == 0.0f, "strength 0: nothing given");
+	VelocityHistory slow;
+	PushVelocity(slow, obvr::NiPoint3{20.0f, 0.0f, 0.0f});
+	Check(ThrowVelocity(slow, 1.0f).LengthSquared() == 0.0f,
+	      "a hand slower than half a metre a second sets it down");
+	Check(Near(ThrowEase(0.0f), 0.1f) && Near(ThrowEase(kThrowFullSpeedUnits), 1.0f) &&
+	          Near(ThrowEase(10.0f * kThrowFullSpeedUnits), 1.0f),
+	      "the ease: a tenth at rest, all of it from full speed on");
+	Check(ThrowEase(70.0f) < 0.4f && ThrowEase(140.0f) > ThrowEase(70.0f),
+	      "a quick short flick of a metre a second is damped, and rises with speed");
+	VelocityHistory toss;
+	PushVelocity(toss, obvr::NiPoint3{70.0f, 0.0f, 0.0f});
+	Check(Near(ThrowVelocity(toss, 1.0f).x, 70.0f * ThrowEase(70.0f)), "a toss: eased");
+	const obvr::NiPoint3 still = PointVelocity(obvr::NiPoint3{1.0f, 2.0f, 3.0f},
+	                                           obvr::NiPoint3{0.0f, 0.0f, 0.0f},
+	                                           obvr::NiPoint3{5.0f, 0.0f, 0.0f});
+	Check(Near(still.x, 1.0f) && Near(still.y, 2.0f) && Near(still.z, 3.0f),
+	      "no turn: the point moves with the controller");
+	const obvr::NiPoint3 turning = PointVelocity(obvr::NiPoint3{0.0f, 0.0f, 0.0f},
+	                                             obvr::NiPoint3{0.0f, 0.0f, 2.0f},
+	                                             obvr::NiPoint3{10.0f, 0.0f, 0.0f});
+	Check(Near(turning.x, 0.0f) && Near(turning.y, 20.0f) && Near(turning.z, 0.0f),
+	      "a wrist flick: w x r, the point further out moves faster");
+}
+
+void TestPlayerCapsule() {
+	std::printf("Letting go inside the player's capsule\n");
+	using obvr::game::InsidePlayerCapsule;
+	const obvr::NiPoint3 player{100.0f, 200.0f, 0.0f};
+	Check(InsidePlayerCapsule(obvr::NiPoint3{110.0f, 200.0f, 90.0f}, 5.0f, player, 25.0f),
+	      "a flick at the chest: inside, the group waits");
+	Check(!InsidePlayerCapsule(obvr::NiPoint3{150.0f, 200.0f, 90.0f}, 5.0f, player, 25.0f),
+	      "an arm's length out: clear, the group goes back");
+	Check(InsidePlayerCapsule(obvr::NiPoint3{128.0f, 200.0f, 90.0f}, 5.0f, player, 25.0f) &&
+	          !InsidePlayerCapsule(obvr::NiPoint3{128.0f, 200.0f, 90.0f}, 0.0f, player, 25.0f),
+	      "the object's own size counts");
+	Check(InsidePlayerCapsule(obvr::NiPoint3{100.0f, 200.0f, 500.0f}, 1.0f, player, 25.0f),
+	      "on the horizontal only, as the grab update measures it");
+	Check(!InsidePlayerCapsule(obvr::NiPoint3{130.0f, 200.0f, 0.0f}, -4.0f, player, 25.0f),
+	      "a negative radius counts as none");
 }
 
 void TestHeldObject() {
@@ -3676,7 +3749,8 @@ int main() {
 	TestNearItems();
 	TestAttachesInHand();
 	TestHavokQuaternion();
-	TestFilterGroup();
+	TestThrow();
+	TestPlayerCapsule();
 	TestHeldObject();
 	TestHandGrip();
 	TestNoPlayerStagger();
