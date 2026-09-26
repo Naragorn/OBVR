@@ -21,6 +21,11 @@ struct Hold {
 	NiAVObject* node = nullptr;
 	HeldAttachment attachment;
 	bool attached = false;
+	// The float to the hand: where the held point lay, and how far along.
+	NiPoint3 floatFrom{0.0f, 0.0f, 0.0f};
+	bool floatStarted = false;
+	float floatSeconds = 0.0f;
+	float floatElapsed = 0.0f;
 };
 
 Hold g_hold;
@@ -29,7 +34,7 @@ UInt32 g_reportsLeft = 6;
 }  // namespace
 
 void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveTouched,
-                    const NiPoint3& touched, bool attachAll) {
+                    const NiPoint3& touched, bool attachAll, float dtSeconds) {
 	const UInt32 player = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
 	const UInt32 ref = holding && LooksLikeObject(player)
 	                       ? *reinterpret_cast<const UInt32*>(player + addr::kPlayerGrabbedRefOffset)
@@ -65,6 +70,7 @@ void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveT
 				CaptureAttachment(handRot, world.rot, world.pos, world.scale,
 				                  haveTouched ? touched : g_hold.node->worldBound.center);
 			g_hold.attached = true;
+			g_hold.floatFrom = haveTouched ? touched : g_hold.node->worldBound.center;
 		}
 		if (g_reportsLeft > 0) {
 			--g_reportsLeft;
@@ -86,7 +92,18 @@ void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveT
 	const float scale = node->worldTransform.scale;
 	const NiPoint3 grip =
 		hand.haveGripPoint ? hand.gripPoint : PalmPoint(handRot, handPos, hand.palmAlongUnits);
-	const HeldPose pose = AttachedPose(handRot, grip, g_hold.attachment, scale);
+	// Floating in: the held point from where it lay to the grip (FloatWeight),
+	// timed from the first frame it is placed.
+	if (!g_hold.floatStarted) {
+		g_hold.floatStarted = true;
+		g_hold.floatSeconds = FloatSeconds(math::Sqrt((grip - g_hold.floatFrom).LengthSquared()));
+		g_hold.floatElapsed = 0.0f;
+	} else if (dtSeconds > 0.0f && dtSeconds < 0.5f) {
+		g_hold.floatElapsed += dtSeconds;
+	}
+	const NiPoint3 held = FloatPoint(g_hold.floatFrom, grip,
+	                                 FloatWeight(g_hold.floatElapsed, g_hold.floatSeconds));
+	const HeldPose pose = AttachedPose(handRot, held, g_hold.attachment, scale);
 	// The node's world transform is written directly and only its children
 	// are updated from it: running the node's own update puts a Havok-driven
 	// object back where its rigid body is, which is why the object followed

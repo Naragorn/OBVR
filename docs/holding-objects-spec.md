@@ -324,6 +324,28 @@ torch.
     data's bound, else the middle is kept and the log says so once
     (`game::NearestVertexOf`, `VertexInBound`).
 
+### Seventh test (2026-09-26): confirmed, the ring from a metre, the float
+
+- **Confirmed: the flick was the capsule.** The flight lines of the sixth
+  test's log show every object let go inside the capsule leaving with the
+  speed OBVR gave it (167 given, 163 to 152 over the next frames; 338 given,
+  374 to 325) or, set down, falling under gravity (20, 25, 31 ... units/s),
+  and no push-out. The one large first sample of each line is the placement
+  at the release, not a speed. The tester: no more flicks.
+- **Throw strength 1.6 by default**, the tester's value.
+- **The ring from a metre.** `[Hands] ReachMarkerMetres` defaults to 1.0 (up
+  to 2 in the menu). The ring starts in the item's middle and moves to the
+  side nearest the hand as it comes closer, all the way from 10 cm in, and
+  back to the middle as the hand leaves (sixth test's `NearSideWeight`, now
+  over the longer distance). Beyond `GrabReachMetres` an item counts only
+  while the hand's laser points at it within 35 degrees
+  (`game::ReachingFor`), so an item on a table does not take the pick from
+  a door being pointed at.
+- **Floating to the hand** instead of appearing in it: the held point
+  glides from where it lay to the grip, eased, at about 2 m/s, between 0.1
+  and 0.35 s (`game::FloatSeconds`, `FloatWeight`, `FloatPoint`). The object
+  keeps its turn and follows the wrist on the way.
+
 ### Up to the mouth and the body
 
 Held objects stopped about 25 cm from the head (2026-09-26). Eating by

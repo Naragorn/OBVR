@@ -544,6 +544,10 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.look.deathBodyView = ReadBool("Look", "DeathBodyView", config.look.deathBodyView, path);
 	config.look.deathViewBackMetres =
 		ReadFloat("Look", "DeathViewBackMetres", config.look.deathViewBackMetres, path);
+	config.look.deathBodyAheadMetres =
+		ReadFloat("Look", "DeathBodyAheadMetres", config.look.deathBodyAheadMetres, path);
+	config.look.hideHudWhenDead =
+		ReadBool("Look", "HideHudWhenDead", config.look.hideHudWhenDead, path);
 	config.look.noPlayerStagger =
 		ReadBool("Look", "NoPlayerStagger", config.look.noPlayerStagger, path);
 	config.look.snapTurnDeadZone =

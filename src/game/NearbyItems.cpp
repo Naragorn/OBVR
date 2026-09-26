@@ -160,11 +160,11 @@ UInt8 RefBaseFormType(UInt32 ref) {
 	                             : 0;
 }
 
-NearItem FindNearestItem(const NiPoint3& right, bool rightValid, const NiPoint3& left,
-                         bool leftValid, float reachUnits, UInt32 except) {
+NearItem FindNearestItem(const SearchHand& right, const SearchHand& left, float reachUnits,
+                         float alwaysUnits, UInt32 except) {
 	NearItem best;
 	const UInt32 player = Read(addr::kPlayerPointer);
-	if (!LooksLikeObject(player) || !(rightValid || leftValid)) {
+	if (!LooksLikeObject(player) || !(right.valid || left.valid)) {
 		return best;
 	}
 	const UInt32 cell = Read(player + kRefParentCellOffset);
@@ -196,8 +196,8 @@ NearItem FindNearestItem(const NiPoint3& right, bool rightValid, const NiPoint3&
 		if ((node->flags & kNiHiddenFlag) != 0) {
 			continue;
 		}
-		ConsiderNearItem(best, ref, node->worldBound.center, node->worldBound.radius, right,
-		                 rightValid, left, leftValid, reachUnits);
+		ConsiderNearItem(best, ref, node->worldBound.center, node->worldBound.radius, right, left,
+		                 reachUnits, alwaysUnits);
 	}
 	return best;
 }

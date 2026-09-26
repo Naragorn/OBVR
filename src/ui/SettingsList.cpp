@@ -66,6 +66,20 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.look.deathViewBackMetres = v; },
 	},
 	{
+		"Comfort", "Death body ahead", "How far in front of you your body falls when you die, metres",
+		ItemKind::Number, 0.0f, 2.0f, 0.1f, 1, false,
+		"Look", "DeathBodyAheadMetres",
+		+[](const Config& c) { return c.look.deathBodyAheadMetres; },
+		+[](Config& c, float v) { c.look.deathBodyAheadMetres = v; },
+	},
+	{
+		"Comfort", "Hide HUD when dead", "The HUD and crosshair go when you die",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "HideHudWhenDead",
+		+[](const Config& c) { return c.look.hideHudWhenDead ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.look.hideHudWhenDead = v != 0.0f; },
+	},
+	{
 		"Comfort", "No stagger", "Hits never stagger you or knock you back",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Look", "NoPlayerStagger",
@@ -503,7 +517,7 @@ const SettingDefinition kSettings[] = {
 	},
 	{
 		"Hands", "Reach marker distance", "How close a hand has to be for the ring to show, metres",
-		ItemKind::Number, 0.05f, 1.0f, 0.05f, 2, false,
+		ItemKind::Number, 0.05f, 2.0f, 0.05f, 2, false,
 		"Hands", "ReachMarkerMetres",
 		+[](const Config& c) { return c.hands.reachMarkerMetres; },
 		+[](Config& c, float v) { c.hands.reachMarkerMetres = v; },

@@ -78,6 +78,7 @@ add_library(OBVR SHARED
 	src/game/FirstPersonDepth.cpp
 	src/game/PlayerStagger.cpp
 	src/game/HandGrip.cpp
+	src/game/DeathBody.cpp
 	src/game/HeldObject.cpp
 	src/game/GrabPhysics.cpp
 	src/game/GrabNearBody.cpp

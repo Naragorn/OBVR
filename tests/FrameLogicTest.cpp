@@ -1350,6 +1350,18 @@ void TestCrosshairTooltipPolicy() {
 			const obvr::NiPoint3 zero = DeathStepBack(facingNorth, 0.0f);
 			Check(none.LengthSquared() == 0.0f && zero.LengthSquared() == 0.0f,
 			      "no heading, or no step: none");
+			using obvr::camera::DeathBodyAhead;
+			const obvr::NiPoint3 ahead = DeathBodyAhead(lookingDown, 35.0f);
+			Check(ahead.x == 0.0f && ahead.y > 34.9f && ahead.y < 35.1f && ahead.z == 0.0f,
+			      "the body ahead: along the living heading, level");
+			Check(DeathBodyAhead(straightDown, 35.0f).LengthSquared() == 0.0f &&
+			          DeathBodyAhead(facingNorth, 0.0f).LengthSquared() == 0.0f,
+			      "no heading, or switched off (0): the body where it falls");
+			using obvr::camera::HudHiddenForDeath;
+			Check(HudHiddenForDeath(true, true, false), "dead: the HUD and crosshair go");
+			Check(!HudHiddenForDeath(true, true, true), "dead, the load menu open: it shows");
+			Check(!HudHiddenForDeath(true, false, false) && !HudHiddenForDeath(false, true, false),
+			      "alive, or switched off: as before");
 			DeathViewState stepped;
 			StepDeathView(stepped, true, false, a);
 			Check(same(StepDeathView(stepped, true, true, chase, back),
@@ -2143,31 +2155,77 @@ void TestNearItems() {
 	      "the distance is to the bound's surface");
 	Check(SurfaceDistance(hand, obvr::NiPoint3{2.0f, 0.0f, 0.0f}, 4.0f) == 0.0f,
 	      "a hand inside the bound is at no distance");
-	const obvr::NiPoint3 right{0.0f, 0.0f, 0.0f};
-	const obvr::NiPoint3 left{-40.0f, 0.0f, 0.0f};
+	const auto Hand = [](const obvr::NiPoint3& at, bool valid) {
+		SearchHand h;
+		h.position = at;
+		h.valid = valid;
+		return h;
+	};
+	const SearchHand right = Hand(obvr::NiPoint3{0.0f, 0.0f, 0.0f}, true);
+	const SearchHand left = Hand(obvr::NiPoint3{-40.0f, 0.0f, 0.0f}, true);
 	NearItem best;
-	ConsiderNearItem(best, 1, obvr::NiPoint3{-45.0f, 0.0f, 0.0f}, 2.0f, right, true, left, true,
-	                 21.0f);
+	ConsiderNearItem(best, 1, obvr::NiPoint3{-45.0f, 0.0f, 0.0f}, 2.0f, right, left, 21.0f, 21.0f);
 	Check(best.valid && best.left && best.ref == 1u && Near(best.distance, 3.0f),
 	      "an item at the left hand, not pointed at: found for the left hand");
-	ConsiderNearItem(best, 2, obvr::NiPoint3{15.0f, 0.0f, 0.0f}, 2.0f, right, true, left, true,
-	                 21.0f);
+	ConsiderNearItem(best, 2, obvr::NiPoint3{15.0f, 0.0f, 0.0f}, 2.0f, right, left, 21.0f, 21.0f);
 	Check(best.ref == 1u, "a farther one does not take its place");
-	ConsiderNearItem(best, 3, obvr::NiPoint3{3.0f, 0.0f, 0.0f}, 2.0f, right, true, left, true,
-	                 21.0f);
+	ConsiderNearItem(best, 3, obvr::NiPoint3{3.0f, 0.0f, 0.0f}, 2.0f, right, left, 21.0f, 21.0f);
 	Check(best.ref == 3u && !best.left, "a nearer one at the right hand does");
 	NearItem none;
-	ConsiderNearItem(none, 4, obvr::NiPoint3{100.0f, 0.0f, 0.0f}, 2.0f, right, true, left, true,
-	                 21.0f);
+	ConsiderNearItem(none, 4, obvr::NiPoint3{100.0f, 0.0f, 0.0f}, 2.0f, right, left, 21.0f, 21.0f);
 	Check(!none.valid, "out of reach of both: nothing");
 	NearItem leftOnly;
-	ConsiderNearItem(leftOnly, 5, obvr::NiPoint3{3.0f, 0.0f, 0.0f}, 2.0f, right, false, left,
-	                 true, 21.0f);
+	ConsiderNearItem(leftOnly, 5, obvr::NiPoint3{3.0f, 0.0f, 0.0f}, 2.0f,
+	                 Hand(obvr::NiPoint3{0.0f, 0.0f, 0.0f}, false), left, 21.0f, 21.0f);
 	Check(!leftOnly.valid, "a hand that is not looking (untracked, or not the gripping one) finds nothing");
 	NearItem tie;
-	ConsiderNearItem(tie, 6, obvr::NiPoint3{-20.0f, 0.0f, 0.0f}, 2.0f, right, true, left, true,
-	                 21.0f);
+	ConsiderNearItem(tie, 6, obvr::NiPoint3{-20.0f, 0.0f, 0.0f}, 2.0f, right, left, 21.0f, 21.0f);
 	Check(tie.valid && !tie.left, "a tie goes to the right hand");
+	// Up to a metre, but beyond the grab's reach only where the laser points.
+	SearchHand pointing = Hand(obvr::NiPoint3{0.0f, 0.0f, 0.0f}, true);
+	pointing.direction = obvr::NiPoint3{0.0f, 1.0f, 0.0f};
+	const SearchHand noLeft = Hand(obvr::NiPoint3{0.0f, 0.0f, 0.0f}, false);
+	NearItem ahead;
+	ConsiderNearItem(ahead, 7, obvr::NiPoint3{5.0f, 60.0f, 0.0f}, 2.0f, pointing, noLeft, 70.0f,
+	                 21.0f);
+	Check(ahead.valid && ahead.ref == 7u, "90 cm away where the laser points: found, the ring comes");
+	NearItem aside;
+	ConsiderNearItem(aside, 8, obvr::NiPoint3{60.0f, 0.0f, 0.0f}, 2.0f, pointing, noLeft, 70.0f,
+	                 21.0f);
+	Check(!aside.valid, "90 cm away off to the side: not reached for, the laser keeps the pick");
+	NearItem close;
+	ConsiderNearItem(close, 9, obvr::NiPoint3{0.0f, -15.0f, 0.0f}, 2.0f, pointing, noLeft, 70.0f,
+	                 21.0f);
+	Check(close.valid, "within the grab's reach: found wherever the laser points");
+	Check(ReachingFor(obvr::NiPoint3{0, 0, 0}, obvr::NiPoint3{0, 0, 0}, obvr::NiPoint3{60, 0, 0},
+	                  50.0f, 21.0f, kReachingConeCos) &&
+	          ReachingFor(obvr::NiPoint3{0, 0, 0}, obvr::NiPoint3{0, 1, 0},
+	                      obvr::NiPoint3{0, 0, 0}, 50.0f, 21.0f, kReachingConeCos),
+	      "no laser direction, or the hand at the middle: no gate");
+	Check(ReachingFor(obvr::NiPoint3{0, 0, 0}, obvr::NiPoint3{0, 2, 0}, obvr::NiPoint3{30, 50, 0},
+	                  50.0f, 21.0f, kReachingConeCos) &&
+	          !ReachingFor(obvr::NiPoint3{0, 0, 0}, obvr::NiPoint3{0, 2, 0},
+	                       obvr::NiPoint3{50, 50, 0}, 50.0f, 21.0f, kReachingConeCos),
+	      "the cone: 31 degrees off is in, 45 is out");
+}
+
+void TestFloatToHand() {
+	std::printf("A new hold floats to the hand\n");
+	using namespace obvr::game;
+	using obvr::NiPoint3;
+	const auto Near = [](float a, float b) { return a - b < 1e-4f && b - a < 1e-4f; };
+	Check(Near(FloatSeconds(0.0f), kFloatMinSeconds) && Near(FloatSeconds(-5.0f), kFloatMinSeconds),
+	      "an object already in the hand: the shortest float");
+	Check(Near(FloatSeconds(21.0f), 0.15f), "30 cm away: 0.15 s, at about 2 m/s");
+	Check(Near(FloatSeconds(1000.0f), kFloatMaxSeconds), "never longer than the most");
+	Check(Near(FloatWeight(0.0f, 0.2f), 0.0f) && Near(FloatWeight(0.2f, 0.2f), 1.0f) &&
+	          Near(FloatWeight(5.0f, 0.2f), 1.0f) && Near(FloatWeight(-1.0f, 0.2f), 0.0f),
+	      "from where it lay to the grip, and there it stays");
+	Check(Near(FloatWeight(0.1f, 0.2f), 0.5f) && FloatWeight(0.02f, 0.2f) < 0.1f,
+	      "eased: slow to leave, halfway at half the time");
+	Check(Near(FloatWeight(0.0f, 0.0f), 1.0f), "no duration: already there");
+	const NiPoint3 p = FloatPoint(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{10.0f, 20.0f, 0.0f}, 0.25f);
+	Check(Near(p.x, 2.5f) && Near(p.y, 5.0f), "the held point along the way");
 }
 
 void TestAttachesInHand() {
@@ -3748,6 +3806,7 @@ void TestThirdPersonAimVisual() {
 int main() {
 	TestNearItems();
 	TestAttachesInHand();
+	TestFloatToHand();
 	TestHavokQuaternion();
 	TestThrow();
 	TestPlayerCapsule();

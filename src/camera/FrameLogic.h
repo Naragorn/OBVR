@@ -670,6 +670,22 @@ inline NiPoint3 DeathStepBack(const NiMatrix33& livingRot, float backUnits) {
 	return forward * (-backUnits / length);
 }
 
+// The body drawn ahead of the held death view instead of the view stepped
+// back from it (2026-09-26: the tester asked why the view jolts back rather
+// than the body being shown half a metre ahead): the same picture - the
+// body falling in front - without moving the view. aheadUnits along the
+// living view's heading, level; none for a heading straight up or down.
+inline NiPoint3 DeathBodyAhead(const NiMatrix33& livingRot, float aheadUnits) {
+	return DeathStepBack(livingRot, aheadUnits) * -1.0f;
+}
+
+// Whether the HUD and the crosshair go: while dead with the switch on, until
+// a menu - the load at the end of a death - opens (2026-09-26: the HUD stayed
+// for seconds after death).
+inline bool HudHiddenForDeath(bool hideWhenDead, bool dead, bool menuIsUp) {
+	return hideWhenDead && dead && !menuIsUp;
+}
+
 // After StepDeathView on the same frame: while the view is held, the base
 // rotation and the vertical offset it is built on stay those of the last
 // living frame too. Writes the ones to use into rot and vertical.

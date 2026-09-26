@@ -108,6 +108,35 @@ inline float SurfaceDistance(const NiPoint3& hand, const NiPoint3& centre, float
 	return toCentre > r ? toCentre - r : 0.0f;
 }
 
+// Whether a hand is reaching for an item: always within `alwaysUnits` of its
+// surface (the grab's own reach), and beyond that only while the hand's
+// laser `direction` points at the item's middle within the cone whose
+// cosine is `coneCos`. A zero direction points at everything.
+constexpr float kReachingConeCos = 0.819f;  // 35 degrees each side
+
+inline bool ReachingFor(const NiPoint3& hand, const NiPoint3& direction, const NiPoint3& centre,
+                        float surfaceDistance, float alwaysUnits, float coneCos) {
+	if (surfaceDistance <= alwaysUnits) {
+		return true;
+	}
+	const float dirLength = math::Sqrt(direction.LengthSquared());
+	const NiPoint3 to = centre - hand;
+	const float toLength = math::Sqrt(to.LengthSquared());
+	if (!(dirLength > 1.0e-6f) || !(toLength > 1.0e-6f)) {
+		return true;
+	}
+	const float cosine =
+		(to.x * direction.x + to.y * direction.y + to.z * direction.z) / (toLength * dirLength);
+	return cosine >= coneCos;
+}
+
+// One hand as the search sees it.
+struct SearchHand {
+	NiPoint3 position{0.0f, 0.0f, 0.0f};
+	NiPoint3 direction{0.0f, 0.0f, 0.0f};  // its laser; zero: no pointing gate
+	bool valid = false;
+};
+
 // One item's bound, and whether it is nearer a hand than the best so far.
 struct NearItem {
 	bool valid = false;
@@ -117,18 +146,22 @@ struct NearItem {
 	float distance = 0.0f;  // from that hand to the item's surface, units
 };
 
-// Takes the candidate if it is within reach of a valid hand and nearer than
-// what `best` holds. The right hand wins a tie.
+// Takes the candidate if it is within reach of a valid hand that is reaching
+// for it (ReachingFor) and nearer than what `best` holds. The right hand wins
+// a tie.
 inline void ConsiderNearItem(NearItem& best, UInt32 ref, const NiPoint3& centre, float radius,
-                             const NiPoint3& right, bool rightValid, const NiPoint3& left,
-                             bool leftValid, float reachUnits) {
+                             const SearchHand& right, const SearchHand& left, float reachUnits,
+                             float alwaysUnits) {
 	for (int side = 0; side < 2; ++side) {
 		const bool isLeft = side == 1;
-		if (!(isLeft ? leftValid : rightValid)) {
+		const SearchHand& hand = isLeft ? left : right;
+		if (!hand.valid) {
 			continue;
 		}
-		const float d = SurfaceDistance(isLeft ? left : right, centre, radius);
-		if (d <= reachUnits && (!best.valid || d < best.distance)) {
+		const float d = SurfaceDistance(hand.position, centre, radius);
+		if (d <= reachUnits &&
+		    ReachingFor(hand.position, hand.direction, centre, d, alwaysUnits, kReachingConeCos) &&
+		    (!best.valid || d < best.distance)) {
 			best.valid = true;
 			best.left = isLeft;
 			best.ref = ref;
@@ -140,7 +173,7 @@ inline void ConsiderNearItem(NearItem& best, UInt32 ref, const NiPoint3& centre,
 
 // The nearest item within reach of either hand in the player's cell, or an
 // invalid one. `except` is left out (the one already held).
-NearItem FindNearestItem(const NiPoint3& right, bool rightValid, const NiPoint3& left,
-                         bool leftValid, float reachUnits, UInt32 except);
+NearItem FindNearestItem(const SearchHand& right, const SearchHand& left, float reachUnits,
+                         float alwaysUnits, UInt32 except);
 
 }  // namespace obvr::game

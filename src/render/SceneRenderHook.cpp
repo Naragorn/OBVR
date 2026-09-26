@@ -515,6 +515,9 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 			         VertexSetupTotal(TotalStateCalls()) - setupBefore, g_sceneCall);
 		}
 
+		if (renderedTexture == nullptr && g_callbacks.afterWorldRender != nullptr) {
+			g_callbacks.afterWorldRender();
+		}
 		TraceFrame(renderedTexture != nullptr ? "texture pass" : "single", passesLastFrame,
 		           drawsLastFrame);
 		return;
@@ -668,6 +671,9 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	}
 	SetWaterStereoPass(WaterStereoPass::Single);
 	g_callbacks.afterSecondPass();
+	if (g_callbacks.afterWorldRender != nullptr) {
+		g_callbacks.afterWorldRender();
+	}
 
 	g_rendering = false;
 	TracePassDraws(drawsAtEntry, drawsAfterFirst, drawsAfterBetween, drawsAfterSecond);

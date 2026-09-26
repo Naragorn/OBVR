@@ -113,6 +113,37 @@ inline bool AttachesInHand(bool attachAll, bool isSmall, bool haveTouched) {
 	return attachAll || (isSmall && haveTouched);
 }
 
+// The float to the hand (2026-09-26: "schwebt es wie in Alyx zur hand"): a
+// new hold is not put into the hand at once. The point that goes into the
+// grip travels from where it lay to the grip, eased, while the object keeps
+// the turn it had and follows the wrist, so closing the grip moves nothing
+// and the object then glides in. It takes the distance at about 2 m/s,
+// never less than a tenth of a second nor more than 0.35.
+constexpr float kFloatUnitsPerSecond = 140.0f;
+constexpr float kFloatMinSeconds = 0.10f;
+constexpr float kFloatMaxSeconds = 0.35f;
+
+inline float FloatSeconds(float distanceUnits) {
+	const float s = (distanceUnits > 0.0f ? distanceUnits : 0.0f) / kFloatUnitsPerSecond;
+	return s < kFloatMinSeconds ? kFloatMinSeconds : (s > kFloatMaxSeconds ? kFloatMaxSeconds : s);
+}
+
+// How far along the float is: 0 at the start, 1 once `duration` has passed,
+// eased at both ends. No duration: already there.
+inline float FloatWeight(float elapsedSeconds, float durationSeconds) {
+	if (!(durationSeconds > 0.0f)) {
+		return 1.0f;
+	}
+	float t = elapsedSeconds / durationSeconds;
+	t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
+	return t * t * (3.0f - 2.0f * t);
+}
+
+// Where the held point is this frame: from where it lay to the grip.
+inline NiPoint3 FloatPoint(const NiPoint3& from, const NiPoint3& grip, float weight) {
+	return from + (grip - from) * weight;
+}
+
 // What one frame of holding knows about the hand.
 struct HeldHand {
 	bool rightHand = true;
@@ -128,8 +159,9 @@ struct HeldHand {
 // engine holding something for `rightHand`'s hand; `touched` the point the
 // grab's ray hit when the hold began (valid with haveTouched).
 // `attachAll` is the in-hand mode (Hands.LevitateObjects off): every held
-// object sits in the hand, not only small ones.
+// object sits in the hand, not only small ones. `dtSeconds` advances the
+// float to the hand (FloatWeight).
 void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveTouched,
-                    const NiPoint3& touched, bool attachAll = false);
+                    const NiPoint3& touched, bool attachAll = false, float dtSeconds = 0.0f);
 
 }  // namespace obvr::game

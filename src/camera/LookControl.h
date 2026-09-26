@@ -113,8 +113,16 @@ struct LookSettings {
 	// game's own death camera over the body on the ground; off keeps it held.
 	bool deathBodyView = false;
 	// How far behind the eyes the held death view stands, metres, so the body
-	// is seen falling in front of it.
-	float deathViewBackMetres = 0.8f;
+	// is seen falling in front of it. Off by default: the step is a jolt of
+	// the view (2026-09-26); deathBodyAheadMetres shows the fall instead.
+	float deathViewBackMetres = 0.0f;
+	// How far ahead of the held view the dead body is drawn, metres, level
+	// along the living heading (game::DeathBody): the view stays still and the
+	// body is seen falling in front of it. 0 leaves it where it falls.
+	float deathBodyAheadMetres = 0.5f;
+	// The HUD and the crosshair gone while dead - until a menu (the load)
+	// opens.
+	bool hideHudWhenDead = true;
 	// The player is never staggered or knocked back by a hit
 	// (game::PlayerStagger): the lurch back jolts the view in a headset.
 	bool noPlayerStagger = true;

@@ -118,7 +118,7 @@ struct HandSettings {
 	bool levitateObjects = false;
 	// Letting go mid-swing throws with the palm's speed times this; 0 leaves
 	// the engine's soft drop.
-	float throwStrength = 1.0f;
+	float throwStrength = 1.6f;
 	// How far each finger link bends while the hand holds something, degrees
 	// (game::HandGrip); negative bends the other way, 0 leaves the hand open.
 	float gripCurlDegrees = 45.0f;
@@ -128,8 +128,10 @@ struct HandSettings {
 	bool reachTooltip = true;
 	bool reachRing = true;
 	// How close a hand has to be for the ring to show, metres, and how
-	// opaque it is (0 to 1).
-	float reachMarkerMetres = 0.3f;
+	// opaque it is (0 to 1). Beyond GrabReachMetres an item counts only while
+	// the hand's laser points roughly at it (game::ReachingFor), so an item
+	// on a table does not take the pick from a door being pointed at.
+	float reachMarkerMetres = 1.0f;
 	float reachMarkerOpacity = 0.85f;
 
 	// Strikes by motion: with a swung weapon in hand the swing itself is the

@@ -39,6 +39,7 @@
 #include "game/PlayerAim.h"
 #include "game/PlayerStagger.h"
 #include "game/HandGrip.h"
+#include "game/DeathBody.h"
 #include "game/HeldObject.h"
 #include "game/GrabPhysics.h"
 #include "game/GrabNearBody.h"
@@ -670,11 +671,28 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		                         ? config.hands.grabReachMetres
 		                         : config.hands.reachMarkerMetres) *
 		                    config.tracker.unitsPerMetre;
+		// Each hand with its laser, the beam the settings tilt: beyond the
+		// grab's reach an item counts only while that beam points at it.
+		const auto hand = [&](bool left, bool valid) {
+			game::SearchHand h;
+			h.valid = valid;
+			h.position =
+				camPos + camRot * (left ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits);
+			if (valid) {
+				h.direction = vr::HandLaserWorldRay(
+					camRot, camPos, left ? g_hand.leftHandRotation : g_hand.rightHandRotation,
+					left ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits,
+					config.hands.laserPitchDegrees,
+					left ? -config.hands.laserYawDegrees : config.hands.laserYawDegrees,
+					config.hands.laserOriginMetres, config.tracker.unitsPerMetre)
+				                  .direction;
+			}
+			return h;
+		};
 		g_nearItem = game::FindNearestItem(
-			camPos + camRot * g_hand.rightHandOffsetUnits,
-			g_hand.rightHandValid && (!gripping || !g_hand.grabWithLeftHand),
-			camPos + camRot * g_hand.leftHandOffsetUnits,
-			g_hand.leftHandValid && (!gripping || g_hand.grabWithLeftHand), reach, 0);
+			hand(false, g_hand.rightHandValid && (!gripping || !g_hand.grabWithLeftHand)),
+			hand(true, g_hand.leftHandValid && (!gripping || g_hand.grabWithLeftHand)), reach,
+			config.hands.grabReachMetres * config.tracker.unitsPerMetre, 0);
 	}
 	g_hand.pickWithLeftHand = g_nearItem.valid && g_nearItem.left;
 	// The grab follows whichever hand is holding it: direction through the aim
@@ -2486,7 +2504,8 @@ void BeforeFirstScenePass() {
 					}
 				}
 				game::StepHeldObject(!hands.levitateObjects || hands.attachSmallObjects, holding,
-				                     held, haveTouched, touched, !hands.levitateObjects);
+				                     held, haveTouched, touched, !hands.levitateObjects,
+				                     g_deltaSeconds);
 			}
 			game::NoteHandAdjustFrame(rightCommitted, leftCommitted,
 			                          g_hand.rightGripDown || g_hand.leftGripDown, g_deltaSeconds);
@@ -2549,7 +2568,22 @@ void BeforeFirstScenePass() {
 		         static_cast<double>(g_aimYawWrote),
 		         static_cast<double>(g_aimBodyOffset * math::kRadiansToDegrees));
 	}
+	// Dead, with the view held: the body drawn ahead of it instead of the view
+	// stepped back (game::DeathBody), for this render only - AfterWorldRender
+	// puts it back.
+	{
+		const Config& config = GetConfig();
+		const bool wanted = g_deathView.held && g_deathView.haveAliveTurn &&
+		                    config.look.deathBodyAheadMetres > 0.0f && !game::IsMenuMode();
+		game::ShiftDeadPlayerBody(
+			wanted, wanted ? DeathBodyAhead(g_deathView.lastAliveRot,
+			                                config.look.deathBodyAheadMetres *
+			                                    config.tracker.unitsPerMetre)
+			               : NiPoint3{0.0f, 0.0f, 0.0f});
+	}
 }
+
+void AfterWorldRender() { game::ShiftDeadPlayerBody(false, NiPoint3{0.0f, 0.0f, 0.0f}); }
 
 bool ScenePassWanted() {
 	// The same menu question, asked of the same source, as the delivery
@@ -3107,6 +3141,11 @@ void MaybeSubmitOverlays(bool worldFrame) {
 
 	PollSettingsMenu();
 
+	// Dead: the HUD and the crosshair go until the load menu opens
+	// (HudHiddenForDeath) - the game keeps drawing its HUD for seconds.
+	const bool hiddenForDeath = HudHiddenForDeath(config.look.hideHudWhenDead,
+	                                              game::PlayerIsDead(), game::IsMenuMode());
+
 	// The crosshair first, and outside the HUD's two gates on purpose: it is
 	// not drawn by the interface pass, so whether that pass is redirected has
 	// nothing to say about it. Submitted even when switched off, because an
@@ -3263,7 +3302,8 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	g_crosshairLayer.SetRoomPlacement(g_reachIconShown, g_reachIconPose,
 	                                  render::kReachIconWidthMetres);
 	g_crosshairLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
-	                        crosshairLifted && content != CrosshairContent::Hidden,
+	                        crosshairLifted && content != CrosshairContent::Hidden &&
+	                            !hiddenForDeath,
 	                        crosshair.distanceMetres, crosshair.widthMetres);
 
 	// Snap turn vignette: fades in when a snap fires, out after. Updated every frame
@@ -3287,7 +3327,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		return;
 	}
 	g_hudLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
-	                  worldFrame, config.tracker.hudDistanceMetres,
+	                  worldFrame && !hiddenForDeath, config.tracker.hudDistanceMetres,
 	                  config.tracker.hudWidthMetres, config.tracker.hudAnchorWorld,
 	                  config.hudProbe);
 }
@@ -5362,6 +5402,7 @@ bool Install() {
 			callbacks.wantsSecondPass = &ScenePassWanted;
 			callbacks.betweenPasses = &BetweenScenePasses;
 			callbacks.afterSecondPass = &AfterSecondScenePass;
+			callbacks.afterWorldRender = &AfterWorldRender;
 			callbacks.probeStage = &DualProbeRung;
 			// Logs its own outcome either way; on failure the mode quietly
 			// renders like mono, and request.dualEyes says so per frame.

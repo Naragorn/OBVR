@@ -163,9 +163,22 @@ verify this from code; a headset test with each switched off would settle it.
   (`StepDeathTurn`). A "final stagger" was still felt at death; the
   assumption, not yet verified, is the chase camera turning and sinking
   towards the body. The tester confirmed it on 2026-09-26: "nun perfekt".
-- `[Look] DeathViewBackMetres` (default 0.8) holds the view that far behind
-  the living eyes, level along the heading, so the body is seen falling in
-  front of it. Otherwise nobody could tell what had happened.
+- `[Look] DeathViewBackMetres` (0.8 at first, 0 since the next point) holds
+  the view that far behind the living eyes, level along the heading, so the
+  body is seen falling in front of it. Otherwise nobody could tell what had
+  happened.
+- Since the tester's question (2026-09-26, "why a jolt back instead of the
+  body shown half a metre ahead"), the step back is off by default
+  (`DeathViewBackMetres=0`) and `[Look] DeathBodyAheadMetres` (default 0.5)
+  draws the dead body that far ahead instead, level along the living
+  heading, while the view stays still (`game::DeathBody`). The skeleton
+  (Bip01 down) gets the offset on its world translations and bounds for the
+  world render only and everything is put back after it, because the
+  ragdoll's nodes are Havok's and a node update would put them back. Not
+  built: a fade-in of the body.
+- `[Look] HideHudWhenDead` (default on) hides the HUD and the crosshair
+  while dead, until the load menu opens; the game kept drawing its HUD for
+  seconds (`camera::HudHiddenForDeath`).
 
 ## Test reminders
 

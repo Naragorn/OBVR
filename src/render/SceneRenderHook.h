@@ -55,6 +55,10 @@ struct ScenePassCallbacks {
 	// and the camera should go back where the game left it.
 	void (*afterSecondPass)() = nullptr;
 
+	// After a world render, one pass or two, before anything else is drawn:
+	// what beforeFirstPass changed for the draw only goes back. Optional.
+	void (*afterWorldRender)() = nullptr;
+
 	// Which rung of the dual pass this frame is running - see
 	// camera::SweepProbeStage. Optional, and used for nothing but the trace:
 	// the rung has to appear beside what the 2D pass drew in that frame, or
