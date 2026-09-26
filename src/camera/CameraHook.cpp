@@ -40,6 +40,7 @@
 #include "game/PlayerStagger.h"
 #include "game/HandGrip.h"
 #include "game/HeldObject.h"
+#include "game/GrabPhysics.h"
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
 #include "render/DxvkInterop.h"
@@ -428,6 +429,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_headsetRenderer.SetControllersWanted(false);
 		game::ForgetStrikes();
 		game::SetMenuCursorHidden(false);
+		game::StepGrabPhysics(false, 0.0f, false, NiPoint3{0.0f, 0.0f, 0.0f}, dt);
 		g_hand = vr::HandModeResult{};
 		g_reachIconShown = false;
 		g_handMode.Reset();
@@ -702,6 +704,25 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		haveHoldPoint = true;
 	}
 	game::SetGrabAtHand(reach.key, grabUnits, haveHoldPoint, holdPoint, 0.0f);
+	// The held body's physics: through the player's body while held, thrown
+	// with the palm's speed when let go (game::GrabPhysics).
+	{
+		// The hand that held it, kept past the grip opening: the engine lets
+		// go a frame or two after the key, and the throw is that hand's speed.
+		static bool s_holdLeft = false;
+		if (reach.key) {
+			s_holdLeft = g_hand.grabWithLeftHand;
+		}
+		NiMatrix33 throwRot;
+		NiPoint3 throwBone;
+		const bool palmValid = game::ReadHandBoneWorld(!s_holdLeft, throwRot, throwBone);
+		game::StepGrabPhysics(
+			config.hands.heldPassesBody, config.hands.throwStrength, palmValid,
+			palmValid ? game::PalmPoint(throwRot, throwBone,
+			                            game::kPalmAlongMetres * config.tracker.unitsPerMetre)
+			          : NiPoint3{0.0f, 0.0f, 0.0f},
+			dt);
+	}
 
 	// The reach marker ([Hands] ReachMarker): a light-brown ring on the object
 	// under the pick when it is within ReachMarkerMetres of either hand - the
@@ -734,7 +755,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 					                               config.tracker.unitsPerMetre));
 			}
 		}
-		g_reachMarker.Submit(backend, markerShown, markerPose, config.hands.reachMarkerOpacity);
+		g_reachMarker.Submit(backend, markerShown && config.hands.reachRing, markerPose,
+		                     config.hands.reachMarkerOpacity);
 		// The crosshair's icon moves into the ring while it shows.
 		g_reachIconShown = markerShown;
 		g_reachIconPose = render::ReachIconPose(markerPose);
@@ -3172,10 +3194,15 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		PlaceCrosshair(crosshairDepth, config.tracker.crosshairSizeAtOneMetre);
 	// In the hand-tracked mode the aim is the right hand's, so the crosshair
 	// and the tooltip it carries hang ahead of that controller.
-	g_crosshairLayer.SetHandPlacement(config.handTracking && g_hand.aimValid,
-	                                  g_headTracker.GetBackendForFrame().HandDeviceIndex(vr::HandDeviceForRole(true, g_handRolesSwapped)),
-	                                  config.hands.laserPitchDegrees, config.hands.laserYawDegrees,
-	                                  config.hands.laserOriginMetres);
+	// On the hand the pick follows, the one the tooltip belongs to.
+	const bool crosshairLeft = g_hand.pickWithLeftHand;
+	g_crosshairLayer.SetHandPlacement(
+		config.handTracking && (crosshairLeft ? g_hand.leftAimValid : g_hand.aimValid),
+		g_headTracker.GetBackendForFrame().HandDeviceIndex(
+			vr::HandDeviceForRole(!crosshairLeft, g_handRolesSwapped)),
+		config.hands.laserPitchDegrees,
+		crosshairLeft ? -config.hands.laserYawDegrees : config.hands.laserYawDegrees,
+		config.hands.laserOriginMetres);
 	g_crosshairLayer.SetRoomPlacement(g_reachIconShown, g_reachIconPose,
 	                                  render::kReachIconWidthMetres);
 	g_crosshairLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
@@ -4043,8 +4070,11 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// From last frame's hand, as the hand mode runs at Present.
 	{
 		const vr::HandSettings& hands = config.hands;
+		// The hand that has been moving (vr::StepPickHand), so the left hand
+		// reaching for something gets its marker and tooltip too.
+		const bool pickLeft = g_hand.pickWithLeftHand;
 		const bool handRay = config.handTracking && g_headTracker.IsHeadsetConnected() &&
-		                     g_hand.rightHandValid;
+		                     (pickLeft ? g_hand.leftHandValid : g_hand.rightHandValid);
 		const bool reachRay = config.handTracking && g_headTracker.IsHeadsetConnected() &&
 		                      g_grabReachPick &&
 		                      (g_hand.grabWithLeftHand ? g_hand.leftHandValid : g_hand.rightHandValid);
@@ -4063,8 +4093,10 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			game::SetWorldPickHandRay(ray.origin, ray.direction, true);
 		} else if (handRay) {
 			const vr::LaserWorldRay ray = vr::HandLaserWorldRay(
-				finalRotation, cameraNode->localTransform.pos, g_hand.rightHandRotation,
-				g_hand.rightHandOffsetUnits, hands.laserPitchDegrees, hands.laserYawDegrees,
+				finalRotation, cameraNode->localTransform.pos,
+				pickLeft ? g_hand.leftHandRotation : g_hand.rightHandRotation,
+				pickLeft ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits,
+				hands.laserPitchDegrees, pickLeft ? -hands.laserYawDegrees : hands.laserYawDegrees,
 				hands.laserOriginMetres, config.tracker.unitsPerMetre);
 			game::SetWorldPickHandRay(ray.origin, ray.direction, true);
 		} else {

@@ -304,6 +304,8 @@ inline constexpr UInt32 kFirstPersonCameraNodePointer = 0x00B3BB0C;
 inline constexpr UInt32 kPlayerGrabModeOffset = 0x57C;
 // The grabbed reference (the update's own check at 0x0066D974).
 inline constexpr UInt32 kPlayerGrabbedRefOffset = 0x578;
+// The grab's spring (bhkMouseSpringAction), null with nothing held.
+inline constexpr UInt32 kPlayerGrabSpringOffset = 0x574;
 inline constexpr UInt32 kNodeWorldTranslateOffset = 0x88;
 inline constexpr UInt32 kInterfaceManagerPickRefOffset = 0xC8;
 inline constexpr UInt32 kInterfaceManagerPickHitOffset = 0xD0;

@@ -157,6 +157,39 @@ Code: `game::HandGrip` (`HandGripWanted`, `FingerCurlDegrees`,
 - Two-handed carrying would also want the target between the two palms, so
   a crate is carried in front of the chest.
 
+## Built on 2026-09-26, after the first test
+
+### Through the player's body
+
+A held object was stopped short of the body: the player's capsule collides
+with it.
+
+- The body's filter is at hkRigidBody+0x30. The layer is in the low 6 bits,
+  0x4000 means "no collision", and the system group is in the high 16 bits.
+- The engine's rule (0x008A7F70) lets two bodies of the same group pass
+  through each other, unless both are linked or both are bipeds.
+- While held, the body therefore takes the player's group through the
+  engine's setter 0x0089F4D0, which also refreshes the world. The group is
+  read from the controller's filter (0x0065ABE0); the fallback is 9.
+- On release its own group goes back.
+- It keeps colliding with the world.
+- Setting: [Hands] HeldPassesBody (default on). Code: game::GrabPhysics.
+
+### Throwing
+
+Vanilla's release leaves the spring's damped speed, a soft drop.
+
+- Once the engine has let go, OBVR does what the engine's Telekinesis throw
+  (0x006A7830) does: it activates the body (0x008A6410), then sets its
+  linear velocity (hkMotion vtable +0x54, in Havok units = game units Ã—
+  0.142877).
+- The velocity is the palm's speed over the last frames, times
+  [Hands] ThrowStrength (default 1.0; 0 keeps the soft drop).
+- A hand slower than 0.5 m/s is a set-down, not a throw.
+- A body that went away with its hold (picked into the inventory, say) is
+  not touched: the check is the ref still having a scene node and the body
+  its vtable and wrapper.
+
 ## Order
 
 Built first: 1, 2 and 4 (the tester's choice). Next: tune 1 and 2 in the

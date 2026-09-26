@@ -1174,6 +1174,44 @@ inline GrabReachVerdict StepGrabReach(GrabReachState& s, bool gripHeld, bool tar
 	return v;
 }
 
+// Which hand's laser the world pick runs along while no grip is closed. The
+// engine picks along one ray a frame, and it was always the right hand's:
+// the left hand's reach marker and tooltip came only once its grip had
+// closed (2026-09-26). The pick now follows the hand that has been moving:
+// each hand's recent motion (metres, fading over kPickHandMemorySeconds),
+// and the pick goes over when the other hand leads by kPickHandMarginMetres
+// - so a hand reaching for something takes the pick, and one held still
+// does not take it back. An untracked hand never has it.
+constexpr float kPickHandMemorySeconds = 0.5f;
+constexpr float kPickHandMarginMetres = 0.05f;
+
+struct PickHandState {
+	bool left = false;
+	float rightMotion = 0.0f;
+	float leftMotion = 0.0f;
+};
+
+inline bool StepPickHand(PickHandState& s, bool rightValid, bool leftValid, float rightSpeed,
+                         float leftSpeed, float dtSeconds) {
+	float keep = dtSeconds > 0.0f ? 1.0f - dtSeconds / kPickHandMemorySeconds : 1.0f;
+	if (keep < 0.0f) {
+		keep = 0.0f;
+	}
+	const float dt = dtSeconds > 0.0f ? dtSeconds : 0.0f;
+	s.rightMotion = rightValid ? s.rightMotion * keep + rightSpeed * dt : 0.0f;
+	s.leftMotion = leftValid ? s.leftMotion * keep + leftSpeed * dt : 0.0f;
+	if (!leftValid) {
+		s.left = false;
+	} else if (!rightValid) {
+		s.left = true;
+	} else if (s.leftMotion > s.rightMotion + kPickHandMarginMetres) {
+		s.left = true;
+	} else if (s.rightMotion > s.leftMotion + kPickHandMarginMetres) {
+		s.left = false;
+	}
+	return s.left;
+}
+
 // Where the held object goes: along the line from the head to the hand, as
 // far as the hand is. headRelative is the hand's offset in the head's frame
 // (game axes: x right, y forward, z up); trackingDelta is the same offset in

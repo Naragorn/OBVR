@@ -633,24 +633,36 @@ inline bool ComposeHandsHideList(char* out, UInt32 capacity, bool hideArms, cons
 }
 
 // The death view held still: the game's death camera sinks and drifts, which
-// in a headset is the motion nobody asked for (2026-09-25). From the first
-// frame the player is dead the camera's position stays where it was then -
-// the head still looks around - until the player lives again (a load).
+// in a headset is the motion nobody asked for (2026-09-25). The camera stays
+// where it was on the last frame the player was alive - the head still looks
+// around - until the player lives again (a load). The last living frame, not
+// the first dead one: the game puts the dying player into third person, and
+// by the first frame that reads as dead the camera has already moved back to
+// the chase camera - the shift still seen on 2026-09-26 (log: "switched to
+// third person", then "the death view is held still" three lines later).
 // Answers where the camera goes: `current` when nothing is held.
 struct DeathViewState {
 	bool held = false;
 	NiPoint3 position{0.0f, 0.0f, 0.0f};
+	bool haveAlive = false;
+	NiPoint3 lastAlive{0.0f, 0.0f, 0.0f};
 };
 
 inline NiPoint3 StepDeathView(DeathViewState& s, bool enabled, bool dead,
                               const NiPoint3& current) {
-	if (!enabled || !dead) {
+	if (!dead) {
+		s.held = false;
+		s.haveAlive = true;
+		s.lastAlive = current;
+		return current;
+	}
+	if (!enabled) {
 		s.held = false;
 		return current;
 	}
 	if (!s.held) {
 		s.held = true;
-		s.position = current;
+		s.position = s.haveAlive ? s.lastAlive : current;
 	}
 	return s.position;
 }

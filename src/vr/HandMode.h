@@ -110,12 +110,21 @@ struct HandSettings {
 	// Small things (potions, keys, ingredients ...) fixed in the palm and
 	// turned with the wrist instead of hanging on the spring (game::HeldObject).
 	bool attachSmallObjects = true;
+	// A held object passes through the player's own body (game::GrabPhysics),
+	// so it can be brought to it.
+	bool heldPassesBody = true;
+	// Letting go mid-swing throws with the palm's speed times this; 0 leaves
+	// the engine's soft drop.
+	float throwStrength = 1.0f;
 	// How far each finger link bends while the hand holds something, degrees
 	// (game::HandGrip); negative bends the other way, 0 leaves the hand open.
 	float gripCurlDegrees = 45.0f;
 	// A light-brown ring on the object a closed grip would take, while it is
 	// within reach (render::ReachMarker).
 	bool reachMarker = true;
+	// With the marker on: whether its ring is drawn. Off leaves only the
+	// crosshair's icon moving onto the object.
+	bool reachRing = true;
 	// How close a hand has to be for the ring to show, metres, and how
 	// opaque it is (0 to 1).
 	float reachMarkerMetres = 0.3f;
@@ -316,6 +325,9 @@ struct HandModeResult {
 	bool grabWanted = false;
 	float grabDistanceMetres = 0.0f;
 	bool grabWithLeftHand = false;  // true when left grip holds it, false for right
+	// The hand whose laser the world pick follows with no grip closed
+	// (StepPickHand).
+	bool pickWithLeftHand = false;
 	// Each physical grip, whatever the handedness: adjusting the hands holds
 	// the hand whose grip is closed.
 	bool rightGripDown = false;
@@ -422,6 +434,11 @@ private:
 	bool m_reachArmed = false;  // the reach back seen since the last release
 	bool m_reachSpent = false;  // a draw used the armed reach
 	NiPoint3 m_lastRightRelative{0.0f, 0.0f, 0.0f};
+	NiPoint3 m_lastLeftRelative{0.0f, 0.0f, 0.0f};
+	bool m_haveLastLeft = false;
+	NiPoint3 m_lastPickRight{0.0f, 0.0f, 0.0f};
+	bool m_haveLastPickRight = false;
+	PickHandState m_pickHand;
 };
 
 }  // namespace obvr::vr

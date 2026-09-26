@@ -467,11 +467,32 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.attachSmallObjects = v != 0.0f; },
 	},
 	{
-		"Hands", "Reach marker", "A light-brown ring on what a closed grip would pick up",
+		"Hands", "Held through body", "A held object passes through your own body",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "HeldPassesBody",
+		+[](const Config& c) { return c.hands.heldPassesBody ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.heldPassesBody = v != 0.0f; },
+	},
+	{
+		"Hands", "Throw strength", "Letting go mid-swing throws with the hand's speed times this",
+		ItemKind::Number, 0.0f, 3.0f, 0.1f, 1, false,
+		"Hands", "ThrowStrength",
+		+[](const Config& c) { return c.hands.throwStrength; },
+		+[](Config& c, float v) { c.hands.throwStrength = v; },
+	},
+	{
+		"Hands", "Reach marker", "Shows what a closed grip would pick up: icon on it, ring around it",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "ReachMarker",
 		+[](const Config& c) { return c.hands.reachMarker ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.reachMarker = v != 0.0f; },
+	},
+	{
+		"Hands", "Reach ring", "The ring itself; off leaves only the icon on the object",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "ReachRing",
+		+[](const Config& c) { return c.hands.reachRing ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.reachRing = v != 0.0f; },
 	},
 	{
 		"Hands", "Reach marker distance", "How close a hand has to be for the ring to show, metres",

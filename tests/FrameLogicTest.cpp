@@ -17,6 +17,7 @@
 #include <limits>
 
 #include "camera/FrameLogic.h"
+#include "game/GrabPhysics.h"
 #include "game/HandGrip.h"
 #include "game/HeldObject.h"
 #include "game/PlayerStagger.h"
@@ -1284,11 +1285,17 @@ void TestCrosshairTooltipPolicy() {
 		DeathViewState s;
 		const obvr::NiPoint3 a{1.0f, 2.0f, 3.0f};
 		const obvr::NiPoint3 b{1.0f, 2.0f, -5.0f};
+		const obvr::NiPoint3 chase{-40.0f, 2.0f, 30.0f};
 		Check(same(StepDeathView(s, true, false, a), a) && !s.held, "alive: the camera as it is");
-		Check(same(StepDeathView(s, true, true, a), a) && s.held, "the first dead frame holds it there");
+		Check(same(StepDeathView(s, true, true, chase), a) && s.held,
+		      "the first dead frame, already in the chase camera: held where the living eyes were");
 		Check(same(StepDeathView(s, true, true, b), a), "the sinking death view is held off");
 		Check(same(StepDeathView(s, true, false, b), b) && !s.held, "alive again: released");
-		Check(same(StepDeathView(s, false, true, b), b) && !s.held, "switched off: the game's view");
+		Check(same(StepDeathView(s, false, true, chase), chase) && !s.held,
+		      "switched off: the game's view");
+		DeathViewState never;
+		Check(same(StepDeathView(never, true, true, chase), chase) && never.held,
+		      "dead from the first frame seen (a load into death): held where it is");
 		using obvr::camera::MenuCameraBase;
 		DeathViewState held;
 		StepDeathView(held, true, true, a);
@@ -2025,6 +2032,38 @@ void TestHandGrip() {
 	const obvr::NiMatrix33 zero = CurledAboutZ(base, 0.0f);
 	Check(Near(zero.data[0][0], base.data[0][0]) && Near(zero.data[0][1], base.data[0][1]),
 	      "no curl: the rotation it had");
+}
+
+void TestThrow() {
+	std::printf("Letting go: a set-down or a throw\n");
+	using namespace obvr::game;
+	const auto Near = [](float a, float b) { return a - b < 1e-2f && b - a < 1e-2f; };
+	Check(FilterGroup(0x0009000Au) == 9u && FilterGroup(0x0000000Au) == 0u,
+	      "the system group is the filter's high half");
+	PalmHistory h;
+	Check(ThrowVelocity(h, 1.0f).LengthSquared() == 0.0f, "no history: no throw");
+	PushPalm(h, obvr::NiPoint3{0.0f, 0.0f, 0.0f}, 0.011f);
+	Check(ThrowVelocity(h, 1.0f).LengthSquared() == 0.0f, "one frame: no speed yet");
+	// 2 units a frame at 100 frames a second: 200 units/s along y.
+	for (int i = 1; i <= 6; ++i) {
+		PushPalm(h, obvr::NiPoint3{0.0f, 2.0f * static_cast<float>(i), 0.0f}, 0.01f);
+	}
+	Check(h.count == kThrowHistory, "the history keeps the last frames only");
+	obvr::NiPoint3 v = ThrowVelocity(h, 1.0f);
+	Check(Near(v.y, 200.0f) && Near(v.x, 0.0f), "the palm's speed over the frames kept");
+	v = ThrowVelocity(h, 1.5f);
+	Check(Near(v.y, 300.0f), "times the strength");
+	Check(ThrowVelocity(h, 0.0f).LengthSquared() == 0.0f, "strength 0: the engine's own drop");
+	PalmHistory slow;
+	for (int i = 0; i < 5; ++i) {
+		PushPalm(slow, obvr::NiPoint3{0.0f, 0.2f * static_cast<float>(i), 0.0f}, 0.01f);
+	}
+	Check(ThrowVelocity(slow, 1.0f).LengthSquared() == 0.0f,
+	      "a hand slower than half a metre a second sets it down");
+	PalmHistory frozen;
+	PushPalm(frozen, obvr::NiPoint3{0.0f, 0.0f, 0.0f}, 0.0f);
+	PushPalm(frozen, obvr::NiPoint3{0.0f, 50.0f, 0.0f}, 0.0f);
+	Check(ThrowVelocity(frozen, 1.0f).LengthSquared() == 0.0f, "no time passed: no throw");
 }
 
 void TestHeldObject() {
@@ -3467,6 +3506,7 @@ void TestThirdPersonAimVisual() {
 
 
 int main() {
+	TestThrow();
 	TestHeldObject();
 	TestHandGrip();
 	TestNoPlayerStagger();
