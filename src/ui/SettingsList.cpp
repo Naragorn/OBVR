@@ -59,6 +59,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.look.deathBodyView = v != 0.0f; },
 	},
 	{
+		"Comfort", "Death view step back", "How far behind you the still death view stands, metres",
+		ItemKind::Number, 0.0f, 2.0f, 0.1f, 1, false,
+		"Look", "DeathViewBackMetres",
+		+[](const Config& c) { return c.look.deathViewBackMetres; },
+		+[](Config& c, float v) { c.look.deathViewBackMetres = v; },
+	},
+	{
 		"Comfort", "No stagger", "Hits never stagger you or knock you back",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Look", "NoPlayerStagger",

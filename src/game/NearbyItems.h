@@ -1,0 +1,94 @@
+#pragma once
+
+#include "core/MathFns.h"
+#include "core/Types.h"
+#include "game/NiMath.h"
+
+namespace obvr::game {
+
+// Items near the hands, found by distance rather than by a ray.
+//
+// The world pick is one ray a frame, and a hand brought to an item without
+// pointing at it found nothing: the left hand's tooltip and marker came only
+// once the grip closed, or once the right hand's laser was on the item
+// (2026-09-26). So the loaded items of the player's cell are measured
+// against both hands - from the hand to the surface of each item's scene
+// bound - and the pick is then aimed from the nearer hand at the nearest
+// item within reach; the engine's own pick finds it on that line, and the
+// tooltip, the marker and the grab follow as before.
+//
+// Read from xOBSE (GameObjects.h, GameForms.h): TESObjectREFR's parentCell at
+// +0x40, its base form at +0x1C, its scene node at +0x3C; TESObjectCELL's
+// objectList at +0x48, a list of { refr, next } whose first entry is inline;
+// TESForm's flags at +0x08 (0x20 deleted, 0x800 disabled) and type at +0x04.
+// Only the player's own cell: in the open world an item just across a cell
+// border is not found.
+
+// The item form types a hand can take (xOBSE GameForms.h): apparatus,
+// armour, book, clothing, ingredient, light, misc, weapon, ammo, soul gem,
+// key, potion, sigil stone.
+inline bool IsHandItemType(UInt8 type) {
+	switch (type) {
+	case 0x13:
+	case 0x14:
+	case 0x15:
+	case 0x16:
+	case 0x19:
+	case 0x1A:
+	case 0x1B:
+	case 0x21:
+	case 0x22:
+	case 0x26:
+	case 0x27:
+	case 0x28:
+	case 0x2A:
+		return true;
+	default:
+		return false;
+	}
+}
+
+// From a hand to the surface of a bound sphere: 0 inside it.
+inline float SurfaceDistance(const NiPoint3& hand, const NiPoint3& centre, float radius) {
+	const NiPoint3 d{centre.x - hand.x, centre.y - hand.y, centre.z - hand.z};
+	const float toCentre = math::Sqrt(d.LengthSquared());
+	const float r = radius > 0.0f ? radius : 0.0f;
+	return toCentre > r ? toCentre - r : 0.0f;
+}
+
+// One item's bound, and whether it is nearer a hand than the best so far.
+struct NearItem {
+	bool valid = false;
+	bool left = false;     // the left hand is the nearer one
+	UInt32 ref = 0;
+	NiPoint3 centre{0.0f, 0.0f, 0.0f};
+	float distance = 0.0f;  // from that hand to the item's surface, units
+};
+
+// Takes the candidate if it is within reach of a valid hand and nearer than
+// what `best` holds. The right hand wins a tie.
+inline void ConsiderNearItem(NearItem& best, UInt32 ref, const NiPoint3& centre, float radius,
+                             const NiPoint3& right, bool rightValid, const NiPoint3& left,
+                             bool leftValid, float reachUnits) {
+	for (int side = 0; side < 2; ++side) {
+		const bool isLeft = side == 1;
+		if (!(isLeft ? leftValid : rightValid)) {
+			continue;
+		}
+		const float d = SurfaceDistance(isLeft ? left : right, centre, radius);
+		if (d <= reachUnits && (!best.valid || d < best.distance)) {
+			best.valid = true;
+			best.left = isLeft;
+			best.ref = ref;
+			best.centre = centre;
+			best.distance = d;
+		}
+	}
+}
+
+// The nearest item within reach of either hand in the player's cell, or an
+// invalid one. `except` is left out (the one already held).
+NearItem FindNearestItem(const NiPoint3& right, bool rightValid, const NiPoint3& left,
+                         bool leftValid, float reachUnits, UInt32 except);
+
+}  // namespace obvr::game

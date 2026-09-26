@@ -112,6 +112,9 @@ struct LookSettings {
 	// At the end, when the game opens the load menu, the view goes to the
 	// game's own death camera over the body on the ground; off keeps it held.
 	bool deathBodyView = false;
+	// How far behind the eyes the held death view stands, metres, so the body
+	// is seen falling in front of it.
+	float deathViewBackMetres = 0.8f;
 	// The player is never staggered or knocked back by a hit
 	// (game::PlayerStagger): the lurch back jolts the view in a headset.
 	bool noPlayerStagger = true;

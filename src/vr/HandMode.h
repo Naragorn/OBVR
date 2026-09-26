@@ -118,7 +118,7 @@ struct HandSettings {
 	bool levitateObjects = false;
 	// Letting go mid-swing throws with the palm's speed times this; 0 leaves
 	// the engine's soft drop.
-	float throwStrength = 1.0f;
+	float throwStrength = 0.6f;  // 1.0 threw "zu stark" (2026-09-26)
 	// How far each finger link bends while the hand holds something, degrees
 	// (game::HandGrip); negative bends the other way, 0 leaves the hand open.
 	float gripCurlDegrees = 45.0f;
@@ -211,9 +211,6 @@ struct HandModeFrame {
 	// The hands are being adjusted (the INI switch or the guided window): a
 	// closed grip holds a hand, it does not grab.
 	bool adjustingHands = false;
-	// Last frame: whether the pick, run along the left hand's laser, found
-	// something within that hand's reach (StepPickHand).
-	bool leftPickInReach = false;
 	// The quad the game's menus hang on when they are not on a wrist - on
 	// the head or in the room - in tracking space, for the laser.
 	MenuQuad menuQuad;
@@ -336,8 +333,8 @@ struct HandModeResult {
 	bool grabWanted = false;
 	float grabDistanceMetres = 0.0f;
 	bool grabWithLeftHand = false;  // true when left grip holds it, false for right
-	// The hand whose laser the world pick follows with no grip closed
-	// (StepPickHand).
+	// The hand the world pick runs from with no grip closed: the one an item
+	// is near (set by the caller from game::FindNearestItem), else the right.
 	bool pickWithLeftHand = false;
 	// Each physical grip, whatever the handedness: adjusting the hands holds
 	// the hand whose grip is closed.
@@ -445,11 +442,6 @@ private:
 	bool m_reachArmed = false;  // the reach back seen since the last release
 	bool m_reachSpent = false;  // a draw used the armed reach
 	NiPoint3 m_lastRightRelative{0.0f, 0.0f, 0.0f};
-	NiPoint3 m_lastLeftRelative{0.0f, 0.0f, 0.0f};
-	bool m_haveLastLeft = false;
-	NiPoint3 m_lastPickRight{0.0f, 0.0f, 0.0f};
-	bool m_haveLastPickRight = false;
-	PickHandState m_pickHand;
 };
 
 }  // namespace obvr::vr

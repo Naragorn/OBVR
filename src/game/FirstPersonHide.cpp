@@ -4,6 +4,7 @@
 #include "core/Log.h"
 #include "game/FirstPersonArms.h"
 #include "game/GameAddresses.h"
+#include "game/GameCamera.h"
 #include "game/GameTypes.h"
 #include "game/NodeNameList.h"
 
@@ -352,6 +353,19 @@ UInt32 CollectNodesContaining(NiAVObject* under, const char* part, NiAVObject** 
 	UInt32 found = 0;
 	CollectContaining(reinterpret_cast<UInt8*>(under), part, out, capacity, found, 0);
 	return found;
+}
+
+void UpdateChildTransforms(NiAVObject* node) {
+	if (!LooksLikeObject(node) || !ClassIsNode(ClassNameOf(reinterpret_cast<UInt8*>(node)))) {
+		return;
+	}
+	UInt32 count = 0;
+	UInt8* const* const children = ChildrenOf(reinterpret_cast<UInt8*>(node), count);
+	for (UInt32 at = 0; at < count; ++at) {
+		if (LooksLikeObject(children[at])) {
+			UpdateNodeTransforms(reinterpret_cast<NiAVObject*>(children[at]));
+		}
+	}
 }
 
 NiAVObject* FindFirstPersonNode(const char* name) {

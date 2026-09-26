@@ -93,6 +93,21 @@ inline LaserWorldRay HandLaserWorldRay(const NiMatrix33& headRot, const NiPoint3
 	return ray;
 }
 
+// The pick aimed from a hand at a point - an item near it
+// (game::FindNearestItem) - starting backUnits behind the hand, so an item
+// the hand is already inside is still ahead of the ray. A point at the hand
+// gives allback from the hand.
+inline LaserWorldRay RayTowards(const NiPoint3& from, const NiPoint3& to, float backUnits,
+                                const NiPoint3& fallback) {
+	LaserWorldRay ray;
+	const NiPoint3 d{to.x - from.x, to.y - from.y, to.z - from.z};
+	const float lengthSquared = d.LengthSquared();
+	ray.direction = lengthSquared > 1.0e-6f ? d * (1.0f / math::Sqrt(lengthSquared)) : fallback;
+	const float back = backUnits > 0.0f ? backUnits : 0.0f;
+	ray.origin = from - ray.direction * back;
+	return ray;
+}
+
 // Whether what the pick found is close enough to the hand to be taken: the
 // point the laser touched it, within the reach of the hand.
 inline bool WithinReach(const NiPoint3& hand, const NiPoint3& target, float reachUnits) {

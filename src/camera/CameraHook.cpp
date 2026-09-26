@@ -42,6 +42,7 @@
 #include "game/HeldObject.h"
 #include "game/GrabPhysics.h"
 #include "game/GrabNearBody.h"
+#include "game/NearbyItems.h"
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
 #include "render/DxvkInterop.h"
@@ -156,9 +157,10 @@ render::LaserLayer g_laserLayer;
 render::ReachMarker g_reachMarker;
 // Whether the ring shows this frame and where: the crosshair's icon hangs in it.
 bool g_reachIconShown = false;
-// Whether the pick, when it ran along the left hand's laser, found something
-// within that hand's grab reach - read by the next frame's StepPickHand.
-bool g_leftPickInReach = false;
+// The item nearest a hand within its reach (game::FindNearestItem): the world
+// pick is aimed from that hand at it, so a hand brought to an item gets its
+// tooltip and marker without pointing at it.
+game::NearItem g_nearItem;
 vr::openvr::HmdMatrix34 g_reachIconPose{};
 // The cyclopean camera, snapshotted in the camera pass (see there); declared
 // early because the hand mode measures the grab reach from it.
@@ -437,6 +439,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		game::StepGrabPhysics(false, 0.0f, false, NiPoint3{0.0f, 0.0f, 0.0f}, dt);
 		g_hand = vr::HandModeResult{};
 		g_reachIconShown = false;
+		g_nearItem = game::NearItem{};
 		g_handMode.Reset();
 		return;
 	}
@@ -512,7 +515,6 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.menusOnly = menusOnly;
 	frame.inWorld = game::PlayerInWorld();
 	frame.adjustingHands = config.hands.adjustHands || game::HandAdjustActive();
-	frame.leftPickInReach = g_leftPickInReach;
 	// The weapon and the player's action: what the ready-weapon click follows
 	// and whether a swing may attack. World frames only, like the sneak.
 	if (!menuIsUp && frame.inWorld) {
@@ -656,6 +658,25 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 
 	g_hand = g_handMode.Update(frame, config.hands);
 
+	// The item nearest a hand, by distance (game::FindNearestItem): the pick is
+	// aimed from that hand at it in the camera pass. While a grip is closed,
+	// only that hand looks; while something is held, nothing does.
+	g_nearItem = game::NearItem{};
+	if (active && !menuIsUp && g_cyclopeanCameraWorldValid && !game::PlayerHoldsGrab()) {
+		const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+		const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
+		const bool gripping = g_hand.grabWanted;
+		const float reach = (config.hands.grabReachMetres > config.hands.reachMarkerMetres
+		                         ? config.hands.grabReachMetres
+		                         : config.hands.reachMarkerMetres) *
+		                    config.tracker.unitsPerMetre;
+		g_nearItem = game::FindNearestItem(
+			camPos + camRot * g_hand.rightHandOffsetUnits,
+			g_hand.rightHandValid && (!gripping || !g_hand.grabWithLeftHand),
+			camPos + camRot * g_hand.leftHandOffsetUnits,
+			g_hand.leftHandValid && (!gripping || g_hand.grabWithLeftHand), reach, 0);
+	}
+	g_hand.pickWithLeftHand = g_nearItem.valid && g_nearItem.left;
 	// The grab follows whichever hand is holding it: direction through the aim
 	// pose (set above based on which grip is down), distance from that hand.
 	// No floor: a hand brought to the body brings the object with it - the
@@ -770,22 +791,6 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 		g_reachMarker.Submit(backend, markerShown && config.hands.reachRing, markerPose,
 		                     config.hands.reachMarkerOpacity);
-		// The left hand keeps the pick only while it has something in reach.
-		{
-			const game::CrosshairTarget pickTarget = game::ReadCrosshairTarget();
-			NiPoint3 pickHit = pickTarget.position;
-			game::ReadPickHit(pickHit);
-			g_leftPickInReach =
-				g_hand.pickWithLeftHand && g_hand.leftHandValid && pickTarget.haveRef &&
-				g_cyclopeanCameraWorldValid &&
-				vr::WithinReach(g_cyclopeanCameraWorldTransform.pos +
-				                    g_cyclopeanCameraWorldTransform.rot * g_hand.leftHandOffsetUnits,
-				                pickHit,
-				                (config.hands.grabReachMetres > config.hands.reachMarkerMetres
-				                     ? config.hands.grabReachMetres
-				                     : config.hands.reachMarkerMetres) *
-				                    config.tracker.unitsPerMetre);
-		}
 		// The crosshair's icon moves onto the object, into the ring's middle.
 		g_reachIconShown = markerShown && config.hands.reachTooltip;
 		g_reachIconPose = render::ReachIconPose(markerPose);
@@ -2456,10 +2461,26 @@ void BeforeFirstScenePass() {
 			{
 				NiPoint3 touched{0.0f, 0.0f, 0.0f};
 				const bool haveTouched = game::GrabStartHit(touched);
+				game::HeldHand held;
+				held.rightHand = !g_hand.grabWithLeftHand;
+				held.palmAlongUnits = (game::kPalmAlongMetres + hands.heldObjectMetres) * perMetre;
+				// The blade: the grabbing controller's forward, the axis a swung
+				// weapon strikes along (the guard reads it the same way).
+				const NiMatrix33& heldRel =
+					held.rightHand ? g_hand.rightHandRotation : g_hand.leftHandRotation;
+				held.haveBlade = held.rightHand ? g_hand.rightHandValid : g_hand.leftHandValid;
+				held.blade = cameraRot * NiPoint3{heldRel.data[0][1], heldRel.data[1][1],
+				                                  heldRel.data[2][1]};
+				// The weapon's grip, the right hand's Weapon node, only while holding.
+				if (holding && held.rightHand && !hands.levitateObjects) {
+					const NiAVObject* const weaponNode = game::FindFirstPersonNode("Weapon");
+					if (weaponNode != nullptr) {
+						held.gripPoint = weaponNode->worldTransform.pos;
+						held.haveGripPoint = true;
+					}
+				}
 				game::StepHeldObject(!hands.levitateObjects || hands.attachSmallObjects, holding,
-				                     !g_hand.grabWithLeftHand, haveTouched, touched,
-				                     (game::kPalmAlongMetres + hands.heldObjectMetres) * perMetre,
-				                     !hands.levitateObjects);
+				                     held, haveTouched, touched, !hands.levitateObjects);
 			}
 			game::NoteHandAdjustFrame(rightCommitted, leftCommitted,
 			                          g_hand.rightGripDown || g_hand.leftGripDown, g_deltaSeconds);
@@ -2472,14 +2493,14 @@ void BeforeFirstScenePass() {
 	} else if (g_weaponTurnWanted) {
 		game::StepHandGrip(true, GetConfig().hands.rightHandBone, false, 0.0f);
 		game::StepHandGrip(false, GetConfig().hands.leftHandBone, false, 0.0f);
-		game::StepHeldObject(false, false, true, false, NiPoint3{0.0f, 0.0f, 0.0f}, 0.0f);
+		game::StepHeldObject(false, false, game::HeldHand{}, false, NiPoint3{0.0f, 0.0f, 0.0f});
 		game::TurnFirstPersonArms(g_weaponTurnRadians);
 	} else {
 		// Third person, a menu, or switched off. Put the arms back rather than
 		// leaving them holding a turn nothing is going to update.
 		game::StepHandGrip(true, GetConfig().hands.rightHandBone, false, 0.0f);
 		game::StepHandGrip(false, GetConfig().hands.leftHandBone, false, 0.0f);
-		game::StepHeldObject(false, false, true, false, NiPoint3{0.0f, 0.0f, 0.0f}, 0.0f);
+		game::StepHeldObject(false, false, game::HeldHand{}, false, NiPoint3{0.0f, 0.0f, 0.0f});
 		game::ReleaseFirstPersonArms();
 	}
 
@@ -4072,7 +4093,11 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		const bool dead = game::PlayerIsDead();
 		const bool wasHeld = g_deathView.held;
 		cameraNode->localTransform.pos = StepDeathView(
-			g_deathView, config.look.deathViewStill, dead, cameraNode->localTransform.pos);
+			g_deathView, config.look.deathViewStill, dead, cameraNode->localTransform.pos,
+			g_deathView.haveAliveTurn
+				? DeathStepBack(g_deathView.lastAliveRot,
+				                config.look.deathViewBackMetres * config.tracker.unitsPerMetre)
+				: NiPoint3{0.0f, 0.0f, 0.0f});
 		// And the turn and height it is built on, or the chase camera's swing
 		// towards the body still turns the view (StepDeathTurn).
 		StepDeathTurn(g_deathView, baseRotation, verticalOffset);
@@ -4105,15 +4130,25 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// From last frame's hand, as the hand mode runs at Present.
 	{
 		const vr::HandSettings& hands = config.hands;
-		// The hand that has been moving (vr::StepPickHand), so the left hand
-		// reaching for something gets its marker and tooltip too.
+		// The hand an item is near (game::FindNearestItem), else the right one.
 		const bool pickLeft = g_hand.pickWithLeftHand;
 		const bool handRay = config.handTracking && g_headTracker.IsHeadsetConnected() &&
 		                     (pickLeft ? g_hand.leftHandValid : g_hand.rightHandValid);
+		const bool nearRay = handRay && g_nearItem.valid;
 		const bool reachRay = config.handTracking && g_headTracker.IsHeadsetConnected() &&
 		                      g_grabReachPick &&
 		                      (g_hand.grabWithLeftHand ? g_hand.leftHandValid : g_hand.rightHandValid);
-		if (reachRay) {
+		if (nearRay) {
+			// An item near a hand: the pick from that hand straight at it, so
+			// the tooltip, the marker and the grab take it without pointing.
+			const NiPoint3 from = cameraNode->localTransform.pos +
+			                      finalRotation * (pickLeft ? g_hand.leftHandOffsetUnits
+			                                                : g_hand.rightHandOffsetUnits);
+			const vr::LaserWorldRay ray = vr::RayTowards(
+				from, g_nearItem.centre, hands.grabReachMetres * config.tracker.unitsPerMetre,
+				ForwardOf(finalRotation));
+			game::SetWorldPickHandRay(ray.origin, ray.direction, true);
+		} else if (reachRay) {
 			// A grip closed: the pick runs along that hand's laser - the beam
 			// the settings tilt, not the line from the head - starting the
 			// grab's reach behind the hand, so an object the hand is already

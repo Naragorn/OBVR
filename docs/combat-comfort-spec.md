@@ -162,7 +162,10 @@ verify this from code; a headset test with each switched off would settle it.
 - Since 2026-09-26 it also holds the base rotation and the vertical offset
   (`StepDeathTurn`). A "final stagger" was still felt at death; the
   assumption, not yet verified, is the chase camera turning and sinking
-  towards the body.
+  towards the body. The tester confirmed it on 2026-09-26: "nun perfekt".
+- `[Look] DeathViewBackMetres` (default 0.8) holds the view that far behind
+  the living eyes, level along the heading, so the body is seen falling in
+  front of it. Otherwise nobody could tell what had happened.
 
 ## Test reminders
 

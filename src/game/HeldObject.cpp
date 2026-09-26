@@ -3,8 +3,8 @@
 #include "core/AddressSpace.h"
 #include "core/Log.h"
 #include "game/BonePin.h"
+#include "game/FirstPersonHide.h"
 #include "game/GameAddresses.h"
-#include "game/GameCamera.h"
 #include "game/GameTypes.h"
 #include "game/GrabPhysics.h"
 #include "game/HandBones.h"
@@ -15,12 +15,13 @@ namespace {
 bool LooksLikeObject(UInt32 address) { return mem::LooksLikeObjectAddress(address); }
 
 // The hold being followed: which reference, its node, and how it sits in
-// the hand. `attached` false for a hold that is not small, or not readable.
+// the hand. `attached` false for a hold that is not placed on the hand.
 struct Hold {
 	UInt32 ref = 0;
 	NiAVObject* node = nullptr;
 	HeldAttachment attachment;
 	bool attached = false;
+	bool swordGrip = false;
 };
 
 Hold g_hold;
@@ -28,8 +29,8 @@ UInt32 g_reportsLeft = 6;
 
 }  // namespace
 
-void StepHeldObject(bool enabled, bool holding, bool rightHand, bool haveTouched,
-                    const NiPoint3& touched, float palmAlongUnits, bool attachAll) {
+void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveTouched,
+                    const NiPoint3& touched, bool attachAll) {
 	const UInt32 player = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
 	const UInt32 ref = holding && LooksLikeObject(player)
 	                       ? *reinterpret_cast<const UInt32*>(player + addr::kPlayerGrabbedRefOffset)
@@ -40,11 +41,14 @@ void StepHeldObject(bool enabled, bool holding, bool rightHand, bool haveTouched
 	}
 	NiMatrix33 handRot;
 	NiPoint3 handPos;
-	if (!ReadHandBoneWorld(rightHand, handRot, handPos)) {
+	if (!ReadHandBoneWorld(hand.rightHand, handRot, handPos)) {
 		return;
 	}
+	// The in-hand mode holds like the sword (SwordGripRotation); the
+	// levitated mode's small things keep the turn they were taken with.
+	const bool swordGrip = attachAll && hand.haveBlade;
 	if (g_hold.ref != ref) {
-		// A new hold: small or not, and how it sits against the hand now.
+		// A new hold: placed or not, and how it sits against the hand.
 		g_hold = Hold{};
 		g_hold.ref = ref;
 		const UInt32 node = *reinterpret_cast<const UInt32*>(ref + addr::kRefNiNodeOffset);
@@ -56,8 +60,13 @@ void StepHeldObject(bool enabled, bool holding, bool rightHand, bool haveTouched
 		const UInt8 type = *reinterpret_cast<const UInt8*>(base + addr::kFormTypeOffset);
 		const float radius = g_hold.node->worldBound.radius;
 		const bool small = IsSmallHeldObject(type, radius);
-		if ((small || attachAll) && haveTouched) {
-			const NiTransform& world = g_hold.node->worldTransform;
+		const NiTransform& world = g_hold.node->worldTransform;
+		if (swordGrip) {
+			g_hold.attachment = CaptureSwordGrip(world.rot, world.pos, world.scale,
+			                                     g_hold.node->worldBound.center);
+			g_hold.attached = true;
+			g_hold.swordGrip = true;
+		} else if ((small || attachAll) && haveTouched) {
 			g_hold.attachment =
 				CaptureAttachment(handRot, world.rot, world.pos, world.scale, touched);
 			g_hold.attached = true;
@@ -66,10 +75,11 @@ void StepHeldObject(bool enabled, bool holding, bool rightHand, bool haveTouched
 			--g_reportsLeft;
 			OBVR_LOG("Hands: holding %08X (form type %02X, bound radius %.1f units) - %s", ref,
 			         type, static_cast<double>(radius),
-			         g_hold.attached ? (attachAll ? "in the hand, turning with the wrist"
-			                                      : "small: fixed in the palm, turning with the wrist")
-			                         : (small ? "small, but no touched point: on the spring"
-			                                  : "not small: on the spring"));
+			         g_hold.swordGrip  ? "in the hand like the sword: up along the blade, its "
+			                             "middle in the grip"
+			         : g_hold.attached ? "fixed in the palm, turning with the wrist"
+			         : small           ? "small, but no touched point: on the spring"
+			                           : "not small: on the spring");
 		}
 	}
 	if (!g_hold.attached || !LooksLikeObject(reinterpret_cast<UInt32>(g_hold.node))) {
@@ -78,8 +88,22 @@ void StepHeldObject(bool enabled, bool holding, bool rightHand, bool haveTouched
 	NiAVObject* const node = g_hold.node;
 	NiAVObject* const parent = node->parent;
 	const float scale = node->worldTransform.scale;
-	const HeldPose pose =
-		AttachedPose(handRot, PalmPoint(handRot, handPos, palmAlongUnits), g_hold.attachment, scale);
+	HeldPose pose;
+	if (g_hold.swordGrip) {
+		const NiPoint3 fingers{handRot.data[0][0], handRot.data[1][0], handRot.data[2][0]};
+		const NiPoint3 grip =
+			hand.haveGripPoint ? hand.gripPoint : PalmPoint(handRot, handPos, hand.palmAlongUnits);
+		pose = AttachedPose(SwordGripRotation(hand.blade, fingers), grip, g_hold.attachment, scale);
+	} else {
+		pose = AttachedPose(handRot, PalmPoint(handRot, handPos, hand.palmAlongUnits),
+		                    g_hold.attachment, scale);
+	}
+	// The node's world transform is written directly and only its children
+	// are updated from it: running the node's own update puts a Havok-driven
+	// object back where its rigid body is, which is why the object followed
+	// the spring's position but never turned with the wrist (2026-09-26).
+	node->worldTransform.rot = pose.rot;
+	node->worldTransform.pos = pose.pos;
 	if (LooksLikeObject(reinterpret_cast<UInt32>(parent))) {
 		BonePose wanted;
 		wanted.rot = pose.rot;
@@ -93,7 +117,7 @@ void StepHeldObject(bool enabled, bool holding, bool rightHand, bool haveTouched
 		node->localTransform.rot = pose.rot;
 		node->localTransform.pos = pose.pos;
 	}
-	UpdateNodeTransforms(node);
+	UpdateChildTransforms(node);
 	NoteHeldPose(g_hold.ref, pose.rot, pose.pos);
 }
 

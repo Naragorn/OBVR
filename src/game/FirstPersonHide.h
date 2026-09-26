@@ -16,6 +16,11 @@ NiAVObject* FindFirstPersonNode(const char* name);
 UInt32 CollectNodesContaining(NiAVObject* under, const char* part, NiAVObject** out,
                               UInt32 capacity);
 
+// Recomputes the world transforms under a node from its own world transform,
+// child by child, without running the node's own update - which for a
+// Havok-driven object sets the node back to its rigid body's pose.
+void UpdateChildTransforms(NiAVObject* node);
+
 // Hiding parts of the first-person model, for the hand-tracked mode: the
 // arms are the animation's and stay where the animation puts them, while the
 // hands are the controllers', so the arms go and the hands and what they

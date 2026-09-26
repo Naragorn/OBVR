@@ -81,6 +81,7 @@ add_library(OBVR SHARED
 	src/game/HeldObject.cpp
 	src/game/GrabPhysics.cpp
 	src/game/GrabNearBody.cpp
+	src/game/NearbyItems.cpp
 	src/game/HandBones.cpp
 	src/game/HandAdjust.cpp
 	src/game/MeleeHits.cpp

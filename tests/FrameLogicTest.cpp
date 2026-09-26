@@ -20,6 +20,7 @@
 #include "game/GrabPhysics.h"
 #include "game/HandGrip.h"
 #include "game/HeldObject.h"
+#include "game/NearbyItems.h"
 #include "game/PlayerStagger.h"
 #include "core/MathFns.h"
 
@@ -1329,6 +1330,35 @@ void TestCrosshairTooltipPolicy() {
 			StepDeathTurn(off, rot, vertical);
 			Check(rot.data[0][1] == -0.7f && vertical == -5.0f, "switched off: the game's turn");
 		}
+		{
+			using obvr::camera::DeathStepBack;
+			obvr::NiMatrix33 facingNorth = obvr::NiMatrix33::Identity();  // forward is +y
+			const obvr::NiPoint3 back = DeathStepBack(facingNorth, 56.0f);
+			Check(back.x == 0.0f && back.y == -56.0f && back.z == 0.0f,
+			      "the step back: behind the living heading, level");
+			obvr::NiMatrix33 lookingDown = obvr::NiMatrix33::Identity();
+			lookingDown.data[1][1] = 0.6f;
+			lookingDown.data[2][1] = -0.8f;  // forward tipped down
+			const obvr::NiPoint3 level = DeathStepBack(lookingDown, 56.0f);
+			Check(level.z == 0.0f && level.y < -55.9f && level.y > -56.1f,
+			      "looking down does not lift or sink it: the heading's level part only");
+			obvr::NiMatrix33 straightDown = obvr::NiMatrix33::Identity();
+			straightDown.data[0][1] = 0.0f;
+			straightDown.data[1][1] = 0.0f;
+			straightDown.data[2][1] = -1.0f;
+			const obvr::NiPoint3 none = DeathStepBack(straightDown, 56.0f);
+			const obvr::NiPoint3 zero = DeathStepBack(facingNorth, 0.0f);
+			Check(none.LengthSquared() == 0.0f && zero.LengthSquared() == 0.0f,
+			      "no heading, or no step: none");
+			DeathViewState stepped;
+			StepDeathView(stepped, true, false, a);
+			Check(same(StepDeathView(stepped, true, true, chase, back),
+			           obvr::NiPoint3{a.x, a.y - 56.0f, a.z}),
+			      "held a step behind where the living eyes were");
+			Check(same(StepDeathView(stepped, true, true, b, back),
+			           obvr::NiPoint3{a.x, a.y - 56.0f, a.z}),
+			      "and the step is taken once, not every frame");
+		}
 		DeathViewState never;
 		Check(same(StepDeathView(never, true, true, chase), chase) && never.held,
 		      "dead from the first frame seen (a load into death): held where it is");
@@ -2068,6 +2098,80 @@ void TestHandGrip() {
 	const obvr::NiMatrix33 zero = CurledAboutZ(base, 0.0f);
 	Check(Near(zero.data[0][0], base.data[0][0]) && Near(zero.data[0][1], base.data[0][1]),
 	      "no curl: the rotation it had");
+}
+
+void TestNearItems() {
+	std::printf("Items near the hands, by distance\n");
+	using namespace obvr::game;
+	const auto Near = [](float a, float b) { return a - b < 1e-3f && b - a < 1e-3f; };
+	Check(IsHandItemType(0x28) && IsHandItemType(0x1B) && IsHandItemType(0x21) &&
+	          IsHandItemType(0x14) && IsHandItemType(0x2A),
+	      "potions, misc, weapons, armour, sigil stones can be taken");
+	Check(!IsHandItemType(0x17) && !IsHandItemType(0x18) && !IsHandItemType(0x1C) &&
+	          !IsHandItemType(0x23) && !IsHandItemType(0x00),
+	      "containers, doors, statics, NPCs are not items");
+	const obvr::NiPoint3 hand{0.0f, 0.0f, 0.0f};
+	Check(Near(SurfaceDistance(hand, obvr::NiPoint3{10.0f, 0.0f, 0.0f}, 4.0f), 6.0f),
+	      "the distance is to the bound's surface");
+	Check(SurfaceDistance(hand, obvr::NiPoint3{2.0f, 0.0f, 0.0f}, 4.0f) == 0.0f,
+	      "a hand inside the bound is at no distance");
+	const obvr::NiPoint3 right{0.0f, 0.0f, 0.0f};
+	const obvr::NiPoint3 left{-40.0f, 0.0f, 0.0f};
+	NearItem best;
+	ConsiderNearItem(best, 1, obvr::NiPoint3{-45.0f, 0.0f, 0.0f}, 2.0f, right, true, left, true,
+	                 21.0f);
+	Check(best.valid && best.left && best.ref == 1u && Near(best.distance, 3.0f),
+	      "an item at the left hand, not pointed at: found for the left hand");
+	ConsiderNearItem(best, 2, obvr::NiPoint3{15.0f, 0.0f, 0.0f}, 2.0f, right, true, left, true,
+	                 21.0f);
+	Check(best.ref == 1u, "a farther one does not take its place");
+	ConsiderNearItem(best, 3, obvr::NiPoint3{3.0f, 0.0f, 0.0f}, 2.0f, right, true, left, true,
+	                 21.0f);
+	Check(best.ref == 3u && !best.left, "a nearer one at the right hand does");
+	NearItem none;
+	ConsiderNearItem(none, 4, obvr::NiPoint3{100.0f, 0.0f, 0.0f}, 2.0f, right, true, left, true,
+	                 21.0f);
+	Check(!none.valid, "out of reach of both: nothing");
+	NearItem leftOnly;
+	ConsiderNearItem(leftOnly, 5, obvr::NiPoint3{3.0f, 0.0f, 0.0f}, 2.0f, right, false, left,
+	                 true, 21.0f);
+	Check(!leftOnly.valid, "a hand that is not looking (untracked, or not the gripping one) finds nothing");
+	NearItem tie;
+	ConsiderNearItem(tie, 6, obvr::NiPoint3{-20.0f, 0.0f, 0.0f}, 2.0f, right, true, left, true,
+	                 21.0f);
+	Check(tie.valid && !tie.left, "a tie goes to the right hand");
+}
+
+void TestSwordGrip() {
+	std::printf("Held like the sword\n");
+	using obvr::game::SwordGripRotation;
+	const auto Near = [](float a, float b) { return a - b < 1e-4f && b - a < 1e-4f; };
+	const obvr::NiMatrix33 g =
+		SwordGripRotation(obvr::NiPoint3{0.0f, 2.0f, 0.0f}, obvr::NiPoint3{0.6f, 0.8f, 0.0f});
+	Check(Near(g.data[0][2], 0.0f) && Near(g.data[1][2], 1.0f) && Near(g.data[2][2], 0.0f),
+	      "the object's up runs along the blade");
+	Check(Near(g.data[0][0], 1.0f) && Near(g.data[1][0], 0.0f),
+	      "its x across the fingers, made square to the blade");
+	const float det = g.data[0][0] * (g.data[1][1] * g.data[2][2] - g.data[1][2] * g.data[2][1]) -
+	                  g.data[0][1] * (g.data[1][0] * g.data[2][2] - g.data[1][2] * g.data[2][0]) +
+	                  g.data[0][2] * (g.data[1][0] * g.data[2][1] - g.data[1][1] * g.data[2][0]);
+	Check(Near(det, 1.0f), "a proper rotation, not a mirror");
+	const obvr::NiMatrix33 along =
+		SwordGripRotation(obvr::NiPoint3{0.0f, 1.0f, 0.0f}, obvr::NiPoint3{0.0f, 3.0f, 0.0f});
+	Check(Near(along.data[1][2], 1.0f) && Near(along.data[2][0], 1.0f),
+	      "fingers along the blade: the world's up stands in");
+	const obvr::NiMatrix33 none =
+		SwordGripRotation(obvr::NiPoint3{0.0f, 0.0f, 0.0f}, obvr::NiPoint3{1.0f, 0.0f, 0.0f});
+	Check(Near(none.data[1][2], 1.0f), "no blade: forward");
+	using obvr::game::AttachedPose;
+	using obvr::game::CaptureSwordGrip;
+	const obvr::NiPoint3 objectPos{50.0f, 0.0f, 0.0f};
+	const obvr::game::HeldAttachment a = CaptureSwordGrip(
+		obvr::NiMatrix33::Identity(), objectPos, 1.0f, objectPos + obvr::NiPoint3{0.0f, 0.0f, 3.0f});
+	const obvr::game::HeldPose p = AttachedPose(g, obvr::NiPoint3{1.0f, 2.0f, 3.0f}, a, 1.0f);
+	const obvr::NiPoint3 middle = p.pos + p.rot * a.pivotLocal;
+	Check(Near(middle.x, 1.0f) && Near(middle.y, 2.0f) && Near(middle.z, 3.0f),
+	      "the object's middle sits in the grip, whatever way it lay");
 }
 
 void TestHavokQuaternion() {
@@ -3588,6 +3692,8 @@ void TestThirdPersonAimVisual() {
 
 
 int main() {
+	TestNearItems();
+	TestSwordGrip();
 	TestHavokQuaternion();
 	TestThrow();
 	TestHeldObject();

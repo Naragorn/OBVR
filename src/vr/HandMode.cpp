@@ -96,9 +96,6 @@ void HandMode::Reset() {
 	m_ready = ReadyWeaponState{};
 	m_sneak = SneakHoldState{};
 	m_runLatched = false;
-	m_haveLastLeft = false;
-	m_haveLastPickRight = false;
-	m_pickHand = PickHandState{};
 }
 
 HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
@@ -216,21 +213,6 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	} else {
 		m_haveLastRight = false;
 		m_swing = SwingDetector{};
-	}
-	// The pick's hand, from how both hands have been moving.
-	{
-		const float rightSpeed = f.right.valid && m_haveLastPickRight
-		                             ? HandSpeed(m_lastPickRight, rightRelative, f.dtSeconds)
-		                             : 0.0f;
-		const float leftSpeed = f.left.valid && m_haveLastLeft
-		                            ? HandSpeed(m_lastLeftRelative, leftRelative, f.dtSeconds)
-		                            : 0.0f;
-		r.pickWithLeftHand = StepPickHand(m_pickHand, f.right.valid, f.left.valid, rightSpeed,
-		                                  leftSpeed, f.dtSeconds, f.leftPickInReach);
-		m_lastPickRight = rightRelative;
-		m_haveLastPickRight = f.right.valid;
-		m_lastLeftRelative = leftRelative;
-		m_haveLastLeft = f.left.valid;
 	}
 	r.swingActive = m_swing.swinging;
 	r.swingHeavy = m_swing.swinging && m_swing.peakSpeed >= s.gestures.swingHeavy;

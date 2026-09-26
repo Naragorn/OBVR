@@ -213,6 +213,33 @@ torch.
   Only small things are fixed (`AttachSmallObjects`); the rest floats on the
   spring.
 
+### Third test (2026-09-26): the node's own update, the sword grip, items by distance
+
+- **It did not turn with the wrist.** The object's scene node was written
+  and then updated through its own update pass. For a Havok-driven object
+  that pass sets the node back to its rigid body's pose, so what was seen
+  was the spring-pulled body: in the palm, but hanging.
+  - The node's world transform is now written directly.
+  - Only its children are updated from it (`game::UpdateChildTransforms`).
+- **"A": held like the sword.** In the in-hand mode, whatever way an object
+  was picked up:
+  - its own up (local z) runs along the blade, i.e. the grabbing
+    controller's forward, the axis a swung weapon strikes along;
+  - its x runs across the fingers;
+  - its middle (the scene bound's centre) sits where the weapon's grip is,
+    the right hand's `Weapon` node, or the palm for the left hand
+    (`game::SwordGripRotation`, `CaptureSwordGrip`).
+- **Items by distance, not by a ray.** A hand brought to an item without
+  pointing at it found nothing, because the pick is one ray a frame.
+  - The loaded items of the player's cell are measured against both hands,
+    to the surface of each scene bound (`game::FindNearestItem`).
+  - The pick is aimed from the nearer hand at the nearest item within
+    reach, so the tooltip, the marker and the grab follow as before.
+  - This replaces the "hand that has been moving" rule of the second test.
+  - **Limit:** only the player's own cell is searched. In the open world an
+    item just across a cell border is not found.
+- **Throw strength** default 0.6 (1.0 was "zu stark").
+
 ### Up to the mouth and the body
 
 Held objects stopped about 25 cm from the head (2026-09-26). Eating by

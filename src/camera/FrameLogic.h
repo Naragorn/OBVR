@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/MathFns.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
 
@@ -657,6 +658,18 @@ struct DeathViewState {
 	float lastAliveVertical = 0.0f;
 };
 
+// The step back for the death view: backUnits behind the living view's
+// heading, level - the vertical part of the heading is left out, so looking
+// down does not lift the camera. None for a heading straight up or down.
+inline NiPoint3 DeathStepBack(const NiMatrix33& livingRot, float backUnits) {
+	const NiPoint3 forward{livingRot.data[0][1], livingRot.data[1][1], 0.0f};
+	const float length = math::Sqrt(forward.x * forward.x + forward.y * forward.y);
+	if (!(length > 1.0e-4f) || !(backUnits > 0.0f)) {
+		return NiPoint3{0.0f, 0.0f, 0.0f};
+	}
+	return forward * (-backUnits / length);
+}
+
 // After StepDeathView on the same frame: while the view is held, the base
 // rotation and the vertical offset it is built on stay those of the last
 // living frame too. Writes the ones to use into rot and vertical.
@@ -677,8 +690,12 @@ inline void StepDeathTurn(DeathViewState& s, NiMatrix33& rot, float& vertical) {
 	vertical = s.vertical;
 }
 
+// backOffset moves the held place once, when the hold begins: a step back
+// from the eyes so the body falls away in front of the view instead of from
+// under it - without it nobody could see what had happened (2026-09-26).
 inline NiPoint3 StepDeathView(DeathViewState& s, bool enabled, bool dead,
-                              const NiPoint3& current) {
+                              const NiPoint3& current,
+                              const NiPoint3& backOffset = NiPoint3{0.0f, 0.0f, 0.0f}) {
 	if (!dead) {
 		s.held = false;
 		s.haveAlive = true;
@@ -691,7 +708,7 @@ inline NiPoint3 StepDeathView(DeathViewState& s, bool enabled, bool dead,
 	}
 	if (!s.held) {
 		s.held = true;
-		s.position = s.haveAlive ? s.lastAlive : current;
+		s.position = (s.haveAlive ? s.lastAlive : current) + backOffset;
 	}
 	return s.position;
 }

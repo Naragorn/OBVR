@@ -1704,77 +1704,7 @@ void TestLegacyButtons() {
 	      "so a legacy click is a stick click and never both");
 }
 
-void TestPickHand() {
-	std::printf("The pick follows the hand that moves\n");
-	using obvr::vr::PickHandState;
-	using obvr::vr::StepPickHand;
-	const float dt = 1.0f / 90.0f;
-	PickHandState s;
-	Check(!StepPickHand(s, true, true, 0.0f, 0.0f, dt), "both still: the right hand, as before");
-	bool left = false;
-	for (int i = 0; i < 20; ++i) {
-		left = StepPickHand(s, true, true, 0.0f, 1.0f, dt);
-	}
-	Check(left, "the left hand reaching (1 m/s, a fifth of a second): the pick goes over");
-	for (int i = 0; i < 90; ++i) {
-		left = StepPickHand(s, true, true, 0.0f, 0.0f, dt);
-	}
-	Check(left, "then both still: it stays with the left hand");
-	for (int i = 0; i < 3; ++i) {
-		left = StepPickHand(s, true, true, 0.3f, 0.0f, dt);
-	}
-	Check(left, "a small twitch of the right hand does not take it back");
-	for (int i = 0; i < 30; ++i) {
-		left = StepPickHand(s, true, true, 1.0f, 0.0f, dt);
-	}
-	Check(!left, "the right hand moving takes it back");
-	PickHandState both;
-	for (int i = 0; i < 30; ++i) {
-		left = StepPickHand(both, true, true, 1.0f, 1.0f, dt);
-	}
-	Check(!left, "both moving alike: no switch");
-	PickHandState lost;
-	lost.left = true;
-	Check(!StepPickHand(lost, true, false, 0.0f, 0.0f, dt), "the left hand not tracked: the right");
-	Check(StepPickHand(lost, false, true, 0.0f, 0.0f, dt), "only the left tracked: the left");
-	// The left hand reaching, then moving away with nothing in reach.
-	PickHandState away;
-	for (int i = 0; i < 20; ++i) {
-		left = StepPickHand(away, true, true, 0.0f, 1.0f, dt, true);
-	}
-	Check(left, "the left hand reaching takes the pick");
-	for (int i = 0; i < 30; ++i) {
-		left = StepPickHand(away, true, true, 0.0f, 1.0f, dt, true);
-	}
-	Check(left, "and keeps it while something is within its reach, moving or not");
-	for (int i = 0; i < 20; ++i) {
-		left = StepPickHand(away, true, true, 0.0f, 1.0f, dt, false);
-	}
-	Check(left, "nothing in reach for a moment: still the left");
-	for (int i = 0; i < 20; ++i) {
-		left = StepPickHand(away, true, true, 0.0f, 1.0f, dt, false);
-	}
-	Check(!left, "nothing in reach for 0.4 s: back to the weapon hand");
-	for (int i = 0; i < 60; ++i) {
-		left = StepPickHand(away, true, true, 0.0f, 1.0f, dt, false);
-	}
-	Check(!left, "the left still moving away does not take it straight back");
-	for (int i = 0; i < 60; ++i) {
-		left = StepPickHand(away, true, true, 0.0f, 1.0f, dt, false);
-	}
-	Check(left, "after the cooldown a moving left hand may try again");
-	PickHandState paused;
-	paused.leftMotion = 0.2f;
-	StepPickHand(paused, true, true, 0.0f, 0.0f, 0.0f);
-	Check(Near(paused.leftMotion, 0.2f), "a frame of no time changes nothing");
-	PickHandState hitch;
-	hitch.leftMotion = 0.2f;
-	StepPickHand(hitch, true, true, 0.0f, 0.0f, 1.0f);
-	Check(Near(hitch.leftMotion, 0.0f), "a long hitch forgets the motion, never negative");
-}
-
 int main() {
-	TestPickHand();
 	TestGestures();
 	TestGrabHand();
 	TestLeftButtonsInHandMode();
