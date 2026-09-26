@@ -375,6 +375,20 @@ torch.
   `ui::SettingsMenu::kRowCapacity` (160), and SettingsMenuTest checks that
   every setting fits.
 
+### Tenth test (2026-09-26): the open hand, not only the pointer
+
+- Beyond the grab's reach an item counted only while the laser pointed at
+  it, but the usual reach is the open hand brought to a thing. The palm now
+  counts too, in a wider cone of 50 degrees (`game::ReachingForWithHand`,
+  `kPalmConeCos`); the laser's 35 degrees stay.
+- The palm's direction is the controller's sideways axis towards the other
+  hand: -x for the right, +x for the left. That is read off how an Index
+  controller is held, not measured; if the back of the hand finds items and
+  the palm does not, the sign is wrong.
+- The death log line "the body is drawn ... ahead" was written every frame:
+  the restore after each render cleared its once-flag. The restore no longer
+  does.
+
 ### Up to the mouth and the body
 
 Held objects stopped about 25 cm from the head (2026-09-26). Eating by

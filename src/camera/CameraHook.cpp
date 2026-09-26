@@ -689,6 +689,15 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 					left ? -config.hands.laserYawDegrees : config.hands.laserYawDegrees,
 					config.hands.laserOriginMetres, config.tracker.unitsPerMetre)
 				                  .direction;
+				// The palm: the controller's own sideways axis, towards the other
+				// hand - a right hand wrapped round the handle faces its palm
+				// left (-x), a left hand right (+x). Read off how the controller
+				// is held, not measured; a palm turned the wrong way would show
+				// as the back of the hand finding items.
+				const NiMatrix33& rel = left ? g_hand.leftHandRotation : g_hand.rightHandRotation;
+				const float side = left ? 1.0f : -1.0f;
+				h.palm = camRot * NiPoint3{rel.data[0][0] * side, rel.data[1][0] * side,
+				                           rel.data[2][0] * side};
 			}
 			return h;
 		};
@@ -2598,7 +2607,7 @@ void BeforeFirstScenePass() {
 	}
 }
 
-void AfterWorldRender() { game::ShiftDeadPlayerBody(false, NiPoint3{0.0f, 0.0f, 0.0f}); }
+void AfterWorldRender() { game::RestoreDeadPlayerBody(); }
 
 bool ScenePassWanted() {
 	// The same menu question, asked of the same source, as the delivery

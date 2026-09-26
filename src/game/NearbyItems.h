@@ -147,8 +147,27 @@ inline bool ReachingFor(const NiPoint3& hand, const NiPoint3& direction, const N
 struct SearchHand {
 	NiPoint3 position{0.0f, 0.0f, 0.0f};
 	NiPoint3 direction{0.0f, 0.0f, 0.0f};  // its laser; zero: no pointing gate
+	// The way its palm faces; zero: none. An item the palm is turned to
+	// counts as reached for too - bringing the open hand to a thing is the
+	// usual reach, not pointing at it (2026-09-26).
+	NiPoint3 palm{0.0f, 0.0f, 0.0f};
 	bool valid = false;
 };
+
+// The palm's cone is wider: an open hand is held less exactly than a
+// pointer. 50 degrees each side.
+constexpr float kPalmConeCos = 0.643f;
+
+// Reached for by either the laser or the palm. With no palm direction only
+// the laser counts, as before; with neither, everything does (ReachingFor).
+inline bool ReachingForWithHand(const SearchHand& hand, const NiPoint3& centre,
+                                float surfaceDistance, float alwaysUnits) {
+	const bool palmKnown = hand.palm.LengthSquared() > 1.0e-12f;
+	return ReachingFor(hand.position, hand.direction, centre, surfaceDistance, alwaysUnits,
+	                   kReachingConeCos) ||
+	       (palmKnown && ReachingFor(hand.position, hand.palm, centre, surfaceDistance,
+	                                 alwaysUnits, kPalmConeCos));
+}
 
 // One item's bound, and whether it is nearer a hand than the best so far.
 struct NearItem {
@@ -173,7 +192,7 @@ inline void ConsiderNearItem(NearItem& best, UInt32 ref, const NiPoint3& centre,
 		}
 		const float d = SurfaceDistance(hand.position, centre, radius);
 		if (d <= reachUnits &&
-		    ReachingFor(hand.position, hand.direction, centre, d, alwaysUnits, kReachingConeCos) &&
+		    ReachingForWithHand(hand, centre, d, alwaysUnits) &&
 		    (!best.valid || d < best.distance)) {
 			best.valid = true;
 			best.left = isLeft;

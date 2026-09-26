@@ -2207,6 +2207,22 @@ void TestNearItems() {
 	ConsiderNearItem(close, 9, obvr::NiPoint3{0.0f, -15.0f, 0.0f}, 2.0f, pointing, noLeft, 70.0f,
 	                 21.0f);
 	Check(close.valid, "within the grab's reach: found wherever the laser points");
+	// The open hand brought to it: the laser elsewhere, the palm towards it.
+	SearchHand palmTowards = pointing;
+	palmTowards.palm = obvr::NiPoint3{1.0f, 0.0f, 0.0f};
+	NearItem byPalm;
+	ConsiderNearItem(byPalm, 10, obvr::NiPoint3{60.0f, 0.0f, 0.0f}, 2.0f, palmTowards, noLeft,
+	                 70.0f, 21.0f);
+	Check(byPalm.valid, "the palm turned to it, the laser elsewhere: found");
+	Check(ReachingForWithHand(palmTowards, obvr::NiPoint3{50.0f, 50.0f, 0.0f}, 50.0f, 21.0f) &&
+	          !ReachingForWithHand(palmTowards, obvr::NiPoint3{-60.0f, 0.0f, 0.0f}, 50.0f, 21.0f),
+	      "the palm's cone is wider (45 degrees in), and the back of the hand does not count");
+	SearchHand palmAway = pointing;
+	palmAway.palm = obvr::NiPoint3{-1.0f, 0.0f, 0.0f};
+	Check(ReachingForWithHand(palmAway, obvr::NiPoint3{5.0f, 60.0f, 0.0f}, 50.0f, 21.0f),
+	      "the palm away but the laser on it: still found");
+	Check(!ReachingForWithHand(pointing, obvr::NiPoint3{60.0f, 0.0f, 0.0f}, 50.0f, 21.0f),
+	      "no palm direction known: the laser alone, as before");
 	Check(ReachingFor(obvr::NiPoint3{0, 0, 0}, obvr::NiPoint3{0, 0, 0}, obvr::NiPoint3{60, 0, 0},
 	                  50.0f, 21.0f, kReachingConeCos) &&
 	          ReachingFor(obvr::NiPoint3{0, 0, 0}, obvr::NiPoint3{0, 1, 0},
