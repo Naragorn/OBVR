@@ -19,7 +19,6 @@ struct Held {
 	UInt32 wrapper = 0;      // bhkRigidBody
 	UInt32 savedGroup = 0;
 	bool grouped = false;
-	VelocityHistory velocities;
 };
 
 Held g_held;
@@ -76,7 +75,7 @@ bool BodyStillThere(const Held& h) {
 	return LooksLikeObject(node) && Read(h.body + kBodyWrapperOffset) == h.wrapper;
 }
 
-void Released(Held& h, float throwStrength) {
+void Released(Held& h) {
 	if (!BodyStillThere(h)) {
 		if (g_linesLeft > 0) {
 			--g_linesLeft;
@@ -107,26 +106,15 @@ void Released(Held& h, float throwStrength) {
 		}
 	}
 	g_seen = SeenPose{};
-	const NiPoint3 v = ThrowVelocity(h.velocities, throwStrength);
-	const bool thrown = v.LengthSquared() > 0.0f;
-	if (thrown) {
-		const UInt32 motion = Read(h.body + kBodyMotionOffset);
-		if (LooksLikeObject(motion) && LooksLikeObject(Read(motion))) {
-			using ActivateFn = void(__thiscall*)(void* body);
-			reinterpret_cast<ActivateFn>(kActivateBody)(reinterpret_cast<void*>(h.body));
-			alignas(16) float havok[4] = {v.x * kHavokPerUnit, v.y * kHavokPerUnit,
-			                              v.z * kHavokPerUnit, 0.0f};
-			using SetVelocityFn = void(__thiscall*)(void* motion, const float* v);
-			const UInt32 slot = Read(Read(motion) + kMotionSetLinearVelocitySlot);
-			reinterpret_cast<SetVelocityFn>(slot)(reinterpret_cast<void*>(motion), havok);
-		}
+	// Its speed stays Havok's; placed, it is woken so it falls from there.
+	if (placed) {
+		using ActivateFn = void(__thiscall*)(void* body);
+		reinterpret_cast<ActivateFn>(kActivateBody)(reinterpret_cast<void*>(h.body));
 	}
 	if (g_linesLeft > 0) {
 		--g_linesLeft;
-		OBVR_LOG("Hands: let go of %08X - group %u put back, %s%s (%.0f units/s)", h.ref,
-		         h.savedGroup, placed ? "placed where it was seen, " : "",
-		         thrown ? "thrown with the hand's speed" : "set down",
-		         static_cast<double>(math::Sqrt(v.LengthSquared())));
+		OBVR_LOG("Hands: let go of %08X - group %u put back, %s", h.ref, h.savedGroup,
+		         placed ? "placed where it was seen, left to Havok" : "left to Havok");
 	}
 }
 
@@ -139,15 +127,14 @@ void NoteHeldPose(UInt32 ref, const NiMatrix33& rot, const NiPoint3& pos) {
 	g_seen.valid = true;
 }
 
-void StepGrabPhysics(bool passBody, float throwStrength, bool velocityValid,
-                     const NiPoint3& velocityUnits) {
+void StepGrabPhysics(bool passBody) {
 	const UInt32 player = PlayerOrZero();
 	const UInt32 body = player != 0 ? GrabbedBody(player) : 0;
 	const UInt32 ref = player != 0 ? Read(player + addr::kPlayerGrabbedRefOffset) : 0;
 
 	if (g_held.body != 0 && body != g_held.body) {
 		// The engine let go (or took something else): this is the release.
-		Released(g_held, throwStrength);
+		Released(g_held);
 		g_held = Held{};
 	}
 	if (body == 0 || !LooksLikeObject(ref)) {
@@ -173,9 +160,6 @@ void StepGrabPhysics(bool passBody, float throwStrength, bool velocityValid,
 				         ref, filter, g_held.savedGroup, group);
 			}
 		}
-	}
-	if (velocityValid) {
-		PushVelocity(g_held.velocities, velocityUnits);
 	}
 }
 

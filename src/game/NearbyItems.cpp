@@ -21,6 +21,15 @@ constexpr UInt32 kMaxRefsPerFrame = 8192;
 
 }  // namespace
 
+UInt8 RefBaseFormType(UInt32 ref) {
+	if (!LooksLikeObject(ref)) {
+		return 0;
+	}
+	const UInt32 base = Read(ref + addr::kRefBaseFormOffset);
+	return LooksLikeObject(base) ? *reinterpret_cast<const UInt8*>(base + addr::kFormTypeOffset)
+	                             : 0;
+}
+
 NearItem FindNearestItem(const NiPoint3& right, bool rightValid, const NiPoint3& left,
                          bool leftValid, float reachUnits, UInt32 except) {
 	NearItem best;

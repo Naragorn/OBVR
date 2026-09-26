@@ -48,6 +48,16 @@ inline bool IsHandItemType(UInt8 type) {
 	}
 }
 
+// Whether the ring and the tooltip go on what the pick found: an item a hand
+// can take, within reach of either hand. Anything else under the pick - an
+// NPC coming close in a fight, most of all - gets neither (2026-09-26).
+inline bool ReachMarkerWanted(bool haveRef, UInt8 baseFormType, bool nearRight, bool nearLeft) {
+	return haveRef && IsHandItemType(baseFormType) && (nearRight || nearLeft);
+}
+
+// The type of a reference's base form, 0 when it cannot be read.
+UInt8 RefBaseFormType(UInt32 ref);
+
 // From a hand to the surface of a bound sphere: 0 inside it.
 inline float SurfaceDistance(const NiPoint3& hand, const NiPoint3& centre, float radius) {
 	const NiPoint3 d{centre.x - hand.x, centre.y - hand.y, centre.z - hand.z};

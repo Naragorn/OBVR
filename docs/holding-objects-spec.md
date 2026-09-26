@@ -180,13 +180,12 @@ with it.
 
 Vanilla's release leaves the spring's damped speed, a soft drop.
 
-- Once the engine has let go, OBVR does what the engine's Telekinesis throw
-  (0x006A7830) does: it activates the body (0x008A6410), then sets its
-  linear velocity (hkMotion vtable +0x54, in Havok units = game units ×
-  0.142877).
-- The velocity is the palm's speed over the last frames, times
-  `[Hands] ThrowStrength` (default 1.0; 0 keeps the soft drop).
-- A hand slower than 0.5 m/s is a set-down, not a throw.
+- Until the fifth test, once the engine had let go, OBVR did what the
+  engine's Telekinesis throw (0x006A7830) does: it activated the body
+  (0x008A6410), then set its linear velocity (hkMotion vtable +0x54, in
+  Havok units = game units × 0.142877).
+- Replaced twice: first the palm's speed, then SteamVR's (fourth test);
+  since the fifth test OBVR sets no speed and leaves the throw to Havok.
 - A body that went away with its hold (picked into the inventory, say) is
   not touched: the check is the ref still having a scene node and the body
   its vtable and wrapper.
@@ -206,7 +205,7 @@ torch.
     bhkRigidBody vtable +0xA0 (SetTranslationAndRotation, 0x008A2FB0), inside
     the Havok critical section at 0x00BA7B00, as the engine's own
     node-to-Havok push does (0x0089EAE0).
-  - Then it is activated and given the palm's speed.
+  - Then it is activated; its speed is Havok's (fifth test).
   - The rotation goes over as a quaternion (x, y, z, w;
     `game::QuaternionFromRotation`, tested against the rotation it came from).
 - **Levitated** (`LevitateObjects=1`): the behaviour of parts 1–4 above.
@@ -265,6 +264,32 @@ torch.
 - How Half-Life: Alyx itself computes a throw: I could not verify this; no
   published source was found.
 
+### Fifth test (2026-09-26): kept as it lay, the throw back to Havok
+
+- **Held as it lay, not like the sword.** The marked side sat in the grip,
+  but the sword turn ("A") set every object upright along the blade. The
+  tester wants the object to keep the turn it had in the world. The in-hand
+  mode now captures the object against the hand when the grip closes
+  (`CaptureAttachment`), as the levitated mode's small things always did:
+  closing the grip moves and turns nothing, and the wrist turns it from
+  there. The marked side (or the middle) stays in the grip, the right hand's
+  `Weapon` node or the left palm (`game::AttachesInHand`).
+  `SwordGripRotation` and `CaptureSwordGrip` are gone.
+- **The throw back to Havok.** Short flicks of the wrist still shot objects
+  away with SteamVR's velocity (ω × r adds the most exactly on a flick). At
+  the tester's call OBVR sets no speed of its own any more: the body is put
+  where it was seen and woken, and keeps the speed the spring gave it.
+  `[Hands] ThrowStrength` and the velocity plumbing are gone; a1ce300 has
+  them if a throw of OBVR's own is wanted again. Vanilla's release was
+  called a soft drop after the second test, so throws may be weak again.
+  Not verified: that SetTranslationAndRotation (bhkRigidBody vtable +0xA0)
+  leaves the body's velocity as it was.
+- **No ring or tooltip on NPCs.** The ring and the tooltip showed on
+  whatever the pick found near a hand, so an enemy close in a fight got the
+  grab ring. They now show only on items a hand can take
+  (`game::ReachMarkerWanted`, the same item types as the distance search).
+  A dead body can still be grabbed with the grip, but shows no ring.
+
 ### Up to the mouth and the body
 
 Held objects stopped about 25 cm from the head (2026-09-26). Eating by
@@ -296,4 +321,5 @@ headset (curl axis and sign, palm offset), then 3(a) for large objects, then
    sideways, the axis is wrong; report that.
 4. **Object in the wrist or too far out?** Move Held object distance in
    2 cm steps.
-5. **Let go and throw.** It flies. Watch for a jolt at the release.
+5. **Let go and throw.** Havok throws it with the speed the spring gave it.
+   Watch for a jolt at the release.

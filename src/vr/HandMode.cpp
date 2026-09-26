@@ -136,9 +136,6 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 			r.rightHandValid = true;
 			r.rightHandRotation = relativeMatrix;
 			r.rightHandOffsetUnits = rightRelative * f.unitsPerMetre;
-			r.rightVelocity = OffsetFromPose(f.head, f.right.velocity, NiPoint3{}, 1.0f);
-			r.rightAngularVelocity =
-				OffsetFromPose(f.head, f.right.angularVelocity, NiPoint3{}, 1.0f);
 		}
 		if (f.firstPerson && !f.menuMode) {
 			r.armsValid = true;
@@ -168,9 +165,6 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 			r.leftHandValid = true;
 			r.leftHandRotation = relativeMatrix;
 			r.leftHandOffsetUnits = leftRelative * f.unitsPerMetre;
-			r.leftVelocity = OffsetFromPose(f.head, f.left.velocity, NiPoint3{}, 1.0f);
-			r.leftAngularVelocity =
-				OffsetFromPose(f.head, f.left.angularVelocity, NiPoint3{}, 1.0f);
 		}
 	}
 

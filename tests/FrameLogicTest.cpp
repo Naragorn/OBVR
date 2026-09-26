@@ -2110,6 +2110,12 @@ void TestNearItems() {
 	Check(!IsHandItemType(0x17) && !IsHandItemType(0x18) && !IsHandItemType(0x1C) &&
 	          !IsHandItemType(0x23) && !IsHandItemType(0x00),
 	      "containers, doors, statics, NPCs are not items");
+	Check(ReachMarkerWanted(true, 0x28, true, false) && ReachMarkerWanted(true, 0x28, false, true),
+	      "the ring and tooltip: an item near either hand");
+	Check(!ReachMarkerWanted(true, 0x23, true, true) && !ReachMarkerWanted(true, 0x24, true, true),
+	      "an NPC or creature under the pick in a fight: no ring, no tooltip");
+	Check(!ReachMarkerWanted(true, 0x28, false, false), "an item out of reach: none");
+	Check(!ReachMarkerWanted(false, 0x28, true, true), "nothing under the pick: none");
 	const obvr::NiPoint3 hand{0.0f, 0.0f, 0.0f};
 	Check(Near(SurfaceDistance(hand, obvr::NiPoint3{10.0f, 0.0f, 0.0f}, 4.0f), 6.0f),
 	      "the distance is to the bound's surface");
@@ -2142,36 +2148,36 @@ void TestNearItems() {
 	Check(tie.valid && !tie.left, "a tie goes to the right hand");
 }
 
-void TestSwordGrip() {
-	std::printf("Held like the sword\n");
-	using obvr::game::SwordGripRotation;
-	const auto Near = [](float a, float b) { return a - b < 1e-4f && b - a < 1e-4f; };
-	const obvr::NiMatrix33 g =
-		SwordGripRotation(obvr::NiPoint3{0.0f, 2.0f, 0.0f}, obvr::NiPoint3{0.6f, 0.8f, 0.0f});
-	Check(Near(g.data[0][2], 0.0f) && Near(g.data[1][2], 1.0f) && Near(g.data[2][2], 0.0f),
-	      "the object's up runs along the blade");
-	Check(Near(g.data[0][0], 1.0f) && Near(g.data[1][0], 0.0f),
-	      "its x across the fingers, made square to the blade");
-	const float det = g.data[0][0] * (g.data[1][1] * g.data[2][2] - g.data[1][2] * g.data[2][1]) -
-	                  g.data[0][1] * (g.data[1][0] * g.data[2][2] - g.data[1][2] * g.data[2][0]) +
-	                  g.data[0][2] * (g.data[1][0] * g.data[2][1] - g.data[1][1] * g.data[2][0]);
-	Check(Near(det, 1.0f), "a proper rotation, not a mirror");
-	const obvr::NiMatrix33 along =
-		SwordGripRotation(obvr::NiPoint3{0.0f, 1.0f, 0.0f}, obvr::NiPoint3{0.0f, 3.0f, 0.0f});
-	Check(Near(along.data[1][2], 1.0f) && Near(along.data[2][0], 1.0f),
-	      "fingers along the blade: the world's up stands in");
-	const obvr::NiMatrix33 none =
-		SwordGripRotation(obvr::NiPoint3{0.0f, 0.0f, 0.0f}, obvr::NiPoint3{1.0f, 0.0f, 0.0f});
-	Check(Near(none.data[1][2], 1.0f), "no blade: forward");
-	using obvr::game::AttachedPose;
-	using obvr::game::CaptureSwordGrip;
-	const obvr::NiPoint3 objectPos{50.0f, 0.0f, 0.0f};
-	const obvr::game::HeldAttachment a = CaptureSwordGrip(
-		obvr::NiMatrix33::Identity(), objectPos, 1.0f, objectPos + obvr::NiPoint3{0.0f, 0.0f, 3.0f});
-	const obvr::game::HeldPose p = AttachedPose(g, obvr::NiPoint3{1.0f, 2.0f, 3.0f}, a, 1.0f);
-	const obvr::NiPoint3 middle = p.pos + p.rot * a.pivotLocal;
-	Check(Near(middle.x, 1.0f) && Near(middle.y, 2.0f) && Near(middle.z, 3.0f),
-	      "the object's middle sits in the grip, whatever way it lay");
+void TestAttachesInHand() {
+	std::printf("Which holds sit in the hand, as they lay\n");
+	using namespace obvr::game;
+	Check(AttachesInHand(true, false, false) && AttachesInHand(true, true, true) &&
+	          AttachesInHand(true, false, true) && AttachesInHand(true, true, false),
+	      "in the hand: every object, touched point or not");
+	Check(AttachesInHand(false, true, true), "levitated: a small thing with a touched point");
+	Check(!AttachesInHand(false, true, false), "levitated: a small thing with no touched point stays on the spring");
+	Check(!AttachesInHand(false, false, true) && !AttachesInHand(false, false, false),
+	      "levitated: anything bigger stays on the spring");
+	// Kept as it lay: at the moment the grip closes the object is where it was,
+	// whatever way the hand is turned; a turn of the wrist turns it from there.
+	const auto Near = [](float a, float b) { return a - b < 1e-3f && b - a < 1e-3f; };
+	const obvr::NiMatrix33 hand = obvr::EulerToMatrix(20.0f, -35.0f, 70.0f);
+	const obvr::NiMatrix33 lay = obvr::EulerToMatrix(0.0f, 90.0f, 10.0f);
+	const obvr::NiPoint3 at{40.0f, 5.0f, -3.0f};
+	const obvr::NiPoint3 side = at + lay * obvr::NiPoint3{4.0f, 0.0f, 0.0f};
+	const HeldAttachment a = CaptureAttachment(hand, lay, at, 1.0f, side);
+	const HeldPose first = AttachedPose(hand, side, a, 1.0f);
+	bool same = Near(first.pos.x, at.x) && Near(first.pos.y, at.y) && Near(first.pos.z, at.z);
+	for (int r = 0; r < 3; ++r) {
+		for (int c = 0; c < 3; ++c) {
+			same = same && Near(first.rot.data[r][c], lay.data[r][c]);
+		}
+	}
+	Check(same, "the grip closing moves and turns nothing: the object keeps how it lay");
+	const HeldPose later = AttachedPose(obvr::NiMatrix33::Identity(), obvr::NiPoint3{0, 0, 0}, a, 1.0f);
+	const obvr::NiPoint3 held = later.pos + later.rot * a.pivotLocal;
+	Check(Near(held.x, 0.0f) && Near(held.y, 0.0f) && Near(held.z, 0.0f),
+	      "the marked side stays in the grip as the hand moves on");
 }
 
 void TestHavokQuaternion() {
@@ -2220,45 +2226,11 @@ void TestHavokQuaternion() {
 	Check(all, "any turn, the half turns included: a unit quaternion of the same rotation");
 }
 
-void TestThrow() {
-	std::printf("Letting go: a set-down or a throw\n");
-	using namespace obvr::game;
-	const auto Near = [](float a, float b) { return a - b < 1e-2f && b - a < 1e-2f; };
+void TestFilterGroup() {
+	std::printf("The held body's collision group\n");
+	using obvr::game::FilterGroup;
 	Check(FilterGroup(0x0009000Au) == 9u && FilterGroup(0x0000000Au) == 0u,
 	      "the system group is the filter's high half");
-	VelocityHistory h;
-	Check(ThrowVelocity(h, 1.0f).LengthSquared() == 0.0f, "no samples: no throw");
-	for (int i = 0; i < 12; ++i) {
-		PushVelocity(h, obvr::NiPoint3{0.0f, 50.0f + 20.0f * static_cast<float>(i), 0.0f});
-	}
-	Check(h.count == kThrowHistory, "the history keeps the last frames only");
-	PushVelocity(h, obvr::NiPoint3{0.0f, 80.0f, 0.0f});  // slowing as the grip opens
-	obvr::NiPoint3 v = ThrowVelocity(h, 1.0f);
-	Check(Near(v.y, 270.0f), "the peak of the last frames, a hand already slowing still throws");
-	Check(Near(ThrowVelocity(h, 0.5f).y, 135.0f), "times the strength");
-	Check(ThrowVelocity(h, 0.0f).LengthSquared() == 0.0f, "strength 0: nothing given");
-	VelocityHistory slow;
-	PushVelocity(slow, obvr::NiPoint3{20.0f, 0.0f, 0.0f});
-	Check(ThrowVelocity(slow, 1.0f).LengthSquared() == 0.0f,
-	      "a hand slower than half a metre a second sets it down");
-	Check(Near(ThrowEase(0.0f), 0.1f) && Near(ThrowEase(kThrowFullSpeedUnits), 1.0f) &&
-	          Near(ThrowEase(10.0f * kThrowFullSpeedUnits), 1.0f),
-	      "the ease: a tenth at rest, all of it from full speed on");
-	Check(ThrowEase(70.0f) < 0.4f && ThrowEase(140.0f) > ThrowEase(70.0f),
-	      "a quick short flick of a metre a second is damped, and rises with speed");
-	VelocityHistory toss;
-	PushVelocity(toss, obvr::NiPoint3{70.0f, 0.0f, 0.0f});
-	Check(Near(ThrowVelocity(toss, 1.0f).x, 70.0f * ThrowEase(70.0f)), "a toss: eased");
-	const obvr::NiPoint3 still = PointVelocity(obvr::NiPoint3{1.0f, 2.0f, 3.0f},
-	                                           obvr::NiPoint3{0.0f, 0.0f, 0.0f},
-	                                           obvr::NiPoint3{5.0f, 0.0f, 0.0f});
-	Check(Near(still.x, 1.0f) && Near(still.y, 2.0f) && Near(still.z, 3.0f),
-	      "no turn: the point moves with the controller");
-	const obvr::NiPoint3 turning = PointVelocity(obvr::NiPoint3{0.0f, 0.0f, 0.0f},
-	                                             obvr::NiPoint3{0.0f, 0.0f, 2.0f},
-	                                             obvr::NiPoint3{10.0f, 0.0f, 0.0f});
-	Check(Near(turning.x, 0.0f) && Near(turning.y, 20.0f) && Near(turning.z, 0.0f),
-	      "a wrist flick: w x r, the point further out moves faster");
 }
 
 void TestHeldObject() {
@@ -3702,9 +3674,9 @@ void TestThirdPersonAimVisual() {
 
 int main() {
 	TestNearItems();
-	TestSwordGrip();
+	TestAttachesInHand();
 	TestHavokQuaternion();
-	TestThrow();
+	TestFilterGroup();
 	TestHeldObject();
 	TestHandGrip();
 	TestNoPlayerStagger();

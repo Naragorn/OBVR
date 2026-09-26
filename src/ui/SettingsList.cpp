@@ -481,13 +481,6 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.attachSmallObjects = v != 0.0f; },
 	},
 	{
-		"Hands", "Throw strength", "Letting go mid-swing throws with the hand's speed times this",
-		ItemKind::Number, 0.0f, 3.0f, 0.1f, 1, false,
-		"Hands", "ThrowStrength",
-		+[](const Config& c) { return c.hands.throwStrength; },
-		+[](Config& c, float v) { c.hands.throwStrength = v; },
-	},
-	{
 		"Hands", "Reach tooltip", "The tooltip icon moves onto what a closed grip would pick up",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "ReachTooltip",

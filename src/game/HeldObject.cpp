@@ -21,7 +21,6 @@ struct Hold {
 	NiAVObject* node = nullptr;
 	HeldAttachment attachment;
 	bool attached = false;
-	bool swordGrip = false;
 };
 
 Hold g_hold;
@@ -44,9 +43,6 @@ void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveT
 	if (!ReadHandBoneWorld(hand.rightHand, handRot, handPos)) {
 		return;
 	}
-	// The in-hand mode holds like the sword (SwordGripRotation); the
-	// levitated mode's small things keep the turn they were taken with.
-	const bool swordGrip = attachAll && hand.haveBlade;
 	if (g_hold.ref != ref) {
 		// A new hold: placed or not, and how it sits against the hand.
 		g_hold = Hold{};
@@ -61,28 +57,25 @@ void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveT
 		const float radius = g_hold.node->worldBound.radius;
 		const bool small = IsSmallHeldObject(type, radius);
 		const NiTransform& world = g_hold.node->worldTransform;
-		if (swordGrip) {
-			// The side the marker showed - the point the pick touched when the
-			// grip closed - goes into the grip; the middle when there is none.
-			g_hold.attachment = CaptureSwordGrip(
-				world.rot, world.pos, world.scale,
-				haveTouched ? touched : g_hold.node->worldBound.center);
-			g_hold.attached = true;
-			g_hold.swordGrip = true;
-		} else if ((small || attachAll) && haveTouched) {
+		if (AttachesInHand(attachAll, small, haveTouched)) {
+			// Turned against the hand as it lay in the world when the grip
+			// closed; the side the marker showed - the point the pick touched -
+			// in the grip, the middle when there is no such point.
 			g_hold.attachment =
-				CaptureAttachment(handRot, world.rot, world.pos, world.scale, touched);
+				CaptureAttachment(handRot, world.rot, world.pos, world.scale,
+				                  haveTouched ? touched : g_hold.node->worldBound.center);
 			g_hold.attached = true;
 		}
 		if (g_reportsLeft > 0) {
 			--g_reportsLeft;
 			OBVR_LOG("Hands: holding %08X (form type %02X, bound radius %.1f units) - %s", ref,
 			         type, static_cast<double>(radius),
-			         g_hold.swordGrip  ? "in the hand like the sword: up along the blade, the "
-			                             "marked side in the grip"
-			         : g_hold.attached ? "fixed in the palm, turning with the wrist"
-			         : small           ? "small, but no touched point: on the spring"
-			                           : "not small: on the spring");
+			         g_hold.attached ? (haveTouched ? "in the hand as it lay, the marked side in "
+			                                          "the grip, turning with the wrist"
+			                                        : "in the hand as it lay, its middle in the "
+			                                          "grip, turning with the wrist")
+			         : small         ? "small, but no touched point: on the spring"
+			                         : "not small: on the spring");
 		}
 	}
 	if (!g_hold.attached || !LooksLikeObject(reinterpret_cast<UInt32>(g_hold.node))) {
@@ -91,16 +84,9 @@ void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveT
 	NiAVObject* const node = g_hold.node;
 	NiAVObject* const parent = node->parent;
 	const float scale = node->worldTransform.scale;
-	HeldPose pose;
-	if (g_hold.swordGrip) {
-		const NiPoint3 fingers{handRot.data[0][0], handRot.data[1][0], handRot.data[2][0]};
-		const NiPoint3 grip =
-			hand.haveGripPoint ? hand.gripPoint : PalmPoint(handRot, handPos, hand.palmAlongUnits);
-		pose = AttachedPose(SwordGripRotation(hand.blade, fingers), grip, g_hold.attachment, scale);
-	} else {
-		pose = AttachedPose(handRot, PalmPoint(handRot, handPos, hand.palmAlongUnits),
-		                    g_hold.attachment, scale);
-	}
+	const NiPoint3 grip =
+		hand.haveGripPoint ? hand.gripPoint : PalmPoint(handRot, handPos, hand.palmAlongUnits);
+	const HeldPose pose = AttachedPose(handRot, grip, g_hold.attachment, scale);
 	// The node's world transform is written directly and only its children
 	// are updated from it: running the node's own update puts a Havok-driven
 	// object back where its rigid body is, which is why the object followed

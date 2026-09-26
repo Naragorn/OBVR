@@ -102,59 +102,23 @@ inline HeldPose AttachedPose(const NiMatrix33& handRot, const NiPoint3& palm,
 	return p;
 }
 
-// The in-hand mode's grip, held the way the sword is (docs/holding-objects-
-// spec.md, "A"): whatever way it was picked up, the object's own up (its
-// local z) runs along the blade - the controller's forward, the axis a swung
-// weapon strikes along - and its x across the fingers; the side the marker
-// showed (the point the pick touched) sits where the weapon's grip is, the
-// middle when there is no such point.
-// Columns: x the fingers made square to the blade, y = z x x, z the blade.
-// A blade along the fingers (no square part) takes the world's up instead.
-inline NiMatrix33 SwordGripRotation(const NiPoint3& blade, const NiPoint3& fingers) {
-	const float bladeLength = math::Sqrt(blade.LengthSquared());
-	const NiPoint3 z = bladeLength > 1.0e-6f ? blade * (1.0f / bladeLength)
-	                                          : NiPoint3{0.0f, 1.0f, 0.0f};
-	const auto square = [&](const NiPoint3& v) {
-		const float along = v.x * z.x + v.y * z.y + v.z * z.z;
-		return NiPoint3{v.x - z.x * along, v.y - z.y * along, v.z - z.z * along};
-	};
-	NiPoint3 x = square(fingers);
-	if (x.LengthSquared() < 1.0e-6f) {
-		x = square(NiPoint3{0.0f, 0.0f, 1.0f});
-	}
-	if (x.LengthSquared() < 1.0e-6f) {
-		x = square(NiPoint3{1.0f, 0.0f, 0.0f});
-	}
-	x = x * (1.0f / math::Sqrt(x.LengthSquared()));
-	const NiPoint3 y{z.y * x.z - z.z * x.y, z.z * x.x - z.x * x.z, z.x * x.y - z.y * x.x};
-	NiMatrix33 m;
-	m.data[0][0] = x.x;
-	m.data[1][0] = x.y;
-	m.data[2][0] = x.z;
-	m.data[0][1] = y.x;
-	m.data[1][1] = y.y;
-	m.data[2][1] = y.z;
-	m.data[0][2] = z.x;
-	m.data[1][2] = z.y;
-	m.data[2][2] = z.z;
-	return m;
-}
-
-// The sword grip's attachment: no turn against the grip frame, and the given
-// point of the object as the point held.
-inline HeldAttachment CaptureSwordGrip(const NiMatrix33& objectRot, const NiPoint3& objectPos,
-                                       float objectScale, const NiPoint3& middleWorld) {
-	return CaptureAttachment(objectRot, objectRot, objectPos, objectScale, middleWorld);
+// Whether a new hold is placed on the hand. The in-hand mode (`attachAll`)
+// places everything, at the touched point or else the middle; the levitated
+// mode only small things, and only with a touched point to hold them by.
+// Either way the object keeps the turn it had in the world when the grip
+// closed and turns with the wrist from there (CaptureAttachment): holding it
+// the way the sword is held was tried and dropped - an object should stay as
+// it lay when picked up (2026-09-26).
+inline bool AttachesInHand(bool attachAll, bool isSmall, bool haveTouched) {
+	return attachAll || (isSmall && haveTouched);
 }
 
 // What one frame of holding knows about the hand.
 struct HeldHand {
 	bool rightHand = true;
 	float palmAlongUnits = 0.0f;
-	// The sword grip: the blade's direction in the world, and where the
-	// weapon's grip is (the hand's Weapon node), when known.
-	bool haveBlade = false;
-	NiPoint3 blade{0.0f, 1.0f, 0.0f};
+	// Where the weapon's grip is (the right hand's Weapon node), when known:
+	// the held point goes there instead of the palm.
 	bool haveGripPoint = false;
 	NiPoint3 gripPoint{0.0f, 0.0f, 0.0f};
 };
