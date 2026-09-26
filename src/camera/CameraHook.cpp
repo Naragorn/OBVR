@@ -149,6 +149,9 @@ render::CrosshairLayer g_crosshairLayer;
 render::VignetteLayer g_vignetteLayer;
 render::LaserLayer g_laserLayer;
 render::ReachMarker g_reachMarker;
+// Whether the ring shows this frame and where: the crosshair's icon hangs in it.
+bool g_reachIconShown = false;
+vr::openvr::HmdMatrix34 g_reachIconPose{};
 // The cyclopean camera, snapshotted in the camera pass (see there); declared
 // early because the hand mode measures the grab reach from it.
 NiTransform g_cyclopeanCameraWorldTransform{};
@@ -423,6 +426,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		game::ForgetStrikes();
 		game::SetMenuCursorHidden(false);
 		g_hand = vr::HandModeResult{};
+		g_reachIconShown = false;
 		g_handMode.Reset();
 		return;
 	}
@@ -638,11 +642,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 
 	// The grab follows whichever hand is holding it: direction through the aim
 	// pose (set above based on which grip is down), distance from that hand.
-	// A hand at the eyes would put the object in the face, so the distance has a floor.
-	float grabUnits = g_hand.grabDistanceMetres * config.tracker.unitsPerMetre;
-	if (grabUnits < 0.25f * config.tracker.unitsPerMetre) {
-		grabUnits = 0.25f * config.tracker.unitsPerMetre;
-	}
+	// No floor: a hand brought to the body brings the object with it - the
+	// quarter-metre floor made it flicker there (2026-09-26), and a gesture
+	// that stows an object at the body is planned.
+	const float grabUnits = g_hand.grabDistanceMetres * config.tracker.unitsPerMetre;
 	// The grab by reach (vr::StepGrabReach): the grip arms it, the pick runs
 	// through the hand, and the key goes down once what it found is within
 	// reach of that hand - measured from the camera the hands are pinned to.
@@ -686,8 +689,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		holdPoint = ray.origin;
 		haveHoldPoint = true;
 	}
-	game::SetGrabAtHand(reach.key, grabUnits, haveHoldPoint, holdPoint,
-	                    0.25f * config.tracker.unitsPerMetre);
+	game::SetGrabAtHand(reach.key, grabUnits, haveHoldPoint, holdPoint, 0.0f);
 
 	// The reach marker ([Hands] ReachMarker): a light-brown ring on the object
 	// under the pick when it is within ReachMarkerMetres of either hand - the
@@ -721,6 +723,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			}
 		}
 		g_reachMarker.Submit(backend, markerShown, markerPose, config.hands.reachMarkerOpacity);
+		// The crosshair's icon moves into the ring while it shows.
+		g_reachIconShown = markerShown;
+		g_reachIconPose = render::ReachIconPose(markerPose);
 	}
 	// Whether the engine took it: its grab update runs only while it holds
 	// something, so a count unchanged a quarter of a second after the key
@@ -3136,6 +3141,8 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	                                  g_headTracker.GetBackendForFrame().HandDeviceIndex(vr::HandDeviceForRole(true, g_handRolesSwapped)),
 	                                  config.hands.laserPitchDegrees, config.hands.laserYawDegrees,
 	                                  config.hands.laserOriginMetres);
+	g_crosshairLayer.SetRoomPlacement(g_reachIconShown, g_reachIconPose,
+	                                  render::kReachIconWidthMetres);
 	g_crosshairLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                        crosshairLifted && content != CrosshairContent::Hidden,
 	                        crosshair.distanceMetres, crosshair.widthMetres);

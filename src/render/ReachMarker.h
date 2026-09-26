@@ -47,4 +47,20 @@ inline float ReachMarkerAlpha(float opacity) {
 constexpr float kReachMarkerWidthMetres = 0.07f;
 constexpr UInt32 kReachMarkerTexture = 64;
 
+// The crosshair's icon in the ring's middle: this wide, a few millimetres
+// towards the wearer so it is drawn over the ring rather than fighting it.
+constexpr float kReachIconWidthMetres = 0.05f;
+constexpr float kReachIconLiftMetres = 0.005f;
+
+// The icon's pose from the ring's: moved along the ring's own +z, the side
+// that faces the wearer (the ring is turned like the head, whose +z points
+// back at the eyes).
+inline vr::openvr::HmdMatrix34 ReachIconPose(const vr::openvr::HmdMatrix34& ring) {
+	vr::openvr::HmdMatrix34 icon = ring;
+	for (int row = 0; row < 3; ++row) {
+		icon.m[row][3] += ring.m[row][2] * kReachIconLiftMetres;
+	}
+	return icon;
+}
+
 }  // namespace obvr::render

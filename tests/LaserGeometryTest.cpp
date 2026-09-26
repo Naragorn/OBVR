@@ -173,6 +173,25 @@ void TestMarkerAlpha() {
 	Check(ReachMarkerAlpha(-0.2f) == 0.0f && ReachMarkerAlpha(0.0f) == 0.0f, "0 or below: invisible");
 	const float nan = std::numeric_limits<float>::quiet_NaN();
 	Check(ReachMarkerAlpha(nan) == 0.0f, "not a number: invisible, never passed on");
+
+	std::printf("The crosshair's icon in the ring\n");
+	obvr::vr::openvr::HmdMatrix34 ring{};
+	ring.m[0][0] = ring.m[1][1] = ring.m[2][2] = 1.0f;
+	ring.m[0][3] = 1.0f;
+	ring.m[1][3] = 2.0f;
+	ring.m[2][3] = 3.0f;
+	const obvr::vr::openvr::HmdMatrix34 icon = obvr::render::ReachIconPose(ring);
+	Check(Near(icon.m[0][3], 1.0f) && Near(icon.m[1][3], 2.0f) &&
+	          Near(icon.m[2][3], 3.0f + obvr::render::kReachIconLiftMetres, 1e-5f),
+	      "unturned: lifted along +z, towards the wearer, turned like the ring");
+	ring.m[0][0] = 0.0f;
+	ring.m[0][2] = 1.0f;
+	ring.m[2][0] = -1.0f;
+	ring.m[2][2] = 0.0f;
+	const obvr::vr::openvr::HmdMatrix34 turned = obvr::render::ReachIconPose(ring);
+	Check(Near(turned.m[0][3], 1.0f + obvr::render::kReachIconLiftMetres, 1e-5f) &&
+	          Near(turned.m[2][3], 3.0f) && turned.m[0][2] == 1.0f,
+	      "turned a quarter: lifted along the ring's own +z");
 }
 
 int main() {

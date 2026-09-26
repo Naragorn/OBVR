@@ -403,8 +403,26 @@ void CrosshairLayer::SetHandPlacement(bool onHand, UInt32 deviceIndex, float pit
 	m_handOrigin = originMetres;
 }
 
+void CrosshairLayer::SetRoomPlacement(bool inRoom, const vr::openvr::HmdMatrix34& trackingToQuad,
+                                      float widthMetres) {
+	m_inRoom = inRoom;
+	m_roomPose = trackingToQuad;
+	m_roomWidth = widthMetres;
+}
+
 void CrosshairLayer::Place(vr::OpenVRBackend& backend, float distanceMetres,
                            float widthMetres) {
+	// In the room: follows the object and the head every frame, so no
+	// comparison - and the next placement on the hand or the head has to be
+	// said again.
+	if (m_inRoom) {
+		backend.SetOverlayTransformAbsolute(m_overlay, m_roomPose);
+		backend.SetOverlayWidthInMetres(m_overlay, m_roomWidth);
+		m_placedInRoom = true;
+		m_placed = false;
+		return;
+	}
+	m_placedInRoom = false;
 	// Nothing moved, so nothing is said. Worth the comparison because this
 	// runs every frame and both calls cross into the compositor.
 	if (m_placed && m_placedDistance == distanceMetres && m_placedWidth == widthMetres &&

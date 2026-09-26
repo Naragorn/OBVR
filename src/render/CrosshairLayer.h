@@ -64,6 +64,13 @@ public:
 	void SetHandPlacement(bool onHand, UInt32 deviceIndex, float pitchDegrees = 0.0f,
 	                      float yawDegrees = 0.0f, float originMetres = 0.0f);
 
+	// Hangs the quad at a place in the room instead, at its own width - the
+	// middle of the reach marker's ring, so the icon of what a closed grip
+	// would take stands on that object, large (render::ReachIconPose). Wins
+	// over the hand and the head while on. Set before Submit.
+	void SetRoomPlacement(bool inRoom, const vr::openvr::HmdMatrix34& trackingToQuad,
+	                      float widthMetres);
+
 	// Takes Oblivion's own crosshair out of the captured 2D layer and into
 	// this one - copies the middle of the layer here, then clears it there.
 	//
@@ -175,6 +182,10 @@ private:
 	float m_placedPitch = 0.0f;
 	float m_placedYaw = 0.0f;
 	float m_placedOrigin = 0.0f;
+	bool m_inRoom = false;
+	vr::openvr::HmdMatrix34 m_roomPose{};
+	float m_roomWidth = 0.0f;
+	bool m_placedInRoom = false;
 
 	VulkanContext m_vulkan;
 	bool m_vulkanChecked = false;
