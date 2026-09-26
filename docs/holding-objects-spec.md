@@ -346,6 +346,21 @@ torch.
   and 0.35 s (`game::FloatSeconds`, `FloatWeight`, `FloatPoint`). The object
   keeps its turn and follows the wrist on the way.
 
+### Eighth test (2026-09-26): the pull, the ring earlier
+
+- **The pull.** `[Hands] PullReachMetres` (default 1.0, 0 is off, up to 2):
+  a closed grip takes an item that far from the hand while the hand points
+  at it (beyond the grab's reach, `game::ReachingFor`), and the item floats
+  in. Only items a hand can take are pulled; a body or anything else the
+  grab could move still needs `GrabReachMetres` (`game::GripTakes`). The
+  float now lasts up to 0.6 s, half a second from a metre.
+  Not verified: that the engine's grab takes an object that far; the log
+  says "did NOT take" when it refuses.
+- **The ring moves earlier.** `[Hands] ReachNearSideMetres` (default 0.5)
+  is where the ring sits all the way on the near side, and the move from
+  the middle is eased out, fastest at first: five centimetres in from a
+  metre it has moved a fifth of the way.
+
 ### Up to the mouth and the body
 
 Held objects stopped about 25 cm from the head (2026-09-26). Eating by

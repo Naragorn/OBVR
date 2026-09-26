@@ -2132,9 +2132,18 @@ void TestNearItems() {
 	      "at the marker's distance or beyond: the middle");
 	Check(Near(NearSideWeight(7.0f, 21.0f, 7.0f), 1.0f) && Near(NearSideWeight(0.0f, 21.0f, 7.0f), 1.0f),
 	      "from the threshold in: the near side wins");
-	Check(Near(NearSideWeight(14.0f, 21.0f, 7.0f), 0.5f) &&
+	Check(Near(NearSideWeight(14.0f, 21.0f, 7.0f), 0.75f) &&
 	          NearSideWeight(10.0f, 21.0f, 7.0f) > NearSideWeight(18.0f, 21.0f, 7.0f),
-	      "between: the closer the hand, the closer the ring");
+	      "between: the closer the hand, the closer the ring - three quarters there at half way");
+	Check(NearSideWeight(66.5f, 70.0f, 35.0f) > 0.18f,
+	      "eased out: 5 cm in from a metre it has already moved a fifth of the way");
+	Check(GripTakes(20.0f, false, 21.0f, 70.0f) && GripTakes(20.0f, true, 21.0f, 0.0f),
+	      "within the grab's reach: anything, pull or not");
+	Check(GripTakes(65.0f, true, 21.0f, 70.0f), "an item 93 cm away with a metre of pull: taken, it floats in");
+	Check(!GripTakes(65.0f, false, 21.0f, 70.0f),
+	      "a body or anything not an item that far: not pulled");
+	Check(!GripTakes(65.0f, true, 21.0f, 0.0f), "pull reach 0: off");
+	Check(!GripTakes(90.0f, true, 21.0f, 70.0f), "beyond the pull's reach: nothing");
 	Check(Near(NearSideWeight(5.0f, 7.0f, 7.0f), 1.0f) && Near(NearSideWeight(9.0f, 7.0f, 7.0f), 0.0f),
 	      "a marker distance no larger than the threshold: a step at it");
 	const obvr::NiPoint3 middle{0.0f, 0.0f, 0.0f};
@@ -2217,6 +2226,7 @@ void TestFloatToHand() {
 	Check(Near(FloatSeconds(0.0f), kFloatMinSeconds) && Near(FloatSeconds(-5.0f), kFloatMinSeconds),
 	      "an object already in the hand: the shortest float");
 	Check(Near(FloatSeconds(21.0f), 0.15f), "30 cm away: 0.15 s, at about 2 m/s");
+	Check(Near(FloatSeconds(70.0f), 0.5f), "pulled from a metre: half a second");
 	Check(Near(FloatSeconds(1000.0f), kFloatMaxSeconds), "never longer than the most");
 	Check(Near(FloatWeight(0.0f, 0.2f), 0.0f) && Near(FloatWeight(0.2f, 0.2f), 1.0f) &&
 	          Near(FloatWeight(5.0f, 0.2f), 1.0f) && Near(FloatWeight(-1.0f, 0.2f), 0.0f),

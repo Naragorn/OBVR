@@ -546,6 +546,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadFloat("Look", "DeathViewBackMetres", config.look.deathViewBackMetres, path);
 	config.look.deathBodyAheadMetres =
 		ReadFloat("Look", "DeathBodyAheadMetres", config.look.deathBodyAheadMetres, path);
+	config.look.deathBodyUpMetres =
+		ReadFloat("Look", "DeathBodyUpMetres", config.look.deathBodyUpMetres, path);
 	config.look.hideHudWhenDead =
 		ReadBool("Look", "HideHudWhenDead", config.look.hideHudWhenDead, path);
 	config.look.noPlayerStagger =
@@ -674,6 +676,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.handGripForwardMetres =
 			ReadFloat("Hands", "HandGripForwardMetres", h.handGripForwardMetres, path);
 		h.grabReachMetres = ReadFloat("Hands", "GrabReachMetres", h.grabReachMetres, path);
+		h.pullReachMetres = ReadFloat("Hands", "PullReachMetres", h.pullReachMetres, path);
+		h.reachNearSideMetres =
+			ReadFloat("Hands", "ReachNearSideMetres", h.reachNearSideMetres, path);
 		h.heldObjectMetres = ReadFloat("Hands", "HeldObjectMetres", h.heldObjectMetres, path);
 		h.gripCurlDegrees = ReadFloat("Hands", "GripCurlDegrees", h.gripCurlDegrees, path);
 		h.throwStrength = ReadFloat("Hands", "ThrowStrength", h.throwStrength, path);

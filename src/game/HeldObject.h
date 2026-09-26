@@ -117,11 +117,12 @@ inline bool AttachesInHand(bool attachAll, bool isSmall, bool haveTouched) {
 // new hold is not put into the hand at once. The point that goes into the
 // grip travels from where it lay to the grip, eased, while the object keeps
 // the turn it had and follows the wrist, so closing the grip moves nothing
-// and the object then glides in. It takes the distance at about 2 m/s,
-// never less than a tenth of a second nor more than 0.35.
+// and the object then glides in - from as far as the pull reaches (game::
+// GripTakes). It takes the distance at about 2 m/s,
+// never less than a tenth of a second nor more than 0.6.
 constexpr float kFloatUnitsPerSecond = 140.0f;
 constexpr float kFloatMinSeconds = 0.10f;
-constexpr float kFloatMaxSeconds = 0.35f;
+constexpr float kFloatMaxSeconds = 0.6f;
 
 inline float FloatSeconds(float distanceUnits) {
 	const float s = (distanceUnits > 0.0f ? distanceUnits : 0.0f) / kFloatUnitsPerSecond;

@@ -73,6 +73,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.look.deathBodyAheadMetres = v; },
 	},
 	{
+		"Comfort", "Death body height", "How far above (negative: below) where it falls your body is shown, metres",
+		ItemKind::Number, -1.0f, 1.0f, 0.05f, 2, false,
+		"Look", "DeathBodyUpMetres",
+		+[](const Config& c) { return c.look.deathBodyUpMetres; },
+		+[](Config& c, float v) { c.look.deathBodyUpMetres = v; },
+	},
+	{
 		"Comfort", "Hide HUD when dead", "The HUD and crosshair go when you die",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Look", "HideHudWhenDead",
@@ -467,6 +474,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.grabReachMetres = v; },
 	},
 	{
+		"Hands", "Pull reach", "How far a grip pulls an item it points at into the hand, metres; 0 is off",
+		ItemKind::Number, 0.0f, 2.0f, 0.1f, 1, false,
+		"Hands", "PullReachMetres",
+		+[](const Config& c) { return c.hands.pullReachMetres; },
+		+[](Config& c, float v) { c.hands.pullReachMetres = v; },
+	},
+	{
 		"Hands", "Held object distance", "How far from the palm along the fingers a held object sits, metres",
 		ItemKind::Number, -0.2f, 0.4f, 0.02f, 2, false,
 		"Hands", "HeldObjectMetres",
@@ -521,6 +535,13 @@ const SettingDefinition kSettings[] = {
 		"Hands", "ReachMarkerMetres",
 		+[](const Config& c) { return c.hands.reachMarkerMetres; },
 		+[](Config& c, float v) { c.hands.reachMarkerMetres = v; },
+	},
+	{
+		"Hands", "Ring to the near side", "How near the hand the ring sits on the item's nearest side, metres",
+		ItemKind::Number, 0.0f, 2.0f, 0.05f, 2, false,
+		"Hands", "ReachNearSideMetres",
+		+[](const Config& c) { return c.hands.reachNearSideMetres; },
+		+[](Config& c, float v) { c.hands.reachNearSideMetres = v; },
 	},
 	{
 		"Hands", "Reach marker opacity", "How solid the ring is, 0 to 1",

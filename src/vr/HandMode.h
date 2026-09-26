@@ -104,6 +104,10 @@ struct HandSettings {
 	// How close the hand has to be to an object for the grip to take it,
 	// metres from the hand to the object's origin.
 	float grabReachMetres = 0.3f;
+	// How far a closed grip reaches for an item that then floats to the hand
+	// (game::GripTakes), metres from the hand; beyond the grab's reach only
+	// while the hand points at it. 0 is off.
+	float pullReachMetres = 1.0f;
 	// Where a held object sits: this many metres from the palm along the
 	// fingers; 0 is the palm, negative pulls it back towards the wrist.
 	float heldObjectMetres = 0.0f;
@@ -132,6 +136,9 @@ struct HandSettings {
 	// the hand's laser points roughly at it (game::ReachingFor), so an item
 	// on a table does not take the pick from a door being pointed at.
 	float reachMarkerMetres = 1.0f;
+	// From how near the hand the ring sits all the way on the item's side
+	// nearest it, metres; from the marker's distance it moves there.
+	float reachNearSideMetres = 0.5f;
 	float reachMarkerOpacity = 0.85f;
 
 	// Strikes by motion: with a swung weapon in hand the swing itself is the

@@ -667,10 +667,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
 		const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
 		const bool gripping = g_hand.grabWanted;
-		const float reach = (config.hands.grabReachMetres > config.hands.reachMarkerMetres
-		                         ? config.hands.grabReachMetres
-		                         : config.hands.reachMarkerMetres) *
-		                    config.tracker.unitsPerMetre;
+		float reachMetres = config.hands.grabReachMetres;
+		reachMetres = config.hands.reachMarkerMetres > reachMetres ? config.hands.reachMarkerMetres
+		                                                            : reachMetres;
+		reachMetres = config.hands.pullReachMetres > reachMetres ? config.hands.pullReachMetres
+		                                                          : reachMetres;
+		const float reach = reachMetres * config.tracker.unitsPerMetre;
 		// Each hand with its laser, the beam the settings tilt: beyond the
 		// grab's reach an item counts only while that beam points at it.
 		const auto hand = [&](bool left, bool valid) {
@@ -717,9 +719,14 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		// to be at the object itself.
 		NiPoint3 hit = target.position;
 		game::ReadPickHit(hit);
+		// Within the grab's reach, or an item within the pull's, which then
+		// floats to the hand (game::GripTakes, game::HeldObject).
+		const float perMetre = config.tracker.unitsPerMetre;
 		inReach = target.haveRef &&
-		          vr::WithinReach(handWorld, hit,
-		                          config.hands.grabReachMetres * config.tracker.unitsPerMetre);
+		          game::GripTakes(
+		              math::Sqrt((hit - handWorld).LengthSquared()),
+		              game::IsHandItemType(game::RefBaseFormType(target.refAddress)),
+		              config.hands.grabReachMetres * perMetre, config.hands.pullReachMetres * perMetre);
 		reachRef = target.haveRef ? target.refAddress : 0;
 	}
 	const vr::GrabReachVerdict reach = vr::StepGrabReach(g_grabReach, gripHeld, inReach);
@@ -866,7 +873,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		if (grabPhase == 2) {
 			OBVR_LOG("Hands: grab - %s grip took %08X within %.2f m, key %02X down",
 			         g_hand.grabWithLeftHand ? "left" : "right", reachRef,
-			         static_cast<double>(config.hands.grabReachMetres), config.handKeys.grab);
+			         static_cast<double>(config.hands.pullReachMetres > config.hands.grabReachMetres
+			                                 ? config.hands.pullReachMetres
+			                                 : config.hands.grabReachMetres), config.handKeys.grab);
 		} else if (grabPhase == 1) {
 			OBVR_LOG("Hands: grab - %s grip closed, reaching for something within %.2f m",
 			         g_hand.grabWithLeftHand ? "left" : "right",
@@ -2573,12 +2582,12 @@ void BeforeFirstScenePass() {
 	// puts it back.
 	{
 		const Config& config = GetConfig();
-		const bool wanted = g_deathView.held && g_deathView.haveAliveTurn &&
-		                    config.look.deathBodyAheadMetres > 0.0f && !game::IsMenuMode();
+		const bool wanted = g_deathView.held && g_deathView.haveAliveTurn && !game::IsMenuMode();
+		const float perMetre = config.tracker.unitsPerMetre;
 		game::ShiftDeadPlayerBody(
 			wanted, wanted ? DeathBodyAhead(g_deathView.lastAliveRot,
-			                                config.look.deathBodyAheadMetres *
-			                                    config.tracker.unitsPerMetre)
+			                                config.look.deathBodyAheadMetres * perMetre) +
+			                     NiPoint3{0.0f, 0.0f, config.look.deathBodyUpMetres * perMetre}
 			               : NiPoint3{0.0f, 0.0f, 0.0f});
 	}
 }
@@ -4192,7 +4201,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			                                                : g_hand.rightHandOffsetUnits);
 			// Towards the side nearest the hand as it comes closer
 			// (game::NearSideWeight): the ring moves to the hand, and from
-			// kNearSideMetres in the near side is what the grip takes.
+			// ReachNearSideMetres in the near side is what the grip takes.
 			NiPoint3 aim = g_nearItem.centre;
 			NiPoint3 nearSurface;
 			float nearDistance = 0.0f;
@@ -4201,7 +4210,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 				aim = game::NearSideAimPoint(
 					g_nearItem.centre, nearSurface,
 					game::NearSideWeight(nearDistance, hands.reachMarkerMetres * perMetre,
-					                     game::kNearSideMetres * perMetre));
+					                     hands.reachNearSideMetres * perMetre));
 			}
 			const vr::LaserWorldRay ray = vr::RayTowards(
 				from, aim, hands.grabReachMetres * config.tracker.unitsPerMetre,

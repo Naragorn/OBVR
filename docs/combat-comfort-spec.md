@@ -176,6 +176,8 @@ verify this from code; a headset test with each switched off would settle it.
   world render only and everything is put back after it, because the
   ragdoll's nodes are Havok's and a node update would put them back. Not
   built: a fade-in of the body.
+- `[Look] DeathBodyUpMetres` (default 0) raises (negative: lowers) the body
+  drawn ahead, at the tester's request.
 - `[Look] HideHudWhenDead` (default on) hides the HUD and the crosshair
   while dead, until the load menu opens; the game kept drawing its HUD for
   seconds (`camera::HudHiddenForDeath`).

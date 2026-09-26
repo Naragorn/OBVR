@@ -120,6 +120,8 @@ struct LookSettings {
 	// along the living heading (game::DeathBody): the view stays still and the
 	// body is seen falling in front of it. 0 leaves it where it falls.
 	float deathBodyAheadMetres = 0.5f;
+	// And how far above (negative: below) where it falls, metres.
+	float deathBodyUpMetres = 0.0f;
 	// The HUD and the crosshair gone while dead - until a menu (the load)
 	// opens.
 	bool hideHudWhenDead = true;
