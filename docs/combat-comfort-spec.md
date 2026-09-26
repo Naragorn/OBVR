@@ -154,6 +154,16 @@ verify this from code; a headset test with each switched off would settle it.
 6. **Recoil for the player removed as well.** Reroute 0x005F4F00's callers
    the same way, if the test shows that the recoil jolts too.
 
+## 3. Death
+
+- The death view (`[Look] DeathViewStill`) holds the camera from the last
+  living frame. The first dead frame is already the game's third-person chase
+  camera, so holding from there showed a jump.
+- Since 2026-09-26 it also holds the base rotation and the vertical offset
+  (`StepDeathTurn`). A "final stagger" was still felt at death; the
+  assumption, not yet verified, is the chase camera turning and sinking
+  towards the body.
+
 ## Test reminders
 
 - With the switch on: fights with power attacks show no lurch back. The log

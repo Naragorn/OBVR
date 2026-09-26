@@ -1737,6 +1737,32 @@ void TestPickHand() {
 	lost.left = true;
 	Check(!StepPickHand(lost, true, false, 0.0f, 0.0f, dt), "the left hand not tracked: the right");
 	Check(StepPickHand(lost, false, true, 0.0f, 0.0f, dt), "only the left tracked: the left");
+	// The left hand reaching, then moving away with nothing in reach.
+	PickHandState away;
+	for (int i = 0; i < 20; ++i) {
+		left = StepPickHand(away, true, true, 0.0f, 1.0f, dt, true);
+	}
+	Check(left, "the left hand reaching takes the pick");
+	for (int i = 0; i < 30; ++i) {
+		left = StepPickHand(away, true, true, 0.0f, 1.0f, dt, true);
+	}
+	Check(left, "and keeps it while something is within its reach, moving or not");
+	for (int i = 0; i < 20; ++i) {
+		left = StepPickHand(away, true, true, 0.0f, 1.0f, dt, false);
+	}
+	Check(left, "nothing in reach for a moment: still the left");
+	for (int i = 0; i < 20; ++i) {
+		left = StepPickHand(away, true, true, 0.0f, 1.0f, dt, false);
+	}
+	Check(!left, "nothing in reach for 0.4 s: back to the weapon hand");
+	for (int i = 0; i < 60; ++i) {
+		left = StepPickHand(away, true, true, 0.0f, 1.0f, dt, false);
+	}
+	Check(!left, "the left still moving away does not take it straight back");
+	for (int i = 0; i < 60; ++i) {
+		left = StepPickHand(away, true, true, 0.0f, 1.0f, dt, false);
+	}
+	Check(left, "after the cooldown a moving left hand may try again");
 	PickHandState paused;
 	paused.leftMotion = 0.2f;
 	StepPickHand(paused, true, true, 0.0f, 0.0f, 0.0f);

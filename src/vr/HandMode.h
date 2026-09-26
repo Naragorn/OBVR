@@ -110,20 +110,22 @@ struct HandSettings {
 	// Small things (potions, keys, ingredients ...) fixed in the palm and
 	// turned with the wrist instead of hanging on the spring (game::HeldObject).
 	bool attachSmallObjects = true;
-	// A held object passes through the player's own body (game::GrabPhysics),
-	// so it can be brought to it.
-	bool heldPassesBody = true;
+	// How a grabbed object is held. Off (the default): in the hand - every
+	// object sits fixed in the palm and turns with the wrist, like a sword or a
+	// torch. On: levitated - the game's own spring pulls it towards the palm and
+	// only small things (AttachSmallObjects) sit fixed. Either way, letting go
+	// hands it back to Havok with the hand's speed.
+	bool levitateObjects = false;
 	// Letting go mid-swing throws with the palm's speed times this; 0 leaves
 	// the engine's soft drop.
 	float throwStrength = 1.0f;
 	// How far each finger link bends while the hand holds something, degrees
 	// (game::HandGrip); negative bends the other way, 0 leaves the hand open.
 	float gripCurlDegrees = 45.0f;
-	// A light-brown ring on the object a closed grip would take, while it is
-	// within reach (render::ReachMarker).
-	bool reachMarker = true;
-	// With the marker on: whether its ring is drawn. Off leaves only the
-	// crosshair's icon moving onto the object.
+	// What a closed grip would take, while it is within ReachMarkerMetres of a
+	// hand: the crosshair's tooltip icon moved onto it, large, and a light-brown
+	// ring around it (render::ReachMarker). Each on its own switch.
+	bool reachTooltip = true;
 	bool reachRing = true;
 	// How close a hand has to be for the ring to show, metres, and how
 	// opaque it is (0 to 1).
@@ -209,6 +211,9 @@ struct HandModeFrame {
 	// The hands are being adjusted (the INI switch or the guided window): a
 	// closed grip holds a hand, it does not grab.
 	bool adjustingHands = false;
+	// Last frame: whether the pick, run along the left hand's laser, found
+	// something within that hand's reach (StepPickHand).
+	bool leftPickInReach = false;
 	// The quad the game's menus hang on when they are not on a wrist - on
 	// the head or in the room - in tracking space, for the laser.
 	MenuQuad menuQuad;
@@ -235,6 +240,12 @@ struct HandModeFrame {
 	// Whether the tile under the game's cursor is a scroll bar's: pulled there,
 	// the laser holds the button at once so the marker can be dragged.
 	bool cursorOnScrollBar = false;
+	// The menu is one surface dragged with the button held - the map: a pull
+	// holds the button at once, as on a scroll bar, so the map pans with the
+	// beam in every direction. Before, an up-and-down drag turned into wheel
+	// notches (the map's zoom) and only a sideways one held the button, so the
+	// map moved only now and then (2026-09-26).
+	bool menuIsDragSurface = false;
 	float cursorX = 0.0f;
 	float cursorY = 0.0f;
 };

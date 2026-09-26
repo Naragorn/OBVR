@@ -173,7 +173,8 @@ with it.
   read from the controller's filter (0x0065ABE0); the fallback is 9.
 - On release its own group goes back.
 - It keeps colliding with the world.
-- Setting: [Hands] HeldPassesBody (default on). Code: game::GrabPhysics.
+- Always on, no setting: gestures will build on it (an object brought to the
+  body goes into the inventory). Code: `game::GrabPhysics`.
 
 ### Throwing
 
@@ -181,14 +182,49 @@ Vanilla's release leaves the spring's damped speed, a soft drop.
 
 - Once the engine has let go, OBVR does what the engine's Telekinesis throw
   (0x006A7830) does: it activates the body (0x008A6410), then sets its
-  linear velocity (hkMotion vtable +0x54, in Havok units = game units Ã—
+  linear velocity (hkMotion vtable +0x54, in Havok units = game units ×
   0.142877).
 - The velocity is the palm's speed over the last frames, times
-  [Hands] ThrowStrength (default 1.0; 0 keeps the soft drop).
+  `[Hands] ThrowStrength` (default 1.0; 0 keeps the soft drop).
 - A hand slower than 0.5 m/s is a set-down, not a throw.
 - A body that went away with its hold (picked into the inventory, say) is
   not touched: the check is the ref still having a scene node and the body
   its vtable and wrapper.
+
+### Two modes: in the hand (default) and levitated
+
+The tester's call after the second test: the levitating grab goes behind a
+flag, and the default holds every object in the hand like a sword or a
+torch.
+
+- **In the hand** (`[Hands] LevitateObjects=0`, the default):
+  - Every grabbed object's scene node is placed on the hand each frame, as
+    part 4 does for small ones. It turns with the wrist, and the touched
+    point stays in the palm.
+  - The spring still pulls the physics body to the palm.
+  - On release the body is first put where the object was seen, through
+    bhkRigidBody vtable +0xA0 (SetTranslationAndRotation, 0x008A2FB0), inside
+    the Havok critical section at 0x00BA7B00, as the engine's own
+    node-to-Havok push does (0x0089EAE0).
+  - Then it is activated and given the palm's speed.
+  - The rotation goes over as a quaternion (x, y, z, w;
+    `game::QuaternionFromRotation`, tested against the rotation it came from).
+- **Levitated** (`LevitateObjects=1`): the behaviour of parts 1–4 above.
+  Only small things are fixed (`AttachSmallObjects`); the rest floats on the
+  spring.
+
+### Up to the mouth and the body
+
+Held objects stopped about 25 cm from the head (2026-09-26). Eating by
+bringing food to the mouth is a planned gesture.
+
+- The grab update keeps the spring's target out of a cylinder round the
+  player: the controller's radius × 6.999 + 5 units (0x0066DF10..0x0066DF44).
+- `game::AllowGrabNearBody` turns its branch (`jne` at 0x0066DF44) into a
+  `jmp` while the hand mode runs, with the same x87 stack, and puts it back
+  otherwise.
+- **Not verified:** the near clip plane is 10 units (14 cm) from the eye, so
+  an object right at the mouth may be cut away in the picture.
 
 ## Order
 

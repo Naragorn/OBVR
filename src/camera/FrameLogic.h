@@ -646,7 +646,36 @@ struct DeathViewState {
 	NiPoint3 position{0.0f, 0.0f, 0.0f};
 	bool haveAlive = false;
 	NiPoint3 lastAlive{0.0f, 0.0f, 0.0f};
+	// The turn and the height of the view, held the same way (StepDeathTurn):
+	// the dying player's camera also swings round and down towards the body,
+	// the "final stagger" still felt on 2026-09-26.
+	bool turnHeld = false;
+	NiMatrix33 rot = NiMatrix33::Identity();
+	float vertical = 0.0f;
+	bool haveAliveTurn = false;
+	NiMatrix33 lastAliveRot = NiMatrix33::Identity();
+	float lastAliveVertical = 0.0f;
 };
+
+// After StepDeathView on the same frame: while the view is held, the base
+// rotation and the vertical offset it is built on stay those of the last
+// living frame too. Writes the ones to use into rot and vertical.
+inline void StepDeathTurn(DeathViewState& s, NiMatrix33& rot, float& vertical) {
+	if (!s.held) {
+		s.turnHeld = false;
+		s.haveAliveTurn = true;
+		s.lastAliveRot = rot;
+		s.lastAliveVertical = vertical;
+		return;
+	}
+	if (!s.turnHeld) {
+		s.turnHeld = true;
+		s.rot = s.haveAliveTurn ? s.lastAliveRot : rot;
+		s.vertical = s.haveAliveTurn ? s.lastAliveVertical : vertical;
+	}
+	rot = s.rot;
+	vertical = s.vertical;
+}
 
 inline NiPoint3 StepDeathView(DeathViewState& s, bool enabled, bool dead,
                               const NiPoint3& current) {

@@ -105,7 +105,9 @@ inline HeldPose AttachedPose(const NiMatrix33& handRot, const NiPoint3& palm,
 // held object in the palm of the hand that holds it. `holding` is the
 // engine holding something for `rightHand`'s hand; `touched` the point the
 // grab's ray hit when the hold began (valid with haveTouched).
+// `attachAll` is the in-hand mode (Hands.LevitateObjects off): every held
+// object sits in the hand, not only small ones.
 void StepHeldObject(bool enabled, bool holding, bool rightHand, bool haveTouched,
-                    const NiPoint3& touched, float palmAlongUnits);
+                    const NiPoint3& touched, float palmAlongUnits, bool attachAll = false);
 
 }  // namespace obvr::game

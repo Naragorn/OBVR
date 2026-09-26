@@ -41,6 +41,7 @@
 #include "game/HandGrip.h"
 #include "game/HeldObject.h"
 #include "game/GrabPhysics.h"
+#include "game/GrabNearBody.h"
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
 #include "render/DxvkInterop.h"
@@ -155,6 +156,9 @@ render::LaserLayer g_laserLayer;
 render::ReachMarker g_reachMarker;
 // Whether the ring shows this frame and where: the crosshair's icon hangs in it.
 bool g_reachIconShown = false;
+// Whether the pick, when it ran along the left hand's laser, found something
+// within that hand's grab reach - read by the next frame's StepPickHand.
+bool g_leftPickInReach = false;
 vr::openvr::HmdMatrix34 g_reachIconPose{};
 // The cyclopean camera, snapshotted in the camera pass (see there); declared
 // early because the hand mode measures the grab reach from it.
@@ -426,6 +430,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_hudLayer.ClearWristPlacement();
 		game::HideFirstPersonNodes(false, "");
 		game::KeepFirstPersonDepth(false);
+		game::AllowGrabNearBody(false);
 		g_headsetRenderer.SetControllersWanted(false);
 		game::ForgetStrikes();
 		game::SetMenuCursorHidden(false);
@@ -484,12 +489,15 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		game::HideFirstPersonNodes(!ReadIsThirdPerson(), HandsHideList(config.hands, handsAway));
 		// The hands in the world rather than on top of it (FirstPersonDepth.h).
 		game::KeepFirstPersonDepth(true);
+		// Held objects may come up to the mouth and the body (GrabNearBody.h).
+		game::AllowGrabNearBody(true);
 		// The real controllers in the eyes while the hands are being adjusted.
 		g_headsetRenderer.SetControllersWanted(
 			(config.hands.adjustHands || game::HandAdjustActive()) && !menuIsUp);
 	} else {
 		game::HideFirstPersonNodes(false, "");
 		game::KeepFirstPersonDepth(false);
+		game::AllowGrabNearBody(false);
 		g_headsetRenderer.SetControllersWanted(false);
 		game::ForgetStrikes();
 	}
@@ -504,6 +512,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.menusOnly = menusOnly;
 	frame.inWorld = game::PlayerInWorld();
 	frame.adjustingHands = config.hands.adjustHands || game::HandAdjustActive();
+	frame.leftPickInReach = g_leftPickInReach;
 	// The weapon and the player's action: what the ready-weapon click follows
 	// and whether a swing may attack. World frames only, like the sneak.
 	if (!menuIsUp && frame.inWorld) {
@@ -529,6 +538,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	if (menuIsUp) {
 		char tileName[48];
 		frame.cursorOnScrollBar = game::CursorOverScrollBar(tileName, sizeof(tileName));
+		frame.menuIsDragSurface = game::ActiveMenuId() == game::kMenuIdMap ||
+		                          game::TopVisibleMenu() == game::kMenuIdMap;
 		// Which tile a pull lands on, the first several times: the scroll bar
 		// is recognised by its name, and the log is where a name that is
 		// missed shows up.
@@ -704,7 +715,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		haveHoldPoint = true;
 	}
 	game::SetGrabAtHand(reach.key, grabUnits, haveHoldPoint, holdPoint, 0.0f);
-	// The held body's physics: through the player's body while held, thrown
+	// The held body's physics: always through the player's body while held
+	// (gameplay will build on it: an object brought to the body), thrown
 	// with the palm's speed when let go (game::GrabPhysics).
 	{
 		// The hand that held it, kept past the grip opening: the engine lets
@@ -717,7 +729,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		NiPoint3 throwBone;
 		const bool palmValid = game::ReadHandBoneWorld(!s_holdLeft, throwRot, throwBone);
 		game::StepGrabPhysics(
-			config.hands.heldPassesBody, config.hands.throwStrength, palmValid,
+			true, config.hands.throwStrength, palmValid,
 			palmValid ? game::PalmPoint(throwRot, throwBone,
 			                            game::kPalmAlongMetres * config.tracker.unitsPerMetre)
 			          : NiPoint3{0.0f, 0.0f, 0.0f},
@@ -732,7 +744,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		bool markerShown = false;
 		vr::openvr::HmdMatrix34 markerPose{};
 		vr::openvr::HmdMatrix34 head{};
-		if (active && !menuIsUp && config.hands.reachMarker && g_cyclopeanCameraWorldValid &&
+		if (active && !menuIsUp && (config.hands.reachTooltip || config.hands.reachRing) &&
+		    g_cyclopeanCameraWorldValid &&
 		    backend.GetRenderPoseMatrix(head)) {
 			const game::CrosshairTarget target = game::ReadCrosshairTarget();
 			NiPoint3 hit = target.position;
@@ -757,8 +770,24 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 		g_reachMarker.Submit(backend, markerShown && config.hands.reachRing, markerPose,
 		                     config.hands.reachMarkerOpacity);
-		// The crosshair's icon moves into the ring while it shows.
-		g_reachIconShown = markerShown;
+		// The left hand keeps the pick only while it has something in reach.
+		{
+			const game::CrosshairTarget pickTarget = game::ReadCrosshairTarget();
+			NiPoint3 pickHit = pickTarget.position;
+			game::ReadPickHit(pickHit);
+			g_leftPickInReach =
+				g_hand.pickWithLeftHand && g_hand.leftHandValid && pickTarget.haveRef &&
+				g_cyclopeanCameraWorldValid &&
+				vr::WithinReach(g_cyclopeanCameraWorldTransform.pos +
+				                    g_cyclopeanCameraWorldTransform.rot * g_hand.leftHandOffsetUnits,
+				                pickHit,
+				                (config.hands.grabReachMetres > config.hands.reachMarkerMetres
+				                     ? config.hands.grabReachMetres
+				                     : config.hands.reachMarkerMetres) *
+				                    config.tracker.unitsPerMetre);
+		}
+		// The crosshair's icon moves onto the object, into the ring's middle.
+		g_reachIconShown = markerShown && config.hands.reachTooltip;
 		g_reachIconPose = render::ReachIconPose(markerPose);
 	}
 	// Whether the engine took it: its grab update runs only while it holds
@@ -2427,9 +2456,10 @@ void BeforeFirstScenePass() {
 			{
 				NiPoint3 touched{0.0f, 0.0f, 0.0f};
 				const bool haveTouched = game::GrabStartHit(touched);
-				game::StepHeldObject(hands.attachSmallObjects, holding, !g_hand.grabWithLeftHand,
-				                     haveTouched, touched,
-				                     (game::kPalmAlongMetres + hands.heldObjectMetres) * perMetre);
+				game::StepHeldObject(!hands.levitateObjects || hands.attachSmallObjects, holding,
+				                     !g_hand.grabWithLeftHand, haveTouched, touched,
+				                     (game::kPalmAlongMetres + hands.heldObjectMetres) * perMetre,
+				                     !hands.levitateObjects);
 			}
 			game::NoteHandAdjustFrame(rightCommitted, leftCommitted,
 			                          g_hand.rightGripDown || g_hand.leftGripDown, g_deltaSeconds);
@@ -4043,6 +4073,11 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		const bool wasHeld = g_deathView.held;
 		cameraNode->localTransform.pos = StepDeathView(
 			g_deathView, config.look.deathViewStill, dead, cameraNode->localTransform.pos);
+		// And the turn and height it is built on, or the chase camera's swing
+		// towards the body still turns the view (StepDeathTurn).
+		StepDeathTurn(g_deathView, baseRotation, verticalOffset);
+		g_menuBaseRot = baseRotation;
+		g_menuBaseVerticalOffset = verticalOffset;
 		if (g_deathView.held != wasHeld) {
 			OBVR_LOG("Camera: the death view is %s", g_deathView.held ? "held still" : "released");
 		}

@@ -226,7 +226,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		                            ? HandSpeed(m_lastLeftRelative, leftRelative, f.dtSeconds)
 		                            : 0.0f;
 		r.pickWithLeftHand = StepPickHand(m_pickHand, f.right.valid, f.left.valid, rightSpeed,
-		                                  leftSpeed, f.dtSeconds);
+		                                  leftSpeed, f.dtSeconds, f.leftPickInReach);
 		m_lastPickRight = rightRelative;
 		m_haveLastPickRight = f.right.valid;
 		m_lastLeftRelative = leftRelative;
@@ -639,7 +639,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 	if (s.laserDragScroll && laserPath) {
 		const LaserPressVerdict press = StepLaserPress(m_press, r.controls.menuClick, pressHit,
 		                                               pressX, pressY, pressHeight, f.dtSeconds,
-		                                               f.cursorOnScrollBar);
+		                                               f.cursorOnScrollBar || f.menuIsDragSurface);
 		r.controls.menuClick = press.mouseDown;
 		dragWheel = press.wheel;
 	} else {

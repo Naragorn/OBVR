@@ -23,6 +23,15 @@ struct Held {
 };
 
 Held g_held;
+
+// The last pose the object was shown at in the hand, for the release.
+struct SeenPose {
+	UInt32 ref = 0;
+	NiMatrix33 rot;
+	NiPoint3 pos{0.0f, 0.0f, 0.0f};
+	bool valid = false;
+};
+SeenPose g_seen;
 UInt32 g_linesLeft = 8;
 
 UInt32 PlayerOrZero() {
@@ -78,6 +87,26 @@ void Released(Held& h, float throwStrength) {
 	if (h.grouped) {
 		SetGroup(h.wrapper, h.savedGroup);
 	}
+	// In the hand, the body goes to where the object was seen, so letting go
+	// does not jump it to where the spring had dragged it.
+	bool placed = false;
+	if (g_seen.valid && g_seen.ref == h.ref) {
+		alignas(16) float pos[4] = {g_seen.pos.x * kHavokPerUnit, g_seen.pos.y * kHavokPerUnit,
+		                            g_seen.pos.z * kHavokPerUnit, 0.0f};
+		alignas(16) float rot[4];
+		QuaternionFromRotation(g_seen.rot, rot);
+		const UInt32 slot = Read(Read(h.wrapper) + kBodySetTranslationAndRotationSlot);
+		if (LooksLikeObject(slot)) {
+			using LockFn = void(__thiscall*)(void* lock);
+			using PlaceFn = void(__thiscall*)(void* body, const float* pos, const float* rot);
+			void* const lock = reinterpret_cast<void*>(kHavokLock);
+			reinterpret_cast<LockFn>(kHavokLockEnter)(lock);
+			reinterpret_cast<PlaceFn>(slot)(reinterpret_cast<void*>(h.wrapper), pos, rot);
+			reinterpret_cast<LockFn>(kHavokLockLeave)(lock);
+			placed = true;
+		}
+	}
+	g_seen = SeenPose{};
 	const NiPoint3 v = ThrowVelocity(h.palms, throwStrength);
 	const bool thrown = v.LengthSquared() > 0.0f;
 	if (thrown) {
@@ -94,13 +123,21 @@ void Released(Held& h, float throwStrength) {
 	}
 	if (g_linesLeft > 0) {
 		--g_linesLeft;
-		OBVR_LOG("Hands: let go of %08X - group %u put back, %s (%.0f units/s)", h.ref,
-		         h.savedGroup, thrown ? "thrown with the palm's speed" : "set down",
+		OBVR_LOG("Hands: let go of %08X - group %u put back, %s%s (%.0f units/s)", h.ref,
+		         h.savedGroup, placed ? "placed where it was seen, " : "",
+		         thrown ? "thrown with the palm's speed" : "set down",
 		         static_cast<double>(math::Sqrt(v.LengthSquared())));
 	}
 }
 
 }  // namespace
+
+void NoteHeldPose(UInt32 ref, const NiMatrix33& rot, const NiPoint3& pos) {
+	g_seen.ref = ref;
+	g_seen.rot = rot;
+	g_seen.pos = pos;
+	g_seen.valid = true;
+}
 
 void StepGrabPhysics(bool passBody, float throwStrength, bool palmValid, const NiPoint3& palm,
                      float dtSeconds) {

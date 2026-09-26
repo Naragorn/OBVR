@@ -48,6 +48,61 @@ inline constexpr float kHavokPerUnit = 0.142877f;
 
 inline UInt32 FilterGroup(UInt32 filter) { return filter >> 16; }
 
+// Placing the body where the object was seen, in the in-hand mode: the
+// object sat fixed in the palm while the spring pulled the physics body
+// only near it, so letting go would jump it to wherever the body had got to.
+// bhkRigidBody's vtable +0xA0 (0x008A2FB0) is SetTranslationAndRotation
+// (thiscall, const hkVector4* pos, const hkQuaternion* rot, ret 8, both
+// 16-byte aligned); the engine's own node-to-Havok push (0x0089EAE0) calls
+// it inside the Havok critical section at 0x00BA7B00 (enter 0x0043F2E0, leave
+// 0x0043F300, thiscall on that address), with the node's world translation
+// times the Havok scale and its world rotation as a quaternion (x, y, z, w).
+inline constexpr UInt32 kBodySetTranslationAndRotationSlot = 0xA0;
+inline constexpr UInt32 kHavokLock = 0x00BA7B00;
+inline constexpr UInt32 kHavokLockEnter = 0x0043F2E0;
+inline constexpr UInt32 kHavokLockLeave = 0x0043F300;
+
+// A rotation matrix (NiMatrix33, data[row][column]) as a unit quaternion
+// x, y, z, w - the same rotation, Havok's order (NiQuaternion::FromRotation
+// 0x007150F0 by the standard formulas, reordered). Shepperd's choice of the
+// largest diagonal term keeps it exact near 180 degrees.
+inline void QuaternionFromRotation(const NiMatrix33& m, float q[4]) {
+	const float m00 = m.data[0][0], m11 = m.data[1][1], m22 = m.data[2][2];
+	const float trace = m00 + m11 + m22;
+	float x, y, z, w;
+	if (trace > 0.0f) {
+		const float s = math::Sqrt(trace + 1.0f) * 2.0f;
+		w = 0.25f * s;
+		x = (m.data[2][1] - m.data[1][2]) / s;
+		y = (m.data[0][2] - m.data[2][0]) / s;
+		z = (m.data[1][0] - m.data[0][1]) / s;
+	} else if (m00 > m11 && m00 > m22) {
+		const float s = math::Sqrt(1.0f + m00 - m11 - m22) * 2.0f;
+		w = (m.data[2][1] - m.data[1][2]) / s;
+		x = 0.25f * s;
+		y = (m.data[0][1] + m.data[1][0]) / s;
+		z = (m.data[0][2] + m.data[2][0]) / s;
+	} else if (m11 > m22) {
+		const float s = math::Sqrt(1.0f + m11 - m00 - m22) * 2.0f;
+		w = (m.data[0][2] - m.data[2][0]) / s;
+		x = (m.data[0][1] + m.data[1][0]) / s;
+		y = 0.25f * s;
+		z = (m.data[1][2] + m.data[2][1]) / s;
+	} else {
+		const float s = math::Sqrt(1.0f + m22 - m00 - m11) * 2.0f;
+		w = (m.data[1][0] - m.data[0][1]) / s;
+		x = (m.data[0][2] + m.data[2][0]) / s;
+		y = (m.data[1][2] + m.data[2][1]) / s;
+		z = 0.25f * s;
+	}
+	const float length = math::Sqrt(x * x + y * y + z * z + w * w);
+	const float inv = length > 0.0f ? 1.0f / length : 0.0f;
+	q[0] = x * inv;
+	q[1] = y * inv;
+	q[2] = z * inv;
+	q[3] = w * inv;
+}
+
 // How fast the palm has to move for letting go to be a throw, units a
 // second: half a metre a second. Slower is a set-down, left to the engine.
 constexpr float kThrowMinUnitsPerSecond = 35.0f;
@@ -104,5 +159,10 @@ inline NiPoint3 ThrowVelocity(const PalmHistory& h, float strength) {
 // when there is no pinned hand this frame (the history is then not fed).
 void StepGrabPhysics(bool passBody, float throwStrength, bool palmValid, const NiPoint3& palm,
                      float dtSeconds);
+
+// Where the object was last seen in the hand (game::HeldObject writes it each
+// frame it places the object): on release, the body is put there before it
+// is sent off.
+void NoteHeldPose(UInt32 ref, const NiMatrix33& rot, const NiPoint3& pos);
 
 }  // namespace obvr::game

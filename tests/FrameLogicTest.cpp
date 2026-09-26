@@ -1293,6 +1293,42 @@ void TestCrosshairTooltipPolicy() {
 		Check(same(StepDeathView(s, true, false, b), b) && !s.held, "alive again: released");
 		Check(same(StepDeathView(s, false, true, chase), chase) && !s.held,
 		      "switched off: the game's view");
+		{
+			using obvr::camera::StepDeathTurn;
+			DeathViewState t;
+			obvr::NiMatrix33 alive = obvr::NiMatrix33::Identity();
+			alive.data[0][1] = 0.5f;
+			obvr::NiMatrix33 rot = alive;
+			float vertical = 3.0f;
+			StepDeathView(t, true, false, a);
+			StepDeathTurn(t, rot, vertical);
+			Check(rot.data[0][1] == 0.5f && vertical == 3.0f, "alive: the turn and height as they are");
+			obvr::NiMatrix33 swung = obvr::NiMatrix33::Identity();
+			swung.data[0][1] = -0.7f;
+			rot = swung;
+			vertical = -20.0f;
+			StepDeathView(t, true, true, chase);
+			StepDeathTurn(t, rot, vertical);
+			Check(rot.data[0][1] == 0.5f && vertical == 3.0f,
+			      "dead: the chase camera's swing and drop held off, the living turn kept");
+			rot = swung;
+			vertical = -40.0f;
+			StepDeathView(t, true, true, chase);
+			StepDeathTurn(t, rot, vertical);
+			Check(rot.data[0][1] == 0.5f && vertical == 3.0f, "and kept while dead");
+			rot = swung;
+			vertical = 1.0f;
+			StepDeathView(t, true, false, a);
+			StepDeathTurn(t, rot, vertical);
+			Check(rot.data[0][1] == -0.7f && vertical == 1.0f && !t.turnHeld,
+			      "alive again: released");
+			DeathViewState off;
+			StepDeathView(off, false, true, chase);
+			rot = swung;
+			vertical = -5.0f;
+			StepDeathTurn(off, rot, vertical);
+			Check(rot.data[0][1] == -0.7f && vertical == -5.0f, "switched off: the game's turn");
+		}
 		DeathViewState never;
 		Check(same(StepDeathView(never, true, true, chase), chase) && never.held,
 		      "dead from the first frame seen (a load into death): held where it is");
@@ -2032,6 +2068,52 @@ void TestHandGrip() {
 	const obvr::NiMatrix33 zero = CurledAboutZ(base, 0.0f);
 	Check(Near(zero.data[0][0], base.data[0][0]) && Near(zero.data[0][1], base.data[0][1]),
 	      "no curl: the rotation it had");
+}
+
+void TestHavokQuaternion() {
+	std::printf("A rotation as Havok's quaternion\n");
+	using obvr::game::QuaternionFromRotation;
+	const auto Near = [](float a, float b) { return a - b < 1e-4f && b - a < 1e-4f; };
+	// Back to a matrix by the standard formula, to compare with the original.
+	const auto Back = [](const float q[4]) {
+		const float x = q[0], y = q[1], z = q[2], w = q[3];
+		obvr::NiMatrix33 m;
+		m.data[0][0] = 1 - 2 * (y * y + z * z);
+		m.data[0][1] = 2 * (x * y - z * w);
+		m.data[0][2] = 2 * (x * z + y * w);
+		m.data[1][0] = 2 * (x * y + z * w);
+		m.data[1][1] = 1 - 2 * (x * x + z * z);
+		m.data[1][2] = 2 * (y * z - x * w);
+		m.data[2][0] = 2 * (x * z - y * w);
+		m.data[2][1] = 2 * (y * z + x * w);
+		m.data[2][2] = 1 - 2 * (x * x + y * y);
+		return m;
+	};
+	const auto Same = [&](const obvr::NiMatrix33& a, const obvr::NiMatrix33& b) {
+		for (int r = 0; r < 3; ++r) {
+			for (int c = 0; c < 3; ++c) {
+				if (!Near(a.data[r][c], b.data[r][c])) {
+					return false;
+				}
+			}
+		}
+		return true;
+	};
+	float q[4];
+	QuaternionFromRotation(obvr::NiMatrix33::Identity(), q);
+	Check(Near(q[0], 0) && Near(q[1], 0) && Near(q[2], 0) && Near(q[3], 1),
+	      "no turn: (0, 0, 0, 1), w last as Havok keeps it");
+	const obvr::NiMatrix33 turns[] = {
+		obvr::EulerToMatrix(0.0f, 0.0f, 90.0f), obvr::EulerToMatrix(30.0f, -50.0f, 120.0f),
+		obvr::EulerToMatrix(180.0f, 0.0f, 0.0f), obvr::EulerToMatrix(0.0f, 180.0f, 0.0f),
+		obvr::EulerToMatrix(0.0f, 0.0f, 180.0f), obvr::EulerToMatrix(170.0f, 5.0f, -175.0f)};
+	bool all = true;
+	for (const obvr::NiMatrix33& m : turns) {
+		QuaternionFromRotation(m, q);
+		const float length = q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3];
+		all = all && Near(length, 1.0f) && Same(Back(q), m);
+	}
+	Check(all, "any turn, the half turns included: a unit quaternion of the same rotation");
 }
 
 void TestThrow() {
@@ -3506,6 +3588,7 @@ void TestThirdPersonAimVisual() {
 
 
 int main() {
+	TestHavokQuaternion();
 	TestThrow();
 	TestHeldObject();
 	TestHandGrip();

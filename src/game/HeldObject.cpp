@@ -6,6 +6,7 @@
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
+#include "game/GrabPhysics.h"
 #include "game/HandBones.h"
 
 namespace obvr::game {
@@ -28,7 +29,7 @@ UInt32 g_reportsLeft = 6;
 }  // namespace
 
 void StepHeldObject(bool enabled, bool holding, bool rightHand, bool haveTouched,
-                    const NiPoint3& touched, float palmAlongUnits) {
+                    const NiPoint3& touched, float palmAlongUnits, bool attachAll) {
 	const UInt32 player = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
 	const UInt32 ref = holding && LooksLikeObject(player)
 	                       ? *reinterpret_cast<const UInt32*>(player + addr::kPlayerGrabbedRefOffset)
@@ -55,7 +56,7 @@ void StepHeldObject(bool enabled, bool holding, bool rightHand, bool haveTouched
 		const UInt8 type = *reinterpret_cast<const UInt8*>(base + addr::kFormTypeOffset);
 		const float radius = g_hold.node->worldBound.radius;
 		const bool small = IsSmallHeldObject(type, radius);
-		if (small && haveTouched) {
+		if ((small || attachAll) && haveTouched) {
 			const NiTransform& world = g_hold.node->worldTransform;
 			g_hold.attachment =
 				CaptureAttachment(handRot, world.rot, world.pos, world.scale, touched);
@@ -65,7 +66,8 @@ void StepHeldObject(bool enabled, bool holding, bool rightHand, bool haveTouched
 			--g_reportsLeft;
 			OBVR_LOG("Hands: holding %08X (form type %02X, bound radius %.1f units) - %s", ref,
 			         type, static_cast<double>(radius),
-			         g_hold.attached ? "small: fixed in the palm, turning with the wrist"
+			         g_hold.attached ? (attachAll ? "in the hand, turning with the wrist"
+			                                      : "small: fixed in the palm, turning with the wrist")
 			                         : (small ? "small, but no touched point: on the spring"
 			                                  : "not small: on the spring"));
 		}
@@ -92,6 +94,7 @@ void StepHeldObject(bool enabled, bool holding, bool rightHand, bool haveTouched
 		node->localTransform.pos = pose.pos;
 	}
 	UpdateNodeTransforms(node);
+	NoteHeldPose(g_hold.ref, pose.rot, pose.pos);
 }
 
 }  // namespace obvr::game
