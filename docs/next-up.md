@@ -60,12 +60,6 @@ taken from the player's Fatigue actor value per strike.
 
 ## Also open
 
-- **Grab reliability.** Cause found in the disassembly: the grab's start
-  casts its own ray from the first-person camera along the player's rotation
-  and takes what that ray hits (GameAddresses.h, kCallGrabHandler); the head-
-  to-hand line passed beside the object into the table or floor. The start now
-  looks at the point the laser's pick hit. Headset confirmation open; the log
-  line "the engine TOOK / did NOT take it" is the measure.
 - **Shield bash.** Not a vanilla action (UESP, Oblivion:Block: the Expert
   and Master perks give a chance of a stagger or disarm on a block; a manual
   bash exists only in Oblivion Remastered). A VR bash would be OBVR's own:
@@ -79,13 +73,20 @@ taken from the player's Fatigue actor value per strike.
   (vanilla stagger back); whether any lurch remains from another path (the
   recoil 0x005F4F00 when the player's own attack is blocked is not touched,
   nor a knockdown).
-- **Holding objects for real.** docs/holding-objects-spec.md: parts 1 (grip
-  pose), 2 (touched point in the palm) and 4 (small objects fixed in the hand)
-  built 2026-09-26; 3 (rotation for large objects) and 5 (grips by size) open.
+- **Holding objects: closed for now (2026-09-26).** In the hand as it lay,
+  pulled from up to a metre, floating in, the ring moving to the near side,
+  thrown with SteamVR's velocity, NPCs looking at the eyes - all confirmed in
+  the headset (docs/holding-objects-spec.md, tests one to ten). Still open
+  there: 3 (rotation for large objects), 5 (grips by size), the eat and stow
+  gestures, and items just across a cell border.
+- **A player-only death force.** The killing blow can fling the player's
+  ragdoll (vanilla fDeathForceForceMax); where the force is applied is not
+  yet found (docs/combat-comfort-spec.md).
+- **Hands a few centimetres low.** The tester suspects the tracking; a
+  comparison with the SteamVR system menu's controllers would settle it.
 - **Block and stagger.** docs/combat-comfort-spec.md holds the problems and
   every proposal.
-- **Death view, to look at again later.** Since 2026-09-26 the held death
-  view stands `[Look] DeathViewBackMetres` (0.8) behind the living eyes and
-  keeps their turn and height, so the body is seen falling in front of it.
-  The tester: "sieht ok aus", but not sure it is the final form - revisit
-  (how far back, whether to follow the body, a fade to the load).
+- **Death view.** Held at the living eyes with the body drawn
+  `DeathBodyAheadMetres` (0.5) ahead and `DeathBodyUpMetres` up, the HUD
+  hidden; the tester: done for now. Not built: a fade-in of the body, a fade
+  to the load.
