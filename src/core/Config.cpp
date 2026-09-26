@@ -542,6 +542,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.look.deathGrey = ReadBool("Look", "DeathGrey", config.look.deathGrey, path);
 	config.look.deathMenuTint = ReadBool("Look", "DeathMenuTint", config.look.deathMenuTint, path);
 	config.look.deathBodyView = ReadBool("Look", "DeathBodyView", config.look.deathBodyView, path);
+	config.look.noPlayerStagger =
+		ReadBool("Look", "NoPlayerStagger", config.look.noPlayerStagger, path);
 	config.look.snapTurnDeadZone =
 		ReadFloat("Look", "SnapTurnDeadZone", config.look.snapTurnDeadZone, path);
 	config.look.smoothTurning =

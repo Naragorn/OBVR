@@ -72,3 +72,14 @@ taken from the player's Fatigue actor value per strike.
   the shield hand driven into an NPC, the engine's knockback applied.
 - **New games.** The walkthrough and the hands' guide around the intro and
   the character creation: not yet tested.
+- **Stagger in combat (reminder to test).** `[Look] NoPlayerStagger` (on by
+  default) skips the player's stagger (0x005F4FD0, both call sites) and a
+  hit's knockback (the character-proxy fetch at 0x0060008A). To test in the
+  headset: fights with power attacks, with the option on (no lurch) and off
+  (vanilla stagger back); whether any lurch remains from another path (the
+  recoil 0x005F4F00 when the player's own attack is blocked is not touched,
+  nor a knockdown).
+- **Holding objects for real.** The held object floats at the hand; the
+  hand does not close around it. Options brainstormed on 2026-09-26: a grip
+  pose on the hand while holding, snapping the object's grab point to the
+  palm, per-size grips.

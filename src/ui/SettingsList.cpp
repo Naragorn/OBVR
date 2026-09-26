@@ -59,6 +59,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.look.deathBodyView = v != 0.0f; },
 	},
 	{
+		"Comfort", "No stagger", "Hits never stagger you or knock you back",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "NoPlayerStagger",
+		+[](const Config& c) { return c.look.noPlayerStagger ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.look.noPlayerStagger = v != 0.0f; },
+	},
+	{
 		"Comfort", "Eye separation", "Wider feels smaller, narrower feels larger",
 		ItemKind::Number, 0.7f, 1.3f, 0.01f, 2, false,
 		"Render", "EyeSeparationScale",

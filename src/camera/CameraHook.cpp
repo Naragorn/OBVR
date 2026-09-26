@@ -37,6 +37,7 @@
 #include "game/MenuType.h"
 #include "game/AimAtSource.h"
 #include "game/PlayerAim.h"
+#include "game/PlayerStagger.h"
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
 #include "render/DxvkInterop.h"
@@ -1404,6 +1405,7 @@ void OnPresent() {
 	const Config& config = GetConfig();
 	const bool layerCaptured = g_hudLayer.HasCapture();
 	const bool menuIsUp = config.tracker.showMenus && game::IsMenuMode();
+	game::SetNoPlayerStagger(config.look.noPlayerStagger);
 	UpdateHandMode(config, game::IsMenuMode());
 	OnFrameEnd();
 	test::AdvanceWaterVRTest(game::PlayerInWorld() && !game::IsMenuMode());
@@ -5174,6 +5176,7 @@ bool Install() {
 
 	InstallCastHook();
 	game::InstallAimAtSource();
+	game::InstallPlayerStagger();
 	game::InstallWorldPickHook();
 
 	// The end of the frame, hooked as soon as there is a device to hook it on

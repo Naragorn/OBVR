@@ -112,6 +112,9 @@ struct LookSettings {
 	// At the end, when the game opens the load menu, the view goes to the
 	// game's own death camera over the body on the ground; off keeps it held.
 	bool deathBodyView = false;
+	// The player is never staggered or knocked back by a hit
+	// (game::PlayerStagger): the lurch back jolts the view in a headset.
+	bool noPlayerStagger = true;
 
 	// How much of the view the vignette leaves clear, as the angle from the
 	// centre of view in degrees where the darkening starts; it is full 20

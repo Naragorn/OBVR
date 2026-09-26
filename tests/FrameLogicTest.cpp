@@ -17,6 +17,7 @@
 #include <limits>
 
 #include "camera/FrameLogic.h"
+#include "game/PlayerStagger.h"
 #include "core/MathFns.h"
 
 namespace {
@@ -1990,6 +1991,15 @@ void TestAimPitchWanted() {
 	Check(true, "all sixty-four combinations of the six gates agree");
 }
 
+void TestNoPlayerStagger() {
+	std::printf("No stagger for the player\n");
+	using obvr::game::SkipForPlayer;
+	Check(SkipForPlayer(true, 0x1000u, 0x1000u), "on, the player: skipped");
+	Check(!SkipForPlayer(false, 0x1000u, 0x1000u), "off, the player: staggered as in the game");
+	Check(!SkipForPlayer(true, 0x2000u, 0x1000u), "on, an NPC: staggered as in the game");
+	Check(!SkipForPlayer(true, 0u, 0u), "no player yet: nothing skipped");
+}
+
 void TestGrabStartRotation() {
 	std::printf("The grab's start looks at the point the pick hit\n");
 	using obvr::camera::GrabStartRotation;
@@ -3369,6 +3379,7 @@ void TestThirdPersonAimVisual() {
 
 
 int main() {
+	TestNoPlayerStagger();
 	TestGrabStartRotation();
 	TestRecenterPlan();
 	TestChaseCamera();
