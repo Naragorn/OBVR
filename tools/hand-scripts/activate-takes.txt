@@ -1,0 +1,29 @@
+# The counterpart of take-only-by-hand.txt, with TakeOnlyByHand off (the
+# default): the same A press at the dropped Iron Longsword takes it at once,
+# as vanilla's activate does - so what kept it on the floor there was the
+# option, and the A was aimed at the sword. No mark before the press: the
+# only items lines are from after it, and none may find the sword.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\activate-takes.txt
+
+ini Hands Enabled=1
+ini Hands StowAtBody=1
+ini Hands TakeOnlyByHand=0
+console player.additem 00000C0C 1
+console player.drop 00000C0C 1
+
+expect HandScript: finished
+expect HandScript: mark after_activate
+reject HandScript: WARNING
+reject Hands: activate kept from the game
+reject HandScript: items - near a hand 1
+
+wait 10
+head pitch -50
+right pos 0.05 -1.40 -0.80
+right rot -80 0 0
+wait 1
+right a 1
+wait 0.3
+right a 0
+wait 1
+mark after_activate

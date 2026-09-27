@@ -11,7 +11,13 @@ struct QuickMenuView {
 	char names[8][40] = {};
 	bool filled[8] = {};
 	int highlighted = -1;
+	// Opened in the inventory or the magic menu: the ring sets a hotkey, so
+	// every slot can be chosen and the middle says so.
+	bool assigning = false;
 };
+
+// The words in the middle of the setting ring.
+inline constexpr const char* kQuickMenuAssignLabel = "Set hotkey";
 
 // The ring's canvas: kQuickMenuCanvas pixels square, the slots on a circle of
 // kQuickMenuRingPixels around the centre in the order vr::QuickSlotCentre

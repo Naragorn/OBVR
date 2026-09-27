@@ -163,12 +163,134 @@ void TestFlows() {
 	}
 }
 
+QuickMenuInput InMenu(bool pad, const NiPoint3& hand, float dt = 0.011f) {
+	QuickMenuInput in = Frame(pad, hand);
+	in.assign = true;
+	in.dt = dt;
+	return in;
+}
+
+void TestAssign() {
+	std::printf("Setting a hotkey in the inventory or the magic menu\n");
+	const QuickMenuSettings settings;
+	const NiPoint3 hand{0.2f, 1.0f, -0.3f};
+	const NiPoint3 down = hand + NiPoint3{0.0f, -0.08f, 0.0f};  // slot 5, empty
+	{
+		QuickMenuState s;
+		QuickMenuVerdict v = StepQuickMenu(s, InMenu(true, hand), settings);
+		Check(v.opened && v.visible && v.assigning && v.holdsCursor && v.key == 0 && !v.click,
+		      "pressed in a menu: the setting ring, the cursor held, no key yet");
+		v = StepQuickMenu(s, InMenu(true, down), settings);
+		Check(v.highlighted == 4 && v.holdsCursor, "the empty slot 5 lit - it can be set");
+		v = StepQuickMenu(s, InMenu(false, down), settings);
+		Check(v.assigned == 4 && v.key == 5 && !v.click && v.used == -1 && !v.visible,
+		      "let go on it: key 5 down, no click yet, nothing used");
+		v = StepQuickMenu(s, InMenu(false, hand), settings);
+		Check(v.key == 5 && !v.click && v.holdsCursor, "the key stays down before the click");
+		int clicks = 0;
+		int frames = 0;
+		bool keyThroughout = true;
+		bool clickWithoutKey = false;
+		while (s.assignPhase != AssignPhase::Idle && frames < 200) {
+			v = StepQuickMenu(s, InMenu(false, hand), settings);
+			++frames;
+			if (v.click) {
+				++clicks;
+				clickWithoutKey = clickWithoutKey || v.key != 5;
+			}
+			if (s.assignPhase != AssignPhase::Idle) {
+				keyThroughout = keyThroughout && v.key == 5 && v.holdsCursor;
+			}
+		}
+		Check(clicks >= 1 && !clickWithoutKey, "the click comes while the key is down");
+		Check(keyThroughout, "the key and the held cursor last to the end");
+		Check(v.assignDone && v.key == 0 && !v.click && !v.holdsCursor,
+		      "then both up at once: done");
+		const float total = settings.assignLeadSeconds + settings.assignClickSeconds +
+		                    settings.assignTailSeconds;
+		Check(frames * 0.011f >= total - 0.001f && frames * 0.011f < total + 0.05f,
+		      "it takes about the lead, the click and the tail");
+		v = StepQuickMenu(s, InMenu(true, hand), settings);
+		Check(v.opened, "a fresh press opens the ring again");
+	}
+	{
+		// Frames as long as the harness's clamp still give every phase a frame.
+		QuickMenuState s;
+		StepQuickMenu(s, InMenu(true, hand, 0.25f), settings);
+		StepQuickMenu(s, InMenu(true, down, 0.25f), settings);
+		QuickMenuVerdict v = StepQuickMenu(s, InMenu(false, down, 0.25f), settings);
+		Check(v.key == 5 && !v.click, "long frames: the key first");
+		v = StepQuickMenu(s, InMenu(false, hand, 0.25f), settings);
+		Check(v.key == 5 && v.click, "then the click, with the key");
+		v = StepQuickMenu(s, InMenu(false, hand, 0.25f), settings);
+		Check(v.key == 5 && !v.click, "then the key alone");
+		v = StepQuickMenu(s, InMenu(false, hand, 0.25f), settings);
+		Check(v.assignDone && v.key == 0, "then done");
+	}
+	{
+		QuickMenuState s;
+		StepQuickMenu(s, InMenu(true, hand), settings);
+		const QuickMenuVerdict v = StepQuickMenu(s, InMenu(false, hand), settings);
+		Check(v.cancelled && v.key == 0 && v.assigned == -1 && s.assignPhase == AssignPhase::Idle,
+		      "let go in the middle: nothing set");
+	}
+	{
+		QuickMenuState s;
+		StepQuickMenu(s, InMenu(true, hand), settings);
+		StepQuickMenu(s, InMenu(true, down), settings);
+		StepQuickMenu(s, InMenu(false, down), settings);
+		QuickMenuInput closed = InMenu(false, hand);
+		closed.assign = false;
+		closed.allowed = false;
+		const QuickMenuVerdict v = StepQuickMenu(s, closed, settings);
+		Check(v.assignAborted && v.key == 0 && !v.click && !v.holdsCursor,
+		      "the menu closes during the sequence: key and click up at once");
+	}
+	{
+		QuickMenuState s;
+		StepQuickMenu(s, InMenu(true, hand), settings);
+		StepQuickMenu(s, InMenu(true, down), settings);
+		StepQuickMenu(s, InMenu(false, down), settings);
+		QuickMenuVerdict v = StepQuickMenu(s, InMenu(true, hand), settings);
+		Check(!v.opened && v.key == 5, "a press during the sequence does not open the ring");
+	}
+	{
+		// A ring opened in the world does not survive the inventory opening,
+		// and the other way round.
+		QuickMenuState s;
+		StepQuickMenu(s, Frame(true, hand), settings);
+		QuickMenuVerdict v = StepQuickMenu(s, InMenu(true, hand), settings);
+		Check(v.cancelled && !v.visible && !s.open, "world ring, then the inventory: closed");
+		StepQuickMenu(s, InMenu(false, hand), settings);
+		StepQuickMenu(s, InMenu(true, hand), settings);
+		v = StepQuickMenu(s, Frame(true, hand), settings);
+		Check(v.cancelled && !s.open, "menu ring, then back in the world: closed");
+	}
+	{
+		// In the world an empty slot still uses nothing: setting is for menus.
+		QuickMenuState s;
+		StepQuickMenu(s, Frame(true, hand), settings);
+		StepQuickMenu(s, Frame(true, down), settings);
+		const QuickMenuVerdict v = StepQuickMenu(s, Frame(false, down), settings);
+		Check(v.cancelled && v.assigned == -1 && v.key == 0 && !v.holdsCursor,
+		      "in the world: no setting, no held cursor");
+	}
+	{
+		QuickMenuSettings off;
+		off.enabled = false;
+		QuickMenuState s;
+		const QuickMenuVerdict v = StepQuickMenu(s, InMenu(true, hand), off);
+		Check(!v.opened && !v.holdsCursor, "switched off: nothing in the menus either");
+	}
+}
+
 }  // namespace
 
 int main() {
 	TestSlots();
 	TestLevelRight();
 	TestFlows();
+	TestAssign();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

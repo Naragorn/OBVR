@@ -1,0 +1,38 @@
+# Taking loose items only by hand ([Hands] TakeOnlyByHand, docs/controls-spec.md
+# 4.6): the right hand at a dropped Iron Longsword, its A pressed - activate
+# is kept from the game and the sword stays on the floor; then it is grabbed
+# and stowed at the chest, which still takes it.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\take-only-by-hand.txt
+
+ini Hands Enabled=1
+ini Hands StowAtBody=1
+ini Hands TakeOnlyByHand=1
+console player.additem 00000C0C 1
+console player.drop 00000C0C 1
+
+expect HandScript: finished
+expect Hands: activate kept from the game - a loose item is taken by hand here
+expect Stow: let go at the body - taken (no owner
+reject HandScript: WARNING
+
+wait 10
+head pitch -50
+right pos 0.05 -1.40 -0.80
+right rot -80 0 0
+wait 1
+mark near
+right a 1
+wait 0.3
+right a 0
+wait 1
+# Still on the floor: the items line of this mark shows it near the hand.
+mark after_activate
+right grip 1
+wait 1.5
+mark held
+head pitch 0
+right pos 0.05 -0.40 -0.05
+wait 1
+right grip 0
+wait 1
+mark stowed

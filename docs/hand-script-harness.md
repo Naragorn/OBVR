@@ -64,7 +64,7 @@ The format is documented at the top of `src/test/HandScript.h`. In short:
 - `dump`
 - `log`
 - `key <k> <0|1>` (a keyboard key down or up), `action <name>` (one of OBVR's actions as its settings row fires it: `holster_fit`)
-- for the runner: `expect`, `reject`, `count <n> <text>` (exactly n times), `ini`, `console`
+- for the runner: `expect`, `reject`, `count <n> <text>` (exactly n times), `ini`, `console`, `console-at <mark> <line>` (typed when that mark is reached; `{near}` becomes the form ID of the item nearest the eyes)
 
 Rules worth knowing:
 - **The head is synthetic by default.** It stands 1.6 m up and looks ahead.
@@ -74,7 +74,12 @@ Rules worth knowing:
   x right, y up, z back.
 - **A mark ends the script's step.** The picture at a mark shows the state
   the commands before it made. At every mark OBVR writes a `HandScript: state`
-  line with the mode, the hands, the camera and the teleport.
+  line with the mode, the hands, the camera and the teleport, and a
+  `HandScript: items` line: the item near a hand, the item nearest the eyes
+  (its form ID and where it is), and what the grab holds.
+- **Items placed with `placeatme` can fall through the floor.** The first
+  stow run placed a sword 60 units ahead and found it 1900 units below the
+  floor. `player.additem` then `player.drop` puts it at the player's feet.
 - **Give the runner time for `console` lines.** It types them once the script
   has started, so the script's first `wait` must leave time for that (the
   quick menu scenario waits 9 s).
@@ -127,3 +132,9 @@ Rules worth knowing:
 | `tools/hand-scripts/vanilla-quickkeys*.txt` | experiments: holding a number key opens no ring, in the world or the inventory; the world use equips at once | ran 2026-09-27, see controls-spec 4.4 |
 | `tools/hand-scripts/holster-two-handed.txt` | over the right shoulder the claymore is drawn and sheathed; the hip brings the sword; with the sword drawn the shoulder does nothing; then the claymore again | PASS 2026-09-27 |
 | `tools/hand-scripts/holster-staff.txt` | the same with a staff (Staff of Burden 000912BE) | PASS 2026-09-27 |
+| `tools/hand-scripts/quick-menu-assign.txt` | in the inventory the ring sets slot 5 to the item under the laser; in the world slot 5 then equips it | PASS 2026-09-27: "the hotkeys now: ... 5 Steel Longsword", exactly 1 click, "Steel Longsword equipped." on screen |
+| `tools/hand-scripts/vanilla-quickkeys-assign.txt` | experiment: a number key held and a click on an item sets the hotkey | ran 2026-09-27: slot 5 read "Steel Longsword" |
+| `tools/hand-scripts/stow.txt` | a dropped sword grabbed, brought to the chest and let go goes into the inventory | PASS 2026-09-27: "taken (no owner ...)", the inventory lists it |
+| `tools/hand-scripts/stow-owned.txt` | the same sword owned by Baurus first: taken as stolen | PASS 2026-09-27: "taken (owner 00023F2A ...)", the red hand on it in the inventory |
+| `tools/hand-scripts/take-only-by-hand.txt` | TakeOnlyByHand=1: A at the sword is kept from the game, the sword stays; stowing still takes it | PASS 2026-09-27 |
+| `tools/hand-scripts/activate-takes.txt` | the option off: the same A takes the sword | PASS 2026-09-27 |

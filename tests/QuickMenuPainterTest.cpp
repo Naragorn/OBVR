@@ -95,6 +95,28 @@ void TestPaint() {
 	      "nothing chosen: every filled slot dark");
 	PaintQuickMenuFor(canvas, &view);
 	Check(Same(canvas.GetPixel(c, c), gold), "the overlay's painter paints the same");
+
+	// The frame of the empty slot 5, at the bottom: its top-left corner.
+	const SInt32 edgeX = c - 80;
+	const SInt32 edgeY = c + kQuickMenuRingPixels - 40;
+	Check(!Same(canvas.GetPixel(edgeX, edgeY), gold), "using: an empty slot's edge is grey");
+	bool labelInk = false;
+	for (SInt32 y = c + 24; y < c + 24 + 20 && !labelInk; ++y) {
+		for (SInt32 x = c - 80; x < c + 80; ++x) {
+			labelInk = labelInk || Same(canvas.GetPixel(x, y), gold);
+		}
+	}
+	Check(!labelInk, "using: nothing written in the middle");
+	view.assigning = true;
+	PaintQuickMenu(canvas, view);
+	Check(Same(canvas.GetPixel(edgeX, edgeY), gold), "setting: the empty slot's edge is gold too");
+	labelInk = false;
+	for (SInt32 y = c + 24; y < c + 24 + 20 && !labelInk; ++y) {
+		for (SInt32 x = c - 80; x < c + 80; ++x) {
+			labelInk = labelInk || Same(canvas.GetPixel(x, y), gold);
+		}
+	}
+	Check(labelInk, "setting: \"Set hotkey\" written under the middle");
 }
 
 }  // namespace

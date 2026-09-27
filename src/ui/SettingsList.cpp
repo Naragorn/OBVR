@@ -748,6 +748,20 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return c.hands.fist.enabled ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.fist.enabled = v != 0.0f; },
 	},
+	{
+		"Hands", "Stow at the body", "Full VR: let go of a held item at your chest or belly to take it",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "StowAtBody",
+		+[](const Config& c) { return c.hands.stow.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.stow.enabled = v != 0.0f; },
+	},
+	{
+		"Hands", "Take only by hand", "Full VR: activating a loose item no longer takes it - stow it",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "TakeOnlyByHand",
+		+[](const Config& c) { return c.hands.stow.takeOnlyByHand ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.stow.takeOnlyByHand = v != 0.0f; },
+	},
 	// ---- Teleport (Full VR) --------------------------------------------------
 	{
 		"Teleport", "Teleport", "Full VR: hold the right stick up, aim the arc, let go",

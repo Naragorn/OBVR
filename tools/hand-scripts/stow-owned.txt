@@ -1,0 +1,53 @@
+# Stowing an owned item (docs/controls-spec.md 4.6): the same as stow.txt,
+# but the dropped Iron Longsword is given to Baurus first (BaseID 00023F2A,
+# UESP Oblivion:Baurus) through the console - prid on its form ID, then
+# SetOwnership. Stowed, it is taken the way activating it takes it: the game
+# reads the owner and marks it stolen (the red hand in the inventory); with
+# no one to see it there is no bounty.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\stow-owned.txt
+
+ini Hands Enabled=1
+ini Hands StowAtBody=1
+ini Render MirrorMenusToMonitor=1
+console player.additem 00000C0C 1
+console player.drop 00000C0C 1
+console-at dropped prid {near}
+console-at dropped setownership 00023F2A
+
+expect HandScript: finished
+expect Stow: the held item is at the body
+expect Stow: let go at the body - taken (owner 00023F2A
+reject HandScript: WARNING
+reject Stow: let go at the body - not taken
+reject Stow: let go at the body - refused
+
+wait 10
+mark dropped
+# Time for the runner to type the two console lines.
+wait 8
+head pitch -50
+right pos 0.05 -1.40 -0.80
+right rot -80 0 0
+wait 1
+mark near
+right grip 1
+wait 1.5
+mark held
+head pitch 0
+right pos 0.05 -0.40 -0.05
+wait 1
+mark at_chest
+right grip 0
+wait 1
+mark stowed
+right pos 0.15 -0.25 -0.35
+right rot 62 29 0
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark inventory
+left b 1
+wait 0.2
+left b 0
+wait 1

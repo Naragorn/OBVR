@@ -1,0 +1,55 @@
+# Setting a hotkey from the inventory (docs/controls-spec.md 4.5): the laser
+# on an item, the right trackpad held opens the setting ring, the hand moved
+# down lights slot 5, letting go sets slot 5 to the item - the game's own way,
+# its number key held and the item clicked. Slot 5 held the Iron Longsword
+# before; afterwards it holds what the laser was on (the Steel Longsword in
+# this save), and the ring in the world uses it.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\quick-menu-assign.txt
+
+ini Hands Enabled=1
+ini Hands QuickMenu=1
+ini Render MirrorMenusToMonitor=1
+console player.additem 00000C0C 1
+console SetHotkeyItem 5 00000C0C
+
+expect HandScript: finished
+expect QuickMenu: setting hotkey 5 to what the cursor is on in the Inventory menu (Iron Longsword)
+expect the quick menu's picture saved as OBVR-QuickMenu-set_ring.bmp
+expect QuickMenu: setting a hotkey done - the hotkeys now: 1 -, 2 -, 3 -, 4 -, 5 Steel Longsword, 6 -, 7 -, 8 -
+expect QuickMenu: hotkey 5 used (Steel Longsword)
+count 1 Hands: click sent to the Inventory menu
+reject HandScript: WARNING
+reject setting a hotkey stopped
+
+wait 12
+right pos 0.15 -0.25 -0.35
+right rot 62 29 0
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark inventory
+right trackpad 1
+wait 0.3
+# Down: slot 5. The laser swings with the hand; the cursor stays.
+right pos 0.15 -0.33 -0.35
+wait 0.4
+mark set_ring
+right trackpad 0
+wait 1
+mark set
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+# In the world: slot 5 from the ring equips what was set.
+right rot 0 0 0
+right pos 0.15 -0.30 -0.35
+right trackpad 1
+wait 0.4
+right pos 0.15 -0.38 -0.35
+wait 0.4
+mark use_ring
+right trackpad 0
+wait 1.5
+mark used

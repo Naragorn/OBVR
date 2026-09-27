@@ -74,6 +74,10 @@ void PaintQuickMenu(Canvas& canvas, const QuickMenuView& view) {
 	canvas.Fill(render::Pixel{0, 0, 0, 0});
 	const SInt32 centre = static_cast<SInt32>(kQuickMenuCanvas) / 2;
 	canvas.FillDiamond(centre, centre, 10, kGold);
+	if (view.assigning) {
+		const SInt32 width = static_cast<SInt32>(TextWidth(kQuickMenuAssignLabel)) * kNameScale;
+		canvas.DrawText(centre - width / 2, centre + 24, kQuickMenuAssignLabel, kNameScale, kGold);
+	}
 	const UInt32 perLine =
 		static_cast<UInt32>((kBoxWidth - 2 * kPad) / (static_cast<SInt32>(kGlyphAdvance) * kNameScale));
 	for (int slot = 0; slot < 8; ++slot) {
@@ -85,8 +89,9 @@ void PaintQuickMenu(Canvas& canvas, const QuickMenuView& view) {
 		const bool lit = view.highlighted == slot;
 		const bool filled = view.filled[slot];
 		canvas.FillRect(x, y, kBoxWidth, kBoxHeight, lit ? kGold : (filled ? kPanel : kPanelEmpty));
+		// Setting, an empty slot is as good a choice as a filled one: gold edged.
 		canvas.DrawFrame(x, y, kBoxWidth, kBoxHeight, lit ? 3 : 2,
-		                 filled || lit ? kGold : kEdgeEmpty);
+		                 filled || lit || view.assigning ? kGold : kEdgeEmpty);
 		const char number[2] = {static_cast<char>('1' + slot), '\0'};
 		const render::Pixel ink = lit ? kTextDark : (filled ? kText : kTextDim);
 		canvas.DrawText(x + kPad, y + kPad, number, kNumberScale, ink);

@@ -46,6 +46,7 @@
 #include "game/PlayerTeleport.h"
 #include "game/ControlBindings.h"
 #include "game/GrabPhysics.h"
+#include "game/TakeItem.h"
 #include "game/GrabNearBody.h"
 #include "game/NearbyItems.h"
 #include "game/MeleeHit.h"
@@ -685,6 +686,15 @@ bool g_holsterFitWasLeftB = false;
 bool g_holsterFitWasRightB = false;
 
 vr::QuickMenuState g_quickMenu;
+
+// Stowing a held item at the body (vr::StepStow).
+vr::StowState g_stow;
+bool g_stowWasAtBody = false;
+UInt32 g_stowLinesLeft = 40;
+// The activate button kept from the game over a loose item
+// ([Hands] TakeOnlyByHand), said the first several times.
+bool g_activateWasWithheld = false;
+UInt32 g_activateWithheldLinesLeft = 12;
 ui::CanvasOverlay g_quickMenuLayer("obvr.quickmenu", "OBVR Quick Menu", ui::kQuickMenuCanvas,
                                    ui::kQuickMenuCanvas);
 ui::QuickMenuView g_quickMenuView;
@@ -711,11 +721,14 @@ vr::openvr::HmdMatrix34 QuickMenuPose(const vr::QuickMenuState& s) {
 	return pose;
 }
 
-void UpdateQuickMenu(const Config& config, vr::OpenVRBackend& backend, bool allowed,
+// `assign`: the cursor is on the inventory or the magic menu, where the ring
+// sets a hotkey to what the cursor is on (docs/controls-spec.md 4.5).
+void UpdateQuickMenu(const Config& config, vr::OpenVRBackend& backend, bool allowed, bool assign,
                      const vr::HandModeFrame& frame, float dt) {
 	vr::QuickMenuInput in;
 	in.pad = frame.right.valid && vr::TrackpadClickDown(frame.right.buttonsPressed);
 	in.allowed = allowed;
+	in.assign = assign;
 	in.hand = frame.right.position;
 	in.headRight = frame.headValid ? vr::ToMatrix(frame.head) * NiPoint3{1.0f, 0.0f, 0.0f}
 	                               : NiPoint3{1.0f, 0.0f, 0.0f};
@@ -737,9 +750,38 @@ void UpdateQuickMenu(const Config& config, vr::OpenVRBackend& backend, bool allo
 	}
 	const vr::QuickMenuVerdict v = vr::StepQuickMenu(g_quickMenu, in, config.hands.quickMenu);
 	g_hand.controls.quickKey = static_cast<UInt8>(v.key);
-	if (v.highlighted != g_quickMenuView.highlighted) {
+	g_hand.controls.menuClick = g_hand.controls.menuClick || v.click;
+	if (v.holdsCursor) {
+		// The click has to land on what the laser was on when the trackpad
+		// went down, not where the hand has moved the laser to reach a slot.
+		g_hand.cursorDx = 0;
+		g_hand.cursorDy = 0;
+	}
+	if (v.highlighted != g_quickMenuView.highlighted || v.assigning != g_quickMenuView.assigning) {
 		g_quickMenuView.highlighted = v.highlighted;
+		g_quickMenuView.assigning = v.assigning;
 		++g_quickMenuRevision;
+	}
+	if (v.assigned >= 0) {
+		OBVR_LOG("QuickMenu: setting hotkey %d to what the cursor is on in the %s menu (%s) - "
+		         "its number key held, then a click",
+		         v.assigned + 1, game::MenuIdName(game::ActiveMenuId()),
+		         g_quickMenuView.filled[v.assigned] ? g_quickMenuView.names[v.assigned]
+		                                            : "empty until now");
+	}
+	if (v.assignDone || v.assignAborted) {
+		game::QuickKeySlot slots[game::kQuickKeyCount];
+		game::ReadQuickKeys(slots);
+		char list[400] = "";
+		for (int i = 0; i < game::kQuickKeyCount; ++i) {
+			char one[56];
+			std::snprintf(one, sizeof(one), "%s%d %s", i == 0 ? "" : ", ", i + 1,
+			              slots[i].filled ? (slots[i].name[0] != '\0' ? slots[i].name : "(no name)")
+			                              : "-");
+			strncat_s(list, one, _TRUNCATE);
+		}
+		OBVR_LOG("QuickMenu: setting a hotkey %s - the hotkeys now: %s",
+		         v.assignDone ? "done" : "stopped, the menu went", list);
 	}
 	if (v.opened) {
 		g_quickMenuPose = QuickMenuPose(g_quickMenu);
@@ -945,6 +987,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_nearItem = game::NearItem{};
 		g_handMode.Reset();
 		g_quickMenu = vr::QuickMenuState{};
+		g_stow = vr::StowState{};
 		g_quickMenuLayer.Hide(g_headTracker.GetBackendForFrame());
 		UpdateTeleport(config, g_headTracker.GetBackendForFrame(), false, menuIsUp, dt);
 		return;
@@ -1197,6 +1240,31 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	                                      active && !menuIsUp && frame.inWorld &&
 	                                          !frame.settingsMenuOpen);
 	g_hand = g_handMode.Update(frame, config.hands);
+	// Taking loose items only by hand ([Hands] TakeOnlyByHand, vr::Stow): the
+	// activate button is kept from the game while the laser is on one. Read
+	// on the press and kept for as long as it is held.
+	{
+		static bool s_activateWas = false;
+		const bool pressed = active && g_hand.controls.activate && !menuIsUp;
+		if (pressed && !s_activateWas) {
+			const game::CrosshairTarget target = game::ReadCrosshairTarget();
+			bool isBook = false;
+			const bool isItem = target.haveRef && game::RefIsItem(target.refAddress, &isBook);
+			g_activateWasWithheld =
+				vr::ActivateWithheld(config.hands.stow, target.haveRef, isItem, isBook);
+			if (g_activateWasWithheld && g_activateWithheldLinesLeft > 0) {
+				--g_activateWithheldLinesLeft;
+				OBVR_LOG("Hands: activate kept from the game - a loose item is taken by hand here "
+				         "([Hands] TakeOnlyByHand)");
+			}
+		} else if (!pressed) {
+			g_activateWasWithheld = false;
+		}
+		s_activateWas = pressed;
+		if (g_activateWasWithheld) {
+			g_hand.controls.activate = false;
+		}
+	}
 	if (fitting) {
 		vr::HandControlsWanted& c = g_hand.controls;
 		c.attack = c.cast = c.block = c.menu = c.escape = c.readyWeapon = c.grab = false;
@@ -1255,8 +1323,17 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			}
 		}
 	}
-	UpdateQuickMenu(config, backend,
-	                active && !menuIsUp && frame.inWorld && !frame.settingsMenuOpen, frame, dt);
+	{
+		// The ring sets hotkeys where the cursor is on the inventory or the
+		// magic menu (the menu under the cursor: the click lands there).
+		const UInt32 underCursor = menuIsUp ? game::ActiveMenuId() : game::kMenuIdNone;
+		const bool assign = underCursor == game::kMenuIdInventory ||
+		                    underCursor == game::kMenuIdMagic;
+		UpdateQuickMenu(config, backend,
+		                active && !frame.settingsMenuOpen &&
+		                    ((!menuIsUp && frame.inWorld) || assign),
+		                assign, frame, dt);
+	}
 	// What a hand script's picture is of ([Debug] HandScript): the state on
 	// the frame of each mark.
 	if (test::HandScriptMarkedThisFrame()) {
@@ -1279,6 +1356,36 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		         static_cast<double>(g_hand.laserPixelX), static_cast<double>(g_hand.laserPixelY),
 		         frame.cursorValid ? 1 : 0, static_cast<double>(frame.cursorX),
 		         static_cast<double>(frame.cursorY));
+		// What the hands could take and what they hold: the grab and the stow
+		// scenarios read whether an item was found at all.
+		const NiPoint3 camera =
+			g_cyclopeanCameraWorldValid ? g_cyclopeanCameraWorldTransform.pos : NiPoint3{0.0f, 0.0f, 0.0f};
+		game::SearchHand eyes;
+		eyes.valid = g_cyclopeanCameraWorldValid;
+		eyes.position = camera;
+		const game::NearItem anyItem =
+			game::FindNearestItem(eyes, game::SearchHand{}, 2000.0f, 2000.0f, 0);
+		const NiPoint3 hand = g_cyclopeanCameraWorldTransform.pos +
+		                      g_cyclopeanCameraWorldTransform.rot * g_hand.rightHandOffsetUnits;
+		OBVR_LOG("HandScript: items - near a hand %d (ref %08X type %02X, %.0f units from the %s "
+		         "hand), nearest to the eyes %08X form %08X type %02X at %.0f %.0f %.0f (%.0f "
+		         "units); "
+		         "eyes %.0f %.0f %.0f, right hand %.0f %.0f %.0f; held %08X; blocking %d, block "
+		         "key %d, attack key %d, player action %d",
+		         g_nearItem.valid ? 1 : 0, g_nearItem.ref, game::RefBaseFormType(g_nearItem.ref),
+		         static_cast<double>(g_nearItem.distance), g_nearItem.left ? "left" : "right",
+		         anyItem.ref,
+		         mem::LooksLikeObjectAddress(anyItem.ref)
+		             ? *reinterpret_cast<const UInt32*>(anyItem.ref + addr::kFormIdOffset)
+		             : 0u,
+		         game::RefBaseFormType(anyItem.ref),
+		         static_cast<double>(anyItem.centre.x), static_cast<double>(anyItem.centre.y),
+		         static_cast<double>(anyItem.centre.z), static_cast<double>(anyItem.distance),
+		         static_cast<double>(camera.x), static_cast<double>(camera.y),
+		         static_cast<double>(camera.z), static_cast<double>(hand.x),
+		         static_cast<double>(hand.y), static_cast<double>(hand.z), game::GrabbedRef(),
+		         g_hand.blocking ? 1 : 0, g_hand.controls.block ? 1 : 0,
+		         g_hand.controls.attack ? 1 : 0, static_cast<int>(game::ReadPlayerAction()));
 	}
 
 	// The item nearest a hand, by distance (game::FindNearestItem): the pick is
@@ -1420,8 +1527,57 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			const NiPoint3 r = haveHoldPoint ? holdPoint - controller : NiPoint3{0.0f, 0.0f, 0.0f};
 			throwVelocity = game::PointVelocity(v, w, r);
 		}
-		game::StepGrabPhysics(true, config.hands.throwStrength, throwValid, throwVelocity,
-		                      g_deltaSeconds);
+		// Stowing (vr::StepStow): an item let go at the chest or the belly
+		// goes into the inventory, taken as activating it would take it, once
+		// the engine has let go of it. It is not thrown on the way.
+		const vr::HandPose& holding = s_holdLeft ? frame.left : frame.right;
+		vr::StowInput stowIn;
+		stowIn.allowed = active && !menuIsUp && frame.inWorld;
+		stowIn.keyDown = reach.key;
+		stowIn.heldRef = game::GrabbedRef();
+		stowIn.heldIsItem = stowIn.heldRef != 0 && game::RefIsItem(stowIn.heldRef, nullptr);
+		stowIn.handValid = holding.valid && frame.headValid;
+		if (stowIn.handValid) {
+			stowIn.handRelative = vr::BodyRelative(frame.head, frame.headPosition, holding.position);
+		}
+		stowIn.dt = g_deltaSeconds;
+		const vr::StowVerdict stow = vr::StepStow(g_stow, stowIn, config.hands.stow);
+		const bool stowing = stow.waiting || stow.take != 0;
+		game::StepGrabPhysics(true, stowing ? 0.0f : config.hands.throwStrength, throwValid,
+		                      throwVelocity, g_deltaSeconds);
+		if (!stowIn.keyDown) {
+			g_stowWasAtBody = false;  // let go: said by the lines below instead
+		} else if (stow.atBody != g_stowWasAtBody) {
+			g_stowWasAtBody = stow.atBody;
+			if (g_stowLinesLeft > 0) {
+				--g_stowLinesLeft;
+				OBVR_LOG("Stow: the held item is %s the body (hand at %.2f right, %.2f forward, "
+				         "%.2f up)",
+				         stow.atBody ? "at" : "away from",
+				         static_cast<double>(stowIn.handRelative.x),
+				         static_cast<double>(stowIn.handRelative.y),
+				         static_cast<double>(stowIn.handRelative.z));
+			}
+		}
+		if (stow.take != 0) {
+			UInt32 owner = 0;
+			const game::TakeResult taken = game::TakeIntoInventory(stow.take, &owner);
+			if (g_stowLinesLeft > 0) {
+				--g_stowLinesLeft;
+				char ownerText[32] = "no owner";
+				if (owner != 0) {
+					std::snprintf(ownerText, sizeof(ownerText), "owner %08X", owner);
+				}
+				OBVR_LOG("Stow: let go at the body - %s (%s; the game's activation decides "
+				         "any crime)",
+				         game::TakeResultName(taken), ownerText);
+			}
+		} else if ((stow.notItem || stow.gaveUp) && g_stowLinesLeft > 0) {
+			--g_stowLinesLeft;
+			OBVR_LOG("Stow: let go at the body - %s",
+			         stow.notItem ? "not an item, dropped as usual"
+			                      : "the engine kept holding it, nothing taken");
+		}
 	}
 
 	// The reach marker ([Hands] ReachMarker): a light-brown ring on the object
@@ -1659,10 +1815,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		static UInt32 readyEndLinesLeft = 12;
 		if ((g_hand.ready.reached || g_hand.ready.gaveUp) && readyEndLinesLeft > 0) {
 			--readyEndLinesLeft;
-			OBVR_LOG("Hands: ready weapon %s", g_hand.ready.reached
-			                                        ? "done - the game shows the wanted state"
-			                                        : "given up - the game did not follow within "
-			                                          "2.5 s");
+			// With the player's action code: a give-up while blocking or in an
+			// equip animation throughout never sent the key at all.
+			OBVR_LOG("Hands: ready weapon %s (player action %d)",
+			         g_hand.ready.reached ? "done - the game shows the wanted state"
+			                              : "given up - the game did not follow within 2.5 s",
+			         static_cast<int>(game::ReadPlayerAction()));
 		}
 
 		// Every click the laser sends into a game menu, the first several

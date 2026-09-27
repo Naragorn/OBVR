@@ -65,11 +65,19 @@ $expects = @()
 $rejects = @()
 $iniLines = @{}
 $consoleLines = @()
+# Console lines typed when a mark is reached ("console-at <mark> <line>"),
+# {near} replaced by the form ID of the item nearest the eyes from that
+# mark's "HandScript: items" line.
+$consoleAt = @{}
 $counts = @()
 foreach ($raw in [IO.File]::ReadAllLines($scriptPath)) {
 	$line = ($raw -replace "#.*$", "").Trim()
 	if ($line -match "^expect\s+(.+)$") { $expects += $Matches[1].Trim() }
 	elseif ($line -match "^reject\s+(.+)$") { $rejects += $Matches[1].Trim() }
+	elseif ($line -match "^console-at\s+(\S+)\s+(.+)$") {
+		if (-not $consoleAt.ContainsKey($Matches[1])) { $consoleAt[$Matches[1]] = @() }
+		$consoleAt[$Matches[1]] += $Matches[2].Trim()
+	}
 	elseif ($line -match "^console\s+(.+)$") { $consoleLines += $Matches[1].Trim() }
 	elseif ($line -match "^count\s+(\d+)\s+(.+)$") { $counts += ,@([int]$Matches[1], $Matches[2].Trim()) }
 	elseif ($line -match "^ini\s+(\S+)\s+(\S+=\S*)$") {
@@ -98,6 +106,25 @@ public static class ObvrHandRun {
 	[StructLayout(LayoutKind.Sequential)]
 	public struct RECT { public int left; public int top; public int right; public int bottom; }
 	[DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr handle, out RECT rect);
+	[DllImport("user32.dll")] static extern void mouse_event(uint flags, int dx, int dy, uint data, IntPtr extra);
+	[DllImport("user32.dll")] static extern uint MapVirtualKey(uint code, uint mapType);
+	// Left and right button up, and every key the hands use (HandKeyMap's
+	// defaults and the hotkeys 1-8) up: an up for a key that is not down
+	// does nothing.
+	public static void ReleaseAll() {
+		mouse_event(0x0004, 0, 0, 0, IntPtr.Zero);
+		mouse_event(0x0010, 0, 0, 0, IntPtr.Zero);
+		// Virtual key and the US scan code OBVR sends it by (KeyScanCodes.h):
+		// up by scan code, as it went down, and by the layout's own code.
+		byte[,] keys = { {0x20, 0x39}, {0x5A, 0x2C}, {0x45, 0x12}, {0x11, 0x1D}, {0x10, 0x2A}, {0x46, 0x21},
+		                 {0x09, 0x0F}, {0x1B, 0x01}, {0x70, 0x3B}, {0x52, 0x13}, {0x57, 0x11}, {0x41, 0x1E},
+		                 {0x53, 0x1F}, {0x44, 0x20}, {0x43, 0x2E}, {0x31, 0x02}, {0x32, 0x03}, {0x33, 0x04},
+		                 {0x34, 0x05}, {0x35, 0x06}, {0x36, 0x07}, {0x37, 0x08}, {0x38, 0x09} };
+		for (int i = 0; i < keys.GetLength(0); ++i) {
+			keybd_event(keys[i, 0], keys[i, 1], 8u | 2u, IntPtr.Zero);
+			keybd_event(keys[i, 0], (byte)MapVirtualKey(keys[i, 0], 0), 2u, IntPtr.Zero);
+		}
+	}
 	public static void Press(byte key, byte scan, bool extended) {
 		uint ext = extended ? 1u : 0u;
 		keybd_event(key, scan, ext, IntPtr.Zero);
@@ -427,7 +454,28 @@ try {
 			if ($lines[$i] -match "HandScript: mark (\S+)") {
 				$marks += $Matches[1]
 				Write-Host "Mark $($Matches[1])"
-				Take-Shots $Matches[1]
+				$markName = $Matches[1]
+				Take-Shots $markName
+				if ($consoleAt.ContainsKey($markName)) {
+					Start-Sleep -Milliseconds 300
+					$itemLine = @(Read-Log | Where-Object { $_ -match "HandScript: items" }) | Select-Object -Last 1
+					$near = if ($itemLine -match "nearest to the eyes [0-9A-F]{8} form ([0-9A-F]{8})") { $Matches[1] } else { "" }
+					Focus-Game | Out-Null
+					[ObvrHandRun]::Press(0xDC, 0x29, $false)
+					Start-Sleep -Milliseconds 600
+					foreach ($c in $consoleAt[$markName]) {
+						$command = $c.Replace("{near}", $near)
+						Write-Host "Console at ${markName}: $command"
+						[ObvrHandRun]::Type($command)
+						Start-Sleep -Milliseconds 200
+						Take-Shots "console"
+						Start-Sleep -Milliseconds 150
+						[ObvrHandRun]::Press(0x0D, 0x1C, $false)
+						Start-Sleep -Milliseconds 400
+					}
+					[ObvrHandRun]::Press(0xDC, 0x29, $false)
+					Start-Sleep -Milliseconds 400
+				}
 			} elseif ($lines[$i] -match "HandScript: finished") {
 				$finished = $true
 			}
@@ -506,6 +554,10 @@ try {
 			if (-not $p.WaitForExit(10000)) { Stop-Process -Id $p.Id -Force }
 			Start-Sleep -Seconds 2
 		}
+		# Whatever the hands held when the game went stays down in Windows (a
+		# killed game cannot let go): the right button held by a block stuck
+		# for every later run, 2026-09-27. Both buttons and the hands' keys up.
+		[ObvrHandRun]::ReleaseAll()
 	}
 	Remove-Item -LiteralPath $testIni -Force -ErrorAction SilentlyContinue
 	Remove-Item -LiteralPath $scriptTarget -Force -ErrorAction SilentlyContinue

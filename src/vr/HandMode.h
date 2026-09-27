@@ -9,6 +9,7 @@
 #include "vr/Holster.h"
 #include "vr/HolsterFit.h"
 #include "vr/QuickMenu.h"
+#include "vr/Stow.h"
 #include "vr/Teleport.h"
 
 namespace obvr::vr {
@@ -210,6 +211,10 @@ struct HandSettings {
 
 	// Fists by making a fist ([Hands] Fists, vr::Fist).
 	FistSettings fist;
+
+	// Stowing a held item at the body, and taking loose items only by hand
+	// ([Hands] StowAtBody, TakeOnlyByHand, vr::Stow).
+	StowSettings stow;
 
 	// The teleport on the right stick pushed forward ([Locomotion], vr::Teleport).
 	TeleportSettings teleport;

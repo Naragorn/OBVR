@@ -140,8 +140,8 @@ Code: `game::HandGrip` (`HandGripWanted`, `FingerCurlDegrees`,
   - A held object does not collide visually: it can pass through a table
     while the physics body is stopped by it. If the spring breaks (too far,
     0xA73DE0), the engine drops the object.
-  - A future gesture, "a potion brought to the body goes into the
-    inventory", fits here. The 25 cm distance floor was removed for it on
+  - The gesture "an item brought to the body goes into the inventory" is
+    built (controls-spec 4.6). The 25 cm distance floor was removed for it on
     2026-09-26.
 
 ### 5. Grips by size — proposal

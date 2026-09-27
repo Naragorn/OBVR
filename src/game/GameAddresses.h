@@ -1459,4 +1459,34 @@ inline constexpr UInt32 kGetContainerChanges = 0x0041E6F0;
 inline constexpr UInt32 kFindWornExtraData = 0x00485FA0;
 inline constexpr UInt32 kActorExtraListOffset = 0x44;
 
+// Taking an object into the inventory (vr::StepStow, game::TakeIntoInventory),
+// read 2026-09-27:
+// - TESObjectREFR::Activate(TESObjectREFR* activator, UInt32, UInt32, UInt32),
+//   __thiscall, `ret 10h`, answers a bool (xOBSE Hooks_Gameplay.cpp calls it
+//   as ThisStdCall(0x004DD260, ref, activator, arg2, arg3, arg4)). The
+//   player's own activate control (0x00403520 with control 5, at
+//   0x00673076) calls it on the crosshair ref as (player, 0, 0, 1) at
+//   0x0067318A. Inside: the ref's OnActivate script runs if it has one;
+//   otherwise the base form's ActivateActionForReference (vtable +0xCC,
+//   xOBSE GameForms.h) - for the item types 0x004B28E0, which takes the
+//   count from ExtraCount (0x0041E860, 1 without one), opens the quantity
+//   menu for a stack of ingredients, and otherwise calls the activator's
+//   vtable +0x2CC (xOBSE's Unk_B3 "called after Activate") with (ref,
+//   count, arg2). The player's is 0x00660910: it reads the ref's owner
+//   (0x004DB6B0) and hands an owned item to the crime (vtable +0x238)
+//   before adding it.
+// - A book's activate (0x004B5720) opens it to read unless it is an
+//   enchanted scroll; a book is therefore taken through the pickup
+//   (+0x2CC) directly, refused when its flags at +0x88 say it cannot be
+//   taken (bit 1, xOBSE GameForms.h kBook_CantBeTaken).
+inline constexpr UInt32 kRefActivate = 0x004DD260;
+inline constexpr UInt32 kRefOwner = 0x004DB6B0;
+inline constexpr UInt32 kRefExtraCount = 0x0041E860;
+inline constexpr UInt32 kRefExtraListOffset = 0x44;
+inline constexpr UInt32 kActorPickUpSlot = 0x2CC;
+inline constexpr UInt32 kBookFlagsOffset = 0x88;
+inline constexpr UInt8 kBookCantBeTaken = 0x02;
+inline constexpr UInt8 kFormTypeBook = 0x15;
+inline constexpr UInt32 kFormIdOffset = 0x0C;
+
 }  // namespace obvr::addr

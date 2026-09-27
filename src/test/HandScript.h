@@ -139,6 +139,7 @@ struct HandScript {
 	std::vector<std::string> rejects;
 	std::vector<std::string> ini;  // "Section Key=Value", for the runner
 	std::vector<std::string> console;  // console commands, for the runner
+	std::vector<std::string> consoleAt;  // "<mark> <command>", for the runner
 	std::vector<std::string> counts;   // "n text", for the runner
 };
 
@@ -349,6 +350,16 @@ inline bool ParseHandScript(const std::string& text, HandScript& out, ScriptPars
 				return fail("console needs a command");
 			}
 			out.console.push_back(rest);
+			continue;
+		} else if (word == "console-at") {
+			// console-at <mark> <command>: typed by the runner when that mark
+			// is reached; {near} becomes the form ID of the item nearest the
+			// eyes on that mark's "HandScript: items" line.
+			const std::string rest = detail::Rest(line, word);
+			if (t.size() < 3) {
+				return fail("console-at needs a mark and a command");
+			}
+			out.consoleAt.push_back(rest);
 			continue;
 		} else if (word == "ini") {
 			// ini <Section> <Key>=<Value>: a line the runner writes into

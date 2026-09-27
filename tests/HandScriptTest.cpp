@@ -67,6 +67,7 @@ void TestParseCommands() {
 		"reject WARNING\n"
 		"ini Hands Enabled=1\n"
 		"console SetHotKeyItem 3 {weapon}\n"
+		"console-at arc_shown prid {near}\n"
 		"count 1 Hands: jump sent\n";
 	Check(Parses(text, s), "a script with every command reads");
 	Check(s.steps.size() == 20, "twenty steps; comments, blank lines, expect and reject are not steps");
@@ -92,6 +93,8 @@ void TestParseCommands() {
 	Check(s.counts.size() == 1 && s.counts[0] == "1 Hands: jump sent", "count, for the runner");
 	Check(s.console.size() == 1 && s.console[0] == "SetHotKeyItem 3 {weapon}",
 	      "console, for the runner, with its spaces");
+	Check(s.consoleAt.size() == 1 && s.consoleAt[0] == "arc_shown prid {near}",
+	      "console-at, for the runner: the mark and the command");
 
 	HandScript empty;
 	Check(Parses("", empty) && empty.steps.empty(), "an empty script reads, with nothing to do");
@@ -119,6 +122,7 @@ void TestParseErrors() {
 	Check(FailsOnLine("log\n") == 1, "log without text");
 	Check(FailsOnLine("expect   \n") == 1, "expect without text");
 	Check(FailsOnLine("console\n") == 1, "console without a command");
+	Check(FailsOnLine("console-at mark\n") == 1, "console-at without a command");
 	Check(FailsOnLine("key 1\n") == 1, "key without down or up");
 	Check(FailsOnLine("key 1 2\n") == 1, "key with neither 0 nor 1");
 	Check(FailsOnLine("key a 1\n") == 1, "a lower-case key name");

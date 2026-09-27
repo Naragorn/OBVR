@@ -1,0 +1,46 @@
+# Experiment: vanilla's own hotkey assignment inside the inventory - a number
+# key held (which opens the QuickKeys menu, 0x416, at once in the inventory:
+# 0x5C1F70 calls 0x5C1B80 when the Inventory or Magic menu is up), the item
+# under the laser clicked while it is held, the key let go. Afterwards the
+# ring is opened in the world, which logs what the eight hotkeys hold.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\vanilla-quickkeys-assign.txt
+
+ini Hands Enabled=1
+ini Hands QuickMenu=1
+ini Render MirrorMenusToMonitor=1
+console player.additem 00000C0C 1
+
+expect HandScript: finished
+expect QuickMenu: opened
+reject HandScript: WARNING
+
+wait 12
+right pos 0.15 -0.25 -0.35
+right rot 62 29 0
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark inventory
+key 5 1
+wait 0.4
+mark key_held
+right trigger 1
+wait 0.1
+right trigger 0
+wait 0.3
+mark clicked
+key 5 0
+wait 0.5
+mark released
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+right rot 0 0 0
+right pos 0.15 -0.30 -0.35
+right trackpad 1
+wait 0.5
+mark ring
+right trackpad 0
+wait 1

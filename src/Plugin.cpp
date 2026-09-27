@@ -2,6 +2,7 @@
 #include "core/Config.h"
 #include "core/Log.h"
 #include "game/GameAddresses.h"
+#include "game/HandControls.h"
 #include "game/NativeMenuPrototype.h"
 #include "game/VRMenuBridge.h"
 #include "game/PlayerBody.h"
@@ -121,6 +122,12 @@ extern "C" int __stdcall DllMain(void* module, unsigned long reason, void* /*res
 		// is stored before any of that can run.
 		obvr::platform::SetPluginModule(module);
 	} else if (reason == kProcessDetach) {
+		// Keys and mouse buttons the hands put down stay down in Windows after
+		// the game has gone: a right button (block) left held by a game that
+		// quit mid-block stayed down for every later program (2026-09-27, the
+		// hand-script runs). A game that ends normally lets them go here; one
+		// that is killed cannot, which the test runner covers itself.
+		obvr::game::ReleaseHandControls(obvr::GetConfig().handKeys);
 		obvr::perf::Profiler::Instance().Shutdown();
 		obvr::log::Close();
 	}

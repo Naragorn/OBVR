@@ -1003,3 +1003,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME holster_fit COMMAND holster_fit_test)
+
+add_executable(stow_test StowTest.cpp)
+
+target_include_directories(stow_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(stow_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME stow COMMAND stow_test)

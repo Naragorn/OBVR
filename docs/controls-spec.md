@@ -39,6 +39,7 @@ flow is covered by `hand_mode_test` and `teleport_test`.
 | Left A, inventory only | drop the item under the cursor (vanilla's Shift + click, over four frames: `vr::StepDropPress`); one drop per press, the button has to be let go for the next |
 | Left B / right B | Tab / Escape |
 | Left stick | the mouse wheel |
+| Right trackpad held, inventory or magic menu | the ring sets a hotkey to what the cursor is on (4.5) |
 
 - The drop presses OBVR's `RunKey` (Shift) for vanilla's Shift.
   - At the mode's start OBVR reads the game's `[Controls] Run` from
@@ -101,7 +102,8 @@ From UESP, Oblivion:Controls.
 | Journal / menus, pause | left B, right B | built |
 | Drop (Shift + click) | left A in the inventory | built |
 | Yield, dodge | gesture + button, see section 2 | untested |
-| Hotkeys 1-8 | right trackpad held: the quick menu | built (4.4) |
+| Hotkeys 1-8 | right trackpad held: the quick menu; in the inventory or magic menu the same ring sets them | built (4.4, 4.5) |
+| Take an item | activate (right A), or held and let go at the body | built (4.6) |
 | Wait (T) | - | missing |
 | Quick save / load (F5 / F9) | Escape menu | enough |
 | Always run, auto move | - | not needed in VR |
@@ -301,7 +303,8 @@ in the headset yet.
   - **In the world.** Holding a number key for 2 s opened no menu. The item
     was equipped at once ("Iron Longsword equipped.").
   - **In the inventory.** Holding a number key over an item opened no ring
-    either.
+    either. Holding it and clicking the item sets the hotkey, which is what
+    4.5 builds on.
   - The game's QuickKeys menu (0x416) is where hotkeys are assigned, from
     the inventory and magic menus. It is not something the world shows for
     using them.
@@ -316,7 +319,111 @@ in the headset yet.
 - **Not tried in the headset yet**: how 10 cm to a slot feels, and whether
   the ring at the hand is easy to read.
 
-### 4.5 What becomes free
+### 4.5 Setting a hotkey from the inventory or the magic menu (built 2026-09-27)
+
+- **Vanilla on the PC.** Open the inventory or the magic menu, hold a number
+  key 1-8, and left-click the item or spell while it is held (the PC manual:
+  "define Hotkeys by holding one of the 1 - 8 Keys while simultaneously
+  selecting ... by Left Clicking"; UESP Oblivion:Controls, "press and hold a
+  Hotkey, then left click on an item").
+- **How the game does it** (read 2026-09-27):
+  - The hotkey handler 0x5C1F70 reads the eight quick controls. With the
+    Inventory (0x3EA) or Magic (0x3FE) menu up, a held key calls 0x5C1B80 at
+    once, with no timer. That opens the QuickKeys menu (0x416) and sets the
+    byte at 0xB3B43D.
+  - While that byte is set, the menus' click handlers (0x5ABC1C inventory,
+    0x5B39BC magic) assign the clicked entry to the held slot
+    (0x5C1100 answers which) instead of equipping it.
+- **Built: the same ring, in those two menus.**
+  - Hold the right trackpad with the laser on an item. The ring opens at the
+    hand with "Set hotkey" in the middle; every slot can be chosen, empty or
+    not.
+  - Move the hand to a slot and let go. OBVR does what the keyboard does:
+    the slot's number key down for 0.2 s, a click for 0.08 s while it is
+    held, the key kept 0.15 s more, then both up. Each step lasts at least
+    one frame.
+  - The cursor does not move from the trackpad's press to the end of the
+    sequence, so the click lands on what the laser was on, not where the
+    hand moved it.
+  - Let go in the middle: nothing. The menu closing during the sequence
+    lets key and click go at once.
+  - Which menu counts is the one under the cursor (`game::ActiveMenuId`).
+  - Logic `vr::StepQuickMenu` (assign mode, `quick_menu_test`); the ring's
+    "Set hotkey" and gold edges on empty slots in `ui::PaintQuickMenu`.
+- **Checked in the game** (`quick-menu-assign.txt`, 2026-09-27):
+  - Slot 5 held the Iron Longsword. The laser on the Steel Longsword row,
+    the ring, slot 5: the log read "5 Steel Longsword" afterwards, one click
+    reached the Inventory menu, and slot 5 from the ring in the world said
+    "Steel Longsword equipped."
+  - The experiment before it (`vanilla-quickkeys-assign.txt`): number key 5
+    held and a trigger click on the Steel Longsword set slot 5. So the key
+    OBVR sends is seen as held. The QuickKeys menu itself did not show on
+    the monitor mirror; whether it shows in the headset is not checked.
+- **Not checked:** spells from the magic menu. The magic menu's click path
+  is the same kind of check (0x5B39BC), but no scenario opens that menu yet.
+
+### 4.6 Stowing at the body, and taking only by hand (built 2026-09-27)
+
+- **What it does.** An item held in the hand, brought to the chest or the
+  belly and let go there, goes into the inventory. `[Hands] StowAtBody`, on
+  by default; settings "Stow at the body".
+- **Taken as activating takes it** (the tester: an owned item must be a
+  crime, "genau so wie aktivieren"):
+  - Everything but a book goes through the ref's own activate,
+    `TESObjectREFR::Activate` (0x004DD260), with the arguments the player's
+    activate control uses (player, 0, 0, 1; the call at 0x0067318A). So the
+    item's OnActivate script runs, and the item's activate reaches the
+    player's pickup (vtable +0x2CC, 0x00660910), which reads the owner
+    (0x004DB6B0) and hands an owned item to the crime.
+  - A book's activate opens it to read. A book therefore goes to the pickup
+    directly, and is refused when it is marked "cannot be taken".
+  - Only items a pack holds (`game::IsHandItemType`). Anything else held -
+    a body, a basket that is not an item - is let go as usual.
+  - The take waits until the engine has let go of the object itself (the
+    grab's ref at player+0x578 changes), so its spring never holds a
+    reference that went into the pack. It is not thrown on the way. Given
+    up after 1 s if the engine keeps holding it.
+- **The zone.** An upright cylinder round the torso in the body's frame
+  (`vr::BodyRelative`): radius 0.28 m round a point 5 cm behind the eyes,
+  from 0.17 m below them (under the chin; the mouth is left for eating) down
+  to 0.80 m (the hips). `[Hands] StowForward`, `StowRadius`, `StowTop`,
+  `StowBottom`.
+- **Taking only by hand.** `[Hands] TakeOnlyByHand`, off by default; settings
+  "Take only by hand". The activate button is kept from the game while the
+  laser is on a loose item. A book still opens to read, and doors, chests
+  and people are activated as ever. It needs stowing on: with stowing off
+  the activate takes items as before, or they could not be taken at all.
+- Logic `vr::StepStow`, `vr::ActivateWithheld` (`stow_test`); the game side
+  `game::TakeIntoInventory`.
+- **Checked in the game** (2026-09-27):
+  - `stow.txt`: an Iron Longsword dropped, grabbed, brought to the chest and
+    let go - "taken (no owner ...)", and the inventory lists it.
+  - `stow-owned.txt`: the same sword first given to Baurus (SetOwnership
+    00023F2A through the console) - "taken (owner 00023F2A ...)", and the
+    inventory shows it with the red hand of a stolen item. No one saw it, so
+    no bounty; a bounty with a witness is not checked.
+  - `take-only-by-hand.txt`: A at the sword kept from the game, the sword
+    still on the floor, then stowed. `activate-takes.txt`, the option off:
+    the same A takes it.
+- **Not checked:** how the zone feels in the headset, and a witnessed theft.
+
+### 4.7 Later: putting a weapon or an item on a hotkey without a menu
+
+The tester's idea (2026-09-27), in the style of Half-Life: Alyx. Not built.
+
+- With the ring open in the world, the drawn weapon or an object held in the
+  other hand is brought to a slot and let go there: that slot now holds it.
+- A held loose object would be taken into the inventory first (as 4.6
+  takes it, with its crime), then set on the slot.
+- Setting the slot could not use the menu click of 4.5, since no menu is
+  up. It needs the game's own assignment function, which the click handlers
+  call (0x00489820 on the container changes, and 0x00484BC0 for the spell
+  branch). Their arguments are read from the call sites but not tried.
+- Open questions: which hand holds the ring while the other brings the
+  object; what happens to a slot's old entry; how the drawn weapon is told
+  from a held one.
+
+### 4.8 What becomes free
 
 - The right stick click, once the weapon is drawn by gestures.
 - The left A in the world.

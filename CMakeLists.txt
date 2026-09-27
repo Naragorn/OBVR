@@ -91,6 +91,7 @@ add_library(OBVR SHARED
 	src/game/GrabNearBody.cpp
 	src/game/NearbyItems.cpp
 	src/game/QuickKeys.cpp
+	src/game/TakeItem.cpp
 	src/game/TeleportNoise.cpp
 	src/game/HandBones.cpp
 	src/game/HandAdjust.cpp
