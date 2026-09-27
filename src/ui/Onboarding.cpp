@@ -166,9 +166,9 @@ UInt32 OnboardingPageCount() { return kPageCount; }
 bool ChoiceIsCurrent(OnboardingAction choice, const Config& config) {
 	switch (choice) {
 	case OnboardingAction::ChooseSeated:
-		return !config.handTracking;
+		return !config.fullVrMode;
 	case OnboardingAction::ChooseStanding:
-		return config.handTracking;
+		return config.fullVrMode;
 	default:
 		return false;
 	}

@@ -15,6 +15,24 @@ bool Key(const SettingDefinition& d,const char* section,const char* key) {
  return *a==*b;
 }
 }
+const char* SettingsModeName(SettingsMode mode) {
+ return mode==SettingsMode::FullVr ? "Full VR Port" : "VR View";
+}
+bool SettingRelevantIn(SettingsMode mode,const SettingDefinition& d) {
+ const bool full=mode==SettingsMode::FullVr;
+ // The switch between the two is in both.
+ if (Key(d,"Hands","Enabled")) return true;
+ // With Full VR off the controllers can still drive the menus, or play as a
+ // gamepad: VR View's.
+ if (Key(d,"Hands","ControllerMenus") || Key(d,"Hands","GamepadLayout")) return !full;
+ // Everything else under Hands, and the teleport: the Full VR Port's.
+ if (Same(d.category,"Hands") || Same(d.category,"Teleport")) return full;
+ // Looking and aiming by the head, and the body under the headset: VR View's
+ // (in Full VR the hands aim and the arms are the controllers).
+ if (Same(d.category,"Looking") || Same(d.category,"Aiming") || Same(d.category,"Body"))
+  return !full;
+ return true;
+}
 bool SettingShownIn(SettingsView view,const SettingDefinition& d,const Config& c) {
  if (view==SettingsView::All || view==SettingsView::Sections) return true;
  const bool snap=c.look.snapTurning;
@@ -32,6 +50,10 @@ NativeSettings::NativeSettings() {
  m_count=total<kNativeMaxRows ? total : kNativeMaxRows;
  for (UInt32 i=0;i<m_count;++i) m_rows[i]=i;
 }
+void NativeSettings::SetMode(SettingsMode mode,const Config& config) {
+ m_mode=mode;
+ SetView(m_view,config);
+}
 void NativeSettings::SetView(SettingsView view,const Config& config) {
  m_view=view; m_first=0; m_count=0; m_section=-1;
  Sync(config);
@@ -43,6 +65,7 @@ void NativeSettings::Sync(const Config& config) {
  m_sectionCount=0;
  if (m_view==SettingsView::Sections) {
   for (UInt32 i=0;i<total;++i) {
+   if (!SettingRelevantIn(m_mode,SettingDefinitions()[i])) continue;
    const char* category=SettingDefinitions()[i].category;
    UInt32 k=0;
    while (k<m_sectionCount && !Same(m_sectionNames[k],category)) ++k;
@@ -60,7 +83,8 @@ void NativeSettings::Sync(const Config& config) {
  for (UInt32 i=0;i<total && m_count<kNativeMaxRows;++i) {
   const auto& d=SettingDefinitions()[i];
   if (!SettingShownIn(m_view,d,config)) continue;
-  if (m_view==SettingsView::Sections && (m_section<0 || !Same(d.category,m_sectionNames[m_section])))
+  if (m_view==SettingsView::Sections &&
+      (m_section<0 || !SettingRelevantIn(m_mode,d) || !Same(d.category,m_sectionNames[m_section])))
    continue;
   if (i==m_selected) selectedShown=true;
   m_rows[m_count++]=i;

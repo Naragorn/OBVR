@@ -84,6 +84,14 @@ struct NativeSettingEdit {
 // pages and pages; MenuQue shows one generic menu at a time, so the
 // sections live inside the one menu rather than as menus of their own).
 enum class SettingsView { All, Comfort, Sections };
+
+// The two menus the Sections view shows, by the mode that is on (the tester,
+// 2026-09-27): VR View - the head-tracked mod, keyboard or gamepad - and the
+// Full VR Port. Each shows only the rows that matter to it; rows that matter
+// to both (comfort, screen, this menu, the mode switch itself) are in both.
+enum class SettingsMode { VrView, FullVr };
+bool SettingRelevantIn(SettingsMode mode, const SettingDefinition& definition);
+const char* SettingsModeName(SettingsMode mode);
 constexpr UInt32 kNativeMaxSections = 32;
 bool SettingShownIn(SettingsView view, const SettingDefinition& definition, const Config& config);
 constexpr UInt32 kNativeMaxRows = 160;
@@ -96,6 +104,10 @@ public:
  SettingsView View() const { return m_view; }
  // Switches the view and starts it at its first row.
  void SetView(SettingsView view, const Config& config);
+ // Which mode's menu the Sections view shows. Changing it starts the menu
+ // over at the list of sections.
+ void SetMode(SettingsMode mode, const Config& config);
+ SettingsMode Mode() const { return m_mode; }
  // Re-reads which rows the view offers - after an edit, or an INI reload,
  // turned a row that others depend on. Keeps the page and the selection
  // where they can stay, moves them where they cannot.
@@ -121,6 +133,7 @@ public:
  UInt32 SectionCount() const { return m_sectionCount; }
 private:
  SettingsView m_view=SettingsView::All;
+ SettingsMode m_mode=SettingsMode::VrView;
  const char* m_sectionNames[kNativeMaxSections]{};
  UInt32 m_sectionSizes[kNativeMaxSections]{};
  UInt32 m_sectionCount=0;

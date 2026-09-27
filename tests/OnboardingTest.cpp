@@ -121,16 +121,16 @@ void TestChoice() {
 	const UInt32 before = menu.Revision();
 	const SettingDefinition* changed = menu.Apply(MenuAction::Increase, config);
 	Check(changed == nullptr, "Right on standing answers nothing to write back");
-	Check(!config.handTracking && !config.hands.enabled, "and hand tracking stays off");
+	Check(!config.fullVrMode && !config.hands.enabled, "and hand tracking stays off");
 	Check(menu.Page() == 0 && menu.State().selected == 3, "and the page and the highlight stay");
 	Check(menu.Revision() == before, "and nothing is repainted");
 	changed = menu.Apply(MenuAction::Decrease, config);
-	Check(changed == nullptr && !config.handTracking && menu.Page() == 0,
+	Check(changed == nullptr && !config.fullVrMode && menu.Page() == 0,
 	      "Left on standing is refused the same way");
 
 	// A configuration that switched the mode on elsewhere (the INI, the
 	// settings menu) is still shown as such: standing is the marked one.
-	config.handTracking = true;
+	config.fullVrMode = true;
 	config.hands.enabled = true;
 	menu.BuildRows(config, items, categories, 16);
 	Check(!items[2].chosen && items[3].chosen, "standing is marked when the INI switched it on");
@@ -142,7 +142,7 @@ void TestChoice() {
 	changed = menu.Apply(MenuAction::Decrease, config);
 	Check(changed != nullptr && std::strcmp(changed->iniKey, "Enabled") == 0,
 	      "Left on seated answers the mode setting to write back");
-	Check(!config.handTracking && !config.hands.enabled, "and switches hand tracking off");
+	Check(!config.fullVrMode && !config.hands.enabled, "and switches hand tracking off");
 	Check(menu.Page() == 1 && std::strcmp(menu.Title(), "Controls") == 0,
 	      "and turns to the controls page");
 	Check(menu.Revision() > before, "and the picture is repainted");
@@ -160,7 +160,7 @@ void TestChoice() {
 	menu.BuildRows(config, items, categories, 16);
 	Check(items[2].chosen && !items[3].chosen, "and seated is marked");
 	changed = menu.Apply(MenuAction::Increase, config);
-	Check(changed != nullptr && !config.handTracking && menu.Page() == 1,
+	Check(changed != nullptr && !config.fullVrMode && menu.Page() == 1,
 	      "Right on seated confirms it and turns the page as well");
 }
 

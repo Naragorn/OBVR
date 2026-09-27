@@ -992,13 +992,13 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// player and the walkthrough on the very first start can be steered from
 	// the controllers before the mode is ever switched on.
 	const bool headset = g_headTracker.IsHeadsetConnected();
-	const bool active = config.handTracking && headset;
+	const bool active = config.fullVrMode && headset;
 	const bool menusOnly = !active && headset && config.hands.controllerMenus;
 	if (!active && !menusOnly) {
 		if (test::HandScriptMarkedThisFrame()) {
 			OBVR_LOG("HandScript: state - the hand mode is not running (Hands.Enabled %d, "
 			         "headset %d)",
-			         config.handTracking ? 1 : 0, headset ? 1 : 0);
+			         config.fullVrMode ? 1 : 0, headset ? 1 : 0);
 		}
 		if (g_handControlsHeld) {
 			game::ReleaseHandControls(config.handKeys);
@@ -3303,7 +3303,7 @@ void BeforeFirstScenePass() {
 	// is drawn, and a book or a dialogue opened with a weapon drawn showed the
 	// hands for that one frame (2026-09-25). Present decides the same again
 	// and keeps it; this only moves the first frame earlier.
-	if (GetConfig().handTracking && !ReadIsThirdPerson() &&
+	if (GetConfig().fullVrMode && !ReadIsThirdPerson() &&
 	    (game::IsMenuMode() || game::DialogCameraCallPending() || g_handsAwayForDialog)) {
 		// The same list Present builds with the hands away. A shorter one here
 		// un-hid the drawn weapon every frame (HideFirstPersonNodes shows again
@@ -4206,7 +4206,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// On the hand the pick follows, the one the tooltip belongs to.
 	const bool crosshairLeft = g_hand.pickWithLeftHand;
 	const bool crosshairOnHand =
-		config.handTracking && (crosshairLeft ? g_hand.leftAimValid : g_hand.aimValid);
+		config.fullVrMode && (crosshairLeft ? g_hand.leftAimValid : g_hand.aimValid);
 	g_crosshairLayer.SetHandPlacement(
 		crosshairOnHand,
 		g_headTracker.GetBackendForFrame().HandDeviceIndex(
@@ -5097,10 +5097,10 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		const vr::HandSettings& hands = config.hands;
 		// The hand an item is near (game::FindNearestItem), else the right one.
 		const bool pickLeft = g_hand.pickWithLeftHand;
-		const bool handRay = config.handTracking && g_headTracker.IsHeadsetConnected() &&
+		const bool handRay = config.fullVrMode && g_headTracker.IsHeadsetConnected() &&
 		                     (pickLeft ? g_hand.leftHandValid : g_hand.rightHandValid);
 		const bool nearRay = handRay && g_nearItem.valid;
-		const bool reachRay = config.handTracking && g_headTracker.IsHeadsetConnected() &&
+		const bool reachRay = config.fullVrMode && g_headTracker.IsHeadsetConnected() &&
 		                      g_grabReachPick &&
 		                      (g_hand.grabWithLeftHand ? g_hand.leftHandValid : g_hand.rightHandValid);
 		if (nearRay) {
@@ -5272,7 +5272,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		// Hands.AimWithHand, off by default; the grab keeps its hand either way,
 		// since the grabbed object is carried along the aim.
 		const bool aimWithHand = GetConfig().hands.aimWithHand;
-		if (GetConfig().handTracking) {
+		if (GetConfig().fullVrMode) {
 			// From the reach on, not only once held: the grab starts inside the
 			// engine's grab handler a frame after the key, and that start has to
 			// look along the same line the pick found the object on.
@@ -5806,7 +5806,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// the head. Pitch and position of the hand are the next rungs, see
 	// docs/hand-tracked-mode.md. Reported on change of tracking so a run
 	// says when the controller was seen and when it was lost.
-	g_handArmsWanted = readPlayer && !isThirdPerson && config.handTracking &&
+	g_handArmsWanted = readPlayer && !isThirdPerson && config.fullVrMode &&
 	                   g_headTracker.IsHeadsetConnected() && !game::IsMenuMode() &&
 	                   g_hand.armsValid;
 	if (!g_handArmsWanted && readPlayer && !isThirdPerson && config.aimFollowsGaze &&

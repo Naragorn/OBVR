@@ -110,15 +110,14 @@ struct Config {
 	// experiment, never a normal menu setting, and stays off by default.
 	bool nativeMenuLifecycleProbe = false;
 
-	// [Hands] Enabled: the hand-tracked mode. Motion controllers are read
+	// [Hands] Enabled: Full VR mode (the "Full VR Port"; called the
+	// hand-tracked mode before 2026-09-27). Motion controllers are read
 	// alongside the head, and the first-person weapon hand follows the right
-	// controller instead of the gaze. The first rung of the ladder in
-	// docs/hand-tracked-mode.md; everything above it - swings, blocks, the
-	// bow, spells, wrist menus, grabbing - stands on this reading. Off by
-	// default: without it OBVR is exactly the head-tracked mod it was.
-	// Under construction: none of it has been seen working in a headset,
-	// the walkthrough refuses it, and the INI and settings menu say so.
-	bool handTracking = false;
+	// controller instead of the gaze; swings, blocks, the bow, spells, wrist
+	// menus, grabbing, teleport and the gestures stand on it. Off, OBVR is
+	// VR View: the head-tracked mod it always was. The INI key keeps its
+	// old name so existing files still read.
+	bool fullVrMode = false;
 
 	// [Onboarding] ShowAtStart: whether the first-start walkthrough opens in
 	// the headset when the game starts. On by default and switched off by
@@ -139,7 +138,7 @@ struct Config {
 
 	// The rest of [Hands]: gestures, arms, wrists, laser, sticks (HandMode.h)
 	// and the keys the mode presses on the player's behalf (HandControls.h).
-	// hands.enabled mirrors handTracking after a load.
+	// hands.enabled mirrors fullVrMode after a load.
 	vr::HandSettings hands;
 	game::HandKeyMap handKeys;
 

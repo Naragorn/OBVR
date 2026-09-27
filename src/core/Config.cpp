@@ -591,7 +591,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.vrTestWaterCoverageDiagnostic = ReadBool("Debug", "VRTestWaterCoverageDiagnostic", config.vrTestWaterCoverageDiagnostic, path);
 	config.vrTestWaterPitch = ReadFloat("Debug", "VRTestWaterPitch", config.vrTestWaterPitch, path);
 	ReadText("Debug", "HandScript", config.handScript, sizeof(config.handScript), path);
-	config.handTracking = ReadBool("Hands", "Enabled", config.handTracking, path);
+	config.fullVrMode = ReadBool("Hands", "Enabled", config.fullVrMode, path);
 	config.onboardingShowAtStart =
 		ReadBool("Onboarding", "ShowAtStart", config.onboardingShowAtStart, path);
 	config.nativeOnboardingPrototype =
@@ -610,7 +610,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	}
 	{
 		vr::HandSettings& h = config.hands;
-		h.enabled = config.handTracking;
+		h.enabled = config.fullVrMode;
 		h.gestures.blockMinUp = ReadFloat("Hands", "BlockMinUp", h.gestures.blockMinUp, path);
 		h.gestures.blockMinForward =
 			ReadFloat("Hands", "BlockMinForward", h.gestures.blockMinForward, path);

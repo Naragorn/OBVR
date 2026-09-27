@@ -358,7 +358,7 @@ void TestHandTracking() {
 	std::printf("Hand tracking\n");
 
 	obvr::Config untouched;
-	Check(!untouched.handTracking, "the hand-tracked mode is off by default");
+	Check(!untouched.fullVrMode, "the hand-tracked mode is off by default");
 	Check(untouched.nativeOnboardingPrototype,
 	      "the native MenuQue menus are selected by default");
 
@@ -373,7 +373,7 @@ void TestHandTracking() {
 
 	obvr::Config configured;
 	LoadFrom("ConfigTestHands.ini", "[Hands]\nEnabled=1\n", configured);
-	Check(configured.handTracking, "Hands.Enabled=1 switches it on");
+	Check(configured.fullVrMode, "Hands.Enabled=1 switches it on");
 
 	Check(untouched.hands.wristHudWidth == 0.35f && untouched.hands.wristMenuWidth == 0.70f,
 	      "the wrist HUD is 35 cm wide and the wrist menu 70 cm by default");

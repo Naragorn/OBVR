@@ -432,11 +432,11 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.tracker.renderHeight = static_cast<UInt32>(v); },
 	},
 	{
-		"Hands", "Hand tracking", "Under construction, not working as intended yet",
+		"Mode", "Full VR mode", "On: the Full VR Port - hands, gestures, teleport. Off: VR View",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "Enabled",
-		+[](const Config& c) { return c.handTracking ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.handTracking = v != 0.0f; c.hands.enabled = v != 0.0f; },
+		+[](const Config& c) { return c.fullVrMode ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.fullVrMode = v != 0.0f; c.hands.enabled = v != 0.0f; },
 	},
 	{
 		"Hands", "HUD on the wrist", "The HUD hangs on the right wrist",

@@ -111,7 +111,7 @@ class OnboardingPort final: public ui::NativeMenuPort {
   // Chosen once: the walkthrough does not come back at the next start. It
   // can be switched on again in the settings (Onboarding / Show at start).
   if (SaveSetting("Onboarding","ShowAtStart","0")) GetConfig().onboardingShowAtStart=false;
-  GetConfig().handTracking=fullVR;
+  GetConfig().fullVrMode=fullVR;
   GetConfig().hands.enabled=fullVR;
   g_comfortPending=fullVR;
   OBVR_LOG("Native onboarding: %s selected and saved",fullVR ? "Full VR" : "Keyboard/Gamepad + VR");
@@ -154,7 +154,11 @@ void Join(char* out,UInt32 capacity,const char* a,const char* b,const char* c=""
 }
 bool RefreshSettings() {
  bool ok=true;
- // An edit or an INI reload may have turned a row that others follow.
+ // An edit or an INI reload may have turned a row that others follow - or
+ // switched Full VR on or off, which brings the other mode's menu.
+ const auto mode=GetConfig().fullVrMode ? ui::SettingsMode::FullVr : ui::SettingsMode::VrView;
+ if (g_settings.View()==ui::SettingsView::Sections && g_settings.Mode()!=mode)
+  g_settings.SetMode(mode,GetConfig());
  g_settings.Sync(GetConfig());
  const bool comfort=g_settings.View()==ui::SettingsView::Comfort;
  const bool overview=g_settings.InOverview();
@@ -163,10 +167,10 @@ bool RefreshSettings() {
  ui::FormatInteger(static_cast<int>(g_settings.First()/ui::kNativeSettingsRows+1),page,sizeof(page));
  ui::FormatInteger(static_cast<int>(g_settings.Pages()),pages,sizeof(pages));
  Join(temporary,sizeof(temporary),page," / ",pages);
- if (comfort) Join(title,sizeof(title),"Comfort (OBVR)",""," - ");
- else if (section) Join(title,sizeof(title),"OBVR: ",section," - ");
- else Join(title,sizeof(title),"VR Settings (OBVR)",""," - ");
- Join(heading,sizeof(heading),title,temporary,"");
+ if (comfort) Join(title,sizeof(title),"Comfort (OBVR)","","");
+ else if (section) Join(title,sizeof(title),ui::SettingsModeName(g_settings.Mode()),": ",section);
+ else Join(title,sizeof(title),ui::SettingsModeName(g_settings.Mode())," (OBVR)","");
+ Join(heading,sizeof(heading),title," - ",temporary);
  ok=CachedText(0,"user0",heading) && ok;
  // Back from a section to the list of sections; hidden elsewhere, the same
  // way as the paging buttons (alpha and target, XML booleans).
@@ -373,7 +377,7 @@ void Tick() {
    const vr::HandSettings& h=GetConfig().hands;
    const bool fitted=h.handsAdjusted || h.rightHandGripX!=0.0f || h.rightHandGripY!=0.0f ||
     h.rightHandGripZ!=0.0f || h.leftHandGripX!=0.0f || h.leftHandGripY!=0.0f || h.leftHandGripZ!=0.0f;
-   if (ui::FirstHandFitDue(GetConfig().handTracking,fitted,PlayerInWorld() && top==0,s_firstOffered,
+   if (ui::FirstHandFitDue(GetConfig().fullVrMode,fitted,PlayerInWorld() && top==0,s_firstOffered,
                            s_open || s_guidePending || s_finishPending || game::HandAdjustActive())) {
     s_firstOffered=true; s_firstFit=true; s_guidePending=true;
     OBVR_LOG("Native menus: the hands have never been fitted - the guide opens by itself");
@@ -469,8 +473,11 @@ void Tick() {
  if (ui::SettingsStep(false,GenericRoot()!=nullptr,false,false,toggle,false,false,
      top==kMenuIdLoading,top!=0 || PlayerInWorld())==ui::NativeSettingsStep::Open) {
   if (OpenMenu(true)) {
-   // Insert opens on the list of sections (ui::SettingsView::Sections).
+   // Insert opens on the list of sections (ui::SettingsView::Sections) of
+   // the menu for the mode that is on: VR View or the Full VR Port.
    g_settings.SetView(ui::SettingsView::Sections,GetConfig());
+   g_settings.SetMode(GetConfig().fullVrMode ? ui::SettingsMode::FullVr : ui::SettingsMode::VrView,
+                      GetConfig());
    g_settingsOpen.Set(true); g_saveFailed=false; g_refusal=nullptr; InvalidateText();
    if (!RefreshSettings()) OBVR_LOG("Native settings: initial UI update failed");
   } else if (!GenericRoot()) {

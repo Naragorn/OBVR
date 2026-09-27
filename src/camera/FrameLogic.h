@@ -589,7 +589,13 @@ CrosshairContent CrosshairContentWanted(bool crosshairWanted, bool haveTarget,
 // whatever a call no longer lists: a shorter list in one of them un-hid the
 // drawn weapon every frame of a conversation (2026-09-25).
 //
-//   * the arms' meshes (armNodes), with HideArms
+//   * the arms' meshes (armNodes), with HideArms - and "LowerBody", the
+//     shape armour below the waist is named by convention: the engine hides
+//     only "UpperBody" in first person and draws every other shape
+//     (cs.uesp.net, "NifSkope/Modeling Tutorial: Fixing the armor
+//     incorrectly displayed in 1st person"). Flat, nobody looks down at it;
+//     with the first-person model moved by the right controller the leg
+//     armour hung in the room (the tester, 2026-09-27)
 //   * the sheaths: a weapon's scabbard is its own node, "Scb", hung on the
 //     side-weapon bone with the sheathed weapon (cs.uesp.net, NifSkope
 //     Comprehensive Guide, "Scabbards"); the bones a sheathed weapon, a bow
@@ -622,6 +628,7 @@ inline bool ComposeHandsHideList(char* out, UInt32 capacity, bool hideArms, cons
 	};
 	if (hideArms && armNodes != nullptr) {
 		append(armNodes);
+		append("LowerBody");
 	}
 	if (hideSheaths) {
 		append("SideWeapon,BackWeapon,Quiver,Scb");

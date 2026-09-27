@@ -86,7 +86,7 @@ void StepHandScriptFrame(float dt, bool inWorld, bool menuUp, const vr::OpenVRBa
 		// The weapon's form ID, for a scenario's console lines ({weapon}).
 		OBVR_LOG("HandScript: started - equipped weapon form %08X, Hands %d, teleport %d noise %d, "
 		         "holsters %d, fists %d, quick menu %d",
-		         game::EquippedWeaponFormId(), GetConfig().handTracking ? 1 : 0,
+		         game::EquippedWeaponFormId(), GetConfig().fullVrMode ? 1 : 0,
 		         GetConfig().hands.teleport.enabled ? 1 : 0,
 		         GetConfig().hands.teleport.makesNoise ? 1 : 0, GetConfig().hands.holster.enabled ? 1 : 0,
 		         GetConfig().hands.fist.enabled ? 1 : 0, GetConfig().hands.quickMenu.enabled ? 1 : 0);

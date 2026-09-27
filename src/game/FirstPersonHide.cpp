@@ -133,7 +133,7 @@ UInt8* const* ChildrenOf(const UInt8* node, UInt32& count) {
 // and only where this code set it.
 UInt8* g_hidden[kMaxHidden];
 UInt32 g_hiddenCount = 0;
-UInt32 g_hiddenReportsLeft = 12;
+UInt32 g_hiddenReportsLeft = 60;  // a scabbard hidden late still shows (2026-09-27)
 const UInt8* g_probedRoot = nullptr;
 UInt32 g_probeLinesLeft = 0;
 

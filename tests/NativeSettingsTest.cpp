@@ -416,6 +416,78 @@ void TestComfortPageStep() {
  }
 }
 
+bool HasSection(NativeSettings& menu,const Config& c,const char* name) {
+ bool found=false;
+ for(UInt32 page=0;page<menu.Pages();++page) {
+  for(UInt32 slot=0;slot<kNativeSettingsRows;++slot) {
+   const char* s=menu.SectionAt(slot);
+   found=found || (s && std::strcmp(s,name)==0);
+  }
+  menu.Click(kNativeNext,c);
+ }
+ return found;
+}
+
+void TestModes() {
+ std::printf("VR View and Full VR Port menus\n");
+ const auto find=[](const char* section,const char* key) { return FindSetting(section,key); };
+ unsigned inNone=0;
+ for(UInt32 i=0;i<SettingDefinitionCount();++i) {
+  const auto& d=SettingDefinitions()[i];
+  if(!SettingRelevantIn(SettingsMode::VrView,d) && !SettingRelevantIn(SettingsMode::FullVr,d)) ++inNone;
+ }
+ Check(inNone==0,"every row is in at least one of the two menus");
+ const auto* mode=find("Hands","Enabled");
+ Check(mode && SettingRelevantIn(SettingsMode::VrView,*mode) && SettingRelevantIn(SettingsMode::FullVr,*mode),
+       "the Full VR switch is in both");
+ const auto* teleport=find("Locomotion","Teleport");
+ Check(teleport && SettingRelevantIn(SettingsMode::FullVr,*teleport) && !SettingRelevantIn(SettingsMode::VrView,*teleport),
+       "the teleport only in the Full VR Port");
+ const auto* holsters=find("Hands","Holsters");
+ Check(holsters && SettingRelevantIn(SettingsMode::FullVr,*holsters) && !SettingRelevantIn(SettingsMode::VrView,*holsters),
+       "the hands' rows only in the Full VR Port");
+ const auto* gamepad=find("Hands","GamepadLayout");
+ const auto* menus=find("Hands","ControllerMenus");
+ Check(gamepad && menus && SettingRelevantIn(SettingsMode::VrView,*gamepad) && !SettingRelevantIn(SettingsMode::FullVr,*gamepad) &&
+       SettingRelevantIn(SettingsMode::VrView,*menus) && !SettingRelevantIn(SettingsMode::FullVr,*menus),
+       "the controllers as a gamepad or on the menus only in VR View");
+ const auto* gaze=find("Look","AimFollowsGaze");
+ Check(gaze && SettingRelevantIn(SettingsMode::VrView,*gaze) && !SettingRelevantIn(SettingsMode::FullVr,*gaze),
+       "aiming by the head only in VR View");
+ const auto* body=find("Body","Visible");
+ Check(!body || (SettingRelevantIn(SettingsMode::VrView,*body) && !SettingRelevantIn(SettingsMode::FullVr,*body)),
+       "the body under the headset only in VR View");
+ const auto* snap=find("Look","SnapTurning");
+ Check(snap && SettingRelevantIn(SettingsMode::VrView,*snap) && SettingRelevantIn(SettingsMode::FullVr,*snap),
+       "comfort rows in both");
+ Check(std::strcmp(SettingsModeName(SettingsMode::VrView),"VR View")==0 &&
+       std::strcmp(SettingsModeName(SettingsMode::FullVr),"Full VR Port")==0,"the menus' names");
+
+ Config c;
+ NativeSettings menu;
+ menu.SetView(SettingsView::Sections,c);
+ Check(menu.Mode()==SettingsMode::VrView,"VR View by default");
+ Check(!HasSection(menu,c,"Teleport") && HasSection(menu,c,"Aiming"),"VR View: no teleport, aiming");
+ menu.SetMode(SettingsMode::FullVr,c);
+ Check(menu.InOverview() && menu.First()==0,"a mode change starts at the list");
+ Check(HasSection(menu,c,"Teleport") && HasSection(menu,c,"Hands") && !HasSection(menu,c,"Aiming"),
+       "Full VR Port: teleport and hands, no head aiming");
+ // Inside Hands in VR View only its two controller rows (the switch has its own section).
+ menu.SetMode(SettingsMode::VrView,c);
+ UInt32 k=0; bool opened=false;
+ for(UInt32 page=0;page<menu.Pages() && !opened;++page) {
+  for(UInt32 slot=0;slot<kNativeSettingsRows;++slot) {
+   const char* s=menu.SectionAt(slot);
+   if(s && std::strcmp(s,"Hands")==0) { menu.Click(kNativeRowBase+static_cast<int>(slot)*3,c); opened=true; break; }
+   ++k;
+  }
+  if(!opened) menu.Click(kNativeNext,c);
+ }
+ UInt32 rows=0;
+ if(opened) for(UInt32 slot=0;slot<kNativeSettingsRows;++slot) rows+=menu.Row(slot)!=nullptr;
+ Check(opened && rows==2,"VR View's Hands: the two controller rows");
+}
+
 void TestSections() {
  std::printf("Sections (the Insert menu)\n");
  Config c;
@@ -451,7 +523,9 @@ void TestSections() {
  }
  Check(seen==sections && distinct,"every section listed once");
  Check(ordered,"in the table's order");
- Check(total==SettingDefinitionCount(),"the sections hold every row");
+ UInt32 relevant=0;
+ for(UInt32 i=0;i<SettingDefinitionCount();++i) relevant+=SettingRelevantIn(menu.Mode(),SettingDefinitions()[i]);
+ Check(total==relevant,"the sections hold every row of this mode's menu");
 
  // Open the section on the second slot of the first page.
  menu.SetView(SettingsView::Sections,c);
@@ -515,6 +589,7 @@ void TestSections() {
 
 int main() {
  TestSections();
+ TestModes();
  TestComfortView();
  TestComfortPageStep();
  TestUpdateWindow();
