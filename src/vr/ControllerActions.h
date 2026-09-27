@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include <cstddef>
 #include <cstdio>
 
 #include "vr/HandInput.h"
@@ -45,6 +46,19 @@ struct ActionSet {
 
 static_assert(sizeof(ActionSet) == 32, "OpenVR active action set ABI");
 
+// VRSkeletalSummaryData_t: flFingerCurl[5] (thumb, index, middle, ring,
+// pinky), flFingerSplay[4].
+struct SkeletalSummary {
+	float curl[5];
+	float splay[4];
+};
+
+static_assert(sizeof(SkeletalSummary) == 36, "OpenVR skeletal summary ABI");
+
+// EVRSummaryType_VRSummaryType_FromDevice: the curls as the controller
+// senses them, not as the hand animation blends them.
+constexpr int kSummaryFromDevice = 1;
+
 struct Table {
 	int(__stdcall* SetManifest)(const char* path);
 	int(__stdcall* GetSet)(const char* path, UInt64* handle);
@@ -58,7 +72,14 @@ struct Table {
 	void* skeleton;
 	void* unused[9];
 	void* bones;
+	// Entry 20, GetSkeletalSummaryData(action, EVRSummaryType, VRSkeletalSummaryData_t*)
+	// (openvr_capi.h v2.15.6, VR_IVRInput_FnTable, counted 2026-09-27): the
+	// fingers' curl for the fist (vr::StepFist).
+	int(__stdcall* SkeletalSummary)(UInt64 action, int summaryType, SkeletalSummary* data);
 };
+
+static_assert(offsetof(Table, SkeletalSummary) == 20 * sizeof(void*),
+              "GetSkeletalSummaryData is entry 20 of VR_IVRInput_FnTable");
 
 enum Action : unsigned {
 	StickClick,

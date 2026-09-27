@@ -38,6 +38,8 @@ void OpenVRBackend::LogOnce(bool& alreadyLogged, const char* message) const {
 void OpenVRBackend::InitControllerActions() {
 	m_input = nullptr;
 	input::ClearActionSetup(m_actionSet, m_actionHandles);
+	m_skeletonHandles[0] = 0;
+	m_skeletonHandles[1] = 0;
 	m_actionReadErrorLogged = false;
 
 	char manifest[512]{};
@@ -76,6 +78,21 @@ void OpenVRBackend::InitControllerActions() {
 
 	m_input = table;
 	OBVR_LOG("OpenVR input: normalized Touch/Index controller actions ready");
+
+	// The hands' skeletons, for the fingers' curl (the fist, vr::StepFist).
+	// Optional: without them the controls work as before.
+	for (int hand = 0; hand < 2; ++hand) {
+		m_skeletonHandles[hand] = 0;
+		m_skeletonLogged[hand] = false;
+		const char* const path =
+			hand == 0 ? "/actions/obvr/in/right_skeleton" : "/actions/obvr/in/left_skeleton";
+		if (table->GetAction(path, &m_skeletonHandles[hand]) != 0) {
+			m_skeletonHandles[hand] = 0;
+		}
+	}
+	OBVR_LOG("OpenVR input: hand skeletons %s", m_skeletonHandles[0] != 0 && m_skeletonHandles[1] != 0
+	                                                ? "resolved - finger curls can be read"
+	                                                : "not in the manifest - no finger curls");
 }
 
 bool OpenVRBackend::Connect(int applicationType) {
@@ -868,6 +885,28 @@ bool OpenVRBackend::ReadHand(bool rightHand, HandPose& out) const {
 	out.angularVelocity = NiPoint3{pose.angularVelocity.v[0], pose.angularVelocity.v[1],
 	                               pose.angularVelocity.v[2]};
 		input::ApplyActionControls(out, controls, activeMask, actionError);
+		// The fingers' curl, from the device (the fist). Said once per hand,
+		// the first time it reads or fails.
+		const UInt64 skeleton = m_skeletonHandles[rightHand ? 0 : 1];
+		auto* const inputTable = static_cast<input::Table*>(m_input);
+		if (actionError == 0 && skeleton != 0 && inputTable->SkeletalSummary != nullptr) {
+			input::SkeletalSummary summary{};
+			const int skeletonError =
+				inputTable->SkeletalSummary(skeleton, input::kSummaryFromDevice, &summary);
+			if (skeletonError == 0) {
+				out.curlValid = true;
+				for (int finger = 0; finger < 5; ++finger) {
+					out.curl[finger] = summary.curl[finger];
+				}
+			}
+			bool& logged = m_skeletonLogged[rightHand ? 0 : 1];
+			if (!logged) {
+				logged = true;
+				OBVR_LOG("OpenVR input: %s hand skeleton %s (%d)%s", rightHand ? "right" : "left",
+				         skeletonError == 0 ? "reads" : "does not read", skeletonError,
+				         skeletonError == 0 ? "" : " - the fist cannot be seen on this hand");
+			}
+		}
 		return true;
 	}
 

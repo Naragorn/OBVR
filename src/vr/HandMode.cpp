@@ -83,6 +83,7 @@ void HandMode::Reset() {
 	m_rightFlick = StickFlickState{};
 	m_teleportStick = TeleportStickState{};
 	m_holster = HolsterState{};
+	m_fist = FistState{};
 	m_dropEdge = ButtonEdge{};
 	m_drop = DropPressState{};
 	m_dropClickNow = false;
@@ -199,7 +200,24 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	// heavy when the swing has been fast enough by then. Otherwise a swing
 	// taps or holds the attack control and the engine's animation decides -
 	// only with the weapon drawn and no grip closed (SwingPressesAttack).
-	r.strikeByMotion = s.motionHits && f.meleeInHand;
+	// Fists by making a fist (vr::StepFist): with nothing in the weapon slot
+	// the weapon hand closed readies hand to hand and opened puts it away,
+	// and bare fists strike by motion only as a fist.
+	{
+		FistInput fin;
+		fin.allowed = !f.menuMode && f.inWorld;
+		fin.curlValid = f.right.valid && f.right.curlValid;
+		for (int finger = 0; finger < 5; ++finger) {
+			fin.curl[finger] = f.right.curl[finger];
+		}
+		fin.gripDown = f.right.valid && GripDown(f.right.buttonsPressed);
+		fin.equipped = f.equipped;
+		fin.seen = f.weaponSeen;
+		fin.dt = f.dtSeconds;
+		r.fist = StepFist(m_fist, fin, s.fist);
+	}
+	r.strikeByMotion = s.motionHits && f.meleeInHand &&
+	                   FistAllowsStrike(f.equipped == EquippedKind::Nothing, r.fist);
 	if (f.right.valid && !f.menuMode) {
 		if (m_haveLastRight) {
 			const float speed = HandSpeed(m_lastRightRelative, rightRelative, f.dtSeconds);
@@ -356,7 +374,8 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	in.pointRight = m_pointRight;
 	in.leftHanded = false;  // the roles are swapped before the frame (AssignHandRoles)
 	r.controls = PlanHandControls(in, s.stickDeadZone);
-	r.controls.readyWeapon = r.controls.readyWeapon || r.holster.readyClick;
+	r.controls.readyWeapon =
+		r.controls.readyWeapon || r.holster.readyClick || r.fist.readyClick;
 	r.controls.run = StepRunToggle(m_runLatched, s.runToggle, in.leftStickClick, r.controls.run);
 	HoldTaps(r.controls, f, r);
 	if (!f.menuMode && cr.valid) {

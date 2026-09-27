@@ -1167,6 +1167,45 @@ void TestHolsterInMode() {
 	Check(!r.holster.readyClick, "in a menu the hip draws nothing");
 }
 
+void TestFistInMode() {
+	std::printf("Fists by making a fist, through the mode\n");
+	HandSettings settings;
+	settings.enabled = true;
+	settings.motionHits = true;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.inWorld = true;
+	frame.unitsPerMetre = 70.0f;
+	frame.dtSeconds = 0.1f;
+	frame.weaponSeen = WeaponSeen::Sheathed;
+	frame.equipped = EquippedKind::Nothing;
+	frame.meleeInHand = true;
+	frame.right.valid = true;
+	frame.right.position = NiPoint3{0.2f, -0.3f, -0.4f};
+	frame.right.curlValid = true;
+	HandMode mode;
+	HandModeResult r = mode.Update(frame, settings);
+	Check(!r.strikeByMotion, "bare hands open: a swing does not strike");
+	for (int finger = 0; finger < 5; ++finger) {
+		frame.right.curl[finger] = 0.95f;
+	}
+	bool readied = false;
+	for (int i = 0; i < 4; ++i) {
+		r = mode.Update(frame, settings);
+		readied = readied || r.controls.readyWeapon;
+	}
+	Check(r.fist.closed && readied, "a fist held: the ready-weapon key, fists up");
+	Check(r.strikeByMotion, "and as a fist a swing strikes");
+
+	HandMode armed;
+	frame.equipped = EquippedKind::Melee;
+	for (int finger = 0; finger < 5; ++finger) {
+		frame.right.curl[finger] = 0.0f;
+	}
+	r = armed.Update(frame, settings);
+	Check(r.strikeByMotion, "a sword in hand strikes with the hand open");
+}
+
 void TestLeftButtonsInHandMode() {
 	std::printf("The left hand's buttons in the hand-tracked mode\n");
 	HandSettings settings;
@@ -1908,6 +1947,7 @@ int main() {
 	TestWeaponGuard();
 	TestLeftHandedMirror();
 	TestHolsterInMode();
+	TestFistInMode();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

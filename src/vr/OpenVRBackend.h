@@ -330,6 +330,9 @@ private:
 	void* m_input = nullptr;       // IVRInput_011, when its manifest is ready
 	UInt64 m_actionSet = 0;
 	UInt64 m_actionHandles[2][7]{};
+	// The hands' skeleton actions, for the fingers' curl (0 when unbound).
+	UInt64 m_skeletonHandles[2]{};
+	mutable bool m_skeletonLogged[2]{};
 	mutable bool m_actionReadErrorLogged = false;
 	void* m_compositor = nullptr;  // IVRCompositorFnTable*, only when scene
 	void* m_overlay = nullptr;     // IVROverlayFnTable*, fetched on first use

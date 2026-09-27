@@ -206,6 +206,12 @@ void TestPose() {
 	      "a light trigger is an axis, not the button");
 	Check(Near(p.thumbY, 1.0f) && Near(p.gripForce, 0.9f), "stick and grip axes");
 	Check(p.actionInput && p.actionActiveMask == 0x1F, "as the action path, everything bound");
+	Check(p.curlValid && Near(p.curl[0], 0.0f) && Near(p.curl[4], 0.0f),
+	      "a skeleton with every finger open");
+	hand.curl = 0.9f;
+	p = ScriptedHandPose(hand, vr::Quaternion::Identity(), headPos);
+	Check(Near(p.curl[1], 0.9f) && Near(p.curl[4], 0.9f), "curl closes every finger");
+	hand.curl = 0.0f;
 
 	hand.a = false;
 	hand.grip = 0.0f;

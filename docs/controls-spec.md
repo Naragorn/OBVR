@@ -96,7 +96,7 @@ From UESP, Oblivion:Controls.
 |---|---|---|
 | Move, run, jump, sneak | left stick, its click, right stick up, right stick down | built |
 | Attack, cast, block | right trigger or a swing, left trigger, raised left hand | built |
-| Ready weapon (F) | right stick click; reaching to the hip or shoulder (4.1, 4.2) | built; fists (4.3) not yet |
+| Ready weapon (F) | right stick click; reaching to the hip or shoulder (4.1, 4.2); a fist with nothing equipped (4.3) | built |
 | Activate, grab | right A, grips | built |
 | Journal / menus, pause | left B, right B | built |
 | Drop (Shift + click) | left A in the inventory | built |
@@ -110,7 +110,7 @@ From UESP, Oblivion:Controls.
 ## 4. The target picture
 
 The tester's aim: the weapon is drawn by reaching for it, as with a real one.
-4.1, 4.2 and 4.4 are built (2026-09-27) and were checked in the game with the
+4.1 to 4.4 are built (2026-09-27) and were checked in the game with the
 hand script harness (docs/hand-script-harness.md). None of them has been tried
 in the headset yet.
 
@@ -161,25 +161,50 @@ in the headset yet.
   - A weapon never seen equipped this session is not searched for in the
     pack.
 
-### 4.3 Fists by making a fist
+### 4.3 Fists by making a fist (built 2026-09-27)
 
 - **Wanted.**
   - A fist with the weapon hand: hand to hand is ready, and striking is all
     that is left.
   - The hand opened: hand to hand is put away and cannot strike.
-- **Design.**
-  - The finger curls come from SteamVR's skeletal summary: IVRInput's
-    `GetSkeletalSummaryData`, `VRSkeletalSummaryData_t.flFingerCurl[5]`
-    (openvr_capi.h, IVRInput_011, read 2026-09-27). OBVR already runs
-    IVRInput_011 with an action manifest, which would need a skeleton action.
-  - A fist: all four fingers curled past a threshold, with hysteresis.
-  - Only with no weapon in the hand (a held sword is a fist too): with a
-    weapon equipped, the fist does nothing.
-  - The strike by motion already exists; it would be gated on the fist.
-- **To find out.**
-  - Whether the skeletal action gives curls on the Index as expected.
-  - How hand to hand is readied: the ready key with nothing equipped, as
-    vanilla does.
+- **Built.** `vr::StepFist` (`fist_test`, and `hand_mode_test` through the
+  mode).
+  - **The curls.** They come from SteamVR's skeletal summary:
+    - `GetSkeletalSummaryData`, entry 20 of IVRInput_011 (openvr_capi.h
+      v2.15.6), `VRSummaryType_FromDevice`.
+    - The skeleton actions are `/actions/obvr/in/right_skeleton` and
+      `left_skeleton`, in the manifest and bound in the knuckles and
+      oculus_touch files, in the form the Action-manifest wiki and SteamVR's
+      own binding files use.
+    - The log says `hand skeletons resolved` at startup, and once per hand
+      whether its skeleton reads.
+  - **What counts as a fist.** The index, middle, ring and little fingers are
+    all past 0.80, held for 0.25 s. The hand is open again only once all four
+    are below 0.35.
+    - The thumb is left out: on an Index it rests on the stick and buttons
+      either way.
+  - **When a fist readies.** Only with nothing in the weapon slot (a hand
+    round a sword is a fist too).
+    - A fist raises the fists and an opened hand lowers them, through the
+      ready-weapon key and its state machine.
+    - While the fists are up, a swing strikes by motion only as a fist.
+    - When the curls are unknown (no skeleton), fists strike as before.
+  - **Not while grabbing.** A fist made round a squeezed grip changes
+    nothing, so a hand closing on a cup does not raise the fists.
+  - **Settings.** `[Hands] Fists`, `FistCloseCurl`, `FistOpenCurl` and
+    `FistHoldSeconds`; a toggle in the settings under Hands.
+- **Checked in the game** (`tools/hand-scripts/fist.txt`, PASS, with the
+  scripted skeleton reporting every finger at the script's curl):
+  - bare hands, curl 1: "fists up", and the game showed them drawn;
+  - curl 0: "fists down", sheathed again.
+- **Open.**
+  - Whether a real Index gives the curls this reads. The harness plays the
+    skeleton; the device path (`hand skeleton reads` in the log) has not run
+    with a controller in hand.
+  - Whether the thresholds tell a fist from a relaxed grip on the handle.
+  - SteamVR keeps the bindings a player has changed. With custom OBVR
+    bindings saved, the skeleton stays unbound until the defaults are
+    reloaded.
 
 ### 4.4 The quick menu on the right trackpad (built 2026-09-27)
 

@@ -67,6 +67,11 @@ inline vr::HandPose ScriptedHandPose(const ScriptHand& hand, const vr::Quaternio
 	// As the action path reports a controller with every action bound.
 	out.actionInput = true;
 	out.actionActiveMask = 0x1F;
+	// A skeleton that reports every finger at the script's curl.
+	out.curlValid = true;
+	for (int finger = 0; finger < 5; ++finger) {
+		out.curl[finger] = hand.curl;
+	}
 	return out;
 }
 

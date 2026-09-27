@@ -1,0 +1,26 @@
+# Fists by making a fist (docs/controls-spec.md 4.3): with no weapon in the
+# slot, the weapon hand closed into a fist raises the fists, opened lowers
+# them. The scripted skeleton reports every finger at the script's curl.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\fist.txt
+
+ini Hands Enabled=1
+ini Hands Fists=1
+# Nothing in the weapon slot (the save's own state may differ).
+console player.unequipitem 00000C0C
+console player.unequipitem 00025231
+
+expect HandScript: finished
+expect Fist: the weapon hand closed - fists up
+expect Fist: the weapon hand opened - fists down
+expect Hands: ready weapon done
+reject HandScript: WARNING
+
+wait 10
+mark open_hand
+right curl 1
+wait 1.5
+mark fists_up
+right curl 0
+wait 1.5
+mark fists_down
+wait 1

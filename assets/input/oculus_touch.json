@@ -5,6 +5,10 @@
   "description": "Normalized OBVR controller controls. Only physical stick clicks open OBVR.",
   "bindings": {
     "/actions/obvr": {
+      "skeleton": [
+        {"output": "/actions/obvr/in/left_skeleton", "path": "/user/hand/left/input/skeleton/left"},
+        {"output": "/actions/obvr/in/right_skeleton", "path": "/user/hand/right/input/skeleton/right"}
+      ],
       "sources": [
         {"path": "/user/hand/left/input/joystick", "mode": "joystick", "inputs": {"click": {"output": "/actions/obvr/in/left_stick_click"}, "position": {"output": "/actions/obvr/in/left_stick"}}},
         {"path": "/user/hand/left/input/trigger", "mode": "trigger", "inputs": {"pull": {"output": "/actions/obvr/in/left_trigger"}}},

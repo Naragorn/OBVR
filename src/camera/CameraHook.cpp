@@ -1050,6 +1050,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				(h.equip == vr::HolsterKind::Bow ? g_lastBowForm : g_lastSwordForm) = nullptr;
 			}
 		}
+		if (g_hand.fist.changed && g_holsterLinesLeft > 0) {
+			--g_holsterLinesLeft;
+			OBVR_LOG("Fist: the weapon hand %s%s", g_hand.fist.closed ? "closed" : "opened",
+			         g_hand.fist.readyClick ? (g_hand.fist.closed ? " - fists up" : " - fists down")
+			                                : " - nothing to ready");
+		}
 		if ((h.gesture != vr::HolsterKind::None || h.gaveUp) && g_holsterLinesLeft > 0) {
 			--g_holsterLinesLeft;
 			const char* const what = h.gesture == vr::HolsterKind::Bow ? "bow" : "sword";

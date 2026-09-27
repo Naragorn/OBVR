@@ -733,6 +733,13 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return c.hands.holster.enabled ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.holster.enabled = v != 0.0f; },
 	},
+	{
+		"Hands", "Fists by a fist", "Full VR, no weapon: a fist raises the fists, an open hand lowers them",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "Fists",
+		+[](const Config& c) { return c.hands.fist.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.fist.enabled = v != 0.0f; },
+	},
 	// ---- Teleport (Full VR) --------------------------------------------------
 	{
 		"Teleport", "Teleport", "Full VR: hold the right stick up, aim the arc, let go",

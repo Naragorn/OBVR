@@ -983,3 +983,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME holster COMMAND holster_test)
+
+add_executable(fist_test FistTest.cpp ../src/vr/Quaternion.cpp)
+
+target_include_directories(fist_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(fist_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME fist COMMAND fist_test)

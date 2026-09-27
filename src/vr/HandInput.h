@@ -26,6 +26,10 @@ struct HandPose {
 	float thumbY = 0.0f;
 	bool thumbFromJoystickAxis = false;  // the stick came from rAxis[3], for the log
 	float gripForce = 0.0f;              // rAxis[2].x on an Index, 0 elsewhere
+	// The fingers' curl from SteamVR's skeletal summary (thumb, index, middle,
+	// ring, pinky; 0 open, 1 curled), when the skeleton action gave it.
+	bool curlValid = false;
+	float curl[5] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 	// Action provenance for recording/replay. A failed or inactive action is
 	// represented by neutral controls; these fields retain why it was neutral.
 	bool actionInput = false;

@@ -727,6 +727,12 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		hs.bowZone.z = ReadFloat("Hands", "HolsterBowUp", hs.bowZone.z, path);
 		hs.bowRadius = ReadFloat("Hands", "HolsterBowRadius", hs.bowRadius, path);
 
+		vr::FistSettings& fs = h.fist;
+		fs.enabled = ReadBool("Hands", "Fists", fs.enabled, path);
+		fs.closeCurl = ReadFloat("Hands", "FistCloseCurl", fs.closeCurl, path);
+		fs.openCurl = ReadFloat("Hands", "FistOpenCurl", fs.openCurl, path);
+		fs.holdSeconds = ReadFloat("Hands", "FistHoldSeconds", fs.holdSeconds, path);
+
 		vr::TeleportSettings& tp = h.teleport;
 		tp.enabled = ReadBool("Locomotion", "Teleport", tp.enabled, path);
 		tp.instant = ReadBool("Locomotion", "TeleportInstant", tp.instant, path);

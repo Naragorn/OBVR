@@ -5,6 +5,7 @@
 #include "vr/HandInput.h"
 #include "vr/OpenVRTypes.h"
 #include "vr/Quaternion.h"
+#include "vr/Fist.h"
 #include "vr/Holster.h"
 #include "vr/QuickMenu.h"
 #include "vr/Teleport.h"
@@ -206,6 +207,9 @@ struct HandSettings {
 	// shoulder ([Hands] Holsters, vr::Holster).
 	HolsterSettings holster;
 
+	// Fists by making a fist ([Hands] Fists, vr::Fist).
+	FistSettings fist;
+
 	// The teleport on the right stick pushed forward ([Locomotion], vr::Teleport).
 	TeleportSettings teleport;
 };
@@ -290,6 +294,9 @@ struct HandModeResult {
 	// Drawing by reaching: the ready click, a weapon to equip first, the grips
 	// that are the holster's (vr::StepHolster).
 	HolsterVerdict holster;
+	// Fists by making a fist: the ready click, and whether the hand is one
+	// (vr::StepFist).
+	FistVerdict fist;
 
 	// The aim, when the right hand is tracked: its heading as a turn from
 	// the head's, and the sine of its pitch (positive up), both in the
@@ -479,6 +486,7 @@ private:
 	StickFlickState m_rightFlick;
 	TeleportStickState m_teleportStick;
 	HolsterState m_holster;
+	FistState m_fist;
 	ButtonEdge m_dropEdge;
 	DropPressState m_drop;
 	bool m_dropClickNow = false;  // this frame carries the drop's click
