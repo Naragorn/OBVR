@@ -46,6 +46,8 @@ struct TeleportSettings {
 	float startThreshold = 0.8f;
 	float releaseThreshold = 0.3f;
 	float coneDegrees = 30.0f;
+	// How long the stick is held up before it aims rather than jumps.
+	float holdSeconds = 0.2f;
 };
 
 constexpr float kGlideSpeedMin = 5.0f;
@@ -53,24 +55,34 @@ constexpr float kGlideSpeedMax = 40.0f;
 
 // ------------------------------------------------------------------ Stick
 //
-// Aiming starts when the stick is pushed past the start threshold, no more
-// than the cone off straight forward: a stick pushed diagonally while
-// turning is a turn, not a teleport (in Half-Life: Alyx players teleport by
-// accident while turning, reddit.com/r/ValveIndex/comments/ikzuca). While
-// aiming the stick belongs to the teleport - no turning. Letting it come back
-// under the release threshold goes; a grip, or the teleport becoming
-// impossible, cancels. For a moment after the release the stick still
-// belongs to it, so the spring back through the middle does not turn.
+// The right stick pushed up does two things, told apart by time
+// (2026-09-27, the tester's choice): flicked up and let go it jumps, as in
+// Skyrim VR, where the right stick up is the jump in the standard Index
+// layout and in VRIK's (reddit r/ValveIndex f1nqvd, r/skyrimvr clsav7);
+// held up for holdSeconds it aims the teleport, and let go it goes.
+//
+// A push counts when it is past the start threshold and no more than the
+// cone off straight up: a stick pushed diagonally while turning is a turn
+// (in Half-Life: Alyx players teleport by accident while turning,
+// reddit.com/r/ValveIndex/comments/ikzuca). While pushed the stick belongs
+// to the push - no turning. It is let go under the release threshold. A
+// grip, or the teleport becoming impossible, cancels an aim; the release
+// then does nothing. With the teleport switched off, a push jumps at once.
+// For a moment after a release the stick still belongs to it, so the spring
+// back through the middle does not turn.
 
 constexpr float kTeleportTurnLockSeconds = 0.25f;
 
 struct TeleportStickState {
+	bool pushed = false;
 	bool aiming = false;
 	bool cancelled = false;
+	float heldSeconds = 0.0f;
 	float lockSeconds = 0.0f;
 };
 
 struct TeleportStickVerdict {
+	bool jump = false;       // a flick: jump now
 	bool aiming = false;     // show the arc this frame
 	bool commit = false;     // go now
 	bool ownsStick = false;  // the stick does not turn this frame
@@ -86,47 +98,70 @@ inline bool InTeleportCone(float x, float y, float startThreshold, float coneDeg
 	return ax <= y * math::Tan(cone * math::kDegreesToRadians);
 }
 
+// `active`: the stick may jump at all (in the world, not in a menu).
+// `teleportAllowed`: a hold may aim a teleport now.
 inline TeleportStickVerdict StepTeleportStick(TeleportStickState& s, float x, float y,
-                                              bool cancel, bool allowed, float dtSeconds,
-                                              const TeleportSettings& settings) {
+                                              bool cancel, bool active, bool teleportAllowed,
+                                              float dtSeconds, const TeleportSettings& settings) {
 	TeleportStickVerdict v;
 	if (!(x == x) || !(y == y)) {
 		x = 0.0f;
 		y = 0.0f;
 	}
+	const float dt = dtSeconds > 0.0f ? dtSeconds : 0.0f;
 	if (s.lockSeconds > 0.0f) {
-		s.lockSeconds -= dtSeconds > 0.0f ? dtSeconds : 0.0f;
+		s.lockSeconds -= dt;
 		if (s.lockSeconds < 0.0f) {
 			s.lockSeconds = 0.0f;
 		}
 		v.ownsStick = true;
 	}
-	if (!allowed || !settings.enabled) {
-		s.aiming = false;
-		s.cancelled = false;
+	if (!active) {
+		s = TeleportStickState{};
 		return v;
 	}
 	const float magnitude = math::Sqrt(x * x + y * y);
-	if (!s.aiming) {
-		if (InTeleportCone(x, y, settings.startThreshold, settings.coneDegrees)) {
-			s.aiming = true;
-			s.cancelled = false;
-		} else {
+	if (!s.pushed) {
+		if (!InTeleportCone(x, y, settings.startThreshold, settings.coneDegrees)) {
 			return v;
 		}
-	}
-	if (cancel) {
-		s.cancelled = true;
+		s.pushed = true;
+		s.aiming = false;
+		s.cancelled = false;
+		s.heldSeconds = 0.0f;
+		if (!settings.enabled) {
+			// No teleport: the push is the jump, at once.
+			v.jump = true;
+		}
 	}
 	v.ownsStick = true;
 	if (magnitude < settings.releaseThreshold) {
-		v.commit = !s.cancelled;
+		if (settings.enabled) {
+			if (!s.aiming) {
+				v.jump = true;
+			} else if (!s.cancelled) {
+				v.commit = true;
+			}
+		}
+		s.pushed = false;
 		s.aiming = false;
 		s.cancelled = false;
 		s.lockSeconds = kTeleportTurnLockSeconds;
 		return v;
 	}
-	v.aiming = !s.cancelled;
+	if (!settings.enabled) {
+		return v;
+	}
+	s.heldSeconds += dt;
+	if (!s.aiming && s.heldSeconds >= settings.holdSeconds) {
+		// Held long enough: from here it is an aim, and the release no jump.
+		s.aiming = true;
+		s.cancelled = !teleportAllowed;
+	}
+	if (s.aiming && (cancel || !teleportAllowed)) {
+		s.cancelled = true;
+	}
+	v.aiming = s.aiming && !s.cancelled;
 	return v;
 }
 

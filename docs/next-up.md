@@ -181,15 +181,27 @@ Every change below is switched by the mode.
 ### The teleport as built
 
 - **Controls.**
-  - Right stick pushed forward, past `TeleportStickStart` (0.8) and within
-    `TeleportStickConeDegrees` (30) of straight ahead, aims: an arc from the
-    right hand's laser and a ring where it lands.
-  - Let back under `TeleportStickRelease` (0.3), it goes.
+  - Right stick pushed up, past `TeleportStickStart` (0.8) and within
+    `TeleportStickConeDegrees` (30) of straight up.
+    - **Flicked and let go** before `TeleportHoldSeconds` (0.2): a jump.
+    - **Held** that long: it aims - an arc from the right hand's laser and a
+      ring where it lands. Let back under `TeleportStickRelease` (0.3), it
+      goes.
+    - The jump comes on the release, a fraction later than a key would.
+    - With the teleport switched off, the push jumps at once.
   - A right grip while aiming cancels.
   - For a quarter second after the release the stick does not turn.
-  - Jumping is on the right A, activating on the left A (the tester, after
-    the first run: the left thumb is busy walking). The right stick's flick up
-    does nothing now.
+  - The history (2026-09-27): first jump on the left A, then on the right A;
+    the tester found both awkward (the left thumb walks, the right A was
+    activate). Skyrim VR puts the jump on the right stick up, in the standard
+    Index layout and in VRIK's (reddit r/ValveIndex f1nqvd, r/skyrimvr
+    clsav7), so a flick up jumps here too and a hold teleports. Skyrim VR's
+    own teleport replaces walking (`bDirectMovementWithWands`, one or the
+    other, UESP Skyrim:Skyrim VR); here both work together.
+  - Right A activates again. The left A drops the item under the cursor in
+    the inventory (vanilla's Shift + click, help.bethesda.net answer 9938)
+    and does nothing in the world - it never takes an object, the grips do
+    that.
   - Logic: `vr::StepTeleportStick`.
 - **Arc and ring.**
   - The arc is a throw at `sqrt(g R)`, walked in 31 segments. Each segment is
@@ -262,7 +274,7 @@ Every change below is switched by the mode.
   - The onboarding page "Teleport" sets on/off, the mode, the range, combat,
     the vignette and Blink.
 - **Tests.** `teleport_test` (stick, arc, landing, price, glide and fade
-  flows, overlay geometry), `hand_mode_test` (right A jumps, the stick aims and
+  flows, overlay geometry), `hand_mode_test` (a flick jumps, a hold aims and
   goes, a grip cancels), `onboarding_test` (the page).
 - **Not verified, to watch in the headset:**
   - whether layer 31 hits ground, statics and clutter as its name suggests;
@@ -304,13 +316,13 @@ Every change below is switched by the mode.
 **Buttons in the hand-tracked mode now** (`PlanHandControls`):
 - Right hand:
   - trigger: attack;
-  - A: jump;
+  - A: activate;
   - menu button: escape;
-  - stick: x turns, pushed forward teleports, a flick down sneaks, the click
-    readies the weapon.
+  - stick: x turns, flicked up jumps, held up teleports, flicked down sneaks,
+    the click readies the weapon.
 - Left hand:
   - trigger: cast;
-  - A: activate (what the right laser points at);
+  - A: drop the item under the cursor in the inventory; nothing in the world;
   - menu button: OBVR's menu;
   - stick: walks; held in, it runs;
   - trackpad click: the quick menu.

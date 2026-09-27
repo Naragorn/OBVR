@@ -125,32 +125,63 @@ void TestPlanner() {
 	left.leftStickHeld = true;
 	left.leftTrackpadClick = true;
 	w = PlanHandControls(left, 0.4f);
-	Check(w.activate && !w.jump && !w.grab, "left A activates, and does not jump");
+	Check(!w.activate && !w.jump && !w.grab, "left A does nothing in the world, and takes nothing");
 	HandFrameInput rightA;
 	rightA.rightValid = true;
 	rightA.leftValid = true;
 	rightA.rightA = true;
 	w = PlanHandControls(rightA, 0.4f);
-	Check(w.jump && !w.activate, "right A jumps, and does not activate");
+	Check(w.activate && !w.jump, "right A activates, and does not jump");
 	rightA.rightValid = false;
-	Check(!PlanHandControls(rightA, 0.4f).jump, "not from an untracked right hand");
-	HandFrameInput leftUntracked;
-	leftUntracked.rightValid = true;
-	leftUntracked.leftA = true;
-	Check(!PlanHandControls(leftUntracked, 0.4f).activate, "nor activates an untracked left hand");
+	Check(!PlanHandControls(rightA, 0.4f).activate, "not from an untracked right hand");
+	HandFrameInput jumpFlick;
+	jumpFlick.rightValid = true;
+	jumpFlick.leftValid = true;
+	jumpFlick.rightStickJump = true;
+	w = PlanHandControls(jumpFlick, 0.4f);
+	Check(w.jump && !w.activate, "the right stick's flick up jumps");
+	jumpFlick.rightValid = false;
+	Check(!PlanHandControls(jumpFlick, 0.4f).jump, "not from an untracked right hand");
 	HandFrameInput lefty;
 	lefty.rightValid = true;
 	lefty.leftValid = true;
 	lefty.leftHanded = true;
 	lefty.rightA = true;
-	w = PlanHandControls(lefty, 0.4f);
-	Check(w.activate && !w.jump, "left-handed: the A buttons swap, the right A activates");
+	Check(!PlanHandControls(lefty, 0.4f).activate, "left-handed flag: the right A no longer activates");
 	lefty.rightA = false;
 	lefty.leftA = true;
-	w = PlanHandControls(lefty, 0.4f);
-	Check(w.jump && !w.activate, "and the left A jumps");
+	Check(PlanHandControls(lefty, 0.4f).activate, "the left A does");
 	lefty.leftValid = false;
-	Check(!PlanHandControls(lefty, 0.4f).jump, "not from an untracked left hand");
+	Check(!PlanHandControls(lefty, 0.4f).activate, "not from an untracked left hand");
+
+	std::printf("Dropping from the inventory\n");
+	HandFrameInput dropMenu;
+	dropMenu.menuMode = true;
+	dropMenu.rightValid = true;
+	dropMenu.leftValid = true;
+	dropMenu.dropShift = true;
+	w = PlanHandControls(dropMenu, 0.4f);
+	Check(w.run && !w.menuClick, "Shift first, no click yet");
+	dropMenu.dropClick = true;
+	w = PlanHandControls(dropMenu, 0.4f);
+	Check(w.run && w.menuClick, "then the click under Shift");
+	dropMenu.dropShift = false;
+	dropMenu.dropClick = false;
+	w = PlanHandControls(dropMenu, 0.4f);
+	Check(!w.run && !w.menuClick, "then nothing");
+	DropPressState drop;
+	DropPressVerdict d = StepDropPress(drop, false);
+	Check(!d.shift && !d.click, "no press: nothing");
+	d = StepDropPress(drop, true);
+	Check(d.shift && !d.click, "pressed: Shift down");
+	d = StepDropPress(drop, false);
+	Check(d.shift && d.click, "next: the click down, Shift still down");
+	d = StepDropPress(drop, true);
+	Check(d.shift && !d.click, "next: the click up, Shift still down - a press now is ignored");
+	d = StepDropPress(drop, false);
+	Check(!d.shift && !d.click, "then Shift up");
+	d = StepDropPress(drop, false);
+	Check(!d.shift && !d.click && drop.phase == 0, "and idle");
 	Check(PlanHandControls(left, 0.4f).run && !PlanHandControls(left, 0.4f).sneak,
 	      "the left stick held in runs, and its click no longer sneaks");
 	Check(PlanHandControls(left, 0.4f).quickMenu, "the left trackpad click opens the quick menu");
@@ -1134,17 +1165,19 @@ void TestLeftButtonsInHandMode() {
 	frame.teleportAllowed = false;
 	frame.right.thumbY = 0.9f;
 	r = mode.Update(frame, settings);
-	Check(!r.controls.jump && !r.teleportAiming && !r.teleportCommit,
-	      "the right stick pushed forward no longer jumps; no teleport while not allowed");
+	Check(!r.controls.jump && !r.teleportAiming, "the right stick pushed up: nothing yet");
 	frame.right.thumbY = 0.0f;
-	mode.Update(frame, settings);
+	r = mode.Update(frame, settings);
+	Check(r.controls.jump && !r.teleportCommit, "flicked up and back: it jumps");
 	for (int i = 0; i < 30; ++i) {
 		mode.Update(frame, settings);
 	}
 	frame.teleportAllowed = true;
 	frame.right.thumbY = 0.9f;
-	r = mode.Update(frame, settings);
-	Check(r.teleportAiming && !r.controls.jump, "allowed: pushed forward aims the teleport");
+	for (int i = 0; i < 25; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	Check(r.teleportAiming && !r.controls.jump, "held up: it aims the teleport");
 	frame.right.thumbX = 0.8f;
 	frame.right.thumbY = 0.3f;
 	r = mode.Update(frame, settings);
@@ -1152,25 +1185,29 @@ void TestLeftButtonsInHandMode() {
 	frame.right.thumbX = 0.0f;
 	frame.right.thumbY = 0.0f;
 	r = mode.Update(frame, settings);
-	Check(r.teleportCommit && !r.teleportAiming, "let go: the teleport goes");
+	Check(r.teleportCommit && !r.teleportAiming && !r.controls.jump,
+	      "let go: the teleport goes, no jump");
 	r = mode.Update(frame, settings);
 	Check(!r.teleportCommit, "once");
 	frame.right.thumbY = 0.9f;
-	mode.Update(frame, settings);
+	for (int i = 0; i < 25; ++i) {
+		mode.Update(frame, settings);
+	}
 	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexGrip;
 	r = mode.Update(frame, settings);
 	Check(!r.teleportAiming, "a right grip cancels the aim");
 	frame.right.buttonsPressed = 0;
 	frame.right.thumbY = 0.0f;
 	r = mode.Update(frame, settings);
-	Check(!r.teleportCommit, "and the release after it goes nowhere");
+	Check(!r.teleportCommit && !r.controls.jump, "and the release after it does nothing");
 	for (int i = 0; i < 30; ++i) {
 		mode.Update(frame, settings);
 	}
 	frame.teleportAllowed = false;
 	frame.left.buttonsPressed = 1ull << openvr::kButtonA;
 	r = mode.Update(frame, settings);
-	Check(r.controls.activate && !r.controls.jump, "left A activates");
+	Check(!r.controls.activate && !r.controls.jump && !r.controls.grab,
+	      "left A does nothing in the world");
 	frame.left.buttonsPressed = 0;
 	mode.Update(frame, settings);
 	frame.right.thumbY = -0.9f;
@@ -1181,7 +1218,31 @@ void TestLeftButtonsInHandMode() {
 
 	frame.right.buttonsPressed = 1ull << openvr::kButtonA;
 	r = mode.Update(frame, settings);
-	Check(r.controls.jump && !r.controls.activate && !r.controls.grab, "right A jumps");
+	Check(r.controls.activate && !r.controls.jump && !r.controls.grab, "right A activates");
+	frame.right.buttonsPressed = 0;
+	mode.Update(frame, settings);
+
+	std::printf("The inventory's drop\n");
+	frame.menuMode = true;
+	frame.inventoryOpen = true;
+	frame.left.buttonsPressed = 1ull << openvr::kButtonA;
+	r = mode.Update(frame, settings);
+	Check(r.controls.run && !r.controls.menuClick, "left A in the inventory: Shift down");
+	r = mode.Update(frame, settings);
+	Check(r.controls.run && r.controls.menuClick, "then the click under it");
+	r = mode.Update(frame, settings);
+	Check(r.controls.run && !r.controls.menuClick, "the click up");
+	r = mode.Update(frame, settings);
+	Check(!r.controls.run && !r.controls.menuClick, "Shift up, and held A does not repeat");
+	frame.left.buttonsPressed = 0;
+	mode.Update(frame, settings);
+	frame.inventoryOpen = false;
+	frame.left.buttonsPressed = 1ull << openvr::kButtonA;
+	r = mode.Update(frame, settings);
+	Check(!r.controls.run && !r.controls.menuClick, "in another menu the left A does nothing");
+	frame.left.buttonsPressed = 0;
+	frame.menuMode = false;
+	mode.Update(frame, settings);
 }
 
 void TestStickFlick() {

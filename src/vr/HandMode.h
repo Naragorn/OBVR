@@ -265,6 +265,8 @@ struct HandModeFrame {
 	// running, and in combat only when that is allowed. The camera hook asks
 	// the game.
 	bool teleportAllowed = false;
+	// The inventory is the menu up: the left A drops the item under the cursor.
+	bool inventoryOpen = false;
 };
 
 struct HandModeResult {
@@ -459,6 +461,8 @@ private:
 	ButtonEdge m_leftTrackpad;
 	StickFlickState m_rightFlick;
 	TeleportStickState m_teleportStick;
+	ButtonEdge m_dropEdge;
+	DropPressState m_drop;
 	LaserPressState m_press;
 	RepeatState m_scrollUp;
 	RepeatState m_scrollDown;

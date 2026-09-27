@@ -82,6 +82,8 @@ void HandMode::Reset() {
 	m_leftTrackpad = ButtonEdge{};
 	m_rightFlick = StickFlickState{};
 	m_teleportStick = TeleportStickState{};
+	m_dropEdge = ButtonEdge{};
+	m_drop = DropPressState{};
 	m_press = LaserPressState{};
 	m_scrollUp = RepeatState{};
 	m_scrollDown = RepeatState{};
@@ -268,9 +270,18 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	// turns nor flicks. A grip on the right hand cancels the aim.
 	const TeleportStickVerdict teleport = StepTeleportStick(
 		m_teleportStick, cr.valid ? cr.thumbX : 0.0f, cr.valid ? cr.thumbY : 0.0f,
-		in.rightGrip, cr.valid && !f.menuMode && f.teleportAllowed, f.dtSeconds, s.teleport);
+		in.rightGrip, cr.valid && !f.menuMode, f.teleportAllowed, f.dtSeconds, s.teleport);
 	r.teleportAiming = teleport.aiming;
 	r.teleportCommit = teleport.commit;
+	in.rightStickJump = teleport.jump;
+	// The inventory's drop on the left A (the hands are already swapped for a
+	// left-handed player, AssignHandRoles): Shift and a click on the item under
+	// the cursor, over four frames.
+	const bool dropPressed =
+		StepRisingEdge(m_dropEdge, f.menuMode && f.inventoryOpen && in.leftA);
+	const DropPressVerdict drop = StepDropPress(m_drop, dropPressed);
+	in.dropShift = drop.shift;
+	in.dropClick = drop.click;
 	if (cr.valid && !teleport.ownsStick) {
 		const StickFlickVerdict flick = StepStickFlick(m_rightFlick, cr.thumbX, cr.thumbY);
 		in.rightStickDown = flick.down;

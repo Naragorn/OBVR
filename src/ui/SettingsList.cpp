@@ -721,7 +721,7 @@ const SettingDefinition kSettings[] = {
 	},
 	// ---- Teleport (Full VR) --------------------------------------------------
 	{
-		"Teleport", "Teleport", "Full VR: push the right stick forward, aim the arc, let go",
+		"Teleport", "Teleport", "Full VR: hold the right stick up, aim the arc, let go",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Locomotion", "Teleport",
 		+[](const Config& c) { return c.hands.teleport.enabled ? 1.0f : 0.0f; },
@@ -824,6 +824,13 @@ const SettingDefinition kSettings[] = {
 		"Locomotion", "TeleportStickConeDegrees",
 		+[](const Config& c) { return c.hands.teleport.coneDegrees; },
 		+[](Config& c, float v) { c.hands.teleport.coneDegrees = v; },
+	},
+	{
+		"Teleport", "Hold to aim", "Right stick up: a flick jumps, held this long it aims, seconds",
+		ItemKind::Number, 0.1f, 0.6f, 0.05f, 2, false,
+		"Locomotion", "TeleportHoldSeconds",
+		+[](const Config& c) { return c.hands.teleport.holdSeconds; },
+		+[](Config& c, float v) { c.hands.teleport.holdSeconds = v; },
 	},
 	{
 		"Help", "Introduction at start", "Show the first-start walkthrough again next time",

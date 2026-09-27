@@ -111,9 +111,9 @@ constexpr OnboardingRow kComfort[] = {
 // Full VR only; shown to everyone, since the choice can be changed later and
 // the seated mode ignores it.
 constexpr OnboardingRow kTeleport[] = {
-	{OnboardingRowKind::Text, "Full VR: push the right stick forward to aim a teleport,", "", "",
+	{OnboardingRowKind::Text, "Full VR: hold the right stick up to aim a teleport,", "", "",
 	 "", OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Text, "let it go to move. The right A jumps. Seated play ignores this.", "",
+	{OnboardingRowKind::Text, "let it go to move. A quick flick up jumps. Seated play ignores this.", "",
 	 "", "", OnboardingAction::None, nullptr, 0},
 	{OnboardingRowKind::Setting, "", "", "Locomotion", "Teleport", OnboardingAction::None, nullptr,
 	 0},

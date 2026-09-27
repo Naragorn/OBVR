@@ -872,6 +872,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 
 	frame.teleportAllowed = active && TeleportAllowedNow(config, menuIsUp, frame.inWorld);
+	frame.inventoryOpen = active && menuIsUp && game::ActiveMenuId() == game::kMenuIdInventory;
 	g_hand = g_handMode.Update(frame, config.hands);
 
 	// The item nearest a hand, by distance (game::FindNearestItem): the pick is

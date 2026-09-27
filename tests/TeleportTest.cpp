@@ -36,54 +36,101 @@ void TestCone() {
 	Check(InTeleportCone(5.0f, 0.9f, 0.8f, 120.0f), "a cone past 89 degrees is held at 89");
 }
 
+TeleportStickVerdict Step(TeleportStickState& st, float x, float y, const TeleportSettings& s,
+                          bool cancel = false, bool active = true, bool allowed = true) {
+	return StepTeleportStick(st, x, y, cancel, active, allowed, kFrame, s);
+}
+
+// Holds the stick up for `seconds`, frame by frame; the last verdict.
+TeleportStickVerdict HoldUp(TeleportStickState& st, float seconds, const TeleportSettings& s,
+                            bool allowed = true) {
+	TeleportStickVerdict v;
+	for (float t = 0.0f; t < seconds; t += kFrame) {
+		v = Step(st, 0.0f, 0.9f, s, false, true, allowed);
+	}
+	return v;
+}
+
+void Unlock(TeleportStickState& st, const TeleportSettings& s) {
+	for (int i = 0; i < 30; ++i) {
+		Step(st, 0.0f, 0.0f, s);
+	}
+}
+
 void TestStick() {
-	std::printf("The stick\n");
+	std::printf("The stick: a flick jumps\n");
 	TeleportSettings s;
 	TeleportStickState st;
-	TeleportStickVerdict v = StepTeleportStick(st, 0.0f, 0.5f, false, true, kFrame, s);
-	Check(!v.aiming && !v.commit && !v.ownsStick, "half forward: nothing, the stick still turns");
-	v = StepTeleportStick(st, 0.0f, 0.9f, false, true, kFrame, s);
-	Check(v.aiming && v.ownsStick && !v.commit, "pushed forward: aiming, no turning");
-	v = StepTeleportStick(st, 0.7f, 0.5f, false, true, kFrame, s);
-	Check(v.aiming && v.ownsStick, "swung to the side while aiming: still aiming");
-	v = StepTeleportStick(st, 0.1f, 0.1f, false, true, kFrame, s);
-	Check(v.commit && !v.aiming && v.ownsStick, "let go: it goes, once");
-	v = StepTeleportStick(st, 0.0f, 0.0f, false, true, kFrame, s);
-	Check(!v.commit && v.ownsStick, "just after: the spring back does not turn");
-	for (int i = 0; i < 30; ++i) {
-		v = StepTeleportStick(st, 0.0f, 0.0f, false, true, kFrame, s);
-	}
+	TeleportStickVerdict v = Step(st, 0.0f, 0.5f, s);
+	Check(!v.jump && !v.aiming && !v.ownsStick, "half up: nothing, the stick still turns");
+	v = Step(st, 0.0f, 0.9f, s);
+	Check(!v.jump && !v.aiming && v.ownsStick, "pushed up: not yet anything, no turning");
+	v = Step(st, 0.0f, 0.0f, s);
+	Check(v.jump && !v.commit && !v.aiming, "let go before the hold: a jump");
+	v = Step(st, 0.0f, 0.0f, s);
+	Check(!v.jump && v.ownsStick, "once, and the spring back does not turn");
+	Unlock(st, s);
+	v = Step(st, 0.0f, 0.0f, s);
 	Check(!v.ownsStick, "a quarter second later the stick turns again");
 
-	std::printf("Cancelling\n");
-	st = TeleportStickState{};
-	StepTeleportStick(st, 0.0f, 0.9f, false, true, kFrame, s);
-	v = StepTeleportStick(st, 0.0f, 0.9f, true, true, kFrame, s);
-	Check(!v.aiming && v.ownsStick, "a grip cancels: no arc, but the stick stays its");
-	v = StepTeleportStick(st, 0.0f, 0.9f, false, true, kFrame, s);
-	Check(!v.aiming, "the grip let go again: still cancelled until released");
-	v = StepTeleportStick(st, 0.0f, 0.0f, false, true, kFrame, s);
-	Check(!v.commit, "released after a cancel: nothing");
-	st = TeleportStickState{};
-	StepTeleportStick(st, 0.0f, 0.9f, false, true, kFrame, s);
-	v = StepTeleportStick(st, 0.0f, 0.9f, false, false, kFrame, s);
-	Check(!v.aiming && !st.aiming, "no longer allowed (a menu): the aim is dropped");
-	v = StepTeleportStick(st, 0.0f, 0.0f, false, true, kFrame, s);
-	Check(!v.commit, "and nothing goes on the release");
+	std::printf("The stick: a hold aims, the release goes\n");
+	v = HoldUp(st, 0.1f, s);
+	Check(!v.aiming, "0.1 s up: not yet aiming");
+	v = HoldUp(st, 0.15f, s);
+	Check(v.aiming && !v.jump && v.ownsStick, "past 0.2 s: aiming");
+	v = Step(st, 0.7f, 0.5f, s);
+	Check(v.aiming, "swung to the side while aiming: still aiming");
+	v = Step(st, 0.1f, 0.1f, s);
+	Check(v.commit && !v.jump && !v.aiming, "let go: it goes, and does not jump");
+	Unlock(st, s);
 
-	std::printf("Off, and a broken stick\n");
+	std::printf("Cancelling\n");
+	HoldUp(st, 0.3f, s);
+	v = Step(st, 0.0f, 0.9f, s, true);
+	Check(!v.aiming && v.ownsStick, "a grip cancels: no arc, but the stick stays its");
+	v = Step(st, 0.0f, 0.9f, s);
+	Check(!v.aiming, "the grip let go again: still cancelled");
+	v = Step(st, 0.0f, 0.0f, s);
+	Check(!v.commit && !v.jump, "released after a cancel: nothing");
+	Unlock(st, s);
+	HoldUp(st, 0.3f, s);
+	v = Step(st, 0.0f, 0.9f, s, false, true, false);
+	Check(!v.aiming, "the teleport no longer allowed (combat off): the aim is dropped");
+	v = Step(st, 0.0f, 0.0f, s);
+	Check(!v.commit && !v.jump, "and the release does nothing");
+	Unlock(st, s);
+	v = HoldUp(st, 0.3f, s, false);
+	Check(!v.aiming, "held while not allowed: no arc");
+	v = Step(st, 0.0f, 0.0f, s, false, true, false);
+	Check(!v.commit && !v.jump, "nor a jump on the release");
+	Unlock(st, s);
+	v = Step(st, 0.0f, 0.9f, s, false, true, false);
+	v = Step(st, 0.0f, 0.0f, s, false, true, false);
+	Check(v.jump, "a flick still jumps while the teleport is not allowed");
+	Unlock(st, s);
+	HoldUp(st, 0.3f, s);
+	v = Step(st, 0.0f, 0.9f, s, false, false);
+	Check(!v.aiming && !st.pushed, "a menu (not active): everything dropped");
+	v = Step(st, 0.0f, 0.0f, s);
+	Check(!v.commit && !v.jump, "and nothing on the release");
+
+	std::printf("Teleport off, and a broken stick\n");
 	TeleportSettings off = s;
 	off.enabled = false;
 	st = TeleportStickState{};
-	v = StepTeleportStick(st, 0.0f, 1.0f, false, true, kFrame, off);
-	Check(!v.aiming && !v.ownsStick, "switched off: the stick is the turn's");
+	v = Step(st, 0.0f, 1.0f, off);
+	Check(v.jump && !v.aiming && v.ownsStick, "switched off: the push jumps at once");
+	v = HoldUp(st, 0.5f, off);
+	Check(!v.jump && !v.aiming, "held: once, never an arc");
+	v = Step(st, 0.0f, 0.0f, off);
+	Check(!v.jump && !v.commit, "the release adds nothing");
 	st = TeleportStickState{};
 	volatile float zero = 0.0f;
-	v = StepTeleportStick(st, zero / zero, zero / zero, false, true, kFrame, s);
-	Check(!v.aiming && !v.commit, "a NaN stick is a centred stick");
+	v = Step(st, zero / zero, zero / zero, s);
+	Check(!v.aiming && !v.jump, "a NaN stick is a centred stick");
 	st = TeleportStickState{};
-	v = StepTeleportStick(st, 0.6f, 0.85f, false, true, kFrame, s);
-	Check(!v.aiming && !v.ownsStick, "pushed diagonally, as in a turn: no teleport");
+	v = Step(st, 0.6f, 0.85f, s);
+	Check(!v.ownsStick && !st.pushed, "pushed diagonally, as in a turn: neither jump nor teleport");
 }
 
 void TestArc() {

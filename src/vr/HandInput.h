@@ -366,6 +366,7 @@ struct HandFrameInput {
 	bool leftStickClick = false;   // rising edge
 	bool leftStickHeld = false;    // level: the left stick pressed in
 	bool rightStickDown = false;   // rising edge of a flick down
+	bool rightStickJump = false;   // the right stick flicked up and back (StepTeleportStick)
 	bool leftTrackpadClick = false;  // rising edge
 	float leftThumbX = 0.0f;
 	float leftThumbY = 0.0f;
@@ -377,24 +378,75 @@ struct HandFrameInput {
 	bool menuMode = false;
 	bool pointRight = true;        // in a menu: which hand holds the pointer, and so the click
 	bool leftHanded = false;       // activate on the left A rather than the right
+	// The inventory's drop (StepDropPress): the run key (Shift) held, and the
+	// click under it.
+	bool dropShift = false;
+	bool dropClick = false;
 };
+
+// Dropping from the inventory: vanilla drops the item under the cursor on
+// Shift and a left click (help.bethesda.net answer 9938, UESP
+// Oblivion:Controls "Drop: Shift + Left Click"; a click held instead drops
+// the item into the grab, which this never does). On the drop button's
+// press: Shift down, then the click down, then the click up, then Shift up -
+// a frame each, so the game sees the modifier before the click and after it.
+struct DropPressState {
+	UInt32 phase = 0;  // 0 idle, 1 Shift down, 2 click down, 3 click up
+};
+
+struct DropPressVerdict {
+	bool shift = false;
+	bool click = false;
+};
+
+inline DropPressVerdict StepDropPress(DropPressState& s, bool pressed) {
+	DropPressVerdict v;
+	if (s.phase == 0) {
+		if (!pressed) {
+			return v;
+		}
+		s.phase = 1;
+	} else {
+		++s.phase;
+	}
+	switch (s.phase) {
+	case 1:
+		v.shift = true;
+		break;
+	case 2:
+		v.shift = true;
+		v.click = true;
+		break;
+	case 3:
+		v.shift = true;
+		break;
+	default:
+		s.phase = 0;
+		break;
+	}
+	return v;
+}
 
 // The mapping. In a menu the hands drive the cursor and nothing else: the
 // pointing hand's trigger is the click, the left menu button closes the
-// menu, the right one is escape. In the world: right trigger attacks (the
-// bow draws while it is held and looses when it is released, a spell hand
-// casts on the left trigger), swings attack by themselves, the raised left
-// hand blocks, either grip grabs, right A jumps, left A activates, the left
-// stick walks and runs while it is pressed in, the right stick turns,
-// teleports when pushed forward (vr::StepTeleportStick, decided before this
-// plan) and sneaks on a flick down, its click readies the weapon, the left
-// trackpad click opens the quick menu. The left grip only grabs: one that
-// grabbed and activated at once would take the object it was meant to hold.
+// menu, the right one is escape, and in the inventory the left A drops the
+// item under the cursor. In the world: right trigger attacks (the bow draws
+// while it is held and looses when it is released, a spell hand casts on the
+// left trigger), swings attack by themselves, the raised left hand blocks,
+// either grip grabs, right A activates, the right stick flicked up jumps and
+// held up teleports (vr::StepTeleportStick, decided before this plan), flicked
+// down sneaks and sideways turns, its click readies the weapon, the left
+// stick walks and runs while it is pressed in, the left trackpad click opens
+// the quick menu. The left A does nothing in the world: it never takes an
+// object - the grips do that. The left grip only grabs: one that grabbed and
+// activated at once would take the object it was meant to hold.
 inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stickDeadZone) {
 	HandControlsWanted out;
 	if (in.menuMode) {
 		out.menuClick = in.pointRight ? (in.rightValid && in.rightTrigger)
 		                              : (in.leftValid && in.leftTrigger);
+		out.menuClick = out.menuClick || in.dropClick;
+		out.run = in.dropShift;
 		out.menu = in.leftMenuButton;
 		out.escape = in.rightMenuButton;
 		return out;
@@ -402,23 +454,16 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 	if (in.rightValid) {
 		out.attack = (in.rightTrigger && !in.drawBlocked && !in.meleeByMotion) || in.swingAttackHeld;
 		out.sneak = in.rightStickDown;
+		out.jump = in.rightStickJump;
 		out.escape = in.rightMenuButton;
-		// The right A jumps (2026-09-27: the left thumb is busy walking, and the
-		// right stick pushed forward teleports); the left A activates.
-		if (in.leftHanded) {
-			out.activate = in.rightA;  // left-handed: the A buttons swap
-		} else {
-			out.jump = in.rightA;
-		}
+		out.activate = !in.leftHanded && in.rightA;  // the pointing hand's A
 		out.readyWeapon = in.rightStickClick;
 		out.turn = in.rightThumbX;
 	}
 	if (in.leftValid) {
 		out.cast = in.leftTrigger;
 		if (in.leftHanded) {
-			out.jump = in.leftA;
-		} else {
-			out.activate = in.leftA;
+			out.activate = in.leftA;  // left-handed: the left A activates instead
 		}
 		out.run = in.leftStickHeld;
 		out.menu = in.leftMenuButton;

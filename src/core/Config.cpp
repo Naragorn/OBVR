@@ -726,6 +726,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		tp.releaseThreshold =
 			ReadFloat("Locomotion", "TeleportStickRelease", tp.releaseThreshold, path);
 		tp.coneDegrees = ReadFloat("Locomotion", "TeleportStickConeDegrees", tp.coneDegrees, path);
+		tp.holdSeconds = ReadFloat("Locomotion", "TeleportHoldSeconds", tp.holdSeconds, path);
 
 		game::HandKeyMap& k = config.handKeys;
 		k.attack = ReadKeyCode("Hands", "AttackKey", k.attack, path);
