@@ -1,0 +1,39 @@
+# The quick menu (docs/controls-spec.md 4.4): the right trackpad held opens
+# the ring of the eight hotkeys at the hand, the hand moved up lights slot 1,
+# moved right lights slot 3, and letting go there taps key 3.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\quick-menu.txt
+
+ini Hands Enabled=1
+ini Hands QuickMenu=1
+# An Iron Longsword (00000C0C, UESP Oblivion:Weapons) into the pack and onto
+# slot 3 (xOBSE SetHotkeyItem). The run never saves, so the save is untouched.
+console player.additem 00000C0C 1
+console SetHotkeyItem 3 00000C0C
+
+expect HandScript: finished
+expect QuickMenu: opened
+expect the quick menu's picture saved as OBVR-QuickMenu-ring_open.bmp
+expect the quick menu's picture saved as OBVR-QuickMenu-slot3_lit.bmp
+expect QuickMenu: hotkey 3 used
+reject HandScript: WARNING
+
+# Time for the runner to type the console line.
+wait 9
+mark standing
+right pos 0.15 -0.30 -0.35
+wait 0.3
+right trackpad 1
+wait 0.4
+mark ring_open
+# Up: slot 1.
+right pos 0.15 -0.22 -0.35
+wait 0.4
+mark slot1_lit
+# Right of where it opened: slot 3.
+right pos 0.23 -0.30 -0.35
+wait 0.4
+mark slot3_lit
+right trackpad 0
+wait 0.6
+mark after_use
+wait 1

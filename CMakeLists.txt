@@ -23,6 +23,7 @@ endif()
 
 add_library(OBVR SHARED
 	src/Plugin.cpp
+	src/test/HandScriptRuntime.cpp
 	src/test/WaterVRTestRuntime.cpp
 	src/camera/CameraHook.cpp
 	src/camera/CameraTrampoline.cpp
@@ -34,6 +35,8 @@ add_library(OBVR SHARED
 	src/ui/MenuPainter.cpp
 	src/ui/SettingsList.cpp
 	src/ui/SettingsMenuLayer.cpp
+	src/ui/CanvasOverlay.cpp
+	src/ui/QuickMenuPainter.cpp
 	src/ui/SettingsMenu.cpp
 	src/ui/NativeSettings.cpp
 	src/ui/Onboarding.cpp
@@ -86,6 +89,7 @@ add_library(OBVR SHARED
 	src/game/GrabPhysics.cpp
 	src/game/GrabNearBody.cpp
 	src/game/NearbyItems.cpp
+	src/game/QuickKeys.cpp
 	src/game/HandBones.cpp
 	src/game/HandAdjust.cpp
 	src/game/MeleeHits.cpp

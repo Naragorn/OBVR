@@ -5,6 +5,7 @@
 #include "vr/HandInput.h"
 #include "vr/OpenVRTypes.h"
 #include "vr/Quaternion.h"
+#include "vr/QuickMenu.h"
 #include "vr/Teleport.h"
 
 namespace obvr::vr {
@@ -197,6 +198,9 @@ struct HandSettings {
 	bool gamepadLayout = true;
 	float scrollFirstDelaySeconds = 0.35f;
 	float scrollIntervalSeconds = 0.12f;
+	// The quick menu on the right trackpad ([Hands] QuickMenu, vr::QuickMenu).
+	QuickMenuSettings quickMenu;
+
 	// The teleport on the right stick pushed forward ([Locomotion], vr::Teleport).
 	TeleportSettings teleport;
 };

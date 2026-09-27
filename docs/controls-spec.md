@@ -24,7 +24,7 @@ flow is covered by `hand_mode_test` and `teleport_test`.
 | B (menu button) | Escape | Tab (the menus) |
 | Stick | sideways: turn (smooth or snap); flicked up: jump; held up (0.2 s): teleport aim, released: go; flicked down: sneak | walk; pressed in: run |
 | Stick click | ready / sheathe the weapon | run (with the stick pressed in) |
-| Trackpad click | free | F1: the key the game binds to "Quick Menu" (Oblivion.ini [Controls] `Quick Menu=003BFFFF`; UESP lists F1-F4 as the journal pages) |
+| Trackpad click | held: the quick menu, the ring of the eight hotkeys (4.4, built) | F1: the key the game binds to "Quick Menu" (Oblivion.ini [Controls] `Quick Menu=003BFFFF`; UESP lists F1-F4 as the journal pages) |
 | Gesture | a swing strikes by motion | raised hand: block |
 
 - Both stick clicks within a quarter second: OBVR's own menu.
@@ -101,7 +101,7 @@ From UESP, Oblivion:Controls.
 | Journal / menus, pause | left B, right B | built |
 | Drop (Shift + click) | left A in the inventory | built |
 | Yield, dodge | gesture + button, see section 2 | untested |
-| Hotkeys 1-8 | - | missing; to become the quick menu (4.4) |
+| Hotkeys 1-8 | right trackpad held: the quick menu | built (4.4) |
 | Wait (T) | - | missing |
 | Quick save / load (F5 / F9) | Escape menu | enough |
 | Always run, auto move | - | not needed in VR |
@@ -161,23 +161,43 @@ The tester's aim: the weapon is drawn by reaching for it, as with a real one.
   - How hand to hand is readied: the ready key with nothing equipped, as
     vanilla does.
 
-### 4.4 The quick menu on the right trackpad
+### 4.4 The quick menu on the right trackpad (built 2026-09-27)
 
 - **Wanted.** The right trackpad pressed: a quick menu in front of the player,
   chosen from the way Half-Life: Alyx's hand menu is.
-- **Design.**
-  - The eight hotkeys (vanilla's 1-8) around a ring in front of the player,
-    each with its item's or spell's icon and name.
-  - The right hand points or moves towards one; letting go of the trackpad
-    uses it, as the hotkey's number key would.
-  - A quick menu that also offers Wait would cover the last missing control.
-- **To find out.**
-  - Where the game keeps the eight hotkeys and their forms, to draw them.
-  - The right trackpad's click as its own action: on the legacy input path
-    it cannot be told from the stick's click (`NormalizeLegacyButtons`); with
-    the action manifest it can.
-  - How the ring is drawn: an overlay like the settings panel, or the game's
-    own menu.
+- **Built.**
+  - The trackpad held down opens a ring of the eight hotkeys where the right
+    hand is, standing upright and facing the head. Slot 1 is at the top,
+    then round to the right.
+  - Moving the hand past 4 cm towards a slot lights it. Letting go there taps
+    that slot's number key for 0.08 s, the way pressing it would. A number
+    key held longer opens the game's own hotkey ring (0x5C1F70 calls 0x5C1B80
+    past a timed threshold at 0xB38BB0), so the tap stays short.
+  - Letting go in the middle, or on an empty slot, uses nothing.
+  - `[Hands] QuickMenu`, `QuickMenuDeadZoneMetres`, `QuickMenuTapSeconds`
+    and `QuickMenuRingMetres`; a toggle in the settings under Hands.
+  - The logic is `vr::StepQuickMenu` (`quick_menu_test`), the ring is
+    `ui::PaintQuickMenu` (`quick_menu_painter_test`), on a
+    `ui::CanvasOverlay`, and the hotkeys come from `game::ReadQuickKeys`.
+- **Where the game keeps the hotkeys.**
+  - `g_quickKeyList` at 0x00B3B440 is eight pointer lists of 0x10 bytes each;
+    the form is at the start node + 8 (xOBSE GameTypes.cpp:9, and the engine's
+    own read at 0x5C23AD).
+  - The name is the form's TESFullName, found through the engine's
+    `__RTDynamicCast` at 0x009832E6 (xOBSE GameAPI.cpp:221).
+  - Checked in the game (docs/hand-script-harness.md): an Iron Longsword set
+    on hotkey 3 read back as "3 Iron Longsword". Using slot 3 from the ring
+    made the game say "Iron Longsword equipped."
+- **Not built yet.**
+  - Icons. The names and numbers are drawn in OBVR's own pixel font. The
+    game's icons are DDS files inside the BSAs, and drawing them needs a
+    loader OBVR does not have.
+  - Wait in the middle of the ring.
+- **Needs the action manifest.** On the legacy input path the right
+  trackpad's click cannot be told from the stick's click
+  (`NormalizeLegacyButtons`), so there it readies the weapon instead.
+- **Not tried in the headset yet**: how 10 cm to a slot feels, and whether
+  the ring at the hand is easy to read.
 
 ### 4.5 What becomes free
 

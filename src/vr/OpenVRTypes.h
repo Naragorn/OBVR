@@ -476,11 +476,39 @@ struct IVRCompositorFnTable {
 	void* getCumulativeStats;
 	void(__stdcall* FadeToColor)(float seconds, float red, float green, float blue, float alpha,
 	                             bool background);
+
+	// 15 GetCurrentFadeColor through 26 CanRenderScene, untyped; 27
+	// ShowMirrorWindow, the headset view on the desktop, and 30
+	// CompositorDumpImages, which "writes back buffer and stereo left/right
+	// pair from the application to a 'screenshots' folder in the SteamVR
+	// runtime root" (openvr.h; openvr_capi.h VR_IVRCompositor_FnTable,
+	// IVRCompositor_029, counted 2026-09-27). Both for the test runner's
+	// pictures (test/HandScript.h).
+	void* getCurrentFadeColor;
+	void* fadeGrid;
+	void* getCurrentGridAlpha;
+	void* setSkyboxOverride;
+	void* clearSkyboxOverride;
+	void* compositorBringToFront;
+	void* compositorGoToBack;
+	void* compositorQuit;
+	void* isFullscreen;
+	void* getCurrentSceneFocusProcess;
+	void* getLastFrameRenderer;
+	void* canRenderScene;
+	void(__stdcall* ShowMirrorWindow)();
+	void* hideMirrorWindow;
+	void* isMirrorWindowVisible;
+	void(__stdcall* CompositorDumpImages)();
 };
 
 // Fifteenth in the table: fourteen pointers before it.
 static_assert(offsetof(IVRCompositorFnTable, FadeToColor) == 14 * sizeof(void*),
               "FadeToColor is entry 14 of VR_IVRCompositor_FnTable");
+static_assert(offsetof(IVRCompositorFnTable, ShowMirrorWindow) == 27 * sizeof(void*),
+              "ShowMirrorWindow is entry 27 of VR_IVRCompositor_FnTable");
+static_assert(offsetof(IVRCompositorFnTable, CompositorDumpImages) == 30 * sizeof(void*),
+              "CompositorDumpImages is entry 30 of VR_IVRCompositor_FnTable");
 
 // ----------------------------------------------------------------- Overlay
 //

@@ -287,6 +287,9 @@ struct HandControlsWanted {
 	bool menu = false;       // the menu-mode key (Tab)
 	bool escape = false;
 	bool quickMenu = false;  // F1
+	// A hotkey (1..8) whose number key is down, 0 for none: the quick menu on
+	// the right trackpad (vr::StepQuickMenu), tapped.
+	UInt8 quickKey = 0;
 	bool togglePov = false;  // the view switch (R)
 	StickDirections move;
 	float turn = 0.0f;  // -1..1, the right stick's x, for the mouse-driven turn

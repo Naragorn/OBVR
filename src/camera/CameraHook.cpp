@@ -1,6 +1,7 @@
 #include "camera/CameraHook.h"
 
 #include <cstdio>
+#include <cstring>
 
 #include "camera/CameraTrampoline.h"
 #include "camera/CastTrampoline.h"
@@ -47,6 +48,8 @@
 #include "game/GrabPhysics.h"
 #include "game/GrabNearBody.h"
 #include "game/NearbyItems.h"
+#include "game/QuickKeys.h"
+#include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
 #include "render/DxvkInterop.h"
@@ -54,6 +57,7 @@
 #include "render/GameProjection.h"
 #include "render/HeadsetRenderer.h"
 #include "render/WaterReprojection.h"
+#include "test/HandScriptRuntime.h"
 #include "test/WaterVRTestRuntime.h"
 #include "render/CrosshairLayer.h"
 #include "render/VignetteLayer.h"
@@ -62,9 +66,11 @@
 #include "render/ReachMarker.h"
 #include "render/TeleportArcLayer.h"
 #include "vr/LaserGeometry.h"
+#include "ui/CanvasOverlay.h"
 #include "ui/Onboarding.h"
 #include "ui/SettingsMenu.h"
 #include "ui/SettingsMenuLayer.h"
+#include "ui/QuickMenuPainter.h"
 #include "render/InterfaceRenderHook.h"
 #include "render/CursorPickHook.h"
 #include "render/CursorProbe.h"
@@ -619,6 +625,116 @@ void UpdateTeleport(const Config& config, vr::OpenVRBackend& backend, bool activ
 	game::SetPlayerUntouchable(active && g_teleportMove.phase != vr::TeleportPhase::Idle);
 }
 
+// The quick menu on the right trackpad (vr/QuickMenu.h, docs/controls-spec.md
+// 4.4): the ring of the eight hotkeys where the hand is, the hand moved
+// towards one, the trackpad let go - and that hotkey's number key is tapped.
+vr::QuickMenuState g_quickMenu;
+ui::CanvasOverlay g_quickMenuLayer("obvr.quickmenu", "OBVR Quick Menu", ui::kQuickMenuCanvas,
+                                   ui::kQuickMenuCanvas);
+ui::QuickMenuView g_quickMenuView;
+UInt32 g_quickMenuRevision = 1;
+vr::openvr::HmdMatrix34 g_quickMenuPose{};
+UInt32 g_quickMenuLinesLeft = 30;
+
+// The ring upright where the hand opened it, facing the head: its right the
+// ring's right, its up tracking up, its face towards the eyes; a few
+// centimetres ahead of the hand so the controller does not hide the middle.
+vr::openvr::HmdMatrix34 QuickMenuPose(const vr::QuickMenuState& s) {
+	const NiPoint3 toHead{-s.right.z, 0.0f, s.right.x};
+	const NiPoint3 at = s.anchor - toHead * 0.03f;
+	vr::openvr::HmdMatrix34 pose{};
+	const NiPoint3 axes[3] = {s.right, s.up, toHead};
+	for (int column = 0; column < 3; ++column) {
+		pose.m[0][column] = axes[column].x;
+		pose.m[1][column] = axes[column].y;
+		pose.m[2][column] = axes[column].z;
+	}
+	pose.m[0][3] = at.x;
+	pose.m[1][3] = at.y;
+	pose.m[2][3] = at.z;
+	return pose;
+}
+
+void UpdateQuickMenu(const Config& config, vr::OpenVRBackend& backend, bool allowed,
+                     const vr::HandModeFrame& frame, float dt) {
+	vr::QuickMenuInput in;
+	in.pad = frame.right.valid && vr::TrackpadClickDown(frame.right.buttonsPressed);
+	in.allowed = allowed;
+	in.hand = frame.right.position;
+	in.headRight = frame.headValid ? vr::ToMatrix(frame.head) * NiPoint3{1.0f, 0.0f, 0.0f}
+	                               : NiPoint3{1.0f, 0.0f, 0.0f};
+	in.dt = dt;
+	// The hotkeys are read while the trackpad is down or the ring is open:
+	// what the ring shows and what a release uses is what they hold now.
+	if (in.pad || g_quickMenu.open) {
+		game::QuickKeySlot slots[game::kQuickKeyCount];
+		game::ReadQuickKeys(slots);
+		for (int i = 0; i < game::kQuickKeyCount; ++i) {
+			in.filled[i] = slots[i].filled;
+			if (g_quickMenuView.filled[i] != slots[i].filled ||
+			    std::strcmp(g_quickMenuView.names[i], slots[i].name) != 0) {
+				g_quickMenuView.filled[i] = slots[i].filled;
+				strncpy_s(g_quickMenuView.names[i], slots[i].name, _TRUNCATE);
+				++g_quickMenuRevision;
+			}
+		}
+	}
+	const vr::QuickMenuVerdict v = vr::StepQuickMenu(g_quickMenu, in, config.hands.quickMenu);
+	g_hand.controls.quickKey = static_cast<UInt8>(v.key);
+	if (v.highlighted != g_quickMenuView.highlighted) {
+		g_quickMenuView.highlighted = v.highlighted;
+		++g_quickMenuRevision;
+	}
+	if (v.opened) {
+		g_quickMenuPose = QuickMenuPose(g_quickMenu);
+		if (g_quickMenuLinesLeft > 0) {
+			--g_quickMenuLinesLeft;
+			char list[400] = "";
+			for (int i = 0; i < game::kQuickKeyCount; ++i) {
+				char one[56];
+				std::snprintf(one, sizeof(one), "%s%d %s", i == 0 ? "" : ", ", i + 1,
+				              g_quickMenuView.filled[i]
+				                  ? (g_quickMenuView.names[i][0] != '\0' ? g_quickMenuView.names[i]
+				                                                          : "(no name)")
+				                  : "-");
+				strncat_s(list, one, _TRUNCATE);
+			}
+			OBVR_LOG("QuickMenu: opened at the hand (%.2f %.2f %.2f) - %s",
+			         static_cast<double>(g_quickMenu.anchor.x),
+			         static_cast<double>(g_quickMenu.anchor.y),
+			         static_cast<double>(g_quickMenu.anchor.z), list);
+			char raw[400];
+			game::DescribeQuickKeyLists(raw, sizeof(raw));
+			OBVR_LOG("QuickMenu: the lists (start node/count->form) %s", raw);
+		}
+	}
+	if ((v.used >= 0 || v.cancelled) && g_quickMenuLinesLeft > 0) {
+		--g_quickMenuLinesLeft;
+		if (v.used >= 0) {
+			OBVR_LOG("QuickMenu: hotkey %d used (%s) - its number key tapped", v.used + 1,
+			         g_quickMenuView.names[v.used]);
+		} else {
+			OBVR_LOG("QuickMenu: closed without a hotkey");
+		}
+	}
+	if (v.visible) {
+		g_quickMenuLayer.Show(backend, render::GetGameDevice(), g_quickMenuPose,
+		                      ui::QuickMenuWidthMetres(config.hands.quickMenu.ringMetres),
+		                      g_quickMenuRevision, ui::PaintQuickMenuFor, &g_quickMenuView);
+	} else {
+		g_quickMenuLayer.Hide(backend);
+	}
+	// For the test runner: the ring as painted, at each mark it is up for.
+	if (test::HandScriptMarkedThisFrame() && g_quickMenuLayer.IsVisible()) {
+		char name[96];
+		char path[512];
+		std::snprintf(name, sizeof(name), "OBVR-QuickMenu-%s.bmp", test::HandScriptMarkName());
+		if (platform::BuildGamePath(name, path, sizeof(path)) && g_quickMenuLayer.SaveBmp(path)) {
+			OBVR_LOG("HandScript: the quick menu's picture saved as %s", name);
+		}
+	}
+}
+
 void UpdateHandMode(const Config& config, bool menuIsUp) {
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
 	const long long now = ReadPerformanceCounter();
@@ -632,6 +748,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 	g_handClockLast = now;
 
+	// The hand script's clock ([Debug] HandScript, test/HandScript.h), ahead
+	// of everything that reads the controllers.
+	test::StepHandScriptFrame(dt, game::PlayerInWorld(), menuIsUp,
+	                          g_headTracker.GetBackendForFrame());
+
 	// The whole mode, or - with it off - the controllers on the menus alone:
 	// the laser at the game's menus and the sticks in OBVR's own, so a seated
 	// player and the walkthrough on the very first start can be steered from
@@ -640,6 +761,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	const bool active = config.handTracking && headset;
 	const bool menusOnly = !active && headset && config.hands.controllerMenus;
 	if (!active && !menusOnly) {
+		if (test::HandScriptMarkedThisFrame()) {
+			OBVR_LOG("HandScript: state - the hand mode is not running (Hands.Enabled %d, "
+			         "headset %d)",
+			         config.handTracking ? 1 : 0, headset ? 1 : 0);
+		}
 		if (g_handControlsHeld) {
 			game::ReleaseHandControls(config.handKeys);
 			g_handControlsHeld = false;
@@ -656,6 +782,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_reachIconShown = false;
 		g_nearItem = game::NearItem{};
 		g_handMode.Reset();
+		g_quickMenu = vr::QuickMenuState{};
+		g_quickMenuLayer.Hide(g_headTracker.GetBackendForFrame());
 		UpdateTeleport(config, g_headTracker.GetBackendForFrame(), false, menuIsUp, dt);
 		return;
 	}
@@ -748,6 +876,13 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	                  backend.ReadHeadPose(frame.head, frame.headPosition);
 	backend.ReadHand(true, frame.right);
 	backend.ReadHand(false, frame.left);
+	// Or the hand script's ([Debug] HandScript): controllers played from a
+	// file, placed from this frame's head.
+	if (test::HandScriptDrivesHands()) {
+		test::ScriptedHands(frame.headValid ? frame.head : vr::Quaternion::Identity(),
+		                    frame.headValid ? frame.headPosition : NiPoint3{0.0f, 1.6f, 0.0f},
+		                    frame.right, frame.left);
+	}
 	// Left-handed in Full VR the controllers swap roles as a whole: the
 	// weapon hand is the left controller (vr::AssignHandRoles).
 	g_handRolesSwapped =
@@ -877,6 +1012,27 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.teleportAllowed = active && TeleportAllowedNow(config, menuIsUp, frame.inWorld);
 	frame.inventoryOpen = active && menuIsUp && game::ActiveMenuId() == game::kMenuIdInventory;
 	g_hand = g_handMode.Update(frame, config.hands);
+	UpdateQuickMenu(config, backend,
+	                active && !menuIsUp && frame.inWorld && !frame.settingsMenuOpen, frame, dt);
+	// What a hand script's picture is of ([Debug] HandScript): the state on
+	// the frame of each mark.
+	if (test::HandScriptMarkedThisFrame()) {
+		OBVR_LOG("HandScript: state - world %d, menu %d, third person %d, head %d at %.2f %.2f "
+		         "%.2f, right %d at %.2f %.2f %.2f stick %.2f %.2f, left %d, camera %d, hand "
+		         "pinned %d, teleport allowed %d aiming %d commit %d, weapon %d",
+		         frame.inWorld ? 1 : 0, menuIsUp ? 1 : 0, frame.firstPerson ? 0 : 1,
+		         frame.headValid ? 1 : 0, static_cast<double>(frame.headPosition.x),
+		         static_cast<double>(frame.headPosition.y),
+		         static_cast<double>(frame.headPosition.z), frame.right.valid ? 1 : 0,
+		         static_cast<double>(frame.right.position.x),
+		         static_cast<double>(frame.right.position.y),
+		         static_cast<double>(frame.right.position.z),
+		         static_cast<double>(frame.right.thumbX), static_cast<double>(frame.right.thumbY),
+		         frame.left.valid ? 1 : 0, g_cyclopeanCameraWorldValid ? 1 : 0,
+		         g_hand.rightHandValid ? 1 : 0, frame.teleportAllowed ? 1 : 0,
+		         g_hand.teleportAiming ? 1 : 0, g_hand.teleportCommit ? 1 : 0,
+		         static_cast<int>(frame.weaponSeen));
+	}
 
 	// The item nearest a hand, by distance (game::FindNearestItem): the pick is
 	// aimed from that hand at it in the camera pass. While a grip is closed,

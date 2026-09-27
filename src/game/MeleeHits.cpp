@@ -187,6 +187,15 @@ UInt32 g_strikeLinesLeft = 20;
 
 }  // namespace
 
+UInt32 EquippedWeaponFormId() {
+	UInt8* const player = PlayerOrNull();
+	UInt8* weapon = nullptr;
+	if (player == nullptr || !EquippedWeapon(player, &weapon) || weapon == nullptr) {
+		return 0;
+	}
+	return *reinterpret_cast<const UInt32*>(weapon + 0x0C);
+}
+
 bool MeleeInHand(SInt32* weaponType) {
 	if (weaponType != nullptr) {
 		*weaponType = static_cast<SInt32>(WeaponTypeCode::None);

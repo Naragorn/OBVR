@@ -184,6 +184,12 @@ struct Config {
 	bool vrTestWaterCoverageDiagnostic = false;
 	float vrTestWaterPitch = -35.0f;
 
+	// Controllers played from a script (test/HandScript.h), for running Full
+	// VR in the game with nobody in the headset: the file's name, next to
+	// OBVR.dll. Empty is off. In [Debug], normally set by
+	// tools/hand-script-run.ps1 through OBVR-test.ini.
+	char handScript[128] = "";
+
 	// Measures which rectangle of the frame the 2D actually lands in, every
 	// couple of seconds while it is on: the bounding box of the non-black
 	// pixels in the back buffer on a cinema frame (films, loading screens,

@@ -719,6 +719,13 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return c.hands.hitBoundFactor; },
 		+[](Config& c, float v) { c.hands.hitBoundFactor = v; },
 	},
+	{
+		"Hands", "Quick menu", "Full VR: hold the right trackpad, move to a hotkey, let go",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "QuickMenu",
+		+[](const Config& c) { return c.hands.quickMenu.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.quickMenu.enabled = v != 0.0f; },
+	},
 	// ---- Teleport (Full VR) --------------------------------------------------
 	{
 		"Teleport", "Teleport", "Full VR: hold the right stick up, aim the arc, let go",

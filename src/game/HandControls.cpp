@@ -87,6 +87,11 @@ void ApplyHandControls(const vr::HandControlsWanted& wanted, const HandKeyMap& k
 	SetKey(keys.menu, wanted.menu);
 	SetKey(keys.escape, wanted.escape);
 	SetKey(keys.quickMenu, wanted.quickMenu);
+	// The hotkeys' number keys, 1-8 (Oblivion.ini [Controls] Quick1..Quick8,
+	// "Quick1=0002FFFF" - the scan codes UsScanCode gives '1'..'8').
+	for (UInt8 n = 1; n <= 8; ++n) {
+		SetKey('0' + n, wanted.quickKey == n);
+	}
 	SetKey(keys.togglePov, wanted.togglePov);
 	SetKey(keys.forward, wanted.move.forward);
 	SetKey(keys.back, wanted.move.back);

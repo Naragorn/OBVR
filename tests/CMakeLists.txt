@@ -932,3 +932,41 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME control_bindings COMMAND control_bindings_test)
+
+add_executable(hand_script_test
+	HandScriptTest.cpp
+	../src/vr/Quaternion.cpp
+)
+
+target_include_directories(hand_script_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(hand_script_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME hand_script COMMAND hand_script_test)
+
+add_executable(quick_menu_test QuickMenuTest.cpp)
+
+target_include_directories(quick_menu_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(quick_menu_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME quick_menu COMMAND quick_menu_test)
+
+add_executable(quick_menu_painter_test
+	QuickMenuPainterTest.cpp
+	../src/ui/QuickMenuPainter.cpp
+	../src/ui/MenuCanvas.cpp
+	../src/ui/MenuFont.cpp
+)
+
+target_include_directories(quick_menu_painter_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(quick_menu_painter_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME quick_menu_painter COMMAND quick_menu_painter_test)

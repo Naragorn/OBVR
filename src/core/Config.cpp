@@ -515,11 +515,15 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	// is still read, as the fallback for both halves, so that an INI written
 	// before the split keeps meaning what it said rather than quietly
 	// reverting to the defaults.
-	const float legacyRange =
+	// Each half falls back on its own current value, so a file without
+	// either key (OBVR-test.ini, read over OBVR.ini) leaves both as they were.
+	const float legacyUp =
 		ReadFloat("Look", "VerticalLookRange", config.look.verticalLookUpRange, path);
-	config.look.verticalLookUpRange = ReadFloat("Look", "VerticalLookUpRange", legacyRange, path);
+	const float legacyDown =
+		ReadFloat("Look", "VerticalLookRange", config.look.verticalLookDownRange, path);
+	config.look.verticalLookUpRange = ReadFloat("Look", "VerticalLookUpRange", legacyUp, path);
 	config.look.verticalLookDownRange =
-		ReadFloat("Look", "VerticalLookDownRange", legacyRange, path);
+		ReadFloat("Look", "VerticalLookDownRange", legacyDown, path);
 	config.look.smoothVerticalLook =
 		ReadBool("Look", "SmoothVerticalLook", config.look.smoothVerticalLook, path);
 	config.look.verticalLookSpeed =
@@ -586,6 +590,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.vrTestWaterOnly = ReadBool("Debug", "VRTestWaterOnly", config.vrTestWaterOnly, path);
 	config.vrTestWaterCoverageDiagnostic = ReadBool("Debug", "VRTestWaterCoverageDiagnostic", config.vrTestWaterCoverageDiagnostic, path);
 	config.vrTestWaterPitch = ReadFloat("Debug", "VRTestWaterPitch", config.vrTestWaterPitch, path);
+	ReadText("Debug", "HandScript", config.handScript, sizeof(config.handScript), path);
 	config.handTracking = ReadBool("Hands", "Enabled", config.handTracking, path);
 	config.onboardingShowAtStart =
 		ReadBool("Onboarding", "ShowAtStart", config.onboardingShowAtStart, path);
@@ -705,6 +710,12 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.stickDeadZone = ReadFloat("Hands", "StickDeadZone", h.stickDeadZone, path);
 		h.turnSpeed = ReadFloat("Hands", "TurnSpeed", h.turnSpeed, path);
 
+		vr::QuickMenuSettings& qm = h.quickMenu;
+		qm.enabled = ReadBool("Hands", "QuickMenu", qm.enabled, path);
+		qm.deadZoneMetres = ReadFloat("Hands", "QuickMenuDeadZoneMetres", qm.deadZoneMetres, path);
+		qm.tapSeconds = ReadFloat("Hands", "QuickMenuTapSeconds", qm.tapSeconds, path);
+		qm.ringMetres = ReadFloat("Hands", "QuickMenuRingMetres", qm.ringMetres, path);
+
 		vr::TeleportSettings& tp = h.teleport;
 		tp.enabled = ReadBool("Locomotion", "Teleport", tp.enabled, path);
 		tp.instant = ReadBool("Locomotion", "TeleportInstant", tp.instant, path);
@@ -751,6 +762,25 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.cursorProbe = ReadBool("Debug", "CursorProbe", config.cursorProbe, path);
 }
 
+// A second file read over OBVR.ini: OBVR-test.ini beside it, which only the
+// test runners write (tools/hand-script-run.ps1), so that a run never has to
+// touch the player's own OBVR.ini. Only the keys it has change anything; the
+// runner deletes it when the run ends. Said in the log once, so a file left
+// behind by a run that was cut short shows up there.
+void ReadTestOverlay(Config& config) {
+	char path[512];
+	if (!platform::BuildPluginPath("OBVR-test.ini", path, sizeof(path)) ||
+	    GetFileAttributesA(path) == INVALID_FILE_ATTRIBUTES) {
+		return;
+	}
+	ReadRuntimeValues(config, path);
+	static bool said = false;
+	if (!said) {
+		said = true;
+		OBVR_LOG("Config: TEST OVERLAY %s read over OBVR.ini", path);
+	}
+}
+
 }  // namespace
 
 bool Config::Load(const char* fileName) {
@@ -776,6 +806,7 @@ bool Config::Load(const char* fileName) {
 
 	cameraHookEnabled = ReadBool("Camera", "HookEnabled", cameraHookEnabled, path);
 	ReadRuntimeValues(*this, path);
+	ReadTestOverlay(*this);
 
 	if (exists) {
 		OBVR_LOG("Config: %s", path);
@@ -934,6 +965,7 @@ bool Config::Reload(const char* fileName) {
 		return false;
 	}
 	ReadRuntimeValues(*this, path);
+	ReadTestOverlay(*this);
 	return true;
 }
 

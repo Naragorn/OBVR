@@ -1416,4 +1416,26 @@ inline constexpr UInt32 kPovSwitchSkipBodyPatchSize = 6;
 // re-applying the animation.
 inline constexpr UInt32 kApplyAnimData = 0x00471F20;
 
+// The eight hotkeys (vanilla's 1-8): g_quickKeyList in xOBSE, "array of 8
+// NiTPointerLists of size 0-1" (xOBSE GameTypes.cpp:9, GameTypes.h:67), 0x10
+// bytes each: vtable, start node, end node, count. A node is {next, prev,
+// data}, the form at +8. The engine reads it the same way at 0x5C23AD-
+// 0x5C23B6 (`shl eax,4; mov eax,[eax+0xB3B444]; mov ecx,[eax+8]`). The form
+// is an item's base form or a SpellItem (research 2026-09-27).
+inline constexpr UInt32 kQuickKeyLists = 0x00B3B440;
+inline constexpr UInt32 kQuickKeyListStride = 0x10;
+inline constexpr UInt32 kQuickKeyListStartOffset = 0x04;
+inline constexpr UInt32 kQuickKeyListCountOffset = 0x0C;
+inline constexpr UInt32 kQuickKeyNodeDataOffset = 0x08;
+
+// A form's display name: the engine's __RTDynamicCast (cdecl: object, 0,
+// from type, to type, 0; its SEH prologue read at 0x009832E6 on 2026-09-27)
+// from TESForm's type descriptor to TESFullName's - xOBSE's GetFullName
+// (GameAPI.cpp:221). The name is a BSStringT {char* data; UInt16 length;
+// UInt16 capacity} at TESFullName+4 (GameForms.h:566, GameTypes.h:46).
+inline constexpr UInt32 kDynamicCast = 0x009832E6;
+inline constexpr UInt32 kRttiTESForm = 0x00B02F9C;
+inline constexpr UInt32 kRttiTESFullName = 0x00B03298;
+inline constexpr UInt32 kFullNameStringOffset = 0x04;
+
 }  // namespace obvr::addr

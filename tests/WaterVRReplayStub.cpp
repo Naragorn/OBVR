@@ -20,3 +20,19 @@ void GetWaterVRReplayPoseMatrix(vr::openvr::HmdMatrix34& matrix) {
 }
 
 }  // namespace obvr::test
+
+// The hand script's head, off in these tests (test/HandScriptRuntime.h).
+#include "test/HandScriptRuntime.h"
+
+namespace obvr::test {
+
+bool HandScriptHeadActive() { return false; }
+
+void GetHandScriptHeadPose(vr::Quaternion& orientation, NiPoint3& position) {
+	orientation = vr::Quaternion::Identity();
+	position = {0.0f, 0.0f, 0.0f};
+}
+
+void GetHandScriptHeadPoseMatrix(vr::openvr::HmdMatrix34& matrix) { matrix = {}; }
+
+}  // namespace obvr::test

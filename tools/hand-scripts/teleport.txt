@@ -1,0 +1,27 @@
+# Teleport (docs/controls-spec.md 1): the right stick held up aims, released
+# it goes. Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\teleport.txt
+
+ini Hands Enabled=1
+ini Locomotion Teleport=1
+ini Locomotion TeleportInstant=0
+
+expect HandScript: finished
+expect Teleport: arrived
+reject HandScript: WARNING
+
+wait 4
+mark standing
+# The right hand forward, pointing a little up: the arc lands ahead.
+right pos 0.2 -0.3 -0.35
+right rot 15 0 0
+wait 0.5
+right stick 0 1
+wait 0.8
+mark aiming
+dump
+wait 0.2
+right stick 0 0
+wait 2
+mark arrived
+dump
+wait 1

@@ -1,6 +1,7 @@
 #include "vr/OpenVRBackend.h"
 
 #include "perf/Profiler.h"
+#include "test/HandScriptRuntime.h"
 #include "test/WaterVRTestRuntime.h"
 
 #include "core/MathFns.h"
@@ -505,6 +506,23 @@ void OpenVRBackend::FadeToColor(float seconds, float red, float green, float blu
 	table->FadeToColor(seconds, red, green, blue, alpha, false);
 }
 
+// For the test runner's pictures (test/HandScript.h): the headset view in a
+// desktop window, and SteamVR's own dump of the frame into its screenshots
+// folder.
+void OpenVRBackend::ShowMirrorWindow() const {
+	auto* table = static_cast<openvr::IVRCompositorFnTable*>(m_compositor);
+	if (table != nullptr && table->ShowMirrorWindow != nullptr) {
+		table->ShowMirrorWindow();
+	}
+}
+
+void OpenVRBackend::DumpCompositorImages() const {
+	auto* table = static_cast<openvr::IVRCompositorFnTable*>(m_compositor);
+	if (table != nullptr && table->CompositorDumpImages != nullptr) {
+		table->CompositorDumpImages();
+	}
+}
+
 int OpenVRBackend::ShowOverlay(openvr::VROverlayHandle handle) const {
 	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);
 	if (table == nullptr || table->ShowOverlay == nullptr) {
@@ -652,6 +670,10 @@ bool OpenVRBackend::GetRenderPose(Quaternion& orientation, NiPoint3& position) c
 		test::GetWaterVRReplayPose(orientation, position);
 		return true;
 	}
+	if (test::HandScriptHeadActive()) {
+		test::GetHandScriptHeadPose(orientation, position);
+		return true;
+	}
 	if (!m_renderPoseValid) {
 		return false;
 	}
@@ -664,6 +686,10 @@ bool OpenVRBackend::GetRenderPose(Quaternion& orientation, NiPoint3& position) c
 bool OpenVRBackend::GetRenderPoseMatrix(openvr::HmdMatrix34& out) const {
 	if (test::WaterVRReplayActive()) {
 		test::GetWaterVRReplayPoseMatrix(out);
+		return true;
+	}
+	if (test::HandScriptHeadActive()) {
+		test::GetHandScriptHeadPoseMatrix(out);
 		return true;
 	}
 	if (!m_renderPoseValid) {
@@ -747,6 +773,10 @@ bool OpenVRBackend::GetRecommendedRenderTargetSize(UInt32& width, UInt32& height
 bool OpenVRBackend::ReadHeadPose(Quaternion& orientation, NiPoint3& position) const {
 	if (test::WaterVRReplayActive()) {
 		test::GetWaterVRReplayPose(orientation, position);
+		return true;
+	}
+	if (test::HandScriptHeadActive()) {
+		test::GetHandScriptHeadPose(orientation, position);
 		return true;
 	}
 	if (m_system == nullptr) {

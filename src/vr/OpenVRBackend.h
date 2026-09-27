@@ -301,6 +301,11 @@ public:
 	// when not a scene application.
 	void FadeToColor(float seconds, float red, float green, float blue, float alpha) const;
 
+	// The headset view on the desktop, and SteamVR's dump of the frame to its
+	// screenshots folder: for the test runner (test/HandScript.h).
+	void ShowMirrorWindow() const;
+	void DumpCompositorImages() const;
+
 	int ShowOverlay(openvr::VROverlayHandle handle) const;
 	int HideOverlay(openvr::VROverlayHandle handle) const;
 	int DestroyOverlay(openvr::VROverlayHandle handle);

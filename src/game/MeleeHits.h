@@ -23,6 +23,10 @@ namespace obvr::game {
 // weapon's type code as well (-1 for none) for the log.
 bool MeleeInHand(SInt32* weaponType);
 
+// The equipped weapon's form ID (TESForm+0x0C, xOBSE GameForms.h: typeID, flags,
+// refID), 0 with none - for the test runner's console lines.
+UInt32 EquippedWeaponFormId();
+
 // Whether the player has died (Actor::IsDead through the same table entry the
 // strike uses for its targets). False when the player cannot be read.
 bool PlayerIsDead();
