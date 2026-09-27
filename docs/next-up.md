@@ -357,6 +357,8 @@ Every change below is switched by the mode.
   yet found (docs/combat-comfort-spec.md).
 - **Hands a few centimetres low.** The tester suspects the tracking; a
   comparison with the SteamVR system menu's controllers would settle it.
+- **Controls.** docs/controls-spec.md holds the layout, why, and the target
+  picture (weapons drawn by reaching for them, fists, the quick menu).
 - **Block and stagger.** docs/combat-comfort-spec.md holds the problems and
   every proposal.
 - **Death view.** Held at the living eyes with the body drawn
