@@ -187,6 +187,29 @@ UInt32 g_strikeLinesLeft = 20;
 
 }  // namespace
 
+UInt8* EquippedWeaponForm(SInt32* type) {
+	*type = static_cast<SInt32>(WeaponTypeCode::None);
+	UInt8* const player = PlayerOrNull();
+	UInt8* weapon = nullptr;
+	if (player == nullptr || !EquippedWeapon(player, &weapon) || weapon == nullptr) {
+		return nullptr;
+	}
+	*type = WeaponTypeOf(weapon);
+	return weapon;
+}
+
+bool EquipWeaponForm(UInt8* weapon) {
+	UInt8* const player = PlayerOrNull();
+	if (player == nullptr || !LooksLikeObject(weapon)) {
+		return false;
+	}
+	using EquipItemFn = void(__fastcall*)(UInt8* actor, void* edx, UInt8* item, UInt32 count,
+	                                      void* extraData, UInt32 unk3, bool lockEquip);
+	reinterpret_cast<EquipItemFn>(addr::kActorEquipItem)(player, nullptr, weapon, 1, nullptr, 1,
+	                                                     false);
+	return true;
+}
+
 UInt32 EquippedWeaponFormId() {
 	UInt8* const player = PlayerOrNull();
 	UInt8* weapon = nullptr;

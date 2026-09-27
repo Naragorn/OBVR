@@ -1438,4 +1438,12 @@ inline constexpr UInt32 kRttiTESForm = 0x00B02F9C;
 inline constexpr UInt32 kRttiTESFullName = 0x00B03298;
 inline constexpr UInt32 kFullNameStringOffset = 0x04;
 
+// Actor::EquipItem(TESForm* item, UInt32 count, ExtraDataList* xData, UInt32
+// unk3, bool lockEquip), __thiscall, `ret 14h` at 0x005FB9A1 (xOBSE
+// GameObjects.cpp:21, 35-37). The vanilla EquipItem command's handler
+// (0x005162B0) calls it with (item, 1, NULL, 1, lock): with no extra data
+// the engine picks the stack itself (research 2026-09-27). The drawn
+// weapons of the holster gestures are equipped through it.
+inline constexpr UInt32 kActorEquipItem = 0x005FAEA0;
+
 }  // namespace obvr::addr

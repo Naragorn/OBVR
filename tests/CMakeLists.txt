@@ -970,3 +970,16 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME quick_menu_painter COMMAND quick_menu_painter_test)
+
+add_executable(holster_test
+	HolsterTest.cpp
+	../src/vr/Quaternion.cpp
+)
+
+target_include_directories(holster_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(holster_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME holster COMMAND holster_test)

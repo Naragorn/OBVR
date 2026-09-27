@@ -726,6 +726,13 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return c.hands.quickMenu.enabled ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.quickMenu.enabled = v != 0.0f; },
 	},
+	{
+		"Hands", "Draw by reaching", "Full VR: grip at the left hip draws the sword, at the left shoulder the bow",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "Holsters",
+		+[](const Config& c) { return c.hands.holster.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.holster.enabled = v != 0.0f; },
+	},
 	// ---- Teleport (Full VR) --------------------------------------------------
 	{
 		"Teleport", "Teleport", "Full VR: hold the right stick up, aim the arc, let go",

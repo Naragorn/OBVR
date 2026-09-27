@@ -5,6 +5,7 @@
 #include "vr/HandInput.h"
 #include "vr/OpenVRTypes.h"
 #include "vr/Quaternion.h"
+#include "vr/Holster.h"
 #include "vr/QuickMenu.h"
 #include "vr/Teleport.h"
 
@@ -201,6 +202,10 @@ struct HandSettings {
 	// The quick menu on the right trackpad ([Hands] QuickMenu, vr::QuickMenu).
 	QuickMenuSettings quickMenu;
 
+	// Drawing by reaching: the sword from the left hip, the bow from the left
+	// shoulder ([Hands] Holsters, vr::Holster).
+	HolsterSettings holster;
+
 	// The teleport on the right stick pushed forward ([Locomotion], vr::Teleport).
 	TeleportSettings teleport;
 };
@@ -227,6 +232,11 @@ struct HandModeFrame {
 	// is in (HighProcess kAction_, -1 none): what the ready-weapon click
 	// follows, and whether a swing may press attack.
 	WeaponSeen weaponSeen = WeaponSeen::Unknown;
+	// The weapon slot, and whether a sword and a bow have been seen in it this
+	// session (the holster gestures, vr::StepHolster).
+	EquippedKind equipped = EquippedKind::Nothing;
+	bool haveSword = false;
+	bool haveBow = false;
 	SInt32 playerAction = -1;
 	// The hands are being adjusted (the INI switch or the guided window): a
 	// closed grip holds a hand, it does not grab.
@@ -277,6 +287,9 @@ struct HandModeResult {
 	// The teleport's stick: aiming shows the arc, commit goes this frame.
 	bool teleportAiming = false;
 	bool teleportCommit = false;
+	// Drawing by reaching: the ready click, a weapon to equip first, the grips
+	// that are the holster's (vr::StepHolster).
+	HolsterVerdict holster;
 
 	// The aim, when the right hand is tracked: its heading as a turn from
 	// the head's, and the sine of its pitch (positive up), both in the
@@ -465,6 +478,7 @@ private:
 	ButtonEdge m_leftTrackpad;
 	StickFlickState m_rightFlick;
 	TeleportStickState m_teleportStick;
+	HolsterState m_holster;
 	ButtonEdge m_dropEdge;
 	DropPressState m_drop;
 	bool m_dropClickNow = false;  // this frame carries the drop's click

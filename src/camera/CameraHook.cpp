@@ -48,6 +48,7 @@
 #include "game/GrabPhysics.h"
 #include "game/GrabNearBody.h"
 #include "game/NearbyItems.h"
+#include "game/MeleeHit.h"
 #include "game/QuickKeys.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
@@ -628,6 +629,14 @@ void UpdateTeleport(const Config& config, vr::OpenVRBackend& backend, bool activ
 // The quick menu on the right trackpad (vr/QuickMenu.h, docs/controls-spec.md
 // 4.4): the ring of the eight hotkeys where the hand is, the hand moved
 // towards one, the trackpad let go - and that hotkey's number key is tapped.
+// The last sword and bow seen in the weapon slot this session: base forms.
+// A plugin's forms stay for as long as the game runs; a form the game made
+// (a custom enchanted weapon) could in principle go, which is not guarded
+// (vr::StepHolster).
+UInt8* g_lastSwordForm = nullptr;
+UInt8* g_lastBowForm = nullptr;
+UInt32 g_holsterLinesLeft = 30;
+
 vr::QuickMenuState g_quickMenu;
 ui::CanvasOverlay g_quickMenuLayer("obvr.quickmenu", "OBVR Quick Menu", ui::kQuickMenuCanvas,
                                    ui::kQuickMenuCanvas);
@@ -870,6 +879,23 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		                                                           : vr::WeaponSeen::Unknown;
 		frame.playerAction = game::ReadPlayerAction();
 	}
+	// The weapon slot, and the last sword and bow seen in it: what a reach
+	// to the hip or the shoulder draws when the other kind is in hand. In
+	// menus too, so a weapon picked in the inventory counts; only with the
+	// player in the world.
+	{
+		SInt32 weaponType = 0;
+		UInt8* const weaponForm = frame.inWorld ? game::EquippedWeaponForm(&weaponType) : nullptr;
+		const bool bow = weaponType == static_cast<SInt32>(game::WeaponTypeCode::Bow);
+		if (weaponForm != nullptr) {
+			(bow ? g_lastBowForm : g_lastSwordForm) = weaponForm;
+		}
+		frame.equipped = weaponForm == nullptr ? vr::EquippedKind::Nothing
+		                 : bow                 ? vr::EquippedKind::Bow
+		                                       : vr::EquippedKind::Melee;
+	}
+	frame.haveSword = g_lastSwordForm != nullptr;
+	frame.haveBow = g_lastBowForm != nullptr;
 	frame.sneaking = active && !menuIsUp && frame.inWorld && config.hands.sneakHold &&
 	                 game::IsPlayerSneaking();
 	frame.headValid = backend.GetRenderPose(frame.head, frame.headPosition) ||
@@ -1012,6 +1038,33 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.teleportAllowed = active && TeleportAllowedNow(config, menuIsUp, frame.inWorld);
 	frame.inventoryOpen = active && menuIsUp && game::ActiveMenuId() == game::kMenuIdInventory;
 	g_hand = g_handMode.Update(frame, config.hands);
+	// A reach to the hip or the shoulder with the other kind in hand: the
+	// remembered weapon is equipped first (vr::StepHolster draws it once the
+	// game shows it). What each reach did goes to the log.
+	{
+		const vr::HolsterVerdict& h = g_hand.holster;
+		if (h.equip != vr::HolsterKind::None) {
+			UInt8* const form = h.equip == vr::HolsterKind::Bow ? g_lastBowForm : g_lastSwordForm;
+			const bool sent = game::EquipWeaponForm(form);
+			if (!sent) {
+				(h.equip == vr::HolsterKind::Bow ? g_lastBowForm : g_lastSwordForm) = nullptr;
+			}
+		}
+		if ((h.gesture != vr::HolsterKind::None || h.gaveUp) && g_holsterLinesLeft > 0) {
+			--g_holsterLinesLeft;
+			const char* const what = h.gesture == vr::HolsterKind::Bow ? "bow" : "sword";
+			if (h.gaveUp) {
+				OBVR_LOG("Holster: the weapon equipped never showed in the hand - draw given up");
+			} else if (h.refused) {
+				OBVR_LOG("Holster: reach for the %s - none seen this session, nothing to draw", what);
+			} else if (h.equip != vr::HolsterKind::None) {
+				OBVR_LOG("Holster: reach for the %s - equipping the last one seen, then drawing", what);
+			} else {
+				OBVR_LOG("Holster: reach for the %s - %s", what,
+				         frame.weaponSeen == vr::WeaponSeen::Drawn ? "sheathing" : "drawing");
+			}
+		}
+	}
 	UpdateQuickMenu(config, backend,
 	                active && !menuIsUp && frame.inWorld && !frame.settingsMenuOpen, frame, dt);
 	// What a hand script's picture is of ([Debug] HandScript): the state on
@@ -1019,7 +1072,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	if (test::HandScriptMarkedThisFrame()) {
 		OBVR_LOG("HandScript: state - world %d, menu %d, third person %d, head %d at %.2f %.2f "
 		         "%.2f, right %d at %.2f %.2f %.2f stick %.2f %.2f, left %d, camera %d, hand "
-		         "pinned %d, teleport allowed %d aiming %d commit %d, weapon %d",
+		         "pinned %d, teleport allowed %d aiming %d commit %d, weapon %d (slot %d)",
 		         frame.inWorld ? 1 : 0, menuIsUp ? 1 : 0, frame.firstPerson ? 0 : 1,
 		         frame.headValid ? 1 : 0, static_cast<double>(frame.headPosition.x),
 		         static_cast<double>(frame.headPosition.y),
@@ -1031,7 +1084,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		         frame.left.valid ? 1 : 0, g_cyclopeanCameraWorldValid ? 1 : 0,
 		         g_hand.rightHandValid ? 1 : 0, frame.teleportAllowed ? 1 : 0,
 		         g_hand.teleportAiming ? 1 : 0, g_hand.teleportCommit ? 1 : 0,
-		         static_cast<int>(frame.weaponSeen));
+		         static_cast<int>(frame.weaponSeen), static_cast<int>(frame.equipped));
 	}
 
 	// The item nearest a hand, by distance (game::FindNearestItem): the pick is

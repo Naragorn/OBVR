@@ -27,6 +27,16 @@ bool MeleeInHand(SInt32* weaponType);
 // refID), 0 with none - for the test runner's console lines.
 UInt32 EquippedWeaponFormId();
 
+// The equipped weapon's base form, nullptr with none; `type` its
+// WeaponTypeCode (None with no weapon).
+UInt8* EquippedWeaponForm(SInt32* type);
+
+// The weapon base form equipped on the player, as the game's EquipItem
+// command does it (addr::kActorEquipItem with no extra data, count 1). For
+// the holster gestures' weapon swap. False when the player or the form
+// cannot be reached.
+bool EquipWeaponForm(UInt8* weapon);
+
 // Whether the player has died (Actor::IsDead through the same table entry the
 // strike uses for its targets). False when the player cannot be read.
 bool PlayerIsDead();

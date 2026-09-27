@@ -1,0 +1,58 @@
+# Drawing by reaching (docs/controls-spec.md 4.1, 4.2): the right hand's grip
+# at the left hip draws the sword - equipping it first while the bow is in
+# hand - the same reach sheathes it, and the left hand's grip behind the left
+# shoulder brings the bow back.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\holster.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+# An Iron Longsword and an Iron Bow (00000C0C, 00025231, UESP
+# Oblivion:Weapons), each equipped once so OBVR has seen both, the bow last.
+# The run never saves, so the save is untouched.
+console player.additem 00000C0C 1
+console player.additem 00025231 1
+console player.equipitem 00000C0C
+console player.equipitem 00025231
+
+expect HandScript: finished
+expect Holster: reach for the sword - equipping the last one seen
+expect Holster: reach for the sword - sheathing
+expect Holster: reach for the bow - equipping the last one seen
+expect Hands: ready weapon done
+reject HandScript: WARNING
+reject draw given up
+
+# Time for the runner's console lines.
+wait 20
+mark bow_in_hand
+
+# The right hand down to the left hip, and a grip.
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark sword_drawn
+
+# The same reach again: sheathed.
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark sword_sheathed
+
+# The left hand behind the left shoulder, and a grip: the bow.
+left pos -0.18 -0.15 0.12
+wait 0.3
+left grip 1
+wait 0.2
+left grip 0
+left pos -0.20 -0.40 -0.30
+wait 3
+mark bow_drawn
+wait 1

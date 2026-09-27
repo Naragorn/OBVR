@@ -82,6 +82,7 @@ void HandMode::Reset() {
 	m_leftTrackpad = ButtonEdge{};
 	m_rightFlick = StickFlickState{};
 	m_teleportStick = TeleportStickState{};
+	m_holster = HolsterState{};
 	m_dropEdge = ButtonEdge{};
 	m_drop = DropPressState{};
 	m_dropClickNow = false;
@@ -255,6 +256,32 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	in.leftTrigger = cl.valid && StepTrigger(m_leftTrigger, cl.trigger);
 	in.rightGrip = cr.valid && GripDown(cr.buttonsPressed);
 	in.leftGrip = cl.valid && GripDown(cl.buttonsPressed);
+	// Drawing by reaching (vr::StepHolster): the right hand's grip at the left
+	// hip, the left hand's at the left shoulder. A grip that closed there is
+	// the holster's until it opens - it neither grabs nor cancels a teleport.
+	{
+		HolsterInput hin;
+		hin.allowed = !f.menuMode && f.inWorld;
+		hin.rightValid = cr.valid;
+		hin.leftValid = cl.valid;
+		if (cr.valid) {
+			hin.rightRelative = BodyRelative(f.head, f.headPosition, cr.position);
+		}
+		if (cl.valid) {
+			hin.leftRelative = BodyRelative(f.head, f.headPosition, cl.position);
+		}
+		hin.rightGrip = in.rightGrip;
+		hin.leftGrip = in.leftGrip;
+		hin.seen = f.weaponSeen;
+		hin.equipped = f.equipped;
+		hin.haveSword = f.haveSword;
+		hin.haveBow = f.haveBow;
+		hin.leftHanded = s.leftHanded;
+		hin.dt = f.dtSeconds;
+		r.holster = StepHolster(m_holster, hin, s.holster);
+		in.rightGrip = in.rightGrip && !r.holster.rightClaimed;
+		in.leftGrip = in.leftGrip && !r.holster.leftClaimed;
+	}
 	in.rightA = cr.valid && ButtonADown(cr.buttonsPressed);
 	in.leftA = cl.valid && ButtonADown(cl.buttonsPressed);
 	in.rightMenuButton = StepRisingEdge(
@@ -329,6 +356,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	in.pointRight = m_pointRight;
 	in.leftHanded = false;  // the roles are swapped before the frame (AssignHandRoles)
 	r.controls = PlanHandControls(in, s.stickDeadZone);
+	r.controls.readyWeapon = r.controls.readyWeapon || r.holster.readyClick;
 	r.controls.run = StepRunToggle(m_runLatched, s.runToggle, in.leftStickClick, r.controls.run);
 	HoldTaps(r.controls, f, r);
 	if (!f.menuMode && cr.valid) {

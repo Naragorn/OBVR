@@ -1120,6 +1120,53 @@ void TestGrabHand() {
 	Check(!r.grabWanted, "no grip: no grab");
 }
 
+void TestHolsterInMode() {
+	std::printf("Drawing by reaching, through the mode\n");
+	HandSettings settings;
+	settings.enabled = true;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.inWorld = true;
+	frame.unitsPerMetre = 70.0f;
+	frame.weaponSeen = WeaponSeen::Sheathed;
+	frame.equipped = EquippedKind::Melee;
+	frame.haveSword = true;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	frame.left.position = NiPoint3{-0.2f, -0.3f, -0.4f};
+	// The left hip in tracking axes (x right, y up, z back) from the eyes at
+	// the origin: the sword zone's right, up and -forward.
+	const HolsterSettings& zones = settings.holster;
+	frame.right.position = NiPoint3{zones.swordZone.x, zones.swordZone.z, -zones.swordZone.y};
+	HandMode mode;
+	HandModeResult r = mode.Update(frame, settings);
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexGrip;
+	r = mode.Update(frame, settings);
+	Check(r.holster.readyClick && r.holster.rightClaimed, "a grip at the left hip: the draw");
+	Check(r.controls.readyWeapon, "sent as the ready-weapon key");
+	Check(!r.grabWanted && !r.controls.grab, "and that grip grabs nothing");
+	frame.right.buttonsPressed = 0;
+	mode.Update(frame, settings);
+
+	HandMode holding;
+	frame.right.position = NiPoint3{0.2f, -0.2f, -0.4f};
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexGrip;
+	r = holding.Update(frame, settings);
+	Check(r.grabWanted, "a grip closed in front: a grab");
+	frame.right.position = NiPoint3{zones.swordZone.x, zones.swordZone.z, -zones.swordZone.y};
+	r = holding.Update(frame, settings);
+	Check(r.grabWanted && !r.holster.readyClick,
+	      "carried to the hip still closed: still the grab, nothing drawn");
+
+	HandMode menu;
+	frame.menuMode = true;
+	frame.right.buttonsPressed = 0;
+	menu.Update(frame, settings);
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexGrip;
+	r = menu.Update(frame, settings);
+	Check(!r.holster.readyClick, "in a menu the hip draws nothing");
+}
+
 void TestLeftButtonsInHandMode() {
 	std::printf("The left hand's buttons in the hand-tracked mode\n");
 	HandSettings settings;
@@ -1860,6 +1907,7 @@ int main() {
 	TestFirstPersonDepthBranch();
 	TestWeaponGuard();
 	TestLeftHandedMirror();
+	TestHolsterInMode();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

@@ -716,6 +716,17 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		qm.tapSeconds = ReadFloat("Hands", "QuickMenuTapSeconds", qm.tapSeconds, path);
 		qm.ringMetres = ReadFloat("Hands", "QuickMenuRingMetres", qm.ringMetres, path);
 
+		vr::HolsterSettings& hs = h.holster;
+		hs.enabled = ReadBool("Hands", "Holsters", hs.enabled, path);
+		hs.swordZone.x = ReadFloat("Hands", "HolsterSwordX", hs.swordZone.x, path);
+		hs.swordZone.y = ReadFloat("Hands", "HolsterSwordForward", hs.swordZone.y, path);
+		hs.swordZone.z = ReadFloat("Hands", "HolsterSwordUp", hs.swordZone.z, path);
+		hs.swordRadius = ReadFloat("Hands", "HolsterSwordRadius", hs.swordRadius, path);
+		hs.bowZone.x = ReadFloat("Hands", "HolsterBowX", hs.bowZone.x, path);
+		hs.bowZone.y = ReadFloat("Hands", "HolsterBowForward", hs.bowZone.y, path);
+		hs.bowZone.z = ReadFloat("Hands", "HolsterBowUp", hs.bowZone.z, path);
+		hs.bowRadius = ReadFloat("Hands", "HolsterBowRadius", hs.bowRadius, path);
+
 		vr::TeleportSettings& tp = h.teleport;
 		tp.enabled = ReadBool("Locomotion", "Teleport", tp.enabled, path);
 		tp.instant = ReadBool("Locomotion", "TeleportInstant", tp.instant, path);

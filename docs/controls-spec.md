@@ -19,7 +19,7 @@ flow is covered by `hand_mode_test` and `teleport_test`.
 | Control | Right hand | Left hand |
 |---|---|---|
 | Trigger | attack (a bow draws while held); with a swung melee weapon the swing itself strikes | cast |
-| Grip | grab (holding objects, docs/holding-objects-spec.md); cancels a teleport aim | grab |
+| Grip | grab (holding objects, docs/holding-objects-spec.md); cancels a teleport aim; closed at the left hip: draws or sheathes the sword (4.1) | grab; closed behind the left shoulder: draws or sheathes the bow (4.2) |
 | A | activate (what the right laser points at) | nothing |
 | B (menu button) | Escape | Tab (the menus) |
 | Stick | sideways: turn (smooth or snap); flicked up: jump; held up (0.2 s): teleport aim, released: go; flicked down: sneak | walk; pressed in: run |
@@ -96,7 +96,7 @@ From UESP, Oblivion:Controls.
 |---|---|---|
 | Move, run, jump, sneak | left stick, its click, right stick up, right stick down | built |
 | Attack, cast, block | right trigger or a swing, left trigger, raised left hand | built |
-| Ready weapon (F) | right stick click | built; to become gestures (4.1-4.3) |
+| Ready weapon (F) | right stick click; reaching to the hip or shoulder (4.1, 4.2) | built; fists (4.3) not yet |
 | Activate, grab | right A, grips | built |
 | Journal / menus, pause | left B, right B | built |
 | Drop (Shift + click) | left A in the inventory | built |
@@ -107,39 +107,59 @@ From UESP, Oblivion:Controls.
 | Always run, auto move | - | not needed in VR |
 | Change view (R) | - | Full VR stays in first person |
 
-## 4. The target picture (not built)
+## 4. The target picture
 
 The tester's aim: the weapon is drawn by reaching for it, as with a real one.
+4.1, 4.2 and 4.4 are built (2026-09-27) and were checked in the game with the
+hand script harness (docs/hand-script-harness.md). None of them has been tried
+in the headset yet.
 
-### 4.1 Sword from the left hip
+### 4.1 Sword from the left hip, 4.2 bow from the left shoulder (built)
 
-- **Wanted.** The right hand at the left hip and a grip: the sword is drawn.
-- **Design.**
-  - A zone at the left hip in the body's frame: the right controller within
-    about 20 cm of a point low on the left side, below the waist.
-  - The grip closing there readies the melee weapon.
-  - Drawn, the same reach and grip sheathes it again (the tester, 2026-09-27:
-    "ja, soll es").
-- **To find out.**
-  - How the body's frame is known: the head's position and heading minus a
-    neck-to-hip offset, or the arms' own hip bone. The first needs no engine.
-  - The grip there must not also grab: the grab is suppressed while the hand
-    is in a holster zone.
-  - Oblivion has one weapon slot. If a bow is equipped, "the sword" is the
-    last melee weapon the player had: it must be remembered and equipped
-    through the engine (xOBSE's EquipItem path) before the ready.
-
-### 4.2 Bow from the left shoulder
-
-- **Wanted.** The left hand at the left shoulder and a grip: the bow is drawn.
-- **Design.** As 4.1, a zone behind or above the left shoulder, the left grip;
-  the same gesture puts the bow away again.
-- **To find out.**
-  - The same one-slot question: the last bow is remembered and equipped.
-  - Conflict: the arrow's reach back over the right shoulder
-    (`BowNeedsReachBack`) is the right hand; the bow's zone is the left hand
-    at the left shoulder, so they do not share a zone. To confirm in the
-    headset that one is not taken for the other.
+- **Wanted.**
+  - The right hand at the left hip and a grip: the sword is drawn.
+  - The left hand at the left shoulder and a grip: the bow is drawn.
+  - The same reach sheathes again (the tester, 2026-09-27: "ja, soll es").
+- **Built.** `vr::StepHolster` (`holster_test`, and `hand_mode_test` through
+  the mode).
+  - **Where the zones are.** They are in the body's frame: metres from the
+    eyes along the head's heading alone, so looking down at the hip does not
+    move it.
+    - The sword's zone is 22 cm round (-0.18, 0.02 forward, -0.62 up).
+    - The bow's zone is 18 cm round (-0.18, -0.12 forward, -0.15 up), behind
+      the left shoulder.
+    - Left-handed, they mirror.
+  - **What a grip there does.** A grip that closes in a zone is the holster's
+    until it opens: it does not grab and does not cancel a teleport.
+    - A grip already closed when the hand arrives stays a grab, so a held
+      object is not dropped at the hip.
+    - The draw and the sheathe go through the ready-weapon key and its
+      state machine (`StepReadyWeapon`), like the stick click.
+  - **One weapon slot.** The last sword and the last bow seen equipped this
+    session are remembered.
+    - Reaching for the other kind equips the remembered one through the
+      engine's `Actor::EquipItem` (0x005FAEA0, called with (form, 1, NULL,
+      1, false), as the game's own EquipItem command does, xOBSE
+      GameObjects.cpp:21).
+    - It is drawn once the game shows it in the hand, or given up after 2 s.
+    - With none of that kind seen yet, the reach does nothing and says so in
+      the log.
+  - **Settings.** `[Hands] Holsters` and the zone keys; a toggle in the
+    settings under Hands.
+- **Checked in the game** (`tools/hand-scripts/holster.txt`, PASS):
+  - bow sheathed, then a reach to the hip: the sword was equipped and drawn;
+  - the same reach sheathed it;
+  - the left hand behind the shoulder equipped and drew the bow.
+- **Open.**
+  - Whether the zones sit right on a real body, standing and seated. They
+    are starting values.
+  - Whether the bow's zone and the arrow's reach back over the right
+    shoulder (`BowNeedsReachBack`) are ever taken for one another. They
+    belong to different hands, so they should not be.
+  - Calling EquipItem directly skips the tail the game's command handler runs
+    for the player. In the harness the HUD's weapon icon did follow.
+  - A weapon never seen equipped this session is not searched for in the
+    pack.
 
 ### 4.3 Fists by making a fist
 
