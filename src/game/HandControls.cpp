@@ -53,7 +53,9 @@ void SendKey(UInt32 key, bool down) {
 		scan = MapVirtualKeyA(key, MAPVK_VK_TO_VSC);
 	}
 	keybd_event(static_cast<UInt8>(key), static_cast<UInt8>(scan),
-	            KEYEVENTF_SCANCODE | (down ? 0 : KEYEVENTF_KEYUP), 0);
+	            KEYEVENTF_SCANCODE | (IsExtendedKey(key) ? KEYEVENTF_EXTENDEDKEY : 0) |
+	                (down ? 0 : KEYEVENTF_KEYUP),
+	            0);
 }
 
 // Brings one key to the wanted state, sending nothing when it is there.

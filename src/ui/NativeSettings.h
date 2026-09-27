@@ -7,6 +7,7 @@ constexpr int kNativePrevious = 9201;
 constexpr int kNativeNext = 9202;
 constexpr int kNativeReset = 9203;
 constexpr int kNativeClose = 9299;
+constexpr int kNativeBack = 9204;  // from a section back to the list of sections
 constexpr int kNativeRowBase = 9300; // three IDs per slot: help, minus, plus
 
 // A generic menu belongs to one mod at a time. Never process keyboard or
@@ -74,10 +75,16 @@ struct NativeSettingEdit {
  bool close = false;
 };
 
-// Which rows the menu offers. All is the Insert menu. Comfort is the
-// onboarding's second page after Full VR is chosen: left-handed and the snap
-// turn with its vignette, each follow-up only while the row it refines is on.
-enum class SettingsView { All, Comfort };
+// Which rows the menu offers. All is every row on one long list of pages.
+// Comfort is the onboarding's second page after Full VR is chosen:
+// left-handed and the snap turn with its vignette, each follow-up only while
+// the row it refines is on. Sections is the Insert menu: first the sections
+// (the rows' categories, in table order), and a click on one shows only its
+// rows, with Back to return (the tester, 2026-09-27: the menu had grown to
+// pages and pages; MenuQue shows one generic menu at a time, so the
+// sections live inside the one menu rather than as menus of their own).
+enum class SettingsView { All, Comfort, Sections };
+constexpr UInt32 kNativeMaxSections = 32;
 bool SettingShownIn(SettingsView view, const SettingDefinition& definition, const Config& config);
 constexpr UInt32 kNativeMaxRows = 160;
 
@@ -96,12 +103,28 @@ public:
  UInt32 First() const { return m_first; }
  // An index into SettingDefinitions(), always one of the offered rows.
  UInt32 Selected() const { return m_selected; }
- UInt32 Pages() const { return m_count==0 ? 1 : (m_count+kNativeSettingsRows-1)/kNativeSettingsRows; }
+ UInt32 Pages() const {
+  const UInt32 n=InOverview() ? m_sectionCount : m_count;
+  return n==0 ? 1 : (n+kNativeSettingsRows-1)/kNativeSettingsRows;
+ }
  const SettingDefinition* Row(UInt32 slot) const;
  bool CanResetSelected(const Config& config) const;
  NativeSettingEdit Click(int id, const Config& config);
+ // The Sections view's list of sections is up (no rows, no selection).
+ bool InOverview() const { return m_view==SettingsView::Sections && m_section<0; }
+ // In the list of sections: the section on a slot of this page and how many
+ // rows it has, null / 0 past the last. Otherwise null.
+ const char* SectionAt(UInt32 slot) const;
+ UInt32 SectionSize(UInt32 slot) const;
+ // The section whose rows are shown, null in the list or the other views.
+ const char* OpenSection() const { return m_section>=0 ? m_sectionNames[m_section] : nullptr; }
+ UInt32 SectionCount() const { return m_sectionCount; }
 private:
  SettingsView m_view=SettingsView::All;
+ const char* m_sectionNames[kNativeMaxSections]{};
+ UInt32 m_sectionSizes[kNativeMaxSections]{};
+ UInt32 m_sectionCount=0;
+ int m_section=-1;
  UInt32 m_rows[kNativeMaxRows]{};
  UInt32 m_count=0;
  UInt32 m_first=0;

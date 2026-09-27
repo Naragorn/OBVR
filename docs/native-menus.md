@@ -170,3 +170,16 @@ Full VR no longer forces first person. Left B switches gameplay perspectives; in
 menus it still closes/backtracks. Third person uses classic gamepad/gaze behavior,
 including head reticle and floating menus; first person retains motion behavior.
 The selected Hands.Enabled flag is distinct from effective MotionPerspective.
+
+## Sections (2026-09-27)
+
+The Insert menu opens on a list of sections - the rows' categories, each once,
+in table order, with its row count - instead of the flat list of every row
+(`ui::SettingsView::Sections`). A click anywhere on a section's row opens it;
+its rows show without the category prefix and the heading names the section;
+a Back button (id 9204, top right, hidden in the list) returns to the list on
+the page the section was on. MenuQue shows one generic menu at a time
+(`ShowGenericMenu`, one closing id), so the sections live inside the one menu
+rather than as menus of their own. The flat view (`All`) and the comfort page
+are unchanged. Covered by `TestSections` in NativeSettingsTest; the list was
+seen in the game through `tools/hand-scripts/settings-sections.txt`.

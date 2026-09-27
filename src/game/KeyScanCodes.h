@@ -59,4 +59,28 @@ inline UInt32 UsScanCode(UInt32 virtualKey) {
 	}
 }
 
+// The keys whose scan code is shared with a numpad key and told apart only
+// by the extended flag: Insert (0x52, also Numpad 0), Delete, Home, End,
+// Page Up, Page Down, the arrows, and the right Ctrl and Alt. Sent by scan
+// code without the flag they arrive as the numpad key - a scripted Insert
+// never opened OBVR's settings menu (2026-09-27).
+inline bool IsExtendedKey(UInt32 virtualKey) {
+	switch (virtualKey) {
+	case 0x21:  // Page Up
+	case 0x22:  // Page Down
+	case 0x23:  // End
+	case 0x24:  // Home
+	case 0x25:  // Left
+	case 0x26:  // Up
+	case 0x27:  // Right
+	case 0x28:  // Down
+	case 0x2D:  // Insert
+	case 0x2E:  // Delete
+	case 0xA3:  // right Ctrl
+	case 0xA5:  // right Alt
+		return true;
+	default:
+		return false;
+	}
+}
 }  // namespace obvr::game

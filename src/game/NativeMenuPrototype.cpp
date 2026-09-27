@@ -157,12 +157,23 @@ bool RefreshSettings() {
  // An edit or an INI reload may have turned a row that others follow.
  g_settings.Sync(GetConfig());
  const bool comfort=g_settings.View()==ui::SettingsView::Comfort;
- char page[16],pages[16],heading[96],temporary[64];
+ const bool overview=g_settings.InOverview();
+ const char* const section=g_settings.OpenSection();
+ char page[16],pages[16],heading[96],temporary[64],title[96];
  ui::FormatInteger(static_cast<int>(g_settings.First()/ui::kNativeSettingsRows+1),page,sizeof(page));
  ui::FormatInteger(static_cast<int>(g_settings.Pages()),pages,sizeof(pages));
  Join(temporary,sizeof(temporary),page," / ",pages);
- Join(heading,sizeof(heading),comfort ? "Comfort (OBVR) - " : "VR Settings (OBVR) - ",temporary);
+ if (comfort) Join(title,sizeof(title),"Comfort (OBVR)",""," - ");
+ else if (section) Join(title,sizeof(title),"OBVR: ",section," - ");
+ else Join(title,sizeof(title),"VR Settings (OBVR)",""," - ");
+ Join(heading,sizeof(heading),title,temporary,"");
  ok=CachedText(0,"user0",heading) && ok;
+ // Back from a section to the list of sections; hidden elsewhere, the same
+ // way as the paging buttons (alpha and target, XML booleans).
+ const bool back=section!=nullptr;
+ ok=Number("parchment\\back\\alpha",back ? 255 : 0) && ok;
+ ok=Number("parchment\\back\\target",ui::kXmlBool[back ? 1 : 0]) && ok;
+ ok=CachedText(42,"parchment\\back\\label\\string",back ? "Back" : " ") && ok;
  ok=CachedText(24,"parchment\\close\\label\\string",comfort ? "Continue" : "Close") && ok;
  // One page has nowhere to turn to: no Previous, no Next. Oblivion's XML
  // booleans are &true; = 2 and &false; = 1, any other number false (UESP,
@@ -184,6 +195,35 @@ bool RefreshSettings() {
  for (UInt32 slot=0;slot<ui::kNativeSettingsRows;++slot) {
   char trait[96],label[192],value[32];
   const auto* definition=g_settings.Row(slot);
+  // The list of sections: each row a section, its size as the value, the
+  // whole row a button that opens it; no - or +.
+  if (overview) {
+   const char* name=g_settings.SectionAt(slot);
+   const char* const rowParts[]={"","minus\\","plus\\"};
+   for (const char* part:rowParts) {
+    char suffix[32];
+    Join(suffix,sizeof(suffix),part,"target");
+    ui::NativeRowTrait(slot,suffix,trait,sizeof(trait));
+    ok=Number(trait,ui::kXmlBool[name && part[0]=='\0' ? 1 : 0]) && ok;
+   }
+   ui::NativeRowTrait(slot,"minus\\label\\string",trait,sizeof(trait));
+   ok=CachedText(25+slot*2,trait," ") && ok;
+   ui::NativeRowTrait(slot,"plus\\label\\string",trait,sizeof(trait));
+   ok=CachedText(26+slot*2,trait,name ? ">" : " ") && ok;
+   ui::NativeRowTrait(slot,"label\\string",trait,sizeof(trait));
+   ok=CachedText(1+slot*3,trait,name ? name : " ") && ok;
+   char count[16]=" ";
+   if (name) {
+    char n[12];
+    ui::FormatInteger(static_cast<int>(g_settings.SectionSize(slot)),n,sizeof(n));
+    Join(count,sizeof(count),n,g_settings.SectionSize(slot)==1 ? " row" : " rows","");
+   }
+   ui::NativeRowTrait(slot,"value\\string",trait,sizeof(trait));
+   ok=CachedText(2+slot*3,trait,count) && ok;
+   ui::NativeRowTrait(slot,"restart\\string",trait,sizeof(trait));
+   ok=CachedText(3+slot*3,trait," ") && ok;
+   continue;
+  }
   // A slot past the last row is emptied rather than hidden: visible was
   // written as 1/0, which are both false to the XML (&true; is 2), and the
   // rows stayed drawn - with the text of whatever stood there before, so a
@@ -209,7 +249,9 @@ bool RefreshSettings() {
    ok=CachedText(3+slot*3,trait," ") && ok;
    continue;
   }
-  Join(label,sizeof(label),definition->category," / ",definition->label);
+  // In a section its name is the heading; in the other views it leads.
+  if (section) Join(label,sizeof(label),definition->label,"","");
+  else Join(label,sizeof(label),definition->category," / ",definition->label);
   const auto item=ui::ItemFor(*definition,GetConfig());
   ui::FormatValue(item,value,sizeof(value));
   ui::NativeRowTrait(slot,"label\\string",trait,sizeof(trait));
@@ -224,14 +266,15 @@ bool RefreshSettings() {
  ok=Number("parchment\\reset\\alpha",canReset ? 255 : 110) && ok;
  const auto& selected=ui::SettingDefinitions()[g_settings.Selected()];
  char help[512];
- Join(help,sizeof(help),selected.label,": ",selected.help);
+ if (overview) Join(help,sizeof(help),"Select a section to see its settings. Back returns here.","","");
+ else Join(help,sizeof(help),selected.label,": ",selected.help);
  ok=CachedText(23,"user1",g_refusal ? g_refusal : g_saveFailed ? "Could not save OBVR.ini. The setting was not changed. Check file permissions and try again." : help) && ok;
  return ok;
 }
 void FinishSettings() {
  g_settingsOpen.Set(false); g_ourRoot=nullptr;
  // The comfort page is a one-off; Insert opens the whole menu again.
- if (g_settings.View()!=ui::SettingsView::All) g_settings.SetView(ui::SettingsView::All,GetConfig());
+ if (g_settings.View()!=ui::SettingsView::Sections) g_settings.SetView(ui::SettingsView::Sections,GetConfig());
  OBVR_LOG("Native settings: closed");
 }
 void CloseSettings() {
@@ -426,6 +469,8 @@ void Tick() {
  if (ui::SettingsStep(false,GenericRoot()!=nullptr,false,false,toggle,false,false,
      top==kMenuIdLoading,top!=0 || PlayerInWorld())==ui::NativeSettingsStep::Open) {
   if (OpenMenu(true)) {
+   // Insert opens on the list of sections (ui::SettingsView::Sections).
+   g_settings.SetView(ui::SettingsView::Sections,GetConfig());
    g_settingsOpen.Set(true); g_saveFailed=false; g_refusal=nullptr; InvalidateText();
    if (!RefreshSettings()) OBVR_LOG("Native settings: initial UI update failed");
   } else if (!GenericRoot()) {

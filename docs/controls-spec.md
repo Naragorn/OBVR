@@ -174,6 +174,19 @@ in the headset yet.
     player's first- and third-person ActorAnimData have their frequency
     (NiControllerSequence +0x28) raised while they run and given back after.
     The keys at which the weapon changes hands still fire; only sooner.
+  - **Two-handers still settle a second later** (the tester, 2026-09-27:
+    in the hand at once, then it slides a few centimetres). Traced frame by
+    frame (the Weapon node and the player's first-person sequences): the
+    sped-up pose reaches its end at 0.3 s, but the engine keeps the Equip
+    sequence - and its end pose - until 1.37 s, the draw's own length; only
+    then does the two-hand idle take over and move the Weapon node 1.3 units
+    (about 2 cm). The engine times that from the sequence's own clock
+    (+0x34), which the frequency does not scale. Tried and dropped: moving
+    that clock to the end restarted the pose from its first frame, twice;
+    setting the sequence's weight to 0 changed nothing; keeping the higher
+    frequency from one draw to the next did not shorten the next draw. Open:
+    what ends the action (the process's action timing), to end it when the
+    pose has.
     - With none of that kind seen yet, the reach does nothing and says so in
       the log.
   - **Another weapon drawn.** Reaching for one kind while another is

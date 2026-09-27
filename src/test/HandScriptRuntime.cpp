@@ -115,7 +115,9 @@ void StepHandScriptFrame(float dt, bool inWorld, bool menuUp, const vr::OpenVRBa
 			scan = MapVirtualKeyA(code, MAPVK_VK_TO_VSC);
 		}
 		keybd_event(static_cast<UInt8>(code), static_cast<UInt8>(scan),
-		            KEYEVENTF_SCANCODE | (down ? 0 : KEYEVENTF_KEYUP), 0);
+		            KEYEVENTF_SCANCODE | (game::IsExtendedKey(code) ? KEYEVENTF_EXTENDEDKEY : 0) |
+		                (down ? 0 : KEYEVENTF_KEYUP),
+		            0);
 		OBVR_LOG("HandScript: key %02X %s (t=%.2f s)", code, down ? "down" : "up",
 		         static_cast<double>(g_clock));
 	}

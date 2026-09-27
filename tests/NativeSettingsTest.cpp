@@ -416,7 +416,105 @@ void TestComfortPageStep() {
  }
 }
 
+void TestSections() {
+ std::printf("Sections (the Insert menu)\n");
+ Config c;
+ NativeSettings menu;
+ menu.SetView(SettingsView::Sections,c);
+ Check(menu.InOverview() && menu.OpenSection()==nullptr,"opens on the list of sections");
+ Check(menu.Row(0)==nullptr,"the list shows no setting rows");
+ Check(!menu.CanResetSelected(c),"nothing to reset in the list");
+ // Each category once, in table order, with its row count; together every row.
+ const UInt32 sections=menu.SectionCount();
+ Check(sections>1 && sections<=kNativeMaxSections,"several sections");
+ Check(menu.Pages()==(sections+kNativeSettingsRows-1)/kNativeSettingsRows,"pages count sections");
+ UInt32 total=0, seen=0;
+ bool distinct=true, ordered=true;
+ const char* names[kNativeMaxSections]{};
+ for(UInt32 page=0;page<menu.Pages();++page) {
+  for(UInt32 slot=0;slot<kNativeSettingsRows;++slot) {
+   const char* name=menu.SectionAt(slot);
+   if(!name) { Check(menu.SectionSize(slot)==0,"no section, no size"); continue; }
+   for(UInt32 k=0;k<seen;++k) distinct=distinct && std::strcmp(names[k],name)!=0;
+   names[seen++]=name;
+   total+=menu.SectionSize(slot);
+  }
+  menu.Click(kNativeNext,c);
+ }
+ // In table order: each section's first row comes after the last one's.
+ UInt32 lastFirst=0;
+ for(UInt32 k=0;k<seen;++k) {
+  UInt32 first=0;
+  while(first<SettingDefinitionCount() && std::strcmp(SettingDefinitions()[first].category,names[k])!=0) ++first;
+  ordered=ordered && (k==0 || first>lastFirst);
+  lastFirst=first;
+ }
+ Check(seen==sections && distinct,"every section listed once");
+ Check(ordered,"in the table's order");
+ Check(total==SettingDefinitionCount(),"the sections hold every row");
+
+ // Open the section on the second slot of the first page.
+ menu.SetView(SettingsView::Sections,c);
+ const char* second=menu.SectionAt(1);
+ const UInt32 secondSize=menu.SectionSize(1);
+ Check(menu.Click(kNativeReset,c).definition==nullptr,"reset does nothing in the list");
+ Check(menu.Click(kNativeBack,c).repaint==false && menu.InOverview(),"Back in the list does nothing");
+ auto edit=menu.Click(kNativeRowBase+1*3+2,c);
+ Check(edit.repaint && edit.definition==nullptr && !menu.InOverview() &&
+       std::strcmp(menu.OpenSection(),second)==0,"a click on a section opens it, changes nothing");
+ UInt32 rows=0; bool onlyIt=true;
+ for(UInt32 page=0;page<menu.Pages();++page) {
+  for(UInt32 slot=0;slot<kNativeSettingsRows;++slot) {
+   const auto* d=menu.Row(slot);
+   if(!d) continue;
+   ++rows; onlyIt=onlyIt && std::strcmp(d->category,second)==0;
+  }
+  menu.Click(kNativeNext,c);
+ }
+ Check(rows==secondSize && onlyIt,"the section shows exactly its own rows");
+ Check(std::strcmp(SettingDefinitions()[menu.Selected()].category,second)==0,"its first row selected");
+ edit=menu.Click(kNativeBack,c);
+ Check(edit.repaint && menu.InOverview() && menu.First()==0,"Back returns to the list, on its page");
+
+ // A section on the second page: Back comes back to that page.
+ if(sections>kNativeSettingsRows) {
+  menu.Click(kNativeNext,c);
+  const char* later=menu.SectionAt(0);
+  menu.Click(kNativeRowBase,c);
+  Check(std::strcmp(menu.OpenSection(),later)==0,"the label opens it too");
+  menu.Click(kNativeBack,c);
+  Check(menu.InOverview() && menu.First()==kNativeSettingsRows,"Back lands on the page it was opened from");
+ }
+ // An empty slot in the list opens nothing.
+ menu.SetView(SettingsView::Sections,c);
+ while(menu.First()+kNativeSettingsRows<sections) menu.Click(kNativeNext,c);
+ const UInt32 used=sections-menu.First();
+ if(used<kNativeSettingsRows) {
+  Check(!menu.Click(kNativeRowBase+static_cast<int>(used)*3,c).repaint && menu.InOverview(),
+        "an empty slot in the list opens nothing");
+ }
+ // An edit inside a section saves as anywhere else.
+ menu.SetView(SettingsView::Sections,c);
+ UInt32 k=0;
+ while(k<menu.SectionCount() && std::strcmp(menu.SectionAt(k%kNativeSettingsRows) ? menu.SectionAt(k%kNativeSettingsRows) : "","Teleport")!=0) {
+  ++k; if(k%kNativeSettingsRows==0) menu.Click(kNativeNext,c);
+ }
+ if(k<menu.SectionCount()) {
+  menu.Click(kNativeRowBase+static_cast<int>(k%kNativeSettingsRows)*3,c);
+  const auto* first=menu.Row(0);
+  Writer writer;
+  const auto plus=menu.Click(kNativeRowBase+2,c);
+  Check(first && plus.definition==first,"+ in a section proposes a change to its row");
+ }
+ // The other views are not sectioned.
+ menu.SetView(SettingsView::All,c);
+ Check(!menu.InOverview() && menu.OpenSection()==nullptr && menu.Row(0)!=nullptr &&
+       menu.SectionAt(0)==nullptr && menu.Click(kNativeBack,c).repaint==false,
+       "the flat view has no sections and no Back");
+}
+
 int main() {
+ TestSections();
  TestComfortView();
  TestComfortPageStep();
  TestUpdateWindow();

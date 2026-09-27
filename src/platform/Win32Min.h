@@ -158,6 +158,7 @@ OBVR_IMPORT DWORD OBVR_STDCALL GetCurrentProcessId();
 // follows injected movement). The constants are winuser.h's.
 constexpr DWORD KEYEVENTF_KEYUP = 0x0002;
 constexpr DWORD KEYEVENTF_SCANCODE = 0x0008;
+constexpr DWORD KEYEVENTF_EXTENDEDKEY = 0x0001;
 constexpr DWORD MOUSEEVENTF_MOVE = 0x0001;
 constexpr DWORD MOUSEEVENTF_LEFTDOWN = 0x0002;
 constexpr DWORD MOUSEEVENTF_LEFTUP = 0x0004;

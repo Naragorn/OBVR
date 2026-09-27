@@ -1697,6 +1697,12 @@ void TestUsScanCodes() {
 	std::printf("Keys by US scan code, whatever the layout\n");
 	// The game's own [Controls] block (Oblivion.ini) for its defaults.
 	Check(obvr::game::UsScanCode('Z') == 0x2C, "Z is 0x2C: the game's Grab=002CFFFF");
+	Check(obvr::game::IsExtendedKey(0x2D) && obvr::game::IsExtendedKey(0x22) &&
+	          obvr::game::IsExtendedKey(0x25) && obvr::game::IsExtendedKey(0xA3),
+	      "Insert, Page Down, the arrows and right Ctrl are sent as extended keys");
+	Check(!obvr::game::IsExtendedKey('Z') && !obvr::game::IsExtendedKey(0x60) &&
+	          !obvr::game::IsExtendedKey(0x11),
+	      "letters, Numpad 0 and the plain Ctrl are not");
 	Check(obvr::game::UsScanCode('Y') == 0x15, "Y is 0x15");
 	Check(obvr::game::UsScanCode('W') == 0x11 && obvr::game::UsScanCode('S') == 0x1F &&
 	          obvr::game::UsScanCode('A') == 0x1E && obvr::game::UsScanCode('D') == 0x20,

@@ -2,6 +2,10 @@
 
 namespace obvr::ui {
 namespace {
+bool Same(const char* a,const char* b) {
+ while (*a && *a==*b) { ++a; ++b; }
+ return *a==*b;
+}
 bool Key(const SettingDefinition& d,const char* section,const char* key) {
  const char* a=d.iniSection; const char* b=section;
  while (*a && *a==*b) { ++a; ++b; }
@@ -12,7 +16,7 @@ bool Key(const SettingDefinition& d,const char* section,const char* key) {
 }
 }
 bool SettingShownIn(SettingsView view,const SettingDefinition& d,const Config& c) {
- if (view==SettingsView::All) return true;
+ if (view==SettingsView::All || view==SettingsView::Sections) return true;
  const bool snap=c.look.snapTurning;
  if (Key(d,"Hands","LeftHanded") || Key(d,"Look","SnapTurning")) return true;
  if (Key(d,"Look","SnapTurnAngle") || Key(d,"Look","SnapTurnInstant") ||
@@ -29,16 +33,35 @@ NativeSettings::NativeSettings() {
  for (UInt32 i=0;i<m_count;++i) m_rows[i]=i;
 }
 void NativeSettings::SetView(SettingsView view,const Config& config) {
- m_view=view; m_first=0; m_count=0;
+ m_view=view; m_first=0; m_count=0; m_section=-1;
  Sync(config);
  m_selected=m_count ? m_rows[0] : 0;
 }
 void NativeSettings::Sync(const Config& config) {
  const UInt32 total=SettingDefinitionCount();
+ // The sections: each category once, in the order its rows first appear.
+ m_sectionCount=0;
+ if (m_view==SettingsView::Sections) {
+  for (UInt32 i=0;i<total;++i) {
+   const char* category=SettingDefinitions()[i].category;
+   UInt32 k=0;
+   while (k<m_sectionCount && !Same(m_sectionNames[k],category)) ++k;
+   if (k==m_sectionCount) {
+    if (m_sectionCount>=kNativeMaxSections) continue;
+    m_sectionNames[m_sectionCount]=category;
+    m_sectionSizes[m_sectionCount++]=0;
+   }
+   ++m_sectionSizes[k];
+  }
+  if (m_section>=static_cast<int>(m_sectionCount)) m_section=-1;
+ }
  m_count=0;
  bool selectedShown=false;
  for (UInt32 i=0;i<total && m_count<kNativeMaxRows;++i) {
-  if (!SettingShownIn(m_view,SettingDefinitions()[i],config)) continue;
+  const auto& d=SettingDefinitions()[i];
+  if (!SettingShownIn(m_view,d,config)) continue;
+  if (m_view==SettingsView::Sections && (m_section<0 || !Same(d.category,m_sectionNames[m_section])))
+   continue;
   if (i==m_selected) selectedShown=true;
   m_rows[m_count++]=i;
  }
@@ -46,12 +69,20 @@ void NativeSettings::Sync(const Config& config) {
  if (m_first>last) m_first=last;
  if (!selectedShown) m_selected=m_first<m_count ? m_rows[m_first] : (m_count ? m_rows[0] : 0);
 }
+const char* NativeSettings::SectionAt(UInt32 slot) const {
+ if (!InOverview() || slot>=kNativeSettingsRows || m_first+slot>=m_sectionCount) return nullptr;
+ return m_sectionNames[m_first+slot];
+}
+UInt32 NativeSettings::SectionSize(UInt32 slot) const {
+ return SectionAt(slot) ? m_sectionSizes[m_first+slot] : 0;
+}
 const SettingDefinition* NativeSettings::Row(UInt32 slot) const {
+ if (InOverview()) return nullptr;
  if (slot>=kNativeSettingsRows || m_first+slot>=m_count) return nullptr;
  return &SettingDefinitions()[m_rows[m_first+slot]];
 }
 bool NativeSettings::CanResetSelected(const Config& config) const {
- if (m_count==0 || m_selected>=SettingDefinitionCount()) return false;
+ if (InOverview() || m_count==0 || m_selected>=SettingDefinitionCount()) return false;
  return CanResetSetting(SettingDefinitions()[m_selected],config);
 }
 NativeSettingEdit NativeSettings::Click(int id,const Config& config) {
@@ -78,8 +109,28 @@ NativeSettingEdit NativeSettings::Click(int id,const Config& config) {
   r.repaint=true;
   return r;
  }
+ if (id==kNativeBack) {
+  if (m_view!=SettingsView::Sections || m_section<0) return r;
+  // Back to the list, on the page that shows the section just left.
+  const UInt32 left=static_cast<UInt32>(m_section);
+  m_section=-1;
+  Sync(config);
+  m_first=(left/kNativeSettingsRows)*kNativeSettingsRows;
+  r.repaint=true;
+  return r;
+ }
  if (id<kNativeRowBase || id>=kNativeRowBase+static_cast<int>(kNativeSettingsRows)*3) return r;
  const UInt32 slot=static_cast<UInt32>(id-kNativeRowBase)/3;
+ if (InOverview()) {
+  // Any part of a section's row opens it.
+  if (!SectionAt(slot)) return r;
+  m_section=static_cast<int>(m_first+slot);
+  m_first=0;
+  Sync(config);
+  m_selected=m_count ? m_rows[0] : 0;
+  r.repaint=true;
+  return r;
+ }
  const auto* definition=Row(slot);
  if (!definition) return r;
  m_selected=m_rows[m_first+slot];
