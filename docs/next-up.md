@@ -116,6 +116,92 @@ hand-to-hand damage, scaled by how hard it was thrown:
   applied directly, with the hit reaction, crime and aggression the engine's
   own hit brings.
 
+## 6. Locomotion: room-scale body, teleport
+
+**Wanted (2026-09-27).**
+- Walking and turning in the playspace moves and turns the character the same
+  way, in all six degrees of freedom.
+- The stick walking and turning stay (snap or smooth).
+- A teleport as in Half-Life: Alyx and Gunman Contracts - Stand Alone.
+- The onboarding and the settings choose between instant and fast.
+
+**Built.**
+- Head tracking in 6DoF moves only the camera.
+  - The offset is taken from the recentered reference.
+  - It is clamped by `MaxLeanUnits` (120 units, about 1.7 m) about the game
+    camera.
+  - The character's capsule stays where it is, so a step through the room is
+    a lean, and nothing stops the view at a wall.
+- The character does not turn with the head. That was the tester's decision
+  ("character bleibt", docs/vr-modding/camera-tracking-and-aiming.md), since
+  kept by aiming in place (`AimAtSource`). The new wish reverses it.
+- The left stick walks along the body's heading (rotZ). The right stick turns:
+  smooth at `TurnSpeed`, or snap (`SnapTurning`, instant or eased,
+  vignette).
+- Nothing of room-scale or teleport:
+  - A first attempt (September 23) replaced the head offset, used a
+    tracking-space point as a world position for its teleport, and turned
+    without booking the turn.
+  - It was taken out in 3aaf4a0 and deleted in 0f88c21.
+
+**To build.**
+1. **The capsule follows the head.**
+   - The horizontal part of the head's motion becomes the character's motion,
+     through the character controller, so walls and slopes stop it as they
+     stop walking.
+   - The head offset keeps only what the capsule could not follow (a lean
+     over a table, a head through a wall shows the wall).
+   - To find out: how to move the player's controller by a given distance in
+     a frame. Options are the proxy's velocity, the engine's own move, or a
+     position write followed by the controller's update.
+2. **The body turns with the head.**
+   - rotZ follows the head's yaw, with a dead zone or while walking, so a
+     glance over the shoulder does not spin the body.
+   - The turn has to be booked like the snap turn's, into the reference, or
+     it feeds back.
+   - Aiming already works from the gaze, so it is not affected.
+3. **Walking direction** for the stick as a setting: the head, the left hand
+   (Alyx's Continuous / Continuous Hand), or the body.
+4. **Height.** Crouching in the room could sneak, as a setting. The head's
+   height already moves the camera.
+5. **Teleport.**
+   - An arc from the hand.
+   - The landing is tested against the ground by a Havok ray, with a
+     capsule-sized clearance and a slope limit. Oblivion has no navmesh, only
+     path grids.
+   - The move itself goes through the engine's position change (the MoveTo
+     path), not a camera offset.
+   - Modes:
+     - **instant**: Alyx's Blink, a short fade to black;
+     - **fast**: Alyx's Shift, a quick glide along the line, driven through
+       the controller so it cannot pass through a wall.
+   - The setting also goes into the onboarding.
+   - Alyx's own documentation: Valve, "Half-Life: Alyx - Locomotion Deep Dive"
+     (youtube.com/watch?v=TX58AbJq-xo): Blink fades, Shift moves quickly
+     without the fade, and the floor gets priority.
+   - How Gunman Contracts binds it: not verified.
+6. **The button.** Undecided; see below.
+
+**Buttons in the hand-tracked mode today** (`PlanHandControls`):
+- Right hand:
+  - trigger: attack;
+  - A: activate;
+  - menu button: escape;
+  - stick: x turns, a flick up jumps, a flick down sneaks, the click readies
+    the weapon.
+- Left hand:
+  - trigger: cast;
+  - menu button: OBVR's menu;
+  - stick: walks; held in, it runs;
+  - trackpad click: the quick menu.
+- Either grip grabs.
+- Free: the left A (it activates only when left-handed).
+- The trackpad clicks cannot be told from the stick clicks on the legacy
+  input path (`NormalizeLegacyButtons`).
+- In Alyx the teleport is on the right stick pushed forward, and players
+  report teleporting by accident when turning (reddit.com/r/ValveIndex/
+  comments/ikzuca).
+
 ## Also open
 
 - **Shield bash.** Not a vanilla action (UESP, Oblivion:Block: the Expert
