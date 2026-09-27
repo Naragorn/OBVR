@@ -1129,15 +1129,15 @@ void TestHolsterInMode() {
 	frame.inWorld = true;
 	frame.unitsPerMetre = 70.0f;
 	frame.weaponSeen = WeaponSeen::Sheathed;
-	frame.equipped = EquippedKind::Melee;
-	frame.haveSword = true;
+	frame.equipped = EquippedKind::OneHand;
+	frame.haveOneHand = true;
 	frame.right.valid = true;
 	frame.left.valid = true;
 	frame.left.position = NiPoint3{-0.2f, -0.3f, -0.4f};
 	// The left hip in tracking axes (x right, y up, z back) from the eyes at
 	// the origin: the sword zone's right, up and -forward.
 	const HolsterSettings& zones = settings.holster;
-	frame.right.position = NiPoint3{zones.swordZone.x, zones.swordZone.z, -zones.swordZone.y};
+	frame.right.position = NiPoint3{zones.oneHandZone.x, zones.oneHandZone.z, -zones.oneHandZone.y};
 	HandMode mode;
 	HandModeResult r = mode.Update(frame, settings);
 	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexGrip;
@@ -1153,7 +1153,7 @@ void TestHolsterInMode() {
 	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexGrip;
 	r = holding.Update(frame, settings);
 	Check(r.grabWanted, "a grip closed in front: a grab");
-	frame.right.position = NiPoint3{zones.swordZone.x, zones.swordZone.z, -zones.swordZone.y};
+	frame.right.position = NiPoint3{zones.oneHandZone.x, zones.oneHandZone.z, -zones.oneHandZone.y};
 	r = holding.Update(frame, settings);
 	Check(r.grabWanted && !r.holster.readyClick,
 	      "carried to the hip still closed: still the grab, nothing drawn");
@@ -1198,7 +1198,7 @@ void TestFistInMode() {
 	Check(r.strikeByMotion, "and as a fist a swing strikes");
 
 	HandMode armed;
-	frame.equipped = EquippedKind::Melee;
+	frame.equipped = EquippedKind::OneHand;
 	for (int finger = 0; finger < 5; ++finger) {
 		frame.right.curl[finger] = 0.0f;
 	}

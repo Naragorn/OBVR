@@ -718,10 +718,14 @@ void ReadRuntimeValues(Config& config, const char* path) {
 
 		vr::HolsterSettings& hs = h.holster;
 		hs.enabled = ReadBool("Hands", "Holsters", hs.enabled, path);
-		hs.swordZone.x = ReadFloat("Hands", "HolsterSwordX", hs.swordZone.x, path);
-		hs.swordZone.y = ReadFloat("Hands", "HolsterSwordForward", hs.swordZone.y, path);
-		hs.swordZone.z = ReadFloat("Hands", "HolsterSwordUp", hs.swordZone.z, path);
-		hs.swordRadius = ReadFloat("Hands", "HolsterSwordRadius", hs.swordRadius, path);
+		hs.oneHandZone.x = ReadFloat("Hands", "HolsterOneHandX", hs.oneHandZone.x, path);
+		hs.oneHandZone.y = ReadFloat("Hands", "HolsterOneHandForward", hs.oneHandZone.y, path);
+		hs.oneHandZone.z = ReadFloat("Hands", "HolsterOneHandUp", hs.oneHandZone.z, path);
+		hs.oneHandRadius = ReadFloat("Hands", "HolsterOneHandRadius", hs.oneHandRadius, path);
+		hs.twoHandZone.x = ReadFloat("Hands", "HolsterTwoHandX", hs.twoHandZone.x, path);
+		hs.twoHandZone.y = ReadFloat("Hands", "HolsterTwoHandForward", hs.twoHandZone.y, path);
+		hs.twoHandZone.z = ReadFloat("Hands", "HolsterTwoHandUp", hs.twoHandZone.z, path);
+		hs.twoHandRadius = ReadFloat("Hands", "HolsterTwoHandRadius", hs.twoHandRadius, path);
 		hs.bowZone.x = ReadFloat("Hands", "HolsterBowX", hs.bowZone.x, path);
 		hs.bowZone.y = ReadFloat("Hands", "HolsterBowForward", hs.bowZone.y, path);
 		hs.bowZone.z = ReadFloat("Hands", "HolsterBowUp", hs.bowZone.z, path);

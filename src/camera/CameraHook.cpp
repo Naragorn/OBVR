@@ -648,12 +648,28 @@ void UpdateTeleport(const Config& config, vr::OpenVRBackend& backend, bool activ
 // The quick menu on the right trackpad (vr/QuickMenu.h, docs/controls-spec.md
 // 4.4): the ring of the eight hotkeys where the hand is, the hand moved
 // towards one, the trackpad let go - and that hotkey's number key is tapped.
-// The last sword and bow seen in the weapon slot this session: base forms.
+// The last weapon of each kind seen in the slot this session: base forms.
 // A plugin's forms stay for as long as the game runs; a form the game made
 // (a custom enchanted weapon) could in principle go, which is not guarded
 // (vr::StepHolster).
-UInt8* g_lastSwordForm = nullptr;
+UInt8* g_lastOneHandForm = nullptr;
+UInt8* g_lastTwoHandForm = nullptr;
 UInt8* g_lastBowForm = nullptr;
+
+UInt8*& LastFormOf(vr::EquippedKind kind) {
+	static UInt8* s_none = nullptr;
+	switch (kind) {
+	case vr::EquippedKind::OneHand:
+		return g_lastOneHandForm;
+	case vr::EquippedKind::TwoHand:
+		return g_lastTwoHandForm;
+	case vr::EquippedKind::Bow:
+		return g_lastBowForm;
+	default:
+		s_none = nullptr;
+		return s_none;
+	}
+}
 UInt32 g_holsterLinesLeft = 30;
 
 // The guided fit of the weapon places (vr::StepHolsterFit), asked for by the
@@ -809,21 +825,26 @@ bool UpdateHolsterFit(Config& config, vr::OpenVRBackend& backend, const vr::Hand
 		++g_holsterFitRevision;
 		g_holsterFitText = ui::GuidePanelText{};
 		g_holsterFitText.title = "Weapon places";
-		if (v.step == vr::HolsterFitStep::Melee) {
-			g_holsterFitText.lines[0] = "1. Your sword: hold the weapon hand";
-			g_holsterFitText.lines[1] = "   where it should hang, pull its trigger.";
+		if (v.step == vr::HolsterFitStep::OneHand) {
+			g_holsterFitText.lines[0] = "1. One-handed weapons: hold the weapon hand";
+			g_holsterFitText.lines[1] = "   where they hang, pull its trigger.";
 			g_holsterFitText.lines[3] = "A menu button cancels.";
 			vr::openvr::HmdMatrix34 head{};
 			if (backend.GetRenderPoseMatrix(head)) {
 				vr::LevelPose(head);
 				g_holsterFitPose = vr::OverlayPoseAhead(head, 0.8f);
 			}
-			OBVR_LOG("Holster fit: started - the melee place first");
+			OBVR_LOG("Holster fit: started - the one-handed place first");
+		} else if (v.step == vr::HolsterFitStep::TwoHand) {
+			g_holsterFitText.lines[0] = "2. Two-handed weapons and staffs: the weapon";
+			g_holsterFitText.lines[1] = "   hand where they sit, pull its trigger.";
+			g_holsterFitText.lines[3] = "A menu button cancels.";
+			OBVR_LOG("Holster fit: the one-handed place taken - now the two-handed one");
 		} else if (v.step == vr::HolsterFitStep::Bow) {
-			g_holsterFitText.lines[0] = "2. Your bow: hold the other hand";
+			g_holsterFitText.lines[0] = "3. Your bow: hold the other hand";
 			g_holsterFitText.lines[1] = "   where it should be, pull its trigger.";
 			g_holsterFitText.lines[3] = "A menu button cancels.";
-			OBVR_LOG("Holster fit: the melee place taken - now the bow's");
+			OBVR_LOG("Holster fit: the two-handed place taken - now the bow's");
 		}
 	}
 	if (v.cancelled) {
@@ -831,16 +852,19 @@ bool UpdateHolsterFit(Config& config, vr::OpenVRBackend& backend, const vr::Hand
 	}
 	if (v.finished) {
 		vr::HolsterSettings& h = config.hands.holster;
-		h.swordZone = v.melee;
+		h.oneHandZone = v.oneHand;
+		h.twoHandZone = v.twoHand;
 		h.bowZone = v.bow;
 		struct Entry {
 			const char* key;
 			float value;
 		};
 		const Entry entries[] = {
-			{"HolsterSwordX", v.melee.x}, {"HolsterSwordForward", v.melee.y},
-			{"HolsterSwordUp", v.melee.z}, {"HolsterBowX", v.bow.x},
-			{"HolsterBowForward", v.bow.y}, {"HolsterBowUp", v.bow.z},
+			{"HolsterOneHandX", v.oneHand.x}, {"HolsterOneHandForward", v.oneHand.y},
+			{"HolsterOneHandUp", v.oneHand.z}, {"HolsterTwoHandX", v.twoHand.x},
+			{"HolsterTwoHandForward", v.twoHand.y}, {"HolsterTwoHandUp", v.twoHand.z},
+			{"HolsterBowX", v.bow.x}, {"HolsterBowForward", v.bow.y},
+			{"HolsterBowUp", v.bow.z},
 		};
 		bool saved = true;
 		for (const Entry& entry : entries) {
@@ -848,12 +872,13 @@ bool UpdateHolsterFit(Config& config, vr::OpenVRBackend& backend, const vr::Hand
 			std::snprintf(value, sizeof(value), "%.2f", static_cast<double>(entry.value));
 			saved = SaveSetting("Hands", entry.key, value) && saved;
 		}
-		OBVR_LOG("Holster fit: done - melee at %.2f %.2f %.2f, bow at %.2f %.2f %.2f (right, "
-		         "forward, up from the eyes)%s",
-		         static_cast<double>(v.melee.x), static_cast<double>(v.melee.y),
-		         static_cast<double>(v.melee.z), static_cast<double>(v.bow.x),
-		         static_cast<double>(v.bow.y), static_cast<double>(v.bow.z),
-		         saved ? "" : " - COULD NOT SAVE the INI");
+		OBVR_LOG("Holster fit: done - one-handed at %.2f %.2f %.2f, two-handed at %.2f %.2f %.2f, "
+		         "bow at %.2f %.2f %.2f (right, forward, up from the eyes)%s",
+		         static_cast<double>(v.oneHand.x), static_cast<double>(v.oneHand.y),
+		         static_cast<double>(v.oneHand.z), static_cast<double>(v.twoHand.x),
+		         static_cast<double>(v.twoHand.y), static_cast<double>(v.twoHand.z),
+		         static_cast<double>(v.bow.x), static_cast<double>(v.bow.y),
+		         static_cast<double>(v.bow.z), saved ? "" : " - COULD NOT SAVE the INI");
 	}
 	if (v.active) {
 		g_holsterFitLayer.Show(backend, render::GetGameDevice(), g_holsterFitPose, 0.6f,
@@ -1007,22 +1032,21 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		                                                           : vr::WeaponSeen::Unknown;
 		frame.playerAction = game::ReadPlayerAction();
 	}
-	// The weapon slot, and the last sword and bow seen in it: what a reach
-	// to the hip or the shoulder draws when the other kind is in hand. In
+	// The weapon slot, and the last weapon of each kind seen in it: what a
+	// reach to the hip or a shoulder draws when another kind is in hand. In
 	// menus too, so a weapon picked in the inventory counts; only with the
 	// player in the world.
 	{
 		SInt32 weaponType = 0;
 		UInt8* const weaponForm = frame.inWorld ? game::EquippedWeaponForm(&weaponType) : nullptr;
-		const bool bow = weaponType == static_cast<SInt32>(game::WeaponTypeCode::Bow);
-		if (weaponForm != nullptr) {
-			(bow ? g_lastBowForm : g_lastSwordForm) = weaponForm;
+		frame.equipped =
+			weaponForm == nullptr ? vr::EquippedKind::Nothing : vr::KindOfWeaponType(weaponType);
+		if (weaponForm != nullptr && frame.equipped != vr::EquippedKind::Nothing) {
+			LastFormOf(frame.equipped) = weaponForm;
 		}
-		frame.equipped = weaponForm == nullptr ? vr::EquippedKind::Nothing
-		                 : bow                 ? vr::EquippedKind::Bow
-		                                       : vr::EquippedKind::Melee;
 	}
-	frame.haveSword = g_lastSwordForm != nullptr;
+	frame.haveOneHand = g_lastOneHandForm != nullptr;
+	frame.haveTwoHand = g_lastTwoHandForm != nullptr;
 	frame.haveBow = g_lastBowForm != nullptr;
 	frame.holdingObject = active && game::PlayerHoldsGrab();
 	frame.sneaking = active && !menuIsUp && frame.inWorld && config.hands.sneakHold &&
@@ -1186,10 +1210,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	{
 		const vr::HolsterVerdict& h = g_hand.holster;
 		if (h.equip != vr::HolsterKind::None) {
-			UInt8* const form = h.equip == vr::HolsterKind::Bow ? g_lastBowForm : g_lastSwordForm;
+			UInt8* const form = LastFormOf(vr::KindFor(h.equip));
 			const bool sent = game::EquipWeaponForm(form);
 			if (!sent) {
-				(h.equip == vr::HolsterKind::Bow ? g_lastBowForm : g_lastSwordForm) = nullptr;
+				LastFormOf(vr::KindFor(h.equip)) = nullptr;
 			}
 		}
 		const bool unequipped = g_hand.fist.unequip && game::UnequipWeapon();
@@ -1213,12 +1237,14 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 		if ((h.gesture != vr::HolsterKind::None || h.gaveUp) && g_holsterLinesLeft > 0) {
 			--g_holsterLinesLeft;
-			const char* const what = h.gesture == vr::HolsterKind::Bow ? "bow" : "sword";
+			const char* const what = h.gesture == vr::HolsterKind::Bow       ? "bow"
+			                         : h.gesture == vr::HolsterKind::TwoHand ? "two-handed weapon"
+			                                                                 : "one-handed weapon";
 			if (h.gaveUp) {
 				OBVR_LOG("Holster: the weapon equipped never showed in the hand - draw given up");
 			} else if (h.otherDrawn) {
-				OBVR_LOG("Holster: reach for the %s - the %s is drawn, it goes back first", what,
-				         h.gesture == vr::HolsterKind::Bow ? "sword" : "bow");
+				OBVR_LOG("Holster: reach for the %s - another weapon is drawn, it goes back first",
+				         what);
 			} else if (h.refused) {
 				OBVR_LOG("Holster: reach for the %s - none seen this session, nothing to draw", what);
 			} else if (h.equip != vr::HolsterKind::None) {

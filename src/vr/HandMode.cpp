@@ -294,7 +294,8 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		hin.leftGrip = in.leftGrip;
 		hin.seen = f.weaponSeen;
 		hin.equipped = f.equipped;
-		hin.haveSword = f.haveSword;
+		hin.haveOneHand = f.haveOneHand;
+		hin.haveTwoHand = f.haveTwoHand;
 		hin.haveBow = f.haveBow;
 		hin.leftHanded = s.leftHanded;
 		hin.dt = f.dtSeconds;

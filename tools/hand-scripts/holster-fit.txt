@@ -1,6 +1,7 @@
 # The weapon places' fit (docs/controls-spec.md 4.1, 4.2): started as its
-# settings row would, the weapon hand's trigger takes the melee place, the
-# other hand's the bow's; a reach to the new melee place then draws.
+# settings row would, the weapon hand's trigger takes the one-handed place,
+# then the two-handed one, the other hand's the bow's; a reach to the new
+# one-handed place then draws.
 # The run writes the places to OBVR-test.ini, never to OBVR.ini.
 # Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\holster-fit.txt
 
@@ -11,10 +12,11 @@ console player.equipitem 00000C0C
 
 expect HandScript: finished
 expect Holster fit: started
-expect Holster fit: the melee place taken
-expect Holster fit: done - melee at 0.25 -0.10 -0.55, bow at -0.10 -0.20 0.05
+expect Holster fit: the one-handed place taken
+expect Holster fit: the two-handed place taken
+expect Holster fit: done - one-handed at 0.25 -0.10 -0.55, two-handed at 0.20 -0.10 -0.10, bow at -0.10 -0.20 0.05
 expect the weapon places panel saved as OBVR-HolsterFit-fit_melee.bmp
-expect Holster: reach for the sword - drawing
+expect Holster: reach for the one-handed weapon - drawing
 reject COULD NOT SAVE
 reject HandScript: WARNING
 
@@ -25,6 +27,13 @@ mark fit_melee
 # The sword on the right hip, a little ahead: right, forward, up in the body
 # frame; the script's pos is x right, y up, z back.
 right pos 0.25 -0.55 0.10
+wait 0.3
+right trigger 1
+wait 0.2
+right trigger 0
+wait 0.5
+mark fit_two_hand
+right pos 0.20 -0.10 0.10
 wait 0.3
 right trigger 1
 wait 0.2

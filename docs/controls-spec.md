@@ -19,7 +19,7 @@ flow is covered by `hand_mode_test` and `teleport_test`.
 | Control | Right hand | Left hand |
 |---|---|---|
 | Trigger | attack (a bow draws while held); with a swung melee weapon the swing itself strikes | cast |
-| Grip | grab (holding objects, docs/holding-objects-spec.md); cancels a teleport aim; closed at the left hip: draws or sheathes the sword (4.1) | grab; closed behind the left shoulder: draws or sheathes the bow (4.2) |
+| Grip | grab (holding objects, docs/holding-objects-spec.md); cancels a teleport aim; closed at the left hip: one-handed weapon, over the right shoulder: two-handed weapon or staff (4.1) | grab; closed behind the left shoulder: the bow (4.2) |
 | A | activate (what the right laser points at) | nothing |
 | B (menu button) | Escape | Tab (the menus) |
 | Stick | sideways: turn (smooth or snap); flicked up: jump; held up (0.2 s): teleport aim, released: go; flicked down: sneak | walk; pressed in: run |
@@ -114,18 +114,34 @@ The tester's aim: the weapon is drawn by reaching for it, as with a real one.
 hand script harness (docs/hand-script-harness.md). None of them has been tried
 in the headset yet.
 
-### 4.1 Sword from the left hip, 4.2 bow from the left shoulder (built)
+### 4.1, 4.2 Every weapon from its own place (built)
 
-- **Wanted.**
-  - The right hand at the left hip and a grip: the sword is drawn.
-  - The left hand at the left shoulder and a grip: the bow is drawn.
-  - The same reach sheathes again (the tester, 2026-09-27: "ja, soll es").
+- **Wanted** (the tester, 2026-09-27).
+  - The one-handed blade or blunt weapon: the weapon hand's grip at the left
+    hip.
+  - The two-handed blade or blunt weapon, and the staff: the weapon hand's
+    grip at the right shoulder.
+  - The bow: the other hand's grip at the left shoulder.
+  - The same reach sheathes again ("ja, soll es").
+- **The weapon types.** Oblivion has six (xOBSE GameForms.h:2669-2682, the
+  TESObjectWEAP type at +0x90, the same enum as OBVR's `WeaponTypeCode`).
+  `vr::KindOfWeaponType` sorts them into the places:
+
+  | Type | Place |
+  |---|---|
+  | Blade one hand (0), Blunt one hand (2) | left hip |
+  | Blade two hand (1), Blunt two hand (3), Staff (4) | right shoulder |
+  | Bow (5) | left shoulder |
+
+  With no weapon the hands fight hand to hand (4.3).
 - **Built.** `vr::StepHolster` (`holster_test`, and `hand_mode_test` through
   the mode).
   - **Where the zones are.** They are in the body's frame: metres from the
     eyes along the head's heading alone, so looking down at the hip does not
     move it.
-    - The sword's zone is 22 cm round (-0.18, 0.02 forward, -0.62 up).
+    - The one-handed zone is 22 cm round (-0.18, 0.02 forward, -0.62 up).
+    - The two-handed zone is 18 cm round (0.18, -0.12 forward, -0.15 up),
+      over and behind the right shoulder.
     - The bow's zone is 18 cm round (-0.18, -0.12 forward, -0.15 up), behind
       the left shoulder.
     - Left-handed, they mirror.
@@ -135,40 +151,30 @@ in the headset yet.
       object is not dropped at the hip.
     - The draw and the sheathe go through the ready-weapon key and its
       state machine (`StepReadyWeapon`), like the stick click.
-  - **One weapon slot.** The last sword and the last bow seen equipped this
-    session are remembered.
-    - Reaching for the other kind equips the remembered one through the
+  - **One weapon slot.** The last weapon of each kind seen equipped this
+    session is remembered.
+    - Reaching for another kind equips the remembered one through the
       engine's `Actor::EquipItem` (0x005FAEA0, called with (form, 1, NULL,
       1, false), as the game's own EquipItem command does, xOBSE
       GameObjects.cpp:21).
     - It is drawn once the game shows it in the hand, or given up after 2 s.
     - With none of that kind seen yet, the reach does nothing and says so in
       the log.
-  - **The other weapon drawn.** Reaching for one kind while the other is
-    drawn does nothing ("the bow is drawn, it goes back first" in the log). It
-    has to go back first, by its own reach (the tester, 2026-09-27: first
-    sheathe the bow, then draw the sword, and the other way round). Raised
-    fists are not in the way.
+  - **Another weapon drawn.** Reaching for one kind while another is
+    drawn does nothing ("another weapon is drawn, it goes back first" in the
+    log). It has to go back first, by its own reach (the tester, 2026-09-27:
+    first sheathe the bow, then draw the sword, and the other way round).
+    Raised fists are not in the way.
   - **Fitting the places.** "Fit weapon places" in the settings (Hands) runs
     a guided fit, `vr::StepHolsterFit` (`holster_fit_test`).
     - A panel in front of the player says what to do.
-    - The weapon hand's trigger takes the melee place; the other hand's
-      trigger takes the bow's.
+    - The weapon hand's trigger takes the one-handed place, then the
+      two-handed one; the other hand's trigger takes the bow's.
     - Either menu button cancels, and nothing changes.
-    - The places are saved to `[Hands] HolsterSword*` and `HolsterBow*`.
-      Left-handed they are stored mirrored, as a right-handed body.
+    - The places are saved to `[Hands] HolsterOneHand*`, `HolsterTwoHand*`
+      and `HolsterBow*`. Left-handed they are stored mirrored, as a
+      right-handed body.
     - While the fit runs, the triggers and menu buttons reach nothing else.
-  - **The weapon types.** Oblivion has six (xOBSE GameForms.h:2669-2682,
-    TESObjectWEAP type at +0x90, the same enum as OBVR's `WeaponTypeCode`):
-    - Blade one hand
-    - Blade two hand
-    - Blunt one hand
-    - Blunt two hand
-    - Staff
-    - Bow
-
-    With no weapon the hands fight hand to hand. Today every type but the
-    bow counts as melee and hangs at the hip, staff included.
   - **Settings.** `[Hands] Holsters` and the zone keys; a toggle in the
     settings under Hands.
 - **Checked in the game** (`tools/hand-scripts/holster.txt`, PASS):
@@ -176,15 +182,21 @@ in the headset yet.
   - the same reach sheathed it;
   - the left hand behind the shoulder equipped and drew the bow;
   - with the bow drawn, a reach to the hip did nothing.
-  - `holster-fit.txt` PASS: the fit took both places, wrote them to the
-    test run's INI (never to OBVR.ini), and a reach to the new melee place
+  - `holster-two-handed.txt` and `holster-staff.txt` PASS: the claymore and
+    the staff were drawn and sheathed over the right shoulder; the hip
+    brought the sword; with the sword drawn the shoulder did nothing; sword
+    back, the shoulder equipped and drew the claymore or staff again.
+  - `holster-fit.txt` PASS: the fit took all three places, wrote them to the
+    test run's INI (never to OBVR.ini), and a reach to the new one-handed place
     drew the sword.
 - **Open.**
   - Whether the zones sit right on a real body, standing and seated. They
     are starting values.
-  - Whether the bow's zone and the arrow's reach back over the right
-    shoulder (`BowNeedsReachBack`) are ever taken for one another. They
-    belong to different hands, so they should not be.
+  - The two-handed zone and the arrow's reach back over the right shoulder
+    (`BowNeedsReachBack`, off by default) share a place. They do not clash:
+    the reach back arms the trigger while a bow is drawn, and with a bow
+    drawn a grip at the right shoulder does nothing. Not tried in the
+    headset.
   - Calling EquipItem directly skips the tail the game's command handler runs
     for the player. In the harness the HUD's weapon icon did follow.
   - A weapon never seen equipped this session is not searched for in the

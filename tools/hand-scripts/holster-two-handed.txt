@@ -1,0 +1,84 @@
+# Two-handed weapons over the right shoulder (docs/controls-spec.md 4.1):
+# the weapon hand's grip there draws the claymore, the same reach sheathes
+# it; the hip brings the one-handed sword instead; with the sword drawn the
+# shoulder does nothing; sword back, the shoulder brings the claymore again.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\holster-two-handed.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+# An Iron Longsword and an Iron Claymore (00000C0C, 0001C6CD, UESP
+# Oblivion:Weapons), each equipped once, the claymore last.
+console player.additem 00000C0C 1
+console player.additem 0001C6CD 1
+console player.equipitem 00000C0C
+console player.equipitem 0001C6CD
+
+expect HandScript: finished
+expect Holster: reach for the two-handed weapon - drawing
+expect Holster: reach for the two-handed weapon - sheathing
+expect Holster: reach for the one-handed weapon - equipping the last one seen
+expect Holster: reach for the two-handed weapon - another weapon is drawn, it goes back first
+expect Holster: reach for the two-handed weapon - equipping the last one seen
+reject HandScript: WARNING
+reject draw given up
+
+wait 20
+mark claymore_in_slot
+
+# Over the right shoulder: the claymore drawn.
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark claymore_drawn
+
+# The same reach: sheathed.
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark claymore_sheathed
+
+# The hip: the sword equipped and drawn.
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark sword_drawn
+
+# The shoulder with the sword out: nothing.
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 1.5
+mark sword_still_drawn
+
+# The sword back by the hip, then the shoulder: the claymore again.
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark claymore_again
+wait 1

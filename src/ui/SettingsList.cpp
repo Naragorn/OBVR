@@ -727,14 +727,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.quickMenu.enabled = v != 0.0f; },
 	},
 	{
-		"Hands", "Draw by reaching", "Full VR: grip at the left hip draws the sword, at the left shoulder the bow",
+		"Hands", "Draw by reaching", "Full VR: grip at the left hip, over the right shoulder, or (other hand) the left shoulder",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "Holsters",
 		+[](const Config& c) { return c.hands.holster.enabled ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.holster.enabled = v != 0.0f; },
 	},
 	{
-		"Hands", "Fit weapon places", "Show where the sword hangs and where the bow sits, with the triggers",
+		"Hands", "Fit weapon places", "Show where one- and two-handed weapons hang and the bow sits, with the triggers",
 		ItemKind::Action, 0.0f, 0.0f, 0.0f, 0, false,
 		"", "",
 		+[](const Config&) { return 0.0f; },

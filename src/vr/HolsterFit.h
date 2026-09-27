@@ -1,7 +1,8 @@
 #pragma once
 
 // Fitting the weapon places to the body (docs/controls-spec.md 4.1, 4.2): a
-// guided run started from the settings. First the melee weapon's place, where
+// guided run started from the settings. First the one-handed weapon's place,
+// then the two-handed weapon's (and staff's), each where
 // the weapon hand is when its trigger is pulled; then the bow's, where the
 // other hand is when its trigger is pulled. Either menu button cancels and
 // nothing changes. The places are taken in the body's frame
@@ -16,13 +17,14 @@
 
 namespace obvr::vr {
 
-enum class HolsterFitStep : UInt8 { Idle, Melee, Bow };
+enum class HolsterFitStep : UInt8 { Idle, OneHand, TwoHand, Bow };
 
 struct HolsterFitState {
 	HolsterFitStep step = HolsterFitStep::Idle;
 	bool weaponTriggerWas = true;  // a trigger held when the run starts is not a press
 	bool otherTriggerWas = true;
-	NiPoint3 melee{0.0f, 0.0f, 0.0f};
+	NiPoint3 oneHand{0.0f, 0.0f, 0.0f};
+	NiPoint3 twoHand{0.0f, 0.0f, 0.0f};
 };
 
 struct HolsterFitInput {
@@ -41,9 +43,10 @@ struct HolsterFitVerdict {
 	bool active = false;     // the run is on: the panel shows, the triggers reach nothing else
 	HolsterFitStep step = HolsterFitStep::Idle;
 	bool stepChanged = false;  // the panel's text changes
-	bool finished = false;   // both places taken this frame: save them
+	bool finished = false;   // all three places taken this frame: save them
 	bool cancelled = false;
-	NiPoint3 melee{0.0f, 0.0f, 0.0f};  // right-handed body frame, when finished
+	NiPoint3 oneHand{0.0f, 0.0f, 0.0f};  // right-handed body frame, when finished
+	NiPoint3 twoHand{0.0f, 0.0f, 0.0f};
 	NiPoint3 bow{0.0f, 0.0f, 0.0f};
 };
 
@@ -58,7 +61,7 @@ inline HolsterFitVerdict StepHolsterFit(HolsterFitState& s, const HolsterFitInpu
 	s.weaponTriggerWas = in.weaponTrigger;
 	s.otherTriggerWas = in.otherTrigger;
 	if (in.start && s.step == HolsterFitStep::Idle) {
-		s.step = HolsterFitStep::Melee;
+		s.step = HolsterFitStep::OneHand;
 		s.weaponTriggerWas = true;
 		s.otherTriggerWas = true;
 		v.stepChanged = true;
@@ -66,13 +69,18 @@ inline HolsterFitVerdict StepHolsterFit(HolsterFitState& s, const HolsterFitInpu
 		s = HolsterFitState{};
 		v.cancelled = true;
 		v.stepChanged = true;
-	} else if (s.step == HolsterFitStep::Melee && weaponPress && in.weaponValid) {
-		s.melee = RightHanded(in.weaponRelative, in.leftHanded);
+	} else if (s.step == HolsterFitStep::OneHand && weaponPress && in.weaponValid) {
+		s.oneHand = RightHanded(in.weaponRelative, in.leftHanded);
+		s.step = HolsterFitStep::TwoHand;
+		v.stepChanged = true;
+	} else if (s.step == HolsterFitStep::TwoHand && weaponPress && in.weaponValid) {
+		s.twoHand = RightHanded(in.weaponRelative, in.leftHanded);
 		s.step = HolsterFitStep::Bow;
 		v.stepChanged = true;
 	} else if (s.step == HolsterFitStep::Bow && otherPress && in.otherValid) {
 		v.finished = true;
-		v.melee = s.melee;
+		v.oneHand = s.oneHand;
+		v.twoHand = s.twoHand;
 		v.bow = RightHanded(in.otherRelative, in.leftHanded);
 		s = HolsterFitState{};
 		v.stepChanged = true;

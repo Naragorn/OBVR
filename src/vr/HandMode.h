@@ -240,7 +240,8 @@ struct HandModeFrame {
 	// The weapon slot, and whether a sword and a bow have been seen in it this
 	// session (the holster gestures, vr::StepHolster).
 	EquippedKind equipped = EquippedKind::Nothing;
-	bool haveSword = false;
+	bool haveOneHand = false;
+	bool haveTwoHand = false;
 	bool haveBow = false;
 	// The player holds an object (the grab): a fist round it is not a fist.
 	bool holdingObject = false;

@@ -1,0 +1,84 @@
+# Staffs over the right shoulder, like two-handed weapons (controls-spec 4.1):
+# the weapon hand's grip there draws the staff, the same reach sheathes
+# it; the hip brings the one-handed sword instead; with the sword drawn the
+# shoulder does nothing; sword back, the shoulder brings the staff again.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\holster-staff.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+# An Iron Longsword and a Staff of Burden (00000C0C, 000912BE, UESP
+# Oblivion:Weapons, Oblivion:Generic Staves), each equipped once, the staff last.
+console player.additem 00000C0C 1
+console player.additem 000912BE 1
+console player.equipitem 00000C0C
+console player.equipitem 000912BE
+
+expect HandScript: finished
+expect Holster: reach for the two-handed weapon - drawing
+expect Holster: reach for the two-handed weapon - sheathing
+expect Holster: reach for the one-handed weapon - equipping the last one seen
+expect Holster: reach for the two-handed weapon - another weapon is drawn, it goes back first
+expect Holster: reach for the two-handed weapon - equipping the last one seen
+reject HandScript: WARNING
+reject draw given up
+
+wait 20
+mark staff_in_slot
+
+# Over the right shoulder: the staff drawn.
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark staff_drawn
+
+# The same reach: sheathed.
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark staff_sheathed
+
+# The hip: the sword equipped and drawn.
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark sword_drawn
+
+# The shoulder with the sword out: nothing.
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 1.5
+mark sword_still_drawn
+
+# The sword back by the hip, then the shoulder: the staff again.
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark staff_again
+wait 1

@@ -53,12 +53,12 @@ HolsterInput AtHip(bool grip, EquippedKind equipped, WeaponSeen seen) {
 	in.allowed = true;
 	in.rightValid = true;
 	in.leftValid = true;
-	in.rightRelative = kSettings.swordZone;
+	in.rightRelative = kSettings.oneHandZone;
 	in.leftRelative = NiPoint3{-0.2f, 0.3f, -0.4f};  // resting in front
 	in.rightGrip = grip;
 	in.equipped = equipped;
 	in.seen = seen;
-	in.haveSword = true;
+	in.haveOneHand = true;
 	in.haveBow = true;
 	in.dt = 0.011f;
 	return in;
@@ -68,44 +68,44 @@ void TestSword() {
 	std::printf("The sword from the left hip\n");
 	{
 		HolsterState s;
-		StepHolster(s, AtHip(false, EquippedKind::Melee, WeaponSeen::Sheathed), kSettings);
+		StepHolster(s, AtHip(false, EquippedKind::OneHand, WeaponSeen::Sheathed), kSettings);
 		const HolsterVerdict v =
-			StepHolster(s, AtHip(true, EquippedKind::Melee, WeaponSeen::Sheathed), kSettings);
-		Check(v.readyClick && v.gesture == HolsterKind::Sword && v.rightClaimed && v.rightInZone,
+			StepHolster(s, AtHip(true, EquippedKind::OneHand, WeaponSeen::Sheathed), kSettings);
+		Check(v.readyClick && v.gesture == HolsterKind::OneHand && v.rightClaimed && v.rightInZone,
 		      "sheathed, a grip at the hip: drawn, and the grip is the holster's");
 		HolsterVerdict held =
-			StepHolster(s, AtHip(true, EquippedKind::Melee, WeaponSeen::Drawn), kSettings);
+			StepHolster(s, AtHip(true, EquippedKind::OneHand, WeaponSeen::Drawn), kSettings);
 		Check(!held.readyClick && held.rightClaimed, "held on: one click, still claimed");
-		HolsterInput away = AtHip(true, EquippedKind::Melee, WeaponSeen::Drawn);
+		HolsterInput away = AtHip(true, EquippedKind::OneHand, WeaponSeen::Drawn);
 		away.rightRelative = NiPoint3{0.2f, 0.4f, -0.3f};
 		held = StepHolster(s, away, kSettings);
 		Check(held.rightClaimed && !held.rightInZone, "carried out of the zone: claimed till let go");
-		held = StepHolster(s, AtHip(false, EquippedKind::Melee, WeaponSeen::Drawn), kSettings);
+		held = StepHolster(s, AtHip(false, EquippedKind::OneHand, WeaponSeen::Drawn), kSettings);
 		Check(!held.rightClaimed, "let go: the grip grabs again");
 		const HolsterVerdict again =
-			StepHolster(s, AtHip(true, EquippedKind::Melee, WeaponSeen::Drawn), kSettings);
+			StepHolster(s, AtHip(true, EquippedKind::OneHand, WeaponSeen::Drawn), kSettings);
 		Check(again.readyClick, "drawn, the same reach: sheathed");
 	}
 	{
 		HolsterState s;
-		HolsterInput outside = AtHip(true, EquippedKind::Melee, WeaponSeen::Sheathed);
+		HolsterInput outside = AtHip(true, EquippedKind::OneHand, WeaponSeen::Sheathed);
 		outside.rightRelative = NiPoint3{0.3f, 0.4f, -0.2f};
 		StepHolster(s, outside, kSettings);
 		const HolsterVerdict v =
-			StepHolster(s, AtHip(true, EquippedKind::Melee, WeaponSeen::Sheathed), kSettings);
+			StepHolster(s, AtHip(true, EquippedKind::OneHand, WeaponSeen::Sheathed), kSettings);
 		Check(!v.readyClick && !v.rightClaimed && v.rightInZone,
 		      "a grip closed elsewhere and brought to the hip: still a grab, nothing drawn");
 	}
 	{
 		HolsterState s;
 		HolsterVerdict v = StepHolster(s, AtHip(true, EquippedKind::Bow, WeaponSeen::Sheathed), kSettings);
-		Check(v.equip == HolsterKind::Sword && !v.readyClick,
+		Check(v.equip == HolsterKind::OneHand && !v.readyClick,
 		      "the bow sheathed: the remembered sword is equipped first");
 		v = StepHolster(s, AtHip(true, EquippedKind::Bow, WeaponSeen::Sheathed), kSettings);
 		Check(!v.readyClick && v.equip == HolsterKind::None, "until it shows, nothing more");
-		v = StepHolster(s, AtHip(true, EquippedKind::Melee, WeaponSeen::Sheathed), kSettings);
+		v = StepHolster(s, AtHip(true, EquippedKind::OneHand, WeaponSeen::Sheathed), kSettings);
 		Check(v.readyClick, "the sword shows sheathed: drawn");
-		v = StepHolster(s, AtHip(true, EquippedKind::Melee, WeaponSeen::Sheathed), kSettings);
+		v = StepHolster(s, AtHip(true, EquippedKind::OneHand, WeaponSeen::Sheathed), kSettings);
 		Check(!v.readyClick, "once");
 	}
 	{
@@ -119,13 +119,13 @@ void TestSword() {
 		HolsterState s;
 		const HolsterVerdict v =
 			StepHolster(s, AtHip(true, EquippedKind::Nothing, WeaponSeen::Drawn), kSettings);
-		Check(v.equip == HolsterKind::Sword && !v.otherDrawn, "fists up are not in the way");
+		Check(v.equip == HolsterKind::OneHand && !v.otherDrawn, "fists up are not in the way");
 	}
 	{
 		HolsterState s;
 		StepHolster(s, AtHip(true, EquippedKind::Bow, WeaponSeen::Sheathed), kSettings);
 		const HolsterVerdict v =
-			StepHolster(s, AtHip(true, EquippedKind::Melee, WeaponSeen::Drawn), kSettings);
+			StepHolster(s, AtHip(true, EquippedKind::OneHand, WeaponSeen::Drawn), kSettings);
 		Check(!v.readyClick && !v.gaveUp, "the sword shows already drawn: nothing to click");
 	}
 	{
@@ -139,7 +139,7 @@ void TestSword() {
 	{
 		HolsterState s;
 		HolsterInput none = AtHip(true, EquippedKind::Nothing, WeaponSeen::Sheathed);
-		none.haveSword = false;
+		none.haveOneHand = false;
 		const HolsterVerdict v = StepHolster(s, none, kSettings);
 		Check(v.refused && !v.readyClick && v.equip == HolsterKind::None && v.rightClaimed,
 		      "fists and no sword remembered: refused, the grip still not a grab");
@@ -148,7 +148,7 @@ void TestSword() {
 		HolsterState s;
 		HolsterInput fists = AtHip(true, EquippedKind::Nothing, WeaponSeen::Sheathed);
 		const HolsterVerdict v = StepHolster(s, fists, kSettings);
-		Check(v.equip == HolsterKind::Sword, "fists, a sword remembered: it is equipped");
+		Check(v.equip == HolsterKind::OneHand, "fists, a sword remembered: it is equipped");
 	}
 }
 
@@ -165,7 +165,7 @@ void TestBow() {
 	      "the left hand at the shoulder: the bow drawn");
 	HolsterState t;
 	in.leftGrip = false;
-	in.equipped = EquippedKind::Melee;
+	in.equipped = EquippedKind::OneHand;
 	StepHolster(t, in, kSettings);
 	in.leftGrip = true;
 	v = StepHolster(t, in, kSettings);
@@ -179,35 +179,109 @@ void TestBow() {
 	Check(v.gesture == HolsterKind::None, "the right hand at the left shoulder draws nothing");
 }
 
+void TestTwoHanded() {
+	std::printf("Two-handed weapons and staffs over the right shoulder\n");
+	Check(KindOfWeaponType(0) == EquippedKind::OneHand && KindOfWeaponType(2) == EquippedKind::OneHand,
+	      "one-handed blade and blunt: the hip");
+	Check(KindOfWeaponType(1) == EquippedKind::TwoHand && KindOfWeaponType(3) == EquippedKind::TwoHand &&
+	          KindOfWeaponType(4) == EquippedKind::TwoHand,
+	      "two-handed blade and blunt, and the staff: the right shoulder");
+	Check(KindOfWeaponType(5) == EquippedKind::Bow, "the bow: the left shoulder");
+	Check(KindOfWeaponType(-1) == EquippedKind::Nothing && KindOfWeaponType(9) == EquippedKind::Nothing,
+	      "no weapon, or a type the game does not have: nothing");
+
+	HolsterInput in = AtHip(false, EquippedKind::TwoHand, WeaponSeen::Sheathed);
+	in.rightRelative = kSettings.twoHandZone;
+	in.haveTwoHand = true;
+	HolsterState s;
+	StepHolster(s, in, kSettings);
+	in.rightGrip = true;
+	HolsterVerdict v = StepHolster(s, in, kSettings);
+	Check(v.readyClick && v.gesture == HolsterKind::TwoHand && v.rightClaimed,
+	      "the weapon hand over the right shoulder: the two-handed weapon drawn");
+
+	HolsterState t;
+	in.rightGrip = false;
+	in.equipped = EquippedKind::OneHand;
+	StepHolster(t, in, kSettings);
+	in.rightGrip = true;
+	v = StepHolster(t, in, kSettings);
+	Check(v.equip == HolsterKind::TwoHand, "a sheathed sword in the slot: the two-hander equipped first");
+	in.rightGrip = false;
+	StepHolster(t, in, kSettings);
+	in.equipped = EquippedKind::TwoHand;
+	v = StepHolster(t, in, kSettings);
+	Check(v.readyClick, "and drawn once it shows");
+
+	HolsterState u;
+	HolsterInput drawn = in;
+	drawn.equipped = EquippedKind::OneHand;
+	drawn.seen = WeaponSeen::Drawn;
+	drawn.rightGrip = false;
+	StepHolster(u, drawn, kSettings);
+	drawn.rightGrip = true;
+	v = StepHolster(u, drawn, kSettings);
+	Check(v.otherDrawn && !v.readyClick, "a sword drawn: the two-hander waits until it is back");
+
+	HolsterState w;
+	HolsterInput none = in;
+	none.equipped = EquippedKind::Nothing;
+	none.haveTwoHand = false;
+	none.rightGrip = false;
+	StepHolster(w, none, kSettings);
+	none.rightGrip = true;
+	v = StepHolster(w, none, kSettings);
+	Check(v.refused && v.gesture == HolsterKind::TwoHand, "no two-hander seen: refused");
+
+	HolsterState x;
+	HolsterInput leftAtBack = AtHip(false, EquippedKind::TwoHand, WeaponSeen::Sheathed);
+	leftAtBack.rightRelative = NiPoint3{0.2f, 0.3f, -0.4f};
+	leftAtBack.leftRelative = kSettings.twoHandZone;
+	StepHolster(x, leftAtBack, kSettings);
+	leftAtBack.leftGrip = true;
+	v = StepHolster(x, leftAtBack, kSettings);
+	Check(v.gesture == HolsterKind::None, "the other hand over the right shoulder draws nothing");
+
+	HolsterState y;
+	HolsterInput mirrored = AtHip(false, EquippedKind::TwoHand, WeaponSeen::Sheathed);
+	mirrored.leftHanded = true;
+	mirrored.rightRelative =
+		NiPoint3{-kSettings.twoHandZone.x, kSettings.twoHandZone.y, kSettings.twoHandZone.z};
+	StepHolster(y, mirrored, kSettings);
+	mirrored.rightGrip = true;
+	v = StepHolster(y, mirrored, kSettings);
+	Check(v.gesture == HolsterKind::TwoHand, "left-handed: over the left shoulder");
+}
+
 void TestGates() {
 	std::printf("When it does nothing\n");
 	HolsterSettings off = kSettings;
 	off.enabled = false;
 	HolsterState s;
-	HolsterVerdict v = StepHolster(s, AtHip(true, EquippedKind::Melee, WeaponSeen::Sheathed), off);
+	HolsterVerdict v = StepHolster(s, AtHip(true, EquippedKind::OneHand, WeaponSeen::Sheathed), off);
 	Check(!v.readyClick && !v.rightClaimed, "switched off: the grip only grabs");
 	HolsterState t;
-	HolsterInput menu = AtHip(true, EquippedKind::Melee, WeaponSeen::Sheathed);
+	HolsterInput menu = AtHip(true, EquippedKind::OneHand, WeaponSeen::Sheathed);
 	menu.allowed = false;
 	v = StepHolster(t, menu, kSettings);
 	Check(!v.readyClick, "in a menu: nothing");
 	HolsterState u;
 	StepHolster(u, AtHip(true, EquippedKind::Bow, WeaponSeen::Sheathed), kSettings);
 	StepHolster(u, menu, kSettings);
-	v = StepHolster(u, AtHip(true, EquippedKind::Melee, WeaponSeen::Sheathed), kSettings);
+	v = StepHolster(u, AtHip(true, EquippedKind::OneHand, WeaponSeen::Sheathed), kSettings);
 	Check(!v.readyClick, "a menu in between drops a pending draw");
 
-	HolsterInput mirrored = AtHip(false, EquippedKind::Melee, WeaponSeen::Sheathed);
+	HolsterInput mirrored = AtHip(false, EquippedKind::OneHand, WeaponSeen::Sheathed);
 	mirrored.leftHanded = true;
 	mirrored.rightRelative =
-		NiPoint3{-kSettings.swordZone.x, kSettings.swordZone.y, kSettings.swordZone.z};
+		NiPoint3{-kSettings.oneHandZone.x, kSettings.oneHandZone.y, kSettings.oneHandZone.z};
 	HolsterState w;
 	StepHolster(w, mirrored, kSettings);
 	mirrored.rightGrip = true;
 	v = StepHolster(w, mirrored, kSettings);
 	Check(v.readyClick, "left-handed: the sword hangs at the right hip");
 	HolsterState x;
-	HolsterInput notMirrored = AtHip(false, EquippedKind::Melee, WeaponSeen::Sheathed);
+	HolsterInput notMirrored = AtHip(false, EquippedKind::OneHand, WeaponSeen::Sheathed);
 	notMirrored.leftHanded = true;
 	StepHolster(x, notMirrored, kSettings);
 	notMirrored.rightGrip = true;
@@ -215,13 +289,13 @@ void TestGates() {
 	Check(!v.readyClick && !v.rightInZone, "and not at the left");
 
 	HolsterState both;
-	HolsterInput two = AtHip(false, EquippedKind::Melee, WeaponSeen::Sheathed);
+	HolsterInput two = AtHip(false, EquippedKind::OneHand, WeaponSeen::Sheathed);
 	two.leftRelative = kSettings.bowZone;
 	StepHolster(both, two, kSettings);
 	two.rightGrip = true;
 	two.leftGrip = true;
 	v = StepHolster(both, two, kSettings);
-	Check(v.gesture == HolsterKind::Sword && !v.leftClaimed,
+	Check(v.gesture == HolsterKind::OneHand && !v.leftClaimed,
 	      "both reaches in one frame: the sword's; the left grip stays a grab");
 }
 
@@ -232,6 +306,7 @@ int main() {
 	TestSword();
 	TestBow();
 	TestGates();
+	TestTwoHanded();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;
