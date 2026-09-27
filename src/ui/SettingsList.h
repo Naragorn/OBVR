@@ -51,6 +51,7 @@ enum class SettingAction {
 	None,
 	Recenter,
 	AdjustHands,  // opens the guided window for fitting the hands to the controllers
+	FitHolsters,  // the guided fit of the weapon places to the body (vr::StepHolsterFit)
 };
 
 struct SettingDefinition {

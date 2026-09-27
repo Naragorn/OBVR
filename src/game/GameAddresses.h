@@ -1446,4 +1446,17 @@ inline constexpr UInt32 kFullNameStringOffset = 0x04;
 // weapons of the holster gestures are equipped through it.
 inline constexpr UInt32 kActorEquipItem = 0x005FAEA0;
 
+// Actor::UnequipItem(TESForm* item, UInt32 count, ExtraDataList* xData, UInt32
+// unk3, bool lockUnequip, UInt32 unk5), __thiscall, `ret 18h` (xOBSE
+// GameObjects.cpp:47-50). The vanilla UnequipItem command (0x005164C0) finds
+// the worn stack first - 0x0041E6F0 on actor+0x44 for the container changes,
+// then 0x00485FA0(changes, item, 0), thiscall `ret 8`, the first extra-data
+// list of that item marked worn - and calls (item, 1, xData, 0, lock, 0) at
+// 0x005165D1 (research 2026-09-27). The fist's hand to hand takes the
+// sheathed weapon off this way.
+inline constexpr UInt32 kActorUnequipItem = 0x005F2E70;
+inline constexpr UInt32 kGetContainerChanges = 0x0041E6F0;
+inline constexpr UInt32 kFindWornExtraData = 0x00485FA0;
+inline constexpr UInt32 kActorExtraListOffset = 0x44;
+
 }  // namespace obvr::addr

@@ -50,6 +50,7 @@
 #include "game/NearbyItems.h"
 #include "game/MeleeHit.h"
 #include "game/QuickKeys.h"
+#include "game/TeleportNoise.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
@@ -72,6 +73,7 @@
 #include "ui/SettingsMenu.h"
 #include "ui/SettingsMenuLayer.h"
 #include "ui/QuickMenuPainter.h"
+#include "ui/GuidePanel.h"
 #include "render/InterfaceRenderHook.h"
 #include "render/CursorPickHook.h"
 #include "render/CursorProbe.h"
@@ -456,6 +458,10 @@ struct TeleportAim {
 constexpr float kTeleportWaistUnits = 60.0f;
 // Set down a hair above the ground, so the capsule does not start in it.
 constexpr float kTeleportLiftUnits = 2.0f;
+// How long a teleport is heard at least, with TeleportMakesNoise: about
+// the time of a step.
+constexpr float kTeleportNoiseSeconds = 0.5f;
+float g_teleportNoiseLeft = 0.0f;
 
 TeleportAim AimTeleport(const Config& config, const vr::LaserWorldRay& ray) {
 	const vr::TeleportSettings& tp = config.hands.teleport;
@@ -567,6 +573,9 @@ void UpdateTeleport(const Config& config, vr::OpenVRBackend& backend, bool activ
 				game::SpendPlayerFatigue(aim.cost);
 				const NiPoint3 target = aim.landing + NiPoint3{0.0f, 0.0f, kTeleportLiftUnits};
 				g_teleportMove = vr::StartTeleport(aim.feet, target, tp, perMetre);
+				g_teleportNoiseLeft = g_teleportMove.duration > kTeleportNoiseSeconds
+				                          ? g_teleportMove.duration
+				                          : kTeleportNoiseSeconds;
 				game::SetPlayerUntouchable(true);
 				if (!tp.instant && tp.vignette) {
 					g_vignetteLayer.Trigger();
@@ -624,6 +633,16 @@ void UpdateTeleport(const Config& config, vr::OpenVRBackend& backend, bool activ
 	// Untouchable exactly while the move runs; also given back when the mode
 	// stops mid-move.
 	game::SetPlayerUntouchable(active && g_teleportMove.phase != vr::TeleportPhase::Idle);
+	// Heard like walking ([Locomotion] TeleportMakesNoise): for as long as
+	// the move lasts, and at least kTeleportNoiseSeconds - a glide shorter
+	// than a frame (the hand-script runs at a few frames a second) would
+	// otherwise be over before the engine ever read the flags.
+	if (g_teleportNoiseLeft > 0.0f) {
+		g_teleportNoiseLeft -= dtSeconds;
+	}
+	game::SetTeleportNoise(active && config.hands.teleport.makesNoise &&
+	                       (g_teleportMove.phase != vr::TeleportPhase::Idle ||
+	                        g_teleportNoiseLeft > 0.0f));
 }
 
 // The quick menu on the right trackpad (vr/QuickMenu.h, docs/controls-spec.md
@@ -636,6 +655,18 @@ void UpdateTeleport(const Config& config, vr::OpenVRBackend& backend, bool activ
 UInt8* g_lastSwordForm = nullptr;
 UInt8* g_lastBowForm = nullptr;
 UInt32 g_holsterLinesLeft = 30;
+
+// The guided fit of the weapon places (vr::StepHolsterFit), asked for by the
+// settings row or a hand script, with its instruction panel.
+vr::HolsterFitState g_holsterFit;
+bool g_holsterFitRequested = false;
+ui::CanvasOverlay g_holsterFitLayer("obvr.holsterfit", "OBVR Weapon Places", ui::kGuidePanelWidth,
+                                    ui::kGuidePanelHeight);
+ui::GuidePanelText g_holsterFitText;
+UInt32 g_holsterFitRevision = 1;
+vr::openvr::HmdMatrix34 g_holsterFitPose{};
+bool g_holsterFitWasLeftB = false;
+bool g_holsterFitWasRightB = false;
 
 vr::QuickMenuState g_quickMenu;
 ui::CanvasOverlay g_quickMenuLayer("obvr.quickmenu", "OBVR Quick Menu", ui::kQuickMenuCanvas,
@@ -742,6 +773,103 @@ void UpdateQuickMenu(const Config& config, vr::OpenVRBackend& backend, bool allo
 			OBVR_LOG("HandScript: the quick menu's picture saved as %s", name);
 		}
 	}
+}
+
+// Steps the fit of the weapon places. True while it runs: the triggers and
+// menu buttons are its, and nothing else of the hands reaches the game.
+bool UpdateHolsterFit(Config& config, vr::OpenVRBackend& backend, const vr::HandModeFrame& frame,
+                      bool allowed) {
+	vr::HolsterFitInput in;
+	if (test::TakeHandScriptAction("holster_fit")) {
+		g_holsterFitRequested = true;
+	}
+	// Asked for from the settings menu: it starts once that has closed and
+	// the player stands in the world.
+	in.start = g_holsterFitRequested && allowed;
+	if (in.start) {
+		g_holsterFitRequested = false;
+	}
+	in.weaponValid = frame.right.valid && frame.headValid;
+	in.otherValid = frame.left.valid && frame.headValid;
+	if (frame.headValid) {
+		in.weaponRelative = vr::BodyRelative(frame.head, frame.headPosition, frame.right.position);
+		in.otherRelative = vr::BodyRelative(frame.head, frame.headPosition, frame.left.position);
+	}
+	in.weaponTrigger = frame.right.valid && frame.right.trigger > 0.5f;
+	in.otherTrigger = frame.left.valid && frame.left.trigger > 0.5f;
+	const bool leftB = frame.left.valid && vr::ButtonBDown(frame.left.buttonsPressed);
+	const bool rightB = frame.right.valid && vr::ButtonBDown(frame.right.buttonsPressed);
+	in.cancel = (leftB && !g_holsterFitWasLeftB) || (rightB && !g_holsterFitWasRightB) || !allowed;
+	g_holsterFitWasLeftB = leftB;
+	g_holsterFitWasRightB = rightB;
+	in.leftHanded = config.hands.leftHanded;
+	const vr::HolsterFitVerdict v = vr::StepHolsterFit(g_holsterFit, in);
+
+	if (v.stepChanged) {
+		++g_holsterFitRevision;
+		g_holsterFitText = ui::GuidePanelText{};
+		g_holsterFitText.title = "Weapon places";
+		if (v.step == vr::HolsterFitStep::Melee) {
+			g_holsterFitText.lines[0] = "1. Your sword: hold the weapon hand";
+			g_holsterFitText.lines[1] = "   where it should hang, pull its trigger.";
+			g_holsterFitText.lines[3] = "A menu button cancels.";
+			vr::openvr::HmdMatrix34 head{};
+			if (backend.GetRenderPoseMatrix(head)) {
+				vr::LevelPose(head);
+				g_holsterFitPose = vr::OverlayPoseAhead(head, 0.8f);
+			}
+			OBVR_LOG("Holster fit: started - the melee place first");
+		} else if (v.step == vr::HolsterFitStep::Bow) {
+			g_holsterFitText.lines[0] = "2. Your bow: hold the other hand";
+			g_holsterFitText.lines[1] = "   where it should be, pull its trigger.";
+			g_holsterFitText.lines[3] = "A menu button cancels.";
+			OBVR_LOG("Holster fit: the melee place taken - now the bow's");
+		}
+	}
+	if (v.cancelled) {
+		OBVR_LOG("Holster fit: cancelled - the places stay as they were");
+	}
+	if (v.finished) {
+		vr::HolsterSettings& h = config.hands.holster;
+		h.swordZone = v.melee;
+		h.bowZone = v.bow;
+		struct Entry {
+			const char* key;
+			float value;
+		};
+		const Entry entries[] = {
+			{"HolsterSwordX", v.melee.x}, {"HolsterSwordForward", v.melee.y},
+			{"HolsterSwordUp", v.melee.z}, {"HolsterBowX", v.bow.x},
+			{"HolsterBowForward", v.bow.y}, {"HolsterBowUp", v.bow.z},
+		};
+		bool saved = true;
+		for (const Entry& entry : entries) {
+			char value[32];
+			std::snprintf(value, sizeof(value), "%.2f", static_cast<double>(entry.value));
+			saved = SaveSetting("Hands", entry.key, value) && saved;
+		}
+		OBVR_LOG("Holster fit: done - melee at %.2f %.2f %.2f, bow at %.2f %.2f %.2f (right, "
+		         "forward, up from the eyes)%s",
+		         static_cast<double>(v.melee.x), static_cast<double>(v.melee.y),
+		         static_cast<double>(v.melee.z), static_cast<double>(v.bow.x),
+		         static_cast<double>(v.bow.y), static_cast<double>(v.bow.z),
+		         saved ? "" : " - COULD NOT SAVE the INI");
+	}
+	if (v.active) {
+		g_holsterFitLayer.Show(backend, render::GetGameDevice(), g_holsterFitPose, 0.6f,
+		                       g_holsterFitRevision, ui::PaintGuidePanelFor, &g_holsterFitText);
+		if (test::HandScriptMarkedThisFrame()) {
+			char name[96];
+			char path[512];
+			std::snprintf(name, sizeof(name), "OBVR-HolsterFit-%s.bmp", test::HandScriptMarkName());
+			if (platform::BuildGamePath(name, path, sizeof(path)) && g_holsterFitLayer.SaveBmp(path)) {
+				OBVR_LOG("HandScript: the weapon places panel saved as %s", name);
+			}
+		}
+	} else {
+		g_holsterFitLayer.Hide(backend);
+	}
+	return v.active || v.finished || v.cancelled;
 }
 
 void UpdateHandMode(const Config& config, bool menuIsUp) {
@@ -896,6 +1024,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 	frame.haveSword = g_lastSwordForm != nullptr;
 	frame.haveBow = g_lastBowForm != nullptr;
+	frame.holdingObject = active && game::PlayerHoldsGrab();
 	frame.sneaking = active && !menuIsUp && frame.inWorld && config.hands.sneakHold &&
 	                 game::IsPlayerSneaking();
 	frame.headValid = backend.GetRenderPose(frame.head, frame.headPosition) ||
@@ -1037,7 +1166,20 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 
 	frame.teleportAllowed = active && TeleportAllowedNow(config, menuIsUp, frame.inWorld);
 	frame.inventoryOpen = active && menuIsUp && game::ActiveMenuId() == game::kMenuIdInventory;
+	// The fit of the weapon places: while it runs the triggers and menu
+	// buttons are its (the triggers would attack and cast, B would open the
+	// menus), and neither reach nor fist changes the weapon.
+	const bool fitting = UpdateHolsterFit(GetConfig(), backend, frame,
+	                                      active && !menuIsUp && frame.inWorld &&
+	                                          !frame.settingsMenuOpen);
 	g_hand = g_handMode.Update(frame, config.hands);
+	if (fitting) {
+		vr::HandControlsWanted& c = g_hand.controls;
+		c.attack = c.cast = c.block = c.menu = c.escape = c.readyWeapon = c.grab = false;
+		g_hand.holster = vr::HolsterVerdict{};
+		g_hand.fist.readyClick = false;
+		g_hand.fist.unequip = false;
+	}
 	// A reach to the hip or the shoulder with the other kind in hand: the
 	// remembered weapon is equipped first (vr::StepHolster draws it once the
 	// game shows it). What each reach did goes to the log.
@@ -1050,17 +1192,33 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				(h.equip == vr::HolsterKind::Bow ? g_lastBowForm : g_lastSwordForm) = nullptr;
 			}
 		}
-		if (g_hand.fist.changed && g_holsterLinesLeft > 0) {
+		const bool unequipped = g_hand.fist.unequip && game::UnequipWeapon();
+		if ((g_hand.fist.changed || g_hand.fist.gaveUp) && g_holsterLinesLeft > 0) {
 			--g_holsterLinesLeft;
-			OBVR_LOG("Fist: the weapon hand %s%s", g_hand.fist.closed ? "closed" : "opened",
-			         g_hand.fist.readyClick ? (g_hand.fist.closed ? " - fists up" : " - fists down")
-			                                : " - nothing to ready");
+			if (g_hand.fist.gaveUp) {
+				OBVR_LOG("Fist: the weapon never left the slot - fists given up");
+			} else {
+				OBVR_LOG("Fist: the weapon hand %s%s", g_hand.fist.closed ? "closed" : "opened",
+				         g_hand.fist.unequip
+				             ? (unequipped ? " - the sheathed weapon taken off for the fists"
+				                           : " - the sheathed weapon could NOT be taken off")
+				         : g_hand.fist.readyClick
+				             ? (g_hand.fist.closed ? " - fists up" : " - fists down")
+				             : " - nothing to ready");
+			}
+		}
+		if (g_hand.fist.readyClick && !g_hand.fist.changed && g_holsterLinesLeft > 0) {
+			--g_holsterLinesLeft;
+			OBVR_LOG("Fist: the slot is empty - fists up");
 		}
 		if ((h.gesture != vr::HolsterKind::None || h.gaveUp) && g_holsterLinesLeft > 0) {
 			--g_holsterLinesLeft;
 			const char* const what = h.gesture == vr::HolsterKind::Bow ? "bow" : "sword";
 			if (h.gaveUp) {
 				OBVR_LOG("Holster: the weapon equipped never showed in the hand - draw given up");
+			} else if (h.otherDrawn) {
+				OBVR_LOG("Holster: reach for the %s - the %s is drawn, it goes back first", what,
+				         h.gesture == vr::HolsterKind::Bow ? "sword" : "bow");
 			} else if (h.refused) {
 				OBVR_LOG("Holster: reach for the %s - none seen this session, nothing to draw", what);
 			} else if (h.equip != vr::HolsterKind::None) {
@@ -1078,7 +1236,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	if (test::HandScriptMarkedThisFrame()) {
 		OBVR_LOG("HandScript: state - world %d, menu %d, third person %d, head %d at %.2f %.2f "
 		         "%.2f, right %d at %.2f %.2f %.2f stick %.2f %.2f, left %d, camera %d, hand "
-		         "pinned %d, teleport allowed %d aiming %d commit %d, weapon %d (slot %d)",
+		         "pinned %d, teleport allowed %d aiming %d commit %d, weapon %d (slot %d), active menu %s, laser hit %d at %.0f,%.0f, cursor %d at %.0f,%.0f",
 		         frame.inWorld ? 1 : 0, menuIsUp ? 1 : 0, frame.firstPerson ? 0 : 1,
 		         frame.headValid ? 1 : 0, static_cast<double>(frame.headPosition.x),
 		         static_cast<double>(frame.headPosition.y),
@@ -1090,7 +1248,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		         frame.left.valid ? 1 : 0, g_cyclopeanCameraWorldValid ? 1 : 0,
 		         g_hand.rightHandValid ? 1 : 0, frame.teleportAllowed ? 1 : 0,
 		         g_hand.teleportAiming ? 1 : 0, g_hand.teleportCommit ? 1 : 0,
-		         static_cast<int>(frame.weaponSeen), static_cast<int>(frame.equipped));
+		         static_cast<int>(frame.weaponSeen), static_cast<int>(frame.equipped),
+		         menuIsUp ? game::MenuIdName(game::ActiveMenuId()) : "none", g_hand.laserHit ? 1 : 0,
+		         static_cast<double>(g_hand.laserPixelX), static_cast<double>(g_hand.laserPixelY),
+		         frame.cursorValid ? 1 : 0, static_cast<double>(frame.cursorX),
+		         static_cast<double>(frame.cursorY));
 	}
 
 	// The item nearest a hand, by distance (game::FindNearestItem): the pick is
@@ -1489,6 +1651,15 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			         static_cast<double>(frame.cursorY));
 		}
 		clickWasSent = controls.menuClick;
+		// Every jump sent, the first several dozen: the right stick's flick
+		// and a diagonal turn must be told apart (docs/controls-spec.md 2).
+		static bool jumpWasSent = false;
+		static UInt32 jumpLinesLeft = 40;
+		if (controls.jump && !jumpWasSent && jumpLinesLeft > 0) {
+			--jumpLinesLeft;
+			OBVR_LOG("Hands: jump sent (right stick flicked up)");
+		}
+		jumpWasSent = controls.jump;
 		game::ApplyHandControls(controls, config.handKeys, config.hands.turnSpeed);
 		g_handControlsHeld = true;
 		if ((g_hand.laserHit || g_hand.pokeHover) &&
@@ -3349,6 +3520,12 @@ void SaveChangedSetting(const ui::SettingDefinition* definition, const Config& c
 	// A button: fired here, saved nowhere. The only one so far is the
 	// recenter at the top of the menu.
 	if (definition->kind == ui::ItemKind::Action) {
+		if (definition->action == ui::SettingAction::FitHolsters) {
+			g_holsterFitRequested = true;
+			if (g_settingsMenu.IsOpen()) {
+				g_settingsMenu.Toggle();  // the fit needs the triggers and the view
+			}
+		}
 		if (definition->action == ui::SettingAction::AdjustHands) {
 			game::StartHandAdjust();
 		}
@@ -5846,6 +6023,7 @@ bool Install() {
 
 	InstallCastHook();
 	game::InstallAimAtSource();
+	game::InstallTeleportNoise();
 	game::InstallPlayerStagger();
 	game::InstallPlayerLookAt();
 	game::InstallWorldPickHook();

@@ -66,7 +66,8 @@ void TestParseCommands() {
 		"expect Teleport: arrived\n"
 		"reject WARNING\n"
 		"ini Hands Enabled=1\n"
-		"console SetHotKeyItem 3 {weapon}\n";
+		"console SetHotKeyItem 3 {weapon}\n"
+		"count 1 Hands: jump sent\n";
 	Check(Parses(text, s), "a script with every command reads");
 	Check(s.steps.size() == 20, "twenty steps; comments, blank lines, expect and reject are not steps");
 	Check(s.steps[0].op == ScriptOp::Wait && Near(s.steps[0].values[0], 1.5f) && s.steps[0].line == 3,
@@ -88,6 +89,7 @@ void TestParseCommands() {
 	Check(s.expects.size() == 1 && s.expects[0] == "Teleport: arrived", "expect, text kept whole");
 	Check(s.rejects.size() == 1 && s.rejects[0] == "WARNING", "reject");
 	Check(s.ini.size() == 1 && s.ini[0] == "Hands Enabled=1", "ini, for the runner, not a step");
+	Check(s.counts.size() == 1 && s.counts[0] == "1 Hands: jump sent", "count, for the runner");
 	Check(s.console.size() == 1 && s.console[0] == "SetHotKeyItem 3 {weapon}",
 	      "console, for the runner, with its spaces");
 
@@ -117,6 +119,17 @@ void TestParseErrors() {
 	Check(FailsOnLine("log\n") == 1, "log without text");
 	Check(FailsOnLine("expect   \n") == 1, "expect without text");
 	Check(FailsOnLine("console\n") == 1, "console without a command");
+	Check(FailsOnLine("key 1\n") == 1, "key without down or up");
+	Check(FailsOnLine("key 1 2\n") == 1, "key with neither 0 nor 1");
+	Check(FailsOnLine("key a 1\n") == 1, "a lower-case key name");
+	Check(FailsOnLine("key 0xZZ 1\n") == 1, "a key code that is not hex");
+	Check(FailsOnLine("key 0x0 1\n") == 1, "key code zero");
+	Check(FailsOnLine("key F1 1\n") == 1, "a key name longer than one letter");
+	Check(FailsOnLine("count 1\n") == 1, "count without text");
+	Check(FailsOnLine("count x jump\n") == 1, "count without a number");
+	Check(FailsOnLine("count -1 jump\n") == 1, "a negative count");
+	Check(FailsOnLine("action\n") == 1, "action without a name");
+	Check(FailsOnLine("action a b\n") == 1, "action with two names");
 	Check(FailsOnLine("ini Hands\n") == 1, "ini without Key=Value");
 	Check(FailsOnLine("ini Hands Enabled\n") == 1, "ini without the equals sign");
 	Check(FailsOnLine("ini Hands =1\n") == 1, "ini without a key");
@@ -149,6 +162,22 @@ void TestStepping() {
 	Check(ev.dump && ev.mirror && ev.finished && run.finished, "dump, mirror, and the end");
 	StepHandScript(s, run, 1.0f, ev);
 	Check(!ev.finished && !ev.dump, "a finished script does nothing more");
+
+	HandScript keyed;
+	Check(Parses("key 1 1\nkey 0x70 0\n", keyed) && keyed.steps.size() == 2, "key commands read");
+	HandScriptRun k;
+	StepHandScript(keyed, k, 0.0f, ev);
+	Check(ev.keys.size() == 2 && Near(ev.keys[0]->values[0], static_cast<float>('1')) &&
+	          Near(ev.keys[0]->values[1], 1.0f) && Near(ev.keys[1]->values[0], 112.0f) &&
+	          Near(ev.keys[1]->values[1], 0.0f),
+	      "a digit as its own code, 0x70 as F1; down and up");
+
+	HandScript acted;
+	Parses("action holster_fit\nwait 1\n", acted);
+	HandScriptRun a;
+	StepHandScript(acted, a, 0.0f, ev);
+	Check(ev.actions.size() == 1 && ev.actions[0]->text == "holster_fit" && ev.said.empty(),
+	      "an action is handed out, not said");
 
 	HandScript marked;
 	Parses("right a 1\nmark pressed\nright a 0\n", marked);

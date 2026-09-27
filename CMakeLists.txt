@@ -37,6 +37,7 @@ add_library(OBVR SHARED
 	src/ui/SettingsMenuLayer.cpp
 	src/ui/CanvasOverlay.cpp
 	src/ui/QuickMenuPainter.cpp
+	src/ui/GuidePanel.cpp
 	src/ui/SettingsMenu.cpp
 	src/ui/NativeSettings.cpp
 	src/ui/Onboarding.cpp
@@ -90,6 +91,7 @@ add_library(OBVR SHARED
 	src/game/GrabNearBody.cpp
 	src/game/NearbyItems.cpp
 	src/game/QuickKeys.cpp
+	src/game/TeleportNoise.cpp
 	src/game/HandBones.cpp
 	src/game/HandAdjust.cpp
 	src/game/MeleeHits.cpp

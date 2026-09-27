@@ -993,3 +993,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME fist COMMAND fist_test)
+
+add_executable(holster_fit_test HolsterFitTest.cpp)
+
+target_include_directories(holster_fit_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(holster_fit_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME holster_fit COMMAND holster_fit_test)

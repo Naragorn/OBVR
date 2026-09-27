@@ -1,0 +1,32 @@
+# Experiment, not a feature test: the game's own hotkey ring inside the
+# inventory - the inventory opened (left B, the Tab menus), a number key held,
+# let go. Menus are mirrored to the monitor so the pictures show them.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\vanilla-quickkeys-menu.txt
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+console player.additem 00000C0C 1
+console SetHotkeyItem 3 00000C0C
+
+expect HandScript: finished
+reject HandScript: WARNING
+
+wait 12
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark menu_open
+key 3 1
+wait 0.5
+mark held_short
+wait 1.5
+mark held_long
+key 3 0
+wait 1
+mark released
+left b 1
+wait 0.2
+left b 0
+wait 1
+mark closed

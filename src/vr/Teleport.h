@@ -35,8 +35,12 @@ struct TeleportSettings {
 	// Places walking cannot reach: higher than a jump, across a gap. Off, the
 	// landing must be ground the player could walk or jump to.
 	bool blink = false;
-	// On, a teleport while sneaking makes no more noise than sneaking.
-	bool quietWhenSneaking = false;
+	// On, a teleport is heard like walking: while it moves, the player's
+	// movement flags read "walking forward", which is what the engine's
+	// detection hears (game::SetTeleportNoise). Sneaking stays sneaking. Off,
+	// a teleport makes no movement noise at all - the engine hears none from
+	// a placement.
+	bool makesNoise = false;
 	// The fatigue: the vanilla dodge roll's price times this, plus, with Blink,
 	// this much per metre climbed.
 	float fatigueMult = 1.0f;

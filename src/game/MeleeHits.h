@@ -37,6 +37,12 @@ UInt8* EquippedWeaponForm(SInt32* type);
 // cannot be reached.
 bool EquipWeaponForm(UInt8* weapon);
 
+// Takes the equipped weapon off the player, as the game's UnequipItem command
+// does, so the hands are bare (the fist's hand to hand). True once the call is
+// made - whether the slot empties shows on the next frames. False with no weapon
+// or when the worn stack cannot be found.
+bool UnequipWeapon();
+
 // Whether the player has died (Actor::IsDead through the same table entry the
 // strike uses for its targets). False when the player cannot be read.
 bool PlayerIsDead();

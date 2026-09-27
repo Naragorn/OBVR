@@ -29,6 +29,12 @@
 //   dump                             SteamVR's CompositorDumpImages
 //   mirror                           SteamVR's headset view window
 //   log <text>                       a line in OBVR.log
+//   key <k> <0|1>                   a keyboard key down or up: a letter or
+//                                    digit, or a virtual-key code 0xNN
+//   action <name>                    one of OBVR's own actions, as its settings
+//                                    row would fire it (holster_fit)
+//   count <n> <text>                 for the runner: the log holds the text
+//                                    exactly n times
 //   ini <Section> <Key>=<Value>      for the runner: written to OBVR-test.ini
 //   console <command>                for the runner: typed into the console once
 //                                    the script runs; {weapon} is the equipped
@@ -92,6 +98,8 @@ enum class ScriptOp : UInt8 {
 	Dump,
 	Mirror,
 	Log,
+	Action,
+	Key,
 };
 
 enum class HandField : UInt8 {
@@ -131,6 +139,7 @@ struct HandScript {
 	std::vector<std::string> rejects;
 	std::vector<std::string> ini;  // "Section Key=Value", for the runner
 	std::vector<std::string> console;  // console commands, for the runner
+	std::vector<std::string> counts;   // "n text", for the runner
 };
 
 struct ScriptParseError {
@@ -298,6 +307,34 @@ inline bool ParseHandScript(const std::string& text, HandScript& out, ScriptPars
 			}
 			step.op = ScriptOp::Mark;
 			step.text = t[1];
+		} else if (word == "key") {
+			// key <k> <0|1>: a keyboard key down or up, as a player would press
+			// it: a single letter or digit, or a virtual-key code as 0xNN.
+			float down = 0.0f;
+			if (t.size() != 3 || !detail::Number(t[2], down) || (down != 0.0f && down != 1.0f)) {
+				return fail("key takes a key and 0 or 1");
+			}
+			UInt32 code = 0;
+			if (t[1].size() == 1 && ((t[1][0] >= '0' && t[1][0] <= '9') || (t[1][0] >= 'A' && t[1][0] <= 'Z'))) {
+				code = static_cast<UInt32>(t[1][0]);
+			} else if (t[1].size() > 2 && t[1][0] == '0' && (t[1][1] == 'x' || t[1][1] == 'X')) {
+				char* stop = nullptr;
+				code = static_cast<UInt32>(std::strtoul(t[1].c_str() + 2, &stop, 16));
+				if (stop == nullptr || *stop != 0 || code == 0 || code > 0xFE) {
+					return fail("key code not understood");
+				}
+			} else {
+				return fail("key code not understood");
+			}
+			step.op = ScriptOp::Key;
+			step.values[0] = static_cast<float>(code);
+			step.values[1] = down;
+		} else if (word == "action") {
+			if (t.size() != 2) {
+				return fail("action takes one name");
+			}
+			step.op = ScriptOp::Action;
+			step.text = t[1];
 		} else if (word == "dump" || word == "mirror") {
 			if (t.size() != 1) {
 				return fail("dump and mirror take nothing");
@@ -320,6 +357,18 @@ inline bool ParseHandScript(const std::string& text, HandScript& out, ScriptPars
 				return fail("ini takes a section and Key=Value");
 			}
 			out.ini.push_back(t[1] + " " + t[2]);
+			continue;
+		} else if (word == "count") {
+			// count <n> <text>: for the runner - the log must hold the text
+			// exactly n times.
+			float n = 0.0f;
+			const std::string rest = detail::Rest(line, word);
+			const size_t space = rest.find(' ');
+			if (space == std::string::npos || !detail::Number(rest.substr(0, space), n) || n < 0.0f ||
+			    detail::Rest(rest, rest.substr(0, space)).empty()) {
+				return fail("count takes a number and text");
+			}
+			out.counts.push_back(rest);
 			continue;
 		} else if (word == "log" || word == "expect" || word == "reject") {
 			const std::string rest = detail::Rest(line, word);
@@ -358,6 +407,8 @@ struct HandScriptRun {
 // What a step of the clock did besides the pose, for the runtime to act on.
 struct HandScriptEvents {
 	std::vector<const ScriptStep*> said;  // marks and log lines, in order
+	std::vector<const ScriptStep*> actions;  // OBVR actions asked for, in order
+	std::vector<const ScriptStep*> keys;     // keys to press or let go, in order
 	bool dump = false;
 	bool mirror = false;
 	bool finished = false;  // the script ran out in this step
@@ -454,6 +505,12 @@ inline void StepHandScript(const HandScript& script, HandScriptRun& run, float d
 		case ScriptOp::Mark:
 			marked = true;
 			events.said.push_back(&s);
+			break;
+		case ScriptOp::Key:
+			events.keys.push_back(&s);
+			break;
+		case ScriptOp::Action:
+			events.actions.push_back(&s);
 			break;
 		case ScriptOp::Log:
 			events.said.push_back(&s);

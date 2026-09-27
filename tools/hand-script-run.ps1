@@ -65,11 +65,13 @@ $expects = @()
 $rejects = @()
 $iniLines = @{}
 $consoleLines = @()
+$counts = @()
 foreach ($raw in [IO.File]::ReadAllLines($scriptPath)) {
 	$line = ($raw -replace "#.*$", "").Trim()
 	if ($line -match "^expect\s+(.+)$") { $expects += $Matches[1].Trim() }
 	elseif ($line -match "^reject\s+(.+)$") { $rejects += $Matches[1].Trim() }
 	elseif ($line -match "^console\s+(.+)$") { $consoleLines += $Matches[1].Trim() }
+	elseif ($line -match "^count\s+(\d+)\s+(.+)$") { $counts += ,@([int]$Matches[1], $Matches[2].Trim()) }
 	elseif ($line -match "^ini\s+(\S+)\s+(\S+=\S*)$") {
 		if (-not $iniLines.ContainsKey($Matches[1])) { $iniLines[$Matches[1]] = @() }
 		$iniLines[$Matches[1]] += $Matches[2]
@@ -333,6 +335,7 @@ try {
 		$ini += $sections[$k]
 	}
 	[IO.File]::WriteAllLines($testIni, $ini)
+	Copy-Item -LiteralPath $testIni -Destination (Join-Path $runDir "OBVR-test.ini")
 	Copy-Item -LiteralPath $scriptPath -Destination $scriptTarget -Force
 	Copy-Item -LiteralPath $scriptPath -Destination (Join-Path $runDir "script.txt")
 
@@ -483,6 +486,10 @@ try {
 	$runLog = Read-Log
 	foreach ($e in $expects) {
 		if (-not ($runLog | Where-Object { $_.Contains($e) })) { $problems += "expected in the log, missing: $e" }
+	}
+	foreach ($c in $counts) {
+		$n = @($runLog | Where-Object { $_.Contains($c[1]) }).Count
+		if ($n -ne $c[0]) { $problems += "expected $($c[0]) times in the log, found $($n): $($c[1])" }
 	}
 	foreach ($r in $rejects) {
 		$hits = @($runLog | Where-Object { $_.Contains($r) })

@@ -29,6 +29,10 @@ bool HandScriptMarkedThisFrame();
 // The last mark's name ("" before the first), for pictures saved at it.
 const char* HandScriptMarkName();
 
+// Whether the script asked for this OBVR action ("action <name>") since the
+// last time it was taken; taking it clears it.
+bool TakeHandScriptAction(const char* name);
+
 // The script's controllers, placed from the head the frame is drawn with.
 void ScriptedHands(const vr::Quaternion& headOrientation, const NiPoint3& headPosition,
                    vr::HandPose& right, vr::HandPose& left);

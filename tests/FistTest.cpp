@@ -40,9 +40,11 @@ FistVerdict Hold(FistState& s, const FistInput& in, int frames, const FistSettin
 		v = StepFist(s, in, settings);
 		any.changed = any.changed || v.changed;
 		any.readyClick = any.readyClick || v.readyClick;
+		any.unequip = any.unequip || v.unequip;
 	}
 	v.changed = any.changed;
 	v.readyClick = any.readyClick;
+	v.unequip = any.unequip;
 	return v;
 }
 
@@ -95,9 +97,50 @@ void TestFist() {
 	}
 	{
 		FistState s;
-		const FistVerdict v = Hold(s, Hand(0.95f, EquippedKind::Melee), 4, settings);
-		Check(v.closed && v.changed && !v.readyClick, "a sword in the slot: the fist readies nothing");
+		const FistVerdict v =
+			Hold(s, Hand(0.95f, EquippedKind::Melee, WeaponSeen::Drawn), 4, settings);
+		Check(v.closed && v.changed && !v.readyClick && !v.unequip,
+		      "a sword drawn: the fist is the hand round it, nothing happens");
 		Check(FistAllowsStrike(false, v), "and a weapon strikes regardless");
+	}
+	{
+		FistState s;
+		FistVerdict v = Hold(s, Hand(0.95f, EquippedKind::Melee, WeaponSeen::Sheathed), 4, settings);
+		Check(v.unequip && !v.readyClick, "a sword sheathed: taken off first");
+		v = StepFist(s, Hand(0.95f, EquippedKind::Melee, WeaponSeen::Sheathed), settings);
+		Check(!v.unequip && !v.readyClick, "once, and nothing while it is still in the slot");
+		v = StepFist(s, Hand(0.95f, EquippedKind::Nothing, WeaponSeen::Sheathed), settings);
+		Check(v.readyClick, "the slot empty: the fists raised");
+		v = StepFist(s, Hand(0.95f, EquippedKind::Nothing, WeaponSeen::Drawn), settings);
+		Check(!v.readyClick, "once");
+	}
+	{
+		FistState s;
+		Hold(s, Hand(0.95f, EquippedKind::Bow, WeaponSeen::Sheathed), 4, settings);
+		FistInput slow = Hand(0.95f, EquippedKind::Bow, WeaponSeen::Sheathed);
+		slow.dt = 2.5f;
+		const FistVerdict v = StepFist(s, slow, settings);
+		Check(v.gaveUp && !v.readyClick, "the bow never leaves the slot: given up");
+	}
+	{
+		FistState s;
+		Hold(s, Hand(0.95f, EquippedKind::Melee, WeaponSeen::Sheathed), 4, settings);
+		const FistVerdict v =
+			Hold(s, Hand(0.1f, EquippedKind::Melee, WeaponSeen::Sheathed), 4, settings);
+		Check(!v.readyClick && !v.closed, "opened before the slot emptied: no fists raised");
+		const FistVerdict after =
+			Hold(s, Hand(0.1f, EquippedKind::Nothing, WeaponSeen::Sheathed), 3, settings);
+		Check(!after.readyClick, "and not later either");
+	}
+	{
+		FistState s;
+		Hold(s, Hand(0.95f, EquippedKind::Melee, WeaponSeen::Sheathed), 4, settings);
+		FistInput menu = Hand(0.95f, EquippedKind::Nothing, WeaponSeen::Sheathed);
+		menu.allowed = false;
+		StepFist(s, menu, settings);
+		const FistVerdict v =
+			StepFist(s, Hand(0.95f, EquippedKind::Nothing, WeaponSeen::Sheathed), settings);
+		Check(!v.readyClick, "a menu in between drops the pending raise");
 	}
 	{
 		FistState s;
@@ -114,12 +157,12 @@ void TestFist() {
 	}
 	{
 		FistState s;
-		FistInput squeezing = Hand(0.95f);
-		squeezing.gripDown = true;
-		FistVerdict v = Hold(s, squeezing, 5, settings);
-		Check(!v.closed && !v.readyClick, "curled round a squeezed grip: a grab, not fists");
+		FistInput holding = Hand(0.95f);
+		holding.busy = true;
+		FistVerdict v = Hold(s, holding, 5, settings);
+		Check(!v.closed && !v.readyClick, "curled round a held object: not fists");
 		v = Hold(s, Hand(0.95f), 3, settings);
-		Check(v.closed && v.readyClick, "the grip let go, the fist kept: fists up");
+		Check(v.closed && v.readyClick, "let go, the fist kept: fists up");
 	}
 	{
 		FistState s;

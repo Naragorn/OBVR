@@ -144,12 +144,41 @@ in the headset yet.
     - It is drawn once the game shows it in the hand, or given up after 2 s.
     - With none of that kind seen yet, the reach does nothing and says so in
       the log.
+  - **The other weapon drawn.** Reaching for one kind while the other is
+    drawn does nothing ("the bow is drawn, it goes back first" in the log). It
+    has to go back first, by its own reach (the tester, 2026-09-27: first
+    sheathe the bow, then draw the sword, and the other way round). Raised
+    fists are not in the way.
+  - **Fitting the places.** "Fit weapon places" in the settings (Hands) runs
+    a guided fit, `vr::StepHolsterFit` (`holster_fit_test`).
+    - A panel in front of the player says what to do.
+    - The weapon hand's trigger takes the melee place; the other hand's
+      trigger takes the bow's.
+    - Either menu button cancels, and nothing changes.
+    - The places are saved to `[Hands] HolsterSword*` and `HolsterBow*`.
+      Left-handed they are stored mirrored, as a right-handed body.
+    - While the fit runs, the triggers and menu buttons reach nothing else.
+  - **The weapon types.** Oblivion has six (xOBSE GameForms.h:2669-2682,
+    TESObjectWEAP type at +0x90, the same enum as OBVR's `WeaponTypeCode`):
+    - Blade one hand
+    - Blade two hand
+    - Blunt one hand
+    - Blunt two hand
+    - Staff
+    - Bow
+
+    With no weapon the hands fight hand to hand. Today every type but the
+    bow counts as melee and hangs at the hip, staff included.
   - **Settings.** `[Hands] Holsters` and the zone keys; a toggle in the
     settings under Hands.
 - **Checked in the game** (`tools/hand-scripts/holster.txt`, PASS):
   - bow sheathed, then a reach to the hip: the sword was equipped and drawn;
   - the same reach sheathed it;
-  - the left hand behind the shoulder equipped and drew the bow.
+  - the left hand behind the shoulder equipped and drew the bow;
+  - with the bow drawn, a reach to the hip did nothing.
+  - `holster-fit.txt` PASS: the fit took both places, wrote them to the
+    test run's INI (never to OBVR.ini), and a reach to the new melee place
+    drew the sword.
 - **Open.**
   - Whether the zones sit right on a real body, standing and seated. They
     are starting values.
@@ -183,25 +212,41 @@ in the headset yet.
     are below 0.35.
     - The thumb is left out: on an Index it rests on the stick and buttons
       either way.
-  - **When a fist readies.** Only with nothing in the weapon slot (a hand
-    round a sword is a fist too).
-    - A fist raises the fists and an opened hand lowers them, through the
-      ready-weapon key and its state machine.
+  - **When a fist counts** (the tester, 2026-09-27: a fist made through the
+    touch sensing makes hand to hand active when no weapon is drawn; it can
+    be switched off).
+    - Nothing in the slot: a fist raises the fists, an opened hand lowers
+      them, through the ready-weapon key and its state machine.
+    - A weapon in the slot but sheathed: a fist takes it off first. That is
+      the game's own UnequipItem path: the worn stack is looked up through
+      0x0041E6F0 and 0x00485FA0, then Actor::UnequipItem 0x005F2E70 is
+      called, as the command handler 0x005164C0 does. Once the slot is
+      empty, the fists are raised. The holster remembers the weapon, so a
+      reach to the hip or the shoulder brings it back. The fists are given
+      up after 2 s if the slot does not empty.
+    - A weapon drawn: a fist is the hand round the handle and does nothing.
     - While the fists are up, a swing strikes by motion only as a fist.
     - When the curls are unknown (no skeleton), fists strike as before.
-  - **Not while grabbing.** A fist made round a squeezed grip changes
-    nothing, so a hand closing on a cup does not raise the fists.
+  - **Not while holding or holstering.** A fist made round a held object, or
+    while the grip is the holster's, changes nothing. A squeezed grip alone
+    does not block it: on an Index a real fist squeezes the handle too.
   - **Settings.** `[Hands] Fists`, `FistCloseCurl`, `FistOpenCurl` and
     `FistHoldSeconds`; a toggle in the settings under Hands.
 - **Checked in the game** (`tools/hand-scripts/fist.txt`, PASS, with the
   scripted skeleton reporting every finger at the script's curl):
   - bare hands, curl 1: "fists up", and the game showed them drawn;
-  - curl 0: "fists down", sheathed again.
+  - curl 0: "fists down", sheathed again;
+  - `fist-armed.txt` PASS: sword drawn, fist: nothing; sword sheathed, fist:
+    "the sheathed weapon taken off for the fists", then "the slot is empty -
+    fists up".
 - **Open.**
   - Whether a real Index gives the curls this reads. The harness plays the
     skeleton; the device path (`hand skeleton reads` in the log) has not run
     with a controller in hand.
   - Whether the thresholds tell a fist from a relaxed grip on the handle.
+  - A fist that squeezes the Index's grip also presses the grab. With
+    nothing within reach the grab takes nothing, but an item right at the
+    hand would be picked up. Not tried.
   - SteamVR keeps the bindings a player has changed. With custom OBVR
     bindings saved, the skeleton stays unbound until the defaults are
     reloaded.
@@ -238,6 +283,21 @@ in the headset yet.
     game's icons are DDS files inside the BSAs, and drawing them needs a
     loader OBVR does not have.
   - Wait in the middle of the ring.
+- **The game's own ring instead?** Tried in the game on 2026-09-27
+  (`vanilla-quickkeys.txt`, `vanilla-quickkeys-menu.txt`, menus mirrored to
+  the monitor):
+  - **In the world.** Holding a number key for 2 s opened no menu. The item
+    was equipped at once ("Iron Longsword equipped.").
+  - **In the inventory.** Holding a number key over an item opened no ring
+    either.
+  - The game's QuickKeys menu (0x416) is where hotkeys are assigned, from
+    the inventory and magic menus. It is not something the world shows for
+    using them.
+  - So there is no vanilla ring to show. Opening 0x416 ourselves in the
+    world would pause the game on an assignment screen.
+  - What would carry the vanilla look into OBVR's ring is the game's own item
+    and spell icons. They are DDS textures in the BSAs, which the game's
+    texture loader can open. Not built.
 - **Needs the action manifest.** On the legacy input path the right
   trackpad's click cannot be told from the stick's click
   (`NormalizeLegacyButtons`), so there it readies the weapon instead.

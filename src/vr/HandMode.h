@@ -7,6 +7,7 @@
 #include "vr/Quaternion.h"
 #include "vr/Fist.h"
 #include "vr/Holster.h"
+#include "vr/HolsterFit.h"
 #include "vr/QuickMenu.h"
 #include "vr/Teleport.h"
 
@@ -241,6 +242,8 @@ struct HandModeFrame {
 	EquippedKind equipped = EquippedKind::Nothing;
 	bool haveSword = false;
 	bool haveBow = false;
+	// The player holds an object (the grab): a fist round it is not a fist.
+	bool holdingObject = false;
 	SInt32 playerAction = -1;
 	// The hands are being adjusted (the INI switch or the guided window): a
 	// closed grip holds a hand, it does not grab.

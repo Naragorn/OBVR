@@ -1,0 +1,36 @@
+# The inventory's drop (docs/controls-spec.md 1, "In a game menu"): the left A
+# in the inventory drops the item under the cursor - one per press, however
+# long it is held (2026-09-27: one press had dropped two and three items when
+# the inventory flickered to the HUD and back after a drop).
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\inventory-drop.txt
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+console player.additem 00000C0C 3
+
+expect HandScript: finished
+count 1 Hands: click sent to the Inventory menu
+reject HandScript: WARNING
+
+wait 12
+right pos 0.15 -0.25 -0.35
+right rot 62 29 0
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark inventory
+wait 2
+mark inventory_later
+# One press, held long: one drop.
+left a 1
+wait 1.5
+mark held
+left a 0
+wait 1.5
+mark after_drop
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark closed

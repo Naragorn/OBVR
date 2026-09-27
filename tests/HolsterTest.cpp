@@ -98,10 +98,10 @@ void TestSword() {
 	}
 	{
 		HolsterState s;
-		HolsterVerdict v = StepHolster(s, AtHip(true, EquippedKind::Bow, WeaponSeen::Drawn), kSettings);
+		HolsterVerdict v = StepHolster(s, AtHip(true, EquippedKind::Bow, WeaponSeen::Sheathed), kSettings);
 		Check(v.equip == HolsterKind::Sword && !v.readyClick,
-		      "the bow in hand: the remembered sword is equipped first");
-		v = StepHolster(s, AtHip(true, EquippedKind::Bow, WeaponSeen::Drawn), kSettings);
+		      "the bow sheathed: the remembered sword is equipped first");
+		v = StepHolster(s, AtHip(true, EquippedKind::Bow, WeaponSeen::Sheathed), kSettings);
 		Check(!v.readyClick && v.equip == HolsterKind::None, "until it shows, nothing more");
 		v = StepHolster(s, AtHip(true, EquippedKind::Melee, WeaponSeen::Sheathed), kSettings);
 		Check(v.readyClick, "the sword shows sheathed: drawn");
@@ -110,7 +110,20 @@ void TestSword() {
 	}
 	{
 		HolsterState s;
-		StepHolster(s, AtHip(true, EquippedKind::Bow, WeaponSeen::Drawn), kSettings);
+		const HolsterVerdict v =
+			StepHolster(s, AtHip(true, EquippedKind::Bow, WeaponSeen::Drawn), kSettings);
+		Check(v.otherDrawn && !v.readyClick && v.equip == HolsterKind::None && v.rightClaimed,
+		      "the bow drawn: the sword stays put until the bow is back");
+	}
+	{
+		HolsterState s;
+		const HolsterVerdict v =
+			StepHolster(s, AtHip(true, EquippedKind::Nothing, WeaponSeen::Drawn), kSettings);
+		Check(v.equip == HolsterKind::Sword && !v.otherDrawn, "fists up are not in the way");
+	}
+	{
+		HolsterState s;
+		StepHolster(s, AtHip(true, EquippedKind::Bow, WeaponSeen::Sheathed), kSettings);
 		const HolsterVerdict v =
 			StepHolster(s, AtHip(true, EquippedKind::Melee, WeaponSeen::Drawn), kSettings);
 		Check(!v.readyClick && !v.gaveUp, "the sword shows already drawn: nothing to click");

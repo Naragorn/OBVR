@@ -180,7 +180,7 @@ void TestResetSelected() {
  }
 
  Check(visited==SettingDefinitionCount(),"reset test visits every definition across pages");
- Check(editable+2==visited,"reset test includes the two action rows' refusal paths");
+ Check(editable+3==visited,"reset test includes the three action rows' refusal paths");
  Check(refusedAtDefault==editable,"every editable definition refuses reset at default");
 }
 

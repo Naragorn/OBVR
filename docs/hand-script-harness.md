@@ -63,7 +63,8 @@ The format is documented at the top of `src/test/HandScript.h`. In short:
 - `mark <name>`
 - `dump`
 - `log`
-- for the runner: `expect`, `reject`, `ini`, `console`
+- `key <k> <0|1>` (a keyboard key down or up), `action <name>` (one of OBVR's actions as its settings row fires it: `holster_fit`)
+- for the runner: `expect`, `reject`, `count <n> <text>` (exactly n times), `ini`, `console`
 
 Rules worth knowing:
 - **The head is synthetic by default.** It stands 1.6 m up and looks ahead.
@@ -80,6 +81,20 @@ Rules worth knowing:
 - **Console text is typed by US scan code.** The game's console reads scan
   codes, not the keyboard layout: typed by this layout's keys, "player" came
   out as "plazer" on a German keyboard.
+
+- **A setting changed during a run goes to `OBVR-test.ini`.** `SaveSetting`
+  writes there while the file exists, so the weapon places' fit leaves the
+  player's `OBVR.ini` as it was. `holster-fit.txt` checks this; the file's
+  hash was the same before and after the run.
+- **The harness runs slowly at times.** With the headset asleep a frame can
+  take the full 0.25 s the hand clock allows (the teleport's commit frame on
+  2026-09-27). A glide can then be over within one frame. Logic that has to
+  last must keep its own time rather than rely on seeing several frames: the
+  teleport's noise keeps at least 0.5 s for this reason.
+- **The laser needs aiming at a menu.** `inventory-drop.txt` points the right
+  hand at the first rows with `right rot 62 29 0`. The game's active menu
+  follows the cursor, and a cursor on the HUD leaves it "HudMain". The state
+  line gives the laser's hit and the cursor, to aim by.
 
 ## What the pictures cannot show
 
@@ -104,3 +119,9 @@ Rules worth knowing:
 | `tools/hand-scripts/quick-menu.txt` | the right trackpad opens the ring with the save's hotkeys; the hand chooses slot 1, then slot 3; letting go taps key 3 and the game equips the item | PASS 2026-09-27: "3 Iron Longsword" read from the engine, "hotkey 3 used", the game's own "Iron Longsword equipped." on screen |
 | `tools/hand-scripts/holster.txt` | with the bow in hand, a grip at the left hip equips and draws the sword; the same reach sheathes it; a grip behind the left shoulder equips and draws the bow | PASS 2026-09-27: states bow sheathed, then sword drawn, then sword sheathed, then bow drawn (the `HandScript: state` lines) |
 | `tools/hand-scripts/fist.txt` | with nothing in the weapon slot, a scripted fist raises the fists, an open hand lowers them | PASS 2026-09-27: "Fist: the weapon hand closed - fists up", then "opened - fists down", weapon state 1 then 2 then 1 |
+| `tools/hand-scripts/fist-armed.txt` | sword drawn: a fist does nothing; sword sheathed: a fist takes it off and raises the fists | PASS 2026-09-27 |
+| `tools/hand-scripts/holster-fit.txt` | the weapon places' fit takes both places, saves them to the run's INI only, and a reach to the new place draws | PASS 2026-09-27: "Holster fit: done - melee at 0.25 -0.10 -0.55, bow at -0.10 -0.20 0.05"; OBVR.ini's hash unchanged |
+| `tools/hand-scripts/teleport-noise.txt` | with TeleportMakesNoise=1 the player's movement flags read walk-forward while the teleport moves | PASS 2026-09-27: "the movement flags read 0101" (whether an NPC then hears it: not tested) |
+| `tools/hand-scripts/stick-diagonal.txt` | a flick up jumps once; diagonal pushes and flicks neither jump nor aim; a hold aims and goes | PASS 2026-09-27: exactly 1 "jump sent", exactly 1 "Teleport: going" |
+| `tools/hand-scripts/inventory-drop.txt` | the left A held 1.5 s over an item in the inventory drops one item | PASS 2026-09-27: exactly 1 click; the weight went 99 to 75, the Steel Longsword's 24 (pictures) |
+| `tools/hand-scripts/vanilla-quickkeys*.txt` | experiments: holding a number key opens no ring, in the world or the inventory; the world use equips at once | ran 2026-09-27, see controls-spec 4.4 |

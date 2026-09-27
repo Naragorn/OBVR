@@ -744,8 +744,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		tp.inCombat = ReadBool("Locomotion", "TeleportInCombat", tp.inCombat, path);
 		tp.vignette = ReadBool("Locomotion", "TeleportVignette", tp.vignette, path);
 		tp.blink = ReadBool("Locomotion", "TeleportBlink", tp.blink, path);
-		tp.quietWhenSneaking =
-			ReadBool("Locomotion", "TeleportQuietWhenSneaking", tp.quietWhenSneaking, path);
+		tp.makesNoise =
+			ReadBool("Locomotion", "TeleportMakesNoise", tp.makesNoise, path);
 		tp.fatigueMult = ReadFloat("Locomotion", "TeleportFatigueMult", tp.fatigueMult, path);
 		tp.blinkFatiguePerMetreUp =
 			ReadFloat("Locomotion", "TeleportBlinkFatiguePerMetreUp", tp.blinkFatiguePerMetreUp, path);
@@ -1002,6 +1002,14 @@ bool SaveSetting(const char* section, const char* key, const char* value) {
 	char path[512];
 	if (!BuildPath("OBVR.ini", path, sizeof(path))) {
 		return false;
+	}
+	// During a test run the change goes to OBVR-test.ini, which is read over
+	// OBVR.ini and deleted when the run ends: a run that changes a setting
+	// (the weapon places' fit) leaves the player's file as it was.
+	char overlay[512];
+	if (platform::BuildPluginPath("OBVR-test.ini", overlay, sizeof(overlay)) &&
+	    GetFileAttributesA(overlay) != INVALID_FILE_ATTRIBUTES) {
+		return WritePrivateProfileStringA(section, key, value, overlay) != 0;
 	}
 
 	return WritePrivateProfileStringA(section, key, value, path) != 0;

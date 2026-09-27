@@ -1,0 +1,43 @@
+# The right stick (docs/controls-spec.md 1, 2): a flick straight up jumps; a
+# diagonal push - turning while the thumb drifts up - neither jumps nor aims
+# the teleport, and a hold straight up aims without jumping.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\stick-diagonal.txt
+
+ini Hands Enabled=1
+ini Locomotion Teleport=1
+
+expect HandScript: finished
+count 1 Hands: jump sent
+count 1 Teleport: going
+reject HandScript: WARNING
+
+wait 4
+# A flick straight up: one jump.
+right stick 0 1
+wait 0.1
+right stick 0 0
+wait 1.5
+mark after_flick
+log -- diagonal from here: no jump, no arc --
+
+# Diagonal up-right, held, then flicked: turns only.
+right stick 0.7 0.7
+wait 1.0
+right stick 0 0
+wait 0.5
+right stick 0.75 0.66
+wait 0.1
+right stick 0 0
+wait 0.5
+right stick -0.7 0.7
+wait 1.0
+right stick 0 0
+wait 1
+mark after_diagonal
+log -- hold straight up from here: the arc, no jump --
+right stick 0 1
+wait 0.8
+mark aiming
+right stick 0 0
+wait 2
+mark end_hold

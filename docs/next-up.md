@@ -283,10 +283,16 @@ Every change below is switched by the mode.
   - whether god mode also covers spells and traps (weapons and falls go
     through the path it blocks);
   - the pick's normal (if the ring lies wrong, that is where to look).
-- **Not wired: `TeleportQuietWhenSneaking`.** The engine's detection reads
-  per-frame movement flags (0x005463F0), and a placement sets none. So a
-  teleport is inferred to make no movement noise at all, sneaking or not; the
-  switch changes nothing yet.
+- **`TeleportMakesNoise` (was `TeleportQuietWhenSneaking`, 2026-09-27).**
+  - The engine hears a moving player through the movement flags, which
+    HandleInput rebuilds every frame (0x00671620, written through HighProcess
+    vtable +0x2C8, 0x00631B50). A placement sets none, so by default a
+    teleport makes no movement noise at all, sneaking or not.
+  - With the option on (the tester: "soll es Laerm machen wie laufen"), the
+    setter slot goes through OBVR and adds walk-forward (0x0101) to the
+    player's flags for the move, at least 0.5 s. Sneaking stays sneaking.
+  - Harness: `teleport-noise.txt` PASS, "the movement flags read 0101".
+    Whether an NPC then notices the player has not been tested.
 - **An in-game test** is feasible like the water test: a `[Debug]` switch
   that feeds a scripted right controller into the hand mode and logs `VRTEST`
   lines for position, fatigue and refusals. Not built.

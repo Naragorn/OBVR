@@ -734,6 +734,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.holster.enabled = v != 0.0f; },
 	},
 	{
+		"Hands", "Fit weapon places", "Show where the sword hangs and where the bow sits, with the triggers",
+		ItemKind::Action, 0.0f, 0.0f, 0.0f, 0, false,
+		"", "",
+		+[](const Config&) { return 0.0f; },
+		+[](Config&, float) {},
+		"", "", SettingAction::FitHolsters,
+	},
+	{
 		"Hands", "Fists by a fist", "Full VR, no weapon: a fist raises the fists, an open hand lowers them",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "Fists",
@@ -805,11 +813,11 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.teleport.blink = v != 0.0f; },
 	},
 	{
-		"Teleport", "Quiet when sneaking", "A teleport while sneaking makes no more noise than sneaking",
+		"Teleport", "Makes noise", "Heard like walking while it moves; off, it is silent",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Locomotion", "TeleportQuietWhenSneaking",
-		+[](const Config& c) { return c.hands.teleport.quietWhenSneaking ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.hands.teleport.quietWhenSneaking = v != 0.0f; },
+		"Locomotion", "TeleportMakesNoise",
+		+[](const Config& c) { return c.hands.teleport.makesNoise ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.teleport.makesNoise = v != 0.0f; },
 	},
 	{
 		"Teleport", "Fatigue cost", "Times the price of the game's dodge roll; 0 is free",

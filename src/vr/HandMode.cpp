@@ -210,7 +210,9 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		for (int finger = 0; finger < 5; ++finger) {
 			fin.curl[finger] = f.right.curl[finger];
 		}
-		fin.gripDown = f.right.valid && GripDown(f.right.buttonsPressed);
+		// Holding something, or the grip the holster's (from the last frame:
+		// the holster steps later, and a fist has to hold a quarter second).
+		fin.busy = f.holdingObject || m_holster.rightClaimed;
 		fin.equipped = f.equipped;
 		fin.seen = f.weaponSeen;
 		fin.dt = f.dtSeconds;

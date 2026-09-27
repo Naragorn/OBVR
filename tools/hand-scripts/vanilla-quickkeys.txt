@@ -1,0 +1,26 @@
+# Experiment, not a feature test: what the game's own hotkey ring (the
+# QuickKeys menu, 0x416) does when a number key is held past the game's
+# threshold and let go - does it open, is it drawn, does letting go use the
+# slot? For the question whether OBVR could show the vanilla ring instead of
+# its own. Menus are mirrored to the monitor so the pictures show them.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\vanilla-quickkeys.txt
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+console player.additem 00000C0C 1
+console SetHotkeyItem 3 00000C0C
+
+expect HandScript: finished
+reject HandScript: WARNING
+
+wait 12
+mark before
+key 3 1
+wait 0.4
+mark held_short
+wait 1.6
+mark held_long
+key 3 0
+wait 1
+mark released
+wait 1

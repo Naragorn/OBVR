@@ -1,0 +1,49 @@
+# Fists with a weapon in the slot (docs/controls-spec.md 4.3): the sword
+# drawn, a fist is the hand round it - nothing happens; the sword sheathed,
+# a fist takes it off and raises the fists.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\fist-armed.txt
+
+ini Hands Enabled=1
+ini Hands Fists=1
+ini Hands Holsters=1
+console player.additem 00000C0C 1
+console player.equipitem 00000C0C
+
+expect HandScript: finished
+expect Fist: the weapon hand closed - nothing to ready
+expect Fist: the weapon hand closed - the sheathed weapon taken off for the fists
+expect Fist: the slot is empty - fists up
+reject could NOT be taken off
+reject HandScript: WARNING
+
+wait 12
+mark sword_sheathed
+
+# Draw the sword from the hip, then make a fist round it: nothing.
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 2.5
+mark sword_drawn
+right curl 1
+wait 1
+mark fist_on_sword
+right curl 0
+wait 1
+
+# Sheathe it by the same reach, then a fist: the sword comes off, fists up.
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 2.5
+mark sword_sheathed_again
+right curl 1
+wait 2.5
+mark fists_up
+wait 1

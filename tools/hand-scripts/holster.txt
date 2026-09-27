@@ -19,6 +19,7 @@ expect Holster: reach for the sword - equipping the last one seen
 expect Holster: reach for the sword - sheathing
 expect Holster: reach for the bow - equipping the last one seen
 expect Hands: ready weapon done
+expect Holster: reach for the sword - the bow is drawn, it goes back first
 reject HandScript: WARNING
 reject draw given up
 
@@ -55,4 +56,15 @@ left grip 0
 left pos -0.20 -0.40 -0.30
 wait 3
 mark bow_drawn
+wait 1
+
+# The bow is drawn: a reach to the hip does nothing until it is put away.
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 1.5
+mark bow_still_drawn
 wait 1

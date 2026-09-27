@@ -14,6 +14,10 @@
 // hand arrives stays a grab, so a held object is never dropped by passing the
 // hip.
 //
+// The other kind drawn, the reach does nothing: it goes back first, by its
+// own reach (the tester, 2026-09-27: first sheathe the bow, then draw the
+// sword, and the other way round). Raised fists are not in the way.
+//
 // Oblivion has one weapon slot. When the weapon of the other kind is
 // equipped, the remembered weapon of this kind is equipped first (the game
 // glue does that), and it is drawn once the game shows it in the hand.
@@ -112,6 +116,7 @@ struct HolsterVerdict {
 	HolsterKind equip = HolsterKind::None;    // equip the remembered one now
 	HolsterKind gesture = HolsterKind::None;  // the zone that fired, for the log
 	bool refused = false;       // fired with nothing of that kind to draw
+	bool otherDrawn = false;    // fired while the other kind is drawn: nothing done
 	bool gaveUp = false;        // the equipped weapon never showed
 };
 
@@ -173,6 +178,10 @@ inline HolsterVerdict StepHolster(HolsterState& s, const HolsterInput& in,
 			// Drawn or sheathed, the ready key turns it the other way.
 			v.readyClick = true;
 			s.drawAfterEquip = HolsterKind::None;
+		} else if (in.equipped != EquippedKind::Nothing && in.seen == WeaponSeen::Drawn) {
+			// The other weapon is out: it has to go back first, by its own
+			// reach (the tester, 2026-09-27). Fists up are not in the way.
+			v.otherDrawn = true;
 		} else if (have) {
 			v.equip = fired;
 			s.drawAfterEquip = fired;

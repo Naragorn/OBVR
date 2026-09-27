@@ -1,15 +1,15 @@
-# Teleport (docs/controls-spec.md 1): the right stick held up aims, released
-# it goes. Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\teleport.txt
+# Teleport with TeleportMakesNoise=1: while the glide moves, the player's movement
+# flags read "walking forward", which is what NPCs hear.
 
 ini Hands Enabled=1
 ini Locomotion Teleport=1
 ini Locomotion TeleportInstant=0
-ini Locomotion TeleportMakesNoise=0
+ini Locomotion TeleportMakesNoise=1
 
 expect HandScript: finished
 expect Teleport: arrived
 reject HandScript: WARNING
-reject heard like walking
+expect Teleport: heard like walking - the movement flags read
 
 wait 4
 mark standing

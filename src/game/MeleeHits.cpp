@@ -210,6 +210,36 @@ bool EquipWeaponForm(UInt8* weapon) {
 	return true;
 }
 
+bool UnequipWeapon() {
+	UInt8* const player = PlayerOrNull();
+	UInt8* weapon = nullptr;
+	if (player == nullptr || !EquippedWeapon(player, &weapon) || weapon == nullptr) {
+		return false;
+	}
+	// As the game's UnequipItem command: the worn stack first, then the
+	// unequip with it (addr::kActorUnequipItem).
+	using ChangesFn = void*(__fastcall*)(void* extraList, void* edx);
+	using FindWornFn = void*(__fastcall*)(void* changes, void* edx, UInt8* item, UInt32 zero);
+	void* const changes = reinterpret_cast<ChangesFn>(addr::kGetContainerChanges)(
+		player + addr::kActorExtraListOffset, nullptr);
+	if (!LooksLikeObject(changes)) {
+		return false;
+	}
+	void* const worn =
+		reinterpret_cast<FindWornFn>(addr::kFindWornExtraData)(changes, nullptr, weapon, 0);
+	if (!LooksLikeObject(worn)) {
+		return false;
+	}
+	// Its return value did not say whether it worked (2026-09-27: it read
+	// false for an unequip the game carried out), so the call being made is
+	// what is reported; whether the slot empties is watched by vr::StepFist.
+	using UnequipFn = void(__fastcall*)(UInt8* actor, void* edx, UInt8* item, UInt32 count,
+	                                    void* extraData, UInt32 unk3, bool lock, UInt32 unk5);
+	reinterpret_cast<UnequipFn>(addr::kActorUnequipItem)(player, nullptr, weapon, 1, worn, 0, false,
+	                                                     0);
+	return true;
+}
+
 UInt32 EquippedWeaponFormId() {
 	UInt8* const player = PlayerOrNull();
 	UInt8* weapon = nullptr;

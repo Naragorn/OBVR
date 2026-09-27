@@ -6,8 +6,10 @@
 
 #include "core/Config.h"
 #include "core/Log.h"
+#include "game/KeyScanCodes.h"
 #include "game/MeleeHits.h"
 #include "platform/PluginPath.h"
+#include "platform/Win32Min.h"
 #include "test/HandScript.h"
 #include "test/HandScriptPose.h"
 #include "vr/OpenVRBackend.h"
@@ -23,6 +25,7 @@ bool g_started = false;
 float g_clock = 0.0f;
 bool g_markedThisFrame = false;
 char g_markName[64] = "";
+char g_action[64] = "";
 
 bool ReadWholeFile(const char* path, std::string& out) {
 	FILE* file = nullptr;
@@ -81,7 +84,12 @@ void StepHandScriptFrame(float dt, bool inWorld, bool menuUp, const vr::OpenVRBa
 		}
 		g_started = true;
 		// The weapon's form ID, for a scenario's console lines ({weapon}).
-		OBVR_LOG("HandScript: started - equipped weapon form %08X", game::EquippedWeaponFormId());
+		OBVR_LOG("HandScript: started - equipped weapon form %08X, Hands %d, teleport %d noise %d, "
+		         "holsters %d, fists %d, quick menu %d",
+		         game::EquippedWeaponFormId(), GetConfig().handTracking ? 1 : 0,
+		         GetConfig().hands.teleport.enabled ? 1 : 0,
+		         GetConfig().hands.teleport.makesNoise ? 1 : 0, GetConfig().hands.holster.enabled ? 1 : 0,
+		         GetConfig().hands.fist.enabled ? 1 : 0, GetConfig().hands.quickMenu.enabled ? 1 : 0);
 		dt = 0.0f;
 	}
 	if (g_run.finished) {
@@ -98,6 +106,22 @@ void StepHandScriptFrame(float dt, bool inWorld, bool menuUp, const vr::OpenVRBa
 		OBVR_LOG("HandScript: %s %s (t=%.2f s, line %u)",
 		         said->op == ScriptOp::Mark ? "mark" : "log", said->text.c_str(),
 		         static_cast<double>(g_clock), said->line);
+	}
+	for (const ScriptStep* key : events.keys) {
+		const UInt32 code = static_cast<UInt32>(key->values[0]);
+		const bool down = key->values[1] != 0.0f;
+		UInt32 scan = game::UsScanCode(code);
+		if (scan == 0) {
+			scan = MapVirtualKeyA(code, MAPVK_VK_TO_VSC);
+		}
+		keybd_event(static_cast<UInt8>(code), static_cast<UInt8>(scan),
+		            KEYEVENTF_SCANCODE | (down ? 0 : KEYEVENTF_KEYUP), 0);
+		OBVR_LOG("HandScript: key %02X %s (t=%.2f s)", code, down ? "down" : "up",
+		         static_cast<double>(g_clock));
+	}
+	for (const ScriptStep* action : events.actions) {
+		strncpy_s(g_action, action->text.c_str(), _TRUNCATE);
+		OBVR_LOG("HandScript: action %s asked for (t=%.2f s)", g_action, static_cast<double>(g_clock));
 	}
 	if (events.mirror) {
 		backend.ShowMirrorWindow();
@@ -145,6 +169,14 @@ void GetHandScriptHeadPoseMatrix(vr::openvr::HmdMatrix34& matrix) {
 	matrix.m[0][3] = position.x;
 	matrix.m[1][3] = position.y;
 	matrix.m[2][3] = position.z;
+}
+
+bool TakeHandScriptAction(const char* name) {
+	if (g_action[0] == '\0' || std::strcmp(g_action, name) != 0) {
+		return false;
+	}
+	g_action[0] = '\0';
+	return true;
 }
 
 }  // namespace obvr::test
