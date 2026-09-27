@@ -183,7 +183,8 @@ struct HandSettings {
 	// hand with it on (2026-09-25). The pick, the crosshair and the tooltip
 	// follow the laser either way.
 	bool aimWithHand = false;
-	// Activate on the left A instead of the right, for a left-handed player.
+	// Swaps the hands for a left-handed player (vr::AssignHandRoles): the left
+	// controller becomes the weapon hand.
 	bool leftHanded = false;
 	// Sneak only while the right stick is held down, instead of a flick down
 	// switching it on and the next one off.

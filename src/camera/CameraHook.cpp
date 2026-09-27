@@ -509,10 +509,22 @@ void UpdateTeleport(const Config& config, vr::OpenVRBackend& backend, bool activ
 	const vr::TeleportSettings& tp = config.hands.teleport;
 	const float perMetre = config.tracker.unitsPerMetre;
 	bool arcShown = false;
-	if (!active && g_teleportMove.phase != vr::TeleportPhase::Idle) {
-		// The mode stopped mid-move: the move is dropped where it is.
-		if (tp.instant) {
+	if (g_teleportMove.phase != vr::TeleportPhase::Idle && (!active || menuIsUp)) {
+		// A menu opened mid-move (a notice, a tutorial message), or the mode
+		// stopped: the move ends at once, at its target, the view back from
+		// black and the player hurtable again, so nothing of the teleport is
+		// left standing while the menu waits for its click. Pausing it there
+		// instead was when one message box could not be clicked away
+		// (2026-09-27); that the pause was the cause is not proven.
+		if (g_teleportMove.fade) {
 			backend.FadeToColor(0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		}
+		const bool placed = active && game::PlacePlayerAt(g_teleportMove.to);
+		if (g_teleportLinesLeft > 0) {
+			--g_teleportLinesLeft;
+			OBVR_LOG("Teleport: %s mid-move - ended at once%s",
+			         active ? "a menu opened" : "the mode stopped",
+			         placed ? ", placed at the target" : "");
 		}
 		g_teleportMove = vr::TeleportMove{};
 	}
@@ -571,8 +583,8 @@ void UpdateTeleport(const Config& config, vr::OpenVRBackend& backend, bool activ
 		                     NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 1.0f}, false);
 	}
 
-	// The move, once it runs. A menu pauses the game and the move with it.
-	if (g_teleportMove.phase != vr::TeleportPhase::Idle && !menuIsUp) {
+	// The move, once it runs (a menu has ended it above).
+	if (g_teleportMove.phase != vr::TeleportPhase::Idle) {
 		const vr::TeleportMoveStep step = vr::StepTeleportMove(g_teleportMove, dtSeconds);
 		if (step.fadeOut) {
 			backend.FadeToColor(tp.fadeSeconds, 0.0f, 0.0f, 0.0f, 1.0f);
@@ -582,7 +594,7 @@ void UpdateTeleport(const Config& config, vr::OpenVRBackend& backend, bool activ
 				--g_teleportLinesLeft;
 				OBVR_LOG("Teleport: the player could not be placed - the move stops");
 			}
-			if (tp.instant) {
+			if (g_teleportMove.fade) {
 				backend.FadeToColor(tp.fadeSeconds, 0.0f, 0.0f, 0.0f, 0.0f);
 			}
 			g_teleportMove = vr::TeleportMove{};
@@ -1246,6 +1258,18 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			                                          "2.5 s");
 		}
 
+		// Every click the laser sends into a game menu, the first several
+		// dozen: a message box that could not be clicked away (2026-09-27)
+		// left no trace of whether a click was sent at all.
+		static bool clickWasSent = false;
+		static UInt32 clickLinesLeft = 40;
+		if (controls.menuClick && !clickWasSent && menuIsUp && clickLinesLeft > 0) {
+			--clickLinesLeft;
+			OBVR_LOG("Hands: click sent to the %s menu at cursor %.0f,%.0f",
+			         game::MenuIdName(game::ActiveMenuId()), static_cast<double>(frame.cursorX),
+			         static_cast<double>(frame.cursorY));
+		}
+		clickWasSent = controls.menuClick;
 		game::ApplyHandControls(controls, config.handKeys, config.hands.turnSpeed);
 		g_handControlsHeld = true;
 		if ((g_hand.laserHit || g_hand.pokeHover) &&
@@ -4607,7 +4631,11 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// gates and action phases, while the render callback applies its angles to
 	// Spine2 after Oblivion has finished animating it.
 	ThirdPersonAimVisualInput visualInput;
-	visualInput.enabled = readPlayer && config.aimFollowsGaze;
+	// Not on a corpse: at death the game goes to third person, and the head and
+	// spine were turned to the headset on the falling ragdoll (2026-09-27 log,
+	// "Bip01 Head follows the HMD" right after "the death view is held").
+	const bool livingPlayer = readPlayer && !game::PlayerIsDead();
+	visualInput.enabled = livingPlayer && config.aimFollowsGaze;
 	visualInput.aimAtSource = atSource;
 	visualInput.headsetConnected = g_headTracker.IsHeadsetConnected();
 	visualInput.isThirdPerson = isThirdPerson;
@@ -4631,7 +4659,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	g_thirdPersonAimVisualYaw = visualDecision.yaw;
 	g_thirdPersonAimVisualPitch = visualDecision.pitch;
 	g_thirdPersonHeadVisualWanted = ThirdPersonHeadVisualWanted(
-		readPlayer && config.aimFollowsGaze, config.thirdPersonHeadFollowsGaze,
+		livingPlayer && config.aimFollowsGaze, config.thirdPersonHeadFollowsGaze,
 		g_headTracker.IsHeadsetConnected(), isThirdPerson,
 		config.aimInThirdPerson, game::IsMenuMode());
 	g_thirdPersonHeadVisualYaw = sourceAimYaw;

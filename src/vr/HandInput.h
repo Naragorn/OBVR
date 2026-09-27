@@ -384,7 +384,7 @@ struct HandFrameInput {
 // menu, the right one is escape. In the world: right trigger attacks (the
 // bow draws while it is held and looses when it is released, a spell hand
 // casts on the left trigger), swings attack by themselves, the raised left
-// hand blocks, either grip grabs, right A activates, left A jumps, the left
+// hand blocks, either grip grabs, right A jumps, left A activates, the left
 // stick walks and runs while it is pressed in, the right stick turns,
 // teleports when pushed forward (vr::StepTeleportStick, decided before this
 // plan) and sneaks on a flick down, its click readies the weapon, the left
@@ -403,9 +403,12 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 		out.attack = (in.rightTrigger && !in.drawBlocked && !in.meleeByMotion) || in.swingAttackHeld;
 		out.sneak = in.rightStickDown;
 		out.escape = in.rightMenuButton;
-		out.activate = !in.leftHanded && in.rightA;  // the pointing hand's A
+		// The right A jumps (2026-09-27: the left thumb is busy walking, and the
+		// right stick pushed forward teleports); the left A activates.
 		if (in.leftHanded) {
-			out.jump = in.rightA;  // left-handed: the A buttons swap
+			out.activate = in.rightA;  // left-handed: the A buttons swap
+		} else {
+			out.jump = in.rightA;
 		}
 		out.readyWeapon = in.rightStickClick;
 		out.turn = in.rightThumbX;
@@ -413,11 +416,9 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 	if (in.leftValid) {
 		out.cast = in.leftTrigger;
 		if (in.leftHanded) {
-			out.activate = in.leftA;  // left-handed: the left A activates instead
-		} else {
-			// Jumping moved here from the right stick's flick up (2026-09-27):
-			// pushed forward, that stick now teleports.
 			out.jump = in.leftA;
+		} else {
+			out.activate = in.leftA;
 		}
 		out.run = in.leftStickHeld;
 		out.menu = in.leftMenuButton;

@@ -712,6 +712,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		tp.glideMetresPerSecond =
 			ReadFloat("Locomotion", "TeleportGlideSpeed", tp.glideMetresPerSecond, path);
 		tp.fadeSeconds = ReadFloat("Locomotion", "TeleportFadeSeconds", tp.fadeSeconds, path);
+		tp.instantFade = ReadBool("Locomotion", "TeleportInstantFade", tp.instantFade, path);
 		tp.inCombat = ReadBool("Locomotion", "TeleportInCombat", tp.inCombat, path);
 		tp.vignette = ReadBool("Locomotion", "TeleportVignette", tp.vignette, path);
 		tp.blink = ReadBool("Locomotion", "TeleportBlink", tp.blink, path);

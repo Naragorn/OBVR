@@ -756,6 +756,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.teleport.fadeSeconds = v; },
 	},
 	{
+		"Teleport", "Instant: fade to black", "Off: the instant teleport jumps there with no black",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Locomotion", "TeleportInstantFade",
+		+[](const Config& c) { return c.hands.teleport.instantFade ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.teleport.instantFade = v != 0.0f; },
+	},
+	{
 		"Teleport", "In combat", "Teleport while fighting, as a dodge",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Locomotion", "TeleportInCombat",

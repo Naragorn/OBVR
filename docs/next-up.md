@@ -187,7 +187,9 @@ Every change below is switched by the mode.
   - Let back under `TeleportStickRelease` (0.3), it goes.
   - A right grip while aiming cancels.
   - For a quarter second after the release the stick does not turn.
-  - Jumping moved to the left A. The right stick's flick up does nothing now.
+  - Jumping is on the right A, activating on the left A (the tester, after
+    the first run: the left thumb is busy walking). The right stick's flick up
+    does nothing now.
   - Logic: `vr::StepTeleportStick`.
 - **Arc and ring.**
   - The arc is a throw at `sqrt(g R)`, walked in 31 segments. Each segment is
@@ -210,12 +212,45 @@ Every change below is switched by the mode.
   - Paid through the engine's own fatigue call before the move.
   - Too little fatigue locks the teleport until there is enough; nobody
     collapses.
+  - Confirmed in the headset on 2026-09-27: 30 a teleport, locked when short.
+  - **Why the dodge's price** (decided with the tester on 2026-09-27):
+    - the default teleport is a dodge step, and the game already prices one;
+    - nothing new to learn or tune;
+    - mods that change the jump's or dodge's cost change the teleport's too;
+    - Acrobatics Expert halves it, as it halves the jump.
+  - Where vanilla ends: the jump formula (`fFatigueJumpBase` 30 +
+    `fFatigueJumpMult` x load, x `fPerkJumpFatigueExpertMult` 0.5 from
+    Expert) is read in the exe (0x00672AEF). That the dodge roll pays it is
+    read there too: its action (0x005F5050) has no fatigue code of its own.
+  - **The alternative, not built** (proposed first, set aside for the above;
+    kept in case the vanilla price feels too cheap or too flat):
+
+    ```
+    cost = (Base + PerMetre x distance + PerMetreUp x rise)
+           x (1 + Load x weight / max weight)
+           x (0.5 from Acrobatics Expert, else 1)
+    ```
+
+    - Base 30, a jump.
+    - PerMetre 7.5: a full 4 m costs 60, two jumps or a power attack
+      ((7 + 0.1 x weapon weight) x 5, cs.uesp.net Fatigue Game Settings).
+    - PerMetreUp 10, climbing only.
+    - Load 0.5: fully loaded costs half as much again.
+    - Against a starting maximum of 150 to 200 (Endurance + Strength +
+      Agility + Willpower, UESP Oblivion:Fatigue) and 10 a second back, that is
+      two or three full teleports in a row, one back in about 6 s. The vanilla
+      price gives five or six.
+    - The multiplier (`TeleportFatigueMult`) already covers "more expensive";
+      the distance term is what the alternative would add.
 - **The move.**
   - Glide (default): the player placed along the line every frame at
     `TeleportGlideSpeed` (15 m/s, 5 to 40), by the same sequence the SetPos
     command runs (`game::PlacePlayerAt`).
   - Instant: the compositor's FadeToColor to black, placed, and back
-    (`TeleportFadeSeconds` each way).
+    (`TeleportFadeSeconds` each way); with `TeleportInstantFade=0` no black
+    at all, there in one frame.
+  - A menu opening mid-move ends the move at once at its target (see the
+    stuck message box below).
   - Untouchable from the commit to the end through the console's god mode
     flag, and restored to what it was.
   - The vignette while gliding (`TeleportVignette`).
@@ -227,7 +262,7 @@ Every change below is switched by the mode.
   - The onboarding page "Teleport" sets on/off, the mode, the range, combat,
     the vignette and Blink.
 - **Tests.** `teleport_test` (stick, arc, landing, price, glide and fade
-  flows, overlay geometry), `hand_mode_test` (left A jumps, the stick aims and
+  flows, overlay geometry), `hand_mode_test` (right A jumps, the stick aims and
   goes, a grip cancels), `onboarding_test` (the page).
 - **Not verified, to watch in the headset:**
   - whether layer 31 hits ground, statics and clutter as its name suggests;
@@ -243,17 +278,39 @@ Every change below is switched by the mode.
 - **An in-game test** is feasible like the water test: a `[Debug]` switch
   that feeds a scripted right controller into the hand mode and logs `VRTEST`
   lines for position, fatigue and refusals. Not built.
+- **The stuck message box (2026-09-27, first headset run).**
+  - A game message (the Generic menu, 0x3F3) opened about five log lines
+    after a glide began, and the trigger could not click it away. The game
+    had to be ended.
+  - Read in OBVR.log.prev: the laser hit the box and the trigger was pulled
+    three times; whether a click was sent is not in the log.
+  - Every other message box that session closed with a click.
+  - The only thing that differed: a teleport was mid-move. Its move paused
+    under the menu and the god mode flag stayed on.
+  - The cause is not proven. Since then a menu that opens mid-move ends the
+    move at once at its target and drops the god mode, and every click the
+    laser sends into a game menu is logged ("Hands: click sent to the ...
+    menu"), so the next occurrence shows whether the click left OBVR.
+- **Floating corpse (2026-09-27).**
+  - The body hovered for a few seconds after death before it lay on the
+    ground.
+  - The log shows the third-person head and spine visuals switching on at
+    the death ("Bip01 Head follows the HMD after animation"), so the ragdoll's
+    head and spine were turned towards the headset every frame.
+  - They are now off while the player is dead.
+  - That they held the ragdoll up is a hypothesis; vanilla slow ragdolls are
+    the other candidate (combat-comfort-spec.md, Death).
 
 **Buttons in the hand-tracked mode now** (`PlanHandControls`):
 - Right hand:
   - trigger: attack;
-  - A: activate;
+  - A: jump;
   - menu button: escape;
   - stick: x turns, pushed forward teleports, a flick down sneaks, the click
     readies the weapon.
 - Left hand:
   - trigger: cast;
-  - A: jump;
+  - A: activate (what the right laser points at);
   - menu button: OBVR's menu;
   - stick: walks; held in, it runs;
   - trackpad click: the quick menu.

@@ -271,9 +271,20 @@ void TestInstant() {
 	s.fadeSeconds = 0.0f;
 	m = StartTeleport(from, to, s, kUnitsPerMetre);
 	step = StepTeleportMove(m, kFrame);
-	Check(step.fadeOut && step.place && step.fadeIn, "no fade time: all in one frame");
+	Check(!step.fadeOut && step.place && !step.fadeIn && step.finished && step.invulnerable,
+	      "no fade time: no black, there in one frame, untouchable for it");
 	step = StepTeleportMove(m, kFrame);
-	Check(step.finished, "and over the next");
+	Check(!step.place && !step.invulnerable, "and nothing after");
+
+	std::printf("Instant without black\n");
+	s.fadeSeconds = 0.1f;
+	s.instantFade = false;
+	m = StartTeleport(from, to, s, kUnitsPerMetre);
+	Check(m.phase == TeleportPhase::FadingOut && !m.fade, "no fade wanted");
+	step = StepTeleportMove(m, kFrame);
+	Check(!step.fadeOut && !step.fadeIn && step.place && step.finished,
+	      "the view jumps there in one frame, nothing goes black");
+	Check(Near(step.at.y, 200.0f), "to the target");
 }
 
 NiPoint3 Column(const vr::openvr::HmdMatrix34& m, int c) {

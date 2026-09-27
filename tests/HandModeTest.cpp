@@ -125,52 +125,39 @@ void TestPlanner() {
 	left.leftStickHeld = true;
 	left.leftTrackpadClick = true;
 	w = PlanHandControls(left, 0.4f);
-	Check(!w.activate && !w.grab, "left A no longer activates");
+	Check(w.activate && !w.jump && !w.grab, "left A activates, and does not jump");
 	HandFrameInput rightA;
 	rightA.rightValid = true;
 	rightA.leftValid = true;
 	rightA.rightA = true;
-	Check(PlanHandControls(rightA, 0.4f).activate, "right A activates, for a right-handed player");
+	w = PlanHandControls(rightA, 0.4f);
+	Check(w.jump && !w.activate, "right A jumps, and does not activate");
 	rightA.rightValid = false;
-	Check(!PlanHandControls(rightA, 0.4f).activate, "not from an untracked right hand");
+	Check(!PlanHandControls(rightA, 0.4f).jump, "not from an untracked right hand");
+	HandFrameInput leftUntracked;
+	leftUntracked.rightValid = true;
+	leftUntracked.leftA = true;
+	Check(!PlanHandControls(leftUntracked, 0.4f).activate, "nor activates an untracked left hand");
 	HandFrameInput lefty;
 	lefty.rightValid = true;
 	lefty.leftValid = true;
 	lefty.leftHanded = true;
 	lefty.rightA = true;
-	Check(!PlanHandControls(lefty, 0.4f).activate, "left-handed: the right A no longer activates");
+	w = PlanHandControls(lefty, 0.4f);
+	Check(w.activate && !w.jump, "left-handed: the A buttons swap, the right A activates");
 	lefty.rightA = false;
 	lefty.leftA = true;
-	Check(PlanHandControls(lefty, 0.4f).activate, "the left A does");
+	w = PlanHandControls(lefty, 0.4f);
+	Check(w.jump && !w.activate, "and the left A jumps");
 	lefty.leftValid = false;
-	Check(!PlanHandControls(lefty, 0.4f).activate, "not from an untracked left hand");
-	Check(w.run && !w.sneak, "the left stick held in runs, and its click no longer sneaks");
-	Check(w.quickMenu, "the left trackpad click opens the quick menu");
+	Check(!PlanHandControls(lefty, 0.4f).jump, "not from an untracked left hand");
+	Check(PlanHandControls(left, 0.4f).run && !PlanHandControls(left, 0.4f).sneak,
+	      "the left stick held in runs, and its click no longer sneaks");
+	Check(PlanHandControls(left, 0.4f).quickMenu, "the left trackpad click opens the quick menu");
 
 	HandFrameInput flicks;
 	flicks.rightValid = true;
 	flicks.leftValid = true;
-	flicks.leftA = true;
-	w = PlanHandControls(flicks, 0.4f);
-	Check(w.jump && !w.sneak && !w.activate, "left A jumps, and only jumps");
-	flicks.leftA = false;
-	flicks.rightA = true;
-	w = PlanHandControls(flicks, 0.4f);
-	Check(!w.jump && w.activate, "right A activates and does not jump");
-	flicks.rightA = false;
-	flicks.leftA = true;
-	flicks.leftValid = false;
-	w = PlanHandControls(flicks, 0.4f);
-	Check(!w.jump, "an untracked left hand does not jump");
-	flicks.leftValid = true;
-	flicks.leftA = false;
-	HandFrameInput leftyJump;
-	leftyJump.rightValid = true;
-	leftyJump.leftValid = true;
-	leftyJump.leftHanded = true;
-	leftyJump.rightA = true;
-	w = PlanHandControls(leftyJump, 0.4f);
-	Check(w.jump && !w.activate, "left-handed: the A buttons swap, right A jumps");
 	flicks.rightStickDown = true;
 	w = PlanHandControls(flicks, 0.4f);
 	Check(w.sneak && !w.jump, "flicked down sneaks");
@@ -1183,7 +1170,7 @@ void TestLeftButtonsInHandMode() {
 	frame.teleportAllowed = false;
 	frame.left.buttonsPressed = 1ull << openvr::kButtonA;
 	r = mode.Update(frame, settings);
-	Check(r.controls.jump && !r.controls.activate, "left A jumps");
+	Check(r.controls.activate && !r.controls.jump, "left A activates");
 	frame.left.buttonsPressed = 0;
 	mode.Update(frame, settings);
 	frame.right.thumbY = -0.9f;
@@ -1194,7 +1181,7 @@ void TestLeftButtonsInHandMode() {
 
 	frame.right.buttonsPressed = 1ull << openvr::kButtonA;
 	r = mode.Update(frame, settings);
-	Check(r.controls.activate && !r.controls.grab, "right A activates");
+	Check(r.controls.jump && !r.controls.activate && !r.controls.grab, "right A jumps");
 }
 
 void TestStickFlick() {

@@ -26,8 +26,10 @@ struct TeleportSettings {
 	float rangeMetres = 4.0f;
 	// The glide's speed, metres a second (kGlideSpeedMin..kGlideSpeedMax).
 	float glideMetresPerSecond = 15.0f;
-	// The instant mode's fade, each way.
+	// The instant mode's fade, each way, and whether it fades to black at
+	// all: off, the view jumps there in one frame (2026-09-27, asked for).
 	float fadeSeconds = 0.1f;
+	bool instantFade = true;
 	bool inCombat = true;
 	bool vignette = true;
 	// Places walking cannot reach: higher than a jump, across a gap. Off, the
@@ -284,6 +286,7 @@ struct TeleportMove {
 	NiPoint3 to{0.0f, 0.0f, 0.0f};
 	float elapsed = 0.0f;
 	float duration = 0.0f;
+	bool fade = false;  // the instant mode fades to black and back
 };
 
 struct TeleportMoveStep {
@@ -315,7 +318,8 @@ inline TeleportMove StartTeleport(const NiPoint3& from, const NiPoint3& to,
 	m.to = to;
 	if (s.instant) {
 		m.phase = TeleportPhase::FadingOut;
-		m.duration = s.fadeSeconds > 0.0f ? s.fadeSeconds : 0.0f;
+		m.fade = s.instantFade && s.fadeSeconds > 0.0f;
+		m.duration = m.fade ? s.fadeSeconds : 0.0f;
 	} else {
 		m.phase = TeleportPhase::Gliding;
 		m.duration = GlideSeconds(math::Sqrt((to - from).LengthSquared()), s.glideMetresPerSecond,
@@ -344,13 +348,18 @@ inline TeleportMoveStep StepTeleportMove(TeleportMove& m, float dtSeconds) {
 		}
 		break;
 	case TeleportPhase::FadingOut:
-		step.fadeOut = first;
+		step.fadeOut = first && m.fade;
 		if (t >= 1.0f) {
 			step.place = true;
 			step.at = m.to;
-			step.fadeIn = true;
-			m.phase = TeleportPhase::FadingIn;
-			m.elapsed = 0.0f;
+			if (m.fade) {
+				step.fadeIn = true;
+				m.phase = TeleportPhase::FadingIn;
+				m.elapsed = 0.0f;
+			} else {
+				m.phase = TeleportPhase::Idle;
+				step.finished = true;
+			}
 		}
 		break;
 	case TeleportPhase::FadingIn:
