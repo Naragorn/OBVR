@@ -4,6 +4,9 @@
 
 #include <cstdio>
 
+#include <cmath>
+
+#include "vr/Holster.h"
 #include "vr/Stow.h"
 
 using namespace obvr;
@@ -20,21 +23,56 @@ void Check(bool condition, const char* what) {
 	}
 }
 
-const NiPoint3 kChest{0.0f, 0.05f, -0.40f};
+const NiPoint3 kChest{0.02f, 0.20f, -0.25f};
 const NiPoint3 kAhead{0.0f, 0.45f, -0.40f};
 constexpr UInt32 kRef = 0x12345678;
 
 void TestZone() {
-	std::printf("The zone round the torso\n");
+	std::printf("The spot at the chest\n");
 	const StowSettings s;
 	Check(InStowZone(kChest, s), "the chest");
-	Check(InStowZone(NiPoint3{0.1f, 0.0f, -0.75f}, s), "the belly, low and a little right");
-	Check(!InStowZone(kAhead, s), "held out ahead: not at the body");
+	Check(InStowZone(NiPoint3{s.centreRight, s.centreForward, s.centreUp}, s), "the spot's middle");
+	Check(InStowZone(NiPoint3{0.0f, s.centreForward, s.centreUp + s.radius}, s),
+	      "its edge belongs to it");
+	// Where the tester held items against the chest (OBVR.log, 2026-09-27).
+	Check(InStowZone(NiPoint3{0.06f, 0.22f, -0.21f}, s), "the chest, just under the chin");
+	Check(InStowZone(NiPoint3{0.01f, 0.23f, -0.23f}, s), "the chest, the hand held out a little");
+	Check(InStowZone(NiPoint3{0.05f, 0.22f, -0.29f}, s), "the chest, lower");
+	// Letting go in front of oneself drops the item again (the second test:
+	// with the wide zone nothing could be dropped ahead).
+	Check(!InStowZone(kAhead, s), "held out ahead: dropped");
+	Check(!InStowZone(NiPoint3{0.00f, 0.23f, -0.67f}, s), "down at the belly, in front: dropped");
 	Check(!InStowZone(NiPoint3{0.0f, 0.0f, -0.10f}, s), "at the mouth: left for eating");
-	Check(!InStowZone(NiPoint3{0.0f, 0.0f, -0.90f}, s), "below the hips");
-	Check(!InStowZone(NiPoint3{0.35f, 0.0f, -0.40f}, s), "out at the side");
-	Check(InStowZone(NiPoint3{0.0f, 0.0f, s.top}, s) && InStowZone(NiPoint3{0.0f, 0.0f, s.bottom}, s),
-	      "its top and bottom belong to it");
+	Check(!InStowZone(NiPoint3{0.35f, 0.2f, -0.30f}, s), "out at the side");
+}
+
+void TestSpotPose() {
+	std::printf("Where the spot is drawn\n");
+	const StowSettings s;
+	const NiPoint3 eyes{0.3f, 1.6f, -0.2f};
+	// Looking along -z (OpenVR's forward): ahead is -z, right is +x.
+	NiPoint3 at = StowSpotInTracking(Quaternion::Identity(), eyes, s);
+	Check(std::fabs(at.x - (0.3f + s.centreRight)) < 1e-4f &&
+	          std::fabs(at.y - (1.6f + s.centreUp)) < 1e-4f &&
+	          std::fabs(at.z - (-0.2f - s.centreForward)) < 1e-4f,
+	      "ahead of the eyes and below them");
+	// Turned 90 degrees to the left: ahead is -x.
+	const Quaternion left = FromAxisAngle(0.0f, 1.0f, 0.0f, 90.0f);
+	at = StowSpotInTracking(left, eyes, s);
+	Check(std::fabs(at.x - (0.3f - s.centreForward)) < 1e-3f && std::fabs(at.z + 0.2f) < 1e-3f,
+	      "it turns with the heading");
+	// And it is where BodyRelative puts the zone's middle.
+	StowSettings offset = s;
+	offset.centreRight = 0.1f;
+	at = StowSpotInTracking(left, eyes, offset);
+	const NiPoint3 back = BodyRelative(left, eyes, at);
+	Check(std::fabs(back.x - 0.1f) < 1e-3f && std::fabs(back.y - offset.centreForward) < 1e-3f &&
+	          std::fabs(back.z - offset.centreUp) < 1e-3f,
+	      "the inverse of the body frame");
+	// Looking straight down: the level heading falls back to ahead = -z.
+	const Quaternion down = FromAxisAngle(1.0f, 0.0f, 0.0f, -90.0f);
+	at = StowSpotInTracking(down, eyes, s);
+	Check(std::fabs(at.y - (1.6f + s.centreUp)) < 1e-4f, "looking down, still at the chest");
 }
 
 StowInput Holding(const NiPoint3& hand, UInt32 ref = kRef, bool item = true) {
@@ -62,8 +100,9 @@ void TestFlows() {
 		StowState s;
 		StowVerdict v = StepStow(s, Holding(kAhead), settings);
 		Check(!v.atBody, "held out ahead: nothing to stow");
+		Check(v.showSpot, "an item held: the spot shows");
 		v = StepStow(s, Holding(kChest), settings);
-		Check(v.atBody, "brought to the chest: letting go would stow it");
+		Check(v.atBody && v.showSpot, "brought to the chest: lit, letting go would stow it");
 		v = StepStow(s, LetGo(kRef), settings);
 		Check(v.take == 0 && v.waiting, "let go, the engine still holds it: wait, no throw");
 		v = StepStow(s, LetGo(0), settings);
@@ -80,17 +119,39 @@ void TestFlows() {
 	{
 		StowState s;
 		StepStow(s, Holding(kChest), settings);
-		StepStow(s, Holding(kAhead), settings);
+		for (int i = 0; i < 40; ++i) {
+			StepStow(s, Holding(kAhead), settings);  // 0.44 s away
+		}
 		const StowVerdict v = StepStow(s, LetGo(0), settings);
-		Check(v.take == 0 && !v.waiting && !v.notItem, "moved away again before letting go: dropped");
+		Check(v.take == 0 && !v.waiting && !v.notItem, "moved away again, then let go: dropped");
+	}
+	{
+		// The hand leaves the zone as it opens: a frame or two later still stows.
+		StowState s;
+		StepStow(s, Holding(kChest), settings);
+		StepStow(s, Holding(kAhead), settings);
+		StepStow(s, Holding(kAhead), settings);
+		StowInput open = LetGo(0);
+		open.handRelative = kAhead;
+		const StowVerdict v = StepStow(s, open, settings);
+		Check(v.take == kRef, "let go 0.02 s after leaving the body: still stowed");
+	}
+	{
+		// A new object is not stowed on the time the last one spent there.
+		StowState s;
+		StepStow(s, Holding(kChest), settings);
+		StepStow(s, LetGo(0), settings);
+		StepStow(s, Holding(kAhead, 0x33333333), settings);
+		const StowVerdict v = StepStow(s, LetGo(0), settings);
+		Check(v.take == 0, "the next object, held only away from the body: dropped");
 	}
 	{
 		StowState s;
 		StepStow(s, Holding(kChest, kRef, false), settings);
 		const StowVerdict v = StepStow(s, LetGo(0), settings);
 		Check(v.notItem && v.take == 0, "not an item (a body, say): dropped as usual");
-		Check(!StepStow(s, Holding(kChest, kRef, false), settings).atBody,
-		      "and it never shows as stowable");
+		const StowVerdict held = StepStow(s, Holding(kChest, kRef, false), settings);
+		Check(!held.atBody && !held.showSpot, "and it never shows as stowable, nor the spot");
 	}
 	{
 		StowState s;
@@ -169,6 +230,7 @@ void TestActivate() {
 
 int main() {
 	TestZone();
+	TestSpotPose();
 	TestFlows();
 	TestActivate();
 	if (g_failures != 0) {

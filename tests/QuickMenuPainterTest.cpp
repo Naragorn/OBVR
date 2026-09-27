@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "ui/QuickMenuPainter.h"
+#include "ui/StowSpotPainter.h"
 #include "vr/QuickMenu.h"
 
 using namespace obvr;
@@ -119,9 +120,29 @@ void TestPaint() {
 	Check(labelInk, "setting: \"Set hotkey\" written under the middle");
 }
 
+void TestStowSpot() {
+	std::printf("The stow spot\n");
+	std::vector<render::Pixel> pixels(kStowSpotCanvas * kStowSpotCanvas);
+	Canvas canvas(pixels.data(), kStowSpotCanvas, kStowSpotCanvas);
+	const SInt32 c = static_cast<SInt32>(kStowSpotCanvas) / 2;
+	StowSpotView view;
+	PaintStowSpot(canvas, view);
+	Check(canvas.GetPixel(0, 0).a == 0, "outside the circle: clear");
+	Check(canvas.GetPixel(c, 3).a > 0, "the ring at the edge");
+	Check(canvas.GetPixel(c, c / 2).a == 0, "inside the ring, not lit: clear");
+	Check(canvas.GetPixel(c, c).a > 0, "the diamond in the middle");
+	const UInt8 faint = canvas.GetPixel(c, 3).a;
+	view.lit = true;
+	PaintStowSpotFor(canvas, &view);
+	Check(canvas.GetPixel(c, c / 2).a > 0, "lit: filled");
+	Check(canvas.GetPixel(c, 3).a > faint, "lit: the ring brighter");
+	Check(canvas.GetPixel(0, 0).a == 0, "lit, outside the circle: still clear");
+}
+
 }  // namespace
 
 int main() {
+	TestStowSpot();
 	TestSplit();
 	TestPaint();
 	if (g_failures != 0) {

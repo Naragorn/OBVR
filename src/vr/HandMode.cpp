@@ -311,6 +311,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		m_leftMenu, cl.valid && ButtonBDown(cl.buttonsPressed));
 	in.rightStickClick = sticks.rightClick;
 	in.leftStickClick = sticks.leftClick;
+	in.stickClickWaits = s.holster.enabled;
 	in.leftTrackpadClick = StepRisingEdge(
 		m_leftTrackpad, cl.valid && TrackpadClickDown(cl.buttonsPressed));
 	in.leftStickHeld = cl.valid && StickClickDown(cl.buttonsPressed);
@@ -436,6 +437,7 @@ void HandMode::HoldTaps(HandControlsWanted& controls, const HandModeFrame& f,
 		controls.block = false;
 	}
 	controls.togglePov = StepTapHold(m_povHold, controls.togglePov, f.dtSeconds);
+	controls.wait = StepTapHold(m_waitHold, controls.wait, f.dtSeconds);
 	controls.quickMenu = StepTapHold(m_quickHold, controls.quickMenu, f.dtSeconds);
 }
 
@@ -755,6 +757,7 @@ HandModeResult HandMode::UpdateMenusOnly(const HandModeFrame& f, const HandSetti
 			m_leftMenu,
 			f.left.valid && ButtonBDown(f.left.buttonsPressed));
 		in.menuMode = true;
+		in.restMenuUp = f.restMenuUp;
 		const bool wasRight = m_pointRight;
 		StepPointerHand(f, in.rightTrigger, in.leftTrigger);
 		if (m_pointRight != wasRight) {

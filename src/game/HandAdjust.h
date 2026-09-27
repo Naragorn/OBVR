@@ -12,6 +12,12 @@ namespace obvr::game {
 void RequestHandAdjustGuide();
 bool TakeHandAdjustGuideRequest();
 
+// The guided fit of the weapon places (vr::StepHolsterFit), asked for from
+// the native settings menu's "Fit weapon places" row; the hand mode takes it
+// once the menu has closed and the player is back in the world.
+void RequestHolsterFit();
+bool TakeHolsterFitRequest();
+
 void StartHandAdjust();
 void StopHandAdjust();
 bool HandAdjustActive();

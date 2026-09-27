@@ -1409,6 +1409,15 @@ void TestCrosshairTooltipPolicy() {
 		      "all tooltip capture flows erase the centre only on a playable frame");
 	}
 
+	// The crosshair and its tooltip on the controller ([Hands] TooltipScale).
+	Check(obvr::camera::HandTooltipWidth(0.1f, false, 3.0f) == 0.1f,
+	      "not on the hand: the seated width, whatever the scale");
+	Check(std::fabs(obvr::camera::HandTooltipWidth(0.1f, true, 2.0f) - 0.2f) < 1e-6f,
+	      "on the hand: the seated width times the scale");
+	Check(std::fabs(obvr::camera::HandTooltipWidth(0.1f, true, 0.1f) - 0.05f) < 1e-6f &&
+	          std::fabs(obvr::camera::HandTooltipWidth(0.1f, true, 9.0f) - 0.5f) < 1e-6f,
+	      "the scale is held within 0.5 to 5");
+
 	const PixelRectangle normal = TooltipAboveNameRectangle(800, 600, 60);
 	Check(normal.left == 700 && normal.right == 760 && normal.top == 420 &&
 	          normal.bottom == 480,

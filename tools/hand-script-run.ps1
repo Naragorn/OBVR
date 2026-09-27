@@ -29,6 +29,12 @@ param(
 	# turned back by this many degrees (0, 90, 180, 270).
 	[ValidateSet(0, 90, 180, 270)][int]$DumpRotate = 270,
 	[switch]$FullScreenShots,
+	# The save the run starts from, by name, loaded from the main menu's
+	# console. The player's own last save changes whenever they play
+	# (2026-09-27: every holster run failed on an over-encumbered autosave
+	# with a tutorial box up), so scenarios start from their own save,
+	# written by make-harness-save.txt. Empty or "continue": continue the last save.
+	[string]$Save = "OBVRHarness",
 	[switch]$KeepGameOpen
 )
 
@@ -111,15 +117,18 @@ public static class ObvrHandRun {
 	// Left and right button up, and every key the hands use (HandKeyMap's
 	// defaults and the hotkeys 1-8) up: an up for a key that is not down
 	// does nothing.
+	[DllImport("user32.dll")] static extern short GetAsyncKeyState(int key);
 	public static void ReleaseAll() {
-		mouse_event(0x0004, 0, 0, 0, IntPtr.Zero);
-		mouse_event(0x0010, 0, 0, 0, IntPtr.Zero);
+		// Only a button that is down: a right-button up on its own opens the
+		// desktop's context menu (seen 2026-09-27).
+		if ((GetAsyncKeyState(0x01) & 0x8000) != 0) mouse_event(0x0004, 0, 0, 0, IntPtr.Zero);
+		if ((GetAsyncKeyState(0x02) & 0x8000) != 0) mouse_event(0x0010, 0, 0, 0, IntPtr.Zero);
 		// Virtual key and the US scan code OBVR sends it by (KeyScanCodes.h):
 		// up by scan code, as it went down, and by the layout's own code.
 		byte[,] keys = { {0x20, 0x39}, {0x5A, 0x2C}, {0x45, 0x12}, {0x11, 0x1D}, {0x10, 0x2A}, {0x46, 0x21},
 		                 {0x09, 0x0F}, {0x1B, 0x01}, {0x70, 0x3B}, {0x52, 0x13}, {0x57, 0x11}, {0x41, 0x1E},
 		                 {0x53, 0x1F}, {0x44, 0x20}, {0x43, 0x2E}, {0x31, 0x02}, {0x32, 0x03}, {0x33, 0x04},
-		                 {0x34, 0x05}, {0x35, 0x06}, {0x36, 0x07}, {0x37, 0x08}, {0x38, 0x09} };
+		                 {0x34, 0x05}, {0x35, 0x06}, {0x36, 0x07}, {0x37, 0x08}, {0x38, 0x09}, {0x54, 0x14} };
 		for (int i = 0; i < keys.GetLength(0); ++i) {
 			keybd_event(keys[i, 0], keys[i, 1], 8u | 2u, IntPtr.Zero);
 			keybd_event(keys[i, 0], (byte)MapVirtualKey(keys[i, 0], 0), 2u, IntPtr.Zero);
@@ -383,6 +392,23 @@ try {
 		Start-Process -FilePath "explorer.exe" -ArgumentList $GameDir
 		Start-Sleep -Seconds 3
 	}
+	# The scenarios' own save: the main menu's Continue takes the newest
+	# save file, and the console does not open there - so for this run the
+	# harness save is made the newest, and afterwards the oldest again, so
+	# the player's own Continue still finds their own last save.
+	$harnessSave = @()
+	if ($Save -ne "" -and $Save -ne "continue") {
+		$saves = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "My Games\Oblivion\Saves"
+		foreach ($ext in "ess", "obse") {
+			$f = Join-Path $saves "$Save.$ext"
+			if (Test-Path -LiteralPath $f) {
+				$harnessSave += [pscustomobject]@{ Path = $f; Time = (Get-Item -LiteralPath $f).LastWriteTime }
+				(Get-Item -LiteralPath $f).LastWriteTime = Get-Date
+			} elseif ($ext -eq "ess") {
+				throw "No save $Save.ess in $saves - run make-harness-save.txt with -Save continue once."
+			}
+		}
+	}
 	& (Join-Path $PSScriptRoot "start-obse-from-explorer.ps1") -GameDir $GameDir
 
 	# Main menu: OBVR's "ready" line, then Continue (Down selects it, Enter).
@@ -397,7 +423,7 @@ try {
 	Start-Sleep -Seconds 4
 	Focus-Game | Out-Null
 	Take-Shots "main-menu"
-	Write-Host "Continuing the latest save..."
+	Write-Host "Continuing the latest save$(if ($harnessSave) { " ($Save, made the newest for this run)" })..."
 	[ObvrHandRun]::Press(0x28, 0x50, $true)
 	Start-Sleep -Milliseconds 400
 	[ObvrHandRun]::Press(0x0D, 0x1C, $false)
@@ -558,6 +584,14 @@ try {
 		# killed game cannot let go): the right button held by a block stuck
 		# for every later run, 2026-09-27. Both buttons and the hands' keys up.
 		[ObvrHandRun]::ReleaseAll()
+	}
+	# The harness save is always left the oldest save there is (and just
+	# written by make-harness-save.txt, too), so the player's own Continue
+	# never lands in it.
+	$savesDir = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "My Games\Oblivion\Saves"
+	foreach ($ext in "ess", "obse") {
+		$f = Join-Path $savesDir "OBVRHarness.$ext"
+		if (Test-Path -LiteralPath $f) { (Get-Item -LiteralPath $f).LastWriteTime = Get-Date "2000-01-01" }
 	}
 	Remove-Item -LiteralPath $testIni -Force -ErrorAction SilentlyContinue
 	Remove-Item -LiteralPath $scriptTarget -Force -ErrorAction SilentlyContinue

@@ -798,6 +798,18 @@ struct PixelRectangle {
 // Fixed HUD-relative home for the action icon when the user asks for it above
 // the lower-right target name. Kept pure so clipping and tiny-frame fallbacks
 // are covered without Direct3D.
+// The crosshair's width - and with it the tooltip icon it carries - hung on
+// the controller in Full VR ([Hands] TooltipScale): the seated width times the
+// scale, which stays within 0.5 to 5. Not on the hand: the seated width, so
+// the seated mode never changes.
+inline float HandTooltipWidth(float widthMetres, bool onHand, float scale) {
+	if (!onHand) {
+		return widthMetres;
+	}
+	const float s = scale < 0.5f ? 0.5f : (scale > 5.0f ? 5.0f : scale);
+	return widthMetres * s;
+}
+
 PixelRectangle TooltipAboveNameRectangle(UInt32 width, UInt32 height,
 	                                     UInt32 sizePixels);
 

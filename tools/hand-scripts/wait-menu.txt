@@ -1,0 +1,27 @@
+# The right stick's click opens the Rest menu (docs/controls-spec.md 1): with
+# the weapons drawn by reaching ([Hands] Holsters, on), the click no longer
+# readies the weapon; it taps the game's Rest key (T, Oblivion.ini [Controls]
+# "Rest=0014FFFF"). Right B closes it again.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\wait-menu.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Render MirrorMenusToMonitor=1
+
+expect HandScript: finished
+expect top menu SleepWait
+reject HandScript: WARNING
+reject Hands: ready weapon sent
+
+wait 10
+mark before
+right click 1
+wait 0.2
+right click 0
+wait 1.5
+mark rest_menu
+right b 1
+wait 0.2
+right b 0
+wait 1.5
+mark closed

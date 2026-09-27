@@ -139,6 +139,11 @@ struct HandSettings {
 	// ring around it (render::ReachMarker). Each on its own switch.
 	bool reachTooltip = true;
 	bool reachRing = true;
+	// How much larger the crosshair and its tooltip icon are when they hang
+	// ahead of the controller, and the icon on a reachable item, than the
+	// seated crosshair ([Hands] TooltipScale; the tester, 2026-09-27: "die
+	// tooltips am controller crosshair sind zu klein"). 1 is the seated size.
+	float tooltipScale = 2.0f;
 	// How close a hand has to be for the ring to show, metres, and how
 	// opaque it is (0 to 1). Beyond GrabReachMetres an item counts only while
 	// the hand's laser points roughly at it (game::ReachingFor), so an item
@@ -212,6 +217,10 @@ struct HandSettings {
 	// Fists by making a fist ([Hands] Fists, vr::Fist).
 	FistSettings fist;
 
+	// How much faster the draw and sheathe animations play ([Hands]
+	// WeaponDrawSpeed, game::StepWeaponDrawSpeed); 1 is the game's own speed.
+	float weaponDrawSpeed = 10.0f;
+
 	// Stowing a held item at the body, and taking loose items only by hand
 	// ([Hands] StowAtBody, TakeOnlyByHand, vr::Stow).
 	StowSettings stow;
@@ -226,6 +235,10 @@ struct HandSettings {
 struct HandModeFrame {
 	float dtSeconds = 0.0f;
 	bool menuMode = false;
+	// The Rest menu (SleepWait) is on top: the right B closes it with the
+	// Rest key, as T does, not with Escape, which opened the pause menu over
+	// it (2026-09-27).
+	bool restMenuUp = false;
 	bool settingsMenuOpen = false;  // OBVR's own menu: the sticks steer it, nothing else fires
 	bool firstPerson = true;
 	bool meleeInHand = false;  // a drawn blade, blunt weapon or bare fists: swung, not shot
@@ -458,6 +471,7 @@ private:
 	ReadyWeaponState m_ready;
 	bool m_runLatched = false;
 	TapHoldState m_povHold;
+	TapHoldState m_waitHold;
 	TapHoldState m_quickHold;
 	SneakHoldState m_sneak;
 	// OBVR's own menu open: the sticks and buttons steer it, nothing else.

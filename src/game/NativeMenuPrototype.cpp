@@ -126,6 +126,11 @@ class SettingWriter final: public ui::NativeSettingWriter {
  }
  void Recenter() override { g_recenterRequested.Set(true); }
  void AdjustHands() override { game::RequestHandAdjustGuide(); g_closeForAdjust=true; }
+ void FitHolsters() override {
+  game::RequestHolsterFit();
+  g_closeForAdjust=true;
+  OBVR_LOG("Native settings: Fit weapon places - the menu closes and the fit starts");
+ }
 };
 
 // Only changed text is sent through the script compiler. INI reloads appear

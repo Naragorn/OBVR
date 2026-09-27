@@ -47,6 +47,7 @@
 #include "game/ControlBindings.h"
 #include "game/GrabPhysics.h"
 #include "game/TakeItem.h"
+#include "game/WeaponDrawSpeed.h"
 #include "game/GrabNearBody.h"
 #include "game/NearbyItems.h"
 #include "game/MeleeHit.h"
@@ -74,6 +75,7 @@
 #include "ui/SettingsMenu.h"
 #include "ui/SettingsMenuLayer.h"
 #include "ui/QuickMenuPainter.h"
+#include "ui/StowSpotPainter.h"
 #include "ui/GuidePanel.h"
 #include "render/InterfaceRenderHook.h"
 #include "render/CursorPickHook.h"
@@ -689,6 +691,34 @@ vr::QuickMenuState g_quickMenu;
 
 // Stowing a held item at the body (vr::StepStow).
 vr::StowState g_stow;
+// The spot at the chest an item is let go in (ui::PaintStowSpot).
+ui::CanvasOverlay g_stowSpotLayer("obvr.stowspot", "OBVR Stow Spot", ui::kStowSpotCanvas,
+                                  ui::kStowSpotCanvas);
+ui::StowSpotView g_stowSpotView;
+UInt32 g_stowSpotRevision = 1;
+
+// The spot's pose: at its point, its face turned to the eyes, upright.
+vr::openvr::HmdMatrix34 StowSpotPose(const NiPoint3& at, const NiPoint3& eyes) {
+	NiPoint3 z = eyes - at;
+	float length = math::Sqrt(z.LengthSquared());
+	z = length > 1e-4f ? z * (1.0f / length) : NiPoint3{0.0f, 0.0f, 1.0f};
+	// x = up cross z, level; y = z cross x.
+	NiPoint3 x{z.z, 0.0f, -z.x};
+	length = math::Sqrt(x.LengthSquared());
+	x = length > 1e-4f ? x * (1.0f / length) : NiPoint3{1.0f, 0.0f, 0.0f};
+	const NiPoint3 y{z.y * x.z - z.z * x.y, z.z * x.x - z.x * x.z, z.x * x.y - z.y * x.x};
+	vr::openvr::HmdMatrix34 pose{};
+	const NiPoint3 axes[3] = {x, y, z};
+	for (int column = 0; column < 3; ++column) {
+		pose.m[0][column] = axes[column].x;
+		pose.m[1][column] = axes[column].y;
+		pose.m[2][column] = axes[column].z;
+	}
+	pose.m[0][3] = at.x;
+	pose.m[1][3] = at.y;
+	pose.m[2][3] = at.z;
+	return pose;
+}
 bool g_stowWasAtBody = false;
 UInt32 g_stowLinesLeft = 40;
 // The activate button kept from the game over a loose item
@@ -838,7 +868,7 @@ void UpdateQuickMenu(const Config& config, vr::OpenVRBackend& backend, bool allo
 bool UpdateHolsterFit(Config& config, vr::OpenVRBackend& backend, const vr::HandModeFrame& frame,
                       bool allowed) {
 	vr::HolsterFitInput in;
-	if (test::TakeHandScriptAction("holster_fit")) {
+	if (test::TakeHandScriptAction("holster_fit") || game::TakeHolsterFitRequest()) {
 		g_holsterFitRequested = true;
 	}
 	// Asked for from the settings menu: it starts once that has closed and
@@ -989,6 +1019,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_quickMenu = vr::QuickMenuState{};
 		g_stow = vr::StowState{};
 		g_quickMenuLayer.Hide(g_headTracker.GetBackendForFrame());
+		g_stowSpotLayer.Hide(g_headTracker.GetBackendForFrame());
 		UpdateTeleport(config, g_headTracker.GetBackendForFrame(), false, menuIsUp, dt);
 		return;
 	}
@@ -1060,6 +1091,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	vr::HandModeFrame frame;
 	frame.dtSeconds = dt;
 	frame.menuMode = menuIsUp;
+	frame.restMenuUp = menuIsUp && game::TopVisibleMenu() == game::kMenuIdSleepWait;
 	frame.settingsMenuOpen = g_settingsMenu.IsOpen() || g_onboarding.IsOpen();
 	frame.firstPerson = !ReadIsThirdPerson();
 	frame.meleeInHand = active && config.hands.motionHits && game::MeleeInHand(nullptr);
@@ -1323,6 +1355,26 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			}
 		}
 	}
+	// Drawing and sheathing without the animation's second (game::StepWeaponDrawSpeed):
+	// the Equip and Unequip sequences play WeaponDrawSpeed times faster.
+	{
+		static UInt32 s_drawLinesLeft = 60;
+		const game::WeaponDrawSpeedReport draw =
+			game::StepWeaponDrawSpeed(config.hands.weaponDrawSpeed, active);
+		if ((draw.newlyHastened > 0 || draw.restored > 0) && s_drawLinesLeft > 0) {
+			--s_drawLinesLeft;
+			if (draw.newlyHastened > 0) {
+				OBVR_LOG("Hands: the %s animation plays %.0fx faster (%u sequence(s), its own speed "
+				         "%.2f)",
+				         draw.group == 17 ? "draw" : "sheathe",
+				         static_cast<double>(config.hands.weaponDrawSpeed), draw.hastened,
+				         static_cast<double>(draw.originalFreq));
+			} else {
+				OBVR_LOG("Hands: %u draw or sheathe sequence(s) given their own speed back",
+				         draw.restored);
+			}
+		}
+	}
 	{
 		// The ring sets hotkeys where the cursor is on the inventory or the
 		// magic menu (the menu under the cursor: the click lands there).
@@ -1339,7 +1391,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	if (test::HandScriptMarkedThisFrame()) {
 		OBVR_LOG("HandScript: state - world %d, menu %d, third person %d, head %d at %.2f %.2f "
 		         "%.2f, right %d at %.2f %.2f %.2f stick %.2f %.2f, left %d, camera %d, hand "
-		         "pinned %d, teleport allowed %d aiming %d commit %d, weapon %d (slot %d), active menu %s, laser hit %d at %.0f,%.0f, cursor %d at %.0f,%.0f",
+		         "pinned %d, teleport allowed %d aiming %d commit %d, weapon %d (slot %d), active menu %s, laser hit %d at %.0f,%.0f, cursor %d at %.0f,%.0f, top menu %s",
 		         frame.inWorld ? 1 : 0, menuIsUp ? 1 : 0, frame.firstPerson ? 0 : 1,
 		         frame.headValid ? 1 : 0, static_cast<double>(frame.headPosition.x),
 		         static_cast<double>(frame.headPosition.y),
@@ -1355,7 +1407,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		         menuIsUp ? game::MenuIdName(game::ActiveMenuId()) : "none", g_hand.laserHit ? 1 : 0,
 		         static_cast<double>(g_hand.laserPixelX), static_cast<double>(g_hand.laserPixelY),
 		         frame.cursorValid ? 1 : 0, static_cast<double>(frame.cursorX),
-		         static_cast<double>(frame.cursorY));
+		         static_cast<double>(frame.cursorY), game::MenuIdName(game::TopVisibleMenu()));
 		// What the hands could take and what they hold: the grab and the stow
 		// scenarios read whether an item was found at all.
 		const NiPoint3 camera =
@@ -1542,6 +1594,21 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 		stowIn.dt = g_deltaSeconds;
 		const vr::StowVerdict stow = vr::StepStow(g_stow, stowIn, config.hands.stow);
+		// The spot, while an item is held; lit while the hand is in it.
+		if (stow.showSpot && frame.headValid) {
+			if (g_stowSpotView.lit != stow.atBody) {
+				g_stowSpotView.lit = stow.atBody;
+				++g_stowSpotRevision;
+			}
+			const NiPoint3 at =
+				vr::StowSpotInTracking(frame.head, frame.headPosition, config.hands.stow);
+			g_stowSpotLayer.Show(backend, render::GetGameDevice(),
+			                     StowSpotPose(at, frame.headPosition),
+			                     2.0f * config.hands.stow.radius, g_stowSpotRevision,
+			                     ui::PaintStowSpotFor, &g_stowSpotView);
+		} else {
+			g_stowSpotLayer.Hide(backend);
+		}
 		const bool stowing = stow.waiting || stow.take != 0;
 		game::StepGrabPhysics(true, stowing ? 0.0f : config.hands.throwStrength, throwValid,
 		                      throwVelocity, g_deltaSeconds);
@@ -1802,7 +1869,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		// weapon stood: "the button does nothing" was reported on
 		// 2026-09-25, and this says whether the press left OBVR at all.
 		static bool readyWasWanted = false;
-		static UInt32 readyLinesLeft = 8;
+		static UInt32 readyLinesLeft = 60;
 		if (controls.readyWeapon && !readyWasWanted && readyLinesLeft > 0) {
 			--readyLinesLeft;
 			const game::WeaponState weapon = game::ReadPlayerWeaponState();
@@ -1811,16 +1878,30 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			         : weapon == game::WeaponState::Sheathed ? "sheathed"
 			                                                 : "unknown");
 		}
+		// How long the draw or sheathe took, from the key to the game showing
+		// it with no animation left: the length of the animation, which
+		// WeaponDrawSpeed shortens.
+		static float s_readySeconds = 0.0f;
+		if (controls.readyWeapon && !readyWasWanted) {
+			s_readySeconds = 0.0f;
+		} else {
+			s_readySeconds += g_deltaSeconds;
+		}
 		readyWasWanted = controls.readyWeapon;
-		static UInt32 readyEndLinesLeft = 12;
+		static UInt32 readyEndLinesLeft = 60;
 		if ((g_hand.ready.reached || g_hand.ready.gaveUp) && readyEndLinesLeft > 0) {
 			--readyEndLinesLeft;
 			// With the player's action code: a give-up while blocking or in an
 			// equip animation throughout never sent the key at all.
-			OBVR_LOG("Hands: ready weapon %s (player action %d)",
+			// And the weapon's type: two-handers were still seen settling for
+			// about a second after the draw (2026-09-27).
+			SInt32 weaponType = -1;
+			game::EquippedWeaponForm(&weaponType);
+			OBVR_LOG("Hands: ready weapon %s after %.2f s (player action %d, weapon type %d)",
 			         g_hand.ready.reached ? "done - the game shows the wanted state"
 			                              : "given up - the game did not follow within 2.5 s",
-			         static_cast<int>(game::ReadPlayerAction()));
+			         static_cast<double>(s_readySeconds), static_cast<int>(game::ReadPlayerAction()),
+			         static_cast<int>(weaponType));
 		}
 
 		// Every click the laser sends into a game menu, the first several
@@ -4124,19 +4205,24 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// and the tooltip it carries hang ahead of that controller.
 	// On the hand the pick follows, the one the tooltip belongs to.
 	const bool crosshairLeft = g_hand.pickWithLeftHand;
+	const bool crosshairOnHand =
+		config.handTracking && (crosshairLeft ? g_hand.leftAimValid : g_hand.aimValid);
 	g_crosshairLayer.SetHandPlacement(
-		config.handTracking && (crosshairLeft ? g_hand.leftAimValid : g_hand.aimValid),
+		crosshairOnHand,
 		g_headTracker.GetBackendForFrame().HandDeviceIndex(
 			vr::HandDeviceForRole(!crosshairLeft, g_handRolesSwapped)),
 		config.hands.laserPitchDegrees,
 		crosshairLeft ? -config.hands.laserYawDegrees : config.hands.laserYawDegrees,
 		config.hands.laserOriginMetres);
-	g_crosshairLayer.SetRoomPlacement(g_reachIconShown, g_reachIconPose,
-	                                  render::kReachIconWidthMetres);
+	g_crosshairLayer.SetRoomPlacement(
+		g_reachIconShown, g_reachIconPose,
+		HandTooltipWidth(render::kReachIconWidthMetres, true, config.hands.tooltipScale));
 	g_crosshairLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                        crosshairLifted && content != CrosshairContent::Hidden &&
 	                            !hiddenForDeath,
-	                        crosshair.distanceMetres, crosshair.widthMetres);
+	                        crosshair.distanceMetres,
+	                        HandTooltipWidth(crosshair.widthMetres, crosshairOnHand,
+	                                         config.hands.tooltipScale));
 
 	// Snap turn vignette: fades in when a snap fires, out after. Updated every frame
 	// so the fade advances even when nothing is happening (keeps it hidden).

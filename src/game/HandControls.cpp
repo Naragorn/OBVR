@@ -93,6 +93,7 @@ void ApplyHandControls(const vr::HandControlsWanted& wanted, const HandKeyMap& k
 		SetKey('0' + n, wanted.quickKey == n);
 	}
 	SetKey(keys.togglePov, wanted.togglePov);
+	SetKey(keys.wait, wanted.wait);
 	SetKey(keys.forward, wanted.move.forward);
 	SetKey(keys.back, wanted.move.back);
 	SetKey(keys.left, wanted.move.left);

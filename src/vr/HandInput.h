@@ -295,6 +295,7 @@ struct HandControlsWanted {
 	// the right trackpad (vr::StepQuickMenu), tapped.
 	UInt8 quickKey = 0;
 	bool togglePov = false;  // the view switch (R)
+	bool wait = false;       // the Rest menu (T): wait, or sleep in a bed
 	StickDirections move;
 	float turn = 0.0f;  // -1..1, the right stick's x, for the mouse-driven turn
 	bool menuClick = false;  // the left mouse button, for the laser cursor
@@ -385,6 +386,11 @@ struct HandFrameInput {
 	bool menuMode = false;
 	bool pointRight = true;        // in a menu: which hand holds the pointer, and so the click
 	bool leftHanded = false;       // activate on the left A rather than the right
+	// The weapons are drawn by reaching ([Hands] Holsters): the right stick's
+	// click is then free and opens the Rest menu instead of readying the
+	// weapon (the tester, 2026-09-27).
+	bool stickClickWaits = false;
+	bool restMenuUp = false;  // the Rest menu is on top: the right B cancels it with its own key
 	// The inventory's drop (StepDropPress): the run key (Shift) held, and the
 	// click under it.
 	bool dropShift = false;
@@ -455,7 +461,14 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 		out.menuClick = out.menuClick || in.dropClick;
 		out.run = in.dropShift;
 		out.menu = in.leftMenuButton;
-		out.escape = in.rightMenuButton;
+		// In the Rest menu Escape opens the pause menu over it; its own key
+		// (T) cancels it (gamefaqs, via r/oblivion 4x987o: "press T to
+		// cancel").
+		if (in.restMenuUp) {
+			out.wait = in.rightMenuButton;
+		} else {
+			out.escape = in.rightMenuButton;
+		}
 		return out;
 	}
 	if (in.rightValid) {
@@ -464,7 +477,11 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 		out.jump = in.rightStickJump;
 		out.escape = in.rightMenuButton;
 		out.activate = !in.leftHanded && in.rightA;  // the pointing hand's A
-		out.readyWeapon = in.rightStickClick;
+		if (in.stickClickWaits) {
+			out.wait = in.rightStickClick;
+		} else {
+			out.readyWeapon = in.rightStickClick;
+		}
 		out.turn = in.rightThumbX;
 	}
 	if (in.leftValid) {

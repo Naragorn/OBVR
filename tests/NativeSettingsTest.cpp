@@ -22,7 +22,9 @@ struct Writer:NativeSettingWriter {
  }
  void Recenter() override { ++recenters; }
  void AdjustHands() override { ++adjusts; }
+ void FitHolsters() override { ++fits; }
  int adjusts=0;
+ int fits=0;
 };
 
 float ChangedFromDefault(const SettingDefinition& definition, float canonical) {
@@ -354,6 +356,26 @@ void TestHandAdjust() {
   if(!fired) menu.Click(kNativeNext,config);
  }
  Check(fired,"the Adjust hands row is in the menu");
+
+ // "Fit weapon places" did nothing in the native menu (2026-09-27): its
+ // action was never handed on.
+ NativeSettings fitMenu; Writer fitWriter;
+ bool fitFired=false;
+ for(unsigned page=0;page<fitMenu.Pages() && !fitFired;++page) {
+  for(unsigned slot=0;slot<7;++slot) {
+   const auto* d=fitMenu.Row(slot);
+   if(d && d->action==SettingAction::FitHolsters) {
+    const auto edit=fitMenu.Click(kNativeRowBase+static_cast<int>(slot)*3+2,config);
+    Check(CommitNativeEdit(edit,config,fitWriter)==NativeEditResult::Action && fitWriter.fits==1 &&
+          fitWriter.adjusts==0 && fitWriter.recenters==0 && fitWriter.saves==0,
+          "the Fit weapon places row starts the fit, saves nothing");
+    fitFired=true;
+    break;
+   }
+  }
+  if(!fitFired) fitMenu.Click(kNativeNext,config);
+ }
+ Check(fitFired,"the Fit weapon places row is in the menu");
 }
 
 void TestUpdateWindow() {

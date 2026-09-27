@@ -959,6 +959,7 @@ add_test(NAME quick_menu COMMAND quick_menu_test)
 add_executable(quick_menu_painter_test
 	QuickMenuPainterTest.cpp
 	../src/ui/QuickMenuPainter.cpp
+	../src/ui/StowSpotPainter.cpp
 	../src/ui/MenuCanvas.cpp
 	../src/ui/MenuFont.cpp
 )
@@ -1004,7 +1005,7 @@ endif()
 
 add_test(NAME holster_fit COMMAND holster_fit_test)
 
-add_executable(stow_test StowTest.cpp)
+add_executable(stow_test StowTest.cpp ../src/vr/Quaternion.cpp)
 
 target_include_directories(stow_test PRIVATE ../src)
 

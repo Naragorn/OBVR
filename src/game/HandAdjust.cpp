@@ -11,6 +11,7 @@ namespace obvr::game {
 namespace {
 
 AtomicFlag g_guideRequested;
+AtomicFlag g_holsterFitRequested;
 AtomicFlag g_finishRequested;
 AtomicFlag g_active;
 ui::HandAdjustSession g_session;  // stepped only in the frame
@@ -19,6 +20,8 @@ ui::HandAdjustSession g_session;  // stepped only in the frame
 
 void RequestHandAdjustGuide() { g_guideRequested.Set(true); }
 bool TakeHandAdjustGuideRequest() { return g_guideRequested.Take(); }
+void RequestHolsterFit() { g_holsterFitRequested.Set(true); }
+bool TakeHolsterFitRequest() { return g_holsterFitRequested.Take(); }
 
 void StartHandAdjust() {
 	ui::StartHandAdjustSession(g_session);

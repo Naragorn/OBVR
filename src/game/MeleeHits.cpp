@@ -2,6 +2,7 @@
 
 #include "core/AddressSpace.h"
 #include "core/Log.h"
+#include "core/Memory.h"
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
 #include "game/MeleeHit.h"
@@ -198,6 +199,47 @@ UInt8* EquippedWeaponForm(SInt32* type) {
 	return weapon;
 }
 
+// Equipping without the item's up/down sound, as xOBSE's EquipItemSilent
+// does (Commands_Inventory.cpp, OverrideGameSounds_Execute): the `jne` at the
+// start of the sound picker 0x005E96E0 ("char* GetItemUpDownSound(TESForm*
+// item, bool up, arg2)") nopped for the call, so it answers no sound for any
+// item, and put back after. The bytes are checked first; anything else there
+// and the equip keeps its sound.
+namespace {
+
+constexpr UInt32 kItemSoundBranch = 0x005E96E7;
+constexpr UInt8 kItemSoundBranchBytes[2] = {0x75, 0x06};
+constexpr UInt8 kItemSoundNops[2] = {0x90, 0x90};
+
+class SilentItemSounds {
+public:
+	SilentItemSounds() {
+		m_patched = mem::Verify(kItemSoundBranch, kItemSoundBranchBytes, 2) &&
+		            mem::SafeWrite(kItemSoundBranch, kItemSoundNops, 2);
+	}
+	~SilentItemSounds() {
+		if (m_patched) {
+			mem::SafeWrite(kItemSoundBranch, kItemSoundBranchBytes, 2);
+		}
+	}
+	bool Patched() const { return m_patched; }
+
+private:
+	bool m_patched = false;
+};
+
+void ReportSilence(bool patched) {
+	static bool s_said = false;
+	if (!s_said) {
+		s_said = true;
+		OBVR_LOG("Hands: weapons change without the item sound (%s)",
+		         patched ? "the sound picker at 005E96E7 nopped for the call"
+		                 : "NOT - the sound picker is not what 1.2.0.416 has there");
+	}
+}
+
+}  // namespace
+
 bool EquipWeaponForm(UInt8* weapon) {
 	UInt8* const player = PlayerOrNull();
 	if (player == nullptr || !LooksLikeObject(weapon)) {
@@ -205,6 +247,8 @@ bool EquipWeaponForm(UInt8* weapon) {
 	}
 	using EquipItemFn = void(__fastcall*)(UInt8* actor, void* edx, UInt8* item, UInt32 count,
 	                                      void* extraData, UInt32 unk3, bool lockEquip);
+	const SilentItemSounds silent;
+	ReportSilence(silent.Patched());
 	reinterpret_cast<EquipItemFn>(addr::kActorEquipItem)(player, nullptr, weapon, 1, nullptr, 1,
 	                                                     false);
 	return true;
@@ -235,6 +279,8 @@ bool UnequipWeapon() {
 	// what is reported; whether the slot empties is watched by vr::StepFist.
 	using UnequipFn = void(__fastcall*)(UInt8* actor, void* edx, UInt8* item, UInt32 count,
 	                                    void* extraData, UInt32 unk3, bool lock, UInt32 unk5);
+	const SilentItemSounds silent;
+	ReportSilence(silent.Patched());
 	reinterpret_cast<UnequipFn>(addr::kActorUnequipItem)(player, nullptr, weapon, 1, worn, 0, false,
 	                                                     0);
 	return true;

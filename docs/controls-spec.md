@@ -23,7 +23,7 @@ flow is covered by `hand_mode_test` and `teleport_test`.
 | A | activate (what the right laser points at) | nothing |
 | B (menu button) | Escape | Tab (the menus) |
 | Stick | sideways: turn (smooth or snap); flicked up: jump; held up (0.2 s): teleport aim, released: go; flicked down: sneak | walk; pressed in: run |
-| Stick click | ready / sheathe the weapon | run (with the stick pressed in) |
+| Stick click | the Rest menu (T: wait, or sleep in a bed) while weapons are drawn by reaching; with `Holsters=0` ready / sheathe the weapon | run (with the stick pressed in) |
 | Trackpad click | held: the quick menu, the ring of the eight hotkeys (4.4, built) | F1: the key the game binds to "Quick Menu" (Oblivion.ini [Controls] `Quick Menu=003BFFFF`; UESP lists F1-F4 as the journal pages) |
 | Gesture | a swing strikes by motion | raised hand: block |
 
@@ -104,7 +104,7 @@ From UESP, Oblivion:Controls.
 | Yield, dodge | gesture + button, see section 2 | untested |
 | Hotkeys 1-8 | right trackpad held: the quick menu; in the inventory or magic menu the same ring sets them | built (4.4, 4.5) |
 | Take an item | activate (right A), or held and let go at the body | built (4.6) |
-| Wait (T) | - | missing |
+| Wait (T) | right stick click (with the weapons drawn by reaching) | built 2026-09-27 |
 | Quick save / load (F5 / F9) | Escape menu | enough |
 | Always run, auto move | - | not needed in VR |
 | Change view (R) | - | Full VR stays in first person |
@@ -160,6 +160,20 @@ in the headset yet.
       1, false), as the game's own EquipItem command does, xOBSE
       GameObjects.cpp:21).
     - It is drawn once the game shows it in the hand, or given up after 2 s.
+    - The swap is silent (the tester, 2026-09-27: the weapon-change sound
+      has to go). As xOBSE's EquipItemSilent does it, the `jne` at the start
+      of the item-sound picker (0x005E96E7, in 0x005E96E0) is nopped for the
+      call and put back after, so the picker answers "no sound". The
+      fist's unequip is silent the same way. Whether any other sound of the
+      swap remains is not checked; the harness cannot hear.
+  - **The draw's animation.** Drawing and sheathing played about a second
+    of animation each before the weapon was in the hand or gone (the
+    tester, 2026-09-27). The Equip and Unequip animation groups (17, 18)
+    now play `[Hands] WeaponDrawSpeed` times faster (10 by default; 1 is the
+    game's speed), `game::StepWeaponDrawSpeed`: the sequences in the
+    player's first- and third-person ActorAnimData have their frequency
+    (NiControllerSequence +0x28) raised while they run and given back after.
+    The keys at which the weapon changes hands still fire; only sooner.
     - With none of that kind seen yet, the reach does nothing and says so in
       the log.
   - **Another weapon drawn.** Reaching for one kind while another is
@@ -383,11 +397,20 @@ in the headset yet.
     grab's ref at player+0x578 changes), so its spring never holds a
     reference that went into the pack. It is not thrown on the way. Given
     up after 1 s if the engine keeps holding it.
-- **The zone.** An upright cylinder round the torso in the body's frame
-  (`vr::BodyRelative`): radius 0.28 m round a point 5 cm behind the eyes,
-  from 0.17 m below them (under the chin; the mouth is left for eating) down
-  to 0.80 m (the hips). `[Hands] StowForward`, `StowRadius`, `StowTop`,
-  `StowBottom`.
+- **The spot.** A gold ring at the chest, shown while an item is held and
+  filled while the hand is in it (`ui::PaintStowSpot`): let go there and the
+  item is stowed; let go anywhere else and it drops. It is a sphere of
+  0.16 m round a point 0.17 m ahead of the eyes and 0.30 m below them, in
+  the body's frame (`vr::BodyRelative`), turned to face the eyes.
+  `[Hands] StowForward`, `StowUp`, `StowRadius`.
+  - First test: a wide cylinder round the torso missed a sword let go
+    0.23 m ahead - the controller is held in front of the body. Moved
+    forward, it stowed, but then nothing could be dropped in front of
+    oneself (the tester, 2026-09-27). The visible spot is the tester's
+    answer: a small target one can see, placed where the hand against the
+    chest was measured (0.19-0.23 m ahead, 0.17-0.30 m below the eyes).
+  - A release up to 0.3 s after the hand left the spot still stows: the hand
+    moves as it opens.
 - **Taking only by hand.** `[Hands] TakeOnlyByHand`, off by default; settings
   "Take only by hand". The activate button is kept from the game while the
   laser is on a loose item. A book still opens to read, and doors, chests

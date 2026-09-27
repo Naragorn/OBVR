@@ -720,6 +720,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.hitBoundFactor = v; },
 	},
 	{
+		"Hands", "Tooltip size", "Full VR: the crosshair and its icon on the controller, times the seated size",
+		ItemKind::Number, 0.5f, 5.0f, 0.25f, 2, false,
+		"Hands", "TooltipScale",
+		+[](const Config& c) { return c.hands.tooltipScale; },
+		+[](Config& c, float v) { c.hands.tooltipScale = v; },
+	},
+	{
 		"Hands", "Quick menu", "Full VR: hold the right trackpad, move to a hotkey, let go",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "QuickMenu",

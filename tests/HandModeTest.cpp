@@ -117,6 +117,33 @@ void TestPlanner() {
 	w = PlanHandControls(right, 0.4f);
 	Check(w.grab && !w.activate, "the right grip grabs too");
 
+	HandFrameInput click;
+	click.rightValid = true;
+	click.leftValid = true;
+	click.rightStickClick = true;
+	w = PlanHandControls(click, 0.4f);
+	Check(w.readyWeapon && !w.wait, "the right stick click readies the weapon");
+	click.stickClickWaits = true;
+	w = PlanHandControls(click, 0.4f);
+	Check(w.wait && !w.readyWeapon, "weapons drawn by reaching: it opens the Rest menu instead");
+	click.menuMode = true;
+	w = PlanHandControls(click, 0.4f);
+	Check(!w.wait && !w.readyWeapon, "not in a menu");
+
+	HandFrameInput rest;
+	rest.rightValid = true;
+	rest.leftValid = true;
+	rest.menuMode = true;
+	rest.rightMenuButton = true;
+	w = PlanHandControls(rest, 0.4f);
+	Check(w.escape && !w.wait, "in a menu the right B is Escape");
+	rest.restMenuUp = true;
+	w = PlanHandControls(rest, 0.4f);
+	Check(w.wait && !w.escape, "in the Rest menu it is the Rest key, which cancels it");
+	rest.rightMenuButton = false;
+	w = PlanHandControls(rest, 0.4f);
+	Check(!w.wait && !w.escape, "and nothing without the press");
+
 	HandFrameInput left;
 	left.rightValid = true;
 	left.leftValid = true;
@@ -1243,7 +1270,8 @@ void TestLeftButtonsInHandMode() {
 	Check(!r.settingsMenuToggle, "a right click half a second into running is not OBVR's menu");
 	frame.right.buttonsPressed = 0;
 	r = mode.Update(frame, settings);
-	Check(r.controls.readyWeapon, "it readies the weapon on release");
+	Check(r.controls.wait && !r.controls.readyWeapon,
+	      "on release it opens the Rest menu - the weapons are drawn by reaching");
 	frame.left.buttonsPressed = 0;
 	r = mode.Update(frame, settings);
 	Check(!r.controls.run && !r.controls.sneak, "let go: walking again, nothing else");

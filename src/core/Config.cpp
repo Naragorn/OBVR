@@ -692,6 +692,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.attachSmallObjects =
 			ReadBool("Hands", "AttachSmallObjects", h.attachSmallObjects, path);
 		h.reachTooltip = ReadBool("Hands", "ReachTooltip", h.reachTooltip, path);
+		h.tooltipScale = ReadFloat("Hands", "TooltipScale", h.tooltipScale, path);
 		h.reachRing = ReadBool("Hands", "ReachRing", h.reachRing, path);
 		h.reachMarkerMetres = ReadFloat("Hands", "ReachMarkerMetres", h.reachMarkerMetres, path);
 		h.reachMarkerOpacity = ReadFloat("Hands", "ReachMarkerOpacity", h.reachMarkerOpacity, path);
@@ -737,13 +738,14 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		fs.openCurl = ReadFloat("Hands", "FistOpenCurl", fs.openCurl, path);
 		fs.holdSeconds = ReadFloat("Hands", "FistHoldSeconds", fs.holdSeconds, path);
 
+		h.weaponDrawSpeed = ReadFloat("Hands", "WeaponDrawSpeed", h.weaponDrawSpeed, path);
+
 		vr::StowSettings& st = h.stow;
 		st.enabled = ReadBool("Hands", "StowAtBody", st.enabled, path);
 		st.takeOnlyByHand = ReadBool("Hands", "TakeOnlyByHand", st.takeOnlyByHand, path);
 		st.centreForward = ReadFloat("Hands", "StowForward", st.centreForward, path);
+		st.centreUp = ReadFloat("Hands", "StowUp", st.centreUp, path);
 		st.radius = ReadFloat("Hands", "StowRadius", st.radius, path);
-		st.top = ReadFloat("Hands", "StowTop", st.top, path);
-		st.bottom = ReadFloat("Hands", "StowBottom", st.bottom, path);
 
 		vr::TeleportSettings& tp = h.teleport;
 		tp.enabled = ReadBool("Locomotion", "Teleport", tp.enabled, path);
@@ -782,6 +784,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		k.escape = ReadKeyCode("Hands", "EscapeKey", k.escape, path);
 		k.quickMenu = ReadKeyCode("Hands", "QuickMenuKey", k.quickMenu, path);
 		k.togglePov = ReadKeyCode("Hands", "TogglePovKey", k.togglePov, path);
+		k.wait = ReadKeyCode("Hands", "WaitKey", k.wait, path);
 		k.forward = ReadKeyCode("Hands", "ForwardKey", k.forward, path);
 		k.back = ReadKeyCode("Hands", "BackKey", k.back, path);
 		k.left = ReadKeyCode("Hands", "LeftKey", k.left, path);

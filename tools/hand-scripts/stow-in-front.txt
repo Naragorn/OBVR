@@ -1,9 +1,11 @@
-# Stowing at the body (docs/controls-spec.md 4.6): an Iron Longsword dropped
+# Stowing with the hand held out in front and moving as it opens (the first
+# headset test, 2026-09-27: a sword let go 0.23 m ahead of the eyes stayed on
+# the floor). Otherwise as stow.txt: an Iron Longsword dropped
 # on the floor ahead, the right grip closed near it (it floats to the hand),
 # the hand brought to the chest, the grip let go there - the sword goes into
 # the inventory the way activating it would take it. The inventory opened
 # afterwards shows it.
-# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\stow.txt
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\stow-in-front.txt
 
 ini Hands Enabled=1
 ini Hands StowAtBody=1
@@ -31,9 +33,12 @@ mark held
 dump
 # To the chest, the head level again.
 head pitch 0
-right pos 0.03 -0.30 -0.18
+right pos 0.05 -0.40 -0.23
 wait 1
-mark at_chest
+mark in_front
+# Moving away as the grip opens: 0.1 s out of the zone, then let go.
+right pos 0.05 -0.40 -0.45
+wait 0.1
 right grip 0
 wait 1
 mark stowed
