@@ -150,13 +150,27 @@ void TestPlanner() {
 	HandFrameInput flicks;
 	flicks.rightValid = true;
 	flicks.leftValid = true;
+	flicks.leftA = true;
+	w = PlanHandControls(flicks, 0.4f);
+	Check(w.jump && !w.sneak && !w.activate, "left A jumps, and only jumps");
+	flicks.leftA = false;
 	flicks.rightA = true;
-	flicks.rightStickUp = true;
 	w = PlanHandControls(flicks, 0.4f);
-	Check(w.jump && !w.sneak, "the right stick flicked up jumps");
-	flicks.rightStickUp = false;
+	Check(!w.jump && w.activate, "right A activates and does not jump");
+	flicks.rightA = false;
+	flicks.leftA = true;
+	flicks.leftValid = false;
 	w = PlanHandControls(flicks, 0.4f);
-	Check(!w.jump, "and right A no longer does");
+	Check(!w.jump, "an untracked left hand does not jump");
+	flicks.leftValid = true;
+	flicks.leftA = false;
+	HandFrameInput leftyJump;
+	leftyJump.rightValid = true;
+	leftyJump.leftValid = true;
+	leftyJump.leftHanded = true;
+	leftyJump.rightA = true;
+	w = PlanHandControls(leftyJump, 0.4f);
+	Check(w.jump && !w.activate, "left-handed: the A buttons swap, right A jumps");
 	flicks.rightStickDown = true;
 	w = PlanHandControls(flicks, 0.4f);
 	Check(w.sneak && !w.jump, "flicked down sneaks");
@@ -1130,11 +1144,48 @@ void TestLeftButtonsInHandMode() {
 	r = mode.Update(frame, settings);
 	Check(!r.controls.run && !r.controls.sneak, "let go: walking again, nothing else");
 
+	frame.teleportAllowed = false;
 	frame.right.thumbY = 0.9f;
 	r = mode.Update(frame, settings);
-	Check(r.controls.jump && !r.controls.sneak, "the right stick flicked up jumps");
+	Check(!r.controls.jump && !r.teleportAiming && !r.teleportCommit,
+	      "the right stick pushed forward no longer jumps; no teleport while not allowed");
+	frame.right.thumbY = 0.0f;
+	mode.Update(frame, settings);
+	for (int i = 0; i < 30; ++i) {
+		mode.Update(frame, settings);
+	}
+	frame.teleportAllowed = true;
+	frame.right.thumbY = 0.9f;
 	r = mode.Update(frame, settings);
-	Check(!r.controls.jump, "once per flick");
+	Check(r.teleportAiming && !r.controls.jump, "allowed: pushed forward aims the teleport");
+	frame.right.thumbX = 0.8f;
+	frame.right.thumbY = 0.3f;
+	r = mode.Update(frame, settings);
+	Check(r.teleportAiming && r.controls.turn == 0.0f, "while aiming the stick does not turn");
+	frame.right.thumbX = 0.0f;
+	frame.right.thumbY = 0.0f;
+	r = mode.Update(frame, settings);
+	Check(r.teleportCommit && !r.teleportAiming, "let go: the teleport goes");
+	r = mode.Update(frame, settings);
+	Check(!r.teleportCommit, "once");
+	frame.right.thumbY = 0.9f;
+	mode.Update(frame, settings);
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexGrip;
+	r = mode.Update(frame, settings);
+	Check(!r.teleportAiming, "a right grip cancels the aim");
+	frame.right.buttonsPressed = 0;
+	frame.right.thumbY = 0.0f;
+	r = mode.Update(frame, settings);
+	Check(!r.teleportCommit, "and the release after it goes nowhere");
+	for (int i = 0; i < 30; ++i) {
+		mode.Update(frame, settings);
+	}
+	frame.teleportAllowed = false;
+	frame.left.buttonsPressed = 1ull << openvr::kButtonA;
+	r = mode.Update(frame, settings);
+	Check(r.controls.jump && !r.controls.activate, "left A jumps");
+	frame.left.buttonsPressed = 0;
+	mode.Update(frame, settings);
 	frame.right.thumbY = -0.9f;
 	r = mode.Update(frame, settings);
 	Check(r.controls.sneak && !r.controls.jump, "flicked down sneaks");

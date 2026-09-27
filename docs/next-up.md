@@ -175,43 +175,92 @@ Every change below is switched by the mode.
    (Alyx's Continuous / Continuous Hand), or the body.
 4. **Height.** Crouching in the room could sneak, as a setting. The head's
    height already moves the camera.
-5. **Teleport.**
-   - An arc from the hand.
-   - The landing is tested against the ground by a Havok ray, with a
-     capsule-sized clearance and a slope limit. Oblivion has no navmesh, only
-     path grids.
-   - The move itself goes through the engine's position change (the MoveTo
-     path), not a camera offset.
-   - Modes:
-     - **instant**: Alyx's Blink, a short fade to black;
-     - **fast**: Alyx's Shift, a quick glide along the line, driven through
-       the controller so it cannot pass through a wall.
-   - The setting also goes into the onboarding.
-   - Alyx's own documentation: Valve, "Half-Life: Alyx - Locomotion Deep Dive"
-     (youtube.com/watch?v=TX58AbJq-xo): Blink fades, Shift moves quickly
-     without the fade, and the floor gets priority.
-   - How Gunman Contracts binds it: not verified.
-6. **The button.** Undecided; see below.
+5. **Teleport: built 2026-09-27, not yet seen in a headset.** See the next
+   section.
 
-**Buttons in the hand-tracked mode today** (`PlanHandControls`):
+### The teleport as built
+
+- **Controls.**
+  - Right stick pushed forward, past `TeleportStickStart` (0.8) and within
+    `TeleportStickConeDegrees` (30) of straight ahead, aims: an arc from the
+    right hand's laser and a ring where it lands.
+  - Let back under `TeleportStickRelease` (0.3), it goes.
+  - A right grip while aiming cancels.
+  - For a quarter second after the release the stick does not turn.
+  - Jumping moved to the left A. The right stick's flick up does nothing now.
+  - Logic: `vr::StepTeleportStick`.
+- **Arc and ring.**
+  - The arc is a throw at `sqrt(g R)`, walked in 31 segments. Each segment is
+    tested against the world with Havok's pick (`game::PickWorldSegment`,
+    layer 31 `OL_DROPPING_PICK`, the player's group excluded).
+  - Both are SteamVR overlays in the reach ring's light brown
+    (`render::TeleportArcLayer`), grey and faint when the landing is refused.
+- **What a landing may be** (`vr::JudgeLanding`):
+  - ground no steeper than about 45 degrees;
+  - within the range (4 m, 5 % slack);
+  - without Blink: no higher than the player's jump apex (the controller's
+    own), no further down than the range, and a clear straight line at waist
+    height to it;
+  - enough fatigue.
+- **The price.**
+  - The dodge roll's, which is the jump's: vanilla's formula read from the
+    game, 30, or 15 from Acrobatics Expert.
+  - Times `TeleportFatigueMult`, plus with Blink `TeleportBlinkFatiguePerMetreUp`
+    per metre climbed.
+  - Paid through the engine's own fatigue call before the move.
+  - Too little fatigue locks the teleport until there is enough; nobody
+    collapses.
+- **The move.**
+  - Glide (default): the player placed along the line every frame at
+    `TeleportGlideSpeed` (15 m/s, 5 to 40), by the same sequence the SetPos
+    command runs (`game::PlacePlayerAt`).
+  - Instant: the compositor's FadeToColor to black, placed, and back
+    (`TeleportFadeSeconds` each way).
+  - Untouchable from the commit to the end through the console's god mode
+    flag, and restored to what it was.
+  - The vignette while gliding (`TeleportVignette`).
+- **When it is allowed.**
+  - First person, in the world, no menu, alive, not riding.
+  - In combat only with `TeleportInCombat`.
+- **Settings.**
+  - Settings menu, category Teleport; INI `[Locomotion]`.
+  - The onboarding page "Teleport" sets on/off, the mode, the range, combat,
+    the vignette and Blink.
+- **Tests.** `teleport_test` (stick, arc, landing, price, glide and fade
+  flows, overlay geometry), `hand_mode_test` (left A jumps, the stick aims and
+  goes, a grip cancels), `onboarding_test` (the page).
+- **Not verified, to watch in the headset:**
+  - whether layer 31 hits ground, statics and clutter as its name suggests;
+  - whether the glide's per-frame placement feels smooth or stutters, and
+    whether the capsule keeps any fall speed at the end;
+  - whether god mode also covers spells and traps (weapons and falls go
+    through the path it blocks);
+  - the pick's normal (if the ring lies wrong, that is where to look).
+- **Not wired: `TeleportQuietWhenSneaking`.** The engine's detection reads
+  per-frame movement flags (0x005463F0), and a placement sets none. So a
+  teleport is inferred to make no movement noise at all, sneaking or not; the
+  switch changes nothing yet.
+- **An in-game test** is feasible like the water test: a `[Debug]` switch
+  that feeds a scripted right controller into the hand mode and logs `VRTEST`
+  lines for position, fatigue and refusals. Not built.
+
+**Buttons in the hand-tracked mode now** (`PlanHandControls`):
 - Right hand:
   - trigger: attack;
   - A: activate;
   - menu button: escape;
-  - stick: x turns, a flick up jumps, a flick down sneaks, the click readies
-    the weapon.
+  - stick: x turns, pushed forward teleports, a flick down sneaks, the click
+    readies the weapon.
 - Left hand:
   - trigger: cast;
+  - A: jump;
   - menu button: OBVR's menu;
   - stick: walks; held in, it runs;
   - trackpad click: the quick menu.
 - Either grip grabs.
-- Free: the left A (it activates only when left-handed).
-- The trackpad clicks cannot be told from the stick clicks on the legacy
-  input path (`NormalizeLegacyButtons`).
 - In Alyx the teleport is on the right stick pushed forward, and players
   report teleporting by accident when turning (reddit.com/r/ValveIndex/
-  comments/ikzuca).
+  comments/ikzuca). That is why there is a cone and a threshold.
 
 ## Also open
 

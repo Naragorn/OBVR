@@ -5,6 +5,7 @@
 #include "vr/HandInput.h"
 #include "vr/OpenVRTypes.h"
 #include "vr/Quaternion.h"
+#include "vr/Teleport.h"
 
 namespace obvr::vr {
 
@@ -195,6 +196,8 @@ struct HandSettings {
 	bool gamepadLayout = true;
 	float scrollFirstDelaySeconds = 0.35f;
 	float scrollIntervalSeconds = 0.12f;
+	// The teleport on the right stick pushed forward ([Locomotion], vr::Teleport).
+	TeleportSettings teleport;
 };
 
 // Everything one frame of the mode needs to know, gathered by the camera
@@ -257,9 +260,17 @@ struct HandModeFrame {
 	bool menuIsDragSurface = false;
 	float cursorX = 0.0f;
 	float cursorY = 0.0f;
+	// Whether a teleport may be aimed now: in the world, no menu, no move
+	// running, and in combat only when that is allowed. The camera hook asks
+	// the game.
+	bool teleportAllowed = false;
 };
 
 struct HandModeResult {
+	// The teleport's stick: aiming shows the arc, commit goes this frame.
+	bool teleportAiming = false;
+	bool teleportCommit = false;
+
 	// The aim, when the right hand is tracked: its heading as a turn from
 	// the head's, and the sine of its pitch (positive up), both in the
 	// game's convention. Used for attacks, spells, and grab direction when
@@ -446,6 +457,7 @@ private:
 	ButtonEdge m_leftMenu;
 	ButtonEdge m_leftTrackpad;
 	StickFlickState m_rightFlick;
+	TeleportStickState m_teleportStick;
 	LaserPressState m_press;
 	RepeatState m_scrollUp;
 	RepeatState m_scrollDown;

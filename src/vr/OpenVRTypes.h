@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 #include "core/Types.h"
 
 // Minimal, binary-compatible replica of the parts of the OpenVR C interface
@@ -460,7 +462,25 @@ struct IVRCompositorFnTable {
 
 	int(__stdcall* Submit)(int eye, const Texture* texture, const VRTextureBounds* bounds,
 	                       int submitFlags);
+
+	// 7 SubmitWithArrayIndex through 13 GetCumulativeStats, untyped; 14
+	// FadeToColor (openvr_capi.h VR_IVRCompositor_FnTable, IVRCompositor_029,
+	// read 2026-09-27): fades the whole view towards a colour over seconds -
+	// the teleport's fade to black and back.
+	void* submitWithArrayIndex;
+	void* clearLastSubmittedFrame;
+	void* postPresentHandoff;
+	void* getFrameTiming;
+	void* getFrameTimings;
+	void* getFrameTimeRemaining;
+	void* getCumulativeStats;
+	void(__stdcall* FadeToColor)(float seconds, float red, float green, float blue, float alpha,
+	                             bool background);
 };
+
+// Fifteenth in the table: fourteen pointers before it.
+static_assert(offsetof(IVRCompositorFnTable, FadeToColor) == 14 * sizeof(void*),
+              "FadeToColor is entry 14 of VR_IVRCompositor_FnTable");
 
 // ----------------------------------------------------------------- Overlay
 //

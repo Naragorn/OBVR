@@ -81,6 +81,7 @@ void HandMode::Reset() {
 	m_leftMenu = ButtonEdge{};
 	m_leftTrackpad = ButtonEdge{};
 	m_rightFlick = StickFlickState{};
+	m_teleportStick = TeleportStickState{};
 	m_press = LaserPressState{};
 	m_scrollUp = RepeatState{};
 	m_scrollDown = RepeatState{};
@@ -262,16 +263,23 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	in.leftTrackpadClick = StepRisingEdge(
 		m_leftTrackpad, cl.valid && TrackpadClickDown(cl.buttonsPressed));
 	in.leftStickHeld = cl.valid && StickClickDown(cl.buttonsPressed);
-	if (cr.valid) {
+	// The right stick pushed forward is the teleport's (vr::StepTeleportStick):
+	// while it aims, and for a moment after it lets go, the stick neither
+	// turns nor flicks. A grip on the right hand cancels the aim.
+	const TeleportStickVerdict teleport = StepTeleportStick(
+		m_teleportStick, cr.valid ? cr.thumbX : 0.0f, cr.valid ? cr.thumbY : 0.0f,
+		in.rightGrip, cr.valid && !f.menuMode && f.teleportAllowed, f.dtSeconds, s.teleport);
+	r.teleportAiming = teleport.aiming;
+	r.teleportCommit = teleport.commit;
+	if (cr.valid && !teleport.ownsStick) {
 		const StickFlickVerdict flick = StepStickFlick(m_rightFlick, cr.thumbX, cr.thumbY);
-		in.rightStickUp = flick.up;
 		in.rightStickDown = flick.down;
 	} else {
 		m_rightFlick = StickFlickState{};
 	}
 	in.leftThumbX = cl.thumbX;
 	in.leftThumbY = cl.thumbY;
-	in.rightThumbX = cr.thumbX;
+	in.rightThumbX = teleport.ownsStick ? 0.0f : cr.thumbX;
 	in.blockGesture = r.blocking;
 	in.swingAttackHeld = swingHeld;
 	// The reach-back gate: armed by the gesture, spent when the trigger comes

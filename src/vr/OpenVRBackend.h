@@ -296,6 +296,11 @@ public:
 	int SetOverlayTextureBounds(openvr::VROverlayHandle handle,
 	                            const openvr::VRTextureBounds& bounds) const;
 
+	// Fades the whole view towards a colour over `seconds` (the compositor's
+	// FadeToColor): alpha 1 is fully that colour, 0 back to the scene. Nothing
+	// when not a scene application.
+	void FadeToColor(float seconds, float red, float green, float blue, float alpha) const;
+
 	int ShowOverlay(openvr::VROverlayHandle handle) const;
 	int HideOverlay(openvr::VROverlayHandle handle) const;
 	int DestroyOverlay(openvr::VROverlayHandle handle);

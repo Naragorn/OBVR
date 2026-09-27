@@ -705,6 +705,27 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.stickDeadZone = ReadFloat("Hands", "StickDeadZone", h.stickDeadZone, path);
 		h.turnSpeed = ReadFloat("Hands", "TurnSpeed", h.turnSpeed, path);
 
+		vr::TeleportSettings& tp = h.teleport;
+		tp.enabled = ReadBool("Locomotion", "Teleport", tp.enabled, path);
+		tp.instant = ReadBool("Locomotion", "TeleportInstant", tp.instant, path);
+		tp.rangeMetres = ReadFloat("Locomotion", "TeleportRangeMetres", tp.rangeMetres, path);
+		tp.glideMetresPerSecond =
+			ReadFloat("Locomotion", "TeleportGlideSpeed", tp.glideMetresPerSecond, path);
+		tp.fadeSeconds = ReadFloat("Locomotion", "TeleportFadeSeconds", tp.fadeSeconds, path);
+		tp.inCombat = ReadBool("Locomotion", "TeleportInCombat", tp.inCombat, path);
+		tp.vignette = ReadBool("Locomotion", "TeleportVignette", tp.vignette, path);
+		tp.blink = ReadBool("Locomotion", "TeleportBlink", tp.blink, path);
+		tp.quietWhenSneaking =
+			ReadBool("Locomotion", "TeleportQuietWhenSneaking", tp.quietWhenSneaking, path);
+		tp.fatigueMult = ReadFloat("Locomotion", "TeleportFatigueMult", tp.fatigueMult, path);
+		tp.blinkFatiguePerMetreUp =
+			ReadFloat("Locomotion", "TeleportBlinkFatiguePerMetreUp", tp.blinkFatiguePerMetreUp, path);
+		tp.startThreshold =
+			ReadFloat("Locomotion", "TeleportStickStart", tp.startThreshold, path);
+		tp.releaseThreshold =
+			ReadFloat("Locomotion", "TeleportStickRelease", tp.releaseThreshold, path);
+		tp.coneDegrees = ReadFloat("Locomotion", "TeleportStickConeDegrees", tp.coneDegrees, path);
+
 		game::HandKeyMap& k = config.handKeys;
 		k.attack = ReadKeyCode("Hands", "AttackKey", k.attack, path);
 		k.block = ReadKeyCode("Hands", "BlockKey", k.block, path);

@@ -108,6 +108,31 @@ constexpr OnboardingRow kComfort[] = {
 	 0},
 };
 
+// Full VR only; shown to everyone, since the choice can be changed later and
+// the seated mode ignores it.
+constexpr OnboardingRow kTeleport[] = {
+	{OnboardingRowKind::Text, "Full VR: push the right stick forward to aim a teleport,", "", "",
+	 "", OnboardingAction::None, nullptr, 0},
+	{OnboardingRowKind::Text, "let it go to move. The left A jumps. Seated play ignores this.", "",
+	 "", "", OnboardingAction::None, nullptr, 0},
+	{OnboardingRowKind::Setting, "", "", "Locomotion", "Teleport", OnboardingAction::None, nullptr,
+	 0},
+	{OnboardingRowKind::Setting, "", "", "Locomotion", "TeleportInstant", OnboardingAction::None,
+	 nullptr, 0},
+	{OnboardingRowKind::Setting, "", "", "Locomotion", "TeleportRangeMetres",
+	 OnboardingAction::None, nullptr, 0},
+	{OnboardingRowKind::Setting, "", "", "Locomotion", "TeleportInCombat", OnboardingAction::None,
+	 nullptr, 0},
+	{OnboardingRowKind::Setting, "", "", "Locomotion", "TeleportVignette", OnboardingAction::None,
+	 nullptr, 0},
+	{OnboardingRowKind::Setting, "", "", "Locomotion", "TeleportBlink", OnboardingAction::None,
+	 nullptr, 0},
+	{OnboardingRowKind::Action, "Back", "The previous page", "", "", OnboardingAction::Back,
+	 nullptr, 0},
+	{OnboardingRowKind::Action, "Next", "The next page", "", "", OnboardingAction::Next, nullptr,
+	 0},
+};
+
 constexpr OnboardingRow kDone[] = {
 	{OnboardingRowKind::Text, "That is all. Everything here lives in OBVR.ini and in the", "",
 	 "", "", OnboardingAction::None, nullptr, 0},
@@ -125,6 +150,7 @@ constexpr OnboardingPage kPages[] = {
 	{"Welcome", kWelcome, sizeof(kWelcome) / sizeof(kWelcome[0])},
 	{"Controls", kControls, sizeof(kControls) / sizeof(kControls[0])},
 	{"Comfort", kComfort, sizeof(kComfort) / sizeof(kComfort[0])},
+	{"Teleport", kTeleport, sizeof(kTeleport) / sizeof(kTeleport[0])},
 	{"Done", kDone, sizeof(kDone) / sizeof(kDone[0])},
 };
 

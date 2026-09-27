@@ -27,7 +27,7 @@ void Check(bool condition, const char* what) {
 
 void TestPagesAreSound() {
 	std::printf("Pages\n");
-	Check(OnboardingPageCount() == 4, "four pages");
+	Check(OnboardingPageCount() == 5, "five pages");
 	bool everySettingKnown = true;
 	bool everyPageHasAWayOn = true;
 	bool everyChoiceHasAPicture = true;
@@ -232,7 +232,7 @@ void TestFinish() {
 	Config config;
 	menu.Open();
 	menu.Apply(MenuAction::Increase, config);  // seated, to controls
-	for (int page = 1; page <= 2; ++page) {
+	for (int page = 1; page <= 3; ++page) {
 		while (menu.IsOpen() && menu.Page() == static_cast<UInt32>(page)) {
 			const OnboardingPage& current = OnboardingPages()[menu.Page()];
 			if (current.rows[menu.State().selected].action == OnboardingAction::Next) {
@@ -242,7 +242,7 @@ void TestFinish() {
 			}
 		}
 	}
-	Check(menu.IsOpen() && menu.Page() == 3, "Next on each page reaches the last");
+	Check(menu.IsOpen() && menu.Page() == 4, "Next on each page reaches the last");
 	Check(std::strcmp(menu.Title(), "Done") == 0, "which is Done");
 
 	MenuItem items[16];
@@ -257,7 +257,7 @@ void TestFinish() {
 
 	menu.Apply(MenuAction::Down, config);
 	menu.Apply(MenuAction::Down, config);
-	const OnboardingPage& done = OnboardingPages()[3];
+	const OnboardingPage& done = OnboardingPages()[4];
 	Check(done.rows[menu.State().selected].action == OnboardingAction::Finish,
 	      "two Downs reach Finish");
 	menu.Apply(MenuAction::Increase, config);
@@ -267,12 +267,49 @@ void TestFinish() {
 
 }  // namespace
 
+void TestTeleportPage() {
+	std::printf("The teleport page\n");
+	OnboardingMenu menu;
+	Config config;
+	menu.Open();
+	menu.Apply(MenuAction::Increase, config);  // seated, to controls
+	for (int page = 1; page <= 2; ++page) {
+		while (menu.Page() == static_cast<UInt32>(page)) {
+			const OnboardingPage& current = OnboardingPages()[menu.Page()];
+			if (current.rows[menu.State().selected].action == OnboardingAction::Next) {
+				menu.Apply(MenuAction::Increase, config);
+			} else {
+				menu.Apply(MenuAction::Down, config);
+			}
+		}
+	}
+	Check(menu.Page() == 3 && std::strcmp(menu.Title(), "Teleport") == 0,
+	      "after Comfort comes Teleport");
+	Check(config.hands.teleport.enabled, "the teleport is on by default");
+	const SettingDefinition* changed = menu.Apply(MenuAction::Decrease, config);
+	Check(changed != nullptr && std::strcmp(changed->iniKey, "Teleport") == 0 &&
+	          !config.hands.teleport.enabled,
+	      "the highlight starts on the switch, and Left turns it off");
+	menu.Apply(MenuAction::Down, config);
+	Check(!config.hands.teleport.instant, "gliding is the default mode");
+	changed = menu.Apply(MenuAction::Increase, config);
+	Check(changed != nullptr && config.hands.teleport.instant, "the next row makes it instant");
+	menu.Apply(MenuAction::Down, config);
+	changed = menu.Apply(MenuAction::Increase, config);
+	Check(changed != nullptr && config.hands.teleport.rangeMetres > 4.0f,
+	      "and the range can be set from 4 m");
+	Check(config.hands.teleport.inCombat && config.hands.teleport.vignette &&
+	          !config.hands.teleport.blink,
+	      "in combat and vignette on, Blink off, by default");
+}
+
 int main() {
 	TestPagesAreSound();
 	TestChoice();
 	TestNavigation();
 	TestSettingsOnPages();
 	TestFinish();
+	TestTeleportPage();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

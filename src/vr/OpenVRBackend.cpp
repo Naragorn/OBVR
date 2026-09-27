@@ -496,6 +496,15 @@ int OpenVRBackend::SetOverlayTextureBounds(openvr::VROverlayHandle handle,
 	return table->SetOverlayTextureBounds(handle, &bounds);
 }
 
+void OpenVRBackend::FadeToColor(float seconds, float red, float green, float blue,
+                                float alpha) const {
+	auto* table = static_cast<openvr::IVRCompositorFnTable*>(m_compositor);
+	if (table == nullptr || table->FadeToColor == nullptr) {
+		return;
+	}
+	table->FadeToColor(seconds, red, green, blue, alpha, false);
+}
+
 int OpenVRBackend::ShowOverlay(openvr::VROverlayHandle handle) const {
 	auto* table = static_cast<openvr::IVROverlayFnTable*>(m_overlay);
 	if (table == nullptr || table->ShowOverlay == nullptr) {

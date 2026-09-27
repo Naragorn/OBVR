@@ -42,6 +42,7 @@
 #include "game/DeathBody.h"
 #include "game/HeldObject.h"
 #include "game/PlayerLookAt.h"
+#include "game/PlayerTeleport.h"
 #include "game/GrabPhysics.h"
 #include "game/GrabNearBody.h"
 #include "game/NearbyItems.h"
@@ -58,6 +59,7 @@
 #include "render/HudLayer.h"
 #include "render/LaserLayer.h"
 #include "render/ReachMarker.h"
+#include "render/TeleportArcLayer.h"
 #include "vr/LaserGeometry.h"
 #include "ui/Onboarding.h"
 #include "ui/SettingsMenu.h"
@@ -157,6 +159,10 @@ render::CrosshairLayer g_crosshairLayer;
 render::VignetteLayer g_vignetteLayer;
 render::LaserLayer g_laserLayer;
 render::ReachMarker g_reachMarker;
+// The Full VR teleport (vr::Teleport, game::PlayerTeleport): the arc while it
+// aims and the move once it goes.
+render::TeleportArcLayer g_teleportArc;
+vr::TeleportMove g_teleportMove;
 // Whether the ring shows this frame and where: the crosshair's icon hangs in it.
 bool g_reachIconShown = false;
 // The item nearest a hand within its reach (game::FindNearestItem): the world
@@ -406,6 +412,200 @@ const char* HandsHideList(const vr::HandSettings& hands, bool handsAway) {
 	return list;
 }
 
+// ------------------------------------------------------------------ Teleport
+//
+// The Full VR teleport (docs/next-up.md 6, vr::Teleport for the logic,
+// game::PlayerTeleport for the engine): the right stick pushed forward aims
+// an arc from the right hand, the ring shows where it lands, letting go
+// moves the player there.
+
+bool TeleportAllowedNow(const Config& config, bool menuIsUp, bool inWorld) {
+	const vr::TeleportSettings& tp = config.hands.teleport;
+	if (!tp.enabled || menuIsUp || !inWorld || ReadIsThirdPerson() || game::PlayerIsDead() ||
+	    g_teleportMove.phase != vr::TeleportPhase::Idle) {
+		return false;
+	}
+	if (game::PlayerRiding()) {
+		return false;
+	}
+	return tp.inCombat || !game::PlayerInCombat();
+}
+
+// Where the arc goes and what it lands on this frame.
+struct TeleportAim {
+	NiPoint3 points[vr::kArcMaxPoints];
+	UInt32 count = 0;
+	bool landed = false;
+	NiPoint3 landing{0.0f, 0.0f, 0.0f};
+	NiPoint3 normal{0.0f, 0.0f, 1.0f};
+	vr::TeleportRefusal refusal = vr::TeleportRefusal::NoGround;
+	float cost = 0.0f;
+	NiPoint3 feet{0.0f, 0.0f, 0.0f};
+};
+
+// Without Blink the glide must not pass through anything: the straight line
+// at waist height from here to the landing has to be clear.
+constexpr float kTeleportWaistUnits = 60.0f;
+// Set down a hair above the ground, so the capsule does not start in it.
+constexpr float kTeleportLiftUnits = 2.0f;
+
+TeleportAim AimTeleport(const Config& config, const vr::LaserWorldRay& ray) {
+	const vr::TeleportSettings& tp = config.hands.teleport;
+	const float perMetre = config.tracker.unitsPerMetre;
+	const float rangeUnits = tp.rangeMetres * perMetre;
+	const float gravity = vr::kArcGravityMetres * perMetre;
+	const float speed = vr::ArcSpeed(rangeUnits, gravity);
+	const float step = vr::ArcTimeStep(rangeUnits, gravity);
+	TeleportAim aim;
+	aim.points[0] = ray.origin;
+	aim.count = 1;
+	bool worldAsked = true;
+	for (UInt32 i = 1; i < vr::kArcMaxPoints && worldAsked; ++i) {
+		const NiPoint3 from = aim.points[i - 1];
+		const NiPoint3 to =
+			vr::ArcPoint(ray.origin, ray.direction, speed, gravity, step * static_cast<float>(i));
+		game::WorldPick pick;
+		worldAsked = game::PickWorldSegment(from, to, pick);
+		if (worldAsked && pick.hit) {
+			aim.points[aim.count++] = pick.point;
+			aim.landed = true;
+			aim.landing = pick.point;
+			aim.normal = pick.normal;
+			break;
+		}
+		aim.points[aim.count++] = to;
+	}
+	vr::LandingQuery q;
+	q.hit = aim.landed;
+	q.point = aim.landing;
+	const float normalLength = math::Sqrt(aim.normal.LengthSquared());
+	q.normalUp = normalLength > 1.0e-6f ? aim.normal.z / normalLength : 0.0f;
+	q.allowedNow = game::ReadPlayerFeet(aim.feet);
+	q.feet = aim.feet;
+	q.rangeUnits = rangeUnits;
+	q.jumpUnits = game::PlayerJumpUnits();
+	q.blink = tp.blink;
+	if (aim.landed && !tp.blink) {
+		const NiPoint3 up{0.0f, 0.0f, kTeleportWaistUnits};
+		game::WorldPick between;
+		q.pathClear =
+			game::PickWorldSegment(aim.feet + up, aim.landing + up, between) && !between.hit;
+	}
+	const float rise = (aim.landing.z - aim.feet.z) / (perMetre > 0.0f ? perMetre : 1.0f);
+	aim.cost = vr::TeleportFatigueCost(game::PlayerDodgeFatigueCost(), rise, tp);
+	float fatigueBase = 0.0f;
+	q.fatigueCost = aim.cost;
+	if (!game::ReadPlayerFatigue(q.fatigueNow, fatigueBase)) {
+		q.fatigueNow = aim.cost;  // unreadable: do not lock the player out
+	}
+	aim.refusal = vr::JudgeLanding(q);
+	return aim;
+}
+
+UInt32 g_teleportLinesLeft = 16;
+
+void UpdateTeleport(const Config& config, vr::OpenVRBackend& backend, bool active,
+                    bool menuIsUp, float dtSeconds) {
+	const vr::TeleportSettings& tp = config.hands.teleport;
+	const float perMetre = config.tracker.unitsPerMetre;
+	bool arcShown = false;
+	if (!active && g_teleportMove.phase != vr::TeleportPhase::Idle) {
+		// The mode stopped mid-move: the move is dropped where it is.
+		if (tp.instant) {
+			backend.FadeToColor(0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		}
+		g_teleportMove = vr::TeleportMove{};
+	}
+	if (active && !menuIsUp && (g_hand.teleportAiming || g_hand.teleportCommit) &&
+	    g_hand.rightHandValid && g_cyclopeanCameraWorldValid) {
+		const vr::LaserWorldRay ray = vr::HandLaserWorldRay(
+			g_cyclopeanCameraWorldTransform.rot, g_cyclopeanCameraWorldTransform.pos,
+			g_hand.rightHandRotation, g_hand.rightHandOffsetUnits, config.hands.laserPitchDegrees,
+			config.hands.laserYawDegrees, config.hands.laserOriginMetres, perMetre);
+		const TeleportAim aim = AimTeleport(config, ray);
+		const bool valid = aim.refusal == vr::TeleportRefusal::None;
+		vr::openvr::HmdMatrix34 head{};
+		if (g_hand.teleportAiming && backend.GetRenderPoseMatrix(head)) {
+			const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+			const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
+			NiPoint3 tracked[vr::kArcMaxPoints];
+			for (UInt32 i = 0; i < aim.count; ++i) {
+				tracked[i] = vr::WorldPointInTracking(head, camRot, camPos, aim.points[i], perMetre);
+			}
+			const NiPoint3 ringAt =
+				vr::WorldPointInTracking(head, camRot, camPos, aim.landing, perMetre);
+			const NiPoint3 normalTip = vr::WorldPointInTracking(
+				head, camRot, camPos, aim.landing + aim.normal * perMetre, perMetre);
+			const NiPoint3 eyes{head.m[0][3], head.m[1][3], head.m[2][3]};
+			g_teleportArc.Submit(backend, true, tracked, aim.count, eyes, aim.landed, ringAt,
+			                     normalTip - ringAt, valid);
+			arcShown = true;
+		}
+		if (g_hand.teleportCommit) {
+			if (valid) {
+				// The price first: while untouchable the player cannot lose fatigue.
+				game::SpendPlayerFatigue(aim.cost);
+				const NiPoint3 target = aim.landing + NiPoint3{0.0f, 0.0f, kTeleportLiftUnits};
+				g_teleportMove = vr::StartTeleport(aim.feet, target, tp, perMetre);
+				game::SetPlayerUntouchable(true);
+				if (!tp.instant && tp.vignette) {
+					g_vignetteLayer.Trigger();
+				}
+			}
+			if (g_teleportLinesLeft > 0) {
+				--g_teleportLinesLeft;
+				const NiPoint3 d = aim.landing - aim.feet;
+				OBVR_LOG("Teleport: %s - %.2f m away, %.2f m up, cost %.1f fatigue, %s (%u arc "
+				         "points)",
+				         valid ? "going" : "refused",
+				         static_cast<double>(math::Sqrt(d.LengthSquared()) / perMetre),
+				         static_cast<double>(d.z / perMetre), static_cast<double>(aim.cost),
+				         valid ? (tp.instant ? "instant" : "glide")
+				               : vr::TeleportRefusalName(aim.refusal),
+				         aim.count);
+			}
+		}
+	}
+	if (!arcShown) {
+		g_teleportArc.Submit(backend, false, nullptr, 0, NiPoint3{0.0f, 0.0f, 0.0f}, false,
+		                     NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 1.0f}, false);
+	}
+
+	// The move, once it runs. A menu pauses the game and the move with it.
+	if (g_teleportMove.phase != vr::TeleportPhase::Idle && !menuIsUp) {
+		const vr::TeleportMoveStep step = vr::StepTeleportMove(g_teleportMove, dtSeconds);
+		if (step.fadeOut) {
+			backend.FadeToColor(tp.fadeSeconds, 0.0f, 0.0f, 0.0f, 1.0f);
+		}
+		if (step.place && !game::PlacePlayerAt(step.at)) {
+			if (g_teleportLinesLeft > 0) {
+				--g_teleportLinesLeft;
+				OBVR_LOG("Teleport: the player could not be placed - the move stops");
+			}
+			if (tp.instant) {
+				backend.FadeToColor(tp.fadeSeconds, 0.0f, 0.0f, 0.0f, 0.0f);
+			}
+			g_teleportMove = vr::TeleportMove{};
+		}
+		if (step.fadeIn) {
+			backend.FadeToColor(tp.fadeSeconds, 0.0f, 0.0f, 0.0f, 0.0f);
+		}
+		if (step.finished) {
+			static UInt32 arrivedLines = 4;
+			NiPoint3 feet{0.0f, 0.0f, 0.0f};
+			if (arrivedLines > 0 && game::ReadPlayerFeet(feet)) {
+				--arrivedLines;
+				const NiPoint3 miss = feet - g_teleportMove.to;
+				OBVR_LOG("Teleport: arrived, %.1f units from the target",
+				         static_cast<double>(math::Sqrt(miss.LengthSquared())));
+			}
+		}
+	}
+	// Untouchable exactly while the move runs; also given back when the mode
+	// stops mid-move.
+	game::SetPlayerUntouchable(active && g_teleportMove.phase != vr::TeleportPhase::Idle);
+}
+
 void UpdateHandMode(const Config& config, bool menuIsUp) {
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
 	const long long now = ReadPerformanceCounter();
@@ -443,6 +643,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_reachIconShown = false;
 		g_nearItem = game::NearItem{};
 		g_handMode.Reset();
+		UpdateTeleport(config, g_headTracker.GetBackendForFrame(), false, menuIsUp, dt);
 		return;
 	}
 
@@ -658,6 +859,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		         frame.left.valid ? "tracked" : "not tracked");
 	}
 
+	frame.teleportAllowed = active && TeleportAllowedNow(config, menuIsUp, frame.inWorld);
 	g_hand = g_handMode.Update(frame, config.hands);
 
 	// The item nearest a hand, by distance (game::FindNearestItem): the pick is
@@ -843,6 +1045,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_reachIconShown = markerShown && config.hands.reachTooltip;
 		g_reachIconPose = render::ReachIconPose(markerPose);
 	}
+	UpdateTeleport(config, backend, active, menuIsUp, dt);
 	// Whether the engine took it: its grab update runs only while it holds
 	// something, so a count unchanged a quarter of a second after the key
 	// went down is a grab it refused - with where the target was then, the
@@ -3334,7 +3537,8 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// Snap turn vignette: fades in when a snap fires, out after. Updated every frame
 	// so the fade advances even when nothing is happening (keeps it hidden).
 	g_vignetteLayer.Update(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
-	                       config.look.snapTurnVignette && worldFrame, g_deltaSeconds,
+	                       (config.look.snapTurnVignette || config.hands.teleport.vignette) && worldFrame,
+	                       g_deltaSeconds,
 	                       config.look.snapTurnVignetteRadius, config.look.snapTurnVignetteStrength);
 
 	// The laser beam from the hand that points at a menu, as long as the way

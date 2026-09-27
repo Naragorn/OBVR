@@ -662,6 +662,16 @@ endif()
 
 add_test(NAME hand_input COMMAND hand_input_test)
 
+add_executable(teleport_test TeleportTest.cpp)
+
+target_include_directories(teleport_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(teleport_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME teleport COMMAND teleport_test)
+
 add_executable(controller_actions_test ControllerActionsTest.cpp)
 target_include_directories(controller_actions_test PRIVATE ../src)
 if(NOT MSVC)

@@ -81,6 +81,7 @@ add_library(OBVR SHARED
 	src/game/DeathBody.cpp
 	src/game/HeldObject.cpp
 	src/game/PlayerLookAt.cpp
+	src/game/PlayerTeleport.cpp
 	src/game/GrabPhysics.cpp
 	src/game/GrabNearBody.cpp
 	src/game/NearbyItems.cpp
@@ -104,6 +105,7 @@ add_library(OBVR SHARED
 	src/render/LaserLayer.cpp
 	src/render/ControllerModels.cpp
 	src/render/ReachMarker.cpp
+	src/render/TeleportArcLayer.cpp
 	src/render/CullingHook.cpp
 	src/render/LeafFacingHook.cpp
 	src/render/WaterReflectionHook.cpp
