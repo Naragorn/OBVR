@@ -84,6 +84,7 @@ void HandMode::Reset() {
 	m_teleportStick = TeleportStickState{};
 	m_dropEdge = ButtonEdge{};
 	m_drop = DropPressState{};
+	m_dropClickNow = false;
 	m_press = LaserPressState{};
 	m_scrollUp = RepeatState{};
 	m_scrollDown = RepeatState{};
@@ -277,11 +278,16 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	// The inventory's drop on the left A (the hands are already swapped for a
 	// left-handed player, AssignHandRoles): Shift and a click on the item under
 	// the cursor, over four frames.
+	// The edge is the button's own: the inventory flickers to the HUD and back
+	// after a drop (2026-09-27 log, "changed - HudMain" then "Inventory"), and
+	// an edge on "A and inventory open" fired again on every flicker while A
+	// stayed down - one press dropped two and three items.
 	const bool dropPressed =
-		StepRisingEdge(m_dropEdge, f.menuMode && f.inventoryOpen && in.leftA);
+		StepRisingEdge(m_dropEdge, in.leftA) && f.menuMode && f.inventoryOpen;
 	const DropPressVerdict drop = StepDropPress(m_drop, dropPressed);
 	in.dropShift = drop.shift;
 	in.dropClick = drop.click;
+	m_dropClickNow = drop.click;
 	if (cr.valid && !teleport.ownsStick) {
 		const StickFlickVerdict flick = StepStickFlick(m_rightFlick, cr.thumbX, cr.thumbY);
 		in.rightStickDown = flick.down;
@@ -644,10 +650,12 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 	// the plain held click.
 	int dragWheel = 0;
 	if (s.laserDragScroll && laserPath) {
-		const LaserPressVerdict press = StepLaserPress(m_press, r.controls.menuClick, pressHit,
+		// The drop's own click goes past the touch-screen press: stepped as a
+		// trigger it would come a frame later, as a click on the release.
+		const LaserPressVerdict press = StepLaserPress(m_press, r.controls.menuClick && !m_dropClickNow, pressHit,
 		                                               pressX, pressY, pressHeight, f.dtSeconds,
 		                                               f.cursorOnScrollBar || f.menuIsDragSurface);
-		r.controls.menuClick = press.mouseDown;
+		r.controls.menuClick = press.mouseDown || m_dropClickNow;
 		dragWheel = press.wheel;
 	} else {
 		m_press = LaserPressState{};

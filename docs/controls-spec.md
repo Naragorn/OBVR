@@ -24,7 +24,7 @@ flow is covered by `hand_mode_test` and `teleport_test`.
 | B (menu button) | Escape | Tab (the menus) |
 | Stick | sideways: turn (smooth or snap); flicked up: jump; held up (0.2 s): teleport aim, released: go; flicked down: sneak | walk; pressed in: run |
 | Stick click | ready / sheathe the weapon | run (with the stick pressed in) |
-| Trackpad click | free | F1 (the journal's first page) |
+| Trackpad click | free | F1: the key the game binds to "Quick Menu" (Oblivion.ini [Controls] `Quick Menu=003BFFFF`; UESP lists F1-F4 as the journal pages) |
 | Gesture | a swing strikes by motion | raised hand: block |
 
 - Both stick clicks within a quarter second: OBVR's own menu.
@@ -36,9 +36,23 @@ flow is covered by `hand_mode_test` and `teleport_test`.
 | Control | Effect |
 |---|---|
 | Pointing hand's trigger | click (on the release; a drag scrolls, sideways holds) |
-| Left A, inventory only | drop the item under the cursor (vanilla's Shift + click, over four frames: `vr::StepDropPress`) |
+| Left A, inventory only | drop the item under the cursor (vanilla's Shift + click, over four frames: `vr::StepDropPress`); one drop per press, the button has to be let go for the next |
 | Left B / right B | Tab / Escape |
 | Left stick | the mouse wheel |
+
+- The drop presses OBVR's `RunKey` (Shift) for vanilla's Shift.
+  - At the mode's start OBVR reads the game's `[Controls] Run` from
+    Oblivion.ini.
+  - It logs a WARNING when Run is not on Left Shift, or when `RunKey` is
+    another key (`game::CheckDropBinding`, verdicts tested in
+    `control_bindings_test`).
+- **One press dropped two or three items** (first headset run, 2026-09-27).
+  - The inventory flickers to the HUD and back after a drop.
+  - The press was an edge on "A held and the inventory open", so every
+    flicker fired it again.
+  - It is now the button's own edge.
+  - The drop's click also goes past the laser's touch-screen press, which
+    would have turned it into a click on the next frame.
 
 ### In OBVR's own menu and the walkthrough
 
@@ -104,8 +118,8 @@ The tester's aim: the weapon is drawn by reaching for it, as with a real one.
   - A zone at the left hip in the body's frame: the right controller within
     about 20 cm of a point low on the left side, below the waist.
   - The grip closing there readies the melee weapon.
-  - Drawn, the same reach and grip sheathes it again (to be confirmed with
-    the tester).
+  - Drawn, the same reach and grip sheathes it again (the tester, 2026-09-27:
+    "ja, soll es").
 - **To find out.**
   - How the body's frame is known: the head's position and heading minus a
     neck-to-hip offset, or the arms' own hip bone. The first needs no engine.
@@ -118,7 +132,8 @@ The tester's aim: the weapon is drawn by reaching for it, as with a real one.
 ### 4.2 Bow from the left shoulder
 
 - **Wanted.** The left hand at the left shoulder and a grip: the bow is drawn.
-- **Design.** As 4.1, a zone behind or above the left shoulder, the left grip.
+- **Design.** As 4.1, a zone behind or above the left shoulder, the left grip;
+  the same gesture puts the bow away again.
 - **To find out.**
   - The same one-slot question: the last bow is remembered and equipped.
   - Conflict: the arrow's reach back over the right shoulder

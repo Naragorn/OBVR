@@ -312,6 +312,18 @@ Every change below is switched by the mode.
   - They are now off while the player is dead.
   - That they held the ragdoll up is a hypothesis; vanilla slow ragdolls are
     the other candidate (combat-comfort-spec.md, Death).
+  - Still floating after that change (tester, 2026-09-27). So the visuals were
+    not the cause, and the vanilla ragdoll is what is left.
+  - Modern Engine Fixes (nexusmods.com/oblivion/mods/56116) is installed here
+    and its list of fixes has nothing on ragdolls; neither has EngineBugFixes
+    (mods/47085; its SavedHavokDataFix is about saving ragdoll data).
+  - What names the symptom: Ragdolls for Oblivion ("corpses no longer fall
+    slowly", reshaped collisions, mass, friction and constraints on every
+    skeleton; nexusmods.com/oblivion/mods/51844, described on
+    ggmods.com/game/the-elder-scrolls-iv-oblivion/mod/50), and Duke Patrick's
+    Melee Combat ("dead bodies ... instead of floating down thru the air like
+    a feather"). Both treat it as vanilla behaviour, fixed in the skeletons'
+    data, not in the engine. Not installed here.
 
 **Buttons in the hand-tracked mode now** (`PlanHandControls`):
 - Right hand:

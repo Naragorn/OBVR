@@ -43,6 +43,7 @@
 #include "game/HeldObject.h"
 #include "game/PlayerLookAt.h"
 #include "game/PlayerTeleport.h"
+#include "game/ControlBindings.h"
 #include "game/GrabPhysics.h"
 #include "game/GrabNearBody.h"
 #include "game/NearbyItems.h"
@@ -660,6 +661,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 
 	if (active) {
+		// Once: whether the inventory drop can work with the game's bindings.
+		game::CheckDropBinding(config.handKeys.run);
 		// The hands are only drawn in first person, so the mode keeps the
 		// player there through the game's own switch - the one the dialogue
 		// shim uses. Not while a menu is up: the game flips to third person

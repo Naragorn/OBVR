@@ -1234,6 +1234,26 @@ void TestLeftButtonsInHandMode() {
 	Check(r.controls.run && !r.controls.menuClick, "the click up");
 	r = mode.Update(frame, settings);
 	Check(!r.controls.run && !r.controls.menuClick, "Shift up, and held A does not repeat");
+	// After a drop the inventory flickers to the HUD and back (2026-09-27 log);
+	// with A still held that must not drop again.
+	frame.inventoryOpen = false;
+	mode.Update(frame, settings);
+	frame.inventoryOpen = true;
+	bool again = false;
+	for (int i = 0; i < 6; ++i) {
+		r = mode.Update(frame, settings);
+		again = again || r.controls.menuClick || r.controls.run;
+	}
+	Check(!again, "the inventory flickering away and back under a held A: no second drop");
+	frame.left.buttonsPressed = 0;
+	mode.Update(frame, settings);
+	frame.left.buttonsPressed = 1ull << openvr::kButtonA;
+	bool dropped = false;
+	for (int i = 0; i < 4; ++i) {
+		r = mode.Update(frame, settings);
+		dropped = dropped || (r.controls.menuClick && r.controls.run);
+	}
+	Check(dropped, "let go and pressed again: the next drop");
 	frame.left.buttonsPressed = 0;
 	mode.Update(frame, settings);
 	frame.inventoryOpen = false;

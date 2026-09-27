@@ -463,6 +463,7 @@ private:
 	TeleportStickState m_teleportStick;
 	ButtonEdge m_dropEdge;
 	DropPressState m_drop;
+	bool m_dropClickNow = false;  // this frame carries the drop's click
 	LaserPressState m_press;
 	RepeatState m_scrollUp;
 	RepeatState m_scrollDown;

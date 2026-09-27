@@ -922,3 +922,13 @@ if(NOT MSVC)
 	target_compile_options(controller_projection_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME controller_projection COMMAND controller_projection_test)
+
+add_executable(control_bindings_test ControlBindingsTest.cpp)
+
+target_include_directories(control_bindings_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(control_bindings_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME control_bindings COMMAND control_bindings_test)
