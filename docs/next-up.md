@@ -118,6 +118,15 @@ hand-to-hand damage, scaled by how hard it was thrown:
 
 ## 6. Locomotion: room-scale body, teleport
 
+**Scope: Full VR only** (the hand-tracked mode, `[Hands] Enabled`). The seated
+mode stays exactly as it is:
+- played with a gamepad or keyboard, VR on top, Luke Ross style;
+- aiming follows the head;
+- the character does not turn with the head;
+- the head moves only the camera.
+
+Every change below is switched by the mode.
+
 **Wanted (2026-09-27).**
 - Walking and turning in the playspace moves and turns the character the same
   way, in all six degrees of freedom.
@@ -133,8 +142,10 @@ hand-to-hand damage, scaled by how hard it was thrown:
   - The character's capsule stays where it is, so a step through the room is
     a lean, and nothing stops the view at a wall.
 - The character does not turn with the head. That was the tester's decision
-  ("character bleibt", docs/vr-modding/camera-tracking-and-aiming.md), since
-  kept by aiming in place (`AimAtSource`). The new wish reverses it.
+  for the seated mode ("character bleibt", docs/vr-modding/
+  camera-tracking-and-aiming.md), since kept by aiming in place
+  (`AimAtSource`). It stays in force there. In Full VR the body follows the
+  playspace instead.
 - The left stick walks along the body's heading (rotZ). The right stick turns:
   smooth at `TurnSpeed`, or snap (`SnapTurning`, instant or eased,
   vignette).
