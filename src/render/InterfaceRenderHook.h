@@ -323,4 +323,8 @@ bool DumpStoredWaterReflectionTarget(void* gameDevice, unsigned slot, const char
 // to be first.
 void ArmBetweenTrace();
 
+// Closed hands (BackfacePass.h): whether the first-person pass's draws are
+// followed by their back faces in black. Set each frame by the camera hook.
+void SetFirstPersonBackfaces(bool enabled);
+
 }  // namespace obvr::render

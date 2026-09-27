@@ -16,6 +16,7 @@
 #include "game/MenuType.h"
 #include "game/PlayerAim.h"
 #include "platform/Win32Min.h"
+#include "render/BackfacePass.h"
 #include "render/BoneRebase.h"
 #include "render/D3D9Types.h"
 #include "render/GameDevice.h"
@@ -1066,6 +1067,70 @@ SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex
 	return result;
 }
 
+// Closed hands (BackfacePass.h).
+bool g_backfacesWanted = false;
+UInt32 g_backfaceReportsLeft = 3;
+
+bool InFirstPersonPass() {
+	const UInt8* const renderer = *reinterpret_cast<const UInt8* const*>(addr::kRendererPointer);
+	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(renderer))) {
+		return false;
+	}
+	const UInt8* const accumulator =
+		*reinterpret_cast<const UInt8* const*>(renderer + addr::kRendererAccumulatorOffset);
+	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(accumulator))) {
+		return false;
+	}
+	return accumulator[kAccumulatorFirstPersonOffset] != 0;
+}
+
+// After a first-person draw: the same geometry again, its back faces, black.
+void DrawBackfacesAfter(void* device, UInt32 type, SInt32 baseVertexIndex, UInt32 minVertexIndex,
+                        UInt32 numVertices, UInt32 startIndex, UInt32 primCount) {
+	if (!g_backfacesWanted || g_redirecting || !InFirstPersonPass()) {
+		return;
+	}
+	auto getState = d3d9::Method<d3d9::GetRenderStateFn>(device, d3d9::kDeviceGetRenderState);
+	if (getState == nullptr || g_originalSetState == nullptr) {
+		return;
+	}
+	UInt32 cull = 0, blend = 0, colorWrite = 0, src = 0, dst = 0, op = 0, separate = 0;
+	getState(device, d3d9::kRenderStateCullMode, &cull);
+	getState(device, d3d9::kRenderStateAlphaBlendEnable, &blend);
+	getState(device, d3d9::kRenderStateColorWriteEnable, &colorWrite);
+	const UInt32 reversed = BackfaceCullFor(true, true, cull, blend != 0, colorWrite);
+	if (reversed == 0) {
+		return;
+	}
+	getState(device, d3d9::kRenderStateSrcBlend, &src);
+	getState(device, d3d9::kRenderStateDestBlend, &dst);
+	getState(device, d3d9::kRenderStateBlendOp, &op);
+	getState(device, d3d9::kRenderStateSeparateAlphaBlendEnable, &separate);
+	g_originalSetState(device, d3d9::kRenderStateCullMode, reversed);
+	g_originalSetState(device, d3d9::kRenderStateAlphaBlendEnable, 1);
+	g_originalSetState(device, d3d9::kRenderStateSrcBlend, d3d9::kBlendZero);
+	g_originalSetState(device, d3d9::kRenderStateDestBlend, d3d9::kBlendZero);
+	g_originalSetState(device, d3d9::kRenderStateBlendOp, d3d9::kBlendOpAdd);
+	g_originalSetState(device, d3d9::kRenderStateSeparateAlphaBlendEnable, 0);
+	// The colour only: whatever the target keeps in alpha stays.
+	g_originalSetState(device, d3d9::kRenderStateColorWriteEnable, colorWrite & 0x7u);
+	const SInt32 result = g_originalDrawIndexed(device, type, baseVertexIndex, minVertexIndex,
+	                                            numVertices, startIndex, primCount);
+	g_originalSetState(device, d3d9::kRenderStateCullMode, cull);
+	g_originalSetState(device, d3d9::kRenderStateAlphaBlendEnable, blend);
+	g_originalSetState(device, d3d9::kRenderStateSrcBlend, src);
+	g_originalSetState(device, d3d9::kRenderStateDestBlend, dst);
+	g_originalSetState(device, d3d9::kRenderStateBlendOp, op);
+	g_originalSetState(device, d3d9::kRenderStateSeparateAlphaBlendEnable, separate);
+	g_originalSetState(device, d3d9::kRenderStateColorWriteEnable, colorWrite);
+	if (g_backfaceReportsLeft > 0) {
+		--g_backfaceReportsLeft;
+		OBVR_LOG("Closed hands: a first-person draw (%u triangles, cull %u) followed by its back "
+		         "faces in black (cull %u)%s", primCount, cull, reversed,
+		         result < 0 ? " - the draw FAILED" : "");
+	}
+}
+
 SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 baseVertexIndex,
                                             UInt32 minVertexIndex, UInt32 numVertices,
                                             UInt32 startIndex, UInt32 primCount) {
@@ -1087,6 +1152,8 @@ SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 base
 	}
 	const SInt32 result = g_originalDrawIndexed(self, type, baseVertexIndex, minVertexIndex,
 	                                            numVertices, startIndex, primCount);
+	DrawBackfacesAfter(self, type, baseVertexIndex, minVertexIndex, numVertices, startIndex,
+	                   primCount);
 	if (g_redirecting || g_observing) {
 		++g_statsDraws;
 		++g_statsKind[1];
@@ -2734,5 +2801,7 @@ bool LastPerspectiveProjection(float (&out)[4][4]) {
 	}
 	return true;
 }
+
+void SetFirstPersonBackfaces(bool enabled) { g_backfacesWanted = enabled; }
 
 }  // namespace obvr::render

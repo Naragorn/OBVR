@@ -1256,25 +1256,35 @@ void TestCrosshairTooltipPolicy() {
 	{
 		using obvr::camera::ComposeHandsHideList;
 		char list[128];
-		Check(ComposeHandsHideList(list, sizeof(list), true, "Arms", true, true) &&
-		          std::strcmp(list, "Arms,LowerBody,SideWeapon,BackWeapon,Quiver,Scb,Hand,Weapon,Torch,"
-		                            "Bip01 L ForearmTwist") == 0,
-		      "everything: arms, sheaths, and the hands with what they hold");
-		Check(ComposeHandsHideList(list, sizeof(list), false, "Arms", false, true) &&
+		Check(ComposeHandsHideList(list, sizeof(list), true, "Arms", true, true, false) &&
+		          std::strcmp(list, "Arms,LowerBody,Foot,SideWeapon,BackWeapon,Quiver,Scb,Hand,Weapon,"
+		                            "Torch,Bip01 L ForearmTwist") == 0,
+		      "everything: arms, legs, sheaths, and the hands with what they hold");
+		Check(ComposeHandsHideList(list, sizeof(list), false, "Arms", false, true, false) &&
 		          std::strcmp(list, "Hand,Weapon,Torch,Bip01 L ForearmTwist") == 0,
 		      "hands away alone: the held weapon goes with the hands");
-		Check(ComposeHandsHideList(list, sizeof(list), true, "Arms", false, false) &&
-		          std::strcmp(list, "Arms,LowerBody") == 0,
-		      "in the world: the arms and the leg armour, the weapon in hand stays");
-		Check(ComposeHandsHideList(list, sizeof(list), false, "Arms", false, false) && list[0] == '\0',
+		Check(ComposeHandsHideList(list, sizeof(list), false, "Arms", false, true, true) &&
+		          std::strcmp(list, "Hand,Weapon,Torch,Bip01 L ForearmTwist") == 0,
+		      "hands away while sheathing: the weapon is named once");
+		Check(ComposeHandsHideList(list, sizeof(list), true, "Arms", false, false, false) &&
+		          std::strcmp(list, "Arms,LowerBody,Foot") == 0,
+		      "in the world: the arms, the greaves and the boots, the weapon in hand stays");
+		Check(ComposeHandsHideList(list, sizeof(list), true, "Arms", true, false, true) &&
+		          std::strcmp(list, "Arms,LowerBody,Foot,SideWeapon,BackWeapon,Quiver,Scb,Weapon") == 0,
+		      "sheathing: the weapon goes from the hand at once");
+		Check(ComposeHandsHideList(list, sizeof(list), false, "Arms", false, false, true) &&
+		          std::strcmp(list, "Weapon") == 0,
+		      "sheathing alone: just the weapon");
+		Check(ComposeHandsHideList(list, sizeof(list), false, "Arms", false, false, false) &&
+		          list[0] == '\0',
 		      "nothing to hide: an empty list");
-		Check(ComposeHandsHideList(list, sizeof(list), true, "", true, false) &&
-		          std::strcmp(list, "LowerBody,SideWeapon,BackWeapon,Quiver,Scb") == 0,
+		Check(ComposeHandsHideList(list, sizeof(list), true, "", true, false, false) &&
+		          std::strcmp(list, "LowerBody,Foot,SideWeapon,BackWeapon,Quiver,Scb") == 0,
 		      "an empty arm list adds no stray comma");
-		Check(!ComposeHandsHideList(list, 8, true, "Arms", true, true) && std::strlen(list) < 8,
+		Check(!ComposeHandsHideList(list, 8, true, "Arms", true, true, true) && std::strlen(list) < 8,
 		      "too long: refused, still terminated");
-		Check(!ComposeHandsHideList(nullptr, 8, true, "Arms", true, true) &&
-		          !ComposeHandsHideList(list, 0, true, "Arms", true, true),
+		Check(!ComposeHandsHideList(nullptr, 8, true, "Arms", true, true, false) &&
+		          !ComposeHandsHideList(list, 0, true, "Arms", true, true, false),
 		      "no room at all: refused");
 	}
 

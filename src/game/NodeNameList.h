@@ -6,6 +6,10 @@ namespace obvr::game {
 // way [Hands] HideFirstPersonNodes spells it: "UpperBody, Hand". Case does
 // not matter, spaces around the commas do not either, and an empty entry
 // never matches - so a list of ",," hides nothing rather than everything.
+// A name with a colon matches by what comes before it, the way the engine
+// reads its own "UpperBody:X" as UpperBody (cs.uesp.net, "NifSkope/Modeling
+// Tutorial: Fixing the armor incorrectly displayed in 1st person"): an
+// armour made of several "Foot:0", "Foot:1" parts is hidden as "Foot".
 //
 // Pure, so the matching - the only decision in hiding a node - is checked
 // without a scene graph.
@@ -41,7 +45,7 @@ inline bool NameInList(const char* name, const char* list) {
 			++e;
 			++n;
 		}
-		if (e == end && *n == '\0') {
+		if (e == end && (*n == '\0' || *n == ':')) {
 			return true;
 		}
 	}

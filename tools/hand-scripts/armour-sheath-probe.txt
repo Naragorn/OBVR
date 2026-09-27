@@ -1,0 +1,67 @@
+﻿# What the first-person tree holds with armour on and a two-hander drawn and
+# sheathed: the names of the armour's parts (which of them still hang in the
+# room in Full VR) and where the claymore goes while it is put away. The
+# tree probe reports again every time the tree changes.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\armour-sheath-probe.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Debug FirstPersonTreeProbe=1
+# Iron Boots, Greaves, Cuirass, Gauntlets, Helmet (UESP Oblivion:Iron Armor)
+# and an Iron Claymore (UESP Oblivion:Weapons).
+console player.additem 0001C6CF 1
+console player.additem 0001C6D0 1
+console player.additem 0001C6D1 1
+console player.additem 0001C6D2 1
+console player.additem 0001C6CE 1
+console player.additem 0001C6CD 1
+console player.equipitem 0001C6CF
+console player.equipitem 0001C6D0
+console player.equipitem 0001C6D1
+console player.equipitem 0001C6D2
+console player.equipitem 0001C6CE
+console player.equipitem 0001C6CD
+
+expect HandScript: finished
+expect First person tree: root
+reject HandScript: WARNING
+
+wait 20
+# Looking down: the legs and feet, if they show.
+head pitch -60
+wait 1
+mark armour_look_down
+head pitch 0
+head yaw 0
+wait 0.5
+
+# Over the right shoulder: the claymore drawn.
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark claymore_drawn
+
+# The same reach: sheathed. Pictures while it goes away.
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 0.3
+mark sheathing_0_3
+wait 0.4
+mark sheathing_0_7
+wait 0.5
+mark sheathing_1_2
+head yaw 60
+wait 0.3
+mark sheathing_look_left
+head pitch 0
+head yaw 0
+wait 2
+mark claymore_sheathed

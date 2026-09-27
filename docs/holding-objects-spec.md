@@ -402,6 +402,42 @@ bringing food to the mouth is a planned gesture.
 - **Not verified:** the near clip plane is 10 units (14 cm) from the eye, so
   an object right at the mouth may be cut away in the picture.
 
+## Hands, weapon and held objects that push the world — research (2026-09-27)
+
+Asked for: the weapon swung through the room, the hands, and what they hold
+should knock into the objects there. Nothing is built yet; this is what the
+route rests on.
+
+Read:
+- Oblivion is built with Havok 3.1.1 (xOBSE `obse/obse/HavokBase.h`, line 4:
+  "oblivion is built with havok 311"). Oblivion.exe carries the class names
+  `hkKeyframedRigidMotion`, `hkFixedRigidMotion`, `hkBoxShape`,
+  `hkCapsuleShape`, `hkSphereShape` and `bhkMouseSpringAction`.
+- xOBSE's physics commands move actors only (their character proxy); none
+  pushes a clutter body (`obse/obse/Commands_Physics.cpp`).
+- HIGGS (Skyrim VR, github.com/adamhynek/higgs) gives each hand, and the
+  weapon, its own keyframed rigid body: `Hand::CreateHandCollision`
+  (src/hand.cpp 559-607) builds a box body with the keyframed motion type in
+  a collision group of its own and adds it to the world; the weapon's body
+  clones the weapon's own collision shape (hand.cpp 755-790). Every frame
+  `applyHardKeyFrame` gives the bodies the velocity that reaches the
+  controller's pose by the next step (hand.cpp 690-712, physics.cpp 865). A
+  keyframed body has infinite mass: what it meets is pushed, it is not.
+  A held object is switched to keyframed and driven the same way (hand.cpp
+  1677), its motion type restored on release (hand.cpp 3069).
+- OBVR already has the pieces for the held object: the body, its collision
+  group, the Havok lock, `hkMotion::setLinearVelocity` (GrabPhysics.h).
+
+Derived: the engine has what the HIGGS route needs - keyframed motion
+exists in the build. The held object is the nearest step (a body that exists,
+driven by velocity instead of the spring); the weapon and the hands need new
+bodies made at run time.
+
+Not found (I could not verify these): the addresses of `setMotionType`,
+`hkWorld::addEntity`/`removeEntity`, the shape and rigid-body constructors of
+3.1.1, whether `hkKeyFrameUtility` is linked in (without it the velocities
+are computed by OBVR), a free collision layer, and whether the engine's own
+node-to-Havok sync overwrites a keyframed body.
 ## Order
 
 Built first: 1, 2 and 4 (the tester's choice). Next: tune 1 and 2 in the

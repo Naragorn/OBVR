@@ -182,4 +182,5 @@ the page the section was on. MenuQue shows one generic menu at a time
 (`ShowGenericMenu`, one closing id), so the sections live inside the one menu
 rather than as menus of their own. The flat view (`All`) and the comfort page
 are unchanged. Covered by `TestSections` in NativeSettingsTest; the list was
-seen in the game through `tools/hand-scripts/settings-sections.txt`.
+seen in the game through `tools/hand-scripts/settings-sections.txt` (Full VR)
+and `settings-sections-vr-view.txt` (VR View).

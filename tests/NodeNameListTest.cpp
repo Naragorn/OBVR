@@ -42,6 +42,12 @@ int main() {
 	Check(NameInList("Bip01 R Hand", "UpperBody, Bip01 R Hand"),
 	      "an entry with spaces inside is matched whole");
 	Check(NameInList("a", "b,a,c"), "a single-character entry in the middle");
+	Check(NameInList("Foot:1", "LowerBody,Foot"), "a numbered part matches by its name before the colon");
+	Check(NameInList("upperbody:0", "UpperBody"), "case does not matter there either");
+	Check(!NameInList("Foot:1", "Foot:2"), "a listed number is matched whole");
+	Check(NameInList("Foot:2", "Foot:2"), "and matches itself");
+	Check(!NameInList("Footwear:1", "Foot"), "the part before the colon must be the whole entry");
+	Check(!NameInList(":1", "Foot"), "a name that is only a number matches nothing");
 
 	std::printf("List is empty\n");
 	Check(ListIsEmpty(""), "an empty string");

@@ -267,8 +267,10 @@ constexpr UInt32 kRenderStateSeparateAlphaBlendEnable = 206;
 constexpr UInt32 kRenderStateSrcBlendAlpha = 207;
 constexpr UInt32 kRenderStateDestBlendAlpha = 208;
 constexpr UInt32 kRenderStateBlendOpAlpha = 209;
+constexpr UInt32 kRenderStateBlendOp = 171;
 
 // D3DBLEND / D3DBLENDOP values (d3d9types.h, lines 230, 234, 256).
+constexpr UInt32 kBlendZero = 1;
 constexpr UInt32 kBlendOne = 2;
 constexpr UInt32 kBlendInvSrcAlpha = 6;
 constexpr UInt32 kBlendOpAdd = 1;

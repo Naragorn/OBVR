@@ -52,8 +52,9 @@ void HideFirstPersonNodes(bool enabled, const char* list);
 void ReleaseHiddenFirstPersonNodes();
 
 // Logs the first-person tree once - class, name, flags and child count of
-// every node a few levels down - and again when the root changes (a new
-// model after a race change or a load). For Debug.FirstPersonTreeProbe.
+// every node a few levels down, with its world position - and again when
+// the tree changes (a new model after a race change or a load, armour put on,
+// a weapon sheathed), up to 24 reports. For Debug.FirstPersonTreeProbe.
 void ProbeFirstPersonTree();
 
 // For the pinned hands: the engine culls a shape by the world bound it

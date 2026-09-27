@@ -418,10 +418,10 @@ bool ReadIsThirdPerson();
 // frame's delivery, so a wrist placement is in place for the overlay submit
 // and the controls are pressed before the engine's next input read.
 // The one list of first-person nodes Full VR hides (ComposeHandsHideList).
-const char* HandsHideList(const vr::HandSettings& hands, bool handsAway) {
+const char* HandsHideList(const vr::HandSettings& hands, bool handsAway, bool sheathing) {
 	static char list[256];
 	ComposeHandsHideList(list, sizeof(list), hands.hideArms, hands.hideNodes, hands.hideSheaths,
-	                     handsAway);
+	                     handsAway, sheathing);
 	return list;
 }
 
@@ -1007,6 +1007,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_hudLayer.ClearWristPlacement();
 		game::HideFirstPersonNodes(false, "");
 		game::KeepFirstPersonDepth(false);
+		render::SetFirstPersonBackfaces(false);
 		game::AllowGrabNearBody(false);
 		g_headsetRenderer.SetControllersWanted(false);
 		game::ForgetStrikes();
@@ -1071,9 +1072,15 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		// (2026-09-25). The bones a sheathed weapon, a bow or a quiver hang on
 		// are hidden with everything under them; "Scb" is named too, for a
 		// scabbard hung anywhere else.
-		game::HideFirstPersonNodes(!ReadIsThirdPerson(), HandsHideList(config.hands, handsAway));
+		// The weapon gone from the hand while it is sheathed: the engine's
+		// animation carries it away from the controller (ComposeHandsHideList).
+		const bool sheathing = game::ReadPlayerAction() == vr::kPlayerActionUnequipWeapon;
+		game::HideFirstPersonNodes(!ReadIsThirdPerson(),
+		                           HandsHideList(config.hands, handsAway, sheathing));
 		// The hands in the world rather than on top of it (FirstPersonDepth.h).
 		game::KeepFirstPersonDepth(true);
+		// And closed: their inside black, not the room (BackfacePass.h).
+		render::SetFirstPersonBackfaces(config.hands.closedHands);
 		// Held objects may come up to the mouth and the body (GrabNearBody.h).
 		game::AllowGrabNearBody(true);
 		// The real controllers in the eyes while the hands are being adjusted.
@@ -1082,6 +1089,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	} else {
 		game::HideFirstPersonNodes(false, "");
 		game::KeepFirstPersonDepth(false);
+		render::SetFirstPersonBackfaces(false);
 		game::AllowGrabNearBody(false);
 		g_headsetRenderer.SetControllersWanted(false);
 		game::ForgetStrikes();
@@ -3308,7 +3316,7 @@ void BeforeFirstScenePass() {
 		// The same list Present builds with the hands away. A shorter one here
 		// un-hid the drawn weapon every frame (HideFirstPersonNodes shows again
 		// what is no longer listed), so it floated through the conversation.
-		game::HideFirstPersonNodes(true, HandsHideList(GetConfig().hands, true));
+		game::HideFirstPersonNodes(true, HandsHideList(GetConfig().hands, true, false));
 	}
 	// Snapshot the cyclopean world camera before the reflection subpass changes it.
 	g_cyclopeanCameraWorldValid = mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(g_bodyCameraNode));

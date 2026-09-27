@@ -731,6 +731,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME melee_hit COMMAND melee_hit_test)
 
+add_executable(backface_pass_test BackfacePassTest.cpp)
+target_include_directories(backface_pass_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(backface_pass_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME backface_pass COMMAND backface_pass_test)
+
 add_executable(node_name_list_test NodeNameListTest.cpp)
 target_include_directories(node_name_list_test PRIVATE ../src)
 if(NOT MSVC)

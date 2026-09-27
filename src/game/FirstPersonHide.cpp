@@ -135,6 +135,8 @@ UInt8* g_hidden[kMaxHidden];
 UInt32 g_hiddenCount = 0;
 UInt32 g_hiddenReportsLeft = 60;  // a scabbard hidden late still shows (2026-09-27)
 const UInt8* g_probedRoot = nullptr;
+UInt32 g_probedSignature = 0;
+UInt32 g_probeReportsLeft = 24;
 UInt32 g_probeLinesLeft = 0;
 
 bool IsHidden(const UInt8* node) {
@@ -220,6 +222,25 @@ UInt8* FindNamed(UInt8* node, const char* name, UInt32 depth) {
 	return nullptr;
 }
 
+// The tree's shape as one number: every object's address in walk order,
+// with its depth, folded together - a part added, removed or moved to
+// another parent changes it.
+UInt32 TreeSignature(const UInt8* node, UInt32 depth, UInt32 signature) {
+	if (!LooksLikeObject(node)) {
+		return signature;
+	}
+	signature = signature * 31u + reinterpret_cast<UInt32>(node) + depth;
+	if (depth >= kMaxFindDepth || !ClassIsNode(ClassNameOf(node))) {
+		return signature;
+	}
+	UInt32 count = 0;
+	UInt8* const* const children = ChildrenOf(node, count);
+	for (UInt32 at = 0; at < count; ++at) {
+		signature = TreeSignature(children[at], depth + 1, signature);
+	}
+	return signature;
+}
+
 void ProbeNode(const UInt8* node, UInt32 depth) {
 	if (g_probeLinesLeft == 0 || !LooksLikeObject(node)) {
 		return;
@@ -233,10 +254,13 @@ void ProbeNode(const UInt8* node, UInt32 depth) {
 	}
 	static const char* const kIndent[] = {"", "  ", "    ", "      ", "        ", "          ",
 	                                      "            "};
-	OBVR_LOG("First person tree: %2u %s%s \"%s\" flags=%04X children=%u at %08X", depth,
-	         kIndent[depth < 6 ? depth : 6], className, NameOf(node),
+	const float* const world =
+		reinterpret_cast<const float*>(node + addr::kNodeWorldTranslateOffset);
+	OBVR_LOG("First person tree: %2u %s%s \"%s\" flags=%04X children=%u at %08X world %.1f %.1f %.1f",
+	         depth, kIndent[depth < 6 ? depth : 6], className, NameOf(node),
 	         *reinterpret_cast<const UInt16*>(node + addr::kNiFlagsOffset), count,
-	         reinterpret_cast<UInt32>(node));
+	         reinterpret_cast<UInt32>(node), static_cast<double>(world[0]),
+	         static_cast<double>(world[1]), static_cast<double>(world[2]));
 	if (depth >= kMaxFindDepth || !isNode) {
 		return;
 	}
@@ -437,13 +461,25 @@ UInt32 KeepFirstPersonNodesInView(const char* list, const NiPoint3& centre, floa
 
 void ProbeFirstPersonTree() {
 	NiAVObject* const root = FirstPersonArmsNode();
-	if (root == nullptr || reinterpret_cast<const UInt8*>(root) == g_probedRoot) {
+	if (root == nullptr) {
+		return;
+	}
+	// Again whenever the tree changes shape - a new model, but also armour
+	// put on or a weapon sheathed, whose parts arrive as new nodes or move to
+	// another bone. Bounded: each report is long.
+	const UInt32 signature = TreeSignature(reinterpret_cast<const UInt8*>(root), 0, 17u);
+	if (reinterpret_cast<const UInt8*>(root) == g_probedRoot && signature == g_probedSignature) {
 		return;
 	}
 	g_probedRoot = reinterpret_cast<const UInt8*>(root);
+	g_probedSignature = signature;
+	if (g_probeReportsLeft == 0) {
+		return;
+	}
+	--g_probeReportsLeft;
 	g_probeLinesLeft = 400;
-	OBVR_LOG("First person tree: root %08X - class, name, flags (bit 0 hidden), children",
-	         reinterpret_cast<UInt32>(root));
+	OBVR_LOG("First person tree: root %08X, shape %08X - class, name, flags (bit 0 hidden), "
+	         "children, world position", reinterpret_cast<UInt32>(root), signature);
 	ProbeNode(g_probedRoot, 0);
 }
 

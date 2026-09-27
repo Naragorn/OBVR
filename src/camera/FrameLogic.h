@@ -589,13 +589,17 @@ CrosshairContent CrosshairContentWanted(bool crosshairWanted, bool haveTarget,
 // whatever a call no longer lists: a shorter list in one of them un-hid the
 // drawn weapon every frame of a conversation (2026-09-25).
 //
-//   * the arms' meshes (armNodes), with HideArms - and "LowerBody", the
-//     shape armour below the waist is named by convention: the engine hides
+//   * the arms' meshes (armNodes), with HideArms - and "LowerBody" and
+//     "Foot", the shapes greaves and boots are named (the vanilla steel and
+//     leather greaves and steel boots in Oblivion - Meshes.bsa, read
+//     2026-09-27; the skin keywords of forums.nexusmods.com topic 525801,
+//     "Special nif node and material names"): the engine hides
 //     only "UpperBody" in first person and draws every other shape
 //     (cs.uesp.net, "NifSkope/Modeling Tutorial: Fixing the armor
 //     incorrectly displayed in 1st person"). Flat, nobody looks down at it;
 //     with the first-person model moved by the right controller the leg
-//     armour hung in the room (the tester, 2026-09-27)
+//     armour hung in the room, and with LowerBody hidden the boots still
+//     did (the tester, 2026-09-27)
 //   * the sheaths: a weapon's scabbard is its own node, "Scb", hung on the
 //     side-weapon bone with the sheathed weapon (cs.uesp.net, NifSkope
 //     Comprehensive Guide, "Scabbards"); the bones a sheathed weapon, a bow
@@ -603,8 +607,14 @@ CrosshairContent CrosshairContentWanted(bool crosshairWanted, bool haveTarget,
 //   * with the hands away (menus, dialogue): the hands and what they hold -
 //     the drawn weapon (Weapon bone), a torch (Torch), a shield (its Prn,
 //     "Bip01 L ForearmTwist")
+//   * while the weapon is being sheathed (the player's action is
+//     UnequipWeapon): the drawn weapon. The engine's sheathe animation moves
+//     it from the hand to where a sheathed weapon hangs, a place with no
+//     meaning in Full VR, where it goes back by the hand reaching the
+//     holster - and a two-hander was seen hanging in the room while it was
+//     put away (the tester, 2026-09-27)
 inline bool ComposeHandsHideList(char* out, UInt32 capacity, bool hideArms, const char* armNodes,
-                                 bool hideSheaths, bool handsAway) {
+                                 bool hideSheaths, bool handsAway, bool sheathing) {
 	if (out == nullptr || capacity == 0) {
 		return false;
 	}
@@ -628,13 +638,15 @@ inline bool ComposeHandsHideList(char* out, UInt32 capacity, bool hideArms, cons
 	};
 	if (hideArms && armNodes != nullptr) {
 		append(armNodes);
-		append("LowerBody");
+		append("LowerBody,Foot");
 	}
 	if (hideSheaths) {
 		append("SideWeapon,BackWeapon,Quiver,Scb");
 	}
 	if (handsAway) {
 		append("Hand,Weapon,Torch,Bip01 L ForearmTwist");
+	} else if (sheathing) {
+		append("Weapon");
 	}
 	out[at] = '\0';
 	return fits;
