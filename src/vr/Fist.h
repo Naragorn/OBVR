@@ -20,6 +20,12 @@
 // again only once they are all below openCurl, so a hand between the two
 // keeps what it was. Either change has to hold for holdSeconds.
 //
+// The close limit is a row in the settings ("Fist at", the tester,
+// 2026-09-28: a hand whose little finger reads low never made a fist). The
+// open limit is kept at least kFistOpenGap below it: were it at or above,
+// a hand resting between the two would count as a fist and as open by
+// turns, a ready click every holdSeconds.
+//
 // A fist made while the hand holds something, or while its grip is the
 // holster's (a reach to the hip curls the fingers too), counts for nothing.
 //
@@ -31,6 +37,8 @@
 
 namespace obvr::vr {
 
+inline constexpr float kFistOpenGap = 0.15f;
+
 struct FistSettings {
 	bool enabled = true;
 	float closeCurl = 0.80f;
@@ -40,6 +48,14 @@ struct FistSettings {
 	// the fists are given up.
 	float unequipWaitSeconds = 2.0f;
 };
+
+// The open limit as used: the setting, or kFistOpenGap below the close limit
+// if it is not that far below, never under 0.
+inline float FistOpenLimit(const FistSettings& settings) {
+	const float highest = settings.closeCurl - kFistOpenGap;
+	const float limit = settings.openCurl < highest ? settings.openCurl : highest;
+	return limit > 0.0f ? limit : 0.0f;
+}
 
 struct FistState {
 	bool closed = false;
@@ -102,7 +118,7 @@ inline FistVerdict StepFist(FistState& s, const FistInput& in, const FistSetting
 		v.closed = s.closed;
 		return v;
 	}
-	const bool wanted = s.closed ? !(highest <= settings.openCurl) : lowest >= settings.closeCurl;
+	const bool wanted = s.closed ? !(highest <= FistOpenLimit(settings)) : lowest >= settings.closeCurl;
 	if (wanted != s.closed) {
 		s.timer += in.dt;
 		if (s.timer >= settings.holdSeconds) {

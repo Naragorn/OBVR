@@ -805,6 +805,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.fist.enabled = v != 0.0f; },
 	},
 	{
+		"Hands", "Fist at", "How far index to little finger must all curl to count as a fist (1 = fully)",
+		ItemKind::Number, 0.4f, 0.95f, 0.05f, 2, false,
+		"Hands", "FistCloseCurl",
+		+[](const Config& c) { return c.hands.fist.closeCurl; },
+		+[](Config& c, float v) { c.hands.fist.closeCurl = v; },
+	},
+	{
 		"Hands", "Stow at the body", "Full VR: let go of a held item at your chest or belly to take it",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "StowAtBody",

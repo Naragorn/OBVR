@@ -129,8 +129,11 @@ With nothing held, each finger of a hand follows the controller's finger
   - A sideways turn of the thumb that does not lie on the open-to-fist path
     is dropped: the game's hand has only its two poses to blend between.
     So the OK sign can only be approximated.
-- **Open bug (the tester, 2026-09-28): the left little finger stays
-  straight** whatever the hand does on the controller ("der linke kleine
+- **Solved, not in OBVR (the tester, 2026-09-28): the left little finger
+  stayed straight.** It works once the hand sits closer to the controller
+  ("musste näher an controller ran"). The fist's limit is now a settings
+  row, "Fist at" (docs/controls-spec.md 4.3), for a hand whose fingers read
+  low. The finding as it was: whatever the hand does on the controller ("der linke kleine
   finger/pinky bleibt immer gestreckt egal wie ich den controller
   berühre"). The tester's own guess is old controllers. Nothing settles it
   yet:

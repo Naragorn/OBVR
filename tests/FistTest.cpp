@@ -173,10 +173,51 @@ void TestFist() {
 	}
 }
 
+
+// The close limit from the settings, and the open limit kept below it.
+void TestLimits() {
+	std::printf("The fist's limits\n");
+	FistSettings s;
+	Check(FistOpenLimit(s) == s.openCurl, "the defaults (0.80, 0.35): the open limit as set");
+	s.closeCurl = 0.45f;
+	Check(FistOpenLimit(s) > 0.299f && FistOpenLimit(s) < 0.301f, "the close limit lowered to 0.45: open below 0.30");
+	s.closeCurl = 0.4f;
+	s.openCurl = 0.6f;
+	Check(FistOpenLimit(s) > 0.249f && FistOpenLimit(s) < 0.251f, "an open limit above the close limit: pulled below it");
+	s.closeCurl = 0.1f;
+	s.openCurl = 0.05f;
+	Check(FistOpenLimit(s) == 0.0f, "a close limit under the gap: open at 0, never negative");
+	{
+		FistSettings low;
+		low.closeCurl = 0.5f;
+		FistState st;
+		FistVerdict v = Hold(st, Hand(0.55f), 5, low);
+		Check(v.closed && v.readyClick, "closed at 0.5: a hand at 0.55 is a fist");
+		v = Hold(st, Hand(0.55f), 10, low);
+		Check(v.closed && !v.changed, "and stays one, no clicks by turns");
+		FistState def;
+		v = Hold(def, Hand(0.55f), 5, FistSettings{});
+		Check(!v.closed, "at the default 0.80 the same hand is not");
+	}
+	{
+		FistSettings crossed;
+		crossed.closeCurl = 0.5f;
+		crossed.openCurl = 0.7f;
+		FistState st;
+		FistVerdict v = Hold(st, Hand(0.6f), 5, crossed);
+		Check(v.closed, "an open limit set above the close limit: a hand at 0.6 closes");
+		v = Hold(st, Hand(0.6f), 10, crossed);
+		Check(v.closed && !v.changed, "and does not open again at once");
+		v = Hold(st, Hand(0.3f), 5, crossed);
+		Check(!v.closed && v.changed, "opened below 0.35: open");
+	}
+}
+
 }  // namespace
 
 int main() {
 	TestFist();
+	TestLimits();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

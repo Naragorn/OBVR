@@ -285,7 +285,13 @@ in the headset yet.
     while the grip is the holster's, changes nothing. A squeezed grip alone
     does not block it: on an Index a real fist squeezes the handle too.
   - **Settings.** `[Hands] Fists`, `FistCloseCurl`, `FistOpenCurl` and
-    `FistHoldSeconds`; a toggle in the settings under Hands.
+    `FistHoldSeconds`; a toggle in the settings under Hands, and the row
+    "Fist at" for `FistCloseCurl` (0.40 to 0.95; the tester, 2026-09-28:
+    a hand whose little finger reads low, the Index sensing it only with
+    the hand close to the handle, needs a lower limit). The open limit is
+    kept at least 0.15 below it (`vr::FistOpenLimit`, fist_test): at or
+    above it, a hand resting between the two would flip between fist and
+    open, a ready click each time.
 - **Checked in the game** (`tools/hand-scripts/fist.txt`, PASS, with the
   scripted skeleton reporting every finger at the script's curl):
   - bare hands, curl 1: "fists up", and the game showed them drawn;
