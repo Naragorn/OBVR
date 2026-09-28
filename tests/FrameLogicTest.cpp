@@ -2408,8 +2408,78 @@ void TestThrow() {
 	      "a wrist flick: w x r, the point further out moves faster");
 }
 
-void TestPlayerCapsule() {
-	std::printf("Letting go inside the player's capsule\n");
+void TestHeldDrive() {
+	std::printf("The held object's body driven to the hand\n");
+	using namespace obvr::game;
+	const auto Near = [](float a, float b) { return a - b < 1e-3f && b - a < 1e-3f; };
+	const float dt = 1.0f / 90.0f;
+
+	// Straight.
+	obvr::NiPoint3 v = DriveLinearVelocity(obvr::NiPoint3{0.0f, 0.0f, 0.0f},
+	                                       obvr::NiPoint3{0.1f, 0.0f, 0.0f}, dt);
+	Check(Near(v.x, 0.1f * kDriveGain * 90.0f) && Near(v.y, 0.0f) && Near(v.z, 0.0f),
+	      "the gap closed by the gain in one frame");
+	v = DriveLinearVelocity(obvr::NiPoint3{1.0f, 2.0f, 3.0f}, obvr::NiPoint3{1.0f, 2.0f, 3.0f}, dt);
+	Check(v.LengthSquared() == 0.0f, "at the hand: still");
+	v = DriveLinearVelocity(obvr::NiPoint3{0.0f, 0.0f, 0.0f}, obvr::NiPoint3{0.0f, 0.0f, -50.0f}, dt);
+	Check(Near(v.z, -kDriveMaxHavokPerSecond) && Near(v.x, 0.0f),
+	      "a jump of the hand: clamped, in its direction");
+	const obvr::NiPoint3 hitch = DriveLinearVelocity(obvr::NiPoint3{0.0f, 0.0f, 0.0f},
+	                                                 obvr::NiPoint3{0.1f, 0.0f, 0.0f}, 0.5f);
+	const obvr::NiPoint3 none = DriveLinearVelocity(obvr::NiPoint3{0.0f, 0.0f, 0.0f},
+	                                                obvr::NiPoint3{0.1f, 0.0f, 0.0f}, 0.0f);
+	Check(Near(hitch.x, none.x) && Near(none.x, 0.1f * kDriveGain * 90.0f),
+	      "a hitch or no frame time: the headset's frame instead");
+	Check(Near(DriveSeconds(0.02f), 0.02f) && Near(DriveSeconds(0.2f), kDriveNominalSeconds) &&
+	          Near(DriveSeconds(-1.0f), kDriveNominalSeconds),
+	      "the frame time trusted between 1 ms and 100 ms");
+
+	// Havok's columns.
+	const float columns[12] = {1.0f, 2.0f, 3.0f, 0.0f, 4.0f, 5.0f, 6.0f, 0.0f, 7.0f, 8.0f, 9.0f, 0.0f};
+	const obvr::NiMatrix33 m = RotationFromColumns(columns);
+	Check(m.data[0][0] == 1.0f && m.data[1][0] == 2.0f && m.data[2][0] == 3.0f &&
+	          m.data[0][1] == 4.0f && m.data[2][2] == 9.0f,
+	      "column j of the motion is column j of the matrix; the fourth floats are padding");
+
+	// Turning.
+	const obvr::NiMatrix33 identity = obvr::NiMatrix33::Identity();
+	obvr::NiPoint3 w = DriveAngularVelocity(identity, identity, dt);
+	Check(w.LengthSquared() == 0.0f, "no turn to make: still");
+	const auto AboutZ = [](float angle) {
+		obvr::NiMatrix33 r = obvr::NiMatrix33::Identity();
+		r.data[0][0] = std::cos(angle);
+		r.data[0][1] = -std::sin(angle);
+		r.data[1][0] = std::sin(angle);
+		r.data[1][1] = std::cos(angle);
+		return r;
+	};
+	const float small = 0.1f;
+	w = DriveAngularVelocity(identity, AboutZ(small), dt);
+	Check(Near(w.z, small * kDriveGain * 90.0f) && Near(w.x, 0.0f) && Near(w.y, 0.0f),
+	      "a tenth of a radian about z: that angle over the frame, about +z");
+	w = DriveAngularVelocity(AboutZ(small), identity, dt);
+	Check(Near(w.z, -small * kDriveGain * 90.0f), "and back the other way");
+	w = DriveAngularVelocity(AboutZ(0.3f), AboutZ(0.4f), dt);
+	Check(Near(w.z, 0.1f * kDriveGain * 90.0f),
+	      "the error between the two, not the target's own angle");
+	w = DriveAngularVelocity(identity, AboutZ(2.0f), dt);
+	Check(Near(w.z, kDriveMaxRadiansPerSecond) && Near(w.x, 0.0f),
+	      "a large turn: clamped, about its axis");
+	w = DriveAngularVelocity(identity, AboutZ(-0.2f * 3.14159265f + 2.0f * 3.14159265f), dt);
+	Check(w.z < 0.0f, "past half a turn one way is the short way round the other");
+
+	// When.
+	Check(!MotionTypeDrivable(kMotionTypeKeyframed) && !MotionTypeDrivable(kMotionTypeFixed) &&
+	          !MotionTypeDrivable(0) && !MotionTypeDrivable(200),
+	      "keyframed, fixed, invalid and unknown motions are not driven");
+	Check(MotionTypeDrivable(1) && MotionTypeDrivable(4) && MotionTypeDrivable(5),
+	      "the dynamic ones are");
+	Check(DriveTakesGap(0.0f) && DriveTakesGap(kDriveMaxGapUnits) &&
+	          !DriveTakesGap(kDriveMaxGapUnits + 1.0f),
+	      "near the hand driven; further out left to the spring");
+}
+
+void TestPlayerCapsule() {	std::printf("Letting go inside the player's capsule\n");
 	using obvr::game::InsidePlayerCapsule;
 	const obvr::NiPoint3 player{100.0f, 200.0f, 0.0f};
 	Check(InsidePlayerCapsule(obvr::NiPoint3{110.0f, 200.0f, 90.0f}, 5.0f, player, 25.0f),
@@ -3872,6 +3942,7 @@ int main() {
 	TestHavokQuaternion();
 	TestThrow();
 	TestPlayerCapsule();
+	TestHeldDrive();
 	TestHeldObject();
 	TestHandGrip();
 	TestNoPlayerStagger();

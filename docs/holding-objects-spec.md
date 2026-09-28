@@ -438,6 +438,30 @@ Not found (I could not verify these): the addresses of `setMotionType`,
 3.1.1, whether `hkKeyFrameUtility` is linked in (without it the velocities
 are computed by OBVR), a free collision layer, and whether the engine's own
 node-to-Havok sync overwrites a keyframed body.
+### Built 2026-09-28: the held object pushes
+
+The first step of the route above, for the object in the hand (the body
+exists; nothing has to be made). Each frame, with `[Hands] HeldObjectsPush=1`
+(default), the held body is given the linear and angular velocity that
+bring it to the pose shown in the hand by the next step (gain 0.8, at most
+15 m/s and 40 rad/s) - `game::DriveLinearVelocity`, `DriveAngularVelocity`,
+tested. The spring stays; the drive takes over once the body is within
+35 units (about half a metre) of the hand, so an object pulled from afar
+still comes on the spring, and one stopped by a wall is let go by the
+engine as before. Keyframed and fixed bodies (motion types 6, 7) are not
+driven; nor is an object being stowed.
+
+Read: the body's pose in its motion (rotation columns at +0x10/+0x20/+0x30,
+translation at +0x40, from the grab's pivot arithmetic at 0x0066D7DD);
+setAngularVelocity at motion vtable +0x58, derived from the pair
+0x004D6AF0/0x004D6B30 (+0x54 and +0x58, same shape) and the impulse at +0x5C
+(Telekinesis, 0x006A7964). Not seen in the game yet: whether the motion's
+pose is where these offsets say, and whether +0x58 turns the body - the log
+lines "driving ... the body at most N units from it" and a held object that
+turns with the wrist will say.
+
+Not yet: the weapon and the hands. They need bodies of their own, made at
+run time; the constructors and hkWorld::addEntity are still to be found.
 ## Order
 
 Built first: 1, 2 and 4 (the tester's choice). Next: tune 1 and 2 in the

@@ -55,6 +55,7 @@ struct SeenPose {
 	NiMatrix33 rot;
 	NiPoint3 pos{0.0f, 0.0f, 0.0f};
 	bool valid = false;
+	bool fresh = false;  // noted since the drive last used it
 };
 SeenPose g_seen;
 UInt32 g_linesLeft = 12;
@@ -302,6 +303,84 @@ void StepFlight(float dtSeconds) {
 	g_flight = Flight{};
 }
 
+// The drive (GrabPhysics.h, "The held object pushes"): the body given the
+// velocity that brings it to the pose shown in the hand.
+UInt32 g_driveLinesLeft = 6;
+UInt32 g_driveFarLinesLeft = 6;
+UInt32 g_driveReportFrames = 0;
+float g_driveLargestGap = 0.0f;
+
+void DriveHeldBody(const Held& h, float dtSeconds) {
+	if (!g_seen.valid || !g_seen.fresh || g_seen.ref != h.ref || !BodyStillThere(h)) {
+		return;
+	}
+	g_seen.fresh = false;
+	const UInt32 motion = Read(h.body + kBodyMotionOffset);
+	if (!LooksLikeObject(motion) || !LooksLikeObject(Read(motion))) {
+		return;
+	}
+	const UInt32 vtable = Read(motion);
+	using TypeFn = UInt32(__thiscall*)(void* motion);
+	const UInt32 typeSlot = Read(vtable + kMotionTypeSlot);
+	const UInt32 linearSlot = Read(vtable + kMotionSetLinearVelocitySlot);
+	const UInt32 angularSlot = Read(vtable + kMotionSetAngularVelocitySlot);
+	if (!LooksLikeObject(typeSlot) || !LooksLikeObject(linearSlot) || !LooksLikeObject(angularSlot)) {
+		return;
+	}
+	const UInt32 type = reinterpret_cast<TypeFn>(typeSlot)(reinterpret_cast<void*>(motion)) & 0xFF;
+	if (!MotionTypeDrivable(type)) {
+		if (g_driveLinesLeft > 0) {
+			--g_driveLinesLeft;
+			OBVR_LOG("Hands: %08X is not driven - its motion type is %u", h.ref, type);
+		}
+		return;
+	}
+	const float* const columns = reinterpret_cast<const float*>(motion + kMotionRotationOffset);
+	const float* const at = reinterpret_cast<const float*>(motion + kMotionTranslationOffset);
+	const NiPoint3 current{at[0], at[1], at[2]};
+	const NiPoint3 target{g_seen.pos.x * kHavokPerUnit, g_seen.pos.y * kHavokPerUnit,
+	                      g_seen.pos.z * kHavokPerUnit};
+	const float gap = math::Sqrt((target - current).LengthSquared()) / kHavokPerUnit;
+	if (gap > g_driveLargestGap) {
+		g_driveLargestGap = gap;
+	}
+	if (!DriveTakesGap(gap)) {
+		// The spring brings it nearer first.
+		if (g_driveFarLinesLeft > 0) {
+			--g_driveFarLinesLeft;
+			OBVR_LOG("Hands: %08X is %.0f units from the hand - left to the spring until it is "
+			         "within %.0f", h.ref, static_cast<double>(gap),
+			         static_cast<double>(kDriveMaxGapUnits));
+		}
+		return;
+	}
+	const NiPoint3 v = DriveLinearVelocity(current, target, dtSeconds);
+	const NiPoint3 w = DriveAngularVelocity(RotationFromColumns(columns), g_seen.rot, dtSeconds);
+
+	using ActivateFn = void(__thiscall*)(void* body);
+	using SetVectorFn = void(__thiscall*)(void* motion, const float* v);
+	reinterpret_cast<ActivateFn>(kActivateBody)(reinterpret_cast<void*>(h.body));
+	alignas(16) float linear[4] = {v.x, v.y, v.z, 0.0f};
+	alignas(16) float angular[4] = {w.x, w.y, w.z, 0.0f};
+	reinterpret_cast<SetVectorFn>(linearSlot)(reinterpret_cast<void*>(motion), linear);
+	reinterpret_cast<SetVectorFn>(angularSlot)(reinterpret_cast<void*>(motion), angular);
+
+	// For the log, a few times: the worst gap over a second - whether the
+	// drive keeps up, and what stopped it.
+	if (++g_driveReportFrames >= 90) {
+		if (g_driveLinesLeft > 0) {
+			--g_driveLinesLeft;
+			OBVR_LOG("Hands: driving %08X (motion type %u) to the hand - the body at most %.1f "
+			         "units from it over the last %u frames; now %.2f m/s, %.1f rad/s",
+			         h.ref, type, static_cast<double>(g_driveLargestGap), g_driveReportFrames,
+			         static_cast<double>(math::Sqrt(v.LengthSquared()) / 10.0f),
+			         static_cast<double>(math::Sqrt(w.LengthSquared())));
+		}
+		g_driveReportFrames = 0;
+		g_driveLargestGap = 0.0f;
+	}
+}
+
 }  // namespace
 
 void NoteHeldPose(UInt32 ref, const NiMatrix33& rot, const NiPoint3& pos) {
@@ -309,10 +388,11 @@ void NoteHeldPose(UInt32 ref, const NiMatrix33& rot, const NiPoint3& pos) {
 	g_seen.rot = rot;
 	g_seen.pos = pos;
 	g_seen.valid = true;
+	g_seen.fresh = true;
 }
 
 void StepGrabPhysics(bool passBody, float throwStrength, bool velocityValid,
-                     const NiPoint3& velocityUnits, float dtSeconds) {
+                     const NiPoint3& velocityUnits, float dtSeconds, bool driveBody) {
 	const UInt32 player = PlayerOrZero();
 	const UInt32 body = player != 0 ? GrabbedBody(player) : 0;
 	const UInt32 ref = player != 0 ? Read(player + addr::kPlayerGrabbedRefOffset) : 0;
@@ -365,6 +445,9 @@ void StepGrabPhysics(bool passBody, float throwStrength, bool velocityValid,
 	}
 	if (velocityValid) {
 		PushVelocity(g_held.velocities, velocityUnits);
+	}
+	if (driveBody) {
+		DriveHeldBody(g_held, dtSeconds);
 	}
 }
 

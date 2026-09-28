@@ -530,6 +530,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.throwStrength = v; },
 	},
 	{
+		"Hands", "Held objects push", "What you hold pushes what it meets, and turns with the hand",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "HeldObjectsPush",
+		+[](const Config& c) { return c.hands.heldObjectsPush ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.heldObjectsPush = v != 0.0f; },
+	},
+	{
 		"Hands", "Reach tooltip", "The tooltip icon moves onto what a closed grip would pick up",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "ReachTooltip",

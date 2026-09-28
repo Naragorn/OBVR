@@ -203,14 +203,142 @@ inline bool InsidePlayerCapsule(const NiPoint3& centre, float radius, const NiPo
 	return dx * dx + dy * dy < reach * reach;
 }
 
+// ------------------------------------------------ The held object pushes
+//
+// In the hand, the object is shown on the hand while its physics body is
+// pulled after it by the engine's spring - softly, a little behind, and
+// never turned (the spring has no rotation target). What the object pushed
+// was that lagging, hanging body, not what was seen. So each frame the body
+// is given the velocity, straight and turning, that brings it to the pose
+// shown in the hand by the next step - the way HIGGS drives a held object in
+// Skyrim VR (github.com/adamhynek/higgs, src/hand.cpp 690-712 and
+// physics.cpp 865, applyHardKeyFrame) - and the physics does the rest: what
+// the body runs into is pushed with the hand's speed, and what it cannot
+// push (a wall) stops it.
+//
+// Read in Oblivion.exe 1.2.0.416:
+// - The body's pose is in its motion ([rb+0x50]): the rotation as three
+//   columns at +0x10, +0x20, +0x30, the translation at +0x40, in Havok units
+//   (the grab's own pivot arithmetic reads them there, 0x0066D7DD..0x0066D817:
+//   the hit minus [motion+0x40], turned back by the rotation at motion+0x10).
+// - The motion's vtable: +0x08 its type (the grab refuses 6 and 7, 0x0066D5D8
+//   and 0x0066D5EA - keyframed and fixed in Havok's order), +0x54 the linear
+//   velocity (the throw above), +0x58 the angular velocity. The last from the
+//   pair 0x004D6AF0 / 0x004D6B30: two functions of the same shape, one ending
+//   in +0x54, the other in +0x58, each activating the body first; the
+//   Telekinesis push scales a vector and calls +0x5C, the impulse after them.
+//   Angular velocity in radians a second, about world axes.
+inline constexpr UInt32 kMotionTypeSlot = 0x08;
+inline constexpr UInt32 kMotionSetAngularVelocitySlot = 0x58;
+inline constexpr UInt32 kMotionRotationOffset = 0x10;
+inline constexpr UInt32 kMotionTranslationOffset = 0x40;
+inline constexpr UInt32 kMotionTypeKeyframed = 6;
+inline constexpr UInt32 kMotionTypeFixed = 7;
+
+// Of the error, how much a frame's velocity closes: all of it is the hard
+// keyframe; a little less keeps a step that runs longer than the frame from
+// overshooting.
+inline constexpr float kDriveGain = 0.8f;
+// The fastest the drive may make the body, so a lost frame or a teleport of
+// the hand does not fire the object across the room: 15 m/s (Havok units
+// are a tenth of a metre - 70 game units a metre times 0.142877) and two
+// a bit over six turns a second.
+inline constexpr float kDriveMaxHavokPerSecond = 150.0f;
+inline constexpr float kDriveMaxRadiansPerSecond = 40.0f;
+// A frame time the drive trusts; longer (a hitch) or none uses the headset's.
+inline constexpr float kDriveNominalSeconds = 1.0f / 90.0f;
+
+inline float DriveSeconds(float dtSeconds) {
+	return dtSeconds > 0.001f && dtSeconds < 0.1f ? dtSeconds : kDriveNominalSeconds;
+}
+
+// The velocity that brings the body from `current` to `target` (both Havok
+// units) in `dtSeconds`, times the gain, clamped.
+inline NiPoint3 DriveLinearVelocity(const NiPoint3& current, const NiPoint3& target,
+                                    float dtSeconds) {
+	const float dt = DriveSeconds(dtSeconds);
+	NiPoint3 v = (target - current) * (kDriveGain / dt);
+	const float speed = math::Sqrt(v.LengthSquared());
+	if (speed > kDriveMaxHavokPerSecond) {
+		v = v * (kDriveMaxHavokPerSecond / speed);
+	}
+	return v;
+}
+
+// The body's rotation from its motion's three columns (Havok keeps a
+// rotation by columns: column j is the body's axis j in the world) as an
+// NiMatrix33 (data[row][column]).
+inline NiMatrix33 RotationFromColumns(const float* columns) {
+	NiMatrix33 m;
+	for (UInt32 row = 0; row < 3; ++row) {
+		for (UInt32 column = 0; column < 3; ++column) {
+			m.data[row][column] = columns[column * 4 + row];
+		}
+	}
+	return m;
+}
+
+// The angular velocity (world axes, radians a second) that turns `current`
+// into `target` in `dtSeconds`, times the gain, clamped: the error rotation
+// target * current^T as axis and angle, the short way round.
+inline NiPoint3 DriveAngularVelocity(const NiMatrix33& current, const NiMatrix33& target,
+                                     float dtSeconds) {
+	NiMatrix33 error;
+	for (UInt32 i = 0; i < 3; ++i) {
+		for (UInt32 j = 0; j < 3; ++j) {
+			float sum = 0.0f;
+			for (UInt32 k = 0; k < 3; ++k) {
+				sum += target.data[i][k] * current.data[j][k];
+			}
+			error.data[i][j] = sum;
+		}
+	}
+	float q[4];
+	QuaternionFromRotation(error, q);
+	if (q[3] < 0.0f) {
+		q[0] = -q[0];
+		q[1] = -q[1];
+		q[2] = -q[2];
+		q[3] = -q[3];
+	}
+	const float sine = math::Sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2]);
+	if (!(sine > 1e-6f)) {
+		return NiPoint3{0.0f, 0.0f, 0.0f};
+	}
+	const float angle = 2.0f * math::Atan2(sine, q[3]);
+	const float dt = DriveSeconds(dtSeconds);
+	float rate = angle * kDriveGain / dt;
+	if (rate > kDriveMaxRadiansPerSecond) {
+		rate = kDriveMaxRadiansPerSecond;
+	}
+	const float scale = rate / sine;
+	return NiPoint3{q[0] * scale, q[1] * scale, q[2] * scale};
+}
+
+// How far the body may stand from the hand, game units, for the drive to
+// take it: an object pulled to the hand from across the room, or one stopped
+// by a wall, is left to the engine's spring - driven, it would fly at the
+// hand at full speed through whatever stands between. About half a metre.
+inline constexpr float kDriveMaxGapUnits = 35.0f;
+
+inline bool DriveTakesGap(float gapUnits) { return gapUnits <= kDriveMaxGapUnits; }
+
+// Whether a body of this motion type may be driven: not a keyframed or
+// fixed one (the grab never takes those either), and not an unknown value.
+inline bool MotionTypeDrivable(UInt32 type) {
+	return type >= 1 && type < kMotionTypeKeyframed;
+}
+
 // Once per frame while the hand mode runs: follows the engine's grab (the
 // spring at player+0x574), gives a held body the player's group while
 // `passBody`, and on its release sends the body off with the held point's
 // velocity when the strength is above zero (velocityValid false when the
 // hand is not tracked this frame). The old group goes back once the object
 // is clear of the player's capsule. `dtSeconds` times the flight report.
+// With `driveBody`, the held body is driven to the pose the object was
+// shown at in the hand this frame (NoteHeldPose), so it pushes what it meets.
 void StepGrabPhysics(bool passBody, float throwStrength, bool velocityValid,
-                     const NiPoint3& velocityUnits, float dtSeconds);
+                     const NiPoint3& velocityUnits, float dtSeconds, bool driveBody);
 
 // Where the object was last seen in the hand (game::HeldObject writes it each
 // frame it places the object): on release, the body is put there before it

@@ -1012,7 +1012,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_headsetRenderer.SetControllersWanted(false);
 		game::ForgetStrikes();
 		game::SetMenuCursorHidden(false);
-		game::StepGrabPhysics(false, 0.0f, false, NiPoint3{0.0f, 0.0f, 0.0f}, g_deltaSeconds);
+		game::StepGrabPhysics(false, 0.0f, false, NiPoint3{0.0f, 0.0f, 0.0f}, g_deltaSeconds, false);
 		g_hand = vr::HandModeResult{};
 		g_reachIconShown = false;
 		g_nearItem = game::NearItem{};
@@ -1618,8 +1618,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			g_stowSpotLayer.Hide(backend);
 		}
 		const bool stowing = stow.waiting || stow.take != 0;
+		// The held object pushes what it meets: its body driven to the hand
+		// (GrabPhysics.h). Not while it is being stowed - it goes into the
+		// inventory, not into the chest.
 		game::StepGrabPhysics(true, stowing ? 0.0f : config.hands.throwStrength, throwValid,
-		                      throwVelocity, g_deltaSeconds);
+		                      throwVelocity, g_deltaSeconds,
+		                      config.hands.heldObjectsPush && !stowing);
 		if (!stowIn.keyDown) {
 			g_stowWasAtBody = false;  // let go: said by the lines below instead
 		} else if (stow.atBody != g_stowWasAtBody) {
