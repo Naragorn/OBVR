@@ -361,9 +361,9 @@ in the headset yet.
   - Tests: `quick_menu_test` (turning, whose trigger), `quick_key_pages_test`
     (next page, a turn, the record both ways with every refusal),
     `quick_menu_painter_test` (the dots).
-  - Not run in the game yet: the writes into the game's eight, the stacks'
-    extras, the co-save, and what happens to an item hotkeyed on two pages.
-    An item that only ever sat in the player's starting inventory (no
+  - Confirmed in the headset on 2026-09-28 by the tester: "funkt wie
+    erwartet". What that run covered in detail was not reported; an item
+    hotkeyed on two pages was not named as tried. An item that only ever sat in the player's starting inventory (no
     change entry) cannot be given its slot this way; the check then takes it
     out.
 - **Not built yet.**
