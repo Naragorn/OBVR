@@ -35,6 +35,7 @@ struct Followed {
 	float followed = 0.0f;
 	UInt32 shrunkState = 0xFFFFFFFFu;  // the blend state last shrunk, once per blend
 	bool seen = false;                 // in a slot this frame
+	bool fireKeys = false;             // its keys are fired over the span moved
 };
 constexpr UInt32 kMaxFollowed = 8;
 Followed g_followed[kMaxFollowed];
@@ -51,7 +52,7 @@ Followed* Find(UInt32 sequence) {
 
 // The draw or sheathe sequences in an anim data's five slots: followed from
 // now on if they were not already.
-void Collect(UInt32 animData, WeaponDrawSpeedReport& report) {
+void Collect(UInt32 animData, bool fireKeys, WeaponDrawSpeedReport& report) {
 	if (!Looks(animData)) {
 		return;
 	}
@@ -78,11 +79,40 @@ void Collect(UInt32 animData, WeaponDrawSpeedReport& report) {
 			f->sequence = sequence;
 			f->animData = animData;
 			f->lastClock = FloatAt(animData + kAnimDataClockOffset);
+			f->fireKeys = fireKeys;
 			++report.newlyHastened;
 			report.group = code;
 		}
 		f->seen = true;
 	}
+}
+
+// The sequence's own time at an anim-data clock, as the anim update computes
+// it for its key window (0x0049F4A0: the offset added and scaled by
+// Gamebryo, 0 when not playing).
+constexpr UInt32 kSequenceTimeAt = 0x0049F4A0;
+// TESAnimGroup's key handler (0x0051AF70, thiscall on the group, ret 10h):
+// (actor, from, to, sequence) - the keys after `from` up to `to`; the Equip
+// and Unequip sounds are its kinds 9 and 10 (0x0051B38D, 0x0051B39A), the
+// weapon's attach is not among them.
+constexpr UInt32 kGroupHandleKeys = 0x0051AF70;
+
+float SequenceTime(UInt32 sequence, float clock) {
+	using TimeFn = float(__fastcall*)(UInt32 self, void* edx, float clock);
+	return reinterpret_cast<TimeFn>(kSequenceTimeAt)(sequence, nullptr, clock);
+}
+
+void FireKeys(const Followed& f, float from, float to) {
+	if (!(to > from) || !f.fireKeys) {
+		return;
+	}
+	const UInt32 player = Read(addr::kPlayerPointer);
+	const UInt32 group = Read(f.sequence + kSequenceAnimGroupOffset);
+	if (!Looks(player) || !Looks(group)) {
+		return;
+	}
+	using KeysFn = void(__fastcall*)(UInt32 self, void* edx, UInt32 actor, float from, float to, UInt32 sequence);
+	reinterpret_cast<KeysFn>(kGroupHandleKeys)(group, nullptr, player, from, to, f.sequence);
 }
 
 }  // namespace
@@ -97,9 +127,9 @@ WeaponDrawSpeedReport StepWeaponDrawSpeed(float speed, bool active) {
 	if (wanted) {
 		const UInt32 process = Read(player + kPlayerProcessOffset);
 		if (Looks(process)) {
-			Collect(Read(process + kProcessAnimDataOffset), report);
+			Collect(Read(process + kProcessAnimDataOffset), false, report);
 		}
-		Collect(Read(player + kPlayerFirstPersonAnimDataOffset), report);
+		Collect(Read(player + kPlayerFirstPersonAnimDataOffset), true, report);
 	}
 	for (UInt32 i = 0; i < g_followedCount;) {
 		Followed& f = g_followed[i];
@@ -117,7 +147,11 @@ WeaponDrawSpeedReport StepWeaponDrawSpeed(float speed, bool active) {
 		f.followed += step;
 		if (state == kSequenceAnimating) {
 			float& offset = FloatAt(f.sequence + kSequenceOffsetOffset);
+			const float before = SequenceTime(f.sequence, clock);
 			offset = HastenedOffset(offset, step, speed);
+			// The keys in the span moved over (the draw's sound), through the
+			// engine's own handler.
+			FireKeys(f, before, SequenceTime(f.sequence, clock));
 		} else if (IsBlendState(state) && f.shrunkState != state &&
 		           ShrinkBlend(clock, FloatAt(f.sequence + kSequenceStartOffset),
 		                       FloatAt(f.sequence + kSequenceEndOffset), speed)) {

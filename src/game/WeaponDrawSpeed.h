@@ -40,6 +40,19 @@ namespace obvr::game {
 //   once per blend, so the weight goes on from where it was, faster.
 // The frequency is left alone.
 //
+// The draw's sound is a key too ("Enum: Equip" / "Enum: Unequip", kinds 9
+// and 10 of TESAnimGroup's key handler, 0x0051AF70, which plays the weapon
+// type's WPN...Equip sound through 0x006B07F0). The anim update fires keys
+// over the span from the clock before its step to the clock after, both at
+// the sequence's current offset (0x00476F4D, 0x00477A4B) - so a span the
+// offset was moved over was skipped, and the sound with it (the tester,
+// 2026-09-28: "der sound fehlt nun"). So the first-person sequence's keys
+// over that span are fired through the same handler as the offset moves.
+// The harness showed one sound per draw and sheathe, as at the game's own
+// speed, and none for the fists, which have none at the game's speed
+// either. The third-person sequence's keys are not fired: at the game's
+// speed only one sound plays.
+//
 // Read from xOBSE (GameProcess.h, NiNodes.h, GameObjects.h):
 // - the player's animations: the third-person ActorAnimData at the process's
 //   +0x17C (MiddleHighProcess::animData, the process at player+0x58), the

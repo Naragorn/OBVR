@@ -383,3 +383,25 @@ Every change below is switched by the mode.
   `DeathBodyAheadMetres` (0.5) ahead and `DeathBodyUpMetres` up, the HUD
   hidden; the tester: done for now. Not built: a fade-in of the body, a fade
   to the load.
+- **Thumbs up (bug, for later).** The thumb now follows the full skeleton
+  joint by joint (docs/holding-objects-spec.md, part 1b), and the tester
+  finds it OK (2026-09-28). A clear thumbs up is still missing. The game's
+  hand blends only between its open hand and its fist, and a turn of the
+  thumb that is on neither is dropped. To look at:
+  - a third pose to blend towards (a thumb straight up), from another
+    animation or made by hand;
+  - SteamVR's range without the controller
+    (`VRSkeletalMotionRange_WithoutController`) in place of the one with it;
+  - another reference skeleton to measure against.
+- **Looking into the hand from below (bug, for later).** The tester, on
+  2026-09-28: "man kann immer noch von unten in die hand schauen". The bare
+  hand's lid is the hand's own far wall, drawn flat. What lies between the
+  opening and that wall shows through it: the bow's grip, and the inside of
+  the fist seen from below.
+  - A lid only in the opening, pulled nearer by a stencil pass, was tried on
+    2026-09-28 and reverted at the tester's request.
+  - Its measurement stands: the hands are drawn with a nearer near plane
+    than the world camera's 10 units (a wrist at 9 to 13 units was fully
+    drawn), so the world frustum's planes do not convert a hand's distance
+    into the depth buffer.
+  - The first-person pass's own projection would be needed first.
