@@ -42,6 +42,10 @@ bool PinHandBone(bool rightHand, const char* boneName, const NiMatrix33& relativ
 // are bare. Off puts the forearms back as they were on the next pin.
 void SetBareWristTaper(bool enabled);
 
+// Whether the first-person hands are bare - no glove, no gauntlet: a node
+// "Hand  (<id>)" whose form is a race. Walks the first-person tree.
+bool FirstPersonHandsBare();
+
 // Puts shrunk forearms and grown hands back to their own scales, for when
 // the pins stop (Full VR switched off): the animation alone does not.
 void RestoreHandBoneScales();

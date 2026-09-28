@@ -77,13 +77,15 @@ void AlphaTable(UInt32 a0, UInt32 a1, UInt8 (&table)[8]) {
 	}
 }
 
-void DecodeBlocks(const DdsInfo& info, const UInt8* data, Pixel* out) {
+// rowPitch: the bytes from one row of blocks to the next (a file packs them;
+// a locked surface may pad).
+void DecodeBlocks(const DdsInfo& info, const UInt8* data, UInt32 rowPitch, Pixel* out) {
 	const UInt32 blocksWide = (info.width + 3) / 4;
 	const UInt32 blocksHigh = (info.height + 3) / 4;
 	const UInt32 stride = BlockBytes(info.format);
 	for (UInt32 by = 0; by < blocksHigh; ++by) {
 		for (UInt32 bx = 0; bx < blocksWide; ++bx) {
-			const UInt8* block = data + (by * blocksWide + bx) * stride;
+			const UInt8* block = data + by * rowPitch + bx * stride;
 			const UInt8* colour = info.format == DdsInfo::Format::Dxt1 ? block : block + 8;
 			Pixel table[4];
 			ColourTable(colour, info.format == DdsInfo::Format::Dxt1, table);
@@ -131,10 +133,10 @@ UInt8 Channel(UInt32 value, UInt32 mask, UInt8 absent) {
 	return static_cast<UInt8>((((value & mask) >> shift) * 255 + max / 2) / max);
 }
 
-void DecodeMasked(const DdsInfo& info, const UInt8* data, Pixel* out) {
+void DecodeMasked(const DdsInfo& info, const UInt8* data, UInt32 rowPitch, Pixel* out) {
 	const UInt32 bytes = info.bitCount / 8;
 	for (UInt32 i = 0; i < info.width * info.height; ++i) {
-		const UInt8* p = data + i * bytes;
+		const UInt8* p = data + (i / info.width) * rowPitch + (i % info.width) * bytes;
 		UInt32 v = 0;
 		for (UInt32 k = 0; k < bytes; ++k) {
 			v |= static_cast<UInt32>(p[k]) << (8 * k);
@@ -198,9 +200,9 @@ bool DecodeDds(const UInt8* data, UInt32 size, std::vector<Pixel>& out, UInt32& 
 	}
 	out.assign(static_cast<size_t>(info.width) * info.height, Pixel{0, 0, 0, 0});
 	if (info.format == DdsInfo::Format::Masked) {
-		DecodeMasked(info, data + kDdsHeaderBytes, out.data());
+		DecodeMasked(info, data + kDdsHeaderBytes, info.width * (info.bitCount / 8), out.data());
 	} else {
-		DecodeBlocks(info, data + kDdsHeaderBytes, out.data());
+		DecodeBlocks(info, data + kDdsHeaderBytes, ((info.width + 3) / 4) * BlockBytes(info.format), out.data());
 	}
 	width = info.width;
 	height = info.height;
@@ -261,6 +263,82 @@ void FitSquare(const Pixel* src, UInt32 width, UInt32 height, Pixel* dst, UInt32
 			          static_cast<UInt8>(sumB / sumA), static_cast<UInt8>(sumA / count)};
 		}
 	}
+}
+
+}  // namespace obvr::render
+
+namespace obvr::render {
+
+bool SurfaceInfo(UInt32 d3dFormat, UInt32 width, UInt32 height, DdsInfo& out) {
+	out = DdsInfo{};
+	if (width == 0 || height == 0 || width > kDdsMaxSide || height > kDdsMaxSide) {
+		return false;
+	}
+	out.width = width;
+	out.height = height;
+	switch (d3dFormat) {
+	case kD3dFormatDxt1: out.format = DdsInfo::Format::Dxt1; return true;
+	case kD3dFormatDxt3: out.format = DdsInfo::Format::Dxt3; return true;
+	case kD3dFormatDxt5: out.format = DdsInfo::Format::Dxt5; return true;
+	default: break;
+	}
+	out.format = DdsInfo::Format::Masked;
+	switch (d3dFormat) {
+	case kD3dFormatA8R8G8B8:
+		out.bitCount = 32; out.redMask = 0x00FF0000; out.greenMask = 0x0000FF00; out.blueMask = 0x000000FF;
+		out.alphaMask = 0xFF000000; return true;
+	case kD3dFormatX8R8G8B8:
+		out.bitCount = 32; out.redMask = 0x00FF0000; out.greenMask = 0x0000FF00; out.blueMask = 0x000000FF;
+		return true;
+	case kD3dFormatR8G8B8:
+		out.bitCount = 24; out.redMask = 0x00FF0000; out.greenMask = 0x0000FF00; out.blueMask = 0x000000FF;
+		return true;
+	case kD3dFormatR5G6B5:
+		out.bitCount = 16; out.redMask = 0xF800; out.greenMask = 0x07E0; out.blueMask = 0x001F; return true;
+	case kD3dFormatA1R5G5B5:
+		out.bitCount = 16; out.redMask = 0x7C00; out.greenMask = 0x03E0; out.blueMask = 0x001F;
+		out.alphaMask = 0x8000; return true;
+	case kD3dFormatA4R4G4B4:
+		out.bitCount = 16; out.redMask = 0x0F00; out.greenMask = 0x00F0; out.blueMask = 0x000F;
+		out.alphaMask = 0xF000; return true;
+	default:
+		return false;
+	}
+}
+
+bool DecodeSurface(UInt32 d3dFormat, const UInt8* bits, UInt32 pitch, UInt32 width, UInt32 height,
+                   std::vector<Pixel>& out) {
+	DdsInfo info;
+	if (bits == nullptr || !SurfaceInfo(d3dFormat, width, height, info)) {
+		return false;
+	}
+	const UInt32 rowBytes = info.format == DdsInfo::Format::Masked ? width * (info.bitCount / 8)
+	                                                                 : ((width + 3) / 4) * BlockBytes(info.format);
+	if (pitch < rowBytes) {
+		return false;
+	}
+	out.assign(static_cast<size_t>(width) * height, Pixel{0, 0, 0, 0});
+	if (info.format == DdsInfo::Format::Masked) {
+		DecodeMasked(info, bits, pitch, out.data());
+	} else {
+		DecodeBlocks(info, bits, pitch, out.data());
+	}
+	return true;
+}
+
+Pixel AverageColour(const Pixel* pixels, UInt32 count) {
+	if (pixels == nullptr || count == 0) {
+		return Pixel{0, 0, 0, 0};
+	}
+	UInt32 r = 0;
+	UInt32 g = 0;
+	UInt32 b = 0;
+	for (UInt32 i = 0; i < count; ++i) {
+		r += pixels[i].r;
+		g += pixels[i].g;
+		b += pixels[i].b;
+	}
+	return Pixel{static_cast<UInt8>(r / count), static_cast<UInt8>(g / count), static_cast<UInt8>(b / count), 255};
 }
 
 }  // namespace obvr::render

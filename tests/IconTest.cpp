@@ -226,6 +226,57 @@ void TestRefused() {
 	      "a vanilla icon's header (64x64 DXT3, 4224 bytes) reads");
 }
 
+void TestSurface() {
+	std::printf("A locked texture level\n");
+	std::vector<Pixel> px;
+	// A8R8G8B8, 2x2, rows padded to 16 bytes.
+	UInt8 argb[32] = {};
+	const UInt8 row0[8] = {10, 20, 30, 255, 50, 60, 70, 255};
+	const UInt8 row1[8] = {1, 2, 3, 255, 5, 6, 7, 0};
+	std::memcpy(argb, row0, 8);
+	std::memcpy(argb + 16, row1, 8);
+	Check(render::DecodeSurface(render::kD3dFormatA8R8G8B8, argb, 16, 2, 2, px) && px.size() == 4,
+	      "A8R8G8B8 with a padded pitch");
+	Check(Same(px[0], Pixel{30, 20, 10, 255}) && Same(px[2], Pixel{3, 2, 1, 255}) && px[3].a == 0,
+	      "each row from its pitch");
+	Check(!render::DecodeSurface(render::kD3dFormatA8R8G8B8, argb, 4, 2, 2, px), "a pitch shorter than a row: refused");
+	// DXT1, a 1x1 level: one block, only its first pixel.
+	std::vector<UInt8> block;
+	ColourBlock(block, kRed565, kBlue565, 0);
+	Check(render::DecodeSurface(render::kD3dFormatDxt1, block.data(), 8, 1, 1, px) && px.size() == 1 &&
+	          Same(px[0], Pixel{255, 0, 0, 255}),
+	      "a DXT1 level smaller than its block");
+	std::vector<UInt8> two;
+	Append(two, {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF});
+	ColourBlock(two, kBlue565, kRed565, 0);
+	Check(render::DecodeSurface(render::kD3dFormatDxt3, two.data(), 16, 4, 4, px) && px[0].b == 255,
+	      "DXT3 by its four-character code");
+	Check(render::DecodeSurface(render::kD3dFormatDxt5, two.data(), 16, 2, 2, px), "DXT5 by its code");
+	UInt8 x8[4] = {9, 8, 7, 0};
+	Check(render::DecodeSurface(render::kD3dFormatX8R8G8B8, x8, 4, 1, 1, px) && Same(px[0], Pixel{7, 8, 9, 255}),
+	      "X8R8G8B8: its unused byte is not alpha");
+	UInt8 r8[3] = {9, 8, 7};
+	Check(render::DecodeSurface(render::kD3dFormatR8G8B8, r8, 3, 1, 1, px) && Same(px[0], Pixel{7, 8, 9, 255}),
+	      "R8G8B8");
+	UInt8 w565[2] = {0x00, 0xF8};
+	Check(render::DecodeSurface(render::kD3dFormatR5G6B5, w565, 2, 1, 1, px) && Same(px[0], Pixel{255, 0, 0, 255}),
+	      "R5G6B5");
+	UInt8 w1555[2] = {0x1F, 0x80};
+	Check(render::DecodeSurface(render::kD3dFormatA1R5G5B5, w1555, 2, 1, 1, px) && Same(px[0], Pixel{0, 0, 255, 255}),
+	      "A1R5G5B5");
+	UInt8 w4444[2] = {0x0F, 0x00};
+	Check(render::DecodeSurface(render::kD3dFormatA4R4G4B4, w4444, 2, 1, 1, px) && Same(px[0], Pixel{0, 0, 255, 0}),
+	      "A4R4G4B4");
+	Check(!render::DecodeSurface(50, x8, 4, 1, 1, px), "a format not read (L8): refused");
+	Check(!render::DecodeSurface(render::kD3dFormatA8R8G8B8, nullptr, 4, 1, 1, px), "no bits: refused");
+	Check(!render::DecodeSurface(render::kD3dFormatA8R8G8B8, x8, 4, 0, 1, px), "no width: refused");
+	Check(!render::DecodeSurface(render::kD3dFormatA8R8G8B8, x8, 4, 2000, 1, px), "wider than read: refused");
+
+	const Pixel mix[2] = {{200, 100, 0, 10}, {100, 50, 255, 255}};
+	Check(Same(render::AverageColour(mix, 2), Pixel{150, 75, 127, 255}), "the plain average, opaque");
+	Check(render::AverageColour(nullptr, 3).a == 0 && render::AverageColour(mix, 0).a == 0, "none: clear");
+}
+
 void TestFit() {
 	std::printf("Fitting into the square\n");
 	Pixel dst[4 * 4];
@@ -333,6 +384,7 @@ int main() {
 	TestDxt5();
 	TestMasked();
 	TestRefused();
+	TestSurface();
 	TestFit();
 	TestPath();
 	TestCache();

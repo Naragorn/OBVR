@@ -17,6 +17,7 @@
 #include "game/PlayerAim.h"
 #include "platform/Win32Min.h"
 #include "render/BackfacePass.h"
+#include "render/DdsImage.h"
 #include "render/BoneRebase.h"
 #include "render/D3D9Types.h"
 #include "render/GameDevice.h"
@@ -1069,8 +1070,174 @@ SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex
 
 // Closed hands (BackfacePass.h).
 bool g_backfacesWanted = false;
+bool g_bareHands = false;
+float g_insideBrightness = kInsideBrightnessDefault;
 UInt32 g_insideBlendFactor = InsideBlendFactor(kInsideBrightnessDefault);
 UInt32 g_backfaceReportsLeft = 3;
+UInt32 g_flatReportsLeft = 8;
+
+// The lid's pixel shaders, one per shader model, made on first use for the
+// device they were made on. A refusal is remembered; the inside is then its
+// own surface darkened, as with a glove.
+void* g_insideShaders[2] = {nullptr, nullptr};  // ps_2_0, ps_3_0
+bool g_insideShaderRefused[2] = {false, false};
+void* g_insideShaderDevice = nullptr;
+// The last vertex shader asked for its version, and the answer.
+void* g_versionedVertexShader = nullptr;
+UInt32 g_vertexShaderMajor = 2;
+
+using ShaderGetFunctionFn = SInt32(__stdcall*)(void* self, void* data, UInt32* size);
+using GetPixelShaderConstantFFn = SInt32(__stdcall*)(void* self, UInt32 start, float* data, UInt32 count);
+constexpr UInt32 kShaderGetFunction = 4;
+constexpr UInt32 kUnknownRelease = 2;
+constexpr UInt32 kDeviceGetPixelShaderConstantF = 110;
+// IDirect3DResource9::GetType, IDirect3DBaseTexture9::GetLevelCount and
+// IDirect3DTexture9's GetLevelDesc, LockRect and UnlockRect, counted from
+// the DECLARE_INTERFACE_ listing in d3d9.h (the texture's own methods start
+// at 17, as kTextureGetSurfaceLevel = 18 in D3D9Types.h).
+constexpr UInt32 kResourceGetType = 10;
+constexpr UInt32 kBaseTextureGetLevelCount = 13;
+constexpr UInt32 kTextureGetLevelDesc = 17;
+constexpr UInt32 kTextureLockRect = 19;
+constexpr UInt32 kTextureUnlockRect = 20;
+constexpr UInt32 kResourceTypeTexture = 3;  // D3DRTYPE_TEXTURE
+
+void ReleaseObject(void* object) {
+	if (object != nullptr) {
+		if (auto release = d3d9::Method<SInt32(__stdcall*)(void*)>(object, kUnknownRelease)) {
+			release(object);
+		}
+	}
+}
+
+// The major version of the vertex shader set now; 2 for none (the fixed
+// function pipeline pairs with any pixel shader up to 2_0).
+UInt32 CurrentVertexShaderMajor(void* device) {
+	auto getShader = d3d9::Method<d3d9::GetShaderFn>(device, d3d9::kDeviceGetVertexShader);
+	void* shader = nullptr;
+	if (getShader == nullptr || getShader(device, &shader) < 0 || shader == nullptr) {
+		return 2;
+	}
+	if (shader != g_versionedVertexShader) {
+		g_versionedVertexShader = shader;
+		g_vertexShaderMajor = 2;
+		static UInt32 function[4096];
+		UInt32 size = 0;
+		auto getFunction = d3d9::Method<ShaderGetFunctionFn>(shader, kShaderGetFunction);
+		if (getFunction != nullptr && getFunction(shader, nullptr, &size) >= 0 && size >= 4 &&
+		    size <= sizeof(function) && getFunction(shader, function, &size) >= 0) {
+			g_vertexShaderMajor = ShaderMajorVersion(function[0]) >= 3 ? 3 : 2;
+		}
+	}
+	ReleaseObject(shader);  // GetVertexShader added a reference
+	return g_vertexShaderMajor;
+}
+
+// The texture averages, a few at a time, by texture: read once each.
+struct TextureAverage {
+	void* texture = nullptr;
+	bool ok = false;
+	Pixel colour{0, 0, 0, 0};
+};
+TextureAverage g_averages[16];
+UInt32 g_nextAverage = 0;
+
+void ForgetDeviceObjects(void* device) {
+	g_insideShaderDevice = device;
+	g_insideShaders[0] = g_insideShaders[1] = nullptr;
+	g_insideShaderRefused[0] = g_insideShaderRefused[1] = false;
+	g_versionedVertexShader = nullptr;
+	for (TextureAverage& a : g_averages) {
+		a = TextureAverage{};
+	}
+}
+
+void* InsideShader(void* device, UInt32 major) {
+	const UInt32 slot = major >= 3 ? 1 : 0;
+	if (g_insideShaders[slot] == nullptr && !g_insideShaderRefused[slot]) {
+		UInt32 tokens[kInsideShaderTokens];
+		BuildInsideShader(major, tokens);
+		auto create = d3d9::Method<d3d9::CreatePixelShaderFn>(device, d3d9::kDeviceCreatePixelShader);
+		const SInt32 made = create != nullptr ? create(device, tokens, &g_insideShaders[slot]) : -1;
+		if (made < 0 || g_insideShaders[slot] == nullptr) {
+			g_insideShaders[slot] = nullptr;
+			g_insideShaderRefused[slot] = true;
+			OBVR_LOG("Closed hands: the device refused the ps_%u_0 lid shader (%08X) - a bare hand's "
+			         "inside stays its own surface darkened", slot == 1 ? 3u : 2u, static_cast<UInt32>(made));
+		} else {
+			OBVR_LOG("Closed hands: the ps_%u_0 lid shader is ready", slot == 1 ? 3u : 2u);
+		}
+	}
+	return g_insideShaders[slot];
+}
+
+// The average colour of the texture on stage 0, from its smallest level;
+// false when there is none, or it cannot be read.
+bool StageTextureAverage(void* device, Pixel& colour) {
+	auto getTexture = d3d9::Method<d3d9::GetTextureFn>(device, d3d9::kDeviceGetTexture);
+	void* texture = nullptr;
+	if (getTexture == nullptr || getTexture(device, 0, &texture) < 0 || texture == nullptr) {
+		return false;
+	}
+	for (const TextureAverage& a : g_averages) {
+		if (a.texture == texture) {
+			colour = a.colour;
+			ReleaseObject(texture);
+			return a.ok;
+		}
+	}
+	TextureAverage& slot = g_averages[g_nextAverage];
+	g_nextAverage = (g_nextAverage + 1) % (sizeof(g_averages) / sizeof(g_averages[0]));
+	slot = TextureAverage{};
+	slot.texture = texture;
+	auto getType = d3d9::Method<UInt32(__stdcall*)(void*)>(texture, kResourceGetType);
+	auto levels = d3d9::Method<UInt32(__stdcall*)(void*)>(texture, kBaseTextureGetLevelCount);
+	auto getDesc = d3d9::Method<SInt32(__stdcall*)(void*, UInt32, d3d9::SurfaceDesc*)>(texture, kTextureGetLevelDesc);
+	auto lock = d3d9::Method<SInt32(__stdcall*)(void*, UInt32, d3d9::LockedRect*, const void*, UInt32)>(
+		texture, kTextureLockRect);
+	auto unlock = d3d9::Method<SInt32(__stdcall*)(void*, UInt32)>(texture, kTextureUnlockRect);
+	const char* why = "";
+	d3d9::SurfaceDesc desc{};
+	UInt32 level = 0;
+	if (getType == nullptr || levels == nullptr || getDesc == nullptr || lock == nullptr || unlock == nullptr ||
+	    getType(texture) != kResourceTypeTexture) {
+		why = "not a plain texture";
+	} else {
+		level = levels(texture) > 0 ? levels(texture) - 1 : 0;
+		d3d9::LockedRect locked{};
+		std::vector<Pixel> pixels;
+		if (getDesc(texture, level, &desc) < 0) {
+			why = "no level description";
+		} else if (lock(texture, level, &locked, nullptr, d3d9::kLockReadOnly) < 0 || locked.bits == nullptr) {
+			why = "the level would not lock";
+		} else {
+			const bool decoded = locked.pitch > 0 &&
+			                     DecodeSurface(desc.format, static_cast<const UInt8*>(locked.bits),
+			                                   static_cast<UInt32>(locked.pitch), desc.width, desc.height, pixels);
+			unlock(texture, level);
+			if (decoded) {
+				slot.colour = AverageColour(pixels.data(), static_cast<UInt32>(pixels.size()));
+				slot.ok = true;
+			} else {
+				why = "a format not read";
+			}
+		}
+	}
+	if (g_flatReportsLeft > 0) {
+		--g_flatReportsLeft;
+		if (slot.ok) {
+			OBVR_LOG("Closed hands: texture %p, level %u (%ux%u, format %08X) averages %u/%u/%u - a bare "
+			         "hand's lid in that", texture, level, desc.width, desc.height, desc.format,
+			         slot.colour.r, slot.colour.g, slot.colour.b);
+		} else {
+			OBVR_LOG("Closed hands: texture %p gives no average (%s) - its inside stays darkened",
+			         texture, why);
+		}
+	}
+	colour = slot.colour;
+	ReleaseObject(texture);  // GetTexture added a reference
+	return slot.ok;
+}
 
 bool InFirstPersonPass() {
 	const UInt8* const renderer = *reinterpret_cast<const UInt8* const*>(addr::kRendererPointer);
@@ -1085,8 +1252,9 @@ bool InFirstPersonPass() {
 	return accumulator[kAccumulatorFirstPersonOffset] != 0;
 }
 
-// After a first-person draw: the same geometry again, its back faces, its own
-// surface darkened (BackfacePass.h).
+// After a first-person draw: the same geometry again, its back faces - its
+// own surface darkened, or with bare hands one flat colour, the lid
+// (BackfacePass.h).
 void DrawBackfacesAfter(void* device, UInt32 type, SInt32 baseVertexIndex, UInt32 minVertexIndex,
                         UInt32 numVertices, UInt32 startIndex, UInt32 primCount) {
 	if (!g_backfacesWanted || g_redirecting || !InFirstPersonPass()) {
@@ -1104,35 +1272,78 @@ void DrawBackfacesAfter(void* device, UInt32 type, SInt32 baseVertexIndex, UInt3
 	if (reversed == 0) {
 		return;
 	}
-	getState(device, d3d9::kRenderStateSrcBlend, &src);
-	getState(device, d3d9::kRenderStateDestBlend, &dst);
-	getState(device, d3d9::kRenderStateBlendOp, &op);
-	getState(device, d3d9::kRenderStateSeparateAlphaBlendEnable, &separate);
-	getState(device, kRenderStateBlendFactor, &factor);
+	if (device != g_insideShaderDevice) {
+		ForgetDeviceObjects(device);  // a new device: the old one's objects went with it
+	}
+	// The lid: the average of the stage's texture, through OBVR's shader.
+	auto getPixelShader = d3d9::Method<d3d9::GetShaderFn>(device, d3d9::kDeviceGetPixelShader);
+	auto setPixelShader = d3d9::Method<d3d9::SetPixelShaderFn>(device, d3d9::kDeviceSetPixelShader);
+	auto getConstant = d3d9::Method<GetPixelShaderConstantFFn>(device, kDeviceGetPixelShaderConstantF);
+	auto setConstant =
+		d3d9::Method<d3d9::SetPixelShaderConstantFFn>(device, d3d9::kDeviceSetPixelShaderConstantF);
+	Pixel average{0, 0, 0, 0};
+	void* lid = nullptr;
+	if (g_bareHands && getPixelShader != nullptr && setPixelShader != nullptr && getConstant != nullptr &&
+	    setConstant != nullptr && StageTextureAverage(device, average)) {
+		lid = InsideShader(device, CurrentVertexShaderMajor(device));
+	}
+	const InsideKind kind = InsideKindFor(reversed, g_bareHands, lid != nullptr);
 	g_originalSetState(device, d3d9::kRenderStateCullMode, reversed);
-	g_originalSetState(device, d3d9::kRenderStateAlphaBlendEnable, 1);
-	g_originalSetState(device, d3d9::kRenderStateSrcBlend, kBlendBlendFactor);
-	g_originalSetState(device, d3d9::kRenderStateDestBlend, d3d9::kBlendZero);
-	g_originalSetState(device, d3d9::kRenderStateBlendOp, d3d9::kBlendOpAdd);
-	g_originalSetState(device, d3d9::kRenderStateSeparateAlphaBlendEnable, 0);
-	g_originalSetState(device, kRenderStateBlendFactor, g_insideBlendFactor);
 	// The colour only: whatever the target keeps in alpha stays.
 	g_originalSetState(device, d3d9::kRenderStateColorWriteEnable, colorWrite & 0x7u);
-	const SInt32 result = g_originalDrawIndexed(device, type, baseVertexIndex, minVertexIndex,
-	                                            numVertices, startIndex, primCount);
+	SInt32 result = 0;
+	if (kind == InsideKind::Flat) {
+		void* previousShader = nullptr;
+		float previousConstant[4] = {};
+		float colour[4];
+		InsideColour(average.r, average.g, average.b, g_insideBrightness, colour);
+		getPixelShader(device, &previousShader);
+		getConstant(device, kInsideColourRegister, previousConstant, 1);
+		setPixelShader(device, lid);
+		setConstant(device, kInsideColourRegister, colour, 1);
+		// No blend: the lid's colour as it is.
+		g_originalSetState(device, d3d9::kRenderStateAlphaBlendEnable, 0);
+		result = g_originalDrawIndexed(device, type, baseVertexIndex, minVertexIndex, numVertices,
+		                               startIndex, primCount);
+		g_originalSetState(device, d3d9::kRenderStateAlphaBlendEnable, blend);
+		setConstant(device, kInsideColourRegister, previousConstant, 1);
+		setPixelShader(device, previousShader);
+		ReleaseObject(previousShader);  // GetPixelShader added a reference
+	} else {
+		getState(device, d3d9::kRenderStateSrcBlend, &src);
+		getState(device, d3d9::kRenderStateDestBlend, &dst);
+		getState(device, d3d9::kRenderStateBlendOp, &op);
+		getState(device, d3d9::kRenderStateSeparateAlphaBlendEnable, &separate);
+		getState(device, kRenderStateBlendFactor, &factor);
+		g_originalSetState(device, d3d9::kRenderStateAlphaBlendEnable, 1);
+		g_originalSetState(device, d3d9::kRenderStateSrcBlend, kBlendBlendFactor);
+		g_originalSetState(device, d3d9::kRenderStateDestBlend, d3d9::kBlendZero);
+		g_originalSetState(device, d3d9::kRenderStateBlendOp, d3d9::kBlendOpAdd);
+		g_originalSetState(device, d3d9::kRenderStateSeparateAlphaBlendEnable, 0);
+		g_originalSetState(device, kRenderStateBlendFactor, g_insideBlendFactor);
+		result = g_originalDrawIndexed(device, type, baseVertexIndex, minVertexIndex, numVertices,
+		                               startIndex, primCount);
+		g_originalSetState(device, d3d9::kRenderStateAlphaBlendEnable, blend);
+		g_originalSetState(device, d3d9::kRenderStateSrcBlend, src);
+		g_originalSetState(device, d3d9::kRenderStateDestBlend, dst);
+		g_originalSetState(device, d3d9::kRenderStateBlendOp, op);
+		g_originalSetState(device, d3d9::kRenderStateSeparateAlphaBlendEnable, separate);
+		g_originalSetState(device, kRenderStateBlendFactor, factor);
+	}
 	g_originalSetState(device, d3d9::kRenderStateCullMode, cull);
-	g_originalSetState(device, d3d9::kRenderStateAlphaBlendEnable, blend);
-	g_originalSetState(device, d3d9::kRenderStateSrcBlend, src);
-	g_originalSetState(device, d3d9::kRenderStateDestBlend, dst);
-	g_originalSetState(device, d3d9::kRenderStateBlendOp, op);
-	g_originalSetState(device, d3d9::kRenderStateSeparateAlphaBlendEnable, separate);
-	g_originalSetState(device, kRenderStateBlendFactor, factor);
 	g_originalSetState(device, d3d9::kRenderStateColorWriteEnable, colorWrite);
 	if (g_backfaceReportsLeft > 0) {
 		--g_backfaceReportsLeft;
-		OBVR_LOG("Closed hands: a first-person draw (%u triangles, cull %u) followed by its back "
-		         "faces, its own surface times %08X (cull %u)%s", primCount, cull,
-		         g_insideBlendFactor, reversed, result < 0 ? " - the draw FAILED" : "");
+		if (kind == InsideKind::Flat) {
+			OBVR_LOG("Closed hands: a first-person draw (%u triangles, cull %u) followed by its back "
+			         "faces flat in %u/%u/%u times %.2f, the lid (cull %u)%s", primCount, cull, average.r,
+			         average.g, average.b, static_cast<double>(g_insideBrightness), reversed,
+			         result < 0 ? " - the draw FAILED" : "");
+		} else {
+			OBVR_LOG("Closed hands: a first-person draw (%u triangles, cull %u) followed by its back "
+			         "faces, its own surface times %08X (cull %u)%s", primCount, cull,
+			         g_insideBlendFactor, reversed, result < 0 ? " - the draw FAILED" : "");
+		}
 	}
 }
 
@@ -2807,8 +3018,10 @@ bool LastPerspectiveProjection(float (&out)[4][4]) {
 	return true;
 }
 
-void SetFirstPersonBackfaces(bool enabled, float brightness) {
+void SetFirstPersonBackfaces(bool enabled, float brightness, bool bareHands) {
 	g_backfacesWanted = enabled;
+	g_bareHands = bareHands;
+	g_insideBrightness = brightness;
 	g_insideBlendFactor = InsideBlendFactor(brightness);
 }
 

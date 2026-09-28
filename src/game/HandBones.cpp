@@ -131,6 +131,8 @@ bool SomethingOnForearm(const NiAVObject* forearm) {
 
 }  // namespace
 
+bool FirstPersonHandsBare() { return HandsAreBare(); }
+
 void SetBareWristTaper(bool enabled) {
 	g_taperWanted = enabled;
 	const bool bare = enabled && HandsAreBare();

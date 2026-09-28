@@ -57,6 +57,26 @@ bool ReadDdsHeader(const UInt8* data, UInt32 size, DdsInfo& out);
 bool DecodeDds(const UInt8* data, UInt32 size, std::vector<Pixel>& out, UInt32& width,
                UInt32& height);
 
+// A locked Direct3D 9 texture level as pixels, the same decoding: the
+// formats by their D3DFORMAT (d3d9types.h; DXTn as their four-character
+// codes), `pitch` the locked rectangle's bytes from one row - of pixels, or
+// of 4x4 blocks - to the next. False for a format not read here, a size past
+// kDdsMaxSide, or a pitch shorter than a row.
+inline constexpr UInt32 kD3dFormatR8G8B8 = 20;
+inline constexpr UInt32 kD3dFormatA8R8G8B8 = 21;
+inline constexpr UInt32 kD3dFormatX8R8G8B8 = 22;
+inline constexpr UInt32 kD3dFormatR5G6B5 = 23;
+inline constexpr UInt32 kD3dFormatA1R5G5B5 = 25;
+inline constexpr UInt32 kD3dFormatA4R4G4B4 = 26;
+inline constexpr UInt32 kD3dFormatDxt1 = 0x31545844;  // 'DXT1'
+inline constexpr UInt32 kD3dFormatDxt3 = 0x33545844;
+inline constexpr UInt32 kD3dFormatDxt5 = 0x35545844;
+bool DecodeSurface(UInt32 d3dFormat, const UInt8* bits, UInt32 pitch, UInt32 width, UInt32 height,
+                   std::vector<Pixel>& out);
+
+// The plain average of the pixels' colours, opaque; clear for none.
+Pixel AverageColour(const Pixel* pixels, UInt32 count);
+
 // A picture fitted into a square of `side` pixels: each target pixel is the
 // average of the source pixels it covers (or the nearest one when the source
 // is smaller), colours weighted by their alpha so a transparent pixel's
