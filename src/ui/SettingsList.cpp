@@ -474,6 +474,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.closedHandsBrightness = v; },
 	},
 	{
+		"Hands", "Close bare wrists", "A bare hand's wrist drawn closed, not open to look into",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "CloseBareWrists",
+		+[](const Config& c) { return c.hands.closeBareWrists ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.closeBareWrists = v != 0.0f; },
+	},
+	{
 		"Hands", "Hands on the controllers", "The hand bones follow the controllers, not the animation",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "PinHands",

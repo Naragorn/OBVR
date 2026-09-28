@@ -2,6 +2,7 @@
 // parent composes back to itself, the calibration turns the bone's axis
 // onto the controller's, and the guards hold.
 
+#include <cmath>
 #include <cstdio>
 #include <initializer_list>
 
@@ -18,6 +19,9 @@ using obvr::game::HandBoneWorld;
 using obvr::game::HandCalibration;
 using obvr::game::LocalUnderParent;
 using obvr::game::ParentForChildAt;
+using obvr::game::FormIdInNodeName;
+using obvr::game::ForearmScaleFor;
+using obvr::game::kBareWristScale;
 
 int g_failures = 0;
 
@@ -237,12 +241,48 @@ void TestAdjust() {
 	      "switched off while held: nothing committed");
 }
 
-int main() {
-	TestAdjust();
+void TestBareWrist() {
+	std::printf("Bare wrists\n");
+	UInt32 id = 0;
+	Check(FormIdInNodeName("Hand  (00000907)", id) && id == 0x907u, "the race's id out of the hand node's name");
+	Check(FormIdInNodeName("UpperBody  (00024DE2)", id) && id == 0x24DE2u, "a robe's, capitals");
+	Check(FormIdInNodeName("Hand  (0001c6d2)", id) && id == 0x1C6D2u, "small letters too");
+	Check(!FormIdInNodeName("Bip01 R Hand", id), "a bone: no id");
+	Check(!FormIdInNodeName("Hand  (907)", id), "too few digits: not an id");
+	Check(!FormIdInNodeName("Hand  (0000090Z)", id), "not hex: not an id");
+	Check(!FormIdInNodeName("Hand  (00000907", id), "no closing bracket: not an id");
+	Check(!FormIdInNodeName(nullptr, id), "no name: no id");
+
+	Check(ForearmScaleFor(true, true, false) == kBareWristScale, "on, bare, nothing on the forearm: shrunk");
+	Check(ForearmScaleFor(false, true, false) == 1.0f, "switched off: as it is");
+	Check(ForearmScaleFor(true, false, false) == 1.0f, "a glove or gauntlet: its cuff left alone");
+	Check(ForearmScaleFor(true, true, true) == 1.0f, "a shield on the forearm: left alone");
+
+	// The pin with the forearm shrunk: the hand lands where wanted, at its own size.
+	const float s = kBareWristScale;
+	BonePose wanted;
+	wanted.rot = EulerToMatrix(10.0f, 20.0f, 30.0f);
+	wanted.pos = NiPoint3{5.0f, 6.0f, 7.0f};
+	const NiMatrix33 handLocalRot = EulerToMatrix(0.0f, 5.0f, 0.0f);
+	const NiPoint3 handLocalPos{25.0f, 0.0f, 0.0f};
+	const BonePose forearm = ParentForChildAt(wanted, handLocalRot, handLocalPos, s);
+	// The child's world, the way the engine composes it, with the hand grown back by 1/s.
+	const NiPoint3 handWorld = forearm.pos + forearm.rot * (handLocalPos * s);
+	const float handWorldScale = s * (1.0f / s);
+	Check(Near(handWorld.x, wanted.pos.x) && Near(handWorld.y, wanted.pos.y) &&
+	          Near(handWorld.z, wanted.pos.z) && Near(handWorldScale, 1.0f),
+	      "shrunk forearm: the hand still where the controller is, at its own size");
+	const NiPoint3 gap = wanted.pos - forearm.pos;
+	Check(Near(std::sqrt(gap.x * gap.x + gap.y * gap.y + gap.z * gap.z), 25.0f * s),
+	      "the forearm drawn up to the wrist: its length times the scale");
+}
+
+int main() {	TestAdjust();
 	TestWorldPose();
 	TestLocalUnderParent();
 	TestCalibration();
 	TestParentForChild();
+	TestBareWrist();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

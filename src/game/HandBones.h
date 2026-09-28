@@ -37,6 +37,15 @@ bool PinHandBone(bool rightHand, const char* boneName, const NiMatrix33& relativ
                  const NiMatrix33& cameraRot, const NiPoint3& cameraPos,
                  const NiPoint3& gripUnits);
 
+// Once a frame before the pins: whether a bare hand's wrist is closed
+// (BonePin.h, "Bare wrists") - asks the first-person tree whether the hands
+// are bare. Off puts the forearms back as they were on the next pin.
+void SetBareWristTaper(bool enabled);
+
+// Puts shrunk forearms and grown hands back to their own scales, for when
+// the pins stop (Full VR switched off): the animation alone does not.
+void RestoreHandBoneScales();
+
 // Forgets the bones found, so a new model is searched afresh.
 void ForgetHandBones();
 

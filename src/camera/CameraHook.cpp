@@ -1083,6 +1083,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 		g_hudLayer.ClearWristPlacement();
 		game::HideFirstPersonNodes(false, "");
+		game::RestoreHandBoneScales();
 		game::KeepFirstPersonDepth(false);
 		render::SetFirstPersonBackfaces(false, 0.0f);
 		game::AllowGrabNearBody(false);
@@ -1166,6 +1167,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			(config.hands.adjustHands || game::HandAdjustActive()) && !menuIsUp);
 	} else {
 		game::HideFirstPersonNodes(false, "");
+		game::RestoreHandBoneScales();
 		game::KeepFirstPersonDepth(false);
 		render::SetFirstPersonBackfaces(false, 0.0f);
 		game::AllowGrabNearBody(false);
@@ -3511,6 +3513,8 @@ void BeforeFirstScenePass() {
 			const NiPoint3 sharedGrip{0.0f, hands.handGripForwardMetres, hands.handGripUpMetres};
 			// Adjusting: from the INI switch or the guided window (game::HandAdjust).
 			const bool adjusting = hands.adjustHands || game::HandAdjustActive();
+			// A bare hand's wrist closed (BonePin.h, "Bare wrists").
+			game::SetBareWristTaper(hands.closeBareWrists);
 			const bool rightCommitted = PinAdjustableHand(
 				true, hands, adjusting, g_hand.rightHandValid, g_hand.rightGripDown,
 			                  g_hand.rightHandRotation, g_hand.rightHandOffsetUnits, cameraRot,

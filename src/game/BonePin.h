@@ -73,6 +73,72 @@ inline BonePose ParentForChildAt(const BonePose& childWanted, const NiMatrix33& 
 	return parent;
 }
 
+// ------------------------------------------------------------ Bare wrists
+//
+// A bare hand ends at the wrist, open, and from below one looked into it:
+// the palm and the fingers from inside (the tester, 2026-09-28: "creepy",
+// with any glove or gauntlet it was fine). The bare hand's mesh
+// (characters\_male\hand.nif, read in Oblivion - Meshes.bsa) is skinned to
+// the forearm and its twist bone as well as the hand and the fingers: its
+// cuff is the forearm's. So the forearm - which the pin already places behind
+// the hand (ParentForChildAt) - is shrunk to kBareWristScale, and the hand
+// under it grown back by the inverse: the fingers and the palm stay as they
+// were, the cuff draws together into the wrist, and the opening closes.
+// The upper body's "Arms" mesh (upperbody.nif) is skinned to the spine, neck
+// and pelvis too, so it stays hidden rather than being drawn this way.
+//
+// Only bare: a glove or gauntlet is skinned to the forearm as well, and its
+// cuff would shrink with it. The first-person tree says which: a bare hand
+// hangs under a node named "Hand  (<race>)" - the race's form, 0x00000907 for
+// an Imperial - a worn one under "Hand  (<armour or clothing>)" or, for a
+// robe with hands, under its "UpperBody  (...)" (the 2026-09-28 tree probes).
+// And not a forearm something hangs on: a shield hangs on the left forearm's
+// twist bone ("Bip01 L ForearmTwist") and would shrink too.
+inline constexpr float kBareWristScale = 0.05f;
+// TESForm's type byte for a race (xOBSE obse/GameForms.h, FormType: Race is
+// the tenth entry, 9).
+inline constexpr UInt8 kFormTypeRace = 9;
+
+// The form id in a node's name, "Hand  (00000907)": the hex digits between
+// the brackets. False when there are none, or not eight.
+inline bool FormIdInNodeName(const char* name, UInt32& id) {
+	id = 0;
+	if (name == nullptr) {
+		return false;
+	}
+	const char* at = name;
+	while (*at != '\0' && *at != '(') {
+		++at;
+	}
+	if (*at != '(') {
+		return false;
+	}
+	++at;
+	UInt32 digits = 0;
+	for (; *at != '\0' && *at != ')'; ++at) {
+		const char c = *at;
+		UInt32 value = 0;
+		if (c >= '0' && c <= '9') {
+			value = static_cast<UInt32>(c - '0');
+		} else if (c >= 'A' && c <= 'F') {
+			value = static_cast<UInt32>(c - 'A' + 10);
+		} else if (c >= 'a' && c <= 'f') {
+			value = static_cast<UInt32>(c - 'a' + 10);
+		} else {
+			return false;
+		}
+		id = (id << 4) | value;
+		++digits;
+	}
+	return *at == ')' && digits == 8;
+}
+
+// The forearm's scale for this frame: shrunk only with the setting on, the
+// hands bare, and nothing hanging on this forearm.
+inline float ForearmScaleFor(bool wanted, bool bareHands, bool somethingOnForearm) {
+	return wanted && bareHands && !somethingOnForearm ? kBareWristScale : 1.0f;
+}
+
 // The calibration from three angles in degrees: the roll about the bone's
 // own axis first, then pitch, then yaw - EulerToMatrix's Z * Y * X order
 // with X the roll. A Bip01 hand bone runs along x and the controller points
