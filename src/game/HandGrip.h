@@ -208,12 +208,31 @@ inline NiMatrix33 TrackedLinkRotation(bool rightHand, int link, float curl) {
 	return RotationOfQuat(rightHand ? blended : MirroredForLeft(blended));
 }
 
+// What the controller says of a hand's fingers: each finger's curl, thumb to
+// little finger, and - when the full skeleton gave it - the thumb joint by
+// joint, base to tip (vr/ThumbPose.h).
+struct FingerCurls {
+	float curl[5] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+	bool thumbJoints = false;
+	float thumb[3] = {0.0f, 0.0f, 0.0f};
+};
+
+// The share a link is blended by: a thumb link by its own joint when the
+// joints are known, every other link - and the thumb without them - by its
+// finger's curl.
+inline float LinkShare(const FingerCurls& curls, int finger, int link) {
+	if (finger == 0 && curls.thumbJoints && link >= 0 && link < 3) {
+		return curls.thumb[link];
+	}
+	return finger >= 0 && finger < 5 ? curls.curl[finger] : 0.0f;
+}
+
 // Once per frame, after the hand bone has been pinned: gives the named hand's
 // fingers the pose asked for - closed by `curlDegrees` around what it holds
-// (Grip), each where the controller's finger is (Tracked, `curl` thumb to
-// little finger), or back to what the animation had (Animation).
+// (Grip), each where the controller's finger is (Tracked), or back to what
+// the animation had (Animation).
 void StepHandFingers(bool rightHand, const char* handBoneName, FingerPose pose, float curlDegrees,
-                     const float curl[5]);
+                     const FingerCurls* curls);
 
 // Whether the named hand holds a thing of its own: anything under the hand
 // bone besides its finger links that carries a child - the drawn weapon's

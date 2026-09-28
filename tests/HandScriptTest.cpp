@@ -216,6 +216,14 @@ void TestStepping() {
 	      "every hand field lands on the left hand");
 	Check(f.pose.right.present && !f.pose.right.b, "and not on the right");
 	Check(ev.finished, "a script without a wait finishes in its first frame");
+
+	HandScript thumbs;
+	Parses("right thumb 0.2 0.5 0.8\nleft thumb -1 0 0\n", thumbs);
+	HandScriptRun t;
+	StepHandScript(thumbs, t, 0.0f, ev);
+	Check(t.pose.right.thumbJoints && Near(t.pose.right.thumb[0], 0.2f) && Near(t.pose.right.thumb[2], 0.8f),
+	      "thumb gives the joints, base to tip");
+	Check(!t.pose.left.thumbJoints, "a negative first value: back to the curl alone");
 }
 
 void TestPose() {
@@ -244,6 +252,15 @@ void TestPose() {
 	hand.curl = 0.9f;
 	p = ScriptedHandPose(hand, vr::Quaternion::Identity(), headPos);
 	Check(Near(p.curl[1], 0.9f) && Near(p.curl[4], 0.9f), "curl closes every finger");
+	Check(!p.thumbValid, "no thumb joints unless the script gives them");
+	hand.thumbJoints = true;
+	hand.thumb[0] = 0.3f;
+	hand.thumb[1] = 0.6f;
+	hand.thumb[2] = 0.1f;
+	p = ScriptedHandPose(hand, vr::Quaternion::Identity(), headPos);
+	Check(p.thumbValid && Near(p.thumb[0], 0.3f) && Near(p.thumb[1], 0.6f) && Near(p.thumb[2], 0.1f),
+	      "the script's thumb joints, as the skeleton would give them");
+	hand.thumbJoints = false;
 	hand.curl = 0.0f;
 
 	hand.a = false;

@@ -1,0 +1,34 @@
+# The thumb joint by joint (src/vr/ThumbPose.h): the fingers curled round the
+# controller and the thumb as the full skeleton gives it - lifted (a thumbs
+# up), its base turned in with the rest straight (resting on a button), and
+# all the way as in the fist. The right hand before the eyes.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\thumb.txt
+
+ini Hands Enabled=1
+ini Hands FingerTracking=1
+ini Hands Fists=0
+
+expect HandScript: finished
+expect Hands: the right fingers follow the controller
+reject HandScript: WARNING
+
+wait 12
+right pos 0.05 -0.05 -0.28
+right rot 0 70 0
+left pos -0.25 -0.45 -0.2
+right curl 1
+right thumb 0 0 0
+wait 1.5
+mark thumb_up
+dump
+wait 1
+right thumb 0.5 0.1 0.1
+wait 1.5
+mark thumb_resting
+dump
+wait 1
+right thumb 1 1 1
+wait 1.5
+mark thumb_in_fist
+dump
+wait 1

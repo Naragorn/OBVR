@@ -381,6 +381,11 @@ struct HandModeResult {
 	bool leftCurlValid = false;
 	float rightCurl[5] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 	float leftCurl[5] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+	// And each thumb joint by joint, base to tip, when the full skeleton gave it.
+	bool rightThumbValid = false;
+	bool leftThumbValid = false;
+	float rightThumb[3] = {0.0f, 0.0f, 0.0f};
+	float leftThumb[3] = {0.0f, 0.0f, 0.0f};
 
 	// The controls to press, and whether any are to be pressed at all
 	// (false releases everything).

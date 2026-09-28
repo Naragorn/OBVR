@@ -829,6 +829,81 @@ bool OpenVRBackend::ReadHeadPose(Quaternion& orientation, NiPoint3& position) co
 	return true;
 }
 
+void OpenVRBackend::ReadThumb(bool rightHand, UInt64 skeleton, HandPose& out) const {
+	auto* const table = static_cast<input::Table*>(m_input);
+	const int side = rightHand ? 0 : 1;
+	if (table == nullptr || table->Bones == nullptr || table->ReferenceTransforms == nullptr) {
+		return;
+	}
+	input::BoneTransform bones[kSkeletonBoneCount];
+	const auto thumbOf = [&bones](int joint) {
+		const input::BoneTransform& b = bones[kSkeletonThumbFirst + joint];
+		return BoneRotation{b.w, b.x, b.y, b.z};
+	};
+	// The open hand and the fist, once.
+	if (!m_thumbReferencesRead[side]) {
+		m_thumbReferencesRead[side] = true;
+		const int openError = table->ReferenceTransforms(skeleton, input::kSkeletonSpaceParent,
+		                                                 input::kReferenceOpenHand, bones, kSkeletonBoneCount);
+		for (int j = 0; openError == 0 && j < kThumbJoints; ++j) {
+			m_thumbOpen[side][j] = thumbOf(j);
+		}
+		const int fistError = openError != 0 ? openError
+		                                     : table->ReferenceTransforms(skeleton, input::kSkeletonSpaceParent,
+		                                                                  input::kReferenceFist, bones,
+		                                                                  kSkeletonBoneCount);
+		for (int j = 0; fistError == 0 && j < kThumbJoints; ++j) {
+			m_thumbFist[side][j] = thumbOf(j);
+		}
+		m_thumbReferencesOk[side] = openError == 0 && fistError == 0;
+		OBVR_LOG("OpenVR input: %s hand's reference poses %s (%d, %d)%s", rightHand ? "right" : "left",
+		         m_thumbReferencesOk[side] ? "read" : "not read", openError, fistError,
+		         m_thumbReferencesOk[side] ? "" : " - the thumb follows the one summary curl");
+	}
+	if (!m_thumbReferencesOk[side]) {
+		return;
+	}
+	const int error = table->Bones(skeleton, input::kSkeletonSpaceParent, input::kMotionWithController, bones,
+	                               kSkeletonBoneCount);
+	BoneRotation open[kSkeletonBoneCount];
+	BoneRotation fist[kSkeletonBoneCount];
+	BoneRotation now[kSkeletonBoneCount];
+	for (int j = 0; j < kThumbJoints; ++j) {
+		open[kSkeletonThumbFirst + j] = m_thumbOpen[side][j];
+		fist[kSkeletonThumbFirst + j] = m_thumbFist[side][j];
+		now[kSkeletonThumbFirst + j] = thumbOf(j);
+	}
+	out.thumbValid = error == 0 && ThumbShares(open, fist, now, out.thumb);
+	// What the thumb reads as it moves - on a button, the stick, lifted - in
+	// quarter steps, the first several dozen changes: for tuning in the
+	// headset.
+	if (out.thumbValid && m_thumbLinesLeft > 0) {
+		int step = 0;
+		for (int j = 0; j < kThumbJoints; ++j) {
+			step = step * 5 + static_cast<int>(out.thumb[j] * 4.0f + 0.5f);
+		}
+		step = step * 5 + static_cast<int>(out.curl[0] * 4.0f + 0.5f);
+		if (step != m_thumbStepLogged[side]) {
+			m_thumbStepLogged[side] = step;
+			--m_thumbLinesLeft;
+			OBVR_LOG("OpenVR input: %s thumb joints %.2f %.2f %.2f, summary curl %.2f, pressed %s%s%s%s",
+			         rightHand ? "right" : "left", static_cast<double>(out.thumb[0]),
+			         static_cast<double>(out.thumb[1]), static_cast<double>(out.thumb[2]),
+			         static_cast<double>(out.curl[0]), ButtonDown(out.buttonsPressed, openvr::kButtonIndexA) ? "A " : "",
+			         ButtonDown(out.buttonsPressed, openvr::kButtonIndexB) ? "B " : "",
+			         ButtonDown(out.buttonsPressed, openvr::kButtonIndexJoystick) ? "stick " : "",
+			         ButtonDown(out.buttonsPressed, openvr::kButtonIndexTrackpad) ? "trackpad" : "");
+		}
+	}
+	if (!m_thumbLogged[side]) {
+		m_thumbLogged[side] = true;
+		OBVR_LOG("OpenVR input: %s thumb %s (%d) - joints %.2f %.2f %.2f, the summary's curl %.2f",
+		         rightHand ? "right" : "left", out.thumbValid ? "read joint by joint" : "not measured", error,
+		         static_cast<double>(out.thumb[0]), static_cast<double>(out.thumb[1]),
+		         static_cast<double>(out.thumb[2]), static_cast<double>(out.curl[0]));
+	}
+}
+
 bool OpenVRBackend::ReadHand(bool rightHand, HandPose& out) const {
 	out = HandPose{};
 	if (m_system == nullptr) {
@@ -898,6 +973,7 @@ bool OpenVRBackend::ReadHand(bool rightHand, HandPose& out) const {
 				for (int finger = 0; finger < 5; ++finger) {
 					out.curl[finger] = summary.curl[finger];
 				}
+				ReadThumb(rightHand, skeleton, out);
 			}
 			bool& logged = m_skeletonLogged[rightHand ? 0 : 1];
 			if (!logged) {

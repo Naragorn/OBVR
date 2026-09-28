@@ -3599,10 +3599,20 @@ void BeforeFirstScenePass() {
 				hands.fingerTracking, g_hand.leftCurlValid,
 				game::HandGripWanted(false, holding, g_hand.grabWithLeftHand),
 				hands.fingerTracking && game::HandHoldsItem(false, hands.leftHandBone));
-			game::StepHandFingers(true, hands.rightHandBone, rightPose, hands.gripCurlDegrees,
-			                      g_hand.rightCurl);
-			game::StepHandFingers(false, hands.leftHandBone, leftPose, hands.gripCurlDegrees,
-			                      g_hand.leftCurl);
+			game::FingerCurls rightCurls;
+			game::FingerCurls leftCurls;
+			for (int finger = 0; finger < 5; ++finger) {
+				rightCurls.curl[finger] = g_hand.rightCurl[finger];
+				leftCurls.curl[finger] = g_hand.leftCurl[finger];
+			}
+			rightCurls.thumbJoints = g_hand.rightThumbValid;
+			leftCurls.thumbJoints = g_hand.leftThumbValid;
+			for (int joint = 0; joint < 3; ++joint) {
+				rightCurls.thumb[joint] = g_hand.rightThumb[joint];
+				leftCurls.thumb[joint] = g_hand.leftThumb[joint];
+			}
+			game::StepHandFingers(true, hands.rightHandBone, rightPose, hands.gripCurlDegrees, &rightCurls);
+			game::StepHandFingers(false, hands.leftHandBone, leftPose, hands.gripCurlDegrees, &leftCurls);
 			// And a small held object sits fixed in that palm.
 			{
 				NiPoint3 touched{0.0f, 0.0f, 0.0f};

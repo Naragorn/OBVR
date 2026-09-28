@@ -55,6 +55,18 @@ struct SkeletalSummary {
 
 static_assert(sizeof(SkeletalSummary) == 36, "OpenVR skeletal summary ABI");
 
+// VRBoneTransform_t: HmdVector4_t position, HmdQuaternionf_t orientation (w,
+// x, y, z).
+struct BoneTransform {
+	float position[4];
+	float w;
+	float x;
+	float y;
+	float z;
+};
+
+static_assert(sizeof(BoneTransform) == 32, "OpenVR bone transform ABI");
+
 // EVRSummaryType_VRSummaryType_FromDevice: the curls as the controller
 // senses them, not as the hand animation blends them.
 constexpr int kSummaryFromDevice = 1;
@@ -70,8 +82,15 @@ struct Table {
 	void* pose;
 	void* nextFramePose;
 	void* skeleton;
-	void* unused[9];
-	void* bones;
+	void* unused[7];
+	// Entry 17, GetSkeletalReferenceTransforms(action, EVRSkeletalTransformSpace,
+	// EVRSkeletalReferencePose, VRBoneTransform_t*, count): the open hand and
+	// the fist the thumb is measured between (vr::ThumbShares).
+	int(__stdcall* ReferenceTransforms)(UInt64 action, int space, int pose, BoneTransform* bones, UInt32 count);
+	void* trackingLevel;
+	// Entry 19, GetSkeletalBoneData(action, EVRSkeletalTransformSpace,
+	// EVRSkeletalMotionRange, VRBoneTransform_t*, count).
+	int(__stdcall* Bones)(UInt64 action, int space, int range, BoneTransform* bones, UInt32 count);
 	// Entry 20, GetSkeletalSummaryData(action, EVRSummaryType, VRSkeletalSummaryData_t*)
 	// (openvr_capi.h v2.15.6, VR_IVRInput_FnTable, counted 2026-09-27): the
 	// fingers' curl for the fist (vr::StepFist).
@@ -80,6 +99,16 @@ struct Table {
 
 static_assert(offsetof(Table, SkeletalSummary) == 20 * sizeof(void*),
               "GetSkeletalSummaryData is entry 20 of VR_IVRInput_FnTable");
+static_assert(offsetof(Table, ReferenceTransforms) == 17 * sizeof(void*),
+              "GetSkeletalReferenceTransforms is entry 17 of VR_IVRInput_FnTable");
+static_assert(offsetof(Table, Bones) == 19 * sizeof(void*), "GetSkeletalBoneData is entry 19 of VR_IVRInput_FnTable");
+
+// EVRSkeletalTransformSpace_Parent, EVRSkeletalMotionRange_WithController,
+// EVRSkeletalReferencePose_OpenHand and _Fist (openvr.h v2.15.6).
+constexpr int kSkeletonSpaceParent = 1;
+constexpr int kMotionWithController = 0;
+constexpr int kReferenceOpenHand = 1;
+constexpr int kReferenceFist = 2;
 
 enum Action : unsigned {
 	StickClick,

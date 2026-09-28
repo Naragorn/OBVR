@@ -18,6 +18,9 @@
 //   right|left a|b|click|trackpad <0|1>
 //   right|left present <0|1>         whether the controller is tracked
 //   right|left curl <0..1>           all fingers' curl (the fist)
+//   right|left thumb <b> <m> <t>     the thumb joint by joint (0..1 each), as the
+//                                    full skeleton gives it; a negative first
+//                                    value goes back to the curl alone
 //   head yaw|pitch <degrees>         a synthetic head, turned
 //   head pos <x> <y> <z>             and placed, in tracking space
 //   head real                        the headset's own pose. The default is a
@@ -66,6 +69,8 @@ struct ScriptHand {
 	float stickX = 0.0f;
 	float stickY = 0.0f;
 	float curl = 0.0f;
+	bool thumbJoints = false;
+	float thumb[3] = {0.0f, 0.0f, 0.0f};
 	bool a = false;
 	bool b = false;
 	bool click = false;
@@ -114,6 +119,7 @@ enum class HandField : UInt8 {
 	Trackpad,
 	Present,
 	Curl,
+	Thumb,
 };
 
 enum class HeadField : UInt8 {
@@ -203,7 +209,7 @@ constexpr FieldName kHandFields[] = {
 	{"stick", HandField::Stick, 2},     {"a", HandField::A, 1},
 	{"b", HandField::B, 1},             {"click", HandField::Click, 1},
 	{"trackpad", HandField::Trackpad, 1}, {"present", HandField::Present, 1},
-	{"curl", HandField::Curl, 1},
+	{"curl", HandField::Curl, 1},     {"thumb", HandField::Thumb, 3},
 };
 
 }  // namespace detail
@@ -463,6 +469,12 @@ inline void ApplyHandField(ScriptHand& hand, const ScriptStep& s) {
 		break;
 	case HandField::Curl:
 		hand.curl = v[0];
+		break;
+	case HandField::Thumb:
+		hand.thumbJoints = v[0] >= 0.0f;
+		for (int j = 0; j < 3; ++j) {
+			hand.thumb[j] = v[j];
+		}
 		break;
 	}
 }

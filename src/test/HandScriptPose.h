@@ -72,6 +72,11 @@ inline vr::HandPose ScriptedHandPose(const ScriptHand& hand, const vr::Quaternio
 	for (int finger = 0; finger < 5; ++finger) {
 		out.curl[finger] = hand.curl;
 	}
+	// And the thumb joint by joint, when the script gave it.
+	out.thumbValid = hand.thumbJoints;
+	for (int joint = 0; joint < 3; ++joint) {
+		out.thumb[joint] = hand.thumb[joint];
+	}
 	return out;
 }
 

@@ -107,9 +107,28 @@ With nothing held, each finger of a hand follows the controller's finger
 - Code: `game::HandGrip` (`FingerPoseFor`, `FingerLinkOf`, `RotationOfQuat`,
   `BlendQuat`, `TrackedLinkRotation`, `StepHandFingers`, `HandHoldsItem`).
   Tested in finger_test. Scenario: `tools/hand-scripts/finger-tracking.txt`.
-- **Not verified yet:** no run in the game so far. Also unconfirmed: that
-  the bow hangs under a hand bone (then that hand keeps the animation), and
-  how the thumb reads on an Index, where it rests on the buttons.
+- Seen in the headset (the tester, 2026-09-28): open hand, fist, single
+  fingers, the sword hand keeping its grip, the grab. The bow hangs on the
+  left hand's "Torch" node (harness log), so the bow hand keeps the
+  animation.
+- **The thumb, joint by joint** (the tester: on an Index the thumb was
+  either straight or folded into the fist, "wie ist das in alyx"). The
+  summary has one thumb curl, and on an Index a thumb on any button reads
+  as a fist's thumb. Now each thumb joint comes from the full skeleton
+  (`vr/ThumbPose.h`): SteamVR's bone rotations with the controller's range
+  of motion, measured as a share of the way from SteamVR's open hand to
+  its fist (`GetSkeletalReferenceTransforms`), per joint, and the game's
+  thumb links (Finger0, 01, 02) blended each by its own joint. Without the
+  skeleton the thumb follows the summary curl as before.
+  - The harness (`tools/hand-scripts/thumb.txt`, the new `thumb` command)
+    shows three distinct thumbs: lifted (a thumbs up), its base turned in
+    with the rest straight, and across the fingers.
+  - **Not yet known:** what an Index actually reports for a thumb on A, B,
+    the stick or the trackpad. The log says it (`OpenVR input: right thumb
+    joints ...`, the first 80 changes) for tuning after a headset run.
+  - A sideways turn of the thumb that does not lie on the open-to-fist path
+    is dropped: the game's hand has only its two poses to blend between.
+    So the OK sign can only be approximated.
 
 ### 2. The touched point in the palm — built
 

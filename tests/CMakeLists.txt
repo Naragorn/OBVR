@@ -1083,3 +1083,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME weapon_draw_speed COMMAND weapon_draw_speed_test)
+
+add_executable(thumb_pose_test ThumbPoseTest.cpp)
+
+target_include_directories(thumb_pose_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(thumb_pose_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME thumb_pose COMMAND thumb_pose_test)

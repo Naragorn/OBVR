@@ -149,6 +149,10 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 			for (int finger = 0; finger < 5; ++finger) {
 				r.rightCurl[finger] = f.right.curl[finger];
 			}
+			r.rightThumbValid = f.right.thumbValid;
+			for (int joint = 0; joint < 3; ++joint) {
+				r.rightThumb[joint] = f.right.thumb[joint];
+			}
 		}
 		if (f.firstPerson && !f.menuMode) {
 			r.armsValid = true;
@@ -184,6 +188,10 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 			r.leftCurlValid = f.left.curlValid;
 			for (int finger = 0; finger < 5; ++finger) {
 				r.leftCurl[finger] = f.left.curl[finger];
+			}
+			r.leftThumbValid = f.left.thumbValid;
+			for (int joint = 0; joint < 3; ++joint) {
+				r.leftThumb[joint] = f.left.thumb[joint];
 			}
 		}
 	}

@@ -4,6 +4,7 @@
 #include "vr/OpenVRTypes.h"
 #include "vr/HandInput.h"
 #include "vr/Quaternion.h"
+#include "vr/ThumbPose.h"
 
 namespace obvr::vr {
 
@@ -127,6 +128,9 @@ public:
 	// valid - the caller keeps its last reading or does nothing, as with the
 	// head. The hand-tracked mode's only source of hands.
 	bool ReadHand(bool rightHand, HandPose& out) const;
+	// The thumb joint by joint from the hand's full skeleton, into
+	// out.thumb (vr/ThumbPose.h); leaves thumbValid false when it cannot.
+	void ReadThumb(bool rightHand, UInt64 skeleton, HandPose& out) const;
 
 	// The tracked-device index of the controller in one hand, or
 	// openvr::kTrackedDeviceIndexInvalid. What an overlay is hung on to ride
@@ -333,6 +337,16 @@ private:
 	// The hands' skeleton actions, for the fingers' curl (0 when unbound).
 	UInt64 m_skeletonHandles[2]{};
 	mutable bool m_skeletonLogged[2]{};
+	// Each hand's SteamVR open hand and fist, its thumb joints
+	// only (vr/ThumbPose.h): read once, when the skeleton first answers.
+	mutable bool m_thumbReferencesRead[2]{};
+	mutable bool m_thumbReferencesOk[2]{};
+	mutable BoneRotation m_thumbOpen[2][kThumbJoints]{};
+	mutable BoneRotation m_thumbFist[2][kThumbJoints]{};
+	mutable bool m_thumbLogged[2]{};
+	// The thumb's joints in quarter steps last logged, and how many more lines.
+	mutable int m_thumbStepLogged[2]{-1, -1};
+	mutable UInt32 m_thumbLinesLeft = 80;
 	mutable bool m_actionReadErrorLogged = false;
 	void* m_compositor = nullptr;  // IVRCompositorFnTable*, only when scene
 	void* m_overlay = nullptr;     // IVROverlayFnTable*, fetched on first use

@@ -30,6 +30,10 @@ struct HandPose {
 	// ring, pinky; 0 open, 1 curled), when the skeleton action gave it.
 	bool curlValid = false;
 	float curl[5] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+	// The thumb joint by joint from the full skeleton (vr/ThumbPose.h): each
+	// joint's share from the open hand to the fist, base to tip.
+	bool thumbValid = false;
+	float thumb[3] = {0.0f, 0.0f, 0.0f};
 	// Action provenance for recording/replay. A failed or inactive action is
 	// represented by neutral controls; these fields retain why it was neutral.
 	bool actionInput = false;
