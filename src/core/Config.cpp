@@ -745,9 +745,11 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		vr::StowSettings& st = h.stow;
 		st.enabled = ReadBool("Hands", "StowAtBody", st.enabled, path);
 		st.takeOnlyByHand = ReadBool("Hands", "TakeOnlyByHand", st.takeOnlyByHand, path);
+		st.centreRight = ReadFloat("Hands", "StowRight", st.centreRight, path);
 		st.centreForward = ReadFloat("Hands", "StowForward", st.centreForward, path);
 		st.centreUp = ReadFloat("Hands", "StowUp", st.centreUp, path);
 		st.radius = ReadFloat("Hands", "StowRadius", st.radius, path);
+		st.spotVisible = ReadBool("Hands", "StowSpotVisible", st.spotVisible, path);
 
 		vr::TeleportSettings& tp = h.teleport;
 		tp.enabled = ReadBool("Locomotion", "Teleport", tp.enabled, path);

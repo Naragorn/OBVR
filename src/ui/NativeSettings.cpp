@@ -175,6 +175,7 @@ NativeEditResult CommitNativeEdit(const NativeSettingEdit& edit,Config& config,N
   if (edit.definition->action==SettingAction::Recenter) writer.Recenter();
   if (edit.definition->action==SettingAction::AdjustHands) writer.AdjustHands();
   if (edit.definition->action==SettingAction::FitHolsters) writer.FitHolsters();
+  if (edit.definition->action==SettingAction::PlaceStowSpot) writer.PlaceStowSpot();
   return NativeEditResult::Action;
  }
  if (SettingEditRefusal(*edit.definition,config,edit.value)) return NativeEditResult::Refused;

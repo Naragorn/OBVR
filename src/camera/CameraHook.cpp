@@ -70,6 +70,7 @@
 #include "render/ReachMarker.h"
 #include "render/TeleportArcLayer.h"
 #include "vr/LaserGeometry.h"
+#include "vr/StowPlace.h"
 #include "ui/CanvasOverlay.h"
 #include "ui/Onboarding.h"
 #include "ui/SettingsMenu.h"
@@ -969,6 +970,81 @@ bool UpdateHolsterFit(Config& config, vr::OpenVRBackend& backend, const vr::Hand
 	return v.active || v.finished || v.cancelled;
 }
 
+// Placing the stow spot (vr/StowPlace.h): stepped every frame of the hand
+// mode, the window's commands taken as they come. While it is on - its
+// window open, so a menu is up - the ring shows at the spot, lit while a grip
+// drags it, and this owns the ring's overlay.
+vr::StowPlaceState g_stowPlace;
+
+void UpdateStowPlacing(Config& config, vr::OpenVRBackend& backend, const vr::HandModeFrame& frame) {
+	vr::StowPlaceInput in;
+	in.command = static_cast<vr::StowPlaceCommand>(game::TakeStowPlaceCommand());
+	in.rightValid = frame.right.valid && frame.headValid;
+	in.leftValid = frame.left.valid && frame.headValid;
+	if (frame.headValid) {
+		in.right = vr::BodyRelative(frame.head, frame.headPosition, frame.right.position);
+		in.left = vr::BodyRelative(frame.head, frame.headPosition, frame.left.position);
+	}
+	in.rightGrip = frame.right.valid && vr::GripDown(frame.right.buttonsPressed);
+	in.leftGrip = frame.left.valid && vr::GripDown(frame.left.buttonsPressed);
+	vr::StowSettings& stow = config.hands.stow;
+	const vr::StowPlaceVerdict v = vr::StepStowPlace(g_stowPlace, in, stow);
+	game::NoteStowPlaceActive(v.active);
+	if (in.command == vr::StowPlaceCommand::Start) {
+		OBVR_LOG("Stow place: started - the ring at %.2f right, %.2f forward, %.2f up",
+		         static_cast<double>(stow.centreRight), static_cast<double>(stow.centreForward),
+		         static_cast<double>(stow.centreUp));
+	}
+	if (v.grabbed || v.dropped) {
+		OBVR_LOG("Stow place: the ring %s at %.2f right, %.2f forward, %.2f up",
+		         v.grabbed ? "taken" : "let go", static_cast<double>(v.spot.x),
+		         static_cast<double>(v.spot.y), static_cast<double>(v.spot.z));
+	}
+	if (v.active) {
+		// The running settings follow the ring, so it is drawn - and would
+		// stow - where it is being put.
+		stow.centreRight = v.spot.x;
+		stow.centreForward = v.spot.y;
+		stow.centreUp = v.spot.z;
+	}
+	if (v.save || v.restore) {
+		stow.centreRight = v.spot.x;
+		stow.centreForward = v.spot.y;
+		stow.centreUp = v.spot.z;
+	}
+	if (v.save) {
+		const struct {
+			const char* key;
+			float value;
+		} entries[] = {{"StowRight", v.spot.x}, {"StowForward", v.spot.y}, {"StowUp", v.spot.z}};
+		bool saved = true;
+		for (const auto& entry : entries) {
+			char value[32];
+			std::snprintf(value, sizeof(value), "%.2f", static_cast<double>(entry.value));
+			saved = SaveSetting("Hands", entry.key, value) && saved;
+		}
+		OBVR_LOG("Stow place: kept at %.2f right, %.2f forward, %.2f up - the ring hidden again%s",
+		         static_cast<double>(v.spot.x), static_cast<double>(v.spot.y),
+		         static_cast<double>(v.spot.z), saved ? "" : " - COULD NOT SAVE the INI");
+	} else if (v.restore) {
+		OBVR_LOG("Stow place: cancelled - the spot back at %.2f right, %.2f forward, %.2f up",
+		         static_cast<double>(v.spot.x), static_cast<double>(v.spot.y),
+		         static_cast<double>(v.spot.z));
+	}
+	if (v.active && frame.headValid) {
+		if (g_stowSpotView.lit != v.dragging) {
+			g_stowSpotView.lit = v.dragging;
+			++g_stowSpotRevision;
+		}
+		const NiPoint3 at = vr::StowSpotInTracking(frame.head, frame.headPosition, stow);
+		g_stowSpotLayer.Show(backend, render::GetGameDevice(), StowSpotPose(at, frame.headPosition),
+		                     2.0f * stow.radius, g_stowSpotRevision, ui::PaintStowSpotFor,
+		                     &g_stowSpotView);
+	} else if (v.save || v.restore) {
+		g_stowSpotLayer.Hide(backend);
+	}
+}
+
 void UpdateHandMode(const Config& config, bool menuIsUp) {
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
 	const long long now = ReadPerformanceCounter();
@@ -1279,6 +1355,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	const bool fitting = UpdateHolsterFit(GetConfig(), backend, frame,
 	                                      active && !menuIsUp && frame.inWorld &&
 	                                          !frame.settingsMenuOpen);
+	UpdateStowPlacing(GetConfig(), backend, frame);
 	g_hand = g_handMode.Update(frame, config.hands);
 	// Taking loose items only by hand ([Hands] TakeOnlyByHand, vr::Stow): the
 	// activate button is kept from the game while the laser is on one. Read
@@ -1602,8 +1679,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 		stowIn.dt = g_deltaSeconds;
 		const vr::StowVerdict stow = vr::StepStow(g_stow, stowIn, config.hands.stow);
-		// The spot, while an item is held; lit while the hand is in it.
-		if (stow.showSpot && frame.headValid) {
+		// The spot, while an item is held and the ring is switched on
+		// ([Hands] StowSpotVisible, off by default); lit while the hand is in
+		// it. While it is being placed, UpdateStowPlacing draws it.
+		const bool placing = game::StowPlaceActive();
+		if (!placing && vr::StowRingShown(false, config.hands.stow.spotVisible, stow.showSpot) &&
+		    frame.headValid) {
 			if (g_stowSpotView.lit != stow.atBody) {
 				g_stowSpotView.lit = stow.atBody;
 				++g_stowSpotRevision;
@@ -1614,7 +1695,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			                     StowSpotPose(at, frame.headPosition),
 			                     2.0f * config.hands.stow.radius, g_stowSpotRevision,
 			                     ui::PaintStowSpotFor, &g_stowSpotView);
-		} else {
+		} else if (!placing) {
 			g_stowSpotLayer.Hide(backend);
 		}
 		const bool stowing = stow.waiting || stow.take != 0;

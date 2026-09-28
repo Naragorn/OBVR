@@ -23,8 +23,10 @@ struct Writer:NativeSettingWriter {
  void Recenter() override { ++recenters; }
  void AdjustHands() override { ++adjusts; }
  void FitHolsters() override { ++fits; }
+ void PlaceStowSpot() override { ++places; }
  int adjusts=0;
  int fits=0;
+ int places=0;
 };
 
 float ChangedFromDefault(const SettingDefinition& definition, float canonical) {
@@ -182,7 +184,7 @@ void TestResetSelected() {
  }
 
  Check(visited==SettingDefinitionCount(),"reset test visits every definition across pages");
- Check(editable+3==visited,"reset test includes the three action rows' refusal paths");
+ Check(editable+4==visited,"reset test includes the four action rows' refusal paths");
  Check(refusedAtDefault==editable,"every editable definition refuses reset at default");
 }
 
@@ -376,6 +378,24 @@ void TestHandAdjust() {
   if(!fitFired) fitMenu.Click(kNativeNext,config);
  }
  Check(fitFired,"the Fit weapon places row is in the menu");
+ // The same for the stow spot's window.
+ NativeSettings placeMenu; Writer placeWriter;
+ bool placeFired=false;
+ for(unsigned page=0;page<placeMenu.Pages() && !placeFired;++page) {
+  for(unsigned slot=0;slot<7;++slot) {
+   const auto* d=placeMenu.Row(slot);
+   if(d && d->action==SettingAction::PlaceStowSpot) {
+    const auto edit=placeMenu.Click(kNativeRowBase+static_cast<int>(slot)*3+2,config);
+    Check(CommitNativeEdit(edit,config,placeWriter)==NativeEditResult::Action && placeWriter.places==1 &&
+          placeWriter.fits==0 && placeWriter.adjusts==0 && placeWriter.recenters==0 && placeWriter.saves==0,
+          "the Place the stow spot row opens its window, saves nothing");
+    placeFired=true;
+    break;
+   }
+  }
+  if(!placeFired) placeMenu.Click(kNativeNext,config);
+ }
+ Check(placeFired,"the Place the stow spot row is in the menu");
 }
 
 void TestUpdateWindow() {

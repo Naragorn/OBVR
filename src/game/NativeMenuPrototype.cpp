@@ -14,6 +14,7 @@
 #include "platform/Win32Min.h"
 #include "ui/NativeOnboarding.h"
 #include "ui/NativeHandAdjust.h"
+#include "vr/StowPlace.h"
 #include "ui/NativeSettings.h"
 #include "core/UpdateNotice.h"
 #include "platform/UpdateFetch.h"
@@ -130,6 +131,11 @@ class SettingWriter final: public ui::NativeSettingWriter {
   game::RequestHolsterFit();
   g_closeForAdjust=true;
   OBVR_LOG("Native settings: Fit weapon places - the menu closes and the fit starts");
+ }
+ void PlaceStowSpot() override {
+  game::RequestStowPlaceWindow();
+  g_closeForAdjust=true;
+  OBVR_LOG("Native settings: Place the stow spot - the menu closes and its window opens");
  }
 };
 
@@ -435,7 +441,59 @@ void Tick() {
    return;
   }
  }
+ // The window for placing the stow spot (vr/StowPlace.h), from the settings
+ // row: the adjust-hands window with the stow's words. While it is open the
+ // frame shows the ring and lets a grip move it; the buttons keep the spot,
+ // put it back, or reset it - Esc puts it back.
+ {
+  static bool s_open=false, s_pending=false;
+  if (game::TakeStowPlaceWindowRequest()) s_pending=true;
+  if (s_open) {
+   if (!root || foreign) {
+    s_open=false; g_ourRoot=nullptr;
+    game::SendStowPlaceCommand(static_cast<int>(vr::StowPlaceCommand::Cancel));
+    OBVR_LOG("Native menus: stow-spot window closed from outside - the spot stays where it was");
+    return;
+   }
+   int button=-1;
+   if (top==kMenuIdGeneric && !g_poll(&button)) button=-1;
+   vr::StowPlaceCommand command=vr::StowPlaceCommand::None;
+   if (button==ui::kAdjustHandsPrimary) command=vr::StowPlaceCommand::Keep;
+   else if (button==ui::kAdjustHandsSecondary) command=vr::StowPlaceCommand::Cancel;
+   else if (button==ui::kAdjustHandsReset) command=vr::StowPlaceCommand::Reset;
+   if (command==vr::StowPlaceCommand::None) return;
+   game::SendStowPlaceCommand(static_cast<int>(command));
+   OBVR_LOG("Native menus: stow-spot window - button %d",button);
+   s_open=false; g_ourRoot=nullptr;
+   Run("ClickMenuButton \"parchment\\close\" 1011");
+   return;
+  }
+  if (s_pending && !root && top==0 && PlayerInWorld()) {
+   s_pending=false;
+   if (!AssetExists("Data\\Menus\\Generic\\OBVR_AdjustHands.xml")) {
+    OBVR_LOG("Native menus: OBVR_AdjustHands.xml missing - the stow spot cannot be placed");
+    return;
+   }
+   int stale=-1; g_poll(&stale);
+   const bool executed=Run("ShowGenericMenu \"OBVR_AdjustHands.xml\" 9500");
+   s_open=executed && GenericRoot();
+   if (s_open) {
+    g_ourRoot=GenericRoot();
+    Text("user0","Place the stow spot");
+    Text("user1","The gold ring shows where letting go of a held item puts it into your pack. Close a grip on the ring, move it where you want it on your body, and open the grip. Done keeps it there and hides the ring again.");
+    Text("user2","Done");
+    Text("user3","Cancel");
+    Text("user4","Reset");
+    Number("parchment\\reset\\target",ui::kXmlBool[1]);
+    Number("parchment\\reset\\alpha",255);
+    game::SendStowPlaceCommand(static_cast<int>(vr::StowPlaceCommand::Start));
+   }
+   OBVR_LOG("Native menus: stow-spot window - open executed=%d",executed);
+   return;
+  }
+ }
  // The update notice (ui::StepUpdateWindow): a native window in the main
+
  // menu, the answer from GitHub or Debug.ForceUpdateNotice behind it.
  {
   static ui::UpdateWindowState s_update;

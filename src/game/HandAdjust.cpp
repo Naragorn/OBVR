@@ -14,6 +14,9 @@ AtomicFlag g_guideRequested;
 AtomicFlag g_holsterFitRequested;
 AtomicFlag g_finishRequested;
 AtomicFlag g_active;
+AtomicFlag g_stowWindowRequested;
+AtomicFlag g_stowPlaceActive;
+volatile long g_stowCommand = 0;  // a vr::StowPlaceCommand, 0 for none
 ui::HandAdjustSession g_session;  // stepped only in the frame
 
 }  // namespace
@@ -22,6 +25,24 @@ void RequestHandAdjustGuide() { g_guideRequested.Set(true); }
 bool TakeHandAdjustGuideRequest() { return g_guideRequested.Take(); }
 void RequestHolsterFit() { g_holsterFitRequested.Set(true); }
 bool TakeHolsterFitRequest() { return g_holsterFitRequested.Take(); }
+void RequestStowPlaceWindow() { g_stowWindowRequested.Set(true); }
+bool TakeStowPlaceWindowRequest() { return g_stowWindowRequested.Take(); }
+void SendStowPlaceCommand(int command) {
+#if defined(_MSC_VER)
+	_InterlockedExchange(&g_stowCommand, command);
+#else
+	__atomic_store_n(&g_stowCommand, command, __ATOMIC_SEQ_CST);
+#endif
+}
+int TakeStowPlaceCommand() {
+#if defined(_MSC_VER)
+	return static_cast<int>(_InterlockedExchange(&g_stowCommand, 0));
+#else
+	return static_cast<int>(__atomic_exchange_n(&g_stowCommand, 0, __ATOMIC_SEQ_CST));
+#endif
+}
+void NoteStowPlaceActive(bool active) { g_stowPlaceActive.Set(active); }
+bool StowPlaceActive() { return g_stowPlaceActive.Get(); }
 
 void StartHandAdjust() {
 	ui::StartHandAdjustSession(g_session);

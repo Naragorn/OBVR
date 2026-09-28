@@ -8,6 +8,7 @@
 
 #include "vr/Holster.h"
 #include "vr/Stow.h"
+#include "vr/StowPlace.h"
 
 using namespace obvr;
 using namespace obvr::vr;
@@ -228,11 +229,153 @@ void TestActivate() {
 
 }  // namespace
 
-int main() {
-	TestZone();
+bool NearPoint(const NiPoint3& a, const NiPoint3& b) {
+	return std::fabs(a.x - b.x) < 1e-4f && std::fabs(a.y - b.y) < 1e-4f && std::fabs(a.z - b.z) < 1e-4f;
+}
+
+void TestPlace() {
+	std::printf("Placing the stow spot\n");
+	StowSettings settings;
+	settings.centreRight = 0.05f;
+	const NiPoint3 spot{0.05f, settings.centreForward, settings.centreUp};
+
+	StowPlaceState s;
+	StowPlaceInput in;
+	StowPlaceVerdict v = StepStowPlace(s, in, settings);
+	Check(!v.active && !v.save && !v.restore, "not started: nothing");
+	in.command = StowPlaceCommand::Keep;
+	v = StepStowPlace(s, in, settings);
+	Check(!v.save && !v.active, "a stray Done with nothing open saves nothing");
+	in.command = StowPlaceCommand::Cancel;
+	v = StepStowPlace(s, in, settings);
+	Check(!v.restore, "nor a stray Cancel");
+	in.command = StowPlaceCommand::Reset;
+	v = StepStowPlace(s, in, settings);
+	Check(!v.save, "nor a stray Reset");
+
+	// Started with the right grip already closed: not a press.
+	in = StowPlaceInput{};
+	in.command = StowPlaceCommand::Start;
+	in.rightValid = in.leftValid = true;
+	in.right = spot;
+	in.rightGrip = true;
+	v = StepStowPlace(s, in, settings);
+	Check(v.active && NearPoint(v.spot, spot) && !v.dragging,
+	      "started: the ring shows where the spot is; a grip already closed takes nothing");
+	in.command = StowPlaceCommand::None;
+	in.right = NiPoint3{0.3f, 0.3f, -0.3f};
+	v = StepStowPlace(s, in, settings);
+	Check(!v.dragging && NearPoint(v.spot, spot), "still held from before: the ring stays");
+
+	// A press away from the ring takes nothing.
+	in.rightGrip = false;
+	StepStowPlace(s, in, settings);
+	in.rightGrip = true;
+	v = StepStowPlace(s, in, settings);
+	Check(!v.grabbed && !v.dragging, "a grip closed far from the ring takes nothing");
+
+	// A press at the ring's edge takes it, with its offset.
+	in.rightGrip = false;
+	in.right = spot + NiPoint3{settings.radius + 0.04f, 0.0f, 0.0f};
+	StepStowPlace(s, in, settings);
+	in.rightGrip = true;
+	v = StepStowPlace(s, in, settings);
+	Check(v.grabbed && v.dragging && NearPoint(v.spot, spot),
+	      "a grip closed just outside the ring takes it, without a jump");
+	in.right = in.right + NiPoint3{0.0f, 0.1f, 0.05f};
+	v = StepStowPlace(s, in, settings);
+	const NiPoint3 moved = spot + NiPoint3{0.0f, 0.1f, 0.05f};
+	Check(v.dragging && NearPoint(v.spot, moved), "it moves with the hand");
+	in.rightGrip = false;
+	v = StepStowPlace(s, in, settings);
+	Check(v.dropped && !v.dragging && NearPoint(v.spot, moved), "the grip opened: it stays there");
+	in.right = NiPoint3{0.0f, 0.0f, 0.0f};
+	v = StepStowPlace(s, in, settings);
+	Check(NearPoint(v.spot, moved), "and does not follow the open hand");
+
+	// The left hand takes it too; lost tracking drops it.
+	in.left = moved;
+	in.leftGrip = true;
+	v = StepStowPlace(s, in, settings);
+	Check(v.grabbed && v.dragging, "the left hand takes it as well");
+	in.leftValid = false;
+	v = StepStowPlace(s, in, settings);
+	Check(v.dropped && !v.dragging, "the dragging hand lost: dropped where it was");
+	in.leftValid = true;
+	in.leftGrip = false;
+	StepStowPlace(s, in, settings);
+
+	// Both grips at once: the right one.
+	in.right = moved;
+	in.left = moved;
+	in.rightGrip = in.leftGrip = true;
+	v = StepStowPlace(s, in, settings);
+	in.left = moved + NiPoint3{0.2f, 0.0f, 0.0f};
+	in.right = moved + NiPoint3{0.0f, 0.05f, 0.0f};
+	v = StepStowPlace(s, in, settings);
+	Check(NearPoint(v.spot, moved + NiPoint3{0.0f, 0.05f, 0.0f}), "both at once: the right hand drags");
+
+	// Dragged off into the room: kept within reach.
+	in.right = NiPoint3{5.0f, 5.0f, 5.0f};
+	v = StepStowPlace(s, in, settings);
+	Check(v.spot.x == kStowPlaceMaxSide && v.spot.y == kStowPlaceMaxForward &&
+	          v.spot.z == kStowPlaceMaxUp,
+	      "too far: held at the edge of reach");
+	in.right = NiPoint3{-5.0f, -5.0f, -5.0f};
+	v = StepStowPlace(s, in, settings);
+	Check(v.spot.x == -kStowPlaceMaxSide && v.spot.y == kStowPlaceMinForward &&
+	          v.spot.z == kStowPlaceMinUp,
+	      "and the other way");
+	in.right = moved;
+	const StowPlaceVerdict placed = StepStowPlace(s, in, settings);
+	in.rightGrip = in.leftGrip = false;
+	StepStowPlace(s, in, settings);
+
+	// Done keeps it; the state is closed afterwards.
+	in.command = StowPlaceCommand::Keep;
+	v = StepStowPlace(s, in, settings);
+	Check(v.save && !v.restore && !v.active && NearPoint(v.spot, placed.spot),
+	      "Done: the spot saved where the ring is, the ring hidden");
+	in.command = StowPlaceCommand::None;
+	v = StepStowPlace(s, in, settings);
+	Check(!v.active, "and it stays closed");
+
+	// Cancel puts it back.
+	in.command = StowPlaceCommand::Start;
+	StepStowPlace(s, in, settings);
+	in.command = StowPlaceCommand::None;
+	in.right = spot;
+	in.rightGrip = true;
+	StepStowPlace(s, in, settings);
+	in.right = spot + NiPoint3{0.1f, 0.0f, 0.0f};
+	StepStowPlace(s, in, settings);
+	in.command = StowPlaceCommand::Cancel;
+	v = StepStowPlace(s, in, settings);
+	Check(v.restore && !v.save && NearPoint(v.spot, spot), "Cancel: back where it was, nothing saved");
+
+	// Reset: the default, saved.
+	in.command = StowPlaceCommand::Start;
+	StepStowPlace(s, in, settings);
+	in.command = StowPlaceCommand::Reset;
+	v = StepStowPlace(s, in, settings);
+	const StowSettings defaults;
+	Check(v.save && NearPoint(v.spot, NiPoint3{defaults.centreRight, defaults.centreForward,
+	                                           defaults.centreUp}),
+	      "Reset: the default spot, saved");
+
+	// Shown.
+	Check(StowRingShown(true, false, false), "placing: the ring shows");
+	Check(!StowRingShown(false, false, true), "the ring off: not shown while holding an item");
+	Check(StowRingShown(false, true, true), "switched on: shown while holding an item");
+	Check(!StowRingShown(false, true, false), "switched on, nothing held: not shown");
+	Check(!defaults.spotVisible, "off by default");
+}
+
+int main() {	TestZone();
 	TestSpotPose();
 	TestFlows();
 	TestActivate();
+	TestPlace();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

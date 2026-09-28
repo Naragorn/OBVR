@@ -18,6 +18,17 @@ bool TakeHandAdjustGuideRequest();
 void RequestHolsterFit();
 bool TakeHolsterFitRequest();
 
+// Placing the stow spot (vr::StepStowPlace): the window asked for from the
+// settings row; the window hands its commands - Start when it opens, Keep,
+// Cancel or Reset when a button is chosen - to the frame, which steps the
+// placing and says whether it is on.
+void RequestStowPlaceWindow();
+bool TakeStowPlaceWindowRequest();
+void SendStowPlaceCommand(int command);  // a vr::StowPlaceCommand
+int TakeStowPlaceCommand();
+void NoteStowPlaceActive(bool active);
+bool StowPlaceActive();
+
 void StartHandAdjust();
 void StopHandAdjust();
 bool HandAdjustActive();

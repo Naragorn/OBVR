@@ -54,6 +54,10 @@ struct StowSettings {
 	float centreForward = 0.17f;
 	float centreUp = -0.30f;
 	float radius = 0.16f;
+	// The ring drawn while an item is held. Off by default since the tester
+	// placed it where wanted once (vr/StowPlace.h, 2026-09-28): the spot
+	// stows whether it is seen or not.
+	bool spotVisible = false;
 	// A release this soon after the hand left the zone still stows.
 	float graceSeconds = 0.3f;
 	// How long the engine may take to let go before the take is given up.

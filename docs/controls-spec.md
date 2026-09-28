@@ -424,6 +424,16 @@ in the headset yet.
     chest was measured (0.19-0.23 m ahead, 0.17-0.30 m below the eyes).
   - A release up to 0.3 s after the hand left the spot still stows: the hand
     moves as it opens.
+  - **Placed by hand, then hidden** (the tester, 2026-09-28). The ring is
+    off by default (`[Hands] StowSpotVisible=0`); the spot stows unseen. The
+    settings row "Place the stow spot" opens a window (MenuQue, the
+    adjust-hands window with the stow's words) and shows the ring for as
+    long as it is open. A grip closed on the ring (or within 6 cm of it)
+    takes it along with that hand; opening the grip leaves it. Done writes
+    `StowRight`, `StowForward`, `StowUp` and hides the ring; Cancel or Esc
+    puts it back; Reset returns it to the default. Kept within reach: 0.6 m
+    to either side, 0.4 m behind to 0.8 m ahead, 1.4 m below to 0.3 m above
+    the eyes (`vr::StepStowPlace`, tested in stow_test).
 - **Taking only by hand.** `[Hands] TakeOnlyByHand`, off by default; settings
   "Take only by hand". The activate button is kept from the game while the
   laser is on a loose item. A book still opens to read, and doors, chests

@@ -777,6 +777,21 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.stow.enabled = v != 0.0f; },
 	},
 	{
+		"Hands", "Place the stow spot", "Shows the ring: grip it and move it where you want it on your body",
+		ItemKind::Action, 0.0f, 0.0f, 0.0f, 0, false,
+		"", "",
+		+[](const Config&) { return 0.0f; },
+		+[](Config&, float) {},
+		"", "", SettingAction::PlaceStowSpot,
+	},
+	{
+		"Hands", "Show the stow ring", "The gold ring shows while you hold an item (the spot stows either way)",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "StowSpotVisible",
+		+[](const Config& c) { return c.hands.stow.spotVisible ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.stow.spotVisible = v != 0.0f; },
+	},
+	{
 		"Hands", "Take only by hand", "Full VR: activating a loose item no longer takes it - stow it",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "TakeOnlyByHand",
