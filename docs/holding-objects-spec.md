@@ -129,6 +129,34 @@ With nothing held, each finger of a hand follows the controller's finger
   - A sideways turn of the thumb that does not lie on the open-to-fist path
     is dropped: the game's hand has only its two poses to blend between.
     So the OK sign can only be approximated.
+- **Open bug (the tester, 2026-09-28): the left little finger stays
+  straight** whatever the hand does on the controller ("der linke kleine
+  finger/pinky bleibt immer gestreckt egal wie ich den controller
+  berühre"). The tester's own guess is old controllers. Nothing settles it
+  yet:
+  - The log has no per-finger curls, only the thumb's lines, so it is
+    unknown whether SteamVR reports the left pinky's curl as 0 (the
+    controller or its driver) or reports it and OBVR drops it.
+  - Derived from the code, not measured: the pinky takes the same path as
+    the other four fingers (summary index 4, links Finger4/41/42, the
+    left-hand mirror is the same for every finger). A fault only in OBVR
+    would have to be in that index or those link names.
+  - Next: log the five summary curls per hand on change, as the thumb's
+    lines do, and compare the left pinky with the right. If SteamVR already
+    reads 0, the cause is outside OBVR (the controller's capacitive sensor
+    for that finger). Otherwise the fault is in OBVR's mapping.
+- **Open bug (the tester, 2026-09-28): no thumbs up.** The tester's log:
+  with the controller's range of motion, the thumb at its most open still
+  reads 0.43 0.00 0.25 from base to tip, so its base never leaves the grip.
+  Ideas: SteamVR's range without the controller, a third pose (a thumb
+  straight up), another reference skeleton. The details are in
+  `docs/next-up.md`.
+- **Open bug (the tester, 2026-09-28): looking into the hand from below**
+  ("man kann immer noch von unten in die hand schauen"). The bare hand's
+  lid is its own far wall, so the bow's grip and the inside of the fist
+  show through it. A stencil lid was tried and reverted. The hands'
+  near plane differs from the world's, so the first-person pass's own
+  projection is needed first (`docs/next-up.md`).
 
 ### 2. The touched point in the palm — built
 
