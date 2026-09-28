@@ -1083,7 +1083,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_hudLayer.ClearWristPlacement();
 		game::HideFirstPersonNodes(false, "");
 		game::KeepFirstPersonDepth(false);
-		render::SetFirstPersonBackfaces(false);
+		render::SetFirstPersonBackfaces(false, 0.0f);
 		game::AllowGrabNearBody(false);
 		g_headsetRenderer.SetControllersWanted(false);
 		game::ForgetStrikes();
@@ -1155,8 +1155,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		                           HandsHideList(config.hands, handsAway, sheathing));
 		// The hands in the world rather than on top of it (FirstPersonDepth.h).
 		game::KeepFirstPersonDepth(true);
-		// And closed: their inside gold-brown, not the room (BackfacePass.h).
-		render::SetFirstPersonBackfaces(config.hands.closedHands);
+		// And closed: their inside their own surface, darker - not the room
+		// (BackfacePass.h).
+		render::SetFirstPersonBackfaces(config.hands.closedHands, config.hands.closedHandsBrightness);
 		// Held objects may come up to the mouth and the body (GrabNearBody.h).
 		game::AllowGrabNearBody(true);
 		// The real controllers in the eyes while the hands are being adjusted.
@@ -1165,7 +1166,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	} else {
 		game::HideFirstPersonNodes(false, "");
 		game::KeepFirstPersonDepth(false);
-		render::SetFirstPersonBackfaces(false);
+		render::SetFirstPersonBackfaces(false, 0.0f);
 		game::AllowGrabNearBody(false);
 		g_headsetRenderer.SetControllersWanted(false);
 		game::ForgetStrikes();

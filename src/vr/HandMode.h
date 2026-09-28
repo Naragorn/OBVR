@@ -58,9 +58,11 @@ struct HandSettings {
 	// quiver bones, and any "Scb" scabbard): they rode with the right hand.
 	bool hideSheaths = true;
 	char hideNodes[128] = "Arms";
-	// Closed hands: the inside of the first-person model drawn gold-brown, so a
-	// hand ending at the wrist is not seen through (render/BackfacePass.h).
+	// Closed hands: the inside of the first-person model drawn as its own
+	// surface, darkened to closedHandsBrightness, so a hand ending at the
+	// wrist is not seen through (render/BackfacePass.h).
 	bool closedHands = true;
+	float closedHandsBrightness = 0.5f;
 
 	// The laser cursor: how much of the remaining distance the game's cursor
 	// is walked per frame, and the largest step.

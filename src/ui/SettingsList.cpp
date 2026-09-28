@@ -460,11 +460,18 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.hideArms = v != 0.0f; },
 	},
 	{
-		"Hands", "Closed hands", "The inside of the hands closed in gold-brown, not see-through",
+		"Hands", "Closed hands", "The inside of the hands drawn, darker, not see-through at the wrist",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "ClosedHands",
 		+[](const Config& c) { return c.hands.closedHands ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.closedHands = v != 0.0f; },
+	},
+	{
+		"Hands", "Inside brightness", "How bright the inside of the hands is: 0 black, 1 as the outside",
+		ItemKind::Number, 0.0f, 1.0f, 0.1f, 1, false,
+		"Hands", "ClosedHandsBrightness",
+		+[](const Config& c) { return c.hands.closedHandsBrightness; },
+		+[](Config& c, float v) { c.hands.closedHandsBrightness = v; },
 	},
 	{
 		"Hands", "Hands on the controllers", "The hand bones follow the controllers, not the animation",

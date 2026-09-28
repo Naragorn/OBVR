@@ -708,6 +708,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadText("Hands", "HideFirstPersonNodes", h.hideNodes, sizeof(h.hideNodes), path);
 		h.hideSheaths = ReadBool("Hands", "HideSheaths", h.hideSheaths, path);
 		h.closedHands = ReadBool("Hands", "ClosedHands", h.closedHands, path);
+		h.closedHandsBrightness =
+			ReadFloat("Hands", "ClosedHandsBrightness", h.closedHandsBrightness, path);
 		h.laserGain = ReadFloat("Hands", "LaserGain", h.laserGain, path);
 		h.laserMaxStep = ReadFloat("Hands", "LaserMaxStep", h.laserMaxStep, path);
 		h.stickDeadZone = ReadFloat("Hands", "StickDeadZone", h.stickDeadZone, path);
