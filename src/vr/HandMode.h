@@ -62,10 +62,13 @@ struct HandSettings {
 	// surface, darkened to closedHandsBrightness, so a hand ending at the
 	// wrist is not seen through (render/BackfacePass.h).
 	bool closedHands = true;
-	float closedHandsBrightness = 0.5f;
+	float closedHandsBrightness = 0.2f;
 	// A bare hand's wrist drawn closed: its forearm shrunk into the cuff
 	// (game/BonePin.h, "Bare wrists").
 	bool closeBareWrists = true;
+	// A bare hand with a short piece of forearm, tapering behind the elbow,
+	// instead of the lid at the wrist (game/ArmStump.h). Off by default.
+	bool forearmStump = false;
 
 	// The laser cursor: how much of the remaining distance the game's cursor
 	// is walked per frame, and the largest step.

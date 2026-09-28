@@ -607,6 +607,8 @@ CrosshairContent CrosshairContentWanted(bool crosshairWanted, bool haveTarget,
 //   * with the hands away (menus, dialogue): the hands and what they hold -
 //     the drawn weapon (Weapon bone), a torch (Torch), a shield (its Prn,
 //     "Bip01 L ForearmTwist")
+//   * the arms stay shown when they are drawn as a forearm stump
+//     (game/ArmStump.h), the legs and feet hidden all the same
 //   * while the weapon is being sheathed (the player's action is
 //     UnequipWeapon): the drawn weapon. The engine's sheathe animation moves
 //     it from the hand to where a sheathed weapon hangs, a place with no
@@ -614,7 +616,8 @@ CrosshairContent CrosshairContentWanted(bool crosshairWanted, bool haveTarget,
 //     holster - and a two-hander was seen hanging in the room while it was
 //     put away (the tester, 2026-09-27)
 inline bool ComposeHandsHideList(char* out, UInt32 capacity, bool hideArms, const char* armNodes,
-                                 bool hideSheaths, bool handsAway, bool sheathing) {
+                                 bool hideSheaths, bool handsAway, bool sheathing,
+                                 bool armsShownAsStump = false) {
 	if (out == nullptr || capacity == 0) {
 		return false;
 	}
@@ -637,7 +640,9 @@ inline bool ComposeHandsHideList(char* out, UInt32 capacity, bool hideArms, cons
 		}
 	};
 	if (hideArms && armNodes != nullptr) {
-		append(armNodes);
+		if (!armsShownAsStump) {
+			append(armNodes);
+		}
 		append("LowerBody,Foot");
 	}
 	if (hideSheaths) {

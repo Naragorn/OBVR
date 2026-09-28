@@ -1281,6 +1281,12 @@ void TestCrosshairTooltipPolicy() {
 		Check(ComposeHandsHideList(list, sizeof(list), true, "", true, false, false) &&
 		          std::strcmp(list, "LowerBody,Foot,SideWeapon,BackWeapon,Quiver,Scb") == 0,
 		      "an empty arm list adds no stray comma");
+		Check(ComposeHandsHideList(list, sizeof(list), true, "Arms", false, false, false, true) &&
+		          std::strcmp(list, "LowerBody,Foot") == 0,
+		      "a forearm stump: the arms stay, the legs and boots still go");
+		Check(ComposeHandsHideList(list, sizeof(list), true, "Arms", false, true, false, true) &&
+		          std::strcmp(list, "LowerBody,Foot,Hand,Weapon,Torch,Bip01 L ForearmTwist") == 0,
+		      "a stump with the hands away: the hands go, the arm mesh is the stump's to give back");
 		Check(!ComposeHandsHideList(list, 8, true, "Arms", true, true, true) && std::strlen(list) < 8,
 		      "too long: refused, still terminated");
 		Check(!ComposeHandsHideList(nullptr, 8, true, "Arms", true, true, false) &&

@@ -1053,3 +1053,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME quick_key_pages COMMAND quick_key_pages_test)
+
+add_executable(arm_stump_test ArmStumpTest.cpp)
+
+target_include_directories(arm_stump_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(arm_stump_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME arm_stump COMMAND arm_stump_test)

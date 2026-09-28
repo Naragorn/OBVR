@@ -54,6 +54,7 @@
 #include "game/MeleeHit.h"
 #include "game/QuickKeys.h"
 #include "game/ItemIcons.h"
+#include "game/ArmStump.h"
 #include "game/QuickKeyPages.h"
 #include "game/TeleportNoise.h"
 #include "platform/PluginPath.h"
@@ -200,6 +201,11 @@ bool g_grabKeyDown = false;
 // The conversation approach is on (game::StepDialogApproach), as last decided
 // at Present - read again before the next world render.
 bool g_handsAwayForDialog = false;
+// The forearm stump (game/ArmStump.h): in place after the last pins, stepped
+// this frame, and the hands away (menus, dialogue) as Present last decided.
+bool g_stumpShown = false;
+bool g_stumpStepped = false;
+bool g_stumpHandsAway = false;
 
 // OBVR's own settings menu: what it is showing, and the quad it shows it on.
 //
@@ -422,10 +428,11 @@ bool ReadIsThirdPerson();
 // frame's delivery, so a wrist placement is in place for the overlay submit
 // and the controls are pressed before the engine's next input read.
 // The one list of first-person nodes Full VR hides (ComposeHandsHideList).
-const char* HandsHideList(const vr::HandSettings& hands, bool handsAway, bool sheathing) {
+const char* HandsHideList(const vr::HandSettings& hands, bool handsAway, bool sheathing,
+                          bool armsShownAsStump = false) {
 	static char list[256];
 	ComposeHandsHideList(list, sizeof(list), hands.hideArms, hands.hideNodes, hands.hideSheaths,
-	                     handsAway, sheathing);
+	                     handsAway, sheathing, armsShownAsStump);
 	return list;
 }
 
@@ -1185,6 +1192,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_handsAwayForDialog =
 			game::StepDialogApproach(s_approach, game::TakeDialogCameraCall(), menuIsUp);
 		const bool handsAway = g_handsAwayForDialog || menuIsUp;
+		g_stumpHandsAway = handsAway;
 		// The sheaths: a weapon's scabbard is its own node, "Scb", which the
 		// engine hangs on the skeleton's side-weapon bone (cs.uesp.net,
 		// NifSkope Comprehensive Guide, "Scabbards"), and a sheathed weapon
@@ -1197,7 +1205,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		// animation carries it away from the controller (ComposeHandsHideList).
 		const bool sheathing = game::ReadPlayerAction() == vr::kPlayerActionUnequipWeapon;
 		game::HideFirstPersonNodes(!ReadIsThirdPerson(),
-		                           HandsHideList(config.hands, handsAway, sheathing));
+		                           HandsHideList(config.hands, handsAway, sheathing, g_stumpShown && !handsAway));
 		// The hands in the world rather than on top of it (FirstPersonDepth.h).
 		game::KeepFirstPersonDepth(true);
 		// And closed: their inside their own surface, darker - not the room
@@ -3484,6 +3492,7 @@ bool PinAdjustableHand(bool right, const vr::HandSettings& hands, bool adjusting
 //
 // The angle was decided in the camera pass, where the head is known.
 void BeforeFirstScenePass() {
+	g_stumpStepped = false;
 	// The hands go the moment a menu or a conversation starts, in the frame
 	// that draws it: the decision at Present comes after that frame's world
 	// is drawn, and a book or a dialogue opened with a weapon drawn showed the
@@ -3563,8 +3572,9 @@ void BeforeFirstScenePass() {
 			const NiPoint3 sharedGrip{0.0f, hands.handGripForwardMetres, hands.handGripUpMetres};
 			// Adjusting: from the INI switch or the guided window (game::HandAdjust).
 			const bool adjusting = hands.adjustHands || game::HandAdjustActive();
-			// A bare hand's wrist closed (BonePin.h, "Bare wrists").
-			game::SetBareWristTaper(hands.closeBareWrists);
+			// A bare hand's wrist closed (BonePin.h, "Bare wrists") - not with the
+			// forearm stump, which needs the forearm its own length.
+			game::SetBareWristTaper(hands.closeBareWrists && !hands.forearmStump);
 			const bool rightCommitted = PinAdjustableHand(
 				true, hands, adjusting, g_hand.rightHandValid, g_hand.rightGripDown,
 			                  g_hand.rightHandRotation, g_hand.rightHandOffsetUnits, cameraRot,
@@ -3608,6 +3618,13 @@ void BeforeFirstScenePass() {
 			// a hand in view by an arm swung out of it. Arm's reach around the
 			// camera - 100 units is about 1.4 m.
 			game::KeepFirstPersonNodesInView("Hand", cameraPos, 100.0f);
+			// And the forearm stump, now the forearms are where the pins put them.
+			g_stumpShown = game::StepForearmStumps(
+				game::StumpWanted(hands.forearmStump, game::FirstPersonHandsBare(), true) && !g_stumpHandsAway);
+			g_stumpStepped = true;
+			if (g_stumpShown) {
+				game::KeepFirstPersonNodesInView("Arms", cameraPos, 100.0f);
+			}
 		}
 	} else if (g_weaponTurnWanted) {
 		game::StepHandGrip(true, GetConfig().hands.rightHandBone, false, 0.0f);
@@ -3621,6 +3638,11 @@ void BeforeFirstScenePass() {
 		game::StepHandGrip(false, GetConfig().hands.leftHandBone, false, 0.0f);
 		game::StepHeldObject(false, false, game::HeldHand{}, false, NiPoint3{0.0f, 0.0f, 0.0f});
 		game::ReleaseFirstPersonArms();
+	}
+	// The forearm stump (game/ArmStump.h): given back on any frame the pins
+	// did not place it.
+	if (!g_stumpStepped) {
+		g_stumpShown = game::StepForearmStumps(false);
 	}
 
 	bool thirdPersonBodyApplied = false;

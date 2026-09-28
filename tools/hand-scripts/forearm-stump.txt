@@ -1,0 +1,34 @@
+# The forearm stump (src/game/ArmStump.h): a bare hand with a short forearm
+# tapering into the elbow. The right hand held ahead, then higher, seen from
+# below and behind, as closed-hands.txt does; the log says whether the hands
+# are bare and which bones of the "Arms" skin were swapped.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\forearm-stump.txt
+
+ini Hands Enabled=1
+ini Hands ClosedHands=1
+ini Hands ForearmStump=1
+
+expect HandScript: finished
+expect forearm stump - the Arms skin
+reject HandScript: WARNING
+
+wait 12
+right pos 0.02 -0.05 -0.28
+right rot 0 0 0
+left pos -0.25 -0.45 -0.2
+wait 1.5
+mark stump_ahead
+dump
+wait 1.5
+right pos 0.02 0.12 -0.22
+right rot 20 0 0
+wait 1.5
+mark stump_from_below
+dump
+wait 1.5
+right pos 0.25 -0.1 -0.25
+right rot 0 70 0
+wait 1.5
+mark stump_side
+dump
+wait 1.5
