@@ -239,6 +239,67 @@ holding-objects-spec.md.
   docs/vr-modding/failed-approaches.md). It must be rewritten after each
   world creation.
 
+## The held object today: already a Havok body
+
+Status: **built (`[Hands] HeldObjectsPush=1`, 2026-09-28), not yet tested
+in the headset. The tester (Nadi) will test it; nothing changes until then.**
+
+A held object needs none of the body creation above. It is already a
+dynamic Havok body, so Havok computes its contacts with other objects
+itself. What OBVR does (holding-objects-spec.md, "Built 2026-09-28: the
+held object pushes"; `game::DriveLinearVelocity` /
+`DriveAngularVelocity`, `GrabPhysics.h:246-329`):
+
+- Each frame the body gets the linear and angular velocity that bring it
+  to the pose shown in the hand: gain 0.8, at most 15 m/s and 40 rad/s.
+  The time used is the frame time (1/90 s).
+- It stays **dynamic** (finite mass), not keyframed. Derived from that:
+  - **Against clutter:** it pushes with real contacts, friction and
+    tipping. A light object against a heavy one meets it in between,
+    because both have mass.
+  - **Against walls and statics:** it is stopped. HIGGS differs here: its
+    regular grab keyframes the held object, which then passes through
+    walls.
+  - **Against the player and the hands:** while held, the body is in the
+    player's group and collides with neither the player's capsule nor
+    (once built) the hand bodies. Same group, no collision (rule step 4).
+- More than 35 units (about half a metre) from the hand, for example held
+  back by a wall: the drive stops, the engine's spring pulls again, and the
+  engine lets go as in vanilla.
+
+Two possible issues, **derived from the code, not observed**:
+
+1. **Picture and physics at a wall.** In the in-hand mode the visible
+   model is written straight to the hand. The body is only driven. A wall
+   holding the body back leaves the picture in the hand, inside the wall,
+   and the contact happens where the object is not seen.
+2. **60 Hz against 90 Hz.** The drive uses the frame time, but Havok steps
+   in fixed 1/60 s steps, and about one frame in three has no step (see
+   "Physics step rate"). That allows roughly 1.2× overshoot and uneven
+   motion: a possible slight jitter while pushing.
+
+Decision: **test first**. Only what the test shows gets fixed.
+
+- If 2 shows, the drive uses the planner's step count and length, as in
+  "Driving it every frame" (a small change).
+- If 1 bothers the tester, the choice is:
+  - (B) keyframe the held object while held, as HIGGS does:
+    `setMotionType` 0x008A9AB0 to 6, the old type back on release. It
+    then pushes everything and passes through walls, and picture and
+    physics always match.
+  - (C) let the picture follow the body once it is blocked.
+
+**Test in the headset (Nadi):**
+
+1. Pick up a plate and push a cup off the table with it. Does the cup
+   tip and fall?
+2. Push the plate slowly against a wall. Is it seen inside the wall? Is
+   it let go after about half a metre?
+3. Slide the plate slowly across the table against other objects. Does
+   what it pushes jitter?
+4. Push a light object against a heavy one (a spoon against a crate).
+   Does it feel too weak?
+
 ## Design
 
 ### Creating a body (per hand, and per drawn melee weapon)
