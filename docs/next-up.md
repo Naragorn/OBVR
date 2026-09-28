@@ -387,7 +387,12 @@ Every change below is switched by the mode.
   joint by joint (docs/holding-objects-spec.md, part 1b), and the tester
   finds it OK (2026-09-28). A clear thumbs up is still missing. The game's
   hand blends only between its open hand and its fist, and a turn of the
-  thumb that is on neither is dropped. To look at:
+  thumb that is on neither is dropped. The tester's log of 2026-09-28 shows
+  why a thumbs up does not come: with the controller's range of motion the
+  thumb at its most open (not touching anything, the summary curl 0.01 to
+  0.13) still reads 0.43 0.00 0.25 base to tip. Its base never comes out of
+  the grip, and it rises to about 0.40 0.40 0.48 at a curl of 0.9. To look
+  at:
   - a third pose to blend towards (a thumb straight up), from another
     animation or made by hand;
   - SteamVR's range without the controller
