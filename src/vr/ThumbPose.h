@@ -107,4 +107,16 @@ inline bool ThumbShares(const BoneRotation* open, const BoneRotation* fist, cons
 	return true;
 }
 
+// Values between 0 and 1 in quarter steps, packed into one number, so a log
+// line can be written only when one of them has moved a step: each clamped,
+// rounded to 0..4, base 5. Not a number counts as 0.
+inline int QuarterSteps(const float* values, int count) {
+	int packed = 0;
+	for (int i = 0; i < count; ++i) {
+		const float v = values[i] > 0.0f ? (values[i] < 1.0f ? values[i] : 1.0f) : 0.0f;
+		packed = packed * 5 + static_cast<int>(v * 4.0f + 0.5f);
+	}
+	return packed;
+}
+
 }  // namespace obvr::vr

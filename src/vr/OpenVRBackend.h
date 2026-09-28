@@ -8,6 +8,10 @@
 
 namespace obvr::vr {
 
+namespace input {
+struct SkeletalSummary;
+}
+
 // Strips pitch and roll from a tracking pose, keeping heading and position.
 //
 // The same reasoning as vr::YawOnly and a different place to apply it: that
@@ -131,6 +135,8 @@ public:
 	// The thumb joint by joint from the hand's full skeleton, into
 	// out.thumb (vr/ThumbPose.h); leaves thumbValid false when it cannot.
 	void ReadThumb(bool rightHand, UInt64 skeleton, HandPose& out) const;
+	// The five curls in the log as they move (for the left little finger).
+	void LogCurls(bool rightHand, UInt64 skeleton, const input::SkeletalSummary& device) const;
 
 	// The tracked-device index of the controller in one hand, or
 	// openvr::kTrackedDeviceIndexInvalid. What an overlay is hung on to ride
@@ -347,6 +353,10 @@ private:
 	// The thumb's joints in quarter steps last logged, and how many more lines.
 	mutable int m_thumbStepLogged[2]{-1, -1};
 	mutable UInt32 m_thumbLinesLeft = 80;
+	// The five curls in quarter steps last logged per hand, and how many more
+	// lines (the left little finger that stays straight, 2026-09-28).
+	mutable int m_curlStepLogged[2]{-1, -1};
+	mutable UInt32 m_curlLinesLeft = 120;
 	mutable bool m_actionReadErrorLogged = false;
 	void* m_compositor = nullptr;  // IVRCompositorFnTable*, only when scene
 	void* m_overlay = nullptr;     // IVROverlayFnTable*, fetched on first use

@@ -1,5 +1,6 @@
 #include "game/HandGrip.h"
 
+#include <cstdio>
 #include <cstring>
 
 #include "core/AddressSpace.h"
@@ -30,6 +31,7 @@ struct Fingers {
 	FingerPose pose = FingerPose::Animation;
 	bool gripReported = false;
 	bool trackReported = false;
+	bool littleReported = false;
 };
 
 Fingers g_fingers[2];
@@ -133,6 +135,28 @@ void ReportTracking(const Fingers& f, bool rightHand) {
 	         rightHand ? "right" : "left");
 }
 
+// The little finger's links as OBVR wrote them this frame (the angle about
+// z: the open hand's 4 to 30 degrees, the fist's 65 to 102) and whether last
+// frame's write was still there - "kept no" means something else wrote the
+// link in between, which the animation does each frame.
+void ReportLittleFinger(const Fingers& f, bool rightHand, float share, const bool* kept) {
+	char text[256];
+	UInt32 at = 0;
+	for (UInt32 i = 0; i < f.count && at + 64 < sizeof(text); ++i) {
+		int finger = 0;
+		int link = 0;
+		if (!FingerLinkOf(NameOf(f.links[i]), finger, link) || finger != kLittleFinger) {
+			continue;
+		}
+		const int written = std::snprintf(text + at, sizeof(text) - at, "%s\"%s\" %.0f degrees, kept %s",
+		                                  at > 0 ? "; " : "", NameOf(f.links[i]),
+		                                  static_cast<double>(LinkCurlDegrees(f.written[i])), kept[i] ? "yes" : "no");
+		at += written > 0 ? static_cast<UInt32>(written) : 0;
+	}
+	OBVR_LOG("Hands: the %s little finger curled %.2f - %s", rightHand ? "right" : "left",
+	         static_cast<double>(share), at > 0 ? text : "no little finger link found");
+}
+
 }  // namespace
 
 void ForgetHandGrip() {
@@ -148,10 +172,12 @@ void StepHandFingers(bool rightHand, const char* handBoneName, FingerPose pose, 
 		// A new model: the old links went with the old tree, never written.
 		const bool gripReported = f.gripReported;
 		const bool trackReported = f.trackReported;
+		const bool littleReported = f.littleReported;
 		f = Fingers{};
 		f.root = root;
 		f.gripReported = gripReported;
 		f.trackReported = trackReported;
+		f.littleReported = littleReported;
 		if (root == nullptr) {
 			return;
 		}
@@ -167,6 +193,13 @@ void StepHandFingers(bool rightHand, const char* handBoneName, FingerPose pose, 
 	}
 	if (f.count == 0) {
 		return;
+	}
+	// Before the bases are taken: whether last frame's writes were kept.
+	const bool littleDue = curls != nullptr && f.pose == FingerPose::Tracked &&
+	                       LittleFingerCheckDue(f.littleReported, pose, curls->curl[kLittleFinger]);
+	bool littleKept[kMaxFingerLinks] = {};
+	for (UInt32 i = 0; littleDue && i < f.count; ++i) {
+		littleKept[i] = LooksLikeObject(f.links[i]) && Same(f.links[i]->localTransform.rot, f.written[i]);
 	}
 	TakeBases(f, f.pose == FingerPose::Animation);
 	if (pose == FingerPose::Grip && !f.gripReported) {
@@ -198,6 +231,10 @@ void StepHandFingers(bool rightHand, const char* handBoneName, FingerPose pose, 
 		f.written[i] = rot;
 	}
 	UpdateNodeTransforms(f.hand);
+	if (littleDue) {
+		f.littleReported = true;
+		ReportLittleFinger(f, rightHand, curls->curl[kLittleFinger], littleKept);
+	}
 }
 
 bool HandHoldsItem(bool rightHand, const char* handBoneName) {

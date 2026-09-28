@@ -145,6 +145,14 @@ With nothing held, each finger of a hand follows the controller's finger
     lines do, and compare the left pinky with the right. If SteamVR already
     reads 0, the cause is outside OBVR (the controller's capacitive sensor
     for that finger). Otherwise the fault is in OBVR's mapping.
+  - Built for the tester's next run (2026-09-28), both hands, so the right
+    is the comparison:
+    - `OpenVR input: <hand> curls thumb to little ...` - the five device
+      curls each time one moves a quarter step (the first 120 changes),
+      with SteamVR's own animation curls beside them;
+    - `Hands: the <hand> little finger curled ...` - once per hand, the
+      first time its tracked curl reaches 0.8: the angle OBVR writes to
+      Finger4, 41 and 42 and whether last frame's write was still there.
 - **Open bug (the tester, 2026-09-28): no thumbs up.** The tester's log:
   with the controller's range of motion, the thumb at its most open still
   reads 0.43 0.00 0.25 from base to tip, so its base never leaves the grip.

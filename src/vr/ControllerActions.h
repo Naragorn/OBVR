@@ -70,6 +70,9 @@ static_assert(sizeof(BoneTransform) == 32, "OpenVR bone transform ABI");
 // EVRSummaryType_VRSummaryType_FromDevice: the curls as the controller
 // senses them, not as the hand animation blends them.
 constexpr int kSummaryFromDevice = 1;
+// EVRSummaryType_VRSummaryType_FromAnimation: the curls of SteamVR's own
+// hand animation, which it blends from the device's - for the log only.
+constexpr int kSummaryFromAnimation = 0;
 
 struct Table {
 	int(__stdcall* SetManifest)(const char* path);

@@ -1,5 +1,7 @@
 #include "vr/OpenVRBackend.h"
 
+#include <cstdio>
+
 #include "perf/Profiler.h"
 #include "test/HandScriptRuntime.h"
 #include "test/WaterVRTestRuntime.h"
@@ -829,6 +831,39 @@ bool OpenVRBackend::ReadHeadPose(Quaternion& orientation, NiPoint3& position) co
 	return true;
 }
 
+// The five curls as the device reports them, thumb to little finger, each
+// time one moves a quarter step, the first hundred or so changes - with the
+// curls of SteamVR's own hand animation beside them. For the left little
+// finger that stays straight (docs/holding-objects-spec.md, part 1b): a
+// device curl stuck at 0 there while the right's moves puts the cause before
+// OBVR.
+void OpenVRBackend::LogCurls(bool rightHand, UInt64 skeleton, const input::SkeletalSummary& device) const {
+	const int side = rightHand ? 0 : 1;
+	if (m_curlLinesLeft == 0) {
+		return;
+	}
+	const int step = QuarterSteps(device.curl, 5);
+	if (step == m_curlStepLogged[side]) {
+		return;
+	}
+	m_curlStepLogged[side] = step;
+	--m_curlLinesLeft;
+	auto* const table = static_cast<input::Table*>(m_input);
+	input::SkeletalSummary animation{};
+	const int animationError = table->SkeletalSummary(skeleton, input::kSummaryFromAnimation, &animation);
+	char animated[64] = "not read";
+	if (animationError == 0) {
+		std::snprintf(animated, sizeof(animated), "%.2f %.2f %.2f %.2f %.2f",
+		              static_cast<double>(animation.curl[0]), static_cast<double>(animation.curl[1]),
+		              static_cast<double>(animation.curl[2]), static_cast<double>(animation.curl[3]),
+		              static_cast<double>(animation.curl[4]));
+	}
+	OBVR_LOG("OpenVR input: %s curls thumb to little %.2f %.2f %.2f %.2f %.2f, SteamVR's animation %s",
+	         rightHand ? "right" : "left", static_cast<double>(device.curl[0]),
+	         static_cast<double>(device.curl[1]), static_cast<double>(device.curl[2]),
+	         static_cast<double>(device.curl[3]), static_cast<double>(device.curl[4]), animated);
+}
+
 void OpenVRBackend::ReadThumb(bool rightHand, UInt64 skeleton, HandPose& out) const {
 	auto* const table = static_cast<input::Table*>(m_input);
 	const int side = rightHand ? 0 : 1;
@@ -974,6 +1009,7 @@ bool OpenVRBackend::ReadHand(bool rightHand, HandPose& out) const {
 					out.curl[finger] = summary.curl[finger];
 				}
 				ReadThumb(rightHand, skeleton, out);
+				LogCurls(rightHand, skeleton, summary);
 			}
 			bool& logged = m_skeletonLogged[rightHand ? 0 : 1];
 			if (!logged) {

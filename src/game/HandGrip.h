@@ -227,6 +227,23 @@ inline float LinkShare(const FingerCurls& curls, int finger, int link) {
 	return finger >= 0 && finger < 5 ? curls.curl[finger] : 0.0f;
 }
 
+// The left little finger that stays straight (the tester, 2026-09-28; open
+// bug in docs/holding-objects-spec.md, part 1b): once per hand, the first
+// time a tracked little finger is curled this far, its links are logged -
+// the angle OBVR writes and whether last frame's write was still there - so
+// the right hand's line can be set against the left's.
+inline constexpr float kLittleFingerCheckShare = 0.8f;
+inline constexpr int kLittleFinger = 4;
+
+inline bool LittleFingerCheckDue(bool reported, FingerPose pose, float share) {
+	return !reported && pose == FingerPose::Tracked && share >= kLittleFingerCheckShare;
+}
+
+// A link's turn about its own z, the axis the curl bends it about, in degrees.
+inline float LinkCurlDegrees(const NiMatrix33& rot) {
+	return math::Atan2(rot.data[1][0], rot.data[0][0]) * math::kRadiansToDegrees;
+}
+
 // Once per frame, after the hand bone has been pinned: gives the named hand's
 // fingers the pose asked for - closed by `curlDegrees` around what it holds
 // (Grip), each where the controller's finger is (Tracked), or back to what

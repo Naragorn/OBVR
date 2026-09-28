@@ -119,6 +119,26 @@ void TestLinks() {
 	Check(game::LinkShare(curls, 5, 15) == 0.0f && game::LinkShare(curls, -1, 0) == 0.0f, "no such finger: 0");
 }
 
+// The curls' log steps (the left little finger, 2026-09-28).
+void TestQuarterSteps() {
+	const float none[5] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+	const float full[5] = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
+	Check(QuarterSteps(none, 5) == 0, "all open: 0");
+	Check(QuarterSteps(full, 5) == 3124, "all closed: 4 in every place, 5^5 - 1");
+	const float little[5] = {0.0f, 0.0f, 0.0f, 0.0f, 0.3f};
+	const float littleNear[5] = {0.0f, 0.0f, 0.0f, 0.0f, 0.2f};
+	Check(QuarterSteps(little, 5) == 1 && QuarterSteps(littleNear, 5) == 1,
+	      "0.2 and 0.3 are the same quarter step: no new line");
+	const float littleOn[5] = {0.0f, 0.0f, 0.0f, 0.0f, 0.4f};
+	Check(QuarterSteps(littleOn, 5) == 2, "0.4 is the next: a new line");
+	const float thumb[5] = {1.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+	Check(QuarterSteps(thumb, 5) == 4 * 625, "the first value is the highest place");
+	volatile float zero = 0.0f;
+	const float odd[5] = {-3.0f, 7.0f, zero / zero, 0.0f, 0.0f};
+	Check(QuarterSteps(odd, 5) == 4 * 125, "below 0 is 0, above 1 is 1, not a number is 0");
+	Check(QuarterSteps(full, 0) == 0, "no values: 0");
+}
+
 }  // namespace
 
 int main() {
@@ -126,6 +146,7 @@ int main() {
 	TestJoint();
 	TestSkeleton();
 	TestLinks();
+	TestQuarterSteps();
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);
 		return 1;

@@ -169,6 +169,32 @@ void TestTables() {
 	      "half curled: between the two");
 }
 
+// The left little finger's check (docs/holding-objects-spec.md, part 1b).
+void TestLittleFinger() {
+	Check(LittleFingerCheckDue(false, FingerPose::Tracked, 0.8f), "tracked, curled to the mark: logged");
+	Check(LittleFingerCheckDue(false, FingerPose::Tracked, 1.0f), "fully curled: logged");
+	Check(!LittleFingerCheckDue(false, FingerPose::Tracked, 0.79f), "not curled far enough: not yet");
+	Check(!LittleFingerCheckDue(true, FingerPose::Tracked, 1.0f), "already logged: once per hand");
+	Check(!LittleFingerCheckDue(false, FingerPose::Grip, 1.0f) && !LittleFingerCheckDue(false, FingerPose::Animation, 1.0f),
+	      "not tracked: nothing to check");
+	Check(Near(LinkCurlDegrees(NiMatrix33::Identity()), 0.0f), "no turn: 0 degrees");
+	Check(Near(LinkCurlDegrees(CurledAboutZ(NiMatrix33::Identity(), 70.0f)), 70.0f, 0.05f), "a curl of 70 degrees reads 70");
+	// The left's links are the right's mirrored, which keeps the curl about z:
+	// a left little finger curled by the controller bends as far as the right.
+	for (int link = 12; link < 15; ++link) {
+		Check(Near(LinkCurlDegrees(TrackedLinkRotation(false, link, 1.0f)),
+		           LinkCurlDegrees(TrackedLinkRotation(true, link, 1.0f)), 0.05f) &&
+		          LinkCurlDegrees(TrackedLinkRotation(false, link, 1.0f)) >
+		              LinkCurlDegrees(TrackedLinkRotation(false, link, 0.0f)) + 30.0f,
+		      "the left little finger's link curls as far as the right's, and well past the open hand");
+	}
+	int finger = 0;
+	int link = 0;
+	Check(FingerLinkOf("Bip01 L Finger4", finger, link) && finger == kLittleFinger && link == 12 &&
+	          FingerLinkOf("Bip01 L Finger42", finger, link) && finger == kLittleFinger && link == 14,
+	      "the left little finger's names map to finger 4, links 12 to 14");
+}
+
 }  // namespace
 
 int main() {
@@ -176,6 +202,7 @@ int main() {
 	TestLinks();
 	TestQuaternions();
 	TestTables();
+	TestLittleFinger();
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);
 		return 1;
