@@ -46,6 +46,7 @@
 #include "game/PlayerTeleport.h"
 #include "game/ControlBindings.h"
 #include "game/GrabPhysics.h"
+#include "game/WorldPush.h"
 #include "game/TakeItem.h"
 #include "game/WeaponDrawSpeed.h"
 #include "game/GrabNearBody.h"
@@ -1869,7 +1870,46 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		game::StrikeByMotion(strike);
 	}
 
+	// The weapon and the hands push what they meet (game/WorldPush.h): the
+	// weapon hand's blade while a melee weapon is drawn, else the hand; the
+	// other hand always. In the world only, in first person, not in a menu.
+	{
+		const bool pushing = active && config.hands.pushWorld && !menuIsUp && frame.inWorld &&
+		                     frame.firstPerson && g_cyclopeanCameraWorldValid;
+		game::PushFrame push;
+		push.dtSeconds = g_deltaSeconds;
+		if (pushing) {
+			const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+			const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
+			const int weapon = static_cast<int>(game::Pusher::WeaponHand);
+			const int other = static_cast<int>(game::Pusher::OtherHand);
+			if (g_hand.rightHandValid) {
+				const NiPoint3 grip = camPos + camRot * g_hand.rightHandOffsetUnits;
+				const NiPoint3 forward = camRot * (g_hand.rightHandRotation * NiPoint3{0.0f, 1.0f, 0.0f});
+				const bool blade = game::MeleeInHand(nullptr) &&
+				                   game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
+				float length = game::kPushFallbackBladeUnits;
+				if (blade) {
+					const NiAVObject* const node = game::FindFirstPersonNode("Weapon");
+					length = game::BladeLengthFromBound(node != nullptr ? node->worldBound.radius : 0.0f);
+				}
+				push.valid[weapon] = true;
+				push.blade[weapon] = blade;
+				push.segment[weapon] = blade ? game::BladeSegment(grip, forward, length)
+				                             : game::HandSegment(grip, forward);
+			}
+			if (g_hand.leftHandValid) {
+				const NiPoint3 grip = camPos + camRot * g_hand.leftHandOffsetUnits;
+				const NiPoint3 forward = camRot * (g_hand.leftHandRotation * NiPoint3{0.0f, 1.0f, 0.0f});
+				push.valid[other] = true;
+				push.segment[other] = game::HandSegment(grip, forward);
+			}
+		}
+		game::StepWorldPush(pushing, push);
+	}
+
 	// What the laser asked of the cursor on a flat frame, a few times, and
+
 	// the cursor's answer a frame later: whether the hit lands where it
 	// should, whether the cursor can be read at all, and whether the mouse
 	// motion moves it. The first headset run saw the beam and no cursor.

@@ -689,6 +689,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.gripCurlDegrees = ReadFloat("Hands", "GripCurlDegrees", h.gripCurlDegrees, path);
 		h.throwStrength = ReadFloat("Hands", "ThrowStrength", h.throwStrength, path);
 		h.heldObjectsPush = ReadBool("Hands", "HeldObjectsPush", h.heldObjectsPush, path);
+		h.pushWorld = ReadBool("Hands", "PushWorld", h.pushWorld, path);
 		h.levitateObjects = ReadBool("Hands", "LevitateObjects", h.levitateObjects, path);
 		h.attachSmallObjects =
 			ReadBool("Hands", "AttachSmallObjects", h.attachSmallObjects, path);

@@ -383,6 +383,8 @@ void DriveHeldBody(const Held& h, float dtSeconds) {
 
 }  // namespace
 
+UInt32 HeldBody() { return g_held.body; }
+
 void NoteHeldPose(UInt32 ref, const NiMatrix33& rot, const NiPoint3& pos) {
 	g_seen.ref = ref;
 	g_seen.rot = rot;

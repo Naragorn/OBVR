@@ -223,12 +223,17 @@ inline bool InsidePlayerCapsule(const NiPoint3& centre, float radius, const NiPo
 //   the hit minus [motion+0x40], turned back by the rotation at motion+0x10).
 // - The motion's vtable: +0x08 its type (the grab refuses 6 and 7, 0x0066D5D8
 //   and 0x0066D5EA - keyframed and fixed in Havok's order), +0x54 the linear
-//   velocity (the throw above), +0x58 the angular velocity. The last from the
-//   pair 0x004D6AF0 / 0x004D6B30: two functions of the same shape, one ending
-//   in +0x54, the other in +0x58, each activating the body first; the
-//   Telekinesis push scales a vector and calls +0x5C, the impulse after them.
-//   Angular velocity in radians a second, about world axes.
+//   velocity (the throw above), +0x58 the angular velocity. Measured
+//   2026-09-28: seven vtables in .rdata (0x00A96FCC-0x54 and six more) hold
+//   0x0089DB90 at +0x54 and 0x0089DBB0 at +0x58, each of them one store of
+//   the vector - to motion+0xD0 and motion+0xE0. So the linear velocity is
+//   kept at motion+0xD0, the angular at +0xE0, and can be read there. (The
+//   pair 0x004D6AF0 / 0x004D6B30 wrap the same two slots, activating first;
+//   the Telekinesis push calls +0x5C, 0x0089DBD0, after them.) Havok units a
+//   second; angular in radians a second about world axes.
 inline constexpr UInt32 kMotionTypeSlot = 0x08;
+inline constexpr UInt32 kMotionLinearVelocityOffset = 0xD0;
+inline constexpr UInt32 kMotionAngularVelocityOffset = 0xE0;
 inline constexpr UInt32 kMotionSetAngularVelocitySlot = 0x58;
 inline constexpr UInt32 kMotionRotationOffset = 0x10;
 inline constexpr UInt32 kMotionTranslationOffset = 0x40;
@@ -344,5 +349,9 @@ void StepGrabPhysics(bool passBody, float throwStrength, bool velocityValid,
 // frame it places the object): on release, the body is put there before it
 // is sent off.
 void NoteHeldPose(UInt32 ref, const NiMatrix33& rot, const NiPoint3& pos);
+
+// The hkRigidBody held now, 0 for none - what the hands and the weapon do not
+// push (game/WorldPush.h): it is already in the hand.
+UInt32 HeldBody();
 
 }  // namespace obvr::game

@@ -47,11 +47,22 @@ struct WorldPick {
 	bool hit = false;
 	NiPoint3 point{0.0f, 0.0f, 0.0f};
 	NiPoint3 normal{0.0f, 0.0f, 1.0f};
+	float fraction = 1.0f;    // along the segment, 0..1
+	UInt32 collidable = 0;    // the hkCollidable hit, 0 for none
 };
+
+// The Havok layers a pick may ask as (niflib enums.h, OblivionLayer): what
+// the pick collides with is what that layer does. 31, OL_DROPPING_PICK, for
+// where a dropped thing would land; 4, OL_CLUTTER, as the grab's own update
+// asks - the held body's layer (0x0066DAB1..0x0066DABB: the player's group
+// << 16 | the low word of the body's filter) - for what clutter meets.
+inline constexpr UInt32 kLayerClutter = 4;
+inline constexpr UInt32 kLayerDroppingPick = 31;
 
 // The closest thing on the segment from -> to (game units), ignoring the
 // player. False when the world could not be asked.
-bool PickWorldSegment(const NiPoint3& from, const NiPoint3& to, WorldPick& out);
+bool PickWorldSegment(const NiPoint3& from, const NiPoint3& to, WorldPick& out,
+                      UInt32 layer = kLayerDroppingPick);
 
 // The player's position (the feet), game units.
 bool ReadPlayerFeet(NiPoint3& out);

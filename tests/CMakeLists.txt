@@ -738,6 +738,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME backface_pass COMMAND backface_pass_test)
 
+add_executable(world_push_test WorldPushTest.cpp)
+target_include_directories(world_push_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(world_push_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME world_push COMMAND world_push_test)
+
 add_executable(node_name_list_test NodeNameListTest.cpp)
 target_include_directories(node_name_list_test PRIVATE ../src)
 if(NOT MSVC)

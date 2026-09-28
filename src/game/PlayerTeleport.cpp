@@ -34,7 +34,6 @@ constexpr UInt32 kPickFilterOffset = 0x24;
 constexpr UInt32 kPickNormalOffset = 0x30;
 constexpr UInt32 kPickFractionOffset = 0x44;
 constexpr UInt32 kPickCollidableOffset = 0x50;
-constexpr UInt32 kLayerDroppingPick = 31;
 
 constexpr UInt32 kGodModeGet = 0x0065D820;
 constexpr UInt32 kGodModeSet = 0x0065D810;
@@ -113,7 +112,7 @@ bool g_godModeBefore = false;
 
 }  // namespace
 
-bool PickWorldSegment(const NiPoint3& from, const NiPoint3& to, WorldPick& out) {
+bool PickWorldSegment(const NiPoint3& from, const NiPoint3& to, WorldPick& out, UInt32 layer) {
 	out = WorldPick{};
 	const UInt32 player = Player();
 	if (player == 0) {
@@ -125,7 +124,7 @@ bool PickWorldSegment(const NiPoint3& from, const NiPoint3& to, WorldPick& out) 
 		return false;
 	}
 	alignas(16) UInt8 pick[0x80] = {};
-	*reinterpret_cast<UInt32*>(pick + kPickFilterOffset) = PlayerFilter(player, kLayerDroppingPick);
+	*reinterpret_cast<UInt32*>(pick + kPickFilterOffset) = PlayerFilter(player, layer);
 	*reinterpret_cast<float*>(pick + kPickFractionOffset) = 1.0f;
 	const float fromXyz[3] = {from.x, from.y, from.z};
 	const NiPoint3 ray = to - from;
@@ -145,6 +144,8 @@ bool PickWorldSegment(const NiPoint3& from, const NiPoint3& to, WorldPick& out) 
 	const UInt32 collidable = *reinterpret_cast<const UInt32*>(pick + kPickCollidableOffset);
 	if (asked && collidable != 0 && fraction >= 0.0f && fraction < 1.0f) {
 		out.hit = true;
+		out.fraction = fraction;
+		out.collidable = collidable;
 		out.point = from + ray * fraction;
 		const float* const n = reinterpret_cast<const float*>(pick + kPickNormalOffset);
 		out.normal = NiPoint3{n[0], n[1], n[2]};

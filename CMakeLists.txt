@@ -89,6 +89,7 @@ add_library(OBVR SHARED
 	src/game/PlayerTeleport.cpp
 	src/game/ControlBindings.cpp
 	src/game/GrabPhysics.cpp
+	src/game/WorldPush.cpp
 	src/game/GrabNearBody.cpp
 	src/game/NearbyItems.cpp
 	src/game/QuickKeys.cpp

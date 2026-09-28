@@ -139,6 +139,8 @@ struct HandSettings {
 	// Held in the hand, an object's physics body is driven to where it is
 	// shown, so it pushes what it meets (game/GrabPhysics.h).
 	bool heldObjectsPush = true;
+	// The weapon and the hands push the objects they meet (game/WorldPush.h).
+	bool pushWorld = true;
 	// How far each finger link bends while the hand holds something, degrees
 	// (game::HandGrip); negative bends the other way, 0 leaves the hand open.
 	float gripCurlDegrees = 45.0f;
