@@ -147,6 +147,11 @@ struct HandSettings {
 	// How far each finger link bends while the hand holds something, degrees
 	// (game::HandGrip); negative bends the other way, 0 leaves the hand open.
 	float gripCurlDegrees = 45.0f;
+	// Each finger of an empty hand follows the controller's finger (Index,
+	// Touch: SteamVR's finger curls), from the game's open hand to its fist
+	// (game::FingerPoseFor). A hand holding a weapon or a torch keeps the
+	// animation's grip.
+	bool fingerTracking = true;
 	// What a closed grip would take, while it is within ReachMarkerMetres of a
 	// hand: the crosshair's tooltip icon moved onto it, large, and a light-brown
 	// ring around it (render::ReachMarker). Each on its own switch.
@@ -370,6 +375,12 @@ struct HandModeResult {
 	NiPoint3 rightAngularVelocity{0.0f, 0.0f, 0.0f};
 	NiPoint3 leftVelocity{0.0f, 0.0f, 0.0f};
 	NiPoint3 leftAngularVelocity{0.0f, 0.0f, 0.0f};
+	// Each hand's finger curls, thumb to little finger, 0 open to 1 curled,
+	// when the device gives them (the finger tracking).
+	bool rightCurlValid = false;
+	bool leftCurlValid = false;
+	float rightCurl[5] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+	float leftCurl[5] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 
 	// The controls to press, and whether any are to be pressed at all
 	// (false releases everything).

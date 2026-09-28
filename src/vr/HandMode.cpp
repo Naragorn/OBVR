@@ -145,6 +145,10 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 			r.rightVelocity = OffsetFromPose(f.head, f.right.velocity, NiPoint3{}, 1.0f);
 			r.rightAngularVelocity =
 				OffsetFromPose(f.head, f.right.angularVelocity, NiPoint3{}, 1.0f);
+			r.rightCurlValid = f.right.curlValid;
+			for (int finger = 0; finger < 5; ++finger) {
+				r.rightCurl[finger] = f.right.curl[finger];
+			}
 		}
 		if (f.firstPerson && !f.menuMode) {
 			r.armsValid = true;
@@ -177,6 +181,10 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 			r.leftVelocity = OffsetFromPose(f.head, f.left.velocity, NiPoint3{}, 1.0f);
 			r.leftAngularVelocity =
 				OffsetFromPose(f.head, f.left.angularVelocity, NiPoint3{}, 1.0f);
+			r.leftCurlValid = f.left.curlValid;
+			for (int finger = 0; finger < 5; ++finger) {
+				r.leftCurl[finger] = f.left.curl[finger];
+			}
 		}
 	}
 

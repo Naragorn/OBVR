@@ -1063,3 +1063,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME arm_stump COMMAND arm_stump_test)
+
+add_executable(finger_test FingerTest.cpp)
+
+target_include_directories(finger_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(finger_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME finger COMMAND finger_test)

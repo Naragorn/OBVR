@@ -1,0 +1,64 @@
+# The tracked fingers (src/game/HandGrip.h): an empty hand's fingers follow
+# the controller's curls, from the game's open hand to its fist; a hand with
+# a drawn sword keeps the animation's grip. Both hands held before the eyes,
+# open, half curled, curled; then the sword drawn from the hip and the right
+# hand curled and opened round it. The log compares the table's poses with
+# what the animation left on the index finger, and says what each hand holds.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\finger-tracking.txt
+
+ini Hands Enabled=1
+ini Hands FingerTracking=1
+# The fist gesture off: a curled hand here is only a pose.
+ini Hands Fists=0
+ini Hands Holsters=1
+console player.additem 00000C0C 1
+console player.equipitem 00000C0C
+
+expect HandScript: finished
+expect Hands: the right fingers follow the controller
+expect Hands: the left fingers follow the controller
+expect Hands: the right hand holds "Weapon"
+reject HandScript: WARNING
+
+wait 12
+right pos 0.12 -0.05 -0.30
+right rot 0 0 0
+left pos -0.12 -0.05 -0.30
+left rot 0 0 0
+right curl 0
+left curl 0
+wait 1.5
+mark fingers_open
+dump
+wait 1
+right curl 0.5
+left curl 0.5
+wait 1.5
+mark fingers_half
+dump
+wait 1
+right curl 1
+left curl 1
+wait 1.5
+mark fingers_fist
+dump
+wait 1
+right curl 0
+left curl 0
+wait 1
+
+# Draw the sword from the hip; curls on the sword hand change nothing.
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.12 -0.05 -0.30
+wait 2.5
+mark sword_open
+right curl 1
+left curl 1
+wait 1.5
+mark sword_curled
+dump
+wait 1

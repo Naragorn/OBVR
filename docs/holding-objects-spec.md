@@ -67,15 +67,49 @@ down), the fingers of the hand that grabbed close:
 Code: `game::HandGrip` (`HandGripWanted`, `FingerCurlDegrees`,
 `CurledAboutZ`, `StepHandGrip`). Tested in FrameLogicTest.
 
-- **Assumption:** a Bip01 finger bends about its own z (3ds Max Biped's
-  finger axes), not confirmed on Oblivion's first-person skeleton. If the
-  fingers bend backwards or sideways, a negative curl flips the direction.
-  If the axis itself is wrong, the curl needs another axis, which is not
-  built yet.
+- The axis: each link bends about its own z. This was an assumption at
+  first (3ds Max Biped's finger axes). It was measured on 2026-09-28 in the
+  game's own fist animation (part 1b): +z closes the hand.
 - **Limits.**
   - One pose for every object: a pen and a pumpkin get the same fist
     (part 5).
   - Fingers go through the object where the pose does not fit it.
+
+### 1b. Fingers that follow the controller — built, not yet seen running
+
+With nothing held, each finger of a hand follows the controller's finger
+(SteamVR's skeletal summary, the curls the fist gesture reads):
+
+- 0 is the game's open hand, 1 the game's fist, and each link in between is
+  blended. Both poses are the game's own local rotations, read with pyffi
+  from `_1stperson\idle.kf` (open) and `_1stperson\handtohandidle.kf`
+  (fist) on 2026-09-28. The left hand is the right's mirror image, x and y
+  negated, as the files have it.
+- The measurement also settles part 1's assumption: in the game's fist
+  every link is turned about +z from the open hand.
+- The order of precedence (`game::FingerPoseFor`):
+  1. an object the engine holds for that hand closes it (part 1);
+  2. otherwise the tracked curls, when `[Hands] FingerTracking` is on
+     (default on, settings row "Finger tracking"), the device gives curls,
+     and the hand holds nothing of its own;
+  3. otherwise the animation.
+- "Holds something of its own" means a node under the hand bone, other than
+  a finger link, that carries a child: the drawn weapon's "Weapon" node, the
+  "Torch" node. That hand keeps the animation's grip on the handle. The
+  first transitions are logged per hand.
+- When OBVR lets go, a link gets the animation's rotation back, unless the
+  animation has written it since.
+- The first tracked frame logs the index finger's first link as the
+  animation left it, next to the table's open hand and fist. It is a
+  constant in both files, so one of the two should match to about 0.003.
+  That is the check that the quaternion-to-matrix convention is the
+  engine's.
+- Code: `game::HandGrip` (`FingerPoseFor`, `FingerLinkOf`, `RotationOfQuat`,
+  `BlendQuat`, `TrackedLinkRotation`, `StepHandFingers`, `HandHoldsItem`).
+  Tested in finger_test. Scenario: `tools/hand-scripts/finger-tracking.txt`.
+- **Not verified yet:** no run in the game so far. Also unconfirmed: that
+  the bow hangs under a hand bone (then that hand keeps the animation), and
+  how the thumb reads on an Index, where it rests on the buttons.
 
 ### 2. The touched point in the palm — built
 

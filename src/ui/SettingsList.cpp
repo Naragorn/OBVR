@@ -523,6 +523,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.gripCurlDegrees = v; },
 	},
 	{
+		"Hands", "Finger tracking", "An empty hand's fingers follow yours on the controller",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "FingerTracking",
+		+[](const Config& c) { return c.hands.fingerTracking ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.fingerTracking = v != 0.0f; },
+	},
+	{
 		"Hands", "Levitate objects", "Held things float on the game's spring instead of sitting in the hand",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "LevitateObjects",

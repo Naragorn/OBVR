@@ -3585,14 +3585,21 @@ void BeforeFirstScenePass() {
 				false, hands, adjusting, g_hand.leftHandValid, g_hand.leftGripDown,
 			                  g_hand.leftHandRotation, g_hand.leftHandOffsetUnits, cameraRot,
 			                  cameraPos, sharedGrip, perMetre);
-			// The fingers close around what the engine holds for this hand.
+			// The fingers close around what the engine holds for this hand, or
+			// follow the controller's fingers while the hand is empty.
 			const bool holding = g_grabKeyDown && game::PlayerHoldsGrab();
-			game::StepHandGrip(true, hands.rightHandBone,
-			                   game::HandGripWanted(true, holding, g_hand.grabWithLeftHand),
-			                   hands.gripCurlDegrees);
-			game::StepHandGrip(false, hands.leftHandBone,
-			                   game::HandGripWanted(false, holding, g_hand.grabWithLeftHand),
-			                   hands.gripCurlDegrees);
+			const game::FingerPose rightPose = game::FingerPoseFor(
+				hands.fingerTracking, g_hand.rightCurlValid,
+				game::HandGripWanted(true, holding, g_hand.grabWithLeftHand),
+				hands.fingerTracking && game::HandHoldsItem(true, hands.rightHandBone));
+			const game::FingerPose leftPose = game::FingerPoseFor(
+				hands.fingerTracking, g_hand.leftCurlValid,
+				game::HandGripWanted(false, holding, g_hand.grabWithLeftHand),
+				hands.fingerTracking && game::HandHoldsItem(false, hands.leftHandBone));
+			game::StepHandFingers(true, hands.rightHandBone, rightPose, hands.gripCurlDegrees,
+			                      g_hand.rightCurl);
+			game::StepHandFingers(false, hands.leftHandBone, leftPose, hands.gripCurlDegrees,
+			                      g_hand.leftCurl);
 			// And a small held object sits fixed in that palm.
 			{
 				NiPoint3 touched{0.0f, 0.0f, 0.0f};
@@ -3639,15 +3646,15 @@ void BeforeFirstScenePass() {
 			}
 		}
 	} else if (g_weaponTurnWanted) {
-		game::StepHandGrip(true, GetConfig().hands.rightHandBone, false, 0.0f);
-		game::StepHandGrip(false, GetConfig().hands.leftHandBone, false, 0.0f);
+		game::StepHandFingers(true, GetConfig().hands.rightHandBone, game::FingerPose::Animation, 0.0f, nullptr);
+		game::StepHandFingers(false, GetConfig().hands.leftHandBone, game::FingerPose::Animation, 0.0f, nullptr);
 		game::StepHeldObject(false, false, game::HeldHand{}, false, NiPoint3{0.0f, 0.0f, 0.0f});
 		game::TurnFirstPersonArms(g_weaponTurnRadians);
 	} else {
 		// Third person, a menu, or switched off. Put the arms back rather than
 		// leaving them holding a turn nothing is going to update.
-		game::StepHandGrip(true, GetConfig().hands.rightHandBone, false, 0.0f);
-		game::StepHandGrip(false, GetConfig().hands.leftHandBone, false, 0.0f);
+		game::StepHandFingers(true, GetConfig().hands.rightHandBone, game::FingerPose::Animation, 0.0f, nullptr);
+		game::StepHandFingers(false, GetConfig().hands.leftHandBone, game::FingerPose::Animation, 0.0f, nullptr);
 		game::StepHeldObject(false, false, game::HeldHand{}, false, NiPoint3{0.0f, 0.0f, 0.0f});
 		game::ReleaseFirstPersonArms();
 	}
