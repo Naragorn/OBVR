@@ -94,9 +94,16 @@ void TestHelpers() {
 	      "a unit from one point to another");
 	Check(NearP(UnitFromTo(NiPoint3{1.0f, 1.0f, 1.0f}, NiPoint3{1.0f, 1.0f, 1.0f}), NiPoint3{1.0f, 0.0f, 0.0f}),
 	      "two that coincide: +x");
-	Check(StumpWanted(true, true, true), "wanted, bare, pinned: drawn");
-	Check(!StumpWanted(false, true, true) && !StumpWanted(true, false, true) && !StumpWanted(true, true, false),
-	      "without any one of them: not");
+	Check(StumpWanted(true, true, false), "bare hands in sleeves, in the world: the stump");
+	Check(!StumpWanted(false, true, false), "a glove: its own cuff, no stump");
+	Check(!StumpWanted(true, false, false), "bare arms: the lid, no stump (the tester, 2026-09-28)");
+	Check(!StumpWanted(true, true, true), "the hands away: no stump");
+	Check(ArmsAreSleeves(1, 0) && ArmsAreSleeves(2, 0), "arm shapes, none of skin: sleeves");
+	Check(!ArmsAreSleeves(2, 1), "a cloth sleeve over a skin forearm (rolled sleeves): skin");
+	Check(!ArmsAreSleeves(1, 1) && !ArmsAreSleeves(0, 0), "skin arms, or none: not sleeves");
+	Check(IsArmsShapeName("Arms") && IsArmsShapeName("arms:0") && IsArmsShapeName("Arms:12"), "an arm shape by name");
+	Check(!IsArmsShapeName("Arm") && !IsArmsShapeName("Armsx") && !IsArmsShapeName("UpperArms") && !IsArmsShapeName(nullptr),
+	      "not an arm shape");
 }
 
 

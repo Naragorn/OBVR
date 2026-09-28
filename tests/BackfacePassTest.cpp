@@ -48,7 +48,7 @@ int main() {
 	volatile float zero = 0.0f;
 	const float nan = zero / zero;
 	Check(InsideBlendFactor(nan) == 0xFF000000u, "not a number: black rather than garbage");
-	Check(InsideBlendFactor(kInsideBrightnessDefault) == 0xFF333333u, "the default is a fifth (the tester, 2026-09-28)");
+	Check(InsideBlendFactor(kInsideBrightnessDefault) == 0xFF999999u, "the default is 0.6 (the tester, 2026-09-28)");
 
 	// The bare hand's lid.
 	UInt32 tokens[kInsideShaderTokens];

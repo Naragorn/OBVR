@@ -206,6 +206,8 @@ bool g_handsAwayForDialog = false;
 bool g_stumpShown = false;
 bool g_stumpStepped = false;
 bool g_stumpHandsAway = false;
+int g_stumpSleevesLogged = -1;  // the last classification logged, -1 none yet
+UInt32 g_stumpLinesLeft = 12;
 
 // OBVR's own settings menu: what it is showing, and the quad it shows it on.
 //
@@ -3574,7 +3576,7 @@ void BeforeFirstScenePass() {
 			const bool adjusting = hands.adjustHands || game::HandAdjustActive();
 			// A bare hand's wrist closed (BonePin.h, "Bare wrists") - not with the
 			// forearm stump, which needs the forearm its own length.
-			game::SetBareWristTaper(hands.closeBareWrists && !hands.forearmStump);
+			game::SetBareWristTaper(hands.closeBareWrists && !g_stumpShown);
 			const bool rightCommitted = PinAdjustableHand(
 				true, hands, adjusting, g_hand.rightHandValid, g_hand.rightGripDown,
 			                  g_hand.rightHandRotation, g_hand.rightHandOffsetUnits, cameraRot,
@@ -3619,8 +3621,18 @@ void BeforeFirstScenePass() {
 			// camera - 100 units is about 1.4 m.
 			game::KeepFirstPersonNodesInView("Hand", cameraPos, 100.0f);
 			// And the forearm stump, now the forearms are where the pins put them.
+			UInt32 armShapes = 0;
+			UInt32 skinShapes = 0;
+			game::CountArmShapes(armShapes, skinShapes);
+			const bool sleeves = game::ArmsAreSleeves(armShapes, skinShapes);
+			if ((sleeves ? 1 : 0) != g_stumpSleevesLogged && g_stumpLinesLeft > 0) {
+				--g_stumpLinesLeft;
+				OBVR_LOG("Hand bones: the arms are %s (%u arm shape(s), %u of skin) - %s", sleeves ? "sleeves" : "skin or none",
+				         armShapes, skinShapes, sleeves ? "a bare hand gets the sleeve's stump" : "a bare hand gets the lid");
+				g_stumpSleevesLogged = sleeves ? 1 : 0;
+			}
 			g_stumpShown = game::StepForearmStumps(
-				game::StumpWanted(hands.forearmStump, game::FirstPersonHandsBare(), true) && !g_stumpHandsAway);
+				game::StumpWanted(game::FirstPersonHandsBare(), sleeves, g_stumpHandsAway));
 			g_stumpStepped = true;
 			if (g_stumpShown) {
 				game::KeepFirstPersonNodesInView("Arms", cameraPos, 100.0f);

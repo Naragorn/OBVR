@@ -481,13 +481,6 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.closeBareWrists = v != 0.0f; },
 	},
 	{
-		"Hands", "Forearm stump (test)", "A bare hand keeps a short forearm, tapering at the elbow",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Hands", "ForearmStump",
-		+[](const Config& c) { return c.hands.forearmStump ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.hands.forearmStump = v != 0.0f; },
-	},
-	{
 		"Hands", "Hands on the controllers", "The hand bones follow the controllers, not the animation",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "PinHands",

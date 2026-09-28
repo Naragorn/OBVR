@@ -6,10 +6,16 @@
 
 namespace obvr::game {
 
-// The forearm stump ([Hands] ForearmStump, off by default): a bare hand
-// with a short piece of forearm behind it, tapering to a point behind the
-// elbow, instead of a hand that ends at the wrist (the tester's choice,
-// 2026-09-28, after the lid; the lid stays the default).
+// The forearm stump: a bare hand in sleeves keeps a short piece of its
+// sleeve behind it, tapering to a point, instead of ending at the wrist. Only
+// with sleeves: on bare skin a stump "looks very unusual" and the lid at the
+// wrist (render/BackfacePass.h) stays (the tester, 2026-09-28, who tried
+// both). Sleeves or skin is told by the "Arms" shapes' properties: a skin
+// shape carries a property named "skin", the name the engine gives the race's
+// skin texture to (pyffi on 2026-09-28: upperbody.nif's Arms "skin"; the
+// lower-class shirts 02 "shirt", middle- and upper-class 01 their own names;
+// lower-class 01 a cloth "Arms:0" over a bare-skinned "Arms:1" - rolled
+// sleeves, so skin, so the lid).
 //
 // The forearm is there already: the body's "Arms" shape (upperbody.nif,
 // read with pyffi 2026-09-28) runs from the shoulders to the wrists, and its
@@ -203,10 +209,33 @@ inline NiPoint3 UnitFromTo(const NiPoint3& from, const NiPoint3& to) {
 	return d * (1.0f / length);
 }
 
-// Whether the stump is drawn this frame: wanted, the hands bare, and the
-// forearms pinned to the controllers (their elbows are where the stump
-// ends). Without all three the shape stays hidden.
-inline bool StumpWanted(bool setting, bool bareHands, bool pinned) { return setting && bareHands && pinned; }
+// An "Arms" shape by its name: "Arms", or one of several, "Arms:0".
+inline bool IsArmsShapeName(const char* name) {
+	if (name == nullptr) {
+		return false;
+	}
+	const char* const want = "arms";
+	for (int i = 0; i < 4; ++i) {
+		char c = name[i];
+		c = (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
+		if (c != want[i]) {
+			return false;
+		}
+	}
+	return name[4] == '\0' || name[4] == ':';
+}
+
+// Sleeves: at least one arm shape, and none of them skin.
+inline bool ArmsAreSleeves(UInt32 armShapes, UInt32 skinShapes) { return armShapes > 0 && skinShapes == 0; }
+
+// Whether the stump is drawn this frame: the hands bare (a glove has its own
+// cuff), the arms in sleeves, and the hands in the world (not away for a
+// menu or a conversation).
+inline bool StumpWanted(bool bareHands, bool sleeves, bool handsAway) { return bareHands && sleeves && !handsAway; }
+
+// The first-person arm shapes: how many, and how many of them are skin. Walks
+// the first-person tree.
+void CountArmShapes(UInt32& armShapes, UInt32& skinShapes);
 
 // ------------------------------------------------------------ the game side
 

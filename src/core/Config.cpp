@@ -712,7 +712,6 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.closedHandsBrightness =
 			ReadFloat("Hands", "ClosedHandsBrightness", h.closedHandsBrightness, path);
 		h.closeBareWrists = ReadBool("Hands", "CloseBareWrists", h.closeBareWrists, path);
-		h.forearmStump = ReadBool("Hands", "ForearmStump", h.forearmStump, path);
 		h.laserGain = ReadFloat("Hands", "LaserGain", h.laserGain, path);
 		h.laserMaxStep = ReadFloat("Hands", "LaserMaxStep", h.laserMaxStep, path);
 		h.stickDeadZone = ReadFloat("Hands", "StickDeadZone", h.stickDeadZone, path);

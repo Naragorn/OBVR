@@ -61,7 +61,7 @@ inline UInt32 BackfaceCullFor(bool enabled, bool firstPersonPass, UInt32 cullMod
 // How bright the inside is against the outside, 0..1: [Hands]
 // ClosedHandsBrightness. The factor as a D3DCOLOR (0xAARRGGBB), the same in
 // the three colour channels; clamped, with a negative or NaN as zero.
-inline constexpr float kInsideBrightnessDefault = 0.2f;
+inline constexpr float kInsideBrightnessDefault = 0.6f;
 
 inline UInt32 InsideBlendFactor(float brightness) {
 	float b = brightness > 0.0f ? brightness : 0.0f;

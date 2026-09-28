@@ -18,6 +18,7 @@ constexpr UInt32 kSkinInstanceData = 0x08;
 constexpr UInt32 kSkinInstanceBones = 0x14;
 constexpr UInt32 kSkinDataBoneCount = 0x40;
 constexpr UInt32 kMaxBones = 64;
+constexpr UInt32 kPropertyListFirst = 0x9C;
 
 bool LooksLikeObject(const void* p) { return mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(p)); }
 UInt32 Read(UInt32 address) { return *reinterpret_cast<const UInt32*>(address); }
@@ -100,7 +101,7 @@ UInt32 ArmSkins(UInt32 (&skins)[8]) {
 	UInt32 n = 0;
 	for (UInt32 i = 0; i < found; ++i) {
 		// The shape itself, not a node that only has the word in its name.
-		if (!NameIs(nodes[i]->name, "Arms")) {
+		if (!IsArmsShapeName(nodes[i]->name)) {
 			continue;
 		}
 		const UInt32 geometry = reinterpret_cast<UInt32>(nodes[i]);
@@ -168,6 +169,39 @@ NiAVObject* CentreNodeFor(NiAVObject* real) {
 }
 
 }  // namespace
+
+void CountArmShapes(UInt32& armShapes, UInt32& skinShapes) {
+	armShapes = 0;
+	skinShapes = 0;
+	NiAVObject* const root = FirstPersonArmsNode();
+	if (root == nullptr) {
+		return;
+	}
+	NiAVObject* nodes[8] = {};
+	const UInt32 found = CollectNodesContaining(root, "Arms", nodes, 8);
+	for (UInt32 i = 0; i < found; ++i) {
+		if (!IsArmsShapeName(nodes[i]->name)) {
+			continue;
+		}
+		++armShapes;
+		// NiAVObject's property list (xOBSE NiObjects.h, a NiTListBase at
+		// +0x98: its first node at +0x9C, a node {next, prev, data}); a
+		// property's name at +0x08, as every NiObjectNET's.
+		const UInt32 geometry = reinterpret_cast<UInt32>(nodes[i]);
+		UInt32 node = Read(geometry + kPropertyListFirst);
+		for (UInt32 guard = 0; guard < 16 && mem::LooksLikeObjectAddress(node); ++guard) {
+			const UInt32 property = Read(node + 8);
+			if (mem::LooksLikeObjectAddress(property)) {
+				const char* const name = reinterpret_cast<const char*>(Read(property + 8));
+				if (LooksLikeObject(name) && NameIs(name, "skin")) {
+					++skinShapes;
+					break;
+				}
+			}
+			node = Read(node);
+		}
+	}
+}
 
 bool StepForearmStumps(bool wanted) {
 	if (!wanted) {
