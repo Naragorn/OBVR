@@ -1073,3 +1073,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME finger COMMAND finger_test)
+
+add_executable(weapon_draw_speed_test WeaponDrawSpeedTest.cpp)
+
+target_include_directories(weapon_draw_speed_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(weapon_draw_speed_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME weapon_draw_speed COMMAND weapon_draw_speed_test)

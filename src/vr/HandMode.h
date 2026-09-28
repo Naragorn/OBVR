@@ -235,7 +235,7 @@ struct HandSettings {
 	// Fists by making a fist ([Hands] Fists, vr::Fist).
 	FistSettings fist;
 
-	// How much faster the draw and sheathe animations play ([Hands]
+	// How much faster the draw and sheathe animations' time runs ([Hands]
 	// WeaponDrawSpeed, game::StepWeaponDrawSpeed); 1 is the game's own speed.
 	float weaponDrawSpeed = 10.0f;
 

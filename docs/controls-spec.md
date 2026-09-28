@@ -168,26 +168,32 @@ in the headset yet.
       swap remains is not checked; the harness cannot hear.
   - **The draw's animation.** Drawing and sheathing played about a second
     of animation each before the weapon was in the hand or gone (the
-    tester, 2026-09-27). The Equip and Unequip animation groups (17, 18)
-    now play `[Hands] WeaponDrawSpeed` times faster (10 by default; 1 is the
-    game's speed), `game::StepWeaponDrawSpeed`: the sequences in the
-    player's first- and third-person ActorAnimData have their frequency
-    (NiControllerSequence +0x28) raised while they run and given back after.
-    The keys at which the weapon changes hands still fire; only sooner.
-  - **Two-handers still settle a second later** (the tester, 2026-09-27:
-    in the hand at once, then it slides a few centimetres). Traced frame by
-    frame (the Weapon node and the player's first-person sequences): the
-    sped-up pose reaches its end at 0.3 s, but the engine keeps the Equip
-    sequence - and its end pose - until 1.37 s, the draw's own length; only
-    then does the two-hand idle take over and move the Weapon node 1.3 units
-    (about 2 cm). The engine times that from the sequence's own clock
-    (+0x34), which the frequency does not scale. Tried and dropped: moving
-    that clock to the end restarted the pose from its first frame, twice;
-    setting the sequence's weight to 0 changed nothing; keeping the higher
-    frequency from one draw to the next did not shorten the next draw. Open:
-    what ends the action (the process's action timing), to end it when the
-    pose has.
-    - With none of that kind seen yet, the reach does nothing and says so in
+    tester, 2026-09-27), and the fists' draw still took 0.66 s after the
+    first fix (2026-09-28). `game::StepWeaponDrawSpeed` now runs the Equip
+    and Unequip groups' (17, 18) **time** `[Hands] WeaponDrawSpeed` times
+    faster (10 by default; 1 is the game's speed).
+    - Why the frequency was not enough (measured 2026-09-28, with probes
+      on HighProcess::SetAction and NiControllerSequence::Deactivate): the
+      player's action (process +0x1F4) ends only when the action's sequence
+      is inactive (0x005FD8B3). The engine stops a group when its own time
+      reaches the group's end key (0x004774A1), and that time is the
+      sequence's offset (+0x48) plus the anim data's clock (+0x94),
+      unscaled by the frequency. After the stop comes the group's blend-out
+      (0x004733A0). So the fists' 0.2 s draw took 0.25 s blending in, 0.2 s
+      playing and 0.2 s easing out, at a frequency of 10 or 40 alike.
+    - Now, each frame, a playing sequence's offset is moved on by
+      (speed - 1) times the clock's step, and a blend's window (+0x4C,
+      +0x50) is shrunk around the clock by the speed, once per blend. The
+      frequency is left alone. The keys still fire in order, only sooner.
+    - Measured after (harness, 2026-09-28), from the key to the action's
+      end: fists 0.66 s to 0.12 s, one-handed 0.88 s to 0.12 s, two-handed
+      1.42 s to 0.13 s, sheathing likewise.
+    - The two-hander's settle a second after the draw (the tester,
+      2026-09-27: in the hand at once, then it slides a few centimetres)
+      was this: the engine kept the Equip sequence and its end pose until
+      the draw's own length, then the two-hand idle moved the Weapon node
+      about 2 cm. The sequence now ends at 0.13 s, so the idle should take
+      over at once. **Not yet seen in the headset.**    - With none of that kind seen yet, the reach does nothing and says so in
       the log.
   - **Another weapon drawn.** Reaching for one kind while another is
     drawn does nothing ("another weapon is drawn, it goes back first" in the
