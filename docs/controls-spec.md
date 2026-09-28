@@ -338,6 +338,34 @@ in the headset yet.
   - A spell shows its first effect's icon. Whether the magic menu picks the
     same effect (the first, or the costliest) was not looked up.
   - `[Hands] QuickMenuIcons=0` goes back to numbers and names only.
+- **Pages (built 2026-09-28).** Several pages of eight, 3 by default
+  (`[Hands] QuickMenuPages`, 1-5, a row in the settings).
+  - The trigger pulled while the ring is up turns to the next page, round to
+    the first. Dots above the middle, the page shown gold. The trigger is
+    the ring's while it is up and until it is let go, so it neither attacks
+    nor clicks (`vr::QuickMenuKeepsTrigger`).
+  - The page shown is always the game's own eight: using, setting from the
+    inventory and saving stay vanilla. A turn keeps the eight's forms and
+    writes the next page's the way setting a hotkey from the inventory does,
+    for each slot: the old item's slot extra taken off its stack
+    (0x004895B0), the list emptied (0x00573880), the form added (0x005B1E20),
+    an item's stack given the slot (0x00422BA0 or 0x00489820). Then the
+    engine's own check (0x005C1900) takes out what the player no longer
+    has. Read with dumpbin; `game/QuickKeyPages.h` has the detail.
+  - Why not the lists alone: an item's hotkey is also an extra (type 0x55)
+    on its inventory stack, and the check at 0x005C1900 - called from
+    about ten places - drops a list entry whose stack does not carry it.
+  - The other pages live in the xOBSE co-save (record 'QKPG'), their form
+    ids resolved on load for a changed mod list. Without the co-save
+    interface the ring has one page.
+  - Tests: `quick_menu_test` (turning, whose trigger), `quick_key_pages_test`
+    (next page, a turn, the record both ways with every refusal),
+    `quick_menu_painter_test` (the dots).
+  - Not run in the game yet: the writes into the game's eight, the stacks'
+    extras, the co-save, and what happens to an item hotkeyed on two pages.
+    An item that only ever sat in the player's starting inventory (no
+    change entry) cannot be given its slot this way; the check then takes it
+    out.
 - **Not built yet.**
   - Wait in the middle of the ring.
 - **The game's own ring instead?** Tried in the game on 2026-09-27

@@ -1479,6 +1479,38 @@ inline constexpr UInt32 kNiFileBufferBytes = 0x8000;
 inline constexpr UInt32 kNiFileGoodSlot = 0x04;
 inline constexpr UInt32 kNiFileReadProcOffset = 0x04;
 
+// Writing a hotkey slot the way setting one from the inventory does
+// (game/QuickKeyPages.h has the reading, 2026-09-28):
+// - kMakeContainerChanges, cdecl (ref, the ref's extra data 0x004D6D40):
+//   the ref's ExtraContainerChanges data, made when missing (0x00485E00;
+//   the engine's call at 0x005C1901-0x005C191C). Its first word is the
+//   first node {EntryData*, next} of its entries; an EntryData keeps its
+//   stacks' extra lists at +0 (a node {ExtraDataList*, next}) and its form
+//   at +8 (0x004895CF, `cmp [ecx+8],esi`).
+// - kClearQuickKeyOfItem, thiscall on it (form, slot), `ret 8`: takes the
+//   slot's extra off the form's stacks (0x004895B0).
+// - kSetQuickKeyOfItem, thiscall on it (form, extra list, slot), `ret 0Ch`
+//   at 0x00489BFD: gives a stack the slot (0x00489820).
+// - kQuickKeyOfExtra / kSetQuickKeyOfExtra: an extra list's slot (-1 none;
+//   type 0x55) read and set, thiscall (0x00422C40; 0x00422BA0(slot)).
+// - kListRemoveAll (0x00573880) and kListAddTail (0x005B1E20, thiscall
+//   (&form), `ret 4`) on a hotkey list.
+// - kCheckQuickKeys (0x005C1900): the engine's check of the lists against
+//   the inventory and the spells, no arguments.
+// - kQuickKeysChanged, the byte the engine sets after a hotkey is set.
+inline constexpr UInt32 kRefExtraData = 0x004D6D40;
+inline constexpr UInt32 kMakeContainerChanges = 0x00485E00;
+inline constexpr UInt32 kClearQuickKeyOfItem = 0x004895B0;
+inline constexpr UInt32 kSetQuickKeyOfItem = 0x00489820;
+inline constexpr UInt32 kQuickKeyOfExtra = 0x00422C40;
+inline constexpr UInt32 kSetQuickKeyOfExtra = 0x00422BA0;
+inline constexpr UInt32 kListRemoveAll = 0x00573880;
+inline constexpr UInt32 kListAddTail = 0x005B1E20;
+inline constexpr UInt32 kCheckQuickKeys = 0x005C1900;
+inline constexpr UInt32 kQuickKeysChanged = 0x00B3B43C;
+inline constexpr UInt8 kFormTypeSpell = 0x10;
+inline constexpr UInt32 kEntryDataFormOffset = 0x08;
+
 // Actor::EquipItem(TESForm* item, UInt32 count, ExtraDataList* xData, UInt32
 // unk3, bool lockEquip), __thiscall, `ret 14h` at 0x005FB9A1 (xOBSE
 // GameObjects.cpp:21, 35-37). The vanilla EquipItem command's handler

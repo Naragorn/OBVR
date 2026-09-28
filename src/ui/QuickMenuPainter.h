@@ -18,7 +18,17 @@ struct QuickMenuView {
 	// order (game/ItemIcons.h), or null: the slot shows its number and name
 	// only. Borrowed, not owned.
 	const render::Pixel* icons[8] = {};
+	// The pages (game/QuickKeyPages.h): a dot each above the middle, the one
+	// shown filled. One page draws no dots.
+	int page = 0;
+	int pageCount = 1;
 };
+
+// The page dots: their radius, the distance between their centres, and how
+// far above the middle their row stands.
+inline constexpr SInt32 kQuickMenuDotRadius = 9;
+inline constexpr SInt32 kQuickMenuDotSpacing = 30;
+inline constexpr SInt32 kQuickMenuDotsAbove = 44;
 
 // The icon's side in pixels, drawn one to one.
 inline constexpr UInt32 kQuickMenuIconSide = 64;

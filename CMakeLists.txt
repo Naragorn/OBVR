@@ -95,6 +95,7 @@ add_library(OBVR SHARED
 	src/game/NearbyItems.cpp
 	src/game/QuickKeys.cpp
 	src/game/ItemIcons.cpp
+	src/game/QuickKeyPages.cpp
 	src/game/TakeItem.cpp
 	src/game/WeaponDrawSpeed.cpp
 	src/game/TeleportNoise.cpp

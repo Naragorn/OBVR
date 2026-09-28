@@ -284,6 +284,59 @@ void TestAssign() {
 	}
 }
 
+
+void TestPages() {
+	std::printf("Turning the pages\n");
+	const NiPoint3 hand{0.2f, 1.0f, -0.3f};
+	QuickMenuSettings settings;  // three pages
+	auto pulled = [&](bool pad, bool trigger) {
+		QuickMenuInput in = Frame(pad, hand);
+		in.trigger = trigger;
+		return in;
+	};
+	{
+		QuickMenuState s;
+		QuickMenuVerdict v = StepQuickMenu(s, pulled(true, true), settings);
+		Check(v.opened && !v.turnPage, "a trigger held as the ring opens turns nothing");
+		v = StepQuickMenu(s, pulled(true, true), settings);
+		Check(!v.turnPage, "still held: nothing");
+		v = StepQuickMenu(s, pulled(true, false), settings);
+		v = StepQuickMenu(s, pulled(true, true), settings);
+		Check(v.turnPage && v.visible, "pulled with the ring up: the next page");
+		v = StepQuickMenu(s, pulled(true, true), settings);
+		Check(!v.turnPage, "one pull, one page");
+		v = StepQuickMenu(s, pulled(true, false), settings);
+		v = StepQuickMenu(s, pulled(true, true), settings);
+		Check(v.turnPage, "let go and pulled again: the next");
+		v = StepQuickMenu(s, pulled(false, true), settings);
+		Check(!v.turnPage && !v.visible, "the trackpad let go: the ring closes, no page turned");
+	}
+	{
+		QuickMenuSettings one = settings;
+		one.pages = 1;
+		QuickMenuState s;
+		StepQuickMenu(s, pulled(true, false), one);
+		const QuickMenuVerdict v = StepQuickMenu(s, pulled(true, true), one);
+		Check(!v.turnPage, "one page: the trigger turns nothing");
+	}
+	{
+		QuickMenuState s;
+		const QuickMenuVerdict v = StepQuickMenu(s, pulled(false, true), settings);
+		Check(!v.turnPage && !v.visible, "the ring closed: the trigger is not the ring's");
+	}
+	Check(QuickMenuPageCount(0) == 1 && QuickMenuPageCount(-4) == 1, "fewer than one page: one");
+	Check(QuickMenuPageCount(3) == 3 && QuickMenuPageCount(9) == kQuickMenuMaxPages, "more than the most: the most");
+
+	std::printf("Whose trigger it is\n");
+	bool keeping = false;
+	Check(!QuickMenuKeepsTrigger(keeping, false, true), "no ring: the hands'");
+	Check(QuickMenuKeepsTrigger(keeping, true, false), "the ring up: the ring's");
+	Check(QuickMenuKeepsTrigger(keeping, true, true), "pulled with the ring up: the ring's");
+	Check(QuickMenuKeepsTrigger(keeping, false, true), "the ring closed, the trigger still held: still the ring's");
+	Check(!QuickMenuKeepsTrigger(keeping, false, false), "let go: the hands' again");
+	Check(!QuickMenuKeepsTrigger(keeping, false, true), "and a new pull is theirs");
+}
+
 }  // namespace
 
 int main() {
@@ -291,6 +344,7 @@ int main() {
 	TestLevelRight();
 	TestFlows();
 	TestAssign();
+	TestPages();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

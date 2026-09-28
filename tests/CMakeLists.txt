@@ -1043,3 +1043,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME icon COMMAND icon_test)
+
+add_executable(quick_key_pages_test QuickKeyPagesTest.cpp)
+
+target_include_directories(quick_key_pages_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(quick_key_pages_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME quick_key_pages COMMAND quick_key_pages_test)

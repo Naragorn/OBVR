@@ -29,6 +29,16 @@ constexpr SInt32 kBoxHeight = kQuickMenuBoxHeight;
 constexpr SInt32 kPad = 8;
 constexpr SInt32 kIconTop = 6;
 constexpr SInt32 kIcon = static_cast<SInt32>(kQuickMenuIconSide);
+
+void FillDot(Canvas& canvas, SInt32 cx, SInt32 cy, SInt32 radius, render::Pixel colour) {
+	for (SInt32 dy = -radius; dy <= radius; ++dy) {
+		for (SInt32 dx = -radius; dx <= radius; ++dx) {
+			if (dx * dx + dy * dy <= radius * radius) {
+				canvas.SetPixel(cx + dx, cy + dy, colour);
+			}
+		}
+	}
+}
 constexpr SInt32 kNameScale = 2;
 constexpr SInt32 kNumberScale = 3;
 
@@ -76,6 +86,19 @@ void PaintQuickMenu(Canvas& canvas, const QuickMenuView& view) {
 	canvas.Fill(render::Pixel{0, 0, 0, 0});
 	const SInt32 centre = static_cast<SInt32>(kQuickMenuCanvas) / 2;
 	canvas.FillDiamond(centre, centre, 10, kGold);
+	if (view.pageCount > 1) {
+		const SInt32 first = centre - (view.pageCount - 1) * kQuickMenuDotSpacing / 2;
+		for (int p = 0; p < view.pageCount; ++p) {
+			const SInt32 x = first + p * kQuickMenuDotSpacing;
+			const SInt32 y = centre - kQuickMenuDotsAbove;
+			// Round, so they do not read as the diamond in the middle: the page
+			// shown filled gold, the others a gold ring on the dark panel.
+			FillDot(canvas, x, y, kQuickMenuDotRadius, kGold);
+			if (p != view.page) {
+				FillDot(canvas, x, y, kQuickMenuDotRadius - 3, kPanel);
+			}
+		}
+	}
 	if (view.assigning) {
 		const SInt32 width = static_cast<SInt32>(TextWidth(kQuickMenuAssignLabel)) * kNameScale;
 		canvas.DrawText(centre - width / 2, centre + 24, kQuickMenuAssignLabel, kNameScale, kGold);

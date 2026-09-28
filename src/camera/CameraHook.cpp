@@ -54,6 +54,7 @@
 #include "game/MeleeHit.h"
 #include "game/QuickKeys.h"
 #include "game/ItemIcons.h"
+#include "game/QuickKeyPages.h"
 #include "game/TeleportNoise.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
@@ -734,6 +735,10 @@ ui::QuickMenuView g_quickMenuView;
 // Each slot's icon path, the way the view's icon was asked for.
 char g_quickMenuIconPaths[game::kQuickKeyCount][128] = {};
 static_assert(ui::kQuickMenuIconSide == game::kItemIconSide, "the ring draws the icons one to one");
+static_assert(vr::kQuickMenuMaxPages == game::kQuickKeyPagesMax, "one page count for the ring and the store");
+// The weapon hand's trigger as read, and whether the ring keeps it.
+bool g_quickMenuTrigger = false;
+bool g_quickMenuKeepsTrigger = false;
 UInt32 g_quickMenuRevision = 1;
 vr::openvr::HmdMatrix34 g_quickMenuPose{};
 UInt32 g_quickMenuLinesLeft = 30;
@@ -769,6 +774,15 @@ void UpdateQuickMenu(const Config& config, vr::OpenVRBackend& backend, bool allo
 	in.headRight = frame.headValid ? vr::ToMatrix(frame.head) * NiPoint3{1.0f, 0.0f, 0.0f}
 	                               : NiPoint3{1.0f, 0.0f, 0.0f};
 	in.dt = dt;
+	in.trigger = g_quickMenuTrigger;
+	// The pages: several with the co-save to keep them in, the game's eight
+	// alone without. A ring opening on a page past the count (the count
+	// lowered since) turns to the first.
+	const int pageCount =
+		game::QuickKeyPagesAvailable() ? vr::QuickMenuPageCount(config.hands.quickMenu.pages) : 1;
+	if (in.pad && !g_quickMenu.open && allowed && game::CurrentQuickKeyPage() >= pageCount) {
+		game::TurnQuickKeyPage(pageCount, true);
+	}
 	// The hotkeys are read while the trackpad is down or the ring is open:
 	// what the ring shows and what a release uses is what they hold now.
 	if (in.pad || g_quickMenu.open) {
@@ -797,7 +811,19 @@ void UpdateQuickMenu(const Config& config, vr::OpenVRBackend& backend, bool allo
 			}
 		}
 	}
-	const vr::QuickMenuVerdict v = vr::StepQuickMenu(g_quickMenu, in, config.hands.quickMenu);
+	vr::QuickMenuSettings settings = config.hands.quickMenu;
+	settings.pages = pageCount;
+	const vr::QuickMenuVerdict v = vr::StepQuickMenu(g_quickMenu, in, settings);
+	if (v.turnPage) {
+		// The game's eight are written now; the next frame's read shows them.
+		game::TurnQuickKeyPage(pageCount);
+	}
+	const int page = game::CurrentQuickKeyPage();
+	if (page != g_quickMenuView.page || pageCount != g_quickMenuView.pageCount) {
+		g_quickMenuView.page = page;
+		g_quickMenuView.pageCount = pageCount;
+		++g_quickMenuRevision;
+	}
 	g_hand.controls.quickKey = static_cast<UInt8>(v.key);
 	g_hand.controls.menuClick = g_hand.controls.menuClick || v.click;
 	if (v.holdsCursor) {
@@ -1246,6 +1272,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// weapon hand is the left controller (vr::AssignHandRoles).
 	g_handRolesSwapped =
 		vr::AssignHandRoles(frame.right, frame.left, active && config.hands.leftHanded);
+	// The weapon hand's trigger turns the quick menu's pages while the ring
+	// is up, and is nobody else's then (vr::QuickMenuKeepsTrigger).
+	g_quickMenuTrigger = frame.right.valid && frame.right.trigger > 0.5f;
+	if (vr::QuickMenuKeepsTrigger(g_quickMenuKeepsTrigger, g_quickMenu.open, g_quickMenuTrigger)) {
+		frame.right.trigger = 0.0f;
+	}
 	frame.unitsPerMetre = config.tracker.unitsPerMetre;
 	g_hudLayer.ShownPixels(frame.layerPixelsWidth, frame.layerPixelsHeight);
 	frame.cursorValid = game::InterfaceCursorPosition(frame.cursorX, frame.cursorY);

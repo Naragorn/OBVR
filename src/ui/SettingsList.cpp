@@ -769,6 +769,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.quickMenu.enabled = v != 0.0f; },
 	},
 	{
+		"Hands", "Quick menu pages", "Pages of eight hotkeys; the trigger turns them while the ring is up",
+		ItemKind::Number, 1.0f, 5.0f, 1.0f, 0, false,
+		"Hands", "QuickMenuPages",
+		+[](const Config& c) { return static_cast<float>(c.hands.quickMenu.pages); },
+		+[](Config& c, float v) { c.hands.quickMenu.pages = vr::QuickMenuPageCount(static_cast<int>(v + 0.5f)); },
+	},
+	{
 		"Hands", "Draw by reaching", "Full VR: grip at the left hip, over the right shoulder, or (other hand) the left shoulder",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "Holsters",

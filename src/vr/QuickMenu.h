@@ -24,6 +24,10 @@
 // it was while the ring is up and the sequence runs, so the click lands on
 // the item the laser was on when the trackpad went down.
 //
+// Pages: the trigger pulled while the ring is up turns to the next page of
+// eight (game/QuickKeyPages.h writes it into the game's eight); the trigger
+// is the ring's then, and stays so until it is let go.
+//
 // Pure, covered by quick_menu_test.
 
 #include "core/MathFns.h"
@@ -47,6 +51,9 @@ struct QuickMenuSettings {
 	// The game's own item and spell icons on the slots (game/ItemIcons.h);
 	// off, the slots show the number and the name only, as before.
 	bool icons = true;
+	// How many pages of eight the ring turns through (game/QuickKeyPages.h),
+	// 1 to kQuickMenuMaxPages; 1 is the game's eight alone.
+	int pages = 3;
 	// Setting a hotkey in a menu: how long the number key is down before the
 	// click, how long the click, how long the key stays down after it.
 	float assignLeadSeconds = 0.20f;
@@ -67,6 +74,7 @@ struct QuickMenuState {
 	int tapSlot = -1;  // the slot whose key is down
 	float tapLeft = 0.0f;
 	bool padWas = false;
+	bool triggerWas = false;
 	AssignPhase assignPhase = AssignPhase::Idle;
 	int assignSlot = -1;
 	float assignClock = 0.0f;  // time in the current phase
@@ -80,6 +88,7 @@ struct QuickMenuInput {
 	bool assign = false;   // in the inventory or the magic menu: a release sets the hotkey
 	NiPoint3 hand{0.0f, 0.0f, 0.0f};       // the right controller, tracking space
 	NiPoint3 headRight{1.0f, 0.0f, 0.0f};  // the head's right, tracking space
+	bool trigger = false;  // the right trigger pulled, as it is now
 	float dt = 0.0f;
 	bool filled[kQuickSlots] = {};  // which slots hold something
 };
@@ -97,7 +106,29 @@ struct QuickMenuVerdict {
 	bool assignDone = false;     // the sequence ended this frame, key and click up
 	bool assignAborted = false;  // the menu went before the sequence ended
 	bool holdsCursor = false;    // the cursor is not to move this frame
+	bool turnPage = false;       // the trigger pulled with the ring up: the next page
 };
+
+// The most pages the ring turns through.
+constexpr int kQuickMenuMaxPages = 5;
+
+// The page count a setting asks for, held to 1..kQuickMenuMaxPages.
+inline int QuickMenuPageCount(int wanted) {
+	return wanted < 1 ? 1 : (wanted > kQuickMenuMaxPages ? kQuickMenuMaxPages : wanted);
+}
+
+// Whether the right trigger is kept from the rest of the hands this frame:
+// while the ring is up it turns the pages, and a pull that began there stays
+// the ring's until it is let go - a trigger still held as the ring closes
+// must not arrive at the game as a fresh pull (an attack, a menu click).
+inline bool QuickMenuKeepsTrigger(bool& keeping, bool ringOpen, bool triggerDown) {
+	if (ringOpen) {
+		keeping = true;
+	} else if (!triggerDown) {
+		keeping = false;
+	}
+	return keeping;
+}
 
 inline float Dot3(const NiPoint3& a, const NiPoint3& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
 
@@ -210,7 +241,12 @@ inline QuickMenuVerdict StepQuickMenu(QuickMenuState& s, const QuickMenuInput& i
 	}
 	s.highlighted = QuickSlotAt(in.hand - s.anchor, s.right, s.up, settings.deadZoneMetres);
 	v.assigning = s.assigning;
+	const bool pull = in.trigger && !s.triggerWas;
+	s.triggerWas = in.trigger;
 	if (in.pad) {
+		// The trigger turns the page while the ring is up; the frame the
+		// ring opened on turns nothing, whatever the trigger was doing.
+		v.turnPage = pull && !v.opened && QuickMenuPageCount(settings.pages) > 1;
 		v.visible = true;
 		v.highlighted = s.highlighted;
 		v.holdsCursor = s.assigning;

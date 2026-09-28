@@ -6,6 +6,7 @@
 #include "game/NativeMenuPrototype.h"
 #include "game/VRMenuBridge.h"
 #include "game/PlayerBody.h"
+#include "game/QuickKeyPages.h"
 #include "obse/PluginInterface.h"
 #include "platform/PluginPath.h"
 #include "platform/UpdateFetch.h"
@@ -106,6 +107,7 @@ __declspec(dllexport) bool OBSEPlugin_Load(const obvr::obse::Interface* obse) {
 
 	obvr::test::InstallWaterVRTest();
 	obvr::game::InstallNativeMenuPrototype(obse);
+	obvr::game::InstallQuickKeyPages(obse);
 	OBVR_LOG("OBVR ready");
 	return true;
 }

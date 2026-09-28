@@ -159,6 +159,38 @@ void TestIcons() {
 	Check(nameInk, "the name written under the icon");
 }
 
+void TestPageDots() {
+	std::printf("The page dots\n");
+	std::vector<render::Pixel> pixels(kQuickMenuCanvas * kQuickMenuCanvas);
+	Canvas canvas(pixels.data(), kQuickMenuCanvas, kQuickMenuCanvas);
+	const SInt32 c = static_cast<SInt32>(kQuickMenuCanvas) / 2;
+	const render::Pixel gold = SwapRedAndBlue(render::Pixel{222, 190, 140, 255});
+	const SInt32 y = c - kQuickMenuDotsAbove;
+	QuickMenuView view;
+	PaintQuickMenu(canvas, view);
+	Check(canvas.GetPixel(c, y).a == 0, "one page: no dots");
+	view.pageCount = 3;
+	view.page = 0;
+	PaintQuickMenu(canvas, view);
+	Check(Same(canvas.GetPixel(c - kQuickMenuDotSpacing, y), gold), "three pages, the first shown: its dot gold, at the left");
+	Check(canvas.GetPixel(c, y).a > 0 && !Same(canvas.GetPixel(c, y), gold) &&
+	          canvas.GetPixel(c + kQuickMenuDotSpacing, y).a > 0 && !Same(canvas.GetPixel(c + kQuickMenuDotSpacing, y), gold),
+	      "the other two drawn, not gold");
+	Check(canvas.GetPixel(c + 2 * kQuickMenuDotSpacing, y).a == 0, "no fourth");
+	view.page = 2;
+	PaintQuickMenu(canvas, view);
+	Check(Same(canvas.GetPixel(c + kQuickMenuDotSpacing, y), gold) &&
+	          !Same(canvas.GetPixel(c - kQuickMenuDotSpacing, y), gold),
+	      "the third shown: the gold dot moves to it");
+	view.pageCount = 2;
+	view.page = 1;
+	PaintQuickMenu(canvas, view);
+	Check(Same(canvas.GetPixel(c + kQuickMenuDotSpacing / 2, y), gold) &&
+	          canvas.GetPixel(c - kQuickMenuDotSpacing / 2, y).a > 0,
+	      "two pages: centred about the middle");
+	Check(canvas.GetPixel(c, c + 30).a == 0, "the dots stand above the middle, clear of the words under it");
+}
+
 void TestStowSpot() {
 	std::printf("The stow spot\n");
 	std::vector<render::Pixel> pixels(kStowSpotCanvas * kStowSpotCanvas);
@@ -185,6 +217,7 @@ int main() {
 	TestSplit();
 	TestPaint();
 	TestIcons();
+	TestPageDots();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;
