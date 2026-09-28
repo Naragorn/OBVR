@@ -1,0 +1,29 @@
+# The walk direction ([Hands] WalkDirection, vr/WalkDirection.h): the head
+# turned 90 degrees in the room, away from where the recenter left forward;
+# the left stick pushed straight ahead then walks where the head looks, and
+# the body turns under a view that holds still.
+# Compare the marks' "player at ..., heading ..." lines: "turned" has the
+# heading of "start" (standing turns nothing); "walked" has it turned by
+# about 90 degrees, and the feet moved along the new heading (engine yaw,
+# forward = sin, cos). The pictures of "turned" and "walked" look the same
+# way.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\walk-direction.txt
+
+ini Hands Enabled=1
+ini Hands WalkDirection=head
+
+expect HandScript: finished
+expect Walk: the body turns to the walk direction (head)
+reject HandScript: WARNING
+
+wait 10
+mark start
+head yaw 90
+wait 1
+mark turned
+left stick 0 1
+wait 1.5
+left stick 0 0
+wait 0.5
+mark walked
+wait 1

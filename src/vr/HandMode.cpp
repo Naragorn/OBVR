@@ -43,6 +43,18 @@ constexpr float kFlatLaserPlaneMetres = 2.0f;
 // margin, of 768 - a little under a tenth).
 constexpr float kPanelScrollBand = 0.09f;
 
+// A controller's heading as a turn from the recenter reference, measured
+// the way the head tracker measures the head (reference undone first, then
+// into the game's basis): for the walk direction.
+bool WalkYawOf(const Quaternion& reference, const Quaternion& hand, float& yaw) {
+	Heading heading{};
+	if (!HeadingOf(ToMatrix(FromOpenXR((reference.Conjugate() * hand).Normalized())), heading)) {
+		return false;
+	}
+	yaw = math::Atan2(heading.sine, heading.cosine);
+	return true;
+}
+
 }  // namespace
 
 void HandMode::StepPointerHand(const HandModeFrame& f, bool rightTrigger, bool leftTrigger) {
@@ -128,6 +140,12 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	// The aim and the arms from the right hand's orientation. The relative
 	// rotation is head-conjugate then hand - hand first, head undone after -
 	// changed into the game's basis the way the head itself is.
+	if (f.right.valid) {
+		r.rightWalkYawValid = WalkYawOf(f.reference, f.right.orientation, r.rightWalkYaw);
+	}
+	if (f.left.valid) {
+		r.leftWalkYawValid = WalkYawOf(f.reference, f.left.orientation, r.leftWalkYaw);
+	}
 	if (f.right.valid) {
 		const Quaternion relative = (f.head.Conjugate() * f.right.orientation).Normalized();
 		const NiMatrix33 relativeMatrix = ToMatrix(FromOpenXR(relative));

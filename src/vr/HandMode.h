@@ -11,6 +11,7 @@
 #include "vr/QuickMenu.h"
 #include "vr/Stow.h"
 #include "vr/Teleport.h"
+#include "vr/WalkDirection.h"
 
 namespace obvr::vr {
 
@@ -76,6 +77,8 @@ struct HandSettings {
 	// for the turn.
 	float stickDeadZone = 0.4f;
 	float turnSpeed = 12.0f;
+	// Which way the left stick walks (vr/WalkDirection.h).
+	WalkDirection walkDirection = kWalkDirectionDefault;
 
 	// The hand bones, written each frame to where the controllers are, so
 	// the hands and the weapon stay with the controllers while the animation
@@ -300,6 +303,9 @@ struct HandModeFrame {
 	bool headValid = false;
 	Quaternion head = Quaternion::Identity();
 	NiPoint3 headPosition{0.0f, 0.0f, 0.0f};
+	// The head tracker's recenter reference (yaw only): what the walk
+	// direction measures each hand's heading from (vr/WalkDirection.h).
+	Quaternion reference = Quaternion::Identity();
 	HandPose right;
 	HandPose left;
 	float unitsPerMetre = 70.0f;
@@ -386,6 +392,14 @@ struct HandModeResult {
 	bool leftThumbValid = false;
 	float rightThumb[3] = {0.0f, 0.0f, 0.0f};
 	float leftThumb[3] = {0.0f, 0.0f, 0.0f};
+
+	// Each controller's heading as a turn from the recenter reference, the
+	// same measure as the head's camera rotation: for the walk direction.
+	// In the frame's hand roles (left-handed: "right" is the left controller).
+	bool rightWalkYawValid = false;
+	float rightWalkYaw = 0.0f;
+	bool leftWalkYawValid = false;
+	float leftWalkYaw = 0.0f;
 
 	// The controls to press, and whether any are to be pressed at all
 	// (false releases everything).

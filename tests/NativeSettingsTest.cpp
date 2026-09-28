@@ -51,6 +51,14 @@ void CheckSerializedCanonical(const SettingDefinition& definition, float canonic
   return;
  }
 
+ if (definition.valueNames != nullptr) {
+  const int index = static_cast<int>(canonical - definition.minimum + 0.5f);
+  Check(index >= 0 && static_cast<UInt32>(index) < definition.valueNameCount &&
+            std::strcmp(writer.last, definition.valueNames[index]) == 0,
+        "reset writes the canonical choice's name");
+  return;
+ }
+
  char* end = nullptr;
  const float parsed = std::strtof(writer.last, &end);
  Check(end != writer.last && end != nullptr && *end == '\0' && parsed == canonical,

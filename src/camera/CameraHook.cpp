@@ -385,6 +385,8 @@ NiPoint3 g_aimTiltApplied{0.0f, 0.0f, 0.0f};
 bool g_aimYawReported = false;
 bool g_aimYawLostReported = false;
 bool g_aimReturnReported = false;
+// The walk direction's first turn of the body, said once.
+bool g_walkSteerReported = false;
 bool g_aimThirdPersonReported = false;
 
 // How far the first person weapon should be turned, and whether it should be
@@ -478,6 +480,12 @@ constexpr float kTeleportLiftUnits = 2.0f;
 // the time of a step.
 constexpr float kTeleportNoiseSeconds = 0.5f;
 float g_teleportNoiseLeft = 0.0f;
+// Where the last teleport landed, and the second after it: then the log
+// says how far the player has moved since, with the sticks untouched it
+// should be nothing (the noise once walked it a step on, 2026-09-28).
+NiPoint3 g_teleportLandedFeet{0.0f, 0.0f, 0.0f};
+float g_teleportDriftCheckLeft = 0.0f;
+UInt32 g_teleportDriftLines = 4;
 
 TeleportAim AimTeleport(const Config& config, const vr::LaserWorldRay& ray) {
 	const vr::TeleportSettings& tp = config.hands.teleport;
@@ -643,6 +651,8 @@ void UpdateTeleport(const Config& config, vr::OpenVRBackend& backend, bool activ
 				const NiPoint3 miss = feet - g_teleportMove.to;
 				OBVR_LOG("Teleport: arrived, %.1f units from the target",
 				         static_cast<double>(math::Sqrt(miss.LengthSquared())));
+				g_teleportLandedFeet = feet;
+				g_teleportDriftCheckLeft = 1.0f;
 			}
 		}
 	}
@@ -655,6 +665,22 @@ void UpdateTeleport(const Config& config, vr::OpenVRBackend& backend, bool activ
 	// otherwise be over before the engine ever read the flags.
 	if (g_teleportNoiseLeft > 0.0f) {
 		g_teleportNoiseLeft -= dtSeconds;
+	}
+	if (g_teleportDriftCheckLeft > 0.0f) {
+		g_teleportDriftCheckLeft -= dtSeconds;
+		NiPoint3 feet{0.0f, 0.0f, 0.0f};
+		if (g_teleportDriftCheckLeft <= 0.0f && g_teleportDriftLines > 0 && game::ReadPlayerFeet(feet)) {
+			--g_teleportDriftLines;
+			const NiPoint3 moved = feet - g_teleportLandedFeet;
+			OBVR_LOG("Teleport: a second after the landing the player stands %.1f units from it "
+			         "(%.1f across the ground; the left stick %s)",
+			         static_cast<double>(math::Sqrt(moved.LengthSquared())),
+			         static_cast<double>(math::Sqrt(moved.x * moved.x + moved.y * moved.y)),
+			         g_hand.controls.move.forward || g_hand.controls.move.back || g_hand.controls.move.left ||
+			                 g_hand.controls.move.right
+			             ? "walking"
+			             : "still");
+		}
 	}
 	game::SetTeleportNoise(active && config.hands.teleport.makesNoise &&
 	                       (g_teleportMove.phase != vr::TeleportPhase::Idle ||
@@ -1273,6 +1299,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	                 game::IsPlayerSneaking();
 	frame.headValid = backend.GetRenderPose(frame.head, frame.headPosition) ||
 	                  backend.ReadHeadPose(frame.head, frame.headPosition);
+	frame.reference = g_headTracker.GetReference();
 	backend.ReadHand(true, frame.right);
 	backend.ReadHand(false, frame.left);
 	// Or the hand script's ([Debug] HandScript): controllers played from a
@@ -1541,6 +1568,15 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// What a hand script's picture is of ([Debug] HandScript): the state on
 	// the frame of each mark.
 	if (test::HandScriptMarkedThisFrame()) {
+		// Where the player stands and faces (the engine's yaw, forward = sin,
+		// cos): what a walk between two marks is measured against.
+		NiPoint3 feet{0.0f, 0.0f, 0.0f};
+		game::PlayerRotation turned{};
+		if (game::ReadPlayerFeet(feet) && game::ReadPlayerRotation(turned)) {
+			OBVR_LOG("HandScript: player at %.1f %.1f %.1f, heading %.1f degrees",
+			         static_cast<double>(feet.x), static_cast<double>(feet.y), static_cast<double>(feet.z),
+			         static_cast<double>(turned.yaw * math::kRadiansToDegrees));
+		}
 		OBVR_LOG("HandScript: state - world %d, menu %d, third person %d, head %d at %.2f %.2f "
 		         "%.2f, right %d at %.2f %.2f %.2f stick %.2f %.2f, left %d, camera %d, hand "
 		         "pinned %d, teleport allowed %d aiming %d commit %d, weapon %d (slot %d), active menu %s, laser hit %d at %.0f,%.0f, cursor %d at %.0f,%.0f, top menu %s",
@@ -5973,9 +6009,11 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		}
 	}
 
-	if (readPlayer &&
-	    AimYawWanted(GetConfig().aimFollowsGaze, g_headTracker.IsHeadsetConnected(), isThirdPerson,
-	                 GetConfig().aimInThirdPerson, game::IsMenuMode(), turnDue)) {
+	const bool aimTurnsBody =
+		readPlayer &&
+		AimYawWanted(GetConfig().aimFollowsGaze, g_headTracker.IsHeadsetConnected(), isThirdPerson,
+		             GetConfig().aimInThirdPerson, game::IsMenuMode(), turnDue);
+	if (aimTurnsBody) {
 		// How far the head is turned away from the camera's base. The head
 		// rotation is already relative to that base, so its heading is the turn
 		// itself rather than a direction in the world - which is what lets this
@@ -6016,6 +6054,60 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 						         static_cast<double>(remaining * math::kRadiansToDegrees),
 						         static_cast<double>(asEngineLeftIt.yaw),
 						         static_cast<double>(target));
+					}
+				}
+			}
+		}
+	}
+
+	// The walk direction (vr/WalkDirection.h, [Hands] WalkDirection): while
+	// the left stick walks, the body faces the head, a hand, or halfway
+	// between the head and the stick's hand - through the same hand-over as
+	// the aim's turn, so the camera takes the turn back out and the picture
+	// holds still. The game then walks the stick's keys along that heading.
+	// Not while the aim turns the body, nor after anything else wrote the
+	// heading this frame (the return): that write is not in asEngineLeftIt.
+	{
+		const vr::StickDirections& walk = g_hand.controls.move;
+		const bool walking = walk.forward || walk.back || walk.left || walk.right;
+		if (readPlayer &&
+		    vr::WalkSteerWanted(config.fullVrMode, g_headTracker.IsHeadsetConnected(), !isThirdPerson,
+		                        game::IsMenuMode(), walking, aimTurnsBody || g_aimYawPending)) {
+			vr::WalkYaws yaws;
+			Heading headTurn{};
+			yaws.headValid = HeadingOf(g_headTracker.GetCameraRotation(), headTurn);
+			yaws.head = yaws.headValid ? math::Atan2(headTurn.sine, headTurn.cosine) : 0.0f;
+			// The setting names the controllers as they are; g_hand has them
+			// in their roles, swapped when left-handed.
+			const bool swapped = g_handRolesSwapped;
+			yaws.rightValid = swapped ? g_hand.leftWalkYawValid : g_hand.rightWalkYawValid;
+			yaws.right = swapped ? g_hand.leftWalkYaw : g_hand.rightWalkYaw;
+			yaws.leftValid = swapped ? g_hand.rightWalkYawValid : g_hand.leftWalkYawValid;
+			yaws.left = swapped ? g_hand.rightWalkYaw : g_hand.leftWalkYaw;
+			yaws.stickHandRight = swapped;
+			float targetYaw = 0.0f;
+			if (vr::WalkTargetYaw(config.hands.walkDirection, yaws, targetYaw)) {
+				const float step = AimYawRemaining(targetYaw, g_aimBodyOffset);
+				if (vr::WalkStepWorthWriting(step)) {
+					const float target = PlayerYawForGaze(asEngineLeftIt.yaw, step);
+					if (game::WritePlayerYaw(target)) {
+						g_aimBodyOffset = math::WrapAngle(g_aimBodyOffset + step);
+						g_aimYawWrote = target;
+						g_aimYawStepTaken = step;
+						g_aimYawPending = true;
+						if (!g_walkSteerReported) {
+							g_walkSteerReported = true;
+							OBVR_LOG("Walk: the body turns to the walk direction (%s) - first step %.1f "
+							         "degrees, head %.1f, right hand %.1f%s, left hand %.1f%s from the "
+							         "recenter",
+							         vr::kWalkDirectionNames[static_cast<UInt32>(config.hands.walkDirection)],
+							         static_cast<double>(step * math::kRadiansToDegrees),
+							         static_cast<double>(yaws.head * math::kRadiansToDegrees),
+							         static_cast<double>(yaws.right * math::kRadiansToDegrees),
+							         yaws.rightValid ? "" : " (not tracked)",
+							         static_cast<double>(yaws.left * math::kRadiansToDegrees),
+							         yaws.leftValid ? "" : " (not tracked)");
+						}
 					}
 				}
 			}

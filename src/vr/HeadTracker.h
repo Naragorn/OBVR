@@ -566,6 +566,10 @@ public:
 	// reported relative to it.
 	void Recenter();
 
+	// The zero pose itself (yaw only), in the source's own convention: what
+	// the controllers' headings are measured from for the walk direction.
+	const Quaternion& GetReference() const { return m_reference; }
+
 	// Rotation relative to the zero pose, ready in Oblivion's camera space.
 	const NiMatrix33& GetCameraRotation() const { return m_cameraRotation; }
 

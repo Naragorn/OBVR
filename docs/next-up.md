@@ -293,6 +293,17 @@ Every change below is switched by the mode.
     player's flags for the move, at least 0.5 s. Sneaking stays sneaking.
   - Harness: `teleport-noise.txt` PASS, "the movement flags read 0101".
     Whether an NPC then notices the player has not been tested.
+  - **Fixed (the tester, 2026-09-28): the extra step after the landing.**
+    "kommt der teleport aber dann noch ein zusätzlicher schritt des chars
+    nach vorne ... das erzeugt nausea". The same flags move the player, so
+    for the half second of noise after the landing it walked on by itself.
+    Measured with the new drift line (`Teleport: a second after the landing
+    the player stands ...`): 21.7 units across the ground with the setter
+    hook, 0.0 now. Now only the detection's two reads (the getter at
+    vtable +0x2C0, 0x006285A0, from 0x005F66DD and 0x005F66FD) answer
+    walk-forward; the flags themselves stay as the controls set them
+    (game/TeleportNoise.h, teleport_noise_test). Whether an NPC then hears
+    it is still not tested: the harness cell has no one to hear.
 - **An in-game test** is feasible like the water test: a `[Debug]` switch
   that feeds a scripted right controller into the hand mode and logs `VRTEST`
   lines for position, fatigue and refusals. Not built.

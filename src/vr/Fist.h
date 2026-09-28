@@ -41,7 +41,7 @@ inline constexpr float kFistOpenGap = 0.15f;
 
 struct FistSettings {
 	bool enabled = true;
-	float closeCurl = 0.80f;
+	float closeCurl = 0.90f;
 	float openCurl = 0.35f;
 	float holdSeconds = 0.25f;
 	// How long a weapon being taken off may take to leave the slot before

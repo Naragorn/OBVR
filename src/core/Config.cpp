@@ -717,6 +717,14 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.laserMaxStep = ReadFloat("Hands", "LaserMaxStep", h.laserMaxStep, path);
 		h.stickDeadZone = ReadFloat("Hands", "StickDeadZone", h.stickDeadZone, path);
 		h.turnSpeed = ReadFloat("Hands", "TurnSpeed", h.turnSpeed, path);
+		{
+			char word[32] = "";
+			ReadText("Hands", "WalkDirection", word, sizeof(word), path);
+			if (word[0] != 0 && !vr::ParseWalkDirection(word, h.walkDirection)) {
+				OBVR_LOG("Config: [Hands] WalkDirection=%s is not head, right, left or blend - kept %s", word,
+				         vr::kWalkDirectionNames[static_cast<UInt32>(h.walkDirection)]);
+			}
+		}
 
 		vr::QuickMenuSettings& qm = h.quickMenu;
 		qm.enabled = ReadBool("Hands", "QuickMenu", qm.enabled, path);

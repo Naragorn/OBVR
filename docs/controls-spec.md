@@ -28,6 +28,29 @@ flow is covered by `hand_mode_test` and `teleport_test`.
 | Gesture | a swing strikes by motion | raised hand: block |
 
 - Both stick clicks within a quarter second: OBVR's own menu.
+- **Which way the left stick walks** (`[Hands] WalkDirection`, the settings
+  row "Walk direction"; the tester, 2026-09-28: "gerade laufen mit linken
+  stick [läuft] in eine andere richtung ... weil das recentering wo anders
+  liegt").
+  - Choices: head, right, left, blend (the default: halfway between the
+    head and the stick's hand).
+  - Why it went wrong: the stick is the W/A/S/D keys, and the game walks
+    them along the player's heading. The head turned only the camera,
+    measured from the recenter. So forward was where the player faced at
+    the last recenter plus turns, not where they now stand facing.
+  - Now, while the stick walks, the body turns to the chosen direction
+    through the aim's hand-over (`g_aimBodyOffset`): the camera takes the
+    turn back out, so the view holds still. The menus and the HUD keep the
+    recenter's place; they are anchored in the room, not on the body.
+    Standing still turns nothing. The aim keeps the body while it turns it
+    itself.
+  - Code: `vr/WalkDirection.h` (walk_direction_test), the headings from
+    the recenter in `vr::HandMode` (`WalkYawOf`), the turn in CameraHook
+    after the aim's. Harness: `tools/hand-scripts/walk-direction.txt`
+    PASS (head turned 90 degrees: heading 0 to 270, the feet moved along
+    it, the compass the same before and after).
+  - **Not yet tried in the headset.** Unknown: whether the blend's
+    turning with the hand while walking feels right.
 - Left-handed (`LeftHanded=1`): the controllers swap roles as a whole
   (`vr::AssignHandRoles`); the table reads with "right" as the weapon hand.
 
@@ -262,7 +285,7 @@ in the headset yet.
     - The log says `hand skeletons resolved` at startup, and once per hand
       whether its skeleton reads.
   - **What counts as a fist.** The index, middle, ring and little fingers are
-    all past 0.80, held for 0.25 s. The hand is open again only once all four
+    all past 0.90 (0.80 until 2026-09-28), held for 0.25 s. The hand is open again only once all four
     are below 0.35.
     - The thumb is left out: on an Index it rests on the stick and buttons
       either way.

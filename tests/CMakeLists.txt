@@ -1093,3 +1093,23 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME thumb_pose COMMAND thumb_pose_test)
+
+add_executable(walk_direction_test WalkDirectionTest.cpp)
+
+target_include_directories(walk_direction_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(walk_direction_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME walk_direction COMMAND walk_direction_test)
+
+add_executable(teleport_noise_test TeleportNoiseTest.cpp)
+
+target_include_directories(teleport_noise_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(teleport_noise_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME teleport_noise COMMAND teleport_noise_test)

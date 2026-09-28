@@ -106,6 +106,11 @@ struct SettingDefinition {
 
 	// For rows of kind Action only: the button this row is.
 	SettingAction action = SettingAction::None;
+
+	// For a Number row of choices: each whole value's name, shown in the menu
+	// and written to the INI (MenuItem::valueNames).
+	const char* const* valueNames = nullptr;
+	UInt32 valueNameCount = 0;
 };
 
 // The table, and its length. A pointer to static data - there is one settings

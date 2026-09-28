@@ -385,6 +385,43 @@ void TestFormattingIntegers() {
 	Check(true, "and no buffer at all is survivable");
 }
 
+
+void TestFormattingChoices() {
+	std::printf("A choice as text\n");
+
+	static const char* const kNames[] = {"head", "right", "left", "blend"};
+	MenuItem item;
+	item.kind = ItemKind::Number;
+	item.decimals = 0;
+	item.valueNames = kNames;
+	item.valueNameCount = 4;
+
+	char text[16];
+	item.value = 0.0f;
+	FormatValue(item, text, sizeof(text));
+	Check(TextIs(text, "head"), "the first value: its name");
+	item.value = 3.0f;
+	FormatValue(item, text, sizeof(text));
+	Check(TextIs(text, "blend"), "the last: its name");
+	item.value = 2.4f;
+	FormatValue(item, text, sizeof(text));
+	Check(TextIs(text, "left"), "between two: the nearer");
+	item.value = 4.0f;
+	FormatValue(item, text, sizeof(text));
+	Check(TextIs(text, "4"), "past the names: the number, not a name read past the end");
+	item.value = -1.0f;
+	FormatValue(item, text, sizeof(text));
+	Check(TextIs(text, "-1"), "below them: the number");
+	item.minimum = 1.0f;
+	item.value = 1.0f;
+	FormatValue(item, text, sizeof(text));
+	Check(TextIs(text, "head"), "the names count from the minimum");
+	char iniText[16];
+	item.value = 4.0f;
+	FormatValueForIni(item, "", "", iniText, sizeof(iniText));
+	Check(TextIs(iniText, "blend"), "and the INI is written the same word");
+}
+
 }  // namespace
 
 int main() {
@@ -403,6 +440,8 @@ int main() {
 	TestFormattingToggles();
 	std::printf("\n");
 	TestFormattingIntegers();
+	std::printf("\n");
+	TestFormattingChoices();
 
 	std::printf("\n");
 	if (g_failures == 0) {

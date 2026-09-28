@@ -178,7 +178,7 @@ void TestFist() {
 void TestLimits() {
 	std::printf("The fist's limits\n");
 	FistSettings s;
-	Check(FistOpenLimit(s) == s.openCurl, "the defaults (0.80, 0.35): the open limit as set");
+	Check(FistOpenLimit(s) == s.openCurl, "the defaults (0.90, 0.35): the open limit as set");
 	s.closeCurl = 0.45f;
 	Check(FistOpenLimit(s) > 0.299f && FistOpenLimit(s) < 0.301f, "the close limit lowered to 0.45: open below 0.30");
 	s.closeCurl = 0.4f;
@@ -197,7 +197,7 @@ void TestLimits() {
 		Check(v.closed && !v.changed, "and stays one, no clicks by turns");
 		FistState def;
 		v = Hold(def, Hand(0.55f), 5, FistSettings{});
-		Check(!v.closed, "at the default 0.80 the same hand is not");
+		Check(!v.closed, "at the default 0.90 the same hand is not");
 	}
 	{
 		FistSettings crossed;

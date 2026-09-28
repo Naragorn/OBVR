@@ -748,6 +748,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.runToggle = v != 0.0f; },
 	},
 	{
+		"Hands", "Walk direction", "The left stick walks where the head, a hand, or head and stick hand together point",
+		ItemKind::Number, 0.0f, static_cast<float>(vr::kWalkDirectionCount - 1), 1.0f, 0, false,
+		"Hands", "WalkDirection",
+		+[](const Config& c) { return static_cast<float>(c.hands.walkDirection); },
+		+[](Config& c, float v) { c.hands.walkDirection = vr::WalkDirectionFromIndex(v); },
+		"", "", SettingAction::None, vr::kWalkDirectionNames, vr::kWalkDirectionCount,
+	},
+	{
 		"Hands", "Laser tilt", "Degrees the laser leaves the controller turned down",
 		ItemKind::Number, -90.0f, 90.0f, 5.0f, 0, false,
 		"Hands", "LaserPitchDegrees",
@@ -1010,6 +1018,8 @@ MenuItem ItemFor(const SettingDefinition& definition, const Config& config) {
 	item.maximum = definition.maximum;
 	item.step = definition.step;
 	item.decimals = definition.decimals;
+	item.valueNames = definition.valueNames;
+	item.valueNameCount = definition.valueNameCount;
 	item.needsRestart = definition.needsRestart;
 
 	// A row with no reader is a half-finished table entry. Showing it at its

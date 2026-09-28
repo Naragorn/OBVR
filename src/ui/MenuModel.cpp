@@ -261,6 +261,17 @@ void FormatValue(const MenuItem& item, char* out, UInt32 size) {
 		return;
 	}
 
+	// A choice: its name, when the value is one of the named ones.
+	if (item.valueNames != nullptr) {
+		const float index = item.value - item.minimum + 0.5f;
+		if (index >= 0.0f && index < static_cast<float>(item.valueNameCount) &&
+		    item.valueNames[static_cast<UInt32>(index)] != nullptr) {
+			const UInt32 at = Append(out, size, 0, item.valueNames[static_cast<UInt32>(index)]);
+			out[at] = '\0';
+			return;
+		}
+	}
+
 	const SInt32 scale = PowerOfTen(item.decimals);
 
 	// Scaled and rounded in one step, half away from zero. Done on the value

@@ -61,6 +61,12 @@ struct MenuItem {
 	// it could be 1.5.
 	UInt32 decimals = 2;
 
+	// A Number row whose values are choices: the name shown (and written to
+	// the INI) for each whole value from the minimum on. Null for a plain
+	// number.
+	const char* const* valueNames = nullptr;
+	UInt32 valueNameCount = 0;
+
 	// True when the setting only takes effect on the next start - the render
 	// size and what is decided with it. The menu says so on the row rather
 	// than letting somebody change it and conclude OBVR is broken.
