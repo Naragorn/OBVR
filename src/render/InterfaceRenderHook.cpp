@@ -1074,6 +1074,7 @@ bool g_bareHands = false;
 float g_insideBrightness = kInsideBrightnessDefault;
 UInt32 g_insideBlendFactor = InsideBlendFactor(kInsideBrightnessDefault);
 UInt32 g_backfaceReportsLeft = 3;
+UInt32 g_backfaceTraceLeft = 0;
 UInt32 g_flatReportsLeft = 8;
 
 // The lid's pixel shaders, one per shader model, made on first use for the
@@ -1270,6 +1271,11 @@ void DrawBackfacesAfter(void* device, UInt32 type, SInt32 baseVertexIndex, UInt3
 	getState(device, d3d9::kRenderStateColorWriteEnable, &colorWrite);
 	const UInt32 reversed = BackfaceCullFor(true, true, cull, blend != 0, colorWrite);
 	if (reversed == 0) {
+		if (g_backfaceTraceLeft > 0) {
+			--g_backfaceTraceLeft;
+			OBVR_LOG("Closed hands trace: a first-person draw (%u triangles, cull %u, blend %u, colour write %X) "
+			         "gets no back faces", primCount, cull, blend, colorWrite);
+		}
 		return;
 	}
 	if (device != g_insideShaderDevice) {
@@ -1332,6 +1338,13 @@ void DrawBackfacesAfter(void* device, UInt32 type, SInt32 baseVertexIndex, UInt3
 	}
 	g_originalSetState(device, d3d9::kRenderStateCullMode, cull);
 	g_originalSetState(device, d3d9::kRenderStateColorWriteEnable, colorWrite);
+	if (g_backfaceTraceLeft > 0) {
+		--g_backfaceTraceLeft;
+		OBVR_LOG("Closed hands trace: a first-person draw (%u triangles, cull %u, blend %u) - back faces %s, "
+		         "colour %u/%u/%u, bare %d%s", primCount, cull, blend,
+		         kind == InsideKind::Flat ? "flat" : "darkened", average.r, average.g, average.b,
+		         g_bareHands ? 1 : 0, result < 0 ? " - the draw FAILED" : "");
+	}
 	if (g_backfaceReportsLeft > 0) {
 		--g_backfaceReportsLeft;
 		if (kind == InsideKind::Flat) {
@@ -3024,5 +3037,7 @@ void SetFirstPersonBackfaces(bool enabled, float brightness, bool bareHands) {
 	g_insideBrightness = brightness;
 	g_insideBlendFactor = InsideBlendFactor(brightness);
 }
+
+void TraceFirstPersonBackfaces(UInt32 draws) { g_backfaceTraceLeft = draws; }
 
 }  // namespace obvr::render

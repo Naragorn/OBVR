@@ -1,0 +1,41 @@
+# The hand on the bow: with the bow drawn, the left hand holds it and should
+# be closed like any bare hand (the lid, render/BackfacePass.h), not open to
+# look into. The bow drawn from behind the left shoulder, then the left hand
+# held before the eyes, turned, and seen from the wrist's side.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\bow-hand.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands ClosedHands=1
+console player.additem 00025231 1
+console player.equipitem 00025231
+
+expect HandScript: finished
+expect Hands: ready weapon done
+reject HandScript: WARNING
+
+wait 16
+# The left hand behind the left shoulder, and a grip: the bow.
+left pos -0.18 -0.15 0.12
+wait 0.3
+left grip 1
+wait 0.2
+left grip 0
+right pos 0.25 -0.45 -0.2
+left pos -0.05 -0.05 -0.30
+left rot 0 0 0
+wait 3
+mark bow_ahead
+dump
+wait 1
+left rot 0 60 0
+wait 1.5
+mark bow_turned
+dump
+wait 1
+left pos -0.02 0.05 -0.22
+left rot 20 -70 0
+wait 1.5
+mark bow_wrist
+dump
+wait 1

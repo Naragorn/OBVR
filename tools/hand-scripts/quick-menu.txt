@@ -17,8 +17,8 @@ expect the quick menu's picture saved as OBVR-QuickMenu-slot3_lit.bmp
 expect QuickMenu: hotkey 3 used
 reject HandScript: WARNING
 
-# Time for the runner to type the console line.
-wait 9
+# Time for the runner to type the console lines and the console to close.
+wait 16
 mark standing
 right pos 0.15 -0.30 -0.35
 wait 0.3

@@ -328,5 +328,8 @@ void ArmBetweenTrace();
 // `bareHands` one flat colour, the texture's average times `brightness` (the
 // lid). Set each frame by the camera hook.
 void SetFirstPersonBackfaces(bool enabled, float brightness, bool bareHands);
+// Logs the next `draws` first-person draws and their back faces (the hand
+// script's marks).
+void TraceFirstPersonBackfaces(UInt32 draws);
 
 }  // namespace obvr::render

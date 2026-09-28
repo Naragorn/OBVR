@@ -1214,6 +1214,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		// (BackfacePass.h).
 		render::SetFirstPersonBackfaces(config.hands.closedHands, config.hands.closedHandsBrightness,
 		                                config.hands.closedHands && game::FirstPersonHandsBare());
+		if (test::HandScriptMarkedThisFrame()) {
+			render::TraceFirstPersonBackfaces(16);
+		}
 		// Held objects may come up to the mouth and the body (GrabNearBody.h).
 		game::AllowGrabNearBody(true);
 		// The real controllers in the eyes while the hands are being adjusted.
@@ -1505,22 +1508,22 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 	}
 	// Drawing and sheathing without the animation's second (game::StepWeaponDrawSpeed):
-	// the Equip and Unequip sequences play WeaponDrawSpeed times faster.
+	// the Equip and Unequip sequences' time runs WeaponDrawSpeed times faster.
 	{
 		static UInt32 s_drawLinesLeft = 60;
 		const game::WeaponDrawSpeedReport draw =
 			game::StepWeaponDrawSpeed(config.hands.weaponDrawSpeed, active);
-		if ((draw.newlyHastened > 0 || draw.restored > 0) && s_drawLinesLeft > 0) {
+		if ((draw.newlyHastened > 0 || draw.released > 0 || draw.blendsShortened > 0) && s_drawLinesLeft > 0) {
 			--s_drawLinesLeft;
 			if (draw.newlyHastened > 0) {
-				OBVR_LOG("Hands: the %s animation plays %.0fx faster (%u sequence(s), its own speed "
-				         "%.2f)",
+				OBVR_LOG("Hands: the %s animation's time runs %.0fx faster (%u sequence(s))",
 				         draw.group == 17 ? "draw" : "sheathe",
-				         static_cast<double>(config.hands.weaponDrawSpeed), draw.hastened,
-				         static_cast<double>(draw.originalFreq));
+				         static_cast<double>(config.hands.weaponDrawSpeed), draw.hastened);
+			} else if (draw.blendsShortened > 0) {
+				OBVR_LOG("Hands: %u draw or sheathe blend(s) shortened %.0fx", draw.blendsShortened,
+				         static_cast<double>(config.hands.weaponDrawSpeed));
 			} else {
-				OBVR_LOG("Hands: %u draw or sheathe sequence(s) given their own speed back",
-				         draw.restored);
+				OBVR_LOG("Hands: %u draw or sheathe sequence(s) done", draw.released);
 			}
 		}
 	}
