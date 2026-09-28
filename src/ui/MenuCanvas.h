@@ -88,6 +88,12 @@ public:
 	void DrawIcon(SInt32 x, SInt32 y, const char* const* rows, UInt32 rowCount, SInt32 scale,
 	              render::Pixel ink, render::Pixel accent);
 
+	// A picture of width x height pixels (rows adjacent, in the canvas's own
+	// channel order) laid over what is there, its alpha deciding how much it
+	// covers (BlendOver), clipped. Null draws nothing. The quick menu's item
+	// icons.
+	void BlendImage(SInt32 x, SInt32 y, const render::Pixel* image, UInt32 width, UInt32 height);
+
 	// One pixel, clipped. The primitive the others are built from, exposed
 	// because a test that wants to know what got drawn reads it back.
 	void SetPixel(SInt32 x, SInt32 y, render::Pixel colour);
@@ -99,6 +105,11 @@ private:
 	UInt32 m_height = 0;
 	UInt32 m_stride = 0;
 };
+
+// `over` laid on `under`: "source over", both alphas straight (not
+// premultiplied), in whole numbers. Opaque covers, clear leaves it; between,
+// the colours mix in proportion to what each adds and the alphas add up.
+render::Pixel BlendOver(render::Pixel under, render::Pixel over);
 
 // The same colour with its red and blue swapped.
 //

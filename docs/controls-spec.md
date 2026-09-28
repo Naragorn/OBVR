@@ -319,10 +319,26 @@ in the headset yet.
   - Checked in the game (docs/hand-script-harness.md): an Iron Longsword set
     on hotkey 3 read back as "3 Iron Longsword". Using slot 3 from the ring
     made the game say "Iron Longsword equipped."
+- **Icons (built 2026-09-28).** Each slot shows the game's own icon above its
+  name, the file the inventory and the magic menu show.
+  - The path: an item's TESIcon, armour's and clothing's male icon
+    (TESBipedModelForm), a spell's first effect's icon (`game::ReadIconPath`,
+    addresses in `GameAddresses.h`). Under `Textures\Menus\Icons\`, TESIcon's
+    own prefix (0x0046CAA0).
+  - The file: opened through the engine's NiFile::GetFile (0x00748100), so
+    loose files and archives count the way the game finds them, and read
+    through the stream's read procedure.
+  - Decoded on the CPU (`render::DecodeDds`: DXT1, DXT3, DXT5, bit-masked
+    RGB(A)) - every format the vanilla icons use, counted in both vanilla
+    texture archives. Fitted to 64 pixels and kept, 24 at a time
+    (`game::ItemIcon`). Tests: `icon_test`, `quick_menu_painter_test`.
+  - Checked outside the game: real vanilla icons (DXT3, DXT5, 16- and 32-bit)
+    decoded and painted into the ring by the painter. Not yet run in the
+    game: the engine's file opener, the casts, and which icon a spell shows.
+  - A spell shows its first effect's icon. Whether the magic menu picks the
+    same effect (the first, or the costliest) was not looked up.
+  - `[Hands] QuickMenuIcons=0` goes back to numbers and names only.
 - **Not built yet.**
-  - Icons. The names and numbers are drawn in OBVR's own pixel font. The
-    game's icons are DDS files inside the BSAs, and drawing them needs a
-    loader OBVR does not have.
   - Wait in the middle of the ring.
 - **The game's own ring instead?** Tried in the game on 2026-09-27
   (`vanilla-quickkeys.txt`, `vanilla-quickkeys-menu.txt`, menus mirrored to
@@ -337,9 +353,8 @@ in the headset yet.
     using them.
   - So there is no vanilla ring to show. Opening 0x416 ourselves in the
     world would pause the game on an assignment screen.
-  - What would carry the vanilla look into OBVR's ring is the game's own item
-    and spell icons. They are DDS textures in the BSAs, which the game's
-    texture loader can open. Not built.
+  - What carries the vanilla look into OBVR's ring is the game's own item
+    and spell icons, built since (the icons above).
 - **Needs the action manifest.** On the legacy input path the right
   trackpad's click cannot be told from the stick's click
   (`NormalizeLegacyButtons`), so there it readies the weapon instead.

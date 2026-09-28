@@ -62,6 +62,7 @@ add_library(OBVR SHARED
 	src/platform/UpdateFetch.cpp
 	src/render/CursorPickHook.cpp
 	src/render/CursorProbe.cpp
+	src/render/DdsImage.cpp
 	src/render/EyeGeometry.cpp
 	src/render/EyeMirror.cpp
 	src/render/UiScreenSize.cpp
@@ -93,6 +94,7 @@ add_library(OBVR SHARED
 	src/game/GrabNearBody.cpp
 	src/game/NearbyItems.cpp
 	src/game/QuickKeys.cpp
+	src/game/ItemIcons.cpp
 	src/game/TakeItem.cpp
 	src/game/WeaponDrawSpeed.cpp
 	src/game/TeleportNoise.cpp

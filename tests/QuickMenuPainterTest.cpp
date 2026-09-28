@@ -99,7 +99,7 @@ void TestPaint() {
 
 	// The frame of the empty slot 5, at the bottom: its top-left corner.
 	const SInt32 edgeX = c - 80;
-	const SInt32 edgeY = c + kQuickMenuRingPixels - 40;
+	const SInt32 edgeY = c + kQuickMenuRingPixels - kQuickMenuBoxHeight / 2;
 	Check(!Same(canvas.GetPixel(edgeX, edgeY), gold), "using: an empty slot's edge is grey");
 	bool labelInk = false;
 	for (SInt32 y = c + 24; y < c + 24 + 20 && !labelInk; ++y) {
@@ -118,6 +118,45 @@ void TestPaint() {
 		}
 	}
 	Check(labelInk, "setting: \"Set hotkey\" written under the middle");
+}
+
+void TestIcons() {
+	std::printf("The icons\n");
+	std::vector<render::Pixel> pixels(kQuickMenuCanvas * kQuickMenuCanvas);
+	Canvas canvas(pixels.data(), kQuickMenuCanvas, kQuickMenuCanvas);
+	const SInt32 c = static_cast<SInt32>(kQuickMenuCanvas) / 2;
+	std::vector<render::Pixel> red(kQuickMenuIconSide * kQuickMenuIconSide, render::Pixel{0, 0, 255, 255});
+	std::vector<render::Pixel> clear(kQuickMenuIconSide * kQuickMenuIconSide, render::Pixel{0, 0, 0, 0});
+	QuickMenuView view;
+	for (int i = 0; i < 8; ++i) {
+		view.filled[i] = i != 4;
+		std::snprintf(view.names[i], sizeof(view.names[i]), "Item %d", i + 1);
+	}
+	view.icons[0] = red.data();    // slot 1, at the top
+	view.icons[4] = red.data();    // slot 5, empty: not drawn
+	view.icons[6] = clear.data();  // slot 7, at the left: a clear picture
+	PaintQuickMenu(canvas, view);
+	// A box's icon place: centred, kQuickMenuBoxHeight / 2 - 6 above the
+	// slot's centre at its top.
+	const SInt32 iconCentreDy = -kQuickMenuBoxHeight / 2 + 6 + static_cast<SInt32>(kQuickMenuIconSide) / 2;
+	Check(Same(canvas.GetPixel(c, c - kQuickMenuRingPixels + iconCentreDy), render::Pixel{0, 0, 255, 255}),
+	      "a filled slot's icon at the top of its box");
+	Check(canvas.GetPixel(c, c + kQuickMenuRingPixels + iconCentreDy).a == 120,
+	      "an empty slot draws no icon, even with one given");
+	Check(canvas.GetPixel(c - kQuickMenuRingPixels, c + iconCentreDy).a == 215,
+	      "a clear icon leaves the panel");
+	Check(canvas.GetPixel(c + kQuickMenuRingPixels, c + iconCentreDy).a == 215,
+	      "no icon: the place stays the panel");
+	// The name under the icon: ink in the lines below it, centred.
+	bool nameInk = false;
+	const SInt32 nameTop = c - kQuickMenuRingPixels + iconCentreDy + static_cast<SInt32>(kQuickMenuIconSide) / 2 + 6;
+	const render::Pixel text = SwapRedAndBlue(render::Pixel{235, 222, 196, 255});
+	for (SInt32 y = nameTop; y < nameTop + 14 && !nameInk; ++y) {
+		for (SInt32 x = c - 40; x < c + 40; ++x) {
+			nameInk = nameInk || Same(canvas.GetPixel(x, y), text);
+		}
+	}
+	Check(nameInk, "the name written under the icon");
 }
 
 void TestStowSpot() {
@@ -145,6 +184,7 @@ int main() {
 	TestStowSpot();
 	TestSplit();
 	TestPaint();
+	TestIcons();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

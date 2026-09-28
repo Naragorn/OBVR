@@ -1438,6 +1438,47 @@ inline constexpr UInt32 kRttiTESForm = 0x00B02F9C;
 inline constexpr UInt32 kRttiTESFullName = 0x00B03298;
 inline constexpr UInt32 kFullNameStringOffset = 0x04;
 
+// A form's icon, the path under Textures\Menus\Icons\ (research 2026-09-28,
+// xOBSE GameForms.h and Commands_Inventory.cpp:2518-2553, the engine read
+// with dumpbin):
+// - TESIcon (TESTexture: vtable, BSStringT ddsPath at +4) on weapons, misc
+//   items, books, ingredients, potions and the rest: a dynamic cast to it.
+//   Its prefix is TESIcon's virtual at 0x0046CAA0, `mov eax,0A3C040h`, the
+//   string "Textures\Menus\Icons\".
+// - TESBipedModelForm on armour and clothing: icon[2] (male, female) at
+//   +0x68, each a TESIcon of 0xC bytes, so the male path at +0x6C.
+// - A spell has neither: EffectItemList (a dynamic cast; vtable, then the
+//   first list entry {EffectItem*, next} at +4), EffectItem::setting at
+//   +0x1C, and the EffectSetting's own TESIcon (a dynamic cast again).
+inline constexpr UInt32 kRttiTESIcon = 0x00B031B8;
+inline constexpr UInt32 kRttiTESBipedModelForm = 0x00B036DC;
+inline constexpr UInt32 kRttiEffectItemList = 0x00B032B4;
+inline constexpr UInt32 kIconPathOffset = 0x04;
+inline constexpr UInt32 kBipedMaleIconPathOffset = 0x6C;
+inline constexpr UInt32 kBipedFemaleIconPathOffset = 0x78;
+inline constexpr UInt32 kEffectListFirstItemOffset = 0x04;
+inline constexpr UInt32 kEffectListFirstNextOffset = 0x08;
+inline constexpr UInt32 kEffectItemSettingOffset = 0x1C;
+
+// Opening a game file the way the engine does, loose or from an archive:
+// NiFile::GetFile, cdecl (path, mode, buffer size), a `jmp [0x00B27E4C]` at
+// 0x00748100 that the game points at its archive-aware opener (xOBSE
+// Commands_Array.cpp:23, "BSFile* LoadFile(char* path, UInt32 arg1, UInt32
+// arg2)"). The engine's own reads call it with mode 0 and 0x2800 or 0x8000
+// (0x006F9991, 0x0071E4E1); mode 1 at 0x006F99FB writes.
+// - The file's vtable: +0 the destructor, called with 1 to free it
+//   (0x006F99DF); +4 whether it opened (0x0071E500, `test al,al` after).
+// - Reading is the stream's read procedure at +4, cdecl (stream, buffer,
+//   bytes, component sizes, component count), answering the bytes read: the
+//   engine's call at 0x00730A67-0x00730A7F (`push 1; lea ecx..; push 4; push
+//   esi; push eax; call edx; add esp,14h`), and NiFile's own procedure
+//   0x00747FF0 forwarding buffer and bytes to 0x00747E80.
+inline constexpr UInt32 kNiFileGetFile = 0x00748100;
+inline constexpr UInt32 kNiFileReadMode = 0;
+inline constexpr UInt32 kNiFileBufferBytes = 0x8000;
+inline constexpr UInt32 kNiFileGoodSlot = 0x04;
+inline constexpr UInt32 kNiFileReadProcOffset = 0x04;
+
 // Actor::EquipItem(TESForm* item, UInt32 count, ExtraDataList* xData, UInt32
 // unk3, bool lockEquip), __thiscall, `ret 14h` at 0x005FB9A1 (xOBSE
 // GameObjects.cpp:21, 35-37). The vanilla EquipItem command's handler

@@ -44,6 +44,9 @@ struct QuickMenuSettings {
 	// The ring's radius: how far from the middle the slots are drawn, and so
 	// about how far the hand moves to one.
 	float ringMetres = 0.10f;
+	// The game's own item and spell icons on the slots (game/ItemIcons.h);
+	// off, the slots show the number and the name only, as before.
+	bool icons = true;
 	// Setting a hotkey in a menu: how long the number key is down before the
 	// click, how long the click, how long the key stays down after it.
 	float assignLeadSeconds = 0.20f;

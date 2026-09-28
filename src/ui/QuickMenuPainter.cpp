@@ -24,9 +24,11 @@ constexpr render::Pixel kText = Colour(235, 222, 196, 255);
 constexpr render::Pixel kTextDark = Colour(30, 22, 14, 255);
 constexpr render::Pixel kTextDim = Colour(140, 130, 115, 255);
 
-constexpr SInt32 kBoxWidth = 160;
-constexpr SInt32 kBoxHeight = 80;
+constexpr SInt32 kBoxWidth = kQuickMenuBoxWidth;
+constexpr SInt32 kBoxHeight = kQuickMenuBoxHeight;
 constexpr SInt32 kPad = 8;
+constexpr SInt32 kIconTop = 6;
+constexpr SInt32 kIcon = static_cast<SInt32>(kQuickMenuIconSide);
 constexpr SInt32 kNameScale = 2;
 constexpr SInt32 kNumberScale = 3;
 
@@ -95,13 +97,23 @@ void PaintQuickMenu(Canvas& canvas, const QuickMenuView& view) {
 		const char number[2] = {static_cast<char>('1' + slot), '\0'};
 		const render::Pixel ink = lit ? kTextDark : (filled ? kText : kTextDim);
 		canvas.DrawText(x + kPad, y + kPad, number, kNumberScale, ink);
+		if (filled) {
+			canvas.BlendImage(x + (kBoxWidth - kIcon) / 2, y + kIconTop, view.icons[slot], kQuickMenuIconSide,
+			                  kQuickMenuIconSide);
+		}
 		char first[40];
 		char second[40];
 		SplitName(filled ? view.names[slot] : "-", perLine, first, second);
-		const SInt32 lineY = y + kPad + static_cast<SInt32>(kGlyphHeight) * kNumberScale + 6;
-		canvas.DrawText(x + kPad, lineY, first, kNameScale, ink);
-		canvas.DrawText(x + kPad, lineY + static_cast<SInt32>(kLineAdvance) * kNameScale, second,
-		                kNameScale, ink);
+		// The name under the icon's place, each line centred; with no icon the
+		// place stays empty, so every slot reads the same way.
+		const SInt32 lineY = y + kIconTop + kIcon + 6;
+		const char* const lines[2] = {first, second};
+		for (int line = 0; line < 2; ++line) {
+			const SInt32 width = static_cast<SInt32>(TextWidth(lines[line])) * kNameScale;
+			canvas.DrawText(x + (kBoxWidth - width) / 2,
+			                lineY + line * static_cast<SInt32>(kLineAdvance) * kNameScale, lines[line],
+			                kNameScale, ink);
+		}
 	}
 }
 

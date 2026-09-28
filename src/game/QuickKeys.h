@@ -11,6 +11,9 @@ struct QuickKeySlot {
 	bool filled = false;
 	UInt8 formType = 0;
 	char name[40] = "";
+	// The form's icon path, relative to Textures\Menus\Icons\ (game/ItemIcons.h);
+	// empty when it has none.
+	char iconPath[128] = "";
 };
 
 constexpr int kQuickKeyCount = 8;

@@ -13,7 +13,9 @@ buttons = {
     for hand in ("left", "right")
     for action in ("stick_click", "a", "b", "grip", "trackpad", "trigger", "stick")
 }
-assert names == buttons, sorted(names ^ buttons)
+# The hands' skeletons, for the finger curls a fist is read from.
+skeletons = {f"/actions/obvr/in/{hand}_skeleton" for hand in ("left", "right")}
+assert names == buttons | skeletons, sorted(names ^ (buttons | skeletons))
 assert {binding["controller_type"] for binding in manifest["default_bindings"]} == {
     "knuckles",
     "oculus_touch",

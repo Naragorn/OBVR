@@ -1028,3 +1028,18 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME stow COMMAND stow_test)
+
+add_executable(icon_test
+	IconTest.cpp
+	../src/render/DdsImage.cpp
+	../src/ui/MenuCanvas.cpp
+	../src/ui/MenuFont.cpp
+)
+
+target_include_directories(icon_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(icon_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME icon COMMAND icon_test)

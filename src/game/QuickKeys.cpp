@@ -4,6 +4,7 @@
 
 #include "core/AddressSpace.h"
 #include "game/GameAddresses.h"
+#include "game/ItemIcons.h"
 
 namespace obvr::game {
 namespace {
@@ -59,6 +60,7 @@ void ReadQuickKeys(QuickKeySlot (&slots)[kQuickKeyCount]) {
 		slot.filled = true;
 		slot.formType = *reinterpret_cast<const UInt8*>(form + addr::kFormTypeOffset);
 		ReadFullName(form, slot.name, sizeof(slot.name));
+		ReadIconPath(form, slot.iconPath, sizeof(slot.iconPath));
 	}
 }
 

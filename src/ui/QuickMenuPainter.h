@@ -14,7 +14,18 @@ struct QuickMenuView {
 	// Opened in the inventory or the magic menu: the ring sets a hotkey, so
 	// every slot can be chosen and the middle says so.
 	bool assigning = false;
+	// Each slot's icon, kQuickMenuIconSide square in the texture's channel
+	// order (game/ItemIcons.h), or null: the slot shows its number and name
+	// only. Borrowed, not owned.
+	const render::Pixel* icons[8] = {};
 };
+
+// The icon's side in pixels, drawn one to one.
+inline constexpr UInt32 kQuickMenuIconSide = 64;
+// A slot's box: the number at its top left, the icon at the top in the
+// middle, the name in two lines under it.
+inline constexpr SInt32 kQuickMenuBoxWidth = 160;
+inline constexpr SInt32 kQuickMenuBoxHeight = 116;
 
 // The words in the middle of the setting ring.
 inline constexpr const char* kQuickMenuAssignLabel = "Set hotkey";

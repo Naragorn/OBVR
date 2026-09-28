@@ -11,7 +11,7 @@ settings=parse(base/'generic/OBVR_Settings.xml')
 assert sorted(int(x.text) for x in onboarding.iter('id'))==[9101,9102]
 assert '(OBVR)' in onboarding.find('.//text[@name="title"]/string').text
 assert 'Decide later' not in (base/'generic/OBVR_Onboarding.xml').read_text()
-expected=[9201,9202,9203,9299]+list(range(9300,9321))
+expected=[9201,9202,9203,9204,9299]+list(range(9300,9321))
 assert sorted(int(x.text) for x in settings.iter('id'))==sorted(expected)
 assert settings.find('.//rect[@name="close"]/id').text=='9299'
 reset=settings.find('.//rect[@name="reset"]')

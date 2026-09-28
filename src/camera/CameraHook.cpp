@@ -53,6 +53,7 @@
 #include "game/NearbyItems.h"
 #include "game/MeleeHit.h"
 #include "game/QuickKeys.h"
+#include "game/ItemIcons.h"
 #include "game/TeleportNoise.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
@@ -730,6 +731,9 @@ UInt32 g_activateWithheldLinesLeft = 12;
 ui::CanvasOverlay g_quickMenuLayer("obvr.quickmenu", "OBVR Quick Menu", ui::kQuickMenuCanvas,
                                    ui::kQuickMenuCanvas);
 ui::QuickMenuView g_quickMenuView;
+// Each slot's icon path, the way the view's icon was asked for.
+char g_quickMenuIconPaths[game::kQuickKeyCount][128] = {};
+static_assert(ui::kQuickMenuIconSide == game::kItemIconSide, "the ring draws the icons one to one");
 UInt32 g_quickMenuRevision = 1;
 vr::openvr::HmdMatrix34 g_quickMenuPose{};
 UInt32 g_quickMenuLinesLeft = 30;
@@ -772,10 +776,23 @@ void UpdateQuickMenu(const Config& config, vr::OpenVRBackend& backend, bool allo
 		game::ReadQuickKeys(slots);
 		for (int i = 0; i < game::kQuickKeyCount; ++i) {
 			in.filled[i] = slots[i].filled;
+			const char* const iconPath = config.hands.quickMenu.icons ? slots[i].iconPath : "";
 			if (g_quickMenuView.filled[i] != slots[i].filled ||
-			    std::strcmp(g_quickMenuView.names[i], slots[i].name) != 0) {
+			    std::strcmp(g_quickMenuView.names[i], slots[i].name) != 0 ||
+			    std::strcmp(g_quickMenuIconPaths[i], iconPath) != 0) {
 				g_quickMenuView.filled[i] = slots[i].filled;
 				strncpy_s(g_quickMenuView.names[i], slots[i].name, _TRUNCATE);
+				strncpy_s(g_quickMenuIconPaths[i], iconPath, _TRUNCATE);
+				++g_quickMenuRevision;
+			}
+		}
+		// Asked for every time: the cache keeps what was asked for last, so
+		// the eight shown are never the ones it lets go (game/ItemIcons.h).
+		for (int i = 0; i < game::kQuickKeyCount; ++i) {
+			const render::Pixel* const icon =
+				g_quickMenuView.filled[i] ? game::ItemIcon(g_quickMenuIconPaths[i]) : nullptr;
+			if (icon != g_quickMenuView.icons[i]) {
+				g_quickMenuView.icons[i] = icon;
 				++g_quickMenuRevision;
 			}
 		}

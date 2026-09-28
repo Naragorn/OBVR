@@ -722,6 +722,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		qm.deadZoneMetres = ReadFloat("Hands", "QuickMenuDeadZoneMetres", qm.deadZoneMetres, path);
 		qm.tapSeconds = ReadFloat("Hands", "QuickMenuTapSeconds", qm.tapSeconds, path);
 		qm.ringMetres = ReadFloat("Hands", "QuickMenuRingMetres", qm.ringMetres, path);
+		qm.icons = ReadBool("Hands", "QuickMenuIcons", qm.icons, path);
 
 		vr::HolsterSettings& hs = h.holster;
 		hs.enabled = ReadBool("Hands", "Holsters", hs.enabled, path);

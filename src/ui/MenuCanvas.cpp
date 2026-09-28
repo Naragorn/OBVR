@@ -152,3 +152,42 @@ void Canvas::DrawText(SInt32 x, SInt32 y, const char* text, SInt32 scale, render
 }
 
 }  // namespace obvr::ui
+
+namespace obvr::ui {
+
+render::Pixel BlendOver(render::Pixel under, render::Pixel over) {
+	const UInt32 a = over.a;
+	if (a == 255) {
+		return over;
+	}
+	if (a == 0) {
+		return under;
+	}
+	const UInt32 keep = 255 - a;
+	// The colour: the picture's where it covers, what was there where it
+	// does not, each in proportion to what it adds.
+	const UInt32 underWeight = under.a * keep / 255;
+	const UInt32 total = a + underWeight;
+	return render::Pixel{static_cast<UInt8>((over.r * a + under.r * underWeight) / total),
+	                     static_cast<UInt8>((over.g * a + under.g * underWeight) / total),
+	                     static_cast<UInt8>((over.b * a + under.b * underWeight) / total),
+	                     static_cast<UInt8>(total)};
+}
+
+void Canvas::BlendImage(SInt32 x, SInt32 y, const render::Pixel* image, UInt32 width, UInt32 height) {
+	if (image == nullptr) {
+		return;
+	}
+	for (UInt32 row = 0; row < height; ++row) {
+		for (UInt32 column = 0; column < width; ++column) {
+			const SInt32 px = x + static_cast<SInt32>(column);
+			const SInt32 py = y + static_cast<SInt32>(row);
+			if (px < 0 || py < 0 || static_cast<UInt32>(px) >= m_width || static_cast<UInt32>(py) >= m_height) {
+				continue;
+			}
+			SetPixel(px, py, BlendOver(GetPixel(px, py), image[row * width + column]));
+		}
+	}
+}
+
+}  // namespace obvr::ui
