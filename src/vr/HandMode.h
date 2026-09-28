@@ -147,6 +147,11 @@ struct HandSettings {
 	bool heldObjectsPush = true;
 	// The weapon and the hands push the objects they meet (game/WorldPush.h).
 	bool pushWorld = true;
+	// The hands and the drawn melee weapon as keyframed Havok bodies
+	// (game/HandBodies.h); PushWorld's rays then only cover what has no body.
+	bool bodyCollision = true;
+	// The physics step in Hz, 0 the game's own 60 (game/HandBodyLogic.h).
+	float physicsRate = 0.0f;
 	// How far each finger link bends while the hand holds something, degrees
 	// (game::HandGrip); negative bends the other way, 0 leaves the hand open.
 	float gripCurlDegrees = 45.0f;

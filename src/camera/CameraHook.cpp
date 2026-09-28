@@ -47,6 +47,7 @@
 #include "game/ControlBindings.h"
 #include "game/GrabPhysics.h"
 #include "game/WorldPush.h"
+#include "game/HandBodies.h"
 #include "game/TakeItem.h"
 #include "game/WeaponDrawSpeed.h"
 #include "game/GrabNearBody.h"
@@ -1169,6 +1170,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		game::ForgetStrikes();
 		game::SetMenuCursorHidden(false);
 		game::StepGrabPhysics(false, 0.0f, false, NiPoint3{0.0f, 0.0f, 0.0f}, g_deltaSeconds, false);
+		game::StepHandBodies(game::HandBodyFrame{});  // out of the world
 		g_hand = vr::HandModeResult{};
 		g_reachIconShown = false;
 		g_nearItem = game::NearItem{};
@@ -1577,6 +1579,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			         static_cast<double>(feet.x), static_cast<double>(feet.y), static_cast<double>(feet.z),
 			         static_cast<double>(turned.yaw * math::kRadiansToDegrees));
 		}
+		game::LogHandBodies();
 		OBVR_LOG("HandScript: state - world %d, menu %d, third person %d, head %d at %.2f %.2f "
 		         "%.2f, right %d at %.2f %.2f %.2f stick %.2f %.2f, left %d, camera %d, hand "
 		         "pinned %d, teleport allowed %d aiming %d commit %d, weapon %d (slot %d), active menu %s, laser hit %d at %.0f,%.0f, cursor %d at %.0f,%.0f, top menu %s",
@@ -1975,11 +1978,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// weapon hand's blade while a melee weapon is drawn, else the hand; the
 	// other hand always. In the world only, in first person, not in a menu.
 	{
-		const bool pushing = active && config.hands.pushWorld && !menuIsUp && frame.inWorld &&
-		                     frame.firstPerson && g_cyclopeanCameraWorldValid;
+		const bool inPlace =
+			active && !menuIsUp && frame.inWorld && frame.firstPerson && g_cyclopeanCameraWorldValid;
+		const bool pushing = inPlace && config.hands.pushWorld;
 		game::PushFrame push;
 		push.dtSeconds = g_deltaSeconds;
-		if (pushing) {
+		if (inPlace && (config.hands.pushWorld || config.hands.bodyCollision)) {
 			const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
 			const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
 			const int weapon = static_cast<int>(game::Pusher::WeaponHand);
@@ -2005,6 +2009,41 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				push.valid[other] = true;
 				push.segment[other] = game::HandSegment(grip, forward);
 			}
+		}
+		// The hands and the drawn melee weapon as Havok bodies
+		// (game/HandBodies.h); the rays below then only cover what has none.
+		game::HandBodyFrame bodies;
+		bodies.enabled = inPlace && config.hands.bodyCollision;
+		bodies.physicsRate = config.hands.physicsRate;
+		bodies.dtSeconds = g_deltaSeconds;
+		bool bodyBlade = false;
+		if (bodies.enabled) {
+			const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+			const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
+			if (g_hand.rightHandValid) {
+				bodyBlade = push.blade[static_cast<int>(game::Pusher::WeaponHand)];
+				const int slot = static_cast<int>(bodyBlade ? game::HandBodySlot::Weapon : game::HandBodySlot::RightHand);
+				bodies.valid[slot] = true;
+				bodies.rot[slot] = camRot * g_hand.rightHandRotation;
+				bodies.pos[slot] = camPos + camRot * g_hand.rightHandOffsetUnits;
+				if (bodyBlade) {
+					const game::PushSegment& s = push.segment[static_cast<int>(game::Pusher::WeaponHand)];
+					bodies.bladeUnits = math::Sqrt((s.b - s.a).LengthSquared());
+				}
+			}
+			if (g_hand.leftHandValid) {
+				const int slot = static_cast<int>(game::HandBodySlot::LeftHand);
+				bodies.valid[slot] = true;
+				bodies.rot[slot] = camRot * g_hand.leftHandRotation;
+				bodies.pos[slot] = camPos + camRot * g_hand.leftHandOffsetUnits;
+			}
+		}
+		const game::HandBodyReport live = game::StepHandBodies(bodies);
+		if (live.live[static_cast<int>(bodyBlade ? game::HandBodySlot::Weapon : game::HandBodySlot::RightHand)]) {
+			push.valid[static_cast<int>(game::Pusher::WeaponHand)] = false;
+		}
+		if (live.live[static_cast<int>(game::HandBodySlot::LeftHand)]) {
+			push.valid[static_cast<int>(game::Pusher::OtherHand)] = false;
 		}
 		game::StepWorldPush(pushing, push);
 	}
@@ -6628,6 +6667,7 @@ bool Install() {
 	InstallCastHook();
 	game::InstallAimAtSource();
 	game::InstallTeleportNoise();
+	game::VerifyHandBodyAddresses();
 	game::InstallPlayerStagger();
 	game::InstallPlayerLookAt();
 	game::InstallWorldPickHook();

@@ -1113,3 +1113,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME teleport_noise COMMAND teleport_noise_test)
+
+add_executable(hand_body_test HandBodyTest.cpp)
+
+target_include_directories(hand_body_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(hand_body_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME hand_body COMMAND hand_body_test)

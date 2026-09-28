@@ -565,6 +565,20 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.pushWorld = v != 0.0f; },
 	},
 	{
+		"Hands", "Hand collision", "Hands and weapon are physics bodies: they push, tip and hold objects",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "BodyCollision",
+		+[](const Config& c) { return c.hands.bodyCollision ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.bodyCollision = v != 0.0f; },
+	},
+	{
+		"Hands", "Physics rate", "Physics steps a second; 0 keeps the game's 60. 90 matches the headset, costs more",
+		ItemKind::Number, 0.0f, 180.0f, 10.0f, 0, false,
+		"Hands", "PhysicsRate",
+		+[](const Config& c) { return c.hands.physicsRate; },
+		+[](Config& c, float v) { c.hands.physicsRate = v; },
+	},
+	{
 		"Hands", "Reach tooltip", "The tooltip icon moves onto what a closed grip would pick up",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "ReachTooltip",

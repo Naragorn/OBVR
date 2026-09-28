@@ -112,6 +112,16 @@ bool g_godModeBefore = false;
 
 }  // namespace
 
+UInt32 PlayerBhkWorld() {
+	const UInt32 player = Read(addr::kPlayerPointer);
+	return LooksLikeObject(player) ? PlayerWorld(player) : 0;
+}
+
+UInt32 PlayerCollisionGroup() {
+	const UInt32 player = Read(addr::kPlayerPointer);
+	return LooksLikeObject(player) ? FilterGroup(PlayerFilter(player, 0)) : kPlayerCollisionGroupFallback;
+}
+
 bool PickWorldSegment(const NiPoint3& from, const NiPoint3& to, WorldPick& out, UInt32 layer) {
 	out = WorldPick{};
 	const UInt32 player = Player();

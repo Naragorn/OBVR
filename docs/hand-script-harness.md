@@ -135,7 +135,8 @@ Rules worth knowing:
 | `tools/hand-scripts/holster-staff.txt` | the same with a staff (Staff of Burden 000912BE) | PASS 2026-09-27 |
 | `tools/hand-scripts/quick-menu-assign.txt` | in the inventory the ring sets slot 5 to the item under the laser; in the world slot 5 then equips it | PASS 2026-09-27: "the hotkeys now: ... 5 Steel Longsword", exactly 1 click, "Steel Longsword equipped." on screen |
 | `tools/hand-scripts/vanilla-quickkeys-assign.txt` | experiment: a number key held and a click on an item sets the hotkey | ran 2026-09-27: slot 5 read "Steel Longsword" |
-| `tools/hand-scripts/stow.txt` | a dropped sword grabbed, brought to the chest and let go goes into the inventory | PASS 2026-09-27: "taken (no owner ...)", the inventory lists it |
+| `tools/hand-scripts/stow.txt` | a dropped sword grabbed, brought to the chest and let go goes into the inventory | PASS 2026-09-27: "taken (no owner ...)", the inventory lists it. FAILS since 2026-09-27 18:44: the save stands the player elsewhere and the hand no longer reaches the sword - new positions needed |
+| `tools/hand-scripts/hand-bodies.txt` | the hands and a drawn sword as keyframed Havok bodies: made, in the player's world, driven, out in a menu, a dropped sword pushed by a hand body alone (PushWorld off), the bodies following into the exterior | PASS 2026-09-28: the sword from 252,-1585 to -162,-1581 |
 | `tools/hand-scripts/stow-owned.txt` | the same sword owned by Baurus first: taken as stolen | PASS 2026-09-27: "taken (owner 00023F2A ...)", the red hand on it in the inventory |
 | `tools/hand-scripts/take-only-by-hand.txt` | TakeOnlyByHand=1: A at the sword is kept from the game, the sword stays; stowing still takes it | PASS 2026-09-27 |
 | `tools/hand-scripts/activate-takes.txt` | the option off: the same A takes the sword | PASS 2026-09-27 |

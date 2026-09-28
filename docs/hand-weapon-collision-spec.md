@@ -1,6 +1,8 @@
 # Hands and weapon as physics bodies (HIGGS-style collision)
 
-Status: **specification, nothing built (2026-09-28).** Addresses are
+Status: **built 2026-09-28 (`[Hands] BodyCollision=1`, game/HandBodies.h),
+harness-tested, not yet tested in the headset.** See "Built" below for what
+differs from this plan and what the harness showed. Addresses are
 Oblivion.exe 1.2.0.416, read with `dumpbin /disasm` from
 `C:\Steam\steamapps\common\Oblivion\Oblivion.exe`. Each finding is marked
 **Read** (seen in the disassembly), **Derived** (concluded from what was
@@ -35,6 +37,105 @@ or statics. A keyframed body has infinite mass, and against a fixed body
 nothing gets resolved. The HIGGS author explains this and chose it on
 purpose ("there is no interaction between 'fixed' objects like walls and
 your hands", reddit.com/r/skyrimvr/comments/100k7jp).
+
+## Built (2026-09-28)
+
+Code: `game/HandBodies.h/.cpp` (the engine calls), `game/HandBodyLogic.h`
+(the decisions, pure, `hand_body_test`), wired in CameraHook next to
+`WorldPush`. Settings: `[Hands] BodyCollision` (default 1, the row "Hand
+collision") and `PhysicsRate` (default 0, the row "Physics rate").
+Scenario: `tools/hand-scripts/hand-bodies.txt`.
+
+What was built, and where it differs from the design below:
+
+- **Three bodies:** the right hand, the left hand, and the drawn melee
+  weapon. While a blade is drawn, the right hand's body is out of the world
+  and the blade's is in. `WorldPush`'s rays still run, but only for a
+  pusher that has no body in the world this frame.
+- **Capsules, not a box for the hands.** One constructor
+  (`bhkCapsuleShape`, 0x00563BB0) serves hands and weapon.
+  - The hand: from 4 units behind the grip to 9 ahead, 2.5 round.
+  - The blade: from the grip to the tip, 1.5 round.
+  - **Read** for the capsule: its data (default 0x00564030) has +0x04 the
+    radius, +0x10 and +0x20 the ends. The constructor builds the hkShape at
+    once (0x008B6B90), at shape+8.
+- **Made as the NIF loader makes a body:**
+  - the factory 0x008A41F0;
+  - the creation block from vtable +0x74, with the cinfo at +0x20: filter,
+    shape, pose, mass 1, motion type 6;
+  - vtable +0x70.
+  - Every body came out with the keyframed motion vtable 0x00A9AE10
+    (harness log).
+- **In and out of the world:** 0x0089F470 to enter or move; vtable +0x60
+  to leave.
+  - A body is in the world only while Full VR runs in first person with no
+    menu. A loading screen is a menu, so the bodies are out before a load
+    tears the world down.
+  - An add the world defers is not asked for again for 5 frames.
+  - A body whose world no longer points back at itself is abandoned, not
+    touched.
+- **References:** OBVR takes one on each wrapper (+4) and never releases
+  it. A weapon body replaced for another blade length is taken out of the
+  world and kept. It leaks a few hundred bytes per weapon change, because
+  the release path of a bhkRigidBody was not read.
+- **The drive:** hard keyframe with gain 1.
+  - Velocity = gap / (the planner's steps × step length this frame), capped
+    at 30 m/s and 75 rad/s.
+  - Placed instead of driven when more than 42 units from the hand.
+  - **Read** from the planner 0x00889810: with `iUpdateType` set, the frame's
+    whole time is split into 1–3 equal steps. With it 0, fixed steps of
+    fMaxTime run and the rest carries over.
+  - The harness game runs the first way: 1 step of the frame time per
+    frame (0.0113–0.0116 s), or 2 on a slow frame.
+  - Derived from that: in that mode `PhysicsRate` changes little, because
+    it only sets the size the planner splits by.
+- **Verified at start-up:** the first bytes of 14 functions, 7 slots of
+  bhkRigidBody's vtable and 2 of the keyframed motion's. The log says
+  "14 functions and 9 table slots match what was read".
+
+**Harness (`hand-bodies.txt`, PASS, 2026-09-28):**
+
+- **Created:** both hands' bodies keyframed, filter 0x00090016 (group 9,
+  layer 22), in the player's world.
+- **Driven:** driven each frame; out of the world in a menu and back in
+  after it.
+- **Pushes:** an Iron Longsword on the floor, PushWorld off, the hand swept
+  over it:
+  - before, the sword lay at 252, -1585;
+  - after, it lay at -162, -1581, about 6 m away.
+  - The scripted sweep is far faster than a hand (1.2 m in one frame on its
+    return passes, which the body is placed across rather than driven),
+    so the distance says nothing about strength. It does say the body
+    alone moved it.
+- **The weapon:** a drawn sword got its own capsule (60, then 75.5 units as
+  the bound settled: one rebuild), and the right hand's body left the
+  world while the sword was drawn.
+- **The exterior:** after `cow Tamriel 0 0`, the bodies stood at the hands
+  in the exterior world.
+- No crash in any of it.
+
+**Observed, not understood:** a body is made at its pose, and the first
+drive finds it there (0.0 units). A few frames later it stands at the
+world's origin (1643 units away) and is placed back. It happens once per
+body, after the first entry into a world. Guess (not checked): the
+deferred add, or the wrapper's own transform, applies later. Risk: a
+body at the origin for a step or two could push what stands there.
+
+**Regression runs with the bodies on (2026-09-28):** `activate-takes`,
+`holster`, `teleport`, `fist` and `quick-menu` PASS. `stow` FAILS, and it
+fails the same way with `BodyCollision=0`. It has failed since the run of
+2026-09-27 18:44: the harness save now stands the player elsewhere, and the
+script's hand no longer reaches the dropped sword (80 units above it). This
+is not caused by the bodies; the scenario needs new hand positions.
+
+**Not tested yet:**
+
+- a load from a save while the bodies are in the world;
+- NPCs touched by a hand;
+- whether activating something behind a hand still works: `activate-takes`
+  PASSES with the bodies on. That run puts the hand beside the sword, not
+  between the eyes and it, so it does not settle the question;
+- the feel in the headset.
 
 ## How HIGGS does it (Skyrim VR, source read)
 

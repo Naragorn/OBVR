@@ -64,6 +64,14 @@ inline constexpr UInt32 kLayerDroppingPick = 31;
 bool PickWorldSegment(const NiPoint3& from, const NiPoint3& to, WorldPick& out,
                       UInt32 layer = kLayerDroppingPick);
 
+// The Havok world the player stands in (the bhkWorld: the interior cell's,
+// or the exterior one), 0 for none. Its hkWorld is at +8.
+UInt32 PlayerBhkWorld();
+
+// The player's collision group, from the character controller's filter
+// (9 when it cannot be read).
+UInt32 PlayerCollisionGroup();
+
 // The player's position (the feet), game units.
 bool ReadPlayerFeet(NiPoint3& out);
 

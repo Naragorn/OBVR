@@ -1,0 +1,283 @@
+# The hands as Havok bodies (docs/hand-weapon-collision-spec.md,
+# game/HandBodies.h): an Iron Longsword dropped ahead, the right hand held
+# level and swept over the floor in rows a tenth of a metre apart (the head level:
+# a y of -2.58 in the script puts the hand 3.6 units over this floor) - the
+# sword is pushed by the hand's body, not by PushWorld's rays (off here).
+# The log says the bodies were made keyframed, put into the player's world
+# and driven; the marks' "items" lines say where the sword lies before and
+# after (moved by the hand's body alone), and "bodies" where each body is.
+# Then a menu (out of the world and back), a drawn sword (its own capsule),
+# and the exterior (the bodies follow into the new world).
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\hand-bodies.txt
+
+ini Hands Enabled=1
+ini Hands BodyCollision=1
+ini Hands PushWorld=0
+console player.additem 00000C0C 1
+console player.drop 00000C0C 1
+
+expect HandScript: finished
+expect Hands: body collision - 14 functions and 9 table slots match what was read
+expect Hands: the right hand's body made
+expect Hands: the right hand's body into the player's world
+expect Hands: the right hand's body driven
+expect Hands: the weapon's body made
+expect Hands: the weapon's body driven
+reject NOT keyframed
+reject do NOT all match
+reject HandScript: WARNING
+
+wait 10
+right rot 0 0 0
+right pos -0.6 -2.58 -0.5
+wait 1
+mark before
+dump
+right pos -0.6 -2.58 -0.5
+wait 0.04
+right pos -0.5 -2.58 -0.5
+wait 0.04
+right pos -0.4 -2.58 -0.5
+wait 0.04
+right pos -0.3 -2.58 -0.5
+wait 0.04
+right pos -0.2 -2.58 -0.5
+wait 0.04
+right pos -0.1 -2.58 -0.5
+wait 0.04
+right pos 0.0 -2.58 -0.5
+wait 0.04
+right pos 0.1 -2.58 -0.5
+wait 0.04
+right pos 0.2 -2.58 -0.5
+wait 0.04
+right pos 0.3 -2.58 -0.5
+wait 0.04
+right pos 0.4 -2.58 -0.5
+wait 0.04
+right pos 0.5 -2.58 -0.5
+wait 0.04
+right pos 0.6 -2.58 -0.5
+wait 0.04
+right pos 0.6 -2.40 -0.5
+wait 0.05
+right pos -0.6 -2.40 -0.5
+wait 0.05
+right pos -0.6 -2.58 -0.6
+wait 0.04
+right pos -0.5 -2.58 -0.6
+wait 0.04
+right pos -0.4 -2.58 -0.6
+wait 0.04
+right pos -0.3 -2.58 -0.6
+wait 0.04
+right pos -0.2 -2.58 -0.6
+wait 0.04
+right pos -0.1 -2.58 -0.6
+wait 0.04
+right pos 0.0 -2.58 -0.6
+wait 0.04
+right pos 0.1 -2.58 -0.6
+wait 0.04
+right pos 0.2 -2.58 -0.6
+wait 0.04
+right pos 0.3 -2.58 -0.6
+wait 0.04
+right pos 0.4 -2.58 -0.6
+wait 0.04
+right pos 0.5 -2.58 -0.6
+wait 0.04
+right pos 0.6 -2.58 -0.6
+wait 0.04
+right pos 0.6 -2.40 -0.6
+wait 0.05
+right pos -0.6 -2.40 -0.6
+wait 0.05
+right pos -0.6 -2.58 -0.7
+wait 0.04
+right pos -0.5 -2.58 -0.7
+wait 0.04
+right pos -0.4 -2.58 -0.7
+wait 0.04
+right pos -0.3 -2.58 -0.7
+wait 0.04
+right pos -0.2 -2.58 -0.7
+wait 0.04
+right pos -0.1 -2.58 -0.7
+wait 0.04
+right pos 0.0 -2.58 -0.7
+wait 0.04
+right pos 0.1 -2.58 -0.7
+wait 0.04
+right pos 0.2 -2.58 -0.7
+wait 0.04
+right pos 0.3 -2.58 -0.7
+wait 0.04
+right pos 0.4 -2.58 -0.7
+wait 0.04
+right pos 0.5 -2.58 -0.7
+wait 0.04
+right pos 0.6 -2.58 -0.7
+wait 0.04
+right pos 0.6 -2.40 -0.7
+wait 0.05
+right pos -0.6 -2.40 -0.7
+wait 0.05
+right pos -0.6 -2.58 -0.8
+wait 0.04
+right pos -0.5 -2.58 -0.8
+wait 0.04
+right pos -0.4 -2.58 -0.8
+wait 0.04
+right pos -0.3 -2.58 -0.8
+wait 0.04
+right pos -0.2 -2.58 -0.8
+wait 0.04
+right pos -0.1 -2.58 -0.8
+wait 0.04
+right pos 0.0 -2.58 -0.8
+wait 0.04
+right pos 0.1 -2.58 -0.8
+wait 0.04
+right pos 0.2 -2.58 -0.8
+wait 0.04
+right pos 0.3 -2.58 -0.8
+wait 0.04
+right pos 0.4 -2.58 -0.8
+wait 0.04
+right pos 0.5 -2.58 -0.8
+wait 0.04
+right pos 0.6 -2.58 -0.8
+wait 0.04
+right pos 0.6 -2.40 -0.8
+wait 0.05
+right pos -0.6 -2.40 -0.8
+wait 0.05
+right pos -0.6 -2.58 -0.9
+wait 0.04
+right pos -0.5 -2.58 -0.9
+wait 0.04
+right pos -0.4 -2.58 -0.9
+wait 0.04
+right pos -0.3 -2.58 -0.9
+wait 0.04
+right pos -0.2 -2.58 -0.9
+wait 0.04
+right pos -0.1 -2.58 -0.9
+wait 0.04
+right pos 0.0 -2.58 -0.9
+wait 0.04
+right pos 0.1 -2.58 -0.9
+wait 0.04
+right pos 0.2 -2.58 -0.9
+wait 0.04
+right pos 0.3 -2.58 -0.9
+wait 0.04
+right pos 0.4 -2.58 -0.9
+wait 0.04
+right pos 0.5 -2.58 -0.9
+wait 0.04
+right pos 0.6 -2.58 -0.9
+wait 0.04
+right pos 0.6 -2.40 -0.9
+wait 0.05
+right pos -0.6 -2.40 -0.9
+wait 0.05
+right pos -0.6 -2.58 -1.0
+wait 0.04
+right pos -0.5 -2.58 -1.0
+wait 0.04
+right pos -0.4 -2.58 -1.0
+wait 0.04
+right pos -0.3 -2.58 -1.0
+wait 0.04
+right pos -0.2 -2.58 -1.0
+wait 0.04
+right pos -0.1 -2.58 -1.0
+wait 0.04
+right pos 0.0 -2.58 -1.0
+wait 0.04
+right pos 0.1 -2.58 -1.0
+wait 0.04
+right pos 0.2 -2.58 -1.0
+wait 0.04
+right pos 0.3 -2.58 -1.0
+wait 0.04
+right pos 0.4 -2.58 -1.0
+wait 0.04
+right pos 0.5 -2.58 -1.0
+wait 0.04
+right pos 0.6 -2.58 -1.0
+wait 0.04
+right pos 0.6 -2.40 -1.0
+wait 0.05
+right pos -0.6 -2.40 -1.0
+wait 0.05
+right pos -0.6 -2.58 -1.1
+wait 0.04
+right pos -0.5 -2.58 -1.1
+wait 0.04
+right pos -0.4 -2.58 -1.1
+wait 0.04
+right pos -0.3 -2.58 -1.1
+wait 0.04
+right pos -0.2 -2.58 -1.1
+wait 0.04
+right pos -0.1 -2.58 -1.1
+wait 0.04
+right pos 0.0 -2.58 -1.1
+wait 0.04
+right pos 0.1 -2.58 -1.1
+wait 0.04
+right pos 0.2 -2.58 -1.1
+wait 0.04
+right pos 0.3 -2.58 -1.1
+wait 0.04
+right pos 0.4 -2.58 -1.1
+wait 0.04
+right pos 0.5 -2.58 -1.1
+wait 0.04
+right pos 0.6 -2.58 -1.1
+wait 0.04
+right pos 0.6 -2.40 -1.1
+wait 0.05
+right pos -0.6 -2.40 -1.1
+wait 0.05
+wait 1.5
+mark after
+dump
+# A menu takes the bodies out of the world, closing it puts them back.
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark menu
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark back
+# The weapon: a sword drawn from the hip (4.1) is a capsule along the blade,
+# the right hand's own body out of the world while it is.
+console-at back player.additem 00000C0C 1
+console-at back player.equipitem 00000C0C
+wait 10
+right pos -0.18 -0.62 -0.02
+right rot 0 0 0
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark sword_drawn
+right pos 0.20 -1.20 -0.60
+wait 0.5
+right pos -0.30 -1.20 -0.60
+wait 1
+mark swung
+# Another world: out to the exterior, the bodies follow the player there.
+console-at swung cow Tamriel 0 0
+wait 20
+mark outside
+wait 1
