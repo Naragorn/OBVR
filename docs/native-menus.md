@@ -174,7 +174,7 @@ The selected Hands.Enabled flag is distinct from effective MotionPerspective.
 ## Sections (2026-09-27)
 
 The Insert menu opens on a list of sections - the rows' categories, each once,
-in table order, with its row count - instead of the flat list of every row
+in table order - instead of the flat list of every row
 (`ui::SettingsView::Sections`). A click anywhere on a section's row opens it;
 its rows show without the category prefix and the heading names the section;
 a Back button (id 9204, top right, hidden in the list) returns to the list on

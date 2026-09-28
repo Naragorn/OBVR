@@ -216,14 +216,9 @@ bool RefreshSettings() {
    ok=CachedText(26+slot*2,trait,name ? ">" : " ") && ok;
    ui::NativeRowTrait(slot,"label\\string",trait,sizeof(trait));
    ok=CachedText(1+slot*3,trait,name ? name : " ") && ok;
-   char count[16]=" ";
-   if (name) {
-    char n[12];
-    ui::FormatInteger(static_cast<int>(g_settings.SectionSize(slot)),n,sizeof(n));
-    Join(count,sizeof(count),n,g_settings.SectionSize(slot)==1 ? " row" : " rows","");
-   }
+   // No row count beside a section: it was noise (the tester, 2026-09-28).
    ui::NativeRowTrait(slot,"value\\string",trait,sizeof(trait));
-   ok=CachedText(2+slot*3,trait,count) && ok;
+   ok=CachedText(2+slot*3,trait," ") && ok;
    ui::NativeRowTrait(slot,"restart\\string",trait,sizeof(trait));
    ok=CachedText(3+slot*3,trait," ") && ok;
    continue;

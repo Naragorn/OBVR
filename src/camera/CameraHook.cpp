@@ -1079,7 +1079,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		                           HandsHideList(config.hands, handsAway, sheathing));
 		// The hands in the world rather than on top of it (FirstPersonDepth.h).
 		game::KeepFirstPersonDepth(true);
-		// And closed: their inside black, not the room (BackfacePass.h).
+		// And closed: their inside gold-brown, not the room (BackfacePass.h).
 		render::SetFirstPersonBackfaces(config.hands.closedHands);
 		// Held objects may come up to the mouth and the body (GrabNearBody.h).
 		game::AllowGrabNearBody(true);

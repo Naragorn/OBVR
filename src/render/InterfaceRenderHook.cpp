@@ -1084,13 +1084,91 @@ bool InFirstPersonPass() {
 	return accumulator[kAccumulatorFirstPersonOffset] != 0;
 }
 
-// After a first-person draw: the same geometry again, its back faces, black.
+// The inside's pixel shaders, one per shader model, made on first use for
+// the device they were made on. A refusal is remembered, and the inside is
+// then drawn black by the blend instead.
+void* g_insideShaders[2] = {nullptr, nullptr};  // ps_2_0, ps_3_0
+bool g_insideShaderRefused[2] = {false, false};
+void* g_insideShaderDevice = nullptr;
+// The last vertex shader asked for its version, and the answer.
+void* g_versionedVertexShader = nullptr;
+UInt32 g_vertexShaderMajor = 2;
+
+using ShaderGetFunctionFn = SInt32(__stdcall*)(void* self, void* data, UInt32* size);
+constexpr UInt32 kShaderGetFunction = 4;
+constexpr UInt32 kUnknownRelease = 2;
+
+void ReleaseObject(void* object) {
+	if (object != nullptr) {
+		if (auto release = d3d9::Method<SInt32(__stdcall*)(void*)>(object, kUnknownRelease)) {
+			release(object);
+		}
+	}
+}
+
+// The major version of the vertex shader set now; 2 for none (the fixed
+// function pipeline pairs with any pixel shader up to 2_0).
+UInt32 CurrentVertexShaderMajor(void* device) {
+	auto getShader = d3d9::Method<d3d9::GetShaderFn>(device, d3d9::kDeviceGetVertexShader);
+	void* shader = nullptr;
+	if (getShader == nullptr || getShader(device, &shader) < 0 || shader == nullptr) {
+		return 2;
+	}
+	if (shader != g_versionedVertexShader) {
+		g_versionedVertexShader = shader;
+		g_vertexShaderMajor = 2;
+		static UInt32 function[4096];
+		UInt32 size = 0;
+		auto getFunction = d3d9::Method<ShaderGetFunctionFn>(shader, kShaderGetFunction);
+		if (getFunction != nullptr && getFunction(shader, nullptr, &size) >= 0 && size >= 4 &&
+		    size <= sizeof(function) && getFunction(shader, function, &size) >= 0) {
+			const UInt32 major = ShaderMajorVersion(function[0]);
+			g_vertexShaderMajor = major >= 3 ? 3 : 2;
+		}
+	}
+	ReleaseObject(shader);  // GetVertexShader added a reference
+	return g_vertexShaderMajor;
+}
+
+void* InsideShader(void* device, UInt32 major) {
+	if (device != g_insideShaderDevice) {
+		// A new device: the old one's shaders went with it.
+		g_insideShaderDevice = device;
+		g_insideShaders[0] = g_insideShaders[1] = nullptr;
+		g_insideShaderRefused[0] = g_insideShaderRefused[1] = false;
+		g_versionedVertexShader = nullptr;
+	}
+	const UInt32 slot = major >= 3 ? 1 : 0;
+	if (g_insideShaders[slot] == nullptr && !g_insideShaderRefused[slot]) {
+		UInt32 tokens[kInsideShaderTokens];
+		BuildInsideShader(major, tokens);
+		auto create = d3d9::Method<d3d9::CreatePixelShaderFn>(device, d3d9::kDeviceCreatePixelShader);
+		const SInt32 made = create != nullptr ? create(device, tokens, &g_insideShaders[slot]) : -1;
+		if (made < 0 || g_insideShaders[slot] == nullptr) {
+			g_insideShaders[slot] = nullptr;
+			g_insideShaderRefused[slot] = true;
+			OBVR_LOG("Closed hands: the device refused the ps_%u_0 inside shader (%08X) - the "
+			         "inside is drawn black instead", major >= 3 ? 3u : 2u, static_cast<UInt32>(made));
+		} else {
+			OBVR_LOG("Closed hands: the ps_%u_0 inside shader is ready (gold-brown %.0f/%.0f/%.0f)",
+			         major >= 3 ? 3u : 2u, static_cast<double>(kInsideRed * 255.0f),
+			         static_cast<double>(kInsideGreen * 255.0f),
+			         static_cast<double>(kInsideBlue * 255.0f));
+		}
+	}
+	return g_insideShaders[slot];
+}
+
+// After a first-person draw: the same geometry again, its back faces, in the
+// inside's colour (BackfacePass.h).
 void DrawBackfacesAfter(void* device, UInt32 type, SInt32 baseVertexIndex, UInt32 minVertexIndex,
                         UInt32 numVertices, UInt32 startIndex, UInt32 primCount) {
 	if (!g_backfacesWanted || g_redirecting || !InFirstPersonPass()) {
 		return;
 	}
 	auto getState = d3d9::Method<d3d9::GetRenderStateFn>(device, d3d9::kDeviceGetRenderState);
+	auto getPixelShader = d3d9::Method<d3d9::GetShaderFn>(device, d3d9::kDeviceGetPixelShader);
+	auto setPixelShader = d3d9::Method<d3d9::SetPixelShaderFn>(device, d3d9::kDeviceSetPixelShader);
 	if (getState == nullptr || g_originalSetState == nullptr) {
 		return;
 	}
@@ -1102,31 +1180,47 @@ void DrawBackfacesAfter(void* device, UInt32 type, SInt32 baseVertexIndex, UInt3
 	if (reversed == 0) {
 		return;
 	}
-	getState(device, d3d9::kRenderStateSrcBlend, &src);
-	getState(device, d3d9::kRenderStateDestBlend, &dst);
-	getState(device, d3d9::kRenderStateBlendOp, &op);
-	getState(device, d3d9::kRenderStateSeparateAlphaBlendEnable, &separate);
+	void* const inside = getPixelShader != nullptr && setPixelShader != nullptr
+	                         ? InsideShader(device, CurrentVertexShaderMajor(device))
+	                         : nullptr;
+	void* previousShader = nullptr;
+	if (inside != nullptr) {
+		getPixelShader(device, &previousShader);
+		setPixelShader(device, inside);
+	} else {
+		// The fallback: whatever the shader makes, blended to black.
+		getState(device, d3d9::kRenderStateSrcBlend, &src);
+		getState(device, d3d9::kRenderStateDestBlend, &dst);
+		getState(device, d3d9::kRenderStateBlendOp, &op);
+		getState(device, d3d9::kRenderStateSeparateAlphaBlendEnable, &separate);
+		g_originalSetState(device, d3d9::kRenderStateAlphaBlendEnable, 1);
+		g_originalSetState(device, d3d9::kRenderStateSrcBlend, d3d9::kBlendZero);
+		g_originalSetState(device, d3d9::kRenderStateDestBlend, d3d9::kBlendZero);
+		g_originalSetState(device, d3d9::kRenderStateBlendOp, d3d9::kBlendOpAdd);
+		g_originalSetState(device, d3d9::kRenderStateSeparateAlphaBlendEnable, 0);
+	}
 	g_originalSetState(device, d3d9::kRenderStateCullMode, reversed);
-	g_originalSetState(device, d3d9::kRenderStateAlphaBlendEnable, 1);
-	g_originalSetState(device, d3d9::kRenderStateSrcBlend, d3d9::kBlendZero);
-	g_originalSetState(device, d3d9::kRenderStateDestBlend, d3d9::kBlendZero);
-	g_originalSetState(device, d3d9::kRenderStateBlendOp, d3d9::kBlendOpAdd);
-	g_originalSetState(device, d3d9::kRenderStateSeparateAlphaBlendEnable, 0);
 	// The colour only: whatever the target keeps in alpha stays.
 	g_originalSetState(device, d3d9::kRenderStateColorWriteEnable, colorWrite & 0x7u);
 	const SInt32 result = g_originalDrawIndexed(device, type, baseVertexIndex, minVertexIndex,
 	                                            numVertices, startIndex, primCount);
 	g_originalSetState(device, d3d9::kRenderStateCullMode, cull);
-	g_originalSetState(device, d3d9::kRenderStateAlphaBlendEnable, blend);
-	g_originalSetState(device, d3d9::kRenderStateSrcBlend, src);
-	g_originalSetState(device, d3d9::kRenderStateDestBlend, dst);
-	g_originalSetState(device, d3d9::kRenderStateBlendOp, op);
-	g_originalSetState(device, d3d9::kRenderStateSeparateAlphaBlendEnable, separate);
 	g_originalSetState(device, d3d9::kRenderStateColorWriteEnable, colorWrite);
+	if (inside != nullptr) {
+		setPixelShader(device, previousShader);
+		ReleaseObject(previousShader);  // GetPixelShader added a reference
+	} else {
+		g_originalSetState(device, d3d9::kRenderStateAlphaBlendEnable, blend);
+		g_originalSetState(device, d3d9::kRenderStateSrcBlend, src);
+		g_originalSetState(device, d3d9::kRenderStateDestBlend, dst);
+		g_originalSetState(device, d3d9::kRenderStateBlendOp, op);
+		g_originalSetState(device, d3d9::kRenderStateSeparateAlphaBlendEnable, separate);
+	}
 	if (g_backfaceReportsLeft > 0) {
 		--g_backfaceReportsLeft;
 		OBVR_LOG("Closed hands: a first-person draw (%u triangles, cull %u) followed by its back "
-		         "faces in black (cull %u)%s", primCount, cull, reversed,
+		         "faces %s (cull %u)%s", primCount, cull,
+		         inside != nullptr ? "in gold-brown" : "in black", reversed,
 		         result < 0 ? " - the draw FAILED" : "");
 	}
 }

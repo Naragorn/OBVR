@@ -465,8 +465,21 @@ try {
 			[ObvrHandRun]::Press(0x0D, 0x1C, $false)
 			Start-Sleep -Milliseconds 400
 		}
-		[ObvrHandRun]::Press(0xDC, 0x29, $false)
-		Start-Sleep -Milliseconds 400
+		# The console has to have taken the last line before the key that
+		# closes it: after a dozen lines it was still busy and the close was
+		# lost - the whole run happened with the console open (2026-09-28).
+		# And the close checked in the log - a closed menu leaves "a menu just
+		# closed" behind - and pressed again when it was lost.
+		for ($try = 0; $try -lt 4; $try++) {
+			Start-Sleep -Milliseconds 1000
+			Focus-Game | Out-Null
+			[ObvrHandRun]::Press(0xDC, 0x29, $false)
+			Start-Sleep -Milliseconds 1200
+			$last = @(Read-Log | Where-Object { $_ -match "Menu trace: a menu just (opened|closed)" }) |
+				Select-Object -Last 1
+			Write-Host "Console close $($try + 1): $last"
+			if ($last -match "just closed") { break }
+		}
 	}
 
 	$seen = 0

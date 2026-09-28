@@ -460,7 +460,7 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.hideArms = v != 0.0f; },
 	},
 	{
-		"Hands", "Closed hands", "The inside of the hands black, not see-through at the wrist",
+		"Hands", "Closed hands", "The inside of the hands closed in gold-brown, not see-through",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "ClosedHands",
 		+[](const Config& c) { return c.hands.closedHands ? 1.0f : 0.0f; },

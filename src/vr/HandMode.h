@@ -58,7 +58,7 @@ struct HandSettings {
 	// quiver bones, and any "Scb" scabbard): they rode with the right hand.
 	bool hideSheaths = true;
 	char hideNodes[128] = "Arms";
-	// Closed hands: the inside of the first-person model drawn black, so a
+	// Closed hands: the inside of the first-person model drawn gold-brown, so a
 	// hand ending at the wrist is not seen through (render/BackfacePass.h).
 	bool closedHands = true;
 

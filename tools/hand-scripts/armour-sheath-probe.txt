@@ -1,4 +1,4 @@
-﻿# What the first-person tree holds with armour on and a two-hander drawn and
+# What the first-person tree holds with a robe on and a two-hander drawn and
 # sheathed: the names of the armour's parts (which of them still hang in the
 # room in Full VR) and where the claymore goes while it is put away. The
 # tree probe reports again every time the tree changes.
@@ -7,26 +7,27 @@
 ini Hands Enabled=1
 ini Hands Holsters=1
 ini Debug FirstPersonTreeProbe=1
-# Iron Boots, Greaves, Cuirass, Gauntlets, Helmet (UESP Oblivion:Iron Armor)
-# and an Iron Claymore (UESP Oblivion:Weapons).
-console player.additem 0001C6CF 1
-console player.additem 0001C6D0 1
-console player.additem 0001C6D1 1
-console player.additem 0001C6D2 1
-console player.additem 0001C6CE 1
+# The Mythic Dawn Robe (00024DE2, UESP Oblivion:Clothing): an upper-body item
+# whose mesh carries the legs and feet too (LowerBody, Foot - read in
+# Oblivion - Meshes.bsa), the parts that hung in the room. Vanilla greaves and
+# boots never reach the first-person model. And an Iron Claymore (UESP
+# Oblivion:Weapons). A dozen console lines left the console open: few lines.
+# Strong enough to carry it all: over-encumbered, the tutorial's message
+# box stops the run (2026-09-28).
+console player.setav strength 300
+console player.additem 00024DE2 1
 console player.additem 0001C6CD 1
-console player.equipitem 0001C6CF
-console player.equipitem 0001C6D0
-console player.equipitem 0001C6D1
-console player.equipitem 0001C6D2
-console player.equipitem 0001C6CE
+console player.equipitem 00024DE2
 console player.equipitem 0001C6CD
 
 expect HandScript: finished
 expect First person tree: root
+expect First person hide: "Foot
+expect Holster: reach for the two-handed weapon - sheathing
+reject HandScript: state - world 1, menu 1
 reject HandScript: WARNING
 
-wait 20
+wait 30
 # Looking down: the legs and feet, if they show.
 head pitch -60
 wait 1

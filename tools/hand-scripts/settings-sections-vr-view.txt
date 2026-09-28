@@ -1,4 +1,4 @@
-﻿# VR View's settings menu (Full VR off): the sections (docs/native-menus.md): Insert opens the list of
+# VR View's settings menu (Full VR off): the sections (docs/native-menus.md): Insert opens the list of
 # sections, not the flat list of every row; Page Down turns to its second page.
 # Menus are mirrored to the monitor so the pictures show them.
 # Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\settings-sections-vr-view.txt
