@@ -193,7 +193,14 @@ in the headset yet.
       was this: the engine kept the Equip sequence and its end pose until
       the draw's own length, then the two-hand idle moved the Weapon node
       about 2 cm. The sequence now ends at 0.13 s, so the idle should take
-      over at once. **Not yet seen in the headset.**    - With none of that kind seen yet, the reach does nothing and says so in
+      over at once. **Not yet seen in the headset.**
+    - The draw's sound (keys "Enum: Equip" / "Enum: Unequip") went missing
+      with the moved offset: the engine's key window skipped the span it
+      was moved over. That span's keys are now fired through the engine's
+      own handler (0x0051AF70). The harness showed one sound per draw and
+      sheathe, and the tester heard them as expected in the headset
+      (2026-09-28). The fists have none, as at the game's speed.
+    - With none of that kind seen yet, the reach does nothing and says so in
       the log.
   - **Another weapon drawn.** Reaching for one kind while another is
     drawn does nothing ("another weapon is drawn, it goes back first" in the

@@ -153,6 +153,33 @@ With nothing held, each finger of a hand follows the controller's finger
     - `Hands: the <hand> little finger curled ...` - once per hand, the
       first time its tracked curl reaches 0.8: the angle OBVR writes to
       Finger4, 41 and 42 and whether last frame's write was still there.
+  - **Measured (the tester's run, 2026-09-28): the cause is the left
+    controller, not OBVR.**
+    - In all of the 120 curl lines, the left little finger's device curl
+      is 0.00. This includes lines where the left middle finger reads 0.73
+      and the ring finger 0.62 (the lines around 590 to 600).
+    - The right little finger moves with its ring finger: 0.98/1.00,
+      0.67/0.33, 0.12/0.40, 0.23/0.64.
+    - SteamVR's own animation shows the same thing: 0.12 to 0.15 for the
+      left little finger all run long, so SteamVR's hand keeps it straight
+      too.
+    - When the left little finger did read high once, 0.88 late in the
+      run, OBVR bent it like the right's: 64, 75 and 79 degrees (right at
+      0.82: 61, 71 and 74).
+    - "kept no" on both hands: the animation writes the links each frame
+      and OBVR writes over it after, the same on both sides.
+  - What remains is the controller's sensor for that finger. Index owners
+    report the same and the fixes they give (not tried here):
+    - drumming the fingers along the handle, from the little finger up,
+      which the controller uses to learn the hand (Valve's
+      troubleshooting page,
+      https://help.steampowered.com/en/faqs/view/57B5-E574-406A-4E61, as
+      quoted in r/ValveIndex e5nndh);
+    - turning the controllers on with the hand resting on them unpressed
+      (r/ValveIndex kxwyfp, a user's report, unverified).
+  - Not built, and only if the sensor stays dead: letting the left little
+    finger follow the ring finger when its own curl never moves. This
+    would be a workaround for the hardware, not a fix.
 - **Open bug (the tester, 2026-09-28): no thumbs up.** The tester's log:
   with the controller's range of motion, the thumb at its most open still
   reads 0.43 0.00 0.25 from base to tip, so its base never leaves the grip.
