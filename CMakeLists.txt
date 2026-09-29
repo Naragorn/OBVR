@@ -94,6 +94,7 @@ add_library(OBVR SHARED
 	src/game/HandBodies.cpp
 	src/game/GameSound.cpp
 	src/game/PlayerCapsule.cpp
+	src/game/Shove.cpp
 	src/game/GrabNearBody.cpp
 	src/game/NearbyItems.cpp
 	src/game/QuickKeys.cpp

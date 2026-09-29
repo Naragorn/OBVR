@@ -593,6 +593,27 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.pushPeople = v != 0.0f; },
 	},
 	{
+		"Hands", "Shove", "An open hand driven fast into someone, weapons away, shoves them: they stagger, or fall",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "Shove",
+		+[](const Config& c) { return c.hands.shove.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.shove.enabled = v != 0.0f; },
+	},
+	{
+		"Hands", "Shove speed", "How fast (m/s) the hand must move into someone for a shove",
+		ItemKind::Number, 0.5f, 6.0f, 0.1f, 1, false,
+		"Hands", "ShoveSpeed",
+		+[](const Config& c) { return c.hands.shove.speed; },
+		+[](Config& c, float v) { c.hands.shove.speed = v; },
+	},
+	{
+		"Hands", "Hard shove speed", "From this speed (m/s) a shove knocks them down",
+		ItemKind::Number, 1.0f, 10.0f, 0.1f, 1, false,
+		"Hands", "ShoveHardSpeed",
+		+[](const Config& c) { return c.hands.shove.hardSpeed; },
+		+[](Config& c, float v) { c.hands.shove.hardSpeed = v; },
+	},
+	{
 		"Hands", "Reach tooltip", "The tooltip icon moves onto what a closed grip would pick up",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "ReachTooltip",

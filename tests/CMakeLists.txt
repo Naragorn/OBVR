@@ -1143,3 +1143,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME player_capsule COMMAND player_capsule_test)
+
+add_executable(shove_test ShoveTest.cpp)
+
+target_include_directories(shove_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(shove_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME shove COMMAND shove_test)

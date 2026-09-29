@@ -23,6 +23,7 @@
 #include "game/HandBones.h"
 #include "game/HandControls.h"
 #include "game/MeleeHits.h"
+#include "game/Shove.h"
 #include "game/ThirdPersonAimVisual.h"
 #include "game/BodyPlacement.h"
 #include "game/PlayerBody.h"
@@ -737,6 +738,58 @@ vr::HolsterFitState g_holsterFit;
 // Whether each hand is a fist, for its Havok body (game::HandBodyFist).
 bool g_rightBodyFist = false;
 bool g_leftBodyFist = false;
+
+// The shove (game/ShoveLogic.h, game/Shove.h): each tracked hand, open and
+// not gripping, moving fast towards a living actor it is at, with the
+// weapons away. The actor is pushed away from a point behind the hand along
+// its motion.
+game::ShoveCooldown g_shoveCooldown;
+
+void StepShoves(const Config& config, float dt) {
+	game::StepShoveCooldown(g_shoveCooldown, dt);
+	const game::ShoveSettings& settings = config.hands.shove;
+	if (!settings.enabled || !g_cyclopeanCameraWorldValid) {
+		return;
+	}
+	const bool weaponDrawn = game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
+	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
+	for (int side = 0; side < 2; ++side) {
+		const bool right = side == 0;
+		game::ShoveHand hand;
+		hand.valid = right ? g_hand.rightHandValid : g_hand.leftHandValid;
+		hand.open = !(right ? g_rightBodyFist : g_leftBodyFist);
+		hand.gripHeld = right ? g_hand.rightGripDown : g_hand.leftGripDown;
+		if (!hand.valid) {
+			continue;
+		}
+		const NiPoint3 at = camPos + camRot * (right ? g_hand.rightHandOffsetUnits : g_hand.leftHandOffsetUnits);
+		NiPoint3 centre{0.0f, 0.0f, 0.0f};
+		void* const actor = game::LivingActorAt(at, 0.5f, 4.0f, &centre);
+		if (actor == nullptr || !game::ShoveAllowed(g_shoveCooldown, actor)) {
+			continue;
+		}
+		// SteamVR's velocity, relative to the head's frame in the game's axes
+		// (m/s): into the world by the camera's rotation.
+		const NiPoint3 velocity = camRot * (right ? g_hand.rightVelocity : g_hand.leftVelocity);
+		hand.towardsSpeed = game::SpeedTowards(velocity, at, centre);
+		const game::ShoveKind kind = game::ShoveFor(settings, weaponDrawn, hand);
+		if (kind == game::ShoveKind::None) {
+			continue;
+		}
+		const float across = math::Sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+		NiPoint3 from = at;
+		if (across > 0.001f) {
+			from = at - NiPoint3{velocity.x / across, velocity.y / across, 0.0f} * 30.0f;
+		}
+		if (game::ShoveActor(actor, kind, from, settings)) {
+			game::StartShoveCooldown(g_shoveCooldown, actor, settings.cooldownSeconds);
+			OBVR_LOG("Shove: the %s hand at %.1f m/s towards %08X - %s", right ? "right" : "left",
+			         static_cast<double>(hand.towardsSpeed), reinterpret_cast<UInt32>(actor),
+			         kind == game::ShoveKind::Hard ? "hard" : "light");
+		}
+	}
+}
 
 // Measuring the bodies against what is drawn (the spec's open bugs,
 // 2026-09-29): the fingers against the hand capsule's front, the drawn
@@ -2254,6 +2307,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			push.valid[static_cast<int>(game::Pusher::OtherHand)] = false;
 		}
 		game::StepWorldPush(pushing, push);
+		if (inPlace) {
+			StepShoves(config, g_deltaSeconds);
+		}
 	}
 
 	// What the laser asked of the cursor on a flat frame, a few times, and
@@ -6922,6 +6978,7 @@ bool Install() {
 	game::InstallTeleportNoise();
 	game::VerifyHandBodyAddresses();
 	game::VerifyGameSoundAddresses();
+	game::VerifyShoveAddresses();
 	game::InstallPlayerStagger();
 	game::InstallPlayerLookAt();
 	game::InstallWorldPickHook();

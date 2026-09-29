@@ -2,6 +2,7 @@
 
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "game/ShoveLogic.h"
 #include "vr/HandInput.h"
 #include "vr/OpenVRTypes.h"
 #include "vr/Quaternion.h"
@@ -159,6 +160,9 @@ struct HandSettings {
 	// The hands and the weapon push people (character controllers); off, they
 	// pass through the living (game::HandBodyPushesActors).
 	bool pushPeople = false;
+	// The shove: an open hand driven fast into someone, weapons away
+	// (game/ShoveLogic.h).
+	game::ShoveSettings shove;
 	// How far each finger link bends while the hand holds something, degrees
 	// (game::HandGrip); negative bends the other way, 0 leaves the hand open.
 	float gripCurlDegrees = 45.0f;

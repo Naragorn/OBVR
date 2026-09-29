@@ -28,6 +28,12 @@ bool MeleeInHand(SInt32* weaponType);
 // is swung or the engine's function is not the one read.
 bool PlaySwingSwish();
 
+// The living actor (a Character or Creature, not the player, not dead)
+// whose bound the point lies in - its radius times `factor` plus `padUnits`
+// - the nearest if several; nullptr with none. `centreOut` gets its
+// bound's centre. For the shove (game/Shove.h).
+void* LivingActorAt(const NiPoint3& point, float factor, float padUnits, NiPoint3* centreOut);
+
 // The equipped weapon's form ID (TESForm+0x0C, xOBSE GameForms.h: typeID, flags,
 // refID), 0 with none - for the test runner's console lines.
 UInt32 EquippedWeaponFormId();

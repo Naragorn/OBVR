@@ -695,6 +695,10 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.physicsRate = ReadFloat("Hands", "PhysicsRate", h.physicsRate, path);
 		h.bodyRadiusScale = ReadFloat("Hands", "BodyRadiusScale", h.bodyRadiusScale, path);
 		h.pushPeople = ReadBool("Hands", "PushPeople", h.pushPeople, path);
+		h.shove.enabled = ReadBool("Hands", "Shove", h.shove.enabled, path);
+		h.shove.speed = ReadFloat("Hands", "ShoveSpeed", h.shove.speed, path);
+		h.shove.hardSpeed = ReadFloat("Hands", "ShoveHardSpeed", h.shove.hardSpeed, path);
+		h.shove.hardForce = ReadFloat("Hands", "ShoveHardForce", h.shove.hardForce, path);
 		h.levitateObjects = ReadBool("Hands", "LevitateObjects", h.levitateObjects, path);
 		h.attachSmallObjects =
 			ReadBool("Hands", "AttachSmallObjects", h.attachSmallObjects, path);

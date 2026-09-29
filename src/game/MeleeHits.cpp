@@ -517,3 +517,45 @@ bool PlaySwingSwish() {
 }
 
 }  // namespace obvr::game
+
+namespace obvr::game {
+
+void* LivingActorAt(const NiPoint3& point, float factor, float padUnits, NiPoint3* centreOut) {
+	UInt8* const player = PlayerOrNull();
+	if (player == nullptr) {
+		return nullptr;
+	}
+	auto* const manager = reinterpret_cast<void*>(addr::kActorProcessManager);
+	auto* node = static_cast<ListNode*>(
+		reinterpret_cast<ThisPtrArgFn>(addr::kActorListByLevel)(manager, nullptr, 0));
+	void* best = nullptr;
+	float bestSquared = 0.0f;
+	for (UInt32 visited = 0; node != nullptr && visited < 512; ++visited) {
+		if (!LooksLikeObject(node)) {
+			break;
+		}
+		void* const actor = node->data;
+		node = node->next;
+		if (actor == nullptr || actor == player || !LooksLikeObject(actor) || !IsActorObject(actor) ||
+		    ActorIsDead(actor)) {
+			continue;
+		}
+		NiBound bound;
+		if (!ActorBound(actor, &bound)) {
+			continue;
+		}
+		const float reach = bound.radius * factor + padUnits;
+		const float d = (point - bound.center).LengthSquared();
+		if (d > reach * reach || (best != nullptr && d >= bestSquared)) {
+			continue;
+		}
+		best = actor;
+		bestSquared = d;
+		if (centreOut != nullptr) {
+			*centreOut = bound.center;
+		}
+	}
+	return best;
+}
+
+}  // namespace obvr::game
