@@ -112,7 +112,9 @@ a menu button closes. The laser clicks rows.
 - **The dodge roll needs no button.** Block and jump (from Acrobatics
   Journeyman): the raised hand and a flick up. UESP Oblivion:Acrobatics:
   "while holding block, you can jump in any direction", so a direction on
-  the left stick belongs to it. Not yet tried.
+  the left stick belongs to it. Works in the headset (Nadi, 2026-09-29).
+  Since the left hand blocks only with a shield (section 5), without one the
+  roll needs the weapon held across; see 4.9 for a proposal.
 - **Quick save and load need no button**: they are in the Escape menu.
 
 ## 3. Vanilla's controls and where they are
@@ -127,7 +129,7 @@ From UESP, Oblivion:Controls.
 | Activate, grab | right A, grips | built |
 | Journal / menus, pause | left B, right B | built |
 | Drop (Shift + click) | left A in the inventory | built |
-| Yield, dodge | gesture + button, see section 2 | yield works (2026-09-29), dodge untested |
+| Yield, dodge | gesture + button, see section 2 | yield works (2026-09-29), dodge works (2026-09-29) |
 | Hotkeys 1-8 | right trackpad held: the quick menu; in the inventory or magic menu the same ring sets them | built (4.4, 4.5) |
 | Take an item | activate (right A), or held and let go at the body | built (4.6) |
 | Wait (T) | right stick click (with the weapons drawn by reaching) | built 2026-09-27 |
@@ -561,6 +563,73 @@ The tester's idea (2026-09-27), in the style of Half-Life: Alyx. Not built.
 
 - The right stick click, once the weapon is drawn by gestures.
 - The left A in the world.
+
+### 4.9 Proposal: the dodge roll from the free left hand (2026-09-29, not built)
+
+**Wanted.** The tester: "Kann man hier einrichten dass wenn ich hier Anime
+style meine linke hand heben als rechtshänder und da ist kein schild und
+rechts meine waffe, dass ich dann zwar nicht blocken kann aber die
+ausweiche rolle machen kann. oder die nur geht wenn ich eine faust balle
+links und dann sogar einfach nur vor links rechts und hinten mache und die
+rolle geht dann in diese richtung."
+
+**Why it is needed.** Vanilla's roll is block and jump, in the direction
+held (UESP Oblivion:Acrobatics: "while holding block, you can jump in any
+direction"; from Acrobatics Journeyman). Since the raised left hand blocks
+only with a shield (section 5), a player with a one-handed weapon and a
+free left hand has to hold the weapon across to roll - the sword hand is
+busy guarding exactly when it should be ready to strike after the roll.
+
+**Two gestures, both for the free left hand (no shield, the right hand
+armed or empty):**
+
+1. **Dodge stance: the raised open left hand.** The same pose that blocks
+   with a shield - hand up and out in front of the chest (`IsBlockGesture`)
+   - becomes a stance without one: it does not block (no block key, no
+   block animation, no damage reduction), but it arms the roll. While the
+   stance is held, the jump flick (right stick up) rolls in the direction
+   the left stick holds, as vanilla's block-and-jump does.
+2. **The fist flick: a left fist moved sharply.** The left hand made a fist
+   (`HandBodyFist`, the same limits as 4.3) and moved fast - a short flick
+   of 15 to 25 cm - forward, backward, left or right relative to the head:
+   the roll goes that way at once, without the stick and without the jump
+   flick. Like the power attack's direction (`ClassifyPowerSwing`), the
+   flick's way decides the direction; mostly up or down is no roll.
+
+The tester's "oder" leaves the choice open; proposed: both, each with its
+own settings row, the fist flick on by default (one hand, no stick, the
+most "anime"), the dodge stance off by default (it can catch a hand
+raised for something else).
+
+**How it would reach the engine.** Two routes, the first to try first:
+
+- **Vanilla's own roll, fed as vanilla wants it.** For the frames of the
+  roll, OBVR holds the block control and taps jump with the movement
+  direction set - the same inputs a gamepad player gives. Risk: the block
+  control for those frames may show a block animation or block a hit for
+  an instant; to be measured (harness: the player's action and the block
+  state per frame around the roll). The direction for the fist flick is set
+  by holding the matching movement key for the roll's first frames.
+- **The engine's dodge call directly.** Where HandleInput turns block +
+  jump + direction into the roll (the player's input handler around the
+  jump, 0x0065EC96..0x0065EEC6 reads the movement flags for the power
+  attack's direction the same way) - not read yet. Calling it with a
+  direction would need neither the block nor the stick. Needs the research
+  first.
+
+**Conditions kept from vanilla:** Acrobatics Journeyman or better (the
+engine checks it either way, route 1; route 2 has to check it itself), on
+the ground, not while swimming, the roll's fatigue cost. Not while the left
+hand holds something (the grip closed) or aims a spell.
+
+**Open questions.**
+- How long the stance must be held before the flick counts (a hand that
+  passes the pose on its way elsewhere should not arm a roll): proposed
+  0.15 s.
+- The fist flick's speed and length thresholds: to be tuned in the headset
+  from logged values, as the swings were ("m/s at its fastest", "m long").
+- Left-handed play: the roles swap (the right hand dodges, the left holds
+  the weapon), as everything else under `LeftHanded`.
 
 ## 5. Found in the headset, 2026-09-29
 
