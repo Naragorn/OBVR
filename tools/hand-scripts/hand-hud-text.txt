@@ -1,0 +1,29 @@
+# The notices on the top of the view (docs/hud-on-hands-spec.md): a skill
+# increase puts "Your Blade skill increased." into HUDSubtitleMenu's notice;
+# the HUD on the hands finds it there, lifts it out of the interface into the
+# atlas (Messages, top) and erases it from the panel. Pictures of the atlas
+# and the panel at the mark (HudTileProbe). The console needs its time to
+# type: the marks come 4, 5 and 6 s after it.
+
+ini Hands Enabled=1
+ini HandHud Enabled=1
+ini Debug HudTileProbe=1
+
+expect HandScript: finished
+expect - Messages top, lifted
+expect Hand HUD: at "msg3" - Subtitles bottom, not found
+reject HandScript: WARNING
+
+wait 10
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark before
+console-at before player.advskill blade 1
+wait 4
+mark msg
+wait 1
+mark msg2
+wait 1
+mark msg3
+wait 2

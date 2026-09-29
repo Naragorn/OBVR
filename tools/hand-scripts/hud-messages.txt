@@ -1,0 +1,23 @@
+# Finds the HUD's messages (top left in vanilla) in the tile trees
+# (docs/hud-on-hands-spec.md): a skill increase puts its text there, and the
+# tile probe logs the trees at the marks after it.
+
+ini Debug HudTileProbe=1
+
+expect HandScript: finished
+expect HudTiles: at "msg"
+reject HandScript: WARNING
+
+wait 10
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark before
+console-at before player.advskill blade 1
+wait 3.5
+mark msg
+wait 1
+mark msg2
+wait 1
+mark msg3
+wait 2

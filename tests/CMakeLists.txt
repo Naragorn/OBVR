@@ -1163,3 +1163,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME hand_hud COMMAND hand_hud_test)
+
+add_executable(dialog_panel_test DialogPanelTest.cpp)
+
+target_include_directories(dialog_panel_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(dialog_panel_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME dialog_panel COMMAND dialog_panel_test)

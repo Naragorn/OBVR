@@ -28,24 +28,38 @@ enum class HudElement : UInt8 {
 	Effects = 3,  // the active effects' icons
 	LevelUp = 4,  // the level-up icon
 	Compass = 5,
+	Region = 6,     // the region's name, shown when one is discovered
+	Messages = 7,   // the notices, top left in vanilla ("Your Blade skill increased.")
+	Subtitles = 8,  // what people say
 };
-inline constexpr UInt32 kHudElementCount = 6;
+inline constexpr UInt32 kHudElementCount = 9;
 
 // The INI's key stems ([HandHud] <Stem>Place, <Stem>Opacity, <Stem>Size).
-inline constexpr const char* kHudElementKeys[kHudElementCount] = {"Bars",    "Spell",   "Weapon",
-                                                                  "Effects", "LevelUp", "Compass"};
+inline constexpr const char* kHudElementKeys[kHudElementCount] = {
+	"Bars", "Spell", "Weapon", "Effects", "LevelUp", "Compass", "Region", "Messages", "Subtitles"};
+
+// Which menu an element's tiles are in: HUDMainMenu, or HUDSubtitleMenu for
+// the notices and the subtitles (hud_subtitle_menu.xml).
+inline bool HudElementInSubtitleMenu(HudElement e) {
+	return e == HudElement::Messages || e == HudElement::Subtitles;
+}
 
 // Where an element goes. View leaves it in the main panel ahead of the
-// player, as the game drew it; Off takes it out and shows it nowhere.
+// player, as the game drew it; Off takes it out and shows it nowhere. Top and
+// Bottom put it above or below the middle of the view, placed where the
+// head looks when it appears (and again when the head turns far from it).
 enum class HudPlace : UInt8 {
 	View = 0,
 	Left = 1,
 	Right = 2,
 	Sky = 3,
 	Off = 4,
+	Top = 5,
+	Bottom = 6,
 };
-inline constexpr UInt32 kHudPlaceCount = 5;
-inline constexpr const char* kHudPlaceNames[kHudPlaceCount] = {"view", "left", "right", "sky", "off"};
+inline constexpr UInt32 kHudPlaceCount = 7;
+inline constexpr const char* kHudPlaceNames[kHudPlaceCount] = {"view", "left", "right", "sky",
+                                                                "off",  "top",  "bottom"};
 
 inline bool ParseHudPlace(const char* text, HudPlace& out) {
 	UInt32 index = 0;
@@ -56,7 +70,7 @@ inline bool ParseHudPlace(const char* text, HudPlace& out) {
 	return true;
 }
 
-// The settings row's value (0..4) as a place; out of range is View, the
+// The settings row's value (0..6) as a place; out of range is View, the
 // game's own.
 inline HudPlace HudPlaceFromIndex(float value) {
 	if (!(value > -0.5f) || !(value < static_cast<float>(kHudPlaceCount) - 0.5f)) {
@@ -73,12 +87,14 @@ struct HudElementSettings {
 
 // [HandHud], hot reloaded. The defaults are the tester's layout
 // (2026-09-29): the left hand health, magicka, fatigue and the spell; the
-// right hand the rest; the compass in the sky.
+// right hand the rest; the compass in the sky; the region's name and the
+// notices at the top of the view, the subtitles at its bottom.
 struct HandHudSettings {
 	bool enabled = true;
 	HudElementSettings element[kHudElementCount] = {
 		{HudPlace::Left, 1.0f, 1.0f},  {HudPlace::Left, 1.0f, 1.0f},  {HudPlace::Right, 1.0f, 1.0f},
 		{HudPlace::Right, 1.0f, 1.0f}, {HudPlace::Right, 1.0f, 1.0f}, {HudPlace::Sky, 1.0f, 1.0f},
+		{HudPlace::Top, 1.0f, 1.0f},   {HudPlace::Top, 1.0f, 1.0f},   {HudPlace::Bottom, 1.0f, 1.0f},
 	};
 	// The panel on the back of each hand: metres along the controller's up
 	// and back axes, and the tilt towards the eyes (as the wrist HUD's).
@@ -98,6 +114,18 @@ struct HandHudSettings {
 	float skyUnitMetres = 0.0023f;
 	float compassFadeStartDegrees = 20.0f;
 	float compassFadeFullDegrees = 35.0f;
+	// The top and bottom of the view: how far away, how far above (top) and
+	// below (bottom) the middle of the view, and metres per HUD unit at size 1
+	// (a 554-unit notice comes out 44 cm wide, 1.2 m away).
+	float viewDistanceMetres = 1.2f;
+	float viewTopDegrees = 15.0f;
+	float viewBottomDegrees = 20.0f;
+	float viewUnitMetres = 0.0008f;
+	// The head turned this many degrees away from where a row was placed
+	// takes it along to the middle again; 0 keeps it where it appeared.
+	float viewFollowDegrees = 30.0f;
+	// On: the top and bottom rows ride the head every frame instead.
+	bool viewLockedToHead = false;
 };
 
 // Whether an element is taken out of the main panel: on a hand, in the sky,
@@ -135,7 +163,14 @@ struct HudTile {
 	float width = 0.0f;
 	float height = 0.0f;
 	bool hasSize = false;
+	// Its alpha trait; 255 when it has none.
+	float alpha = 255.0f;
+	// Its justify trait: 1 left (x is its left edge), 2 centre (x is its
+	// middle), 4 right (x is its right edge) - the text tiles'.
+	UInt32 justify = 1;
 };
+inline constexpr UInt32 kHudJustifyCentre = 2;
+inline constexpr UInt32 kHudJustifyRight = 4;
 
 struct UiRect {
 	float left = 0.0f;
@@ -202,6 +237,11 @@ inline UiRect HudTileRect(const HudTile* tiles, UInt32 count, SInt32 index) {
 	if (!HudTileOrigin(tiles, count, index, x, y)) {
 		return r;
 	}
+	if (t.justify == kHudJustifyCentre) {
+		x -= t.width * 0.5f;
+	} else if (t.justify == kHudJustifyRight) {
+		x -= t.width;
+	}
 	r.left = x;
 	r.top = y;
 	r.right = x + t.width;
@@ -250,6 +290,9 @@ inline constexpr const char* kHudElementTiles[kHudElementCount][kHudElementTiles
 	{nullptr, nullptr, nullptr, nullptr},  // the active effects: every tile under magic_icons
 	{"hudmain_Levelup_Icon", nullptr, nullptr, nullptr},
 	{"hudmain_compass_window", "hudmain_compass_frame", nullptr, nullptr},
+	{"hudmain_region", nullptr, nullptr, nullptr},
+	{"hudsubtitle_notice", "hudsubtitle_icon", nullptr, nullptr},
+	{"hudsubtitle_text", nullptr, nullptr, nullptr},
 };
 inline constexpr const char* kHudEffectsRoot = "magic_icons";
 
@@ -271,9 +314,16 @@ inline UiRect HudElementRect(const HudTile* tiles, UInt32 count, HudElement elem
 		return r;
 	}
 	for (const char* name : kHudElementTiles[static_cast<UInt32>(element)]) {
-		if (name != nullptr) {
-			r = UnionRect(r, HudTileRect(tiles, count, FindHudTile(tiles, count, name)));
+		if (name == nullptr) {
+			continue;
 		}
+		const SInt32 index = FindHudTile(tiles, count, name);
+		// The region's name stays in the tree all the time and fades in by
+		// its alpha; at 0 there is nothing to show.
+		if (element == HudElement::Region && index >= 0 && !(tiles[index].alpha > 0.0f)) {
+			continue;
+		}
+		r = UnionRect(r, HudTileRect(tiles, count, index));
 	}
 	return r;
 }
@@ -327,7 +377,7 @@ inline CaptureRect UiRectToCapture(const UiRect& r, UInt32 believedHeight, UInt3
 // a grid, keeping its aspect - one texture for all the quads, each showing
 // its slot through the overlay's texture bounds.
 inline constexpr UInt32 kHandHudAtlasWidth = 2048;
-inline constexpr UInt32 kHandHudAtlasHeight = 1024;
+inline constexpr UInt32 kHandHudAtlasHeight = 2048;
 inline constexpr UInt32 kHandHudAtlasColumns = 4;
 inline constexpr UInt32 kHandHudSlotSize = kHandHudAtlasWidth / kHandHudAtlasColumns;  // 512
 static_assert(kHudElementCount <= kHandHudAtlasColumns * (kHandHudAtlasHeight / kHandHudSlotSize),
@@ -485,7 +535,47 @@ struct HandHudFrame {
 	bool haveHead = false;
 	openvr::HmdMatrix34 head{};
 	UiRect rect[kHudElementCount];
+	// Where the top and bottom rows were placed: the head's pose then
+	// (StepViewAnchor); [0] the top, [1] the bottom.
+	bool viewAnchorValid[2] = {false, false};
+	openvr::HmdMatrix34 viewAnchor[2] = {};
 };
+
+// The head's heading and another's, apart by this many degrees (yaw only).
+inline float HeadingApartDegrees(const openvr::HmdMatrix34& a, const openvr::HmdMatrix34& b) {
+	const float ax = -a.m[0][2], az = -a.m[2][2];
+	const float bx = -b.m[0][2], bz = -b.m[2][2];
+	const float la = math::Sqrt(ax * ax + az * az);
+	const float lb = math::Sqrt(bx * bx + bz * bz);
+	if (la < 1e-4f || lb < 1e-4f) {
+		return 0.0f;  // straight up or down: no heading to be apart by
+	}
+	const float dot = ax * bx + az * bz;
+	float cross = ax * bz - az * bx;
+	cross = cross < 0.0f ? -cross : cross;
+	return math::Atan2(cross, dot) * (180.0f / math::kPi);
+}
+
+// A top or bottom row's anchor for this frame. Taken from the head when the
+// row appears, when the head has turned more than `followDegrees` from it
+// (0: never), or every frame when locked to the head; dropped when the row
+// has nothing to show, so the next one appears where the head looks then.
+struct HudViewAnchor {
+	bool valid = false;
+	openvr::HmdMatrix34 head{};
+};
+inline void StepViewAnchor(HudViewAnchor& a, bool shown, bool haveHead, const openvr::HmdMatrix34& head,
+                           float followDegrees, bool lockedToHead) {
+	if (!shown || !haveHead) {
+		a.valid = shown && a.valid;  // no head this frame: keep what there is
+		return;
+	}
+	if (!a.valid || lockedToHead ||
+	    (followDegrees > 0.0f && HeadingApartDegrees(a.head, head) > followDegrees)) {
+		a.head = head;
+		a.valid = true;
+	}
+}
 
 // Where one element's quad goes: on a hand (relative to that controller) or
 // in the room (absolute), its width and its opacity.
@@ -517,13 +607,15 @@ inline void PlaceHandHud(const HandHudSettings& s, const HandHudFrame& f, HandHu
 	if (!s.enabled) {
 		return;
 	}
-	const HudPlace rows[3] = {HudPlace::Left, HudPlace::Right, HudPlace::Sky};
+	const HudPlace rows[5] = {HudPlace::Left, HudPlace::Right, HudPlace::Sky, HudPlace::Top, HudPlace::Bottom};
 	for (HudPlace row : rows) {
+		const bool inView = row == HudPlace::Top || row == HudPlace::Bottom;
+		const UInt32 viewRow = row == HudPlace::Top ? 0u : 1u;
 		UInt32 members[kHudElementCount];
 		float widths[kHudElementCount];
 		float centres[kHudElementCount];
 		UInt32 n = 0;
-		const float unit = row == HudPlace::Sky ? s.skyUnitMetres : s.unitMetres;
+		const float unit = row == HudPlace::Sky ? s.skyUnitMetres : inView ? s.viewUnitMetres : s.unitMetres;
 		for (UInt32 e = 0; e < kHudElementCount; ++e) {
 			const HudElementSettings& es = s.element[e];
 			if (es.place != row || !f.rect[e].valid) {
@@ -536,8 +628,11 @@ inline void PlaceHandHud(const HandHudSettings& s, const HandHudFrame& f, HandHu
 		if (n == 0) {
 			continue;
 		}
-		LayoutHandRow(widths, n, row == HudPlace::Sky ? s.gapMetres * 3.0f : s.gapMetres, centres);
-		const bool tracked = row == HudPlace::Left ? f.leftValid : row == HudPlace::Right ? f.rightValid : f.haveHead;
+		LayoutHandRow(widths, n, (row == HudPlace::Sky || inView) ? s.gapMetres * 3.0f : s.gapMetres, centres);
+		const bool tracked = row == HudPlace::Left    ? f.leftValid
+		                     : row == HudPlace::Right ? f.rightValid
+		                     : inView                 ? f.viewAnchorValid[viewRow]
+		                                              : f.haveHead;
 		if (!tracked) {
 			continue;
 		}
@@ -547,12 +642,16 @@ inline void PlaceHandHud(const HandHudSettings& s, const HandHudFrame& f, HandHu
 			skyPose = CompassPose(f.head, s.compassElevationDegrees, s.compassDistanceMetres);
 			skyAlpha = CompassOpacity(HeadPitchDegrees(f.head), s.compassFadeStartDegrees,
 			                          s.compassFadeFullDegrees, 1.0f);
+		} else if (inView) {
+			skyPose = CompassPose(f.viewAnchor[viewRow], viewRow == 0 ? s.viewTopDegrees : -s.viewBottomDegrees,
+			                      s.viewDistanceMetres);
+			skyAlpha = 1.0f;
 		}
 		for (UInt32 i = 0; i < n; ++i) {
 			const UInt32 e = members[i];
 			HandHudQuad& q = out[e];
 			q.widthMetres = widths[i];
-			if (row == HudPlace::Sky) {
+			if (row == HudPlace::Sky || inView) {
 				q.onDevice = false;
 				q.pose = AlongOwnX(skyPose, centres[i]);
 				q.alpha = skyAlpha * s.element[e].opacity;

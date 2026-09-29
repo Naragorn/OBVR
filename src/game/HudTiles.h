@@ -21,6 +21,18 @@ namespace obvr::game {
 // only. Returns the number of tiles logged, 0 when the menu is not loaded.
 UInt32 LogHudTileTree(UInt32 menuId, const char* label);
 
+// Logs the names of the menu roots under InterfaceManager::menuRoot, and the
+// whole tree of HUDSubtitleMenu when it hangs there - the subtitles and the
+// top-left notices live in that menu (hud_subtitle_menu.xml:
+// hudsubtitle_text, hudsubtitle_notice, hudsubtitle_icon), which the tile
+// menu array does not carry.
+UInt32 LogMenuRootTiles();
+
+// Reads the tree of the menu root with this name under
+// InterfaceManager::menuRoot into `out`, as ReadHudTiles does. 0 when no
+// such menu hangs there.
+UInt32 ReadMenuRootTiles(const char* menuName, vr::HudTile* out, UInt32 capacity);
+
 // Reads one menu's tile tree into `out`, depth first, each tile with its
 // parent's index - the snapshot vr::HudElementRect works on. A tile hidden
 // by its own visible trait counts as having no size. Returns the number of

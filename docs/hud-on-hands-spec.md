@@ -206,3 +206,47 @@ It PASSED: HUDMainMenu has 34 tiles and HUDInfoMenu has 21.
 - The top-left messages showed in neither tree. They come and go with a message, so a run that shows one still has to find them.
 
 **Decision:** route B holds for vanilla. Every element the hands need has a stable, named tile with a rectangle that matches the picture.
+
+**The notices and the subtitles** (a later run on 2026-09-29, `tools/hand-scripts/hud-messages.txt`):
+- They live in HUDSubtitleMenu, as `hudsubtitle_notice` (with `hudsubtitle_icon`) and `hudsubtitle_text`.
+- The tile menu array does not carry that menu. It hangs under `InterfaceManager::menuRoot` (+0x68, xOBSE's GameAPI.h) once the game first shows one.
+- A notice read: "Your Blade skill increased.", x 48, y 40, w 554, h 45, visible 2.
+- The subtitle text is centre-justified: its x is its middle.
+- The enemy health bar and the sneak eye are the persistent HUDReticle roots, drawn at the crosshair. The crosshair layer already carries them. They are not hand elements.
+
+## 9. Built (2026-09-29)
+
+Commits `b4e33e3` and the following.
+
+**`src/vr/HandHud.h`** holds the pure logic (`hand_hud_test`):
+- the places;
+- the tile rectangles, including justify, and alpha for the region's name;
+- the capture pixels and the atlas;
+- the rows on the hands;
+- the compass pose and its fade;
+- the top and bottom of the view, with their anchor.
+
+**`src/render/HandHudLayer.*`** lifts the elements into one 2048² atlas, erases them from the panel, and shows one overlay per element.
+
+**`src/vr/DialogPanel.h`** covers the dialogue panel on the speaker and its size (`dialog_panel_test`).
+
+**Default layout:**
+- left hand: bars, spell;
+- right hand: weapon, active effects, level-up icon;
+- sky: compass;
+- top of the view: region name and notices;
+- bottom of the view: subtitles.
+
+Every element has its own place, opacity and size. The settings are in `[HandHud]` and the settings menu's HUD page. The dialogue settings are `[Look] DialogRecentre`, `DialogPanelSide` (default right), `DialogPanelSideDegrees` and `DialogPanelScale` (default 0.8).
+
+**Harness runs (a sleeping headset, so no tracked hands and no quads):**
+- `hand-hud.txt` PASS: bars, spell, weapon and compass lifted; the atlas and the emptied panel written.
+- `hand-hud-text.txt`: the notice lifted at 4–6 s after the console line (atlas picture). The final run with the corrected mark was cut off: the tester had started the game.
+- `hud-messages.txt` PASS.
+
+**Not tested:**
+- The quads on the hands and in the sky, which need tracked controllers and a head pose.
+- The dialogue panel on the speaker, which needs a conversation. Its decision and anchor have unit tests.
+- How readable the bars are at 12 cm.
+
+**Open bug (2026-09-29): the speaker is taken from the crosshair.** It comes from the crosshair target in the two seconds before the conversation opens. A conversation an NPC starts (they walk up and greet) has no crosshair target, and the panel then stays where it was (logged "left where it was"). The dialogue menu's own target field would be the direct source; it has not been found yet.

@@ -260,6 +260,95 @@ void TestPlacement() {
 	Check(!q[1].shown && !q[2].shown, "the feature off: nothing");
 }
 
+void TestText() {
+	std::printf("The region's name, the notices and the subtitles\n");
+	HudPlace p = HudPlace::View;
+	Check(ParseHudPlace("top", p) && p == HudPlace::Top && ParseHudPlace("Bottom", p) && p == HudPlace::Bottom,
+	      "\"top\" and \"bottom\": the view's top and bottom");
+	Check(HudPlaceFromIndex(6.0f) == HudPlace::Bottom, "row value 6: bottom");
+	Check(HudElementInSubtitleMenu(HudElement::Messages) && HudElementInSubtitleMenu(HudElement::Subtitles) &&
+	          !HudElementInSubtitleMenu(HudElement::Region),
+	      "the notices and subtitles are HUDSubtitleMenu's, the region's name HUDMainMenu's");
+
+	// HUDSubtitleMenu as the probe read it with a notice up (spec section 8).
+	HudTile t[8];
+	UInt32 n = 0;
+	t[n++] = Tile("HUDSubtitleMenu", -1, 0, 0);
+	t[n++] = Tile("hudsubtitle_text_layout", 0, 0, 0);
+	t[n++] = Tile("hudsubtitle_notice", 1, 48, 40, 554, 45);
+	t[n++] = Tile("hudsubtitle_icon", 1, 40, 40);  // hidden: no size
+	t[n] = Tile("hudsubtitle_text", 1, 853.25f, 700, 400, 45);
+	t[n++].justify = kHudJustifyCentre;
+	const UiRect notice = HudElementRect(t, n, HudElement::Messages);
+	Check(notice.valid && Near(notice.left, 48) && Near(notice.right, 602) && Near(notice.bottom, 85),
+	      "the notice: its text, the hidden icon left out");
+	const UiRect said = HudElementRect(t, n, HudElement::Subtitles);
+	Check(said.valid && Near(said.left, 653.25f) && Near(said.right, 1053.25f),
+	      "a subtitle, centred: x is its middle");
+	t[n - 1].justify = kHudJustifyRight;
+	Check(Near(HudElementRect(t, n, HudElement::Subtitles).left, 453.25f), "right-justified: x is its right edge");
+
+	HudTile main[3] = {Tile("HUDMainMenu", -1, 0, 0), Tile("hudmain_background", 0, 87, 850, 620, 70),
+	                   Tile("hudmain_region", 1, 0, -45, 360, 45)};
+	main[2].alpha = 0.0f;
+	Check(!HudElementRect(main, 3, HudElement::Region).valid, "the region's name at alpha 0: nothing to show");
+	main[2].alpha = 200.0f;
+	const UiRect region = HudElementRect(main, 3, HudElement::Region);
+	Check(region.valid && Near(region.top, 805), "fading in: its rectangle");
+}
+
+void TestViewAnchor() {
+	std::printf("The top and bottom of the view\n");
+	openvr::HmdMatrix34 ahead = HeadLooking(0.0f);
+	Check(Near(HeadingApartDegrees(ahead, ahead), 0.0f), "the same heading: 0 apart");
+	openvr::HmdMatrix34 turned{};  // turned 90 degrees to the right: forward +x
+	turned.m[0][2] = -1.0f;
+	turned.m[1][1] = 1.0f;
+	turned.m[2][0] = 1.0f;
+	Check(Near(HeadingApartDegrees(ahead, turned), 90.0f, 0.05f), "a quarter turn: 90 apart");
+	Check(HeadingApartDegrees(ahead, HeadLooking(90.0f)) == 0.0f, "straight up: no heading, 0");
+
+	HudViewAnchor a;
+	StepViewAnchor(a, false, true, ahead, 30.0f, false);
+	Check(!a.valid, "nothing shown: no anchor");
+	StepViewAnchor(a, true, true, ahead, 30.0f, false);
+	Check(a.valid && Near(a.head.m[2][2], 1.0f), "it appears: placed where the head looks");
+	openvr::HmdMatrix34 little = HeadLooking(0.0f);
+	little.m[0][3] = 0.3f;  // moved, not turned
+	StepViewAnchor(a, true, true, little, 30.0f, false);
+	Check(Near(a.head.m[0][3], 0.0f), "the head moves or turns a little: it stays");
+	StepViewAnchor(a, true, true, turned, 30.0f, false);
+	Check(Near(a.head.m[0][2], -1.0f), "turned beyond 30 degrees: taken along");
+	StepViewAnchor(a, true, true, ahead, 0.0f, false);
+	Check(Near(a.head.m[0][2], -1.0f), "following off (0): it stays where it appeared");
+	StepViewAnchor(a, true, true, ahead, 0.0f, true);
+	Check(Near(a.head.m[2][2], 1.0f), "locked to the head: every frame");
+	StepViewAnchor(a, true, false, turned, 30.0f, false);
+	Check(a.valid && Near(a.head.m[2][2], 1.0f), "no head pose this frame: kept");
+	StepViewAnchor(a, false, true, turned, 30.0f, false);
+	Check(!a.valid, "gone: dropped, the next one appears where the head looks then");
+
+	HandHudSettings s;
+	HandHudFrame f;
+	f.haveHead = true;
+	f.head = ahead;
+	f.rect[7] = UiRect{48, 40, 602, 85, true};    // a notice, top
+	f.rect[8] = UiRect{653, 700, 1053, 745, true};  // a subtitle, bottom
+	HandHudQuad q[kHudElementCount];
+	PlaceHandHud(s, f, q);
+	Check(!q[7].shown && !q[8].shown, "no anchor yet: not shown");
+	f.viewAnchorValid[0] = f.viewAnchorValid[1] = true;
+	f.viewAnchor[0] = f.viewAnchor[1] = ahead;
+	PlaceHandHud(s, f, q);
+	const float up = 1.7f + 1.2f * math::Sin(15.0f * math::kPi / 180.0f);
+	const float down = 1.7f - 1.2f * math::Sin(20.0f * math::kPi / 180.0f);
+	Check(q[7].shown && !q[7].onDevice && Near(q[7].pose.m[1][3], up) && Near(q[7].pose.m[0][3], 0.0f),
+	      "the notice: 15 degrees above the middle, 1.2 m away, centred");
+	Check(q[8].shown && Near(q[8].pose.m[1][3], down) && Near(q[8].widthMetres, 400 * 0.0008f),
+	      "the subtitle: 20 degrees below, 400 units wide");
+	Check(Near(q[7].alpha, 1.0f), "at its own opacity");
+}
+
 }  // namespace
 
 int main() {
@@ -271,6 +360,8 @@ int main() {
 	TestLayout();
 	TestCompass();
 	TestPlacement();
+	TestText();
+	TestViewAnchor();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

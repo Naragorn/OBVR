@@ -33,7 +33,7 @@ void HudSizeWrite(Config& c, float v) {
 
 #define OBVR_HUD_ELEMENT_ROWS(E, NAME, KEY)                                                              \
 	{                                                                                                    \
-		"HUD", NAME, "Where: in view, left hand, right hand, in the sky, or off",                        \
+		"HUD", NAME, "Where: the panel, left or right hand, the sky, off, top or bottom of the view",    \
 		ItemKind::Number, 0.0f, static_cast<float>(vr::kHudPlaceCount - 1), 1.0f, 0, false,              \
 		"HandHud", KEY "Place", &HudPlaceRead<E>, &HudPlaceWrite<E>,                                     \
 		"", "", SettingAction::None, vr::kHudPlaceNames, vr::kHudPlaceCount,                             \
@@ -330,6 +330,35 @@ const SettingDefinition kSettings[] = {
 		"Look", "DialogFirstPerson",
 		+[](const Config& c) { return c.dialogFirstPerson ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.dialogFirstPerson = v != 0.0f; },
+	},
+	{
+		"Dialogue", "Panel on the speaker", "When a conversation opens, the panel moves to who you talk to",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "DialogRecentre",
+		+[](const Config& c) { return c.dialogPanel.recentre ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.dialogPanel.recentre = v != 0.0f; },
+	},
+	{
+		"Dialogue", "Panel side", "In front of the speaker, or beside them so they stay in view",
+		ItemKind::Number, 0.0f, static_cast<float>(vr::kDialogPanelSideCount - 1), 1.0f, 0, false,
+		"Look", "DialogPanelSide",
+		+[](const Config& c) { return static_cast<float>(c.dialogPanel.side); },
+		+[](Config& c, float v) { c.dialogPanel.side = vr::DialogPanelSideFromIndex(v); },
+		"", "", SettingAction::None, vr::kDialogPanelSideNames, vr::kDialogPanelSideCount,
+	},
+	{
+		"Dialogue", "Panel beside by", "How far beside the speaker, degrees",
+		ItemKind::Number, 5.0f, 60.0f, 5.0f, 0, false,
+		"Look", "DialogPanelSideDegrees",
+		+[](const Config& c) { return c.dialogPanel.sideDegrees; },
+		+[](Config& c, float v) { c.dialogPanel.sideDegrees = v; },
+	},
+	{
+		"Dialogue", "Panel size", "The dialogue panel's size, times the menus'",
+		ItemKind::Number, 0.4f, 1.5f, 0.05f, 2, false,
+		"Look", "DialogPanelScale",
+		+[](const Config& c) { return c.dialogPanel.scale; },
+		+[](Config& c, float v) { c.dialogPanel.scale = v; },
 	},
 
 	// ---- Body --------------------------------------------------------------
@@ -961,6 +990,44 @@ const SettingDefinition kSettings[] = {
 	OBVR_HUD_ELEMENT_ROWS(3, "Active effects", "Effects")
 	OBVR_HUD_ELEMENT_ROWS(4, "Level-up icon", "LevelUp")
 	OBVR_HUD_ELEMENT_ROWS(5, "Compass", "Compass")
+	OBVR_HUD_ELEMENT_ROWS(6, "Region name", "Region")
+	OBVR_HUD_ELEMENT_ROWS(7, "Messages", "Messages")
+	OBVR_HUD_ELEMENT_ROWS(8, "Subtitles", "Subtitles")
+	{
+		"HUD", "Text distance", "How far away messages and subtitles hang, metres",
+		ItemKind::Number, 0.5f, 3.0f, 0.1f, 1, false,
+		"HandHud", "ViewDistanceMetres",
+		+[](const Config& c) { return c.hands.handHud.viewDistanceMetres; },
+		+[](Config& c, float v) { c.hands.handHud.viewDistanceMetres = v; },
+	},
+	{
+		"HUD", "Top of view", "How far above the middle of the view the top row hangs, degrees",
+		ItemKind::Number, 0.0f, 45.0f, 1.0f, 0, false,
+		"HandHud", "ViewTopDegrees",
+		+[](const Config& c) { return c.hands.handHud.viewTopDegrees; },
+		+[](Config& c, float v) { c.hands.handHud.viewTopDegrees = v; },
+	},
+	{
+		"HUD", "Bottom of view", "How far below the middle of the view the bottom row hangs, degrees",
+		ItemKind::Number, 0.0f, 45.0f, 1.0f, 0, false,
+		"HandHud", "ViewBottomDegrees",
+		+[](const Config& c) { return c.hands.handHud.viewBottomDegrees; },
+		+[](Config& c, float v) { c.hands.handHud.viewBottomDegrees = v; },
+	},
+	{
+		"HUD", "Text follows after", "Turn this far away and the text comes back to the middle, degrees; 0 never",
+		ItemKind::Number, 0.0f, 90.0f, 5.0f, 0, false,
+		"HandHud", "ViewFollowDegrees",
+		+[](const Config& c) { return c.hands.handHud.viewFollowDegrees; },
+		+[](Config& c, float v) { c.hands.handHud.viewFollowDegrees = v; },
+	},
+	{
+		"HUD", "Text locked to the head", "Messages and subtitles ride the head instead",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"HandHud", "ViewLockedToHead",
+		+[](const Config& c) { return c.hands.handHud.viewLockedToHead ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.handHud.viewLockedToHead = v != 0.0f; },
+	},
 	{
 		"HUD", "Compass height", "How far above the horizon the compass hangs, degrees",
 		ItemKind::Number, 15.0f, 85.0f, 5.0f, 0, false,

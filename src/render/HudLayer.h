@@ -90,6 +90,11 @@ public:
 	// hangs in the room: bring it back in front of me.
 	void ResetAnchor() { m_anchorValid = false; }
 
+	// Takes this pose as the room anchor now - levelled, heading only - and
+	// hangs the quad ahead of it on the next room placement. What puts the
+	// dialogue panel on the NPC when a conversation opens (vr/DialogPanel.h).
+	void AnchorAt(const vr::openvr::HmdMatrix34& pose);
+
 	// The hand-tracked mode's wrist placement: hang the layer on a tracked
 	// device (a controller) with the given device-to-overlay transform and
 	// width, on the next Submit and every one after it until cleared. While
@@ -159,6 +164,11 @@ private:
 	// last placed. Held rather than read per frame - see PlaceInRoom.
 	vr::openvr::HmdMatrix34 m_anchorPose = {};
 	bool m_anchorValid = false;
+	// Set by AnchorAt: the anchor changed without PlaceInRoom taking it, so
+	// the next placement has to hand the transform over.
+	bool m_anchorDirty = false;
+	// The width last handed to the compositor off the wrist.
+	float m_appliedWidth = 0.0f;
 	bool m_anchorReported = false;
 	UInt32 m_reanchorsReported = 0;  // self-heal log budget - see PlaceInRoom
 

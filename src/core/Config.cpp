@@ -396,6 +396,18 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.dialogZoom = ReadBool("Look", "DialogZoom", config.dialogZoom, path);
 	config.dialogFirstPerson =
 		ReadBool("Look", "DialogFirstPerson", config.dialogFirstPerson, path);
+	{
+		vr::DialogPanelSettings& dp = config.dialogPanel;
+		dp.recentre = ReadBool("Look", "DialogRecentre", dp.recentre, path);
+		char word[16] = {};
+		ReadText("Look", "DialogPanelSide", word, sizeof(word), path);
+		if (word[0] != 0 && !vr::ParseDialogPanelSide(word, dp.side)) {
+			OBVR_LOG("Config: [Look] DialogPanelSide=%s is not centre, right or left - kept %s", word,
+			         vr::kDialogPanelSideNames[static_cast<UInt32>(dp.side)]);
+		}
+		dp.sideDegrees = ReadFloat("Look", "DialogPanelSideDegrees", dp.sideDegrees, path);
+		dp.scale = ReadFloat("Look", "DialogPanelScale", dp.scale, path);
+	}
 	config.tracker.menusInWorld =
 		ReadMenusInWorld("Render", "Menus", config.tracker.menusInWorld, path);
 	config.tracker.liveMenuBackground = ReadBool(
@@ -734,6 +746,12 @@ void ReadRuntimeValues(Config& config, const char* path) {
 				ReadFloat("HandHud", "CompassFadeStartDegrees", hh.compassFadeStartDegrees, path);
 			hh.compassFadeFullDegrees =
 				ReadFloat("HandHud", "CompassFadeFullDegrees", hh.compassFadeFullDegrees, path);
+			hh.viewDistanceMetres = ReadFloat("HandHud", "ViewDistanceMetres", hh.viewDistanceMetres, path);
+			hh.viewTopDegrees = ReadFloat("HandHud", "ViewTopDegrees", hh.viewTopDegrees, path);
+			hh.viewBottomDegrees = ReadFloat("HandHud", "ViewBottomDegrees", hh.viewBottomDegrees, path);
+			hh.viewUnitMetres = ReadFloat("HandHud", "ViewUnitMetres", hh.viewUnitMetres, path);
+			hh.viewFollowDegrees = ReadFloat("HandHud", "ViewFollowDegrees", hh.viewFollowDegrees, path);
+			hh.viewLockedToHead = ReadBool("HandHud", "ViewLockedToHead", hh.viewLockedToHead, path);
 		}
 		h.levitateObjects = ReadBool("Hands", "LevitateObjects", h.levitateObjects, path);
 		h.attachSmallObjects =

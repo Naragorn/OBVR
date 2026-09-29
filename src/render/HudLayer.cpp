@@ -244,6 +244,7 @@ bool HudLayer::EnsureOverlay(vr::OpenVRBackend& backend, float distanceMetres,
 
 	backend.SetOverlayTransformHmdRelative(m_overlay, hmdToOverlay);
 	backend.SetOverlayWidthInMetres(m_overlay, widthMetres);
+	m_appliedWidth = widthMetres;
 
 	// The slice of the layer texture the 2D actually draws in. An earlier
 	// crop to the believed size was wrong and swallowed the HUD, because the
@@ -307,6 +308,13 @@ void HudLayer::SetWristPlacement(UInt32 deviceIndex,
 	m_wristWidth = widthMetres;
 }
 
+void HudLayer::AnchorAt(const vr::openvr::HmdMatrix34& pose) {
+	m_anchorPose = pose;
+	vr::LevelPose(m_anchorPose);
+	m_anchorValid = true;
+	m_anchorDirty = true;
+}
+
 void HudLayer::ShownPixels(float& width, float& height) const {
 	UInt32 believedWidth = 0;
 	UInt32 believedHeight = 0;
@@ -326,6 +334,12 @@ void HudLayer::PlaceInRoom(vr::OpenVRBackend& backend, float distanceMetres) {
 		return;
 	}
 
+	if (m_anchorValid && m_anchorDirty) {
+		// Taken by AnchorAt: handed over as it is.
+		m_anchorDirty = false;
+		backend.SetOverlayTransformAbsolute(m_overlay, vr::OverlayPoseAhead(m_anchorPose, distanceMetres));
+		return;
+	}
 	if (m_anchorValid) {
 		const float distSq = vr::PoseDistanceSq(current, m_anchorPose);
 		if (distSq <= kAnchorReachMetres * kAnchorReachMetres) {
@@ -423,9 +437,12 @@ void HudLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool capture
 			backend.SetOverlayWidthInMetres(m_overlay, m_wristWidth);
 		}
 		m_anchorValid = true;
-	} else if (m_wristApplied) {
+	} else if (m_wristApplied || m_appliedWidth != widthMetres) {
+		// Off the wrist, or a new width - the dialogue panel's own size while
+		// talking (vr::DialogPanelWidth), or the setting changed.
 		m_wristApplied = false;
 		backend.SetOverlayWidthInMetres(m_overlay, widthMetres);
+		m_appliedWidth = widthMetres;
 	}
 
 	if (m_wristSet) {
@@ -634,6 +651,8 @@ void HudLayer::Destroy() {
 	// tearing down, and SteamVR reclaims a process's overlays on exit anyway.
 	m_overlay = vr::openvr::kOverlayHandleInvalid;
 	m_overlayTried = false;
+	m_appliedWidth = 0.0f;
+	m_anchorDirty = false;
 	m_overlayVisible = false;
 	m_vulkanChecked = false;
 	m_vulkanUsable = false;

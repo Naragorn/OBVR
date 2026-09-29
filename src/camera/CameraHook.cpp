@@ -4773,9 +4773,14 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// The HUD tile probe (docs/hud-on-hands-spec.md, step 1): the tile trees
 	// beside the captured picture they drew, before anything is lifted out of
 	// it. Once some seconds into the world, and at every hand-script mark.
-	if (config.hudTileProbe && worldFrame && !visibility.menuIsUp && g_hudLayer.HasCapture()) {
+	// A mark counts with a menu up as well: the harness's console can leave the
+	// menu state set after it closed (docs/hand-script-harness.md), and the
+	// trees are what is wanted.
+	const bool hudTileProbeMarked = test::HandScriptMarkedThisFrame();
+	if (config.hudTileProbe && g_hudLayer.HasCapture() &&
+	    ((worldFrame && !visibility.menuIsUp) || hudTileProbeMarked)) {
 		++g_hudTileProbeWorldFrames;
-		const bool marked = test::HandScriptMarkedThisFrame();
+		const bool marked = hudTileProbeMarked;
 		if (marked || g_hudTileProbeWorldFrames == 300) {
 			const char* const mark = marked ? test::HandScriptMarkName() : "first";
 			UInt32 believedWidth = 0;
@@ -4787,6 +4792,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			game::LogHudTileTree(game::kMenuIdHudInfo, "HUDInfoMenu");
 			game::LogHudTileTree(game::kMenuIdHudReticle, "HUDReticle");
 			game::LogHudTileTree(game::kMenuIdHudSubtitle, "HUDSubtitleMenu");
+			game::LogMenuRootTiles();
 			char name[96];
 			std::snprintf(name, sizeof(name), "OBVR-HudTiles-%s.bmp", mark);
 			const bool dumped = render::DumpSurfaceBmp(
@@ -4807,7 +4813,13 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	vr::HandHudFrame handHudFrame;
 	if (handHudActive) {
 		static vr::HudTile s_hudTiles[vr::kHudTilesMax];
+		static vr::HudTile s_subtitleTiles[vr::kHudTilesMax];
 		const UInt32 tileCount = game::ReadHudTiles(game::kMenuIdHudMain, s_hudTiles, vr::kHudTilesMax);
+		// The notices and the subtitles are HUDSubtitleMenu's, which exists
+		// only once the game first showed one; under the interface's menu
+		// root either way.
+		const UInt32 subtitleCount =
+			game::ReadMenuRootTiles("HUDSubtitleMenu", s_subtitleTiles, vr::kHudTilesMax);
 		UInt32 believedWidth = 0;
 		UInt32 believedHeight = 0;
 		render::GameBelievedSize(believedWidth, believedHeight);
@@ -4819,7 +4831,11 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			const auto element = static_cast<vr::HudElement>(e);
 			lift[e] = vr::HudElementLifted(handHud, element);
 			show[e] = vr::HudElementShown(handHud, element);
-			const vr::UiRect r = lift[e] ? vr::HudElementRect(s_hudTiles, tileCount, element) : vr::UiRect{};
+			const bool subtitleMenu = vr::HudElementInSubtitleMenu(element);
+			const vr::UiRect r =
+				lift[e] ? vr::HudElementRect(subtitleMenu ? s_subtitleTiles : s_hudTiles,
+				                             subtitleMenu ? subtitleCount : tileCount, element)
+				        : vr::UiRect{};
 			rects[e] = vr::UiRectToCapture(r, uiHeight, g_hudLayer.CaptureWidth(), g_hudLayer.CaptureHeight());
 			handHudFrame.rect[e] = r;
 		}
@@ -4970,6 +4986,20 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		handHudFrame.leftValid = leftDevice != vr::openvr::kTrackedDeviceIndexInvalid;
 		handHudFrame.rightValid = rightDevice != vr::openvr::kTrackedDeviceIndexInvalid;
 		handHudFrame.haveHead = backend.GetRenderPoseMatrix(handHudFrame.head);
+		// The top and bottom of the view: placed where the head looks when
+		// something appears there, and taken along when it turns far away.
+		static vr::HudViewAnchor s_viewAnchor[2];
+		for (UInt32 row = 0; row < 2; ++row) {
+			const vr::HudPlace place = row == 0 ? vr::HudPlace::Top : vr::HudPlace::Bottom;
+			bool shown = false;
+			for (UInt32 e = 0; e < vr::kHudElementCount; ++e) {
+				shown = shown || (handHud.element[e].place == place && handHudFrame.rect[e].valid);
+			}
+			vr::StepViewAnchor(s_viewAnchor[row], shown && handHudActive, handHudFrame.haveHead,
+			                   handHudFrame.head, handHud.viewFollowDegrees, handHud.viewLockedToHead);
+			handHudFrame.viewAnchorValid[row] = s_viewAnchor[row].valid;
+			handHudFrame.viewAnchor[row] = s_viewAnchor[row].head;
+		}
 		vr::HandHudQuad quads[vr::kHudElementCount];
 		vr::PlaceHandHud(handHud, handHudFrame, quads);
 		render::HandHudLayer::Placement placements[vr::kHudElementCount];
@@ -4982,6 +5012,52 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			placements[e].alpha = quads[e].alpha;
 		}
 		g_handHudLayer.Submit(backend, render::GetGameDevice(), handHudActive && !hiddenForDeath, placements);
+
+		// The dialogue panel on the speaker (vr/DialogPanel.h). Who that is:
+		// what was under the crosshair in the last world frames before the
+		// conversation opened - talking starts by activating them - kept in
+		// tracking space, a little above the origin at their feet.
+		static NiPoint3 s_speakerTracking{0.0f, 0.0f, 0.0f};
+		static UInt32 s_speakerFrame = 0;
+		static bool s_speakerSeen = false;
+		static bool s_wasTalking = false;
+		if (worldFrame && !visibility.menuIsUp && g_cyclopeanCameraWorldValid && handHudFrame.haveHead) {
+			const game::CrosshairTarget target = game::ReadCrosshairTarget();
+			if (target.haveRef) {
+				constexpr float kSpeakerHeadUnits = 110.0f;
+				const NiPoint3 at{target.position.x, target.position.y, target.position.z + kSpeakerHeadUnits};
+				s_speakerTracking = vr::WorldPointInTracking(handHudFrame.head, g_cyclopeanCameraWorldTransform.rot,
+				                                             g_cyclopeanCameraWorldTransform.pos, at,
+				                                             config.tracker.unitsPerMetre);
+				s_speakerFrame = g_presentedFrame;
+				s_speakerSeen = true;
+			}
+		}
+		const bool talking = g_dialogMenuEpisode;
+		const bool opened = talking && !s_wasTalking;
+		s_wasTalking = talking;
+		constexpr UInt32 kSpeakerFreshFrames = 180;  // two seconds at 90 Hz
+		const bool speakerFresh = s_speakerSeen && g_presentedFrame - s_speakerFrame <= kSpeakerFreshFrames;
+		const bool menusInRoom = config.tracker.menusInWorld && config.tracker.hudAnchorWorld;
+		if (opened) {
+			vr::openvr::HmdMatrix34 anchor{};
+			const bool due = vr::DialogRecentreDue(config.dialogPanel.recentre, opened, menusInRoom, speakerFresh);
+			const bool placed =
+				due && handHudFrame.haveHead &&
+				vr::DialogAnchor(handHudFrame.head, s_speakerTracking.x, s_speakerTracking.y, s_speakerTracking.z,
+				                 config.dialogPanel.side, config.dialogPanel.sideDegrees, anchor);
+			if (placed) {
+				g_hudLayer.AnchorAt(anchor);
+			}
+			static UInt32 s_dialogLinesLeft = 6;
+			if (s_dialogLinesLeft > 0) {
+				--s_dialogLinesLeft;
+				OBVR_LOG("Dialogue: a conversation opened - the panel %s (recentre %d, menus in the room %d, "
+				         "speaker seen %d, %u frame(s) ago)",
+				         placed ? "placed on the speaker" : "left where it was", config.dialogPanel.recentre ? 1 : 0,
+				         menusInRoom ? 1 : 0, speakerFresh ? 1 : 0, g_presentedFrame - s_speakerFrame);
+			}
+		}
 	}
 
 	// Snap turn vignette: fades in when a snap fires, out after. Updated every frame
@@ -5007,8 +5083,9 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	}
 	g_hudLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                  worldFrame && !hiddenForDeath, config.tracker.hudDistanceMetres,
-	                  config.tracker.hudWidthMetres, config.tracker.hudAnchorWorld,
-	                  config.hudProbe);
+	                  vr::DialogPanelWidth(config.tracker.hudWidthMetres, g_dialogMenuEpisode,
+	                                       config.dialogPanel.scale),
+	                  config.tracker.hudAnchorWorld, config.hudProbe);
 }
 
 // What the recenter key does to a frame that has a camera, without asking

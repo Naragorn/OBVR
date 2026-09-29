@@ -5,6 +5,7 @@
 #include "game/HandControls.h"
 #include "render/WaterReprojection.h"
 #include "perf/ProfileLogic.h"
+#include "vr/DialogPanel.h"
 #include "vr/HandMode.h"
 #include "vr/HeadTracker.h"
 
@@ -41,6 +42,11 @@ struct Config {
 	// have taken; off leaves the point of view entirely alone. Read live by
 	// the shim, so the hot reload reaches it mid-session.
 	bool dialogFirstPerson = true;
+
+	// The dialogue panel in the room: placed on the NPC once when a
+	// conversation opens, beside them, at its own size (vr/DialogPanel.h).
+	// In [Look], hot reloaded.
+	vr::DialogPanelSettings dialogPanel;
 
 	// How often the camera state is logged, in frames. 0 turns the running
 	// log off; state changes are still reported.

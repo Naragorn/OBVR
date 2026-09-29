@@ -38,6 +38,7 @@ constexpr UInt16 kTraitWidth = 0x0FCB;
 constexpr UInt16 kTraitZoom = 0x0FD2;
 constexpr UInt16 kTraitString = 0x0FDE;
 constexpr UInt16 kTraitFilename = 0x0FE6;
+constexpr UInt16 kTraitJustify = 0x0FD1;
 
 constexpr UInt32 kMaxTiles = 1500;
 constexpr UInt32 kMaxDepth = 24;
@@ -70,9 +71,9 @@ const char* ReadableText(const char* text, UInt32 limit) {
 }
 
 struct Traits {
-	bool have[12] = {};
-	float num[12] = {};
-	const char* text[12] = {};
+	bool have[13] = {};
+	float num[13] = {};
+	const char* text[13] = {};
 };
 
 int TraitSlot(UInt16 id) {
@@ -89,6 +90,7 @@ int TraitSlot(UInt16 id) {
 	case kTraitZoom: return 9;
 	case kTraitString: return 10;
 	case kTraitFilename: return 11;
+	case kTraitJustify: return 12;
 	default: return -1;
 	}
 }
@@ -220,6 +222,11 @@ void CollectTile(Collect& c, const UInt8* tile, SInt32 parent, UInt32 depth) {
 	const bool haveWidth = number(2, t.width);
 	const bool haveHeight = number(3, t.height);
 	t.hasSize = haveWidth && haveHeight;
+	number(5, t.alpha);
+	float justify = 0.0f;
+	if (number(12, justify)) {
+		t.justify = static_cast<UInt32>(justify + 0.5f);
+	}
 	// A tile hidden by its own trait (visible = 1, false) draws nothing: no
 	// size to lift.
 	if (traits.have[4] && traits.text[4] == nullptr && traits.num[4] == 1.0f) {
@@ -253,6 +260,82 @@ UInt32 ReadHudTiles(UInt32 menuId, vr::HudTile* out, UInt32 capacity) {
 	}
 	Collect c{out, capacity};
 	CollectTile(c, data[index], -1, 0);
+	return c.count;
+}
+
+namespace {
+
+// InterfaceManager::menuRoot, from xOBSE's obse/GameAPI.h ("Tile *
+// menuRoot; // 068", the class asserted 0x134 long with activeMenu at 0x9C -
+// the offset OBVR reads the active menu at). Every menu's root tile hangs
+// under it, loaded in the tile menu array or not.
+constexpr UInt32 kInterfaceMenuRootOffset = 0x68;
+
+const UInt8* MenuRoot() {
+	const auto* const manager = *reinterpret_cast<const UInt8* const*>(addr::kInterfaceManagerPointer);
+	if (!LooksLikeObject(manager)) {
+		return nullptr;
+	}
+	const UInt8* const root = Read<const UInt8*>(manager, kInterfaceMenuRootOffset);
+	return LooksLikeObject(root) ? root : nullptr;
+}
+
+// The child of the menu root with this name, any case, or null.
+const UInt8* MenuRootChild(const char* name) {
+	const UInt8* const root = MenuRoot();
+	if (root == nullptr) {
+		return nullptr;
+	}
+	const UInt8* child = Read<const UInt8*>(root, kTileChildListStartOffset);
+	for (UInt32 n = 0; LooksLikeObject(child) && n < kMaxListItems; ++n) {
+		const UInt8* const data = Read<const UInt8*>(child, kListNodeDataOffset);
+		if (LooksLikeObject(data) && Read<const UInt8*>(data, addr::kTileParentOffset) == root) {
+			const char* const childName = ReadableText(Read<const char*>(data, addr::kTileNameOffset), 64);
+			if (childName != nullptr && vr::SameTileName(childName, name)) {
+				return data;
+			}
+		}
+		child = Read<const UInt8*>(child, kListNodeNextOffset);
+	}
+	return nullptr;
+}
+
+}  // namespace
+
+UInt32 LogMenuRootTiles() {
+	const UInt8* const root = MenuRoot();
+	if (root == nullptr) {
+		OBVR_LOG("HudTiles: the interface's menu root is not readable");
+		return 0;
+	}
+	const UInt8* child = Read<const UInt8*>(root, kTileChildListStartOffset);
+	UInt32 count = 0;
+	for (UInt32 n = 0; LooksLikeObject(child) && n < kMaxListItems; ++n) {
+		const UInt8* const data = Read<const UInt8*>(child, kListNodeDataOffset);
+		if (LooksLikeObject(data) && Read<const UInt8*>(data, addr::kTileParentOffset) == root) {
+			const char* const name = ReadableText(Read<const char*>(data, addr::kTileNameOffset), 64);
+			OBVR_LOG("HudTiles: the menu root's child %u - %s", count, name != nullptr ? name : "(no name)");
+			++count;
+		}
+		child = Read<const UInt8*>(child, kListNodeNextOffset);
+	}
+	const UInt8* const subtitles = MenuRootChild("HUDSubtitleMenu");
+	if (subtitles != nullptr) {
+		Walk walk;
+		walk.label = "HUDSubtitleMenu (root)";
+		LogTile(walk, subtitles, 0);
+		OBVR_LOG("HudTiles: HUDSubtitleMenu (root) - %u tile(s)", walk.logged);
+	}
+	return count;
+}
+
+UInt32 ReadMenuRootTiles(const char* menuName, vr::HudTile* out, UInt32 capacity) {
+	const UInt8* const tile = MenuRootChild(menuName);
+	if (tile == nullptr || out == nullptr || capacity == 0) {
+		return 0;
+	}
+	Collect c{out, capacity};
+	CollectTile(c, tile, -1, 0);
 	return c.count;
 }
 
