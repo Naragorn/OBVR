@@ -215,6 +215,12 @@ struct Config {
 	// fault. Hot reloaded, like the rest of [Debug].
 	bool hudProbe = false;
 
+	// Logs the HUD menus' tile trees (names, x, y, width, height, visible,
+	// alpha) and dumps the captured interface beside them: once when the
+	// player is first in the world, and at every hand-script mark. The
+	// instrument for the HUD on the hands (docs/hud-on-hands-spec.md, step 1).
+	bool hudTileProbe = false;
+
 	// Logs the player's own rotation beside the camera's and the head's, a few
 	// times a second.
 	//

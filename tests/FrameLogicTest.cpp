@@ -22,6 +22,7 @@
 #include "game/HeldObject.h"
 #include "game/NearbyItems.h"
 #include "game/PlayerLookAt.h"
+#include "game/HitShader.h"
 #include "game/PlayerStagger.h"
 #include "core/MathFns.h"
 
@@ -2562,6 +2563,12 @@ void TestNoPlayerStagger() {
 	Check(!SkipForPlayer(true, 0u, 0u), "no player yet: nothing skipped");
 }
 
+void TestNoHitBlur() {
+	std::printf("No hit blur\n");
+	Check(!obvr::game::HitShaderRuns(true), "on: the hit blur does not start");
+	Check(obvr::game::HitShaderRuns(false), "off: it starts as in the game");
+}
+
 void TestGrabStartRotation() {
 	std::printf("The grab's start looks at the point the pick hit\n");
 	using obvr::camera::GrabStartRotation;
@@ -3952,6 +3959,7 @@ int main() {
 	TestHeldObject();
 	TestHandGrip();
 	TestNoPlayerStagger();
+	TestNoHitBlur();
 	TestGrabStartRotation();
 	TestRecenterPlan();
 	TestChaseCamera();

@@ -128,6 +128,8 @@ struct LookSettings {
 	// The player is never staggered or knocked back by a hit
 	// (game::PlayerStagger): the lurch back jolts the view in a headset.
 	bool noPlayerStagger = true;
+	// The hit blur (Oblivion's GethitShader) skipped for the player (game/HitShader.h).
+	bool noHitBlur = false;
 
 	// How much of the view the vignette leaves clear, as the angle from the
 	// centre of view in degrees where the darkening starts; it is full 20

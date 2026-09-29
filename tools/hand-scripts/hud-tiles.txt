@@ -1,0 +1,24 @@
+# Logs the HUD's tile trees beside the captured interface
+# (docs/hud-on-hands-spec.md, step 1): the element names and rectangles the
+# HUD on the hands will cut out. Reads "HudTiles:" lines; passes when both
+# trees that matter were walked and the capture was written.
+
+ini Debug HudTileProbe=1
+
+expect HandScript: finished
+expect HudTiles: at "hud"
+expect HudTiles: HUDMainMenu -
+expect HudTiles: HUDSubtitleMenu
+expect HudTiles: the capture written
+reject HandScript: WARNING
+
+wait 10
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 2
+mark hud
+wait 1
+console-at hud player.modav health -20
+wait 1
+mark hurt
+wait 1

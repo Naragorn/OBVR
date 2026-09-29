@@ -83,6 +83,7 @@ add_library(OBVR SHARED
 	src/game/FirstPersonHide.cpp
 	src/game/FirstPersonDepth.cpp
 	src/game/PlayerStagger.cpp
+	src/game/HitShader.cpp
 	src/game/HandGrip.cpp
 	src/game/DeathBody.cpp
 	src/game/HeldObject.cpp
@@ -110,6 +111,7 @@ add_library(OBVR SHARED
 	src/game/ThirdPersonAimVisual.cpp
 	src/game/PlayerBody.cpp
 	src/game/MenuType.cpp
+	src/game/HudTiles.cpp
 	src/game/PlayerAim.cpp
 	src/render/GameDevice.cpp
 	src/render/GameProjection.cpp

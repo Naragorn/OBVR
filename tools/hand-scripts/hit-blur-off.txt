@@ -1,0 +1,22 @@
+# The hit blur switched off (Look.NoHitBlur, game/HitShader.h): the console's
+# TriggerHitShader goes through the same start as a hit on the player, and
+# with the setting on it returns at once. Passes when both starts were
+# detoured and the skip was logged.
+
+ini Look NoHitBlur=1
+
+expect HandScript: finished
+expect Comfort: the hit blur's start (blocked) detoured at 007EB010
+expect Comfort: the hit blur's start (amount) detoured at 007EB080
+expect Comfort: the hit blur was skipped (Look.NoHitBlur)
+reject HandScript: WARNING
+
+wait 10
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark before
+console-at before TriggerHitShader 1
+wait 0.3
+mark after
+wait 2

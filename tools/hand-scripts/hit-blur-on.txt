@@ -1,0 +1,20 @@
+# The hit blur left to the game (Look.NoHitBlur=0, the default): the
+# console's TriggerHitShader runs the game's own effect, and nothing is
+# skipped. The screenshot after the command shows the blur.
+
+ini Look NoHitBlur=0
+
+expect HandScript: finished
+expect Comfort: the hit blur's start (amount) detoured at 007EB080
+reject Comfort: the hit blur was skipped
+reject HandScript: WARNING
+
+wait 10
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark before
+console-at before TriggerHitShader 1
+wait 0.3
+mark after
+wait 2

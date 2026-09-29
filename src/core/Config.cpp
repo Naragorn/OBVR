@@ -556,6 +556,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Look", "HideHudWhenDead", config.look.hideHudWhenDead, path);
 	config.look.noPlayerStagger =
 		ReadBool("Look", "NoPlayerStagger", config.look.noPlayerStagger, path);
+	config.look.noHitBlur = ReadBool("Look", "NoHitBlur", config.look.noHitBlur, path);
 	config.look.snapTurnDeadZone =
 		ReadFloat("Look", "SnapTurnDeadZone", config.look.snapTurnDeadZone, path);
 	config.look.smoothTurning =
@@ -577,6 +578,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.dualPassProbe = ReadUInt("Debug", "DualPassProbe", config.dualPassProbe, path);
 	config.swapEyeOrder = ReadBool("Debug", "SwapEyeOrder", config.swapEyeOrder, path);
 	config.hudProbe = ReadBool("Debug", "HudProbe", config.hudProbe, path);
+	config.hudTileProbe = ReadBool("Debug", "HudTileProbe", config.hudTileProbe, path);
 	config.aimProbe = ReadBool("Debug", "AimProbe", config.aimProbe, path);
 	config.thirdPersonProbe =
 		ReadBool("Debug", "ThirdPersonProbe", config.thirdPersonProbe, path);

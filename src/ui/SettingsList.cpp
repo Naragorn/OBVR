@@ -94,6 +94,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.look.noPlayerStagger = v != 0.0f; },
 	},
 	{
+		"Comfort", "No hit blur", "Hits never blur or shake your view",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "NoHitBlur",
+		+[](const Config& c) { return c.look.noHitBlur ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.look.noHitBlur = v != 0.0f; },
+	},
+	{
 		"Comfort", "Eye separation", "Wider feels smaller, narrower feels larger",
 		ItemKind::Number, 0.7f, 1.3f, 0.01f, 2, false,
 		"Render", "EyeSeparationScale",

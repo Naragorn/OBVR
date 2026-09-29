@@ -74,8 +74,10 @@ above 0):
   - the blocker is at Block Journeyman or better and wins
     `iPerkHandToHandBlockRecoilChance` (0x00B37250).
 - **For the player as the blocker**: 0x007EB010(1) is called (0x00600574).
-  It sets two floats behind a flag and is probably the gamepad rumble; this
-  is a guess.
+  This is the start of the hit blur (GethitShader), with the blocked offset
+  and a strength of 0.3. The earlier guess that it was the gamepad rumble was
+  wrong. See `src/game/HitShader.h`. `[Look] NoHitBlur` (since 2026-09-29)
+  skips it, and its sibling start 0x007EB080 as well.
 - Blocking costs fatigue and wears the shield or weapon down below the
   Apprentice and Journeyman perks (UESP, Oblivion:Block; the fatigue formula
   on cs.uesp.net/wiki/FFatigueBlockBase). The code for these was not read.

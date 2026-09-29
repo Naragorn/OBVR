@@ -15,6 +15,8 @@
 #include "core/MathFns.h"
 #include "game/CrosshairTarget.h"
 #include "game/DialogZoom.h"
+#include "game/HitShader.h"
+#include "game/HudTiles.h"
 #include "game/FirstPersonArms.h"
 #include "game/FirstPersonDepth.h"
 #include "game/FirstPersonHide.h"
@@ -919,6 +921,7 @@ void MeasureBodies(const game::HandBodyFrame& bodies, bool blade, bool marked) {
 		}
 	}
 }
+UInt32 g_hudTileProbeWorldFrames = 0;
 bool g_holsterFitRequested = false;
 ui::CanvasOverlay g_holsterFitLayer("obvr.holsterfit", "OBVR Weapon Places", ui::kGuidePanelWidth,
                                     ui::kGuidePanelHeight);
@@ -2964,6 +2967,7 @@ void OnPresent() {
 	const bool layerCaptured = g_hudLayer.HasCapture();
 	const bool menuIsUp = config.tracker.showMenus && game::IsMenuMode();
 	game::SetNoPlayerStagger(config.look.noPlayerStagger);
+	game::SetNoHitBlur(config.look.noHitBlur);
 	UpdateHandMode(config, game::IsMenuMode());
 	OnFrameEnd();
 	test::AdvanceWaterVRTest(game::PlayerInWorld() && !game::IsMenuMode());
@@ -4764,6 +4768,32 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// leave Oblivion's original crosshair behind in the flat HUD.  Menu and held
 	// frames are excluded by CrosshairCaptureWanted, so their centre is never
 	// punched out.
+	// The HUD tile probe (docs/hud-on-hands-spec.md, step 1): the tile trees
+	// beside the captured picture they drew, before anything is lifted out of
+	// it. Once some seconds into the world, and at every hand-script mark.
+	if (config.hudTileProbe && worldFrame && !visibility.menuIsUp && g_hudLayer.HasCapture()) {
+		++g_hudTileProbeWorldFrames;
+		const bool marked = test::HandScriptMarkedThisFrame();
+		if (marked || g_hudTileProbeWorldFrames == 300) {
+			const char* const mark = marked ? test::HandScriptMarkName() : "first";
+			UInt32 believedWidth = 0;
+			UInt32 believedHeight = 0;
+			render::GameBelievedSize(believedWidth, believedHeight);
+			OBVR_LOG("HudTiles: at \"%s\" - the capture %ux%u, the game believes %ux%u", mark,
+			         g_hudLayer.CaptureWidth(), g_hudLayer.CaptureHeight(), believedWidth, believedHeight);
+			game::LogHudTileTree(game::kMenuIdHudMain, "HUDMainMenu");
+			game::LogHudTileTree(game::kMenuIdHudInfo, "HUDInfoMenu");
+			game::LogHudTileTree(game::kMenuIdHudReticle, "HUDReticle");
+			game::LogHudTileTree(game::kMenuIdHudSubtitle, "HUDSubtitleMenu");
+			char name[96];
+			std::snprintf(name, sizeof(name), "OBVR-HudTiles-%s.bmp", mark);
+			const bool dumped = render::DumpSurfaceBmp(
+				render::GetGameDevice(), g_hudLayer.CaptureSurface(), g_hudLayer.CaptureWidth(),
+				g_hudLayer.CaptureHeight(), render::d3d9::kFormatA8R8G8B8, name);
+			OBVR_LOG("HudTiles: the capture %s as %s", dumped ? "written" : "refused", name);
+		}
+	}
+
 	bool crosshairLifted = false;
 	if (CrosshairCentreCaptureWanted(config.tracker.crosshair,
 	                                g_crosshairHasTarget, tooltipsEnabled,
@@ -7001,6 +7031,7 @@ bool Install() {
 	game::VerifyGameSoundAddresses();
 	game::VerifyShoveAddresses();
 	game::InstallPlayerStagger();
+	game::InstallHitShader();
 	game::InstallPlayerLookAt();
 	game::InstallWorldPickHook();
 

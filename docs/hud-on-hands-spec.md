@@ -81,7 +81,13 @@ NorthernUI rewrites parts of HUDMainMenu, for example the compass icon alpha (ht
 - the enemy health bar;
 - the sneak eye.
 
-**Subtitles and messages** (top left in vanilla) stay in the main panel ahead of the player, not on a hand. Text on a moving hand is hard to read. This is a proposal; it can become a setting.
+**Subtitles and messages** do not go on a hand. The tester decided this on 2026-09-29:
+
+- **Placement:**
+  - Messages (top left in vanilla) show at the top centre of the view.
+  - Subtitles show at the bottom centre of the view.
+- **They always follow the current view.** Each one is placed in the middle of the headset's view at the moment it appears, not at the room anchor. Once the player has turned away from the recenter point, a room anchor would put them somewhere else entirely.
+- **Proposal:** a message stays where it appeared while it is shown, rather than being locked to the head. A head-locked text makes some people sick. `HudTextFollow` could offer "where it appeared" or "locked to the head".
 
 **The crosshair and tooltips** already have their own layers and do not change.
 
@@ -113,7 +119,7 @@ NorthernUI rewrites parts of HUDMainMenu, for example the compass icon alpha (ht
 - When DialogMenu opens, the panel's room anchor is set once. It goes on the line from the head to the NPC's head, at `HudDistanceMetres`, turned towards the player.
 - It then stays put, as now. The recenter key still works.
 - The NPC comes from the dialogue target. Which engine field holds it is to find; the HUDInfo crosshair reference (`CrosshairTarget.cpp:117-131`) is the fallback, because a conversation normally starts by activating the NPC under the crosshair.
-- **Better alternative (proposal):** put the panel beside the NPC, not in front of the face, for example 30 cm to the right and slightly lower. Then the NPC is not hidden. A setting `DialogPanelSide` could offer centre, right or left.
+- **Beside the NPC** (agreed 2026-09-29): the panel can sit beside the NPC instead of in front of the face, for example 30 cm to the right and slightly lower, so the NPC stays visible. The setting `DialogPanelSide` offers centre, right or left.
 
 **Size:** `DialogPanelScale`, default 80 %. It scales the panel while DialogMenu is open (and the persuasion minigame with it).
 
@@ -127,7 +133,9 @@ NorthernUI rewrites parts of HUDMainMenu, for example the compass icon alpha (ht
 
 ## 6. Risks and open questions
 
-- **Thin bars:** vanilla bars are a few pixels wide, so cropping them onto a small hand panel may be blurry. Step 2 shows it. If so, those bars can be drawn by OBVR (route C) from the actor values.
+- **Thin bars:** vanilla bars are a few pixels wide, so cropping them onto a small hand panel may be blurry. Step 2 shows it.
+  - Every hand element gets its own size (zoom) setting (agreed 2026-09-29).
+  - If the bars are still too blurry at a readable size, OBVR draws them itself (route C) from the actor values.
 - **Layout changes:** a UI mod's scale settings, or a resolution change, move the rectangles. Re-walking the tiles when the HUD's size changes handles that. How often the walk is cheap enough is unknown until measured.
 - **Tile coordinates:** they are in the game's UI space. They need the same scaling the crosshair's `CrosshairSourceShare` uses to become capture pixels. This is unverified.
 - **Ammo and weapon icons** in vanilla sit right next to the bars (bottom left). That is a guess from memory until step 1 logs it. A single crop of that corner would put the bars and the weapon on the same hand, so they need separate rectangles.
@@ -156,3 +164,45 @@ NorthernUI rewrites parts of HUDMainMenu, for example the compass icon alpha (ht
    - Onboarding text.
 
 Step 1 decides how much of B is possible. The rest does not depend on its outcome, only on where the rectangles come from.
+
+## 8. Step 1 results (2026-09-29)
+
+**How it was run.** Built as `[Debug] HudTileProbe` (`src/game/HudTiles.cpp`). It was run with the harness scenario `tools/hand-scripts/hud-tiles.txt`:
+- vanilla UI;
+- a capture of 3916x3480, with the game believing 3916x2203;
+- run folder `artifacts/hand-script/hud-tiles/20260929-184919`.
+
+It PASSED: HUDMainMenu has 34 tiles and HUDInfoMenu has 21.
+
+**The tile layout from xOBSE holds.** The value list is at +0x14 and the child list at +0x30. Every child points back at its parent.
+
+**Units** (measured):
+- The HUD is laid out in a space 960 units high and 1706.5 wide (`player_grab_zone`, w 1706.5, h 960). 1706.5 is 960 times the aspect.
+- A tile unit is `believedHeight / 960` capture pixels, with the origin at the top left: 2203 / 960 = 2.2948, and 3916 / 1706.5 = 2.2948.
+- Check against the dumped capture:
+  - the health bar is computed at (98, 864) units, i.e. (225, 1983) pixels;
+  - `OBVR-HudTiles-hud.bmp` shows it at about (220, 1985).
+- The capture is taller than the believed frame. Only its top `believedHeight` rows hold the HUD.
+
+**Absolute position** is the sum of the `x`/`y` traits up the parent chain. The root is at (0, 0).
+- This matches the render nodes' world translation: screen x = world.x + 853.25, screen y = 480 − world.z.
+- Tiles without `locus` are the exception. Their offset goes into their geometry, not their node, so their node sits at the parent's position. The trait sum still gives their place.
+
+**Vanilla elements** (absolute rectangles in tile units; all children of `hudmain_background` at (87, 850)):
+
+| Element | Tile | Rectangle (x, y, w, h) |
+|---|---|---|
+| Health / magicka / fatigue bars | `hudmain_statusbars` → `hudmain_health_empty`, `hudmain_magic_empty`, `hudmain_fatigue_empty` | (87, 862, 189, 52); each bar 189 × 16 at y 862 / 880 / 898 |
+| Equipped weapon, ammo count, condition | `hudmain_Weapon_Icon` (+ `hudmain_weapon_ammo`, `hudmain_weapon_status`) | (316, 855, 63, 63), ammo and condition inside to x + 81 |
+| Equipped spell | `hudmain_Magic_Icon` | (411, 855, 63, 63) |
+| Compass | `hudmain_compass_layout` → `hudmain_compass_window` | (494, 855, 213, 87), frame (480, 845, 220, 84) |
+| Region name on discovery | `hudmain_region` | (87, 805, 360, 45) |
+| Active effects | `magic_icons` | from (1642.5, 58), grows by its children |
+| Level up icon | `hudmain_Levelup_Icon` | (711, 856, 63, 63) |
+| Crosshair info (name, action, icons) | HUDInfoMenu `hudinfo_*` | around (1578–1714, 827–965) |
+
+**Menus not loaded at the time:**
+- HUDReticle (the enemy health bar and the sneak eye) and HUDSubtitleMenu. The existing persistent root pointers (`kHudReticleRootPointer`) are the way to HUDReticle.
+- The top-left messages showed in neither tree. They come and go with a message, so a run that shows one still has to find them.
+
+**Decision:** route B holds for vanilla. Every element the hands need has a stable, named tile with a rectangle that matches the picture.
