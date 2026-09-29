@@ -1,0 +1,26 @@
+# A raised left hand blocks only with a shield worn (the tester,
+# 2026-09-29: "wenn schwert in rechter hand ... und linke hand frei, dann
+# soll ich mit rechter hand das schwert blocken können aber nicht mit linker
+# hand ... wenn ich links ein schild trage dann soll ich damit weiter blocken
+# können"). A shield is equipped at the start; the log must say it is worn,
+# and the raised left hand then blocks.
+
+ini Hands Enabled=1
+
+console player.additem 000733ED 1
+console player.equipitem 000733ED
+
+expect HandScript: finished
+expect Hands: a shield worn - the raised left hand blocks
+expect Hands: the left hand is up - blocking
+reject HandScript: WARNING
+
+wait 10
+left pos -0.15 -0.15 -0.35
+left rot 0 0 0
+wait 1.5
+mark raised
+left pos -0.25 -0.55 -0.10
+wait 1
+mark lowered
+wait 1

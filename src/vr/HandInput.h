@@ -130,7 +130,7 @@ struct GestureThresholds {
 	// powerattack zu machen muss dieser nicht viel stärker sein. stattdessen
 	// muss er die selbe schwung stärke erreichen UND mehr schwung distanz
 	// hinter sich zurücklegen"). It was a higher peak speed (SwingHeavy).
-	float swingLight = 1.6f;
+	float swingLight = 2.6f;  // the tester's, 2026-09-29
 	float powerSwingMetres = 0.7f;
 	// How long the attack control is held for a heavy swing, in seconds -
 	// the engine's power attack wants the control held, a tap is a light one.
@@ -140,6 +140,9 @@ struct GestureThresholds {
 	// since the last release. Off by default until the gesture is tuned.
 	bool bowNeedsReachBack = false;
 };
+
+// Whether the raised left hand blocks: only with a shield on it.
+inline bool LeftHandBlocks(bool gesture, bool shieldEquipped) { return gesture && shieldEquipped; }
 
 inline bool IsBlockGesture(const NiPoint3& leftHandRelative, const GestureThresholds& t) {
 	return leftHandRelative.z >= t.blockMinUp && leftHandRelative.y >= t.blockMinForward;

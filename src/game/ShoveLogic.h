@@ -25,7 +25,7 @@ namespace obvr::game {
 struct ShoveSettings {
 	bool enabled = true;
 	float speed = 2.0f;      // m/s towards the actor: a light shove
-	float hardSpeed = 4.0f;  // m/s: a hard one, knocked down
+	float hardSpeed = 3.6f;  // m/s: a hard one, knocked down (the tester's, 2026-09-29)
 	// The hard shove's force, as the engine's knockback takes it
 	// (PushActorAway's: fKnockbackDamageBase 50 is a typical value).
 	float hardForce = 3.0f;  // the tester, 2026-09-29: 50 threw them far too hard

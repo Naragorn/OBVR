@@ -639,3 +639,31 @@ The tester's idea (2026-09-27), in the style of Half-Life: Alyx. Not built.
     swing): "a power attack's grunt said (the game's chance 1.00)". Not
     heard yet: whether the player's voice has the lines. No grunt for light
     attacks - vanilla says Attack only for the combat AI (read).
+- **Headset (the tester, 2026-09-29, the next run).**
+  - "linke hand heben wenn kein schild equiped, darf nicht als block zählen
+    ... wenn schwert in rechter hand ... dann soll ich mit rechter hand das
+    schwert blocken können aber nicht mit linker hand ... wenn ich links ein
+    schild trage dann soll ich damit weiter blocken können. same für
+    zweihänder". **Built:** the raised left hand blocks only with a shield
+    worn (`LeftHandBlocks`); the weapon held across (`IsWeaponGuard`, any
+    drawn weapon, two-handers and fists included) blocks as before. The
+    shield is the process's GetEquippedShieldData(true) (vtable +0xF8,
+    0x0064B2D0 in both process tables; worn only, 0x00484E80), as the
+    engine asks it at 0x00489A35 and 0x005FF7F5. A first try - something
+    hanging on the left forearm's twist bone - read "a shield" as soon as a
+    sword was drawn, and was dropped. Harness: `shield-block.txt` (Arena
+    Iron Shield 000733ED equipped: "a shield worn", the raised hand blocks)
+    and `shield-block-none.txt` (no shield: the same hand does not block)
+    PASS. A getter that is not the one read keeps the old behaviour.
+  - "keine der Perks ist mir ingame aufgefallen". The log showed the cause:
+    of 20 strikes one was heavy - the blade met its target 0.3 to 0.6 m
+    into a swing, before 0.7 m made it a power attack, and the swing became
+    one only after. **Built:** a body met before the swing is a power
+    attack is held and struck when the swing becomes one, or when it ends,
+    as what the whole swing was (`SettleHeldStrike`, melee_hit_test); one
+    met by a swing already a power attack is struck at once. The log names
+    each strike ("struck ... - power attack (group 19)"). Not seen yet.
+  - "Weit ausholen: Machtangriff mit Grunzen. Kurz und schnell: normaler
+    Schlag. ja geht beides die werte die wir jz haben als default setzen":
+    `SwingLight` 2.6 (was 1.6), `ShoveHardSpeed` 3.6 (was 4.0);
+    `PowerSwingMetres` stays 0.7.

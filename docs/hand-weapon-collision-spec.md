@@ -345,6 +345,14 @@ Proposed for OBVR, in this order; all by intent, never by a mere touch:
      stagger alone was not seen; the hard one, force 50, threw them far.
      PushPeople is not needed. Since then: the light shove's push back, and
      `ShoveHardForce` 3.0 (the tester's value). Not seen yet.
+   - **Headset, the next run (2026-09-29):** "Mittelfest schubsen: macht
+     nix auch nicht mit push ppl an. Kräftig schubsen: auch nix." The log:
+     every light shove ran ("staggered and pushed back"), and every hard
+     one fell back to a light one - the level or the knocked-state check
+     refused all of them, where the run before knocked down eight times.
+     Which one is not known; the refusal now logs both values ("the hard
+     shove refused ... its process level, its knocked state"). The light
+     shove's stagger and push are not seen in the game - open.
 2. **Taking someone by the hand.** A grip closed on an actor's hand or arm
    (within a few centimetres of the bone): they are held. Each frame their
    controller is steered to keep the held point near the hand, with a speed

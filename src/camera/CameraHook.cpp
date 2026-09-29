@@ -1469,6 +1469,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.settingsMenuOpen = g_settingsMenu.IsOpen() || g_onboarding.IsOpen();
 	frame.firstPerson = !ReadIsThirdPerson();
 	frame.meleeInHand = active && config.hands.motionHits && game::MeleeInHand(nullptr);
+	frame.shieldEquipped = active && game::PlayerWearsShield();
 	frame.menusOnly = menusOnly;
 	frame.inWorld = game::PlayerInWorld();
 	frame.adjustingHands = config.hands.adjustHands || game::HandAdjustActive();
@@ -2199,6 +2200,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		strike.boundFactor = config.hands.hitBoundFactor;
 		strike.padUnits = config.hands.hitPadUnits;
 		game::StrikeByMotion(strike);
+	}
+	// The bodies met before the swing was a power attack: struck once it is
+	// one, or as what it was when it ends (game::SettleHeldStrike).
+	if (active && !menuIsUp) {
+		game::SettleHeldStrikes(g_hand.swingSerial, g_hand.swingActive, g_hand.swingHeavy,
+		                        g_hand.swing == vr::SwingVerdict::Heavy, vr::PowerAttackGroup(g_hand.powerDirection));
 	}
 
 	// The weapon and the hands push what they meet (game/WorldPush.h): the

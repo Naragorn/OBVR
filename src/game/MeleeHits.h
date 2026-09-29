@@ -28,6 +28,10 @@ bool MeleeInHand(SInt32* weaponType);
 // is swung or the engine's function is not the one read.
 bool PlaySwingSwish();
 
+// Whether the player wears a shield (the process's GetEquippedShieldData, worn
+// only). When the getter is not the one read: true, the block as before.
+bool PlayerWearsShield();
+
 // The player's power attack grunt, the engine's own line and chance
 // (vr::GruntDue). True when said.
 bool PlayPowerAttackGrunt();
@@ -85,6 +89,11 @@ struct MotionStrike {
 // Strikes every actor the blade meets this frame that this swing has not
 // struck yet. Answers how many were struck.
 UInt32 StrikeByMotion(const MotionStrike& strike);
+
+// Strikes the bodies a swing met before it was a power attack, once it is
+// one or is over (MeleeHit.h, SettleHeldStrike). Each frame, after
+// StrikeByMotion.
+void SettleHeldStrikes(UInt32 currentSerial, bool swingActive, bool swingPower, bool endedPower, UInt8 powerGroup);
 
 // Forgets the swing's ledger, for when the mode stops.
 void ForgetStrikes();

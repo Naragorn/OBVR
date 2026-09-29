@@ -124,6 +124,15 @@ void TestLedger() {
 	Check(LedgerAdmits(full, 8, &bodies[SwingLedger::kCapacity]), "the next swing does");
 }
 
+void TestHeldStrike() {
+	std::printf("A strike held to the end of its swing\n");
+	Check(SettleHeldStrike(5, 5, true, false, false) == HeldStrike::Wait, "the swing runs, not yet a power attack: wait");
+	Check(SettleHeldStrike(5, 5, true, true, false) == HeldStrike::Power, "the swing has become a power attack: struck as one now");
+	Check(SettleHeldStrike(5, 5, false, false, true) == HeldStrike::Power, "the swing ended as a power attack: struck as one");
+	Check(SettleHeldStrike(5, 5, false, false, false) == HeldStrike::Light, "the swing ended light: struck light");
+	Check(SettleHeldStrike(4, 5, true, true, true) == HeldStrike::Light, "held from an earlier swing: struck light");
+}
+
 void TestSwish() {
 	std::printf("The swish\n");
 	Check(SwishDue(true, true, 5, 4), "a new swing that may strike: swished");
@@ -151,6 +160,7 @@ int main() {
 	TestLedger();
 	TestWeaponTypes();
 	TestSwish();
+	TestHeldStrike();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

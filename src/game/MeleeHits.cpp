@@ -188,6 +188,64 @@ UInt32 g_armedLinesLeft = 8;
 bool g_refusedReported = false;
 UInt32 g_strikeLinesLeft = 20;
 
+// The actor's GetAnimData (vtable +0x164, xOBSE GameObjects.h; the player's
+// 0x0065D720 answers its first-person data in first person) and the word whose
+// low byte is the current attack group (animsMapKey[3], +0x42).
+constexpr UInt32 kActorVtableAnimDataOffset = 0x164;
+constexpr UInt32 kAnimDataAttackGroupOffset = 0x42;
+// vr::kAnimGroupAttackLight - AttackLeft, so a light strike carries no power group.
+constexpr UInt8 kAnimGroupLightStrike = 0x14;
+
+// Hands `actor` to the engine's melee hit, read as `group` (0 leaves the
+// attacker's): AttackHandling takes the power attack's direction from the
+// low byte of the attacker's AnimData +0x42 (0x005FF355, 0x0060028E) - set
+// for the call, put back after unless the engine wrote its own meanwhile.
+void ApplyStrike(UInt8* player, void* actor, bool heavy, UInt8 group, UInt32 serial) {
+	UInt16* groupWord = nullptr;
+	UInt16 groupBefore = 0;
+	UInt16 groupWritten = 0;
+	if (group != 0) {
+		const UInt32 animDataOf = VirtualAt(player, kActorVtableAnimDataOffset);
+		UInt8* const animData =
+			animDataOf != 0 ? static_cast<UInt8*>(reinterpret_cast<ThisFn>(animDataOf)(player, nullptr)) : nullptr;
+		if (LooksLikeObject(animData)) {
+			groupWord = reinterpret_cast<UInt16*>(animData + kAnimDataAttackGroupOffset);
+			groupBefore = *groupWord;
+			groupWritten = static_cast<UInt16>((groupBefore & 0xFF00u) | group);
+			*groupWord = groupWritten;
+		}
+	}
+	reinterpret_cast<AttackHandlingFn>(addr::kAttackHandling)(player, nullptr, heavy ? 1u : 0u, nullptr, actor);
+	if (groupWord != nullptr && *groupWord == groupWritten) {
+		*groupWord = groupBefore;
+	}
+	static UInt32 linesLeft = 30;
+	if (linesLeft > 0) {
+		--linesLeft;
+		OBVR_LOG("Hands: struck %08X - %s attack (group %02X), swing %u", reinterpret_cast<UInt32>(actor),
+		         heavy ? "power" : "light", static_cast<UInt32>(group), serial);
+	}
+}
+
+// Bodies met before their swing was a power attack, held to its end
+// (MeleeHit.h, SettleHeldStrike).
+struct HeldBody {
+	void* actor = nullptr;
+	UInt32 serial = 0;
+};
+constexpr UInt32 kMaxHeldBodies = 8;
+HeldBody g_held[kMaxHeldBodies];
+
+void HoldStrike(void* actor, UInt32 serial) {
+	for (HeldBody& h : g_held) {
+		if (h.actor == nullptr) {
+			h.actor = actor;
+			h.serial = serial;
+			return;
+		}
+	}
+}
+
 }  // namespace
 
 UInt8* EquippedWeaponForm(SInt32* type) {
@@ -208,12 +266,6 @@ UInt8* EquippedWeaponForm(SInt32* type) {
 // item, and put back after. The bytes are checked first; anything else there
 // and the equip keeps its sound.
 namespace {
-
-// The actor's GetAnimData (vtable +0x164, xOBSE GameObjects.h; the player's
-// 0x0065D720 answers its first-person data in first person) and the word whose
-// low byte is the current attack group (animsMapKey[3], +0x42).
-constexpr UInt32 kActorVtableAnimDataOffset = 0x164;
-constexpr UInt32 kAnimDataAttackGroupOffset = 0x42;
 
 constexpr UInt32 kItemSoundBranch = 0x005E96E7;
 constexpr UInt8 kItemSoundBranchBytes[2] = {0x75, 0x06};
@@ -459,45 +511,45 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		if (!LedgerAdmits(g_ledger, strike.swingSerial, actor)) {
 			continue;
 		}
-		// The group the hit is read as: AttackHandling takes the power
-		// attack's direction from the low byte of the attacker's AnimData
-		// +0x42 (0x005FF355, 0x0060028E) - set for the call, put back after
-		// unless the engine wrote its own meanwhile.
-		UInt16* groupWord = nullptr;
-		UInt16 groupBefore = 0;
-		UInt16 groupWritten = 0;
-		if (strike.attackGroup != 0) {
-			const UInt32 animDataOf = VirtualAt(player, kActorVtableAnimDataOffset);
-			UInt8* const animData = animDataOf != 0
-			                            ? static_cast<UInt8*>(reinterpret_cast<ThisFn>(animDataOf)(player, nullptr))
-			                            : nullptr;
-			if (LooksLikeObject(animData)) {
-				groupWord = reinterpret_cast<UInt16*>(animData + kAnimDataAttackGroupOffset);
-				groupBefore = *groupWord;
-				groupWritten = static_cast<UInt16>((groupBefore & 0xFF00u) | strike.attackGroup);
-				*groupWord = groupWritten;
-			}
-		}
-		reinterpret_cast<AttackHandlingFn>(addr::kAttackHandling)(player, nullptr,
-		                                                          strike.heavy ? 1u : 0u, nullptr,
-		                                                          actor);
-		if (groupWord != nullptr && *groupWord == groupWritten) {
-			*groupWord = groupBefore;
-		}
 		++struck;
 		s_missStruck = true;
+		const bool now = strike.heavy;
 		if (g_strikeLinesLeft > 0) {
 			--g_strikeLinesLeft;
-			OBVR_LOG("Hands: the blade struck %08X (%s, bound radius %.0f, %.0f units from its "
-			         "centre) - %s attack, swing %u",
+			OBVR_LOG("Hands: the blade met %08X (%s, bound radius %.0f, %.0f units from its "
+			         "centre) - swing %u, %s",
 			         reinterpret_cast<UInt32>(actor),
 			         *reinterpret_cast<const UInt32*>(actor) == addr::kVtblCreature ? "creature"
 			                                                                          : "character",
-			         bound.radius, SegmentPointDistance(blade.base, blade.tip, bound.center),
-			         strike.heavy ? "heavy" : "light", strike.swingSerial);
+			         bound.radius, SegmentPointDistance(blade.base, blade.tip, bound.center), strike.swingSerial,
+			         now ? "a power attack already: struck now" : "held to the swing's end");
+		}
+		if (now) {
+			ApplyStrike(player, actor, true, strike.attackGroup, strike.swingSerial);
+		} else {
+			HoldStrike(actor, strike.swingSerial);
 		}
 	}
 	return struck;
+}
+
+void SettleHeldStrikes(UInt32 currentSerial, bool swingActive, bool swingPower, bool endedPower, UInt8 powerGroup) {
+	UInt8* const player = PlayerOrNull();
+	for (HeldBody& h : g_held) {
+		if (h.actor == nullptr) {
+			continue;
+		}
+		const HeldStrike verdict = SettleHeldStrike(h.serial, currentSerial, swingActive, swingPower, endedPower);
+		if (verdict == HeldStrike::Wait) {
+			continue;
+		}
+		// Still a living actor? (It may have died or gone since.)
+		if (player != nullptr && LooksLikeObject(h.actor) && IsActorObject(h.actor) && !ActorIsDead(h.actor)) {
+			const bool power = verdict == HeldStrike::Power;
+			ApplyStrike(player, h.actor, power, power ? powerGroup : kAnimGroupLightStrike, h.serial);
+		}
+		h = HeldBody{};
+	}
 }
 
 void ForgetStrikes() { g_ledger = SwingLedger{}; }
@@ -635,6 +687,35 @@ bool PlayPowerAttackGrunt() {
 		         static_cast<double>(chance));
 	}
 	return said;
+}
+
+}  // namespace obvr::game
+
+namespace obvr::game {
+
+bool PlayerWearsShield() {
+	UInt8* const player = PlayerOrNull();
+	auto* const process =
+		player != nullptr ? *reinterpret_cast<UInt8* const*>(player + addr::kMobileProcessOffset) : nullptr;
+	const UInt32 getter = LooksLikeObject(process) ? VirtualAt(process, addr::kProcessVtableEquippedShieldOffset) : 0;
+	static int reported = -1;
+	if (getter != addr::kEquippedShieldGetter) {
+		// Not the table read: the raised hand keeps blocking as before.
+		if (reported != 2) {
+			reported = 2;
+			OBVR_LOG("Hands: the shield getter could not be read (%08X) - the raised left hand blocks as before",
+			         getter);
+		}
+		return true;
+	}
+	const void* const entry = reinterpret_cast<ThisPtrArgFn>(getter)(process, nullptr, 1);
+	const bool worn = entry != nullptr;
+	if ((worn ? 1 : 0) != reported) {
+		reported = worn ? 1 : 0;
+		OBVR_LOG("Hands: %s - the raised left hand %s", worn ? "a shield worn" : "no shield worn",
+		         worn ? "blocks" : "does not block");
+	}
+	return worn;
 }
 
 }  // namespace obvr::game

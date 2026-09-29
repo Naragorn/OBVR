@@ -279,6 +279,8 @@ struct HandModeFrame {
 	bool settingsMenuOpen = false;  // OBVR's own menu: the sticks steer it, nothing else fires
 	bool firstPerson = true;
 	bool meleeInHand = false;  // a drawn blade, blunt weapon or bare fists: swung, not shot
+	// A shield on the left arm: only then does the raised left hand block.
+	bool shieldEquipped = false;
 	// The mode is off but the controllers still steer menus (ControllerMenus).
 	bool menusOnly = false;
 	// A game is loaded - the player stands in a cell. Before that (the main

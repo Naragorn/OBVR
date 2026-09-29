@@ -34,7 +34,7 @@ void TestKind() {
 	const ShoveSettings s;
 	Check(ShoveFor(s, false, Open(1.0f)) == ShoveKind::None, "slower than the shove speed: nothing");
 	Check(ShoveFor(s, false, Open(2.5f)) == ShoveKind::Light, "from 2 m/s: a light shove");
-	Check(ShoveFor(s, false, Open(4.5f)) == ShoveKind::Hard, "from 4 m/s: a hard one");
+	Check(ShoveFor(s, false, Open(4.5f)) == ShoveKind::Hard, "from 3.6 m/s: a hard one");
 	Check(ShoveFor(s, true, Open(4.5f)) == ShoveKind::None, "a weapon or the fists up: a swing, no shove");
 	ShoveHand fist = Open(4.5f);
 	fist.open = false;

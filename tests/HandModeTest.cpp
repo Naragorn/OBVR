@@ -41,6 +41,7 @@ void TestGestures() {
 void TestSpeedAndSwing() {
 	std::printf("Speed and swing\n");
 	GestureThresholds t;
+	t.swingLight = 1.6f;  // the speeds below were written for 1.6
 	Check(Near(HandSpeed(NiPoint3{0, 0, 0}, NiPoint3{0.03f, 0, 0}, 0.01f), 3.0f),
 	      "three centimetres in ten milliseconds is three metres a second");
 	Check(HandSpeed(NiPoint3{0, 0, 0}, NiPoint3{1, 0, 0}, 0.0f) == 0.0f, "no time is no speed");
@@ -375,6 +376,7 @@ void TestStrikeByMotion() {
 	// A power attack from 3.5 cm travelled: the frames below move the hand a
 	// few centimetres at a time.
 	settings.gestures.powerSwingMetres = 0.035f;
+	settings.gestures.swingLight = 1.6f;  // the speeds below were written for 1.6
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
@@ -1616,6 +1618,13 @@ void TestReadyWeapon() {
 	}
 }
 
+void TestShieldBlock() {
+	std::printf("The raised left hand blocks only with a shield\n");
+	Check(LeftHandBlocks(true, true), "raised, a shield: blocks");
+	Check(!LeftHandBlocks(true, false), "raised, no shield: no block (2026-09-29)");
+	Check(!LeftHandBlocks(false, true), "a shield but the hand down: no block");
+}
+
 void TestPowerDirection() {
 	std::printf("The power attack's direction\n");
 	Check(ClassifyPowerSwing(NiPoint3{0.1f, 0.8f, -0.2f}) == PowerDirection::Forward, "a thrust ahead: forward");
@@ -2052,6 +2061,7 @@ int main() {
 	TestReadyWeapon();
 	TestSwingPressesAttack();
 	TestPowerDirection();
+	TestShieldBlock();
 	TestRunToggle();
 	TestUsScanCodes();
 	TestFirstPersonDepthBranch();

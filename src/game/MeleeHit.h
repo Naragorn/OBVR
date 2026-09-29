@@ -134,3 +134,28 @@ inline bool SwishDue(bool strikeByMotion, bool swingActive, UInt32 serial, UInt3
 }
 
 }  // namespace obvr::game
+
+namespace obvr::game {
+
+// When a strike by motion lands (the tester, 2026-09-29: no perk was ever
+// seen - the log showed why: the blade met its target 0.3 to 0.6 m into the
+// swing, before the swing was long enough to be a power attack, so the hit
+// counted light, and the swing became a power attack only after). A body met
+// while the swing is already a power attack is struck at once; one met
+// before is held until the swing is over, and struck as what the whole
+// swing was - a power attack of its direction, or a light one. A held body
+// of an earlier swing is struck light.
+enum class HeldStrike : UInt8 { Wait, Light, Power };
+
+inline HeldStrike SettleHeldStrike(UInt32 heldSerial, UInt32 currentSerial, bool swingActive, bool swingPower,
+                                   bool endedPower) {
+	if (heldSerial != currentSerial) {
+		return HeldStrike::Light;  // its swing is long gone
+	}
+	if (swingActive) {
+		return swingPower ? HeldStrike::Power : HeldStrike::Wait;
+	}
+	return endedPower ? HeldStrike::Power : HeldStrike::Light;
+}
+
+}  // namespace obvr::game

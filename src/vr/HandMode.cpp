@@ -215,7 +215,10 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	}
 
 	// Gestures.
-	r.blocking = f.left.valid && !f.menuMode && IsBlockGesture(leftRelative, s.gestures);
+	// The left hand raised blocks only with a shield on that arm (the tester,
+	// 2026-09-29: "linke hand heben wenn kein schild equiped, darf nicht als
+	// block zählen").
+	r.blocking = LeftHandBlocks(f.left.valid && !f.menuMode && IsBlockGesture(leftRelative, s.gestures), f.shieldEquipped);
 	// Or the weapon raised across the body (IsWeaponGuard), with the weapon
 	// drawn - fists included.
 	if (!r.blocking && !f.menuMode && f.right.valid && r.rightHandValid &&

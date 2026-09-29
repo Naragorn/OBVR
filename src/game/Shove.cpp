@@ -62,7 +62,15 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 		}
 		using LevelFn = UInt32(__thiscall*)(void* process);
 		const UInt32 level = reinterpret_cast<LevelFn>(levelFn)(reinterpret_cast<void*>(process));
-		if (level != 0 || Read(process + kProcessKnockedState) != 0) {
+		const UInt32 knocked = Read(process + kProcessKnockedState);
+		if (level != 0 || knocked != 0) {
+			static UInt32 refusedLines = 10;
+			if (refusedLines > 0) {
+				--refusedLines;
+				OBVR_LOG("Shove: the hard shove refused for %08X - its process level %u, its knocked state %u (both must "
+				         "be 0) - a light one instead",
+				         a, level, knocked);
+			}
 			// Too far from the player's attention (not a high process) or
 			// already down: a stagger instead.
 			kind = ShoveKind::Light;

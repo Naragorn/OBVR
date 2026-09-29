@@ -1340,6 +1340,12 @@ inline constexpr UInt32 kActorVtableHandReachOffset = 0x26C;
 inline constexpr UInt32 kActorVtableGetScaleOffset = 0x0EC;
 inline constexpr UInt32 kActorVtableAttackHandlingOffset = 0x3AC;
 inline constexpr UInt32 kProcessVtableEquippedWeaponOffset = 0x0EC;
+// Its neighbour GetEquippedShieldData(bool worn) at +0xF8 (0x0064B2D0 in both
+// process tables 0x00A71814 and 0x00A72684): the shield's entry, with `true`
+// only while the stack is worn (0x00484E80, ExtraWorn/WornLeft), else null;
+// the engine asks it so at 0x00489A35 and 0x005FF7F5. Read 2026-09-29.
+inline constexpr UInt32 kProcessVtableEquippedShieldOffset = 0x0F8;
+inline constexpr UInt32 kEquippedShieldGetter = 0x0064B2D0;
 inline constexpr UInt32 kEntryDataTypeOffset = 0x08;
 inline constexpr UInt32 kWeaponTypeOffset = 0x90;
 inline constexpr UInt32 kWeaponReachOffset = 0x98;
