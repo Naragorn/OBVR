@@ -271,3 +271,12 @@ The palm's side is **assumed** to be the controller's +x on the left hand and �
 The dialogue panel's side now defaults to centre, because right was "zu weit rechts".
 
 Menus open in front: the room anchor is dropped as a menu opens, so a menu or a book is placed where the head looks. Before, the anchor was kept from the first placement, and with the body and the walking direction turned away from the view a menu could open behind the player.
+
+**Open bug (2026-09-29): the enemy health bar is not shown.** The tester: "wir müssen den healthbar von gegnern rendern ... das ist afaik ein vanilla feature".
+- It is vanilla: HUDReticle's `hudreticle_enemy_health`, drawn under the crosshair while a fight target is set.
+- The step 1 probe found it as the third persistent HUD root, `kHudAuxRootPointer` 0x00B3B358 (x −1, y −20, visible 1 = hidden when idle, file "Enemy He…").
+- Why it is missing in VR is not known yet. Candidates, none checked:
+  - It lies outside the square `CrosshairLayer::TakeFromHud` lifts (`CrosshairSourceShare`, a centred square), and is then erased from the flat HUD with the rest of the centre, or left in the flat panel behind the crosshair's depth.
+  - `SetHudReticleEnabled` hides the aux root on the title screen and does not show it again.
+  - The HUDReticle update that OBVR wraps (0x00582251) skips it.
+- To do: run the tile probe during a fight (the aux root's visible and alpha, its rectangle) and a capture dump. Then lift it as a hand-HUD element (a `HudElement` of its own, default right hand or under the crosshair), or keep it with the crosshair quad.
