@@ -249,4 +249,17 @@ Every element has its own place, opacity and size. The settings are in `[HandHud
 - The dialogue panel on the speaker, which needs a conversation. Its decision and anchor have unit tests.
 - How readable the bars are at 12 cm.
 
+**Headset (2026-09-29):** "ja HUD geht alles habe es getestet." The settings are not tried yet.
+
+**Shown on a look (2026-09-29, the tester: "man muss die hand mit vr anschauen und die hand zum gesicht drehen quasi mit offener hand").** A hand's HUD fades in over 0.15 s only while three things hold:
+- the hand is within `LookGazeDegrees` (35) of the head's forward;
+- its palm is within `LookPalmDegrees` (55) of facing the eyes;
+- the hand is not a fist (finger curl < 0.6, or the grip's squeeze without curls).
+
+While shown, the HUD hangs `PalmLiftMetres` (0.06) off the palm, facing the eyes, and is hung on the controller. `ShowOnLook=0` brings the watch on the back of the hand back.
+
+The palm's side is **assumed** to be the controller's +x on the left hand and −x on the right, from OpenVR's controller axes. The headset has not confirmed it. If the HUD shows with the back of the hand instead, that is the sign to flip.
+
+`tools/hand-scripts/hand-hud-look.txt` covers it, but it has not run yet: the tester was playing.
+
 **Open bug (2026-09-29): the speaker is taken from the crosshair.** It comes from the crosshair target in the two seconds before the conversation opens. A conversation an NPC starts (they walk up and greet) has no crosshair target, and the panel then stays where it was (logged "left where it was"). The dialogue menu's own target field would be the direct source; it has not been found yet.

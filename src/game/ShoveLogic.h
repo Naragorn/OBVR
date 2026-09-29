@@ -38,7 +38,48 @@ struct ShoveSettings {
 	float fatigueHard = 40.0f;  // PLANCK's shove costs 40 stamina
 	float dispositionLight = 5.0f;
 	float dispositionHard = 15.0f;
+	// Shoving the same person hard this many times within crimeWindowSeconds
+	// is an assault (the tester, 2026-09-29: "hier sollten wir definitiv einen
+	// crime hinzufügen wenn man es zu oft macht"); 0 never.
+	UInt32 crimeAfter = 3;
+	float crimeWindowSeconds = 60.0f;
 };
+
+// The hard shoves on one actor, counted towards the crime.
+struct ShoveTally {
+	const void* actor = nullptr;
+	UInt32 count = 0;
+	float secondsLeft = 0.0f;
+};
+
+inline void StepShoveTally(ShoveTally& t, float dt) {
+	if (t.secondsLeft > 0.0f) {
+		t.secondsLeft -= dt;
+		if (t.secondsLeft <= 0.0f) {
+			t = ShoveTally{};
+		}
+	}
+}
+
+// Counts a hard shove on `actor`; true when it makes the crime - the
+// `after`-th on the same actor within the window. Another actor starts a new
+// count; after a crime the count starts again, so shoving on is another one.
+inline bool CountHardShove(ShoveTally& t, const void* actor, UInt32 after, float windowSeconds) {
+	if (actor == nullptr || after == 0) {
+		return false;
+	}
+	if (t.actor != actor) {
+		t = ShoveTally{};
+		t.actor = actor;
+	}
+	++t.count;
+	t.secondsLeft = windowSeconds;
+	if (t.count >= after) {
+		t.count = 0;
+		return true;
+	}
+	return false;
+}
 
 enum class ShoveKind : UInt8 { None, Light, Hard };
 

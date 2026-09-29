@@ -28,6 +28,31 @@ constexpr UInt8 kProxyKnockbackBytes[] = {0x55, 0x8B, 0xEC, 0x83, 0xE4, 0xF0, 0x
 
 bool g_verified = false;
 UInt32 g_lines = 20;
+ShoveTally g_tally;
+
+// The assault: the victim's vtable +0x240, thiscall(victim, criminal, UInt8
+// flag) ret 8 - what the hit handler's reaction 0x005FE380 calls on a hit it
+// takes as an attack (read at 0x005FE789: `push 1; push edi; mov ecx, esi;
+// call [edx+240h]`). It is 0x00610930 on Character and PlayerCharacter,
+// 0x0060CF60 on Creature; it registers crime type 3, Attack (cs.uesp.net/
+// wiki/Crime_Types), with the victim and the criminal, counts the player's
+// assaults (player+0x6D4, xOBSE's kMiscStat_Assaults) and lets the witnesses
+// react. Called only when the slot holds one of the two, checked each time.
+constexpr UInt32 kAlarmAttackSlot = 0x240;
+constexpr UInt32 kAlarmAttackCharacter = 0x00610930;
+constexpr UInt32 kAlarmAttackCreature = 0x0060CF60;
+
+void CommitAssault(UInt32 victim, UInt32 player) {
+	const UInt32 vtable = Read(victim);
+	const UInt32 fn = LooksLikeObject(vtable) ? Read(vtable + kAlarmAttackSlot) : 0;
+	if (fn != kAlarmAttackCharacter && fn != kAlarmAttackCreature) {
+		OBVR_LOG("Shove: no assault for %08X - its alarm slot holds %08X, not the attack's", victim, fn);
+		return;
+	}
+	using AlarmFn = void(__thiscall*)(void* victim, void* criminal, UInt32 flag);
+	reinterpret_cast<AlarmFn>(fn)(reinterpret_cast<void*>(victim), reinterpret_cast<void*>(player), 1);
+	OBVR_LOG("Shove: %08X shoved down too often - an assault (crime type 3) reported", victim);
+}
 
 bool LooksLikeObject(UInt32 address) { return mem::LooksLikeObjectAddress(address); }
 UInt32 Read(UInt32 address) { return *reinterpret_cast<const UInt32*>(address); }
@@ -44,6 +69,8 @@ bool VerifyShoveAddresses() {
 	}
 	return g_verified;
 }
+
+void StepShoveCrime(float dt) { StepShoveTally(g_tally, dt); }
 
 bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const NiPoint3& centre,
                 const ShoveSettings& settings) {
@@ -62,7 +89,11 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 		}
 		using LevelFn = UInt32(__thiscall*)(void* process);
 		const UInt32 level = reinterpret_cast<LevelFn>(levelFn)(reinterpret_cast<void*>(process));
-		const UInt32 knocked = Read(process + kProcessKnockedState);
+		// One byte (xOBSE GameProcess.h, HighProcess: "SInt8 knockedState;
+		// // 11C", sleepState beside it at 11D). Read as a whole word it took
+		// its neighbours along - 0xD6140000, 0x65680000 in the tester's log of
+		// 2026-09-29 - and refused nearly every hard shove on a standing NPC.
+		const UInt32 knocked = *reinterpret_cast<const UInt8*>(process + kProcessKnockedState);
 		if (level != 0 || knocked != 0) {
 			static UInt32 refusedLines = 10;
 			if (refusedLines > 0) {
@@ -79,6 +110,9 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 			reinterpret_cast<KnockFn>(kKnockback)(reinterpret_cast<void*>(process), actor, fromWorld.x, fromWorld.y,
 			                                      fromWorld.z, settings.hardForce);
 			done = "knocked down";
+			if (CountHardShove(g_tally, actor, settings.crimeAfter, settings.crimeWindowSeconds)) {
+				CommitAssault(a, player);
+			}
 		}
 	}
 	if (kind == ShoveKind::Light) {

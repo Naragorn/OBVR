@@ -130,6 +130,9 @@ struct LookSettings {
 	bool noPlayerStagger = true;
 	// The hit blur (Oblivion's GethitShader) skipped for the player (game/HitShader.h).
 	bool noHitBlur = true;  // the tester, 2026-09-29: "ja machen wir!"
+	// The player's block counts towards where the headset looks, not where the
+	// body faces (game/BlockCone.h).
+	bool blockFacesView = true;
 
 	// How much of the view the vignette leaves clear, as the angle from the
 	// centre of view in degrees where the darkening starts; it is full 20

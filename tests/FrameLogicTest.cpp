@@ -22,6 +22,7 @@
 #include "game/HeldObject.h"
 #include "game/NearbyItems.h"
 #include "game/PlayerLookAt.h"
+#include "game/BlockCone.h"
 #include "game/HitShader.h"
 #include "game/PlayerStagger.h"
 #include "core/MathFns.h"
@@ -2569,6 +2570,16 @@ void TestNoHitBlur() {
 	Check(obvr::game::HitShaderRuns(false), "off: it starts as in the game");
 }
 
+void TestBlockCone() {
+	std::printf("The block looks along the view\n");
+	using obvr::game::BlockConeUsesGaze;
+	Check(BlockConeUsesGaze(true, 0x1000u, 0x1000u, true), "on, the player, a headset heading: the view's");
+	Check(!BlockConeUsesGaze(false, 0x1000u, 0x1000u, true), "off: the body's, as in the game");
+	Check(!BlockConeUsesGaze(true, 0x2000u, 0x1000u, true), "an NPC blocking: its own");
+	Check(!BlockConeUsesGaze(true, 0x1000u, 0x1000u, false), "no headset heading: the body's");
+	Check(!BlockConeUsesGaze(true, 0u, 0u, true), "no player yet: nothing changed");
+}
+
 void TestGrabStartRotation() {
 	std::printf("The grab's start looks at the point the pick hit\n");
 	using obvr::camera::GrabStartRotation;
@@ -3960,6 +3971,7 @@ int main() {
 	TestHandGrip();
 	TestNoPlayerStagger();
 	TestNoHitBlur();
+	TestBlockCone();
 	TestGrabStartRotation();
 	TestRecenterPlan();
 	TestChaseCamera();

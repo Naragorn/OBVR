@@ -35,4 +35,10 @@ bool VerifyShoveAddresses();
 bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const NiPoint3& centre,
                 const ShoveSettings& settings);
 
+// Runs the window of the hard shoves counted towards the assault
+// (ShoveTally): the `crimeAfter`-th hard shove on one actor within
+// `crimeWindowSeconds` reports an Attack crime through the actor's own
+// alarm (vtable +0x240), as a hit the actor takes as an attack does.
+void StepShoveCrime(float dt);
+
 }  // namespace obvr::game

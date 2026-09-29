@@ -571,6 +571,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.look.noPlayerStagger =
 		ReadBool("Look", "NoPlayerStagger", config.look.noPlayerStagger, path);
 	config.look.noHitBlur = ReadBool("Look", "NoHitBlur", config.look.noHitBlur, path);
+	config.look.blockFacesView = ReadBool("Look", "BlockFacesView", config.look.blockFacesView, path);
 	config.look.snapTurnDeadZone =
 		ReadFloat("Look", "SnapTurnDeadZone", config.look.snapTurnDeadZone, path);
 	config.look.smoothTurning =
@@ -716,6 +717,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.shove.hardSpeed = ReadFloat("Hands", "ShoveHardSpeed", h.shove.hardSpeed, path);
 		h.shove.hardForce = ReadFloat("Hands", "ShoveHardForce", h.shove.hardForce, path);
 		h.shove.distance = ReadFloat("Hands", "ShoveDistance", h.shove.distance, path);
+		h.shove.crimeAfter = ReadUInt("Hands", "ShoveCrimeAfter", h.shove.crimeAfter, path);
+		h.shove.crimeWindowSeconds =
+			ReadFloat("Hands", "ShoveCrimeWindowSeconds", h.shove.crimeWindowSeconds, path);
 		{
 			vr::HandHudSettings& hh = h.handHud;
 			hh.enabled = ReadBool("HandHud", "Enabled", hh.enabled, path);

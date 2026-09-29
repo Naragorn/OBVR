@@ -15,6 +15,7 @@
 #include "core/MathFns.h"
 #include "game/CrosshairTarget.h"
 #include "game/DialogZoom.h"
+#include "game/BlockCone.h"
 #include "game/HitShader.h"
 #include "game/HudTiles.h"
 #include "game/FirstPersonArms.h"
@@ -757,6 +758,7 @@ game::ShoveCooldown g_shoveCooldown;
 
 void StepShoves(const Config& config, float dt) {
 	game::StepShoveCooldown(g_shoveCooldown, dt);
+	game::StepShoveCrime(dt);
 	const game::ShoveSettings& settings = config.hands.shove;
 	if (!settings.enabled || !g_cyclopeanCameraWorldValid) {
 		return;
@@ -6146,6 +6148,9 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		                                g_headTracker.IsHeadsetConnected(), game::IsMenuMode(),
 		                                viewAimed);
 		pose.headYaw = AimYawRemaining(sourceHeadYaw, g_aimBodyOffset);
+		// The block looks along the head, never the hand.
+		game::SetBlockCone(GetConfig().look.blockFacesView, readPlayer && g_headTracker.IsHeadsetConnected(),
+		                   pose.headYaw);
 		pose.pitch = gazePitch;
 		// The hand-tracked mode: the shot goes along the right hand instead
 		// of the gaze - its heading as the head's plus the hand's turn from
@@ -7240,6 +7245,7 @@ bool Install() {
 	game::VerifyShoveAddresses();
 	game::InstallPlayerStagger();
 	game::InstallHitShader();
+	game::InstallBlockCone();
 	game::InstallPlayerLookAt();
 	game::InstallWorldPickHook();
 

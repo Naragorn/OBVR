@@ -128,6 +128,20 @@ against a weapon. A blocked blow is never fully stopped: at most `fBlockMax`
   the weapon drawn (fists included). It holds the same block control.
 - The guard reads the blade as the controller's forward axis, the same axis
   the strike by motion runs along.
+- **The block looks along the view** (`[Look] BlockFacesView`, on by default,
+  since 2026-09-29; `game/BlockCone.h`).
+  - The problem: the tester reported "block mit schild lässt ein paar
+    attacken noch durch". The engine's cone takes the **body's** heading, and
+    OBVR keeps the body apart from the view, so an attacker the headset faced
+    could stand outside it.
+  - The fix: the call to the cone check at 0x005FF83E is rerouted. For the
+    player, the check runs with rotZ set to the gaze's heading, then puts it
+    back.
+  - It logs both angles ("Block: a blow at the player's block - N degrees off
+    the view ..., M off the body ...") for the first twelve blows.
+  - A blocked blow still takes up to 75 % off, never all (`fBlockMax`). Some
+    damage coming through a good block is vanilla.
+  - Not seen in the headset yet.
 
 ### Problems
 

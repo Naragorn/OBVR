@@ -144,6 +144,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.look.noHitBlur = v != 0.0f; },
 	},
 	{
+		"Comfort", "Block where you look", "Your block counts towards where you look, not where your body faces",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "BlockFacesView",
+		+[](const Config& c) { return c.look.blockFacesView ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.look.blockFacesView = v != 0.0f; },
+	},
+	{
 		"Comfort", "Eye separation", "Wider feels smaller, narrower feels larger",
 		ItemKind::Number, 0.7f, 1.3f, 0.01f, 2, false,
 		"Render", "EyeSeparationScale",
@@ -691,6 +698,13 @@ const SettingDefinition kSettings[] = {
 		"Hands", "ShoveHardSpeed",
 		+[](const Config& c) { return c.hands.shove.hardSpeed; },
 		+[](Config& c, float v) { c.hands.shove.hardSpeed = v; },
+	},
+	{
+		"Hands", "Shoves until a crime", "Shove someone down this often in a minute and it is an assault; 0 never",
+		ItemKind::Number, 0.0f, 10.0f, 1.0f, 0, false,
+		"Hands", "ShoveCrimeAfter",
+		+[](const Config& c) { return static_cast<float>(c.hands.shove.crimeAfter); },
+		+[](Config& c, float v) { c.hands.shove.crimeAfter = static_cast<UInt32>(v + 0.5f); },
 	},
 	{
 		"Hands", "Reach tooltip", "The tooltip icon moves onto what a closed grip would pick up",

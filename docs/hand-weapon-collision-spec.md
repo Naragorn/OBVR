@@ -353,6 +353,30 @@ Proposed for OBVR, in this order; all by intent, never by a mere touch:
      Which one is not known; the refusal now logs both values ("the hard
      shove refused ... its process level, its knocked state"). The light
      shove's stagger and push are not seen in the game - open.
+   - **The cause of the refusals (2026-09-29):** the knocked state was read
+     wrong.
+     - The next log refused with "process level 0, knocked state 3591634944 /
+       1701314560 / 1638006784", that is 0xD6140000, 0x65680000 and
+       0x61A20000.
+     - In xOBSE's GameProcess.h the knocked state is **one byte** in
+       HighProcess (`SInt8 knockedState; // 11C`, `sleepState` at 11D). OBVR
+       read four bytes, so the neighbouring bytes made every standing NPC
+       look "down".
+     - Now read as a byte. The low byte was 0 in all three values, so those
+       shoves would have gone through.
+     - The tester had seen it work "ein paar mal aber nicht immer": whenever
+       the neighbouring bytes happened to be 0.
+   - **The assault (2026-09-29, tester: "einen crime hinzufügen wenn man es zu
+     oft macht"):**
+     - When: the third hard shove on the same person within 60 s
+       (`ShoveCrimeAfter` 3, `ShoveCrimeWindowSeconds` 60; each shove renews
+       the window).
+     - What happens: an Attack crime is reported through the victim's alarm,
+       vtable +0x240 (0x00610930 Character, 0x0060CF60 Creature). The hit
+       handler's reaction calls the same alarm for an assault.
+     - Effects: crime type 3, the player's assault count, and the witnesses
+       react.
+     - Not seen in the game yet.
 2. **Taking someone by the hand.** A grip closed on an actor's hand or arm
    (within a few centimetres of the bone): they are held. Each frame their
    controller is steered to keep the held point near the hand, with a speed
