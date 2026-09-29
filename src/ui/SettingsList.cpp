@@ -700,6 +700,27 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.shove.hardSpeed = v; },
 	},
 	{
+		"Hands", "Thrown things hit", "What you throw staggers people, or knocks them down when fast",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "ThrowHits",
+		+[](const Config& c) { return c.hands.throwHit.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.throwHit.enabled = v != 0.0f; },
+	},
+	{
+		"Hands", "Throw: stagger from", "How fast (m/s) a thrown thing must fly to stagger someone",
+		ItemKind::Number, 1.0f, 15.0f, 0.5f, 1, false,
+		"Hands", "ThrowStaggerSpeed",
+		+[](const Config& c) { return c.hands.throwHit.staggerSpeed; },
+		+[](Config& c, float v) { c.hands.throwHit.staggerSpeed = v; },
+	},
+	{
+		"Hands", "Throw: knock down from", "How fast (m/s) it must fly to knock them down",
+		ItemKind::Number, 1.0f, 20.0f, 0.5f, 1, false,
+		"Hands", "ThrowKnockSpeed",
+		+[](const Config& c) { return c.hands.throwHit.knockSpeed; },
+		+[](Config& c, float v) { c.hands.throwHit.knockSpeed = v; },
+	},
+	{
 		"Hands", "Take by the hand", "Close a grip next to someone's hand and they walk after you",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "LeadByHand",

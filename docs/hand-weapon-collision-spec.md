@@ -859,3 +859,23 @@ Every flow gets a unit test in `tests/`:
   GrabPhysics/WorldPush already read, and it mirrors HIGGS.
 - **Keeping `WorldPush`** is the fallback (`BodyCollision=0`), not the
   target.
+
+## Thrown things hit people (built 2026-09-29)
+
+The tester: "ich nehme irgendwas in die hand auf mit grab und werfe es auf npcs. mit genug schwung fallen die zu boden wie der schubser. oder werden zumindest staggered".
+
+**How it works:**
+- An object let go with a throw's speed (`game::TakeJustThrown`, set where `GrabPhysics` gives the body its velocity) is followed for up to 3 s, until it comes to rest.
+- Its speed is measured from its node's world position each frame.
+- When it passes through a living person's body (the shove's upright column, `game::HandAtBody`), the shove's effects apply:
+  - from `ThrowStaggerSpeed` (4 m/s): staggered and pushed back;
+  - from `ThrowKnockSpeed` (7 m/s): knocked down, and taken as a hit (`ShoveCountsAsHit`).
+- One hit per throw. The player pays no fatigue for it (`ShoveActor(..., byHand = false)`).
+- Code: `game/ThrowLogic.h` (`throw_test`) and `StepThrowHits` in `CameraHook.cpp`.
+
+**Harness:** `tools/hand-scripts/throw-hit.txt` PASS, two runs out of four.
+- A beggar is placed and an Iron Longsword dropped from the inventory. The right grip pulls it in (`PullReachMetres` 2.5 for the run) and throws it, and the beggar is knocked down.
+- The two failed runs: the sword landed out of the pull's reach, which varies from run to run.
+- The harness hands now carry a velocity worked out from their position a frame ago (`ScriptedHands`). A `pos` jump then throws far too fast (200+ m/s logged). That is the script, not the game.
+
+**Not seen in the headset yet.** The speeds of real throws decide whether 4 and 7 m/s are right.

@@ -47,6 +47,7 @@ struct Flight {
 	bool inside = false;
 };
 Flight g_flight;
+UInt32 g_justThrown = 0;
 UInt32 g_flightLinesLeft = 12;
 
 // The last pose the object was shown at in the hand, for the release.
@@ -244,6 +245,7 @@ void Released(UInt32 player, Held& h, float throwStrength) {
 			using SetVelocityFn = void(__thiscall*)(void* motion, const float* v);
 			const UInt32 slot = Read(Read(motion) + kMotionSetLinearVelocitySlot);
 			reinterpret_cast<SetVelocityFn>(slot)(reinterpret_cast<void*>(motion), havok);
+			g_justThrown = h.ref;
 		}
 	}
 	const float given = math::Sqrt(v.LengthSquared());
@@ -391,6 +393,12 @@ void NoteHeldPose(UInt32 ref, const NiMatrix33& rot, const NiPoint3& pos) {
 	g_seen.pos = pos;
 	g_seen.valid = true;
 	g_seen.fresh = true;
+}
+
+UInt32 TakeJustThrown() {
+	const UInt32 ref = g_justThrown;
+	g_justThrown = 0;
+	return ref;
 }
 
 void StepGrabPhysics(bool passBody, float throwStrength, bool velocityValid,

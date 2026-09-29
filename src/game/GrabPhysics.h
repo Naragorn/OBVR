@@ -342,6 +342,11 @@ inline bool MotionTypeDrivable(UInt32 type) {
 // is clear of the player's capsule. `dtSeconds` times the flight report.
 // With `driveBody`, the held body is driven to the pose the object was
 // shown at in the hand this frame (NoteHeldPose), so it pushes what it meets.
+// The object just let go with a throw's speed, once: its reference, then 0
+// until the next throw. For the thrown things that hit people
+// (game/ThrowLogic.h).
+UInt32 TakeJustThrown();
+
 void StepGrabPhysics(bool passBody, float throwStrength, bool velocityValid,
                      const NiPoint3& velocityUnits, float dtSeconds, bool driveBody);
 

@@ -69,7 +69,7 @@ bool VerifyShoveAddresses() {
 }
 
 bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const NiPoint3& centre,
-                const ShoveSettings& settings) {
+                const ShoveSettings& settings, bool byHand) {
 	const UInt32 a = reinterpret_cast<UInt32>(actor);
 	const UInt32 player = Read(addr::kPlayerPointer);
 	if (!g_verified || kind == ShoveKind::None || !LooksLikeObject(a) || !LooksLikeObject(player)) {
@@ -123,9 +123,13 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 			done = "staggered and pushed back";
 		}
 	}
-	const float fatigue = kind == ShoveKind::Hard ? settings.fatigueHard : settings.fatigueLight;
+	// A thrown thing (byHand false) costs the player nothing more: the throw
+	// was the effort.
+	const float fatigue = !byHand ? 0.0f : kind == ShoveKind::Hard ? settings.fatigueHard : settings.fatigueLight;
 	const float disposition = kind == ShoveKind::Hard ? settings.dispositionHard : settings.dispositionLight;
-	SpendPlayerFatigue(fatigue);
+	if (fatigue > 0.0f) {
+		SpendPlayerFatigue(fatigue);
+	}
 	using DispositionFn = void(__thiscall*)(void* actor, void* toward, float delta);
 	reinterpret_cast<DispositionFn>(kModDisposition)(actor, reinterpret_cast<void*>(player), -disposition);
 	// And the engine hears of it as of a blow.

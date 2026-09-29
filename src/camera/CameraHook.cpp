@@ -20,6 +20,7 @@
 #include "game/HudTiles.h"
 #include "game/Lead.h"
 #include "game/LeadLogic.h"
+#include "game/ThrowLogic.h"
 #include "game/FirstPersonArms.h"
 #include "game/FirstPersonDepth.h"
 #include "game/FirstPersonHide.h"
@@ -803,6 +804,54 @@ void StepShoves(const Config& config, float dt) {
 			         static_cast<double>(hand.towardsSpeed), reinterpret_cast<UInt32>(actor),
 			         kind == game::ShoveKind::Hard ? "hard" : "light");
 		}
+	}
+}
+
+// Thrown things that hit people (game/ThrowLogic.h): an object let go with a
+// throw's speed is followed; passing through someone's body fast enough it
+// staggers them or knocks them down - the shove's effects, once per throw.
+game::ThrowFlight g_throwFlight;
+
+void StepThrowHits(const Config& config, float dt, bool inWorld) {
+	const UInt32 thrown = game::TakeJustThrown();
+	if (thrown != 0 && config.hands.throwHit.enabled) {
+		game::StartThrowFlight(g_throwFlight, thrown);
+		static UInt32 s_throwLines = 8;
+		if (s_throwLines > 0) {
+			--s_throwLines;
+			OBVR_LOG("Throw: %08X thrown - watched for whom it hits", thrown);
+		}
+	}
+	if (g_throwFlight.ref == 0) {
+		return;
+	}
+	const UInt32 node = inWorld ? *reinterpret_cast<const UInt32*>(g_throwFlight.ref + addr::kRefNiNodeOffset) : 0;
+	if (!mem::LooksLikeObjectAddress(node)) {
+		g_throwFlight = game::ThrowFlight{};
+		return;
+	}
+	const float* const p = reinterpret_cast<const float*>(node + addr::kNodeWorldTranslateOffset);
+	const NiPoint3 at{p[0], p[1], p[2]};
+	const bool hadLast = g_throwFlight.haveLast;
+	const NiPoint3 before = g_throwFlight.last;
+	if (!game::StepThrowFlight(g_throwFlight, config.hands.throwHit, at, dt, config.tracker.unitsPerMetre)) {
+		return;
+	}
+	const game::ShoveKind kind = game::ThrowHitFor(config.hands.throwHit, g_throwFlight.speed);
+	if (kind == game::ShoveKind::None) {
+		return;
+	}
+	NiPoint3 centre{0.0f, 0.0f, 0.0f};
+	void* const actor = game::LivingActorAt(at, 0.5f, 4.0f, &centre, 1.0f);
+	if (actor == nullptr || !game::ShoveAllowed(g_shoveCooldown, actor)) {
+		return;
+	}
+	const float speed = g_throwFlight.speed;
+	if (game::ShoveActor(actor, kind, hadLast ? before : at, centre, config.hands.shove, false)) {
+		game::StartShoveCooldown(g_shoveCooldown, actor, config.hands.shove.cooldownSeconds);
+		OBVR_LOG("Throw: %08X hit %08X at %.1f m/s - %s", g_throwFlight.ref, reinterpret_cast<UInt32>(actor),
+		         static_cast<double>(speed), kind == game::ShoveKind::Hard ? "knocked down" : "staggered");
+		g_throwFlight = game::ThrowFlight{};  // one hit per throw
 	}
 }
 
@@ -2158,6 +2207,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		game::StepGrabPhysics(true, stowing ? 0.0f : config.hands.throwStrength, throwValid,
 		                      throwVelocity, g_deltaSeconds,
 		                      config.hands.heldObjectsPush && !stowing);
+		StepThrowHits(config, g_deltaSeconds, active && !menuIsUp && frame.inWorld);
 		if (!stowIn.keyDown) {
 			g_stowWasAtBody = false;  // let go: said by the lines below instead
 		} else if (stow.atBody != g_stowWasAtBody) {

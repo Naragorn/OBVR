@@ -1183,3 +1183,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME lead COMMAND lead_test)
+
+add_executable(throw_test ThrowTest.cpp)
+
+target_include_directories(throw_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(throw_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME throw COMMAND throw_test)

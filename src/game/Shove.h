@@ -33,6 +33,6 @@ bool VerifyShoveAddresses();
 // from `fromWorld`, the fatigue, the disposition. False when refused (not
 // verified, no process, already down).
 bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const NiPoint3& centre,
-                const ShoveSettings& settings);
+                const ShoveSettings& settings, bool byHand = true);
 
 }  // namespace obvr::game

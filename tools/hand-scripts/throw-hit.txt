@@ -1,0 +1,67 @@
+# Thrown things hit people (game/ThrowLogic.h): a beggar placed ahead, a
+# sword dropped at the player's feet from the inventory (the left A under
+# the pointer, as inventory-drop does - a third console line would leave the
+# harness in a menu); the right grip takes it (it floats to the hand), the
+# hand jumps forward and lets go - a throw at the jump's speed (the scripted
+# hand's velocity) - and the sword flies at the beggar.
+
+ini Hands Enabled=1
+ini Hands ThrowHits=1
+ini Hands PushPeople=0
+ini Hands StowAtBody=0
+ini Hands PullReachMetres=2.5
+ini Render MirrorMenusToMonitor=1
+
+expect HandScript: finished
+expect thrown - watched
+
+expect hit 
+expect taken as a hit
+reject HandScript: WARNING
+
+console player.placeatme 0001C45B 1
+console player.additem 00000C0C 1
+
+wait 12
+right pos 0.15 -0.25 -0.35
+right rot 62 29 0
+left b 1
+wait 0.2
+left b 0
+wait 2
+left a 1
+wait 0.3
+left a 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark dropped
+head pitch -50
+right pos 0.15 -1.50 -2.30
+right rot -80 0 0
+wait 1
+mark near
+right grip 1
+wait 1.5
+mark held
+head pitch 0
+right pos 0.20 -0.10 -0.20
+right rot 0 0 0
+wait 0.5
+right pos 0.20 -0.05 -0.40
+wait 0.03
+right pos 0.20 0.00 -0.60
+wait 0.03
+right pos 0.20 0.05 -0.80
+right grip 0
+wait 0.03
+right pos 0.20 0.10 -1.00
+wait 0.03
+right pos 0.20 0.15 -1.20
+wait 0.03
+right pos 0.20 0.20 -1.40
+wait 2
+mark thrown
+wait 1
