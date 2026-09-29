@@ -334,6 +334,12 @@ Proposed for OBVR, in this order; all by intent, never by a mere touch:
    not). Whether the vanilla grab takes a body's limb by the hand grip is
    not checked.
 
+The tester agreed (2026-09-29: "finde ich alles geil. können wir so
+machen"). The mood is the actor's disposition towards the player.
+"irgendwann könnte es vll sogar zu einem crime event werden, muss aber whl
+extreme situation sein": an assault only in an extreme case (held long,
+yanked, shoved again and again), never for a single shove.
+
 ## How HIGGS does it (Skyrim VR, source read)
 
 Source: github.com/adamhynek/higgs, `src/hand.cpp`.
