@@ -561,3 +561,32 @@ The tester's idea (2026-09-27), in the style of Half-Life: Alyx. Not built.
 
 - The right stick click, once the weapon is drawn by gestures.
 - The left A in the world.
+
+## 5. Found in the headset, 2026-09-29
+
+- **Fixed: the spell's hand effect floated in the air.** "linker trigger
+  macht den zauber ja. aber der zauber effekt bei heal zb erscheint
+  irgendwo über der hand in der luft statt an der hand." The engine hangs a
+  spell's hand effect on the node `magicNode`, found by name at each cast
+  (0x005EDCB8, 0x00602D42) and given the effect as a child (0x00602D71). In
+  the first-person skeleton it is a child of `Bip01 Spine2`, and the cast
+  animations key it to where the animated hand would be
+  (`1stperson_castself.kf`, its own translation track). OBVR's pins move
+  the forearms and so the hands, not `magicNode`. Now, after the pins, its
+  local position is set to the middle of the pinned left palm (wrist to the
+  middle finger's base, `game::PalmCentre`), its rotation left to the
+  animation (CameraHook `PlaceMagicNodeAtCastingHand`). Harness
+  `cast-effect.txt` PASS: "the casting hand's effect node set to the left
+  palm". **Not seen:** the harness picture shows no hands; whether the
+  glow now sits in the palm is for the headset. The left hand is taken as
+  the casting hand (the game's); left-handed play is not checked.
+- **Open bug: a swing in empty air attacks, with the attack sound and a
+  step forward.** "wenn ich die touch controller schwinge im leeren raum
+  kommt ein h2h attacke mit attack sound und mit ausfallschritt (nausea)."
+  Under investigation.
+- **Open bug: no swing sounds, no attack grunts.** "wir machen gar keinen
+  schwing sound von schwert, axt und h2h. auch keine player attack sounds
+  also grunzen." The PC's swish sounds are `WPNSwishSmall` 000872C2,
+  `WPNSwishMedium` 000887F7, `WPNSwishLarge` 0008976F, `WPNSwishHand`
+  00088834 (Oblivion.esm; the `...X` ones point to the 360's files, which
+  the PC does not have). Under investigation.

@@ -18,6 +18,7 @@ using obvr::game::BonePose;
 using obvr::game::HandBoneWorld;
 using obvr::game::HandCalibration;
 using obvr::game::LocalUnderParent;
+using obvr::game::PalmCentre;
 using obvr::game::ParentForChildAt;
 using obvr::game::FormIdInNodeName;
 using obvr::game::ForearmScaleFor;
@@ -95,6 +96,14 @@ void TestWorldPose() {
 	      "and the camera's turn carries the grip too");
 	pose = HandBoneWorld(identity, camera, identity, offset, identity);
 	Check(NearPoint(pose.pos, NiPoint3{110.0f, 220.0f, 295.0f}), "no grip, no change");
+}
+
+void TestPalmCentre() {
+	std::printf("The palm's middle\n");
+	Check(NearPoint(PalmCentre(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 6.0f, 2.0f}), NiPoint3{0.0f, 3.0f, 1.0f}),
+	      "halfway from the wrist to the knuckle");
+	Check(NearPoint(PalmCentre(NiPoint3{1.0f, 1.0f, 1.0f}, NiPoint3{1.0f, 1.0f, 1.0f}), NiPoint3{1.0f, 1.0f, 1.0f}),
+	      "the two in one place: that place");
 }
 
 void TestLocalUnderParent() {
@@ -280,6 +289,7 @@ void TestBareWrist() {
 int main() {	TestAdjust();
 	TestWorldPose();
 	TestLocalUnderParent();
+	TestPalmCentre();
 	TestCalibration();
 	TestParentForChild();
 	TestBareWrist();

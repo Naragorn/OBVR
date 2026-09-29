@@ -1,0 +1,27 @@
+# The casting hand's effect at the pinned left hand (the tester,
+# 2026-09-29: the Heal effect showed in the air above the hand). The left
+# hand is held out to the side and low, away from where the cast animation
+# puts its hand; the left trigger casts the equipped spell. The screenshot
+# at "casting" shows where the glow is; the log says where magicNode was set.
+
+ini Hands Enabled=1
+
+expect HandScript: finished
+expect Hands: the casting hand's effect node set to the left palm
+reject HandScript: WARNING
+
+wait 10
+left pos -0.35 -0.55 -0.25
+left rot 0 0 0
+right pos 0.25 -0.60 -0.30
+wait 1
+mark before
+left trigger 1
+wait 0.35
+mark casting
+wait 0.4
+mark cast
+left trigger 0
+wait 1.5
+mark after
+wait 1

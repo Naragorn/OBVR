@@ -53,6 +53,15 @@ inline BonePose LocalUnderParent(const NiMatrix33& parentRot, const NiPoint3& pa
 	return local;
 }
 
+// The palm's middle: halfway from the wrist bone to the middle finger's base.
+// Where the casting hand's effect goes (magicNode, see CameraHook: the
+// node is a child of Spine2, keyed by the cast animation to where the
+// animated hand would be, so a pinned hand left it floating in the air -
+// the tester, 2026-09-29).
+inline NiPoint3 PalmCentre(const NiPoint3& wrist, const NiPoint3& knuckle) {
+	return wrist + (knuckle - wrist) * 0.5f;
+}
+
 // Where a bone's parent has to be for the bone, keeping its own local
 // transform, to land at `childWanted`. The world of a child is
 // parent.rot * local.rot and parent.pos + parent.rot * (parent.scale *

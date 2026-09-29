@@ -3678,6 +3678,50 @@ void PrepareMenuFrameIfNeeded(bool menuIsUp) {
 // the world while its grip is closed, and fitted to the controller when the
 // grip opens (game::StepHandAdjust, game::FitHandToPose). The fit is kept in
 // the running config and written to the INI.
+// The casting hand's effect at the pinned hand (the tester, 2026-09-29: "der
+// zauber effekt bei heal zb erscheint irgendwo über der hand in der luft
+// statt an der hand"). The engine hangs a spell's hand effect on the node
+// "magicNode", looked up by name at each cast (0x005EDCB8, 0x00602D42) and
+// given the effect as a child (0x00602D71). In the first-person skeleton
+// that node is a child of Bip01 Spine2, and the cast animations key it
+// (1stperson_castself.kf: its own translation track) to where the animated
+// hand would be. The pins move the forearms and so the hands, not it: the
+// effect stayed where the animation's hand would have been. So after the
+// pins its local position is set to the middle of the pinned left palm -
+// the game's casting hand - under its parent; its rotation stays the
+// animation's.
+UInt32 g_magicNodeLines = 3;
+
+void PlaceMagicNodeAtCastingHand() {
+	NiAVObject* const node = game::FindFirstPersonNode("magicNode");
+	const NiAVObject* const wrist = game::FindFirstPersonNode("Bip01 L Hand");
+	const NiAVObject* const knuckle = game::FindFirstPersonNode("Bip01 L Finger2");
+	if (node == nullptr || wrist == nullptr || knuckle == nullptr || node->parent == nullptr) {
+		if (g_magicNodeLines > 0) {
+			--g_magicNodeLines;
+			OBVR_LOG("Hands: the casting hand's effect node not placed - magicNode %s, the left hand %s, its "
+			         "finger %s",
+			         node != nullptr ? "found" : "missing", wrist != nullptr ? "found" : "missing",
+			         knuckle != nullptr ? "found" : "missing");
+		}
+		return;
+	}
+	const NiAVObject* const parent = node->parent;
+	game::BonePose wanted;
+	wanted.rot = node->worldTransform.rot;
+	wanted.pos = game::PalmCentre(wrist->worldTransform.pos, knuckle->worldTransform.pos);
+	const game::BonePose local = game::LocalUnderParent(parent->worldTransform.rot, parent->worldTransform.pos,
+	                                                    parent->worldTransform.scale, wanted);
+	node->localTransform.pos = local.pos;
+	game::UpdateNodeTransforms(node);
+	if (g_magicNodeLines > 0) {
+		--g_magicNodeLines;
+		OBVR_LOG("Hands: the casting hand's effect node set to the left palm (%.1f %.1f %.1f, under a %s)",
+		         static_cast<double>(wanted.pos.x), static_cast<double>(wanted.pos.y),
+		         static_cast<double>(wanted.pos.z), game::NiClassNameOf(parent));
+	}
+}
+
 bool PinAdjustableHand(bool right, const vr::HandSettings& hands, bool adjusting, bool handValid,
                        bool gripDown,
                        const NiMatrix33& relativeRot, const NiPoint3& offsetUnits,
@@ -3859,6 +3903,7 @@ void BeforeFirstScenePass() {
 				false, hands, adjusting, g_hand.leftHandValid, g_hand.leftGripDown,
 			                  g_hand.leftHandRotation, g_hand.leftHandOffsetUnits, cameraRot,
 			                  cameraPos, sharedGrip, perMetre);
+			PlaceMagicNodeAtCastingHand();
 			// The fingers close around what the engine holds for this hand, or
 			// follow the controller's fingers while the hand is empty.
 			const bool holding = g_grabKeyDown && game::PlayerHoldsGrab();
