@@ -1582,6 +1582,21 @@ void TestSwingPressesAttack() {
 		Check(SwingPressesAttack(motion, drawn, grip) == (!motion && drawn && !grip),
 		      "attack only when not striking by motion, drawn, and no grip closed");
 	}
+	// The open hand with the fists up (2026-09-29): the strike by motion may
+	// not strike with it (FistAllowsStrike false), and the swing must not
+	// fall back to the attack control - vanilla's attack, its sound, its step.
+	FistVerdict open;
+	open.known = true;
+	open.closed = false;
+	Check(!FistAllowsStrike(true, open), "the open hand with the fists up: no strike by motion");
+	Check(!SwingMayPressAttack(true, true, true, false),
+	      "and no attack control either: a hand waved through the air does nothing");
+	Check(SwingMayPressAttack(false, true, true, false),
+	      "motion hits off: the swing presses the attack control, as before");
+	Check(SwingMayPressAttack(true, false, true, false),
+	      "not a melee weapon in hand (a bow drawn): the attack control, as before");
+	Check(!SwingMayPressAttack(true, true, true, true) && !SwingMayPressAttack(false, true, false, false),
+	      "a grip closed, or the weapon away: never");
 }
 
 void TestRunToggle() {

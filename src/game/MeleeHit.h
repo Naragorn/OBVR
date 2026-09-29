@@ -123,4 +123,14 @@ inline bool WeaponIsSwung(SInt32 type) {
 	        type <= static_cast<SInt32>(WeaponTypeCode::BluntTwoHand));
 }
 
+// The swish of a swing (the tester, 2026-09-29: "wir machen gar keinen
+// schwing sound von schwert, axt und h2h"). Vanilla plays it in
+// AttackHandling on a miss only (0x005FEC7D..0x005FEC95), and the strike by
+// motion calls that only for a body it meets - so no swing ever sounded.
+// Now each swing that may strike by motion swishes once, as it starts:
+// a new swing serial while the swing runs.
+inline bool SwishDue(bool strikeByMotion, bool swingActive, UInt32 serial, UInt32 lastSwished) {
+	return strikeByMotion && swingActive && serial != lastSwished;
+}
+
 }  // namespace obvr::game

@@ -583,10 +583,33 @@ The tester's idea (2026-09-27), in the style of Half-Life: Alyx. Not built.
 - **Open bug: a swing in empty air attacks, with the attack sound and a
   step forward.** "wenn ich die touch controller schwinge im leeren raum
   kommt ein h2h attacke mit attack sound und mit ausfallschritt (nausea)."
-  Under investigation.
+  **Fixed.** Cause (read): with the fists up and the hand open, the strike
+  by motion may not strike (`FistAllowsStrike`), and the swing then fell
+  back to pressing the attack control (`SwingPressesAttack` was asked with
+  `strikeByMotion`, false) - vanilla's hand-to-hand attack ran, with its
+  sound and its movement. Now the fallback is asked whether the swung
+  thing belongs to the strike by motion at all (`SwingMayPressAttack`:
+  motion hits on and a melee weapon or fists in hand): an open hand waved
+  through the air does nothing. The step forward is the attack
+  animation's (derived; its root motion not read). Tests in
+  hand_mode_test.
 - **Open bug: no swing sounds, no attack grunts.** "wir machen gar keinen
   schwing sound von schwert, axt und h2h. auch keine player attack sounds
   also grunzen." The PC's swish sounds are `WPNSwishSmall` 000872C2,
   `WPNSwishMedium` 000887F7, `WPNSwishLarge` 0008976F, `WPNSwishHand`
   00088834 (Oblivion.esm; the `...X` ones point to the 360's files, which
-  the PC does not have). Under investigation.
+  the PC does not have).
+  - **Swish, built.** Vanilla plays it in AttackHandling on a miss only
+    (0x005FEC7D..0x005FEC95: 0x006AF880 cdecl(actor, 0.0, 0.0, no target,
+    weapon type or -1, -1, -1, 0, 0), which picks Hand, or Small/Medium/
+    Large by the weapon's speed, and plays it at the actor); the strike by
+    motion calls AttackHandling only for a body it meets, so no swing
+    sounded. Now every swing that may strike calls 0x006AF880 as vanilla's
+    miss does, once, as it starts (`SwishDue`, `game::PlaySwingSwish`).
+    Harness: "a swing's swish (weapon type 0)" per swing in `hand-bodies`
+    and `fist-armed`. A hit plays the engine's hit sound as before.
+  - **Open: the grunts.** The combat topics are `Attack` (000000DC) and
+    `PowerAttack` (000000E6), hardcoded at 0x00B10DA4; vanilla voices the
+    player on power attacks (the Nexus mod "Silent Player Voice" exists to
+    stop it). The engine's say-topic call and where the attack starts it
+    are not found yet.

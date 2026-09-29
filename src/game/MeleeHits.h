@@ -23,6 +23,11 @@ namespace obvr::game {
 // weapon's type code as well (-1 for none) for the log.
 bool MeleeInHand(SInt32* weaponType);
 
+// The swish of the weapon in hand (or of the fists) at the player, the
+// engine's own choice of sound (MeleeHit.h, SwishDue). False when nothing
+// is swung or the engine's function is not the one read.
+bool PlaySwingSwish();
+
 // The equipped weapon's form ID (TESForm+0x0C, xOBSE GameForms.h: typeID, flags,
 // refID), 0 with none - for the test runner's console lines.
 UInt32 EquippedWeaponFormId();

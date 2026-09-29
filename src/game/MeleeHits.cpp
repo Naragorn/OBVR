@@ -473,3 +473,47 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 void ForgetStrikes() { g_ledger = SwingLedger{}; }
 
 }  // namespace obvr::game
+
+namespace obvr::game {
+namespace {
+
+// The engine's weapon sound (0x006AF880, cdecl, 9 dwords, the caller
+// cleans up): with no target it plays the swish - WPNSwishHand for no
+// weapon, else Small/Medium/Large by the weapon's speed
+// (bUseSpeedForWeaponSwish) - as a 3D sound at the actor. Vanilla's own miss
+// call: (actor, 0.0, 0.0, 0, weaponType or -1, -1, -1, 0, 0) at
+// 0x005FEC7D..0x005FEC95. Read 2026-09-29.
+constexpr UInt32 kWeaponSound = 0x006AF880;
+constexpr UInt8 kWeaponSoundBytes[] = {0x8B, 0x44, 0x24, 0x04, 0x83, 0xEC, 0x24, 0x53, 0x33, 0xDB};
+int g_weaponSoundVerified = -1;
+UInt32 g_swishLines = 4;
+
+}  // namespace
+
+bool PlaySwingSwish() {
+	if (g_weaponSoundVerified < 0) {
+		g_weaponSoundVerified = mem::Verify(kWeaponSound, kWeaponSoundBytes, sizeof(kWeaponSoundBytes)) ? 1 : 0;
+		if (g_weaponSoundVerified == 0) {
+			OBVR_LOG("Hands: the weapon sound function at %08X is not the bytes read - swings stay silent",
+			         kWeaponSound);
+		}
+	}
+	UInt8* const player = PlayerOrNull();
+	if (g_weaponSoundVerified != 1 || player == nullptr) {
+		return false;
+	}
+	SInt32 type = static_cast<SInt32>(WeaponTypeCode::None);
+	if (!MeleeInHand(&type)) {
+		return false;
+	}
+	using WeaponSoundFn = void(__cdecl*)(void* actor, float a, float b, void* target, SInt32 weaponType,
+	                                     SInt32 armour, SInt32 shield, UInt32 c, UInt32 d);
+	reinterpret_cast<WeaponSoundFn>(kWeaponSound)(player, 0.0f, 0.0f, nullptr, type, -1, -1, 0, 0);
+	if (g_swishLines > 0) {
+		--g_swishLines;
+		OBVR_LOG("Hands: a swing's swish (weapon type %d)", type);
+	}
+	return true;
+}
+
+}  // namespace obvr::game

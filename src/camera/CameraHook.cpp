@@ -2102,6 +2102,16 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		OBVR_LOG("Hands: a %s swing", g_hand.swing == vr::SwingVerdict::Heavy ? "heavy" : "light");
 	}
 
+	// Each swing that may strike swishes once, as it starts (game::SwishDue).
+	{
+		static UInt32 lastSwished = 0;
+		if (active && !menuIsUp && g_hand.rightHandValid &&
+		    game::SwishDue(g_hand.strikeByMotion, g_hand.swingActive, g_hand.swingSerial, lastSwished)) {
+			lastSwished = g_hand.swingSerial;
+			game::PlaySwingSwish();
+		}
+	}
+
 	// The strike by motion: while the right hand is swinging a drawn melee
 	// weapon, the blade is tested against the bodies near the player and each
 	// one it passes through is handed to the engine's hit function - once per

@@ -1202,8 +1202,22 @@ inline bool StepRunToggle(bool& latched, bool toggleMode, bool click, bool held)
 // (ready) my weapon"), so a hand moved quickly to reach for or throw
 // something drew the fists (2026-09-25). Not while a grip is closed either:
 // that hand is holding or reaching, not striking.
+//
+// `strikeByMotion` means: the swung thing belongs to the strike by motion
+// (motionHits on, a melee weapon or the fists in hand) - whether this swing
+// may strike or not. An open hand with the fists up may not strike
+// (FistAllowsStrike), and it must not fall back to the attack control
+// either: that ran vanilla's hand-to-hand attack, its sound and its step
+// forward, for a hand waved through empty air (the tester, 2026-09-29: "wenn
+// ich die touch controller schwinge im leeren raum kommt ein h2h attacke
+// mit attack sound und mit ausfallschritt (nausea)"). SwingMayPressAttack
+// is what HandMode asks.
 inline bool SwingPressesAttack(bool strikeByMotion, bool weaponDrawn, bool gripHeld) {
 	return !strikeByMotion && weaponDrawn && !gripHeld;
+}
+
+inline bool SwingMayPressAttack(bool motionHits, bool meleeInHand, bool weaponDrawn, bool gripHeld) {
+	return SwingPressesAttack(motionHits && meleeInHand, weaponDrawn, gripHeld);
 }
 
 // ------------------------------------------------------------ Grab by reach

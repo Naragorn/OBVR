@@ -124,6 +124,14 @@ void TestLedger() {
 	Check(LedgerAdmits(full, 8, &bodies[SwingLedger::kCapacity]), "the next swing does");
 }
 
+void TestSwish() {
+	std::printf("The swish\n");
+	Check(SwishDue(true, true, 5, 4), "a new swing that may strike: swished");
+	Check(!SwishDue(true, true, 5, 5), "the same swing again: not twice");
+	Check(!SwishDue(false, true, 5, 4), "no strike by motion (an open hand, a bow): silent");
+	Check(!SwishDue(true, false, 5, 4), "no swing running: silent");
+}
+
 void TestWeaponTypes() {
 	std::printf("Which weapons are swung\n");
 	Check(WeaponIsSwung(static_cast<SInt32>(WeaponTypeCode::None)), "fists are");
@@ -142,6 +150,7 @@ int main() {
 	TestStrike();
 	TestLedger();
 	TestWeaponTypes();
+	TestSwish();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

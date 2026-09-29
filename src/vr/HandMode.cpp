@@ -264,8 +264,8 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 			}
 			const bool gripHeld = (f.right.valid && GripDown(f.right.buttonsPressed)) ||
 			                      (f.left.valid && GripDown(f.left.buttonsPressed));
-			if (SwingPressesAttack(r.strikeByMotion, f.weaponSeen == WeaponSeen::Drawn,
-			                       gripHeld)) {
+			if (SwingMayPressAttack(s.motionHits, f.meleeInHand, f.weaponSeen == WeaponSeen::Drawn,
+			                        gripHeld)) {
 				if (r.swing == SwingVerdict::Heavy) {
 					HoldFor(m_heavyHold, s.gestures.heavyHoldSeconds);
 				} else if (r.swing == SwingVerdict::Light) {
