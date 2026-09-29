@@ -42,6 +42,9 @@ constexpr UInt32 kAlarmAttackSlot = 0x240;
 constexpr UInt32 kAlarmAttackCharacter = 0x00610930;
 constexpr UInt32 kAlarmAttackCreature = 0x0060CF60;
 
+bool LooksLikeObject(UInt32 address) { return mem::LooksLikeObjectAddress(address); }
+UInt32 Read(UInt32 address) { return *reinterpret_cast<const UInt32*>(address); }
+
 void CommitAssault(UInt32 victim, UInt32 player) {
 	const UInt32 vtable = Read(victim);
 	const UInt32 fn = LooksLikeObject(vtable) ? Read(vtable + kAlarmAttackSlot) : 0;
@@ -53,9 +56,6 @@ void CommitAssault(UInt32 victim, UInt32 player) {
 	reinterpret_cast<AlarmFn>(fn)(reinterpret_cast<void*>(victim), reinterpret_cast<void*>(player), 1);
 	OBVR_LOG("Shove: %08X shoved down too often - an assault (crime type 3) reported", victim);
 }
-
-bool LooksLikeObject(UInt32 address) { return mem::LooksLikeObjectAddress(address); }
-UInt32 Read(UInt32 address) { return *reinterpret_cast<const UInt32*>(address); }
 
 }  // namespace
 
