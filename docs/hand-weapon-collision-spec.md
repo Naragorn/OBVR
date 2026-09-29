@@ -319,6 +319,32 @@ Proposed for OBVR, in this order; all by intent, never by a mere touch:
    aggression hit. Needs: the contact test (the hand's span against the
    actors' spheres, as MeleeHits already finds them) and the engine's
    push/stagger call (not read yet).
+   - **Built 2026-09-29** (game/ShoveLogic.h, game/Shove.h, shove_test): an
+     open hand (not a fist, the grip open), weapons away, inside a living
+     actor's bound (half its radius plus 4 units), moving towards it across
+     the ground at `ShoveSpeed` (2 m/s) or faster - SteamVR's own hand
+     velocity. Light: the stagger 0x005F4FD0, and pushed back `ShoveDistance`
+     (30 units) in 0.3 s through the character proxy as a hit's knockback
+     does (0x008907A0 thiscall(proxy, const NiPoint3* distance, float
+     seconds), ret 8, read at the hit handler 0x0060008A..0x006000AF). From
+     `ShoveHardSpeed` (4 m/s): the knockback PushActorAway's handler
+     (0x0050EAB0) ends in, 0x00654420 thiscall(process, actor, fromX, fromY,
+     fromZ, force), ret 14h, on the actor's process - knocked down (a
+     ragdoll), away from a point 30 units behind the hand; a stagger
+     instead for an actor already down or not in high process. Either
+     costs 15 or 40 fatigue and 5 or 15 disposition (ModDisposition's
+     0x005E2070 thiscall(actor, toward, delta)); the same actor not again
+     for a second. Rows "Shove", "Shove speed", "Hard shove speed"; INI
+     `ShoveHardForce`, `ShoveDistance`. No "bump" reaction exists in
+     Oblivion to reuse (no string, no DIAL topic); the nearest voice topic
+     is Hit (000000DD).
+   - **Headset (2026-09-29):** "muss dafür die setting an sein? ich musste
+     erst push ppl in settings an machen.. dann ging aber nur sehr kräftig
+     stoßen ... mit wirklich viel wucht". The log: the light shove fired
+     ("staggered", three times before PushPeople was switched on), but the
+     stagger alone was not seen; the hard one, force 50, threw them far.
+     PushPeople is not needed. Since then: the light shove's push back, and
+     `ShoveHardForce` 3.0 (the tester's value). Not seen yet.
 2. **Taking someone by the hand.** A grip closed on an actor's hand or arm
    (within a few centimetres of the bone): they are held. Each frame their
    controller is steered to keep the held point near the hand, with a speed
