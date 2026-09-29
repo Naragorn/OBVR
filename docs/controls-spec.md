@@ -629,8 +629,13 @@ The tester's idea (2026-09-27), in the style of Half-Life: Alyx. Not built.
     miss does, once, as it starts (`SwishDue`, `game::PlaySwingSwish`).
     Harness: "a swing's swish (weapon type 0)" per swing in `hand-bodies`
     and `fist-armed`. A hit plays the engine's hit sound as before.
-  - **Open: the grunts.** The combat topics are `Attack` (000000DC) and
-    `PowerAttack` (000000E6), hardcoded at 0x00B10DA4; vanilla voices the
-    player on power attacks (the Nexus mod "Silent Player Voice" exists to
-    stop it). The engine's say-topic call and where the attack starts it
-    are not found yet.
+  - **The grunt, built.** Vanilla says the PowerAttack combat topic (index
+    10; topic pointer at 0x00B10EA8) for the player as a power attack
+    starts, through PlayerCharacter's vtable +0x308 (0x006608A0,
+    thiscall(player, target, topic index, interrupt), ret 0Ch; nothing
+    while sneaking), when a roll under fCombatSpeakPowerAttackChance lands
+    (0x0065EF10). OBVR does the same once per swing that becomes a power
+    attack (`GruntDue`, `game::PlayPowerAttackGrunt`). Harness (a 1 m sword
+    swing): "a power attack's grunt said (the game's chance 1.00)". Not
+    heard yet: whether the player's voice has the lines. No grunt for light
+    attacks - vanilla says Attack only for the combat AI (read).

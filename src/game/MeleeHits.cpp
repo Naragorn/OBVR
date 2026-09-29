@@ -1,5 +1,7 @@
 #include "game/MeleeHits.h"
 
+#include <cstdlib>
+
 #include "core/AddressSpace.h"
 #include "core/Log.h"
 #include "core/Memory.h"
@@ -206,6 +208,12 @@ UInt8* EquippedWeaponForm(SInt32* type) {
 // item, and put back after. The bytes are checked first; anything else there
 // and the equip keeps its sound.
 namespace {
+
+// The actor's GetAnimData (vtable +0x164, xOBSE GameObjects.h; the player's
+// 0x0065D720 answers its first-person data in first person) and the word whose
+// low byte is the current attack group (animsMapKey[3], +0x42).
+constexpr UInt32 kActorVtableAnimDataOffset = 0x164;
+constexpr UInt32 kAnimDataAttackGroupOffset = 0x42;
 
 constexpr UInt32 kItemSoundBranch = 0x005E96E7;
 constexpr UInt8 kItemSoundBranchBytes[2] = {0x75, 0x06};
@@ -451,9 +459,31 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		if (!LedgerAdmits(g_ledger, strike.swingSerial, actor)) {
 			continue;
 		}
+		// The group the hit is read as: AttackHandling takes the power
+		// attack's direction from the low byte of the attacker's AnimData
+		// +0x42 (0x005FF355, 0x0060028E) - set for the call, put back after
+		// unless the engine wrote its own meanwhile.
+		UInt16* groupWord = nullptr;
+		UInt16 groupBefore = 0;
+		UInt16 groupWritten = 0;
+		if (strike.attackGroup != 0) {
+			const UInt32 animDataOf = VirtualAt(player, kActorVtableAnimDataOffset);
+			UInt8* const animData = animDataOf != 0
+			                            ? static_cast<UInt8*>(reinterpret_cast<ThisFn>(animDataOf)(player, nullptr))
+			                            : nullptr;
+			if (LooksLikeObject(animData)) {
+				groupWord = reinterpret_cast<UInt16*>(animData + kAnimDataAttackGroupOffset);
+				groupBefore = *groupWord;
+				groupWritten = static_cast<UInt16>((groupBefore & 0xFF00u) | strike.attackGroup);
+				*groupWord = groupWritten;
+			}
+		}
 		reinterpret_cast<AttackHandlingFn>(addr::kAttackHandling)(player, nullptr,
 		                                                          strike.heavy ? 1u : 0u, nullptr,
 		                                                          actor);
+		if (groupWord != nullptr && *groupWord == groupWritten) {
+			*groupWord = groupBefore;
+		}
 		++struck;
 		s_missStruck = true;
 		if (g_strikeLinesLeft > 0) {
@@ -556,6 +586,55 @@ void* LivingActorAt(const NiPoint3& point, float factor, float padUnits, NiPoint
 		}
 	}
 	return best;
+}
+
+}  // namespace obvr::game
+
+namespace obvr::game {
+namespace {
+
+// The player's combat line (PlayerCharacter's vtable +0x308, 0x006608A0,
+// thiscall(player, TESObjectREFR* target, UInt32 combat topic index, bool
+// interrupt), ret 0Ch; nothing while sneaking). Vanilla says the PowerAttack
+// topic (index 10) as a power attack starts, when a roll under
+// fCombatSpeakPowerAttackChance (the setting's value at 0x00B36F40) lands
+// (0x0065EF10). Read 2026-09-29.
+constexpr UInt32 kPlayerSayCombat = 0x006608A0;
+constexpr UInt8 kPlayerSayCombatBytes[] = {0x51, 0x56, 0x8B, 0xF1, 0xE8};
+constexpr UInt32 kPowerAttackSpeakChance = 0x00B36F40;
+constexpr UInt32 kCombatTopicPowerAttack = 10;
+int g_sayVerified = -1;
+UInt32 g_gruntLines = 6;
+
+}  // namespace
+
+bool PlayPowerAttackGrunt() {
+	if (g_sayVerified < 0) {
+		g_sayVerified = mem::Verify(kPlayerSayCombat, kPlayerSayCombatBytes, sizeof(kPlayerSayCombatBytes)) ? 1 : 0;
+		if (g_sayVerified == 0) {
+			OBVR_LOG("Hands: the player's combat line at %08X is not the bytes read - no grunts", kPlayerSayCombat);
+		}
+	}
+	UInt8* const player = PlayerOrNull();
+	if (g_sayVerified != 1 || player == nullptr) {
+		return false;
+	}
+	float chance = *reinterpret_cast<const float*>(kPowerAttackSpeakChance);
+	if (!(chance >= 0.0f && chance <= 1.0f)) {
+		chance = 1.0f;
+	}
+	const float roll = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+	const bool said = roll <= chance;
+	if (said) {
+		using SayFn = void(__thiscall*)(void* player, void* target, UInt32 topic, bool interrupt);
+		reinterpret_cast<SayFn>(kPlayerSayCombat)(player, player, kCombatTopicPowerAttack, false);
+	}
+	if (g_gruntLines > 0) {
+		--g_gruntLines;
+		OBVR_LOG("Hands: a power attack's grunt %s (the game's chance %.2f)", said ? "said" : "skipped by the roll",
+		         static_cast<double>(chance));
+	}
+	return said;
 }
 
 }  // namespace obvr::game

@@ -495,6 +495,9 @@ struct HandModeResult {
 	float swingPeakSpeed = 0.0f;
 	// And how far it travelled (m): a power attack from PowerSwingMetres.
 	float swingMetres = 0.0f;
+	// The running swing's direction so far, from its start, relative to the
+	// head: the power attack it makes (PowerDirection).
+	PowerDirection powerDirection = PowerDirection::Standing;
 	bool strikeByMotion = false;  // this frame's swing strikes by motion rather than by control
 
 	// The ready-weapon click's progress this frame.
@@ -591,6 +594,8 @@ private:
 	bool m_reachArmed = false;  // the reach back seen since the last release
 	bool m_reachSpent = false;  // a draw used the armed reach
 	NiPoint3 m_lastRightRoom{0.0f, 0.0f, 0.0f};  // tracking space, for the swing speed
+	NiPoint3 m_swingStartRoom{0.0f, 0.0f, 0.0f};  // where the running swing began
+	PowerDirection m_powerDirection = PowerDirection::Standing;
 };
 
 }  // namespace obvr::vr

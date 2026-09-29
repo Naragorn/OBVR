@@ -222,6 +222,77 @@ inline SwingVerdict StepSwing(SwingDetector& d, float speed, float dtSeconds, co
 	return SwingVerdict::None;
 }
 
+// The direction of a power attack, from the hand's way through the swing
+// (the tester, 2026-09-29: "die entsprechende richtung die man macht können
+// wir dann an oblivion übergeben"). The engine keys its power attacks'
+// effects on the attacker's attack animation group (AttackHandling reads the
+// low byte of AnimData+0x42 at 0x005FF355 and 0x0060028E): the damage bonus
+// by mastery (0x00546BA0), knockdown on a backward one (Expert), paralysis
+// on a forward one (Master), disarm on a side one (Journeyman, 0x005FC090).
+// A swing mostly up or down - an overhead chop - is the standing one.
+//
+// `way` is the hand's travel since the swing began, in the head's frame
+// (x right, y forward, z up).
+enum class PowerDirection : UInt8 { Standing, Forward, Back, Left, Right };
+
+inline PowerDirection ClassifyPowerSwing(const NiPoint3& way) {
+	const float across = math::Sqrt(way.x * way.x + way.y * way.y);
+	const float up = way.z < 0.0f ? -way.z : way.z;
+	if (!(across > 0.0f) || up >= 1.2f * across) {
+		return PowerDirection::Standing;
+	}
+	const float side = way.x < 0.0f ? -way.x : way.x;
+	const float ahead = way.y < 0.0f ? -way.y : way.y;
+	if (ahead >= side) {
+		return way.y >= 0.0f ? PowerDirection::Forward : PowerDirection::Back;
+	}
+	return way.x >= 0.0f ? PowerDirection::Right : PowerDirection::Left;
+}
+
+// The engine's animation groups (xOBSE's list: 20 AttackLeft, 22 AttackPower,
+// 23 AttackForwardPower, 24 AttackBackPower, 25 AttackLeftPower, 26
+// AttackRightPower). A light strike gets AttackLeft, so a power group left
+// behind by an earlier attack does not make it a power attack.
+inline constexpr UInt8 kAnimGroupAttackLight = 0x14;
+
+inline UInt8 PowerAttackGroup(PowerDirection d) {
+	switch (d) {
+	case PowerDirection::Forward:
+		return 0x17;
+	case PowerDirection::Back:
+		return 0x18;
+	case PowerDirection::Left:
+		return 0x19;
+	case PowerDirection::Right:
+		return 0x1A;
+	case PowerDirection::Standing:
+	default:
+		return 0x16;
+	}
+}
+
+inline const char* PowerDirectionName(PowerDirection d) {
+	switch (d) {
+	case PowerDirection::Forward:
+		return "forward";
+	case PowerDirection::Back:
+		return "backward";
+	case PowerDirection::Left:
+		return "left";
+	case PowerDirection::Right:
+		return "right";
+	default:
+		return "standing";
+	}
+}
+
+// Whether to grunt: a swing that has just become a power attack and may
+// strike, once per swing (vanilla grunts as the power attack starts, with its
+// own chance, fCombatSpeakPowerAttackChance, at 0x0065EF10).
+inline bool GruntDue(bool strikeByMotion, bool power, UInt32 serial, UInt32 lastGrunted) {
+	return strikeByMotion && power && serial != lastGrunted;
+}
+
 // A control held for a while - the heavy attack. Started with a duration,
 // counted down with the frame time, reports whether the control is still
 // to be held this frame.

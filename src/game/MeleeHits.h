@@ -28,6 +28,10 @@ bool MeleeInHand(SInt32* weaponType);
 // is swung or the engine's function is not the one read.
 bool PlaySwingSwish();
 
+// The player's power attack grunt, the engine's own line and chance
+// (vr::GruntDue). True when said.
+bool PlayPowerAttackGrunt();
+
 // The living actor (a Character or Creature, not the player, not dead)
 // whose bound the point lies in - its radius times `factor` plus `padUnits`
 // - the nearest if several; nullptr with none. `centreOut` gets its
@@ -73,6 +77,9 @@ struct MotionStrike {
 	// of the bound's radius, plus this many units.
 	float boundFactor = 0.7f;
 	float padUnits = 8.0f;
+	// The attack animation group the engine reads the strike as (vr::
+	// PowerAttackGroup, kAnimGroupAttackLight); 0 leaves what is there.
+	UInt8 attackGroup = 0;
 };
 
 // Strikes every actor the blade meets this frame that this swing has not

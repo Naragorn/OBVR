@@ -2152,13 +2152,24 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 	if (g_hand.swing != vr::SwingVerdict::None && g_handSwingLinesLeft > 0) {
 		--g_handSwingLinesLeft;
-		OBVR_LOG("Hands: a %s swing, %.1f m/s at its fastest, %.2f m long (Swing speed %.1f, a power attack from "
+		OBVR_LOG("Hands: a %s%s swing, %.1f m/s at its fastest, %.2f m long (Swing speed %.1f, a power attack from "
 		         "%.2f m)",
-		         g_hand.swing == vr::SwingVerdict::Heavy ? "power" : "light", static_cast<double>(g_hand.swingPeakSpeed),
+		         g_hand.swing == vr::SwingVerdict::Heavy ? vr::PowerDirectionName(g_hand.powerDirection) : "",
+		         g_hand.swing == vr::SwingVerdict::Heavy ? " power" : "light", static_cast<double>(g_hand.swingPeakSpeed),
 		         static_cast<double>(g_hand.swingMetres), static_cast<double>(config.hands.gestures.swingLight),
 		         static_cast<double>(config.hands.gestures.powerSwingMetres));
 	}
 
+	// A swing that has become a power attack grunts once (vr::GruntDue), as
+	// vanilla does when its power attack starts.
+	{
+		static UInt32 lastGrunted = 0;
+		if (active && !menuIsUp && g_hand.rightHandValid &&
+		    vr::GruntDue(g_hand.strikeByMotion, g_hand.swingHeavy, g_hand.swingSerial, lastGrunted)) {
+			lastGrunted = g_hand.swingSerial;
+			game::PlayPowerAttackGrunt();
+		}
+	}
 	// Each swing that may strike swishes once, as it starts (game::SwishDue).
 	{
 		static UInt32 lastSwished = 0;
@@ -2179,6 +2190,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		game::MotionStrike strike;
 		strike.swingSerial = g_hand.swingSerial;
 		strike.heavy = g_hand.swingHeavy;
+		strike.attackGroup = g_hand.swingHeavy ? vr::PowerAttackGroup(g_hand.powerDirection) : vr::kAnimGroupAttackLight;
 		strike.handRotation = g_hand.rightHandRotation;
 		strike.handOffsetUnits = g_hand.rightHandOffsetUnits;
 		strike.cameraValid = g_cyclopeanCameraWorldValid;

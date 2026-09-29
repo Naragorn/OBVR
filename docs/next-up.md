@@ -48,6 +48,23 @@ them (knockdown, disarm, paralysis, ...) apply.
   read from the animation group does not exist. Whether the perks are applied
   on that path at all: not verified.
 
+**Built 2026-09-29 (the tester: "die entsprechende richtung die man macht
+können wir dann an oblivion übergeben").** Read: AttackHandling takes the
+direction from the attacker's current attack group, the low byte of
+AnimData+0x42 (GetAnimData at vtable +0x164; read at 0x005FF355 and
+0x0060028E), and keys everything on it - the damage bonus by mastery
+(0x00546BA0: standing Apprentice, sides Journeyman, back Expert, forward
+Master; a group outside 0x16..0x1A is 1.0, so the strikes by motion so far
+had no power bonus above Novice - derived), knockdown on backward and
+paralysis on forward power attacks (0x006002C3..0x0060040B), disarm on the
+sides (0x005FC090). OBVR now sets that byte for the strike and puts it back
+after: 0x16 standing, 0x17 forward, 0x18 back, 0x19 left, 0x1A right for a
+power swing, 0x14 (AttackLeft) for a light one. The direction is the
+hand's way since the swing began, in the head's frame: mostly up or down is
+standing, else the stronger of across and ahead (`ClassifyPowerSwing`,
+hand_mode_test). The swing log names it ("a left power swing"). Not seen
+in the headset: the perks' effects on a target.
+
 **To find out.** Where the engine keeps the current power attack's direction
 (the process's animation group or a field beside the current action), and
 where the perk effects are applied - so a motion strike can set the direction

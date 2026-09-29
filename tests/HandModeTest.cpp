@@ -402,6 +402,7 @@ void TestStrikeByMotion() {
 	r = mode.Update(frame, settings);
 	Check(r.swingActive && r.swingHeavy && r.swingSerial == 1,
 	      "past the power swing length the same swing is heavy");
+	Check(r.powerDirection == PowerDirection::Right, "the hand moved to the right of the head: a right power attack");
 	frame.right.position = NiPoint3{0.371f, -0.2f, -0.5f};  // slowed down
 	r = mode.Update(frame, settings);
 	Check(!r.swingActive && r.swing == SwingVerdict::Heavy && !r.controls.attack,
@@ -1615,6 +1616,24 @@ void TestReadyWeapon() {
 	}
 }
 
+void TestPowerDirection() {
+	std::printf("The power attack's direction\n");
+	Check(ClassifyPowerSwing(NiPoint3{0.1f, 0.8f, -0.2f}) == PowerDirection::Forward, "a thrust ahead: forward");
+	Check(ClassifyPowerSwing(NiPoint3{0.1f, -0.6f, 0.1f}) == PowerDirection::Back, "pulled back: backward");
+	Check(ClassifyPowerSwing(NiPoint3{-0.7f, 0.2f, -0.3f}) == PowerDirection::Left, "across to the left: left");
+	Check(ClassifyPowerSwing(NiPoint3{0.7f, -0.2f, 0.1f}) == PowerDirection::Right, "across to the right: right");
+	Check(ClassifyPowerSwing(NiPoint3{0.1f, 0.2f, -0.9f}) == PowerDirection::Standing,
+	      "an overhead chop, mostly down: standing");
+	Check(ClassifyPowerSwing(NiPoint3{0.0f, 0.0f, 0.0f}) == PowerDirection::Standing, "no way at all: standing");
+	Check(PowerAttackGroup(PowerDirection::Standing) == 0x16 && PowerAttackGroup(PowerDirection::Forward) == 0x17 &&
+	          PowerAttackGroup(PowerDirection::Back) == 0x18 && PowerAttackGroup(PowerDirection::Left) == 0x19 &&
+	          PowerAttackGroup(PowerDirection::Right) == 0x1A,
+	      "the engine's power attack groups, 22..26");
+	Check(kAnimGroupAttackLight == 0x14, "a light strike: AttackLeft, no power group");
+	Check(GruntDue(true, true, 3, 2) && !GruntDue(true, true, 3, 3), "a power swing grunts once");
+	Check(!GruntDue(true, false, 3, 2) && !GruntDue(false, true, 3, 2), "not light, not without the strike by motion");
+}
+
 void TestSwingPressesAttack() {
 	std::printf("Swing presses attack only with a drawn weapon and open grips\n");
 	for (UInt32 mask = 0; mask < 8; ++mask) {
@@ -2032,6 +2051,7 @@ int main() {
 	TestGrabReach();
 	TestReadyWeapon();
 	TestSwingPressesAttack();
+	TestPowerDirection();
 	TestRunToggle();
 	TestUsScanCodes();
 	TestFirstPersonDepthBranch();

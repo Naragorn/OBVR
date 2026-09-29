@@ -271,6 +271,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 			}
 			if (m_swing.swinging && !wasSwinging) {
 				++m_swingSerial;
+				m_swingStartRoom = m_lastRightRoom;  // where the hand was before the swing's first move
 			}
 			const bool gripHeld = (f.right.valid && GripDown(f.right.buttonsPressed)) ||
 			                      (f.left.valid && GripDown(f.left.buttonsPressed));
@@ -291,6 +292,10 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	}
 	r.swingActive = m_swing.swinging;
 	r.swingHeavy = m_swing.swinging && SwingIsPower(m_swing, s.gestures);
+	if (m_swing.swinging && f.right.valid) {
+		m_powerDirection = ClassifyPowerSwing(OffsetFromPose(f.head, f.right.position, m_swingStartRoom, 1.0f));
+	}
+	r.powerDirection = m_powerDirection;  // held past the swing's end, for the verdict's frame
 	r.swingSerial = m_swingSerial;
 	const bool swingHeld = StepHeld(m_heavyHold, f.dtSeconds);
 
