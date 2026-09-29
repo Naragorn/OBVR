@@ -758,7 +758,6 @@ game::ShoveCooldown g_shoveCooldown;
 
 void StepShoves(const Config& config, float dt) {
 	game::StepShoveCooldown(g_shoveCooldown, dt);
-	game::StepShoveCrime(dt);
 	const game::ShoveSettings& settings = config.hands.shove;
 	if (!settings.enabled || !g_cyclopeanCameraWorldValid) {
 		return;

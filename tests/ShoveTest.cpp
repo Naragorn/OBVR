@@ -97,24 +97,13 @@ void TestCooldown() {
 	Check(ShoveAllowed(c, &a) && c.actor == nullptr, "after the second: allowed again");
 }
 
-void TestCrime() {
-	std::printf("Shoving too often is a crime\n");
-	ShoveTally t;
-	int a = 0;
-	int b = 0;
-	Check(!CountHardShove(t, &a, 3, 60.0f) && !CountHardShove(t, &a, 3, 60.0f), "the first two: no crime");
-	Check(CountHardShove(t, &a, 3, 60.0f), "the third within the window: a crime");
-	Check(!CountHardShove(t, &a, 3, 60.0f), "and the count starts again");
-	CountHardShove(t, &a, 3, 60.0f);
-	Check(!CountHardShove(t, &b, 3, 60.0f) && t.count == 1, "someone else: a new count");
-	StepShoveTally(t, 61.0f);
-	Check(t.actor == nullptr && t.count == 0, "the window runs out: forgotten");
-	CountHardShove(t, &a, 3, 60.0f);
-	CountHardShove(t, &a, 3, 60.0f);
-	StepShoveTally(t, 30.0f);
-	Check(CountHardShove(t, &a, 3, 60.0f), "each shove renews the window: the third after 30 s still counts");
-	Check(!CountHardShove(t, &a, 0, 60.0f) && !CountHardShove(t, nullptr, 3, 60.0f), "0 or no actor: never");
-	Check(CountHardShove(t, &b, 1, 60.0f), "1: every hard shove");
+void TestCountsAsHit() {
+	std::printf("A shove counts as a hit\n");
+	ShoveSettings s;
+	Check(ShoveCountsAsHit(s, ShoveKind::Light) && ShoveCountsAsHit(s, ShoveKind::Hard), "light or hard: a hit");
+	Check(!ShoveCountsAsHit(s, ShoveKind::None), "no shove: nothing");
+	s.countsAsHit = false;
+	Check(!ShoveCountsAsHit(s, ShoveKind::Hard), "switched off: only the disposition");
 }
 
 }  // namespace
@@ -125,7 +114,7 @@ int main() {
 	TestReach();
 	TestCooldown();
 	TestPush();
-	TestCrime();
+	TestCountsAsHit();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

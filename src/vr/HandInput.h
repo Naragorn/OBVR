@@ -132,6 +132,10 @@ struct GestureThresholds {
 	// hinter sich zurücklegen"). It was a higher peak speed (SwingHeavy).
 	float swingLight = 2.6f;  // the tester's, 2026-09-29
 	float powerSwingMetres = 1.2f;  // the tester's, 2026-09-29
+	// A thrust forward or a pull back is a power attack from this far: an arm
+	// reaches 50-70 cm, so the swing's length was never reached that way (the
+	// tester's power swings of 2026-09-29 were left, right and standing only).
+	float powerThrustMetres = 0.45f;
 	// How long the attack control is held for a heavy swing, in seconds -
 	// the engine's power attack wants the control held, a tap is a light one.
 	float heavyHoldSeconds = 0.6f;
@@ -184,6 +188,16 @@ inline float HandSpeed(const NiPoint3& previous, const NiPoint3& current, float 
 	return math::Sqrt(delta.LengthSquared()) / dtSeconds;
 }
 
+// The direction of a power attack, from the hand's way through the swing -
+// see ClassifyPowerSwing below.
+enum class PowerDirection : UInt8 { Standing, Forward, Back, Left, Right };
+
+// How far a swing in this direction travels to be a power attack: a thrust
+// or a pull its own, shorter length.
+inline float PowerMetresFor(PowerDirection d, const GestureThresholds& t) {
+	return d == PowerDirection::Forward || d == PowerDirection::Back ? t.powerThrustMetres : t.powerSwingMetres;
+}
+
 // The swing detector: idle until the hand exceeds the light speed, then one
 // attack per swing - heavy once the hand has travelled powerSwingMetres in
 // it. The distance counts from the frame the swing starts; a swing is over
@@ -197,11 +211,13 @@ struct SwingDetector {
 };
 
 // Whether the swing so far is a power attack.
-inline bool SwingIsPower(const SwingDetector& d, const GestureThresholds& t) {
-	return d.metres >= t.powerSwingMetres;
+inline bool SwingIsPower(const SwingDetector& d, const GestureThresholds& t,
+                         PowerDirection direction = PowerDirection::Standing) {
+	return d.metres >= PowerMetresFor(direction, t);
 }
 
-inline SwingVerdict StepSwing(SwingDetector& d, float speed, float dtSeconds, const GestureThresholds& t) {
+inline SwingVerdict StepSwing(SwingDetector& d, float speed, float dtSeconds, const GestureThresholds& t,
+                              PowerDirection direction = PowerDirection::Standing) {
 	const float travelled = dtSeconds > 0.0f && speed == speed ? speed * dtSeconds : 0.0f;
 	if (!d.swinging) {
 		if (speed >= t.swingLight) {
@@ -216,7 +232,7 @@ inline SwingVerdict StepSwing(SwingDetector& d, float speed, float dtSeconds, co
 	}
 	if (speed < 0.5f * t.swingLight) {
 		d.swinging = false;
-		const SwingVerdict verdict = SwingIsPower(d, t) ? SwingVerdict::Heavy : SwingVerdict::Light;
+		const SwingVerdict verdict = SwingIsPower(d, t, direction) ? SwingVerdict::Heavy : SwingVerdict::Light;
 		d.peakSpeed = 0.0f;
 		d.metres = 0.0f;
 		return verdict;
@@ -236,8 +252,6 @@ inline SwingVerdict StepSwing(SwingDetector& d, float speed, float dtSeconds, co
 //
 // `way` is the hand's travel since the swing began, in the head's frame
 // (x right, y forward, z up).
-enum class PowerDirection : UInt8 { Standing, Forward, Back, Left, Right };
-
 inline PowerDirection ClassifyPowerSwing(const NiPoint3& way) {
 	const float across = math::Sqrt(way.x * way.x + way.y * way.y);
 	const float up = way.z < 0.0f ? -way.z : way.z;

@@ -366,16 +366,18 @@ Proposed for OBVR, in this order; all by intent, never by a mere touch:
        shoves would have gone through.
      - The tester had seen it work "ein paar mal aber nicht immer": whenever
        the neighbouring bytes happened to be 0.
-   - **The assault (2026-09-29, tester: "einen crime hinzufügen wenn man es zu
-     oft macht"):**
-     - When: the third hard shove on the same person within 60 s
-       (`ShoveCrimeAfter` 3, `ShoveCrimeWindowSeconds` 60; each shove renews
-       the window).
-     - What happens: an Attack crime is reported through the victim's alarm,
-       vtable +0x240 (0x00610930 Character, 0x0060CF60 Creature). The hit
-       handler's reaction calls the same alarm for an assault.
-     - Effects: crime type 3, the player's assault count, and the witnesses
-       react.
+   - **A shove counts as a hit (2026-09-29).** The tester first asked for a
+     crime "wenn man es zu oft macht", then for "mach dass es direkt wie ein
+     normaler hit zählt".
+     - Every shove, light or hard, calls the victim's reaction to a hit:
+       vtable +0x3A8, 0x005FE380, thiscall(victim, attacker, 0). The hit
+       handler calls the same thing after every landed blow (0x006005B1..BE).
+     - The engine then decides what follows, the same as for a fist:
+       - a friend forgives the first few;
+       - anyone else raises the alarm (vtable +0x240: an Attack crime, the
+         assault count, the witnesses) or fights back.
+     - `ShoveCountsAsHit` (on by default) switches it.
+     - The first idea, an OBVR count of three hard shoves, is gone.
      - Not seen in the game yet.
 2. **Taking someone by the hand.** A grip closed on an actor's hand or arm
    (within a few centimetres of the bone): they are held. Each frame their

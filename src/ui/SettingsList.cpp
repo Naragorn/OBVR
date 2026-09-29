@@ -700,11 +700,11 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.shove.hardSpeed = v; },
 	},
 	{
-		"Hands", "Shoves until a crime", "Shove someone down this often in a minute and it is an assault; 0 never",
-		ItemKind::Number, 0.0f, 10.0f, 1.0f, 0, false,
-		"Hands", "ShoveCrimeAfter",
-		+[](const Config& c) { return static_cast<float>(c.hands.shove.crimeAfter); },
-		+[](Config& c, float v) { c.hands.shove.crimeAfter = static_cast<UInt32>(v + 0.5f); },
+		"Hands", "Shove counts as a hit", "A shove is taken like a blow: friends forgive a few, others call the guards",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "ShoveCountsAsHit",
+		+[](const Config& c) { return c.hands.shove.countsAsHit ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.shove.countsAsHit = v != 0.0f; },
 	},
 	{
 		"Hands", "Reach tooltip", "The tooltip icon moves onto what a closed grip would pick up",
@@ -824,6 +824,13 @@ const SettingDefinition kSettings[] = {
 		"Hands", "PowerSwingMetres",
 		+[](const Config& c) { return c.hands.gestures.powerSwingMetres; },
 		+[](Config& c, float v) { c.hands.gestures.powerSwingMetres = v; },
+	},
+	{
+		"Hands", "Power thrust length", "How far (m) a thrust forward or a pull back must go to be a power attack",
+		ItemKind::Number, 0.2f, 1.0f, 0.05f, 2, false,
+		"Hands", "PowerThrustMetres",
+		+[](const Config& c) { return c.hands.gestures.powerThrustMetres; },
+		+[](Config& c, float v) { c.hands.gestures.powerThrustMetres = v; },
 	},
 	{
 		"Hands", "Strikes by motion", "The swung blade hits what it passes through, no animation",

@@ -65,6 +65,15 @@ standing, else the stronger of across and ahead (`ClassifyPowerSwing`,
 hand_mode_test). The swing log names it ("a left power swing"). Not seen
 in the headset: the perks' effects on a target.
 
+**Headset (2026-09-29):**
+- The tester saw a weapon fly away once, which is the sideways disarm.
+- The log had power swings left, right and standing, never forward or back.
+- The reason: `PowerSwingMetres` is 1.2 m of hand travel, and a thrust ahead
+  or a pull back cannot reach that; an arm reaches 50–70 cm.
+- The fix: forward and back now have their own length, `PowerThrustMetres`
+  0.45 (`vr::PowerMetresFor`). The direction so far decides which length the
+  running swing needs.
+
 **To find out.** Where the engine keeps the current power attack's direction
 (the process's animation group or a field beside the current action), and
 where the perk effects are applied - so a motion strike can set the direction

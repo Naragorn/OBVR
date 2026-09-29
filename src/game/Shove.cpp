@@ -28,33 +28,31 @@ constexpr UInt8 kProxyKnockbackBytes[] = {0x55, 0x8B, 0xEC, 0x83, 0xE4, 0xF0, 0x
 
 bool g_verified = false;
 UInt32 g_lines = 20;
-ShoveTally g_tally;
-
-// The assault: the victim's vtable +0x240, thiscall(victim, criminal, UInt8
-// flag) ret 8 - what the hit handler's reaction 0x005FE380 calls on a hit it
-// takes as an attack (read at 0x005FE789: `push 1; push edi; mov ecx, esi;
-// call [edx+240h]`). It is 0x00610930 on Character and PlayerCharacter,
-// 0x0060CF60 on Creature; it registers crime type 3, Attack (cs.uesp.net/
-// wiki/Crime_Types), with the victim and the criminal, counts the player's
-// assaults (player+0x6D4, xOBSE's kMiscStat_Assaults) and lets the witnesses
-// react. Called only when the slot holds one of the two, checked each time.
-constexpr UInt32 kAlarmAttackSlot = 0x240;
-constexpr UInt32 kAlarmAttackCharacter = 0x00610930;
-constexpr UInt32 kAlarmAttackCreature = 0x0060CF60;
+// The victim's reaction to a hit: vtable +0x3A8, 0x005FE380 on
+// PlayerCharacter, Character and Creature alike, thiscall(victim, Actor*
+// attacker, UInt32 0) ret 8. The hit handler calls it after every landed
+// blow (read at 0x006005B1..0x006005BE: `mov eax, [edx+3A8h]; push 0; push
+// edi; mov ecx, esi; call eax`, esi the target, edi the attacker). It weighs
+// disposition and aggression, forgives a friend the first few hits and
+// otherwise raises the alarm (vtable +0x240: an Attack crime, the player's
+// assault count, the witnesses) or fights back. Called only when the slot
+// holds it and its first bytes are the ones read.
+constexpr UInt32 kHitReactionSlot = 0x3A8;
+constexpr UInt32 kHitReaction = 0x005FE380;
+constexpr UInt8 kHitReactionBytes[] = {0x83, 0xEC, 0x14, 0x56, 0x8B, 0xF1, 0x8B, 0x06};
 
 bool LooksLikeObject(UInt32 address) { return mem::LooksLikeObjectAddress(address); }
 UInt32 Read(UInt32 address) { return *reinterpret_cast<const UInt32*>(address); }
 
-void CommitAssault(UInt32 victim, UInt32 player) {
+void ReactAsToAHit(UInt32 victim, UInt32 player) {
 	const UInt32 vtable = Read(victim);
-	const UInt32 fn = LooksLikeObject(vtable) ? Read(vtable + kAlarmAttackSlot) : 0;
-	if (fn != kAlarmAttackCharacter && fn != kAlarmAttackCreature) {
-		OBVR_LOG("Shove: no assault for %08X - its alarm slot holds %08X, not the attack's", victim, fn);
+	const UInt32 fn = LooksLikeObject(vtable) ? Read(vtable + kHitReactionSlot) : 0;
+	if (fn != kHitReaction || !mem::Verify(kHitReaction, kHitReactionBytes, sizeof(kHitReactionBytes))) {
+		OBVR_LOG("Shove: %08X not told of a hit - its reaction slot holds %08X", victim, fn);
 		return;
 	}
-	using AlarmFn = void(__thiscall*)(void* victim, void* criminal, UInt32 flag);
-	reinterpret_cast<AlarmFn>(fn)(reinterpret_cast<void*>(victim), reinterpret_cast<void*>(player), 1);
-	OBVR_LOG("Shove: %08X shoved down too often - an assault (crime type 3) reported", victim);
+	using ReactFn = void(__thiscall*)(void* victim, void* attacker, UInt32 zero);
+	reinterpret_cast<ReactFn>(fn)(reinterpret_cast<void*>(victim), reinterpret_cast<void*>(player), 0);
 }
 
 }  // namespace
@@ -69,8 +67,6 @@ bool VerifyShoveAddresses() {
 	}
 	return g_verified;
 }
-
-void StepShoveCrime(float dt) { StepShoveTally(g_tally, dt); }
 
 bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const NiPoint3& centre,
                 const ShoveSettings& settings) {
@@ -110,9 +106,6 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 			reinterpret_cast<KnockFn>(kKnockback)(reinterpret_cast<void*>(process), actor, fromWorld.x, fromWorld.y,
 			                                      fromWorld.z, settings.hardForce);
 			done = "knocked down";
-			if (CountHardShove(g_tally, actor, settings.crimeAfter, settings.crimeWindowSeconds)) {
-				CommitAssault(a, player);
-			}
 		}
 	}
 	if (kind == ShoveKind::Light) {
@@ -135,11 +128,17 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 	SpendPlayerFatigue(fatigue);
 	using DispositionFn = void(__thiscall*)(void* actor, void* toward, float delta);
 	reinterpret_cast<DispositionFn>(kModDisposition)(actor, reinterpret_cast<void*>(player), -disposition);
+	// And the engine hears of it as of a blow.
+	const bool asHit = ShoveCountsAsHit(settings, kind);
+	if (asHit) {
+		ReactAsToAHit(a, player);
+	}
 	if (g_lines > 0) {
 		--g_lines;
-		OBVR_LOG("Shove: %08X %s (from %.0f %.0f %.0f), the player's fatigue -%.0f, its disposition -%.0f", a, done,
+		OBVR_LOG("Shove: %08X %s (from %.0f %.0f %.0f), the player's fatigue -%.0f, its disposition -%.0f%s", a, done,
 		         static_cast<double>(fromWorld.x), static_cast<double>(fromWorld.y), static_cast<double>(fromWorld.z),
-		         static_cast<double>(fatigue), static_cast<double>(disposition));
+		         static_cast<double>(fatigue), static_cast<double>(disposition),
+		         asHit ? ", taken as a hit" : "");
 	}
 	return true;
 }

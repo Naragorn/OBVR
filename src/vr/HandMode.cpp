@@ -267,7 +267,12 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 			const bool wasSwinging = m_swing.swinging;
 			const float peakBefore = m_swing.peakSpeed;
 			const float metresBefore = m_swing.metres;
-			r.swing = StepSwing(m_swing, speed, f.dtSeconds, s.gestures);
+			// The direction so far decides how long the swing must be: a thrust
+			// is shorter than a slash.
+			const PowerDirection soFar =
+				m_swing.swinging ? ClassifyPowerSwing(OffsetFromPose(f.head, f.right.position, m_swingStartRoom, 1.0f))
+				                 : m_powerDirection;
+			r.swing = StepSwing(m_swing, speed, f.dtSeconds, s.gestures, soFar);
 			if (r.swing != SwingVerdict::None) {
 				r.swingPeakSpeed = peakBefore;  // the swing that just ended, for the log
 				r.swingMetres = metresBefore;
@@ -294,10 +299,10 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		m_swing = SwingDetector{};
 	}
 	r.swingActive = m_swing.swinging;
-	r.swingHeavy = m_swing.swinging && SwingIsPower(m_swing, s.gestures);
 	if (m_swing.swinging && f.right.valid) {
 		m_powerDirection = ClassifyPowerSwing(OffsetFromPose(f.head, f.right.position, m_swingStartRoom, 1.0f));
 	}
+	r.swingHeavy = m_swing.swinging && SwingIsPower(m_swing, s.gestures, m_powerDirection);
 	r.powerDirection = m_powerDirection;  // held past the swing's end, for the verdict's frame
 	r.swingSerial = m_swingSerial;
 	const bool swingHeld = StepHeld(m_heavyHold, f.dtSeconds);

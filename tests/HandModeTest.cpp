@@ -1628,6 +1628,26 @@ void TestShieldBlock() {
 
 void TestPowerDirection() {
 	std::printf("The power attack's direction\n");
+	{
+		GestureThresholds t;
+		t.powerSwingMetres = 1.2f;
+		t.powerThrustMetres = 0.45f;
+		Check(PowerMetresFor(PowerDirection::Forward, t) == 0.45f && PowerMetresFor(PowerDirection::Back, t) == 0.45f,
+		      "a thrust or a pull: its own, shorter length");
+		Check(PowerMetresFor(PowerDirection::Left, t) == 1.2f && PowerMetresFor(PowerDirection::Standing, t) == 1.2f,
+		      "a slash or a chop: the swing's length");
+		SwingDetector d;
+		d.swinging = true;
+		d.metres = 0.5f;
+		Check(SwingIsPower(d, t, PowerDirection::Forward) && !SwingIsPower(d, t, PowerDirection::Right),
+		      "0.5 m: a power thrust, not yet a power slash");
+		Check(StepSwing(d, 0.1f, 0.1f, t, PowerDirection::Forward) == SwingVerdict::Heavy,
+		      "the thrust ends: heavy, by its own length");
+		d.swinging = true;
+		d.metres = 0.5f;
+		Check(StepSwing(d, 0.1f, 0.1f, t, PowerDirection::Left) == SwingVerdict::Light,
+		      "the same length sideways ends light");
+	}
 	Check(ClassifyPowerSwing(NiPoint3{0.1f, 0.8f, -0.2f}) == PowerDirection::Forward, "a thrust ahead: forward");
 	Check(ClassifyPowerSwing(NiPoint3{0.1f, -0.6f, 0.1f}) == PowerDirection::Back, "pulled back: backward");
 	Check(ClassifyPowerSwing(NiPoint3{-0.7f, 0.2f, -0.3f}) == PowerDirection::Left, "across to the left: left");
