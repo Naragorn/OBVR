@@ -3,6 +3,7 @@
 #include "core/MathFns.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "vr/TeleportSound.h"
 
 namespace obvr::vr {
 
@@ -41,6 +42,8 @@ struct TeleportSettings {
 	// a teleport makes no movement noise at all - the engine hears none from
 	// a placement.
 	bool makesNoise = false;
+	// With makesNoise, the sound it makes when it lands (vr/TeleportSound.h).
+	TeleportSound sound = kTeleportSoundDefault;
 	// The fatigue: the vanilla dodge roll's price times this, plus, with Blink,
 	// this much per metre climbed.
 	float fatigueMult = 1.0f;

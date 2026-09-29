@@ -1,18 +1,19 @@
-# Teleport with TeleportMakesNoise=1: while the glide moves, the player's movement
-# flags read "walking forward" to the detection only (what NPCs hear); the
-# player must not walk on by them after the landing.
+# Teleport with TeleportMakesNoise=1 and TeleportSound=landing: the landing
+# plays the game's own landing sound for the ground under the player
+# (0x006B1900 with the controller's material) and nothing breaks.
 
 ini Hands Enabled=1
 ini Locomotion Teleport=1
 ini Locomotion TeleportInstant=0
 ini Locomotion TeleportMakesNoise=1
+ini Locomotion TeleportSound=landing
 
 expect HandScript: finished
 expect Teleport: arrived
 reject HandScript: WARNING
 expect Teleport: a second after the landing the player stands
-expect Teleport: the landing sound dodge (000CBA79) played
-reject Teleport: the landing sound dodge (000CBA79) NOT played
+expect Teleport: the landing sound landing (00000000) played
+reject Teleport: the landing sound landing (00000000) NOT played
 reject Sound: 
 
 wait 4

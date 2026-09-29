@@ -308,8 +308,18 @@ Every change below is switched by the mode.
     "fügen wir nun einen sound hinzu. whl den von der rolle". Oblivion.esm
     has `FSTDodge` (000CBA79, fx\fst\dodge\fst_dodge.wav) and
     `FSTDodgeBackward` (000CBA7A); other candidates are the landing sounds
-    per ground (`FootSound*Land`, 00000219-0000021E). OBVR plays no sound of
-    its own yet: the engine's play-sound call still has to be found.
+    per ground (`FootSound*Land`, 00000219-0000021E).
+  - **Built (2026-09-29): `[Locomotion] TeleportSound`**, the tester: "wir
+    bieten in den settings alle 4 an. mit default auf fstdodge". With
+    TeleportMakesNoise on, the landing plays `dodge` (default),
+    `dodgeback`, `landing` (the engine's own landing after a jump,
+    0x006B1900, picked by the ground under the player) or `swish`
+    (`WPNSwishHandX`, 0000C3D1). Settings: Teleport, "Sound". The calls
+    are the script command PlaySound's (game/GameSound.h,
+    teleport_sound_test). Harness: `teleport-noise.txt` (dodge) and
+    `teleport-sound-landing.txt` PASS, both "played". Not heard yet: the
+    harness cannot listen, and `dodgeback`/`swish` ran only as the same
+    call with another form.
 - **An in-game test** is feasible like the water test: a `[Debug]` switch
   that feeds a scripted right controller into the hand mode and logs `VRTEST`
   lines for position, fatigue and refusals. Not built.

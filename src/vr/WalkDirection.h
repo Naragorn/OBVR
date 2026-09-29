@@ -23,6 +23,7 @@
 //
 // Pure, covered by walk_direction_test.
 
+#include "core/ChoiceWord.h"
 #include "core/MathFns.h"
 #include "core/Types.h"
 
@@ -44,22 +45,12 @@ inline constexpr const char* kWalkDirectionNames[kWalkDirectionCount] = {"head",
 // A word from the INI, any case. False, and `out` left alone, for anything
 // else.
 inline bool ParseWalkDirection(const char* text, WalkDirection& out) {
-	if (text == nullptr) {
+	UInt32 index = 0;
+	if (!MatchChoiceWord(text, kWalkDirectionNames, kWalkDirectionCount, index)) {
 		return false;
 	}
-	for (UInt32 i = 0; i < kWalkDirectionCount; ++i) {
-		const char* a = text;
-		const char* b = kWalkDirectionNames[i];
-		while (*a != '\0' && *b != '\0' && (*a == *b || *a + ('a' - 'A') == *b)) {
-			++a;
-			++b;
-		}
-		if (*a == '\0' && *b == '\0') {
-			out = static_cast<WalkDirection>(i);
-			return true;
-		}
-	}
-	return false;
+	out = static_cast<WalkDirection>(index);
+	return true;
 }
 
 // The settings row's value (0..3) as a direction; out of range is the

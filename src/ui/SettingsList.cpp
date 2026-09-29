@@ -934,6 +934,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.teleport.makesNoise = v != 0.0f; },
 	},
 	{
+		"Teleport", "Sound", "With Makes noise, what the landing sounds like: the dodge roll, backwards, your steps, a swish",
+		ItemKind::Number, 0.0f, static_cast<float>(vr::kTeleportSoundCount - 1), 1.0f, 0, false,
+		"Locomotion", "TeleportSound",
+		+[](const Config& c) { return static_cast<float>(c.hands.teleport.sound); },
+		+[](Config& c, float v) { c.hands.teleport.sound = vr::TeleportSoundFromIndex(v); },
+		"", "", SettingAction::None, vr::kTeleportSoundNames, vr::kTeleportSoundCount,
+	},
+	{
 		"Teleport", "Fatigue cost", "Times the price of the game's dodge roll; 0 is free",
 		ItemKind::Number, 0.0f, 3.0f, 0.1f, 1, false,
 		"Locomotion", "TeleportFatigueMult",

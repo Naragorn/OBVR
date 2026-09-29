@@ -58,6 +58,7 @@
 #include "game/ArmStump.h"
 #include "game/QuickKeyPages.h"
 #include "game/TeleportNoise.h"
+#include "game/GameSound.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
@@ -643,6 +644,18 @@ void UpdateTeleport(const Config& config, vr::OpenVRBackend& backend, bool activ
 		}
 		if (step.fadeIn) {
 			backend.FadeToColor(tp.fadeSeconds, 0.0f, 0.0f, 0.0f, 0.0f);
+		}
+		if (vr::TeleportSoundDue(tp.makesNoise, step.finished)) {
+			// The landing heard ([Locomotion] TeleportSound).
+			static UInt32 soundLines = 4;
+			const UInt32 form = vr::TeleportSoundForm(tp.sound);
+			const bool played = form != 0 ? game::PlaySoundForm(form) : game::PlayPlayerLandingSound();
+			if (soundLines > 0) {
+				--soundLines;
+				OBVR_LOG("Teleport: the landing sound %s (%08X) %s",
+				         vr::kTeleportSoundNames[static_cast<UInt32>(tp.sound)], form,
+				         played ? "played" : "NOT played");
+			}
 		}
 		if (step.finished) {
 			static UInt32 arrivedLines = 4;
@@ -6668,6 +6681,7 @@ bool Install() {
 	game::InstallAimAtSource();
 	game::InstallTeleportNoise();
 	game::VerifyHandBodyAddresses();
+	game::VerifyGameSoundAddresses();
 	game::InstallPlayerStagger();
 	game::InstallPlayerLookAt();
 	game::InstallWorldPickHook();

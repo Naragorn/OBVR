@@ -782,6 +782,14 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		tp.blink = ReadBool("Locomotion", "TeleportBlink", tp.blink, path);
 		tp.makesNoise =
 			ReadBool("Locomotion", "TeleportMakesNoise", tp.makesNoise, path);
+		{
+			char word[32] = "";
+			ReadText("Locomotion", "TeleportSound", word, sizeof(word), path);
+			if (word[0] != 0 && !vr::ParseTeleportSound(word, tp.sound)) {
+				OBVR_LOG("Config: [Locomotion] TeleportSound=%s is not dodge, dodgeback, landing or swish - kept %s",
+				         word, vr::kTeleportSoundNames[static_cast<UInt32>(tp.sound)]);
+			}
+		}
 		tp.fatigueMult = ReadFloat("Locomotion", "TeleportFatigueMult", tp.fatigueMult, path);
 		tp.blinkFatiguePerMetreUp =
 			ReadFloat("Locomotion", "TeleportBlinkFatiguePerMetreUp", tp.blinkFatiguePerMetreUp, path);
