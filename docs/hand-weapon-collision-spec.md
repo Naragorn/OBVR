@@ -287,6 +287,53 @@ can now be pushed away. Three open bugs:
     (harness: filter 00090017 on every body); on, the rules above.
     Ragdolls (the dead, biped layer 8) are pushed either way.
 
+## Proposal: pushing and pulling people on purpose (2026-09-29, not built)
+
+The tester: "wie könnten wir es dennoch erlauben? also das es möglich ist
+wenn der spieler es bewusst will. npcs an der hand nehmen und mitziehen wie
+in higgs ist auch lustig". With `PushPeople` off the hands pass through the
+living; a keyframed body has no mass limit, so a touch alone must not move
+anyone. What the Skyrim mods do (their Nexus pages, read 2026-09-29):
+
+- **HIGGS alone** grabs bodies (ragdolls): "Bodies can be grabbed and moved
+  around". Living actors are grabbed only with PLANCK, and that grab is
+  constraint-driven with a force limit for actors
+  (`grabConstraintLinearMaxForceActor`).
+- **PLANCK** makes the living physically present. It has **a shove**: "shove
+  other actors while the player's hands/weapons are sheathed. If you push
+  someone hard enough while sheathed, they will either act as if they were
+  just ran into (a large bump reaction), or get staggered ... A shove costs
+  40 stamina, and increases the npc's aggression a large amount." It has **a
+  grab of the living**: "When you grab someone ... they will try and stay
+  next to you ... Once you have grabbed someone, they will walk with you when
+  you move." And **a yank**: grab and yank while letting go, and they
+  ragdoll and are thrown. Touching or holding someone raises an aggression
+  score until they turn hostile.
+
+Proposed for OBVR, in this order; all by intent, never by a mere touch:
+
+1. **The shove.** An open hand, weapons sheathed, driven fast into an actor
+   (the hand body's speed at contact over a threshold, towards the actor):
+   the engine's own reaction - a bump, or a stagger / knock like the script
+   function PushActorAway - plus a fatigue cost and a disposition or
+   aggression hit. Needs: the contact test (the hand's span against the
+   actors' spheres, as MeleeHits already finds them) and the engine's
+   push/stagger call (not read yet).
+2. **Taking someone by the hand.** A grip closed on an actor's hand or arm
+   (within a few centimetres of the bone): they are held. Each frame their
+   controller is steered to keep the held point near the hand, with a speed
+   and force limit, so they walk along instead of being dragged through
+   walls; let go when the grip opens or they are pulled too far away. Their
+   disposition drops the longer it lasts; not in combat (or: in combat it
+   is a grapple). Needs: how to steer an actor's character controller from
+   outside the AI (its velocity or a move target - not read yet).
+3. **The yank.** Held, then a sharp pull while letting go: they fall
+   (knocked down, ragdoll) and are thrown a little the way of the pull.
+   Needs: the engine's knockdown call.
+4. **The dead** can already be pushed (ragdolls, layer 8, `PushPeople` or
+   not). Whether the vanilla grab takes a body's limb by the hand grip is
+   not checked.
+
 ## How HIGGS does it (Skyrim VR, source read)
 
 Source: github.com/adamhynek/higgs, `src/hand.cpp`.
