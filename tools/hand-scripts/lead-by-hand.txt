@@ -1,0 +1,40 @@
+# Taking someone by the hand (game/LeadLogic.h, game/Lead.h): a beggar is
+# placed near, the right grip closes and takes their hand, they are given
+# Oblivion.esm's FollowPlayer package and walk after the player while the
+# player walks ahead (the left stick), liking the player less per metre;
+# letting go takes the package away again. LeadTakeUnits and LeadBreakUnits
+# are widened for the run: where the beggar's hand ends up is not known to
+# the script, and it follows at a walk.
+
+ini Hands Enabled=1
+ini Hands LeadByHand=1
+ini Hands LeadTakeUnits=200
+ini Hands LeadBreakUnits=2000
+ini Hands PushPeople=0
+
+expect HandScript: finished
+expect Lead: the right hand took
+expect given FollowPlayer
+expect m, their hand
+expect let go - FollowPlayer taken away
+reject Lead: the package functions are not the bytes read
+reject HandScript: WARNING
+
+console player.placeatme 0001C45B 1
+wait 10
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark before
+right grip 1
+wait 1
+mark held
+left stick 0 1
+wait 4
+left stick 0 0
+wait 1
+mark walked
+right grip 0
+wait 1
+mark released
+wait 1

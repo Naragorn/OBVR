@@ -2,6 +2,7 @@
 
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "game/LeadLogic.h"
 #include "game/ShoveLogic.h"
 #include "vr/HandInput.h"
 #include "vr/OpenVRTypes.h"
@@ -164,6 +165,8 @@ struct HandSettings {
 	// The shove: an open hand driven fast into someone, weapons away
 	// (game/ShoveLogic.h).
 	game::ShoveSettings shove;
+	// Taking someone by the hand (game/LeadLogic.h).
+	game::LeadSettings lead;
 	// The HUD on the hands and the compass in the sky ([HandHud], vr/HandHud.h).
 	HandHudSettings handHud;
 	// How far each finger link bends while the hand holds something, degrees

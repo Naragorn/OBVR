@@ -396,6 +396,39 @@ Proposed for OBVR, in this order; all by intent, never by a mere touch:
    disposition drops the longer it lasts; not in combat (or: in combat it
    is a grapple). Needs: how to steer an actor's character controller from
    outside the AI (its velocity or a move target - not read yet).
+   **Built 2026-09-29** (`game/LeadLogic.h`, `game/Lead.h`, `lead_test`,
+   harness `tools/hand-scripts/lead-by-hand.txt` PASS). The tester asked: "npcs
+   die keine follower sind folgen nur bis zu 5m und verlieren disposition.
+   follower folgen solange wie man sie hält".
+   - **Taking a hand:** a grip that closes within `LeadTakeUnits` (14) of their
+     "Bip01 R/L Hand" bone. The bones are read through GetNiNode (vtable
+     +0x154) and GetObject (+0x58). Not while they fight, not while the hand
+     holds something.
+   - **A follower:** their current package (process vtable +0x184) is Follow
+     (type 1) with the player as its target. They already walk after the
+     player, so nothing is given, and they stay led for as long as the grip is
+     closed.
+   - **Anyone else:**
+     - They get Oblivion.esm's FollowPlayer package (0x0009828A), given the
+       way the console's AddScriptPackage handler (0x005123A0) does it for a
+       high-process actor. They walk after the player with their own animation
+       and paths.
+     - They lose 3 disposition per metre and pull free after
+       `LeadStrangerMetres` (5).
+     - On letting go, RemoveScriptPackage's steps (0x0050B6A0) run, then
+       EvaluatePackage (0x00601B80).
+   - **The package's target distance** (+8 of the target data, 0 in the ESM)
+     is set to `LeadFollowUnits` (40) while leading and put back afterwards.
+   - **Harness, measured:**
+     - Distance 0: the beggar kept 225 units hand to hand while the player
+       walked 6.2 m. At 40 it kept about 180 units, in 3D with their hand at
+       the hip.
+     - They followed 4.8 and 5.0 m, and at 5 m pulled free.
+     - A push through the character proxy (0x008907A0) each frame did not
+       close the gap, so it was taken out again.
+   - **Known limit:** they walk about 2.5 m behind, not literally hand in
+     hand. `LeadBreakUnits` (300) lets go only beyond that.
+   - Not seen in the headset yet, and not tried with a real follower.
 3. **The yank.** Held, then a sharp pull while letting go: they fall
    (knocked down, ragdoll) and are thrown a little the way of the pull.
    Needs: the engine's knockdown call.

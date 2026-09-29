@@ -18,6 +18,8 @@
 #include "game/BlockCone.h"
 #include "game/HitShader.h"
 #include "game/HudTiles.h"
+#include "game/Lead.h"
+#include "game/LeadLogic.h"
 #include "game/FirstPersonArms.h"
 #include "game/FirstPersonDepth.h"
 #include "game/FirstPersonHide.h"
@@ -802,6 +804,131 @@ void StepShoves(const Config& config, float dt) {
 			         kind == game::ShoveKind::Hard ? "hard" : "light");
 		}
 	}
+}
+
+// Taking someone by the hand (game/LeadLogic.h, game/Lead.h): a grip closed
+// next to a person's hand leads them - a follower for as long as it is
+// held, anyone else for a few metres, liking the player less as they go.
+struct LeadRun {
+	void* actor = nullptr;
+	bool right = false;       // the player's hand that holds
+	bool theirRight = false;  // their hand that is held
+	bool packageGiven = false;
+	NiPoint3 lastPosition{0.0f, 0.0f, 0.0f};
+	game::LeadState state;
+};
+LeadRun g_lead;
+bool g_leadGripWas[2] = {false, false};
+
+void EndLead(game::LeadEnd why) {
+	if (g_lead.actor == nullptr) {
+		return;
+	}
+	if (g_lead.packageGiven) {
+		game::StopFollowing(g_lead.actor);
+	}
+	OBVR_LOG("Lead: %08X - %s after %.1f m", reinterpret_cast<UInt32>(g_lead.actor), game::LeadEndName(why),
+	         static_cast<double>(g_lead.state.metres));
+	g_lead = LeadRun{};
+}
+
+void StepLeads(const Config& config, bool inWorld) {
+	const game::LeadSettings& s = config.hands.lead;
+	const bool gripNow[2] = {g_hand.rightGripDown, g_hand.leftGripDown};
+	const bool valid[2] = {g_hand.rightHandValid, g_hand.leftHandValid};
+	if (!inWorld || !g_cyclopeanCameraWorldValid) {
+		EndLead(game::LeadEnd::Gone);
+		g_leadGripWas[0] = gripNow[0];
+		g_leadGripWas[1] = gripNow[1];
+		return;
+	}
+	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
+	const auto handAt = [&](int side) {
+		return camPos + camRot * (side == 0 ? g_hand.rightHandOffsetUnits : g_hand.leftHandOffsetUnits);
+	};
+
+	if (g_lead.actor != nullptr) {
+		const int side = g_lead.right ? 0 : 1;
+		const bool fine = game::ActorFineToLead(g_lead.actor);
+		NiPoint3 theirHand{0.0f, 0.0f, 0.0f};
+		NiPoint3 position{0.0f, 0.0f, 0.0f};
+		const bool read = fine && game::ActorHandPosition(g_lead.actor, g_lead.theirRight, &theirHand) &&
+		                  game::ActorPosition(g_lead.actor, &position);
+		const float apart = read ? math::Sqrt((handAt(side) - theirHand).LengthSquared()) : 0.0f;
+		float moved = 0.0f;
+		if (read) {
+			const NiPoint3 d = position - g_lead.lastPosition;
+			moved = math::Sqrt(d.x * d.x + d.y * d.y) / config.tracker.unitsPerMetre;
+			g_lead.lastPosition = position;
+		}
+		SInt32 disposition = 0;
+		const game::LeadEnd end =
+			game::StepLead(g_lead.state, s, gripNow[side] && valid[side], read, apart, moved, disposition);
+		if (disposition > 0) {
+			game::ChangeDisposition(g_lead.actor, -static_cast<float>(disposition));
+		}
+		static UInt32 s_leadMetreLogged = 0;
+		const UInt32 wholeMetres = static_cast<UInt32>(g_lead.state.metres);
+		if (wholeMetres != s_leadMetreLogged) {
+			s_leadMetreLogged = wholeMetres;
+			if (wholeMetres > 0 && wholeMetres <= 20) {
+				OBVR_LOG("Lead: %08X led %u m, their hand %.0f units from the player's", reinterpret_cast<UInt32>(g_lead.actor),
+				         wholeMetres, static_cast<double>(apart));
+			}
+		}
+		if (end != game::LeadEnd::None) {
+			EndLead(end);
+		}
+	} else {
+		for (int side = 0; side < 2 && g_lead.actor == nullptr; ++side) {
+			const bool closedNow = gripNow[side] && !g_leadGripWas[side] && valid[side];
+			if (!closedNow || !s.enabled) {
+				continue;
+			}
+			NiPoint3 theirHand{0.0f, 0.0f, 0.0f};
+			bool theirRight = false;
+			const NiPoint3 at = handAt(side);
+			void* const actor = game::ActorHandNear(at, s.takeUnits > 30.0f ? s.takeUnits : 30.0f, &theirHand, &theirRight);
+			if (actor == nullptr) {
+				static UInt32 s_missLines = 4;
+				if (s_missLines > 0) {
+					--s_missLines;
+					NiPoint3 centre{0.0f, 0.0f, 0.0f};
+					void* const nearest = game::LivingActorAt(at, 0.0f, 3000.0f, &centre);
+					OBVR_LOG("Lead: the %s grip closed with no one's hand in reach - the nearest living %08X, %.0f "
+					         "units from the hand",
+					         side == 0 ? "right" : "left", reinterpret_cast<UInt32>(nearest),
+					         nearest != nullptr ? static_cast<double>(math::Sqrt((centre - at).LengthSquared()))
+					                            : -1.0);
+				}
+				continue;
+			}
+			const float distance = math::Sqrt((at - theirHand).LengthSquared());
+			const bool empty = !game::PlayerHoldsGrab();
+			if (!game::LeadTakes(s, true, empty, distance, game::ActorInCombat(actor)) ||
+			    !game::ActorFineToLead(actor)) {
+				continue;
+			}
+			g_lead.actor = actor;
+			g_lead.right = side == 0;
+			g_lead.theirRight = theirRight;
+			const bool follower = game::ActorIsPlayersFollower(actor);
+			game::StartLead(g_lead.state, follower);
+			game::ActorPosition(actor, &g_lead.lastPosition);
+			// A follower already walks after the player: nothing to give.
+			g_lead.packageGiven = !follower && game::StartFollowing(actor, s.followUnits);
+			if (!follower && !g_lead.packageGiven) {
+				g_lead = LeadRun{};
+				continue;
+			}
+			OBVR_LOG("Lead: the %s hand took %08X by the %s hand (%.0f units) - %s", side == 0 ? "right" : "left",
+			         reinterpret_cast<UInt32>(actor), theirRight ? "right" : "left", static_cast<double>(distance),
+			         follower ? "a follower, led for as long as held" : "not a follower, led a few metres");
+		}
+	}
+	g_leadGripWas[0] = gripNow[0];
+	g_leadGripWas[1] = gripNow[1];
 }
 
 // Measuring the bodies against what is drawn (the spec's open bugs,
@@ -2392,6 +2519,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		if (inPlace) {
 			StepShoves(config, g_deltaSeconds);
 		}
+		StepLeads(config, inPlace);
 	}
 
 	// What the laser asked of the cursor on a flat frame, a few times, and

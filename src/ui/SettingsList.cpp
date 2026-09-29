@@ -700,6 +700,20 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.shove.hardSpeed = v; },
 	},
 	{
+		"Hands", "Take by the hand", "Close a grip next to someone's hand and they walk after you",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "LeadByHand",
+		+[](const Config& c) { return c.hands.lead.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.lead.enabled = v != 0.0f; },
+	},
+	{
+		"Hands", "Strangers follow for", "How far someone who is not your follower lets you lead them, metres",
+		ItemKind::Number, 1.0f, 20.0f, 0.5f, 1, false,
+		"Hands", "LeadStrangerMetres",
+		+[](const Config& c) { return c.hands.lead.strangerMetres; },
+		+[](Config& c, float v) { c.hands.lead.strangerMetres = v; },
+	},
+	{
 		"Hands", "Shove down counts as a hit", "Shoving someone to the ground is taken like a blow: friends forgive a few, others call the guards",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "ShoveCountsAsHit",

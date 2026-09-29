@@ -719,6 +719,13 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.shove.hardForce = ReadFloat("Hands", "ShoveHardForce", h.shove.hardForce, path);
 		h.shove.distance = ReadFloat("Hands", "ShoveDistance", h.shove.distance, path);
 		h.shove.countsAsHit = ReadBool("Hands", "ShoveCountsAsHit", h.shove.countsAsHit, path);
+		h.lead.enabled = ReadBool("Hands", "LeadByHand", h.lead.enabled, path);
+		h.lead.strangerMetres = ReadFloat("Hands", "LeadStrangerMetres", h.lead.strangerMetres, path);
+		h.lead.takeUnits = ReadFloat("Hands", "LeadTakeUnits", h.lead.takeUnits, path);
+		h.lead.breakUnits = ReadFloat("Hands", "LeadBreakUnits", h.lead.breakUnits, path);
+		h.lead.followUnits = ReadUInt("Hands", "LeadFollowUnits", h.lead.followUnits, path);
+		h.lead.dispositionPerMetre =
+			ReadFloat("Hands", "LeadDispositionPerMetre", h.lead.dispositionPerMetre, path);
 		{
 			vr::HandHudSettings& hh = h.handHud;
 			hh.enabled = ReadBool("HandHud", "Enabled", hh.enabled, path);

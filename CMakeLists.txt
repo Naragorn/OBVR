@@ -113,6 +113,7 @@ add_library(OBVR SHARED
 	src/game/PlayerBody.cpp
 	src/game/MenuType.cpp
 	src/game/HudTiles.cpp
+	src/game/Lead.cpp
 	src/render/HandHudLayer.cpp
 	src/game/PlayerAim.cpp
 	src/render/GameDevice.cpp

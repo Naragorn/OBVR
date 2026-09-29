@@ -1173,3 +1173,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME dialog_panel COMMAND dialog_panel_test)
+
+add_executable(lead_test LeadTest.cpp)
+
+target_include_directories(lead_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(lead_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME lead COMMAND lead_test)
