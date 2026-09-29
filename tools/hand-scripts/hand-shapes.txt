@@ -1,0 +1,24 @@
+# Measures what small objects' Havok shapes cover against their meshes
+# (docs/hand-weapon-collision-spec.md, open bug "some objects react before
+# the hand reaches them"): a plate and a cup placed
+# next to the player, and at each mark one line per object - the mesh's
+# world box, the Havok shape's (its getAabb, the convex radius included)
+# and how far the Havok box stands out beyond the mesh's.
+
+ini Hands Enabled=1
+ini Hands BodyCollision=1
+ini Hands PushWorld=0
+console player.placeatme 0002507F 1
+console player.placeatme 0002507B 1
+
+expect HandScript: finished
+expect Measure: object
+reject HandScript: WARNING
+
+wait 10
+mark start
+wait 10
+mark objects
+wait 3
+mark settled
+wait 1

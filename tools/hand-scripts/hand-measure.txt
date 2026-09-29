@@ -1,0 +1,47 @@
+# Measures the hand and weapon bodies against what is drawn
+# (docs/hand-weapon-collision-spec.md, the open bugs of 2026-09-29): the
+# finger joints against the hand capsule's front, open and as a fist, and
+# the drawn longsword against the blade capsule. Reads "Measure:" lines;
+# it passes when they are written.
+
+ini Hands Enabled=1
+ini Hands BodyCollision=1
+ini Hands PushWorld=0
+
+expect HandScript: finished
+expect Measure: right hand - "Bip01 R Hand"
+expect Measure: right hand - "Bip01 R Finger22"
+expect Measure: left hand - "Bip01 L Finger22"
+expect Measure: blade - the body
+expect Measure: blade - the weapon node's axis z
+reject HandScript: WARNING
+
+wait 10
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+right curl 0
+left curl 0
+wait 1
+mark open
+right curl 1
+left curl 1
+wait 1
+mark fist
+right curl 0
+left curl 0
+console-at fist player.additem 00000C0C 1
+console-at fist player.equipitem 00000C0C
+wait 8
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark sword_drawn
+right rot 0 0 -45
+wait 1
+mark sword_turned
+wait 1

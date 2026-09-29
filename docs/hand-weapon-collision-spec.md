@@ -143,28 +143,87 @@ can now be pushed away. Three open bugs:
 
 - **Open bug: some objects react before the hand reaches them.** "manche
   objekte interagieren teilw zu früh. weiß nicht ob das an den objekten
-  liegt oder an uns." Not measured. Candidates, none checked:
-  - ours: the hand capsule reaches 9 + 2.5 = 11.5 units (about 16 cm)
-    ahead of the grip (`kHandBodyAheadUnits`, `kHandBodyRadiusUnits`),
-    which may be longer than the visible fingers;
-  - the object's: its Havok shape can be larger than its mesh (a box
-    around a round cup), and every Havok shape carries a convex radius.
-  To settle it: log the gap between the hand body and the first thing it
-  touches, and compare the capsule with the drawn hand.
+  liegt oder an uns." **Measured 2026-09-29 - both, and ours is the larger
+  part.**
+  - **Ours: the hand capsule stands in front of the drawn hand.** The
+    `Measure:` lines of `hand-measure.txt` (the scripted hand, its default
+    pose), along the hand's forward from the grip: the wrist bone
+    (`Bip01 R Hand`) at -11.1 units (7.2 aside), the middle finger's base
+    (`Finger2`) at -7.5, its last joint (`Finger22`) at -5.9; the left hand
+    the same (-5.6). The capsule runs from -4 - 2.5 to +9 + 2.5 = **+11.5**:
+    it covers the space from the fingers to about 17 units (some 24 cm) in
+    front of them, and leaves the palm and the wrist behind it out. The
+    game units per metre are 70 (`[Tracker] UnitsPerMetre`). Not measured:
+    a flat, open hand in the headset (the scripted curl 0 still showed the
+    animation's curled fingers) and a user's own `HandAdjust` offsets,
+    which move the drawn hand against the grip. **Derived fix:** build the
+    capsule from the drawn bones (wrist to finger ends, in the grip's
+    frame) instead of the constants; not built.
+  - **The objects': their Havok shapes stand out beyond their meshes.**
+    `hand-shapes.txt` places items beside the player and compares the
+    world box round the mesh's vertices with the Havok shape's own box
+    (hkShape getAabb, vtable +0x0C, the convex radius included):
+
+    | object (base) | mesh (units) | Havok (units) | Havok beyond the mesh, per side |
+    |---|---|---|---|
+    | cup UpperCupCeramic01 (0002507B) | 11.8 x 9.0 x 7.3 | 14.4 x 13.6 x 11.7 | 1.2 to 2.7 |
+    | goblet MiddleMetalGoblet (000CD401) | 7.9 x 11.9 x 7.7 | 13.8 x 14.1 x 13.1 | 1.1 to 3.0 |
+    | tankard MiddleMetalTankard003 (000CD403) | 14.5 x 15.3 x 9.6 | 21.1 x 21.4 x 15.9 | 1.7 to 5.0 |
+    | longsword on the floor (00000C0C) | 13.8 x 79.4 x 4.3 | 13.9 x 80.4 x 5.0 | 0.0 to 0.8 |
+
+    So clutter's collision is 1 to 5 units (1.5 to 7 cm) larger per side
+    than what is drawn; a weapon's is tight. That is the game's data (the
+    NIFs' collision), the same for everything that touches them. The
+    plate's run placed nothing (the console placement in the harness is
+    unreliable), so plates are not measured.
 - **Open bug: the sword's tip sometimes passes through.** "wenn ich ein
-  schwert habe kollidiert die spitze vom schwert teilweise nicht." Not
-  measured. Candidates, none checked: the tip moves fastest in a swing,
-  and a 1.5-unit-thin keyframed capsule can step past small clutter
-  between two physics steps (no continuous collision); or the blade length
-  taken from the push segment (CameraHook, `bodies.bladeUnits`) is shorter
-  than the drawn blade.
-- **Open bug: pushing NPCs makes hand-to-hand combat hard.** "npcs kann man
-  nun wegschieben. das macht aber h2h combat schwierig da man nicht mehr
-  nah genug ran kommt zum hauen." The fist body pushes the opponent's
-  character controller (layer 20, CHARCONTROLLER) back before the swing
-  lands. A fix has to decide what the hands should do to actors: not
-  collide with layer 20 at all, or not in combat, or not while a fist is
-  made.
+  schwert habe kollidiert die spitze vom schwert teilweise nicht."
+  **Measured 2026-09-29 (`hand-measure.txt`, the longsword):**
+  - **The capsule does not lie along the drawn blade.** The drawn weapon
+    node's own y axis is the blade (0.99 with the line from its attach
+    point to its bound's centre); the capsule's axis (the controller's
+    forward) is **11 degrees** off it. The capsule is 75.5 units long
+    (1.9 x the bound's 39.7, `BladeLengthFromBound`); the drawn blade's far
+    end lies 57.7 units ahead of the grip and **14.0 units to the side** of
+    the capsule's axis - 12.5 units outside a capsule 1.5 round. The
+    weapon's attach point is 8.3 units behind the grip. So the drawn tip
+    and the body's tip are in different places. **Derived fix:** build the
+    blade capsule from the drawn weapon node (from its attach point along
+    its y axis to the bound's far end), in the grip's frame; not built.
+  - **Passing through between two steps - not measured in the headset.**
+    A keyframed capsule of radius r passes an object t thick without ever
+    overlapping it once one physics step carries it further than t + 2r:
+    4 units for a 1-unit plate, 7 for a 4-unit cup (`PassThroughTravelUnits`).
+    Each swing now logs its fastest tip per physics step (`Measure: a swing
+    - the blade's tip moved up to ...`, 16 lines a run). The harness's
+    swings are jumps between positions, so its numbers (15 to 60 units a
+    step) say nothing about a real swing; a headset log will.
+  - Read 2026-09-29: CreateHavok makes a clutter body DEBRIS quality (3)
+    when its largest extent is over fDebrisMinExtent (2.0 Havok, about 14
+    units; around 0x008A43C3..0x008A43DB, the branch direction derived); what Havok 3.1 does with DEBRIS against
+    a keyframed body (continuous or not) is not verified.
+- **Open bug, changed 2026-09-29: pushing NPCs made hand-to-hand combat
+  hard.** "npcs kann man nun wegschieben. das macht aber h2h combat
+  schwierig da man nicht mehr nah genug ran kommt zum hauen." The tester
+  decided: "wegschieben aus im Kampf, und mit geballter Faust".
+  **Built:** in combat no body pushes people; out of combat a hand made a
+  fist does not either (the weapon out of combat still does).
+  `game::HandBodyPushesActors`, `HandBodyFist` (the four fingers past
+  "Fist at", open again under the open limit, as the fist of 4.3). Such a
+  body moves to **layer 23**, the other unnamed layer, whose row in the
+  layer matrix OBVR keeps without layer 20 (CHARCONTROLLER: the controller
+  cinfo 0x00890C00 builds `(group << 16) | 0x14`, read 2026-09-29); the
+  matrix is checked every step because 0x008A83C0 fills it anew. The
+  change reaches Havok the way the engine's own setters do it (0x0089F4D0,
+  0x0089F520): the filter written at hkRigidBody+0x30, then the wrapper's
+  vtable +0x80 (0x008B0060 -> hkWorld::updateCollisionFilterOnEntity,
+  0x0089B630). No call to 0x008A7F20 in the exe pushes 22 or 23 (98 calls
+  tallied; not a proof that nothing else touches them).
+  - Harness (`hand-measure.txt`): "the right hand's body no longer pushes
+    people now (layer 23)" when the scripted hands closed, "pushes people
+    now (layer 22)" when they opened; "layer 23 no longer collides with
+    the character controllers (layer 20)". **Not verified:** an NPC
+    actually not pushed - the harness cell has no one to push.
 
 ## How HIGGS does it (Skyrim VR, source read)
 
@@ -244,9 +303,9 @@ hkRigidBody constructor's reads):
 | +0xA4 / +0xA8 | max linear / angular velocity (to motion +0xB4 / +0xB8) | 200 / 200 |
 | +0xAC | allowed penetration depth (to body +0x34) | −1 |
 | +0xB0 | byte motion type | 1 (dynamic) |
-| +0xB1 | byte quality type (to 0x008A9C90) | 2 |
+| +0xB1 | byte deactivator type (0x008A9C90: 2 allocates a 0x70-byte deactivator, 0x008E90A0; 1 takes the static one at 0x00B2FD60; to body +0x64). Corrected 2026-09-29: this row said "quality type" | 2 |
 | +0xB2 | byte solver deactivation (to motion, 0x0089DB80) | 2 |
-| +0xB3 | byte: if 0, body+0x2E becomes 1 fixed / 2 keyframed / 3 other | 0 |
+| +0xB3 | byte quality type (MotionQuality: 1 fixed, 2 keyframed, 3 debris, 4 moving, 5 critical, 6 bullet, 7 user, 8 character); if 0, body+0x2E becomes 1 fixed / 2 keyframed / 3 other (0x008AA102..0x008AA139) | 0 |
 | +0xB4 | byte, copied to body+0x90 | 0 |
 
 **hkRigidBody** (**Read** unless noted): +0x08 hkWorld* (null when not in
@@ -293,7 +352,11 @@ hkRigidBodyCinfo** (defaults as above, but max linear velocity 10000 and max
 angular velocity 31.4159). CreateHavok copies +0x00/+0x04 into the cinfo's
 filter and shape (**Read**, 0x008A436E), clamps the damping and velocity
 limits, and handles mass 0: a keyframed or fixed type with mass 0 is created
-dynamic and then switched with `setMotionType(type, 1, 0)`.
+dynamic and then switched with `setMotionType(type, 1, 0)`. **Not settled
+(2026-09-29):** a second reading of `test ah,44h; jnp` at 0x008A4328 gives the
+opposite - a nonzero mass with a type of 6 or more is created dynamic with
+quality 4 (0x008A4337/0x008A433E), a mass of 0 with type 7 gets quality 1
+(0x008A4362). The bodies OBVR makes are keyframed as logged, whichever holds.
 
 **Derived:** the shape pointer has to be the `hkShape*`, which is the bhk
 shape wrapper's hkObj at +0x08. The hkEntity constructor (0x008A6850) takes

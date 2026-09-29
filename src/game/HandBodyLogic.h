@@ -22,12 +22,117 @@ namespace obvr::game {
 // (0x4000) switches a body's collision off (the rule 0x008A7F70, step 1:
 // any layer but 29).
 inline constexpr UInt32 kHandBodyLayer = 22;
+// Layer 23, the other unnamed one: the bodies that do not push people
+// (below). OBVR takes the character controllers' layer out of its row.
+inline constexpr UInt32 kHandBodyQuietLayer = 23;
+inline constexpr UInt32 kCharControllerLayer = 20;
 inline constexpr UInt32 kFilterNoCollision = 0x4000;
 
-inline UInt32 HandBodyFilter(UInt32 group, bool collides) {
+inline UInt32 HandBodyFilter(UInt32 group, bool collides, bool pushesActors = true) {
 	const UInt32 g = group != 0 ? (group & 0xFFFF) : kPlayerCollisionGroupFallback;
-	return (g << 16) | kHandBodyLayer | (collides ? 0u : kFilterNoCollision);
+	return (g << 16) | (pushesActors ? kHandBodyLayer : kHandBodyQuietLayer) | (collides ? 0u : kFilterNoCollision);
 }
+
+// The layer: the low 6 bits (GrabPhysics.h).
+inline UInt32 FilterLayer(UInt32 filter) { return filter & 0x3F; }
+
+// ------------------------------------------------------ pushing the people
+//
+// A hand's body pushed an opponent's character controller away before the
+// swing landed (the tester, 2026-09-29: "npcs kann man nun wegschieben. das
+// macht aber h2h combat schwierig da man nicht mehr nah genug ran kommt zum
+// hauen"). So in combat no body pushes people, and out of it a hand made
+// into a fist does not either: "wegschieben aus im Kampf, und mit geballter
+// Faust". The hits themselves are OBVR's own hit test (game/MeleeHits), not
+// the bodies, so they still land.
+//
+// Such a body goes to layer 23 (kHandBodyQuietLayer), the other unnamed
+// layer, whose matrix row OBVR keeps without the character controllers'
+// layer; the filter change reaches Havok through the wrapper's vtable +0x80
+// (0x008B0060: hkWorld::updateCollisionFilterOnEntity, 0x0089B630), as
+// the engine's own setters 0x0089F4D0 and 0x0089F520 do.
+// Whether a hand is a fist, for its body: the four fingers (the thumb left
+// out, as vr::StepFist does) all past closeCurl; one stays a fist until they
+// are all below openLimit. No curls: no fist.
+inline bool HandBodyFist(bool wasFist, bool curlValid, const float* curl, float closeCurl, float openLimit) {
+	if (!curlValid || curl == nullptr) {
+		return false;
+	}
+	float lowest = curl[1];
+	float highest = curl[1];
+	for (int finger = 2; finger < 5; ++finger) {
+		lowest = curl[finger] < lowest ? curl[finger] : lowest;
+		highest = curl[finger] > highest ? curl[finger] : highest;
+	}
+	return wasFist ? !(highest <= openLimit) : lowest >= closeCurl;
+}
+
+// Whether a body pushes people: never in combat; a hand not while it is a
+// fist; the weapon out of combat always.
+inline bool HandBodyPushesActors(bool isHand, bool inCombat, bool fist) {
+	if (inCombat) {
+		return false;
+	}
+	return !(isHand && fist);
+}
+
+// ------------------------------------------------- measuring (open bugs)
+//
+// A keyframed body is moved in steps, and Havok tests it against the others
+// only where each step leaves it (no continuous collision between a
+// keyframed body and clutter is asked for). A capsule of radius r passes an
+// object t thick without ever overlapping it once a step carries it
+// further than t + 2r: the tip of a swung sword is the fastest part.
+inline float PassThroughTravelUnits(float thicknessUnits, float radiusUnits) {
+	return thicknessUnits + 2.0f * radiusUnits;
+}
+
+// The travel of one physics step, from a frame's travel and the steps the
+// frame ran; a frame of no step (or an absurd count) counts as one.
+inline float TravelPerStep(float frameTravelUnits, UInt32 steps) {
+	return frameTravelUnits / static_cast<float>(steps >= 1 && steps <= 6 ? steps : 1u);
+}
+
+// How far an object's Havok box stands out beyond its mesh's box, side by
+// side (both world, axis-aligned): the most and the least of the six gaps,
+// positive where the Havok shape reaches further than the model.
+struct BoxGaps {
+	float most = 0.0f;
+	float least = 0.0f;
+};
+
+inline BoxGaps HavokBeyondMesh(const NiPoint3& meshLow, const NiPoint3& meshHigh, const NiPoint3& havokLow,
+                               const NiPoint3& havokHigh) {
+	const float gaps[6] = {meshLow.x - havokLow.x,   meshLow.y - havokLow.y,   meshLow.z - havokLow.z,
+	                       havokHigh.x - meshHigh.x, havokHigh.y - meshHigh.y, havokHigh.z - meshHigh.z};
+	BoxGaps out;
+	out.most = gaps[0];
+	out.least = gaps[0];
+	for (int i = 1; i < 6; ++i) {
+		out.most = gaps[i] > out.most ? gaps[i] : out.most;
+		out.least = gaps[i] < out.least ? gaps[i] : out.least;
+	}
+	return out;
+}
+
+// Where a point lies from the grip, along the body's axis and off it
+// (game units): for the fingers against the capsule's front end.
+struct AlongAxis {
+	float ahead = 0.0f;
+	float aside = 0.0f;
+};
+
+inline AlongAxis MeasureAlongAxis(const NiPoint3& grip, const NiPoint3& axis, const NiPoint3& point) {
+	const NiPoint3 d = point - grip;
+	AlongAxis out;
+	out.ahead = d.x * axis.x + d.y * axis.y + d.z * axis.z;
+	const NiPoint3 off = d - axis * out.ahead;
+	out.aside = math::Sqrt(off.LengthSquared());
+	return out;
+}
+
+// Whether a body already in the world needs its filter written again.
+inline bool HandBodyRefilterNeeded(UInt32 currentFilter, UInt32 wantedFilter) { return currentFilter != wantedFilter; }
 
 // ------------------------------------------------------------- the shapes
 //

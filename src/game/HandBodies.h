@@ -48,6 +48,9 @@ struct HandBodyFrame {
 	NiMatrix33 rot[static_cast<int>(HandBodySlot::Count)];  // world, the hand's
 	NiPoint3 pos[static_cast<int>(HandBodySlot::Count)];    // the grip, game units
 	float bladeUnits = 0.0f;   // the weapon's length, for its capsule
+	// Whether each body pushes people (HandBodyPushesActors): not in combat,
+	// not a hand made a fist.
+	bool pushesActors[static_cast<int>(HandBodySlot::Count)] = {true, true, true};
 	float physicsRate = 0.0f;  // [Hands] PhysicsRate, 0 the game's own
 	float dtSeconds = 0.0f;
 };
@@ -68,5 +71,13 @@ HandBodyReport StepHandBodies(const HandBodyFrame& frame);
 // For a hand script's marks: where each body stands (Havok's own pose, in
 // game units), one line.
 void LogHandBodies();
+
+// How many physics steps this frame runs (the planner, 0x00BA7914).
+UInt32 HandBodyPhysicsSteps();
+
+// The axis-aligned box an object's Havok shape covers in the world, game
+// units, the convex radius included: from the node's collision object. False
+// when it has none, or it is no rigid body of the hands' own class.
+bool HavokWorldBoxOf(UInt32 node, NiPoint3& low, NiPoint3& high);
 
 }  // namespace obvr::game

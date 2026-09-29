@@ -113,6 +113,11 @@ bool NearestVertexOf(UInt32 ref, const NiPoint3& hand, NiPoint3& out, float& dis
 // The type of a reference's base form, 0 when it cannot be read.
 UInt8 RefBaseFormType(UInt32 ref);
 
+// For a hand script's marks: each small object with a Havok body near
+// `around`, its mesh's box against its Havok shape's box, one line each
+// ("Measure: object ..."; the spec's open bug of objects touched early).
+void MeasureNearbyShapes(const NiPoint3& around, float radiusUnits, UInt32 maxObjects);
+
 // From a hand to the surface of a bound sphere: 0 inside it.
 inline float SurfaceDistance(const NiPoint3& hand, const NiPoint3& centre, float radius) {
 	const NiPoint3 d{centre.x - hand.x, centre.y - hand.y, centre.z - hand.z};

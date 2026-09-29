@@ -17,7 +17,7 @@ console player.additem 00000C0C 1
 console player.drop 00000C0C 1
 
 expect HandScript: finished
-expect Hands: body collision - 14 functions and 9 table slots match what was read
+expect Hands: body collision - 16 functions and 10 table slots match what was read
 expect Hands: the right hand's body made
 expect Hands: the right hand's body into the player's world
 expect Hands: the right hand's body driven

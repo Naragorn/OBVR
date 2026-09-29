@@ -34,6 +34,21 @@ constexpr UInt32 kBhkWorldHkWorldOffset = 0x08;      // bhkWorld -> its hkWorld
 constexpr UInt32 kWrapperObjOffset = 0x08;           // bhk wrapper -> hk object
 constexpr UInt32 kRefCountOffset = 0x04;             // NiRefObject
 constexpr UInt32 kBodyWorldOffset = 0x08;            // hkEntity -> hkWorld
+constexpr UInt32 kVtblRefreshFilter = 0x80;         // thiscall(wrapper): the world takes the new filter
+constexpr UInt32 kLayerMatrix = 0x00BA7DB0;          // 32 rows of 32 bits, one per layer
+constexpr UInt32 kLayerMatrixSetter = 0x008A7F20;    // cdecl(layerA, layerB, bool), both ways
+// For measuring what an object's Havok shape covers (2026-09-29): the node's
+// bhkCollisionObject (0x0047FAC0 cdecl(node), NiAVObject+0xA8 behind an RTTI
+// check), its body wrapper at +0x10; in the hkRigidBody the shape at +0x14
+// and the transform pointer at +0x1C (the collidable's); hkShape's getAabb
+// at vtable +0x0C, thiscall(shape, const hkTransform*, float tolerance,
+// hkAabb* out), ret 0Ch, min at +0, max at +0x10 (read on the box and the
+// sphere shape, 0x008CE060, 0x008ED4A0; the convex radius included).
+constexpr UInt32 kCollisionObjectOf = 0x0047FAC0;
+constexpr UInt32 kCollisionObjectBodyOffset = 0x10;
+constexpr UInt32 kBodyShapeOffset = 0x14;
+constexpr UInt32 kBodyTransformOffset = 0x1C;
+constexpr UInt32 kShapeGetAabbSlot = 0x0C;
 
 // The creation block (0x008A5790's layout): the filter and the shape, and
 // the hkRigidBodyCinfo at +0x20 (the spec's table, offsets from the block).
@@ -67,6 +82,8 @@ const Expected kExpected[] = {
 	{kHavokLockLeave, {0x83, 0x41, 0x7C, 0xFF}, 4, "the Havok unlock"},
 	{0x0089DB90, {0x8B, 0x44, 0x24, 0x04, 0x0F, 0x28, 0x00}, 7, "setLinearVelocity"},
 	{0x0089DBB0, {0x8B, 0x44, 0x24, 0x04, 0x0F, 0x28, 0x00}, 7, "setAngularVelocity"},
+	{kCollisionObjectOf, {0x8B, 0x44, 0x24, 0x04, 0x56, 0x8B, 0xB0, 0xA8}, 8, "the collision object getter"},
+	{kLayerMatrixSetter, {0x8B, 0x54, 0x24, 0x08, 0x8B, 0x44, 0x24, 0x04}, 8, "the layer matrix setter"},
 };
 
 struct Slot {
@@ -74,10 +91,11 @@ struct Slot {
 	UInt32 value;
 };
 // bhkRigidBody's vtable: SetObj, GetWorld, AddToWorld, RemoveFromWorld,
-// CreateHavok, CreateHavokData, SetTranslationAndRotation.
+// CreateHavok, CreateHavokData, the filter's refresh (0x008B0060:
+// hkWorld::updateCollisionFilterOnEntity, 0x0089B630), SetTranslationAndRotation.
 const Slot kVtableSlots[] = {{0x4C, 0x0089D730}, {0x58, 0x0089D940}, {0x5C, 0x008A48C0},
                              {0x60, 0x008B0020}, {0x70, 0x008A4260}, {0x74, 0x008A5980},
-                             {0xA0, 0x008A2FB0}};
+                             {0x80, 0x008B0060}, {0xA0, 0x008A2FB0}};
 // The keyframed motion's velocity setters.
 const Slot kMotionSlots[] = {{kMotionSetLinearVelocitySlot, 0x0089DB90},
                              {kMotionSetAngularVelocitySlot, 0x0089DBB0}};
@@ -151,7 +169,8 @@ void RotationQuaternion(const NiMatrix33& rot, float out[4]) { QuaternionFromRot
 
 // A capsule body at the pose, keyframed, in the player's group; not yet in
 // a world. False, and nothing kept, when a step fails.
-bool Create(Body& b, const CapsuleSpec& capsule, const NiMatrix33& rot, const NiPoint3& pos, int slot) {
+bool Create(Body& b, const CapsuleSpec& capsule, const NiMatrix33& rot, const NiPoint3& pos, int slot,
+            bool pushesActors) {
 	using AllocFn = void*(__cdecl*)(UInt32 size);
 	using DataCtorFn = void(__thiscall*)(void* data);
 	using ShapeCtorFn = void*(__thiscall*)(void* self, void* data);
@@ -206,7 +225,7 @@ bool Create(Body& b, const CapsuleSpec& capsule, const NiMatrix33& rot, const Ni
 		}
 		return false;
 	}
-	const UInt32 filter = HandBodyFilter(PlayerCollisionGroup(), true);
+	const UInt32 filter = HandBodyFilter(PlayerCollisionGroup(), true, pushesActors);
 	*reinterpret_cast<UInt32*>(block + kBlockFilter) = filter;
 	*reinterpret_cast<UInt32*>(block + kBlockShape) = hkShape;
 	UInt8* const cinfo = block + kBlockCinfo;
@@ -333,7 +352,93 @@ void StepPhysicsRate(float rateHz) {
 	}
 }
 
+// Layer 23's row without the character controllers (HandBodyLogic.h,
+// pushing the people): 0x008A83C0 fills the whole matrix with every bit,
+// so this is looked at every step, not once.
+void KeepQuietLayerOffPeople() {
+	const UInt32 row = Read(kLayerMatrix + kHandBodyQuietLayer * 4);
+	if ((row & (1u << kCharControllerLayer)) == 0) {
+		return;
+	}
+	using SetterFn = void(__cdecl*)(UInt32 layerA, UInt32 layerB, bool collide);
+	reinterpret_cast<SetterFn>(kLayerMatrixSetter)(kHandBodyQuietLayer, kCharControllerLayer, false);
+	static UInt32 linesLeft = 3;
+	if (linesLeft > 0) {
+		--linesLeft;
+		OBVR_LOG("Hands: layer %u no longer collides with the character controllers (layer %u)",
+		         kHandBodyQuietLayer, kCharControllerLayer);
+	}
+}
+
+// A body in the world whose filter is to change (pushing people or not):
+// written where the engine's own setters write it, then handed to the world.
+void Refilter(Body& b, bool pushesActors, int slot) {
+	if (!LooksLikeObject(b.body)) {
+		return;
+	}
+	UInt32* const filter = reinterpret_cast<UInt32*>(b.body + kBodyFilterOffset);
+	const UInt32 wanted = HandBodyFilter(FilterGroup(*filter), (*filter & kFilterNoCollision) == 0, pushesActors);
+	if (!HandBodyRefilterNeeded(*filter, wanted)) {
+		return;
+	}
+	*filter = wanted;
+	using RefreshFn = void(__thiscall*)(void* wrapper);
+	reinterpret_cast<RefreshFn>(VtableSlot(b.wrapper, kVtblRefreshFilter))(reinterpret_cast<void*>(b.wrapper));
+	static UInt32 linesLeft = 12;
+	if (linesLeft > 0) {
+		--linesLeft;
+		OBVR_LOG("Hands: %s's body %s people now (layer %u)", SlotName(slot),
+		         pushesActors ? "pushes" : "no longer pushes", FilterLayer(wanted));
+	}
+}
+
 }  // namespace
+
+UInt32 HandBodyPhysicsSteps() { return Read(kPlannerStepCount); }
+
+bool HavokWorldBoxOf(UInt32 node, NiPoint3& low, NiPoint3& high) {
+	if (!g_verified || !LooksLikeObject(node)) {
+		return false;
+	}
+	// Only bodies of the class the hands' own are: without one of ours to
+	// compare with, nothing is read.
+	UInt32 knownBody = 0;
+	for (const Body& b : g_bodies) {
+		if (LooksLikeObject(b.body)) {
+			knownBody = b.body;
+			break;
+		}
+	}
+	if (knownBody == 0) {
+		return false;
+	}
+	using CollisionOfFn = UInt32(__cdecl*)(UInt32 node);
+	const UInt32 collision = reinterpret_cast<CollisionOfFn>(kCollisionObjectOf)(node);
+	const UInt32 wrapper = LooksLikeObject(collision) ? Read(collision + kCollisionObjectBodyOffset) : 0;
+	const UInt32 body = LooksLikeObject(wrapper) ? Read(wrapper + kWrapperObjOffset) : 0;
+	if (!LooksLikeObject(body) || Read(body) != Read(knownBody)) {
+		return false;
+	}
+	const UInt32 shape = Read(body + kBodyShapeOffset);
+	const UInt32 transform = Read(body + kBodyTransformOffset);
+	if (!LooksLikeObject(shape) || !LooksLikeObject(transform) || !LooksLikeObject(Read(shape))) {
+		return false;
+	}
+	const UInt32 getAabb = VtableSlot(shape, kShapeGetAabbSlot);
+	if (!LooksLikeObject(getAabb)) {
+		return false;
+	}
+	alignas(16) float aabb[8] = {};
+	{
+		Lock lock;
+		using GetAabbFn = void(__thiscall*)(void* shape, const void* transform, float tolerance, float* out);
+		reinterpret_cast<GetAabbFn>(getAabb)(reinterpret_cast<void*>(shape), reinterpret_cast<const void*>(transform),
+		                                     0.0f, aabb);
+	}
+	low = NiPoint3{aabb[0] / kHavokPerUnit, aabb[1] / kHavokPerUnit, aabb[2] / kHavokPerUnit};
+	high = NiPoint3{aabb[4] / kHavokPerUnit, aabb[5] / kHavokPerUnit, aabb[6] / kHavokPerUnit};
+	return true;
+}
 
 void LogHandBodies() {
 	char text[320];
@@ -391,6 +496,9 @@ HandBodyReport StepHandBodies(const HandBodyFrame& frame) {
 	}
 	Lock lock;
 	StepPhysicsRate(frame.enabled ? frame.physicsRate : 0.0f);
+	if (frame.enabled) {
+		KeepQuietLayerOffPeople();
+	}
 	const UInt32 bhkWorld = frame.enabled ? PlayerBhkWorld() : 0;
 	const UInt32 playerWorld = LooksLikeObject(bhkWorld) ? Read(bhkWorld + kBhkWorldHkWorldOffset) : 0;
 	const UInt32 plannerSteps = Read(kPlannerStepCount);
@@ -433,7 +541,7 @@ HandBodyReport StepHandBodies(const HandBodyFrame& frame) {
 			if (i == weapon && !BladeCapsule(frame.bladeUnits, kBladeBodyRadiusUnits, capsule)) {
 				break;
 			}
-			if (!Create(b, capsule, frame.rot[i], frame.pos[i], i)) {
+			if (!Create(b, capsule, frame.rot[i], frame.pos[i], i, frame.pushesActors[i])) {
 				b = Body{};
 				break;
 			}
@@ -450,6 +558,7 @@ HandBodyReport StepHandBodies(const HandBodyFrame& frame) {
 			report.live[i] = BodyWorld(b) == playerWorld;
 			break;
 		case HandBodyAction::Drive:
+			Refilter(b, frame.pushesActors[i], i);
 			Drive(b, frame.rot[i], frame.pos[i], stepSeconds, i);
 			report.live[i] = true;
 			break;

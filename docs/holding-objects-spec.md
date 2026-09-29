@@ -442,6 +442,14 @@ torch.
     in xOBSE; it is checked, not trusted: every vertex must lie in the
     data's bound, else the middle is kept and the log says so once
     (`game::NearestVertexOf`, `VertexInBound`).
+  - **Fixed 2026-09-29: the near side never worked.** Measured on a placed
+    cup: the bound is at **+0x0C** (+0x1C holds a pointer), the vertices at
+    **+0x1C**, and +0x20 holds the normals (vectors of length 1). And the
+    array's end was checked at `vertices + count * 12 - 1`, never 4-aligned,
+    which `LooksLikeObjectAddress` always refuses. So no geometry was ever
+    read and the pick always aimed at the middle. Now the near side is used
+    as described above - how the ring and the grab feel from 10 cm in has
+    not been seen in the headset since.
 
 ### Seventh test (2026-09-26): confirmed, the ring from a metre, the float
 
@@ -581,6 +589,42 @@ turns with the wrist will say.
 
 Not yet: the weapon and the hands. They need bodies of their own, made at
 run time; the constructors and hkWorld::addEntity are still to be found.
+## Other mods: Put it in its Place - Enhanced Grabbing (2026-09-29, open)
+
+The tester: "wie interagieren wir mit [nexusmods.com/oblivion/mods/19847]
+was das vr grabbing angeht? wäre ja ein match made in heaven".
+
+- **What it is** (its Nexus page, read 2026-09-29): shadeMe's OBSE script
+  mod, version 0.5 "FiNAL" (2010). It overhauls the Grab key: grabbing an
+  owned object is no crime any more, and NPCs watch, judge and react
+  instead; thrown things make noise NPCs investigate; owners put thrown
+  things back; a toggled grab (tap to hold, tap to let go) with an
+  "Auto-Flinger"; slapping, snatching from actors, locking objects in
+  place, equip on activate while grabbed; it works with telekinesis. An
+  INI switches the parts.
+- **How OBVR grabs** (read in OBVR): with the vanilla grab. The grip holds
+  the game's Grab key (Z, `game::HandControls`), the engine's own grab
+  (player +0x574, the spring) holds the object, OBVR only moves where it is
+  pulled and gives the throw its speed. **Derived:** whatever the mod reads
+  of the vanilla grab - the Grab control held, the grabbed object moving -
+  OBVR produces too, so most of it should see VR grabs as grabs.
+- **Where it could clash (derived, not verified):**
+  - its toggled grab - a tap of Z starts, a second tap ends - against a
+    grip that holds Z for as long as the hand is closed; it would want to
+    be switched off in its INI;
+  - its Auto-Flinger and OBVR's throw both setting the object's speed;
+  - which object it thinks is grabbed: if it asks the crosshair
+    (`GetCrosshairRef`) when Z goes down, it gets OBVR's pick, which runs
+    from the hand while a grip closes (`SetWorldPickHandRay`) - likely the
+    same object, not checked;
+  - crime: OBVR's stow takes an owned object as activate does (a crime);
+    the mod changes only the grab's crime.
+- **Not verified at all:** the mod is not installed here and its scripts
+  have not been read (they are in its ESP; the download needs a Nexus
+  login). To settle it: install it into a test profile, read the scripts
+  (TES4Edit), then a hand-script scenario that grabs an owned object in
+  front of its owner.
+
 ## Order
 
 Built first: 1, 2 and 4 (the tester's choice). Next: tune 1 and 2 in the

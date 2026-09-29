@@ -53,6 +53,16 @@ The runner exits 1 on FAIL.
   - Nothing is written back to the save.
 - **It deletes SteamVR's full-size dumps** from `SteamVR\screenshots` after
   bringing them over small.
+- **Open bug (2026-09-29): every run leaves an `obse_loader` process
+  behind.** After about seven runs in a row the next one fails with "The
+  game ended before the script started". Ending the leftovers
+  (`Stop-Process` on the loaders started by the runs) lets it start again.
+  The cause is not looked into.
+- **Open bug (2026-09-29): more than two console lines leave OBVR in a
+  menu.** With four `console-at` or six `console` lines the console is
+  closed on the picture, but every later state line reads "menu 1" (top
+  menu unnamed), so nothing that waits for the world runs. Two lines work.
+  Not looked into; scenarios keep to two.
 
 ## The script
 
@@ -138,6 +148,8 @@ Rules worth knowing:
 | `tools/hand-scripts/vanilla-quickkeys-assign.txt` | experiment: a number key held and a click on an item sets the hotkey | ran 2026-09-27: slot 5 read "Steel Longsword" |
 | `tools/hand-scripts/stow.txt` | a dropped sword grabbed, brought to the chest and let go goes into the inventory | PASS 2026-09-27: "taken (no owner ...)", the inventory lists it. FAILS since 2026-09-27 18:44: the save stands the player elsewhere and the hand no longer reaches the sword - new positions needed |
 | `tools/hand-scripts/hand-bodies.txt` | the hands and a drawn sword as keyframed Havok bodies: made, in the player's world, driven, out in a menu, a dropped sword pushed by a hand body alone (PushWorld off), the bodies following into the exterior | PASS 2026-09-28: the sword from 252,-1585 to -162,-1581 |
+| `tools/hand-scripts/hand-measure.txt` | the hand and weapon bodies against what is drawn: finger bones and the drawn weapon node, `Measure:` lines; the push-people layer switching with a fist | PASS 2026-09-29: the finger joints 4.4-7.5 units behind the grip, the capsule to 11.5 ahead; the drawn blade 11 degrees off the capsule, its far end 14 units aside; "no longer pushes people now (layer 23)" with the fist |
+| `tools/hand-scripts/hand-shapes.txt` | small objects placed beside the player: the mesh's world box against the Havok shape's (getAabb) | PASS 2026-09-29: a cup, Havok 1.2-2.7 units beyond the mesh per side (a goblet 1.1-3.0, a tankard 1.7-5.0, the longsword 0.0-0.8, from copies of it with other items) |
 | `tools/hand-scripts/stow-owned.txt` | the same sword owned by Baurus first: taken as stolen | PASS 2026-09-27: "taken (owner 00023F2A ...)", the red hand on it in the inventory |
-| `tools/hand-scripts/take-only-by-hand.txt` | TakeOnlyByHand=1: A at the sword is kept from the game, the sword stays; stowing still takes it | PASS 2026-09-27 |
+| `tools/hand-scripts/take-only-by-hand.txt` | TakeOnlyByHand=1: A at the sword is kept from the game, the sword stays; stowing still takes it | PASS 2026-09-27. FAILS since the save change of 2026-09-27 18:44, like `stow`: checked 2026-09-29 against a build of 423b77a, it fails there the same way - new hand positions needed |
 | `tools/hand-scripts/activate-takes.txt` | the option off: the same A takes the sword | PASS 2026-09-27 |

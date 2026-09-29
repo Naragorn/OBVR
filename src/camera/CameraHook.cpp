@@ -1,5 +1,6 @@
 #include "camera/CameraHook.h"
 
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 
@@ -48,6 +49,7 @@
 #include "game/GrabPhysics.h"
 #include "game/WorldPush.h"
 #include "game/HandBodies.h"
+#include "game/HandBodyLogic.h"
 #include "game/TakeItem.h"
 #include "game/WeaponDrawSpeed.h"
 #include "game/GrabNearBody.h"
@@ -731,6 +733,130 @@ UInt32 g_holsterLinesLeft = 30;
 // The guided fit of the weapon places (vr::StepHolsterFit), asked for by the
 // settings row or a hand script, with its instruction panel.
 vr::HolsterFitState g_holsterFit;
+// Whether each hand is a fist, for its Havok body (game::HandBodyFist).
+bool g_rightBodyFist = false;
+bool g_leftBodyFist = false;
+
+// Measuring the bodies against what is drawn (the spec's open bugs,
+// 2026-09-29): the fingers against the hand capsule's front, the drawn
+// blade against the weapon capsule, and a swing's fastest tip per physics
+// step against what a thin object lets through.
+NiPoint3 g_bladeTipBefore{0.0f, 0.0f, 0.0f};
+bool g_bladeTipBeforeValid = false;
+float g_bladeTipFastest = 0.0f;
+UInt32 g_bladeSwingLinesLeft = 16;
+UInt32 g_bodyGeometryLinesLeft = 3;
+
+void LogHandGeometry(const game::HandBodyFrame& bodies, int slot, const char* fingerName) {
+	if (!bodies.valid[slot]) {
+		return;
+	}
+	const NiPoint3 axis = bodies.rot[slot] * NiPoint3{0.0f, 1.0f, 0.0f};
+	const NiAVObject* const finger = game::FindFirstPersonNode(fingerName);
+	if (finger == nullptr) {
+		OBVR_LOG("Measure: %s - no node \"%s\"", slot == static_cast<int>(game::HandBodySlot::LeftHand) ? "left hand" : "right hand",
+		         fingerName);
+		return;
+	}
+	const game::AlongAxis a = game::MeasureAlongAxis(bodies.pos[slot], axis, finger->worldTransform.pos);
+	OBVR_LOG("Measure: %s - \"%s\" (the last joint, the tip beyond it) %.1f units ahead of the grip, %.1f aside; "
+	         "the body reaches %.1f ahead (%.1f + %.1f round)",
+	         slot == static_cast<int>(game::HandBodySlot::LeftHand) ? "left hand" : "right hand", fingerName,
+	         static_cast<double>(a.ahead), static_cast<double>(a.aside),
+	         static_cast<double>(game::kHandBodyAheadUnits + game::kHandBodyRadiusUnits),
+	         static_cast<double>(game::kHandBodyAheadUnits), static_cast<double>(game::kHandBodyRadiusUnits));
+}
+
+void LogBladeGeometry(const game::HandBodyFrame& bodies) {
+	const int w = static_cast<int>(game::HandBodySlot::Weapon);
+	const NiAVObject* const node = game::FindFirstPersonNode("Weapon");
+	if (!bodies.valid[w] || node == nullptr) {
+		return;
+	}
+	const NiPoint3 axis = bodies.rot[w] * NiPoint3{0.0f, 1.0f, 0.0f};
+	const NiPoint3 attach = node->worldTransform.pos;
+	const NiPoint3 centre = node->worldBound.center;
+	const float radius = node->worldBound.radius;
+	NiPoint3 along = centre - attach;
+	const float alongLength = math::Sqrt(along.LengthSquared());
+	if (alongLength > 0.001f) {
+		along = along * (1.0f / alongLength);
+	}
+	// Derived: the far end of the bound along the line from the attach point
+	// through its centre - the drawn tip, if the bound is round the blade.
+	const NiPoint3 drawnTip = centre + along * radius;
+	const game::AlongAxis tip = game::MeasureAlongAxis(bodies.pos[w], axis, drawnTip);
+	const game::AlongAxis att = game::MeasureAlongAxis(bodies.pos[w], axis, attach);
+	const float cosAngle = axis.x * along.x + axis.y * along.y + axis.z * along.z;
+	OBVR_LOG("Measure: blade - the body %.1f units from the grip; the drawn weapon: attach %.1f ahead %.1f aside, "
+	         "bound %.1f round, its far end %.1f ahead %.1f aside, %.0f degrees off the body's axis",
+	         static_cast<double>(bodies.bladeUnits), static_cast<double>(att.ahead), static_cast<double>(att.aside),
+	         static_cast<double>(radius), static_cast<double>(tip.ahead), static_cast<double>(tip.aside),
+	         static_cast<double>(std::acos(cosAngle < -1.0f ? -1.0f : cosAngle > 1.0f ? 1.0f : cosAngle) *
+	                             math::kRadiansToDegrees));
+	// Which of the drawn weapon's own axes the blade runs along: each column
+	// of its world rotation against the line to the bound's centre and
+	// against the body's axis (cosines).
+	const NiMatrix33& r = node->worldTransform.rot;
+	for (int c = 0; c < 3; ++c) {
+		const NiPoint3 col{r.data[0][c], r.data[1][c], r.data[2][c]};
+		OBVR_LOG("Measure: blade - the weapon node's axis %c: %.2f with the line to the bound's centre, %.2f with "
+		         "the body's axis",
+		         "xyz"[c], static_cast<double>(col.x * along.x + col.y * along.y + col.z * along.z),
+		         static_cast<double>(col.x * axis.x + col.y * axis.y + col.z * axis.z));
+	}
+}
+
+void MeasureBodies(const game::HandBodyFrame& bodies, bool blade, bool marked) {
+	const int w = static_cast<int>(game::HandBodySlot::Weapon);
+	if (blade && bodies.valid[w]) {
+		const NiPoint3 tip = bodies.pos[w] + (bodies.rot[w] * NiPoint3{0.0f, 1.0f, 0.0f}) * bodies.bladeUnits;
+		if (g_bladeTipBeforeValid) {
+			const float step =
+				game::TravelPerStep(math::Sqrt((tip - g_bladeTipBefore).LengthSquared()), game::HandBodyPhysicsSteps());
+			if (step > g_bladeTipFastest) {
+				g_bladeTipFastest = step;
+			}
+			// A swing is over when the tip is nearly still again: its fastest step.
+			if (step < 1.0f && g_bladeTipFastest >= 2.0f) {
+				if (g_bladeSwingLinesLeft > 0) {
+					--g_bladeSwingLinesLeft;
+					OBVR_LOG("Measure: a swing - the blade's tip moved up to %.1f units in one physics step; a "
+					         "1-unit plate is passed at %.1f, a 4-unit cup at %.1f",
+					         static_cast<double>(g_bladeTipFastest),
+					         static_cast<double>(game::PassThroughTravelUnits(1.0f, game::kBladeBodyRadiusUnits)),
+					         static_cast<double>(game::PassThroughTravelUnits(4.0f, game::kBladeBodyRadiusUnits)));
+				}
+				g_bladeTipFastest = 0.0f;
+			}
+		}
+		g_bladeTipBefore = tip;
+		g_bladeTipBeforeValid = true;
+	} else {
+		g_bladeTipBeforeValid = false;
+		g_bladeTipFastest = 0.0f;
+	}
+	const bool anyValid = bodies.valid[0] || bodies.valid[1] || bodies.valid[2];
+	if (marked || (anyValid && g_bodyGeometryLinesLeft > 0)) {
+		if (!marked) {
+			--g_bodyGeometryLinesLeft;
+		}
+		LogHandGeometry(bodies, static_cast<int>(game::HandBodySlot::RightHand), "Bip01 R Hand");
+		LogHandGeometry(bodies, static_cast<int>(game::HandBodySlot::RightHand), "Bip01 R Finger2");
+		LogHandGeometry(bodies, static_cast<int>(game::HandBodySlot::RightHand), "Bip01 R Finger21");
+		LogHandGeometry(bodies, static_cast<int>(game::HandBodySlot::RightHand), "Bip01 R Finger22");
+		LogHandGeometry(bodies, static_cast<int>(game::HandBodySlot::LeftHand), "Bip01 L Finger22");
+		if (blade) {
+			LogBladeGeometry(bodies);
+		}
+		if (marked) {
+			NiPoint3 feet{0.0f, 0.0f, 0.0f};
+			if (game::ReadPlayerFeet(feet)) {
+				game::MeasureNearbyShapes(feet, 600.0f, 16);
+			}
+		}
+	}
+}
 bool g_holsterFitRequested = false;
 ui::CanvasOverlay g_holsterFitLayer("obvr.holsterfit", "OBVR Weapon Places", ui::kGuidePanelWidth,
                                     ui::kGuidePanelHeight);
@@ -2050,8 +2176,24 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				bodies.rot[slot] = camRot * g_hand.leftHandRotation;
 				bodies.pos[slot] = camPos + camRot * g_hand.leftHandOffsetUnits;
 			}
+			// People are pushed out of combat only, and not by a hand made a fist
+			// (game::HandBodyPushesActors; the tester, 2026-09-29).
+			const float closeCurl = config.hands.fist.closeCurl;
+			const float openLimit = vr::FistOpenLimit(config.hands.fist);
+			g_rightBodyFist = game::HandBodyFist(g_rightBodyFist, g_hand.rightCurlValid, g_hand.rightCurl, closeCurl, openLimit);
+			g_leftBodyFist = game::HandBodyFist(g_leftBodyFist, g_hand.leftCurlValid, g_hand.leftCurl, closeCurl, openLimit);
+			const bool inCombat = game::PlayerInCombat();
+			bodies.pushesActors[static_cast<int>(game::HandBodySlot::RightHand)] =
+				game::HandBodyPushesActors(true, inCombat, g_rightBodyFist);
+			bodies.pushesActors[static_cast<int>(game::HandBodySlot::LeftHand)] =
+				game::HandBodyPushesActors(true, inCombat, g_leftBodyFist);
+			bodies.pushesActors[static_cast<int>(game::HandBodySlot::Weapon)] =
+				game::HandBodyPushesActors(false, inCombat, false);
 		}
 		const game::HandBodyReport live = game::StepHandBodies(bodies);
+		if (bodies.enabled) {
+			MeasureBodies(bodies, bodyBlade, test::HandScriptMarkedThisFrame());
+		}
 		if (live.live[static_cast<int>(bodyBlade ? game::HandBodySlot::Weapon : game::HandBodySlot::RightHand)]) {
 			push.valid[static_cast<int>(game::Pusher::WeaponHand)] = false;
 		}
