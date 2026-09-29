@@ -599,6 +599,17 @@ The tester's idea (2026-09-27), in the style of Half-Life: Alyx. Not built.
   `WPNSwishMedium` 000887F7, `WPNSwishLarge` 0008976F, `WPNSwishHand`
   00088834 (Oblivion.esm; the `...X` ones point to the 360's files, which
   the PC does not have).
+  - **The swing speed in the room (2026-09-29).** "Ja ist da aber passiert
+    sogar bei dem kleinsten luftzug. das müssen wir ändern dass der und der
+    aktuall schlag nur passieren bei gewisser kraft vom schwung die man
+    einstellen kann." The knob was there (`[Hands] SwingLight`, row "Swing
+    speed", 1.6 m/s); the cause was the speed: taken from the hand's
+    position relative to the head, so a head turned quickly with the hand
+    still read a metre or two a second (0.45 m from the head at 5 rad/s is
+    2.3). Now from the controller's position in the room
+    (hand_mode_test: a head turned at 70 rad/s with the hand still starts
+    no swing). Each swing now logs its fastest ("a light swing, 2.4 m/s at
+    its fastest"), 60 lines a run, to set the row by.
   - **Swish, built.** Vanilla plays it in AttackHandling on a miss only
     (0x005FEC7D..0x005FEC95: 0x006AF880 cdecl(actor, 0.0, 0.0, no target,
     weapon type or -1, -1, -1, 0, 0), which picks Hand, or Small/Medium/

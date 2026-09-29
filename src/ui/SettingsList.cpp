@@ -698,7 +698,7 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.wristMenuWidth = v; },
 	},
 	{
-		"Hands", "Swing speed", "Metres per second that count as a swing",
+		"Hands", "Swing speed", "How fast the hand must move (m/s) for a swing: only then it strikes and swishes",
 		ItemKind::Number, 0.5f, 5.0f, 0.1f, 1, false,
 		"Hands", "SwingLight",
 		+[](const Config& c) { return c.hands.gestures.swingLight; },

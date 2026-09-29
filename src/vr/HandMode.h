@@ -486,6 +486,9 @@ struct HandModeResult {
 	bool swingActive = false;
 	bool swingHeavy = false;
 	UInt32 swingSerial = 0;
+	// The fastest the hand went in the swing that ended this frame (m/s,
+	// in the room), 0 otherwise: the log's, to set "Swing speed" by.
+	float swingPeakSpeed = 0.0f;
 	bool strikeByMotion = false;  // this frame's swing strikes by motion rather than by control
 
 	// The ready-weapon click's progress this frame.
@@ -581,7 +584,7 @@ private:
 	bool m_haveLastRight = false;
 	bool m_reachArmed = false;  // the reach back seen since the last release
 	bool m_reachSpent = false;  // a draw used the armed reach
-	NiPoint3 m_lastRightRelative{0.0f, 0.0f, 0.0f};
+	NiPoint3 m_lastRightRoom{0.0f, 0.0f, 0.0f};  // tracking space, for the swing speed
 };
 
 }  // namespace obvr::vr

@@ -398,6 +398,34 @@ void TestStrikeByMotion() {
 	r = mode.Update(frame, settings);
 	Check(r.swingActive && r.swingSerial == 2, "the next swing is number two");
 
+	// The head turned fast, the hand still in the room (2026-09-29: "passiert
+	// sogar bei dem kleinsten luftzug"): no swing. Relative to the head the
+	// hand moves some 0.4 m in 0.01 s here; in the room it stays.
+	{
+		HandMode still;
+		HandModeFrame turning = frame;
+		turning.right.position = NiPoint3{0.3f, -0.2f, -0.5f};
+		still.Update(turning, settings);
+		const float half = 0.5f * 0.7f;  // 0.7 rad in one frame: 70 rad/s
+		turning.head = Quaternion{0.0f, std::sin(half), 0.0f, std::cos(half)};
+		r = still.Update(turning, settings);
+		Check(!r.swingActive && r.swing == SwingVerdict::None,
+		      "a head turned fast with the hand still in the room: no swing");
+	}
+	// The peak of a swing that ended, for the log.
+	{
+		HandMode peak;
+		HandModeFrame f2 = frame;
+		f2.right.position = NiPoint3{0.3f, -0.2f, -0.5f};
+		peak.Update(f2, settings);
+		f2.right.position = NiPoint3{0.33f, -0.2f, -0.5f};  // 3 m/s
+		peak.Update(f2, settings);
+		f2.right.position = NiPoint3{0.331f, -0.2f, -0.5f};  // slowed: ends
+		r = peak.Update(f2, settings);
+		Check(r.swing == SwingVerdict::Light && r.swingPeakSpeed > 2.9f && r.swingPeakSpeed < 3.1f,
+		      "a swing that ends reports its fastest, 3 m/s");
+	}
+
 	// The same swing with the attack control: no melee weapon in hand (a
 	// bow, say) or strikes by motion switched off. Drawn: a sheathed weapon
 	// is readied by the attack control, so there a swing presses nothing.

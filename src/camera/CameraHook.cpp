@@ -427,7 +427,7 @@ UInt32 g_quadLaserLinesLeft = 0;
 bool g_quadLaserMenuWasUp = false;
 bool g_handBlocking = false;
 bool g_handReachBack = false;
-UInt32 g_handSwingLinesLeft = 20;
+UInt32 g_handSwingLinesLeft = 60;
 UInt32 g_handPokeLinesLeft = 20;
 UInt32 g_handPovLinesLeft = 20;
 
@@ -2099,7 +2099,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 	if (g_hand.swing != vr::SwingVerdict::None && g_handSwingLinesLeft > 0) {
 		--g_handSwingLinesLeft;
-		OBVR_LOG("Hands: a %s swing", g_hand.swing == vr::SwingVerdict::Heavy ? "heavy" : "light");
+		OBVR_LOG("Hands: a %s swing, %.1f m/s at its fastest (Swing speed %.1f, heavy from %.1f)",
+		         g_hand.swing == vr::SwingVerdict::Heavy ? "heavy" : "light", static_cast<double>(g_hand.swingPeakSpeed),
+		         static_cast<double>(config.hands.gestures.swingLight), static_cast<double>(config.hands.gestures.swingHeavy));
 	}
 
 	// Each swing that may strike swishes once, as it starts (game::SwishDue).

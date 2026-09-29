@@ -256,9 +256,17 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	                   FistAllowsStrike(f.equipped == EquippedKind::Nothing, r.fist);
 	if (f.right.valid && !f.menuMode) {
 		if (m_haveLastRight) {
-			const float speed = HandSpeed(m_lastRightRelative, rightRelative, f.dtSeconds);
+			// In the room, not relative to the head: a head turned quickly moved
+			// the hand's head-relative position by a metre or two a second while
+			// the hand stood still, and started swings (the tester, 2026-09-29:
+			// "passiert sogar bei dem kleinsten luftzug").
+			const float speed = HandSpeed(m_lastRightRoom, f.right.position, f.dtSeconds);
 			const bool wasSwinging = m_swing.swinging;
+			const float peakBefore = m_swing.peakSpeed;
 			r.swing = StepSwing(m_swing, speed, s.gestures);
+			if (r.swing != SwingVerdict::None) {
+				r.swingPeakSpeed = peakBefore;  // the swing that just ended, for the log
+			}
 			if (m_swing.swinging && !wasSwinging) {
 				++m_swingSerial;
 			}
@@ -273,7 +281,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 				}
 			}
 		}
-		m_lastRightRelative = rightRelative;
+		m_lastRightRoom = f.right.position;
 		m_haveLastRight = true;
 	} else {
 		m_haveLastRight = false;
