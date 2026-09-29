@@ -493,6 +493,8 @@ struct HandModeResult {
 	// The fastest the hand went in the swing that ended this frame (m/s,
 	// in the room), 0 otherwise: the log's, to set "Swing speed" by.
 	float swingPeakSpeed = 0.0f;
+	// And how far it travelled (m): a power attack from PowerSwingMetres.
+	float swingMetres = 0.0f;
 	bool strikeByMotion = false;  // this frame's swing strikes by motion rather than by control
 
 	// The ready-weapon click's progress this frame.

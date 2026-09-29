@@ -619,7 +619,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.gestures.reachBackMinUp =
 			ReadFloat("Hands", "ReachBackMinUp", h.gestures.reachBackMinUp, path);
 		h.gestures.swingLight = ReadFloat("Hands", "SwingLight", h.gestures.swingLight, path);
-		h.gestures.swingHeavy = ReadFloat("Hands", "SwingHeavy", h.gestures.swingHeavy, path);
+		h.gestures.powerSwingMetres = ReadFloat("Hands", "PowerSwingMetres", h.gestures.powerSwingMetres, path);
 		h.gestures.heavyHoldSeconds =
 			ReadFloat("Hands", "HeavyHoldSeconds", h.gestures.heavyHoldSeconds, path);
 		h.gestures.bowNeedsReachBack =
@@ -699,6 +699,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.shove.speed = ReadFloat("Hands", "ShoveSpeed", h.shove.speed, path);
 		h.shove.hardSpeed = ReadFloat("Hands", "ShoveHardSpeed", h.shove.hardSpeed, path);
 		h.shove.hardForce = ReadFloat("Hands", "ShoveHardForce", h.shove.hardForce, path);
+		h.shove.distance = ReadFloat("Hands", "ShoveDistance", h.shove.distance, path);
 		h.levitateObjects = ReadBool("Hands", "LevitateObjects", h.levitateObjects, path);
 		h.attachSmallObjects =
 			ReadBool("Hands", "AttachSmallObjects", h.attachSmallObjects, path);

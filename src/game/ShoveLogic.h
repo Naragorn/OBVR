@@ -28,7 +28,11 @@ struct ShoveSettings {
 	float hardSpeed = 4.0f;  // m/s: a hard one, knocked down
 	// The hard shove's force, as the engine's knockback takes it
 	// (PushActorAway's: fKnockbackDamageBase 50 is a typical value).
-	float hardForce = 50.0f;
+	float hardForce = 3.0f;  // the tester, 2026-09-29: 50 threw them far too hard
+	// The light shove's push: this far (game units) back, over this long - the
+	// hit's own knockback through the character proxy (0x008907A0).
+	float distance = 30.0f;
+	float pushSeconds = 0.3f;
 	float cooldownSeconds = 1.0f;
 	float fatigueLight = 15.0f;
 	float fatigueHard = 40.0f;  // PLANCK's shove costs 40 stamina
@@ -74,6 +78,19 @@ inline float SpeedTowards(const NiPoint3& velocity, const NiPoint3& hand, const 
 inline bool HandAtActor(const NiPoint3& hand, const NiPoint3& centre, float radius, float factor, float padUnits) {
 	const float reach = radius * factor + padUnits;
 	return (hand - centre).LengthSquared() <= reach * reach;
+}
+
+// The light shove's push: `distance` units along the ground, away from the
+// hand (from `from` towards the actor's centre). Nothing when the two stand
+// in one place.
+inline NiPoint3 ShovePush(const NiPoint3& from, const NiPoint3& centre, float distance) {
+	const float dx = centre.x - from.x;
+	const float dy = centre.y - from.y;
+	const float length = math::Sqrt(dx * dx + dy * dy);
+	if (!(length > 0.0001f) || !(distance > 0.0f)) {
+		return NiPoint3{0.0f, 0.0f, 0.0f};
+	}
+	return NiPoint3{dx / length * distance, dy / length * distance, 0.0f};
 }
 
 // One actor shoved not again until the cooldown has run out.

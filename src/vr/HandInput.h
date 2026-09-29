@@ -124,10 +124,14 @@ struct GestureThresholds {
 	// Reach back: the right hand behind the head plane and up by the shoulder.
 	float reachBackMaxForward = -0.05f;
 	float reachBackMinUp = -0.30f;
-	// Swing: hand speed in metres per second that counts as a swing, and the
-	// speed above which it counts as a heavy one.
+	// Swing: hand speed in metres per second that counts as a swing, and how
+	// far the hand has to travel in it, in metres, for a power attack - the
+	// same speed, a longer swing (the tester, 2026-09-29: "um einen
+	// powerattack zu machen muss dieser nicht viel stärker sein. stattdessen
+	// muss er die selbe schwung stärke erreichen UND mehr schwung distanz
+	// hinter sich zurücklegen"). It was a higher peak speed (SwingHeavy).
 	float swingLight = 1.6f;
-	float swingHeavy = 3.2f;
+	float powerSwingMetres = 0.7f;
 	// How long the attack control is held for a heavy swing, in seconds -
 	// the engine's power attack wants the control held, a tap is a light one.
 	float heavyHoldSeconds = 0.6f;
@@ -178,22 +182,29 @@ inline float HandSpeed(const NiPoint3& previous, const NiPoint3& current, float 
 }
 
 // The swing detector: idle until the hand exceeds the light speed, then one
-// attack per swing - heavy if the peak speed of the swing crossed the heavy
-// threshold before the hand slowed down again. The decision is taken when
-// the hand slows, so a swing that starts light and ends fast is heavy; a
-// swing is over when the speed falls under half the light threshold.
+// attack per swing - heavy once the hand has travelled powerSwingMetres in
+// it. The distance counts from the frame the swing starts; a swing is over
+// when the speed falls under half the light threshold.
 enum class SwingVerdict { None, Light, Heavy };
 
 struct SwingDetector {
 	bool swinging = false;
 	float peakSpeed = 0.0f;
+	float metres = 0.0f;  // travelled in this swing so far
 };
 
-inline SwingVerdict StepSwing(SwingDetector& d, float speed, const GestureThresholds& t) {
+// Whether the swing so far is a power attack.
+inline bool SwingIsPower(const SwingDetector& d, const GestureThresholds& t) {
+	return d.metres >= t.powerSwingMetres;
+}
+
+inline SwingVerdict StepSwing(SwingDetector& d, float speed, float dtSeconds, const GestureThresholds& t) {
+	const float travelled = dtSeconds > 0.0f && speed == speed ? speed * dtSeconds : 0.0f;
 	if (!d.swinging) {
 		if (speed >= t.swingLight) {
 			d.swinging = true;
 			d.peakSpeed = speed;
+			d.metres = travelled;
 		}
 		return SwingVerdict::None;
 	}
@@ -202,11 +213,12 @@ inline SwingVerdict StepSwing(SwingDetector& d, float speed, const GestureThresh
 	}
 	if (speed < 0.5f * t.swingLight) {
 		d.swinging = false;
-		const SwingVerdict verdict =
-			d.peakSpeed >= t.swingHeavy ? SwingVerdict::Heavy : SwingVerdict::Light;
+		const SwingVerdict verdict = SwingIsPower(d, t) ? SwingVerdict::Heavy : SwingVerdict::Light;
 		d.peakSpeed = 0.0f;
+		d.metres = 0.0f;
 		return verdict;
 	}
+	d.metres += travelled;
 	return SwingVerdict::None;
 }
 

@@ -9,7 +9,10 @@ namespace obvr::game {
 // The shove's engine side (game/ShoveLogic.h for the decisions). Read in
 // Oblivion.exe 1.2.0.416, 2026-09-29:
 // - light: the stagger, 0x005F4FD0 thiscall(actor) - the one a heavy hit
-//   starts; it guards itself (no animation data or process: nothing);
+//   starts; it guards itself (no animation data or process: nothing) - and
+//   the hit's knockback through the character proxy, 0x008907A0, which
+//   moves the actor: the stagger alone was not seen in the headset
+//   (2026-09-29, logged "staggered" three times, the tester saw nothing);
 // - hard: the knockback PushActorAway's handler (0x0050EAB0) ends in -
 //   the actor's process ([actor+0x58]) vtable +0x2F0, 0x00654420
 //   thiscall(process, actor, float fromX, fromY, fromZ, float force), ret
@@ -29,6 +32,7 @@ bool VerifyShoveAddresses();
 // Shoves `actor` (from LivingActorAt): the stagger or the knockback away
 // from `fromWorld`, the fatigue, the disposition. False when refused (not
 // verified, no process, already down).
-bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const ShoveSettings& settings);
+bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const NiPoint3& centre,
+                const ShoveSettings& settings);
 
 }  // namespace obvr::game

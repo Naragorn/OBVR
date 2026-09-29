@@ -726,11 +726,11 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.gestures.swingLight = v; },
 	},
 	{
-		"Hands", "Heavy swing speed", "Metres per second that make a swing a power attack",
-		ItemKind::Number, 1.0f, 8.0f, 0.1f, 1, false,
-		"Hands", "SwingHeavy",
-		+[](const Config& c) { return c.hands.gestures.swingHeavy; },
-		+[](Config& c, float v) { c.hands.gestures.swingHeavy = v; },
+		"Hands", "Power swing length", "How far (m) a swing must travel to be a power attack - the same speed, a longer swing",
+		ItemKind::Number, 0.2f, 2.0f, 0.05f, 2, false,
+		"Hands", "PowerSwingMetres",
+		+[](const Config& c) { return c.hands.gestures.powerSwingMetres; },
+		+[](Config& c, float v) { c.hands.gestures.powerSwingMetres = v; },
 	},
 	{
 		"Hands", "Strikes by motion", "The swung blade hits what it passes through, no animation",

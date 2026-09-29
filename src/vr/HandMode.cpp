@@ -263,9 +263,11 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 			const float speed = HandSpeed(m_lastRightRoom, f.right.position, f.dtSeconds);
 			const bool wasSwinging = m_swing.swinging;
 			const float peakBefore = m_swing.peakSpeed;
-			r.swing = StepSwing(m_swing, speed, s.gestures);
+			const float metresBefore = m_swing.metres;
+			r.swing = StepSwing(m_swing, speed, f.dtSeconds, s.gestures);
 			if (r.swing != SwingVerdict::None) {
 				r.swingPeakSpeed = peakBefore;  // the swing that just ended, for the log
+				r.swingMetres = metresBefore;
 			}
 			if (m_swing.swinging && !wasSwinging) {
 				++m_swingSerial;
@@ -288,7 +290,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		m_swing = SwingDetector{};
 	}
 	r.swingActive = m_swing.swinging;
-	r.swingHeavy = m_swing.swinging && m_swing.peakSpeed >= s.gestures.swingHeavy;
+	r.swingHeavy = m_swing.swinging && SwingIsPower(m_swing, s.gestures);
 	r.swingSerial = m_swingSerial;
 	const bool swingHeld = StepHeld(m_heavyHold, f.dtSeconds);
 

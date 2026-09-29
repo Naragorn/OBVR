@@ -610,6 +610,16 @@ The tester's idea (2026-09-27), in the style of Half-Life: Alyx. Not built.
     (hand_mode_test: a head turned at 70 rad/s with the hand still starts
     no swing). Each swing now logs its fastest ("a light swing, 2.4 m/s at
     its fastest"), 60 lines a run, to set the row by.
+  - **The power attack by the swing's length (2026-09-29).** "ich finde
+    aber um einen powerattack zu machen muss dieser nicht viel stärker sein.
+    stattdessen muss er die selbe schwung stärke erreichen UND mehr schwung
+    distanz hinter sich zurücklegen." A swing is a power attack once the
+    hand has travelled `PowerSwingMetres` (0.7 m) in it, at the swing speed;
+    the peak speed (`SwingHeavy`) no longer decides (`SwingIsPower`,
+    hand_mode_test: 0.8 m at 2 m/s is one, 0.4 m at 10 m/s is not). Row
+    "Power swing length". The log gives each swing's length. Open: the
+    swing's direction as the power attack's direction (next-up.md 2) and
+    the grunt - under research.
   - **Swish, built.** Vanilla plays it in AttackHandling on a miss only
     (0x005FEC7D..0x005FEC95: 0x006AF880 cdecl(actor, 0.0, 0.0, no target,
     weapon type or -1, -1, -1, 0, 0), which picks Hand, or Small/Medium/

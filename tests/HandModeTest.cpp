@@ -46,16 +46,27 @@ void TestSpeedAndSwing() {
 	Check(HandSpeed(NiPoint3{0, 0, 0}, NiPoint3{1, 0, 0}, 0.0f) == 0.0f, "no time is no speed");
 
 	SwingDetector d;
-	Check(StepSwing(d, 0.5f, t) == SwingVerdict::None, "a slow hand is idle");
-	Check(StepSwing(d, 2.0f, t) == SwingVerdict::None, "a fast hand starts a swing, no verdict yet");
+	const float dt = 0.1f;
+	Check(StepSwing(d, 0.5f, dt, t) == SwingVerdict::None, "a slow hand is idle");
+	Check(StepSwing(d, 2.0f, dt, t) == SwingVerdict::None, "a fast hand starts a swing, no verdict yet");
 	Check(d.swinging, "and is swinging");
-	Check(StepSwing(d, 2.5f, t) == SwingVerdict::None, "still swinging");
-	Check(StepSwing(d, 0.3f, t) == SwingVerdict::Light, "slowing down ends it as a light swing");
-	Check(!d.swinging, "and the detector is idle again");
+	Check(StepSwing(d, 2.5f, dt, t) == SwingVerdict::None, "still swinging");
+	Check(StepSwing(d, 0.3f, dt, t) == SwingVerdict::Light, "slowing down after 0.45 m ends it as a light swing");
+	Check(!d.swinging && d.metres == 0.0f, "and the detector is idle again");
 
-	Check(StepSwing(d, 2.0f, t) == SwingVerdict::None, "a second swing starts");
-	Check(StepSwing(d, 4.0f, t) == SwingVerdict::None, "peaks above the heavy speed");
-	Check(StepSwing(d, 0.2f, t) == SwingVerdict::Heavy, "and ends heavy");
+	// A power attack: the same speed, a longer swing (2026-09-29).
+	Check(StepSwing(d, 2.0f, dt, t) == SwingVerdict::None, "a second swing starts at the same speed");
+	Check(StepSwing(d, 2.0f, dt, t) == SwingVerdict::None && !SwingIsPower(d, t), "0.4 m: not yet a power attack");
+	Check(StepSwing(d, 2.0f, dt, t) == SwingVerdict::None && !SwingIsPower(d, t), "0.6 m: not yet");
+	Check(StepSwing(d, 2.0f, dt, t) == SwingVerdict::None && SwingIsPower(d, t), "0.8 m: a power attack while it runs");
+	Check(StepSwing(d, 0.2f, dt, t) == SwingVerdict::Heavy, "and ends as one");
+
+	// Fast but short: a flick of the wrist is no power attack.
+	Check(StepSwing(d, 10.0f, 0.02f, t) == SwingVerdict::None, "a flick at 10 m/s starts a swing");
+	Check(StepSwing(d, 10.0f, 0.02f, t) == SwingVerdict::None, "0.4 m in 0.04 s");
+	Check(StepSwing(d, 0.2f, 0.02f, t) == SwingVerdict::Light, "however fast, 0.4 m is a light swing");
+	volatile float zero = 0.0f;
+	Check(StepSwing(d, zero / zero, dt, t) == SwingVerdict::None && d.metres == 0.0f, "a speed that is not a number: nothing");
 
 	HeldControl h;
 	Check(!StepHeld(h, 0.016f), "nothing held reports nothing");
@@ -361,6 +372,9 @@ void TestGamepadPlanner() {
 void TestStrikeByMotion() {
 	std::printf("The swing for the strikes by motion\n");
 	HandSettings settings;
+	// A power attack from 3.5 cm travelled: the frames below move the hand a
+	// few centimetres at a time.
+	settings.gestures.powerSwingMetres = 0.035f;
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
@@ -387,7 +401,7 @@ void TestStrikeByMotion() {
 	frame.right.position = NiPoint3{0.37f, -0.2f, -0.5f};  // four metres a second
 	r = mode.Update(frame, settings);
 	Check(r.swingActive && r.swingHeavy && r.swingSerial == 1,
-	      "past the heavy speed the same swing is heavy");
+	      "past the power swing length the same swing is heavy");
 	frame.right.position = NiPoint3{0.371f, -0.2f, -0.5f};  // slowed down
 	r = mode.Update(frame, settings);
 	Check(!r.swingActive && r.swing == SwingVerdict::Heavy && !r.controls.attack,

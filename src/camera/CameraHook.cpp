@@ -782,7 +782,7 @@ void StepShoves(const Config& config, float dt) {
 		if (across > 0.001f) {
 			from = at - NiPoint3{velocity.x / across, velocity.y / across, 0.0f} * 30.0f;
 		}
-		if (game::ShoveActor(actor, kind, from, settings)) {
+		if (game::ShoveActor(actor, kind, from, centre, settings)) {
 			game::StartShoveCooldown(g_shoveCooldown, actor, settings.cooldownSeconds);
 			OBVR_LOG("Shove: the %s hand at %.1f m/s towards %08X - %s", right ? "right" : "left",
 			         static_cast<double>(hand.towardsSpeed), reinterpret_cast<UInt32>(actor),
@@ -2152,9 +2152,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 	if (g_hand.swing != vr::SwingVerdict::None && g_handSwingLinesLeft > 0) {
 		--g_handSwingLinesLeft;
-		OBVR_LOG("Hands: a %s swing, %.1f m/s at its fastest (Swing speed %.1f, heavy from %.1f)",
-		         g_hand.swing == vr::SwingVerdict::Heavy ? "heavy" : "light", static_cast<double>(g_hand.swingPeakSpeed),
-		         static_cast<double>(config.hands.gestures.swingLight), static_cast<double>(config.hands.gestures.swingHeavy));
+		OBVR_LOG("Hands: a %s swing, %.1f m/s at its fastest, %.2f m long (Swing speed %.1f, a power attack from "
+		         "%.2f m)",
+		         g_hand.swing == vr::SwingVerdict::Heavy ? "power" : "light", static_cast<double>(g_hand.swingPeakSpeed),
+		         static_cast<double>(g_hand.swingMetres), static_cast<double>(config.hands.gestures.swingLight),
+		         static_cast<double>(config.hands.gestures.powerSwingMetres));
 	}
 
 	// Each swing that may strike swishes once, as it starts (game::SwishDue).

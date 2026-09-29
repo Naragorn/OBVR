@@ -72,6 +72,16 @@ void TestReach() {
 	Check(!HandAtActor(NiPoint3{0.0f, 40.0f, 60.0f}, centre, 60.0f, 0.5f, 4.0f), "further: not at it");
 }
 
+void TestPush() {
+	std::printf("The light shove's push\n");
+	const NiPoint3 p = ShovePush(NiPoint3{0.0f, 0.0f, 100.0f}, NiPoint3{0.0f, 40.0f, 60.0f}, 30.0f);
+	Check(Near(p.x, 0.0f) && Near(p.y, 30.0f) && Near(p.z, 0.0f), "30 units away from the hand, along the ground");
+	const NiPoint3 none = ShovePush(NiPoint3{5.0f, 5.0f, 0.0f}, NiPoint3{5.0f, 5.0f, 90.0f}, 30.0f);
+	Check(none.LengthSquared() == 0.0f, "straight above each other: no push");
+	Check(ShovePush(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 10.0f, 0.0f}, 0.0f).LengthSquared() == 0.0f,
+	      "a distance of 0: no push");
+}
+
 void TestCooldown() {
 	std::printf("The cooldown\n");
 	ShoveCooldown c;
@@ -94,6 +104,7 @@ int main() {
 	TestSpeedTowards();
 	TestReach();
 	TestCooldown();
+	TestPush();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;
