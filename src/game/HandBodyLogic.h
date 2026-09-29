@@ -67,10 +67,16 @@ inline bool HandBodyFist(bool wasFist, bool curlValid, const float* curl, float 
 	return wasFist ? !(highest <= openLimit) : lowest >= closeCurl;
 }
 
-// Whether a body pushes people: never in combat; a hand not while it is a
-// fist; the weapon out of combat always.
-inline bool HandBodyPushesActors(bool isHand, bool inCombat, bool fist) {
-	if (inCombat) {
+// Whether a body pushes people: only with [Hands] PushPeople on (the tester,
+// 2026-09-29, with it off by the rules below: "dennoch kann ich mit den
+// händen viel zu einfach npcs wegschieben. wir brauchen hier eine bessere
+// lösung" - a keyframed body has no mass limit, so it moves anyone it
+// touches; now the hands pass through the living by default, as in Skyrim
+// VR). With it on: never in combat; a hand not while it is a fist; the
+// weapon out of combat always. Bodies (ragdolls, the biped layer) are no
+// character controllers and are pushed either way.
+inline bool HandBodyPushesActors(bool pushPeople, bool isHand, bool inCombat, bool fist) {
+	if (!pushPeople || inCombat) {
 		return false;
 	}
 	return !(isHand && fist);

@@ -120,13 +120,15 @@ void TestSpans() {
 
 void TestPushingPeople() {
 	std::printf("Pushing people\n");
-	Check(HandBodyPushesActors(true, false, false), "a hand, out of combat, open: pushes");
-	Check(!HandBodyPushesActors(true, false, true), "a hand made a fist: does not");
-	Check(!HandBodyPushesActors(true, true, false) && !HandBodyPushesActors(true, true, true),
+	Check(HandBodyPushesActors(true, true, false, false), "a hand, out of combat, open: pushes");
+	Check(!HandBodyPushesActors(true, true, false, true), "a hand made a fist: does not");
+	Check(!HandBodyPushesActors(true, true, true, false) && !HandBodyPushesActors(true, true, true, true),
 	      "a hand in combat: does not, open or fist");
-	Check(HandBodyPushesActors(false, false, false) && HandBodyPushesActors(false, false, true),
+	Check(HandBodyPushesActors(true, false, false, false) && HandBodyPushesActors(true, false, false, true),
 	      "the weapon out of combat: pushes (a fist round a handle is no fist)");
-	Check(!HandBodyPushesActors(false, true, false), "the weapon in combat: does not");
+	Check(!HandBodyPushesActors(true, false, true, false), "the weapon in combat: does not");
+	Check(!HandBodyPushesActors(false, true, false, false) && !HandBodyPushesActors(false, false, false, false),
+	      "PushPeople off (the default): no hand and no weapon pushes people, in combat or out");
 
 	const float open[5] = {0.9f, 0.1f, 0.1f, 0.1f, 0.1f};
 	const float fist[5] = {0.0f, 0.95f, 0.92f, 0.91f, 0.93f};

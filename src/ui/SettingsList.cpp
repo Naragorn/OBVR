@@ -586,6 +586,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.bodyRadiusScale = v; },
 	},
 	{
+		"Hands", "Push people", "Hands and weapon push the living; off, they pass through them (never in combat or as a fist)",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "PushPeople",
+		+[](const Config& c) { return c.hands.pushPeople ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.pushPeople = v != 0.0f; },
+	},
+	{
 		"Hands", "Reach tooltip", "The tooltip icon moves onto what a closed grip would pick up",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "ReachTooltip",

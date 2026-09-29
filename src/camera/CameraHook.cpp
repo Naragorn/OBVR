@@ -2222,11 +2222,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			g_leftBodyFist = game::HandBodyFist(g_leftBodyFist, g_hand.leftCurlValid, g_hand.leftCurl, closeCurl, openLimit);
 			const bool inCombat = game::PlayerInCombat();
 			bodies.pushesActors[static_cast<int>(game::HandBodySlot::RightHand)] =
-				game::HandBodyPushesActors(true, inCombat, g_rightBodyFist);
+				game::HandBodyPushesActors(config.hands.pushPeople, true, inCombat, g_rightBodyFist);
 			bodies.pushesActors[static_cast<int>(game::HandBodySlot::LeftHand)] =
-				game::HandBodyPushesActors(true, inCombat, g_leftBodyFist);
+				game::HandBodyPushesActors(config.hands.pushPeople, true, inCombat, g_leftBodyFist);
 			bodies.pushesActors[static_cast<int>(game::HandBodySlot::Weapon)] =
-				game::HandBodyPushesActors(false, inCombat, false);
+				game::HandBodyPushesActors(config.hands.pushPeople, false, inCombat, false);
 		}
 		const game::HandBodyReport live = game::StepHandBodies(bodies);
 		if (frame.inWorld && !menuIsUp) {

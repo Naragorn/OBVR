@@ -276,6 +276,16 @@ can now be pushed away. Three open bugs:
     was added after the tester started playing), and whether a smaller
     body stops the pushing. How actors push each other in vanilla is not
     read.
+  - **Headset (the tester, 2026-09-29): "body radius geht nun gut. der
+    wert den ich in der ini habe sollten wir als default sezten"** - 0.5,
+    now the default. Harness: "the capsule now 10.1, slot 0" at every mark,
+    after a move to the exterior too. **"dennoch kann ich mit den händen
+    viel zu einfach npcs wegschieben"**: a keyframed body has no mass
+    limit, it moves any controller it meets. **Built: `[Hands]
+    PushPeople`, default off** (settings row "Push people"): off, every
+    hand and weapon body is on layer 23 and passes through the living
+    (harness: filter 00090017 on every body); on, the rules above.
+    Ragdolls (the dead, biped layer 8) are pushed either way.
 
 ## How HIGGS does it (Skyrim VR, source read)
 

@@ -694,6 +694,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.bodyCollision = ReadBool("Hands", "BodyCollision", h.bodyCollision, path);
 		h.physicsRate = ReadFloat("Hands", "PhysicsRate", h.physicsRate, path);
 		h.bodyRadiusScale = ReadFloat("Hands", "BodyRadiusScale", h.bodyRadiusScale, path);
+		h.pushPeople = ReadBool("Hands", "PushPeople", h.pushPeople, path);
 		h.levitateObjects = ReadBool("Hands", "LevitateObjects", h.levitateObjects, path);
 		h.attachSmallObjects =
 			ReadBool("Hands", "AttachSmallObjects", h.attachSmallObjects, path);
