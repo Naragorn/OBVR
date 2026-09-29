@@ -304,6 +304,12 @@ Every change below is switched by the mode.
     walk-forward; the flags themselves stay as the controls set them
     (game/TeleportNoise.h, teleport_noise_test). Whether an NPC then hears
     it is still not tested: the harness cell has no one to hear.
+  - **Headset (Nadi, 2026-09-29): no extra step any more.** Next wish:
+    "fügen wir nun einen sound hinzu. whl den von der rolle". Oblivion.esm
+    has `FSTDodge` (000CBA79, fx\fst\dodge\fst_dodge.wav) and
+    `FSTDodgeBackward` (000CBA7A); other candidates are the landing sounds
+    per ground (`FootSound*Land`, 00000219-0000021E). OBVR plays no sound of
+    its own yet: the engine's play-sound call still has to be found.
 - **An in-game test** is feasible like the water test: a `[Debug]` switch
   that feeds a scripted right controller into the hand mode and logs `VRTEST`
   lines for position, fatigue and refusals. Not built.

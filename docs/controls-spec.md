@@ -107,9 +107,12 @@ a menu button closes. The laser clicks rows.
   that picked things up would compete with them.
 - **Yield needs no button.** Vanilla's yield is block and activate together,
   facing the attacker (UESP Oblivion:Controls): the raised left hand and the
-  right A. Not yet tried in the headset.
+  right A. Works in the headset (Nadi, 2026-09-29), also with the right
+  hand alone blocking and A.
 - **The dodge roll needs no button.** Block and jump (from Acrobatics
-  Journeyman): the raised hand and a flick up. Not yet tried.
+  Journeyman): the raised hand and a flick up. UESP Oblivion:Acrobatics:
+  "while holding block, you can jump in any direction", so a direction on
+  the left stick belongs to it. Not yet tried.
 - **Quick save and load need no button**: they are in the Escape menu.
 
 ## 3. Vanilla's controls and where they are
@@ -124,7 +127,7 @@ From UESP, Oblivion:Controls.
 | Activate, grab | right A, grips | built |
 | Journal / menus, pause | left B, right B | built |
 | Drop (Shift + click) | left A in the inventory | built |
-| Yield, dodge | gesture + button, see section 2 | untested |
+| Yield, dodge | gesture + button, see section 2 | yield works (2026-09-29), dodge untested |
 | Hotkeys 1-8 | right trackpad held: the quick menu; in the inventory or magic menu the same ring sets them | built (4.4, 4.5) |
 | Take an item | activate (right A), or held and let go at the body | built (4.6) |
 | Wait (T) | right stick click (with the weapons drawn by reaching) | built 2026-09-27 |

@@ -137,6 +137,35 @@ is not caused by the bodies; the scenario needs new hand positions.
   between the eyes and it, so it does not settle the question;
 - the feel in the headset.
 
+**Headset test (Nadi, 2026-09-29):** "wirkt alles fein ... ansonsten sehr
+überzeugend". Plates, cups and a swept sword push as they should, and NPCs
+can now be pushed away. Three open bugs:
+
+- **Open bug: some objects react before the hand reaches them.** "manche
+  objekte interagieren teilw zu früh. weiß nicht ob das an den objekten
+  liegt oder an uns." Not measured. Candidates, none checked:
+  - ours: the hand capsule reaches 9 + 2.5 = 11.5 units (about 16 cm)
+    ahead of the grip (`kHandBodyAheadUnits`, `kHandBodyRadiusUnits`),
+    which may be longer than the visible fingers;
+  - the object's: its Havok shape can be larger than its mesh (a box
+    around a round cup), and every Havok shape carries a convex radius.
+  To settle it: log the gap between the hand body and the first thing it
+  touches, and compare the capsule with the drawn hand.
+- **Open bug: the sword's tip sometimes passes through.** "wenn ich ein
+  schwert habe kollidiert die spitze vom schwert teilweise nicht." Not
+  measured. Candidates, none checked: the tip moves fastest in a swing,
+  and a 1.5-unit-thin keyframed capsule can step past small clutter
+  between two physics steps (no continuous collision); or the blade length
+  taken from the push segment (CameraHook, `bodies.bladeUnits`) is shorter
+  than the drawn blade.
+- **Open bug: pushing NPCs makes hand-to-hand combat hard.** "npcs kann man
+  nun wegschieben. das macht aber h2h combat schwierig da man nicht mehr
+  nah genug ran kommt zum hauen." The fist body pushes the opponent's
+  character controller (layer 20, CHARCONTROLLER) back before the swing
+  lands. A fix has to decide what the hands should do to actors: not
+  collide with layer 20 at all, or not in combat, or not while a fist is
+  made.
+
 ## How HIGGS does it (Skyrim VR, source read)
 
 Source: github.com/adamhynek/higgs, `src/hand.cpp`.
@@ -400,6 +429,12 @@ Decision: **test first**. Only what the test shows gets fixed.
    what it pushes jitter?
 4. Push a light object against a heavy one (a spoon against a crate).
    Does it feel too weak?
+
+**Result (Nadi, 2026-09-29):** it works. **Open bug:** "manche objekte
+kollidieren bevor die objekte nah ran kommen, keine ahnung ob das einfach
+bei oblivion so ist." Not measured; probably the same question as the
+hands' early contact above (the objects' Havok shapes against their
+meshes), not yet settled.
 
 ## Design
 
