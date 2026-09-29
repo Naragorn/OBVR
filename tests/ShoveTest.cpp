@@ -72,6 +72,18 @@ void TestReach() {
 	Check(!HandAtActor(NiPoint3{0.0f, 40.0f, 60.0f}, centre, 60.0f, 0.5f, 4.0f), "further: not at it");
 }
 
+void TestBody() {
+	std::printf("The whole body, head to feet\n");
+	// A standing NPC: its bound's centre at the waist, 64 units up, radius 64.
+	const NiPoint3 centre{0.0f, 0.0f, 64.0f};
+	Check(HandAtBody(NiPoint3{0.0f, 20.0f, 120.0f}, centre, 64.0f, 0.5f, 1.0f, 4.0f), "at the head: at the body");
+	Check(HandAtBody(NiPoint3{0.0f, 20.0f, 70.0f}, centre, 64.0f, 0.5f, 1.0f, 4.0f), "at the chest: at the body");
+	Check(!HandAtActor(NiPoint3{0.0f, 20.0f, 120.0f}, centre, 64.0f, 0.5f, 4.0f),
+	      "the old ball round the waist missed the head");
+	Check(!HandAtBody(NiPoint3{0.0f, 20.0f, 140.0f}, centre, 64.0f, 0.5f, 1.0f, 4.0f), "above the head: not");
+	Check(!HandAtBody(NiPoint3{0.0f, 40.0f, 90.0f}, centre, 64.0f, 0.5f, 1.0f, 4.0f), "a step beside them: not");
+}
+
 void TestPush() {
 	std::printf("The light shove's push\n");
 	const NiPoint3 p = ShovePush(NiPoint3{0.0f, 0.0f, 100.0f}, NiPoint3{0.0f, 40.0f, 60.0f}, 30.0f);
@@ -100,7 +112,8 @@ void TestCooldown() {
 void TestCountsAsHit() {
 	std::printf("A shove counts as a hit\n");
 	ShoveSettings s;
-	Check(ShoveCountsAsHit(s, ShoveKind::Light) && ShoveCountsAsHit(s, ShoveKind::Hard), "light or hard: a hit");
+	Check(ShoveCountsAsHit(s, ShoveKind::Hard), "pushed to the ground: a hit");
+	Check(!ShoveCountsAsHit(s, ShoveKind::Light), "a light shove: no hit, only their liking");
 	Check(!ShoveCountsAsHit(s, ShoveKind::None), "no shove: nothing");
 	s.countsAsHit = false;
 	Check(!ShoveCountsAsHit(s, ShoveKind::Hard), "switched off: only the disposition");
@@ -114,6 +127,7 @@ int main() {
 	TestReach();
 	TestCooldown();
 	TestPush();
+	TestBody();
 	TestCountsAsHit();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);

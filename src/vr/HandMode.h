@@ -504,6 +504,16 @@ struct HandModeResult {
 	// head: the power attack it makes (PowerDirection).
 	PowerDirection powerDirection = PowerDirection::Standing;
 	bool strikeByMotion = false;  // this frame's swing strikes by motion rather than by control
+	// The left hand's swing, the same way - it strikes only with the fists up
+	// (hand to hand: both hands punch; the tester, 2026-09-29: "ich kann mit
+	// den linken controller nicht zuschlagen"). Its serials count from
+	// kLeftSwingSerialBase, so they are never the right hand's.
+	bool leftStrikeByMotion = false;
+	bool leftSwingActive = false;
+	bool leftSwingHeavy = false;
+	UInt32 leftSwingSerial = 0;
+	PowerDirection leftPowerDirection = PowerDirection::Standing;
+	SwingVerdict leftSwing = SwingVerdict::None;
 
 	// The ready-weapon click's progress this frame.
 	ReadyWeaponVerdict ready;
@@ -513,6 +523,9 @@ struct HandModeResult {
 	bool reachBack = false;
 	SwingVerdict swing = SwingVerdict::None;
 };
+
+// Where the left hand's swing serials start, apart from the right's.
+inline constexpr UInt32 kLeftSwingSerialBase = 0x80000000u;
 
 // The device-to-overlay transform for a quad on a wrist: the controller's
 // frame is x right, y up, -z forward along the pointing direction, so the
@@ -601,6 +614,12 @@ private:
 	NiPoint3 m_lastRightRoom{0.0f, 0.0f, 0.0f};  // tracking space, for the swing speed
 	NiPoint3 m_swingStartRoom{0.0f, 0.0f, 0.0f};  // where the running swing began
 	PowerDirection m_powerDirection = PowerDirection::Standing;
+	SwingDetector m_leftSwing;
+	UInt32 m_leftSwingSerial = kLeftSwingSerialBase;
+	bool m_haveLastLeft = false;
+	NiPoint3 m_lastLeftRoom{0.0f, 0.0f, 0.0f};
+	NiPoint3 m_leftSwingStartRoom{0.0f, 0.0f, 0.0f};
+	PowerDirection m_leftPowerDirection = PowerDirection::Standing;
 };
 
 }  // namespace obvr::vr

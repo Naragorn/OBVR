@@ -9,6 +9,7 @@
 #include "game/GameTypes.h"
 #include "game/MeleeHit.h"
 #include "game/PlayerAim.h"
+#include "game/ShoveLogic.h"
 
 namespace obvr::game {
 namespace {
@@ -180,7 +181,7 @@ bool ActorBound(void* actor, NiBound* out) {
 	return true;
 }
 
-SwingLedger g_ledger;
+SwingLedger g_ledger[2];  // per hand: the weapon hand, the other
 // The weapon type the armed line was last written for: again on each change,
 // the first run only ever said "fists" (type -1).
 SInt32 g_armedType = -1000;
@@ -230,17 +231,19 @@ void ApplyStrike(UInt8* player, void* actor, bool heavy, UInt8 group, UInt32 ser
 // Bodies met before their swing was a power attack, held to its end
 // (MeleeHit.h, SettleHeldStrike).
 struct HeldBody {
+	UInt32 hand = 0;
 	void* actor = nullptr;
 	UInt32 serial = 0;
 };
 constexpr UInt32 kMaxHeldBodies = 8;
 HeldBody g_held[kMaxHeldBodies];
 
-void HoldStrike(void* actor, UInt32 serial) {
+void HoldStrike(void* actor, UInt32 serial, UInt32 hand) {
 	for (HeldBody& h : g_held) {
 		if (h.actor == nullptr) {
 			h.actor = actor;
 			h.serial = serial;
+			h.hand = hand;
 			return;
 		}
 	}
@@ -401,6 +404,10 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 	    ReadPlayerWeaponState() != WeaponState::Drawn) {
 		return 0;
 	}
+	// The other hand strikes only as a fist.
+	if (strike.hand != 0 && weapon != nullptr) {
+		return 0;
+	}
 	float reach = 0.0f;
 	if (!ReachUnits(player, weapon, &reach)) {
 		return 0;
@@ -508,7 +515,7 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		if (!BladeStrikes(blade, bound.center, bound.radius, strike.boundFactor, strike.padUnits)) {
 			continue;
 		}
-		if (!LedgerAdmits(g_ledger, strike.swingSerial, actor)) {
+		if (!LedgerAdmits(g_ledger[strike.hand & 1u], strike.swingSerial, actor)) {
 			continue;
 		}
 		++struck;
@@ -527,16 +534,17 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		if (now) {
 			ApplyStrike(player, actor, true, strike.attackGroup, strike.swingSerial);
 		} else {
-			HoldStrike(actor, strike.swingSerial);
+			HoldStrike(actor, strike.swingSerial, strike.hand & 1u);
 		}
 	}
 	return struck;
 }
 
-void SettleHeldStrikes(UInt32 currentSerial, bool swingActive, bool swingPower, bool endedPower, UInt8 powerGroup) {
+void SettleHeldStrikes(UInt32 currentSerial, bool swingActive, bool swingPower, bool endedPower, UInt8 powerGroup,
+                       UInt32 hand) {
 	UInt8* const player = PlayerOrNull();
 	for (HeldBody& h : g_held) {
-		if (h.actor == nullptr) {
+		if (h.actor == nullptr || h.hand != (hand & 1u)) {
 			continue;
 		}
 		const HeldStrike verdict = SettleHeldStrike(h.serial, currentSerial, swingActive, swingPower, endedPower);
@@ -552,7 +560,10 @@ void SettleHeldStrikes(UInt32 currentSerial, bool swingActive, bool swingPower, 
 	}
 }
 
-void ForgetStrikes() { g_ledger = SwingLedger{}; }
+void ForgetStrikes() {
+	g_ledger[0] = SwingLedger{};
+	g_ledger[1] = SwingLedger{};
+}
 
 }  // namespace obvr::game
 
@@ -602,7 +613,8 @@ bool PlaySwingSwish() {
 
 namespace obvr::game {
 
-void* LivingActorAt(const NiPoint3& point, float factor, float padUnits, NiPoint3* centreOut) {
+void* LivingActorAt(const NiPoint3& point, float factor, float padUnits, NiPoint3* centreOut,
+                    float heightFactor) {
 	UInt8* const player = PlayerOrNull();
 	if (player == nullptr) {
 		return nullptr;
@@ -626,9 +638,15 @@ void* LivingActorAt(const NiPoint3& point, float factor, float padUnits, NiPoint
 		if (!ActorBound(actor, &bound)) {
 			continue;
 		}
+		// A ball round the bound's centre, or with a height factor an upright
+		// column (HandAtBody), nearest across the ground.
 		const float reach = bound.radius * factor + padUnits;
-		const float d = (point - bound.center).LengthSquared();
-		if (d > reach * reach || (best != nullptr && d >= bestSquared)) {
+		const NiPoint3 off = point - bound.center;
+		const bool column = heightFactor > 0.0f;
+		const float d = column ? off.x * off.x + off.y * off.y : off.LengthSquared();
+		const bool at = column ? HandAtBody(point, bound.center, bound.radius, factor, heightFactor, padUnits)
+		                       : d <= reach * reach;
+		if (!at || (best != nullptr && d >= bestSquared)) {
 			continue;
 		}
 		best = actor;

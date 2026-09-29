@@ -700,7 +700,7 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.shove.hardSpeed = v; },
 	},
 	{
-		"Hands", "Shove counts as a hit", "A shove is taken like a blow: friends forgive a few, others call the guards",
+		"Hands", "Shove down counts as a hit", "Shoving someone to the ground is taken like a blow: friends forgive a few, others call the guards",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "ShoveCountsAsHit",
 		+[](const Config& c) { return c.hands.shove.countsAsHit ? 1.0f : 0.0f; },
@@ -1039,6 +1039,13 @@ const SettingDefinition kSettings[] = {
 		"HandHud", "PalmLiftMetres",
 		+[](const Config& c) { return c.hands.handHud.palmLiftMetres; },
 		+[](Config& c, float v) { c.hands.handHud.palmLiftMetres = v; },
+	},
+	{
+		"HUD", "Look: down the palm", "How far below the controller's top the HUD lies in the palm, metres",
+		ItemKind::Number, -0.1f, 0.2f, 0.01f, 2, false,
+		"HandHud", "PalmDownMetres",
+		+[](const Config& c) { return c.hands.handHud.palmDownMetres; },
+		+[](Config& c, float v) { c.hands.handHud.palmDownMetres = v; },
 	},
 	OBVR_HUD_ELEMENT_ROWS(0, "Health bars", "Bars")
 	OBVR_HUD_ELEMENT_ROWS(1, "Spell", "Spell")

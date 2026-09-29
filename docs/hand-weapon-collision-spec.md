@@ -377,6 +377,15 @@ Proposed for OBVR, in this order; all by intent, never by a mere touch:
        - anyone else raises the alarm (vtable +0x240: an Attack crime, the
          assault count, the witnesses) or fights back.
      - `ShoveCountsAsHit` (on by default) switches it.
+     - Then narrowed (the tester: "den zu boden schubsen nur der zählt wie ein
+       hit der andere schubser nicht"): only the hard shove, knocking them
+       down, is a hit. A light one only costs their liking.
+   - **The reach covers the whole body (2026-09-29).** The tester reported:
+     "ich kann sie nur an der brust schubsen nicht am kopf".
+     - The old reach was a ball of half the bound's radius round its centre,
+       at the waist, so it never reached the head.
+     - It is now an upright column, half the radius wide and the full radius
+       up and down from the centre (`game::HandAtBody`).
      - The first idea, an OBVR count of three hard shoves, is gone.
      - Not seen in the game yet.
 2. **Taking someone by the hand.** A grip closed on an actor's hand or arm

@@ -40,7 +40,8 @@ bool PlayPowerAttackGrunt();
 // whose bound the point lies in - its radius times `factor` plus `padUnits`
 // - the nearest if several; nullptr with none. `centreOut` gets its
 // bound's centre. For the shove (game/Shove.h).
-void* LivingActorAt(const NiPoint3& point, float factor, float padUnits, NiPoint3* centreOut);
+void* LivingActorAt(const NiPoint3& point, float factor, float padUnits, NiPoint3* centreOut,
+                    float heightFactor = -1.0f);
 
 // The equipped weapon's form ID (TESForm+0x0C, xOBSE GameForms.h: typeID, flags,
 // refID), 0 with none - for the test runner's console lines.
@@ -84,6 +85,9 @@ struct MotionStrike {
 	// The attack animation group the engine reads the strike as (vr::
 	// PowerAttackGroup, kAnimGroupAttackLight); 0 leaves what is there.
 	UInt8 attackGroup = 0;
+	// The hand: 0 the weapon hand, 1 the other - which strikes only with the
+	// fists (hand to hand). Each hand keeps its own ledger and held bodies.
+	UInt32 hand = 0;
 };
 
 // Strikes every actor the blade meets this frame that this swing has not
@@ -93,7 +97,8 @@ UInt32 StrikeByMotion(const MotionStrike& strike);
 // Strikes the bodies a swing met before it was a power attack, once it is
 // one or is over (MeleeHit.h, SettleHeldStrike). Each frame, after
 // StrikeByMotion.
-void SettleHeldStrikes(UInt32 currentSerial, bool swingActive, bool swingPower, bool endedPower, UInt8 powerGroup);
+void SettleHeldStrikes(UInt32 currentSerial, bool swingActive, bool swingPower, bool endedPower, UInt8 powerGroup,
+                       UInt32 hand = 0);
 
 // Forgets the swing's ledger, for when the mode stops.
 void ForgetStrikes();

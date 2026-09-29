@@ -395,6 +395,9 @@ void TestLook() {
 	Check(StepHandFade(0.5f, true, 0.01f, 0.0f) == 1.0f && StepHandFade(0.5f, false, 0.01f, 0.0f) == 0.0f,
 	      "no fade time: at once");
 
+	const openvr::HmdMatrix34 inPalm = PalmPanelPose(left, false, head, 0.02f, 0.05f);
+	Check(Near(inPalm.m[1][3], 1.55f) && Near(inPalm.m[2][3], -0.38f),
+	      "in the palm: 5 cm down the controller, 2 cm off the palm");
 	const openvr::HmdMatrix34 panel = PalmPanelPose(left, false, head, 0.06f);
 	Check(Near(panel.m[2][3], -0.34f) && Near(panel.m[1][3], 1.6f), "6 cm off the palm towards the eyes");
 	Check(panel.m[2][2] > 0.9f && Near(panel.m[1][0], 0.0f), "facing the eyes, its x level");

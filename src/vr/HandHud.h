@@ -137,8 +137,12 @@ struct HandHudSettings {
 	float lookPalmDegrees = 55.0f;
 	// Fading in and out takes this long.
 	float lookFadeSeconds = 0.15f;
-	// Looked at, the HUD hangs this far off the palm towards the eyes.
-	float palmLiftMetres = 0.06f;
+	// Looked at, the HUD lies in the palm: this far below the controller's
+	// tracked origin (along its -y, where the hand holds the grip) and this
+	// far off the palm towards the eyes (the tester, 2026-09-29: 6 cm off and
+	// at the origin was "zu weit hoch ... dachte ... in der handfläche").
+	float palmDownMetres = 0.05f;
+	float palmLiftMetres = 0.02f;
 };
 
 // ---- Looking at a hand ------------------------------------------------------
@@ -213,12 +217,14 @@ inline float StepHandFade(float alpha, bool lookedAt, float dt, float seconds) {
 // level (the row lies across it), its face turned to the head. Absolute, in
 // tracking space.
 inline openvr::HmdMatrix34 PalmPanelPose(const HandLook& hand, bool rightHand, const openvr::HmdMatrix34& head,
-                                         float lift) {
+                                         float lift, float down = 0.0f) {
 	float nx = 0.0f, ny = 0.0f, nz = 0.0f;
 	PalmNormal(hand.pose, rightHand, nx, ny, nz);
-	const float cx = hand.pose.m[0][3] + nx * lift;
-	const float cy = hand.pose.m[1][3] + ny * lift;
-	const float cz = hand.pose.m[2][3] + nz * lift;
+	// The palm: `down` along the controller's -y from its origin, then `lift`
+	// off it along the palm's normal.
+	const float cx = hand.pose.m[0][3] - hand.pose.m[0][1] * down + nx * lift;
+	const float cy = hand.pose.m[1][3] - hand.pose.m[1][1] * down + ny * lift;
+	const float cz = hand.pose.m[2][3] - hand.pose.m[2][1] * down + nz * lift;
 	// z: from the panel to the eyes.
 	float zx = head.m[0][3] - cx, zy = head.m[1][3] - cy, zz = head.m[2][3] - cz;
 	float len = math::Sqrt(Dot3(zx, zy, zz, zx, zy, zz));
@@ -813,7 +819,7 @@ inline void PlaceHandHud(const HandHudSettings& s, const HandHudFrame& f, HandHu
 						continue;
 					}
 					q.pose = RelativeToDevice(
-						hand.pose, AlongOwnX(PalmPanelPose(hand, q.rightHand, f.head, s.palmLiftMetres), centres[i]));
+						hand.pose, AlongOwnX(PalmPanelPose(hand, q.rightHand, f.head, s.palmLiftMetres, s.palmDownMetres), centres[i]));
 					q.alpha = s.element[e].opacity * f.handAlpha[side];
 				} else {
 					q.pose = HandPanelTransform(s.panelUp, s.panelBack, s.panelTiltDegrees, centres[i]);

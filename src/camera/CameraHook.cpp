@@ -776,7 +776,9 @@ void StepShoves(const Config& config, float dt) {
 		}
 		const NiPoint3 at = camPos + camRot * (right ? g_hand.rightHandOffsetUnits : g_hand.leftHandOffsetUnits);
 		NiPoint3 centre{0.0f, 0.0f, 0.0f};
-		void* const actor = game::LivingActorAt(at, 0.5f, 4.0f, &centre);
+		// The whole body, head to feet: an upright column half the bound's radius
+		// wide (game::HandAtBody).
+		void* const actor = game::LivingActorAt(at, 0.5f, 4.0f, &centre, 1.0f);
 		if (actor == nullptr || !game::ShoveAllowed(g_shoveCooldown, actor)) {
 			continue;
 		}
@@ -2217,11 +2219,54 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		strike.padUnits = config.hands.hitPadUnits;
 		game::StrikeByMotion(strike);
 	}
+	// The left fist, the same way: with the fists up both hands punch.
+	if (active && g_hand.leftStrikeByMotion && g_hand.leftSwingActive && g_hand.leftHandValid && !menuIsUp) {
+		game::MotionStrike strike;
+		strike.hand = 1;
+		strike.swingSerial = g_hand.leftSwingSerial;
+		strike.heavy = g_hand.leftSwingHeavy;
+		strike.attackGroup =
+			g_hand.leftSwingHeavy ? vr::PowerAttackGroup(g_hand.leftPowerDirection) : vr::kAnimGroupAttackLight;
+		strike.handRotation = g_hand.leftHandRotation;
+		strike.handOffsetUnits = g_hand.leftHandOffsetUnits;
+		strike.cameraValid = g_cyclopeanCameraWorldValid;
+		strike.cameraRotation = g_cyclopeanCameraWorldTransform.rot;
+		strike.cameraPosition = g_cyclopeanCameraWorldTransform.pos;
+		strike.boundFactor = config.hands.hitBoundFactor;
+		strike.padUnits = config.hands.hitPadUnits;
+		game::StrikeByMotion(strike);
+	}
+	{
+		static UInt32 lastLeftSwished = 0;
+		static UInt32 lastLeftGrunted = 0;
+		if (active && !menuIsUp && g_hand.leftHandValid) {
+			if (game::SwishDue(g_hand.leftStrikeByMotion, g_hand.leftSwingActive, g_hand.leftSwingSerial,
+			                   lastLeftSwished)) {
+				lastLeftSwished = g_hand.leftSwingSerial;
+				game::PlaySwingSwish();
+			}
+			if (vr::GruntDue(g_hand.leftStrikeByMotion, g_hand.leftSwingHeavy, g_hand.leftSwingSerial,
+			                 lastLeftGrunted)) {
+				lastLeftGrunted = g_hand.leftSwingSerial;
+				game::PlayPowerAttackGrunt();
+			}
+		}
+		if (g_hand.leftSwing != vr::SwingVerdict::None && g_hand.leftStrikeByMotion && g_handSwingLinesLeft > 0) {
+			--g_handSwingLinesLeft;
+			OBVR_LOG("Hands: a left-fist %s%s swing",
+			         g_hand.leftSwing == vr::SwingVerdict::Heavy ? vr::PowerDirectionName(g_hand.leftPowerDirection)
+			                                                     : "",
+			         g_hand.leftSwing == vr::SwingVerdict::Heavy ? " power" : "light");
+		}
+	}
 	// The bodies met before the swing was a power attack: struck once it is
 	// one, or as what it was when it ends (game::SettleHeldStrike).
 	if (active && !menuIsUp) {
 		game::SettleHeldStrikes(g_hand.swingSerial, g_hand.swingActive, g_hand.swingHeavy,
-		                        g_hand.swing == vr::SwingVerdict::Heavy, vr::PowerAttackGroup(g_hand.powerDirection));
+		                        g_hand.swing == vr::SwingVerdict::Heavy, vr::PowerAttackGroup(g_hand.powerDirection), 0);
+		game::SettleHeldStrikes(g_hand.leftSwingSerial, g_hand.leftSwingActive, g_hand.leftSwingHeavy,
+		                        g_hand.leftSwing == vr::SwingVerdict::Heavy,
+		                        vr::PowerAttackGroup(g_hand.leftPowerDirection), 1);
 	}
 
 	// The weapon and the hands push what they meet (game/WorldPush.h): the
@@ -5082,6 +5127,18 @@ void MaybeSubmitOverlays(bool worldFrame) {
 				s_speakerSeen = true;
 			}
 		}
+		// A menu opens in front of the player: the room anchor is dropped as
+		// it opens, so the panel is placed where the head looks now. It was
+		// kept from the first placement, and with the walking direction and
+		// the body turned apart from the view an inventory or a book could
+		// open behind (the tester, 2026-09-29). The dialogue's own placement
+		// below comes after and wins.
+		static bool s_menuWasUp = false;
+		const bool menuNowUp = visibility.menuIsUp;
+		if (menuNowUp && !s_menuWasUp) {
+			g_hudLayer.ResetAnchor();
+		}
+		s_menuWasUp = menuNowUp;
 		const bool talking = g_dialogMenuEpisode;
 		const bool opened = talking && !s_wasTalking;
 		s_wasTalking = talking;

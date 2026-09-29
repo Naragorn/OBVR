@@ -46,7 +46,7 @@ inline DialogPanelSide DialogPanelSideFromIndex(float value) {
 struct DialogPanelSettings {
 	// Placed on the NPC once when a conversation opens.
 	bool recentre = true;
-	DialogPanelSide side = DialogPanelSide::Right;
+	DialogPanelSide side = DialogPanelSide::Centre;  // the tester, 2026-09-29: right was "zu weit rechts"
 	// How far to the side, degrees of the player's view.
 	float sideDegrees = 25.0f;
 	// The panel's width while talking, times the menus' own.

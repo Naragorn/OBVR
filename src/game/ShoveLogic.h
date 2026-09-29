@@ -38,10 +38,11 @@ struct ShoveSettings {
 	float fatigueHard = 40.0f;  // PLANCK's shove costs 40 stamina
 	float dispositionLight = 5.0f;
 	float dispositionHard = 15.0f;
-	// A shove counts as a hit on them: the engine's own reaction to being hit
-	// (the tester, 2026-09-29: "mach dass es direkt wie ein normaler hit
-	// zählt") - a friend forgives the first few, anyone else takes it as an
-	// assault, as a blow of the fist would be.
+	// A hard shove - pushed to the ground - counts as a hit on them: the
+	// engine's own reaction to being hit (the tester, 2026-09-29: "den zu boden
+	// schubsen nur der zählt wie ein hit der andere schubser nicht") - a friend
+	// forgives the first few, anyone else takes it as an assault. A light shove
+	// only costs their liking.
 	bool countsAsHit = true;
 };
 
@@ -49,7 +50,7 @@ enum class ShoveKind : UInt8 { None, Light, Hard };
 
 // Whether this shove goes to the engine as a hit.
 inline bool ShoveCountsAsHit(const ShoveSettings& s, ShoveKind kind) {
-	return s.countsAsHit && kind != ShoveKind::None;
+	return s.countsAsHit && kind == ShoveKind::Hard;
 }
 
 // What the hand is doing now.
@@ -81,6 +82,23 @@ inline float SpeedTowards(const NiPoint3& velocity, const NiPoint3& hand, const 
 		return 0.0f;
 	}
 	return (velocity.x * dx + velocity.y * dy) / length;
+}
+
+// Whether a point lies at an actor's body, taken as an upright column: within
+// `sideFactor` of its bound's radius plus `padUnits` across the ground, and
+// within `heightFactor` of the radius plus `padUnits` above or below the
+// bound's centre. The bound's sphere is as wide as the actor is tall, so a
+// ball of half its radius round the centre reached the chest and never the
+// head (the tester, 2026-09-29: "ich kann sie nur an der brust schubsen nicht
+// am kopf").
+inline bool HandAtBody(const NiPoint3& hand, const NiPoint3& centre, float radius, float sideFactor,
+                       float heightFactor, float padUnits) {
+	const float dx = hand.x - centre.x;
+	const float dy = hand.y - centre.y;
+	const float dz = hand.z - centre.z;
+	const float side = radius * sideFactor + padUnits;
+	const float height = radius * heightFactor + padUnits;
+	return dx * dx + dy * dy <= side * side && (dz < 0.0f ? -dz : dz) <= height;
 }
 
 // Whether a point lies in an actor's reach: within its bound's radius times

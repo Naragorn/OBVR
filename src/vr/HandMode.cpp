@@ -109,6 +109,8 @@ void HandMode::Reset() {
 	m_swing = SwingDetector{};
 	m_heavyHold = HeldControl{};
 	m_haveLastRight = false;
+	m_leftSwing = SwingDetector{};
+	m_haveLastLeft = false;
 	m_reachArmed = false;
 	m_reachSpent = false;
 	m_ready = ReadyWeaponState{};
@@ -304,6 +306,39 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	}
 	r.swingHeavy = m_swing.swinging && SwingIsPower(m_swing, s.gestures, m_powerDirection);
 	r.powerDirection = m_powerDirection;  // held past the swing's end, for the verdict's frame
+
+	// The left fist's swing: the same detector, its own state; it only
+	// strikes (nothing pressed, no held control - the engine's attack is the
+	// right hand's).
+	r.leftStrikeByMotion = r.strikeByMotion && f.equipped == EquippedKind::Nothing;
+	if (f.left.valid && !f.menuMode) {
+		if (m_haveLastLeft) {
+			const float speed = HandSpeed(m_lastLeftRoom, f.left.position, f.dtSeconds);
+			const bool wasSwinging = m_leftSwing.swinging;
+			const PowerDirection soFar =
+				m_leftSwing.swinging
+					? ClassifyPowerSwing(OffsetFromPose(f.head, f.left.position, m_leftSwingStartRoom, 1.0f))
+					: m_leftPowerDirection;
+			r.leftSwing = StepSwing(m_leftSwing, speed, f.dtSeconds, s.gestures, soFar);
+			if (m_leftSwing.swinging && !wasSwinging) {
+				++m_leftSwingSerial;
+				m_leftSwingStartRoom = m_lastLeftRoom;
+			}
+		}
+		m_lastLeftRoom = f.left.position;
+		m_haveLastLeft = true;
+	} else {
+		m_haveLastLeft = false;
+		m_leftSwing = SwingDetector{};
+	}
+	if (m_leftSwing.swinging && f.left.valid) {
+		m_leftPowerDirection =
+			ClassifyPowerSwing(OffsetFromPose(f.head, f.left.position, m_leftSwingStartRoom, 1.0f));
+	}
+	r.leftSwingActive = m_leftSwing.swinging;
+	r.leftSwingHeavy = m_leftSwing.swinging && SwingIsPower(m_leftSwing, s.gestures, m_leftPowerDirection);
+	r.leftPowerDirection = m_leftPowerDirection;
+	r.leftSwingSerial = m_leftSwingSerial;
 	r.swingSerial = m_swingSerial;
 	const bool swingHeld = StepHeld(m_heavyHold, f.dtSeconds);
 

@@ -263,3 +263,11 @@ The palm's side is **assumed** to be the controller's +x on the left hand and �
 `tools/hand-scripts/hand-hud-look.txt` covers it, but it has not run yet: the tester was playing.
 
 **Open bug (2026-09-29): the speaker is taken from the crosshair.** It comes from the crosshair target in the two seconds before the conversation opens. A conversation an NPC starts (they walk up and greet) has no crosshair target, and the panel then stays where it was (logged "left where it was"). The dialogue menu's own target field would be the direct source; it has not been found yet.
+
+**Headset (2026-09-29, second look):** "hud an den händen auch zu weit hoch. dachte da eher an das dass hud dann in der handfläche ist". Since then the HUD lies in the palm:
+- `PalmDownMetres` 0.05 below the controller's tracked origin, along its −y;
+- `PalmLiftMetres` 0.02 off the palm, facing the eyes.
+
+The dialogue panel's side now defaults to centre, because right was "zu weit rechts".
+
+Menus open in front: the room anchor is dropped as a menu opens, so a menu or a book is placed where the head looks. Before, the anchor was kept from the first placement, and with the body and the walking direction turned away from the view a menu could open behind the player.

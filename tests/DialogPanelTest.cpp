@@ -41,8 +41,8 @@ void TestSides() {
 	Check(DialogPanelSideFromIndex(2.0f) == DialogPanelSide::Left, "row value 2: left");
 	Check(DialogPanelSideFromIndex(7.0f) == DialogPanelSide::Centre, "out of range: centre");
 	const DialogPanelSettings s;
-	Check(s.recentre && s.side == DialogPanelSide::Right && Near(s.scale, 0.8f),
-	      "defaults: placed on the speaker, beside them, 80 %");
+	Check(s.recentre && s.side == DialogPanelSide::Centre && Near(s.scale, 0.8f),
+	      "defaults: placed on the speaker, facing them, 80 %");
 }
 
 void TestDue() {
