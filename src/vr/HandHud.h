@@ -126,7 +126,149 @@ struct HandHudSettings {
 	float viewFollowDegrees = 30.0f;
 	// On: the top and bottom rows ride the head every frame instead.
 	bool viewLockedToHead = false;
+	// When a hand's HUD shows: always (on the back of the hand, as a watch),
+	// or only while you look at the hand with its palm turned to your face
+	// (the tester, 2026-09-29: "man muss die hand mit vr anschauen und die
+	// hand zum gesicht drehen quasi mit offener hand"). Look is the default.
+	bool showOnLook = true;
+	// The hand within this many degrees of where the head looks, and the
+	// palm within this many degrees of facing the eyes.
+	float lookGazeDegrees = 35.0f;
+	float lookPalmDegrees = 55.0f;
+	// Fading in and out takes this long.
+	float lookFadeSeconds = 0.15f;
+	// Looked at, the HUD hangs this far off the palm towards the eyes.
+	float palmLiftMetres = 0.06f;
 };
+
+// ---- Looking at a hand ------------------------------------------------------
+
+// A controller as the look check sees it: where it is and its own axes in
+// tracking space (OpenVR's: x right, y up, z back along the controller), and
+// whether the hand is open.
+struct HandLook {
+	bool valid = false;
+	openvr::HmdMatrix34 pose{};
+	bool open = true;
+};
+
+inline float Dot3(float ax, float ay, float az, float bx, float by, float bz) { return ax * bx + ay * by + az * bz; }
+
+// The palm's outward direction in tracking space: the controller's -x on the
+// right hand, +x on the left - the side the fingers close over. ASSUMED from
+// OpenVR's controller axes (x to the right of the grip); to confirm in the
+// headset. Written into nx/ny/nz.
+inline void PalmNormal(const openvr::HmdMatrix34& pose, bool rightHand, float& nx, float& ny, float& nz) {
+	const float s = rightHand ? -1.0f : 1.0f;
+	nx = pose.m[0][0] * s;
+	ny = pose.m[1][0] * s;
+	nz = pose.m[2][0] * s;
+}
+
+// Whether the player is looking at this hand with its palm turned to the
+// face: the hand within `gazeDegrees` of the head's forward, the palm within
+// `palmDegrees` of facing the eyes, and the hand open.
+inline bool PalmFacesEyes(const HandLook& hand, bool rightHand, const openvr::HmdMatrix34& head, float gazeDegrees,
+                          float palmDegrees) {
+	if (!hand.valid || !hand.open) {
+		return false;
+	}
+	const float hx = head.m[0][3], hy = head.m[1][3], hz = head.m[2][3];
+	float tx = hand.pose.m[0][3] - hx, ty = hand.pose.m[1][3] - hy, tz = hand.pose.m[2][3] - hz;
+	const float len = math::Sqrt(Dot3(tx, ty, tz, tx, ty, tz));
+	if (len < 1e-3f) {
+		return false;
+	}
+	tx /= len;
+	ty /= len;
+	tz /= len;
+	// The head's forward is its -z column.
+	const float gaze = Dot3(-head.m[0][2], -head.m[1][2], -head.m[2][2], tx, ty, tz);
+	if (gaze < math::Cos(gazeDegrees * (math::kPi / 180.0f))) {
+		return false;
+	}
+	float nx = 0.0f, ny = 0.0f, nz = 0.0f;
+	PalmNormal(hand.pose, rightHand, nx, ny, nz);
+	// Facing the eyes: the palm points back along the line to the hand.
+	return Dot3(nx, ny, nz, -tx, -ty, -tz) >= math::Cos(palmDegrees * (math::kPi / 180.0f));
+}
+
+// A hand HUD's opacity one frame on: towards 1 while looked at, towards 0
+// otherwise, the whole way in `seconds` (0: at once).
+inline float StepHandFade(float alpha, bool lookedAt, float dt, float seconds) {
+	const float target = lookedAt ? 1.0f : 0.0f;
+	if (!(seconds > 0.0f)) {
+		return target;
+	}
+	const float step = dt / seconds;
+	if (alpha < target) {
+		alpha += step;
+		return alpha > target ? target : alpha;
+	}
+	alpha -= step;
+	return alpha < target ? target : alpha;
+}
+
+// The panel over the palm, facing the eyes: `lift` metres off the palm, its x
+// level (the row lies across it), its face turned to the head. Absolute, in
+// tracking space.
+inline openvr::HmdMatrix34 PalmPanelPose(const HandLook& hand, bool rightHand, const openvr::HmdMatrix34& head,
+                                         float lift) {
+	float nx = 0.0f, ny = 0.0f, nz = 0.0f;
+	PalmNormal(hand.pose, rightHand, nx, ny, nz);
+	const float cx = hand.pose.m[0][3] + nx * lift;
+	const float cy = hand.pose.m[1][3] + ny * lift;
+	const float cz = hand.pose.m[2][3] + nz * lift;
+	// z: from the panel to the eyes.
+	float zx = head.m[0][3] - cx, zy = head.m[1][3] - cy, zz = head.m[2][3] - cz;
+	float len = math::Sqrt(Dot3(zx, zy, zz, zx, zy, zz));
+	if (len < 1e-4f) {
+		zx = 0.0f, zy = 0.0f, zz = 1.0f, len = 1.0f;
+	}
+	zx /= len;
+	zy /= len;
+	zz /= len;
+	// x: world up cross z, level; straight above or below falls back to the
+	// head's own x.
+	float xx = zz, xy = 0.0f, xz = -zx;
+	len = math::Sqrt(xx * xx + xz * xz);
+	if (len < 1e-4f) {
+		xx = head.m[0][0], xy = head.m[1][0], xz = head.m[2][0];
+		len = math::Sqrt(Dot3(xx, xy, xz, xx, xy, xz));
+	}
+	xx /= len;
+	xy /= len;
+	xz /= len;
+	// y = z cross x.
+	const float yx = zy * xz - zz * xy;
+	const float yy = zz * xx - zx * xz;
+	const float yz = zx * xy - zy * xx;
+	openvr::HmdMatrix34 m{};
+	m.m[0][0] = xx, m.m[1][0] = xy, m.m[2][0] = xz;
+	m.m[0][1] = yx, m.m[1][1] = yy, m.m[2][1] = yz;
+	m.m[0][2] = zx, m.m[1][2] = zy, m.m[2][2] = zz;
+	m.m[0][3] = cx, m.m[1][3] = cy, m.m[2][3] = cz;
+	return m;
+}
+
+// An absolute pose as seen from a device: inverse(device) * absolute, for an
+// overlay hung on that device - the compositor then carries it with the
+// hand's newest pose.
+inline openvr::HmdMatrix34 RelativeToDevice(const openvr::HmdMatrix34& device, const openvr::HmdMatrix34& absolute) {
+	openvr::HmdMatrix34 out{};
+	for (int r = 0; r < 3; ++r) {
+		for (int c = 0; c < 3; ++c) {
+			// (R_d^T R_a)[r][c] = sum_k R_d[k][r] R_a[k][c]
+			out.m[r][c] = device.m[0][r] * absolute.m[0][c] + device.m[1][r] * absolute.m[1][c] +
+			              device.m[2][r] * absolute.m[2][c];
+		}
+		const float dx = absolute.m[0][3] - device.m[0][3];
+		const float dy = absolute.m[1][3] - device.m[1][3];
+		const float dz = absolute.m[2][3] - device.m[2][3];
+		out.m[r][3] = device.m[0][r] * dx + device.m[1][r] * dy + device.m[2][r] * dz;
+	}
+	return out;
+}
 
 // Whether an element is taken out of the main panel: on a hand, in the sky,
 // or switched off. The feature off, everything stays where the game drew it.
@@ -539,6 +681,10 @@ struct HandHudFrame {
 	// (StepViewAnchor); [0] the top, [1] the bottom.
 	bool viewAnchorValid[2] = {false, false};
 	openvr::HmdMatrix34 viewAnchor[2] = {};
+	// With showOnLook: the controllers ([0] left, [1] right, physically) and
+	// each hand HUD's opacity from StepHandFade.
+	HandLook hand[2];
+	float handAlpha[2] = {0.0f, 0.0f};
 };
 
 // The head's heading and another's, apart by this many degrees (yaw only).
@@ -658,8 +804,21 @@ inline void PlaceHandHud(const HandHudSettings& s, const HandHudFrame& f, HandHu
 			} else {
 				q.onDevice = true;
 				q.rightHand = row == HudPlace::Right;
-				q.pose = HandPanelTransform(s.panelUp, s.panelBack, s.panelTiltDegrees, centres[i]);
-				q.alpha = s.element[e].opacity;
+				const UInt32 side = q.rightHand ? 1u : 0u;
+				if (s.showOnLook) {
+					// Over the palm, facing the eyes, while looked at; hung on
+					// the controller so the compositor carries it with the hand.
+					const HandLook& hand = f.hand[side];
+					if (!hand.valid || !f.haveHead) {
+						continue;
+					}
+					q.pose = RelativeToDevice(
+						hand.pose, AlongOwnX(PalmPanelPose(hand, q.rightHand, f.head, s.palmLiftMetres), centres[i]));
+					q.alpha = s.element[e].opacity * f.handAlpha[side];
+				} else {
+					q.pose = HandPanelTransform(s.panelUp, s.panelBack, s.panelTiltDegrees, centres[i]);
+					q.alpha = s.element[e].opacity;
+				}
 			}
 			q.shown = q.widthMetres > 0.0f && q.alpha > 0.0f;
 		}

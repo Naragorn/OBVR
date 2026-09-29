@@ -752,6 +752,11 @@ void ReadRuntimeValues(Config& config, const char* path) {
 			hh.viewUnitMetres = ReadFloat("HandHud", "ViewUnitMetres", hh.viewUnitMetres, path);
 			hh.viewFollowDegrees = ReadFloat("HandHud", "ViewFollowDegrees", hh.viewFollowDegrees, path);
 			hh.viewLockedToHead = ReadBool("HandHud", "ViewLockedToHead", hh.viewLockedToHead, path);
+			hh.showOnLook = ReadBool("HandHud", "ShowOnLook", hh.showOnLook, path);
+			hh.lookGazeDegrees = ReadFloat("HandHud", "LookGazeDegrees", hh.lookGazeDegrees, path);
+			hh.lookPalmDegrees = ReadFloat("HandHud", "LookPalmDegrees", hh.lookPalmDegrees, path);
+			hh.lookFadeSeconds = ReadFloat("HandHud", "LookFadeSeconds", hh.lookFadeSeconds, path);
+			hh.palmLiftMetres = ReadFloat("HandHud", "PalmLiftMetres", hh.palmLiftMetres, path);
 		}
 		h.levitateObjects = ReadBool("Hands", "LevitateObjects", h.levitateObjects, path);
 		h.attachSmallObjects =

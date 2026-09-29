@@ -42,6 +42,7 @@ void TestSpeedAndSwing() {
 	std::printf("Speed and swing\n");
 	GestureThresholds t;
 	t.swingLight = 1.6f;  // the speeds below were written for 1.6
+	t.powerSwingMetres = 0.7f;  // and the lengths for 0.7 m
 	Check(Near(HandSpeed(NiPoint3{0, 0, 0}, NiPoint3{0.03f, 0, 0}, 0.01f), 3.0f),
 	      "three centimetres in ten milliseconds is three metres a second");
 	Check(HandSpeed(NiPoint3{0, 0, 0}, NiPoint3{1, 0, 0}, 0.0f) == 0.0f, "no time is no speed");

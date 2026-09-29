@@ -220,6 +220,7 @@ void TestCompass() {
 void TestPlacement() {
 	std::printf("One frame's placement\n");
 	HandHudSettings s;
+	s.showOnLook = false;  // the watch: always on the back of the hand
 	HandHudFrame f;
 	f.leftValid = true;
 	f.rightValid = true;
@@ -349,6 +350,84 @@ void TestViewAnchor() {
 	Check(Near(q[7].alpha, 1.0f), "at its own opacity");
 }
 
+// A controller at (x, y, z) whose x axis points along (ax, 0, az), y up.
+HandLook Controller(float x, float y, float z, float ax, float az) {
+	HandLook h;
+	h.valid = true;
+	h.pose.m[0][0] = ax;
+	h.pose.m[2][0] = az;
+	h.pose.m[1][1] = 1.0f;
+	// z = x cross y = (ax,0,az) x (0,1,0) = (-az, 0, ax)
+	h.pose.m[0][2] = -az;
+	h.pose.m[2][2] = ax;
+	h.pose.m[0][3] = x;
+	h.pose.m[1][3] = y;
+	h.pose.m[2][3] = z;
+	return h;
+}
+
+void TestLook() {
+	std::printf("Looking at a hand\n");
+	const openvr::HmdMatrix34 head = HeadLooking(0.0f);  // at (0, 1.7, 0), looking -z
+	// The left hand 40 cm ahead, its palm (+x) turned back to the face: x = +z.
+	HandLook left = Controller(0.0f, 1.6f, -0.4f, 0.0f, 1.0f);
+	Check(PalmFacesEyes(left, false, head, 35.0f, 55.0f), "the left palm to the face, the hand in view: looked at");
+	// The right hand's palm is its -x: x = -z turns the palm to the face.
+	HandLook right = Controller(0.0f, 1.6f, -0.4f, 0.0f, -1.0f);
+	Check(PalmFacesEyes(right, true, head, 35.0f, 55.0f), "the right palm (its -x) to the face: looked at");
+	Check(!PalmFacesEyes(left, true, head, 35.0f, 55.0f), "the same controller as a right hand: the back of it, not");
+	HandLook down = Controller(0.0f, 1.6f, -0.4f, 1.0f, 0.0f);  // palm sideways
+	Check(!PalmFacesEyes(down, false, head, 35.0f, 55.0f), "the palm turned sideways: not");
+	HandLook aside = Controller(0.6f, 1.6f, -0.1f, -0.6f, 0.8f);  // far to the right, out of view
+	Check(!PalmFacesEyes(aside, false, head, 35.0f, 55.0f), "the hand out of view: not");
+	HandLook fist = left;
+	fist.open = false;
+	Check(!PalmFacesEyes(fist, false, head, 35.0f, 55.0f), "a fist: not");
+	HandLook lost = left;
+	lost.valid = false;
+	Check(!PalmFacesEyes(lost, false, head, 35.0f, 55.0f), "not tracked: not");
+	HandLook atHead = Controller(0.0f, 1.7f, 0.0f, 0.0f, 1.0f);
+	Check(!PalmFacesEyes(atHead, false, head, 35.0f, 55.0f), "at the eyes themselves: no direction, not");
+
+	Check(Near(StepHandFade(0.0f, true, 0.05f, 0.15f), 0.3333f), "fading in: a third in 50 ms of 150");
+	Check(StepHandFade(0.9f, true, 0.05f, 0.15f) == 1.0f, "never past 1");
+	Check(StepHandFade(0.1f, false, 0.05f, 0.15f) == 0.0f, "fading out: never below 0");
+	Check(StepHandFade(0.5f, true, 0.01f, 0.0f) == 1.0f && StepHandFade(0.5f, false, 0.01f, 0.0f) == 0.0f,
+	      "no fade time: at once");
+
+	const openvr::HmdMatrix34 panel = PalmPanelPose(left, false, head, 0.06f);
+	Check(Near(panel.m[2][3], -0.34f) && Near(panel.m[1][3], 1.6f), "6 cm off the palm towards the eyes");
+	Check(panel.m[2][2] > 0.9f && Near(panel.m[1][0], 0.0f), "facing the eyes, its x level");
+	const openvr::HmdMatrix34 rel = RelativeToDevice(left.pose, panel);
+	// Back to absolute: device * rel must give the panel again.
+	float back[3];
+	for (int r = 0; r < 3; ++r) {
+		back[r] = left.pose.m[r][0] * rel.m[0][3] + left.pose.m[r][1] * rel.m[1][3] + left.pose.m[r][2] * rel.m[2][3] +
+		          left.pose.m[r][3];
+	}
+	Check(Near(back[0], panel.m[0][3]) && Near(back[1], panel.m[1][3]) && Near(back[2], panel.m[2][3]),
+	      "relative to the controller and back: the same place");
+
+	HandHudSettings s;
+	HandHudFrame f;
+	f.leftValid = f.rightValid = f.haveHead = true;
+	f.head = head;
+	f.rect[0] = UiRect{87, 847, 286, 927, true};
+	f.rect[2] = UiRect{312, 847, 384, 927, true};
+	f.hand[0] = left;
+	f.hand[1] = right;
+	HandHudQuad q[kHudElementCount];
+	PlaceHandHud(s, f, q);
+	Check(!q[0].shown && !q[2].shown, "looked at, but not yet faded in: nothing");
+	f.handAlpha[0] = 0.5f;
+	PlaceHandHud(s, f, q);
+	Check(q[0].shown && Near(q[0].alpha, 0.5f) && q[0].onDevice && !q[2].shown,
+	      "the left faded half in: its bars at half, the right still hidden");
+	f.hand[0].valid = false;
+	PlaceHandHud(s, f, q);
+	Check(!q[0].shown, "the hand lost: hidden");
+}
+
 }  // namespace
 
 int main() {
@@ -362,6 +441,7 @@ int main() {
 	TestPlacement();
 	TestText();
 	TestViewAnchor();
+	TestLook();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

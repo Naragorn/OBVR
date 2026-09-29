@@ -1,0 +1,38 @@
+# The hand HUD shows only while the hand is looked at, palm to the face
+# (HandHud ShowOnLook, vr::PalmFacesEyes): the left hand ahead with its palm
+# turned to the eyes shows its HUD, pointing ahead it does not; then the
+# right. A yaw of the controller turns its x axis (the left palm's side) to
+# the face, the other way for the right palm (its -x).
+
+ini Hands Enabled=1
+ini HandHud Enabled=1
+ini HandHud ShowOnLook=1
+
+expect HandScript: finished
+expect Hand HUD: the left hand is looked at, palm to the face
+expect Hand HUD: the left hand is no longer looked at
+expect Hand HUD: the right hand is looked at, palm to the face
+reject HandScript: WARNING
+
+wait 10
+right pos 0.30 -0.45 -0.20
+left pos -0.30 -0.45 -0.20
+wait 1
+mark rest
+left pos 0.00 -0.15 -0.35
+left rot 0 90 0
+wait 1
+mark left_yaw_plus
+left rot 0 -90 0
+wait 1
+mark left_yaw_minus
+left pos -0.30 -0.45 -0.20
+left rot 0 0 0
+right pos 0.00 -0.15 -0.35
+right rot 0 90 0
+wait 1
+mark right_yaw_plus
+right rot 0 -90 0
+wait 1
+mark right_yaw_minus
+wait 1

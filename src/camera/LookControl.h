@@ -129,7 +129,7 @@ struct LookSettings {
 	// (game::PlayerStagger): the lurch back jolts the view in a headset.
 	bool noPlayerStagger = true;
 	// The hit blur (Oblivion's GethitShader) skipped for the player (game/HitShader.h).
-	bool noHitBlur = false;
+	bool noHitBlur = true;  // the tester, 2026-09-29: "ja machen wir!"
 
 	// How much of the view the vignette leaves clear, as the angle from the
 	// centre of view in degrees where the darkening starts; it is full 20

@@ -131,7 +131,7 @@ struct GestureThresholds {
 	// muss er die selbe schwung stärke erreichen UND mehr schwung distanz
 	// hinter sich zurücklegen"). It was a higher peak speed (SwingHeavy).
 	float swingLight = 2.6f;  // the tester's, 2026-09-29
-	float powerSwingMetres = 0.7f;
+	float powerSwingMetres = 1.2f;  // the tester's, 2026-09-29
 	// How long the attack control is held for a heavy swing, in seconds -
 	// the engine's power attack wants the control held, a tap is a light one.
 	float heavyHoldSeconds = 0.6f;

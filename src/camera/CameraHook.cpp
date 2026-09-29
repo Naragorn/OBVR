@@ -204,6 +204,12 @@ NiTransform g_cyclopeanCameraWorldTransform{};
 bool g_cyclopeanCameraWorldValid = false;
 // Left-handed in Full VR this frame: "right" in g_hand is the left controller.
 bool g_handRolesSwapped = false;
+// The controllers this frame, physically: [0] left, [1] right (the hand
+// script's when it drives them). What the HUD on the hands looks at.
+vr::HandPose g_hudHandPose[2];
+// Each hand HUD's opacity, faded in while looked at (vr::StepHandFade).
+float g_hudHandAlpha[2] = {0.0f, 0.0f};
+bool g_hudHandLookedAt[2] = {false, false};
 // The grab by reach - see vr::StepGrabReach.
 vr::GrabReachState g_grabReach;
 bool g_grabReachPick = false;
@@ -1520,6 +1526,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 	// Left-handed in Full VR the controllers swap roles as a whole: the
 	// weapon hand is the left controller (vr::AssignHandRoles).
+	// The controllers as they are physically, for the HUD on the hands' look
+	// check - before the roles may swap them.
+	g_hudHandPose[0] = frame.left;
+	g_hudHandPose[1] = frame.right;
 	g_handRolesSwapped =
 		vr::AssignHandRoles(frame.right, frame.left, active && config.hands.leftHanded);
 	// The weapon hand's trigger turns the quick menu's pages while the ring
@@ -4999,6 +5009,44 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			                   handHudFrame.head, handHud.viewFollowDegrees, handHud.viewLockedToHead);
 			handHudFrame.viewAnchorValid[row] = s_viewAnchor[row].valid;
 			handHudFrame.viewAnchor[row] = s_viewAnchor[row].head;
+		}
+		// Looking at a hand, palm to the face: its HUD fades in.
+		for (UInt32 side = 0; side < 2; ++side) {
+			const vr::HandPose& pose = g_hudHandPose[side];
+			vr::HandLook& look = handHudFrame.hand[side];
+			look.valid = pose.valid;
+			if (pose.valid) {
+				const NiPoint3 x = vr::Rotate(pose.orientation, NiPoint3{1.0f, 0.0f, 0.0f});
+				const NiPoint3 y = vr::Rotate(pose.orientation, NiPoint3{0.0f, 1.0f, 0.0f});
+				const NiPoint3 z = vr::Rotate(pose.orientation, NiPoint3{0.0f, 0.0f, 1.0f});
+				look.pose.m[0][0] = x.x, look.pose.m[1][0] = x.y, look.pose.m[2][0] = x.z;
+				look.pose.m[0][1] = y.x, look.pose.m[1][1] = y.y, look.pose.m[2][1] = y.z;
+				look.pose.m[0][2] = z.x, look.pose.m[1][2] = z.y, look.pose.m[2][2] = z.z;
+				look.pose.m[0][3] = pose.position.x, look.pose.m[1][3] = pose.position.y,
+				look.pose.m[2][3] = pose.position.z;
+				// Open: the fingers' curl when SteamVR gives it, the grip's
+				// squeeze otherwise.
+				float curl = pose.gripForce;
+				if (pose.curlValid) {
+					curl = (pose.curl[1] + pose.curl[2] + pose.curl[3] + pose.curl[4]) * 0.25f;
+				}
+				look.open = curl < 0.6f;
+			}
+			const bool lookedAt = handHudActive && handHudFrame.haveHead &&
+			                      vr::PalmFacesEyes(look, side == 1, handHudFrame.head, handHud.lookGazeDegrees,
+			                                        handHud.lookPalmDegrees);
+			g_hudHandAlpha[side] = vr::StepHandFade(g_hudHandAlpha[side], lookedAt, g_deltaSeconds,
+			                                        handHud.lookFadeSeconds);
+			handHudFrame.handAlpha[side] = g_hudHandAlpha[side];
+			if (lookedAt != g_hudHandLookedAt[side]) {
+				g_hudHandLookedAt[side] = lookedAt;
+				static UInt32 s_lookLinesLeft = 12;
+				if (s_lookLinesLeft > 0) {
+					--s_lookLinesLeft;
+					OBVR_LOG("Hand HUD: the %s hand %s", side == 1 ? "right" : "left",
+					         lookedAt ? "is looked at, palm to the face - its HUD shows" : "is no longer looked at");
+				}
+			}
 		}
 		vr::HandHudQuad quads[vr::kHudElementCount];
 		vr::PlaceHandHud(handHud, handHudFrame, quads);

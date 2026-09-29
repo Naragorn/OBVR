@@ -984,6 +984,41 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return c.hands.handHud.enabled ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.handHud.enabled = v != 0.0f; },
 	},
+	{
+		"HUD", "Show when looked at", "A hand's HUD shows only while you look at it, palm to your face",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"HandHud", "ShowOnLook",
+		+[](const Config& c) { return c.hands.handHud.showOnLook ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.handHud.showOnLook = v != 0.0f; },
+	},
+	{
+		"HUD", "Look: hand in view", "How close to the middle of your view the hand must be, degrees",
+		ItemKind::Number, 10.0f, 80.0f, 5.0f, 0, false,
+		"HandHud", "LookGazeDegrees",
+		+[](const Config& c) { return c.hands.handHud.lookGazeDegrees; },
+		+[](Config& c, float v) { c.hands.handHud.lookGazeDegrees = v; },
+	},
+	{
+		"HUD", "Look: palm turned", "How squarely the palm must face you, degrees off",
+		ItemKind::Number, 10.0f, 90.0f, 5.0f, 0, false,
+		"HandHud", "LookPalmDegrees",
+		+[](const Config& c) { return c.hands.handHud.lookPalmDegrees; },
+		+[](Config& c, float v) { c.hands.handHud.lookPalmDegrees = v; },
+	},
+	{
+		"HUD", "Look: fade", "How long the hand HUD takes to fade in and out, seconds",
+		ItemKind::Number, 0.0f, 1.0f, 0.05f, 2, false,
+		"HandHud", "LookFadeSeconds",
+		+[](const Config& c) { return c.hands.handHud.lookFadeSeconds; },
+		+[](Config& c, float v) { c.hands.handHud.lookFadeSeconds = v; },
+	},
+	{
+		"HUD", "Look: off the palm", "How far off the palm the HUD hangs, metres",
+		ItemKind::Number, 0.0f, 0.2f, 0.01f, 2, false,
+		"HandHud", "PalmLiftMetres",
+		+[](const Config& c) { return c.hands.handHud.palmLiftMetres; },
+		+[](Config& c, float v) { c.hands.handHud.palmLiftMetres = v; },
+	},
 	OBVR_HUD_ELEMENT_ROWS(0, "Health bars", "Bars")
 	OBVR_HUD_ELEMENT_ROWS(1, "Spell", "Spell")
 	OBVR_HUD_ELEMENT_ROWS(2, "Weapon", "Weapon")
