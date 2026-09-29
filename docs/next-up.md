@@ -73,6 +73,16 @@ in the headset: the perks' effects on a target.
 - The fix: forward and back now have their own length, `PowerThrustMetres`
   0.45 (`vr::PowerMetresFor`). The direction so far decides which length the
   running swing needs.
+- **The blow's own direction (2026-09-29).** The tester asked for it:
+  "powerattacks brauchen in full vr mode keine bewegungsrichtung mehr.
+  stattdessen einfach die schlagrichtung". A pull back to the body was "dumm
+  und nicht machbar in VR". The mapping (`vr::ClassifyPowerSwing`):
+  - chop down: standing (the damage bonus);
+  - strike up from below: the engine's backward one (knockdown, Expert);
+  - slash across, left or right: sideways (disarm, Journeyman);
+  - thrust ahead: forward (paralysis, Master), at the thrust's 0.45 m;
+  - a pull back: standing.
+  All five of the engine's power attack groups (0x16..0x1A) are reachable.
 
 **To find out.** Where the engine keeps the current power attack's direction
 (the process's animation group or a field beside the current action), and

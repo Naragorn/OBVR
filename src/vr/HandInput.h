@@ -132,9 +132,9 @@ struct GestureThresholds {
 	// hinter sich zurücklegen"). It was a higher peak speed (SwingHeavy).
 	float swingLight = 2.6f;  // the tester's, 2026-09-29
 	float powerSwingMetres = 1.2f;  // the tester's, 2026-09-29
-	// A thrust forward or a pull back is a power attack from this far: an arm
-	// reaches 50-70 cm, so the swing's length was never reached that way (the
-	// tester's power swings of 2026-09-29 were left, right and standing only).
+	// A thrust forward is a power attack from this far: an arm reaches 50-70
+	// cm, so the swing's length was never reached that way (the tester's power
+	// swings of 2026-09-29 were left, right and standing only).
 	float powerThrustMetres = 0.45f;
 	// How long the attack control is held for a heavy swing, in seconds -
 	// the engine's power attack wants the control held, a tap is a light one.
@@ -193,9 +193,9 @@ inline float HandSpeed(const NiPoint3& previous, const NiPoint3& current, float 
 enum class PowerDirection : UInt8 { Standing, Forward, Back, Left, Right };
 
 // How far a swing in this direction travels to be a power attack: a thrust
-// or a pull its own, shorter length.
+// its own, shorter length.
 inline float PowerMetresFor(PowerDirection d, const GestureThresholds& t) {
-	return d == PowerDirection::Forward || d == PowerDirection::Back ? t.powerThrustMetres : t.powerSwingMetres;
+	return d == PowerDirection::Forward ? t.powerThrustMetres : t.powerSwingMetres;
 }
 
 // The swing detector: idle until the hand exceeds the light speed, then one
@@ -248,7 +248,16 @@ inline SwingVerdict StepSwing(SwingDetector& d, float speed, float dtSeconds, co
 // low byte of AnimData+0x42 at 0x005FF355 and 0x0060028E): the damage bonus
 // by mastery (0x00546BA0), knockdown on a backward one (Expert), paralysis
 // on a forward one (Master), disarm on a side one (Journeyman, 0x005FC090).
-// A swing mostly up or down - an overhead chop - is the standing one.
+//
+// In VR the direction is the blow's own, not the walk's (the tester,
+// 2026-09-29: "powerattacks brauchen in full vr mode keine bewegungsrichtung
+// mehr. stattdessen einfach die schlagrichtung"; a pull back to the body
+// was "dumm und nicht machbar in VR"):
+// - chopping down: standing (the damage bonus);
+// - striking up from below: the engine's backward one (knockdown);
+// - slashing across, left or right: sideways (disarm);
+// - thrusting ahead: forward (paralysis);
+// - a hand pulled back towards the body is no blow's direction: standing.
 //
 // `way` is the hand's travel since the swing began, in the head's frame
 // (x right, y forward, z up).
@@ -256,12 +265,13 @@ inline PowerDirection ClassifyPowerSwing(const NiPoint3& way) {
 	const float across = math::Sqrt(way.x * way.x + way.y * way.y);
 	const float up = way.z < 0.0f ? -way.z : way.z;
 	if (!(across > 0.0f) || up >= 1.2f * across) {
-		return PowerDirection::Standing;
+		// Mostly up or down: a chop down, or a blow up from below.
+		return way.z > 0.0f ? PowerDirection::Back : PowerDirection::Standing;
 	}
 	const float side = way.x < 0.0f ? -way.x : way.x;
 	const float ahead = way.y < 0.0f ? -way.y : way.y;
 	if (ahead >= side) {
-		return way.y >= 0.0f ? PowerDirection::Forward : PowerDirection::Back;
+		return way.y >= 0.0f ? PowerDirection::Forward : PowerDirection::Standing;
 	}
 	return way.x >= 0.0f ? PowerDirection::Right : PowerDirection::Left;
 }
@@ -293,7 +303,7 @@ inline const char* PowerDirectionName(PowerDirection d) {
 	case PowerDirection::Forward:
 		return "forward";
 	case PowerDirection::Back:
-		return "backward";
+		return "upward (the engine's backward)";
 	case PowerDirection::Left:
 		return "left";
 	case PowerDirection::Right:

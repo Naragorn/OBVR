@@ -1632,10 +1632,10 @@ void TestPowerDirection() {
 		GestureThresholds t;
 		t.powerSwingMetres = 1.2f;
 		t.powerThrustMetres = 0.45f;
-		Check(PowerMetresFor(PowerDirection::Forward, t) == 0.45f && PowerMetresFor(PowerDirection::Back, t) == 0.45f,
-		      "a thrust or a pull: its own, shorter length");
-		Check(PowerMetresFor(PowerDirection::Left, t) == 1.2f && PowerMetresFor(PowerDirection::Standing, t) == 1.2f,
-		      "a slash or a chop: the swing's length");
+		Check(PowerMetresFor(PowerDirection::Forward, t) == 0.45f, "a thrust: its own, shorter length");
+		Check(PowerMetresFor(PowerDirection::Left, t) == 1.2f && PowerMetresFor(PowerDirection::Standing, t) == 1.2f &&
+		          PowerMetresFor(PowerDirection::Back, t) == 1.2f,
+		      "a slash, a chop or a blow up: the swing's length");
 		SwingDetector d;
 		d.swinging = true;
 		d.metres = 0.5f;
@@ -1649,7 +1649,10 @@ void TestPowerDirection() {
 		      "the same length sideways ends light");
 	}
 	Check(ClassifyPowerSwing(NiPoint3{0.1f, 0.8f, -0.2f}) == PowerDirection::Forward, "a thrust ahead: forward");
-	Check(ClassifyPowerSwing(NiPoint3{0.1f, -0.6f, 0.1f}) == PowerDirection::Back, "pulled back: backward");
+	Check(ClassifyPowerSwing(NiPoint3{0.1f, -0.6f, 0.1f}) == PowerDirection::Standing,
+	      "pulled back to the body: no blow's direction, standing");
+	Check(ClassifyPowerSwing(NiPoint3{0.1f, 0.3f, 0.9f}) == PowerDirection::Back,
+	      "struck up from below: the engine's backward one (knockdown)");
 	Check(ClassifyPowerSwing(NiPoint3{-0.7f, 0.2f, -0.3f}) == PowerDirection::Left, "across to the left: left");
 	Check(ClassifyPowerSwing(NiPoint3{0.7f, -0.2f, 0.1f}) == PowerDirection::Right, "across to the right: right");
 	Check(ClassifyPowerSwing(NiPoint3{0.1f, 0.2f, -0.9f}) == PowerDirection::Standing,

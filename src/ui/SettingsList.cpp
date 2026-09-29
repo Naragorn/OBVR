@@ -826,7 +826,7 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.gestures.powerSwingMetres = v; },
 	},
 	{
-		"Hands", "Power thrust length", "How far (m) a thrust forward or a pull back must go to be a power attack",
+		"Hands", "Power thrust length", "How far (m) a thrust forward must go to be a power attack",
 		ItemKind::Number, 0.2f, 1.0f, 0.05f, 2, false,
 		"Hands", "PowerThrustMetres",
 		+[](const Config& c) { return c.hands.gestures.powerThrustMetres; },
