@@ -50,6 +50,7 @@
 #include "game/WorldPush.h"
 #include "game/HandBodies.h"
 #include "game/HandBodyLogic.h"
+#include "game/PlayerCapsule.h"
 #include "game/TakeItem.h"
 #include "game/WeaponDrawSpeed.h"
 #include "game/GrabNearBody.h"
@@ -760,7 +761,7 @@ void LogHandGeometry(const game::HandBodyFrame& bodies, int slot, const char* fi
 	}
 	const game::AlongAxis a = game::MeasureAlongAxis(bodies.pos[slot], axis, finger->worldTransform.pos);
 	OBVR_LOG("Measure: %s - \"%s\" (the last joint, the tip beyond it) %.1f units ahead of the grip, %.1f aside; "
-	         "the body reaches %.1f ahead (%.1f + %.1f round)",
+	         "the constant capsule would reach %.1f ahead (%.1f + %.1f round); the body is built from the bones",
 	         slot == static_cast<int>(game::HandBodySlot::LeftHand) ? "left hand" : "right hand", fingerName,
 	         static_cast<double>(a.ahead), static_cast<double>(a.aside),
 	         static_cast<double>(game::kHandBodyAheadUnits + game::kHandBodyRadiusUnits),
@@ -848,6 +849,14 @@ void MeasureBodies(const game::HandBodyFrame& bodies, bool blade, bool marked) {
 		LogHandGeometry(bodies, static_cast<int>(game::HandBodySlot::LeftHand), "Bip01 L Finger22");
 		if (blade) {
 			LogBladeGeometry(bodies);
+		}
+		if (marked) {
+			const game::PlayerBodyReading body = game::ReadPlayerBody();
+			if (body.valid) {
+				OBVR_LOG("Measure: the player's body - the game's radius %.1f, asked %.1f, the capsule now %.1f, slot %u",
+				         static_cast<double>(body.gameRadiusUnits), static_cast<double>(body.targetRadiusUnits),
+				         static_cast<double>(body.capsuleRadiusUnits), body.slot);
+			}
 		}
 		if (marked) {
 			NiPoint3 feet{0.0f, 0.0f, 0.0f};
@@ -2176,6 +2185,35 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				bodies.rot[slot] = camRot * g_hand.leftHandRotation;
 				bodies.pos[slot] = camPos + camRot * g_hand.leftHandOffsetUnits;
 			}
+			// Each body's span from what is drawn (game::HandSpanFromBones,
+			// BladeSpanFromNode), in the body's own frame.
+			for (int slot = 0; slot < static_cast<int>(game::HandBodySlot::Count); ++slot) {
+				if (!bodies.valid[slot]) {
+					continue;
+				}
+				const NiMatrix33& r = bodies.rot[slot];
+				const NiPoint3& p = bodies.pos[slot];
+				if (slot == static_cast<int>(game::HandBodySlot::Weapon)) {
+					const NiAVObject* const node = game::FindFirstPersonNode("Weapon");
+					if (node != nullptr) {
+						const NiMatrix33& w = node->worldTransform.rot;
+						const NiPoint3 axis{w.data[0][1], w.data[1][1], w.data[2][1]};
+						bodies.span[slot] = game::BladeSpanFromNode(
+							game::ToBodyFrame(r, p, node->worldTransform.pos),
+							game::ToBodyFrame(r, NiPoint3{0.0f, 0.0f, 0.0f}, axis),
+							game::ToBodyFrame(r, p, node->worldBound.center), node->worldBound.radius);
+					}
+					continue;
+				}
+				const bool left = slot == static_cast<int>(game::HandBodySlot::LeftHand);
+				const NiAVObject* const wrist = game::FindFirstPersonNode(left ? "Bip01 L Hand" : "Bip01 R Hand");
+				const NiAVObject* const knuckle =
+					game::FindFirstPersonNode(left ? "Bip01 L Finger2" : "Bip01 R Finger2");
+				if (wrist != nullptr && knuckle != nullptr) {
+					bodies.span[slot] = game::HandSpanFromBones(game::ToBodyFrame(r, p, wrist->worldTransform.pos),
+					                                            game::ToBodyFrame(r, p, knuckle->worldTransform.pos));
+				}
+			}
 			// People are pushed out of combat only, and not by a hand made a fist
 			// (game::HandBodyPushesActors; the tester, 2026-09-29).
 			const float closeCurl = config.hands.fist.closeCurl;
@@ -2191,6 +2229,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				game::HandBodyPushesActors(false, inCombat, false);
 		}
 		const game::HandBodyReport live = game::StepHandBodies(bodies);
+		if (frame.inWorld && !menuIsUp) {
+			game::StepPlayerCapsule(config.hands.bodyRadiusScale);
+		}
 		if (bodies.enabled) {
 			MeasureBodies(bodies, bodyBlade, test::HandScriptMarkedThisFrame());
 		}

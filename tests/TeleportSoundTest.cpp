@@ -29,7 +29,7 @@ void TestWords() {
 	Check(!ParseTeleportSound("roll", s) && s == TeleportSound::Swish, "not a word of it: refused, left alone");
 	Check(!ParseTeleportSound("dodg", s) && !ParseTeleportSound("dodgebackward", s), "shorter or longer: refused");
 	Check(!ParseTeleportSound("", s) && !ParseTeleportSound(nullptr, s), "empty or none: refused");
-	Check(kTeleportSoundDefault == TeleportSound::Dodge, "the default is the dodge roll's (the tester)");
+	Check(kTeleportSoundDefault == TeleportSound::Landing, "the default is the landing (the tester, 2026-09-29)");
 }
 
 void TestRow() {
@@ -48,7 +48,7 @@ void TestForms() {
 	std::printf("The forms\n");
 	Check(TeleportSoundForm(TeleportSound::Dodge) == 0x000CBA79, "dodge: FSTDodge");
 	Check(TeleportSoundForm(TeleportSound::DodgeBackward) == 0x000CBA7A, "dodgeback: FSTDodgeBackward");
-	Check(TeleportSoundForm(TeleportSound::Swish) == 0x0000C3D1, "swish: WPNSwishHandX");
+	Check(TeleportSoundForm(TeleportSound::Swish) == 0x00088834, "swish: WPNSwishHand (the PC's, not the 360lofi one)");
 	Check(TeleportSoundForm(TeleportSound::Landing) == 0, "landing: none - the engine picks it by the ground");
 	Check(TeleportSoundForm(static_cast<TeleportSound>(9)) == 0, "a value that is none of them: no form");
 }

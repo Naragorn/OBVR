@@ -156,9 +156,17 @@ can now be pushed away. Three open bugs:
     game units per metre are 70 (`[Tracker] UnitsPerMetre`). Not measured:
     a flat, open hand in the headset (the scripted curl 0 still showed the
     animation's curled fingers) and a user's own `HandAdjust` offsets,
-    which move the drawn hand against the grip. **Derived fix:** build the
-    capsule from the drawn bones (wrist to finger ends, in the grip's
-    frame) instead of the constants; not built.
+    which move the drawn hand against the grip.
+    **Built 2026-09-29 (the tester: "ziel wäre ja zur laufzeit: Kapseln aus
+    den gezeichneten Knochen"):** the capsule runs from the wrist bone to
+    as far past the middle finger's base as the base is from the wrist (a
+    finger about as long as the palm - a human proportion, not measured on
+    the model), taken into the grip's frame each frame
+    (`HandSpanFromBones`, `ToBodyFrame`). Harness: "the right hand's body
+    made ... 15.2 long, from 3.7 -11.1 6.2 to 0.7 -3.9 -6.9" - behind the
+    grip now, about 21 cm long. Points further than 40 units from the grip
+    are refused (the first frames read the bones before the hand is placed:
+    50 units off); then the constants are used until the bones can be read.
   - **The objects': their Havok shapes stand out beyond their meshes.**
     `hand-shapes.txt` places items beside the player and compares the
     world box round the mesh's vertices with the Havok shape's own box
@@ -187,10 +195,28 @@ can now be pushed away. Three open bugs:
     end lies 57.7 units ahead of the grip and **14.0 units to the side** of
     the capsule's axis - 12.5 units outside a capsule 1.5 round. The
     weapon's attach point is 8.3 units behind the grip. So the drawn tip
-    and the body's tip are in different places. **Derived fix:** build the
-    blade capsule from the drawn weapon node (from its attach point along
-    its y axis to the bound's far end), in the grip's frame; not built.
-  - **Passing through between two steps - not measured in the headset.**
+    and the body's tip are in different places.
+    **Built 2026-09-29:** the blade capsule runs from the drawn weapon
+    node's attach point along its own y axis to the bound's far end on
+    that axis (`BladeSpanFromNode`). Harness: "the weapon's body made ...
+    67.2 long, from -0.0 -8.3 1.6 to -3.2 57.7 13.7" - the measured drawn
+    blade. The push segment of PushWorld and the melee hit test still use
+    the controller's forward.
+  - **When a drawn span moves** (another weapon, `HandAdjust` changed, the
+    first frames) further than 2 units at either end for 90 frames in a
+    row, the body is made anew (`SpanMoved`, `StepSpanWatch`; the bones are
+    a frame behind the controller, so a fast hand alone does not count).
+    The old body is taken out of the world and kept, not freed (its
+    release path is still unread): a few bodies a session.
+  - **Passing through between two steps - measured in the headset
+    (2026-09-29, the tester's log):** the fastest tip per physics step of
+    each swing read 2.3 to 40.6 units, most of them 5 to 17, three of them
+    81, 144 and 155 (a fast turn or a jump of the hand). Over 4 a 1-unit
+    plate is passed without a contact, over 7 a 4-unit cup: **most real
+    swings are fast enough to pass thin clutter.** Not built: a finer
+    physics step (`[Hands] PhysicsRate` 120 halves the travel of 60),
+    or continuous collision for the blade (its quality, cinfo +0xB3; what
+    Havok 3.1 does with it against DEBRIS clutter is unread).
     A keyframed capsule of radius r passes an object t thick without ever
     overlapping it once one physics step carries it further than t + 2r:
     4 units for a 1-unit plate, 7 for a 4-unit cup (`PassThroughTravelUnits`).
@@ -224,6 +250,32 @@ can now be pushed away. Three open bugs:
     now (layer 22)" when they opened; "layer 23 no longer collides with
     the character controllers (layer 20)". **Not verified:** an NPC
     actually not pushed - the harness cell has no one to push.
+  - **Headset (the tester, 2026-09-29): "NPCs wegschieben passiert
+    immernoch, vll einfach durch den player körper? und der scheint mom
+    noch einen zu großen radius zu haben."** The log of that run shows the
+    right hand switching to layer 23 with its fist and back; no combat was
+    logged. Whether the push came from the player's body is not measured.
+  - **The player's body (read 2026-09-29, game/PlayerCapsule.h):** each
+    actor's character controller has two shapes built from its skeleton's
+    bound ("BBX") times its scale (0x00895190): a capsule of the
+    character's radius at +0x374 and an 18-point hull at +0x378, which a
+    humanoid walks with (+0x36C the slot in use). The radius is at +0x3A0,
+    Havok units: **20.2 game units (about 29 cm) for the harness player**
+    (measured). The console's SetSize ("player.shrink") changes it through
+    0x00894BD0 thiscall(controller, radius): the capsule becomes the shape
+    and grows or shrinks to the radius. Shapes are per actor (built, not
+    cloned; one shared hull at 0x00BA7A64 only with cinfo +0x85 set).
+  - **Built: `[Hands] BodyRadiusScale`** (settings row "Body radius",
+    0.3 to 1.5, default 1: the game's own, and OBVR then leaves the radius
+    alone). Other than 1, OBVR asks the controller for the game's radius
+    times it, the way SetSize does, whenever the controller's target
+    (+0x3A8) is another - the engine asks for its own again on entering a
+    world. Harness at 0.6: "the player's radius asked for 12.1 units (the
+    game's 20.2 x 0.60 ...; slot 0)". Not verified yet: that the capsule
+    then stays at 12.1 (a "Measure: the player's body" line at each mark
+    was added after the tester started playing), and whether a smaller
+    body stops the pushing. How actors push each other in vanilla is not
+    read.
 
 ## How HIGGS does it (Skyrim VR, source read)
 

@@ -66,6 +66,58 @@ void TestMeasuring() {
 	Check(Near(inside.most, -1.0f) && Near(inside.least, -1.0f), "Havok inside the mesh all round: negative");
 }
 
+void TestSpans() {
+	std::printf("The shapes from what is drawn\n");
+	// A body turned 90 degrees about z at (10, 0, 0): its y is the world's -x.
+	const NiMatrix33 r = AboutZ(1.5707963f);
+	const NiPoint3 local = ToBodyFrame(r, NiPoint3{10.0f, 0.0f, 0.0f}, NiPoint3{10.0f, 5.0f, 0.0f});
+	Check(Near(local.x, 5.0f) && Near(local.y, 0.0f), "a world point into the body's frame: world +y is its +x");
+	const NiPoint3 back = ToBodyFrame(r, NiPoint3{10.0f, 0.0f, 0.0f}, NiPoint3{7.0f, 0.0f, 0.0f});
+	Check(Near(back.y, 3.0f) && Near(back.x, 0.0f), "3 along world -x is 3 along its y");
+
+	BodySpan hand = HandSpanFromBones(NiPoint3{0.0f, -11.0f, 0.0f}, NiPoint3{0.0f, -6.0f, 0.0f});
+	Check(hand.valid && Near(hand.a.y, -11.0f) && Near(hand.b.y, -1.0f),
+	      "the hand: the wrist to as far past the knuckle as the palm is long");
+	Check(!HandSpanFromBones(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.5f, 0.0f}).valid &&
+	          !HandSpanFromBones(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 40.0f, 0.0f}).valid,
+	      "bones too close or too far apart: no hand");
+	Check(!HandSpanFromBones(NiPoint3{-4.4f, -50.5f, -7.1f}, NiPoint3{-3.0f, -52.0f, -12.0f}).valid,
+	      "bones 50 units from the grip (read before the hand was placed): no hand");
+	Check(!BladeSpanFromNode(NiPoint3{0.0f, -60.0f, 0.0f}, NiPoint3{0.0f, 1.0f, 0.0f}, NiPoint3{0.0f, -30.0f, 0.0f}, 38.0f).valid,
+	      "a weapon attached 60 units from the grip: refused");
+
+	BodySpan blade = BladeSpanFromNode(NiPoint3{0.0f, -8.0f, 0.0f}, NiPoint3{0.0f, 1.0f, 0.0f},
+	                                   NiPoint3{0.0f, 22.0f, 0.0f}, 38.0f);
+	Check(blade.valid && Near(blade.a.y, -8.0f) && Near(blade.b.y, 60.0f),
+	      "the blade: the attach point to the bound's far end along the node's y");
+	Check(!BladeSpanFromNode(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 1.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 0.0f}, 0.0f).valid,
+	      "no bound yet (just equipped): refused");
+	Check(!BladeSpanFromNode(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 3.0f, 0.0f}, NiPoint3{0.0f, 20.0f, 0.0f}, 30.0f).valid,
+	      "an axis that is no unit vector: refused");
+	Check(!BladeSpanFromNode(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 1.0f, 0.0f}, NiPoint3{0.0f, -40.0f, 0.0f}, 2.0f).valid,
+	      "the bound behind the attach point: refused");
+
+	const CapsuleSpec c = CapsuleFromSpan(blade, 1.5f);
+	Check(Near(c.b.y, 60.0f * kHavokPerUnit) && Near(c.radius, 1.5f * kHavokPerUnit), "in Havok units");
+
+	BodySpan moved = hand;
+	moved.b.y += 1.0f;
+	Check(!SpanMoved(hand, moved), "an end 1 unit off: not moved");
+	moved.b.y += 2.0f;
+	Check(SpanMoved(hand, moved), "3 units off: moved");
+	Check(!SpanMoved(BodySpan{}, hand) && !SpanMoved(hand, BodySpan{}), "either unknown: not moved");
+
+	UInt32 frames = 0;
+	bool rebuilt = false;
+	for (UInt32 i = 0; i < kSpanRebuildFrames - 1; ++i) {
+		rebuilt = rebuilt || StepSpanWatch(frames, true);
+	}
+	Check(!rebuilt, "moved for less than the frames needed: kept");
+	Check(StepSpanWatch(frames, true) && frames == 0, "the last frame of it: made anew, the count starts over");
+	StepSpanWatch(frames, true);
+	Check(!StepSpanWatch(frames, false) && frames == 0, "back in place: the count starts over");
+}
+
 void TestPushingPeople() {
 	std::printf("Pushing people\n");
 	Check(HandBodyPushesActors(true, false, false), "a hand, out of combat, open: pushes");
@@ -184,6 +236,7 @@ void TestRate() {
 int main() {
 	TestFilter();
 	TestPushingPeople();
+	TestSpans();
 	TestMeasuring();
 	TestCapsules();
 	TestDrive();

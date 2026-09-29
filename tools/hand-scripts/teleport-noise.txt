@@ -6,13 +6,14 @@ ini Hands Enabled=1
 ini Locomotion Teleport=1
 ini Locomotion TeleportInstant=0
 ini Locomotion TeleportMakesNoise=1
+ini Locomotion TeleportSound=swish
 
 expect HandScript: finished
 expect Teleport: arrived
 reject HandScript: WARNING
 expect Teleport: a second after the landing the player stands
-expect Teleport: the landing sound dodge (000CBA79) played
-reject Teleport: the landing sound dodge (000CBA79) NOT played
+expect Teleport: the landing sound swish (00088834) played
+reject Teleport: the landing sound swish (00088834) NOT played
 reject Sound: 
 
 wait 4

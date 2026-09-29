@@ -152,6 +152,9 @@ struct HandSettings {
 	bool bodyCollision = true;
 	// The physics step in Hz, 0 the game's own 60 (game/HandBodyLogic.h).
 	float physicsRate = 0.0f;
+	// The player's own capsule radius, times the game's (game/PlayerCapsule.h):
+	// smaller, the body pushes people and bumps into things less.
+	float bodyRadiusScale = 1.0f;
 	// How far each finger link bends while the hand holds something, degrees
 	// (game::HandGrip); negative bends the other way, 0 leaves the hand open.
 	float gripCurlDegrees = 45.0f;

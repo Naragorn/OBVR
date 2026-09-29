@@ -3,7 +3,7 @@
 // The sound a heard teleport makes when it lands ([Locomotion] TeleportSound;
 // the tester, 2026-09-29: "fügen wir nun einen sound hinzu. whl den von der
 // rolle ... wir bieten in den settings alle 4 an. mit default auf
-// fstdodge").
+// fstdodge"; then, 2026-09-29: "setzen wir als default: landing").
 //
 // Played with TeleportMakesNoise only: a teleport the engine does not hear
 // stays silent to the player as well.
@@ -15,7 +15,12 @@
 // - landing: the engine's own landing after a jump (0x006B1900), which picks
 //   FootSound{Earth,Grass,Metal,Stone,Water,Wood}Land (00000219-0000021E)
 //   by the ground under the player, and the armour's landing with it;
-// - swish: WPNSwishHandX 0000C3D1, a fist's swing through the air.
+// - swish: WPNSwishHand 00088834 (the folder fx/wpn/swish/hand, one of three
+//   files at random), a fist's swing through the air. Not WPNSwishHandX
+//   0000C3D1: its file is under fx/wpn/360lofi, which the PC's
+//   Oblivion - Sounds.bsa does not
+//   have - the game made the sound and nothing was heard (the tester,
+//   2026-09-29: "swish macht keinen sound").
 //
 // Pure, covered by teleport_sound_test.
 
@@ -32,14 +37,14 @@ enum class TeleportSound : UInt8 {
 };
 
 inline constexpr UInt32 kTeleportSoundCount = 4;
-inline constexpr TeleportSound kTeleportSoundDefault = TeleportSound::Dodge;
+inline constexpr TeleportSound kTeleportSoundDefault = TeleportSound::Landing;
 
 // The INI's words, in the order of the values, and the settings row's.
 inline constexpr const char* kTeleportSoundNames[kTeleportSoundCount] = {"dodge", "dodgeback", "landing", "swish"};
 
 inline constexpr UInt32 kSoundFormDodge = 0x000CBA79;
 inline constexpr UInt32 kSoundFormDodgeBackward = 0x000CBA7A;
-inline constexpr UInt32 kSoundFormSwishHand = 0x0000C3D1;
+inline constexpr UInt32 kSoundFormSwishHand = 0x00088834;
 
 inline bool ParseTeleportSound(const char* text, TeleportSound& out) {
 	UInt32 index = 0;

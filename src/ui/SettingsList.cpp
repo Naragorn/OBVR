@@ -579,6 +579,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.physicsRate = v; },
 	},
 	{
+		"Hands", "Body radius", "Your own body's width in the physics, times the game's: smaller pushes people and bumps into less",
+		ItemKind::Number, 0.3f, 1.5f, 0.05f, 2, false,
+		"Hands", "BodyRadiusScale",
+		+[](const Config& c) { return c.hands.bodyRadiusScale; },
+		+[](Config& c, float v) { c.hands.bodyRadiusScale = v; },
+	},
+	{
 		"Hands", "Reach tooltip", "The tooltip icon moves onto what a closed grip would pick up",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "ReachTooltip",

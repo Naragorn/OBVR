@@ -1133,3 +1133,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME hand_body COMMAND hand_body_test)
+
+add_executable(player_capsule_test PlayerCapsuleTest.cpp)
+
+target_include_directories(player_capsule_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(player_capsule_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME player_capsule COMMAND player_capsule_test)

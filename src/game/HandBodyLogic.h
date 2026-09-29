@@ -185,6 +185,119 @@ inline bool BladeNeedsRebuild(float builtUnits, float nowUnits) {
 	return d > kBladeRebuildUnits || d < -kBladeRebuildUnits;
 }
 
+// ------------------------------------------- the shapes from what is drawn
+//
+// Measured 2026-09-29 (the spec's open bugs): the constant hand capsule
+// stood in front of the drawn hand (the wrist 11 units behind the grip, the
+// capsule to 11.5 ahead) and the blade's 11 degrees off the drawn blade. So
+// both are built from the drawn skeleton: each frame the drawn points are
+// taken into the body's own frame (the grip's), and a body whose span has
+// moved away from them for a while is made anew.
+
+// A world point in the frame of a body at `pos` turned by `rot` (world from
+// body): rot transposed times the offset.
+inline NiPoint3 ToBodyFrame(const NiMatrix33& rot, const NiPoint3& pos, const NiPoint3& world) {
+	const NiPoint3 d = world - pos;
+	return NiPoint3{rot.data[0][0] * d.x + rot.data[1][0] * d.y + rot.data[2][0] * d.z,
+	                rot.data[0][1] * d.x + rot.data[1][1] * d.y + rot.data[2][1] * d.z,
+	                rot.data[0][2] * d.x + rot.data[1][2] * d.y + rot.data[2][2] * d.z};
+}
+
+// A body's span: its capsule's two end points in its own frame, game units.
+struct BodySpan {
+	bool valid = false;
+	NiPoint3 a{0.0f, 0.0f, 0.0f};
+	NiPoint3 b{0.0f, 0.0f, 0.0f};
+};
+
+// No drawn point of a hand or a blade's start lies further from the grip than
+// this; one that does was read before the hand was placed (the first frames:
+// 50 units off, measured 2026-09-29), and the span is refused.
+inline constexpr float kSpanMaxFromGripUnits = 40.0f;
+
+inline bool NearGrip(const NiPoint3& local) {
+	return local.LengthSquared() <= kSpanMaxFromGripUnits * kSpanMaxFromGripUnits;
+}
+
+// The hand from the drawn bones: from the wrist to the fingers' ends. The
+// ends are taken as far past the middle finger's base as the base is from
+// the wrist - a finger about as long as the palm (a proportion of the human
+// hand, not measured on the model). Refused when the two bones are closer
+// than 1 unit or further than 30 apart (not a hand).
+inline BodySpan HandSpanFromBones(const NiPoint3& wristLocal, const NiPoint3& knuckleLocal) {
+	BodySpan s;
+	const NiPoint3 palm = knuckleLocal - wristLocal;
+	const float length = math::Sqrt(palm.LengthSquared());
+	if (!(length >= 1.0f && length <= 30.0f) || !NearGrip(wristLocal) || !NearGrip(knuckleLocal)) {
+		return s;
+	}
+	s.valid = true;
+	s.a = wristLocal;
+	s.b = knuckleLocal + palm;
+	return s;
+}
+
+// The blade from the drawn weapon node: from its attach point along its own
+// y axis (the blade: measured 0.99 with the line to its bound's centre) to
+// the bound's far end on that axis. Refused when that is under
+// kBladeMinUnits or over 200 units, or the axis is no unit vector.
+inline BodySpan BladeSpanFromNode(const NiPoint3& attachLocal, const NiPoint3& axisLocal,
+                                  const NiPoint3& boundCentreLocal, float boundRadius) {
+	BodySpan s;
+	const float axisLength = axisLocal.LengthSquared();
+	if (!(axisLength > 0.81f && axisLength < 1.21f) || !(boundRadius > 0.0f) || !NearGrip(attachLocal)) {
+		return s;
+	}
+	const NiPoint3 toCentre = boundCentreLocal - attachLocal;
+	const float along = toCentre.x * axisLocal.x + toCentre.y * axisLocal.y + toCentre.z * axisLocal.z + boundRadius;
+	if (!(along >= kBladeMinUnits && along <= 200.0f)) {
+		return s;
+	}
+	s.valid = true;
+	s.a = attachLocal;
+	s.b = attachLocal + axisLocal * along;
+	return s;
+}
+
+// The capsule for a span, in Havok units.
+inline CapsuleSpec CapsuleFromSpan(const BodySpan& span, float radiusUnits) {
+	CapsuleSpec c;
+	c.a = span.a * kHavokPerUnit;
+	c.b = span.b * kHavokPerUnit;
+	c.radius = radiusUnits * kHavokPerUnit;
+	return c;
+}
+
+// Whether the drawn span has left the built one: either end further than
+// this from where it was built.
+inline constexpr float kSpanRebuildUnits = 2.0f;
+// And for how many frames in a row before the body is made anew: the drawn
+// bones are a frame behind the controller, so a fast hand reads a moved
+// span for a frame or two (90 frames: a second at 90 Hz).
+inline constexpr UInt32 kSpanRebuildFrames = 90;
+
+inline bool SpanMoved(const BodySpan& built, const BodySpan& now) {
+	if (!built.valid || !now.valid) {
+		return false;
+	}
+	const float limit = kSpanRebuildUnits * kSpanRebuildUnits;
+	return (now.a - built.a).LengthSquared() > limit || (now.b - built.b).LengthSquared() > limit;
+}
+
+// Counts the frames the span stays moved; true once it has for long enough
+// (and starts counting anew).
+inline bool StepSpanWatch(UInt32& frames, bool moved) {
+	if (!moved) {
+		frames = 0;
+		return false;
+	}
+	if (++frames < kSpanRebuildFrames) {
+		return false;
+	}
+	frames = 0;
+	return true;
+}
+
 // ------------------------------------------------------------- the drive
 //
 // A keyframed body is moved by its velocities: Havok integrates them over

@@ -120,6 +120,10 @@ struct Body {
 	UInt32 wrapper = 0;  // bhkRigidBody
 	UInt32 body = 0;     // hkRigidBody
 	float bladeUnits = 0.0f;
+	// The span it was built from (invalid: the constants), and the frames the
+	// drawn span has stood away from it.
+	BodySpan span;
+	UInt32 spanFrames = 0;
 	bool reportedDrive = false;
 	// The world it was last sent into, and the frames since: an add the
 	// world defers (while it steps) is not asked for twice.
@@ -245,11 +249,14 @@ bool Create(Body& b, const CapsuleSpec& capsule, const NiMatrix33& rot, const Ni
 	const UInt32 motion = LooksLikeObject(body) ? Read(body + kBodyMotionOffset) : 0;
 	const UInt32 motionVtable = LooksLikeObject(motion) ? Read(motion) : 0;
 	OBVR_LOG("Hands: %s's body made - bhkRigidBody %08X, hkRigidBody %08X, motion vtable %08X (%s), "
-	         "filter %08X, capsule %.1f units round, %.1f long",
+	         "filter %08X, capsule %.1f units round, %.1f long, from %.1f %.1f %.1f to %.1f %.1f %.1f (the grip's frame)",
 	         SlotName(slot), wrapper, body, motionVtable,
 	         motionVtable == kKeyframedMotionVtable ? "keyframed" : "NOT keyframed", filter,
 	         static_cast<double>(capsule.radius / kHavokPerUnit),
-	         static_cast<double>(math::Sqrt((capsule.b - capsule.a).LengthSquared()) / kHavokPerUnit));
+	         static_cast<double>(math::Sqrt((capsule.b - capsule.a).LengthSquared()) / kHavokPerUnit),
+	         static_cast<double>(capsule.a.x / kHavokPerUnit), static_cast<double>(capsule.a.y / kHavokPerUnit),
+	         static_cast<double>(capsule.a.z / kHavokPerUnit), static_cast<double>(capsule.b.x / kHavokPerUnit),
+	         static_cast<double>(capsule.b.y / kHavokPerUnit), static_cast<double>(capsule.b.z / kHavokPerUnit));
 	if (!LooksLikeObject(body) || motionVtable != kKeyframedMotionVtable) {
 		return false;
 	}
@@ -517,6 +524,29 @@ HandBodyReport StepHandBodies(const HandBodyFrame& frame) {
 		blade = Body{};
 	}
 
+	// A body whose drawn hand or blade has moved away from its span for a
+	// while (HandBodyLogic.h, the shapes from what is drawn): made anew.
+	for (int i = 0; i < static_cast<int>(HandBodySlot::Count); ++i) {
+		Body& b = g_bodies[i];
+		if (b.wrapper == 0 || !frame.valid[i] || !frame.span[i].valid) {
+			b.spanFrames = 0;
+			continue;
+		}
+		const bool moved = b.span.valid ? SpanMoved(b.span, frame.span[i]) : true;
+		if (!StepSpanWatch(b.spanFrames, moved)) {
+			continue;
+		}
+		if (BodyWorld(b) != 0 && WorldSound(BodyWorld(b))) {
+			Leave(b, i);
+		}
+		OBVR_LOG("Hands: %s's drawn span is %.1f %.1f %.1f to %.1f %.1f %.1f now (the body's %s) - a new body",
+		         SlotName(i), static_cast<double>(frame.span[i].a.x), static_cast<double>(frame.span[i].a.y),
+		         static_cast<double>(frame.span[i].a.z), static_cast<double>(frame.span[i].b.x),
+		         static_cast<double>(frame.span[i].b.y), static_cast<double>(frame.span[i].b.z),
+		         b.span.valid ? "was another" : "was the constants");
+		b = Body{};
+	}
+
 	for (int i = 0; i < static_cast<int>(HandBodySlot::Count); ++i) {
 		Body& b = g_bodies[i];
 		HandBodyState s;
@@ -537,8 +567,13 @@ HandBodyReport StepHandBodies(const HandBodyFrame& frame) {
 			Leave(b, i);
 			break;
 		case HandBodyAction::Create: {
+			// From the drawn hand or blade when it could be read, else the
+			// constants (HandCapsule, BladeCapsule).
+			const float radius = i == weapon ? kBladeBodyRadiusUnits : kHandBodyRadiusUnits;
 			CapsuleSpec capsule = HandCapsule(kHandBodyRadiusUnits);
-			if (i == weapon && !BladeCapsule(frame.bladeUnits, kBladeBodyRadiusUnits, capsule)) {
+			if (frame.span[i].valid) {
+				capsule = CapsuleFromSpan(frame.span[i], radius);
+			} else if (i == weapon && !BladeCapsule(frame.bladeUnits, kBladeBodyRadiusUnits, capsule)) {
 				break;
 			}
 			if (!Create(b, capsule, frame.rot[i], frame.pos[i], i, frame.pushesActors[i])) {
@@ -546,6 +581,7 @@ HandBodyReport StepHandBodies(const HandBodyFrame& frame) {
 				break;
 			}
 			b.bladeUnits = i == weapon ? frame.bladeUnits : 0.0f;
+			b.span = frame.span[i];
 			Enter(b, bhkWorld, i);
 			// Made at the world's origin whatever the block said: to the hand
 			// at once, before a step can run it through what stands there.

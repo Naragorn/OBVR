@@ -2,6 +2,7 @@
 
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "game/HandBodyLogic.h"
 
 namespace obvr::game {
 
@@ -51,6 +52,9 @@ struct HandBodyFrame {
 	// Whether each body pushes people (HandBodyPushesActors): not in combat,
 	// not a hand made a fist.
 	bool pushesActors[static_cast<int>(HandBodySlot::Count)] = {true, true, true};
+	// Each body's span from the drawn hand or blade, in the body's own frame
+	// (HandBodyLogic.h); invalid, the constants are used.
+	BodySpan span[static_cast<int>(HandBodySlot::Count)];
 	float physicsRate = 0.0f;  // [Hands] PhysicsRate, 0 the game's own
 	float dtSeconds = 0.0f;
 };

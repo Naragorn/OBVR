@@ -314,12 +314,21 @@ Every change below is switched by the mode.
     TeleportMakesNoise on, the landing plays `dodge` (default),
     `dodgeback`, `landing` (the engine's own landing after a jump,
     0x006B1900, picked by the ground under the player) or `swish`
-    (`WPNSwishHandX`, 0000C3D1). Settings: Teleport, "Sound". The calls
+    (`WPNSwishHand`, 00088834). Settings: Teleport, "Sound". The calls
     are the script command PlaySound's (game/GameSound.h,
     teleport_sound_test). Harness: `teleport-noise.txt` (dodge) and
     `teleport-sound-landing.txt` PASS, both "played". Not heard yet: the
     harness cannot listen, and `dodgeback`/`swish` ran only as the same
     call with another form.
+  - **Headset (the tester, 2026-09-29):** "swish macht keinen sound,
+    setzen wir als default: landing". Cause: the swish first played was
+    `WPNSwishHandX` (0000C3D1), whose file lies under
+    `fx\wpn\360lofi\` - the PC's `Oblivion - Sounds.bsa` has no
+    `360lofi` folder (its names searched), so the game made the sound and
+    played nothing, and OBVR logged "played". Now `WPNSwishHand`
+    (00088834, `fx\wpn\swish\hand\`, whose `wpn_swishhand_01..03.wav` the
+    BSA has). The default is `landing` now. "played" in the log says the
+    engine made the sound, not that its file exists.
 - **An in-game test** is feasible like the water test: a `[Debug]` switch
   that feeds a scripted right controller into the hand mode and logs `VRTEST`
   lines for position, fatigue and refusals. Not built.
