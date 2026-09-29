@@ -76,6 +76,7 @@
 #include "test/HandScriptRuntime.h"
 #include "test/WaterVRTestRuntime.h"
 #include "render/CrosshairLayer.h"
+#include "render/HandHudLayer.h"
 #include "render/VignetteLayer.h"
 #include "render/HudLayer.h"
 #include "render/LaserLayer.h"
@@ -182,6 +183,7 @@ UInt32 g_menuLiveReportsLeft = 6;
 // and paid at Present alongside the eyes.
 render::HudLayer g_hudLayer;
 render::CrosshairLayer g_crosshairLayer;
+render::HandHudLayer g_handHudLayer;
 render::VignetteLayer g_vignetteLayer;
 render::LaserLayer g_laserLayer;
 render::ReachMarker g_reachMarker;
@@ -4794,6 +4796,64 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		}
 	}
 
+	// The HUD on the hands (docs/hud-on-hands-spec.md): the chosen parts of the
+	// game's HUD lifted out of the capture onto quads of their own, their
+	// rectangles read from the HUD's tile tree every frame - an element whose
+	// tiles a UI mod renamed is not found and stays in the main panel.
+	const vr::HandHudSettings& handHud = config.hands.handHud;
+	const bool handHudActive = config.fullVrMode && handHud.enabled && worldFrame &&
+	                           !visibility.menuIsUp && config.tracker.hudOverlay &&
+	                           g_hudLayer.HasCapture();
+	vr::HandHudFrame handHudFrame;
+	if (handHudActive) {
+		static vr::HudTile s_hudTiles[vr::kHudTilesMax];
+		const UInt32 tileCount = game::ReadHudTiles(game::kMenuIdHudMain, s_hudTiles, vr::kHudTilesMax);
+		UInt32 believedWidth = 0;
+		UInt32 believedHeight = 0;
+		render::GameBelievedSize(believedWidth, believedHeight);
+		const UInt32 uiHeight = believedHeight > 0 ? believedHeight : g_hudLayer.CaptureHeight();
+		vr::CaptureRect rects[vr::kHudElementCount];
+		bool lift[vr::kHudElementCount];
+		bool show[vr::kHudElementCount];
+		for (UInt32 e = 0; e < vr::kHudElementCount; ++e) {
+			const auto element = static_cast<vr::HudElement>(e);
+			lift[e] = vr::HudElementLifted(handHud, element);
+			show[e] = vr::HudElementShown(handHud, element);
+			const vr::UiRect r = lift[e] ? vr::HudElementRect(s_hudTiles, tileCount, element) : vr::UiRect{};
+			rects[e] = vr::UiRectToCapture(r, uiHeight, g_hudLayer.CaptureWidth(), g_hudLayer.CaptureHeight());
+			handHudFrame.rect[e] = r;
+		}
+		g_handHudLayer.Lift(render::GetGameDevice(), g_hudLayer.CaptureSurface(), g_hudLayer.CaptureWidth(),
+		                    g_hudLayer.CaptureHeight(), rects, lift, show);
+		for (UInt32 e = 0; e < vr::kHudElementCount; ++e) {
+			if (!g_handHudLayer.Lifted(e)) {
+				handHudFrame.rect[e] = vr::UiRect{};
+			}
+		}
+		// At a hand-script mark: what was found and lifted, and with the tile
+		// probe on the atlas and the panel left behind as pictures.
+		if (test::HandScriptMarkedThisFrame()) {
+			for (UInt32 e = 0; e < vr::kHudElementCount; ++e) {
+				OBVR_LOG("Hand HUD: at \"%s\" - %s %s, %s, pixels %d,%d..%d,%d", test::HandScriptMarkName(),
+				         vr::kHudElementKeys[e],
+				         vr::kHudPlaceNames[static_cast<UInt32>(handHud.element[e].place)],
+				         g_handHudLayer.Lifted(e) ? "lifted" : (rects[e].valid ? "found, not lifted" : "not found"),
+				         rects[e].left, rects[e].top, rects[e].right, rects[e].bottom);
+			}
+			if (config.hudTileProbe) {
+				char name[96];
+				std::snprintf(name, sizeof(name), "OBVR-HandHud-atlas-%s.bmp", test::HandScriptMarkName());
+				const bool atlas = g_handHudLayer.DumpAtlas(render::GetGameDevice(), name);
+				std::snprintf(name, sizeof(name), "OBVR-HandHud-panel-%s.bmp", test::HandScriptMarkName());
+				const bool panel = render::DumpSurfaceBmp(
+					render::GetGameDevice(), g_hudLayer.CaptureSurface(), g_hudLayer.CaptureWidth(),
+					g_hudLayer.CaptureHeight(), render::d3d9::kFormatA8R8G8B8, name);
+				OBVR_LOG("Hand HUD: the atlas %s, the panel left behind %s", atlas ? "written" : "refused",
+				         panel ? "written" : "refused");
+			}
+		}
+	}
+
 	bool crosshairLifted = false;
 	if (CrosshairCentreCaptureWanted(config.tracker.crosshair,
 	                                g_crosshairHasTarget, tooltipsEnabled,
@@ -4900,6 +4960,29 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	                        crosshair.distanceMetres,
 	                        HandTooltipWidth(crosshair.widthMetres, crosshairOnHand,
 	                                         config.hands.tooltipScale));
+
+	// The HUD on the hands, placed: each quad on its controller, the compass
+	// in the sky fading in as the head looks up.
+	{
+		vr::OpenVRBackend& backend = g_headTracker.GetBackendForFrame();
+		const UInt32 leftDevice = backend.HandDeviceIndex(false);
+		const UInt32 rightDevice = backend.HandDeviceIndex(true);
+		handHudFrame.leftValid = leftDevice != vr::openvr::kTrackedDeviceIndexInvalid;
+		handHudFrame.rightValid = rightDevice != vr::openvr::kTrackedDeviceIndexInvalid;
+		handHudFrame.haveHead = backend.GetRenderPoseMatrix(handHudFrame.head);
+		vr::HandHudQuad quads[vr::kHudElementCount];
+		vr::PlaceHandHud(handHud, handHudFrame, quads);
+		render::HandHudLayer::Placement placements[vr::kHudElementCount];
+		for (UInt32 e = 0; e < vr::kHudElementCount; ++e) {
+			placements[e].shown = quads[e].shown;
+			placements[e].onDevice = quads[e].onDevice;
+			placements[e].device = quads[e].rightHand ? rightDevice : leftDevice;
+			placements[e].pose = quads[e].pose;
+			placements[e].widthMetres = quads[e].widthMetres;
+			placements[e].alpha = quads[e].alpha;
+		}
+		g_handHudLayer.Submit(backend, render::GetGameDevice(), handHudActive && !hiddenForDeath, placements);
+	}
 
 	// Snap turn vignette: fades in when a snap fires, out after. Updated every frame
 	// so the fade advances even when nothing is happening (keeps it hidden).

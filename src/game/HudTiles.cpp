@@ -184,7 +184,77 @@ void LogTile(Walk& walk, const UInt8* tile, UInt32 depth) {
 	}
 }
 
+struct Collect {
+	vr::HudTile* out;
+	UInt32 capacity;
+	UInt32 count = 0;
+};
+
+void CollectTile(Collect& c, const UInt8* tile, SInt32 parent, UInt32 depth) {
+	if (c.count >= c.capacity) {
+		return;
+	}
+	const SInt32 self = static_cast<SInt32>(c.count);
+	vr::HudTile& t = c.out[c.count++];
+	t = vr::HudTile{};
+	t.parent = parent;
+	const char* const name = ReadableText(Read<const char*>(tile, addr::kTileNameOffset), 64);
+	if (name != nullptr) {
+		UInt32 at = 0;
+		for (; at + 1 < vr::kHudTileNameSize && name[at] != '\0'; ++at) {
+			t.name[at] = name[at];
+		}
+		t.name[at] = '\0';
+	}
+	const Traits traits = ReadTraits(tile);
+	// Numbers only: a trait held as a string has no place in the sum.
+	const auto number = [&](int slot, float& value) {
+		if (traits.have[slot] && traits.text[slot] == nullptr) {
+			value = traits.num[slot];
+			return true;
+		}
+		return false;
+	};
+	number(0, t.x);
+	number(1, t.y);
+	const bool haveWidth = number(2, t.width);
+	const bool haveHeight = number(3, t.height);
+	t.hasSize = haveWidth && haveHeight;
+	// A tile hidden by its own trait (visible = 1, false) draws nothing: no
+	// size to lift.
+	if (traits.have[4] && traits.text[4] == nullptr && traits.num[4] == 1.0f) {
+		t.hasSize = false;
+	}
+
+	if (depth >= kMaxDepth) {
+		return;
+	}
+	const UInt8* child = Read<const UInt8*>(tile, kTileChildListStartOffset);
+	for (UInt32 n = 0; LooksLikeObject(child) && n < kMaxListItems; ++n) {
+		const UInt8* const data = Read<const UInt8*>(child, kListNodeDataOffset);
+		if (LooksLikeObject(data) && Read<const UInt8*>(data, addr::kTileParentOffset) == tile) {
+			CollectTile(c, data, self, depth + 1);
+		}
+		child = Read<const UInt8*>(child, kListNodeNextOffset);
+	}
+}
+
 }  // namespace
+
+UInt32 ReadHudTiles(UInt32 menuId, vr::HudTile* out, UInt32 capacity) {
+	const auto* const data = *reinterpret_cast<const UInt8* const* const*>(addr::kTileMenuArrayData);
+	if (out == nullptr || capacity == 0 || !LooksLikeObject(data) || menuId < kMenuIdFirst) {
+		return 0;
+	}
+	const UInt32 count = *reinterpret_cast<const UInt16*>(addr::kTileMenuArrayCount);
+	const UInt32 index = menuId - kMenuIdFirst;
+	if (index >= count || !LooksLikeObject(data[index])) {
+		return 0;
+	}
+	Collect c{out, capacity};
+	CollectTile(c, data[index], -1, 0);
+	return c.count;
+}
 
 UInt32 LogHudTileTree(UInt32 menuId, const char* label) {
 	const auto* const data = *reinterpret_cast<const UInt8* const* const*>(addr::kTileMenuArrayData);

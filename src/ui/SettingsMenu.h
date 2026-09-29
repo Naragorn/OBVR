@@ -62,7 +62,7 @@ public:
 	// The rows the headset menu builds at most. Past it the last settings
 	// silently had no row: at 96 the 97th setting went missing (2026-09-26);
 	// SettingsMenuTest checks that every setting fits.
-	static constexpr UInt32 kRowCapacity = 160;
+	static constexpr UInt32 kRowCapacity = 256;
 
 	// Fills `items` and `categories` from the configuration, and answers how
 	// many rows were written. Never writes more than `capacity`.

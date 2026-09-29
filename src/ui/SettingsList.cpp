@@ -4,6 +4,49 @@ namespace obvr::ui {
 
 namespace {
 
+// The HUD on the hands has the same three rows for every element; one reader
+// and writer per row, told the element by the template argument.
+template <UInt32 E>
+float HudPlaceRead(const Config& c) {
+	return static_cast<float>(c.hands.handHud.element[E].place);
+}
+template <UInt32 E>
+void HudPlaceWrite(Config& c, float v) {
+	c.hands.handHud.element[E].place = vr::HudPlaceFromIndex(v);
+}
+template <UInt32 E>
+float HudOpacityRead(const Config& c) {
+	return c.hands.handHud.element[E].opacity;
+}
+template <UInt32 E>
+void HudOpacityWrite(Config& c, float v) {
+	c.hands.handHud.element[E].opacity = v;
+}
+template <UInt32 E>
+float HudSizeRead(const Config& c) {
+	return c.hands.handHud.element[E].size;
+}
+template <UInt32 E>
+void HudSizeWrite(Config& c, float v) {
+	c.hands.handHud.element[E].size = v;
+}
+
+#define OBVR_HUD_ELEMENT_ROWS(E, NAME, KEY)                                                              \
+	{                                                                                                    \
+		"HUD", NAME, "Where: in view, left hand, right hand, in the sky, or off",                        \
+		ItemKind::Number, 0.0f, static_cast<float>(vr::kHudPlaceCount - 1), 1.0f, 0, false,              \
+		"HandHud", KEY "Place", &HudPlaceRead<E>, &HudPlaceWrite<E>,                                     \
+		"", "", SettingAction::None, vr::kHudPlaceNames, vr::kHudPlaceCount,                             \
+	},                                                                                                   \
+	{                                                                                                    \
+		"HUD", NAME " opacity", "How solid it is, 0 to 1", ItemKind::Number, 0.0f, 1.0f, 0.05f, 2, false, \
+		"HandHud", KEY "Opacity", &HudOpacityRead<E>, &HudOpacityWrite<E>,                               \
+	},                                                                                                   \
+	{                                                                                                    \
+		"HUD", NAME " size", "Times its own size", ItemKind::Number, 0.5f, 3.0f, 0.1f, 1, false,         \
+		"HandHud", KEY "Size", &HudSizeRead<E>, &HudSizeWrite<E>,                                        \
+	},
+
 // Captureless lambdas so that each row's reach into the configuration sits on
 // the row itself. Naming a member twice - once to read, once to write - is what
 // makes the "no row disturbs another" test able to find a mistake at all: there
@@ -903,6 +946,69 @@ const SettingDefinition kSettings[] = {
 		"Hands", "TakeOnlyByHand",
 		+[](const Config& c) { return c.hands.stow.takeOnlyByHand ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.stow.takeOnlyByHand = v != 0.0f; },
+	},
+	// ---- HUD on the hands (Full VR) -----------------------------------------
+	{
+		"HUD", "HUD on the hands", "Parts of the HUD on your hands, the compass in the sky",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"HandHud", "Enabled",
+		+[](const Config& c) { return c.hands.handHud.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.handHud.enabled = v != 0.0f; },
+	},
+	OBVR_HUD_ELEMENT_ROWS(0, "Health bars", "Bars")
+	OBVR_HUD_ELEMENT_ROWS(1, "Spell", "Spell")
+	OBVR_HUD_ELEMENT_ROWS(2, "Weapon", "Weapon")
+	OBVR_HUD_ELEMENT_ROWS(3, "Active effects", "Effects")
+	OBVR_HUD_ELEMENT_ROWS(4, "Level-up icon", "LevelUp")
+	OBVR_HUD_ELEMENT_ROWS(5, "Compass", "Compass")
+	{
+		"HUD", "Compass height", "How far above the horizon the compass hangs, degrees",
+		ItemKind::Number, 15.0f, 85.0f, 5.0f, 0, false,
+		"HandHud", "CompassElevationDegrees",
+		+[](const Config& c) { return c.hands.handHud.compassElevationDegrees; },
+		+[](Config& c, float v) { c.hands.handHud.compassElevationDegrees = v; },
+	},
+	{
+		"HUD", "Compass fade start", "Looking this far up, degrees, the compass starts to show",
+		ItemKind::Number, 0.0f, 80.0f, 5.0f, 0, false,
+		"HandHud", "CompassFadeStartDegrees",
+		+[](const Config& c) { return c.hands.handHud.compassFadeStartDegrees; },
+		+[](Config& c, float v) { c.hands.handHud.compassFadeStartDegrees = v; },
+	},
+	{
+		"HUD", "Compass fade full", "From this far up, degrees, it shows fully",
+		ItemKind::Number, 0.0f, 85.0f, 5.0f, 0, false,
+		"HandHud", "CompassFadeFullDegrees",
+		+[](const Config& c) { return c.hands.handHud.compassFadeFullDegrees; },
+		+[](Config& c, float v) { c.hands.handHud.compassFadeFullDegrees = v; },
+	},
+	{
+		"HUD", "Compass distance", "How far away the compass hangs, metres",
+		ItemKind::Number, 0.5f, 5.0f, 0.1f, 1, false,
+		"HandHud", "CompassDistanceMetres",
+		+[](const Config& c) { return c.hands.handHud.compassDistanceMetres; },
+		+[](Config& c, float v) { c.hands.handHud.compassDistanceMetres = v; },
+	},
+	{
+		"HUD", "Hand panel height", "How far above the controller the hand HUD sits, metres",
+		ItemKind::Number, -0.1f, 0.2f, 0.01f, 2, false,
+		"HandHud", "PanelUp",
+		+[](const Config& c) { return c.hands.handHud.panelUp; },
+		+[](Config& c, float v) { c.hands.handHud.panelUp = v; },
+	},
+	{
+		"HUD", "Hand panel back", "How far back along the controller it sits, metres",
+		ItemKind::Number, -0.1f, 0.3f, 0.01f, 2, false,
+		"HandHud", "PanelBack",
+		+[](const Config& c) { return c.hands.handHud.panelBack; },
+		+[](Config& c, float v) { c.hands.handHud.panelBack = v; },
+	},
+	{
+		"HUD", "Hand panel tilt", "How far it leans towards your eyes, degrees",
+		ItemKind::Number, 0.0f, 90.0f, 5.0f, 0, false,
+		"HandHud", "PanelTiltDegrees",
+		+[](const Config& c) { return c.hands.handHud.panelTiltDegrees; },
+		+[](Config& c, float v) { c.hands.handHud.panelTiltDegrees = v; },
 	},
 	// ---- Teleport (Full VR) --------------------------------------------------
 	{

@@ -6,6 +6,7 @@
 #include "vr/HandInput.h"
 #include "vr/OpenVRTypes.h"
 #include "vr/Quaternion.h"
+#include "vr/HandHud.h"
 #include "vr/Fist.h"
 #include "vr/Holster.h"
 #include "vr/HolsterFit.h"
@@ -163,6 +164,8 @@ struct HandSettings {
 	// The shove: an open hand driven fast into someone, weapons away
 	// (game/ShoveLogic.h).
 	game::ShoveSettings shove;
+	// The HUD on the hands and the compass in the sky ([HandHud], vr/HandHud.h).
+	HandHudSettings handHud;
 	// How far each finger link bends while the hand holds something, degrees
 	// (game::HandGrip); negative bends the other way, 0 leaves the hand open.
 	float gripCurlDegrees = 45.0f;

@@ -1,0 +1,26 @@
+# The HUD on the hands (docs/hud-on-hands-spec.md): the bars, the spell, the
+# weapon and the compass are found in the HUD's tile tree, lifted out of the
+# captured interface into the atlas and erased from the panel. Writes the
+# atlas and the panel left behind as pictures (HudTileProbe). The quads
+# themselves need tracked controllers and a head pose, which a sleeping
+# headset does not give - their placement is covered by hand_hud_test.
+
+ini Hands Enabled=1
+ini HandHud Enabled=1
+ini Debug HudTileProbe=1
+
+expect HandScript: finished
+expect Hand HUD: lifted out of the
+expect Hand HUD: at "hud" - Bars left, lifted
+expect Hand HUD: at "hud" - Spell left, lifted
+expect Hand HUD: at "hud" - Weapon right, lifted
+expect Hand HUD: at "hud" - Compass sky, lifted
+expect Hand HUD: the atlas written, the panel left behind written
+reject HandScript: WARNING
+
+wait 10
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 2
+mark hud
+wait 1

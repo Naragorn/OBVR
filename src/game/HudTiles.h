@@ -12,6 +12,7 @@
 // their rectangles are in are known before anything relies on them.
 
 #include "core/Types.h"
+#include "vr/HandHud.h"
 
 namespace obvr::game {
 
@@ -19,5 +20,11 @@ namespace obvr::game {
 // lines, one per tile: its depth, name, and the traits that place it. Reads
 // only. Returns the number of tiles logged, 0 when the menu is not loaded.
 UInt32 LogHudTileTree(UInt32 menuId, const char* label);
+
+// Reads one menu's tile tree into `out`, depth first, each tile with its
+// parent's index - the snapshot vr::HudElementRect works on. A tile hidden
+// by its own visible trait counts as having no size. Returns the number of
+// tiles read, 0 when the menu is not loaded; stops at `capacity`.
+UInt32 ReadHudTiles(UInt32 menuId, vr::HudTile* out, UInt32 capacity);
 
 }  // namespace obvr::game

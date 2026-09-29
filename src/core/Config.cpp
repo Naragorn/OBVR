@@ -1,5 +1,7 @@
 #include "core/Config.h"
 
+#include <cstdio>
+
 #include "core/Log.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
@@ -702,6 +704,37 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.shove.hardSpeed = ReadFloat("Hands", "ShoveHardSpeed", h.shove.hardSpeed, path);
 		h.shove.hardForce = ReadFloat("Hands", "ShoveHardForce", h.shove.hardForce, path);
 		h.shove.distance = ReadFloat("Hands", "ShoveDistance", h.shove.distance, path);
+		{
+			vr::HandHudSettings& hh = h.handHud;
+			hh.enabled = ReadBool("HandHud", "Enabled", hh.enabled, path);
+			for (UInt32 e = 0; e < vr::kHudElementCount; ++e) {
+				char key[40];
+				char word[16] = {};
+				std::snprintf(key, sizeof(key), "%sPlace", vr::kHudElementKeys[e]);
+				ReadText("HandHud", key, word, sizeof(word), path);
+				if (word[0] != 0 && !vr::ParseHudPlace(word, hh.element[e].place)) {
+					OBVR_LOG("Config: [HandHud] %s=%s is not view, left, right, sky or off - kept %s", key, word,
+					         vr::kHudPlaceNames[static_cast<UInt32>(hh.element[e].place)]);
+				}
+				std::snprintf(key, sizeof(key), "%sOpacity", vr::kHudElementKeys[e]);
+				hh.element[e].opacity = ReadFloat("HandHud", key, hh.element[e].opacity, path);
+				std::snprintf(key, sizeof(key), "%sSize", vr::kHudElementKeys[e]);
+				hh.element[e].size = ReadFloat("HandHud", key, hh.element[e].size, path);
+			}
+			hh.panelUp = ReadFloat("HandHud", "PanelUp", hh.panelUp, path);
+			hh.panelBack = ReadFloat("HandHud", "PanelBack", hh.panelBack, path);
+			hh.panelTiltDegrees = ReadFloat("HandHud", "PanelTiltDegrees", hh.panelTiltDegrees, path);
+			hh.unitMetres = ReadFloat("HandHud", "UnitMetres", hh.unitMetres, path);
+			hh.gapMetres = ReadFloat("HandHud", "GapMetres", hh.gapMetres, path);
+			hh.compassElevationDegrees =
+				ReadFloat("HandHud", "CompassElevationDegrees", hh.compassElevationDegrees, path);
+			hh.compassDistanceMetres = ReadFloat("HandHud", "CompassDistanceMetres", hh.compassDistanceMetres, path);
+			hh.skyUnitMetres = ReadFloat("HandHud", "SkyUnitMetres", hh.skyUnitMetres, path);
+			hh.compassFadeStartDegrees =
+				ReadFloat("HandHud", "CompassFadeStartDegrees", hh.compassFadeStartDegrees, path);
+			hh.compassFadeFullDegrees =
+				ReadFloat("HandHud", "CompassFadeFullDegrees", hh.compassFadeFullDegrees, path);
+		}
 		h.levitateObjects = ReadBool("Hands", "LevitateObjects", h.levitateObjects, path);
 		h.attachSmallObjects =
 			ReadBool("Hands", "AttachSmallObjects", h.attachSmallObjects, path);
