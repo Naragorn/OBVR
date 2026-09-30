@@ -25,7 +25,7 @@ questions, bug reports, screenshots, or just to say hi.
   world with Oblivion's own sepia look. Main menu, loading screens and videos
   play on a big cinema screen.
 - **A welcome walkthrough and a settings menu** inside the headset (`Insert`).
-- **Recenter** your view with `Del`.
+- **Recenter** your view with the `Delete` key (`Entf` on German keyboards).
 - **Comfort options** like smooth turning.
 - Works with or without the 4GB patch, and with Mod Organizer 2.
 
@@ -104,7 +104,7 @@ A few worth knowing:
 | `[Render] Stereo` | `dual` real 3D (default), `aer` lighter fallback, `none` flat |
 | `[Render] EyeSeparationScale` | depth boost: above `1.0` the world feels deeper and a bit smaller. Stay below ~1.5 |
 | `[Render] Menus` | `world` menus float in front of you, `cinema` on a flat screen |
-| `[Head] RecenterKey` | the recenter key, `Del` by default |
+| `[Head] RecenterKey` | the recenter key, `Delete` (`Entf`) by default |
 | `[Look] *` | turning, aiming and comfort options |
 | `[Hands] Enabled` | standing with motion controllers - not ready yet, off |
 
