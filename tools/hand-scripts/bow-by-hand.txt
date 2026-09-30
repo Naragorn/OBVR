@@ -1,0 +1,50 @@
+# The bow by hand (vr/Archery.h): the bow drawn from behind the left
+# shoulder, the right hand's grip over the right shoulder takes an arrow,
+# brings it to the bow (nocked), pulls back (the engine's draw), lets go
+# (loosed) - the shot along the line from the right hand through the bow.
+# The runner takes two console lines at the start; the arrows come at marks,
+# and a console at a mark leaves the menu state up for some seconds - the
+# bow waits for it.
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands BowByHand=1
+console player.additem 00025231 1
+console player.equipitem 00025231
+console-at arrows player.additem 00017829 20
+console-at arrows_on player.equipitem 00017829
+
+expect HandScript: finished
+expect Hands: bow by hand - an arrow taken from the quiver
+expect Hands: bow by hand - the arrow nocked
+expect Hands: bow by hand - drawn - the engine's draw begins
+expect Hands: bow by hand - loosed
+reject HandScript: WARNING
+
+wait 16
+mark arrows
+wait 3
+mark arrows_on
+wait 12
+left pos -0.18 -0.15 0.12
+wait 0.3
+left grip 1
+wait 0.2
+left grip 0
+left pos -0.05 -0.10 -0.40
+wait 3
+mark bow_drawn
+right pos 0.15 -0.10 0.12
+wait 0.3
+right grip 1
+wait 0.3
+mark arrow_taken
+right pos -0.03 -0.10 -0.30
+wait 0.4
+mark nocked
+right pos 0.0 -0.08 -0.02
+wait 1.5
+mark drawn
+right grip 0
+wait 1.5
+mark loosed

@@ -403,6 +403,45 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	// A left grip on a weapon's handle neither grabs nor does anything else a
 	// grip does.
 	in.leftGrip = in.leftGrip && !f.leftGripOnHandle;
+	// The bow by hand (vr::StepArchery): the weapon hand's grip at the quiver
+	// takes an arrow, and from then on the grip is the arrow's.
+	const bool bowDrawn = f.inWorld && !f.menuMode && f.equipped == EquippedKind::Bow &&
+	                      f.weaponSeen == WeaponSeen::Drawn;
+	{
+		ArcheryInput ain;
+		ain.bowDrawn = bowDrawn;
+		ain.drawValid = cr.valid && f.headValid;
+		ain.bowValid = cl.valid;
+		if (ain.drawValid) {
+			ain.drawBody = BodyRelative(f.head, f.headPosition, cr.position);
+		}
+		ain.drawAt = cr.position;
+		ain.bowAt = cl.position;
+		ain.drawGrip = cr.valid && GripDown(cr.buttonsPressed);
+		ain.leftHanded = s.leftHanded;
+		r.archery = StepArchery(m_archery, ain, s.archery);
+		in.rightGrip = in.rightGrip && !r.archery.claimsGrip;
+		// The shot along the arrow: from the drawing hand through the bow.
+		NiPoint3 line{};
+		if (r.archery.aiming && ArrowLine(cr.position, cl.position, line)) {
+			r.arrowOrigin = cl.position;
+			r.arrowDirection = line;
+			r.arrowAimValid = ReachDirection(leftRelative - rightRelative, cl.position - cr.position, r.arrowYawTurn,
+			                                 r.arrowSinPitch);
+			if (r.arrowAimValid) {
+				m_lastArrow = ArrowAimKept{true, r.arrowYawTurn, r.arrowSinPitch, r.arrowOrigin, r.arrowDirection};
+			}
+		}
+		// The loosed arrow still flies along its line (vr::StepArrowAimHold).
+		if (StepArrowAimHold(m_arrowHold, r.arrowAimValid, r.archery.loosed, f.dtSeconds) &&
+		    m_lastArrow.valid) {
+			r.arrowAimValid = true;
+			r.arrowYawTurn = m_lastArrow.yawTurn;
+			r.arrowSinPitch = m_lastArrow.sinPitch;
+			r.arrowOrigin = m_lastArrow.origin;
+			r.arrowDirection = m_lastArrow.direction;
+		}
+	}
 	in.rightA = cr.valid && ButtonADown(cr.buttonsPressed);
 	in.leftA = cl.valid && ButtonADown(cl.buttonsPressed);
 	in.rightMenuButton = StepRisingEdge(
@@ -478,6 +517,10 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	in.pointRight = m_pointRight;
 	in.leftHanded = false;  // the roles are swapped before the frame (AssignHandRoles)
 	r.controls = PlanHandControls(in, s.stickDeadZone);
+	// With the bow by hand, the draw is the arrow's pull, not the trigger.
+	if (bowDrawn && s.archery.enabled) {
+		r.controls.attack = r.archery.attackHeld;
+	}
 	r.controls.readyWeapon =
 		r.controls.readyWeapon || r.holster.readyClick || r.fist.readyClick;
 	r.controls.run = StepRunToggle(m_runLatched, s.runToggle, in.leftStickClick, r.controls.run);

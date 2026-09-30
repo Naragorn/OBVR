@@ -857,6 +857,16 @@ void TestCrosshair() {
 	      "something activatable under it brings it back");
 	Check(CrosshairWanted(Needed(false, false, true)), "so does drawing a weapon");
 	Check(CrosshairWanted(Needed(false, true, true)), "and both at once, without arguing");
+	{
+		CrosshairVisibility arrow = Needed(false, false, false);
+		arrow.aiming = true;
+		Check(CrosshairWanted(arrow), "an arrow on the string by hand brings it back");
+		arrow.enabled = false;
+		Check(!CrosshairWanted(arrow), "but not with the crosshair switched off");
+		arrow.enabled = true;
+		arrow.menuIsUp = true;
+		Check(!CrosshairWanted(arrow), "nor under a menu");
+	}
 
 	// Sneaking: the centre is the game's sneak eye, which must stay in view
 	// with the weapon away and nothing aimed at - in either view.

@@ -549,6 +549,12 @@ struct CrosshairVisibility {
 	// is, and the eye tells whether one is seen - so it is always wanted while
 	// sneaking, whatever "only when needed" would say about a sheathed weapon.
 	bool sneaking = false;
+
+	// An arrow is on the string by hand (vr::StepArchery): the crosshair is
+	// wanted while aiming, whatever else would hide it (the tester,
+	// 2026-09-30: "Crosshair muss voll sichtbar sein wenn Optionen dafür an ist
+	// und man zielt damit").
+	bool aiming = false;
 };
 
 // Whether either only-when-needed control restricts this view. Shared by the

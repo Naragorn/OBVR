@@ -206,7 +206,7 @@ bool CrosshairWanted(const CrosshairVisibility& visibility) {
 	if (!CrosshairOnlyWhenNeededApplies(visibility)) {
 		return true;
 	}
-	return visibility.somethingAimedAt || visibility.weaponDrawn || visibility.sneaking;
+	return visibility.somethingAimedAt || visibility.weaponDrawn || visibility.sneaking || visibility.aiming;
 }
 
 bool CrosshairCaptureWanted(const CrosshairVisibility& visibility) {

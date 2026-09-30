@@ -1222,6 +1222,62 @@ void TestGrabHand() {
 	Check(!r.leftTriggerDown, "let go: not down");
 }
 
+void TestBowByHand() {
+	std::printf("The bow by hand, through the mode\n");
+	HandSettings settings;
+	settings.enabled = true;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.inWorld = true;
+	frame.unitsPerMetre = 70.0f;
+	frame.dtSeconds = 0.011f;
+	frame.weaponSeen = WeaponSeen::Drawn;
+	frame.equipped = EquippedKind::Bow;
+	frame.haveBow = true;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	// The bow ahead of the eyes; tracking axes x right, y up, z back.
+	frame.left.position = NiPoint3{-0.1f, -0.2f, -0.5f};
+	const ArcherySettings& a = settings.archery;
+	const NiPoint3 quiver{a.quiverZone.x, a.quiverZone.z, -a.quiverZone.y};
+	const UInt64 grip = 1ull << openvr::kButtonIndexGrip;
+	HandMode mode;
+
+	frame.right.position = NiPoint3{0.2f, -0.3f, -0.3f};
+	frame.right.trigger = 1.0f;
+	HandModeResult r = mode.Update(frame, settings);
+	Check(!r.controls.attack, "the trigger no longer draws the bow");
+	frame.right.trigger = 0.0f;
+
+	frame.right.position = quiver;
+	mode.Update(frame, settings);
+	frame.right.buttonsPressed = grip;
+	r = mode.Update(frame, settings);
+	Check(r.archery.took && !r.grabWanted && !r.controls.grab, "the grip at the quiver: an arrow, no grab");
+	frame.right.position = NiPoint3{-0.1f, -0.2f, -0.4f};
+	r = mode.Update(frame, settings);
+	Check(r.archery.nocked && r.arrowAimValid && !r.controls.attack, "at the bow: nocked, aimed along it, not drawn");
+	Check(r.arrowDirection.z < -0.99f, "the arrow's line from the drawing hand through the bow");
+	frame.right.position = NiPoint3{-0.1f, -0.2f, -0.2f};
+	r = mode.Update(frame, settings);
+	Check(r.controls.attack && r.archery.drawStarted, "pulled back: the engine's draw");
+	frame.right.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(!r.controls.attack && r.archery.loosed && r.arrowAimValid,
+	      "let go: loosed, and the shot still along the arrow's line");
+	frame.dtSeconds = 0.5f;
+	r = mode.Update(frame, settings);
+	Check(!r.arrowAimValid, "half a second later: the line let go");
+
+	HandSettings off = settings;
+	off.archery.enabled = false;
+	HandMode vanilla;
+	frame.dtSeconds = 0.011f;
+	frame.right.trigger = 1.0f;
+	r = vanilla.Update(frame, off);
+	Check(r.controls.attack, "bow by hand off: the trigger draws as before");
+}
+
 void TestHolsterInMode() {
 	std::printf("Drawing by reaching, through the mode\n");
 	HandSettings settings;
@@ -2120,6 +2176,7 @@ int main() {
 	TestFirstPersonDepthBranch();
 	TestWeaponGuard();
 	TestLeftHandedMirror();
+	TestBowByHand();
 	TestHolsterInMode();
 	TestFistInMode();
 

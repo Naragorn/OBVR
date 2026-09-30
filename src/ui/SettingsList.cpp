@@ -707,6 +707,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.twoHand.enabled = v != 0.0f; },
 	},
 	{
+		"Hands", "Bow by hand", "An arrow from over the shoulder, nocked on the bow, pulled back and let go",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "BowByHand",
+		+[](const Config& c) { return c.hands.archery.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.archery.enabled = v != 0.0f; },
+	},
+	{
 		"Hands", "Two hands on one-handers", "One-handed weapons can be held with both hands too",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "TwoHandOneHanders",

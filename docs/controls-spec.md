@@ -818,3 +818,43 @@ The tester: "bei 2 händern mit der linken hand meine hand an das schwert/axt/wh
     - `HoldWeaponAtRest` now keeps the pose the Weapon node has while the player does nothing, per model, and writes it back while any action plays. It runs before the hands are pinned, for one- and two-handed weapons, not the bow.
     - The harness logged the draw turning it up to 27.7 degrees ("an animation turned the weapon ... (player action 0) - held at its rest").
     - `hand-bodies`, `holster`, `holster-two-handed` and `shield-block` still PASS with it.
+
+### 4.11 The bow by hand, as in Blade & Sorcery (built 2026-09-30)
+
+The tester: "Pfeil und Bogen wie in blade and sorcery. Linke hand hat ja bereits den Bogen. Jetzt muss rechte noch auf rechter schulter den Pfeil bekommen und an den bogen führen. Beim loslassen Schuss. Zielen im groben mit links mit dem bogen, im feinen mit rechts dem Pfeil. Crosshair muss voll sichtbar sein wenn Optionen dafür an ist und man zielt damit."
+
+**The shot, step by step** (`vr::StepArchery`, `vr/Archery.h`, `archery_test`):
+1. **Take:** with the bow drawn (the bow hand already holds it, 4.2), the weapon hand's grip closing at the quiver takes an arrow. The quiver is over that hand's shoulder, behind it: `QuiverX/Forward/Up` (0.15, -0.12, -0.10 m from the eyes), `QuiverRadius` 0.20 m, mirrored with `LeftHanded`.
+   - A grip already closed when the bow comes out takes nothing.
+   - From then on the grip is the arrow's: it grabs nothing.
+2. **Nock:** the arrow brought within `NockMetres` (0.15 m) of the bow hand is on the string.
+3. **Draw:** pulled back `BowDrawStartMetres` (0.08 m) further, the engine's own draw begins: its attack control held, as the trigger held it before.
+4. **Loose:** the grip opened lets the control go, and the engine looses as vanilla does on release.
+- An arrow let go before the draw, or the bow put away, is dropped: no shot.
+- **The trigger no longer draws the bow** while `BowByHand` is on (settings row "Bow by hand", default on). Off, it draws as before.
+
+**Aim:**
+- While nocked or drawn, the shot goes along the line from the drawing hand through the bow hand. The bow sets it roughly, the drawing hand finely (`HandModeResult::arrowYawTurn/arrowSinPitch`, via `vr::ReachDirection`).
+- It goes into the aim-at-source pose ahead of `AimWithHand` and the gaze.
+- The engine makes the arrow a few frames after the control goes up (action 5, then 3). By then the grip is open, so the line is kept for 0.4 s after the loose (`vr::StepArrowAimHold`).
+
+**The crosshair:**
+- While an arrow is nocked or drawn, the crosshair hangs on the arrow's line, ahead of the bow at the crosshair's distance, facing the eyes (`CrosshairLayer::SetRoomPlacement`). Before, it hung on the right hand's laser.
+- It is wanted while aiming whatever "only when needed" says (`CrosshairVisibility::aiming`), and still not with the crosshair switched off or under a menu (`frame_logic_test`).
+
+**What the engine still decides:**
+- The draw's power: the time the control is held. How far the hand pulls does not change it.
+- The arrow on the string, drawn by the bow's own animation.
+- Where the arrow starts: only its direction is set.
+
+**Not built:**
+- An arrow model in the hand between the quiver and the bow.
+- Power from the pull's length.
+- The string following the hand.
+
+**Tested:** harness `bow-by-hand`, 2026-09-30 14:52: PASS (artifacts/hand-script/bow-by-hand/20260930-145217).
+- The arrow was taken (the hands 0.56 m apart), nocked at 0.10 m, and drawn at 0.38 m "along the arrow's line".
+- The attack update ran at action 5 with "heading 0.0000 set to 6.1524 and pitch -0.0000 to 0.0521": 7.5 degrees left and 3 degrees down. That is the line from the scripted right hand through the bow, which sat 5 cm left of and 2 cm below it, 38 cm ahead.
+- After the loose an arrow reference (form FF000B9E, type 0x22 ammunition) lay 669 units away.
+- The crosshair's placement is not in the window picture: not seen.
+- The runner's console at a mark leaves the menu state up for some seconds; the script waits 12 s for it.

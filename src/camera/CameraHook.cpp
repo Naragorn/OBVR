@@ -2383,6 +2383,21 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		OBVR_LOG("Hands: %s", g_handBlocking ? "the left hand is up - blocking"
 		                                      : "the left hand is down - block released");
 	}
+	// The bow by hand, each step (vr::StepArchery).
+	{
+		const vr::ArcheryVerdict& a = g_hand.archery;
+		if (a.took || a.nocked || a.drawStarted || a.loosed || a.dropped) {
+			OBVR_LOG("Hands: bow by hand - %s (the hands %.2f m apart)%s",
+			         a.took ? "an arrow taken from the quiver"
+			         : a.nocked ? "the arrow nocked"
+			         : a.drawStarted ? "drawn - the engine's draw begins"
+			         : a.loosed ? "loosed"
+			                    : "the arrow dropped, no shot",
+			         static_cast<double>(a.handsApartMetres),
+			         a.loosed || a.drawStarted ? (g_hand.arrowAimValid ? ", along the arrow's line" : ", no line")
+			                                   : "");
+		}
+	}
 	if (g_hand.reachBack != g_handReachBack) {
 		g_handReachBack = g_hand.reachBack;
 		OBVR_LOG("Hands: the right hand is %s", g_handReachBack ? "reaching back" : "in front");
@@ -5388,6 +5403,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		visibility.sneaking = game::IsPlayerSneaking();
 	}
 
+	visibility.aiming = config.fullVrMode && g_hand.arrowAimValid;
 	const bool crosshairWanted = CrosshairWanted(visibility);
 	const bool tooltipsEnabled = visibility.thirdPerson
 	                               ? config.tracker.crosshairTooltipsThirdPerson
@@ -5605,6 +5621,17 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	g_crosshairLayer.SetRoomPlacement(
 		g_reachIconShown, g_reachIconPose,
 		HandTooltipWidth(render::kReachIconWidthMetres, true, config.hands.tooltipScale));
+	// An arrow on the string (vr::StepArchery): the crosshair hangs on its
+	// line, ahead of the bow at the crosshair's distance, facing the eyes -
+	// where the shot goes, not where the right hand's laser points.
+	vr::openvr::HmdMatrix34 arrowHead{};
+	const bool arrowCrosshair = config.fullVrMode && g_hand.arrowAimValid &&
+	                            g_headTracker.GetBackendForFrame().GetRenderPoseMatrix(arrowHead);
+	if (arrowCrosshair) {
+		const NiPoint3 at = g_hand.arrowOrigin + g_hand.arrowDirection * crosshair.distanceMetres;
+		g_crosshairLayer.SetRoomPlacement(true, vr::FacingHeadAt(arrowHead, at),
+		                                  HandTooltipWidth(crosshair.widthMetres, true, config.hands.tooltipScale));
+	}
 	g_crosshairLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                        crosshairLifted && content != CrosshairContent::Hidden &&
 	                            !hiddenForDeath,
@@ -6807,6 +6834,12 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 				// the hand moves, and a throw of the hand throws it.
 				pose.headYaw = AimYawRemaining(sourceHeadYaw + g_hand.grabYawTurn, g_aimBodyOffset);
 				pose.pitch = PlayerPitchForGaze(g_hand.grabSinPitch);
+			} else if (g_hand.arrowAimValid) {
+				// An arrow nocked or drawn by hand (vr::StepArchery): the shot
+				// goes along it, from the drawing hand through the bow - the
+				// bow's turn and the drawing hand's place both steer it.
+				pose.headYaw = AimYawRemaining(sourceHeadYaw + g_hand.arrowYawTurn, g_aimBodyOffset);
+				pose.pitch = PlayerPitchForGaze(g_hand.arrowSinPitch);
 			} else if (g_hand.aimValid && aimWithHand) {
 				// Right hand: attacks and spells, with Hands.AimWithHand
 				pose.headYaw = AimYawRemaining(sourceHeadYaw + g_hand.aimYawTurn, g_aimBodyOffset);

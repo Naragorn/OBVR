@@ -728,6 +728,13 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.twoHand.oneHanders = ReadBool("Hands", "TwoHandOneHanders", h.twoHand.oneHanders, path);
 		h.twoHand.slide = ReadBool("Hands", "TwoHandSlide", h.twoHand.slide, path);
 		h.twoHand.releaseSeconds = ReadFloat("Hands", "TwoHandReleaseSeconds", h.twoHand.releaseSeconds, path);
+		h.archery.enabled = ReadBool("Hands", "BowByHand", h.archery.enabled, path);
+		h.archery.quiverZone.x = ReadFloat("Hands", "QuiverX", h.archery.quiverZone.x, path);
+		h.archery.quiverZone.y = ReadFloat("Hands", "QuiverForward", h.archery.quiverZone.y, path);
+		h.archery.quiverZone.z = ReadFloat("Hands", "QuiverUp", h.archery.quiverZone.z, path);
+		h.archery.quiverRadius = ReadFloat("Hands", "QuiverRadius", h.archery.quiverRadius, path);
+		h.archery.nockMetres = ReadFloat("Hands", "NockMetres", h.archery.nockMetres, path);
+		h.archery.drawStartMetres = ReadFloat("Hands", "BowDrawStartMetres", h.archery.drawStartMetres, path);
 		h.throwHit.staggerSpeed = ReadFloat("Hands", "ThrowStaggerSpeed", h.throwHit.staggerSpeed, path);
 		h.throwHit.knockSpeed = ReadFloat("Hands", "ThrowKnockSpeed", h.throwHit.knockSpeed, path);
 		h.lead.strangerMetres = ReadFloat("Hands", "LeadStrangerMetres", h.lead.strangerMetres, path);

@@ -1203,3 +1203,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME two_hand COMMAND two_hand_test)
+
+add_executable(archery_test ArcheryTest.cpp)
+
+target_include_directories(archery_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(archery_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME archery COMMAND archery_test)

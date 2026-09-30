@@ -10,6 +10,7 @@
 #include "vr/Quaternion.h"
 #include "vr/HandHud.h"
 #include "vr/TwoHandLogic.h"
+#include "vr/Archery.h"
 #include "vr/Fist.h"
 #include "vr/Holster.h"
 #include "vr/HolsterFit.h"
@@ -173,6 +174,9 @@ struct HandSettings {
 	game::ThrowHitSettings throwHit;
 	// Holding a two-hander with both hands (vr/TwoHandLogic.h).
 	TwoHandSettings twoHand;
+	// The bow by hand: an arrow from the quiver, nocked, drawn, loosed
+	// (vr/Archery.h).
+	ArcherySettings archery;
 	// The HUD on the hands and the compass in the sky ([HandHud], vr/HandHud.h).
 	HandHudSettings handHud;
 	// How far each finger link bends while the hand holds something, degrees
@@ -378,6 +382,14 @@ struct HandModeResult {
 	// Drawing by reaching: the ready click, a weapon to equip first, the grips
 	// that are the holster's (vr::StepHolster).
 	HolsterVerdict holster;
+	// The bow by hand (vr::StepArchery), and the arrow's line while it is
+	// nocked or drawn: the shot goes along it, the crosshair hangs on it.
+	ArcheryVerdict archery;
+	bool arrowAimValid = false;
+	float arrowYawTurn = 0.0f;
+	float arrowSinPitch = 0.0f;
+	NiPoint3 arrowOrigin{0.0f, 0.0f, 0.0f};     // the bow hand, tracking space, metres
+	NiPoint3 arrowDirection{0.0f, 0.0f, -1.0f};  // tracking space, unit
 	// Fists by making a fist: the ready click, and whether the hand is one
 	// (vr::StepFist).
 	FistVerdict fist;
@@ -614,6 +626,17 @@ private:
 	StickFlickState m_rightFlick;
 	TeleportStickState m_teleportStick;
 	HolsterState m_holster;
+	ArcheryState m_archery;
+	// The last arrow's line, kept for the loose (vr::StepArrowAimHold).
+	struct ArrowAimKept {
+		bool valid = false;
+		float yawTurn = 0.0f;
+		float sinPitch = 0.0f;
+		NiPoint3 origin{0.0f, 0.0f, 0.0f};
+		NiPoint3 direction{0.0f, 0.0f, -1.0f};
+	};
+	ArrowAimKept m_lastArrow;
+	ArrowAimHold m_arrowHold;
 	FistState m_fist;
 	ButtonEdge m_dropEdge;
 	DropPressState m_drop;
