@@ -98,12 +98,89 @@ void TestVanillaGrip() {
 
 	std::printf("The left hand put on the handle\n");
 	const NiPoint3 moved{0.0f, 0.0f, 50.0f};
-	const LeftHandPose same = LeftHandOnHandle(g, g.Below(), w, moved);
+	const LeftHandPose same = LeftHandOnHandle(g, g.Below(), w, moved, w * g.rot);
 	Check(NearV(same.pos, moved + w * g.pos) && NearV(same.rot * NiPoint3{1, 0, 0}, w * NiPoint3{1, 0, 0}),
 	      "at the game's place: the game's pose, carried with the weapon");
-	const LeftHandPose lower = LeftHandOnHandle(g, -14.0f, w, moved);
+	const LeftHandPose lower = LeftHandOnHandle(g, -14.0f, w, moved, w * g.rot);
 	Check(NearV(lower.pos, moved + w * NiPoint3{0.0f, -14.0f, 6.0f}),
 	      "6 further down: the same grip, 6 further down the axis");
+
+	std::printf("The player's own turn of the hand kept\n");
+	// Turned 90 degrees round the handle (the weapon's y): kept whole.
+	NiMatrix33 roundY{};
+	roundY.data[0][2] = 1.0f;
+	roundY.data[1][1] = 1.0f;
+	roundY.data[2][0] = -1.0f;
+	const NiMatrix33 twisted = w * roundY * g.rot;
+	const LeftHandPose round = LeftHandOnHandle(g, g.Below(), w, moved, twisted);
+	Check(NearV(round.rot * NiPoint3{1, 0, 0}, twisted * NiPoint3{1, 0, 0}) &&
+	          NearV(round.rot * NiPoint3{0, 0, 1}, twisted * NiPoint3{0, 0, 1}),
+	      "turned round the handle: the hand's turn kept as it is");
+	const NiPoint3 roundLocal = Transposed(w) * (round.pos - moved);
+	Check(Near(roundLocal.y, -8.0f) && Near(roundLocal.x * roundLocal.x + roundLocal.z * roundLocal.z, 36.0f),
+	      "and the bone still 8 down the handle and 6 from it: the fist round the handle");
+	// Tilted 20 degrees off the handle (round the weapon's x): tilted back
+	// onto it, no more.
+	const float c = 0.9396926f;
+	const float sn = 0.3420201f;
+	NiMatrix33 tilt{};
+	tilt.data[0][0] = 1.0f;
+	tilt.data[1][1] = c;
+	tilt.data[1][2] = -sn;
+	tilt.data[2][1] = sn;
+	tilt.data[2][2] = c;
+	const NiMatrix33 tilted = w * tilt * g.rot;
+	const LeftHandPose back = LeftHandOnHandle(g, g.Below(), w, moved, tilted);
+	Check(NearV(back.rot * NiPoint3{0, 1, 0}, w * NiPoint3{0, 1, 0}), "tilted off the handle: the handle along the weapon again");
+	Check(NearV(back.rot * NiPoint3{1, 0, 0}, tilted * NiPoint3{1, 0, 0}),
+	      "the axis of the tilt untouched: only the tilt taken out");
+	const NiPoint3 backLocal = Transposed(w) * (back.pos - moved);
+	Check(Near(backLocal.y, -8.0f) && Near(backLocal.x * backLocal.x + backLocal.z * backLocal.z, 36.0f),
+	      "on the handle where it belongs");
+}
+
+void TestApproach() {
+	std::printf("The open hand coming near the handle\n");
+	const TwoHandSettings s;  // 18 to 3
+	Check(Near(PreshapeWeight(s, 20.0f), 0.0f), "further than 18: nothing");
+	Check(Near(PreshapeWeight(s, 10.5f), 0.5f), "halfway: half");
+	Check(Near(PreshapeWeight(s, 2.0f), 1.0f), "at the handle: all of it");
+	Check(PreshapeWeight(s, 15.0f) > 0.0f && PreshapeWeight(s, 15.0f) < 0.2f, "coming in: gently");
+	TwoHandSettings off = s;
+	off.preshapeUnits = 0.0f;
+	Check(Near(PreshapeWeight(off, 2.0f), 0.0f), "switched off: nothing");
+	off = s;
+	off.enabled = false;
+	Check(Near(PreshapeWeight(off, 2.0f), 0.0f), "two hands off: nothing");
+	Check(Near(PreshapeWeight(s, kNaN), 0.0f), "no distance: nothing");
+
+	const HandleSpan h = HandleSpanFor(s, true, -30.0f, -6.0f);  // 27 to 6 below
+	HandleReach r = NearestOnHandle(h, -6.0f, -15.0f, 4.0f);
+	Check(Near(r.axial, -15.0f) && Near(r.distance, 4.0f), "beside the handle: straight across to it");
+	r = NearestOnHandle(h, -6.0f, -30.0f, 4.0f);
+	Check(Near(r.axial, -27.0f) && Near(r.distance, 5.0f), "past its end: to the end");
+	r = NearestOnHandle(h, -6.0f, 10.0f, 0.0f);
+	Check(Near(r.axial, -6.0f) && Near(r.distance, 16.0f), "up at the blade: the handle's top, far off");
+	r = NearestOnHandle(HandleSpan{}, -7.0f, -12.0f, 3.0f);
+	Check(Near(r.axial, -7.0f) && Near(r.distance, 5.8309518f), "not measured: the game's own place");
+
+	Check(Near(HeldWeight(0.6f, 0.0f), 0.6f) && Near(HeldWeight(0.6f, 1.0f), 1.0f),
+	      "closing already shaped: from there the rest of the way");
+	Check(Near(HeldWeight(0.0f, 0.5f), 0.5f) && Near(HeldWeight(2.0f, 0.0f), 1.0f) && Near(HeldWeight(-1.0f, 0.0f), 0.0f),
+	      "not shaped: the whole way; out of range held to 0 to 1");
+}
+
+void TestRotationBetween() {
+	std::printf("The smallest turn from one direction to another\n");
+	const NiMatrix33 r = RotationBetween(NiPoint3{0, 1, 0}, NiPoint3{0, 0, 1});
+	Check(NearV(r * NiPoint3{0, 1, 0}, NiPoint3{0, 0, 1}), "y onto z");
+	Check(NearV(r * NiPoint3{1, 0, 0}, NiPoint3{1, 0, 0}), "the axis across both stays");
+	const NiMatrix33 back = RotationBetween(NiPoint3{0, 1, 0}, NiPoint3{0, -1, 0});
+	Check(NearV(back * NiPoint3{0, 1, 0}, NiPoint3{0, -1, 0}), "opposite: turned half round");
+	const NiMatrix33 backX = RotationBetween(NiPoint3{1, 0, 0}, NiPoint3{-1, 0, 0});
+	Check(NearV(backX * NiPoint3{1, 0, 0}, NiPoint3{-1, 0, 0}), "opposite along x: turned half round too");
+	const NiMatrix33 none = RotationBetween(NiPoint3{0, 0, 0}, NiPoint3{0, 1, 0});
+	Check(NearV(none * NiPoint3{1, 2, 3}, NiPoint3{1, 2, 3}), "no direction: no turn");
 }
 
 void TestHold() {
@@ -161,6 +238,8 @@ int main() {
 	TestVanillaGrip();
 	TestHold();
 	TestBlend();
+	TestApproach();
+	TestRotationBetween();
 	TestTranspose();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);

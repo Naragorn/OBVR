@@ -16,6 +16,7 @@ console player.equipitem 0001C6CD
 
 expect HandScript: finished
 expect Hands: the game's left hand on the two-hander read
+expect Hands: the open left hand near the two-hander's handle takes its shape
 expect Hands: the left hand took the handle
 expect Hands: the left hand drawn on the handle
 expect Hands: the left hand let go of the handle (the grip opened)

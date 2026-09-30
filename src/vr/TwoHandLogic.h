@@ -56,6 +56,14 @@ struct TwoHandSettings {
 	// How long the hand takes from the controller to the handle, and back.
 	// 0: at once.
 	float blendSeconds = 0.2f;
+	// The hand coming near the handle with its grip open already takes the
+	// grip's shape, more the nearer it is (the tester, 2026-09-30: "je näher
+	// ich komme umso mehr geht die ingame hand schonmal in die passende
+	// handposition" - the way Half-Life: Alyx shapes a hand before it
+	// closes): nothing from preshapeUnits away from the handle, all of it at
+	// preshapeNearUnits. 0: off.
+	float preshapeUnits = 18.0f;
+	float preshapeNearUnits = 3.0f;
 };
 
 // The way from the controller to the handle, 0 to 1: up while held, down
@@ -74,6 +82,23 @@ inline float StepTwoHandBlend(float current, bool held, float dtSeconds, const T
 inline float TwoHandBlendWeight(float blend) {
 	const float t = blend < 0.0f ? 0.0f : (blend > 1.0f ? 1.0f : blend);
 	return t * t * (3.0f - 2.0f * t);
+}
+
+// The share once held: from where the approach had already shaped the hand
+// (`floor`, PreshapeWeight when the grip closed) the rest of the way, so
+// closing the grip near the handle does not drop the hand back first.
+inline float HeldWeight(float floor, float blend) {
+	const float f = floor < 0.0f ? 0.0f : (floor > 1.0f ? 1.0f : floor);
+	return f + (1.0f - f) * TwoHandBlendWeight(blend);
+}
+
+// How much of the grip's shape a hand `distanceUnits` from the handle takes
+// while its grip is open (preshapeUnits): eased, 0 far off, 1 at the handle.
+inline float PreshapeWeight(const TwoHandSettings& s, float distanceUnits) {
+	if (!s.enabled || !(s.preshapeUnits > s.preshapeNearUnits) || !(distanceUnits == distanceUnits)) {
+		return 0.0f;
+	}
+	return TwoHandBlendWeight((s.preshapeUnits - distanceUnits) / (s.preshapeUnits - s.preshapeNearUnits));
 }
 
 // The game's own left hand on a two-hander, read from its first-person
@@ -214,23 +239,6 @@ inline bool TwoHandHolds(TwoHandState& t, const TwoHandSettings& s, bool twoHand
 	return held;
 }
 
-// The left hand bone's world pose while held: the game's own grip against
-// the weapon as it is this frame, moved along the weapon's axis from where
-// the game holds it to `handAxial`.
-struct LeftHandPose {
-	NiMatrix33 rot = NiMatrix33::Identity();
-	NiPoint3 pos{0.0f, 0.0f, 0.0f};
-};
-
-inline LeftHandPose LeftHandOnHandle(const VanillaGrip& grip, float handAxial, const NiMatrix33& weaponRot,
-                                     const NiPoint3& weaponPos) {
-	LeftHandPose p;
-	p.rot = weaponRot * grip.rot;
-	const NiPoint3 local{grip.pos.x, grip.pos.y + (handAxial - grip.Below()), grip.pos.z};
-	p.pos = weaponPos + weaponRot * local;
-	return p;
-}
-
 inline NiMatrix33 Transposed(const NiMatrix33& m) {
 	NiMatrix33 t{};
 	for (int r = 0; r < 3; ++r) {
@@ -239,6 +247,96 @@ inline NiMatrix33 Transposed(const NiMatrix33& m) {
 		}
 	}
 	return t;
+}
+
+// The smallest rotation that turns the unit vector `from` onto the unit
+// vector `to` (Rodrigues). Opposite vectors turn half round an axis across
+// `from`; a vector of no length leaves everything as it is.
+inline NiMatrix33 RotationBetween(const NiPoint3& from, const NiPoint3& to) {
+	const float fl = math::Sqrt(from.LengthSquared());
+	const float tl = math::Sqrt(to.LengthSquared());
+	if (!(fl > 1e-6f) || !(tl > 1e-6f)) {
+		return NiMatrix33::Identity();
+	}
+	const NiPoint3 a = from * (1.0f / fl);
+	const NiPoint3 b = to * (1.0f / tl);
+	const float c = a.x * b.x + a.y * b.y + a.z * b.z;
+	const NiPoint3 v{a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
+	if (c < -0.9999f) {
+		// Half round an axis across `a`.
+		NiPoint3 axis = (a.x < 0.9f && a.x > -0.9f) ? NiPoint3{0.0f, -a.z, a.y} : NiPoint3{a.z, 0.0f, -a.x};
+		axis = axis * (1.0f / math::Sqrt(axis.LengthSquared()));
+		NiMatrix33 m{};
+		const float u[3] = {axis.x, axis.y, axis.z};
+		for (int r = 0; r < 3; ++r) {
+			for (int col = 0; col < 3; ++col) {
+				m.data[r][col] = 2.0f * u[r] * u[col] - (r == col ? 1.0f : 0.0f);
+			}
+		}
+		return m;
+	}
+	const float k = 1.0f / (1.0f + c);
+	NiMatrix33 m{};
+	m.data[0][0] = c + v.x * v.x * k;
+	m.data[0][1] = v.x * v.y * k - v.z;
+	m.data[0][2] = v.x * v.z * k + v.y;
+	m.data[1][0] = v.y * v.x * k + v.z;
+	m.data[1][1] = c + v.y * v.y * k;
+	m.data[1][2] = v.y * v.z * k - v.x;
+	m.data[2][0] = v.z * v.x * k - v.y;
+	m.data[2][1] = v.z * v.y * k + v.x;
+	m.data[2][2] = c + v.z * v.z * k;
+	return m;
+}
+
+// The left hand bone's world pose on the handle: the game's grip - the
+// handle through the fist where the game's hand has it - at `handAxial`
+// along the weapon, turned round the handle as the player's own hand is
+// turned (`handRot`, the bone where the controller alone would put it).
+//
+// The tester, 2026-09-30: "die linke hand hat eine ausrichtung vom controller.
+// wir zwingen aber die ingame hand an die waffe mit bestimmter position und
+// angle ... Das fühlt sich schlecht an. daher fix die ingame hand bleibt beim
+// gleichen angle wie die controller hand". A fist round a handle can turn
+// round the handle and nothing else without letting go of it: so the hand
+// keeps the controller's turn, and is only tilted - the smallest turn - until
+// the handle it would hold lies along the weapon. Held as the game holds it,
+// that is no tilt and the game's pose exactly.
+struct LeftHandPose {
+	NiMatrix33 rot = NiMatrix33::Identity();
+	NiPoint3 pos{0.0f, 0.0f, 0.0f};
+};
+
+inline LeftHandPose LeftHandOnHandle(const VanillaGrip& grip, float handAxial, const NiMatrix33& weaponRot,
+                                     const NiPoint3& weaponPos, const NiMatrix33& handRot) {
+	const NiPoint3 up{0.0f, 1.0f, 0.0f};
+	const NiMatrix33 gripToHand = Transposed(grip.rot);
+	// The handle's direction and the way from the bone to the handle's line,
+	// both in the hand bone's own frame (the game's grip).
+	const NiPoint3 handleInHand = gripToHand * up;
+	const NiPoint3 toLineInHand = gripToHand * NiPoint3{-grip.pos.x, 0.0f, -grip.pos.z};
+	const NiPoint3 axis = weaponRot * up;
+	LeftHandPose p;
+	p.rot = RotationBetween(handRot * handleInHand, axis) * handRot;
+	const NiPoint3 onLine = weaponPos + axis * (grip.pos.y + (handAxial - grip.Below()));
+	p.pos = onLine - p.rot * toLineInHand;
+	return p;
+}
+
+// The handle's nearest point to a hand `axial` along the weapon from the right
+// hand and `lateral` from its line: on the measured handle, or the game's own
+// place when it was not measured; and how far the hand is from it.
+struct HandleReach {
+	float axial = 0.0f;
+	float distance = 0.0f;
+};
+
+inline HandleReach NearestOnHandle(const HandleSpan& handle, float gameAxial, float axial, float lateral) {
+	HandleReach r;
+	r.axial = LeftHandAxial(handle, axial, gameAxial);
+	const float along = axial - r.axial;
+	r.distance = math::Sqrt(lateral * lateral + along * along);
+	return r;
 }
 
 }  // namespace obvr::vr
