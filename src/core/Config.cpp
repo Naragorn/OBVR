@@ -721,6 +721,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.shove.countsAsHit = ReadBool("Hands", "ShoveCountsAsHit", h.shove.countsAsHit, path);
 		h.lead.enabled = ReadBool("Hands", "LeadByHand", h.lead.enabled, path);
 		h.throwHit.enabled = ReadBool("Hands", "ThrowHits", h.throwHit.enabled, path);
+		h.twoHand.enabled = ReadBool("Hands", "TwoHandGrip", h.twoHand.enabled, path);
+		h.twoHand.reachUnits = ReadFloat("Hands", "TwoHandReachUnits", h.twoHand.reachUnits, path);
 		h.throwHit.staggerSpeed = ReadFloat("Hands", "ThrowStaggerSpeed", h.throwHit.staggerSpeed, path);
 		h.throwHit.knockSpeed = ReadFloat("Hands", "ThrowKnockSpeed", h.throwHit.knockSpeed, path);
 		h.lead.strangerMetres = ReadFloat("Hands", "LeadStrangerMetres", h.lead.strangerMetres, path);

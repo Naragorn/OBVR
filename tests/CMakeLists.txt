@@ -1193,3 +1193,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME throw COMMAND throw_test)
+
+add_executable(two_hand_test TwoHandTest.cpp)
+
+target_include_directories(two_hand_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(two_hand_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME two_hand COMMAND two_hand_test)

@@ -736,3 +736,24 @@ hand holds something (the grip closed) or aims a spell.
     Schlag. ja geht beides die werte die wir jz haben als default setzen":
     `SwingLight` 2.6 (was 1.6), `ShoveHardSpeed` 3.6 (was 4.0);
     `PowerSwingMetres` stays 0.7.
+
+### 4.10 Two hands on a two-hander (built 2026-09-30)
+
+The tester: "bei 2 händern mit der linken hand meine hand an das schwert/axt/whatever andocken kann mit grip und so zweihändig halte".
+
+**Taking hold:** with a two-handed weapon drawn (claymore, war axe, battle hammer; the staff counts too), the left grip closing on the handle takes hold. On the handle means:
+- within `TwoHandReachUnits` (12, about 17 cm) of the weapon's line;
+- between 25 units behind the right hand and 40 ahead of it.
+
+**While held:**
+- The weapon points along the line between the two hands. It points towards the left hand when the left holds higher up the handle, away from it when the left holds lower.
+- The left hand stays on the handle at the distance it took hold.
+- The strike by motion follows the turned blade.
+
+**Letting go:** opening the left grip, sheathing, or pulling the hands more than 30 units further apart or closer than they started.
+
+**Code:** `vr/TwoHandLogic.h` (`two_hand_test`) and `StepTwoHands` in `CameraHook.cpp`. `StepTwoHands` turns the right hand's head-relative rotation by the smallest rotation that puts the blade on the line, before the hands are pinned.
+
+**Not run yet.** The harness scenario `tools/hand-scripts/two-hand-grip.txt` is written. On 2026-09-30 every launch crashed in the main menu, in Windows' `msmpeg2ac3dec.dll`, exception 0xc0000602, fail-fast.
+- The first crash was at 08:28 with the build from before this change. The machine had booted at 08:23 after Windows update KB5124010 was installed that morning.
+- That update is reported to crash games (TechSpot 2026-09-23, The FPS Review 2026-09-25). The reports name anti-cheat games, not this codec, so the link to Oblivion's crash is inferred from the timing only.

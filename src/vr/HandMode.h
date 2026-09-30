@@ -9,6 +9,7 @@
 #include "vr/OpenVRTypes.h"
 #include "vr/Quaternion.h"
 #include "vr/HandHud.h"
+#include "vr/TwoHandLogic.h"
 #include "vr/Fist.h"
 #include "vr/Holster.h"
 #include "vr/HolsterFit.h"
@@ -170,6 +171,8 @@ struct HandSettings {
 	game::LeadSettings lead;
 	// Thrown things that hit people (game/ThrowLogic.h).
 	game::ThrowHitSettings throwHit;
+	// Holding a two-hander with both hands (vr/TwoHandLogic.h).
+	TwoHandSettings twoHand;
 	// The HUD on the hands and the compass in the sky ([HandHud], vr/HandHud.h).
 	HandHudSettings handHud;
 	// How far each finger link bends while the hand holds something, degrees

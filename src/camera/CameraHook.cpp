@@ -214,6 +214,11 @@ vr::HandPose g_hudHandPose[2];
 // Each hand HUD's opacity, faded in while looked at (vr::StepHandFade).
 float g_hudHandAlpha[2] = {0.0f, 0.0f};
 bool g_hudHandLookedAt[2] = {false, false};
+// Two hands on a two-hander (StepTwoHands, vr/TwoHandLogic.h).
+vr::TwoHandState g_twoHand;
+bool g_twoHandLeftGripWas = false;
+bool g_twoHandRightRotValid = false;
+NiMatrix33 g_twoHandRightRot = NiMatrix33::Identity();
 // The grab by reach - see vr::StepGrabReach.
 vr::GrabReachState g_grabReach;
 bool g_grabReachPick = false;
@@ -2387,7 +2392,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		strike.swingSerial = g_hand.swingSerial;
 		strike.heavy = g_hand.swingHeavy;
 		strike.attackGroup = g_hand.swingHeavy ? vr::PowerAttackGroup(g_hand.powerDirection) : vr::kAnimGroupAttackLight;
-		strike.handRotation = g_hand.rightHandRotation;
+		// Held with both hands, the blade is where the two hands turned it.
+		strike.handRotation = g_twoHandRightRotValid ? g_twoHandRightRot : g_hand.rightHandRotation;
 		strike.handOffsetUnits = g_hand.rightHandOffsetUnits;
 		strike.cameraValid = g_cyclopeanCameraWorldValid;
 		strike.cameraRotation = g_cyclopeanCameraWorldTransform.rot;
@@ -4051,6 +4057,82 @@ void PlaceMagicNodeAtCastingHand() {
 	}
 }
 
+// Two hands on a two-hander (vr/TwoHandLogic.h): the left grip closed on the
+// handle turns the weapon along the line between the hands and keeps the left
+// hand on the handle. Decided where the hands are pinned; the strike by motion
+// takes the turned rotation from here (g_twoHandRightRot).
+struct TwoHandPins {
+	NiMatrix33 rightRot;
+	NiPoint3 leftOffset;
+};
+
+TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& cameraRot, const NiPoint3& cameraPos) {
+	TwoHandPins out{g_hand.rightHandRotation, g_hand.leftHandOffsetUnits};
+	const bool leftGrip = g_hand.leftGripDown;
+	const bool closedNow = leftGrip && !g_twoHandLeftGripWas;
+	g_twoHandLeftGripWas = leftGrip;
+	g_twoHandRightRotValid = false;
+
+	SInt32 weaponType = -1;
+	const bool twoHanded = g_hand.rightHandValid && g_hand.leftHandValid &&
+	                       game::EquippedWeaponForm(&weaponType) != nullptr &&
+	                       vr::KindOfWeaponType(weaponType) == vr::EquippedKind::TwoHand &&
+	                       game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
+	const NiAVObject* const handBone = game::FindFirstPersonNode(hands.rightHandBone);
+	const NiAVObject* const weapon = game::FindFirstPersonNode("Weapon");
+	if (handBone == nullptr || weapon == nullptr) {
+		g_twoHand = vr::TwoHandState{};
+		return out;
+	}
+	// The blade in the hand bone's frame (fixed by the skeleton), then where
+	// the pinned hand will put it this frame.
+	const NiPoint3 bladeInHand = vr::Transposed(handBone->worldTransform.rot) *
+	                             (weapon->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f});
+	const NiMatrix33 calibration =
+		game::HandCalibration(hands.rightHandRoll, hands.rightHandPitch, hands.rightHandYaw);
+	const NiPoint3 blade = cameraRot * (g_hand.rightHandRotation * (calibration * bladeInHand));
+	const NiPoint3 right = cameraPos + cameraRot * g_hand.rightHandOffsetUnits;
+	const NiPoint3 left = cameraPos + cameraRot * g_hand.leftHandOffsetUnits;
+
+	if (!g_twoHand.active) {
+		float axial = 0.0f;
+		float lateral = 0.0f;
+		vr::AxialLateral(left, right, blade, axial, lateral);
+		if (vr::TwoHandTakes(hands.twoHand, twoHanded, closedNow, axial, lateral)) {
+			vr::StartTwoHand(g_twoHand, axial);
+			OBVR_LOG("Hands: the left hand took the handle %.0f units %s the right, %.0f from the line - held "
+			         "with both hands",
+			         static_cast<double>(axial < 0.0f ? -axial : axial), axial < 0.0f ? "below" : "above",
+			         static_cast<double>(lateral));
+		} else if (closedNow && twoHanded) {
+			static UInt32 s_missLines = 6;
+			if (s_missLines > 0) {
+				--s_missLines;
+				OBVR_LOG("Hands: the left grip closed off the handle - %.0f units along the weapon, %.0f from its "
+				         "line",
+				         static_cast<double>(axial), static_cast<double>(lateral));
+			}
+		}
+	}
+	if (g_twoHand.active) {
+		const float apart = math::Sqrt((left - right).LengthSquared());
+		if (!vr::TwoHandHolds(g_twoHand, hands.twoHand, twoHanded, leftGrip, apart)) {
+			OBVR_LOG("Hands: the left hand let go of the handle (%s)",
+			         !leftGrip ? "the grip opened" : !twoHanded ? "the weapon went" : "the hands came apart");
+			return out;
+		}
+		const NiPoint3 direction = vr::TwoHandDirection(g_twoHand, right, left);
+		if (direction.LengthSquared() > 0.0f) {
+			const NiMatrix33 turn = vr::RotationBetween(blade, direction);
+			out.rightRot = vr::Transposed(cameraRot) * turn * cameraRot * g_hand.rightHandRotation;
+			out.leftOffset = vr::Transposed(cameraRot) * (vr::TwoHandLeftAt(g_twoHand, right, direction) - cameraPos);
+			g_twoHandRightRot = out.rightRot;
+			g_twoHandRightRotValid = true;
+		}
+	}
+	return out;
+}
+
 bool PinAdjustableHand(bool right, const vr::HandSettings& hands, bool adjusting, bool handValid,
                        bool gripDown,
                        const NiMatrix33& relativeRot, const NiPoint3& offsetUnits,
@@ -4224,13 +4306,17 @@ void BeforeFirstScenePass() {
 			// A bare hand's wrist closed (BonePin.h, "Bare wrists") - not with the
 			// forearm stump, which needs the forearm its own length.
 			game::SetBareWristTaper(hands.closeBareWrists && !g_stumpShown);
+			// Two hands on a two-hander: the weapon hand turned along the line
+			// between the hands, the left hand kept on the handle.
+			const TwoHandPins twoHand = adjusting ? TwoHandPins{g_hand.rightHandRotation, g_hand.leftHandOffsetUnits}
+			                                      : StepTwoHands(hands, cameraRot, cameraPos);
 			const bool rightCommitted = PinAdjustableHand(
 				true, hands, adjusting, g_hand.rightHandValid, g_hand.rightGripDown,
-			                  g_hand.rightHandRotation, g_hand.rightHandOffsetUnits, cameraRot,
+			                  twoHand.rightRot, g_hand.rightHandOffsetUnits, cameraRot,
 			                  cameraPos, sharedGrip, perMetre);
 			const bool leftCommitted = PinAdjustableHand(
 				false, hands, adjusting, g_hand.leftHandValid, g_hand.leftGripDown,
-			                  g_hand.leftHandRotation, g_hand.leftHandOffsetUnits, cameraRot,
+			                  g_hand.leftHandRotation, twoHand.leftOffset, cameraRot,
 			                  cameraPos, sharedGrip, perMetre);
 			PlaceMagicNodeAtCastingHand();
 			// The fingers close around what the engine holds for this hand, or

@@ -700,6 +700,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.shove.hardSpeed = v; },
 	},
 	{
+		"Hands", "Two hands on two-handers", "Close the left grip on the handle to hold it with both hands",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "TwoHandGrip",
+		+[](const Config& c) { return c.hands.twoHand.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.twoHand.enabled = v != 0.0f; },
+	},
+	{
 		"Hands", "Thrown things hit", "What you throw staggers people, or knocks them down when fast",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "ThrowHits",
