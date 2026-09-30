@@ -197,7 +197,32 @@ void TestLittleFinger() {
 
 }  // namespace
 
+void TestRotationBlend() {
+	std::printf("Rotations as quaternions, and the blend between two\n");
+	// Each branch of QuatOfRotation: a small turn (trace > 0), and half turns
+	// about x, y and z (the largest diagonal).
+	const FingerQuat turns[4] = {{0.9f, 0.1f, -0.3f, 0.2f}, {0.0f, 1.0f, 0.0f, 0.0f},
+	                             {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
+	const char* names[4] = {"a small turn: back to the same rotation", "half round x: the same",
+	                        "half round y: the same", "half round z: the same"};
+	for (int i = 0; i < 4; ++i) {
+		const FingerQuat& t = turns[i];
+		const float n = std::sqrt(t.w * t.w + t.x * t.x + t.y * t.y + t.z * t.z);
+		const NiMatrix33 m = RotationOfQuat(FingerQuat{t.w / n, t.x / n, t.y / n, t.z / n});
+		Check(NearM(RotationOfQuat(QuatOfRotation(m)), m), names[i]);
+	}
+	const NiMatrix33 flipped = RotationOfQuat(FingerQuat{-0.8f, 0.6f, 0.0f, 0.0f});
+	Check(QuatOfRotation(flipped).w >= 0.0f, "w kept non-negative");
+	const NiMatrix33 a = NiMatrix33::Identity();
+	const NiMatrix33 b = RotationOfQuat(FingerQuat{0.7071068f, 0.0f, 0.0f, 0.7071068f});  // 90 about z
+	Check(NearM(BlendRotation(a, b, 0.0f), a), "t 0: the first");
+	Check(NearM(BlendRotation(a, b, 1.0f), b), "t 1: the second");
+	const NiMatrix33 half = BlendRotation(a, b, 0.5f);
+	Check(Near(LinkCurlDegrees(half), 45.0f), "t 0.5: halfway, 45 of 90 degrees");
+}
+
 int main() {
+	TestRotationBlend();
 	TestPose();
 	TestLinks();
 	TestQuaternions();

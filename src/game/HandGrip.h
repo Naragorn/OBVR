@@ -195,6 +195,40 @@ inline FingerQuat BlendQuat(const FingerQuat& a, const FingerQuat& b, float t) {
 	return FingerQuat{q.w * k, q.x * k, q.y * k, q.z * k};
 }
 
+// The unit quaternion of a rotation matrix (the inverse of RotationOfQuat),
+// w kept non-negative. From the largest of the four diagonal sums, so no
+// division by a value near zero.
+inline FingerQuat QuatOfRotation(const NiMatrix33& m) {
+	const float trace = m.data[0][0] + m.data[1][1] + m.data[2][2];
+	FingerQuat q{1.0f, 0.0f, 0.0f, 0.0f};
+	if (trace > 0.0f) {
+		const float s = math::Sqrt(trace + 1.0f) * 2.0f;
+		q = FingerQuat{0.25f * s, (m.data[2][1] - m.data[1][2]) / s, (m.data[0][2] - m.data[2][0]) / s,
+		               (m.data[1][0] - m.data[0][1]) / s};
+	} else if (m.data[0][0] > m.data[1][1] && m.data[0][0] > m.data[2][2]) {
+		const float s = math::Sqrt(1.0f + m.data[0][0] - m.data[1][1] - m.data[2][2]) * 2.0f;
+		q = FingerQuat{(m.data[2][1] - m.data[1][2]) / s, 0.25f * s, (m.data[0][1] + m.data[1][0]) / s,
+		               (m.data[0][2] + m.data[2][0]) / s};
+	} else if (m.data[1][1] > m.data[2][2]) {
+		const float s = math::Sqrt(1.0f + m.data[1][1] - m.data[0][0] - m.data[2][2]) * 2.0f;
+		q = FingerQuat{(m.data[0][2] - m.data[2][0]) / s, (m.data[0][1] + m.data[1][0]) / s, 0.25f * s,
+		               (m.data[1][2] + m.data[2][1]) / s};
+	} else {
+		const float s = math::Sqrt(1.0f + m.data[2][2] - m.data[0][0] - m.data[1][1]) * 2.0f;
+		q = FingerQuat{(m.data[1][0] - m.data[0][1]) / s, (m.data[0][2] + m.data[2][0]) / s,
+		               (m.data[1][2] + m.data[2][1]) / s, 0.25f * s};
+	}
+	if (q.w < 0.0f) {
+		q = FingerQuat{-q.w, -q.x, -q.y, -q.z};
+	}
+	return q;
+}
+
+// From one rotation to another by t (0 to 1), the shorter way (BlendQuat).
+inline NiMatrix33 BlendRotation(const NiMatrix33& a, const NiMatrix33& b, float t) {
+	return RotationOfQuat(BlendQuat(QuatOfRotation(a), QuatOfRotation(b), t));
+}
+
 // The left hand's link is the right's mirror image: x and y negated.
 inline FingerQuat MirroredForLeft(const FingerQuat& q) { return FingerQuat{q.w, -q.x, -q.y, q.z}; }
 
@@ -247,9 +281,11 @@ inline float LinkCurlDegrees(const NiMatrix33& rot) {
 // Once per frame, after the hand bone has been pinned: gives the named hand's
 // fingers the pose asked for - closed by `curlDegrees` around what it holds
 // (Grip), each where the controller's finger is (Tracked), or back to what
-// the animation had (Animation).
+// the animation had (Animation). `towardAnimation` (0 to 1) blends a Grip or
+// Tracked pose that far towards the animation's: the left hand closing on a
+// two-hander's handle (vr/TwoHandLogic.h) forms the game's grip gradually.
 void StepHandFingers(bool rightHand, const char* handBoneName, FingerPose pose, float curlDegrees,
-                     const FingerCurls* curls);
+                     const FingerCurls* curls, float towardAnimation = 0.0f);
 
 // Whether the named hand holds a thing of its own: anything under the hand
 // bone besides its finger links that carries a child - the drawn weapon's

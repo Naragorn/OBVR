@@ -114,7 +114,8 @@ void TestHold() {
 	Check(t.active && Near(t.distance, 15.0f) && Near(t.handAxial, -12.0f),
 	      "taken 15 below: the controllers 15 apart, the palm put 12 below");
 	Check(TwoHandHolds(t, s, true, true, 25.0f), "10 further apart: still held");
-	Check(!TwoHandHolds(t, s, true, true, 60.0f) && !t.active, "45 further apart: let go");
+	Check(!TwoHandHolds(t, s, true, true, 60.0f) && !t.active && Near(t.handAxial, -12.0f),
+	      "45 further apart: let go, where the hand was put kept for the way back");
 	StartTwoHand(t, -20.0f, -20.0f);
 	Check(!TwoHandHolds(t, s, true, false, 20.0f) && !t.active, "the grip opens: let go");
 	StartTwoHand(t, -20.0f, -20.0f);
@@ -122,29 +123,33 @@ void TestHold() {
 	Check(!TwoHandHolds(t, s, true, true, 20.0f), "not held: nothing");
 }
 
-void TestDirection() {
-	std::printf("Where the weapon points\n");
-	const NiPoint3 right{0, 0, 0};
-	Check(NearV(TwoHandDirection(right, NiPoint3{0, 0, -30}), NiPoint3{0, 0, 1}),
-	      "the left hand below: pointing away from it");
-	Check(NearV(TwoHandDirection(right, NiPoint3{30, 0, 0}), NiPoint3{-1, 0, 0}),
-	      "the left hand to the side: pointing away from it");
-	Check(NearV(TwoHandDirection(right, right), NiPoint3{0, 0, 0}), "the hands in one place: nowhere");
+void TestBlend() {
+	std::printf("The hand's way to the handle and back\n");
+	const TwoHandSettings s;  // 0.2 s
+	Check(Near(StepTwoHandBlend(0.0f, true, 0.05f, s), 0.25f), "held, a twentieth of a second: a quarter of the way");
+	Check(Near(StepTwoHandBlend(0.9f, true, 0.05f, s), 1.0f), "the last step: arrived, no further");
+	Check(Near(StepTwoHandBlend(1.0f, false, 0.05f, s), 0.75f), "let go: a quarter back");
+	Check(Near(StepTwoHandBlend(0.1f, false, 0.05f, s), 0.0f), "the last step back: at the controller");
+	Check(Near(StepTwoHandBlend(0.5f, true, -1.0f, s), 0.5f), "no time passed: where it was");
+	TwoHandSettings now;
+	now.blendSeconds = 0.0f;
+	Check(Near(StepTwoHandBlend(0.0f, true, 0.01f, now), 1.0f) && Near(StepTwoHandBlend(1.0f, false, 0.01f, now), 0.0f),
+	      "no blend time: at once, both ways");
+	Check(Near(TwoHandBlendWeight(0.0f), 0.0f) && Near(TwoHandBlendWeight(1.0f), 1.0f) &&
+	          Near(TwoHandBlendWeight(0.5f), 0.5f),
+	      "eased: from nothing to all, halfway at half");
+	Check(TwoHandBlendWeight(0.1f) < 0.1f && TwoHandBlendWeight(0.9f) > 0.9f, "starting and arriving gently");
+	Check(Near(TwoHandBlendWeight(-1.0f), 0.0f) && Near(TwoHandBlendWeight(2.0f), 1.0f), "outside the way: its ends");
 }
 
-void TestRotation() {
-	std::printf("The turn\n");
-	const NiMatrix33 r = RotationBetween(NiPoint3{0, 1, 0}, NiPoint3{0, 0, 1});
-	Check(NearV(r * NiPoint3{0, 1, 0}, NiPoint3{0, 0, 1}), "y onto z");
-	Check(NearV(r * NiPoint3{1, 0, 0}, NiPoint3{1, 0, 0}), "the axis across both stays");
-	const NiMatrix33 same = RotationBetween(NiPoint3{0, 1, 0}, NiPoint3{0, 2, 0});
-	Check(NearV(same * NiPoint3{1, 0, 0}, NiPoint3{1, 0, 0}), "the same direction: no turn");
-	const NiMatrix33 back = RotationBetween(NiPoint3{0, 1, 0}, NiPoint3{0, -1, 0});
-	Check(NearV(back * NiPoint3{0, 1, 0}, NiPoint3{0, -1, 0}), "opposite: turned half round");
-	const NiMatrix33 none = RotationBetween(NiPoint3{0, 0, 0}, NiPoint3{0, 1, 0});
-	Check(NearV(none * NiPoint3{1, 2, 3}, NiPoint3{1, 2, 3}), "no direction: no turn");
+void TestTranspose() {
+	std::printf("The transpose\n");
+	NiMatrix33 r{};
+	r.data[0][0] = 1.0f;
+	r.data[1][2] = -1.0f;
+	r.data[2][1] = 1.0f;
 	const NiMatrix33 t = Transposed(r);
-	Check(NearV(t * (r * NiPoint3{0.3f, 0.5f, 0.2f}), NiPoint3{0.3f, 0.5f, 0.2f}), "the transpose undoes it");
+	Check(NearV(t * (r * NiPoint3{0.3f, 0.5f, 0.2f}), NiPoint3{0.3f, 0.5f, 0.2f}), "the transpose undoes a turn");
 }
 
 }  // namespace
@@ -155,8 +160,8 @@ int main() {
 	TestHandle();
 	TestVanillaGrip();
 	TestHold();
-	TestDirection();
-	TestRotation();
+	TestBlend();
+	TestTranspose();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

@@ -1,8 +1,9 @@
 # Holding a two-hander with both hands (vr/TwoHandLogic.h): an Iron Claymore
 # drawn over the right shoulder, the left grip closed on its handle below the
-# right hand - held with both hands; the left hand moved up and to the side,
-# the claymore turns with the line between the hands, the left hand drawn
-# with the game's own grip on the handle; the grip opened - let go.
+# right hand - held with both hands, the left hand moving onto the handle
+# with the game's own grip; the left controller moved up and to the side, the
+# claymore stays with the right hand and the left hand on its handle; the grip
+# opened - let go.
 # TwoHandReachUnits is widened for the run: where the scripted hands put the
 # handle is not measured.
 
@@ -29,7 +30,7 @@ right grip 0
 right pos 0.20 -0.40 -0.30
 wait 3
 mark drawn
-left pos 0.20 -0.50 -0.25
+left pos 0.20 -0.40 -0.10
 wait 0.5
 left grip 1
 wait 1

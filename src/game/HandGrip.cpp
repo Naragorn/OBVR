@@ -165,7 +165,7 @@ void ForgetHandGrip() {
 }
 
 void StepHandFingers(bool rightHand, const char* handBoneName, FingerPose pose, float curlDegrees,
-                     const FingerCurls* curls) {
+                     const FingerCurls* curls, float towardAnimation) {
 	Fingers& f = g_fingers[rightHand ? 0 : 1];
 	NiAVObject* const root = FirstPersonArmsNode();
 	if (root == nullptr || f.root != root) {
@@ -226,6 +226,9 @@ void StepHandFingers(bool rightHand, const char* handBoneName, FingerPose pose, 
 			if (FingerLinkOf(name, finger, link) && curls != nullptr) {
 				rot = TrackedLinkRotation(rightHand, link, LinkShare(*curls, finger, link));
 			}
+		}
+		if (towardAnimation > 0.0f) {
+			rot = BlendRotation(rot, f.base[i], towardAnimation);
 		}
 		f.links[i]->localTransform.rot = rot;
 		f.written[i] = rot;

@@ -748,24 +748,28 @@ The tester: "bei 2 händern mit der linken hand meine hand an das schwert/axt/wh
 - The measurement is logged ("the two-hander's model - measured; pommel N units below the right palm ...").
 
 **The hand on the handle - the game's own grip (reworked 2026-09-30).** The first build put the left hand at the handle's line but kept the controller's own turn of the hand, and the tester saw it float in the handle ("die linke hand ist am zweihänder aber nicht am griff sondern schwebt im griff. wir brauchen die vanilla hand die wirklich exakt den griff greift nur eben an der position die wir wollten"). Now:
-- **Read from the animation.** While the left hand is not holding, the game's first-person two-handed animation puts the left hand on the handle. Each frame, before the hands are pinned, the left hand bone's pose is taken in the Weapon node's frame, with both palms along the weapon's axis (`vr::VanillaGripFrom`; a palm is halfway from the hand bone to its middle finger's base). It is kept only while the left palm is within reach of the axis and below the right palm, and the last good one stays.
+- **Read from the animation.** While the left hand is not holding, the game's first-person two-handed animation puts the left hand on the handle. Each frame, before the hands are pinned, the left hand bone's pose is taken in the Weapon node's frame, with both palms along the weapon's axis (`vr::VanillaGripFrom`; a palm is halfway from the hand bone to its middle finger's base). It is kept only while the left palm is within 9 units of the axis (`vr::kGamePalmOnHandleUnits`) and below the right palm, and the last good one stays. The threshold is its own, not `TwoHandReachUnits`: widened to 60 for the harness, that let a frame of the draw animation with the palm 29 units off the axis pass (2026-09-30).
   - Measured in the game's files with pyffi (`_1stperson\twohandidle.kf`, 2026-09-30): the left hand bone sits 8.3 units down the axis from the Weapon node and 6.8 from it, steady through the idle. The right hand bone sits 2.1 down: the left hand directly under the right one, around the handle.
   - The attack animations (B-spline keys) were not read. In the game the pose is re-read every frame the left hand is free, and kept from the last frame it held the handle.
 - **Put on the handle.** The left hand bone gets that pose against the weapon as the pinned right hand holds it this frame, moved along the axis from where the game holds it to where the grip closed (`vr::LeftHandOnHandle`).
   - It is kept between the pommel end (3 units inside it, half a hand) and the game's own place, right under the right hand.
   - Unmeasured, or a handle with no room below the game's place: the game's own place.
 - **The fingers** are the animation's (`FingerPose::Animation`), the game's grip around the handle, not the controller's.
+- **No jump (2026-09-30).** The tester: "es wäre cool wenn statt einem sprung der linken hand eine sanfte bewegung der hand an den griff passiert. idealerweise mit allen fingern auch die sich langsam zu einem griff formen ... ähnlich wie alyx".
+  - Over `TwoHandBlendSeconds` (0.2 s) the hand moves from where its controller puts it to the handle, eased at both ends (`vr::StepTwoHandBlend`, `vr::TwoHandBlendWeight`). Position is blended straight, rotation by quaternion (`game::BlendRotation`).
+  - The fingers blend the same share from their own pose (tracked curls or the grip curl) into the animation's grip (`StepHandFingers`' `towardAnimation`).
+  - Letting go runs the same way back. A sheathed weapon ends it at once.
 - The log says where the game's hand was read ("the game's left hand on the two-hander read - its palm N units below the right palm") and where it was drawn ("the left hand drawn on the handle - its palm N units down the weapon from the right palm (wanted M)").
 
-**While held:**
-- The weapon points along the line from the left controller to the right one, away from the left.
-- The left hand is drawn on the handle as above, wherever the left controller is; the controller only steers the weapon's direction.
-- The strike by motion follows the turned blade.
+**While held - the weapon hand leads (2026-09-30):**
+- The weapon stays with the weapon hand, exactly as with one hand; the left hand goes to the weapon, never the weapon to it. The tester: "die dominante hand sollte rechts sein wenn nicht linkshänder gesetzt ... sie sollte aber immer zugunsten der dominaten hand ... bleiben ... die linke hand muss dann einen sprung an den griff machen statt andersherum". The build before turned the weapon onto the line between the controllers, so taking hold swung it towards the left hand.
+- The weapon hand is the game's right hand. With `[Hands] LeftHanded=1` the two controllers swap roles as a whole (`vr::AssignHandRoles`), so it is always the dominant controller, and the off hand is the one that takes the handle.
+- The left hand is drawn on the handle as above, wherever the left controller is.
 
 **Letting go:** opening the left grip, sheathing, or pulling the hands more than 30 units further apart or closer than they started.
 
-**Code:** `vr/TwoHandLogic.h` (`two_hand_test`) and `StepTwoHands` in `CameraHook.cpp`. `StepTwoHands` turns the right hand's head-relative rotation by the smallest rotation that puts the blade on the line, before the hands are pinned; `PinLeftHandOnHandle` pins the left hand after the right one, so it sits on the weapon where the right hand now holds it.
+**Code:** `vr/TwoHandLogic.h` (`two_hand_test`), `game/HandGrip.h` (`finger_test`: the quaternion of a rotation and the blend), and `StepTwoHands` in `CameraHook.cpp`. `PinLeftHandOnHandle` pins the left hand after the right one, so it sits on the weapon where the right hand now holds it.
 
-**Not run yet.** The harness scenario `tools/hand-scripts/two-hand-grip.txt` is written. The rework's run at 09:35 on 2026-09-30 did not start the game: the runner reported "Explorer activation did not produce Oblivion.exe", with `obse_loader.exe` left running. On 2026-09-30 every launch crashed in the main menu, in Windows' `msmpeg2ac3dec.dll`, exception 0xc0000602, fail-fast.
-- The first crash was at 08:28 with the build from before this change. The machine had booted at 08:23 after Windows update KB5124010 was installed that morning.
-- That update is reported to crash games (TechSpot 2026-09-23, The FPS Review 2026-09-25). The reports name anti-cheat games, not this codec, so the link to Oblivion's crash is inferred from the timing only.
+**Tested:**
+- The tester, in the headset, 2026-09-30 (the game's grip, before the weapon hand led): "an sich gut das die hand sich nun um den griff schließt". The log: the game's hand read 7.0 units below the right palm, taken 7.0 to 15.9 below and drawn where wanted.
+- Harness `two-hand-grip`, 2026-09-30 11:08, with the weapon hand leading and the blend: PASS (artifacts/hand-script/two-hand-grip/20260930-110821). The hand was taken 13.4 units below the right palm and drawn there. The scripted head shows no hands in the window picture, so the blend itself was not seen - only its end.
