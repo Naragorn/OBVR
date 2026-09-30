@@ -1,0 +1,150 @@
+# Physical combat: a Blade & Sorcery feel (2026-09-30, research, nothing built)
+
+The tester asked whether OBVR can get "ein Blade&Sorcery Feeling für VR combat":
+
+- "waffen haben ein gewicht gefühl, ein schwung verhalten, zb 2händer sind schwer, dolche nicht";
+- "ich kann items vom boden direkt am grip aufnehmen und direkt als waffe zuschlagen";
+- "kann waffen beliebig hantieren".
+
+This spec covers:
+1. what Blade & Sorcery (B&S) actually does, from sources;
+2. what OBVR already has;
+3. each piece of the feel, how it could be done in Oblivion, and how sure that is.
+
+"Read" means seen in a source or the code. "Proposed" is a design. "Unknown" means the Oblivion side has not been researched yet.
+
+## 1. How B&S does it (sources)
+
+**The hand is not the controller.** A B&S developer on Reddit (r/BladeAndSorcery, "Slow mo and the strength multiplier", 2023):
+
+> "The game works by having an invisible object track the position of your controllers exactly, with no delay. There is a joint - think like a really strong rubber band - that connects this invisible object to the player's in-game hands. This allows you to put your controllers through a wall in-game, but your in-game hands get stuck on the wall"
+
+https://www.reddit.com/r/BladeAndSorcery/comments/17jpdkv/
+
+**Weight is mass against that joint.**
+
+- The B&S SDK FAQ gives the mass ranges: "Small items like daggers and small axes can have a lower weight (like 0.8 mass), swords have a medium sized weight (1.0-1.4 mass) and larger weapons like mauls and greatswords can have a higher mass to account for two-handed handling (2.0-8.0 mass)." It also moves the centre of mass for top-heavy items. https://kospy.github.io/BasSDK/Components/Guides/FAQ/ItemFAQ.html
+- A heavy weapon lags behind the hand when swung too fast for its weight: "weapon dragging behind your hand means you are swinging it too fast for its weight" (Steam discussion "Weapon Weight", https://steamcommunity.com/app/629730/discussions/0/1640913421084764621/).
+- A two-hander swung with one hand "just kind of flops" (r/BladeAndSorcery, "nerfs the weight of claymores", https://www.reddit.com/r/BladeAndSorcery/comments/nkjmqk/).
+- The joint's spring and damper can be tuned in the options: a stronger spring means lighter weapons (https://www.reddit.com/r/BladeAndSorcery/comments/als2br/).
+
+**Damage comes from the collision.**
+- Items carry "damagers" and colliders, and whatever hits hard enough does damage. That is how anything can be a weapon (the SDK FAQ above).
+- Handles define where an item can be held, and an item without one cannot be grabbed ("If you can't grab your weapon, it is usually an issue with handles").
+
+So the feel comes from three things: a spring between the controller and the hand, the weapon's mass on that spring, and damage from what the moving body hits.
+
+## 2. What OBVR has already (read in the repo)
+
+- **Hands and the drawn weapon** are keyframed Havok bodies that follow the controllers exactly (`game/HandBodies`, hand-weapon-collision-spec.md).
+  - They push the world, but nothing pushes them back.
+  - The weapon has no weight: a dagger and a warhammer move the same.
+- **The strike by motion** (`game/MeleeHits`) tests the drawn blade against the bodies along the hand's swing.
+  - It hands the hit to the engine's own hit function 0x005FEBF0.
+  - Light or power depends on the swing's length, the power kind on the blow's direction.
+- **Two hands on a two-hander** (controls-spec 4.10): the weapon points along the line between the hands.
+- **Held objects** go through the engine's grab (the mouse spring, `bhkMouseSpringAction`), driven to the hand (`game/GrabPhysics`).
+  - Let go, they are thrown with the hand's speed.
+  - A thrown thing staggers or knocks people down (`game/ThrowLogic.h`).
+- **Oblivion's weapons carry the numbers the feel needs.** Read from Oblivion.esm's WEAP DATA on 2026-09-30:
+
+  | Weapon (iron) | Type | Weight | Speed | Reach | Damage |
+  |---|---|---|---|---|---|
+  | Dagger | blade 1H | 3 | 1.4 | 0.6 | 5 |
+  | Shortsword | blade 1H | 8 | 1.2 | 0.8 | 7 |
+  | War axe | blunt 1H | 12 | 1.1 | 0.8 | 8 |
+  | Mace | blunt 1H | 15 | 0.9 | 1.0 | 10 |
+  | Longsword | blade 1H | 20 | 1.0 | 1.0 | 10 |
+  | Claymore | blade 2H | 22 | 0.8 | 1.3 | 12 |
+  | Battle axe | blunt 2H | 27 | 0.8 | 1.2 | 12 |
+  | Warhammer | blunt 2H | 30 | 0.7 | 1.3 | 14 |
+
+  These are from the Shivering Isles copies of the iron weapons (`SEWeapIron*`, `SEEnchIron*`). The base game's own iron weapons were not listed separately.
+
+## 3. The pieces, and how each could be done
+
+### A. Weight: the weapon lags the hand (proposed; feasible, OBVR only)
+
+**The idea:** the weapon hand's rotation, and with it the weapon, follows the controller through a critically damped spring instead of exactly. The spring's stiffness falls with the weapon's weight.
+- A dagger (3) follows almost at once.
+- A warhammer (30) trails a fast swing and overshoots a little at the end.
+- Holding it with both hands (4.10) makes the spring stiffer, for example ×2.5. A two-hander held in one hand stays sluggish, which is the B&S "flop".
+
+**Where it goes:** OBVR already decides the weapon hand's rotation before the bones are pinned (`StepTwoHands`, `PinAdjustableHand`). The spring goes there.
+- The strike by motion takes the lagged blade, so a hit lands where the weapon is seen.
+- The Havok weapon body follows the drawn node already.
+
+**Risks:**
+- The gap between the controller and the drawn hand must stay small, or it reads as lag rather than weight. It needs a cap (B&S's joint has one too).
+- The view is never touched, so there is no comfort risk for the head.
+
+**Tests:** the spring as a pure function (step response per weight, cap, two-hand factor).
+
+### B. Swing behaviour: heavy weapons need a longer swing and hit harder (proposed; partly unknown)
+
+- **Light and power per weight (feasible, OBVR only):** the power-attack length (`PowerSwingMetres`, `PowerThrustMetres`) and the swing speed (`SwingLight`) can scale with the weapon's weight and its speed value.
+  - A dagger swing counts sooner.
+  - A warhammer needs a full swing but always lands as a power attack once it has one.
+- **Damage by momentum (unknown):**
+  - B&S's damage comes from the collision's energy. In Oblivion the damage is computed inside the hit handler from the weapon, skills and power attack.
+  - A multiplier by the blade tip's speed needs a place in 0x005FEBF0 where the final damage can be scaled. It has not been looked for.
+  - Until found, the only lever is light against power.
+- **Stagger by momentum (feasible):** a heavy weapon's power hit could add the shove's knockdown when the tip is fast enough (`ShoveActor`, already used by throws).
+
+### C. Picking a weapon up from the ground by its grip and striking at once (proposed; feasible with parts built, one unknown)
+
+- **The flow:**
+  1. The grip closes on a weapon lying in the world (a WEAP reference) near its handle end.
+  2. OBVR takes it into the inventory the way activating would. Owned means stealing, with the crime rules the stow already uses (`TakeIntoInventory`).
+  3. OBVR equips it (`EquipWeaponForm`) and draws it.
+- **The unknown:** the engine's draw plays an animation, about a second, so "at once" needs a draw without it.
+  - A ready state set directly (the weapon state at `ReadPlayerWeaponState`'s field) might do. It has not been researched.
+  - Until then there is a short delay between picking it up and striking with it.
+- **Where the handle is:** a weapon's grip end is its "Weapon" node origin, the attach point. The blade runs along the node's axis (the blade capsule already measures that). A grip near the origin takes the handle; a grip on the blade could take it by the blade (see E).
+
+### D. Anything held is a weapon (proposed; feasible, reuses the throw)
+
+- A held object (a chair leg, a bottle, a skull) swung into someone should hit them like a thrown one.
+- The throw's check already follows an object and tests it against the living bodies. Run it on the held object too, with the hand's speed, and it staggers or knocks down at the throw's thresholds.
+- **Damage:** the shove's effects carry no damage. A real hit would call the hit handler with no weapon, as a fist (hand-to-hand), which the strike by motion can already do for fists. The held object's weight could scale it; the "unknown" of B above applies.
+
+### E. Free handling (partly feasible, partly an engine limit)
+
+- **Where on the handle the right hand holds (feasible):** slide the weapon along its own axis relative to the hand, the node's local offset, so a grip lower or higher on a long handle is kept.
+- **Half-swording, holding a sword by the blade (feasible, visual):** the same offset, past the guard.
+- **Turning the weapon in the hand, a reverse grip (feasible):** a twist of the wrist with the grip half open (a gesture to define) flips the node's local rotation 180°. The strike by motion follows the drawn node.
+- **The weapon in the left hand, or passing it between hands (engine limit):**
+  - Oblivion has one weapon slot and draws it on the right hand's "Weapon" node, and the left-handed mode (`LeftHanded`) swaps whole controller roles.
+  - Moving the drawn node under the left hand bone is possible in the scene graph, but the engine's own code (the sheathe, the hit, the animation) expects it on the right. It is risky and unresearched.
+  - Dual wielding is not possible.
+- **Throwing the drawn weapon (feasible with C in reverse):** unequip it, drop it at the hand as a world reference, and give it the hand's velocity like a thrown object. It then hits by D.
+
+### F. Hands that stop at walls and bodies, B&S's physics hands (large; unknown)
+
+- B&S's hand is a dynamic body on a joint, so it stops at a wall while the controller goes through.
+- OBVR's hands are keyframed and go through everything; the weight in A only lags them.
+- Making them dynamic bodies driven by a spring or constraint towards the controller would give walls, parries (blade on blade) and resistance on a hit.
+- It is the largest piece: Havok constraints or a motor, and the engine's own collision for the player's hands. Nothing of that has been read yet.
+- A cheaper part of it is feasible: a blade's cast along its swing, stopped where it meets static geometry (the hand bodies' world queries exist).
+
+### G. Out of reach in this engine
+
+- Stabbing that sticks (impaling), cutting and dismemberment: Oblivion has no support in its meshes or code.
+- Grabbing an enemy's weapon out of their hand: unknown. The disarm drops it, and the weapon on the ground could then be picked up by C.
+
+## 4. Proposed order
+
+1. **A, weight as a lagging spring,** with the two-hand factor. The largest part of the feel, all OBVR's own code. Harness: the lag step per weight in the log; the headset judges the feel.
+2. **B, swing thresholds per weight.** Small, on top of A.
+3. **D, held objects hit.** Reuses the throw.
+4. **C, pick up by the grip.** First look for a draw without the animation.
+5. **E, grip position and reverse grip.**
+6. **B's damage by momentum.** First look for the scale point in the hit handler.
+7. **F, physics hands:** a spec and a research pass of their own.
+
+## 5. Open questions
+
+- How strong the lag should be at each weight (tuning in the headset: settings per weight class, or one "weapon weight" factor).
+- Whether the drawn hand should lag with the weapon (B&S) or only the weapon should turn around the hand. Both are feasible. The hand lagging is truer to B&S; the weapon alone keeps the hand on the controller.
+- Where exactly in the hit handler the damage can be scaled (B).
+- How to draw a picked-up weapon without the animation (C).
