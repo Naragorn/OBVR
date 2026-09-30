@@ -42,7 +42,8 @@ void TestTake() {
 	Check(!TwoHandTakes(s, true, false, -15.0f, 3.0f), "the grip already closed: not");
 	Check(!TwoHandTakes(s, true, true, -15.0f, 20.0f), "20 units beside the line: not");
 	Check(!TwoHandTakes(s, true, true, -40.0f, 3.0f), "far behind: not");
-	Check(!TwoHandTakes(s, true, true, -2.0f, 3.0f), "on the right hand itself: not");
+	Check(TwoHandTakes(s, true, true, -2.0f, 3.0f), "2 below, right beside the right hand: taken");
+	Check(!TwoHandTakes(s, true, true, -1.0f, 3.0f), "on the right hand itself: not");
 	Check(!TwoHandTakes(s, true, true, -15.0f, kNaN), "no distance from the line: not");
 	TwoHandSettings off;
 	off.enabled = false;
@@ -194,8 +195,13 @@ void TestHold() {
 	Check(t.active && Near(t.distance, 15.0f) && Near(t.handAxial, -12.0f),
 	      "taken 15 below: the controllers 15 apart, the palm put 12 below");
 	Check(TwoHandHolds(t, s, true, true, 25.0f, 0.011f), "25 from the handle: still held");
-	Check(!TwoHandHolds(t, s, true, true, 35.0f, 0.011f) && !t.active && Near(t.handAxial, -12.0f),
-	      "35 from the handle: let go, where the hand was put kept for the way back");
+	Check(TwoHandHolds(t, s, true, true, 35.0f, 0.05f) && TwoHandHolds(t, s, true, true, 35.0f, 0.05f),
+	      "35 from the handle for a tenth of a second (a tracking jump): still held");
+	Check(TwoHandHolds(t, s, true, true, 5.0f, 0.011f) && Near(t.farSeconds, 0.0f),
+	      "back on the handle: held, the time off it forgotten");
+	Check(TwoHandHolds(t, s, true, true, 35.0f, 0.1f) && !TwoHandHolds(t, s, true, true, 35.0f, 0.05f) &&
+	          !t.active && Near(t.handAxial, -12.0f),
+	      "35 from the handle for 0.15 s: let go, where the hand was put kept for the way back");
 	StartTwoHand(t, -20.0f, -20.0f);
 	Check(TwoHandHolds(t, s, true, false, 2.0f, 0.05f) && TwoHandHolds(t, s, true, false, 2.0f, 0.05f),
 	      "the grip reading open for a tenth of a second: still held");

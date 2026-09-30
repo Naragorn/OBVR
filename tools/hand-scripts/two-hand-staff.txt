@@ -1,0 +1,48 @@
+# A staff with both hands (vr/TwoHandLogic.h; staffs are the weapon type 4,
+# held like two-handers): the Staff of Apotheosis drawn over the right
+# shoulder, the left grip closed three times at three places below the right
+# hand and ahead of it - where the staff's model lies against the hand, and
+# which grips take it, are what the log answers (the tester, 2026-09-30:
+# "stäbe gehen auch noch nicht. die gehen nur auf der rechten hand").
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands TwoHandGrip=1
+console player.additem 000CA153 1
+console player.equipitem 000CA153
+
+expect HandScript: finished
+expect Hands: the two-hander's model (weapon type 4) - measured
+reject HandScript: WARNING
+
+wait 20
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+left pos 0.20 -0.40 -0.10
+wait 0.5
+left grip 1
+wait 0.5
+mark below
+left grip 0
+wait 0.5
+left pos 0.20 -0.55 0.05
+wait 0.5
+left grip 1
+wait 0.5
+mark far_below
+left grip 0
+wait 0.5
+left pos 0.20 -0.33 -0.50
+wait 0.5
+left grip 1
+wait 0.5
+mark ahead
+left grip 0
+wait 1
+mark let_go

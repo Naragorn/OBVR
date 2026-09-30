@@ -793,7 +793,7 @@ The tester: "bei 2 händern mit der linken hand meine hand an das schwert/axt/wh
 - The weapon hand is the game's right hand. With `[Hands] LeftHanded=1` the two controllers swap roles as a whole (`vr::AssignHandRoles`), so it is always the dominant controller, and the off hand is the one that takes the handle.
 - The left hand is drawn on the handle as above, wherever the left controller is.
 
-**Letting go:** opening the left grip for more than 0.12 s, sheathing, or the left controller more than 30 units from the handle.
+**Letting go:** opening the left grip for more than 0.12 s, sheathing, or the left controller more than 30 units from the handle for more than 0.12 s.
 
 **Code:** `vr/TwoHandLogic.h` (`two_hand_test`), `game/HandGrip.h` (`finger_test`: the quaternion of a rotation and the blend), and `StepTwoHands` in `CameraHook.cpp`. `PinLeftHandOnHandle` pins the left hand after the right one, so it sits on the weapon where the right hand now holds it.
 
@@ -807,3 +807,14 @@ The tester: "bei 2 händern mit der linken hand meine hand an das schwert/axt/wh
   - The longsword: "not readable yet", then "measured; pommel 9.5 units below the right palm". The hand was taken 6.5 below and drawn there, cupping the pommel end.
   - Neither run logged a left-grip grab while the handle was held (a reject line).
   - The slide and the flicker hold-on are covered by `two_hand_test`, not by the harness.
+- The tester, 2026-09-30 14:00: "geht gut nun ... klebt nix mehr. mit trigger kan ich gleiten". Still: the grip lost now and then during or after a swing with both hands, one-handers "da passiert noch nix", and staffs working only in the right hand. What the log showed and what was done:
+  - **Staffs, and any second weapon: another weapon's handle.** The handle was measured once per "Weapon" node. That node belongs to the skeleton, and every weapon hangs on it. A staff drawn after a longsword and a claymore kept one of their handles all session, so grips 14, 36 and 48 units down its shaft were refused.
+    - Now the handle is measured per weapon form, once the draw is over (player action -1). During the draw the node can still carry the old model.
+    - Harness `two-hand-switch` (staff, then claymore in one run): PASS (artifacts/hand-script/two-hand-switch/20260930-141437). The staff measured its pommel 84.1 units below and took a grip 25.8 down. The claymore then measured 16.4, refused the same grip ("closed off the handle - -26 units along"), and took one at 12.9. The staff alone: `two-hand-staff` PASS.
+  - **The game's grip read from an attack.** Two takes gave "the game's own hand at 14.6" and "16.4": frames of an attack animation that passed the check. The game's grip is now read only while the player does nothing (action -1). The idle holds it at 7.0.
+  - **Off the handle during swings.** Three lets go were "the hand left the handle", right after swings, and none of the grip lets go was a short flicker (no "read open for" line). A hand more than 30 units off the handle now has to stay off for 0.12 s, like the grip: a tracking jump of a frame or two holds on. The other 32 lets go were the grip reading open for longer than 0.12 s. The log cannot tell a hand that opened from a controller that did.
+  - **One-handers.** Grips were taken (7.0 to 11.7 units down) and let go a moment later, and two were refused at 1 and 5 units down: the left controller closing right beside the right one. `minUnits` is 2 now (was 5).
+  - **The weapon turned in the hand by the animations** (found on the way). `_1stperson\twohandattackleft.kf` keys the Weapon node up to 17 degrees from the idle's pose and back. The idle, the block and the one-handed idle hold it still (pyffi). In Full VR the weapon, and a left hand on its handle, turned with it during every strike and draw.
+    - `HoldWeaponAtRest` now keeps the pose the Weapon node has while the player does nothing, per model, and writes it back while any action plays. It runs before the hands are pinned, for one- and two-handed weapons, not the bow.
+    - The harness logged the draw turning it up to 27.7 degrees ("an animation turned the weapon ... (player action 0) - held at its rest").
+    - `hand-bodies`, `holster`, `holster-two-handed` and `shield-block` still PASS with it.

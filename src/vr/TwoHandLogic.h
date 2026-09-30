@@ -43,9 +43,11 @@ struct TwoHandSettings {
 	// line (70 a metre)...
 	float reachUnits = 12.0f;
 	// ...below the right hand, at least minUnits and, when the handle could
-	// not be measured, at most behindUnits.
+	// not be measured, at most behindUnits. minUnits was 5: on a one-hander
+	// the left controller closes right beside the right one, and the tester's
+	// run refused it at 5 and 1 units down (2026-09-30).
 	float behindUnits = 25.0f;
-	float minUnits = 5.0f;
+	float minUnits = 2.0f;
 	// The hand this far from the handle while holding it: let go.
 	float slackUnits = 30.0f;
 	// The handle measured from the weapon's model: the left palm stays this far
@@ -239,6 +241,7 @@ struct TwoHandState {
 	float distance = 0.0f;    // between the controllers when it took hold
 	float handAxial = 0.0f;   // where the left palm is put, from the right palm
 	float openSeconds = 0.0f;  // how long the grip has been open while held
+	float farSeconds = 0.0f;   // how long the hand has been off the handle while held
 };
 
 // Whether the left grip, closing now at `axial` along the weapon from the
@@ -278,7 +281,10 @@ inline void StartTwoHand(TwoHandState& t, float axial, float handAxial) {
 // den grip, kann auch an meinen alten controller liegen" - every one of those
 // lets go was the grip reading open (the log), so a grip that flickers open
 // for a frame or two is held through. `handleUnits` is how far the hand is
-// from the handle (NearestOnHandle): further than slackUnits, it lets go.
+// from the handle (NearestOnHandle): further than slackUnits for as long as
+// releaseSeconds, it lets go - the tester's next run (2026-09-30) let go three
+// times off the handle, right after swings, where a tracking jump of an old
+// controller lasts a frame or two.
 inline bool TwoHandHolds(TwoHandState& t, const TwoHandSettings& s, bool twoHandedDrawn, bool leftGripDown,
                          float handleUnits, float dtSeconds) {
 	if (!t.active) {
@@ -289,12 +295,19 @@ inline bool TwoHandHolds(TwoHandState& t, const TwoHandSettings& s, bool twoHand
 	} else if (dtSeconds > 0.0f) {
 		t.openSeconds += dtSeconds;
 	}
+	const bool closeBy = handleUnits == handleUnits && handleUnits <= s.slackUnits;
+	if (closeBy) {
+		t.farSeconds = 0.0f;
+	} else if (dtSeconds > 0.0f) {
+		t.farSeconds += dtSeconds;
+	}
 	const bool gripHeld = leftGripDown || t.openSeconds < s.releaseSeconds;
-	const bool held = s.enabled && twoHandedDrawn && gripHeld && handleUnits == handleUnits &&
-	                  handleUnits <= s.slackUnits;
+	const bool onHandle = closeBy || (handleUnits == handleUnits && t.farSeconds < s.releaseSeconds);
+	const bool held = s.enabled && twoHandedDrawn && gripHeld && onHandle;
 	if (!held) {
 		t.active = false;
 		t.openSeconds = 0.0f;
+		t.farSeconds = 0.0f;
 	}
 	return held;
 }

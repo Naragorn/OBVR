@@ -1,0 +1,73 @@
+# Two weapons in one session (vr/TwoHandLogic.h): a staff drawn and taken
+# with the left hand far down its shaft, sheathed, then a claymore equipped
+# and drawn, and the same far grip - past the claymore's pommel, so it is
+# refused - then one on its handle. The handle is measured per weapon: keyed
+# by the skeleton's Weapon node, one weapon kept another's handle all session
+# (the tester, 2026-09-30: "stäbe gehen auch noch nicht").
+# The runner takes two console lines at the start; the claymore is added and
+# equipped at marks.
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands TwoHandGrip=1
+console player.additem 000CA153 1
+console player.equipitem 000CA153
+console-at sheathed player.additem 0001C6CD 1
+console-at sheathed2 player.equipitem 0001C6CD
+
+expect HandScript: finished
+expect Hands: the two-hander's model (weapon type 4) - measured
+expect Hands: the two-hander's model (weapon type 1) - measured
+expect Hands: the left grip closed off the handle
+reject HandScript: WARNING
+
+wait 20
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark staff
+left pos 0.20 -0.55 0.05
+wait 0.5
+left grip 1
+wait 0.5
+mark staff_far
+left grip 0
+wait 0.5
+left pos -0.20 -0.40 -0.30
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+wait 2
+mark sheathed
+wait 3
+mark sheathed2
+wait 8
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark claymore
+left pos 0.20 -0.55 0.05
+wait 0.5
+left grip 1
+wait 0.5
+mark claymore_far
+left grip 0
+wait 0.5
+left pos 0.20 -0.40 -0.10
+wait 0.5
+left grip 1
+wait 0.5
+mark claymore_held
+left grip 0
+wait 1
+mark let_go

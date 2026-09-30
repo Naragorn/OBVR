@@ -225,7 +225,10 @@ float g_twoHandFloor = 0.0f;
 float g_twoHandPreshape = 0.0f;
 // The drawn two-hander's pommel end along its axis, in the Weapon node's frame
 // (game::AxialExtentOf), measured once per model.
-const NiAVObject* g_twoHandMeasured = nullptr;
+// Keyed by the weapon's form: the "Weapon" node is the skeleton's own, the
+// same for every weapon, and keyed by it a staff kept a longsword's handle
+// all session (2026-09-30: grips 14, 36 and 48 units down the staff refused).
+const UInt8* g_twoHandMeasured = nullptr;
 bool g_twoHandPommelValid = false;
 float g_twoHandPommel = 0.0f;
 // The game's own left hand on the two-hander (vr::VanillaGrip), read from the
@@ -4148,6 +4151,67 @@ void ReadVanillaGrip(const vr::HandSettings& hands, const NiAVObject* weapon) {
 	}
 }
 
+// The drawn weapon held in the hand as it rests, through the attack
+// animations. The game's attack animations turn the Weapon node in the hand
+// (_1stperson\twohandattackleft.kf keys it up to 17 degrees from the idle's
+// pose and back; the idle, the block and the one-handed idle all hold it at
+// the same pose, read with pyffi 2026-09-30). In Full VR the hand is where the
+// controller is, and so should the weapon be: a strike by motion presses
+// attack, the animation then twisted the blade in the hand, and a left hand on
+// its handle with it. The pose it has while the player does nothing (action
+// -1) is kept per weapon model and written back while any action plays -
+// before the hands are pinned, so they carry it. Not for the bow, whose draw
+// the animation is.
+struct WeaponRest {
+	const NiAVObject* node = nullptr;
+	bool have = false;
+	NiMatrix33 rot = NiMatrix33::Identity();
+	NiPoint3 pos{0.0f, 0.0f, 0.0f};
+	float largestDegrees = 0.0f;
+};
+WeaponRest g_weaponRest;
+
+void HoldWeaponAtRest() {
+	SInt32 weaponType = -1;
+	const bool drawn = game::EquippedWeaponForm(&weaponType) != nullptr &&
+	                   game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
+	const vr::EquippedKind kind = vr::KindOfWeaponType(weaponType);
+	NiAVObject* const weapon = game::FindFirstPersonNode("Weapon");
+	if (!drawn || weapon == nullptr || (kind != vr::EquippedKind::OneHand && kind != vr::EquippedKind::TwoHand)) {
+		return;
+	}
+	if (weapon != g_weaponRest.node) {
+		g_weaponRest = WeaponRest{};
+		g_weaponRest.node = weapon;
+	}
+	if (game::ReadPlayerAction() < 0) {
+		g_weaponRest.rot = weapon->localTransform.rot;
+		g_weaponRest.pos = weapon->localTransform.pos;
+		g_weaponRest.have = true;
+		return;
+	}
+	if (!g_weaponRest.have) {
+		return;
+	}
+	// How far the animation had turned it, for the log: the angle of the turn
+	// from the rest to now.
+	const NiMatrix33 turn = vr::Transposed(g_weaponRest.rot) * weapon->localTransform.rot;
+	float cosine = (turn.data[0][0] + turn.data[1][1] + turn.data[2][2] - 1.0f) * 0.5f;
+	cosine = cosine > 1.0f ? 1.0f : (cosine < -1.0f ? -1.0f : cosine);
+	const float degrees = math::Atan2(math::Sqrt(1.0f - cosine * cosine), cosine) * math::kRadiansToDegrees;
+	static UInt32 s_lines = 6;
+	if (degrees > g_weaponRest.largestDegrees + 5.0f && s_lines > 0) {
+		--s_lines;
+		g_weaponRest.largestDegrees = degrees;
+		OBVR_LOG("Hands: an animation turned the weapon %.1f degrees in the hand (player action %d) - held at its "
+		         "rest",
+		         static_cast<double>(degrees), static_cast<int>(game::ReadPlayerAction()));
+	}
+	weapon->localTransform.rot = g_weaponRest.rot;
+	weapon->localTransform.pos = g_weaponRest.pos;
+	game::UpdateNodeTransforms(weapon);
+}
+
 TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& cameraRot, const NiPoint3& cameraPos) {
 	TwoHandPins out;
 	const bool leftGrip = g_hand.leftGripDown;
@@ -4159,8 +4223,8 @@ TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& camera
 	// (vr::TwoHandWeapon). The game's own grip is read from the two-handed
 	// animation only; a one-hander's keeps the left hand at the side.
 	SInt32 weaponType = -1;
-	const bool drawn = g_hand.rightHandValid && g_hand.leftHandValid &&
-	                   game::EquippedWeaponForm(&weaponType) != nullptr &&
+	const UInt8* const weaponForm = game::EquippedWeaponForm(&weaponType);
+	const bool drawn = g_hand.rightHandValid && g_hand.leftHandValid && weaponForm != nullptr &&
 	                   game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
 	const vr::EquippedKind kind = vr::KindOfWeaponType(weaponType);
 	const bool twoHander = drawn && kind == vr::EquippedKind::TwoHand;
@@ -4183,7 +4247,11 @@ TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& camera
 	const NiPoint3 right = cameraPos + cameraRot * g_hand.rightHandOffsetUnits;
 	const NiPoint3 left = cameraPos + cameraRot * g_hand.leftHandOffsetUnits;
 
-	if (twoHander && !g_twoHand.active) {
+	// Only while the player does nothing (action -1): the tester's run of
+	// 2026-09-30 read the game's hand at 14.6 and 16.4 units below the right
+	// palm, frames of an attack animation that passed the check - the idle
+	// holds it at 7.0.
+	if (twoHander && !g_twoHand.active && game::ReadPlayerAction() < 0) {
 		ReadVanillaGrip(hands, weapon);
 	}
 	// The handle from the weapon's own model: its pommel end along the weapon's
@@ -4196,26 +4264,32 @@ TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& camera
 	if (s_measureWait > 0) {
 		--s_measureWait;
 	}
-	if (twoHanded && (weapon != g_twoHandMeasured || (!g_twoHandPommelValid && s_measureWait == 0))) {
-		g_twoHandMeasured = weapon;
+	// Measured once the draw is over (action -1): during it the node can still
+	// carry the model it had, or none.
+	if (twoHanded && game::ReadPlayerAction() < 0 &&
+	    (weaponForm != g_twoHandMeasured || (!g_twoHandPommelValid && s_measureWait == 0))) {
+		// Logged once per model: its first try, and its measurement. The
+		// retries used the lines up before (a staff's never showed).
+		const bool firstTry = weaponForm != g_twoHandMeasured;
+		g_twoHandMeasured = weaponForm;
 		float tip = 0.0f;
 		const NiPoint3 axis = weapon->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f};
-		const bool was = g_twoHandPommelValid;
 		g_twoHandPommelValid = game::AxialExtentOf(weapon, weapon->worldTransform.pos, axis, g_twoHandPommel, tip);
 		s_measureWait = g_twoHandPommelValid ? 0 : 90;
-		static UInt32 s_handleLines = 6;
-		if (s_handleLines > 0 && (g_twoHandPommelValid || !was)) {
+		static UInt32 s_handleLines = 32;
+		if (s_handleLines > 0 && (g_twoHandPommelValid || firstTry)) {
 			--s_handleLines;
 			const float fromRight = g_twoHandPommel - g_vanillaGrip.rightPalmAxial;
-			OBVR_LOG("Hands: the %s's model - %s; pommel %.1f units %s the right palm, tip %.0f above the "
-			         "weapon node",
-			         twoHander ? "two-hander" : "one-hander", g_twoHandPommelValid ? "measured" : "not readable yet",
+			OBVR_LOG("Hands: the %s's model (weapon type %d) - %s; pommel %.1f units %s the right palm, tip %.0f "
+			         "above the weapon node",
+			         twoHander ? "two-hander" : "one-hander", static_cast<int>(weaponType),
+			         g_twoHandPommelValid ? "measured" : "not readable yet",
 			         static_cast<double>(fromRight < 0.0f ? -fromRight : fromRight),
 			         fromRight < 0.0f ? "below" : "above", static_cast<double>(tip));
 		}
 	}
 	const vr::HandleSpan handle =
-		weapon == g_twoHandMeasured
+		weaponForm == g_twoHandMeasured
 			? vr::HandleSpanFor(hands.twoHand, g_twoHandPommelValid,
 			                    g_twoHandPommel - g_vanillaGrip.rightPalmAxial, g_vanillaGrip.Below())
 			: vr::HandleSpan{};
@@ -4537,6 +4611,7 @@ void BeforeFirstScenePass() {
 			game::SetBareWristTaper(hands.closeBareWrists && !g_stumpShown);
 			// Two hands on a two-hander: the weapon hand turned along the line
 			// between the hands, the left hand kept on the handle.
+			HoldWeaponAtRest();
 			const TwoHandPins twoHand = adjusting ? TwoHandPins{} : StepTwoHands(hands, cameraRot, cameraPos);
 			const bool rightCommitted = PinAdjustableHand(
 				true, hands, adjusting, g_hand.rightHandValid, g_hand.rightGripDown,
