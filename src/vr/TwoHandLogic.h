@@ -48,8 +48,13 @@ struct TwoHandSettings {
 	// run refused it at 5 and 1 units down (2026-09-30).
 	float behindUnits = 25.0f;
 	float minUnits = 2.0f;
-	// The hand this far from the handle while holding it: let go.
-	float slackUnits = 30.0f;
+	// The hand this far from the handle while holding it: let go. 0: never -
+	// the hand is locked on the handle until its grip opens (the tester,
+	// 2026-09-30 16:23: "sobald man das schwert mit links hält gerne noch
+	// stärker locken an das schwert sodass beim schwingen nicht der griff
+	// verloren wird"; both of that run's lets go by distance came right after
+	// a swing, at 30 units).
+	float slackUnits = 0.0f;
 	// The handle measured from the weapon's model: the left palm stays this far
 	// inside its pommel end (half a hand), and a grip up to overhangUnits past
 	// the end still takes the handle (it is put on the end). A hand's width:
@@ -253,6 +258,8 @@ inline HandleSpan HandleSpanFor(const TwoHandSettings& s, bool measured, float p
 // model was not measured, too few vertices lie there to trust, or the middle
 // is further off than a shaft could be from the hand holding it.
 inline constexpr float kShaftBandUnits = 4.0f;
+// Too few vertices there: this far either side of the right palm instead.
+inline constexpr float kShaftWideBandUnits = 20.0f;
 inline constexpr UInt32 kShaftMinVertices = 8;
 inline constexpr float kShaftMaxOffUnits = 15.0f;
 
@@ -354,7 +361,8 @@ inline void StartTwoHand(TwoHandState& t, float axial, float handAxial) {
 // from the handle (NearestOnHandle): further than slackUnits for as long as
 // releaseSeconds, it lets go - the tester's next run (2026-09-30) let go three
 // times off the handle, right after swings, where a tracking jump of an old
-// controller lasts a frame or two.
+// controller lasts a frame or two. With slackUnits 0 (the default) the hand
+// stays locked on however far its controller swings away.
 inline bool TwoHandHolds(TwoHandState& t, const TwoHandSettings& s, bool twoHandedDrawn, bool leftGripDown,
                          float handleUnits, float dtSeconds) {
 	if (!t.active) {
@@ -365,7 +373,8 @@ inline bool TwoHandHolds(TwoHandState& t, const TwoHandSettings& s, bool twoHand
 	} else if (dtSeconds > 0.0f) {
 		t.openSeconds += dtSeconds;
 	}
-	const bool closeBy = handleUnits == handleUnits && handleUnits <= s.slackUnits;
+	const bool locked = !(s.slackUnits > 0.0f);
+	const bool closeBy = locked || (handleUnits == handleUnits && handleUnits <= s.slackUnits);
 	if (closeBy) {
 		t.farSeconds = 0.0f;
 	} else if (dtSeconds > 0.0f) {

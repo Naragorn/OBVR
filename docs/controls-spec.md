@@ -164,6 +164,12 @@ in the headset yet.
   | Bow (5) | left shoulder |
 
   With no weapon the hands fight hand to hand (4.3).
+- **The staff's and the bow's draw sounds** (the tester, 2026-09-30: "stab und bogen keine equip sounds bekommen im vergleich zu 1 hand oder 2hand").
+  - The game plays `WPN<type>Equip` / `WPN<type>Unequip` at the "Enum: Equip" / "Enum: Unequip" text keys of the first-person draw animation (0x006B07F0 builds the name from the weapon's type: WPNBlade1Hand, WPNBlade2Hand, WPNBlunt1Hand, WPNBlunt2Hand, WPNStaff, WPNBow; read from Oblivion.exe). With `WeaponDrawSpeed` those keys are fired by OBVR (`game::StepWeaponDrawSpeed`).
+  - The staff's `staffequip.kf` and `staffunequip.kf` have no such key (only Attach/Detach; pyffi over `Oblivion - Meshes.bsa`): the staff is silent in the game itself.
+  - The bow's `bowequip.kf` has it at 0.5 s, and the harness logged the span 0.435 to 0.536 s fired through the game's handler ("Draw speed: keys fired", `bow-hand` 2026-09-30 16:30); the sound files are in `Oblivion - Sounds.bsa`. Yet the tester heard nothing. Why is not found (open).
+  - So OBVR plays the game's own sound forms for these two when the weapon shows drawn or sheathed (`vr::DrawSoundForm`: WPNStaffEquip 00029BB2, WPNStaffUnequip 00029BB3, WPNBowEquip 00088B2B, WPNBowUnequip 00088B2C). For the bow this is a detour: the direct fix is whatever keeps the game's own key from sounding. If the game does play it somewhere, the bow sounds twice.
+  - Harness 2026-09-30: `holster-staff` PASS (…/20260930-163904) with "the staff's draw sound (00029BB2) played" and the sheathe's (00029BB3); `bow-hand` PASS (…/20260930-163431) with the bow's. `holster-staff` now runs with `SwingLight=1000`: the scripted hands jump at 44 m/s, a swing, and the staff's cast held the sheathe off (a runner effect since swings by motion).
 - **Built.** `vr::StepHolster` (`holster_test`, and `hand_mode_test` through
   the mode).
   - **Where the zones are.** They are in the body's frame: metres from the
@@ -830,6 +836,10 @@ The tester: "bei 2 händern mit der linken hand meine hand an das schwert/axt/wh
   - **The handle's line.** The left hand was put on the Weapon node's axis. A sword's handle is modelled on it; a staff's need not be. The line is now moved across to where the model's vertices lie within 4 units of the right palm along the axis (`vr::ShaftOffset`, `AxialExtentOf`'s band), and the hand arrived logs how far both palms are off that line.
   - Harness 2026-09-30 15:56-16:01: `two-hand-staff` PASS twice (…/20260930-160153): the Staff of Apotheosis's shaft 0.5 and -0.9 off the axis (26 vertices); a take 25.8 below with the left palm 3.8 off the line, the right 4.3. `two-hand-one-hander` PASS (sword 0.0 0.0 off, palms 3.8 and 3.3), `two-hand-grip` PASS (as before). `two-hand-switch` FAIL twice: the claymore's console equip at a mark did not take (the staff icon stays in the HUD at "claymore"; a SteamVR window was over the game), so no claymore was drawn - the runner, not the two hands.
   - Not reproduced in the harness: the tester's staffs (pommel 44 to 63 below, one with the right palm at -26) and the grip read at 18.0. That the fix puts the hand on those staffs is for the headset.
+
+- The tester, 2026-09-30 16:23: "jo nun viel besser". The staff "ungefähr in einer linie noch etwas versetzt aber schon akzeptabel", the one-hander "passt nun"; wanted: "sobald man das schwert mit links hält gerne noch stärker locken an das schwert sodass beim schwingen nicht der griff verloren wird". What the log showed and what was done:
+  - **Locked on the handle.** Both of that run's lets go by distance ("the hand left the handle") came right after a swing. Held, the hand now stays on the handle however far its controller swings away; only the grip opening (for 0.12 s) lets go. `TwoHandSlackUnits` (new, default 0 = locked) gives the old release by distance back.
+  - **The staff a little off.** The tester's staff measured "the shaft there 0.0 0.0 off its axis (0 vertices)": no vertex within 4 units of the right palm along a long plain shaft, so the node's axis was kept. For a staff the band now widens to 20 units when the narrow one has too few vertices (`kShaftWideBandUnits`). Not seen on that staff yet: the harness staff has 26 vertices in the narrow band.
 
 ### 4.11 The bow by hand, as in Blade & Sorcery (built 2026-09-30)
 

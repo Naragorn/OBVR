@@ -2766,6 +2766,35 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			         static_cast<int>(weaponType));
 		}
 
+		// The staff's and the bow's draw and sheathe sounds, which the game
+		// does not play (vr::DrawSoundForm): once the weapon shows drawn or
+		// sheathed, the sound of the change.
+		{
+			static game::WeaponState s_lastWeapon = game::WeaponState::Unknown;
+			static SInt32 s_lastType = -1;
+			SInt32 soundType = -1;
+			game::EquippedWeaponForm(&soundType);
+			const game::WeaponState weaponNow = game::ReadPlayerWeaponState();
+			if (weaponNow != game::WeaponState::Unknown && s_lastWeapon != game::WeaponState::Unknown &&
+			    weaponNow != s_lastWeapon && !menuIsUp) {
+				// Sheathed, the weapon is still equipped: its own type.
+				const SInt32 type = soundType >= 0 ? soundType : s_lastType;
+				const UInt32 form = vr::DrawSoundForm(type, weaponNow == game::WeaponState::Drawn);
+				if (form != 0) {
+					const bool played = game::PlaySoundForm(form);
+					static UInt32 s_soundLines = 8;
+					if (s_soundLines > 0) {
+						--s_soundLines;
+						OBVR_LOG("Hands: the %s's %s sound (%08X) %s", type == 4 ? "staff" : "bow",
+						         weaponNow == game::WeaponState::Drawn ? "draw" : "sheathe", form,
+						         played ? "played" : "not played");
+					}
+				}
+			}
+			s_lastWeapon = weaponNow;
+			s_lastType = soundType;
+		}
+
 		// Every click the laser sends into a game menu, the first several
 		// dozen: a message box that could not be clicked away (2026-09-27)
 		// left no trace of whether a click was sent at all.
@@ -4316,6 +4345,18 @@ TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& camera
 		g_twoHandPommelValid = game::AxialExtentOf(weapon, weapon->worldTransform.pos, axis, g_twoHandPommel, tip,
 		                                           band, &shaftCentre, &shaftVertices);
 		g_twoHandTip = tip;
+		// A long plain shaft has its vertices far apart along it: none within
+		// the band of the tester's second staff (2026-09-30 16:23, "0 vertices",
+		// the hand "etwas versetzt") - then the wider band. A staff's only: a
+		// sword's would take in its guard, and the two-hander is fine as it is.
+		if (g_twoHandPommelValid && shaftVertices < vr::kShaftMinVertices && vr::IsStaffWeaponType(weaponType)) {
+			const float wide[2] = {g_twoHandRightPalm - vr::kShaftWideBandUnits,
+			                       g_twoHandRightPalm + vr::kShaftWideBandUnits};
+			float wideLow = 0.0f;
+			float wideHigh = 0.0f;
+			game::AxialExtentOf(weapon, weapon->worldTransform.pos, axis, wideLow, wideHigh, wide, &shaftCentre,
+			                    &shaftVertices);
+		}
 		// Where the shaft lies across the node's axis, in the node's frame.
 		g_twoHandShaft = vr::ShaftOffset(g_twoHandPommelValid, shaftVertices,
 		                                 toNode * (shaftCentre - weapon->worldTransform.pos));

@@ -728,6 +728,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.twoHand.oneHanders = ReadBool("Hands", "TwoHandOneHanders", h.twoHand.oneHanders, path);
 		h.twoHand.slide = ReadBool("Hands", "TwoHandSlide", h.twoHand.slide, path);
 		h.twoHand.releaseSeconds = ReadFloat("Hands", "TwoHandReleaseSeconds", h.twoHand.releaseSeconds, path);
+		h.twoHand.slackUnits = ReadFloat("Hands", "TwoHandSlackUnits", h.twoHand.slackUnits, path);
 		h.archery.enabled = ReadBool("Hands", "BowByHand", h.archery.enabled, path);
 		h.archery.quiverZone.x = ReadFloat("Hands", "QuiverX", h.archery.quiverZone.x, path);
 		h.archery.quiverZone.y = ReadFloat("Hands", "QuiverForward", h.archery.quiverZone.y, path);

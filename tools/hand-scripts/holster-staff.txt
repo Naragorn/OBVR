@@ -6,6 +6,9 @@
 
 ini Hands Enabled=1
 ini Hands Holsters=1
+# The scripted hands jump between places at 44 m/s: a swing, and the staff
+# casts, which holds the sheathe off. No swings for the run.
+ini Hands SwingLight=1000
 # An Iron Longsword and a Staff of Burden (00000C0C, 000912BE, UESP
 # Oblivion:Weapons, Oblivion:Generic Staves), each equipped once, the staff last.
 console player.additem 00000C0C 1
@@ -16,6 +19,8 @@ console player.equipitem 000912BE
 expect HandScript: finished
 expect Holster: reach for the two-handed weapon - drawing
 expect Holster: reach for the two-handed weapon - sheathing
+expect Hands: the staff's draw sound (00029BB2) played
+expect Hands: the staff's sheathe sound (00029BB3) played
 expect Holster: reach for the one-handed weapon - equipping the last one seen
 expect Holster: reach for the two-handed weapon - another weapon is drawn, it goes back first
 expect Holster: reach for the two-handed weapon - equipping the last one seen

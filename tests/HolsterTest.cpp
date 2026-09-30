@@ -190,6 +190,13 @@ void TestTwoHanded() {
 	Check(IsStaffWeaponType(4) && !IsStaffWeaponType(1) && !IsStaffWeaponType(3) && !IsStaffWeaponType(0) &&
 	          !IsStaffWeaponType(-1),
 	      "the staff alone is a staff (its shaft a handle both ways, its animation not the grip's source)");
+	Check(DrawSoundForm(4, true) == kStaffEquipSound && DrawSoundForm(4, false) == kStaffUnequipSound,
+	      "the staff drawn and sheathed: WPNStaffEquip and WPNStaffUnequip");
+	Check(DrawSoundForm(5, true) == kBowEquipSound && DrawSoundForm(5, false) == kBowUnequipSound,
+	      "the bow drawn and sheathed: WPNBowEquip and WPNBowUnequip");
+	Check(DrawSoundForm(0, true) == 0 && DrawSoundForm(1, false) == 0 && DrawSoundForm(2, true) == 0 &&
+	          DrawSoundForm(3, false) == 0 && DrawSoundForm(-1, true) == 0,
+	      "blades, blunt weapons and no weapon: none - the game plays its own");
 	Check(KindOfWeaponType(-1) == EquippedKind::Nothing && KindOfWeaponType(9) == EquippedKind::Nothing,
 	      "no weapon, or a type the game does not have: nothing");
 

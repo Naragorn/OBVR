@@ -69,6 +69,33 @@ inline EquippedKind KindOfWeaponType(SInt32 type) {
 // hand (vr::HandleSpan::above).
 inline bool IsStaffWeaponType(SInt32 type) { return type == 4; }
 
+// The draw and sheathe sounds OBVR plays itself (the tester, 2026-09-30: "stab
+// und bogen keine equip sounds bekommen im vergleich zu 1 hand oder 2hand").
+// The game plays a weapon's WPN<type>Equip/Unequip at the "Enum: Equip" and
+// "Enum: Unequip" keys of its draw animation (0x006B07F0, the name built from
+// the type). The staff's first-person draw and sheathe have no such key
+// (staffequip.kf, staffunequip.kf: only Attach/Detach): silent in the game
+// itself. The bow's have them, and the harness showed the key's span fired
+// through the game's handler (0.435 to 0.536 s round the key at 0.5), yet the
+// tester heard nothing; why is not found. So for these two OBVR plays the
+// game's own sound forms (Oblivion.esm): WPNStaffEquip 00029BB2,
+// WPNStaffUnequip 00029BB3, WPNBowEquip 00088B2B, WPNBowUnequip 00088B2C.
+// 0 for any other weapon: the game plays its own.
+inline constexpr UInt32 kStaffEquipSound = 0x00029BB2;
+inline constexpr UInt32 kStaffUnequipSound = 0x00029BB3;
+inline constexpr UInt32 kBowEquipSound = 0x00088B2B;
+inline constexpr UInt32 kBowUnequipSound = 0x00088B2C;
+
+inline UInt32 DrawSoundForm(SInt32 type, bool drawn) {
+	if (type == 4) {
+		return drawn ? kStaffEquipSound : kStaffUnequipSound;
+	}
+	if (type == 5) {
+		return drawn ? kBowEquipSound : kBowUnequipSound;
+	}
+	return 0;
+}
+
 // Which side of the body a weapon hangs on (the tester, 2026-09-30: "links
 // händer wollen whl alles links, kann aber auch n paar geben die wollen dann
 // mixen und matchen. soll möglich sein"). Auto: where a right-hander has it,

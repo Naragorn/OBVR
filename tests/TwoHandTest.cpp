@@ -261,16 +261,18 @@ void TestRotationBetween() {
 void TestHold() {
 	std::printf("Holding\n");
 	const TwoHandSettings s;
+	TwoHandSettings slack = s;
+	slack.slackUnits = 30.0f;
 	TwoHandState t;
 	StartTwoHand(t, -15.0f, -12.0f);
 	Check(t.active && Near(t.distance, 15.0f) && Near(t.handAxial, -12.0f),
 	      "taken 15 below: the controllers 15 apart, the palm put 12 below");
-	Check(TwoHandHolds(t, s, true, true, 25.0f, 0.011f), "25 from the handle: still held");
-	Check(TwoHandHolds(t, s, true, true, 35.0f, 0.05f) && TwoHandHolds(t, s, true, true, 35.0f, 0.05f),
+	Check(TwoHandHolds(t, slack, true, true, 25.0f, 0.011f), "a slack of 30, 25 from the handle: still held");
+	Check(TwoHandHolds(t, slack, true, true, 35.0f, 0.05f) && TwoHandHolds(t, slack, true, true, 35.0f, 0.05f),
 	      "35 from the handle for a tenth of a second (a tracking jump): still held");
-	Check(TwoHandHolds(t, s, true, true, 5.0f, 0.011f) && Near(t.farSeconds, 0.0f),
+	Check(TwoHandHolds(t, slack, true, true, 5.0f, 0.011f) && Near(t.farSeconds, 0.0f),
 	      "back on the handle: held, the time off it forgotten");
-	Check(TwoHandHolds(t, s, true, true, 35.0f, 0.1f) && !TwoHandHolds(t, s, true, true, 35.0f, 0.05f) &&
+	Check(TwoHandHolds(t, slack, true, true, 35.0f, 0.1f) && !TwoHandHolds(t, slack, true, true, 35.0f, 0.05f) &&
 	          !t.active && Near(t.handAxial, -12.0f),
 	      "35 from the handle for 0.15 s: let go, where the hand was put kept for the way back");
 	StartTwoHand(t, -20.0f, -20.0f);
@@ -289,7 +291,13 @@ void TestHold() {
 	StartTwoHand(t, -20.0f, -20.0f);
 	Check(!TwoHandHolds(t, s, false, true, 2.0f, 0.011f), "sheathed: let go");
 	StartTwoHand(t, -20.0f, -20.0f);
-	Check(!TwoHandHolds(t, s, true, true, kNaN, 0.011f), "no distance: let go");
+	Check(!TwoHandHolds(t, slack, true, true, kNaN, 0.011f), "a slack, no distance: let go");
+	StartTwoHand(t, -20.0f, -20.0f);
+	Check(TwoHandHolds(t, s, true, true, 80.0f, 0.5f) && TwoHandHolds(t, s, true, true, 80.0f, 0.5f) &&
+	          TwoHandHolds(t, s, true, true, kNaN, 0.5f),
+	      "locked (no slack, the default): a second 80 units off, or no distance - still held");
+	Check(TwoHandHolds(t, s, true, false, 80.0f, 0.1f) && !TwoHandHolds(t, s, true, false, 80.0f, 0.05f),
+	      "locked: the grip open for 0.15 s lets go");
 	Check(!TwoHandHolds(t, s, true, true, 2.0f, 0.011f), "not held: nothing");
 
 	std::printf("Which weapons both hands hold\n");

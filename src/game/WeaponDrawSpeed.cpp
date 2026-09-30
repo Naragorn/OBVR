@@ -1,6 +1,7 @@
 #include "game/WeaponDrawSpeed.h"
 
 #include "core/AddressSpace.h"
+#include "core/Log.h"
 #include "game/GameAddresses.h"
 
 namespace obvr::game {
@@ -113,6 +114,15 @@ void FireKeys(const Followed& f, float from, float to) {
 	}
 	using KeysFn = void(__fastcall*)(UInt32 self, void* edx, UInt32 actor, float from, float to, UInt32 sequence);
 	reinterpret_cast<KeysFn>(kGroupHandleKeys)(group, nullptr, player, from, to, f.sequence);
+	// Which spans were fired, per draw: whether a sequence's sound key fell in
+	// one (the tester, 2026-09-30: the bow and the staff are drawn silently).
+	static UInt32 s_lines = 16;
+	if (s_lines > 0) {
+		--s_lines;
+		OBVR_LOG("Draw speed: keys fired from %.3f to %.3f s (group %u, sequence %08X)", static_cast<double>(from),
+		         static_cast<double>(to), static_cast<unsigned>(*reinterpret_cast<const UInt8*>(group + kAnimGroupCodeOffset)),
+		         f.sequence);
+	}
 }
 
 }  // namespace
