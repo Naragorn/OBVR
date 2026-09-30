@@ -105,6 +105,7 @@ add_library(OBVR SHARED
 	src/game/ArmStump.cpp
 	src/game/TakeItem.cpp
 	src/game/WeaponDrawSpeed.cpp
+	src/game/BowVisual.cpp
 	src/game/TeleportNoise.cpp
 	src/game/HandBones.cpp
 	src/game/HandAdjust.cpp

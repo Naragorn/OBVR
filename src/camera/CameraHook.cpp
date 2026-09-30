@@ -16,6 +16,7 @@
 #include "game/CrosshairTarget.h"
 #include "game/DialogZoom.h"
 #include "game/BlockCone.h"
+#include "game/BowVisual.h"
 #include "game/HitShader.h"
 #include "game/HudTiles.h"
 #include "game/Lead.h"
@@ -450,6 +451,10 @@ bool g_weaponTurnWanted = false;
 // pass (the arms). See vr/HandMode.h and docs/hand-tracked-mode.md.
 vr::HandMode g_handMode;
 vr::HandModeResult g_hand;
+// What is seen of the bow by hand, decided in the camera pass and drawn
+// after the hands are pinned (game::StepBowVisual).
+game::BowVisualInput g_bowVisual;
+vr::BowStringState g_bowString;
 bool g_handArmsWanted = false;
 bool g_handControlsHeld = false;
 long long g_handClockLast = 0;
@@ -2404,6 +2409,14 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			         a.loosed || a.drawStarted ? (g_hand.arrowAimValid ? ", along the arrow's line" : ", no line")
 			                                   : "");
 		}
+		// What is seen of it: the arrow in the hand and on the string, the
+		// string where the hand pulls it; the engine's own shot keeps the
+		// string at rest until it is over.
+		g_bowVisual.active = config.hands.archery.enabled && frame.inWorld && !frame.menuMode &&
+		                     frame.equipped == vr::EquippedKind::Bow && frame.weaponSeen == vr::WeaponSeen::Drawn;
+		g_bowVisual.arrow = vr::ArrowShownFor(a.state);
+		g_bowVisual.string =
+			vr::StepBowString(g_bowString, a.state, a.loosed, game::ReadPlayerAction() >= 0, g_deltaSeconds);
 	}
 	if (g_hand.reachBack != g_handReachBack) {
 		g_handReachBack = g_hand.reachBack;
@@ -4752,9 +4765,13 @@ void BeforeFirstScenePass() {
 			// The fingers close around what the engine holds for this hand, or
 			// follow the controller's fingers while the hand is empty.
 			const bool holding = g_grabKeyDown && game::PlayerHoldsGrab();
+			// An arrow from the quiver is held in the closed fist (the bow by
+			// hand): it no longer hangs on the hand's bone, so the bone's
+			// children do not tell.
+			const bool rightHoldsArrow = g_bowVisual.active && g_bowVisual.arrow != vr::ArrowShown::None;
 			const game::FingerPose rightPose = game::FingerPoseFor(
 				hands.fingerTracking, g_hand.rightCurlValid,
-				game::HandGripWanted(true, holding, g_hand.grabWithLeftHand),
+				game::HandGripWanted(true, holding, g_hand.grabWithLeftHand) || rightHoldsArrow,
 				hands.fingerTracking && game::HandHoldsItem(true, hands.rightHandBone));
 			// On the handle the left fingers are the game's own grip round it
 			// (game::kHandleLeft, the two-hander idle's - a one-hander's animation
@@ -4781,6 +4798,13 @@ void BeforeFirstScenePass() {
 			game::StepHandFingers(true, hands.rightHandBone, rightPose, hands.gripCurlDegrees, &rightCurls);
 			game::StepHandFingers(false, hands.leftHandBone, leftPose, hands.gripCurlDegrees, &leftCurls,
 			                      twoHand.handleWeight);
+			// The bow by hand as it is seen, on the hands just pinned. The arrow
+			// reaches past the hand's own bound, which the engine worked out
+			// before it was there: kept in view like the hands.
+			game::StepBowVisual(g_bowVisual);
+			if (g_bowVisual.active && g_bowVisual.arrow != vr::ArrowShown::None) {
+				game::KeepFirstPersonNodesInView("Arrow:0", cameraPos, 100.0f);
+			}
 			// And a small held object sits fixed in that palm.
 			{
 				NiPoint3 touched{0.0f, 0.0f, 0.0f};
@@ -4838,6 +4862,11 @@ void BeforeFirstScenePass() {
 		game::StepHandFingers(false, GetConfig().hands.leftHandBone, game::FingerPose::Animation, 0.0f, nullptr);
 		game::StepHeldObject(false, false, game::HeldHand{}, false, NiPoint3{0.0f, 0.0f, 0.0f});
 		game::ReleaseFirstPersonArms();
+	}
+	// The bow's arrow and string given back on any frame the pins did not
+	// place them.
+	if (!g_stumpStepped) {
+		game::StepBowVisual(game::BowVisualInput{});
 	}
 	// The forearm stump (game/ArmStump.h): given back on any frame the pins
 	// did not place it.

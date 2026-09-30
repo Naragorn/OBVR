@@ -867,20 +867,28 @@ The tester: "Pfeil und Bogen wie in blade and sorcery. Linke hand hat ja bereits
 - While an arrow is nocked or drawn, the crosshair hangs on the arrow's line, ahead of the bow at the crosshair's distance, facing the eyes (`CrosshairLayer::SetRoomPlacement`). Before, it hung on the right hand's laser.
 - It is wanted while aiming whatever "only when needed" says (`CrosshairVisibility::aiming`), and still not with the crosshair switched off or under a menu (`frame_logic_test`).
 
+**What is seen** (built 2026-09-30, `game::StepBowVisual`, `game/BowVisual.h`; the tester, 15:19, had seen nothing of it: "da passiert nix ausser dass ich die motion mache und dann wenn ich spanne oder loslasse ... dann kommt die ingame animation"):
+- **The arrow, from the quiver on.** At the take OBVR makes the arrow the way the engine makes its own at the draw's Attach key: the ammunition's quiver model holds an "Arrow:0", and 0x005FCFD4-0x005FD03F clones it (NiObject::Clone, 0x00700900) and adds the clone to the bow's `ArrowBone`. OBVR clones the same "Arrow:0" (its length read from the model, 46.6 units head to nock on the iron arrow) and places it each frame after the hands are pinned:
+  - in the hand: along the drawing hand's grip (the right-hand `Weapon` node, as a sword is held), the nock 3 units behind it, the head ahead;
+  - on the string (nocked or drawn): from that nock through the arrow's rest on the bow, (0, 2.8, -2.45) in the bow's frame, where `bowattack.kf` lays it at full draw. It keeps the roll it had in the hand.
+  - It hangs on the first-person root, not on the hand's bone, and its bound is kept in view like the hands'. It goes when the arrow is loosed, dropped or the bow put away; a new ammunition makes a new one.
+  - The right hand's fingers close round it while it is held.
+- **The engine's own arrow is hidden** while the bow is drawn by hand (`ArrowBone` culled), and `ArrowBone` is put where the hand's arrow is, so what the engine reads off it at the release is the arrow the wearer saw.
+- **The string follows the hand.** The bow's `BowMorph` weight is written after the animation and blended by the morpher's own blend (0x006D0CF0; its weights at +0x44, the flag it waits for at +0x58, found in its Update 0x006D13C0 and blend 0x006D0C30). The weight is how far the nock is behind the arrow's rest, less the string's rest distance, over the full draw's travel; rest and travel are read from the morph itself (the iron bow: -15.6 and 28.1 units). From the distance rather than along the bow's own axis, so a bow held turned still shows the pull.
+  - After the loose the string is held at rest until the engine's shot is over (its action back to -1, at most 3 s): a short draw let go early would otherwise carry on pulling to full in the engine's animation. After a dropped arrow it is set to rest once. Otherwise it is the game's (`vr::StepBowString`).
+
 **What the engine still decides:**
 - The draw's power: the time the control is held. How far the hand pulls does not change it.
-- The arrow on the string, drawn by the bow's own animation.
 - Where the arrow starts: only its direction is set.
 
 **Not built:**
-- An arrow model in the hand between the quiver and the bow.
 - Power from the pull's length.
-- The string following the hand.
-- **Open bug: nothing to see while taking, nocking and drawing** (the tester, 2026-09-30 15:19: "da passiert nix ausser dass ich die motion mache und dann wenn ich spanne oder loslasse ... dann kommt die ingame animation. zielen scheint aber zu gehen wie ich das will"). The log of that run: 12 arrows taken, 8 nocked, drawn and loosed "along the arrow's line", 4 dropped. The mechanics work; the picture is the engine's draw animation, not the hands. What the game's files say (pyffi over `Oblivion - Meshes.bsa`, research 2026-09-30):
-  - The string is not a bone. It is a vertex morph, `BowMorph`, on the bow's mesh `Bow:0` (NiGeomMorpherController, the data volatile). On the iron bow it moves the string's middle 28 units back along the bow's x; every vertex moves only in x.
-  - The arrow on the string is whatever hangs under the bow's node `ArrowBone`. `bowattack.kf` ("AttackBow", 1.97 s) animates `ArrowBone`, `ArrowHelper01` and the `BowMorph` weight (0 until 1.03 s, 1.0 at 1.37 s); its text keys are Attach 0.267, Hold 1.367, Release 1.433. The engine finds `ArrowBone` at 0x0064F5E0 and keeps the player's first-person one at 0x00B3BA98.
-  - So both can be set each frame after the animation, as the hand pins are: the morph weight from how far the drawing hand is behind the bow's rest string, and `ArrowBone` along the line from the drawing hand through the bow. No arrow hangs there before Attach: for the arrow in the hand from the quiver on, either the engine's attack starts at the take, or the ammo's arrow model is copied onto the hand.
 
+**Tested (what is seen):** harness `bow-by-hand`, 2026-09-30 18:19: PASS (artifacts/hand-script/bow-by-hand/20260930-181935).
+- "an arrow made for the hand from the quiver's ..., 46.6 units head to nock"; "the string measured - at rest -15.6 along the bow, 28.1 units to full draw"; drawn at weight 0.54; after the loose "at rest", then the game's.
+- The eyes' dumps (SteamVR's, `dump-*-eyes.png`) show the arrow in the closed right fist, then on the string from the fist through the bow.
+- The game window's picture is NOT the check: in it the arrow on a drawn string did not show while the eyes had it (the runs of 17:38-17:58). Cause not found; the dumps are what the headset gets.
+- Not seen in a picture: the string's bend itself (the log's weight and the morph's blend are the evidence), and a real headset.
 **Tested:** harness `bow-by-hand`, 2026-09-30 14:52: PASS (artifacts/hand-script/bow-by-hand/20260930-145217).
 - The arrow was taken (the hands 0.56 m apart), nocked at 0.10 m, and drawn at 0.38 m "along the arrow's line".
 - The attack update ran at action 5 with "heading 0.0000 set to 6.1524 and pitch -0.0000 to 0.0521": 7.5 degrees left and 3 degrees down. That is the line from the scripted right hand through the bow, which sat 5 cm left of and 2 cm below it, 38 cm ahead.

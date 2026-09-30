@@ -138,6 +138,125 @@ void TestLine() {
 	Check(!ArrowLine(NiPoint3{0, 1, 0}, NiPoint3{0, 1, 0}, d), "the hands in one place: no line");
 }
 
+void TestStringWeight() {
+	std::printf("The string's weight from the nock\n");
+	Check(Near(StringWeightAt(16.0f, 16.0f, 28.0f), 0.0f), "the nock where the string rests: 0");
+	Check(Near(StringWeightAt(30.0f, 16.0f, 28.0f), 0.5f), "half the travel back: 0.5");
+	Check(Near(StringWeightAt(44.0f, 16.0f, 28.0f), 1.0f), "the full travel: 1");
+	Check(Near(StringWeightAt(60.0f, 16.0f, 28.0f), 1.0f), "further than the string goes: held at 1");
+	Check(Near(StringWeightAt(5.0f, 16.0f, 28.0f), 0.0f), "nearer the bow than the string: 0");
+	Check(Near(StringWeightAt(30.0f, 16.0f, 0.0f), 0.0f), "a bow with no travel: 0");
+}
+
+void TestStringSource() {
+	std::printf("Who has the string\n");
+	BowStringState s;
+	Check(StepBowString(s, ArrowState::None, false, false, 0.01f) == StringSource::Engine, "no arrow: the game's");
+	Check(StepBowString(s, ArrowState::InHand, false, false, 0.01f) == StringSource::Engine,
+	      "an arrow in the hand, not on the string: the game's");
+	Check(StepBowString(s, ArrowState::Nocked, false, false, 0.01f) == StringSource::Hand, "nocked: the hand's");
+	Check(StepBowString(s, ArrowState::Drawing, false, true, 0.01f) == StringSource::Hand, "drawn: the hand's");
+	Check(StepBowString(s, ArrowState::None, true, true, 0.01f) == StringSource::Rest, "loosed: at rest");
+	Check(StepBowString(s, ArrowState::None, false, true, 0.5f) == StringSource::Rest,
+	      "the engine's shot still playing: held at rest");
+	Check(StepBowString(s, ArrowState::None, false, false, 0.01f) == StringSource::Engine,
+	      "the shot over (action -1): the game's again");
+	Check(StepBowString(s, ArrowState::None, false, true, 0.01f) == StringSource::Engine,
+	      "the next action is the game's own");
+
+	BowStringState slow;
+	StepBowString(slow, ArrowState::Drawing, false, true, 0.01f);
+	StepBowString(slow, ArrowState::None, true, true, 0.01f);
+	Check(StepBowString(slow, ArrowState::None, false, true, 2.0f) == StringSource::Rest, "2 s on: still at rest");
+	Check(StepBowString(slow, ArrowState::None, false, true, 1.5f) == StringSource::Engine,
+	      "past 3 s with the action still on: given back anyway");
+
+	BowStringState dropped;
+	StepBowString(dropped, ArrowState::Nocked, false, false, 0.01f);
+	Check(StepBowString(dropped, ArrowState::None, false, false, 0.01f) == StringSource::Rest,
+	      "dropped from the string: back to rest once");
+	Check(StepBowString(dropped, ArrowState::None, false, false, 0.01f) == StringSource::Engine,
+	      "then the game's");
+
+	BowStringState again;
+	StepBowString(again, ArrowState::Drawing, false, true, 0.01f);
+	StepBowString(again, ArrowState::None, true, true, 0.01f);
+	Check(StepBowString(again, ArrowState::Nocked, false, true, 0.01f) == StringSource::Hand,
+	      "the next arrow nocked while the last shot plays: the hand's");
+}
+
+void TestArrowShown() {
+	std::printf("Where the arrow is seen\n");
+	Check(ArrowShownFor(ArrowState::None) == ArrowShown::None, "no arrow: none");
+	Check(ArrowShownFor(ArrowState::InHand) == ArrowShown::InHand, "taken: in the fist");
+	Check(ArrowShownFor(ArrowState::Nocked) == ArrowShown::OnString, "nocked: on the string");
+	Check(ArrowShownFor(ArrowState::Drawing) == ArrowShown::OnString, "drawn: on the string");
+}
+
+bool NearPoint(const NiPoint3& a, const NiPoint3& b) { return Near(a.x, b.x) && Near(a.y, b.y) && Near(a.z, b.z); }
+
+bool Orthonormal(const NiMatrix33& m) {
+	for (int i = 0; i < 3; ++i) {
+		for (int j = 0; j < 3; ++j) {
+			float dot = 0.0f;
+			for (int k = 0; k < 3; ++k) {
+				dot += m.data[k][i] * m.data[k][j];
+			}
+			if (!Near(dot, i == j ? 1.0f : 0.0f)) {
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+void TestTurn() {
+	std::printf("Turning the arrow onto its line\n");
+	const NiMatrix33 id = NiMatrix33::Identity();
+	NiMatrix33 r = TurnYOnto(id, NiPoint3{0, 1, 0});
+	Check(NearPoint(r * NiPoint3{1, 0, 0}, NiPoint3{1, 0, 0}) && NearPoint(r * NiPoint3{0, 1, 0}, NiPoint3{0, 1, 0}),
+	      "already along it: unchanged");
+	r = TurnYOnto(id, NiPoint3{0, 0, 1});
+	Check(NearPoint(r * NiPoint3{0, 1, 0}, NiPoint3{0, 0, 1}) && NearPoint(r * NiPoint3{1, 0, 0}, NiPoint3{1, 0, 0}) &&
+	          Orthonormal(r),
+	      "a quarter turn up: y onto z, x (the roll) kept");
+	r = TurnYOnto(id, NiPoint3{0, -1, 0});
+	Check(NearPoint(r * NiPoint3{0, 1, 0}, NiPoint3{0, -1, 0}) && NearPoint(r * NiPoint3{1, 0, 0}, NiPoint3{1, 0, 0}) &&
+	          Orthonormal(r),
+	      "straight back: half a turn about x");
+	const float s = 0.70710678f;
+	NiMatrix33 rolled = id;  // turned 90 degrees about y: x onto -z
+	rolled.data[0][0] = 0.0f;
+	rolled.data[0][2] = 1.0f;
+	rolled.data[2][0] = -1.0f;
+	rolled.data[2][2] = 0.0f;
+	r = TurnYOnto(rolled, NiPoint3{s, s, 0});
+	Check(NearPoint(r * NiPoint3{0, 1, 0}, NiPoint3{s, s, 0}) && Orthonormal(r) &&
+	          NearPoint(r * NiPoint3{1, 0, 0}, NiPoint3{0, 0, -1}),
+	      "a rolled fist turned sideways: y onto the line, the roll's axis kept off it");
+}
+
+void TestArrowPose() {
+	std::printf("The arrow's pose\n");
+	const NiMatrix33 id = NiMatrix33::Identity();
+	const NiPoint3 grip{10, 0, 0};
+	const NiPoint3 rest{10, 40, 0};
+	ArrowPose p;
+	Check(!ArrowPoseFor(ArrowShown::None, id, grip, rest, 46.6f, p), "no arrow: no pose");
+	Check(!ArrowPoseFor(ArrowShown::InHand, id, grip, rest, 0.0f, p), "a model with no length: no pose");
+	Check(ArrowPoseFor(ArrowShown::InHand, id, grip, rest, 46.6f, p) &&
+	          NearPoint(p.nock, NiPoint3{10, -kArrowNockBehindGripUnits, 0}) &&
+	          NearPoint(p.pos, NiPoint3{10, 46.6f - kArrowNockBehindGripUnits, 0}),
+	      "in the fist: the nock behind the grip, the head ahead along it");
+	const NiPoint3 aside{10 + 43.6f, -kArrowNockBehindGripUnits, 0};
+	Check(ArrowPoseFor(ArrowShown::OnString, id, grip, aside, 46.6f, p) &&
+	          NearPoint(p.pos, NiPoint3{10 + 46.6f, -kArrowNockBehindGripUnits, 0}) &&
+	          NearPoint(p.rot * NiPoint3{0, 1, 0}, NiPoint3{1, 0, 0}),
+	      "on the string: from the nock through the bow's rest, the head past it");
+	const NiPoint3 onNock{10, -kArrowNockBehindGripUnits, 0};
+	Check(!ArrowPoseFor(ArrowShown::OnString, id, grip, onNock, 46.6f, p), "the rest on the nock: no pose");
+}
+
 }  // namespace
 
 int main() {
@@ -146,6 +265,11 @@ int main() {
 	TestGates();
 	TestQuiver();
 	TestLine();
+	TestStringWeight();
+	TestStringSource();
+	TestArrowShown();
+	TestTurn();
+	TestArrowPose();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

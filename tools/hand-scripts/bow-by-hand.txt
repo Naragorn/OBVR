@@ -5,6 +5,11 @@
 # The runner takes two console lines at the start; the arrows come at marks,
 # and a console at a mark leaves the menu state up for some seconds - the
 # bow waits for it.
+# What is seen (game/BowVisual.h): the arrow made for the hand from the
+# quiver's, the string measured from the bow's morph. The head looks down at
+# the hands, and the eyes are dumped at the arrow's three places: the game
+# window's picture lags the eyes and showed no arrow on a drawn string the
+# eyes had (2026-09-30), so the dumps are what to look at.
 
 ini Hands Enabled=1
 ini Hands Holsters=1
@@ -19,7 +24,14 @@ expect Hands: bow by hand - an arrow taken from the quiver
 expect Hands: bow by hand - the arrow nocked
 expect Hands: bow by hand - drawn - the engine's draw begins
 expect Hands: bow by hand - loosed
+expect Bow by hand: an arrow made for the hand from the quiver's
+expect Bow by hand: the string measured
 reject HandScript: WARNING
+reject Bow by hand: no "Arrow:0" in the quiver
+reject could not be measured
+reject could not be cloned
+reject the string stays the game's
+reject nothing drawn by hand
 
 wait 16
 mark arrows
@@ -31,20 +43,34 @@ wait 0.3
 left grip 1
 wait 0.2
 left grip 0
-left pos -0.05 -0.10 -0.40
+left pos -0.25 -0.10 -0.70
 wait 3
+head pitch -45
+wait 0.5
 mark bow_drawn
 right pos 0.15 -0.10 0.12
 wait 0.3
 right grip 1
 wait 0.3
 mark arrow_taken
-right pos -0.03 -0.10 -0.30
+right pos 0.12 -0.12 -0.55
+wait 0.5
+mark in_hand
+dump
+wait 0.3
+right pos -0.16 -0.10 -0.68
 wait 0.4
 mark nocked
-right pos 0.0 -0.08 -0.02
-wait 1.5
+dump
+wait 0.3
+right pos -0.06 -0.10 -0.66
+wait 0.4
+mark half_nocked
+right pos 0.10 -0.10 -0.62
+wait 1.2
 mark drawn
+dump
+wait 0.3
 right grip 0
 wait 1.5
 mark loosed

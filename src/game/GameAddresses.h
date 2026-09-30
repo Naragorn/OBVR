@@ -1077,6 +1077,29 @@ inline constexpr UInt32 kRendererAccumulatorOffset = 0x08;
 // this is the call the game itself uses to make the world transform follow.
 inline constexpr UInt32 kUpdateNodeTransforms = 0x00707370;
 
+// The bow's drawn arrow, as the engine makes it (game/BowVisual.h). At the
+// draw's Attach key, 0x005FCFD4-0x005FD03F takes the ammunition's quiver
+// (the actor process's vtable +0x128) and the bow's ArrowBone (+0x12C,
+// 0x0064B1F0: the player's first-person one kept at 0x00B3BA98), finds
+// "Arrow:0" in the quiver (the string at 0x00A6EA84; failing, it logs "Could
+// not find Arrow:0 on Quiver"), clones it with kNiObjectClone and adds the
+// clone to ArrowBone through NiNode vtable +0x84.
+//
+// kNiObjectClone: NiObject::Clone, __thiscall, no arguments, the new object
+// returned - it builds a cloning process on the stack, then calls the
+// object's CreateClone (vtable +0x18) and ProcessClone (+0x38).
+inline constexpr UInt32 kNiObjectClone = 0x00700900;
+// NiNode's AddObject (child, 1) and RemoveObject (out smart pointer, child):
+// the NiNode vtable at 0x00A7E38C has them at 0x0070AF00 and 0x0070B120.
+inline constexpr UInt32 kNiNodeAddObjectSlot = 0x84;
+inline constexpr UInt32 kNiNodeRemoveObjectSlot = 0x88;
+// NiGeomMorpherController's blend (its vtable at 0x00A7A23C, slot 0x1A),
+// __thiscall, no arguments: when its flag at +0x58 is set it adds the morphs
+// by the weights at +0x44 into the target's vertices (0x006D0C30), marks the
+// geometry's data changed (+0x2E |= 1) and clears the flag. Its Update
+// (0x006D13C0) is what fills the weights from the animation.
+inline constexpr UInt32 kGeomMorpherBlend = 0x006D0CF0;
+
 // The function that draws the 2D layer: HUD, menus, dialogues and loading
 // screens. __thiscall on the InterfaceManager singleton, one argument (a
 // rendered texture, null on the ordinary path), ret 4.
