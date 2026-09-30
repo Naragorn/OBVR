@@ -857,6 +857,10 @@ The tester: "Pfeil und Bogen wie in blade and sorcery. Linke hand hat ja bereits
 - An arrow model in the hand between the quiver and the bow.
 - Power from the pull's length.
 - The string following the hand.
+- **Open bug: nothing to see while taking, nocking and drawing** (the tester, 2026-09-30 15:19: "da passiert nix ausser dass ich die motion mache und dann wenn ich spanne oder loslasse ... dann kommt die ingame animation. zielen scheint aber zu gehen wie ich das will"). The log of that run: 12 arrows taken, 9 nocked, drawn and loosed "along the arrow's line", 3 dropped. The mechanics work; the picture is the engine's draw animation, not the hands. What the game's files say (pyffi over `Oblivion - Meshes.bsa`, research 2026-09-30):
+  - The string is not a bone. It is a vertex morph, `BowMorph`, on the bow's mesh `Bow:0` (NiGeomMorpherController, the data volatile). On the iron bow it moves the string's middle 28 units back along the bow's x; every vertex moves only in x.
+  - The arrow on the string is whatever hangs under the bow's node `ArrowBone`. `bowattack.kf` ("AttackBow", 1.97 s) animates `ArrowBone`, `ArrowHelper01` and the `BowMorph` weight (0 until 1.03 s, 1.0 at 1.37 s); its text keys are Attach 0.267, Hold 1.367, Release 1.433. The engine finds `ArrowBone` at 0x0064F5E0 and keeps the player's first-person one at 0x00B3BA98.
+  - So both can be set each frame after the animation, as the hand pins are: the morph weight from how far the drawing hand is behind the bow's rest string, and `ArrowBone` along the line from the drawing hand through the bow. No arrow hangs there before Attach: for the arrow in the hand from the quiver on, either the engine's attack starts at the take, or the ammo's arrow model is copied onto the hand.
 
 **Tested:** harness `bow-by-hand`, 2026-09-30 14:52: PASS (artifacts/hand-script/bow-by-hand/20260930-145217).
 - The arrow was taken (the hands 0.56 m apart), nocked at 0.10 m, and drawn at 0.38 m "along the arrow's line".
