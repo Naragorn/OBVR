@@ -98,6 +98,18 @@ void TestHandle() {
 	Check(tipless.valid && !tipless.above, "no far end measured: below only");
 	Check(!HandleSpanFor(s, true, -81.0f, -7.0f, true, 9.0f).above, "no room above the right hand: below only");
 
+	std::printf("Where the shaft lies across the node's axis\n");
+	Check(NearV(ShaftOffset(true, 40, NiPoint3{3.0f, -37.0f, -4.0f}), NiPoint3{3.0f, 0.0f, -4.0f}),
+	      "a staff's shaft 5 off the axis: moved across by it, not along");
+	Check(NearV(ShaftOffset(false, 40, NiPoint3{3.0f, 0.0f, -4.0f}), NiPoint3{0.0f, 0.0f, 0.0f}),
+	      "not measured: the node's own axis");
+	Check(NearV(ShaftOffset(true, kShaftMinVertices - 1, NiPoint3{3.0f, 0.0f, -4.0f}), NiPoint3{0.0f, 0.0f, 0.0f}) &&
+	          NearV(ShaftOffset(true, kShaftMinVertices, NiPoint3{3.0f, 0.0f, -4.0f}), NiPoint3{3.0f, 0.0f, -4.0f}),
+	      "too few vertices there: the axis; enough: the shaft");
+	Check(NearV(ShaftOffset(true, 40, NiPoint3{12.0f, 0.0f, 12.0f}), NiPoint3{0.0f, 0.0f, 0.0f}),
+	      "17 off, further than a shaft from the hand: the axis");
+	Check(NearV(ShaftOffset(true, 40, NiPoint3{kNaN, 0.0f, 1.0f}), NiPoint3{0.0f, 0.0f, 0.0f}), "no number: the axis");
+
 	std::printf("Sliding keeps to its side of the right hand\n");
 	Check(Near(SlideAxial(staff, 20.0f, -10.0f, -7.0f), 7.0f), "held above, the controller below: stays above");
 	Check(Near(SlideAxial(staff, -20.0f, 10.0f, -7.0f), -7.0f), "held below, the controller above: stays below");

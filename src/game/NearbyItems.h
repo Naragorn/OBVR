@@ -118,8 +118,13 @@ bool NearestVertexOf(UInt32 ref, const NiPoint3& hand, NiPoint3& out, float& dis
 // along the unit vector `dir`: the lowest and highest vertex, in game units
 // along it. For the drawn weapon, where its pommel ends against the hand that
 // holds it. False when no vertex can be read or a read fails VertexInBound.
-
-bool AxialExtentOf(const NiAVObject* root, const NiPoint3& origin, const NiPoint3& dir, float& low, float& high);
+//
+// With `band` (from, to along the line), also the middle of the vertices in
+// that band, in the world, and how many there were: where the model's shaft
+// lies across the line there - a staff's shaft is not on the Weapon node's
+// axis (2026-09-30).
+bool AxialExtentOf(const NiAVObject* root, const NiPoint3& origin, const NiPoint3& dir, float& low, float& high,
+                   const float* band = nullptr, NiPoint3* bandCentre = nullptr, UInt32* bandVertices = nullptr);
 
 // The type of a reference's base form, 0 when it cannot be read.
 UInt8 RefBaseFormType(UInt32 ref);

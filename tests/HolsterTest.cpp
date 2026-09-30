@@ -187,6 +187,9 @@ void TestTwoHanded() {
 	          KindOfWeaponType(4) == EquippedKind::TwoHand,
 	      "two-handed blade and blunt, and the staff: the right shoulder");
 	Check(KindOfWeaponType(5) == EquippedKind::Bow, "the bow: the left shoulder");
+	Check(IsStaffWeaponType(4) && !IsStaffWeaponType(1) && !IsStaffWeaponType(3) && !IsStaffWeaponType(0) &&
+	          !IsStaffWeaponType(-1),
+	      "the staff alone is a staff (its shaft a handle both ways, its animation not the grip's source)");
 	Check(KindOfWeaponType(-1) == EquippedKind::Nothing && KindOfWeaponType(9) == EquippedKind::Nothing,
 	      "no weapon, or a type the game does not have: nothing");
 

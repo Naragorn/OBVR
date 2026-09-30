@@ -221,6 +221,11 @@ struct AxialSpan {
 	float high = 0.0f;
 	UInt32 vertices = 0;
 	bool refused = false;
+	bool band = false;
+	float bandFrom = 0.0f;
+	float bandTo = 0.0f;
+	NiPoint3 bandSum{0.0f, 0.0f, 0.0f};
+	UInt32 bandVertices = 0;
 };
 
 void SpanGeometry(const NiAVObject* geometry, AxialSpan& span) {
@@ -253,6 +258,10 @@ void SpanGeometry(const NiAVObject* geometry, AxialSpan& span) {
 			span.high = a;
 		}
 		++span.vertices;
+		if (span.band && a >= span.bandFrom && a <= span.bandTo) {
+			span.bandSum = span.bandSum + w;
+			++span.bandVertices;
+		}
 	}
 }
 
@@ -283,19 +292,31 @@ void SpanTree(const NiAVObject* object, UInt32 depth, AxialSpan& span) {
 
 }  // namespace
 
-bool AxialExtentOf(const NiAVObject* root, const NiPoint3& origin, const NiPoint3& dir, float& low, float& high) {
+bool AxialExtentOf(const NiAVObject* root, const NiPoint3& origin, const NiPoint3& dir, float& low, float& high,
+                   const float* band, NiPoint3* bandCentre, UInt32* bandVertices) {
 	if (root == nullptr || !LooksLikeObject(reinterpret_cast<UInt32>(root))) {
 		return false;
 	}
 	AxialSpan span;
 	span.origin = origin;
 	span.dir = dir;
+	if (band != nullptr) {
+		span.band = true;
+		span.bandFrom = band[0];
+		span.bandTo = band[1];
+	}
 	SpanTree(root, 0, span);
 	if (span.refused || span.vertices == 0) {
 		return false;
 	}
 	low = span.low;
 	high = span.high;
+	if (bandVertices != nullptr) {
+		*bandVertices = span.bandVertices;
+	}
+	if (bandCentre != nullptr && span.bandVertices > 0) {
+		*bandCentre = origin + span.bandSum * (1.0f / static_cast<float>(span.bandVertices));
+	}
 	return true;
 }
 

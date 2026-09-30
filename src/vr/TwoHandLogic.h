@@ -243,6 +243,32 @@ inline HandleSpan HandleSpanFor(const TwoHandSettings& s, bool measured, float p
 	return h;
 }
 
+// Where the handle's line runs: the Weapon node's axis moved across by where
+// the model's shaft lies at the right hand. A sword's handle is modelled on
+// the node's axis; a staff's shaft need not be (the tester, 2026-09-30, on a
+// staff: "die linke hand ist nicht in einer linie vom stab zur rechten hand
+// sondern greift iwo in den leeren raum"). The middle of the model's vertices
+// within kShaftBandUnits of the right palm along the axis, in the node's
+// frame: across the axis only (y 0). Nothing - the node's own axis - when the
+// model was not measured, too few vertices lie there to trust, or the middle
+// is further off than a shaft could be from the hand holding it.
+inline constexpr float kShaftBandUnits = 4.0f;
+inline constexpr UInt32 kShaftMinVertices = 8;
+inline constexpr float kShaftMaxOffUnits = 15.0f;
+
+inline NiPoint3 ShaftOffset(bool measured, UInt32 bandVertices, const NiPoint3& bandCentreInNode) {
+	const NiPoint3 none{0.0f, 0.0f, 0.0f};
+	if (!measured || bandVertices < kShaftMinVertices) {
+		return none;
+	}
+	const NiPoint3 across{bandCentreInNode.x, 0.0f, bandCentreInNode.z};
+	const float off = across.x * across.x + across.z * across.z;
+	if (!(off == off) || off > kShaftMaxOffUnits * kShaftMaxOffUnits) {
+		return none;
+	}
+	return across;
+}
+
 // Where a point lies against a line through `origin` along the unit vector
 // `dir`: how far along it (`axial`, negative behind) and how far from it.
 inline void AxialLateral(const NiPoint3& point, const NiPoint3& origin, const NiPoint3& dir, float& axial,

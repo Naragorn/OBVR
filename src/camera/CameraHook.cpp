@@ -235,6 +235,9 @@ float g_twoHandTip = 0.0f;  // the far end, for a staff's shaft above the right 
 // Where the right palm is along the Weapon node's axis on this weapon, measured with
 // its handle: a staff hangs further down the hand than the file's grip has it.
 float g_twoHandRightPalm = 0.0f;
+// Where the shaft lies across the Weapon node's axis at the right hand, in the
+// node's frame (y 0): a staff's is off it (vr::ShaftOffset).
+NiPoint3 g_twoHandShaft{0.0f, 0.0f, 0.0f};
 // The game's own left hand on the two-hander (vr::VanillaGrip), read from the
 // animation while the left hand is not held.
 vr::VanillaGrip g_vanillaGrip = vr::GameGripFromFiles();
@@ -4270,7 +4273,12 @@ TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& camera
 	// 2026-09-30 read the game's hand at 14.6 and 16.4 units below the right
 	// palm, frames of an attack animation that passed the check - the idle
 	// holds it at 7.0.
-	if (twoHander && !g_twoHand.active && game::ReadPlayerAction() < 0) {
+	// A blade or blunt two-hander's idle only: the staff's own animation holds
+	// the left hand elsewhere and passed the check - read from it, the grip
+	// read "the game's own hand at 18.0", then at 1.5 on the one-hander drawn
+	// next, and the left hand on both was put off the handle (the tester,
+	// 2026-09-30 15:53: "greift iwo in den leeren raum").
+	if (twoHander && !vr::IsStaffWeaponType(weaponType) && !g_twoHand.active && game::ReadPlayerAction() < 0) {
 		ReadVanillaGrip(hands, weapon);
 	}
 	// The handle from the weapon's own model: its pommel end along the weapon's
@@ -4293,26 +4301,39 @@ TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& camera
 		g_twoHandMeasured = weaponForm;
 		float tip = 0.0f;
 		const NiPoint3 axis = weapon->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f};
-		g_twoHandPommelValid = game::AxialExtentOf(weapon, weapon->worldTransform.pos, axis, g_twoHandPommel, tip);
-		g_twoHandTip = tip;
-		NiPoint3 rightPalm{};
+		const NiMatrix33 toNode = vr::Transposed(weapon->worldTransform.rot);
+		// The right palm along the node's axis first: the shaft is looked for
+		// where that hand holds it.
+		NiPoint3 rightPalm = weapon->worldTransform.pos;
 		float palmLateral = 0.0f;
 		g_twoHandRightPalm = g_vanillaGrip.rightPalmAxial;
 		if (PalmOf(true, rightPalm)) {
 			vr::AxialLateral(rightPalm, weapon->worldTransform.pos, axis, g_twoHandRightPalm, palmLateral);
 		}
+		const float band[2] = {g_twoHandRightPalm - vr::kShaftBandUnits, g_twoHandRightPalm + vr::kShaftBandUnits};
+		NiPoint3 shaftCentre{};
+		UInt32 shaftVertices = 0;
+		g_twoHandPommelValid = game::AxialExtentOf(weapon, weapon->worldTransform.pos, axis, g_twoHandPommel, tip,
+		                                           band, &shaftCentre, &shaftVertices);
+		g_twoHandTip = tip;
+		// Where the shaft lies across the node's axis, in the node's frame.
+		g_twoHandShaft = vr::ShaftOffset(g_twoHandPommelValid, shaftVertices,
+		                                 toNode * (shaftCentre - weapon->worldTransform.pos));
+		const NiPoint3 palmInNode = toNode * (rightPalm - weapon->worldTransform.pos);
 		s_measureWait = g_twoHandPommelValid ? 0 : 90;
 		static UInt32 s_handleLines = 32;
 		if (s_handleLines > 0 && (g_twoHandPommelValid || firstTry)) {
 			--s_handleLines;
 			const float fromRight = g_twoHandPommel - g_twoHandRightPalm;
 			OBVR_LOG("Hands: the %s's model (weapon type %d) - %s; pommel %.1f units %s the right palm, tip %.0f "
-			         "above the weapon node, the right palm %.1f along it",
+			         "above the weapon node, the right palm at (%.1f %.1f %.1f) in its frame; the shaft there %.1f "
+			         "%.1f off its axis (%u vertices)",
 			         twoHander ? "two-hander" : "one-hander", static_cast<int>(weaponType),
 			         g_twoHandPommelValid ? "measured" : "not readable yet",
 			         static_cast<double>(fromRight < 0.0f ? -fromRight : fromRight),
-			         fromRight < 0.0f ? "below" : "above", static_cast<double>(tip),
-			         static_cast<double>(g_twoHandRightPalm));
+			         fromRight < 0.0f ? "below" : "above", static_cast<double>(tip), static_cast<double>(palmInNode.x),
+			         static_cast<double>(palmInNode.y), static_cast<double>(palmInNode.z),
+			         static_cast<double>(g_twoHandShaft.x), static_cast<double>(g_twoHandShaft.z), shaftVertices);
 		}
 	}
 	const vr::HandleSpan handle =
@@ -4450,8 +4471,10 @@ void PinLeftHandOnHandle(const vr::HandSettings& hands, float weight, float hand
 		vr::AxialLateral(rightPalmNow, weapon->worldTransform.pos,
 		                 weapon->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f}, rightPalmAxial, offLine);
 	}
-	vr::LeftHandPose pose = vr::LeftHandOnHandle(g_vanillaGrip, handAxial, weapon->worldTransform.rot,
-	                                             weapon->worldTransform.pos, own.rot, rightPalmAxial);
+	// The handle's line: the node's axis, moved across to the model's shaft.
+	const NiPoint3 lineOrigin = weapon->worldTransform.pos + weapon->worldTransform.rot * g_twoHandShaft;
+	vr::LeftHandPose pose = vr::LeftHandOnHandle(g_vanillaGrip, handAxial, weapon->worldTransform.rot, lineOrigin,
+	                                             own.rot, rightPalmAxial);
 	if (weight < 1.0f && g_hand.leftHandValid) {
 		pose.rot = game::BlendRotation(own.rot, pose.rot, weight);
 		pose.pos = own.pos + (pose.pos - own.pos) * weight;
@@ -4459,21 +4482,37 @@ void PinLeftHandOnHandle(const vr::HandSettings& hands, float weight, float hand
 	const NiMatrix33 inverseCamera = InverseRotation(cameraRot);
 	game::PinHandBone(false, hands.leftHandBone, inverseCamera * pose.rot, inverseCamera * (pose.pos - cameraPos),
 	                  NiMatrix33::Identity(), cameraRot, cameraPos, NiPoint3{0.0f, 0.0f, 0.0f});
-	static UInt32 s_lines = 2;
+	// Once per hold, the hand arrived: where its palm is against the handle's
+	// line and against the right palm - both palms equally far off the line is
+	// both hands on the same shaft.
+	static UInt32 s_lines = 24;
+	static float s_loggedAxial = 1e9f;
 	if (weight < 1.0f) {
-		return;  // the line below is for the hand arrived
+		if (weight <= 0.0f) {
+			s_loggedAxial = 1e9f;
+		}
+		return;
 	}
 	NiPoint3 leftPalm{};
 	NiPoint3 rightPalm{};
-	if (s_lines > 0 && PalmOf(false, leftPalm) && PalmOf(true, rightPalm)) {
+	if (s_lines > 0 && s_loggedAxial != handAxial && PalmOf(false, leftPalm) && PalmOf(true, rightPalm)) {
 		--s_lines;
+		s_loggedAxial = handAxial;
 		float axial = 0.0f;
 		float lateral = 0.0f;
+		float leftAlong = 0.0f;
+		float leftOff = 0.0f;
+		float rightAlong = 0.0f;
+		float rightOff = 0.0f;
 		const NiPoint3 axis = weapon->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f};
 		vr::AxialLateral(leftPalm, rightPalm, axis, axial, lateral);
-		OBVR_LOG("Hands: the left hand drawn on the handle - its palm %.1f units down the weapon from the right palm "
-		         "(wanted %.1f), %.1f from the right palm's line",
-		         static_cast<double>(-axial), static_cast<double>(-handAxial), static_cast<double>(lateral));
+		vr::AxialLateral(leftPalm, lineOrigin, axis, leftAlong, leftOff);
+		vr::AxialLateral(rightPalm, lineOrigin, axis, rightAlong, rightOff);
+		OBVR_LOG("Hands: the left hand drawn on the handle - its palm %.1f units along the weapon from the right palm "
+		         "(wanted %.1f), %.1f from the right palm's line; off the handle's line the left palm %.1f, the right "
+		         "%.1f",
+		         static_cast<double>(axial), static_cast<double>(handAxial), static_cast<double>(lateral),
+		         static_cast<double>(leftOff), static_cast<double>(rightOff));
 	}
 }
 
