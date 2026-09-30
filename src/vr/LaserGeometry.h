@@ -14,9 +14,12 @@ namespace obvr::vr {
 // The beam: a quad whose up is the beam's direction and whose right is the
 // controller's x turned by the same yaw; its front is right x up, which keeps
 // the frame right-handed - with no angles the controller's up. It starts
-// originMetres along the direction and its centre sits half its length on.
+// originMetres along the direction and its centre sits half its length on;
+// the whole beam is moved by `offset` in the controller's frame
+// (vr::LaserOffsetLocal: the laser's start beside the controller's origin).
 inline openvr::HmdMatrix34 LaserBeamMatrix(float lengthMetres, float pitchDegrees,
-                                           float yawDegrees, float originMetres) {
+                                           float yawDegrees, float originMetres,
+                                           const NiPoint3& offset = NiPoint3{0.0f, 0.0f, 0.0f}) {
 	const NiPoint3 up = LaserDirectionLocal(pitchDegrees, yawDegrees);
 	const NiPoint3 right = LaserRightLocal(yawDegrees);
 	const NiPoint3 front{right.y * up.z - right.z * up.y, right.z * up.x - right.x * up.z,
@@ -32,9 +35,9 @@ inline openvr::HmdMatrix34 LaserBeamMatrix(float lengthMetres, float pitchDegree
 	m.m[0][2] = front.x;
 	m.m[1][2] = front.y;
 	m.m[2][2] = front.z;
-	m.m[0][3] = up.x * along;
-	m.m[1][3] = up.y * along;
-	m.m[2][3] = up.z * along;
+	m.m[0][3] = offset.x + up.x * along;
+	m.m[1][3] = offset.y + up.y * along;
+	m.m[2][3] = offset.z + up.z * along;
 	return m;
 }
 
@@ -44,7 +47,8 @@ inline openvr::HmdMatrix34 LaserBeamMatrix(float lengthMetres, float pitchDegree
 // angles and no offset this is the plain "distance ahead" placement the
 // crosshair has always used.
 inline openvr::HmdMatrix34 LaserPointMatrix(float distanceMetres, float pitchDegrees,
-                                            float yawDegrees, float originMetres) {
+                                            float yawDegrees, float originMetres,
+                                            const NiPoint3& offset = NiPoint3{0.0f, 0.0f, 0.0f}) {
 	const NiPoint3 direction = LaserDirectionLocal(pitchDegrees, yawDegrees);
 	const NiPoint3 right = LaserRightLocal(yawDegrees);
 	const NiPoint3 front{-direction.x, -direction.y, -direction.z};
@@ -61,9 +65,9 @@ inline openvr::HmdMatrix34 LaserPointMatrix(float distanceMetres, float pitchDeg
 	m.m[0][2] = front.x;
 	m.m[1][2] = front.y;
 	m.m[2][2] = front.z;
-	m.m[0][3] = direction.x * along;
-	m.m[1][3] = direction.y * along;
-	m.m[2][3] = direction.z * along;
+	m.m[0][3] = offset.x + direction.x * along;
+	m.m[1][3] = offset.y + direction.y * along;
+	m.m[2][3] = offset.z + direction.z * along;
 	return m;
 }
 
@@ -83,13 +87,16 @@ inline LaserWorldRay HandLaserWorldRay(const NiMatrix33& headRot, const NiPoint3
                                        const NiMatrix33& handRelativeRot,
                                        const NiPoint3& handOffsetUnits, float pitchDegrees,
                                        float yawDegrees, float originMetres,
-                                       float unitsPerMetre) {
+                                       float unitsPerMetre,
+                                       const NiPoint3& offset = NiPoint3{0.0f, 0.0f, 0.0f}) {
 	const NiPoint3 local = LaserDirectionLocal(pitchDegrees, yawDegrees);
 	const NiPoint3 inGameAxes{local.x, -local.z, local.y};
 	const NiPoint3 headRelative = handRelativeRot * inGameAxes;
+	const NiPoint3 offsetRelative = handRelativeRot * NiPoint3{offset.x, -offset.z, offset.y};
 	LaserWorldRay ray;
 	ray.direction = headRot * headRelative;
-	ray.origin = headPos + headRot * (handOffsetUnits + headRelative * (originMetres * unitsPerMetre));
+	ray.origin = headPos + headRot * (handOffsetUnits + (offsetRelative + headRelative * originMetres) *
+	                                                        unitsPerMetre);
 	return ray;
 }
 

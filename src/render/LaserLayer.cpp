@@ -48,8 +48,8 @@ void PaintDot(UInt8* rgba) {
 }  // namespace
 
 vr::openvr::HmdMatrix34 LaserBeamTransform(float lengthMetres, float pitchDegrees,
-                                           float yawDegrees, float originMetres) {
-	return vr::LaserBeamMatrix(lengthMetres, pitchDegrees, yawDegrees, originMetres);
+                                           float yawDegrees, float originMetres, const NiPoint3& offset) {
+	return vr::LaserBeamMatrix(lengthMetres, pitchDegrees, yawDegrees, originMetres, offset);
 }
 
 float LaserBeamWidth(float lengthMetres) {
@@ -88,12 +88,12 @@ bool LaserLayer::EnsureOverlay(vr::OpenVRBackend& backend) {
 
 void LaserLayer::Submit(vr::OpenVRBackend& backend, bool pointing, UInt32 deviceIndex,
                         float pitchDegrees, float yawDegrees, float originMetres,
-                        float lengthMetres, bool withBeam, bool withDot) {
+                        float lengthMetres, bool withBeam, bool withDot, const NiPoint3& offset) {
 	const vr::LaserParts parts = vr::LaserPartsShown(
 		pointing, withBeam, withDot, deviceIndex != vr::openvr::kTrackedDeviceIndexInvalid,
 		lengthMetres);
 	SubmitDot(backend, parts.dot, deviceIndex, pitchDegrees, yawDegrees, originMetres,
-	          lengthMetres > 5.0f ? 5.0f : lengthMetres);
+	          lengthMetres > 5.0f ? 5.0f : lengthMetres, offset);
 	if (!parts.beam) {
 		if (m_overlayVisible && m_overlay != vr::openvr::kOverlayHandleInvalid) {
 			backend.HideOverlay(m_overlay);
@@ -114,10 +114,11 @@ void LaserLayer::Submit(vr::OpenVRBackend& backend, bool pointing, UInt32 device
 	const float delta = lengthMetres - m_placedLength;
 	if (!m_placed || m_placedDevice != deviceIndex || delta > 0.01f || delta < -0.01f ||
 	    pitchDegrees != m_placedPitch || yawDegrees != m_placedYaw ||
-	    originMetres != m_placedOrigin) {
+	    originMetres != m_placedOrigin || offset.x != m_placedOffset.x || offset.y != m_placedOffset.y ||
+	    offset.z != m_placedOffset.z) {
 		backend.SetOverlayTransformDeviceRelative(m_overlay, deviceIndex,
 		                                          LaserBeamTransform(lengthMetres, pitchDegrees, yawDegrees,
-		                                                             originMetres));
+		                                                             originMetres, offset));
 		backend.SetOverlayWidthInMetres(m_overlay, LaserBeamWidth(lengthMetres));
 		m_placed = true;
 		m_placedDevice = deviceIndex;
@@ -125,6 +126,7 @@ void LaserLayer::Submit(vr::OpenVRBackend& backend, bool pointing, UInt32 device
 		m_placedPitch = pitchDegrees;
 		m_placedYaw = yawDegrees;
 		m_placedOrigin = originMetres;
+		m_placedOffset = offset;
 	}
 	if (!m_overlayVisible) {
 		backend.ShowOverlay(m_overlay);
@@ -139,7 +141,7 @@ void LaserLayer::Submit(vr::OpenVRBackend& backend, bool pointing, UInt32 device
 
 void LaserLayer::SubmitDot(vr::OpenVRBackend& backend, bool visible, UInt32 deviceIndex,
                            float pitchDegrees, float yawDegrees, float originMetres,
-                           float lengthMetres) {
+                           float lengthMetres, const NiPoint3& offset) {
 	if (!visible || deviceIndex == vr::openvr::kTrackedDeviceIndexInvalid ||
 	    !(lengthMetres > 0.01f)) {
 		if (m_dotVisible && m_dot != vr::openvr::kOverlayHandleInvalid) {
@@ -172,7 +174,7 @@ void LaserLayer::SubmitDot(vr::OpenVRBackend& backend, bool visible, UInt32 devi
 	// Every frame: the end of a beam that follows a hand moves every frame.
 	backend.SetOverlayTransformDeviceRelative(
 		m_dot, deviceIndex,
-		vr::LaserPointMatrix(lengthMetres, pitchDegrees, yawDegrees, originMetres));
+		vr::LaserPointMatrix(lengthMetres, pitchDegrees, yawDegrees, originMetres, offset));
 	backend.SetOverlayWidthInMetres(m_dot, vr::LaserDotWidth(lengthMetres));
 	if (!m_dotVisible) {
 		backend.ShowOverlay(m_dot);

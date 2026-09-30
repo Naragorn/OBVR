@@ -714,6 +714,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.archery.enabled = v != 0.0f; },
 	},
 	{
+		"Hands", "Arrow with grip", "The bow by hand: take and hold the arrow with the grip instead of the trigger",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "ArrowWithGrip",
+		+[](const Config& c) { return c.hands.archery.takeWithTrigger ? 0.0f : 1.0f; },
+		+[](Config& c, float v) { c.hands.archery.takeWithTrigger = v == 0.0f; },
+	},
+	{
 		"Hands", "Two hands on one-handers", "One-handed weapons can be held with both hands too",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "TwoHandOneHanders",
@@ -975,6 +982,27 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.laserPitchDegrees = v; },
 	},
 	{
+		"Hands", "Laser sideways", "Where the laser starts: metres right of the controller (left hand mirrored)",
+		ItemKind::Number, -0.1f, 0.1f, 0.005f, 3, false,
+		"Hands", "LaserRightMetres",
+		+[](const Config& c) { return c.hands.laserOffsetRightMetres; },
+		+[](Config& c, float v) { c.hands.laserOffsetRightMetres = v; },
+	},
+	{
+		"Hands", "Laser height", "Where the laser starts: metres above the controller",
+		ItemKind::Number, -0.1f, 0.1f, 0.005f, 3, false,
+		"Hands", "LaserUpMetres",
+		+[](const Config& c) { return c.hands.laserOffsetUpMetres; },
+		+[](Config& c, float v) { c.hands.laserOffsetUpMetres = v; },
+	},
+	{
+		"Hands", "Laser start", "Where the laser starts: metres along it from the controller (negative: back)",
+		ItemKind::Number, -0.2f, 0.2f, 0.01f, 2, false,
+		"Hands", "LaserOriginMetres",
+		+[](const Config& c) { return c.hands.laserOriginMetres; },
+		+[](Config& c, float v) { c.hands.laserOriginMetres = v; },
+	},
+	{
 		"Hands", "Strike size", "How much of a body's bound the blade has to reach, 0 to 1",
 		ItemKind::Number, 0.0f, 1.0f, 0.05f, 2, false,
 		"Hands", "HitBoundFactor",
@@ -1133,6 +1161,20 @@ const SettingDefinition kSettings[] = {
 		"HandHud", "PalmDownMetres",
 		+[](const Config& c) { return c.hands.handHud.palmDownMetres; },
 		+[](Config& c, float v) { c.hands.handHud.palmDownMetres = v; },
+	},
+	{
+		"HUD", "Hand HUD X", "The HUD on the hands moved to the right as you see it, metres (negative: left)",
+		ItemKind::Number, -0.15f, 0.15f, 0.01f, 2, false,
+		"HandHud", "OffsetRightMetres",
+		+[](const Config& c) { return c.hands.handHud.offsetRightMetres; },
+		+[](Config& c, float v) { c.hands.handHud.offsetRightMetres = v; },
+	},
+	{
+		"HUD", "Hand HUD Y", "The HUD on the hands moved up as you see it, metres (negative: down)",
+		ItemKind::Number, -0.15f, 0.15f, 0.01f, 2, false,
+		"HandHud", "OffsetUpMetres",
+		+[](const Config& c) { return c.hands.handHud.offsetUpMetres; },
+		+[](Config& c, float v) { c.hands.handHud.offsetUpMetres = v; },
 	},
 	OBVR_HUD_ELEMENT_ROWS(0, "Health bars", "Bars")
 	OBVR_HUD_ELEMENT_ROWS(1, "Spell", "Spell")

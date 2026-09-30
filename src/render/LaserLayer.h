@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Types.h"
+#include "game/NiMath.h"
 #include "vr/OpenVRTypes.h"
 
 namespace obvr::vr {
@@ -33,7 +34,7 @@ public:
 	// (vr::LaserPartsShown).
 	void Submit(vr::OpenVRBackend& backend, bool pointing, UInt32 deviceIndex, float pitchDegrees,
 	            float yawDegrees, float originMetres, float lengthMetres, bool withBeam,
-	            bool withDot);
+	            bool withDot, const NiPoint3& offset = NiPoint3{0.0f, 0.0f, 0.0f});
 
 	void Destroy();
 
@@ -41,7 +42,7 @@ private:
 	bool EnsureOverlay(vr::OpenVRBackend& backend);
 	// The dot at the beam's end, its own small overlay facing back along the beam.
 	void SubmitDot(vr::OpenVRBackend& backend, bool visible, UInt32 deviceIndex, float pitchDegrees,
-	               float yawDegrees, float originMetres, float lengthMetres);
+	               float yawDegrees, float originMetres, float lengthMetres, const NiPoint3& offset);
 	vr::openvr::VROverlayHandle m_dot = vr::openvr::kOverlayHandleInvalid;
 	bool m_dotTried = false;
 	bool m_dotVisible = false;
@@ -55,6 +56,7 @@ private:
 	float m_placedPitch = 0.0f;
 	float m_placedYaw = 0.0f;
 	float m_placedOrigin = 0.0f;
+	NiPoint3 m_placedOffset{0.0f, 0.0f, 0.0f};
 	bool m_reported = false;
 };
 
@@ -63,7 +65,8 @@ private:
 // the quad runs from the controller's origin to the length. Pure, so the
 // axes can be checked without a headset.
 vr::openvr::HmdMatrix34 LaserBeamTransform(float lengthMetres, float pitchDegrees,
-                                           float yawDegrees, float originMetres);
+                                           float yawDegrees, float originMetres,
+                                           const NiPoint3& offset = NiPoint3{0.0f, 0.0f, 0.0f});
 
 // The quad's width for a beam of this length: the texture is kLaserTextureWidth
 // by kLaserTextureHeight, so the compositor draws it length / aspect wide.

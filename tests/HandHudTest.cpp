@@ -236,6 +236,14 @@ void TestPlacement() {
 	      "the bars: on the left hand, 199 units wide");
 	Check(q[0].pose.m[0][3] < q[1].pose.m[0][3], "the spell beside them in the row");
 	Check(q[2].shown && q[2].rightHand && Near(q[2].pose.m[0][3], 0.0f), "the weapon alone on the right: centred");
+	{
+		HandHudSettings moved = s;
+		moved.offsetRightMetres = 0.02f;
+		moved.offsetUpMetres = 0.0f;
+		HandHudQuad m[kHudElementCount];
+		PlaceHandHud(moved, f, m);
+		Check(Near(m[2].pose.m[0][3], 0.02f), "on the back of the hand: the X setting moves it along the panel");
+	}
 	Check(!q[3].shown && !q[4].shown, "no effects, no level-up: nothing shown");
 	Check(!q[5].onDevice && q[5].alpha == 0.0f && !q[5].shown, "the compass, looking straight: not shown");
 	f.head = HeadLooking(40.0f);
@@ -410,6 +418,12 @@ void TestLook() {
 	}
 	Check(Near(back[0], panel.m[0][3]) && Near(back[1], panel.m[1][3]) && Near(back[2], panel.m[2][3]),
 	      "relative to the controller and back: the same place");
+	const openvr::HmdMatrix34 moved = AlongOwnXY(panel, 0.02f, -0.03f);
+	Check(Near(moved.m[0][3], panel.m[0][3] + 0.02f * panel.m[0][0] - 0.03f * panel.m[0][1]) &&
+	          Near(moved.m[1][3], panel.m[1][3] + 0.02f * panel.m[1][0] - 0.03f * panel.m[1][1]) &&
+	          Near(moved.m[2][3], panel.m[2][3] + 0.02f * panel.m[2][0] - 0.03f * panel.m[2][1]) &&
+	          moved.m[1][3] < panel.m[1][3] - 0.025f,
+	      "moved on its own face: 2 cm right, 3 cm down, as the eyes see it");
 
 	HandHudSettings s;
 	HandHudFrame f;
@@ -426,6 +440,22 @@ void TestLook() {
 	PlaceHandHud(s, f, q);
 	Check(q[0].shown && Near(q[0].alpha, 0.5f) && q[0].onDevice && !q[2].shown,
 	      "the left faded half in: its bars at half, the right still hidden");
+	HandHudSettings still = s;
+	still.offsetRightMetres = 0.0f;
+	still.offsetUpMetres = 0.0f;
+	HandHudQuad plain[kHudElementCount];
+	PlaceHandHud(still, f, plain);
+	HandHudSettings shifted = still;
+	shifted.offsetUpMetres = -0.05f;
+	HandHudQuad lower[kHudElementCount];
+	PlaceHandHud(shifted, f, lower);
+	const openvr::HmdMatrix34 a = PalmPanelPose(f.hand[0], false, head, s.palmLiftMetres, s.palmDownMetres);
+	const openvr::HmdMatrix34 b = AlongOwnXY(a, 0.0f, -0.05f);
+	const openvr::HmdMatrix34 wantPlain = RelativeToDevice(f.hand[0].pose, AlongOwnX(a, 0.0f));
+	const openvr::HmdMatrix34 wantLower = RelativeToDevice(f.hand[0].pose, AlongOwnX(b, 0.0f));
+	Check(Near(plain[0].pose.m[1][3], wantPlain.m[1][3]) && Near(lower[0].pose.m[1][3], wantLower.m[1][3]) &&
+	          Near(lower[0].pose.m[2][3], wantLower.m[2][3]),
+	      "the Y setting moves the palm's HUD down on its face");
 	f.hand[0].valid = false;
 	PlaceHandHud(s, f, q);
 	Check(!q[0].shown, "the hand lost: hidden");

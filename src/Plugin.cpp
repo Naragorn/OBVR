@@ -2,6 +2,7 @@
 #include "core/Config.h"
 #include "core/Log.h"
 #include "game/GameAddresses.h"
+#include "game/ConsoleLine.h"
 #include "game/HandControls.h"
 #include "game/NativeMenuPrototype.h"
 #include "game/VRMenuBridge.h"
@@ -108,6 +109,7 @@ __declspec(dllexport) bool OBSEPlugin_Load(const obvr::obse::Interface* obse) {
 	obvr::test::InstallWaterVRTest();
 	obvr::game::InstallNativeMenuPrototype(obse);
 	obvr::game::InstallQuickKeyPages(obse);
+	obvr::game::InstallConsoleLine(obse);
 	OBVR_LOG("OBVR ready");
 	return true;
 }

@@ -395,12 +395,13 @@ bool CrosshairLayer::EnsureOverlay(vr::OpenVRBackend& backend) {
 }
 
 void CrosshairLayer::SetHandPlacement(bool onHand, UInt32 deviceIndex, float pitchDegrees,
-                                      float yawDegrees, float originMetres) {
+                                      float yawDegrees, float originMetres, const NiPoint3& offset) {
 	m_onHand = onHand;
 	m_handDevice = deviceIndex;
 	m_handPitch = pitchDegrees;
 	m_handYaw = yawDegrees;
 	m_handOrigin = originMetres;
+	m_handOffset = offset;
 }
 
 void CrosshairLayer::SetRoomPlacement(bool inRoom, const vr::openvr::HmdMatrix34& trackingToQuad,
@@ -454,7 +455,7 @@ void CrosshairLayer::Place(vr::OpenVRBackend& backend, float distanceMetres,
 	if (m_onHand) {
 		backend.SetOverlayTransformDeviceRelative(
 			m_overlay, m_handDevice,
-			vr::LaserPointMatrix(distanceMetres, m_handPitch, m_handYaw, m_handOrigin));
+			vr::LaserPointMatrix(distanceMetres, m_handPitch, m_handYaw, m_handOrigin, m_handOffset));
 	} else {
 		backend.SetOverlayTransformHmdRelative(m_overlay, toOverlay);
 	}

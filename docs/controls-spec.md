@@ -27,7 +27,32 @@ flow is covered by `hand_mode_test` and `teleport_test`.
 | Trackpad click | held: the quick menu, the ring of the eight hotkeys (4.4, built) | F1: the key the game binds to "Quick Menu" (Oblivion.ini [Controls] `Quick Menu=003BFFFF`; UESP lists F1-F4 as the journal pages) |
 | Gesture | a swing strikes by motion | raised hand: block |
 
-- Both stick clicks within a quarter second: OBVR's own menu.
+- Both stick clicks within a quarter second: OBVR's own menu, on their
+  release. Both held in for three seconds: the recenter, as the recenter key,
+  and no menu (the tester, 2026-09-30: "beide thumbsticks für 3s gedrückt
+  macht ein recenter"; `vr::StepStickChord`, hand_mode_test; harness
+  `bow-by-hand` ends with it: "Camera: both sticks held - recentering").
+- **The flat picture follows the head** (the main menu, loading screens,
+  films, a menu on the cinema screen; the tester, 2026-09-30: "das
+  hauptmenu auch wie ingame alle paar momente neuausrichten abhängig wo man
+  gerade steht oder hinsieht"). It hangs where the head looked when it
+  appeared; turned more than `[Render] FlatFollowDegrees` (30) from it, or
+  half a metre off, for a second, it is taken along to where the head is
+  (`vr/FlatFollow.h`, flat_follow_test; CameraHook's flat path). 0 keeps it
+  in place until the recenter. **Not tried in the headset**, nor in the
+  harness (its scripts start after the load).
+- **The laser starts beside the controller**: `LaserRightMetres` (-0.01)
+  and `LaserUpMetres` (-0.02) in the controller's own frame, the right
+  mirrored for the left hand (the tester, 2026-09-30: "der laserpointer muss
+  auch noch 2cm weiter runter und 1 cm weiter nach links"). The beam, the
+  dot, the crosshair on the hand and every pick made along the laser move
+  with it (`vr::LaserOffsetLocal`, laser_geometry_test). Settings rows
+  "Laser sideways", "Laser height" and "Laser start" (the origin along it).
+- **The HUD on the hands moved on its own face**: `[HandHud]
+  OffsetRightMetres` (0) and `OffsetUpMetres` (-0.03), both ways it is
+  shown (the tester, 2026-09-30: "die hud an den händen sind auch noch zu
+  weit oben. man muss x, y einstellen können"); settings rows "Hand HUD X"
+  and "Hand HUD Y" (`vr::AlongOwnXY`, hand_hud_test).
 - **Which way the left stick walks** (`[Hands] WalkDirection`, the settings
   row "Walk direction"; the tester, 2026-09-28: "gerade laufen mit linken
   stick [läuft] in eine andere richtung ... weil das recentering wo anders
@@ -848,34 +873,39 @@ The tester: "bei 2 händern mit der linken hand meine hand an das schwert/axt/wh
 
 The tester: "Pfeil und Bogen wie in blade and sorcery. Linke hand hat ja bereits den Bogen. Jetzt muss rechte noch auf rechter schulter den Pfeil bekommen und an den bogen führen. Beim loslassen Schuss. Zielen im groben mit links mit dem bogen, im feinen mit rechts dem Pfeil. Crosshair muss voll sichtbar sein wenn Optionen dafür an ist und man zielt damit."
 
-**The shot, step by step** (`vr::StepArchery`, `vr/Archery.h`, `archery_test`):
-1. **Take:** with the bow drawn (the bow hand already holds it, 4.2), the weapon hand's grip closing at the quiver takes an arrow. The quiver is over that hand's shoulder, behind it: `QuiverX/Forward/Up` (0.15, -0.12, -0.10 m from the eyes), `QuiverRadius` 0.20 m, mirrored with `LeftHanded`.
-   - A grip already closed when the bow comes out takes nothing.
-   - From then on the grip is the arrow's: it grabs nothing.
+**The shot, step by step** (`vr::StepArchery`, `vr/Archery.h`, `archery_test`; reworked 2026-09-30 evening after the tester's second round, see below):
+1. **Take:** with the bow drawn (the bow hand already holds it, 4.2), the weapon hand's **trigger** pulled at the quiver takes an arrow (`ArrowWithGrip=1`, settings row "Arrow with grip": the grip instead). The quiver is over that hand's shoulder, behind it: `QuiverX/Forward/Up` (0.15, -0.12, -0.10 m from the eyes), `QuiverRadius` 0.20 m, mirrored with `LeftHanded`.
+   - A button already down when the bow comes out takes nothing.
+   - From then on that button is the arrow's: it neither grabs nor attacks.
 2. **Nock:** the arrow brought within `NockMetres` (0.15 m) of the bow hand is on the string.
-3. **Draw:** pulled back `BowDrawStartMetres` (0.08 m) further, the engine's own draw begins: its attack control held, as the trigger held it before.
-4. **Loose:** the grip opened lets the control go, and the engine looses as vanilla does on release.
-- An arrow let go before the draw, or the bow put away, is dropped: no shot.
+3. **Draw:** pulled back **along the bow** `BowDrawStartMetres` (0.08 m) further, the engine's own draw begins: its attack control held.
+4. **Loose:** the button let go lets the control go, and the engine looses as vanilla does on release.
+5. **Ease** (the tester: "oder wieder zurück wie am anfang"): the hand brought back to the bow while drawn (the pull along the bow within `NockMetres`) takes the draw back - no shot. The arrow stays on the string.
+   - Vanilla cannot take a drawn arrow back (reddit.com/r/oblivion/comments/piwuhr: "You supposedly can't without a mod"). OBVR does what the DenockArrow mods do (github.com/dannywarren/Oblivion-DenockArrowToo, src/DenockArrowScript.txt): `player.playgroup unequip 1` while the attack control is still held, the control let go 0.3 s later (`kDenockHoldSeconds`), then `player.playgroup idle 1`. The lines run through xOBSE's console interface from an xOBSE task (`game/ConsoleLine.h`).
+   - The interface answers false for both lines and they take all the same: the harness saw the player's action go 5 -> 12 (ScriptAnimation) -> -1, never 3 (the follow-through of an arrow that left); a real loose goes 5 -> 3 -> -1.
+6. **Off the string:** nocked, the hand moved `BowUnnockMetres` (0.12 m) off the bow's line takes the arrow off the string, into the hand. **Put back:** let go at the quiver, the arrow is put back ("inklusive pfeil wegstecken"); let go elsewhere it is dropped. No arrow is spent either way - the engine takes one only when it looses.
+- The bow put away with an arrow out: dropped, no shot.
 - **The trigger no longer draws the bow** while `BowByHand` is on (settings row "Bow by hand", default on). Off, it draws as before.
 
-**Aim:**
-- While nocked or drawn, the shot goes along the line from the drawing hand through the bow hand. The bow sets it roughly, the drawing hand finely (`HandModeResult::arrowYawTurn/arrowSinPitch`, via `vr::ReachDirection`).
-- It goes into the aim-at-source pose ahead of `AimWithHand` and the gaze.
-- The engine makes the arrow a few frames after the control goes up (action 5, then 3). By then the grip is open, so the line is kept for 0.4 s after the loose (`vr::StepArrowAimHold`).
+**Aim** (the tester, 2026-09-30: "zielen doch nur noch mit linker hand wo der bogen ist"):
+- The shot goes **along the bow hand's laser** (`LaserDirectionLocal` with the left hand's yaw, carried by that controller), and the bow model is turned onto that same line (below), so the bow, the arrow and the shot agree. The drawing hand no longer steers it.
+- Why not the bow model's own axis: in the hand, as the hand calibration puts it, the bow's shot axis (its model's +x) pointed along the left controller's -y - down the handle - with the tester's calibration (harness 2026-09-30: "(-0.07 -1.00 -0.04) in the bow hand", 67 degrees from that hand's laser when first read during the draw's animation). Aiming along it would have meant holding the controller upright to shoot ahead.
+- It goes into the aim-at-source pose ahead of `AimWithHand` and the gaze; the line is kept 0.4 s after the loose (`vr::StepArrowAimHold`), as the engine makes the arrow a few frames later.
 
 **The crosshair:**
-- While an arrow is nocked or drawn, the crosshair hangs on the arrow's line, ahead of the bow at the crosshair's distance, facing the eyes (`CrosshairLayer::SetRoomPlacement`). Before, it hung on the right hand's laser.
+- While an arrow is nocked or drawn, the crosshair hangs on the shot's line, ahead of the bow at the crosshair's distance, facing the eyes (`CrosshairLayer::SetRoomPlacement`).
 - It is wanted while aiming whatever "only when needed" says (`CrosshairVisibility::aiming`), and still not with the crosshair switched off or under a menu (`frame_logic_test`).
 
-**What is seen** (built 2026-09-30, `game::StepBowVisual`, `game/BowVisual.h`; the tester, 15:19, had seen nothing of it: "da passiert nix ausser dass ich die motion mache und dann wenn ich spanne oder loslasse ... dann kommt die ingame animation"):
+**What is seen** (built 2026-09-30, `game::StepBowVisual`, `game/BowVisual.h`; the tester, 15:19, had seen nothing of it: "da passiert nix ausser dass ich die motion mache und dann wenn ich spanne oder loslasse ... dann kommt die ingame animation"; 2026-09-30 evening: "also schonmal super das es geht!"):
 - **The arrow, from the quiver on.** At the take OBVR makes the arrow the way the engine makes its own at the draw's Attach key: the ammunition's quiver model holds an "Arrow:0", and 0x005FCFD4-0x005FD03F clones it (NiObject::Clone, 0x00700900) and adds the clone to the bow's `ArrowBone`. OBVR clones the same "Arrow:0" (its length read from the model, 46.6 units head to nock on the iron arrow) and places it each frame after the hands are pinned:
-  - in the hand: along the drawing hand's grip (the right-hand `Weapon` node, as a sword is held), the nock 3 units behind it, the head ahead;
-  - on the string (nocked or drawn): from that nock through the arrow's rest on the bow, (0, 2.8, -2.45) in the bow's frame, where `bowattack.kf` lays it at full draw. It keeps the roll it had in the hand.
-  - It hangs on the first-person root, not on the hand's bone, and its bound is kept in view like the hands'. It goes when the arrow is loosed, dropped or the bow put away; a new ammunition makes a new one.
+  - **in the hand: along the drawing hand's laser**, from where the beam starts, pointing where it points (the tester: "der pfeil muss nicht wie jetzt nach oben zeigen sondern in die selbe richtung wie der laserpointer ... dann den pfeil genau so ausrichten wie den laserpointer"; `vr::ArrowInHand`). Before, it pointed along the fist's grip - up.
+  - **on the string: on the bow's line** through the arrow's rest, (0, 2.8, -2.45) in the bow's frame, where `bowattack.kf` lays it at full draw; the nock as far back as the fist, no nearer than the string at rest and **no further than a full draw** (the tester: "wenn man maximale spannung des bogens erreicht hat ist stopp. mehr spannen geht dann nicht"; `vr::ArrowOnBowLine`). The drawing hand is moved onto that point, so it stays on the string and stops with it ("kann man den nur noch in einer linie ... ziehen").
+  - It hangs on the first-person root, not on the hand's bone, and its bound is kept in view like the hands'. It goes when the arrow is loosed, dropped or put back; a new ammunition makes a new one.
   - The right hand's fingers close round it while it is held.
+- **The bow turned onto its hand's laser** (`vr::BowFacing`): its model's +x (the shot) along the laser, its limbs along that controller's up, turned about its grip. The harness dumps show it upright ahead with the controller tilted up by the laser's 40 degrees.
 - **The engine's own arrow is hidden** while the bow is drawn by hand (`ArrowBone` culled), and `ArrowBone` is put where the hand's arrow is, so what the engine reads off it at the release is the arrow the wearer saw.
-- **The string follows the hand.** The bow's `BowMorph` weight is written after the animation and blended by the morpher's own blend (0x006D0CF0; its weights at +0x44, the flag it waits for at +0x58, found in its Update 0x006D13C0 and blend 0x006D0C30). The weight is how far the nock is behind the arrow's rest, less the string's rest distance, over the full draw's travel; rest and travel are read from the morph itself (the iron bow: -15.6 and 28.1 units). From the distance rather than along the bow's own axis, so a bow held turned still shows the pull.
-  - After the loose the string is held at rest until the engine's shot is over (its action back to -1, at most 3 s): a short draw let go early would otherwise carry on pulling to full in the engine's animation. After a dropped arrow it is set to rest once. Otherwise it is the game's (`vr::StepBowString`).
+- **The string follows the hand.** The bow's `BowMorph` weight is written after the animation and blended by the morpher's own blend (0x006D0CF0; its weights at +0x44, the flag it waits for at +0x58, found in its Update 0x006D13C0 and blend 0x006D0C30). The weight is how far the nock is behind the string's rest along the bow over the full draw's travel; rest and travel are read from the morph itself (the iron bow: -15.6 and 28.1 units).
+  - After the loose the string is held at rest until the engine's shot is over (its action back to -1, at most 3 s). After a dropped arrow it is set to rest once. Otherwise it is the game's (`vr::StepBowString`).
 
 **What the engine still decides:**
 - The draw's power: the time the control is held. How far the hand pulls does not change it.
@@ -889,6 +919,10 @@ The tester: "Pfeil und Bogen wie in blade and sorcery. Linke hand hat ja bereits
 - The eyes' dumps (SteamVR's, `dump-*-eyes.png`) show the arrow in the closed right fist, then on the string from the fist through the bow.
 - The game window's picture is NOT the check: in it the arrow on a drawn string did not show while the eyes had it (the runs of 17:38-17:58). Cause not found; the dumps are what the headset gets.
 - Not seen in a picture: the string's bend itself (the log's weight and the morph's blend are the evidence), and a real headset.
+**Tested (the second round):** harness `bow-by-hand`, 2026-09-30 19:50: PASS (artifacts/hand-script/bow-by-hand/20260930-195023): the trigger took, "the arrow in the hand along the laser", nocked, drawn along the bow, "at full draw - stopped" (weight 1.00), eased ("the player's action 5 -> 12", "the eased draw ended with no arrow loosed"), off the string, "put back in the quiver", a second arrow taken, drawn and loosed (5 -> 3), then both sticks held: "Camera: both sticks held - recentering".
+- The eyes' dumps of a variant with the bow held ahead (the script's positions along the laser, the head level) show the bow upright, the arrow along the fist's laser, and drawn the arrow from the fist through the bow.
+- Not seen in a headset: all of it. Not measured: whether the eased draw's `playgroup unequip` shows a sheathe flicker, and whether the engine's power still follows the time the control was held after an ease.
+
 **Tested:** harness `bow-by-hand`, 2026-09-30 14:52: PASS (artifacts/hand-script/bow-by-hand/20260930-145217).
 - The arrow was taken (the hands 0.56 m apart), nocked at 0.10 m, and drawn at 0.38 m "along the arrow's line".
 - The attack update ran at action 5 with "heading 0.0000 set to 6.1524 and pitch -0.0000 to 0.0521": 7.5 degrees left and 3 degrees down. That is the line from the scripted right hand through the bow, which sat 5 cm left of and 2 cm below it, 38 cm ahead.

@@ -21,6 +21,18 @@ struct BowVisualInput {
 	bool active = false;  // Full VR, hands pinned, the bow by hand on and a bow drawn
 	vr::ArrowShown arrow = vr::ArrowShown::None;
 	vr::StringSource string = vr::StringSource::Engine;
+	// The drawing hand's bone, moved onto the string while the arrow is on it.
+	const char* rightHandBone = "Bip01 R Hand";
+	// The drawing hand's laser in the world: the arrow in the fist lies along it.
+	bool laserValid = false;
+	NiPoint3 laserStart{0.0f, 0.0f, 0.0f};
+	NiPoint3 laserDirection{0.0f, 1.0f, 0.0f};
+	// The bow hand's laser in the world and that controller's up: the bow is
+	// turned so it shoots along the laser, its limbs along the up (the aim is
+	// the same laser, vr::StepArchery's bowAxis).
+	bool bowAimValid = false;
+	NiPoint3 bowAim{0.0f, 1.0f, 0.0f};
+	NiPoint3 bowUp{0.0f, 0.0f, 1.0f};
 };
 
 void StepBowVisual(const BowVisualInput& in);

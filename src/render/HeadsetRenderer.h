@@ -186,6 +186,13 @@ public:
 	// intro film that started while the head was tilted stayed tilted, and the
 	// only way to watch it was to look up at it.
 	void ResetFlatAnchor() { m_flatPoseValid = false; }
+	// The pose the flat picture hangs from, while it has one.
+	bool FlatAnchor(vr::openvr::HmdMatrix34& pose) const {
+		if (m_flatPoseValid) {
+			pose = m_flatPose;
+		}
+		return m_flatPoseValid;
+	}
 
 	// Whether a captured pair is standing by that a held submit could send
 	// again. False until the first dual frame has been captured, which is what

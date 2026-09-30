@@ -104,6 +104,30 @@ void TestWorldRay() {
 	Check(NearPoint(ray.direction, turned * NiPoint3{0, 1, 0}), "a turned head turns the ray with it");
 }
 
+void TestOffset() {
+	std::printf("The laser's start beside the controller\n");
+	const NiPoint3 right = LaserOffsetLocal(-0.01f, -0.02f, false);
+	const NiPoint3 left = LaserOffsetLocal(-0.01f, -0.02f, true);
+	Check(NearPoint(right, NiPoint3{-0.01f, -0.02f, 0.0f}), "the right hand's: 1 cm left, 2 cm down");
+	Check(NearPoint(left, NiPoint3{0.01f, -0.02f, 0.0f}), "the left hand's mirrored: 1 cm right, 2 cm down");
+
+	openvr::HmdMatrix34 m = LaserBeamMatrix(1.0f, 0.0f, 0.0f, 0.0f, right);
+	Check(NearPoint(NiPoint3{m.m[0][3], m.m[1][3], m.m[2][3]}, NiPoint3{-0.01f, -0.02f, -0.5f}),
+	      "the beam moved by it, still half a metre out");
+	m = LaserPointMatrix(2.0f, 40.0f, 5.0f, -0.04f, right);
+	const NiPoint3 direction = LaserDirectionLocal(40.0f, 5.0f);
+	Check(NearPoint(NiPoint3{m.m[0][3], m.m[1][3], m.m[2][3]}, right + direction * (2.0f - 0.04f)),
+	      "the dot at the beam's end, moved the same");
+
+	const NiMatrix33 identity = NiMatrix33::Identity();
+	LaserWorldRay ray = HandLaserWorldRay(identity, NiPoint3{0, 0, 0}, identity, NiPoint3{0, 0, 0}, 0.0f, 0.0f,
+	                                      0.0f, 70.0f, right);
+	Check(NearPoint(ray.origin, NiPoint3{-0.7f, 0.0f, -1.4f}), "in the world: 0.7 units left, 1.4 down");
+	Check(NearPoint(ray.direction, NiPoint3{0, 1, 0}), "the direction unchanged");
+	ray = HandLaserWorldRay(identity, NiPoint3{0, 0, 0}, identity, NiPoint3{0, 0, 0}, 0.0f, 0.0f, 0.0f, 70.0f);
+	Check(NearPoint(ray.origin, NiPoint3{0, 0, 0}), "no offset given: the start as before");
+}
+
 }  // namespace
 
 void TestReach() {
@@ -202,6 +226,7 @@ int main() {
 	TestBeam();
 	TestPoint();
 	TestWorldRay();
+	TestOffset();
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);
 		return 1;

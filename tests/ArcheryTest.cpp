@@ -60,11 +60,84 @@ void TestShot() {
 	v = StepArchery(st, At(kPulled, true), kSettings);
 	Check(v.drawStarted && v.state == ArrowState::Drawing && v.attackHeld && v.aiming,
 	      "pulled to 0.30: the draw begins, the attack held");
-	v = StepArchery(st, At(kAtBow, true), kSettings);
-	Check(v.state == ArrowState::Drawing && v.attackHeld, "eased back towards the bow: still drawn");
+	v = StepArchery(st, At(kBarely, true), kSettings);
+	Check(v.state == ArrowState::Drawing && v.attackHeld, "eased to 0.20: still drawn");
 	v = StepArchery(st, At(kPulled, false), kSettings);
 	Check(v.loosed && v.state == ArrowState::None && !v.attackHeld && !v.claimsGrip,
 	      "the grip let go: loosed, the attack let go");
+}
+
+// The bow pointing along -z from (-0.1, 1.4, -0.5), the drawing hand where
+// asked: pulled back along +z, or off to the side.
+ArcheryInput OnAxis(const NiPoint3& drawAt, bool hold, float dt = 0.011f) {
+	ArcheryInput in = At(drawAt, hold);
+	in.axisValid = true;
+	in.bowAxis = NiPoint3{0.0f, 0.0f, -1.0f};
+	in.dtSeconds = dt;
+	return in;
+}
+
+void TestEase() {
+	std::printf("Easing the draw, taking the arrow off, putting it back\n");
+	ArcheryState st;
+	StepArchery(st, At(kShoulder, false, true), kSettings);
+	StepArchery(st, At(kShoulder, true, true), kSettings);
+	StepArchery(st, OnAxis(kAtBow, true), kSettings);
+	ArcheryVerdict v = StepArchery(st, OnAxis(kPulled, true), kSettings);
+	Check(v.state == ArrowState::Drawing && Near(v.pullMetres, 0.30f) && Near(v.offLineMetres, 0.0f),
+	      "pulled 0.30 straight back along the bow: drawn");
+	v = StepArchery(st, OnAxis(NiPoint3{0.2f, 1.4f, -0.2f}, true), kSettings);
+	Check(v.state == ArrowState::Drawing && Near(v.pullMetres, 0.30f) && Near(v.offLineMetres, 0.30f),
+	      "the hand swung 0.30 aside: still the same pull along the bow, still drawn");
+	v = StepArchery(st, OnAxis(kAtBow, true), kSettings);
+	Check(v.eased && v.state == ArrowState::Nocked && v.attackHeld && v.aiming && !v.loosed,
+	      "brought back to the bow: eased, nocked again, the control still held for the cancel");
+	v = StepArchery(st, OnAxis(kPulled, true, 0.1f), kSettings);
+	Check(v.state == ArrowState::Nocked && !v.drawStarted, "pulled again before the cancel is through: not yet");
+	bool done = false;
+	for (int i = 0; i < 40 && v.attackHeld; ++i) {
+		v = StepArchery(st, OnAxis(kAtBow, true, 0.011f), kSettings);
+		done = done || v.denockDone;
+	}
+	Check(done && !v.attackHeld && v.state == ArrowState::Nocked,
+	      "0.3 s on: the control let go (the cancel's end), the arrow still on the string");
+	v = StepArchery(st, OnAxis(kPulled, true), kSettings);
+	Check(v.drawStarted, "and it can be drawn again");
+	StepArchery(st, OnAxis(kAtBow, true, 0.5f), kSettings);
+	v = StepArchery(st, OnAxis(kAtBow, true, 0.5f), kSettings);
+	Check(v.denockDone && !v.attackHeld, "a long frame ends the cancel at once");
+	v = StepArchery(st, OnAxis(NiPoint3{0.1f, 1.4f, -0.45f}, true), kSettings);
+	Check(v.unnocked && v.state == ArrowState::InHand && !v.aiming,
+	      "nocked, the hand moved 0.20 off the bow's line: off the string, in the hand");
+	ArcheryInput atQuiver = OnAxis(kShoulder, false);
+	atQuiver.drawBody = kSettings.quiverZone;
+	v = StepArchery(st, atQuiver, kSettings);
+	Check(v.stowed && !v.dropped && v.state == ArrowState::None, "let go at the quiver: put back");
+
+	ArcheryState away;
+	StepArchery(away, At(kShoulder, false, true), kSettings);
+	StepArchery(away, At(kShoulder, true, true), kSettings);
+	StepArchery(away, OnAxis(kAtBow, true), kSettings);
+	v = StepArchery(away, OnAxis(NiPoint3{-0.1f, 1.4f, -0.44f}, true), kSettings);
+	Check(v.state == ArrowState::Nocked && !v.unnocked, "a hand wobbling on the line stays nocked");
+	ArcheryInput noAxis = At(NiPoint3{0.3f, 1.4f, -0.5f}, true);
+	ArcheryState plain;
+	StepArchery(plain, At(kShoulder, false, true), kSettings);
+	StepArchery(plain, At(kShoulder, true, true), kSettings);
+	StepArchery(plain, At(kAtBow, true), kSettings);
+	v = StepArchery(plain, noAxis, kSettings);
+	Check(v.drawStarted && !v.unnocked, "no bow axis: 0.40 away in any direction is a draw, as before");
+
+	ArcheryState gone;
+	StepArchery(gone, At(kShoulder, false, true), kSettings);
+	StepArchery(gone, At(kShoulder, true, true), kSettings);
+	StepArchery(gone, OnAxis(kAtBow, true), kSettings);
+	StepArchery(gone, OnAxis(kPulled, true), kSettings);
+	StepArchery(gone, OnAxis(kAtBow, true), kSettings);
+	ArcheryInput sheathed = OnAxis(kAtBow, true);
+	sheathed.bowDrawn = false;
+	v = StepArchery(gone, sheathed, kSettings);
+	Check(v.denockDone && !v.attackHeld && v.dropped, "the bow put away mid-cancel: the cancel ended with it");
 }
 
 void TestDrops() {
@@ -89,6 +162,12 @@ void TestDrops() {
 	StepArchery(away, At(kShoulder, false), kSettings);
 	v = StepArchery(away, At(kShoulder, true), kSettings);
 	Check(!v.took && !v.claimsGrip, "the grip closed away from the quiver: no arrow, the grip free");
+
+	ArcheryState back;
+	StepArchery(back, At(kShoulder, false, true), kSettings);
+	StepArchery(back, At(kShoulder, true, true), kSettings);
+	v = StepArchery(back, At(kShoulder, false, true), kSettings);
+	Check(v.stowed && !v.dropped, "taken and let go at the quiver again: put back, not dropped");
 }
 
 void TestGates() {
@@ -239,22 +318,45 @@ void TestTurn() {
 void TestArrowPose() {
 	std::printf("The arrow's pose\n");
 	const NiMatrix33 id = NiMatrix33::Identity();
-	const NiPoint3 grip{10, 0, 0};
-	const NiPoint3 rest{10, 40, 0};
 	ArrowPose p;
-	Check(!ArrowPoseFor(ArrowShown::None, id, grip, rest, 46.6f, p), "no arrow: no pose");
-	Check(!ArrowPoseFor(ArrowShown::InHand, id, grip, rest, 0.0f, p), "a model with no length: no pose");
-	Check(ArrowPoseFor(ArrowShown::InHand, id, grip, rest, 46.6f, p) &&
-	          NearPoint(p.nock, NiPoint3{10, -kArrowNockBehindGripUnits, 0}) &&
-	          NearPoint(p.pos, NiPoint3{10, 46.6f - kArrowNockBehindGripUnits, 0}),
-	      "in the fist: the nock behind the grip, the head ahead along it");
-	const NiPoint3 aside{10 + 43.6f, -kArrowNockBehindGripUnits, 0};
-	Check(ArrowPoseFor(ArrowShown::OnString, id, grip, aside, 46.6f, p) &&
-	          NearPoint(p.pos, NiPoint3{10 + 46.6f, -kArrowNockBehindGripUnits, 0}) &&
-	          NearPoint(p.rot * NiPoint3{0, 1, 0}, NiPoint3{1, 0, 0}),
-	      "on the string: from the nock through the bow's rest, the head past it");
-	const NiPoint3 onNock{10, -kArrowNockBehindGripUnits, 0};
-	Check(!ArrowPoseFor(ArrowShown::OnString, id, grip, onNock, 46.6f, p), "the rest on the nock: no pose");
+	Check(ArrowInHand(NiPoint3{1, 2, 3}, NiPoint3{0, 0, 2}, id, 46.6f, p) && NearPoint(p.nock, NiPoint3{1, 2, 3}) &&
+	          NearPoint(p.pos, NiPoint3{1, 2, 49.6f}) && NearPoint(p.rot * NiPoint3{0, 1, 0}, NiPoint3{0, 0, 1}),
+	      "in the fist: from the laser's start along the laser, the head ahead");
+	Check(!ArrowInHand(NiPoint3{1, 2, 3}, NiPoint3{0, 0, 1}, id, 0.0f, p), "a model with no length: no pose");
+	Check(!ArrowInHand(NiPoint3{1, 2, 3}, NiPoint3{0, 0, 0}, id, 46.6f, p), "no laser direction: no pose");
+
+	// The bow's axis along +y, its arrow rest at (0, 100, 0); the string rests
+	// 15.6 behind, a full draw 28 more.
+	const NiPoint3 rest{0, 100, 0};
+	const NiPoint3 axis{0, 1, 0};
+	ArrowOnString a;
+	Check(!ArrowOnBowLine(rest, axis, id, NiPoint3{0, 80, 0}, 0.0f, 15.6f, 28.0f, a), "no length: no pose");
+	Check(ArrowOnBowLine(rest, axis, id, NiPoint3{0, 95, 0}, 46.6f, 15.6f, 28.0f, a) &&
+	          Near(a.nockBehindRest, 15.6f) && Near(a.weight, 0.0f) && !a.atFullDraw &&
+	          NearPoint(a.gripTarget, NiPoint3{0, 100 - 15.6f + kArrowNockBehindGripUnits, 0}),
+	      "the fist at the bow: the nock on the string at rest, the fist to go there");
+	Check(ArrowOnBowLine(rest, axis, id, NiPoint3{3, 70, -2}, 46.6f, 15.6f, 28.0f, a) &&
+	          Near(a.nockBehindRest, 30.0f + kArrowNockBehindGripUnits) &&
+	          NearPoint(a.pose.nock, NiPoint3{0, 100 - 30 - kArrowNockBehindGripUnits, 0}) &&
+	          NearPoint(a.pose.pos, a.pose.nock + axis * 46.6f) && !a.atFullDraw &&
+	          NearPoint(a.pose.rot * NiPoint3{0, 1, 0}, axis),
+	      "pulled 30 back and a little aside: on the line, as far back as the fist, along the bow");
+	Check(Near(a.weight, (33.0f - 15.6f) / 28.0f), "the string's weight from the pull");
+	Check(ArrowOnBowLine(rest, axis, id, NiPoint3{0, 20, 0}, 46.6f, 15.6f, 28.0f, a) &&
+	          Near(a.nockBehindRest, 43.6f) && Near(a.weight, 1.0f) && a.atFullDraw &&
+	          NearPoint(a.gripTarget, NiPoint3{0, 100 - 43.6f + kArrowNockBehindGripUnits, 0}),
+	      "pulled past a full draw: stopped there, the fist held at it");
+}
+
+void TestBowFacing() {
+	std::printf("The bow turned onto its hand's laser\n");
+	NiMatrix33 m{};
+	Check(BowFacing(NiPoint3{0, 2, 0}, NiPoint3{0, 0.3f, 1}, m) &&
+	          NearPoint(m * NiPoint3{1, 0, 0}, NiPoint3{0, 1, 0}) && NearPoint(m * NiPoint3{0, 1, 0}, NiPoint3{0, 0, 1}),
+	      "its +x along the laser, its limbs along the controller's up made square to it");
+	Check(NearPoint(m * NiPoint3{0, 0, 1}, NiPoint3{1, 0, 0}), "and +z the third, right-handed");
+	Check(!BowFacing(NiPoint3{0, 0, 0}, NiPoint3{0, 0, 1}, m), "no laser: no facing");
+	Check(!BowFacing(NiPoint3{0, 0, 1}, NiPoint3{0, 0, 3}, m), "the up along the laser: no facing");
 }
 
 }  // namespace
@@ -270,6 +372,8 @@ int main() {
 	TestArrowShown();
 	TestTurn();
 	TestArrowPose();
+	TestEase();
+	TestBowFacing();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

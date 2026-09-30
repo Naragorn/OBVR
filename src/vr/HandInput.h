@@ -75,6 +75,14 @@ inline NiPoint3 LaserRightLocal(float yawDegrees) {
 	return NiPoint3{math::Cos(yaw), 0.0f, -math::Sin(yaw)};
 }
 
+// Where the laser starts beside the controller's tracked origin, in its own
+// frame (x right, y up, z back), metres: `right` and `up` as set for the right
+// hand, the right mirrored for the left (the tester, 2026-09-30: "2cm weiter
+// runter und 1 cm weiter nach links").
+inline NiPoint3 LaserOffsetLocal(float rightMetres, float upMetres, bool leftHand) {
+	return NiPoint3{leftHand ? -rightMetres : rightMetres, upMetres, 0.0f};
+}
+
 inline bool TrackpadClickDown(UInt64 mask) {
 	return ButtonDown(mask, openvr::kButtonIndexTrackpad);
 }
@@ -926,18 +934,26 @@ struct StickChordState {
 	bool leftDown = false;
 	bool chorded = false;  // both were down at some point in this press
 	float sinceFirst = 0.0f;  // seconds since the first of the two went down
+	float chordSeconds = 0.0f;  // seconds both have been down together
+	bool recentred = false;     // this chord was held long enough to recentre
 };
 
 struct StickChordVerdict {
 	bool rightClick = false;  // the right stick, released alone
 	bool leftClick = false;   // the left stick, released alone
-	bool both = false;        // the frame both came to be down
+	bool both = false;        // the chord let go, short of the recentre hold
+	bool recentre = false;    // the frame the chord reached the recentre hold
 };
 
 // Both sticks count as the chord only when the second goes down within this
 // of the first. The left stick held in is running: a right click while
 // running readies the weapon, and must not open OBVR's menu instead.
 constexpr float kStickChordWindowSeconds = 0.25f;
+
+// Both held this long is a recentre, not OBVR's menu (the tester, 2026-09-30:
+// "beide thumbsticks für 3s gedrückt macht ein recenter"). So the menu comes
+// on the chord's release: held on past this it never opens.
+constexpr float kStickRecentreHoldSeconds = 3.0f;
 
 inline StickChordVerdict StepStickChord(StickChordState& s, bool rightDown, bool leftDown,
                                         float dtSeconds = 0.0f) {
@@ -952,9 +968,16 @@ inline StickChordVerdict StepStickChord(StickChordState& s, bool rightDown, bool
 		// Both are down for the first time in this press: a chord if the
 		// second came quickly, otherwise a click held under a running stick.
 		if (s.sinceFirst <= kStickChordWindowSeconds) {
-			v.both = true;
 			s.chorded = true;
+			s.chordSeconds = 0.0f;
+			s.recentred = false;
 		}
+	} else if (bothDown && s.chorded && dtSeconds > 0.0f) {
+		s.chordSeconds += dtSeconds;
+	}
+	if (bothDown && s.chorded && !s.recentred && s.chordSeconds >= kStickRecentreHoldSeconds) {
+		v.recentre = true;
+		s.recentred = true;
 	}
 	if (s.rightDown && !rightDown && !s.chorded) {
 		v.rightClick = true;
@@ -963,7 +986,11 @@ inline StickChordVerdict StepStickChord(StickChordState& s, bool rightDown, bool
 		v.leftClick = true;
 	}
 	if (!rightDown && !leftDown) {
+		// The chord let go: OBVR's menu, unless it was held to recentre.
+		v.both = s.chorded && !s.recentred;
 		s.chorded = false;
+		s.recentred = false;
+		s.chordSeconds = 0.0f;
 	}
 	s.rightDown = rightDown;
 	s.leftDown = leftDown;

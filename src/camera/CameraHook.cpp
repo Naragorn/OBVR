@@ -17,6 +17,7 @@
 #include "game/DialogZoom.h"
 #include "game/BlockCone.h"
 #include "game/BowVisual.h"
+#include "game/ConsoleLine.h"
 #include "game/HitShader.h"
 #include "game/HudTiles.h"
 #include "game/Lead.h"
@@ -87,6 +88,7 @@
 #include "render/LaserLayer.h"
 #include "render/ReachMarker.h"
 #include "render/TeleportArcLayer.h"
+#include "vr/FlatFollow.h"
 #include "vr/LaserGeometry.h"
 #include "vr/StowPlace.h"
 #include "ui/CanvasOverlay.h"
@@ -626,7 +628,8 @@ void UpdateTeleport(const Config& config, vr::OpenVRBackend& backend, bool activ
 		const vr::LaserWorldRay ray = vr::HandLaserWorldRay(
 			g_cyclopeanCameraWorldTransform.rot, g_cyclopeanCameraWorldTransform.pos,
 			g_hand.rightHandRotation, g_hand.rightHandOffsetUnits, config.hands.laserPitchDegrees,
-			config.hands.laserYawDegrees, config.hands.laserOriginMetres, perMetre);
+			config.hands.laserYawDegrees, config.hands.laserOriginMetres, perMetre,
+			vr::LaserOffsetLocal(config.hands.laserOffsetRightMetres, config.hands.laserOffsetUpMetres, false));
 		const TeleportAim aim = AimTeleport(config, ray);
 		const bool valid = aim.refusal == vr::TeleportRefusal::None;
 		vr::openvr::HmdMatrix34 head{};
@@ -2107,7 +2110,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 					left ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits,
 					config.hands.laserPitchDegrees,
 					left ? -config.hands.laserYawDegrees : config.hands.laserYawDegrees,
-					config.hands.laserOriginMetres, config.tracker.unitsPerMetre)
+					config.hands.laserOriginMetres, config.tracker.unitsPerMetre,
+					vr::LaserOffsetLocal(config.hands.laserOffsetRightMetres, config.hands.laserOffsetUpMetres, left))
 				                  .direction;
 				// The palm: the controller's own sideways axis, towards the other
 				// hand - a right hand wrapped round the handle faces its palm
@@ -2186,7 +2190,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			left ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits,
 			config.hands.laserPitchDegrees,
 			left ? -config.hands.laserYawDegrees : config.hands.laserYawDegrees,
-			config.hands.heldObjectMetres, config.tracker.unitsPerMetre);
+			config.hands.heldObjectMetres, config.tracker.unitsPerMetre,
+			vr::LaserOffsetLocal(config.hands.laserOffsetRightMetres, config.hands.laserOffsetUpMetres, left));
 		holdPoint = ray.origin;
 		haveHoldPoint = true;
 	}
@@ -2417,6 +2422,57 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_bowVisual.arrow = vr::ArrowShownFor(a.state);
 		g_bowVisual.string =
 			vr::StepBowString(g_bowString, a.state, a.loosed, game::ReadPlayerAction() >= 0, g_deltaSeconds);
+		g_bowVisual.rightHandBone = config.hands.rightHandBone;
+		// The player's action while the bow is drawn by hand: 4 and 5 the draw,
+		// 3 the follow-through after an arrow left (game::kAction*), so a
+		// cancelled draw shows as a draw that never reaches 3.
+		{
+			static SInt32 s_action = -1;
+			static UInt32 s_actionLines = 40;
+			static bool s_watchEase = false;
+			const SInt32 action = game::ReadPlayerAction();
+			if (g_bowVisual.active && action != s_action && s_actionLines > 0) {
+				--s_actionLines;
+				OBVR_LOG("Hands: bow by hand - the player's action %d -> %d", static_cast<int>(s_action),
+				         static_cast<int>(action));
+			}
+			// An eased draw is watched until the engine's action ends: the
+			// follow-through (3) is an arrow that left after all.
+			if (a.eased) {
+				s_watchEase = true;
+			} else if (s_watchEase && action != s_action) {
+				if (action == addr::kActionAttackFollowThrough) {
+					OBVR_LOG("Hands: bow by hand - the eased draw loosed its arrow anyway (action 3)");
+					s_watchEase = false;
+				} else if (action < 0) {
+					OBVR_LOG("Hands: bow by hand - the eased draw ended with no arrow loosed");
+					s_watchEase = false;
+				}
+			}
+			s_action = action;
+		}
+		// Eased back from a draw: the engine's shot taken back the way the
+		// DenockArrow mods do it - the unequip group played while the attack
+		// is still held (vr::kDenockHoldSeconds), then back to the idle once
+		// it is let go (github.com/dannywarren/Oblivion-DenockArrowToo,
+		// src/DenockArrowScript.txt).
+		if (a.eased || a.unnocked || a.stowed || a.denockDone) {
+			bool asked = true;
+			if (a.eased) {
+				asked = game::RequestConsoleLine("player.playgroup unequip 1");
+			} else if (a.denockDone) {
+				asked = game::RequestConsoleLine("player.playgroup idle 1");
+			}
+			OBVR_LOG("Hands: bow by hand - %s (pull %.2f m, %.2f m off the bow's line along %.2f %.2f %.2f, action "
+			         "%d)%s",
+			         a.eased       ? "eased back: the draw taken back, the arrow still on the string"
+			         : a.unnocked  ? "the arrow off the string, in the hand"
+			         : a.stowed    ? "the arrow put back in the quiver"
+			                       : "the draw's cancel through: the control let go, back to the idle",
+			         static_cast<double>(a.pullMetres), static_cast<double>(a.offLineMetres),
+			         static_cast<double>(a.bowAxis.x), static_cast<double>(a.bowAxis.y), static_cast<double>(a.bowAxis.z),
+			         static_cast<int>(game::ReadPlayerAction()), asked ? "" : " - the script line could not be run");
+		}
 	}
 	if (g_hand.reachBack != g_handReachBack) {
 		g_handReachBack = g_hand.reachBack;
@@ -3372,7 +3428,14 @@ void OnFrameEnd() {
 	// Sharing one edge is what makes polling early safe: the camera hook runs
 	// before this and consumes the press on an ordinary world frame, so this
 	// reads false there and no branch acts twice.
-	const bool recenterPressed = PollRecenterEdge();
+	// Both sticks held in for three seconds recenter as the key does
+	// (vr::StepStickChord), on any kind of frame - the main menu's too: the
+	// hand mode runs from OnPresent, just before this.
+	const bool recenterChord = g_hand.recentreChord;
+	if (recenterChord) {
+		OBVR_LOG("Camera: both sticks held - recentering");
+	}
+	const bool recenterPressed = PollRecenterEdge() || recenterChord;
 
 	// Counted here because here is the one place that runs on every frame,
 	// whatever else did or did not happen. Every return below is a frame that
@@ -3722,6 +3785,40 @@ void OnFrameEnd() {
 	if (recenter.tracker && (hadCameraPass || recenterFrameOpen)) {
 		DoRecenter("flat path");
 		if (recenter.flatAnchor) g_headsetRenderer.ResetFlatAnchor();
+	}
+
+	// And taken along when the wearer has turned or walked away from it for a
+	// moment (vr/FlatFollow.h): the next flat frame anchors where the head is.
+	{
+		static vr::FlatFollowState s_follow;
+		static long long s_followLast = 0;
+		static UInt32 s_followLines = 8;
+		static const long long ticksPerSecond = ReadPerformanceFrequency();
+		const long long now = ReadPerformanceCounter();
+		float dt = 0.0f;
+		if (s_followLast != 0 && ticksPerSecond > 0) {
+			dt = static_cast<float>(static_cast<double>(now - s_followLast) / static_cast<double>(ticksPerSecond));
+			dt = dt > 0.25f ? 0.25f : dt;
+		}
+		s_followLast = now;
+		vr::openvr::HmdMatrix34 anchor{};
+		vr::openvr::HmdMatrix34 head{};
+		vr::FlatFollowSettings follow;
+		follow.followDegrees = config.tracker.flatFollowDegrees;
+		if (g_headsetRenderer.FlatAnchor(anchor) && g_headTracker.GetBackendForFrame().GetRenderPoseMatrix(head)) {
+			const float apart = vr::HeadingApartDegrees(anchor, head);
+			const float moved = std::sqrt(vr::PoseDistanceSq(anchor, head));
+			if (vr::StepFlatFollow(s_follow, apart, moved, dt, follow)) {
+				g_headsetRenderer.ResetFlatAnchor();
+				if (s_followLines > 0) {
+					--s_followLines;
+					OBVR_LOG("Render: the flat picture taken along - the head %.0f degrees and %.2f m from it",
+					         static_cast<double>(apart), static_cast<double>(moved));
+				}
+			}
+		} else {
+			s_follow = vr::FlatFollowState{};
+		}
 	}
 
 	// The cinema-side layout measurement, taken while the finished frame is
@@ -4801,6 +4898,27 @@ void BeforeFirstScenePass() {
 			// The bow by hand as it is seen, on the hands just pinned. The arrow
 			// reaches past the hand's own bound, which the engine worked out
 			// before it was there: kept in view like the hands.
+			// The arrow in the fist lies along the drawing hand's laser.
+			{
+				const vr::LaserWorldRay laser = vr::HandLaserWorldRay(
+					cameraRot, cameraPos, g_hand.rightHandRotation, g_hand.rightHandOffsetUnits,
+					hands.laserPitchDegrees, hands.laserYawDegrees, hands.laserOriginMetres, perMetre,
+					vr::LaserOffsetLocal(hands.laserOffsetRightMetres, hands.laserOffsetUpMetres, false));
+				g_bowVisual.laserValid = g_hand.rightHandValid;
+				g_bowVisual.laserStart = laser.origin;
+				g_bowVisual.laserDirection = laser.direction;
+			}
+			// The bow turned onto the bow hand's laser: the shot goes along it.
+			{
+				const vr::LaserWorldRay bowLaser = vr::HandLaserWorldRay(
+					cameraRot, cameraPos, g_hand.leftHandRotation, g_hand.leftHandOffsetUnits,
+					hands.laserPitchDegrees, -hands.laserYawDegrees, hands.laserOriginMetres, perMetre,
+					vr::LaserOffsetLocal(hands.laserOffsetRightMetres, hands.laserOffsetUpMetres, true));
+				g_bowVisual.bowAimValid = g_hand.leftHandValid;
+				g_bowVisual.bowAim = bowLaser.direction;
+				// The controller's own up, in the world: the bow's limbs along it.
+				g_bowVisual.bowUp = cameraRot * (g_hand.leftHandRotation * NiPoint3{0.0f, 0.0f, 1.0f});
+			}
 			game::StepBowVisual(g_bowVisual);
 			if (g_bowVisual.active && g_bowVisual.arrow != vr::ArrowShown::None) {
 				game::KeepFirstPersonNodesInView("Arrow:0", cameraPos, 100.0f);
@@ -5753,7 +5871,8 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			vr::HandDeviceForRole(!crosshairLeft, g_handRolesSwapped)),
 		config.hands.laserPitchDegrees,
 		crosshairLeft ? -config.hands.laserYawDegrees : config.hands.laserYawDegrees,
-		config.hands.laserOriginMetres);
+		config.hands.laserOriginMetres,
+		vr::LaserOffsetLocal(config.hands.laserOffsetRightMetres, config.hands.laserOffsetUpMetres, crosshairLeft));
 	g_crosshairLayer.SetRoomPlacement(
 		g_reachIconShown, g_reachIconPose,
 		HandTooltipWidth(render::kReachIconWidthMetres, true, config.hands.tooltipScale));
@@ -5924,7 +6043,9 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	                    g_hand.laserRight ? config.hands.laserYawDegrees
 	                                      : -config.hands.laserYawDegrees,
 	                    config.hands.laserOriginMetres, g_hand.laserLengthMetres,
-	                    config.hands.laserBeam, config.hands.laserDot);
+	                    config.hands.laserBeam, config.hands.laserDot,
+	                    vr::LaserOffsetLocal(config.hands.laserOffsetRightMetres, config.hands.laserOffsetUpMetres,
+	                                         !g_hand.laserRight));
 
 	if (!config.tracker.hudOverlay || !render::IsInterfaceRenderHooked()) {
 		return;
@@ -6822,7 +6943,8 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 				left ? g_hand.leftHandRotation : g_hand.rightHandRotation,
 				left ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits,
 				hands.laserPitchDegrees, left ? -hands.laserYawDegrees : hands.laserYawDegrees,
-				hands.laserOriginMetres - hands.grabReachMetres, config.tracker.unitsPerMetre);
+				hands.laserOriginMetres - hands.grabReachMetres, config.tracker.unitsPerMetre,
+				vr::LaserOffsetLocal(hands.laserOffsetRightMetres, hands.laserOffsetUpMetres, left));
 			game::SetWorldPickHandRay(ray.origin, ray.direction, true);
 		} else if (handRay) {
 			const vr::LaserWorldRay ray = vr::HandLaserWorldRay(
@@ -6830,7 +6952,8 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 				pickLeft ? g_hand.leftHandRotation : g_hand.rightHandRotation,
 				pickLeft ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits,
 				hands.laserPitchDegrees, pickLeft ? -hands.laserYawDegrees : hands.laserYawDegrees,
-				hands.laserOriginMetres, config.tracker.unitsPerMetre);
+				hands.laserOriginMetres, config.tracker.unitsPerMetre,
+				vr::LaserOffsetLocal(hands.laserOffsetRightMetres, hands.laserOffsetUpMetres, pickLeft));
 			game::SetWorldPickHandRay(ray.origin, ray.direction, true);
 		} else {
 			game::SetWorldPickHandRay(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 1.0f, 0.0f}, false);

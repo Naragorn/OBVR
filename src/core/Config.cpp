@@ -385,6 +385,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		config.waterReflectionMode = render::WaterReflectionMode::Vanilla;
 	config.tracker.hudAnchorWorld =
 		ReadAnchorIsWorld("Render", "HudAnchor", config.tracker.hudAnchorWorld, path);
+	config.tracker.flatFollowDegrees =
+		ReadFloat("Render", "FlatFollowDegrees", config.tracker.flatFollowDegrees, path);
 	config.tracker.menuShade =
 		ReadBool("Render", "MenuShade", config.tracker.menuShade, path);
 	config.tracker.menuShadeColorRgb =
@@ -649,6 +651,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.laserPitchDegrees = ReadFloat("Hands", "LaserPitchDegrees", h.laserPitchDegrees, path);
 		h.laserYawDegrees = ReadFloat("Hands", "LaserYawDegrees", h.laserYawDegrees, path);
 		h.laserOriginMetres = ReadFloat("Hands", "LaserOriginMetres", h.laserOriginMetres, path);
+		h.laserOffsetRightMetres = ReadFloat("Hands", "LaserRightMetres", h.laserOffsetRightMetres, path);
+		h.laserOffsetUpMetres = ReadFloat("Hands", "LaserUpMetres", h.laserOffsetUpMetres, path);
 		h.laserDragScroll = ReadBool("Hands", "LaserDragScroll", h.laserDragScroll, path);
 		h.laserDot = ReadBool("Hands", "LaserDot", h.laserDot, path);
 		h.aimWithHand = ReadBool("Hands", "AimWithHand", h.aimWithHand, path);
@@ -736,6 +740,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.archery.quiverRadius = ReadFloat("Hands", "QuiverRadius", h.archery.quiverRadius, path);
 		h.archery.nockMetres = ReadFloat("Hands", "NockMetres", h.archery.nockMetres, path);
 		h.archery.drawStartMetres = ReadFloat("Hands", "BowDrawStartMetres", h.archery.drawStartMetres, path);
+		h.archery.unnockMetres = ReadFloat("Hands", "BowUnnockMetres", h.archery.unnockMetres, path);
+		h.archery.takeWithTrigger = !ReadBool("Hands", "ArrowWithGrip", !h.archery.takeWithTrigger, path);
 		h.throwHit.staggerSpeed = ReadFloat("Hands", "ThrowStaggerSpeed", h.throwHit.staggerSpeed, path);
 		h.throwHit.knockSpeed = ReadFloat("Hands", "ThrowKnockSpeed", h.throwHit.knockSpeed, path);
 		h.lead.strangerMetres = ReadFloat("Hands", "LeadStrangerMetres", h.lead.strangerMetres, path);
@@ -786,6 +792,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 			hh.lookFadeSeconds = ReadFloat("HandHud", "LookFadeSeconds", hh.lookFadeSeconds, path);
 			hh.palmLiftMetres = ReadFloat("HandHud", "PalmLiftMetres", hh.palmLiftMetres, path);
 			hh.palmDownMetres = ReadFloat("HandHud", "PalmDownMetres", hh.palmDownMetres, path);
+			hh.offsetRightMetres = ReadFloat("HandHud", "OffsetRightMetres", hh.offsetRightMetres, path);
+			hh.offsetUpMetres = ReadFloat("HandHud", "OffsetUpMetres", hh.offsetUpMetres, path);
 		}
 		h.levitateObjects = ReadBool("Hands", "LevitateObjects", h.levitateObjects, path);
 		h.attachSmallObjects =

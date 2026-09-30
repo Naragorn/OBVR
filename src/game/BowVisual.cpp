@@ -255,21 +255,20 @@ void MeasureString(void* data) {
 	}
 }
 
-void SetString(NiAVObject* bow, vr::StringSource source, const NiPoint3& nock, const NiPoint3& rest) {
-	if (source == vr::StringSource::Engine) {
-		return;
-	}
+// The bow's morpher, measured the first time it is seen; null when the bow
+// has none this code can read.
+void* StringOf(NiAVObject* bow) {
 	NiAVObject* const geometry = FindFirstPersonNode("Bow:0");
 	if (geometry == nullptr || geometry->parent != bow) {
 		Note("no \"Bow:0\" on the bow - the string stays the game's");
-		return;
+		return nullptr;
 	}
 	void* const morpher = MorpherOf(geometry);
 	void* const data = morpher != nullptr ? At<void*>(morpher, kMorpherData) : nullptr;
 	if (morpher == nullptr || !LooksLikeObject(data) || !ClassIs(data, "NiMorphData") ||
 	    At<UInt16>(morpher, kMorpherWeightCount) < 2 || !LooksLikeObject(At<float*>(morpher, kMorpherWeights))) {
 		Note("the bow's string morph not found - the string stays the game's");
-		return;
+		return nullptr;
 	}
 	if (morpher != g_string.morpher || data != g_string.data) {
 		g_string = BowString{};
@@ -283,14 +282,10 @@ void SetString(NiAVObject* bow, vr::StringSource source, const NiPoint3& nock, c
 			         static_cast<double>(g_string.restAlongBow), static_cast<double>(g_string.travelUnits));
 		}
 	}
-	float weight = 0.0f;
-	if (source == vr::StringSource::Hand) {
-		const float scale = bow->worldTransform.scale > 0.0f ? bow->worldTransform.scale : 1.0f;
-		const NiPoint3 stringAtRest{g_string.restAlongBow, 0.0f, 0.0f};
-		const NiPoint3 arrowRest{0.0f, vr::kArrowRestOnBowY, vr::kArrowRestOnBowZ};
-		weight = vr::StringWeightAt(vr::MetresBetween(nock, rest) / scale, vr::MetresBetween(stringAtRest, arrowRest),
-		                            g_string.travelUnits);
-	}
+	return morpher;
+}
+
+void SetStringWeight(void* morpher, float weight) {
 	g_lastWeight = weight;
 	At<float*>(morpher, kMorpherWeights)[1] = weight;
 	At<UInt8>(morpher, kMorpherBlendWanted) = 1;
@@ -298,13 +293,29 @@ void SetString(NiAVObject* bow, vr::StringSource source, const NiPoint3& nock, c
 	reinterpret_cast<BlendFn>(addr::kGeomMorpherBlend)(morpher);
 }
 
+// The drawing hand moved so its grip point lands on `target`: its bone
+// shifted in the world, the grip and fingers riding along ("kann man den nur
+// noch in einer linie ... ziehen").
+void MoveHandTo(const char* boneName, const NiAVObject* grip, const NiPoint3& target) {
+	NiAVObject* const hand = FindFirstPersonNode(boneName);
+	if (hand == nullptr || hand->parent == nullptr) {
+		return;
+	}
+	const NiAVObject* const parent = hand->parent;
+	const float parentScale = parent->worldTransform.scale > 0.0f ? parent->worldTransform.scale : 1.0f;
+	const NiPoint3 shift = target - grip->worldTransform.pos;
+	hand->localTransform.pos = hand->localTransform.pos + InverseRotation(parent->worldTransform.rot) * shift *
+	                                                          (1.0f / parentScale);
+	UpdateNodeTransforms(hand);
+}
+
 }  // namespace
 
 void StepBowVisual(const BowVisualInput& in) {
 	// The arrow hangs on the first-person root, not on the hand's bone: it is
-	// placed in the world each frame from the grip and the bow, so it needs no
-	// bone to carry it, and the root is not what the engine's equipping hangs
-	// weapons on. Its bound is kept in view by the caller, like the hands'.
+	// placed in the world each frame, so it needs no bone to carry it, and the
+	// root is not what the engine's equipping hangs weapons on. Its bound is
+	// kept in view by the caller, like the hands'.
 	NiAVObject* const holder = FirstPersonArmsNode();
 	if (!in.active || holder == nullptr) {
 		DropArrow(holder);
@@ -326,13 +337,55 @@ void StepBowVisual(const BowVisualInput& in) {
 	}
 	arrowBone->flags = static_cast<UInt16>(arrowBone->flags | kAppCulledBit);
 
+	// The bow turned onto the bow hand's laser, turning about its own origin
+	// (the grip): as it sits in the hand from the hand calibration its shot axis
+	// can point anywhere - measured along the left controller's -y, down the
+	// handle, with the tester's calibration (harness 2026-09-30).
+	NiMatrix33 bowWorld{};
+	if (in.bowAimValid && vr::BowFacing(in.bowAim, in.bowUp, bowWorld)) {
+		BonePose turned;
+		turned.rot = bowWorld;
+		turned.pos = bow->worldTransform.pos;
+		Place(bow, turned);
+	}
+	// The bow's shot axis (its model's +x) and the arrow's rest on it.
 	const float bowScale = bow->worldTransform.scale > 0.0f ? bow->worldTransform.scale : 1.0f;
+	NiPoint3 axis = bow->worldTransform.rot * NiPoint3{1.0f, 0.0f, 0.0f};
+	const float axisLength = math::Sqrt(axis.LengthSquared());
+	const bool axisValid = axisLength > 1e-4f;
+	if (axisValid) {
+		axis = axis * (1.0f / axisLength);
+	}
 	const NiPoint3 rest = bow->worldTransform.pos +
 	                      bow->worldTransform.rot * (NiPoint3{0.0f, vr::kArrowRestOnBowY, vr::kArrowRestOnBowZ} * bowScale);
+	void* const morpher = in.arrow == vr::ArrowShown::OnString || in.string != vr::StringSource::Engine
+	                          ? StringOf(bow)
+	                          : nullptr;
+
 	vr::ArrowPose pose;
-	const bool posed = in.arrow != vr::ArrowShown::None && EnsureArrow(holder) &&
-	                   vr::ArrowPoseFor(in.arrow, grip->worldTransform.rot, grip->worldTransform.pos, rest,
-	                                    g_arrow.lengthUnits, pose);
+	vr::ArrowOnString onString;
+	bool posed = false;
+	if (in.arrow != vr::ArrowShown::None && EnsureArrow(holder)) {
+		if (in.arrow == vr::ArrowShown::OnString && axisValid) {
+			posed = vr::ArrowOnBowLine(rest, axis, grip->worldTransform.rot, grip->worldTransform.pos,
+			                           g_arrow.lengthUnits, -g_string.restAlongBow * bowScale,
+			                           g_string.travelUnits * bowScale, onString);
+			if (posed) {
+				pose = onString.pose;
+				// The fist on the string: on the bow's line, no further back than
+				// a full draw.
+				MoveHandTo(in.rightHandBone, grip, onString.gripTarget);
+			}
+		} else if (in.arrow == vr::ArrowShown::InHand) {
+			// Along the hand's laser; without one, along the fist.
+			const NiPoint3 along = grip->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f};
+			posed = in.laserValid
+			            ? vr::ArrowInHand(in.laserStart, in.laserDirection, grip->worldTransform.rot,
+			                              g_arrow.lengthUnits, pose)
+			            : vr::ArrowInHand(grip->worldTransform.pos - along * vr::kArrowNockBehindGripUnits, along,
+			                              grip->worldTransform.rot, g_arrow.lengthUnits, pose);
+		}
+	}
 	if (posed) {
 		BonePose world;
 		world.rot = pose.rot;
@@ -345,35 +398,42 @@ void StepBowVisual(const BowVisualInput& in) {
 	} else {
 		HideArrow();
 	}
+	if (morpher != nullptr && in.string != vr::StringSource::Engine) {
+		SetStringWeight(morpher, in.string == vr::StringSource::Hand && posed && in.arrow == vr::ArrowShown::OnString
+		                             ? onString.weight
+		                             : 0.0f);
+	}
 	const NiPoint3 nock = posed ? pose.nock : grip->worldTransform.pos;
-	SetString(bow, in.string, nock, rest);
-	// Each change of what is shown, and the string's weight as it moves, with
-	// where the nock is: the harness's window pictures do not show the hands
-	// as the eyes do.
+	// Each change of what is shown, the string's weight as it moves, and a
+	// full draw reached, with where the nock is: the harness's window pictures
+	// do not show the hands as the eyes do.
 	static vr::ArrowShown s_shown = vr::ArrowShown::None;
 	static vr::StringSource s_source = vr::StringSource::Engine;
-	static UInt32 s_stateLines = 24;
+	static bool s_full = false;
+	static UInt32 s_stateLines = 32;
 	static float s_loggedWeight = 0.0f;
+	const bool full = posed && in.arrow == vr::ArrowShown::OnString && onString.atFullDraw;
 	const float weightMoved = g_lastWeight - s_loggedWeight;
-	if ((in.arrow != s_shown || in.string != s_source || weightMoved > 0.2f || weightMoved < -0.2f) &&
+	if ((in.arrow != s_shown || in.string != s_source || full != s_full || weightMoved > 0.2f ||
+	     weightMoved < -0.2f) &&
 	    s_stateLines > 0) {
 		--s_stateLines;
 		s_loggedWeight = g_lastWeight;
 		const NiPoint3 bowAt = InverseRotation(bow->worldTransform.rot) * (nock - bow->worldTransform.pos);
-		OBVR_LOG("Bow by hand: the arrow %s, the string %s (weight %.2f) - the nock %.1f %.1f %.1f in the bow's "
-		         "frame, the head %.1f units from the bow's rest",
-		         in.arrow == vr::ArrowShown::InHand     ? "in the hand"
-		         : in.arrow == vr::ArrowShown::OnString ? "on the string"
+		OBVR_LOG("Bow by hand: the arrow %s, the string %s (weight %.2f)%s - the nock %.1f %.1f %.1f in the "
+		         "bow's frame",
+		         in.arrow == vr::ArrowShown::InHand     ? (in.laserValid ? "in the hand along the laser" : "in the hand")
+		         : in.arrow == vr::ArrowShown::OnString ? "on the string along the bow"
 		                                                : "not shown",
 		         in.string == vr::StringSource::Hand   ? "pulled by the hand"
 		         : in.string == vr::StringSource::Rest ? "at rest"
 		                                               : "the game's",
-		         static_cast<double>(g_lastWeight), static_cast<double>(bowAt.x), static_cast<double>(bowAt.y),
-		         static_cast<double>(bowAt.z),
-		         static_cast<double>(posed ? vr::MetresBetween(pose.pos, rest) : -1.0f));
+		         static_cast<double>(g_lastWeight), full ? ", at full draw - stopped" : "",
+		         static_cast<double>(bowAt.x), static_cast<double>(bowAt.y), static_cast<double>(bowAt.z));
 	}
 	s_shown = in.arrow;
 	s_source = in.string;
+	s_full = full;
 }
 
 }  // namespace obvr::game

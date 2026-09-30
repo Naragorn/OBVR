@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Types.h"
+#include "game/NiMath.h"
 #include "render/D3D9Types.h"
 #include "render/GameDevice.h"
 #include "render/InteropBracket.h"
@@ -62,7 +63,8 @@ public:
 	// crosshair, with the tooltip it carries, belongs where the hand points.
 	// Set before Submit; off puts it back on the head.
 	void SetHandPlacement(bool onHand, UInt32 deviceIndex, float pitchDegrees = 0.0f,
-	                      float yawDegrees = 0.0f, float originMetres = 0.0f);
+	                      float yawDegrees = 0.0f, float originMetres = 0.0f,
+	                      const NiPoint3& offset = NiPoint3{0.0f, 0.0f, 0.0f});
 
 	// Hangs the quad at a place in the room instead, at its own width - the
 	// middle of the reach marker's ring, so the icon of what a closed grip
@@ -179,6 +181,7 @@ private:
 	float m_handPitch = 0.0f;
 	float m_handYaw = 0.0f;
 	float m_handOrigin = 0.0f;
+	NiPoint3 m_handOffset{0.0f, 0.0f, 0.0f};
 	float m_placedPitch = 0.0f;
 	float m_placedYaw = 0.0f;
 	float m_placedOrigin = 0.0f;

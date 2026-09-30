@@ -143,6 +143,11 @@ struct HandHudSettings {
 	// at the origin was "zu weit hoch ... dachte ... in der handfläche").
 	float palmDownMetres = 0.05f;
 	float palmLiftMetres = 0.02f;
+	// And moved on the panel itself, as the eyes see it: metres to the right
+	// and up, both hands the same (the tester, 2026-09-30: "die hud an den
+	// händen sind auch noch zu weit oben. man muss x, y einstellen können").
+	float offsetRightMetres = 0.0f;
+	float offsetUpMetres = -0.03f;
 };
 
 // ---- Looking at a hand ------------------------------------------------------
@@ -748,6 +753,15 @@ inline openvr::HmdMatrix34 AlongOwnX(openvr::HmdMatrix34 pose, float sideways) {
 	return pose;
 }
 
+// And along its own x and y: sideways and up on the quad's face.
+inline openvr::HmdMatrix34 AlongOwnXY(openvr::HmdMatrix34 pose, float sideways, float up) {
+	pose = AlongOwnX(pose, sideways);
+	pose.m[0][3] += pose.m[0][1] * up;
+	pose.m[1][3] += pose.m[1][1] * up;
+	pose.m[2][3] += pose.m[2][1] * up;
+	return pose;
+}
+
 // Every element's quad this frame. The elements of one hand stand in a row
 // across its panel in the order of HudElement; the sky's in a row across the
 // compass's place. An element whose hand is not tracked, or with no head
@@ -819,10 +833,12 @@ inline void PlaceHandHud(const HandHudSettings& s, const HandHudFrame& f, HandHu
 						continue;
 					}
 					q.pose = RelativeToDevice(
-						hand.pose, AlongOwnX(PalmPanelPose(hand, q.rightHand, f.head, s.palmLiftMetres, s.palmDownMetres), centres[i]));
+						hand.pose, AlongOwnXY(PalmPanelPose(hand, q.rightHand, f.head, s.palmLiftMetres, s.palmDownMetres),
+					                          centres[i] + s.offsetRightMetres, s.offsetUpMetres));
 					q.alpha = s.element[e].opacity * f.handAlpha[side];
 				} else {
-					q.pose = HandPanelTransform(s.panelUp, s.panelBack, s.panelTiltDegrees, centres[i]);
+					q.pose = AlongOwnXY(HandPanelTransform(s.panelUp, s.panelBack, s.panelTiltDegrees, centres[i]),
+					                    s.offsetRightMetres, s.offsetUpMetres);
 					q.alpha = s.element[e].opacity;
 				}
 			}

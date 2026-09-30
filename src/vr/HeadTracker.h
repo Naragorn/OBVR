@@ -317,6 +317,12 @@ struct TrackerSettings {
 	// recenter key is how it is brought back.
 	bool hudAnchorWorld = false;
 
+	// The flat picture (the main menu, a film, a menu on the cinema screen)
+	// taken along when the head has turned this far from it, or moved half a
+	// metre, for a second (vr/FlatFollow.h). 0 keeps it where it appeared
+	// until the recenter.
+	float flatFollowDegrees = 30.0f;
+
 	// The dressing the held world pair wears while a pause menu is up - the
 	// frames where Oblivion stops redrawing the world, which is also what
 	// keeps all of this out of dialogue, where the world renders on. See

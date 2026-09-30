@@ -6,18 +6,33 @@
 // führen. Beim loslassen Schuss. Zielen im groben mit links mit dem bogen, im
 // feinen mit rechts dem Pfeil").
 //
-// With the bow drawn, the weapon hand's grip closed at the quiver - over the
-// shoulder on its own side - takes an arrow. Brought to the bow hand it is
-// nocked; pulled back from there the engine's own draw begins (its attack
-// control held, the way the trigger held it before); the grip let go looses
-// it (the control let go, as vanilla looses on release). The arrow flies along
-// the line from the drawing hand through the bow hand - the bow sets it
-// roughly, the drawing hand finely.
+// With the bow drawn, the weapon hand's trigger (or grip, ArrowWithGrip)
+// closed at the quiver - over the shoulder on its own side - takes an arrow.
+// Brought to the bow hand it is nocked; pulled back from there along the bow's
+// line the engine's own draw begins (its attack control held, the way the
+// trigger held it before); let go, it looses (the control let go, as vanilla
+// looses on release).
 //
-// The engine still decides the draw's power (the time the control is held)
-// and draws its own arrow on the string; OBVR decides when it is held and
-// which way it flies. An arrow let go before the draw began is dropped: no
-// shot.
+// The tester, 2026-09-30, after the first round: "zielen doch nur noch mit
+// linker hand wo der bogen ist ... wenn man den bogen spannt kann man den nur
+// noch in einer linie wie man mit links zielt ... und wenn man maximale
+// spannung des bogens erreicht hat ist stopp ... man kann den bogen dann
+// entweder loslassen und schiessen oder wieder zurück wie am anfang (inklusive
+// pfeil wegstecken)". So:
+//   * the shot goes where the bow points (its shot axis, measured off the bow
+//     model), the drawing hand no longer steers it; without that axis, the old
+//     line from the drawing hand through the bow;
+//   * the pull is how far the drawing hand is behind the bow along that axis;
+//     the picture keeps the arrow on the axis and stops at full draw
+//     (game/BowVisual);
+//   * the hand brought back to the bow while drawn eases the string: the
+//     engine's draw is cancelled (no shot), the arrow stays nocked; moved off
+//     the line it comes off the string, into the hand; let go at the quiver it
+//     is put back.
+//
+// The engine still decides the draw's power (the time the control is held);
+// OBVR decides when it is held and which way it flies. An arrow let go before
+// the draw began is dropped (or put back, at the quiver): no shot.
 //
 // Positions are the controllers' in tracking space, metres; the quiver's place
 // is in the body's frame (vr::BodyRelative: right, forward, up from the eyes).
@@ -40,7 +55,17 @@ struct ArcherySettings {
 	float nockMetres = 0.15f;
 	// ...and this much further back from there begins the draw.
 	float drawStartMetres = 0.08f;
+	// Nocked, the drawing hand this far off the bow's line takes the arrow
+	// off the string again.
+	float unnockMetres = 0.12f;
+	// Which button holds the arrow: the trigger (the default), or the grip.
+	bool takeWithTrigger = true;
 };
+
+// After an eased draw the engine's control is held this much longer, so the
+// cancel (game::StepBowDenock) is in before the control goes up: let go
+// first, the engine looses (vanilla has no way to take an arrow back).
+constexpr float kDenockHoldSeconds = 0.3f;
 
 enum class ArrowState : UInt8 {
 	None,     // no arrow in the hand
@@ -52,6 +77,7 @@ enum class ArrowState : UInt8 {
 struct ArcheryState {
 	ArrowState state = ArrowState::None;
 	bool gripWas = true;  // a grip closed when the bow comes out is not a take
+	float denockSeconds = 0.0f;  // an eased draw's control still held
 };
 
 struct ArcheryInput {
@@ -61,8 +87,13 @@ struct ArcheryInput {
 	NiPoint3 drawBody{0.0f, 0.0f, 0.0f};  // the drawing hand, BodyRelative
 	NiPoint3 drawAt{0.0f, 0.0f, 0.0f};    // tracking space, metres
 	NiPoint3 bowAt{0.0f, 0.0f, 0.0f};
-	bool drawGrip = false;
+	bool drawGrip = false;    // the button that holds the arrow (the trigger or the grip)
 	bool leftHanded = false;  // the quiver mirrors
+	// The bow's shot axis, tracking space, unit length; without it the pull
+	// is the distance between the hands.
+	bool axisValid = false;
+	NiPoint3 bowAxis{0.0f, 0.0f, -1.0f};
+	float dtSeconds = 0.0f;
 };
 
 struct ArcheryVerdict {
@@ -76,7 +107,14 @@ struct ArcheryVerdict {
 	bool drawStarted = false;
 	bool loosed = false;
 	bool dropped = false;
+	bool eased = false;      // the hand came back while drawn: the draw cancelled
+	bool unnocked = false;   // off the string, back in the hand
+	bool stowed = false;     // let go at the quiver: put back
+	bool denockDone = false; // the eased draw's control goes up this frame
 	float handsApartMetres = 0.0f;
+	float pullMetres = 0.0f;     // behind the bow along its axis
+	float offLineMetres = 0.0f;  // across it
+	NiPoint3 bowAxis{0.0f, 0.0f, 0.0f};  // the axis it went by (zero: none), for the log
 };
 
 inline float MetresBetween(const NiPoint3& a, const NiPoint3& b) {
@@ -90,19 +128,49 @@ inline bool AtQuiver(const ArcherySettings& s, const NiPoint3& drawBody, bool le
 	return d.x * d.x + d.y * d.y + d.z * d.z <= s.quiverRadius * s.quiverRadius;
 }
 
+// How far the drawing hand is behind the bow hand along the bow's axis, and
+// how far across it; without an axis, the whole distance and none across.
+inline void PullAlongBow(const ArcheryInput& in, float& pull, float& across) {
+	const NiPoint3 d{in.bowAt.x - in.drawAt.x, in.bowAt.y - in.drawAt.y, in.bowAt.z - in.drawAt.z};
+	if (!in.axisValid) {
+		pull = math::Sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
+		across = 0.0f;
+		return;
+	}
+	const NiPoint3& a = in.bowAxis;
+	pull = d.x * a.x + d.y * a.y + d.z * a.z;
+	const NiPoint3 side{d.x - a.x * pull, d.y - a.y * pull, d.z - a.z * pull};
+	across = math::Sqrt(side.x * side.x + side.y * side.y + side.z * side.z);
+}
+
 inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, const ArcherySettings& s) {
 	ArcheryVerdict v;
 	const bool press = in.drawGrip && !st.gripWas;
 	st.gripWas = in.drawGrip;
+	// An eased draw's control, held a moment longer (kDenockHoldSeconds).
+	const bool denocking = st.denockSeconds > 0.0f;
+	if (denocking && in.dtSeconds > 0.0f) {
+		st.denockSeconds -= in.dtSeconds;
+		if (st.denockSeconds <= 0.0f) {
+			st.denockSeconds = 0.0f;
+			v.denockDone = true;
+		}
+	}
 	if (!s.enabled || !in.bowDrawn || !in.drawValid || !in.bowValid) {
 		// The bow went, or a hand: the arrow with it. A draw under way is not
 		// loosed - the control simply stops being held.
 		v.dropped = st.state != ArrowState::None;
 		st.state = ArrowState::None;
+		v.denockDone = v.denockDone || st.denockSeconds > 0.0f;
+		st.denockSeconds = 0.0f;
 		v.state = st.state;
 		return v;
 	}
 	v.handsApartMetres = MetresBetween(in.drawAt, in.bowAt);
+	PullAlongBow(in, v.pullMetres, v.offLineMetres);
+	if (in.axisValid) {
+		v.bowAxis = in.bowAxis;
+	}
 	switch (st.state) {
 	case ArrowState::None:
 		if (press && AtQuiver(s, in.drawBody, in.leftHanded)) {
@@ -113,7 +181,11 @@ inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, cons
 	case ArrowState::InHand:
 		if (!in.drawGrip) {
 			st.state = ArrowState::None;
-			v.dropped = true;
+			if (AtQuiver(s, in.drawBody, in.leftHanded)) {
+				v.stowed = true;
+			} else {
+				v.dropped = true;
+			}
 		} else if (v.handsApartMetres <= s.nockMetres) {
 			st.state = ArrowState::Nocked;
 			v.nocked = true;
@@ -123,20 +195,27 @@ inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, cons
 		if (!in.drawGrip) {
 			st.state = ArrowState::None;
 			v.dropped = true;
-		} else if (v.handsApartMetres >= s.nockMetres + s.drawStartMetres) {
+		} else if (v.pullMetres >= s.nockMetres + s.drawStartMetres && st.denockSeconds <= 0.0f) {
 			st.state = ArrowState::Drawing;
 			v.drawStarted = true;
+		} else if (in.axisValid && v.offLineMetres > s.unnockMetres) {
+			st.state = ArrowState::InHand;
+			v.unnocked = true;
 		}
 		break;
 	case ArrowState::Drawing:
 		if (!in.drawGrip) {
 			st.state = ArrowState::None;
 			v.loosed = true;
+		} else if (v.pullMetres <= s.nockMetres) {
+			st.state = ArrowState::Nocked;
+			v.eased = true;
+			st.denockSeconds = kDenockHoldSeconds;
 		}
 		break;
 	}
 	v.state = st.state;
-	v.attackHeld = st.state == ArrowState::Drawing;
+	v.attackHeld = st.state == ArrowState::Drawing || st.denockSeconds > 0.0f;
 	v.claimsGrip = st.state != ArrowState::None || v.took;
 	v.aiming = st.state == ArrowState::Nocked || st.state == ArrowState::Drawing;
 	return v;
@@ -202,10 +281,9 @@ constexpr float kArrowRestOnBowZ = -2.45f;
 // it), so the fletching shows behind the fingers.
 constexpr float kArrowNockBehindGripUnits = 3.0f;
 
-// The string's weight from how far the nock is behind the arrow's rest on the
-// bow: 0 with it no further back than the string at rest, 1 a full draw's
-// travel further. From the distance, not along the bow's own shot axis, so a
-// bow held turned in the hand still shows the pull the hand makes.
+// The string's weight from how far the nock is behind the arrow's rest along
+// the bow's shot axis: 0 with it no further back than the string at rest, 1 a
+// full draw's travel further.
 inline float StringWeightAt(float nockFromRest, float stringFromRest, float travelUnits) {
 	if (!(travelUnits > 0.0f)) {
 		return 0.0f;
@@ -320,35 +398,96 @@ inline NiMatrix33 TurnYOnto(const NiMatrix33& from, const NiPoint3& direction) {
 	return r * from;
 }
 
-// The arrow's pose in the world. `gripRot`/`gripPos` is the drawing fist's
-// grip (the right-hand Weapon node); `rest` the point on the bow the arrow
-// lies across. In the fist the arrow points along the grip, as a sword does,
-// its nock just behind it; on the string it runs from that nock through the
-// rest. `lengthUnits` is the model's head-to-nock length; the model's origin
-// is its head. False when the pose cannot be made (a zero length, the rest on
-// the nock).
+// The bow's world rotation for a shot along `aim`: its model's +x (the shot)
+// along it, its +y (the limbs) along `up` made square to it, +z the rest. False
+// when either is zero or they are parallel.
+inline bool BowFacing(const NiPoint3& aim, const NiPoint3& up, NiMatrix33& out) {
+	const float aimLength = math::Sqrt(aim.x * aim.x + aim.y * aim.y + aim.z * aim.z);
+	if (!(aimLength > 1e-6f)) {
+		return false;
+	}
+	const NiPoint3 x = aim * (1.0f / aimLength);
+	const float along = up.x * x.x + up.y * x.y + up.z * x.z;
+	NiPoint3 y{up.x - x.x * along, up.y - x.y * along, up.z - x.z * along};
+	const float yLength = math::Sqrt(y.x * y.x + y.y * y.y + y.z * y.z);
+	if (!(yLength > 1e-4f)) {
+		return false;
+	}
+	y = y * (1.0f / yLength);
+	const NiPoint3 z{x.y * y.z - x.z * y.y, x.z * y.x - x.x * y.z, x.x * y.y - x.y * y.x};
+	out.data[0][0] = x.x;
+	out.data[1][0] = x.y;
+	out.data[2][0] = x.z;
+	out.data[0][1] = y.x;
+	out.data[1][1] = y.y;
+	out.data[2][1] = y.z;
+	out.data[0][2] = z.x;
+	out.data[1][2] = z.y;
+	out.data[2][2] = z.z;
+	return true;
+}
+
+// The arrow's pose in the world; the model's origin is its head, its nock
+// `lengthUnits` back along -y.
 struct ArrowPose {
 	NiMatrix33 rot = NiMatrix33::Identity();
 	NiPoint3 pos{0.0f, 0.0f, 0.0f};  // the head: the model's origin
 	NiPoint3 nock{0.0f, 0.0f, 0.0f};
 };
 
-inline bool ArrowPoseFor(ArrowShown shown, const NiMatrix33& gripRot, const NiPoint3& gripPos,
-                         const NiPoint3& rest, float lengthUnits, ArrowPose& out) {
-	if (shown == ArrowShown::None || !(lengthUnits > 0.0f)) {
+// In the fist: along the hand's laser, from where the beam starts, pointing
+// where it points (the tester, 2026-09-30: "der pfeil muss nicht wie jetzt
+// nach oben zeigen sondern in die selbe richtung wie der laserpointer ...
+// dann den pfeil genau so ausrichten wie den laserpointer"). `rollFrom` keeps
+// the fist's roll. False for a model with no length or no direction.
+inline bool ArrowInHand(const NiPoint3& laserStart, const NiPoint3& laserDirection, const NiMatrix33& rollFrom,
+                        float lengthUnits, ArrowPose& out) {
+	const float d = laserDirection.x * laserDirection.x + laserDirection.y * laserDirection.y +
+	                laserDirection.z * laserDirection.z;
+	if (!(lengthUnits > 0.0f) || !(d > 1e-6f)) {
 		return false;
 	}
-	const NiPoint3 along = gripRot * NiPoint3{0.0f, 1.0f, 0.0f};
-	out.nock = gripPos - along * kArrowNockBehindGripUnits;
-	out.rot = gripRot;
-	if (shown == ArrowShown::OnString) {
-		NiPoint3 direction{};
-		if (!ArrowLine(out.nock, rest, direction)) {
-			return false;
-		}
-		out.rot = TurnYOnto(gripRot, direction);
+	const NiPoint3 unit = laserDirection * (1.0f / math::Sqrt(d));
+	out.nock = laserStart;
+	out.rot = TurnYOnto(rollFrom, unit);
+	out.pos = laserStart + unit * lengthUnits;
+	return true;
+}
+
+// On the string: along the bow's shot axis through the arrow's rest, the nock
+// as far behind the rest as the drawing fist is - but no nearer than the
+// string at rest and no further than a full draw ("wenn man maximale spannung
+// des bogens erreicht hat ist stopp"). `stringRestUnits` is the string's rest
+// behind the arrow's rest along the axis, `travelUnits` a full draw's travel
+// (both read from the bow's morph). The fist is to go where the nock's grip
+// point is (`gripTarget`), so the hand stays on the string; `weight` is the
+// string's morph weight. False for a model with no length.
+struct ArrowOnString {
+	ArrowPose pose;
+	NiPoint3 gripTarget{0.0f, 0.0f, 0.0f};
+	float nockBehindRest = 0.0f;
+	float weight = 0.0f;
+	bool atFullDraw = false;
+};
+
+inline bool ArrowOnBowLine(const NiPoint3& rest, const NiPoint3& axis, const NiMatrix33& gripRot,
+                           const NiPoint3& gripPos, float lengthUnits, float stringRestUnits, float travelUnits,
+                           ArrowOnString& out) {
+	if (!(lengthUnits > 0.0f)) {
+		return false;
 	}
-	out.pos = out.nock + (out.rot * NiPoint3{0.0f, 1.0f, 0.0f}) * lengthUnits;
+	const NiPoint3 d{rest.x - gripPos.x, rest.y - gripPos.y, rest.z - gripPos.z};
+	const float behind = d.x * axis.x + d.y * axis.y + d.z * axis.z + kArrowNockBehindGripUnits;
+	const float full = stringRestUnits + (travelUnits > 0.0f ? travelUnits : 0.0f);
+	float nockBehind = behind < stringRestUnits ? stringRestUnits : behind;
+	out.atFullDraw = behind >= full;
+	nockBehind = nockBehind > full ? full : nockBehind;
+	out.nockBehindRest = nockBehind;
+	out.pose.nock = rest - axis * nockBehind;
+	out.pose.rot = TurnYOnto(gripRot, axis);
+	out.pose.pos = out.pose.nock + axis * lengthUnits;
+	out.gripTarget = out.pose.nock + axis * kArrowNockBehindGripUnits;
+	out.weight = StringWeightAt(nockBehind, stringRestUnits, travelUnits);
 	return true;
 }
 

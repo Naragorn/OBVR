@@ -417,20 +417,46 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		}
 		ain.drawAt = cr.position;
 		ain.bowAt = cl.position;
-		ain.drawGrip = cr.valid && GripDown(cr.buttonsPressed);
+		// The arrow is held by the trigger (the default) or by the grip
+		// (Hands.ArrowWithGrip); that button is the arrow's from the take on.
+		ain.drawGrip = s.archery.takeWithTrigger ? in.rightTrigger : (cr.valid && GripDown(cr.buttonsPressed));
 		ain.leftHanded = s.leftHanded;
+		ain.dtSeconds = f.dtSeconds;
+		// Where the bow points: along the bow hand's laser - the bow itself is
+		// turned onto it (game::StepBowVisual), so the arrow, the bow and the
+		// shot agree.
+		if (cl.valid) {
+			const NiPoint3 axis =
+				TrackingRotate(cl.orientation, LaserDirectionLocal(s.laserPitchDegrees, -s.laserYawDegrees));
+			const float length = math::Sqrt(axis.LengthSquared());
+			if (length > 1e-4f) {
+				ain.axisValid = true;
+				ain.bowAxis = axis * (1.0f / length);
+			}
+		}
 		r.archery = StepArchery(m_archery, ain, s.archery);
-		in.rightGrip = in.rightGrip && !r.archery.claimsGrip;
-		// The shot along the arrow: from the drawing hand through the bow.
+		if (s.archery.takeWithTrigger) {
+			in.rightTrigger = in.rightTrigger && !r.archery.claimsGrip;
+		} else {
+			in.rightGrip = in.rightGrip && !r.archery.claimsGrip;
+		}
+		// The shot: where the bow points (the tester, 2026-09-30: "zielen doch
+		// nur noch mit linker hand wo der bogen ist"); without the bow's axis,
+		// along the arrow from the drawing hand through the bow.
 		NiPoint3 line{};
-		if (r.archery.aiming && ArrowLine(cr.position, cl.position, line)) {
+		if (r.archery.aiming && ain.axisValid) {
+			r.arrowOrigin = cl.position;
+			r.arrowDirection = ain.bowAxis;
+			r.arrowAimValid = ReachDirection(OffsetFromPose(f.head, f.headPosition + ain.bowAxis, f.headPosition, 1.0f),
+			                                 ain.bowAxis, r.arrowYawTurn, r.arrowSinPitch);
+		} else if (r.archery.aiming && ArrowLine(cr.position, cl.position, line)) {
 			r.arrowOrigin = cl.position;
 			r.arrowDirection = line;
 			r.arrowAimValid = ReachDirection(leftRelative - rightRelative, cl.position - cr.position, r.arrowYawTurn,
 			                                 r.arrowSinPitch);
-			if (r.arrowAimValid) {
-				m_lastArrow = ArrowAimKept{true, r.arrowYawTurn, r.arrowSinPitch, r.arrowOrigin, r.arrowDirection};
-			}
+		}
+		if (r.arrowAimValid) {
+			m_lastArrow = ArrowAimKept{true, r.arrowYawTurn, r.arrowSinPitch, r.arrowOrigin, r.arrowDirection};
 		}
 		// The loosed arrow still flies along its line (vr::StepArrowAimHold).
 		if (StepArrowAimHold(m_arrowHold, r.arrowAimValid, r.archery.loosed, f.dtSeconds) &&
@@ -589,6 +615,7 @@ StickChordVerdict HandMode::StepChord(const HandModeFrame& f, HandModeResult& r)
 		m_sticks, f.right.valid && StickClickDown(f.right.buttonsPressed),
 		f.left.valid && StickClickDown(f.left.buttonsPressed), f.dtSeconds);
 	r.settingsMenuToggle = sticks.both;
+	r.recentreChord = sticks.recentre;
 	return sticks;
 }
 
@@ -628,7 +655,11 @@ void HandMode::SteerSettingsMenu(const HandModeFrame& f, const HandSettings& s,
 	    f.settingsPixelsHeight > 0.0f) {
 		const NiPoint3 pointing =
 			TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees, pointRight ? s.laserYawDegrees : -s.laserYawDegrees));
-		const NiPoint3 origin = pointHand->position + pointing * s.laserOriginMetres;
+		const NiPoint3 origin =
+			pointHand->position +
+			TrackingRotate(pointHand->orientation,
+			               LaserOffsetLocal(s.laserOffsetRightMetres, s.laserOffsetUpMetres, !pointRight)) +
+			pointing * s.laserOriginMetres;
 		const LaserHit hit = LaserOnQuad(origin, pointing, f.settingsQuad.centre,
 		                                 f.settingsQuad.right, f.settingsQuad.up,
 		                                 f.settingsQuad.width, f.settingsQuad.height,
@@ -770,7 +801,11 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 	    f.layerPixelsWidth > 0.0f && f.layerPixelsHeight > 0.0f) {
 		const NiPoint3 pointing =
 			TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees, pointRight ? s.laserYawDegrees : -s.laserYawDegrees));
-		const NiPoint3 origin = pointHand->position + pointing * s.laserOriginMetres;
+		const NiPoint3 origin =
+			pointHand->position +
+			TrackingRotate(pointHand->orientation,
+			               LaserOffsetLocal(s.laserOffsetRightMetres, s.laserOffsetUpMetres, !pointRight)) +
+			pointing * s.laserOriginMetres;
 		const NiPoint3 tip = pointHand->position + pointing * s.pokeTipForward;
 		const PokeSample sample = PokeOnQuad(tip, quad.centre, quad.right, quad.up, quad.width,
 		                                     quad.height, f.layerPixelsWidth, f.layerPixelsHeight);
@@ -818,7 +853,11 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 		m_poke = PokeState{};
 		const NiPoint3 pointing =
 			TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees, pointRight ? s.laserYawDegrees : -s.laserYawDegrees));
-		const NiPoint3 origin = pointHand->position + pointing * s.laserOriginMetres;
+		const NiPoint3 origin =
+			pointHand->position +
+			TrackingRotate(pointHand->orientation,
+			               LaserOffsetLocal(s.laserOffsetRightMetres, s.laserOffsetUpMetres, !pointRight)) +
+			pointing * s.laserOriginMetres;
 		const FlatLaserHit hit = LaserOnFlatPicture(origin, pointing, f.headPosition,
 		                                            f.flat, kFlatLaserPlaneMetres);
 		laserPath = true;

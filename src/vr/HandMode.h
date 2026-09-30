@@ -236,6 +236,10 @@ struct HandSettings {
 	float laserPitchDegrees = 40.0f;
 	float laserYawDegrees = 5.0f;
 	float laserOriginMetres = -0.04f;
+	// And beside the controller: metres to the right and up in its own frame,
+	// the right mirrored on the left hand (vr::LaserOffsetLocal).
+	float laserOffsetRightMetres = -0.01f;
+	float laserOffsetUpMetres = -0.02f;
 	// The laser's trigger as a finger on a touch screen: click on release,
 	// drag to scroll - see StepLaserPress. Off, it clicks on the pull.
 	bool laserDragScroll = true;
@@ -484,9 +488,12 @@ struct HandModeResult {
 	// The mouse wheel in a menu, in notches this frame: up positive.
 	int menuScroll = 0;
 
-	// OBVR's own menu: both sticks clicked together toggle it, and while it
-	// is open the sticks are its arrow keys.
+	// OBVR's own menu: both sticks clicked together and let go toggle it, and
+	// while it is open the sticks are its arrow keys.
 	bool settingsMenuToggle = false;
+	// Both sticks held in for kStickRecentreHoldSeconds: the recenter, as the
+	// recenter key (the frame the hold is reached).
+	bool recentreChord = false;
 	StickNavVerdict settingsNav;
 	// The laser on OBVR's own panel: the canvas pixel it points at, and
 	// the pointing hand's trigger pulled on it - a click on that row, which

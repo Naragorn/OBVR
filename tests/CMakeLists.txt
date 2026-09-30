@@ -1213,3 +1213,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME archery COMMAND archery_test)
+
+add_executable(flat_follow_test FlatFollowTest.cpp)
+
+target_include_directories(flat_follow_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(flat_follow_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME flat_follow COMMAND flat_follow_test)

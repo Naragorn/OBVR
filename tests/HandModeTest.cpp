@@ -16,6 +16,17 @@ namespace {
 using namespace obvr::vr;
 using obvr::NiPoint3;
 
+// The settings with the laser starting at the controller's origin, as the
+// checks below were written: the start beside it (LaserOffsetLocal) has its
+// own checks in laser_geometry_test.
+HandSettings WithoutLaserOffset() {
+	HandSettings s;
+	s.laserOffsetRightMetres = 0.0f;
+	s.laserOffsetUpMetres = 0.0f;
+	return s;
+}
+
+
 int g_failures = 0;
 
 void Check(bool condition, const char* what) {
@@ -329,7 +340,7 @@ void TestGamepadPlanner() {
 
 	// The gamepad in the world through the mode itself: the tapped buttons
 	// are edges, held ones are held, the stick chord still opens OBVR's menu.
-	HandSettings settings;
+	HandSettings settings = WithoutLaserOffset();
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
@@ -363,17 +374,18 @@ void TestGamepadPlanner() {
 	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
 	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
 	r = mode.Update(frame, settings);
-	Check(r.settingsMenuToggle && !r.controls.togglePov && !r.controls.sneak,
-	      "both sticks together: OBVR's menu, no view switch, no sneak");
+	Check(!r.settingsMenuToggle && !r.controls.togglePov && !r.controls.sneak,
+	      "both sticks together: no view switch, no sneak, the menu waits for the release");
 	frame.right.buttonsPressed = 0;
 	frame.left.buttonsPressed = 0;
 	r = mode.Update(frame, settings);
-	Check(!r.controls.togglePov && !r.controls.sneak, "and their release fires nothing");
+	Check(r.settingsMenuToggle && !r.controls.togglePov && !r.controls.sneak,
+	      "their release: OBVR's menu, and nothing else");
 }
 
 void TestStrikeByMotion() {
 	std::printf("The swing for the strikes by motion\n");
-	HandSettings settings;
+	HandSettings settings = WithoutLaserOffset();
 	// A power attack from 3.5 cm travelled: the frames below move the hand a
 	// few centimetres at a time.
 	settings.gestures.powerSwingMetres = 0.035f;
@@ -580,18 +592,53 @@ void TestStickChord() {
 
 	v = StepStickChord(s, true, false);
 	v = StepStickChord(s, true, true);
-	Check(v.both && !v.rightClick && !v.leftClick, "the left joining the right is the chord");
+	Check(!v.both && !v.rightClick && !v.leftClick, "the left joining the right is the chord - it waits");
 	v = StepStickChord(s, true, true);
-	Check(!v.both, "held together it fires once");
+	Check(!v.both, "held together: still nothing");
 	v = StepStickChord(s, true, false);
-	Check(!v.leftClick && !v.both, "the left releasing after a chord is no click");
+	Check(!v.leftClick && !v.both, "the left releasing after a chord is no click, and not the menu yet");
 	v = StepStickChord(s, false, false);
-	Check(!v.rightClick && !v.both, "nor is the right");
+	Check(!v.rightClick && v.both && !v.recentre, "the right let go too: OBVR's menu, once");
+	v = StepStickChord(s, false, false);
+	Check(!v.both, "and only once");
 	v = StepStickChord(s, true, true);
+	v = StepStickChord(s, false, false);
 	Check(v.both, "and both down again from nothing is a chord again");
 	v = StepStickChord(s, false, false);
-	v = StepStickChord(s, false, false);
 	Check(!v.rightClick && !v.leftClick && !v.both, "nothing down, nothing fires");
+
+	// Held three seconds: a recentre, and then no menu.
+	StickChordState h;
+	StepStickChord(h, true, true, 0.011f);
+	bool recentred = false;
+	int recentres = 0;
+	for (int i = 0; i < 300; ++i) {  // 3.3 s
+		v = StepStickChord(h, true, true, 0.011f);
+		recentred = recentred || v.recentre;
+		recentres += v.recentre ? 1 : 0;
+		if (i == 200) {
+			Check(!recentred, "2.2 s held: no recentre yet");
+		}
+	}
+	Check(recentred && recentres == 1, "3 s held: the recentre, once");
+	v = StepStickChord(h, false, false, 0.011f);
+	Check(!v.both && !v.rightClick && !v.leftClick, "let go after it: no menu, no click");
+	StepStickChord(h, true, true, 0.011f);
+	v = StepStickChord(h, false, false, 0.011f);
+	Check(v.both && !v.recentre, "the next short chord is the menu again");
+	// One stick let go before the three seconds: the time stops counting.
+	StickChordState part;
+	StepStickChord(part, true, true, 0.011f);
+	for (int i = 0; i < 200; ++i) {
+		StepStickChord(part, true, true, 0.011f);
+	}
+	bool partRecentred = false;
+	for (int i = 0; i < 200; ++i) {
+		v = StepStickChord(part, true, false, 0.011f);
+		partRecentred = partRecentred || v.recentre;
+	}
+	v = StepStickChord(part, false, false, 0.011f);
+	Check(!partRecentred && v.both && !v.recentre, "one stick let go at 2.2 s: no recentre, the menu on the release");
 }
 
 void TestStickNav() {
@@ -613,7 +660,7 @@ void TestStickNav() {
 
 void TestMenuHandAndSettingsMenu() {
 	std::printf("Menu hand and OBVR's menu\n");
-	HandSettings settings;
+	HandSettings settings = WithoutLaserOffset();
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
@@ -654,12 +701,12 @@ void TestMenuHandAndSettingsMenu() {
 	      "one stick down: no toggle, and its own click waits");
 	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
 	r = mode.Update(frame, settings);
-	Check(r.settingsMenuToggle, "both down: the toggle");
+	Check(!r.settingsMenuToggle, "both down: the chord, waiting for its release");
 	frame.right.buttonsPressed = 0;
 	frame.left.buttonsPressed = 0;
 	r = mode.Update(frame, settings);
-	Check(!r.settingsMenuToggle && !r.controls.readyWeapon && !r.controls.quickMenu,
-	      "released after a chord: nothing else fires");
+	Check(r.settingsMenuToggle && !r.controls.readyWeapon && !r.controls.quickMenu,
+	      "released: the toggle, and nothing else fires");
 
 	frame.settingsMenuOpen = true;
 	frame.left.thumbY = 0.9f;
@@ -699,7 +746,7 @@ HandModeFrame BigQuadFrame() {
 
 void TestLaserOnBigQuad() {
 	std::printf("The laser on the big quad\n");
-	HandSettings settings;
+	HandSettings settings = WithoutLaserOffset();
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
@@ -774,7 +821,7 @@ void TestLaserOnBigQuad() {
 
 void TestMenusOnly() {
 	std::printf("The mode off, the controllers on the menus\n");
-	HandSettings settings;
+	HandSettings settings = WithoutLaserOffset();
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
@@ -822,9 +869,10 @@ void TestMenusOnly() {
 	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
 	frame.left.thumbY = 0.0f;
 	r = mode.Update(frame, settings);
-	Check(r.settingsMenuToggle, "both sticks clicked: the toggle");
 	frame.right.buttonsPressed = 0;
 	frame.left.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(r.settingsMenuToggle, "both sticks clicked and let go: the toggle");
 	frame.settingsMenuOpen = true;
 	frame.right.trigger = 0.0f;
 	r = mode.Update(frame, settings);
@@ -860,7 +908,7 @@ void TestMenusOnly() {
 
 void TestHandPoses() {
 	std::printf("Hand poses for the bone pin\n");
-	HandSettings settings;
+	HandSettings settings = WithoutLaserOffset();
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
@@ -940,7 +988,7 @@ HandModeFrame MainMenuFrame() {
 
 void TestMainMenuLaser() {
 	std::printf("The laser on the main menu's cinema screen, and the hand that holds it\n");
-	HandSettings settings;
+	HandSettings settings = WithoutLaserOffset();
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
@@ -1050,7 +1098,7 @@ void TestMainMenuLaser() {
 
 void TestLaserOnOwnPanel() {
 	std::printf("The laser on OBVR's own panel\n");
-	HandSettings settings;
+	HandSettings settings = WithoutLaserOffset();
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
@@ -1156,7 +1204,7 @@ void TestLaserOnOwnPanel() {
 
 void TestGrabHand() {
 	std::printf("The grab follows the hand whose grip holds it\n");
-	HandSettings settings;
+	HandSettings settings = WithoutLaserOffset();
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
@@ -1224,7 +1272,7 @@ void TestGrabHand() {
 
 void TestBowByHand() {
 	std::printf("The bow by hand, through the mode\n");
-	HandSettings settings;
+	HandSettings settings = WithoutLaserOffset();
 	settings.enabled = true;
 	HandModeFrame frame;
 	frame.headValid = true;
@@ -1238,6 +1286,7 @@ void TestBowByHand() {
 	frame.left.valid = true;
 	// The bow ahead of the eyes; tracking axes x right, y up, z back.
 	frame.left.position = NiPoint3{-0.1f, -0.2f, -0.5f};
+	settings.archery.takeWithTrigger = false;  // this part: the grip holds the arrow
 	const ArcherySettings& a = settings.archery;
 	const NiPoint3 quiver{a.quiverZone.x, a.quiverZone.z, -a.quiverZone.y};
 	const UInt64 grip = 1ull << openvr::kButtonIndexGrip;
@@ -1257,8 +1306,10 @@ void TestBowByHand() {
 	frame.right.position = NiPoint3{-0.1f, -0.2f, -0.4f};
 	r = mode.Update(frame, settings);
 	Check(r.archery.nocked && r.arrowAimValid && !r.controls.attack, "at the bow: nocked, aimed along it, not drawn");
-	Check(r.arrowDirection.z < -0.99f, "the arrow's line from the drawing hand through the bow");
-	frame.right.position = NiPoint3{-0.1f, -0.2f, -0.2f};
+	const NiPoint3 gripBowLaser = LaserDirectionLocal(settings.laserPitchDegrees, -settings.laserYawDegrees);
+	Check(Near(r.arrowDirection.z, gripBowLaser.z) && Near(r.arrowDirection.y, gripBowLaser.y),
+	      "the shot along the bow hand's laser");
+	frame.right.position = frame.left.position - gripBowLaser * 0.3f;
 	r = mode.Update(frame, settings);
 	Check(r.controls.attack && r.archery.drawStarted, "pulled back: the engine's draw");
 	frame.right.buttonsPressed = 0;
@@ -1276,11 +1327,52 @@ void TestBowByHand() {
 	frame.right.trigger = 1.0f;
 	r = vanilla.Update(frame, off);
 	Check(r.controls.attack, "bow by hand off: the trigger draws as before");
+
+	// The default: the trigger holds the arrow, and the bow aims - along its
+	// hand's laser (the bow is turned onto it), here with the controller
+	// untilted: 40 down, 5 to the right.
+	HandSettings byTrigger = WithoutLaserOffset();
+	byTrigger.enabled = true;
+	HandMode aimed;
+	frame.right.trigger = 0.0f;
+	frame.right.buttonsPressed = 0;
+	const NiPoint3 bowLaser = LaserDirectionLocal(byTrigger.laserPitchDegrees, -byTrigger.laserYawDegrees);
+	frame.right.position = quiver;
+	aimed.Update(frame, byTrigger);
+	frame.right.trigger = 1.0f;
+	r = aimed.Update(frame, byTrigger);
+	Check(r.archery.took && !r.controls.attack, "the trigger at the quiver: an arrow, no attack");
+	frame.right.buttonsPressed = grip;
+	r = aimed.Update(frame, byTrigger);
+	Check(r.archery.state == ArrowState::InHand, "and the grip does nothing to it");
+	frame.right.buttonsPressed = 0;
+	frame.right.position = NiPoint3{-0.1f, -0.2f, -0.4f};
+	r = aimed.Update(frame, byTrigger);
+	Check(r.archery.nocked && r.arrowAimValid, "at the bow: nocked and aimed");
+	Check(Near(r.arrowDirection.x, bowLaser.x) && Near(r.arrowDirection.y, bowLaser.y) &&
+	          Near(r.arrowDirection.z, bowLaser.z) && r.arrowYawTurn < 0.0f && r.arrowSinPitch < -0.6f,
+	      "along the bow hand's laser, down and a little right - not from the drawing hand");
+	// Pulled back along the bow: 0.30 behind it.
+	frame.right.position = frame.left.position - bowLaser * 0.3f;
+	r = aimed.Update(frame, byTrigger);
+	Check(r.archery.drawStarted && r.controls.attack && Near(r.arrowDirection.x, bowLaser.x),
+	      "pulled back along the bow: drawn, still aimed where the bow points");
+	frame.right.position = frame.left.position - bowLaser * 0.05f;
+	r = aimed.Update(frame, byTrigger);
+	Check(r.archery.eased && r.controls.attack && r.archery.state == ArrowState::Nocked,
+	      "brought back to the bow: eased, the control held for the cancel");
+	for (int i = 0; i < 40 && r.controls.attack; ++i) {
+		r = aimed.Update(frame, byTrigger);
+	}
+	Check(!r.controls.attack && r.archery.state == ArrowState::Nocked, "then let go, the arrow still on the string");
+	frame.right.trigger = 0.0f;
+	r = aimed.Update(frame, byTrigger);
+	Check(r.archery.dropped && !r.archery.loosed && !r.controls.attack, "the trigger let go on the string, undrawn: no shot");
 }
 
 void TestHolsterInMode() {
 	std::printf("Drawing by reaching, through the mode\n");
-	HandSettings settings;
+	HandSettings settings = WithoutLaserOffset();
 	settings.enabled = true;
 	HandModeFrame frame;
 	frame.headValid = true;
@@ -1327,7 +1419,7 @@ void TestHolsterInMode() {
 
 void TestFistInMode() {
 	std::printf("Fists by making a fist, through the mode\n");
-	HandSettings settings;
+	HandSettings settings = WithoutLaserOffset();
 	settings.enabled = true;
 	settings.motionHits = true;
 	HandModeFrame frame;
@@ -1366,7 +1458,7 @@ void TestFistInMode() {
 
 void TestLeftButtonsInHandMode() {
 	std::printf("The left hand's buttons in the hand-tracked mode\n");
-	HandSettings settings;
+	HandSettings settings = WithoutLaserOffset();
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
@@ -1554,7 +1646,7 @@ void TestLaserTilt() {
 	// On the big quad: a hand level with the quad's centre, held so that its
 	// tracked forward points 60 degrees ABOVE the quad, hits the centre
 	// once the laser is tilted down by 60.
-	HandSettings settings;
+	HandSettings settings = WithoutLaserOffset();
 	settings.laserPitchDegrees = 60.0f;
 	HandModeFrame frame = BigQuadFrame();
 	frame.menusOnly = true;
@@ -1607,7 +1699,7 @@ void TestLaserPress() {
 	Check(!v.mouseDown, "pulled on it, let go off it: no click");
 
 	// Through the mode: a pull is no click until it is let go.
-	HandSettings settings;
+	HandSettings settings = WithoutLaserOffset();
 	settings.enabled = false;
 	settings.laserPitchDegrees = 0.0f;
 	settings.laserYawDegrees = 0.0f;
@@ -1817,7 +1909,7 @@ void TestLeftHandedMirror() {
 	      "swapped: the right role hangs on the left controller");
 
 	// The whole mode on swapped roles: the left controller's trigger attacks.
-	HandSettings settings;
+	HandSettings settings = WithoutLaserOffset();
 	settings.enabled = true;
 	settings.motionHits = false;
 	HandModeFrame frame;
@@ -1854,7 +1946,7 @@ void TestWeaponGuard() {
 	Check(IsWeaponGuard(raised, NiPoint3{0.8f, 0.2f, -0.45f}, false, t),
 	      "either way across, a little tilted: a guard");
 
-	HandSettings settings;
+	HandSettings settings = WithoutLaserOffset();
 	settings.enabled = true;
 	HandModeFrame frame;
 	frame.headValid = true;
@@ -2118,9 +2210,9 @@ void TestChordWindow() {
 	v = StepStickChord(s, false, true, 0.011f);
 	v = StepStickChord(s, false, true, 0.011f);
 	v = StepStickChord(s, true, true, 0.011f);
-	Check(v.both, "the right a couple of frames after the left: the chord");
 	v = StepStickChord(s, false, false, 0.011f);
-	Check(!v.rightClick && !v.leftClick, "and no clicks after it");
+	Check(v.both && !v.rightClick && !v.leftClick,
+	      "the right a couple of frames after the left: the chord on the release, no clicks");
 }
 
 void TestLegacyButtons() {
