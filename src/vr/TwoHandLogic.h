@@ -46,13 +46,16 @@ struct TwoHandSettings {
 	// not be measured, at most behindUnits.
 	float behindUnits = 25.0f;
 	float minUnits = 5.0f;
-	// The hands this much further apart or closer than when it took hold: let go.
+	// The hand this far from the handle while holding it: let go.
 	float slackUnits = 30.0f;
 	// The handle measured from the weapon's model: the left palm stays this far
 	// inside its pommel end (half a hand), and a grip up to overhangUnits past
-	// the end still takes the handle (it is put on the end).
+	// the end still takes the handle (it is put on the end). A hand's width:
+	// two controllers sit no closer than that, so on a one-hander's short
+	// handle the left controller closes past the pommel (the harness,
+	// 2026-09-30: 13 units down against a pommel 9.5 down).
 	float endInsetUnits = 3.0f;
-	float overhangUnits = 6.0f;
+	float overhangUnits = 10.0f;
 	// How long the hand takes from the controller to the handle, and back.
 	// 0: at once.
 	float blendSeconds = 0.2f;
@@ -64,6 +67,16 @@ struct TwoHandSettings {
 	// preshapeNearUnits. 0: off.
 	float preshapeUnits = 18.0f;
 	float preshapeNearUnits = 3.0f;
+	// A grip reading open for less than this does not let go (TwoHandHolds).
+	float releaseSeconds = 0.12f;
+	// One-handers can be held with both hands too (the tester, 2026-09-30:
+	// "ist es möglich den 2 hand auf auf einhänder zu haben?").
+	bool oneHanders = true;
+	// While held, the hand slides along the handle with its controller (the
+	// tester, 2026-09-30: "bisher ist die linke hand ja immer an einer
+	// bestimmten position am griff. ist es möglich diesen auch abhängig vom
+	// left conrtoller zu haben?"); off, it stays where it took hold.
+	bool slide = true;
 };
 
 // The way from the controller to the handle, 0 to 1: up while held, down
@@ -120,6 +133,31 @@ struct VanillaGrip {
 	float Below() const { return leftPalmAxial - rightPalmAxial; }
 };
 
+// The same grip read from the game's files: _1stperson\twohandidle.kf's
+// first key, the arm chains and the Weapon node composed with pyffi
+// (2026-09-30). Its palm 7.0 below the right one is what the game showed
+// live every time (the log's "the game's own hand at 7.0"), which is the
+// check that the file was read the way the engine reads it. Used until the
+// animation has been read this session - and for one-handers, whose own
+// animation keeps the left hand at the side: the Weapon node hangs on the
+// right hand the same way for both (its key 6.17 1.99 0.76 in onehandidle.kf
+// and twohandidle.kf alike).
+inline VanillaGrip GameGripFromFiles() {
+	VanillaGrip g;
+	g.valid = true;
+	const float rot[3][3] = {{0.152203f, -0.98826f, 0.013307f}, {-0.00173f, -0.01373f, -0.999904f}, {0.988348f, 0.152165f, -0.0038f}};
+	for (int r = 0; r < 3; ++r) {
+		for (int c = 0; c < 3; ++c) {
+			g.rot.data[r][c] = rot[r][c];
+		}
+	}
+	g.pos = NiPoint3{1.461f, -8.339f, -6.645f};
+	g.leftPalmAxial = -7.888f;
+	g.rightPalmAxial = -0.881f;
+	g.leftPalmLateral = 3.83f;
+	return g;
+}
+
 // How close to the weapon's axis the game's own left palm has to be for its
 // pose to count as holding the handle - a fist's half-width and a little.
 // Not [Hands] TwoHandReachUnits (how close the player's hand has to come):
@@ -158,9 +196,10 @@ inline VanillaGrip VanillaGripFrom(const NiMatrix33& weaponRot, const NiPoint3& 
 // (AxialExtentOf) and inset, to where the game's own left hand holds it -
 // right under the right hand (the tester, 2026-09-30: "wenn wir irgendwo
 // andocken können müssen wir aufpassen das es zum griff der klinge passt ...
-// und ich nicht irgendwo in der luft dann halte"). Invalid when the model was
-// not measured or the handle has no room below the game's own left hand: the
-// hand is then put where the game has it.
+// und ich nicht irgendwo in der luft dann halte"). A handle with no room below
+// the game's own left hand - a one-hander's - is the one place at its pommel
+// end: the left hand cups the pommel. Invalid when the model was not measured:
+// the hand is then put where the game has it.
 struct HandleSpan {
 	bool valid = false;
 	float low = 0.0f;   // the pommel end, inset
@@ -173,8 +212,8 @@ inline HandleSpan HandleSpanFor(const TwoHandSettings& s, bool measured, float p
 		return h;
 	}
 	h.low = pommelAxial + s.endInsetUnits;
-	h.high = highestAxial;
-	h.valid = h.high >= h.low;
+	h.high = highestAxial < h.low ? h.low : highestAxial;
+	h.valid = true;
 	return h;
 }
 
@@ -192,6 +231,7 @@ struct TwoHandState {
 	bool active = false;
 	float distance = 0.0f;    // between the controllers when it took hold
 	float handAxial = 0.0f;   // where the left palm is put, from the right palm
+	float openSeconds = 0.0f;  // how long the grip has been open while held
 };
 
 // Whether the left grip, closing now at `axial` along the weapon from the
@@ -225,18 +265,37 @@ inline void StartTwoHand(TwoHandState& t, float axial, float handAxial) {
 
 // Whether it still holds this frame; ends it when not (where the hand was put
 // is kept, for the way back to the controller).
+//
+// The grip may open for less than releaseSeconds and close again without
+// letting go: the tester, 2026-09-30, "dann verliert die linke hand manchmal
+// den grip, kann auch an meinen alten controller liegen" - every one of those
+// lets go was the grip reading open (the log), so a grip that flickers open
+// for a frame or two is held through. `handleUnits` is how far the hand is
+// from the handle (NearestOnHandle): further than slackUnits, it lets go.
 inline bool TwoHandHolds(TwoHandState& t, const TwoHandSettings& s, bool twoHandedDrawn, bool leftGripDown,
-                         float handsApartUnits) {
+                         float handleUnits, float dtSeconds) {
 	if (!t.active) {
 		return false;
 	}
-	const float change = handsApartUnits - t.distance;
-	const bool held = s.enabled && twoHandedDrawn && leftGripDown && handsApartUnits == handsApartUnits &&
-	                  (change < 0.0f ? -change : change) <= s.slackUnits;
+	if (leftGripDown) {
+		t.openSeconds = 0.0f;
+	} else if (dtSeconds > 0.0f) {
+		t.openSeconds += dtSeconds;
+	}
+	const bool gripHeld = leftGripDown || t.openSeconds < s.releaseSeconds;
+	const bool held = s.enabled && twoHandedDrawn && gripHeld && handleUnits == handleUnits &&
+	                  handleUnits <= s.slackUnits;
 	if (!held) {
 		t.active = false;
+		t.openSeconds = 0.0f;
 	}
 	return held;
+}
+
+// Whether the weapon drawn is one both hands can hold: a two-hander, or a
+// one-hander when oneHanders is on.
+inline bool TwoHandWeapon(const TwoHandSettings& s, bool twoHander, bool oneHander) {
+	return twoHander || (oneHander && s.oneHanders);
 }
 
 inline NiMatrix33 Transposed(const NiMatrix33& m) {

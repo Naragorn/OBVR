@@ -63,7 +63,10 @@ void TestHandle() {
 	Check(Near(LeftHandAxial(h, -35.0f, -6.0f), -27.0f), "past the end: put on the end");
 	Check(Near(LeftHandAxial(h, -15.0f, -6.0f), -15.0f), "on the handle: where it closed");
 	Check(Near(LeftHandAxial(h, -5.0f, -6.0f), -6.0f), "closer than the game's hand: right under the right hand");
-	Check(!HandleSpanFor(s, true, -8.0f, -6.0f).valid, "a handle too short for the hand to move: not measured");
+	const HandleSpan shortHandle = HandleSpanFor(s, true, -8.0f, -6.0f);
+	Check(shortHandle.valid && Near(shortHandle.low, -5.0f) && Near(shortHandle.high, -5.0f),
+	      "a one-hander's short handle: the one place at its pommel end, cupping it");
+	Check(Near(LeftHandAxial(shortHandle, -15.0f, -6.0f), -5.0f), "wherever it closes: on the pommel");
 	Check(!HandleSpanFor(s, false, -30.0f, -6.0f).valid, "not measured: nothing");
 	Check(!HandleSpanFor(s, true, kNaN, -6.0f).valid, "no pommel: nothing");
 	Check(!HandleSpanFor(s, true, -30.0f, kNaN).valid, "no game's hand: nothing");
@@ -190,14 +193,47 @@ void TestHold() {
 	StartTwoHand(t, -15.0f, -12.0f);
 	Check(t.active && Near(t.distance, 15.0f) && Near(t.handAxial, -12.0f),
 	      "taken 15 below: the controllers 15 apart, the palm put 12 below");
-	Check(TwoHandHolds(t, s, true, true, 25.0f), "10 further apart: still held");
-	Check(!TwoHandHolds(t, s, true, true, 60.0f) && !t.active && Near(t.handAxial, -12.0f),
-	      "45 further apart: let go, where the hand was put kept for the way back");
+	Check(TwoHandHolds(t, s, true, true, 25.0f, 0.011f), "25 from the handle: still held");
+	Check(!TwoHandHolds(t, s, true, true, 35.0f, 0.011f) && !t.active && Near(t.handAxial, -12.0f),
+	      "35 from the handle: let go, where the hand was put kept for the way back");
 	StartTwoHand(t, -20.0f, -20.0f);
-	Check(!TwoHandHolds(t, s, true, false, 20.0f) && !t.active, "the grip opens: let go");
+	Check(TwoHandHolds(t, s, true, false, 2.0f, 0.05f) && TwoHandHolds(t, s, true, false, 2.0f, 0.05f),
+	      "the grip reading open for a tenth of a second: still held");
+	Check(TwoHandHolds(t, s, true, true, 2.0f, 0.011f) && Near(t.openSeconds, 0.0f),
+	      "closed again: held, the open time forgotten");
+	Check(TwoHandHolds(t, s, true, false, 2.0f, 0.1f) && !TwoHandHolds(t, s, true, false, 2.0f, 0.05f) && !t.active,
+	      "open for 0.15 s: let go");
 	StartTwoHand(t, -20.0f, -20.0f);
-	Check(!TwoHandHolds(t, s, false, true, 20.0f), "sheathed: let go");
-	Check(!TwoHandHolds(t, s, true, true, 20.0f), "not held: nothing");
+	Check(TwoHandHolds(t, s, true, false, 2.0f, 0.0f), "no time passed with the grip open: held");
+	TwoHandSettings now = s;
+	now.releaseSeconds = 0.0f;
+	StartTwoHand(t, -20.0f, -20.0f);
+	Check(!TwoHandHolds(t, now, true, false, 2.0f, 0.011f), "no grace time: the grip opens, let go at once");
+	StartTwoHand(t, -20.0f, -20.0f);
+	Check(!TwoHandHolds(t, s, false, true, 2.0f, 0.011f), "sheathed: let go");
+	StartTwoHand(t, -20.0f, -20.0f);
+	Check(!TwoHandHolds(t, s, true, true, kNaN, 0.011f), "no distance: let go");
+	Check(!TwoHandHolds(t, s, true, true, 2.0f, 0.011f), "not held: nothing");
+
+	std::printf("Which weapons both hands hold\n");
+	Check(TwoHandWeapon(s, true, false), "a two-hander");
+	Check(TwoHandWeapon(s, false, true), "a one-hander, with one-handers on");
+	TwoHandSettings noOne = s;
+	noOne.oneHanders = false;
+	Check(!TwoHandWeapon(noOne, false, true) && TwoHandWeapon(noOne, true, false), "one-handers off: only two-handers");
+	Check(!TwoHandWeapon(s, false, false), "anything else: no");
+}
+
+void TestGripFromFiles() {
+	std::printf("The game's grip from its files\n");
+	const VanillaGrip g = GameGripFromFiles();
+	Check(g.valid && g.Below() > -7.05f && g.Below() < -6.95f, "valid, the left palm 7 below the right, as the game shows it live");
+	Check(g.leftPalmLateral < kGamePalmOnHandleUnits, "its palm on the handle by the live check's own measure");
+	const NiPoint3 x = g.rot * NiPoint3{1, 0, 0};
+	const NiPoint3 y = g.rot * NiPoint3{0, 1, 0};
+	const float dot = x.x * y.x + x.y * y.y + x.z * y.z;
+	Check(Near(x.LengthSquared(), 1.0f) && Near(y.LengthSquared(), 1.0f) && dot < 1e-2f && dot > -1e-2f,
+	      "a rotation: unit axes at right angles");
 }
 
 void TestBlend() {
@@ -237,6 +273,7 @@ int main() {
 	TestHandle();
 	TestVanillaGrip();
 	TestHold();
+	TestGripFromFiles();
 	TestBlend();
 	TestApproach();
 	TestRotationBetween();

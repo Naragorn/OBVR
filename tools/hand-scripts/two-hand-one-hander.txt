@@ -1,0 +1,45 @@
+# Holding a one-hander with both hands (vr/TwoHandLogic.h, TwoHandOneHanders):
+# an Iron Longsword drawn from the left hip, the left grip closed below the
+# right hand - held with both hands, the game's two-handed grip taken from its
+# files (a one-hander's own animation keeps the left hand at the side), the
+# hand cupping the short handle's pommel end; the grip opened - let go. While
+# held, the left grip grabs nothing.
+# TwoHandReachUnits is widened for the run: where the scripted hands put the
+# handle is not measured.
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands TwoHandGrip=1
+ini Hands TwoHandOneHanders=1
+ini Hands TwoHandReachUnits=60
+console player.additem 000229B3 1
+console player.equipitem 000229B3
+
+expect HandScript: finished
+expect Hands: the open left hand near the one-hander's handle takes its shape
+expect Hands: the left hand took the one-hander's handle
+expect Hands: the left hand drawn on the handle
+expect Hands: the left hand let go of the handle (the grip opened)
+reject HandScript: WARNING
+reject Hands: grab - left grip
+
+wait 20
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+left pos 0.20 -0.40 -0.10
+wait 0.5
+left grip 1
+wait 1
+mark both_hands
+left pos 0.18 -0.42 -0.14
+wait 1
+mark slid
+left grip 0
+wait 1
+mark let_go

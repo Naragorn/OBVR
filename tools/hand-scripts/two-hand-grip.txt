@@ -17,10 +17,11 @@ console player.equipitem 0001C6CD
 expect HandScript: finished
 expect Hands: the game's left hand on the two-hander read
 expect Hands: the open left hand near the two-hander's handle takes its shape
-expect Hands: the left hand took the handle
+expect Hands: the left hand took the two-hander's handle
 expect Hands: the left hand drawn on the handle
 expect Hands: the left hand let go of the handle (the grip opened)
 reject HandScript: WARNING
+reject Hands: grab - left grip
 
 wait 20
 right pos 0.18 -0.15 0.12

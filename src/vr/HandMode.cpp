@@ -396,6 +396,9 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		in.rightGrip = in.rightGrip && !r.holster.rightClaimed;
 		in.leftGrip = in.leftGrip && !r.holster.leftClaimed;
 	}
+	// A left grip on a weapon's handle neither grabs nor does anything else a
+	// grip does.
+	in.leftGrip = in.leftGrip && !f.leftGripOnHandle;
 	in.rightA = cr.valid && ButtonADown(cr.buttonsPressed);
 	in.leftA = cl.valid && ButtonADown(cl.buttonsPressed);
 	in.rightMenuButton = StepRisingEdge(

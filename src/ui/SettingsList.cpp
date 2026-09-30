@@ -707,6 +707,20 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.twoHand.enabled = v != 0.0f; },
 	},
 	{
+		"Hands", "Two hands on one-handers", "One-handed weapons can be held with both hands too",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "TwoHandOneHanders",
+		+[](const Config& c) { return c.hands.twoHand.oneHanders ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.twoHand.oneHanders = v != 0.0f; },
+	},
+	{
+		"Hands", "Left hand slides on the handle", "Held with both hands, the left hand follows its controller along the handle",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "TwoHandSlide",
+		+[](const Config& c) { return c.hands.twoHand.slide ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.twoHand.slide = v != 0.0f; },
+	},
+	{
 		"Hands", "Thrown things hit", "What you throw staggers people, or knocks them down when fast",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "ThrowHits",

@@ -314,6 +314,11 @@ struct HandModeFrame {
 	bool haveBow = false;
 	// The player holds an object (the grab): a fist round it is not a fist.
 	bool holdingObject = false;
+	// The left grip holds a weapon's handle, or is about to (vr/TwoHandLogic.h):
+	// it is the weapon's, not the grab's - an object it brushed stuck to it
+	// (the tester, 2026-09-30: "objekte die ich rum haue an der linken hand
+	// kleben bleiben").
+	bool leftGripOnHandle = false;
 	SInt32 playerAction = -1;
 	// The hands are being adjusted (the INI switch or the guided window): a
 	// closed grip holds a hand, it does not grab.

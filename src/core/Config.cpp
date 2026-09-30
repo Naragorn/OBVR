@@ -725,6 +725,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.twoHand.reachUnits = ReadFloat("Hands", "TwoHandReachUnits", h.twoHand.reachUnits, path);
 		h.twoHand.blendSeconds = ReadFloat("Hands", "TwoHandBlendSeconds", h.twoHand.blendSeconds, path);
 		h.twoHand.preshapeUnits = ReadFloat("Hands", "TwoHandPreshapeUnits", h.twoHand.preshapeUnits, path);
+		h.twoHand.oneHanders = ReadBool("Hands", "TwoHandOneHanders", h.twoHand.oneHanders, path);
+		h.twoHand.slide = ReadBool("Hands", "TwoHandSlide", h.twoHand.slide, path);
+		h.twoHand.releaseSeconds = ReadFloat("Hands", "TwoHandReleaseSeconds", h.twoHand.releaseSeconds, path);
 		h.throwHit.staggerSpeed = ReadFloat("Hands", "ThrowStaggerSpeed", h.throwHit.staggerSpeed, path);
 		h.throwHit.knockSpeed = ReadFloat("Hands", "ThrowKnockSpeed", h.throwHit.knockSpeed, path);
 		h.lead.strangerMetres = ReadFloat("Hands", "LeadStrangerMetres", h.lead.strangerMetres, path);

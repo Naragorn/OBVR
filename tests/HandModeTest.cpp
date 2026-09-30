@@ -1191,6 +1191,20 @@ void TestGrabHand() {
 	frame.right.buttonsPressed = 0;
 	r = mode.Update(frame, settings);
 	Check(!r.grabWanted, "no grip: no grab");
+
+	// The left grip on a weapon's handle (vr/TwoHandLogic.h) is the handle's:
+	// it takes nothing it brushes (2026-09-30: objects stuck to that hand).
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexGrip;
+	frame.leftGripOnHandle = true;
+	r = mode.Update(frame, settings);
+	Check(!r.grabWanted && r.leftGripDown, "the left grip on a handle: no grab, the grip itself still read");
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexGrip;
+	r = mode.Update(frame, settings);
+	Check(r.grabWanted && !r.grabWithLeftHand, "and the right grip still grabs");
+	frame.right.buttonsPressed = 0;
+	frame.leftGripOnHandle = false;
+	r = mode.Update(frame, settings);
+	Check(r.grabWanted && r.grabWithLeftHand, "off the handle: the left grip grabs again");
 }
 
 void TestHolsterInMode() {

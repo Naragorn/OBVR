@@ -767,7 +767,22 @@ The tester: "bei 2 händern mit der linken hand meine hand an das schwert/axt/wh
   - With its grip open, the left hand coming near the handle already takes the handle's pose and the fingers the grip's shape, more the nearer it is (`vr::PreshapeWeight`). Nothing from `TwoHandPreshapeUnits` (18, about 26 cm) from the handle's nearest point, all of it at 3 units, eased. `TwoHandPreshapeUnits=0` switches it off.
   - Its target is the nearest point of the measured handle (`vr::NearestOnHandle`), or the game's own place when the handle was not measured. Above the right hand is the blade, far from any of it: no shaping there.
   - Closing the grip goes on from where the approach had got to (`vr::HeldWeight`), not from the controller again. Opening it near the handle goes back only as far as the approach holds it.
-  - The handle is measured once per model now (`game::AxialExtentOf`), not at each grip.
+  - The handle is measured once per model now (`game::AxialExtentOf`), not at each grip. A model that cannot be read yet is tried again about once a second. The tester's run of 2026-09-30 measured it on the first frame of the draw ("not readable") and never again, so the whole session had no handle. The harness shows the same first frame, then "measured" a moment later.
+
+**Fixes and additions after the tester's run, 2026-09-30:**
+- **Objects stuck to the left hand.** The tester: "Wenn ich mit links den 2 händer halte passiert es manchmal das objekte die ich rum haue an der linken hand kleben bleiben". The log showed the cause: the left grip on the handle also armed the grab, and the grab took what came near ("grab - left grip took 2FEC8600 within 1.00 m" while the handle was held).
+  - Now the left grip belongs to the handle while it holds it, and while the open hand is near enough to be shaped more than half (`HandModeFrame::leftGripOnHandle`, `g_leftGripOnHandle`). In the hand mode it counts as open, like a grip at a holster: it neither grabs nor takes someone's hand (lead).
+  - A grip that closes off the handle is refused, and then it is an ordinary grab again.
+- **The grip lost now and then.** Every let go in that run was the grip reading open ("the grip opened", 22 and 35 times), so whether the controller flickered or the hand opened cannot be told from the log.
+  - The grip may now read open for less than `TwoHandReleaseSeconds` (0.12 s) and close again without letting go.
+  - Each such hold-on is logged, with how long it read open ("the left grip read open for N s and closed again"). That tells a flickering controller from a real release.
+- **One-handers with both hands** (`TwoHandOneHanders`, default on; the tester: "ist es möglich den 2 hand auf auf einhänder zu haben?").
+  - A one-hander's own animation keeps the left hand at the side, so the grip comes from the two-handed animation. The game's files hold it for when that has not been read yet this session (`vr::GameGripFromFiles`: twohandidle.kf's first key composed with pyffi, quaternions normalised). Its palm is 7.0 units below the right one, as the game showed it live every time.
+  - The Weapon node hangs on the right hand the same way for both kinds (the same key in onehandidle.kf and twohandidle.kf).
+  - A short handle with no room below the game's place is one place, at its pommel end: the left hand cups the pommel.
+  - A grip up to a hand's width (10 units, was 6) past the pommel end still takes the handle. Two controllers sit no closer than that: the harness's left controller closed 13 units down against a longsword pommel 9.5 down.
+- **The hand slides with its controller** (`TwoHandSlide`, default on; the tester: "ist es möglich diesen auch abhängig vom left conrtoller zu haben?"). While held, the hand's place on the handle follows the left controller every frame, kept on the handle. It lets go when the controller is more than 30 units from the handle, where before it let go when the controllers came 30 units further apart or closer.
+- New settings rows (Hands): "Two hands on one-handers" and "Left hand slides on the handle".
 - The log says where the game's hand was read ("the game's left hand on the two-hander read - its palm N units below the right palm") and where it was drawn ("the left hand drawn on the handle - its palm N units down the weapon from the right palm (wanted M)").
 
 **While held - the weapon hand leads (2026-09-30):**
@@ -775,7 +790,7 @@ The tester: "bei 2 händern mit der linken hand meine hand an das schwert/axt/wh
 - The weapon hand is the game's right hand. With `[Hands] LeftHanded=1` the two controllers swap roles as a whole (`vr::AssignHandRoles`), so it is always the dominant controller, and the off hand is the one that takes the handle.
 - The left hand is drawn on the handle as above, wherever the left controller is.
 
-**Letting go:** opening the left grip, sheathing, or pulling the hands more than 30 units further apart or closer than they started.
+**Letting go:** opening the left grip for more than 0.12 s, sheathing, or the left controller more than 30 units from the handle.
 
 **Code:** `vr/TwoHandLogic.h` (`two_hand_test`), `game/HandGrip.h` (`finger_test`: the quaternion of a rotation and the blend), and `StepTwoHands` in `CameraHook.cpp`. `PinLeftHandOnHandle` pins the left hand after the right one, so it sits on the weapon where the right hand now holds it.
 
@@ -784,3 +799,8 @@ The tester: "bei 2 händern mit der linken hand meine hand an das schwert/axt/wh
 - Harness `two-hand-grip`, 2026-09-30 11:08, with the weapon hand leading and the blend: PASS (artifacts/hand-script/two-hand-grip/20260930-110821). The hand was taken 13.4 units below the right palm and drawn there. The scripted head shows no hands in the window picture, so the blend itself was not seen - only its end.
 - The tester, in the headset, 2026-09-30 (the weapon hand leading, the blend): "ziemlich geil aber noch ein wenig nauseating" - the forced angle of the hand. The log: taken between 8.2 and 13.4 units below the right palm, drawn where wanted.
 - Harness `two-hand-grip`, 2026-09-30 11:48, with the hand's own turn and the approach: PASS (artifacts/hand-script/two-hand-grip/20260930-114833). The open hand reached the handle's full shape at 13.4 units below the right palm before the grip closed ("already shaped 1.00"), and was drawn there. The turn and the approach are not seen in the window picture.
+- The tester, in the headset, 2026-09-30 13:23 (the own turn and the approach): "jo das ging also super! sehr gut gemacht!" Found: objects stuck to the left hand, the grip lost now and then, and the handle never measured all session (all above).
+- Harness 2026-09-30 13:34-13:35, with the fixes above: `two-hand-grip` PASS (artifacts/hand-script/two-hand-grip/20260930-133536) and the new `two-hand-one-hander` PASS (…/two-hand-one-hander/20260930-133443).
+  - The longsword: "not readable yet", then "measured; pommel 9.5 units below the right palm". The hand was taken 6.5 below and drawn there, cupping the pommel end.
+  - Neither run logged a left-grip grab while the handle was held (a reject line).
+  - The slide and the flicker hold-on are covered by `two_hand_test`, not by the harness.
