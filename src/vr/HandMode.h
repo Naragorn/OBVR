@@ -319,6 +319,9 @@ struct HandModeFrame {
 	// (the tester, 2026-09-30: "objekte die ich rum haue an der linken hand
 	// kleben bleiben").
 	bool leftGripOnHandle = false;
+	// The left hand holds a weapon's handle: its trigger slides it along the
+	// handle, as in Blade & Sorcery, and casts nothing.
+	bool leftTriggerOnHandle = false;
 	SInt32 playerAction = -1;
 	// The hands are being adjusted (the INI switch or the guided window): a
 	// closed grip holds a hand, it does not grab.
@@ -496,6 +499,9 @@ struct HandModeResult {
 	// the hand whose grip is closed.
 	bool rightGripDown = false;
 	bool leftGripDown = false;
+	// The left trigger as pulled, before a handle takes it
+	// (HandModeFrame::leftTriggerOnHandle): what slides the hand on it.
+	bool leftTriggerDown = false;
 	// The line from the head to the grabbing hand (ReachDirection): where the
 	// held object is carried, so it moves with the hand and flies with it.
 	bool grabDirectionValid = false;

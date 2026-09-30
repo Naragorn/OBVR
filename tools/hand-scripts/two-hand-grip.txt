@@ -2,8 +2,9 @@
 # drawn over the right shoulder, the left grip closed on its handle below the
 # right hand - held with both hands, the left hand moving onto the handle
 # with the game's own grip; the left controller moved up and to the side, the
-# claymore stays with the right hand and the left hand on its handle; the grip
-# opened - let go.
+# claymore stays with the right hand and the left hand where it is on its
+# handle; with the left trigger held the hand slides along the handle; the
+# grip opened - let go.
 # TwoHandReachUnits is widened for the run: where the scripted hands put the
 # handle is not measured.
 
@@ -19,6 +20,7 @@ expect Hands: the game's left hand on the two-hander read
 expect Hands: the open left hand near the two-hander's handle takes its shape
 expect Hands: the left hand took the two-hander's handle
 expect Hands: the left hand drawn on the handle
+expect Hands: the left hand slides along the handle with the trigger held
 expect Hands: the left hand let go of the handle (the grip opened)
 reject HandScript: WARNING
 reject Hands: grab - left grip
@@ -40,6 +42,11 @@ mark both_hands
 left pos 0.05 -0.35 -0.35
 wait 1
 mark turned
+left trigger 1
+left pos 0.20 -0.36 -0.02
+wait 1
+mark slid
+left trigger 0
 left grip 0
 wait 1
 mark let_go

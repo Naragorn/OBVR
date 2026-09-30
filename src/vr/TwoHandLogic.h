@@ -75,9 +75,16 @@ struct TwoHandSettings {
 	// While held, the hand slides along the handle with its controller (the
 	// tester, 2026-09-30: "bisher ist die linke hand ja immer an einer
 	// bestimmten position am griff. ist es möglich diesen auch abhängig vom
-	// left conrtoller zu haben?"); off, it stays where it took hold.
+	// left conrtoller zu haben?"), while the left trigger is held - as in
+	// Blade & Sorcery; let go of the trigger and the hand stays where it is
+	// (the tester, 2026-09-30: "das nur passiert wenn man auch während dem
+	// halten trigger drückt und hält. beim trigger loslassen klebt die hand
+	// dann fest"). Off, it never slides.
 	bool slide = true;
 };
+
+// Whether the held hand slides along the handle this frame (slide).
+inline bool TwoHandSlides(const TwoHandSettings& s, bool leftTriggerDown) { return s.slide && leftTriggerDown; }
 
 // The way from the controller to the handle, 0 to 1: up while held, down
 // after, by the frame's share of blendSeconds.

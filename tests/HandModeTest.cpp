@@ -1205,6 +1205,21 @@ void TestGrabHand() {
 	frame.leftGripOnHandle = false;
 	r = mode.Update(frame, settings);
 	Check(r.grabWanted && r.grabWithLeftHand, "off the handle: the left grip grabs again");
+
+	// Held on a handle, the left trigger slides the hand: it is still read,
+	// and it pulls nothing else.
+	frame.left.trigger = 1.0f;
+	frame.leftTriggerOnHandle = true;
+	r = mode.Update(frame, settings);
+	Check(r.leftTriggerDown && !r.controls.cast, "the left trigger on a handle: still read, for the slide - and no spell");
+	frame.leftTriggerOnHandle = false;
+	r = mode.Update(frame, settings);
+	Check(r.controls.cast, "off the handle: the left trigger casts again");
+	frame.leftTriggerOnHandle = true;
+	frame.leftTriggerOnHandle = false;
+	frame.left.trigger = 0.0f;
+	r = mode.Update(frame, settings);
+	Check(!r.leftTriggerDown, "let go: not down");
 }
 
 void TestHolsterInMode() {

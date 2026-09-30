@@ -222,6 +222,13 @@ void TestHold() {
 	noOne.oneHanders = false;
 	Check(!TwoHandWeapon(noOne, false, true) && TwoHandWeapon(noOne, true, false), "one-handers off: only two-handers");
 	Check(!TwoHandWeapon(s, false, false), "anything else: no");
+
+	std::printf("Sliding along the handle\n");
+	Check(TwoHandSlides(s, true), "the trigger held: the hand slides");
+	Check(!TwoHandSlides(s, false), "the trigger let go: it stays where it is");
+	TwoHandSettings fixedHand = s;
+	fixedHand.slide = false;
+	Check(!TwoHandSlides(fixedHand, true), "sliding off: never, trigger or not");
 }
 
 void TestGripFromFiles() {

@@ -714,7 +714,7 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.twoHand.oneHanders = v != 0.0f; },
 	},
 	{
-		"Hands", "Left hand slides on the handle", "Held with both hands, the left hand follows its controller along the handle",
+		"Hands", "Left hand slides on the handle", "Held with both hands, the left trigger held slides the hand along the handle",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "TwoHandSlide",
 		+[](const Config& c) { return c.hands.twoHand.slide ? 1.0f : 0.0f; },

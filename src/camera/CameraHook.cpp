@@ -1726,6 +1726,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.haveBow = g_lastBowForm != nullptr;
 	frame.holdingObject = active && game::PlayerHoldsGrab();
 	frame.leftGripOnHandle = active && g_leftGripOnHandle;
+	frame.leftTriggerOnHandle = active && g_twoHand.active;
 	frame.sneaking = active && !menuIsUp && frame.inWorld && config.hands.sneakHold &&
 	                 game::IsPlayerSneaking();
 	frame.headValid = backend.GetRenderPose(frame.head, frame.headPosition) ||
@@ -4267,8 +4268,16 @@ TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& camera
 				OBVR_LOG("Hands: the left grip read open for %.3f s and closed again - held on to the handle",
 				         static_cast<double>(openBefore));
 			}
-			// The hand slides along the handle with its controller.
-			if (hands.twoHand.slide) {
+			// The hand slides along the handle with its controller while the
+			// trigger is held, and stays put when it is let go.
+			static bool s_slideLogged = false;
+			if (vr::TwoHandSlides(hands.twoHand, g_hand.leftTriggerDown)) {
+				if (!s_slideLogged && reach.axial != g_twoHand.handAxial) {
+					s_slideLogged = true;
+					OBVR_LOG("Hands: the left hand slides along the handle with the trigger held - from %.1f to %.1f "
+					         "units below the right palm",
+					         static_cast<double>(-g_twoHand.handAxial), static_cast<double>(-reach.axial));
+				}
 				g_twoHand.handAxial = reach.axial;
 			}
 		}

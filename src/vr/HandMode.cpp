@@ -366,6 +366,10 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	in.leftValid = cl.valid;
 	in.rightTrigger = cr.valid && StepTrigger(m_rightTrigger, cr.trigger);
 	in.leftTrigger = cl.valid && StepTrigger(m_leftTrigger, cl.trigger);
+	// Held on a weapon's handle, the left trigger slides the hand along it
+	// (vr/TwoHandLogic.h) and does nothing else - no spell from that hand.
+	r.leftTriggerDown = in.leftTrigger;
+	in.leftTrigger = in.leftTrigger && !f.leftTriggerOnHandle;
 	in.rightGrip = cr.valid && GripDown(cr.buttonsPressed);
 	in.leftGrip = cl.valid && GripDown(cl.buttonsPressed);
 	// Drawing by reaching (vr::StepHolster): the weapon hand's grip at the
