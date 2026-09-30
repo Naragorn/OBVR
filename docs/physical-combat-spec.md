@@ -125,6 +125,63 @@ So the feel comes from three things: a spring between the controller and the han
 - It is the largest piece: Havok constraints or a motor, and the engine's own collision for the player's hands. Nothing of that has been read yet.
 - A cheaper part of it is feasible: a blade's cast along its swing, stopped where it meets static geometry (the hand bodies' world queries exist).
 
+### F2. The held weapon against bodies: the blade stops at a body (researched 2026-09-30)
+
+The tester asked whether the carried weapon could get body collisions. Read here as: the drawn weapon meets a person's body (living or dead, and the player's own) and stops at it or slides along it, instead of passing through, with the hit taken from that contact.
+
+**What is in Havok's world** (read in Oblivion.exe 1.2.0.416):
+
+- **The living have no bone bodies in the world.**
+  - An actor's bones carry `bhkBlendCollisionObject`s (RTTI 0x00BA7A20).
+  - `bhkRigidBody`'s AddToWorld (0x008A48C0) takes a bone body out of the world, and does not add it, while it is fully keyframed: blend +0x14 and +0x18 ≥ 1.0, +0x24 ≤ 0 (0x008A493C–0x008A4962).
+  - The only exception is the flag `[0x00BA7909]`, copied from the INI setting `bAddBipedWhenKeyframed:HAVOK` (0x00441A66, default 0; STEP's INI guide agrees: https://stepmodifications.org/wiki/Guide:Oblivion_INI/HAVOK).
+- **So a living person is only their character controller** in the world (layer 20): a coarse capsule of the actor's radius, not the shape of the body.
+- **The dead, the knocked-down and the ragdolled** have their bones in the world on BIPED (layer 8). That is why the weapon pushes ragdolls today.
+- **The player's own bones** follow the same rule (keyframed while alive, not in the world). The player's controller has the same group as OBVR's bodies, and the filter lets no two bodies of one group collide (0x008A7F70), so nothing touches the player's own body. Whether the first-person skeleton carries blend objects at all was not read.
+
+**What a keyframed weapon can do:**
+- OBVR's weapon body is keyframed, so it has infinite mass. Havok's `hkpMotion.h` says the velocity of a keyframed body "is NOT changed by the application of impulses or forces" (https://github.com/nitaigao/engine-showcase/blob/master/etc/vendor/havok/Source/Physics/Dynamics/Motion/hkpMotion.h, a later Havok than Oblivion's 3.1).
+- It pushes a controller (seen in the headset, now off by default via `PushPeople`) and a ragdoll. Nothing can stop it.
+- **Havok alone will not stop the blade at a body.**
+
+**Three ways:**
+
+1. **OBVR's own body capsules and a clamp (recommended; no Havok needed).**
+   - Each frame, build capsules from the nearby actors' drawn skeleton nodes: head, spine, upper and lower arms and legs. The hand body's span is already built this way (`HandSpanFromBones`).
+   - Sweep the blade, the drawn span from `BladeSpanFromNode`, from last frame's pose to this frame's against those capsules.
+   - At the first contact:
+     - the drawn weapon and hand are held at the surface and slide along it;
+     - the hit goes to the engine from that contact (0x005FEBF0, as the strike by motion does now), replacing the bound-sphere test in `MeleeHits`;
+     - which body part was hit is known, for a later damage or effect by part.
+   - The gap between the drawn hand and the controller has a cap; past it the weapon lets go of the body, like B&S's joint. The view is never moved.
+   - It works for the living and the dead alike, because it reads the drawn bones. The player is left out of the capsule set.
+   - It is pure arithmetic, so every flow can be tested (the FrameLogic pattern).
+   - Cost: about ten capsules per nearby actor and one swept segment per frame. The actor walk already exists (`MeleeHits`).
+2. **A dynamic weapon on a spring** (B&S's joint; `GrabPhysics` already drives held objects this way).
+   - Havok would stop it at walls, statics and ragdolls. It would likely pass through a living person's controller: the proxy is a phantom, and phantoms take no part in the solver. That is derived, not verified in 3.1.
+   - It carries the known split between the picture and the physics, and fast swings tunnel between 60 Hz steps (tips measured at 5–40 units a step).
+   - It is for walls and parries later, not for bodies.
+3. **The living's bones put into the world** (`[0x00BA7909]` = 1 at runtime; never in the INI, see the iSize lesson).
+   - Their bones would enter the world as keyframed layer-8 bodies, for queries to find.
+   - It only acts when a body is added, so the actors already loaded would need re-adding.
+   - STEP warns that on Skyrim the same switch causes "characters to fly" and "funky animations".
+   - It costs 15–20 bodies per actor.
+   - High risk; worth an experiment only if the capsules of way 1 are too coarse.
+
+**Havok queries known or found** (for the world, and for way 3):
+- Built and used: the bhkWorld ray pick (vtable +0x88, `PickWorldSegment`).
+- Found, not yet usable: `bhkSimpleShapePhantom` (constructor 0x00531FC0), `bhkCachingShapePhantom` (vtable 0x00A9840C) and `hkClosestCdPointCollector` (vtable 0x00A967A8, used at 0x00894A33 and 0x009022B5).
+- Not found: the phantom's cast and closest-point slots in 3.1, their input and collector layouts, and `hkWorld::linearCast` or `getClosestPoints`.
+- These are needed for the blade against walls, not against bodies.
+
+**Unknowns:**
+- What blend +0x24 counts: above 0, the bones are added even while keyframed, perhaps during a hit reaction.
+- How an arrow picks a body part (0x00609DF0 resolves a hit node's collision object against the blend RTTI); this could give the body part names for way 1.
+- Whether creatures without ragdolls have blend objects.
+- Whether a dynamic body passes through character proxies in Oblivion.
+
+**Proposed place in the order:** after A (weight). Way 1 replaces the strike's bound-sphere test with contacts. The lag spring of A and the clamp of way 1 then work on the same drawn weapon: the controller pulls, the body stops, and the spring lets the weapon trail.
+
 ### G. Out of reach in this engine
 
 - Stabbing that sticks (impaling), cutting and dismemberment: Oblivion has no support in its meshes or code.
@@ -139,6 +196,7 @@ So the feel comes from three things: a spring between the controller and the han
 5. **E, grip position and reverse grip.**
 6. **B's damage by momentum.** First look for the scale point in the hit handler.
 7. **F, physics hands:** a spec and a research pass of their own.
+8. **F2, the blade stops at bodies** (way 1, OBVR's body capsules and a clamp): after A, it replaces the strike's bound-sphere test.
 
 ## 5. Open questions
 
