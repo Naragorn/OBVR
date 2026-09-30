@@ -5,12 +5,19 @@
 // andocken kann mit grip und so zweihändig halte").
 //
 // The right hand holds the weapon as always. The left grip closed on its
-// handle - near the line of the weapon, not too far along it - takes hold:
-// from then on the weapon points along the line between the two hands
-// (towards the left hand when it holds higher up the handle, away from it
-// when it holds lower down), and the left hand stays on the handle at the
-// distance it took hold. Letting go of the grip, sheathing, or pulling the
-// hands apart ends it.
+// handle - near the line of the weapon, below the right hand - takes hold:
+// from then on the weapon points along the line between the two hands, away
+// from the left one, and the left hand is drawn the way the game's own
+// two-handed animation holds the handle - its bone's pose against the weapon,
+// fingers and all - only moved along the handle to where it took hold (the
+// tester, 2026-09-30: "wir brauchen die vanilla hand die wirklich exakt den
+// griff greift nur eben an der position die wir wollten"; the first build
+// kept the controller's own hand turn at the line, and the hand floated in
+// the handle). Letting go of the grip, sheathing, or pulling the hands apart
+// ends it.
+//
+// Distances along the weapon are game units along its axis (the Weapon
+// node's +y), from the right palm, negative towards the pommel.
 //
 // Pure, covered by two_hand_test.
 
@@ -25,41 +32,86 @@ struct TwoHandSettings {
 	// The left hand takes hold within this many game units of the weapon's
 	// line (70 a metre)...
 	float reachUnits = 12.0f;
-	// ...between this far behind the right hand (towards the pommel) and this
-	// far ahead of it (up the handle), and not closer to it than minUnits.
+	// ...below the right hand, at least minUnits and, when the handle could
+	// not be measured, at most behindUnits.
 	float behindUnits = 25.0f;
-	float aheadUnits = 40.0f;
 	float minUnits = 5.0f;
 	// The hands this much further apart or closer than when it took hold: let go.
 	float slackUnits = 30.0f;
-	// The handle measured from the weapon's model: the left hand stays this far
-	// inside its pommel end, and a grip up to overhangUnits past the end still
-	// takes the handle (it is put on the end).
-	float endInsetUnits = 2.0f;
+	// The handle measured from the weapon's model: the left palm stays this far
+	// inside its pommel end (half a hand), and a grip up to overhangUnits past
+	// the end still takes the handle (it is put on the end).
+	float endInsetUnits = 3.0f;
 	float overhangUnits = 6.0f;
 };
 
-// The handle below the right hand, along the weapon (negative, towards the
-// pommel): from the model's pommel end, measured (AxialExtentOf), to a hand's
-// width below the right hand (the tester, 2026-09-30: "wenn wir irgendwo
-// andocken können müssen wir aufpassen das es zum griff der klinge passt ... und ich
-// nicht irgendwo in der luft dann halte"). Invalid when the model was not
-// measured or there is no room for a hand below the right one - the fixed
-// window (behindUnits, aheadUnits) is used then.
+// The game's own left hand on a two-hander, read from its first-person
+// two-handed animation while the left hand is not held: the left hand bone's
+// rotation and position in the Weapon node's frame (game units, not scaled),
+// and where the two palms sit along the weapon's axis. In the game's
+// twohandidle.kf the left hand bone sits 8.3 units down the axis from the
+// Weapon node and 6.8 from it, the right one 2.1 down (read with pyffi,
+// 2026-09-30): the left hand right under the right one, around the handle.
+struct VanillaGrip {
+	bool valid = false;
+	NiMatrix33 rot = NiMatrix33::Identity();
+	NiPoint3 pos{0.0f, 0.0f, 0.0f};
+	float leftPalmAxial = 0.0f;   // in the weapon's frame, from the Weapon node
+	float rightPalmAxial = 0.0f;
+	float leftPalmLateral = 0.0f;  // the left palm's distance from the axis
+	// The left palm's place along the weapon from the right palm: where the
+	// animation puts the hand, and the highest the left hand is put.
+	float Below() const { return leftPalmAxial - rightPalmAxial; }
+};
+
+// From the world poses of this frame's animation: the weapon node, the left
+// hand bone, and the two palms (PalmCentre of each hand and its middle
+// finger). Valid only when it looks like the animation holds the handle with
+// both hands: the left palm within `reachUnits` of the axis and below the
+// right palm - an animation with the left hand elsewhere gives nothing.
+inline VanillaGrip VanillaGripFrom(const NiMatrix33& weaponRot, const NiPoint3& weaponPos, const NiMatrix33& leftRot,
+                                   const NiPoint3& leftPos, const NiPoint3& leftPalm, const NiPoint3& rightPalm,
+                                   float reachUnits) {
+	NiMatrix33 inverse{};
+	for (int r = 0; r < 3; ++r) {
+		for (int c = 0; c < 3; ++c) {
+			inverse.data[r][c] = weaponRot.data[c][r];
+		}
+	}
+	VanillaGrip g;
+	g.rot = inverse * leftRot;
+	g.pos = inverse * (leftPos - weaponPos);
+	const NiPoint3 left = inverse * (leftPalm - weaponPos);
+	const NiPoint3 right = inverse * (rightPalm - weaponPos);
+	g.leftPalmAxial = left.y;
+	g.rightPalmAxial = right.y;
+	g.leftPalmLateral = math::Sqrt(left.x * left.x + left.z * left.z);
+	g.valid = g.leftPalmLateral <= reachUnits && g.leftPalmAxial < g.rightPalmAxial;
+	return g;
+}
+
+// The handle below the right hand, along the weapon from the right palm
+// (negative, towards the pommel): from the model's pommel end, measured
+// (AxialExtentOf) and inset, to where the game's own left hand holds it -
+// right under the right hand (the tester, 2026-09-30: "wenn wir irgendwo
+// andocken können müssen wir aufpassen das es zum griff der klinge passt ...
+// und ich nicht irgendwo in der luft dann halte"). Invalid when the model was
+// not measured or the handle has no room below the game's own left hand: the
+// hand is then put where the game has it.
 struct HandleSpan {
 	bool valid = false;
 	float low = 0.0f;   // the pommel end, inset
-	float high = 0.0f;  // just below the right hand
+	float high = 0.0f;  // the game's own left hand, right under the right one
 };
 
-inline HandleSpan HandleSpanFor(const TwoHandSettings& s, bool measured, float pommelAxial) {
+inline HandleSpan HandleSpanFor(const TwoHandSettings& s, bool measured, float pommelAxial, float highestAxial) {
 	HandleSpan h;
-	if (!measured || !(pommelAxial == pommelAxial)) {
+	if (!measured || !(pommelAxial == pommelAxial) || !(highestAxial == highestAxial)) {
 		return h;
 	}
 	h.low = pommelAxial + s.endInsetUnits;
-	h.high = -s.minUnits;
-	h.valid = h.high - h.low >= 4.0f;
+	h.high = highestAxial;
+	h.valid = h.high >= h.low;
 	return h;
 }
 
@@ -75,38 +127,37 @@ inline void AxialLateral(const NiPoint3& point, const NiPoint3& origin, const Ni
 
 struct TwoHandState {
 	bool active = false;
-	float sign = 1.0f;      // +1 the left hand up the handle, -1 below the right
-	float distance = 0.0f;  // between the hands when it took hold
+	float distance = 0.0f;    // between the controllers when it took hold
+	float handAxial = 0.0f;   // where the left palm is put, from the right palm
 };
 
-// Whether the left grip, closing now, takes hold of the handle: on the
-// measured handle (or up to overhangUnits past its end), else in the fixed
-// window.
+// Whether the left grip, closing now at `axial` along the weapon from the
+// right hand and `lateral` from its line, takes hold of the handle: below the
+// right hand, down to the measured handle's end (or up to overhangUnits past
+// it), else down to behindUnits. Above the right hand is the blade.
 inline bool TwoHandTakes(const TwoHandSettings& s, bool twoHandedDrawn, bool leftGripClosedNow, float axial,
                          float lateral, const HandleSpan& handle = HandleSpan{}) {
-	if (!s.enabled || !twoHandedDrawn || !leftGripClosedNow) {
+	if (!s.enabled || !twoHandedDrawn || !leftGripClosedNow || !(lateral <= s.reachUnits) ||
+	    !(axial <= -s.minUnits)) {
 		return false;
 	}
-	if (handle.valid) {
-		return lateral <= s.reachUnits && axial >= handle.low - s.overhangUnits && axial <= handle.high;
-	}
-	const float along = axial < 0.0f ? -axial : axial;
-	return lateral <= s.reachUnits && axial >= -s.behindUnits && axial <= s.aheadUnits && along >= s.minUnits;
+	return handle.valid ? axial >= handle.low - s.overhangUnits : axial >= -s.behindUnits;
 }
 
-// Where on the handle the left hand is put: where it closed, kept on the
-// measured handle.
-inline float OnHandle(const HandleSpan& handle, float axial) {
+// Where on the handle the left palm is put, from the right palm: where it
+// closed, kept on the measured handle; where the game's own left hand holds
+// it (`gameAxial`) when the handle was not measured.
+inline float LeftHandAxial(const HandleSpan& handle, float axial, float gameAxial) {
 	if (!handle.valid) {
-		return axial;
+		return gameAxial;
 	}
 	return axial < handle.low ? handle.low : (axial > handle.high ? handle.high : axial);
 }
 
-inline void StartTwoHand(TwoHandState& t, float axial) {
+inline void StartTwoHand(TwoHandState& t, float axial, float handAxial) {
 	t.active = true;
-	t.sign = axial >= 0.0f ? 1.0f : -1.0f;
 	t.distance = axial < 0.0f ? -axial : axial;
+	t.handAxial = handAxial;
 }
 
 // Whether it still holds this frame; clears the state when not.
@@ -125,19 +176,32 @@ inline bool TwoHandHolds(TwoHandState& t, const TwoHandSettings& s, bool twoHand
 }
 
 // The weapon's direction while held with both hands: along the line from the
-// right hand to the left, or against it. Zero when the hands are in one place.
-inline NiPoint3 TwoHandDirection(const TwoHandState& t, const NiPoint3& right, const NiPoint3& left) {
-	NiPoint3 d = left - right;
+// left hand to the right, away from the left. Zero when the hands are in one
+// place.
+inline NiPoint3 TwoHandDirection(const NiPoint3& right, const NiPoint3& left) {
+	NiPoint3 d = right - left;
 	const float length = math::Sqrt(d.LengthSquared());
 	if (!(length > 0.001f)) {
 		return NiPoint3{0.0f, 0.0f, 0.0f};
 	}
-	return d * (t.sign / length);
+	return d * (1.0f / length);
 }
 
-// Where the left hand is held: on the line, at the distance it took hold.
-inline NiPoint3 TwoHandLeftAt(const TwoHandState& t, const NiPoint3& right, const NiPoint3& direction) {
-	return right + direction * (t.sign * t.distance);
+// The left hand bone's world pose while held: the game's own grip against
+// the weapon as it is this frame, moved along the weapon's axis from where
+// the game holds it to `handAxial`.
+struct LeftHandPose {
+	NiMatrix33 rot = NiMatrix33::Identity();
+	NiPoint3 pos{0.0f, 0.0f, 0.0f};
+};
+
+inline LeftHandPose LeftHandOnHandle(const VanillaGrip& grip, float handAxial, const NiMatrix33& weaponRot,
+                                     const NiPoint3& weaponPos) {
+	LeftHandPose p;
+	p.rot = weaponRot * grip.rot;
+	const NiPoint3 local{grip.pos.x, grip.pos.y + (handAxial - grip.Below()), grip.pos.z};
+	p.pos = weaponPos + weaponRot * local;
+	return p;
 }
 
 // The smallest rotation that turns the unit vector `from` onto the unit

@@ -1,9 +1,10 @@
 # Holding a two-hander with both hands (vr/TwoHandLogic.h): an Iron Claymore
 # drawn over the right shoulder, the left grip closed on its handle below the
 # right hand - held with both hands; the left hand moved up and to the side,
-# the claymore turns with the line between the hands; the grip opened - let
-# go. TwoHandReachUnits is widened for the run: where the scripted hands put
-# the handle is not measured.
+# the claymore turns with the line between the hands, the left hand drawn
+# with the game's own grip on the handle; the grip opened - let go.
+# TwoHandReachUnits is widened for the run: where the scripted hands put the
+# handle is not measured.
 
 ini Hands Enabled=1
 ini Hands Holsters=1
@@ -13,7 +14,9 @@ console player.additem 0001C6CD 1
 console player.equipitem 0001C6CD
 
 expect HandScript: finished
+expect Hands: the game's left hand on the two-hander read
 expect Hands: the left hand took the handle
+expect Hands: the left hand drawn on the handle
 expect Hands: the left hand let go of the handle (the grip opened)
 reject HandScript: WARNING
 
