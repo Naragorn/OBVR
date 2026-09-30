@@ -76,22 +76,17 @@ inline bool IsStaffWeaponType(SInt32 type) { return type == 4; }
 // the type). The staff's first-person draw and sheathe have no such key
 // (staffequip.kf, staffunequip.kf: only Attach/Detach): silent in the game
 // itself. The bow's have them, and the harness showed the key's span fired
-// through the game's handler (0.435 to 0.536 s round the key at 0.5), yet the
-// tester heard nothing; why is not found. So for these two OBVR plays the
-// game's own sound forms (Oblivion.esm): WPNStaffEquip 00029BB2,
-// WPNStaffUnequip 00029BB3, WPNBowEquip 00088B2B, WPNBowUnequip 00088B2C.
-// 0 for any other weapon: the game plays its own.
+// through the game's handler (0.435 to 0.536 s round the key at 0.5) - and
+// with OBVR's own added the tester found the bow's "war da whl schon vorher"
+// (2026-09-30): the game plays it, so OBVR does not. For the staff OBVR plays
+// the game's own sound forms (Oblivion.esm): WPNStaffEquip 00029BB2,
+// WPNStaffUnequip 00029BB3. 0 for any other weapon: the game plays its own.
 inline constexpr UInt32 kStaffEquipSound = 0x00029BB2;
 inline constexpr UInt32 kStaffUnequipSound = 0x00029BB3;
-inline constexpr UInt32 kBowEquipSound = 0x00088B2B;
-inline constexpr UInt32 kBowUnequipSound = 0x00088B2C;
 
 inline UInt32 DrawSoundForm(SInt32 type, bool drawn) {
 	if (type == 4) {
 		return drawn ? kStaffEquipSound : kStaffUnequipSound;
-	}
-	if (type == 5) {
-		return drawn ? kBowEquipSound : kBowUnequipSound;
 	}
 	return 0;
 }

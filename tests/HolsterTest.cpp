@@ -192,8 +192,7 @@ void TestTwoHanded() {
 	      "the staff alone is a staff (its shaft a handle both ways, its animation not the grip's source)");
 	Check(DrawSoundForm(4, true) == kStaffEquipSound && DrawSoundForm(4, false) == kStaffUnequipSound,
 	      "the staff drawn and sheathed: WPNStaffEquip and WPNStaffUnequip");
-	Check(DrawSoundForm(5, true) == kBowEquipSound && DrawSoundForm(5, false) == kBowUnequipSound,
-	      "the bow drawn and sheathed: WPNBowEquip and WPNBowUnequip");
+	Check(DrawSoundForm(5, true) == 0 && DrawSoundForm(5, false) == 0, "the bow: none - the game plays its own");
 	Check(DrawSoundForm(0, true) == 0 && DrawSoundForm(1, false) == 0 && DrawSoundForm(2, true) == 0 &&
 	          DrawSoundForm(3, false) == 0 && DrawSoundForm(-1, true) == 0,
 	      "blades, blunt weapons and no weapon: none - the game plays its own");

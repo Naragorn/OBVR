@@ -12,7 +12,6 @@ console player.equipitem 00025231
 
 expect HandScript: finished
 expect Hands: ready weapon done
-expect Hands: the bow's draw sound (00088B2B) played
 reject HandScript: WARNING
 
 wait 16
@@ -40,3 +39,4 @@ wait 1.5
 mark bow_wrist
 dump
 wait 1
+reject Hands: the bow's draw sound

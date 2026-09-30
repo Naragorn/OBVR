@@ -2766,7 +2766,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			         static_cast<int>(weaponType));
 		}
 
-		// The staff's and the bow's draw and sheathe sounds, which the game
+		// The staff's draw and sheathe sounds, which the game
 		// does not play (vr::DrawSoundForm): once the weapon shows drawn or
 		// sheathed, the sound of the change.
 		{
@@ -2785,7 +2785,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 					static UInt32 s_soundLines = 8;
 					if (s_soundLines > 0) {
 						--s_soundLines;
-						OBVR_LOG("Hands: the %s's %s sound (%08X) %s", type == 4 ? "staff" : "bow",
+						OBVR_LOG("Hands: the %s's %s sound (%08X) %s", vr::IsStaffWeaponType(type) ? "staff" : "weapon",
 						         weaponNow == game::WeaponState::Drawn ? "draw" : "sheathe", form,
 						         played ? "played" : "not played");
 					}
