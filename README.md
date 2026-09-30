@@ -2,322 +2,152 @@
 
 <img src="obvr.png" alt="An Imperial Legion guard wearing a Quest 3 headset" width="50%">
 
-Native VR for the original **The Elder Scrolls IV: Oblivion**. Not for the Remastered
-edition.
+Play the original **The Elder Scrolls IV: Oblivion** in real VR. Real 3D, head
+tracking, your menus and HUD in the headset. (Not for the Remastered edition.)
 
-Guiding idea for now: *Oblivion stays Oblivion.* OBVR does not replace gameplay yet. It puts real
-stereo VR on top of the game's own camera and render pipeline, as an xOBSE plugin.
+**Status: early test build (0.2.x).** Sit down, grab your mouse, keyboard or
+gamepad and you're in Cyrodiil - that part works and is what this release is for.
+Playing standing with motion controllers is being built right now and is still
+switched off.
 
-**Status: early public test build (0.2.1).** The seated experience below works and is what this release is for; the standing experience with motion controllers is under construction and switched off. Please test, and please report what you see - see [Reporting a problem](#reporting-a-problem).
+**Join the Discord:** https://discord.com/channels/747967102895390741/1547539304786436228 -
+questions, bug reports, screenshots, or just to say hi.
 
-## What works
+## What you get
 
-Everything here has been confirmed in a headset.
+- **Real 3D.** Each eye gets its own picture, so the world has depth.
+- **Head tracking.** Look around and lean in, the camera follows your head.
+  You still walk with mouse/keyboard or gamepad.
+- **Aim with your head.** Bows, spells and swords go where you look, in first and
+  third person. Walking stays independent of where you look.
+- **One clean crosshair** that sits at the distance of what you're aiming at.
+- **HUD, menus and dialogue in the headset.** Pause menus float in front of the
+  world with Oblivion's own sepia look. Main menu, loading screens and videos
+  play on a big cinema screen.
+- **A welcome walkthrough and a settings menu** inside the headset (`Insert`).
+- **Recenter** your view with `Del`.
+- **Comfort options** like smooth turning.
+- Works with or without the 4GB patch, and with Mod Organizer 2.
 
-- **Dual-pass stereo.** The world is drawn twice per frame, once from each eye.
-  **Alternate eye rendering** (`Stereo=aer`) is there as well: it costs nothing extra in
-  performance but shows a one-frame disparity on fast motion. Dual is the default; aer is
-  the fallback if dual misbehaves on your setup.
-- **6DoF head tracking.** The head rotates and moves the camera; leaning works. Locomotion stays with mouse, keyboard or gamepad. 
-- **Head-based aiming.** Bows, spells and melee go where the head looks, in first and
-  third person, while the walking direction stays with the movement controls. In first
-  person the weapon visibly points where the shot goes. In 3rd person the char looks to where you are looking with the headset.
-- **One crosshair, at the depth the aim ray hits**
-- **HUD, menus and dialogue in the headset.** The 2D layer is lifted out of the frame and
-  shown on an overlay in front of the world. In-game menus keep the world behind them in
-  stereo with Oblivion's own sepia pause look; the main menu, loading screens and videos
-  take a cinema screen. The dialogue zoom is disabled.
-- **Native Oblivion-style onboarding and settings menu** (`Insert`) through MenuQue,
-  using the existing game UI in the headset.
-- **Recenter** on a key (`Del` by default).
-- **Smooth turning** as a comfort option for keyboard VR mode.
-- Works with and without the 4GB patch, and under Mod Organizer 2 without Root Builder.
+## Coming next: standing with motion controllers
 
-## Built, not yet confirmed in a headset
-
-These are in the build and covered by tests, but nobody has looked at them through a
-headset yet. Reports on them are especially useful.
-
-- **Menus mirrored onto the monitor window** while the overlay carries them
-  (`Render.MirrorMenusToMonitor`), so the game stays controllable from the desk.
-- **The hang watchdog**: a thread that writes where a frame stood when frames stop.
-- **Your own body** (`[Body] Visible=1`, off by default): look down in first person and
-  the character's body is there, standing under the headset, its head and its own arms
-  removed so the first-person arms stay the only ones. Enhanced Camera's mechanism,
-  carried over to a headset camera. The view lurch seen in the first runs came from
-  `BlockVerticalLook=0` in the INI, not from the body; it stays off until it has been
-  looked at again.
-- **Snap turning** for the controllers (`[Look] SnapTurning=1`, or Comfort in the
-  settings menu): the right stick turns the character by a fixed angle per push, instantly
-  or eased, with a brief vignette. The turn goes into the character's heading, so walking
-  and aiming follow it.
-- **SteamVR input actions** (`Data/OBSE/Plugins/OBVR_Input`): the controllers are read
-  through SteamVR's action system with default bindings for Index and Touch, which keeps
-  a stick click apart from a trackpad click. Touch hardware is untested.
-
-## Under construction - switched off
-
-The **standing experience**: motion controllers in both hands, the weapon in the right
-one, swings that strike what they pass through, a shield raised to block, spells from the
-left hand, menus on the wrists with a laser and finger presses, controllers steering every
-menu from the main menu on. All of it is built (`docs/hand-tracked-mode.md` is the ladder,
-rung by rung), **none of it has been seen working in a headset, and it is not working as
-intended**. It is off by default and appears in onboarding as **Full VR — Under construction**, but cannot be selected there.
-The main menu and onboarding accept controller laser input before choosing a mode,
-even with `[Hands] ControllerMenus=0`. `[Hands] Enabled=1` in `OBVR.ini` can still switch the unfinished mode on for development testing; a report from doing so is
-welcome, marked as such.
-
-Not built at all: teleport, room-scale locomotion beyond the head's own lean
-(`[Head] MaxLeanUnits`), physical interaction with objects by hand, finger tracking from
-SteamVR's hand skeleton, Linux under Proton.
+The big one. Swords in your hand, swings that actually hit, block with your shield,
+grab and throw things, hold a two-hander with both hands, shove people, lead NPCs by
+the hand, your HUD on your hands, and more. A lot of it is already built and being
+tested. It is **not ready yet** and stays off - the welcome walkthrough shows it
+but won't let you pick it. If you're brave, `[Hands] Enabled=1` in `OBVR.ini`
+turns it on anyway. Please say so if you report a bug from it.
 
 ## Known issues
 
-- The recenter key does nothing during the intro films: the render pose cannot be read
-  for the first seconds, so the picture rides the head until the main menu.
-- Text entry (a character's name) still needs the keyboard.
-- Oblivion Reloaded and its derivatives are incompatible; see
-  [Compatibility](#compatibility).
+- The recenter key does nothing during the intro videos. It works from the main
+  menu on.
+- Typing text (like your character's name) still needs the keyboard.
+- Oblivion Reloaded, ORC, E3 and Enhanced Camera don't work together with OBVR.
+  See [Compatibility](#compatibility).
 
-### Controllers in the menus
+## What you need
 
-Menu placement is selectable in the OBVR settings: **Wrist menus (off: floating)**.
-With **Menus in the world** enabled (`Render.Menus=world`), switch wrist menus off
-for the large floating panel in front of you. Switch them on for wrist placement.
-Open OBVR with **both thumbsticks physically clicked together**, or Insert.
-Stick movement navigates menu entries; it must never open OBVR. Point with the
-laser and pull the trigger to click. After stick navigation, the trigger confirms
-the selection; move the laser to return to pointing.
-
-Install the packaged `Data/OBSE/Plugins/OBVR_Input` directory along with the DLL.
-Its SteamVR actions separate physical thumbstick clicks from stick deflection;
-Index and Oculus Touch default bindings are included. Touch hardware is untested.
-
-## Requirements
-
-- Oblivion **1.2.0.416**, 32-bit. By store: **Steam (tested)**, **GOG (untested)**, retail disc with the
-  final patch (untested). Not the Remastered edition.
+- Oblivion **1.2.0.416** (32-bit). **Steam version tested**; GOG and disc with the
+  last patch should work but are untested.
 - [xOBSE](https://github.com/llde/xOBSE/releases/latest) 22.13 or newer.
-- [MenuQue](https://www.nexusmods.com/oblivion/mods/32200) **v16b**, required for the
-  native onboarding and Insert menus. Install it separately; OBVR does not bundle it.
-  The current integration verifies the supported v16b binary. Missing or unsupported
-  MenuQue restores the legacy overlay menus; it does not disable VR.
-- **SteamVR**, and a headset it drives. OBVR talks OpenVR; there is no OpenXR path, and
-  the reason is bitness: a 32-bit process needs a 32-bit runtime, and SteamVR's OpenVR
-  has always shipped one. See [Why OpenVR](#why-openvr). **Meta headsets** (Rift, Quest
-  through Link, Air Link or Virtual Desktop) reach OBVR the same way every other SteamVR
-  title does: SteamVR installed from Steam (Library, Tools), "Unknown Sources" switched on
-  in the Meta/Oculus PC app (Settings, General), the Meta app left running, SteamVR started
-  before the game. There is nothing to switch inside OBVR; a headset that only ever ran
-  OpenXR titles will have skipped the SteamVR step. Quest owners can also use Steam Link,
-  which needs no Meta PC app at all.
-- **DXVK** as the game's `d3d9.dll`. This is not optional.
-- Windows 10 or 11. Linux under Proton is the intended second platform, not a supported
-  one yet.
+- [MenuQue v16b](https://www.nexusmods.com/oblivion/mods/32200), for the
+  in-headset menus. Without it you get simpler fallback menus, VR still works.
+- [DXVK](https://github.com/doitsujin/dxvk/releases/latest). Not optional.
+- **SteamVR** and a headset it runs. Meta headsets (Quest via Link, Air Link,
+  Virtual Desktop or Steam Link, Rift) work like any other SteamVR game.
+- Windows 10 or 11.
 
-Tested on: one headset (a Dream Air) with Valve Index controllers through SteamVR, an
-RTX 4090, Windows 11. Anything else is untested, which is exactly what reports are for.
+Tested so far on one setup: Dream Air headset, Valve Index controllers, RTX 4090,
+Windows 11. Everything else is exactly what your reports are for.
 
 ## Installing
 
-1. Install [xOBSE](https://github.com/llde/xOBSE/releases/latest): `obse_1_2_416.dll`,
-   `obse_editor_1_2.dll`, `obse_steam_loader.dll`, `obse_loader.exe` and its `Data`
-   folder into the Oblivion directory.
-2. Install [DXVK](https://github.com/doitsujin/dxvk/releases/latest): from the archive's
-   `x32` folder, put `d3d9.dll` next to `Oblivion.exe`. Only that one file.
-3. Download `OBVR-<version>.zip` from this repository's **[Releases](https://github.com/Naragorn/OBVR/releases)** page and extract it
-   into Oblivion's `Data` folder. It contains `OBSE/Plugins/OBVR.dll`,
-   `OBSE/Plugins/OBVR.ini`, the controller bindings in `OBSE/Plugins/OBVR_Input/` and
-   Valve's 32-bit `openvr_api.dll` with its license (both from 0.2.2 on), the native
-   MenuQue XML menus and the license text.
-4. Install [MenuQue v16b](https://www.nexusmods.com/oblivion/mods/32200): merge its
-   `Data` folder into Oblivion, preserving `OBSE/Plugins/MenuQue.dll` and the
-   `OBSE/Plugins/MenuQue/` subfolder. Under MO2, install and enable it as a separate mod.
-5. From 0.2.2 on the archive brings the **32-bit** `openvr_api.dll` (OpenVR 2.15.6).
-   For 0.2.1 and older, copy it from SteamVR - it is at
-   `Steam\steamapps\common\SteamVR\bin\win32\openvr_api.dll` - into `Data/OBSE/Plugins/`
-   next to `OBVR.dll`. The 64-bit one from `bin/win64` will not load into Oblivion.
-6. **You must disable the Steam Overlay before playing OBVR.** In Steam, in your Steam Library,
-right-click **Oblivion > Properties > General** and turn off the Steam Overlay.
-Restart Oblivion after changing the setting.
-7. Start SteamVR, then launch Oblivion. On Steam, `obse_steam_loader.dll` loads xOBSE and
-   OBVR automatically when you use the normal Play button; `obse_loader.exe` is for
-   non-Steam installations or if you have trouble starting OBVR via Steam.
+1. **xOBSE:** put `obse_1_2_416.dll`, `obse_editor_1_2.dll`,
+   `obse_steam_loader.dll`, `obse_loader.exe` and its `Data` folder into your
+   Oblivion folder.
+2. **DXVK:** from the archive's `x32` folder, copy only `d3d9.dll` next to
+   `Oblivion.exe`.
+3. **OBVR:** download `OBVR-<version>.zip` from
+   **[Releases](https://github.com/Naragorn/OBVR/releases)** and extract it into
+   Oblivion's `Data` folder.
+4. **MenuQue v16b:** merge its `Data` folder into Oblivion's (or install it as its
+   own mod in MO2).
+5. **Only for 0.2.1 and older:** copy the **32-bit** `openvr_api.dll` from
+   `Steam\steamapps\common\SteamVR\bin\win32\` into `Data/OBSE/Plugins/`, next to
+   `OBVR.dll`. Newer versions bring it along.
+6. **Turn off the Steam Overlay for Oblivion.** In your Steam Library, right-click
+   **Oblivion > Properties > General** and switch the overlay off. This is required.
+7. Start SteamVR, then start Oblivion with the normal Play button in Steam
+   (`obse_loader.exe` if you don't use Steam or Steam won't start it).
 
-### Disable the Steam Overlay (required)
+**Mod Organizer 2:** just install the OBVR zip as a normal mod. OBVR itself doesn't
+need Root Builder (xOBSE's own files in the game folder do).
 
-**You must disable the Steam Overlay before playing OBVR.** In Steam, in your Steam Library,
-right-click **Oblivion > Properties > General** and turn off the Steam Overlay.
-Restart Oblivion after changing the setting.
+**Uninstalling:** delete `OBVR.dll`, `OBVR.ini`, `OBVR-LICENSE.txt`,
+`OBVR-crosshair.cache`, `openvr_api.dll`, `openvr_api-LICENSE.txt` and the
+`OBVR_Input` folder from `Data/OBSE/Plugins/`, plus `OBVR_Onboarding.xml` and
+`OBVR_Settings.xml` from `Data/Menus/Generic/` and the `Data/Menus/Prefabs/OBVR/`
+folder. OBVR doesn't touch your saves. Want to rule OBVR out quickly? Set
+`[Camera] HookEnabled=0` in `OBVR.ini`.
 
-### Mod Organizer 2
+## Settings
 
-MO2 virtualises `Data` and nothing else. xOBSE's loader files live in the game root and
-need [Root Builder](https://kezyma.github.io/?p=rootbuilder); OBVR does not, because it
-anchors its own files on `OBVR.dll`:
+Press `Insert` in the game for the settings menu. Everything else lives in
+`OBVR.ini` (in `Data/OBSE/Plugins/`), each option explained right above it. Changes
+apply while the game runs, no restart needed.
 
-| File | Where OBVR looks | Under MO2 |
-| --- | --- | --- |
-| `OBVR.ini` | next to `OBVR.dll` first, then the game root | virtualised, ships with the mod |
-| `openvr_api.dll` | next to `OBVR.dll` first, then the default search | virtualised, ships with the mod from 0.2.2 |
-| `OBVR-crosshair.cache` | next to `OBVR.dll` | virtualised |
-| `OBVR.log` | game root, always | written for real |
+A few worth knowing:
 
-So the release archive is an ordinary MO2 mod: install it from the archive as it is, with
-`OBSE/Plugins/` and `Menus/` inside and no `Root` folder. Up to 0.2.1, drop
-`openvr_api.dll` into the same `OBSE/Plugins/` folder of that mod.
-
-### Uninstalling
-
-Delete `OBVR.dll`, `OBVR.ini`, `OBVR-LICENSE.txt`, `OBVR-crosshair.cache`,
-`openvr_api.dll`, `openvr_api-LICENSE.txt` and the `OBVR_Input` folder from
-`Data/OBSE/Plugins/`. Also remove `Data/Menus/Generic/OBVR_Onboarding.xml`,
-`Data/Menus/Generic/OBVR_Settings.xml`, and `Data/Menus/Prefabs/OBVR/button_highlight.xml`.
-Keep MenuQue if other mods use it. OBVR touches no save. `[Camera] HookEnabled=0`
-in `OBVR.ini` is the quick way to rule OBVR out without removing it.
-
-## Reporting a problem
-
-Open an issue on this repository's **Issues** tab; the bug report form asks for what
-follows. The short version:
-
-- **`OBVR.log` and `OBVR.log.prev`** from the Oblivion directory. The log is the evidence;
-  a report without it can rarely be acted on. It contains the install path and nothing
-  else personal.
-- What you did and what you saw: both eyes, one eye, the monitor, the log's last line.
-- Headset, controllers, SteamVR version, GPU and driver, Windows version.
-- DXVK version, 4GB patch yes or no, Mod Organizer 2 yes or no, and the other xOBSE
-  plugins and mods loaded. Compatibility with other renderer and camera mods is the most
-  likely cause of a problem and the least known.
-- Whether the standing experience was switched on. It is under construction; reports from
-  it are welcome but read differently.
-
-A freeze rather than a crash: note whether the monitor window still updated, and whether
-SteamVR's own view still tracked. The watchdog's lines in the log ("Watchdog: ...") say
-where the game stood.
-
-## Configuration
-
-Every setting lives in `OBVR.ini`, each with its reasoning written above it, and the file
-is hot reloaded while the game runs. The settings menu in the headset (`Insert`) has the
-ones most people touch:
-
-| Key | What it does |
+| Setting | What it does |
 | --- | --- |
-| `[Head] Source` | `openvr` for a headset; `simulated` or `fixed` to check the camera chain without one |
-| `[Head] RecenterKey` | virtual-key code of the recenter key, `Del` by default |
-| `[Render] Stereo` | `dual` for real stereo; `aer` for alternate eye rendering; `none` for a flat picture |
-| `[Render] EyeSeparationScale` | how far apart the two viewpoints are, as a multiple of your real eye distance; `1.0` is true to life, above it is the depth boost (see below) |
-| `[Render] Menus` | `world` keeps menus in front of the world, `cinema` puts them on a flat screen |
-| `[Render] LiveMenuBackground` | render the paused world freshly per eye behind menus |
-| `[Render] MirrorMenusToMonitor` | composite in-game menus back onto the monitor window |
-| `[Render] Crosshair*` | the crosshair, its depth, size and when it shows |
-| `[Look] *` | what happens to the look controls once a headset drives the camera, smooth turning, and the head-based aiming options |
-| `[Hands] Enabled` | the standing experience, under construction, off |
-| `[Onboarding] ShowAtStart` | the first-start walkthrough |
+| `[Render] Stereo` | `dual` real 3D (default), `aer` lighter fallback, `none` flat |
+| `[Render] EyeSeparationScale` | depth boost: above `1.0` the world feels deeper and a bit smaller. Stay below ~1.5 |
+| `[Render] Menus` | `world` menus float in front of you, `cinema` on a flat screen |
+| `[Head] RecenterKey` | the recenter key, `Del` by default |
+| `[Look] *` | turning, aiming and comfort options |
+| `[Hands] Enabled` | standing with motion controllers - not ready yet, off |
 
-**Depth boost.** `EyeSeparationScale` is OBVR's version of the "3D Depth Boost" that
-PrimaShock's mod of the OpenXR Toolkit made popular in the flight and racing sim crowd
-(https://primashock.com/openxr-toolkit-mod-by-primashock-vr/). It moves the two
-viewpoints further apart than your real eyes are, so everything gets more parallax: more
-felt depth and separation up close, and a world that reads proportionally smaller. Those
-come as one package. Where the toolkit mod reprojects finished images, OBVR moves the
-camera before each eye is rendered, so there is no warping; each eye is genuinely drawn
-from the wider viewpoint. `1.0` is the default and geometrically true to your headset's
-own eye distance. Values close to 1 are the useful range; past about 1.5 most people
-trade depth for eye strain. It is hot reloaded, so it can be tuned from inside the
-headset.
+## Found a bug?
+
+Tell us on [Discord](https://discord.com/channels/747967102895390741/1547539304786436228)
+or open an issue on the **Issues** tab here. Please include:
+
+- **`OBVR.log` and `OBVR.log.prev`** from your Oblivion folder. Without them we
+  can rarely fix anything. (They contain your install path, nothing else personal.)
+- What you did and what you saw.
+- Your headset, graphics card, and other mods you use - other mods are the most
+  common cause of trouble.
+- If the game froze instead of crashing: did the monitor still move? Did SteamVR
+  still track?
 
 ## Compatibility
 
-**Oblivion Reloaded, Oblivion Reloaded Combined, E3: incompatible.** Both take over the
-same functions. Oblivion Reloaded plants a detour at the entry of the scene render
-(`0x0040C830`) in every version, and the 8.x-derived builds (E3, ORC) also at the camera
-update (`0x0066BE6E`) and the dialogue camera (`0x0066C6F0`). OBVR needs all three. It
-verifies every site before patching, refuses one that is already patched, and the log
-names the DLL that got there first. Whichever loads first keeps the site; the other loses
-the feature, and with the scene render that means no stereo. There is no configuration
-that makes the two coexist.
+- **Oblivion Reloaded, Oblivion Reloaded Combined, E3:** don't work with OBVR. They
+  change the same parts of the game OBVR needs. Pick one.
+- **Enhanced Camera:** doesn't work with OBVR. The game runs flat while it's
+  installed; remove `OBSE_EnhancedCamera.dll` to play in VR.
+- **NorthernUI:** works (tested with 2.0.3).
+- **ENB:** not tested.
+- Other mods that don't change graphics or the camera should be fine. Tell us either
+  way!
 
-**ENB**: not tested. ENB replaces `d3d9.dll`, which is where DXVK has to sit.
+## For modders and developers
 
-**Enhanced Camera**: incompatible. It plants its jump at the camera update (`0x0066BE6E`),
-the site OBVR needs for the head pose. With both loaded the log says "Camera: at 0066BE6E
-another plugin's jump ... inside OBSE_EnhancedCamera.dll" and OBVR stays inactive; the game
-runs flat. Remove `OBSE_EnhancedCamera.dll` to play in VR.
+The deep dive lives in the repo:
 
-**NorthernUI**: works, tested with 2.0.3. NorthernUI's menus reach the headset like every
-other menu. One shared site goes to NorthernUI: it wraps the HUDReticle update
-(`0x00582251`) first, so OBVR's third-person crosshair tooltips keep vanilla behaviour
-(the log says so, with the DLL's name). Nothing else overlaps.
+- `HANDOFF.md` - how OBVR works inside, and every dead end on the way.
+- `docs/` - the specs for every feature, including the standing mode.
+- `docs/vr-modding/` - a knowledge base for bringing flat games into VR.
 
-Other xOBSE plugins that do not touch the renderer or the player camera are expected to
-work; the engine fixes commonly installed alongside have been in the test load order
-throughout. Reports either way are welcome.
-
-## How it works, briefly
-
-- The camera hook sits at `0x0066BE6E`, immediately after Oblivion has written the
-  player camera into the scene graph, and rewrites the camera's local transform from the
-  head pose. The trampoline bytes are generated at runtime, so there is no inline assembly
-  and the generator is unit-tested.
-- The scene render entry (`0x0040C830`) is detoured so the world is drawn twice, the camera
-  stepped one eye over between the draws. The frame clock is zeroed for the second draw so
-  nothing animates twice.
-- The 2D pass (`0x0057F170`) is redirected into a texture of OBVR's own, which becomes an
-  OpenVR overlay. Direct3D device methods are hooked through the device's method table for
-  the back buffer copy, the bone lock and the render-target bookkeeping.
-- Aiming is set at the source: the player's attack update and the projectile factory are
-  wrapped so they read the gaze instead of the body's heading, and nothing else does.
-- Every reverse-engineered address in `src/game/GameAddresses.h` carries the evidence it
-  was read from, and is verified against the binary before it is patched.
-
-`HANDOFF.md` is the long version: the coordinate systems, the axis conventions, every
-dead end and why it was a dead end. `docs/hand-tracked-mode.md` is the same for the
-standing experience. `docs/vr-modding/` is the knowledge base written for coding agents:
-the architecture, the stereo model, the engine facts, the failed approaches and the open
-questions, classified by how well each is established, plus a playbook for bringing
-another flat game into VR.
-
-## Why OpenVR
-
-Oblivion is a 32-bit process, so OBVR is a 32-bit DLL, and it needs a 32-bit VR runtime.
-OpenVR's `openvr_api.dll` has always shipped for x86 and is out-of-process by design;
-SteamVR's OpenXR does not serve 32-bit applications, and under Proton `wineopenxr` is not
-built for i386 at all. Through SteamVR one OpenVR backend reaches more headsets than every
-32-bit OpenXR runtime combined. `TrackerSource` is an enumeration of interchangeable
-sources, so a second backend can be added without touching the camera code.
-
-## Building
-
-Oblivion is 32-bit, so the DLL must be too. With Visual Studio 2022 Build Tools:
+**Building:** Oblivion is 32-bit, so build 32-bit, with Visual Studio 2022 Build Tools:
 
 ```
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release .
 cmake --build build
 ```
 
-or with the Visual Studio generator:
-
-```
-cmake -B build -A Win32
-cmake --build build --config Release
-```
-
-Name the build type either way: an unoptimised DLL loads, but it is not what was tested.
-The DLL depends on nothing beyond `kernel32`, `user32` and `msvcrt`; a cross build without
-the Windows SDK exists as a verification route (`cmake/toolchain-linux-nosdk.cmake`).
-The version comes from the `project()` line in `CMakeLists.txt` and is the first thing
-the log says.
-
-### Tests
-
-The tests are a separate CMake project that runs natively on the development machine.
-Every decision the hooks make is lifted into pure functions over plain values so it can be
-exercised without a running game: trampoline bytes, rotation maths, the frame decisions,
-the INI parser, the bone-lock pairing, the compositor submit policy, the watchdog, the
-menus, the walkthrough, the hand mode, and so on. About seventy test binaries at the
-time of writing.
+**Tests** are their own project; build them 32-bit too:
 
 ```
 cmake -B build-tests tests -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -325,47 +155,20 @@ cmake --build build-tests
 ctest --test-dir build-tests --output-on-failure
 ```
 
-Build them with the 32-bit toolchain too (`vcvars32`, or `-A Win32` with the Visual
-Studio generator): the layout checks on the mirrored Windows and Direct3D structures
-hold for the pointer size the DLL is built for.
-
-`docs/verification/` holds logs and screenshots from the game runs that confirmed each
-milestone; `tools/` holds the scripts that start the game and take measurements without a
-person in the headset.
-
-### Releases
-
-`tools/package-release.ps1` builds the release archive: it reads the version from
-`CMakeLists.txt`, takes `build/OBVR.dll`, `OBVR.ini` and `assets/menus/`, and writes
-`dist/OBVR-<version>.zip` laid out for both a manual install and Mod Organizer 2, with the
-linker map beside it for reading a crash address back to a function. The GitHub Actions
-workflow in `.github/workflows/build.yml` builds the DLL and runs the tests on every push
-and keeps the DLL as an artifact.
-
-## Working on it
-
-Two rules shape every change here, and pull requests are read against them:
-
-- **Two sources for every address.** A reverse-engineered address is used only when the
-  disassembly of the actual binary and an independent source (xOBSE, NorthernUI, another
-  plugin, or a second code path in the binary) agree on it.
-- **Cause, not workaround.** A change that makes a symptom go away without an explanation
-  of why it appeared has not fixed anything. The commit history is written in that spirit
-  and is the first place to look for why something is the way it is.
-
-Everything in the repository - code, comments, commits, documents - is in English.
+`tools/package-release.ps1` builds the release zip. Pull requests are welcome;
+two house rules: every game address needs two independent sources, and fixes go
+after the cause, not the symptom. Everything in the repo is in English.
 
 ## Supporting the work
 
-OBVR is free and stays free. If it puts you in Cyrodiil and you want to buy a coffee for
-the evenings it took, there is a Patreon: https://www.patreon.com/naragorn
+OBVR is free and stays free. If it gets you into Cyrodiil and you want to buy a
+coffee for the evenings it took: https://www.patreon.com/naragorn
 
-Patrons get new builds of this and future VR mods before they go public, with the
-testing notes that come with them, and from the higher tiers a vote on which game gets
-the VR treatment next. Early access is a head start, not a lock: OBVR is GPL-3.0, and
-every build reaches this repository.
+Patrons get new builds of this and future VR mods early, with testing notes, and on
+higher tiers a vote on which game gets the VR treatment next. Every build still
+lands here - early access is a head start, not a lock.
 
-Tips in crypto are welcome too:
+Crypto tips are welcome too:
 
 | Coin | Address |
 | --- | --- |
@@ -375,35 +178,21 @@ Tips in crypto are welcome too:
 
 ## License
 
-OBVR is free software under the **GNU General Public License, version 3** (`LICENSE`).
-Copyright (C) 2026 Naragorn.
+**GNU General Public License v3** (`LICENSE`). Copyright (C) 2026 Naragorn.
 
-In plain words: use it, change it, share it, build on it, show it, fund your own work on it.
-What the license rules out is taking it away from the commons: whoever passes OBVR on,
-changed or not, has to pass the source on with it under this same license, keep the
-copyright notice, and mark what they changed. A closed or paid-for build of OBVR, with or
-without additions, is therefore not possible. The license text is the authority; this
-paragraph is only its summary.
+In short: use it, change it, share it, build on it. If you pass it on, pass the
+source on with it under the same license. No closed or paid-for versions. The
+license text is what counts; this is just the summary.
 
-`src/obse/PluginInterface.h` reproduces the layout of two structs from xOBSE's
-`PluginAPI.h` for binary compatibility, the way every OBSE plugin does; xOBSE publishes
-that header without a license of its own.
+`src/obse/PluginInterface.h` copies the layout of two structs from xOBSE's
+`PluginAPI.h` so the plugin can load, like every OBSE plugin does.
 
-Developer testing: the [real-engine VR replay suite](docs/vr-test-suite.md) is under
-construction. Ten in-game cases now pass, including regression checks for stretched
-wrists and stale hand-model bounds. Input focus, full gameplay and physical controller
-validation remain open. Results and exact coverage are recorded there.
+## Thanks to
 
-## References
-
-- [llde/xOBSE](https://github.com/llde/xOBSE) - the plugin loader. `src/obse/PluginInterface.h`
-  is a minimal, binary-compatible replica of its `PluginAPI.h`.
-- [ValveSoftware/openvr](https://github.com/ValveSoftware/openvr) - `openvr_api.dll` and the
-  headers `src/vr/OpenVRTypes.h` was written against.
-- [doitsujin/dxvk](https://github.com/doitsujin/dxvk) - the Direct3D 9 to Vulkan layer and
-  the interop interfaces OBVR uses to hand frames to the compositor.
-- [DavidJCobb/NorthernUI](https://github.com/DavidJCobb/NorthernUI) and
-  [llde/TESReloaded](https://github.com/llde/TESReloaded) - reverse-engineering references;
-  every address taken from them was checked against the binary first.
-- [openRBRVR](https://github.com/Detegr/openRBRVR) - the closest relative: a 32-bit D3D9
-  game with an in-process VR mod.
+- [xOBSE](https://github.com/llde/xOBSE) - the plugin loader.
+- [OpenVR](https://github.com/ValveSoftware/openvr) - the VR runtime.
+- [DXVK](https://github.com/doitsujin/dxvk) - Direct3D 9 on Vulkan.
+- [NorthernUI](https://github.com/DavidJCobb/NorthernUI) and
+  [TESReloaded](https://github.com/llde/TESReloaded) - reverse-engineering references.
+- [openRBRVR](https://github.com/Detegr/openRBRVR) - the closest relative, another
+  32-bit game brought into VR.
