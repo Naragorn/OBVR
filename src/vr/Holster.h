@@ -30,6 +30,7 @@
 //
 // Pure, covered by holster_test.
 
+#include "core/ChoiceWord.h"
 #include "core/MathFns.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
@@ -64,6 +65,38 @@ inline EquippedKind KindOfWeaponType(SInt32 type) {
 	}
 }
 
+// Which side of the body a weapon hangs on (the tester, 2026-09-30: "links
+// händer wollen whl alles links, kann aber auch n paar geben die wollen dann
+// mixen und matchen. soll möglich sein"). Auto: where a right-hander has it,
+// mirrored for a left-hander (LeftHanded) - what every place did before.
+// Right or Left: that side, whatever the handedness; the place's distance to
+// the side ([Hands] Holster*X) is kept, only its side is set.
+enum class HolsterSide : UInt8 { Auto = 0, Right = 1, Left = 2 };
+
+inline constexpr UInt32 kHolsterSideCount = 3;
+
+// The INI's words, in the order of the values, and the settings row's.
+inline constexpr const char* kHolsterSideNames[kHolsterSideCount] = {"auto", "right", "left"};
+
+// A word from the INI, any case. False, and `out` left alone, for anything
+// else.
+inline bool ParseHolsterSide(const char* text, HolsterSide& out) {
+	UInt32 index = 0;
+	if (!MatchChoiceWord(text, kHolsterSideNames, kHolsterSideCount, index)) {
+		return false;
+	}
+	out = static_cast<HolsterSide>(index);
+	return true;
+}
+
+// The settings row's value (0..2) as a side; out of range is Auto.
+inline HolsterSide HolsterSideFromIndex(float value) {
+	if (!(value > -0.5f) || !(value < static_cast<float>(kHolsterSideCount) - 0.5f)) {
+		return HolsterSide::Auto;
+	}
+	return static_cast<HolsterSide>(static_cast<int>(value + 0.5f));
+}
+
 struct HolsterSettings {
 	bool enabled = true;
 	// The left hip, low at the side: for the weapon hand. A standing adult's
@@ -77,6 +110,10 @@ struct HolsterSettings {
 	// Behind the left shoulder: for the other hand.
 	NiPoint3 bowZone{-0.18f, -0.12f, -0.15f};
 	float bowRadius = 0.18f;
+	// Which side each hangs on (HolsterSide).
+	HolsterSide oneHandSide = HolsterSide::Auto;
+	HolsterSide twoHandSide = HolsterSide::Auto;
+	HolsterSide bowSide = HolsterSide::Auto;
 	// How long a weapon just equipped may take to show in the hand before
 	// the draw is given up.
 	float drawWaitSeconds = 2.0f;
@@ -113,6 +150,32 @@ inline bool InZone(const NiPoint3& relative, const NiPoint3& centre, float radiu
 
 inline NiPoint3 Mirrored(const NiPoint3& zone, bool leftHanded) {
 	return NiPoint3{leftHanded ? -zone.x : zone.x, zone.y, zone.z};
+}
+
+// A place as it is on the body this frame: its setting (a right-hander's),
+// put on its side.
+inline NiPoint3 ZoneFor(const NiPoint3& zone, HolsterSide side, bool leftHanded) {
+	const float across = zone.x < 0.0f ? -zone.x : zone.x;
+	switch (side) {
+	case HolsterSide::Right:
+		return NiPoint3{across, zone.y, zone.z};
+	case HolsterSide::Left:
+		return NiPoint3{-across, zone.y, zone.z};
+	default:
+		return Mirrored(zone, leftHanded);
+	}
+}
+
+// The side a place has after the fitting run put it at `fittedX` (stored the
+// right-handed way, vr::RightHanded): Auto stays Auto - the fit is mirrored
+// with the hands - and a chosen side becomes the side the hand was really on,
+// so fitting a place never moves it to the other shoulder.
+inline HolsterSide FittedSide(HolsterSide side, float fittedX, bool leftHanded) {
+	if (side == HolsterSide::Auto) {
+		return side;
+	}
+	const float onBody = leftHanded ? -fittedX : fittedX;
+	return onBody >= 0.0f ? HolsterSide::Right : HolsterSide::Left;
 }
 
 struct HolsterInput {
@@ -171,14 +234,14 @@ inline HolsterVerdict StepHolster(HolsterState& s, const HolsterInput& in,
                                   const HolsterSettings& settings) {
 	HolsterVerdict v;
 	const bool atHip = in.rightValid && InZone(in.rightRelative,
-	                                           Mirrored(settings.oneHandZone, in.leftHanded),
+	                                           ZoneFor(settings.oneHandZone, settings.oneHandSide, in.leftHanded),
 	                                           settings.oneHandRadius);
 	const bool atBack = in.rightValid && InZone(in.rightRelative,
-	                                            Mirrored(settings.twoHandZone, in.leftHanded),
+	                                            ZoneFor(settings.twoHandZone, settings.twoHandSide, in.leftHanded),
 	                                            settings.twoHandRadius);
 	v.rightInZone = atHip || atBack;
 	v.leftInZone = in.leftValid && InZone(in.leftRelative,
-	                                      Mirrored(settings.bowZone, in.leftHanded),
+	                                      ZoneFor(settings.bowZone, settings.bowSide, in.leftHanded),
 	                                      settings.bowRadius);
 
 	const bool rightPress = in.rightGrip && !s.rightGripWas;

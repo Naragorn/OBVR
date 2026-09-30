@@ -368,8 +368,9 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	in.leftTrigger = cl.valid && StepTrigger(m_leftTrigger, cl.trigger);
 	in.rightGrip = cr.valid && GripDown(cr.buttonsPressed);
 	in.leftGrip = cl.valid && GripDown(cl.buttonsPressed);
-	// Drawing by reaching (vr::StepHolster): the right hand's grip at the left
-	// hip, the left hand's at the left shoulder. A grip that closed there is
+	// Drawing by reaching (vr::StepHolster): the weapon hand's grip at the
+	// one- or two-handed place, the other hand's at the bow's, each on its
+	// side (vr::ZoneFor). A grip that closed there is
 	// the holster's until it opens - it neither grabs nor cancels a teleport.
 	{
 		HolsterInput hin;

@@ -1407,6 +1407,18 @@ bool UpdateHolsterFit(Config& config, vr::OpenVRBackend& backend, const vr::Hand
 		h.oneHandZone = v.oneHand;
 		h.twoHandZone = v.twoHand;
 		h.bowZone = v.bow;
+		// A chosen side follows the hand: the place goes on the side it was
+		// fitted on (vr::FittedSide); auto stays auto.
+		const bool leftHanded = config.hands.leftHanded;
+		h.oneHandSide = vr::FittedSide(h.oneHandSide, v.oneHand.x, leftHanded);
+		h.twoHandSide = vr::FittedSide(h.twoHandSide, v.twoHand.x, leftHanded);
+		h.bowSide = vr::FittedSide(h.bowSide, v.bow.x, leftHanded);
+		const struct {
+			const char* key;
+			vr::HolsterSide side;
+		} sides[] = {{"HolsterOneHandSide", h.oneHandSide},
+		             {"HolsterTwoHandSide", h.twoHandSide},
+		             {"HolsterBowSide", h.bowSide}};
 		struct Entry {
 			const char* key;
 			float value;
@@ -1423,6 +1435,9 @@ bool UpdateHolsterFit(Config& config, vr::OpenVRBackend& backend, const vr::Hand
 			char value[32];
 			std::snprintf(value, sizeof(value), "%.2f", static_cast<double>(entry.value));
 			saved = SaveSetting("Hands", entry.key, value) && saved;
+		}
+		for (const auto& entry : sides) {
+			saved = SaveSetting("Hands", entry.key, vr::kHolsterSideNames[static_cast<UInt32>(entry.side)]) && saved;
 		}
 		OBVR_LOG("Holster fit: done - one-handed at %.2f %.2f %.2f, two-handed at %.2f %.2f %.2f, "
 		         "bow at %.2f %.2f %.2f (right, forward, up from the eyes)%s",

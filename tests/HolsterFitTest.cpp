@@ -4,6 +4,7 @@
 #include <cstdio>
 
 #include "vr/HolsterFit.h"
+#include "vr/Holster.h"
 
 using namespace obvr;
 using namespace obvr::vr;
@@ -137,9 +138,22 @@ void TestFit() {
 	}
 }
 
+void TestFittedSide() {
+	std::printf("A chosen side after the fit\n");
+	Check(FittedSide(HolsterSide::Auto, -0.2f, false) == HolsterSide::Auto, "auto stays auto");
+	Check(FittedSide(HolsterSide::Right, -0.2f, false) == HolsterSide::Left,
+	      "set right, shown on the left: now left");
+	Check(FittedSide(HolsterSide::Left, 0.2f, false) == HolsterSide::Right, "set left, shown on the right: now right");
+	Check(FittedSide(HolsterSide::Left, -0.2f, false) == HolsterSide::Left, "shown where it was: kept");
+	// Left-handed the fit is stored mirrored: -0.2 stored is +0.2 on the body.
+	Check(FittedSide(HolsterSide::Left, -0.2f, true) == HolsterSide::Right,
+	      "left-handed: the stored mirror read back to the body's side");
+}
+
 }  // namespace
 
 int main() {
+	TestFittedSide();
 	TestFit();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);

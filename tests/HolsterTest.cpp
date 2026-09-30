@@ -299,9 +299,50 @@ void TestGates() {
 	      "both reaches in one frame: the sword's; the left grip stays a grab");
 }
 
+void TestSides() {
+	std::printf("Which side each place is on\n");
+	const NiPoint3 hip = kSettings.oneHandZone;  // the left hip, a right-hander's
+	Check(Near(ZoneFor(hip, HolsterSide::Auto, false).x, hip.x), "auto, right-handed: as set");
+	Check(Near(ZoneFor(hip, HolsterSide::Auto, true).x, -hip.x), "auto, left-handed: mirrored");
+	const NiPoint3 right = ZoneFor(hip, HolsterSide::Right, false);
+	Check(Near(right.x, 0.18f) && Near(right.y, hip.y) && Near(right.z, hip.z),
+	      "right: on the right, only the side changes");
+	Check(Near(ZoneFor(hip, HolsterSide::Right, true).x, 0.18f), "right stays right when left-handed");
+	Check(Near(ZoneFor(kSettings.twoHandZone, HolsterSide::Left, false).x, -0.18f),
+	      "left: the right shoulder's place put on the left");
+	Check(Near(ZoneFor(kSettings.twoHandZone, HolsterSide::Left, true).x, -0.18f), "left stays left when left-handed");
+
+	HolsterSide side = HolsterSide::Auto;
+	Check(ParseHolsterSide("Left", side) && side == HolsterSide::Left, "the INI's word, any case");
+	Check(!ParseHolsterSide("middle", side) && side == HolsterSide::Left, "another word: kept");
+	Check(HolsterSideFromIndex(1.0f) == HolsterSide::Right && HolsterSideFromIndex(7.0f) == HolsterSide::Auto &&
+	          HolsterSideFromIndex(-1.0f) == HolsterSide::Auto,
+	      "the settings row's value, out of range auto");
+
+	// Mix and match: a right-hander's two-hander over the left shoulder.
+	HolsterSettings mixed = kSettings;
+	mixed.twoHandSide = HolsterSide::Left;
+	HolsterInput in = AtHip(false, EquippedKind::TwoHand, WeaponSeen::Sheathed);
+	in.haveTwoHand = true;
+	in.rightRelative = NiPoint3{-0.18f, kSettings.twoHandZone.y, kSettings.twoHandZone.z};
+	HolsterState s;
+	StepHolster(s, in, mixed);
+	in.rightGrip = true;
+	HolsterVerdict v = StepHolster(s, in, mixed);
+	Check(v.readyClick && v.gesture == HolsterKind::TwoHand, "the two-hander set left: drawn over the left shoulder");
+	HolsterState t;
+	in.rightGrip = false;
+	in.rightRelative = kSettings.twoHandZone;
+	StepHolster(t, in, mixed);
+	in.rightGrip = true;
+	v = StepHolster(t, in, mixed);
+	Check(!v.rightInZone && !v.readyClick, "and no longer over the right");
+}
+
 }  // namespace
 
 int main() {
+	TestSides();
 	TestBodyFrame();
 	TestSword();
 	TestBow();

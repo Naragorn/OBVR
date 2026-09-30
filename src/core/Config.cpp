@@ -833,6 +833,23 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		hs.bowZone.y = ReadFloat("Hands", "HolsterBowForward", hs.bowZone.y, path);
 		hs.bowZone.z = ReadFloat("Hands", "HolsterBowUp", hs.bowZone.z, path);
 		hs.bowRadius = ReadFloat("Hands", "HolsterBowRadius", hs.bowRadius, path);
+		{
+			struct SideKey {
+				const char* key;
+				vr::HolsterSide* side;
+			};
+			const SideKey sides[] = {{"HolsterOneHandSide", &hs.oneHandSide},
+			                         {"HolsterTwoHandSide", &hs.twoHandSide},
+			                         {"HolsterBowSide", &hs.bowSide}};
+			for (const SideKey& entry : sides) {
+				char word[16] = {};
+				ReadText("Hands", entry.key, word, sizeof(word), path);
+				if (word[0] != 0 && !vr::ParseHolsterSide(word, *entry.side)) {
+					OBVR_LOG("Config: [Hands] %s=%s is not auto, right or left - kept %s", entry.key, word,
+					         vr::kHolsterSideNames[static_cast<UInt32>(*entry.side)]);
+				}
+			}
+		}
 
 		vr::FistSettings& fs = h.fist;
 		fs.enabled = ReadBool("Hands", "Fists", fs.enabled, path);
