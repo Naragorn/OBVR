@@ -81,6 +81,7 @@ enum class FingerPose : UInt8 {
 	Animation,  // the fingers as the animation has them
 	Grip,       // closed around what the engine holds (the grip curl)
 	Tracked,    // each finger where the controller's finger is
+	Handle,     // the game's own left hand round a two-hander's handle
 };
 
 // Which pose a hand's fingers take this frame: closed around a held object
@@ -232,6 +233,32 @@ inline NiMatrix33 BlendRotation(const NiMatrix33& a, const NiMatrix33& b, float 
 // The left hand's link is the right's mirror image: x and y negated.
 inline FingerQuat MirroredForLeft(const FingerQuat& q) { return FingerQuat{q.w, -q.x, -q.y, q.z}; }
 
+// The game's own left hand round a two-hander's handle: twohandidle.kf, read
+// with pyffi on 2026-09-30 - every left finger link a constant key. The left
+// hand on a handle takes this pose, not the animation's: a one-hander's
+// animation keeps the left hand open at the side, and the tester, 2026-09-30,
+// saw it "mit offener hand im griff schweben".
+inline constexpr FingerQuat kHandleLeft[kFingerLinkCount] = {
+	{0.633f, 0.589f, 0.483f, -0.139f},  {0.919f, 0.0f, 0.0f, 0.394f}, {0.962f, 0.0f, 0.0f, 0.273f},
+	{0.767f, 0.009f, -0.026f, 0.641f},  {0.891f, 0.0f, 0.0f, 0.453f}, {0.934f, 0.0f, 0.0f, 0.358f},
+	{0.767f, -0.085f, -0.019f, 0.636f}, {0.874f, 0.0f, 0.0f, 0.485f}, {0.824f, 0.0f, 0.0f, 0.567f},
+	{0.767f, -0.148f, -0.014f, 0.624f}, {0.912f, 0.0f, 0.0f, 0.411f}, {0.864f, 0.0f, 0.0f, 0.504f},
+	{0.808f, -0.244f, 0.018f, 0.537f},  {0.926f, 0.0f, 0.0f, 0.378f}, {0.882f, 0.0f, 0.0f, 0.471f},
+};
+
+// A link's local rotation round a handle; the right hand's is the mirror image
+// of the left's. False for a link outside the table.
+inline bool HandleLinkRotation(bool rightHand, int link, NiMatrix33& rot) {
+	if (link < 0 || link >= kFingerLinkCount) {
+		return false;
+	}
+	const FingerQuat q = kHandleLeft[link];
+	const float length = math::Sqrt(q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z);
+	const FingerQuat unit{q.w / length, q.x / length, q.y / length, q.z / length};
+	rot = RotationOfQuat(rightHand ? MirroredForLeft(unit) : unit);
+	return true;
+}
+
 // A tracked link's local rotation: its open and fist poses blended by its
 // finger's curl.
 inline NiMatrix33 TrackedLinkRotation(bool rightHand, int link, float curl) {
@@ -280,12 +307,13 @@ inline float LinkCurlDegrees(const NiMatrix33& rot) {
 
 // Once per frame, after the hand bone has been pinned: gives the named hand's
 // fingers the pose asked for - closed by `curlDegrees` around what it holds
-// (Grip), each where the controller's finger is (Tracked), or back to what
-// the animation had (Animation). `towardAnimation` (0 to 1) blends a Grip or
-// Tracked pose that far towards the animation's: the left hand closing on a
-// two-hander's handle (vr/TwoHandLogic.h) forms the game's grip gradually.
+// (Grip), each where the controller's finger is (Tracked), round a handle
+// (Handle), or back to what the animation had (Animation). `towardHandle`
+// (0 to 1) blends any other pose that far towards the Handle pose: the left
+// hand closing on a weapon's handle (vr/TwoHandLogic.h) forms the game's grip
+// gradually.
 void StepHandFingers(bool rightHand, const char* handBoneName, FingerPose pose, float curlDegrees,
-                     const FingerCurls* curls, float towardAnimation = 0.0f);
+                     const FingerCurls* curls, float towardHandle = 0.0f);
 
 // Whether the named hand holds a thing of its own: anything under the hand
 // bone besides its finger links that carries a child - the drawn weapon's

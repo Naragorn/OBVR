@@ -209,13 +209,25 @@ inline VanillaGrip VanillaGripFrom(const NiMatrix33& weaponRot, const NiPoint3& 
 // the game's own left hand - a one-hander's - is the one place at its pommel
 // end: the left hand cups the pommel. Invalid when the model was not measured:
 // the hand is then put where the game has it.
+//
+// A staff is a handle all along: above the right hand too, from a fist's width
+// past it (the game's own hand's distance below it, mirrored) to the far end,
+// inset. The tester, 2026-09-30, on a staff: "bei dem habe ich keine freie
+// Wahl wo ich den anfassen will mit links. scheint nur einen ort zu geben" -
+// the log had the left grip close 24 to 35 units above the right palm, all
+// refused as the blade, and the one grip below put 7 units under the right
+// hand.
 struct HandleSpan {
 	bool valid = false;
 	float low = 0.0f;   // the pommel end, inset
 	float high = 0.0f;  // the game's own left hand, right under the right one
+	bool above = false;       // a staff: the shaft above the right hand too
+	float aboveLow = 0.0f;    // a fist's width above the right palm
+	float aboveHigh = 0.0f;   // the far end, inset
 };
 
-inline HandleSpan HandleSpanFor(const TwoHandSettings& s, bool measured, float pommelAxial, float highestAxial) {
+inline HandleSpan HandleSpanFor(const TwoHandSettings& s, bool measured, float pommelAxial, float highestAxial,
+                                bool shaft = false, float tipAxial = 0.0f) {
 	HandleSpan h;
 	if (!measured || !(pommelAxial == pommelAxial) || !(highestAxial == highestAxial)) {
 		return h;
@@ -223,6 +235,11 @@ inline HandleSpan HandleSpanFor(const TwoHandSettings& s, bool measured, float p
 	h.low = pommelAxial + s.endInsetUnits;
 	h.high = highestAxial < h.low ? h.low : highestAxial;
 	h.valid = true;
+	if (shaft && tipAxial == tipAxial) {
+		h.aboveLow = -highestAxial;
+		h.aboveHigh = tipAxial - s.endInsetUnits;
+		h.above = h.aboveLow > 0.0f && h.aboveHigh > h.aboveLow;
+	}
 	return h;
 }
 
@@ -247,24 +264,51 @@ struct TwoHandState {
 // Whether the left grip, closing now at `axial` along the weapon from the
 // right hand and `lateral` from its line, takes hold of the handle: below the
 // right hand, down to the measured handle's end (or up to overhangUnits past
-// it), else down to behindUnits. Above the right hand is the blade.
+// it), else down to behindUnits. Above the right hand is the blade - but a
+// staff's shaft (HandleSpan::above), up to overhangUnits past its far end.
 inline bool TwoHandTakes(const TwoHandSettings& s, bool twoHandedDrawn, bool leftGripClosedNow, float axial,
                          float lateral, const HandleSpan& handle = HandleSpan{}) {
-	if (!s.enabled || !twoHandedDrawn || !leftGripClosedNow || !(lateral <= s.reachUnits) ||
-	    !(axial <= -s.minUnits)) {
+	if (!s.enabled || !twoHandedDrawn || !leftGripClosedNow || !(lateral <= s.reachUnits)) {
+		return false;
+	}
+	if (handle.valid && handle.above && axial >= s.minUnits) {
+		return axial <= handle.aboveHigh + s.overhangUnits;
+	}
+	if (!(axial <= -s.minUnits)) {
 		return false;
 	}
 	return handle.valid ? axial >= handle.low - s.overhangUnits : axial >= -s.behindUnits;
 }
 
+inline float ClampedTo(float value, float low, float high) {
+	return value < low ? low : (value > high ? high : value);
+}
+
 // Where on the handle the left palm is put, from the right palm: where it
-// closed, kept on the measured handle; where the game's own left hand holds
-// it (`gameAxial`) when the handle was not measured.
+// closed, kept on the measured handle - on a staff on the side of the right
+// hand it closed on; where the game's own left hand holds it (`gameAxial`)
+// when the handle was not measured.
 inline float LeftHandAxial(const HandleSpan& handle, float axial, float gameAxial) {
 	if (!handle.valid) {
 		return gameAxial;
 	}
-	return axial < handle.low ? handle.low : (axial > handle.high ? handle.high : axial);
+	if (handle.above && axial > 0.0f) {
+		return ClampedTo(axial, handle.aboveLow, handle.aboveHigh);
+	}
+	return ClampedTo(axial, handle.low, handle.high);
+}
+
+// Where the hand sliding along the handle (the trigger held) is put: as
+// LeftHandAxial, but kept on the side of the right hand it holds - it does
+// not slide through the right hand.
+inline float SlideAxial(const HandleSpan& handle, float heldAxial, float axial, float gameAxial) {
+	if (!handle.valid) {
+		return gameAxial;
+	}
+	if (handle.above && heldAxial > 0.0f) {
+		return ClampedTo(axial, handle.aboveLow, handle.aboveHigh);
+	}
+	return ClampedTo(axial, handle.low, handle.high);
 }
 
 inline void StartTwoHand(TwoHandState& t, float axial, float handAxial) {
@@ -387,7 +431,7 @@ struct LeftHandPose {
 };
 
 inline LeftHandPose LeftHandOnHandle(const VanillaGrip& grip, float handAxial, const NiMatrix33& weaponRot,
-                                     const NiPoint3& weaponPos, const NiMatrix33& handRot) {
+                                     const NiPoint3& weaponPos, const NiMatrix33& handRot, float rightPalmAxial) {
 	const NiPoint3 up{0.0f, 1.0f, 0.0f};
 	const NiMatrix33 gripToHand = Transposed(grip.rot);
 	// The handle's direction and the way from the bone to the handle's line,
@@ -395,9 +439,21 @@ inline LeftHandPose LeftHandOnHandle(const VanillaGrip& grip, float handAxial, c
 	const NiPoint3 handleInHand = gripToHand * up;
 	const NiPoint3 toLineInHand = gripToHand * NiPoint3{-grip.pos.x, 0.0f, -grip.pos.z};
 	const NiPoint3 axis = weaponRot * up;
+	// A fist holds the handle either way round: a hand turned more than a
+	// quarter round from the game's grip - the other way up on a staff - is
+	// tilted onto the handle the other way, not turned half round.
+	const NiPoint3 handle = handRot * handleInHand;
+	const bool reversed = handle.x * axis.x + handle.y * axis.y + handle.z * axis.z < 0.0f;
+	const NiPoint3 along = reversed ? axis * -1.0f : axis;
 	LeftHandPose p;
-	p.rot = RotationBetween(handRot * handleInHand, axis) * handRot;
-	const NiPoint3 onLine = weaponPos + axis * (grip.pos.y + (handAxial - grip.Below()));
+	p.rot = RotationBetween(handle, along) * handRot;
+	// The palm at handAxial from the right palm - where it is on this weapon
+	// (`rightPalmAxial` along the Weapon node's axis, measured: a staff hangs
+	// 37 units lower in the hand than a sword, and put from the file's -0.9
+	// the tester's left hand landed 37 units up the staff, 2026-09-30) - the
+	// bone as far from it along the hand's own handle as in the game's grip.
+	const NiPoint3 palm = weaponPos + axis * (rightPalmAxial + handAxial);
+	const NiPoint3 onLine = palm + along * (grip.pos.y - grip.leftPalmAxial);
 	p.pos = onLine - p.rot * toLineInHand;
 	return p;
 }

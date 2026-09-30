@@ -231,6 +231,10 @@ float g_twoHandPreshape = 0.0f;
 const UInt8* g_twoHandMeasured = nullptr;
 bool g_twoHandPommelValid = false;
 float g_twoHandPommel = 0.0f;
+float g_twoHandTip = 0.0f;  // the far end, for a staff's shaft above the right hand
+// Where the right palm is along the Weapon node's axis on this weapon, measured with
+// its handle: a staff hangs further down the hand than the file's grip has it.
+float g_twoHandRightPalm = 0.0f;
 // The game's own left hand on the two-hander (vr::VanillaGrip), read from the
 // animation while the left hand is not held.
 vr::VanillaGrip g_vanillaGrip = vr::GameGripFromFiles();
@@ -4290,23 +4294,32 @@ TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& camera
 		float tip = 0.0f;
 		const NiPoint3 axis = weapon->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f};
 		g_twoHandPommelValid = game::AxialExtentOf(weapon, weapon->worldTransform.pos, axis, g_twoHandPommel, tip);
+		g_twoHandTip = tip;
+		NiPoint3 rightPalm{};
+		float palmLateral = 0.0f;
+		g_twoHandRightPalm = g_vanillaGrip.rightPalmAxial;
+		if (PalmOf(true, rightPalm)) {
+			vr::AxialLateral(rightPalm, weapon->worldTransform.pos, axis, g_twoHandRightPalm, palmLateral);
+		}
 		s_measureWait = g_twoHandPommelValid ? 0 : 90;
 		static UInt32 s_handleLines = 32;
 		if (s_handleLines > 0 && (g_twoHandPommelValid || firstTry)) {
 			--s_handleLines;
-			const float fromRight = g_twoHandPommel - g_vanillaGrip.rightPalmAxial;
+			const float fromRight = g_twoHandPommel - g_twoHandRightPalm;
 			OBVR_LOG("Hands: the %s's model (weapon type %d) - %s; pommel %.1f units %s the right palm, tip %.0f "
-			         "above the weapon node",
+			         "above the weapon node, the right palm %.1f along it",
 			         twoHander ? "two-hander" : "one-hander", static_cast<int>(weaponType),
 			         g_twoHandPommelValid ? "measured" : "not readable yet",
 			         static_cast<double>(fromRight < 0.0f ? -fromRight : fromRight),
-			         fromRight < 0.0f ? "below" : "above", static_cast<double>(tip));
+			         fromRight < 0.0f ? "below" : "above", static_cast<double>(tip),
+			         static_cast<double>(g_twoHandRightPalm));
 		}
 	}
 	const vr::HandleSpan handle =
 		weaponForm == g_twoHandMeasured
 			? vr::HandleSpanFor(hands.twoHand, g_twoHandPommelValid,
-			                    g_twoHandPommel - g_vanillaGrip.rightPalmAxial, g_vanillaGrip.Below())
+			                    g_twoHandPommel - g_twoHandRightPalm, g_vanillaGrip.Below(),
+			                    vr::IsStaffWeaponType(weaponType), g_twoHandTip - g_twoHandRightPalm)
 			: vr::HandleSpan{};
 	float axial = 0.0f;
 	float lateral = 0.0f;
@@ -4326,10 +4339,12 @@ TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& camera
 			vr::StartTwoHand(g_twoHand, axial, held);
 			// From where the approach had shaped the hand, the rest of the way.
 			g_twoHandFloor = g_twoHandBlend > 0.0f ? 0.0f : g_twoHandPreshape;
-			OBVR_LOG("Hands: the left hand took the %s's handle %.1f units below the right palm (closed at %.0f, %.0f "
+			OBVR_LOG("Hands: the left hand took the %s's handle %.1f units %s the right palm (closed at %.0f, %.0f "
 			         "from the line; the game's own hand at %.1f; the handle %s; already shaped %.2f) - held with "
 			         "both hands, the game's grip",
-			         twoHander ? "two-hander" : "one-hander", static_cast<double>(-held), static_cast<double>(axial),
+			         vr::IsStaffWeaponType(weaponType) ? "staff" : twoHander ? "two-hander" : "one-hander",
+			         static_cast<double>(held < 0.0f ? -held : held), held < 0.0f ? "below" : "above",
+			         static_cast<double>(axial),
 			         static_cast<double>(lateral), static_cast<double>(-g_vanillaGrip.Below()),
 			         handle.valid ? "measured" : "not measured", static_cast<double>(g_twoHandFloor));
 		} else if (closedNow && twoHanded) {
@@ -4361,13 +4376,15 @@ TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& camera
 			// trigger is held, and stays put when it is let go.
 			static bool s_slideLogged = false;
 			if (vr::TwoHandSlides(hands.twoHand, g_hand.leftTriggerDown)) {
-				if (!s_slideLogged && reach.axial != g_twoHand.handAxial) {
+				// On its own side of the right hand (a staff's shaft is both).
+				const float slid = vr::SlideAxial(handle, g_twoHand.handAxial, axial, g_vanillaGrip.Below());
+				if (!s_slideLogged && slid != g_twoHand.handAxial) {
 					s_slideLogged = true;
 					OBVR_LOG("Hands: the left hand slides along the handle with the trigger held - from %.1f to %.1f "
-					         "units below the right palm",
-					         static_cast<double>(-g_twoHand.handAxial), static_cast<double>(-reach.axial));
+					         "units from the right palm",
+					         static_cast<double>(g_twoHand.handAxial), static_cast<double>(slid));
 				}
-				g_twoHand.handAxial = reach.axial;
+				g_twoHand.handAxial = slid;
 			}
 		}
 	}
@@ -4424,8 +4441,17 @@ void PinLeftHandOnHandle(const vr::HandSettings& hands, float weight, float hand
 	const game::BonePose own = game::HandBoneWorld(
 		cameraRot, cameraPos, g_hand.leftHandRotation, g_hand.leftHandOffsetUnits,
 		game::HandCalibration(hands.leftHandRoll, hands.leftHandPitch, hands.leftHandYaw), grip);
+	// The right palm where this weapon has it, this frame (the pinned hand
+	// carries the weapon: where the palm lies along it does not change).
+	float rightPalmAxial = g_vanillaGrip.rightPalmAxial;
+	NiPoint3 rightPalmNow{};
+	if (PalmOf(true, rightPalmNow)) {
+		float offLine = 0.0f;
+		vr::AxialLateral(rightPalmNow, weapon->worldTransform.pos,
+		                 weapon->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f}, rightPalmAxial, offLine);
+	}
 	vr::LeftHandPose pose = vr::LeftHandOnHandle(g_vanillaGrip, handAxial, weapon->worldTransform.rot,
-	                                             weapon->worldTransform.pos, own.rot);
+	                                             weapon->worldTransform.pos, own.rot, rightPalmAxial);
 	if (weight < 1.0f && g_hand.leftHandValid) {
 		pose.rot = game::BlendRotation(own.rot, pose.rot, weight);
 		pose.pos = own.pos + (pose.pos - own.pos) * weight;
@@ -4650,12 +4676,13 @@ void BeforeFirstScenePass() {
 				hands.fingerTracking, g_hand.rightCurlValid,
 				game::HandGripWanted(true, holding, g_hand.grabWithLeftHand),
 				hands.fingerTracking && game::HandHoldsItem(true, hands.rightHandBone));
-			// On the two-hander's handle the left fingers are the animation's, the
-			// game's own grip around it; on the way there they close into it from
+			// On the handle the left fingers are the game's own grip round it
+			// (game::kHandleLeft, the two-hander idle's - a one-hander's animation
+			// has the left hand open); on the way there they close into it from
 			// their own pose, and open back out of it on the way back.
 			const game::FingerPose leftPose =
 				twoHand.handleWeight >= 1.0f
-					? game::FingerPose::Animation
+					? game::FingerPose::Handle
 					: game::FingerPoseFor(hands.fingerTracking, g_hand.leftCurlValid,
 				                          game::HandGripWanted(false, holding, g_hand.grabWithLeftHand),
 				                          hands.fingerTracking && game::HandHoldsItem(false, hands.leftHandBone));

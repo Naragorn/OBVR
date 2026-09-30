@@ -72,6 +72,39 @@ void TestHandle() {
 	Check(!HandleSpanFor(s, true, kNaN, -6.0f).valid, "no pommel: nothing");
 	Check(!HandleSpanFor(s, true, -30.0f, kNaN).valid, "no game's hand: nothing");
 	Check(Near(LeftHandAxial(HandleSpan{}, -20.0f, -6.0f), -6.0f), "no measured handle: where the game holds it");
+	Check(!h.above && !HandleSpanFor(s, true, -30.0f, -6.0f, false, 40.0f).above,
+	      "not a staff: nothing above the right hand");
+
+	std::printf("A staff's shaft, both sides of the right hand\n");
+	// The tester's staff (2026-09-30): 81 below the right palm, 39 above.
+	const HandleSpan staff = HandleSpanFor(s, true, -81.0f, -7.0f, true, 39.0f);
+	Check(staff.valid && staff.above && Near(staff.low, -78.0f) && Near(staff.high, -7.0f) &&
+	          Near(staff.aboveLow, 7.0f) && Near(staff.aboveHigh, 36.0f),
+	      "the shaft from 78 below to 7 below, and from 7 above to 36 above");
+	Check(TwoHandTakes(s, true, true, 24.0f, 5.0f, staff) && TwoHandTakes(s, true, true, 35.0f, 5.0f, staff),
+	      "24 and 35 above the right hand, the tester's grips: taken");
+	Check(TwoHandTakes(s, true, true, -60.0f, 5.0f, staff), "far down the shaft: taken");
+	Check(TwoHandTakes(s, true, true, 44.0f, 5.0f, staff) && !TwoHandTakes(s, true, true, 47.0f, 5.0f, staff),
+	      "past the far end: up to the overhang, not beyond");
+	Check(!TwoHandTakes(s, true, true, 1.0f, 5.0f, staff) && !TwoHandTakes(s, true, true, -1.0f, 5.0f, staff),
+	      "on the right hand itself: not");
+	Check(!TwoHandTakes(s, true, true, 24.0f, 20.0f, staff), "beside the shaft: not");
+	Check(Near(LeftHandAxial(staff, 24.0f, -7.0f), 24.0f) && Near(LeftHandAxial(staff, -40.0f, -7.0f), -40.0f),
+	      "put where it closed, on either side");
+	Check(Near(LeftHandAxial(staff, 3.0f, -7.0f), 7.0f) && Near(LeftHandAxial(staff, -3.0f, -7.0f), -7.0f),
+	      "closer than a fist to the right hand: a fist's width off it, on its own side");
+	Check(Near(LeftHandAxial(staff, 50.0f, -7.0f), 36.0f), "past the far end: on the end");
+	const HandleSpan tipless = HandleSpanFor(s, true, -81.0f, -7.0f, true, kNaN);
+	Check(tipless.valid && !tipless.above, "no far end measured: below only");
+	Check(!HandleSpanFor(s, true, -81.0f, -7.0f, true, 9.0f).above, "no room above the right hand: below only");
+
+	std::printf("Sliding keeps to its side of the right hand\n");
+	Check(Near(SlideAxial(staff, 20.0f, -10.0f, -7.0f), 7.0f), "held above, the controller below: stays above");
+	Check(Near(SlideAxial(staff, -20.0f, 10.0f, -7.0f), -7.0f), "held below, the controller above: stays below");
+	Check(Near(SlideAxial(staff, 20.0f, 30.0f, -7.0f), 30.0f) && Near(SlideAxial(staff, -20.0f, -50.0f, -7.0f), -50.0f),
+	      "along its own side: follows");
+	Check(Near(SlideAxial(h, -15.0f, 10.0f, -6.0f), -6.0f), "a sword: never above");
+	Check(Near(SlideAxial(HandleSpan{}, -15.0f, -20.0f, -6.0f), -6.0f), "no measured handle: the game's place");
 }
 
 void TestVanillaGrip() {
@@ -102,10 +135,10 @@ void TestVanillaGrip() {
 
 	std::printf("The left hand put on the handle\n");
 	const NiPoint3 moved{0.0f, 0.0f, 50.0f};
-	const LeftHandPose same = LeftHandOnHandle(g, g.Below(), w, moved, w * g.rot);
+	const LeftHandPose same = LeftHandOnHandle(g, g.Below(), w, moved, w * g.rot, g.rightPalmAxial);
 	Check(NearV(same.pos, moved + w * g.pos) && NearV(same.rot * NiPoint3{1, 0, 0}, w * NiPoint3{1, 0, 0}),
 	      "at the game's place: the game's pose, carried with the weapon");
-	const LeftHandPose lower = LeftHandOnHandle(g, -14.0f, w, moved, w * g.rot);
+	const LeftHandPose lower = LeftHandOnHandle(g, -14.0f, w, moved, w * g.rot, g.rightPalmAxial);
 	Check(NearV(lower.pos, moved + w * NiPoint3{0.0f, -14.0f, 6.0f}),
 	      "6 further down: the same grip, 6 further down the axis");
 
@@ -116,7 +149,7 @@ void TestVanillaGrip() {
 	roundY.data[1][1] = 1.0f;
 	roundY.data[2][0] = -1.0f;
 	const NiMatrix33 twisted = w * roundY * g.rot;
-	const LeftHandPose round = LeftHandOnHandle(g, g.Below(), w, moved, twisted);
+	const LeftHandPose round = LeftHandOnHandle(g, g.Below(), w, moved, twisted, g.rightPalmAxial);
 	Check(NearV(round.rot * NiPoint3{1, 0, 0}, twisted * NiPoint3{1, 0, 0}) &&
 	          NearV(round.rot * NiPoint3{0, 0, 1}, twisted * NiPoint3{0, 0, 1}),
 	      "turned round the handle: the hand's turn kept as it is");
@@ -134,13 +167,39 @@ void TestVanillaGrip() {
 	tilt.data[2][1] = sn;
 	tilt.data[2][2] = c;
 	const NiMatrix33 tilted = w * tilt * g.rot;
-	const LeftHandPose back = LeftHandOnHandle(g, g.Below(), w, moved, tilted);
+	const LeftHandPose back = LeftHandOnHandle(g, g.Below(), w, moved, tilted, g.rightPalmAxial);
 	Check(NearV(back.rot * NiPoint3{0, 1, 0}, w * NiPoint3{0, 1, 0}), "tilted off the handle: the handle along the weapon again");
 	Check(NearV(back.rot * NiPoint3{1, 0, 0}, tilted * NiPoint3{1, 0, 0}),
 	      "the axis of the tilt untouched: only the tilt taken out");
 	const NiPoint3 backLocal = Transposed(w) * (back.pos - moved);
 	Check(Near(backLocal.y, -8.0f) && Near(backLocal.x * backLocal.x + backLocal.z * backLocal.z, 36.0f),
 	      "on the handle where it belongs");
+
+	std::printf("The hand held the other way round\n");
+	// Turned half round the weapon's x, then tilted 20 degrees more: its
+	// handle points down the weapon. Tilted onto it the other way, 20 degrees,
+	// not turned 160.
+	NiMatrix33 half{};
+	half.data[0][0] = 1.0f;
+	half.data[1][1] = -1.0f;
+	half.data[2][2] = -1.0f;
+	const NiMatrix33 upsideDown = w * tilt * half * g.rot;
+	const LeftHandPose flipped = LeftHandOnHandle(g, -20.0f, w, moved, upsideDown, g.rightPalmAxial);
+	Check(NearV(flipped.rot * NiPoint3{0, 1, 0}, w * NiPoint3{0, -1, 0}),
+	      "its handle down the weapon: along it the other way");
+	Check(NearV(flipped.rot * NiPoint3{1, 0, 0}, upsideDown * NiPoint3{1, 0, 0}),
+	      "only the 20 degree tilt taken out");
+	const NiPoint3 flippedPalm = Transposed(w) * (flipped.pos - moved);
+	// The palm 20 below the right palm (at 1): 19 down; the bone 1 past the
+	// palm along the hand's own handle, which points down the weapon: 18.
+	Check(Near(flippedPalm.y, -18.0f) && Near(flippedPalm.x * flippedPalm.x + flippedPalm.z * flippedPalm.z, 36.0f),
+	      "the palm where it was put, the fist round the handle");
+
+	std::printf("The right palm where this weapon has it\n");
+	// A staff: the right palm 37 down the Weapon node, not 1 up as in the grip.
+	const LeftHandPose onStaff = LeftHandOnHandle(g, -14.0f, w, moved, w * g.rot, -37.0f);
+	Check(NearV(onStaff.pos, moved + w * NiPoint3{0.0f, -52.0f, 6.0f}),
+	      "14 below that palm: 51 down the node, the bone 1 further");
 }
 
 void TestApproach() {

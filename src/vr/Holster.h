@@ -65,6 +65,10 @@ inline EquippedKind KindOfWeaponType(SInt32 type) {
 	}
 }
 
+// A staff: a two-hander whose shaft is a handle on both sides of the right
+// hand (vr::HandleSpan::above).
+inline bool IsStaffWeaponType(SInt32 type) { return type == 4; }
+
 // Which side of the body a weapon hangs on (the tester, 2026-09-30: "links
 // händer wollen whl alles links, kann aber auch n paar geben die wollen dann
 // mixen und matchen. soll möglich sein"). Auto: where a right-hander has it,

@@ -44,5 +44,19 @@ left grip 1
 wait 0.5
 mark ahead
 left grip 0
+wait 0.5
+left pos 0.20 -0.25 -0.30
+wait 0.5
+left grip 1
+wait 0.5
+mark above
+left grip 0
+wait 0.5
+left pos 0.20 -0.12 -0.30
+wait 0.5
+left grip 1
+wait 0.5
+mark far_above
+left grip 0
 wait 1
 mark let_go

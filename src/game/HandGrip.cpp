@@ -32,6 +32,7 @@ struct Fingers {
 	bool gripReported = false;
 	bool trackReported = false;
 	bool littleReported = false;
+	bool handleReported = false;
 };
 
 Fingers g_fingers[2];
@@ -165,7 +166,7 @@ void ForgetHandGrip() {
 }
 
 void StepHandFingers(bool rightHand, const char* handBoneName, FingerPose pose, float curlDegrees,
-                     const FingerCurls* curls, float towardAnimation) {
+                     const FingerCurls* curls, float towardHandle) {
 	Fingers& f = g_fingers[rightHand ? 0 : 1];
 	NiAVObject* const root = FirstPersonArmsNode();
 	if (root == nullptr || f.root != root) {
@@ -173,11 +174,13 @@ void StepHandFingers(bool rightHand, const char* handBoneName, FingerPose pose, 
 		const bool gripReported = f.gripReported;
 		const bool trackReported = f.trackReported;
 		const bool littleReported = f.littleReported;
+		const bool handleReported = f.handleReported;
 		f = Fingers{};
 		f.root = root;
 		f.gripReported = gripReported;
 		f.trackReported = trackReported;
 		f.littleReported = littleReported;
+		f.handleReported = handleReported;
 		if (root == nullptr) {
 			return;
 		}
@@ -185,7 +188,8 @@ void StepHandFingers(bool rightHand, const char* handBoneName, FingerPose pose, 
 	if (!f.found) {
 		Find(f, rightHand, handBoneName);
 	}
-	if (pose == FingerPose::Animation) {
+	// The animation's fingers on their way to a handle are written too.
+	if (pose == FingerPose::Animation && !(towardHandle > 0.0f)) {
 		if (f.pose != FingerPose::Animation) {
 			GiveBack(f);
 		}
@@ -207,28 +211,43 @@ void StepHandFingers(bool rightHand, const char* handBoneName, FingerPose pose, 
 		OBVR_LOG("Hands: the %s hand closes around what it holds, %.0f degrees a link",
 		         rightHand ? "right" : "left", static_cast<double>(curlDegrees));
 	}
+	if (pose == FingerPose::Handle && !f.handleReported) {
+		f.handleReported = true;
+		OBVR_LOG("Hands: the %s hand's fingers close round the handle - the game's own grip (twohandidle.kf), "
+		         "%u links", rightHand ? "right" : "left", f.count);
+	}
 	if (pose == FingerPose::Tracked && !f.trackReported) {
 		f.trackReported = true;
 		ReportTracking(f, rightHand);
 	}
-	f.pose = pose;
+	// Written this frame, whichever pose: the next frame keeps its bases.
+	f.pose = pose == FingerPose::Animation ? FingerPose::Handle : pose;
 	for (UInt32 i = 0; i < f.count; ++i) {
 		if (!LooksLikeObject(f.links[i])) {
 			continue;
 		}
 		const char* const name = NameOf(f.links[i]);
 		NiMatrix33 rot = f.base[i];
+		int finger = 0;
+		int link = 0;
+		const bool known = FingerLinkOf(name, finger, link);
 		if (pose == FingerPose::Grip) {
 			rot = CurledAboutZ(f.base[i], FingerCurlDegrees(name, curlDegrees));
-		} else {
-			int finger = 0;
-			int link = 0;
-			if (FingerLinkOf(name, finger, link) && curls != nullptr) {
+		} else if (pose == FingerPose::Tracked) {
+			if (known && curls != nullptr) {
 				rot = TrackedLinkRotation(rightHand, link, LinkShare(*curls, finger, link));
 			}
 		}
-		if (towardAnimation > 0.0f) {
-			rot = BlendRotation(rot, f.base[i], towardAnimation);
+		// Round the handle: the game's own grip (a link it does not know keeps
+		// the animation's).
+		NiMatrix33 onHandle = f.base[i];
+		if (known) {
+			HandleLinkRotation(rightHand, link, onHandle);
+		}
+		if (pose == FingerPose::Handle) {
+			rot = onHandle;
+		} else if (towardHandle > 0.0f) {
+			rot = BlendRotation(rot, onHandle, towardHandle);
 		}
 		f.links[i]->localTransform.rot = rot;
 		f.written[i] = rot;

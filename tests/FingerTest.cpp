@@ -221,6 +221,39 @@ void TestRotationBlend() {
 	Check(Near(LinkCurlDegrees(half), 45.0f), "t 0.5: halfway, 45 of 90 degrees");
 }
 
+// The game's left hand round a handle (kHandleLeft), for the one-hander too.
+void TestHandle() {
+	std::printf("The grip round a handle\n");
+	bool unit = true;
+	bool rotations = true;
+	bool closed = true;
+	for (int i = 0; i < kFingerLinkCount; ++i) {
+		unit = unit && Near(Length(kHandleLeft[i]), 1.0f, 3e-3f);
+		NiMatrix33 left{};
+		NiMatrix33 right{};
+		rotations = rotations && HandleLinkRotation(false, i, left) && HandleLinkRotation(true, i, right) &&
+		            IsRotation(left) && IsRotation(right);
+		// Every link but the thumb's first is bent further than the open hand's.
+		if (i != 0) {
+			closed = closed && kHandleLeft[i].z > kOpenRight[i].z + 0.1f;
+		}
+	}
+	Check(unit, "every key is a unit quaternion, to the file's three decimals");
+	Check(rotations, "every link on either hand is a rotation");
+	Check(closed, "each link is bent further than the open hand: the hand is closed");
+	NiMatrix33 left{};
+	NiMatrix33 right{};
+	HandleLinkRotation(false, 6, left);
+	HandleLinkRotation(true, 6, right);
+	Check(NearM(left, RotationOfQuat(FingerQuat{0.767f, -0.085f, -0.019f, 0.636f}), 3e-3f),
+	      "the left hand: the file's key");
+	Check(NearM(right, RotationOfQuat(MirroredForLeft(kHandleLeft[6])), 3e-3f), "the right hand: its mirror image");
+	NiMatrix33 untouched = NiMatrix33::Identity();
+	Check(!HandleLinkRotation(false, -1, untouched) && !HandleLinkRotation(true, kFingerLinkCount, untouched) &&
+	          NearM(untouched, NiMatrix33::Identity()),
+	      "no such link: refused, nothing written");
+}
+
 int main() {
 	TestRotationBlend();
 	TestPose();
@@ -228,6 +261,7 @@ int main() {
 	TestQuaternions();
 	TestTables();
 	TestLittleFinger();
+	TestHandle();
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);
 		return 1;

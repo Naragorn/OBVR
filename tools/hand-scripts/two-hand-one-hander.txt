@@ -19,6 +19,7 @@ expect HandScript: finished
 expect Hands: the open left hand near the one-hander's handle takes its shape
 expect Hands: the left hand took the one-hander's handle
 expect Hands: the left hand drawn on the handle
+expect Hands: the left hand's fingers close round the handle
 expect Hands: the left hand let go of the handle (the grip opened)
 reject HandScript: WARNING
 reject Hands: grab - left grip
