@@ -4098,12 +4098,31 @@ TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& camera
 		float axial = 0.0f;
 		float lateral = 0.0f;
 		vr::AxialLateral(left, right, blade, axial, lateral);
-		if (vr::TwoHandTakes(hands.twoHand, twoHanded, closedNow, axial, lateral)) {
-			vr::StartTwoHand(g_twoHand, axial);
-			OBVR_LOG("Hands: the left hand took the handle %.0f units %s the right, %.0f from the line - held "
-			         "with both hands",
-			         static_cast<double>(axial < 0.0f ? -axial : axial), axial < 0.0f ? "below" : "above",
-			         static_cast<double>(lateral));
+		// The handle from the weapon's own model: its pommel end against the
+		// right hand, so the left hand takes hold on the handle, not in the air.
+		vr::HandleSpan handle;
+		float pommel = 0.0f;
+		float tip = 0.0f;
+		if (closedNow && twoHanded) {
+			const bool measured = game::AxialExtentOf(weapon, right, blade, pommel, tip);
+			handle = vr::HandleSpanFor(hands.twoHand, measured, pommel);
+			static UInt32 s_handleLines = 4;
+			if (s_handleLines > 0) {
+				--s_handleLines;
+				OBVR_LOG("Hands: the two-hander's model - %s; pommel %.0f units %s the right hand, tip %.0f above; "
+				         "the handle for the left hand %s",
+				         measured ? "measured" : "not readable", static_cast<double>(pommel < 0.0f ? -pommel : pommel),
+				         pommel < 0.0f ? "below" : "above", static_cast<double>(tip),
+				         handle.valid ? "from its pommel end to a hand below the right" : "the fixed window");
+			}
+		}
+		if (vr::TwoHandTakes(hands.twoHand, twoHanded, closedNow, axial, lateral, handle)) {
+			const float held = vr::OnHandle(handle, axial);
+			vr::StartTwoHand(g_twoHand, held);
+			OBVR_LOG("Hands: the left hand took the handle %.0f units %s the right (closed at %.0f), %.0f from the line "
+			         "- held with both hands",
+			         static_cast<double>(held < 0.0f ? -held : held), held < 0.0f ? "below" : "above",
+			         static_cast<double>(axial), static_cast<double>(lateral));
 		} else if (closedNow && twoHanded) {
 			static UInt32 s_missLines = 6;
 			if (s_missLines > 0) {

@@ -32,7 +32,36 @@ struct TwoHandSettings {
 	float minUnits = 5.0f;
 	// The hands this much further apart or closer than when it took hold: let go.
 	float slackUnits = 30.0f;
+	// The handle measured from the weapon's model: the left hand stays this far
+	// inside its pommel end, and a grip up to overhangUnits past the end still
+	// takes the handle (it is put on the end).
+	float endInsetUnits = 2.0f;
+	float overhangUnits = 6.0f;
 };
+
+// The handle below the right hand, along the weapon (negative, towards the
+// pommel): from the model's pommel end, measured (AxialExtentOf), to a hand's
+// width below the right hand (the tester, 2026-09-30: "wenn wir irgendwo
+// andocken können müssen wir aufpassen das es zum griff der klinge passt ... und ich
+// nicht irgendwo in der luft dann halte"). Invalid when the model was not
+// measured or there is no room for a hand below the right one - the fixed
+// window (behindUnits, aheadUnits) is used then.
+struct HandleSpan {
+	bool valid = false;
+	float low = 0.0f;   // the pommel end, inset
+	float high = 0.0f;  // just below the right hand
+};
+
+inline HandleSpan HandleSpanFor(const TwoHandSettings& s, bool measured, float pommelAxial) {
+	HandleSpan h;
+	if (!measured || !(pommelAxial == pommelAxial)) {
+		return h;
+	}
+	h.low = pommelAxial + s.endInsetUnits;
+	h.high = -s.minUnits;
+	h.valid = h.high - h.low >= 4.0f;
+	return h;
+}
 
 // Where a point lies against a line through `origin` along the unit vector
 // `dir`: how far along it (`axial`, negative behind) and how far from it.
@@ -50,14 +79,28 @@ struct TwoHandState {
 	float distance = 0.0f;  // between the hands when it took hold
 };
 
-// Whether the left grip, closing now, takes hold of the handle.
+// Whether the left grip, closing now, takes hold of the handle: on the
+// measured handle (or up to overhangUnits past its end), else in the fixed
+// window.
 inline bool TwoHandTakes(const TwoHandSettings& s, bool twoHandedDrawn, bool leftGripClosedNow, float axial,
-                         float lateral) {
+                         float lateral, const HandleSpan& handle = HandleSpan{}) {
 	if (!s.enabled || !twoHandedDrawn || !leftGripClosedNow) {
 		return false;
 	}
+	if (handle.valid) {
+		return lateral <= s.reachUnits && axial >= handle.low - s.overhangUnits && axial <= handle.high;
+	}
 	const float along = axial < 0.0f ? -axial : axial;
 	return lateral <= s.reachUnits && axial >= -s.behindUnits && axial <= s.aheadUnits && along >= s.minUnits;
+}
+
+// Where on the handle the left hand is put: where it closed, kept on the
+// measured handle.
+inline float OnHandle(const HandleSpan& handle, float axial) {
+	if (!handle.valid) {
+		return axial;
+	}
+	return axial < handle.low ? handle.low : (axial > handle.high ? handle.high : axial);
 }
 
 inline void StartTwoHand(TwoHandState& t, float axial) {

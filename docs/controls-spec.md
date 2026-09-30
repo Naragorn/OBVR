@@ -743,7 +743,13 @@ The tester: "bei 2 händern mit der linken hand meine hand an das schwert/axt/wh
 
 **Taking hold:** with a two-handed weapon drawn (claymore, war axe, battle hammer; the staff counts too), the left grip closing on the handle takes hold. On the handle means:
 - within `TwoHandReachUnits` (12, about 17 cm) of the weapon's line;
-- between 25 units behind the right hand and 40 ahead of it.
+- on the handle measured from the weapon's own model, when the grip closes: from the pommel end (the lowest vertex along the weapon, `game::AxialExtentOf`, 2 units inside it) to a hand's width (5 units) below the right hand.
+  - A grip up to 6 units past the pommel is put on the end.
+  - A grip on the blade above the right hand, or in the air, does not take hold (the tester, 2026-09-30: "damit es realistisch bleibt und ich nicht irgendwo in der luft dann halte").
+  - The left hand stays where it closed on the handle; it docks anywhere along it, not at a fixed point.
+- When the model cannot be read, or there is no room for a hand below the right one, the fixed window applies: between 25 units behind the right hand and 40 ahead of it.
+- The measurement is logged ("the two-hander's model - measured; pommel N units below the right hand ...").
+- **Assumed, not measured:** Oblivion's first-person hand holds a two-hander just under the guard, so the handle lies below it. If the log shows the pommel only a few units below the hand, the handle is above it instead, and the fixed window is used.
 
 **While held:**
 - The weapon points along the line between the two hands. It points towards the left hand when the left holds higher up the handle, away from it when the left holds lower.

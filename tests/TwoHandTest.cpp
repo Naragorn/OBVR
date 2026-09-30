@@ -46,6 +46,22 @@ void TestTake() {
 	Check(!TwoHandTakes(off, true, true, 20.0f, 3.0f), "switched off: not");
 }
 
+void TestHandle() {
+	std::printf("The measured handle\n");
+	const TwoHandSettings s;
+	const HandleSpan h = HandleSpanFor(s, true, -30.0f);
+	Check(h.valid && Near(h.low, -28.0f) && Near(h.high, -5.0f), "a pommel 30 below: the handle from 28 to 5 below");
+	Check(TwoHandTakes(s, true, true, -15.0f, 3.0f, h), "on the handle: taken");
+	Check(TwoHandTakes(s, true, true, -32.0f, 3.0f, h), "just past the pommel: taken");
+	Check(!TwoHandTakes(s, true, true, -40.0f, 3.0f, h), "12 below the pommel, in the air: not");
+	Check(!TwoHandTakes(s, true, true, 20.0f, 3.0f, h), "above the right hand, on the blade: not");
+	Check(!TwoHandTakes(s, true, true, -15.0f, 20.0f, h), "beside the handle: not");
+	Check(Near(OnHandle(h, -32.0f), -28.0f) && Near(OnHandle(h, -15.0f), -15.0f), "put on the handle's end, or where it closed");
+	Check(!HandleSpanFor(s, true, -6.0f).valid, "no room below the right hand: the fixed window");
+	Check(!HandleSpanFor(s, false, -30.0f).valid, "not measured: the fixed window");
+	Check(Near(OnHandle(HandleSpan{}, 50.0f), 50.0f), "no measured handle: where it closed");
+}
+
 void TestHold() {
 	std::printf("Holding\n");
 	const TwoHandSettings s;
@@ -97,6 +113,7 @@ void TestRotation() {
 int main() {
 	TestPlace();
 	TestTake();
+	TestHandle();
 	TestHold();
 	TestDirection();
 	TestRotation();

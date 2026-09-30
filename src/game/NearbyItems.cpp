@@ -213,7 +213,91 @@ void BoxTree(const NiAVObject* object, UInt32 depth, MeshBox& box) {
 	}
 }
 
+// How far a model's vertices reach along a line (AxialExtentOf).
+struct AxialSpan {
+	NiPoint3 origin{0.0f, 0.0f, 0.0f};
+	NiPoint3 dir{0.0f, 1.0f, 0.0f};
+	float low = 0.0f;
+	float high = 0.0f;
+	UInt32 vertices = 0;
+	bool refused = false;
+};
+
+void SpanGeometry(const NiAVObject* geometry, AxialSpan& span) {
+	const UInt32 data = Read(reinterpret_cast<UInt32>(geometry) + kGeometryDataOffset);
+	if (!LooksLikeObject(data)) {
+		return;
+	}
+	const UInt32 count = *reinterpret_cast<const UInt16*>(data + kGeometryVertexCountOffset);
+	const NiPoint3 boundCentre = *reinterpret_cast<const NiPoint3*>(data + kGeometryBoundOffset);
+	const float boundRadius = *reinterpret_cast<const float*>(data + kGeometryBoundOffset + 12);
+	const UInt32 vertices = Read(data + kGeometryVerticesOffset);
+	if (count == 0 || count > kMaxVerticesPerGeometry || !LooksLikeObject(vertices) ||
+	    !LooksLikeObject(vertices + (count - 1) * sizeof(NiPoint3))) {
+		return;
+	}
+	const auto* v = reinterpret_cast<const NiPoint3*>(vertices);
+	const NiTransform& world = geometry->worldTransform;
+	const float scale = world.scale > 0.0f ? world.scale : 1.0f;
+	for (UInt32 i = 0; i < count; ++i) {
+		if (!VertexInBound(v[i], boundCentre, boundRadius)) {
+			span.refused = true;
+			return;
+		}
+		const NiPoint3 w = world.pos + world.rot * (v[i] * scale) - span.origin;
+		const float a = w.x * span.dir.x + w.y * span.dir.y + w.z * span.dir.z;
+		if (span.vertices == 0 || a < span.low) {
+			span.low = a;
+		}
+		if (span.vertices == 0 || a > span.high) {
+			span.high = a;
+		}
+		++span.vertices;
+	}
+}
+
+void SpanTree(const NiAVObject* object, UInt32 depth, AxialSpan& span) {
+	if (depth > kMaxDepth || span.refused || (object->flags & kNiHiddenFlag) != 0) {
+		return;
+	}
+	const char* const name = NiClassNameOf(object);
+	if (NiClassIsNode(name)) {
+		const UInt32 address = reinterpret_cast<UInt32>(object);
+		const UInt32 children = Read(address + addr::kNiChildrenOffset);
+		const UInt16 count = *reinterpret_cast<const UInt16*>(address + addr::kNiChildCountOffset);
+		if (!LooksLikeObject(children) || count > 512) {
+			return;
+		}
+		for (UInt16 i = 0; i < count; ++i) {
+			const UInt32 child = Read(children + i * 4u);
+			if (LooksLikeObject(child)) {
+				SpanTree(reinterpret_cast<const NiAVObject*>(child), depth + 1, span);
+			}
+		}
+		return;
+	}
+	if (ContainsText(name, "Tri")) {
+		SpanGeometry(object, span);
+	}
+}
+
 }  // namespace
+
+bool AxialExtentOf(const NiAVObject* root, const NiPoint3& origin, const NiPoint3& dir, float& low, float& high) {
+	if (root == nullptr || !LooksLikeObject(reinterpret_cast<UInt32>(root))) {
+		return false;
+	}
+	AxialSpan span;
+	span.origin = origin;
+	span.dir = dir;
+	SpanTree(root, 0, span);
+	if (span.refused || span.vertices == 0) {
+		return false;
+	}
+	low = span.low;
+	high = span.high;
+	return true;
+}
 
 void MeasureNearbyShapes(const NiPoint3& around, float radiusUnits, UInt32 maxObjects) {
 	const UInt32 player = Read(addr::kPlayerPointer);

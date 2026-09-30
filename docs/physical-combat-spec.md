@@ -91,15 +91,13 @@ So the feel comes from three things: a spring between the controller and the han
   - Until found, the only lever is light against power.
 - **Stagger by momentum (feasible):** a heavy weapon's power hit could add the shove's knockdown when the tip is fast enough (`ShoveActor`, already used by throws).
 
-### C. Picking a weapon up from the ground by its grip and striking at once (proposed; feasible with parts built, one unknown)
+### C. Picking a weapon up from the ground by its grip and striking at once (proposed; feasible, all parts built)
 
 - **The flow:**
   1. The grip closes on a weapon lying in the world (a WEAP reference) near its handle end.
   2. OBVR takes it into the inventory the way activating would. Owned means stealing, with the crime rules the stow already uses (`TakeIntoInventory`).
   3. OBVR equips it (`EquipWeaponForm`) and draws it.
-- **The unknown:** the engine's draw plays an animation, about a second, so "at once" needs a draw without it.
-  - A ready state set directly (the weapon state at `ReadPlayerWeaponState`'s field) might do. It has not been researched.
-  - Until then there is a short delay between picking it up and striking with it.
+- **The draw is already fast:** `[Hands] WeaponDrawSpeed` (`game/WeaponDrawSpeed.h`, built 2026-09-27, default 10) runs the draw animation's time ten times faster. The draw takes about a tenth of the game's second. The first version of this spec called it an unknown, which was wrong (the tester, 2026-09-30: "dachte das haben wir bereits gefixt").
 - **Where the handle is:** a weapon's grip end is its "Weapon" node origin, the attach point. The blade runs along the node's axis (the blade capsule already measures that). A grip near the origin takes the handle; a grip on the blade could take it by the blade (see E).
 
 ### D. Anything held is a weapon (proposed; feasible, reuses the throw)
@@ -137,7 +135,7 @@ So the feel comes from three things: a spring between the controller and the han
 1. **A, weight as a lagging spring,** with the two-hand factor. The largest part of the feel, all OBVR's own code. Harness: the lag step per weight in the log; the headset judges the feel.
 2. **B, swing thresholds per weight.** Small, on top of A.
 3. **D, held objects hit.** Reuses the throw.
-4. **C, pick up by the grip.** First look for a draw without the animation.
+4. **C, pick up by the grip.** The draw is already fast (`WeaponDrawSpeed`).
 5. **E, grip position and reverse grip.**
 6. **B's damage by momentum.** First look for the scale point in the hit handler.
 7. **F, physics hands:** a spec and a research pass of their own.
@@ -147,4 +145,3 @@ So the feel comes from three things: a spring between the controller and the han
 - How strong the lag should be at each weight (tuning in the headset: settings per weight class, or one "weapon weight" factor).
 - Whether the drawn hand should lag with the weapon (B&S) or only the weapon should turn around the hand. Both are feasible. The hand lagging is truer to B&S; the weapon alone keeps the hand on the controller.
 - Where exactly in the hit handler the damage can be scaled (B).
-- How to draw a picked-up weapon without the animation (C).

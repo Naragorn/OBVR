@@ -4,6 +4,10 @@
 #include "core/Types.h"
 #include "game/NiMath.h"
 
+namespace obvr {
+struct NiAVObject;
+}
+
 namespace obvr::game {
 
 // Items near the hands, found by distance rather than by a ray.
@@ -109,6 +113,13 @@ inline bool VertexInBound(const NiPoint3& v, const NiPoint3& boundCentre, float 
 // distance. False when the item has no geometry this can read, or the read
 // fails its checks (VertexInBound); the caller then keeps the middle.
 bool NearestVertexOf(UInt32 ref, const NiPoint3& hand, NiPoint3& out, float& distanceOut);
+
+// How far the model under `root` reaches along the line through `origin`
+// along the unit vector `dir`: the lowest and highest vertex, in game units
+// along it. For the drawn weapon, where its pommel ends against the hand that
+// holds it. False when no vertex can be read or a read fails VertexInBound.
+
+bool AxialExtentOf(const NiAVObject* root, const NiPoint3& origin, const NiPoint3& dir, float& low, float& high);
 
 // The type of a reference's base form, 0 when it cannot be read.
 UInt8 RefBaseFormType(UInt32 ref);
