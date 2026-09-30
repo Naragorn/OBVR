@@ -78,8 +78,12 @@ Windows 11. Everything else is exactly what your reports are for.
    `OBVR.dll`. Newer versions bring it along.
 6. **Turn off the Steam Overlay for Oblivion.** In your Steam Library, right-click
    **Oblivion > Properties > General** and switch the overlay off. This is required.
-7. Start SteamVR, then start Oblivion with the normal Play button in Steam
-   (`obse_loader.exe` if you don't use Steam or Steam won't start it).
+7. Start SteamVR, then start the game with **`obse_loader.exe`** in your Oblivion
+   folder - not with Steam's Play button.
+
+**Tip - start it from the VR library:** in Steam, **Games > Add a Non-Steam Game to
+My Library...**, pick `obse_loader.exe` from your Oblivion folder. Now it shows up in
+your library and you can start it right from SteamVR's game list, headset on.
 
 **Mod Organizer 2:** just install the OBVR zip as a normal mod. OBVR itself doesn't
 need Root Builder (xOBSE's own files in the game folder do).
