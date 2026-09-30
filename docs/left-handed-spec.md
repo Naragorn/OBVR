@@ -86,3 +86,7 @@ Not covered: the sheathed weapon's own model (the game's `SideWeapon` / `BackWea
 4. The onboarding and settings texts naming the buttons by role.
 5. The sheathed weapon's model on the chosen side.
 6. Decide 2.1 (a left hand holding the weapon), the only big one.
+
+## 6. Open: a full left-handed playthrough
+
+The tester, 2026-09-30: "notiere irgendwo in den specs dass ich mal den ganzen mod als links händer durchteste". To do, by the tester in the headset: play the whole mod once with `[Hands] LeftHanded=1`, every feature in sections 2 to 4. Each finding goes into this spec as an open bug.
