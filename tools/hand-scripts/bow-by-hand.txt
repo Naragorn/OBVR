@@ -89,9 +89,9 @@ left pos -0.25 -0.10 -0.70
 # shoots along (-0.07 -1.00 -0.04)" at the nock, 2026-09-30). The controller
 # is turned up 90 degrees so the bow stands upright and shoots ahead, along
 # (-0.07 0.04 -1.00) (the log's "along" at the arrow taken off). The pulls
-# below run back along it from the bow hand: 5 cm (nocked, eased), 30
-# (drawn), 70 (past a full draw); the arrow is taken off the string 30 cm
-# across it, out of the nock's reach (25 cm).
+# below run back along it from the bow hand: 14 cm (nocked at the string's
+# place, 15 cm back; eased), 30 (drawn), 70 (past a full draw); the arrow is
+# taken off the string 30 cm across it, out of the nock's reach (10 cm).
 left rot 90 0 0
 wait 3
 head pitch -45
@@ -107,7 +107,7 @@ wait 0.5
 mark in_hand
 dump
 wait 0.3
-right pos -0.247 -0.102 -0.650
+right pos -0.240 -0.106 -0.560
 wait 0.4
 mark nocked
 dump
@@ -122,12 +122,12 @@ wait 0.6
 mark full_draw
 dump
 wait 0.3
-right pos -0.247 -0.102 -0.650
+right pos -0.240 -0.106 -0.560
 wait 1.0
 mark eased
 right pos 0.050 -0.102 -0.650
 wait 0.5
-right pos -0.247 -0.102 -0.650
+right pos -0.240 -0.106 -0.560
 wait 0.5
 mark renocked
 right pos 0.050 -0.102 -0.650
@@ -140,7 +140,7 @@ wait 0.5
 mark stowed
 right trigger 1
 wait 0.3
-right pos -0.247 -0.102 -0.650
+right pos -0.240 -0.106 -0.560
 wait 0.4
 right pos -0.229 -0.112 -0.400
 # Let go 0.5 s into the draw, short of its Hold (1.367 s): the loose comes at
@@ -157,7 +157,7 @@ right pos 0.15 -0.10 0.12
 wait 0.4
 right trigger 1
 wait 0.3
-right pos -0.247 -0.102 -0.650
+right pos -0.240 -0.106 -0.560
 wait 0.3
 right pos -0.229 -0.112 -0.400
 wait 0.1

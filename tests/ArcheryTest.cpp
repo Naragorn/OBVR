@@ -119,12 +119,12 @@ void TestEase() {
 	StepArchery(off, At(kShoulder, false, true), kSettings);
 	StepArchery(off, At(kShoulder, true, true), kSettings);
 	StepArchery(off, OnAxis(kAtBow, true), kSettings);
-	v = StepArchery(off, OnAxis(NiPoint3{0.06f, 1.4f, -0.45f}, true), kSettings);
-	Check(v.state == ArrowState::Nocked && !v.unnocked && Near(v.offLineMetres, 0.16f),
-	      "nocked, the hand 0.16 off the bow's line but within the nock's reach: still on the string");
-	v = StepArchery(off, OnAxis(NiPoint3{0.2f, 1.4f, -0.45f}, true), kSettings);
+	v = StepArchery(off, OnAxis(NiPoint3{-0.02f, 1.4f, -0.4f}, true), kSettings);
+	Check(v.state == ArrowState::Nocked && !v.unnocked && Near(v.offLineMetres, 0.08f),
+	      "nocked, the hand 0.08 off the bow's line: still on the string");
+	v = StepArchery(off, OnAxis(NiPoint3{0.06f, 1.4f, -0.4f}, true), kSettings);
 	Check(v.unnocked && v.state == ArrowState::InHand && !v.aiming,
-	      "0.30 off the line, out of the nock's reach: off the string, in the hand");
+	      "0.16 off the line, out of the nock's reach: off the string, in the hand");
 	v = StepArchery(off, OnAxis(kAtBow, true), kSettings);
 	Check(v.nocked, "taken off by moving away: nocked again at once when brought back");
 
@@ -154,16 +154,22 @@ void TestEase() {
 	Check(v.denockDone && !v.attackHeld && v.dropped, "the bow put away mid-cancel: the cancel ended with it");
 }
 
-// The nock is found from further off (the tester, 2026-10-01: "früher erkannt
-// werden"); the draw still begins and eases where the string rests.
+// The nock is found around where the string rests, 0.15 behind the bow hand
+// (the tester, 2026-10-01: "näher an die position"); the draw begins and
+// eases from there.
 void TestWideNock() {
-	std::printf("A wide nock, the string where it was\n");
+	std::printf("The nock at the string's place\n");
+	ArcheryState near;
+	StepArchery(near, At(kShoulder, false, true), kSettings);
+	StepArchery(near, At(kShoulder, true, true), kSettings);
+	ArcheryVerdict v = StepArchery(near, OnAxis(NiPoint3{-0.1f, 1.4f, -0.47f}, true), kSettings);
+	Check(!v.nocked && Near(v.fromNockMetres, 0.12f), "right at the bow hand, 0.12 before the string's place: not yet");
 	ArcheryState st;
 	StepArchery(st, At(kShoulder, false, true), kSettings);
 	StepArchery(st, At(kShoulder, true, true), kSettings);
-	ArcheryVerdict v = StepArchery(st, OnAxis(NiPoint3{-0.02f, 1.4f, -0.33f}, true), kSettings);
-	Check(v.nocked && v.handsApartMetres > 0.18f && v.handsApartMetres < 0.20f,
-	      "brought within 0.19 of the bow hand, behind and a little aside: nocked");
+	v = StepArchery(st, OnAxis(NiPoint3{-0.02f, 1.4f, -0.33f}, true), kSettings);
+	Check(v.nocked && v.fromNockMetres > 0.08f && v.fromNockMetres < 0.09f,
+	      "within 0.09 of where the string rests, behind the bow and a little aside: nocked");
 	v = StepArchery(st, OnAxis(NiPoint3{0.0f, 1.4f, -0.29f}, true), kSettings);
 	Check(v.state == ArrowState::Nocked && !v.drawStarted, "0.21 behind the bow: short of the draw (0.15 + 0.08)");
 	v = StepArchery(st, OnAxis(NiPoint3{-0.1f, 1.4f, -0.26f}, true), kSettings);
@@ -176,7 +182,8 @@ void TestWideNock() {
 	StepArchery(far, At(kShoulder, false, true), kSettings);
 	StepArchery(far, At(kShoulder, true, true), kSettings);
 	v = StepArchery(far, OnAxis(NiPoint3{-0.1f, 1.4f, -0.23f}, true), kSettings);
-	Check(!v.nocked && v.state == ArrowState::InHand, "0.27 from it: not yet");
+	Check(!v.nocked && v.state == ArrowState::InHand && v.fromNockMetres > 0.1f,
+	      "0.27 behind the bow hand, 0.12 past the string's place: not yet");
 
 	// Only from behind (the tester, 2026-10-01: "von vorne kommen oder andere
 	// seiten soll natürlich nicht gehen").
@@ -193,8 +200,8 @@ void TestWideNock() {
 	ArcheryState plain;
 	StepArchery(plain, At(kShoulder, false, true), kSettings);
 	StepArchery(plain, At(kShoulder, true, true), kSettings);
-	v = StepArchery(plain, At(NiPoint3{-0.1f, 1.4f, -0.6f}, true), kSettings);
-	Check(v.nocked, "no bow axis: any side, as before");
+	v = StepArchery(plain, At(NiPoint3{-0.1f, 1.4f, -0.58f}, true), kSettings);
+	Check(v.nocked, "no bow axis: any side of the bow hand, as before");
 	Check(FromBehind(true, 0.1f, 0.1f) && !FromBehind(true, 0.1f, 0.11f) && !FromBehind(true, 0.01f, 0.0f) &&
 	          FromBehind(false, -1.0f, 5.0f),
 	      "the cone's edges: 45 degrees, two centimetres; no axis, anything");

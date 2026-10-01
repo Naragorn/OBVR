@@ -54,12 +54,15 @@ struct ArcherySettings {
 	// bow in hand. Mirrored when left-handed.
 	NiPoint3 quiverZone{0.15f, -0.12f, -0.10f};
 	float quiverRadius = 0.20f;
-	// The drawing hand this near the bow hand nocks the arrow: wide, so the
-	// nock is not searched for (the tester, 2026-10-01: "pfeil anlegen darf
-	// noch großzügiger sein etwas. also früher erkannt werden damit man nicht
-	// nach der anlege stelle suchen muss"; 0.15 before), then a little less
-	// ("die entfernung noch verkleinern"; 0.25 before).
-	float nockMetres = 0.20f;
+	// The drawing hand this near the nock's place nocks the arrow: where the
+	// string rests, stringMetres behind the bow hand along the bow (the bow
+	// hand itself without the bow's axis). Measured from the bow hand it was
+	// 0.15, then 0.25, then 0.20 (the tester, 2026-10-01: "früher erkannt
+	// werden", then "die entfernung noch verkleinern"), and the hand then
+	// slid a long way back onto the string; from the string's own place the
+	// slide is short ("muss noch näher passieren dass die rechte pfeil hand
+	// näher an die position gleitet").
+	float nockMetres = 0.10f;
 	// The string at rest: the drawing hand this far behind the bow hand along
 	// the bow. The draw begins drawStartMetres further back, and the hand
 	// brought back within it eases the draw. Apart from the nock's zone, so a
@@ -131,6 +134,7 @@ struct ArcheryVerdict {
 	bool stowed = false;     // let go at the quiver: put back
 	bool denockDone = false; // the eased draw's control goes up this frame
 	float handsApartMetres = 0.0f;
+	float fromNockMetres = 0.0f;  // the drawing hand from the nock's place
 	float pullMetres = 0.0f;     // behind the bow along its axis
 	float offLineMetres = 0.0f;  // across it
 	NiPoint3 bowAxis{0.0f, 0.0f, 0.0f};  // the axis it went by (zero: none), for the log
@@ -336,6 +340,16 @@ inline bool FromBehind(bool axisValid, float pullMetres, float acrossMetres) {
 	return pullMetres >= kNockBehindMinMetres && acrossMetres <= pullMetres;
 }
 
+// Where the arrow is nocked: the string at rest, stringMetres behind the bow
+// hand along the bow's axis; without the axis, the bow hand.
+inline NiPoint3 NockPlace(const ArcheryInput& in, const ArcherySettings& s) {
+	if (!in.axisValid) {
+		return in.bowAt;
+	}
+	return NiPoint3{in.bowAt.x - in.bowAxis.x * s.stringMetres, in.bowAt.y - in.bowAxis.y * s.stringMetres,
+	                in.bowAt.z - in.bowAxis.z * s.stringMetres};
+}
+
 inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, const ArcherySettings& s) {
 	ArcheryVerdict v;
 	const bool press = in.drawGrip && !st.gripWas;
@@ -360,6 +374,7 @@ inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, cons
 		return v;
 	}
 	v.handsApartMetres = MetresBetween(in.drawAt, in.bowAt);
+	v.fromNockMetres = MetresBetween(in.drawAt, NockPlace(in, s));
 	PullAlongBow(in, v.pullMetres, v.offLineMetres);
 	if (in.axisValid) {
 		v.bowAxis = in.bowAxis;
@@ -381,8 +396,8 @@ inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, cons
 				v.dropped = true;
 			}
 		} else if (!st.awayFromNock) {
-			st.awayFromNock = v.handsApartMetres > s.nockMetres;
-		} else if (v.handsApartMetres <= s.nockMetres && FromBehind(in.axisValid, v.pullMetres, v.offLineMetres)) {
+			st.awayFromNock = v.fromNockMetres > s.nockMetres;
+		} else if (v.fromNockMetres <= s.nockMetres && FromBehind(in.axisValid, v.pullMetres, v.offLineMetres)) {
 			st.state = ArrowState::Nocked;
 			v.nocked = true;
 		}
@@ -394,7 +409,7 @@ inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, cons
 		} else if (v.pullMetres >= s.stringMetres + s.drawStartMetres && st.denockSeconds <= 0.0f) {
 			st.state = ArrowState::Drawing;
 			v.drawStarted = true;
-		} else if (in.axisValid && v.offLineMetres > s.unnockMetres && v.handsApartMetres > s.nockMetres) {
+		} else if (in.axisValid && v.offLineMetres > s.unnockMetres && v.fromNockMetres > s.nockMetres) {
 			st.state = ArrowState::InHand;
 			v.unnocked = true;
 		}

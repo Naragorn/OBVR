@@ -1379,9 +1379,10 @@ void TestBowByHand() {
 	seen.Update(frame, byTrigger);
 	frame.right.trigger = 1.0f;
 	seen.Update(frame, byTrigger);
-	frame.right.position = NiPoint3{-0.1f, -0.2f, -0.4f};
-	r = seen.Update(frame, byTrigger);
 	const float h = 0.70710678f;
+	// At the string's place: 0.15 behind the bow hand along where it shoots.
+	frame.right.position = frame.left.position - NiPoint3{0.0f, -h, -h} * 0.15f;
+	r = seen.Update(frame, byTrigger);
 	Check(r.archery.nocked && r.arrowAimValid && Near(r.arrowDirection.y, -h) && Near(r.arrowDirection.x, 0.0f) &&
 	          Near(r.arrowDirection.z, -h) && r.arrowSinPitch < -0.7f,
 	      "the bow seen: aimed along where it shoots, made a unit - 45 down");
