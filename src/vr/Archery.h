@@ -147,46 +147,58 @@ inline BowSoundCue BowSoundsFor(const ArcheryVerdict& v) {
 
 // The loose at once (the tester, 2026-10-01: "nach dem loslassen erwartet man
 // einen direkten schuss. oftmals kommt aber eine sekunde verzögerung! das muss
-// weg!"; game/BowRelease.h). The engine looses at its draw's Release key; let
-// go before the Hold key the draw plays on to it first - up to 1.4 s. So,
-// once the control is up after a loose, the draw is put at its Hold - but only
-// with the arrow attached (action 5): before the Attach key there is no arrow
-// to loose, and the engine's key counter steps once a frame, so a jump past
-// the Attach would lose the shot. Asked until it is done, the draw ends, or
+// weg!"; then, of a very quick draw: "wenn ich sehr schnell spanne dann gibts
+// die pause. also Legolas Style Schiessen net möglich!"; game/BowRelease.h).
+// The engine looses at its draw's Release key, its key counter stepping once a
+// frame: Attach (the arrow on the string, action 4 -> 5), Hold, Release. Let
+// go early, the draw plays on to the Release first - up to 1.4 s, or from
+// before the Attach (0.27 s) all of it. So, once the control is up after a
+// loose, the draw is moved on key by key: to its Attach while the arrow is not
+// on yet (action 4), then to its Hold (action 5); the engine steps to the
+// Release itself. One key at a time, as the engine would reach them: a jump
+// past the Attach would lose the shot. The draw may not show as begun yet on
+// the loose's frame (a draw of a frame or two): kReleaseSnapStartSeconds are
+// waited for it. Asked until the Hold is done, the draw ends, or
 // kReleaseSnapSeconds pass.
 constexpr float kReleaseSnapSeconds = 2.0f;
+constexpr float kReleaseSnapStartSeconds = 0.25f;
 
 struct ReleaseSnapState {
 	bool pending = false;
+	bool drawSeen = false;  // the engine's draw (4 or 5) seen since the loose
 	float seconds = 0.0f;
 };
 
 enum class ReleaseSnap : UInt8 {
-	Idle,   // nothing to do
-	Wait,   // loosed, the arrow not attached yet
-	Snap,   // put the draw at its Hold now
+	Idle,      // nothing to do
+	Wait,      // loosed, the engine's draw not under way yet (or the loose's own frame)
+	ToAttach,  // put the draw at its Attach now
+	ToHold,    // put the draw at its Hold now
 };
 
 // `action`: the player's (game::kAction*): 4 the draw before the Attach key,
-// 5 after it. `snapped`: last frame's Snap was carried out.
-inline ReleaseSnap StepReleaseSnap(ReleaseSnapState& s, bool loosedNow, SInt32 action, bool snapped,
+// 5 after it. `holdDone`: last frame's ToHold was carried out.
+inline ReleaseSnap StepReleaseSnap(ReleaseSnapState& s, bool loosedNow, SInt32 action, bool holdDone,
                                    float dtSeconds) {
+	const bool drawing = action == 4 || action == 5;
 	if (loosedNow) {
 		s.pending = true;
 		s.seconds = 0.0f;
+		s.drawSeen = drawing;
 	} else if (s.pending) {
 		s.seconds += dtSeconds > 0.0f ? dtSeconds : 0.0f;
+		s.drawSeen = s.drawSeen || drawing;
 	}
-	if (snapped || action < 0 || (action != 4 && action != 5 && !loosedNow) ||
-	    s.seconds > kReleaseSnapSeconds) {
+	if (holdDone || s.seconds > kReleaseSnapSeconds || (s.drawSeen && !drawing) ||
+	    (!s.drawSeen && s.seconds > kReleaseSnapStartSeconds)) {
 		s.pending = false;
-	}
-	if (!s.pending) {
-		return ReleaseSnap::Idle;
 	}
 	// Not on the loose's own frame: the engine is to see the control up first,
 	// or it pauses the draw at the Hold it was put at.
-	return action == 5 && !loosedNow ? ReleaseSnap::Snap : ReleaseSnap::Wait;
+	if (!s.pending || loosedNow || !drawing) {
+		return s.pending ? ReleaseSnap::Wait : ReleaseSnap::Idle;
+	}
+	return action == 5 ? ReleaseSnap::ToHold : ReleaseSnap::ToAttach;
 }
 
 // The shot's power from how far the string is drawn, not how long (the

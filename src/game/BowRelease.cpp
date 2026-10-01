@@ -28,7 +28,9 @@ bool Looks(UInt32 address) { return mem::LooksLikeObjectAddress(address); }
 
 enum class Snap : UInt8 { Unreadable, Done, NotNeeded };
 
-Snap SnapOne(UInt32 animData, const char* which) {
+// The draw put at key `key` (Attach 1, Hold 2) when its counter is on the key
+// before and its time short of it.
+Snap SnapOne(UInt32 animData, const char* which, UInt32 key) {
 	if (!Looks(animData)) {
 		return Snap::Unreadable;
 	}
@@ -37,13 +39,13 @@ Snap SnapOne(UInt32 animData, const char* which) {
 	if (!Looks(group) || *reinterpret_cast<const UInt8*>(group + kAnimGroupCodeOffset) != kGroupAttackBow) {
 		return Snap::Unreadable;
 	}
-	// Only with the Attach passed and the Hold not yet: the engine steps the
-	// rest itself (Hold, then Release).
-	if (Read(animData + kAnimDataSlot3KeyCount) != kKeyAttach) {
+	// One key on from where the counter is: the engine steps to it next frame
+	// as if the draw had reached it, and the rest itself.
+	if (Read(animData + kAnimDataSlot3KeyCount) != key - 1) {
 		return Snap::NotNeeded;
 	}
 	using KeyTimeFn = float(__thiscall*)(UInt32 self, UInt32 index);
-	const float hold = reinterpret_cast<KeyTimeFn>(kGroupKeyTime)(group, kKeyHold);
+	const float hold = reinterpret_cast<KeyTimeFn>(kGroupKeyTime)(group, key);
 	const float clock = *reinterpret_cast<const float*>(animData + kAnimDataClockOffset);
 	float& offset = *reinterpret_cast<float*>(sequence + kSequenceOffsetOffset);
 	const float before = offset + clock;
@@ -51,11 +53,11 @@ Snap SnapOne(UInt32 animData, const char* which) {
 		return Snap::NotNeeded;
 	}
 	offset = hold - clock;
-	static UInt32 s_lines = 12;
+	static UInt32 s_lines = 24;
 	if (s_lines > 0) {
 		--s_lines;
-		OBVR_LOG("Bow release: the %s draw put at its Hold (%.3f s, it was at %.3f s) - the loose comes now", which,
-		         static_cast<double>(hold), static_cast<double>(before));
+		OBVR_LOG("Bow release: the %s draw put at its %s (%.3f s, it was at %.3f s) - the loose comes now", which,
+		         key == kKeyAttach ? "Attach" : "Hold", static_cast<double>(hold), static_cast<double>(before));
 	}
 	return Snap::Done;
 }
@@ -90,16 +92,24 @@ bool WriteBowPowerForDraw(float weight) {
 	return true;
 }
 
-bool SnapBowDrawToHold() {
+namespace {
+
+bool SnapBowDrawToKey(UInt32 key) {
 	const UInt32 player = Read(addr::kPlayerPointer);
 	if (!Looks(player)) {
 		return false;
 	}
 	const UInt32 process = Read(player + kPlayerProcessOffset);
-	const Snap first = SnapOne(Read(player + kPlayerFirstPersonAnimDataOffset), "first-person");
-	const Snap third = Looks(process) ? SnapOne(Read(process + kProcessAnimDataOffset), "third-person")
+	const Snap first = SnapOne(Read(player + kPlayerFirstPersonAnimDataOffset), "first-person", key);
+	const Snap third = Looks(process) ? SnapOne(Read(process + kProcessAnimDataOffset), "third-person", key)
 	                                  : Snap::Unreadable;
 	return first != Snap::Unreadable || third != Snap::Unreadable;
 }
+
+}  // namespace
+
+bool SnapBowDrawToAttach() { return SnapBowDrawToKey(kKeyAttach); }
+
+bool SnapBowDrawToHold() { return SnapBowDrawToKey(kKeyHold); }
 
 }  // namespace obvr::game

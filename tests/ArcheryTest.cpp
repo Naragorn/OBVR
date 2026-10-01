@@ -456,30 +456,46 @@ void TestReleaseSnap() {
 	std::printf("The loose at once\n");
 	ReleaseSnapState s;
 	Check(StepReleaseSnap(s, false, 5, false, 0.011f) == ReleaseSnap::Idle, "drawn, not loosed: nothing");
-	Check(StepReleaseSnap(s, true, 5, false, 0.011f) == ReleaseSnap::Wait, "the loose's own frame: wait for the control to be up");
-	Check(StepReleaseSnap(s, false, 5, false, 0.011f) == ReleaseSnap::Snap, "the next, the arrow attached: snap to the Hold");
+	Check(StepReleaseSnap(s, true, 5, false, 0.011f) == ReleaseSnap::Wait,
+	      "the loose's own frame: wait for the control to be up");
+	Check(StepReleaseSnap(s, false, 5, false, 0.011f) == ReleaseSnap::ToHold,
+	      "the next, the arrow attached: to the Hold");
 	Check(StepReleaseSnap(s, false, 5, true, 0.011f) == ReleaseSnap::Idle, "done: nothing more");
 
+	// Legolas: let go before the Attach.
 	ReleaseSnapState early;
-	StepReleaseSnap(early, true, 4, false, 0.011f);
-	Check(StepReleaseSnap(early, false, 4, false, 0.011f) == ReleaseSnap::Wait,
-	      "let go before the Attach: wait, a jump past it would lose the shot");
-	Check(StepReleaseSnap(early, false, 5, false, 0.011f) == ReleaseSnap::Snap, "attached: snap");
+	Check(StepReleaseSnap(early, true, 4, false, 0.011f) == ReleaseSnap::Wait, "let go before the Attach: its frame waits");
+	Check(StepReleaseSnap(early, false, 4, false, 0.011f) == ReleaseSnap::ToAttach,
+	      "the next: to the Attach first - one key at a time");
+	Check(StepReleaseSnap(early, false, 4, false, 0.011f) == ReleaseSnap::ToAttach, "asked again until it is on");
+	Check(StepReleaseSnap(early, false, 5, false, 0.011f) == ReleaseSnap::ToHold, "attached: to the Hold");
+
+	// A draw of a frame: the engine's draw not seen yet when let go.
+	ReleaseSnapState flick;
+	Check(StepReleaseSnap(flick, true, -1, false, 0.011f) == ReleaseSnap::Wait, "let go before the draw shows: wait");
+	Check(StepReleaseSnap(flick, false, -1, false, 0.011f) == ReleaseSnap::Wait, "still not shown: wait");
+	Check(StepReleaseSnap(flick, false, 4, false, 0.011f) == ReleaseSnap::ToAttach, "it shows: to the Attach");
+	ReleaseSnapState none;
+	StepReleaseSnap(none, true, -1, false, 0.011f);
+	Check(StepReleaseSnap(none, false, -1, false, 0.3f) == ReleaseSnap::Idle,
+	      "no draw a quarter second on: given up");
 
 	ReleaseSnapState shot;
 	StepReleaseSnap(shot, true, 5, false, 0.011f);
 	Check(StepReleaseSnap(shot, false, 3, false, 0.011f) == ReleaseSnap::Idle, "already loosed (3): nothing");
+	Check(StepReleaseSnap(shot, false, 5, false, 0.011f) == ReleaseSnap::Idle, "and not again");
 	ReleaseSnapState cancelled;
 	StepReleaseSnap(cancelled, true, 4, false, 0.011f);
-	Check(StepReleaseSnap(cancelled, false, -1, false, 0.011f) == ReleaseSnap::Idle, "the draw gone (-1): nothing");
+	Check(StepReleaseSnap(cancelled, false, -1, false, 0.011f) == ReleaseSnap::Idle,
+	      "the draw seen, then gone (-1): nothing");
 	ReleaseSnapState stuck;
 	StepReleaseSnap(stuck, true, 4, false, 0.011f);
-	Check(StepReleaseSnap(stuck, false, 4, false, 1.0f) == ReleaseSnap::Wait, "a second on: still waiting");
+	Check(StepReleaseSnap(stuck, false, 4, false, 1.0f) == ReleaseSnap::ToAttach, "a second on: still asked");
 	Check(StepReleaseSnap(stuck, false, 4, false, 1.1f) == ReleaseSnap::Idle, "past two seconds: given up");
 	ReleaseSnapState unreadable;
 	StepReleaseSnap(unreadable, true, 5, false, 0.011f);
 	StepReleaseSnap(unreadable, false, 5, false, 0.011f);
-	Check(StepReleaseSnap(unreadable, false, 5, false, 0.011f) == ReleaseSnap::Snap,
+	Check(StepReleaseSnap(unreadable, false, 5, false, 0.011f) == ReleaseSnap::ToHold,
 	      "a snap not carried out is asked again");
 }
 

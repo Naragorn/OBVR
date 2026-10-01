@@ -2461,9 +2461,31 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			}
 		}
 		{
-			const vr::ReleaseSnap snap = vr::StepReleaseSnap(g_releaseSnap, a.loosed, game::ReadPlayerAction(),
-			                                                 g_releaseSnapped, g_deltaSeconds);
-			g_releaseSnapped = snap == vr::ReleaseSnap::Snap && game::SnapBowDrawToHold();
+			const SInt32 action = game::ReadPlayerAction();
+			const vr::ReleaseSnap snap =
+				vr::StepReleaseSnap(g_releaseSnap, a.loosed, action, g_releaseSnapped, g_deltaSeconds);
+			if (snap == vr::ReleaseSnap::ToAttach) {
+				game::SnapBowDrawToAttach();
+			}
+			g_releaseSnapped = snap == vr::ReleaseSnap::ToHold && game::SnapBowDrawToHold();
+			// How long from the let-go to the arrow leaving (the action 3): the
+			// tester's "pause", measured.
+			static float s_sinceLoose = -1.0f;
+			if (a.loosed) {
+				s_sinceLoose = 0.0f;
+			} else if (s_sinceLoose >= 0.0f) {
+				s_sinceLoose += g_deltaSeconds;
+				if (action == addr::kActionAttackFollowThrough || s_sinceLoose > 3.0f) {
+					static UInt32 s_leftLines = 24;
+					if (s_leftLines > 0) {
+						--s_leftLines;
+						OBVR_LOG("Hands: bow by hand - %s %.3f s after the let-go",
+						         action == addr::kActionAttackFollowThrough ? "the arrow left" : "NO ARROW",
+						         static_cast<double>(s_sinceLoose));
+					}
+					s_sinceLoose = -1.0f;
+				}
+			}
 			// The power from the draw: the string's weight last frame (the
 			// picture is placed after this), left to the game when there is
 			// none.
@@ -2488,7 +2510,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		// cancelled draw shows as a draw that never reaches 3.
 		{
 			static SInt32 s_action = -1;
-			static UInt32 s_actionLines = 40;
+			static UInt32 s_actionLines = 200;
 			static bool s_watchEase = false;
 			const SInt32 action = game::ReadPlayerAction();
 			if (g_bowVisual.active && action != s_action && s_actionLines > 0) {

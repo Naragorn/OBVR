@@ -4,8 +4,8 @@
 
 namespace obvr::game {
 
-// The bow's draw put at its Hold key, so a loose comes at once (vr::
-// StepReleaseSnap decides when).
+// The bow's draw moved on to its Attach and Hold keys, so a loose comes at
+// once however early it is let go (vr::StepReleaseSnap decides when).
 //
 // Read from Oblivion.exe 1.2.0.416 (2026-10-01, static):
 // - The attack update 0x005FCAB0 looses a bow shot in its action-5 case
@@ -27,9 +27,11 @@ namespace obvr::game {
 // first-person anim data (player +0x5CC) and the third-person one (the
 // process at player +0x58, +0x17C).
 
-// Puts each of the player's bow draws still short of Hold at its Hold. True
-// when none is left short of it (done now, or nothing to do); false when no
-// draw could be read.
+// Puts each of the player's bow draws whose counter is on the key before at
+// that key: at its Attach (key 1) a draw let go before the arrow was on, at
+// its Hold (key 2) one with the arrow on. True when a draw could be read (put
+// there now, or nothing to do); false when none could.
+bool SnapBowDrawToAttach();
 bool SnapBowDrawToHold();
 
 // The shot's power from the draw (vr::BowTimerForDraw): the player's bow timer

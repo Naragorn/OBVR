@@ -20,6 +20,12 @@ console player.additem 00025231 1
 console player.equipitem 00025231
 console-at arrows player.additem 00017829 20
 console-at arrows_on player.equipitem 00017829
+# The console's equipitem equips the arrows one at a time: each shot leaves
+# none equipped, the quiver gone and the next draw refused (2026-10-01:
+# re-equipped after a shot, the next one drew; not re-equipped, it did not).
+# In a game equipped from the inventory the whole stack is - the tester shot
+# one after the other. So they are equipped again after the first loose.
+console-at loosed player.equipitem 00017829
 
 expect HandScript: finished
 expect Hands: bow by hand - an arrow taken from the quiver
@@ -42,6 +48,9 @@ expect Hands: bow by hand - loosed
 expect Bow release: the first-person draw put at its Hold
 expect Bow power: the draw 1.00 gives the bow timer 1.8
 expect Hands: bow by hand - loosed at a draw of
+expect Bow release: the first-person draw put at its Attach
+expect Hands: bow by hand - the arrow left
+reject Hands: bow by hand - NO ARROW
 reject (no draw read - the game's power)
 expect Camera: both sticks held - recentering
 expect Bow draw sound: fx\wpn\wpn_bowdraw.wav from
@@ -130,6 +139,20 @@ mark drawn_again
 right trigger 0
 wait 1.5
 mark loosed
+wait 8
+# A third, Legolas-quick: drawn and let go 0.1 s later, before the draw's
+# Attach (0.27 s) - moved on to its Attach, then its Hold, at once.
+right pos 0.15 -0.10 0.12
+wait 0.4
+right trigger 1
+wait 0.3
+right pos -0.247 -0.102 -0.650
+wait 0.3
+right pos -0.229 -0.112 -0.400
+wait 0.1
+right trigger 0
+wait 1.0
+mark legolas
 right click 1
 left click 1
 wait 3.3
