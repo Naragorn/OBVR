@@ -117,6 +117,26 @@ struct ArcheryVerdict {
 	NiPoint3 bowAxis{0.0f, 0.0f, 0.0f};  // the axis it went by (zero: none), for the log
 };
 
+// The bow's draw sound in its parts (game/BowDrawSound.h; the tester,
+// 2026-09-30 evening: "den bogen spann sound müssen wir whl stückeln so dass
+// das spannen des bogens und andere teile davon einzeln abspielen"): its first
+// part as the arrow goes onto the string, its second - the string's stretch -
+// as the draw begins, and that one cut off whenever the bow is not drawn: let
+// go, eased back, taken off the string or dropped.
+struct BowSoundCue {
+	bool nock = false;
+	bool stretch = false;
+	bool stopStretch = false;
+};
+
+inline BowSoundCue BowSoundsFor(const ArcheryVerdict& v) {
+	BowSoundCue c;
+	c.nock = v.nocked;
+	c.stretch = v.drawStarted;
+	c.stopStretch = v.state != ArrowState::Drawing;
+	return c;
+}
+
 inline float MetresBetween(const NiPoint3& a, const NiPoint3& b) {
 	const NiPoint3 d{a.x - b.x, a.y - b.y, a.z - b.z};
 	return math::Sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
@@ -398,35 +418,6 @@ inline NiMatrix33 TurnYOnto(const NiMatrix33& from, const NiPoint3& direction) {
 	return r * from;
 }
 
-// The bow's world rotation for a shot along `aim`: its model's +x (the shot)
-// along it, its +y (the limbs) along `up` made square to it, +z the rest. False
-// when either is zero or they are parallel.
-inline bool BowFacing(const NiPoint3& aim, const NiPoint3& up, NiMatrix33& out) {
-	const float aimLength = math::Sqrt(aim.x * aim.x + aim.y * aim.y + aim.z * aim.z);
-	if (!(aimLength > 1e-6f)) {
-		return false;
-	}
-	const NiPoint3 x = aim * (1.0f / aimLength);
-	const float along = up.x * x.x + up.y * x.y + up.z * x.z;
-	NiPoint3 y{up.x - x.x * along, up.y - x.y * along, up.z - x.z * along};
-	const float yLength = math::Sqrt(y.x * y.x + y.y * y.y + y.z * y.z);
-	if (!(yLength > 1e-4f)) {
-		return false;
-	}
-	y = y * (1.0f / yLength);
-	const NiPoint3 z{x.y * y.z - x.z * y.y, x.z * y.x - x.x * y.z, x.x * y.y - x.y * y.x};
-	out.data[0][0] = x.x;
-	out.data[1][0] = x.y;
-	out.data[2][0] = x.z;
-	out.data[0][1] = y.x;
-	out.data[1][1] = y.y;
-	out.data[2][1] = y.z;
-	out.data[0][2] = z.x;
-	out.data[1][2] = z.y;
-	out.data[2][2] = z.z;
-	return true;
-}
-
 // The arrow's pose in the world; the model's origin is its head, its nock
 // `lengthUnits` back along -y.
 struct ArrowPose {
@@ -435,23 +426,37 @@ struct ArrowPose {
 	NiPoint3 nock{0.0f, 0.0f, 0.0f};
 };
 
-// In the fist: along the hand's laser, from where the beam starts, pointing
-// where it points (the tester, 2026-09-30: "der pfeil muss nicht wie jetzt
-// nach oben zeigen sondern in die selbe richtung wie der laserpointer ...
-// dann den pfeil genau so ausrichten wie den laserpointer"). `rollFrom` keeps
-// the fist's roll. False for a model with no length or no direction.
-inline bool ArrowInHand(const NiPoint3& laserStart, const NiPoint3& laserDirection, const NiMatrix33& rollFrom,
-                        float lengthUnits, ArrowPose& out) {
-	const float d = laserDirection.x * laserDirection.x + laserDirection.y * laserDirection.y +
-	                laserDirection.z * laserDirection.z;
+// An arrow from `nock` along `direction` (any length), `rollFrom` turned onto
+// it to keep its roll. False for a model with no length or no direction.
+inline bool ArrowAlong(const NiPoint3& nock, const NiPoint3& direction, const NiMatrix33& rollFrom,
+                       float lengthUnits, ArrowPose& out) {
+	const float d = direction.x * direction.x + direction.y * direction.y + direction.z * direction.z;
 	if (!(lengthUnits > 0.0f) || !(d > 1e-6f)) {
 		return false;
 	}
-	const NiPoint3 unit = laserDirection * (1.0f / math::Sqrt(d));
-	out.nock = laserStart;
+	const NiPoint3 unit = direction * (1.0f / math::Sqrt(d));
+	out.nock = nock;
 	out.rot = TurnYOnto(rollFrom, unit);
-	out.pos = laserStart + unit * lengthUnits;
+	out.pos = nock + unit * lengthUnits;
 	return true;
+}
+
+// In the fist: through its middle, straight ahead along the hand - the line
+// from the wrist to the middle finger's knuckle - its nock
+// kArrowNockBehindGripUnits behind the fist's grip point (the tester,
+// 2026-09-30 evening: "rechte hand der pfeil zeigt nicht wie der laserpointer
+// sondern hier auch einfach mittig in der hand gerade aus"). Before it lay on
+// the laser, and before that along the grip, pointing up. False with the
+// wrist on the knuckle or a model with no length.
+inline bool ArrowInFist(const NiPoint3& grip, const NiPoint3& wrist, const NiPoint3& knuckle,
+                        const NiMatrix33& rollFrom, float lengthUnits, ArrowPose& out) {
+	const NiPoint3 along{knuckle.x - wrist.x, knuckle.y - wrist.y, knuckle.z - wrist.z};
+	const float d = along.x * along.x + along.y * along.y + along.z * along.z;
+	if (!(d > 1e-6f)) {
+		return false;
+	}
+	const NiPoint3 unit = along * (1.0f / math::Sqrt(d));
+	return ArrowAlong(grip - unit * kArrowNockBehindGripUnits, unit, rollFrom, lengthUnits, out);
 }
 
 // On the string: along the bow's shot axis through the arrow's rest, the nock

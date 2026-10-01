@@ -1,11 +1,12 @@
 # The bow by hand (vr/Archery.h, game/BowVisual.h): the bow drawn from behind
-# the left shoulder; the right hand's trigger over the right shoulder takes an
-# arrow (it lies along that hand's laser), brings it to the bow (nocked), pulls
-# back along the bow (the engine's draw), past a full draw (stopped there),
-# eases back to the bow (the draw taken back - no shot), moves off the bow's
-# line (the arrow off the string), puts it back at the quiver; then a second
-# arrow is taken, drawn and loosed. At the end both sticks are held in for
-# three seconds: the recenter.
+# the left shoulder, held as the game holds it; the right hand's trigger over
+# the right shoulder takes an arrow (it lies in the fist along the hand), brings
+# it to the bow (nocked: the draw sound's first part), pulls back along the bow
+# (the engine's draw, its whole sound kept quiet, the second part played), past
+# a full draw (stopped there), eases back to the bow (the draw taken back - no
+# shot), moves off the bow's line (the arrow off the string), puts it back at
+# the quiver; then a second arrow is taken, drawn and loosed. At the end both
+# sticks are held in for three seconds: the recenter.
 # The runner takes two console lines at the start; the arrows come at marks,
 # and a console at a mark leaves the menu state up for some seconds - the
 # bow waits for it. The head looks down at the hands, and the eyes are dumped
@@ -22,7 +23,8 @@ console-at arrows_on player.equipitem 00017829
 
 expect HandScript: finished
 expect Hands: bow by hand - an arrow taken from the quiver
-expect Bow by hand: the arrow in the hand along the laser
+expect Bow by hand: the arrow in the fist along the hand
+expect Hands: bow by hand - the bow shoots along
 expect Hands: bow by hand - the arrow nocked
 expect Hands: bow by hand - drawn - the engine's draw begins
 expect Bow by hand: an arrow made for the hand from the quiver's
@@ -38,6 +40,12 @@ expect Hands: bow by hand - the arrow off the string, in the hand
 expect Hands: bow by hand - the arrow put back in the quiver
 expect Hands: bow by hand - loosed
 expect Camera: both sticks held - recentering
+expect Bow draw sound: fx\wpn\wpn_bowdraw.wav from
+expect Bow draw sound: the first (nock) part played
+expect Bow draw sound: the second (stretch) part played
+expect Bow draw sound: the engine's WPNBowDraw at the draw's key kept quiet
+reject the engine's draw sound stays whole
+reject COULD NOT BE PLAYED
 reject HandScript: WARNING
 reject Bow by hand: no "Arrow:0" in the quiver
 reject could not be measured
@@ -57,9 +65,15 @@ left grip 1
 wait 0.2
 left grip 0
 left pos -0.25 -0.10 -0.70
-# The bow aims along the left laser: with the controller untilted 40 degrees
-# down and 5 to the right, (0.07 -0.64 -0.76). The pulls below run back along
-# it from the bow hand: 5 cm (nocked, eased), 30 (drawn), 70 (past a full draw).
+# The bow aims where it shoots, as the game holds it in this hand: with the
+# live INI's hand calibration, down the controller's -y (the log's "the bow
+# shoots along (-0.07 -1.00 -0.04)" at the nock, 2026-09-30). The controller
+# is turned up 90 degrees so the bow stands upright and shoots ahead, along
+# (-0.07 0.04 -1.00) (the log's "along" at the arrow taken off). The pulls
+# below run back along it from the bow hand: 5 cm (nocked, eased), 30
+# (drawn), 70 (past a full draw); the arrow is taken off the string 21 cm
+# across it.
+left rot 90 0 0
 wait 3
 head pitch -45
 wait 0.5
@@ -74,25 +88,25 @@ wait 0.5
 mark in_hand
 dump
 wait 0.3
-right pos -0.25 -0.07 -0.66
+right pos -0.247 -0.102 -0.650
 wait 0.4
 mark nocked
 dump
 wait 0.3
-right pos -0.27 0.09 -0.47
+right pos -0.229 -0.112 -0.400
 wait 0.8
 mark drawn
 dump
 wait 0.3
-right pos -0.30 0.35 -0.17
+right pos -0.201 -0.128 0.000
 wait 0.6
 mark full_draw
 dump
 wait 0.3
-right pos -0.25 -0.07 -0.66
+right pos -0.247 -0.102 -0.650
 wait 1.0
 mark eased
-right pos 0.05 -0.10 -0.66
+right pos -0.037 -0.102 -0.650
 wait 0.5
 mark unnocked
 right pos 0.15 -0.10 0.12
@@ -102,9 +116,9 @@ wait 0.5
 mark stowed
 right trigger 1
 wait 0.3
-right pos -0.25 -0.07 -0.66
+right pos -0.247 -0.102 -0.650
 wait 0.4
-right pos -0.27 0.09 -0.47
+right pos -0.229 -0.112 -0.400
 wait 1.5
 mark drawn_again
 right trigger 0

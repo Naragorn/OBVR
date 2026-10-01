@@ -15,6 +15,7 @@ CreateFileA@28
 MoveFileExA@12
 DeleteFileA@4
 GetFileSize@8
+SetFilePointer@16
 ReadFile@20
 WriteFile@20
 FlushFileBuffers@4

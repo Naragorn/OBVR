@@ -422,12 +422,14 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		ain.drawGrip = s.archery.takeWithTrigger ? in.rightTrigger : (cr.valid && GripDown(cr.buttonsPressed));
 		ain.leftHanded = s.leftHanded;
 		ain.dtSeconds = f.dtSeconds;
-		// Where the bow points: along the bow hand's laser - the bow itself is
-		// turned onto it (game::StepBowVisual), so the arrow, the bow and the
-		// shot agree.
+		// Where the bow points: where the arrow would fly, along the bow as the
+		// hand holds it (the tester, 2026-09-30 evening: "wenn der bogen
+		// equipped ist den aim ändern auf dahin wo der pfeil fliegen würde");
+		// before the bow is seen, along the bow hand's laser.
 		if (cl.valid) {
-			const NiPoint3 axis =
-				TrackingRotate(cl.orientation, LaserDirectionLocal(s.laserPitchDegrees, -s.laserYawDegrees));
+			const NiPoint3 axis = TrackingRotate(
+				cl.orientation, f.bowShotValid ? f.bowShotLocal
+				                               : LaserDirectionLocal(s.laserPitchDegrees, -s.laserYawDegrees));
 			const float length = math::Sqrt(axis.LengthSquared());
 			if (length > 1e-4f) {
 				ain.axisValid = true;

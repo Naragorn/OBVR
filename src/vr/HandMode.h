@@ -330,6 +330,11 @@ struct HandModeFrame {
 	// The left hand holds a weapon's handle: its trigger slides it along the
 	// handle, as in Blade & Sorcery, and casts nothing.
 	bool leftTriggerOnHandle = false;
+	// Where the drawn bow shoots, in the bow hand's controller frame (x right,
+	// y up, -z forward), as the last frame showed the bow (game::BowShotAxis):
+	// the arrow's aim. Without it, that hand's laser.
+	bool bowShotValid = false;
+	NiPoint3 bowShotLocal{0.0f, 0.0f, -1.0f};
 	SInt32 playerAction = -1;
 	// The hands are being adjusted (the INI switch or the guided window): a
 	// closed grip holds a hand, it does not grab.

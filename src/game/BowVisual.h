@@ -17,24 +17,25 @@ namespace obvr::game {
 // and places it in the drawing hand; the engine's arrow is hidden while the bow
 // is drawn by hand; and the string's weight is written and blended by the
 // morpher's own blend (0x006D0CF0) after the animation.
+//
+// The bow itself sits in the bow hand as the game holds it (the tester,
+// 2026-09-30 evening: "linke hand wieder wie sie in vanilla war vor unseren
+// changes einfach normaler griff 90 grad am bogen"); the shot goes where it
+// points (BowShotAxis).
 struct BowVisualInput {
 	bool active = false;  // Full VR, hands pinned, the bow by hand on and a bow drawn
 	vr::ArrowShown arrow = vr::ArrowShown::None;
 	vr::StringSource string = vr::StringSource::Engine;
-	// The drawing hand's bone, moved onto the string while the arrow is on it.
+	// The drawing hand's bone, moved onto the string while the arrow is on it;
+	// the arrow in the fist lies along it, from it to its middle finger.
 	const char* rightHandBone = "Bip01 R Hand";
-	// The drawing hand's laser in the world: the arrow in the fist lies along it.
-	bool laserValid = false;
-	NiPoint3 laserStart{0.0f, 0.0f, 0.0f};
-	NiPoint3 laserDirection{0.0f, 1.0f, 0.0f};
-	// The bow hand's laser in the world and that controller's up: the bow is
-	// turned so it shoots along the laser, its limbs along the up (the aim is
-	// the same laser, vr::StepArchery's bowAxis).
-	bool bowAimValid = false;
-	NiPoint3 bowAim{0.0f, 1.0f, 0.0f};
-	NiPoint3 bowUp{0.0f, 0.0f, 1.0f};
 };
 
 void StepBowVisual(const BowVisualInput& in);
+
+// Where the drawn bow shoots in the world this frame, as the last
+// StepBowVisual found it: its model's +x, the line the string pulls back
+// along. False while no bow is drawn by hand.
+bool BowShotAxis(NiPoint3& world);
 
 }  // namespace obvr::game

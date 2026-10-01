@@ -42,6 +42,8 @@ constexpr DWORD OPEN_EXISTING = 3;
 constexpr DWORD FILE_ATTRIBUTE_NORMAL = 0x80;
 constexpr DWORD INVALID_FILE_ATTRIBUTES = 0xFFFFFFFF;
 constexpr DWORD INVALID_FILE_SIZE = 0xFFFFFFFF;
+constexpr DWORD FILE_BEGIN = 0;
+constexpr DWORD INVALID_SET_FILE_POINTER = 0xFFFFFFFF;
 constexpr DWORD MOVEFILE_REPLACE_EXISTING = 0x1;
 constexpr DWORD MOVEFILE_WRITE_THROUGH = 0x8;
 
@@ -54,6 +56,7 @@ OBVR_IMPORT HANDLE OBVR_STDCALL CreateFileA(const char* fileName, DWORD access, 
 OBVR_IMPORT int OBVR_STDCALL MoveFileExA(const char* existingName, const char* newName, DWORD flags);
 OBVR_IMPORT BOOL OBVR_STDCALL DeleteFileA(const char* fileName);
 OBVR_IMPORT DWORD OBVR_STDCALL GetFileSize(HANDLE file, DWORD* highSize);
+OBVR_IMPORT DWORD OBVR_STDCALL SetFilePointer(HANDLE file, long distance, long* distanceHigh, DWORD method);
 OBVR_IMPORT BOOL OBVR_STDCALL ReadFile(HANDLE file, void* buffer, DWORD bytes, DWORD* read, void* overlapped);
 OBVR_IMPORT BOOL OBVR_STDCALL WriteFile(HANDLE file, const void* buffer, DWORD bytes, DWORD* written, void* overlapped);
 OBVR_IMPORT BOOL OBVR_STDCALL FlushFileBuffers(HANDLE file);

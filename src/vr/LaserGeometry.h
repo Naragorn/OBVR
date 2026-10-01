@@ -100,6 +100,22 @@ inline LaserWorldRay HandLaserWorldRay(const NiMatrix33& headRot, const NiPoint3
 	return ray;
 }
 
+// A world direction in the controller's own frame (x right, y up, -z
+// forward): HandLaserWorldRay's carrying of a direction undone - the head's
+// rotation, then the hand's, both transposed, and the game's axes back to
+// OpenVR's. What a thing held in the hand points along, as a laser's angles
+// (vr::LaserAnglesOf) for that hand.
+inline NiPoint3 ControllerLocalOf(const NiMatrix33& headRot, const NiMatrix33& handRelativeRot,
+                                  const NiPoint3& world) {
+	const auto transposedTimes = [](const NiMatrix33& m, const NiPoint3& v) {
+		return NiPoint3{m.data[0][0] * v.x + m.data[1][0] * v.y + m.data[2][0] * v.z,
+		                m.data[0][1] * v.x + m.data[1][1] * v.y + m.data[2][1] * v.z,
+		                m.data[0][2] * v.x + m.data[1][2] * v.y + m.data[2][2] * v.z};
+	};
+	const NiPoint3 inGameAxes = transposedTimes(handRelativeRot, transposedTimes(headRot, world));
+	return NiPoint3{inGameAxes.x, inGameAxes.z, -inGameAxes.y};
+}
+
 // The pick aimed from a hand at a point - an item near it
 // (game::FindNearestItem) - starting backUnits behind the hand, so an item
 // the hand is already inside is still ahead of the ray. A point at the hand

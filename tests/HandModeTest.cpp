@@ -1368,6 +1368,27 @@ void TestBowByHand() {
 	frame.right.trigger = 0.0f;
 	r = aimed.Update(frame, byTrigger);
 	Check(r.archery.dropped && !r.archery.loosed && !r.controls.attack, "the trigger let go on the string, undrawn: no shot");
+
+	// The bow seen in the hand: the shot goes where it points, not along the
+	// laser - here down the controller's handle and ahead, 45 degrees down,
+	// turned into tracking space by the controller (untilted, so as is).
+	HandMode seen;
+	frame.bowShotValid = true;
+	frame.bowShotLocal = NiPoint3{0.0f, -2.0f, -2.0f};
+	frame.right.position = quiver;
+	seen.Update(frame, byTrigger);
+	frame.right.trigger = 1.0f;
+	seen.Update(frame, byTrigger);
+	frame.right.position = NiPoint3{-0.1f, -0.2f, -0.4f};
+	r = seen.Update(frame, byTrigger);
+	const float h = 0.70710678f;
+	Check(r.archery.nocked && r.arrowAimValid && Near(r.arrowDirection.y, -h) && Near(r.arrowDirection.x, 0.0f) &&
+	          Near(r.arrowDirection.z, -h) && r.arrowSinPitch < -0.7f,
+	      "the bow seen: aimed along where it shoots, made a unit - 45 down");
+	frame.right.position = frame.left.position - NiPoint3{0.0f, -h, -h} * 0.3f;
+	r = seen.Update(frame, byTrigger);
+	Check(r.archery.drawStarted && Near(r.arrowDirection.y, -h), "and drawn back along that line");
+	frame.bowShotValid = false;
 }
 
 void TestHolsterInMode() {

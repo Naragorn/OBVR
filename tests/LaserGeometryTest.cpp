@@ -128,6 +128,28 @@ void TestOffset() {
 	Check(NearPoint(ray.origin, NiPoint3{0, 0, 0}), "no offset given: the start as before");
 }
 
+// A laser along what the hand holds: a world direction back into the
+// controller's frame, and into the angles that give it back.
+void TestAnglesOfHeld() {
+	std::printf("A world direction as the hand's laser\n");
+	const NiMatrix33 head = EulerToMatrix(10.0f, -20.0f, 35.0f);
+	const NiMatrix33 hand = EulerToMatrix(-30.0f, 50.0f, 15.0f);
+	const LaserWorldRay ray =
+		HandLaserWorldRay(head, NiPoint3{0, 0, 0}, hand, NiPoint3{0, 0, 0}, 25.0f, -12.0f, 0.0f, 70.0f);
+	const NiPoint3 local = ControllerLocalOf(head, hand, ray.direction);
+	Check(NearPoint(local, LaserDirectionLocal(25.0f, -12.0f)), "the world ray back in the controller's frame");
+	float pitch = 0.0f;
+	float yaw = 0.0f;
+	Check(LaserAnglesOf(local * 3.0f, pitch, yaw) && Near(pitch, 25.0f, 0.01f) && Near(yaw, -12.0f, 0.01f),
+	      "and its angles are the laser's, whatever its length");
+	Check(LaserAnglesOf(LaserDirectionLocal(-60.0f, 150.0f), pitch, yaw) && Near(pitch, -60.0f, 0.01f) &&
+	          Near(yaw, 150.0f, 0.01f),
+	      "tilted up and turned past the side: the same angles back");
+	Check(LaserAnglesOf(NiPoint3{0, -1, 0}, pitch, yaw) && Near(yaw, 0.0f) && pitch > 89.0f,
+	      "straight down: no yaw, the pitch at the steepest the sine allows");
+	Check(!LaserAnglesOf(NiPoint3{0, 0, 0}, pitch, yaw), "no direction: no angles");
+}
+
 }  // namespace
 
 void TestReach() {
@@ -227,6 +249,7 @@ int main() {
 	TestPoint();
 	TestWorldRay();
 	TestOffset();
+	TestAnglesOfHeld();
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);
 		return 1;

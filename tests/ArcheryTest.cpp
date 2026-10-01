@@ -319,11 +319,25 @@ void TestArrowPose() {
 	std::printf("The arrow's pose\n");
 	const NiMatrix33 id = NiMatrix33::Identity();
 	ArrowPose p;
-	Check(ArrowInHand(NiPoint3{1, 2, 3}, NiPoint3{0, 0, 2}, id, 46.6f, p) && NearPoint(p.nock, NiPoint3{1, 2, 3}) &&
+	Check(ArrowAlong(NiPoint3{1, 2, 3}, NiPoint3{0, 0, 2}, id, 46.6f, p) && NearPoint(p.nock, NiPoint3{1, 2, 3}) &&
 	          NearPoint(p.pos, NiPoint3{1, 2, 49.6f}) && NearPoint(p.rot * NiPoint3{0, 1, 0}, NiPoint3{0, 0, 1}),
-	      "in the fist: from the laser's start along the laser, the head ahead");
-	Check(!ArrowInHand(NiPoint3{1, 2, 3}, NiPoint3{0, 0, 1}, id, 0.0f, p), "a model with no length: no pose");
-	Check(!ArrowInHand(NiPoint3{1, 2, 3}, NiPoint3{0, 0, 0}, id, 46.6f, p), "no laser direction: no pose");
+	      "along a line: the nock where given, the head ahead along it");
+	Check(!ArrowAlong(NiPoint3{1, 2, 3}, NiPoint3{0, 0, 1}, id, 0.0f, p), "a model with no length: no pose");
+	Check(!ArrowAlong(NiPoint3{1, 2, 3}, NiPoint3{0, 0, 0}, id, 46.6f, p), "no direction: no pose");
+
+	// The fist: the wrist at the origin, the knuckle 8 units ahead and a little
+	// up, the grip point in between and below.
+	const NiPoint3 grip{0, 4, -1};
+	const NiPoint3 wrist{0, 0, 0};
+	const NiPoint3 knuckle{0, 8, 0.8f};
+	Check(ArrowInFist(grip, wrist, knuckle, id, 46.6f, p), "in the fist: posed");
+	const float l = std::sqrt(64.0f + 0.64f);
+	const NiPoint3 unit{0, 8 / l, 0.8f / l};
+	Check(NearPoint(p.rot * NiPoint3{0, 1, 0}, unit), "straight ahead along the hand, wrist to knuckle");
+	Check(NearPoint(p.nock, grip - unit * kArrowNockBehindGripUnits) && NearPoint(p.pos, p.nock + unit * 46.6f),
+	      "through the fist's middle: the nock just behind its grip point, the head ahead");
+	Check(!ArrowInFist(grip, wrist, wrist, id, 46.6f, p), "the knuckle on the wrist: no pose");
+	Check(!ArrowInFist(grip, wrist, knuckle, id, 0.0f, p), "a model with no length: no pose");
 
 	// The bow's axis along +y, its arrow rest at (0, 100, 0); the string rests
 	// 15.6 behind, a full draw 28 more.
@@ -348,15 +362,28 @@ void TestArrowPose() {
 	      "pulled past a full draw: stopped there, the fist held at it");
 }
 
-void TestBowFacing() {
-	std::printf("The bow turned onto its hand's laser\n");
-	NiMatrix33 m{};
-	Check(BowFacing(NiPoint3{0, 2, 0}, NiPoint3{0, 0.3f, 1}, m) &&
-	          NearPoint(m * NiPoint3{1, 0, 0}, NiPoint3{0, 1, 0}) && NearPoint(m * NiPoint3{0, 1, 0}, NiPoint3{0, 0, 1}),
-	      "its +x along the laser, its limbs along the controller's up made square to it");
-	Check(NearPoint(m * NiPoint3{0, 0, 1}, NiPoint3{1, 0, 0}), "and +z the third, right-handed");
-	Check(!BowFacing(NiPoint3{0, 0, 0}, NiPoint3{0, 0, 1}, m), "no laser: no facing");
-	Check(!BowFacing(NiPoint3{0, 0, 1}, NiPoint3{0, 0, 3}, m), "the up along the laser: no facing");
+void TestBowSounds() {
+	std::printf("The draw sound's parts\n");
+	ArcheryVerdict v;
+	v.state = ArrowState::Nocked;
+	v.nocked = true;
+	BowSoundCue c = BowSoundsFor(v);
+	Check(c.nock && !c.stretch && c.stopStretch, "nocked: the first part, no stretch");
+	v = ArcheryVerdict{};
+	v.state = ArrowState::Drawing;
+	v.drawStarted = true;
+	c = BowSoundsFor(v);
+	Check(!c.nock && c.stretch && !c.stopStretch, "the draw begins: the stretch");
+	v.drawStarted = false;
+	c = BowSoundsFor(v);
+	Check(!c.nock && !c.stretch && !c.stopStretch, "drawing on: the stretch left to play");
+	const ArrowState notDrawn[] = {ArrowState::None, ArrowState::InHand, ArrowState::Nocked};
+	for (ArrowState s : notDrawn) {
+		v = ArcheryVerdict{};
+		v.state = s;
+		c = BowSoundsFor(v);
+		Check(c.stopStretch && !c.stretch && !c.nock, "not drawn (loosed, dropped, off the string, eased): cut off");
+	}
 }
 
 }  // namespace
@@ -373,7 +400,7 @@ int main() {
 	TestTurn();
 	TestArrowPose();
 	TestEase();
-	TestBowFacing();
+	TestBowSounds();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

@@ -68,6 +68,21 @@ inline NiPoint3 LaserDirectionLocal(float pitchDegrees, float yawDegrees = 0.0f)
 	return NiPoint3{-level * math::Sin(yaw), -math::Sin(pitch), -level * math::Cos(yaw)};
 }
 
+// The angles that give `direction` (in the controller's own frame, any
+// length) back from LaserDirectionLocal: its pitch down and its yaw left, in
+// degrees. Straight up or down the yaw is 0. False for no direction.
+inline bool LaserAnglesOf(const NiPoint3& direction, float& pitchDegrees, float& yawDegrees) {
+	const float length = math::Sqrt(direction.x * direction.x + direction.y * direction.y + direction.z * direction.z);
+	if (!(length > 1e-6f)) {
+		return false;
+	}
+	const float toDegrees = 1.0f / math::kDegreesToRadians;
+	pitchDegrees = math::Asin(-direction.y / length) * toDegrees;
+	const bool level = direction.x * direction.x + direction.z * direction.z > 1e-12f;
+	yawDegrees = level ? math::Atan2(-direction.x, -direction.z) * toDegrees : 0.0f;
+	return true;
+}
+
 // The beam's right in the same frame: the controller's x turned by the same
 // yaw, so it stays square to the direction whatever the pitch.
 inline NiPoint3 LaserRightLocal(float yawDegrees) {

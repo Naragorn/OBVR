@@ -16,6 +16,7 @@
 #include "game/CrosshairTarget.h"
 #include "game/DialogZoom.h"
 #include "game/BlockCone.h"
+#include "game/BowDrawSound.h"
 #include "game/BowVisual.h"
 #include "game/ConsoleLine.h"
 #include "game/HitShader.h"
@@ -457,6 +458,22 @@ vr::HandModeResult g_hand;
 // after the hands are pinned (game::StepBowVisual).
 game::BowVisualInput g_bowVisual;
 vr::BowStringState g_bowString;
+// Where the drawn bow shoots, in the bow hand's controller frame, from the
+// last frame the bow was seen (game::BowShotAxis): the arrow's aim
+// (HandModeFrame::bowShotLocal) and that hand's laser (LaserAnglesFor).
+bool g_bowShotValid = false;
+NiPoint3 g_bowShotLocal{0.0f, 0.0f, -1.0f};
+
+// A hand's laser angles: the settings' tilt, the yaw mirrored on the left -
+// and the bow hand's along the drawn bow instead, so what it points at is
+// where the arrow would fly (the tester, 2026-09-30 evening).
+void LaserAnglesFor(const vr::HandSettings& hands, bool left, float& pitchDegrees, float& yawDegrees) {
+	pitchDegrees = hands.laserPitchDegrees;
+	yawDegrees = left ? -hands.laserYawDegrees : hands.laserYawDegrees;
+	if (left && g_bowShotValid) {
+		vr::LaserAnglesOf(g_bowShotLocal, pitchDegrees, yawDegrees);
+	}
+}
 bool g_handArmsWanted = false;
 bool g_handControlsHeld = false;
 long long g_handClockLast = 0;
@@ -1745,6 +1762,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.holdingObject = active && game::PlayerHoldsGrab();
 	frame.leftGripOnHandle = active && g_leftGripOnHandle;
 	frame.leftTriggerOnHandle = active && g_twoHand.active;
+	frame.bowShotValid = active && g_bowShotValid;
+	frame.bowShotLocal = g_bowShotLocal;
 	frame.sneaking = active && !menuIsUp && frame.inWorld && config.hands.sneakHold &&
 	                 game::IsPlayerSneaking();
 	frame.headValid = backend.GetRenderPose(frame.head, frame.headPosition) ||
@@ -2105,11 +2124,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			h.position =
 				camPos + camRot * (left ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits);
 			if (valid) {
+				float pitch = 0.0f;
+				float yaw = 0.0f;
+				LaserAnglesFor(config.hands, left, pitch, yaw);
 				h.direction = vr::HandLaserWorldRay(
 					camRot, camPos, left ? g_hand.leftHandRotation : g_hand.rightHandRotation,
-					left ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits,
-					config.hands.laserPitchDegrees,
-					left ? -config.hands.laserYawDegrees : config.hands.laserYawDegrees,
+					left ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits, pitch, yaw,
 					config.hands.laserOriginMetres, config.tracker.unitsPerMetre,
 					vr::LaserOffsetLocal(config.hands.laserOffsetRightMetres, config.hands.laserOffsetUpMetres, left))
 				                  .direction;
@@ -2419,6 +2439,21 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		// string at rest until it is over.
 		g_bowVisual.active = config.hands.archery.enabled && frame.inWorld && !frame.menuMode &&
 		                     frame.equipped == vr::EquippedKind::Bow && frame.weaponSeen == vr::WeaponSeen::Drawn;
+		// The draw sound in its parts, the engine's whole one kept quiet
+		// meanwhile (game/BowDrawSound.h).
+		game::SetBowDrawSoundByHand(g_bowVisual.active);
+		{
+			const vr::BowSoundCue cue = vr::BowSoundsFor(a);
+			if (cue.nock) {
+				game::PlayBowDrawPart(game::BowDrawPart::Nock);
+			}
+			if (cue.stretch) {
+				game::PlayBowDrawPart(game::BowDrawPart::Stretch);
+			}
+			if (cue.stopStretch) {
+				game::StopBowDrawPart(game::BowDrawPart::Stretch);
+			}
+		}
 		g_bowVisual.arrow = vr::ArrowShownFor(a.state);
 		g_bowVisual.string =
 			vr::StepBowString(g_bowString, a.state, a.loosed, game::ReadPlayerAction() >= 0, g_deltaSeconds);
@@ -4823,6 +4858,7 @@ void BeforeFirstScenePass() {
 		}
 	}
 
+	g_bowShotValid = false;
 	if (g_handArmsWanted) {
 		game::PlaceFirstPersonArms(g_hand.armsRotation, g_hand.armsOffsetUnits);
 		// After the arms, so the bones' parents carry this frame's placement:
@@ -4898,28 +4934,34 @@ void BeforeFirstScenePass() {
 			// The bow by hand as it is seen, on the hands just pinned. The arrow
 			// reaches past the hand's own bound, which the engine worked out
 			// before it was there: kept in view like the hands.
-			// The arrow in the fist lies along the drawing hand's laser.
-			{
-				const vr::LaserWorldRay laser = vr::HandLaserWorldRay(
-					cameraRot, cameraPos, g_hand.rightHandRotation, g_hand.rightHandOffsetUnits,
-					hands.laserPitchDegrees, hands.laserYawDegrees, hands.laserOriginMetres, perMetre,
-					vr::LaserOffsetLocal(hands.laserOffsetRightMetres, hands.laserOffsetUpMetres, false));
-				g_bowVisual.laserValid = g_hand.rightHandValid;
-				g_bowVisual.laserStart = laser.origin;
-				g_bowVisual.laserDirection = laser.direction;
-			}
-			// The bow turned onto the bow hand's laser: the shot goes along it.
-			{
-				const vr::LaserWorldRay bowLaser = vr::HandLaserWorldRay(
-					cameraRot, cameraPos, g_hand.leftHandRotation, g_hand.leftHandOffsetUnits,
-					hands.laserPitchDegrees, -hands.laserYawDegrees, hands.laserOriginMetres, perMetre,
-					vr::LaserOffsetLocal(hands.laserOffsetRightMetres, hands.laserOffsetUpMetres, true));
-				g_bowVisual.bowAimValid = g_hand.leftHandValid;
-				g_bowVisual.bowAim = bowLaser.direction;
-				// The controller's own up, in the world: the bow's limbs along it.
-				g_bowVisual.bowUp = cameraRot * (g_hand.leftHandRotation * NiPoint3{0.0f, 0.0f, 1.0f});
-			}
 			game::StepBowVisual(g_bowVisual);
+			// Where the bow shoots, in its hand's controller frame: the next
+			// frame's aim and that hand's laser.
+			{
+				NiPoint3 shot{};
+				static bool s_wasOnString = false;
+				const bool wasOnString = s_wasOnString;
+				s_wasOnString = g_bowVisual.arrow == vr::ArrowShown::OnString;
+				if (g_hand.leftHandValid && game::BowShotAxis(shot)) {
+					g_bowShotValid = true;
+					g_bowShotLocal = vr::ControllerLocalOf(cameraRot, g_hand.leftHandRotation, shot);
+					// Each time an arrow goes onto the string: the bow is then
+					// held as it is shot (while it is drawn out of the holster
+					// its draw animation still moves it in the hand).
+					static UInt32 s_shotLines = 6;
+					if (s_wasOnString && !wasOnString && s_shotLines > 0) {
+						--s_shotLines;
+						float pitch = 0.0f;
+						float yaw = 0.0f;
+						vr::LaserAnglesOf(g_bowShotLocal, pitch, yaw);
+						OBVR_LOG("Hands: bow by hand - the bow shoots along (%.2f %.2f %.2f) in its controller's "
+						         "frame: the aim and that hand's laser %.0f degrees down, %.0f left",
+						         static_cast<double>(g_bowShotLocal.x), static_cast<double>(g_bowShotLocal.y),
+						         static_cast<double>(g_bowShotLocal.z), static_cast<double>(pitch),
+						         static_cast<double>(yaw));
+					}
+				}
+			}
 			if (g_bowVisual.active && g_bowVisual.arrow != vr::ArrowShown::None) {
 				game::KeepFirstPersonNodesInView("Arrow:0", cameraPos, 100.0f);
 			}
@@ -5865,13 +5907,14 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	const bool crosshairLeft = g_hand.pickWithLeftHand;
 	const bool crosshairOnHand =
 		config.fullVrMode && (crosshairLeft ? g_hand.leftAimValid : g_hand.aimValid);
+	float crosshairPitch = 0.0f;
+	float crosshairYaw = 0.0f;
+	LaserAnglesFor(config.hands, crosshairLeft, crosshairPitch, crosshairYaw);
 	g_crosshairLayer.SetHandPlacement(
 		crosshairOnHand,
 		g_headTracker.GetBackendForFrame().HandDeviceIndex(
 			vr::HandDeviceForRole(!crosshairLeft, g_handRolesSwapped)),
-		config.hands.laserPitchDegrees,
-		crosshairLeft ? -config.hands.laserYawDegrees : config.hands.laserYawDegrees,
-		config.hands.laserOriginMetres,
+		crosshairPitch, crosshairYaw, config.hands.laserOriginMetres,
 		vr::LaserOffsetLocal(config.hands.laserOffsetRightMetres, config.hands.laserOffsetUpMetres, crosshairLeft));
 	g_crosshairLayer.SetRoomPlacement(
 		g_reachIconShown, g_reachIconPose,
@@ -6947,11 +6990,13 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 				vr::LaserOffsetLocal(hands.laserOffsetRightMetres, hands.laserOffsetUpMetres, left));
 			game::SetWorldPickHandRay(ray.origin, ray.direction, true);
 		} else if (handRay) {
+			float pitch = 0.0f;
+			float yaw = 0.0f;
+			LaserAnglesFor(hands, pickLeft, pitch, yaw);
 			const vr::LaserWorldRay ray = vr::HandLaserWorldRay(
 				finalRotation, cameraNode->localTransform.pos,
 				pickLeft ? g_hand.leftHandRotation : g_hand.rightHandRotation,
-				pickLeft ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits,
-				hands.laserPitchDegrees, pickLeft ? -hands.laserYawDegrees : hands.laserYawDegrees,
+				pickLeft ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits, pitch, yaw,
 				hands.laserOriginMetres, config.tracker.unitsPerMetre,
 				vr::LaserOffsetLocal(hands.laserOffsetRightMetres, hands.laserOffsetUpMetres, pickLeft));
 			game::SetWorldPickHandRay(ray.origin, ray.direction, true);
@@ -8171,6 +8216,7 @@ bool Install() {
 	game::VerifyGameSoundAddresses();
 	game::VerifyShoveAddresses();
 	game::InstallPlayerStagger();
+	game::InstallBowDrawSound();
 	game::InstallHitShader();
 	game::InstallBlockCone();
 	game::InstallPlayerLookAt();

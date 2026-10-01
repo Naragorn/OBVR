@@ -1223,3 +1223,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME flat_follow COMMAND flat_follow_test)
+
+add_executable(sound_slice_test SoundSliceTest.cpp)
+
+target_include_directories(sound_slice_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(sound_slice_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME sound_slice COMMAND sound_slice_test)

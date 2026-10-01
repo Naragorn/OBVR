@@ -309,9 +309,22 @@ void MoveHandTo(const char* boneName, const NiAVObject* grip, const NiPoint3& ta
 	UpdateNodeTransforms(hand);
 }
 
+// The bow's shot axis as the last step found it.
+bool g_shotValid = false;
+NiPoint3 g_shot{0.0f, 1.0f, 0.0f};
+
 }  // namespace
 
+bool BowShotAxis(NiPoint3& world) {
+	if (!g_shotValid) {
+		return false;
+	}
+	world = g_shot;
+	return true;
+}
+
 void StepBowVisual(const BowVisualInput& in) {
+	g_shotValid = false;
 	// The arrow hangs on the first-person root, not on the hand's bone: it is
 	// placed in the world each frame, so it needs no bone to carry it, and the
 	// root is not what the engine's equipping hangs weapons on. Its bound is
@@ -337,24 +350,16 @@ void StepBowVisual(const BowVisualInput& in) {
 	}
 	arrowBone->flags = static_cast<UInt16>(arrowBone->flags | kAppCulledBit);
 
-	// The bow turned onto the bow hand's laser, turning about its own origin
-	// (the grip): as it sits in the hand from the hand calibration its shot axis
-	// can point anywhere - measured along the left controller's -y, down the
-	// handle, with the tester's calibration (harness 2026-09-30).
-	NiMatrix33 bowWorld{};
-	if (in.bowAimValid && vr::BowFacing(in.bowAim, in.bowUp, bowWorld)) {
-		BonePose turned;
-		turned.rot = bowWorld;
-		turned.pos = bow->worldTransform.pos;
-		Place(bow, turned);
-	}
-	// The bow's shot axis (its model's +x) and the arrow's rest on it.
+	// The bow's shot axis (its model's +x) and the arrow's rest on it. The bow
+	// stays as the game holds it in the hand; the aim follows it (BowShotAxis).
 	const float bowScale = bow->worldTransform.scale > 0.0f ? bow->worldTransform.scale : 1.0f;
 	NiPoint3 axis = bow->worldTransform.rot * NiPoint3{1.0f, 0.0f, 0.0f};
 	const float axisLength = math::Sqrt(axis.LengthSquared());
 	const bool axisValid = axisLength > 1e-4f;
 	if (axisValid) {
 		axis = axis * (1.0f / axisLength);
+		g_shot = axis;
+		g_shotValid = true;
 	}
 	const NiPoint3 rest = bow->worldTransform.pos +
 	                      bow->worldTransform.rot * (NiPoint3{0.0f, vr::kArrowRestOnBowY, vr::kArrowRestOnBowZ} * bowScale);
@@ -377,13 +382,16 @@ void StepBowVisual(const BowVisualInput& in) {
 				MoveHandTo(in.rightHandBone, grip, onString.gripTarget);
 			}
 		} else if (in.arrow == vr::ArrowShown::InHand) {
-			// Along the hand's laser; without one, along the fist.
-			const NiPoint3 along = grip->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f};
-			posed = in.laserValid
-			            ? vr::ArrowInHand(in.laserStart, in.laserDirection, grip->worldTransform.rot,
-			                              g_arrow.lengthUnits, pose)
-			            : vr::ArrowInHand(grip->worldTransform.pos - along * vr::kArrowNockBehindGripUnits, along,
-			                              grip->worldTransform.rot, g_arrow.lengthUnits, pose);
+			// Through the fist, straight ahead along the hand.
+			const NiAVObject* const wrist = FindFirstPersonNode(in.rightHandBone);
+			const NiAVObject* const knuckle = FindFirstPersonNode("Bip01 R Finger2");
+			if (wrist != nullptr && knuckle != nullptr) {
+				posed = vr::ArrowInFist(grip->worldTransform.pos, wrist->worldTransform.pos,
+				                        knuckle->worldTransform.pos, grip->worldTransform.rot, g_arrow.lengthUnits,
+				                        pose);
+			} else {
+				Note("the drawing hand or its middle finger not found - no arrow in the fist");
+			}
 		}
 	}
 	if (posed) {
@@ -422,7 +430,7 @@ void StepBowVisual(const BowVisualInput& in) {
 		const NiPoint3 bowAt = InverseRotation(bow->worldTransform.rot) * (nock - bow->worldTransform.pos);
 		OBVR_LOG("Bow by hand: the arrow %s, the string %s (weight %.2f)%s - the nock %.1f %.1f %.1f in the "
 		         "bow's frame",
-		         in.arrow == vr::ArrowShown::InHand     ? (in.laserValid ? "in the hand along the laser" : "in the hand")
+		         in.arrow == vr::ArrowShown::InHand     ? "in the fist along the hand"
 		         : in.arrow == vr::ArrowShown::OnString ? "on the string along the bow"
 		                                                : "not shown",
 		         in.string == vr::StringSource::Hand   ? "pulled by the hand"
