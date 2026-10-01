@@ -182,7 +182,7 @@ void TestWideNock() {
 	StepArchery(guided, At(kShoulder, false, true), kSettings);
 	StepArchery(guided, At(kShoulder, true, true), kSettings);
 	v = StepArchery(guided, OnAxis(NiPoint3{-0.1f, 1.4f, -0.1f}, true), kSettings);
-	Check(!v.nocked && v.nockGuide > 0.4f && v.nockGuide < 0.5f, "0.25 behind the string's place: led part of the way");
+	Check(!v.nocked && v.nockGuide > 0.15f && v.nockGuide < 0.25f, "0.25 behind the string's place: led a little of the way");
 	v = StepArchery(guided, OnAxis(NiPoint3{-0.1f, 1.4f, -0.6f}, true), kSettings);
 	Check(v.nockGuide == 0.0f, "in front of the bow: not led");
 	ArcheryState far;
@@ -585,9 +585,9 @@ void TestNockBlend() {
 	      "no time: no way; a target past 1 held to 1");
 	Check(Near(NockGuide(0.35f, 0.12f, 0.35f, true), 0.0f) && Near(NockGuide(0.5f, 0.12f, 0.35f, true), 0.0f),
 	      "the guide: nothing from 0.35 off and beyond");
-	Check(Near(NockGuide(0.235f, 0.12f, 0.35f, true), 0.5f) && Near(NockGuide(0.12f, 0.12f, 0.35f, true), 1.0f) &&
+	Check(Near(NockGuide(0.235f, 0.12f, 0.35f, true), 0.25f) && Near(NockGuide(0.12f, 0.12f, 0.35f, true), 1.0f) &&
 	          Near(NockGuide(0.05f, 0.12f, 0.35f, true), 1.0f),
-	      "halfway at halfway, all the way at the nock's reach");
+	      "a quarter at halfway - the nearer, the harder - all the way at the nock's reach");
 	Check(Near(NockGuide(0.2f, 0.12f, 0.35f, false), 0.0f) && Near(NockGuide(0.2f, 0.12f, 0.1f, true), 0.0f),
 	      "not from the front or a side; none when the guide is inside the nock's reach");
 	Check(Near(NockBlendWeight(0.0f), 0.0f) && Near(NockBlendWeight(1.0f), 1.0f) &&
@@ -601,25 +601,41 @@ void TestNockBlend() {
 	ArrowOnBowLine(rest, axis, id, NiPoint3{0, 80, 0}, 46.6f, 15.6f, 28.0f, on);
 	const NiPoint3 fistNock{10, 70, 5};
 	const NiPoint3 grip{10, 73, 5};
+	const NiPoint3 fistAlong{1, 0, 0};  // the fist points it across the bow
 	ArrowOnString e;
-	Check(ArrowEasedOntoString(fistNock, on, rest, axis, id, grip, 46.6f, 0.0f, e) &&
+	Check(ArrowEasedOntoString(fistNock, fistAlong, on, rest, axis, id, grip, 46.6f, 0.0f, e) &&
 	          NearPoint(e.pose.nock, fistNock) && NearPoint(e.gripTarget, grip) && Near(e.weight, 0.0f),
 	      "at the start: the nock where the fist has it, the fist where it is, the string at rest");
+	Check(NearPoint(e.pose.rot * NiPoint3{0, 1, 0}, fistAlong),
+	      "at the start: pointing where the fist points it, not yet at the bow");
 	const NiPoint3 toRest{-10, 30, -5};
 	const float l = std::sqrt(100.0f + 900.0f + 25.0f);
-	Check(NearPoint(e.pose.rot * NiPoint3{0, 1, 0}, toRest * (1.0f / l)), "pointing through the arrow's rest");
-	Check(ArrowEasedOntoString(fistNock, on, rest, axis, id, grip, 46.6f, 0.5f, e) &&
+	Check(ArrowEasedOntoString(fistNock, NiPoint3{0, 0, 0}, on, rest, axis, id, grip, 46.6f, 0.0f, e) &&
+	          NearPoint(e.pose.rot * NiPoint3{0, 1, 0}, toRest * (1.0f / l)),
+	      "no way the fist points: through the arrow's rest");
+	Check(ArrowEasedOntoString(fistNock, fistAlong, on, rest, axis, id, grip, 46.6f, 0.5f, e) &&
 	          NearPoint(e.pose.nock, (fistNock + on.pose.nock) * 0.5f) &&
 	          NearPoint(e.gripTarget, (grip + on.gripTarget) * 0.5f),
 	      "halfway: halfway there");
-	Check(ArrowEasedOntoString(fistNock, on, rest, axis, id, grip, 46.6f, 1.0f, e) &&
+	{
+		const NiPoint3 nock = (fistNock + on.pose.nock) * 0.5f;
+		NiPoint3 onto = rest - nock;
+		onto = onto * (1.0f / std::sqrt(onto.LengthSquared()));
+		NiPoint3 half = fistAlong * 0.5f + onto * 0.5f;
+		half = half * (1.0f / std::sqrt(half.LengthSquared()));
+		Check(NearPoint(e.pose.rot * NiPoint3{0, 1, 0}, half), "halfway: turned halfway onto the rest");
+	}
+	Check(ArrowEasedOntoString(fistNock, fistAlong, on, rest, axis, id, grip, 46.6f, 1.0f, e) &&
 	          NearPoint(e.pose.nock, on.pose.nock) && NearPoint(e.gripTarget, on.gripTarget) && Near(e.weight, on.weight),
 	      "at the end: the string's pose exactly");
-	Check(ArrowEasedOntoString(rest, on, rest, axis, id, grip, 46.6f, 0.0f, e) &&
+	Check(ArrowEasedOntoString(rest, NiPoint3{0, 0, 0}, on, rest, axis, id, grip, 46.6f, 0.0f, e) &&
 	          NearPoint(e.pose.rot * NiPoint3{0, 1, 0}, axis),
-	      "the nock on the rest itself: along the bow");
-	Check(!ArrowEasedOntoString(fistNock, on, rest, axis, id, grip, 0.0f, 0.5f, e) &&
-	          !ArrowEasedOntoString(fistNock, on, rest, axis, id, grip, 0.0f, 1.0f, e),
+	      "the nock on the rest itself, no fist's way: along the bow");
+	Check(ArrowEasedOntoString(NiPoint3{0, 90, 0}, NiPoint3{0, -1, 0}, on, rest, axis, id, grip, 46.6f, 0.5f, e) &&
+	          NearPoint(e.pose.rot * NiPoint3{0, 1, 0}, axis),
+	      "pointed straight back from the rest halfway: turned onto it at once");
+	Check(!ArrowEasedOntoString(fistNock, fistAlong, on, rest, axis, id, grip, 0.0f, 0.5f, e) &&
+	          !ArrowEasedOntoString(fistNock, fistAlong, on, rest, axis, id, grip, 0.0f, 1.0f, e),
 	      "a model with no length: no pose");
 }
 

@@ -1233,3 +1233,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME sound_slice COMMAND sound_slice_test)
+
+add_executable(compass_heading_test CompassHeadingTest.cpp)
+
+target_include_directories(compass_heading_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(compass_heading_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME compass_heading COMMAND compass_heading_test)

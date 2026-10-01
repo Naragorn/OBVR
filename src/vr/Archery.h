@@ -309,13 +309,18 @@ inline float StepNockPull(float current, float target, float dtSeconds) {
 // How far the arrow in the hand is led towards the nock: 0 from guideMetres
 // off the nock's place and beyond, rising to 1 at nockMetres (where it is
 // nocked), and only from behind the bow (FromBehind's cone) - an arrow
-// brought from the front or a side is not led.
+// brought from the front or a side is not led. It rises with the square of
+// the way come, so far off it is barely felt and near it pulls hard (the
+// tester, 2026-10-01, of a lead rising evenly: "der pfeil am bogen spannt sich
+// nun viel zu früh auf. dachte da eher an man nähert sich dem punkt und je
+// näher man kommt umso mehr wird man geführt").
 inline float NockGuide(float fromNockMetres, float nockMetres, float guideMetres, bool fromBehind) {
 	if (!fromBehind || !(guideMetres > nockMetres)) {
 		return 0.0f;
 	}
-	const float t = (guideMetres - fromNockMetres) / (guideMetres - nockMetres);
-	return t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
+	float t = (guideMetres - fromNockMetres) / (guideMetres - nockMetres);
+	t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
+	return t * t;
 }
 
 // The share of the way taken, eased in and out (smoothstep).
@@ -741,13 +746,15 @@ inline bool ArrowOnBowLine(const NiPoint3& rest, const NiPoint3& axis, const NiM
 
 // On the string, `w` of the way there (NockBlendWeight): the nock from where
 // it was in the fist (`fistNock`) towards its place on the string, the arrow
-// pointing from it through the arrow's rest on the bow - so it swings onto
-// the bow's line as it comes; the fist's target and the string's weight the
-// same share of theirs. At 1 it is ArrowOnBowLine's pose exactly. False for
-// a model with no length.
-inline bool ArrowEasedOntoString(const NiPoint3& fistNock, const ArrowOnString& onString, const NiPoint3& rest,
-                                 const NiPoint3& axis, const NiMatrix33& rollFrom, const NiPoint3& gripPos,
-                                 float lengthUnits, float w, ArrowOnString& out) {
+// turned the same share from where the fist points it (`fistAlong`) to
+// pointing through the arrow's rest on the bow - so it swings onto the bow's
+// line only as it comes, not at the first pull (the tester, 2026-10-01: "der
+// pfeil am bogen spannt sich nun viel zu früh auf"); the fist's target and the
+// string's weight the same share of theirs. At 1 it is ArrowOnBowLine's pose
+// exactly. False for a model with no length.
+inline bool ArrowEasedOntoString(const NiPoint3& fistNock, const NiPoint3& fistAlong, const ArrowOnString& onString,
+                                 const NiPoint3& rest, const NiPoint3& axis, const NiMatrix33& rollFrom,
+                                 const NiPoint3& gripPos, float lengthUnits, float w, ArrowOnString& out) {
 	const float t = w < 0.0f ? 0.0f : (w > 1.0f ? 1.0f : w);
 	out = onString;
 	if (t >= 1.0f) {
@@ -755,8 +762,16 @@ inline bool ArrowEasedOntoString(const NiPoint3& fistNock, const ArrowOnString& 
 	}
 	const NiPoint3 nock = fistNock + (onString.pose.nock - fistNock) * t;
 	const NiPoint3 toRest{rest.x - nock.x, rest.y - nock.y, rest.z - nock.z};
-	const bool through = toRest.x * toRest.x + toRest.y * toRest.y + toRest.z * toRest.z > 1e-4f;
-	if (!ArrowAlong(nock, through ? toRest : axis, rollFrom, lengthUnits, out.pose)) {
+	const float restLength = math::Sqrt(toRest.x * toRest.x + toRest.y * toRest.y + toRest.z * toRest.z);
+	const NiPoint3 onto = restLength > 1e-2f ? toRest * (1.0f / restLength) : axis;
+	const float fistLength = math::Sqrt(fistAlong.LengthSquared());
+	const NiPoint3 from = fistLength > 1e-4f ? fistAlong * (1.0f / fistLength) : onto;
+	NiPoint3 along = from * (1.0f - t) + onto * t;
+	// Pointing straight back at the rest halfway: turned onto the rest at once.
+	if (!(along.LengthSquared() > 1e-6f)) {
+		along = onto;
+	}
+	if (!ArrowAlong(nock, along, rollFrom, lengthUnits, out.pose)) {
 		return false;
 	}
 	out.gripTarget = gripPos + (onString.gripTarget - gripPos) * t;

@@ -418,8 +418,9 @@ void StepBowVisual(const BowVisualInput& in) {
 			    vr::ArrowInFist(grip->worldTransform.pos, wrist->worldTransform.pos, knuckle->worldTransform.pos,
 			                    grip->worldTransform.rot, g_arrow.lengthUnits, fist)) {
 				vr::ArrowOnString eased;
-				if (vr::ArrowEasedOntoString(fist.nock, onString, rest, axis, grip->worldTransform.rot,
-				                             grip->worldTransform.pos, g_arrow.lengthUnits, w, eased)) {
+				if (vr::ArrowEasedOntoString(fist.nock, fist.rot * NiPoint3{0.0f, 1.0f, 0.0f}, onString, rest, axis,
+				                             grip->worldTransform.rot, grip->worldTransform.pos, g_arrow.lengthUnits, w,
+				                             eased)) {
 					onString = eased;
 				}
 			}

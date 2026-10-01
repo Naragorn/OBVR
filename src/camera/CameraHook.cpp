@@ -17,6 +17,7 @@
 #include "game/DialogZoom.h"
 #include "game/BlockCone.h"
 #include "game/BowDrawSound.h"
+#include "game/CompassHeading.h"
 #include "game/BowRelease.h"
 #include "game/BowVisual.h"
 #include "game/ConsoleLine.h"
@@ -6803,6 +6804,13 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	g_playerWorldValid = game::PlayerWorldPosition(g_playerWorldPos);
 	g_cameraWorldRot = cameraNode->worldTransform.rot;
 	g_cameraWorldValid = true;
+	// The compass turned with what the eyes see, not the body
+	// (game/CompassHeading.h).
+	{
+		float viewHeading = 0.0f;
+		const bool headingValid = game::ViewHeadingOf(g_cameraWorldRot, viewHeading);
+		game::SetCompassViewHeading(headingValid, viewHeading);
+	}
 
 	UpdateCrosshairDepth(config, deltaSeconds);
 
@@ -8308,6 +8316,7 @@ bool Install() {
 	game::VerifyShoveAddresses();
 	game::InstallPlayerStagger();
 	game::InstallBowDrawSound();
+	game::InstallCompassHeading();
 	game::InstallHitShader();
 	game::InstallBlockCone();
 	game::InstallPlayerLookAt();

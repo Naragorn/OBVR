@@ -97,7 +97,7 @@ NorthernUI rewrites parts of HUDMainMenu, for example the compass icon alpha (ht
   - invisible while looking straight;
   - fades in between `CompassFadeStartDegrees` (default 20° up) and `CompassFadeFullDegrees` (default 35° up);
   - reaches at most its own opacity setting.
-- It keeps showing the game's compass picture, and the game turns it with the player's heading as it does now. So "north" stays correct.
+- It keeps showing the game's compass picture, turned with the **view's** heading, not the body's (`game/CompassHeading.h`): HUDMainMenu's update (0x005A6DE0) reads the player's heading virtual (+0x1E0) at 0x005A6F05; that read is rerouted to the camera's heading as last drawn, levelled even looking straight up (`game::ViewHeadingOf`, compass_heading_test). The markers take their bearing from positions and sit against the strip, so they turn with it; the interior north rotation is still added by the game. So "north" stays correct. Before, the head turned only the camera and the strip stood still (the tester, 2026-10-01: "der kompass wenn man hochschaut dreht sich nicht mit der headset sicht"). Harness `walk-direction` 2026-10-01: the head turned 90 degrees, the body still at 0 - the compass read 270 (W), the engine's heading 0.
 
 **Every element** gets its own settings:
 - on or off;
