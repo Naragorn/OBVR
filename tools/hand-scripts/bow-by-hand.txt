@@ -39,6 +39,7 @@ reject the eased draw loosed its arrow anyway
 expect Hands: bow by hand - the arrow off the string, in the hand
 expect Hands: bow by hand - the arrow put back in the quiver
 expect Hands: bow by hand - loosed
+expect Bow release: the first-person draw put at its Hold
 expect Camera: both sticks held - recentering
 expect Bow draw sound: fx\wpn\wpn_bowdraw.wav from
 expect Bow draw sound: the first (nock) part played
@@ -119,7 +120,9 @@ wait 0.3
 right pos -0.247 -0.102 -0.650
 wait 0.4
 right pos -0.229 -0.112 -0.400
-wait 1.5
+# Let go 0.5 s into the draw, short of its Hold (1.367 s): the loose comes at
+# once (game/BowRelease.h), not a second later.
+wait 0.5
 mark drawn_again
 right trigger 0
 wait 1.5

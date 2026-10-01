@@ -107,8 +107,11 @@ void TestEase() {
 	v = StepArchery(st, OnAxis(kAtBow, true, 0.5f), kSettings);
 	Check(v.denockDone && !v.attackHeld, "a long frame ends the cancel at once");
 	v = StepArchery(st, OnAxis(NiPoint3{0.1f, 1.4f, -0.45f}, true), kSettings);
+	Check(v.state == ArrowState::Nocked && !v.unnocked && Near(v.offLineMetres, 0.20f),
+	      "nocked, the hand 0.20 off the bow's line but within the nock's reach: still on the string");
+	v = StepArchery(st, OnAxis(NiPoint3{0.2f, 1.4f, -0.45f}, true), kSettings);
 	Check(v.unnocked && v.state == ArrowState::InHand && !v.aiming,
-	      "nocked, the hand moved 0.20 off the bow's line: off the string, in the hand");
+	      "0.30 off the line, out of the nock's reach: off the string, in the hand");
 	ArcheryInput atQuiver = OnAxis(kShoulder, false);
 	atQuiver.drawBody = kSettings.quiverZone;
 	v = StepArchery(st, atQuiver, kSettings);
@@ -138,6 +141,31 @@ void TestEase() {
 	sheathed.bowDrawn = false;
 	v = StepArchery(gone, sheathed, kSettings);
 	Check(v.denockDone && !v.attackHeld && v.dropped, "the bow put away mid-cancel: the cancel ended with it");
+}
+
+// The nock is found from further off (the tester, 2026-10-01: "früher erkannt
+// werden"); the draw still begins and eases where the string rests.
+void TestWideNock() {
+	std::printf("A wide nock, the string where it was\n");
+	ArcheryState st;
+	StepArchery(st, At(kShoulder, false, true), kSettings);
+	StepArchery(st, At(kShoulder, true, true), kSettings);
+	ArcheryVerdict v = StepArchery(st, OnAxis(NiPoint3{0.08f, 1.4f, -0.36f}, true), kSettings);
+	Check(v.nocked && v.handsApartMetres > 0.2f && v.handsApartMetres < 0.25f,
+	      "brought within 0.23 of the bow hand, aside and behind: nocked");
+	v = StepArchery(st, OnAxis(NiPoint3{0.0f, 1.4f, -0.29f}, true), kSettings);
+	Check(v.state == ArrowState::Nocked && !v.drawStarted, "0.21 behind the bow: short of the draw (0.15 + 0.08)");
+	v = StepArchery(st, OnAxis(NiPoint3{-0.1f, 1.4f, -0.26f}, true), kSettings);
+	Check(v.drawStarted, "0.24 behind it: drawn, no later than with the old nock");
+	v = StepArchery(st, OnAxis(NiPoint3{-0.1f, 1.4f, -0.34f}, true), kSettings);
+	Check(v.state == ArrowState::Drawing, "0.16 behind: still drawn");
+	v = StepArchery(st, OnAxis(NiPoint3{-0.1f, 1.4f, -0.36f}, true), kSettings);
+	Check(v.eased, "0.14 behind, at the string's rest: eased");
+	ArcheryState far;
+	StepArchery(far, At(kShoulder, false, true), kSettings);
+	StepArchery(far, At(kShoulder, true, true), kSettings);
+	v = StepArchery(far, OnAxis(NiPoint3{-0.1f, 1.4f, -0.23f}, true), kSettings);
+	Check(!v.nocked && v.state == ArrowState::InHand, "0.27 from it: not yet");
 }
 
 void TestDrops() {
@@ -330,14 +358,31 @@ void TestArrowPose() {
 	const NiPoint3 grip{0, 4, -1};
 	const NiPoint3 wrist{0, 0, 0};
 	const NiPoint3 knuckle{0, 8, 0.8f};
-	Check(ArrowInFist(grip, wrist, knuckle, id, 46.6f, p), "in the fist: posed");
+	// The fist's grip axis (its y) up the world's z, the hand along y: the
+	// arrow 30 degrees below the hand's line.
+	NiMatrix33 fist = NiMatrix33::Identity();
+	fist.data[1][1] = 0.0f;
+	fist.data[2][1] = 1.0f;
+	fist.data[1][2] = -1.0f;
+	fist.data[2][2] = 0.0f;
+	const NiPoint3 flatKnuckle{0, 8, 0};
+	Check(ArrowInFist(grip, wrist, flatKnuckle, fist, 46.6f, p), "in the fist: posed");
+	const float c = std::cos(30.0f * 3.14159265f / 180.0f);
+	const float sn = std::sin(30.0f * 3.14159265f / 180.0f);
+	const NiPoint3 ahead{0, c, -sn};
+	Check(NearPoint(p.rot * NiPoint3{0, 1, 0}, ahead), "along the hand, wrist to knuckle, 30 degrees down from it");
+	Check(NearPoint(p.nock, grip - ahead * kArrowNockBehindGripUnits) && NearPoint(p.pos, p.nock + ahead * 46.6f),
+	      "through the fist's middle: the nock just behind its grip point, the head ahead");
+	// The hand tilted up a little: "down" is still away from the grip axis,
+	// square to the hand's line.
+	Check(ArrowInFist(grip, wrist, knuckle, fist, 46.6f, p), "a tilted hand: posed");
 	const float l = std::sqrt(64.0f + 0.64f);
 	const NiPoint3 unit{0, 8 / l, 0.8f / l};
-	Check(NearPoint(p.rot * NiPoint3{0, 1, 0}, unit), "straight ahead along the hand, wrist to knuckle");
-	Check(NearPoint(p.nock, grip - unit * kArrowNockBehindGripUnits) && NearPoint(p.pos, p.nock + unit * 46.6f),
-	      "through the fist's middle: the nock just behind its grip point, the head ahead");
-	Check(!ArrowInFist(grip, wrist, wrist, id, 46.6f, p), "the knuckle on the wrist: no pose");
-	Check(!ArrowInFist(grip, wrist, knuckle, id, 0.0f, p), "a model with no length: no pose");
+	const NiPoint3 up{0, -0.8f / l, 8 / l};
+	Check(NearPoint(p.rot * NiPoint3{0, 1, 0}, unit * c - up * sn), "down from the hand's own line, not the world's");
+	Check(!ArrowInFist(grip, wrist, wrist, fist, 46.6f, p), "the knuckle on the wrist: no pose");
+	Check(!ArrowInFist(grip, wrist, NiPoint3{0, 0, 8}, fist, 46.6f, p), "the grip axis along the hand: no pose");
+	Check(!ArrowInFist(grip, wrist, knuckle, fist, 0.0f, p), "a model with no length: no pose");
 
 	// The bow's axis along +y, its arrow rest at (0, 100, 0); the string rests
 	// 15.6 behind, a full draw 28 more.
@@ -386,6 +431,37 @@ void TestBowSounds() {
 	}
 }
 
+void TestReleaseSnap() {
+	std::printf("The loose at once\n");
+	ReleaseSnapState s;
+	Check(StepReleaseSnap(s, false, 5, false, 0.011f) == ReleaseSnap::Idle, "drawn, not loosed: nothing");
+	Check(StepReleaseSnap(s, true, 5, false, 0.011f) == ReleaseSnap::Wait, "the loose's own frame: wait for the control to be up");
+	Check(StepReleaseSnap(s, false, 5, false, 0.011f) == ReleaseSnap::Snap, "the next, the arrow attached: snap to the Hold");
+	Check(StepReleaseSnap(s, false, 5, true, 0.011f) == ReleaseSnap::Idle, "done: nothing more");
+
+	ReleaseSnapState early;
+	StepReleaseSnap(early, true, 4, false, 0.011f);
+	Check(StepReleaseSnap(early, false, 4, false, 0.011f) == ReleaseSnap::Wait,
+	      "let go before the Attach: wait, a jump past it would lose the shot");
+	Check(StepReleaseSnap(early, false, 5, false, 0.011f) == ReleaseSnap::Snap, "attached: snap");
+
+	ReleaseSnapState shot;
+	StepReleaseSnap(shot, true, 5, false, 0.011f);
+	Check(StepReleaseSnap(shot, false, 3, false, 0.011f) == ReleaseSnap::Idle, "already loosed (3): nothing");
+	ReleaseSnapState cancelled;
+	StepReleaseSnap(cancelled, true, 4, false, 0.011f);
+	Check(StepReleaseSnap(cancelled, false, -1, false, 0.011f) == ReleaseSnap::Idle, "the draw gone (-1): nothing");
+	ReleaseSnapState stuck;
+	StepReleaseSnap(stuck, true, 4, false, 0.011f);
+	Check(StepReleaseSnap(stuck, false, 4, false, 1.0f) == ReleaseSnap::Wait, "a second on: still waiting");
+	Check(StepReleaseSnap(stuck, false, 4, false, 1.1f) == ReleaseSnap::Idle, "past two seconds: given up");
+	ReleaseSnapState unreadable;
+	StepReleaseSnap(unreadable, true, 5, false, 0.011f);
+	StepReleaseSnap(unreadable, false, 5, false, 0.011f);
+	Check(StepReleaseSnap(unreadable, false, 5, false, 0.011f) == ReleaseSnap::Snap,
+	      "a snap not carried out is asked again");
+}
+
 }  // namespace
 
 int main() {
@@ -400,6 +476,8 @@ int main() {
 	TestTurn();
 	TestArrowPose();
 	TestEase();
+	TestWideNock();
+	TestReleaseSnap();
 	TestBowSounds();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);

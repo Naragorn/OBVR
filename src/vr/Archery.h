@@ -51,12 +51,20 @@ struct ArcherySettings {
 	// bow in hand. Mirrored when left-handed.
 	NiPoint3 quiverZone{0.15f, -0.12f, -0.10f};
 	float quiverRadius = 0.20f;
-	// The drawing hand this near the bow hand nocks the arrow...
-	float nockMetres = 0.15f;
-	// ...and this much further back from there begins the draw.
+	// The drawing hand this near the bow hand nocks the arrow: wide, so the
+	// nock is not searched for (the tester, 2026-10-01: "pfeil anlegen darf
+	// noch großzügiger sein etwas. also früher erkannt werden damit man nicht
+	// nach der anlege stelle suchen muss"; 0.15 before).
+	float nockMetres = 0.25f;
+	// The string at rest: the drawing hand this far behind the bow hand along
+	// the bow. The draw begins drawStartMetres further back, and the hand
+	// brought back within it eases the draw. Apart from the nock's zone, so a
+	// wider nock does not make the draw begin later.
+	float stringMetres = 0.15f;
 	float drawStartMetres = 0.08f;
-	// Nocked, the drawing hand this far off the bow's line takes the arrow
-	// off the string again.
+	// Nocked, the drawing hand this far off the bow's line - and out of the
+	// nock's zone, or it would come off as it goes on - takes the arrow off the
+	// string again.
 	float unnockMetres = 0.12f;
 	// Which button holds the arrow: the trigger (the default), or the grip.
 	bool takeWithTrigger = true;
@@ -137,6 +145,50 @@ inline BowSoundCue BowSoundsFor(const ArcheryVerdict& v) {
 	return c;
 }
 
+// The loose at once (the tester, 2026-10-01: "nach dem loslassen erwartet man
+// einen direkten schuss. oftmals kommt aber eine sekunde verzögerung! das muss
+// weg!"; game/BowRelease.h). The engine looses at its draw's Release key; let
+// go before the Hold key the draw plays on to it first - up to 1.4 s. So,
+// once the control is up after a loose, the draw is put at its Hold - but only
+// with the arrow attached (action 5): before the Attach key there is no arrow
+// to loose, and the engine's key counter steps once a frame, so a jump past
+// the Attach would lose the shot. Asked until it is done, the draw ends, or
+// kReleaseSnapSeconds pass.
+constexpr float kReleaseSnapSeconds = 2.0f;
+
+struct ReleaseSnapState {
+	bool pending = false;
+	float seconds = 0.0f;
+};
+
+enum class ReleaseSnap : UInt8 {
+	Idle,   // nothing to do
+	Wait,   // loosed, the arrow not attached yet
+	Snap,   // put the draw at its Hold now
+};
+
+// `action`: the player's (game::kAction*): 4 the draw before the Attach key,
+// 5 after it. `snapped`: last frame's Snap was carried out.
+inline ReleaseSnap StepReleaseSnap(ReleaseSnapState& s, bool loosedNow, SInt32 action, bool snapped,
+                                   float dtSeconds) {
+	if (loosedNow) {
+		s.pending = true;
+		s.seconds = 0.0f;
+	} else if (s.pending) {
+		s.seconds += dtSeconds > 0.0f ? dtSeconds : 0.0f;
+	}
+	if (snapped || action < 0 || (action != 4 && action != 5 && !loosedNow) ||
+	    s.seconds > kReleaseSnapSeconds) {
+		s.pending = false;
+	}
+	if (!s.pending) {
+		return ReleaseSnap::Idle;
+	}
+	// Not on the loose's own frame: the engine is to see the control up first,
+	// or it pauses the draw at the Hold it was put at.
+	return action == 5 && !loosedNow ? ReleaseSnap::Snap : ReleaseSnap::Wait;
+}
+
 inline float MetresBetween(const NiPoint3& a, const NiPoint3& b) {
 	const NiPoint3 d{a.x - b.x, a.y - b.y, a.z - b.z};
 	return math::Sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
@@ -215,10 +267,10 @@ inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, cons
 		if (!in.drawGrip) {
 			st.state = ArrowState::None;
 			v.dropped = true;
-		} else if (v.pullMetres >= s.nockMetres + s.drawStartMetres && st.denockSeconds <= 0.0f) {
+		} else if (v.pullMetres >= s.stringMetres + s.drawStartMetres && st.denockSeconds <= 0.0f) {
 			st.state = ArrowState::Drawing;
 			v.drawStarted = true;
-		} else if (in.axisValid && v.offLineMetres > s.unnockMetres) {
+		} else if (in.axisValid && v.offLineMetres > s.unnockMetres && v.handsApartMetres > s.nockMetres) {
 			st.state = ArrowState::InHand;
 			v.unnocked = true;
 		}
@@ -227,7 +279,7 @@ inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, cons
 		if (!in.drawGrip) {
 			st.state = ArrowState::None;
 			v.loosed = true;
-		} else if (v.pullMetres <= s.nockMetres) {
+		} else if (v.pullMetres <= s.stringMetres) {
 			st.state = ArrowState::Nocked;
 			v.eased = true;
 			st.denockSeconds = kDenockHoldSeconds;
@@ -442,12 +494,17 @@ inline bool ArrowAlong(const NiPoint3& nock, const NiPoint3& direction, const Ni
 }
 
 // In the fist: through its middle, straight ahead along the hand - the line
-// from the wrist to the middle finger's knuckle - its nock
-// kArrowNockBehindGripUnits behind the fist's grip point (the tester,
-// 2026-09-30 evening: "rechte hand der pfeil zeigt nicht wie der laserpointer
-// sondern hier auch einfach mittig in der hand gerade aus"). Before it lay on
-// the laser, and before that along the grip, pointing up. False with the
-// wrist on the knuckle or a model with no length.
+// from the wrist to the middle finger's knuckle - turned kArrowInFistDownDegrees
+// down, away from the fist's grip axis (`rollFrom`'s y: where a sword's blade
+// stands out of the fist, by the thumb), its nock kArrowNockBehindGripUnits
+// behind the fist's grip point. The tester, 2026-09-30 evening: "rechte hand
+// der pfeil zeigt nicht wie der laserpointer sondern hier auch einfach mittig
+// in der hand gerade aus"; 2026-10-01, of the line along the hand: "der pfeil
+// muss noch 30 grad runter damit er geradeaus schaut". Before it lay on the
+// laser, and before that along the grip, pointing up. False with the wrist on
+// the knuckle, the grip axis along the hand, or a model with no length.
+constexpr float kArrowInFistDownDegrees = 30.0f;
+
 inline bool ArrowInFist(const NiPoint3& grip, const NiPoint3& wrist, const NiPoint3& knuckle,
                         const NiMatrix33& rollFrom, float lengthUnits, ArrowPose& out) {
 	const NiPoint3 along{knuckle.x - wrist.x, knuckle.y - wrist.y, knuckle.z - wrist.z};
@@ -456,7 +513,18 @@ inline bool ArrowInFist(const NiPoint3& grip, const NiPoint3& wrist, const NiPoi
 		return false;
 	}
 	const NiPoint3 unit = along * (1.0f / math::Sqrt(d));
-	return ArrowAlong(grip - unit * kArrowNockBehindGripUnits, unit, rollFrom, lengthUnits, out);
+	// The grip axis made square to the hand's line: "up" in the fist.
+	const NiPoint3 gripAxis = rollFrom * NiPoint3{0.0f, 1.0f, 0.0f};
+	const float onLine = gripAxis.x * unit.x + gripAxis.y * unit.y + gripAxis.z * unit.z;
+	NiPoint3 up{gripAxis.x - unit.x * onLine, gripAxis.y - unit.y * onLine, gripAxis.z - unit.z * onLine};
+	const float upLength = math::Sqrt(up.x * up.x + up.y * up.y + up.z * up.z);
+	if (!(upLength > 1e-4f)) {
+		return false;
+	}
+	up = up * (1.0f / upLength);
+	const float down = kArrowInFistDownDegrees * math::kDegreesToRadians;
+	const NiPoint3 ahead = unit * math::Cos(down) - up * math::Sin(down);
+	return ArrowAlong(grip - ahead * kArrowNockBehindGripUnits, ahead, rollFrom, lengthUnits, out);
 }
 
 // On the string: along the bow's shot axis through the arrow's rest, the nock

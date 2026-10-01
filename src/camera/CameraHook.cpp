@@ -17,6 +17,7 @@
 #include "game/DialogZoom.h"
 #include "game/BlockCone.h"
 #include "game/BowDrawSound.h"
+#include "game/BowRelease.h"
 #include "game/BowVisual.h"
 #include "game/ConsoleLine.h"
 #include "game/HitShader.h"
@@ -458,6 +459,9 @@ vr::HandModeResult g_hand;
 // after the hands are pinned (game::StepBowVisual).
 game::BowVisualInput g_bowVisual;
 vr::BowStringState g_bowString;
+// The loose at once: the draw put at its Hold after the control goes up.
+vr::ReleaseSnapState g_releaseSnap;
+bool g_releaseSnapped = false;
 // Where the drawn bow shoots, in the bow hand's controller frame, from the
 // last frame the bow was seen (game::BowShotAxis): the arrow's aim
 // (HandModeFrame::bowShotLocal) and that hand's laser (LaserAnglesFor).
@@ -2453,6 +2457,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			if (cue.stopStretch) {
 				game::StopBowDrawPart(game::BowDrawPart::Stretch);
 			}
+		}
+		{
+			const vr::ReleaseSnap snap = vr::StepReleaseSnap(g_releaseSnap, a.loosed, game::ReadPlayerAction(),
+			                                                 g_releaseSnapped, g_deltaSeconds);
+			g_releaseSnapped = snap == vr::ReleaseSnap::Snap && game::SnapBowDrawToHold();
 		}
 		g_bowVisual.arrow = vr::ArrowShownFor(a.state);
 		g_bowVisual.string =
