@@ -1359,15 +1359,15 @@ void TestBowByHand() {
 	      "pulled back along the bow: drawn, still aimed where the bow points");
 	frame.right.position = frame.left.position - bowLaser * 0.05f;
 	r = aimed.Update(frame, byTrigger);
-	Check(r.archery.eased && r.controls.attack && r.archery.state == ArrowState::Nocked,
-	      "brought back to the bow: eased, the control held for the cancel");
+	Check(r.archery.eased && r.controls.attack && r.archery.state == ArrowState::InHand,
+	      "brought back to the bow: eased, the arrow back in the hand, the control held for the cancel");
 	for (int i = 0; i < 40 && r.controls.attack; ++i) {
 		r = aimed.Update(frame, byTrigger);
 	}
-	Check(!r.controls.attack && r.archery.state == ArrowState::Nocked, "then let go, the arrow still on the string");
+	Check(!r.controls.attack && r.archery.state == ArrowState::InHand, "then let go, the arrow still in the hand");
 	frame.right.trigger = 0.0f;
 	r = aimed.Update(frame, byTrigger);
-	Check(r.archery.dropped && !r.archery.loosed && !r.controls.attack, "the trigger let go on the string, undrawn: no shot");
+	Check(r.archery.dropped && !r.archery.loosed && !r.controls.attack, "the trigger let go at the bow: dropped, no shot");
 
 	// The bow seen in the hand: the shot goes where it points, not along the
 	// laser - here down the controller's handle and ahead, 45 degrees down,

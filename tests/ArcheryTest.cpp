@@ -90,32 +90,43 @@ void TestEase() {
 	Check(v.state == ArrowState::Drawing && Near(v.pullMetres, 0.30f) && Near(v.offLineMetres, 0.30f),
 	      "the hand swung 0.30 aside: still the same pull along the bow, still drawn");
 	v = StepArchery(st, OnAxis(kAtBow, true), kSettings);
-	Check(v.eased && v.state == ArrowState::Nocked && v.attackHeld && v.aiming && !v.loosed,
-	      "brought back to the bow: eased, nocked again, the control still held for the cancel");
-	v = StepArchery(st, OnAxis(kPulled, true, 0.1f), kSettings);
-	Check(v.state == ArrowState::Nocked && !v.drawStarted, "pulled again before the cancel is through: not yet");
+	Check(v.eased && v.state == ArrowState::InHand && v.attackHeld && !v.aiming && !v.loosed,
+	      "brought back to the bow: eased, the arrow back in the hand, the control still held for the cancel");
+	v = StepArchery(st, OnAxis(kAtBow, true, 0.011f), kSettings);
+	Check(v.state == ArrowState::InHand && !v.nocked, "still at the bow: not nocked again at once");
 	bool done = false;
 	for (int i = 0; i < 40 && v.attackHeld; ++i) {
 		v = StepArchery(st, OnAxis(kAtBow, true, 0.011f), kSettings);
 		done = done || v.denockDone;
 	}
-	Check(done && !v.attackHeld && v.state == ArrowState::Nocked,
-	      "0.3 s on: the control let go (the cancel's end), the arrow still on the string");
+	Check(done && !v.attackHeld && v.state == ArrowState::InHand,
+	      "0.3 s on: the control let go (the cancel's end), the arrow still in the hand");
+	v = StepArchery(st, OnAxis(NiPoint3{-0.1f, 1.4f, -0.2f}, true), kSettings);
+	Check(v.state == ArrowState::InHand && !v.drawStarted, "pulled back from the bow in the hand: no draw");
+	v = StepArchery(st, OnAxis(kAtBow, true), kSettings);
+	Check(v.nocked && v.state == ArrowState::Nocked, "out of the nock's reach and back: nocked again");
 	v = StepArchery(st, OnAxis(kPulled, true), kSettings);
 	Check(v.drawStarted, "and it can be drawn again");
 	StepArchery(st, OnAxis(kAtBow, true, 0.5f), kSettings);
 	v = StepArchery(st, OnAxis(kAtBow, true, 0.5f), kSettings);
 	Check(v.denockDone && !v.attackHeld, "a long frame ends the cancel at once");
-	v = StepArchery(st, OnAxis(NiPoint3{0.1f, 1.4f, -0.45f}, true), kSettings);
-	Check(v.state == ArrowState::Nocked && !v.unnocked && Near(v.offLineMetres, 0.20f),
-	      "nocked, the hand 0.20 off the bow's line but within the nock's reach: still on the string");
-	v = StepArchery(st, OnAxis(NiPoint3{0.2f, 1.4f, -0.45f}, true), kSettings);
-	Check(v.unnocked && v.state == ArrowState::InHand && !v.aiming,
-	      "0.30 off the line, out of the nock's reach: off the string, in the hand");
 	ArcheryInput atQuiver = OnAxis(kShoulder, false);
 	atQuiver.drawBody = kSettings.quiverZone;
 	v = StepArchery(st, atQuiver, kSettings);
-	Check(v.stowed && !v.dropped && v.state == ArrowState::None, "let go at the quiver: put back");
+	Check(v.stowed && !v.dropped && v.state == ArrowState::None, "the eased arrow let go at the quiver: put back");
+
+	ArcheryState off;
+	StepArchery(off, At(kShoulder, false, true), kSettings);
+	StepArchery(off, At(kShoulder, true, true), kSettings);
+	StepArchery(off, OnAxis(kAtBow, true), kSettings);
+	v = StepArchery(off, OnAxis(NiPoint3{0.1f, 1.4f, -0.45f}, true), kSettings);
+	Check(v.state == ArrowState::Nocked && !v.unnocked && Near(v.offLineMetres, 0.20f),
+	      "nocked, the hand 0.20 off the bow's line but within the nock's reach: still on the string");
+	v = StepArchery(off, OnAxis(NiPoint3{0.2f, 1.4f, -0.45f}, true), kSettings);
+	Check(v.unnocked && v.state == ArrowState::InHand && !v.aiming,
+	      "0.30 off the line, out of the nock's reach: off the string, in the hand");
+	v = StepArchery(off, OnAxis(kAtBow, true), kSettings);
+	Check(v.nocked, "taken off by moving away: nocked again at once when brought back");
 
 	ArcheryState away;
 	StepArchery(away, At(kShoulder, false, true), kSettings);

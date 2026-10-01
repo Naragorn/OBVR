@@ -2538,22 +2538,41 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		// is still held (vr::kDenockHoldSeconds), then back to the idle once
 		// it is let go (github.com/dannywarren/Oblivion-DenockArrowToo,
 		// src/DenockArrowScript.txt).
-		if (a.eased || a.unnocked || a.stowed || a.denockDone) {
-			bool asked = true;
-			if (a.eased) {
-				asked = game::RequestConsoleLine("player.playgroup unequip 1");
-			} else if (a.denockDone) {
-				asked = game::RequestConsoleLine("player.playgroup idle 1");
-			}
+		// The cancel's end: back to the idle, and the quiver's arrows shown
+		// again - the draw's Attach hid one of them (0x005FD0D6) and no arrow
+		// was spent (game::RefreshQuiverArrows).
+		if (a.denockDone) {
+			const bool asked = game::RequestConsoleLine("player.playgroup idle 1");
+			const bool refreshed = game::RefreshQuiverArrows();
+			OBVR_LOG("Hands: bow by hand - the draw's cancel through: the control let go, back to the idle, the "
+			         "quiver %s (action %d)%s",
+			         refreshed ? "shown again" : "NOT refreshed", static_cast<int>(game::ReadPlayerAction()),
+			         asked ? "" : " - the script line could not be run");
+		}
+		if (a.eased || a.unnocked || a.stowed) {
+			const bool asked = !a.eased || game::RequestConsoleLine("player.playgroup unequip 1");
 			OBVR_LOG("Hands: bow by hand - %s (pull %.2f m, %.2f m off the bow's line along %.2f %.2f %.2f, action "
 			         "%d)%s",
-			         a.eased       ? "eased back: the draw taken back, the arrow still on the string"
+			         a.eased       ? "eased back: the draw taken back, the arrow back in the hand"
 			         : a.unnocked  ? "the arrow off the string, in the hand"
-			         : a.stowed    ? "the arrow put back in the quiver"
-			                       : "the draw's cancel through: the control let go, back to the idle",
+			                       : "the arrow put back in the quiver",
 			         static_cast<double>(a.pullMetres), static_cast<double>(a.offLineMetres),
 			         static_cast<double>(a.bowAxis.x), static_cast<double>(a.bowAxis.y), static_cast<double>(a.bowAxis.z),
 			         static_cast<int>(game::ReadPlayerAction()), asked ? "" : " - the script line could not be run");
+		}
+		// The quiver's sounds: the game's own for ammunition taken up and put
+		// down (ITMAmmoUp 0008B095, ITMAmmoDown 0008B096, Oblivion.esm; the
+		// tester, 2026-10-01: a sound at the take - vanilla has none, its draw
+		// has only WPNBowDraw and bowShoot).
+		if (a.took || a.stowed) {
+			const UInt32 form = a.took ? vr::kSoundFormAmmoUp : vr::kSoundFormAmmoDown;
+			const bool played = game::PlaySoundForm(form);
+			static UInt32 s_soundLines = 6;
+			if (s_soundLines > 0) {
+				--s_soundLines;
+				OBVR_LOG("Hands: bow by hand - the quiver's sound (%08X) %s", form,
+				         played ? "played" : "COULD NOT BE PLAYED");
+			}
 		}
 	}
 	if (g_hand.reachBack != g_handReachBack) {
@@ -4957,12 +4976,30 @@ void BeforeFirstScenePass() {
 			// (game::kHandleLeft, the two-hander idle's - a one-hander's animation
 			// has the left hand open); on the way there they close into it from
 			// their own pose, and open back out of it on the way back.
+			// The bow drawn by hand: its hand's fingers follow the controller's as
+			// an empty hand's do, not the bow animation's hollow grip (the
+			// tester, 2026-10-01: "das die hand am bogen nicht ausgehöhlt ist wie
+			// sie jetzt ist sondern sich genauso verhält wie die leere hand").
+			const bool leftHoldsItem =
+				hands.fingerTracking && !g_bowVisual.active && game::HandHoldsItem(false, hands.leftHandBone);
 			const game::FingerPose leftPose =
 				twoHand.handleWeight >= 1.0f
 					? game::FingerPose::Handle
 					: game::FingerPoseFor(hands.fingerTracking, g_hand.leftCurlValid,
 				                          game::HandGripWanted(false, holding, g_hand.grabWithLeftHand),
-				                          hands.fingerTracking && game::HandHoldsItem(false, hands.leftHandBone));
+				                          leftHoldsItem);
+			{
+				static game::FingerPose s_leftPose = game::FingerPose::Animation;
+				static UInt32 s_poseLines = 8;
+				if (leftPose != s_leftPose && g_bowVisual.active && s_poseLines > 0) {
+					--s_poseLines;
+					OBVR_LOG("Hands: bow by hand - the bow hand's fingers %s",
+					         leftPose == game::FingerPose::Tracked     ? "follow the controller's, as an empty hand's"
+					         : leftPose == game::FingerPose::Animation ? "are the animation's (no finger curls read)"
+					                                                   : "are closed round a held object");
+				}
+				s_leftPose = leftPose;
+			}
 			game::FingerCurls rightCurls;
 			game::FingerCurls leftCurls;
 			for (int finger = 0; finger < 5; ++finger) {

@@ -43,4 +43,13 @@ bool SnapBowDrawToHold();
 // so it is written each frame. False when the player cannot be read.
 bool WriteBowPowerForDraw(float weight);
 
+// The quiver's arrows shown again from the ammunition's count, on both the
+// third- and the first-person body: the draw's Attach hides one of them
+// (`or word [node+0x18], 1` at 0x005FD0D6), and a draw taken back spent no
+// arrow. The engine's own call, as the player makes it at 0x00660C58 and
+// 0x00660C68: 0x005F8300 thiscall(actor, root, 0), ret 8, with the roots at
+// player +0x104 and +0x5C8. False when the player cannot be read or the
+// function's first bytes are not the ones read.
+bool RefreshQuiverArrows();
+
 }  // namespace obvr::game

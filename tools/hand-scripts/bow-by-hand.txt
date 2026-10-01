@@ -4,9 +4,11 @@
 # it to the bow (nocked: the draw sound's first part), pulls back along the bow
 # (the engine's draw, its whole sound kept quiet, the second part played), past
 # a full draw (stopped there), eases back to the bow (the draw taken back - no
-# shot), moves off the bow's line (the arrow off the string), puts it back at
-# the quiver; then a second arrow is taken, drawn and loosed. At the end both
-# sticks are held in for three seconds: the recenter.
+# shot - the arrow back in the hand), moves out of the nock's reach and back
+# (nocked again), off the bow's line (the arrow off the string), puts it back at
+# the quiver (the quiver's sounds at the take and the put-back); then a second
+# arrow is taken, drawn and loosed, and a third let go 0.1 s into its draw. At
+# the end both sticks are held in for three seconds: the recenter.
 # The runner takes two console lines at the start; the arrows come at marks,
 # and a console at a mark leaves the menu state up for some seconds - the
 # bow waits for it. The head looks down at the hands, and the eyes are dumped
@@ -36,7 +38,12 @@ expect Hands: bow by hand - drawn - the engine's draw begins
 expect Bow by hand: an arrow made for the hand from the quiver's
 expect Bow by hand: the string measured
 expect at full draw - stopped
-expect Hands: bow by hand - eased back: the draw taken back
+expect Hands: bow by hand - eased back: the draw taken back, the arrow back in the hand
+expect the quiver shown again
+reject the quiver NOT refreshed
+expect Hands: bow by hand - the quiver's sound (0008B095) played
+expect Hands: bow by hand - the quiver's sound (0008B096) played
+reject COULD NOT BE PLAYED
 expect Console line: "player.playgroup unequip 1" run
 expect Hands: bow by hand - the draw's cancel through
 expect Console line: "player.playgroup idle 1" run
@@ -58,7 +65,6 @@ expect Bow draw sound: the first (nock) part played
 expect Bow draw sound: the second (stretch) part played
 expect Bow draw sound: the engine's WPNBowDraw at the draw's key kept quiet
 reject the engine's draw sound stays whole
-reject COULD NOT BE PLAYED
 reject HandScript: WARNING
 reject Bow by hand: no "Arrow:0" in the quiver
 reject could not be measured
@@ -119,6 +125,11 @@ wait 0.3
 right pos -0.247 -0.102 -0.650
 wait 1.0
 mark eased
+right pos 0.050 -0.102 -0.650
+wait 0.5
+right pos -0.247 -0.102 -0.650
+wait 0.5
+mark renocked
 right pos 0.050 -0.102 -0.650
 wait 0.5
 mark unnocked

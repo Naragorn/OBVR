@@ -26,13 +26,16 @@
 //     the picture keeps the arrow on the axis and stops at full draw
 //     (game/BowVisual);
 //   * the hand brought back to the bow while drawn eases the string: the
-//     engine's draw is cancelled (no shot), the arrow stays nocked; moved off
-//     the line it comes off the string, into the hand; let go at the quiver it
-//     is put back.
+//     engine's draw is cancelled (no shot), the arrow back in the hand (since
+//     2026-10-01; before it stayed nocked) - nocked again once the hand has
+//     left the nock's reach and come back; nocked and moved off the line it
+//     comes off the string, into the hand; let go at the quiver it is put
+//     back.
 //
-// The engine still decides the draw's power (the time the control is held);
-// OBVR decides when it is held and which way it flies. An arrow let go before
-// the draw began is dropped (or put back, at the quiver): no shot.
+// OBVR decides when the engine's control is held, which way the arrow flies,
+// and since 2026-10-01 its power, from how far the string is drawn
+// (BowTimerForDraw). An arrow let go before the draw began is dropped (or put
+// back, at the quiver): no shot.
 //
 // Positions are the controllers' in tracking space, metres; the quiver's place
 // is in the body's frame (vr::BodyRelative: right, forward, up from the eyes).
@@ -86,6 +89,9 @@ struct ArcheryState {
 	ArrowState state = ArrowState::None;
 	bool gripWas = true;  // a grip closed when the bow comes out is not a take
 	float denockSeconds = 0.0f;  // an eased draw's control still held
+	// An eased arrow is back in the hand at the bow: not nocked again until the
+	// hand has been out of the nock's reach.
+	bool awayFromNock = true;
 };
 
 struct ArcheryInput {
@@ -257,6 +263,12 @@ inline bool StepBowPower(BowPowerState& s, bool drawing, bool weightValid, float
 	return drawing ? s.known : s.holding;
 }
 
+// The game's sounds for ammunition taken up and put down (Oblivion.esm's SOUN
+// ITMAmmoUp and ITMAmmoDown, fx\itm\itm_ammo_up.wav / itm_ammo_down.wav,
+// read 2026-10-01): played at the quiver's take and put-back.
+constexpr UInt32 kSoundFormAmmoUp = 0x0008B095;
+constexpr UInt32 kSoundFormAmmoDown = 0x0008B096;
+
 inline float MetresBetween(const NiPoint3& a, const NiPoint3& b) {
 	const NiPoint3 d{a.x - b.x, a.y - b.y, a.z - b.z};
 	return math::Sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
@@ -330,6 +342,7 @@ inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, cons
 	case ArrowState::None:
 		if (press && AtQuiver(s, in.drawBody, in.leftHanded)) {
 			st.state = ArrowState::InHand;
+			st.awayFromNock = true;
 			v.took = true;
 		}
 		break;
@@ -341,6 +354,8 @@ inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, cons
 			} else {
 				v.dropped = true;
 			}
+		} else if (!st.awayFromNock) {
+			st.awayFromNock = v.handsApartMetres > s.nockMetres;
 		} else if (v.handsApartMetres <= s.nockMetres && FromBehind(in.axisValid, v.pullMetres, v.offLineMetres)) {
 			st.state = ArrowState::Nocked;
 			v.nocked = true;
@@ -363,7 +378,13 @@ inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, cons
 			st.state = ArrowState::None;
 			v.loosed = true;
 		} else if (v.pullMetres <= s.stringMetres) {
-			st.state = ArrowState::Nocked;
+			// Taken back: the arrow off the string, back in the hand, to be put
+			// back in the quiver or nocked again (the tester, 2026-10-01: "hätte
+			// aber erwartet den pfeil zurückzubekommen und wieder in den köcher
+			// legen"). No arrow was spent: the engine takes one only when it
+			// looses.
+			st.state = ArrowState::InHand;
+			st.awayFromNock = false;
 			v.eased = true;
 			st.denockSeconds = kDenockHoldSeconds;
 		}

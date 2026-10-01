@@ -2,6 +2,7 @@
 
 #include "core/AddressSpace.h"
 #include "core/Log.h"
+#include "core/Memory.h"
 #include "game/GameAddresses.h"
 #include "vr/Archery.h"
 
@@ -107,6 +108,30 @@ bool SnapBowDrawToKey(UInt32 key) {
 }
 
 }  // namespace
+
+bool RefreshQuiverArrows() {
+	constexpr UInt32 kRefreshQuiver = 0x005F8300;
+	constexpr UInt32 kPlayerThirdPersonRoot = 0x104;
+	constexpr UInt32 kPlayerFirstPersonRoot = 0x5C8;
+	static const UInt8 kExpected[] = {0x6A, 0xFF, 0x68, 0x48, 0x2A, 0x9C, 0x00};
+	static const bool s_verified = mem::Verify(kRefreshQuiver, kExpected, sizeof(kExpected));
+	const UInt32 player = Read(addr::kPlayerPointer);
+	if (!s_verified || !Looks(player)) {
+		return false;
+	}
+	using RefreshFn = void(__thiscall*)(UInt32 actor, UInt32 root, UInt32 zero);
+	const auto refresh = reinterpret_cast<RefreshFn>(kRefreshQuiver);
+	bool any = false;
+	const UInt32 roots[2] = {kPlayerThirdPersonRoot, kPlayerFirstPersonRoot};
+	for (const UInt32 offset : roots) {
+		const UInt32 root = Read(player + offset);
+		if (Looks(root)) {
+			refresh(player, root, 0);
+			any = true;
+		}
+	}
+	return any;
+}
 
 bool SnapBowDrawToAttach() { return SnapBowDrawToKey(kKeyAttach); }
 
