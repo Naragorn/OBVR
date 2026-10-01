@@ -422,6 +422,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		ain.drawGrip = s.archery.takeWithTrigger ? in.rightTrigger : (cr.valid && GripDown(cr.buttonsPressed));
 		ain.leftHanded = s.leftHanded;
 		ain.dtSeconds = f.dtSeconds;
+		ain.haveArrows = f.haveArrows;
 		// Where the bow points: where the arrow would fly, along the bow as the
 		// hand holds it (the tester, 2026-09-30 evening: "wenn der bogen
 		// equipped ist den aim ändern auf dahin wo der pfeil fliegen würde");

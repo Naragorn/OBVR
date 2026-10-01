@@ -29,6 +29,7 @@ struct BowVisualInput {
 	// The drawing hand's bone, moved onto the string while the arrow is on it;
 	// the arrow in the fist lies along it, from it to its middle finger.
 	const char* rightHandBone = "Bip01 R Hand";
+	float dtSeconds = 0.0f;  // the frame's, for the hand's way onto the string
 };
 
 void StepBowVisual(const BowVisualInput& in);
@@ -42,5 +43,10 @@ bool BowShotAxis(NiPoint3& world);
 // rest, 1 at full draw (the weight its morph was given). False when the arrow
 // was not on the string, or the string's morph could not be set.
 bool BowDrawWeight(float& weight);
+
+// Whether the equipped ammunition's quiver still holds an arrow ("Arrow:0"
+// in the first-person "Quiver"): with none left the engine takes the quiver
+// away (2026-10-01: a harness run with none equipped found none).
+bool QuiverHasArrows();
 
 }  // namespace obvr::game

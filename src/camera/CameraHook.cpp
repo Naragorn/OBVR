@@ -1769,6 +1769,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.leftGripOnHandle = active && g_leftGripOnHandle;
 	frame.leftTriggerOnHandle = active && g_twoHand.active;
 	frame.bowShotValid = active && g_bowShotValid;
+	// No arrows left: the quiver gives none. Read only with a bow drawn; the
+	// quiver is the first-person body's.
+	frame.haveArrows = !(active && frame.inWorld && frame.equipped == vr::EquippedKind::Bow &&
+	                     frame.weaponSeen == vr::WeaponSeen::Drawn) ||
+	                   game::QuiverHasArrows();
 	frame.bowShotLocal = g_bowShotLocal;
 	frame.sneaking = active && !menuIsUp && frame.inWorld && config.hands.sneakHold &&
 	                 game::IsPlayerSneaking();
@@ -2505,6 +2510,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_bowVisual.string =
 			vr::StepBowString(g_bowString, a.state, a.loosed, game::ReadPlayerAction() >= 0, g_deltaSeconds);
 		g_bowVisual.rightHandBone = config.hands.rightHandBone;
+		g_bowVisual.dtSeconds = g_deltaSeconds;
 		// The player's action while the bow is drawn by hand: 4 and 5 the draw,
 		// 3 the follow-through after an arrow left (game::kAction*), so a
 		// cancelled draw shows as a draw that never reaches 3.

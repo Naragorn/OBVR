@@ -314,8 +314,12 @@ bool g_shotValid = false;
 NiPoint3 g_shot{0.0f, 1.0f, 0.0f};
 bool g_drawValid = false;
 float g_draw = 0.0f;
+// The drawing hand's way onto the string (vr::StepNockBlend).
+float g_nockBlend = 0.0f;
 
 }  // namespace
+
+bool QuiverHasArrows() { return QuiverArrow() != nullptr; }
 
 bool BowDrawWeight(float& weight) {
 	if (!g_drawValid) {
@@ -336,6 +340,9 @@ bool BowShotAxis(NiPoint3& world) {
 void StepBowVisual(const BowVisualInput& in) {
 	g_shotValid = false;
 	g_drawValid = false;
+	if (in.arrow != vr::ArrowShown::OnString) {
+		g_nockBlend = 0.0f;
+	}
 	// The arrow hangs on the first-person root, not on the hand's bone: it is
 	// placed in the world each frame, so it needs no bone to carry it, and the
 	// root is not what the engine's equipping hangs weapons on. Its bound is
@@ -386,6 +393,21 @@ void StepBowVisual(const BowVisualInput& in) {
 			posed = vr::ArrowOnBowLine(rest, axis, grip->worldTransform.rot, grip->worldTransform.pos,
 			                           g_arrow.lengthUnits, -g_string.restAlongBow * bowScale,
 			                           g_string.travelUnits * bowScale, onString);
+			// Eased there from the fist, not jumped (vr::StepNockBlend).
+			g_nockBlend = vr::StepNockBlend(g_nockBlend, posed, in.dtSeconds);
+			const float w = vr::NockBlendWeight(g_nockBlend);
+			const NiAVObject* const wrist = FindFirstPersonNode(in.rightHandBone);
+			const NiAVObject* const knuckle = FindFirstPersonNode("Bip01 R Finger2");
+			vr::ArrowPose fist;
+			if (posed && w < 1.0f && wrist != nullptr && knuckle != nullptr &&
+			    vr::ArrowInFist(grip->worldTransform.pos, wrist->worldTransform.pos, knuckle->worldTransform.pos,
+			                    grip->worldTransform.rot, g_arrow.lengthUnits, fist)) {
+				vr::ArrowOnString eased;
+				if (vr::ArrowEasedOntoString(fist.nock, onString, rest, axis, grip->worldTransform.rot,
+				                             grip->worldTransform.pos, g_arrow.lengthUnits, w, eased)) {
+					onString = eased;
+				}
+			}
 			if (posed) {
 				pose = onString.pose;
 				// The fist on the string: on the bow's line, no further back than

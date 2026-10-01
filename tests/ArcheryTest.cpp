@@ -119,9 +119,9 @@ void TestEase() {
 	StepArchery(off, At(kShoulder, false, true), kSettings);
 	StepArchery(off, At(kShoulder, true, true), kSettings);
 	StepArchery(off, OnAxis(kAtBow, true), kSettings);
-	v = StepArchery(off, OnAxis(NiPoint3{0.1f, 1.4f, -0.45f}, true), kSettings);
-	Check(v.state == ArrowState::Nocked && !v.unnocked && Near(v.offLineMetres, 0.20f),
-	      "nocked, the hand 0.20 off the bow's line but within the nock's reach: still on the string");
+	v = StepArchery(off, OnAxis(NiPoint3{0.06f, 1.4f, -0.45f}, true), kSettings);
+	Check(v.state == ArrowState::Nocked && !v.unnocked && Near(v.offLineMetres, 0.16f),
+	      "nocked, the hand 0.16 off the bow's line but within the nock's reach: still on the string");
 	v = StepArchery(off, OnAxis(NiPoint3{0.2f, 1.4f, -0.45f}, true), kSettings);
 	Check(v.unnocked && v.state == ArrowState::InHand && !v.aiming,
 	      "0.30 off the line, out of the nock's reach: off the string, in the hand");
@@ -161,9 +161,9 @@ void TestWideNock() {
 	ArcheryState st;
 	StepArchery(st, At(kShoulder, false, true), kSettings);
 	StepArchery(st, At(kShoulder, true, true), kSettings);
-	ArcheryVerdict v = StepArchery(st, OnAxis(NiPoint3{0.03f, 1.4f, -0.30f}, true), kSettings);
-	Check(v.nocked && v.handsApartMetres > 0.2f && v.handsApartMetres < 0.25f,
-	      "brought within 0.24 of the bow hand, behind and a little aside: nocked");
+	ArcheryVerdict v = StepArchery(st, OnAxis(NiPoint3{-0.02f, 1.4f, -0.33f}, true), kSettings);
+	Check(v.nocked && v.handsApartMetres > 0.18f && v.handsApartMetres < 0.20f,
+	      "brought within 0.19 of the bow hand, behind and a little aside: nocked");
 	v = StepArchery(st, OnAxis(NiPoint3{0.0f, 1.4f, -0.29f}, true), kSettings);
 	Check(v.state == ArrowState::Nocked && !v.drawStarted, "0.21 behind the bow: short of the draw (0.15 + 0.08)");
 	v = StepArchery(st, OnAxis(NiPoint3{-0.1f, 1.4f, -0.26f}, true), kSettings);
@@ -543,6 +543,63 @@ void TestBowPower() {
 	Check(!StepBowPower(next, true, false, 0.0f, false, 4, w), "an eased draw's weight is not the next draw's");
 }
 
+void TestNoArrows() {
+	std::printf("An empty quiver\n");
+	ArcheryState st;
+	ArcheryInput in = At(kShoulder, false, true);
+	in.haveArrows = false;
+	StepArchery(st, in, kSettings);
+	in.drawGrip = true;
+	ArcheryVerdict v = StepArchery(st, in, kSettings);
+	Check(!v.took && v.state == ArrowState::None && !v.claimsGrip,
+	      "no arrows: the grip at the quiver takes none (no sound, nothing to draw)");
+	in.haveArrows = true;
+	in.drawGrip = false;
+	StepArchery(st, in, kSettings);
+	in.drawGrip = true;
+	v = StepArchery(st, in, kSettings);
+	Check(v.took, "arrows again: taken");
+}
+
+void TestNockBlend() {
+	std::printf("The hand eased onto the string\n");
+	Check(Near(StepNockBlend(0.0f, true, 0.1f), 0.5f) && Near(StepNockBlend(0.9f, true, 0.1f), 1.0f),
+	      "up by the frame's share of 0.2 s, no further than 1");
+	Check(Near(StepNockBlend(0.7f, false, 0.1f), 0.0f), "off the string: at once back to 0");
+	Check(Near(StepNockBlend(0.3f, true, -1.0f), 0.3f), "no time: no way");
+	Check(Near(NockBlendWeight(0.0f), 0.0f) && Near(NockBlendWeight(1.0f), 1.0f) &&
+	          Near(NockBlendWeight(0.5f), 0.5f) && NockBlendWeight(0.1f) < 0.1f && NockBlendWeight(2.0f) <= 1.0f,
+	      "eased in and out, held to 0..1");
+
+	const NiMatrix33 id = NiMatrix33::Identity();
+	const NiPoint3 rest{0, 100, 0};
+	const NiPoint3 axis{0, 1, 0};
+	ArrowOnString on;
+	ArrowOnBowLine(rest, axis, id, NiPoint3{0, 80, 0}, 46.6f, 15.6f, 28.0f, on);
+	const NiPoint3 fistNock{10, 70, 5};
+	const NiPoint3 grip{10, 73, 5};
+	ArrowOnString e;
+	Check(ArrowEasedOntoString(fistNock, on, rest, axis, id, grip, 46.6f, 0.0f, e) &&
+	          NearPoint(e.pose.nock, fistNock) && NearPoint(e.gripTarget, grip) && Near(e.weight, 0.0f),
+	      "at the start: the nock where the fist has it, the fist where it is, the string at rest");
+	const NiPoint3 toRest{-10, 30, -5};
+	const float l = std::sqrt(100.0f + 900.0f + 25.0f);
+	Check(NearPoint(e.pose.rot * NiPoint3{0, 1, 0}, toRest * (1.0f / l)), "pointing through the arrow's rest");
+	Check(ArrowEasedOntoString(fistNock, on, rest, axis, id, grip, 46.6f, 0.5f, e) &&
+	          NearPoint(e.pose.nock, (fistNock + on.pose.nock) * 0.5f) &&
+	          NearPoint(e.gripTarget, (grip + on.gripTarget) * 0.5f),
+	      "halfway: halfway there");
+	Check(ArrowEasedOntoString(fistNock, on, rest, axis, id, grip, 46.6f, 1.0f, e) &&
+	          NearPoint(e.pose.nock, on.pose.nock) && NearPoint(e.gripTarget, on.gripTarget) && Near(e.weight, on.weight),
+	      "at the end: the string's pose exactly");
+	Check(ArrowEasedOntoString(rest, on, rest, axis, id, grip, 46.6f, 0.0f, e) &&
+	          NearPoint(e.pose.rot * NiPoint3{0, 1, 0}, axis),
+	      "the nock on the rest itself: along the bow");
+	Check(!ArrowEasedOntoString(fistNock, on, rest, axis, id, grip, 0.0f, 0.5f, e) &&
+	          !ArrowEasedOntoString(fistNock, on, rest, axis, id, grip, 0.0f, 1.0f, e),
+	      "a model with no length: no pose");
+}
+
 }  // namespace
 
 int main() {
@@ -560,6 +617,8 @@ int main() {
 	TestWideNock();
 	TestReleaseSnap();
 	TestBowPower();
+	TestNoArrows();
+	TestNockBlend();
 	TestBowSounds();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);

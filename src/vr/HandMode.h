@@ -333,6 +333,9 @@ struct HandModeFrame {
 	// Where the drawn bow shoots, in the bow hand's controller frame (x right,
 	// y up, -z forward), as the last frame showed the bow (game::BowShotAxis):
 	// the arrow's aim. Without it, that hand's laser.
+	// Arrows in the quiver, while a bow is drawn (game::QuiverHasArrows): with
+	// none no arrow is taken.
+	bool haveArrows = true;
 	bool bowShotValid = false;
 	NiPoint3 bowShotLocal{0.0f, 0.0f, -1.0f};
 	SInt32 playerAction = -1;

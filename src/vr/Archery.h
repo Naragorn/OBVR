@@ -57,8 +57,9 @@ struct ArcherySettings {
 	// The drawing hand this near the bow hand nocks the arrow: wide, so the
 	// nock is not searched for (the tester, 2026-10-01: "pfeil anlegen darf
 	// noch großzügiger sein etwas. also früher erkannt werden damit man nicht
-	// nach der anlege stelle suchen muss"; 0.15 before).
-	float nockMetres = 0.25f;
+	// nach der anlege stelle suchen muss"; 0.15 before), then a little less
+	// ("die entfernung noch verkleinern"; 0.25 before).
+	float nockMetres = 0.20f;
 	// The string at rest: the drawing hand this far behind the bow hand along
 	// the bow. The draw begins drawStartMetres further back, and the hand
 	// brought back within it eases the draw. Apart from the nock's zone, so a
@@ -103,6 +104,10 @@ struct ArcheryInput {
 	NiPoint3 bowAt{0.0f, 0.0f, 0.0f};
 	bool drawGrip = false;    // the button that holds the arrow (the trigger or the grip)
 	bool leftHanded = false;  // the quiver mirrors
+	// Arrows left in the quiver: with none the quiver gives none (the tester,
+	// 2026-10-01: "wenn ich keine pfeile mehr habe, dann kann ich auch keinen
+	// mehr graben und den bogen nicht spannen. also keinen sound beim grab").
+	bool haveArrows = true;
 	// The bow's shot axis, tracking space, unit length; without it the pull
 	// is the distance between the hands.
 	bool axisValid = false;
@@ -269,6 +274,27 @@ inline bool StepBowPower(BowPowerState& s, bool drawing, bool weightValid, float
 constexpr UInt32 kSoundFormAmmoUp = 0x0008B095;
 constexpr UInt32 kSoundFormAmmoDown = 0x0008B096;
 
+// The drawing hand eased onto the string over kNockBlendSeconds rather than
+// jumping there, as the left hand onto a two-hander's handle (the tester,
+// 2026-10-01: "wie beim 2 händer die hand progressive annähnern an die
+// position statt direkt hinzuspringen"): the way from the fist to the string,
+// 0 to 1, up while the arrow is on the string, back to 0 the moment it is not.
+constexpr float kNockBlendSeconds = 0.2f;
+
+inline float StepNockBlend(float current, bool onString, float dtSeconds) {
+	if (!onString) {
+		return 0.0f;
+	}
+	const float next = current + (dtSeconds > 0.0f ? dtSeconds / kNockBlendSeconds : 0.0f);
+	return next > 1.0f ? 1.0f : (next < 0.0f ? 0.0f : next);
+}
+
+// The share of the way taken, eased in and out (smoothstep).
+inline float NockBlendWeight(float blend) {
+	const float t = blend < 0.0f ? 0.0f : (blend > 1.0f ? 1.0f : blend);
+	return t * t * (3.0f - 2.0f * t);
+}
+
 inline float MetresBetween(const NiPoint3& a, const NiPoint3& b) {
 	const NiPoint3 d{a.x - b.x, a.y - b.y, a.z - b.z};
 	return math::Sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
@@ -340,7 +366,7 @@ inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, cons
 	}
 	switch (st.state) {
 	case ArrowState::None:
-		if (press && AtQuiver(s, in.drawBody, in.leftHanded)) {
+		if (press && in.haveArrows && AtQuiver(s, in.drawBody, in.leftHanded)) {
 			st.state = ArrowState::InHand;
 			st.awayFromNock = true;
 			v.took = true;
@@ -666,6 +692,32 @@ inline bool ArrowOnBowLine(const NiPoint3& rest, const NiPoint3& axis, const NiM
 	out.pose.pos = out.pose.nock + axis * lengthUnits;
 	out.gripTarget = out.pose.nock + axis * kArrowNockBehindGripUnits;
 	out.weight = StringWeightAt(nockBehind, stringRestUnits, travelUnits);
+	return true;
+}
+
+// On the string, `w` of the way there (NockBlendWeight): the nock from where
+// it was in the fist (`fistNock`) towards its place on the string, the arrow
+// pointing from it through the arrow's rest on the bow - so it swings onto
+// the bow's line as it comes; the fist's target and the string's weight the
+// same share of theirs. At 1 it is ArrowOnBowLine's pose exactly. False for
+// a model with no length.
+inline bool ArrowEasedOntoString(const NiPoint3& fistNock, const ArrowOnString& onString, const NiPoint3& rest,
+                                 const NiPoint3& axis, const NiMatrix33& rollFrom, const NiPoint3& gripPos,
+                                 float lengthUnits, float w, ArrowOnString& out) {
+	const float t = w < 0.0f ? 0.0f : (w > 1.0f ? 1.0f : w);
+	out = onString;
+	if (t >= 1.0f) {
+		return lengthUnits > 0.0f;
+	}
+	const NiPoint3 nock = fistNock + (onString.pose.nock - fistNock) * t;
+	const NiPoint3 toRest{rest.x - nock.x, rest.y - nock.y, rest.z - nock.z};
+	const bool through = toRest.x * toRest.x + toRest.y * toRest.y + toRest.z * toRest.z > 1e-4f;
+	if (!ArrowAlong(nock, through ? toRest : axis, rollFrom, lengthUnits, out.pose)) {
+		return false;
+	}
+	out.gripTarget = gripPos + (onString.gripTarget - gripPos) * t;
+	out.weight = onString.weight * t;
+	out.atFullDraw = onString.atFullDraw && t >= 1.0f;
 	return true;
 }
 
