@@ -1253,6 +1253,127 @@ bool InFirstPersonPass() {
 	return accumulator[kAccumulatorFirstPersonOffset] != 0;
 }
 
+// Whether the draw now bound is skinned on the card: its vertex declaration
+// carries blend indices (D3DDECLUSAGE_BLENDINDICES, 2; d3d9types.h) - a hand,
+// a body part. The bow is not (its string's morph is written into a dynamic
+// buffer, and it has no bones): the harness's first try took "the stream in a
+// dynamic buffer" for skinned and sealed the bow instead of the hands.
+// IDirect3DDevice9::GetVertexDeclaration is vtable 88 (d3d9.h, after
+// SetVertexDeclaration 87), IDirect3DVertexDeclaration9::GetDeclaration 4;
+// D3DVERTEXELEMENT9 is eight bytes, its usage the seventh. Cached per
+// declaration.
+bool DrawIsSkinned(void* device) {
+	constexpr UInt32 kDeviceGetVertexDeclaration = 88;
+	constexpr UInt32 kDeclarationGetDeclaration = 4;
+	constexpr UInt8 kUsageBlendIndices = 2;
+	static void* s_declaration = nullptr;
+	static bool s_skinned = false;
+	using GetDeclFn = SInt32(__stdcall*)(void* self, void** declaration);
+	using GetElementsFn = SInt32(__stdcall*)(void* self, UInt8* elements, UInt32* count);
+	auto getDecl = d3d9::Method<GetDeclFn>(device, kDeviceGetVertexDeclaration);
+	void* declaration = nullptr;
+	if (getDecl == nullptr || getDecl(device, &declaration) < 0 || declaration == nullptr) {
+		return false;
+	}
+	if (declaration != s_declaration) {
+		s_declaration = declaration;
+		s_skinned = false;
+		UInt8 elements[65 * 8] = {};
+		UInt32 count = 65;
+		auto getElements = d3d9::Method<GetElementsFn>(declaration, kDeclarationGetDeclaration);
+		if (getElements != nullptr && getElements(declaration, elements, &count) >= 0 && count <= 65) {
+			for (UInt32 i = 0; i < count; ++i) {
+				s_skinned = s_skinned || elements[i * 8 + 6] == kUsageBlendIndices;
+			}
+		}
+	}
+	ReleaseObject(declaration);  // GetVertexDeclaration added a reference
+	return s_skinned;
+}
+
+// Whether the depth buffer bound now has eight stencil bits (D24S8 or
+// D24FS8), cached per surface.
+bool DepthHasEightStencilBits(void* device) {
+	static void* s_surface = nullptr;
+	static bool s_eight = false;
+	auto getDepth = d3d9::Method<d3d9::GetDepthStencilSurfaceFn>(device, d3d9::kDeviceGetDepthStencilSurface);
+	void* surface = nullptr;
+	if (getDepth == nullptr || getDepth(device, &surface) < 0 || surface == nullptr) {
+		return false;
+	}
+	if (surface != s_surface) {
+		s_surface = surface;
+		d3d9::SurfaceDesc desc{};
+		auto getDesc = d3d9::Method<d3d9::GetDescFn>(surface, d3d9::kSurfaceGetDesc);
+		s_eight = getDesc != nullptr && getDesc(surface, &desc) >= 0 && HasEightStencilBits(desc.format);
+		static UInt32 s_lines = 4;
+		if (s_lines > 0) {
+			--s_lines;
+			OBVR_LOG("Closed hands: the depth buffer is format %u - %s", desc.format,
+			         s_eight ? "eight stencil bits, the wrist's opening is sealed"
+			                 : "no eight stencil bits, the lid stays the far wall");
+		}
+	}
+	ReleaseObject(surface);  // GetDepthStencilSurface added a reference
+	return s_eight;
+}
+
+// The lid drawn into the hand's opening only, over what is inside the hand
+// (BackfacePass.h, the sealed opening). The lid's shader and colour are
+// set; `lid` is it, put back to `previousShader` for the steps that write no
+// colour. Every state touched is put back.
+SInt32 DrawSealedLid(void* device, UInt32 type, SInt32 baseVertexIndex, UInt32 minVertexIndex,
+                     UInt32 numVertices, UInt32 startIndex, UInt32 primCount, UInt32 cull, UInt32 reversed,
+                     UInt32 colourWrite, void* lid, d3d9::SetPixelShaderFn setPixelShader, void* previousShader) {
+	auto getState = d3d9::Method<d3d9::GetRenderStateFn>(device, d3d9::kDeviceGetRenderState);
+	auto getViewport = d3d9::Method<d3d9::GetViewportFn>(device, d3d9::kDeviceGetViewport);
+	auto setViewport = d3d9::Method<d3d9::SetViewportFn>(device, d3d9::kDeviceSetViewport);
+	UInt32 saved[kSealSavedCount] = {};
+	for (UInt32 i = 0; i < kSealSavedCount; ++i) {
+		getState(device, kSealSavedStates[i], &saved[i]);
+	}
+	d3d9::Viewport viewport{};
+	const bool haveViewport = getViewport != nullptr && setViewport != nullptr && getViewport(device, &viewport) >= 0;
+	SealStep steps[4];
+	const UInt32 count = SealSteps(cull, reversed, colourWrite, steps);
+	SInt32 result = 0;
+	for (UInt32 s = 0; s < count; ++s) {
+		const SealStep& step = steps[s];
+		if (step.nearestDepth && !haveViewport) {
+			continue;  // no way to write the nearest depth: no lid rather than a wrong one
+		}
+		for (UInt32 k = 0; k < step.count; ++k) {
+			g_originalSetState(device, step.states[k][0], step.states[k][1]);
+		}
+		setPixelShader(device, step.lid ? lid : previousShader);
+		if (step.nearestDepth) {
+			d3d9::Viewport nearest = viewport;
+			nearest.minZ = 0.0f;
+			nearest.maxZ = 0.0f;
+			setViewport(device, &nearest);
+		}
+		const SInt32 drawn = g_originalDrawIndexed(device, type, baseVertexIndex, minVertexIndex, numVertices,
+		                                           startIndex, primCount);
+		if (step.lid) {
+			result = drawn;
+		}
+		if (step.nearestDepth) {
+			setViewport(device, &viewport);
+		}
+	}
+	setPixelShader(device, lid);
+	for (UInt32 i = 0; i < kSealSavedCount; ++i) {
+		g_originalSetState(device, kSealSavedStates[i], saved[i]);
+	}
+	static UInt32 s_lines = 2;
+	if (s_lines > 0) {
+		--s_lines;
+		OBVR_LOG("Closed hands: a bare hand's opening sealed (%u triangles) - the lid over what is inside it%s",
+		         primCount, result < 0 ? " - the draw FAILED" : "");
+	}
+	return result;
+}
+
 // After a first-person draw: the same geometry again, its back faces - its
 // own surface darkened, or with bare hands one flat colour, the lid
 // (BackfacePass.h).
@@ -1309,8 +1430,17 @@ void DrawBackfacesAfter(void* device, UInt32 type, SInt32 baseVertexIndex, UInt3
 		setConstant(device, kInsideColourRegister, colour, 1);
 		// No blend: the lid's colour as it is.
 		g_originalSetState(device, d3d9::kRenderStateAlphaBlendEnable, 0);
-		result = g_originalDrawIndexed(device, type, baseVertexIndex, minVertexIndex, numVertices,
-		                               startIndex, primCount);
+		// A skinned hand with a stencil to use: its opening sealed, so what
+		// is inside it does not show through (BackfacePass.h, the sealed
+		// opening); else the far wall as it is.
+		if (DrawIsSkinned(device) && DepthHasEightStencilBits(device)) {
+			result = DrawSealedLid(device, type, baseVertexIndex, minVertexIndex, numVertices, startIndex,
+			                       primCount, cull, reversed, colorWrite & 0x7u, lid, setPixelShader,
+			                       previousShader);
+		} else {
+			result = g_originalDrawIndexed(device, type, baseVertexIndex, minVertexIndex, numVertices,
+			                               startIndex, primCount);
+		}
 		g_originalSetState(device, d3d9::kRenderStateAlphaBlendEnable, blend);
 		setConstant(device, kInsideColourRegister, previousConstant, 1);
 		setPixelShader(device, previousShader);

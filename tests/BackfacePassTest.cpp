@@ -16,9 +16,64 @@ void Check(bool condition, const char* what) {
 	}
 }
 
+// The value a step sets for a state, or 0xFFFFFFFF when it sets none.
+UInt32 ValueOf(const obvr::render::SealStep& s, UInt32 state) {
+	for (UInt32 i = 0; i < s.count; ++i) {
+		if (s.states[i][0] == state) {
+			return s.states[i][1];
+		}
+	}
+	return 0xFFFFFFFFu;
+}
+
+void TestSeal() {
+	using namespace obvr::render;
+	std::printf("The sealed opening\n");
+	Check(HasEightStencilBits(75) && HasEightStencilBits(83) && !HasEightStencilBits(77) &&
+	          !HasEightStencilBits(79) && !HasEightStencilBits(73) && !HasEightStencilBits(80),
+	      "eight stencil bits: D24S8 and D24FS8, not D24X8, D24X4S4, D15S1 or D16");
+	SealStep s[4];
+	Check(SealSteps(kCullCounterClockwise, kCullClockwise, 0x7, s) == 4, "four steps");
+	for (const SealStep& step : s) {
+		Check(ValueOf(step, kRsAlphaTest) == 0 && ValueOf(step, kRsStencilEnable) == 1,
+		      "each: alpha test off, the stencil on");
+	}
+	Check(ValueOf(s[0], kRsCull) == kCullNone && ValueOf(s[0], kRsZFunc) == kCmpAlways &&
+	          ValueOf(s[0], kRsColorWrite) == 0 && ValueOf(s[0], kRsStencilPass) == kStencilInvert &&
+	          ValueOf(s[0], kRsStencilWriteMask) == kStencilParityBit && !s[0].lid,
+	      "1: every face toggles the parity bit, depth ignored, no colour");
+	Check(ValueOf(s[1], kRsCull) == kCullCounterClockwise && ValueOf(s[1], kRsZFunc) == kCmpEqual &&
+	          ValueOf(s[1], kRsStencilPass) == kStencilReplace && ValueOf(s[1], kRsStencilRef) == kStencilSkinBit &&
+	          ValueOf(s[1], kRsStencilWriteMask) == kStencilSkinBit && ValueOf(s[1], kRsColorWrite) == 0,
+	      "2: the visible front faces mark the skin");
+	Check(s[2].lid && s[2].nearestDepth && ValueOf(s[2], kRsCull) == kCullClockwise &&
+	          ValueOf(s[2], kRsZFunc) == kCmpAlways && ValueOf(s[2], kRsZWrite) == 1 &&
+	          ValueOf(s[2], kRsStencilFunc) == kCmpEqual && ValueOf(s[2], kRsStencilRef) == kStencilParityBit &&
+	          ValueOf(s[2], kRsStencilMask) == (kStencilParityBit | kStencilSkinBit) &&
+	          ValueOf(s[2], kRsStencilWriteMask) == 0 && ValueOf(s[2], kRsColorWrite) == 0x7,
+	      "3: the lid, flat, only in the opening (parity, no skin), over what is inside, at the nearest depth");
+	Check(ValueOf(s[3], kRsCull) == kCullNone && ValueOf(s[3], kRsStencilPass) == kStencilZero &&
+	          ValueOf(s[3], kRsStencilFail) == kStencilZero && ValueOf(s[3], kRsStencilZFail) == kStencilZero &&
+	          ValueOf(s[3], kRsStencilWriteMask) == (kStencilParityBit | kStencilSkinBit) &&
+	          ValueOf(s[3], kRsColorWrite) == 0,
+	      "4: both bits cleared over the whole silhouette");
+	bool saved = true;
+	for (const SealStep& step : s) {
+		for (UInt32 i = 0; i < step.count; ++i) {
+			bool found = false;
+			for (UInt32 k = 0; k < kSealSavedCount; ++k) {
+				found = found || kSealSavedStates[k] == step.states[i][0];
+			}
+			saved = saved && found;
+		}
+	}
+	Check(saved, "every state a step sets is saved and put back");
+}
+
 }  // namespace
 
 int main() {
+	TestSeal();
 	using namespace obvr::render;
 	const UInt32 rgba = 0xF;
 

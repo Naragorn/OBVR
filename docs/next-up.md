@@ -470,7 +470,8 @@ Every change below is switched by the mode.
   - SteamVR's range without the controller
     (`VRSkeletalMotionRange_WithoutController`) in place of the one with it;
   - another reference skeleton to measure against.
-- **Looking into the hand from below (bug, for later).** The tester, on
+- **Looking into the hand from below (sealed 2026-10-01, see
+  `docs/holding-objects-spec.md`).** The tester, on
   2026-09-28: "man kann immer noch von unten in die hand schauen". The bare
   hand's lid is the hand's own far wall, drawn flat. What lies between the
   opening and that wall shows through it: the bow's grip, and the inside of

@@ -189,12 +189,27 @@ With nothing held, each finger of a hand follows the controller's finger
   Ideas: SteamVR's range without the controller, a third pose (a thumb
   straight up), another reference skeleton. The details are in
   `docs/next-up.md`.
-- **Open bug (the tester, 2026-09-28): looking into the hand from below**
-  ("man kann immer noch von unten in die hand schauen"). The bare hand's
-  lid is its own far wall, so the bow's grip and the inside of the fist
-  show through it. A stencil lid was tried and reverted. The hands'
-  near plane differs from the world's, so the first-person pass's own
-  projection is needed first (`docs/next-up.md`).
+- **Looking into the hand from below (the tester, 2026-09-28: "man kann
+  immer noch von unten in die hand schauen"; 2026-10-01, of the bow hand:
+  "ich will hier wenn keine rüstung dran ist genau dieselbe hand wie ohne
+  bogen") - sealed 2026-10-01.** The bare hand's lid was its own far wall,
+  so what lies inside the hand showed through it: the harness's views into
+  the wrist (probe "wrist", 15:37) showed the empty hand's one flat lid and,
+  in the bow hand, the bow's grip with its dark open end. Now a bare,
+  card-skinned hand (its vertex declaration has blend indices) seals its
+  opening with the stencil (`render/BackfacePass.h`, "the sealed opening",
+  backface_pass_test): the parity of all its faces finds the opening, its
+  visible front faces keep their skin, and the flat lid is drawn there over
+  what is inside, at the nearest depth, so what is drawn later inside the
+  hand fails against it. Only with eight stencil bits (the harness's buffer:
+  D24S8). The probe after (15:48) showed the bow hand's wrist sealed; what
+  of the bow still shows lies outside the open scripted hand. Not seen in a
+  headset. Trade-offs: something drawn before the hand in front of its
+  opening (a wall the wrist is pushed into) is drawn over there; something
+  drawn after it in front of the opening fails there (the arrow passing
+  just in front of the bow hand's wrist). The first try took "a stream in a
+  dynamic buffer" for skinned and sealed the bow (its string's morph is
+  written into one) instead of the hands.
 
 ### 2. The touched point in the palm — built
 

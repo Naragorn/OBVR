@@ -4,11 +4,14 @@
 # It starts from the player's last save, goes to TestingHall, empties the
 # pack, gives an Iron and a Steel Longsword, equips the steel one sheathed,
 # and saves under its own name. Run it once, and again whenever that save is
-# lost. The player's last save had the weapon drawn (2026-09-27); F puts it
-# away, and the state line at "sheathed" must read weapon 1 (sheathed).
+# lost. The player's last save had the weapon drawn (2026-09-27); the right
+# hand's reach to the left hip puts it away (OBVR's holster - the F key no
+# longer did under Full VR, 2026-10-01), and the state line at "sheathed" must
+# read weapon 1 (sheathed).
 # Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\make-harness-save.txt -Save continue
 
 ini Hands Enabled=1
+ini Hands Holsters=1
 ini Render MirrorMenusToMonitor=1
 console coc TestingHall
 console-at arrived player.removeallitems
@@ -24,9 +27,12 @@ reject HandScript: WARNING
 wait 12
 mark arrived
 wait 25
-key F 1
-wait 0.1
-key F 0
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
 wait 3
 mark sheathed
 wait 12

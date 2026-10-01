@@ -145,6 +145,139 @@ inline InsideKind InsideKindFor(UInt32 reversedCull, bool bareHands, bool haveFl
 	return bareHands && haveFlatColour ? InsideKind::Flat : InsideKind::Darkened;
 }
 
+// ------------------------------------------------ the sealed opening
+//
+// The lid is the hand's own far wall, drawn flat - so whatever lies inside
+// the hand, nearer than that wall, shows through the wrist instead: the bow's
+// grip in the bow hand's fist (harness 2026-10-01, "wrist": the empty hand's
+// wrist one flat lid, the bow hand's showing the bow inside it; the tester:
+// "ich will hier wenn keine rüstung dran ist genau dieselbe hand wie ohne
+// bogen"). So for a bare, skinned hand the opening is found and sealed:
+//   1. parity: every face of the hand, both sides, depth ignored, toggles a
+//      stencil bit (kStencilParityBit). A closed surface is crossed an even
+//      number of times along a ray, so the bit stays set only where the ray
+//      goes in through the opening - the wrist - and hits the far wall;
+//   2. the visible skin: the hand's front faces where they are what the depth
+//      buffer holds (depth equal) set kStencilSkinBit - where the hand's own
+//      faces cross each other the parity is odd too, and the skin there is
+//      to stay skin;
+//   3. the lid: the back faces, flat, where the parity is set and the skin's
+//      bit is not, depth ignored and written as the nearest there is (the
+//      viewport's depth range 0 to 0): drawn over what is inside the hand,
+//      and anything drawn later inside it fails against it;
+//   4. both bits cleared again over the hand's whole silhouette.
+// Only with a depth buffer of eight stencil bits (D24S8, D24FS8); without, the
+// far-wall lid as before.
+inline constexpr UInt32 kStencilParityBit = 0x80;
+inline constexpr UInt32 kStencilSkinBit = 0x40;
+
+// D3DFMT_D24S8 and D3DFMT_D24FS8 (d3d9types.h): eight stencil bits.
+inline bool HasEightStencilBits(UInt32 depthFormat) { return depthFormat == 75 || depthFormat == 83; }
+
+// D3DRS_* (d3d9types.h) the sealing sets, and their values.
+inline constexpr UInt32 kRsZFunc = 23;
+inline constexpr UInt32 kRsZWrite = 14;
+inline constexpr UInt32 kRsCull = 22;
+inline constexpr UInt32 kRsStencilEnable = 52;
+inline constexpr UInt32 kRsStencilFail = 53;
+inline constexpr UInt32 kRsStencilZFail = 54;
+inline constexpr UInt32 kRsStencilPass = 55;
+inline constexpr UInt32 kRsStencilFunc = 56;
+inline constexpr UInt32 kRsStencilRef = 57;
+inline constexpr UInt32 kRsStencilMask = 58;
+inline constexpr UInt32 kRsStencilWriteMask = 59;
+inline constexpr UInt32 kRsTwoSidedStencil = 185;
+inline constexpr UInt32 kRsColorWrite = 168;
+inline constexpr UInt32 kRsAlphaTest = 15;
+inline constexpr UInt32 kCullNone = 1;
+inline constexpr UInt32 kCmpEqual = 3;
+inline constexpr UInt32 kCmpAlways = 8;
+inline constexpr UInt32 kStencilKeep = 1;
+inline constexpr UInt32 kStencilZero = 2;
+inline constexpr UInt32 kStencilReplace = 3;
+inline constexpr UInt32 kStencilInvert = 6;
+
+// One step of the sealing: the render states it draws with (each a pair of
+// state and value), whether it draws the back faces with the flat lid, and
+// whether its depth is written as the nearest.
+struct SealStep {
+	UInt32 states[12][2];
+	UInt32 count;
+	bool lid;
+	bool nearestDepth;
+};
+
+// The four steps for a draw whose own cull is `cull`, whose back faces cull
+// `reversed`, with the colour channels `colourWrite` the lid may write.
+inline UInt32 SealSteps(UInt32 cull, UInt32 reversed, UInt32 colourWrite, SealStep (&out)[4]) {
+	const UInt32 both = kStencilParityBit | kStencilSkinBit;
+	// 1. parity
+	out[0] = SealStep{{{kRsAlphaTest, 0},
+	                   {kRsColorWrite, 0},
+	                   {kRsCull, kCullNone},
+	                   {kRsZFunc, kCmpAlways},
+	                   {kRsZWrite, 0},
+	                   {kRsStencilEnable, 1},
+	                   {kRsTwoSidedStencil, 0},
+	                   {kRsStencilFunc, kCmpAlways},
+	                   {kRsStencilPass, kStencilInvert},
+	                   {kRsStencilFail, kStencilKeep},
+	                   {kRsStencilZFail, kStencilKeep},
+	                   {kRsStencilWriteMask, kStencilParityBit}},
+	                  12, false, false};
+	// 2. the visible skin
+	out[1] = SealStep{{{kRsAlphaTest, 0},
+	                   {kRsColorWrite, 0},
+	                   {kRsCull, cull},
+	                   {kRsZFunc, kCmpEqual},
+	                   {kRsZWrite, 0},
+	                   {kRsStencilEnable, 1},
+	                   {kRsStencilFunc, kCmpAlways},
+	                   {kRsStencilPass, kStencilReplace},
+	                   {kRsStencilZFail, kStencilKeep},
+	                   {kRsStencilRef, kStencilSkinBit},
+	                   {kRsStencilWriteMask, kStencilSkinBit},
+	                   {kRsStencilFail, kStencilKeep}},
+	                  12, false, false};
+	// 3. the lid
+	out[2] = SealStep{{{kRsAlphaTest, 0},
+	                   {kRsColorWrite, colourWrite},
+	                   {kRsCull, reversed},
+	                   {kRsZFunc, kCmpAlways},
+	                   {kRsZWrite, 1},
+	                   {kRsStencilEnable, 1},
+	                   {kRsStencilFunc, kCmpEqual},
+	                   {kRsStencilRef, kStencilParityBit},
+	                   {kRsStencilMask, both},
+	                   {kRsStencilWriteMask, 0},
+	                   {kRsStencilPass, kStencilKeep},
+	                   {kRsStencilZFail, kStencilKeep}},
+	                  12, true, true};
+	// 4. both bits cleared
+	out[3] = SealStep{{{kRsAlphaTest, 0},
+	                   {kRsColorWrite, 0},
+	                   {kRsCull, kCullNone},
+	                   {kRsZFunc, kCmpAlways},
+	                   {kRsZWrite, 0},
+	                   {kRsStencilEnable, 1},
+	                   {kRsStencilFunc, kCmpAlways},
+	                   {kRsStencilPass, kStencilZero},
+	                   {kRsStencilFail, kStencilZero},
+	                   {kRsStencilZFail, kStencilZero},
+	                   {kRsStencilWriteMask, both},
+	                   {kRsStencilMask, both}},
+	                  12, false, false};
+	return 4;
+}
+
+// The states the sealing touches, saved before and put back after.
+inline constexpr UInt32 kSealSavedStates[] = {kRsAlphaTest,     kRsColorWrite,    kRsCull,          kRsZFunc,
+                                              kRsZWrite,        kRsStencilEnable, kRsTwoSidedStencil,
+                                              kRsStencilFunc,   kRsStencilPass,   kRsStencilFail,
+                                              kRsStencilZFail,  kRsStencilRef,    kRsStencilMask,
+                                              kRsStencilWriteMask};
+inline constexpr UInt32 kSealSavedCount = sizeof(kSealSavedStates) / sizeof(kSealSavedStates[0]);
+
 // D3DBLEND_BLENDFACTOR and D3DRS_BLENDFACTOR (d3d9types.h).
 inline constexpr UInt32 kBlendBlendFactor = 14;
 inline constexpr UInt32 kRenderStateBlendFactor = 193;
