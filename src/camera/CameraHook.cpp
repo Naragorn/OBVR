@@ -461,6 +461,8 @@ game::BowVisualInput g_bowVisual;
 vr::BowStringState g_bowString;
 // The loose at once: the draw put at its Hold after the control goes up.
 vr::ReleaseSnapState g_releaseSnap;
+// The shot's power from the draw (vr::StepBowPower).
+vr::BowPowerState g_bowPower;
 bool g_releaseSnapped = false;
 // Where the drawn bow shoots, in the bow hand's controller frame, from the
 // last frame the bow was seen (game::BowShotAxis): the arrow's aim
@@ -2462,6 +2464,20 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			const vr::ReleaseSnap snap = vr::StepReleaseSnap(g_releaseSnap, a.loosed, game::ReadPlayerAction(),
 			                                                 g_releaseSnapped, g_deltaSeconds);
 			g_releaseSnapped = snap == vr::ReleaseSnap::Snap && game::SnapBowDrawToHold();
+			// The power from the draw: the string's weight last frame (the
+			// picture is placed after this), left to the game when there is
+			// none.
+			float drawWeight = 0.0f;
+			const bool haveWeight = game::BowDrawWeight(drawWeight);
+			float weight = 0.0f;
+			if (vr::StepBowPower(g_bowPower, a.state == vr::ArrowState::Drawing, haveWeight, drawWeight, a.loosed,
+			                     game::ReadPlayerAction(), weight)) {
+				game::WriteBowPowerForDraw(weight);
+			}
+			if (a.loosed) {
+				OBVR_LOG("Hands: bow by hand - loosed at a draw of %.2f%s", static_cast<double>(g_bowPower.weight),
+				         g_bowPower.holding ? "" : " (no draw read - the game's power)");
+			}
 		}
 		g_bowVisual.arrow = vr::ArrowShownFor(a.state);
 		g_bowVisual.string =

@@ -38,4 +38,9 @@ void StepBowVisual(const BowVisualInput& in);
 // along. False while no bow is drawn by hand.
 bool BowShotAxis(NiPoint3& world);
 
+// How far the string was drawn by the hand at the last StepBowVisual: 0 at
+// rest, 1 at full draw (the weight its morph was given). False when the arrow
+// was not on the string, or the string's morph could not be set.
+bool BowDrawWeight(float& weight);
+
 }  // namespace obvr::game

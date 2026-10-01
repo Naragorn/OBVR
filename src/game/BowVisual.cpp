@@ -309,11 +309,21 @@ void MoveHandTo(const char* boneName, const NiAVObject* grip, const NiPoint3& ta
 	UpdateNodeTransforms(hand);
 }
 
-// The bow's shot axis as the last step found it.
+// The bow's shot axis as the last step found it, and the string's draw.
 bool g_shotValid = false;
 NiPoint3 g_shot{0.0f, 1.0f, 0.0f};
+bool g_drawValid = false;
+float g_draw = 0.0f;
 
 }  // namespace
+
+bool BowDrawWeight(float& weight) {
+	if (!g_drawValid) {
+		return false;
+	}
+	weight = g_draw;
+	return true;
+}
 
 bool BowShotAxis(NiPoint3& world) {
 	if (!g_shotValid) {
@@ -325,6 +335,7 @@ bool BowShotAxis(NiPoint3& world) {
 
 void StepBowVisual(const BowVisualInput& in) {
 	g_shotValid = false;
+	g_drawValid = false;
 	// The arrow hangs on the first-person root, not on the hand's bone: it is
 	// placed in the world each frame, so it needs no bone to carry it, and the
 	// root is not what the engine's equipping hangs weapons on. Its bound is
@@ -410,6 +421,10 @@ void StepBowVisual(const BowVisualInput& in) {
 		SetStringWeight(morpher, in.string == vr::StringSource::Hand && posed && in.arrow == vr::ArrowShown::OnString
 		                             ? onString.weight
 		                             : 0.0f);
+	}
+	if (posed && in.arrow == vr::ArrowShown::OnString) {
+		g_drawValid = true;
+		g_draw = onString.weight;
 	}
 	const NiPoint3 nock = posed ? pose.nock : grip->worldTransform.pos;
 	// Each change of what is shown, the string's weight as it moves, and a

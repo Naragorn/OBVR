@@ -3,6 +3,7 @@
 #include "core/AddressSpace.h"
 #include "core/Log.h"
 #include "game/GameAddresses.h"
+#include "vr/Archery.h"
 
 namespace obvr::game {
 namespace {
@@ -59,7 +60,35 @@ Snap SnapOne(UInt32 animData, const char* which) {
 	return Snap::Done;
 }
 
+constexpr UInt32 kPlayerBowTimerOffset = 0x640;
+constexpr UInt32 kArrowBowTimerBase = 0x00B37080;
+constexpr UInt32 kArrowBowTimerMult = 0x00B37088;
+
 }  // namespace
+
+bool WriteBowPowerForDraw(float weight) {
+	const UInt32 player = Read(addr::kPlayerPointer);
+	if (!Looks(player)) {
+		return false;
+	}
+	const float base = *reinterpret_cast<const float*>(kArrowBowTimerBase);
+	const float mult = *reinterpret_cast<const float*>(kArrowBowTimerMult);
+	const float timer = vr::BowTimerForDraw(weight, base, mult);
+	float& written = *reinterpret_cast<float*>(player + kPlayerBowTimerOffset);
+	written = timer;
+	static UInt32 s_lines = 6;
+	static float s_lastLogged = -1.0f;
+	if (s_lines > 0 && (weight >= 0.999f || weight <= 0.001f) && weight != s_lastLogged) {
+		--s_lines;
+		s_lastLogged = weight;
+		OBVR_LOG("Bow power: the draw %.2f gives the bow timer %.2f s - power %.2f (fArrowBowTimerBase %.2f, "
+		         "fArrowBowTimerMult %.2f)",
+		         static_cast<double>(weight), static_cast<double>(timer),
+		         static_cast<double>(base + mult * timer > 1.0f ? 1.0f : base + mult * timer),
+		         static_cast<double>(base), static_cast<double>(mult));
+	}
+	return true;
+}
 
 bool SnapBowDrawToHold() {
 	const UInt32 player = Read(addr::kPlayerPointer);

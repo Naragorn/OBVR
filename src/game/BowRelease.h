@@ -32,4 +32,13 @@ namespace obvr::game {
 // draw could be read.
 bool SnapBowDrawToHold();
 
+// The shot's power from the draw (vr::BowTimerForDraw): the player's bow timer
+// (player +0x640) written for a string drawn `weight` (0 at rest, 1 full),
+// with the game's fArrowBowTimerBase and fArrowBowTimerMult (their values at
+// 0x00B37080 and 0x00B37088; their initialisers 0x009E9AA0 and 0x009E9AD0,
+// defaults 0.25 and 0.4, read 2026-10-01 - no plugin in Data sets them). The
+// engine adds the frame's time to it while the control is held (0x0065ED7B),
+// so it is written each frame. False when the player cannot be read.
+bool WriteBowPowerForDraw(float weight);
+
 }  // namespace obvr::game

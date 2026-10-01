@@ -150,9 +150,9 @@ void TestWideNock() {
 	ArcheryState st;
 	StepArchery(st, At(kShoulder, false, true), kSettings);
 	StepArchery(st, At(kShoulder, true, true), kSettings);
-	ArcheryVerdict v = StepArchery(st, OnAxis(NiPoint3{0.08f, 1.4f, -0.36f}, true), kSettings);
+	ArcheryVerdict v = StepArchery(st, OnAxis(NiPoint3{0.03f, 1.4f, -0.30f}, true), kSettings);
 	Check(v.nocked && v.handsApartMetres > 0.2f && v.handsApartMetres < 0.25f,
-	      "brought within 0.23 of the bow hand, aside and behind: nocked");
+	      "brought within 0.24 of the bow hand, behind and a little aside: nocked");
 	v = StepArchery(st, OnAxis(NiPoint3{0.0f, 1.4f, -0.29f}, true), kSettings);
 	Check(v.state == ArrowState::Nocked && !v.drawStarted, "0.21 behind the bow: short of the draw (0.15 + 0.08)");
 	v = StepArchery(st, OnAxis(NiPoint3{-0.1f, 1.4f, -0.26f}, true), kSettings);
@@ -166,6 +166,27 @@ void TestWideNock() {
 	StepArchery(far, At(kShoulder, true, true), kSettings);
 	v = StepArchery(far, OnAxis(NiPoint3{-0.1f, 1.4f, -0.23f}, true), kSettings);
 	Check(!v.nocked && v.state == ArrowState::InHand, "0.27 from it: not yet");
+
+	// Only from behind (the tester, 2026-10-01: "von vorne kommen oder andere
+	// seiten soll natürlich nicht gehen").
+	v = StepArchery(far, OnAxis(NiPoint3{-0.1f, 1.4f, -0.6f}, true), kSettings);
+	Check(!v.nocked && v.pullMetres < 0.0f, "0.10 in front of the bow: not nocked");
+	v = StepArchery(far, OnAxis(NiPoint3{0.05f, 1.4f, -0.5f}, true), kSettings);
+	Check(!v.nocked, "0.15 to its side, level with it: not nocked");
+	v = StepArchery(far, OnAxis(NiPoint3{0.08f, 1.4f, -0.44f}, true), kSettings);
+	Check(!v.nocked && v.offLineMetres > v.pullMetres, "behind, but more aside than behind: not nocked");
+	v = StepArchery(far, OnAxis(NiPoint3{-0.1f, 1.4f, -0.49f}, true), kSettings);
+	Check(!v.nocked, "a centimetre behind it: not yet");
+	v = StepArchery(far, OnAxis(NiPoint3{-0.05f, 1.4f, -0.42f}, true), kSettings);
+	Check(v.nocked, "then brought round behind it: nocked");
+	ArcheryState plain;
+	StepArchery(plain, At(kShoulder, false, true), kSettings);
+	StepArchery(plain, At(kShoulder, true, true), kSettings);
+	v = StepArchery(plain, At(NiPoint3{-0.1f, 1.4f, -0.6f}, true), kSettings);
+	Check(v.nocked, "no bow axis: any side, as before");
+	Check(FromBehind(true, 0.1f, 0.1f) && !FromBehind(true, 0.1f, 0.11f) && !FromBehind(true, 0.01f, 0.0f) &&
+	          FromBehind(false, -1.0f, 5.0f),
+	      "the cone's edges: 45 degrees, two centimetres; no axis, anything");
 }
 
 void TestDrops() {
@@ -359,7 +380,7 @@ void TestArrowPose() {
 	const NiPoint3 wrist{0, 0, 0};
 	const NiPoint3 knuckle{0, 8, 0.8f};
 	// The fist's grip axis (its y) up the world's z, the hand along y: the
-	// arrow 30 degrees below the hand's line.
+	// arrow 15 degrees below the hand's line.
 	NiMatrix33 fist = NiMatrix33::Identity();
 	fist.data[1][1] = 0.0f;
 	fist.data[2][1] = 1.0f;
@@ -367,10 +388,10 @@ void TestArrowPose() {
 	fist.data[2][2] = 0.0f;
 	const NiPoint3 flatKnuckle{0, 8, 0};
 	Check(ArrowInFist(grip, wrist, flatKnuckle, fist, 46.6f, p), "in the fist: posed");
-	const float c = std::cos(30.0f * 3.14159265f / 180.0f);
-	const float sn = std::sin(30.0f * 3.14159265f / 180.0f);
+	const float c = std::cos(15.0f * 3.14159265f / 180.0f);
+	const float sn = std::sin(15.0f * 3.14159265f / 180.0f);
 	const NiPoint3 ahead{0, c, -sn};
-	Check(NearPoint(p.rot * NiPoint3{0, 1, 0}, ahead), "along the hand, wrist to knuckle, 30 degrees down from it");
+	Check(NearPoint(p.rot * NiPoint3{0, 1, 0}, ahead), "along the hand, wrist to knuckle, 15 degrees down from it");
 	Check(NearPoint(p.nock, grip - ahead * kArrowNockBehindGripUnits) && NearPoint(p.pos, p.nock + ahead * 46.6f),
 	      "through the fist's middle: the nock just behind its grip point, the head ahead");
 	// The hand tilted up a little: "down" is still away from the grip axis,
@@ -462,6 +483,39 @@ void TestReleaseSnap() {
 	      "a snap not carried out is asked again");
 }
 
+void TestBowPower() {
+	std::printf("The power from the draw\n");
+	const auto power = [](float timer) { return std::fmin(1.0f, 0.25f + 0.4f * timer); };
+	Check(Near(power(BowTimerForDraw(0.0f, 0.25f, 0.4f)), 0.25f), "a string at rest: vanilla's least, 0.25");
+	Check(Near(power(BowTimerForDraw(1.0f, 0.25f, 0.4f)), 1.0f), "a full draw: full power");
+	Check(Near(power(BowTimerForDraw(0.5f, 0.25f, 0.4f)), 0.625f), "half drawn: halfway between");
+	Check(Near(BowTimerForDraw(2.0f, 0.25f, 0.4f), BowTimerForDraw(1.0f, 0.25f, 0.4f)) &&
+	          Near(BowTimerForDraw(-1.0f, 0.25f, 0.4f), 0.0f),
+	      "past either end: held to it");
+	Check(Near(BowTimerForDraw(1.0f, 0.25f, 0.0f), 0.0f), "settings that never grow: nothing written but 0");
+	Check(Near(BowTimerForDraw(1.0f, 2.0f, 0.4f), 0.0f) && Near(BowTimerForDraw(1.0f, -1.0f, 0.4f), 2.5f),
+	      "a base past 1 or below 0: held to the range");
+
+	BowPowerState s;
+	float w = -1.0f;
+	Check(!StepBowPower(s, false, true, 0.3f, false, -1, w), "nothing drawn: nothing written");
+	Check(StepBowPower(s, true, true, 0.4f, false, 4, w) && Near(w, 0.4f), "drawn: the string's weight");
+	Check(StepBowPower(s, true, false, 0.9f, false, 5, w) && Near(w, 0.4f), "a frame unread: the last weight kept");
+	StepBowPower(s, true, true, 0.8f, false, 5, w);
+	Check(StepBowPower(s, false, false, 0.0f, true, 5, w) && Near(w, 0.8f), "let go: the weight it had");
+	Check(StepBowPower(s, false, false, 0.0f, false, 5, w) && Near(w, 0.8f), "until the engine looses");
+	Check(!StepBowPower(s, false, false, 0.0f, false, 3, w), "loosed (3): no more");
+	Check(!StepBowPower(s, false, false, 0.0f, false, 5, w), "and not again");
+
+	BowPowerState unread;
+	Check(!StepBowPower(unread, true, false, 0.0f, false, 4, w), "a draw never read: the game's own timer");
+	Check(!StepBowPower(unread, false, false, 0.0f, true, 5, w), "and its loose too");
+	BowPowerState next;
+	StepBowPower(next, true, true, 0.7f, false, 5, w);
+	StepBowPower(next, false, false, 0.0f, false, 12, w);
+	Check(!StepBowPower(next, true, false, 0.0f, false, 4, w), "an eased draw's weight is not the next draw's");
+}
+
 }  // namespace
 
 int main() {
@@ -478,6 +532,7 @@ int main() {
 	TestEase();
 	TestWideNock();
 	TestReleaseSnap();
+	TestBowPower();
 	TestBowSounds();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);

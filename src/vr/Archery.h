@@ -189,6 +189,62 @@ inline ReleaseSnap StepReleaseSnap(ReleaseSnapState& s, bool loosedNow, SInt32 a
 	return action == 5 && !loosedNow ? ReleaseSnap::Snap : ReleaseSnap::Wait;
 }
 
+// The shot's power from how far the string is drawn, not how long (the
+// tester, 2026-10-01: "in vanilla scheint das ja iwas mit wie lange der bogen
+// gespannt wird. das geht in vr nicht. wir müssen das ändern auf wie weit der
+// bogen gespannt wurde"; game/BowRelease.h).
+//
+// The engine's power for the player is min(1, base + mult * timer), the
+// timer its bow timer (seconds the control was held), base and mult the game
+// settings fArrowBowTimerBase (0.25) and fArrowBowTimerMult (0.4) - nothing
+// else (no skill) goes into it. The power scales the arrow's speed and its
+// damage; the skill and the rest of the damage formula are applied apart from
+// it. So the timer is written instead, to the time that gives the same range
+// by the draw: a string at rest the vanilla least (base), a full draw full
+// power. The timer for a string `weight` (0 at rest, 1 at full draw); 0 when
+// the settings give no growth.
+inline float BowTimerForDraw(float weight, float base, float mult) {
+	if (!(mult > 0.0f)) {
+		return 0.0f;
+	}
+	const float w = weight < 0.0f ? 0.0f : (weight > 1.0f ? 1.0f : weight);
+	const float floor = base < 0.0f ? 0.0f : (base > 1.0f ? 1.0f : base);
+	return (1.0f - floor) * w / mult;
+}
+
+// Which draw the timer is written for this frame: while drawn, the string's
+// weight as last read; from the loose until the engine has loosed (its action
+// leaves 4 and 5), the weight the string had when it was let go - the engine
+// reads the power when it looses, a few frames after the control goes up. A
+// draw whose weight was never read is left to the game's own timer.
+struct BowPowerState {
+	bool known = false;    // this draw's weight has been read
+	bool holding = false;  // a loosed draw not yet shot
+	float weight = 0.0f;
+};
+
+// True with the weight to write in `weightOut`.
+inline bool StepBowPower(BowPowerState& s, bool drawing, bool weightValid, float stringWeight, bool loosedNow,
+                         SInt32 action, float& weightOut) {
+	if (drawing) {
+		s.holding = false;
+		if (weightValid) {
+			s.weight = stringWeight;
+			s.known = true;
+		}
+	} else if (loosedNow) {
+		s.holding = s.known;
+		s.known = false;
+	} else {
+		s.known = false;
+		if (s.holding && action != 4 && action != 5) {
+			s.holding = false;
+		}
+	}
+	weightOut = s.weight;
+	return drawing ? s.known : s.holding;
+}
+
 inline float MetresBetween(const NiPoint3& a, const NiPoint3& b) {
 	const NiPoint3 d{a.x - b.x, a.y - b.y, a.z - b.z};
 	return math::Sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
@@ -213,6 +269,21 @@ inline void PullAlongBow(const ArcheryInput& in, float& pull, float& across) {
 	pull = d.x * a.x + d.y * a.y + d.z * a.z;
 	const NiPoint3 side{d.x - a.x * pull, d.y - a.y * pull, d.z - a.z * pull};
 	across = math::Sqrt(side.x * side.x + side.y * side.y + side.z * side.z);
+}
+
+// Whether the drawing hand is behind the bow to nock: within 45 degrees of
+// straight back along the bow (no further across it than behind it), so an
+// arrow brought from the front or a side does not go onto the string (the
+// tester, 2026-10-01: "der pfeil nur auf die sehne springt wenn man ihn von
+// hinten an die stelle am bogen führt. von vorne kommen oder andere seiten soll
+// natürlich nicht gehen"). Without the bow's axis any side does, as before.
+constexpr float kNockBehindMinMetres = 0.02f;
+
+inline bool FromBehind(bool axisValid, float pullMetres, float acrossMetres) {
+	if (!axisValid) {
+		return true;
+	}
+	return pullMetres >= kNockBehindMinMetres && acrossMetres <= pullMetres;
 }
 
 inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, const ArcherySettings& s) {
@@ -258,7 +329,7 @@ inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, cons
 			} else {
 				v.dropped = true;
 			}
-		} else if (v.handsApartMetres <= s.nockMetres) {
+		} else if (v.handsApartMetres <= s.nockMetres && FromBehind(in.axisValid, v.pullMetres, v.offLineMetres)) {
 			st.state = ArrowState::Nocked;
 			v.nocked = true;
 		}
@@ -500,10 +571,11 @@ inline bool ArrowAlong(const NiPoint3& nock, const NiPoint3& direction, const Ni
 // behind the fist's grip point. The tester, 2026-09-30 evening: "rechte hand
 // der pfeil zeigt nicht wie der laserpointer sondern hier auch einfach mittig
 // in der hand gerade aus"; 2026-10-01, of the line along the hand: "der pfeil
-// muss noch 30 grad runter damit er geradeaus schaut". Before it lay on the
-// laser, and before that along the grip, pointing up. False with the wrist on
-// the knuckle, the grip axis along the hand, or a model with no length.
-constexpr float kArrowInFistDownDegrees = 30.0f;
+// muss noch 30 grad runter damit er geradeaus schaut", then "fast da. jetzt
+// bitte 15 grad hoch": 15. Before it lay on the laser, and before that along
+// the grip, pointing up. False with the wrist on the knuckle, the grip axis
+// along the hand, or a model with no length.
+constexpr float kArrowInFistDownDegrees = 15.0f;
 
 inline bool ArrowInFist(const NiPoint3& grip, const NiPoint3& wrist, const NiPoint3& knuckle,
                         const NiMatrix33& rollFrom, float lengthUnits, ArrowPose& out) {

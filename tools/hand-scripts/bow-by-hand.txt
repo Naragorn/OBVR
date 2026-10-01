@@ -40,6 +40,9 @@ expect Hands: bow by hand - the arrow off the string, in the hand
 expect Hands: bow by hand - the arrow put back in the quiver
 expect Hands: bow by hand - loosed
 expect Bow release: the first-person draw put at its Hold
+expect Bow power: the draw 1.00 gives the bow timer 1.8
+expect Hands: bow by hand - loosed at a draw of
+reject (no draw read - the game's power)
 expect Camera: both sticks held - recentering
 expect Bow draw sound: fx\wpn\wpn_bowdraw.wav from
 expect Bow draw sound: the first (nock) part played
@@ -72,8 +75,8 @@ left pos -0.25 -0.10 -0.70
 # is turned up 90 degrees so the bow stands upright and shoots ahead, along
 # (-0.07 0.04 -1.00) (the log's "along" at the arrow taken off). The pulls
 # below run back along it from the bow hand: 5 cm (nocked, eased), 30
-# (drawn), 70 (past a full draw); the arrow is taken off the string 21 cm
-# across it.
+# (drawn), 70 (past a full draw); the arrow is taken off the string 30 cm
+# across it, out of the nock's reach (25 cm).
 left rot 90 0 0
 wait 3
 head pitch -45
@@ -107,7 +110,7 @@ wait 0.3
 right pos -0.247 -0.102 -0.650
 wait 1.0
 mark eased
-right pos -0.037 -0.102 -0.650
+right pos 0.050 -0.102 -0.650
 wait 0.5
 mark unnocked
 right pos 0.15 -0.10 0.12
