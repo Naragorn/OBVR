@@ -429,6 +429,33 @@ Every change below is switched by the mode.
   the shield hand driven into an NPC, the engine's knockback applied.
 - **New games.** The walkthrough and the hands' guide around the intro and
   the character creation: not yet tested.
+- **Block with the fists and the bow (test more later; the tester,
+  2026-10-01: "bisher keinen block gehabt ... Bogen: Hat manchmal geblockt.
+  aber auch hier unklar wie oft das gehen soll").** The tester's log of that
+  evening (until 21:09): both guards reach the engine - 36 times each the
+  player's action went to 6 (blocking), and the engine's own block test
+  counted at least 8 blows on the fists and 4 on the bow as blocked
+  ("Block: a blow at the player's block ... (blocked)"; that line stops
+  after 12, so later blocks went unlogged). What to look at:
+  - **Fists against weapons do nothing in vanilla** (UESP Oblivion:Block:
+    "Hand to hand blocks 0.25% damage per skill level, but only against
+    unarmed opponents"; Novice: "hand-to-hand blocking against weapons has no
+    effect"), and with the arms hidden there is no feedback either - likely
+    why no block was felt. A decision for the tester: vanilla plus feedback
+    (a sound or a pulse on a blocked blow), or OBVR's own reduction against
+    weapons (not vanilla).
+  - **Both guards flicker.** About half the blocks end within one to five log
+    lines (11471-11550: on, off, on, off); a blow counts only when it lands
+    in an "on". Suspected, not measured: the thresholds sit where the hands
+    are held - the guard's hand no lower than 20 cm below the eyes (a bow
+    held at the chest is 30-40 cm below), the bow within about 37 degrees of
+    upright, and any small move read as a swing ends the fists' guard.
+  - **First measure:** each guard's on and off with its values (the hand's
+    height and reach, the bow's lean, a swing seen), each blow at the player
+    with blocking or not, the attacker's weapon and the damage taken, and no
+    cap on the block line. **Then** an on-threshold and a looser
+    off-threshold with a short least hold (about 0.3 s), and for the bow
+    perhaps the chest's height and 45 degrees.
 - **Stagger in combat (reminder to test).** `[Look] NoPlayerStagger` (on by
   default) skips the player's stagger (0x005F4FD0, both call sites) and a
   hit's knockback (the character-proxy fetch at 0x0060008A). To test in the
