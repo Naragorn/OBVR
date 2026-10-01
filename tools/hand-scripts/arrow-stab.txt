@@ -1,8 +1,10 @@
 # The arrow in the hand stabs (vr::ArrowStabs; the tester, 2026-10-01: "dass
 # ich mit dem pfeil rechts in der hand zuschlagen kann wie Legolas"). A bow
 # drawn, an arrow taken from the quiver, a beggar placed just ahead; the
-# hand thrusts the arrow forward through him - the arrow is the blade, the
-# engine's hit function strikes with the bow drawn.
+# arrow is first swung across through him like a blade - no stab (the
+# tester: "Nur zustechen soll gehen, nicht schwingen wie eine klinge!") - then
+# thrust forward into him: a stab, the engine's hit with the bow drawn. The
+# log must show "the arrow in the hand met" only after the mark "ready".
 # Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\arrow-stab.txt
 
 ini Hands Enabled=1
@@ -14,10 +16,8 @@ console player.additem 00025231 1
 console player.equipitem 00025231
 console-at arrows player.additem 00017829 20
 console-at arrows_on player.equipitem 00017829
+# A beggar walks up to the player to beg, and stays near.
 console-at beggar player.placeatme 0001C45B 1 100 0
-# The AI off, so the beggar stands where he is put (he walks up and away
-# otherwise) - the strike, not his wandering, is under test.
-console-at still tai
 
 expect HandScript: finished
 expect Hands: bow by hand - an arrow taken from the quiver
@@ -32,10 +32,8 @@ mark arrows_on
 wait 6
 # The console's menu would make an arrow in the hand drop: the beggar comes
 # before the bow is drawn.
-mark still
-wait 4
 mark beggar
-wait 10
+wait 14
 left pos -0.18 -0.15 0.12
 wait 0.3
 left grip 1
@@ -51,10 +49,297 @@ wait 0.5
 mark arrow_taken
 # Turned up, so the arrow points ahead rather than at the floor.
 right rot 60 0 0
-right pos 0.15 -0.15 -0.15
 wait 1
+# Slowly (no swing) out to the left at arm's length.
+right pos 0.133 -0.101 0.114
+wait 0.05
+right pos 0.117 -0.102 0.108
+wait 0.05
+right pos 0.100 -0.103 0.102
+wait 0.05
+right pos 0.083 -0.104 0.096
+wait 0.05
+right pos 0.067 -0.106 0.090
+wait 0.05
+right pos 0.050 -0.107 0.084
+wait 0.05
+right pos 0.033 -0.108 0.078
+wait 0.05
+right pos 0.017 -0.109 0.072
+wait 0.05
+right pos -0.000 -0.110 0.066
+wait 0.05
+right pos -0.017 -0.111 0.060
+wait 0.05
+right pos -0.033 -0.112 0.054
+wait 0.05
+right pos -0.050 -0.113 0.048
+wait 0.05
+right pos -0.067 -0.114 0.042
+wait 0.05
+right pos -0.083 -0.116 0.036
+wait 0.05
+right pos -0.100 -0.117 0.030
+wait 0.05
+right pos -0.117 -0.118 0.024
+wait 0.05
+right pos -0.133 -0.119 0.018
+wait 0.05
+right pos -0.150 -0.120 0.012
+wait 0.05
+right pos -0.167 -0.121 0.006
+wait 0.05
+right pos -0.183 -0.122 0.000
+wait 0.05
+right pos -0.200 -0.123 -0.006
+wait 0.05
+right pos -0.217 -0.124 -0.012
+wait 0.05
+right pos -0.233 -0.126 -0.018
+wait 0.05
+right pos -0.250 -0.127 -0.024
+wait 0.05
+right pos -0.267 -0.128 -0.030
+wait 0.05
+right pos -0.283 -0.129 -0.036
+wait 0.05
+right pos -0.300 -0.130 -0.042
+wait 0.05
+right pos -0.317 -0.131 -0.048
+wait 0.05
+right pos -0.333 -0.132 -0.054
+wait 0.05
+right pos -0.350 -0.133 -0.060
+wait 0.05
+right pos -0.367 -0.134 -0.066
+wait 0.05
+right pos -0.383 -0.136 -0.072
+wait 0.05
+right pos -0.400 -0.137 -0.078
+wait 0.05
+right pos -0.417 -0.138 -0.084
+wait 0.05
+right pos -0.433 -0.139 -0.090
+wait 0.05
+right pos -0.450 -0.140 -0.096
+wait 0.05
+right pos -0.467 -0.141 -0.102
+wait 0.05
+right pos -0.483 -0.142 -0.108
+wait 0.05
+right pos -0.500 -0.143 -0.114
+wait 0.05
+right pos -0.517 -0.144 -0.120
+wait 0.05
+right pos -0.533 -0.146 -0.126
+wait 0.05
+right pos -0.550 -0.147 -0.132
+wait 0.05
+right pos -0.567 -0.148 -0.138
+wait 0.05
+right pos -0.583 -0.149 -0.144
+wait 0.05
+right pos -0.600 -0.150 -0.150
+wait 0.05
+right pos -0.600 -0.150 -0.163
+wait 0.05
+right pos -0.600 -0.150 -0.177
+wait 0.05
+right pos -0.600 -0.150 -0.190
+wait 0.05
+right pos -0.600 -0.150 -0.203
+wait 0.05
+right pos -0.600 -0.150 -0.217
+wait 0.05
+right pos -0.600 -0.150 -0.230
+wait 0.05
+right pos -0.600 -0.150 -0.243
+wait 0.05
+right pos -0.600 -0.150 -0.257
+wait 0.05
+right pos -0.600 -0.150 -0.270
+wait 0.05
+right pos -0.600 -0.150 -0.283
+wait 0.05
+right pos -0.600 -0.150 -0.297
+wait 0.05
+right pos -0.600 -0.150 -0.310
+wait 0.05
+right pos -0.600 -0.150 -0.323
+wait 0.05
+right pos -0.600 -0.150 -0.337
+wait 0.05
+right pos -0.600 -0.150 -0.350
+wait 0.05
+right pos -0.600 -0.150 -0.363
+wait 0.05
+right pos -0.600 -0.150 -0.377
+wait 0.05
+right pos -0.600 -0.150 -0.390
+wait 0.05
+right pos -0.600 -0.150 -0.403
+wait 0.05
+right pos -0.600 -0.150 -0.417
+wait 0.05
+right pos -0.600 -0.150 -0.430
+wait 0.05
+right pos -0.600 -0.150 -0.443
+wait 0.05
+right pos -0.600 -0.150 -0.457
+wait 0.05
+right pos -0.600 -0.150 -0.470
+wait 0.05
+right pos -0.600 -0.150 -0.483
+wait 0.05
+right pos -0.600 -0.150 -0.497
+wait 0.05
+right pos -0.600 -0.150 -0.510
+wait 0.05
+right pos -0.600 -0.150 -0.523
+wait 0.05
+right pos -0.600 -0.150 -0.537
+wait 0.05
+right pos -0.600 -0.150 -0.550
+wait 0.05
+right pos -0.600 -0.150 -0.563
+wait 0.05
+right pos -0.600 -0.150 -0.577
+wait 0.05
+right pos -0.600 -0.150 -0.590
+wait 0.05
+right pos -0.600 -0.150 -0.603
+wait 0.05
+right pos -0.600 -0.150 -0.617
+wait 0.05
+right pos -0.600 -0.150 -0.630
+wait 0.05
+right pos -0.600 -0.150 -0.643
+wait 0.05
+right pos -0.600 -0.150 -0.657
+wait 0.05
+right pos -0.600 -0.150 -0.670
+wait 0.05
+right pos -0.600 -0.150 -0.683
+wait 0.05
+right pos -0.600 -0.150 -0.697
+wait 0.05
+right pos -0.600 -0.150 -0.710
+wait 0.05
+right pos -0.600 -0.150 -0.723
+wait 0.05
+right pos -0.600 -0.150 -0.737
+wait 0.05
+right pos -0.600 -0.150 -0.750
+wait 0.05
+wait 0.5
+mark wide
+dump
+# Swung across, like a blade, through where the beggar stands: no stab.
+right pos -0.30 -0.15 -0.75
+wait 0.03
+right pos 0.00 -0.15 -0.75
+wait 0.03
+right pos 0.30 -0.15 -0.75
+wait 0.03
+right pos 0.60 -0.15 -0.75
+wait 0.5
+mark swept
+dump
+# Slowly back to the middle, the arm drawn in.
+right pos 0.590 -0.150 -0.736
+wait 0.05
+right pos 0.580 -0.150 -0.721
+wait 0.05
+right pos 0.570 -0.150 -0.707
+wait 0.05
+right pos 0.560 -0.150 -0.692
+wait 0.05
+right pos 0.550 -0.150 -0.678
+wait 0.05
+right pos 0.540 -0.150 -0.663
+wait 0.05
+right pos 0.530 -0.150 -0.649
+wait 0.05
+right pos 0.520 -0.150 -0.634
+wait 0.05
+right pos 0.510 -0.150 -0.620
+wait 0.05
+right pos 0.500 -0.150 -0.606
+wait 0.05
+right pos 0.490 -0.150 -0.591
+wait 0.05
+right pos 0.480 -0.150 -0.577
+wait 0.05
+right pos 0.470 -0.150 -0.562
+wait 0.05
+right pos 0.460 -0.150 -0.548
+wait 0.05
+right pos 0.450 -0.150 -0.533
+wait 0.05
+right pos 0.440 -0.150 -0.519
+wait 0.05
+right pos 0.430 -0.150 -0.504
+wait 0.05
+right pos 0.420 -0.150 -0.490
+wait 0.05
+right pos 0.410 -0.150 -0.476
+wait 0.05
+right pos 0.400 -0.150 -0.461
+wait 0.05
+right pos 0.390 -0.150 -0.447
+wait 0.05
+right pos 0.380 -0.150 -0.432
+wait 0.05
+right pos 0.370 -0.150 -0.418
+wait 0.05
+right pos 0.360 -0.150 -0.403
+wait 0.05
+right pos 0.350 -0.150 -0.389
+wait 0.05
+right pos 0.340 -0.150 -0.374
+wait 0.05
+right pos 0.330 -0.150 -0.360
+wait 0.05
+right pos 0.320 -0.150 -0.346
+wait 0.05
+right pos 0.310 -0.150 -0.331
+wait 0.05
+right pos 0.300 -0.150 -0.317
+wait 0.05
+right pos 0.290 -0.150 -0.302
+wait 0.05
+right pos 0.280 -0.150 -0.288
+wait 0.05
+right pos 0.270 -0.150 -0.273
+wait 0.05
+right pos 0.260 -0.150 -0.259
+wait 0.05
+right pos 0.250 -0.150 -0.244
+wait 0.05
+right pos 0.240 -0.150 -0.230
+wait 0.05
+right pos 0.230 -0.150 -0.216
+wait 0.05
+right pos 0.220 -0.150 -0.201
+wait 0.05
+right pos 0.210 -0.150 -0.187
+wait 0.05
+right pos 0.200 -0.150 -0.172
+wait 0.05
+right pos 0.190 -0.150 -0.158
+wait 0.05
+right pos 0.180 -0.150 -0.143
+wait 0.05
+right pos 0.170 -0.150 -0.129
+wait 0.05
+right pos 0.160 -0.150 -0.114
+wait 0.05
+right pos 0.150 -0.150 -0.100
+wait 0.05
+wait 0.5
 mark ready
 dump
+# Thrust head first: a stab.
 right pos 0.15 -0.15 -0.30
 wait 0.03
 right pos 0.15 -0.15 -0.45
@@ -67,7 +352,11 @@ right pos 0.15 -0.15 -0.85
 wait 0.5
 mark stabbed
 dump
-right pos 0.15 -0.15 -0.15
 wait 1
+# Once more, so a miss of the stab above is reported (at the next swing).
+right pos 0.15 -0.15 -0.30
+wait 0.03
+right pos 0.15 -0.15 -0.50
+wait 0.5
 right trigger 0
 wait 1

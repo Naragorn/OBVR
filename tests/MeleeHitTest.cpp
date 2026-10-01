@@ -167,6 +167,30 @@ void TestStrikeKind() {
 	Check(StrikeKindFor(false, 1, true, 0) == StrikeKind::None, "the other hand with a weapon out: nothing");
 }
 
+void TestArrowBlade() {
+	std::printf("The arrow carried over to the world by the hand\n");
+	const NiMatrix33 id = NiMatrix33::Identity();
+	// The first-person skeleton 100 units above the world: the hilt where the
+	// hand is in the world, the arrow as far from it as from the skeleton's grip.
+	const Blade b = ArrowBladeInWorld(id, NiPoint3{10, 20, 30}, NiPoint3{5, 0, 0}, NiPoint3{0, 0, 100},
+	                                  NiPoint3{0, -3, 100}, NiPoint3{0, 43, 101});
+	Check(b.base.x == 15.0f && b.base.y == 17.0f && b.base.z == 30.0f, "the nock: the hilt plus its way from the grip");
+	Check(b.tip.x == 15.0f && b.tip.y == 63.0f && b.tip.z == 31.0f, "the head the same way");
+}
+
+void TestArrowThrust() {
+	std::printf("The arrow stabs only when thrust\n");
+	const NiPoint3 nock{0, 0, 0};
+	const NiPoint3 head{0, 46, 0};
+	Check(IsArrowThrust(NiPoint3{0, 40, 0}, nock, head), "driven head first along itself: a thrust");
+	Check(IsArrowThrust(NiPoint3{-2, 40, 0}, nock, head), "a little off its line: still a thrust");
+	Check(!IsArrowThrust(NiPoint3{-6, 46, 0}, nock, head), "swung across, like a blade: no thrust");
+	Check(!IsArrowThrust(NiPoint3{-5, 41, 0}, nock, head), "half across, half ahead (45 degrees): no thrust");
+	Check(!IsArrowThrust(NiPoint3{0, 50, 0}, nock, head), "pulled back: no thrust");
+	Check(!IsArrowThrust(head, nock, head), "not moved: no thrust");
+	Check(!IsArrowThrust(NiPoint3{0, 40, 0}, head, head), "an arrow of no length: no thrust");
+}
+
 }  // namespace
 
 int main() {
@@ -176,6 +200,8 @@ int main() {
 	TestLedger();
 	TestWeaponTypes();
 	TestStrikeKind();
+	TestArrowThrust();
+	TestArrowBlade();
 	TestSwish();
 	TestHeldStrike();
 

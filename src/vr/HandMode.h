@@ -574,6 +574,7 @@ struct HandModeResult {
 	// For the log.
 	bool blocking = false;
 	bool bowGuard = false;  // the block is the bow held upright
+	bool fistGuard = false;  // the block is both fists raised
 	bool reachBack = false;
 	SwingVerdict swing = SwingVerdict::None;
 };

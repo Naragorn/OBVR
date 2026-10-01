@@ -744,7 +744,6 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.archery.drawStartMetres = ReadFloat("Hands", "BowDrawStartMetres", h.archery.drawStartMetres, path);
 		h.archery.unnockMetres = ReadFloat("Hands", "BowUnnockMetres", h.archery.unnockMetres, path);
 		h.archery.takeWithTrigger = !ReadBool("Hands", "ArrowWithGrip", !h.archery.takeWithTrigger, path);
-		h.archery.blocks = ReadBool("Hands", "BowBlocks", h.archery.blocks, path);
 		h.archery.stabs = ReadBool("Hands", "ArrowStabs", h.archery.stabs, path);
 		h.throwHit.staggerSpeed = ReadFloat("Hands", "ThrowStaggerSpeed", h.throwHit.staggerSpeed, path);
 		h.throwHit.knockSpeed = ReadFloat("Hands", "ThrowKnockSpeed", h.throwHit.knockSpeed, path);

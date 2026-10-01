@@ -91,7 +91,10 @@ struct MotionStrike {
 	// The arrow in the weapon hand with a bow drawn (vr::ArrowStabs): the
 	// blade is the arrow from its nock to its head, in the world, and each
 	// body it meets is struck at once - no power attack to wait for.
+	// All three on the first-person skeleton (game::ArrowInHandWorld), carried
+	// over to the world by the hand (ArrowBladeInWorld, handOffsetUnits).
 	bool arrow = false;
+	NiPoint3 arrowGrip{0.0f, 0.0f, 0.0f};
 	NiPoint3 arrowNock{0.0f, 0.0f, 0.0f};
 	NiPoint3 arrowHead{0.0f, 0.0f, 0.0f};
 };

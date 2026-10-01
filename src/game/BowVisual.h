@@ -47,9 +47,13 @@ bool BowShotAxis(NiPoint3& world);
 bool BowLimbAxis(NiPoint3& world);
 
 // The arrow in the drawing hand (not on the string) in the world at the last
-// StepBowVisual, its nock and its head: the blade of a stab with it
-// (vr::ArrowStabs). False with none shown in the hand.
-bool ArrowInHandWorld(NiPoint3& nock, NiPoint3& head);
+// StepBowVisual - the hand's grip, its nock and its head, on the first-person
+// skeleton (game::ArrowBladeInWorld carries them to the world) - as the fist holds it - not as it is
+// shown led towards the string: the blade of a stab with it (vr::ArrowStabs).
+// False with none shown in the hand. `thrustCosine` is how its head moved
+// since the step before against its own line (game::ArrowThrustCosine; -2
+// for no move or no arrow then): a stab is a thrust, not a swing.
+bool ArrowInHandWorld(NiPoint3& grip, NiPoint3& nock, NiPoint3& head, float& thrustCosine);
 
 // How far the string was drawn by the hand at the last StepBowVisual: 0 at
 // rest, 1 at full draw (the weight its morph was given). False when the arrow

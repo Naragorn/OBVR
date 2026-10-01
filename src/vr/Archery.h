@@ -78,9 +78,7 @@ struct ArcherySettings {
 	float unnockMetres = 0.12f;
 	// Which button holds the arrow: the trigger (the default), or the grip.
 	bool takeWithTrigger = true;
-	// The bow held upright before the body blocks (vr::IsBowGuard).
-	bool blocks = true;
-	// The arrow in the hand, swung or thrust into someone, strikes
+	// The arrow in the hand, thrust head first into someone, stabs
 	// (vr::ArrowStabs).
 	bool stabs = true;
 };

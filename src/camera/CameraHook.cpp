@@ -2434,8 +2434,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 
 	if (g_hand.blocking != g_handBlocking) {
 		g_handBlocking = g_hand.blocking;
-		OBVR_LOG("Hands: %s", g_handBlocking ? (g_hand.bowGuard ? "the bow is held upright - blocking"
-		                                                         : "the left hand is up - blocking")
+		OBVR_LOG("Hands: %s", g_handBlocking ? (g_hand.bowGuard    ? "the bow is held upright - blocking"
+		                                        : g_hand.fistGuard ? "both fists are up - blocking"
+		                                                           : "the left hand is up - blocking")
 		                                      : "the left hand is down - block released");
 	}
 	// The bow by hand, each step (vr::StepArchery).
@@ -2645,11 +2646,30 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		game::StrikeByMotion(strike);
 	}
 	// The arrow in the drawing hand, with the bow drawn, stabs the same way
-	// (vr::ArrowStabs): the arrow as it is seen is the blade.
-	if (active && g_hand.arrowStrike && g_hand.swingActive && g_hand.rightHandValid && !menuIsUp) {
+	// (vr::ArrowStabs): the arrow as it is seen is the blade - only while it is
+	// thrust head first, not swung (game::IsArrowThrust).
+	{
+		// Measured by the bow's own step, once a frame, between its places of
+		// the arrow (this runs more often than that step moves it).
 		game::MotionStrike strike;
-		if (game::ArrowInHandWorld(strike.arrowNock, strike.arrowHead)) {
+		float cosine = -2.0f;
+		const bool seen = game::ArrowInHandWorld(strike.arrowGrip, strike.arrowNock, strike.arrowHead, cosine);
+		const bool thrust = seen && cosine >= game::kArrowThrustMinAlong;
+		// Each swing with the arrow, once: whether it was a thrust or a swing.
+		static UInt32 s_saidSerial = 0;
+		static UInt32 s_thrustLines = 40;
+		if (active && g_hand.arrowStrike && g_hand.swingActive && cosine > -1.5f && g_hand.swingSerial != s_saidSerial &&
+		    s_thrustLines > 0) {
+			s_saidSerial = g_hand.swingSerial;
+			--s_thrustLines;
+			OBVR_LOG("Hands: the arrow in the hand %s (its head's way %.2f along it, %.2f needed) - swing %u",
+			         thrust ? "thrust - it stabs" : "swung, not thrust - no stab", static_cast<double>(cosine),
+			         static_cast<double>(game::kArrowThrustMinAlong), g_hand.swingSerial);
+		}
+		if (active && g_hand.arrowStrike && g_hand.swingActive && g_hand.rightHandValid && !menuIsUp && thrust) {
 			strike.arrow = true;
+			strike.handRotation = g_hand.rightHandRotation;
+			strike.handOffsetUnits = g_hand.rightHandOffsetUnits;
 			strike.swingSerial = g_hand.swingSerial;
 			strike.attackGroup = vr::kAnimGroupAttackLight;
 			strike.cameraValid = g_cyclopeanCameraWorldValid;

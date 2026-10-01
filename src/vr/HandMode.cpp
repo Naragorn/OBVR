@@ -229,6 +229,12 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		                     r.rightHandRotation.data[2][1]};
 		r.blocking = IsWeaponGuard(rightRelative, blade, m_swing.swinging, s.gestures);
 	}
+	// Or, with the fists up, both raised in front (IsFistGuard).
+	if (!r.blocking && !f.menuMode && f.right.valid && f.left.valid && f.equipped == EquippedKind::Nothing &&
+	    f.weaponSeen == WeaponSeen::Drawn) {
+		r.blocking = IsFistGuard(rightRelative, leftRelative, m_swing.swinging, m_leftSwing.swinging, s.gestures);
+		r.fistGuard = r.blocking;
+	}
 	r.reachBack = f.right.valid && IsReachBackGesture(rightRelative, s.gestures);
 
 	// The swing, from the right hand's speed across the head-relative frame
@@ -444,7 +450,9 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		// (vr::IsBowGuard) - none in the hand either.
 		if (bowDrawn && s.archery.enabled) {
 			r.blocking = false;
-			if (s.archery.blocks && cl.valid && f.bowLimbValid && !f.menuMode) {
+			// Always: vanilla blocks with a bow (the tester, 2026-10-01: "das ist
+			// vanilla funktionalität daher immer drin").
+			if (cl.valid && f.bowLimbValid && !f.menuMode) {
 				const NiPoint3 limb = TrackingRotate(cl.orientation, f.bowLimbLocal);
 				const float length = math::Sqrt(limb.LengthSquared());
 				const bool arrowOut = r.archery.state != ArrowState::None;

@@ -1,0 +1,35 @@
+# Both fists raised block (vr::IsFistGuard; the tester, 2026-10-01: "als h2h
+# wenn ich beide fäuste vor mir hebe das muss auch als block zählen im
+# unarmed combat"), as vanilla blocks bare-handed. Nothing in the weapon slot,
+# the weapon hand closed raises the fists (fist.txt); both hands are then
+# raised before the face, one lowered, both raised again.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\fist-block.txt
+
+ini Hands Enabled=1
+ini Hands Fists=1
+console player.unequipitem 00000C0C
+console player.unequipitem 00025231
+console player.unequipitem 000229B3
+
+expect HandScript: finished
+expect Fist: the weapon hand closed - fists up
+expect Hands: both fists are up - blocking
+expect Hands: the left hand is down - block released
+reject HandScript: WARNING
+
+wait 20
+right curl 1
+wait 2
+mark fists_up
+right pos 0.10 -0.05 -0.35
+left pos -0.10 -0.05 -0.35
+wait 1.5
+mark guard
+dump
+left pos -0.30 -0.60 -0.20
+wait 1
+mark one_down
+left pos -0.10 -0.05 -0.35
+wait 1
+mark guard_again
+wait 1

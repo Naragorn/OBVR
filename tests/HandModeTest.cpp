@@ -1990,6 +1990,50 @@ void TestWeaponGuard() {
 	Check(!r.blocking, "sheathed: the same hand does not block");
 }
 
+void TestFistGuard() {
+	std::printf("Both fists raised block\n");
+	GestureThresholds t;
+	const NiPoint3 right{0.1f, 0.35f, -0.05f};
+	const NiPoint3 left{-0.1f, 0.35f, -0.05f};
+	Check(IsFistGuard(right, left, false, false, t), "both raised in front of the face: a guard");
+	Check(!IsFistGuard(right, NiPoint3{-0.2f, 0.1f, -0.5f}, false, false, t) &&
+	          !IsFistGuard(NiPoint3{0.2f, 0.1f, -0.5f}, left, false, false, t),
+	      "one hand down: no guard");
+	Check(!IsFistGuard(right, NiPoint3{-0.1f, 0.05f, -0.05f}, false, false, t), "one at the chest: no guard");
+	Check(!IsFistGuard(right, left, true, false, t) && !IsFistGuard(right, left, false, true, t),
+	      "not while either hand punches");
+
+	HandSettings settings = WithoutLaserOffset();
+	settings.enabled = true;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.inWorld = true;
+	frame.dtSeconds = 0.01f;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	// Tracking axes x right, y up, z back: both hands up ahead of the face.
+	frame.right.position = NiPoint3{0.1f, -0.05f, -0.35f};
+	frame.left.position = NiPoint3{-0.1f, -0.05f, -0.35f};
+	frame.equipped = EquippedKind::Nothing;
+	frame.weaponSeen = WeaponSeen::Drawn;
+	HandMode mode;
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.blocking && r.fistGuard && r.controls.block, "in the mode: the fists up, both raised, block");
+	frame.left.position = NiPoint3{-0.3f, -0.6f, -0.2f};
+	r = mode.Update(frame, settings);
+	Check(!r.blocking, "the left hand lowered: no block");
+	frame.left.position = NiPoint3{-0.1f, -0.05f, -0.35f};
+	frame.weaponSeen = WeaponSeen::Sheathed;
+	HandMode down;
+	r = down.Update(frame, settings);
+	Check(!r.blocking, "the fists not up: no block");
+	frame.weaponSeen = WeaponSeen::Drawn;
+	frame.equipped = EquippedKind::OneHand;
+	HandMode sword;
+	r = sword.Update(frame, settings);
+	Check(!r.fistGuard, "a sword in hand: not the fists' guard");
+}
+
 void TestBowGuard() {
 	std::printf("The bow held upright blocks\n");
 	GestureThresholds t;
@@ -2031,11 +2075,6 @@ void TestBowGuard() {
 	r = mode.Update(frame, settings);
 	Check(!r.blocking, "the bow's limbs not seen: no block");
 	frame.bowLimbValid = true;
-	HandSettings off = settings;
-	off.archery.blocks = false;
-	HandMode noBlock;
-	r = noBlock.Update(frame, off);
-	Check(!r.blocking, "Bow blocks off: no block");
 	// The empty weapon hand across the body is no guard with the bow.
 	frame.left.position = NiPoint3{-0.3f, -0.6f, -0.2f};
 	frame.right.position = NiPoint3{0.1f, -0.1f, -0.35f};
@@ -2361,6 +2400,7 @@ int main() {
 	TestFirstPersonDepthBranch();
 	TestWeaponGuard();
 	TestBowGuard();
+	TestFistGuard();
 	TestLeftHandedMirror();
 	TestBowByHand();
 	TestHolsterInMode();

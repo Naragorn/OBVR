@@ -11,6 +11,7 @@
 #include "game/FirstPersonHide.h"
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
+#include "game/MeleeHit.h"
 #include "game/GameTypes.h"
 #include "game/NearbyItems.h"
 
@@ -316,6 +317,8 @@ NiPoint3 g_limb{0.0f, 0.0f, 1.0f};
 bool g_inHandValid = false;
 NiPoint3 g_inHandNock{0.0f, 0.0f, 0.0f};
 NiPoint3 g_inHandHead{0.0f, 0.0f, 0.0f};
+float g_inHandThrustCosine = -2.0f;
+NiPoint3 g_inHandGrip{0.0f, 0.0f, 0.0f};
 bool g_drawValid = false;
 float g_draw = 0.0f;
 // The drawing hand's way onto the string (vr::StepNockPull).
@@ -341,12 +344,14 @@ bool BowShotAxis(NiPoint3& world) {
 	return true;
 }
 
-bool ArrowInHandWorld(NiPoint3& nock, NiPoint3& head) {
+bool ArrowInHandWorld(NiPoint3& grip, NiPoint3& nock, NiPoint3& head, float& thrustCosine) {
 	if (!g_inHandValid) {
 		return false;
 	}
+	grip = g_inHandGrip;
 	nock = g_inHandNock;
 	head = g_inHandHead;
+	thrustCosine = g_inHandThrustCosine;
 	return true;
 }
 
@@ -361,7 +366,10 @@ bool BowLimbAxis(NiPoint3& world) {
 void StepBowVisual(const BowVisualInput& in) {
 	g_shotValid = false;
 	g_drawValid = false;
+	const bool hadInHand = g_inHandValid;
+	const NiPoint3 headBefore = g_inHandHead;
 	g_inHandValid = false;
+	g_inHandThrustCosine = -2.0f;
 	// Led towards the string in the hand, onto it on the string.
 	g_nockPull = vr::StepNockPull(g_nockPull,
 	                              in.arrow == vr::ArrowShown::OnString  ? 1.0f
@@ -419,6 +427,12 @@ void StepBowVisual(const BowVisualInput& in) {
 	vr::ArrowPose pose;
 	vr::ArrowOnString onString;
 	bool posed = false;
+	// The arrow as the fist holds it, before any lead towards the string: what
+	// a stab is measured and struck with (ArrowInHandWorld), and the grip it
+	// is held from, before the hand is led anywhere.
+	vr::ArrowPose fistPose;
+	bool fistSeen = false;
+	const NiPoint3 fistGrip = grip->worldTransform.pos;
 	if (in.arrow != vr::ArrowShown::None && EnsureArrow(holder)) {
 		const float w = vr::NockBlendWeight(g_nockPull);
 		const bool led = in.arrow == vr::ArrowShown::InHand && w > 0.001f;
@@ -442,6 +456,8 @@ void StepBowVisual(const BowVisualInput& in) {
 			if (posed && w < 1.0f && wrist != nullptr && knuckle != nullptr &&
 			    vr::ArrowInFist(grip->worldTransform.pos, wrist->worldTransform.pos, knuckle->worldTransform.pos,
 			                    grip->worldTransform.rot, g_arrow.lengthUnits, fist)) {
+				fistSeen = true;
+				fistPose = fist;
 				vr::ArrowOnString eased;
 				if (vr::ArrowEasedOntoString(fist.nock, fist.rot * NiPoint3{0.0f, 1.0f, 0.0f}, onString, rest, axis,
 				                             grip->worldTransform.rot, grip->worldTransform.pos, g_arrow.lengthUnits, w,
@@ -463,6 +479,8 @@ void StepBowVisual(const BowVisualInput& in) {
 				posed = vr::ArrowInFist(grip->worldTransform.pos, wrist->worldTransform.pos,
 				                        knuckle->worldTransform.pos, grip->worldTransform.rot, g_arrow.lengthUnits,
 				                        pose);
+				fistSeen = posed;
+				fistPose = pose;
 			} else {
 				Note("the drawing hand or its middle finger not found - no arrow in the fist");
 			}
@@ -470,8 +488,13 @@ void StepBowVisual(const BowVisualInput& in) {
 	}
 	if (posed && in.arrow == vr::ArrowShown::InHand) {
 		g_inHandValid = true;
-		g_inHandNock = pose.nock;
-		g_inHandHead = pose.pos;
+		g_inHandGrip = fistGrip;
+		g_inHandNock = fistSeen ? fistPose.nock : pose.nock;
+		g_inHandHead = fistSeen ? fistPose.pos : pose.pos;
+		// Step by step, once a frame: the head's way since the last step.
+		if (hadInHand && (g_inHandHead - headBefore).LengthSquared() > kArrowThrustMinMoveSq) {
+			g_inHandThrustCosine = ArrowThrustCosine(headBefore, g_inHandNock, g_inHandHead);
+		}
 	}
 	if (posed) {
 		BonePose world;

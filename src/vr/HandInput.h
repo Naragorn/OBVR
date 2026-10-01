@@ -197,6 +197,23 @@ inline bool IsWeaponGuard(const NiPoint3& weaponHandRelative, const NiPoint3& bl
 	       across >= kGuardMinAcross && tilt <= kGuardMaxTilt;
 }
 
+// The fists' guard: with the fists up (hand to hand), both hands raised in
+// front of the face, as a boxer's guard (the tester, 2026-10-01: "als h2h wenn
+// ich beide fäuste vor mir hebe das muss auch als block zählen im unarmed
+// combat"). Vanilla blocks bare-handed too (UESP Oblivion:Block: "using a
+// shield, weapon, or your hands"; "Hand to hand blocks 0.25% damage per skill
+// level, but only against unarmed opponents"). Each hand up as high and as far
+// ahead as the weapon's guard; not while either is swinging - a punch passes
+// through the same place.
+inline bool IsFistGuard(const NiPoint3& rightRelative, const NiPoint3& leftRelative, bool rightSwinging,
+                        bool leftSwinging, const GestureThresholds& t) {
+	if (rightSwinging || leftSwinging) {
+		return false;
+	}
+	return rightRelative.z >= kGuardMinUp && rightRelative.y >= t.blockMinForward &&
+	       leftRelative.z >= kGuardMinUp && leftRelative.y >= t.blockMinForward;
+}
+
 // The bow's guard: the bow hand up and out in front, the bow upright - its
 // limbs within about 37 degrees of straight up - as a staff is raised against
 // a blow (the tester, 2026-10-01: "dass man mit bow blocken kann wenn ich den

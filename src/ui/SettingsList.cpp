@@ -721,14 +721,7 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.archery.takeWithTrigger = v == 0.0f; },
 	},
 	{
-		"Hands", "Bow blocks", "The bow held upright in front of you blocks, with no arrow out of the quiver",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Hands", "BowBlocks",
-		+[](const Config& c) { return c.hands.archery.blocks ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.hands.archery.blocks = v != 0.0f; },
-	},
-	{
-		"Hands", "Arrow stabs", "Swing or thrust the arrow in your hand into someone to strike them",
+		"Hands", "Arrow stabs", "Thrust the arrow in your hand into someone, head first, to stab them",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "ArrowStabs",
 		+[](const Config& c) { return c.hands.archery.stabs ? 1.0f : 0.0f; },

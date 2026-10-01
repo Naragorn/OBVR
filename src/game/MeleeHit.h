@@ -39,6 +39,23 @@ inline Blade BladeInWorld(const NiMatrix33& cameraRot, const NiPoint3& cameraPos
 	return blade;
 }
 
+// The arrow in the hand as a blade in the world the bodies stand in. The
+// arrow is placed on the first-person skeleton, whose world is not that one
+// (it is shifted from it: the harness, 2026-10-01, found the arrow a hundred
+// units above the eyes and a stab "met nobody" with the body in reach) - so it
+// is carried over by the hand: its nock and head as far from the first-person
+// grip (`fpGrip`) as they are, from the hilt where BladeInWorld has the hand.
+// The two worlds turn alike (the arrow read along the player's heading).
+inline Blade ArrowBladeInWorld(const NiMatrix33& cameraRot, const NiPoint3& cameraPos,
+                               const NiPoint3& handOffsetUnits, const NiPoint3& fpGrip, const NiPoint3& fpNock,
+                               const NiPoint3& fpHead) {
+	const NiPoint3 hilt = cameraPos + cameraRot * handOffsetUnits;
+	Blade blade;
+	blade.base = hilt + (fpNock - fpGrip);
+	blade.tip = hilt + (fpHead - fpGrip);
+	return blade;
+}
+
 // The distance from a point to the nearest point of the segment a..b.
 inline float SegmentPointDistance(const NiPoint3& a, const NiPoint3& b, const NiPoint3& p) {
 	const NiPoint3 ab = b - a;
@@ -138,6 +155,35 @@ inline StrikeKind StrikeKindFor(bool arrowWanted, UInt32 hand, bool haveWeapon, 
 		return StrikeKind::None;
 	}
 	return StrikeKind::Weapon;
+}
+
+// Whether the arrow in the hand is thrust this frame - driven head first
+// along its own line, not swung across it like a blade (the tester,
+// 2026-10-01: "Nur zustechen soll gehen, nicht schwingen wie eine klinge!"):
+// its head moved from `headBefore` to `head`, and that way runs forward along
+// the arrow (from `nock` to `head`) within about 37 degrees. False for no
+// move, a pull back, or an arrow of no length.
+constexpr float kArrowThrustMinAlong = 0.80f;
+// Less than this far (game units, squared: a fifth of a unit) is no move to
+// read a way from.
+constexpr float kArrowThrustMinMoveSq = 0.04f;
+
+// The cosine between the head's move and the arrow's line, -2 for no move or
+// no length (for the log as well).
+inline float ArrowThrustCosine(const NiPoint3& headBefore, const NiPoint3& nock, const NiPoint3& head) {
+	const NiPoint3 moved = head - headBefore;
+	const NiPoint3 along = head - nock;
+	const float movedSq = moved.LengthSquared();
+	const float alongSq = along.LengthSquared();
+	if (!(movedSq > 1e-8f) || !(alongSq > 1e-8f)) {
+		return -2.0f;
+	}
+	const float dot = moved.x * along.x + moved.y * along.y + moved.z * along.z;
+	return dot / math::Sqrt(movedSq * alongSq);
+}
+
+inline bool IsArrowThrust(const NiPoint3& headBefore, const NiPoint3& nock, const NiPoint3& head) {
+	return ArrowThrustCosine(headBefore, nock, head) >= kArrowThrustMinAlong;
 }
 
 // The swish of a swing (the tester, 2026-09-29: "wir machen gar keinen

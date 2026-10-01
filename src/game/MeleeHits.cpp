@@ -442,7 +442,8 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 	if (!strike.cameraValid) {
 		return 0;
 	}
-	const Blade blade = arrow ? Blade{strike.arrowNock, strike.arrowHead}
+	const Blade blade = arrow ? ArrowBladeInWorld(strike.cameraRotation, strike.cameraPosition, strike.handOffsetUnits,
+	                                              strike.arrowGrip, strike.arrowNock, strike.arrowHead)
 	                          : BladeInWorld(strike.cameraRotation, strike.cameraPosition, strike.handRotation,
 	                                         strike.handOffsetUnits, reach);
 
@@ -470,6 +471,7 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 	static UInt32 s_missOtherVtable = 0;
 	static float s_missNearest = -1.0f;
 	static float s_missNeeded = 0.0f;
+	static NiPoint3 s_missCentre{0.0f, 0.0f, 0.0f};
 	static float s_missReach = 0.0f;
 	static SInt32 s_missType = 0;
 	static UInt32 s_missLinesLeft = 20;
@@ -530,6 +532,7 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 				if (s_missNearest < 0.0f || distance < s_missNearest) {
 					s_missNearest = distance;
 					s_missNeeded = bound.radius * strike.boundFactor + strike.padUnits;
+					s_missCentre = bound.center;
 				}
 			}
 		}
@@ -559,6 +562,24 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		} else {
 			HoldStrike(actor, strike.swingSerial, strike.hand & 1u);
 		}
+	}
+	// A stab is one thrust, not a swing with a next one to report it: said at
+	// once, a few times, how near it came.
+	static UInt32 s_stabMissLines = 12;
+	if (arrow && struck == 0 && s_stabMissLines > 0) {
+		--s_stabMissLines;
+		OBVR_LOG("Hands: the arrow in the hand thrust and met nobody - the nearest body %.0f units from it, %.0f "
+		         "needed (its centre %.0f %.0f %.0f, the arrow %.0f %.0f %.0f to %.0f %.0f %.0f; the camera %.0f %.0f "
+		         "%.0f, the hand %.0f %.0f %.0f from it) - swing %u",
+		         static_cast<double>(s_missNearest), static_cast<double>(s_missNeeded),
+		         static_cast<double>(s_missCentre.x), static_cast<double>(s_missCentre.y),
+		         static_cast<double>(s_missCentre.z), static_cast<double>(blade.base.x),
+		         static_cast<double>(blade.base.y), static_cast<double>(blade.base.z), static_cast<double>(blade.tip.x),
+		         static_cast<double>(blade.tip.y), static_cast<double>(blade.tip.z),
+		         static_cast<double>(strike.cameraPosition.x), static_cast<double>(strike.cameraPosition.y),
+		         static_cast<double>(strike.cameraPosition.z), static_cast<double>(strike.handOffsetUnits.x),
+		         static_cast<double>(strike.handOffsetUnits.y), static_cast<double>(strike.handOffsetUnits.z),
+		         strike.swingSerial);
 	}
 	return struck;
 }

@@ -9,7 +9,6 @@
 ini Hands Enabled=1
 ini Hands Holsters=1
 ini Hands BowByHand=1
-ini Hands BowBlocks=1
 console player.additem 00025231 1
 console player.equipitem 00025231
 console-at arrows player.additem 00017829 20
