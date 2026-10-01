@@ -88,6 +88,12 @@ struct MotionStrike {
 	// The hand: 0 the weapon hand, 1 the other - which strikes only with the
 	// fists (hand to hand). Each hand keeps its own ledger and held bodies.
 	UInt32 hand = 0;
+	// The arrow in the weapon hand with a bow drawn (vr::ArrowStabs): the
+	// blade is the arrow from its nock to its head, in the world, and each
+	// body it meets is struck at once - no power attack to wait for.
+	bool arrow = false;
+	NiPoint3 arrowNock{0.0f, 0.0f, 0.0f};
+	NiPoint3 arrowHead{0.0f, 0.0f, 0.0f};
 };
 
 // Strikes every actor the blade meets this frame that this swing has not

@@ -197,6 +197,29 @@ inline bool IsWeaponGuard(const NiPoint3& weaponHandRelative, const NiPoint3& bl
 	       across >= kGuardMinAcross && tilt <= kGuardMaxTilt;
 }
 
+// The bow's guard: the bow hand up and out in front, the bow upright - its
+// limbs within about 37 degrees of straight up - as a staff is raised against
+// a blow (the tester, 2026-10-01: "dass man mit bow blocken kann wenn ich den
+// senkrecht vor mir hochhalte"). Vanilla blocks with a bow too, at half a
+// shield's share (UESP Oblivion:Block: "Blade/blunt weapons or bows block
+// 0.5% damage per skill level"; bowblockidle.kf), but "only if you don't have
+// an arrow nocked on the string" (UESP Oblivion:Marksman) - and the bow is
+// held just so to nock and to shoot, so no guard once an arrow is out of the
+// quiver (`arrowOut`): a block raised on the way to the string would still be
+// coming down as the draw begins. `limbUpright` is the limbs' cosine to the
+// vertical, either way up.
+constexpr float kBowGuardMinUpright = 0.80f;
+
+inline bool IsBowGuard(const NiPoint3& bowHandRelative, float limbUpright, bool arrowOut,
+                       const GestureThresholds& t) {
+	if (arrowOut) {
+		return false;
+	}
+	const float upright = limbUpright < 0.0f ? -limbUpright : limbUpright;
+	return bowHandRelative.z >= kGuardMinUp && bowHandRelative.y >= t.blockMinForward &&
+	       upright >= kBowGuardMinUpright;
+}
+
 inline bool IsReachBackGesture(const NiPoint3& rightHandRelative, const GestureThresholds& t) {
 	return rightHandRelative.y <= t.reachBackMaxForward && rightHandRelative.z >= t.reachBackMinUp;
 }

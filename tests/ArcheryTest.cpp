@@ -575,6 +575,23 @@ void TestNoArrows() {
 	Check(v.took, "arrows again: taken");
 }
 
+void TestArrowStabs() {
+	std::printf("The arrow in the hand stabs\n");
+	ArcherySettings s;
+	Check(ArrowStabs(true, s, true, ArrowState::InHand), "an arrow in the hand, the bow drawn: stabs");
+	Check(!ArrowStabs(true, s, true, ArrowState::Nocked) && !ArrowStabs(true, s, true, ArrowState::Drawing) &&
+	          !ArrowStabs(true, s, true, ArrowState::None),
+	      "on the string, drawing, or no arrow: no stab");
+	Check(!ArrowStabs(false, s, true, ArrowState::InHand), "strikes by motion off: no stab");
+	Check(!ArrowStabs(true, s, false, ArrowState::InHand), "the bow not drawn: no stab");
+	ArcherySettings off = s;
+	off.stabs = false;
+	Check(!ArrowStabs(true, off, true, ArrowState::InHand), "Arrow stabs off: no stab");
+	ArcherySettings noBow = s;
+	noBow.enabled = false;
+	Check(!ArrowStabs(true, noBow, true, ArrowState::InHand), "the bow by hand off: no stab");
+}
+
 void TestNockBlend() {
 	std::printf("The hand eased onto the string\n");
 	Check(Near(StepNockPull(0.0f, 1.0f, 0.1f), 0.5f) && Near(StepNockPull(0.9f, 1.0f, 0.1f), 1.0f),
@@ -658,6 +675,7 @@ int main() {
 	TestBowPower();
 	TestNoArrows();
 	TestNockBlend();
+	TestArrowStabs();
 	TestBowSounds();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);

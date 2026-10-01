@@ -78,6 +78,11 @@ struct ArcherySettings {
 	float unnockMetres = 0.12f;
 	// Which button holds the arrow: the trigger (the default), or the grip.
 	bool takeWithTrigger = true;
+	// The bow held upright before the body blocks (vr::IsBowGuard).
+	bool blocks = true;
+	// The arrow in the hand, swung or thrust into someone, strikes
+	// (vr::ArrowStabs).
+	bool stabs = true;
 };
 
 // After an eased draw the engine's control is held this much longer, so the
@@ -470,6 +475,20 @@ inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, cons
 	v.claimsGrip = st.state != ArrowState::None || v.took;
 	v.aiming = st.state == ArrowState::Nocked || st.state == ArrowState::Drawing;
 	return v;
+}
+
+// Whether this frame's swing of the drawing hand stabs with the arrow in it
+// (the tester, 2026-10-01: "dass ich mit dem pfeil rechts in der hand
+// zuschlagen kann wie Legolas"). Vanilla has no such strike - an archer
+// fights at range or changes weapon - so it is OBVR's: the arrow is the
+// blade (game::StrikeByMotion with the arrow's own line), and the engine's
+// hit function strikes with the bow drawn as it would with any weapon
+// (AttackHandling 0x005FEBF0 does not turn a bow away: its damage then is
+// the bow's, by Agility and Marksman, and Marksman is what it trains). Only
+// with an arrow in the hand - not on the string, where the hand draws - and
+// only where strikes by motion are on.
+inline bool ArrowStabs(bool motionHits, const ArcherySettings& s, bool bowDrawn, ArrowState state) {
+	return motionHits && s.enabled && s.stabs && bowDrawn && state == ArrowState::InHand;
 }
 
 // The line kept a moment after the loose. The engine makes the arrow a few

@@ -1,0 +1,73 @@
+# The arrow in the hand stabs (vr::ArrowStabs; the tester, 2026-10-01: "dass
+# ich mit dem pfeil rechts in der hand zuschlagen kann wie Legolas"). A bow
+# drawn, an arrow taken from the quiver, a beggar placed just ahead; the
+# hand thrusts the arrow forward through him - the arrow is the blade, the
+# engine's hit function strikes with the bow drawn.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\arrow-stab.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands BowByHand=1
+ini Hands ArrowStabs=1
+ini Hands PushPeople=0
+console player.additem 00025231 1
+console player.equipitem 00025231
+console-at arrows player.additem 00017829 20
+console-at arrows_on player.equipitem 00017829
+console-at beggar player.placeatme 0001C45B 1 100 0
+# The AI off, so the beggar stands where he is put (he walks up and away
+# otherwise) - the strike, not his wandering, is under test.
+console-at still tai
+
+expect HandScript: finished
+expect Hands: bow by hand - an arrow taken from the quiver
+expect Hands: the arrow in the hand met
+expect Hands: struck
+reject HandScript: WARNING
+
+wait 16
+mark arrows
+wait 3
+mark arrows_on
+wait 6
+# The console's menu would make an arrow in the hand drop: the beggar comes
+# before the bow is drawn.
+mark still
+wait 4
+mark beggar
+wait 10
+left pos -0.18 -0.15 0.12
+wait 0.3
+left grip 1
+wait 0.2
+left grip 0
+left pos -0.30 -0.45 -0.20
+wait 4
+mark bow_drawn
+right pos 0.15 -0.10 0.12
+wait 0.6
+right trigger 1
+wait 0.5
+mark arrow_taken
+# Turned up, so the arrow points ahead rather than at the floor.
+right rot 60 0 0
+right pos 0.15 -0.15 -0.15
+wait 1
+mark ready
+dump
+right pos 0.15 -0.15 -0.30
+wait 0.03
+right pos 0.15 -0.15 -0.45
+wait 0.03
+right pos 0.15 -0.15 -0.60
+wait 0.03
+right pos 0.15 -0.15 -0.75
+wait 0.03
+right pos 0.15 -0.15 -0.85
+wait 0.5
+mark stabbed
+dump
+right pos 0.15 -0.15 -0.15
+wait 1
+right trigger 0
+wait 1

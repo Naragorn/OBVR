@@ -338,6 +338,10 @@ struct HandModeFrame {
 	bool haveArrows = true;
 	bool bowShotValid = false;
 	NiPoint3 bowShotLocal{0.0f, 0.0f, -1.0f};
+	// The bow's limbs (its model's y), in the bow hand's controller frame:
+	// upright, the bow blocks (vr::IsBowGuard).
+	bool bowLimbValid = false;
+	NiPoint3 bowLimbLocal{0.0f, 1.0f, 0.0f};
 	SInt32 playerAction = -1;
 	// The hands are being adjusted (the INI switch or the guided window): a
 	// closed grip holds a hand, it does not grab.
@@ -551,6 +555,8 @@ struct HandModeResult {
 	// head: the power attack it makes (PowerDirection).
 	PowerDirection powerDirection = PowerDirection::Standing;
 	bool strikeByMotion = false;  // this frame's swing strikes by motion rather than by control
+	// This frame's swing stabs with the arrow in the hand (vr::ArrowStabs).
+	bool arrowStrike = false;
 	// The left hand's swing, the same way - it strikes only with the fists up
 	// (hand to hand: both hands punch; the tester, 2026-09-29: "ich kann mit
 	// den linken controller nicht zuschlagen"). Its serials count from
@@ -567,6 +573,7 @@ struct HandModeResult {
 
 	// For the log.
 	bool blocking = false;
+	bool bowGuard = false;  // the block is the bow held upright
 	bool reachBack = false;
 	SwingVerdict swing = SwingVerdict::None;
 };

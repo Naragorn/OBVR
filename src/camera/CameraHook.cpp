@@ -470,6 +470,9 @@ bool g_releaseSnapped = false;
 // (HandModeFrame::bowShotLocal) and that hand's laser (LaserAnglesFor).
 bool g_bowShotValid = false;
 NiPoint3 g_bowShotLocal{0.0f, 0.0f, -1.0f};
+// The bow's limbs the same way (HandModeFrame::bowLimbLocal).
+bool g_bowLimbValid = false;
+NiPoint3 g_bowLimbLocal{0.0f, 1.0f, 0.0f};
 
 // A hand's laser angles: the settings' tilt, the yaw mirrored on the left -
 // and the bow hand's along the drawn bow instead, so what it points at is
@@ -1776,6 +1779,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	                     frame.weaponSeen == vr::WeaponSeen::Drawn) ||
 	                   game::QuiverHasArrows();
 	frame.bowShotLocal = g_bowShotLocal;
+	frame.bowLimbValid = active && g_bowLimbValid;
+	frame.bowLimbLocal = g_bowLimbLocal;
 	frame.sneaking = active && !menuIsUp && frame.inWorld && config.hands.sneakHold &&
 	                 game::IsPlayerSneaking();
 	frame.headValid = backend.GetRenderPose(frame.head, frame.headPosition) ||
@@ -2429,7 +2434,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 
 	if (g_hand.blocking != g_handBlocking) {
 		g_handBlocking = g_hand.blocking;
-		OBVR_LOG("Hands: %s", g_handBlocking ? "the left hand is up - blocking"
+		OBVR_LOG("Hands: %s", g_handBlocking ? (g_hand.bowGuard ? "the bow is held upright - blocking"
+		                                                         : "the left hand is up - blocking")
 		                                      : "the left hand is down - block released");
 	}
 	// The bow by hand, each step (vr::StepArchery).
@@ -2637,6 +2643,22 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		strike.boundFactor = config.hands.hitBoundFactor;
 		strike.padUnits = config.hands.hitPadUnits;
 		game::StrikeByMotion(strike);
+	}
+	// The arrow in the drawing hand, with the bow drawn, stabs the same way
+	// (vr::ArrowStabs): the arrow as it is seen is the blade.
+	if (active && g_hand.arrowStrike && g_hand.swingActive && g_hand.rightHandValid && !menuIsUp) {
+		game::MotionStrike strike;
+		if (game::ArrowInHandWorld(strike.arrowNock, strike.arrowHead)) {
+			strike.arrow = true;
+			strike.swingSerial = g_hand.swingSerial;
+			strike.attackGroup = vr::kAnimGroupAttackLight;
+			strike.cameraValid = g_cyclopeanCameraWorldValid;
+			strike.cameraRotation = g_cyclopeanCameraWorldTransform.rot;
+			strike.cameraPosition = g_cyclopeanCameraWorldTransform.pos;
+			strike.boundFactor = config.hands.hitBoundFactor;
+			strike.padUnits = config.hands.hitPadUnits;
+			game::StrikeByMotion(strike);
+		}
 	}
 	// The left fist, the same way: with the fists up both hands punch.
 	if (active && g_hand.leftStrikeByMotion && g_hand.leftSwingActive && g_hand.leftHandValid && !menuIsUp) {
@@ -4933,6 +4955,7 @@ void BeforeFirstScenePass() {
 	}
 
 	g_bowShotValid = false;
+	g_bowLimbValid = false;
 	if (g_handArmsWanted) {
 		game::PlaceFirstPersonArms(g_hand.armsRotation, g_hand.armsOffsetUnits);
 		// After the arms, so the bones' parents carry this frame's placement:
@@ -5037,6 +5060,11 @@ void BeforeFirstScenePass() {
 				if (g_hand.leftHandValid && game::BowShotAxis(shot)) {
 					g_bowShotValid = true;
 					g_bowShotLocal = vr::ControllerLocalOf(cameraRot, g_hand.leftHandRotation, shot);
+					NiPoint3 limb{};
+					if (game::BowLimbAxis(limb)) {
+						g_bowLimbValid = true;
+						g_bowLimbLocal = vr::ControllerLocalOf(cameraRot, g_hand.leftHandRotation, limb);
+					}
 					// Each time an arrow goes onto the string: the bow is then
 					// held as it is shot (while it is drawn out of the holster
 					// its draw animation still moves it in the hand).

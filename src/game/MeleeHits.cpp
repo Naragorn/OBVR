@@ -1,6 +1,7 @@
 #include "game/MeleeHits.h"
 
 #include <cstdlib>
+#include <limits>
 
 #include "core/AddressSpace.h"
 #include "core/Log.h"
@@ -201,7 +202,23 @@ constexpr UInt8 kAnimGroupLightStrike = 0x14;
 // attacker's): AttackHandling takes the power attack's direction from the
 // low byte of the attacker's AnimData +0x42 (0x005FF355, 0x0060028E) - set
 // for the call, put back after unless the engine wrote its own meanwhile.
+// The target's health as the actor values have it (GetActorValue_F, vtable
+// +0x288, as PlayerTeleport reads fatigue; health is actor value 8): what a
+// strike took, for the log. NaN when it cannot be read.
+constexpr UInt32 kActorVtableActorValueF = 0x288;
+constexpr UInt32 kActorValueHealth = 8;
+
+float HealthOf(void* actor) {
+	const UInt32 slot = VirtualAt(actor, kActorVtableActorValueF);
+	if (slot == 0) {
+		return std::numeric_limits<float>::quiet_NaN();
+	}
+	using GetFloatFn = float(__thiscall*)(void* actor, UInt32 av);
+	return reinterpret_cast<GetFloatFn>(slot)(actor, kActorValueHealth);
+}
+
 void ApplyStrike(UInt8* player, void* actor, bool heavy, UInt8 group, UInt32 serial) {
+	const float healthBefore = HealthOf(actor);
 	UInt16* groupWord = nullptr;
 	UInt16 groupBefore = 0;
 	UInt16 groupWritten = 0;
@@ -223,8 +240,9 @@ void ApplyStrike(UInt8* player, void* actor, bool heavy, UInt8 group, UInt32 ser
 	static UInt32 linesLeft = 30;
 	if (linesLeft > 0) {
 		--linesLeft;
-		OBVR_LOG("Hands: struck %08X - %s attack (group %02X), swing %u", reinterpret_cast<UInt32>(actor),
-		         heavy ? "power" : "light", static_cast<UInt32>(group), serial);
+		OBVR_LOG("Hands: struck %08X - %s attack (group %02X), swing %u; health %.1f -> %.1f",
+		         reinterpret_cast<UInt32>(actor), heavy ? "power" : "light", static_cast<UInt32>(group), serial,
+		         static_cast<double>(healthBefore), static_cast<double>(HealthOf(actor)));
 	}
 }
 
@@ -400,16 +418,18 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		return 0;
 	}
 	UInt8* weapon = nullptr;
-	if (!EquippedWeapon(player, &weapon) || !WeaponIsSwung(WeaponTypeOf(weapon)) ||
-	    ReadPlayerWeaponState() != WeaponState::Drawn) {
+	if (!EquippedWeapon(player, &weapon) || ReadPlayerWeaponState() != WeaponState::Drawn) {
 		return 0;
 	}
-	// The other hand strikes only as a fist.
-	if (strike.hand != 0 && weapon != nullptr) {
+	const StrikeKind kind = StrikeKindFor(strike.arrow, strike.hand, weapon != nullptr, WeaponTypeOf(weapon));
+	if (kind == StrikeKind::None) {
 		return 0;
 	}
+	const bool arrow = kind == StrikeKind::Arrow;
 	float reach = 0.0f;
-	if (!ReachUnits(player, weapon, &reach)) {
+	if (arrow) {
+		reach = math::Sqrt((strike.arrowHead - strike.arrowNock).LengthSquared());
+	} else if (!ReachUnits(player, weapon, &reach)) {
 		return 0;
 	}
 
@@ -422,8 +442,9 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 	if (!strike.cameraValid) {
 		return 0;
 	}
-	const Blade blade = BladeInWorld(strike.cameraRotation, strike.cameraPosition,
-	                                 strike.handRotation, strike.handOffsetUnits, reach);
+	const Blade blade = arrow ? Blade{strike.arrowNock, strike.arrowHead}
+	                          : BladeInWorld(strike.cameraRotation, strike.cameraPosition, strike.handRotation,
+	                                         strike.handOffsetUnits, reach);
 
 	if (WeaponTypeOf(weapon) != g_armedType && g_armedLinesLeft > 0) {
 		g_armedType = WeaponTypeOf(weapon);
@@ -520,19 +541,21 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		}
 		++struck;
 		s_missStruck = true;
-		const bool now = strike.heavy;
+		const bool now = strike.heavy || arrow;
 		if (g_strikeLinesLeft > 0) {
 			--g_strikeLinesLeft;
-			OBVR_LOG("Hands: the blade met %08X (%s, bound radius %.0f, %.0f units from its "
+			OBVR_LOG("Hands: the %s met %08X (%s, bound radius %.0f, %.0f units from its "
 			         "centre) - swing %u, %s",
-			         reinterpret_cast<UInt32>(actor),
+			         arrow ? "arrow in the hand" : "blade", reinterpret_cast<UInt32>(actor),
 			         *reinterpret_cast<const UInt32*>(actor) == addr::kVtblCreature ? "creature"
 			                                                                          : "character",
 			         bound.radius, SegmentPointDistance(blade.base, blade.tip, bound.center), strike.swingSerial,
-			         now ? "a power attack already: struck now" : "held to the swing's end");
+			         arrow  ? "a stab: struck now"
+			         : now ? "a power attack already: struck now"
+			               : "held to the swing's end");
 		}
 		if (now) {
-			ApplyStrike(player, actor, true, strike.attackGroup, strike.swingSerial);
+			ApplyStrike(player, actor, strike.heavy, strike.attackGroup, strike.swingSerial);
 		} else {
 			HoldStrike(actor, strike.swingSerial, strike.hand & 1u);
 		}

@@ -1990,6 +1990,77 @@ void TestWeaponGuard() {
 	Check(!r.blocking, "sheathed: the same hand does not block");
 }
 
+void TestBowGuard() {
+	std::printf("The bow held upright blocks\n");
+	GestureThresholds t;
+	const NiPoint3 raised{-0.1f, 0.4f, -0.1f};
+	Check(IsBowGuard(raised, 1.0f, false, t) && IsBowGuard(raised, -0.85f, false, t),
+	      "raised, upright either way up: a guard");
+	Check(!IsBowGuard(raised, 0.7f, false, t), "tilted past 37 degrees: no guard");
+	Check(!IsBowGuard(raised, 1.0f, true, t), "an arrow out: no guard");
+	Check(!IsBowGuard(NiPoint3{-0.1f, 0.4f, -0.4f}, 1.0f, false, t), "held low: no guard");
+	Check(!IsBowGuard(NiPoint3{-0.1f, 0.05f, -0.1f}, 1.0f, false, t), "at the chest: no guard");
+
+	HandSettings settings = WithoutLaserOffset();
+	settings.enabled = true;
+	settings.archery.takeWithTrigger = false;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.inWorld = true;
+	frame.unitsPerMetre = 70.0f;
+	frame.dtSeconds = 0.011f;
+	frame.weaponSeen = WeaponSeen::Drawn;
+	frame.equipped = EquippedKind::Bow;
+	frame.haveBow = true;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	// Tracking axes x right, y up, z back: the bow hand up ahead, the limbs
+	// along the controller's y - straight up.
+	frame.left.position = NiPoint3{-0.1f, -0.1f, -0.45f};
+	frame.bowLimbValid = true;
+	frame.bowLimbLocal = NiPoint3{0.0f, 1.0f, 0.0f};
+	frame.right.position = NiPoint3{0.3f, -0.5f, -0.1f};
+	HandMode mode;
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.blocking && r.bowGuard && r.controls.block, "in the mode: the bow upright in front blocks");
+	frame.bowLimbLocal = NiPoint3{1.0f, 0.0f, 0.0f};
+	r = mode.Update(frame, settings);
+	Check(!r.blocking, "the bow lying flat: no block");
+	frame.bowLimbLocal = NiPoint3{0.0f, 1.0f, 0.0f};
+	frame.bowLimbValid = false;
+	r = mode.Update(frame, settings);
+	Check(!r.blocking, "the bow's limbs not seen: no block");
+	frame.bowLimbValid = true;
+	HandSettings off = settings;
+	off.archery.blocks = false;
+	HandMode noBlock;
+	r = noBlock.Update(frame, off);
+	Check(!r.blocking, "Bow blocks off: no block");
+	// The empty weapon hand across the body is no guard with the bow.
+	frame.left.position = NiPoint3{-0.3f, -0.6f, -0.2f};
+	frame.right.position = NiPoint3{0.1f, -0.1f, -0.35f};
+	const float half = 0.70710678f;
+	frame.right.orientation = obvr::vr::Quaternion{0.0f, half, 0.0f, half};
+	HandMode across;
+	r = across.Update(frame, settings);
+	Check(!r.blocking, "the empty weapon hand held across: no block with the bow");
+	frame.right.orientation = obvr::vr::Quaternion{};
+	// An arrow nocked: the bow held as it shoots does not block.
+	frame.left.position = NiPoint3{-0.1f, -0.1f, -0.45f};
+	const ArcherySettings& a = settings.archery;
+	frame.right.position = NiPoint3{a.quiverZone.x, a.quiverZone.z, -a.quiverZone.y};
+	HandMode nock;
+	nock.Update(frame, settings);
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexGrip;
+	r = nock.Update(frame, settings);
+	Check(r.archery.took && !r.blocking && r.arrowStrike,
+	      "an arrow taken at the quiver: no block from then on, the arrow stabs");
+	frame.right.position = NiPoint3{-0.1f, -0.1f, -0.33f};
+	r = nock.Update(frame, settings);
+	Check(r.archery.nocked && !r.blocking && !r.arrowStrike,
+	      "nocked: the same upright bow does not block, the arrow does not stab");
+}
+
 void TestFirstPersonDepthBranch() {
 	std::printf("First-person depth: the branch before the clear\n");
 	using obvr::game::FirstPersonDepthBranchByte;
@@ -2289,6 +2360,7 @@ int main() {
 	TestUsScanCodes();
 	TestFirstPersonDepthBranch();
 	TestWeaponGuard();
+	TestBowGuard();
 	TestLeftHandedMirror();
 	TestBowByHand();
 	TestHolsterInMode();

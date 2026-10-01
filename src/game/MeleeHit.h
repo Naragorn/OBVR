@@ -123,6 +123,23 @@ inline bool WeaponIsSwung(SInt32 type) {
 	        type <= static_cast<SInt32>(WeaponTypeCode::BluntTwoHand));
 }
 
+// What a strike by motion strikes with: the swung weapon or the fists, or
+// the arrow in the weapon hand with a bow drawn (vr::ArrowStabs) - or
+// nothing. The other hand (1) strikes only as a fist; an arrow only from the
+// weapon hand, only with a bow; a bow, a staff otherwise not at all.
+enum class StrikeKind : UInt8 { None, Weapon, Arrow };
+
+inline StrikeKind StrikeKindFor(bool arrowWanted, UInt32 hand, bool haveWeapon, SInt32 type) {
+	if (arrowWanted) {
+		return hand == 0 && haveWeapon && type == static_cast<SInt32>(WeaponTypeCode::Bow) ? StrikeKind::Arrow
+		                                                                                  : StrikeKind::None;
+	}
+	if (!WeaponIsSwung(type) || (hand != 0 && haveWeapon)) {
+		return StrikeKind::None;
+	}
+	return StrikeKind::Weapon;
+}
+
 // The swish of a swing (the tester, 2026-09-29: "wir machen gar keinen
 // schwing sound von schwert, axt und h2h"). Vanilla plays it in
 // AttackHandling on a miss only (0x005FEC7D..0x005FEC95), and the strike by

@@ -151,6 +151,22 @@ void TestWeaponTypes() {
 	Check(!WeaponIsSwung(6) && !WeaponIsSwung(-2), "nor anything unknown");
 }
 
+void TestStrikeKind() {
+	std::printf("What a strike strikes with\n");
+	const SInt32 bow = static_cast<SInt32>(WeaponTypeCode::Bow);
+	const SInt32 none = static_cast<SInt32>(WeaponTypeCode::None);
+	Check(StrikeKindFor(true, 0, true, bow) == StrikeKind::Arrow, "the arrow, the weapon hand, a bow: the arrow");
+	Check(StrikeKindFor(true, 1, true, bow) == StrikeKind::None, "the arrow from the other hand: nothing");
+	Check(StrikeKindFor(true, 0, true, 0) == StrikeKind::None && StrikeKindFor(true, 0, false, none) == StrikeKind::None,
+	      "the arrow with a sword or no weapon: nothing");
+	Check(StrikeKindFor(false, 0, true, 0) == StrikeKind::Weapon, "a sword in the weapon hand: the weapon");
+	Check(StrikeKindFor(false, 0, true, bow) == StrikeKind::None &&
+	          StrikeKindFor(false, 0, true, static_cast<SInt32>(WeaponTypeCode::Staff)) == StrikeKind::None,
+	      "a bow or a staff swung: nothing");
+	Check(StrikeKindFor(false, 1, false, none) == StrikeKind::Weapon, "the other hand as a fist: struck");
+	Check(StrikeKindFor(false, 1, true, 0) == StrikeKind::None, "the other hand with a weapon out: nothing");
+}
+
 }  // namespace
 
 int main() {
@@ -159,6 +175,7 @@ int main() {
 	TestStrike();
 	TestLedger();
 	TestWeaponTypes();
+	TestStrikeKind();
 	TestSwish();
 	TestHeldStrike();
 

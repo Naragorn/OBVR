@@ -312,6 +312,10 @@ void MoveHandTo(const char* boneName, const NiAVObject* grip, const NiPoint3& ta
 // The bow's shot axis as the last step found it, and the string's draw.
 bool g_shotValid = false;
 NiPoint3 g_shot{0.0f, 1.0f, 0.0f};
+NiPoint3 g_limb{0.0f, 0.0f, 1.0f};
+bool g_inHandValid = false;
+NiPoint3 g_inHandNock{0.0f, 0.0f, 0.0f};
+NiPoint3 g_inHandHead{0.0f, 0.0f, 0.0f};
 bool g_drawValid = false;
 float g_draw = 0.0f;
 // The drawing hand's way onto the string (vr::StepNockPull).
@@ -337,9 +341,27 @@ bool BowShotAxis(NiPoint3& world) {
 	return true;
 }
 
+bool ArrowInHandWorld(NiPoint3& nock, NiPoint3& head) {
+	if (!g_inHandValid) {
+		return false;
+	}
+	nock = g_inHandNock;
+	head = g_inHandHead;
+	return true;
+}
+
+bool BowLimbAxis(NiPoint3& world) {
+	if (!g_shotValid) {
+		return false;
+	}
+	world = g_limb;
+	return true;
+}
+
 void StepBowVisual(const BowVisualInput& in) {
 	g_shotValid = false;
 	g_drawValid = false;
+	g_inHandValid = false;
 	// Led towards the string in the hand, onto it on the string.
 	g_nockPull = vr::StepNockPull(g_nockPull,
 	                              in.arrow == vr::ArrowShown::OnString  ? 1.0f
@@ -384,6 +406,9 @@ void StepBowVisual(const BowVisualInput& in) {
 		axis = axis * (1.0f / axisLength);
 		g_shot = axis;
 		g_shotValid = true;
+		// The limbs: the model's y (its tips lie past |y| 45, bowresearch's
+		// morph read of the vanilla bows).
+		g_limb = bow->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f};
 	}
 	const NiPoint3 rest = bow->worldTransform.pos +
 	                      bow->worldTransform.rot * (NiPoint3{0.0f, vr::kArrowRestOnBowY, vr::kArrowRestOnBowZ} * bowScale);
@@ -442,6 +467,11 @@ void StepBowVisual(const BowVisualInput& in) {
 				Note("the drawing hand or its middle finger not found - no arrow in the fist");
 			}
 		}
+	}
+	if (posed && in.arrow == vr::ArrowShown::InHand) {
+		g_inHandValid = true;
+		g_inHandNock = pose.nock;
+		g_inHandHead = pose.pos;
 	}
 	if (posed) {
 		BonePose world;

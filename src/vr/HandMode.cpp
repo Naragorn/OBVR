@@ -438,6 +438,20 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 			}
 		}
 		r.archery = StepArchery(m_archery, ain, s.archery);
+		r.arrowStrike = ArrowStabs(s.motionHits, s.archery, bowDrawn, r.archery.state);
+		// With the bow by hand the bow is the guard, not the empty weapon hand
+		// across the body: held upright in front, with no arrow at it
+		// (vr::IsBowGuard) - none in the hand either.
+		if (bowDrawn && s.archery.enabled) {
+			r.blocking = false;
+			if (s.archery.blocks && cl.valid && f.bowLimbValid && !f.menuMode) {
+				const NiPoint3 limb = TrackingRotate(cl.orientation, f.bowLimbLocal);
+				const float length = math::Sqrt(limb.LengthSquared());
+				const bool arrowOut = r.archery.state != ArrowState::None;
+				r.blocking = length > 1e-4f && IsBowGuard(leftRelative, limb.y / length, arrowOut, s.gestures);
+			}
+			r.bowGuard = r.blocking;
+		}
 		if (s.archery.takeWithTrigger) {
 			in.rightTrigger = in.rightTrigger && !r.archery.claimsGrip;
 		} else {
