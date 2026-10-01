@@ -30,6 +30,8 @@ struct BowVisualInput {
 	// the arrow in the fist lies along it, from it to its middle finger.
 	const char* rightHandBone = "Bip01 R Hand";
 	float dtSeconds = 0.0f;  // the frame's, for the hand's way onto the string
+	// In the hand: how far it is led towards the nock (vr::NockGuide).
+	float nockGuide = 0.0f;
 };
 
 void StepBowVisual(const BowVisualInput& in);

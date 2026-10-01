@@ -32,6 +32,7 @@ console-at loosed player.equipitem 00017829
 expect HandScript: finished
 expect Hands: bow by hand - an arrow taken from the quiver
 expect Bow by hand: the arrow in the fist along the hand
+expect Bow by hand: the arrow in the hand led towards the string
 expect Hands: bow by hand - the bow shoots along
 expect Hands: bow by hand - the arrow nocked
 expect Hands: bow by hand - drawn - the engine's draw begins
@@ -105,6 +106,12 @@ mark arrow_taken
 right pos 0.12 -0.12 -0.55
 wait 0.5
 mark in_hand
+dump
+wait 0.3
+# 20 cm behind the string's place: led part of the way there (BowGuideMetres).
+right pos -0.236 -0.108 -0.360
+wait 0.5
+mark guided
 dump
 wait 0.3
 right pos -0.240 -0.106 -0.560

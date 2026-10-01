@@ -62,7 +62,10 @@ struct ArcherySettings {
 	// slid a long way back onto the string; from the string's own place the
 	// slide is short ("muss noch näher passieren dass die rechte pfeil hand
 	// näher an die position gleitet").
-	float nockMetres = 0.10f;
+	float nockMetres = 0.12f;
+	// From this far off the nock's place the arrow in the hand is led towards
+	// it, the more the nearer (NockGuide).
+	float guideMetres = 0.35f;
 	// The string at rest: the drawing hand this far behind the bow hand along
 	// the bow. The draw begins drawStartMetres further back, and the hand
 	// brought back within it eases the draw. Apart from the nock's zone, so a
@@ -135,6 +138,7 @@ struct ArcheryVerdict {
 	bool denockDone = false; // the eased draw's control goes up this frame
 	float handsApartMetres = 0.0f;
 	float fromNockMetres = 0.0f;  // the drawing hand from the nock's place
+	float nockGuide = 0.0f;       // in the hand: how far it is led to the nock (NockGuide)
 	float pullMetres = 0.0f;     // behind the bow along its axis
 	float offLineMetres = 0.0f;  // across it
 	NiPoint3 bowAxis{0.0f, 0.0f, 0.0f};  // the axis it went by (zero: none), for the log
@@ -278,19 +282,40 @@ inline bool StepBowPower(BowPowerState& s, bool drawing, bool weightValid, float
 constexpr UInt32 kSoundFormAmmoUp = 0x0008B095;
 constexpr UInt32 kSoundFormAmmoDown = 0x0008B096;
 
-// The drawing hand eased onto the string over kNockBlendSeconds rather than
-// jumping there, as the left hand onto a two-hander's handle (the tester,
-// 2026-10-01: "wie beim 2 händer die hand progressive annähnern an die
-// position statt direkt hinzuspringen"): the way from the fist to the string,
-// 0 to 1, up while the arrow is on the string, back to 0 the moment it is not.
-constexpr float kNockBlendSeconds = 0.2f;
+// The drawing hand drawn onto the string, as the left hand onto a
+// two-hander's handle rather than jumping there (the tester, 2026-10-01: "wie
+// beim 2 händer die hand progressive annähnern an die position statt direkt
+// hinzuspringen"), and led there already on the way: the nearer the arrow
+// comes to the nock's place from behind, the further the hand and the arrow
+// are pulled towards it, from NockGuideMetres off ("je näher ich zum anlege
+// bereich komme je mehr gleitet die hand schonmal in diese richtung sodass ich
+// geführt werde. das muss auch schon viel früher passieren als jetzt").
+//
+// The pull, 0 to 1: the share of the way from the fist to the string the
+// hand and the arrow are shown at. Its target is NockGuide's while the arrow
+// is in the hand, 1 on the string, 0 with none; it follows the target at
+// kNockPullPerSecond, so the nock itself, which sets 1, does not jump.
+constexpr float kNockPullPerSecond = 5.0f;
 
-inline float StepNockBlend(float current, bool onString, float dtSeconds) {
-	if (!onString) {
+inline float StepNockPull(float current, float target, float dtSeconds) {
+	const float t = target < 0.0f ? 0.0f : (target > 1.0f ? 1.0f : target);
+	const float step = dtSeconds > 0.0f ? dtSeconds * kNockPullPerSecond : 0.0f;
+	if (current < t) {
+		return current + step > t ? t : current + step;
+	}
+	return current - step < t ? t : current - step;
+}
+
+// How far the arrow in the hand is led towards the nock: 0 from guideMetres
+// off the nock's place and beyond, rising to 1 at nockMetres (where it is
+// nocked), and only from behind the bow (FromBehind's cone) - an arrow
+// brought from the front or a side is not led.
+inline float NockGuide(float fromNockMetres, float nockMetres, float guideMetres, bool fromBehind) {
+	if (!fromBehind || !(guideMetres > nockMetres)) {
 		return 0.0f;
 	}
-	const float next = current + (dtSeconds > 0.0f ? dtSeconds / kNockBlendSeconds : 0.0f);
-	return next > 1.0f ? 1.0f : (next < 0.0f ? 0.0f : next);
+	const float t = (guideMetres - fromNockMetres) / (guideMetres - nockMetres);
+	return t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
 }
 
 // The share of the way taken, eased in and out (smoothstep).
@@ -432,6 +457,10 @@ inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, cons
 		break;
 	}
 	v.state = st.state;
+	if (st.state == ArrowState::InHand && st.awayFromNock) {
+		v.nockGuide = NockGuide(v.fromNockMetres, s.nockMetres, s.guideMetres,
+		                        FromBehind(in.axisValid, v.pullMetres, v.offLineMetres));
+	}
 	v.attackHeld = st.state == ArrowState::Drawing || st.denockSeconds > 0.0f;
 	v.claimsGrip = st.state != ArrowState::None || v.took;
 	v.aiming = st.state == ArrowState::Nocked || st.state == ArrowState::Drawing;

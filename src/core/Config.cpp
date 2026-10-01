@@ -740,6 +740,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.archery.quiverRadius = ReadFloat("Hands", "QuiverRadius", h.archery.quiverRadius, path);
 		h.archery.nockMetres = ReadFloat("Hands", "NockMetres", h.archery.nockMetres, path);
 		h.archery.stringMetres = ReadFloat("Hands", "BowStringMetres", h.archery.stringMetres, path);
+		h.archery.guideMetres = ReadFloat("Hands", "BowGuideMetres", h.archery.guideMetres, path);
 		h.archery.drawStartMetres = ReadFloat("Hands", "BowDrawStartMetres", h.archery.drawStartMetres, path);
 		h.archery.unnockMetres = ReadFloat("Hands", "BowUnnockMetres", h.archery.unnockMetres, path);
 		h.archery.takeWithTrigger = !ReadBool("Hands", "ArrowWithGrip", !h.archery.takeWithTrigger, path);

@@ -314,8 +314,8 @@ bool g_shotValid = false;
 NiPoint3 g_shot{0.0f, 1.0f, 0.0f};
 bool g_drawValid = false;
 float g_draw = 0.0f;
-// The drawing hand's way onto the string (vr::StepNockBlend).
-float g_nockBlend = 0.0f;
+// The drawing hand's way onto the string (vr::StepNockPull).
+float g_nockPull = 0.0f;
 
 }  // namespace
 
@@ -340,8 +340,14 @@ bool BowShotAxis(NiPoint3& world) {
 void StepBowVisual(const BowVisualInput& in) {
 	g_shotValid = false;
 	g_drawValid = false;
-	if (in.arrow != vr::ArrowShown::OnString) {
-		g_nockBlend = 0.0f;
+	// Led towards the string in the hand, onto it on the string.
+	g_nockPull = vr::StepNockPull(g_nockPull,
+	                              in.arrow == vr::ArrowShown::OnString  ? 1.0f
+	                              : in.arrow == vr::ArrowShown::InHand ? in.nockGuide
+	                                                                   : 0.0f,
+	                              in.dtSeconds);
+	if (in.arrow == vr::ArrowShown::None) {
+		g_nockPull = 0.0f;
 	}
 	// The arrow hangs on the first-person root, not on the hand's bone: it is
 	// placed in the world each frame, so it needs no bone to carry it, and the
@@ -389,13 +395,22 @@ void StepBowVisual(const BowVisualInput& in) {
 	vr::ArrowOnString onString;
 	bool posed = false;
 	if (in.arrow != vr::ArrowShown::None && EnsureArrow(holder)) {
-		if (in.arrow == vr::ArrowShown::OnString && axisValid) {
+		const float w = vr::NockBlendWeight(g_nockPull);
+		const bool led = in.arrow == vr::ArrowShown::InHand && w > 0.001f;
+		static bool s_ledLogged = false;
+		if (in.arrow != vr::ArrowShown::InHand) {
+			s_ledLogged = false;
+		} else if (g_nockPull > 0.25f && !s_ledLogged && g_lines > 0) {
+			s_ledLogged = true;
+			--g_lines;
+			OBVR_LOG("Bow by hand: the arrow in the hand led towards the string (%.2f of the way, the guide %.2f)",
+			         static_cast<double>(g_nockPull), static_cast<double>(in.nockGuide));
+		}
+		if ((in.arrow == vr::ArrowShown::OnString || led) && axisValid) {
 			posed = vr::ArrowOnBowLine(rest, axis, grip->worldTransform.rot, grip->worldTransform.pos,
 			                           g_arrow.lengthUnits, -g_string.restAlongBow * bowScale,
 			                           g_string.travelUnits * bowScale, onString);
-			// Eased there from the fist, not jumped (vr::StepNockBlend).
-			g_nockBlend = vr::StepNockBlend(g_nockBlend, posed, in.dtSeconds);
-			const float w = vr::NockBlendWeight(g_nockBlend);
+			// Led or eased there from the fist, not jumped (vr::StepNockPull).
 			const NiAVObject* const wrist = FindFirstPersonNode(in.rightHandBone);
 			const NiAVObject* const knuckle = FindFirstPersonNode("Bip01 R Finger2");
 			vr::ArrowPose fist;
@@ -410,8 +425,8 @@ void StepBowVisual(const BowVisualInput& in) {
 			}
 			if (posed) {
 				pose = onString.pose;
-				// The fist on the string: on the bow's line, no further back than
-				// a full draw.
+				// The fist on the string, or on its way there: on the bow's line,
+				// no further back than a full draw.
 				MoveHandTo(in.rightHandBone, grip, onString.gripTarget);
 			}
 		} else if (in.arrow == vr::ArrowShown::InHand) {

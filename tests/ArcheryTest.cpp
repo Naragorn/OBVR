@@ -178,12 +178,19 @@ void TestWideNock() {
 	Check(v.state == ArrowState::Drawing, "0.16 behind: still drawn");
 	v = StepArchery(st, OnAxis(NiPoint3{-0.1f, 1.4f, -0.36f}, true), kSettings);
 	Check(v.eased, "0.14 behind, at the string's rest: eased");
+	ArcheryState guided;
+	StepArchery(guided, At(kShoulder, false, true), kSettings);
+	StepArchery(guided, At(kShoulder, true, true), kSettings);
+	v = StepArchery(guided, OnAxis(NiPoint3{-0.1f, 1.4f, -0.1f}, true), kSettings);
+	Check(!v.nocked && v.nockGuide > 0.4f && v.nockGuide < 0.5f, "0.25 behind the string's place: led part of the way");
+	v = StepArchery(guided, OnAxis(NiPoint3{-0.1f, 1.4f, -0.6f}, true), kSettings);
+	Check(v.nockGuide == 0.0f, "in front of the bow: not led");
 	ArcheryState far;
 	StepArchery(far, At(kShoulder, false, true), kSettings);
 	StepArchery(far, At(kShoulder, true, true), kSettings);
-	v = StepArchery(far, OnAxis(NiPoint3{-0.1f, 1.4f, -0.23f}, true), kSettings);
-	Check(!v.nocked && v.state == ArrowState::InHand && v.fromNockMetres > 0.1f,
-	      "0.27 behind the bow hand, 0.12 past the string's place: not yet");
+	v = StepArchery(far, OnAxis(NiPoint3{-0.1f, 1.4f, -0.21f}, true), kSettings);
+	Check(!v.nocked && v.state == ArrowState::InHand && v.fromNockMetres > 0.12f,
+	      "0.29 behind the bow hand, 0.14 past the string's place: not yet");
 
 	// Only from behind (the tester, 2026-10-01: "von vorne kommen oder andere
 	// seiten soll natürlich nicht gehen").
@@ -570,10 +577,19 @@ void TestNoArrows() {
 
 void TestNockBlend() {
 	std::printf("The hand eased onto the string\n");
-	Check(Near(StepNockBlend(0.0f, true, 0.1f), 0.5f) && Near(StepNockBlend(0.9f, true, 0.1f), 1.0f),
-	      "up by the frame's share of 0.2 s, no further than 1");
-	Check(Near(StepNockBlend(0.7f, false, 0.1f), 0.0f), "off the string: at once back to 0");
-	Check(Near(StepNockBlend(0.3f, true, -1.0f), 0.3f), "no time: no way");
+	Check(Near(StepNockPull(0.0f, 1.0f, 0.1f), 0.5f) && Near(StepNockPull(0.9f, 1.0f, 0.1f), 1.0f),
+	      "up by 5 a second, no further than the target");
+	Check(Near(StepNockPull(0.8f, 0.3f, 0.05f), 0.55f) && Near(StepNockPull(0.4f, 0.3f, 0.1f), 0.3f),
+	      "down the same way, no further than the target");
+	Check(Near(StepNockPull(0.3f, 1.0f, -1.0f), 0.3f) && Near(StepNockPull(0.2f, 2.0f, 1.0f), 1.0f),
+	      "no time: no way; a target past 1 held to 1");
+	Check(Near(NockGuide(0.35f, 0.12f, 0.35f, true), 0.0f) && Near(NockGuide(0.5f, 0.12f, 0.35f, true), 0.0f),
+	      "the guide: nothing from 0.35 off and beyond");
+	Check(Near(NockGuide(0.235f, 0.12f, 0.35f, true), 0.5f) && Near(NockGuide(0.12f, 0.12f, 0.35f, true), 1.0f) &&
+	          Near(NockGuide(0.05f, 0.12f, 0.35f, true), 1.0f),
+	      "halfway at halfway, all the way at the nock's reach");
+	Check(Near(NockGuide(0.2f, 0.12f, 0.35f, false), 0.0f) && Near(NockGuide(0.2f, 0.12f, 0.1f, true), 0.0f),
+	      "not from the front or a side; none when the guide is inside the nock's reach");
 	Check(Near(NockBlendWeight(0.0f), 0.0f) && Near(NockBlendWeight(1.0f), 1.0f) &&
 	          Near(NockBlendWeight(0.5f), 0.5f) && NockBlendWeight(0.1f) < 0.1f && NockBlendWeight(2.0f) <= 1.0f,
 	      "eased in and out, held to 0..1");

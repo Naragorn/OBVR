@@ -2507,6 +2507,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			}
 		}
 		g_bowVisual.arrow = vr::ArrowShownFor(a.state);
+		g_bowVisual.nockGuide = a.nockGuide;
 		g_bowVisual.string =
 			vr::StepBowString(g_bowString, a.state, a.loosed, game::ReadPlayerAction() >= 0, g_deltaSeconds);
 		g_bowVisual.rightHandBone = config.hands.rightHandBone;
