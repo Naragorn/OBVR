@@ -1243,3 +1243,33 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME compass_heading COMMAND compass_heading_test)
+
+add_executable(equip_while_acting_test EquipWhileActingTest.cpp)
+
+target_include_directories(equip_while_acting_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(equip_while_acting_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME equip_while_acting COMMAND equip_while_acting_test)
+
+add_executable(hud_depth_test HudDepthTest.cpp)
+
+target_include_directories(hud_depth_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(hud_depth_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME hud_depth COMMAND hud_depth_test)
+
+add_executable(target_marker_test TargetMarkerTest.cpp)
+
+target_include_directories(target_marker_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(target_marker_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME target_marker COMMAND target_marker_test)

@@ -20,6 +20,7 @@
 #include "render/DdsImage.h"
 #include "render/BoneRebase.h"
 #include "render/D3D9Types.h"
+#include "render/HudDepth.h"
 #include "render/GameDevice.h"
 #include "render/LockLedger.h"
 #include "render/LayoutProbe.h"
@@ -1109,6 +1110,44 @@ void ReleaseObject(void* object) {
 			release(object);
 		}
 	}
+}
+
+// The interface pass's own depth-stencil (render/HudDepth.h), for the device
+// and size it was made for.
+void* g_hudDepth = nullptr;
+void* g_hudDepthDevice = nullptr;
+UInt32 g_hudDepthWidth = 0;
+UInt32 g_hudDepthHeight = 0;
+
+bool EnsureHudDepth(void* device, UInt32 width, UInt32 height) {
+	if (g_hudDepth != nullptr && g_hudDepthDevice == device && g_hudDepthWidth == width &&
+	    g_hudDepthHeight == height) {
+		return true;
+	}
+	if (g_hudDepthDevice == device) {
+		ReleaseObject(g_hudDepth);
+	}
+	g_hudDepth = nullptr;
+	g_hudDepthDevice = device;
+	auto create = d3d9::Method<d3d9::CreateDepthStencilSurfaceFn>(device, d3d9::kDeviceCreateDepthStencilSurface);
+	if (create == nullptr) {
+		return false;
+	}
+	const SInt32 result = create(device, width, height, d3d9::kFormatD24S8, 0, 0, 0, &g_hudDepth, nullptr);
+	static UInt32 s_lines = 4;
+	if (s_lines > 0) {
+		--s_lines;
+		OBVR_LOG("Hud depth: own single-sample depth-stencil %ux%u %s (%08X) - the interface pass's 3D (the "
+		         "inventory's figure) gets a depth test",
+		         width, height, result >= 0 && g_hudDepth != nullptr ? "made" : "NOT made",
+		         static_cast<UInt32>(result));
+	}
+	if (result < 0) {
+		g_hudDepth = nullptr;
+	}
+	g_hudDepthWidth = width;
+	g_hudDepthHeight = height;
+	return g_hudDepth != nullptr;
 }
 
 // The major version of the vertex shader set now; 2 for none (the fixed
@@ -2455,6 +2494,32 @@ const char* RunInterfacePass(void* self, void* unusedEdx, void* renderedTexture,
 		}
 	}
 
+	// A depth-stencil DXVK will attach (render/HudDepth.h): the game's has
+	// other samples than the layer, and would be left out.
+	void* gameDepth = nullptr;
+	bool ownDepthBound = false;
+	{
+		auto getDepthStencil =
+			d3d9::Method<d3d9::GetDepthStencilSurfaceFn>(device, d3d9::kDeviceGetDepthStencilSurface);
+		auto setDepthStencil =
+			d3d9::Method<d3d9::SetDepthStencilSurfaceFn>(device, d3d9::kDeviceSetDepthStencilSurface);
+		if (getDepthStencil != nullptr && setDepthStencil != nullptr) {
+			getDepthStencil(device, &gameDepth);
+		}
+		d3d9::SurfaceDesc depthDesc{};
+		d3d9::SurfaceDesc targetDesc{};
+		auto depthGetDesc =
+			gameDepth != nullptr ? d3d9::Method<d3d9::GetDescFn>(gameDepth, d3d9::kSurfaceGetDesc) : nullptr;
+		auto targetGetDesc = d3d9::Method<d3d9::GetDescFn>(substitute, d3d9::kSurfaceGetDesc);
+		if (depthGetDesc != nullptr && targetGetDesc != nullptr && depthGetDesc(gameDepth, &depthDesc) >= 0 &&
+		    targetGetDesc(substitute, &targetDesc) >= 0 &&
+		    HudNeedsOwnDepth(depthDesc.multiSampleType, targetDesc.multiSampleType, depthDesc.width,
+		                     depthDesc.height, targetDesc.width, targetDesc.height) &&
+		    EnsureHudDepth(device, targetDesc.width, targetDesc.height)) {
+			ownDepthBound = setDepthStencil(device, g_hudDepth) >= 0;
+		}
+	}
+
 	// The depth the vanilla begin gives the pass. The orange probe clear
 	// arrived through the binding while all twenty-two successful draws did
 	// not, and the one anomaly in the first draw's pipeline was z=1 - the
@@ -2493,12 +2558,13 @@ const char* RunInterfacePass(void* self, void* unusedEdx, void* renderedTexture,
 			OBVR_LOG("Hud depth: no depth stencil bound at the redirected pass");
 		}
 	}
-	if (g_depthClearFlags != 0 && g_originalClear != nullptr) {
+	const UInt32 depthClearFlags = ownDepthBound ? (d3d9::kClearZBuffer | d3d9::kClearStencil) : g_depthClearFlags;
+	if (depthClearFlags != 0 && g_originalClear != nullptr) {
 		const SInt32 depthResult =
-			g_originalClear(device, 0, nullptr, g_depthClearFlags, 0, 1.0f, 0);
+			g_originalClear(device, 0, nullptr, depthClearFlags, 0, 1.0f, 0);
 		if (g_depthClearTraceLeft > 0) {
 			--g_depthClearTraceLeft;
-			OBVR_LOG("Hud depth clear: flags=0x%X result=%08X", g_depthClearFlags,
+			OBVR_LOG("Hud depth clear: flags=0x%X result=%08X", depthClearFlags,
 			         static_cast<UInt32>(depthResult));
 		}
 	}
@@ -2541,6 +2607,15 @@ const char* RunInterfacePass(void* self, void* unusedEdx, void* renderedTexture,
 	}
 
 	g_redirecting = false;
+
+	// The game's depth-stencil back.
+	if (ownDepthBound) {
+		if (auto setDepthStencil =
+		        d3d9::Method<d3d9::SetDepthStencilSurfaceFn>(device, d3d9::kDeviceSetDepthStencilSurface)) {
+			setDepthStencil(device, gameDepth);
+		}
+	}
+	ReleaseObject(gameDepth);
 
 	// The device ends the call aiming where the game last aimed it - at what
 	// the pass asked for, or failing that at whatever was current before.

@@ -399,6 +399,20 @@ bool NearestVertexOf(UInt32 ref, const NiPoint3& hand, NiPoint3& out, float& dis
 	return true;
 }
 
+bool RefWorldBound(UInt32 ref, NiPoint3& centre, float& radius) {
+	if (!LooksLikeObject(ref)) {
+		return false;
+	}
+	const UInt32 nodeAddress = Read(ref + addr::kRefNiNodeOffset);
+	if (!LooksLikeObject(nodeAddress)) {
+		return false;
+	}
+	const auto* node = reinterpret_cast<const NiAVObject*>(nodeAddress);
+	centre = node->worldBound.center;
+	radius = node->worldBound.radius;
+	return radius == radius && radius >= 0.0f;
+}
+
 UInt8 RefBaseFormType(UInt32 ref) {
 	if (!LooksLikeObject(ref)) {
 		return 0;

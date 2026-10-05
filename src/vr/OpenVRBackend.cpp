@@ -92,9 +92,28 @@ void OpenVRBackend::InitControllerActions() {
 			m_skeletonHandles[hand] = 0;
 		}
 	}
+	for (int hand = 0; hand < 2; ++hand) {
+		m_hapticHandles[hand] = 0;
+		const char* const path = hand == 0 ? "/actions/obvr/out/right_haptic" : "/actions/obvr/out/left_haptic";
+		if (table->GetAction(path, &m_hapticHandles[hand]) != 0) {
+			m_hapticHandles[hand] = 0;
+		}
+	}
+	OBVR_LOG("OpenVR input: hand pulses %s", m_hapticHandles[0] != 0 && m_hapticHandles[1] != 0 && table->Haptic != nullptr
+	                                             ? "resolved"
+	                                             : "not in the manifest - no pulses");
 	OBVR_LOG("OpenVR input: hand skeletons %s", m_skeletonHandles[0] != 0 && m_skeletonHandles[1] != 0
 	                                                ? "resolved - finger curls can be read"
 	                                                : "not in the manifest - no finger curls");
+}
+
+bool OpenVRBackend::Pulse(bool rightHand, float seconds, float frequency, float amplitude) {
+	const UInt64 action = m_hapticHandles[rightHand ? 0 : 1];
+	auto* const table = static_cast<input::Table*>(m_input);
+	if (table == nullptr || action == 0 || table->Haptic == nullptr) {
+		return false;
+	}
+	return table->Haptic(action, 0.0f, seconds, frequency, amplitude, 0) == 0;
 }
 
 bool OpenVRBackend::Connect(int applicationType) {

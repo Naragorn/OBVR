@@ -18,6 +18,8 @@
 #include "game/BlockCone.h"
 #include "game/BowDrawSound.h"
 #include "game/CompassHeading.h"
+#include "game/EquipWhileActing.h"
+#include "game/TargetMarker.h"
 #include "game/BowRelease.h"
 #include "game/BowVisual.h"
 #include "game/ConsoleLine.h"
@@ -2344,6 +2346,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// open and the hand's while reaching; either way what it found is asked.
 	{
 		bool markerShown = false;
+		UInt32 markerRef = 0;
 		vr::openvr::HmdMatrix34 markerPose{};
 		vr::openvr::HmdMatrix34 head{};
 		if (active && !menuIsUp && (config.hands.reachTooltip || config.hands.reachRing) &&
@@ -2367,6 +2370,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			                            game::RefBaseFormType(target.haveRef ? target.refAddress : 0),
 			                            nearRight, nearLeft)) {
 				markerShown = true;
+				markerRef = target.refAddress;
 				markerPose = vr::FacingHeadAt(
 					head, vr::WorldPointInTracking(head, camRot, camPos, hit,
 					                               config.tracker.unitsPerMetre));
@@ -2376,6 +2380,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		                     config.hands.reachMarkerOpacity);
 		// The crosshair's icon moves onto the object, into the ring's middle.
 		g_reachIconShown = markerShown && config.hands.reachTooltip;
+		// And the thing itself marked: an outline, or a glow (game/TargetMarker.h).
+		game::StepTargetMarker(markerShown ? markerRef : 0, active && config.hands.targetOutline,
+		                       active && config.hands.targetGlow);
 		g_reachIconPose = render::ReachIconPose(markerPose);
 	}
 	UpdateTeleport(config, backend, active, menuIsUp, dt);
@@ -3516,6 +3523,8 @@ void OnPresent() {
 	const bool layerCaptured = g_hudLayer.HasCapture();
 	const bool menuIsUp = config.tracker.showMenus && game::IsMenuMode();
 	game::SetNoPlayerStagger(config.look.noPlayerStagger);
+	game::SetNoPlayerKnockdown(config.look.noPlayerKnockdown);
+	game::SetEquipWhileActing(config.fullVrMode);
 	game::SetNoHitBlur(config.look.noHitBlur);
 	UpdateHandMode(config, game::IsMenuMode());
 	OnFrameEnd();
@@ -5124,6 +5133,19 @@ void BeforeFirstScenePass() {
 				game::StepHeldObject(!hands.levitateObjects || hands.attachSmallObjects, holding,
 				                     held, haveTouched, touched, !hands.levitateObjects,
 				                     g_deltaSeconds);
+				// In the hand: a short pulse on that controller, and only then -
+				// none while reaching or pulling (the tester, 2026-10-05).
+				bool arrivedRight = true;
+				if (game::TakeHeldObjectArrival(arrivedRight)) {
+					const bool pulsed = g_headTracker.GetBackendForFrame().Pulse(
+						vr::HandDeviceForRole(arrivedRight, g_handRolesSwapped), 0.04f, 160.0f, 0.5f);
+					static UInt32 s_pulseLines = 6;
+					if (s_pulseLines > 0) {
+						--s_pulseLines;
+						OBVR_LOG("Hands: the held thing is in the %s hand - %s", arrivedRight ? "weapon" : "other",
+						         pulsed ? "a pulse" : "no pulse (SteamVR refused it, or no vibration action)");
+					}
+				}
 			}
 			game::NoteHandAdjustFrame(rightCommitted, leftCommitted,
 			                          g_hand.rightGripDown || g_hand.leftGripDown, g_deltaSeconds);
@@ -5145,6 +5167,8 @@ void BeforeFirstScenePass() {
 			}
 			g_stumpShown = game::StepForearmStumps(
 				game::StumpWanted(game::FirstPersonHandsBare(), sleeves, g_stumpHandsAway));
+			// A glove's cuff ends at the elbow (game/ArmStump.h).
+			game::StepGloveElbows(!game::FirstPersonHandsBare());
 			g_stumpStepped = true;
 			if (g_stumpShown) {
 				game::KeepFirstPersonNodesInView("Arms", cameraPos, 100.0f);
@@ -5172,6 +5196,7 @@ void BeforeFirstScenePass() {
 	// did not place it.
 	if (!g_stumpStepped) {
 		g_stumpShown = game::StepForearmStumps(false);
+		game::StepGloveElbows(false);
 	}
 
 	bool thirdPersonBodyApplied = false;
@@ -5901,7 +5926,10 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	if (handHudActive) {
 		static vr::HudTile s_hudTiles[vr::kHudTilesMax];
 		static vr::HudTile s_subtitleTiles[vr::kHudTilesMax];
+		static vr::HudTile s_infoTiles[vr::kHudTilesMax];
 		const UInt32 tileCount = game::ReadHudTiles(game::kMenuIdHudMain, s_hudTiles, vr::kHudTilesMax);
+		// What the crosshair is on: HUDInfoMenu's.
+		const UInt32 infoCount = game::ReadHudTiles(game::kMenuIdHudInfo, s_infoTiles, vr::kHudTilesMax);
 		// The notices and the subtitles are HUDSubtitleMenu's, which exists
 		// only once the game first showed one; under the interface's menu
 		// root either way.
@@ -5919,9 +5947,10 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			lift[e] = vr::HudElementLifted(handHud, element);
 			show[e] = vr::HudElementShown(handHud, element);
 			const bool subtitleMenu = vr::HudElementInSubtitleMenu(element);
+			const bool infoMenu = vr::HudElementInInfoMenu(element);
 			const vr::UiRect r =
-				lift[e] ? vr::HudElementRect(subtitleMenu ? s_subtitleTiles : s_hudTiles,
-				                             subtitleMenu ? subtitleCount : tileCount, element)
+				lift[e] ? vr::HudElementRect(infoMenu ? s_infoTiles : subtitleMenu ? s_subtitleTiles : s_hudTiles,
+				                             infoMenu ? infoCount : subtitleMenu ? subtitleCount : tileCount, element)
 				        : vr::UiRect{};
 			rects[e] = vr::UiRectToCapture(r, uiHeight, g_hudLayer.CaptureWidth(), g_hudLayer.CaptureHeight());
 			handHudFrame.rect[e] = r;
@@ -6086,6 +6115,26 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		handHudFrame.leftValid = leftDevice != vr::openvr::kTrackedDeviceIndexInvalid;
 		handHudFrame.rightValid = rightDevice != vr::openvr::kTrackedDeviceIndexInvalid;
 		handHudFrame.haveHead = backend.GetRenderPoseMatrix(handHudFrame.head);
+		// What the crosshair is on: the Target row hangs just under it.
+		if (handHudActive && handHudFrame.haveHead && g_cyclopeanCameraWorldValid) {
+			const game::CrosshairTarget target = game::ReadCrosshairTarget();
+			NiPoint3 hit = target.position;
+			if (target.haveRef && game::ReadPickHit(hit)) {
+				NiPoint3 centre{};
+				float radius = 0.0f;
+				const bool haveBound = game::RefWorldBound(target.refAddress, centre, radius);
+				const NiPoint3 hang = vr::TargetHangPoint(hit, haveBound, centre, radius);
+				const NiPoint3 at = vr::WorldPointInTracking(handHudFrame.head, g_cyclopeanCameraWorldTransform.rot,
+				                                             g_cyclopeanCameraWorldTransform.pos, hang,
+				                                             config.tracker.unitsPerMetre);
+				handHudFrame.target = vr::TargetRowPose(handHudFrame.head, at.x, at.y, at.z);
+				const float dx = at.x - handHudFrame.head.m[0][3];
+				const float dy = at.y - handHudFrame.head.m[1][3];
+				const float dz = at.z - handHudFrame.head.m[2][3];
+				handHudFrame.targetDistanceMetres = math::Sqrt(dx * dx + dy * dy + dz * dz);
+				handHudFrame.targetValid = true;
+			}
+		}
 		// The top and bottom of the view: placed where the head looks when
 		// something appears there, and taken along when it turns far away.
 		static vr::HudViewAnchor s_viewAnchor[2];
@@ -6218,14 +6267,28 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	                       config.look.snapTurnVignetteRadius, config.look.snapTurnVignetteStrength);
 
 	// The laser beam from the hand that points at a menu, as long as the way
-	// to it. Its own overlay, raw pixels, no game texture behind it.
+	// to it. Its own overlay, raw pixels, no game texture behind it. In the
+	// world ([Hands] LaserInWorld) it ends where the pick hit what A would
+	// activate, if that is nearer than its own length.
+	float laserLength = g_hand.laserLengthMetres;
+	if (g_hand.laserVisible && !visibility.menuIsUp && config.hands.laserInWorld && g_cyclopeanCameraWorldValid &&
+	    g_hand.rightHandValid) {
+		const game::CrosshairTarget target = game::ReadCrosshairTarget();
+		NiPoint3 hit{};
+		if (target.haveRef && game::ReadPickHit(hit)) {
+			const NiPoint3 hand = g_cyclopeanCameraWorldTransform.pos +
+			                      g_cyclopeanCameraWorldTransform.rot * g_hand.rightHandOffsetUnits;
+			const float metres = math::Sqrt((hit - hand).LengthSquared()) / config.tracker.unitsPerMetre;
+			laserLength = metres < laserLength ? metres : laserLength;
+		}
+	}
 	g_laserLayer.Submit(g_headTracker.GetBackendForFrame(),
 	                    g_hand.laserVisible,
 	                    g_headTracker.GetBackendForFrame().HandDeviceIndex(vr::HandDeviceForRole(g_hand.laserRight, g_handRolesSwapped)),
 	                    config.hands.laserPitchDegrees,
 	                    g_hand.laserRight ? config.hands.laserYawDegrees
 	                                      : -config.hands.laserYawDegrees,
-	                    config.hands.laserOriginMetres, g_hand.laserLengthMetres,
+	                    config.hands.laserOriginMetres, laserLength,
 	                    config.hands.laserBeam, config.hands.laserDot,
 	                    vr::LaserOffsetLocal(config.hands.laserOffsetRightMetres, config.hands.laserOffsetUpMetres,
 	                                         !g_hand.laserRight));
@@ -8363,6 +8426,7 @@ bool Install() {
 	game::VerifyGameSoundAddresses();
 	game::VerifyShoveAddresses();
 	game::InstallPlayerStagger();
+	game::InstallEquipWhileActing();
 	game::InstallBowDrawSound();
 	game::InstallCompassHeading();
 	game::InstallHitShader();

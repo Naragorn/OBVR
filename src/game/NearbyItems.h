@@ -126,6 +126,9 @@ bool NearestVertexOf(UInt32 ref, const NiPoint3& hand, NiPoint3& out, float& dis
 bool AxialExtentOf(const NiAVObject* root, const NiPoint3& origin, const NiPoint3& dir, float& low, float& high,
                    const float* band = nullptr, NiPoint3* bandCentre = nullptr, UInt32* bandVertices = nullptr);
 
+// A reference's 3D bound in the world. False when its node cannot be read.
+bool RefWorldBound(UInt32 ref, NiPoint3& centre, float& radius);
+
 // The type of a reference's base form, 0 when it cannot be read.
 UInt8 RefBaseFormType(UInt32 ref);
 
@@ -190,18 +193,79 @@ inline bool ReachingForWithHand(const SearchHand& hand, const NiPoint3& centre,
 	                                 alwaysUnits, kPalmConeCos));
 }
 
-// One item's bound, and whether it is nearer a hand than the best so far.
+// One item's bound, and how well a hand reaches for it.
 struct NearItem {
 	bool valid = false;
-	bool left = false;     // the left hand is the nearer one
+	bool left = false;     // the left hand is the reaching one
 	UInt32 ref = 0;
 	NiPoint3 centre{0.0f, 0.0f, 0.0f};
 	float distance = 0.0f;  // from that hand to the item's surface, units
+	// How it was reached for (PickRank) and the key within that: lower wins.
+	UInt8 rankClass = 0xFF;
+	float rankKey = 0.0f;
 };
 
+// How the laser misses an item: the angle, in radians, from the laser to the
+// nearest edge of its bound sphere seen from the hand - 0 when the laser runs
+// through the sphere. -1 with no laser or the hand inside the sphere.
+inline float LaserMissRadians(const NiPoint3& hand, const NiPoint3& direction, const NiPoint3& centre,
+                              float radius) {
+	const float dirLength = math::Sqrt(direction.LengthSquared());
+	const NiPoint3 to = centre - hand;
+	const float toLength = math::Sqrt(to.LengthSquared());
+	if (!(dirLength > 1.0e-6f) || !(toLength > 1.0e-6f) || toLength <= radius) {
+		return -1.0f;
+	}
+	float cosine = (to.x * direction.x + to.y * direction.y + to.z * direction.z) / (toLength * dirLength);
+	cosine = cosine > 1.0f ? 1.0f : (cosine < -1.0f ? -1.0f : cosine);
+	const float angle = math::Atan2(math::Sqrt(1.0f - cosine * cosine), cosine);
+	const float half = math::Asin(radius > 0.0f ? radius / toLength : 0.0f);
+	return angle > half ? angle - half : 0.0f;
+}
+
+// Which item a hand takes when several are in reach (the tester's tester,
+// 2026-10-03: before three objects, pointing at one, the nearest was taken).
+// By class, then within it by its key, lower first:
+//   0 touched (within kPickTouchUnits of its surface) - by distance;
+//   1 the laser on it (within kPickAimedRadians of its bound) - by the miss;
+//   2 within the grab's reach - by distance;
+//   3 in the laser's cone (ReachingFor) - by the miss;
+//   4 the palm turned to it, or a hand with no laser - by distance.
+// So what the hand touches comes first, then what the laser points at, then
+// the nearest; pointed at from afar, the item nearest the laser wins, not the
+// one nearest the hand.
+constexpr float kPickTouchUnits = 3.5f;       // 5 cm
+constexpr float kPickAimedRadians = 0.105f;   // 6 degrees
+
+inline bool PickRank(const SearchHand& hand, const NiPoint3& centre, float radius, float surfaceDistance,
+                     float alwaysUnits, UInt8& rankClass, float& rankKey) {
+	if (!ReachingForWithHand(hand, centre, surfaceDistance, alwaysUnits)) {
+		return false;
+	}
+	const float miss = LaserMissRadians(hand.position, hand.direction, centre, radius);
+	if (surfaceDistance <= kPickTouchUnits) {
+		rankClass = 0;
+		rankKey = surfaceDistance;
+	} else if (miss >= 0.0f && miss <= kPickAimedRadians) {
+		rankClass = 1;
+		rankKey = miss;
+	} else if (surfaceDistance <= alwaysUnits) {
+		rankClass = 2;
+		rankKey = surfaceDistance;
+	} else if (miss >= 0.0f && ReachingFor(hand.position, hand.direction, centre, surfaceDistance, 0.0f,
+	                                       kReachingConeCos)) {
+		rankClass = 3;
+		rankKey = miss;
+	} else {
+		rankClass = 4;
+		rankKey = surfaceDistance;
+	}
+	return true;
+}
+
 // Takes the candidate if it is within reach of a valid hand that is reaching
-// for it (ReachingFor) and nearer than what `best` holds. The right hand wins
-// a tie.
+// for it (ReachingFor) and ranks better than what `best` holds (PickRank).
+// The right hand wins a tie.
 inline void ConsiderNearItem(NearItem& best, UInt32 ref, const NiPoint3& centre, float radius,
                              const SearchHand& right, const SearchHand& left, float reachUnits,
                              float alwaysUnits) {
@@ -212,14 +276,18 @@ inline void ConsiderNearItem(NearItem& best, UInt32 ref, const NiPoint3& centre,
 			continue;
 		}
 		const float d = SurfaceDistance(hand.position, centre, radius);
-		if (d <= reachUnits &&
-		    ReachingForWithHand(hand, centre, d, alwaysUnits) &&
-		    (!best.valid || d < best.distance)) {
+		UInt8 rankClass = 0xFF;
+		float rankKey = 0.0f;
+		if (d <= reachUnits && PickRank(hand, centre, radius, d, alwaysUnits, rankClass, rankKey) &&
+		    (!best.valid || rankClass < best.rankClass ||
+		     (rankClass == best.rankClass && rankKey < best.rankKey))) {
 			best.valid = true;
 			best.left = isLeft;
 			best.ref = ref;
 			best.centre = centre;
 			best.distance = d;
+			best.rankClass = rankClass;
+			best.rankKey = rankKey;
 		}
 	}
 }

@@ -421,6 +421,66 @@ Every change below is switched by the mode.
   report teleporting by accident when turning (reddit.com/r/ValveIndex/
   comments/ikzuca). That is why there is a cone and a threshold.
 
+## Beta tester round (2026-10-03), built 2026-10-05
+
+A beta tester's first notes; the tester decided what to build. Built and
+checked by tests and the harness as far as said; **none seen in the headset**.
+
+1. **Which item a grip takes, and showing it.** Before several items the
+   nearest in reach was taken even when the laser pointed at another
+   (`game::ConsiderNearItem` ranked by distance only). Now by class
+   (`game::PickRank`, frame_logic_test): touched (5 cm), then the laser on
+   it (6 degrees off its bound), then within the grab's reach, then in the
+   laser's cone by how far off, then the palm. The game's info text (name,
+   action, value, weight - HUDInfoMenu) is a hand-HUD element of its own,
+   `[HandHud] InfoPlace=target` by default: hung just under what the
+   crosshair is on, facing the eyes, its size kept as at the view distance
+   (`vr::TargetRowPose`, `vr::TargetHangPoint`, hand_hud_test). The item
+   itself is marked by the engine's effect shaders on the reference
+   (`game/TargetMarker.h`, target_marker_test): an outline (`TargetOutline=1`,
+   effectFortify 000562C8) and a glow (`TargetGlow=0`, effectTelekinesis
+   00181C2E). Harness `stow`: "Target marker: ... marked (outline 1)",
+   "Info target, lifted". How either looks: not seen.
+2. **The inventory's figure hollow.** The interface pass drew it into
+   OBVR's single-sample layer with the game's 8-sample depth-stencil, which
+   DXVK leaves out of the framebuffer - no depth test, skin over armour. The
+   pass now gets a single-sample depth-stencil of its own while redirected
+   (`render/HudDepth.h`, hud_depth_test). Log: "Hud depth: own single-sample
+   depth-stencil 4028x3380 made". The figure itself: not seen.
+3. **Pulling from afar.** `PullReachMetres` and `ReachMarkerMetres` default
+   2.0 (up to 3): pointing at an item shows the ring and the grip pulls it.
+   A short pulse on that controller when the held thing reaches the hand
+   (`game::TakeHeldObjectArrival`; the manifest's new vibration actions,
+   IVRInput entry 23 TriggerHapticVibrationAction), none before. The harness
+   has no real controller: "no pulse (SteamVR refused it ...)" there.
+   **The tester's live INI still says 1.0 for both** - set them in the menu.
+4. **"You cannot change weapons while attacking."** The inventory, the
+   hotkeys (the quick ring), unequipping and dropping refuse while the
+   player's action is anything but -1; in Full VR the animations are not
+   seen, so those four `je` become `jmp` while Full VR is on
+   (`game/EquipWhileActing.h`, equip_while_acting_test). Log: "Equip: 4 of 4
+   action gates found". Why the action was not -1 when the tester equipped
+   is not known; a log of the action at each refusal would say.
+5. **A ray from the hand in the Arena raiment.** Best explanation found:
+   the female Arena raiment's glove ("Hand:0") has elbow vertices weighted
+   half to the upper arm, which in Full VR stays with the animation while the
+   forearm follows the controller. Gloves' upper-arm bones now collapse into
+   the pinned elbow (`game::StepGloveElbows`, arm_stump_test). Whether the
+   tester's character was female is not known; not reproduced.
+6. **Thrown through the air.** `[Look] NoPlayerKnockdown=1` (menu "No
+   knockdown"): the knockdown (0x00654420, the process vtable +0x2F0, from a
+   hit's knockdown roll, a magic explosion, PushActorAway) skips the player.
+   Log: "the high process's knockdown rerouted". Not seen in a fight.
+7. **Stuck at doors.** No log, no tester to ask. Open: walk through a door
+   in the harness with `BodyCollision` on and off; if only on, the hand and
+   weapon bodies catch the frame.
+8. **The laser in the world.** `[Hands] LaserInWorld=0` by default (menu
+   "Laser in the world"): the weapon hand's beam, ending at what the pick
+   hit, else `WorldLaserMetres` (2). hand_mode_test.
+
+Also found on the way: harness `stow` fails at "held item at the body" - it
+failed the same way on 2026-09-28, before this round.
+
 ## Also open
 
 - **Shield bash.** Not a vanilla action (UESP, Oblivion:Block: the Expert

@@ -143,6 +143,11 @@ public:
 	// a wrist.
 	UInt32 HandDeviceIndex(bool rightHand) const;
 
+	// A short pulse on one hand's controller (the physical hand), through the
+	// manifest's vibration actions. False when the input actions or that
+	// action are not there.
+	bool Pulse(bool rightHand, float seconds, float frequency, float amplitude);
+
 	// For drawing the real controllers (render::ControllerModels): the pose
 	// of the controller in one hand as OpenVR's own matrix, in the seated
 	// space and from the same unpredicted read ReadHand makes; the eye's full
@@ -342,6 +347,8 @@ private:
 	UInt64 m_actionHandles[2][7]{};
 	// The hands' skeleton actions, for the fingers' curl (0 when unbound).
 	UInt64 m_skeletonHandles[2]{};
+	// The vibration actions, [0] right, [1] left, as the skeletons.
+	UInt64 m_hapticHandles[2]{};
 	mutable bool m_skeletonLogged[2]{};
 	// Each hand's SteamVR open hand and fist, its thumb joints
 	// only (vr/ThumbPose.h): read once, when the skeleton first answers.

@@ -26,9 +26,13 @@ struct Hold {
 	bool floatStarted = false;
 	float floatSeconds = 0.0f;
 	float floatElapsed = 0.0f;
+	// Said once per hold: in the hand (HeldObjectArrived).
+	bool arrived = false;
 };
 
 Hold g_hold;
+bool g_arrivedEvent = false;
+bool g_arrivedRightHand = true;
 UInt32 g_reportsLeft = 6;
 
 }  // namespace
@@ -72,6 +76,12 @@ void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveT
 			g_hold.attached = true;
 			g_hold.floatFrom = haveTouched ? touched : g_hold.node->worldBound.center;
 		}
+		// Not placed on the hand (the spring holds it): in the hand at once.
+		if (!g_hold.attached) {
+			g_hold.arrived = true;
+			g_arrivedEvent = true;
+			g_arrivedRightHand = hand.rightHand;
+		}
 		if (g_reportsLeft > 0) {
 			--g_reportsLeft;
 			OBVR_LOG("Hands: holding %08X (form type %02X, bound radius %.1f units) - %s", ref,
@@ -102,8 +112,13 @@ void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveT
 	} else if (dtSeconds > 0.0f && dtSeconds < 0.5f) {
 		g_hold.floatElapsed += dtSeconds;
 	}
-	const NiPoint3 held = FloatPoint(g_hold.floatFrom, grip,
-	                                 FloatWeight(g_hold.floatElapsed, g_hold.floatSeconds));
+	const float floated = FloatWeight(g_hold.floatElapsed, g_hold.floatSeconds);
+	const NiPoint3 held = FloatPoint(g_hold.floatFrom, grip, floated);
+	if (!g_hold.arrived && floated >= 1.0f) {
+		g_hold.arrived = true;
+		g_arrivedEvent = true;
+		g_arrivedRightHand = hand.rightHand;
+	}
 	const HeldPose pose = AttachedPose(handRot, held, g_hold.attachment, scale);
 	// The node's world transform is written directly and only its children
 	// are updated from it: running the node's own update puts a Havok-driven
@@ -126,6 +141,15 @@ void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveT
 	}
 	UpdateChildTransforms(node);
 	NoteHeldPose(g_hold.ref, pose.rot, pose.pos);
+}
+
+bool TakeHeldObjectArrival(bool& rightHand) {
+	if (!g_arrivedEvent) {
+		return false;
+	}
+	g_arrivedEvent = false;
+	rightHand = g_arrivedRightHand;
+	return true;
 }
 
 }  // namespace obvr::game

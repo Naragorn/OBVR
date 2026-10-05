@@ -463,7 +463,60 @@ void TestLook() {
 
 }  // namespace
 
+void TestTarget() {
+	std::printf("What the crosshair is on, under it\n");
+	HudPlace p = HudPlace::View;
+	Check(ParseHudPlace("target", p) && p == HudPlace::Target && HudPlaceFromIndex(7.0f) == HudPlace::Target,
+	      "\"target\" and row value 7: under the target");
+	HandHudSettings s;
+	Check(s.element[static_cast<UInt32>(HudElement::Info)].place == HudPlace::Target &&
+	          HudElementInInfoMenu(HudElement::Info) && !HudElementInInfoMenu(HudElement::Bars),
+	      "the info is under the target by default, read from HUDInfoMenu");
+	HudTile t[4] = {Tile("HUDInfoMenu", -1, 0, 0), Tile("hudinfo_name", 0, 1600, 880, 120, 45),
+	                Tile("hudinfo_action_icon", 0, 1580, 827, 64, 64), Tile("elsewhere", -1, 10, 10, 5, 5)};
+	const UiRect info = HudElementRect(t, 4, HudElement::Info);
+	Check(info.valid && Near(info.left, 1580) && Near(info.top, 827) && Near(info.right, 1720) && Near(info.bottom, 925),
+	      "the info: every tile under HUDInfoMenu, nothing else");
+
+	const NiPoint3 hit{10.0f, 20.0f, 104.0f};
+	const NiPoint3 low = TargetHangPoint(hit, true, NiPoint3{10.0f, 20.0f, 100.0f}, 5.0f);
+	Check(Near(low.x, 10.0f) && Near(low.y, 20.0f) && Near(low.z, 92.0f),
+	      "a small thing: under its bound, a little gap lower");
+	const NiPoint3 tall = TargetHangPoint(NiPoint3{0, 0, 80.0f}, true, NiPoint3{0, 0, 50.0f}, 70.0f);
+	Check(Near(tall.z, 27.0f), "a person or a door: no more than 20 units below its middle");
+	const NiPoint3 bare = TargetHangPoint(hit, false, NiPoint3{}, 0.0f);
+	Check(Near(bare.z, 101.0f), "no bound: just under the hit");
+	const NiPoint3 above = TargetHangPoint(NiPoint3{0, 0, 10.0f}, true, NiPoint3{0, 0, 50.0f}, 5.0f);
+	Check(Near(above.z, 7.0f), "hit below its bound's bottom: under the hit");
+
+	HandHudFrame f;
+	f.haveHead = true;
+	f.head.m[0][0] = f.head.m[1][1] = f.head.m[2][2] = 1.0f;
+	f.head.m[1][3] = 1.6f;
+	f.rect[static_cast<UInt32>(HudElement::Info)] = UiRect{0.0f, 0.0f, 200.0f, 50.0f, true};
+	HandHudQuad q[kHudElementCount];
+	PlaceHandHud(s, f, q);
+	Check(!q[static_cast<UInt32>(HudElement::Info)].shown, "nothing under the crosshair: not shown");
+	f.targetValid = true;
+	f.targetDistanceMetres = 2.4f;
+	f.target = TargetRowPose(f.head, 0.0f, 1.2f, -2.35f);
+	PlaceHandHud(s, f, q);
+	const HandHudQuad& iq = q[static_cast<UInt32>(HudElement::Info)];
+	Check(iq.shown && !iq.onDevice, "something under it: shown, in the room");
+	Check(Near(iq.widthMetres, 200.0f * s.viewUnitMetres * 2.0f),
+	      "twice the view's distance away: twice as wide, so it looks as large");
+	{
+		const float dx = iq.pose.m[0][3] - 0.0f, dy = iq.pose.m[1][3] - 1.2f, dz = iq.pose.m[2][3] + 2.35f;
+		const float half = iq.widthMetres * 0.25f * 0.5f;
+		Check(Near(dx * dx + dy * dy + dz * dz, half * half, 1e-5f) && dy < 0.0f,
+		      "hung from its top edge: half its height under the anchor");
+	}
+	Check(iq.pose.m[2][2] > 0.98f && iq.pose.m[1][2] > 0.0f && Near(iq.pose.m[1][0], 0.0f),
+	      "its face turned to the eyes, level");
+}
+
 int main() {
+	TestTarget();
 	TestPlaces();
 	TestTiles();
 	TestElements();

@@ -2251,6 +2251,36 @@ void TestNearItems() {
 	ConsiderNearItem(byPalm, 10, obvr::NiPoint3{60.0f, 0.0f, 0.0f}, 2.0f, palmTowards, noLeft,
 	                 70.0f, 21.0f);
 	Check(byPalm.valid, "the palm turned to it, the laser elsewhere: found");
+	// Before three items, pointing at one: that one, not the nearest (the beta
+	// tester, 2026-10-03).
+	NearItem three;
+	ConsiderNearItem(three, 11, obvr::NiPoint3{-20.0f, 50.0f, 0.0f}, 3.0f, pointing, noLeft, 140.0f, 21.0f);
+	ConsiderNearItem(three, 12, obvr::NiPoint3{0.0f, 90.0f, 0.0f}, 3.0f, pointing, noLeft, 140.0f, 21.0f);
+	ConsiderNearItem(three, 13, obvr::NiPoint3{20.0f, 40.0f, 0.0f}, 3.0f, pointing, noLeft, 140.0f, 21.0f);
+	Check(three.valid && three.ref == 12u && three.rankClass == 1,
+	      "three in front, the laser on the farthest: the farthest is taken");
+	NearItem twoInCone;
+	ConsiderNearItem(twoInCone, 14, obvr::NiPoint3{20.0f, 50.0f, 0.0f}, 2.0f, pointing, noLeft, 140.0f, 21.0f);
+	ConsiderNearItem(twoInCone, 15, obvr::NiPoint3{15.0f, 90.0f, 0.0f}, 2.0f, pointing, noLeft, 140.0f, 21.0f);
+	Check(twoInCone.ref == 15u && twoInCone.rankClass == 3,
+	      "neither on the laser, both in its cone: the one nearer the laser, though farther");
+	NearItem reachVsAim;
+	ConsiderNearItem(reachVsAim, 16, obvr::NiPoint3{15.0f, 0.0f, 0.0f}, 2.0f, pointing, noLeft, 140.0f, 21.0f);
+	ConsiderNearItem(reachVsAim, 17, obvr::NiPoint3{0.0f, 60.0f, 0.0f}, 2.0f, pointing, noLeft, 140.0f, 21.0f);
+	Check(reachVsAim.ref == 17u, "one within the grab's reach, one on the laser: the laser's");
+	NearItem touchVsAim;
+	ConsiderNearItem(touchVsAim, 18, obvr::NiPoint3{0.0f, 60.0f, 0.0f}, 2.0f, pointing, noLeft, 140.0f, 21.0f);
+	ConsiderNearItem(touchVsAim, 19, obvr::NiPoint3{4.0f, -3.0f, 0.0f}, 2.0f, pointing, noLeft, 140.0f, 21.0f);
+	Check(touchVsAim.ref == 19u && touchVsAim.rankClass == 0, "one touched, one on the laser: the touched");
+	Check(LaserMissRadians(obvr::NiPoint3{0, 0, 0}, obvr::NiPoint3{0, 1, 0}, obvr::NiPoint3{0, 50, 0}, 3.0f) == 0.0f &&
+	          LaserMissRadians(obvr::NiPoint3{0, 0, 0}, obvr::NiPoint3{0, 0, 0}, obvr::NiPoint3{0, 50, 0}, 3.0f) <
+	              0.0f &&
+	          LaserMissRadians(obvr::NiPoint3{0, 0, 0}, obvr::NiPoint3{0, 1, 0}, obvr::NiPoint3{0, 1, 0}, 3.0f) <
+	              0.0f,
+	      "the laser through the bound: no miss; no laser, or the hand inside: none to tell");
+	Check(Near(LaserMissRadians(obvr::NiPoint3{0, 0, 0}, obvr::NiPoint3{0, 1, 0}, obvr::NiPoint3{50, 50, 0}, 0.0f),
+	           0.7854f),
+	      "45 degrees off, a point: 45 degrees");
 	Check(ReachingForWithHand(palmTowards, obvr::NiPoint3{50.0f, 50.0f, 0.0f}, 50.0f, 21.0f) &&
 	          !ReachingForWithHand(palmTowards, obvr::NiPoint3{-60.0f, 0.0f, 0.0f}, 50.0f, 21.0f),
 	      "the palm's cone is wider (45 degrees in), and the back of the hand does not count");

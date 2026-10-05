@@ -1990,6 +1990,37 @@ void TestWeaponGuard() {
 	Check(!r.blocking, "sheathed: the same hand does not block");
 }
 
+void TestWorldLaser() {
+	std::printf("The laser in the world\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.enabled = true;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.inWorld = true;
+	frame.dtSeconds = 0.01f;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	frame.right.position = NiPoint3{0.2f, -0.3f, -0.3f};
+	HandMode off;
+	HandModeResult r = off.Update(frame, settings);
+	Check(!r.laserVisible, "off (the default): no laser in the world");
+	settings.laserInWorld = true;
+	settings.worldLaserMetres = 3.0f;
+	HandMode on;
+	r = on.Update(frame, settings);
+	Check(r.laserVisible && r.laserRight && r.laserLengthMetres == 3.0f,
+	      "on: the weapon hand's laser, its own length until something is hit");
+	frame.right.valid = false;
+	HandMode noHand;
+	r = noHand.Update(frame, settings);
+	Check(!r.laserVisible, "the weapon hand not tracked: none");
+	frame.right.valid = true;
+	frame.inWorld = false;
+	HandMode notWorld;
+	r = notWorld.Update(frame, settings);
+	Check(!r.laserVisible, "not in the world (a load, the main menu): none");
+}
+
 void TestFistGuard() {
 	std::printf("Both fists raised block\n");
 	GestureThresholds t;
@@ -2401,6 +2432,7 @@ int main() {
 	TestWeaponGuard();
 	TestBowGuard();
 	TestFistGuard();
+	TestWorldLaser();
 	TestLeftHandedMirror();
 	TestBowByHand();
 	TestHolsterInMode();

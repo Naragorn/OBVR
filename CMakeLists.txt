@@ -107,6 +107,8 @@ add_library(OBVR SHARED
 	src/game/WeaponDrawSpeed.cpp
 	src/game/BowDrawSound.cpp
 	src/game/CompassHeading.cpp
+	src/game/EquipWhileActing.cpp
+	src/game/TargetMarker.cpp
 	src/game/BowRelease.cpp
 	src/game/BowVisual.cpp
 	src/game/ConsoleLine.cpp

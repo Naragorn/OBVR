@@ -130,7 +130,15 @@ struct HandSettings {
 	// How far a closed grip reaches for an item that then floats to the hand
 	// (game::GripTakes), metres from the hand; beyond the grab's reach only
 	// while the hand points at it. 0 is off.
-	float pullReachMetres = 1.0f;
+	float pullReachMetres = 2.0f;
+	// The laser drawn in the world as well as at menus, and how long it is
+	// when the pick hits nothing (HandMode: the weapon hand's).
+	bool laserInWorld = false;
+	// What a closed grip would take, marked on itself: an outline (default),
+	// a soft glow (game/TargetMarker.h).
+	bool targetOutline = true;
+	bool targetGlow = false;
+	float worldLaserMetres = 2.0f;
 	// How fast a pulled or grabbed item floats into the hand, metres a second.
 	float pullSpeedMetres = 4.0f;
 	// Where a held object sits: this many metres from the palm along the
@@ -201,7 +209,7 @@ struct HandSettings {
 	// opaque it is (0 to 1). Beyond GrabReachMetres an item counts only while
 	// the hand's laser points roughly at it (game::ReachingFor), so an item
 	// on a table does not take the pick from a door being pointed at.
-	float reachMarkerMetres = 1.0f;
+	float reachMarkerMetres = 2.0f;
 	// From how near the hand the ring sits all the way on the item's side
 	// nearest it, metres; from the marker's distance it moves there evenly
 	// with the hand: very near, very near the edge.

@@ -799,6 +799,15 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 		m_press = LaserPressState{};
 		m_scrollUp = RepeatState{};
 		m_scrollDown = RepeatState{};
+		// The laser in the world too, when wanted ([Hands] LaserInWorld; the
+		// tester, 2026-10-05, of a beta tester's "Laserpointer auch ingame"):
+		// from the weapon hand, whose laser picks what A activates, this long
+		// unless the caller shortens it to what the pick hit.
+		if (s.laserInWorld && f.inWorld && f.right.valid) {
+			r.laserVisible = true;
+			r.laserRight = true;
+			r.laserLengthMetres = s.worldLaserMetres;
+		}
 		return;
 	}
 

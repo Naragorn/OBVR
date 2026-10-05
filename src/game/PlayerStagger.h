@@ -34,6 +34,29 @@ inline constexpr UInt32 kCallStaggerFromReach = 0x005FCCC8;
 inline constexpr UInt32 kCharacterProxyOf = 0x0065A2C0;
 inline constexpr UInt32 kCallKnockbackProxy = 0x0060008A;
 
+// The player never knocked down and thrown through the air ([Look]
+// NoPlayerKnockdown; the tester, 2026-10-05, of a beta tester's report: "andere
+// npcs können die player mit iwelchen attacken in die luft befördern und so
+// weghauen ... das sollten wir anbieten als option wegzupatchen").
+//
+// Read in Oblivion.exe 1.2.0.416: every knockdown goes through one function,
+// 0x00654420 - thiscall(process, actor, x, y, z, force), ret 14h - which
+// puts the actor into the knock state "Explode Lead In" (process+0x11C = 2),
+// turns its ragdoll on (0x0088D070) and pushes it with an impulse from the
+// source point (0x005364B0 at 0x006545BA): the throw. It is the process
+// vtable's slot +0x2F0 in both the high (0x00A71814, the slot at 0x00A71B04)
+// and the middle-high process (0x00A72684, at 0x00A72974), and is reached
+// from three places: a melee or arrow hit that rolled a knockdown (0x00600402,
+// fKnockdownChance and the Marksman perk), a magic explosion (0x00699AA2),
+// and the script command PushActorAway (0x0050EB8C). NoPlayerStagger covers
+// none of them. Both slots are rerouted to OBVR's own: for the player, with
+// the setting on, nothing happens (the damage is the hit's own and still
+// lands); everyone else goes to the original. The fatigue knock-out (0x006545E0)
+// is a collapse, not a throw, and is left alone.
+inline constexpr UInt32 kKnockActorAway = 0x00654420;
+inline constexpr UInt32 kKnockSlotHighProcess = 0x00A71B04;
+inline constexpr UInt32 kKnockSlotMiddleHighProcess = 0x00A72974;
+
 // Whether this actor's stagger or knockback is skipped.
 inline bool SkipForPlayer(bool enabled, UInt32 actor, UInt32 player) {
 	return enabled && player != 0 && actor == player;
@@ -41,5 +64,6 @@ inline bool SkipForPlayer(bool enabled, UInt32 actor, UInt32 player) {
 
 void InstallPlayerStagger();
 void SetNoPlayerStagger(bool enabled);
+void SetNoPlayerKnockdown(bool enabled);
 
 }  // namespace obvr::game

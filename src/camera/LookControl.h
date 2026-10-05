@@ -128,6 +128,8 @@ struct LookSettings {
 	// The player is never staggered or knocked back by a hit
 	// (game::PlayerStagger): the lurch back jolts the view in a headset.
 	bool noPlayerStagger = true;
+	// The player never knocked down and thrown (game/PlayerStagger.h).
+	bool noPlayerKnockdown = true;
 	// The hit blur (Oblivion's GethitShader) skipped for the player (game/HitShader.h).
 	bool noHitBlur = true;  // the tester, 2026-09-29: "ja machen wir!"
 	// The player's block counts towards where the headset looks, not where the

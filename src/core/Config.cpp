@@ -572,6 +572,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Look", "HideHudWhenDead", config.look.hideHudWhenDead, path);
 	config.look.noPlayerStagger =
 		ReadBool("Look", "NoPlayerStagger", config.look.noPlayerStagger, path);
+	config.look.noPlayerKnockdown =
+		ReadBool("Look", "NoPlayerKnockdown", config.look.noPlayerKnockdown, path);
 	config.look.noHitBlur = ReadBool("Look", "NoHitBlur", config.look.noHitBlur, path);
 	config.look.blockFacesView = ReadBool("Look", "BlockFacesView", config.look.blockFacesView, path);
 	config.look.snapTurnDeadZone =
@@ -704,6 +706,10 @@ void ReadRuntimeValues(Config& config, const char* path) {
 			ReadFloat("Hands", "HandGripForwardMetres", h.handGripForwardMetres, path);
 		h.grabReachMetres = ReadFloat("Hands", "GrabReachMetres", h.grabReachMetres, path);
 		h.pullReachMetres = ReadFloat("Hands", "PullReachMetres", h.pullReachMetres, path);
+		h.laserInWorld = ReadBool("Hands", "LaserInWorld", h.laserInWorld, path);
+		h.targetOutline = ReadBool("Hands", "TargetOutline", h.targetOutline, path);
+		h.targetGlow = ReadBool("Hands", "TargetGlow", h.targetGlow, path);
+		h.worldLaserMetres = ReadFloat("Hands", "WorldLaserMetres", h.worldLaserMetres, path);
 		h.pullSpeedMetres = ReadFloat("Hands", "PullSpeedMetres", h.pullSpeedMetres, path);
 		h.reachNearSideMetres =
 			ReadFloat("Hands", "ReachNearSideMetres", h.reachNearSideMetres, path);

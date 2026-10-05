@@ -136,7 +136,22 @@ void TestSquash() {
 
 }  // namespace
 
+void TestGlove() {
+	std::printf("A glove's cuff at the elbow\n");
+	Check(IsHandShapeName("Hand") && IsHandShapeName("hand:0") && IsHandShapeName("Hand:1"), "a glove's shape by name");
+	Check(!IsHandShapeName("Hands") && !IsHandShapeName("HandL") && !IsHandShapeName("Han") &&
+	          !IsHandShapeName(nullptr),
+	      "nothing else");
+	Check(GloveRoleOf("Bip01 L UpperArm") == StumpRole::LeftUpper &&
+	          GloveRoleOf("Bip01 R UpperArmTwist") == StumpRole::RightUpper,
+	      "the upper arm and its twist: to the elbow");
+	Check(GloveRoleOf("Bip01 L Forearm") == StumpRole::Keep && GloveRoleOf("Bip01 R ForearmTwist") == StumpRole::Keep &&
+	          GloveRoleOf("Bip01 R Hand") == StumpRole::Keep && GloveRoleOf("Bip01 Spine2") == StumpRole::Keep,
+	      "the forearm, the hand and the spine keep their bones");
+}
+
 int main() {
+	TestGlove();
 	TestRoles();
 	TestCollapse();
 	TestCentre();

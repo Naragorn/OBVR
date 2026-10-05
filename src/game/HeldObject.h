@@ -169,4 +169,11 @@ struct HeldHand {
 void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveTouched,
                     const NiPoint3& touched, bool attachAll = false, float dtSeconds = 0.0f);
 
+// Once per hold, the moment the held thing is in the hand - floated all the
+// way in, or at once when the spring holds it - and which hand (the role's:
+// the weapon hand is "right"). For the pulse on arrival (the tester,
+// 2026-10-05: "keine vibration. diese erst wenn das objekt in die hand
+// kommt").
+bool TakeHeldObjectArrival(bool& rightHand);
+
 }  // namespace obvr::game

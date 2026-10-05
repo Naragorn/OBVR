@@ -168,7 +168,134 @@ NiAVObject* CentreNodeFor(NiAVObject* real) {
 	return nullptr;
 }
 
+// The gloves' own: their elbow nodes and the skins swapped.
+FakeNode g_gloveLeft{};
+FakeNode g_gloveRight{};
+bool g_gloveNodesMade = false;
+Swapped g_gloveSwapped[8];
+UInt32 g_gloveLines = 8;
+
+// The "Hand" shapes of the first-person model whose skins have an upper-arm
+// bone, and their skins.
+UInt32 GloveSkins(UInt32 (&skins)[8]) {
+	NiAVObject* const root = FirstPersonArmsNode();
+	if (root == nullptr) {
+		return 0;
+	}
+	NiAVObject* nodes[16] = {};
+	const UInt32 found = CollectNodesContaining(root, "Hand", nodes, 16);
+	UInt32 n = 0;
+	for (UInt32 i = 0; i < found && n < 8; ++i) {
+		if (!IsHandShapeName(nodes[i]->name)) {
+			continue;
+		}
+		const UInt32 skin = Read(reinterpret_cast<UInt32>(nodes[i]) + kGeometrySkinInstance);
+		if (!mem::LooksLikeObjectAddress(skin)) {
+			continue;
+		}
+		const UInt32 data = Read(skin + kSkinInstanceData);
+		const UInt32 bones = Read(skin + kSkinInstanceBones);
+		if (!mem::LooksLikeObjectAddress(data) || !mem::LooksLikeObjectAddress(bones)) {
+			continue;
+		}
+		const UInt32 count = Read(data + kSkinDataBoneCount);
+		if (count == 0 || count > kMaxBones) {
+			continue;
+		}
+		skins[n++] = skin;
+	}
+	return n;
+}
+
 }  // namespace
+
+void StepGloveElbows(bool wanted) {
+	UInt32 skins[8];
+	const UInt32 n = GloveSkins(skins);
+	if (!wanted) {
+		for (Swapped& s : g_gloveSwapped) {
+			if (s.skin == 0) {
+				continue;
+			}
+			bool present = false;
+			for (UInt32 i = 0; i < n; ++i) {
+				present = present || skins[i] == s.skin;
+			}
+			if (present) {
+				GiveBack(s);
+			} else {
+				s = Swapped{};
+			}
+		}
+		return;
+	}
+	NiAVObject* const leftForearm = FindFirstPersonNode("Bip01 L Forearm");
+	NiAVObject* const rightForearm = FindFirstPersonNode("Bip01 R Forearm");
+	if (!LooksLikeObject(leftForearm) || !LooksLikeObject(rightForearm)) {
+		return;
+	}
+	if (!g_gloveNodesMade) {
+		MakeFrom(g_gloveLeft, leftForearm);
+		MakeFrom(g_gloveRight, rightForearm);
+		g_gloveNodesMade = true;
+	}
+	AsNode(g_gloveLeft)->worldTransform = CollapseAt(leftForearm->worldTransform.pos);
+	AsNode(g_gloveRight)->worldTransform = CollapseAt(rightForearm->worldTransform.pos);
+	for (UInt32 k = 0; k < n; ++k) {
+		const UInt32 skin = skins[k];
+		UInt32* const bones = reinterpret_cast<UInt32*>(Read(skin + kSkinInstanceBones));
+		Swapped* s = nullptr;
+		for (Swapped& g : g_gloveSwapped) {
+			s = g.skin == skin ? &g : s;
+		}
+		const bool fresh = s == nullptr;
+		if (fresh) {
+			for (Swapped& g : g_gloveSwapped) {
+				if (s == nullptr && g.skin == 0) {
+					s = &g;
+				}
+			}
+			if (s == nullptr) {
+				continue;
+			}
+			s->skin = skin;
+			s->count = Read(Read(skin + kSkinInstanceData) + kSkinDataBoneCount);
+			for (UInt32 i = 0; i < s->count; ++i) {
+				const bool fake = bones[i] == reinterpret_cast<UInt32>(g_gloveLeft.bytes) ||
+				                  bones[i] == reinterpret_cast<UInt32>(g_gloveRight.bytes);
+				s->original[i] = fake ? 0 : bones[i];
+			}
+		}
+		UInt32 left = 0, right = 0;
+		for (UInt32 i = 0; i < s->count; ++i) {
+			NiAVObject* const real = reinterpret_cast<NiAVObject*>(s->original[i]);
+			if (!LooksLikeObject(real)) {
+				continue;
+			}
+			switch (GloveRoleOf(real->name)) {
+			case StumpRole::LeftUpper:
+				bones[i] = reinterpret_cast<UInt32>(AsNode(g_gloveLeft));
+				++left;
+				break;
+			case StumpRole::RightUpper:
+				bones[i] = reinterpret_cast<UInt32>(AsNode(g_gloveRight));
+				++right;
+				break;
+			default:
+				bones[i] = s->original[i];
+				break;
+			}
+		}
+		if (fresh && g_gloveLines > 0) {
+			--g_gloveLines;
+			OBVR_LOG("Hand bones: a glove's skin %08X (%u bones) - %u left and %u right above the elbow tied to the "
+			         "elbows%s",
+			         skin, s->count, left, right,
+			         left + right > 0 ? " (its cuff no longer stretches to the animated upper arm)"
+			                          : ", none there: nothing changes");
+		}
+	}
+}
 
 void CountArmShapes(UInt32& armShapes, UInt32& skinShapes) {
 	armShapes = 0;

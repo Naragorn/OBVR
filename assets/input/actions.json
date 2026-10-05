@@ -21,7 +21,9 @@
     {"name": "/actions/obvr/in/right_trigger", "type": "vector1", "requirement": "suggested"},
     {"name": "/actions/obvr/in/right_stick", "type": "vector2", "requirement": "suggested"},
     {"name": "/actions/obvr/in/left_skeleton", "type": "skeleton", "skeleton": "/skeleton/hand/left", "requirement": "optional"},
-    {"name": "/actions/obvr/in/right_skeleton", "type": "skeleton", "skeleton": "/skeleton/hand/right", "requirement": "optional"}
+    {"name": "/actions/obvr/in/right_skeleton", "type": "skeleton", "skeleton": "/skeleton/hand/right", "requirement": "optional"},
+    {"name": "/actions/obvr/out/left_haptic", "type": "vibration", "requirement": "optional"},
+    {"name": "/actions/obvr/out/right_haptic", "type": "vibration", "requirement": "optional"}
   ],
   "default_bindings": [
     {"controller_type": "knuckles", "binding_url": "knuckles.json"},
@@ -46,7 +48,9 @@
       "/actions/obvr/in/right_trigger": "right trigger",
       "/actions/obvr/in/right_stick": "right stick",
       "/actions/obvr/in/left_skeleton": "left hand skeleton",
-      "/actions/obvr/in/right_skeleton": "right hand skeleton"
+      "/actions/obvr/in/right_skeleton": "right hand skeleton",
+      "/actions/obvr/out/left_haptic": "left hand pulse",
+      "/actions/obvr/out/right_haptic": "right hand pulse"
     }
   ],
   "minimum_required_version": 3

@@ -98,6 +98,14 @@ struct Table {
 	// (openvr_capi.h v2.15.6, VR_IVRInput_FnTable, counted 2026-09-27): the
 	// fingers' curl for the fist (vr::StepFist).
 	int(__stdcall* SkeletalSummary)(UInt64 action, int summaryType, SkeletalSummary* data);
+	void* boneDataCompressed;
+	void* decompressBoneData;
+	// Entry 23, TriggerHapticVibrationAction(action, fStartSecondsFromNow,
+	// fDurationSeconds, fFrequency, fAmplitude, ulRestrictToDevice)
+	// (openvr_capi.h, github.com/ValveSoftware/openvr master, IVRInput_011,
+	// counted 2026-10-05): the pulse when a held thing reaches the hand.
+	int(__stdcall* Haptic)(UInt64 action, float startSeconds, float durationSeconds, float frequency, float amplitude,
+	                       UInt64 restrictToDevice);
 };
 
 static_assert(offsetof(Table, SkeletalSummary) == 20 * sizeof(void*),
@@ -105,6 +113,8 @@ static_assert(offsetof(Table, SkeletalSummary) == 20 * sizeof(void*),
 static_assert(offsetof(Table, ReferenceTransforms) == 17 * sizeof(void*),
               "GetSkeletalReferenceTransforms is entry 17 of VR_IVRInput_FnTable");
 static_assert(offsetof(Table, Bones) == 19 * sizeof(void*), "GetSkeletalBoneData is entry 19 of VR_IVRInput_FnTable");
+static_assert(offsetof(Table, Haptic) == 23 * sizeof(void*),
+              "TriggerHapticVibrationAction is entry 23 of VR_IVRInput_FnTable");
 
 // EVRSkeletalTransformSpace_Parent, EVRSkeletalMotionRange_WithController,
 // EVRSkeletalReferencePose_OpenHand and _Fist (openvr.h v2.15.6).

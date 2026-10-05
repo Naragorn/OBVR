@@ -33,7 +33,7 @@ void HudSizeWrite(Config& c, float v) {
 
 #define OBVR_HUD_ELEMENT_ROWS(E, NAME, KEY)                                                              \
 	{                                                                                                    \
-		"HUD", NAME, "Where: the panel, left or right hand, the sky, off, top or bottom of the view",    \
+		"HUD", NAME, "Where: the panel, left or right hand, the sky, off, top or bottom of the view, under the target",    \
 		ItemKind::Number, 0.0f, static_cast<float>(vr::kHudPlaceCount - 1), 1.0f, 0, false,              \
 		"HandHud", KEY "Place", &HudPlaceRead<E>, &HudPlaceWrite<E>,                                     \
 		"", "", SettingAction::None, vr::kHudPlaceNames, vr::kHudPlaceCount,                             \
@@ -135,6 +135,13 @@ const SettingDefinition kSettings[] = {
 		"Look", "NoPlayerStagger",
 		+[](const Config& c) { return c.look.noPlayerStagger ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.look.noPlayerStagger = v != 0.0f; },
+	},
+	{
+		"Comfort", "No knockdown", "Blows, explosions and spells never throw you through the air",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "NoPlayerKnockdown",
+		+[](const Config& c) { return c.look.noPlayerKnockdown ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.look.noPlayerKnockdown = v != 0.0f; },
 	},
 	{
 		"Comfort", "No hit blur", "Hits never blur or shake your view",
@@ -582,7 +589,7 @@ const SettingDefinition kSettings[] = {
 	},
 	{
 		"Hands", "Pull reach", "How far a grip pulls an item it points at into the hand, metres; 0 is off",
-		ItemKind::Number, 0.0f, 2.0f, 0.1f, 1, false,
+		ItemKind::Number, 0.0f, 3.0f, 0.1f, 1, false,
 		"Hands", "PullReachMetres",
 		+[](const Config& c) { return c.hands.pullReachMetres; },
 		+[](Config& c, float v) { c.hands.pullReachMetres = v; },
@@ -841,7 +848,7 @@ const SettingDefinition kSettings[] = {
 	},
 	{
 		"Hands", "Reach marker distance", "How close a hand has to be for the ring to show, metres",
-		ItemKind::Number, 0.05f, 2.0f, 0.05f, 2, false,
+		ItemKind::Number, 0.05f, 3.0f, 0.05f, 2, false,
 		"Hands", "ReachMarkerMetres",
 		+[](const Config& c) { return c.hands.reachMarkerMetres; },
 		+[](Config& c, float v) { c.hands.reachMarkerMetres = v; },
@@ -971,6 +978,34 @@ const SettingDefinition kSettings[] = {
 		"Hands", "GamepadLayout",
 		+[](const Config& c) { return c.hands.gamepadLayout ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.gamepadLayout = v != 0.0f; },
+	},
+	{
+		"Hands", "Target outline", "What a grip would take gets a light outline",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "TargetOutline",
+		+[](const Config& c) { return c.hands.targetOutline ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.targetOutline = v != 0.0f; },
+	},
+	{
+		"Hands", "Target glow", "What a grip would take glows softly",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "TargetGlow",
+		+[](const Config& c) { return c.hands.targetGlow ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.targetGlow = v != 0.0f; },
+	},
+	{
+		"Hands", "Laser in the world", "The weapon hand's laser drawn in the world too, up to what it points at",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "LaserInWorld",
+		+[](const Config& c) { return c.hands.laserInWorld ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.laserInWorld = v != 0.0f; },
+	},
+	{
+		"Hands", "World laser length", "How long the laser in the world is when it points at nothing, metres",
+		ItemKind::Number, 0.5f, 10.0f, 0.5f, 1, false,
+		"Hands", "WorldLaserMetres",
+		+[](const Config& c) { return c.hands.worldLaserMetres; },
+		+[](Config& c, float v) { c.hands.worldLaserMetres = v; },
 	},
 	{
 		"Hands", "Laser beam", "Draw the beam from the hand that points at a menu",
@@ -1234,6 +1269,7 @@ const SettingDefinition kSettings[] = {
 	OBVR_HUD_ELEMENT_ROWS(6, "Region name", "Region")
 	OBVR_HUD_ELEMENT_ROWS(7, "Messages", "Messages")
 	OBVR_HUD_ELEMENT_ROWS(8, "Subtitles", "Subtitles")
+	OBVR_HUD_ELEMENT_ROWS(9, "Target info", "Info")
 	{
 		"HUD", "Text distance", "How far away messages and subtitles hang, metres",
 		ItemKind::Number, 0.5f, 3.0f, 0.1f, 1, false,

@@ -225,6 +225,30 @@ inline bool IsArmsShapeName(const char* name) {
 	return name[4] == '\0' || name[4] == ':';
 }
 
+// A glove's shape by its name: "Hand", or one of several, "Hand:0".
+inline bool IsHandShapeName(const char* name) {
+	if (name == nullptr) {
+		return false;
+	}
+	const char* const want = "hand";
+	for (int i = 0; i < 4; ++i) {
+		char c = name[i];
+		c = (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
+		if (c != want[i]) {
+			return false;
+		}
+	}
+	return name[4] == '\0' || name[4] == ':';
+}
+
+// What a glove's bone becomes while the hands are pinned (StepGloveElbows):
+// the upper arm and its twist, and the clavicle, collapse into that side's
+// elbow; everything else keeps its bone.
+inline StumpRole GloveRoleOf(const char* boneName) {
+	const StumpRole role = StumpRoleOf(boneName);
+	return role == StumpRole::LeftUpper || role == StumpRole::RightUpper ? role : StumpRole::Keep;
+}
+
 // Sleeves: at least one arm shape, and none of them skin.
 inline bool ArmsAreSleeves(UInt32 armShapes, UInt32 skinShapes) { return armShapes > 0 && skinShapes == 0; }
 
@@ -244,5 +268,25 @@ void CountArmShapes(UInt32& armShapes, UInt32& skinShapes);
 // whether the stump is in place, which is what shows the shape (the hide
 // list leaves "Arms" out) on the next frame.
 bool StepForearmStumps(bool wanted);
+
+// A glove's cuff tied to the elbow instead of the animated upper arm (a beta
+// tester, 2026-10-03, in the Arena: "ein teil der rüstungshand [beamte sich]
+// in die unendlichkeit sodass man einen unendlichen strahl der vom handstumpf
+// aus ging sehen kann, dieser drehte sich mit der kamera"). The female Arena
+// raiment's "Hand:0" (armor\ArenaLight|ArenaHeavy\f\cuirass.nif and the
+// Champion's, read with pyffi 2026-10-05) has 20 vertices a side at the
+// elbow weighted a quarter each to the upper arm, its twist, the forearm and
+// its twist; the female glass and fur gauntlets a few more, at 5-13 %. In
+// Full VR the forearm is where the controller is and the upper arm where the
+// animation leaves it, hung from the camera: those vertices stretched between
+// the two - a spike that turned with the view. Not seen in the headset; that
+// the tester's character was female is not known.
+//
+// So, while the hands are pinned and covered, every first-person "Hand"
+// shape's skin has its upper-arm and clavicle bones swapped for nodes at that
+// side's elbow (the forearm bone's origin) with almost no scale, as the
+// stump does for the sleeves (StumpRole): the cuff's elbow edge ends at the
+// elbow. `wanted` false gives the bones back.
+void StepGloveElbows(bool wanted);
 
 }  // namespace obvr::game
