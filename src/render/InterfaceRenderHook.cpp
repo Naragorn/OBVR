@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <cstdio>
+#include <intrin.h>
 #include "test/WaterVRTestRuntime.h"
 #include "test/WaterVRTestPlan.h"
 
@@ -653,7 +654,44 @@ d3d9::VertexBufferUnlockFn g_originalIbUnlock = nullptr;
 void** g_ibVtable = nullptr;
 bool g_ibSecondVtableReported = false;
 
+// The scene target probe's budget: lines left for the targets the scene
+// render sets, and for the captures.
+UInt32 g_sceneTargetLines = 24;
+UInt32 g_captureTargetLines = 4;
+
+void DescribeSurface(void* surface, char* out, UInt32 size) {
+	d3d9::SurfaceDesc desc{};
+	auto getDesc = surface != nullptr ? d3d9::Method<d3d9::GetDescFn>(surface, d3d9::kSurfaceGetDesc) : nullptr;
+	if (getDesc != nullptr && getDesc(surface, &desc) >= 0) {
+		std::snprintf(out, size, "%08X %ux%u format=%u samples=%u usage=%08X%s", reinterpret_cast<UInt32>(surface),
+		              desc.width, desc.height, desc.format, desc.multiSampleType, desc.usage,
+		              surface == g_backBuffer ? " (the back buffer)" : "");
+	} else {
+		std::snprintf(out, size, "%08X (no description)%s", reinterpret_cast<UInt32>(surface),
+		              surface == g_backBuffer ? " (the back buffer)" : "");
+	}
+}
+
 SInt32 __stdcall HookedSetRenderTarget(void* self, UInt32 index, void* surface) {
+	if (index == 0 && g_sceneTargetLines > 0 && SceneRenderRunning()) {
+		--g_sceneTargetLines;
+		char what[160];
+		DescribeSurface(surface, what, sizeof(what));
+		// The callers above the wrapper: the words on the stack above this
+		// frame that lie in the game's code, as a rough chain.
+		char chain[200];
+		UInt32 at = 0;
+		const UInt32* slot = static_cast<const UInt32*>(_AddressOfReturnAddress());
+		for (UInt32 i = 0; i < 160 && at < sizeof(chain) - 12; ++i) {
+			const UInt32 word = slot[i];
+			if (word >= 0x00401000u && word < 0x00B00000u) {
+				at += static_cast<UInt32>(std::snprintf(chain + at, sizeof(chain) - at, " %08X", word));
+			}
+		}
+		chain[at] = 0;
+		OBVR_LOG("Scene target probe: scene call %u, SetRenderTarget(0) = %s - stack:%s", CurrentSceneCall(), what,
+		         chain);
+	}
 	// Where the next bone rows are heading. Only while a bone mode is on -
 	// outside dual frames the answer is never read - and only for target
 	// zero, the one the draws land in. An unreadable surface is treated as
@@ -3156,6 +3194,38 @@ void GetBoneShiftState(float shift[3], int& sign) {
 	sign = g_boneShiftSign == ShiftSign::Positive
 	           ? 1
 	           : (g_boneShiftSign == ShiftSign::Negative ? -1 : 0);
+}
+
+void TraceTargetAtCapture(const char* where) {
+	if (g_captureTargetLines == 0) {
+		return;
+	}
+	--g_captureTargetLines;
+	void* device = GetGameDevice();
+	void* current = nullptr;
+	auto getTarget = d3d9::Method<d3d9::GetRenderTargetFn>(device, d3d9::kDeviceGetRenderTarget);
+	if (getTarget != nullptr) {
+		getTarget(device, 0, &current);
+	}
+	char what[160];
+	DescribeSurface(current, what, sizeof(what));
+	char back[160];
+	DescribeSurface(g_backBuffer, back, sizeof(back));
+	OBVR_LOG("Scene target probe: at %s (scene call %u) target 0 is %s; the back buffer is %s", where,
+	         CurrentSceneCall(), what, back);
+	ReleaseObject(current);
+}
+
+bool CaptureTargetIsBackBuffer() {
+	void* device = GetGameDevice();
+	void* current = nullptr;
+	auto getTarget = d3d9::Method<d3d9::GetRenderTargetFn>(device, d3d9::kDeviceGetRenderTarget);
+	if (getTarget == nullptr || getTarget(device, 0, &current) < 0) {
+		return true;  // cannot tell: the capture goes ahead as before
+	}
+	const bool isBack = current == g_backBuffer;
+	ReleaseObject(current);
+	return isBack;
 }
 
 void TakeInterfaceStats(UInt32& passes, UInt32& draws) {

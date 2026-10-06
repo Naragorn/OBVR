@@ -1,0 +1,25 @@
+# The picture itself, for the question "is this mono, and is the field of
+# view right": SteamVR's composited frame and the two eyes as OBVR
+# submitted them, standing still and after a turn of the head. No hands,
+# no actions - the run only looks. Run with:
+#   tools\hand-script-run.ps1 -Script tools\hand-scripts\stereo-view.txt
+
+expect HandScript: finished
+expect Render: dual pass is live
+reject HandScript: WARNING
+
+wait 8
+mark standing
+dump
+wait 1
+head yaw 45
+wait 1.5
+mark turned_right
+dump
+wait 1
+head yaw 0
+head pitch -25
+wait 1.5
+mark looking_down
+dump
+wait 1

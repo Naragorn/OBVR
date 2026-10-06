@@ -20,6 +20,7 @@
 #include "game/CompassHeading.h"
 #include "game/EquipWhileActing.h"
 #include "game/TargetMarker.h"
+#include "game/SceneFrame.h"
 #include "game/BowRelease.h"
 #include "game/BowVisual.h"
 #include "game/ConsoleLine.h"
@@ -5360,6 +5361,7 @@ void BetweenScenePasses() {
 		perf::Profiler::ScopedSpan capture(perf::Profiler::Instance(),
 		                                  perf::EventType::EyeCapture, captureContext);
 		HandWorldControllersToRenderer();
+		render::TraceTargetAtCapture("the first pass's capture");
 		const bool captured = g_headsetRenderer.CaptureEye(g_pendingRequest, firstIsLeft);
 		perf::Profiler::Instance().SetFrameDetails(
 				perf::DeliveryMode::Unknown, perf::Profiler::Instance().CurrentVrFrameId(), -1,
@@ -5386,6 +5388,14 @@ void BetweenScenePasses() {
 			OBVR_LOG("Dual trace: the 2D layer was %s between the renders",
 			         captured ? "captured" : "not captured");
 		}
+	}
+
+	// Without antialiasing the first pass's copy into the back buffer left
+	// the frame open, and the second pass's copy would not run: closed here
+	// (game/SceneFrame.h). After the capture and the 2D layer, which both
+	// read what the open frame holds.
+	if (probe != 1) {
+		game::CloseSceneFrameBetweenPasses();
 	}
 
 	// To the other eye, the way the game itself moves the camera: edit the
@@ -5429,7 +5439,20 @@ void AfterSecondScenePass() {
 		perf::Profiler::ScopedSpan capture(perf::Profiler::Instance(),
 		                                  perf::EventType::EyeCapture, captureContext);
 		HandWorldControllersToRenderer();
-		const bool captured = g_headsetRenderer.CaptureEye(g_pendingRequest, !firstIsLeft);
+		render::TraceTargetAtCapture("the second pass's capture");
+		// The second eye never reached the back buffer (the texture path with
+		// its copy skipped): no capture, so the frame falls back to the mono
+		// picture and says so, rather than claiming a dual pass that shows
+		// the first eye twice.
+		static bool s_secondEyeMissingSaid = false;
+		const bool secondEyeThere = render::CaptureTargetIsBackBuffer();
+		if (!secondEyeThere && !s_secondEyeMissingSaid) {
+			s_secondEyeMissingSaid = true;
+			OBVR_LOG("Render: the second eye's picture is not in the back buffer after its pass (the world is "
+			         "drawn into a texture without antialiasing and its copy ran only once) - both eyes would "
+			         "get the same picture, so the mono picture is shown instead");
+		}
+		const bool captured = secondEyeThere && g_headsetRenderer.CaptureEye(g_pendingRequest, !firstIsLeft);
 		perf::Profiler::Instance().SetFrameDetails(
 				perf::DeliveryMode::Unknown, perf::Profiler::Instance().CurrentVrFrameId(), -1, 1,
 			captured ? 1 : 0, 2);

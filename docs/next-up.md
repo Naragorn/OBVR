@@ -483,6 +483,20 @@ failed the same way on 2026-09-28, before this round.
 
 ## Also open
 
+- **The dual pass was mono without the game's antialiasing (found and
+  fixed 2026-10-06, `game/SceneFrame.h`).** With `iMultiSample=0` both eyes
+  carried the same picture: the game renders the world into a frame-sized
+  texture and copies it into the back buffer once a frame (the image-space
+  copy shader, gated on the renderer's frame state), so the second pass's
+  picture never reached the back buffer OBVR captures from. OBVR now closes
+  the frame between the passes (group pop, EndFrame, state 0), so the second
+  pass copies as the first did; a second pass whose picture still is not in
+  the back buffer is not captured and the log says so. Measured with
+  `tools/disparity.ps1` on `stereo-view`'s eye dumps: 0 samples before -56 px
+  in every band (the crop offset), after -104 (ceiling) to -59 (floor); 8
+  samples -104 to -59 as well, unchanged. The player's INI losing its 8
+  between two sessions on 2026-10-06 is still unexplained (the launcher's
+  autodetect is the suspect).
 - **Shield bash.** Not a vanilla action (UESP, Oblivion:Block: the Expert
   and Master perks give a chance of a stagger or disarm on a block; a manual
   bash exists only in Oblivion Remastered). A VR bash would be OBVR's own:

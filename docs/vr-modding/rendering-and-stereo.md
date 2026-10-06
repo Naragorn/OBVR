@@ -448,5 +448,22 @@ cursor detours. That is the current state; the mouse now clicks where the button
   first HUD run").
 - HDR tone mapping (`0x007B48E0`, called once inside `kRenderScene`) runs per pass; each
   eye is tone-mapped on its own. Whether adaptation state advances per walk: `UNKNOWN`.
+- **Where the world lands depends on the antialiasing setting** (`CONFIRMED` 2026-10-06,
+  `game/SceneFrame.h`). With an effective sample count of 2 or more (`0x00B34FC0`:
+  `iMultiSample`, 0 with HDR) `kRenderScene` draws straight into the multisampled back
+  buffer and resolves it. Below that, with `bDoImageSpaceEffects` on (`0x00B42F3E`), it draws
+  into a frame-sized texture (begun at `0x0040CC2E`) and the image-space manager
+  (`0x008037D0`) copies it into the back buffer at the end - the plain copy shader
+  `0x00803E40` when no HDR or blur shader is active. That copy begins the back buffer's target
+  group only while the renderer's frame state (`[0x00B3F928]+0x200`) is 0 (`0x008040AA`), and
+  the first copy leaves it at 1 for the 2D pass, which ends the frame (`0x007D7210` from
+  `0x0057F429`). So OBVR's second pass drew the other eye into the texture and its copy drew
+  into no group: both captures read the first eye (measured: the eyes' best shift -56 px in
+  every band, the crop offset alone). Between the passes OBVR now does what `0x007D7210` does
+  short of presenting - pops the group stack (`0x007D7150`), EndFrame (vtable +0x134,
+  `0x00762600`), state 0 - and the second pass copies as the first did (-104 to -59 px with
+  depth, the same as with 8 samples). The capture also checks that target 0 is the back
+  buffer; a second pass that is not there is not captured, and the frame falls back to mono
+  with a plain log line.
 - Near plane: the frustum's `n` reads 10 units (14 cm); nothing changes it. Weapon and arm
   clipping in first person at that distance: not reported.

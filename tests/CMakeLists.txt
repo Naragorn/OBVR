@@ -1283,3 +1283,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME target_marker COMMAND target_marker_test)
+
+add_executable(scene_frame_test SceneFrameTest.cpp)
+
+target_include_directories(scene_frame_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(scene_frame_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME scene_frame COMMAND scene_frame_test)

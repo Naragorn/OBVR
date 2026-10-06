@@ -79,6 +79,10 @@ bool IsSceneRenderHooked();
 // than this.
 UInt32 CurrentSceneCall();
 
+// Whether the engine's scene render is running right now (inside the hooked
+// call, either pass).
+bool SceneRenderRunning();
+
 // One self-initiated world render, for the menu-world probe: calls the
 // engine's render function - through the trampoline, so no second pass and
 // no callbacks run - on the renderer instance remembered from the last real

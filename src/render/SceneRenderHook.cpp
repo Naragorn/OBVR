@@ -768,6 +768,8 @@ bool IsSceneRenderHooked() { return g_original != nullptr; }
 
 UInt32 CurrentSceneCall() { return g_sceneCall; }
 
+bool SceneRenderRunning() { return g_rendering; }
+
 const char* MenuWorldProbeRefusal() {
 	if (g_original == nullptr) {
 		return "the scene render is not hooked";

@@ -255,6 +255,17 @@ void GetBoneShiftState(float shift[3], int& sign);
 // entered and left without drawing, which is where the dual pass puts it.
 void TakeInterfaceStats(UInt32& passes, UInt32& draws);
 
+// The scene target probe: for the first dual frames, every index-0 target the
+// engine sets while its scene render runs (size, format, samples, whether it
+// is the back buffer), and what target 0 is at each eye capture - the
+// question behind the mono picture without antialiasing (docs/next-up.md).
+void TraceTargetAtCapture(const char* where);
+
+// Whether render target 0 is the back buffer right now - what an eye capture
+// copies from. False on the texture path when the engine's copy into the
+// back buffer did not run for this pass (game/SceneFrame.h).
+bool CaptureTargetIsBackBuffer();
+
 // Runs the 2D pass now, redirected, and says whether anything was captured.
 //
 // For the moment between the two world renders of a dual frame, which the
