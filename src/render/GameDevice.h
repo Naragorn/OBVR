@@ -147,11 +147,34 @@ bool IsSubmittableImage(const BackBufferImage& image);
 // been queried for ID3D9VkInteropTexture.
 //
 // A function called every frame rather than a value read once, and that is
-// the point of it. The handle behind an image does not change, but the layout
-// does - DXVK reports where the image will be once commands are flushed, and
-// that answer is different after something has drawn into it. A layout cached
-// at creation would later be undone into a state the image was never in.
+// the point of it. The layout changes - DXVK reports where the image will be
+// once commands are flushed, and that answer is different after something has
+// drawn into it. A layout cached at creation would later be undone into a
+// state the image was never in.
+//
+// The handle changes too, which this file once said it did not. DXVK's memory
+// defragmenter relocates images that are not mapped, shared or pinned, and a
+// plain D3D9 texture is none of those: it gets a new VkImage, and SteamVR,
+// which knows the old one, creates a shared texture for the new one - "Created
+// shared texture 'Scene create Vulkan, N'" in vrclient_Oblivion.txt, about
+// 100 ms on the frame's thread each time (profiler capture 2026-10-06 11:31,
+// every ~100 ms overlay stall ending on such a line). The move is said in the
+// log when `out` still holds the previous handle; the interop offers no way to
+// pin an image, so the cure is dxvk.enableMemoryDefrag = False in dxvk.conf.
 bool ReadImageInfo(void* interopTexture, BackBufferImage& out);
+
+// Whether a second reading names a different image than the first. Zero on
+// either side is not a move: the first reading, or one that failed.
+inline bool ImageMoved(unsigned long long before, unsigned long long after) {
+	return before != 0 && after != 0 && before != after;
+}
+
+// Which moves reach the log: the first twenty, then every two-hundredth. A
+// defragmenter that moves something every second or two (2026-10-06: 180
+// shared-texture creations in four minutes) would otherwise fill the file.
+inline bool ReportMove(UInt32 moveCount) {
+	return moveCount <= 20 || moveCount % 200 == 0;
+}
 
 // Reads it. False when the device is not DXVK, when the back buffer cannot be
 // had, or when the surface does not carry a Vulkan image - which DXVK

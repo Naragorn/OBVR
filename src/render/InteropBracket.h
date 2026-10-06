@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Types.h"
+#include "render/BracketOwner.h"
 #include "render/DxvkInterop.h"
 #include "perf/Profiler.h"
 
@@ -45,7 +46,10 @@ public:
 	// After this returns true the queue is locked. It stays locked until
 	// Release, so the window between them should contain the submit calls and
 	// as little else as possible.
-	bool Begin(void* gameDevice);
+	//
+	// The owner names the bracket in a profiler capture (BracketOwner.h); it
+	// changes nothing about what the bracket does.
+	bool Begin(void* gameDevice, BracketOwner owner = BracketOwner::Unnamed);
 
 	// Moves one image into the layout SteamVR wants, and records how to put
 	// it back. currentLayout is what DXVK reported for that image; an image

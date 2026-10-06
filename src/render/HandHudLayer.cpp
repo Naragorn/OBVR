@@ -167,7 +167,7 @@ void HandHudLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool vis
 		return;
 	}
 	// One bracket for every quad: they all show the same image.
-	if (!m_bracket.Begin(gameDevice)) {
+	if (!m_bracket.Begin(gameDevice, BracketOwner::HandHud)) {
 		return;
 	}
 	if (!m_bracket.ToTransferSrc(m_interop, m_image.layout)) {

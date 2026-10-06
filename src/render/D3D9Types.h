@@ -83,7 +83,17 @@ constexpr UInt32 kSurfaceGetDesc = 12;
 constexpr UInt32 kDeviceColorFill = 35;
 // IDirect3DDevice9::CreateQuery, the final method before the interface ends.
 constexpr UInt32 kDeviceCreateQuery = 118;
-constexpr UInt32 kQueryGetData = 5;
+
+// IDirect3DQuery9 derives from IUnknown directly - NOT from IDirect3DResource9
+// - so its own methods start at 3: GetDevice 3, GetType 4, GetDataSize 5,
+// Issue 6, GetData 7 (SDK 10.0.26100 d3d9.h, DECLARE_INTERFACE_(IDirect3DQuery9,
+// IUnknown)). GetData sat at 5 until 2026-10-06, which is GetDataSize: a
+// method with no arguments, called __stdcall with three. The callee popped
+// four bytes where the caller had pushed sixteen, the next return took a
+// pointer off the stack instead of an address, and the first GPU-timed frame
+// after a loading screen crashed inside OBVR's own data segment. The test in
+// D3D9TypesTest.cpp had asserted the wrong number with the wrong reason.
+constexpr UInt32 kQueryGetData = 7;
 constexpr UInt32 kQueryIssue = 6;
 constexpr UInt32 kQueryTimestamp = 10;
 constexpr UInt32 kQueryTimestampFrequency = 12;

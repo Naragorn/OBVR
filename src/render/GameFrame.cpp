@@ -171,7 +171,7 @@ bool GameFrame::Acquire(void* gameDevice, FrameResolve* resolve) {
 		return false;
 	}
 
-	if (!m_bracket.Begin(gameDevice)) {
+	if (!m_bracket.Begin(gameDevice, BracketOwner::GameFrame)) {
 		Release();
 		return false;
 	}

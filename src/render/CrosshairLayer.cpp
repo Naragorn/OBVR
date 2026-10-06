@@ -505,7 +505,7 @@ void CrosshairLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool v
 	if (!ReadImageInfo(m_interop, m_image)) {
 		return;
 	}
-	if (!m_bracket.Begin(gameDevice)) {
+	if (!m_bracket.Begin(gameDevice, BracketOwner::Crosshair)) {
 		return;
 	}
 	if (!m_bracket.ToTransferSrc(m_interop, m_image.layout)) {

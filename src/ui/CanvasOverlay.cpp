@@ -135,7 +135,8 @@ bool CanvasOverlay::Show(vr::OpenVRBackend& backend, void* gameDevice,
 	}
 	backend.SetOverlayTransformAbsolute(m_overlay, pose);
 
-	if (!render::ReadImageInfo(m_interop, m_image) || !m_bracket.Begin(gameDevice)) {
+	if (!render::ReadImageInfo(m_interop, m_image) ||
+	    !m_bracket.Begin(gameDevice, render::BracketOwner::Canvas)) {
 		return false;
 	}
 	if (!m_bracket.ToTransferSrc(m_interop, m_image.layout)) {

@@ -254,6 +254,7 @@ if(WIN32)
 		PluginPathTest.cpp
 		../src/platform/PluginPath.cpp
 		../src/render/GameDevice.cpp
+		../src/core/Log.cpp
 	)
 
 	target_include_directories(plugin_path_test PRIVATE ../src)
@@ -322,6 +323,8 @@ add_test(NAME eye_geometry COMMAND eye_geometry_test)
 add_executable(game_device_test
 	GameDeviceTest.cpp
 	../src/render/GameDevice.cpp
+	../src/core/Log.cpp
+	../src/platform/PluginPath.cpp
 )
 
 target_include_directories(game_device_test PRIVATE ../src)
@@ -651,6 +654,16 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME reload_gate COMMAND reload_gate_test)
+
+add_executable(bracket_owner_test BracketOwnerTest.cpp)
+
+target_include_directories(bracket_owner_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(bracket_owner_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME bracket_owner COMMAND bracket_owner_test)
 
 add_executable(menu_pause_policy_test MenuPausePolicyTest.cpp)
 

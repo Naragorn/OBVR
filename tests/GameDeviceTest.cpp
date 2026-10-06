@@ -199,6 +199,30 @@ void TestSubmittability() {
 	Check(!obvr::render::IsSubmittableImage(empty), "a default-constructed image is refused");
 }
 
+// A second reading of a texture naming another image is DXVK's defragmenter
+// having moved it - and the ~100 ms SteamVR spends importing the new one. The
+// decision of what counts as a move, and which moves are worth a log line.
+void TestImageMoves() {
+	std::printf("Image moves\n");
+
+	using obvr::render::ImageMoved;
+	using obvr::render::ReportMove;
+
+	Check(!ImageMoved(0, 0x1234), "the first reading is not a move");
+	Check(!ImageMoved(0x1234, 0), "a reading that failed is not a move either");
+	Check(!ImageMoved(0x1234, 0x1234), "the same image again is not a move");
+	Check(ImageMoved(0x1234, 0x5678), "another image is a move");
+	Check(ImageMoved(0x1234, 0x5678) && ImageMoved(0x5678, 0x1234),
+	      "in either direction - a moved image can move back");
+
+	Check(ReportMove(1), "the first move is said");
+	Check(ReportMove(20), "and the twentieth");
+	Check(!ReportMove(21), "the twenty-first is not");
+	Check(!ReportMove(199), "nor the hundred-and-ninety-ninth");
+	Check(ReportMove(200), "the two-hundredth is, as a sign of life");
+	Check(ReportMove(400) && !ReportMove(401), "and every two-hundredth after it");
+}
+
 }  // namespace
 
 int main() {
@@ -211,6 +235,8 @@ int main() {
 	TestNaming();
 	std::printf("\n");
 	TestSubmittability();
+	std::printf("\n");
+	TestImageMoves();
 
 	std::printf("\n");
 	if (g_failures == 0) {

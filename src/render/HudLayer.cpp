@@ -503,7 +503,7 @@ void HudLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool capture
 	if (!ReadImageInfo(m_interop, m_image)) {
 		return;
 	}
-	if (!m_bracket.Begin(gameDevice)) {
+	if (!m_bracket.Begin(gameDevice, BracketOwner::Hud)) {
 		return;
 	}
 	if (!m_bracket.ToTransferSrc(m_interop, m_image.layout)) {

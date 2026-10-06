@@ -1,5 +1,6 @@
 #include "render/GameDevice.h"
 
+#include "core/Log.h"
 #include "game/GameAddresses.h"
 #include "render/D3D11Types.h"
 #include "render/D3D9Types.h"
@@ -127,6 +128,20 @@ bool ReadImageInfo(void* interopTexture, BackBufferImage& out) {
 	if (d3d11::Failed(texture->vtbl->GetVulkanImageInfo(texture, &image, &layout, &info)) ||
 	    image == 0) {
 		return false;
+	}
+
+	// Said when the caller's previous reading named another image: that is
+	// DXVK's defragmenter at work, and the next SetOverlayTexture or Submit
+	// with this image is a ~100 ms shared-texture creation inside SteamVR.
+	if (ImageMoved(out.image, image)) {
+		static UInt32 s_moves = 0;
+		++s_moves;
+		if (ReportMove(s_moves)) {
+			OBVR_LOG("Render: the Vulkan image behind a %ux%u texture moved (%016llX -> %016llX, "
+			         "move %u) - DXVK relocated it, so SteamVR imports it afresh, which is the "
+			         "~100 ms stall; dxvk.enableMemoryDefrag = False stops the moving",
+			         info.extent.width, info.extent.height, out.image, image, s_moves);
+		}
 	}
 
 	out.image = image;

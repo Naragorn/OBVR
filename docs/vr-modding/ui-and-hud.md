@@ -84,6 +84,16 @@ Open question: why the second render leaves the pass unable to draw. See
   bigger than the picture (eye-sized frame), which also makes the quad 16:9 again.
 - The overlay is submitted only when this frame captured something; submitting an empty
   capture hides the overlay, and on held menu frames that blinked the menu.
+- **DXVK must not move the textures.** Its memory defragmenter relocates images that are
+  not mapped, shared or pinned - every D3D9 texture OBVR owns - and each relocation gives
+  the texture a new `VkImage`. SteamVR keeps shared textures per image handle, so the next
+  `SetOverlayTexture` or `Submit` makes it create a new one: `Created shared texture 'Scene
+  create Vulkan, N'` in `vrclient_Oblivion.txt`, ~100 ms on the frame's thread each time
+  (profiler capture 2026-10-06 11:31: hand HUD, crosshair, vignette, HUD and eye-mirror
+  brackets of 95-105 ms, every one ending on such a line; 180 creations in a four-minute
+  session before). The interop has no way to pin an image, so the player's `dxvk.conf`
+  needs `dxvk.enableMemoryDefrag = False`. `ReadImageInfo` logs a move it sees
+  (`Render: the Vulkan image behind a ... texture moved`), which is how to tell.
 
 ## Menu delivery: cinema, world, held, live
 

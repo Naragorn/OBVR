@@ -330,7 +330,7 @@ void SettingsMenuLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, boo
 	if (!render::ReadImageInfo(m_interop, m_image)) {
 		return;
 	}
-	if (!m_bracket.Begin(gameDevice)) {
+	if (!m_bracket.Begin(gameDevice, render::BracketOwner::SettingsMenu)) {
 		return;
 	}
 	if (!m_bracket.ToTransferSrc(m_interop, m_image.layout)) {

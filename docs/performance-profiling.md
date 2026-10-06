@@ -57,6 +57,13 @@ Ein echter Profilerexport trägt `runtime_measurement=true`; das Beispiel unter
 von Submit für linkes und rechtes Auge fest. `-1` bedeutet, dass dieser Aufruf für
 den Frame nicht stattgefunden hat.
 
+Bei den Zeilen `interop_flush`, `interop_lock` und `interop_held` steht in `pass_index`
+der Besitzer der Klammer (`src/render/BracketOwner.h`): 1 poses, 2 game_frame,
+3 eye_mirror, 4 hud, 5 crosshair, 6 hand_hud, 7 vignette, 8 canvas, 9 settings_menu,
+0 unbenannt. Eingeführt nach der ersten Ingame-Aufnahme am 2026-10-06, in der zwei
+Frames je ~100 ms in einer Klammer verbrachten, ohne dass die Datei sagen konnte, in
+welcher.
+
 Der Bericht trennt CPU-Spannen nach Liefermodus, GPU-Intervalle nach Liefermodus
 und stellt Pass 0 gegen Pass 1 nur bei eindeutig gepaarten `world_dual`-Frames
 gegenüber. Verschachtelte Spannen werden dabei nicht addiert.
@@ -74,6 +81,23 @@ gleicher Auflösung und identischer Diagnosekonfiguration aufnehmen:
 Zuerst `GpuTiming=0`, danach `GpuTiming=1` messen. Die Eigenkosten müssen aus einem
 identischen Szenario mit Profiler aus und aktivem CPU-only/GPU-Profil bestimmt werden.
 Ein synthetischer Export oder ein einzelner Lauf beweist keine Ingame-Performance.
+
+## Befunde aus den ersten Ingame-Aufnahmen (2026-10-06)
+
+- `GpuTiming=1` lieferte unter DXVK keine GPU-Zeiten: die D3D9-Timestamp-Werte sind
+  Host-Nanosekunden seit Epoche (Differenz Begin/End ~1 µs). DXVK bedient
+  `D3DQUERYTYPE_TIMESTAMP` nicht aus GPU-Zeitstempeln. Für GPU-Zeiten bleibt fpsVR bzw.
+  SteamVRs eigene Frame-Timing-Anzeige.
+- Die ~100-ms-Hänger lagen in den Overlay-Klammern (`interop_held`, Besitzer hand_hud,
+  crosshair, vignette, hud, eye_mirror) und endeten jeweils auf einer Zeile `Created
+  shared texture 'Scene create Vulkan, N'` in `vrclient_Oblivion.txt`: DXVKs
+  Defragmentierer hatte die Textur verschoben, SteamVR importierte das neue VkImage.
+  Abhilfe `dxvk.enableMemoryDefrag = False` (siehe docs/vr-modding/ui-and-hud.md).
+- `poses_wait`-Stalls von 23-28 ms fielen auf die Millisekunde mit `***** Reloading
+  Shaders Begin` in `vrcompositor.txt` zusammen; der Compositor lädt seine Shader alle
+  paar Sekunden neu, auch ohne laufende App. Auslöser noch offen (Verdacht: der
+  Custom-Shader des sboys3-Treibers, der bei jedem Config-Reload die Compositor-Shader
+  ersetzt).
 
 ## Grenzen
 

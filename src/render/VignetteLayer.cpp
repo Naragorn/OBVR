@@ -317,7 +317,7 @@ void VignetteLayer::Update(vr::OpenVRBackend& backend, void* gameDevice, bool vi
 	if (!ReadImageInfo(m_interop, m_image)) {
 		return;
 	}
-	if (!m_bracket.Begin(gameDevice)) {
+	if (!m_bracket.Begin(gameDevice, BracketOwner::Vignette)) {
 		ReportFailure("DXVK's queue could not be taken");
 		return;
 	}

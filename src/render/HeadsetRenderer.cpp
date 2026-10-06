@@ -178,7 +178,7 @@ bool HeadsetRenderer::BeginFrame(vr::OpenVRBackend& backend) {
 	int waited = 0;
 	{
 		InteropBracket poses;
-		const bool held = poses.Begin(GetGameDevice());
+		const bool held = poses.Begin(GetGameDevice(), BracketOwner::Poses);
 		if (held != m_poseLockReported || !m_poseLockEverReported) {
 			m_poseLockEverReported = true;
 			m_poseLockReported = held;

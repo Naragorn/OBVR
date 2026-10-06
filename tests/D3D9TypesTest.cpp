@@ -115,8 +115,13 @@ void TestConstants() {
 	Check(kTexFilterNone == 0, "D3DTEXF_NONE is 0");
 
 	Check(kDeviceCreateQuery == 118, "CreateQuery is the final device vtable slot");
-	Check(kQueryGetData == 5 && kQueryIssue == 6,
-	      "query GetData and Issue use the resource vtable slots");
+	// IDirect3DQuery9 derives from IUnknown, not IDirect3DResource9: after the
+	// three IUnknown methods come GetDevice, GetType, GetDataSize, Issue,
+	// GetData. The old check said 5 for GetData, which is GetDataSize - a
+	// __stdcall mismatch that crashed the first GPU-timed frame in the game.
+	Check(kQueryIssue == 6, "query Issue is the seventh slot, after GetDataSize");
+	Check(kQueryGetData == 7, "query GetData is the eighth slot, after Issue");
+	Check(kQueryGetData != 5, "slot 5 is GetDataSize, a method with no arguments");
 	Check(kQueryTimestamp == 10 && kQueryTimestampFrequency == 12 && kIssueEnd == 2,
 	      "timestamp query types and END issue value match D3D9");
 	Check(kSOk == 0 && kSFalse == 1, "S_OK and S_FALSE are preserved for nonblocking polling");

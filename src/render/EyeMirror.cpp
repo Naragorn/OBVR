@@ -1079,7 +1079,7 @@ bool EyeMirror::BeginSubmit(void* gameDevice) {
 		}
 	}
 
-	if (!m_bracket.Begin(gameDevice)) {
+	if (!m_bracket.Begin(gameDevice, BracketOwner::EyeMirror)) {
 		return false;
 	}
 

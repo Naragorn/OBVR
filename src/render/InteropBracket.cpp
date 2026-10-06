@@ -20,8 +20,9 @@ dxvk::VkImageSubresourceRange WholeImage() {
 
 }  // namespace
 
-bool InteropBracket::Begin(void* gameDevice) {
+bool InteropBracket::Begin(void* gameDevice, BracketOwner owner) {
 	Release();
+	const perf::EventContext context = BracketContext(owner);
 
 	if (gameDevice == nullptr) {
 		return false;
@@ -53,18 +54,18 @@ bool InteropBracket::Begin(void* gameDevice) {
 	// only promises.
 	{
 		perf::Profiler::ScopedSpan flush(perf::Profiler::Instance(),
-		                                perf::EventType::InteropFlush);
+		                                perf::EventType::InteropFlush, context);
 		interop->vtbl->FlushRenderingCommands(interop);
 	}
 
 	// From here the queue is ours. Everything below must reach Release.
 	{
 		perf::Profiler::ScopedSpan lock(perf::Profiler::Instance(),
-		                               perf::EventType::InteropLock);
+		                               perf::EventType::InteropLock, context);
 		interop->vtbl->LockSubmissionQueue(interop);
 	}
 	m_queueLocked = true;
-	m_profileSpan = perf::Profiler::Instance().Begin(perf::EventType::InteropHeld);
+	m_profileSpan = perf::Profiler::Instance().Begin(perf::EventType::InteropHeld, context);
 	return true;
 }
 
