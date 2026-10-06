@@ -3,6 +3,7 @@
 #include <cstdio>
 
 #include "core/Log.h"
+#include "core/ReloadGate.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
 #include "render/MenuShade.h"
@@ -11,6 +12,23 @@ namespace obvr {
 namespace {
 
 Config g_config;
+
+// What the hot reload remembers of the files between two looks at them. See
+// ReloadGate.h for why the look is cheap and the read is not.
+config::ReloadGate g_reloadGate;
+
+// The two files as they are now: the INI at the given path, and the test
+// overlay beside the plugin, which ReadTestOverlay reads over it when present.
+config::FileStamp StampFiles(const char* iniPath) {
+	config::FileStamp stamp;
+	stamp.iniKnown = ReadFileStamp(iniPath, stamp.iniWrite, stamp.iniSize);
+	char overlay[512];
+	if (platform::BuildPluginPath("OBVR-test.ini", overlay, sizeof(overlay))) {
+		// A missing overlay leaves both at zero, which is its state.
+		ReadFileStamp(overlay, stamp.overlayWrite, stamp.overlaySize);
+	}
+	return stamp;
+}
 
 // Builds the path to the INI. Two locations are tried, in this order:
 //
@@ -997,6 +1015,9 @@ bool Config::Load(const char* fileName) {
 	cameraHookEnabled = ReadBool("Camera", "HookEnabled", cameraHookEnabled, path);
 	ReadRuntimeValues(*this, path);
 	ReadTestOverlay(*this);
+	// Stamped after the read, so a write that lands in between is seen by the
+	// first reload rather than lost; read twice is the lesser fault.
+	config::Remember(g_reloadGate, StampFiles(path));
 
 	if (exists) {
 		OBVR_LOG("Config: %s", path);
@@ -1154,8 +1175,23 @@ bool Config::Reload(const char* fileName) {
 	if (!BuildPath(fileName, path, sizeof(path))) {
 		return false;
 	}
+
+	// Asked before read: the read is 374 GetPrivateProfileString calls over a
+	// file of over a hundred kilobytes, 75 ms measured, and it runs on the
+	// frame's own thread. The question is one directory read.
+	if (config::Decide(g_reloadGate, StampFiles(path)) != config::ReloadVerdict::Changed) {
+		return false;
+	}
+
+	const long long started = ReadPerformanceCounter();
 	ReadRuntimeValues(*this, path);
 	ReadTestOverlay(*this);
+	const long long frequency = ReadPerformanceFrequency();
+	const double milliseconds =
+		frequency > 0 ? (ReadPerformanceCounter() - started) * 1000.0 / frequency : 0.0;
+	// Said each time, because each time is a change someone made - and the
+	// figure is the stutter that change cost, which should stay rare.
+	OBVR_LOG("Config: %s changed - re-read in %.1f ms", fileName, milliseconds);
 	return true;
 }
 

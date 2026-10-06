@@ -247,7 +247,10 @@ cinema screen does not flash up; see `camera::DeliverFrame` in `src/camera/Frame
 
 `OBVR.ini` (repository root is the template; the installed copy lives next to `OBVR.dll`)
 is read at load and **hot reloaded every `Debug.ReloadEveryFrames` frames** (default 120)
-from the camera hook. Startup-only keys: `[Camera] HookEnabled`, `[Render] Enabled`,
+from the camera hook - checked, that is: the file's write time and size are compared with
+the last read (`core/ReloadGate.h`) and the 374-key read only happens after a change. It
+used to happen every time, 75 ms on the frame's thread every 1.3 s at 90 Hz, which was a
+regular stutter in the headset. Startup-only keys: `[Camera] HookEnabled`, `[Render] Enabled`,
 `SubmitAtFrameEnd`, `Stereo` (the hooks it needs are installed at load), `SetGameResolution`
 and the resolution keys, `UiFollowsFrameSize`, `HudOverlay` as far as the hook install
 goes. Everything else follows the file while the game runs, which is how one session can

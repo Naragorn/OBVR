@@ -642,6 +642,16 @@ endif()
 
 add_test(NAME stall_detector COMMAND stall_detector_test)
 
+add_executable(reload_gate_test ReloadGateTest.cpp)
+
+target_include_directories(reload_gate_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(reload_gate_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME reload_gate COMMAND reload_gate_test)
+
 add_executable(menu_pause_policy_test MenuPausePolicyTest.cpp)
 
 target_include_directories(menu_pause_policy_test PRIVATE ../src)

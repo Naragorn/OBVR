@@ -550,6 +550,11 @@ struct Config {
 	// Re-reads only the values that are safe to change while the game runs.
 	// cameraHookEnabled stays out of it: by this point the hook has long been
 	// installed.
+	//
+	// true only when the file - or the test overlay beside it - changed since
+	// the last read and was read again. Called every ReloadEveryFrames frames,
+	// it answers false almost every time, and that answer costs one look at
+	// the directory rather than a read of the whole file (ReloadGate.h).
 	bool Reload(const char* fileName);
 };
 

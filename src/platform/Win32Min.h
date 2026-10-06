@@ -108,6 +108,26 @@ OBVR_IMPORT DWORD OBVR_STDCALL GetEnvironmentVariableA(const char* name, char* b
 OBVR_IMPORT DWORD OBVR_STDCALL GetModuleFileNameA(HMODULE module, char* fileName, DWORD size);
 OBVR_IMPORT DWORD OBVR_STDCALL GetFileAttributesA(const char* fileName);
 
+// For asking OBVR.ini whether it changed before reading it again. The
+// structure is WIN32_FILE_ATTRIBUTE_DATA spelled out: attributes, three
+// FILETIMEs of two 32-bit halves each, then the size's high and low halves -
+// 36 bytes, which the SDK branch checks against the real type below.
+struct FileTimeHalves {
+	DWORD low;
+	DWORD high;
+};
+struct FileAttributeData {
+	DWORD attributes;
+	FileTimeHalves creation;
+	FileTimeHalves lastAccess;
+	FileTimeHalves lastWrite;
+	DWORD sizeHigh;
+	DWORD sizeLow;
+};
+constexpr int GetFileExInfoStandard = 0;
+OBVR_IMPORT BOOL OBVR_STDCALL GetFileAttributesExA(const char* fileName, int infoLevel,
+                                                   FileAttributeData* info);
+
 // For the frame time the position smoothing needs. A high resolution counter
 // rather than GetTickCount, whose resolution of 10 to 16 ms is of the same
 // order as a frame itself.
@@ -252,6 +272,39 @@ inline long long ReadPerformanceFrequency() {
 	LARGE_INTEGER value{};
 	QueryPerformanceFrequency(&value);
 	return value.QuadPart;
+}
+
+#endif
+
+// A file's last write time and size, as one 64-bit value each, regardless of
+// which branch supplied the import. False when the file is not there or
+// cannot be asked - the caller decides what that means.
+#if defined(OBVR_NO_WINSDK)
+
+inline bool ReadFileStamp(const char* path, UInt64& lastWrite, UInt64& size) {
+	FileAttributeData data{};
+	if (!GetFileAttributesExA(path, GetFileExInfoStandard, &data)) {
+		return false;
+	}
+	lastWrite = (static_cast<UInt64>(data.lastWrite.high) << 32) | data.lastWrite.low;
+	size = (static_cast<UInt64>(data.sizeHigh) << 32) | data.sizeLow;
+	return true;
+}
+
+#else
+
+static_assert(sizeof(WIN32_FILE_ATTRIBUTE_DATA) == 36,
+              "WIN32_FILE_ATTRIBUTE_DATA is 36 bytes, as FileAttributeData spells it");
+
+inline bool ReadFileStamp(const char* path, UInt64& lastWrite, UInt64& size) {
+	WIN32_FILE_ATTRIBUTE_DATA data{};
+	if (!GetFileAttributesExA(path, GetFileExInfoStandard, &data)) {
+		return false;
+	}
+	lastWrite = (static_cast<UInt64>(data.ftLastWriteTime.dwHighDateTime) << 32) |
+	            data.ftLastWriteTime.dwLowDateTime;
+	size = (static_cast<UInt64>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
+	return true;
 }
 
 #endif
