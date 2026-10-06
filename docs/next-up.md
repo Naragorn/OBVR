@@ -494,9 +494,21 @@ failed the same way on 2026-09-28, before this round.
   the back buffer is not captured and the log says so. Measured with
   `tools/disparity.ps1` on `stereo-view`'s eye dumps: 0 samples before -56 px
   in every band (the crop offset), after -104 (ceiling) to -59 (floor); 8
-  samples -104 to -59 as well, unchanged. The player's INI losing its 8
-  between two sessions on 2026-10-06 is still unexplained (the launcher's
-  autodetect is the suspect).
+  samples -104 to -59 as well, unchanged. Confirmed in the headset the same
+  day (the log: `samples=1`, then "the frame closed between the passes"). The
+  player's INI losing its 8 between two sessions on 2026-10-06 is still
+  unexplained (the launcher's autodetect is the suspect).
+- **Texture flicker (test more later).** The player saw a shimmer on
+  textures in earlier sessions, before the `dxvk.conf` line and while
+  `iMultiSample` and the specular distance were down (0 and 0/300). The
+  defragmenter only moves OBVR's textures in memory and cannot change their
+  pixels, so the likely cause is the missing antialiasing; the specular pass
+  is the other candidate (more shimmer with a higher distance, not less).
+  Back on 8 samples and 1000/1300 on 2026-10-06: no bad flicker in the first
+  session, to be watched. If it returns on shiny surfaces (armour, bottles,
+  wet floors), it is the specular pass: a step down in the launcher, or
+  `bDoSpecularPass=0` for a counter-test. Also check after each start that
+  the INI still says 8.
 - **Shield bash.** Not a vanilla action (UESP, Oblivion:Block: the Expert
   and Master perks give a chance of a stagger or disarm on a block; a manual
   bash exists only in Oblivion Remastered). A VR bash would be OBVR's own:
