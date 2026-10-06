@@ -531,6 +531,47 @@ torch.
   the restore after each render cleared its once-flag. The restore no longer
   does.
 
+### Eleventh test (2026-10-06): the pick held steady
+
+The tester: pointing at or reaching for a thing, with the name under it,
+the ring and the outline, "ist ziemlich jittery. es sollte sich natürlich
+anfühlen." Three things shook, all in `game/PickHold.h` now
+(pick_hold_test, harness `pick-hold`):
+
+- **The choice.** The item was chosen afresh every frame (`PickRank`), so two
+  items ranking alike swapped with every tremor of the hand, and the hand
+  the pick came from swapped too when both reached for one thing. Now the
+  pick holds its item and its hand (`StepPickHold`): a challenger has to be
+  clearly better - a better class, or within the class a key better by
+  2 degrees (the laser's miss) or 7 cm (a distance) - and stay so for
+  0.15 s; a touched item takes over at once. An item no hand reaches for any
+  more is kept 0.15 s before it is let go, so a hand at the edge of the
+  reach does not blink.
+- **The distance.** Within the grab's reach the distance to an item is to
+  its mesh (`NearestVertexOf`), not to its bound sphere: a sword's sphere is
+  a metre across, and two swords lying together put a hand inside both at
+  once (the first harness run could not tell them apart). So "touched" is
+  the blade a hand is on, and a hand hovering 40 cm over a sword's middle
+  is no longer in reach of it - it has to come to the blade, or point.
+- **What is shown.** The ring, the info row and the mark follow the engine's
+  pick target only once it has stayed the same for 0.12 s
+  (`StepRefSettle`): the ray aimed at the held item can cross the other
+  thing lying against it for a few frames (seen in the first run: the mark
+  went to the other sword and back during one sweep). And their points ease
+  towards the target with an 80 ms time constant (`StepAnchor`), snapping
+  only when the thing changes - the ray's hit no longer walks the ring over
+  the surface with every tremor, and the aim at the item's near side no
+  longer jumps from vertex to vertex. The info row hangs under a small
+  thing's own middle (a bound within 56 cm), under the hit only for a large
+  one (`vr::TargetHangPoint`).
+
+Harness `pick-hold` (two Iron Longswords dropped together, the right hand
+lowered to them and swept 15 cm across and back in 1.5 cm steps, then a
+tremor of a centimetre): 2 "Pick: on" lines, both while the hand came down,
+none during the sweep or the tremor; the outline moved once. Not seen in
+the headset. The log says "Pick: on <ref> (class, key, hand) - was <ref>"
+at each change, forty lines at most.
+
 ### Up to the mouth and the body
 
 Held objects stopped about 25 cm from the head (2026-09-26). Eating by

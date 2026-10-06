@@ -1306,3 +1306,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME scene_frame COMMAND scene_frame_test)
+
+add_executable(pick_hold_test PickHoldTest.cpp)
+
+target_include_directories(pick_hold_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(pick_hold_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME pick_hold COMMAND pick_hold_test)

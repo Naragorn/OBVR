@@ -225,7 +225,9 @@ inline float LaserMissRadians(const NiPoint3& hand, const NiPoint3& direction, c
 
 // Which item a hand takes when several are in reach (the tester's tester,
 // 2026-10-03: before three objects, pointing at one, the nearest was taken).
-// By class, then within it by its key, lower first:
+// By class, then within it by its key, lower first (the distance being to
+// the item's mesh within the grab's reach, FindNearestItem, else to its
+// bound sphere):
 //   0 touched (within kPickTouchUnits of its surface) - by distance;
 //   1 the laser on it (within kPickAimedRadians of its bound) - by the miss;
 //   2 within the grab's reach - by distance;
@@ -265,17 +267,20 @@ inline bool PickRank(const SearchHand& hand, const NiPoint3& centre, float radiu
 
 // Takes the candidate if it is within reach of a valid hand that is reaching
 // for it (ReachingFor) and ranks better than what `best` holds (PickRank).
-// The right hand wins a tie.
+// The right hand wins a tie. `distances` ([0] the right hand's, [1] the
+// left's) are the hands' distances to the item's mesh when known, else
+// negative (the bound sphere's then).
 inline void ConsiderNearItem(NearItem& best, UInt32 ref, const NiPoint3& centre, float radius,
                              const SearchHand& right, const SearchHand& left, float reachUnits,
-                             float alwaysUnits) {
+                             float alwaysUnits, const float* distances = nullptr) {
 	for (int side = 0; side < 2; ++side) {
 		const bool isLeft = side == 1;
 		const SearchHand& hand = isLeft ? left : right;
 		if (!hand.valid) {
 			continue;
 		}
-		const float d = SurfaceDistance(hand.position, centre, radius);
+		const float known = distances != nullptr ? distances[side] : -1.0f;
+		const float d = known >= 0.0f ? known : SurfaceDistance(hand.position, centre, radius);
 		UInt8 rankClass = 0xFF;
 		float rankKey = 0.0f;
 		if (d <= reachUnits && PickRank(hand, centre, radius, d, alwaysUnits, rankClass, rankKey) &&
@@ -292,9 +297,39 @@ inline void ConsiderNearItem(NearItem& best, UInt32 ref, const NiPoint3& centre,
 	}
 }
 
-// The nearest item within reach of either hand in the player's cell, or an
-// invalid one. `except` is left out (the one already held).
+// How one hand ranks one item this frame (PickRank), or invalid when that
+// hand is not valid, the item is out of its reach or it is not reaching for
+// it. For the item the pick holds (game/PickHold.h), by hand. `distance` is
+// the hand's distance to the item when known better than the bound sphere
+// gives it (its mesh, HandDistanceToItem), else negative.
+inline NearItem RankItemForHand(const SearchHand& hand, bool isLeft, UInt32 ref, const NiPoint3& centre,
+                                float radius, float reachUnits, float alwaysUnits, float distance = -1.0f) {
+	NearItem out;
+	if (!hand.valid) {
+		return out;
+	}
+	const float d = distance >= 0.0f ? distance : SurfaceDistance(hand.position, centre, radius);
+	UInt8 rankClass = 0xFF;
+	float rankKey = 0.0f;
+	if (d > reachUnits || !PickRank(hand, centre, radius, d, alwaysUnits, rankClass, rankKey)) {
+		return out;
+	}
+	out.valid = true;
+	out.left = isLeft;
+	out.ref = ref;
+	out.centre = centre;
+	out.distance = d;
+	out.rankClass = rankClass;
+	out.rankKey = rankKey;
+	return out;
+}
+
+// The best-ranked item within reach of either hand in the player's cell, or
+// an invalid one. `except` is left out (the one already held). With `keep`
+// (0 none), that item's own ranks this frame go to `keptByHand` ([0] the
+// right hand, [1] the left; invalid where the hand does not reach for it) -
+// what the pick's hold needs to know whether to stay on it.
 NearItem FindNearestItem(const SearchHand& right, const SearchHand& left, float reachUnits,
-                         float alwaysUnits, UInt32 except);
+                         float alwaysUnits, UInt32 except, UInt32 keep = 0, NearItem* keptByHand = nullptr);
 
 }  // namespace obvr::game

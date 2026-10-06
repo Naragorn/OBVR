@@ -488,6 +488,10 @@ void TestTarget() {
 	Check(Near(bare.z, 101.0f), "no bound: just under the hit");
 	const NiPoint3 above = TargetHangPoint(NiPoint3{0, 0, 10.0f}, true, NiPoint3{0, 0, 50.0f}, 5.0f);
 	Check(Near(above.z, 7.0f), "hit below its bound's bottom: under the hit");
+	const NiPoint3 aside = TargetHangPoint(NiPoint3{14.0f, 23.0f, 104.0f}, true, NiPoint3{10.0f, 20.0f, 100.0f}, 5.0f);
+	Check(Near(aside.x, 10.0f) && Near(aside.y, 20.0f), "a small thing hit off its middle: under the middle");
+	const NiPoint3 wide = TargetHangPoint(NiPoint3{14.0f, 23.0f, 80.0f}, true, NiPoint3{10.0f, 20.0f, 50.0f}, 70.0f);
+	Check(Near(wide.x, 14.0f) && Near(wide.y, 23.0f), "a large thing: under the hit, not its far middle");
 
 	HandHudFrame f;
 	f.haveHead = true;

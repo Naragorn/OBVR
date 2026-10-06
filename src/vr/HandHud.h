@@ -716,23 +716,34 @@ struct HandHudFrame {
 	float targetDistanceMetres = 0.0f;
 };
 
-// Where a Target row hangs from, in the world (game units, z up): under the
-// point the pick's ray hit, below the thing's bound - its centre less its
-// radius, no more than kTargetHangMaxDropUnits down, so a door or a person
-// does not send it to the floor - and a little gap lower still. Without a
+// Where a Target row hangs from, in the world (game units, z up): below the
+// thing's bound - its centre less its radius, no more than
+// kTargetHangMaxDropUnits down, so a door or a person does not send it to
+// the floor - and a little gap lower still, never above the hit. Sideways
+// under the thing's own middle when it is small (a bound within
+// kTargetHangCentreUnits), so the text stands still while the ray's hit
+// wanders over it (2026-10-06); under the hit for a large thing, where the
+// middle of a door or a person can be far from where one points. Without a
 // bound, just under the hit.
 constexpr float kTargetHangMaxDropUnits = 20.0f;  // 28 cm
 constexpr float kTargetHangGapUnits = 3.0f;       // 4 cm
+constexpr float kTargetHangCentreUnits = 40.0f;   // 56 cm
 
 inline NiPoint3 TargetHangPoint(const NiPoint3& hit, bool haveBound, const NiPoint3& boundCentre, float boundRadius) {
+	float x = hit.x;
+	float y = hit.y;
 	float z = hit.z;
 	if (haveBound) {
 		const float drop = boundRadius < kTargetHangMaxDropUnits ? (boundRadius > 0.0f ? boundRadius : 0.0f)
 		                                                         : kTargetHangMaxDropUnits;
 		const float below = boundCentre.z - drop;
 		z = below < z ? below : z;
+		if (boundRadius <= kTargetHangCentreUnits) {
+			x = boundCentre.x;
+			y = boundCentre.y;
+		}
 	}
-	return NiPoint3{hit.x, hit.y, z - kTargetHangGapUnits};
+	return NiPoint3{x, y, z - kTargetHangGapUnits};
 }
 
 // The pose a Target row hangs from: at `point` (tracking space), its face

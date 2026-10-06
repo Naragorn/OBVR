@@ -70,6 +70,7 @@
 #include "game/WeaponDrawSpeed.h"
 #include "game/GrabNearBody.h"
 #include "game/NearbyItems.h"
+#include "game/PickHold.h"
 #include "game/MeleeHit.h"
 #include "game/QuickKeys.h"
 #include "game/ItemIcons.h"
@@ -210,6 +211,15 @@ bool g_reachIconShown = false;
 // pick is aimed from that hand at it, so a hand brought to an item gets its
 // tooltip and marker without pointing at it.
 game::NearItem g_nearItem;
+// Held steady across frames (game/PickHold.h): the choice, the hand, and the
+// points the ring, the info row and the pick's aim follow.
+game::PickHoldState g_pickHold;
+game::AnchorState g_ringAnchor;
+game::AnchorState g_rowAnchor;
+game::AnchorState g_aimAnchor;
+game::RefSettleState g_ringSettle;
+game::RefSettleState g_rowSettle;
+UInt32 g_pickLines = 40;
 vr::openvr::HmdMatrix34 g_reachIconPose{};
 // The cyclopean camera, snapshotted in the camera pass (see there); declared
 // early because the hand mode measures the grab reach from it.
@@ -1649,6 +1659,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_hand = vr::HandModeResult{};
 		g_reachIconShown = false;
 		g_nearItem = game::NearItem{};
+		g_pickHold = game::PickHoldState{};
 		g_handMode.Reset();
 		g_quickMenu = vr::QuickMenuState{};
 		g_stow = vr::StowState{};
@@ -2122,11 +2133,14 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		         g_hand.controls.attack ? 1 : 0, static_cast<int>(game::ReadPlayerAction()));
 	}
 
-	// The item nearest a hand, by distance (game::FindNearestItem): the pick is
-	// aimed from that hand at it in the camera pass. While a grip is closed,
-	// only that hand looks; while something is held, nothing does.
+	// The item a hand reaches for (game::FindNearestItem, ranked by PickRank),
+	// held steady from frame to frame (game::StepPickHold): the pick is aimed
+	// from that hand at it in the camera pass. While a grip is closed, only
+	// that hand looks; while something is held, nothing does.
 	g_nearItem = game::NearItem{};
-	if (active && !menuIsUp && g_cyclopeanCameraWorldValid && !game::PlayerHoldsGrab()) {
+	if (!(active && !menuIsUp && g_cyclopeanCameraWorldValid && !game::PlayerHoldsGrab())) {
+		g_pickHold = game::PickHoldState{};
+	} else {
 		const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
 		const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
 		const bool gripping = g_hand.grabWanted;
@@ -2165,10 +2179,24 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			}
 			return h;
 		};
-		g_nearItem = game::FindNearestItem(
+		game::NearItem keptByHand[2];
+		const game::NearItem best = game::FindNearestItem(
 			hand(false, g_hand.rightHandValid && (!gripping || !g_hand.grabWithLeftHand)),
 			hand(true, g_hand.leftHandValid && (!gripping || g_hand.grabWithLeftHand)), reach,
-			config.hands.grabReachMetres * config.tracker.unitsPerMetre, 0);
+			config.hands.grabReachMetres * config.tracker.unitsPerMetre, 0,
+			g_pickHold.held.valid ? g_pickHold.held.ref : 0, keptByHand);
+		const UInt32 before = g_pickHold.held.valid ? g_pickHold.held.ref : 0;
+		const bool beforeLeft = g_pickHold.held.left;
+		g_nearItem = game::StepPickHold(g_pickHold, best, keptByHand, dt);
+		const UInt32 after = g_nearItem.valid ? g_nearItem.ref : 0;
+		if ((after != before || (after != 0 && g_nearItem.left != beforeLeft)) && g_pickLines > 0) {
+			--g_pickLines;
+			OBVR_LOG("Pick: on %08X (class %u, key %.3f, %s hand) - was %08X (%s hand)%s", after,
+			         g_nearItem.valid ? g_nearItem.rankClass : 0xFFu,
+			         static_cast<double>(g_nearItem.valid ? g_nearItem.rankKey : 0.0f),
+			         g_nearItem.left ? "left" : "right", before, beforeLeft ? "left" : "right",
+			         best.valid && best.ref != after ? " (the best was another)" : "");
+		}
 	}
 	g_hand.pickWithLeftHand = g_nearItem.valid && g_nearItem.left;
 	// The grab follows whichever hand is holding it: direction through the aim
@@ -2356,6 +2384,16 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			const game::CrosshairTarget target = game::ReadCrosshairTarget();
 			NiPoint3 hit = target.position;
 			game::ReadPickHit(hit);
+			// Shown on the thing the pick has settled on (game/PickHold.h): a
+			// thing the ray crossed for a few frames does not take the ring;
+			// and the ring eases over the thing rather than following every
+			// tremor of the ray's hit, snapping only to another thing.
+			const UInt32 wantedRef = target.haveRef ? target.refAddress : 0;
+			const UInt32 shownRef = game::StepRefSettle(g_ringSettle, wantedRef, dt);
+			if (shownRef != wantedRef && g_ringAnchor.valid && g_ringAnchor.ref == shownRef) {
+				hit = g_ringAnchor.point;
+			}
+			hit = game::StepAnchor(g_ringAnchor, shownRef, hit, dt);
 			const float reachUnits = config.hands.reachMarkerMetres * config.tracker.unitsPerMetre;
 			const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
 			const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
@@ -2367,11 +2405,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				g_hand.leftHandValid &&
 				vr::WithinReach(camPos + camRot * g_hand.leftHandOffsetUnits, hit,
 				                reachUnits);
-			if (game::ReachMarkerWanted(target.haveRef,
-			                            game::RefBaseFormType(target.haveRef ? target.refAddress : 0),
-			                            nearRight, nearLeft)) {
+			if (game::ReachMarkerWanted(shownRef != 0, game::RefBaseFormType(shownRef), nearRight, nearLeft)) {
 				markerShown = true;
-				markerRef = target.refAddress;
+				markerRef = shownRef;
 				markerPose = vr::FacingHeadAt(
 					head, vr::WorldPointInTracking(head, camRot, camPos, hit,
 					                               config.tracker.unitsPerMetre));
@@ -6142,11 +6178,22 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		if (handHudActive && handHudFrame.haveHead && g_cyclopeanCameraWorldValid) {
 			const game::CrosshairTarget target = game::ReadCrosshairTarget();
 			NiPoint3 hit = target.position;
-			if (target.haveRef && game::ReadPickHit(hit)) {
-				NiPoint3 centre{};
-				float radius = 0.0f;
-				const bool haveBound = game::RefWorldBound(target.refAddress, centre, radius);
-				const NiPoint3 hang = vr::TargetHangPoint(hit, haveBound, centre, radius);
+			const bool haveHit = target.haveRef && game::ReadPickHit(hit);
+			// On the thing the pick has settled on (game/PickHold.h), under
+			// its own middle for a small thing, eased - so the text neither
+			// shakes with the ray's hit nor jumps to a thing the ray crossed.
+			const UInt32 shownRef = game::StepRefSettle(g_rowSettle, haveHit ? target.refAddress : 0, g_deltaSeconds);
+			if (shownRef != 0) {
+				NiPoint3 wanted = g_rowAnchor.point;
+				if (shownRef == target.refAddress && haveHit) {
+					NiPoint3 centre{};
+					float radius = 0.0f;
+					const bool haveBound = game::RefWorldBound(shownRef, centre, radius);
+					wanted = vr::TargetHangPoint(hit, haveBound, centre, radius);
+				} else if (!g_rowAnchor.valid || g_rowAnchor.ref != shownRef) {
+					wanted = hit;
+				}
+				const NiPoint3 hang = game::StepAnchor(g_rowAnchor, shownRef, wanted, g_deltaSeconds);
 				const NiPoint3 at = vr::WorldPointInTracking(handHudFrame.head, g_cyclopeanCameraWorldTransform.rot,
 				                                             g_cyclopeanCameraWorldTransform.pos, hang,
 				                                             config.tracker.unitsPerMetre);
@@ -7204,6 +7251,9 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 					game::NearSideWeight(nearDistance, hands.reachMarkerMetres * perMetre,
 					                     hands.reachNearSideMetres * perMetre));
 			}
+			// The near side jumps from vertex to vertex as the hand moves; the
+			// aim eases after it (game/PickHold.h).
+			aim = game::StepAnchor(g_aimAnchor, g_nearItem.ref, aim, g_deltaSeconds);
 			const vr::LaserWorldRay ray = vr::RayTowards(
 				from, aim, hands.grabReachMetres * config.tracker.unitsPerMetre,
 				ForwardOf(finalRotation));

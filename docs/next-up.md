@@ -441,6 +441,18 @@ checked by tests and the harness as far as said; **none seen in the headset**.
    effectFortify 000562C8) and a glow (`TargetGlow=0`, effectTelekinesis
    00181C2E). Harness `stow`: "Target marker: ... marked (outline 1)",
    "Info target, lifted". How either looks: not seen.
+   **Held steady (2026-10-06; the tester: "ziemlich jittery").** The choice
+   was made afresh every frame and the ring, the text and the mark followed
+   the ray's hit. Now (`game/PickHold.h`, pick_hold_test; the spec's
+   eleventh test): the pick keeps its item and its hand until another is
+   clearly better (a better class, or 2 degrees / 7 cm within one) for
+   0.15 s, a touch at once; an item no longer reached for is kept 0.15 s;
+   within the grab's reach the distance is to the mesh, not the bound sphere
+   (two swords together put a hand inside both spheres); what is shown is
+   the engine's target once it stayed 0.12 s; the ring, the aim and the
+   text ease (80 ms) and the text hangs under a small thing's own middle.
+   Harness `pick-hold`: a slow sweep across two swords and a tremor over
+   one, 2 "Pick: on" lines, both before the sweep. Not seen in the headset.
 2. **The inventory's figure hollow.** The interface pass drew it into
    OBVR's single-sample layer with the game's 8-sample depth-stencil, which
    DXVK leaves out of the framebuffer - no depth test, skin over armour. The

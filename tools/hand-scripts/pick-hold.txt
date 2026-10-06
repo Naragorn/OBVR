@@ -1,0 +1,90 @@
+# The pick held steady (game/PickHold.h): two Iron Longswords dropped
+# together on the floor ahead, the right hand brought down over them and
+# swept slowly across from one to the other and back. The pick should take
+# one, stay on it while the hand wavers between them, and change only when
+# the other is clearly the nearer - a few "Pick: on" lines over the sweep,
+# not one every frame. The ring, the info text and the outline follow the
+# held one. Read the count of "Pick: on" lines in the log after the run.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\pick-hold.txt
+
+ini Hands Enabled=1
+ini Hands TargetOutline=1
+# No hand bodies: a hand pushing the swords apart would move the thing measured.
+ini Hands BodyCollision=0
+ini Render MirrorMenusToMonitor=1
+console player.additem 00000C0C 2
+console player.drop 00000C0C 1
+console player.drop 00000C0C 1
+
+expect HandScript: finished
+expect Pick: on
+reject HandScript: WARNING
+
+# The swords settle first; the left hand hangs down, its laser at the floor behind.
+wait 14
+head pitch -50
+left pos -0.25 -0.10 -0.60
+left rot -170 0 0
+right pos 0.05 -1.65 -0.95
+right rot -80 0 0
+wait 1
+mark near
+dump
+# Across to the left and back, a centimetre and a half a step.
+right pos 0.035 -1.65 -0.95
+wait 0.08
+right pos 0.02 -1.65 -0.95
+wait 0.08
+right pos 0.005 -1.65 -0.95
+wait 0.08
+right pos -0.01 -1.65 -0.95
+wait 0.08
+right pos -0.025 -1.65 -0.95
+wait 0.08
+right pos -0.04 -1.65 -0.95
+wait 0.08
+right pos -0.055 -1.65 -0.95
+wait 0.08
+right pos -0.07 -1.65 -0.95
+wait 0.08
+right pos -0.085 -1.65 -0.95
+wait 0.08
+right pos -0.10 -1.65 -0.95
+wait 0.5
+mark left
+dump
+right pos -0.085 -1.65 -0.95
+wait 0.08
+right pos -0.07 -1.65 -0.95
+wait 0.08
+right pos -0.055 -1.65 -0.95
+wait 0.08
+right pos -0.04 -1.65 -0.95
+wait 0.08
+right pos -0.025 -1.65 -0.95
+wait 0.08
+right pos -0.01 -1.65 -0.95
+wait 0.08
+right pos 0.005 -1.65 -0.95
+wait 0.08
+right pos 0.02 -1.65 -0.95
+wait 0.08
+right pos 0.035 -1.65 -0.95
+wait 0.08
+right pos 0.05 -1.65 -0.95
+wait 0.5
+mark back
+dump
+# A small tremor over the same spot: the pick must not change.
+right pos 0.055 -1.65 -0.95
+wait 0.05
+right pos 0.045 -1.65 -0.95
+wait 0.05
+right pos 0.055 -1.65 -0.96
+wait 0.05
+right pos 0.045 -1.65 -0.94
+wait 0.05
+right pos 0.05 -1.65 -0.95
+wait 0.5
+mark tremor
+dump

@@ -423,8 +423,12 @@ UInt8 RefBaseFormType(UInt32 ref) {
 }
 
 NearItem FindNearestItem(const SearchHand& right, const SearchHand& left, float reachUnits,
-                         float alwaysUnits, UInt32 except) {
+                         float alwaysUnits, UInt32 except, UInt32 keep, NearItem* keptByHand) {
 	NearItem best;
+	if (keptByHand != nullptr) {
+		keptByHand[0] = NearItem{};
+		keptByHand[1] = NearItem{};
+	}
 	const UInt32 player = Read(addr::kPlayerPointer);
 	if (!LooksLikeObject(player) || !(right.valid || left.valid)) {
 		return best;
@@ -458,8 +462,32 @@ NearItem FindNearestItem(const SearchHand& right, const SearchHand& left, float 
 		if ((node->flags & kNiHiddenFlag) != 0) {
 			continue;
 		}
+		// Within the grab's reach of the bound sphere the distance is taken
+		// to the mesh itself: a sword's sphere is a metre across, and two
+		// swords lying together put a hand inside both at once (2026-10-06,
+		// pick-hold: the pick could not tell them apart) - the blade a hand
+		// is on is the one touched.
+		float distances[2] = {-1.0f, -1.0f};
+		for (int side = 0; side < 2; ++side) {
+			const SearchHand& hand = side == 1 ? left : right;
+			if (!hand.valid ||
+			    SurfaceDistance(hand.position, node->worldBound.center, node->worldBound.radius) > alwaysUnits) {
+				continue;
+			}
+			NiPoint3 nearest;
+			float toMesh = 0.0f;
+			if (NearestVertexOf(ref, hand.position, nearest, toMesh)) {
+				distances[side] = toMesh;
+			}
+		}
 		ConsiderNearItem(best, ref, node->worldBound.center, node->worldBound.radius, right, left,
-		                 reachUnits, alwaysUnits);
+		                 reachUnits, alwaysUnits, distances);
+		if (keptByHand != nullptr && ref == keep) {
+			keptByHand[0] = RankItemForHand(right, false, ref, node->worldBound.center, node->worldBound.radius,
+			                                reachUnits, alwaysUnits, distances[0]);
+			keptByHand[1] = RankItemForHand(left, true, ref, node->worldBound.center, node->worldBound.radius,
+			                                reachUnits, alwaysUnits, distances[1]);
+		}
 	}
 	return best;
 }
