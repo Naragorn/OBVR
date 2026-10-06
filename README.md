@@ -67,7 +67,12 @@ Windows 11. Everything else is exactly what your reports are for.
    `obse_steam_loader.dll`, `obse_loader.exe` and its `Data` folder into your
    Oblivion folder.
 2. **DXVK:** from the archive's `x32` folder, copy only `d3d9.dll` next to
-   `Oblivion.exe`.
+   `Oblivion.exe`. Then make a text file called `dxvk.conf` in the same folder
+   with this one line in it:
+
+   ```
+   dxvk.enableMemoryDefrag = False
+   ```
 3. **OBVR:** download `OBVR-<version>.zip` from
    **[Releases](https://github.com/Naragorn/OBVR/releases)** and extract it into
    Oblivion's `Data` folder.
@@ -88,7 +93,8 @@ your library and you can start it right from SteamVR's game list, headset on.
 **Mod Organizer 2:** just install the OBVR zip as a normal mod. OBVR itself doesn't
 need Root Builder (xOBSE's own files in the game folder do).
 
-**Uninstalling:** delete `OBVR.dll`, `OBVR.ini`, `OBVR-LICENSE.txt`,
+**Uninstalling:** delete `dxvk.conf` from your Oblivion folder (and `d3d9.dll`
+too, if you don't use DXVK for anything else), then `OBVR.dll`, `OBVR.ini`, `OBVR-LICENSE.txt`,
 `OBVR-crosshair.cache`, `openvr_api.dll`, `openvr_api-LICENSE.txt` and the
 `OBVR_Input` folder from `Data/OBSE/Plugins/`, plus `OBVR_Onboarding.xml` and
 `OBVR_Settings.xml` from `Data/Menus/Generic/` and the `Data/Menus/Prefabs/OBVR/`
