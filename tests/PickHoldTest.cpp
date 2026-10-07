@@ -263,7 +263,15 @@ void TestRankForHand() {
 	palm.palm = NiPoint3{0.0f, 1.0f, 0.0f};
 	r = RankItemForHand(palm, false, 0xA, centre, 5.0f, 100.0f, 20.0f, 30.0f);
 	Check(r.valid && r.rankClass == kPickPalmNear, "the palm turned to it within 42 units: still the hand's");
+	// The tester (2026-10-07): "nun ist auch die hand tooltip weg auf
+	// objekten" - near enough is the hand's whichever way it points.
+	r = RankItemForHand(away, false, 0xA, centre, 5.0f, 100.0f, 20.0f, 30.0f);
+	Check(r.valid && r.rankClass == kPickPalmNear, "pointing elsewhere, within 42 units: the hand's all the same");
+	r = RankItemForHand(away, false, 0xA, centre, 5.0f, 100.0f, 20.0f, 50.0f);
+	Check(!r.valid, "pointing elsewhere, 50 units off: not");
 	g_laserPicksItems = true;
+	r = RankItemForHand(away, false, 0xA, centre, 5.0f, 100.0f, 20.0f, 30.0f);
+	Check(!r.valid, "the laser on again, pointing elsewhere 30 units off: the laser's rules, not reached for");
 	r = RankItemForHand(hand, true, 0xA, centre, 5.0f, 100.0f, 20.0f);
 	Check(r.valid && r.rankClass == kPickLaserOn, "on again: the laser's class is back");
 }

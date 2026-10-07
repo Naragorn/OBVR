@@ -550,10 +550,11 @@ in the headset yet.
     grab's ref at player+0x578 changes), so its spring never holds a
     reference that went into the pack. It is not thrown on the way. Given
     up after 1 s if the engine keeps holding it.
-- **The spot.** A gold ring at the chest, shown while an item is held and
-  filled while the hand is in it (`ui::PaintStowSpot`): let go there and the
-  item is stowed; let go anywhere else and it drops. It is a sphere of
-  0.16 m round a point 0.17 m ahead of the eyes and 0.30 m below them, in
+- **The spot.** A gold circle at the chest (a faint disc with an edge
+  line, firmer while the hand is in it - `ui::PaintStowSpot`; a ring with a
+  clear middle until 2026-10-07), shown while an item is held: let go there
+  and the item is stowed; let go anywhere else and it drops. It is a sphere
+  of 0.16 m round a point 0.17 m ahead of the eyes and 0.33 m below them, in
   the body's frame (`vr::BodyRelative`), turned to face the eyes.
   `[Hands] StowForward`, `StowUp`, `StowRadius`.
   - First test: a wide cylinder round the torso missed a sword let go
@@ -569,11 +570,14 @@ in the headset yet.
     settings row "Place the stow spot" opens a window (MenuQue, the
     adjust-hands window with the stow's words) and shows the ring for as
     long as it is open. A grip closed on the ring (or within 6 cm of it)
-    takes it along with that hand; opening the grip leaves it. Done writes
-    `StowRight`, `StowForward`, `StowUp` and hides the ring; Cancel or Esc
-    puts it back; Reset returns it to the default. Kept within reach: 0.6 m
-    to either side, 0.4 m behind to 0.8 m ahead, 1.4 m below to 0.3 m above
-    the eyes (`vr::StepStowPlace`, tested in stow_test).
+    takes it along with that hand; opening the grip leaves it. The right
+    stick up and down grows and shrinks it (0.12 m of radius a second at
+    full deflection, past the stick dead zone; 0.06 to 0.40 m - since
+    2026-10-07). Done writes `StowRight`, `StowForward`, `StowUp`,
+    `StowRadius` and hides the circle; Cancel or Esc puts spot and size
+    back; Reset returns both to the default. Kept within reach: 0.6 m to
+    either side, 0.4 m behind to 0.8 m ahead, 1.4 m below to 0.3 m above the
+    eyes (`vr::StepStowPlace`, tested in stow_test).
 - **Taking only by hand.** `[Hands] TakeOnlyByHand`, off by default; settings
   "Take only by hand". The activate button is kept from the game while the
   laser is on a loose item. A book still opens to read, and doors, chests
@@ -1380,3 +1384,64 @@ it rotated it out), so this is built on the tester's words.
   seen; the click log now names the tile under the cursor and the menu on
   top ("Hands: click sent to the ... menu (on top: ...) ... the tile under
   it \"...\"") - what the next log needs for the field's real name.
+
+### 4.19 The tester's round of 65e776a (2026-10-07, night)
+
+- **The ticks** "15% stärker": 0.097 and 0.24.
+- **The slap** "musste ihn ein paar mal slappen before die andere mod
+  triggerte". His log's facing lines: the player 0 degrees off the slapped
+  one, they 0 degrees off the player, 69 units apart - and the mod wants
+  fewer than 51 (`getDistance < 51` in its tap check), so the facing was
+  right and the distance was the gate, until a slap landed from closer.
+  Now the tap's watch also pulls the slapped one's origin (+0x2C, x and y)
+  to 45 units from the player's feet along the line between them, when it
+  is farther (`HoldSlapFacing`, `kSlapModReachUnits`); the NPC steps the
+  rest of the way itself. Not seen in the headset: whether the engine lets
+  an actor's origin be written mid-frame without its Havok body snapping it
+  back, or the actor jolting visibly.
+- **The dialogue view** "sobald er mich ansprach war die dialog kamera
+  wieder zu tief auf höhe der hände. immerhin sah der npc die höhe meines
+  kopfes an". His log: the menu frame's camera base 108.3 with the eyes at
+  150.7 - the engine's dialogue camera lowers its own camera base for the
+  talk, and OBVR's head offset went on top of the lowered base. The base is
+  now held where it was as the conversation began, for as long as
+  `game::PlayerDialogActive` says it lasts, in the camera pass before the
+  menu frames take their base from it ("Dialogue view: the camera's base
+  held at ..." once per conversation, the first eight). The NPC's gaze at
+  the eyes was right already (4.11) and is unchanged. Not seen in the
+  headset.
+- **The hand's tooltip over items** "Laser auf Gegenstände: ok ist weg
+  aber nun ist auch die hand tooltip weg auf objekten": with the laser off
+  items, the hand's own reach (`ReachingForWithHand`) was still asked for a
+  palm that pointed at the item; now, with the laser off items, an item
+  within 42 units of the hand's surface is the hand's whether the palm
+  faces it or not (`kPickNearHandUnits`, pick_hold_test), so the ring, the
+  name and the reach pull are back for the hand near a thing.
+- **The keyboard** "immernoch nicht da": his log's click lines name the
+  tile under the cursor in the race menu as "race_name" (the character's
+  name at the top of the menu, not the race's - the earlier reading of the
+  XML was wrong); a click on it now opens the keyboard with "Your name"
+  over it (`NameTileTakesKeyboard`, vr_keyboard_test). The alchemy,
+  spellmaking and enchantment fields still rest on the XML's names and have
+  no click line yet.
+- **The stow circle** "sollte eher ein kreis sein den man platzieren und
+  auch vergrößern oder verkleinern kann im adjust setting. by default in
+  der brust": the ring is a filled circle, the placing window sizes it with
+  the right stick, Done keeps the size (4.6), and the default spot is 0.33 m
+  under the eyes (0.30 before; the live INI had 0.29), still over the hand
+  measured against the chest on 2026-09-27.
+- **"text zeilen machen noch einen luftsprung manchmal ... erst mittig
+  oder woanders"**: still open, the cause not pinned. Read through this
+  round: the crosshair quad over the thing is already hidden until the
+  row's anchor is the pick's (`targetSettled`), the row's anchor snaps on a
+  new thing (`game::StepAnchor`), and the overlay's transform is set
+  before it is shown (`HandHudLayer::Submit`). The one path left that
+  shows the text "mittig" is the Info element not lifted for a frame: its
+  tiles give no rectangle (hidden or unsized) while the engine still
+  draws HUDInfoMenu at its vanilla place in the middle of the view, and the
+  next frame it is lifted and jumps to the thing. Two logs for the next
+  round, both limited: "Hand HUD: the Info element lifted / its menu
+  there, no rectangle / ..." at every change of that state with the pick's
+  ref, and "Hands: row on <ref>, frame 1..3 - hit ..., wanted ..., hang
+  ..., m from the head" for the row's first three frames on a thing. A
+  jump in the headset now has its frames in the log.

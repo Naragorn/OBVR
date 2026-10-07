@@ -53,7 +53,8 @@ struct StowSettings {
 	// round it the hand counts as in it.
 	float centreRight = 0.0f;
 	float centreForward = 0.17f;
-	float centreUp = -0.30f;
+	float centreUp = -0.33f;  // the chest (the tester, 2026-10-07: "by default in der brust"),
+	                          // still over where items were held in 2026-09-27's log
 	float radius = 0.16f;
 	// The ring drawn while an item is held. Off by default since the tester
 	// placed it where wanted once (vr/StowPlace.h, 2026-09-28): the spot

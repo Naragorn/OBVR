@@ -184,9 +184,23 @@ constexpr float kPalmConeCos = 0.643f;
 
 // Reached for by either the laser or the palm. With no palm direction only
 // the laser counts, as before; with neither, everything does (ReachingFor).
+// Whether the laser picks items at all ([Hands] LaserPicksItems; the tester,
+// 2026-10-07: "das man nun auf aufnehmbare objekte noch mit dem pointer
+// darauf zeigen kann das können wir nun entfernen ... denn wir haben ja nun
+// unsere eigene greif und pull technik"). Off, an item counts only by the
+// hand - touched, within reach, or near it - and the laser classes are never
+// given. Set from the configuration each frame.
+inline bool g_laserPicksItems = true;
+// How near a hand has to be for a thing to be its (kPickPalmNear).
+constexpr float kPickNearHandUnits = 42.0f;  // 60 cm
+
 inline bool ReachingForWithHand(const SearchHand& hand, const NiPoint3& centre,
                                 float surfaceDistance, float alwaysUnits) {
 	const bool palmKnown = hand.palm.LengthSquared() > 1.0e-12f;
+	// Near enough to be the hand's, laser or no laser (g_laserPicksItems off).
+	if (!g_laserPicksItems && surfaceDistance <= kPickNearHandUnits) {
+		return true;
+	}
 	return ReachingFor(hand.position, hand.direction, centre, surfaceDistance, alwaysUnits,
 	                   kReachingConeCos) ||
 	       (palmKnown && ReachingFor(hand.position, hand.palm, centre, surfaceDistance,
@@ -251,21 +265,13 @@ enum PickClass : UInt8 {
 };
 constexpr float kPickTouchUnits = 3.5f;       // 5 cm
 constexpr float kPickAimedRadians = 0.105f;   // 6 degrees
-constexpr float kPickPalmNearUnits = 42.0f;   // 60 cm
+constexpr float kPickPalmNearUnits = kPickNearHandUnits;
 
 // Whether a class is keyed by the laser's miss (an angle) rather than by a
 // distance - what a margin between two keys is measured in (game/PickHold.h).
 inline bool PickClassKeyedByAngle(UInt8 rankClass) {
 	return rankClass == kPickLaserOn || rankClass == kPickLaserCone;
 }
-
-// Whether the laser picks items at all ([Hands] LaserPicksItems; the tester,
-// 2026-10-07: "das man nun auf aufnehmbare objekte noch mit dem pointer
-// darauf zeigen kann das können wir nun entfernen ... denn wir haben ja nun
-// unsere eigene greif und pull technik"). Off, an item counts only by the
-// hand - touched, within reach, or the palm turned to it - and the laser
-// classes are never given. Set from the configuration each frame.
-inline bool g_laserPicksItems = true;
 
 inline bool PickRank(const SearchHand& hand, const NiPoint3& centre, float radius, float surfaceDistance,
                      float alwaysUnits, UInt8& rankClass, float& rankKey) {
@@ -274,8 +280,12 @@ inline bool PickRank(const SearchHand& hand, const NiPoint3& centre, float radiu
 	}
 	const float miss = LaserMissRadians(hand.position, hand.direction, centre, radius);
 	const bool palmKnown = hand.palm.LengthSquared() > 1.0e-12f;
-	const bool palmNear = palmKnown && surfaceDistance <= kPickPalmNearUnits &&
-	                      ReachingFor(hand.position, hand.palm, centre, surfaceDistance, 0.0f, kPalmConeCos);
+	// With the laser not picking items, a hand near a thing is reaching for
+	// it whichever way the palm turns (the tester, 2026-10-07: "nun ist auch
+	// die hand tooltip weg auf objekten").
+	const bool palmNear = surfaceDistance <= kPickPalmNearUnits &&
+	                      (!g_laserPicksItems || (palmKnown && ReachingFor(hand.position, hand.palm, centre,
+	                                                                       surfaceDistance, 0.0f, kPalmConeCos)));
 	if (surfaceDistance <= kPickTouchUnits) {
 		rankClass = kPickTouched;
 		rankKey = surfaceDistance;

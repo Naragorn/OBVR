@@ -234,6 +234,8 @@ bool NearPoint(const NiPoint3& a, const NiPoint3& b) {
 	return std::fabs(a.x - b.x) < 1e-4f && std::fabs(a.y - b.y) < 1e-4f && std::fabs(a.z - b.z) < 1e-4f;
 }
 
+bool Near(float a, float b) { return std::fabs(a - b) < 1e-4f; }
+
 void TestPlace() {
 	std::printf("Placing the stow spot\n");
 	StowSettings settings;
@@ -363,6 +365,54 @@ void TestPlace() {
 	Check(v.save && NearPoint(v.spot, NiPoint3{defaults.centreRight, defaults.centreForward,
 	                                           defaults.centreUp}),
 	      "Reset: the default spot, saved");
+	Check(v.radius == defaults.radius, "Reset: the default size with it");
+
+	// Sized by the stick while placing: up grows, down shrinks, clamped,
+	// Done keeps it, Cancel puts it back, nothing without a window.
+	settings.radius = 0.16f;
+	in = StowPlaceInput{};
+	in.command = StowPlaceCommand::Start;
+	StepStowPlace(s, in, settings);
+	in.command = StowPlaceCommand::None;
+	in.resize = 1.0f;
+	in.dtSeconds = 0.5f;
+	v = StepStowPlace(s, in, settings);
+	Check(v.active && Near(v.radius, 0.16f + 0.5f * kStowResizeMetresPerSecond), "the stick up: grown by its speed and the frame");
+	in.resize = -0.5f;
+	in.dtSeconds = 0.25f;
+	v = StepStowPlace(s, in, settings);
+	Check(Near(v.radius, 0.16f + 0.5f * kStowResizeMetresPerSecond - 0.125f * kStowResizeMetresPerSecond),
+	      "half down: shrunk by half the speed");
+	in.resize = 1.0f;
+	in.dtSeconds = 100.0f;
+	v = StepStowPlace(s, in, settings);
+	Check(Near(v.radius, kStowMaxRadius), "held up for long: stops at the largest");
+	in.resize = -1.0f;
+	v = StepStowPlace(s, in, settings);
+	Check(Near(v.radius, kStowMinRadius), "held down for long: stops at the smallest");
+	in.resize = 1.0f;
+	in.dtSeconds = 0.0f;
+	v = StepStowPlace(s, in, settings);
+	Check(Near(v.radius, kStowMinRadius), "no frame time: unchanged");
+	in.resize = 0.0f;
+	in.command = StowPlaceCommand::Keep;
+	v = StepStowPlace(s, in, settings);
+	Check(v.save && Near(v.radius, kStowMinRadius), "Done: the size kept with the spot");
+	in.command = StowPlaceCommand::Start;
+	StepStowPlace(s, in, settings);
+	in.command = StowPlaceCommand::None;
+	in.resize = 1.0f;
+	in.dtSeconds = 1.0f;
+	StepStowPlace(s, in, settings);
+	in.resize = 0.0f;
+	in.command = StowPlaceCommand::Cancel;
+	v = StepStowPlace(s, in, settings);
+	Check(v.restore && Near(v.radius, 0.16f), "Cancel: the size it opened with");
+	in.command = StowPlaceCommand::None;
+	in.resize = 1.0f;
+	in.dtSeconds = 1.0f;
+	v = StepStowPlace(s, in, settings);
+	Check(!v.active && v.radius == 0.16f, "no window: the stick sizes nothing");
 
 	// Shown.
 	Check(StowRingShown(true, false, false), "placing: the ring shows");

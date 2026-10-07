@@ -1346,6 +1346,18 @@ inline constexpr UInt32 kMapScanToKey = 1;  // MAPVK_VSC_TO_VK
 // GameObjects.h, TESObjectREFR).
 inline constexpr UInt32 kRefRotZOffset = 0x28;
 UInt32 g_slapFacingLines = 12;
+// The engine's camera base held through a conversation (the camera pass).
+bool g_dialogBaseHeld = false;
+NiPoint3 g_dialogBasePos{0.0f, 0.0f, 0.0f};
+UInt32 g_dialogBaseLines = 8;
+// The mod's slap wants the two origins within 51 units (its script's
+// `getDistance < 51`); a hand at a face from an arm's length stands the
+// body further off (the tester's log, 2026-10-07: 69 and 45 units, the mod
+// following only on the 45). For the tap's watch the slapped one's origin
+// is set this close along the line to the player when it is further - the
+// mod's own positioner then puts them 50 units before the player anyway,
+// and the engine's movement writes their place back otherwise.
+inline constexpr float kSlapModReachUnits = 45.0f;
 
 void HoldSlapFacing() {
 	if (g_slapTapWatch == 0 || !mem::LooksLikeObjectAddress(g_slapTapActor)) {
@@ -1377,6 +1389,12 @@ void HoldSlapFacing() {
 	}
 	game::WritePlayerYaw(math::Atan2(dx, dy));
 	*npcYaw = math::Atan2(-dx, -dy);
+	if (distance > kSlapModReachUnits + 1.0f) {
+		float* const npcPosWrite = reinterpret_cast<float*>(g_slapTapActor + addr::kRefPositionOffset);
+		const float share = kSlapModReachUnits / distance;
+		npcPosWrite[0] = feet.x + dx * share;
+		npcPosWrite[1] = feet.y + dy * share;
+	}
 }
 NiPoint3 g_slapTapTarget{0.0f, 0.0f, 0.0f};
 inline constexpr float kYieldEnemyUnits = 420.0f;   // 6 m
@@ -1829,6 +1847,13 @@ void UpdateStowPlacing(Config& config, vr::OpenVRBackend& backend, const vr::Han
 	}
 	in.rightGrip = frame.right.valid && vr::GripDown(frame.right.buttonsPressed);
 	in.leftGrip = frame.left.valid && vr::GripDown(frame.left.buttonsPressed);
+	// The right stick up and down sizes the circle, past the dead zone.
+	if (frame.right.valid) {
+		const float y = frame.right.thumbY;
+		const float dead = config.hands.stickDeadZone;
+		in.resize = y > dead ? (y - dead) / (1.0f - dead) : (y < -dead ? (y + dead) / (1.0f - dead) : 0.0f);
+	}
+	in.dtSeconds = g_deltaSeconds;
 	vr::StowSettings& stow = config.hands.stow;
 	const vr::StowPlaceVerdict v = vr::StepStowPlace(g_stowPlace, in, stow);
 	game::NoteStowPlaceActive(v.active);
@@ -1842,32 +1867,31 @@ void UpdateStowPlacing(Config& config, vr::OpenVRBackend& backend, const vr::Han
 		         v.grabbed ? "taken" : "let go", static_cast<double>(v.spot.x),
 		         static_cast<double>(v.spot.y), static_cast<double>(v.spot.z));
 	}
-	if (v.active) {
-		// The running settings follow the ring, so it is drawn - and would
-		// stow - where it is being put.
+	if (v.active || v.save || v.restore) {
+		// The running settings follow the circle, so it is drawn - and would
+		// stow - where and as large as it is being put.
 		stow.centreRight = v.spot.x;
 		stow.centreForward = v.spot.y;
 		stow.centreUp = v.spot.z;
-	}
-	if (v.save || v.restore) {
-		stow.centreRight = v.spot.x;
-		stow.centreForward = v.spot.y;
-		stow.centreUp = v.spot.z;
+		if (stow.radius != v.radius) {
+			stow.radius = v.radius;
+			++g_stowSpotRevision;
+		}
 	}
 	if (v.save) {
 		const struct {
 			const char* key;
 			float value;
-		} entries[] = {{"StowRight", v.spot.x}, {"StowForward", v.spot.y}, {"StowUp", v.spot.z}};
+		} entries[] = {{"StowRight", v.spot.x}, {"StowForward", v.spot.y}, {"StowUp", v.spot.z}, {"StowRadius", v.radius}};
 		bool saved = true;
 		for (const auto& entry : entries) {
 			char value[32];
 			std::snprintf(value, sizeof(value), "%.2f", static_cast<double>(entry.value));
 			saved = SaveSetting("Hands", entry.key, value) && saved;
 		}
-		OBVR_LOG("Stow place: kept at %.2f right, %.2f forward, %.2f up - the ring hidden again%s",
+		OBVR_LOG("Stow place: kept at %.2f right, %.2f forward, %.2f up, %.2f m across - the circle hidden again%s",
 		         static_cast<double>(v.spot.x), static_cast<double>(v.spot.y),
-		         static_cast<double>(v.spot.z), saved ? "" : " - COULD NOT SAVE the INI");
+		         static_cast<double>(v.spot.z), static_cast<double>(2.0f * v.radius), saved ? "" : " - COULD NOT SAVE the INI");
 	} else if (v.restore) {
 		OBVR_LOG("Stow place: cancelled - the spot back at %.2f right, %.2f forward, %.2f up",
 		         static_cast<double>(v.spot.x), static_cast<double>(v.spot.y),
@@ -6495,6 +6519,32 @@ void MaybeSubmitOverlays(bool worldFrame) {
 				handHudFrame.rect[e] = vr::UiRect{};
 			}
 		}
+		// The Info element's lift, frame by frame as it changes: left on the
+		// panel (its vanilla place, the middle of the view) when its tiles
+		// give no rectangle - the one way the row shows "erst mittig" (the
+		// tester, 2026-10-07) - or lifted. Next to the row's and the pick's
+		// lines, the next log says which frames were which.
+		{
+			const UInt32 info = static_cast<UInt32>(vr::HudElement::Info);
+			const UInt8 state = !lift[info]                 ? 0
+			                    : g_handHudLayer.Lifted(info) ? 1
+			                    : rects[info].valid          ? 2
+			                    : vr::FindHudTile(s_infoTiles, infoCount, vr::kHudInfoRoot) >= 0 ? 3
+			                                                 : 4;
+			static UInt8 s_infoState = 0;
+			static UInt32 s_infoLines = 40;
+			if (state != s_infoState && s_infoLines > 0) {
+				--s_infoLines;
+				const game::CrosshairTarget onNow = game::ReadCrosshairTarget();
+				static const char* const kStates[] = {"not lifted by the settings", "lifted", "found, the copy failed",
+				                                      "its menu there, no rectangle (hidden or unsized tiles)",
+				                                      "its menu not there"};
+				OBVR_LOG("Hand HUD: the Info element %s (pixels %d,%d..%d,%d, %u tile(s), the pick on %08X)",
+				         kStates[state], rects[info].left, rects[info].top, rects[info].right, rects[info].bottom,
+				         infoCount, onNow.haveRef ? onNow.refAddress : 0u);
+			}
+			s_infoState = state;
+		}
 		// At a hand-script mark: what was found and lifted, and with the tile
 		// probe on the atlas and the panel left behind as pictures.
 		if (test::HandScriptMarkedThisFrame()) {
@@ -6740,6 +6790,28 @@ void MaybeSubmitOverlays(bool worldFrame) {
 				const float dz = at.z - handHudFrame.head.m[2][3];
 				handHudFrame.targetDistanceMetres = math::Sqrt(dx * dx + dy * dy + dz * dz);
 				handHudFrame.targetValid = true;
+				// The row's first three frames on a thing, for the jump the tester
+				// still sees ("der text erscheint erst mittig oder woanders und
+				// dann an der position", 2026-10-07): where the hit, the hang and
+				// the row were, next to the pick's lines of the same frames.
+				static UInt32 s_rowRef = 0;
+				static UInt32 s_rowFrames = 0;
+				static UInt32 s_rowLines = 60;
+				if (shownRef != s_rowRef) {
+					s_rowRef = shownRef;
+					s_rowFrames = 0;
+				}
+				if (s_rowFrames < 3 && s_rowLines > 0) {
+					--s_rowLines;
+					OBVR_LOG("Hands: row on %08X, frame %u - hit %s at %.0f %.0f %.0f, wanted %.0f %.0f %.0f, "
+					         "hang %.0f %.0f %.0f, %.2f m from the head",
+					         shownRef, s_rowFrames + 1, shownRef == target.refAddress && haveHit ? "the pick's" : "none (the anchor's)",
+					         static_cast<double>(hit.x), static_cast<double>(hit.y), static_cast<double>(hit.z),
+					         static_cast<double>(wanted.x), static_cast<double>(wanted.y), static_cast<double>(wanted.z),
+					         static_cast<double>(hang.x), static_cast<double>(hang.y), static_cast<double>(hang.z),
+					         static_cast<double>(handHudFrame.targetDistanceMetres));
+				}
+				++s_rowFrames;
 			}
 		}
 		// The top and bottom of the view: placed where the head looks when
@@ -7480,6 +7552,31 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// head pose onto the next and walk the camera away across a menu. The
 	// game's own value is the only fixed point, and this is the one moment it
 	// can be read - after the engine has written it, before OBVR has.
+	// In a conversation the engine moves its own camera for the talk (the
+	// dialogue camera, zoom or not), and the view sank with it to "höhe der
+	// hände" while the NPC looked at the headset's eyes (the tester,
+	// 2026-10-07; his log: the menu frame's base 108.3, the eyes 150.7). So
+	// the engine's base is held where it was as the conversation began, for
+	// as long as it lasts (game::PlayerDialogActive): the head's own offset
+	// goes on top as ever, and the menu frames build on the same base.
+	{
+		const bool talking = game::PlayerDialogActive();
+		if (talking && !g_dialogBaseHeld) {
+			g_dialogBaseHeld = true;
+			g_dialogBasePos = cameraNode->localTransform.pos;
+			if (g_dialogBaseLines > 0) {
+				--g_dialogBaseLines;
+				OBVR_LOG("Dialogue view: the camera's base held at %.1f %.1f %.1f for the conversation",
+				         static_cast<double>(g_dialogBasePos.x), static_cast<double>(g_dialogBasePos.y),
+				         static_cast<double>(g_dialogBasePos.z));
+			}
+		} else if (!talking) {
+			g_dialogBaseHeld = false;
+		}
+		if (g_dialogBaseHeld) {
+			cameraNode->localTransform.pos = g_dialogBasePos;
+		}
+	}
 	g_menuBaseNode = cameraNode;
 	g_menuBasePos = cameraNode->localTransform.pos;
 	g_menuBaseThirdPerson = isThirdPerson;

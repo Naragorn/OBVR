@@ -200,12 +200,13 @@ void TestStowSpot() {
 	PaintStowSpot(canvas, view);
 	Check(canvas.GetPixel(0, 0).a == 0, "outside the circle: clear");
 	Check(canvas.GetPixel(c, 3).a > 0, "the ring at the edge");
-	Check(canvas.GetPixel(c, c / 2).a == 0, "inside the ring, not lit: clear");
+	Check(canvas.GetPixel(c, c / 2).a > 0 && canvas.GetPixel(c, c / 2).a < canvas.GetPixel(c, 3).a,
+	      "inside, not lit: a faint fill, under the edge");
 	Check(canvas.GetPixel(c, c).a > 0, "the diamond in the middle");
 	const UInt8 faint = canvas.GetPixel(c, 3).a;
 	view.lit = true;
 	PaintStowSpotFor(canvas, &view);
-	Check(canvas.GetPixel(c, c / 2).a > 0, "lit: filled");
+	Check(canvas.GetPixel(c, c / 2).a > 40, "lit: the fill firmer");
 	Check(canvas.GetPixel(c, 3).a > faint, "lit: the ring brighter");
 	Check(canvas.GetPixel(0, 0).a == 0, "lit, outside the circle: still clear");
 }

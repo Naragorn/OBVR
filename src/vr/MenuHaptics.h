@@ -23,10 +23,10 @@ enum class MenuPulse : UInt8 { None, Hover, Click };
 // 0.25 and 0.6 were too much).
 inline constexpr float kHoverPulseSeconds = 0.005f;
 inline constexpr float kHoverPulseHertz = 180.0f;
-inline constexpr float kHoverPulseAmplitude = 0.084f;  // "5 % stärker" (2026-10-07)
+inline constexpr float kHoverPulseAmplitude = 0.097f;  // "5 % stärker", then "15% stärker" (2026-10-07)
 inline constexpr float kClickPulseSeconds = 0.012f;
 inline constexpr float kClickPulseHertz = 200.0f;
-inline constexpr float kClickPulseAmplitude = 0.21f;
+inline constexpr float kClickPulseAmplitude = 0.24f;
 
 // What the laser is on, remembered so a pulse comes once per thing.
 struct MenuHapticState {

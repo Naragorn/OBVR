@@ -34,8 +34,18 @@ constexpr float kStowPlaceMaxUp = 0.3f;
 
 enum class StowPlaceCommand : UInt8 { None, Start, Keep, Cancel, Reset };
 
+// How the spot is sized while placing: the right stick up and down grows
+// and shrinks it, this fast at full deflection, within these bounds (the
+// tester, 2026-10-07: "ein kreis den man platzieren und auch vergrößern
+// oder verkleinern kann im adjust setting").
+constexpr float kStowResizeMetresPerSecond = 0.12f;
+constexpr float kStowMinRadius = 0.06f;
+constexpr float kStowMaxRadius = 0.40f;
+
 struct StowPlaceState {
 	bool active = false;
+	float radius = 0.16f;          // the circle's radius now
+	float originalRadius = 0.16f;  // as it was when the window opened
 	NiPoint3 spot{0.0f, 0.0f, 0.0f};      // where the ring is now
 	NiPoint3 original{0.0f, 0.0f, 0.0f};  // where it was when the window opened
 	int hand = 0;                         // dragging with: 0 none, 1 right, 2 left
@@ -52,11 +62,14 @@ struct StowPlaceInput {
 	NiPoint3 left{0.0f, 0.0f, 0.0f};
 	bool rightGrip = false;
 	bool leftGrip = false;
+	float resize = 0.0f;   // -1..1, the right stick's y: grow up, shrink down
+	float dtSeconds = 0.0f;
 };
 
 struct StowPlaceVerdict {
 	bool active = false;    // the window is open: the ring shows at `spot`
 	NiPoint3 spot{0.0f, 0.0f, 0.0f};
+	float radius = 0.16f;   // the circle's radius, with the spot
 	bool dragging = false;
 	bool grabbed = false;   // a grip took the ring this frame
 	bool dropped = false;   // and let it go
@@ -95,6 +108,7 @@ inline StowPlaceVerdict StepStowPlace(StowPlaceState& s, const StowPlaceInput& i
 		s = StowPlaceState{};
 		s.active = true;
 		s.spot = s.original = StowSpotOf(settings);
+		s.radius = s.originalRadius = settings.radius;
 		s.rightGripWas = in.rightGrip;
 		s.leftGripWas = in.leftGrip;
 		break;
@@ -102,6 +116,7 @@ inline StowPlaceVerdict StepStowPlace(StowPlaceState& s, const StowPlaceInput& i
 		if (s.active) {
 			v.save = true;
 			v.spot = s.spot;
+			v.radius = s.radius;
 		}
 		s = StowPlaceState{};
 		return v;
@@ -109,6 +124,7 @@ inline StowPlaceVerdict StepStowPlace(StowPlaceState& s, const StowPlaceInput& i
 		if (s.active) {
 			v.restore = true;
 			v.spot = s.original;
+			v.radius = s.originalRadius;
 		}
 		s = StowPlaceState{};
 		return v;
@@ -116,6 +132,7 @@ inline StowPlaceVerdict StepStowPlace(StowPlaceState& s, const StowPlaceInput& i
 		if (s.active) {
 			v.save = true;
 			v.spot = StowSpotOf(StowSettings{});
+			v.radius = StowSettings{}.radius;
 		}
 		s = StowPlaceState{};
 		return v;
@@ -136,11 +153,11 @@ inline StowPlaceVerdict StepStowPlace(StowPlaceState& s, const StowPlaceInput& i
 	}
 	// A grip closed on the ring takes it; the right hand first when both do.
 	if (s.hand == 0) {
-		if (rightPress && in.rightValid && NearStowSpot(in.right, s.spot, settings.radius)) {
+		if (rightPress && in.rightValid && NearStowSpot(in.right, s.spot, s.radius)) {
 			s.hand = 1;
 			s.offset = s.spot - in.right;
 			v.grabbed = true;
-		} else if (leftPress && in.leftValid && NearStowSpot(in.left, s.spot, settings.radius)) {
+		} else if (leftPress && in.leftValid && NearStowSpot(in.left, s.spot, s.radius)) {
 			s.hand = 2;
 			s.offset = s.spot - in.left;
 			v.grabbed = true;
@@ -151,8 +168,14 @@ inline StowPlaceVerdict StepStowPlace(StowPlaceState& s, const StowPlaceInput& i
 	} else if (s.hand == 2) {
 		s.spot = ClampStowSpot(in.left + s.offset);
 	}
+	// The stick sizes it, clamped.
+	if (in.resize != 0.0f && in.dtSeconds > 0.0f) {
+		s.radius = ClampTo(s.radius + in.resize * kStowResizeMetresPerSecond * in.dtSeconds, kStowMinRadius,
+		                   kStowMaxRadius);
+	}
 	v.active = true;
 	v.spot = s.spot;
+	v.radius = s.radius;
 	v.dragging = s.hand != 0;
 	return v;
 }

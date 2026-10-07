@@ -30,9 +30,10 @@ void TestWhere() {
 	          NameTileTakesKeyboard(kMenuIdAlchemy, "name_text") && NameTileTakesKeyboard(kMenuIdAlchemy, "name_background"),
 	      "the three naming menus' fields and their backgrounds");
 	Check(!NameTileTakesKeyboard(kMenuIdSpellmaking, "name_text") && !NameTileTakesKeyboard(kMenuIdAlchemy, "spell_name_text") &&
-	          !NameTileTakesKeyboard(kMenuIdAlchemy, nullptr) && !NameTileTakesKeyboard(0x40C, "race_name"),
-	      "another menu's field, no tile, or the race's name: not");
-	Check(SameText(KeyboardPromptFor(kMenuIdAlchemy), "The potion's name") && SameText(KeyboardPromptFor(0x40C), "Type") &&
+	          !NameTileTakesKeyboard(kMenuIdAlchemy, nullptr) && !NameTileTakesKeyboard(kMenuIdRaceSex, "race_background"),
+	      "another menu's field, no tile, or the race menu's background: not");
+	Check(NameTileTakesKeyboard(kMenuIdRaceSex, "race_name"), "the race menu's name field: the character's name");
+	Check(SameText(KeyboardPromptFor(kMenuIdAlchemy), "The potion's name") && SameText(KeyboardPromptFor(kMenuIdRaceSex), "Your name") && SameText(KeyboardPromptFor(0x400), "Type") &&
 	          SameText(KeyboardPromptFor(kMenuIdTextEdit), "Type, then Done"),
 	      "a line over the keyboard for each, a plain one otherwise");
 }

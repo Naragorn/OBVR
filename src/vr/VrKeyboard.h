@@ -23,8 +23,8 @@
 //   "ench_name_text", AlchemyMenu (0x410) "name_text": a name field each,
 //   typed into once clicked. The keyboard opens when the laser's click
 //   lands on the field (or its background rect), and Done only closes it.
-// The RaceSexMenu (0x40C) has no text field of its own ("race_name" is the
-// race's name).
+// - RaceSexMenu (0x40C) "race_name": the character's name at the top of the
+//   race menu (where the tester's clicks landed, 2026-10-07).
 //
 // Pure; vr_keyboard_test covers it.
 
@@ -36,6 +36,7 @@ inline constexpr UInt32 kMenuIdTextEdit = 0x41B;
 inline constexpr UInt32 kMenuIdAlchemy = 0x410;
 inline constexpr UInt32 kMenuIdSpellmaking = 0x411;
 inline constexpr UInt32 kMenuIdEnchantment = 0x412;
+inline constexpr UInt32 kMenuIdRaceSex = 0x40C;
 
 // The menu whose text field is the whole menu: the keyboard opens as it
 // does.
@@ -61,6 +62,11 @@ inline bool NameTileTakesKeyboard(UInt32 menuId, const char* tileName) {
 		return SameText(tileName, "ench_name_text") || SameText(tileName, "ench_name_background");
 	case kMenuIdAlchemy:
 		return SameText(tileName, "name_text") || SameText(tileName, "name_background");
+	case kMenuIdRaceSex:
+		// The character's name at the top of the race menu (the tester's clicks
+		// on it landed on "race_name", 2026-10-07); "race_background" is the
+		// whole menu's and opens nothing.
+		return SameText(tileName, "race_name");
 	default:
 		return false;
 	}
@@ -217,6 +223,7 @@ inline const char* KeyboardPromptFor(UInt32 menuId) {
 	case kMenuIdSpellmaking: return "The spell's name";
 	case kMenuIdEnchantment: return "The item's name";
 	case kMenuIdAlchemy: return "The potion's name";
+	case kMenuIdRaceSex: return "Your name";
 	default: return "Type";
 	}
 }
