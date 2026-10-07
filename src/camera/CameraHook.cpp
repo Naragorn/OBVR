@@ -6570,14 +6570,13 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			vr::HandDeviceForRole(!crosshairLeft, g_handRolesSwapped)),
 		crosshairPitch, crosshairYaw, config.hands.laserOriginMetres,
 		vr::LaserOffsetLocal(config.hands.laserOffsetRightMetres, config.hands.laserOffsetUpMetres, crosshairLeft));
-	// Over the thing it stays over the thing, near or far: the reach ring's
-	// icon placement is the laser's way (the tester, 2026-10-07: "wenn ich
-	// dann näher rantrete springt er zu dem kreis ... das sollte einheitlich
-	// sein").
-	bool roomPlaced = g_reachIconShown && quadAt != vr::CrosshairQuadAt::Target;
+	// Within reach the icon goes into the reach ring at the thing, as it
+	// always did: kept over the thing instead it "schwebt in der luft" (the
+	// tester, 2026-10-07, on the build that tried that).
+	bool roomPlaced = g_reachIconShown;
 	vr::openvr::HmdMatrix34 roomPose = g_reachIconPose;
 	float roomWidth = HandTooltipWidth(render::kReachIconWidthMetres, true, config.hands.tooltipScale);
-	if (quadAt == vr::CrosshairQuadAt::Target) {
+	if (!roomPlaced && quadAt == vr::CrosshairQuadAt::Target) {
 		NiPoint3 centre{};
 		float radius = 0.0f;
 		const bool haveBound = game::RefWorldBound(g_rowAnchor.ref, centre, radius);
@@ -6640,15 +6639,18 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			// shakes with the ray's hit nor jumps to a thing the ray crossed.
 			const UInt32 shownRef = game::StepRefSettle(g_rowSettle, haveHit ? target.refAddress : 0, g_deltaSeconds,
 			                                            g_nearItem.valid ? g_nearItem.ref : 0);
-			if (shownRef != 0) {
+			// The row stays hidden while the thing it would show is not the one
+			// the pick is on and no anchor of its own is known: placed at the
+			// other thing's hit it stood "mittig oder in der luft für paar
+			// frames" and then jumped (the tester, 2026-10-07).
+			const bool anchorKnown = g_rowAnchor.valid && g_rowAnchor.ref == shownRef;
+			if (shownRef != 0 && ((shownRef == target.refAddress && haveHit) || anchorKnown)) {
 				NiPoint3 wanted = g_rowAnchor.point;
 				if (shownRef == target.refAddress && haveHit) {
 					NiPoint3 centre{};
 					float radius = 0.0f;
 					const bool haveBound = game::RefWorldBound(shownRef, centre, radius);
 					wanted = vr::TargetHangPoint(hit, haveBound, centre, radius);
-				} else if (!g_rowAnchor.valid || g_rowAnchor.ref != shownRef) {
-					wanted = hit;
 				}
 				const NiPoint3 hang = game::StepAnchor(g_rowAnchor, shownRef, wanted, g_deltaSeconds);
 				const NiPoint3 at = vr::WorldPointInTracking(handHudFrame.head, g_cyclopeanCameraWorldTransform.rot,

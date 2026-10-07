@@ -1309,3 +1309,37 @@ moves are not reaching the game (its window not in front, or its cursor
 clamped)". The telling test: whether the physical mouse moves the game's
 cursor in that state - if it does, the injected moves are refused; if not,
 the engine's cursor is stuck.
+
+### 4.17 The tester's round of eafd1c3 (2026-10-07, late)
+
+- **The main menu's laser works again** ("geht wieder. liegt vll daran das
+  das game nicht im focus war"); his log of the round has the new line
+  "Menu cursor: the engine's cursor stayed at 2013,1171 through 90 frames
+  of mouse steps" once, later in the session, so the game's window not
+  being in front is the reading for both. Not OBVR's.
+- **The ticks** "müssen weniger stark sein ... nur ein tick wie in
+  steamvr": 5 ms at 0.08 for the hover, 12 ms at 0.2 for the click (were
+  12 ms at 0.25 and 30 ms at 0.6).
+- **The slap** "geht nicht so toll, beim 3ten versuch"; the log has the
+  mod's sNPCGrab count 1, 2, 3 on every tap - the mod sees the tap each
+  time, so what refuses is its own checks (the NPC facing the player
+  within 18 degrees, the origins within 51 units). The tester: "wäre doch
+  besser wenn wir seinen sound nehmen statt unseren 2 und unsere slap
+  mechanik und dann irgendwie die mod triggern". So: OBVR's own slap runs
+  always (the stagger, the push, the fatigue, the liking), the mod's slap
+  noise is played at the slapped one by the engine on every slap
+  (`PlaySoundFormAt`: the sequence of the script command PlaySound3D's
+  handler at 0x00509520 - made with flags 0x102, placed by 0x006B7360,
+  attached by 0x006AC3E0, started and handed over; the mod's SOUN by form
+  id), and the mod is set off on top by the grab tap as before
+  (`SlapTriggersMod`); when its own sequence follows, its noise comes once
+  more from it. OBVR's own noise stays out with the mod loaded.
+- **The reach ring's icon is back** ("die tooltip an objekten zum aufnehmen
+  ist eine regression, nun schweben die in der luft und nicht mehr im
+  kreis"): within reach the icon goes into the ring again, over the thing
+  only beyond it.
+- **The row's first frames** ("der text kommt oft mittig oder in der luft
+  für paar frames und dann springt"): while the settle still showed the
+  thing before and the pick's hit was already the next thing's, the row for
+  the old thing was placed at the new thing's hit. Now the row is hidden
+  until its own anchor is known or the pick is on it.

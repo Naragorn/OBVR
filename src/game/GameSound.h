@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Types.h"
+#include "game/NiMath.h"
 
 namespace obvr::game {
 
@@ -27,6 +28,11 @@ bool VerifyGameSoundAddresses();
 // A SOUN form by its id, as the player's own (not placed). False when it is
 // no sound form or the game makes no sound of it.
 bool PlaySoundForm(UInt32 formId);
+
+// The same placed in the world at `at` and on the reference `ref` (a 3D
+// sound at an actor), as the script command PlaySound3D does it. False on
+// the same terms.
+bool PlaySoundFormAt(UInt32 formId, UInt32 ref, const NiPoint3& at);
 
 // The landing sound the player makes on the ground under them.
 bool PlayPlayerLandingSound();

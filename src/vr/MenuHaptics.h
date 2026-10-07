@@ -18,12 +18,15 @@ namespace obvr::vr {
 enum class MenuPulse : UInt8 { None, Hover, Click };
 
 // The pulses, as OpenVRBackend::Pulse takes them: seconds, hertz, amplitude.
-inline constexpr float kHoverPulseSeconds = 0.012f;
+// Tiny on purpose (the tester, 2026-10-07: "die vibrationen müssen weniger
+// stark sein ... soll nur ein tick sein wie in steamvr" - the first build's
+// 0.25 and 0.6 were too much).
+inline constexpr float kHoverPulseSeconds = 0.005f;
 inline constexpr float kHoverPulseHertz = 180.0f;
-inline constexpr float kHoverPulseAmplitude = 0.25f;
-inline constexpr float kClickPulseSeconds = 0.03f;
+inline constexpr float kHoverPulseAmplitude = 0.08f;
+inline constexpr float kClickPulseSeconds = 0.012f;
 inline constexpr float kClickPulseHertz = 200.0f;
-inline constexpr float kClickPulseAmplitude = 0.6f;
+inline constexpr float kClickPulseAmplitude = 0.2f;
 
 // What the laser is on, remembered so a pulse comes once per thing.
 struct MenuHapticState {

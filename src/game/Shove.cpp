@@ -86,22 +86,19 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 		return false;
 	}
 	const char* done = "";
-	// A slap the mod finishes (ShoveLogic.h, SlapLeftToMod): a grab tap with
-	// the pick on them, which the camera pass reads (TakeSlapGrabTap), and
-	// nothing of OBVR's own - its positioner wants them where they stand,
-	// its handler costs them their liking.
+	// A slap in the face with the mod loaded (ShoveLogic.h, SlapTriggersMod):
+	// OBVR's own slap below, the mod's slap noise at them by the engine (its
+	// SOUN form; the script lines with its form id answered 0), and the mod
+	// set off on top by a grab tap with the pick on them, which the camera
+	// pass reads (TakeSlapGrabTap) - whatever its own sequence then adds.
 	const bool inTheFace = byHand && SlapInTheFace(fromWorld.z, centre.z);
-	if (SlapLeftToMod(PutItInItsPlaceIndex(), kind, inTheFace)) {
+	const UInt8 modIndex = PutItInItsPlaceIndex();
+	const bool modsTap = SlapTriggersMod(modIndex, kind, inTheFace);
+	bool modsNoise = false;
+	if (modsTap) {
 		g_slapTapActor = a;
 		g_slapTapCentre = centre;
-		if (g_lines > 0) {
-			--g_lines;
-			OBVR_LOG("Shove: %08X slapped in the face (from %.0f %.0f %.0f) - left to Put it in its Place: a grab tap "
-			         "with the pick on them, nothing of OBVR's own",
-			         a, static_cast<double>(fromWorld.x), static_cast<double>(fromWorld.y),
-			         static_cast<double>(fromWorld.z));
-		}
-		return true;
+		modsNoise = PlaySoundFormAt((static_cast<UInt32>(modIndex) << 24) | kPiiiPSlapNoiseLow, a, centre);
 	}
 	if (kind == ShoveKind::Hard) {
 		const UInt32 process = Read(a + kActorProcessOffset);
@@ -164,12 +161,13 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 	if (asHit) {
 		ReactAsToAHit(a, player);
 	}
-	// A slap without the mod (with it the slap was left to it above): OBVR's
-	// own noise and the game's gasp, run as them (ShoveLogic.h, SlapLines;
-	// game/ConsoleLine.h).
+	// The noise: without the mod OBVR's own and the game's gasp, run as them
+	// (ShoveLogic.h, SlapLines; game/ConsoleLine.h); with the mod loaded
+	// neither - the mod's own noise comes with its sequence, and the tester
+	// wants that one ("seinen sound nehmen statt unseren").
 	UInt32 slapLines = 0;
 	bool ownWave = false;
-	if (inTheFace && kind == ShoveKind::Light) {
+	if (inTheFace && kind == ShoveKind::Light && !modsTap) {
 		char lines[4][kSlapLineChars] = {};
 		const UInt32 count = SlapLines(0, SlapSound::Own, lines);
 		for (UInt32 i = 0; i < count; ++i) {
@@ -189,7 +187,10 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 		         a, done, static_cast<double>(fromWorld.x), static_cast<double>(fromWorld.y),
 		         static_cast<double>(fromWorld.z), static_cast<double>(fatigue), static_cast<double>(disposition),
 		         asHit ? ", taken as a hit" : "", inTheFace ? ", in the face" : "", slapLines,
-		         ownWave ? ", OBVR's own slap played" : "");
+		         ownWave ? ", OBVR's own slap played"
+		                 : (modsTap ? (modsNoise ? ", the mod's noise played, the mod set off by a grab tap"
+		                                        : ", the mod's noise refused, the mod set off by a grab tap")
+		                            : ""));
 	}
 	return true;
 }

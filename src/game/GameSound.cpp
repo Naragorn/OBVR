@@ -18,6 +18,15 @@ constexpr UInt32 kMakeSound = 0x006AE0A0;    // thiscall(system, formID, flags, 
 constexpr UInt32 kStartSound = 0x006B7190;   // thiscall(sound, 0), ret 4
 constexpr UInt32 kHandOverSound = 0x006B73E0;  // thiscall(sound)
 constexpr UInt32 kGameFree = 0x00401F20;     // cdecl(p)
+// The placed (3D) play, as the script command PlaySound3D does it (its
+// handler 0x00509520, read 2026-10-07): the sound made with flags 0x102,
+// put at the reference's position (0x006B7360 thiscall(sound, x, y, z)),
+// attached to the reference through the system (0x006AC3E0
+// thiscall(system, sound's first dword, ref)), then started and handed
+// over as the unplaced one.
+constexpr UInt32 kPlaceSound = 0x006B7360;   // thiscall(sound, float x, float y, float z)
+constexpr UInt32 kAttachSound = 0x006AC3E0;  // thiscall(system, soundId, ref)
+constexpr UInt32 kSoundFlagsPlaced = 0x102;
 constexpr UInt32 kPlayLanding = 0x006B1900;  // cdecl(actor, material)
 constexpr UInt32 kLandingCall = 0x005FDA0F;  // mov edx,[ebx+214h]; push edx; push esi
 constexpr UInt32 kLookupFormById = 0x0046B250;  // xOBSE GameAPI.cpp, cdecl, as HandBones.cpp
@@ -39,6 +48,8 @@ const Expected kExpected[] = {
 	{kStartSound, {0x8B, 0xC1, 0x8B, 0x0D, 0x14, 0xC2, 0xB3, 0x00}, 8, "the sound start"},
 	{kHandOverSound, {0xA1, 0x98, 0x3A, 0xB3, 0x00, 0x85, 0xC0}, 7, "the sound hand-over"},
 	{kGameFree, {0x8B, 0x44, 0x24, 0x04, 0x85, 0xC0}, 6, "the game's free"},
+	{kPlaceSound, {0x8B, 0xC1, 0x8B, 0x0D, 0x14, 0xC2, 0xB3, 0x00}, 8, "the sound placing"},
+	{kAttachSound, {0x8B, 0x44, 0x24, 0x08, 0x85, 0xC0, 0x56, 0x8B}, 8, "the sound attaching"},
 	{kPlayLanding, {0xA1, 0x0C, 0xC2, 0xB3, 0x00, 0x83, 0xEC, 0x10}, 8, "the landing sound"},
 	{kLandingCall, {0x8B, 0x93, 0x14, 0x02, 0x00, 0x00, 0x52, 0x56}, 8, "the landing's material"},
 };
@@ -85,6 +96,39 @@ bool PlaySoundForm(UInt32 formId) {
 	if (sound == nullptr) {
 		return false;
 	}
+	reinterpret_cast<StartFn>(kStartSound)(sound, 0);
+	reinterpret_cast<HandOverFn>(kHandOverSound)(sound);
+	reinterpret_cast<FreeFn>(kGameFree)(sound);
+	return true;
+}
+
+bool PlaySoundFormAt(UInt32 formId, UInt32 ref, const NiPoint3& at) {
+	if (!g_verified || !LooksLikeObject(ref)) {
+		return false;
+	}
+	using LookupFn = const UInt8*(__cdecl*)(UInt32 id);
+	const UInt8* const form = reinterpret_cast<LookupFn>(kLookupFormById)(formId);
+	if (!LooksLikeObject(reinterpret_cast<UInt32>(form)) || form[addr::kFormTypeOffset] != kFormTypeSound) {
+		return false;
+	}
+	const UInt32 globals = Read(kOsGlobalsPointer);
+	const UInt32 system = LooksLikeObject(globals) ? Read(globals + kOsGlobalsSoundOffset) : 0;
+	if (!LooksLikeObject(system)) {
+		return false;
+	}
+	using MakeFn = void*(__thiscall*)(void* system, UInt32 formId, UInt32 flags, UInt32 unused);
+	using PlaceFn = void(__thiscall*)(void* sound, float x, float y, float z);
+	using AttachFn = void(__thiscall*)(void* system, UInt32 soundId, UInt32 ref);
+	using StartFn = void(__thiscall*)(void* sound, UInt32 unused);
+	using HandOverFn = void(__thiscall*)(void* sound);
+	using FreeFn = void(__cdecl*)(void* p);
+	void* const sound =
+		reinterpret_cast<MakeFn>(kMakeSound)(reinterpret_cast<void*>(system), formId, kSoundFlagsPlaced, 0);
+	if (sound == nullptr) {
+		return false;
+	}
+	reinterpret_cast<PlaceFn>(kPlaceSound)(sound, at.x, at.y, at.z);
+	reinterpret_cast<AttachFn>(kAttachSound)(reinterpret_cast<void*>(system), *static_cast<const UInt32*>(sound), ref);
 	reinterpret_cast<StartFn>(kStartSound)(sound, 0);
 	reinterpret_cast<HandOverFn>(kHandOverSound)(sound);
 	reinterpret_cast<FreeFn>(kGameFree)(sound);

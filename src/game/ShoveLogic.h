@@ -166,9 +166,14 @@ inline bool SlapByModsGrabTap(UInt8 modIndex) { return modIndex != 0; }
 // Whether the grab is down this frame of the tap, `framesLeft` counting
 // down from kSlapGrabTapTotalFrames: the aim frames first, then the press.
 inline bool SlapGrabTapPressed(UInt32 framesLeft) { return framesLeft > 0 && framesLeft <= kSlapGrabTapFrames; }
-// Whether a shove is a slap the mod finishes - a light one in the face with
-// the mod loaded - and so none of OBVR's own.
-inline bool SlapLeftToMod(UInt8 modIndex, ShoveKind kind, bool inTheFace) {
+// Whether a shove is a slap the mod is told of - a light one in the face
+// with the mod loaded. OBVR's own slap runs either way - the stagger, the
+// push, the fatigue, the liking - and the mod is set off on top by the grab
+// tap (the tester, 2026-10-07: "unsere slap mechanik und dann irgendwie die
+// mod triggern"); its own checks (the facing, the distance) decide whether
+// its sequence follows. OBVR's noise stays out with the mod loaded: the
+// tester wants the mod's ("seinen sound nehmen statt unseren").
+inline bool SlapTriggersMod(UInt8 modIndex, ShoveKind kind, bool inTheFace) {
 	return SlapByModsGrabTap(modIndex) && kind == ShoveKind::Light && inTheFace;
 }
 inline constexpr const char* kSlapWave = "OBVR_Sounds\\slap.wav";
