@@ -153,10 +153,10 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 		// The coin: the slap's turn, the mod's or OBVR's own (ShoveLogic.h).
 		static UInt32 s_toss = 0x9E3779B9u;
 		s_toss = s_toss * 1664525u + 1013904223u;
-		const bool modLoaded = PutItInItsPlaceLoaded();
-		const SlapSound sound = SlapSoundFor(modLoaded, (s_toss >> 16) & 1u);
-		const char* lines[4] = {};
-		const UInt32 count = SlapLines(modLoaded, sound, lines);
+		const UInt8 modIndex = PutItInItsPlaceIndex();
+		const SlapSound sound = SlapSoundFor(modIndex != 0, (s_toss >> 16) & 1u);
+		char lines[4][kSlapLineChars] = {};
+		const UInt32 count = SlapLines(modIndex, sound, lines);
 		for (UInt32 i = 0; i < count; ++i) {
 			if (RequestConsoleLineAs(a, lines[i])) {
 				++slapLines;
@@ -181,47 +181,43 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 	return true;
 }
 
-bool PutItInItsPlaceLoaded() {
-	// The ESP in the game's Data folder and on the active plugin list
-	// (%LOCALAPPDATA%\Oblivion\Plugins.txt), read once.
-	static int s_loaded = -1;
-	if (s_loaded >= 0) {
-		return s_loaded == 1;
+UInt8 PutItInItsPlaceIndex() {
+	// The mod's load index: the one load index under which its slap noise
+	// (a SOUN at the low id kPiiiPSlapNoiseLow) and its slapped idle token (a
+	// CLOT at kPiiiPSlappedTokenLow) both exist, asked of the game's own form
+	// table (0x0046B250, cdecl(formId), as Lead.cpp uses it). Read once per
+	// session; 0 when no index has them (the mod not loaded).
+	constexpr UInt32 kLookupFormById = 0x0046B250;
+	// xOBSE GameForms.h's FormType: SOUN 0x0A, CLOT 0x16 (the same table
+	// IsHandItemType in NearbyItems.h is written against: APPA 0x13, ARMO
+	// 0x14, BOOK 0x15, CLOT 0x16, INGR 0x19 ...).
+	constexpr UInt8 kFormTypeSound = 0x0A;
+	constexpr UInt8 kFormTypeClothing = 0x16;
+	static int s_index = -1;
+	if (s_index >= 0) {
+		return static_cast<UInt8>(s_index);
 	}
-	s_loaded = 0;
-	const char* const appData = std::getenv("LOCALAPPDATA");
-	if (appData == nullptr) {
-		return false;
-	}
-	char path[512];
-	std::snprintf(path, sizeof(path), "%s\\Oblivion\\Plugins.txt", appData);
-	FILE* const list = std::fopen(path, "rb");
-	if (list == nullptr) {
-		return false;
-	}
-	char line[256];
-	bool listed = false;
-	while (std::fgets(line, sizeof(line), list) != nullptr) {
-		if (line[0] == '#') {
+	s_index = 0;
+	using LookupFn = void*(__cdecl*)(UInt32 formId);
+	const auto lookup = reinterpret_cast<LookupFn>(kLookupFormById);
+	for (UInt32 index = 1; index < 0xFF; ++index) {
+		const UInt32 sound = reinterpret_cast<UInt32>(lookup((index << 24) | kPiiiPSlapNoiseLow));
+		const UInt32 token = reinterpret_cast<UInt32>(lookup((index << 24) | kPiiiPSlappedTokenLow));
+		if (!LooksLikeObject(sound) || !LooksLikeObject(token)) {
 			continue;
 		}
-		if (std::strstr(line, "Enhanced Grabbing.esp") != nullptr) {
-			listed = true;
-			break;
+		const UInt8 soundType = *reinterpret_cast<const UInt8*>(sound + addr::kFormTypeOffset);
+		const UInt8 tokenType = *reinterpret_cast<const UInt8*>(token + addr::kFormTypeOffset);
+		if (soundType != kFormTypeSound || tokenType != kFormTypeClothing) {
+			continue;
 		}
+		s_index = static_cast<int>(index);
+		OBVR_LOG("Shove: Put it in its Place - Enhanced Grabbing is loaded at index %02X - a slap takes turns with "
+		         "its noise and runs its slapped idle",
+		         index);
+		return static_cast<UInt8>(index);
 	}
-	std::fclose(list);
-	if (!listed) {
-		return false;
-	}
-	FILE* const esp = std::fopen("Data\\Enhanced Grabbing.esp", "rb");
-	if (esp == nullptr) {
-		return false;
-	}
-	std::fclose(esp);
-	s_loaded = 1;
-	OBVR_LOG("Shove: Put it in its Place - Enhanced Grabbing is active - a slap uses its noise and its slapped idle");
-	return true;
+	return 0;
 }
 
 }  // namespace obvr::game

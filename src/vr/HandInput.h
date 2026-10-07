@@ -560,6 +560,7 @@ struct HandFrameInput {
 	bool swingAttackHeld = false;  // a swing's attack still being held
 	bool drawBlocked = false;      // the bow wants a reach-back first and has not had one
 	bool meleeByMotion = false;    // a swung weapon strikes by motion: the trigger does not attack
+	bool meleeInHand = false;      // a melee weapon or bare fists drawn: the trigger never attacks
 	bool menuMode = false;
 	bool pointRight = true;        // in a menu: which hand holds the pointer, and so the click
 	bool leftHanded = false;       // activate on the left A rather than the right
@@ -649,7 +650,13 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 		return out;
 	}
 	if (in.rightValid) {
-		out.attack = (in.rightTrigger && !in.drawBlocked && !in.meleeByMotion) || in.swingAttackHeld;
+		// With a melee weapon or bare fists drawn the trigger never attacks:
+		// every blow is a motion (the tester, 2026-10-07: "powerattacks mit
+		// trigger verbieten nun für alle waffen und ohne waffen da wir ja nun
+		// die motions haben"). The bow keeps its trigger draw for the vanilla
+		// way (archery by hand off); by hand its draw sets the attack itself.
+		out.attack = (in.rightTrigger && !in.drawBlocked && !in.meleeByMotion && !in.meleeInHand) ||
+		             in.swingAttackHeld;
 		out.sneak = in.rightStickDown;
 		out.jump = in.rightStickJump;
 		out.escape = in.rightMenuButton;

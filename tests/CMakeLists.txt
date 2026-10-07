@@ -1333,3 +1333,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME insult COMMAND insult_test)
+
+add_executable(yield_test YieldTest.cpp)
+
+target_include_directories(yield_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(yield_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME yield COMMAND yield_test)

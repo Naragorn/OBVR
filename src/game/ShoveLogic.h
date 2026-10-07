@@ -80,21 +80,57 @@ inline SlapSound SlapSoundFor(bool putItInItsPlaceLoaded, bool coin) {
 // The script lines the slap runs as the slapped one: the mod's noise when
 // it is the sound's turn, and with the mod its slapped idle the way its
 // slapper script does it (the idle marker token, pickIdle, the token off
-// again); without the mod the game's own gasp. Returns how many lines are
-// in `out` (at most 4).
-inline UInt32 SlapLines(bool putItInItsPlaceLoaded, SlapSound sound, const char* out[4]) {
+// again); without the mod the game's own gasp. The mod's forms by form id,
+// its load index in the top byte: lines by editor id answered false and did
+// nothing in the game (the tester, 2026-10-07: "die put it in its place
+// script hat allerdings nicht gestartet"), form ids are what the console
+// takes. `modIndex` 0 is the mod not loaded. Returns how many lines are in
+// `out` (at most 4), each at most kSlapLineChars long.
+inline constexpr UInt32 kPiiiPSlapNoiseLow = 0x005339;          // SOUN zzPiiiPSlapNoise
+inline constexpr UInt32 kPiiiPSlappedTokenLow = 0x005335;       // CLOT zzPiiiPIdleMarkerSlappedToken
+inline constexpr UInt32 kSlapLineChars = 48;
+
+inline void SlapFormLine(char* out, const char* command, UInt8 modIndex, UInt32 low, const char* tail) {
+	static const char kHex[] = "0123456789ABCDEF";
 	UInt32 n = 0;
-	if (putItInItsPlaceLoaded) {
+	for (const char* c = command; *c != '\0' && n + 12 < kSlapLineChars; ++c) {
+		out[n++] = *c;
+	}
+	out[n++] = ' ';
+	const UInt32 id = (static_cast<UInt32>(modIndex) << 24) | (low & 0xFFFFFFu);
+	for (int shift = 28; shift >= 0; shift -= 4) {
+		out[n++] = kHex[(id >> shift) & 0xF];
+	}
+	for (const char* c = tail; *c != '\0' && n + 1 < kSlapLineChars; ++c) {
+		out[n++] = *c;
+	}
+	out[n] = '\0';
+}
+
+inline UInt32 SlapLines(UInt8 modIndex, SlapSound sound, char out[4][kSlapLineChars]) {
+	UInt32 n = 0;
+	if (modIndex != 0) {
 		if (sound == SlapSound::Mod) {
-			out[n++] = "playSound3D zzPiiiPSlapNoise";
+			SlapFormLine(out[n++], "playSound3D", modIndex, kPiiiPSlapNoiseLow, "");
 		}
-		out[n++] = "addItemNS zzPiiiPIdleMarkerSlappedToken 1";
-		out[n++] = "pickIdle";
-		out[n++] = "removeItemNS zzPiiiPIdleMarkerSlappedToken 1";
+		SlapFormLine(out[n++], "addItemNS", modIndex, kPiiiPSlappedTokenLow, " 1");
+		for (const char* c = "pickIdle"; ; ++c) {
+			out[n][c - "pickIdle"] = *c;
+			if (*c == '\0') {
+				break;
+			}
+		}
+		++n;
+		SlapFormLine(out[n++], "removeItemNS", modIndex, kPiiiPSlappedTokenLow, " 1");
 		return n;
 	}
-	out[n++] = "playSound3D NPCHumanGaspMale";
-	return n;
+	const char* const gasp = "playSound3D NPCHumanGaspMale";
+	UInt32 i = 0;
+	for (; gasp[i] != '\0'; ++i) {
+		out[n][i] = gasp[i];
+	}
+	out[n][i] = '\0';
+	return n + 1;
 }
 inline constexpr const char* kSlapWave = "OBVR_Sounds\\slap.wav";
 

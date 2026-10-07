@@ -155,7 +155,11 @@ void HandHudLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool vis
 		}
 		anyToShow = true;
 	}
-	if (!anyToShow || m_texture == nullptr) {
+	bool anyToWarm = false;
+	for (UInt32 e = 0; e < vr::kHudElementCount; ++e) {
+		anyToWarm = anyToWarm || !m_warmed[e];
+	}
+	if ((!anyToShow && !anyToWarm) || m_texture == nullptr) {
 		return;
 	}
 
@@ -176,6 +180,19 @@ void HandHudLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool vis
 	}
 	dxvk::VRVulkanTextureData data{};
 	DescribeForOpenVR(m_image, m_vulkan, data);
+
+	// Every overlay handed the atlas once while hidden (m_warmed): SteamVR's
+	// shared texture for it is made now, on this first submit after the
+	// load, not on the first look at a hand.
+	for (UInt32 e = 0; e < vr::kHudElementCount; ++e) {
+		if (m_warmed[e]) {
+			continue;
+		}
+		m_warmed[e] = true;
+		if (EnsureOverlay(backend, e)) {
+			backend.SetOverlayTexture(m_overlay[e], &data);
+		}
+	}
 
 	UInt32 shown = 0;
 	for (UInt32 e = 0; e < vr::kHudElementCount; ++e) {

@@ -72,6 +72,7 @@
 #include "game/NearbyItems.h"
 #include "game/PickHold.h"
 #include "game/Insult.h"
+#include "vr/Yield.h"
 #include "game/MeleeHit.h"
 #include "game/QuickKeys.h"
 #include "game/ItemIcons.h"
@@ -1208,6 +1209,49 @@ ui::CanvasOverlay g_stowSpotLayer("obvr.stowspot", "OBVR Stow Spot", ui::kStowSp
 ui::StowSpotView g_stowSpotView;
 UInt32 g_stowSpotRevision = 1;
 
+// Yielding by gesture (vr/Yield.h): the state, and once the gesture is
+// complete the frames over which block is held and activate pressed with
+// the pick on the enemy - vanilla's yield.
+vr::YieldState g_yield;
+UInt32 g_yieldFramesLeft = 0;
+NiPoint3 g_yieldTarget{0.0f, 0.0f, 0.0f};
+UInt32 g_yieldLines = 20;
+inline constexpr UInt32 kYieldHoldFrames = 8;       // block held this long
+inline constexpr UInt32 kYieldActivateFrames = 4;   // activate down for the last of them
+inline constexpr float kYieldEnemyUnits = 420.0f;   // 6 m
+inline constexpr float kYieldEnemyCos = 0.866f;     // 30 degrees from the head's forward
+
+void UpdateYield(const Config& config, const vr::HandModeFrame& frame, bool active, float dt) {
+	const bool weaponAway = !frame.meleeHeld;
+	NiPoint3 enemy{};
+	bool enemyAhead = false;
+	if (active && g_cyclopeanCameraWorldValid) {
+		const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+		const NiPoint3 forward{camRot.data[0][1], camRot.data[1][1], camRot.data[2][1]};
+		void* const actor = game::ActorUnderRay(g_cyclopeanCameraWorldTransform.pos, forward, kYieldEnemyUnits,
+		                                        kYieldEnemyCos, &enemy);
+		enemyAhead = actor != nullptr && game::ActorInCombat(actor);
+	}
+	const bool allowed = active && vr::YieldAllowed(weaponAway, frame.right.valid && g_hand.rightHandValid,
+	                                                frame.left.valid && g_hand.leftHandValid,
+	                                                g_hand.rightCurlValid ? g_hand.rightCurl[1] : 1.0f,
+	                                                g_hand.leftCurlValid ? g_hand.leftCurl[1] : 1.0f, enemyAhead);
+	// Each hand's sideways position, outward from the body positive: the
+	// camera-relative offset's x (the camera's x axis points right).
+	const float perMetre = config.tracker.unitsPerMetre > 0.0f ? config.tracker.unitsPerMetre : 1.0f;
+	const float lateral[2] = {g_hand.rightHandOffsetUnits.x / perMetre, -g_hand.leftHandOffsetUnits.x / perMetre};
+	if (vr::StepYield(g_yield, allowed, lateral, dt)) {
+		g_yieldFramesLeft = kYieldHoldFrames;
+		g_yieldTarget = enemy;
+		if (g_yieldLines > 0) {
+			--g_yieldLines;
+			OBVR_LOG("Yield: the open hands rocked at someone in combat - block held and activate pressed on them "
+			         "at %.0f %.0f %.0f",
+			         static_cast<double>(enemy.x), static_cast<double>(enemy.y), static_cast<double>(enemy.z));
+		}
+	}
+}
+
 // The middle finger at an NPC (game/Insult.h): [0] the right hand, [1] the left.
 game::InsultState g_insult[2];
 UInt32 g_insultLines = 20;
@@ -1796,7 +1840,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.restMenuUp = menuIsUp && game::TopVisibleMenu() == game::kMenuIdSleepWait;
 	frame.settingsMenuOpen = g_settingsMenu.IsOpen() || g_onboarding.IsOpen();
 	frame.firstPerson = !ReadIsThirdPerson();
-	frame.meleeInHand = active && config.hands.motionHits && game::MeleeInHand(nullptr);
+	frame.meleeHeld = active && game::MeleeInHand(nullptr);
+	frame.meleeInHand = frame.meleeHeld && config.hands.motionHits;
 	frame.shieldEquipped = active && game::PlayerWearsShield();
 	frame.menusOnly = menusOnly;
 	frame.inWorld = game::PlayerInWorld();
@@ -1998,7 +2043,17 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	                                          !frame.settingsMenuOpen);
 	UpdateStowPlacing(GetConfig(), backend, frame);
 	UpdateInsult(config, frame, active && !menuIsUp && frame.inWorld && !frame.settingsMenuOpen, dt);
+	UpdateYield(config, frame, active && !menuIsUp && frame.inWorld && !frame.settingsMenuOpen, dt);
 	g_hand = g_handMode.Update(frame, config.hands);
+	// The yield's keys (vr/Yield.h): block held over its frames, activate
+	// down for the last of them, the pick on the enemy meanwhile.
+	if (g_yieldFramesLeft > 0) {
+		g_hand.controls.block = true;
+		if (g_yieldFramesLeft <= kYieldActivateFrames) {
+			g_hand.controls.activate = true;
+		}
+		--g_yieldFramesLeft;
+	}
 	// Taking loose items only by hand ([Hands] TakeOnlyByHand, vr::Stow): the
 	// activate button is kept from the game while the laser is on one. Read
 	// on the press and kept for as long as it is held.
@@ -6305,7 +6360,12 @@ void MaybeSubmitOverlays(bool worldFrame) {
 				if (pose.curlValid) {
 					curl = (pose.curl[1] + pose.curl[2] + pose.curl[3] + pose.curl[4]) * 0.25f;
 				}
-				look.open = curl < 0.6f;
+				// A hand holding a drawn melee weapon cannot open; it counts as
+				// open for the look (the tester, 2026-10-07: "wenn waffe gezogen
+				// sehe ich das hud nicht mehr an der rechten hand").
+				SInt32 weaponType = 0;
+				const bool armed = side == 1 && game::MeleeInHand(&weaponType);
+				look.open = curl < 0.6f || armed;
 			}
 			const bool lookedAt = handHudActive && handHudFrame.haveHead &&
 			                      vr::PalmFacesEyes(look, side == 1, handHudFrame.head, handHud.lookGazeDegrees,
@@ -7289,7 +7349,13 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		const bool heldRay = config.fullVrMode && g_headTracker.IsHeadsetConnected() && heldRef != 0 &&
 		                     (heldLeft ? g_hand.leftHandValid : g_hand.rightHandValid) &&
 		                     game::RefWorldBound(heldRef, heldCentre, heldRadius);
-		if (heldRay) {
+		if (g_yieldFramesLeft > 0 && config.fullVrMode && g_headTracker.IsHeadsetConnected()) {
+			// The yield (vr/Yield.h): the pick from the head at the enemy, so
+			// activate with block held is vanilla's yield to them.
+			const NiPoint3 from = cameraNode->localTransform.pos;
+			const vr::LaserWorldRay ray = vr::RayTowards(from, g_yieldTarget, 0.0f, ForwardOf(finalRotation));
+			game::SetWorldPickHandRay(ray.origin, ray.direction, true);
+		} else if (heldRay) {
 			const NiPoint3 from = cameraNode->localTransform.pos +
 			                      finalRotation * (heldLeft ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits);
 			const vr::LaserWorldRay ray = vr::RayTowards(

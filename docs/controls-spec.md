@@ -910,6 +910,40 @@ The tester's asks of 2026-10-07, all in one round:
   (`RequestConsoleLineAs`). Without the mod the game's own gasp
   (`NPCHumanGaspMale`) and no idle: the mod's assets are not OBVR's to ship.
   `SlapSoundFor`, `SlapLines` (shove_test). Not seen in the headset.
+  **The tester's round of it (the same day):** the sound "zu leise" and to
+  be "mehr comic haft" like the mod's - OBVR's slap is now the CC0 slap
+  layered with a CC0 whip crack (BigSoundBank 2949), at full scale; the
+  mod's lines "hat nicht gestartet": the lines by editor id answered false
+  and did nothing, so the mod's forms go by form id with its load index in
+  the top byte (`PutItInItsPlaceIndex`: the index under which its slap
+  noise and its slapped token are found in the game's form table;
+  `SlapLines`, `SlapFormLine`). Not seen running either way yet.
+- **Yielding by gesture** (`vr/Yield.h`, yield_test; the tester: "waffe
+  einstecken ... mit offenen händen ... leicht von aussen nach innen wippen
+  ... zählt das als ein yield"). The weapon away, both hands open (index
+  curl under 0.5), someone in combat within 6 m and 30 degrees of the
+  head's forward: both hands' sideways positions are watched, and four
+  direction reversals after strokes of 5 cm or more within 2.5 s - two
+  out-and-in cycles - are the yield. Then for 8 frames block is held, for
+  the last 4 activate is pressed, and the pick runs from the head at that
+  NPC: vanilla's yield (block and activate facing the attacker), which the
+  NPC may still refuse. Not again within 3 s. Logged "Yield: the open hands
+  rocked at someone in combat". The palms' facing is not checked - open
+  hands rocking at an enemy with the weapon away is gesture enough. Not
+  seen in the headset.
+- **The trigger never attacks with a melee weapon or the fists in hand**
+  (the tester: "powerattacks mit trigger verbieten nun für alle waffen und
+  ohne waffen"): `HandFrameInput::meleeInHand`, set whether or not the hits
+  by motion are on (hand_mode_test). The bow keeps its trigger draw for the
+  vanilla way; by hand its draw sets the attack itself.
+- **The hand HUD with a weapon drawn** (the tester: "wenn waffe gezogen
+  sehe ich das hud nicht mehr an der rechten hand"): the look at a hand
+  wanted it open, and a hand gripping a drawn weapon is not; the weapon
+  hand now counts as open for the look (`MeleeInHand`). And the first look
+  at a hand stuttered: SteamVR makes an overlay's shared texture on its
+  first SetOverlayTexture (~100 ms), so every hand HUD overlay is handed the
+  atlas once, hidden, on the first submit after a load
+  (`HandHudLayer::m_warmed`).
 
 ### 4.11 The bow by hand, as in Blade & Sorcery (built 2026-09-30)
 

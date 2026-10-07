@@ -75,6 +75,12 @@ private:
 	vr::openvr::VROverlayHandle m_overlay[vr::kHudElementCount] = {};
 	bool m_overlayTried[vr::kHudElementCount] = {};
 	bool m_overlayVisible[vr::kHudElementCount] = {};
+	// Whether the overlay has been handed the atlas once: SteamVR makes its
+	// shared texture for an overlay on the first SetOverlayTexture, ~100 ms
+	// on the frame's thread, so every overlay gets the atlas on the first
+	// submit while hidden, rather than the first time a hand is looked at
+	// (the tester, 2026-10-07: "beim ersten mal sehen ein laderuckler").
+	bool m_warmed[vr::kHudElementCount] = {};
 
 	VulkanContext m_vulkan;
 	bool m_vulkanChecked = false;

@@ -550,6 +550,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	}
 	in.drawBlocked = s.gestures.bowNeedsReachBack && !m_reachArmed;
 	in.meleeByMotion = r.strikeByMotion;
+	in.meleeInHand = f.meleeHeld;
 	if (!in.rightTrigger && m_reachSpent) {
 		m_reachArmed = false;
 	}

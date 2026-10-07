@@ -124,15 +124,18 @@ void TestCountsAsHit() {
 	Check(SlapSoundFor(true, true) == SlapSound::Mod && SlapSoundFor(true, false) == SlapSound::Own &&
 	          SlapSoundFor(false, true) == SlapSound::Own && SlapSoundFor(false, false) == SlapSound::Own,
 	      "the mod's noise only with the mod and on its turn of the coin; OBVR's own otherwise");
-	const char* lines[4] = {};
-	Check(SlapLines(true, SlapSound::Mod, lines) == 4 && std::strcmp(lines[0], "playSound3D zzPiiiPSlapNoise") == 0 &&
-	          std::strcmp(lines[2], "pickIdle") == 0,
-	      "with Put it in its Place, its turn: its slap noise, the slapped idle by its token");
-	Check(SlapLines(true, SlapSound::Own, lines) == 3 && std::strcmp(lines[0], "addItemNS zzPiiiPIdleMarkerSlappedToken 1") == 0 &&
+	char lines[4][kSlapLineChars] = {};
+	Check(SlapLines(0x0B, SlapSound::Mod, lines) == 4 && std::strcmp(lines[0], "playSound3D 0B005339") == 0 &&
+	          std::strcmp(lines[1], "addItemNS 0B005335 1") == 0 && std::strcmp(lines[2], "pickIdle") == 0 &&
+	          std::strcmp(lines[3], "removeItemNS 0B005335 1") == 0,
+	      "with Put it in its Place at index 0B, its turn: its slap noise and the slapped idle by form id");
+	Check(SlapLines(0x0B, SlapSound::Own, lines) == 3 && std::strcmp(lines[0], "addItemNS 0B005335 1") == 0 &&
 	          std::strcmp(lines[1], "pickIdle") == 0,
 	      "with the mod, OBVR's turn: the idle only, the noise is OBVR's wave");
-	Check(SlapLines(false, SlapSound::Own, lines) == 1 && std::strcmp(lines[0], "playSound3D NPCHumanGaspMale") == 0,
+	Check(SlapLines(0, SlapSound::Own, lines) == 1 && std::strcmp(lines[0], "playSound3D NPCHumanGaspMale") == 0,
 	      "without it: the game's own gasp, no idle");
+	Check(SlapLines(0xFE, SlapSound::Mod, lines) == 4 && std::strcmp(lines[0], "playSound3D FE005339") == 0,
+	      "the load index in the top byte");
 	Check(!ShoveCountsAsHit(s, ShoveKind::None), "no shove: nothing");
 	s.countsAsHit = false;
 	Check(!ShoveCountsAsHit(s, ShoveKind::Hard), "switched off: only the disposition");

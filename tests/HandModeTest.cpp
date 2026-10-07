@@ -126,7 +126,7 @@ void TestPlanner() {
 	in.leftThumbY = 1.0f;
 	in.rightThumbX = -0.5f;
 	HandControlsWanted w = PlanHandControls(in, 0.4f);
-	Check(w.attack, "the right trigger attacks");
+	Check(w.attack, "the right trigger attacks (nothing melee in hand)");
 	Check(w.grab, "the left grip grabs");
 	Check(!w.activate, "and does not also activate, which would take the object");
 	Check(w.block, "the raised left hand blocks");
@@ -291,6 +291,15 @@ void TestPlanner() {
 	w = PlanHandControls(motion, 0.4f);
 	Check(!w.attack, "with a swung weapon striking by motion the trigger does not attack");
 	Check(w.turn == 0.0f && !w.grab, "and nothing else changes");
+	HandFrameInput melee;
+	melee.rightValid = true;
+	melee.rightTrigger = true;
+	melee.meleeInHand = true;  // the hits by motion off, a blade or the fists drawn all the same
+	w = PlanHandControls(melee, 0.4f);
+	Check(!w.attack, "a melee weapon or the fists in hand: the trigger never attacks, motion hits on or off");
+	melee.swingAttackHeld = true;
+	w = PlanHandControls(melee, 0.4f);
+	Check(w.attack, "but a swing's attack still goes through");
 	motion.rightGrip = true;
 	w = PlanHandControls(motion, 0.4f);
 	Check(w.grab, "the grip still grabs");

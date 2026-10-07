@@ -181,7 +181,7 @@ struct HandSettings {
 	// The middle finger at an NPC (game/Insult.h): their disposition drops
 	// by this much.
 	bool middleFinger = true;
-	float middleFingerDisposition = 10.0f;
+	float middleFingerDisposition = 30.0f;  // the tester, 2026-10-07: 30 by default
 	// Taking someone by the hand (game/LeadLogic.h).
 	game::LeadSettings lead;
 	// Thrown things that hit people (game/ThrowLogic.h).
@@ -313,6 +313,7 @@ struct HandModeFrame {
 	bool settingsMenuOpen = false;  // OBVR's own menu: the sticks steer it, nothing else fires
 	bool firstPerson = true;
 	bool meleeInHand = false;  // a drawn blade, blunt weapon or bare fists: swung, not shot
+	bool meleeHeld = false;    // the same, whether or not the hits by motion are on: the trigger never attacks
 	// A shield on the left arm: only then does the raised left hand block.
 	bool shieldEquipped = false;
 	// The mode is off but the controllers still steer menus (ControllerMenus).
