@@ -1,25 +1,27 @@
 #include "game/DialogZoom.h"
 
+#include "core/AddressSpace.h"
 #include "core/AtomicFlag.h"
 #include "core/Config.h"
+#include "core/EntryDetour.h"
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "core/Types.h"
 #include "game/GameAddresses.h"
+#include "game/PlayerLookAt.h"
 
 namespace obvr::game {
 namespace {
 
 // The first eight bytes of SetDialogCamera in 1.2.0.416, read from this
-// machine's Oblivion.exe - sub esp,18h; push ebp; mov ebp,[esp+20h]. Eight
-// rather than the five being replaced, because the check is "is this the
-// function I read", not "is there room".
+// machine's Oblivion.exe - sub esp,18h; push ebp; mov ebp,[esp+20h]. These
+// complete instructions can be replayed unchanged in the original trampoline.
 constexpr UInt8 kOriginalBytes[] = {0x83, 0xEC, 0x18, 0x55, 0x8B, 0x6C, 0x24, 0x20};
 
-// How many bytes the jmp rel32 takes. The five land inside the first two
-// instructions (three bytes and one), so the tail of the second is orphaned -
-// harmless, because nothing ever runs past the jump.
-constexpr UInt32 kJumpSize = 5;
+using DialogCameraFn = void(__fastcall*)(UInt8*, void*, void*, float, UInt32);
+DialogCameraFn g_original = nullptr;
+bool g_zoomWanted = false;
+DialogZoomRoute g_route;
 
 // Whether the shim flipped the player into first person for the current
 // conversation, so only that flip is undone. A player already in first
@@ -60,8 +62,18 @@ void __fastcall DialogCameraShim(UInt8* player, void* /*edx*/, void* actor, floa
 		return;
 	}
 
-	if (actor != nullptr) {
-		g_calledWithActor.Set(true);
+	const bool speakerValid = mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(actor));
+	NiPoint3 speaker{};
+	if (speakerValid) {
+		speaker = *reinterpret_cast<const NiPoint3*>(
+			static_cast<const UInt8*>(actor) + addr::kRefPositionOffset);
+	}
+	// Before ToggleCamera or the original camera can move the player's view.
+	ObservePlayerDialog(actor != nullptr, speakerValid, speaker);
+	if (actor != nullptr) g_calledWithActor.Set(true);
+	if (g_route.UseOriginal(actor != nullptr, g_zoomWanted)) {
+		g_original(player, nullptr, actor, focus, flag);
+		return;
 	}
 	const bool isThirdPerson = player[addr::kPlayerIsThirdPersonOffset] != 0;
 	const DialogPovAction action =
@@ -100,54 +112,39 @@ bool g_refused = false;
 }  // namespace
 
 void ApplyDialogZoom(bool zoomWanted) {
-	switch (DecideDialogZoom(zoomWanted, g_patched)) {
-		case DialogZoomAction::Nothing:
-			return;
-
-		case DialogZoomAction::Patch: {
-			// Verified on every application, not just the first: after a
-			// restore the bytes should be the originals again, and if some
-			// other mod has since claimed the function, patching over it
-			// would corrupt whatever it installed.
-			if (!mem::Verify(addr::kSetDialogCamera, kOriginalBytes, sizeof(kOriginalBytes))) {
-				if (!g_refused) {
-					g_refused = true;
-					OBVR_LOG("Dialog: the bytes at %08X are not SetDialogCamera as this "
-					         "build knows it, so the dialogue zoom stays alive",
-					         addr::kSetDialogCamera);
-					mem::ReportForeignCode("Dialog", addr::kSetDialogCamera);
-				}
-				return;
-			}
-
-			UInt8 jump[kJumpSize];
-			jump[0] = 0xE9;
-			const UInt32 relative = reinterpret_cast<UInt32>(&DialogCameraShim) -
-			                        (addr::kSetDialogCamera + kJumpSize);
-			jump[1] = static_cast<UInt8>(relative);
-			jump[2] = static_cast<UInt8>(relative >> 8);
-			jump[3] = static_cast<UInt8>(relative >> 16);
-			jump[4] = static_cast<UInt8>(relative >> 24);
-
-			if (mem::SafeWrite(addr::kSetDialogCamera, jump, kJumpSize)) {
-				g_patched = true;
-				OBVR_LOG("Dialog: the dialogue camera zoom is off - SetDialogCamera at %08X "
-				         "jumps to the shim, which keeps the first-person flip and skips "
-				         "the transition",
-				         addr::kSetDialogCamera);
-			}
-			return;
-		}
-
-		case DialogZoomAction::Restore:
-			if (mem::SafeWrite(addr::kSetDialogCamera, kOriginalBytes, kJumpSize)) {
-				g_patched = false;
-				OBVR_LOG("Dialog: the dialogue camera zoom is back on - SetDialogCamera at "
-				         "%08X restored",
-				         addr::kSetDialogCamera);
-			}
-			return;
+	g_zoomWanted = zoomWanted;
+	if (!PlayerDialogActive()) g_route.inConversation = false;
+	// Observation must also work with vanilla zoom enabled. The verified
+	// eight-byte prologue consists of whole, non-relative instructions.
+	if (g_patched || g_refused) return;
+	g_refused = true;  // allocation/write failures do not leak a retry each frame
+	if (!mem::Verify(addr::kSetDialogCamera, kOriginalBytes, sizeof(kOriginalBytes))) {
+		OBVR_LOG("Dialog: camera entry differs; conversation focus hook refused");
+		mem::ReportForeignCode("Dialog", addr::kSetDialogCamera);
+		return;
 	}
+	constexpr UInt32 capacity = 24;
+	auto* trampoline = static_cast<UInt8*>(mem::AllocExecutable(capacity));
+	if (trampoline == nullptr) {
+		OBVR_LOG("Dialog: no executable memory for camera observer");
+		return;
+	}
+	if (mem::BuildEntryTrampoline(trampoline, capacity, reinterpret_cast<UInt32>(trampoline),
+	                              addr::kSetDialogCamera, kOriginalBytes, sizeof(kOriginalBytes)) == 0) {
+		OBVR_LOG("Dialog: camera observer trampoline did not fit");
+		return;
+	}
+	g_original = reinterpret_cast<DialogCameraFn>(trampoline);
+	UInt8 patch[sizeof(kOriginalBytes)];
+	if (mem::BuildEntryPatch(patch, sizeof(patch), addr::kSetDialogCamera,
+	                         reinterpret_cast<UInt32>(&DialogCameraShim), sizeof(kOriginalBytes)) == 0 ||
+	    !mem::SafeWrite(addr::kSetDialogCamera, patch, sizeof(patch))) {
+		OBVR_LOG("Dialog: could not install camera observer");
+		return;
+	}
+	g_patched = true;
+	OBVR_LOG("Dialog: camera observer installed; actual speaker and pre-dialogue eyes captured, zoom=%d",
+	         zoomWanted ? 1 : 0);
 }
 
 bool TakeDialogCameraCall() { return g_calledWithActor.Take(); }

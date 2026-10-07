@@ -54,11 +54,19 @@ struct DialogPanelSettings {
 };
 
 // Whether this frame places the panel on the NPC: the conversation has just
-// opened, the setting is on, the menus hang in the room (on the head there is
-// nothing to place), and where the NPC is was seen.
-inline bool DialogRecentreDue(bool recentre, bool openedThisFrame, bool menusInRoom, bool haveTarget) {
-	return recentre && openedThisFrame && menusInRoom && haveTarget;
+// opened and has not been placed yet, the setting is on, menus hang in the
+// room, and the actual speaker is known. Retry while tracking is unavailable.
+inline bool DialogRecentreDue(bool recentre, bool placementPending, bool menusInRoom, bool haveTarget) {
+	return recentre && placementPending && menusInRoom && haveTarget;
 }
+
+struct DialogPanelPlacement {
+	bool placed = false;
+	bool Pending(bool talking) {
+		if (!talking) placed = false;
+		return talking && !placed;
+	}
+};
 
 // The panel's width while talking; a scale that is not positive is ignored.
 inline float DialogPanelWidth(float menuWidthMetres, bool talking, float scale) {
@@ -79,7 +87,7 @@ inline bool DialogAnchor(const openvr::HmdMatrix34& head, float npcX, float npcY
 	float fx = npcX - head.m[0][3];
 	float fz = npcZ - head.m[2][3];
 	const float len = math::Sqrt(fx * fx + fz * fz);
-	if (len < 1e-3f) {
+	if (!(len >= 1e-3f) || !(len < 1.0e7f)) {
 		return false;
 	}
 	fx /= len;

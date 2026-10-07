@@ -23,7 +23,8 @@ namespace obvr::game {
 //
 // The slot is replaced: while the eyes are known (SetPlayerLookAtEyes) and
 // the player is in first person, it answers the headset's eyes less the same
-// 6 units; otherwise the original.
+// 6 units. During a conversation it holds the exact eyes from before the first
+// approach call, including across a POV change; otherwise the original.
 inline constexpr UInt32 kPlayerLookAtSlot = 0x00A73B28;
 inline constexpr UInt32 kPlayerLookAtOriginal = 0x006604C0;
 inline constexpr UInt32 kPlayerThirdPersonOffset = 0x588;
@@ -44,5 +45,12 @@ void InstallPlayerLookAt();
 
 // Each frame: the headset's eyes in the world, and whether to use them.
 void SetPlayerLookAtEyes(bool wanted, bool valid, const NiPoint3& eyes);
+
+// Called before the dialog camera changes POV. Repeated approach calls keep
+// the original eyes; only the current speaker position is refreshed.
+void ObservePlayerDialog(bool hasActor, bool speakerValid, const NiPoint3& speaker);
+void StepPlayerDialog(bool menuIsUp);
+bool ReadDialogSpeaker(NiPoint3& speaker);
+bool PlayerDialogActive();
 
 }  // namespace obvr::game

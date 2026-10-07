@@ -2,6 +2,7 @@
 // on the speaker, where, and its size while talking.
 
 #include <cstdio>
+#include <limits>
 
 #include "vr/DialogPanel.h"
 
@@ -46,12 +47,30 @@ void TestSides() {
 }
 
 void TestDue() {
+	DialogPanelPlacement placement;
+	Check(!placement.Pending(false), "ordinary world is not awaiting dialogue placement");
+	Check(placement.Pending(true) && placement.Pending(true), "first and delayed tracking frames remain pending");
+	placement.placed = true;
+	Check(!placement.Pending(true), "successful placement remains fixed through the conversation");
+	Check(!placement.Pending(false) && !placement.placed && placement.Pending(true),
+	      "exit resets placement so the next conversation can use a different speaker");
 	std::printf("When it is placed\n");
 	Check(DialogRecentreDue(true, true, true, true), "a conversation opened, menus in the room, speaker seen: placed");
 	Check(!DialogRecentreDue(false, true, true, true), "the setting off: not");
 	Check(!DialogRecentreDue(true, false, true, true), "already talking: not again");
 	Check(!DialogRecentreDue(true, true, false, true), "menus on the head: nothing to place");
 	Check(!DialogRecentreDue(true, true, true, false), "the speaker not seen: left where it was");
+	bool combinations = true;
+	for (int enabled = 0; enabled < 2; ++enabled)
+	for (int pending = 0; pending < 2; ++pending)
+	for (int room = 0; room < 2; ++room)
+	for (int target = 0; target < 2; ++target)
+		combinations = combinations &&
+			DialogRecentreDue(enabled != 0, pending != 0, room != 0, target != 0) ==
+			(enabled + pending + room + target == 4);
+	Check(combinations, "all 16 placement policy combinations");
+	Check(!DialogRecentreDue(true, true, true, false) && DialogRecentreDue(true, true, true, true),
+	      "missing first-frame speaker retries when it becomes available");
 }
 
 void TestWidth() {
@@ -81,6 +100,16 @@ void TestAnchor() {
 	openvr::HmdMatrix34 kept = head;
 	Check(!DialogAnchor(head, 0.5f, 3.0f, 0.0f, DialogPanelSide::Right, 25.0f, kept) && Near(kept.m[2][2], 1.0f),
 	      "straight above the head: no heading, the anchor untouched");
+	Check(DialogAnchor(head, 0.5f, 0.0f, 2.0f, DialogPanelSide::Centre, 25.0f, a) && Near(a.m[2][2], -1.0f),
+	      "NPC approaches from behind: panel turns to the actual speaker");
+	Check(DialogAnchor(head, -2.5f, 0.0f, 0.0f, DialogPanelSide::Centre, 25.0f, a) && Near(a.m[0][2], 1.0f),
+	      "NPC approaches from left: panel turns left");
+	const float invalid[] = {std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity()};
+	for (float value : invalid) {
+		kept = head;
+		Check(!DialogAnchor(head, value, 0, -2, DialogPanelSide::Centre, 0, kept) && Near(kept.m[0][3], 0.5f),
+		      "invalid tracking direction leaves anchor intact");
+	}
 }
 
 }  // namespace

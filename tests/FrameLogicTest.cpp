@@ -22,6 +22,7 @@
 #include "game/HeldObject.h"
 #include "game/NearbyItems.h"
 #include "game/PlayerLookAt.h"
+#include "game/DialogFocus.h"
 #include "game/BlockCone.h"
 #include "game/HitShader.h"
 #include "game/PlayerStagger.h"
@@ -2354,6 +2355,76 @@ void TestPlayerLookAt() {
 	const obvr::NiPoint3 p = LookAtPointFromEyes(obvr::NiPoint3{10.0f, 20.0f, 130.0f});
 	Check(p.x == 10.0f && p.y == 20.0f && p.z == 124.0f,
 	      "six units under the eyes, as the game takes it under Camera01");
+	const obvr::NiPoint3 eyes{10, 20, 130};
+	const obvr::NiPoint3 raisedHand{40, 50, 300};
+	const obvr::NiPoint3 npc{100, 200, 0};
+	DialogFocus s;
+	s.Step(false);
+	Check(!s.active, "an idle frame does not begin a conversation");
+	s.Observe(true, true, eyes, true, npc);
+	Check(s.active && s.eyesValid && s.speakerValid && s.eyes.z == 130 && s.speaker.x == 100,
+	      "NPC approach freezes gameplay eyes and records actual speaker without a pick");
+	s.Step(false);
+	s.Observe(true, true, raisedHand, true, obvr::NiPoint3{110, 210, 0});
+	Check(s.eyes.z == 130 && s.speaker.x == 110,
+	      "repeated approach calls update speaker but cannot replace eyes with raised hand");
+	s.Step(true);
+	for (int frame = 0; frame < 200; ++frame) s.Step(true);
+	Check(s.active && s.eyes.z == 130, "menu keeps the original eye position without new camera calls");
+	s.Step(false);
+	Check(!s.active && !s.eyesValid && !s.speakerValid, "menu exit clears focus even without a null camera call");
+	s.Observe(true, true, raisedHand, true, npc);
+	Check(s.eyes.z == 300, "a second conversation captures the new gameplay position");
+	s.Observe(false, true, eyes, true, npc);
+	Check(!s.active && !s.eyesValid && !s.speakerValid, "explicit end clears both anchors");
+	s.Observe(false, false, eyes, false, npc);
+	Check(!s.active, "repeated end stays clear");
+	s.Observe(true, true, eyes, true, npc);
+	s.Step(false);
+	for (int frame = 0; frame < 3; ++frame) s.Step(false);
+	Check(s.active, "approach tolerates the three-frame gap before the menu");
+	s.Step(false);
+	Check(!s.active && !s.speakerValid, "cancelled approach expires and cannot supply a later speaker");
+	s.Observe(true, false, eyes, false, npc);
+	s.Observe(true, true, raisedHand, true, npc);
+	Check(!s.eyesValid && s.speakerValid, "missing pre-dialogue eyes cannot be replaced by transition camera");
+	s.Observe(true, true, eyes, false, npc);
+	Check(!s.speakerValid, "an invalid updated speaker clears the previous target");
+	bool matrix = true;
+	for (int active = 0; active < 2; ++active)
+	for (int menu = 0; menu < 2; ++menu)
+	for (int frozen = 0; frozen < 2; ++frozen)
+	for (int wanted = 0; wanted < 2; ++wanted)
+	for (int third = 0; third < 2; ++third)
+	for (int live = 0; live < 2; ++live) {
+		DialogFocus focus;
+		focus.active = active != 0;
+		focus.sawMenu = menu != 0;
+		focus.eyesValid = frozen != 0;
+		// The frozen eyes only with the conversation's menu up; the live ones
+		// before it and outside it (the approach follows the player).
+		const bool holding = active && menu;
+		const bool expected = wanted && (holding ? frozen : (!third && live));
+		matrix = matrix && focus.UseEyes(wanted != 0, third != 0, live != 0) == expected;
+		matrix = matrix && focus.TakesLiveEyes() == (active && !menu);
+	}
+	Check(matrix, "all 64 headset, POV, menu, live-eye and frozen-eye selection combinations");
+	const float bad[] = {std::numeric_limits<float>::quiet_NaN(),
+	                     std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity(),
+	                     1.0e7f, -1.0e7f};
+	bool refused = true;
+	for (float value : bad) {
+		for (int axis = 0; axis < 3; ++axis) {
+			obvr::NiPoint3 invalid = eyes;
+			if (axis == 0) invalid.x = value;
+			if (axis == 1) invalid.y = value;
+			if (axis == 2) invalid.z = value;
+			DialogFocus focus;
+			focus.Observe(true, true, invalid, true, invalid);
+			refused = refused && !focus.eyesValid && !focus.speakerValid;
+		}
+	}
+	Check(refused, "non-finite and out-of-bounds positions are refused on every axis");
 }
 
 void TestAttachesInHand() {

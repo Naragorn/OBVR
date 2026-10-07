@@ -12,9 +12,7 @@
 namespace {
 
 using obvr::game::DecideDialogPov;
-using obvr::game::DecideDialogZoom;
 using obvr::game::DialogPovAction;
-using obvr::game::DialogZoomAction;
 using obvr::render::CommonWindowInEye;
 using obvr::render::ComposeShadeColor;
 using obvr::render::EdgeStrips;
@@ -154,20 +152,24 @@ void TestEdgeStrips() {
 	      "the four strips cover the four exclusive margins");
 }
 
-void TestDialogZoomDecision() {
-	std::printf("Dialogue zoom decisions\n");
-
-	Check(DecideDialogZoom(false, false) == DialogZoomAction::Patch,
-	      "zoom unwanted and unpatched patches");
-	Check(DecideDialogZoom(false, true) == DialogZoomAction::Nothing,
-	      "zoom unwanted and already patched rests");
-	Check(DecideDialogZoom(true, true) == DialogZoomAction::Restore,
-	      "zoom wanted again restores");
-	Check(DecideDialogZoom(true, false) == DialogZoomAction::Nothing,
-	      "zoom wanted and untouched rests");
-}
-
 void TestDialogPovDecision() {
+	bool routes = true;
+	for (int active = 0; active < 2; ++active)
+	for (int held = 0; held < 2; ++held)
+	for (int wanted = 0; wanted < 2; ++wanted)
+	for (int actor = 0; actor < 2; ++actor) {
+		obvr::game::DialogZoomRoute route;
+		route.inConversation = active != 0;
+		route.zoom = held != 0;
+		const bool result = route.UseOriginal(actor != 0, wanted != 0);
+		routes = routes && result == (active ? held != 0 : wanted != 0) &&
+		         route.inConversation == (actor != 0);
+	}
+	Check(routes, "all 16 zoom routing flows preserve the opening implementation until close");
+	obvr::game::DialogZoomRoute route;
+	Check(route.UseOriginal(true, true) && route.UseOriginal(true, false) &&
+	      route.UseOriginal(false, false) && !route.UseOriginal(true, false),
+	      "hot reload applies to the next conversation, retaining vanilla exit cleanup");
 	std::printf("Dialogue point-of-view decisions\n");
 
 	// A conversation starting with a third-person player flips - and it
@@ -241,7 +243,6 @@ int main() {
 	TestShadeRectangle();
 	TestCommonWindow();
 	TestEdgeStrips();
-	TestDialogZoomDecision();
 	TestDialogPovDecision();
 
 	if (g_failures != 0) {

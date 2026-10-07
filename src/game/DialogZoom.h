@@ -2,25 +2,17 @@
 
 namespace obvr::game {
 
-// What the dialogue-zoom patch should do this tick, given what the INI wants
-// and what has already been done. Pure, so every flow is testable without a
-// process to patch: the patch is applied once, restored once, and a wish
-// already granted costs nothing.
-enum class DialogZoomAction {
-	Nothing,
-	Patch,
-	Restore,
+// A hot reload cannot switch camera implementations halfway through a
+// conversation: the implementation that opened it must also close it.
+struct DialogZoomRoute {
+	bool inConversation = false;
+	bool zoom = false;
+	bool UseOriginal(bool hasActor, bool wanted) {
+		if (!inConversation) zoom = wanted;
+		inConversation = hasActor;
+		return zoom;
+	}
 };
-
-constexpr DialogZoomAction DecideDialogZoom(bool zoomWanted, bool patched) {
-	if (!zoomWanted && !patched) {
-		return DialogZoomAction::Patch;
-	}
-	if (zoomWanted && patched) {
-		return DialogZoomAction::Restore;
-	}
-	return DialogZoomAction::Nothing;
-}
 
 // What the shim does to the point of view on one SetDialogCamera call. Pure,
 // because the first version of this decision had a latch bug a test would
@@ -47,16 +39,8 @@ constexpr DialogPovAction DecideDialogPov(bool conversationStarting, bool isThir
 	return flippedForDialog ? DialogPovAction::FlipBack : DialogPovAction::Nothing;
 }
 
-// Applies Look.DialogZoom. Off, SetDialogCamera's entry jumps to a shim that
-// keeps exactly one of the function's two jobs: a third-person player is
-// still flipped into first person when a conversation starts and back when
-// it ends - the vanilla dance, asked back after a bare ret removed it, and
-// itself switchable through Look.DialogFirstPerson - but the camera
-// transition whose distance fDlgFocus sets is never started, so there is no
-// zoom and no spent transition. On restores the vanilla bytes. Verifies the
-// bytes before the first patch and refuses - once, out loud - when they are
-// not the ones this build knows. Safe to call every frame; it only acts on
-// a change.
+// Installs a verified observer once. Look.DialogZoom chooses whether its
+// original trampoline runs; the speaker/eyes observation is always retained.
 void ApplyDialogZoom(bool zoomWanted);
 
 // The approach before a conversation: the engine calls SetDialogCamera with
@@ -86,8 +70,7 @@ inline bool StepDialogApproach(DialogApproachState& s, bool calledWithActor, boo
 }
 
 // Whether SetDialogCamera was called with an actor since the last ask -
-// consumed by the ask. Only while the zoom is off: the shim is what sees
-// the call.
+// consumed by the ask. The observer sees both zoom modes.
 bool TakeDialogCameraCall();
 // The same, without consuming it: for the render that comes before the ask.
 bool DialogCameraCallPending();

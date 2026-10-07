@@ -262,7 +262,7 @@ The palm's side is **assumed** to be the controller's +x on the left hand and �
 
 `tools/hand-scripts/hand-hud-look.txt` covers it, but it has not run yet: the tester was playing.
 
-**Open bug (2026-09-29): the speaker is taken from the crosshair.** It comes from the crosshair target in the two seconds before the conversation opens. A conversation an NPC starts (they walk up and greet) has no crosshair target, and the panel then stays where it was (logged "left where it was"). The dialogue menu's own target field would be the direct source; it has not been found yet.
+**Reworked (2026-10-06; headset verification pending):** the crosshair cache has been removed. `DialogCameraShim` copies the actual actor position from `SetDialogCamera` before either the POV switch or vanilla zoom runs. This also supplies a target for NPC-initiated greetings. The panel places once per conversation, retrying if the first frame has no valid head/camera pose. Side and size settings remain unchanged. `DialogFocus` clears the copied position on explicit end, menu exit, or cancelled approach. The camera observer stays installed with zoom on; a zoom setting change takes effect for the next conversation so its original exit cleanup is retained. `dialog_panel` and `dialog_camera_hook` exercise the placement policy and engine-facing wiring without running Oblivion.
 
 **Headset (2026-09-29, second look):** "hud an den händen auch zu weit hoch. dachte da eher an das dass hud dann in der handfläche ist". Since then the HUD lies in the palm:
 - `PalmDownMetres` 0.05 below the controller's tracked origin, along its −y;

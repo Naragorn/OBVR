@@ -1317,6 +1317,13 @@ endif()
 
 add_test(NAME pick_hold COMMAND pick_hold_test)
 
+# Engine-facing dialogue tests mock patching; calling conventions require x86 MSVC.
+if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+	add_executable(dialog_camera_hook_test DialogCameraHookTest.cpp)
+	target_include_directories(dialog_camera_hook_test PRIVATE ../src)
+	add_test(NAME dialog_camera_hook COMMAND dialog_camera_hook_test)
+endif()
+
 add_executable(insult_test InsultTest.cpp)
 
 target_include_directories(insult_test PRIVATE ../src)

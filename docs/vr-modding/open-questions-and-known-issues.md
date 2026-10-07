@@ -160,3 +160,15 @@ in a dialogue the arms are released and it was right. OBVR replaces the slot
 (`game::PlayerLookAt`) to answer the headset's eyes less 6 units in first
 person with a headset. `LIKELY`: derived from the disassembly, not yet seen
 in the headset.
+
+2026-10-06: the conversation path now freezes the exact last gameplay headset
+eyes on the first `SetDialogCamera(actor)` call, before its POV change, and
+retains them through repeated approach calls and menu rendering. Ordinary
+first-person tracking outside dialogue still uses the six-unit offset above.
+The old render callback refreshed the look target on every menu render instead
+of preserving the pre-conversation position. This missing freeze is reproduced
+by the raised-hand regression in `tests/DialogCameraHookTest.cpp`; whether it
+fully explains the reported high gaze in the actual headset remains unverified.
+Source inspection: `artifacts/dialog-approach-fix/engine-evidence.txt` records
+the installed executable's look-at dispatch and dialog-camera entry. No live
+Oblivion/headset test was run for this change.

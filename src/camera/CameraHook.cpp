@@ -5019,6 +5019,7 @@ bool PinAdjustableHand(bool right, const vr::HandSettings& hands, bool adjusting
 // The angle was decided in the camera pass, where the head is known.
 void BeforeFirstScenePass() {
 	g_stumpStepped = false;
+	game::StepPlayerDialog(game::IsMenuMode());
 	// The hands go the moment a menu or a conversation starts, in the frame
 	// that draws it: the decision at Present comes after that frame's world
 	// is drawn, and a book or a dialogue opened with a weapon drawn showed the
@@ -6335,26 +6336,9 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		}
 		g_handHudLayer.Submit(backend, render::GetGameDevice(), handHudActive && !hiddenForDeath, placements);
 
-		// The dialogue panel on the speaker (vr/DialogPanel.h). Who that is:
-		// what was under the crosshair in the last world frames before the
-		// conversation opened - talking starts by activating them - kept in
-		// tracking space, a little above the origin at their feet.
-		static NiPoint3 s_speakerTracking{0.0f, 0.0f, 0.0f};
-		static UInt32 s_speakerFrame = 0;
-		static bool s_speakerSeen = false;
-		static bool s_wasTalking = false;
-		if (worldFrame && !visibility.menuIsUp && g_cyclopeanCameraWorldValid && handHudFrame.haveHead) {
-			const game::CrosshairTarget target = game::ReadCrosshairTarget();
-			if (target.haveRef) {
-				constexpr float kSpeakerHeadUnits = 110.0f;
-				const NiPoint3 at{target.position.x, target.position.y, target.position.z + kSpeakerHeadUnits};
-				s_speakerTracking = vr::WorldPointInTracking(handHudFrame.head, g_cyclopeanCameraWorldTransform.rot,
-				                                             g_cyclopeanCameraWorldTransform.pos, at,
-				                                             config.tracker.unitsPerMetre);
-				s_speakerFrame = g_presentedFrame;
-				s_speakerSeen = true;
-			}
-		}
+		// SetDialogCamera supplies the actual actor, including NPC-initiated
+		// greetings. Never infer the speaker from an unrelated hand pick.
+		static vr::DialogPanelPlacement s_dialogPlacement;
 		// A menu opens in front of the player: the room anchor is dropped as
 		// it opens, so the panel is placed where the head looks now. It was
 		// kept from the first placement, and with the walking direction and
@@ -6368,28 +6352,24 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		}
 		s_menuWasUp = menuNowUp;
 		const bool talking = g_dialogMenuEpisode;
-		const bool opened = talking && !s_wasTalking;
-		s_wasTalking = talking;
-		constexpr UInt32 kSpeakerFreshFrames = 180;  // two seconds at 90 Hz
-		const bool speakerFresh = s_speakerSeen && g_presentedFrame - s_speakerFrame <= kSpeakerFreshFrames;
+		const bool placementPending = s_dialogPlacement.Pending(talking);
+		NiPoint3 speakerWorld{};
+		const bool haveSpeaker = game::ReadDialogSpeaker(speakerWorld);
 		const bool menusInRoom = config.tracker.menusInWorld && config.tracker.hudAnchorWorld;
-		if (opened) {
+		const bool due = vr::DialogRecentreDue(config.dialogPanel.recentre, placementPending,
+		                                      menusInRoom, haveSpeaker);
+		if (due && g_cyclopeanCameraWorldValid && handHudFrame.haveHead) {
+			const NiPoint3 speakerTracking = vr::WorldPointInTracking(
+				handHudFrame.head, g_cyclopeanCameraWorldTransform.rot,
+				g_cyclopeanCameraWorldTransform.pos, speakerWorld, config.tracker.unitsPerMetre);
 			vr::openvr::HmdMatrix34 anchor{};
-			const bool due = vr::DialogRecentreDue(config.dialogPanel.recentre, opened, menusInRoom, speakerFresh);
-			const bool placed =
-				due && handHudFrame.haveHead &&
-				vr::DialogAnchor(handHudFrame.head, s_speakerTracking.x, s_speakerTracking.y, s_speakerTracking.z,
-				                 config.dialogPanel.side, config.dialogPanel.sideDegrees, anchor);
-			if (placed) {
+			if (vr::DialogAnchor(handHudFrame.head, speakerTracking.x, speakerTracking.y, speakerTracking.z,
+			                    config.dialogPanel.side, config.dialogPanel.sideDegrees, anchor)) {
 				g_hudLayer.AnchorAt(anchor);
-			}
-			static UInt32 s_dialogLinesLeft = 6;
-			if (s_dialogLinesLeft > 0) {
-				--s_dialogLinesLeft;
-				OBVR_LOG("Dialogue: a conversation opened - the panel %s (recentre %d, menus in the room %d, "
-				         "speaker seen %d, %u frame(s) ago)",
-				         placed ? "placed on the speaker" : "left where it was", config.dialogPanel.recentre ? 1 : 0,
-				         menusInRoom ? 1 : 0, speakerFresh ? 1 : 0, g_presentedFrame - s_speakerFrame);
+				s_dialogPlacement.placed = true;
+				OBVR_LOG("Dialogue: panel anchored to actual speaker at %.2f/%.2f/%.2f",
+				         static_cast<double>(speakerWorld.x), static_cast<double>(speakerWorld.y),
+				         static_cast<double>(speakerWorld.z));
 			}
 		}
 	}
