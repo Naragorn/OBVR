@@ -108,4 +108,54 @@ inline bool YieldAllowed(bool weaponAway, bool rightTracked, bool leftTracked, f
 	       enemyAhead;
 }
 
+// Why the gesture is not allowed, for the log when the hands rocked all
+// the same (the tester, 2026-10-07: "yield ging nicht" with no yield line
+// in the log - the gesture never got to count). Writes the failing
+// conditions, comma separated, into `out` (at most `size` chars, always
+// terminated); "nothing" when all hold. Returns how many failed.
+inline UInt32 YieldBlockedBy(bool weaponAway, bool rightTracked, bool leftTracked, float rightCurl, float leftCurl,
+                             bool enemyAhead, char* out, UInt32 size) {
+	const char* reasons[6];
+	UInt32 n = 0;
+	if (!weaponAway) {
+		reasons[n++] = "a weapon or the fists in hand";
+	}
+	if (!rightTracked) {
+		reasons[n++] = "the right hand not tracked";
+	}
+	if (!leftTracked) {
+		reasons[n++] = "the left hand not tracked";
+	}
+	if (!(rightCurl < kYieldOpenCurl)) {
+		reasons[n++] = "the right index curled";
+	}
+	if (!(leftCurl < kYieldOpenCurl)) {
+		reasons[n++] = "the left index curled";
+	}
+	if (!enemyAhead) {
+		reasons[n++] = "no one in combat ahead of the head";
+	}
+	UInt32 at = 0;
+	if (size == 0) {
+		return n;
+	}
+	if (n == 0) {
+		for (const char* c = "nothing"; *c != '\0' && at + 1 < size; ++c) {
+			out[at++] = *c;
+		}
+	}
+	for (UInt32 i = 0; i < n; ++i) {
+		if (i > 0) {
+			for (const char* c = ", "; *c != '\0' && at + 1 < size; ++c) {
+				out[at++] = *c;
+			}
+		}
+		for (const char* c = reasons[i]; *c != '\0' && at + 1 < size; ++c) {
+			out[at++] = *c;
+		}
+	}
+	out[at] = '\0';
+	return n;
+}
+
 }  // namespace obvr::vr

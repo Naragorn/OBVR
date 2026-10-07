@@ -141,8 +141,36 @@ inline UInt32 SlapLines(UInt8 modIndex, SlapSound sound, char out[4][kSlapLineCh
 // and the mod does the rest - its noise, the cheek, the reactions; OBVR's
 // own noise stays out of its way then. Without the mod: OBVR's noise and
 // the gasp line.
+//
+// What the mod's grab script does with the tap (its zzPiiiPGrabQS, read
+// from the ESP 2026-10-07): on the grab control's down it takes the
+// crosshair's reference; a living NPC starts a count of the frames the
+// control stays down - 12 or more is its pickpocket, let go within 7 is its
+// Tap-Slap. The slap then wants neither side in combat, the player facing
+// the NPC within 25 degrees and the NPC facing the player within 18 ("I
+// can't slap %po from this side"), the NPC not seated, a height difference
+// within 0.1 of scale and 12 units, the actors' origins within 51 units
+// ("Damnation ..., %ps's out of reach"), and the crosshair's spot on the
+// head. Then both are restrained, the NPC is set 50 units before the player,
+// both play their idles (the slap, the cheek), and its reaction handler
+// takes half the NPC's disposition, has them curse, slap back or challenge
+// to a duel. The tap is pressed only after kSlapGrabAimFrames with the pick
+// already on them, so the down-edge finds the crosshair's reference there.
+// A slap the mod finishes is wholly its own: no stagger, push, fatigue or
+// disposition from OBVR - its positioner needs them where they stand, and
+// its handler costs them their liking.
 inline constexpr UInt32 kSlapGrabTapFrames = 3;
+inline constexpr UInt32 kSlapGrabAimFrames = 1;
+inline constexpr UInt32 kSlapGrabTapTotalFrames = kSlapGrabTapFrames + kSlapGrabAimFrames;
 inline bool SlapByModsGrabTap(UInt8 modIndex) { return modIndex != 0; }
+// Whether the grab is down this frame of the tap, `framesLeft` counting
+// down from kSlapGrabTapTotalFrames: the aim frames first, then the press.
+inline bool SlapGrabTapPressed(UInt32 framesLeft) { return framesLeft > 0 && framesLeft <= kSlapGrabTapFrames; }
+// Whether a shove is a slap the mod finishes - a light one in the face with
+// the mod loaded - and so none of OBVR's own.
+inline bool SlapLeftToMod(UInt8 modIndex, ShoveKind kind, bool inTheFace) {
+	return SlapByModsGrabTap(modIndex) && kind == ShoveKind::Light && inTheFace;
+}
 inline constexpr const char* kSlapWave = "OBVR_Sounds\\slap.wav";
 
 // What a shove costs the actor's liking: the hard shove's, or for a light

@@ -138,6 +138,12 @@ void TestCountsAsHit() {
 	      "the load index in the top byte");
 	Check(SlapByModsGrabTap(0x0B) && !SlapByModsGrabTap(0) && kSlapGrabTapFrames >= 2,
 	      "with the mod loaded the slap is its grab tap; without it none");
+	Check(!SlapGrabTapPressed(kSlapGrabTapTotalFrames) && SlapGrabTapPressed(kSlapGrabTapFrames) &&
+	          SlapGrabTapPressed(1) && !SlapGrabTapPressed(0) && kSlapGrabTapFrames <= 7,
+	      "the tap: the pick there first, the grab down for the frames after, let go within the mod's 7");
+	Check(SlapLeftToMod(0x0B, ShoveKind::Light, true) && !SlapLeftToMod(0, ShoveKind::Light, true) &&
+	          !SlapLeftToMod(0x0B, ShoveKind::Hard, true) && !SlapLeftToMod(0x0B, ShoveKind::Light, false),
+	      "the mod's slap is a light one in the face with the mod loaded, and then wholly the mod's");
 	Check(!ShoveCountsAsHit(s, ShoveKind::None), "no shove: nothing");
 	s.countsAsHit = false;
 	Check(!ShoveCountsAsHit(s, ShoveKind::Hard), "switched off: only the disposition");

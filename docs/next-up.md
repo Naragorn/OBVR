@@ -458,6 +458,17 @@ checked by tests and the harness as far as said; **none seen in the headset**.
    settle, and rows "Target outline"/"Target glow" in the menu (the spec's
    eleventh test). The crime toggle for owned things in the hand is left to
    Put it in its Place (the tester's decision).
+   **Rudeness, the tester's rounds (2026-10-07,
+   `docs/controls-spec.md` 4.12):** the middle finger "perfekt"; the slap
+   with Put it in its Place loaded is the mod's own Tap-Slap now (a grab tap
+   with the pick on them; its flow read from its scripts is in the spec),
+   and in 8e12223 the tap never reached the game - the grab reach
+   overwrote the key; fixed, not seen in the headset. The yield by gesture
+   fired once (2026-10-07, the NPC fought on) and then not at all; the log
+   now names what blocks the gesture and what the engine's action is when
+   activate goes down. Open question there: whether the engine blocks at
+   all with the weapons sheathed - if not, the yield needs its engine call
+   found.
    **A loading crash seen the same morning** (access violation at
    0x004BDDDB, a refcount release, after Load menu > save > confirm) came
    with a build that held the other agent's uncommitted dialogue work

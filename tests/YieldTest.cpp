@@ -1,6 +1,7 @@
 // Checks the yield by gesture (vr/Yield.h).
 
 #include <cstdio>
+#include <cstring>
 
 #include "vr/Yield.h"
 
@@ -50,6 +51,23 @@ int main() {
 	Check(!YieldAllowed(true, true, true, 0.7f, 0.2f, true) && !YieldAllowed(true, true, true, 0.1f, 0.6f, true),
 	      "a hand closed: not");
 	Check(!YieldAllowed(true, true, true, 0.1f, 0.2f, false), "no one in combat ahead: not");
+
+	std::printf("Why not, for the log\n");
+	char why[160] = {};
+	Check(YieldBlockedBy(true, true, true, 0.1f, 0.2f, true, why, sizeof(why)) == 0 && std::strcmp(why, "nothing") == 0,
+	      "all holding: nothing");
+	Check(YieldBlockedBy(false, true, true, 0.1f, 0.2f, true, why, sizeof(why)) == 1 &&
+	          std::strcmp(why, "a weapon or the fists in hand") == 0,
+	      "a weapon out: named");
+	Check(YieldBlockedBy(true, false, false, 0.7f, 0.6f, false, why, sizeof(why)) == 5 &&
+	          std::strcmp(why, "the right hand not tracked, the left hand not tracked, the right index curled, the left "
+	                           "index curled, no one in combat ahead of the head") == 0,
+	      "everything else failing: each named, comma separated");
+	char tiny[12] = {};
+	Check(YieldBlockedBy(false, true, true, 0.1f, 0.2f, true, tiny, sizeof(tiny)) == 1 &&
+	          std::strcmp(tiny, "a weapon or") == 0,
+	      "a short buffer: cut and terminated");
+	Check(YieldBlockedBy(false, true, true, 0.1f, 0.2f, true, tiny, 0) == 1, "no buffer: the count alone");
 
 	std::printf("The rocking\n");
 	YieldState s;

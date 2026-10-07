@@ -886,8 +886,13 @@ The tester's asks of 2026-10-07, all in one round:
   index, ring and little fingers curled (0.6 or more), the thumb free. Held
   at an NPC under that hand's laser (4 m, 15 degrees) for 0.4 s, their
   disposition drops by the amount, once per gesture; the same NPC not again
-  within 8 s. Logged "Insult: the right hand's middle finger at <ref>". Not
-  seen in the headset; the harness has no finger curls to script.
+  within 8 s. Logged "Insult: the right hand's middle finger at <ref>".
+  **Without pointing (the same day, 8e12223):** "mittelfinger muss aber
+  auch gehen ohne dass ich mit dem pointer auf npcs zeigen muss" - with no
+  NPC under the laser the gesture goes to whoever is ahead of the head
+  within 60 degrees, else to the nearest living NPC within 3 m. The tester:
+  "mittelfinger nun perfekt" (2026-10-07). The default loss is 30 now
+  (`MiddleFingerDisposition=30`).
 - **The slap** is the shove (`docs/combat-comfort-spec.md`, 4.9's
   neighbour `game/Shove.h`): an open hand driven fast into someone, weapons
   away. Light (1.5 m/s): they stagger and are pushed, their disposition
@@ -917,20 +922,74 @@ The tester's asks of 2026-10-07, all in one round:
   and did nothing, so the mod's forms go by form id with its load index in
   the top byte (`PutItInItsPlaceIndex`: the index under which its slap
   noise and its slapped token are found in the game's form table;
-  `SlapLines`, `SlapFormLine`). Not seen running either way yet.
+  `SlapLines`, `SlapFormLine`). The tester's log of that build: `pickIdle`
+  answered 1, every line with the mod's form id (`addItemNS 0B005335 1`,
+  `playSound3D 0B005339`) answered 0 - the console takes the line, not the
+  mod's forms by id. Why is open (the same line typed in the console is the
+  normal way); nothing of the mod's ran.
+  **The mod's own way in (8e12223, then fixed the same day).** What its
+  slap actually is, read from its scripts (`zzPiiiPGrabQS`,
+  `zzPiiiPzFunctSlapperInit`, `zzPiiiPzFunctSlapperReactionHandler`,
+  extracted from the ESP; its readme: "NPCs can be slapped by tapping the
+  grab key when pointing the crosshair at their face"): on the grab
+  control's down (xOBSE control 28) it takes the crosshair's reference; a
+  living NPC starts a count of the frames the control stays down - 12 or
+  more is its pickpocket ("Grabby"), let go within 7 is its "Tap-Slap". The
+  slap then wants neither side in combat, the player facing the NPC within
+  25 degrees and the NPC facing the player within 18 ("I can't slap %po
+  from this side - I need to face %po"), the NPC not seated, the two of a
+  height (scale within 0.1, origins within 12 units), the origins within 51
+  units ("Damnation ..., %ps's out of reach") and the crosshair's spot on
+  the head (its `LocationGrabber`: the player's pitch under about 9 degrees
+  down at that range). Then both are restrained, the NPC is moved 50 units
+  before the player, both play idles (the player's `slapper.kf`, the NPC's
+  `slapped.kf` - the hand to the cheek - with its slap noise), the NPC may
+  dodge or block by speed and skill, and its handler takes half of their
+  disposition, has them curse (over disposition 40), slap back (65 %) or
+  challenge the player to a duel (First Blood or To the Death, by level and
+  skill). So with the mod loaded a slap in the face is a grab tap with the
+  pick on them from the head (`SlapByModsGrabTap`, `SlapGrabTapPressed`:
+  one frame of the pick there first, then the grab down for 3), and nothing
+  of OBVR's own - no stagger, push, fatigue or disposition
+  (`SlapLeftToMod`; its positioner wants them where they stand, its handler
+  costs them their liking). Logged "Shove: <ref> slapped in the face ...
+  left to Put it in its Place: a grab tap". In 8e12223 the tap never
+  reached the game: the grab key was set before the grab reach
+  (`StepGrabReach`) decided the same key and overwrote it - the tester's
+  "put in place script kam nicht", with no sound either, since OBVR's stays
+  out of the mod's way. Fixed: the tap is OR-ed in after the reach. Not seen
+  in the headset. What may still stop it there: the mod's 51 units between
+  the origins (73 cm - a hand at a face from an arm's length may stand the
+  body further off), and the NPC having to face the player; both are the
+  mod's own checks and show as its messages.
 - **Yielding by gesture** (`vr/Yield.h`, yield_test; the tester: "waffe
   einstecken ... mit offenen händen ... leicht von aussen nach innen wippen
   ... zählt das als ein yield"). The weapon away, both hands open (index
   curl under 0.5), someone in combat within 6 m and 30 degrees of the
   head's forward: both hands' sideways positions are watched, and four
   direction reversals after strokes of 5 cm or more within 2.5 s - two
-  out-and-in cycles - are the yield. Then for 8 frames block is held, for
-  the last 4 activate is pressed, and the pick runs from the head at that
-  NPC: vanilla's yield (block and activate facing the attacker), which the
-  NPC may still refuse. Not again within 3 s. Logged "Yield: the open hands
-  rocked at someone in combat". The palms' facing is not checked - open
-  hands rocking at an enemy with the weapon away is gesture enough. Not
-  seen in the headset.
+  out-and-in cycles - are the yield. Then block is held for 30 frames and
+  activate pressed from the 10th to the 16th of them (8 frames with
+  activate down at once fired in the log on 2026-10-07 and the NPC fought
+  on), and the pick runs from the head at that NPC: vanilla's yield (block
+  and activate facing the attacker), which the NPC may still refuse. Not
+  again within 3 s. Logged "Yield: the open hands rocked at someone in
+  combat". The palms' facing is not checked - open hands rocking at an
+  enemy with the weapon away is gesture enough.
+  **Open (2026-10-07):** the tester's second round had no yield line at
+  all - the gesture never counted, and the log did not say why. Now the
+  rocking is watched on its own as well (`YieldBlockedBy`, yield_test):
+  when it completes while the gesture is not allowed, "Yield: the hands
+  rocked, but no yield - <reasons> (index curls r/l)" names what stood in
+  the way; and when activate goes down, "Yield: activate goes down after 10
+  frames of block - the player's action <n>, the crosshair on <ref>" shows
+  whether the engine took the block and whom the pick had. A thing to
+  settle with that line: vanilla's block is "with weapon or shield" (UESP
+  Oblivion:Controls), and the gesture wants the weapon away - if the engine
+  takes no block with the weapons sheathed, the key route cannot yield
+  this way, and the yield would have to be called in the engine directly
+  (the activate-while-blocking branch; not located yet). The button route
+  of 2026-09-29 (raised hand and A) yielded with the weapon drawn.
 - **The trigger never attacks with a melee weapon or the fists in hand**
   (the tester: "powerattacks mit trigger verbieten nun für alle waffen und
   ohne waffen"): `HandFrameInput::meleeInHand`, set whether or not the hits

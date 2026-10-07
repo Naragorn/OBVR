@@ -1213,6 +1213,7 @@ UInt32 g_stowSpotRevision = 1;
 // complete the frames over which block is held and activate pressed with
 // the pick on the enemy - vanilla's yield.
 vr::YieldState g_yield;
+vr::YieldState g_yieldShadow;  // the rocking alone, for the log's "why not"
 UInt32 g_yieldFramesLeft = 0;
 NiPoint3 g_yieldTarget{0.0f, 0.0f, 0.0f};
 UInt32 g_yieldLines = 20;
@@ -1225,6 +1226,7 @@ inline constexpr UInt32 kYieldActivateTo = 14;    // ... and comes up
 // The mod's slap by a grab tap (game/Shove.h, TakeSlapGrabTap): the frames
 // the grab is held with the pick on the slapped one.
 UInt32 g_slapTapFrames = 0;
+bool g_slapTapPressed = false;  // the grab down this frame for the tap
 NiPoint3 g_slapTapTarget{0.0f, 0.0f, 0.0f};
 inline constexpr float kYieldEnemyUnits = 420.0f;   // 6 m
 inline constexpr float kYieldEnemyCos = 0.866f;     // 30 degrees from the head's forward
@@ -1248,6 +1250,20 @@ void UpdateYield(const Config& config, const vr::HandModeFrame& frame, bool acti
 	// camera-relative offset's x (the camera's x axis points right).
 	const float perMetre = config.tracker.unitsPerMetre > 0.0f ? config.tracker.unitsPerMetre : 1.0f;
 	const float lateral[2] = {g_hand.rightHandOffsetUnits.x / perMetre, -g_hand.leftHandOffsetUnits.x / perMetre};
+	// The rocking watched on its own as well: when it completes while the
+	// gesture is not allowed, the log says what stood in the way
+	// (vr::YieldBlockedBy) - the tester's "yield ging nicht" came with no
+	// yield line at all, 2026-10-07.
+	if (vr::StepYield(g_yieldShadow, active, lateral, dt) && !allowed && g_yieldLines > 0) {
+		--g_yieldLines;
+		char why[160] = {};
+		vr::YieldBlockedBy(weaponAway, frame.right.valid && g_hand.rightHandValid,
+		                   frame.left.valid && g_hand.leftHandValid, g_hand.rightCurlValid ? g_hand.rightCurl[1] : 1.0f,
+		                   g_hand.leftCurlValid ? g_hand.leftCurl[1] : 1.0f, enemyAhead, why, sizeof(why));
+		OBVR_LOG("Yield: the hands rocked, but no yield - %s (index curls %.2f/%.2f)", why,
+		         static_cast<double>(g_hand.rightCurlValid ? g_hand.rightCurl[1] : 1.0f),
+		         static_cast<double>(g_hand.leftCurlValid ? g_hand.leftCurl[1] : 1.0f));
+	}
 	if (vr::StepYield(g_yield, allowed, lateral, dt)) {
 		g_yieldFramesLeft = kYieldHoldFrames;
 		g_yieldTarget = enemy;
@@ -2070,19 +2086,34 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_hand.controls.block = true;
 		if (g_yieldFramesLeft <= kYieldActivateFrom && g_yieldFramesLeft > kYieldActivateTo) {
 			g_hand.controls.activate = true;
+			if (g_yieldFramesLeft == kYieldActivateFrom && g_yieldLines > 0) {
+				// What the engine makes of the block by then, and whom the
+				// pick has: the yield needs the player blocking and the
+				// attacker under the crosshair (UESP Oblivion:Controls).
+				--g_yieldLines;
+				const game::CrosshairTarget target = game::ReadCrosshairTarget();
+				OBVR_LOG("Yield: activate goes down after %u frames of block - the player's action %d, the crosshair "
+				         "on %08X",
+				         static_cast<unsigned>(kYieldHoldFrames - kYieldActivateFrom), game::ReadPlayerAction(),
+				         target.haveRef ? target.refAddress : 0u);
+			}
 		}
 		--g_yieldFramesLeft;
 	}
-	// The mod's slap: a grab tap with the pick on the slapped one.
+	// The mod's slap: a grab tap with the pick on the slapped one - the pick
+	// there first, the grab down after (ShoveLogic.h, SlapGrabTapPressed).
+	// The key itself is set below the grab reach, which decides the grab key
+	// otherwise and overwrote it here (the tester, 2026-10-07: "put in place
+	// script kam nicht").
 	{
 		UInt32 slapped = 0;
 		NiPoint3 centre{};
 		if (game::TakeSlapGrabTap(slapped, centre)) {
-			g_slapTapFrames = game::kSlapGrabTapFrames;
+			g_slapTapFrames = game::kSlapGrabTapTotalFrames;
 			g_slapTapTarget = centre;
 		}
+		g_slapTapPressed = game::SlapGrabTapPressed(g_slapTapFrames);
 		if (g_slapTapFrames > 0) {
-			g_hand.controls.grab = true;
 			--g_slapTapFrames;
 		}
 	}
@@ -2384,7 +2415,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	const vr::GrabReachVerdict reach = vr::StepGrabReach(g_grabReach, gripHeld, inReach);
 	g_grabReachPick = reach.reachPick;
 	g_grabKeyDown = reach.key;
-	g_hand.controls.grab = reach.key;
+	g_hand.controls.grab = reach.key || g_slapTapPressed;
 	// Where the held object goes: the palm of the grabbing hand's pinned bone
 	// (game::HeldObject - the spring pulls the touched point there), moved
 	// along the fingers by [Hands] HeldObjectMetres; without a pinned bone,
@@ -7381,13 +7412,13 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		const bool heldRay = config.fullVrMode && g_headTracker.IsHeadsetConnected() && heldRef != 0 &&
 		                     (heldLeft ? g_hand.leftHandValid : g_hand.rightHandValid) &&
 		                     game::RefWorldBound(heldRef, heldCentre, heldRadius);
-		if ((g_yieldFramesLeft > 0 || g_slapTapFrames > 0) && config.fullVrMode &&
+		if ((g_yieldFramesLeft > 0 || g_slapTapFrames > 0 || g_slapTapPressed) && config.fullVrMode &&
 		    g_headTracker.IsHeadsetConnected()) {
 			// The yield (vr/Yield.h): the pick from the head at the enemy, so
 			// activate with block held is vanilla's yield to them. The mod's
 			// slap the same way: the pick on the slapped one for the grab tap.
 			const NiPoint3 from = cameraNode->localTransform.pos;
-			const NiPoint3& at = g_slapTapFrames > 0 ? g_slapTapTarget : g_yieldTarget;
+			const NiPoint3& at = (g_slapTapFrames > 0 || g_slapTapPressed) ? g_slapTapTarget : g_yieldTarget;
 			const vr::LaserWorldRay ray = vr::RayTowards(from, at, 0.0f, ForwardOf(finalRotation));
 			game::SetWorldPickHandRay(ray.origin, ray.direction, true);
 		} else if (heldRay) {
