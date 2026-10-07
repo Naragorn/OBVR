@@ -378,8 +378,16 @@ in the headset yet.
     (light and power attacks, the health going down each time) and no
     "struck nothing" line; the strike lines stop at their limit, so the
     later swings are unseen. Not pinned: whether swings miss, or land
-    without the reaction the tester expects. Needs the strike lines
-    unlimited for one round, or a fight probe in the harness.
+    without the reaction the tester expects - the tester, later that day: "da
+    erwarte ich ein punch sound eig. der kam nicht immer". The punch sound
+    is the engine's own: the attack handling OBVR calls (0x005FEBF0) plays
+    the weapon sound with the target from three sites (0x005FFB89,
+    0x005FFCE5, 0x005FFD61 - the hit variants, a target and a ninth argument
+    the miss call leaves 0), OBVR plays only the swish. Not pinned why it
+    stays out at times: whether those sites are not reached for some
+    strikes, or the sound is there and drowned by the swish played on the
+    same swing. Needs the strike lines unlimited for one round, or a fight
+    probe in the harness.
 
 ### 4.4 The quick menu on the right trackpad (built 2026-09-27)
 
