@@ -35,4 +35,9 @@ bool VerifyShoveAddresses();
 bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const NiPoint3& centre,
                 const ShoveSettings& settings, bool byHand = true);
 
+// Whether Put it in its Place - Enhanced Grabbing is active: its ESP in
+// Data and on the plugin list. Read once; a slap in the face then runs its
+// noise and its slapped idle (ShoveLogic.h, SlapLines).
+bool PutItInItsPlaceLoaded();
+
 }  // namespace obvr::game

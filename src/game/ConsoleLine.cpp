@@ -16,6 +16,7 @@ bool g_ready = false;
 constexpr unsigned kSlots = 4;
 constexpr unsigned kLineChars = 96;
 char g_lines[kSlots][kLineChars];
+UInt32 g_refs[kSlots];
 unsigned g_count = 0;
 volatile long g_lock = 0;
 
@@ -30,11 +31,13 @@ void Unlock() { _InterlockedExchange(&g_lock, 0); }
 // The xOBSE task: every frame, on the game's loop.
 void Tick() {
 	char lines[kSlots][kLineChars];
+	UInt32 refs[kSlots];
 	unsigned count = 0;
 	Lock();
 	count = g_count;
 	for (unsigned i = 0; i < count; ++i) {
 		std::memcpy(lines[i], g_lines[i], kLineChars);
+		refs[i] = g_refs[i];
 	}
 	g_count = 0;
 	Unlock();
@@ -43,7 +46,7 @@ void Tick() {
 		// answers false and plays the group all the same (harness 2026-09-30,
 		// the player's action going to 12, ScriptAnimation). What the line did
 		// is to be read from the game.
-		const bool answer = g_console->RunScriptLine2(lines[i], nullptr, true);
+		const bool answer = g_console->RunScriptLine2(lines[i], reinterpret_cast<void*>(refs[i]), true);
 		static unsigned s_logLeft = 24;
 		if (s_logLeft > 0) {
 			--s_logLeft;
@@ -70,7 +73,9 @@ void InstallConsoleLine(const obse::Interface* api) {
 	g_ready = true;
 }
 
-bool RequestConsoleLine(const char* line) {
+bool RequestConsoleLine(const char* line) { return RequestConsoleLineAs(0, line); }
+
+bool RequestConsoleLineAs(UInt32 ref, const char* line) {
 	if (!g_ready || line == nullptr) {
 		static bool s_logged = false;
 		if (!s_logged) {
@@ -87,6 +92,7 @@ bool RequestConsoleLine(const char* line) {
 	Lock();
 	if (g_count < kSlots) {
 		std::memcpy(g_lines[g_count], line, length + 1);
+		g_refs[g_count] = ref;
 		++g_count;
 		queued = true;
 	}

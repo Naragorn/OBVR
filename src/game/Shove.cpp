@@ -1,6 +1,11 @@
 #include "game/Shove.h"
 
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
 #include "core/AddressSpace.h"
+#include "game/ConsoleLine.h"
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
@@ -138,13 +143,70 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 	if (asHit) {
 		ReactAsToAHit(a, player);
 	}
+	// A slap: the sound, and the slapped one's hand to the cheek when Put it
+	// in its Place is loaded (ShoveLogic.h, SlapLines), as script lines run
+	// as them (game/ConsoleLine.h).
+	UInt32 slapLines = 0;
+	if (inTheFace && kind == ShoveKind::Light) {
+		const char* lines[4] = {};
+		const UInt32 count = SlapLines(PutItInItsPlaceLoaded(), lines);
+		for (UInt32 i = 0; i < count; ++i) {
+			if (RequestConsoleLineAs(a, lines[i])) {
+				++slapLines;
+			}
+		}
+	}
 	if (g_lines > 0) {
 		--g_lines;
-		OBVR_LOG("Shove: %08X %s (from %.0f %.0f %.0f), the player's fatigue -%.0f, its disposition -%.0f%s", a, done,
-		         static_cast<double>(fromWorld.x), static_cast<double>(fromWorld.y), static_cast<double>(fromWorld.z),
-		         static_cast<double>(fatigue), static_cast<double>(disposition),
-		         asHit ? ", taken as a hit" : "");
+		OBVR_LOG("Shove: %08X %s (from %.0f %.0f %.0f), the player's fatigue -%.0f, its disposition -%.0f%s%s, %u slap "
+		         "line(s) queued",
+		         a, done, static_cast<double>(fromWorld.x), static_cast<double>(fromWorld.y),
+		         static_cast<double>(fromWorld.z), static_cast<double>(fatigue), static_cast<double>(disposition),
+		         asHit ? ", taken as a hit" : "", inTheFace ? ", in the face" : "", slapLines);
 	}
+	return true;
+}
+
+bool PutItInItsPlaceLoaded() {
+	// The ESP in the game's Data folder and on the active plugin list
+	// (%LOCALAPPDATA%\Oblivion\Plugins.txt), read once.
+	static int s_loaded = -1;
+	if (s_loaded >= 0) {
+		return s_loaded == 1;
+	}
+	s_loaded = 0;
+	const char* const appData = std::getenv("LOCALAPPDATA");
+	if (appData == nullptr) {
+		return false;
+	}
+	char path[512];
+	std::snprintf(path, sizeof(path), "%s\\Oblivion\\Plugins.txt", appData);
+	FILE* const list = std::fopen(path, "rb");
+	if (list == nullptr) {
+		return false;
+	}
+	char line[256];
+	bool listed = false;
+	while (std::fgets(line, sizeof(line), list) != nullptr) {
+		if (line[0] == '#') {
+			continue;
+		}
+		if (std::strstr(line, "Enhanced Grabbing.esp") != nullptr) {
+			listed = true;
+			break;
+		}
+	}
+	std::fclose(list);
+	if (!listed) {
+		return false;
+	}
+	FILE* const esp = std::fopen("Data\\Enhanced Grabbing.esp", "rb");
+	if (esp == nullptr) {
+		return false;
+	}
+	std::fclose(esp);
+	s_loaded = 1;
+	OBVR_LOG("Shove: Put it in its Place - Enhanced Grabbing is active - a slap uses its noise and its slapped idle");
 	return true;
 }
 

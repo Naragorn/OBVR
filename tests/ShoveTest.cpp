@@ -2,6 +2,7 @@
 // hard, its speed towards the actor, the reach, and the cooldown.
 
 #include <cstdio>
+#include <cstring>
 
 #include "game/ShoveLogic.h"
 
@@ -120,6 +121,12 @@ void TestCountsAsHit() {
 	          ShoveDisposition(s, ShoveKind::Light, true) == s.dispositionFace &&
 	          ShoveDisposition(s, ShoveKind::Hard, true) == s.dispositionHard,
 	      "the body's, the face's, the hard shove's liking");
+	const char* lines[4] = {};
+	Check(SlapLines(true, lines) == 4 && std::strcmp(lines[0], "playSound3D zzPiiiPSlapNoise") == 0 &&
+	          std::strcmp(lines[2], "pickIdle") == 0,
+	      "with Put it in its Place: its slap noise, the slapped idle by its token");
+	Check(SlapLines(false, lines) == 1 && std::strcmp(lines[0], "playSound3D NPCHumanGaspMale") == 0,
+	      "without it: the game's own gasp, no idle");
 	Check(!ShoveCountsAsHit(s, ShoveKind::None), "no shove: nothing");
 	s.countsAsHit = false;
 	Check(!ShoveCountsAsHit(s, ShoveKind::Hard), "switched off: only the disposition");

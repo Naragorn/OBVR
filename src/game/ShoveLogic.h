@@ -65,6 +65,25 @@ inline bool SlapInTheFace(float handZ, float bodyCentreZ) {
 	return handZ - bodyCentreZ >= kSlapFaceAboveUnits;
 }
 
+// The script lines a slap in the face runs as the slapped one (the tester,
+// 2026-10-07: "ein schönen slap sound ... npc greift sich die wange wie in
+// der mod"). With Put it in its Place - Enhanced Grabbing loaded, its own
+// slap noise and its slapped idle the way its slapper script does it (the
+// idle marker token, pickIdle, the token off again); without it, the game's
+// own gasp - the mod's assets are not OBVR's to ship (its readme grants no
+// such use). Returns how many lines are in `out` (at most 4).
+inline UInt32 SlapLines(bool putItInItsPlaceLoaded, const char* out[4]) {
+	if (putItInItsPlaceLoaded) {
+		out[0] = "playSound3D zzPiiiPSlapNoise";
+		out[1] = "addItemNS zzPiiiPIdleMarkerSlappedToken 1";
+		out[2] = "pickIdle";
+		out[3] = "removeItemNS zzPiiiPIdleMarkerSlappedToken 1";
+		return 4;
+	}
+	out[0] = "playSound3D NPCHumanGaspMale";
+	return 1;
+}
+
 // What a shove costs the actor's liking: the hard shove's, or for a light
 // one the face's or the body's.
 inline float ShoveDisposition(const ShoveSettings& s, ShoveKind kind, bool inTheFace) {

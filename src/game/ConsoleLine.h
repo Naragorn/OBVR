@@ -19,4 +19,9 @@ void InstallConsoleLine(const obse::Interface* api);
 // cannot be run: no console interface, too long, or the queue full.
 bool RequestConsoleLine(const char* line);
 
+// The same, run as `ref` (xOBSE's calling reference: "playSound3D X" plays
+// at it, "pickIdle" picks for it) - the slap's sound and the slapped one's
+// idle (game/Shove.h). 0 runs it as no one.
+bool RequestConsoleLineAs(UInt32 ref, const char* line);
+
 }  // namespace obvr::game
