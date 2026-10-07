@@ -1088,6 +1088,13 @@ const SettingDefinition kSettings[] = {
 		"", "", SettingAction::None, vr::kCrosshairPlaceNames, vr::kCrosshairPlaceCount,
 	},
 	{
+		"Hands", "VR keyboard", "SteamVR's keyboard opens for the game's text fields: a name, a spell, an enchantment, a potion",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "VrKeyboard",
+		+[](const Config& c) { return c.hands.vrKeyboard ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.vrKeyboard = v != 0.0f; },
+	},
+	{
 		"Hands", "Laser tilt", "Degrees the laser leaves the controller turned down",
 		ItemKind::Number, -90.0f, 90.0f, 5.0f, 0, false,
 		"Hands", "LaserPitchDegrees",

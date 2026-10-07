@@ -1,0 +1,18 @@
+# What the race and sex menu (showracemenu) looks like through OBVR: the
+# camera, the menu id and the picture, for the chargen view (2026-10-07).
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\race-menu.txt -Save autosave
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+
+expect HandScript: finished
+reject HandScript: WARNING
+
+wait 15
+mark loaded
+console-at loaded showracemenu
+wait 8
+mark racemenu
+dump
+wait 3
+mark racemenu-later

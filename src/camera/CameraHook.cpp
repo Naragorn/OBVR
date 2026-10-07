@@ -73,6 +73,7 @@
 #include "game/NearbyItems.h"
 #include "game/PickHold.h"
 #include "game/Insult.h"
+#include "vr/VrKeyboard.h"
 #include "vr/Yield.h"
 #include "game/MeleeHit.h"
 #include "game/QuickKeys.h"
@@ -1215,6 +1216,69 @@ UInt32 g_stowSpotRevision = 1;
 // the pick on the enemy - vanilla's yield.
 vr::YieldState g_yield;
 vr::YieldState g_yieldShadow;  // the rocking alone, for the log's "why not"
+
+// SteamVR's keyboard for the game's text fields (vr/VrKeyboard.h): the
+// session, the key taps it feeds the game a frame at a time, and the laser
+// click's tile that opens it.
+vr::KeyboardSession g_keyboard;
+vr::KeyTapQueue g_keyTaps;
+bool g_menuClickEdge = false;
+char g_menuClickTile[64] = {};
+UInt32 g_keyboardLines = 24;
+
+void StepVrKeyboard(const Config& config) {
+	vr::OpenVRBackend& backend = g_headTracker.GetBackendForFrame();
+	const bool connected = g_headTracker.IsHeadsetConnected();
+	const bool menuMode = game::IsMenuMode();
+	const UInt32 top = menuMode ? game::TopVisibleMenu() : game::kMenuIdNone;
+	char chars[64] = {};
+	bool done = false;
+	bool closed = false;
+	const UInt32 openedFor = g_keyboard.menuId;
+	if (g_keyboard.open) {
+		backend.PollKeyboard(chars, sizeof(chars), done, closed);
+	}
+	const char* const clicked = g_menuClickEdge && g_menuClickTile[0] != '\0' ? g_menuClickTile : nullptr;
+	const vr::KeyboardStep step =
+		vr::StepKeyboardSession(g_keyboard, config.hands.vrKeyboard && connected, top, clicked, closed);
+	if (chars[0] != '\0' || done) {
+		const UInt32 dropped = vr::QueueTypedText(g_keyTaps, chars, done, openedFor);
+		if (g_keyboardLines > 0) {
+			--g_keyboardLines;
+			OBVR_LOG("Keyboard: %u character(s) typed for the %s menu%s, %u left out (not on the US keys or the "
+			         "queue full), %u tap(s) pending",
+			         static_cast<unsigned>(std::strlen(chars)), game::MenuIdName(openedFor), done ? ", Done" : "",
+			         dropped, g_keyTaps.count);
+		}
+	}
+	if (step == vr::KeyboardStep::Open) {
+		if (!backend.ShowKeyboard(vr::KeyboardPromptFor(top), "", 64)) {
+			g_keyboard.open = false;
+			g_keyboard.menuId = 0;
+		} else if (g_keyboardLines > 0) {
+			--g_keyboardLines;
+			OBVR_LOG("Keyboard: SteamVR's keyboard opened for the %s menu%s%s", game::MenuIdName(top),
+			         clicked != nullptr ? " on a click at " : "", clicked != nullptr ? clicked : "");
+		}
+	} else if (step == vr::KeyboardStep::Close) {
+		backend.HideKeyboard();
+		g_keyTaps.Clear();
+		if (g_keyboardLines > 0) {
+			--g_keyboardLines;
+			OBVR_LOG("Keyboard: closed with its menu (%s)", game::MenuIdName(openedFor));
+		}
+	}
+	// The taps go into a menu's field or nowhere: the world gets no stray
+	// letters.
+	if (!menuMode) {
+		g_keyTaps.Clear();
+	}
+	const vr::KeyTapAction tap = g_keyTaps.Step();
+	if (tap.any) {
+		game::TapKey(tap.vk, tap.shift, tap.down);
+	}
+	g_menuClickEdge = false;
+}
 UInt32 g_yieldFramesLeft = 0;
 NiPoint3 g_yieldTarget{0.0f, 0.0f, 0.0f};
 UInt32 g_yieldLines = 20;
@@ -3328,6 +3392,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			         game::MenuIdName(game::ActiveMenuId()), static_cast<double>(frame.cursorX),
 			         static_cast<double>(frame.cursorY));
 		}
+		// The click's down-edge and the tile under the cursor as it went:
+		// what the SteamVR keyboard opens on (vr/VrKeyboard.h, StepVrKeyboard).
+		g_menuClickEdge = controls.menuClick && !clickWasSent && menuIsUp;
+		if (!g_menuClickEdge || !game::ActiveTileName(g_menuClickTile, sizeof(g_menuClickTile))) {
+			g_menuClickTile[0] = '\0';
+		}
 		clickWasSent = controls.menuClick;
 		// Every jump sent, the first several dozen: the right stick's flick
 		// and a diagonal turn must be told apart (docs/controls-spec.md 2).
@@ -3822,6 +3892,7 @@ void OnPresent() {
 	game::SetEquipWhileActing(config.fullVrMode);
 	game::SetNoHitBlur(config.look.noHitBlur);
 	UpdateHandMode(config, game::IsMenuMode());
+	StepVrKeyboard(config);
 	OnFrameEnd();
 	test::AdvanceWaterVRTest(game::PlayerInWorld() && !game::IsMenuMode());
 	if (config.tracker.mirrorMenusToMonitor && menuIsUp && layerCaptured) {

@@ -88,6 +88,8 @@ struct HandSettings {
 	// Where the crosshair quad with its context icon hangs (vr/HandHud.h,
 	// CrosshairPlace): on the laser, over the thing pointed at, or ahead.
 	CrosshairPlace crosshairPlace = kCrosshairPlaceDefault;
+	// SteamVR's keyboard for the game's text fields (vr/VrKeyboard.h).
+	bool vrKeyboard = true;
 
 	// The hand bones, written each frame to where the controllers are, so
 	// the hands and the weapon stay with the controllers while the animation

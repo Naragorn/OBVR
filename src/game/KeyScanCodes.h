@@ -55,6 +55,14 @@ inline UInt32 UsScanCode(UInt32 virtualKey) {
 	case 0x14: return 0x3A;  // Caps Lock
 	case 0x1B: return 0x01;  // Esc
 	case 0x20: return 0x39;  // Space
+	// The US layout's punctuation, for typing a name through the SteamVR
+	// keyboard (vr/VrKeyboard.h): scan code set 1, the key a US keyboard
+	// has the character on (MapVirtualKeyA would give the layout's key,
+	// which the game then reads as another character).
+	case 0xBD: return 0x0C;  // VK_OEM_MINUS: - and _
+	case 0xBC: return 0x33;  // VK_OEM_COMMA: , and <
+	case 0xBE: return 0x34;  // VK_OEM_PERIOD: . and >
+	case 0xDE: return 0x28;  // VK_OEM_7: ' and "
 	default: return 0;
 	}
 }

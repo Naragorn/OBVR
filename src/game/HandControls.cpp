@@ -75,6 +75,20 @@ void SetKey(UInt32 key, bool wanted) {
 
 }  // namespace
 
+void TapKey(UInt32 virtualKey, bool shift, bool down) {
+	if (down) {
+		if (shift) {
+			SendKey(0x10, true);
+		}
+		SendKey(virtualKey, true);
+		return;
+	}
+	SendKey(virtualKey, false);
+	if (shift) {
+		SendKey(0x10, false);
+	}
+}
+
 void ApplyHandControls(const vr::HandControlsWanted& wanted, const HandKeyMap& keys,
                        float turnSpeed) {
 	SetKey(keys.attack, wanted.attack || wanted.menuClick);

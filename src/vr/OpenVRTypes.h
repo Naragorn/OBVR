@@ -96,6 +96,37 @@ static_assert(sizeof(VRControllerAxis) == 8, "VRControllerAxis_t is two floats")
 static_assert(sizeof(VRControllerState) == 64,
               "VRControllerState_t is 64 bytes with natural alignment on Windows");
 
+// VREvent_t (openvr_capi.h lines 2908..2915): the type, the device, the age,
+// then a union of event payloads at its end. The union's largest member is
+// VREvent_Reserved_t, six uint64 (lines 2332..2340); the keyboard's
+// (VREvent_Keyboard_t, lines 2314..2319) is the one read here: the new
+// input as up to eight chars, then the user value and the overlay handle.
+// With Windows' natural alignment the union sits at 16 and the whole is 64
+// bytes, which is the size PollNextEvent is told.
+struct VREventKeyboard {
+	char newInput[8];
+	UInt64 userValue;
+	UInt64 overlayHandle;
+};
+
+struct VREvent {
+	UInt32 eventType;
+	UInt32 trackedDeviceIndex;
+	float eventAgeSeconds;
+	UInt32 padding;
+	union {
+		VREventKeyboard keyboard;
+		UInt64 reserved[6];
+	} data;
+};
+
+static_assert(sizeof(VREvent) == 64, "VREvent_t is 64 bytes with natural alignment on Windows");
+
+// EVREventType (openvr_capi.h lines 998..1000).
+constexpr UInt32 kEventKeyboardClosed = 1200;
+constexpr UInt32 kEventKeyboardCharInput = 1201;
+constexpr UInt32 kEventKeyboardDone = 1202;
+
 // These sizes have to match exactly, otherwise OBVR reads the pose field at
 // an offset. That would show up in the headset as a wild camera and be hard
 // to attribute - so it should fail at compile time instead.
@@ -197,7 +228,14 @@ struct IVRSystemFnTable {
 
 	// Indices 29 to 36: the property error names, the event polls, the event
 	// names, the hidden-area mesh and the two foveation queries.
-	void* unusedBeforeControllerState[8];
+	// 29 GetPropErrorNameFromEnum; 30 PollNextEvent (openvr_capi.h line
+	// 2969, counted from GetRecommendedRenderTargetSize at line 2939 as
+	// entry 0 - GetControllerState at line 2976 is the 37 below, which the
+	// controllers have proved); 31..36 the event and hidden-area entries
+	// between.
+	void* getPropErrorNameFromEnum;  // 29
+	bool(__stdcall* PollNextEvent)(VREvent* event, UInt32 eventSize);  // 30
+	void* unusedAfterPollNextEvent[6];  // 31..36
 
 	// Index 37 and 38: the legacy controller state - buttons and axes - and
 	// the same together with the device's pose in one call, which is what a
@@ -676,6 +714,28 @@ struct IVROverlayFnTable {
 	// openvr_capi.h line 3210: buffer, width, height, bytes per pixel.
 	int(__stdcall* SetOverlayRaw)(VROverlayHandle handle, void* buffer, UInt32 width,
 	                              UInt32 height, UInt32 bytesPerPixel);  // 62
+
+	// 63..73 (openvr_capi.h lines 3211..3221): SetOverlayFromFile,
+	// GetOverlayTexture, ReleaseNativeOverlayHandle, GetOverlayTextureSize,
+	// CreateDashboardOverlay, IsDashboardVisible, IsActiveDashboardOverlay,
+	// SetDashboardOverlaySceneProcess, GetDashboardOverlaySceneProcess,
+	// ShowDashboard, GetPrimaryDashboardDevice.
+	void* unusedDashboard[11];  // 63..73
+
+	// The SteamVR keyboard (openvr_capi.h lines 3222..3227, counted from
+	// FindOverlay at 3148 as 0, one entry a line): the runtime's own keyboard
+	// in the headset, typed on with the controllers, its characters handed
+	// back as VREvent_KeyboardCharInput events (vr/VrKeyboard.h).
+	// EGamepadTextInputMode: Normal 0; EGamepadTextInputLineMode: SingleLine 0.
+	int(__stdcall* ShowKeyboard)(int inputMode, int lineMode, UInt32 flags, const char* description,
+	                             UInt32 charMax, const char* existingText, UInt64 userValue);  // 74
+	void* showKeyboardForOverlay;  // 75
+	UInt32(__stdcall* GetKeyboardText)(char* text, UInt32 capacity);  // 76
+	void(__stdcall* HideKeyboard)();  // 77
+	void(__stdcall* SetKeyboardTransformAbsolute)(int trackingOrigin, const HmdMatrix34* trackingOriginToKeyboard);  // 78
+	void* setKeyboardPositionForOverlay;  // 79
+	void* showMessageOverlay;             // 80
+	void* closeMessageOverlay;            // 81
 };
 
 }  // namespace obvr::vr::openvr

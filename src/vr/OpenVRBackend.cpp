@@ -316,6 +316,60 @@ bool OpenVRBackend::EnsureOverlayInterface() {
 	return true;
 }
 
+bool OpenVRBackend::ShowKeyboard(const char* description, const char* existingText, UInt32 maxChars) {
+	if (!EnsureOverlayInterface()) {
+		return false;
+	}
+	auto* const overlay = static_cast<openvr::IVROverlayFnTable*>(m_overlay);
+	// Normal input, a single line, no flags (openvr_capi.h: EGamepadTextInputMode
+	// 0, EGamepadTextInputLineMode 0).
+	const int error = overlay->ShowKeyboard(0, 0, 0, description, maxChars, existingText, 0);
+	if (error != openvr::kOverlayErrorNone) {
+		OBVR_LOG("OpenVR: the keyboard did not open (overlay error %d)", error);
+		return false;
+	}
+	return true;
+}
+
+void OpenVRBackend::HideKeyboard() {
+	if (m_overlay == nullptr) {
+		return;
+	}
+	static_cast<openvr::IVROverlayFnTable*>(m_overlay)->HideKeyboard();
+}
+
+UInt32 OpenVRBackend::PollKeyboard(char* chars, UInt32 capacity, bool& done, bool& closed) {
+	done = false;
+	closed = false;
+	UInt32 written = 0;
+	if (chars != nullptr && capacity > 0) {
+		chars[0] = '\0';
+	}
+	if (m_system == nullptr) {
+		return 0;
+	}
+	auto* const system = static_cast<openvr::IVRSystemFnTable*>(m_system);
+	openvr::VREvent event{};
+	// Bounded: a queue that never empties would hold the frame.
+	for (UInt32 polled = 0; polled < 64 && system->PollNextEvent(&event, sizeof(event)); ++polled) {
+		if (event.eventType == openvr::kEventKeyboardCharInput) {
+			for (UInt32 i = 0; i < 8 && event.data.keyboard.newInput[i] != '\0'; ++i) {
+				if (chars != nullptr && written + 1 < capacity) {
+					chars[written++] = event.data.keyboard.newInput[i];
+					chars[written] = '\0';
+				}
+			}
+		} else if (event.eventType == openvr::kEventKeyboardDone) {
+			done = true;
+			closed = true;
+		} else if (event.eventType == openvr::kEventKeyboardClosed) {
+			closed = true;
+		}
+		event = openvr::VREvent{};
+	}
+	return written;
+}
+
 bool OpenVRBackend::CreateOverlay(const char* key, const char* name,
                                   openvr::VROverlayHandle& handle) {
 	if (!EnsureOverlayInterface()) {

@@ -1343,3 +1343,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME yield COMMAND yield_test)
+
+add_executable(vr_keyboard_test VrKeyboardTest.cpp)
+
+target_include_directories(vr_keyboard_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(vr_keyboard_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME vr_keyboard COMMAND vr_keyboard_test)

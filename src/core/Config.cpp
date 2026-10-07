@@ -852,6 +852,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.laserMaxStep = ReadFloat("Hands", "LaserMaxStep", h.laserMaxStep, path);
 		h.stickDeadZone = ReadFloat("Hands", "StickDeadZone", h.stickDeadZone, path);
 		h.turnSpeed = ReadFloat("Hands", "TurnSpeed", h.turnSpeed, path);
+		h.vrKeyboard = ReadBool("Hands", "VrKeyboard", h.vrKeyboard, path);
 		{
 			char word[32] = "";
 			ReadText("Hands", "WalkDirection", word, sizeof(word), path);

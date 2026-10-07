@@ -132,6 +132,21 @@ public:
 	// valid - the caller keeps its last reading or does nothing, as with the
 	// head. The hand-tracked mode's only source of hands.
 	bool ReadHand(bool rightHand, HandPose& out) const;
+
+	// SteamVR's own keyboard in the headset (IVROverlay ShowKeyboard): a
+	// single line, `description` over it, `existingText` in it, at most
+	// `maxChars`. False when the overlay interface is not there or the
+	// runtime refused (another keyboard already up, no headset). What is
+	// typed arrives through PollKeyboard.
+	bool ShowKeyboard(const char* description, const char* existingText, UInt32 maxChars);
+	void HideKeyboard();
+	// Drains the runtime's event queue: the keyboard's new characters (as
+	// the runtime sends them: the character itself, '\b' for a backspace)
+	// appended to `chars` up to `capacity` - 1 and terminated; `done` set
+	// when the Done key was pressed, `closed` when the keyboard went away
+	// either way. Other events are dropped - nothing else in OBVR reads
+	// them. Answers how many characters were added.
+	UInt32 PollKeyboard(char* chars, UInt32 capacity, bool& done, bool& closed);
 	// The thumb joint by joint from the hand's full skeleton, into
 	// out.thumb (vr/ThumbPose.h); leaves thumbValid false when it cannot.
 	void ReadThumb(bool rightHand, UInt64 skeleton, HandPose& out) const;

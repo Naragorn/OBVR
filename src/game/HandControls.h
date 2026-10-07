@@ -50,6 +50,13 @@ void ApplyHandControls(const vr::HandControlsWanted& wanted, const HandKeyMap& k
 // the worst thing an input mode can leave behind.
 void ReleaseHandControls(const HandKeyMap& keys);
 
+// One key down or up, by its virtual key (the US scan code behind it, as
+// the hand controls send theirs): the SteamVR keyboard's typing, a key a
+// frame (vr/VrKeyboard.h, KeyTapQueue). Shift goes down with the key and up
+// after it when `shift`. Outside the held-key bookkeeping: a tap is not a
+// control held.
+void TapKey(UInt32 virtualKey, bool shift, bool down);
+
 // A relative mouse movement, for the laser cursor walking the game's cursor.
 void MoveMouseBy(int dx, int dy);
 

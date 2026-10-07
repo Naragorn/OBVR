@@ -304,3 +304,33 @@ bool CursorOverScrollBar(char* nameOut, UInt32 nameSize) {
 }
 
 }  // namespace obvr::game
+
+namespace obvr::game {
+
+bool ActiveTileName(char* out, UInt32 size) {
+	if (out == nullptr || size == 0) {
+		return false;
+	}
+	out[0] = '\0';
+	const auto* const manager = *reinterpret_cast<const UInt8* const*>(addr::kInterfaceManagerPointer);
+	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(manager))) {
+		return false;
+	}
+	const auto* const tile =
+		*reinterpret_cast<const UInt8* const*>(manager + addr::kInterfaceActiveTileOffset);
+	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(tile))) {
+		return false;
+	}
+	const char* const name = TileName(tile);
+	if (name == nullptr) {
+		return false;
+	}
+	UInt32 at = 0;
+	for (; name[at] != '\0' && at + 1 < size; ++at) {
+		out[at] = name[at];
+	}
+	out[at] = '\0';
+	return true;
+}
+
+}  // namespace obvr::game

@@ -110,6 +110,11 @@ static_assert(kMenuIdMagicPopup == kMenuIdFirst + 23, "MagicPopup follows Map");
 // menu - IsMenuMode is what answers that.
 UInt32 ActiveMenuId();
 
+// The tile under the cursor (InterfaceManager's activeTile), by name,
+// into `out`; false with none or an unreadable name. For a click: what it
+// landed on.
+bool ActiveTileName(char* out, UInt32 size);
+
 // HUDReticle is a persistent tile, independent of normal menu ownership. The
 // game can therefore leave its sneak eye visible while any menu draws. The
 // player pointer is deliberately not part of this decision: after a save has

@@ -1,0 +1,18 @@
+# showracemenu with the hand mode off (the camera and render hooks on, so the script runs): whether the crash on
+# the race menu (2026-10-07, c0000005 at 0x0051FE90) is OBVR's at all.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\race-menu-handsoff.txt -Save autosave
+
+ini Hands Enabled=0
+
+
+
+expect HandScript: finished
+reject HandScript: WARNING
+
+wait 15
+mark loaded
+console-at loaded showracemenu
+wait 8
+mark racemenu
+wait 3
+mark racemenu-later

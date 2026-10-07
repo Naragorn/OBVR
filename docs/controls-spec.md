@@ -1203,3 +1203,71 @@ The tester: "Pfeil und Bogen wie in blade and sorcery. Linke hand hat ja bereits
   of the menu. The "Crosshair place" row is in the Hands section (the
   Aiming section is VR View's and was hidden from Full VR, which is why
   the tester found no row).
+
+### 4.14 Typing in the headset: SteamVR's keyboard (built 2026-10-07)
+
+The tester: "für die wenigen stellen im spiel für die man ein keyboard zum
+text eingeben braucht ... den standard best practice weg ... ein keyboard
+zu rendern mit dem man mit dem laserpointer interagieren kann und text in
+textfelder einfügen kann".
+
+**Where the game takes text** (its menu XMLs, read from Oblivion -
+Misc.bsa; the menu ids from xOBSE's GameTiles.cpp and UESP's entity list):
+- TextEditMenu (0x41B): the character's name at the end of the tutorial, a
+  custom class's name, anything else asked through CreateTextEditMenu - the
+  `textedit_text` field with OK and Back.
+- SpellmakingMenu (0x411) `spell_name_text`, EnchantmentMenu (0x412)
+  `ench_name_text`, AlchemyMenu (0x410) `name_text`: a name field each,
+  typed into once clicked.
+- The RaceSexMenu (0x40C) has no text field (`race_name` is the race's).
+- The console: not a place for the headset.
+
+**The keyboard** is SteamVR's own (IVROverlay `ShowKeyboard`, entry 74 of
+IVROverlay_028's table, counted from the header; the characters back as
+`VREvent_KeyboardCharInput` through IVRSystem `PollNextEvent`, entry 30),
+drawn by the runtime in the headset and typed on with the controllers'
+lasers - the way every SteamVR title takes text. OBVR's part
+(`vr/VrKeyboard.h`, vr_keyboard_test; `OpenVRBackend::ShowKeyboard`,
+`PollKeyboard`; `game::TapKey`):
+- it opens as the TextEditMenu comes up, and in the three naming menus
+  when the laser's click lands on the name field or its background (the
+  tile under the cursor, `game::ActiveTileName`), with a line over it
+  naming what is being named (`KeyboardPromptFor`);
+- each character the runtime sends becomes the key that carries it on a
+  US keyboard, with Shift for a capital (`KeyStrokeFor`; letters, digits,
+  space, `- _ , . ' "`; the runtime's `\b` is Backspace) - Oblivion reads
+  its text from scan codes by the US layout - pressed one key a frame, a
+  frame down and a frame up (`KeyTapQueue`): the game polls the keyboard
+  once a frame, and a press with its release in the same frame is never
+  seen. A character not on those keys (an umlaut) is left out and counted
+  in the log;
+- Done presses Enter for the TextEditMenu's OK; in the naming menus it only
+  closes the keyboard;
+- the keyboard goes with its menu, and with `[Hands] VrKeyboard=0` (Hands,
+  "VR keyboard") it never opens.
+Logged "Keyboard: SteamVR's keyboard opened for the ... menu", "Keyboard:
+n character(s) typed ...", "Keyboard: closed with its menu". Not seen in
+the headset; the harness cannot press the runtime's keys.
+
+**The race and sex menu's view** (the tester: "beim char gen beim new game
+die kamera kurz wie in vanilla vor dem player char setzen damit man sich
+ansehen kann"): not built yet. The probe for it (`race-menu.txt`,
+`showracemenu` from the console at a loaded save) crashed the game on the
+menu's opening (c0000005 at 0x0051FE90, 2026-10-07, before any trace of
+the menu in OBVR's log); whether OBVR's hooks are the cause is being told
+apart with the hooks off (`race-menu-plain.txt`).
+  **The probe's crash, read (the same evening):** the fault is in a
+  four-instruction getter at 0x0051FE90 (`movzx eax, [ecx+0x48]; shr 3;
+  and 1` - a TESHair's FixedColor flag, xOBSE GameForms.h), called from
+  the race menu's own code at 0x005C350F, 0x005C5E31, 0x005C61A3 and
+  0x005CBCB6 on the object at [player's virtual 0x170 result + 0x1C8] -
+  TESNPC's `hair` (GameForms.h, 0x1C8) - which was not an object. The
+  same crash with the hand mode off (`race-menu-handsoff.txt`), so not the
+  hands'; whether OBVR's camera or render hooks are involved could not be
+  told apart: with them off the script runtime does not run. The harness
+  save was made from the player's own save (a character who went through
+  the character generation), so a hair of none is not expected there
+  either. Open: a run of `showracemenu` without OBVR at all, by hand, is
+  the next evidence; and the chargen view itself is not built - it would
+  be built blind otherwise, which the tester asked not to do ("mache
+  keine fehler").
