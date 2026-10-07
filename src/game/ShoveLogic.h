@@ -160,7 +160,7 @@ inline UInt32 SlapLines(UInt8 modIndex, SlapSound sound, char out[4][kSlapLineCh
 // disposition from OBVR - its positioner needs them where they stand, and
 // its handler costs them their liking.
 inline constexpr UInt32 kSlapGrabTapFrames = 3;
-inline constexpr UInt32 kSlapGrabAimFrames = 1;
+inline constexpr UInt32 kSlapGrabAimFrames = 3;
 inline constexpr UInt32 kSlapGrabTapTotalFrames = kSlapGrabTapFrames + kSlapGrabAimFrames;
 inline bool SlapByModsGrabTap(UInt8 modIndex) { return modIndex != 0; }
 // Whether the grab is down this frame of the tap, `framesLeft` counting

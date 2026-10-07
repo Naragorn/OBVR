@@ -296,3 +296,27 @@ headset moves the synthetic head.
   - `SetHudReticleEnabled` hides the aux root on the title screen and does not show it again.
   - The HUDReticle update that OBVR wraps (0x00582251) skips it.
 - To do: run the tile probe during a fight (the aux root's visible and alpha, its rectangle) and a capture dump. Then lift it as a hand-HUD element (a `HudElement` of its own, default right hand or under the crosshair), or keep it with the crosshair quad.
+
+**The crosshair quad off the laser (2026-10-07).** The tester: "die
+tooltips vom laserpointer ausschneiden und stattdessen wie beim heben von
+objekten in die welt legen über das objekt wo die hand hinzeigt oder
+mittig der vr view (wechselbar in settings). denn so muss man bischen
+schielen mit den augen". The quad - the game's reticle with the context
+icon it carries - hung ahead of the pointing hand at the aim's depth: off
+the line of sight, so the eyes had to cross for it. Now `[Hands]
+CrosshairPlace` (Aiming, "Crosshair place (Full VR)"; `vr::CrosshairPlace`,
+`CrosshairQuadPlace`, hand_hud_test):
+- `target` (the default): over the thing the pick has settled on, facing
+  the eyes, the mirror of the Info row under it (`TargetHoverPoint` from
+  the row's anchor: above a small thing's bound, above the hit of a large
+  one by as much as the row hangs below), its apparent size kept over the
+  distance; with nothing under the hand the plain reticle rides the laser
+  as before, so the dot and the reticle do not come apart. It takes the
+  Info row's anchor, so it needs the hand HUD on;
+- `laser`: as before;
+- `view`: straight ahead of the head at the aim's depth - the crosshair of
+  the seated mode.
+The reach ring's icon and an arrow on the string still win. The Info row
+(the name) is unchanged: "die texte ... finde ich noch ok so". Logged
+"Crosshair: the quad over <ref> at <m> (CrosshairPlace=target)". Not seen
+in the headset.

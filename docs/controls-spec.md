@@ -997,6 +997,16 @@ The tester's asks of 2026-10-07, all in one round:
   with an NPC under the crosshair, counted up while held, 0 once its branch
   ran), sIsGrabbing, rGrabbedItem, sEnabled, sSlapper - and the key by the
   layout. What the next log says decides whether the mod ever sees the tap.
+  **Answered by that log (the same day):** the key went down (the layout's
+  Y, three frames), the crosshair was on the slapped one from the tap's
+  second pressed frame, the mod's grab quest ran with sEnabled and sSlapper
+  1 - and sNPCGrab stayed 0 while rGrabbedItem went to 0: the mod took the
+  grab's down-edge one game frame before the crosshair reached the NPC,
+  found nothing under it, and started no count. So the tap aims for three
+  frames before the grab goes down (`kSlapGrabAimFrames` 3, the press 3,
+  six in all, within the mod's seven). Not seen in the headset. The hard
+  shove on the same NPC knocked them down: "stärker haute den npc um lol
+  geil".
 - **Yielding by gesture** (`vr/Yield.h`, yield_test; the tester: "waffe
   einstecken ... mit offenen händen ... leicht von aussen nach innen wippen
   ... zählt das als ein yield"). The weapon away, both hands open (index
@@ -1021,7 +1031,7 @@ The tester's asks of 2026-10-07, all in one round:
   every one, and the index curl 0.6 to 1.0 with the hands held open - the
   index rests on the trigger - so a hand is open by its middle, ring and
   little fingers now (`YieldHandCurl`). The tester's "yield mit der geste
-  scheint zu klappen" that round was not OBVR's yield: none fired; the round after (0987362) fired three times, "the player's action -1" (the action unreadable), the crosshair on them twice, and the NPC refused - the tester: "yield klappte paarmal, wurde aber vom npc rejected, was ja ok ist"; and when activate goes down, "Yield: activate goes down after 10
+  scheint zu klappen" that round was not OBVR's yield: none fired; the round of 212fa21: "yield klappte einmal nicht, dann klappte es sogar mit ingame succces" - the miss had the hands at curls 0.54 to 0.64, so a hand is open under 0.7 now (a fist reads 0.9 and more); the round after (0987362) fired three times, "the player's action -1" (the action unreadable), the crosshair on them twice, and the NPC refused - the tester: "yield klappte paarmal, wurde aber vom npc rejected, was ja ok ist"; and when activate goes down, "Yield: activate goes down after 10
   frames of block - the player's action <n>, the crosshair on <ref>" shows
   whether the engine took the block and whom the pick had. A thing to
   settle with that line: vanilla's block is "with weapon or shield" (UESP

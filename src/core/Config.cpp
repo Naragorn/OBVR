@@ -860,6 +860,14 @@ void ReadRuntimeValues(Config& config, const char* path) {
 				         vr::kWalkDirectionNames[static_cast<UInt32>(h.walkDirection)]);
 			}
 		}
+		{
+			char word[32] = "";
+			ReadText("Hands", "CrosshairPlace", word, sizeof(word), path);
+			if (word[0] != 0 && !vr::ParseCrosshairPlace(word, h.crosshairPlace)) {
+				OBVR_LOG("Config: [Hands] CrosshairPlace=%s is not laser, target or view - kept %s", word,
+				         vr::kCrosshairPlaceNames[static_cast<UInt32>(h.crosshairPlace)]);
+			}
+		}
 
 		vr::QuickMenuSettings& qm = h.quickMenu;
 		qm.enabled = ReadBool("Hands", "QuickMenu", qm.enabled, path);

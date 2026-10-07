@@ -498,6 +498,31 @@ void TestTarget() {
 	const NiPoint3 wide = TargetHangPoint(NiPoint3{14.0f, 23.0f, 80.0f}, true, NiPoint3{10.0f, 20.0f, 50.0f}, 70.0f);
 	Check(Near(wide.x, 14.0f) && Near(wide.y, 23.0f), "a large thing: under the hit, not its far middle");
 
+	std::printf("The crosshair quad over the thing\n");
+	const NiPoint3 hoverSmall = TargetHoverPoint(low, true, NiPoint3{10.0f, 20.0f, 100.0f}, 5.0f);
+	Check(Near(hoverSmall.x, 10.0f) && Near(hoverSmall.y, 20.0f) && Near(hoverSmall.z, 108.0f),
+	      "a small thing: above its bound by the gap, over its middle");
+	const NiPoint3 hoverTall = TargetHoverPoint(tall, true, NiPoint3{0, 0, 50.0f}, 70.0f);
+	Check(Near(hoverTall.z, 73.0f), "a person or a door: as far above the hang as the hang is below the hit");
+	const NiPoint3 hoverBare = TargetHoverPoint(bare, false, NiPoint3{}, 0.0f);
+	Check(Near(hoverBare.z, 107.0f), "no bound: just over the hit");
+	Check(CrosshairQuadPlace(CrosshairPlace::Target, true, true) == CrosshairQuadAt::Target &&
+	          CrosshairQuadPlace(CrosshairPlace::Target, true, false) == CrosshairQuadAt::Laser,
+	      "target: over the settled thing, else on the laser");
+	Check(CrosshairQuadPlace(CrosshairPlace::View, true, true) == CrosshairQuadAt::Head &&
+	          CrosshairQuadPlace(CrosshairPlace::View, true, false) == CrosshairQuadAt::Head,
+	      "view: ahead of the head either way");
+	Check(CrosshairQuadPlace(CrosshairPlace::Laser, true, true) == CrosshairQuadAt::Laser &&
+	          CrosshairQuadPlace(CrosshairPlace::Target, false, true) == CrosshairQuadAt::Head,
+	      "laser: on the laser; without Full VR the head, whatever the setting");
+	CrosshairPlace parsed = CrosshairPlace::Laser;
+	Check(ParseCrosshairPlace("View", parsed) && parsed == CrosshairPlace::View && !ParseCrosshairPlace("hand", parsed) &&
+	          parsed == CrosshairPlace::View,
+	      "the INI's word, any case; a stranger left alone");
+	Check(CrosshairPlaceFromIndex(2.0f) == CrosshairPlace::View && CrosshairPlaceFromIndex(0.0f) == CrosshairPlace::Laser &&
+	          CrosshairPlaceFromIndex(9.0f) == kCrosshairPlaceDefault,
+	      "the row's index; out of range the default");
+
 	HandHudFrame f;
 	f.haveHead = true;
 	f.head.m[0][0] = f.head.m[1][1] = f.head.m[2][2] = 1.0f;

@@ -85,6 +85,9 @@ struct HandSettings {
 	float turnSpeed = 12.0f;
 	// Which way the left stick walks (vr/WalkDirection.h).
 	WalkDirection walkDirection = kWalkDirectionDefault;
+	// Where the crosshair quad with its context icon hangs (vr/HandHud.h,
+	// CrosshairPlace): on the laser, over the thing pointed at, or ahead.
+	CrosshairPlace crosshairPlace = kCrosshairPlaceDefault;
 
 	// The hand bones, written each frame to where the controllers are, so
 	// the hands and the weapon stay with the controllers while the animation

@@ -753,6 +753,77 @@ inline NiPoint3 TargetHangPoint(const NiPoint3& hit, bool haveBound, const NiPoi
 	return NiPoint3{x, y, z - kTargetHangGapUnits};
 }
 
+// Where the crosshair quad - the game's reticle with the context icon it
+// carries, the hand, the lock, the speech bubble - hangs in Full VR (the
+// tester, 2026-10-07: "die tooltips vom laserpointer ausschneiden und
+// stattdessen wie beim heben von objekten in die welt legen über das
+// objekt wo die hand hinzeigt oder mittig der vr view (wechselbar in
+// settings). denn so muss man bischen schielen"). On the laser, ahead of
+// the pointing hand at the aim's depth, the quad stands off the line of
+// sight and the eyes have to cross for it; over the thing the hand points
+// at, facing the eyes, it stands where the eyes already are; in the view,
+// straight ahead of the head at the aim's depth. [Hands] CrosshairPlace.
+enum class CrosshairPlace : UInt8 {
+	Laser = 0,
+	Target = 1,
+	View = 2,
+};
+inline constexpr UInt32 kCrosshairPlaceCount = 3;
+inline constexpr const char* kCrosshairPlaceNames[kCrosshairPlaceCount] = {"laser", "target", "view"};
+inline constexpr CrosshairPlace kCrosshairPlaceDefault = CrosshairPlace::Target;
+
+inline bool ParseCrosshairPlace(const char* text, CrosshairPlace& out) {
+	UInt32 index = 0;
+	if (!MatchChoiceWord(text, kCrosshairPlaceNames, kCrosshairPlaceCount, index)) {
+		return false;
+	}
+	out = static_cast<CrosshairPlace>(index);
+	return true;
+}
+
+inline CrosshairPlace CrosshairPlaceFromIndex(float value) {
+	if (!(value > -0.5f) || !(value < static_cast<float>(kCrosshairPlaceCount) - 0.5f)) {
+		return kCrosshairPlaceDefault;
+	}
+	return static_cast<CrosshairPlace>(static_cast<int>(value + 0.5f));
+}
+
+// Where the quad goes this frame. Over the target only while the pick has
+// settled on something (the Info row's anchor, game/PickHold.h) - with
+// nothing under the hand the plain reticle rides the laser as before, so
+// the dot and the reticle do not come apart. The reach ring's icon and an
+// arrow on the string are placed by their owners and win over all of this.
+enum class CrosshairQuadAt : UInt8 { Laser, Target, Head };
+inline CrosshairQuadAt CrosshairQuadPlace(CrosshairPlace place, bool fullVr, bool targetSettled) {
+	if (!fullVr) {
+		return CrosshairQuadAt::Head;
+	}
+	switch (place) {
+	case CrosshairPlace::Target:
+		return targetSettled ? CrosshairQuadAt::Target : CrosshairQuadAt::Laser;
+	case CrosshairPlace::View:
+		return CrosshairQuadAt::Head;
+	default:
+		return CrosshairQuadAt::Laser;
+	}
+}
+
+// Where the quad hovers over a thing, from the Target row's hang point
+// under it (TargetHangPoint): the same sideways, and above the bound of a
+// small thing or above the hit of a large one by as much as the row hangs
+// below - the mirror of the hang, so icon and name frame the thing.
+inline NiPoint3 TargetHoverPoint(const NiPoint3& hang, bool haveBound, const NiPoint3& boundCentre,
+                                 float boundRadius) {
+	if (!haveBound) {
+		return NiPoint3{hang.x, hang.y, hang.z + 2.0f * kTargetHangGapUnits};
+	}
+	if (boundRadius <= kTargetHangCentreUnits) {
+		const float radius = boundRadius > 0.0f ? boundRadius : 0.0f;
+		return NiPoint3{hang.x, hang.y, boundCentre.z + radius + kTargetHangGapUnits};
+	}
+	return NiPoint3{hang.x, hang.y, hang.z + 2.0f * (kTargetHangMaxDropUnits + kTargetHangGapUnits)};
+}
+
 // The pose a Target row hangs from: at `point` (tracking space), its face
 // turned to the head, level - as the compass's and the dialogue panel's.
 inline openvr::HmdMatrix34 TargetRowPose(const openvr::HmdMatrix34& head, float px, float py, float pz) {

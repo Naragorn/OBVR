@@ -6369,8 +6369,18 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// and the tooltip it carries hang ahead of that controller.
 	// On the hand the pick follows, the one the tooltip belongs to.
 	const bool crosshairLeft = g_hand.pickWithLeftHand;
-	const bool crosshairOnHand =
-		config.fullVrMode && (crosshairLeft ? g_hand.leftAimValid : g_hand.aimValid);
+	// Where the quad goes ([Hands] CrosshairPlace, vr::CrosshairQuadPlace):
+	// on the laser, over the thing the pick has settled on (the Info row's
+	// anchor from the last frame, g_rowAnchor - the quad the mirror of the
+	// row, above the thing as the row is below), or ahead of the head.
+	vr::openvr::HmdMatrix34 hoverHead{};
+	const bool targetSettled = config.fullVrMode && g_crosshairHasTarget && g_rowAnchor.valid &&
+	                           g_rowAnchor.ref != 0 && g_cyclopeanCameraWorldValid &&
+	                           g_headTracker.GetBackendForFrame().GetRenderPoseMatrix(hoverHead);
+	const vr::CrosshairQuadAt quadAt =
+		vr::CrosshairQuadPlace(config.hands.crosshairPlace, config.fullVrMode, targetSettled);
+	const bool crosshairOnHand = quadAt == vr::CrosshairQuadAt::Laser && config.fullVrMode &&
+	                             (crosshairLeft ? g_hand.leftAimValid : g_hand.aimValid);
 	float crosshairPitch = 0.0f;
 	float crosshairYaw = 0.0f;
 	LaserAnglesFor(config.hands, crosshairLeft, crosshairPitch, crosshairYaw);
@@ -6380,9 +6390,35 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			vr::HandDeviceForRole(!crosshairLeft, g_handRolesSwapped)),
 		crosshairPitch, crosshairYaw, config.hands.laserOriginMetres,
 		vr::LaserOffsetLocal(config.hands.laserOffsetRightMetres, config.hands.laserOffsetUpMetres, crosshairLeft));
-	g_crosshairLayer.SetRoomPlacement(
-		g_reachIconShown, g_reachIconPose,
-		HandTooltipWidth(render::kReachIconWidthMetres, true, config.hands.tooltipScale));
+	bool roomPlaced = g_reachIconShown;
+	vr::openvr::HmdMatrix34 roomPose = g_reachIconPose;
+	float roomWidth = HandTooltipWidth(render::kReachIconWidthMetres, true, config.hands.tooltipScale);
+	if (!roomPlaced && quadAt == vr::CrosshairQuadAt::Target) {
+		NiPoint3 centre{};
+		float radius = 0.0f;
+		const bool haveBound = game::RefWorldBound(g_rowAnchor.ref, centre, radius);
+		const NiPoint3 hover = vr::TargetHoverPoint(g_rowAnchor.point, haveBound, centre, radius);
+		const NiPoint3 at = vr::WorldPointInTracking(hoverHead, g_cyclopeanCameraWorldTransform.rot,
+		                                             g_cyclopeanCameraWorldTransform.pos, hover,
+		                                             config.tracker.unitsPerMetre);
+		const float dx = at.x - hoverHead.m[0][3];
+		const float dy = at.y - hoverHead.m[1][3];
+		const float dz = at.z - hoverHead.m[2][3];
+		const float metres = math::Sqrt(dx * dx + dy * dy + dz * dz);
+		// Its apparent size kept over the distance, as on the laser.
+		const CrosshairPlacement overThing = PlaceCrosshair(metres, config.tracker.crosshairSizeAtOneMetre);
+		roomPlaced = true;
+		roomPose = vr::FacingHeadAt(hoverHead, at);
+		roomWidth = HandTooltipWidth(overThing.widthMetres, true, config.hands.tooltipScale);
+		static UInt32 s_hoverLines = 3;
+		if (s_hoverLines > 0) {
+			--s_hoverLines;
+			OBVR_LOG("Crosshair: the quad over %08X at %.2f m (CrosshairPlace=target), bound %s radius %.0f",
+			         g_rowAnchor.ref, static_cast<double>(metres), haveBound ? "known" : "unknown",
+			         static_cast<double>(radius));
+		}
+	}
+	g_crosshairLayer.SetRoomPlacement(roomPlaced, roomPose, roomWidth);
 	// An arrow on the string (vr::StepArchery): the crosshair hangs on its
 	// line, ahead of the bow at the crosshair's distance, facing the eyes -
 	// where the shot goes, not where the right hand's laser points.

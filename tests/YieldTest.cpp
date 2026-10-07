@@ -48,7 +48,7 @@ int main() {
 	Check(!YieldAllowed(false, true, true, 0.1f, 0.2f, true), "a weapon out: not");
 	Check(!YieldAllowed(true, false, true, 0.1f, 0.2f, true) && !YieldAllowed(true, true, false, 0.1f, 0.2f, true),
 	      "a hand not tracked: not");
-	Check(!YieldAllowed(true, true, true, 0.7f, 0.2f, true) && !YieldAllowed(true, true, true, 0.1f, 0.6f, true),
+	Check(!YieldAllowed(true, true, true, 0.9f, 0.2f, true) && !YieldAllowed(true, true, true, 0.1f, 0.8f, true),
 	      "a hand closed: not");
 	Check(!YieldAllowed(true, true, true, 0.1f, 0.2f, false), "no one in combat ahead: not");
 
@@ -67,7 +67,7 @@ int main() {
 	Check(YieldBlockedBy(false, true, true, 0.1f, 0.2f, true, why, sizeof(why)) == 1 &&
 	          std::strcmp(why, "a weapon or the fists in hand") == 0,
 	      "a weapon out: named");
-	Check(YieldBlockedBy(true, false, false, 0.7f, 0.6f, false, why, sizeof(why)) == 5 &&
+	Check(YieldBlockedBy(true, false, false, 0.9f, 0.8f, false, why, sizeof(why)) == 5 &&
 	          std::strcmp(why, "the right hand not tracked, the left hand not tracked, the right hand closed, the left "
 	                           "hand closed, no one in combat ahead of the head") == 0,
 	      "everything else failing: each named, comma separated");

@@ -22,7 +22,7 @@ inline constexpr float kYieldStrokeMetres = 0.05f;
 inline constexpr UInt32 kYieldReversals = 4;       // two out-and-in cycles across both hands
 inline constexpr float kYieldWindowSeconds = 2.5f;
 inline constexpr float kYieldCooldownSeconds = 3.0f;
-inline constexpr float kYieldOpenCurl = 0.5f;      // a hand is open below this curl (YieldHandCurl)
+inline constexpr float kYieldOpenCurl = 0.7f;      // a hand is open below this curl (YieldHandCurl)
 
 struct YieldHandTrack {
 	bool tracking = false;
