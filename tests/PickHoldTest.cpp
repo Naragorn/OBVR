@@ -216,6 +216,15 @@ void TestShownSettle() {
 	Check(StepRefSettle(s, 0xE, 0.011f, 0xD) == 0xD, "another than the pick's: the settle as before");
 }
 
+void TestNpcTakesPick() {
+	std::printf("An NPC under the laser\n");
+	Check(NpcTakesPick(true, true, kPickInReach), "an item in reach: the NPC takes the pick");
+	Check(NpcTakesPick(true, true, kPickLaserOn), "an item on the laser too");
+	Check(NpcTakesPick(true, false, 0xFF), "no item at all: the NPC's");
+	Check(!NpcTakesPick(true, true, kPickTouched), "a touched item: the item keeps it");
+	Check(!NpcTakesPick(false, true, kPickInReach), "no NPC under the laser: as before");
+}
+
 void TestRankForHand() {
 	std::printf("One hand's rank of one item\n");
 	SearchHand hand;
@@ -254,6 +263,7 @@ int main() {
 	TestHand();
 	TestAnchor();
 	TestShownSettle();
+	TestNpcTakesPick();
 	TestRankForHand();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);

@@ -869,6 +869,36 @@ The tester: "bei 2 händern mit der linken hand meine hand an das schwert/axt/wh
   - **Locked on the handle.** Both of that run's lets go by distance ("the hand left the handle") came right after a swing. Held, the hand now stays on the handle however far its controller swings away; only the grip opening (for 0.12 s) lets go. `TwoHandSlackUnits` (new, default 0 = locked) gives the old release by distance back.
   - **The staff a little off.** The tester's staff measured "the shaft there 0.0 0.0 off its axis (0 vertices)": no vertex within 4 units of the right palm along a long plain shaft, so the node's axis was kept. For a staff the band now widens to 20 units when the narrow one has too few vertices (`kShaftWideBandUnits`). Not seen on that staff yet: the harness staff has 26 vertices in the narrow band.
 
+### 4.12 Rudeness: the middle finger, the slap, and talking past the things (built 2026-10-07)
+
+The tester's asks of 2026-10-07, all in one round:
+
+- **NPC before items.** "npc vor objekten, damit man immer in dialog gehen
+  kann auch wenn objekte eig näher an der hand wären". An NPC under the
+  pick hand's laser (`game::ActorUnderRay`, within 3 m and 8 degrees) takes
+  the pick from the items (`game::NpcTakesPick`, pick_hold_test): the pick
+  runs along the laser and Activate talks to them. Only a touched item still
+  wins - a hand on a thing is not pointing past it. Logged once: "Pick: an
+  NPC under the laser takes it from the items".
+- **The middle finger** (`game/Insult.h`, insult_test; `[Hands]
+  MiddleFinger=1`, `MiddleFingerDisposition=10`, both in the menu). From the
+  controller's finger curls: the middle finger out (curl 0.35 or less), the
+  index, ring and little fingers curled (0.6 or more), the thumb free. Held
+  at an NPC under that hand's laser (4 m, 15 degrees) for 0.4 s, their
+  disposition drops by the amount, once per gesture; the same NPC not again
+  within 8 s. Logged "Insult: the right hand's middle finger at <ref>". Not
+  seen in the headset; the harness has no finger curls to script.
+- **The slap** is the shove (`docs/combat-comfort-spec.md`, 4.9's
+  neighbour `game/Shove.h`): an open hand driven fast into someone, weapons
+  away. Light (1.5 m/s): they stagger and are pushed, their disposition
+  drops, no crime. Hard (3.2 m/s): knocked down, more disposition, and it
+  counts as a hit (`ShoveCountsAsHit=1`: friends forgive a few, others call
+  the guards). New: a light shove landed in the face - 35 cm or more above
+  the body's middle (`SlapInTheFace`) - costs `[Hands] SlapDisposition`
+  (10) instead of the light shove's 5 (shove_test). That is the tester's
+  "ins gesicht slappen ... crime default off; mit viel wucht haut es den npc
+  um, crime default an, mehr dispo verlust".
+
 ### 4.11 The bow by hand, as in Blade & Sorcery (built 2026-09-30)
 
 The tester: "Pfeil und Bogen wie in blade and sorcery. Linke hand hat ja bereits den Bogen. Jetzt muss rechte noch auf rechter schulter den Pfeil bekommen und an den bogen führen. Beim loslassen Schuss. Zielen im groben mit links mit dem bogen, im feinen mit rechts dem Pfeil. Crosshair muss voll sichtbar sein wenn Optionen dafür an ist und man zielt damit."

@@ -38,7 +38,6 @@ add_library(OBVR SHARED
 	src/ui/CanvasOverlay.cpp
 	src/ui/QuickMenuPainter.cpp
 	src/ui/StowSpotPainter.cpp
-	src/ui/HeldNamePainter.cpp
 	src/ui/GuidePanel.cpp
 	src/ui/SettingsMenu.cpp
 	src/ui/NativeSettings.cpp

@@ -38,6 +38,11 @@ struct ShoveSettings {
 	float fatigueHard = 40.0f;  // PLANCK's shove costs 40 stamina
 	float dispositionLight = 5.0f;
 	float dispositionHard = 15.0f;
+	// A slap: the open hand into the face rather than the body (the tester,
+	// 2026-10-07: "man kann npcs ins gesicht slappen ... disposition wird
+	// verloren, einstellbar") - a light shove landed kSlapFaceAboveUnits or
+	// more above the body's middle costs this much instead of dispositionLight.
+	float dispositionFace = 10.0f;
 	// A hard shove - pushed to the ground - counts as a hit on them: the
 	// engine's own reaction to being hit (the tester, 2026-09-29: "den zu boden
 	// schubsen nur der zählt wie ein hit der andere schubser nicht") - a friend
@@ -51,6 +56,22 @@ enum class ShoveKind : UInt8 { None, Light, Hard };
 // Whether this shove goes to the engine as a hit.
 inline bool ShoveCountsAsHit(const ShoveSettings& s, ShoveKind kind) {
 	return s.countsAsHit && kind == ShoveKind::Hard;
+}
+
+// Whether the hand landed in the face: this far above the body's middle
+// (a bound's centre is about the hips; the head is some 60 cm up).
+inline constexpr float kSlapFaceAboveUnits = 25.0f;  // 35 cm
+inline bool SlapInTheFace(float handZ, float bodyCentreZ) {
+	return handZ - bodyCentreZ >= kSlapFaceAboveUnits;
+}
+
+// What a shove costs the actor's liking: the hard shove's, or for a light
+// one the face's or the body's.
+inline float ShoveDisposition(const ShoveSettings& s, ShoveKind kind, bool inTheFace) {
+	if (kind == ShoveKind::Hard) {
+		return s.dispositionHard;
+	}
+	return inTheFace ? s.dispositionFace : s.dispositionLight;
 }
 
 // What the hand is doing now.

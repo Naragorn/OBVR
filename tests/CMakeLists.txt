@@ -1317,17 +1317,12 @@ endif()
 
 add_test(NAME pick_hold COMMAND pick_hold_test)
 
-add_executable(held_name_test
-	HeldNameTest.cpp
-	../src/ui/HeldNamePainter.cpp
-	../src/ui/MenuCanvas.cpp
-	../src/ui/MenuFont.cpp
-)
+add_executable(insult_test InsultTest.cpp)
 
-target_include_directories(held_name_test PRIVATE ../src)
+target_include_directories(insult_test PRIVATE ../src)
 
 if(NOT MSVC)
-	target_compile_options(held_name_test PRIVATE -Wall -Wextra)
+	target_compile_options(insult_test PRIVATE -Wall -Wextra)
 endif()
 
-add_test(NAME held_name COMMAND held_name_test)
+add_test(NAME insult COMMAND insult_test)

@@ -43,6 +43,15 @@ bool PlayPowerAttackGrunt();
 void* LivingActorAt(const NiPoint3& point, float factor, float padUnits, NiPoint3* centreOut,
                     float heightFactor = -1.0f);
 
+// The living actor a ray points at: its bound within `coneCos` of the
+// direction seen from `origin` (the angle to the bound's edge, as the
+// laser's miss of an item is taken), no farther than `maxUnits` from the
+// origin to its centre - the nearest when several; nullptr with none.
+// `centreOut` gets its bound's centre. For the pick (an NPC under the laser
+// takes it from the items) and the insult (game/Insult.h).
+void* ActorUnderRay(const NiPoint3& origin, const NiPoint3& direction, float maxUnits, float coneCos,
+                    NiPoint3* centreOut);
+
 // The equipped weapon's form ID (TESForm+0x0C, xOBSE GameForms.h: typeID, flags,
 // refID), 0 with none - for the test runner's console lines.
 UInt32 EquippedWeaponFormId();

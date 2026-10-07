@@ -126,7 +126,8 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 	// A thrown thing (byHand false) costs the player nothing more: the throw
 	// was the effort.
 	const float fatigue = !byHand ? 0.0f : kind == ShoveKind::Hard ? settings.fatigueHard : settings.fatigueLight;
-	const float disposition = kind == ShoveKind::Hard ? settings.dispositionHard : settings.dispositionLight;
+	const bool inTheFace = byHand && SlapInTheFace(fromWorld.z, centre.z);
+	const float disposition = ShoveDisposition(settings, kind, inTheFace);
 	if (fatigue > 0.0f) {
 		SpendPlayerFatigue(fatigue);
 	}

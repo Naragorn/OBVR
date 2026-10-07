@@ -118,6 +118,18 @@ inline NearItem StepPickHold(PickHoldState& s, const NearItem& best, const NearI
 	return s.held;
 }
 
+// An NPC under the laser takes the pick from the items (the tester,
+// 2026-10-07: "npc vor objekten, damit man immer in dialog gehen kann auch
+// wenn objekte näher an der hand wären"): the pick then runs along the laser,
+// so Activate talks to them. Only a touched item still wins - a hand on a
+// thing is not pointing past it.
+inline constexpr float kNpcTalkUnits = 210.0f;      // 3 m
+inline constexpr float kNpcUnderLaserCos = 0.990f;  // 8 degrees
+
+inline bool NpcTakesPick(bool npcUnderLaser, bool itemHeld, UInt8 itemClass) {
+	return npcUnderLaser && (!itemHeld || itemClass != kPickTouched);
+}
+
 // What the ring, the info row and the mark are shown on: the engine's pick
 // target, but only once it has been the same for a moment
 // (kShownSettleSeconds). The ray aimed at the held item can cross another

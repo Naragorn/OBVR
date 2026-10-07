@@ -622,8 +622,13 @@ things left, built the same day:
   TESFullName in the menu font on a dark strip (`ui/HeldNamePainter.h`,
   held_name_test), a canvas overlay 36 cm wide hung under the held thing's
   bound and eased like the info row (`UpdateHeldName`), hidden when nothing
-  is held. The game's info row stays what it was for everything else. Not
-  seen in the headset.
+  is held. **Removed the same day** (the tester: the vanilla font or
+  nothing). The engine route is still open: the field at HUDInfoMenu+0x54
+  is written at 0x005A9E3F (`mov [esi+54h], eax` after a float-to-int
+  call, inside a long HUDInfoMenu update around 0x005A9D90), which does not
+  look like a plain "set the crosshair reference" entry; the function that
+  builds the text from a reference is not found yet. The pick aimed at the
+  held thing (the `heldRay` branch) stays, since it costs nothing.
 - **Owned things in the hand (not built, the tester's decision).** The idea
   of a toggle making the grab of an owned thing no crime until it is
   stowed, eaten, carried out of the cell or 15 m away is left to Put it in

@@ -114,6 +114,12 @@ void TestCountsAsHit() {
 	ShoveSettings s;
 	Check(ShoveCountsAsHit(s, ShoveKind::Hard), "pushed to the ground: a hit");
 	Check(!ShoveCountsAsHit(s, ShoveKind::Light), "a light shove: no hit, only their liking");
+	Check(SlapInTheFace(60.0f, 30.0f) && !SlapInTheFace(40.0f, 30.0f) && !SlapInTheFace(10.0f, 30.0f),
+	      "in the face from 35 cm above the body's middle, not below");
+	Check(ShoveDisposition(s, ShoveKind::Light, false) == s.dispositionLight &&
+	          ShoveDisposition(s, ShoveKind::Light, true) == s.dispositionFace &&
+	          ShoveDisposition(s, ShoveKind::Hard, true) == s.dispositionHard,
+	      "the body's, the face's, the hard shove's liking");
 	Check(!ShoveCountsAsHit(s, ShoveKind::None), "no shove: nothing");
 	s.countsAsHit = false;
 	Check(!ShoveCountsAsHit(s, ShoveKind::Hard), "switched off: only the disposition");

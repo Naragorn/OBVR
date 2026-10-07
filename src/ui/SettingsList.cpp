@@ -833,6 +833,27 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.shove.countsAsHit = v != 0.0f; },
 	},
 	{
+		"Hands", "Slap disposition", "How much a slap in the face (a light shove landed high) costs their liking",
+		ItemKind::Number, 0.0f, 50.0f, 1.0f, 0, false,
+		"Hands", "SlapDisposition",
+		+[](const Config& c) { return c.hands.shove.dispositionFace; },
+		+[](Config& c, float v) { c.hands.shove.dispositionFace = v; },
+	},
+	{
+		"Hands", "Middle finger", "The middle finger held at someone costs their liking",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "MiddleFinger",
+		+[](const Config& c) { return c.hands.middleFinger ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.middleFinger = v != 0.0f; },
+	},
+	{
+		"Hands", "Middle finger disposition", "How much the middle finger costs their liking",
+		ItemKind::Number, 0.0f, 50.0f, 1.0f, 0, false,
+		"Hands", "MiddleFingerDisposition",
+		+[](const Config& c) { return c.hands.middleFingerDisposition; },
+		+[](Config& c, float v) { c.hands.middleFingerDisposition = v; },
+	},
+	{
 		"Hands", "Reach tooltip", "The tooltip icon moves onto what a closed grip would pick up",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "ReachTooltip",

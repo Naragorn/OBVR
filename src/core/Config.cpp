@@ -747,6 +747,10 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.shove.hardForce = ReadFloat("Hands", "ShoveHardForce", h.shove.hardForce, path);
 		h.shove.distance = ReadFloat("Hands", "ShoveDistance", h.shove.distance, path);
 		h.shove.countsAsHit = ReadBool("Hands", "ShoveCountsAsHit", h.shove.countsAsHit, path);
+		h.shove.dispositionFace = ReadFloat("Hands", "SlapDisposition", h.shove.dispositionFace, path);
+		h.middleFinger = ReadBool("Hands", "MiddleFinger", h.middleFinger, path);
+		h.middleFingerDisposition =
+			ReadFloat("Hands", "MiddleFingerDisposition", h.middleFingerDisposition, path);
 		h.lead.enabled = ReadBool("Hands", "LeadByHand", h.lead.enabled, path);
 		h.throwHit.enabled = ReadBool("Hands", "ThrowHits", h.throwHit.enabled, path);
 		h.twoHand.enabled = ReadBool("Hands", "TwoHandGrip", h.twoHand.enabled, path);

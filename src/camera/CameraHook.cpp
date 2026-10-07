@@ -71,6 +71,7 @@
 #include "game/GrabNearBody.h"
 #include "game/NearbyItems.h"
 #include "game/PickHold.h"
+#include "game/Insult.h"
 #include "game/MeleeHit.h"
 #include "game/QuickKeys.h"
 #include "game/ItemIcons.h"
@@ -104,7 +105,6 @@
 #include "ui/SettingsMenuLayer.h"
 #include "ui/QuickMenuPainter.h"
 #include "ui/StowSpotPainter.h"
-#include "ui/HeldNamePainter.h"
 #include "ui/GuidePanel.h"
 #include "render/InterfaceRenderHook.h"
 #include "render/CursorPickHook.h"
@@ -1208,44 +1208,46 @@ ui::CanvasOverlay g_stowSpotLayer("obvr.stowspot", "OBVR Stow Spot", ui::kStowSp
 ui::StowSpotView g_stowSpotView;
 UInt32 g_stowSpotRevision = 1;
 
-// The name of the thing in the hand, hung under it (ui/HeldNamePainter.h).
-ui::CanvasOverlay g_heldNameLayer("obvr.heldname", "OBVR Held Name", ui::kHeldNameCanvasWidth,
-                                  ui::kHeldNameCanvasHeight);
-ui::HeldNameView g_heldNameView;
-UInt32 g_heldNameRevision = 1;
-UInt32 g_heldNameRef = 0;
-game::AnchorState g_heldNameAnchor;
+// The middle finger at an NPC (game/Insult.h): [0] the right hand, [1] the left.
+game::InsultState g_insult[2];
+UInt32 g_insultLines = 20;
 
-// Each frame: while the grab holds something with a name, the strip with its
-// name under it, facing the eyes; hidden otherwise.
-void UpdateHeldName(const Config& config, vr::OpenVRBackend& backend, bool active, bool menuIsUp) {
-	const UInt32 held = (active && !menuIsUp && game::PlayerHoldsGrab()) ? game::GrabbedRef() : 0;
-	if (held != g_heldNameRef) {
-		g_heldNameRef = held;
-		g_heldNameView.name[0] = '\0';
-		if (held != 0 && mem::LooksLikeObjectAddress(held)) {
-			const UInt32 base = *reinterpret_cast<const UInt32*>(held + addr::kRefBaseFormOffset);
-			game::ReadFormFullName(base, g_heldNameView.name, sizeof(g_heldNameView.name));
-		}
-		++g_heldNameRevision;
-	}
-	NiPoint3 centre{};
-	float radius = 0.0f;
-	vr::openvr::HmdMatrix34 head{};
-	const bool shown = ui::HeldNameShown(held != 0, g_heldNameView.name) && g_cyclopeanCameraWorldValid &&
-	                   game::RefWorldBound(held, centre, radius) && backend.GetRenderPoseMatrix(head);
-	if (!shown) {
-		g_heldNameLayer.Hide(backend);
+void UpdateInsult(const Config& config, const vr::HandModeFrame& frame, bool active, float dt) {
+	const vr::HandSettings& hands = config.hands;
+	if (!active || !hands.middleFinger || !g_cyclopeanCameraWorldValid) {
+		g_insult[0] = game::InsultState{};
+		g_insult[1] = game::InsultState{};
 		return;
 	}
-	// Under the thing's bound, eased as the info row is (game/PickHold.h).
-	const NiPoint3 hang = game::StepAnchor(g_heldNameAnchor, held,
-	                                       vr::TargetHangPoint(centre, true, centre, radius), g_deltaSeconds);
-	const NiPoint3 at = vr::WorldPointInTracking(head, g_cyclopeanCameraWorldTransform.rot,
-	                                             g_cyclopeanCameraWorldTransform.pos, hang,
-	                                             config.tracker.unitsPerMetre);
-	g_heldNameLayer.Show(backend, render::GetGameDevice(), vr::TargetRowPose(head, at.x, at.y, at.z),
-	                     ui::kHeldNameWidthMetres, g_heldNameRevision, ui::PaintHeldNameFor, &g_heldNameView);
+	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
+	for (int side = 0; side < 2; ++side) {
+		const bool left = side == 1;
+		const bool tracked = left ? (frame.left.valid && g_hand.leftHandValid) : (frame.right.valid && g_hand.rightHandValid);
+		const bool gesture = tracked && game::InsultGesture(left ? g_hand.leftCurlValid : g_hand.rightCurlValid,
+		                                                    left ? g_hand.leftCurl : g_hand.rightCurl);
+		void* actor = nullptr;
+		if (gesture) {
+			float pitch = 0.0f;
+			float yaw = 0.0f;
+			LaserAnglesFor(hands, left, pitch, yaw);
+			const vr::LaserWorldRay ray = vr::HandLaserWorldRay(
+				camRot, camPos, left ? g_hand.leftHandRotation : g_hand.rightHandRotation,
+				left ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits, pitch, yaw, hands.laserOriginMetres,
+				config.tracker.unitsPerMetre,
+				vr::LaserOffsetLocal(hands.laserOffsetRightMetres, hands.laserOffsetUpMetres, left));
+			actor = game::ActorUnderRay(ray.origin, ray.direction, game::kInsultReachUnits, game::kInsultConeCos,
+			                            nullptr);
+		}
+		if (game::StepInsult(g_insult[side], gesture, actor, dt)) {
+			game::ChangeDisposition(actor, -hands.middleFingerDisposition);
+			if (g_insultLines > 0) {
+				--g_insultLines;
+				OBVR_LOG("Insult: the %s hand's middle finger at %08X - their disposition -%.0f", left ? "left" : "right",
+				         reinterpret_cast<UInt32>(actor), static_cast<double>(hands.middleFingerDisposition));
+			}
+		}
+	}
 }
 
 // The spot's pose: at its point, its face turned to the eyes, upright.
@@ -1995,7 +1997,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	                                      active && !menuIsUp && frame.inWorld &&
 	                                          !frame.settingsMenuOpen);
 	UpdateStowPlacing(GetConfig(), backend, frame);
-	UpdateHeldName(config, backend, active && frame.inWorld && !frame.settingsMenuOpen, menuIsUp);
+	UpdateInsult(config, frame, active && !menuIsUp && frame.inWorld && !frame.settingsMenuOpen, dt);
 	g_hand = g_handMode.Update(frame, config.hands);
 	// Taking loose items only by hand ([Hands] TakeOnlyByHand, vr::Stow): the
 	// activate button is kept from the game while the laser is on one. Read
@@ -2231,6 +2233,24 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		const UInt32 before = g_pickHold.held.valid ? g_pickHold.held.ref : 0;
 		const bool beforeLeft = g_pickHold.held.left;
 		g_nearItem = game::StepPickHold(g_pickHold, best, keptByHand, dt);
+		// An NPC under the pick hand's laser takes the pick from the items
+		// (game::NpcTakesPick): the pick runs along the laser, Activate talks.
+		{
+			const bool pickLeft = g_nearItem.valid ? g_nearItem.left : false;
+			const game::SearchHand laser = hand(pickLeft, pickLeft ? g_hand.leftHandValid : g_hand.rightHandValid);
+			const bool npcUnderLaser =
+				laser.valid && game::ActorUnderRay(laser.position, laser.direction, game::kNpcTalkUnits,
+				                                   game::kNpcUnderLaserCos, nullptr) != nullptr;
+			if (game::NpcTakesPick(npcUnderLaser, g_nearItem.valid, g_nearItem.rankClass)) {
+				static bool s_npcSaid = false;
+				if (g_nearItem.valid && !s_npcSaid) {
+					s_npcSaid = true;
+					OBVR_LOG("Pick: an NPC under the laser takes it from the items (the laser's pick, Activate talks)");
+				}
+				g_nearItem = game::NearItem{};
+				g_pickHold = game::PickHoldState{};
+			}
+		}
 		const UInt32 after = g_nearItem.valid ? g_nearItem.ref : 0;
 		if ((after != before || (after != 0 && g_nearItem.left != beforeLeft)) && g_pickLines > 0) {
 			--g_pickLines;

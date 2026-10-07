@@ -178,6 +178,10 @@ struct HandSettings {
 	// The shove: an open hand driven fast into someone, weapons away
 	// (game/ShoveLogic.h).
 	game::ShoveSettings shove;
+	// The middle finger at an NPC (game/Insult.h): their disposition drops
+	// by this much.
+	bool middleFinger = true;
+	float middleFingerDisposition = 10.0f;
 	// Taking someone by the hand (game/LeadLogic.h).
 	game::LeadSettings lead;
 	// Thrown things that hit people (game/ThrowLogic.h).

@@ -702,6 +702,58 @@ void* LivingActorAt(const NiPoint3& point, float factor, float padUnits, NiPoint
 	return best;
 }
 
+void* ActorUnderRay(const NiPoint3& origin, const NiPoint3& direction, float maxUnits, float coneCos,
+                    NiPoint3* centreOut) {
+	UInt8* const player = PlayerOrNull();
+	const float dirLength = math::Sqrt(direction.LengthSquared());
+	if (player == nullptr || !(dirLength > 1.0e-6f)) {
+		return nullptr;
+	}
+	auto* const manager = reinterpret_cast<void*>(addr::kActorProcessManager);
+	auto* node = static_cast<ListNode*>(
+		reinterpret_cast<ThisPtrArgFn>(addr::kActorListByLevel)(manager, nullptr, 0));
+	void* best = nullptr;
+	float bestSquared = 0.0f;
+	for (UInt32 visited = 0; node != nullptr && visited < 512; ++visited) {
+		if (!LooksLikeObject(node)) {
+			break;
+		}
+		void* const actor = node->data;
+		node = node->next;
+		if (actor == nullptr || actor == player || !LooksLikeObject(actor) || !IsActorObject(actor) ||
+		    ActorIsDead(actor)) {
+			continue;
+		}
+		NiBound bound;
+		if (!ActorBound(actor, &bound)) {
+			continue;
+		}
+		const NiPoint3 to = bound.center - origin;
+		const float dSquared = to.LengthSquared();
+		const float toLength = math::Sqrt(dSquared);
+		if (!(toLength > 1.0e-3f) || toLength > maxUnits || (best != nullptr && dSquared >= bestSquared)) {
+			continue;
+		}
+		// The angle from the ray to the bound's edge: the cone is passed when
+		// the ray runs within the bound's half-angle of its centre.
+		float cosine = (to.x * direction.x + to.y * direction.y + to.z * direction.z) / (toLength * dirLength);
+		cosine = cosine > 1.0f ? 1.0f : (cosine < -1.0f ? -1.0f : cosine);
+		const float angle = math::Atan2(math::Sqrt(1.0f - cosine * cosine), cosine);
+		const float half = toLength > bound.radius ? math::Asin(bound.radius / toLength) : 3.14159f;
+		const float miss = angle > half ? angle - half : 0.0f;
+		const float coneAngle = math::Atan2(math::Sqrt(1.0f - coneCos * coneCos), coneCos);
+		if (miss > coneAngle) {
+			continue;
+		}
+		best = actor;
+		bestSquared = dSquared;
+		if (centreOut != nullptr) {
+			*centreOut = bound.center;
+		}
+	}
+	return best;
+}
+
 }  // namespace obvr::game
 
 namespace obvr::game {
