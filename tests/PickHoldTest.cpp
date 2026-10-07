@@ -48,10 +48,12 @@ void TestClearlyBetter() {
 	std::printf("Clearly better\n");
 	Check(RanksClearlyBetter(0, 100.0f, 1, 0.0f), "a better class wins whatever the keys");
 	Check(!RanksClearlyBetter(2, 0.0f, 1, 1.0f), "a worse class loses whatever the keys");
-	Check(RanksClearlyBetter(1, 0.010f, 1, 0.050f), "the laser's miss: 2.3 degrees less is clear");
-	Check(!RanksClearlyBetter(1, 0.030f, 1, 0.050f), "the laser's miss: 1.1 degrees less is not");
-	Check(RanksClearlyBetter(2, 10.0f, 2, 16.0f), "by distance: 6 units nearer is clear");
-	Check(!RanksClearlyBetter(2, 12.0f, 2, 16.0f), "by distance: 4 units nearer is not");
+	Check(RanksClearlyBetter(2, 0.010f, 2, 0.050f), "the laser's miss: 2.3 degrees less is clear");
+	Check(!RanksClearlyBetter(2, 0.030f, 2, 0.050f), "the laser's miss: 1.1 degrees less is not");
+	Check(RanksClearlyBetter(1, 10.0f, 1, 12.0f), "by distance: 2 units (3 cm) nearer is clear");
+	Check(!RanksClearlyBetter(1, 11.0f, 1, 12.0f), "by distance: 1 unit nearer is not");
+	Check(RanksClearlyBetter(0, 1.0f, 0, 3.0f) && !RanksClearlyBetter(4, 30.0f, 4, 31.0f),
+	      "touched and palm-found: by distance too");
 	Check(!RanksClearlyBetter(3, 0.2f, 3, 0.2f), "the same is never clearer");
 }
 
@@ -60,15 +62,16 @@ void TestTakeAndStay() {
 	PickHoldState s;
 	const NearItem none;
 	Check(!Frame(s, none, none, none, 0.011f).valid, "nothing in reach: nothing held");
-	const NearItem a = Item(0xA, false, 2, 10.0f);
+	const NearItem a = Item(0xA, false, 1, 10.0f);
 	const NearItem got = Frame(s, a, none, none, 0.011f);
 	Check(got.valid && got.ref == 0xA && !got.left, "the first item is taken at once");
 	// The next frame: still the best, nearer now.
-	const NearItem aNearer = Item(0xA, false, 2, 8.0f, 8.0f);
+	const NearItem aNearer = Item(0xA, false, 1, 8.0f, 8.0f);
 	const NearItem kept = Frame(s, aNearer, aNearer, none, 0.011f);
 	Check(kept.valid && kept.ref == 0xA && Near(kept.distance, 8.0f), "held on, with this frame's values");
-	// Another item ranks a little better: not clearly, so A stays.
-	const NearItem bClose = Item(0xB, false, 2, 6.0f);
+	// Another item ranks a little better (a centimetre nearer): not
+	// clearly, so A stays.
+	const NearItem bClose = Item(0xB, false, 1, 7.0f);
 	for (int i = 0; i < 30; ++i) {
 		Frame(s, bClose, aNearer, none, 0.011f);
 	}
@@ -79,9 +82,9 @@ void TestChallenge() {
 	std::printf("The challenge\n");
 	PickHoldState s;
 	const NearItem none;
-	const NearItem a = Item(0xA, false, 2, 10.0f);
+	const NearItem a = Item(0xA, false, 1, 10.0f);
 	Frame(s, a, none, none, 0.011f);
-	const NearItem bClear = Item(0xB, false, 2, 2.0f);
+	const NearItem bClear = Item(0xB, false, 1, 5.0f);
 	NearItem got = Frame(s, bClear, a, none, 0.05f);
 	Check(got.ref == 0xA && s.challenger == 0xB, "clearly better: the challenge starts, A still held");
 	got = Frame(s, bClear, a, none, 0.05f);
@@ -93,7 +96,7 @@ void TestChallenge() {
 	PickHoldState t;
 	Frame(t, a, none, none, 0.011f);
 	Frame(t, bClear, a, none, 0.10f);
-	Frame(t, Item(0xB, false, 2, 9.0f), a, none, 0.011f);
+	Frame(t, Item(0xB, false, 1, 9.5f), a, none, 0.011f);
 	Check(t.held.ref == 0xA && t.challenger == 0 && Near(t.challengeSeconds, 0.0f),
 	      "a challenger back within the margin: the clock reset");
 	Frame(t, bClear, a, none, 0.10f);
@@ -105,7 +108,7 @@ void TestChallenge() {
 	PickHoldState u;
 	Frame(u, a, none, none, 0.011f);
 	Frame(u, bClear, a, none, 0.10f);
-	Frame(u, Item(0xC, false, 2, 1.0f), a, none, 0.10f);
+	Frame(u, Item(0xC, false, 1, 4.0f), a, none, 0.10f);
 	Check(u.held.ref == 0xA && u.challenger == 0xC && Near(u.challengeSeconds, 0.10f),
 	      "a second challenger starts its own clock");
 
@@ -113,7 +116,7 @@ void TestChallenge() {
 	PickHoldState v;
 	Frame(v, Item(0xA, false, 3, 0.3f), none, none, 0.011f);
 	Frame(v, Item(0xB, false, 1, 0.05f), Item(0xA, false, 3, 0.3f), none, 0.10f);
-	Check(v.held.ref == 0xA, "the laser on B against A in its cone: not before the challenge is over");
+	Check(v.held.ref == 0xA, "B in the grab's reach against A in the cone: not before the challenge is over");
 
 	// A touch wins at once.
 	PickHoldState w;
@@ -130,7 +133,7 @@ void TestGrace() {
 	std::printf("The grace\n");
 	PickHoldState s;
 	const NearItem none;
-	const NearItem a = Item(0xA, false, 2, 10.0f);
+	const NearItem a = Item(0xA, false, 1, 10.0f);
 	Frame(s, a, none, none, 0.011f);
 	// No hand reaches for A any more; B is the best.
 	const NearItem b = Item(0xB, false, 4, 40.0f);
@@ -155,8 +158,8 @@ void TestHand() {
 	std::printf("The hand\n");
 	PickHoldState s;
 	const NearItem none;
-	const NearItem aRight = Item(0xA, false, 2, 10.0f);
-	const NearItem aLeft = Item(0xA, true, 2, 9.0f);
+	const NearItem aRight = Item(0xA, false, 1, 10.0f);
+	const NearItem aLeft = Item(0xA, true, 1, 9.5f);
 	Frame(s, aRight, none, none, 0.011f);
 	// Both hands reach for A, the left a little nearer: the right keeps it.
 	for (int i = 0; i < 30; ++i) {
@@ -164,7 +167,7 @@ void TestHand() {
 	}
 	Check(s.held.ref == 0xA && !s.held.left, "the left hand a little nearer: the right keeps it");
 	// The left clearly nearer: after the challenge.
-	const NearItem aLeftNear = Item(0xA, true, 2, 2.0f);
+	const NearItem aLeftNear = Item(0xA, true, 1, 2.0f);
 	Frame(s, aLeftNear, aRight, aLeftNear, 0.10f);
 	Check(!s.held.left && s.challenger == 0xA && s.challengerLeft, "the left hand clearly nearer: a challenge");
 	Frame(s, aLeftNear, aRight, aLeftNear, 0.06f);
@@ -200,14 +203,16 @@ void TestShownSettle() {
 	RefSettleState s;
 	Check(StepRefSettle(s, 0xA, 0.011f) == 0xA, "nothing shown: the first thing at once");
 	Check(StepRefSettle(s, 0xA, 0.011f) == 0xA, "the same thing: shown on");
-	Check(StepRefSettle(s, 0xB, 0.05f) == 0xA, "another thing wanted: A still shown");
-	Check(StepRefSettle(s, 0xB, 0.05f) == 0xA, "0.10 s: still A");
+	Check(StepRefSettle(s, 0xB, 0.03f) == 0xA, "another thing wanted: A still shown");
+	Check(StepRefSettle(s, 0xB, 0.03f) == 0xA, "0.06 s: still A");
 	Check(StepRefSettle(s, 0xA, 0.011f) == 0xA && s.wanted == 0xA, "back to A before the settle: nothing changed");
-	Check(StepRefSettle(s, 0xB, 0.05f) == 0xA, "B again: its clock starts over");
-	Check(StepRefSettle(s, 0xB, 0.08f) == 0xB, "0.13 s of B: shown");
-	Check(StepRefSettle(s, 0, 0.05f) == 0xB, "nothing wanted: B shown through the settle");
-	Check(StepRefSettle(s, 0, 0.08f) == 0, "... then nothing");
+	Check(StepRefSettle(s, 0xB, 0.03f) == 0xA, "B again: its clock starts over");
+	Check(StepRefSettle(s, 0xB, 0.06f) == 0xB, "0.09 s of B: shown");
+	Check(StepRefSettle(s, 0, 0.03f) == 0xB, "nothing wanted: B shown through the settle");
+	Check(StepRefSettle(s, 0, 0.06f) == 0, "... then nothing");
 	Check(StepRefSettle(s, 0xC, 0.011f) == 0xC, "and the next thing at once");
+	Check(StepRefSettle(s, 0xD, 0.011f, 0xD) == 0xD, "the pick's own item: at once, no settle");
+	Check(StepRefSettle(s, 0xE, 0.011f, 0xD) == 0xD, "another than the pick's: the settle as before");
 }
 
 void TestRankForHand() {
@@ -218,8 +223,8 @@ void TestRankForHand() {
 	hand.direction = NiPoint3{0.0f, 1.0f, 0.0f};
 	const NiPoint3 centre{0.0f, 50.0f, 0.0f};
 	NearItem r = RankItemForHand(hand, true, 0xA, centre, 5.0f, 100.0f, 20.0f);
-	Check(r.valid && r.left && r.ref == 0xA && r.rankClass == 1 && Near(r.distance, 45.0f),
-	      "the laser on it from half a metre: class 1, the left hand's");
+	Check(r.valid && r.left && r.ref == 0xA && r.rankClass == 2 && Near(r.distance, 45.0f),
+	      "the laser on it from half a metre: class 2, the left hand's");
 	r = RankItemForHand(hand, false, 0xA, centre, 5.0f, 30.0f, 20.0f);
 	Check(!r.valid, "out of the hand's reach: invalid");
 	r = RankItemForHand(hand, false, 0xA, centre, 5.0f, 100.0f, 20.0f, 2.0f);

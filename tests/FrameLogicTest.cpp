@@ -2257,7 +2257,7 @@ void TestNearItems() {
 	ConsiderNearItem(three, 11, obvr::NiPoint3{-20.0f, 50.0f, 0.0f}, 3.0f, pointing, noLeft, 140.0f, 21.0f);
 	ConsiderNearItem(three, 12, obvr::NiPoint3{0.0f, 90.0f, 0.0f}, 3.0f, pointing, noLeft, 140.0f, 21.0f);
 	ConsiderNearItem(three, 13, obvr::NiPoint3{20.0f, 40.0f, 0.0f}, 3.0f, pointing, noLeft, 140.0f, 21.0f);
-	Check(three.valid && three.ref == 12u && three.rankClass == 1,
+	Check(three.valid && three.ref == 12u && three.rankClass == 2,
 	      "three in front, the laser on the farthest: the farthest is taken");
 	NearItem twoInCone;
 	ConsiderNearItem(twoInCone, 14, obvr::NiPoint3{20.0f, 50.0f, 0.0f}, 2.0f, pointing, noLeft, 140.0f, 21.0f);
@@ -2267,7 +2267,8 @@ void TestNearItems() {
 	NearItem reachVsAim;
 	ConsiderNearItem(reachVsAim, 16, obvr::NiPoint3{15.0f, 0.0f, 0.0f}, 2.0f, pointing, noLeft, 140.0f, 21.0f);
 	ConsiderNearItem(reachVsAim, 17, obvr::NiPoint3{0.0f, 60.0f, 0.0f}, 2.0f, pointing, noLeft, 140.0f, 21.0f);
-	Check(reachVsAim.ref == 17u, "one within the grab's reach, one on the laser: the laser's");
+	Check(reachVsAim.ref == 16u && reachVsAim.rankClass == 1,
+	      "one within the grab's reach, one on the laser: the one in reach (the hand brought to things)");
 	NearItem touchVsAim;
 	ConsiderNearItem(touchVsAim, 18, obvr::NiPoint3{0.0f, 60.0f, 0.0f}, 2.0f, pointing, noLeft, 140.0f, 21.0f);
 	ConsiderNearItem(touchVsAim, 19, obvr::NiPoint3{4.0f, -3.0f, 0.0f}, 2.0f, pointing, noLeft, 140.0f, 21.0f);

@@ -452,7 +452,18 @@ checked by tests and the harness as far as said; **none seen in the headset**.
    the engine's target once it stayed 0.12 s; the ring, the aim and the
    text ease (80 ms) and the text hangs under a small thing's own middle.
    Harness `pick-hold`: a slow sweep across two swords and a tremor over
-   one, 2 "Pick: on" lines, both before the sweep. Not seen in the headset.
+   one, 2 "Pick: on" lines, both before the sweep. The tester's first round
+   (2026-10-07): steadier; then the nearest to the hand wins over the laser
+   within the grab's reach, the pick's own item bypasses the display
+   settle, and rows "Target outline"/"Target glow" in the menu (the spec's
+   eleventh test). The crime toggle for owned things in the hand is left to
+   Put it in its Place (the tester's decision).
+   **A loading crash seen the same morning** (access violation at
+   0x004BDDDB, a refcount release, after Load menu > save > confirm) came
+   with a build that held the other agent's uncommitted dialogue work
+   (DialogZoom, PlayerLookAt, DialogFocus.h) on top of the pick-hold
+   commit; the pick-hold build alone loaded the same way without a crash.
+   The harness could not reproduce it (it loads from the console).
 2. **The inventory's figure hollow.** The interface pass drew it into
    OBVR's single-sample layer with the game's 8-sample depth-stencil, which
    DXVK leaves out of the framebuffer - no depth test, skin over armour. The

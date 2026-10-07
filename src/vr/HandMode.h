@@ -136,7 +136,9 @@ struct HandSettings {
 	bool laserInWorld = false;
 	// What a closed grip would take, marked on itself: an outline (default),
 	// a soft glow (game/TargetMarker.h).
-	bool targetOutline = true;
+	// Both off by default (the tester, 2026-10-07: things were marked
+	// "although the setting is off" - the outline was the one on).
+	bool targetOutline = false;
 	bool targetGlow = false;
 	float worldLaserMetres = 2.0f;
 	// How fast a pulled or grabbed item floats into the hand, metres a second.

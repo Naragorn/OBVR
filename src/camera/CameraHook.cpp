@@ -2389,7 +2389,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			// and the ring eases over the thing rather than following every
 			// tremor of the ray's hit, snapping only to another thing.
 			const UInt32 wantedRef = target.haveRef ? target.refAddress : 0;
-			const UInt32 shownRef = game::StepRefSettle(g_ringSettle, wantedRef, dt);
+			const UInt32 shownRef =
+				game::StepRefSettle(g_ringSettle, wantedRef, dt, g_nearItem.valid ? g_nearItem.ref : 0);
 			if (shownRef != wantedRef && g_ringAnchor.valid && g_ringAnchor.ref == shownRef) {
 				hit = g_ringAnchor.point;
 			}
@@ -6182,7 +6183,8 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			// On the thing the pick has settled on (game/PickHold.h), under
 			// its own middle for a small thing, eased - so the text neither
 			// shakes with the ray's hit nor jumps to a thing the ray crossed.
-			const UInt32 shownRef = game::StepRefSettle(g_rowSettle, haveHit ? target.refAddress : 0, g_deltaSeconds);
+			const UInt32 shownRef = game::StepRefSettle(g_rowSettle, haveHit ? target.refAddress : 0, g_deltaSeconds,
+			                                            g_nearItem.valid ? g_nearItem.ref : 0);
 			if (shownRef != 0) {
 				NiPoint3 wanted = g_rowAnchor.point;
 				if (shownRef == target.refAddress && haveHit) {

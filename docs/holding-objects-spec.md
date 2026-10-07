@@ -572,6 +572,37 @@ none during the sweep or the tremor; the outline moved once. Not seen in
 the headset. The log says "Pick: on <ref> (class, key, hand) - was <ref>"
 at each change, forty lines at most.
 
+**The tester's first headset round (2026-10-07):** steadier, with three
+things left, built the same day:
+
+- **The nearest to the hand wins.** On a laden plate the hand brought to
+  one thing took another: the laser from that same hand, falling on the
+  thing behind within 6 degrees, ranked above "within the grab's reach".
+  The classes are reordered (`PickRank`): touched, then within the grab's
+  reach by distance, then the laser on it, the cone, the palm. So a hand
+  near things takes the nearest; the laser decides only beyond the reach,
+  which keeps the earlier tester's case (three things at arm's length,
+  pointing at the far one). The hold's distance margin is 2 cm now (7
+  before), so on a plate the nearer thing can still take over; the 0.15 s
+  do the steadying.
+- **The old name on a change.** The ring and the row waited 0.12 s for
+  the engine's target to settle even when the pick itself had changed on
+  purpose, so for those frames the new name stood under the old thing. The
+  item the pick holds now bypasses the settle (`StepRefSettle`'s `trusted`),
+  and the settle for anything else is 0.08 s. Whether the flicker was only
+  that: not verified - the HUDInfoMenu's own text is the engine's.
+- **The outline with "the setting off".** The tester's INI has no
+  `TargetOutline` line, so the default applied, and that was on (decided
+  2026-10-05) while the "Target glow" row showed off. Both default off now
+  (`[Hands] TargetOutline=0`, `TargetGlow=0`); the rows under Hands switch
+  them on. Whether a mark ever stayed on with the row switched off: not
+  seen (a mark switched off is stopped the same frame).
+- **Owned things in the hand (not built, the tester's decision).** The idea
+  of a toggle making the grab of an owned thing no crime until it is
+  stowed, eaten, carried out of the cell or 15 m away is left to Put it in
+  its Place (above), which changes exactly the grab's crime; OBVR's stow
+  stays a crime like activate.
+
 ### Up to the mouth and the body
 
 Held objects stopped about 25 cm from the head (2026-09-26). Eating by

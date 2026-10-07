@@ -229,13 +229,14 @@ inline float LaserMissRadians(const NiPoint3& hand, const NiPoint3& direction, c
 // the item's mesh within the grab's reach, FindNearestItem, else to its
 // bound sphere):
 //   0 touched (within kPickTouchUnits of its surface) - by distance;
-//   1 the laser on it (within kPickAimedRadians of its bound) - by the miss;
-//   2 within the grab's reach - by distance;
+//   1 within the grab's reach - by distance;
+//   2 the laser on it (within kPickAimedRadians of its bound) - by the miss;
 //   3 in the laser's cone (ReachingFor) - by the miss;
 //   4 the palm turned to it, or a hand with no laser - by distance.
-// So what the hand touches comes first, then what the laser points at, then
-// the nearest; pointed at from afar, the item nearest the laser wins, not the
-// one nearest the hand.
+// So a hand brought to things takes the nearest of them (the tester,
+// 2026-10-07: on a laden table the laser from that hand fell on the thing
+// behind the nearest); beyond the grab's reach the laser decides, and the
+// item nearest the laser wins, not the one nearest the hand.
 constexpr float kPickTouchUnits = 3.5f;       // 5 cm
 constexpr float kPickAimedRadians = 0.105f;   // 6 degrees
 
@@ -248,12 +249,12 @@ inline bool PickRank(const SearchHand& hand, const NiPoint3& centre, float radiu
 	if (surfaceDistance <= kPickTouchUnits) {
 		rankClass = 0;
 		rankKey = surfaceDistance;
-	} else if (miss >= 0.0f && miss <= kPickAimedRadians) {
-		rankClass = 1;
-		rankKey = miss;
 	} else if (surfaceDistance <= alwaysUnits) {
-		rankClass = 2;
+		rankClass = 1;
 		rankKey = surfaceDistance;
+	} else if (miss >= 0.0f && miss <= kPickAimedRadians) {
+		rankClass = 2;
+		rankKey = miss;
 	} else if (miss >= 0.0f && ReachingFor(hand.position, hand.direction, centre, surfaceDistance, 0.0f,
 	                                       kReachingConeCos)) {
 		rankClass = 3;

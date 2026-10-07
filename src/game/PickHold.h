@@ -29,9 +29,11 @@ namespace obvr::game {
 inline constexpr float kPickHoldChallengeSeconds = 0.15f;
 inline constexpr float kPickHoldGraceSeconds = 0.15f;
 // A clear margin within a class: for the classes keyed by the laser's miss
-// (1 and 3) an angle; for those keyed by distance (0, 2 and 4) units.
+// (2 and 3) an angle; for those keyed by distance (0, 1 and 4) units.
 inline constexpr float kPickHoldMarginRadians = 0.035f;  // 2 degrees
-inline constexpr float kPickHoldMarginUnits = 5.0f;       // 7 cm
+// Small, so that on a laden plate the thing nearest the hand still wins
+// (the tester, 2026-10-07); the hold's time does the steadying.
+inline constexpr float kPickHoldMarginUnits = 1.5f;       // 2 cm
 
 struct PickHoldState {
 	NearItem held;                 // what the pick is on, with this frame's values
@@ -42,7 +44,7 @@ struct PickHoldState {
 };
 
 inline bool RankKeyedByAngle(UInt8 rankClass) {
-	return rankClass == 1 || rankClass == 3;
+	return rankClass == 2 || rankClass == 3;
 }
 
 // Whether `a` ranks clearly better than `b`: a better class, or the same
@@ -121,8 +123,11 @@ inline NearItem StepPickHold(PickHoldState& s, const NearItem& best, const NearI
 // (kShownSettleSeconds). The ray aimed at the held item can cross another
 // thing lying against it for a few frames (pick-hold, 2026-10-06: the mark
 // went to the other sword and back during one sweep); those frames show
-// the thing shown before. Nothing shown yet takes the first thing at once.
-inline constexpr float kShownSettleSeconds = 0.12f;
+// the thing shown before. Nothing shown yet takes the first thing at once,
+// and the item the pick itself holds (`trusted`) is taken at once too: a
+// change the pick made on purpose should not lag (the tester, 2026-10-07:
+// the old name flickered on a change).
+inline constexpr float kShownSettleSeconds = 0.08f;
 
 struct RefSettleState {
 	UInt32 shown = 0;
@@ -130,13 +135,14 @@ struct RefSettleState {
 	float seconds = 0.0f;
 };
 
-inline UInt32 StepRefSettle(RefSettleState& s, UInt32 wanted, float dt, float settleSeconds = kShownSettleSeconds) {
+inline UInt32 StepRefSettle(RefSettleState& s, UInt32 wanted, float dt, UInt32 trusted = 0,
+                            float settleSeconds = kShownSettleSeconds) {
 	if (wanted != s.wanted) {
 		s.wanted = wanted;
 		s.seconds = 0.0f;
 	}
 	s.seconds += dt;
-	if (s.shown == 0 || s.wanted == s.shown || s.seconds >= settleSeconds) {
+	if (s.shown == 0 || s.wanted == s.shown || (trusted != 0 && s.wanted == trusted) || s.seconds >= settleSeconds) {
 		s.shown = s.wanted;
 	}
 	return s.shown;
