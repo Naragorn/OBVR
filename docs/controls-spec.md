@@ -961,7 +961,12 @@ The tester's asks of 2026-10-07, all in one round:
   in the headset. What may still stop it there: the mod's 51 units between
   the origins (73 cm - a hand at a face from an arm's length may stand the
   body further off), and the NPC having to face the player; both are the
-  mod's own checks and show as its messages.
+  mod's own checks and show as its messages. The tester's round of 86225fa:
+  seven taps logged, nothing visible of the mod's. Each tap frame now logs
+  the key's state and whom the crosshair has ("Shove: the grab tap, n
+  frame(s) left - the grab down this frame, the key down before 1, the
+  crosshair on <ref> (the slapped one <ref>), the player in combat n") for
+  the mod's side.
 - **Yielding by gesture** (`vr/Yield.h`, yield_test; the tester: "waffe
   einstecken ... mit offenen händen ... leicht von aussen nach innen wippen
   ... zählt das als ein yield"). The weapon away, both hands open (index
@@ -980,8 +985,13 @@ The tester's asks of 2026-10-07, all in one round:
   all - the gesture never counted, and the log did not say why. Now the
   rocking is watched on its own as well (`YieldBlockedBy`, yield_test):
   when it completes while the gesture is not allowed, "Yield: the hands
-  rocked, but no yield - <reasons> (index curls r/l)" names what stood in
-  the way; and when activate goes down, "Yield: activate goes down after 10
+  rocked, but no yield - <reasons> (hand curls r/l; under the head: <ref>, in
+  combat n)" names what stood in the way. The tester's round of 86225fa
+  gave 24 of those and no yield: "no one in combat ahead of the head" on
+  every one, and the index curl 0.6 to 1.0 with the hands held open - the
+  index rests on the trigger - so a hand is open by its middle, ring and
+  little fingers now (`YieldHandCurl`). The tester's "yield mit der geste
+  scheint zu klappen" that round was not OBVR's yield: none fired; and when activate goes down, "Yield: activate goes down after 10
   frames of block - the player's action <n>, the crosshair on <ref>" shows
   whether the engine took the block and whom the pick had. A thing to
   settle with that line: vanilla's block is "with weapon or shield" (UESP

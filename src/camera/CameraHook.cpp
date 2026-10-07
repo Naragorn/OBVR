@@ -1227,6 +1227,8 @@ inline constexpr UInt32 kYieldActivateTo = 14;    // ... and comes up
 // the grab is held with the pick on the slapped one.
 UInt32 g_slapTapFrames = 0;
 bool g_slapTapPressed = false;  // the grab down this frame for the tap
+UInt32 g_slapTapActor = 0;
+UInt32 g_slapTapLines = 40;
 NiPoint3 g_slapTapTarget{0.0f, 0.0f, 0.0f};
 inline constexpr float kYieldEnemyUnits = 420.0f;   // 6 m
 inline constexpr float kYieldEnemyCos = 0.866f;     // 30 degrees from the head's forward
@@ -1235,17 +1237,20 @@ void UpdateYield(const Config& config, const vr::HandModeFrame& frame, bool acti
 	const bool weaponAway = !frame.meleeHeld;
 	NiPoint3 enemy{};
 	bool enemyAhead = false;
+	void* ahead = nullptr;  // whoever is under the head ray, in combat or not
 	if (active && g_cyclopeanCameraWorldValid) {
 		const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
 		const NiPoint3 forward{camRot.data[0][1], camRot.data[1][1], camRot.data[2][1]};
-		void* const actor = game::ActorUnderRay(g_cyclopeanCameraWorldTransform.pos, forward, kYieldEnemyUnits,
-		                                        kYieldEnemyCos, &enemy);
-		enemyAhead = actor != nullptr && game::ActorInCombat(actor);
+		ahead = game::ActorUnderRay(g_cyclopeanCameraWorldTransform.pos, forward, kYieldEnemyUnits, kYieldEnemyCos,
+		                            &enemy);
+		enemyAhead = ahead != nullptr && game::ActorInCombat(ahead);
 	}
+	// A hand is open by its middle, ring and little fingers (vr::YieldHandCurl).
+	const float rightCurl = g_hand.rightCurlValid ? vr::YieldHandCurl(g_hand.rightCurl) : 1.0f;
+	const float leftCurl = g_hand.leftCurlValid ? vr::YieldHandCurl(g_hand.leftCurl) : 1.0f;
 	const bool allowed = active && vr::YieldAllowed(weaponAway, frame.right.valid && g_hand.rightHandValid,
-	                                                frame.left.valid && g_hand.leftHandValid,
-	                                                g_hand.rightCurlValid ? g_hand.rightCurl[1] : 1.0f,
-	                                                g_hand.leftCurlValid ? g_hand.leftCurl[1] : 1.0f, enemyAhead);
+	                                                frame.left.valid && g_hand.leftHandValid, rightCurl, leftCurl,
+	                                                enemyAhead);
 	// Each hand's sideways position, outward from the body positive: the
 	// camera-relative offset's x (the camera's x axis points right).
 	const float perMetre = config.tracker.unitsPerMetre > 0.0f ? config.tracker.unitsPerMetre : 1.0f;
@@ -1258,11 +1263,10 @@ void UpdateYield(const Config& config, const vr::HandModeFrame& frame, bool acti
 		--g_yieldLines;
 		char why[160] = {};
 		vr::YieldBlockedBy(weaponAway, frame.right.valid && g_hand.rightHandValid,
-		                   frame.left.valid && g_hand.leftHandValid, g_hand.rightCurlValid ? g_hand.rightCurl[1] : 1.0f,
-		                   g_hand.leftCurlValid ? g_hand.leftCurl[1] : 1.0f, enemyAhead, why, sizeof(why));
-		OBVR_LOG("Yield: the hands rocked, but no yield - %s (index curls %.2f/%.2f)", why,
-		         static_cast<double>(g_hand.rightCurlValid ? g_hand.rightCurl[1] : 1.0f),
-		         static_cast<double>(g_hand.leftCurlValid ? g_hand.leftCurl[1] : 1.0f));
+		                   frame.left.valid && g_hand.leftHandValid, rightCurl, leftCurl, enemyAhead, why, sizeof(why));
+		OBVR_LOG("Yield: the hands rocked, but no yield - %s (hand curls %.2f/%.2f; under the head: %08X, in combat %d)",
+		         why, static_cast<double>(rightCurl), static_cast<double>(leftCurl),
+		         reinterpret_cast<UInt32>(ahead), ahead != nullptr && game::ActorInCombat(ahead) ? 1 : 0);
 	}
 	if (vr::StepYield(g_yield, allowed, lateral, dt)) {
 		g_yieldFramesLeft = kYieldHoldFrames;
@@ -2111,8 +2115,24 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		if (game::TakeSlapGrabTap(slapped, centre)) {
 			g_slapTapFrames = game::kSlapGrabTapTotalFrames;
 			g_slapTapTarget = centre;
+			g_slapTapActor = slapped;
 		}
 		g_slapTapPressed = game::SlapGrabTapPressed(g_slapTapFrames);
+		if (g_slapTapFrames > 0 && g_slapTapLines > 0) {
+			// Evidence for the mod's side (the tester, 2026-10-07: "slaps
+			// gehen nicht mehr" with the tap logged): whom the pick has on
+			// each frame of the tap, and whether the grab key was down from
+			// the frame before - the mod takes the crosshair's reference on
+			// the key's down-edge.
+			--g_slapTapLines;
+			const game::CrosshairTarget target = game::ReadCrosshairTarget();
+			OBVR_LOG("Shove: the grab tap, %u frame(s) left - the grab %s this frame, the key down before %d, the "
+			         "crosshair on %08X (the slapped one %08X), the player in combat %d",
+			         g_slapTapFrames, g_slapTapPressed ? "down" : "not yet",
+			         (GetAsyncKeyState(static_cast<int>(config.handKeys.grab)) & 0x8000) != 0 ? 1 : 0,
+			         target.haveRef ? target.refAddress : 0u, g_slapTapActor,
+			         game::ActorInCombat(*reinterpret_cast<void* const*>(addr::kPlayerPointer)) ? 1 : 0);
+		}
 		if (g_slapTapFrames > 0) {
 			--g_slapTapFrames;
 		}

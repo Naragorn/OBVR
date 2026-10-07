@@ -22,7 +22,7 @@ inline constexpr float kYieldStrokeMetres = 0.05f;
 inline constexpr UInt32 kYieldReversals = 4;       // two out-and-in cycles across both hands
 inline constexpr float kYieldWindowSeconds = 2.5f;
 inline constexpr float kYieldCooldownSeconds = 3.0f;
-inline constexpr float kYieldOpenCurl = 0.5f;      // a hand is open below this curl
+inline constexpr float kYieldOpenCurl = 0.5f;      // a hand is open below this curl (YieldHandCurl)
 
 struct YieldHandTrack {
 	bool tracking = false;
@@ -100,8 +100,26 @@ inline bool StepYield(YieldState& s, bool allowed, const float lateral[2], float
 	return false;
 }
 
+// How closed a hand is for the yield: the most curled of the middle, ring
+// and little fingers (curls thumb, index, middle, ring, little). The index
+// is left out - on the Index controller it rests on the trigger and read
+// 0.6 to 1.0 with the hands held open in the tester's log (2026-10-07,
+// "the left index curled" on every rocking), so the index said nothing
+// about the hand being open.
+inline float YieldHandCurl(const float curl[5]) {
+	float most = curl[2];
+	if (curl[3] > most) {
+		most = curl[3];
+	}
+	if (curl[4] > most) {
+		most = curl[4];
+	}
+	return most;
+}
+
 // Whether the gesture is allowed this frame: the weapon away, both hands
-// tracked and open, and someone in combat ahead.
+// tracked and open (YieldHandCurl under kYieldOpenCurl), and someone in
+// combat ahead.
 inline bool YieldAllowed(bool weaponAway, bool rightTracked, bool leftTracked, float rightCurl, float leftCurl,
                          bool enemyAhead) {
 	return weaponAway && rightTracked && leftTracked && rightCurl < kYieldOpenCurl && leftCurl < kYieldOpenCurl &&
@@ -127,10 +145,10 @@ inline UInt32 YieldBlockedBy(bool weaponAway, bool rightTracked, bool leftTracke
 		reasons[n++] = "the left hand not tracked";
 	}
 	if (!(rightCurl < kYieldOpenCurl)) {
-		reasons[n++] = "the right index curled";
+		reasons[n++] = "the right hand closed";
 	}
 	if (!(leftCurl < kYieldOpenCurl)) {
-		reasons[n++] = "the left index curled";
+		reasons[n++] = "the left hand closed";
 	}
 	if (!enemyAhead) {
 		reasons[n++] = "no one in combat ahead of the head";
