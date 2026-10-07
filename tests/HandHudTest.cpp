@@ -475,8 +475,13 @@ void TestTarget() {
 	HudTile t[4] = {Tile("HUDInfoMenu", -1, 0, 0), Tile("hudinfo_name", 0, 1600, 880, 120, 45),
 	                Tile("hudinfo_action_icon", 0, 1580, 827, 64, 64), Tile("elsewhere", -1, 10, 10, 5, 5)};
 	const UiRect info = HudElementRect(t, 4, HudElement::Info);
-	Check(info.valid && Near(info.left, 1580) && Near(info.top, 827) && Near(info.right, 1720) && Near(info.bottom, 925),
-	      "the info: every tile under HUDInfoMenu, nothing else");
+	Check(info.valid && Near(info.left, 1600) && Near(info.top, 880) && Near(info.right, 1720) && Near(info.bottom, 925),
+	      "the info: every tile under HUDInfoMenu but its action icon, nothing else");
+	HudTile noIcon[3] = {Tile("HUDInfoMenu", -1, 0, 0), Tile("hudinfo_name", 0, 1600, 880, 120, 45),
+	                     Tile("elsewhere", -1, 10, 10, 5, 5)};
+	const UiRect infoNoIcon = HudElementRect(noIcon, 3, HudElement::Info);
+	Check(infoNoIcon.valid && Near(infoNoIcon.left, 1600) && Near(infoNoIcon.bottom, 925),
+	      "the info without an action icon tile: the same");
 
 	const NiPoint3 hit{10.0f, 20.0f, 104.0f};
 	const NiPoint3 low = TargetHangPoint(hit, true, NiPoint3{10.0f, 20.0f, 100.0f}, 5.0f);

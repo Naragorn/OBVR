@@ -459,6 +459,12 @@ inline constexpr const char* kHudElementTiles[kHudElementCount][kHudElementTiles
 };
 inline constexpr const char* kHudEffectsRoot = "magic_icons";
 inline constexpr const char* kHudInfoRoot = "HUDInfoMenu";
+// HUDInfoMenu's action icon is left out of the Info element: the crosshair
+// quad already carries the game's context icon (the hand, the lock, the
+// speech bubble) at the laser or in the reach ring, and the same icon in the
+// row under the thing as well showed twice at two sizes (the tester,
+// 2026-10-07: "doppelte tooltips ... nicht dieselbe größe").
+inline constexpr const char* kHudInfoActionIcon = "hudinfo_action_icon";
 
 // An element's rectangle in HUD units, invalid when none of its tiles is
 // found with a size - a UI mod that renamed them, or nothing to show (no
@@ -471,8 +477,9 @@ inline UiRect HudElementRect(const HudTile* tiles, UInt32 count, HudElement elem
 		if (root < 0) {
 			return r;
 		}
+		const SInt32 actionIcon = element == HudElement::Info ? FindHudTile(tiles, count, kHudInfoActionIcon) : -1;
 		for (UInt32 i = 0; i < count; ++i) {
-			if (HudTileUnder(tiles, count, static_cast<SInt32>(i), root)) {
+			if (static_cast<SInt32>(i) != actionIcon && HudTileUnder(tiles, count, static_cast<SInt32>(i), root)) {
 				r = UnionRect(r, HudTileRect(tiles, count, static_cast<SInt32>(i)));
 			}
 		}

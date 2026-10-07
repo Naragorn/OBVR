@@ -272,6 +272,22 @@ The dialogue panel's side now defaults to centre, because right was "zu weit rec
 
 Menus open in front: the room anchor is dropped as a menu opens, so a menu or a book is placed where the head looks. Before, the anchor was kept from the first placement, and with the body and the walking direction turned away from the view a menu could open behind the player.
 
+**The action icon twice (2026-10-07).** The tester saw double tooltips of
+two sizes in Full VR: the crosshair quad carries HUDReticle's context icon
+(at the laser, or in the reach ring, `render::ReachIconPose`), and the Info
+row under the thing carried HUDInfoMenu's `hudinfo_action_icon` as well,
+scaled with the distance. The Info element now leaves that tile out
+(`vr::kHudInfoActionIcon`, hand_hud_test): the icon is the ring's, the text
+the row's. Not seen in the headset.
+
+**The enemy health bar over the NPC (asked 2026-10-07, not built).** The
+plan: lift HUDReticle's `hudreticle_enemy_health` (the aux root,
+`kHudAuxRootPointer`) as a HUD element of its own and hang it above the
+crosshair target's bound (a Target-like place, above rather than under),
+at the Info row's scale. First the probe below has to run in a fight with
+the headset asleep: the harness cannot script a fight while a live
+headset moves the synthetic head.
+
 **Open bug (2026-09-29): the enemy health bar is not shown.** The tester: "wir müssen den healthbar von gegnern rendern ... das ist afaik ein vanilla feature".
 - It is vanilla: HUDReticle's `hudreticle_enemy_health`, drawn under the crosshair while a fight target is set.
 - The step 1 probe found it as the third persistent HUD root, `kHudAuxRootPointer` 0x00B3B358 (x −1, y −20, visible 1 = hidden when idle, file "Enemy He…").
