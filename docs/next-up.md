@@ -481,6 +481,16 @@ checked by tests and the harness as far as said; **none seen in the headset**.
    own code reading the player's hair (`docs/controls-spec.md` 4.14); a
    new-game run, or a save whose race menu opens, is the evidence to get
    first.
+   **Evidence from the tester's own new game (2026-10-07, 20:01, read
+   from his log):** after the load the engine is in third person from
+   frame 1 ("Camera: switched to third person (frame 1)"), the race menu
+   comes up as RaceSex (0x40C) over it, and every menu frame of it is
+   delivered as cinema ("Menu trace: cinema, camera pass=0, armed=1, world
+   renders this frame=0"): the flat picture of what the engine drew - its
+   own chargen view of the face - on the cinema screen, not a stereo view
+   of the body. So the view to build is a stereo one of the player's head
+   from in front (a menu-frame camera base before the face, the head
+   offset on top), with the engine's third-person body as it stands.
    **A loading crash seen the same morning** (access violation at
    0x004BDDDB, a refcount release, after Load menu > save > confirm) came
    with a build that held the other agent's uncommitted dialogue work
