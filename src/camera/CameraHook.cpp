@@ -26,6 +26,7 @@
 #include "game/ConsoleLine.h"
 #include "game/HitShader.h"
 #include "game/HudTiles.h"
+#include "game/KeyScanCodes.h"
 #include "game/Lead.h"
 #include "game/LeadLogic.h"
 #include "game/ThrowLogic.h"
@@ -1228,7 +1229,12 @@ inline constexpr UInt32 kYieldActivateTo = 14;    // ... and comes up
 UInt32 g_slapTapFrames = 0;
 bool g_slapTapPressed = false;  // the grab down this frame for the tap
 UInt32 g_slapTapActor = 0;
-UInt32 g_slapTapLines = 40;
+UInt32 g_slapTapLines = 120;
+// The frames the log watches the mod's state after a tap, the tap's own
+// frames included.
+inline constexpr UInt32 kSlapTapWatchFrames = 24;
+UInt32 g_slapTapWatch = 0;
+inline constexpr UInt32 kMapScanToKey = 1;  // MAPVK_VSC_TO_VK
 NiPoint3 g_slapTapTarget{0.0f, 0.0f, 0.0f};
 inline constexpr float kYieldEnemyUnits = 420.0f;   // 6 m
 inline constexpr float kYieldEnemyCos = 0.866f;     // 30 degrees from the head's forward
@@ -2118,20 +2124,47 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			g_slapTapActor = slapped;
 		}
 		g_slapTapPressed = game::SlapGrabTapPressed(g_slapTapFrames);
-		if (g_slapTapFrames > 0 && g_slapTapLines > 0) {
+		if (g_slapTapFrames > 0) {
+			g_slapTapWatch = kSlapTapWatchFrames;
+		}
+		if (g_slapTapWatch > 0 && g_slapTapLines > 0) {
 			// Evidence for the mod's side (the tester, 2026-10-07: "slaps
-			// gehen nicht mehr" with the tap logged): whom the pick has on
-			// each frame of the tap, and whether the grab key was down from
-			// the frame before - the mod takes the crosshair's reference on
-			// the key's down-edge.
+			// gehen nicht mehr" with the tap logged, then "slap klappte gar
+			// nicht" with the key down every frame): whom the pick has, the
+			// key as the game's layout sees it (the scan code's key - on a
+			// German layout the Z scan code is the Y key), and the mod's own
+			// state from its quest variables (game/Shove.h) - its grab quest
+			// running, its count of the grab's frames (sNPCGrab: 1 on the
+			// down-edge with an NPC under the crosshair, then counted up while
+			// held, 0 again once its tap-slap or pickpocket branch ran), and
+			// whom it took (rGrabbedItem).
 			--g_slapTapLines;
+			--g_slapTapWatch;
 			const game::CrosshairTarget target = game::ReadCrosshairTarget();
-			OBVR_LOG("Shove: the grab tap, %u frame(s) left - the grab %s this frame, the key down before %d, the "
-			         "crosshair on %08X (the slapped one %08X), the player in combat %d",
-			         g_slapTapFrames, g_slapTapPressed ? "down" : "not yet",
-			         (GetAsyncKeyState(static_cast<int>(config.handKeys.grab)) & 0x8000) != 0 ? 1 : 0,
+			const UInt32 scan = game::UsScanCode(config.handKeys.grab);
+			const UInt32 layoutKey = scan != 0 ? MapVirtualKeyA(scan, kMapScanToKey) : config.handKeys.grab;
+			const UInt8 modIndex = game::PutItInItsPlaceIndex();
+			double npcGrab = -1.0;
+			double grabbing = -1.0;
+			double grabbed = 0.0;
+			double enabled = -1.0;
+			double slapper = -1.0;
+			game::ReadModQuestVar(modIndex, game::kPiiiPGrabQuestLow, game::kPiiiPVarNpcGrab, npcGrab);
+			game::ReadModQuestVar(modIndex, game::kPiiiPGrabQuestLow, game::kPiiiPVarIsGrabbing, grabbing);
+			game::ReadModQuestVar(modIndex, game::kPiiiPGrabQuestLow, game::kPiiiPVarGrabbedItem, grabbed);
+			game::ReadModQuestVar(modIndex, game::kPiiiPVarsQuestLow, game::kPiiiPVarEnabled, enabled);
+			game::ReadModQuestVar(modIndex, game::kPiiiPVarsQuestLow, game::kPiiiPVarSlapper, slapper);
+			UInt32 grabbedId = 0;
+			std::memcpy(&grabbedId, &grabbed, sizeof(grabbedId));
+			OBVR_LOG("Shove: the grab tap, %u frame(s) left - the grab %s this frame, the key (layout %02X) down %d, the "
+			         "crosshair on %08X (the slapped one %08X), the player in combat %d; the mod: grab quest %s, "
+			         "sNPCGrab %.0f, sIsGrabbing %.0f, rGrabbedItem %08X, sEnabled %.0f, sSlapper %.0f",
+			         g_slapTapFrames, g_slapTapPressed ? "down" : "not yet", layoutKey,
+			         (GetAsyncKeyState(static_cast<int>(layoutKey)) & 0x8000) != 0 ? 1 : 0,
 			         target.haveRef ? target.refAddress : 0u, g_slapTapActor,
-			         game::ActorInCombat(*reinterpret_cast<void* const*>(addr::kPlayerPointer)) ? 1 : 0);
+			         game::ActorInCombat(*reinterpret_cast<void* const*>(addr::kPlayerPointer)) ? 1 : 0,
+			         game::ModQuestActive(modIndex, game::kPiiiPGrabQuestLow) ? "running" : "NOT running", npcGrab,
+			         grabbing, grabbedId, enabled, slapper);
 		}
 		if (g_slapTapFrames > 0) {
 			--g_slapTapFrames;

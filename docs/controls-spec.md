@@ -372,6 +372,14 @@ in the headset yet.
   - SteamVR keeps the bindings a player has changed. With custom OBVR
     bindings saved, the skeleton stays unbound until the defaults are
     reloaded.
+  - **Open (2026-10-07):** the tester: "die faust in den gegner klappt oft
+    nicht richtig". The log of that round shows 17 fist swings after the
+    fists came up, the nine with a strike line all striking the same NPC
+    (light and power attacks, the health going down each time) and no
+    "struck nothing" line; the strike lines stop at their limit, so the
+    later swings are unseen. Not pinned: whether swings miss, or land
+    without the reaction the tester expects. Needs the strike lines
+    unlimited for one round, or a fight probe in the harness.
 
 ### 4.4 The quick menu on the right trackpad (built 2026-09-27)
 
@@ -967,6 +975,20 @@ The tester's asks of 2026-10-07, all in one round:
   frame(s) left - the grab down this frame, the key down before 1, the
   crosshair on <ref> (the slapped one <ref>), the player in combat n") for
   the mod's side.
+  **The tester's round of 0987362 (the same day):** four taps logged, the
+  crosshair on the slapped one from the tap's second pressed frame, "the key
+  down before 0" on every frame - which was the log's own fault: it asked
+  for the Z key while the scan code sent (0x2C) is the Y key on the
+  tester's German layout (`keybd_event` with KEYEVENTF_SCANCODE takes
+  the layout's key; the game binds the scan code, Grab=002CFFFF in its
+  INI). Still nothing of the mod's. So the log now reads the mod's own
+  state from its quest scripts' variables (`ReadModQuestVar`,
+  `ModQuestActive`; xOBSE's TESQuest +0x58 ScriptEventList, m_vars at
+  +0x0C; the quests' and variables' ids from its ESP) for 24 frames from
+  each tap: its grab quest running or not, sNPCGrab (1 on the down-edge
+  with an NPC under the crosshair, counted up while held, 0 once its branch
+  ran), sIsGrabbing, rGrabbedItem, sEnabled, sSlapper - and the key by the
+  layout. What the next log says decides whether the mod ever sees the tap.
 - **Yielding by gesture** (`vr/Yield.h`, yield_test; the tester: "waffe
   einstecken ... mit offenen händen ... leicht von aussen nach innen wippen
   ... zählt das als ein yield"). The weapon away, both hands open (index
@@ -991,7 +1013,7 @@ The tester's asks of 2026-10-07, all in one round:
   every one, and the index curl 0.6 to 1.0 with the hands held open - the
   index rests on the trigger - so a hand is open by its middle, ring and
   little fingers now (`YieldHandCurl`). The tester's "yield mit der geste
-  scheint zu klappen" that round was not OBVR's yield: none fired; and when activate goes down, "Yield: activate goes down after 10
+  scheint zu klappen" that round was not OBVR's yield: none fired; the round after (0987362) fired three times, "the player's action -1" (the action unreadable), the crosshair on them twice, and the NPC refused - the tester: "yield klappte paarmal, wurde aber vom npc rejected, was ja ok ist"; and when activate goes down, "Yield: activate goes down after 10
   frames of block - the player's action <n>, the crosshair on <ref>" shows
   whether the engine took the block and whom the pick had. A thing to
   settle with that line: vanilla's block is "with weapon or shield" (UESP

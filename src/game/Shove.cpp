@@ -244,3 +244,60 @@ UInt8 PutItInItsPlaceIndex() {
 }
 
 }  // namespace obvr::game
+
+namespace obvr::game {
+
+// Put it in its Place's own state, read from its quest scripts' variables
+// (xOBSE GameForms.h: TESQuest, the ScriptEventList* at +0x58, its flags
+// at +0x3C with bit 0 active; GameAPI.h: ScriptEventList::m_vars at +0x0C,
+// a list of VarEntry {Var*, next}, Var {id, nextEntry, double data}; a
+// reference variable holds the form id in the double's low 32 bits). The
+// quests and variable ids are from its ESP (SCPT records' SLSD/SCVR).
+namespace {
+constexpr UInt32 kLookupFormByIdFn = 0x0046B250;
+constexpr UInt8 kFormTypeQuest = 0x3B;
+constexpr UInt32 kQuestFlagsOffset = 0x3C;
+constexpr UInt32 kQuestEventListOffset = 0x58;
+constexpr UInt32 kEventListVarsOffset = 0x0C;
+
+UInt32 ModQuest(UInt8 modIndex, UInt32 questLow) {
+	if (modIndex == 0) {
+		return 0;
+	}
+	using LookupFn = void*(__cdecl*)(UInt32 formId);
+	const UInt32 quest = reinterpret_cast<UInt32>(
+		reinterpret_cast<LookupFn>(kLookupFormByIdFn)((static_cast<UInt32>(modIndex) << 24) | questLow));
+	if (!LooksLikeObject(quest) || *reinterpret_cast<const UInt8*>(quest + addr::kFormTypeOffset) != kFormTypeQuest) {
+		return 0;
+	}
+	return quest;
+}
+}  // namespace
+
+bool ModQuestActive(UInt8 modIndex, UInt32 questLow) {
+	const UInt32 quest = ModQuest(modIndex, questLow);
+	return quest != 0 && (*reinterpret_cast<const UInt8*>(quest + kQuestFlagsOffset) & 1) != 0;
+}
+
+bool ReadModQuestVar(UInt8 modIndex, UInt32 questLow, UInt32 varId, double& out) {
+	const UInt32 quest = ModQuest(modIndex, questLow);
+	if (quest == 0) {
+		return false;
+	}
+	const UInt32 events = Read(quest + kQuestEventListOffset);
+	if (!LooksLikeObject(events)) {
+		return false;
+	}
+	UInt32 entry = Read(events + kEventListVarsOffset);
+	for (UInt32 guard = 0; guard < 512 && LooksLikeObject(entry); ++guard) {
+		const UInt32 var = Read(entry);
+		if (LooksLikeObject(var) && Read(var) == varId) {
+			out = *reinterpret_cast<const double*>(var + 8);
+			return true;
+		}
+		entry = Read(entry + 4);
+	}
+	return false;
+}
+
+}  // namespace obvr::game

@@ -48,3 +48,23 @@ UInt8 PutItInItsPlaceIndex();
 bool TakeSlapGrabTap(UInt32& actor, NiPoint3& centre);
 
 }  // namespace obvr::game
+
+namespace obvr::game {
+
+// Put it in its Place's own state, read from its quest scripts' variables
+// (the quests' low form ids and the variable ids from its ESP, v0.5): for
+// the log of a slap tap - whether its grab quest runs, what it counted.
+inline constexpr UInt32 kPiiiPGrabQuestLow = 0x0015AC;   // QUST zzPiiiPGrabQ
+inline constexpr UInt32 kPiiiPVarsQuestLow = 0x00A548;   // QUST zzPiiiPVarsQ
+inline constexpr UInt32 kPiiiPVarNpcGrab = 117;          // zzPiiiPGrabQS.sNPCGrab
+inline constexpr UInt32 kPiiiPVarIsGrabbing = 67;        // zzPiiiPGrabQS.sIsGrabbing
+inline constexpr UInt32 kPiiiPVarGrabbedItem = 60;       // zzPiiiPGrabQS.rGrabbedItem
+inline constexpr UInt32 kPiiiPVarEnabled = 4;            // zzPiiiPVarsQS.sEnabled
+inline constexpr UInt32 kPiiiPVarSlapper = 70;           // zzPiiiPVarsQS.sSlapper
+// Whether the mod's quest is running (its flags' active bit).
+bool ModQuestActive(UInt8 modIndex, UInt32 questLow);
+// One of its quest script's variables; false when the quest, its event
+// list or the variable is not there.
+bool ReadModQuestVar(UInt8 modIndex, UInt32 questLow, UInt32 varId, double& out);
+
+}  // namespace obvr::game
