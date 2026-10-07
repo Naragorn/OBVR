@@ -34,6 +34,10 @@ constexpr UInt8 kProxyKnockbackBytes[] = {0x55, 0x8B, 0xEC, 0x83, 0xE4, 0xF0, 0x
 
 bool g_verified = false;
 UInt32 g_lines = 20;
+// A slap for the mod to finish: the slapped one and where they stand, until
+// the camera pass takes it (TakeSlapGrabTap).
+UInt32 g_slapTapActor = 0;
+NiPoint3 g_slapTapCentre{0.0f, 0.0f, 0.0f};
 // The victim's reaction to a hit: vtable +0x3A8, 0x005FE380 on
 // PlayerCharacter, Character and Creature alike, thiscall(victim, Actor*
 // attacker, UInt32 0) ret 8. The hit handler calls it after every landed
@@ -149,20 +153,23 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 	// as them (game/ConsoleLine.h).
 	UInt32 slapLines = 0;
 	bool ownWave = false;
+	bool modsTap = false;
 	if (inTheFace && kind == ShoveKind::Light) {
-		// The coin: the slap's turn, the mod's or OBVR's own (ShoveLogic.h).
-		static UInt32 s_toss = 0x9E3779B9u;
-		s_toss = s_toss * 1664525u + 1013904223u;
 		const UInt8 modIndex = PutItInItsPlaceIndex();
-		const SlapSound sound = SlapSoundFor(modIndex != 0, (s_toss >> 16) & 1u);
-		char lines[4][kSlapLineChars] = {};
-		const UInt32 count = SlapLines(modIndex, sound, lines);
-		for (UInt32 i = 0; i < count; ++i) {
-			if (RequestConsoleLineAs(a, lines[i])) {
-				++slapLines;
+		if (SlapByModsGrabTap(modIndex)) {
+			// The mod's own slap: a grab tap with the pick on them (the camera
+			// pass reads it, TakeSlapGrabTap).
+			g_slapTapActor = a;
+			g_slapTapCentre = centre;
+			modsTap = true;
+		} else {
+			char lines[4][kSlapLineChars] = {};
+			const UInt32 count = SlapLines(0, SlapSound::Own, lines);
+			for (UInt32 i = 0; i < count; ++i) {
+				if (RequestConsoleLineAs(a, lines[i])) {
+					++slapLines;
+				}
 			}
-		}
-		if (sound == SlapSound::Own) {
 			ownWave = PlayPluginWave(kSlapWave);
 			if (!ownWave) {
 				OBVR_LOG("Shove: OBVR's own slap (%s) could not be played - missing next to OBVR.dll?", kSlapWave);
@@ -176,8 +183,18 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 		         a, done, static_cast<double>(fromWorld.x), static_cast<double>(fromWorld.y),
 		         static_cast<double>(fromWorld.z), static_cast<double>(fatigue), static_cast<double>(disposition),
 		         asHit ? ", taken as a hit" : "", inTheFace ? ", in the face" : "", slapLines,
-		         ownWave ? ", OBVR's own slap played" : "");
+		         ownWave ? ", OBVR's own slap played" : (modsTap ? ", the mod's slap by a grab tap" : ""));
 	}
+	return true;
+}
+
+bool TakeSlapGrabTap(UInt32& actor, NiPoint3& centre) {
+	if (g_slapTapActor == 0) {
+		return false;
+	}
+	actor = g_slapTapActor;
+	centre = g_slapTapCentre;
+	g_slapTapActor = 0;
 	return true;
 }
 

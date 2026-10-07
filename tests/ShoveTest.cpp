@@ -136,6 +136,8 @@ void TestCountsAsHit() {
 	      "without it: the game's own gasp, no idle");
 	Check(SlapLines(0xFE, SlapSound::Mod, lines) == 4 && std::strcmp(lines[0], "playSound3D FE005339") == 0,
 	      "the load index in the top byte");
+	Check(SlapByModsGrabTap(0x0B) && !SlapByModsGrabTap(0) && kSlapGrabTapFrames >= 2,
+	      "with the mod loaded the slap is its grab tap; without it none");
 	Check(!ShoveCountsAsHit(s, ShoveKind::None), "no shove: nothing");
 	s.countsAsHit = false;
 	Check(!ShoveCountsAsHit(s, ShoveKind::Hard), "switched off: only the disposition");

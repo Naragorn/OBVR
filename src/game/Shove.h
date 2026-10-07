@@ -42,4 +42,9 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 // SlapLines).
 UInt8 PutItInItsPlaceIndex();
 
+// A slap the mod is to finish (ShoveLogic.h, SlapByModsGrabTap): the slapped
+// one and where they stand, once; the caller taps the grab with the pick on
+// them. False with none pending.
+bool TakeSlapGrabTap(UInt32& actor, NiPoint3& centre);
+
 }  // namespace obvr::game

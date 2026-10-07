@@ -132,6 +132,17 @@ inline UInt32 SlapLines(UInt8 modIndex, SlapSound sound, char out[4][kSlapLineCh
 	out[n][i] = '\0';
 	return n + 1;
 }
+
+// How the mod's own slap is set off when it is loaded: its grab script
+// slaps when the grab key is tapped with an actor under the pick (its
+// "Tap-Slap"; the lines by form id above answered false and did nothing in
+// the tester's log, 2026-10-07). So a slap in the face with the mod loaded
+// taps the grab for kSlapGrabTapFrames with the pick on the slapped one,
+// and the mod does the rest - its noise, the cheek, the reactions; OBVR's
+// own noise stays out of its way then. Without the mod: OBVR's noise and
+// the gasp line.
+inline constexpr UInt32 kSlapGrabTapFrames = 3;
+inline bool SlapByModsGrabTap(UInt8 modIndex) { return modIndex != 0; }
 inline constexpr const char* kSlapWave = "OBVR_Sounds\\slap.wav";
 
 // What a shove costs the actor's liking: the hard shove's, or for a light

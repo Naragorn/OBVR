@@ -1216,8 +1216,16 @@ vr::YieldState g_yield;
 UInt32 g_yieldFramesLeft = 0;
 NiPoint3 g_yieldTarget{0.0f, 0.0f, 0.0f};
 UInt32 g_yieldLines = 20;
-inline constexpr UInt32 kYieldHoldFrames = 8;       // block held this long
-inline constexpr UInt32 kYieldActivateFrames = 4;   // activate down for the last of them
+// Block held 30 frames; activate down from the 10th to the 16th of them,
+// once the block has stood (8 frames with activate down right away did not
+// yield in the headset, 2026-10-07).
+inline constexpr UInt32 kYieldHoldFrames = 30;
+inline constexpr UInt32 kYieldActivateFrom = 20;  // frames left when activate goes down
+inline constexpr UInt32 kYieldActivateTo = 14;    // ... and comes up
+// The mod's slap by a grab tap (game/Shove.h, TakeSlapGrabTap): the frames
+// the grab is held with the pick on the slapped one.
+UInt32 g_slapTapFrames = 0;
+NiPoint3 g_slapTapTarget{0.0f, 0.0f, 0.0f};
 inline constexpr float kYieldEnemyUnits = 420.0f;   // 6 m
 inline constexpr float kYieldEnemyCos = 0.866f;     // 30 degrees from the head's forward
 
@@ -1282,6 +1290,17 @@ void UpdateInsult(const Config& config, const vr::HandModeFrame& frame, bool act
 				vr::LaserOffsetLocal(hands.laserOffsetRightMetres, hands.laserOffsetUpMetres, left));
 			actor = game::ActorUnderRay(ray.origin, ray.direction, game::kInsultReachUnits, game::kInsultConeCos,
 			                            nullptr);
+			// No need to aim the laser at them (the tester, 2026-10-07:
+			// "mittelfinger muss aber auch gehen ohne dass ich mit dem pointer
+			// auf npcs zeigen muss"): whoever is ahead of the head within 60
+			// degrees, else the nearest living one within 3 m.
+			if (actor == nullptr) {
+				const NiPoint3 forward{camRot.data[0][1], camRot.data[1][1], camRot.data[2][1]};
+				actor = game::ActorUnderRay(camPos, forward, game::kInsultReachUnits, 0.5f, nullptr);
+			}
+			if (actor == nullptr) {
+				actor = game::LivingActorAt(camPos, 0.0f, 210.0f, nullptr);
+			}
 		}
 		if (game::StepInsult(g_insult[side], gesture, actor, dt)) {
 			game::ChangeDisposition(actor, -hands.middleFingerDisposition);
@@ -2049,10 +2068,23 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// down for the last of them, the pick on the enemy meanwhile.
 	if (g_yieldFramesLeft > 0) {
 		g_hand.controls.block = true;
-		if (g_yieldFramesLeft <= kYieldActivateFrames) {
+		if (g_yieldFramesLeft <= kYieldActivateFrom && g_yieldFramesLeft > kYieldActivateTo) {
 			g_hand.controls.activate = true;
 		}
 		--g_yieldFramesLeft;
+	}
+	// The mod's slap: a grab tap with the pick on the slapped one.
+	{
+		UInt32 slapped = 0;
+		NiPoint3 centre{};
+		if (game::TakeSlapGrabTap(slapped, centre)) {
+			g_slapTapFrames = game::kSlapGrabTapFrames;
+			g_slapTapTarget = centre;
+		}
+		if (g_slapTapFrames > 0) {
+			g_hand.controls.grab = true;
+			--g_slapTapFrames;
+		}
 	}
 	// Taking loose items only by hand ([Hands] TakeOnlyByHand, vr::Stow): the
 	// activate button is kept from the game while the laser is on one. Read
@@ -7349,11 +7381,14 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		const bool heldRay = config.fullVrMode && g_headTracker.IsHeadsetConnected() && heldRef != 0 &&
 		                     (heldLeft ? g_hand.leftHandValid : g_hand.rightHandValid) &&
 		                     game::RefWorldBound(heldRef, heldCentre, heldRadius);
-		if (g_yieldFramesLeft > 0 && config.fullVrMode && g_headTracker.IsHeadsetConnected()) {
+		if ((g_yieldFramesLeft > 0 || g_slapTapFrames > 0) && config.fullVrMode &&
+		    g_headTracker.IsHeadsetConnected()) {
 			// The yield (vr/Yield.h): the pick from the head at the enemy, so
-			// activate with block held is vanilla's yield to them.
+			// activate with block held is vanilla's yield to them. The mod's
+			// slap the same way: the pick on the slapped one for the grab tap.
 			const NiPoint3 from = cameraNode->localTransform.pos;
-			const vr::LaserWorldRay ray = vr::RayTowards(from, g_yieldTarget, 0.0f, ForwardOf(finalRotation));
+			const NiPoint3& at = g_slapTapFrames > 0 ? g_slapTapTarget : g_yieldTarget;
+			const vr::LaserWorldRay ray = vr::RayTowards(from, at, 0.0f, ForwardOf(finalRotation));
 			game::SetWorldPickHandRay(ray.origin, ray.direction, true);
 		} else if (heldRay) {
 			const NiPoint3 from = cameraNode->localTransform.pos +
