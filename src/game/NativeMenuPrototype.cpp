@@ -1,4 +1,5 @@
 #include "game/NativeMenuPrototype.h"
+#include <cstring>
 #include "game/MenuQueSignature.h"
 #include "core/AddressSpace.h"
 #include "core/AtomicFlag.h"
@@ -269,6 +270,25 @@ bool RefreshSettings() {
  const bool canReset=g_settings.CanResetSelected(GetConfig());
  ok=Number("parchment\\reset\\target",ui::kXmlBool[canReset ? 1 : 0]) && ok;
  ok=Number("parchment\\reset\\alpha",canReset ? 255 : 110) && ok;
+ // Undo: lit while a change is left to put back, its label naming the row
+ // and the value it goes back to.
+ float previous=0.0f;
+ const auto* undoRow=g_settings.UndoRow(previous);
+ char undoLabel[160];
+ if (undoRow) {
+  auto item=ui::ItemFor(*undoRow,GetConfig());
+  item.value=previous;
+  char value[64];
+  ui::FormatValue(item,value,sizeof(value));
+  Join(undoLabel,sizeof(undoLabel),"Undo: ",undoRow->label," = ");
+  const UInt32 used=static_cast<UInt32>(std::strlen(undoLabel));
+  Join(undoLabel+used,sizeof(undoLabel)-used,value,"","");
+ } else {
+  Join(undoLabel,sizeof(undoLabel),"Undo last change","","");
+ }
+ ok=Number("parchment\\undo\\target",ui::kXmlBool[undoRow ? 1 : 0]) && ok;
+ ok=Number("parchment\\undo\\alpha",undoRow ? 255 : 110) && ok;
+ ok=CachedText(43,"parchment\\undo\\label\\string",undoLabel) && ok;
  const auto& selected=ui::SettingDefinitions()[g_settings.Selected()];
  char help[512];
  if (overview) Join(help,sizeof(help),"Select a section to see its settings. Back returns here.","","");
@@ -322,8 +342,14 @@ void Tick() {
             (button-ui::kNativeRowBase)/3,row ? row->label : "empty");
   }
   const auto edit=g_settings.Click(button,GetConfig());
+  // What the row had before the change, for the Undo button's queue.
+  const float before=edit.definition && !edit.action ? ui::ItemFor(*edit.definition,GetConfig()).value : 0.0f;
   SettingWriter writer;
   const auto result=ui::CommitNativeEdit(edit,GetConfig(),writer);
+  if (result==ui::NativeEditResult::Saved) {
+   g_settings.NoteSaved(edit,before);
+   if (edit.undo) OBVR_LOG("Native settings: undo put %s back to %g",edit.definition->label,static_cast<double>(edit.value));
+  }
   if (result!=ui::NativeEditResult::None) {
    g_saveFailed=result==ui::NativeEditResult::SaveFailed;
    g_refusal=result==ui::NativeEditResult::Refused

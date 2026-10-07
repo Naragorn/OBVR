@@ -125,6 +125,27 @@ NativeSettingEdit NativeSettings::Click(int id,const Config& config) {
   r.repaint=true;
   return r;
  }
+ if (id==kNativeUndo) {
+  float previous=0.0f;
+  const auto* definition=UndoRow(previous);
+  if (!definition) return r;
+  // The row goes back to what it had; the selection follows it when the
+  // view shows it, so the help names what was put back.
+  if (!InOverview()) {
+   for (UInt32 i=0;i<m_count;++i) {
+    if (&SettingDefinitions()[m_rows[i]]==definition) {
+     m_selected=m_rows[i];
+     m_first=(i/kNativeSettingsRows)*kNativeSettingsRows;
+     break;
+    }
+   }
+  }
+  r.definition=definition;
+  r.value=previous;
+  r.undo=true;
+  r.repaint=true;
+  return r;
+ }
  if (id==kNativePrevious || id==kNativeNext) {
   const UInt32 last=(Pages()-1)*kNativeSettingsRows;
   m_first=id==kNativePrevious ? (m_first==0 ? last : m_first-kNativeSettingsRows)
@@ -168,6 +189,16 @@ NativeSettingEdit NativeSettings::Click(int id,const Config& config) {
  const float value=AdjustValue(item,part==1 ? MenuAction::Decrease : MenuAction::Increase);
  if (value!=item.value) { r.definition=definition; r.value=value; }
  return r;
+}
+const SettingDefinition* NativeSettings::UndoRow(float& previous) const {
+ UInt32 row=0;
+ if (!m_undo.Top(row,previous) || row>=SettingDefinitionCount()) return nullptr;
+ return &SettingDefinitions()[row];
+}
+void NativeSettings::NoteSaved(const NativeSettingEdit& edit,float previous) {
+ if (!edit.definition || edit.action) return;
+ if (edit.undo) { m_undo.Pop(); return; }
+ m_undo.Push(static_cast<UInt32>(edit.definition-SettingDefinitions()),previous);
 }
 NativeEditResult CommitNativeEdit(const NativeSettingEdit& edit,Config& config,NativeSettingWriter& writer) {
  if (!edit.definition) return NativeEditResult::None;

@@ -8,6 +8,7 @@ constexpr int kNativeNext = 9202;
 constexpr int kNativeReset = 9203;
 constexpr int kNativeClose = 9299;
 constexpr int kNativeBack = 9204;  // from a section back to the list of sections
+constexpr int kNativeUndo = 9205;  // the last change put back (NativeUndoQueue)
 constexpr int kNativeRowBase = 9300; // three IDs per slot: help, minus, plus
 
 // A generic menu belongs to one mod at a time. Never process keyboard or
@@ -73,6 +74,35 @@ struct NativeSettingEdit {
  bool action = false;
  bool repaint = false;
  bool close = false;
+ bool undo = false;  // the Undo button's: puts the queue's last change back
+};
+
+// The changes made in this menu, newest last, each as the row and the value
+// it had before (the tester, 2026-10-07: "return to last changed value
+// button ... mit menuque"). Undo takes the newest: the row goes back to
+// that value, and that change is dropped from the queue - an undo is not
+// itself remembered, so undo, undo, undo walks back through the changes.
+// Full, the oldest is forgotten. A reset to default is a change like any
+// other, so it can be undone too. Pure; the host tells the queue what was
+// saved (NativeSettings::NoteSaved), so a save that failed leaves it as it
+// was.
+constexpr UInt32 kNativeUndoDepth = 32;
+struct NativeUndoQueue {
+ UInt32 rows[kNativeUndoDepth]{};
+ float values[kNativeUndoDepth]{};
+ UInt32 count = 0;
+ void Push(UInt32 row, float previous) {
+  if (count == kNativeUndoDepth) {
+   for (UInt32 i = 1; i < count; ++i) { rows[i - 1] = rows[i]; values[i - 1] = values[i]; }
+   --count;
+  }
+  rows[count] = row; values[count] = previous; ++count;
+ }
+ bool Top(UInt32& row, float& previous) const {
+  if (count == 0) return false;
+  row = rows[count - 1]; previous = values[count - 1]; return true;
+ }
+ void Pop() { if (count > 0) --count; }
 };
 
 // Which rows the menu offers. All is every row on one long list of pages.
@@ -122,6 +152,14 @@ public:
  const SettingDefinition* Row(UInt32 slot) const;
  bool CanResetSelected(const Config& config) const;
  NativeSettingEdit Click(int id, const Config& config);
+ // The Undo button: whether a change is left to put back, and which row
+ // and value the newest one would restore (for the button's own label).
+ bool CanUndo() const { return m_undo.count > 0; }
+ const SettingDefinition* UndoRow(float& previous) const;
+ // Told by the host once an edit was SAVED (not on a failed or refused
+ // one): a change is remembered with the value the row had before it, an
+ // undo drops the change it put back.
+ void NoteSaved(const NativeSettingEdit& edit, float previous);
  // The Sections view's list of sections is up (no rows, no selection).
  bool InOverview() const { return m_view==SettingsView::Sections && m_section<0; }
  // In the list of sections: the section on a slot of this page and how many
@@ -142,6 +180,7 @@ private:
  UInt32 m_count=0;
  UInt32 m_first=0;
  UInt32 m_selected=0;
+ NativeUndoQueue m_undo;
 };
 
 struct NativeSettingWriter {

@@ -615,7 +615,100 @@ void TestSections() {
        "the flat view has no sections and no Back");
 }
 
+void TestUndo() {
+ std::printf("The Undo button and its queue\n");
+ NativeUndoQueue q;
+ UInt32 row=0; float v=0.0f;
+ Check(!q.Top(row,v) && q.count==0,"empty: nothing to undo");
+ q.Pop();
+ Check(q.count==0,"pop on empty: still nothing");
+ q.Push(3,1.5f); q.Push(7,0.0f);
+ Check(q.Top(row,v) && row==7 && v==0.0f,"the newest change on top");
+ q.Pop();
+ Check(q.Top(row,v) && row==3 && v==1.5f,"then the one before");
+ for (UInt32 i=0;i<kNativeUndoDepth+5;++i) q.Push(100+i,static_cast<float>(i));
+ Check(q.count==kNativeUndoDepth && q.rows[0]==105 && q.Top(row,v) && row==100+kNativeUndoDepth+4,
+       "full: the oldest forgotten, the newest kept");
+
+ NativeSettings menu;
+ menu.SetView(SettingsView::All,Config{});
+ Config config;
+ Writer writer;
+ Check(!menu.CanUndo() && menu.Click(kNativeUndo,config).definition==nullptr,"nothing changed yet: undo inert");
+ // Find an editable number row on the first page.
+ UInt32 slot=0; const SettingDefinition* definition=nullptr;
+ for (;slot<kNativeSettingsRows;++slot) {
+  const auto* d=menu.Row(slot);
+  if (d && d->kind!=ItemKind::Action && d->kind!=ItemKind::Text && d->Write) { definition=d; break; }
+ }
+ Check(definition!=nullptr,"an editable row on the first page");
+ if (!definition) return;
+ const float original=ItemFor(*definition,config).value;
+ // Two changes with +, each saved and noted.
+ float values[2]={0.0f,0.0f};
+ for (int i=0;i<2;++i) {
+  const auto edit=menu.Click(kNativeRowBase+static_cast<int>(slot)*3+2,config);
+  const float before=ItemFor(*definition,config).value;
+  Check(edit.definition==definition && !edit.undo,"a plus click proposes the row");
+  Check(CommitNativeEdit(edit,config,writer)==NativeEditResult::Saved,"and is saved");
+  menu.NoteSaved(edit,before);
+  values[i]=before;
+ }
+ Check(menu.CanUndo(),"two changes: undo lit");
+ float shown=0.0f;
+ Check(menu.UndoRow(shown)==definition && shown==values[1],"the button names the row and the value before the last change");
+ // A failed save leaves the queue as it is.
+ {
+  const auto undo=menu.Click(kNativeUndo,config);
+  Check(undo.definition==definition && undo.undo && undo.value==values[1] && undo.repaint,"undo proposes the value before");
+  writer.success=false;
+  Check(CommitNativeEdit(undo,config,writer)==NativeEditResult::SaveFailed,"the save fails");
+  writer.success=true;
+  Check(menu.CanUndo() && menu.UndoRow(shown)==definition && shown==values[1],"nothing dropped on a failed save");
+ }
+ // Undo twice walks back to the original; a third is inert.
+ for (int i=1;i>=0;--i) {
+  const auto undo=menu.Click(kNativeUndo,config);
+  const float before=ItemFor(*definition,config).value;
+  Check(CommitNativeEdit(undo,config,writer)==NativeEditResult::Saved && ItemFor(*definition,config).value==values[i],"undo restores the value before");
+  menu.NoteSaved(undo,before);
+ }
+ Check(ItemFor(*definition,config).value==original && !menu.CanUndo(),"back at the original, the queue empty");
+ Check(menu.Click(kNativeUndo,config).definition==nullptr,"a third undo: inert");
+ // A reset is a change: undoable.
+ {
+  const auto plus=menu.Click(kNativeRowBase+static_cast<int>(slot)*3+2,config);
+  const float before=ItemFor(*definition,config).value;
+  CommitNativeEdit(plus,config,writer); menu.NoteSaved(plus,before);
+  const float changed=ItemFor(*definition,config).value;
+  Check(menu.CanResetSelected(config),"changed: reset lit");
+  const auto reset=menu.Click(kNativeReset,config);
+  const float beforeReset=ItemFor(*definition,config).value;
+  Check(CommitNativeEdit(reset,config,writer)==NativeEditResult::Saved,"reset saved");
+  menu.NoteSaved(reset,beforeReset);
+  const auto undo=menu.Click(kNativeUndo,config);
+  Check(undo.definition==definition && undo.value==changed,"undo after reset offers the changed value back");
+  const float b2=ItemFor(*definition,config).value;
+  CommitNativeEdit(undo,config,writer); menu.NoteSaved(undo,b2);
+  Check(ItemFor(*definition,config).value==changed,"and restores it");
+ }
+ // Actions are never queued.
+ {
+  NativeSettingEdit action; action.definition=&SettingDefinitions()[0]; action.action=true;
+  const UInt32 countBefore=menu.CanUndo() ? 1 : 0;
+  menu.NoteSaved(action,0.0f);
+  Check((menu.CanUndo() ? 1u : 0u)==countBefore,"an action row leaves the queue alone");
+ }
+ // The selection follows the undone row when the view shows it.
+ {
+  menu.Click(kNativeNext,config);
+  const auto undo=menu.Click(kNativeUndo,config);
+  Check(undo.definition==definition && menu.Selected()==static_cast<UInt32>(definition-SettingDefinitions()) && menu.First()==0,
+        "undo from another page selects the row and turns to its page");
+ }
+}
 int main() {
+ TestUndo();
  TestSections();
  TestModes();
  TestComfortView();

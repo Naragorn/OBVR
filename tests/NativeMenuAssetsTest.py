@@ -11,7 +11,7 @@ settings=parse(base/'generic/OBVR_Settings.xml')
 assert sorted(int(x.text) for x in onboarding.iter('id'))==[9101,9102]
 assert '(OBVR)' in onboarding.find('.//text[@name="title"]/string').text
 assert 'Decide later' not in (base/'generic/OBVR_Onboarding.xml').read_text()
-expected=[9201,9202,9203,9204,9299]+list(range(9300,9321))
+expected=[9201,9202,9203,9204,9205,9299]+list(range(9300,9321))
 assert sorted(int(x.text) for x in settings.iter('id'))==sorted(expected)
 assert settings.find('.//rect[@name="close"]/id').text=='9299'
 reset=settings.find('.//rect[@name="reset"]')
@@ -20,8 +20,12 @@ assert reset.find('id').text=='9203'
 assert reset.find('target').text.strip()=='0'
 assert reset.find('locus').text.strip()=='1'
 assert reset.find('alpha').text=='110'
-assert reset.find('text[@name="label"]/string').text=='Reset selected to default'
-bottom=[settings.find(f'.//rect[@name="{name}"]') for name in ['previous','next','reset','close']]
+assert reset.find('text[@name="label"]/string').text=='Reset to default'
+undo=settings.find('.//rect[@name="undo"]')
+assert undo is not None and undo.find('id').text=='9205'
+assert undo.find('target').text.strip()=='0' and undo.find('alpha').text=='110'
+assert undo.find('text[@name="label"]/string').text=='Undo last change'
+bottom=[settings.find(f'.//rect[@name="{name}"]') for name in ['previous','next','reset','undo','close']]
 bottom_bounds=[]
 for button in bottom:
     x=int(button.findtext('x'))
@@ -33,7 +37,7 @@ for button in bottom:
 for index,left in enumerate(bottom_bounds):
     for right in bottom_bounds[index+1:]:
         assert left[0]+left[2] <= right[0] or right[0]+right[2] <= left[0]
-print('Reset button: ID 9203, initial disabled traits, label, and bottom layout verified')
+print('Reset and Undo buttons: IDs 9203 and 9205, initial disabled traits, labels, and bottom layout verified')
 for i in range(7):
     row=settings.find(f'.//rect[@name="row{i}"]')
     for name in ['label','value','restart']:
