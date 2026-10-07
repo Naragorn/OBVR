@@ -736,6 +736,19 @@ constexpr float kTargetHangMaxDropUnits = 20.0f;  // 28 cm
 constexpr float kTargetHangGapUnits = 3.0f;       // 4 cm
 constexpr float kTargetHangCentreUnits = 40.0f;   // 56 cm
 
+// Whether the pick's hit is taken as the thing's: a hit read on the pick's
+// first frames on a thing can be the last frame's on another (the hit lags
+// the reference), so there it has to lie within the thing's bound and a
+// slack; from the third frame on it is the engine's own hit on that thing,
+// whatever its bound says - a door's refused its hits for frames on end and
+// the row froze, then jumped (the tester, 2026-10-07). `framesOnRef`: how
+// many frames the pick has been on the thing before this one.
+inline constexpr UInt32 kPickHitSettleFrames = 2;
+
+inline bool PickHitTrusted(UInt32 framesOnRef, bool withinSlack) {
+	return withinSlack || framesOnRef >= kPickHitSettleFrames;
+}
+
 inline NiPoint3 TargetHangPoint(const NiPoint3& hit, bool haveBound, const NiPoint3& boundCentre, float boundRadius) {
 	float x = hit.x;
 	float y = hit.y;

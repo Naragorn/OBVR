@@ -1269,23 +1269,36 @@ void StepVrKeyboard(const Config& config) {
 	char chars[64] = {};
 	bool done = false;
 	bool closed = false;
+	UInt32 charEvents = 0;
 	const UInt32 openedFor = g_keyboard.menuId;
 	if (g_keyboard.open) {
-		backend.PollKeyboard(chars, sizeof(chars), done, closed);
+		backend.PollKeyboard(chars, sizeof(chars), done, closed, &charEvents);
+	}
+	// The runtime's buffer, read on a character event and on Done (its
+	// ordinary mode keeps the text itself; the tester's Done came with no
+	// character at all, 2026-10-07): the game is typed what changed in it.
+	// Character events with an empty buffer are the minimal mode's, typed
+	// as they come.
+	char buffer[vr::kKeyboardTextCapacity] = {};
+	bool haveBuffer = false;
+	if (g_keyboard.open && (charEvents > 0 || done)) {
+		haveBuffer = backend.ReadKeyboardText(buffer, sizeof(buffer)) && (buffer[0] != '\0' || g_keyboard.text[0] != '\0');
 	}
 	const char* const clicked = g_menuClickEdge && g_menuClickTile[0] != '\0' ? g_menuClickTile : nullptr;
-	const vr::KeyboardStep step =
-		vr::StepKeyboardSession(g_keyboard, config.hands.vrKeyboard && connected, top, clicked, closed);
-	if (chars[0] != '\0' || done) {
-		const UInt32 dropped = vr::QueueTypedText(g_keyTaps, chars, done, openedFor);
+	if (haveBuffer || chars[0] != '\0' || done) {
+		const UInt32 dropped = haveBuffer ? vr::QueueTextDifference(g_keyTaps, g_keyboard, buffer, done)
+		                                  : vr::QueueTypedText(g_keyTaps, chars, done, openedFor);
 		if (g_keyboardLines > 0) {
 			--g_keyboardLines;
-			OBVR_LOG("Keyboard: %u character(s) typed for the %s menu%s, %u left out (not on the US keys or the "
-			         "queue full), %u tap(s) pending",
-			         static_cast<unsigned>(std::strlen(chars)), game::MenuIdName(openedFor), done ? ", Done" : "",
+			OBVR_LOG("Keyboard: %u character event(s) for the %s menu%s - the buffer \"%s\"%s, %u character(s) in "
+			         "the events, %u left out (not on the US keys or the queue full), %u tap(s) pending",
+			         charEvents, game::MenuIdName(openedFor), done ? ", Done" : "", buffer,
+			         haveBuffer ? " typed as it changed" : " not used", static_cast<unsigned>(std::strlen(chars)),
 			         dropped, g_keyTaps.count);
 		}
 	}
+	const vr::KeyboardStep step =
+		vr::StepKeyboardSession(g_keyboard, config.hands.vrKeyboard && connected, top, clicked, closed);
 	if (step == vr::KeyboardStep::Open) {
 		if (!backend.ShowKeyboard(vr::KeyboardPromptFor(top), "", 64)) {
 			g_keyboard.open = false;
@@ -1350,6 +1363,13 @@ UInt32 g_slapFacingLines = 12;
 bool g_dialogBaseHeld = false;
 NiPoint3 g_dialogBasePos{0.0f, 0.0f, 0.0f};
 UInt32 g_dialogBaseLines = 8;
+// The base of the last two passes outside a conversation: [0] the last,
+// [1] the one before.
+struct DialogBaseSample {
+	bool valid = false;
+	NiPoint3 pos{0.0f, 0.0f, 0.0f};
+};
+DialogBaseSample g_dialogBaseHistory[2];
 // The mod's slap wants the two origins within 51 units (its script's
 // `getDistance < 51`); a hand at a face from an arm's length stands the
 // body further off (the tester's log, 2026-10-07: 69 and 45 units, the mod
@@ -6754,13 +6774,30 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			// A hit that is not on the thing - the pick's last hit from another,
 			// read a frame before the pick moved on - is no hit: the row stood
 			// "in der luft für paar frames" on it (the tester, 2026-10-07).
+			// Only on the pick's first frames on a thing, though: the hit is
+			// the engine's own on that thing afterwards, and a door's bound
+			// refused its hits for frames on end so the row froze and then
+			// caught up in one jump ("wenn ich von rechts mit pointer auf die
+			// tür gehe springt ein textfeld", the tester, 2026-10-07).
+			static UInt32 s_pickRef = 0;
+			static UInt32 s_pickFrames = 0;
+			if (target.refAddress != s_pickRef) {
+				s_pickRef = target.refAddress;
+				s_pickFrames = 0;
+			} else if (s_pickFrames < 1000) {
+				++s_pickFrames;
+			}
+			NiPoint3 hitCentre{};
+			float hitRadius = 0.0f;
+			bool haveHitBound = false;
+			bool withinSlack = true;
 			if (haveHit) {
-				NiPoint3 hitCentre{};
-				float hitRadius = 0.0f;
-				if (game::RefWorldBound(target.refAddress, hitCentre, hitRadius)) {
+				haveHitBound = game::RefWorldBound(target.refAddress, hitCentre, hitRadius);
+				if (haveHitBound) {
 					const float slack = hitRadius + kHitSlackUnits;
-					haveHit = (hit - hitCentre).LengthSquared() <= slack * slack;
+					withinSlack = (hit - hitCentre).LengthSquared() <= slack * slack;
 				}
+				haveHit = vr::PickHitTrusted(s_pickFrames, withinSlack);
 			}
 			// On the thing the pick has settled on (game/PickHold.h), under
 			// its own middle for a small thing, eased - so the text neither
@@ -6803,10 +6840,13 @@ void MaybeSubmitOverlays(bool worldFrame) {
 				}
 				if (s_rowFrames < 3 && s_rowLines > 0) {
 					--s_rowLines;
-					OBVR_LOG("Hands: row on %08X, frame %u - hit %s at %.0f %.0f %.0f, wanted %.0f %.0f %.0f, "
-					         "hang %.0f %.0f %.0f, %.2f m from the head",
+					OBVR_LOG("Hands: row on %08X, frame %u - hit %s at %.0f %.0f %.0f (the bound %s %.0f %.0f %.0f radius "
+					         "%.0f, %s, the pick's frame %u on it), wanted %.0f %.0f %.0f, hang %.0f %.0f %.0f, %.2f m from the head",
 					         shownRef, s_rowFrames + 1, shownRef == target.refAddress && haveHit ? "the pick's" : "none (the anchor's)",
 					         static_cast<double>(hit.x), static_cast<double>(hit.y), static_cast<double>(hit.z),
+					         haveHitBound ? "at" : "unknown", static_cast<double>(hitCentre.x), static_cast<double>(hitCentre.y),
+					         static_cast<double>(hitCentre.z), static_cast<double>(hitRadius),
+					         withinSlack ? "within its slack" : "OUTSIDE its slack", s_pickFrames + 1,
 					         static_cast<double>(wanted.x), static_cast<double>(wanted.y), static_cast<double>(wanted.z),
 					         static_cast<double>(hang.x), static_cast<double>(hang.y), static_cast<double>(hang.z),
 					         static_cast<double>(handHudFrame.targetDistanceMetres));
@@ -7559,19 +7599,35 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// the engine's base is held where it was as the conversation began, for
 	// as long as it lasts (game::PlayerDialogActive): the head's own offset
 	// goes on top as ever, and the menu frames build on the same base.
+	// The base is taken from two passes BEFORE the conversation was seen:
+	// the engine had already lowered it by the first pass after its
+	// SetDialogCamera call (the tester's log, 2026-10-07: the eyes frozen at
+	// 148.3 as the call came, the base 107.0 one pass later), so the pass
+	// that sees the conversation is too late to read it.
 	{
 		const bool talking = game::PlayerDialogActive();
 		if (talking && !g_dialogBaseHeld) {
 			g_dialogBaseHeld = true;
-			g_dialogBasePos = cameraNode->localTransform.pos;
+			const NiPoint3 now = cameraNode->localTransform.pos;
+			g_dialogBasePos = g_dialogBaseHistory[1].valid ? g_dialogBaseHistory[1].pos
+			                  : g_dialogBaseHistory[0].valid ? g_dialogBaseHistory[0].pos
+			                                                 : now;
 			if (g_dialogBaseLines > 0) {
 				--g_dialogBaseLines;
-				OBVR_LOG("Dialogue view: the camera's base held at %.1f %.1f %.1f for the conversation",
+				OBVR_LOG("Dialogue view: the camera's base held at %.1f %.1f %.1f for the conversation (this pass's "
+				         "%.1f %.1f %.1f, the one before %.1f %.1f %.1f, two before %.1f %.1f %.1f)",
 				         static_cast<double>(g_dialogBasePos.x), static_cast<double>(g_dialogBasePos.y),
-				         static_cast<double>(g_dialogBasePos.z));
+				         static_cast<double>(g_dialogBasePos.z), static_cast<double>(now.x), static_cast<double>(now.y),
+				         static_cast<double>(now.z), static_cast<double>(g_dialogBaseHistory[0].pos.x),
+				         static_cast<double>(g_dialogBaseHistory[0].pos.y), static_cast<double>(g_dialogBaseHistory[0].pos.z),
+				         static_cast<double>(g_dialogBaseHistory[1].pos.x), static_cast<double>(g_dialogBaseHistory[1].pos.y),
+				         static_cast<double>(g_dialogBaseHistory[1].pos.z));
 			}
 		} else if (!talking) {
 			g_dialogBaseHeld = false;
+			g_dialogBaseHistory[1] = g_dialogBaseHistory[0];
+			g_dialogBaseHistory[0].valid = true;
+			g_dialogBaseHistory[0].pos = cameraNode->localTransform.pos;
 		}
 		if (g_dialogBaseHeld) {
 			cameraNode->localTransform.pos = g_dialogBasePos;

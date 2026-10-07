@@ -491,6 +491,12 @@ void TestTarget() {
 	Check(Near(tall.z, 27.0f), "a person or a door: no more than 20 units below its middle");
 	const NiPoint3 bare = TargetHangPoint(hit, false, NiPoint3{}, 0.0f);
 	Check(Near(bare.z, 101.0f), "no bound: just under the hit");
+	Check(PickHitTrusted(0, true) && PickHitTrusted(1, true) && PickHitTrusted(5, true),
+	      "a hit within the bound's slack: the thing's on any frame");
+	Check(!PickHitTrusted(0, false) && !PickHitTrusted(1, false),
+	      "outside the slack on the pick's first two frames on it: the last thing's hit, not taken");
+	Check(PickHitTrusted(2, false) && PickHitTrusted(100, false),
+	      "outside the slack from the third frame on: the engine's own hit on it, taken");
 	const NiPoint3 above = TargetHangPoint(NiPoint3{0, 0, 10.0f}, true, NiPoint3{0, 0, 50.0f}, 5.0f);
 	Check(Near(above.z, 7.0f), "hit below its bound's bottom: under the hit");
 	const NiPoint3 aside = TargetHangPoint(NiPoint3{14.0f, 23.0f, 104.0f}, true, NiPoint3{10.0f, 20.0f, 100.0f}, 5.0f);

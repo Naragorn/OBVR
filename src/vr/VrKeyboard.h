@@ -180,12 +180,49 @@ struct KeyTapQueue {
 	}
 };
 
-// The keyboard's session: which menu it is up for, and what to do with
-// what it sends.
+inline UInt32 QueueTypedText(KeyTapQueue& q, const char* chars, bool done, UInt32 menuId);
+
+// The keyboard's session: which menu it is up for, what to do with what it
+// sends, and the text its buffer held the last time it was read.
+inline constexpr UInt32 kKeyboardTextCapacity = 65;
+
 struct KeyboardSession {
 	bool open = false;
 	UInt32 menuId = 0;
+	char text[kKeyboardTextCapacity] = {};
 };
+
+// The runtime's keyboard in its ordinary (buffered) mode keeps the text
+// itself and shows it over the keys; what was typed is read back whole
+// with GetKeyboardText - Valve's own keyboard sample does so on every
+// character event and on Done (openvr/samples/unity_keyboard_sample,
+// KeyboardSample.cs), and the tester's log of 2026-10-07 shows Done
+// arriving with no character events at all ("0 character(s) typed ...
+// Done"). So the game is typed the DIFFERENCE between the buffer as last
+// read and as it stands now: backspaces for what went from the end of the
+// old text, then the new text's rest. Answers how many characters could not
+// be typed; `s.text` becomes `current`.
+inline UInt32 QueueTextDifference(KeyTapQueue& q, KeyboardSession& s, const char* current, bool done) {
+	const char* previous = s.text;
+	UInt32 common = 0;
+	while (previous[common] != '\0' && current != nullptr && current[common] != '\0' &&
+	       previous[common] == current[common]) {
+		++common;
+	}
+	UInt32 dropped = 0;
+	for (UInt32 i = common; previous[i] != '\0'; ++i) {
+		if (!q.Push(kVkBack, false)) {
+			++dropped;
+		}
+	}
+	dropped += QueueTypedText(q, current != nullptr ? current + common : nullptr, done, s.menuId);
+	UInt32 n = 0;
+	for (; current != nullptr && current[n] != '\0' && n + 1 < kKeyboardTextCapacity; ++n) {
+		s.text[n] = current[n];
+	}
+	s.text[n] = '\0';
+	return dropped;
+}
 
 // What this frame asks of the keyboard, decided from the menus and the
 // click (the engine side is the caller's: OpenVRBackend, the tile under the
@@ -201,6 +238,7 @@ inline KeyboardStep StepKeyboardSession(KeyboardSession& s, bool enabled, UInt32
 		if (!enabled || keyboardGone || !KeyboardMenuStillUp(s.menuId, topMenuId)) {
 			s.open = false;
 			s.menuId = 0;
+			s.text[0] = '\0';
 			return keyboardGone ? KeyboardStep::Nothing : KeyboardStep::Close;
 		}
 		return KeyboardStep::Nothing;
@@ -211,6 +249,7 @@ inline KeyboardStep StepKeyboardSession(KeyboardSession& s, bool enabled, UInt32
 	if (TextMenuTakesKeyboard(topMenuId) || (clickedTile != nullptr && NameTileTakesKeyboard(topMenuId, clickedTile))) {
 		s.open = true;
 		s.menuId = topMenuId;
+		s.text[0] = '\0';
 		return KeyboardStep::Open;
 	}
 	return KeyboardStep::Nothing;

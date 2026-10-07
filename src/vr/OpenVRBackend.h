@@ -146,7 +146,12 @@ public:
 	// when the Done key was pressed, `closed` when the keyboard went away
 	// either way. Other events are dropped - nothing else in OBVR reads
 	// them. Answers how many characters were added.
-	UInt32 PollKeyboard(char* chars, UInt32 capacity, bool& done, bool& closed);
+	UInt32 PollKeyboard(char* chars, UInt32 capacity, bool& done, bool& closed, UInt32* charEvents = nullptr);
+	// The keyboard's whole text as it stands (IVROverlay GetKeyboardText) -
+	// the runtime's buffer in its own mode, which Valve's keyboard sample
+	// reads on every character event and on Done. Into `text`, terminated,
+	// at most `capacity` - 1 characters; false without the overlay interface.
+	bool ReadKeyboardText(char* text, UInt32 capacity);
 	// The thumb joint by joint from the hand's full skeleton, into
 	// out.thumb (vr/ThumbPose.h); leaves thumbValid false when it cannot.
 	void ReadThumb(bool rightHand, UInt64 skeleton, HandPose& out) const;

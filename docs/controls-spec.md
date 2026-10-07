@@ -1431,7 +1431,8 @@ it rotated it out), so this is built on the tester's words.
   under the eyes (0.30 before; the live INI had 0.29), still over the hand
   measured against the chest on 2026-09-27.
 - **"text zeilen machen noch einen luftsprung manchmal ... erst mittig
-  oder woanders"**: still open, the cause not pinned. Read through this
+  oder woanders"**: open after this round; see 4.20 for what its log
+  showed. Read through this
   round: the crosshair quad over the thing is already hidden until the
   row's anchor is the pick's (`targetSettled`), the row's anchor snaps on a
   new thing (`game::StepAnchor`), and the overlay's transform is set
@@ -1445,3 +1446,55 @@ it rotated it out), so this is built on the tester's words.
   ref, and "Hands: row on <ref>, frame 1..3 - hit ..., wanted ..., hang
   ..., m from the head" for the row's first three frames on a thing. A
   jump in the headset now has its frames in the log.
+
+### 4.20 The tester's round of f62ce58 (2026-10-07, 21:45)
+
+"1) ja passt 2) jetzt gehts glaube ich 3) nein 4) keyboard ist nun da!!
+aber egal was ich drücke auf dem keyboard keine buchstaben kommen ins
+textfeld 5) ja das war die tür wenn ich von rechts mit pointer auf die
+tür gehe springt ein textfeld". Read from his log (OBVR.log.prev, 21:46).
+
+- **The stow circle** (1): placed and kept - "Stow place: kept at 0.07
+  right, -0.00 forward, -0.05 up, 0.54 m across"; the live INI has them.
+- **The slap** (2): the tap's facing lines say 8 and 0 degrees, 33 units
+  apart - within the mod's 51 by itself this time, the origin pull not
+  needed; the mod's counter ran 1, 2, 3.
+- **The dialogue view** (3), still "zu tief": his log in order -
+  "Dialogue focus: eyes frozen=1 at .../148.30" (the first SetDialogCamera
+  call, the live eyes at 148), then "Dialogue view: the camera's base held
+  at 2328.6 4127.6 107.0" on the very next camera pass. So the engine's
+  base was ALREADY at 107 by the first pass after its call, and the hold
+  of f62ce58 held the lowered base. The shim's own path ran ("nothing to
+  do", the original not called), so what lowers it is the caller's doing
+  around that call, within one frame; not found. The hold now takes the
+  base from TWO passes before the conversation was first seen
+  (`g_dialogBaseHistory`), and its line prints this pass's base with the
+  two before it, so the next log says whether two is enough. The other
+  two conversations of the log (the tester's own) began with the base at
+  141 and 168.5 - at the eyes - and were not lowered.
+- **The keyboard** (4): "Keyboard: 0 character(s) typed for the RaceSex
+  menu, Done" twice - the Done event came, no character event ever did.
+  Valve's own sample (openvr, samples/unity_keyboard_sample/Assets/
+  KeyboardSample.cs) reads the whole text with GetKeyboardText on each
+  character event and on Done when not in minimal mode; the keyboard's
+  ordinary mode keeps the text itself. So the text is now read back from
+  the runtime on a character event and on Done, and the game is typed what
+  changed in it since the last read: backspaces for what went from the
+  end, then the rest (`vr::QueueTextDifference`, vr_keyboard_test).
+  Character events with an empty buffer (the minimal mode) are typed as
+  they come, as before. The line now says how many character events came
+  and what the buffer held. Whether the race menu's name field takes the
+  key taps once the keyboard is up is not shown yet.
+- **The door's text** (5): his log's row lines on the door (181976D4):
+  frame 1 "hit the pick's", frames 2 and 3 "hit none (the anchor's)" with
+  hits 27 units from the first - the engine's own hits on the door,
+  refused by the bound-plus-slack test of 4.18, so the row froze at the
+  first hit and caught up in one jump when a hit passed the test again. The
+  test is now only for the pick's first two frames on a thing (where the
+  lagging hit of the last thing is possible), `vr::PickHitTrusted`
+  (hand_hud_test); from the third frame the engine's hit on that thing is
+  taken. The row's frame lines now print the bound (centre, radius) and
+  whether the hit was within its slack - what the door's bound is, and why
+  it refused, the next log says. The Info element stayed lifted through
+  the whole log (its state changed only at the start): the "mittig" path
+  of 4.19 is ruled out for that run.
