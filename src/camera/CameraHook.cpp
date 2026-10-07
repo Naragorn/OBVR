@@ -1218,6 +1218,23 @@ UInt32 g_stowSpotRevision = 1;
 vr::YieldState g_yield;
 vr::YieldState g_yieldShadow;  // the rocking alone, for the log's "why not"
 
+// Whether the engine's pick on `ref` is to be shown and acted on: not when
+// the laser does not pick items ([Hands] LaserPicksItems off), the thing is
+// an item, and no hand holds it in the pick (game::NearItem).
+bool LaserItemFiltered(const Config& config, UInt32 ref) {
+	if (config.hands.laserPicksItems || ref == 0) {
+		return false;
+	}
+	if (g_nearItem.valid && g_nearItem.ref == ref) {
+		return false;
+	}
+	bool isBook = false;
+	return game::RefIsItem(ref, &isBook);
+}
+
+// A pick hit counts as on the thing within its bound plus this much.
+inline constexpr float kHitSlackUnits = 10.0f;
+
 // The tick at the buttons (vr/MenuHaptics.h): the game's tiles, OBVR's
 // panel rows and the quick menu's ring, each remembered on its own.
 vr::MenuHapticState g_menuHaptic;
@@ -1319,6 +1336,48 @@ UInt32 g_dialogCameraLines = 8;  // "Dialogue view" lines, one per conversation
 inline constexpr UInt32 kSlapTapWatchFrames = 24;
 UInt32 g_slapTapWatch = 0;
 inline constexpr UInt32 kMapScanToKey = 1;  // MAPVK_VSC_TO_VK
+
+// The slapped one faced for the mod's slap (game/Shove.h): the player's
+// heading to them and theirs to the player, written each frame of the
+// tap's watch at Present - after the gaze's own heading write, which took
+// the one written in the camera pass straight back ("der text must face
+// usw kommt", the tester, 2026-10-07). Oblivion's heading: zero at north,
+// clockwise; a reference's rotZ at +0x28 and its position at +0x2C (xOBSE
+// GameObjects.h, TESObjectREFR).
+inline constexpr UInt32 kRefRotZOffset = 0x28;
+UInt32 g_slapFacingLines = 12;
+
+void HoldSlapFacing() {
+	if (g_slapTapWatch == 0 || !mem::LooksLikeObjectAddress(g_slapTapActor)) {
+		return;
+	}
+	NiPoint3 feet{};
+	if (!game::PlayerWorldPosition(feet)) {
+		return;
+	}
+	const float* const npcPos = reinterpret_cast<const float*>(g_slapTapActor + addr::kRefPositionOffset);
+	const float dx = npcPos[0] - feet.x;
+	const float dy = npcPos[1] - feet.y;
+	const float distance = math::Sqrt(dx * dx + dy * dy);
+	if (!(distance > 1.0f)) {
+		return;
+	}
+	float* const npcYaw = reinterpret_cast<float*>(g_slapTapActor + kRefRotZOffset);
+	if (g_slapTapWatch == kSlapTapWatchFrames - 1 && g_slapFacingLines > 0) {
+		--g_slapFacingLines;
+		game::PlayerRotation player{};
+		const bool haveYaw = game::ReadPlayerRotation(player);
+		const float toNpc = math::Atan2(dx, dy);
+		const float toPlayer = math::Atan2(-dx, -dy);
+		OBVR_LOG("Shove: facing for the mod - the player %.0f deg off the slapped one, they %.0f deg off the player, "
+		         "%.0f units apart (the mod wants 25, 18 and 51) - both turned to face for %u frames",
+		         static_cast<double>(haveYaw ? math::WrapAngle(player.yaw - toNpc) * 57.2958f : 0.0f),
+		         static_cast<double>(math::WrapAngle(*npcYaw - toPlayer) * 57.2958f), static_cast<double>(distance),
+		         kSlapTapWatchFrames);
+	}
+	game::WritePlayerYaw(math::Atan2(dx, dy));
+	*npcYaw = math::Atan2(-dx, -dy);
+}
 NiPoint3 g_slapTapTarget{0.0f, 0.0f, 0.0f};
 inline constexpr float kYieldEnemyUnits = 420.0f;   // 6 m
 inline constexpr float kYieldEnemyCos = 0.866f;     // 30 degrees from the head's forward
@@ -2227,7 +2286,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				}
 			}
 		}
-		if (g_slapTapWatch > 0 && g_slapTapLines > 0) {
+		const bool watchLogged = g_slapTapWatch > 0 && g_slapTapLines > 0;
+		if (g_slapTapWatch > 0) {
+			--g_slapTapWatch;
+		}
+		if (watchLogged) {
 			// Evidence for the mod's side (the tester, 2026-10-07: "slaps
 			// gehen nicht mehr" with the tap logged, then "slap klappte gar
 			// nicht" with the key down every frame): whom the pick has, the
@@ -2239,7 +2302,6 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			// held, 0 again once its tap-slap or pickpocket branch ran), and
 			// whom it took (rGrabbedItem).
 			--g_slapTapLines;
-			--g_slapTapWatch;
 			const game::CrosshairTarget target = game::ReadCrosshairTarget();
 			const UInt32 scan = game::UsScanCode(config.handKeys.grab);
 			const UInt32 layoutKey = scan != 0 ? MapVirtualKeyA(scan, kMapScanToKey) : config.handKeys.grab;
@@ -2495,6 +2557,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			}
 			return h;
 		};
+		// Whether the laser picks items at all ([Hands] LaserPicksItems).
+		game::g_laserPicksItems = config.hands.laserPicksItems;
 		game::NearItem keptByHand[2];
 		const game::NearItem best = game::FindNearestItem(
 			hand(false, g_hand.rightHandValid && (!gripping || !g_hand.grabWithLeftHand)),
@@ -3408,9 +3472,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		static UInt32 clickLinesLeft = 40;
 		if (controls.menuClick && !clickWasSent && menuIsUp && clickLinesLeft > 0) {
 			--clickLinesLeft;
-			OBVR_LOG("Hands: click sent to the %s menu at cursor %.0f,%.0f",
-			         game::MenuIdName(game::ActiveMenuId()), static_cast<double>(frame.cursorX),
-			         static_cast<double>(frame.cursorY));
+			char tileName[64] = {};
+			game::ActiveTileName(tileName, sizeof(tileName));
+			OBVR_LOG("Hands: click sent to the %s menu (on top: %s) at cursor %.0f,%.0f, the tile under it \"%s\"",
+			         game::MenuIdName(game::ActiveMenuId()), game::MenuIdName(game::TopVisibleMenu()),
+			         static_cast<double>(frame.cursorX), static_cast<double>(frame.cursorY), tileName);
 		}
 		// The click's down-edge and the tile under the cursor as it went:
 		// what the SteamVR keyboard opens on (vr/VrKeyboard.h, StepVrKeyboard).
@@ -3943,6 +4009,7 @@ void OnPresent() {
 	game::SetNoHitBlur(config.look.noHitBlur);
 	UpdateHandMode(config, game::IsMenuMode());
 	StepVrKeyboard(config);
+	HoldSlapFacing();
 	OnFrameEnd();
 	test::AdvanceWaterVRTest(game::PlayerInWorld() && !game::IsMenuMode());
 	if (config.tracker.mirrorMenusToMonitor && menuIsUp && layerCaptured) {
@@ -6633,7 +6700,18 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		if (handHudActive && handHudFrame.haveHead && g_cyclopeanCameraWorldValid) {
 			const game::CrosshairTarget target = game::ReadCrosshairTarget();
 			NiPoint3 hit = target.position;
-			const bool haveHit = target.haveRef && game::ReadPickHit(hit);
+			bool haveHit = target.haveRef && !LaserItemFiltered(config, target.refAddress) && game::ReadPickHit(hit);
+			// A hit that is not on the thing - the pick's last hit from another,
+			// read a frame before the pick moved on - is no hit: the row stood
+			// "in der luft für paar frames" on it (the tester, 2026-10-07).
+			if (haveHit) {
+				NiPoint3 hitCentre{};
+				float hitRadius = 0.0f;
+				if (game::RefWorldBound(target.refAddress, hitCentre, hitRadius)) {
+					const float slack = hitRadius + kHitSlackUnits;
+					haveHit = (hit - hitCentre).LengthSquared() <= slack * slack;
+				}
+			}
 			// On the thing the pick has settled on (game/PickHold.h), under
 			// its own middle for a small thing, eased - so the text neither
 			// shakes with the ray's hit nor jumps to a thing the ray crossed.
@@ -6870,7 +6948,9 @@ void UpdateCrosshairDepth(const Config& config, float deltaSeconds) {
 
 	const game::CrosshairTarget target =
 		wantTarget ? game::ReadCrosshairTarget() : game::CrosshairTarget{};
-	g_crosshairHasTarget = target.haveRef;
+	// An item the laser alone has, with the laser not picking items: no
+	// target - no icon, no depth to it (LaserItemFiltered).
+	g_crosshairHasTarget = target.haveRef && !LaserItemFiltered(config, target.refAddress);
 	const UInt32 targetAddress = target.haveRef ? target.refAddress : 0;
 	const bool immediateTargetDepth =
 		CrosshairTargetNeedsImmediateDepth(g_crosshairTargetAddress, targetAddress);

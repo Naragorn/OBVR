@@ -139,7 +139,9 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 		// And pushed back, as a hit's knockback moves its target.
 		using ProxyOfFn = void*(__thiscall*)(void* actor);
 		void* const proxy = reinterpret_cast<ProxyOfFn>(kCharacterProxyOf)(actor);
-		const NiPoint3 push = ShovePush(fromWorld, centre, settings.distance);
+		// Not for a slap in the face: the stagger is its reaction, the push
+		// "schubst den npc leider auch bisschen" (the tester, 2026-10-07).
+		const NiPoint3 push = inTheFace ? NiPoint3{0.0f, 0.0f, 0.0f} : ShovePush(fromWorld, centre, settings.distance);
 		if (LooksLikeObject(reinterpret_cast<UInt32>(proxy)) && push.LengthSquared() > 0.0f &&
 		    settings.pushSeconds > 0.0f) {
 			using PushFn = void(__thiscall*)(void* proxy, const NiPoint3* distance, float seconds);

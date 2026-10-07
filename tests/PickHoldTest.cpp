@@ -251,6 +251,21 @@ void TestRankForHand() {
 	away.direction = NiPoint3{1.0f, 0.0f, 0.0f};
 	r = RankItemForHand(away, false, 0xA, centre, 5.0f, 100.0f, 20.0f);
 	Check(!r.valid, "pointing elsewhere, beyond the grab's reach: not reached for");
+
+	std::printf("The laser not picking items\n");
+	g_laserPicksItems = false;
+	r = RankItemForHand(hand, true, 0xA, centre, 5.0f, 100.0f, 20.0f);
+	Check(!r.valid, "the laser on it from half a metre: nothing, the laser does not pick items");
+	r = RankItemForHand(hand, false, 0xA, centre, 5.0f, 100.0f, 20.0f, 2.0f);
+	Check(r.valid && r.rankClass == kPickTouched, "touched: still the hand's");
+	SearchHand palm = hand;
+	palm.direction = NiPoint3{0.0f, 0.0f, 0.0f};
+	palm.palm = NiPoint3{0.0f, 1.0f, 0.0f};
+	r = RankItemForHand(palm, false, 0xA, centre, 5.0f, 100.0f, 20.0f, 30.0f);
+	Check(r.valid && r.rankClass == kPickPalmNear, "the palm turned to it within 42 units: still the hand's");
+	g_laserPicksItems = true;
+	r = RankItemForHand(hand, true, 0xA, centre, 5.0f, 100.0f, 20.0f);
+	Check(r.valid && r.rankClass == kPickLaserOn, "on again: the laser's class is back");
 }
 
 }  // namespace

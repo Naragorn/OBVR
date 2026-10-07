@@ -1102,6 +1102,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.menuHaptics = v != 0.0f; },
 	},
 	{
+		"Hands", "Laser picks items", "Off: the laser leaves takeable things alone - items are the hands' (reach, pull, stow); doors, people and the rest still take the laser",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "LaserPicksItems",
+		+[](const Config& c) { return c.hands.laserPicksItems ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.laserPicksItems = v != 0.0f; },
+	},
+	{
 		"Hands", "Laser tilt", "Degrees the laser leaves the controller turned down",
 		ItemKind::Number, -90.0f, 90.0f, 5.0f, 0, false,
 		"Hands", "LaserPitchDegrees",

@@ -1343,3 +1343,40 @@ the engine's cursor is stuck.
   thing before and the pick's hit was already the next thing's, the row for
   the old thing was placed at the new thing's hit. Now the row is hidden
   until its own anchor is known or the pick is on it.
+
+### 4.18 The tester's round of dccfbb5 (2026-10-07, 20:00)
+
+The round's own log was gone by the time it was read (two sessions after
+it rotated it out), so this is built on the tester's words.
+- **The ticks** "5 % stärker": 0.084 and 0.21.
+- **The slap** "kommt. schubst aber den npc leider auch bisschen": a slap
+  in the face staggers and is not pushed any more; the push stays the
+  body shove's.
+- **"der text must face usw kommt und die mod triggert nicht"**: the mod's
+  one message for two of its checks (the player's heading within 25
+  degrees, the NPC's within 18). The heading written in the camera pass
+  was taken straight back by the gaze's own heading write the same frame;
+  now both are written at Present for the tap's watch (24 frames): the
+  player's heading to the slapped one (`WritePlayerYaw`) and the slapped
+  one's rotZ (+0x28) to the player (`HoldSlapFacing`). Logged once per
+  slap, before the writes: "Shove: facing for the mod - the player n deg
+  off the slapped one, they n deg off the player, n units apart (the mod
+  wants 25, 18 and 51)". Not seen in the headset; the distance the mod
+  wants is the one thing OBVR cannot give it.
+- **The laser and items** ("das können wir nun entfernen aus dem game mit
+  einem toggle (default an) ... aufnehmen mit stow (default an)"):
+  `[Hands] LaserPicksItems`, off by default - the laser's classes are never
+  given to an item (`g_laserPicksItems`, pick_hold_test), and the engine's
+  own pick on an item no hand holds is shown and acted on as nothing
+  (`LaserItemFiltered`: no name row, no icon, no crosshair depth to it;
+  `TakeOnlyByHand` already keeps Activate from it). Doors, people,
+  containers and the rest take the laser as before. Reach, pull, touch and
+  the stow at the body are the way to items.
+- **"Text für paar Frames in der Luft: immer noch hier und da"**: the
+  pick's hit read for the row can be the previous thing's for a frame
+  (the hit lags the pick's reference); now a hit farther than the thing's
+  bound plus 10 units from its middle is no hit, and the row waits.
+- **"namensfeld und keyboard geht nicht"**: no keyboard line in any log
+  seen; the click log now names the tile under the cursor and the menu on
+  top ("Hands: click sent to the ... menu (on top: ...) ... the tile under
+  it \"...\"") - what the next log needs for the field's real name.

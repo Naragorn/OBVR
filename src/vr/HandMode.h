@@ -93,6 +93,9 @@ struct HandSettings {
 	// A tick in the controller at every button hovered or clicked
 	// (vr/MenuHaptics.h).
 	bool menuHaptics = true;
+	// Whether the laser picks items at all (game/NearbyItems.h,
+	// g_laserPicksItems): off, items are the hands' alone.
+	bool laserPicksItems = false;
 
 	// The hand bones, written each frame to where the controllers are, so
 	// the hands and the weapon stay with the controllers while the animation
