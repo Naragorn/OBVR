@@ -2257,22 +2257,40 @@ void TestNearItems() {
 	ConsiderNearItem(three, 11, obvr::NiPoint3{-20.0f, 50.0f, 0.0f}, 3.0f, pointing, noLeft, 140.0f, 21.0f);
 	ConsiderNearItem(three, 12, obvr::NiPoint3{0.0f, 90.0f, 0.0f}, 3.0f, pointing, noLeft, 140.0f, 21.0f);
 	ConsiderNearItem(three, 13, obvr::NiPoint3{20.0f, 40.0f, 0.0f}, 3.0f, pointing, noLeft, 140.0f, 21.0f);
-	Check(three.valid && three.ref == 12u && three.rankClass == 2,
+	Check(three.valid && three.ref == 12u && three.rankClass == kPickLaserOn,
 	      "three in front, the laser on the farthest: the farthest is taken");
 	NearItem twoInCone;
 	ConsiderNearItem(twoInCone, 14, obvr::NiPoint3{20.0f, 50.0f, 0.0f}, 2.0f, pointing, noLeft, 140.0f, 21.0f);
 	ConsiderNearItem(twoInCone, 15, obvr::NiPoint3{15.0f, 90.0f, 0.0f}, 2.0f, pointing, noLeft, 140.0f, 21.0f);
-	Check(twoInCone.ref == 15u && twoInCone.rankClass == 3,
+	Check(twoInCone.ref == 15u && twoInCone.rankClass == kPickLaserCone,
 	      "neither on the laser, both in its cone: the one nearer the laser, though farther");
 	NearItem reachVsAim;
 	ConsiderNearItem(reachVsAim, 16, obvr::NiPoint3{15.0f, 0.0f, 0.0f}, 2.0f, pointing, noLeft, 140.0f, 21.0f);
 	ConsiderNearItem(reachVsAim, 17, obvr::NiPoint3{0.0f, 60.0f, 0.0f}, 2.0f, pointing, noLeft, 140.0f, 21.0f);
-	Check(reachVsAim.ref == 16u && reachVsAim.rankClass == 1,
+	Check(reachVsAim.ref == 16u && reachVsAim.rankClass == kPickInReach,
 	      "one within the grab's reach, one on the laser: the one in reach (the hand brought to things)");
 	NearItem touchVsAim;
 	ConsiderNearItem(touchVsAim, 18, obvr::NiPoint3{0.0f, 60.0f, 0.0f}, 2.0f, pointing, noLeft, 140.0f, 21.0f);
 	ConsiderNearItem(touchVsAim, 19, obvr::NiPoint3{4.0f, -3.0f, 0.0f}, 2.0f, pointing, noLeft, 140.0f, 21.0f);
-	Check(touchVsAim.ref == 19u && touchVsAim.rankClass == 0, "one touched, one on the laser: the touched");
+	Check(touchVsAim.ref == 19u && touchVsAim.rankClass == kPickTouched, "one touched, one on the laser: the touched");
+	// The open palm near a thing against the laser on a far one (the tester,
+	// 2026-10-07): the palm's, within 60 cm; farther, the laser's.
+	SearchHand palmAside = pointing;
+	palmAside.palm = obvr::NiPoint3{1.0f, 0.0f, 0.0f};
+	NearItem palmVsAim;
+	ConsiderNearItem(palmVsAim, 20, obvr::NiPoint3{0.0f, 90.0f, 0.0f}, 2.0f, palmAside, noLeft, 140.0f, 21.0f);
+	ConsiderNearItem(palmVsAim, 21, obvr::NiPoint3{35.0f, 0.0f, 0.0f}, 2.0f, palmAside, noLeft, 140.0f, 21.0f);
+	Check(palmVsAim.ref == 21u && palmVsAim.rankClass == kPickPalmNear,
+	      "the palm 33 units from a thing, the laser on a far one: the palm's");
+	NearItem palmFarVsAim;
+	ConsiderNearItem(palmFarVsAim, 22, obvr::NiPoint3{0.0f, 90.0f, 0.0f}, 2.0f, palmAside, noLeft, 140.0f, 21.0f);
+	ConsiderNearItem(palmFarVsAim, 23, obvr::NiPoint3{60.0f, 0.0f, 0.0f}, 2.0f, palmAside, noLeft, 140.0f, 21.0f);
+	Check(palmFarVsAim.ref == 22u && palmFarVsAim.rankClass == kPickLaserOn,
+	      "the palm 58 units from a thing: the laser's far one");
+	NearItem twoPalm;
+	ConsiderNearItem(twoPalm, 24, obvr::NiPoint3{35.0f, 0.0f, 0.0f}, 2.0f, palmAside, noLeft, 140.0f, 21.0f);
+	ConsiderNearItem(twoPalm, 25, obvr::NiPoint3{28.0f, 5.0f, 0.0f}, 2.0f, palmAside, noLeft, 140.0f, 21.0f);
+	Check(twoPalm.ref == 25u, "two near the palm: the nearer");
 	Check(LaserMissRadians(obvr::NiPoint3{0, 0, 0}, obvr::NiPoint3{0, 1, 0}, obvr::NiPoint3{0, 50, 0}, 3.0f) == 0.0f &&
 	          LaserMissRadians(obvr::NiPoint3{0, 0, 0}, obvr::NiPoint3{0, 0, 0}, obvr::NiPoint3{0, 50, 0}, 3.0f) <
 	              0.0f &&

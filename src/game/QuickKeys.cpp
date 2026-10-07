@@ -44,6 +44,17 @@ void ReadFullName(UInt32 form, char* out, UInt32 size) {
 
 }  // namespace
 
+void ReadFormFullName(UInt32 form, char* out, UInt32 size) {
+	if (out == nullptr || size == 0) {
+		return;
+	}
+	if (!LooksLikeObject(form)) {
+		out[0] = '\0';
+		return;
+	}
+	ReadFullName(form, out, size);
+}
+
 void ReadQuickKeys(QuickKeySlot (&slots)[kQuickKeyCount]) {
 	for (int i = 0; i < kQuickKeyCount; ++i) {
 		QuickKeySlot& slot = slots[i];

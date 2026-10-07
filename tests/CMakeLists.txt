@@ -1316,3 +1316,18 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME pick_hold COMMAND pick_hold_test)
+
+add_executable(held_name_test
+	HeldNameTest.cpp
+	../src/ui/HeldNamePainter.cpp
+	../src/ui/MenuCanvas.cpp
+	../src/ui/MenuFont.cpp
+)
+
+target_include_directories(held_name_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(held_name_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME held_name COMMAND held_name_test)

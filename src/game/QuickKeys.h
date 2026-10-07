@@ -26,4 +26,8 @@ void ReadQuickKeys(QuickKeySlot (&slots)[kQuickKeyCount]);
 // what an "all empty" ring was read from.
 void DescribeQuickKeyLists(char* out, UInt32 size);
 
+// A form's TESFullName into `out`, cut to fit; empty when it has none or the
+// form cannot be read. For a reference, pass its base form.
+void ReadFormFullName(UInt32 form, char* out, UInt32 size);
+
 }  // namespace obvr::game

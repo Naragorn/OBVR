@@ -48,13 +48,14 @@ void TestClearlyBetter() {
 	std::printf("Clearly better\n");
 	Check(RanksClearlyBetter(0, 100.0f, 1, 0.0f), "a better class wins whatever the keys");
 	Check(!RanksClearlyBetter(2, 0.0f, 1, 1.0f), "a worse class loses whatever the keys");
-	Check(RanksClearlyBetter(2, 0.010f, 2, 0.050f), "the laser's miss: 2.3 degrees less is clear");
-	Check(!RanksClearlyBetter(2, 0.030f, 2, 0.050f), "the laser's miss: 1.1 degrees less is not");
+	Check(RanksClearlyBetter(3, 0.010f, 3, 0.050f), "the laser's miss: 2.3 degrees less is clear");
+	Check(!RanksClearlyBetter(2, 10.0f, 2, 11.0f) && !RanksClearlyBetter(3, 0.030f, 3, 0.050f),
+	      "the palm near, a unit nearer, and the laser's miss 1.1 degrees less: neither is clear");
 	Check(RanksClearlyBetter(1, 10.0f, 1, 12.0f), "by distance: 2 units (3 cm) nearer is clear");
 	Check(!RanksClearlyBetter(1, 11.0f, 1, 12.0f), "by distance: 1 unit nearer is not");
-	Check(RanksClearlyBetter(0, 1.0f, 0, 3.0f) && !RanksClearlyBetter(4, 30.0f, 4, 31.0f),
+	Check(RanksClearlyBetter(0, 1.0f, 0, 3.0f) && !RanksClearlyBetter(5, 30.0f, 5, 31.0f),
 	      "touched and palm-found: by distance too");
-	Check(!RanksClearlyBetter(3, 0.2f, 3, 0.2f), "the same is never clearer");
+	Check(!RanksClearlyBetter(4, 0.2f, 4, 0.2f), "the same is never clearer");
 }
 
 void TestTakeAndStay() {
@@ -114,14 +115,14 @@ void TestChallenge() {
 
 	// A better class without a touch waits too.
 	PickHoldState v;
-	Frame(v, Item(0xA, false, 3, 0.3f), none, none, 0.011f);
-	Frame(v, Item(0xB, false, 1, 0.05f), Item(0xA, false, 3, 0.3f), none, 0.10f);
+	Frame(v, Item(0xA, false, 4, 0.3f), none, none, 0.011f);
+	Frame(v, Item(0xB, false, 1, 0.05f), Item(0xA, false, 4, 0.3f), none, 0.10f);
 	Check(v.held.ref == 0xA, "B in the grab's reach against A in the cone: not before the challenge is over");
 
 	// A touch wins at once.
 	PickHoldState w;
-	Frame(w, Item(0xA, false, 1, 0.05f), none, none, 0.011f);
-	const NearItem touched = Frame(w, Item(0xB, false, 0, 1.0f), Item(0xA, false, 1, 0.05f), none, 0.011f);
+	Frame(w, Item(0xA, false, 3, 0.05f), none, none, 0.011f);
+	const NearItem touched = Frame(w, Item(0xB, false, 0, 1.0f), Item(0xA, false, 3, 0.05f), none, 0.011f);
 	Check(touched.ref == 0xB, "a touched item takes over at once");
 	PickHoldState x;
 	Frame(x, Item(0xA, false, 0, 1.0f), none, none, 0.011f);
@@ -136,7 +137,7 @@ void TestGrace() {
 	const NearItem a = Item(0xA, false, 1, 10.0f);
 	Frame(s, a, none, none, 0.011f);
 	// No hand reaches for A any more; B is the best.
-	const NearItem b = Item(0xB, false, 4, 40.0f);
+	const NearItem b = Item(0xB, false, 5, 40.0f);
 	NearItem got = Frame(s, b, none, none, 0.05f);
 	Check(got.ref == 0xA, "A not reached for: kept through the grace");
 	got = Frame(s, b, none, none, 0.05f);
@@ -223,15 +224,15 @@ void TestRankForHand() {
 	hand.direction = NiPoint3{0.0f, 1.0f, 0.0f};
 	const NiPoint3 centre{0.0f, 50.0f, 0.0f};
 	NearItem r = RankItemForHand(hand, true, 0xA, centre, 5.0f, 100.0f, 20.0f);
-	Check(r.valid && r.left && r.ref == 0xA && r.rankClass == 2 && Near(r.distance, 45.0f),
-	      "the laser on it from half a metre: class 2, the left hand's");
+	Check(r.valid && r.left && r.ref == 0xA && r.rankClass == kPickLaserOn && Near(r.distance, 45.0f),
+	      "the laser on it from half a metre: the laser's class, the left hand's");
 	r = RankItemForHand(hand, false, 0xA, centre, 5.0f, 30.0f, 20.0f);
 	Check(!r.valid, "out of the hand's reach: invalid");
 	r = RankItemForHand(hand, false, 0xA, centre, 5.0f, 100.0f, 20.0f, 2.0f);
 	Check(r.valid && r.rankClass == 0 && Near(r.rankKey, 2.0f) && Near(r.distance, 2.0f),
 	      "the mesh known 2 units away: touched, by that distance");
 	r = RankItemForHand(hand, false, 0xA, centre, 60.0f, 100.0f, 20.0f, 30.0f);
-	Check(r.valid && r.rankClass == 4 && Near(r.distance, 30.0f),
+	Check(r.valid && r.rankClass == kPickPalm && Near(r.distance, 30.0f),
 	      "inside the sphere but the mesh 30 units off: not touched, nor within the grab's reach");
 	SearchHand off;
 	off.valid = false;

@@ -228,17 +228,36 @@ inline float LaserMissRadians(const NiPoint3& hand, const NiPoint3& direction, c
 // By class, then within it by its key, lower first (the distance being to
 // the item's mesh within the grab's reach, FindNearestItem, else to its
 // bound sphere):
-//   0 touched (within kPickTouchUnits of its surface) - by distance;
-//   1 within the grab's reach - by distance;
-//   2 the laser on it (within kPickAimedRadians of its bound) - by the miss;
-//   3 in the laser's cone (ReachingFor) - by the miss;
-//   4 the palm turned to it, or a hand with no laser - by distance.
+//   kPickTouched   touched (within kPickTouchUnits of its surface) - by distance;
+//   kPickInReach   within the grab's reach - by distance;
+//   kPickPalmNear  the palm turned to it within kPickPalmNearUnits - by distance;
+//   kPickLaserOn   the laser on it (within kPickAimedRadians of its bound) - by the miss;
+//   kPickLaserCone in the laser's cone (ReachingFor) - by the miss;
+//   kPickPalm      the palm turned to it farther off, or a hand with no laser - by distance.
 // So a hand brought to things takes the nearest of them (the tester,
 // 2026-10-07: on a laden table the laser from that hand fell on the thing
-// behind the nearest); beyond the grab's reach the laser decides, and the
-// item nearest the laser wins, not the one nearest the hand.
+// behind the nearest), and an open palm held near a thing takes it before
+// the laser takes something far off (the tester, the same day: "die
+// handfläche nah an einem objekt muss prio haben vor laserpointer zu einem
+// entfernten objekt"); beyond that the laser decides, and the item nearest
+// the laser wins, not the one nearest the hand.
+enum PickClass : UInt8 {
+	kPickTouched = 0,
+	kPickInReach = 1,
+	kPickPalmNear = 2,
+	kPickLaserOn = 3,
+	kPickLaserCone = 4,
+	kPickPalm = 5,
+};
 constexpr float kPickTouchUnits = 3.5f;       // 5 cm
 constexpr float kPickAimedRadians = 0.105f;   // 6 degrees
+constexpr float kPickPalmNearUnits = 42.0f;   // 60 cm
+
+// Whether a class is keyed by the laser's miss (an angle) rather than by a
+// distance - what a margin between two keys is measured in (game/PickHold.h).
+inline bool PickClassKeyedByAngle(UInt8 rankClass) {
+	return rankClass == kPickLaserOn || rankClass == kPickLaserCone;
+}
 
 inline bool PickRank(const SearchHand& hand, const NiPoint3& centre, float radius, float surfaceDistance,
                      float alwaysUnits, UInt8& rankClass, float& rankKey) {
@@ -246,21 +265,27 @@ inline bool PickRank(const SearchHand& hand, const NiPoint3& centre, float radiu
 		return false;
 	}
 	const float miss = LaserMissRadians(hand.position, hand.direction, centre, radius);
+	const bool palmKnown = hand.palm.LengthSquared() > 1.0e-12f;
+	const bool palmNear = palmKnown && surfaceDistance <= kPickPalmNearUnits &&
+	                      ReachingFor(hand.position, hand.palm, centre, surfaceDistance, 0.0f, kPalmConeCos);
 	if (surfaceDistance <= kPickTouchUnits) {
-		rankClass = 0;
+		rankClass = kPickTouched;
 		rankKey = surfaceDistance;
 	} else if (surfaceDistance <= alwaysUnits) {
-		rankClass = 1;
+		rankClass = kPickInReach;
+		rankKey = surfaceDistance;
+	} else if (palmNear) {
+		rankClass = kPickPalmNear;
 		rankKey = surfaceDistance;
 	} else if (miss >= 0.0f && miss <= kPickAimedRadians) {
-		rankClass = 2;
+		rankClass = kPickLaserOn;
 		rankKey = miss;
 	} else if (miss >= 0.0f && ReachingFor(hand.position, hand.direction, centre, surfaceDistance, 0.0f,
 	                                       kReachingConeCos)) {
-		rankClass = 3;
+		rankClass = kPickLaserCone;
 		rankKey = miss;
 	} else {
-		rankClass = 4;
+		rankClass = kPickPalm;
 		rankKey = surfaceDistance;
 	}
 	return true;

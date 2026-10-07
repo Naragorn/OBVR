@@ -608,6 +608,22 @@ things left, built the same day:
   not hold anything (the headset was awake, the scripted hand 1.6 m off),
   and the "HandScript: items" line now prints "the crosshair on <ref>" next
   to "held" for the next run with the headset asleep.
+- **The open palm near a thing beats the laser on a far one (the tester's
+  second round, 2026-10-07).** A new class between "within the grab's
+  reach" and "the laser on it": the palm turned to a thing within 60 cm
+  (`kPickPalmNear`, `kPickPalmNearUnits`), by distance. Farther off the laser
+  decides as before. The classes are named now (`game::PickClass`).
+- **The name while holding, second try.** The pick aimed at the held thing
+  did not bring its name (the tester: "objekte die ich vor mir halte zeigen
+  keinen namen an"); why the engine's pick does not name a grabbed
+  reference is not known (no read of the grabbed-reference field in the
+  pick routine's range 0x580000-0x582800; the harness could not look while
+  the headset was awake). So OBVR paints the name itself: the base form's
+  TESFullName in the menu font on a dark strip (`ui/HeldNamePainter.h`,
+  held_name_test), a canvas overlay 36 cm wide hung under the held thing's
+  bound and eased like the info row (`UpdateHeldName`), hidden when nothing
+  is held. The game's info row stays what it was for everything else. Not
+  seen in the headset.
 - **Owned things in the hand (not built, the tester's decision).** The idea
   of a toggle making the grab of an owned thing no crime until it is
   stowed, eaten, carried out of the cell or 15 m away is left to Put it in

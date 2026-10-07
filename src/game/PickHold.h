@@ -29,7 +29,7 @@ namespace obvr::game {
 inline constexpr float kPickHoldChallengeSeconds = 0.15f;
 inline constexpr float kPickHoldGraceSeconds = 0.15f;
 // A clear margin within a class: for the classes keyed by the laser's miss
-// (2 and 3) an angle; for those keyed by distance (0, 1 and 4) units.
+// an angle; for those keyed by distance units (PickClassKeyedByAngle).
 inline constexpr float kPickHoldMarginRadians = 0.035f;  // 2 degrees
 // Small, so that on a laden plate the thing nearest the hand still wins
 // (the tester, 2026-10-07); the hold's time does the steadying.
@@ -44,7 +44,7 @@ struct PickHoldState {
 };
 
 inline bool RankKeyedByAngle(UInt8 rankClass) {
-	return rankClass == 2 || rankClass == 3;
+	return PickClassKeyedByAngle(rankClass);
 }
 
 // Whether `a` ranks clearly better than `b`: a better class, or the same

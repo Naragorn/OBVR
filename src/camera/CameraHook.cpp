@@ -104,6 +104,7 @@
 #include "ui/SettingsMenuLayer.h"
 #include "ui/QuickMenuPainter.h"
 #include "ui/StowSpotPainter.h"
+#include "ui/HeldNamePainter.h"
 #include "ui/GuidePanel.h"
 #include "render/InterfaceRenderHook.h"
 #include "render/CursorPickHook.h"
@@ -1207,6 +1208,46 @@ ui::CanvasOverlay g_stowSpotLayer("obvr.stowspot", "OBVR Stow Spot", ui::kStowSp
 ui::StowSpotView g_stowSpotView;
 UInt32 g_stowSpotRevision = 1;
 
+// The name of the thing in the hand, hung under it (ui/HeldNamePainter.h).
+ui::CanvasOverlay g_heldNameLayer("obvr.heldname", "OBVR Held Name", ui::kHeldNameCanvasWidth,
+                                  ui::kHeldNameCanvasHeight);
+ui::HeldNameView g_heldNameView;
+UInt32 g_heldNameRevision = 1;
+UInt32 g_heldNameRef = 0;
+game::AnchorState g_heldNameAnchor;
+
+// Each frame: while the grab holds something with a name, the strip with its
+// name under it, facing the eyes; hidden otherwise.
+void UpdateHeldName(const Config& config, vr::OpenVRBackend& backend, bool active, bool menuIsUp) {
+	const UInt32 held = (active && !menuIsUp && game::PlayerHoldsGrab()) ? game::GrabbedRef() : 0;
+	if (held != g_heldNameRef) {
+		g_heldNameRef = held;
+		g_heldNameView.name[0] = '\0';
+		if (held != 0 && mem::LooksLikeObjectAddress(held)) {
+			const UInt32 base = *reinterpret_cast<const UInt32*>(held + addr::kRefBaseFormOffset);
+			game::ReadFormFullName(base, g_heldNameView.name, sizeof(g_heldNameView.name));
+		}
+		++g_heldNameRevision;
+	}
+	NiPoint3 centre{};
+	float radius = 0.0f;
+	vr::openvr::HmdMatrix34 head{};
+	const bool shown = ui::HeldNameShown(held != 0, g_heldNameView.name) && g_cyclopeanCameraWorldValid &&
+	                   game::RefWorldBound(held, centre, radius) && backend.GetRenderPoseMatrix(head);
+	if (!shown) {
+		g_heldNameLayer.Hide(backend);
+		return;
+	}
+	// Under the thing's bound, eased as the info row is (game/PickHold.h).
+	const NiPoint3 hang = game::StepAnchor(g_heldNameAnchor, held,
+	                                       vr::TargetHangPoint(centre, true, centre, radius), g_deltaSeconds);
+	const NiPoint3 at = vr::WorldPointInTracking(head, g_cyclopeanCameraWorldTransform.rot,
+	                                             g_cyclopeanCameraWorldTransform.pos, hang,
+	                                             config.tracker.unitsPerMetre);
+	g_heldNameLayer.Show(backend, render::GetGameDevice(), vr::TargetRowPose(head, at.x, at.y, at.z),
+	                     ui::kHeldNameWidthMetres, g_heldNameRevision, ui::PaintHeldNameFor, &g_heldNameView);
+}
+
 // The spot's pose: at its point, its face turned to the eyes, upright.
 vr::openvr::HmdMatrix34 StowSpotPose(const NiPoint3& at, const NiPoint3& eyes) {
 	NiPoint3 z = eyes - at;
@@ -1954,6 +1995,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	                                      active && !menuIsUp && frame.inWorld &&
 	                                          !frame.settingsMenuOpen);
 	UpdateStowPlacing(GetConfig(), backend, frame);
+	UpdateHeldName(config, backend, active && frame.inWorld && !frame.settingsMenuOpen, menuIsUp);
 	g_hand = g_handMode.Update(frame, config.hands);
 	// Taking loose items only by hand ([Hands] TakeOnlyByHand, vr::Stow): the
 	// activate button is kept from the game while the laser is on one. Read
