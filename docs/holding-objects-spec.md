@@ -597,6 +597,17 @@ things left, built the same day:
   (`[Hands] TargetOutline=0`, `TargetGlow=0`); the rows under Hands switch
   them on. Whether a mark ever stayed on with the row switched off: not
   seen (a mark switched off is stopped the same frame).
+- **The name while holding (the tester, 2026-10-07: "muss sichtbar sein am
+  objekt auch noch während des festhaltens").** While the grab holds
+  something, the pick ran along the hand's laser, so the game's info text
+  named whatever the laser crossed and the row hung there. Now the pick is
+  aimed from the holding hand at the held thing's bound (the `heldRay`
+  branch before `nearRay` in the camera pass), so the text stays its name,
+  under it. Whether the engine's crosshair pick returns the grabbed
+  reference at all is not verified: the harness `stow` run of the day could
+  not hold anything (the headset was awake, the scripted hand 1.6 m off),
+  and the "HandScript: items" line now prints "the crosshair on <ref>" next
+  to "held" for the next run with the headset asleep.
 - **Owned things in the hand (not built, the tester's decision).** The idea
   of a toggle making the grab of an owned thing no crime until it is
   stowed, eaten, carried out of the cell or 15 m away is left to Put it in

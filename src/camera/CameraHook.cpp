@@ -2115,7 +2115,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		OBVR_LOG("HandScript: items - near a hand %d (ref %08X type %02X, %.0f units from the %s "
 		         "hand), nearest to the eyes %08X form %08X type %02X at %.0f %.0f %.0f (%.0f "
 		         "units); "
-		         "eyes %.0f %.0f %.0f, right hand %.0f %.0f %.0f; held %08X; blocking %d, block "
+		         "eyes %.0f %.0f %.0f, right hand %.0f %.0f %.0f; held %08X, the crosshair on %08X; blocking %d, block "
 		         "key %d, attack key %d, player action %d",
 		         g_nearItem.valid ? 1 : 0, g_nearItem.ref, game::RefBaseFormType(g_nearItem.ref),
 		         static_cast<double>(g_nearItem.distance), g_nearItem.left ? "left" : "right",
@@ -2129,6 +2129,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		         static_cast<double>(camera.x), static_cast<double>(camera.y),
 		         static_cast<double>(camera.z), static_cast<double>(hand.x),
 		         static_cast<double>(hand.y), static_cast<double>(hand.z), game::GrabbedRef(),
+		         game::ReadCrosshairTarget().haveRef ? game::ReadCrosshairTarget().refAddress : 0u,
 		         g_hand.blocking ? 1 : 0, g_hand.controls.block ? 1 : 0,
 		         g_hand.controls.attack ? 1 : 0, static_cast<int>(game::ReadPlayerAction()));
 	}
@@ -7234,7 +7235,25 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		const bool reachRay = config.fullVrMode && g_headTracker.IsHeadsetConnected() &&
 		                      g_grabReachPick &&
 		                      (g_hand.grabWithLeftHand ? g_hand.leftHandValid : g_hand.rightHandValid);
-		if (nearRay) {
+		// While something is held, the pick from the holding hand straight at
+		// it: the game's info text (its name, under it) stays on the thing in
+		// the hand rather than on whatever the laser crosses (the tester,
+		// 2026-10-07: "der text des objektes muss sichtbar sein am objekt auch
+		// noch während des festhaltens").
+		NiPoint3 heldCentre{};
+		float heldRadius = 0.0f;
+		const UInt32 heldRef = game::PlayerHoldsGrab() ? game::GrabbedRef() : 0;
+		const bool heldLeft = g_hand.grabWithLeftHand;
+		const bool heldRay = config.fullVrMode && g_headTracker.IsHeadsetConnected() && heldRef != 0 &&
+		                     (heldLeft ? g_hand.leftHandValid : g_hand.rightHandValid) &&
+		                     game::RefWorldBound(heldRef, heldCentre, heldRadius);
+		if (heldRay) {
+			const NiPoint3 from = cameraNode->localTransform.pos +
+			                      finalRotation * (heldLeft ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits);
+			const vr::LaserWorldRay ray = vr::RayTowards(
+				from, heldCentre, hands.grabReachMetres * config.tracker.unitsPerMetre, ForwardOf(finalRotation));
+			game::SetWorldPickHandRay(ray.origin, ray.direction, true);
+		} else if (nearRay) {
 			// An item near a hand: the pick from that hand straight at it, so
 			// the tooltip, the marker and the grab take it without pointing.
 			const NiPoint3 from = cameraNode->localTransform.pos +
