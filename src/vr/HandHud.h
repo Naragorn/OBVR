@@ -812,14 +812,20 @@ inline CrosshairQuadAt CrosshairQuadPlace(CrosshairPlace place, bool fullVr, boo
 // under it (TargetHangPoint): the same sideways, and above the bound of a
 // small thing or above the hit of a large one by as much as the row hangs
 // below - the mirror of the hang, so icon and name frame the thing.
+// A small thing's bound sphere is generous - a cup's reaches well past
+// the cup - so the quad rises no more than kTargetHoverCapUnits over its
+// middle (the tester, 2026-10-07: "auf kleinen objekten clutter usw.
+// schwebt der tooltip noch weit über den objekten").
+constexpr float kTargetHoverCapUnits = 10.0f;  // 14 cm
 inline NiPoint3 TargetHoverPoint(const NiPoint3& hang, bool haveBound, const NiPoint3& boundCentre,
                                  float boundRadius) {
 	if (!haveBound) {
 		return NiPoint3{hang.x, hang.y, hang.z + 2.0f * kTargetHangGapUnits};
 	}
 	if (boundRadius <= kTargetHangCentreUnits) {
-		const float radius = boundRadius > 0.0f ? boundRadius : 0.0f;
-		return NiPoint3{hang.x, hang.y, boundCentre.z + radius + kTargetHangGapUnits};
+		float lift = boundRadius > 0.0f ? boundRadius : 0.0f;
+		lift = lift < kTargetHoverCapUnits ? lift : kTargetHoverCapUnits;
+		return NiPoint3{hang.x, hang.y, boundCentre.z + lift + kTargetHangGapUnits};
 	}
 	return NiPoint3{hang.x, hang.y, hang.z + 2.0f * (kTargetHangMaxDropUnits + kTargetHangGapUnits)};
 }

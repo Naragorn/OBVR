@@ -304,7 +304,7 @@ mittig der vr view (wechselbar in settings). denn so muss man bischen
 schielen mit den augen". The quad - the game's reticle with the context
 icon it carries - hung ahead of the pointing hand at the aim's depth: off
 the line of sight, so the eyes had to cross for it. Now `[Hands]
-CrosshairPlace` (Aiming, "Crosshair place (Full VR)"; `vr::CrosshairPlace`,
+CrosshairPlace` (Hands, "Crosshair place"; `vr::CrosshairPlace`,
 `CrosshairQuadPlace`, hand_hud_test):
 - `target` (the default): over the thing the pick has settled on, facing
   the eyes, the mirror of the Info row under it (`TargetHoverPoint` from

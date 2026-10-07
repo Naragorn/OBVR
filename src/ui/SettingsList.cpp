@@ -309,14 +309,6 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.tracker.crosshairSizeAtOneMetre = v; },
 	},
 	{
-		"Aiming", "Crosshair place (Full VR)", "laser: ahead of the pointing hand. target: over the thing pointed at, facing you. view: straight ahead",
-		ItemKind::Number, 0.0f, static_cast<float>(vr::kCrosshairPlaceCount - 1), 1.0f, 0, false,
-		"Hands", "CrosshairPlace",
-		+[](const Config& c) { return static_cast<float>(c.hands.crosshairPlace); },
-		+[](Config& c, float v) { c.hands.crosshairPlace = vr::CrosshairPlaceFromIndex(v); },
-		"", "", SettingAction::None, vr::kCrosshairPlaceNames, vr::kCrosshairPlaceCount,
-	},
-	{
 		"Aiming", "Crosshair only when needed", "Hide it until you aim or can act",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Render", "CrosshairOnlyWhenNeeded",
@@ -1086,6 +1078,14 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return static_cast<float>(c.hands.walkDirection); },
 		+[](Config& c, float v) { c.hands.walkDirection = vr::WalkDirectionFromIndex(v); },
 		"", "", SettingAction::None, vr::kWalkDirectionNames, vr::kWalkDirectionCount,
+	},
+	{
+		"Hands", "Crosshair place", "laser: ahead of the pointing hand. target: over the thing pointed at, facing you. view: straight ahead",
+		ItemKind::Number, 0.0f, static_cast<float>(vr::kCrosshairPlaceCount - 1), 1.0f, 0, false,
+		"Hands", "CrosshairPlace",
+		+[](const Config& c) { return static_cast<float>(c.hands.crosshairPlace); },
+		+[](Config& c, float v) { c.hands.crosshairPlace = vr::CrosshairPlaceFromIndex(v); },
+		"", "", SettingAction::None, vr::kCrosshairPlaceNames, vr::kCrosshairPlaceCount,
 	},
 	{
 		"Hands", "Laser tilt", "Degrees the laser leaves the controller turned down",

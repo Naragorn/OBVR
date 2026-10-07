@@ -216,9 +216,10 @@ void TestFlows() {
 void TestActivate() {
 	std::printf("The activate button over a loose item\n");
 	StowSettings s;
-	Check(!ActivateWithheld(s, true, true, false), "by default activating takes it");
+	Check(ActivateWithheld(s, true, true, false), "by default (only by hand, since 2026-10-07): kept from the game");
+	s.takeOnlyByHand = false;
+	Check(!ActivateWithheld(s, true, true, false), "switched off: activating takes it");
 	s.takeOnlyByHand = true;
-	Check(ActivateWithheld(s, true, true, false), "only by hand: kept from the game");
 	Check(!ActivateWithheld(s, true, true, true), "a book still opens to read");
 	Check(!ActivateWithheld(s, true, false, false), "a door, a chest, a person: activated");
 	Check(!ActivateWithheld(s, false, false, false), "nothing under the laser: passed on");

@@ -359,3 +359,35 @@ NearItem FindNearestItem(const SearchHand& right, const SearchHand& left, float 
                          float alwaysUnits, UInt32 except, UInt32 keep = 0, NearItem* keptByHand = nullptr);
 
 }  // namespace obvr::game
+
+namespace obvr::game {
+
+// xOBSE GameForms.h's FormType: the kinds the laser activates rather than
+// takes - a door, a container, an activator, furniture.
+inline bool IsActivatorType(UInt8 type) {
+	return type == 0x12 || type == 0x17 || type == 0x18 || type == 0x20;
+}
+
+// Whether a ray runs within `coneCos` of a bound's edge: the angle from the
+// ray to the bound's centre, less the bound's half-angle, within the cone
+// (as ActorUnderRay reads it). `to` is centre - origin, `toLength` its
+// length, `dirLength` the direction's.
+inline bool RayWithinBoundCone(const NiPoint3& to, float toLength, const NiPoint3& direction, float dirLength,
+                               float radius, float coneCos) {
+	if (!(toLength > 1.0e-6f) || !(dirLength > 1.0e-6f)) {
+		return false;
+	}
+	float cosine = (to.x * direction.x + to.y * direction.y + to.z * direction.z) / (toLength * dirLength);
+	cosine = cosine > 1.0f ? 1.0f : (cosine < -1.0f ? -1.0f : cosine);
+	const float angle = math::Atan2(math::Sqrt(1.0f - cosine * cosine), cosine);
+	const float half = toLength > radius ? math::Asin(radius / toLength) : 3.14159f;
+	const float miss = angle > half ? angle - half : 0.0f;
+	const float coneAngle = math::Atan2(math::Sqrt(1.0f - coneCos * coneCos), coneCos);
+	return miss <= coneAngle;
+}
+
+// The nearest door, container, activator or furniture under a ray within
+// `maxUnits` and `coneCos` (the cone as RayWithinBoundCone), 0 for none.
+UInt32 ActivatorUnderRay(const NiPoint3& origin, const NiPoint3& direction, float maxUnits, float coneCos);
+
+}  // namespace obvr::game

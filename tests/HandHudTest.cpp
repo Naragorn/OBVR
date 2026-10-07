@@ -502,6 +502,9 @@ void TestTarget() {
 	const NiPoint3 hoverSmall = TargetHoverPoint(low, true, NiPoint3{10.0f, 20.0f, 100.0f}, 5.0f);
 	Check(Near(hoverSmall.x, 10.0f) && Near(hoverSmall.y, 20.0f) && Near(hoverSmall.z, 108.0f),
 	      "a small thing: above its bound by the gap, over its middle");
+	const NiPoint3 hoverClutter = TargetHoverPoint(TargetHangPoint(hit, true, NiPoint3{10.0f, 20.0f, 100.0f}, 30.0f), true,
+	                                               NiPoint3{10.0f, 20.0f, 100.0f}, 30.0f);
+	Check(Near(hoverClutter.z, 113.0f), "a small thing with a generous bound: no more than 10 units over its middle");
 	const NiPoint3 hoverTall = TargetHoverPoint(tall, true, NiPoint3{0, 0, 50.0f}, 70.0f);
 	Check(Near(hoverTall.z, 73.0f), "a person or a door: as far above the hang as the hang is below the hit");
 	const NiPoint3 hoverBare = TargetHoverPoint(bare, false, NiPoint3{}, 0.0f);

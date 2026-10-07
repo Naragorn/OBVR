@@ -1230,6 +1230,8 @@ UInt32 g_slapTapFrames = 0;
 bool g_slapTapPressed = false;  // the grab down this frame for the tap
 UInt32 g_slapTapActor = 0;
 UInt32 g_slapTapLines = 120;
+bool g_crosshairSettling = false;  // the quad hidden while the row's anchor catches up with the pick
+UInt32 g_dialogCameraLines = 8;  // "Dialogue view" lines, one per conversation
 // The frames the log watches the mod's state after a tap, the tap's own
 // frames included.
 inline constexpr UInt32 kSlapTapWatchFrames = 24;
@@ -2126,6 +2128,20 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_slapTapPressed = game::SlapGrabTapPressed(g_slapTapFrames);
 		if (g_slapTapFrames > 0) {
 			g_slapTapWatch = kSlapTapWatchFrames;
+			// The body turned to face them for the tap: the mod wants the
+			// player's heading within 25 degrees of the slapped one ("I can't
+			// slap %po from this side - I need to face %po"), and in Full VR
+			// the body's heading is the walk's or the gaze's, not the hand's
+			// (the tester, 2026-10-07: "das klappt in vr nicht so gut weil ich
+			// das eig tue"). Oblivion's heading: zero at north, clockwise.
+			NiPoint3 feet{};
+			if (game::PlayerWorldPosition(feet)) {
+				const float dx = g_slapTapTarget.x - feet.x;
+				const float dy = g_slapTapTarget.y - feet.y;
+				if (dx * dx + dy * dy > 1.0f) {
+					game::WritePlayerYaw(math::Atan2(dx, dy));
+				}
+			}
 		}
 		if (g_slapTapWatch > 0 && g_slapTapLines > 0) {
 			// Evidence for the mod's side (the tester, 2026-10-07: "slaps
@@ -2412,11 +2428,18 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			const bool npcUnderLaser =
 				laser.valid && game::ActorUnderRay(laser.position, laser.direction, game::kNpcTalkUnits,
 				                                   game::kNpcUnderLaserCos, nullptr) != nullptr;
-			if (game::NpcTakesPick(npcUnderLaser, g_nearItem.valid, g_nearItem.rankClass)) {
+			// And a door, a container, an activator or furniture under it the same
+			// (game::ActivatorUnderRay): the tester, 2026-10-07, stood before a door
+			// with the pick caught on a small thing by the hand.
+			const bool activatorUnderLaser =
+				laser.valid && g_nearItem.valid && g_nearItem.rankClass != game::kPickTouched &&
+				game::ActivatorUnderRay(laser.position, laser.direction, game::kNpcTalkUnits, game::kNpcUnderLaserCos) != 0;
+			if (game::NpcTakesPick(npcUnderLaser || activatorUnderLaser, g_nearItem.valid, g_nearItem.rankClass)) {
 				static bool s_npcSaid = false;
 				if (g_nearItem.valid && !s_npcSaid) {
 					s_npcSaid = true;
-					OBVR_LOG("Pick: an NPC under the laser takes it from the items (the laser's pick, Activate talks)");
+					OBVR_LOG("Pick: %s under the laser takes it from the items (the laser's pick, Activate %s)",
+					         npcUnderLaser ? "an NPC" : "a door or the like", npcUnderLaser ? "talks" : "opens");
 				}
 				g_nearItem = game::NearItem{};
 				g_pickHold = game::PickHoldState{};
@@ -4568,6 +4591,30 @@ void PlaceMenuCamera(bool leftEye) {
 		pos + finalRotation * NiPoint3{step.toFirstEye, 0.0f, 0.0f};
 	g_menuBaseNode->localTransform.rot = finalRotation;
 	game::UpdateNodeTransforms(g_menuBaseNode);
+	// Evidence for the dialogue's view (the tester, 2026-10-07: the NPC
+	// looked at the headset's eyes, "aber die kamera wechselte runter zur
+	// hand"): the first menu frame of a conversation, what it is built on
+	// against the last world frame's camera and the eyes the NPC looks at.
+	static bool s_dialogSaid = false;
+	if (g_dialogMenuEpisode && !s_dialogSaid && g_dialogCameraLines > 0) {
+		s_dialogSaid = true;
+		--g_dialogCameraLines;
+		NiPoint3 eyes{};
+		const bool haveEyes = game::ReadDialogEyes(eyes);
+		OBVR_LOG("Dialogue view: the menu frame's camera at %.1f %.1f %.1f (base %.1f %.1f %.1f, offset z %.1f, vertical "
+		         "%.1f) - the last world frame's at %.1f %.1f %.1f, the eyes the NPC looks at %s%.1f %.1f %.1f",
+		         static_cast<double>(g_menuBaseNode->localTransform.pos.x),
+		         static_cast<double>(g_menuBaseNode->localTransform.pos.y),
+		         static_cast<double>(g_menuBaseNode->localTransform.pos.z), static_cast<double>(g_menuBasePos.x),
+		         static_cast<double>(g_menuBasePos.y), static_cast<double>(g_menuBasePos.z),
+		         static_cast<double>(g_headTracker.GetCameraOffset().z), static_cast<double>(g_menuBaseVerticalOffset),
+		         static_cast<double>(g_cyclopeanCameraWorldTransform.pos.x),
+		         static_cast<double>(g_cyclopeanCameraWorldTransform.pos.y),
+		         static_cast<double>(g_cyclopeanCameraWorldTransform.pos.z), haveEyes ? "" : "(none) ",
+		         static_cast<double>(eyes.x), static_cast<double>(eyes.y), static_cast<double>(eyes.z));
+	} else if (!g_dialogMenuEpisode) {
+		s_dialogSaid = false;
+	}
 
 	// The step to the other eye, on the same terms as the dual pass: what the
 	// second pass moves the camera by, and what the bone lock rebases the
@@ -6374,9 +6421,18 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// anchor from the last frame, g_rowAnchor - the quad the mirror of the
 	// row, above the thing as the row is below), or ahead of the head.
 	vr::openvr::HmdMatrix34 hoverHead{};
+	// Settled: the row's anchor is on the thing the pick has NOW - while the
+	// pick has moved on and the row has not followed yet (game/PickHold.h,
+	// the 0.08 s settle) the quad is hidden rather than left over the old
+	// thing (the tester, 2026-10-07: "der tooltip liegt für paar frames in
+	// der luft an einer falschen position und springt dann").
+	const game::CrosshairTarget nowTarget = game::ReadCrosshairTarget();
 	const bool targetSettled = config.fullVrMode && g_crosshairHasTarget && g_rowAnchor.valid &&
-	                           g_rowAnchor.ref != 0 && g_cyclopeanCameraWorldValid &&
+	                           g_rowAnchor.ref != 0 && nowTarget.haveRef && nowTarget.refAddress == g_rowAnchor.ref &&
+	                           g_cyclopeanCameraWorldValid &&
 	                           g_headTracker.GetBackendForFrame().GetRenderPoseMatrix(hoverHead);
+	g_crosshairSettling = config.fullVrMode && config.hands.crosshairPlace == vr::CrosshairPlace::Target &&
+	                      g_crosshairHasTarget && !targetSettled;
 	const vr::CrosshairQuadAt quadAt =
 		vr::CrosshairQuadPlace(config.hands.crosshairPlace, config.fullVrMode, targetSettled);
 	const bool crosshairOnHand = quadAt == vr::CrosshairQuadAt::Laser && config.fullVrMode &&
@@ -6390,10 +6446,14 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			vr::HandDeviceForRole(!crosshairLeft, g_handRolesSwapped)),
 		crosshairPitch, crosshairYaw, config.hands.laserOriginMetres,
 		vr::LaserOffsetLocal(config.hands.laserOffsetRightMetres, config.hands.laserOffsetUpMetres, crosshairLeft));
-	bool roomPlaced = g_reachIconShown;
+	// Over the thing it stays over the thing, near or far: the reach ring's
+	// icon placement is the laser's way (the tester, 2026-10-07: "wenn ich
+	// dann näher rantrete springt er zu dem kreis ... das sollte einheitlich
+	// sein").
+	bool roomPlaced = g_reachIconShown && quadAt != vr::CrosshairQuadAt::Target;
 	vr::openvr::HmdMatrix34 roomPose = g_reachIconPose;
 	float roomWidth = HandTooltipWidth(render::kReachIconWidthMetres, true, config.hands.tooltipScale);
-	if (!roomPlaced && quadAt == vr::CrosshairQuadAt::Target) {
+	if (quadAt == vr::CrosshairQuadAt::Target) {
 		NiPoint3 centre{};
 		float radius = 0.0f;
 		const bool haveBound = game::RefWorldBound(g_rowAnchor.ref, centre, radius);
@@ -6432,7 +6492,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	}
 	g_crosshairLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                        crosshairLifted && content != CrosshairContent::Hidden &&
-	                            !hiddenForDeath,
+	                            !hiddenForDeath && !g_crosshairSettling,
 	                        crosshair.distanceMetres,
 	                        HandTooltipWidth(crosshair.widthMetres, crosshairOnHand,
 	                                         config.hands.tooltipScale));

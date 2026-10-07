@@ -1160,3 +1160,46 @@ The tester: "Pfeil und Bogen wie in blade and sorcery. Linke hand hat ja bereits
 - After the loose an arrow reference (form FF000B9E, type 0x22 ammunition) lay 669 units away.
 - The crosshair's placement is not in the window picture: not seen.
 - The runner's console at a mark leaves the menu state up for some seconds; the script waits 12 s for it.
+
+### 4.13 The tester's round of 331a7d9 (2026-10-07, evening)
+
+- **The slap** "scheint nun zu gehen", at too much force: `ShoveSpeed` 1.3
+  m/s now (was 1.5). The mod's "I can't slap %po from this side - I need to
+  face %po": its check is the player's heading, which in Full VR is the
+  walk's or the gaze's, not the hand's. For the tap's frames the body is
+  turned to face the slapped one (`WritePlayerYaw`, Oblivion's heading:
+  zero at north, clockwise). Not seen in the headset.
+- **The dialogue's view** ("sobald der npc mit mir dialog startete ... die
+  kamera wechselte runter zur hand ... während er die alte position
+  anschaute die eigentlich richtig wäre"). The eyes the NPC looks at are
+  the frozen headset eyes (DialogFocus) and were right; the view itself
+  dropped. The menu frame's camera is built from `g_menuBasePos` (the
+  engine's own camera, taken in the last camera pass) plus the head offset
+  and the vertical offset - the same terms as a world frame - so where the
+  drop comes from is not read yet. Logged once per conversation: "Dialogue
+  view: the menu frame's camera at ... (base ..., offset z ..., vertical
+  ...) - the last world frame's at ..., the eyes the NPC looks at ...". The
+  next log decides. Open.
+- **The pick caught on a small thing before a door** ("der pointer bleibt
+  manchmal an objekten hängen obwohl ich direkt vor einer tür stehe"): a
+  door, a container, an activator or furniture under the laser (within 3 m
+  and 8 degrees, `game::ActivatorUnderRay`) takes the pick from a held item
+  the way an NPC does (`NpcTakesPick`), unless the item is touched. Logged
+  "Pick: a door or the like under the laser takes it from the items".
+- **Taking by pointing and A** ("können wir ... per setting entfernen,
+  default an"): `[Hands] TakeOnlyByHand` is that setting and is on by
+  default now (it was off); `StowAtBody` was on already. A live INI that
+  says `TakeOnlyByHand=0` keeps the old way until switched.
+- **The crosshair quad over things** (CrosshairPlace=target): no higher
+  than 10 units over a small thing's middle (`kTargetHoverCapUnits`; the
+  bound spheres are generous - "schwebt der tooltip noch weit über den
+  objekten"); it stays over the thing when the hand comes near instead of
+  moving into the reach ring ("das sollte einheitlich sein"); and while the
+  pick has moved on and the row's anchor has not followed (the 0.08 s
+  settle) the quad is hidden rather than shown over the old thing ("für
+  paar frames in der luft an einer falschen position"). The row's place
+  (the name): `[HandHud] InfoPlace` - `target` in the world under the
+  thing (the default), `view` the flat HUD, or a hand - in the HUD section
+  of the menu. The "Crosshair place" row is in the Hands section (the
+  Aiming section is VR View's and was hidden from Full VR, which is why
+  the tester found no row).

@@ -51,6 +51,8 @@ void SetPlayerLookAtEyes(bool wanted, bool valid, const NiPoint3& eyes);
 void ObservePlayerDialog(bool hasActor, bool speakerValid, const NiPoint3& speaker);
 void StepPlayerDialog(bool menuIsUp);
 bool ReadDialogSpeaker(NiPoint3& speaker);
+// The eyes the conversation holds for the NPC to look at, once it has them.
+bool ReadDialogEyes(NiPoint3& eyes);
 bool PlayerDialogActive();
 
 }  // namespace obvr::game

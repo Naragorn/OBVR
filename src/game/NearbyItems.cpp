@@ -493,3 +493,64 @@ NearItem FindNearestItem(const SearchHand& right, const SearchHand& left, float 
 }
 
 }  // namespace obvr::game
+
+namespace obvr::game {
+
+// A door, a container, an activator or a piece of furniture under a ray
+// (the tester, 2026-10-07: "der pointer bleibt manchmal an objekten hängen
+// obwohl ich direkt vor einer tür stehe und diese nicht aktivieren kann"):
+// the cell's references of those kinds, their bound within `coneCos` of
+// the ray and within `maxUnits`, the nearest of them. Walked the way
+// FindNearestItem walks the cell; the cone the way ActorUnderRay reads it.
+UInt32 ActivatorUnderRay(const NiPoint3& origin, const NiPoint3& direction, float maxUnits, float coneCos) {
+	const float dirLength = math::Sqrt(direction.LengthSquared());
+	const UInt32 player = Read(addr::kPlayerPointer);
+	if (!LooksLikeObject(player) || !(dirLength > 1.0e-6f)) {
+		return 0;
+	}
+	const UInt32 cell = Read(player + kRefParentCellOffset);
+	if (!LooksLikeObject(cell)) {
+		return 0;
+	}
+	UInt32 best = 0;
+	float bestSquared = 0.0f;
+	UInt32 entry = cell + kCellObjectListOffset;
+	for (UInt32 walked = 0; entry != 0 && walked < kMaxRefsPerFrame; ++walked) {
+		const UInt32 ref = Read(entry);
+		const UInt32 next = Read(entry + 4);
+		entry = LooksLikeObject(next) ? next : 0;
+		if (!LooksLikeObject(ref) || ref == player) {
+			continue;
+		}
+		if ((Read(ref + kFormFlagsOffset) & kFormDeletedOrDisabled) != 0) {
+			continue;
+		}
+		const UInt32 base = Read(ref + addr::kRefBaseFormOffset);
+		if (!LooksLikeObject(base) ||
+		    !IsActivatorType(*reinterpret_cast<const UInt8*>(base + addr::kFormTypeOffset))) {
+			continue;
+		}
+		const UInt32 nodeAddress = Read(ref + addr::kRefNiNodeOffset);
+		if (!LooksLikeObject(nodeAddress)) {
+			continue;
+		}
+		const auto* node = reinterpret_cast<const NiAVObject*>(nodeAddress);
+		if ((node->flags & kNiHiddenFlag) != 0) {
+			continue;
+		}
+		const NiPoint3 to = node->worldBound.center - origin;
+		const float dSquared = to.LengthSquared();
+		const float toLength = math::Sqrt(dSquared);
+		if (!(toLength > 1.0e-3f) || toLength > maxUnits || (best != 0 && dSquared >= bestSquared)) {
+			continue;
+		}
+		if (!RayWithinBoundCone(to, toLength, direction, dirLength, node->worldBound.radius, coneCos)) {
+			continue;
+		}
+		best = ref;
+		bestSquared = dSquared;
+	}
+	return best;
+}
+
+}  // namespace obvr::game

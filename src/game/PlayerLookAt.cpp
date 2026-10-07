@@ -87,5 +87,10 @@ bool ReadDialogSpeaker(NiPoint3& speaker) {
 	speaker = g_dialog.speaker;
 	return true;
 }
+bool ReadDialogEyes(NiPoint3& eyes) {
+	if (!g_dialog.active || !g_dialog.eyesValid) return false;
+	eyes = g_dialog.eyes;
+	return true;
+}
 
 }  // namespace obvr::game

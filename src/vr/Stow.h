@@ -12,7 +12,8 @@
 // usual. The take waits until the engine has let go of the object itself,
 // so its grab spring never holds a reference that has gone into the pack.
 //
-// [Hands] TakeOnlyByHand (off by default): the activate button no longer
+// [Hands] TakeOnlyByHand (on by default since 2026-10-07, the tester: "aufheben
+// nur mit an körper ran führen auch default an"): the activate button no longer
 // takes loose items; activating a book still opens it to read. It needs
 // stowing on - with that off, activating takes items as ever, or they could
 // not be taken at all.
@@ -46,7 +47,7 @@ namespace obvr::vr {
 
 struct StowSettings {
 	bool enabled = true;
-	bool takeOnlyByHand = false;
+	bool takeOnlyByHand = true;
 	// The spot, from the eyes: where a hand held against the chest was
 	// measured (0.19 to 0.23 m ahead, 0.17 to 0.30 m below), and how far
 	// round it the hand counts as in it.
