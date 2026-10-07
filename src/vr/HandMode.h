@@ -90,6 +90,9 @@ struct HandSettings {
 	CrosshairPlace crosshairPlace = kCrosshairPlaceDefault;
 	// SteamVR's keyboard for the game's text fields (vr/VrKeyboard.h).
 	bool vrKeyboard = true;
+	// A tick in the controller at every button hovered or clicked
+	// (vr/MenuHaptics.h).
+	bool menuHaptics = true;
 
 	// The hand bones, written each frame to where the controllers are, so
 	// the hands and the weapon stay with the controllers while the animation

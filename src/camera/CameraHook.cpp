@@ -73,6 +73,7 @@
 #include "game/NearbyItems.h"
 #include "game/PickHold.h"
 #include "game/Insult.h"
+#include "vr/MenuHaptics.h"
 #include "vr/VrKeyboard.h"
 #include "vr/Yield.h"
 #include "game/MeleeHit.h"
@@ -1217,6 +1218,23 @@ UInt32 g_stowSpotRevision = 1;
 vr::YieldState g_yield;
 vr::YieldState g_yieldShadow;  // the rocking alone, for the log's "why not"
 
+// The tick at the buttons (vr/MenuHaptics.h): the game's tiles, OBVR's
+// panel rows and the quick menu's ring, each remembered on its own.
+vr::MenuHapticState g_menuHaptic;
+vr::MenuHapticState g_panelHaptic;
+vr::MenuHapticState g_ringHaptic;
+
+void MenuPulseOn(bool rightHand, vr::MenuPulse pulse) {
+	if (pulse == vr::MenuPulse::None || !GetConfig().hands.menuHaptics) {
+		return;
+	}
+	const bool hover = pulse == vr::MenuPulse::Hover;
+	g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(rightHand, g_handRolesSwapped),
+	                                         hover ? vr::kHoverPulseSeconds : vr::kClickPulseSeconds,
+	                                         hover ? vr::kHoverPulseHertz : vr::kClickPulseHertz,
+	                                         hover ? vr::kHoverPulseAmplitude : vr::kClickPulseAmplitude);
+}
+
 // SteamVR's keyboard for the game's text fields (vr/VrKeyboard.h): the
 // session, the key taps it feeds the game a frame at a time, and the laser
 // click's tile that opens it.
@@ -1518,6 +1536,8 @@ void UpdateQuickMenu(const Config& config, vr::OpenVRBackend& backend, bool allo
 	vr::QuickMenuSettings settings = config.hands.quickMenu;
 	settings.pages = pageCount;
 	const vr::QuickMenuVerdict v = vr::StepQuickMenu(g_quickMenu, in, settings);
+	// The tick at the ring's slots (vr/MenuHaptics.h), in the trackpad's hand.
+	MenuPulseOn(true, vr::StepRowHaptic(g_ringHaptic, v.visible, v.highlighted, v.used >= 0));
 	if (v.turnPage) {
 		// The game's eight are written now; the next frame's read shows them.
 		game::TurnQuickKeyPage(pageCount);
@@ -3398,6 +3418,14 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		if (!g_menuClickEdge || !game::ActiveTileName(g_menuClickTile, sizeof(g_menuClickTile))) {
 			g_menuClickTile[0] = '\0';
 		}
+		// A tick in the pointing hand as the laser comes onto one of the
+		// game's tiles, a firmer one as it clicks (vr/MenuHaptics.h).
+		{
+			const bool pointing = menuIsUp && (g_hand.laserHit || g_hand.pokeHover);
+			const vr::MenuPulse pulse =
+				vr::StepTileHaptic(g_menuHaptic, pointing, pointing ? game::ActiveTile() : 0, g_menuClickEdge);
+			MenuPulseOn(g_hand.laserRight, pulse);
+		}
 		clickWasSent = controls.menuClick;
 		// Every jump sent, the first several dozen: the right stick's flick
 		// and a diagonal turn must be told apart (docs/controls-spec.md 2).
@@ -3413,6 +3441,28 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		if ((g_hand.laserHit || g_hand.pokeHover) &&
 		    (g_hand.cursorDx != 0 || g_hand.cursorDy != 0)) {
 			game::MoveMouseBy(g_hand.cursorDx, g_hand.cursorDy);
+			// Whether the steps arrive: the engine's cursor read the same
+			// through many frames of steps means the mouse moves are not
+			// reaching it (the tester, 2026-10-07: "kann im hauptmenü nicht
+			// mehr buttons anvisieren oder klicken" with the cursor at 0,0
+			// through every step in the log).
+			static float s_stuckX = -1.0f;
+			static float s_stuckY = -1.0f;
+			static UInt32 s_stuckFrames = 0;
+			static bool s_stuckSaid = false;
+			if (frame.cursorValid && frame.cursorX == s_stuckX && frame.cursorY == s_stuckY) {
+				++s_stuckFrames;
+			} else {
+				s_stuckFrames = 0;
+				s_stuckX = frame.cursorX;
+				s_stuckY = frame.cursorY;
+			}
+			if (s_stuckFrames == 90 && !s_stuckSaid) {
+				s_stuckSaid = true;
+				OBVR_LOG("Menu cursor: the engine's cursor stayed at %.0f,%.0f through 90 frames of mouse steps - the "
+				         "moves are not reaching the game (its window not in front, or its cursor clamped)",
+				         static_cast<double>(frame.cursorX), static_cast<double>(frame.cursorY));
+			}
 		}
 		if (g_hand.menuScroll != 0) {
 			game::ScrollMouseWheel(g_hand.menuScroll);
@@ -6026,6 +6076,7 @@ void PointAtPanel(Menu& menu, Config& config, const ui::MenuItem* items,
 	if (!g_hand.settingsPointerValid) {
 		g_hand.settingsClick = false;
 		g_panelHoveredRow = -1;
+		vr::StepRowHaptic(g_panelHaptic, false, -1, false);
 		return;
 	}
 	UInt32 canvasWidth = 0;
@@ -6048,6 +6099,8 @@ void PointAtPanel(Menu& menu, Config& config, const ui::MenuItem* items,
 		g_panelHoveredRow = row;
 		menu.Hover(static_cast<UInt32>(row));
 	}
+	// The tick at the row (vr/MenuHaptics.h), in the hand that points.
+	MenuPulseOn(g_hand.laserRight, vr::StepRowHaptic(g_panelHaptic, true, row, click));
 	// Only the row that actually took the highlight is clicked: a text row
 	// the walkthrough refuses stays as it is.
 	if (click && menu.State().selected == static_cast<UInt32>(row)) {

@@ -853,6 +853,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.stickDeadZone = ReadFloat("Hands", "StickDeadZone", h.stickDeadZone, path);
 		h.turnSpeed = ReadFloat("Hands", "TurnSpeed", h.turnSpeed, path);
 		h.vrKeyboard = ReadBool("Hands", "VrKeyboard", h.vrKeyboard, path);
+		h.menuHaptics = ReadBool("Hands", "MenuHaptics", h.menuHaptics, path);
 		{
 			char word[32] = "";
 			ReadText("Hands", "WalkDirection", word, sizeof(word), path);

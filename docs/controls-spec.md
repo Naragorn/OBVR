@@ -1271,3 +1271,41 @@ apart with the hooks off (`race-menu-plain.txt`).
   the next evidence; and the chargen view itself is not built - it would
   be built blind otherwise, which the tester asked not to do ("mache
   keine fehler").
+
+### 4.15 A tick at every button (built 2026-10-07)
+
+The tester: "ein leichtes klicken der vibrationsmotoren der controller an
+jedem button ... wenn man über dem hovert oder klickt, gleich wie beim
+steamvr menü". `vr/MenuHaptics.h` (menu_haptics_test): a light pulse
+(12 ms, 180 Hz, 0.25) as the laser comes onto a new thing it can press, a
+firmer one (30 ms, 200 Hz, 0.6) as it clicks, through the hands'
+vibration actions (`OpenVRBackend::Pulse`), in the hand that points. The
+things: in the game's menus the engine's own tile under the cursor
+(`game::ActiveTile`, InterfaceManager's activeTile, which the engine sets
+for the tiles that take the cursor - the main menu's buttons, a list's
+rows, the native settings' buttons included); OBVR's settings and
+walkthrough panels by their row (`PointAtPanel`); the quick menu's ring by
+its slot (the trackpad's hand). Leaving a button onto nothing pulses not.
+`[Hands] MenuHaptics` (Hands, "Menu haptics"), on by default. Not seen in
+the headset.
+
+### 4.16 Open: the main menu's laser (2026-10-07, evening)
+
+The tester: "kann im hauptmenü nicht mehr buttons anvisieren oder klicken
+mit den laserpointer" (with 8716238). His log: the laser's hits on the
+cinema picture are found and steps sent ("flat laser hit pixel 2138,88 -
+cursor at 0,0, step 60,44", then 60,60 every frame), but the engine's
+cursor reads 0,0 throughout, and its pick ("Cursor pick: (0, 0)") was at
+0,0 from the main menu's first frame - in the session before (DLL 212fa21)
+the same first pick read the middle of the screen (2020, 1107) and the
+cursor followed the steps. So the engine's cursor never left the corner,
+whatever OBVR stepped. Nothing in the commits since (331a7d9, b7e9d48,
+8716238) writes the cursor or the mouse differently: the keyboard polls
+the runtime's events only while its keyboard is up (never, in that log),
+the key taps only with characters queued (none). Not pinned. Logged now,
+once, when the cursor stays put through 90 frames of steps: "Menu cursor:
+the engine's cursor stayed at x,y through 90 frames of mouse steps - the
+moves are not reaching the game (its window not in front, or its cursor
+clamped)". The telling test: whether the physical mouse moves the game's
+cursor in that state - if it does, the injected moves are refused; if not,
+the engine's cursor is stuck.

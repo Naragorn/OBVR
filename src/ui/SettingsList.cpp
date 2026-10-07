@@ -1095,6 +1095,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.vrKeyboard = v != 0.0f; },
 	},
 	{
+		"Hands", "Menu haptics", "A tick in the controller at every button the laser comes onto, a firmer one as it clicks",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "MenuHaptics",
+		+[](const Config& c) { return c.hands.menuHaptics ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.menuHaptics = v != 0.0f; },
+	},
+	{
 		"Hands", "Laser tilt", "Degrees the laser leaves the controller turned down",
 		ItemKind::Number, -90.0f, 90.0f, 5.0f, 0, false,
 		"Hands", "LaserPitchDegrees",

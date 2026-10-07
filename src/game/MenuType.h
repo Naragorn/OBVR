@@ -115,6 +115,10 @@ UInt32 ActiveMenuId();
 // landed on.
 bool ActiveTileName(char* out, UInt32 size);
 
+// The same tile as a pointer, 0 for none: for telling one from the next
+// (the menu haptics).
+UInt32 ActiveTile();
+
 // HUDReticle is a persistent tile, independent of normal menu ownership. The
 // game can therefore leave its sneak eye visible while any menu draws. The
 // player pointer is deliberately not part of this decision: after a save has

@@ -1353,3 +1353,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME vr_keyboard COMMAND vr_keyboard_test)
+
+add_executable(menu_haptics_test MenuHapticsTest.cpp)
+
+target_include_directories(menu_haptics_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(menu_haptics_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME menu_haptics COMMAND menu_haptics_test)

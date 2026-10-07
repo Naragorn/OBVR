@@ -334,3 +334,16 @@ bool ActiveTileName(char* out, UInt32 size) {
 }
 
 }  // namespace obvr::game
+
+namespace obvr::game {
+
+UInt32 ActiveTile() {
+	const auto* const manager = *reinterpret_cast<const UInt8* const*>(addr::kInterfaceManagerPointer);
+	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(manager))) {
+		return 0;
+	}
+	const UInt32 tile = *reinterpret_cast<const UInt32*>(manager + addr::kInterfaceActiveTileOffset);
+	return mem::LooksLikeObjectAddress(tile) ? tile : 0;
+}
+
+}  // namespace obvr::game

@@ -469,6 +469,18 @@ checked by tests and the harness as far as said; **none seen in the headset**.
    activate goes down. Open question there: whether the engine blocks at
    all with the weapons sheathed - if not, the yield needs its engine call
    found.
+   **FIX, asked 2026-10-07: the character generation's view.** The
+   tester: "beim char gen beim new game die kamera kurz wie in vanilla vor
+   dem player char setzen damit man sich ansehen kann und den char ändern
+   oder anlegen kann". Not built. The plan: while the RaceSexMenu (0x40C)
+   is up, build the menu frames' camera from a base in front of the
+   player's face looking back at it, head offset on top, with the player's
+   body shown - the engine's own race-menu camera and whether it shows the
+   third-person body in that menu are not read yet. The probe for it
+   (`race-menu.txt`, showracemenu at a loaded save) crashes in the menu's
+   own code reading the player's hair (`docs/controls-spec.md` 4.14); a
+   new-game run, or a save whose race menu opens, is the evidence to get
+   first.
    **A loading crash seen the same morning** (access violation at
    0x004BDDDB, a refcount release, after Load menu > save > confirm) came
    with a build that held the other agent's uncommitted dialogue work
