@@ -3,7 +3,7 @@
 
 set(OBVR_IMPORT_LIBS "")
 
-foreach(module kernel32 msvcrt user32)
+foreach(module kernel32 msvcrt user32 winmm)
 	set(def "${CMAKE_CURRENT_SOURCE_DIR}/${module}.def")
 	set(lib "${CMAKE_CURRENT_BINARY_DIR}/${module}.lib")
 

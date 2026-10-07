@@ -31,4 +31,10 @@ bool PlaySoundForm(UInt32 formId);
 // The landing sound the player makes on the ground under them.
 bool PlayPlayerLandingSound();
 
+// One of OBVR's own wave files, by its name under Data/OBSE/Plugins
+// (assets/sounds, shipped as OBVR_Sounds/): played once through winmm,
+// not placed in the world. False when the path cannot be built or winmm
+// refuses (no such file).
+bool PlayPluginWave(const char* fileName);
+
 }  // namespace obvr::game

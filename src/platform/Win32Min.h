@@ -174,6 +174,13 @@ OBVR_IMPORT void* OBVR_STDCALL GetForegroundWindow();
 OBVR_IMPORT DWORD OBVR_STDCALL GetWindowThreadProcessId(void* window, DWORD* processId);
 OBVR_IMPORT DWORD OBVR_STDCALL GetCurrentProcessId();
 
+// From winmm.dll, for OBVR's own wave files (the slap, game/GameSound.h):
+// a plain file played once, asynchronously, through the system mixer.
+OBVR_IMPORT BOOL OBVR_STDCALL PlaySoundA(const char* sound, HMODULE module, DWORD flags);
+#define SND_ASYNC 0x0001
+#define SND_NODEFAULT 0x0002
+#define SND_FILENAME 0x00020000
+
 // For the hand-tracked mode: the controllers drive the game through the
 // keys and mouse buttons the player has bound, injected the way the input
 // harness injects them - keybd_event with a scan code, which DirectInput
@@ -229,6 +236,7 @@ extern "C" double __cdecl cos(double value);
 #else
 
 #include <windows.h>
+#include <mmsystem.h>
 
 #include <cmath>
 #include <cstdio>

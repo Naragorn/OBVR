@@ -898,6 +898,18 @@ The tester's asks of 2026-10-07, all in one round:
   (10) instead of the light shove's 5 (shove_test). That is the tester's
   "ins gesicht slappen ... crime default off; mit viel wucht haut es den npc
   um, crime default an, mehr dispo verlust".
+  **Its sound and the cheek (the same day).** A slap in the face plays
+  OBVR's own slap, `assets/sounds/slap.wav` (one slap cut from a CC0
+  recording, see the README there), shipped as `OBVR_Sounds/slap.wav` next
+  to the DLL and played through winmm (`game::PlayPluginWave`). With Put it
+  in its Place - Enhanced Grabbing active (its ESP in Data and on the plugin
+  list, `PutItInItsPlaceLoaded`) a coin decides each slap between OBVR's
+  and the mod's own noise, and the slapped one grabs their cheek the way the
+  mod's slapper script does it: its idle marker token, `pickIdle`, the token
+  off again, run as them through xOBSE's console interface
+  (`RequestConsoleLineAs`). Without the mod the game's own gasp
+  (`NPCHumanGaspMale`) and no idle: the mod's assets are not OBVR's to ship.
+  `SlapSoundFor`, `SlapLines` (shove_test). Not seen in the headset.
 
 ### 4.11 The bow by hand, as in Blade & Sorcery (built 2026-09-30)
 

@@ -6,6 +6,7 @@
 
 #include "core/AddressSpace.h"
 #include "game/ConsoleLine.h"
+#include "game/GameSound.h"
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
@@ -147,22 +148,35 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 	// in its Place is loaded (ShoveLogic.h, SlapLines), as script lines run
 	// as them (game/ConsoleLine.h).
 	UInt32 slapLines = 0;
+	bool ownWave = false;
 	if (inTheFace && kind == ShoveKind::Light) {
+		// The coin: the slap's turn, the mod's or OBVR's own (ShoveLogic.h).
+		static UInt32 s_toss = 0x9E3779B9u;
+		s_toss = s_toss * 1664525u + 1013904223u;
+		const bool modLoaded = PutItInItsPlaceLoaded();
+		const SlapSound sound = SlapSoundFor(modLoaded, (s_toss >> 16) & 1u);
 		const char* lines[4] = {};
-		const UInt32 count = SlapLines(PutItInItsPlaceLoaded(), lines);
+		const UInt32 count = SlapLines(modLoaded, sound, lines);
 		for (UInt32 i = 0; i < count; ++i) {
 			if (RequestConsoleLineAs(a, lines[i])) {
 				++slapLines;
+			}
+		}
+		if (sound == SlapSound::Own) {
+			ownWave = PlayPluginWave(kSlapWave);
+			if (!ownWave) {
+				OBVR_LOG("Shove: OBVR's own slap (%s) could not be played - missing next to OBVR.dll?", kSlapWave);
 			}
 		}
 	}
 	if (g_lines > 0) {
 		--g_lines;
 		OBVR_LOG("Shove: %08X %s (from %.0f %.0f %.0f), the player's fatigue -%.0f, its disposition -%.0f%s%s, %u slap "
-		         "line(s) queued",
+		         "line(s) queued%s",
 		         a, done, static_cast<double>(fromWorld.x), static_cast<double>(fromWorld.y),
 		         static_cast<double>(fromWorld.z), static_cast<double>(fatigue), static_cast<double>(disposition),
-		         asHit ? ", taken as a hit" : "", inTheFace ? ", in the face" : "", slapLines);
+		         asHit ? ", taken as a hit" : "", inTheFace ? ", in the face" : "", slapLines,
+		         ownWave ? ", OBVR's own slap played" : "");
 	}
 	return true;
 }

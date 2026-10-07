@@ -81,6 +81,7 @@ New-Item -ItemType Directory -Force $plugins | Out-Null
 Copy-Item $dll (Join-Path $plugins "OBVR.dll")
 Copy-Item $ini (Join-Path $plugins "OBVR.ini")
 Copy-Item -LiteralPath (Join-Path $root "assets\input") -Destination (Join-Path $plugins "OBVR_Input") -Recurse
+Copy-Item -LiteralPath (Join-Path $root "assets\sounds") -Destination (Join-Path $plugins "OBVR_Sounds") -Recurse
 Copy-Item (Join-Path $root "LICENSE") (Join-Path $plugins "OBVR-LICENSE.txt")
 Copy-Item $openvr (Join-Path $plugins "openvr_api.dll")
 Copy-Item $openvrLicense (Join-Path $plugins "openvr_api-LICENSE.txt")

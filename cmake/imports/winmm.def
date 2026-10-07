@@ -1,0 +1,8 @@
+; Imports from winmm.dll for the SDK-free verification build.
+;
+; A single entry: PlaySoundA, which plays OBVR's own wave files (the slap,
+; game/GameSound.h). The @12 suffix is the stdcall name decoration on x86
+; and matches the three arguments (the name, the module, the flags).
+LIBRARY winmm.dll
+EXPORTS
+PlaySoundA@12

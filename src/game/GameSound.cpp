@@ -1,5 +1,8 @@
 #include "game/GameSound.h"
 
+#include "platform/PluginPath.h"
+#include "platform/Win32Min.h"
+
 #include "core/AddressSpace.h"
 #include "core/Log.h"
 #include "core/Memory.h"
@@ -106,6 +109,18 @@ bool PlayPlayerLandingSound() {
 	reinterpret_cast<LandingFn>(kPlayLanding)(reinterpret_cast<void*>(player),
 	                                          Read(controller + kControllerGroundMaterial));
 	return true;
+}
+
+}  // namespace obvr::game
+
+namespace obvr::game {
+
+bool PlayPluginWave(const char* fileName) {
+	char path[512];
+	if (fileName == nullptr || !platform::BuildPluginPath(fileName, path, sizeof(path))) {
+		return false;
+	}
+	return PlaySoundA(path, nullptr, SND_FILENAME | SND_ASYNC | SND_NODEFAULT) != 0;
 }
 
 }  // namespace obvr::game

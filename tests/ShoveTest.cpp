@@ -121,11 +121,17 @@ void TestCountsAsHit() {
 	          ShoveDisposition(s, ShoveKind::Light, true) == s.dispositionFace &&
 	          ShoveDisposition(s, ShoveKind::Hard, true) == s.dispositionHard,
 	      "the body's, the face's, the hard shove's liking");
+	Check(SlapSoundFor(true, true) == SlapSound::Mod && SlapSoundFor(true, false) == SlapSound::Own &&
+	          SlapSoundFor(false, true) == SlapSound::Own && SlapSoundFor(false, false) == SlapSound::Own,
+	      "the mod's noise only with the mod and on its turn of the coin; OBVR's own otherwise");
 	const char* lines[4] = {};
-	Check(SlapLines(true, lines) == 4 && std::strcmp(lines[0], "playSound3D zzPiiiPSlapNoise") == 0 &&
+	Check(SlapLines(true, SlapSound::Mod, lines) == 4 && std::strcmp(lines[0], "playSound3D zzPiiiPSlapNoise") == 0 &&
 	          std::strcmp(lines[2], "pickIdle") == 0,
-	      "with Put it in its Place: its slap noise, the slapped idle by its token");
-	Check(SlapLines(false, lines) == 1 && std::strcmp(lines[0], "playSound3D NPCHumanGaspMale") == 0,
+	      "with Put it in its Place, its turn: its slap noise, the slapped idle by its token");
+	Check(SlapLines(true, SlapSound::Own, lines) == 3 && std::strcmp(lines[0], "addItemNS zzPiiiPIdleMarkerSlappedToken 1") == 0 &&
+	          std::strcmp(lines[1], "pickIdle") == 0,
+	      "with the mod, OBVR's turn: the idle only, the noise is OBVR's wave");
+	Check(SlapLines(false, SlapSound::Own, lines) == 1 && std::strcmp(lines[0], "playSound3D NPCHumanGaspMale") == 0,
 	      "without it: the game's own gasp, no idle");
 	Check(!ShoveCountsAsHit(s, ShoveKind::None), "no shove: nothing");
 	s.countsAsHit = false;

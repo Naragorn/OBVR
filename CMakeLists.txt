@@ -186,6 +186,8 @@ if(MSVC)
 	# next to Oblivion; that is not something to ask of a mod user.
 	set_property(TARGET OBVR PROPERTY
 		MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+	# winmm for OBVR's own wave files (PlaySoundA; the slap).
+	target_link_libraries(OBVR PRIVATE winmm)
 else()
 	target_compile_options(OBVR PRIVATE -Wall -Wextra)
 endif()

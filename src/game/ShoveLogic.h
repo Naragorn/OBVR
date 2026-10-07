@@ -65,24 +65,38 @@ inline bool SlapInTheFace(float handZ, float bodyCentreZ) {
 	return handZ - bodyCentreZ >= kSlapFaceAboveUnits;
 }
 
-// The script lines a slap in the face runs as the slapped one (the tester,
-// 2026-10-07: "ein schönen slap sound ... npc greift sich die wange wie in
-// der mod"). With Put it in its Place - Enhanced Grabbing loaded, its own
-// slap noise and its slapped idle the way its slapper script does it (the
-// idle marker token, pickIdle, the token off again); without it, the game's
-// own gasp - the mod's assets are not OBVR's to ship (its readme grants no
-// such use). Returns how many lines are in `out` (at most 4).
-inline UInt32 SlapLines(bool putItInItsPlaceLoaded, const char* out[4]) {
-	if (putItInItsPlaceLoaded) {
-		out[0] = "playSound3D zzPiiiPSlapNoise";
-		out[1] = "addItemNS zzPiiiPIdleMarkerSlappedToken 1";
-		out[2] = "pickIdle";
-		out[3] = "removeItemNS zzPiiiPIdleMarkerSlappedToken 1";
-		return 4;
-	}
-	out[0] = "playSound3D NPCHumanGaspMale";
-	return 1;
+// What a slap in the face sounds like (the tester, 2026-10-07: "ein schönen
+// slap sound ... npc greift sich die wange wie in der mod"; then "wenn die
+// mod da ist dann machen wir random den slap sound von der und unserer").
+// OBVR's own slap (assets/sounds/slap.wav, CC0) always exists; with Put it
+// in its Place - Enhanced Grabbing loaded its slap noise takes turns with
+// it, by a coin toss. The mod's assets are not OBVR's to ship (its readme
+// grants no such use), so without the mod there is only OBVR's.
+enum class SlapSound : UInt8 { Own, Mod };
+inline SlapSound SlapSoundFor(bool putItInItsPlaceLoaded, bool coin) {
+	return putItInItsPlaceLoaded && coin ? SlapSound::Mod : SlapSound::Own;
 }
+
+// The script lines the slap runs as the slapped one: the mod's noise when
+// it is the sound's turn, and with the mod its slapped idle the way its
+// slapper script does it (the idle marker token, pickIdle, the token off
+// again); without the mod the game's own gasp. Returns how many lines are
+// in `out` (at most 4).
+inline UInt32 SlapLines(bool putItInItsPlaceLoaded, SlapSound sound, const char* out[4]) {
+	UInt32 n = 0;
+	if (putItInItsPlaceLoaded) {
+		if (sound == SlapSound::Mod) {
+			out[n++] = "playSound3D zzPiiiPSlapNoise";
+		}
+		out[n++] = "addItemNS zzPiiiPIdleMarkerSlappedToken 1";
+		out[n++] = "pickIdle";
+		out[n++] = "removeItemNS zzPiiiPIdleMarkerSlappedToken 1";
+		return n;
+	}
+	out[n++] = "playSound3D NPCHumanGaspMale";
+	return n;
+}
+inline constexpr const char* kSlapWave = "OBVR_Sounds\\slap.wav";
 
 // What a shove costs the actor's liking: the hard shove's, or for a light
 // one the face's or the body's.
