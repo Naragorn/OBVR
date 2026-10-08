@@ -264,13 +264,27 @@ inline float PowerMetresFor(PowerDirection d, const GestureThresholds& t) {
 // The swing detector: idle until the hand exceeds the light speed, then one
 // attack per swing - heavy once the hand has travelled powerSwingMetres in
 // it. The distance counts from the frame the swing starts; a swing is over
-// when the speed falls under half the light threshold.
+// when the speed has stayed under half the light threshold for
+// kSwingEndSeconds - a dip shorter than that (the strike's own jolt, a
+// tremor of the tracking) does not end it, where it used to, and the rest
+// of the stroke counted as another swing (the tester, 2026-10-08: "wenn ich
+// schwinge zählen oft mehrere swings"; his log: swings of 0.15 and 0.19 m
+// ending frames apart, each striking). After a swing nothing starts for
+// kSwingRestSeconds: the hand's way back is no swing. And a swing shorter
+// than kSwingMinMetres is a twitch, with no verdict (his log: "a light
+// swing ... 0.03 m long").
 enum class SwingVerdict { None, Light, Heavy };
+
+inline constexpr float kSwingEndSeconds = 0.06f;
+inline constexpr float kSwingRestSeconds = 0.25f;
+inline constexpr float kSwingMinMetres = 0.10f;
 
 struct SwingDetector {
 	bool swinging = false;
 	float peakSpeed = 0.0f;
-	float metres = 0.0f;  // travelled in this swing so far
+	float metres = 0.0f;        // travelled in this swing so far
+	float belowSeconds = 0.0f;  // how long the speed has been under the end threshold
+	float restSeconds = 0.0f;   // left of the rest after the last swing
 };
 
 // Whether the swing so far is a power attack.
@@ -279,14 +293,24 @@ inline bool SwingIsPower(const SwingDetector& d, const GestureThresholds& t,
 	return d.metres >= PowerMetresFor(direction, t);
 }
 
+// Whether the swing so far is long enough to be one: strikes and the swish
+// wait for it.
+inline bool SwingLongEnough(const SwingDetector& d) { return d.swinging && d.metres >= kSwingMinMetres; }
+
 inline SwingVerdict StepSwing(SwingDetector& d, float speed, float dtSeconds, const GestureThresholds& t,
                               PowerDirection direction = PowerDirection::Standing) {
-	const float travelled = dtSeconds > 0.0f && speed == speed ? speed * dtSeconds : 0.0f;
+	const bool haveTime = dtSeconds > 0.0f;
+	const float travelled = haveTime && speed == speed ? speed * dtSeconds : 0.0f;
 	if (!d.swinging) {
+		if (d.restSeconds > 0.0f) {
+			d.restSeconds -= haveTime ? dtSeconds : 0.0f;
+			return SwingVerdict::None;
+		}
 		if (speed >= t.swingLight) {
 			d.swinging = true;
 			d.peakSpeed = speed;
 			d.metres = travelled;
+			d.belowSeconds = 0.0f;
 		}
 		return SwingVerdict::None;
 	}
@@ -294,14 +318,52 @@ inline SwingVerdict StepSwing(SwingDetector& d, float speed, float dtSeconds, co
 		d.peakSpeed = speed;
 	}
 	if (speed < 0.5f * t.swingLight) {
+		d.belowSeconds += haveTime ? dtSeconds : 0.0f;
+		// A hair of tolerance: six frames of 0.01 s add up to a float just
+		// under 0.06.
+		if (d.belowSeconds + 1.0e-4f < kSwingEndSeconds) {
+			return SwingVerdict::None;  // a dip, not the end
+		}
 		d.swinging = false;
-		const SwingVerdict verdict = SwingIsPower(d, t, direction) ? SwingVerdict::Heavy : SwingVerdict::Light;
+		const bool twitch = d.metres < kSwingMinMetres;
+		const SwingVerdict verdict =
+			twitch ? SwingVerdict::None : (SwingIsPower(d, t, direction) ? SwingVerdict::Heavy : SwingVerdict::Light);
 		d.peakSpeed = 0.0f;
 		d.metres = 0.0f;
+		d.belowSeconds = 0.0f;
+		d.restSeconds = kSwingRestSeconds;
 		return verdict;
 	}
+	d.belowSeconds = 0.0f;
 	d.metres += travelled;
 	return SwingVerdict::None;
+}
+
+// A weapon just readied: its draw moves the hand fast, and that counted as
+// a swing that struck (the tester, 2026-10-08: "waffen ziehen soll nicht
+// gleich als hit zählen"; his log: "ready weapon done" then "a light swing
+// ... 0.08 m long" at once). So for kDrawGraceSeconds from the frame a melee
+// weapon comes into the hand no swing is taken: the detectors are kept
+// idle. Answers whether the grace is running.
+inline constexpr float kDrawGraceSeconds = 0.6f;
+
+struct DrawGraceState {
+	bool known = false;  // a first frame seen: a weapon in the hand from the start is no draw
+	bool wasInHand = false;
+	float left = 0.0f;
+};
+
+inline bool StepDrawGrace(DrawGraceState& g, bool meleeInHand, float dtSeconds, float graceSeconds = kDrawGraceSeconds) {
+	if (meleeInHand && !g.wasInHand && g.known) {
+		g.left = graceSeconds;
+	} else if (!meleeInHand) {
+		g.left = 0.0f;
+	} else if (g.left > 0.0f && dtSeconds > 0.0f) {
+		g.left -= dtSeconds;
+	}
+	g.known = true;
+	g.wasInHand = meleeInHand;
+	return g.left > 0.0f;
 }
 
 // The direction of a power attack, from the hand's way through the swing

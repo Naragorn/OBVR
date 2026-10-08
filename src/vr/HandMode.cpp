@@ -107,6 +107,7 @@ void HandMode::Reset() {
 	m_navLeft = StickNavState{};
 	m_poke = PokeState{};
 	m_swing = SwingDetector{};
+	m_drawGrace = DrawGraceState{};
 	m_heavyHold = HeldControl{};
 	m_haveLastRight = false;
 	m_leftSwing = SwingDetector{};
@@ -263,7 +264,15 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		fin.dt = f.dtSeconds;
 		r.fist = StepFist(m_fist, fin, s.fist);
 	}
-	r.strikeByMotion = s.motionHits && f.meleeInHand &&
+	// A weapon just readied: its draw is no swing (HandInput.h, StepDrawGrace)
+	// - the detectors kept idle and no strike through the grace.
+	const bool drawGrace = StepDrawGrace(m_drawGrace, f.meleeInHand, f.dtSeconds);
+	if (drawGrace) {
+		m_swing = SwingDetector{};
+		m_leftSwing = SwingDetector{};
+	}
+	r.drawGrace = drawGrace;
+	r.strikeByMotion = s.motionHits && f.meleeInHand && !drawGrace &&
 	                   FistAllowsStrike(f.equipped == EquippedKind::Nothing, r.fist);
 	if (f.right.valid && !f.menuMode) {
 		if (m_haveLastRight) {
@@ -307,6 +316,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		m_swing = SwingDetector{};
 	}
 	r.swingActive = m_swing.swinging;
+	r.swingTravelledMetres = m_swing.metres;
 	if (m_swing.swinging && f.right.valid) {
 		m_powerDirection = ClassifyPowerSwing(OffsetFromPose(f.head, f.right.position, m_swingStartRoom, 1.0f));
 	}

@@ -63,23 +63,65 @@ void TestSpeedAndSwing() {
 	Check(StepSwing(d, 0.5f, dt, t) == SwingVerdict::None, "a slow hand is idle");
 	Check(StepSwing(d, 2.0f, dt, t) == SwingVerdict::None, "a fast hand starts a swing, no verdict yet");
 	Check(d.swinging, "and is swinging");
+	Check(SwingLongEnough(d), "0.2 m in: long enough for a strike");
 	Check(StepSwing(d, 2.5f, dt, t) == SwingVerdict::None, "still swinging");
+	Check(SwingLongEnough(d), "0.45 m: long enough");
 	Check(StepSwing(d, 0.3f, dt, t) == SwingVerdict::Light, "slowing down after 0.45 m ends it as a light swing");
 	Check(!d.swinging && d.metres == 0.0f, "and the detector is idle again");
 
+	// The rest after a swing: the hand's way back starts none.
+	Check(StepSwing(d, 2.0f, dt, t) == SwingVerdict::None && !d.swinging, "fast again at once: the rest, no swing");
+	Check(StepSwing(d, 2.0f, dt, t) == SwingVerdict::None && !d.swinging, "0.2 s: still the rest");
+	Check(StepSwing(d, 2.0f, dt, t) == SwingVerdict::None && !d.swinging && d.restSeconds <= 0.0f,
+	      "0.3 s: the rest is over, this frame still none");
 	// A power attack: the same speed, a longer swing (2026-09-29).
-	Check(StepSwing(d, 2.0f, dt, t) == SwingVerdict::None, "a second swing starts at the same speed");
+	Check(StepSwing(d, 2.0f, dt, t) == SwingVerdict::None && d.swinging, "a second swing starts at the same speed");
 	Check(StepSwing(d, 2.0f, dt, t) == SwingVerdict::None && !SwingIsPower(d, t), "0.4 m: not yet a power attack");
 	Check(StepSwing(d, 2.0f, dt, t) == SwingVerdict::None && !SwingIsPower(d, t), "0.6 m: not yet");
 	Check(StepSwing(d, 2.0f, dt, t) == SwingVerdict::None && SwingIsPower(d, t), "0.8 m: a power attack while it runs");
+	// A dip of the speed shorter than kSwingEndSeconds does not end it.
+	Check(StepSwing(d, 0.2f, 0.03f, t) == SwingVerdict::None && d.swinging, "a 0.03 s dip under half the speed: still swinging");
+	Check(StepSwing(d, 2.0f, dt, t) == SwingVerdict::None && d.swinging && d.belowSeconds == 0.0f,
+	      "fast again: the dip forgotten");
 	Check(StepSwing(d, 0.2f, dt, t) == SwingVerdict::Heavy, "and ends as one");
+	for (int i = 0; i < 3; ++i) {
+		StepSwing(d, 0.0f, dt, t);  // the rest
+	}
 
 	// Fast but short: a flick of the wrist is no power attack.
 	Check(StepSwing(d, 10.0f, 0.02f, t) == SwingVerdict::None, "a flick at 10 m/s starts a swing");
 	Check(StepSwing(d, 10.0f, 0.02f, t) == SwingVerdict::None, "0.4 m in 0.04 s");
-	Check(StepSwing(d, 0.2f, 0.02f, t) == SwingVerdict::Light, "however fast, 0.4 m is a light swing");
+	Check(StepSwing(d, 0.2f, 0.1f, t) == SwingVerdict::Light, "however fast, 0.4 m is a light swing");
+	for (int i = 0; i < 3; ++i) {
+		StepSwing(d, 0.0f, dt, t);
+	}
+	// A twitch: fast for a moment, hardly any way - no verdict.
+	Check(StepSwing(d, 2.0f, 0.02f, t) == SwingVerdict::None && d.swinging, "a twitch starts like a swing");
+	Check(!SwingLongEnough(d), "4 cm: not long enough for a strike");
+	Check(StepSwing(d, 0.2f, 0.1f, t) == SwingVerdict::None && !d.swinging && d.restSeconds > 0.0f,
+	      "over after 4 cm: no verdict, the rest all the same");
+	for (int i = 0; i < 3; ++i) {
+		StepSwing(d, 0.0f, dt, t);
+	}
 	volatile float zero = 0.0f;
 	Check(StepSwing(d, zero / zero, dt, t) == SwingVerdict::None && d.metres == 0.0f, "a speed that is not a number: nothing");
+	Check(StepSwing(d, 2.0f, 0.0f, t) == SwingVerdict::None && d.swinging && d.metres == 0.0f,
+	      "no frame time: a swing starts, nothing travelled");
+	Check(StepSwing(d, 0.2f, 0.0f, t) == SwingVerdict::None && d.swinging, "no frame time under the speed: no end counted");
+	Check(StepSwing(d, 0.2f, dt, t) == SwingVerdict::None && !d.swinging, "then ended as a twitch");
+
+	std::printf("The draw's grace\n");
+	DrawGraceState g;
+	Check(!StepDrawGrace(g, false, 0.1f), "nothing in the hand: no grace");
+	Check(StepDrawGrace(g, true, 0.1f) && g.left > 0.5f, "a weapon comes into the hand: the grace starts");
+	DrawGraceState fromStart;
+	Check(!StepDrawGrace(fromStart, true, 0.1f) && !StepDrawGrace(fromStart, true, 0.1f),
+	      "a weapon in the hand from the first frame: no draw, no grace");
+	Check(StepDrawGrace(g, true, 0.3f), "0.3 s in: still");
+	Check(!StepDrawGrace(g, true, 0.3f), "0.6 s: over");
+	Check(!StepDrawGrace(g, true, 0.1f), "and stays over while the weapon stays");
+	Check(!StepDrawGrace(g, false, 0.1f) && g.left == 0.0f, "put away: nothing");
+	Check(StepDrawGrace(g, true, 0.0f) && !StepDrawGrace(g, false, 0.0f), "drawn, then away within the grace: it ends with the weapon");
 
 	HeldControl h;
 	Check(!StepHeld(h, 0.016f), "nothing held reports nothing");
@@ -427,13 +469,30 @@ void TestStrikeByMotion() {
 	Check(r.swingActive && r.swingHeavy && r.swingSerial == 1,
 	      "past the power swing length the same swing is heavy");
 	Check(r.powerDirection == PowerDirection::Right, "the hand moved to the right of the head: a right power attack");
-	frame.right.position = NiPoint3{0.371f, -0.2f, -0.5f};  // slowed down
+	frame.right.position = NiPoint3{0.41f, -0.2f, -0.5f};  // four metres a second: 0.11 m in all
 	r = mode.Update(frame, settings);
+	Check(r.swingActive && r.swingHeavy && r.swingTravelledMetres > 0.10f, "0.11 m: long enough to strike");
+	// Slowed down: the swing ends once the speed has stayed low for
+	// kSwingEndSeconds (six of these frames), not on the first slow one.
+	frame.right.position = NiPoint3{0.411f, -0.2f, -0.5f};
+	r = mode.Update(frame, settings);
+	Check(r.swingActive && r.swing == SwingVerdict::None, "the first slow frame: a dip, still swinging");
+	for (int i = 0; i < 5; ++i) {
+		frame.right.position.x += 0.001f;
+		r = mode.Update(frame, settings);
+	}
 	Check(!r.swingActive && r.swing == SwingVerdict::Heavy && !r.controls.attack,
-	      "the swing ends heavy without holding the control");
+	      "0.06 s slow: the swing ends heavy without holding the control");
 	r = mode.Update(frame, settings);
 	Check(!r.controls.attack, "and nothing is held after it either");
-	frame.right.position = NiPoint3{0.40f, -0.2f, -0.5f};
+	// The rest after a swing: the next one only after kSwingRestSeconds.
+	frame.right.position.x += 0.03f;
+	r = mode.Update(frame, settings);
+	Check(!r.swingActive && r.swingSerial == 1, "fast again at once: the rest, no swing two");
+	for (int i = 0; i < 26; ++i) {
+		r = mode.Update(frame, settings);  // still, through the rest
+	}
+	frame.right.position.x += 0.03f;
 	r = mode.Update(frame, settings);
 	Check(r.swingActive && r.swingSerial == 2, "the next swing is number two");
 
@@ -456,11 +515,18 @@ void TestStrikeByMotion() {
 		HandMode peak;
 		HandModeFrame f2 = frame;
 		f2.right.position = NiPoint3{0.3f, -0.2f, -0.5f};
-		peak.Update(f2, settings);
-		f2.right.position = NiPoint3{0.33f, -0.2f, -0.5f};  // 3 m/s
-		peak.Update(f2, settings);
-		f2.right.position = NiPoint3{0.331f, -0.2f, -0.5f};  // slowed: ends
-		r = peak.Update(f2, settings);
+		HandSettings wide = settings;  // a power swing far longer than this one
+		wide.gestures.powerSwingMetres = 1.0f;
+		wide.gestures.powerThrustMetres = 1.0f;
+		peak.Update(f2, wide);
+		for (int i = 0; i < 4; ++i) {
+			f2.right.position.x += 0.03f;  // 3 m/s, 0.12 m in all
+			peak.Update(f2, wide);
+		}
+		for (int i = 0; i < 6; ++i) {
+			f2.right.position.x += 0.001f;  // slowed: ends after kSwingEndSeconds
+			r = peak.Update(f2, wide);
+		}
 		Check(r.swing == SwingVerdict::Light && r.swingPeakSpeed > 2.9f && r.swingPeakSpeed < 3.1f,
 		      "a swing that ends reports its fastest, 3 m/s");
 	}
@@ -474,10 +540,14 @@ void TestStrikeByMotion() {
 		HandMode sheathed;
 		frame.right.position = NiPoint3{0.3f, -0.2f, -0.5f};
 		sheathed.Update(frame, settings);
-		frame.right.position = NiPoint3{0.34f, -0.2f, -0.5f};
-		sheathed.Update(frame, settings);
-		frame.right.position = NiPoint3{0.341f, -0.2f, -0.5f};
-		r = sheathed.Update(frame, settings);
+		for (int i = 0; i < 3; ++i) {
+			frame.right.position.x += 0.04f;
+			sheathed.Update(frame, settings);
+		}
+		for (int i = 0; i < 6; ++i) {
+			frame.right.position.x += 0.001f;
+			r = sheathed.Update(frame, settings);
+		}
 		Check(r.swing == SwingVerdict::Heavy && !r.controls.attack,
 		      "sheathed: the same swing does not attack, so it cannot draw the fists");
 	}
@@ -488,12 +558,20 @@ void TestStrikeByMotion() {
 	frame.right.position = NiPoint3{0.34f, -0.2f, -0.5f};
 	r = byControl.Update(frame, settings);
 	Check(!r.strikeByMotion && r.swingActive, "without a melee weapon the swing is by control");
-	frame.right.position = NiPoint3{0.341f, -0.2f, -0.5f};
-	r = byControl.Update(frame, settings);
+	for (int i = 0; i < 2; ++i) {
+		frame.right.position.x += 0.04f;
+		byControl.Update(frame, settings);
+	}
+	for (int i = 0; i < 6; ++i) {
+		frame.right.position.x += 0.001f;
+		r = byControl.Update(frame, settings);
+	}
 	Check(r.swing == SwingVerdict::Heavy && r.controls.attack,
 	      "and a heavy swing holds the attack control as before");
 
 	settings.motionHits = false;
+	settings.gestures.powerSwingMetres = 1.0f;  // a power swing far longer than this one
+	settings.gestures.powerThrustMetres = 1.0f;
 	frame.meleeInHand = true;
 	HandMode switchedOff;
 	frame.right.position = NiPoint3{0.3f, -0.2f, -0.5f};
@@ -501,8 +579,14 @@ void TestStrikeByMotion() {
 	frame.right.position = NiPoint3{0.32f, -0.2f, -0.5f};
 	r = switchedOff.Update(frame, settings);
 	Check(!r.strikeByMotion && r.swingActive, "switched off, a melee weapon swings by control");
-	frame.right.position = NiPoint3{0.321f, -0.2f, -0.5f};
-	r = switchedOff.Update(frame, settings);
+	for (int i = 0; i < 4; ++i) {
+		frame.right.position.x += 0.02f;  // 0.10 m in all: a swing, not a twitch
+		switchedOff.Update(frame, settings);
+	}
+	for (int i = 0; i < 6; ++i) {
+		frame.right.position.x += 0.001f;
+		r = switchedOff.Update(frame, settings);
+	}
 	Check(r.swing == SwingVerdict::Light && r.controls.attack, "and a light swing taps it");
 }
 

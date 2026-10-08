@@ -879,6 +879,22 @@ void StepShoves(const Config& config, float dt) {
 		hand.towardsSpeed = game::SpeedTowards(velocity, at, centre);
 		const game::ShoveKind kind = game::ShoveFor(settings, weaponDrawn, hand);
 		if (kind == game::ShoveKind::None) {
+			// A hand fast enough at someone and refused: why, for the log (the
+			// tester, 2026-10-08: "slappen geht gar nicht mehr" - his log of
+			// that session had no shove line at all, the weapon or the fists
+			// readied throughout).
+			static float s_refusedQuiet = 0.0f;
+			s_refusedQuiet = s_refusedQuiet > 0.0f ? s_refusedQuiet - dt : 0.0f;
+			static UInt32 s_refusedLines = 20;
+			if (hand.towardsSpeed >= settings.speed && s_refusedQuiet <= 0.0f && s_refusedLines > 0) {
+				--s_refusedLines;
+				s_refusedQuiet = 1.0f;
+				OBVR_LOG("Shove: the %s hand at %.1f m/s towards %08X refused - %s%s%s(a shove or a slap wants the "
+				         "weapons away, an open hand and the grip loose)",
+				         right ? "right" : "left", static_cast<double>(hand.towardsSpeed),
+				         reinterpret_cast<UInt32>(actor), weaponDrawn ? "the weapon or the fists are readied; " : "",
+				         !hand.open ? "the hand is a fist; " : "", hand.gripHeld ? "the grip is held; " : "");
+			}
 			continue;
 		}
 		const float across = math::Sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
@@ -3112,11 +3128,14 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			game::PlayPowerAttackGrunt();
 		}
 	}
-	// Each swing that may strike swishes once, as it starts (game::SwishDue).
+	// Each swing that may strike swishes once, as it starts (game::SwishDue)
+	// - once it is long enough to be a swing and not a twitch
+	// (vr::kSwingMinMetres).
 	{
 		static UInt32 lastSwished = 0;
 		if (active && !menuIsUp && g_hand.rightHandValid &&
-		    game::SwishDue(g_hand.strikeByMotion, g_hand.swingActive, g_hand.swingSerial, lastSwished)) {
+		    game::SwishDue(g_hand.strikeByMotion, g_hand.swingActive && g_hand.swingTravelledMetres >= vr::kSwingMinMetres,
+		                   g_hand.swingSerial, lastSwished)) {
 			lastSwished = g_hand.swingSerial;
 			game::PlaySwingSwish();
 		}
@@ -3127,8 +3146,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// one it passes through is handed to the engine's hit function - once per
 	// swing, heavy when the swing has been fast enough. Not in a menu, not in
 	// third person (no hand pose there), and only while the hand is tracked.
-	if (active && g_hand.strikeByMotion && g_hand.swingActive && g_hand.rightHandValid &&
-	    !menuIsUp) {
+	if (active && g_hand.strikeByMotion && g_hand.swingActive && g_hand.swingTravelledMetres >= vr::kSwingMinMetres &&
+	    g_hand.rightHandValid && !menuIsUp) {
 		game::MotionStrike strike;
 		strike.swingSerial = g_hand.swingSerial;
 		strike.heavy = g_hand.swingHeavy;

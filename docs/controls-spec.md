@@ -1653,3 +1653,49 @@ der load order da ist und das feature in seiner ini an ist."
   own throughout, with OBVR's own noise and the game's gasp, as without
   the mod; the log line says so.
 - Not seen in the headset.
+
+### 4.26 The tester's round of 915c1dd (2026-10-08, 20:40) and the next asks
+
+"getested: slappen geht gar nicht mehr", and before it: "wenn ich gekilled
+werde dann bleibt mein char ... halben meter über dem boden schweben und
+droppt dann nach paar sekunden erst zu boden", "waffen ziehen soll nicht
+gleich als hit zählen", "wenn ich schwinge zählen oft mehrere swings".
+
+- **"slappen geht gar nicht mehr"**: his log of that session (OBVR.log,
+  20:28-20:40, the first with 915c1dd) has no "Shove:" line at all - not
+  even the "Put it in its Place ... is loaded" line the first slap writes -
+  so no slap reached the shove code; the session before (c392ccb) slapped
+  as ever. What the log shows through his attempts: "both fists are up -
+  blocking", "the weapon's body made", and every yield line saying "a
+  weapon or the fists in hand" - the weapon or the fists were readied, and
+  a shove or a slap wants the weapons away (`ShoveFor`: not with the weapon
+  drawn, not with a fist, not with the grip held). Nothing in 915c1dd
+  touched that path. Not proven, since a refused hand left no line: now it
+  does - "Shove: the right hand at n m/s towards <ref> refused - the weapon
+  or the fists are readied; / the hand is a fist; / the grip is held;
+  (...)", once a second, twenty lines - so the next log says why.
+- **The body half a metre over the ground when killed**: `[Look]
+  DeathBodyUpMetres` is 0.50 in his live INI (the template and the
+  default are 0), and the held death view draws the body that much above
+  where it lies (game::ShiftDeadPlayerBody, "Death: the body is drawn 35
+  units ahead of the held view" in his logs - 35 units, the offset's
+  length, is that half metre) until the load prompt releases the view, when
+  the body is drawn where it is: the "drop". OBVR did not change his INI;
+  the settings row "Death body up" (or the INI key) at 0 is the fix he
+  asked for: the body falls with its ragdoll, drawn where it falls.
+- **A weapon drawn counted as a swing**: his log - "ready weapon done - the
+  game shows the wanted state after 0.12 s" then at once "a light swing,
+  2.7 m/s at its fastest, 0.08 m long". Now the frame a melee weapon comes
+  into the hand starts a grace of 0.6 s (`vr::StepDrawGrace`,
+  hand_mode_test) with the swing detectors kept idle and no strike; a
+  weapon in the hand from the first frame of the mode starts none.
+- **Several swings for one**: his log - swings of 0.24, 0.15, 0.19, 0.27,
+  0.31 m ending frames apart, each striking the same man (health 34 -> 26.6
+  in five), and "a light swing ... 0.03 m long". The detector ended a swing
+  on the first frame under half the speed, and the rest of the stroke was
+  the next swing; the way back another. Now (`vr::StepSwing`,
+  hand_mode_test): a swing ends only once the speed has stayed under half
+  the threshold for 0.06 s (a dip is the strike's own jolt); after a swing
+  nothing starts for 0.25 s (the way back); a swing shorter than 0.10 m is
+  a twitch with no verdict, and strikes and the swish wait until a swing
+  has travelled that far (`SwingLongEnough`). Not seen in the headset.

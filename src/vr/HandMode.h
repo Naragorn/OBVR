@@ -574,6 +574,11 @@ struct HandModeResult {
 	UInt32 swingSerial = 0;
 	// The fastest the hand went in the swing that ended this frame (m/s,
 	// in the room), 0 otherwise: the log's, to set "Swing speed" by.
+	// How far the right hand's swing has travelled so far (metres): strikes
+	// and the swish wait for kSwingMinMetres of it.
+	float swingTravelledMetres = 0.0f;
+	// A melee weapon just readied: no swing is taken for kDrawGraceSeconds.
+	bool drawGrace = false;
 	float swingPeakSpeed = 0.0f;
 	// And how far it travelled (m): a power attack from PowerSwingMetres.
 	float swingMetres = 0.0f;
@@ -698,6 +703,7 @@ private:
 	StickNavState m_navLeft;
 	PokeState m_poke;
 	SwingDetector m_swing;
+	DrawGraceState m_drawGrace;
 	HeldControl m_heavyHold;
 	UInt32 m_swingSerial = 0;
 	bool m_haveLastRight = false;
