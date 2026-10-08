@@ -71,10 +71,49 @@ struct Swapped {
 Swapped g_swapped[8];
 UInt32 g_linesLeft = 12;
 
+UInt32 g_staleLines = 8;
+
+// Whether `s` still describes the skin at its address (SwapRecordHolds):
+// its bone array as recorded, OBVR's nodes allowed in any slot. A record of
+// a skin that came back with another model's bones is forgotten, with a
+// line - nothing of the old bone list is ever written into the new skin.
+bool RecordHolds(Swapped& s, const UInt32* fakes, UInt32 fakeCount) {
+	const UInt32 data = Read(s.skin + kSkinInstanceData);
+	const UInt32 bones = Read(s.skin + kSkinInstanceBones);
+	if (!mem::LooksLikeObjectAddress(data) || !mem::LooksLikeObjectAddress(bones)) {
+		s = Swapped{};
+		return false;
+	}
+	const UInt32 count = Read(data + kSkinDataBoneCount);
+	if (SwapRecordHolds(reinterpret_cast<const UInt32*>(bones), count, s.original, s.count, fakes, fakeCount)) {
+		return true;
+	}
+	if (g_staleLines > 0) {
+		--g_staleLines;
+		OBVR_LOG("Hand bones: the skin %08X came back with another model's bones (%u now, %u recorded) - the old "
+		         "record dropped, the skin taken as new",
+		         s.skin, count, s.count);
+	}
+	s = Swapped{};
+	return false;
+}
+
+// OBVR's own nodes for the Arms skins, as addresses.
+UInt32 ArmFakes(UInt32 (&out)[2 + kMaxCentre]) {
+	out[0] = reinterpret_cast<UInt32>(g_leftNode.bytes);
+	out[1] = reinterpret_cast<UInt32>(g_rightNode.bytes);
+	for (UInt32 i = 0; i < kMaxCentre; ++i) {
+		out[2 + i] = reinterpret_cast<UInt32>(g_centreNodes[i].bytes);
+	}
+	return 2 + kMaxCentre;
+}
+
 Swapped* Find(UInt32 skin) {
 	for (Swapped& s : g_swapped) {
 		if (s.skin == skin) {
-			return &s;
+			UInt32 fakes[2 + kMaxCentre];
+			const UInt32 n = ArmFakes(fakes);
+			return RecordHolds(s, fakes, n) ? &s : nullptr;
 		}
 	}
 	return nullptr;
@@ -136,6 +175,8 @@ void GiveAllBack() {
 	// changed) went with its pointers.
 	UInt32 skins[8];
 	const UInt32 n = ArmSkins(skins);
+	UInt32 fakes[2 + kMaxCentre];
+	const UInt32 fakeCount = ArmFakes(fakes);
 	for (Swapped& s : g_swapped) {
 		if (s.skin == 0) {
 			continue;
@@ -144,7 +185,7 @@ void GiveAllBack() {
 		for (UInt32 i = 0; i < n; ++i) {
 			present = present || skins[i] == s.skin;
 		}
-		if (present) {
+		if (present && RecordHolds(s, fakes, fakeCount)) {
 			GiveBack(s);
 		} else {
 			s = Swapped{};
@@ -212,6 +253,8 @@ UInt32 GloveSkins(UInt32 (&skins)[8]) {
 void StepGloveElbows(bool wanted) {
 	UInt32 skins[8];
 	const UInt32 n = GloveSkins(skins);
+	const UInt32 gloveFakes[2] = {reinterpret_cast<UInt32>(g_gloveLeft.bytes),
+	                              reinterpret_cast<UInt32>(g_gloveRight.bytes)};
 	if (!wanted) {
 		for (Swapped& s : g_gloveSwapped) {
 			if (s.skin == 0) {
@@ -221,7 +264,7 @@ void StepGloveElbows(bool wanted) {
 			for (UInt32 i = 0; i < n; ++i) {
 				present = present || skins[i] == s.skin;
 			}
-			if (present) {
+			if (present && RecordHolds(s, gloveFakes, 2)) {
 				GiveBack(s);
 			} else {
 				s = Swapped{};
@@ -247,6 +290,9 @@ void StepGloveElbows(bool wanted) {
 		Swapped* s = nullptr;
 		for (Swapped& g : g_gloveSwapped) {
 			s = g.skin == skin ? &g : s;
+		}
+		if (s != nullptr && !RecordHolds(*s, gloveFakes, 2)) {
+			s = nullptr;
 		}
 		const bool fresh = s == nullptr;
 		if (fresh) {

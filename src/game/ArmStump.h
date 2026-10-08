@@ -261,6 +261,36 @@ inline bool StumpWanted(bool bareHands, bool sleeves, bool handsAway) { return b
 // the first-person tree.
 void CountArmShapes(UInt32& armShapes, UInt32& skinShapes);
 
+// Whether a skin's bone array is still the one a swap record was made from:
+// the same number of bones, and every slot either the bone recorded for it
+// or one of OBVR's own nodes (a slot recorded as 0 held one of ours when the
+// record was made). A record that fails this is of a skin that went with
+// its model and came back at the same address with another model's bones:
+// the tester loaded a save with a female character after a new game
+// (2026-10-08), the engine kept the skeleton and replaced the hand shapes,
+// and the new skins' addresses were the old ones - the old record wrote
+// the male hand's bone list, in its order, into the female hand's skin,
+// and the hands were "komplett verzerrt". Pure; arm_stump_test.
+inline bool SwapRecordHolds(const UInt32* bones, UInt32 boneCount, const UInt32* original, UInt32 recordCount,
+                            const UInt32* fakes, UInt32 fakeCount) {
+	if (bones == nullptr || original == nullptr || boneCount != recordCount || boneCount == 0) {
+		return false;
+	}
+	for (UInt32 i = 0; i < boneCount; ++i) {
+		bool ours = false;
+		for (UInt32 f = 0; f < fakeCount && !ours; ++f) {
+			ours = fakes != nullptr && bones[i] == fakes[f];
+		}
+		if (ours) {
+			continue;
+		}
+		if (original[i] == 0 || bones[i] != original[i]) {
+			return false;
+		}
+	}
+	return true;
+}
+
 // ------------------------------------------------------------ the game side
 
 // Once a frame after the hand pins: swaps the bones of the first-person

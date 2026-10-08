@@ -1553,3 +1553,37 @@ hatten nun zwar den kreis aber keine namen mehr und kein hand symbol BUG".
 - **The Info element** without a rectangle while the pick was on 191936CC
   (bound radius 160), three times: the game drew no info for it in those
   frames; noted, not pursued.
+
+### 4.23 Hands "komplett verzerrt" after loading a female character (2026-10-08)
+
+The tester: "ich hatte new game getestet -> ging. aber dann einen anderen
+spielstand mit nem weiblichen char geladen -> die Hände waren komplett
+verzerrt! BUG".
+
+- **His log** (OBVR.log of 19:54): the new game's hands were drawn as
+  4047 and twice 2162 triangles; after the second load (the Load menu at
+  5918, closed at 6183) the hand shapes were new ones ("Hand" at 1C81765C
+  hidden, 2239 and 2214 triangles sealed) while the skeleton stayed - the
+  same Torch, ForearmTwist and Weapon node addresses before and after, so
+  the engine kept the first-person skeleton and replaced the body shapes.
+  No "a glove's skin ..." line came for the new hand shapes, though their
+  skins were new objects: their addresses were the old skins' (freed and
+  made again at the same place), and `StepGloveElbows` found its old
+  records for them.
+- **The cause**: a swap record (`Swapped`) was keyed by the skin's
+  address alone, and held the old skin's bone list. For a skin "already
+  known" the step wrote `bones[i] = original[i]` - the male hand skin's
+  bone pointers, in the male skin's order and count - into the female
+  hand skin's bone array, whose weights index bones by their own order.
+  Every vertex was then skinned to the wrong bone: "komplett verzerrt".
+  The Arms skins (`StepForearmStumps`, `GiveAllBack`) had the same hole.
+- **The fix**: a record is used only while the skin's bone array is still
+  the one it was made from - the same count, every slot the recorded bone
+  or one of OBVR's own nodes (`SwapRecordHolds`, arm_stump_test). A record
+  that fails is dropped without a write and logged once ("Hand bones: the
+  skin ... came back with another model's bones ... the old record
+  dropped, the skin taken as new"), and the skin is recorded afresh from
+  its own bones. Not seen in the headset.
+- **Left as is**: `PinHandBone` keys its bone on the first-person root; a
+  skeleton replaced under the same root address would keep a freed bone.
+  His log shows the skeleton kept across loads, so not reached here.

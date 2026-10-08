@@ -150,7 +150,31 @@ void TestGlove() {
 	      "the forearm, the hand and the spine keep their bones");
 }
 
+void TestRecord() {
+	std::printf("A swap record against the skin as it stands\n");
+	const UInt32 fakes[2] = {0xF1, 0xF2};
+	const UInt32 original[4] = {0x10, 0x20, 0x30, 0};
+	const UInt32 untouched[4] = {0x10, 0x20, 0x30, 0xF1};
+	Check(SwapRecordHolds(untouched, 4, original, 4, fakes, 2), "every slot as recorded, ours where ours was: holds");
+	const UInt32 swapped[4] = {0x10, 0xF2, 0x30, 0xF1};
+	Check(SwapRecordHolds(swapped, 4, original, 4, fakes, 2), "a recorded bone swapped for ours: holds");
+	const UInt32 anotherModel[4] = {0x11, 0x21, 0x31, 0x41};
+	Check(!SwapRecordHolds(anotherModel, 4, original, 4, fakes, 2),
+	      "another model's bones at the same address: does not hold");
+	const UInt32 oneOff[4] = {0x10, 0x20, 0x31, 0xF1};
+	Check(!SwapRecordHolds(oneOff, 4, original, 4, fakes, 2), "one bone another: does not hold");
+	Check(!SwapRecordHolds(untouched, 3, original, 4, fakes, 2) && !SwapRecordHolds(untouched, 4, original, 3, fakes, 2),
+	      "another bone count: does not hold");
+	const UInt32 zeroSlot[4] = {0x10, 0x20, 0x30, 0x40};
+	Check(!SwapRecordHolds(zeroSlot, 4, original, 4, fakes, 2),
+	      "a slot that was ours now a real bone: not the recorded skin");
+	Check(!SwapRecordHolds(nullptr, 4, original, 4, fakes, 2) && !SwapRecordHolds(untouched, 0, original, 0, fakes, 2) &&
+	          !SwapRecordHolds(untouched, 4, original, 4, nullptr, 0),
+	      "no bones, none recorded, or no own nodes to allow: does not hold");
+}
+
 int main() {
+	TestRecord();
 	TestGlove();
 	TestRoles();
 	TestCollapse();
