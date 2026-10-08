@@ -1583,7 +1583,11 @@ verzerrt! BUG".
   that fails is dropped without a write and logged once ("Hand bones: the
   skin ... came back with another model's bones ... the old record
   dropped, the skin taken as new"), and the skin is recorded afresh from
-  its own bones. Not seen in the headset.
+  its own bones. **Confirmed** (the tester, 2026-10-08, 20:15: "hände sind
+  nun fixed"): his log of a new game followed by the load - "Hand bones:
+  the skin 131A2B2C came back with another model's bones (36 now, 6
+  recorded) - the old record dropped, the skin taken as new" - the
+  6-bone skin's address taken by a 36-bone one, as read above.
 - **Left as is**: `PinHandBone` keys its bone on the first-person root; a
   skeleton replaced under the same root address would keep a freed bone.
   His log shows the skeleton kept across loads, so not reached here.
