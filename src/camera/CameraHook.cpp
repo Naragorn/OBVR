@@ -1222,14 +1222,10 @@ vr::YieldState g_yieldShadow;  // the rocking alone, for the log's "why not"
 // the laser does not pick items ([Hands] LaserPicksItems off), the thing is
 // an item, and no hand holds it in the pick (game::NearItem).
 bool LaserItemFiltered(const Config& config, UInt32 ref) {
-	if (config.hands.laserPicksItems || ref == 0) {
-		return false;
-	}
-	if (g_nearItem.valid && g_nearItem.ref == ref) {
-		return false;
-	}
 	bool isBook = false;
-	return game::RefIsItem(ref, &isBook);
+	const bool isItem = ref != 0 && game::RefIsItem(ref, &isBook);
+	return game::LaserPickFiltered(config.hands.laserPicksItems, g_nearItem.valid ? g_nearItem.ref : 0, ref, isItem,
+	                               isBook);
 }
 
 // A pick hit counts as on the thing within its bound plus this much.
@@ -6836,9 +6832,19 @@ void MaybeSubmitOverlays(bool worldFrame) {
 				}
 				if (s_rowFrames < 3 && s_rowLines > 0) {
 					--s_rowLines;
-					OBVR_LOG("Hands: row on %08X, frame %u - hit %s at %.0f %.0f %.0f (the bound %s %.0f %.0f %.0f radius "
+					char rowName[48] = {};
+					if (s_rowFrames == 0) {
+						const UInt32 rowBase = mem::LooksLikeObjectAddress(shownRef)
+						                           ? *reinterpret_cast<const UInt32*>(shownRef + addr::kRefBaseFormOffset)
+						                           : 0;
+						if (mem::LooksLikeObjectAddress(rowBase)) {
+							game::ReadFormFullName(rowBase, rowName, sizeof(rowName));
+						}
+					}
+					OBVR_LOG("Hands: row on %08X (type %u \"%s\"), frame %u - hit %s at %.0f %.0f %.0f (the bound %s %.0f %.0f %.0f radius "
 					         "%.0f, %s, the pick's frame %u on it), wanted %.0f %.0f %.0f, hang %.0f %.0f %.0f, %.2f m from the head",
-					         shownRef, s_rowFrames + 1, shownRef == target.refAddress && haveHit ? "the pick's" : "none (the anchor's)",
+					         shownRef, game::RefBaseFormType(shownRef), rowName, s_rowFrames + 1,
+					         shownRef == target.refAddress && haveHit ? "the pick's" : "none (the anchor's)",
 					         static_cast<double>(hit.x), static_cast<double>(hit.y), static_cast<double>(hit.z),
 					         haveHitBound ? "at" : "unknown", static_cast<double>(hitCentre.x), static_cast<double>(hitCentre.y),
 					         static_cast<double>(hitCentre.z), static_cast<double>(hitRadius),

@@ -1523,3 +1523,33 @@ tür gehe springt ein textfeld". Read from his log (OBVR.log.prev, 21:46).
   input: the event's own cNewInput when it has one, the runtime's text
   when it is empty (`vr::KeyboardNewInput`, vr_keyboard_test); Done is no
   input. The log line prints both.
+
+### 4.22 The tester's round of 69811f8 (2026-10-08, 19:54)
+
+"1) ja nun geht es wie erwartet 2) ja passiert noch + neu dazu: bücher
+hatten nun zwar den kreis aber keine namen mehr und kein hand symbol BUG".
+
+- **The keyboard** (1): words type now; the minimal mode and the key per
+  event (4.21) stand.
+- **Books** (2, the bug): with the laser off items (4.18) a book under the
+  laser was filtered like any item - no name, no reading hand, only the
+  plain reticle's circle - although its Activate still opens it to read
+  (4.6). A book is now never filtered (`game::LaserPickFiltered`,
+  pick_hold_test): the laser gives its name and the hand as before.
+- **The door's text** (2), still jumping. His log's row lines on the door
+  (1AC6CE50, bound radius 52) were all "within its slack" this time - the
+  4.20 freeze is gone - and what the log shows instead is the pick leaving
+  the door for a thing with a bound of radius 482 at the room's middle
+  (1AC6CD90; 1C2396C8 the run before), hit at floor height all over the
+  room (496,-6,-89 ... 853,7,-59), which the engine's own grab once took
+  ("the engine TOOK it (target now 1AC6CD90 ...)"). Its row hangs under
+  the hit and trails a fast sweep (710 to 770 in three frames, the hang
+  713 to 719); coming from the right onto the door the row goes from that
+  thing to the door, or the other way. What it is the log does not say
+  yet: the row's first-frame line now prints the thing's form type and
+  name, so the next log names it. The pick's one-frame flicker to another
+  thing (frame 2 of 4227, "the pick's frame 1 on it") is held off by the
+  row's settle as meant.
+- **The Info element** without a rectangle while the pick was on 191936CC
+  (bound radius 160), three times: the game drew no info for it in those
+  frames; noted, not pursued.

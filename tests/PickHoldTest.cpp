@@ -272,6 +272,14 @@ void TestRankForHand() {
 	g_laserPicksItems = true;
 	r = RankItemForHand(away, false, 0xA, centre, 5.0f, 100.0f, 20.0f, 30.0f);
 	Check(!r.valid, "the laser on again, pointing elsewhere 30 units off: the laser's rules, not reached for");
+
+	std::printf("The engine's pick on an item, shown or not\n");
+	Check(LaserPickFiltered(false, 0, 0xA, true, false), "the laser off items, an item no hand has: filtered");
+	Check(!LaserPickFiltered(false, 0xA, 0xA, true, false), "the same item in a hand's pick: shown");
+	Check(!LaserPickFiltered(false, 0xB, 0xA, true, true), "a book no hand has: shown, it is read where it lies");
+	Check(!LaserPickFiltered(false, 0, 0xA, false, false), "a door or a person: shown");
+	Check(!LaserPickFiltered(true, 0, 0xA, true, false), "the laser picking items: everything shown");
+	Check(!LaserPickFiltered(false, 0, 0, false, false), "no pick at all: nothing to filter");
 	r = RankItemForHand(hand, true, 0xA, centre, 5.0f, 100.0f, 20.0f);
 	Check(r.valid && r.rankClass == kPickLaserOn, "on again: the laser's class is back");
 }
