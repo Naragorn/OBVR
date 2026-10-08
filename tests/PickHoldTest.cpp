@@ -197,6 +197,52 @@ void TestAnchor() {
 	Check(Near(p.x, 60.0f), "no frame time: the target as it is");
 	p = StepAnchor(a, 0, NiPoint3{1.0f, 0.0f, 0.0f}, 0.011f);
 	Check(!a.valid && Near(p.x, 1.0f), "nothing: not held, the point passed through");
+
+	std::printf("The anchor gliding from one thing to the next\n");
+	AnchorState g;
+	p = StepAnchor(g, 0xA, NiPoint3{10.0f, 0.0f, 0.0f}, 0.011f, kAnchorSeconds, kAnchorGlideSeconds);
+	Check(Near(p.x, 10.0f) && g.held && !g.gliding, "the first thing: taken as it is, nothing to glide from");
+	p = StepAnchor(g, 0xB, NiPoint3{110.0f, 0.0f, 0.0f}, 0.011f, kAnchorSeconds, kAnchorGlideSeconds);
+	Check(g.ref == 0xB && g.gliding && p.x > 10.0f && p.x < 25.0f,
+	      "another thing: on the way from the last, a small share of it (about a twelfth at 90 Hz)");
+	x = p.x;
+	for (int i = 0; i < 30; ++i) {
+		x = StepAnchor(g, 0xB, NiPoint3{110.0f, 0.0f, 0.0f}, 0.011f, kAnchorSeconds, kAnchorGlideSeconds).x;
+	}
+	Check(x > 100.0f && x < 110.0f, "after 0.34 s most of the way there");
+	for (int i = 0; i < 40; ++i) {
+		x = StepAnchor(g, 0xB, NiPoint3{110.0f, 0.0f, 0.0f}, 0.011f, kAnchorSeconds, kAnchorGlideSeconds).x;
+	}
+	Check(!g.gliding && x > 108.0f, "within two units: the glide is over, the ordinary ease from here");
+	p = StepAnchor(g, 0xB, NiPoint3{120.0f, 0.0f, 0.0f}, 0.011f, kAnchorSeconds, kAnchorGlideSeconds);
+	Check(p.x > 109.0f && p.x < 112.0f && !g.gliding, "the same thing moving: the ordinary step (an eighth at 90 Hz)");
+	// Lost, then found again within the grace: from where it was.
+	StepAnchor(g, 0, NiPoint3{}, 0.011f, kAnchorSeconds, kAnchorGlideSeconds);
+	Check(!g.valid && g.held && Near(g.lostSeconds, 0.0f), "nothing: let go, the last place kept, the clock started");
+	for (int i = 0; i < 10; ++i) {
+		StepAnchor(g, 0, NiPoint3{}, 0.011f, kAnchorSeconds, kAnchorGlideSeconds);
+	}
+	Check(g.lostSeconds > 0.1f && g.lostSeconds < 0.12f, "0.11 s of nothing counted");
+	p = StepAnchor(g, 0xC, NiPoint3{200.0f, 0.0f, 0.0f}, 0.011f, kAnchorSeconds, kAnchorGlideSeconds);
+	Check(g.gliding && p.x > 110.0f && p.x < 125.0f, "the next thing within the grace: glides from where the last was");
+	// Lost for longer than the grace: snapped.
+	for (int i = 0; i < 40; ++i) {
+		StepAnchor(g, 0, NiPoint3{}, 0.011f, kAnchorSeconds, kAnchorGlideSeconds);
+	}
+	p = StepAnchor(g, 0xD, NiPoint3{300.0f, 0.0f, 0.0f}, 0.011f, kAnchorSeconds, kAnchorGlideSeconds);
+	Check(!g.gliding && Near(p.x, 300.0f), "lost for 0.44 s: the next thing taken as it is");
+	// No glide asked for (the pick's aim): snapped as ever.
+	p = StepAnchor(g, 0xE, NiPoint3{400.0f, 0.0f, 0.0f}, 0.011f);
+	Check(!g.gliding && Near(p.x, 400.0f) && g.ref == 0xE, "no glide asked for: another thing snaps");
+	// No frame time on a change: the target as it is.
+	p = StepAnchor(g, 0xF, NiPoint3{500.0f, 0.0f, 0.0f}, 0.0f, kAnchorSeconds, kAnchorGlideSeconds);
+	Check(!g.gliding && Near(p.x, 500.0f), "no frame time: taken as it is, no glide");
+	// A glide interrupted by a third thing: from wherever it had got to.
+	StepAnchor(g, 0x10, NiPoint3{600.0f, 0.0f, 0.0f}, 0.011f, kAnchorSeconds, kAnchorGlideSeconds);
+	const float midway = g.point.x;
+	p = StepAnchor(g, 0x11, NiPoint3{700.0f, 0.0f, 0.0f}, 0.011f, kAnchorSeconds, kAnchorGlideSeconds);
+	Check(g.gliding && g.ref == 0x11 && p.x > midway && p.x < midway + 20.0f,
+	      "a third thing mid-glide: on from where it had got to");
 }
 
 void TestShownSettle() {

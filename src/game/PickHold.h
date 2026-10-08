@@ -161,28 +161,70 @@ inline UInt32 StepRefSettle(RefSettleState& s, UInt32 wanted, float dt, UInt32 t
 }
 
 // A point that follows its target smoothly while the thing it is on stays
-// the same, and snaps when the thing changes: for the ring, the info row and
-// the pick's aim. A first-order ease, the share per frame dt/(tc+dt) - the
-// time constant kAnchorSeconds leaves a tenth of a step after about 0.2 s at
-// any frame rate. No dt (0) takes the target as it is.
+// the same: for the ring, the info row and the pick's aim. A first-order
+// ease, the share per frame dt/(tc+dt) - the time constant kAnchorSeconds
+// leaves a tenth of a step after about 0.2 s at any frame rate. No dt (0)
+// takes the target as it is.
+//
+// When the thing changes the point snaps to the new one, unless asked to
+// glide (`glideSeconds` > 0): then it eases over from where it was, with
+// that time constant until it is within kAnchorGlideDoneUnits of the new
+// thing, and a thing taken up within `graceSeconds` of losing the last one
+// eases from where that one was left - so the row and the ring slide from
+// one thing to the next instead of jumping (the tester, 2026-10-08, on the
+// row from one thing to another: "der übergang könnte generell weicher
+// sein"). The pick's aim never glides: a ray aimed between two things hits
+// neither.
 inline constexpr float kAnchorSeconds = 0.08f;
+inline constexpr float kAnchorGlideSeconds = 0.12f;
+inline constexpr float kAnchorGraceSeconds = 0.3f;
+inline constexpr float kAnchorGlideDoneUnits = 2.0f;
 
 struct AnchorState {
 	bool valid = false;
 	UInt32 ref = 0;
 	NiPoint3 point{0.0f, 0.0f, 0.0f};
+	bool held = false;         // `point` is a place something was shown at
+	float lostSeconds = 0.0f;  // since the last thing went, while nothing is held
+	bool gliding = false;      // on the way over from the last thing
 };
 
 inline NiPoint3 StepAnchor(AnchorState& a, UInt32 ref, const NiPoint3& target, float dt,
-                           float timeConstant = kAnchorSeconds) {
-	if (!a.valid || a.ref != ref || ref == 0 || !(dt > 0.0f) || !(timeConstant > 0.0f)) {
-		a.valid = ref != 0;
-		a.ref = ref;
-		a.point = target;
+                           float timeConstant = kAnchorSeconds, float glideSeconds = 0.0f,
+                           float graceSeconds = kAnchorGraceSeconds) {
+	if (ref == 0) {
+		// Nothing held; the last place is kept for a glide from it.
+		a.lostSeconds = a.valid ? 0.0f : a.lostSeconds + (dt > 0.0f ? dt : 0.0f);
+		a.valid = false;
+		a.ref = 0;
+		a.gliding = false;
 		return target;
 	}
-	const float share = dt / (timeConstant + dt);
+	if (!a.valid || a.ref != ref) {
+		const bool from = a.held && glideSeconds > 0.0f && dt > 0.0f &&
+		                  (a.valid || a.lostSeconds <= graceSeconds);
+		a.valid = true;
+		a.ref = ref;
+		a.lostSeconds = 0.0f;
+		a.gliding = from;
+		if (!from) {
+			a.point = target;
+			a.held = true;
+			return target;
+		}
+	}
+	a.held = true;
+	const float constant = a.gliding ? glideSeconds : timeConstant;
+	if (!(dt > 0.0f) || !(constant > 0.0f)) {
+		a.point = target;
+		a.gliding = false;
+		return target;
+	}
+	const float share = dt / (constant + dt);
 	a.point = a.point + (target - a.point) * share;
+	if (a.gliding && (target - a.point).LengthSquared() <= kAnchorGlideDoneUnits * kAnchorGlideDoneUnits) {
+		a.gliding = false;
+	}
 	return a.point;
 }
 

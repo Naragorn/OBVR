@@ -1587,3 +1587,33 @@ verzerrt! BUG".
 - **Left as is**: `PinHandBone` keys its bone on the first-person root; a
   skeleton replaced under the same root address would keep a freed bone.
   His log shows the skeleton kept across loads, so not reached here.
+
+### 4.24 The tester's round of ebd89f3 (2026-10-08, 20:11)
+
+"1. ja 2. ja jetzt schneller, ich denke das problem kommt wenn man von
+einem objekt zum anderen springt. der übergang könnte generell weicher
+sein."
+
+- **The hands** (1): right again. His session loaded the female
+  character straight from the main menu (the bare hands' lid from the
+  first frames, no new game before it), so the stale-record path of 4.23
+  had nothing to drop in this log; "came back with another model's bones"
+  is still to be seen after a new game followed by that load.
+- **The row from thing to thing** (2): the freeze of 4.20 is gone ("jetzt
+  schneller"), and what is left is the snap itself - the row, the ring and
+  the quad jumped to the next thing the pick settled on. His log of this
+  session shows it on a bookshelf: the pick going between "Darkest
+  Darkness" and "The Locked Room" (books 23 units apart) and to
+  "Denyiir" (an NPC) over and over, a snap each time. Now the three glide
+  (`game::StepAnchor` with a glide: a time constant of 0.12 s from where
+  the last thing was, the ordinary 0.08 s again within two units of the
+  new one; a thing taken up within 0.3 s of losing the last one glides
+  from where that one was left; pick_hold_test). The row's text changes
+  at the settle as before, its place slides. The quad's hover is eased
+  on its own from the row's wanted hang (`g_hoverAnchor`), not built from
+  the row's eased point - that way its height does not jump to the new
+  thing's bound while sliding sideways. The pick's aim (`g_aimAnchor`)
+  never glides: a ray aimed between two things hits neither.
+- **Open**: the pick itself still alternates between two things the ray
+  sits between (#69); the glide softens what is shown, the settle of
+  0.08 s decides how often. Not seen in the headset.

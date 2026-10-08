@@ -222,6 +222,11 @@ game::PickHoldState g_pickHold;
 game::AnchorState g_ringAnchor;
 game::AnchorState g_rowAnchor;
 game::AnchorState g_aimAnchor;
+// The crosshair quad's place over the thing, eased apart from the row's
+// hang (the mirror of it), and the hang the row wants this frame before
+// the ease, the quad's hover built from it.
+game::AnchorState g_hoverAnchor;
+NiPoint3 g_rowWanted{0.0f, 0.0f, 0.0f};
 game::RefSettleState g_ringSettle;
 game::RefSettleState g_rowSettle;
 UInt32 g_pickLines = 40;
@@ -2828,14 +2833,17 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			// Shown on the thing the pick has settled on (game/PickHold.h): a
 			// thing the ray crossed for a few frames does not take the ring;
 			// and the ring eases over the thing rather than following every
-			// tremor of the ray's hit, snapping only to another thing.
+			// tremor of the ray's hit, and glides over to another thing
+			// (the tester, 2026-10-08: "der übergang könnte generell weicher
+			// sein") - what the grip takes is the pick's own, not the ring's
+			// drawn place.
 			const UInt32 wantedRef = target.haveRef ? target.refAddress : 0;
 			const UInt32 shownRef =
 				game::StepRefSettle(g_ringSettle, wantedRef, dt, g_nearItem.valid ? g_nearItem.ref : 0);
 			if (shownRef != wantedRef && g_ringAnchor.valid && g_ringAnchor.ref == shownRef) {
 				hit = g_ringAnchor.point;
 			}
-			hit = game::StepAnchor(g_ringAnchor, shownRef, hit, dt);
+			hit = game::StepAnchor(g_ringAnchor, shownRef, hit, dt, game::kAnchorSeconds, game::kAnchorGlideSeconds);
 			const float reachUnits = config.hands.reachMarkerMetres * config.tracker.unitsPerMetre;
 			const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
 			const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
@@ -6709,7 +6717,13 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		NiPoint3 centre{};
 		float radius = 0.0f;
 		const bool haveBound = game::RefWorldBound(g_rowAnchor.ref, centre, radius);
-		const NiPoint3 hover = vr::TargetHoverPoint(g_rowAnchor.point, haveBound, centre, radius);
+		// Over the thing the row's hang is wanted under (g_rowWanted), eased
+		// and gliding from one thing to the next as the row does
+		// (game/PickHold.h) - built from the row's eased point it jumped in
+		// height to the new thing's bound while sliding sideways.
+		const NiPoint3 hoverWanted = vr::TargetHoverPoint(g_rowWanted, haveBound, centre, radius);
+		const NiPoint3 hover = game::StepAnchor(g_hoverAnchor, g_rowAnchor.ref, hoverWanted, g_deltaSeconds,
+		                                        game::kAnchorSeconds, game::kAnchorGlideSeconds);
 		const NiPoint3 at = vr::WorldPointInTracking(hoverHead, g_cyclopeanCameraWorldTransform.rot,
 		                                             g_cyclopeanCameraWorldTransform.pos, hover,
 		                                             config.tracker.unitsPerMetre);
@@ -6729,6 +6743,11 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			         g_rowAnchor.ref, static_cast<double>(metres), haveBound ? "known" : "unknown",
 			         static_cast<double>(radius));
 		}
+	} else {
+		// Not over a thing this frame: the hover's place is kept for a glide
+		// back within the grace, let go after it.
+		game::StepAnchor(g_hoverAnchor, 0, NiPoint3{0.0f, 0.0f, 0.0f}, g_deltaSeconds, game::kAnchorSeconds,
+		                 game::kAnchorGlideSeconds);
 	}
 	g_crosshairLayer.SetRoomPlacement(roomPlaced, roomPose, roomWidth);
 	// An arrow on the string (vr::StepArchery): the crosshair hangs on its
@@ -6809,7 +6828,12 @@ void MaybeSubmitOverlays(bool worldFrame) {
 					const bool haveBound = game::RefWorldBound(shownRef, centre, radius);
 					wanted = vr::TargetHangPoint(hit, haveBound, centre, radius);
 				}
-				const NiPoint3 hang = game::StepAnchor(g_rowAnchor, shownRef, wanted, g_deltaSeconds);
+				// Gliding from the last thing to this one (game/PickHold.h):
+				// "der übergang könnte generell weicher sein" (the tester,
+				// 2026-10-08, on the row jumping from one thing to another).
+				const NiPoint3 hang = game::StepAnchor(g_rowAnchor, shownRef, wanted, g_deltaSeconds,
+				                                       game::kAnchorSeconds, game::kAnchorGlideSeconds);
+				g_rowWanted = wanted;
 				const NiPoint3 at = vr::WorldPointInTracking(handHudFrame.head, g_cyclopeanCameraWorldTransform.rot,
 				                                             g_cyclopeanCameraWorldTransform.pos, hang,
 				                                             config.tracker.unitsPerMetre);
