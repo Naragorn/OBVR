@@ -462,6 +462,27 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.tracker.unpausedMenus = v != 0.0f; },
 	},
 	{
+		"Screen", "Container over the chest", "A container's menu opens over the container, the world running",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "ContainerInWorld",
+		+[](const Config& c) { return c.containerPanel.inWorld ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.containerPanel.inWorld = v != 0.0f; },
+	},
+	{
+		"Screen", "Container panel size", "The container panel's size, times the menus'",
+		ItemKind::Number, 0.3f, 1.5f, 0.05f, 2, false,
+		"Look", "ContainerPanelScale",
+		+[](const Config& c) { return c.containerPanel.scale; },
+		+[](Config& c, float v) { c.containerPanel.scale = v; },
+	},
+	{
+		"Screen", "Container panel height", "How far (m) the panel's middle sits over the container's top",
+		ItemKind::Number, 0.0f, 1.0f, 0.05f, 2, false,
+		"Look", "ContainerPanelRaiseMetres",
+		+[](const Config& c) { return c.containerPanel.raiseMetres; },
+		+[](Config& c, float v) { c.containerPanel.raiseMetres = v; },
+	},
+	{
 		"Screen", "Menu shade", "The vanilla brown wash behind a menu",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Render", "MenuShade",

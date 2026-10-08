@@ -47,6 +47,9 @@ struct Config {
 	// conversation opens, beside them, at its own size (vr/DialogPanel.h).
 	// In [Look], hot reloaded.
 	vr::DialogPanelSettings dialogPanel;
+	// A container's menu over the container, the world running
+	// (vr/DialogPanel.h, ContainerPanelSettings). In [Look], hot reloaded.
+	vr::ContainerPanelSettings containerPanel;
 
 	// How often the camera state is logged, in frames. 0 turns the running
 	// log off; state changes are still reported.

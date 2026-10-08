@@ -116,4 +116,47 @@ inline bool DialogAnchor(const openvr::HmdMatrix34& head, float npcX, float npcY
 	return true;
 }
 
+// A container's menu over the container, the world running (the tester,
+// 2026-10-08: "wenn ich einen container markiere und A drücke das
+// inventory menü des containers geöffnet wird (und zwar als overlay über
+// dem container und nicht als cinema screen) aber mit dem game unpaused
+// (neue setting mit default on). ähnlich wie die fallout mods"). [Look]
+// ContainerInWorld, ContainerPanelScale, ContainerPanelRaiseMetres.
+struct ContainerPanelSettings {
+	bool inWorld = true;        // the panel over the container, the world running behind it
+	float scale = 0.6f;         // the panel's width while looting, times the menus' own
+	float raiseMetres = 0.35f;  // the panel's middle this far over the container's top
+};
+
+// The room anchor that puts the panel on a container: the panel hangs the
+// menus' distance straight ahead of its anchor (OverlayPoseAhead), so the
+// anchor stands that far back from the target along the level line from
+// the head to it, at the target's height, heading at it - the panel then
+// lands on the target, facing the head. False, anchor untouched, for a
+// target straight above or below the head, or a distance or height that
+// is no number.
+inline bool ContainerAnchor(const openvr::HmdMatrix34& head, float targetX, float targetY, float targetZ,
+                            float distanceMetres, openvr::HmdMatrix34& anchor) {
+	float fx = targetX - head.m[0][3];
+	float fz = targetZ - head.m[2][3];
+	const float len = math::Sqrt(fx * fx + fz * fz);
+	if (!(len >= 1e-3f) || !(len < 1.0e7f) || !(distanceMetres >= 0.0f) || !(distanceMetres < 1.0e7f) ||
+	    !(targetY == targetY) || !(targetY > -1.0e7f && targetY < 1.0e7f)) {
+		return false;
+	}
+	fx /= len;
+	fz /= len;
+	anchor = openvr::HmdMatrix34{};
+	// x right, y up, z back (the heading reversed), as DialogAnchor lays it.
+	anchor.m[0][0] = -fz;
+	anchor.m[2][0] = fx;
+	anchor.m[1][1] = 1.0f;
+	anchor.m[0][2] = -fx;
+	anchor.m[2][2] = -fz;
+	anchor.m[0][3] = targetX - fx * distanceMetres;
+	anchor.m[1][3] = targetY;
+	anchor.m[2][3] = targetZ - fz * distanceMetres;
+	return true;
+}
+
 }  // namespace obvr::vr

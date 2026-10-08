@@ -62,6 +62,15 @@ void TestAnswer() {
 	      "and a dialogue still pauses it");
 	Check(WorldPausesForMenu(true, true, kMenuIdNone),
 	      "an unreadable stack pauses rather than guesses");
+
+	std::printf("The container's own switch\n");
+	Check(!WorldPausesForMenu(true, false, kMenuIdContainer, true),
+	      "the container runs the world with the option off");
+	Check(WorldPausesForMenu(true, false, kMenuIdInventory, true),
+	      "... and the inventory still pauses as vanilla");
+	Check(WorldPausesForMenu(true, false, kMenuIdContainer, false), "neither switch: the container pauses");
+	Check(!WorldPausesForMenu(true, true, kMenuIdContainer, false), "the option alone runs it too");
+	Check(!WorldPausesForMenu(false, false, kMenuIdContainer, true), "outside menu mode nothing pauses either way");
 }
 
 void TestForeignHookThunk() {

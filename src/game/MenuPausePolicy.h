@@ -47,8 +47,14 @@ inline bool MenuKeepsWorldRunning(UInt32 topMenuId) {
 // answer is vanilla's own unless the option is on and the menu on top is
 // one of the above. Outside menu mode the answer is always no, whatever
 // the stack says - the stack can hold the HUD's own entries.
-inline bool WorldPausesForMenu(bool menuMode, bool unpausedMenus, UInt32 topMenuId) {
+//
+// `containerRuns` is [Look] ContainerInWorld (the tester, 2026-10-08): the
+// container's menu alone keeps the world running, whatever the option.
+inline bool WorldPausesForMenu(bool menuMode, bool unpausedMenus, UInt32 topMenuId, bool containerRuns = false) {
 	if (!menuMode) {
+		return false;
+	}
+	if (containerRuns && topMenuId == kMenuIdContainer) {
 		return false;
 	}
 	if (!unpausedMenus) {

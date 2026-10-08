@@ -1562,6 +1562,12 @@ UInt32 g_stowLinesLeft = 40;
 // The activate button kept from the game over a loose item
 // ([Hands] TakeOnlyByHand), said the first several times.
 bool g_activateWasWithheld = false;
+// What the laser was on as activate was last pressed, and the frame: a
+// container menu opening soon after is that thing's, and its panel goes
+// over it (vr/DialogPanel.h, ContainerAnchor).
+UInt32 g_activatedRef = 0;
+UInt32 g_activatedFrame = 0;
+inline constexpr UInt32 kActivatedRecentFrames = 180;
 UInt32 g_activateWithheldLinesLeft = 12;
 ui::CanvasOverlay g_quickMenuLayer("obvr.quickmenu", "OBVR Quick Menu", ui::kQuickMenuCanvas,
                                    ui::kQuickMenuCanvas);
@@ -2404,6 +2410,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		const bool pressed = active && g_hand.controls.activate && !menuIsUp;
 		if (pressed && !s_activateWas) {
 			const game::CrosshairTarget target = game::ReadCrosshairTarget();
+			if (target.haveRef) {
+				g_activatedRef = target.refAddress;
+				g_activatedFrame = g_state.frameCount;
+			}
 			bool isBook = false;
 			const bool isItem = target.haveRef && game::RefIsItem(target.refAddress, &isBook);
 			g_activateWasWithheld =
@@ -3877,6 +3887,9 @@ UInt32 g_bridgesReported = 8;
 // granted or skipped is the evidence the washed-grey diagnosis rests on.
 UInt32 g_menuOpenedFrame = 0;
 bool g_dialogMenuEpisode = false;
+// A container's menu up, one episode from its opening to its closing (the
+// same shape as the dialogue's): its panel over the container.
+bool g_containerMenuEpisode = false;
 bool g_dressingReportedThisMenu = false;
 UInt32 g_dressingReportsLeft = 8;
 
@@ -4116,7 +4129,7 @@ void OnFrameEnd() {
 
 	// The same shape for the simulation: asked every frame because the INI
 	// is hot reloaded, redirected once, and the answer follows the option.
-	game::ApplyUnpausedMenus(config.tracker.unpausedMenus);
+	game::ApplyUnpausedMenus(config.tracker.unpausedMenus, config.containerPanel.inWorld);
 
 	// Remembered for this frame's delivery before clearing the guard for the
 	// next one. This is what distinguishes a fresh pause-menu stereo pair from
@@ -4244,6 +4257,7 @@ void OnFrameEnd() {
 	const bool loadingFrame = menuId == game::kMenuIdLoading || game::LoadingThreadActive();
 	g_dialogMenuEpisode = DialogMenuEpisode(
 		g_dialogMenuEpisode, menuIsUp, menuId == game::kMenuIdDialog);
+	g_containerMenuEpisode = DialogMenuEpisode(g_containerMenuEpisode, menuIsUp, menuId == game::kMenuIdContainer);
 	const bool menuFlagChanged = menuIsUp != g_menuTraceWasUp;
 	const bool menuTypeChanged = menuId != game::kMenuIdNone && menuId != g_menuTraceLastId;
 
@@ -7023,6 +7037,53 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		}
 	}
 
+	// A container's menu over the container ([Look] ContainerInWorld,
+	// vr/DialogPanel.h ContainerAnchor): placed once as the menu opens, over
+	// the thing activate was last pressed on - a chest, a barrel, a body -
+	// when that was within the last two seconds and has a bound. The menu
+	// opened some other way (a script, a pickpocket) keeps its usual place.
+	{
+		static vr::DialogPanelPlacement s_containerPlacement;
+		const bool looting = g_containerMenuEpisode && config.containerPanel.inWorld;
+		const bool placementPending = s_containerPlacement.Pending(looting);
+		const bool menusInRoom = config.tracker.menusInWorld && config.tracker.hudAnchorWorld;
+		NiPoint3 chestCentre{};
+		float chestRadius = 0.0f;
+		const bool recent = g_activatedRef != 0 && g_state.frameCount - g_activatedFrame <= kActivatedRecentFrames;
+		const bool haveChest = recent && game::RefWorldBound(g_activatedRef, chestCentre, chestRadius);
+		if (vr::DialogRecentreDue(true, placementPending, menusInRoom, haveChest) && g_cyclopeanCameraWorldValid &&
+		    handHudFrame.haveHead) {
+			const float perMetre = config.tracker.unitsPerMetre;
+			const NiPoint3 over = chestCentre + NiPoint3{0.0f, 0.0f, chestRadius + config.containerPanel.raiseMetres * perMetre};
+			const NiPoint3 overTracking = vr::WorldPointInTracking(
+				handHudFrame.head, g_cyclopeanCameraWorldTransform.rot, g_cyclopeanCameraWorldTransform.pos, over, perMetre);
+			vr::openvr::HmdMatrix34 anchor{};
+			if (vr::ContainerAnchor(handHudFrame.head, overTracking.x, overTracking.y, overTracking.z,
+			                        config.tracker.hudDistanceMetres, anchor)) {
+				g_hudLayer.AnchorAt(anchor);
+				s_containerPlacement.placed = true;
+				static UInt32 s_containerLines = 12;
+				if (s_containerLines > 0) {
+					--s_containerLines;
+					OBVR_LOG("Container: the menu's panel over %08X at %.1f %.1f %.1f (bound radius %.0f, the panel's "
+					         "middle %.2f m over its top), the world running behind it",
+					         g_activatedRef, static_cast<double>(over.x), static_cast<double>(over.y),
+					         static_cast<double>(over.z), static_cast<double>(chestRadius),
+					         static_cast<double>(config.containerPanel.raiseMetres));
+				}
+			}
+		} else if (placementPending && !haveChest && g_containerMenuEpisode) {
+			static UInt32 s_noChestLines = 6;
+			if (s_noChestLines > 0 && menusInRoom) {
+				--s_noChestLines;
+				OBVR_LOG("Container: the menu opened with nothing activated in the last %u frames (last %08X, %u frames "
+				         "ago) - its panel stays where menus open",
+				         kActivatedRecentFrames, g_activatedRef, g_state.frameCount - g_activatedFrame);
+				s_containerPlacement.placed = true;  // not asked again this episode
+			}
+		}
+	}
+
 	// Snap turn vignette: fades in when a snap fires, out after. Updated every frame
 	// so the fade advances even when nothing is happening (keeps it hidden).
 	g_vignetteLayer.Update(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
@@ -7062,8 +7123,12 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	}
 	g_hudLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                  worldFrame && !hiddenForDeath, config.tracker.hudDistanceMetres,
-	                  vr::DialogPanelWidth(config.tracker.hudWidthMetres, g_dialogMenuEpisode,
-	                                       config.dialogPanel.scale),
+	                  // The container's panel at its own size while looting, the
+	                  // dialogue's while talking, the menus' own otherwise.
+	                  vr::DialogPanelWidth(vr::DialogPanelWidth(config.tracker.hudWidthMetres,
+	                                                            g_containerMenuEpisode && config.containerPanel.inWorld,
+	                                                            config.containerPanel.scale),
+	                                       g_dialogMenuEpisode, config.dialogPanel.scale),
 	                  config.tracker.hudAnchorWorld, config.hudProbe);
 }
 

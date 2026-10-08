@@ -428,6 +428,12 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		dp.sideDegrees = ReadFloat("Look", "DialogPanelSideDegrees", dp.sideDegrees, path);
 		dp.scale = ReadFloat("Look", "DialogPanelScale", dp.scale, path);
 	}
+	{
+		vr::ContainerPanelSettings& cp = config.containerPanel;
+		cp.inWorld = ReadBool("Look", "ContainerInWorld", cp.inWorld, path);
+		cp.scale = ReadFloat("Look", "ContainerPanelScale", cp.scale, path);
+		cp.raiseMetres = ReadFloat("Look", "ContainerPanelRaiseMetres", cp.raiseMetres, path);
+	}
 	config.tracker.menusInWorld =
 		ReadMenusInWorld("Render", "Menus", config.tracker.menusInWorld, path);
 	config.tracker.liveMenuBackground = ReadBool(

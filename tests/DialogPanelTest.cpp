@@ -112,6 +112,40 @@ void TestAnchor() {
 	}
 }
 
+void TestContainerAnchor() {
+	std::printf("A container's panel over the container\n");
+	const openvr::HmdMatrix34 head = Head();
+	openvr::HmdMatrix34 a{};
+	// A chest's top 2 m straight ahead (-z) of the head, lower than it; the
+	// menus 1.2 m ahead of their anchor.
+	Check(ContainerAnchor(head, 0.5f, 1.0f, -2.0f, 1.2f, a), "a chest ahead: placed");
+	Check(Near(a.m[0][2], 0.0f) && Near(a.m[2][2], 1.0f) && Near(a.m[0][0], 1.0f), "facing straight at it");
+	Check(Near(a.m[0][3], 0.5f) && Near(a.m[1][3], 1.0f) && Near(a.m[2][3], -0.8f),
+	      "the anchor 1.2 m short of the chest at the chest's height: the panel lands on it");
+	Check(ContainerAnchor(head, 3.5f, 1.0f, 0.0f, 1.2f, a) && Near(-a.m[0][2], 1.0f) && Near(a.m[2][0], 1.0f) &&
+	          Near(a.m[0][3], 2.3f) && Near(a.m[2][3], 0.0f),
+	      "a chest to the right: the heading turns to it, the anchor 1.2 m short of it");
+	Check(ContainerAnchor(head, 0.5f, 1.0f, -2.0f, 0.0f, a) && Near(a.m[2][3], -2.0f), "no distance: the anchor at the chest");
+	openvr::HmdMatrix34 kept = head;
+	Check(!ContainerAnchor(head, 0.5f, 0.2f, 0.0f, 1.2f, kept) && Near(kept.m[2][2], 1.0f),
+	      "straight below the head: no heading, the anchor untouched");
+	const float invalid[] = {std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity()};
+	for (float value : invalid) {
+		kept = head;
+		Check(!ContainerAnchor(head, value, 1.0f, -2.0f, 1.2f, kept) && Near(kept.m[0][3], 0.5f),
+		      "an invalid place leaves the anchor intact");
+		kept = head;
+		Check(!ContainerAnchor(head, 0.5f, value, -2.0f, 1.2f, kept) && Near(kept.m[0][3], 0.5f),
+		      "an invalid height leaves the anchor intact");
+		kept = head;
+		Check(!ContainerAnchor(head, 0.5f, 1.0f, -2.0f, value, kept) && Near(kept.m[0][3], 0.5f),
+		      "an invalid distance leaves the anchor intact");
+	}
+	Check(!ContainerAnchor(head, 0.5f, 1.0f, -2.0f, -1.0f, kept), "a distance below zero: refused");
+	const ContainerPanelSettings defaults;
+	Check(defaults.inWorld && defaults.scale > 0.0f && defaults.raiseMetres >= 0.0f, "on by default, sized, over the top");
+}
+
 }  // namespace
 
 int main() {
@@ -119,6 +153,7 @@ int main() {
 	TestDue();
 	TestWidth();
 	TestAnchor();
+	TestContainerAnchor();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

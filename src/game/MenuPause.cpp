@@ -11,6 +11,7 @@ namespace obvr::game {
 namespace {
 
 bool g_enabled = false;
+bool g_containerEnabled = false;  // [Look] ContainerInWorld: the container's menu alone
 bool g_installTried = false;
 UInt32 g_sitesRedirected = 0;
 
@@ -38,11 +39,12 @@ UInt32 TopVisibleMenuId() {
 // option off the answer is vanilla's own.
 int __cdecl WorldPauseForMenu() {
 	const bool menuMode = IsMenuMode();
-	const UInt32 observed = menuMode && g_enabled ? TopVisibleMenuId() : kMenuIdNone;
+	const bool asking = g_enabled || g_containerEnabled;
+	const UInt32 observed = menuMode && asking ? TopVisibleMenuId() : kMenuIdNone;
 	const UInt32 top = StablePauseMenuId(menuMode, observed, g_rememberedTop);
 	g_rememberedTop = top;
-	const bool paused = WorldPausesForMenu(menuMode, g_enabled, top);
-	if (menuMode && g_enabled &&
+	const bool paused = WorldPausesForMenu(menuMode, g_enabled, top, g_containerEnabled);
+	if (menuMode && asking &&
 	    (!g_lastAnswerLogged || paused != g_lastPaused || top != g_lastTop)) {
 		g_lastAnswerLogged = true;
 		g_lastPaused = paused;
@@ -141,16 +143,19 @@ void InstallOnce() {
 
 }  // namespace
 
-void ApplyUnpausedMenus(bool wanted) {
-	if (wanted && !g_installTried) {
+void ApplyUnpausedMenus(bool wanted, bool containerWanted) {
+	if ((wanted || containerWanted) && !g_installTried) {
 		InstallOnce();
 	}
 	const bool enabled = wanted && g_sitesRedirected != 0;
-	if (enabled != g_enabled) {
+	const bool containerEnabled = containerWanted && g_sitesRedirected != 0;
+	if (enabled != g_enabled || containerEnabled != g_containerEnabled) {
 		g_enabled = enabled;
+		g_containerEnabled = containerEnabled;
 		g_lastAnswerLogged = false;
 		if (g_installTried) {
-			OBVR_LOG("Menu pause: unpaused menus are now %s", enabled ? "on" : "off");
+			OBVR_LOG("Menu pause: unpaused menus are now %s, the container's menu %s", enabled ? "on" : "off",
+			         containerEnabled ? "runs the world on its own" : "as the option says");
 		}
 	}
 }

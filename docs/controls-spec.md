@@ -1726,3 +1726,33 @@ als crouch/sneak mode on zählt und vice versa".
 - Not seen in the headset. Open: a player who plays seated has the seated
   head as the standing height; leaning down 30 cm would sneak - the depth
   is theirs to raise, or the switch to turn off.
+
+### 4.28 A container's menu over the container, the world running (built 2026-10-08)
+
+The tester: "bau mal ein dass wenn ich einen container markiere und A
+drücke das inventory menü des containers geöffnet wird (und zwar als
+overlay über dem container und nicht als cinema screen) aber mit dem game
+unpaused (neue setting mit default on). ähnlich wie die fallout mods".
+
+- `[Look] ContainerInWorld` (on by default; settings "Container over the
+  chest"), `ContainerPanelScale` (0.6; "Container panel size"),
+  `ContainerPanelRaiseMetres` (0.35; "Container panel height").
+- **The place**: as the ContainerMenu opens (one episode, the dialogue's
+  shape: `g_containerMenuEpisode`), the thing activate was last pressed on
+  (`g_activatedRef`, within the last 180 world frames) gives its bound; the
+  menus' room anchor is set the menus' distance short of a point the raise
+  over the bound's top, along the level line from the head, heading at it
+  (`vr::ContainerAnchor`, dialog_panel_test) - so the panel, which hangs
+  that distance ahead of its anchor, lands over the chest, facing the
+  head, at the container scale of the menus' width. Needs the menus in
+  the room (`Render.Menus=world`, `HudAnchor=world`), as the dialogue's
+  panel does; a container menu opened with nothing activated lately (a
+  script, a pickpocket) keeps its usual place, said once in the log.
+- **The world running**: the IsMenuMode sites of the update step
+  (game/MenuPause.cpp) answer "no pause" for the ContainerMenu on this
+  switch alone, whatever `Render.UnpausedMenus` says
+  (`WorldPausesForMenu(..., containerRuns)`, menu_pause_policy_test); the
+  sites are redirected when either is on.
+- The laser works the panel wherever it hangs, as on every menu. Not seen
+  in the headset. Open: a body looted from close by puts the panel low
+  over the corpse; the raise is the knob.
