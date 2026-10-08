@@ -182,46 +182,34 @@ struct KeyTapQueue {
 
 inline UInt32 QueueTypedText(KeyTapQueue& q, const char* chars, bool done, UInt32 menuId);
 
-// The keyboard's session: which menu it is up for, what to do with what it
-// sends, and the text its buffer held the last time it was read.
-inline constexpr UInt32 kKeyboardTextCapacity = 65;
-
+// The keyboard's session: which menu it is up for, and what to do with
+// what it sends.
 struct KeyboardSession {
 	bool open = false;
 	UInt32 menuId = 0;
-	char text[kKeyboardTextCapacity] = {};
 };
 
-// The runtime's keyboard in its ordinary (buffered) mode keeps the text
-// itself and shows it over the keys; what was typed is read back whole
-// with GetKeyboardText - Valve's own keyboard sample does so on every
-// character event and on Done (openvr/samples/unity_keyboard_sample,
-// KeyboardSample.cs), and the tester's log of 2026-10-07 shows Done
-// arriving with no character events at all ("0 character(s) typed ...
-// Done"). So the game is typed the DIFFERENCE between the buffer as last
-// read and as it stands now: backspaces for what went from the end of the
-// old text, then the new text's rest. Answers how many characters could not
-// be typed; `s.text` becomes `current`.
-inline UInt32 QueueTextDifference(KeyTapQueue& q, KeyboardSession& s, const char* current, bool done) {
-	const char* previous = s.text;
-	UInt32 common = 0;
-	while (previous[common] != '\0' && current != nullptr && current[common] != '\0' &&
-	       previous[common] == current[common]) {
-		++common;
-	}
-	UInt32 dropped = 0;
-	for (UInt32 i = common; previous[i] != '\0'; ++i) {
-		if (!q.Push(kVkBack, false)) {
-			++dropped;
-		}
-	}
-	dropped += QueueTypedText(q, current != nullptr ? current + common : nullptr, done, s.menuId);
-	UInt32 n = 0;
-	for (; current != nullptr && current[n] != '\0' && n + 1 < kKeyboardTextCapacity; ++n) {
-		s.text[n] = current[n];
-	}
-	s.text[n] = '\0';
-	return dropped;
+// The keyboard is opened in its minimal mode (KeyboardFlag_Minimal, 1 << 0:
+// "makes the keyboard send key events immediately instead of accumulating
+// a buffer" - openvr.h, SDK 1.10.30): no text box of its own, each key a
+// character event, the game's own field the only place the text shows.
+// Valve's keyboard sample takes the key from the event's cNewInput in that
+// mode. The tester's runtime sent its character events with cNewInput
+// EMPTY and the key in GetKeyboardText instead - one key at a time, the
+// same one four times for four presses, "g" alone at Done after a dozen
+// keys (OBVR.log, 2026-10-08), so that read is the latest input and no
+// accumulated text. The input to type this frame is the event's own when
+// it has one, else the buffer when a character event came, else nothing.
+// The runtime's escape (a lone "\x1b", or "\x1b[" and a letter for an
+// arrow key) is not typed. Done is not an input: its buffer is the last
+// key over again.
+inline constexpr UInt32 kKeyboardTextCapacity = 65;
+
+inline const char* KeyboardNewInput(UInt32 charEvents, const char* eventChars, const char* buffer) {
+	const char* input = eventChars != nullptr && eventChars[0] != '\0' ? eventChars
+	                    : charEvents > 0 && buffer != nullptr        ? buffer
+	                                                                 : "";
+	return input[0] == '\x1b' ? "" : input;
 }
 
 // What this frame asks of the keyboard, decided from the menus and the
@@ -238,7 +226,6 @@ inline KeyboardStep StepKeyboardSession(KeyboardSession& s, bool enabled, UInt32
 		if (!enabled || keyboardGone || !KeyboardMenuStillUp(s.menuId, topMenuId)) {
 			s.open = false;
 			s.menuId = 0;
-			s.text[0] = '\0';
 			return keyboardGone ? KeyboardStep::Nothing : KeyboardStep::Close;
 		}
 		return KeyboardStep::Nothing;
@@ -249,7 +236,6 @@ inline KeyboardStep StepKeyboardSession(KeyboardSession& s, bool enabled, UInt32
 	if (TextMenuTakesKeyboard(topMenuId) || (clickedTile != nullptr && NameTileTakesKeyboard(topMenuId, clickedTile))) {
 		s.open = true;
 		s.menuId = topMenuId;
-		s.text[0] = '\0';
 		return KeyboardStep::Open;
 	}
 	return KeyboardStep::Nothing;

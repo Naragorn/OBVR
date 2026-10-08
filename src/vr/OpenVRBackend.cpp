@@ -321,9 +321,11 @@ bool OpenVRBackend::ShowKeyboard(const char* description, const char* existingTe
 		return false;
 	}
 	auto* const overlay = static_cast<openvr::IVROverlayFnTable*>(m_overlay);
-	// Normal input, a single line, no flags (openvr_capi.h: EGamepadTextInputMode
-	// 0, EGamepadTextInputLineMode 0).
-	const int error = overlay->ShowKeyboard(0, 0, 0, description, maxChars, existingText, 0);
+	// Normal input, a single line (openvr_capi.h: EGamepadTextInputMode 0,
+	// EGamepadTextInputLineMode 0), the minimal mode: the keys come as
+	// events, the keyboard keeps no text of its own (vr/VrKeyboard.h).
+	const int error =
+		overlay->ShowKeyboard(0, 0, openvr::kKeyboardFlagMinimal, description, maxChars, existingText, 0);
 	if (error != openvr::kOverlayErrorNone) {
 		OBVR_LOG("OpenVR: the keyboard did not open (overlay error %d)", error);
 		return false;

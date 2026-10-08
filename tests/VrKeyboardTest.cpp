@@ -97,50 +97,15 @@ void TestQueue() {
 	Check(q.Step().vk == 'Z' && q.Step().vk == 'Z' && q.Step().vk == 'Y', "the ring keeps the order");
 }
 
-void TestDifference() {
-	std::printf("The runtime's buffer, typed as it changes\n");
-	KeyTapQueue q;
-	KeyboardSession s;
-	s.open = true;
-	s.menuId = kMenuIdRaceSex;
-	Check(QueueTextDifference(q, s, "Ab", false) == 0 && q.count == 2 && SameText(s.text, "Ab"),
-	      "from nothing to \"Ab\": two taps, the text kept");
-	Check(q.Step().vk == 'A' && q.Step().vk == 'A' && q.Step().vk == 'B' && q.Step().vk == 'B' && q.Idle(), "A, then b");
-	Check(QueueTextDifference(q, s, "Abc", false) == 0 && q.count == 1 && q.Step().vk == 'C' && SameText(s.text, "Abc"),
-	      "one more letter: one tap");
-	q.Clear();
-	Check(QueueTextDifference(q, s, "Abc", false) == 0 && q.count == 0, "the same again: nothing");
-	Check(QueueTextDifference(q, s, "A", false) == 0 && q.count == 2 && q.Step().vk == kVkBack && q.Step().vk == kVkBack &&
-	          q.Step().vk == kVkBack && SameText(s.text, "A"),
-	      "two letters gone from the end: two backspaces");
-	q.Clear();
-	Check(QueueTextDifference(q, s, "Xy", false) == 0 && q.count == 3 && q.Step().vk == kVkBack && q.Step().vk == kVkBack &&
-	          q.Step().vk == 'X' && q.Step().vk == 'X' && q.Step().vk == 'Y',
-	      "a different text: the old one backspaced, the new one typed");
-	q.Clear();
-	Check(QueueTextDifference(q, s, "", false) == 0 && q.count == 2 && SameText(s.text, ""), "cleared: two backspaces");
-	q.Clear();
-	Check(QueueTextDifference(q, s, "Q\xE4", false) == 1 && q.count == 1 && SameText(s.text, "Q\xE4"),
-	      "an umlaut in it: dropped and counted, kept in the text so it is not retried");
-	q.Clear();
-	s.menuId = kMenuIdTextEdit;
-	Check(QueueTextDifference(q, s, "Q\xE4", true) == 0 && q.count == 1 && q.Step().vk == kVkReturn,
-	      "Done in the text edit menu with nothing new: Enter alone");
-	q.Clear();
-	Check(QueueTextDifference(q, s, nullptr, false) == 0 && q.count == 2 && SameText(s.text, ""),
-	      "no buffer at all: as cleared");
-	char longText[kKeyboardTextCapacity + 20];
-	for (UInt32 i = 0; i < sizeof(longText) - 1; ++i) {
-		longText[i] = 'a';
-	}
-	longText[sizeof(longText) - 1] = '\0';
-	q.Clear();
-	QueueTextDifference(q, s, longText, false);
-	UInt32 kept = 0;
-	while (s.text[kept] != '\0') {
-		++kept;
-	}
-	Check(kept == kKeyboardTextCapacity - 1, "a text past the session's capacity: cut to it, terminated");
+void TestNewInput() {
+	std::printf("The key of a character event\n");
+	Check(SameText(KeyboardNewInput(1, "a", "zz"), "a"), "the event's own character: taken, the runtime's text left");
+	Check(SameText(KeyboardNewInput(1, "", "g"), "g"), "the event empty: the runtime's text is the key");
+	Check(SameText(KeyboardNewInput(1, nullptr, "g"), "g"), "no event text at all: the same");
+	Check(SameText(KeyboardNewInput(0, "", "g"), ""), "no character event: the runtime's text is stale, nothing");
+	Check(SameText(KeyboardNewInput(0, "", nullptr), "") && SameText(KeyboardNewInput(1, "", nullptr), ""), "nothing anywhere: nothing");
+	Check(SameText(KeyboardNewInput(1, "\x1b", "x"), "") && SameText(KeyboardNewInput(1, "", "\x1b[D"), ""), "the runtime's escape and an arrow key: not typed");
+	Check(SameText(KeyboardNewInput(1, "\b", ""), "\b"), "a backspace: typed");
 }
 
 void TestSession() {
@@ -170,14 +135,6 @@ void TestSession() {
 	StepKeyboardSession(s, true, kMenuIdSpellmaking, "spell_name_text", false);
 	Check(StepKeyboardSession(s, true, kMenuIdEnchantment, nullptr, false) == KeyboardStep::Close && !s.open,
 	      "another menu on top: closed");
-	KeyTapQueue q;
-	StepKeyboardSession(s, true, kMenuIdTextEdit, nullptr, false);
-	QueueTextDifference(q, s, "old", false);
-	StepKeyboardSession(s, true, 0, nullptr, false);
-	Check(SameText(s.text, ""), "closed: the text forgotten");
-	QueueTextDifference(q, s, "old", false);
-	StepKeyboardSession(s, true, kMenuIdTextEdit, nullptr, false);
-	Check(SameText(s.text, ""), "opened again: the text starts empty");
 }
 
 }  // namespace
@@ -186,7 +143,7 @@ int main() {
 	TestWhere();
 	TestKeys();
 	TestQueue();
-	TestDifference();
+	TestNewInput();
 	TestSession();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);

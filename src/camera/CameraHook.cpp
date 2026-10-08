@@ -1274,27 +1274,23 @@ void StepVrKeyboard(const Config& config) {
 	if (g_keyboard.open) {
 		backend.PollKeyboard(chars, sizeof(chars), done, closed, &charEvents);
 	}
-	// The runtime's buffer, read on a character event and on Done (its
-	// ordinary mode keeps the text itself; the tester's Done came with no
-	// character at all, 2026-10-07): the game is typed what changed in it.
-	// Character events with an empty buffer are the minimal mode's, typed
-	// as they come.
+	// The key of a character event: the event's own, or the runtime's
+	// GetKeyboardText when the event came empty (vr/VrKeyboard.h,
+	// KeyboardNewInput - the tester's runtime, 2026-10-08).
 	char buffer[vr::kKeyboardTextCapacity] = {};
-	bool haveBuffer = false;
-	if (g_keyboard.open && (charEvents > 0 || done)) {
-		haveBuffer = backend.ReadKeyboardText(buffer, sizeof(buffer)) && (buffer[0] != '\0' || g_keyboard.text[0] != '\0');
+	if (g_keyboard.open && charEvents > 0 && chars[0] == '\0') {
+		backend.ReadKeyboardText(buffer, sizeof(buffer));
 	}
 	const char* const clicked = g_menuClickEdge && g_menuClickTile[0] != '\0' ? g_menuClickTile : nullptr;
-	if (haveBuffer || chars[0] != '\0' || done) {
-		const UInt32 dropped = haveBuffer ? vr::QueueTextDifference(g_keyTaps, g_keyboard, buffer, done)
-		                                  : vr::QueueTypedText(g_keyTaps, chars, done, openedFor);
+	const char* const input = vr::KeyboardNewInput(charEvents, chars, buffer);
+	if (input[0] != '\0' || done) {
+		const UInt32 dropped = vr::QueueTypedText(g_keyTaps, input, done, openedFor);
 		if (g_keyboardLines > 0) {
 			--g_keyboardLines;
-			OBVR_LOG("Keyboard: %u character event(s) for the %s menu%s - the buffer \"%s\"%s, %u character(s) in "
-			         "the events, %u left out (not on the US keys or the queue full), %u tap(s) pending",
-			         charEvents, game::MenuIdName(openedFor), done ? ", Done" : "", buffer,
-			         haveBuffer ? " typed as it changed" : " not used", static_cast<unsigned>(std::strlen(chars)),
-			         dropped, g_keyTaps.count);
+			OBVR_LOG("Keyboard: %u character event(s) for the %s menu%s - \"%s\" typed (the events' own \"%s\", the "
+			         "runtime's text \"%s\"), %u left out (not on the US keys or the queue full), %u tap(s) pending",
+			         charEvents, game::MenuIdName(openedFor), done ? ", Done" : "", input, chars, buffer, dropped,
+			         g_keyTaps.count);
 		}
 	}
 	const vr::KeyboardStep step =

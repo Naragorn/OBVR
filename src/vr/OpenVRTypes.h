@@ -126,6 +126,10 @@ static_assert(sizeof(VREvent) == 64, "VREvent_t is 64 bytes with natural alignme
 constexpr UInt32 kEventKeyboardClosed = 1200;
 constexpr UInt32 kEventKeyboardCharInput = 1201;
 constexpr UInt32 kEventKeyboardDone = 1202;
+// EKeyboardFlags (openvr.h, SDK 1.10.30): KeyboardFlag_Minimal = 1 << 0
+// "makes the keyboard send key events immediately instead of accumulating
+// a buffer"; KeyboardFlag_Modal = 2 << 0.
+constexpr UInt32 kKeyboardFlagMinimal = 1;
 
 // These sizes have to match exactly, otherwise OBVR reads the pose field at
 // an offset. That would show up in the headset as a wild camera and be hard

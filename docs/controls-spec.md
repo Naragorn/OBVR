@@ -1498,3 +1498,28 @@ tür gehe springt ein textfeld". Read from his log (OBVR.log.prev, 21:46).
   it refused, the next log says. The Info element stayed lifted through
   the whole log (its state changed only at the start): the "mittig" path
   of 4.19 is ruled out for that run.
+
+### 4.21 The tester's round of 7fa4771 (2026-10-08, 19:37)
+
+"1) buchstabe kommt. aber der nächst gewählte ersetzt dann den vorherigen
+2) dialogs starteten bisher super 3) ah muss ich noch testen".
+
+- **The dialogue view** (2): "Dialogue view: the camera's base held at
+  ... 149.5 ... (this pass's ... 130.2, the one before ... 149.5, two
+  before ... 149.5)" - seven conversations, the pass that first sees the
+  conversation already lowered by 10-20 units, the one before it not. The
+  hold from two passes before (4.20) stands; one would do.
+- **The keyboard** (1): the log's lines, one per character event - "the
+  buffer "y"" four times over for four presses of y, then "g", "h", "j"
+  ... and "g" alone at Done after a dozen keys - so the runtime's
+  GetKeyboardText answered the LATEST key and never an accumulated text
+  (an accumulating one would have been "yyyy" and a dozen letters at
+  Done), and every character event came with cNewInput empty. The
+  difference-typing of 4.20 therefore backspaced the last key and typed
+  the new one: "der nächste ersetzt den vorherigen". Now the keyboard is
+  opened in its minimal mode (KeyboardFlag_Minimal, openvr.h SDK
+  1.10.30: "makes the keyboard send key events immediately instead of
+  accumulating a buffer") and each character event's key is typed as new
+  input: the event's own cNewInput when it has one, the runtime's text
+  when it is empty (`vr::KeyboardNewInput`, vr_keyboard_test); Done is no
+  input. The log line prints both.
