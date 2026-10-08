@@ -2324,6 +2324,63 @@ void TestGrabReach() {
 	}
 }
 
+void TestCrouchSneak() {
+	std::printf("Crouching in the room\n");
+	CrouchState c;
+	const float dt = 0.011f;
+	CrouchVerdict v = StepCrouchSneak(c, false, true, 1.7f, 0.3f, false, dt, 0);
+	Check(!v.crouched && !v.changed && !v.tap && !c.haveStanding, "switched off: nothing");
+	v = StepCrouchSneak(c, true, true, 1.7f, 0.3f, false, dt, 0);
+	Check(c.haveStanding && Near(c.standing, 1.7f) && !v.crouched && !v.changed,
+	      "the first head height is the standing height");
+	v = StepCrouchSneak(c, true, true, 1.75f, 0.3f, false, dt, 0);
+	Check(Near(c.standing, 1.75f), "a taller head raises it at once");
+	v = StepCrouchSneak(c, true, true, 1.55f, 0.3f, false, dt, 0);
+	Check(!v.crouched && !v.changed && !v.tap, "0.2 m down: no crouch, 0.3 wanted");
+	v = StepCrouchSneak(c, true, true, 1.40f, 0.3f, false, dt, 0);
+	Check(v.crouched && v.changed && v.tap, "0.35 m down: crouched, the sneak key tapped");
+	v = StepCrouchSneak(c, true, true, 1.40f, 0.3f, false, dt, 0);
+	Check(v.crouched && !v.changed && !v.tap, "still down, the game not sneaking yet: no second tap within the wait");
+	v = StepCrouchSneak(c, true, true, 1.40f, 0.3f, true, dt, 0);
+	Check(!v.tap && !c.pending, "the game sneaks: done");
+	for (int i = 0; i < 500; ++i) {
+		StepCrouchSneak(c, true, true, 1.40f, 0.3f, true, dt, 0);
+	}
+	Check(Near(c.standing, 1.75f), "crouched for 5 s: the standing height does not follow the crouched head");
+	v = StepCrouchSneak(c, true, true, 1.58f, 0.3f, true, dt, 0);
+	Check(v.crouched && !v.changed, "up to 0.17 m under: still crouched - half the drop is the line back");
+	v = StepCrouchSneak(c, true, true, 1.62f, 0.3f, true, dt, 0);
+	Check(!v.crouched && v.changed && v.tap, "0.13 m under: standing, the key tapped to end the sneak");
+	v = StepCrouchSneak(c, true, true, 1.62f, 0.3f, false, dt, 0);
+	Check(!v.tap && !c.pending, "the game stood up: done");
+	// A sneak toggled by the stick while standing is left alone.
+	v = StepCrouchSneak(c, true, true, 1.70f, 0.3f, true, dt, 0);
+	Check(!v.tap && !v.changed && !c.pending, "sneaking by the stick while standing: nothing to do");
+	v = StepCrouchSneak(c, true, true, 1.40f, 0.3f, true, dt, 0);
+	Check(v.crouched && v.changed && !v.tap && !c.pending, "crouched while already sneaking: nothing to tap");
+	// Standing up while the game keeps sneaking: tapped again after each
+	// wait, given up after kCrouchFollowSeconds.
+	v = StepCrouchSneak(c, true, true, 1.75f, 0.3f, true, dt, 0);
+	int taps = v.tap ? 1 : 0;
+	for (int i = 0; i < 220; ++i) {
+		v = StepCrouchSneak(c, true, true, 1.75f, 0.3f, true, dt, 0);
+		taps += v.tap ? 1 : 0;
+	}
+	Check(taps >= 3 && taps <= 5 && !c.pending, "the game keeps sneaking: tapped after each wait, given up after 2 s");
+	// A recenter: the standing height taken anew.
+	v = StepCrouchSneak(c, true, true, 1.20f, 0.3f, false, dt, 1);
+	Check(Near(c.standing, 1.20f) && !v.crouched && !v.changed, "a recenter: the standing height taken anew, nothing changed");
+	v = StepCrouchSneak(c, true, false, 0.0f, 0.3f, false, dt, 1);
+	Check(Near(c.standing, 1.20f) && !v.changed, "no head pose: nothing judged");
+	// Standing a little lower for half a minute: the standing height follows slowly.
+	for (int i = 0; i < 2727; ++i) {
+		StepCrouchSneak(c, true, true, 1.10f, 0.3f, false, dt, 1);
+	}
+	Check(c.standing < 1.16f && c.standing > 1.10f && !c.crouched, "30 s at 0.1 m under: the standing height followed most of the way");
+	v = StepCrouchSneak(c, true, true, 1.10f, 0.0f, false, dt, 1);
+	Check(!c.haveStanding && !v.crouched, "no drop set: nothing, the state cleared");
+}
+
 void TestSneakTap() {
 	std::printf("Sneak: toggled by a flick, or held on the stick\n");
 	// Toggle mode passes the flick through, whatever the game says.
@@ -2514,6 +2571,7 @@ int main() {
 	TestMainMenuLaser();
 	TestLaserOnOwnPanel();
 	TestSneakTap();
+	TestCrouchSneak();
 	TestGrabReach();
 	TestReadyWeapon();
 	TestSwingPressesAttack();

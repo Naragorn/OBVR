@@ -281,6 +281,11 @@ struct HandSettings {
 	// Sneak only while the right stick is held down, instead of a flick down
 	// switching it on and the next one off.
 	bool sneakHold = false;
+	// Crouching in the room sneaks, standing up ends it (HandInput.h,
+	// StepCrouchSneak); the head this far under its standing height is a
+	// crouch.
+	bool crouchSneak = true;
+	float crouchDropMetres = 0.30f;
 	// Run switched on and off by a click of the left stick, instead of held
 	// while the stick is pressed in.
 	bool runToggle = false;
@@ -390,6 +395,9 @@ struct HandModeFrame {
 	// The head tracker's recenter reference (yaw only): what the walk
 	// direction measures each hand's heading from (vr/WalkDirection.h).
 	Quaternion reference = Quaternion::Identity();
+	// Counts the recenters: a change means one happened since the last
+	// frame (the crouch's standing height is taken anew, HandInput.h).
+	UInt32 recenterSerial = 0;
 	HandPose right;
 	HandPose left;
 	float unitsPerMetre = 70.0f;
@@ -579,6 +587,10 @@ struct HandModeResult {
 	float swingTravelledMetres = 0.0f;
 	// A melee weapon just readied: no swing is taken for kDrawGraceSeconds.
 	bool drawGrace = false;
+	// Crouching in the room (HandInput.h, StepCrouchSneak), and the frame
+	// it began or ended.
+	bool crouched = false;
+	bool crouchChanged = false;
 	float swingPeakSpeed = 0.0f;
 	// And how far it travelled (m): a power attack from PowerSwingMetres.
 	float swingMetres = 0.0f;
@@ -645,6 +657,7 @@ private:
 	TapHoldState m_waitHold;
 	TapHoldState m_quickHold;
 	SneakHoldState m_sneak;
+	CrouchState m_crouch;
 	// OBVR's own menu open: the sticks and buttons steer it, nothing else.
 	void SteerSettingsMenu(const HandModeFrame& frame, const HandSettings& settings,
 	                       HandModeResult& r);

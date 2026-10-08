@@ -1592,6 +1592,95 @@ inline bool StepSneakTap(SneakHoldState& s, bool holdMode, bool flickDown, bool 
 	return false;
 }
 
+// ---------------------------------------------------------- Crouch to sneak
+//
+// Crouching in the room sneaks in the game and standing up ends it (the
+// tester, 2026-10-08: "wenn ich in real life crouche dass auch ingame als
+// crouch/sneak mode on zählt und vice versa"). The head's height in the
+// tracking space is measured against a standing height: the head's highest
+// since the last recenter, followed slowly downwards while standing (a
+// player who settles lower over minutes), never while crouched, and taken
+// anew at a recenter. Below the standing height by `dropMetres` the player
+// is crouched, back above it by half that they stand - a hysteresis, so a
+// head bobbing at the line does not flip. Each change wants the game's
+// sneak to follow: the sneak key is tapped as the hold mode taps it
+// (StepSneakTap) until the game shows the wanted state, and given up after
+// kCrouchFollowSeconds (a sneak the game refuses is not asked for all day).
+// A sneak toggled by the stick while standing is left alone: only a change
+// of the crouch speaks.
+inline constexpr float kCrouchStandingFollowSeconds = 30.0f;
+inline constexpr float kCrouchFollowSeconds = 2.0f;
+
+struct CrouchState {
+	bool haveStanding = false;
+	float standing = 0.0f;
+	bool crouched = false;
+	bool serialKnown = false;
+	UInt32 recenterSerial = 0;
+	bool wantSneak = false;
+	bool pending = false;  // the game's sneak still to follow the last change
+	float pendingSeconds = 0.0f;
+	SneakHoldState tap;
+};
+
+struct CrouchVerdict {
+	bool crouched = false;
+	bool changed = false;  // the crouch began or ended this frame
+	bool tap = false;      // the sneak key this frame
+};
+
+inline CrouchVerdict StepCrouchSneak(CrouchState& c, bool enabled, bool headValid, float headY, float dropMetres,
+                                     bool sneaking, float dtSeconds, UInt32 recenterSerial) {
+	CrouchVerdict v;
+	if (!enabled || !(dropMetres > 0.0f)) {
+		c = CrouchState{};
+		return v;
+	}
+	const bool recentred = c.serialKnown && recenterSerial != c.recenterSerial;
+	c.serialKnown = true;
+	c.recenterSerial = recenterSerial;
+	if (headValid) {
+		if (recentred || !c.haveStanding) {
+			c.haveStanding = true;
+			c.standing = headY;
+			c.crouched = false;
+			c.pending = false;
+		}
+		if (headY > c.standing) {
+			c.standing = headY;
+		} else if (!c.crouched && dtSeconds > 0.0f) {
+			c.standing += (headY - c.standing) * (dtSeconds / (kCrouchStandingFollowSeconds + dtSeconds));
+		}
+		const bool was = c.crouched;
+		if (!c.crouched && headY < c.standing - dropMetres) {
+			c.crouched = true;
+		} else if (c.crouched && headY > c.standing - 0.5f * dropMetres) {
+			c.crouched = false;
+		}
+		if (c.crouched != was) {
+			v.changed = true;
+			c.wantSneak = c.crouched;
+			c.pending = true;
+			c.pendingSeconds = 0.0f;
+			c.tap = SneakHoldState{};
+		}
+	}
+	v.crouched = c.crouched;
+	if (c.pending) {
+		if (sneaking == c.wantSneak) {
+			c.pending = false;
+		} else {
+			c.pendingSeconds += dtSeconds > 0.0f ? dtSeconds : 0.0f;
+			if (c.pendingSeconds > kCrouchFollowSeconds) {
+				c.pending = false;  // the game will not follow: left to it
+			} else {
+				v.tap = StepSneakTap(c.tap, true, false, c.wantSneak, sneaking, dtSeconds);
+			}
+		}
+	}
+	return v;
+}
+
 // ----------------------------------------------------------- Stick as keys
 //
 // A stick pushed past the dead zone fires a direction once and again only

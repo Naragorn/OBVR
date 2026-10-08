@@ -116,6 +116,7 @@ void HandMode::Reset() {
 	m_reachSpent = false;
 	m_ready = ReadyWeaponState{};
 	m_sneak = SneakHoldState{};
+	m_crouch = CrouchState{};
 	m_runLatched = false;
 }
 
@@ -592,6 +593,20 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		                                f.sneaking, f.dtSeconds);
 	} else {
 		m_sneak = SneakHoldState{};
+	}
+	// Crouching in the room (HandInput.h, StepCrouchSneak): the game's sneak
+	// follows a crouch begun or ended, by its key. The head is not judged
+	// in a menu or out of the world; the standing height is kept across.
+	{
+		const bool inWorld = !f.menuMode && f.inWorld;
+		const CrouchVerdict crouch =
+			StepCrouchSneak(m_crouch, s.crouchSneak, f.headValid && inWorld, f.headPosition.y, s.crouchDropMetres,
+		                    f.sneaking, f.dtSeconds, f.recenterSerial);
+		r.crouched = crouch.crouched;
+		r.crouchChanged = crouch.changed;
+		if (crouch.tap && inWorld) {
+			r.controls.sneak = true;
+		}
 	}
 	// The pull that moved the pointer over is not a click: the cursor is
 	// still where the other hand left it. The trigger has to come up first.

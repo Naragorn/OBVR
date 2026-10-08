@@ -1057,6 +1057,20 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.sneakHold = v != 0.0f; },
 	},
 	{
+		"Hands", "Crouch to sneak", "Crouching in the room sneaks in the game, standing up ends it",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "CrouchSneak",
+		+[](const Config& c) { return c.hands.crouchSneak ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.crouchSneak = v != 0.0f; },
+	},
+	{
+		"Hands", "Crouch depth", "How far (m) the head must drop under its standing height to count as a crouch",
+		ItemKind::Number, 0.1f, 0.6f, 0.05f, 2, false,
+		"Hands", "CrouchDropMetres",
+		+[](const Config& c) { return c.hands.crouchDropMetres; },
+		+[](Config& c, float v) { c.hands.crouchDropMetres = v; },
+	},
+	{
 		"Hands", "Adjust hands", "A guided fit of the in-game hands to the controllers you hold",
 		ItemKind::Action, 0.0f, 0.0f, 0.0f, 0, false,
 		"", "",

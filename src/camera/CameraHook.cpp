@@ -130,6 +130,8 @@ vr::HeadTracker g_headTracker;
 constexpr UInt32 kTrampolineSize = 64;
 
 KeyEdge g_recenterEdge;
+// Counts the recenters, for the hand mode's frame (vr::HandModeFrame).
+UInt32 g_recenterSerial = 0;
 FrameClock g_frameClock;
 float g_deltaSeconds = 0.0f;  // last frame's delta, for use by overlay updates
 LookControl g_lookControl;
@@ -2130,11 +2132,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.bowShotLocal = g_bowShotLocal;
 	frame.bowLimbValid = active && g_bowLimbValid;
 	frame.bowLimbLocal = g_bowLimbLocal;
-	frame.sneaking = active && !menuIsUp && frame.inWorld && config.hands.sneakHold &&
+	frame.sneaking = active && !menuIsUp && frame.inWorld && (config.hands.sneakHold || config.hands.crouchSneak) &&
 	                 game::IsPlayerSneaking();
 	frame.headValid = backend.GetRenderPose(frame.head, frame.headPosition) ||
 	                  backend.ReadHeadPose(frame.head, frame.headPosition);
 	frame.reference = g_headTracker.GetReference();
+	frame.recenterSerial = g_recenterSerial;
 	backend.ReadHand(true, frame.right);
 	backend.ReadHand(false, frame.left);
 	// Or the hand script's ([Debug] HandScript): controllers played from a
@@ -3107,6 +3110,15 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	if (g_hand.reachBack != g_handReachBack) {
 		g_handReachBack = g_hand.reachBack;
 		OBVR_LOG("Hands: the right hand is %s", g_handReachBack ? "reaching back" : "in front");
+	}
+	if (g_hand.crouchChanged) {
+		static UInt32 s_crouchLines = 24;
+		if (s_crouchLines > 0) {
+			--s_crouchLines;
+			OBVR_LOG("Hands: %s in the room - the game's sneak %s (sneaking now %d)",
+			         g_hand.crouched ? "crouched" : "stood up", g_hand.crouched ? "asked for" : "to end",
+			         game::IsPlayerSneaking() ? 1 : 0);
+		}
 	}
 	if (g_hand.swing != vr::SwingVerdict::None && g_handSwingLinesLeft > 0) {
 		--g_handSwingLinesLeft;
@@ -7064,6 +7076,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 // hook to have done so. See the single poll at the top of OnFrameEnd.
 void DoRecenter(const char* where) {
 	g_headTracker.Recenter();
+	++g_recenterSerial;
 
 	// A HUD hanging in the room is brought back in front of the wearer by the
 	// same key, because "put things where I am looking now" is the one thing

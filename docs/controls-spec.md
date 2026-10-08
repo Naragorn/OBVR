@@ -1699,3 +1699,30 @@ gleich als hit zählen", "wenn ich schwinge zählen oft mehrere swings".
   nothing starts for 0.25 s (the way back); a swing shorter than 0.10 m is
   a twitch with no verdict, and strikes and the swish wait until a swing
   has travelled that far (`SwingLongEnough`). Not seen in the headset.
+
+### 4.27 Crouching in the room sneaks (built 2026-10-08)
+
+The tester: "bau ein dass wenn ich in real life crouche dass auch ingame
+als crouch/sneak mode on zählt und vice versa".
+
+- `[Hands] CrouchSneak` (on by default; settings "Crouch to sneak") and
+  `CrouchDropMetres` (0.30; "Crouch depth"). The head's height in the
+  tracking space (the seated universe OBVR poses in, metres) against a
+  standing height: the head's highest since the last recenter, followed
+  slowly downwards while standing (30 s time constant - a player who
+  settles lower), never while crouched, taken anew at a recenter
+  (`HandModeFrame::recenterSerial`). Under it by the drop: crouched; back
+  above it by half the drop: standing - a hysteresis against a head that
+  bobs at the line.
+- A crouch begun or ended asks the game's sneak to follow by its key, the
+  way the hold mode taps it (`StepSneakTap`: once, then again after 0.5 s
+  until the game shows the wanted state), and gives up after 2 s - a sneak
+  the game refuses is not asked for all day. A sneak toggled by the stick
+  while standing is left alone; only a change of the crouch speaks. Not
+  judged in a menu or out of the world; the standing height is kept
+  across. `vr::StepCrouchSneak`, hand_mode_test; the log says "Hands:
+  crouched in the room - the game's sneak asked for (sneaking now n)" and
+  "stood up ...".
+- Not seen in the headset. Open: a player who plays seated has the seated
+  head as the standing height; leaning down 30 cm would sneak - the depth
+  is theirs to raise, or the switch to turn off.
