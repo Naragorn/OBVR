@@ -141,9 +141,38 @@ void TestCountsAsHit() {
 	Check(!SlapGrabTapPressed(kSlapGrabTapTotalFrames) && SlapGrabTapPressed(kSlapGrabTapFrames) &&
 	          SlapGrabTapPressed(1) && !SlapGrabTapPressed(0) && kSlapGrabTapFrames <= 7,
 	      "the tap: the pick there first, the grab down for the frames after, let go within the mod's 7");
-	Check(SlapTriggersMod(0x0B, ShoveKind::Light, true) && !SlapTriggersMod(0, ShoveKind::Light, true) &&
-	          !SlapTriggersMod(0x0B, ShoveKind::Hard, true) && !SlapTriggersMod(0x0B, ShoveKind::Light, false),
-	      "the mod is told of a light slap in the face with it loaded; OBVR's own slap runs either way");
+	Check(SlapModOn(0x0B, 1.0, 1.0) && !SlapModOn(0, 1.0, 1.0) && !SlapModOn(0x0B, 0.0, 1.0) &&
+	          !SlapModOn(0x0B, 1.0, 0.0),
+	      "the mod on: loaded, its master switch and its slap feature set; off with either 0 or not loaded");
+	Check(SlapTriggersMod(true, ShoveKind::Light, true) && !SlapTriggersMod(false, ShoveKind::Light, true) &&
+	          !SlapTriggersMod(true, ShoveKind::Hard, true) && !SlapTriggersMod(true, ShoveKind::Light, false),
+	      "the mod is told of a light slap in the face with it on; OBVR's own slap runs either way");
+
+	std::printf("The slap's noise with the mod on\n");
+	SlapNoiseWait w;
+	Check(StepSlapNoiseWait(w, true, 50.0f, false) == SlapNoiseStep::Idle, "nothing pending: idle");
+	w.pending = true;
+	w.encumbranceAtSlap = 50.0f;
+	Check(StepSlapNoiseWait(w, true, 50.0f, false) == SlapNoiseStep::Waiting && w.pending,
+	      "the encumbrance as at the slap: waiting on");
+	Check(StepSlapNoiseWait(w, true, 60.0f, false) == SlapNoiseStep::Waiting && w.pending,
+	      "a small change (an item taken): still waiting");
+	Check(StepSlapNoiseWait(w, true, 2050.0f, false) == SlapNoiseStep::ModStarted && !w.pending,
+	      "the mod's 2000 on it: its sequence started, the noise its own");
+	Check(StepSlapNoiseWait(w, true, 2050.0f, false) == SlapNoiseStep::Idle, "then idle");
+	w.pending = true;
+	w.encumbranceAtSlap = 2050.0f;
+	Check(StepSlapNoiseWait(w, true, 50.0f, false) == SlapNoiseStep::ModStarted && !w.pending,
+	      "a step down as large (the mod's own taken back): the same");
+	w.pending = true;
+	w.encumbranceAtSlap = 50.0f;
+	Check(StepSlapNoiseWait(w, true, 50.0f, true) == SlapNoiseStep::OurTurn && !w.pending,
+	      "the watch over without it: OBVR's turn to play the mod's noise");
+	w.pending = true;
+	Check(StepSlapNoiseWait(w, false, 2050.0f, false) == SlapNoiseStep::Waiting && w.pending,
+	      "the encumbrance not readable: a step cannot be seen, waiting");
+	Check(StepSlapNoiseWait(w, false, 2050.0f, true) == SlapNoiseStep::OurTurn && !w.pending,
+	      "... and OBVR's turn once the watch is over");
 	Check(!ShoveCountsAsHit(s, ShoveKind::None), "no shove: nothing");
 	s.countsAsHit = false;
 	Check(!ShoveCountsAsHit(s, ShoveKind::Hard), "switched off: only the disposition");

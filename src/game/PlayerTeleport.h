@@ -81,6 +81,11 @@ bool PlacePlayerAt(const NiPoint3& at);
 // Fatigue now and at most; false when the player cannot be read.
 bool ReadPlayerFatigue(float& now, float& base);
 
+// The player's encumbrance as the game counts it now (actor value 11, the
+// weight carried with every script's modAV on it); false when the player
+// cannot be read.
+bool ReadPlayerEncumbrance(float& now);
+
 // What a dodge roll (a jump) costs the player now, vanilla's formula.
 float PlayerDodgeFatigueCost();
 

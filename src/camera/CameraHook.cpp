@@ -2330,6 +2330,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		const bool watchLogged = g_slapTapWatch > 0 && g_slapTapLines > 0;
 		if (g_slapTapWatch > 0) {
 			--g_slapTapWatch;
+			// The slap's noise with the mod on (game/Shove.h): the mod's
+			// own with its sequence, OBVR's once the watch is over without
+			// it.
+			game::StepSlapNoise(g_slapTapWatch == 0);
 		}
 		if (watchLogged) {
 			// Evidence for the mod's side (the tester, 2026-10-07: "slaps

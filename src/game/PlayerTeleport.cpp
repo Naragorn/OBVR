@@ -223,6 +223,17 @@ bool ReadPlayerFatigue(float& now, float& base) {
 	return now == now;
 }
 
+bool ReadPlayerEncumbrance(float& now) {
+	const UInt32 player = Player();
+	const UInt32 getInt = player != 0 ? Slot(player, kGetActorValueSlot) : 0;
+	if (getInt == 0) {
+		return false;
+	}
+	using GetIntFn = SInt32(__thiscall*)(void* actor, UInt32 av);
+	now = static_cast<float>(reinterpret_cast<GetIntFn>(getInt)(reinterpret_cast<void*>(player), kAvEncumbrance));
+	return true;
+}
+
 float PlayerDodgeFatigueCost() {
 	const UInt32 player = Player();
 	const UInt32 getInt = player != 0 ? Slot(player, kGetActorValueSlot) : 0;

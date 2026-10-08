@@ -166,15 +166,60 @@ inline bool SlapByModsGrabTap(UInt8 modIndex) { return modIndex != 0; }
 // Whether the grab is down this frame of the tap, `framesLeft` counting
 // down from kSlapGrabTapTotalFrames: the aim frames first, then the press.
 inline bool SlapGrabTapPressed(UInt32 framesLeft) { return framesLeft > 0 && framesLeft <= kSlapGrabTapFrames; }
+// Whether the mod's slapping is on: loaded, its master switch (sEnabled,
+// from its INI) and its slapper (sSlapper, the INI's slap feature) both set
+// - the tester (2026-10-08): the mod's part "nur wenn dieser mod in der load
+// order da ist und das feature in seiner ini an ist". Loaded but off, the
+// slap is OBVR's own throughout, as without the mod.
+inline bool SlapModOn(UInt8 modIndex, double enabled, double slapper) {
+	return SlapByModsGrabTap(modIndex) && enabled != 0.0 && slapper != 0.0;
+}
+
 // Whether a shove is a slap the mod is told of - a light one in the face
-// with the mod loaded. OBVR's own slap runs either way - the stagger, the
+// with the mod on. OBVR's own slap runs either way - the stagger, the
 // push, the fatigue, the liking - and the mod is set off on top by the grab
 // tap (the tester, 2026-10-07: "unsere slap mechanik und dann irgendwie die
 // mod triggern"); its own checks (the facing, the distance) decide whether
-// its sequence follows. OBVR's noise stays out with the mod loaded: the
+// its sequence follows. OBVR's noise stays out with the mod on: the
 // tester wants the mod's ("seinen sound nehmen statt unseren").
-inline bool SlapTriggersMod(UInt8 modIndex, ShoveKind kind, bool inTheFace) {
-	return SlapByModsGrabTap(modIndex) && kind == ShoveKind::Light && inTheFace;
+inline bool SlapTriggersMod(bool modOn, ShoveKind kind, bool inTheFace) {
+	return modOn && kind == ShoveKind::Light && inTheFace;
+}
+
+// The slap's noise with the mod on. The mod's sequence plays its slap noise
+// itself, with its animation (zzPiiiPAnimTimerOS: "playSound
+// zzPiiiPSlapNoise" at 1.02 s of its 1.6 s clock, about 0.6 s after the
+// slap); OBVR playing the same noise at the slap gave two (the tester,
+// 2026-10-08: "beim slappen von npcs höre ich 2 slap sounds"). So OBVR
+// waits: the mod's sequence starts with "modAV encumbrance 2000" on the
+// player (zzPiiiPzFunctSlapperInit), and a step of the player's
+// encumbrance that size within the tap's watch says it has started - the
+// noise is the mod's. The watch over without it (its checks refused the
+// slap), OBVR plays the mod's noise itself, so the slap that was dealt is
+// heard. Pure; shove_test.
+inline constexpr float kSlapModEncumbranceStep = 1000.0f;  // the mod's 2000, with room
+
+struct SlapNoiseWait {
+	bool pending = false;
+	float encumbranceAtSlap = 0.0f;
+};
+
+enum class SlapNoiseStep : UInt8 { Idle, Waiting, ModStarted, OurTurn };
+
+inline SlapNoiseStep StepSlapNoiseWait(SlapNoiseWait& w, bool haveEncumbrance, float encumbranceNow, bool watchOver) {
+	if (!w.pending) {
+		return SlapNoiseStep::Idle;
+	}
+	const float step = encumbranceNow - w.encumbranceAtSlap;
+	if (haveEncumbrance && (step >= kSlapModEncumbranceStep || step <= -kSlapModEncumbranceStep)) {
+		w.pending = false;
+		return SlapNoiseStep::ModStarted;
+	}
+	if (watchOver) {
+		w.pending = false;
+		return SlapNoiseStep::OurTurn;
+	}
+	return SlapNoiseStep::Waiting;
 }
 inline constexpr const char* kSlapWave = "OBVR_Sounds\\slap.wav";
 

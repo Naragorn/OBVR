@@ -37,6 +37,13 @@ UInt32 g_lines = 20;
 // A slap for the mod to finish: the slapped one and where they stand, until
 // the camera pass takes it (TakeSlapGrabTap).
 UInt32 g_slapTapActor = 0;
+// The slap's noise waited for with the mod on (ShoveLogic.h, SlapNoiseWait).
+SlapNoiseWait g_slapNoiseWait;
+bool g_slapNoiseHaveStart = false;
+UInt32 g_slapNoiseActor = 0;
+NiPoint3 g_slapNoiseCentre{0.0f, 0.0f, 0.0f};
+UInt8 g_slapNoiseModIndex = 0;
+UInt32 g_slapNoiseLines = 12;
 NiPoint3 g_slapTapCentre{0.0f, 0.0f, 0.0f};
 // The victim's reaction to a hit: vtable +0x3A8, 0x005FE380 on
 // PlayerCharacter, Character and Creature alike, thiscall(victim, Actor*
@@ -93,12 +100,28 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 	// pass reads (TakeSlapGrabTap) - whatever its own sequence then adds.
 	const bool inTheFace = byHand && SlapInTheFace(fromWorld.z, centre.z);
 	const UInt8 modIndex = PutItInItsPlaceIndex();
-	const bool modsTap = SlapTriggersMod(modIndex, kind, inTheFace);
-	bool modsNoise = false;
+	// The mod's part only with the mod on (ShoveLogic.h, SlapModOn: its
+	// master switch and its slap feature, both from its INI).
+	double modEnabled = 0.0;
+	double modSlapper = 0.0;
+	if (modIndex != 0) {
+		ReadModQuestVar(modIndex, kPiiiPVarsQuestLow, kPiiiPVarEnabled, modEnabled);
+		ReadModQuestVar(modIndex, kPiiiPVarsQuestLow, kPiiiPVarSlapper, modSlapper);
+	}
+	const bool modOn = SlapModOn(modIndex, modEnabled, modSlapper);
+	const bool modsTap = SlapTriggersMod(modOn, kind, inTheFace);
 	if (modsTap) {
 		g_slapTapActor = a;
 		g_slapTapCentre = centre;
-		modsNoise = PlaySoundFormAt((static_cast<UInt32>(modIndex) << 24) | kPiiiPSlapNoiseLow, a, centre);
+		// The noise is the mod's, with its sequence; OBVR's only if that
+		// does not start (ShoveLogic.h, StepSlapNoiseWait, stepped by the
+		// camera pass through the tap's watch).
+		g_slapNoiseWait.pending = true;
+		g_slapNoiseWait.encumbranceAtSlap = 0.0f;
+		g_slapNoiseHaveStart = ReadPlayerEncumbrance(g_slapNoiseWait.encumbranceAtSlap);
+		g_slapNoiseActor = a;
+		g_slapNoiseCentre = centre;
+		g_slapNoiseModIndex = modIndex;
 	}
 	if (kind == ShoveKind::Hard) {
 		const UInt32 process = Read(a + kActorProcessOffset);
@@ -185,16 +208,45 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 	if (g_lines > 0) {
 		--g_lines;
 		OBVR_LOG("Shove: %08X %s (from %.0f %.0f %.0f), the player's fatigue -%.0f, its disposition -%.0f%s%s, %u slap "
-		         "line(s) queued%s",
+		         "line(s) queued%s%s",
 		         a, done, static_cast<double>(fromWorld.x), static_cast<double>(fromWorld.y),
 		         static_cast<double>(fromWorld.z), static_cast<double>(fatigue), static_cast<double>(disposition),
 		         asHit ? ", taken as a hit" : "", inTheFace ? ", in the face" : "", slapLines,
 		         ownWave ? ", OBVR's own slap played"
-		                 : (modsTap ? (modsNoise ? ", the mod's noise played, the mod set off by a grab tap"
-		                                        : ", the mod's noise refused, the mod set off by a grab tap")
-		                            : ""));
+		                 : (modsTap ? ", the mod set off by a grab tap - its noise waited for" : ""),
+		         modIndex != 0 && !modOn && inTheFace && kind == ShoveKind::Light
+		             ? " (the mod loaded but off - sEnabled or sSlapper 0 - so OBVR's own slap)"
+		             : "");
 	}
 	return true;
+}
+
+void StepSlapNoise(bool watchOver) {
+	if (!g_slapNoiseWait.pending) {
+		return;
+	}
+	float now = 0.0f;
+	const bool have = g_slapNoiseHaveStart && ReadPlayerEncumbrance(now);
+	const SlapNoiseStep step = StepSlapNoiseWait(g_slapNoiseWait, have, now, watchOver);
+	if (step == SlapNoiseStep::ModStarted) {
+		if (g_slapNoiseLines > 0) {
+			--g_slapNoiseLines;
+			OBVR_LOG("Shove: the mod's slap sequence started (the player's encumbrance %.0f -> %.0f) - its noise is "
+			         "its own, OBVR plays none",
+			         static_cast<double>(g_slapNoiseWait.encumbranceAtSlap), static_cast<double>(now));
+		}
+	} else if (step == SlapNoiseStep::OurTurn) {
+		const bool played =
+			PlaySoundFormAt((static_cast<UInt32>(g_slapNoiseModIndex) << 24) | kPiiiPSlapNoiseLow, g_slapNoiseActor,
+		                    g_slapNoiseCentre);
+		if (g_slapNoiseLines > 0) {
+			--g_slapNoiseLines;
+			OBVR_LOG("Shove: the mod's slap sequence did not start within the tap's watch (the player's encumbrance "
+			         "%.0f -> %.0f%s) - the mod's noise %s by OBVR for the slap dealt",
+			         static_cast<double>(g_slapNoiseWait.encumbranceAtSlap), static_cast<double>(now),
+			         have ? "" : ", not readable", played ? "played" : "could not be played");
+		}
+	}
 }
 
 bool TakeSlapGrabTap(UInt32& actor, NiPoint3& centre) {

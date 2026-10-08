@@ -47,6 +47,11 @@ UInt8 PutItInItsPlaceIndex();
 // them. False with none pending.
 bool TakeSlapGrabTap(UInt32& actor, NiPoint3& centre);
 
+// Once a frame through a slap tap's watch (ShoveLogic.h, StepSlapNoiseWait):
+// the mod's sequence started, or - `watchOver` with none - the mod's noise
+// played by OBVR for the slap dealt.
+void StepSlapNoise(bool watchOver);
+
 }  // namespace obvr::game
 
 namespace obvr::game {

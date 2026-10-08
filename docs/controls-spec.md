@@ -1621,3 +1621,35 @@ sein."
 - **Open**: the pick itself still alternates between two things the ray
   sits between (#69); the glide softens what is shown, the settle of
   0.08 s decides how often. Not seen in the headset.
+
+### 4.25 Two slap noises with the mod on (2026-10-08)
+
+The tester: "beim slappen von npcs höre ich 2 slap sounds whl unserer und
+er vom 'put it in place'. das fixen i guess aber nur wenn dieser mod in
+der load order da ist und das feature in seiner ini an ist."
+
+- **What played**: with the mod loaded, OBVR played the mod's own slap
+  noise (its SOUN, by the engine) the moment the hand struck, and set the
+  mod off by the grab tap; the mod's sequence then played the same noise
+  itself with its animation (zzPiiiPAnimTimerOS: "playSound
+  zzPiiiPSlapNoise" at 1.02 s of a 1.6 s clock set in
+  zzPiiiPzFunctSlapperInit - about 0.6 s after the slap). Two noises, the
+  same one.
+- **Now**: OBVR plays nothing at the slap with the mod on and waits
+  through the tap's watch (24 frames). The mod's sequence begins with
+  "modAV encumbrance 2000" on the player (zzPiiiPzFunctSlapperInit); a
+  step of the player's encumbrance of 1000 or more within the watch says
+  it has started, and the noise is the mod's with its animation ("Shove:
+  the mod's slap sequence started ..."). The watch over without it - the
+  mod's own checks refused the slap - OBVR plays the mod's noise then, for
+  the slap that was dealt ("... did not start within the tap's watch ... the
+  mod's noise played by OBVR"). `game::ReadPlayerEncumbrance` (actor value
+  11, as the dodge's fatigue cost reads it); `game::StepSlapNoiseWait`,
+  shove_test.
+- **The mod's switches**: its part is taken only with the mod loaded AND
+  its master switch (zzPiiiPVarsQ.sEnabled) AND its slap feature
+  (zzPiiiPVarsQ.sSlapper, the INI's) set - both read from its quest
+  variables at the slap (`SlapModOn`). Loaded but off, the slap is OBVR's
+  own throughout, with OBVR's own noise and the game's gasp, as without
+  the mod; the log line says so.
+- Not seen in the headset.
