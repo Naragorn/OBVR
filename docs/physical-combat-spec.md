@@ -119,6 +119,8 @@ So the feel comes from three things: a spring between the controller and the han
 
 ### F. Hands that stop at walls and bodies, B&S's physics hands (large; unknown)
 
+The weapon's part of F and F2 (walls, bodies, parries, shields) is designed as one contact step in [weapon-collision-spec.md](weapon-collision-spec.md) (2026-10-09, nothing built).
+
 - B&S's hand is a dynamic body on a joint, so it stops at a wall while the controller goes through.
 - OBVR's hands are keyframed and go through everything; the weight in A only lags them.
 - Making them dynamic bodies driven by a spring or constraint towards the controller would give walls, parries (blade on blade) and resistance on a hit.
@@ -196,7 +198,7 @@ The tester asked whether the carried weapon could get body collisions. Read here
 5. **E, grip position and reverse grip.**
 6. **B's damage by momentum.** First look for the scale point in the hit handler.
 7. **F, physics hands:** a spec and a research pass of their own.
-8. **F2, the blade stops at bodies** (way 1, OBVR's body capsules and a clamp): after A, it replaces the strike's bound-sphere test.
+8. **F2, the blade stops at bodies** (way 1, OBVR's body capsules and a clamp): after A, it replaces the strike's bound-sphere test. Now part of [weapon-collision-spec.md](weapon-collision-spec.md).
 
 ## 5. Open questions
 
