@@ -94,6 +94,11 @@ struct HandSettings {
 	// A tick in the controller at every button hovered or clicked
 	// (vr/MenuHaptics.h).
 	bool menuHaptics = true;
+	// The controllers while another window is in front (game/InputRoute.h):
+	// on, they go straight into the game's input, so the player keeps
+	// walking with the game in the background; off, they do nothing there.
+	// Either way nothing reaches the window in front.
+	bool backgroundInput = true;
 	// Whether the laser picks items at all (game/NearbyItems.h,
 	// g_laserPicksItems): off, items are the hands' alone.
 	bool laserPicksItems = false;

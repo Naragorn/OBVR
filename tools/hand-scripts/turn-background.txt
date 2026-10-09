@@ -1,0 +1,36 @@
+# The mouse half of the background route: smooth turning ([Look]
+# SnapTurning=0) turns the player by mouse movement. The right stick held
+# right turns the player with the game in front (mouse_event), then behind
+# another window (the movement added to the game's mouse state). The two
+# turns should be about the same size; "Measured" in the summary has both.
+# Needs OblivionAlwaysActive (Enabled=1), as walk-background.txt does.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\turn-background.txt
+
+ini Hands Enabled=1
+ini Look SnapTurning=0
+
+background-at behind
+
+expect HandScript: finished
+expect Input: the game's window is behind another window - the controllers go straight into the game's input
+expect Input: the game's poll took the controllers' state
+reject HandScript: WARNING
+turned start turned-in-front 10
+turned behind turned-behind 10
+
+wait 10
+mark start
+right stick 1 0
+wait 1
+right stick 0 0
+wait 0.5
+mark turned-in-front
+wait 1
+mark behind
+wait 2
+right stick 1 0
+wait 1
+right stick 0 0
+wait 0.5
+mark turned-behind
+wait 1

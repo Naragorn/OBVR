@@ -75,6 +75,7 @@ add_library(OBVR SHARED
 	src/game/NativeMenuPrototype.cpp
 	src/game/MenuPause.cpp
 	src/game/HandControls.cpp
+	src/game/EngineInput.cpp
 	src/game/MenuBackground.cpp
 	src/game/CrosshairTarget.cpp
 	src/game/WorldPickHook.cpp

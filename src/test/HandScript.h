@@ -44,6 +44,14 @@
 //                                    weapon's form ID
 //   expect <text> / reject <text>    read by the runner, not by OBVR: the
 //                                    log must (must not) contain the text
+//   background-at <mark>             for the runner: a window of another
+//                                    process is put in front of the game at
+//                                    that mark and kept there
+//   moved|still <a> <b> <units>      for the runner: the player walked at
+//                                    least (at most) this far between two
+//                                    marks, by their "player at" lines
+//   turned <a> <b> <degrees>         for the runner: the player turned at
+//                                    least this much between two marks
 //
 // The script's time runs on the frames' own time, so a wait is as long in a
 // slow frame as in a fast one.
@@ -147,6 +155,8 @@ struct HandScript {
 	std::vector<std::string> console;  // console commands, for the runner
 	std::vector<std::string> consoleAt;  // "<mark> <command>", for the runner
 	std::vector<std::string> counts;   // "n text", for the runner
+	std::vector<std::string> backgroundAt;  // marks, for the runner
+	std::vector<std::string> walkChecks;    // "moved|still|turned a b n", for the runner
 };
 
 struct ScriptParseError {
@@ -386,6 +396,24 @@ inline bool ParseHandScript(const std::string& text, HandScript& out, ScriptPars
 				return fail("count takes a number and text");
 			}
 			out.counts.push_back(rest);
+			continue;
+		} else if (word == "background-at") {
+			// background-at <mark>: for the runner - from that mark on a
+			// window of another process stays in front of the game.
+			if (t.size() != 2) {
+				return fail("background-at takes one mark");
+			}
+			out.backgroundAt.push_back(t[1]);
+			continue;
+		} else if (word == "moved" || word == "still" || word == "turned") {
+			// moved|still <a> <b> <units>, turned <a> <b> <degrees>: for the
+			// runner - how far the player walked (at least, at most) or turned
+			// (at least) between two marks.
+			float limit = 0.0f;
+			if (t.size() != 4 || !detail::Number(t[3], limit) || limit < 0.0f) {
+				return fail("moved, still and turned take two marks and a number");
+			}
+			out.walkChecks.push_back(word + " " + t[1] + " " + t[2] + " " + t[3]);
 			continue;
 		} else if (word == "log" || word == "expect" || word == "reject") {
 			const std::string rest = detail::Rest(line, word);

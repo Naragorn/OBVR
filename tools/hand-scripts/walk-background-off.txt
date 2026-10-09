@@ -1,0 +1,36 @@
+# The control for walk-background.txt: the same walks with [Hands]
+# BackgroundInput=0. In front the stick walks; behind another window it does
+# nothing - the controllers go nowhere, neither into the game nor into the
+# window in front. Proves the walk-background measurement can tell the two
+# apart.
+# Needs OblivionAlwaysActive (Enabled=1), as walk-background.txt does.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\walk-background-off.txt
+
+ini Hands Enabled=1
+ini Hands BackgroundInput=0
+
+background-at behind
+
+expect HandScript: finished
+expect Input: the game's window is behind another window - the controllers go nowhere, Hands.BackgroundInput=0
+reject Input: the game's poll took the controllers' state
+reject HandScript: WARNING
+moved start walked-in-front 60
+still behind walked-behind 10
+
+wait 10
+mark start
+left stick 0 1
+wait 1.5
+left stick 0 0
+wait 0.5
+mark walked-in-front
+wait 1
+mark behind
+wait 2
+left stick 0 1
+wait 1.5
+left stick 0 0
+wait 0.5
+mark walked-behind
+wait 1

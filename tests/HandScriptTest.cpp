@@ -68,7 +68,11 @@ void TestParseCommands() {
 		"ini Hands Enabled=1\n"
 		"console SetHotKeyItem 3 {weapon}\n"
 		"console-at arc_shown prid {near}\n"
-		"count 1 Hands: jump sent\n";
+		"count 1 Hands: jump sent\n"
+		"background-at arc_shown\n"
+		"moved start arc_shown 60\n"
+		"still a b 10.5\n"
+		"turned a b 15\n";
 	Check(Parses(text, s), "a script with every command reads");
 	Check(s.steps.size() == 20, "twenty steps; comments, blank lines, expect and reject are not steps");
 	Check(s.steps[0].op == ScriptOp::Wait && Near(s.steps[0].values[0], 1.5f) && s.steps[0].line == 3,
@@ -95,6 +99,11 @@ void TestParseCommands() {
 	      "console, for the runner, with its spaces");
 	Check(s.consoleAt.size() == 1 && s.consoleAt[0] == "arc_shown prid {near}",
 	      "console-at, for the runner: the mark and the command");
+	Check(s.backgroundAt.size() == 1 && s.backgroundAt[0] == "arc_shown",
+	      "background-at, for the runner: the mark, not a step");
+	Check(s.walkChecks.size() == 3 && s.walkChecks[0] == "moved start arc_shown 60" &&
+	          s.walkChecks[1] == "still a b 10.5" && s.walkChecks[2] == "turned a b 15",
+	      "moved, still and turned, for the runner, not steps");
 
 	HandScript empty;
 	Check(Parses("", empty) && empty.steps.empty(), "an empty script reads, with nothing to do");
@@ -137,6 +146,12 @@ void TestParseErrors() {
 	Check(FailsOnLine("ini Hands\n") == 1, "ini without Key=Value");
 	Check(FailsOnLine("ini Hands Enabled\n") == 1, "ini without the equals sign");
 	Check(FailsOnLine("ini Hands =1\n") == 1, "ini without a key");
+	Check(FailsOnLine("background-at\n") == 1, "background-at without a mark");
+	Check(FailsOnLine("background-at a b\n") == 1, "background-at with two marks");
+	Check(FailsOnLine("moved a b\n") == 1, "moved without a distance");
+	Check(FailsOnLine("still a b far\n") == 1, "still with a distance that is not a number");
+	Check(FailsOnLine("turned a b -5\n") == 1, "a negative turn");
+	Check(FailsOnLine("moved a b 5 6\n") == 1, "moved with a fourth word");
 	HandScript s;
 	ScriptParseError error;
 	Check(!ParseHandScript("wait 1\nbogus\nwait 2\n", s, error) && s.steps.empty(),

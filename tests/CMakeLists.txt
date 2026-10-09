@@ -675,6 +675,16 @@ endif()
 
 add_test(NAME menu_pause_policy COMMAND menu_pause_policy_test)
 
+add_executable(input_route_test InputRouteTest.cpp)
+
+target_include_directories(input_route_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(input_route_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME input_route COMMAND input_route_test)
+
 add_executable(hand_input_test HandInputTest.cpp)
 
 target_include_directories(hand_input_test PRIVATE ../src)

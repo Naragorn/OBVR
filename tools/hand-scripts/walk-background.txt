@@ -1,0 +1,39 @@
+# The controllers with the game behind another window ([Hands]
+# BackgroundInput, game/InputRoute.h): the left stick walks the player with
+# the game in front (through Windows), then a window of another process is
+# put in front at "behind" and the same push walks the player again - now
+# straight into the game's input, with nothing sent through Windows.
+# Needs the game to keep running behind another window: OblivionAlwaysActive
+# (Enabled=1) in Data\OBSE\Plugins - without it the game pauses there and
+# the second walk measures nothing.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\walk-background.txt
+
+ini Hands Enabled=1
+
+background-at behind
+
+expect HandScript: finished
+expect Input: the poll's tail at 00403C30 takes the controllers' keys
+expect Input: the game's window is behind another window - the controllers go straight into the game's input
+expect Input: the game's poll took the controllers' state
+reject HandScript: WARNING
+moved start walked-in-front 60
+still walked-in-front behind 10
+moved behind walked-behind 60
+
+wait 10
+mark start
+left stick 0 1
+wait 1.5
+left stick 0 0
+wait 0.5
+mark walked-in-front
+wait 1
+mark behind
+wait 2
+left stick 0 1
+wait 1.5
+left stick 0 0
+wait 0.5
+mark walked-behind
+wait 1

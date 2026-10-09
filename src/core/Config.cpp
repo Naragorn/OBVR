@@ -864,6 +864,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.turnSpeed = ReadFloat("Hands", "TurnSpeed", h.turnSpeed, path);
 		h.vrKeyboard = ReadBool("Hands", "VrKeyboard", h.vrKeyboard, path);
 		h.menuHaptics = ReadBool("Hands", "MenuHaptics", h.menuHaptics, path);
+		h.backgroundInput = ReadBool("Hands", "BackgroundInput", h.backgroundInput, path);
 		h.laserPicksItems = ReadBool("Hands", "LaserPicksItems", h.laserPicksItems, path);
 		{
 			char word[32] = "";

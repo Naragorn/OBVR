@@ -692,6 +692,32 @@ inline constexpr UInt32 kIniSettingListOffset = 0x10C;
 // which is the second source for this address.
 inline constexpr UInt32 kFrameSecondsAddress = 0x00B33E9C;
 
+// The game's input poll and the state it fills - where the controllers'
+// keys go while another window is in front (game/EngineInput.h).
+//
+// OSInputGlobals::PollAndUpdateInputState is 0x004046A0 (xOBSE
+// GameOSDepend.h), called once a frame from the main frame function at
+// 0x0040D8CD with the input globals in ecx. Each device is acquired and read
+// - or, when Acquire fails, as it does for DISCL_FOREGROUND devices with
+// another window in front, its state is zeroed - and both mouse paths end in
+// a tail jump to 0x00403C30 (at 0x0040480E and 0x00404835, its only two
+// references): the double-click pass over the eight buttons. Its entry is
+// the first instruction after every device read, before the double clicks
+// are judged and before xOBSE's own pass over the state (xOBSE's
+// Hooks_Input.cpp hooks this function's loop exit at 0x00403C81, outside
+// the bytes detoured here). The entry's nine bytes, read from this
+// machine's Oblivion.exe: push esi; xor eax,eax; lea edx,[ecx+1B58h] -
+// whole instructions, nothing relative.
+//
+// The offsets are OSInputGlobals' (xOBSE GameOSDepend.h), confirmed by the
+// poll's own reads: GetDeviceState(0x100, this+0x18F4) for the keyboard,
+// GetDeviceState(0x14, this+0x1B20) for the mouse, and the double-click pass
+// testing [this+0x1B2C+i] & 0x80.
+inline constexpr UInt32 kInputPollTail = 0x00403C30;
+inline constexpr UInt32 kInputCurrentKeysOffset = 0x18F4;   // UInt8[256], DIK-indexed
+inline constexpr UInt32 kInputMouseStateOffset = 0x1B20;    // lX, lY, lZ
+inline constexpr UInt32 kInputMouseButtonsOffset = 0x1B2C;  // UInt8[8]
+
 // Whether a menu is up: the main menu, a loading screen, an inventory, the
 // ESC menu, a dialogue. A function rather than a flag, and nullary.
 //

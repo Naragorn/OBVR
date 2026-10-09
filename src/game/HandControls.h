@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Types.h"
+#include "game/InputRoute.h"
 #include "vr/HandInput.h"
 
 namespace obvr::game {
@@ -33,11 +34,19 @@ struct HandKeyMap {
 	UInt32 right = 0x44;       // D
 };
 
-// Presses and releases the game's controls to match what the hands want,
-// sending only the edges: a key that is already down is left down. Mouse
-// buttons go through mouse_event, keys through keybd_event with the key's
-// US scan code (UsScanCode) - the form DirectInput sees, and the physical
-// key the game's bindings name whatever the keyboard layout.
+// Where everything below goes this frame (game/InputRoute.h), stepped once
+// a frame before any of it: with the game's window in front through
+// Windows; behind another window straight into the game's input
+// (game/EngineInput.h); or nowhere. A step that leaves the Windows route
+// lets go of what Windows holds for the hands first.
+void SetHandControlsRoute(const InputRouteStep& step);
+
+// Presses and releases the game's controls to match what the hands want.
+// Through Windows only the edges are sent - a key already down is left
+// down; mouse buttons go through mouse_event, keys through keybd_event with
+// the key's US scan code (UsScanCode) - the form DirectInput sees, and the
+// physical key the game's bindings name whatever the keyboard layout. Into
+// the game's input the same keys are held by the same scan codes.
 //
 // The turn is a relative mouse movement, scaled by turnSpeed pixels per
 // frame at full deflection. A menu click is the left mouse button, which is
@@ -45,9 +54,9 @@ struct HandKeyMap {
 void ApplyHandControls(const vr::HandControlsWanted& wanted, const HandKeyMap& keys,
                        float turnSpeed);
 
-// Releases everything the mode is holding. For switching the mode off, for a
-// lost controller, and for leaving the game window - a key held by nobody is
-// the worst thing an input mode can leave behind.
+// Releases everything the mode is holding, on both routes. For switching the
+// mode off and for a lost controller - a key held by nobody is the worst
+// thing an input mode can leave behind.
 void ReleaseHandControls(const HandKeyMap& keys);
 
 // One key down or up, by its virtual key (the US scan code behind it, as

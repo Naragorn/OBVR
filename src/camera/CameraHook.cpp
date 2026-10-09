@@ -36,6 +36,7 @@
 #include "game/BonePin.h"
 #include "game/HandAdjust.h"
 #include "game/HandBones.h"
+#include "game/EngineInput.h"
 #include "game/HandControls.h"
 #include "game/MeleeHits.h"
 #include "game/Shove.h"
@@ -1952,7 +1953,31 @@ void UpdateStowPlacing(Config& config, vr::OpenVRBackend& backend, const vr::Han
 	}
 }
 
+// Where the controllers' keys go this frame (game/InputRoute.h): through
+// Windows with the game's window in front, straight into the game's input
+// behind another window. Stepped first, before anything below sends a key.
+game::InputRouteState g_inputRoute;
+UInt32 g_inputRouteLines = 40;
+
+void StepInputRouting(const Config& config) {
+	const bool inFront = game::GameWindowInFront();
+	const bool engineAllowed = config.hands.backgroundInput && game::EngineInputHookInstalled();
+	const game::InputRouteStep step = game::StepInputRoute(g_inputRoute, inFront, engineAllowed);
+	game::SetHandControlsRoute(step);
+	if (step.changed && g_inputRouteLines > 0) {
+		--g_inputRouteLines;
+		OBVR_LOG("Input: the game's window is %s - the controllers go %s%s (thread %u)",
+		         inFront ? "in front" : "behind another window", game::InputRouteName(step.route),
+		         step.route == game::InputRoute::Off
+		             ? (config.hands.backgroundInput ? ", the game's input poll is not reachable"
+		                                             : ", Hands.BackgroundInput=0")
+		             : "",
+		         static_cast<UInt32>(GetCurrentThreadId()));
+	}
+}
+
 void UpdateHandMode(const Config& config, bool menuIsUp) {
+	StepInputRouting(config);
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
 	const long long now = ReadPerformanceCounter();
 	float dt = 0.0f;
@@ -4872,7 +4897,9 @@ bool AttackHeld() {
 	if (key == 0) {
 		return false;
 	}
-	return (GetAsyncKeyState(static_cast<int>(key)) & 0x8000) != 0;
+	// Or the controllers hold it in the game's input, with the game behind
+	// another window (game/EngineInput.h) - Windows never sees that press.
+	return (GetAsyncKeyState(static_cast<int>(key)) & 0x8000) != 0 || game::EngineHoldsKey(key);
 }
 
 // The cast control, read the same way and for the same reason.
@@ -4886,7 +4913,7 @@ bool CastHeld() {
 	if (key == 0 || !GetConfig().aimCastFollowsGaze) {
 		return false;
 	}
-	return (GetAsyncKeyState(static_cast<int>(key)) & 0x8000) != 0;
+	return (GetAsyncKeyState(static_cast<int>(key)) & 0x8000) != 0 || game::EngineHoldsKey(key);
 }
 
 // The three callbacks of the scene render hook, in the order they run.
@@ -9428,6 +9455,9 @@ bool Install() {
 	game::InstallBlockCone();
 	game::InstallPlayerLookAt();
 	game::InstallWorldPickHook();
+	// The controllers' way into a game behind another window; logs its own
+	// outcome, and passes straight through while the game is in front.
+	game::InstallEngineInputHook();
 
 	// The end of the frame, hooked as soon as there is a device to hook it on
 	// rather than when the first world camera runs.

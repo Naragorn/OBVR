@@ -1,13 +1,18 @@
 #include "game/HandControls.h"
 
+#include "game/EngineInput.h"
 #include "game/KeyScanCodes.h"
 #include "platform/Win32Min.h"
 
 namespace obvr::game {
 namespace {
 
-// Which keys OBVR itself put down, by virtual-key code. Bounded: the map has
-// fifteen entries and nothing else is ever pressed from here.
+// Where this frame's controls go (SetHandControlsRoute).
+InputRoute g_route = InputRoute::Windows;
+
+// Which keys OBVR itself put down through Windows, by virtual-key code.
+// Bounded: the map has fifteen entries and nothing else is ever pressed from
+// here.
 constexpr UInt32 kHeldSlots = 16;
 UInt32 g_heldKeys[kHeldSlots] = {};
 UInt32 g_heldCount = 0;
@@ -58,9 +63,25 @@ void SendKey(UInt32 key, bool down) {
 	            0);
 }
 
+// Lets go of every key OBVR put down through Windows.
+void ReleaseWindowsHeld() {
+	while (g_heldCount > 0) {
+		const UInt32 key = g_heldKeys[g_heldCount - 1];
+		SendKey(key, false);
+		--g_heldCount;
+	}
+}
+
 // Brings one key to the wanted state, sending nothing when it is there.
 void SetKey(UInt32 key, bool wanted) {
 	if (key == 0) {
+		return;
+	}
+	if (g_route == InputRoute::Engine) {
+		EngineHoldKey(key, wanted);
+		return;
+	}
+	if (g_route == InputRoute::Off) {
 		return;
 	}
 	const bool held = IsHeld(key);
@@ -75,7 +96,29 @@ void SetKey(UInt32 key, bool wanted) {
 
 }  // namespace
 
+void SetHandControlsRoute(const InputRouteStep& step) {
+	if (step.releaseWindowsKeys) {
+		ReleaseWindowsHeld();
+	}
+	SetEngineInputActive(step.engineInject);
+	g_route = step.route;
+}
+
 void TapKey(UInt32 virtualKey, bool shift, bool down) {
+	if (g_route == InputRoute::Engine) {
+		// Held in the game's state for the frame, like a key: what reads the
+		// state takes it. A text field reads the keyboard's buffered events
+		// instead (0x005834B9), which only Windows feeds - so typing reaches
+		// a field only with the game in front.
+		if (shift) {
+			EngineHoldKey(0x10, down);
+		}
+		EngineHoldKey(virtualKey, down);
+		return;
+	}
+	if (g_route == InputRoute::Off) {
+		return;
+	}
 	if (down) {
 		if (shift) {
 			SendKey(0x10, true);
@@ -124,19 +167,30 @@ void ApplyHandControls(const vr::HandControlsWanted& wanted, const HandKeyMap& k
 }
 
 void ReleaseHandControls(const HandKeyMap&) {
-	while (g_heldCount > 0) {
-		const UInt32 key = g_heldKeys[g_heldCount - 1];
-		SendKey(key, false);
-		--g_heldCount;
-	}
+	ReleaseWindowsHeld();
+	EngineReleaseAll();
 }
 
 void MoveMouseBy(int dx, int dy) {
+	if (g_route == InputRoute::Engine) {
+		EngineMoveMouse(dx, dy);
+		return;
+	}
+	if (g_route == InputRoute::Off) {
+		return;
+	}
 	mouse_event(MOUSEEVENTF_MOVE, static_cast<DWORD>(dx), static_cast<DWORD>(dy), 0, 0);
 }
 
 void ScrollMouseWheel(int notches) {
 	if (notches == 0) {
+		return;
+	}
+	if (g_route == InputRoute::Engine) {
+		EngineScrollWheel(notches * WHEEL_DELTA);
+		return;
+	}
+	if (g_route == InputRoute::Off) {
 		return;
 	}
 	mouse_event(MOUSEEVENTF_WHEEL, 0, 0, static_cast<DWORD>(notches * WHEEL_DELTA), 0);

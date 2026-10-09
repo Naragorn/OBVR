@@ -76,10 +76,22 @@ $consoleLines = @()
 # mark's "HandScript: items" line.
 $consoleAt = @{}
 $counts = @()
+# Marks at which a window of another process is put in front of the game and
+# kept there ("background-at <mark>"): from then on the runner no longer
+# brings the game to the front.
+$backgroundAt = @()
+# How far the player got between two marks, from the marks' "HandScript:
+# player at" lines: "moved <a> <b> <units>" (at least), "still <a> <b>
+# <units>" (at most), "turned <a> <b> <degrees>" (at least).
+$walkChecks = @()
 foreach ($raw in [IO.File]::ReadAllLines($scriptPath)) {
 	$line = ($raw -replace "#.*$", "").Trim()
 	if ($line -match "^expect\s+(.+)$") { $expects += $Matches[1].Trim() }
 	elseif ($line -match "^reject\s+(.+)$") { $rejects += $Matches[1].Trim() }
+	elseif ($line -match "^background-at\s+(\S+)$") { $backgroundAt += $Matches[1] }
+	elseif ($line -match "^(moved|still|turned)\s+(\S+)\s+(\S+)\s+([0-9]+(?:\.[0-9]+)?)$") {
+		$walkChecks += ,@($Matches[1], $Matches[2], $Matches[3], [double]$Matches[4])
+	}
 	elseif ($line -match "^console-at\s+(\S+)\s+(.+)$") {
 		if (-not $consoleAt.ContainsKey($Matches[1])) { $consoleAt[$Matches[1]] = @() }
 		$consoleAt[$Matches[1]] += $Matches[2].Trim()
@@ -102,6 +114,24 @@ public static class ObvrHandRun {
 	[DllImport("user32.dll")] static extern void keybd_event(byte key, byte scan, uint flags, IntPtr extra);
 	[DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr handle);
 	[DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+	[DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
+	[DllImport("user32.dll")] static extern bool AttachThreadInput(uint from, uint to, bool attach);
+	[DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr handle);
+	// Puts a window in front from a process that does not own the front:
+	// joined to the front thread's input for the call, as Windows allows.
+	public static bool BringToFront(IntPtr target) {
+		uint ignored;
+		uint frontThread = GetWindowThreadProcessId(GetForegroundWindow(), out ignored);
+		uint current = GetCurrentThreadId();
+		bool attached = frontThread != 0 && frontThread != current && AttachThreadInput(current, frontThread, true);
+		try {
+			BringWindowToTop(target);
+			SetForegroundWindow(target);
+		} finally {
+			if (attached) AttachThreadInput(current, frontThread, false);
+		}
+		return GetForegroundWindow() == target;
+	}
 	[DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr handle);
 	[DllImport("user32.dll")] public static extern bool IsIconic(IntPtr handle);
 	[DllImport("user32.dll")] static extern int GetWindowText(IntPtr handle, StringBuilder text, int max);
@@ -217,7 +247,11 @@ public static class ObvrHandRun {
 
 function Get-Game { Get-Process -Name Oblivion -ErrorAction SilentlyContinue | Select-Object -First 1 }
 
+$background = $false
+$thief = $null
 function Focus-Game {
+	# In a scenario's background part the game stays behind the other window.
+	if ($script:background) { return $false }
 	$p = Get-Game
 	if ($p -and $p.MainWindowHandle -ne 0) {
 		if ([ObvrHandRun]::GetForegroundWindow() -ne $p.MainWindowHandle) {
@@ -338,6 +372,24 @@ function Take-Shots([string]$name) {
 	}
 }
 
+# A plain window of a process of its own, put in front of the game: what a
+# browser or a chat in front looks like to the game. Small and in the top
+# left corner, so the pictures still show most of the game.
+function Start-FocusThief {
+	$form = "Add-Type -AssemblyName System.Windows.Forms; `$f = New-Object Windows.Forms.Form; " +
+		"`$f.Text = 'OBVR harness - the game is behind this window'; `$f.TopMost = `$true; " +
+		"`$f.StartPosition = 'Manual'; `$f.Left = 0; `$f.Top = 0; `$f.Width = 420; `$f.Height = 120; " +
+		"[Windows.Forms.Application]::Run(`$f)"
+	$process = Start-Process powershell.exe -ArgumentList "-NoProfile", "-Command", "`"$form`"" -PassThru
+	$deadline = (Get-Date).AddSeconds(15)
+	while ((Get-Date) -lt $deadline) {
+		Start-Sleep -Milliseconds 200
+		$process.Refresh()
+		if ($process.MainWindowHandle -ne 0) { break }
+	}
+	return $process
+}
+
 function Read-Log {
 	if (-not (Test-Path -LiteralPath $logPath)) { return @() }
 	try {
@@ -358,6 +410,7 @@ if (Test-Path -LiteralPath $prevPath) { Copy-Item -LiteralPath $prevPath -Destin
 $verdict = "FAIL"
 $problems = @()
 $marks = @()
+$measured = @()
 try {
 	# The overlay: [Debug] HandScript and the scenario's own lines.
 	$sections = @{ "Debug" = @("HandScript=OBVR-HandScript.txt") }
@@ -495,6 +548,21 @@ try {
 				Write-Host "Mark $($Matches[1])"
 				$markName = $Matches[1]
 				Take-Shots $markName
+				if ($background) {
+					# The game must still be behind at every later mark, else what
+					# the marks measured was not the background.
+					$p = Get-Game
+					if ($p -and [ObvrHandRun]::GetForegroundWindow() -eq $p.MainWindowHandle) {
+						$problems += "the game was in front again at mark $markName - the background part is inconclusive"
+					}
+				}
+				if ($backgroundAt -contains $markName -and -not $background) {
+					$thief = Start-FocusThief
+					$inFront = $thief.MainWindowHandle -ne 0 -and [ObvrHandRun]::BringToFront($thief.MainWindowHandle)
+					$background = $true
+					Write-Host "Background from mark ${markName}: another window in front $inFront"
+					if (-not $inFront) { $problems += "could not put another window in front of the game at mark $markName" }
+				}
 				if ($consoleAt.ContainsKey($markName)) {
 					Start-Sleep -Milliseconds 300
 					$itemLine = @(Read-Log | Where-Object { $_ -match "HandScript: items" }) | Select-Object -Last 1
@@ -582,10 +650,43 @@ try {
 		$hits = @($runLog | Where-Object { $_.Contains($r) })
 		if ($hits.Count -gt 0) { $problems += "rejected, but in the log: $($hits[0])" }
 	}
+	# Where the player stood at each mark: the first "HandScript: player at
+	# x y z, heading h degrees" after the mark's own line (both are written
+	# on the mark's frame).
+	$standing = @{}
+	$current = $null
+	foreach ($l in $runLog) {
+		if ($l -match "HandScript: mark (\S+)") { $current = $Matches[1]; continue }
+		if ($current -and $l -match "HandScript: player at (-?[0-9.]+) (-?[0-9.]+) (-?[0-9.]+), heading (-?[0-9.]+) degrees") {
+			if (-not $standing.ContainsKey($current)) {
+				$standing[$current] = @([double]$Matches[1], [double]$Matches[2], [double]$Matches[3], [double]$Matches[4])
+			}
+			$current = $null
+		}
+	}
+	foreach ($c in $walkChecks) {
+		$kind = $c[0]; $a = $c[1]; $b = $c[2]; $limit = $c[3]
+		if (-not $standing.ContainsKey($a) -or -not $standing.ContainsKey($b)) {
+			$problems += "$kind ${a} ${b}: no player line at mark $(if (-not $standing.ContainsKey($a)) { $a } else { $b })"
+			continue
+		}
+		$pa = $standing[$a]; $pb = $standing[$b]
+		if ($kind -eq "turned") {
+			$turn = [Math]::Abs(((($pb[3] - $pa[3]) % 360) + 540) % 360 - 180)
+			$measured += ("turned from {0} to {1}: {2:N1} degrees (at least {3})" -f $a, $b, $turn, $limit)
+			if ($turn -lt $limit) { $problems += ("turned {0} {1}: {2:N1} degrees, wanted at least {3}" -f $a, $b, $turn, $limit) }
+		} else {
+			$d = [Math]::Sqrt(($pb[0] - $pa[0]) * ($pb[0] - $pa[0]) + ($pb[1] - $pa[1]) * ($pb[1] - $pa[1]))
+			$measured += ("walked from {0} to {1}: {2:N1} units across the ground ({3} {4})" -f $a, $b, $d, $(if ($kind -eq "moved") { "at least" } else { "at most" }), $limit)
+			if ($kind -eq "moved" -and $d -lt $limit) { $problems += ("moved {0} {1}: {2:N1} units, wanted at least {3}" -f $a, $b, $d, $limit) }
+			if ($kind -eq "still" -and $d -gt $limit) { $problems += ("still {0} {1}: {2:N1} units, wanted at most {3}" -f $a, $b, $d, $limit) }
+		}
+	}
 	if ($problems.Count -eq 0) { $verdict = "PASS" }
 } catch {
 	$problems += "runner: $($_.Exception.Message)"
 } finally {
+	if ($thief -and -not $thief.HasExited) { Stop-Process -Id $thief.Id -Force -ErrorAction SilentlyContinue }
 	if (-not $KeepGameOpen) {
 		$p = Get-Game
 		if ($p) {
@@ -616,6 +717,11 @@ try {
 }
 
 $summary = @("# $scenario - $verdict", "", "Run: $runDir", "", "Marks: $($marks -join ', ')", "")
+if ($measured.Count -gt 0) {
+	$summary += "Measured:"
+	$summary += ($measured | ForEach-Object { "- $_" })
+	$summary += ""
+}
 if ($problems.Count -gt 0) {
 	$summary += "Problems:"
 	$summary += ($problems | ForEach-Object { "- $_" })

@@ -37,6 +37,19 @@ point.
   list) through `keybd_event` with scan codes and `mouse_event` - the route the input
   harness already proved reaches DirectInput. Only edges are sent, and everything is
   released when the mode stops or a controller is lost.
+- That route needs the game's window in front: Windows hands input to the window in
+  front, and the game's DirectInput devices are foreground-only. Behind another window
+  (with the game kept running by OblivionAlwaysActive) the controls go straight into the
+  game's input state instead (`game/InputRoute.h`, `game/EngineInput.h`): a detour at the
+  poll's tail `0x00403C30` writes the held keys, buttons and mouse movement where a device
+  read would have put them, before xOBSE's own pass. Nothing goes through Windows then, so
+  nothing lands in the window in front. Leaving the front lets go of the Windows-held keys;
+  coming back keeps the injected state one more poll. `[Hands] BackgroundInput=0` sends
+  nothing at all behind another window. Typing with the SteamVR keyboard needs the game in
+  front (text fields read buffered key events, `0x005834B9`). Measured 2026-10-09 by
+  `walk-background`, `walk-background-off` and `turn-background` (see
+  docs/hand-script-harness.md): 184 units walked behind against 183 in front, 0 with the
+  route off, 123.7 degrees turned behind against 122.4 in front.
 
 ## Rung 1 - the hands are read, the weapon hand turns with the controller
 
