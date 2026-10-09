@@ -415,3 +415,58 @@ else sets the lag.
   and the swing-through overrunning a jump). All unit tests pass.
 - **Open**: the feel in the headset (the time constant and the caps are
   code constants to retune from there); item 6.
+
+## 7. Strength and fatigue in the weight (idea, 2026-10-09, nothing built)
+
+The tester asked whether the character's Strength should enter the lag.
+Kept here to decide later, after the headset has judged the swing-through
+of section 6.
+
+### How Oblivion uses weight and Strength (sources read 2026-10-09)
+
+- **Weight, in combat, costs fatigue per attack**: `fatigue burned =
+  (fFatigueAttackWeaponBase + fFatigueAttackWeaponMult x WeaponWeight) x
+  fPowerAttackFatiguePenalty`, defaults 7.0 and 0.1, the penalty only on a
+  power attack (5 by the UESP talk page) - an Iron Warhammer (30) costs
+  10, a dagger (3) 7.3 (cs.uesp.net "Fatigue Game Settings"; UESP
+  "Oblivion talk:Fatigue"). Not read in the engine's code.
+- **Weight and stagger**: UESP "Oblivion:Combat": blunt weapons' weight
+  "causes enemies to be staggered more often". The formula: could not
+  verify.
+- **Weight and attack speed**: none; the swing speed is the weapon's Speed
+  value. Only from GameFAQs posts (2009), not from UESP - weaker evidence.
+- **Strength**: carry weight = Strength x 5 (UESP "Oblivion:Strength");
+  melee damage factor `0.75 + Strength x 0.005` (fDamageStrengthBase
+  0.75, fDamageStrengthMult 0.5), Strength capped at 100 for it (UESP
+  "Oblivion:Weapons", Damage Calculations; "Oblivion:The Complete Damage
+  Formula"); max fatigue = Strength + Agility + Endurance + Willpower.
+- **Fatigue in damage**: `x (Fatigue / MaxFatigue + 1) / 2` (The Complete
+  Damage Formula) - a tired character hits for down to half.
+
+So vanilla never sets Strength against a weapon's weight: Strength scales
+damage and carry weight, weight scales the fatigue an attack costs.
+Bringing Strength into the lag is a design choice, not a port.
+
+### The idea
+
+1. **Strength, mild**: divide the time constant by the game's own damage
+   factor, normalised to Strength 50 - `tc x 1.0 / (0.75 + min(Str, 100)
+   x 0.005)`: Strength 20 trails ~18 % more, 50 as now, 100 and above 20 %
+   less. Weight and the slider stay the main lever; a level-up and
+   Fortify Strength become something felt.
+2. **Fatigue, the vanilla-shaped one**: scale the time constant by the
+   inverse of the damage's fatigue term, `2 / (Fatigue / MaxFatigue + 1)`
+   - a fresh character as now, an exhausted one up to twice the lag.
+   Since vanilla takes `7 + 0.1 x weight` fatigue per swing, the weight
+   then enters twice, by the game's own rules: heavy weapons tire faster
+   and a tired arm drags them more.
+
+### Against, and what is unknown
+
+- Not vanilla behaviour; a Fortify Strength potion or a fatigue drain
+  would change the swing's feel in the middle of a fight.
+- OBVR does not read the player's actor values yet (Strength, Fatigue and
+  its base) - the read path is not looked up and not verified.
+- Each needs its own INI switch (default to be decided) and pure, tested
+  factors next to `WeaponLagFor` in vr/WeaponWeight.h; the log line per
+  draw would carry the factors.
