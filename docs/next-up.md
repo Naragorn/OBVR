@@ -652,3 +652,57 @@ failed the same way on 2026-09-28, before this round.
     drawn), so the world frustum's planes do not convert a hand's distance
     into the depth buffer.
   - The first-person pass's own projection would be needed first.
+
+## Parallax textures in VR (assessment, 2026-10-09, nothing built)
+
+The tester: "das game nutzt ja parallax texturen teilweise. in vr sehen die
+ok aus nicht so großartig wie in flat. was kann man da machen für obvr".
+
+What Oblivion's parallax is (sources read): single-step offset mapping -
+the texture coordinate shifted by the height times the tangent-space view
+vector, the height in the diffuse texture's alpha channel, switched on per
+mesh in the NIF (UESP CS wiki "DDS Files"; katsbits "Oblivion's Parallax &
+Normal Maps"). Bethesda in 2006 (Beyond3D interview): "Some amount of
+texture warping is inherent to the system ... virtually a non-issue in
+game unless you've got the camera mashed up against the textures. The
+artists quickly learned the limits of range in the displacement". That is
+the VR finding in one sentence: at real scale the camera IS close, and
+the single-step offset warps and flattens at the angles and distances a
+headset gives, which flat play never showed.
+
+What OBVR does with it: the dual pass calls the engine's render twice with
+the camera moved (docs/vr-modding/rendering-and-stereo.md), so the eye
+vector the shader uses comes from each eye's camera - the parallax is
+per eye, not one offset for both. Not measured; a harness capture of a
+parallax wall in both eyes would show it (the shift differs between the
+eye images).
+
+Options, cheapest first:
+1. **dxvk.conf, no code**: `d3d9.samplerAnisotropy = 16` - Oblivion.ini
+   carries no anisotropy key, so the filtering is whatever the driver
+   gives; DXVK forces 16x on every sampler (dxvk.conf in the repository:
+   "Overrides anisotropic filtering for all samplers ... known to break
+   passes that rely on bilinear filtering"). Floors and walls at grazing
+   angles, where the parallax surfaces are, sharpen the most. Optionally
+   `d3d9.samplerLodBias = -0.3` ("may increase sharpness at the cost of
+   shimmer") - shimmer is worse in a headset, so only on trial.
+2. **Not worth it**: the SM3 shader package swap (shaderpackage019.sdp,
+   bAllow30Shaders=1): the guides agree on "typically no image quality
+   difference", and 2006 reports of broken lighting with it.
+3. **OBVR's own parallax shader** (large, the real answer): the engine
+   creates its pixel shaders from the shader package through
+   CreatePixelShader; OBVR already swaps and adds shaders on that device
+   (the water reflection blend, the hands' lid, FoliageAA's draw hooks). A
+   hook that recognises the parallax variants by their bytecode and hands
+   DXVK an iterative or occlusion parallax shader with the same inputs
+   (diffuse+alpha height, normal, the view vector, the lighting constants)
+   would give the surfaces real depth at close range in both eyes. Work:
+   find the parallax shader variants in the package (several, per light
+   count and fog), disassemble one to learn its registers, write the
+   replacement in HLSL and compile it at build time, hook the creation,
+   a setting for the step count. Oblivion Reloaded does its own shader
+   library this way, and OBVR cannot run beside it, so this is the only
+   route for VR players. A week, with the headset as the judge.
+4. **Texture packs**: the height lives in the diffuse alpha, DXT-compressed
+   to a few bits; packs with proper heights (QTP3's stone, parallax packs)
+   gain the most from 3 and are what the tester would test it with.
