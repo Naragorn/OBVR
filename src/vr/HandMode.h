@@ -321,6 +321,11 @@ struct HandSettings {
 	bool weaponParries = true;
 	bool parryStopsAll = true;
 	float parryFatigue = 10.0f;
+	// How close fighters come before they strike, game units: the game setting
+	// fCombatDistance held at this while Full VR runs, so a blow is struck
+	// within reach of the player's blade ([Hands] CombatReach, 0 the game's own
+	// 128; game/CombatReach.h).
+	float combatReach = 85.0f;
 	// Opening by reaching: an open, empty hand at a container, a body or -
 	// sneaking - a person opens it, the hand away closes it ([Hands]
 	// ReachOpens, ReachOpenMetres, ReachCloseMetres; vr/ReachOpen.h).

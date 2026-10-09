@@ -696,6 +696,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.weaponParries = ReadBool("Hands", "WeaponParries", h.weaponParries, path);
 		h.parryStopsAll = ReadBool("Hands", "ParryStopsAll", h.parryStopsAll, path);
 		h.parryFatigue = ReadFloat("Hands", "ParryFatigue", h.parryFatigue, path);
+		h.combatReach = ReadFloat("Hands", "CombatReach", h.combatReach, path);
 		h.reachOpen.enabled = ReadBool("Hands", "ReachOpens", h.reachOpen.enabled, path);
 		h.reachOpen.openMetres = ReadFloat("Hands", "ReachOpenMetres", h.reachOpen.openMetres, path);
 		h.reachOpen.closeMetres = ReadFloat("Hands", "ReachCloseMetres", h.reachOpen.closeMetres, path);

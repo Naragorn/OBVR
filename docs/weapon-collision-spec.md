@@ -520,3 +520,22 @@ Ways on (not decided, see the tester):
 - **C. The guard on the line:** their attack parried when the player's
   blade lies across the line from their weapon hand to the player's chest
   during their swing - the blade held in the way.
+
+**Built: option A (the tester, 2026-10-09: "A, mach erst den Harness-Test").**
+- Tried first by the console (`setgs fCombatDistance 85`, a hand script of
+  its own): the bandit struck from about 1.3 m (its torso 80-110 units off),
+  its blade's tip 24-55 units from the eyes at each blow, and the circling
+  blade parried ten blows - "blocked 1.00 of it (the engine's own share
+  0.03, Block 10)", Block rising to 11.
+- Then built (`game/CombatReach.h`, `combat_reach_test`): `[Hands]
+  CombatReach` (85; 0 the game's own) holds fCombatDistance (0x00B36F20,
+  checked by the name kept after it) while Full VR runs and gives the game's
+  own back when it stops; a value set by anyone else meanwhile is taken as
+  the game's own. A game setting changed at runtime is not kept in the
+  savegame (cs.uesp.net/wiki/Con_SetGameSetting) and is no INI setting.
+  `blade-parry.txt` with it: PASS, parries with "blocked 1.00".
+- It is the player's reach as well: the strike by motion's test takes
+  reach x fCombatDistance as its blade's length, so the player's blows now
+  reach 85 units rather than 128 - nearer the 67 the sword is drawn.
+- Not measured: creatures (their bites reach by the same setting), and how
+  NPCs fighting each other look at 85.

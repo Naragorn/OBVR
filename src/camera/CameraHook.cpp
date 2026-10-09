@@ -77,6 +77,7 @@
 #include "game/BladeContact.h"
 #include "game/BladeBodies.h"
 #include "game/Parry.h"
+#include "game/CombatReach.h"
 #include "game/Insult.h"
 #include "vr/MenuHaptics.h"
 #include "vr/VrKeyboard.h"
@@ -2451,6 +2452,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	const bool headset = g_headTracker.IsHeadsetConnected();
 	const bool active = config.fullVrMode && headset;
 	const bool menusOnly = !active && headset && config.hands.controllerMenus;
+	// Fighters come within reach of a blade held in VR (game/CombatReach.h);
+	// the game's own reach back with the mode off.
+	game::StepCombatReach(active, config.hands.combatReach);
 	if (!active && !menusOnly) {
 		if (test::HandScriptMarkedThisFrame()) {
 			OBVR_LOG("HandScript: state - the hand mode is not running (Hands.Enabled %d, "

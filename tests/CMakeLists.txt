@@ -1417,3 +1417,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME parry COMMAND parry_test)
+
+add_executable(combat_reach_test CombatReachTest.cpp)
+
+target_include_directories(combat_reach_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(combat_reach_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME combat_reach COMMAND combat_reach_test)

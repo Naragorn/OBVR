@@ -1148,6 +1148,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.weaponParries = v != 0.0f; },
 	},
 	{
+		"Hands", "Combat reach (units)",
+		"How close fighters come to strike: 85 brings their blades within your reach; 0 is the game's own 128",
+		ItemKind::Number, 0.0f, 200.0f, 5.0f, 0, false,
+		"Hands", "CombatReach",
+		+[](const Config& c) { return c.hands.combatReach; },
+		+[](Config& c, float v) { c.hands.combatReach = v; },
+	},
+	{
 		"Hands", "Open by reaching",
 		"An open, empty hand at a chest, a body or - sneaking - a pocket opens it; the hand away closes it",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,

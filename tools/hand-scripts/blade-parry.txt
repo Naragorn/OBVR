@@ -7,7 +7,9 @@
 # bandit's swings, from wherever they come, cross it now and then. Every
 # blow at the player is logged with where the bandit's blade stood (the
 # timing the parry depends on); a meeting during their attack is a parry,
-# and the blow that follows is blocked whole.
+# and the blow that follows is blocked whole. With [Hands] CombatReach 85
+# (game/CombatReach.h) the bandit strikes from about 1.3 m; at the game's
+# own 128 (the first run) it struck from 2 m and no parry could reach it.
 # Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\blade-parry.txt
 
 ini Hands Enabled=1
@@ -15,6 +17,7 @@ ini Hands Holsters=1
 ini Hands WeaponParries=1
 ini Hands ParryStopsAll=1
 ini Hands WeaponStopsAtBodies=1
+ini Hands CombatReach=85
 console-at ready player.placeatme 00069AD1 1
 console-at ready player.additem 00000C0C 1
 console-at ready player.equipitem 00000C0C
@@ -24,6 +27,9 @@ expect HandScript: finished
 expect Hands: ready weapon done
 expect Parry: the hit handler's block check (005FF7DF) and blocked share (005FF8C7) rerouted
 expect Parry: a blow at the player
+expect Combat reach: fCombatDistance 85.0 - fighters close in to strike
+expect Parry: the blades met
+expect blocked 1.00 of it
 reject HandScript: WARNING
 
 wait 12

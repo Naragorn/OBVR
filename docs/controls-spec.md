@@ -2074,6 +2074,14 @@ fast swing passes, and the measuring; bodies, parries and shields follow.
   PASS 2026-10-09 as a measurement: the hooks ran on 24 blows, no parry -
   at every blow the bandit's blade tip was 131-191 units from the eyes, its
   torso 140-165 away (fCombatDistance 128); see weapon-collision-spec 11.
+  With CombatReach 85 (below): PASS with parries, "blocked 1.00 of it".
+- **Combat reach** (`[Hands] CombatReach=85`, settings "Combat reach
+  (units)", 0 the game's own; game/CombatReach.h): the game setting
+  fCombatDistance (0x00B36F20, checked by its name) held while Full VR runs
+  and given back after - fighters strike from about 1.3 m instead of 2 m,
+  their blades within the player's reach (measured: the bandit's tip 24-55
+  units from the eyes at each blow, from 131-191). Not kept in the
+  savegame, not an INI setting. The player's strike reaches 85 units too.
 - **Found in the tester's run of 2026-10-09:** a power swing struck an NPC
   by the strike by motion (the blade 52 units from its bound's centre,
   within the 71 the sphere test allows) with no "a swing went into
