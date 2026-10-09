@@ -706,3 +706,14 @@ Options, cheapest first:
 4. **Texture packs**: the height lives in the diffuse alpha, DXT-compressed
    to a few bits; packs with proper heights (QTP3's stone, parallax packs)
    gain the most from 3 and are what the tester would test it with.
+
+**Status 2026-10-09:** option 1 is switched on in the tester's live `dxvk.conf`
+(`d3d9.samplerAnisotropy = 16`, the LOD bias left commented out for a second
+trial), nothing in the repository changed for it. The installed DXVK is
+v3.1.1-gplasync and its own template documents the key; by its
+`D3D9DeviceEx::BindSampler` the override reaches only samplers that filter
+linearly on a mipmapped texture, so point sampling and the single-mip render
+targets of the post passes keep their filtering (deepwiki, doitsujin/dxvk).
+Headset test open. If it holds, the line joins the README's step 2, the Nexus
+description and docs/nexusmods-page.md as a second line of the file; if it
+breaks shadows, water or the HDR passes, it goes and this note says so.
