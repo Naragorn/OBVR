@@ -335,22 +335,35 @@ else sets the lag.
 - **Two ways to follow, by `[Hands] WeaponSwingThrough`** (on by default;
   the tester the same day: "ja machen wir das nachschwingen auch aber
   hinter einem feature toggle (default on)"):
-  - *On, the swing-through*: the weapon has momentum. A spring and a
-    damper act on its motion RELATIVE to the hand, as B&S's joint does: a
-    hand that starts leaves the weapon behind (by a / omega^2 under the
-    acceleration a), a hand at a steady speed has it back on the hand (no
-    lag at a steady speed, unlike the plain lag), a hand that stops is
-    overrun by it - by 0.6 x speed / omega at the peak, e.g. 7 cm after a
-    1 m/s swing of the heaviest weapon at 100 % - and it swings back, a
-    quarter of the way (damping ratio 0.4: the overshoot is e^(-zeta pi /
-    sqrt(1 - zeta^2)) = 25 %). omega = 1 / tc, so the heaviest at 100 %
-    swings at 8.3 rad/s (a 0.8 s period) and at 40 % at 21 (0.3 s). Each
-    frame is the damped oscillator's closed form (Ryan Juckett, "Damped
-    Springs", 2012, the four coefficients): exact for a hand that moves
-    evenly within the frame, stable however long the frame; the hand's
-    change of speed between frames is the push. `exp` was added to
-    core/MathFns.h for it - msvcrt exports it (dumpbin on
-    SysWOW64\msvcrt.dll, ordinal 1213, beside sin/cos/sqrt/atan/tan).
+  - *On, the swing-through*: the plain lag's spring and drag, and the
+    weapon's mass besides (`x'' = omega^2 (hand - x) - 2 zeta omega x'`,
+    the drag against the room). A moving hand is trailed exactly as far as
+    the plain lag trails it, speed x tc - the weight; a hand that starts
+    leaves the weapon up to half as far again behind for a moment (its
+    inertia); a hand that stops is overrun by it, by about half the trail,
+    and it swings back. Damping ratio 0.4 (a release from rest overshoots
+    by e^(-zeta pi / sqrt(1 - zeta^2)) = 25 %), omega = 2 zeta / tc so the
+    drag over the spring is the plain lag's tc: the heaviest at 100 %
+    swings at 6.7 rad/s (a 1.0 s period), at 40 % at 17. Each frame is
+    the damped oscillator's closed form (Ryan Juckett, "Damped Springs",
+    2012, the four coefficients) about the trail's rest point: exact for a
+    hand that moves evenly within the frame (the test checks it against a
+    Runge-Kutta integration of the equation), stable however long the
+    frame. `exp` was added to core/MathFns.h for it - msvcrt exports it
+    (dumpbin on SysWOW64\msvcrt.dll, ordinal 1213, beside
+    sin/cos/sqrt/atan/tan). Switched on in the middle of a draw it takes
+    over without a push: the plain lag keeps the drawn pose's motion.
+  - *The first swing-through, replaced the same day*: a spring and a damper
+    on the weapon's motion RELATIVE to the hand, as B&S's joint does, with
+    omega = 1 / tc. The headset run (2026-10-09): "Weapon weight war da
+    aber erst nachdem ich nachschwingen ausschaltete. mit dem an war
+    einfach ohne weight." Why: relative damping lags by acceleration x
+    tc^2 and not at all at a steady speed. Run on swings shaped like the
+    log's (0.25-0.8 m at 3.2-4.5 m/s, an Iron Warhammer 30 at 40 %), it
+    trailed by about half the plain lag at the swing's fastest moment, and
+    with both hands on the handle (tc 13 ms, two of the four logged swings)
+    by under 1.2 cm and 1.2 degrees - on the hand. The drag against the
+    room is what the plain lag's weight is; the mass only adds to it.
   - *Off, the plain lag*: first order, `drawn += (wanted - drawn) * dt /
     (tc + dt)`. It trails a moving hand by speed x tc, carries on to where
     the hand stopped and never past it.
@@ -388,13 +401,17 @@ else sets the lag.
   the closed form says, the plain lag's step: taken up, a frame behind by
   the share, caught up and never past, no time, both caps, both hands,
   let go and taken up again; the swing-through: taken up without
-  momentum, a release from behind that passes the hand by the damping's
-  quarter and settles, a hand at a steady speed caught up with, a stop
-  overrun by the analytic peak, a jump, the cap taking the momentum, no
-  time, let go, the rotation's overshoot and cap, 40 % against 100 %) and
+  momentum, every frame against a Runge-Kutta integration of the equation
+  (a sweeping hand with a jump in it), a release from behind that passes
+  the hand by the damping's quarter and settles, a hand at a steady speed
+  trailed exactly as the plain lag trails it and further as it starts, a
+  stop overrun by the analytic peak, a jump, the cap taking the momentum
+  and a hand too fast for it ridden at the cap, no time, let go, the
+  switch from the plain lag mid-draw without a push, the rotation's
+  overshoot, steady trail and cap, 40 % against 100 %) and
   `TestWeaponWeightInMode` in `hand_mode_test` (through the mode: the
   controller's pose untouched, the drawn pose behind in units and
   heading, sheathed, a dagger, adjusting, both hands, 1 %, third person,
-  and the swing-through overrunning a jump). 123 tests pass.
+  and the swing-through overrunning a jump). All unit tests pass.
 - **Open**: the feel in the headset (the time constant and the caps are
   code constants to retune from there); item 6.

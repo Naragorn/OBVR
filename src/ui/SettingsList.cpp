@@ -1101,7 +1101,7 @@ const SettingDefinition kSettings[] = {
 	},
 	{
 		"Hands", "Weapon swing-through",
-		"The weapon's momentum carries it past a hand that stops, and it swings back; off, it only trails",
+		"The weapon trails as with this off, and its momentum carries it past a hand that stops; off, it only trails",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "WeaponSwingThrough",
 		+[](const Config& c) { return c.hands.weaponSwingThrough ? 1.0f : 0.0f; },

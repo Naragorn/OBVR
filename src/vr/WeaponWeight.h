@@ -18,19 +18,28 @@ namespace obvr::vr {
 //
 // Two ways to follow, by [Hands] WeaponSwingThrough:
 //
-//   * The swing-through (on by default): the weapon has momentum. It is
-//     joined to the hand by a spring and a damper that act on its motion
-//     RELATIVE to the hand, as Blade & Sorcery's joint does: a hand that
-//     starts leaves the weapon behind, a hand at a steady speed has it on
-//     the hand again, a hand that stops is overrun by it - the weapon
-//     carries on past the hand and swings back, a quarter of the way (the
-//     damping ratio 0.4). Each frame is the damped oscillator's closed
-//     form (Ryan Juckett, "Damped Springs", 2012): exact for a hand that
-//     moves evenly within the frame, stable however long the frame; the
-//     hand's change of speed between frames is the push the weapon feels.
-//   * The plain lag (off): first order, drawn += (wanted - drawn) * dt /
+//   * The plain lag: first order, drawn += (wanted - drawn) * dt /
 //     (tc + dt). It trails a moving hand by speed * tc and never
-//     overshoots.
+//     overshoots. As a body: a spring k to the hand and a drag c against
+//     the room's air, tc = c / k, and no mass.
+//   * The swing-through (on by default): the same spring and drag, and
+//     the weapon's mass besides. A moving hand is trailed exactly as far
+//     as the plain lag trails it - the weight - a hand that starts leaves
+//     the weapon further behind for a moment (its inertia), and a hand
+//     that stops is overrun: the weapon carries on past the hand and
+//     swings back. The damping ratio 0.4 makes the natural frequency
+//     2 * 0.4 / tc; a release from rest overshoots by a quarter, a stop
+//     from a steady swing by about half the trail. Each frame is the
+//     damped oscillator's closed form (Ryan Juckett, "Damped Springs",
+//     2012) about the trail's rest point: exact for a hand that moves
+//     evenly within the frame, stable however long the frame.
+//
+//     Headset, 2026-10-09: the first swing-through damped the weapon's
+//     motion RELATIVE to the hand (Blade & Sorcery's joint). That lags by
+//     acceleration * tc^2 and not at all at a steady speed, so at 40 % and
+//     with both hands on the handle (tc 13-32 ms) the weapon sat on the
+//     hand - "with it on there was simply no weight". The drag against the
+//     room is what the plain lag's weight is; the mass only adds to it.
 //
 // Either way the pose is lagged in the tracking space - the room - not
 // relative to the head: a head turned with the hand held still must not
@@ -52,9 +61,17 @@ constexpr float kWeaponLagLightWeight = 3.0f;
 constexpr float kWeaponLagHeavyWeight = 43.0f;
 // The swing-through's damping ratio: under 1 the weapon overshoots, and by
 // this much of the way - e^(-zeta pi / sqrt(1 - zeta^2)), 25 % at 0.4. Its
-// spring's natural frequency is 1 / tc, so the heaviest weapon at 100 %
-// swings at 8.3 rad/s (a 0.8 s period) and at 40 % at 21.
+// spring's natural frequency is 2 zeta / tc, so that the drag (2 zeta omega
+// per unit of mass) over the spring (omega^2) is the plain lag's tc: the
+// heaviest weapon at 100 % swings at 6.7 rad/s (a 1.0 s period), at 40 %
+// at 17.
 constexpr float kWeaponSwingThroughDamping = 0.4f;
+
+// The swing-through's natural frequency at this time constant (see above);
+// 0 for none.
+inline float SwingThroughOmega(float timeConstantSeconds) {
+	return timeConstantSeconds > 0.0f ? 2.0f * kWeaponSwingThroughDamping / timeConstantSeconds : 0.0f;
+}
 
 // 0 for a dagger and anything lighter, 1 for a warhammer and anything
 // heavier. A weight that is not a number is no weight.
@@ -256,39 +273,50 @@ inline WeaponLagVerdict StepWeaponLag(WeaponLagState& s, bool weaponInHand, cons
 		s.lastWantedPosition = wantedPosition;
 	}
 	const float dt = dtSeconds > 0.0f ? dtSeconds : 0.0f;
-	// The hand's motion this frame, which the swing-through measures the
-	// weapon's momentum against; nothing with the plain lag.
+	// The hand's motion this frame: the swing-through's trail and push, and
+	// the cap's measure of what is outward.
 	NiPoint3 handVelocity{0.0f, 0.0f, 0.0f};
 	NiPoint3 handSpin{0.0f, 0.0f, 0.0f};
 	if (dt > 0.0f) {
+		const float perSecond = 1.0f / dt;
+		handVelocity = (wantedPosition - s.lastWantedPosition) * perSecond;
+		handSpin = RotationVectorOf(wantedOrientation * s.lastWantedOrientation.Conjugate()) * perSecond;
 		if (t.swingThrough) {
 			const SpringStep k =
-				UnderDampedStep(1.0f / t.timeConstantSeconds, kWeaponSwingThroughDamping, dt);
-			const float perSecond = 1.0f / dt;
-			// The drawn pose behind the hand as it WAS, and its velocity
-			// relative to the hand's this frame, through the oscillator; then
-			// put behind the hand as it is. The hand's frame moved evenly within
-			// the frame, so nothing acts on the weapon in it but the joint; a
-			// change of the hand's speed between frames is the push.
-			handVelocity = (wantedPosition - s.lastWantedPosition) * perSecond;
-			const NiPoint3 x0 = s.position - s.lastWantedPosition;
+				UnderDampedStep(SwingThroughOmega(t.timeConstantSeconds), kWeaponSwingThroughDamping, dt);
+			// x'' = omega^2 (hand - x) - 2 zeta omega x': relative to a hand that
+			// moves evenly within the frame, the weapon rests where the drag
+			// balances the spring - the trail, speed * tc behind, the plain
+			// lag's - and swings about that point as a free damped oscillator.
+			// So: the drawn pose's offset from the hand as it WAS less the
+			// trail, and its velocity relative to the hand's, through the
+			// oscillator; then the trail added back behind the hand as it is.
+			const NiPoint3 trail = handVelocity * -t.timeConstantSeconds;
+			const NiPoint3 x0 = s.position - s.lastWantedPosition - trail;
 			const NiPoint3 v0 = s.velocity - handVelocity;
-			s.position = wantedPosition + x0 * k.pp + v0 * k.pv;
+			s.position = wantedPosition + trail + x0 * k.pp + v0 * k.pv;
 			s.velocity = handVelocity + x0 * k.vp + v0 * k.vv;
-			s.lastWantedPosition = wantedPosition;
 			// The orientation the same way, with rotation vectors in the room's
 			// frame: the turn from the hand's orientation to the drawn one.
-			handSpin = RotationVectorOf(wantedOrientation * s.lastWantedOrientation.Conjugate()) * perSecond;
-			const NiPoint3 r0 = RotationVectorOf(s.orientation * s.lastWantedOrientation.Conjugate());
+			const NiPoint3 turnTrail = handSpin * -t.timeConstantSeconds;
+			const NiPoint3 r0 = RotationVectorOf(s.orientation * s.lastWantedOrientation.Conjugate()) - turnTrail;
 			const NiPoint3 w0 = s.spin - handSpin;
-			s.orientation = (TurnOfRotationVector(r0 * k.pp + w0 * k.pv) * wantedOrientation).Normalized();
+			s.orientation =
+				(TurnOfRotationVector(turnTrail + r0 * k.pp + w0 * k.pv) * wantedOrientation).Normalized();
 			s.spin = handSpin + r0 * k.vp + w0 * k.vv;
-			s.lastWantedOrientation = wantedOrientation;
 		} else {
 			const float share = dt / (t.timeConstantSeconds + dt);
+			const NiPoint3 wasAt = s.position;
+			const Quaternion wasTurned = s.orientation;
 			s.position = s.position + (wantedPosition - s.position) * share;
 			s.orientation = SlerpTowards(s.orientation, wantedOrientation, share);
+			// The drawn pose's own motion, so the swing-through switched on in
+			// the middle of a draw takes over without a push.
+			s.velocity = (s.position - wasAt) * perSecond;
+			s.spin = RotationVectorOf(s.orientation * wasTurned.Conjugate()) * perSecond;
 		}
+		s.lastWantedPosition = wantedPosition;
+		s.lastWantedOrientation = wantedOrientation;
 	}
 
 	// The cap: never further from the hand than this, in either measure. The

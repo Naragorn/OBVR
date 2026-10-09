@@ -2,9 +2,10 @@
 // share, the slider's, the tuning per weight and grip, the quaternion
 // helpers, the plain lag's step - taken up where the hand is, a frame
 // behind, the caps, no time, let go - and the swing-through: the exact
-// oscillator step, the release from behind that overshoots by a quarter, the
-// steady hand it catches up with, the stop it overruns, the cap that takes
-// its momentum.
+// oscillator step against an integrated oracle, the release from behind
+// that overshoots by a quarter, the steady hand it trails as the plain lag
+// does, the stop it overruns, the cap that takes its momentum, the switch
+// in the middle of a draw.
 
 #include <cmath>
 #include <cstdio>
@@ -255,14 +256,49 @@ void TestRotation() {
 	Check(Near(Degrees(v.gapRadians), 14.0f, 0.05f), "the heading's cap is the slider's");
 }
 
+// The swing-through's own oracle: x'' = omega^2 (hand - x) - 2 zeta omega x'
+// integrated with many small Runge-Kutta steps over a frame in which the
+// hand moves evenly from `from` to `to` - one axis, which is all the step
+// does per axis.
+void IntegrateFrame(float& x, float& v, float from, float to, float omega, float zeta, float dt) {
+	const int steps = 400;
+	const double h = static_cast<double>(dt) / steps;
+	double px = x;
+	double pv = v;
+	const double speed = (static_cast<double>(to) - from) / dt;
+	auto accel = [&](double time, double pos, double vel) {
+		const double hand = from + speed * time;
+		return static_cast<double>(omega) * omega * (hand - pos) - 2.0 * zeta * omega * vel;
+	};
+	for (int i = 0; i < steps; ++i) {
+		const double time = i * h;
+		const double k1x = pv;
+		const double k1v = accel(time, px, pv);
+		const double k2x = pv + 0.5 * h * k1v;
+		const double k2v = accel(time + 0.5 * h, px + 0.5 * h * k1x, pv + 0.5 * h * k1v);
+		const double k3x = pv + 0.5 * h * k2v;
+		const double k3v = accel(time + 0.5 * h, px + 0.5 * h * k2x, pv + 0.5 * h * k2v);
+		const double k4x = pv + h * k3v;
+		const double k4v = accel(time + h, px + h * k3x, pv + h * k3v);
+		px += h / 6.0 * (k1x + 2.0 * k2x + 2.0 * k3x + k4x);
+		pv += h / 6.0 * (k1v + 2.0 * k2v + 2.0 * k3v + k4v);
+	}
+	x = static_cast<float>(px);
+	v = static_cast<float>(pv);
+}
+
 void TestSwingThrough() {
 	std::printf("The swing-through\n");
 	const Quaternion identity = Quaternion::Identity();
 	const NiPoint3 origin{0.0f, 0.0f, 0.0f};
 	const WeaponLagTuning hammer = WeaponLagFor(43.0f, 100.0f, false, true);
-	const float omega = 1.0f / hammer.timeConstantSeconds;
+	const WeaponLagTuning plainHammer = WeaponLagFor(43.0f, 100.0f, false, false);
+	const float tc = hammer.timeConstantSeconds;
 	const float zeta = kWeaponSwingThroughDamping;
+	const float omega = SwingThroughOmega(tc);
 	const float omegaD = omega * std::sqrt(1.0f - zeta * zeta);
+	Check(Near(omega, 0.8f / 0.12f, 1e-4f), "the natural frequency is 2 zeta / tc");
+	Check(SwingThroughOmega(0.0f) == 0.0f && SwingThroughOmega(-1.0f) == 0.0f, "no time constant, no frequency");
 
 	// Taken up where the hand is, without momentum.
 	WeaponLagState state;
@@ -270,6 +306,30 @@ void TestSwingThrough() {
 	Check(v.lagging && Near(v.position.x, 0.1f) && Near(v.gapMetres, 0.0f), "taken up where the hand is");
 	v = StepWeaponLag(state, true, hammer, identity, NiPoint3{0.1f, 0.0f, 0.0f}, kFrame);
 	Check(Near(v.position.x, 0.1f) && Near(v.gapMetres, 0.0f), "and stays there while the hand is still");
+
+	// The step against the equation it solves: a hand that sweeps back and
+	// forth, faster and slower, with one jump in it - frame by frame the
+	// same as the integrated motion.
+	state = WeaponLagState{};
+	StepWeaponLag(state, true, hammer, identity, origin, kFrame);
+	float oracleX = 0.0f;
+	float oracleV = 0.0f;
+	float handWas = 0.0f;
+	float worst = 0.0f;
+	for (int frame = 1; frame <= 120; ++frame) {
+		const float time = static_cast<float>(frame) * kFrame;
+		float hand = 0.12f * std::sin(9.0f * time) + 0.05f * std::sin(23.0f * time);
+		if (frame >= 60) {
+			hand += 0.04f;  // a jump of 4 cm in one frame
+		}
+		v = StepWeaponLag(state, true, hammer, identity, NiPoint3{hand, 0.0f, 0.0f}, kFrame);
+		IntegrateFrame(oracleX, oracleV, handWas, hand, omega, zeta, kFrame);
+		handWas = hand;
+		const float off = std::fabs(v.position.x - oracleX);
+		worst = off > worst ? off : worst;
+	}
+	Check(worst < 1e-4f, "each frame is the closed form of x'' = omega^2 (hand - x) - 2 zeta omega x'");
+	Check(Near(state.velocity.x, oracleV, 1e-3f), "and so is its velocity");
 
 	// A release from rest, 0.1 m behind a still hand: it swings past the
 	// hand by a quarter of the way (the damping ratio's overshoot) and
@@ -290,38 +350,51 @@ void TestSwingThrough() {
 	Check(Near(furthest, 0.1f + 0.1f * Overshoot(zeta), 0.002f), "by a quarter of the way (zeta 0.4)");
 	Check(Near(v.position.x, 0.1f, 0.001f) && v.gapMetres < 0.001f, "and three seconds later rests on it");
 
-	// A hand at a steady speed: the weapon is left behind as the hand starts
-	// and is back on the hand two seconds on - no lag at a steady speed.
+	// A hand at a steady speed: the weapon trails it exactly as far as the
+	// plain lag does - the weight - after being left further behind as the
+	// hand starts.
 	state = WeaponLagState{};
+	WeaponLagState plain;
 	StepWeaponLag(state, true, hammer, identity, origin, kFrame);
-	float behindAtStart = 0.0f;
+	StepWeaponLag(plain, true, plainHammer, identity, origin, kFrame);
+	float mostBehind = 0.0f;
+	WeaponLagVerdict p;
 	NiPoint3 hand = origin;
-	for (int frame = 1; frame <= 180; ++frame) {
+	for (int frame = 1; frame <= 270; ++frame) {
 		hand.x = static_cast<float>(frame) * kFrame;  // 1 m/s
 		v = StepWeaponLag(state, true, hammer, identity, hand, kFrame);
-		if (frame == 5) {
-			behindAtStart = v.gapMetres;
-		}
+		p = StepWeaponLag(plain, true, plainHammer, identity, hand, kFrame);
+		mostBehind = v.gapMetres > mostBehind ? v.gapMetres : mostBehind;
 	}
-	Check(behindAtStart > 0.02f, "left behind as the hand starts");
-	Check(v.gapMetres < 0.005f, "on the hand again at a steady speed");
-	// The hand stops: the weapon overruns it by its momentum - e^(-zeta
-	// omega t) sin(omega_d t) v / omega_d at its peak - and comes back.
-	const float peakTime = std::atan(std::sqrt(1.0f - zeta * zeta) / zeta) / omegaD;
-	const float overrun = std::exp(-zeta * omega * peakTime) * std::sin(omegaD * peakTime) / omegaD;
+	Check(Near(p.gapMetres, 0.12f, 0.001f), "the plain lag trails 1 m/s by speed * tc, 0.12 m");
+	Check(Near(v.gapMetres, p.gapMetres, 0.001f) && v.position.x < hand.x,
+	      "the swing-through trails it by the same - the weight is kept");
+	Check(mostBehind > v.gapMetres * 1.4f && mostBehind < 0.25f,
+	      "and as the hand starts its inertia leaves it half as far again behind");
+
+	// The hand stops: the weapon overruns it - from tc behind at the hand's
+	// speed, the free oscillator about the hand - and comes back.
+	const float a = -1.0f * tc;
+	const float b = (1.0f + zeta * omega * a) / omegaD;
+	float expected = 0.0f;
+	for (int frame = 1; frame <= 90; ++frame) {
+		const float time = static_cast<float>(frame) * kFrame;
+		const float x = std::exp(-zeta * omega * time) * (a * std::cos(omegaD * time) + b * std::sin(omegaD * time));
+		expected = x > expected ? x : expected;
+	}
 	float past = 0.0f;
 	for (int frame = 0; frame < 90; ++frame) {
 		v = StepWeaponLag(state, true, hammer, identity, hand, kFrame);
 		past = v.position.x - hand.x > past ? v.position.x - hand.x : past;
 	}
-	Check(Near(past, overrun, 0.004f), "a stopped hand is overrun by the weapon's momentum");
+	Check(expected > 0.05f && Near(past, expected, 0.001f), "a stopped hand is overrun, by half the trail");
 	for (int frame = 0; frame < 270; ++frame) {
 		v = StepWeaponLag(state, true, hammer, identity, hand, kFrame);
 	}
 	Check(v.gapMetres < 0.001f, "and it settles");
 
 	// A hand that jumps (a frame of 9 m/s): the weapon is left where it was,
-	// then overruns the hand with the push the jump gave it.
+	// then swings up to the hand and past it, about as a release does.
 	state = WeaponLagState{};
 	StepWeaponLag(state, true, hammer, identity, origin, kFrame);
 	v = StepWeaponLag(state, true, hammer, identity, NiPoint3{0.1f, 0.0f, 0.0f}, kFrame);
@@ -331,7 +404,7 @@ void TestSwingThrough() {
 		v = StepWeaponLag(state, true, hammer, identity, NiPoint3{0.1f, 0.0f, 0.0f}, kFrame);
 		furthest = v.position.x > furthest ? v.position.x : furthest;
 	}
-	Check(furthest > 0.125f && furthest < 0.145f, "then overruns it, further than a release would");
+	Check(furthest > 0.12f && furthest < 0.135f, "then overruns it by about a quarter");
 
 	// The cap takes the momentum outward: a jump of two metres leaves the
 	// weapon the cap behind, and the next frames bring it closer, not
@@ -344,15 +417,48 @@ void TestSwingThrough() {
 		widest = v.gapMetres > widest ? v.gapMetres : widest;
 	}
 	Check(widest <= 0.25f + 1e-5f && v.gapMetres < 0.25f, "and it comes in from the cap, not out");
+	// A hand too fast for the cap: the weapon rides the cap, and is not
+	// pressed out past it frame after frame.
+	state = WeaponLagState{};
+	StepWeaponLag(state, true, hammer, identity, origin, kFrame);
+	hand = origin;
+	for (int frame = 1; frame <= 90; ++frame) {
+		hand.x = static_cast<float>(frame) * kFrame * 4.0f;  // 4 m/s: a trail of 0.48 m
+		v = StepWeaponLag(state, true, hammer, identity, hand, kFrame);
+	}
+	Check(Near(v.gapMetres, 0.25f) && Near(state.velocity.x, 4.0f, 0.01f),
+	      "at 4 m/s it rides the cap at the hand's speed");
 
 	// No time: nothing moves, nothing is pushed.
 	const NiPoint3 before = v.position;
-	v = StepWeaponLag(state, true, hammer, identity, NiPoint3{2.1f, 0.0f, 0.0f}, 0.0f);
+	v = StepWeaponLag(state, true, hammer, identity, hand, 0.0f);
 	Check(Near(v.position.x, before.x), "dt 0 leaves the drawn hand where it was");
 
 	// Let go: the momentum goes with the pose.
 	v = StepWeaponLag(state, false, hammer, identity, NiPoint3{5.0f, 0.0f, 0.0f}, kFrame);
 	Check(!state.held && state.velocity.x == 0.0f, "sheathed: nothing held, no momentum");
+
+	// Switched on in the middle of a draw, at a steady speed: the plain
+	// lag's trail is the swing-through's rest point and its motion is kept,
+	// so the weapon carries on where it was - no push.
+	state = WeaponLagState{};
+	StepWeaponLag(state, true, plainHammer, identity, origin, kFrame);
+	hand = origin;
+	for (int frame = 1; frame <= 270; ++frame) {
+		hand.x = static_cast<float>(frame) * kFrame;
+		v = StepWeaponLag(state, true, plainHammer, identity, hand, kFrame);
+	}
+	const float plainGap = v.gapMetres;
+	float switchedMost = 0.0f;
+	float switchedLeast = 1.0f;
+	for (int frame = 271; frame <= 300; ++frame) {
+		hand.x = static_cast<float>(frame) * kFrame;
+		v = StepWeaponLag(state, true, hammer, identity, hand, kFrame);
+		switchedMost = v.gapMetres > switchedMost ? v.gapMetres : switchedMost;
+		switchedLeast = v.gapMetres < switchedLeast ? v.gapMetres : switchedLeast;
+	}
+	Check(switchedMost - plainGap < 0.002f && plainGap - switchedLeast < 0.002f,
+	      "switched on mid-draw it takes over without a push");
 
 	// The rotation: released 20 degrees behind a still hand, it swings past
 	// by a quarter and settles.
@@ -369,8 +475,22 @@ void TestSwingThrough() {
 	}
 	Check(Near(widestTurn, 20.0f + 20.0f * Overshoot(zeta), 0.3f), "released behind in heading, it swings past by a quarter");
 	Check(Degrees(v.gapRadians) < 0.05f, "and settles on the hand's heading");
+	// A steady turn: trailed in heading as far as the plain lag trails it.
+	state = WeaponLagState{};
+	plain = WeaponLagState{};
+	StepWeaponLag(state, true, hammer, identity, origin, kFrame);
+	StepWeaponLag(plain, true, plainHammer, identity, origin, kFrame);
+	for (int frame = 1; frame <= 270; ++frame) {
+		const Quaternion turned = FromAxisAngle(0.0f, 1.0f, 0.0f, static_cast<float>(frame) * kFrame * 90.0f);
+		v = StepWeaponLag(state, true, hammer, turned, origin, kFrame);
+		p = StepWeaponLag(plain, true, plainHammer, turned, origin, kFrame);
+	}
+	Check(Near(Degrees(p.gapRadians), 10.8f, 0.1f) && Near(Degrees(v.gapRadians), Degrees(p.gapRadians), 0.1f),
+	      "a turn of 90 degrees a second is trailed 10.8 degrees, as the plain lag trails it");
 	// A turn of 120 degrees: the cap in heading, and the spin outward taken.
 	const Quaternion roll120 = FromAxisAngle(0.0f, 0.0f, 1.0f, 120.0f);
+	state = WeaponLagState{};
+	StepWeaponLag(state, true, hammer, identity, origin, kFrame);
 	v = StepWeaponLag(state, true, hammer, roll120, origin, kFrame);
 	Check(Near(Degrees(v.gapRadians), 35.0f, 0.05f), "never more than the cap behind in heading");
 	float widestGap = 0.0f;
@@ -394,7 +514,7 @@ void TestSwingThrough() {
 		v = StepWeaponLag(light, true, forty, identity, hand, kFrame);
 		lightPast = v.position.x - hand.x > lightPast ? v.position.x - hand.x : lightPast;
 	}
-	Check(lightPast > 0.0f && lightPast < past * 0.5f, "at 40 % the overrun is well under half of 100 %'s");
+	Check(lightPast > 0.0f && Near(lightPast, past * 0.4f, 0.002f), "at 40 % the overrun is 0.4 of 100 %'s");
 }
 
 }  // namespace
