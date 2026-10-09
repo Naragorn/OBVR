@@ -53,7 +53,9 @@ turns it on anyway. Please say so if you report a bug from it.
 - [xOBSE](https://github.com/llde/xOBSE/releases/latest) 22.13 or newer.
 - [MenuQue v16b](https://www.nexusmods.com/oblivion/mods/32200), for the
   in-headset menus. Without it you get simpler fallback menus, VR still works.
-- [DXVK](https://github.com/doitsujin/dxvk/releases/latest). Not optional.
+- [DXVK, the gplasync build](https://gitlab.com/Ph42oN/dxvk-gplasync/-/releases). Not
+  optional. That build keeps drawing while new shaders compile, so fewer hitches in
+  the headset. Take the newest entry on that page, the zip.
 - **SteamVR** and a headset it runs. Meta headsets (Quest via Link, Air Link,
   Virtual Desktop or Steam Link, Rift) work like any other SteamVR game.
 - Windows 10 or 11.
@@ -66,7 +68,7 @@ Windows 11. Everything else is exactly what your reports are for.
 1. **xOBSE:** put `obse_1_2_416.dll`, `obse_editor_1_2.dll`,
    `obse_steam_loader.dll`, `obse_loader.exe` and its `Data` folder into your
    Oblivion folder.
-2. **DXVK:** from the archive's `x32` folder, copy only `d3d9.dll` next to
+2. **DXVK:** from the `x32` folder of the gplasync archive, copy only `d3d9.dll` next to
    `Oblivion.exe`. Then make a text file called `dxvk.conf` in the same folder
    with this one line in it:
 
@@ -202,6 +204,7 @@ license text is what counts; this is just the summary.
 - [xOBSE](https://github.com/llde/xOBSE) - the plugin loader.
 - [OpenVR](https://github.com/ValveSoftware/openvr) - the VR runtime.
 - [DXVK](https://github.com/doitsujin/dxvk) - Direct3D 9 on Vulkan.
+- [dxvk-gplasync](https://gitlab.com/Ph42oN/dxvk-gplasync) - DXVK with async shader compilation, the build OBVR is tested with.
 - [NorthernUI](https://github.com/DavidJCobb/NorthernUI) and
   [TESReloaded](https://github.com/llde/TESReloaded) - reverse-engineering references.
 - [openRBRVR](https://github.com/Detegr/openRBRVR) - the closest relative, another

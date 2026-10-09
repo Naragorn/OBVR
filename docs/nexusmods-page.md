@@ -87,7 +87,7 @@ structure, no extra parent folder.
 | --- | --- | --- |
 | Oblivion Script Extender (xOBSE) | https://www.nexusmods.com/oblivion/mods/37952 | 22.13 or newer; pick it from the Nexus list so it links |
 | MenuQue | https://www.nexusmods.com/oblivion/mods/32200 | v16b, for the in-headset menus; without it the fallback menus |
-| DXVK | https://github.com/doitsujin/dxvk/releases/latest | 32-bit d3d9.dll next to Oblivion.exe, from the x32 folder, plus the dxvk.conf line |
+| DXVK | https://gitlab.com/Ph42oN/dxvk-gplasync/-/releases | the gplasync build, newest entry, its zip; 32-bit d3d9.dll next to Oblivion.exe, from the x32 folder, plus the dxvk.conf line |
 | SteamVR | https://store.steampowered.com/app/250820/SteamVR/ | installed and running; its client library ships with OBVR |
 
 Official DLC requirements: none.

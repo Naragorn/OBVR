@@ -34,7 +34,7 @@ The big one. Swords in your hand, swings that actually hit, block with your shie
 [*]Oblivion [b]1.2.0.416[/b] (32-bit). [b]Steam version tested[/b]; GOG and disc with the last patch should work but are untested.
 [*][url=https://github.com/llde/xOBSE/releases/latest]xOBSE[/url] 22.13 or newer.
 [*][url=https://www.nexusmods.com/oblivion/mods/32200]MenuQue v16b[/url], for the in-headset menus. Without it you get simpler fallback menus, VR still works.
-[*][url=https://github.com/doitsujin/dxvk/releases/latest]DXVK[/url]. Not optional.
+[*][url=https://gitlab.com/Ph42oN/dxvk-gplasync/-/releases]DXVK, the gplasync build[/url]. Not optional. That build keeps drawing while new shaders compile, so fewer hitches in the headset. Take the newest entry on that page, the zip.
 [*][b]SteamVR[/b] and a headset it runs. Meta headsets (Quest via Link, Air Link, Virtual Desktop or Steam Link, Rift) work like any other SteamVR game.
 [*]Windows 10 or 11.
 [/list]
@@ -43,7 +43,7 @@ Tested so far on one setup: Dream Air headset, Valve Index controllers, RTX 4090
 [size=4][b]Installing[/b][/size]
 [list=1]
 [*][b]xOBSE:[/b] put obse_1_2_416.dll, obse_editor_1_2.dll, obse_steam_loader.dll, obse_loader.exe and its Data folder into your Oblivion folder.
-[*][b]DXVK:[/b] from the archive's x32 folder, copy only d3d9.dll next to Oblivion.exe. Then make a text file called dxvk.conf in the same folder with this one line in it:
+[*][b]DXVK:[/b] from the x32 folder of the gplasync archive, copy only d3d9.dll next to Oblivion.exe. Then make a text file called dxvk.conf in the same folder with this one line in it:
 [code]dxvk.enableMemoryDefrag = False[/code]
 [*][b]OBVR:[/b] download the OBVR zip from the Files tab (or from [url=https://github.com/Naragorn/OBVR/releases]GitHub Releases[/url]) and extract it into Oblivion's Data folder.
 [*][b]MenuQue v16b:[/b] merge its Data folder into Oblivion's (or install it as its own mod in MO2).
@@ -113,6 +113,7 @@ In short: use it, change it, share it, build on it. If you pass it on, pass the 
 [*][url=https://github.com/llde/xOBSE]xOBSE[/url] - the plugin loader.
 [*][url=https://github.com/ValveSoftware/openvr]OpenVR[/url] - the VR runtime.
 [*][url=https://github.com/doitsujin/dxvk]DXVK[/url] - Direct3D 9 on Vulkan.
+[*][url=https://gitlab.com/Ph42oN/dxvk-gplasync]dxvk-gplasync[/url] - DXVK with async shader compilation, the build OBVR is tested with.
 [*][url=https://github.com/DavidJCobb/NorthernUI]NorthernUI[/url] and [url=https://github.com/llde/TESReloaded]TESReloaded[/url] - reverse-engineering references.
 [*][url=https://github.com/Detegr/openRBRVR]openRBRVR[/url] - the closest relative, another 32-bit game brought into VR.
 [/list]
