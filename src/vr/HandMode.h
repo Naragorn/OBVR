@@ -18,6 +18,7 @@
 #include "vr/Stow.h"
 #include "vr/Teleport.h"
 #include "vr/WalkDirection.h"
+#include "vr/WeaponWeight.h"
 
 namespace obvr::vr {
 
@@ -286,6 +287,10 @@ struct HandSettings {
 	// crouch.
 	bool crouchSneak = true;
 	float crouchDropMetres = 0.30f;
+	// The weapon's weight as a lag of the drawn hand behind the controller
+	// ([Hands] WeaponWeight, 1-100 %, vr/WeaponWeight.h): 1 is on the
+	// controller, 100 the heaviest feel.
+	float weaponWeightPercent = 40.0f;
 	// Run switched on and off by a click of the left stick, instead of held
 	// while the stick is pressed in.
 	bool runToggle = false;
@@ -351,6 +356,11 @@ struct HandModeFrame {
 	bool haveOneHand = false;
 	bool haveTwoHand = false;
 	bool haveBow = false;
+	// The drawn weapon's weight, the item's own (game::WeaponWeightOf), while
+	// a swung weapon - a blade or a blunt one - is drawn in the hand; 0 with
+	// the fists, a bow, a staff, or nothing drawn. The weapon's lag is set by
+	// it (vr/WeaponWeight.h).
+	float weaponWeight = 0.0f;
 	// The player holds an object (the grab): a fist round it is not a fist.
 	bool holdingObject = false;
 	// The left grip holds a weapon's handle, or is about to (vr/TwoHandLogic.h):
@@ -475,6 +485,17 @@ struct HandModeResult {
 	NiMatrix33 leftHandRotation{};
 	NiPoint3 rightHandOffsetUnits{0.0f, 0.0f, 0.0f};
 	NiPoint3 leftHandOffsetUnits{0.0f, 0.0f, 0.0f};
+	// The weapon hand as it is drawn: behind the controller by the weapon's
+	// weight (vr/WeaponWeight.h), in the same frame as rightHandRotation and
+	// rightHandOffsetUnits, and equal to them while nothing lags. The pin,
+	// the strike and the weapon's body take these; the reach, the ring, the
+	// laser and the grab stay on the controller's.
+	bool weaponLagging = false;
+	NiMatrix33 weaponHandRotation{};
+	NiPoint3 weaponHandOffsetUnits{0.0f, 0.0f, 0.0f};
+	// How far the drawn hand is behind the controller, for the log.
+	float weaponGapMetres = 0.0f;
+	float weaponGapDegrees = 0.0f;
 	// SteamVR's velocity of each controller, relative to the head's frame in
 	// the game's axes: metres and radians a second (for the throw).
 	NiPoint3 rightVelocity{0.0f, 0.0f, 0.0f};
@@ -658,6 +679,8 @@ private:
 	TapHoldState m_quickHold;
 	SneakHoldState m_sneak;
 	CrouchState m_crouch;
+	// The drawn weapon hand behind the controller (vr/WeaponWeight.h).
+	WeaponLagState m_weaponLag;
 	// OBVR's own menu open: the sticks and buttons steer it, nothing else.
 	void SteerSettingsMenu(const HandModeFrame& frame, const HandSettings& settings,
 	                       HandModeResult& r);

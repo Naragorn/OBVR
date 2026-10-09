@@ -1799,7 +1799,37 @@ shader weg."
   runs there and is meant to be seen ("der orange shader muss weg"). The
   switch he asked for is the "Container over the chest" row (Screen),
   `[Look] ContainerInWorld`.
-- **Weapon weight**: a proposal, not built - docs/physical-combat-spec.md
-  section 6: the drawn hand and weapon pulled after the controller by a
-  spring whose time constant grows with the weapon's weight, capped, the
-  strike fed the drawn blade, one slider `[Hands] WeaponWeight` 1-100 %.
+- **Weapon weight**: a proposal, docs/physical-combat-spec.md section 6:
+  the drawn hand and weapon pulled after the controller by a spring whose
+  time constant grows with the weapon's weight, capped, the strike fed the
+  drawn blade, one slider `[Hands] WeaponWeight` 1-100 %. Built the same
+  day, 4.30.
+
+### 4.30 The weapon's weight: the drawn hand trails the controller (built 2026-10-09)
+
+The tester: "und setze jetzt um deinen vorschlag. Mir ist nur wichtig das
+der ingame weight wert der waffe in die gewichtung mit einfliesst".
+
+- The item's own weight, read from the WEAP form (`game::WeaponWeightOf`,
+  `addr::kWeaponWeightOffset` 0x7C), sets the lag and nothing else does:
+  the time constant is `0.12 s * clamp((weight - 3) / 40, 0, 1) *
+  slider`, so an iron dagger (3) sits on the hand and a warhammer (42)
+  trails a fast swing by a hand's breadth; both hands on the handle cut
+  it to 0.4. A cap of 0.25 m and 35 degrees (times the slider) bounds the
+  gap. `vr/WeaponWeight.h`, pure; the design, the decisions and what is
+  open are in physical-combat-spec.md section 6, "Built".
+- The lag is of the controller's pose in the room (tracking space), then
+  put relative to the head: a turned head does not swing the weapon.
+- Who takes the drawn pose: the weapon hand's pin, the two-hand grip,
+  the strike by motion (the hit lands where the weapon is seen), the
+  hands' Havok bodies and the push. The laser, the ring, the reach, the
+  grab and the swing detector keep the controller's. Bows, staffs and
+  the fists do not lag; nor anything while the hands are adjusted.
+- `[Hands] WeaponWeight=40` (1-100 %; settings "Weapon weight (%)"), hot
+  reloaded. 1 % is the controller.
+- The log: "Weapon weight: <name> <weight>, time constant n ms at n %,
+  cap n m / n degrees" once per draw - the first headset run checks the
+  figure against the inventory row - and the largest gap of each of the
+  first six swings with a lag.
+- Tests: `weapon_weight_test` and `TestWeaponWeightInMode` in
+  `hand_mode_test`; 123 pass. Not seen in the headset.

@@ -686,6 +686,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.sneakHold = ReadBool("Hands", "SneakHold", h.sneakHold, path);
 		h.crouchSneak = ReadBool("Hands", "CrouchSneak", h.crouchSneak, path);
 		h.crouchDropMetres = ReadFloat("Hands", "CrouchDropMetres", h.crouchDropMetres, path);
+		h.weaponWeightPercent = ReadFloat("Hands", "WeaponWeight", h.weaponWeightPercent, path);
 		h.runToggle = ReadBool("Hands", "RunToggle", h.runToggle, path);
 		if (!h.laserBeam && !h.laserDot) {
 			// The laser needs something to show; the settings menu refuses this

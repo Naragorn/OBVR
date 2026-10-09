@@ -280,6 +280,18 @@ UInt8* EquippedWeaponForm(SInt32* type) {
 	return weapon;
 }
 
+bool WeaponWeightOf(const UInt8* weapon, float* weight) {
+	if (weapon == nullptr) {
+		return false;
+	}
+	const float raw = *reinterpret_cast<const float*>(weapon + addr::kWeaponWeightOffset);
+	if (!(raw >= 0.0f && raw < 1000.0f)) {
+		return false;
+	}
+	*weight = raw;
+	return true;
+}
+
 // Equipping without the item's up/down sound, as xOBSE's EquipItemSilent
 // does (Commands_Inventory.cpp, OverrideGameSounds_Execute): the `jne` at the
 // start of the sound picker 0x005E96E0 ("char* GetItemUpDownSound(TESForm*

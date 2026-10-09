@@ -1,4 +1,4 @@
-# Physical combat: a Blade & Sorcery feel (2026-09-30, research, nothing built)
+# Physical combat: a Blade & Sorcery feel (2026-09-30, research; section 6 built 2026-10-09)
 
 The tester asked whether OBVR can get "ein Blade&Sorcery Feeling für VR combat":
 
@@ -204,7 +204,7 @@ The tester asked whether the carried weapon could get body collisions. Read here
 - Whether the drawn hand should lag with the weapon (B&S) or only the weapon should turn around the hand. Both are feasible. The hand lagging is truer to B&S; the weapon alone keeps the hand on the controller.
 - Where exactly in the hit handler the damage can be scaled (B).
 
-## 6. Weight as one slider: the proposal of 2026-10-09 (not built)
+## 6. Weight as one slider: the proposal of 2026-10-09 (built 2026-10-09, headset open)
 
 The tester (2026-10-08): "wie würden wir nun den waffen ein schwere gefühl
 geben ähnlich zu blade & sorcery ... vorschlag? und stärke muss per
@@ -303,3 +303,71 @@ A day's work for 1-5 (the spring, the cap, the strike fed the drawn
 blade, the slider, the tests); 6 an hour after. Built on the
 `hand-tracked-mode` line as everything else; off at 1 % by setting, so a
 tester who dislikes it loses nothing.
+
+### Built (2026-10-09): 1-5, as designed, with these decisions
+
+The tester's one condition: "Mir ist nur wichtig das der ingame weight
+wert der waffe in die gewichtung mit einfliesst" - it does, and nothing
+else sets the lag.
+
+- **The weight is the item's own.** `game::WeaponWeightOf` reads the WEAP
+  form's TESWeightForm float at +0x7C (`addr::kWeaponWeightOffset`; xOBSE's
+  GameForms.h: TESValueForm 0x70, TESWeightForm 0x78 = vtable + `float
+  weight`, TESHealthForm 0x80, TESAttackDamageForm 0x88, then the type at
+  0x90 and reach at 0x98 the hit function was seen to read). A figure that
+  cannot be a weight (not a number, negative, 1000 or more) is refused and
+  the weapon does not lag. **Open: the figure against the item's row** -
+  the log says "Weapon weight: Iron Dagger 3.0, ..." at each draw, and the
+  first headset run checks it against the inventory (dagger 3, longsword
+  24, claymore 36, warhammer 42). The camera hook fills
+  `HandModeFrame::weaponWeight` only with a swung weapon drawn (not the
+  fists, which have no form; not a staff; not a bow).
+- **The lag runs in the room, not relative to the head.** The spring
+  (`vr/WeaponWeight.h`, `StepWeaponLag`) follows the controller's pose in
+  tracking space; the drawn pose is then put relative to the head the way
+  the controller's own is. Lagged head-relative, a head turned with the
+  hand held still would have swung the weapon; and walking moves the game's
+  camera, not the room's poses, so the weapon rides along without lag.
+  Position and orientation apart: a straight share of the gap for the
+  position, a slerp by the same share for the orientation (no acos in the
+  cross build: the angle is atan2 of the turn quaternion's sine and
+  cosine).
+- **First order, as designed**: `drawn += (wanted - drawn) * dt / (tc +
+  dt)`. The "swing-through" this gives is the weapon carrying on after
+  the hand stopped, to where the hand is - not past it; there is no
+  overshoot, which is also why there is nothing to oscillate. If the
+  headset wants the overshoot, a second-order step behind the same
+  interface is the change.
+- **The cap**: 0.25 m and 35 degrees at 100 %, both scaled by the slider;
+  beyond it the drawn pose is pulled onto the cap along the line (and the
+  arc) towards the controller. A jump of the raw poses (SteamVR's seated
+  zero reset) is bounded by it and caught up in ~0.1 s.
+- **Who takes the drawn pose** (`HandModeResult::weaponHandRotation` and
+  `weaponHandOffsetUnits`, equal to `rightHand*` while nothing lags): the
+  weapon hand's pin, the two-hand grip (the left hand holds the handle
+  where it is seen), the strike by motion (the hit lands where the weapon
+  is seen, with the lagged tip speed), the hands' Havok bodies and the
+  push segment. **Who keeps the controller's**: the laser, the ring, the
+  reach, the grab, the swing detector (the controller's speed starts a
+  swing; the thresholds per weight of item 6 are not built), the
+  controller models drawn into the eye.
+- **Not while adjusting the hands** (the fit measures the controller), not
+  in third person (no hand pose there), taken up where the hand is at each
+  draw (no jump), let go at the sheathe.
+- **The slider**: `[Hands] WeaponWeight=40` (1-100; the settings row
+  "Weapon weight (%)", step 5), hot reloaded; the time constant is
+  `0.12 s * clamp((weight - 3) / 40, 0, 1) * slider`, times 0.4 with both
+  hands on the handle.
+- **The log**: "Weapon weight: <name> <weight>, time constant n ms at n %,
+  cap n m / n degrees" once per draw, and "Weapon weight: swing n - the
+  weapon trailed the hand by up to n m and n degrees" for the first six
+  swings with a lag.
+- **Tests**: `weapon_weight_test` (the weight's share, the slider's
+  clamps, the tuning per weight and grip, the slerp and the angle, the
+  step: taken up, a frame behind by the share, caught up, no time, both
+  caps, both hands, let go and taken up again) and `TestWeaponWeightInMode`
+  in `hand_mode_test` (through the mode: the controller's pose untouched,
+  the drawn pose behind in units and heading, sheathed, a dagger,
+  adjusting, both hands, 1 %, third person). 123 tests pass.
+- **Open**: the feel in the headset (the time constant and the caps are
+  code constants to retune from there); item 6.

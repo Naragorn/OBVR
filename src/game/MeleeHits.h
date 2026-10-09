@@ -60,6 +60,11 @@ UInt32 EquippedWeaponFormId();
 // WeaponTypeCode (None with no weapon).
 UInt8* EquippedWeaponForm(SInt32* type);
 
+// The weapon form's weight, the item's own as the inventory shows it (its
+// TESWeightForm, addr::kWeaponWeightOffset); false for no form, or a figure
+// that cannot be a weight - not a number, negative, a thousand or more.
+bool WeaponWeightOf(const UInt8* weapon, float* weight);
+
 // The weapon base form equipped on the player, as the game's EquipItem
 // command does it (addr::kActorEquipItem with no extra data, count 1). For
 // the holster gestures' weapon swap. False when the player or the form

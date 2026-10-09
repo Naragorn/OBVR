@@ -1363,3 +1363,17 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME menu_haptics COMMAND menu_haptics_test)
+
+add_executable(weapon_weight_test
+	WeaponWeightTest.cpp
+	../src/vr/Quaternion.cpp
+	../src/core/Rotation.cpp
+)
+
+target_include_directories(weapon_weight_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(weapon_weight_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME weapon_weight COMMAND weapon_weight_test)

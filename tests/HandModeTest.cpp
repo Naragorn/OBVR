@@ -2541,6 +2541,96 @@ void TestLegacyButtons() {
 	      "so a legacy click is a stick click and never both");
 }
 
+// The weapon's weight through the mode (vr/WeaponWeight.h): the drawn hand
+// behind the controller, the controller's own pose untouched, and the cases
+// that leave the two equal.
+void TestWeaponWeightInMode() {
+	std::printf("Weapon weight in the mode\n");
+	HandSettings settings;
+	settings.enabled = true;
+	settings.weaponWeightPercent = 100.0f;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.firstPerson = true;
+	frame.unitsPerMetre = 70.0f;
+	frame.dtSeconds = 1.0f / 90.0f;
+	frame.right.valid = true;
+	frame.meleeHeld = true;
+	frame.weaponWeight = 43.0f;  // the heaviest
+	const float share = frame.dtSeconds / (0.12f + frame.dtSeconds);
+	HandMode mode;
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.rightHandValid && r.weaponLagging, "a drawn warhammer lags");
+	Check(Near(r.weaponHandOffsetUnits.x, r.rightHandOffsetUnits.x) && Near(r.weaponGapMetres, 0.0f),
+	      "taken up where the hand is");
+	frame.right.position.x = 0.1f;
+	r = mode.Update(frame, settings);
+	Check(Near(r.rightHandOffsetUnits.x, 7.0f), "the controller's hand is where the controller is");
+	Check(Near(r.weaponHandOffsetUnits.x, 7.0f * share, 0.01f), "the drawn hand a frame behind, in units");
+	Check(Near(r.weaponGapMetres, 0.1f * (1.0f - share), 0.002f), "the gap in metres");
+	frame.right.orientation = FromAxisAngle(0.0f, 1.0f, 0.0f, 20.0f);
+	r = mode.Update(frame, settings);
+	Check(Near(r.weaponGapDegrees, 20.0f * (1.0f - share), 0.1f), "and a frame behind in heading");
+	Check(!Near(r.weaponHandRotation.data[0][1], r.rightHandRotation.data[0][1], 0.0001f),
+	      "the drawn rotation is not the controller's");
+
+	// Sheathed: on the controller.
+	frame.meleeHeld = false;
+	frame.weaponWeight = 0.0f;
+	r = mode.Update(frame, settings);
+	Check(!r.weaponLagging && Near(r.weaponHandOffsetUnits.x, r.rightHandOffsetUnits.x) &&
+	          Near(r.weaponHandRotation.data[0][1], r.rightHandRotation.data[0][1], 0.0001f),
+	      "sheathed, the drawn hand is the controller's");
+
+	// A dagger: none either.
+	frame.meleeHeld = true;
+	frame.weaponWeight = 3.0f;
+	mode.Update(frame, settings);
+	frame.right.position.x = 0.3f;
+	r = mode.Update(frame, settings);
+	Check(!r.weaponLagging && Near(r.weaponHandOffsetUnits.x, 21.0f), "a dagger sits on the hand");
+
+	// Adjusting the hands: the fit measures the controller.
+	frame.weaponWeight = 43.0f;
+	frame.adjustingHands = true;
+	mode.Update(frame, settings);
+	frame.right.position.x = 0.5f;
+	r = mode.Update(frame, settings);
+	Check(!r.weaponLagging && Near(r.weaponHandOffsetUnits.x, 35.0f), "no lag while the hands are adjusted");
+	frame.adjustingHands = false;
+
+	// Both hands on the handle: closer after the same frame.
+	HandMode one;
+	HandMode two;
+	HandModeFrame moving = frame;
+	moving.right.position.x = 0.0f;
+	one.Update(moving, settings);
+	moving.leftGripOnHandle = true;
+	two.Update(moving, settings);
+	moving.right.position.x = 0.1f;
+	moving.leftGripOnHandle = false;
+	const HandModeResult oneHand = one.Update(moving, settings);
+	moving.leftGripOnHandle = true;
+	const HandModeResult bothHands = two.Update(moving, settings);
+	Check(bothHands.weaponGapMetres < oneHand.weaponGapMetres && bothHands.weaponGapMetres > 0.0f,
+	      "both hands on the handle: stiffer, still behind");
+
+	// At 1 % there is next to nothing: a millimetre of a 10 cm move.
+	settings.weaponWeightPercent = 1.0f;
+	HandMode light;
+	moving.right.position.x = 0.0f;
+	light.Update(moving, settings);
+	moving.right.position.x = 0.1f;
+	r = light.Update(moving, settings);
+	Check(r.weaponGapMetres < 0.012f, "at 1 % the weapon is as good as on the hand");
+
+	// Third person: no hand pose, nothing lags.
+	settings.weaponWeightPercent = 100.0f;
+	frame.firstPerson = false;
+	r = mode.Update(frame, settings);
+	Check(!r.rightHandValid && !r.weaponLagging, "in third person there is no drawn hand to lag");
+}
+
 int main() {
 	TestGestures();
 	TestGrabHand();
@@ -2587,6 +2677,7 @@ int main() {
 	TestBowByHand();
 	TestHolsterInMode();
 	TestFistInMode();
+	TestWeaponWeightInMode();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

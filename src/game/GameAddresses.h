@@ -1372,6 +1372,19 @@ inline constexpr UInt32 kEquippedShieldGetter = 0x0064B2D0;
 inline constexpr UInt32 kEntryDataTypeOffset = 0x08;
 inline constexpr UInt32 kWeaponTypeOffset = 0x90;
 inline constexpr UInt32 kWeaponReachOffset = 0x98;
+// The weapon's weight: xOBSE's GameForms.h lays TESObjectWEAP (0xA0) out as
+// TESBoundObject, then TESFullName 0x024, TESModel 0x030, TESIcon 0x048,
+// TESScriptableForm 0x054, TESEnchantableForm 0x060, TESValueForm 0x070,
+// TESWeightForm 0x078, TESHealthForm 0x080, TESAttackDamageForm 0x088, and
+// the type at 0x090 with the reach at 0x098 - the two the hit function was
+// seen to read (above). TESWeightForm is `class TESWeightForm :
+// BaseFormComponent { float weight; }`, 8 bytes, the float after the
+// component's vtable: 0x078 + 4. Not read in the disassembly; the figure is
+// logged at each draw ("Weapon weight: <name> <weight>") to be checked
+// against the item's row (an iron dagger 3, a longsword 24, a claymore 36,
+// a warhammer 42), and a figure that cannot be a weight is refused
+// (game::WeaponWeightOf).
+inline constexpr UInt32 kWeaponWeightOffset = 0x7C;
 
 // The reach in game units. 0x00547540 is `fld [00B36F20h]; fmul [esp+4]`:
 // the weapon's reach times a setting, and it is what 0x005FEBF0 calls at

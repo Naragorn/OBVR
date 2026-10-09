@@ -2122,6 +2122,29 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		if (weaponForm != nullptr && frame.equipped != vr::EquippedKind::Nothing) {
 			LastFormOf(frame.equipped) = weaponForm;
 		}
+		// The drawn weapon's weight, for its lag (vr/WeaponWeight.h): a swung
+		// weapon's own - not the fists', which have no form, not a staff's,
+		// which is not swung by its weight, not a bow's, which is aimed.
+		// Logged once per draw, with the lag it makes at the slider's setting.
+		static const UInt8* s_weighed = nullptr;
+		float weight = 0.0f;
+		const bool weighed = frame.meleeHeld && weaponForm != nullptr && !vr::IsStaffWeaponType(weaponType) &&
+		                     game::WeaponWeightOf(weaponForm, &weight);
+		if (weighed) {
+			frame.weaponWeight = weight;
+			if (weaponForm != s_weighed) {
+				s_weighed = weaponForm;
+				char name[64] = "";
+				game::ReadFormFullName(reinterpret_cast<UInt32>(weaponForm), name, sizeof(name));
+				const vr::WeaponLagTuning lag = vr::WeaponLagFor(weight, config.hands.weaponWeightPercent, false);
+				OBVR_LOG("Weapon weight: %s %.1f, time constant %.0f ms at %.0f %%, cap %.2f m / %.0f degrees",
+				         name, static_cast<double>(weight), static_cast<double>(lag.timeConstantSeconds * 1000.0f),
+				         static_cast<double>(config.hands.weaponWeightPercent), static_cast<double>(lag.capMetres),
+				         static_cast<double>(lag.capRadians * math::kRadiansToDegrees));
+			}
+		} else {
+			s_weighed = nullptr;
+		}
 	}
 	frame.haveOneHand = g_lastOneHandForm != nullptr;
 	frame.haveTwoHand = g_lastTwoHandForm != nullptr;
@@ -3163,6 +3186,31 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 	}
 
+	// The weapon's lag, measured: the largest gap of each of the first swings
+	// with a lag, since the headset's feel cannot be read from here.
+	{
+		static UInt32 s_gapSerial = 0;
+		static float s_gapMetres = 0.0f;
+		static float s_gapDegrees = 0.0f;
+		static UInt32 s_gapLines = 6;
+		if (g_hand.weaponLagging && g_hand.swingActive) {
+			if (g_hand.swingSerial != s_gapSerial) {
+				s_gapSerial = g_hand.swingSerial;
+				s_gapMetres = 0.0f;
+				s_gapDegrees = 0.0f;
+			}
+			s_gapMetres = g_hand.weaponGapMetres > s_gapMetres ? g_hand.weaponGapMetres : s_gapMetres;
+			s_gapDegrees = g_hand.weaponGapDegrees > s_gapDegrees ? g_hand.weaponGapDegrees : s_gapDegrees;
+		} else if (s_gapSerial != 0) {
+			if (s_gapLines > 0) {
+				--s_gapLines;
+				OBVR_LOG("Weapon weight: swing %u - the weapon trailed the hand by up to %.2f m and %.0f degrees",
+				         s_gapSerial, static_cast<double>(s_gapMetres), static_cast<double>(s_gapDegrees));
+			}
+			s_gapSerial = 0;
+		}
+	}
+
 	// The strike by motion: while the right hand is swinging a drawn melee
 	// weapon, the blade is tested against the bodies near the player and each
 	// one it passes through is handed to the engine's hit function - once per
@@ -3175,8 +3223,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		strike.heavy = g_hand.swingHeavy;
 		strike.attackGroup = g_hand.swingHeavy ? vr::PowerAttackGroup(g_hand.powerDirection) : vr::kAnimGroupAttackLight;
 		// Held with both hands, the blade is where the two hands turned it.
-		strike.handRotation = g_hand.rightHandRotation;
-		strike.handOffsetUnits = g_hand.rightHandOffsetUnits;
+		// The DRAWN hand, behind the controller by the weapon's weight
+		// (vr/WeaponWeight.h): the hit lands where the weapon is seen.
+		strike.handRotation = g_hand.weaponHandRotation;
+		strike.handOffsetUnits = g_hand.weaponHandOffsetUnits;
 		strike.cameraValid = g_cyclopeanCameraWorldValid;
 		strike.cameraRotation = g_cyclopeanCameraWorldTransform.rot;
 		strike.cameraPosition = g_cyclopeanCameraWorldTransform.pos;
@@ -3284,8 +3334,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			const int weapon = static_cast<int>(game::Pusher::WeaponHand);
 			const int other = static_cast<int>(game::Pusher::OtherHand);
 			if (g_hand.rightHandValid) {
-				const NiPoint3 grip = camPos + camRot * g_hand.rightHandOffsetUnits;
-				const NiPoint3 forward = camRot * (g_hand.rightHandRotation * NiPoint3{0.0f, 1.0f, 0.0f});
+				// The drawn hand (vr/WeaponWeight.h): the same as the controller's
+				// unless a weapon's weight holds it back.
+				const NiPoint3 grip = camPos + camRot * g_hand.weaponHandOffsetUnits;
+				const NiPoint3 forward = camRot * (g_hand.weaponHandRotation * NiPoint3{0.0f, 1.0f, 0.0f});
 				const bool blade = game::MeleeInHand(nullptr) &&
 				                   game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
 				float length = game::kPushFallbackBladeUnits;
@@ -3319,8 +3371,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				bodyBlade = push.blade[static_cast<int>(game::Pusher::WeaponHand)];
 				const int slot = static_cast<int>(bodyBlade ? game::HandBodySlot::Weapon : game::HandBodySlot::RightHand);
 				bodies.valid[slot] = true;
-				bodies.rot[slot] = camRot * g_hand.rightHandRotation;
-				bodies.pos[slot] = camPos + camRot * g_hand.rightHandOffsetUnits;
+				bodies.rot[slot] = camRot * g_hand.weaponHandRotation;
+				bodies.pos[slot] = camPos + camRot * g_hand.weaponHandOffsetUnits;
 				if (bodyBlade) {
 					const game::PushSegment& s = push.segment[static_cast<int>(game::Pusher::WeaponHand)];
 					bodies.bladeUnits = math::Sqrt((s.b - s.a).LengthSquared());
@@ -5185,8 +5237,11 @@ TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& camera
 	                             (weapon->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f});
 	const NiMatrix33 calibration =
 		game::HandCalibration(hands.rightHandRoll, hands.rightHandPitch, hands.rightHandYaw);
-	const NiPoint3 blade = cameraRot * (g_hand.rightHandRotation * (calibration * bladeInHand));
-	const NiPoint3 right = cameraPos + cameraRot * g_hand.rightHandOffsetUnits;
+	// The weapon hand as it is drawn, behind the controller by the weapon's
+	// weight (vr/WeaponWeight.h): the left hand holds the handle where it is
+	// seen.
+	const NiPoint3 blade = cameraRot * (g_hand.weaponHandRotation * (calibration * bladeInHand));
+	const NiPoint3 right = cameraPos + cameraRot * g_hand.weaponHandOffsetUnits;
 	const NiPoint3 left = cameraPos + cameraRot * g_hand.leftHandOffsetUnits;
 
 	// Only while the player does nothing (action -1): the tester's run of
@@ -5630,7 +5685,7 @@ void BeforeFirstScenePass() {
 			const TwoHandPins twoHand = adjusting ? TwoHandPins{} : StepTwoHands(hands, cameraRot, cameraPos);
 			const bool rightCommitted = PinAdjustableHand(
 				true, hands, adjusting, g_hand.rightHandValid, g_hand.rightGripDown,
-			                  g_hand.rightHandRotation, g_hand.rightHandOffsetUnits, cameraRot,
+			                  g_hand.weaponHandRotation, g_hand.weaponHandOffsetUnits, cameraRot,
 			                  cameraPos, sharedGrip, perMetre);
 			bool leftCommitted = false;
 			if (twoHand.handleWeight > 0.0f) {

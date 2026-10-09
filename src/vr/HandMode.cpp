@@ -117,6 +117,7 @@ void HandMode::Reset() {
 	m_ready = ReadyWeaponState{};
 	m_sneak = SneakHoldState{};
 	m_crouch = CrouchState{};
+	m_weaponLag = WeaponLagState{};
 	m_runLatched = false;
 }
 
@@ -187,6 +188,31 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 				const NiPoint3 rest{s.restHandRight, s.restHandForward, s.restHandUp};
 				r.armsOffsetUnits = (rightRelative - rest) * (f.unitsPerMetre * s.armOffsetScale);
 			}
+		}
+	}
+
+	// The weapon hand as it is drawn (vr/WeaponWeight.h): behind the
+	// controller by the weapon's weight, lagged in the room, then put relative
+	// to the head the way the controller's own pose is. Only a swung weapon
+	// with a weight lags - the frame carries 0 for the fists, a bow, a staff -
+	// and not while the hands are being adjusted: the fit measures the
+	// controller. Both hands on the handle stiffen it.
+	{
+		const bool weaponInHand = f.right.valid && f.firstPerson && f.meleeHeld && f.weaponWeight > 0.0f &&
+		                          !(s.adjustHands || f.adjustingHands);
+		const WeaponLagTuning tuning = WeaponLagFor(f.weaponWeight, s.weaponWeightPercent, f.leftGripOnHandle);
+		const WeaponLagVerdict drawn =
+			StepWeaponLag(m_weaponLag, weaponInHand, tuning, f.right.orientation, f.right.position, f.dtSeconds);
+		r.weaponLagging = drawn.lagging;
+		r.weaponGapMetres = drawn.gapMetres;
+		r.weaponGapDegrees = drawn.gapRadians * math::kRadiansToDegrees;
+		if (r.rightHandValid && drawn.lagging) {
+			const Quaternion relative = (f.head.Conjugate() * drawn.orientation).Normalized();
+			r.weaponHandRotation = ToMatrix(FromOpenXR(relative));
+			r.weaponHandOffsetUnits = OffsetFromPose(f.head, drawn.position, f.headPosition, 1.0f) * f.unitsPerMetre;
+		} else {
+			r.weaponHandRotation = r.rightHandRotation;
+			r.weaponHandOffsetUnits = r.rightHandOffsetUnits;
 		}
 	}
 
