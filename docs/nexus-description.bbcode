@@ -1,0 +1,118 @@
+[size=5][b]OBVR - TES4 Oblivion (2006) in VR[/b][/size]
+
+Play the original [b]The Elder Scrolls IV: Oblivion[/b] in real VR. Real 3D, head tracking, your menus and HUD in the headset. (Not for the Remastered edition.)
+
+[b]Status: early test build (0.2.x).[/b] Sit down, grab your mouse, keyboard or gamepad and you're in Cyrodiil - that part works and is what this release is for. Playing standing with motion controllers is being built right now and is still switched off.
+
+[b]Join the Discord:[/b] [url=https://discord.com/channels/747967102895390741/1547539304786436228]OBVR on Discord[/url] - questions, bug reports, screenshots, or just to say hi.
+
+[size=4][b]What you get[/b][/size]
+[list]
+[*][b]Real 3D.[/b] Each eye gets its own picture, so the world has depth.
+[*][b]Head tracking.[/b] Look around and lean in, the camera follows your head. You still walk with mouse/keyboard or gamepad.
+[*][b]Aim with your head.[/b] Bows, spells and swords go where you look, in first and third person. Walking stays independent of where you look.
+[*][b]One clean crosshair[/b] that sits at the distance of what you're aiming at.
+[*][b]HUD, menus and dialogue in the headset.[/b] Pause menus float in front of the world with Oblivion's own sepia look. Main menu, loading screens and videos play on a big cinema screen.
+[*][b]A welcome walkthrough and a settings menu[/b] inside the headset (Insert key).
+[*][b]Recenter[/b] your view with the Delete key (Entf on German keyboards).
+[*][b]Comfort options[/b] like smooth turning.
+[*]Works with or without the 4GB patch, and with Mod Organizer 2.
+[/list]
+
+[size=4][b]Coming next: standing with motion controllers[/b][/size]
+The big one. Swords in your hand, swings that actually hit, block with your shield, grab and throw things, hold a two-hander with both hands, shove people, lead NPCs by the hand, your HUD on your hands, and more. A lot of it is already built and being tested. It is [b]not ready yet[/b] and stays off - the welcome walkthrough shows it but won't let you pick it. If you're brave, [i][Hands] Enabled=1[/i] in OBVR.ini turns it on anyway. Please say so if you report a bug from it.
+
+[size=4][b]Known issues[/b][/size]
+[list]
+[*]The recenter key does nothing during the intro videos. It works from the main menu on.
+[*]Typing text (like your character's name) still needs the keyboard.
+[*]Oblivion Reloaded, ORC, E3 and Enhanced Camera don't work together with OBVR. See Compatibility below.
+[/list]
+
+[size=4][b]What you need[/b][/size]
+[list]
+[*]Oblivion [b]1.2.0.416[/b] (32-bit). [b]Steam version tested[/b]; GOG and disc with the last patch should work but are untested.
+[*][url=https://github.com/llde/xOBSE/releases/latest]xOBSE[/url] 22.13 or newer.
+[*][url=https://www.nexusmods.com/oblivion/mods/32200]MenuQue v16b[/url], for the in-headset menus. Without it you get simpler fallback menus, VR still works.
+[*][url=https://github.com/doitsujin/dxvk/releases/latest]DXVK[/url]. Not optional.
+[*][b]SteamVR[/b] and a headset it runs. Meta headsets (Quest via Link, Air Link, Virtual Desktop or Steam Link, Rift) work like any other SteamVR game.
+[*]Windows 10 or 11.
+[/list]
+Tested so far on one setup: Dream Air headset, Valve Index controllers, RTX 4090, Windows 11. Everything else is exactly what your reports are for.
+
+[size=4][b]Installing[/b][/size]
+[list=1]
+[*][b]xOBSE:[/b] put obse_1_2_416.dll, obse_editor_1_2.dll, obse_steam_loader.dll, obse_loader.exe and its Data folder into your Oblivion folder.
+[*][b]DXVK:[/b] from the archive's x32 folder, copy only d3d9.dll next to Oblivion.exe. Then make a text file called dxvk.conf in the same folder with this one line in it:
+[code]dxvk.enableMemoryDefrag = False[/code]
+[*][b]OBVR:[/b] download the OBVR zip from the Files tab (or from [url=https://github.com/Naragorn/OBVR/releases]GitHub Releases[/url]) and extract it into Oblivion's Data folder.
+[*][b]MenuQue v16b:[/b] merge its Data folder into Oblivion's (or install it as its own mod in MO2).
+[*][b]Only for 0.2.1 and older:[/b] copy the [b]32-bit[/b] openvr_api.dll from Steam/steamapps/common/SteamVR/bin/win32/ into Data/OBSE/Plugins/, next to OBVR.dll. Newer versions bring it along.
+[*][b]Turn off the Steam Overlay for Oblivion.[/b] In your Steam Library, right-click [b]Oblivion > Properties > General[/b] and switch the overlay off. This is required.
+[*]Start SteamVR, then start the game with [b]obse_loader.exe[/b] in your Oblivion folder - not with Steam's Play button.
+[/list]
+[b]Tip - start it from the VR library:[/b] in Steam, [b]Games > Add a Non-Steam Game to My Library...[/b], pick obse_loader.exe from your Oblivion folder. Now it shows up in your library and you can start it right from SteamVR's game list, headset on.
+
+[b]Mod Organizer 2:[/b] just install the OBVR zip as a normal mod. OBVR itself doesn't need Root Builder (xOBSE's own files in the game folder do).
+
+[b]Uninstalling:[/b] delete dxvk.conf from your Oblivion folder (and d3d9.dll too, if you don't use DXVK for anything else), then OBVR.dll, OBVR.ini, OBVR-LICENSE.txt, OBVR-crosshair.cache, openvr_api.dll, openvr_api-LICENSE.txt and the OBVR_Input folder from Data/OBSE/Plugins/, plus OBVR_Onboarding.xml and OBVR_Settings.xml from Data/Menus/Generic/ and the Data/Menus/Prefabs/OBVR/ folder. OBVR doesn't touch your saves. Want to rule OBVR out quickly? Set [i][Camera] HookEnabled=0[/i] in OBVR.ini.
+
+[size=4][b]Settings[/b][/size]
+Press Insert in the game for the settings menu. Everything else lives in OBVR.ini (in Data/OBSE/Plugins/), each option explained right above it. Changes apply while the game runs, no restart needed.
+
+A few worth knowing:
+[list]
+[*][i][Render] Stereo[/i] - [i]dual[/i] real 3D (default), [i]aer[/i] lighter fallback, [i]none[/i] flat.
+[*][i][Render] EyeSeparationScale[/i] - depth boost: above 1.0 the world feels deeper and a bit smaller. Stay below ~1.5.
+[*][i][Render] Menus[/i] - [i]world[/i] menus float in front of you, [i]cinema[/i] on a flat screen.
+[*][i][Head] RecenterKey[/i] - the recenter key, Delete (Entf) by default.
+[*][i][Look] *[/i] - turning, aiming and comfort options.
+[*][i][Hands] Enabled[/i] - standing with motion controllers - not ready yet, off.
+[/list]
+
+[size=4][b]Found a bug?[/b][/size]
+Tell us on [url=https://discord.com/channels/747967102895390741/1547539304786436228]Discord[/url], in the Bugs tab here, or open an issue on [url=https://github.com/Naragorn/OBVR/issues]GitHub[/url]. Please include:
+[list]
+[*][b]OBVR.log and OBVR.log.prev[/b] from your Oblivion folder. Without them we can rarely fix anything. (They contain your install path, nothing else personal.)
+[*]What you did and what you saw.
+[*]Your headset, graphics card, and other mods you use - other mods are the most common cause of trouble.
+[*]If the game froze instead of crashing: did the monitor still move? Did SteamVR still track?
+[/list]
+
+[size=4][b]Compatibility[/b][/size]
+[list]
+[*][b]Oblivion Reloaded, Oblivion Reloaded Combined, E3:[/b] don't work with OBVR. They change the same parts of the game OBVR needs. Pick one.
+[*][b]Enhanced Camera:[/b] doesn't work with OBVR. The game runs flat while it's installed; remove OBSE_EnhancedCamera.dll to play in VR.
+[*][b]NorthernUI:[/b] works (tested with 2.0.3).
+[*][b]ENB:[/b] not tested.
+[*]Other mods that don't change graphics or the camera should be fine. Tell us either way!
+[/list]
+
+[size=4][b]For modders and developers[/b][/size]
+OBVR is open source: [url=https://github.com/Naragorn/OBVR]github.com/Naragorn/OBVR[/url]. The repo holds the deep dive - HANDOFF.md on how OBVR works inside and every dead end on the way, docs/ with the specs for every feature including the standing mode, and docs/vr-modding/ as a knowledge base for bringing flat games into VR. Pull requests are welcome.
+
+[size=4][b]Supporting the work[/b][/size]
+OBVR is free and stays free. If it gets you into Cyrodiil and you want to buy a coffee for the evenings it took: [url=https://www.patreon.com/naragorn]patreon.com/naragorn[/url]
+
+Patrons get new builds of this and future VR mods early, with testing notes, and on higher tiers a vote on which game gets the VR treatment next. Every build still lands here and on GitHub - early access is a head start, not a lock.
+
+Crypto tips are welcome too:
+[list]
+[*]BTC: bc1q78akvct56ctrgcz0ahzthm3sjayu96tl8fdhc4
+[*]ETH (Ethereum network): 0x94c3Ec9707a1ac383F40Bb55Bff63d37175AC666
+[*]SOL: 5GYdnxLnKByKuptpHtqkcmCx8LTjaMm5BtkoFN4jvCEU
+[/list]
+
+[size=4][b]License[/b][/size]
+[b]GNU General Public License v3.[/b] Copyright (C) 2026 Naragorn.
+
+In short: use it, change it, share it, build on it. If you pass it on, pass the source on with it under the same license. No closed or paid-for versions. The license text is what counts; this is just the summary.
+
+[size=4][b]Thanks to[/b][/size]
+[list]
+[*][url=https://github.com/llde/xOBSE]xOBSE[/url] - the plugin loader.
+[*][url=https://github.com/ValveSoftware/openvr]OpenVR[/url] - the VR runtime.
+[*][url=https://github.com/doitsujin/dxvk]DXVK[/url] - Direct3D 9 on Vulkan.
+[*][url=https://github.com/DavidJCobb/NorthernUI]NorthernUI[/url] and [url=https://github.com/llde/TESReloaded]TESReloaded[/url] - reverse-engineering references.
+[*][url=https://github.com/Detegr/openRBRVR]openRBRVR[/url] - the closest relative, another 32-bit game brought into VR.
+[/list]
