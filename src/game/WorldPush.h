@@ -162,4 +162,14 @@ struct PushFrame {
 // not sweep from long ago.
 void StepWorldPush(bool enabled, const PushFrame& frame);
 
+// What a pick met, for the blade's contact (game/BladeContactLogic.h): the
+// rigid body its collidable belongs to, that body's motion type (the
+// motion's vtable +0x08) and its layer (the low seven bits of its filter,
+// body+0x30). False when the collidable is no rigid body's.
+bool ReadPickBody(UInt32 collidable, UInt32& body, UInt32& motionType, UInt32& layer);
+
+// Gives a movable body the blade passed at least the blade's speed there
+// (units a second), as a pusher's ray does; answers whether it did.
+bool KickBodyByBlade(UInt32 body, const NiPoint3& unitsPerSecond);
+
 }  // namespace obvr::game

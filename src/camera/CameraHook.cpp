@@ -74,6 +74,7 @@
 #include "game/NearbyItems.h"
 #include "game/PickHold.h"
 #include "game/ReachTargets.h"
+#include "game/BladeContact.h"
 #include "game/Insult.h"
 #include "vr/MenuHaptics.h"
 #include "vr/VrKeyboard.h"
@@ -1977,6 +1978,192 @@ void StepInputRouting(const Config& config) {
 	}
 }
 
+// The drawn weapon stops at walls ([Hands] WeaponStopsAtWalls,
+// game/BladeContactLogic.h, docs/weapon-collision-spec.md): the drawn
+// weapon hand HandMode answers - behind the controller by the weapon's
+// weight - is swept from where it was drawn the frame before and held where
+// the blade meets something fixed. It runs before everything that reads the
+// drawn pose (the strike, the push, the Havok body) and rewrites it, so the
+// bones are pinned where it stopped; a blade that went through strikes
+// nothing (g_bladeThrough) until it is free.
+game::BladeContactState g_bladeContact;
+game::BladeSpanCache g_bladeSpan;
+bool g_bladeThrough = false;
+// The pose written the frame before, relative to the camera: what the bones
+// were pinned to, which the blade's span is read against.
+bool g_bladeOutValid = false;
+NiMatrix33 g_bladeOutRotation = NiMatrix33::Identity();
+NiPoint3 g_bladeOutOffset{0.0f, 0.0f, 0.0f};
+bool g_bladeCameraValid = false;
+NiMatrix33 g_bladeCameraRot = NiMatrix33::Identity();
+NiPoint3 g_bladeCameraPos{0.0f, 0.0f, 0.0f};
+float g_bladeSinceSound = 10.0f;
+UInt32 g_bladeScrapeFrames = 0;
+UInt32 g_bladeLines = 40;
+// The cost, over windows of 600 frames with the step running.
+UInt32 g_bladeCostFrames = 0;
+UInt32 g_bladeCostCasts = 0;
+UInt32 g_bladeCostNotBodies = 0;
+double g_bladeCostSeconds = 0.0;
+UInt32 g_bladeCostLines = 6;
+
+// Oblivion.esm's weapon hit sounds, not on flesh (SOUN WPNHitBladeX,
+// WPNHitBluntX; read 2026-10-09): the knock of a blade or a mace on a wall.
+constexpr UInt32 kSoundFormHitBlade = 0x0000C3C4;
+constexpr UInt32 kSoundFormHitBlunt = 0x0000C3C7;
+
+const char* BladeEventName(game::BladeContactEvent e) {
+	switch (e) {
+	case game::BladeContactEvent::Touched: return "touched";
+	case game::BladeContactEvent::LetGo: return "let go";
+	case game::BladeContactEvent::Rearmed: return "free again";
+	case game::BladeContactEvent::StartedInside: return "taken up inside";
+	default: return "none";
+	}
+}
+
+void StepWeaponContact(const Config& config, bool inPlace, float dt) {
+	SInt32 weaponType = -1;
+	const bool drawn = inPlace && g_hand.rightHandValid && g_cyclopeanCameraWorldValid &&
+	                   game::MeleeInHand(&weaponType) && game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
+	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
+
+	// The blade in the grip's frame, read from the drawn weapon node against
+	// the pose its bones were pinned to: this camera and the pose written
+	// the frame before (the same reading the Havok body makes).
+	game::BodySpan measured;
+	if (drawn && g_bladeOutValid) {
+		const NiAVObject* const node = game::FindFirstPersonNode("Weapon");
+		if (node != nullptr) {
+			const NiMatrix33 r = camRot * g_bladeOutRotation;
+			const NiPoint3 p = camPos + camRot * g_bladeOutOffset;
+			const NiMatrix33& w = node->worldTransform.rot;
+			const NiPoint3 axis{w.data[0][1], w.data[1][1], w.data[2][1]};
+			measured = game::BladeSpanFromNode(game::ToBodyFrame(r, p, node->worldTransform.pos),
+			                                   game::ToBodyFrame(r, NiPoint3{0.0f, 0.0f, 0.0f}, axis),
+			                                   game::ToBodyFrame(r, p, node->worldBound.center), node->worldBound.radius);
+		}
+	}
+	const game::BodySpan& span =
+		game::StepBladeSpanCache(g_bladeSpan, drawn ? game::EquippedWeaponFormId() : 0, measured);
+
+	game::BladeContactFrame f;
+	f.active = drawn;
+	f.wanted.rot = camRot * g_hand.weaponHandRotation;
+	f.wanted.pos = camPos + camRot * g_hand.weaponHandOffsetUnits;
+	f.span = span;
+	f.eye = camPos;
+	f.dtSeconds = dt;
+	f.jumped = g_bladeCameraValid && game::CameraJumped(g_bladeCameraRot, g_bladeCameraPos, camRot, camPos);
+	g_bladeCameraValid = g_cyclopeanCameraWorldValid;
+	g_bladeCameraRot = camRot;
+	g_bladeCameraPos = camPos;
+	const game::BladeContactSettings settings =
+		game::BladeContactSettingsFor(config.hands.weaponStopsAtWalls, config.hands.weaponLetGoMetres,
+		                              config.hands.weaponLetGoDegrees, config.tracker.unitsPerMetre);
+	game::HavokBladeWorld world;
+	static const long long ticksPerSecond = ReadPerformanceFrequency();
+	const long long before = ReadPerformanceCounter();
+	const game::BladeContactVerdict v = game::StepBladeContact(g_bladeContact, settings, f, world);
+	const long long after = ReadPerformanceCounter();
+	if (v.held) {
+		const NiMatrix33 back = vr::Transposed(camRot);
+		g_hand.weaponHandRotation = back * v.pose.rot;
+		g_hand.weaponHandOffsetUnits = back * (v.pose.pos - camPos);
+	}
+	g_bladeOutValid = inPlace && g_hand.rightHandValid && g_cyclopeanCameraWorldValid;
+	g_bladeOutRotation = g_hand.weaponHandRotation;
+	g_bladeOutOffset = g_hand.weaponHandOffsetUnits;
+	g_bladeThrough = v.through;
+	const UInt32 kicked = game::KickBladeKicks(v.kicks);
+
+	// Felt and heard: a pulse on every touch by its speed into the surface,
+	// a soft one now and then while it scrapes along, and the weapon's knock
+	// on a hard one.
+	g_bladeSinceSound += dt;
+	const bool blunt = weaponType == 2 || weaponType == 3;
+	if (v.event == game::BladeContactEvent::Touched) {
+		g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.03f, 180.0f,
+		                                         game::BladeTouchAmplitude(v.contact.speedIn));
+		if (game::BladeKnockSounds(v.contact.speedIn, g_bladeSinceSound)) {
+			g_bladeSinceSound = 0.0f;
+			game::PlaySoundFormAt(blunt ? kSoundFormHitBlunt : kSoundFormHitBlade,
+			                      *reinterpret_cast<const UInt32*>(addr::kPlayerPointer), v.contact.point);
+		}
+		g_bladeScrapeFrames = 0;
+	} else if (v.held && v.contact.hit) {
+		if (++g_bladeScrapeFrames >= 8) {
+			g_bladeScrapeFrames = 0;
+			g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.01f, 120.0f,
+			                                         game::kBladeTouchMinAmplitude);
+		}
+	}
+
+	if (v.event != game::BladeContactEvent::None && g_bladeLines > 0) {
+		--g_bladeLines;
+		if (v.event == game::BladeContactEvent::Touched && v.contact.hit) {
+			OBVR_LOG("Contact: the blade met body %08X (layer %u, motion %u) at %.0f %.0f %.0f - its point %.2f of "
+			         "the way to the tip, %.2f m/s into it; held %.1f units and %.0f degrees from the hand%s",
+			         v.contact.body, world.lastLayer, world.lastMotion, static_cast<double>(v.contact.point.x),
+			         static_cast<double>(v.contact.point.y), static_cast<double>(v.contact.point.z),
+			         static_cast<double>(v.contact.along),
+			         static_cast<double>(v.contact.speedIn / config.tracker.unitsPerMetre),
+			         static_cast<double>(v.gapUnits), static_cast<double>(v.gapRadians * math::kRadiansToDegrees),
+			         game::BladeKnockSounds(v.contact.speedIn, 1.0f) ? " - a knock" : "");
+		} else if (v.event == game::BladeContactEvent::Touched) {
+			OBVR_LOG("Contact: the blade would end across something between its points - held where it was");
+		} else if (v.event == game::BladeContactEvent::LetGo) {
+			OBVR_LOG("Contact: let go - %.1f units and %.0f degrees from where it was held (at most %.1f and %.0f); "
+			         "it passes through and strikes nothing until it is free",
+			         static_cast<double>(v.gapUnits), static_cast<double>(v.gapRadians * math::kRadiansToDegrees),
+			         static_cast<double>(settings.letGoUnits),
+			         static_cast<double>(settings.letGoRadians * math::kRadiansToDegrees));
+		} else {
+			OBVR_LOG("Contact: the blade %s%s", BladeEventName(v.event),
+			         v.event == game::BladeContactEvent::Rearmed ? " - it stops at walls again"
+			                                                     : " something - it passes through until it is free");
+		}
+	}
+	static UInt32 s_kickLines = 12;
+	if (kicked > 0 && s_kickLines > 0) {
+		--s_kickLines;
+		OBVR_LOG("Contact: the blade's sweep kicked %u of %u bodies it passed", kicked, v.kicks.count);
+	}
+	if (f.active && settings.enabled) {
+		++g_bladeCostFrames;
+		g_bladeCostCasts += world.casts;
+		g_bladeCostNotBodies += world.notBodies;
+		g_bladeCostSeconds += ticksPerSecond > 0 ? static_cast<double>(after - before) / static_cast<double>(ticksPerSecond)
+		                                         : 0.0;
+		if (g_bladeCostFrames >= 600) {
+			if (g_bladeCostLines > 0) {
+				--g_bladeCostLines;
+				OBVR_LOG("Contact: %u frames with a blade drawn - %.1f rays a frame, %.3f ms a frame on average; %u "
+				         "rays met no rigid body",
+				         g_bladeCostFrames, static_cast<double>(g_bladeCostCasts) / g_bladeCostFrames,
+				         g_bladeCostSeconds * 1000.0 / g_bladeCostFrames, g_bladeCostNotBodies);
+			}
+			g_bladeCostFrames = 0;
+			g_bladeCostCasts = 0;
+			g_bladeCostNotBodies = 0;
+			g_bladeCostSeconds = 0.0;
+		}
+	}
+	if (test::HandScriptMarkedThisFrame()) {
+		const NiPoint3 wantedTip = span.valid ? game::BladePointAt(f.wanted, span, 1.0f) : f.wanted.pos;
+		const NiPoint3 drawnTip = span.valid ? game::BladePointAt(v.pose, span, 1.0f) : v.pose.pos;
+		OBVR_LOG("Contact: state - active %d (setting %d), the blade %.1f units (span %s), held %d, through %d, gap "
+		         "%.1f units %.0f degrees; the hand's tip %.0f %.0f %.0f, the drawn tip %.0f %.0f %.0f; %u rays",
+		         f.active ? 1 : 0, settings.enabled ? 1 : 0,
+		         span.valid ? static_cast<double>(math::Sqrt((span.b - span.a).LengthSquared())) : 0.0,
+		         span.valid ? "read" : "none", v.held ? 1 : 0, v.through ? 1 : 0, static_cast<double>(v.gapUnits),
+		         static_cast<double>(v.gapRadians * math::kRadiansToDegrees), static_cast<double>(wantedTip.x),
+		         static_cast<double>(wantedTip.y), static_cast<double>(wantedTip.z), static_cast<double>(drawnTip.x),
+		         static_cast<double>(drawnTip.y), static_cast<double>(drawnTip.z), world.casts);
+	}
+}
+
 // Opening by reaching ([Hands] ReachOpens, vr/ReachOpen.h, game/ReachTargets.h):
 // an open, empty hand at a container, a body or - sneaking - a person
 // activates it as the A button would, and the hand away closes the menu the
@@ -2152,6 +2339,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		game::SetMenuCursorHidden(false);
 		game::StepGrabPhysics(false, 0.0f, false, NiPoint3{0.0f, 0.0f, 0.0f}, g_deltaSeconds, false);
 		game::StepHandBodies(game::HandBodyFrame{});  // out of the world
+		g_bladeContact = game::BladeContactState{};
+		g_bladeThrough = false;
+		g_bladeOutValid = false;
 		g_hand = vr::HandModeResult{};
 		g_reachIconShown = false;
 		g_nearItem = game::NearItem{};
@@ -3376,13 +3566,22 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 	}
 
+	// The drawn weapon held where it meets a wall (game/BladeContactLogic.h),
+	// before the strike, the push and the Havok body read the drawn pose.
+	StepWeaponContact(config,
+	                  active && !menuIsUp && frame.inWorld && frame.firstPerson && !frame.adjustingHands &&
+	                      !config.hands.adjustHands,
+	                  dt);
+
 	// The strike by motion: while the right hand is swinging a drawn melee
 	// weapon, the blade is tested against the bodies near the player and each
 	// one it passes through is handed to the engine's hit function - once per
 	// swing, heavy when the swing has been fast enough. Not in a menu, not in
-	// third person (no hand pose there), and only while the hand is tracked.
+	// third person (no hand pose there), and only while the hand is tracked -
+	// and not with a blade that went through a wall until it is back out
+	// (g_bladeThrough: the tester chose "let go" over "stuck", 2026-10-09).
 	if (active && g_hand.strikeByMotion && g_hand.swingActive && g_hand.swingTravelledMetres >= vr::kSwingMinMetres &&
-	    g_hand.rightHandValid && !menuIsUp) {
+	    g_hand.rightHandValid && !menuIsUp && !g_bladeThrough) {
 		game::MotionStrike strike;
 		strike.swingSerial = g_hand.swingSerial;
 		strike.heavy = g_hand.swingHeavy;

@@ -1108,6 +1108,22 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.weaponSwingThrough = v != 0.0f; },
 	},
 	{
+		"Hands", "Weapon stops at walls",
+		"The drawn weapon stops at walls, floors and furniture and slides along them; pushed too far it lets go",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "WeaponStopsAtWalls",
+		+[](const Config& c) { return c.hands.weaponStopsAtWalls ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.weaponStopsAtWalls = v != 0.0f; },
+	},
+	{
+		"Hands", "Weapon lets go at (m)",
+		"How far the hand may go past where a wall holds the weapon before it lets go and passes through",
+		ItemKind::Number, 0.10f, 1.00f, 0.05f, 2, false,
+		"Hands", "WeaponLetGoMetres",
+		+[](const Config& c) { return c.hands.weaponLetGoMetres; },
+		+[](Config& c, float v) { c.hands.weaponLetGoMetres = v; },
+	},
+	{
 		"Hands", "Open by reaching",
 		"An open, empty hand at a chest, a body or - sneaking - a pocket opens it; the hand away closes it",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,

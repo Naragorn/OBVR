@@ -1397,3 +1397,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME reach_open COMMAND reach_open_test)
+
+add_executable(blade_contact_test BladeContactTest.cpp)
+
+target_include_directories(blade_contact_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(blade_contact_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME blade_contact COMMAND blade_contact_test)

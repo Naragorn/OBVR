@@ -63,6 +63,18 @@ The runner exits 1 on FAIL.
   closed on the picture, but every later state line reads "menu 1" (top
   menu unnamed), so nothing that waits for the world runs. Two lines work.
   Not looked into; scenarios keep to two.
+- **Open bug (2026-10-09): `console` lines at the start land in the game.**
+  Typed once the script has started, the keys reached the world, not the
+  console: the picture showed "You cannot wait while in the air" (T, in
+  "additem", is Wait), and the items were never added - `holster.txt` failed
+  on it the same day ("draw given up") - before the blade's contact step,
+  which needs a drawn weapon, could act. `console-at <mark>` lines typed
+  after a `wait 10` and a mark work (`reach-open.txt`, `blade-wall.txt`);
+  typing them takes over 8 s, so
+  a step that needs the console closed waits about 16 s after that mark
+  (the third `blade-wall` run's holster grip came while the console was
+  still up and did nothing). Why the start's typing goes astray is not
+  looked into.
 
 ## The script
 
@@ -154,6 +166,7 @@ Rules worth knowing:
 | `tools/hand-scripts/hand-bodies.txt` | the hands and a drawn sword as keyframed Havok bodies: made, in the player's world, driven, out in a menu, a dropped sword pushed by a hand body alone (PushWorld off), the bodies following into the exterior | PASS 2026-09-28: the sword from 252,-1585 to -162,-1581 |
 | `tools/hand-scripts/hand-measure.txt` | the hand and weapon bodies against what is drawn: finger bones and the drawn weapon node, `Measure:` lines; the push-people layer switching with a fist | PASS 2026-09-29: the finger joints 4.4-7.5 units behind the grip, the capsule to 11.5 ahead; the drawn blade 11 degrees off the capsule, its far end 14 units aside; "no longer pushes people now (layer 23)" with the fist |
 | `tools/hand-scripts/hand-shapes.txt` | small objects placed beside the player: the mesh's world box against the Havok shape's (getAabb) | PASS 2026-09-29: a cup, Havok 1.2-2.7 units beyond the mesh per side (a goblet 1.1-3.0, a tankard 1.7-5.0, the longsword 0.0-0.8, from copies of it with other items) |
+| `tools/hand-scripts/blade-wall.txt` | WeaponStopsAtWalls: a longsword drawn by the holster, pointed down and lowered onto the floor, then far below it, then raised: held, let go, free again (`Contact:` lines) | PASS 2026-10-09: the floor met at -256 (layer 1, motion 7), the tip held at -254 while the hand went to -272, let go at 24.2 units, free again; 2.0 rays and 0.004 ms a frame |
 | `tools/hand-scripts/stow-owned.txt` | the same sword owned by Baurus first: taken as stolen | PASS 2026-09-27: "taken (owner 00023F2A ...)", the red hand on it in the inventory |
 | `tools/hand-scripts/take-only-by-hand.txt` | TakeOnlyByHand=1: A at the sword is kept from the game, the sword stays; stowing still takes it | PASS 2026-09-27. FAILS since the save change of 2026-09-27 18:44, like `stow`: checked 2026-09-29 against a build of 423b77a, it fails there the same way - new hand positions needed |
 | `tools/hand-scripts/activate-takes.txt` | the option off: the same A takes the sword | PASS 2026-09-27 |

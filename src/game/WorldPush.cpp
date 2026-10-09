@@ -90,7 +90,35 @@ bool Push(UInt32 body, const NiPoint3& pusherUnitsPerSecond, Pusher who, bool bl
 	return true;
 }
 
+// The motion type of a rigid body, through its motion's vtable.
+bool MotionTypeOf(UInt32 body, UInt32& type) {
+	const UInt32 motion = Read(body + kBodyMotionOffset);
+	if (!LooksLikeObject(motion) || !LooksLikeObject(Read(motion))) {
+		return false;
+	}
+	const UInt32 typeSlot = Read(Read(motion) + kMotionTypeSlot);
+	if (!LooksLikeObject(typeSlot)) {
+		return false;
+	}
+	using TypeFn = UInt32(__thiscall*)(void* motion);
+	type = reinterpret_cast<TypeFn>(typeSlot)(reinterpret_cast<void*>(motion)) & 0xFF;
+	return true;
+}
+
 }  // namespace
+
+bool ReadPickBody(UInt32 collidable, UInt32& body, UInt32& motionType, UInt32& layer) {
+	body = BodyOfCollidable(collidable);
+	if (body == 0 || !MotionTypeOf(body, motionType)) {
+		return false;
+	}
+	layer = Read(body + kBodyFilterOffset) & 0x7F;
+	return true;
+}
+
+bool KickBodyByBlade(UInt32 body, const NiPoint3& unitsPerSecond) {
+	return LooksLikeObject(body) && body != HeldBody() && Push(body, unitsPerSecond, Pusher::WeaponHand, true);
+}
 
 void StepWorldPush(bool enabled, const PushFrame& frame) {
 	const int count = static_cast<int>(Pusher::Count);

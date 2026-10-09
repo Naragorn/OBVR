@@ -1,0 +1,70 @@
+# The drawn weapon stops at walls ([Hands] WeaponStopsAtWalls,
+# game/BladeContactLogic.h): a longsword is drawn by the holster, pointed
+# down, and the hand lowered step by step until the blade meets the floor -
+# the floor is the wall here, the one fixed surface the harness cell surely
+# has under the player. Pressed on, it stays on the floor while the hand goes
+# lower; pressed more than WeaponLetGoMetres (0.30) past it, it lets go and
+# passes through; raised and level again, it is free and armed again. The
+# "Contact: state" line at each mark gives the hand's tip and the drawn tip.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\blade-wall.txt
+
+ini Hands Enabled=1
+ini Hands BodyCollision=1
+ini Hands WeaponStopsAtWalls=1
+ini Hands WeaponLetGoMetres=0.30
+ini Hands Holsters=1
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect Contact: state - active 1
+expect Contact: the blade met body
+expect Contact: let go
+expect Contact: the blade free again
+reject HandScript: WARNING
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 16
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+right rot -80 0 0
+right pos 0.20 -0.55 -0.30
+wait 1
+mark down
+right pos 0.20 -0.65 -0.30
+wait 0.5
+mark lower1
+right pos 0.20 -0.75 -0.30
+wait 0.5
+mark lower2
+right pos 0.20 -0.85 -0.30
+wait 0.5
+mark lower3
+right pos 0.20 -0.95 -0.30
+wait 0.5
+mark lower4
+right pos 0.20 -1.05 -0.30
+wait 0.5
+mark lower5
+right pos 0.20 -1.20 -0.30
+wait 0.5
+mark lower6
+right pos 0.20 -1.50 -0.30
+wait 0.5
+mark deep
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1.5
+mark free
+wait 1

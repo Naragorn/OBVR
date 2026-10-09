@@ -1921,3 +1921,67 @@ schauen mal." Feasibility in docs/container-touch-spec.md.
   xOBSE lays it out, vtable 0x00A357B8 checked - not read in a run), the
   minigame over the chest with the world running, the reopen after a
   picked lock, a body, a pocket. Headset test open.
+
+### 4.32 The weapon stops at walls (built 2026-10-09)
+
+The tester: "waffen kollisionen mit allem ... fang an", with the decisions
+of docs/weapon-collision-spec.md section 8 (2026-10-09): past the cap the
+weapon lets go and passes through ("Variante A"), the blade rests on a
+person held there slowly, a parry stops the whole blow, a short hit-stop
+on a landed hit. This is phases 1 to 3 of that spec - walls, the clutter a
+fast swing passes, and the measuring; bodies, parries and shields follow.
+
+- `[Hands] WeaponStopsAtWalls=1` (settings "Weapon stops at walls"),
+  `WeaponLetGoMetres` (0.30; "Weapon lets go at (m)"), `WeaponLetGoDegrees`
+  (45, INI only); `game::BladeContactSettingsFor` holds them to 0.05-2 m
+  and 5-180 degrees.
+- **The step** (`game::StepBladeContact`, game/BladeContactLogic.h): the
+  drawn weapon hand HandMode answers - behind the controller by the
+  weapon's weight - is swept from where it was drawn the frame before:
+  five points of the blade (guard, quarters, tip), each a ray of the
+  world's pick reaching 1.5 units past its end. The first thing on a ray
+  that is fixed (a fixed or keyframed body: layers STATIC, TERRAIN, a door)
+  holds the blade 1.5 units short of it; what is left of the move along
+  the surface is swept once more (a blade pressed to a wall scrapes along
+  it); a ray goes on past clutter and the dead (dynamic bodies) and past
+  water, triggers, controllers and the pick layers. A pose across
+  something along its length (a post between two points) is not taken -
+  the stop, then where it was, then letting go.
+- **Let go**: held more than the cap from where the spring would draw it,
+  or turned more than the angle: the weapon goes back to the hand and
+  passes through. **Through, it strikes nothing** (the strike by motion is
+  skipped) until the blade is free again: nothing across it along its
+  length, nothing between the eyes and its guard. A blade taken up inside
+  something (the first frame, a jump of the camera over 40 units or 15
+  degrees: a teleport, a snap turn) passes through the same way.
+- **Written back** into `g_hand.weaponHandRotation` and
+  `weaponHandOffsetUnits` before the strike, the push and the Havok body
+  read them, so the bones are pinned where the blade stopped; the two-hand
+  grip follows it. The blade's span is the drawn weapon node's
+  (`BladeSpanFromNode`) read against the pose the bones were pinned to,
+  kept until it has stood apart for 90 frames (`StepBladeSpanCache`), anew
+  for another weapon.
+- **Clutter**: what a sweep's ray passed that moves is given the passing
+  point's speed (`KickBodyByBlade`, WorldPush's push) - the cure for the
+  open bug "the sword's tip sometimes passes through" thin things between
+  two physics steps.
+- **Felt and heard**: a pulse on the weapon hand at each touch by the
+  speed into the surface (the lightest up to 0.45 m/s, full from 3 m/s), a light one
+  every eighth frame while it scrapes; from 1.5 m/s the weapon's knock
+  (Oblivion.esm's WPNHitBladeX 0000C3C4, WPNHitBluntX 0000C3C7), at most
+  four a second.
+- Log: "Contact: the blade met body <b> (layer, motion) at ... - its point
+  0..1 of the way to the tip, m/s into it", "Contact: let go - ...",
+  "Contact: the blade free again", "Contact: <n> frames with a blade drawn
+  - rays a frame, ms a frame"; at a hand script's mark a state line.
+- Tests: `blade_contact_test` (every kind, the ray past clutter, turns,
+  the sweep and its margin, every flow of the step, the jump, the span
+  cache, the settings, the feel). Hand script `blade-wall.txt`: PASS
+  2026-10-09 - a longsword drawn by the holster, pointed down and lowered:
+  it met the floor (layer 1 STATIC, motion 7 fixed) at -256 with the feet
+  at -258.5, held its tip at -254 while the hand's went to -261 and -272,
+  let go at 24.2 units, through, and was free again raised; 2.0 rays and
+  0.004 ms a frame.
+- **Not exercised yet**: a wall (only the floor was met), the slide along
+  it, a fast swing's kick of a cup, the knock's sound and the pulse (the
+  harness has no controllers to feel), a two-hander. Headset test open.

@@ -1,4 +1,4 @@
-# Weapon collisions with everything (feasibility and design, 2026-10-09, nothing built)
+# Weapon collisions with everything (feasibility and design 2026-10-09; walls built 2026-10-09)
 
 The tester (2026-10-09): "waffen kollisionen mit allem. machbarkeits
 analyses. wie würdest du es umsetzen oder designen".
@@ -342,7 +342,7 @@ hinter einem feature flag"):
 - `[Hands] WeaponStopsAtWalls` (A, and B's kick with it), default 1.
 - `WeaponStopsAtBodies` (C), default 1.
 - `WeaponParries` (E, F), default 1 once measured.
-- `ParryStopsAll` (decision 3), `WeaponLetGoMetres` (0.30),
+- `ParryStopsAll` (decision 3: on), `WeaponLetGoMetres` (0.30),
   `WeaponLetGoDegrees` (45), `ContactHaptics` (strength, 0 off).
 
 ## 6. Phases and acceptance
@@ -384,12 +384,49 @@ hinter einem feature flag"):
 - The parry window: their action, their target, the blow landed or not.
 - Each switch off.
 
-## 8. Decisions for the tester
+## 8. Decisions (the tester, 2026-10-09)
 
-1. **Past the cap:** the weapon lets go and passes through (proposed), or
-   stays stuck until the controller comes back.
-2. **The living, slowly:** the blade rests on them (proposed), or only hits
-   count and it always passes.
-3. **A parry:** stops the whole blow and costs fatigue (proposed), or
-   vanilla's block share (25 % at Block 50 with a weapon).
-4. **A hit-stop** on a landed hit: yes or no.
+"1) Variante A 2) Langsam an einen NPC gehalten liegt die Klinge auf 3) Gar
+keiner (dein Vorschlag) 4) ja . fang an"
+
+1. **Past the cap:** the weapon lets go and passes through, and a blade
+   that went through strikes nothing until it is free again (added to A
+   when it was explained).
+2. **The living, slowly:** the blade rests on them; a swing hits and passes.
+3. **A parry:** stops the whole blow ("gar keiner": no damage comes
+   through) and costs fatigue - `ParryStopsAll` on.
+4. **A hit-stop** on a landed hit: yes.
+
+## 9. Built: phases 1 to 3, walls (2026-10-09)
+
+- `game/BladeContactLogic.h` (pure, `blade_contact_test`), the Havok side
+  in `game/BladeContact.cpp` (layer 23 picks, `ReadPickBody`,
+  `KickBodyByBlade` in WorldPush), wired as `StepWeaponContact` in
+  CameraHook before the strike; settings `[Hands] WeaponStopsAtWalls`,
+  `WeaponLetGoMetres`, `WeaponLetGoDegrees`. controls-spec 4.32 has the
+  details.
+- Differences from the design above:
+  - Each point's ray reaches the margin (1.5 units) past its end, so a
+    point never ends nearer a surface than that - a ray that began on a
+    face did not see it, and the next frame's ray went into the wall (unit
+    test, a wrist turned into a wall in 5-degree frames).
+  - A pose across something along its length is never taken: the slide's
+    end, then the stop, then where the blade was; across something even
+    there, it lets go (a door swung over the blade).
+  - Nothing is fed back into the weight spring: it runs on behind the
+    wall, and the blade follows it again as soon as the way is free. The
+    spring's momentum into the wall is therefore not taken out - a heavy
+    weapon let go of swings on as it would have. Not judged in the headset.
+  - A camera jump (over 40 units or 15 degrees in a frame) sweeps nothing;
+    the blade is taken up where it is wanted, through if inside something.
+- **Harness** (`blade-wall.txt`, PASS 2026-10-09): the floor met at -256,
+  a fixed static (layer 1, motion 7); the tip held at -254 with the hand's
+  at -261 and -272; let go at 24.2 units; free again raised. 2.0 rays and
+  0.004 ms a frame over 600 frames, no ray met anything but rigid bodies.
+- **Answered from section 4 A:** a ray pick met only rigid bodies in the
+  harness cell (no trigger seen); the cost is small. How far walls'
+  collision stands out of their meshes is still not measured (the floor was
+  met 2.5 units above the player's reference point, which says nothing of
+  the drawn floor).
+- **Not exercised yet:** a wall and the slide along it, the kick of a cup
+  by a fast swing, the knock and the pulse, a two-hander. Headset open.
