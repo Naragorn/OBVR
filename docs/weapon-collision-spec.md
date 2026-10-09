@@ -1,4 +1,4 @@
-# Weapon collisions with everything (feasibility and design 2026-10-09; walls built 2026-10-09)
+# Weapon collisions with everything (feasibility and design 2026-10-09; walls and bodies built 2026-10-09)
 
 The tester (2026-10-09): "waffen kollisionen mit allem. machbarkeits
 analyses. wie würdest du es umsetzen oder designen".
@@ -430,3 +430,25 @@ keiner (dein Vorschlag) 4) ja . fang an"
   the drawn floor).
 - **Not exercised yet:** a wall and the slide along it, the kick of a cup
   by a fast swing, the knock and the pulse, a two-hander. Headset open.
+
+## 10. Built: the living and the hit-stop (2026-10-09)
+
+- `game/BladeBodies.cpp` (the capsules on the bones), the living in
+  `SweepBlade` and `StepBladeContact` (`BladeLiving`, `BladePassLedger`,
+  `HitStopShare`); settings `WeaponStopsAtBodies`, `WeaponHitStop`.
+  controls-spec 4.32 has the details.
+- Differences from section 4 C:
+  - The contact does **not** replace the bound-sphere test of the strike
+    yet: a swing passes the capsules and the strike by motion hits as
+    before. The blade only rests on people when it is not swinging. Taking
+    the hit from the capsules is the next step, once the capsules' fit is
+    seen in the headset.
+  - Pressed into someone past the cap, the blade lets go into them (they are
+    passed) rather than "through": it still strikes.
+  - The hit-stop starts when a swing goes into a capsule, not when the
+    engine takes the hit (a light swing's hit is held to the swing's end).
+- **Not measured:** the capsules' radii against the meshes; creatures'
+  skeletons (only a beggar's was read: 18 of 18 bones); the cost with many
+  people near (the walk runs every frame a blade is drawn).
+- **Harness:** `blade-body.txt` written, not yet run to PASS (the PC was
+  locked); its earlier versions read the skeleton and placed the capsules.

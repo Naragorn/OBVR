@@ -1,0 +1,636 @@
+# The drawn weapon meets people ([Hands] WeaponStopsAtBodies,
+# game/BladeContactLogic.h "the living", game/BladeBodies.h): a beggar is
+# placed by the player and frozen (tai - AI off, so they neither wander nor
+# fight back), a longsword is drawn by the holster, and the blade turned
+# round the player slowly, level at the chest, the hand 25 cm out - wherever
+# the beggar stands within the blade's reach, it comes to rest on them, and
+# turned on 45 degrees it goes into them; then the same circle fast, a
+# swing - it goes into them, they are passed, the hit-stop runs. Where
+# PlaceAtMe puts them is not the same each run (behind the player, 30 to 90
+# units), hence the circle. The "Contact: people" lines give their capsules.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\blade-body.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands WeaponStopsAtWalls=1
+ini Hands WeaponStopsAtBodies=1
+ini Hands WeaponHitStop=1
+ini Hands PushPeople=0
+console-at ready player.placeatme 0001C45B 1
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+console-at ready tai
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect skeleton read
+expect Contact: people - 1 near
+expect Contact: the blade rests on
+expect Contact: pressed on into
+expect Contact: a swing went into someone
+reject HandScript: WARNING
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 26
+mark placed
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.00 -0.45 -0.25
+wait 3
+mark drawn
+right pos 0.009 -0.45 -0.250
+right rot 0 -2 0
+wait 0.05
+right pos 0.017 -0.45 -0.249
+right rot 0 -4 0
+wait 0.05
+right pos 0.026 -0.45 -0.249
+right rot 0 -6 0
+wait 0.05
+right pos 0.035 -0.45 -0.248
+right rot 0 -8 0
+wait 0.05
+right pos 0.043 -0.45 -0.246
+right rot 0 -10 0
+wait 0.05
+right pos 0.052 -0.45 -0.245
+right rot 0 -12 0
+wait 0.05
+right pos 0.060 -0.45 -0.243
+right rot 0 -14 0
+wait 0.05
+right pos 0.069 -0.45 -0.240
+right rot 0 -16 0
+wait 0.05
+right pos 0.077 -0.45 -0.238
+right rot 0 -18 0
+wait 0.05
+right pos 0.086 -0.45 -0.235
+right rot 0 -20 0
+wait 0.05
+right pos 0.094 -0.45 -0.232
+right rot 0 -22 0
+wait 0.05
+right pos 0.102 -0.45 -0.228
+right rot 0 -24 0
+wait 0.05
+right pos 0.110 -0.45 -0.225
+right rot 0 -26 0
+wait 0.05
+right pos 0.117 -0.45 -0.221
+right rot 0 -28 0
+wait 0.05
+right pos 0.125 -0.45 -0.217
+right rot 0 -30 0
+wait 0.05
+right pos 0.132 -0.45 -0.212
+right rot 0 -32 0
+wait 0.05
+right pos 0.140 -0.45 -0.207
+right rot 0 -34 0
+wait 0.05
+right pos 0.147 -0.45 -0.202
+right rot 0 -36 0
+wait 0.05
+right pos 0.154 -0.45 -0.197
+right rot 0 -38 0
+wait 0.05
+right pos 0.161 -0.45 -0.192
+right rot 0 -40 0
+wait 0.05
+right pos 0.167 -0.45 -0.186
+right rot 0 -42 0
+wait 0.05
+right pos 0.174 -0.45 -0.180
+right rot 0 -44 0
+wait 0.05
+right pos 0.180 -0.45 -0.174
+right rot 0 -46 0
+wait 0.05
+right pos 0.186 -0.45 -0.167
+right rot 0 -48 0
+wait 0.05
+right pos 0.192 -0.45 -0.161
+right rot 0 -50 0
+wait 0.05
+right pos 0.197 -0.45 -0.154
+right rot 0 -52 0
+wait 0.05
+right pos 0.202 -0.45 -0.147
+right rot 0 -54 0
+wait 0.05
+right pos 0.207 -0.45 -0.140
+right rot 0 -56 0
+wait 0.05
+right pos 0.212 -0.45 -0.132
+right rot 0 -58 0
+wait 0.05
+right pos 0.217 -0.45 -0.125
+right rot 0 -60 0
+wait 0.05
+right pos 0.221 -0.45 -0.117
+right rot 0 -62 0
+wait 0.05
+right pos 0.225 -0.45 -0.110
+right rot 0 -64 0
+wait 0.05
+right pos 0.228 -0.45 -0.102
+right rot 0 -66 0
+wait 0.05
+right pos 0.232 -0.45 -0.094
+right rot 0 -68 0
+wait 0.05
+right pos 0.235 -0.45 -0.086
+right rot 0 -70 0
+wait 0.05
+right pos 0.238 -0.45 -0.077
+right rot 0 -72 0
+wait 0.05
+right pos 0.240 -0.45 -0.069
+right rot 0 -74 0
+wait 0.05
+right pos 0.243 -0.45 -0.060
+right rot 0 -76 0
+wait 0.05
+right pos 0.245 -0.45 -0.052
+right rot 0 -78 0
+wait 0.05
+right pos 0.246 -0.45 -0.043
+right rot 0 -80 0
+wait 0.05
+right pos 0.248 -0.45 -0.035
+right rot 0 -82 0
+wait 0.05
+right pos 0.249 -0.45 -0.026
+right rot 0 -84 0
+wait 0.05
+right pos 0.249 -0.45 -0.017
+right rot 0 -86 0
+wait 0.05
+right pos 0.250 -0.45 -0.009
+right rot 0 -88 0
+wait 0.05
+right pos 0.250 -0.45 -0.000
+right rot 0 -90 0
+wait 0.05
+mark slow90
+right pos 0.250 -0.45 0.009
+right rot 0 -92 0
+wait 0.05
+right pos 0.249 -0.45 0.017
+right rot 0 -94 0
+wait 0.05
+right pos 0.249 -0.45 0.026
+right rot 0 -96 0
+wait 0.05
+right pos 0.248 -0.45 0.035
+right rot 0 -98 0
+wait 0.05
+right pos 0.246 -0.45 0.043
+right rot 0 -100 0
+wait 0.05
+right pos 0.245 -0.45 0.052
+right rot 0 -102 0
+wait 0.05
+right pos 0.243 -0.45 0.060
+right rot 0 -104 0
+wait 0.05
+right pos 0.240 -0.45 0.069
+right rot 0 -106 0
+wait 0.05
+right pos 0.238 -0.45 0.077
+right rot 0 -108 0
+wait 0.05
+right pos 0.235 -0.45 0.086
+right rot 0 -110 0
+wait 0.05
+right pos 0.232 -0.45 0.094
+right rot 0 -112 0
+wait 0.05
+right pos 0.228 -0.45 0.102
+right rot 0 -114 0
+wait 0.05
+right pos 0.225 -0.45 0.110
+right rot 0 -116 0
+wait 0.05
+right pos 0.221 -0.45 0.117
+right rot 0 -118 0
+wait 0.05
+right pos 0.217 -0.45 0.125
+right rot 0 -120 0
+wait 0.05
+right pos 0.212 -0.45 0.132
+right rot 0 -122 0
+wait 0.05
+right pos 0.207 -0.45 0.140
+right rot 0 -124 0
+wait 0.05
+right pos 0.202 -0.45 0.147
+right rot 0 -126 0
+wait 0.05
+right pos 0.197 -0.45 0.154
+right rot 0 -128 0
+wait 0.05
+right pos 0.192 -0.45 0.161
+right rot 0 -130 0
+wait 0.05
+right pos 0.186 -0.45 0.167
+right rot 0 -132 0
+wait 0.05
+right pos 0.180 -0.45 0.174
+right rot 0 -134 0
+wait 0.05
+right pos 0.174 -0.45 0.180
+right rot 0 -136 0
+wait 0.05
+right pos 0.167 -0.45 0.186
+right rot 0 -138 0
+wait 0.05
+right pos 0.161 -0.45 0.192
+right rot 0 -140 0
+wait 0.05
+right pos 0.154 -0.45 0.197
+right rot 0 -142 0
+wait 0.05
+right pos 0.147 -0.45 0.202
+right rot 0 -144 0
+wait 0.05
+right pos 0.140 -0.45 0.207
+right rot 0 -146 0
+wait 0.05
+right pos 0.132 -0.45 0.212
+right rot 0 -148 0
+wait 0.05
+right pos 0.125 -0.45 0.217
+right rot 0 -150 0
+wait 0.05
+right pos 0.117 -0.45 0.221
+right rot 0 -152 0
+wait 0.05
+right pos 0.110 -0.45 0.225
+right rot 0 -154 0
+wait 0.05
+right pos 0.102 -0.45 0.228
+right rot 0 -156 0
+wait 0.05
+right pos 0.094 -0.45 0.232
+right rot 0 -158 0
+wait 0.05
+right pos 0.086 -0.45 0.235
+right rot 0 -160 0
+wait 0.05
+right pos 0.077 -0.45 0.238
+right rot 0 -162 0
+wait 0.05
+right pos 0.069 -0.45 0.240
+right rot 0 -164 0
+wait 0.05
+right pos 0.060 -0.45 0.243
+right rot 0 -166 0
+wait 0.05
+right pos 0.052 -0.45 0.245
+right rot 0 -168 0
+wait 0.05
+right pos 0.043 -0.45 0.246
+right rot 0 -170 0
+wait 0.05
+right pos 0.035 -0.45 0.248
+right rot 0 -172 0
+wait 0.05
+right pos 0.026 -0.45 0.249
+right rot 0 -174 0
+wait 0.05
+right pos 0.017 -0.45 0.249
+right rot 0 -176 0
+wait 0.05
+right pos 0.009 -0.45 0.250
+right rot 0 -178 0
+wait 0.05
+right pos 0.000 -0.45 0.250
+right rot 0 -180 0
+wait 0.05
+mark slow180
+right pos -0.009 -0.45 0.250
+right rot 0 -182 0
+wait 0.05
+right pos -0.017 -0.45 0.249
+right rot 0 -184 0
+wait 0.05
+right pos -0.026 -0.45 0.249
+right rot 0 -186 0
+wait 0.05
+right pos -0.035 -0.45 0.248
+right rot 0 -188 0
+wait 0.05
+right pos -0.043 -0.45 0.246
+right rot 0 -190 0
+wait 0.05
+right pos -0.052 -0.45 0.245
+right rot 0 -192 0
+wait 0.05
+right pos -0.060 -0.45 0.243
+right rot 0 -194 0
+wait 0.05
+right pos -0.069 -0.45 0.240
+right rot 0 -196 0
+wait 0.05
+right pos -0.077 -0.45 0.238
+right rot 0 -198 0
+wait 0.05
+right pos -0.086 -0.45 0.235
+right rot 0 -200 0
+wait 0.05
+right pos -0.094 -0.45 0.232
+right rot 0 -202 0
+wait 0.05
+right pos -0.102 -0.45 0.228
+right rot 0 -204 0
+wait 0.05
+right pos -0.110 -0.45 0.225
+right rot 0 -206 0
+wait 0.05
+right pos -0.117 -0.45 0.221
+right rot 0 -208 0
+wait 0.05
+right pos -0.125 -0.45 0.217
+right rot 0 -210 0
+wait 0.05
+right pos -0.132 -0.45 0.212
+right rot 0 -212 0
+wait 0.05
+right pos -0.140 -0.45 0.207
+right rot 0 -214 0
+wait 0.05
+right pos -0.147 -0.45 0.202
+right rot 0 -216 0
+wait 0.05
+right pos -0.154 -0.45 0.197
+right rot 0 -218 0
+wait 0.05
+right pos -0.161 -0.45 0.192
+right rot 0 -220 0
+wait 0.05
+right pos -0.167 -0.45 0.186
+right rot 0 -222 0
+wait 0.05
+right pos -0.174 -0.45 0.180
+right rot 0 -224 0
+wait 0.05
+right pos -0.180 -0.45 0.174
+right rot 0 -226 0
+wait 0.05
+right pos -0.186 -0.45 0.167
+right rot 0 -228 0
+wait 0.05
+right pos -0.192 -0.45 0.161
+right rot 0 -230 0
+wait 0.05
+right pos -0.197 -0.45 0.154
+right rot 0 -232 0
+wait 0.05
+right pos -0.202 -0.45 0.147
+right rot 0 -234 0
+wait 0.05
+right pos -0.207 -0.45 0.140
+right rot 0 -236 0
+wait 0.05
+right pos -0.212 -0.45 0.132
+right rot 0 -238 0
+wait 0.05
+right pos -0.217 -0.45 0.125
+right rot 0 -240 0
+wait 0.05
+right pos -0.221 -0.45 0.117
+right rot 0 -242 0
+wait 0.05
+right pos -0.225 -0.45 0.110
+right rot 0 -244 0
+wait 0.05
+right pos -0.228 -0.45 0.102
+right rot 0 -246 0
+wait 0.05
+right pos -0.232 -0.45 0.094
+right rot 0 -248 0
+wait 0.05
+right pos -0.235 -0.45 0.086
+right rot 0 -250 0
+wait 0.05
+right pos -0.238 -0.45 0.077
+right rot 0 -252 0
+wait 0.05
+right pos -0.240 -0.45 0.069
+right rot 0 -254 0
+wait 0.05
+right pos -0.243 -0.45 0.060
+right rot 0 -256 0
+wait 0.05
+right pos -0.245 -0.45 0.052
+right rot 0 -258 0
+wait 0.05
+right pos -0.246 -0.45 0.043
+right rot 0 -260 0
+wait 0.05
+right pos -0.248 -0.45 0.035
+right rot 0 -262 0
+wait 0.05
+right pos -0.249 -0.45 0.026
+right rot 0 -264 0
+wait 0.05
+right pos -0.249 -0.45 0.017
+right rot 0 -266 0
+wait 0.05
+right pos -0.250 -0.45 0.009
+right rot 0 -268 0
+wait 0.05
+right pos -0.250 -0.45 0.000
+right rot 0 -270 0
+wait 0.05
+mark slow270
+right pos -0.250 -0.45 -0.009
+right rot 0 -272 0
+wait 0.05
+right pos -0.249 -0.45 -0.017
+right rot 0 -274 0
+wait 0.05
+right pos -0.249 -0.45 -0.026
+right rot 0 -276 0
+wait 0.05
+right pos -0.248 -0.45 -0.035
+right rot 0 -278 0
+wait 0.05
+right pos -0.246 -0.45 -0.043
+right rot 0 -280 0
+wait 0.05
+right pos -0.245 -0.45 -0.052
+right rot 0 -282 0
+wait 0.05
+right pos -0.243 -0.45 -0.060
+right rot 0 -284 0
+wait 0.05
+right pos -0.240 -0.45 -0.069
+right rot 0 -286 0
+wait 0.05
+right pos -0.238 -0.45 -0.077
+right rot 0 -288 0
+wait 0.05
+right pos -0.235 -0.45 -0.086
+right rot 0 -290 0
+wait 0.05
+right pos -0.232 -0.45 -0.094
+right rot 0 -292 0
+wait 0.05
+right pos -0.228 -0.45 -0.102
+right rot 0 -294 0
+wait 0.05
+right pos -0.225 -0.45 -0.110
+right rot 0 -296 0
+wait 0.05
+right pos -0.221 -0.45 -0.117
+right rot 0 -298 0
+wait 0.05
+right pos -0.217 -0.45 -0.125
+right rot 0 -300 0
+wait 0.05
+right pos -0.212 -0.45 -0.132
+right rot 0 -302 0
+wait 0.05
+right pos -0.207 -0.45 -0.140
+right rot 0 -304 0
+wait 0.05
+right pos -0.202 -0.45 -0.147
+right rot 0 -306 0
+wait 0.05
+right pos -0.197 -0.45 -0.154
+right rot 0 -308 0
+wait 0.05
+right pos -0.192 -0.45 -0.161
+right rot 0 -310 0
+wait 0.05
+right pos -0.186 -0.45 -0.167
+right rot 0 -312 0
+wait 0.05
+right pos -0.180 -0.45 -0.174
+right rot 0 -314 0
+wait 0.05
+right pos -0.174 -0.45 -0.180
+right rot 0 -316 0
+wait 0.05
+right pos -0.167 -0.45 -0.186
+right rot 0 -318 0
+wait 0.05
+right pos -0.161 -0.45 -0.192
+right rot 0 -320 0
+wait 0.05
+right pos -0.154 -0.45 -0.197
+right rot 0 -322 0
+wait 0.05
+right pos -0.147 -0.45 -0.202
+right rot 0 -324 0
+wait 0.05
+right pos -0.140 -0.45 -0.207
+right rot 0 -326 0
+wait 0.05
+right pos -0.132 -0.45 -0.212
+right rot 0 -328 0
+wait 0.05
+right pos -0.125 -0.45 -0.217
+right rot 0 -330 0
+wait 0.05
+right pos -0.117 -0.45 -0.221
+right rot 0 -332 0
+wait 0.05
+right pos -0.110 -0.45 -0.225
+right rot 0 -334 0
+wait 0.05
+right pos -0.102 -0.45 -0.228
+right rot 0 -336 0
+wait 0.05
+right pos -0.094 -0.45 -0.232
+right rot 0 -338 0
+wait 0.05
+right pos -0.086 -0.45 -0.235
+right rot 0 -340 0
+wait 0.05
+right pos -0.077 -0.45 -0.238
+right rot 0 -342 0
+wait 0.05
+right pos -0.069 -0.45 -0.240
+right rot 0 -344 0
+wait 0.05
+right pos -0.060 -0.45 -0.243
+right rot 0 -346 0
+wait 0.05
+right pos -0.052 -0.45 -0.245
+right rot 0 -348 0
+wait 0.05
+right pos -0.043 -0.45 -0.246
+right rot 0 -350 0
+wait 0.05
+right pos -0.035 -0.45 -0.248
+right rot 0 -352 0
+wait 0.05
+right pos -0.026 -0.45 -0.249
+right rot 0 -354 0
+wait 0.05
+right pos -0.017 -0.45 -0.249
+right rot 0 -356 0
+wait 0.05
+right pos -0.009 -0.45 -0.250
+right rot 0 -358 0
+wait 0.05
+right pos -0.000 -0.45 -0.250
+right rot 0 -360 0
+wait 0.05
+mark slow360
+wait 1.5
+mark before_swing
+right pos 0.125 -0.45 -0.217
+right rot 0 -30 0
+wait 0.02
+right pos 0.217 -0.45 -0.125
+right rot 0 -60 0
+wait 0.02
+right pos 0.250 -0.45 -0.000
+right rot 0 -90 0
+wait 0.02
+right pos 0.217 -0.45 0.125
+right rot 0 -120 0
+wait 0.02
+right pos 0.125 -0.45 0.217
+right rot 0 -150 0
+wait 0.02
+right pos 0.000 -0.45 0.250
+right rot 0 -180 0
+wait 0.02
+right pos -0.125 -0.45 0.217
+right rot 0 -210 0
+wait 0.02
+right pos -0.217 -0.45 0.125
+right rot 0 -240 0
+wait 0.02
+right pos -0.250 -0.45 0.000
+right rot 0 -270 0
+wait 0.02
+right pos -0.217 -0.45 -0.125
+right rot 0 -300 0
+wait 0.02
+right pos -0.125 -0.45 -0.217
+right rot 0 -330 0
+wait 0.02
+right pos -0.000 -0.45 -0.250
+right rot 0 -360 0
+wait 0.02
+wait 0.5
+mark swung
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark away
+wait 1

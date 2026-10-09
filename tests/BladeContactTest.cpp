@@ -9,6 +9,7 @@
 
 #include <cstdio>
 #include <limits>
+#include <string>
 
 #include "game/BladeContactLogic.h"
 
@@ -445,6 +446,216 @@ void TestSpanCache() {
 	Check(!StepBladeSpanCache(c, 3, none).valid, "another weapon not readable yet: none, not the last one's");
 }
 
+void TestCapsuleGeometry() {
+	std::printf("Capsules and segments\n");
+	const NiPoint3 a{0, 0, -50};
+	const NiPoint3 b{0, 0, 50};
+	float f = -1.0f;
+	NiPoint3 n;
+	bool inside = true;
+	Check(SegmentEntersCapsule(NiPoint3{-30, 0, 0}, NiPoint3{30, 0, 0}, a, b, 10.0f, f, n, inside) && !inside &&
+	          Near(f, 20.0f / 60.0f) && Near(n.x, -1.0f),
+	      "across the side: enters at its surface, the normal outward");
+	Check(SegmentEntersCapsule(NiPoint3{0, 0, 100}, NiPoint3{0, 0, 0}, a, b, 10.0f, f, n, inside) &&
+	          Near(f, 40.0f / 100.0f) && Near(n.z, 1.0f),
+	      "down its axis: enters at the round end");
+	Check(!SegmentEntersCapsule(NiPoint3{-30, 20, 0}, NiPoint3{30, 20, 0}, a, b, 10.0f, f, n, inside),
+	      "passing beside it: never enters");
+	Check(!SegmentEntersCapsule(NiPoint3{-30, 0, 0}, NiPoint3{-15, 0, 0}, a, b, 10.0f, f, n, inside),
+	      "stopping short of it: never enters");
+	Check(SegmentEntersCapsule(NiPoint3{3, 0, 0}, NiPoint3{30, 0, 0}, a, b, 10.0f, f, n, inside) && inside && f == 0.0f,
+	      "starting in it: inside");
+	Check(SegmentEntersCapsule(NiPoint3{-30, 0, 0}, NiPoint3{30, 0, 0}, NiPoint3{0, 0, 0}, NiPoint3{0, 0, 0}, 10.0f, f, n, inside) &&
+	          Near(f, 20.0f / 60.0f),
+	      "a capsule of no length is a ball");
+	Check(!SegmentEntersCapsule(NiPoint3{-30, 0, 0}, NiPoint3{30, 0, 0}, a, b, 0.0f, f, n, inside),
+	      "no radius: nothing");
+	Check(!SegmentEntersCapsule(NiPoint3{-30, 0, 0}, NiPoint3{-30, 0, 0}, a, b, 10.0f, f, n, inside),
+	      "a segment of no length outside: nothing");
+	Check(Near(SegmentSegmentDistance(NiPoint3{-10, 0, 0}, NiPoint3{10, 0, 0}, NiPoint3{0, -10, 5}, NiPoint3{0, 10, 5}),
+	           5.0f),
+	      "two crossing segments 5 apart");
+	Check(Near(SegmentSegmentDistance(NiPoint3{0, 0, 0}, NiPoint3{10, 0, 0}, NiPoint3{0, 3, 0}, NiPoint3{10, 3, 0}),
+	           3.0f),
+	      "two parallel ones");
+	Check(Near(SegmentSegmentDistance(NiPoint3{0, 0, 0}, NiPoint3{10, 0, 0}, NiPoint3{14, 3, 0}, NiPoint3{20, 3, 0}),
+	           5.0f),
+	      "end to end");
+	Check(Near(SegmentSegmentDistance(NiPoint3{0, 0, 0}, NiPoint3{0, 0, 0}, NiPoint3{3, 4, 0}, NiPoint3{3, 4, 0}), 5.0f),
+	      "two points");
+	Check(Near(SegmentSegmentDistance(NiPoint3{0, 0, 0}, NiPoint3{0, 0, 0}, NiPoint3{-5, 2, 0}, NiPoint3{5, 2, 0}), 2.0f),
+	      "a point and a segment");
+	Check(Near(SegmentSegmentDistance(NiPoint3{-5, 2, 0}, NiPoint3{5, 2, 0}, NiPoint3{0, 0, 0}, NiPoint3{0, 0, 0}), 2.0f),
+	      "a segment and a point");
+	Check(Near(PointSegmentDistance(NiPoint3{0, 5, 0}, NiPoint3{-1, 0, 0}, NiPoint3{1, 0, 0}), 5.0f),
+	      "a point beside a segment");
+}
+
+void TestBodyCapsules() {
+	std::printf("A person's capsules\n");
+	NiPoint3 bones[kBladeBoneCount];
+	bool have[kBladeBoneCount];
+	for (UInt32 i = 0; i < kBladeBoneCount; ++i) {
+		bones[i] = NiPoint3{static_cast<float>(i), 0, static_cast<float>(i) * 5.0f};
+		have[i] = true;
+	}
+	bones[kBoneNeck] = NiPoint3{0, 0, 100};
+	bones[kBoneHead] = NiPoint3{0, 0, 105};
+	BladeBodies out;
+	Check(BodyCapsulesFromBones(bones, have, 1.0f, 7, out) == 13 && out.count == 13, "a whole skeleton: 13 capsules");
+	Check(out.cap[0].actor == 7 && Near(out.cap[0].radius, kBladeHeadRadius) &&
+	          Near(out.cap[0].b.z, 105.0f + kBladeHeadAbove),
+	      "the head from its bone on away from the neck");
+	BladeBodies scaled;
+	BodyCapsulesFromBones(bones, have, 2.0f, 7, scaled);
+	Check(Near(scaled.cap[0].radius, 2.0f * kBladeHeadRadius) && Near(scaled.cap[0].b.z, 105.0f + 2.0f * kBladeHeadAbove),
+	      "scaled twice: twice as round, the head twice as tall");
+	BladeBodies odd;
+	BodyCapsulesFromBones(bones, have, kNaN, 7, odd);
+	Check(Near(odd.cap[0].radius, kBladeHeadRadius), "a scale that is not a number: 1");
+	have[kBoneNeck] = false;
+	BladeBodies noNeck;
+	BodyCapsulesFromBones(bones, have, 1.0f, 7, noNeck);
+	Check(noNeck.count == 11 && Near(noNeck.cap[0].b.z - noNeck.cap[0].a.z, kBladeHeadAbove),
+	      "no neck: the head straight up, and the two links to the neck missing");
+	for (UInt32 i = 0; i < kBladeBoneCount; ++i) {
+		have[i] = i < kBladeBonesNeeded - 1;
+	}
+	BladeBodies few;
+	Check(BodyCapsulesFromBones(bones, have, 1.0f, 7, few) == 0 && few.count == 0, "fewer than six bones: none");
+	BladeBodies column;
+	Check(BodyColumnFromBound(NiPoint3{0, 0, 60}, 50.0f, 8, column) && Near(column.cap[0].a.z, 20.0f) &&
+	          Near(column.cap[0].radius, 22.5f),
+	      "the column of a bound");
+	Check(!BodyColumnFromBound(NiPoint3{0, 0, 60}, 0.0f, 8, column) && !BodyColumnFromBound(NiPoint3{0, 0, 60}, kNaN, 8, column),
+	      "no bound: no column");
+	BladeBodies full;
+	for (UInt32 i = 0; i < kBladeBodyCapsulesMax; ++i) {
+		full.Add(NiPoint3{0, 0, 0}, NiPoint3{0, 0, 1}, 1.0f, 1);
+	}
+	Check(!full.Add(NiPoint3{0, 0, 0}, NiPoint3{0, 0, 1}, 1.0f, 1) && full.count == kBladeBodyCapsulesMax,
+	      "never more than the room for them");
+	Check(std::string(BladeBoneName(kBoneRFoot)) == "Bip01 R Foot" && std::string(BladeBoneName(99)).empty(),
+	      "the bones' names");
+}
+
+void TestPassLedger() {
+	std::printf("Those passed\n");
+	BladePassLedger l;
+	Check(l.Add(5) && l.Has(5) && !l.Add(5), "added once");
+	BladeBodies bodies;
+	bodies.Add(NiPoint3{0, 0, -50}, NiPoint3{0, 0, 50}, 10.0f, 5);
+	l.Step(NiPoint3{-5, 0, 0}, NiPoint3{5, 0, 0}, &bodies, 0.1f);
+	Check(l.Has(5) && l.clear[0] == 0.0f, "the blade in them: kept, no time out");
+	l.Step(NiPoint3{50, 0, 0}, NiPoint3{60, 0, 0}, &bodies, 0.1f);
+	l.Step(NiPoint3{50, 0, 0}, NiPoint3{60, 0, 0}, &bodies, 0.1f);
+	Check(l.Has(5), "out of them 0.2 s: still passed");
+	l.Step(NiPoint3{50, 0, 0}, NiPoint3{60, 0, 0}, &bodies, 0.05f);
+	Check(!l.Has(5), "out of them 0.25 s: no longer");
+	l.Add(5);
+	l.Step(NiPoint3{50, 0, 0}, NiPoint3{60, 0, 0}, nullptr, 0.01f);
+	Check(!l.Has(5), "no longer near (no capsules): let go of at once");
+	BladePassLedger fullLedger;
+	for (UInt32 a = 1; a <= kBladePassedMax; ++a) {
+		fullLedger.Add(a);
+	}
+	Check(!fullLedger.Add(99) && !fullLedger.Has(99), "never more than eight");
+}
+
+// A person standing at y 45: the torso a column 10 round, so its face at y 35.
+BladeBodies PersonAhead(UInt32 actor = 11) {
+	BladeBodies b;
+	b.Add(NiPoint3{0, 45, -60}, NiPoint3{0, 45, 60}, 10.0f, actor);
+	return b;
+}
+
+BladeContactFrame LivingFrame(const BladePose& wanted, const BladeBodies* bodies, bool swinging) {
+	BladeContactFrame f = FrameFor(wanted);
+	f.bodies = bodies;
+	f.swinging = swinging;
+	return f;
+}
+
+void TestLiving() {
+	std::printf("The step: the living\n");
+	BoxWorld none;
+	BladeContactSettings set;
+	const BladeBodies person = PersonAhead();
+	BladeContactState s;
+	StepBladeContact(s, set, LivingFrame(At(0, -30, 0), &person, false), none);
+	BladeContactVerdict v = StepBladeContact(s, set, LivingFrame(At(0, -20, 0), &person, false), none);
+	Check(v.held && v.apart && v.event == BladeContactEvent::Touched && v.contact.actor == 11 && v.contact.body == 0,
+	      "held slowly onto someone: it rests on them, a touch");
+	Check(Near(BladePointAt(v.pose, Blade(), 1.0f).y, 33.5f), "the tip 1.5 units short of their body");
+	v = StepBladeContact(s, set, LivingFrame(At(0, 10, 0), &person, false), none);
+	Check(v.event == BladeContactEvent::LetGo && !v.through && s.passed.Has(11),
+	      "pressed on past the cap: it goes into them, passed, not through a wall");
+	v = StepBladeContact(s, set, LivingFrame(At(0, 12, 0), &person, false), none);
+	Check(!v.held && !v.through && Near(v.pose.pos.y, 12.0f), "and stays in them, unheld");
+
+	BladeContactState w;
+	StepBladeContact(w, set, LivingFrame(At(0, -30, 0), &person, true), none);
+	v = StepBladeContact(w, set, LivingFrame(At(0, 0, 0), &person, true), none);
+	Check(!v.held && v.enteredBody && w.passed.Has(11) && Near(v.pose.pos.y, 0.0f),
+	      "a swing into them: through, gone in, passed");
+	v = StepBladeContact(w, set, LivingFrame(At(0, 2, 0), &person, false), none);
+	Check(!v.held && !v.enteredBody, "slowing inside them: still passed, no second time in");
+	for (int i = 0; i < 30; ++i) {
+		v = StepBladeContact(w, set, LivingFrame(At(0, -40, 0), &person, false), none);
+	}
+	Check(!w.passed.Has(11), "out of them for a third of a second: no longer passed");
+	v = StepBladeContact(w, set, LivingFrame(At(0, -20, 0), &person, false), none);
+	Check(v.held && v.contact.actor == 11, "and a slow blade rests on them again");
+
+	BladeContactState r;
+	const BladeBodies away = PersonAhead();
+	StepBladeContact(r, set, LivingFrame(At(0, -30, 0), &away, false), none);
+	BladeBodies walkedIn;
+	walkedIn.Add(NiPoint3{0, 10, -60}, NiPoint3{0, 10, 60}, 10.0f, 12);
+	v = StepBladeContact(r, set, LivingFrame(At(0, -29, 0), &walkedIn, false), none);
+	Check(!v.held && r.passed.Has(12), "someone walked into the resting blade: passed, not pushed against");
+
+	BoxWorld wall;
+	AddWallAhead(wall);
+	BladeBodies near;
+	near.Add(NiPoint3{0, 25, -60}, NiPoint3{0, 25, 60}, 5.0f, 13);
+	BladeContactState t;
+	StepBladeContact(t, set, LivingFrame(At(0, -20, 0), &near, true), wall);
+	v = StepBladeContact(t, set, LivingFrame(At(0, 0, 0), &near, true), wall);
+	Check(v.held && v.contact.body == 1 && v.contact.actor == 0 && t.passed.Has(13),
+	      "a swing through someone into the wall behind them: the wall holds it");
+
+	BladeContactState first;
+	v = StepBladeContact(first, set, LivingFrame(At(0, 0, 0), &person, false), none);
+	Check(first.passed.Has(11) && !v.through, "taken up inside someone: they are passed");
+	BladeContactState thr;
+	AddWallAhead(none);
+	StepBladeContact(thr, set, LivingFrame(At(0, 20, 0), &person, false), none);
+	Check(thr.through && thr.passed.Has(11), "taken up across a wall and in someone: through, and they passed");
+}
+
+void TestHitStop() {
+	std::printf("The hit-stop\n");
+	Check(Near(HitStopShare(0), 0.25f) && Near(HitStopShare(2), 0.25f) && Near(HitStopShare(3), 0.5f) &&
+	          Near(HitStopShare(4), 0.75f) && Near(HitStopShare(5), 1.0f) && Near(HitStopShare(1000), 1.0f),
+	      "a quarter for three frames, then a half, three quarters, all");
+	BoxWorld none;
+	BladeContactSettings set;
+	BladeContactState s;
+	StepBladeContact(s, set, FrameFor(At(0, 0, 0)), none);
+	BladeContactFrame f = FrameFor(At(40, 0, 0));
+	f.followShare = 0.25f;
+	BladeContactVerdict v = StepBladeContact(s, set, f, none);
+	Check(Near(v.pose.pos.x, 10.0f) && v.apart && !v.held, "slowed: a quarter of the way, apart, not held");
+	f.followShare = 1.0f;
+	v = StepBladeContact(s, set, f, none);
+	Check(Near(v.pose.pos.x, 40.0f) && !v.apart, "then all of it again");
+	f.followShare = 0.25f;
+	f.wanted = At(200, 0, 0);
+	v = StepBladeContact(s, set, f, none);
+	Check(v.event != BladeContactEvent::LetGo && Near(v.pose.pos.x, 80.0f), "slowed far behind: never let go of");
+}
+
 void TestSettings() {
 	std::printf("The settings as used\n");
 	BladeContactSettings s = BladeContactSettingsFor(true, 0.30f, 45.0f, 70.0f);
@@ -485,6 +696,11 @@ int main() {
 	TestLetGo();
 	TestJump();
 	TestSpanCache();
+	TestCapsuleGeometry();
+	TestBodyCapsules();
+	TestPassLedger();
+	TestLiving();
+	TestHitStop();
 	TestSettings();
 	TestFeel();
 	if (g_failures != 0) {

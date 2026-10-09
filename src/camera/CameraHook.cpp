@@ -75,6 +75,7 @@
 #include "game/PickHold.h"
 #include "game/ReachTargets.h"
 #include "game/BladeContact.h"
+#include "game/BladeBodies.h"
 #include "game/Insult.h"
 #include "vr/MenuHaptics.h"
 #include "vr/VrKeyboard.h"
@@ -2006,6 +2007,10 @@ UInt32 g_bladeCostCasts = 0;
 UInt32 g_bladeCostNotBodies = 0;
 double g_bladeCostSeconds = 0.0;
 UInt32 g_bladeCostLines = 6;
+// The living near the blade this frame, and the frames since a swing last
+// went into someone (the hit-stop's count; kHitStopFrames: none running).
+game::BladeBodies g_bladeBodies;
+UInt32 g_bladeHitStopFrames = game::kHitStopFrames;
 
 // Oblivion.esm's weapon hit sounds, not on flesh (SOUN WPNHitBladeX,
 // WPNHitBluntX; read 2026-10-09): the knock of a blade or a mace on a wall.
@@ -2062,12 +2067,29 @@ void StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	const game::BladeContactSettings settings =
 		game::BladeContactSettingsFor(config.hands.weaponStopsAtWalls, config.hands.weaponLetGoMetres,
 		                              config.hands.weaponLetGoDegrees, config.tracker.unitsPerMetre);
-	game::HavokBladeWorld world;
+	// The living near the blade (game/BladeBodies.h), and the swing that
+	// goes into them: the strike's own swing.
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
 	const long long before = ReadPerformanceCounter();
+	const bool people = f.active && settings.enabled && config.hands.weaponStopsAtBodies;
+	UInt32 peopleNear = 0;
+	if (people) {
+		const float bladeUnits = span.valid ? math::Sqrt((span.b - span.a).LengthSquared()) : 100.0f;
+		peopleNear = game::CollectBladeBodies(f.wanted.pos, bladeUnits + 30.0f, g_bladeBodies);
+		f.bodies = &g_bladeBodies;
+	}
+	f.swinging = g_hand.swingActive && g_hand.swingTravelledMetres >= vr::kSwingMinMetres;
+	f.followShare = config.hands.weaponHitStop ? game::HitStopShare(g_bladeHitStopFrames) : 1.0f;
+	if (g_bladeHitStopFrames < game::kHitStopFrames) {
+		++g_bladeHitStopFrames;
+	}
+	game::HavokBladeWorld world;
 	const game::BladeContactVerdict v = game::StepBladeContact(g_bladeContact, settings, f, world);
 	const long long after = ReadPerformanceCounter();
-	if (v.held) {
+	if (v.enteredBody) {
+		g_bladeHitStopFrames = 0;
+	}
+	if (v.apart) {
 		const NiMatrix33 back = vr::Transposed(camRot);
 		g_hand.weaponHandRotation = back * v.pose.rot;
 		g_hand.weaponHandOffsetUnits = back * (v.pose.pos - camPos);
@@ -2083,10 +2105,15 @@ void StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	// on a hard one.
 	g_bladeSinceSound += dt;
 	const bool blunt = weaponType == 2 || weaponType == 3;
+	const bool onPerson = v.contact.hit && v.contact.actor != 0;
+	if (v.enteredBody) {
+		g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.04f, 160.0f, 0.7f);
+	}
 	if (v.event == game::BladeContactEvent::Touched) {
 		g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.03f, 180.0f,
-		                                         game::BladeTouchAmplitude(v.contact.speedIn));
-		if (game::BladeKnockSounds(v.contact.speedIn, g_bladeSinceSound)) {
+		                                         onPerson ? game::kBladeTouchMinAmplitude
+		                                                  : game::BladeTouchAmplitude(v.contact.speedIn));
+		if (!onPerson && game::BladeKnockSounds(v.contact.speedIn, g_bladeSinceSound)) {
 			g_bladeSinceSound = 0.0f;
 			game::PlaySoundFormAt(blunt ? kSoundFormHitBlunt : kSoundFormHitBlade,
 			                      *reinterpret_cast<const UInt32*>(addr::kPlayerPointer), v.contact.point);
@@ -2100,9 +2127,26 @@ void StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		}
 	}
 
+	if (v.enteredBody && g_bladeLines > 0) {
+		--g_bladeLines;
+		OBVR_LOG("Contact: a swing went into someone (%u near) - they are passed until the blade has been out of "
+		         "them for %.2f s%s",
+		         peopleNear, static_cast<double>(game::kBladePassClearSeconds),
+		         config.hands.weaponHitStop ? "; the hit-stop slows it" : "");
+	}
 	if (v.event != game::BladeContactEvent::None && g_bladeLines > 0) {
 		--g_bladeLines;
-		if (v.event == game::BladeContactEvent::Touched && v.contact.hit) {
+		if (v.event == game::BladeContactEvent::Touched && onPerson) {
+			OBVR_LOG("Contact: the blade rests on %08X at %.0f %.0f %.0f - its point %.2f of the way to the tip, "
+			         "%.2f m/s into them; held %.1f units from the hand",
+			         v.contact.actor, static_cast<double>(v.contact.point.x), static_cast<double>(v.contact.point.y),
+			         static_cast<double>(v.contact.point.z), static_cast<double>(v.contact.along),
+			         static_cast<double>(v.contact.speedIn / config.tracker.unitsPerMetre),
+			         static_cast<double>(v.gapUnits));
+		} else if (v.event == game::BladeContactEvent::LetGo && !v.through) {
+			OBVR_LOG("Contact: pressed on into %08X - %.1f units from where it rested; it goes into them, passed",
+			         v.contact.actor, static_cast<double>(v.gapUnits));
+		} else if (v.event == game::BladeContactEvent::Touched && v.contact.hit) {
 			OBVR_LOG("Contact: the blade met body %08X (layer %u, motion %u) at %.0f %.0f %.0f - its point %.2f of "
 			         "the way to the tip, %.2f m/s into it; held %.1f units and %.0f degrees from the hand%s",
 			         v.contact.body, world.lastLayer, world.lastMotion, static_cast<double>(v.contact.point.x),
@@ -2161,6 +2205,16 @@ void StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		         static_cast<double>(v.gapRadians * math::kRadiansToDegrees), static_cast<double>(wantedTip.x),
 		         static_cast<double>(wantedTip.y), static_cast<double>(wantedTip.z), static_cast<double>(drawnTip.x),
 		         static_cast<double>(drawnTip.y), static_cast<double>(drawnTip.z), world.casts);
+		OBVR_LOG("Contact: people - %u near (%u capsules), %u passed, resting on %08X, swinging %d, hit-stop frame %u",
+		         peopleNear, people ? g_bladeBodies.count : 0u, g_bladeContact.passed.count,
+		         v.held && v.contact.actor != 0 ? v.contact.actor : 0u, f.swinging ? 1 : 0, g_bladeHitStopFrames);
+		for (UInt32 c = 0; people && c < g_bladeBodies.count && c < 3; ++c) {
+			const game::BladeBodyCapsule& cap = g_bladeBodies.cap[c];
+			OBVR_LOG("Contact: capsule %u of %08X - %.0f %.0f %.0f to %.0f %.0f %.0f, %.1f round", c, cap.actor,
+			         static_cast<double>(cap.a.x), static_cast<double>(cap.a.y), static_cast<double>(cap.a.z),
+			         static_cast<double>(cap.b.x), static_cast<double>(cap.b.y), static_cast<double>(cap.b.z),
+			         static_cast<double>(cap.radius));
+		}
 	}
 }
 
@@ -2342,6 +2396,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_bladeContact = game::BladeContactState{};
 		g_bladeThrough = false;
 		g_bladeOutValid = false;
+		game::ForgetBladeBodies();
 		g_hand = vr::HandModeResult{};
 		g_reachIconShown = false;
 		g_nearItem = game::NearItem{};

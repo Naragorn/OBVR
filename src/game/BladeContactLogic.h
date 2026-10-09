@@ -248,6 +248,330 @@ struct BladeKicks {
 	}
 };
 
+// ------------------------------------------------------------------ the living
+//
+// A living person is only a character controller in Havok's world (their
+// bones are not in it while animated, hand-weapon-collision-spec.md), so
+// the blade meets them as capsules of OBVR's own on their drawn bones
+// (game::CollectBladeBodies). The tester (2026-10-09, decision 2): "Langsam
+// an einen NPC gehalten liegt die Klinge auf" - held there slowly, the blade
+// rests on them; a swing goes through, hits (the strike by motion) and
+// passes on. As in PLANCK (nexusmods.com/skyrimspecialedition/mods/66025):
+// once the blade has gone into someone, they are passed until it has been
+// out of them for 0.22 s (its hitCooldownTimeStoppedColliding) - a swing
+// that ends inside a body does not get stuck in it, and nor does a blade
+// someone walked into.
+
+// The closest point of segment a-b to p, as a share 0..1 along it.
+inline float ShareOnSegment(const NiPoint3& p, const NiPoint3& a, const NiPoint3& b) {
+	const NiPoint3 ab = b - a;
+	const float abab = DotOf3(ab, ab);
+	if (!(abab > 1e-12f)) {
+		return 0.0f;
+	}
+	const float t = DotOf3(p - a, ab) / abab;
+	return t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
+}
+
+inline float PointSegmentDistance(const NiPoint3& p, const NiPoint3& a, const NiPoint3& b) {
+	const NiPoint3 q = a + (b - a) * ShareOnSegment(p, a, b);
+	return math::Sqrt((p - q).LengthSquared());
+}
+
+// The distance between two segments (Ericson, Real-Time Collision
+// Detection, 5.1.9: the closest points, clamped to both).
+inline float SegmentSegmentDistance(const NiPoint3& p1, const NiPoint3& q1, const NiPoint3& p2, const NiPoint3& q2) {
+	const NiPoint3 d1 = q1 - p1;
+	const NiPoint3 d2 = q2 - p2;
+	const NiPoint3 r = p1 - p2;
+	const float a = DotOf3(d1, d1);
+	const float e = DotOf3(d2, d2);
+	const float f = DotOf3(d2, r);
+	float s = 0.0f;
+	float t = 0.0f;
+	if (!(a > 1e-12f) && !(e > 1e-12f)) {
+		return math::Sqrt(r.LengthSquared());
+	}
+	if (!(a > 1e-12f)) {
+		t = f / e;
+		t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
+	} else {
+		const float c = DotOf3(d1, r);
+		if (!(e > 1e-12f)) {
+			s = -c / a;
+			s = s < 0.0f ? 0.0f : (s > 1.0f ? 1.0f : s);
+		} else {
+			const float b = DotOf3(d1, d2);
+			const float denom = a * e - b * b;
+			s = denom > 1e-12f ? (b * f - c * e) / denom : 0.0f;
+			s = s < 0.0f ? 0.0f : (s > 1.0f ? 1.0f : s);
+			t = (b * s + f) / e;
+			if (t < 0.0f) {
+				t = 0.0f;
+				s = -c / a;
+				s = s < 0.0f ? 0.0f : (s > 1.0f ? 1.0f : s);
+			} else if (t > 1.0f) {
+				t = 1.0f;
+				s = (b - c) / a;
+				s = s < 0.0f ? 0.0f : (s > 1.0f ? 1.0f : s);
+			}
+		}
+	}
+	const NiPoint3 gap = (p1 + d1 * s) - (p2 + d2 * t);
+	return math::Sqrt(gap.LengthSquared());
+}
+
+// Where the segment from -> to first enters the capsule a-b of radius r: its
+// fraction and the capsule's outward normal there. `inside` when `from` is
+// already in it (then fraction 0). False when it never enters.
+inline bool SegmentEntersCapsule(const NiPoint3& from, const NiPoint3& to, const NiPoint3& a, const NiPoint3& b,
+                                 float r, float& fraction, NiPoint3& normal, bool& inside) {
+	inside = false;
+	if (!(r > 0.0f)) {
+		return false;
+	}
+	if (PointSegmentDistance(from, a, b) <= r) {
+		inside = true;
+		fraction = 0.0f;
+		normal = NiPoint3{0.0f, 0.0f, 1.0f};
+		return true;
+	}
+	const NiPoint3 d = to - from;
+	const float length = math::Sqrt(d.LengthSquared());
+	if (!(length > 1e-6f)) {
+		return false;
+	}
+	const NiPoint3 rd = d * (1.0f / length);
+	float best = -1.0f;
+	// The side: |(o + t rd - a) x (b - a)| = r |b - a|, between the ends.
+	const NiPoint3 ba = b - a;
+	const NiPoint3 oa = from - a;
+	const float baba = DotOf3(ba, ba);
+	if (baba > 1e-12f) {
+		const float bard = DotOf3(ba, rd);
+		const float baoa = DotOf3(ba, oa);
+		const float qa = baba - bard * bard;
+		const float qb = baba * DotOf3(rd, oa) - baoa * bard;
+		const float qc = baba * DotOf3(oa, oa) - baoa * baoa - r * r * baba;
+		const float h = qb * qb - qa * qc;
+		if (qa > 1e-9f && h >= 0.0f) {
+			const float t = (-qb - math::Sqrt(h)) / qa;
+			const float y = baoa + t * bard;
+			if (t >= 0.0f && y > 0.0f && y < baba) {
+				best = t;
+			}
+		}
+	}
+	// The two round ends.
+	const NiPoint3 ends[2] = {a, b};
+	for (const NiPoint3& c : ends) {
+		const NiPoint3 oc = from - c;
+		const float hb = DotOf3(rd, oc);
+		const float hc = DotOf3(oc, oc) - r * r;
+		const float h = hb * hb - hc;
+		if (h > 0.0f) {
+			const float t = -hb - math::Sqrt(h);
+			if (t >= 0.0f && (best < 0.0f || t < best)) {
+				best = t;
+			}
+		}
+	}
+	if (!(best >= 0.0f) || best > length) {
+		return false;
+	}
+	fraction = best / length;
+	const NiPoint3 p = from + rd * best;
+	const NiPoint3 q = a + ba * ShareOnSegment(p, a, b);
+	const NiPoint3 out = p - q;
+	const float outLength = math::Sqrt(out.LengthSquared());
+	normal = outLength > 1e-6f ? out * (1.0f / outLength) : rd * -1.0f;
+	return true;
+}
+
+// A capsule on the bones of someone living: which actor it belongs to.
+struct BladeBodyCapsule {
+	NiPoint3 a{0.0f, 0.0f, 0.0f};
+	NiPoint3 b{0.0f, 0.0f, 0.0f};
+	float radius = 0.0f;
+	UInt32 actor = 0;
+};
+
+inline constexpr UInt32 kBladeBodyCapsulesMax = 128;
+
+struct BladeBodies {
+	UInt32 count = 0;
+	BladeBodyCapsule cap[kBladeBodyCapsulesMax];
+
+	bool Add(const NiPoint3& a, const NiPoint3& b, float radius, UInt32 actor) {
+		if (count >= kBladeBodyCapsulesMax || !(radius > 0.0f)) {
+			return false;
+		}
+		cap[count].a = a;
+		cap[count].b = b;
+		cap[count].radius = radius;
+		cap[count].actor = actor;
+		++count;
+		return true;
+	}
+};
+
+// The bones a person's capsules are built on, in this order (the Biped
+// names Oblivion's skeletons carry; which a skeleton has is logged).
+enum BladeBone : UInt32 {
+	kBoneHead, kBoneNeck, kBoneSpine2, kBoneSpine1, kBoneSpine, kBonePelvis,
+	kBoneLUpperArm, kBoneLForearm, kBoneLHand, kBoneRUpperArm, kBoneRForearm, kBoneRHand,
+	kBoneLThigh, kBoneLCalf, kBoneLFoot, kBoneRThigh, kBoneRCalf, kBoneRFoot,
+	kBladeBoneCount
+};
+
+inline const char* BladeBoneName(UInt32 bone) {
+	static const char* const kNames[kBladeBoneCount] = {
+		"Bip01 Head",     "Bip01 Neck",       "Bip01 Spine2",    "Bip01 Spine1",     "Bip01 Spine",
+		"Bip01 Pelvis",   "Bip01 L UpperArm", "Bip01 L Forearm", "Bip01 L Hand",     "Bip01 R UpperArm",
+		"Bip01 R Forearm", "Bip01 R Hand",    "Bip01 L Thigh",   "Bip01 L Calf",     "Bip01 L Foot",
+		"Bip01 R Thigh",  "Bip01 R Calf",     "Bip01 R Foot",
+	};
+	return bone < kBladeBoneCount ? kNames[bone] : "";
+}
+
+// The flesh round each bone, game units at scale 1 (70 a metre): proposed
+// for a human - a head 10 cm round, a torso 14, an upper arm 6, a forearm
+// 5, a thigh 9, a calf 6 - not measured on the meshes. The head reaches
+// this far past its bone, away from the neck (the head bone sits at the
+// skull's base).
+inline constexpr float kBladeHeadRadius = 7.0f;
+inline constexpr float kBladeHeadAbove = 9.0f;
+inline constexpr float kBladeNeckRadius = 4.5f;
+inline constexpr float kBladeTorsoRadius = 10.0f;
+inline constexpr float kBladeUpperArmRadius = 4.5f;
+inline constexpr float kBladeForearmRadius = 3.5f;
+inline constexpr float kBladeThighRadius = 6.5f;
+inline constexpr float kBladeCalfRadius = 4.5f;
+// Fewer bones than this read and the body is the bound's column instead.
+inline constexpr UInt32 kBladeBonesNeeded = 6;
+
+// A person's capsules from their bones (`have` says which were read), the
+// radii times their scale; answers how many were added. With fewer than
+// kBladeBonesNeeded bones, none: the caller takes the column.
+inline UInt32 BodyCapsulesFromBones(const NiPoint3* bones, const bool* have, float scale, UInt32 actor,
+                                    BladeBodies& out) {
+	UInt32 read = 0;
+	for (UInt32 i = 0; i < kBladeBoneCount; ++i) {
+		read += have[i] ? 1u : 0u;
+	}
+	if (read < kBladeBonesNeeded) {
+		return 0;
+	}
+	const float k = scale > 0.0f && scale < 20.0f ? scale : 1.0f;
+	UInt32 added = 0;
+	auto link = [&](UInt32 from, UInt32 to, float radius) {
+		if (have[from] && have[to] && out.Add(bones[from], bones[to], radius * k, actor)) {
+			++added;
+		}
+	};
+	if (have[kBoneHead]) {
+		NiPoint3 up{0.0f, 0.0f, 1.0f};
+		if (have[kBoneNeck]) {
+			const NiPoint3 d = bones[kBoneHead] - bones[kBoneNeck];
+			const float l = math::Sqrt(d.LengthSquared());
+			if (l > 1e-3f) {
+				up = d * (1.0f / l);
+			}
+		}
+		if (out.Add(bones[kBoneHead], bones[kBoneHead] + up * (kBladeHeadAbove * k), kBladeHeadRadius * k, actor)) {
+			++added;
+		}
+	}
+	link(kBoneNeck, kBoneHead, kBladeNeckRadius);
+	link(kBoneSpine2, kBoneNeck, kBladeTorsoRadius);
+	link(kBoneSpine, kBoneSpine2, kBladeTorsoRadius);
+	link(kBonePelvis, kBoneSpine, kBladeTorsoRadius);
+	link(kBoneLUpperArm, kBoneLForearm, kBladeUpperArmRadius);
+	link(kBoneLForearm, kBoneLHand, kBladeForearmRadius);
+	link(kBoneRUpperArm, kBoneRForearm, kBladeUpperArmRadius);
+	link(kBoneRForearm, kBoneRHand, kBladeForearmRadius);
+	link(kBoneLThigh, kBoneLCalf, kBladeThighRadius);
+	link(kBoneLCalf, kBoneLFoot, kBladeCalfRadius);
+	link(kBoneRThigh, kBoneRCalf, kBladeThighRadius);
+	link(kBoneRCalf, kBoneRFoot, kBladeCalfRadius);
+	return added;
+}
+
+// A body without the bones: an upright column of its bound - the shove's
+// reach (game::HandAtBody: half the radius wide, the radius up and down),
+// a little narrower.
+inline bool BodyColumnFromBound(const NiPoint3& centre, float radius, UInt32 actor, BladeBodies& out) {
+	if (!(radius > 0.0f && radius < 4096.0f)) {
+		return false;
+	}
+	const NiPoint3 up{0.0f, 0.0f, radius * 0.8f};
+	return out.Add(centre - up, centre + up, radius * 0.45f, actor);
+}
+
+// Those the blade has gone into: passed until it has been out of them for
+// a while.
+inline constexpr float kBladePassClearSeconds = 0.22f;
+inline constexpr UInt32 kBladePassedMax = 8;
+
+struct BladePassLedger {
+	UInt32 count = 0;
+	UInt32 actor[kBladePassedMax] = {};
+	float clear[kBladePassedMax] = {};
+
+	bool Has(UInt32 a) const {
+		for (UInt32 i = 0; i < count; ++i) {
+			if (actor[i] == a) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// Answers whether it is new.
+	bool Add(UInt32 a) {
+		for (UInt32 i = 0; i < count; ++i) {
+			if (actor[i] == a) {
+				clear[i] = 0.0f;
+				return false;
+			}
+		}
+		if (count >= kBladePassedMax) {
+			return false;
+		}
+		actor[count] = a;
+		clear[count] = 0.0f;
+		++count;
+		return true;
+	}
+
+	// The blade where it is now: each one passed it is out of counts the
+	// time, and is let go of after kBladePassClearSeconds; one in no
+	// capsule of this frame (gone, dead, too far) at once.
+	void Step(const NiPoint3& guard, const NiPoint3& tip, const BladeBodies* bodies, float dtSeconds) {
+		UInt32 kept = 0;
+		for (UInt32 i = 0; i < count; ++i) {
+			bool seen = false;
+			bool touching = false;
+			for (UInt32 c = 0; bodies != nullptr && c < bodies->count; ++c) {
+				const BladeBodyCapsule& cap = bodies->cap[c];
+				if (cap.actor != actor[i]) {
+					continue;
+				}
+				seen = true;
+				touching = touching || SegmentSegmentDistance(guard, tip, cap.a, cap.b) <= cap.radius;
+			}
+			float t = touching ? 0.0f : clear[i] + (dtSeconds > 0.0f ? dtSeconds : 0.0f);
+			if (!seen || t >= kBladePassClearSeconds) {
+				continue;
+			}
+			actor[kept] = actor[i];
+			clear[kept] = t;
+			++kept;
+		}
+		count = kept;
+	}
+};
+
 struct BladeSweep {
 	bool hit = false;
 	float fraction = 1.0f;      // of the move, where the first point met something fixed
@@ -257,16 +581,28 @@ struct BladeSweep {
 	NiPoint3 normal{0.0f, 0.0f, 1.0f};  // of the surface, against the point's way
 	UInt32 body = 0;
 	float speedIn = 0.0f;  // units a second into the surface
+	UInt32 actor = 0;      // a person it rests on (body 0), or 0
+	bool entered = false;  // a swing went into someone not passed yet
+};
+
+// What the living are to this sweep: their capsules, those passed, and
+// whether the blade swings (then it goes into them and passes them).
+struct BladeLiving {
+	const BladeBodies* bodies = nullptr;
+	BladePassLedger* passed = nullptr;
+	bool swinging = false;
 };
 
 // The blade's points from where they were to where they would be, the
-// earliest that meets something fixed. Each point's ray reaches the margin
-// past its end, so a point is never left nearer a surface than the margin
-// - a ray that began on a face could not see it. Movable things passed are
-// kicked with the speed of the point that passed them (none without a time).
+// earliest that meets something fixed - or, held slowly, someone living.
+// Each point's ray reaches the margin past its end, so a point is never
+// left nearer a surface than the margin - a ray that began on a face could
+// not see it. Movable things passed are kicked with the speed of the point
+// that passed them (none without a time); the living a swing goes into, and
+// any a point is already inside, are passed.
 template <class World>
 BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, const BodySpan& span, float dtSeconds,
-                      BladeKicks* kicks) {
+                      BladeKicks* kicks, const BladeLiving& living = BladeLiving{}) {
 	BladeSweep best;
 	for (UInt32 i = 0; i < kBladeSweepPoints; ++i) {
 		const float s = kBladeSweepAt[i];
@@ -279,21 +615,54 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 		}
 		const NiPoint3 dir = way * (1.0f / length);
 		const float reach = length + kBladeContactMarginUnits;
+		const NiPoint3 end = a + dir * reach;
 		const NiPoint3 velocity = dtSeconds > 0.0f ? way * (1.0f / dtSeconds) : NiPoint3{0.0f, 0.0f, 0.0f};
-		const BladeRayHit h = FirstStopper(world, a, a + dir * reach, [&](const BladeRayHit& m) {
+		const BladeRayHit h = FirstStopper(world, a, end, [&](const BladeRayHit& m) {
 			if (kicks != nullptr && dtSeconds > 0.0f && m.fraction * reach <= length) {
 				kicks->Add(m.body, velocity);
 			}
 		});
-		if (!h.hit) {
+		float atUnits = h.hit ? h.fraction * reach : -1.0f;
+		NiPoint3 normal = h.normal;
+		NiPoint3 point = h.point;
+		UInt32 body = h.body;
+		UInt32 actor = 0;
+		for (UInt32 c = 0; living.bodies != nullptr && c < living.bodies->count; ++c) {
+			const BladeBodyCapsule& cap = living.bodies->cap[c];
+			if (living.passed != nullptr && living.passed->Has(cap.actor)) {
+				continue;
+			}
+			float f = 1.0f;
+			NiPoint3 n;
+			bool inside = false;
+			if (!SegmentEntersCapsule(a, end, cap.a, cap.b, cap.radius, f, n, inside)) {
+				continue;
+			}
+			const float at = f * reach;
+			if (inside || living.swinging) {
+				// Inside already, or a swing into them within this move: passed.
+				if ((inside || at <= length) && living.passed != nullptr && living.passed->Add(cap.actor) &&
+				    !inside) {
+					best.entered = true;
+				}
+				continue;
+			}
+			if (atUnits < 0.0f || at < atUnits) {
+				atUnits = at;
+				normal = n;
+				point = a + dir * at;
+				body = 0;
+				actor = cap.actor;
+			}
+		}
+		if (!(atUnits >= 0.0f)) {
 			continue;
 		}
-		const float atUnits = h.fraction * reach;
 		const float fraction = atUnits < length ? atUnits / length : 1.0f;
 		if (best.hit && fraction >= best.fraction) {
 			continue;
 		}
-		NiPoint3 n = h.normal;
+		NiPoint3 n = normal;
 		const float nLength = math::Sqrt(n.LengthSquared());
 		n = nLength > 1e-6f ? n * (1.0f / nLength) : dir * -1.0f;
 		if (DotOf3(n, dir) > 0.0f) {
@@ -304,13 +673,30 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 		const float back = (atUnits - kBladeContactMarginUnits) / length;
 		best.safeFraction = back > 0.0f ? (back < 1.0f ? back : 1.0f) : 0.0f;
 		best.along = s;
-		best.point = h.point;
+		best.point = point;
 		best.normal = n;
-		best.body = h.body;
+		best.body = body;
+		best.actor = actor;
 		const float into = -DotOf3(way, n);
 		best.speedIn = dtSeconds > 0.0f && into > 0.0f ? into / dtSeconds : 0.0f;
 	}
 	return best;
+}
+
+// The living the blade at this pose lies in: passed (someone walked into a
+// blade held still, or it was taken up in them).
+inline void PassThoseItIsIn(const BladePose& pose, const BodySpan& span, const BladeLiving& living) {
+	if (living.bodies == nullptr || living.passed == nullptr) {
+		return;
+	}
+	const NiPoint3 guard = BladePointAt(pose, span, 0.0f);
+	const NiPoint3 tip = BladePointAt(pose, span, 1.0f);
+	for (UInt32 c = 0; c < living.bodies->count; ++c) {
+		const BladeBodyCapsule& cap = living.bodies->cap[c];
+		if (SegmentSegmentDistance(guard, tip, cap.a, cap.b) <= cap.radius) {
+			living.passed->Add(cap.actor);
+		}
+	}
 }
 
 // A blade at this pose lies across something fixed, along its length.
@@ -379,6 +765,7 @@ struct BladeContactState {
 	BladePose pose;         // where the blade was drawn last
 	bool through = false;   // passing through: no stop, no strike
 	bool touching = false;  // held last frame
+	BladePassLedger passed; // the living it has gone into
 };
 
 struct BladeContactFrame {
@@ -390,14 +777,23 @@ struct BladeContactFrame {
 	bool jumped = false;
 	NiPoint3 eye{0.0f, 0.0f, 0.0f};
 	float dtSeconds = 0.0f;
+	// The living near the blade (none: they are not met), and whether the
+	// blade swings - the strike's own swing - and goes into them.
+	const BladeBodies* bodies = nullptr;
+	bool swinging = false;
+	// The hit-stop (HitStopShare): the share of its way the blade goes this
+	// frame; 1 all of it.
+	float followShare = 1.0f;
 };
 
 struct BladeContactVerdict {
 	BladePose pose;        // where the blade is drawn
-	bool held = false;     // something fixed held it this frame
-	bool through = false;  // it went through: it strikes nothing
+	bool held = false;     // something held it this frame
+	bool apart = false;    // drawn elsewhere than wanted: held, or slowed by a hit-stop
+	bool through = false;  // it went through a wall: it strikes nothing
 	BladeContactEvent event = BladeContactEvent::None;
-	BladeSweep contact;    // what held it, when a sweep found it
+	BladeSweep contact;    // what held it, when a sweep found it (a person: contact.actor)
+	bool enteredBody = false;  // a swing went into someone not passed yet
 	float gapUnits = 0.0f;     // from where the spring would draw it
 	float gapRadians = 0.0f;
 	BladeKicks kicks;
@@ -412,12 +808,14 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 		s = BladeContactState{};
 		return v;
 	}
+	const BladeLiving living{f.bodies, &s.passed, f.swinging};
 	if (!s.have || f.jumped) {
 		const bool inside = BladeInside(world, f.wanted, f.span) || BladeBehind(world, f.eye, f.wanted, f.span);
 		s.have = true;
 		s.pose = f.wanted;
 		s.through = inside;
 		s.touching = false;
+		PassThoseItIsIn(f.wanted, f.span, living);
 		v.through = inside;
 		v.event = inside ? BladeContactEvent::StartedInside : BladeContactEvent::None;
 		return v;
@@ -425,16 +823,25 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 	if (s.through) {
 		s.pose = f.wanted;
 		s.touching = false;
+		PassThoseItIsIn(f.wanted, f.span, living);
 		if (!BladeInside(world, f.wanted, f.span) && !BladeBehind(world, f.eye, f.wanted, f.span)) {
 			s.through = false;
 			v.event = BladeContactEvent::Rearmed;
 		}
 		v.through = s.through;
+		s.passed.Step(BladePointAt(f.wanted, f.span, 0.0f), BladePointAt(f.wanted, f.span, 1.0f), f.bodies,
+		              f.dtSeconds);
 		return v;
 	}
 
 	const BladePose start = s.pose;
-	const BladeSweep first = SweepBlade(world, start, f.wanted, f.span, f.dtSeconds, &v.kicks);
+	// Someone who walked into the blade where it rests is passed, not pushed
+	// against.
+	PassThoseItIsIn(start, f.span, living);
+	const bool slowed = f.followShare >= 0.0f && f.followShare < 1.0f;
+	const BladePose target = slowed ? PoseBetween(start, f.wanted, f.followShare) : f.wanted;
+	const BladeSweep first = SweepBlade(world, start, target, f.span, f.dtSeconds, &v.kicks, living);
+	v.enteredBody = first.entered;
 	// Where it goes, the first of these not across something along its
 	// length: a post between two points, or the points' straight ways cutting
 	// a corner the turning blade does not. Where it was is the last resort;
@@ -443,13 +850,14 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 	UInt32 count = 0;
 	bool held = false;
 	if (!first.hit) {
-		candidates[count++] = f.wanted;
+		candidates[count++] = target;
 	} else {
 		held = true;
 		v.contact = first;
-		const BladePose stop = PoseBetween(start, f.wanted, first.safeFraction);
-		const BladePose slid = SlideTarget(stop, f.wanted, first.normal);
-		const BladeSweep second = SweepBlade(world, stop, slid, f.span, f.dtSeconds, nullptr);
+		const BladePose stop = PoseBetween(start, target, first.safeFraction);
+		const BladePose slid = SlideTarget(stop, target, first.normal);
+		const BladeSweep second = SweepBlade(world, stop, slid, f.span, f.dtSeconds, nullptr, living);
+		v.enteredBody = v.enteredBody || second.entered;
 		candidates[count++] = second.hit ? PoseBetween(stop, slid, second.safeFraction) : slid;
 		candidates[count++] = stop;
 	}
@@ -468,23 +876,46 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 	v.gapUnits = math::Sqrt(gap.LengthSquared());
 	v.gapRadians = AngleBetweenRotations(pose.rot, f.wanted.rot);
 	if (!placed || (held && (v.gapUnits > set.letGoUnits || v.gapRadians > set.letGoRadians))) {
+		// Let go. Pressed on into someone, the blade goes into them and they
+		// are passed; anything else it went through, and it strikes nothing
+		// until it is free.
+		const bool intoPerson = placed && v.contact.hit && v.contact.actor != 0;
+		if (intoPerson) {
+			s.passed.Add(v.contact.actor);
+		}
 		s.pose = f.wanted;
-		s.through = true;
+		s.through = !intoPerson;
 		s.touching = false;
 		v.pose = f.wanted;
 		v.held = false;
-		v.through = true;
+		v.through = s.through;
 		v.event = BladeContactEvent::LetGo;
+		s.passed.Step(BladePointAt(f.wanted, f.span, 0.0f), BladePointAt(f.wanted, f.span, 1.0f), f.bodies,
+		              f.dtSeconds);
 		return v;
 	}
 	v.pose = pose;
 	v.held = held;
+	v.apart = held || slowed;
 	if (held && !s.touching) {
 		v.event = BladeContactEvent::Touched;
 	}
 	s.touching = held;
 	s.pose = pose;
+	s.passed.Step(BladePointAt(pose, f.span, 0.0f), BladePointAt(pose, f.span, 1.0f), f.bodies, f.dtSeconds);
 	return v;
+}
+
+// The hit-stop (the tester, 2026-10-09, decision 4: "ja"): once a swing has
+// gone into someone, the blade goes only part of its way for a few frames -
+// a quarter for three, then a half and three quarters - and then on with
+// the hand again. The view is never held. Frames counted from the one the
+// swing went in; past them, all of the way.
+inline constexpr UInt32 kHitStopFrames = 5;
+
+inline float HitStopShare(UInt32 framesSince) {
+	static const float kShares[kHitStopFrames] = {0.25f, 0.25f, 0.25f, 0.5f, 0.75f};
+	return framesSince < kHitStopFrames ? kShares[framesSince] : 1.0f;
 }
 
 // ------------------------------------------------------------------ around it

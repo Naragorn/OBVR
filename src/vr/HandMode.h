@@ -308,6 +308,12 @@ struct HandSettings {
 	bool weaponStopsAtWalls = true;
 	float weaponLetGoMetres = 0.30f;
 	float weaponLetGoDegrees = 45.0f;
+	// The living as well: held there slowly the blade rests on a person, a
+	// swing goes into them and through ([Hands] WeaponStopsAtBodies); and the
+	// hit-stop, the blade slowed for a few frames once a swing goes in
+	// ([Hands] WeaponHitStop).
+	bool weaponStopsAtBodies = true;
+	bool weaponHitStop = true;
 	// Opening by reaching: an open, empty hand at a container, a body or -
 	// sneaking - a person opens it, the hand away closes it ([Hands]
 	// ReachOpens, ReachOpenMetres, ReachCloseMetres; vr/ReachOpen.h).

@@ -1124,6 +1124,22 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.weaponLetGoMetres = v; },
 	},
 	{
+		"Hands", "Weapon rests on people",
+		"Held there slowly the weapon rests on a person; a swing goes into them, hits and through",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "WeaponStopsAtBodies",
+		+[](const Config& c) { return c.hands.weaponStopsAtBodies ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.weaponStopsAtBodies = v != 0.0f; },
+	},
+	{
+		"Hands", "Weapon hit-stop",
+		"A swing that goes into someone is slowed for a few frames - the weapon only, never the view",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "WeaponHitStop",
+		+[](const Config& c) { return c.hands.weaponHitStop ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.weaponHitStop = v != 0.0f; },
+	},
+	{
 		"Hands", "Open by reaching",
 		"An open, empty hand at a chest, a body or - sneaking - a pocket opens it; the hand away closes it",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,

@@ -1985,3 +1985,45 @@ fast swing passes, and the measuring; bodies, parries and shields follow.
 - **Not exercised yet**: a wall (only the floor was met), the slide along
   it, a fast swing's kick of a cup, the knock's sound and the pulse (the
   harness has no controllers to feel), a two-hander. Headset test open.
+
+**The living (built 2026-10-09, the same day; spec section 4 C and decisions 2 and 4):**
+
+- `[Hands] WeaponStopsAtBodies=1` ("Weapon rests on people") and
+  `WeaponHitStop=1` ("Weapon hit-stop").
+- **Capsules on their bones** (`game::CollectBladeBodies`, game/BladeBodies.h):
+  the high-process actors near the blade (the strike's own walk), alive,
+  not the player; 18 "Bip01" bones found by name through the root's
+  GetObject once per actor and root, kept and checked by name each frame;
+  13 capsules (`BodyCapsulesFromBones`: a head reaching 9 units past its
+  bone, neck, three torso links, arms, legs; radii 3.5-10 units times the
+  actor's scale - proposed for a human, not measured on the meshes); with
+  fewer than six bones the bound's column.
+- **Slow, the blade rests on them** like on a wall (`SweepBlade` with
+  `BladeLiving`), sliding along; pressed on past the cap it goes into them
+  - let go, but not "through": they are passed and the blade still strikes.
+- **A swing goes in and passes** (PLANCK's rule): a swing into someone, or
+  a blade that finds itself in them (they walked into it), passes them
+  until it has been out of them for 0.22 s (`BladePassLedger`). The hit is
+  still the strike by motion's, unchanged.
+- **The hit-stop** (`HitStopShare`): from the frame a swing goes into
+  someone, the blade goes a quarter of its way for three frames, then a
+  half, three quarters, all - the weapon only, never the view. A strong
+  pulse on the weapon hand as it goes in, a light one when it comes to rest
+  on someone (no knock sound on a body).
+- Log: "Contact: <actor>'s skeleton read - n of 18 bones", "Contact: the
+  blade rests on <actor> ...", "Contact: pressed on into <actor> ...",
+  "Contact: a swing went into someone ..."; at a mark "Contact: people - n
+  near (capsules), passed, resting on, swinging, hit-stop frame" and the
+  first three capsules.
+- Tests: `blade_contact_test` (segment into capsule, segment distances, the
+  capsules from bones, the column, the ledger, every flow with people: rest,
+  press in, swing in, pass while in, free again, walked into, a wall behind
+  someone, taken up inside; the hit-stop).
+- **Harness**: `blade-body.txt` written - a beggar placed, frozen (`tai`),
+  the blade turned slowly round the player at chest height, then fast.
+  Not run to PASS yet: the PC was locked before the circle version could
+  run. Three earlier runs of it with the beggar unfrozen showed the reading
+  works: "18 of 18 bones", the capsules where a standing beggar stands (head
+  at -144 with the feet at -258.5), no crash; the beggar stood behind the
+  player each time (PlaceAtMe's distance and direction did not put it
+  ahead) and wandered off, so the blade never met them - hence the circle.
