@@ -289,8 +289,11 @@ struct HandSettings {
 	float crouchDropMetres = 0.30f;
 	// The weapon's weight as a lag of the drawn hand behind the controller
 	// ([Hands] WeaponWeight, 1-100 %, vr/WeaponWeight.h): 1 is on the
-	// controller, 100 the heaviest feel.
+	// controller, 100 the heaviest feel. With the swing-through the weapon
+	// has momentum: it overruns a hand that stops and swings back ([Hands]
+	// WeaponSwingThrough); off, it only trails.
 	float weaponWeightPercent = 40.0f;
+	bool weaponSwingThrough = true;
 	// Run switched on and off by a click of the left stick, instead of held
 	// while the stick is pressed in.
 	bool runToggle = false;

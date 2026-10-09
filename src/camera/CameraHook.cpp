@@ -2136,11 +2136,13 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				s_weighed = weaponForm;
 				char name[64] = "";
 				game::ReadFormFullName(reinterpret_cast<UInt32>(weaponForm), name, sizeof(name));
-				const vr::WeaponLagTuning lag = vr::WeaponLagFor(weight, config.hands.weaponWeightPercent, false);
-				OBVR_LOG("Weapon weight: %s %.1f, time constant %.0f ms at %.0f %%, cap %.2f m / %.0f degrees",
+				const vr::WeaponLagTuning lag = vr::WeaponLagFor(weight, config.hands.weaponWeightPercent, false,
+				                                                 config.hands.weaponSwingThrough);
+				OBVR_LOG("Weapon weight: %s %.1f, time constant %.0f ms at %.0f %%, cap %.2f m / %.0f degrees, %s",
 				         name, static_cast<double>(weight), static_cast<double>(lag.timeConstantSeconds * 1000.0f),
 				         static_cast<double>(config.hands.weaponWeightPercent), static_cast<double>(lag.capMetres),
-				         static_cast<double>(lag.capRadians * math::kRadiansToDegrees));
+				         static_cast<double>(lag.capRadians * math::kRadiansToDegrees),
+				         lag.swingThrough ? "swinging through" : "the plain lag");
 			}
 		} else {
 			s_weighed = nullptr;
@@ -3187,27 +3189,36 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 
 	// The weapon's lag, measured: the largest gap of each of the first swings
-	// with a lag, since the headset's feel cannot be read from here.
+	// with a lag, since the headset's feel cannot be read from here. Watched
+	// for half a second past the swing as well: the swing-through comes when
+	// the hand has stopped.
 	{
 		static UInt32 s_gapSerial = 0;
 		static float s_gapMetres = 0.0f;
 		static float s_gapDegrees = 0.0f;
 		static UInt32 s_gapLines = 6;
-		if (g_hand.weaponLagging && g_hand.swingActive) {
-			if (g_hand.swingSerial != s_gapSerial) {
+		static UInt32 s_gapAfter = 0;  // frames still watched after the swing
+		const bool watching = g_hand.weaponLagging && (g_hand.swingActive || s_gapAfter > 0);
+		const bool newSwing = g_hand.weaponLagging && g_hand.swingActive && g_hand.swingSerial != s_gapSerial;
+		if (s_gapSerial != 0 && (!watching || newSwing)) {
+			if (s_gapLines > 0) {
+				--s_gapLines;
+				OBVR_LOG("Weapon weight: swing %u - the weapon was up to %.2f m and %.0f degrees from the hand, "
+				         "within half a second of it",
+				         s_gapSerial, static_cast<double>(s_gapMetres), static_cast<double>(s_gapDegrees));
+			}
+			s_gapSerial = 0;
+			s_gapAfter = 0;
+		}
+		if (watching) {
+			if (newSwing) {
 				s_gapSerial = g_hand.swingSerial;
 				s_gapMetres = 0.0f;
 				s_gapDegrees = 0.0f;
 			}
+			s_gapAfter = g_hand.swingActive ? 45 : s_gapAfter - 1;
 			s_gapMetres = g_hand.weaponGapMetres > s_gapMetres ? g_hand.weaponGapMetres : s_gapMetres;
 			s_gapDegrees = g_hand.weaponGapDegrees > s_gapDegrees ? g_hand.weaponGapDegrees : s_gapDegrees;
-		} else if (s_gapSerial != 0) {
-			if (s_gapLines > 0) {
-				--s_gapLines;
-				OBVR_LOG("Weapon weight: swing %u - the weapon trailed the hand by up to %.2f m and %.0f degrees",
-				         s_gapSerial, static_cast<double>(s_gapMetres), static_cast<double>(s_gapDegrees));
-			}
-			s_gapSerial = 0;
 		}
 	}
 

@@ -332,16 +332,34 @@ else sets the lag.
   position, a slerp by the same share for the orientation (no acos in the
   cross build: the angle is atan2 of the turn quaternion's sine and
   cosine).
-- **First order, as designed**: `drawn += (wanted - drawn) * dt / (tc +
-  dt)`. The "swing-through" this gives is the weapon carrying on after
-  the hand stopped, to where the hand is - not past it; there is no
-  overshoot, which is also why there is nothing to oscillate. If the
-  headset wants the overshoot, a second-order step behind the same
-  interface is the change.
+- **Two ways to follow, by `[Hands] WeaponSwingThrough`** (on by default;
+  the tester the same day: "ja machen wir das nachschwingen auch aber
+  hinter einem feature toggle (default on)"):
+  - *On, the swing-through*: the weapon has momentum. A spring and a
+    damper act on its motion RELATIVE to the hand, as B&S's joint does: a
+    hand that starts leaves the weapon behind (by a / omega^2 under the
+    acceleration a), a hand at a steady speed has it back on the hand (no
+    lag at a steady speed, unlike the plain lag), a hand that stops is
+    overrun by it - by 0.6 x speed / omega at the peak, e.g. 7 cm after a
+    1 m/s swing of the heaviest weapon at 100 % - and it swings back, a
+    quarter of the way (damping ratio 0.4: the overshoot is e^(-zeta pi /
+    sqrt(1 - zeta^2)) = 25 %). omega = 1 / tc, so the heaviest at 100 %
+    swings at 8.3 rad/s (a 0.8 s period) and at 40 % at 21 (0.3 s). Each
+    frame is the damped oscillator's closed form (Ryan Juckett, "Damped
+    Springs", 2012, the four coefficients): exact for a hand that moves
+    evenly within the frame, stable however long the frame; the hand's
+    change of speed between frames is the push. `exp` was added to
+    core/MathFns.h for it - msvcrt exports it (dumpbin on
+    SysWOW64\msvcrt.dll, ordinal 1213, beside sin/cos/sqrt/atan/tan).
+  - *Off, the plain lag*: first order, `drawn += (wanted - drawn) * dt /
+    (tc + dt)`. It trails a moving hand by speed x tc, carries on to where
+    the hand stopped and never past it.
 - **The cap**: 0.25 m and 35 degrees at 100 %, both scaled by the slider;
   beyond it the drawn pose is pulled onto the cap along the line (and the
-  arc) towards the controller. A jump of the raw poses (SteamVR's seated
-  zero reset) is bounded by it and caught up in ~0.1 s.
+  arc) towards the controller, and the momentum that would carry it further
+  out is taken away, so the weapon rests at the cap rather than presses on
+  it. A jump of the raw poses (SteamVR's seated zero reset) is bounded by
+  it and caught up in ~0.1 s.
 - **Who takes the drawn pose** (`HandModeResult::weaponHandRotation` and
   `weaponHandOffsetUnits`, equal to `rightHand*` while nothing lags): the
   weapon hand's pin, the two-hand grip (the left hand holds the handle
@@ -359,15 +377,24 @@ else sets the lag.
   `0.12 s * clamp((weight - 3) / 40, 0, 1) * slider`, times 0.4 with both
   hands on the handle.
 - **The log**: "Weapon weight: <name> <weight>, time constant n ms at n %,
-  cap n m / n degrees" once per draw, and "Weapon weight: swing n - the
-  weapon trailed the hand by up to n m and n degrees" for the first six
-  swings with a lag.
+  cap n m / n degrees, swinging through | the plain lag" once per draw,
+  and "Weapon weight: swing n - the weapon was up to n m and n degrees
+  from the hand, within half a second of it" for the first six swings
+  with a lag (the half second past the swing is where the swing-through
+  shows).
 - **Tests**: `weapon_weight_test` (the weight's share, the slider's
-  clamps, the tuning per weight and grip, the slerp and the angle, the
-  step: taken up, a frame behind by the share, caught up, no time, both
-  caps, both hands, let go and taken up again) and `TestWeaponWeightInMode`
-  in `hand_mode_test` (through the mode: the controller's pose untouched,
-  the drawn pose behind in units and heading, sheathed, a dagger,
-  adjusting, both hands, 1 %, third person). 123 tests pass.
+  clamps, the tuning per weight, grip and model, the slerp, the angle and
+  the rotation vectors, the oscillator's step composing and decaying as
+  the closed form says, the plain lag's step: taken up, a frame behind by
+  the share, caught up and never past, no time, both caps, both hands,
+  let go and taken up again; the swing-through: taken up without
+  momentum, a release from behind that passes the hand by the damping's
+  quarter and settles, a hand at a steady speed caught up with, a stop
+  overrun by the analytic peak, a jump, the cap taking the momentum, no
+  time, let go, the rotation's overshoot and cap, 40 % against 100 %) and
+  `TestWeaponWeightInMode` in `hand_mode_test` (through the mode: the
+  controller's pose untouched, the drawn pose behind in units and
+  heading, sheathed, a dagger, adjusting, both hands, 1 %, third person,
+  and the swing-through overrunning a jump). 123 tests pass.
 - **Open**: the feel in the headset (the time constant and the caps are
   code constants to retune from there); item 6.

@@ -1100,6 +1100,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.weaponWeightPercent = v; },
 	},
 	{
+		"Hands", "Weapon swing-through",
+		"The weapon's momentum carries it past a hand that stops, and it swings back; off, it only trails",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "WeaponSwingThrough",
+		+[](const Config& c) { return c.hands.weaponSwingThrough ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.weaponSwingThrough = v != 0.0f; },
+	},
+	{
 		"Hands", "Adjust hands", "A guided fit of the in-game hands to the controllers you hold",
 		ItemKind::Action, 0.0f, 0.0f, 0.0f, 0, false,
 		"", "",

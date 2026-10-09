@@ -1827,6 +1827,13 @@ der ingame weight wert der waffe in die gewichtung mit einfliesst".
   the fists do not lag; nor anything while the hands are adjusted.
 - `[Hands] WeaponWeight=40` (1-100 %; settings "Weapon weight (%)"), hot
   reloaded. 1 % is the controller.
+- `[Hands] WeaponSwingThrough=1` (settings "Weapon swing-through"; the
+  tester: "ja machen wir das nachschwingen auch aber hinter einem feature
+  toggle (default on)"): the weapon has momentum - a hand that starts
+  leaves it behind, a steady hand has it back, a hand that stops is
+  overrun by it and it swings back a quarter of the way (the damped
+  oscillator's closed form, damping ratio 0.4, omega 1 / tc). Off, the
+  plain lag that only trails.
 - The log: "Weapon weight: <name> <weight>, time constant n ms at n %,
   cap n m / n degrees" once per draw - the first headset run checks the
   figure against the inventory row - and the largest gap of each of the

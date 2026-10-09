@@ -18,6 +18,11 @@ extern "C" double __cdecl cos(double value);
 extern "C" double __cdecl sqrt(double value);
 extern "C" double __cdecl atan(double value);
 extern "C" double __cdecl tan(double value);
+// exp is C89 and in every msvcrt: `dumpbin /exports` on this machine's
+// SysWOW64\msvcrt.dll lists it (ordinal 1213) beside the five above
+// (2026-10-09). Wanted by the weapon's swing-through (vr/WeaponWeight.h),
+// whose exact oscillator step decays by it.
+extern "C" double __cdecl exp(double value);
 
 #else
 
@@ -33,6 +38,7 @@ inline float Sin(float radians) { return static_cast<float>(sin(static_cast<doub
 inline float Cos(float radians) { return static_cast<float>(cos(static_cast<double>(radians))); }
 inline float Sqrt(float value) { return static_cast<float>(sqrt(static_cast<double>(value))); }
 inline float Tan(float radians) { return static_cast<float>(tan(static_cast<double>(radians))); }
+inline float Exp(float value) { return static_cast<float>(exp(static_cast<double>(value))); }
 
 // Only ever used to turn a projection tangent into a readable number of
 // degrees for the log. Nothing depends on its precision, which is why the

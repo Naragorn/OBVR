@@ -200,7 +200,8 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	{
 		const bool weaponInHand = f.right.valid && f.firstPerson && f.meleeHeld && f.weaponWeight > 0.0f &&
 		                          !(s.adjustHands || f.adjustingHands);
-		const WeaponLagTuning tuning = WeaponLagFor(f.weaponWeight, s.weaponWeightPercent, f.leftGripOnHandle);
+		const WeaponLagTuning tuning =
+			WeaponLagFor(f.weaponWeight, s.weaponWeightPercent, f.leftGripOnHandle, s.weaponSwingThrough);
 		const WeaponLagVerdict drawn =
 			StepWeaponLag(m_weaponLag, weaponInHand, tuning, f.right.orientation, f.right.position, f.dtSeconds);
 		r.weaponLagging = drawn.lagging;

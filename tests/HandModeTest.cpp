@@ -2549,6 +2549,7 @@ void TestWeaponWeightInMode() {
 	HandSettings settings;
 	settings.enabled = true;
 	settings.weaponWeightPercent = 100.0f;
+	settings.weaponSwingThrough = false;  // the plain lag first: its numbers are the share's
 	HandModeFrame frame;
 	frame.headValid = true;
 	frame.firstPerson = true;
@@ -2629,6 +2630,28 @@ void TestWeaponWeightInMode() {
 	frame.firstPerson = false;
 	r = mode.Update(frame, settings);
 	Check(!r.rightHandValid && !r.weaponLagging, "in third person there is no drawn hand to lag");
+
+	// The swing-through, the default: a hand that jumps leaves the weapon
+	// where it was, and the weapon then overruns the hand and swings back.
+	settings.weaponSwingThrough = true;
+	frame.firstPerson = true;
+	frame.right.position.x = 0.0f;
+	HandMode momentum;
+	momentum.Update(frame, settings);
+	frame.right.position.x = 0.1f;
+	r = momentum.Update(frame, settings);
+	Check(r.weaponLagging && r.weaponHandOffsetUnits.x < 1.0f && Near(r.weaponGapMetres, 0.1f, 0.01f),
+	      "with the swing-through a jump leaves the weapon where it was");
+	float furthest = 0.0f;
+	for (int frameNo = 0; frameNo < 90; ++frameNo) {
+		r = momentum.Update(frame, settings);
+		furthest = r.weaponHandOffsetUnits.x > furthest ? r.weaponHandOffsetUnits.x : furthest;
+	}
+	Check(furthest > 8.5f && furthest < 10.5f, "then overruns the hand (7 units) and swings back");
+	for (int frameNo = 0; frameNo < 270; ++frameNo) {
+		r = momentum.Update(frame, settings);
+	}
+	Check(Near(r.weaponHandOffsetUnits.x, 7.0f, 0.05f), "and rests on it");
 }
 
 int main() {
