@@ -5,6 +5,7 @@
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
+#include "game/Parry.h"
 #include "game/PlayerAim.h"
 
 namespace obvr::game {
@@ -21,6 +22,18 @@ UInt32 Player() { return *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
 
 bool __cdecl OnBlockCone(void* target, void* attacker, float* angleOut) {
 	const auto original = reinterpret_cast<ConeFn>(kBlockConeCheck);
+	// A parried blow is blocked whichever way the player faces; another
+	// attacker's under a block forced for a parry is not (game/Parry.h).
+	const ParryCone parry = ParryConeFor(reinterpret_cast<UInt32>(target), reinterpret_cast<UInt32>(attacker));
+	if (parry == ParryCone::Blocked) {
+		if (angleOut != nullptr) {
+			*angleOut = 0.0f;
+		}
+		return true;
+	}
+	if (parry == ParryCone::NotBlocked) {
+		return false;
+	}
 	if (!BlockConeUsesGaze(g_enabled, reinterpret_cast<UInt32>(target), Player(), g_haveGaze)) {
 		return original(target, attacker, angleOut);
 	}

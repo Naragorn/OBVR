@@ -456,3 +456,42 @@ keiner (dein Vorschlag) 4) ja . fang an"
   found a limb crossed between two swept points passing the whole person;
   a pose across someone not passed is now refused (`PersonAcross`).
   `blade-wall.txt` PASS again on that build.
+
+## 11. Built: the parry (2026-10-09)
+
+- `game/ParryLogic.h` (pure, `parry_test`), `game/Parry.cpp` (the two
+  reroutes), the cone's answer in `game/BlockCone.cpp`, their blades from
+  `game/BladeBodies.cpp`; settings `WeaponParries`, `ParryStopsAll`
+  (decision 3: on), `ParryFatigue` (10). controls-spec 4.32 has the details.
+- **Read 2026-10-09 (dumpbin on the hit handler 0x005FEBF0):** the target
+  is `esi`, the attacker `edi` (`mov edi,ecx` at 0x005FEC3B: the handler is
+  a thiscall on the attacker); the block check `call 005E5670` at
+  0x005FF7DF is thiscall(target) and answers in `al`; the cone's second
+  argument is `[esp+20h]`, the arrow (`ebp`) or else the attacker; the
+  share `call 005474A0` at 0x005FF8C7 takes five dwords - the target's
+  Block (actor value 0x0F, read through vtable +0x284), its Luck (7), the
+  float from 0x005F4880, and two flags - and answers in st0. A
+  hand-to-hand block against an armed attacker skips the share (0x005FF885).
+- Differences from section 4 E:
+  - The blades meeting do not stop the player's blade yet; the engine's
+    recoil throws the attacker's back.
+  - Their blades are looked at four steps a frame, both moving
+    (`BladesMeet`), within 4 units; the window is 0.8 s from the meeting,
+    taken by their first blow in it.
+  - A block forced for one attacker's parry is answered "not in front" for
+    any other attacker's blow in it, so theirs lands.
+- **Unmeasured until the harness or the headset says:** when a blow is
+  resolved against where the attacker's blade is - every blow at the player
+  logs the attackers' blades' distance to the eyes and to the player's
+  blade ("Parry: a blow at the player ...").
+- **Shields** (section 4 F, ours): the worn shield's ball parries as the
+  blade does (`ShieldBall`, `BladeMeetsBall`). Their shields stopping the
+  player's blade is not built.
+
+**Open bug (the tester's run, 2026-10-09): the strike hits where the blade
+never touched.** A power swing struck an NPC by the strike by motion's
+sphere (the blade 52 units from the bound's centre; 0.7 of the radius 90
+plus 8 = 71 allowed) and no capsule was entered - no "a swing went into
+someone", no hit-stop. The sphere is far wider than the body the capsules
+draw. Taking the hit from the capsules (section 4 C) would make the hit,
+the hit-stop and the blade's rest agree; not built yet.

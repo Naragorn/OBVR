@@ -1407,3 +1407,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME blade_contact COMMAND blade_contact_test)
+
+add_executable(parry_test ParryTest.cpp)
+
+target_include_directories(parry_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(parry_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME parry COMMAND parry_test)

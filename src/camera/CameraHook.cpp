@@ -76,6 +76,7 @@
 #include "game/ReachTargets.h"
 #include "game/BladeContact.h"
 #include "game/BladeBodies.h"
+#include "game/Parry.h"
 #include "game/Insult.h"
 #include "vr/MenuHaptics.h"
 #include "vr/VrKeyboard.h"
@@ -2010,6 +2011,7 @@ UInt32 g_bladeCostLines = 6;
 // The living near the blade this frame, and the frames since a swing last
 // went into someone (the hit-stop's count; kHitStopFrames: none running).
 game::BladeBodies g_bladeBodies;
+game::BladeFoes g_bladeFoes;
 UInt32 g_bladeHitStopFrames = game::kHitStopFrames;
 // The person the blade rested on the frame before (0 none): a new one is said.
 UInt32 g_bladeRestActor = 0;
@@ -2018,6 +2020,10 @@ UInt32 g_bladeRestActor = 0;
 // WPNHitBluntX; read 2026-10-09): the knock of a blade or a mace on a wall.
 constexpr UInt32 kSoundFormHitBlade = 0x0000C3C4;
 constexpr UInt32 kSoundFormHitBlunt = 0x0000C3C7;
+// WPNBlockBladeX, WPNBlockBluntX: a parry's clash.
+constexpr UInt32 kSoundFormBlockBlade = 0x0000C3CB;
+constexpr UInt32 kSoundFormBlockBlunt = 0x0000C3CC;
+constexpr UInt32 kSoundFormBlockShield = 0x0000C3D0;  // WPNBlockShieldLightX
 
 const char* BladeEventName(game::BladeContactEvent e) {
 	switch (e) {
@@ -2074,11 +2080,19 @@ void StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
 	const long long before = ReadPerformanceCounter();
 	const bool people = f.active && settings.enabled && config.hands.weaponStopsAtBodies;
+	const bool parries = f.active && config.hands.weaponParries;
 	UInt32 peopleNear = 0;
-	if (people) {
+	if (people || parries) {
+		// Their blades reach further than the bodies: a sword's length more.
 		const float bladeUnits = span.valid ? math::Sqrt((span.b - span.a).LengthSquared()) : 100.0f;
-		peopleNear = game::CollectBladeBodies(f.wanted.pos, bladeUnits + 30.0f, g_bladeBodies);
-		f.bodies = &g_bladeBodies;
+		peopleNear = game::CollectBladeBodies(f.wanted.pos, bladeUnits + (parries ? 100.0f : 30.0f), g_bladeBodies,
+		                                      parries ? &g_bladeFoes : nullptr);
+		if (people) {
+			f.bodies = &g_bladeBodies;
+		}
+	}
+	if (!parries) {
+		g_bladeFoes.count = 0;
 	}
 	f.swinging = g_hand.swingActive && g_hand.swingTravelledMetres >= vr::kSwingMinMetres;
 	f.followShare = config.hands.weaponHitStop ? game::HitStopShare(g_bladeHitStopFrames) : 1.0f;
@@ -2101,6 +2115,49 @@ void StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	g_bladeOutOffset = g_hand.weaponHandOffsetUnits;
 	g_bladeThrough = v.through;
 	const UInt32 kicked = game::KickBladeKicks(v.kicks);
+
+	// The parry (game/Parry.h): the drawn blade where it is now against the
+	// blades of those attacking near.
+	{
+		game::ParryFrame p;
+		p.enabled = parries;
+		p.stopsAll = config.hands.parryStopsAll;
+		p.fatigue = config.hands.parryFatigue;
+		p.bladeValid = span.valid && !v.through;
+		p.guard = span.valid ? game::BladePointAt(v.pose, span, 0.0f) : v.pose.pos;
+		p.tip = span.valid ? game::BladePointAt(v.pose, span, 1.0f) : v.pose.pos;
+		p.eye = camPos;
+		p.foes = &g_bladeFoes;
+		p.dtSeconds = dt;
+		// The shield, worn on the left forearm: its node's bound as a ball.
+		if (parries) {
+			const NiAVObject* const shield = game::FindFirstPersonNode("Bip01 L ForearmTwist");
+			p.shieldValid = shield != nullptr &&
+			                game::ShieldBall(game::PlayerWearsShield(), shield->worldBound.radius, p.shieldRadius);
+			p.shieldCentre = shield != nullptr ? shield->worldBound.center : NiPoint3{0.0f, 0.0f, 0.0f};
+		}
+		const game::ParryEvent parry = game::StepParry(p);
+		if (parry.parried) {
+			g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(!parry.byShield, g_handRolesSwapped), 0.06f, 140.0f,
+			                                         1.0f);
+			game::PlaySoundFormAt(parry.byShield ? kSoundFormBlockShield
+			                      : weaponType == 2 || weaponType == 3 ? kSoundFormBlockBlunt : kSoundFormBlockBlade,
+			                      *reinterpret_cast<const UInt32*>(addr::kPlayerPointer), parry.point);
+			static UInt32 s_parryLines = 24;
+			if (s_parryLines > 0) {
+				--s_parryLines;
+				OBVR_LOG("Parry: %s - %08X's attack (action %d) at %.0f %.0f %.0f is parried for %.1f s",
+				         parry.byShield ? "their blade met the shield" : "the blades met",
+				         parry.actor, static_cast<int>(parry.action), static_cast<double>(parry.point.x),
+				         static_cast<double>(parry.point.y), static_cast<double>(parry.point.z),
+				         static_cast<double>(game::kParryWindowSeconds));
+			}
+		}
+		const float owed = game::TakeParryFatigue();
+		if (owed > 0.0f) {
+			game::SpendPlayerFatigue(owed);
+		}
+	}
 
 	// Felt and heard: a pulse on every touch by its speed into the surface,
 	// a soft one now and then while it scrapes along, and the weapon's knock
@@ -2220,6 +2277,16 @@ void StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		OBVR_LOG("Contact: people - %u near (%u capsules), %u passed, resting on %08X, swinging %d, hit-stop frame %u",
 		         peopleNear, people ? g_bladeBodies.count : 0u, g_bladeContact.passed.count,
 		         v.held && v.contact.actor != 0 ? v.contact.actor : 0u, f.swinging ? 1 : 0, g_bladeHitStopFrames);
+		for (UInt32 i = 0; i < g_bladeFoes.count && i < 3; ++i) {
+			const game::BladeFoe& foe = g_bladeFoes.foe[i];
+			const float toOurs = span.valid ? game::SegmentSegmentDistance(foe.a, foe.b, game::BladePointAt(v.pose, span, 0.0f),
+			                                                              game::BladePointAt(v.pose, span, 1.0f))
+			                                : -1.0f;
+			OBVR_LOG("Contact: a blade near - %08X, action %d, from %.0f %.0f %.0f to %.0f %.0f %.0f, %.0f from ours",
+			         foe.actor, static_cast<int>(foe.action), static_cast<double>(foe.a.x), static_cast<double>(foe.a.y),
+			         static_cast<double>(foe.a.z), static_cast<double>(foe.b.x), static_cast<double>(foe.b.y),
+			         static_cast<double>(foe.b.z), static_cast<double>(toOurs));
+		}
 		for (UInt32 c = 0; people && c < g_bladeBodies.count && c < 3; ++c) {
 			const game::BladeBodyCapsule& cap = g_bladeBodies.cap[c];
 			OBVR_LOG("Contact: capsule %u of %08X - %.0f %.0f %.0f to %.0f %.0f %.0f, %.1f round", c, cap.actor,
@@ -2409,6 +2476,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_bladeThrough = false;
 		g_bladeOutValid = false;
 		game::ForgetBladeBodies();
+		game::ForgetParries();
 		g_hand = vr::HandModeResult{};
 		g_reachIconShown = false;
 		g_nearItem = game::NearItem{};
@@ -9890,6 +9958,7 @@ bool Install() {
 	game::InstallCompassHeading();
 	game::InstallHitShader();
 	game::InstallBlockCone();
+	game::InstallParry();
 	game::InstallPlayerLookAt();
 	game::InstallWorldPickHook();
 	// The controllers' way into a game behind another window; logs its own

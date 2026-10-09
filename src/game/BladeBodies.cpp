@@ -60,8 +60,44 @@ struct Kept {
 	UInt32 actor = 0;
 	UInt32 root = 0;
 	const NiAVObject* bone[kBladeBoneCount] = {};
+	// Their drawn weapon's node, and their blade the frame before.
+	const NiAVObject* weapon = nullptr;
+	bool haveBlade = false;
+	NiPoint3 bladeA{0.0f, 0.0f, 0.0f};
+	NiPoint3 bladeB{0.0f, 0.0f, 0.0f};
 	UInt32 lastFrame = 0;
 };
+
+bool IsWeaponNode(const NiAVObject* node) {
+	if (!LooksLikeObject(reinterpret_cast<UInt32>(node))) {
+		return false;
+	}
+	const char* const name = node->name;
+	if (!LooksLikeObject(reinterpret_cast<UInt32>(name) & ~3u)) {
+		return false;
+	}
+	return name[0] == 'W' && name[1] == 'e' && name[2] == 'a' && name[3] == 'p' && name[4] == 'o' && name[5] == 'n' &&
+	       name[6] == '\0';
+}
+
+// The actor's process action (HighProcess +0x1F4, GameAddresses.h), only in
+// high process (level 0, the process's vtable +0x08, as leading reads it):
+// a lower process has no such field.
+SInt32 ActionOf(UInt32 actor) {
+	const UInt32 process = Read(actor + addr::kMobileProcessOffset);
+	if (!LooksLikeObject(process)) {
+		return addr::kActionNone;
+	}
+	const UInt32 levelFn = Slot(process, 0x08);
+	if (levelFn == 0) {
+		return addr::kActionNone;
+	}
+	using LevelFn = UInt32(__fastcall*)(void* process, void* edx);
+	if (reinterpret_cast<LevelFn>(levelFn)(reinterpret_cast<void*>(process), nullptr) != 0) {
+		return addr::kActionNone;
+	}
+	return *reinterpret_cast<const SInt16*>(process + addr::kProcessCurrentActionOffset);
+}
 
 constexpr UInt32 kKeptMax = 16;
 Kept g_kept[kKeptMax];
@@ -97,6 +133,11 @@ Kept& KeptFor(UInt32 actor, UInt32 root) {
 			++found;
 		}
 	}
+	if (getObject != 0) {
+		auto* const weapon = static_cast<const NiAVObject*>(
+			reinterpret_cast<GetObjectFn>(getObject)(reinterpret_cast<void*>(root), nullptr, "Weapon"));
+		k.weapon = IsWeaponNode(weapon) ? weapon : nullptr;
+	}
 	if (g_readLines > 0) {
 		--g_readLines;
 		char missing[160] = {};
@@ -114,18 +155,21 @@ Kept& KeptFor(UInt32 actor, UInt32 root) {
 			}
 		}
 		missing[at > 0 ? at - 1 : 0] = '\0';
-		OBVR_LOG("Contact: %08X's skeleton read - %u of %u bones%s%s%s", actor, found,
+		OBVR_LOG("Contact: %08X's skeleton read - %u of %u bones%s%s%s; a weapon node %s", actor, found,
 		         static_cast<UInt32>(kBladeBoneCount), found < kBladeBoneCount ? " (none for " : "", missing,
-		         found < kBladeBoneCount ? ")" : "");
+		         found < kBladeBoneCount ? ")" : "", k.weapon != nullptr ? "found" : "NOT found");
 	}
 	return k;
 }
 
 }  // namespace
 
-UInt32 CollectBladeBodies(const NiPoint3& around, float withinUnits, BladeBodies& out) {
+UInt32 CollectBladeBodies(const NiPoint3& around, float withinUnits, BladeBodies& out, BladeFoes* foes) {
 	++g_frame;
 	out.count = 0;
+	if (foes != nullptr) {
+		foes->count = 0;
+	}
 	const UInt32 player = Read(addr::kPlayerPointer);
 	if (!LooksLikeObject(player)) {
 		return 0;
@@ -162,6 +206,28 @@ UInt32 CollectBladeBodies(const NiPoint3& around, float withinUnits, BladeBodies
 			continue;
 		}
 		Kept& k = KeptFor(actor, root);
+		// Their blade, when a weapon is in their hand, and what they are doing.
+		NiPoint3 bladeA{0.0f, 0.0f, 0.0f};
+		NiPoint3 bladeB{0.0f, 0.0f, 0.0f};
+		const bool blade =
+			k.weapon != nullptr && IsWeaponNode(k.weapon) &&
+			TheirBladeFromNode(k.weapon->worldTransform.pos,
+			                   NiPoint3{k.weapon->worldTransform.rot.data[0][1], k.weapon->worldTransform.rot.data[1][1],
+			                            k.weapon->worldTransform.rot.data[2][1]},
+			                   k.weapon->worldBound.center, k.weapon->worldBound.radius, bladeA, bladeB);
+		if (blade && foes != nullptr && foes->count < kBladeFoesMax) {
+			BladeFoe& f = foes->foe[foes->count++];
+			f.actor = actor;
+			f.action = ActionOf(actor);
+			f.a = bladeA;
+			f.b = bladeB;
+			f.haveLast = k.haveBlade;
+			f.lastA = k.haveBlade ? k.bladeA : bladeA;
+			f.lastB = k.haveBlade ? k.bladeB : bladeB;
+		}
+		k.haveBlade = blade;
+		k.bladeA = bladeA;
+		k.bladeB = bladeB;
 		NiPoint3 at[kBladeBoneCount];
 		bool have[kBladeBoneCount];
 		for (UInt32 b = 0; b < kBladeBoneCount; ++b) {

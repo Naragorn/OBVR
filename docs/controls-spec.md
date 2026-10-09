@@ -2036,3 +2036,45 @@ fast swing passes, and the measuring; bodies, parries and shields follow.
   in the frame the strike by motion met them, the hit-stop running; at most
   4.4 rays and 0.008 ms a frame. `blade-wall.txt` PASS again on the same
   build.
+
+**The parry (built 2026-10-09; spec section 4 E, decision 3):**
+
+- `[Hands] WeaponParries=1` ("Weapon parries"), `ParryStopsAll=1`,
+  `ParryFatigue=10` (INI only).
+- **Their blades** (`game::CollectBladeBodies` with foes): each living
+  actor near with a weapon in hand - their "Weapon" node, found once by
+  name and kept with the bones, along its own y axis to its bound's far end
+  (`TheirBladeFromNode`) - with the frame before's and their process action
+  (HighProcess +0x1F4, only in high process).
+- **Meeting**: while they attack (action 2 or 3), their blade and the
+  player's, both moving, looked at in four steps of the frame, within 4
+  units (`BladesMeet`); or their blade within the worn shield's ball (the
+  bound of "Bip01 L ForearmTwist" times 0.8, only a shield's size,
+  `ShieldBall`, `BladeMeetsBall`). They are then parried for 0.8 s
+  (`ParryLedger`): a strong pulse on the hand that met them, the block
+  sound (WPNBlockBladeX, WPNBlockBluntX, WPNBlockShieldLightX).
+- **Their blow** in that window is blocked by the engine's own path: the
+  hit handler's block check (0x005FF7DF) answers yes for the player when
+  someone is parried, the cone (0x005FF83E, game/BlockCone) yes for the
+  parried attacker and no for any other under that forced block, the share
+  (0x005FF8C7) 1 - all of it - with ParryStopsAll. The engine then plays
+  the block, gives Block its experience and makes the attacker recoil. The
+  fatigue is spent in the next frame, outside the hit handler.
+- Log: "Parry: the hit handler's block check (005FF7DF) and blocked share
+  (005FF8C7) rerouted" at start-up; "Parry: the blades met - <actor>'s
+  attack ..." / "their blade met the shield"; "Parry: <actor>'s blow
+  parried - blocked 1.00 of it (the engine's own share ...)"; and for the
+  first two dozen blows at the player, "Parry: a blow at the player - the
+  engine says blocking ..., blades near: <actor> action <n> tip <d> from
+  the eyes, <d> from ours" - the timing the parry depends on.
+- Tests: `parry_test` (attack actions, their blade, two moving blades, the
+  shield's ball, the ledger, every answer of the hit handler).
+- **Hand script** `blade-parry.txt` (a bandit, 00069AD1, attacking a
+  player made untouchable with tgm while the blade circles at the chest):
+  written; not run yet - the game was in use.
+- **Found in the tester's run of 2026-10-09:** a power swing struck an NPC
+  by the strike by motion (the blade 52 units from its bound's centre,
+  within the 71 the sphere test allows) with no "a swing went into
+  someone": the blade never entered the capsules, so no hit-stop. The
+  strike's sphere is far wider than the body; taking the hit from the
+  capsules is the open step that would make the two agree.

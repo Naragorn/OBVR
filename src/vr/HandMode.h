@@ -314,6 +314,13 @@ struct HandSettings {
 	// ([Hands] WeaponHitStop).
 	bool weaponStopsAtBodies = true;
 	bool weaponHitStop = true;
+	// The parry: the drawn blade meeting an attacker's during their attack
+	// blocks their blow by the engine's own path, all of it with
+	// ParryStopsAll, for ParryFatigue fatigue ([Hands] WeaponParries,
+	// ParryStopsAll, ParryFatigue; game/ParryLogic.h).
+	bool weaponParries = true;
+	bool parryStopsAll = true;
+	float parryFatigue = 10.0f;
 	// Opening by reaching: an open, empty hand at a container, a body or -
 	// sneaking - a person opens it, the hand away closes it ([Hands]
 	// ReachOpens, ReachOpenMetres, ReachCloseMetres; vr/ReachOpen.h).

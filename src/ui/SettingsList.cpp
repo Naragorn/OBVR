@@ -1140,6 +1140,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.weaponHitStop = v != 0.0f; },
 	},
 	{
+		"Hands", "Weapon parries",
+		"Your blade meeting an attacker's during their swing blocks their blow - all of it - for a little fatigue",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "WeaponParries",
+		+[](const Config& c) { return c.hands.weaponParries ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.weaponParries = v != 0.0f; },
+	},
+	{
 		"Hands", "Open by reaching",
 		"An open, empty hand at a chest, a body or - sneaking - a pocket opens it; the hand away closes it",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,

@@ -96,6 +96,7 @@ add_library(OBVR SHARED
 	src/game/WorldPush.cpp
 	src/game/BladeContact.cpp
 	src/game/BladeBodies.cpp
+	src/game/Parry.cpp
 	src/game/HandBodies.cpp
 	src/game/GameSound.cpp
 	src/game/PlayerCapsule.cpp
