@@ -2071,7 +2071,9 @@ fast swing passes, and the measuring; bodies, parries and shields follow.
   shield's ball, the ledger, every answer of the hit handler).
 - **Hand script** `blade-parry.txt` (a bandit, 00069AD1, attacking a
   player made untouchable with tgm while the blade circles at the chest):
-  written; not run yet - the game was in use.
+  PASS 2026-10-09 as a measurement: the hooks ran on 24 blows, no parry -
+  at every blow the bandit's blade tip was 131-191 units from the eyes, its
+  torso 140-165 away (fCombatDistance 128); see weapon-collision-spec 11.
 - **Found in the tester's run of 2026-10-09:** a power swing struck an NPC
   by the strike by motion (the blade 52 units from its bound's centre,
   within the 71 the sphere test allows) with no "a swing went into

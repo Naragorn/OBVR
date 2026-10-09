@@ -495,3 +495,28 @@ plus 8 = 71 allowed) and no capsule was entered - no "a swing went into
 someone", no hit-stop. The sphere is far wider than the body the capsules
 draw. Taking the hit from the capsules (section 4 C) would make the hit,
 the hit-stop and the blade's rest agree; not built yet.
+
+**Measured 2026-10-09 (`blade-parry.txt`, PASS - the hooks ran on 24 blows
+at the player): Oblivion's blows land with the attacker's blade far from
+the player.** A melee bandit attacking a player held still: at every blow
+its blade's tip was 131 to 191 units (1.9 to 2.7 m) from the player's eyes,
+its torso 140 to 165 units away - the reach fCombatDistance 128 (logged)
+times the weapon's 1.0, from body to body. The player's blade circling 30 cm
+out came no nearer than 110 units to theirs; no parry happened. A player's
+blade reaches about 110 to 120 units from the eyes (a hand 0.6-0.7 m out and
+a 67-unit sword), so a parry by touch needs the arm stretched out to meet
+their swing at its far end, before their hit key - rarely, if at all. This
+is the same thing the Skyrim parry mod works around ("enemies have some
+cheating attack animations"), and worse: here the blade never comes near.
+Ways on (not decided, see the tester):
+- **A. Bring the attackers in:** their blows land from within
+  fCombatDistance x reach; a smaller runtime value (never written to an INI)
+  would bring their swings within the player's reach. It is the player's
+  vanilla reach too, and other combat settings may decide how close they
+  stand - unread.
+- **B. A wider parry:** their blade within 40-60 units of the player's,
+  not 4: a parry that asks for the blade put towards their swing rather
+  than on it.
+- **C. The guard on the line:** their attack parried when the player's
+  blade lies across the line from their weapon hand to the player's chest
+  during their swing - the blade held in the way.
