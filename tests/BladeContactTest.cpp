@@ -133,6 +133,14 @@ BladePose TurnedAt(float x, float y, float z, float radiansAboutZ) {
 	return p;
 }
 
+// The blade pointed down, a little forward: its tip 59.7 below the grip and
+// 6 ahead.
+BladePose PointedDownAt(float x, float y, float z) {
+	BladePose p = At(x, y, z);
+	p.rot = RotationAbout(NiPoint3{1.0f, 0.0f, 0.0f}, -1.4707963f);
+	return p;
+}
+
 // A wall across the blade's way: y from 50 to 60.
 void AddWallAhead(BoxWorld& w) {
 	w.Add(NiPoint3{-200.0f, 50.0f, -200.0f}, NiPoint3{200.0f, 60.0f, 200.0f}, ContactKind::Fixed, 1);
@@ -624,6 +632,27 @@ void TestLiving() {
 	v = StepBladeContact(t, set, LivingFrame(At(0, 0, 0), &near, true), wall);
 	Check(v.held && v.contact.body == 1 && v.contact.actor == 0 && t.passed.Has(13),
 	      "a swing through someone into the wall behind them: the wall holds it");
+
+	BoxWorld floor;
+	floor.Add(NiPoint3{-200, -200, -50}, NiPoint3{200, 200, -40}, ContactKind::Fixed, 2);
+	BladeBodies lying;
+	lying.Add(NiPoint3{0, 20, -35}, NiPoint3{0, 60, -35}, 5.0f, 14);
+	BladeContactState g;
+	StepBladeContact(g, set, LivingFrame(PointedDownAt(0, 0, 25), &lying, false), floor);
+	v = StepBladeContact(g, set, LivingFrame(PointedDownAt(0, 0, 10), &lying, false), floor);
+	Check(v.held && v.contact.body == 2, "a blade pressed down onto the floor: the floor holds it");
+	v = StepBladeContact(g, set, LivingFrame(PointedDownAt(0, 22, 15), &lying, false), floor);
+	Check(v.held && v.contact.actor == 14, "slid along the floor into someone lying there: now they hold it");
+
+	BladeBodies arm;
+	arm.Add(NiPoint3{5, 22, -30}, NiPoint3{5, 22, 30}, 2.0f, 15);
+	BladeContactState a;
+	StepBladeContact(a, set, LivingFrame(At(-5, 0, 0), &arm, false), none);
+	v = StepBladeContact(a, set, LivingFrame(At(5, 0, 0), &arm, false), none);
+	Check(v.held && Near(v.pose.pos.x, -5.0f) && v.contact.actor == 15 && !a.passed.Has(15),
+	      "slowly across an arm between two points: held where it was, on them, not passed");
+	v = StepBladeContact(a, set, LivingFrame(At(5, 0, 0), &arm, true), none);
+	Check(!v.held && Near(v.pose.pos.x, 5.0f), "swung across it: through");
 
 	BladeContactState first;
 	v = StepBladeContact(first, set, LivingFrame(At(0, 0, 0), &person, false), none);

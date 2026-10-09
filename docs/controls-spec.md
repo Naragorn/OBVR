@@ -2019,11 +2019,20 @@ fast swing passes, and the measuring; bodies, parries and shields follow.
   capsules from bones, the column, the ledger, every flow with people: rest,
   press in, swing in, pass while in, free again, walked into, a wall behind
   someone, taken up inside; the hit-stop).
-- **Harness**: `blade-body.txt` written - a beggar placed, frozen (`tai`),
-  the blade turned slowly round the player at chest height, then fast.
-  Not run to PASS yet: the PC was locked before the circle version could
-  run. Three earlier runs of it with the beggar unfrozen showed the reading
-  works: "18 of 18 bones", the capsules where a standing beggar stands (head
-  at -144 with the feet at -258.5), no crash; the beggar stood behind the
-  player each time (PlaceAtMe's distance and direction did not put it
-  ahead) and wandered off, so the blade never met them - hence the circle.
+- **A limb between two points** (found in the hand script): held slowly,
+  the blade crossed a thin arm between two swept points, and the next frame
+  found it in them and passed them - it went straight through. A pose with
+  the blade across someone not passed is now refused like a post
+  (`PersonAcross`), and they hold it.
+- **The rest found by sliding**: the blade held by the floor and slid along
+  it into someone lying there now rests on them (the slide's contact is
+  the one that holds it); "rests on" is said whenever the person it rests
+  on changes, not only on a touch from the air.
+- **Harness**: `blade-body.txt` PASS 2026-10-09 - a beggar placed and
+  frozen (`tai`; PlaceAtMe put them behind the player, lying, 80 to 120
+  units off), the blade turned slowly round the player at chest height and
+  then level just above the floor: "rests on" the beggar, "pressed on into"
+  them at 21.2 units, and in the fast circle "a swing went into someone"
+  in the frame the strike by motion met them, the hit-stop running; at most
+  4.4 rays and 0.008 ms a frame. `blade-wall.txt` PASS again on the same
+  build.

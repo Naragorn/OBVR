@@ -2011,6 +2011,8 @@ UInt32 g_bladeCostLines = 6;
 // went into someone (the hit-stop's count; kHitStopFrames: none running).
 game::BladeBodies g_bladeBodies;
 UInt32 g_bladeHitStopFrames = game::kHitStopFrames;
+// The person the blade rested on the frame before (0 none): a new one is said.
+UInt32 g_bladeRestActor = 0;
 
 // Oblivion.esm's weapon hit sounds, not on flesh (SOUN WPNHitBladeX,
 // WPNHitBluntX; read 2026-10-09): the knock of a blade or a mace on a wall.
@@ -2106,14 +2108,22 @@ void StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	g_bladeSinceSound += dt;
 	const bool blunt = weaponType == 2 || weaponType == 3;
 	const bool onPerson = v.contact.hit && v.contact.actor != 0;
+	// Resting on someone new - from the air, or slid there along the floor or
+	// a wall it already touched.
+	const UInt32 restingOn = v.held && onPerson ? v.contact.actor : 0u;
+	const bool restsOnNew = restingOn != 0 && restingOn != g_bladeRestActor;
+	g_bladeRestActor = restingOn;
 	if (v.enteredBody) {
 		g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.04f, 160.0f, 0.7f);
 	}
-	if (v.event == game::BladeContactEvent::Touched) {
+	if (restsOnNew) {
 		g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.03f, 180.0f,
-		                                         onPerson ? game::kBladeTouchMinAmplitude
-		                                                  : game::BladeTouchAmplitude(v.contact.speedIn));
-		if (!onPerson && game::BladeKnockSounds(v.contact.speedIn, g_bladeSinceSound)) {
+		                                         game::kBladeTouchMinAmplitude);
+	}
+	if (v.event == game::BladeContactEvent::Touched && !onPerson) {
+		g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.03f, 180.0f,
+		                                         game::BladeTouchAmplitude(v.contact.speedIn));
+		if (game::BladeKnockSounds(v.contact.speedIn, g_bladeSinceSound)) {
 			g_bladeSinceSound = 0.0f;
 			game::PlaySoundFormAt(blunt ? kSoundFormHitBlunt : kSoundFormHitBlade,
 			                      *reinterpret_cast<const UInt32*>(addr::kPlayerPointer), v.contact.point);
@@ -2134,16 +2144,18 @@ void StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		         peopleNear, static_cast<double>(game::kBladePassClearSeconds),
 		         config.hands.weaponHitStop ? "; the hit-stop slows it" : "");
 	}
-	if (v.event != game::BladeContactEvent::None && g_bladeLines > 0) {
+	if (restsOnNew && g_bladeLines > 0) {
 		--g_bladeLines;
-		if (v.event == game::BladeContactEvent::Touched && onPerson) {
-			OBVR_LOG("Contact: the blade rests on %08X at %.0f %.0f %.0f - its point %.2f of the way to the tip, "
-			         "%.2f m/s into them; held %.1f units from the hand",
-			         v.contact.actor, static_cast<double>(v.contact.point.x), static_cast<double>(v.contact.point.y),
-			         static_cast<double>(v.contact.point.z), static_cast<double>(v.contact.along),
-			         static_cast<double>(v.contact.speedIn / config.tracker.unitsPerMetre),
-			         static_cast<double>(v.gapUnits));
-		} else if (v.event == game::BladeContactEvent::LetGo && !v.through) {
+		OBVR_LOG("Contact: the blade rests on %08X at %.0f %.0f %.0f - its point %.2f of the way to the tip, "
+		         "%.2f m/s into them; held %.1f units from the hand",
+		         v.contact.actor, static_cast<double>(v.contact.point.x), static_cast<double>(v.contact.point.y),
+		         static_cast<double>(v.contact.point.z), static_cast<double>(v.contact.along),
+		         static_cast<double>(v.contact.speedIn / config.tracker.unitsPerMetre), static_cast<double>(v.gapUnits));
+	}
+	if (v.event != game::BladeContactEvent::None && !(v.event == game::BladeContactEvent::Touched && onPerson) &&
+	    g_bladeLines > 0) {
+		--g_bladeLines;
+		if (v.event == game::BladeContactEvent::LetGo && !v.through) {
 			OBVR_LOG("Contact: pressed on into %08X - %.1f units from where it rested; it goes into them, passed",
 			         v.contact.actor, static_cast<double>(v.gapUnits));
 		} else if (v.event == game::BladeContactEvent::Touched && v.contact.hit) {

@@ -450,5 +450,9 @@ keiner (dein Vorschlag) 4) ja . fang an"
 - **Not measured:** the capsules' radii against the meshes; creatures'
   skeletons (only a beggar's was read: 18 of 18 bones); the cost with many
   people near (the walk runs every frame a blade is drawn).
-- **Harness:** `blade-body.txt` written, not yet run to PASS (the PC was
-  locked); its earlier versions read the skeleton and placed the capsules.
+- **Harness:** `blade-body.txt` PASS 2026-10-09 (a lying, frozen beggar: the
+  blade rests on them, pressed on goes into them at 21.2 units, a fast
+  swing goes in with the strike's hit and the hit-stop). The runs before it
+  found a limb crossed between two swept points passing the whole person;
+  a pose across someone not passed is now refused (`PersonAcross`).
+  `blade-wall.txt` PASS again on that build.

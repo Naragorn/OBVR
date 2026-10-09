@@ -683,6 +683,27 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 	return best;
 }
 
+// Someone not passed the blade at this pose lies across - held slowly: an
+// arm or a leg between two of the swept points, which the points' ways
+// missed. 0 for none, or while it swings.
+inline UInt32 PersonAcross(const BladePose& pose, const BodySpan& span, const BladeLiving& living) {
+	if (living.bodies == nullptr || living.swinging) {
+		return 0;
+	}
+	const NiPoint3 guard = BladePointAt(pose, span, 0.0f);
+	const NiPoint3 tip = BladePointAt(pose, span, 1.0f);
+	for (UInt32 c = 0; c < living.bodies->count; ++c) {
+		const BladeBodyCapsule& cap = living.bodies->cap[c];
+		if (living.passed != nullptr && living.passed->Has(cap.actor)) {
+			continue;
+		}
+		if (SegmentSegmentDistance(guard, tip, cap.a, cap.b) <= cap.radius) {
+			return cap.actor;
+		}
+	}
+	return 0;
+}
+
 // The living the blade at this pose lies in: passed (someone walked into a
 // blade held still, or it was taken up in them).
 inline void PassThoseItIsIn(const BladePose& pose, const BodySpan& span, const BladeLiving& living) {
@@ -858,6 +879,11 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 		const BladePose slid = SlideTarget(stop, target, first.normal);
 		const BladeSweep second = SweepBlade(world, stop, slid, f.span, f.dtSeconds, nullptr, living);
 		v.enteredBody = v.enteredBody || second.entered;
+		if (second.hit) {
+			// What it slid into holds it now: the floor it scraped along led it
+			// to a wall, or to someone lying on it.
+			v.contact = second;
+		}
 		candidates[count++] = second.hit ? PoseBetween(stop, slid, second.safeFraction) : slid;
 		candidates[count++] = stop;
 	}
@@ -865,11 +891,24 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 	bool placed = false;
 	BladePose pose = start;
 	for (UInt32 i = 0; i < count && !placed; ++i) {
-		if (!BladeInside(world, candidates[i], f.span)) {
-			pose = candidates[i];
-			placed = true;
-			held = held || i > 0;
+		if (BladeInside(world, candidates[i], f.span)) {
+			continue;
 		}
+		// Across someone held slowly (a limb between two points): not taken
+		// either, and they are what holds it.
+		const UInt32 across = PersonAcross(candidates[i], f.span, living);
+		if (across != 0) {
+			if (!v.contact.hit) {
+				v.contact.hit = true;
+				v.contact.actor = across;
+				v.contact.body = 0;
+				v.contact.point = BladePointAt(candidates[i], f.span, 0.5f);
+			}
+			continue;
+		}
+		pose = candidates[i];
+		placed = true;
+		held = held || i > 0;
 	}
 
 	const NiPoint3 gap = pose.pos - f.wanted.pos;
