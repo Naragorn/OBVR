@@ -1889,6 +1889,18 @@ schauen mal." Feasibility in docs/container-touch-spec.md.
   never a menu the reach did not open. Then the reach waits for the hand
   to leave before the same thing opens again (closed with B while the
   hand is still there: not reopened).
+- **The panel faces the eyes** (the tester, 2026-10-09: "achte noch darauf
+  dass die overlays so geneigt sind dass sie direkt zum headset schauen
+  also nicht in der luft schweben senkrecht"): `vr::ContainerAnchor`
+  turns the container's and the lock's panel along the full line from the
+  head to the thing - tilted back over a chest below the eyes, down under
+  a shelf above them, its edge kept level (a pitch, never a roll) - and
+  `HudLayer::AnchorAt(pose, keepTilt)` keeps that tilt (every other anchor
+  is levelled as before). The tilted anchor is dropped as the container's
+  menu goes, so the next menu is placed level where the head looks. The
+  dialogue panel and the HUD already hang at eye height, facing the eyes.
+  The log's panel line gives the tilt (88 degrees in the hand script: the
+  chest lay under the player).
 - **Episodes by the top of the stack**: the container's and the lock's
   menu episodes now also look at `TopVisibleMenu`, not only at
   ActiveMenuId (the menu under the cursor): a menu opened by reaching

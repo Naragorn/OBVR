@@ -7317,6 +7317,15 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	{
 		static vr::DialogPanelPlacement s_containerPlacement;
 		const bool looting = ContainerPanelUp(config);
+		// The panel's anchor is tilted to face the eyes (vr::ContainerAnchor):
+		// not one for whatever the layer shows next - dropped as the
+		// container's menu goes, so the next is placed level where the head
+		// looks.
+		static bool s_lootingWas = false;
+		if (s_lootingWas && !looting && s_containerPlacement.placed) {
+			g_hudLayer.ResetAnchor();
+		}
+		s_lootingWas = looting;
 		const bool placementPending = s_containerPlacement.Pending(looting);
 		const bool menusInRoom = config.tracker.menusInWorld && config.tracker.hudAnchorWorld;
 		NiPoint3 chestCentre{};
@@ -7337,16 +7346,20 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			vr::openvr::HmdMatrix34 anchor{};
 			if (vr::ContainerAnchor(handHudFrame.head, overTracking.x, overTracking.y, overTracking.z,
 			                        config.tracker.hudDistanceMetres, anchor)) {
-				g_hudLayer.AnchorAt(anchor);
+				g_hudLayer.AnchorAt(anchor, true);  // tilted to face the eyes
 				s_containerPlacement.placed = true;
 				static UInt32 s_containerLines = 12;
 				if (s_containerLines > 0) {
 					--s_containerLines;
 					OBVR_LOG("Container: the menu's panel on %08X at %.1f %.1f %.1f (bound radius %.0f, the panel's "
-					         "middle %.2f m over the thing's middle), the world running behind it",
+					         "middle %.2f m over the thing's middle, its face tilted %.0f degrees up to the eyes), the world "
+					         "running behind it",
 					         g_activatedRef, static_cast<double>(over.x), static_cast<double>(over.y),
 					         static_cast<double>(over.z), static_cast<double>(chestRadius),
-					         static_cast<double>(config.containerPanel.raiseMetres));
+					         static_cast<double>(config.containerPanel.raiseMetres),
+					         static_cast<double>(math::Atan2(anchor.m[1][2], math::Sqrt(anchor.m[0][2] * anchor.m[0][2] +
+					                                                               anchor.m[2][2] * anchor.m[2][2])) *
+					                             math::kRadiansToDegrees));
 				}
 			}
 		} else if (placementPending && !haveChest && looting) {

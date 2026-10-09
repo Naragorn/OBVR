@@ -130,31 +130,47 @@ struct ContainerPanelSettings {
 
 // The room anchor that puts the panel on a container: the panel hangs the
 // menus' distance straight ahead of its anchor (OverlayPoseAhead), so the
-// anchor stands that far back from the target along the level line from
-// the head to it, at the target's height, heading at it - the panel then
-// lands on the target, facing the head. False, anchor untouched, for a
-// target straight above or below the head, or a distance or height that
-// is no number.
+// anchor stands that far back from the target along the line from the
+// head to it, heading at it AND tilted to it - the panel then lands on the
+// target and faces the eyes, leaning back over a chest below them instead
+// of standing upright in the air (the tester, 2026-10-09: "achte noch
+// darauf dass die overlays so geneigt sind dass sie direkt zum headset
+// schauen also nicht in der luft schweben senkrecht"). Its right edge stays
+// level: the tilt is a pitch, never a roll. HudLayer::AnchorAt keeps the
+// tilt when asked to (keepTilt). False, anchor untouched, for a target
+// straight above or below the head (no heading to keep the edge level by),
+// or a place or distance that is no number.
 inline bool ContainerAnchor(const openvr::HmdMatrix34& head, float targetX, float targetY, float targetZ,
                             float distanceMetres, openvr::HmdMatrix34& anchor) {
 	float fx = targetX - head.m[0][3];
+	float fy = targetY - head.m[1][3];
 	float fz = targetZ - head.m[2][3];
-	const float len = math::Sqrt(fx * fx + fz * fz);
-	if (!(len >= 1e-3f) || !(len < 1.0e7f) || !(distanceMetres >= 0.0f) || !(distanceMetres < 1.0e7f) ||
-	    !(targetY == targetY) || !(targetY > -1.0e7f && targetY < 1.0e7f)) {
+	const float level = math::Sqrt(fx * fx + fz * fz);
+	if (!(level >= 1e-3f) || !(level < 1.0e7f) || !(distanceMetres >= 0.0f) || !(distanceMetres < 1.0e7f) ||
+	    !(fy == fy) || !(fy > -1.0e7f && fy < 1.0e7f)) {
 		return false;
 	}
+	const float len = math::Sqrt(fx * fx + fy * fy + fz * fz);
 	fx /= len;
+	fy /= len;
 	fz /= len;
+	// x right: level, across the line of sight (forward x up, normalised).
+	const float rx = -fz / math::Sqrt(fx * fx + fz * fz);
+	const float rz = fx / math::Sqrt(fx * fx + fz * fz);
 	anchor = openvr::HmdMatrix34{};
-	// x right, y up, z back (the heading reversed), as DialogAnchor lays it.
-	anchor.m[0][0] = -fz;
-	anchor.m[2][0] = fx;
-	anchor.m[1][1] = 1.0f;
+	anchor.m[0][0] = rx;
+	anchor.m[1][0] = 0.0f;
+	anchor.m[2][0] = rz;
+	// y up: right x forward, so a target below the eyes leans the top away.
+	anchor.m[0][1] = -rz * fy;
+	anchor.m[1][1] = rz * fx - rx * fz;
+	anchor.m[2][1] = rx * fy;
+	// z back: towards the head.
 	anchor.m[0][2] = -fx;
+	anchor.m[1][2] = -fy;
 	anchor.m[2][2] = -fz;
 	anchor.m[0][3] = targetX - fx * distanceMetres;
-	anchor.m[1][3] = targetY;
+	anchor.m[1][3] = targetY - fy * distanceMetres;
 	anchor.m[2][3] = targetZ - fz * distanceMetres;
 	return true;
 }

@@ -90,10 +90,12 @@ public:
 	// hangs in the room: bring it back in front of me.
 	void ResetAnchor() { m_anchorValid = false; }
 
-	// Takes this pose as the room anchor now - levelled, heading only - and
-	// hangs the quad ahead of it on the next room placement. What puts the
-	// dialogue panel on the NPC when a conversation opens (vr/DialogPanel.h).
-	void AnchorAt(const vr::openvr::HmdMatrix34& pose);
+	// Takes this pose as the room anchor now - levelled, heading only, unless
+	// `keepTilt` (the container's panel, tilted to face the eyes:
+	// vr::ContainerAnchor) - and hangs the quad ahead of it on the next room
+	// placement. What puts the dialogue panel on the NPC when a conversation
+	// opens (vr/DialogPanel.h), and the container's over the container.
+	void AnchorAt(const vr::openvr::HmdMatrix34& pose, bool keepTilt = false);
 
 	// The hand-tracked mode's wrist placement: hang the layer on a tracked
 	// device (a controller) with the given device-to-overlay transform and

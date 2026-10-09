@@ -308,9 +308,11 @@ void HudLayer::SetWristPlacement(UInt32 deviceIndex,
 	m_wristWidth = widthMetres;
 }
 
-void HudLayer::AnchorAt(const vr::openvr::HmdMatrix34& pose) {
+void HudLayer::AnchorAt(const vr::openvr::HmdMatrix34& pose, bool keepTilt) {
 	m_anchorPose = pose;
-	vr::LevelPose(m_anchorPose);
+	if (!keepTilt) {
+		vr::LevelPose(m_anchorPose);
+	}
 	m_anchorValid = true;
 	m_anchorDirty = true;
 }

@@ -1,6 +1,7 @@
 // Checks the dialogue panel's decisions (vr/DialogPanel.h): when it is placed
 // on the speaker, where, and its size while talking.
 
+#include <cmath>
 #include <cstdio>
 #include <limits>
 
@@ -116,16 +117,37 @@ void TestContainerAnchor() {
 	std::printf("A container's panel over the container\n");
 	const openvr::HmdMatrix34 head = Head();
 	openvr::HmdMatrix34 a{};
-	// A chest's top 2 m straight ahead (-z) of the head, lower than it; the
-	// menus 1.2 m ahead of their anchor.
+	// Where the panel lands: the anchor walked the menus' distance along its
+	// forward (-z column), as OverlayPoseAhead walks it.
+	const auto panelAt = [](const openvr::HmdMatrix34& anchor, float d, int row) {
+		return anchor.m[row][3] - anchor.m[row][2] * d;
+	};
+	// A chest 2 m straight ahead (-z) of the head and 0.7 m under the eyes;
+	// the menus 1.2 m ahead of their anchor.
 	Check(ContainerAnchor(head, 0.5f, 1.0f, -2.0f, 1.2f, a), "a chest ahead: placed");
-	Check(Near(a.m[0][2], 0.0f) && Near(a.m[2][2], 1.0f) && Near(a.m[0][0], 1.0f), "facing straight at it");
-	Check(Near(a.m[0][3], 0.5f) && Near(a.m[1][3], 1.0f) && Near(a.m[2][3], -0.8f),
-	      "the anchor 1.2 m short of the chest at the chest's height: the panel lands on it");
-	Check(ContainerAnchor(head, 3.5f, 1.0f, 0.0f, 1.2f, a) && Near(-a.m[0][2], 1.0f) && Near(a.m[2][0], 1.0f) &&
-	          Near(a.m[0][3], 2.3f) && Near(a.m[2][3], 0.0f),
-	      "a chest to the right: the heading turns to it, the anchor 1.2 m short of it");
-	Check(ContainerAnchor(head, 0.5f, 1.0f, -2.0f, 0.0f, a) && Near(a.m[2][3], -2.0f), "no distance: the anchor at the chest");
+	Check(Near(panelAt(a, 1.2f, 0), 0.5f) && Near(panelAt(a, 1.2f, 1), 1.0f) && Near(panelAt(a, 1.2f, 2), -2.0f),
+	      "the panel lands on the chest");
+	const float len = std::sqrt(0.7f * 0.7f + 2.0f * 2.0f);
+	Check(Near(a.m[0][2], 0.0f) && Near(a.m[1][2], 0.7f / len) && Near(a.m[2][2], 2.0f / len),
+	      "its face turned to the eyes: tilted up towards them, not upright");
+	Check(Near(a.m[0][0], 1.0f) && Near(a.m[1][0], 0.0f) && Near(a.m[2][0], 0.0f), "its edge level: no roll");
+	Check(a.m[1][1] > 0.9f && a.m[2][1] < 0.0f, "its top leaning away from the eyes");
+	const float dotUpBack = a.m[0][1] * a.m[0][2] + a.m[1][1] * a.m[1][2] + a.m[2][1] * a.m[2][2];
+	const float upLength = a.m[0][1] * a.m[0][1] + a.m[1][1] * a.m[1][1] + a.m[2][1] * a.m[2][1];
+	Check(Near(dotUpBack, 0.0f) && Near(upLength, 1.0f), "a true rotation: up across the face, unit length");
+	// The same chest at eye height: nothing to tilt.
+	Check(ContainerAnchor(head, 0.5f, 1.7f, -2.0f, 1.2f, a) && Near(a.m[1][2], 0.0f) && Near(a.m[1][1], 1.0f) &&
+	          Near(a.m[2][2], 1.0f) && Near(a.m[1][3], 1.7f) && Near(a.m[2][3], -0.8f),
+	      "at eye height: upright, the anchor 1.2 m short of it");
+	// Above the eyes (a shelf): tilted down towards them.
+	Check(ContainerAnchor(head, 0.5f, 2.4f, -2.0f, 1.2f, a) && a.m[1][2] < 0.0f && a.m[2][1] > 0.0f &&
+	          Near(panelAt(a, 1.2f, 1), 2.4f),
+	      "a shelf over the eyes: the face tilted down to them, on the shelf");
+	Check(ContainerAnchor(head, 3.5f, 1.0f, 0.0f, 1.2f, a) && Near(a.m[2][0], 1.0f) && Near(a.m[0][0], 0.0f) &&
+	          a.m[0][2] < -0.9f && Near(panelAt(a, 1.2f, 0), 3.5f) && Near(panelAt(a, 1.2f, 2), 0.0f),
+	      "a chest to the right: the heading turns to it, the panel on it");
+	Check(ContainerAnchor(head, 0.5f, 1.0f, -2.0f, 0.0f, a) && Near(a.m[2][3], -2.0f) && Near(a.m[1][3], 1.0f),
+	      "no distance: the anchor at the chest");
 	openvr::HmdMatrix34 kept = head;
 	Check(!ContainerAnchor(head, 0.5f, 0.2f, 0.0f, 1.2f, kept) && Near(kept.m[2][2], 1.0f),
 	      "straight below the head: no heading, the anchor untouched");

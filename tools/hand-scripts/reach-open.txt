@@ -19,6 +19,7 @@ expect HandScript: finished
 expect reached - activated
 expect its menu opened
 expect Container: the menu's panel on
+expect degrees up to the eyes
 expect the hand left - closed
 expect the hand is away - armed again
 expect top menu Container
