@@ -1,4 +1,4 @@
-# Containers by hand: the menu in the world, opened by reaching (feasibility, 2026-10-09, nothing built)
+# Containers by hand: the menu in the world, opened by reaching (feasibility 2026-10-09; A, B and D built the same day)
 
 The tester (2026-10-09): "außerdem mach eine machbarkeits analyses zu den
 neuen container menüs: momentan verkleinerst du die ja und hängst sie ran
@@ -18,6 +18,17 @@ anything is promised, and the pickpocket half carries one real risk (a
 crime raised while the menu is up, with the world running). A container UI
 of OBVR's own, with no engine menu at all, is possible but a different size
 of job (section 5).
+
+**Built 2026-10-09** (controls-spec 4.31, `[Hands] ReachOpens=1`): A (opened by
+reaching, no dwell - the tester: "aber auch nicht kurz gehalten, ich muss
+mich nur mit der hand nähern"), B (closed when the hand leaves, by the
+engine's close-all-menus), the lock's minigame over the chest with the
+world running and the chest's menu after it (the tester: "wenn das
+bestanden ist das neue menü"), and D's trigger (a pocket while sneaking -
+"wir schauen mal. könnte lustig sein"; the alarm-while-open risk below is
+untested). The hand script reach-open passes for a chest; the lock, a
+body and a pocket wait for the headset. C, E, F and section 3's
+measurement are open.
 
 ## 1. What is built already (read in the repo)
 

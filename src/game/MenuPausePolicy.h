@@ -50,11 +50,19 @@ inline bool MenuKeepsWorldRunning(UInt32 topMenuId) {
 //
 // `containerRuns` is [Look] ContainerInWorld (the tester, 2026-10-08): the
 // container's menu alone keeps the world running, whatever the option.
-inline bool WorldPausesForMenu(bool menuMode, bool unpausedMenus, UInt32 topMenuId, bool containerRuns = false) {
+// `lockRuns` is [Hands] ReachOpens (the tester, 2026-10-09: "Verschlossene
+// Container auch hier wenn ich mich näher kommt dann das Schlossknacken
+// minigame wie das neue menü"): the lock's minigame keeps it running too,
+// as the container's panel does.
+inline bool WorldPausesForMenu(bool menuMode, bool unpausedMenus, UInt32 topMenuId, bool containerRuns = false,
+                               bool lockRuns = false) {
 	if (!menuMode) {
 		return false;
 	}
 	if (containerRuns && topMenuId == kMenuIdContainer) {
+		return false;
+	}
+	if (lockRuns && topMenuId == kMenuIdLockPick) {
 		return false;
 	}
 	if (!unpausedMenus) {

@@ -71,6 +71,17 @@ void TestAnswer() {
 	Check(WorldPausesForMenu(true, false, kMenuIdContainer, false), "neither switch: the container pauses");
 	Check(!WorldPausesForMenu(true, true, kMenuIdContainer, false), "the option alone runs it too");
 	Check(!WorldPausesForMenu(false, false, kMenuIdContainer, true), "outside menu mode nothing pauses either way");
+
+	std::printf("The lock's minigame with opening by reaching\n");
+	Check(!WorldPausesForMenu(true, false, kMenuIdLockPick, false, true),
+	      "the lockpicking runs the world with ReachOpens on");
+	Check(WorldPausesForMenu(true, false, kMenuIdLockPick, true, false),
+	      "... and pauses as vanilla with it off, the container's switch alone");
+	Check(WorldPausesForMenu(true, true, kMenuIdLockPick, false, false),
+	      "the unpaused menus leave the lockpicking paused (not one of the player's own screens)");
+	Check(WorldPausesForMenu(true, false, kMenuIdInventory, false, true),
+	      "the inventory is not the lock: paused as vanilla");
+	Check(!WorldPausesForMenu(false, false, kMenuIdLockPick, false, true), "outside menu mode nothing pauses");
 }
 
 void TestForeignHookThunk() {

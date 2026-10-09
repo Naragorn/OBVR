@@ -73,6 +73,7 @@
 #include "game/GrabNearBody.h"
 #include "game/NearbyItems.h"
 #include "game/PickHold.h"
+#include "game/ReachTargets.h"
 #include "game/Insult.h"
 #include "vr/MenuHaptics.h"
 #include "vr/VrKeyboard.h"
@@ -1976,6 +1977,134 @@ void StepInputRouting(const Config& config) {
 	}
 }
 
+// Opening by reaching ([Hands] ReachOpens, vr/ReachOpen.h, game/ReachTargets.h):
+// an open, empty hand at a container, a body or - sneaking - a person
+// activates it as the A button would, and the hand away closes the menu the
+// reach opened. The container's panel then goes over the thing as for A
+// (g_activatedRef), the lock's minigame too.
+vr::ReachOpenState g_reachOpen;
+UInt32 g_reachLines = 60;
+
+void StepReachOpen(const Config& config, bool handsInWorld, bool menuIsUp) {
+	vr::ReachOpenSettings settings = config.hands.reachOpen;
+	settings.closeMetres = vr::ReachCloseMetresFor(settings.openMetres, settings.closeMetres);
+	const float perMetre = config.tracker.unitsPerMetre;
+	const bool cameraKnown = g_cyclopeanCameraWorldValid;
+
+	// The menu on top while one is up; one that reads as none is not decided
+	// on (the stack can read empty for a frame with a menu up).
+	const UInt32 top = menuIsUp ? game::TopVisibleMenu() : game::kMenuIdNone;
+	if (settings.enabled && menuIsUp && top == game::kMenuIdNone) {
+		return;
+	}
+
+	vr::ReachOpenFrame f;
+	f.active = handsInWorld && cameraKnown;
+	f.menuUp = menuIsUp;
+	f.containerOnTop = top == game::kMenuIdContainer;
+	f.lockpickOnTop = top == game::kMenuIdLockPick;
+	f.quantityOnTop = top == game::kMenuIdQuantity;
+	f.moving = g_hand.controls.move.forward || g_hand.controls.move.back || g_hand.controls.move.left ||
+	           g_hand.controls.move.right;
+
+	game::ReachHands tracked;
+	game::ReachHands freeHands;
+	if (cameraKnown) {
+		const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+		const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
+		const bool weaponReadied = game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
+		const bool holding = game::PlayerHoldsGrab();
+		for (int side = 0; side < 2; ++side) {
+			const bool left = side == 1;
+			const bool valid = left ? g_hand.leftHandValid : g_hand.rightHandValid;
+			const NiPoint3 at = camPos + camRot * (left ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits);
+			tracked.position[side] = at;
+			tracked.valid[side] = valid;
+			freeHands.position[side] = at;
+			freeHands.valid[side] = vr::HandFreeToOpen(valid, left ? g_hand.leftGripDown : g_hand.rightGripDown,
+			                                       left ? g_leftBodyFist : g_rightBodyFist,
+			                                       holding && g_hand.grabWithLeftHand == left, weaponReadied);
+		}
+	}
+
+	// The nearest thing a free hand is at - only looked for while it could
+	// be opened.
+	game::ReachTarget reached;
+	if (settings.enabled && f.active && !menuIsUp && g_reachOpen.phase == vr::ReachPhase::Idle && !f.moving) {
+		reached = game::FindReachTarget(freeHands, settings.openMetres * perMetre, game::IsPlayerSneaking());
+	}
+	if (reached.ref != 0) {
+		f.candidate = reached.ref;
+		f.kind = reached.kind;
+		f.candidateAllowed = vr::ReachKindAllowed(reached.kind, game::IsPlayerSneaking(), reached.personInCombat);
+		f.candidateMetres = reached.distanceUnits / perMetre;
+		f.itemFirst = vr::ItemGoesFirst(g_nearItem.valid, g_nearItem.left == reached.left,
+		                                g_nearItem.distance / perMetre, f.candidateMetres);
+	}
+
+	// The target held, measured from any tracked hand.
+	if (g_reachOpen.target != 0) {
+		float units = 0.0f;
+		bool gone = false;
+		f.targetKnown = cameraKnown && game::ReachDistanceTo(g_reachOpen.target, tracked, units, gone);
+		f.targetGone = gone;
+		f.targetMetres = units / perMetre;
+		f.targetLocked = !gone && game::RefIsLocked(g_reachOpen.target);
+	}
+
+	// A hand script's mark: what the reach sees, opened or not - the nearest
+	// thing of the kinds it opens within two metres of either tracked hand.
+	if (test::HandScriptMarkedThisFrame()) {
+		const game::ReachTarget around =
+			cameraKnown ? game::FindReachTarget(tracked, 2.0f * perMetre, true) : game::ReachTarget{};
+		OBVR_LOG("Reach: state - %s, phase %u target %08X; free hands right %d left %d (weapon readied %d, grips "
+		         "%d/%d, fists %d/%d, holding %d, moving %d, hands in the world %d, camera %d); nearest within 2 m "
+		         "%08X a %s %.2f m off the %s hand",
+		         settings.enabled ? "on" : "off", static_cast<unsigned>(g_reachOpen.phase), g_reachOpen.target,
+		         freeHands.valid[0] ? 1 : 0, freeHands.valid[1] ? 1 : 0,
+		         game::ReadPlayerWeaponState() == game::WeaponState::Drawn ? 1 : 0, g_hand.rightGripDown ? 1 : 0,
+		         g_hand.leftGripDown ? 1 : 0, g_rightBodyFist ? 1 : 0, g_leftBodyFist ? 1 : 0,
+		         game::PlayerHoldsGrab() ? 1 : 0, f.moving ? 1 : 0, handsInWorld ? 1 : 0, cameraKnown ? 1 : 0,
+		         around.ref, vr::ReachKindName(around.kind), static_cast<double>(around.distanceUnits / perMetre),
+		         around.left ? "left" : "right");
+		NiPoint3 centre{};
+		float radius = 0.0f;
+		if (around.ref != 0 && game::RefWorldBound(around.ref, centre, radius)) {
+			OBVR_LOG("Reach: state - its bound at %.0f %.0f %.0f radius %.0f; the right hand at %.0f %.0f %.0f, the "
+			         "left at %.0f %.0f %.0f",
+			         static_cast<double>(centre.x), static_cast<double>(centre.y), static_cast<double>(centre.z),
+			         static_cast<double>(radius), static_cast<double>(tracked.position[0].x),
+			         static_cast<double>(tracked.position[0].y), static_cast<double>(tracked.position[0].z),
+			         static_cast<double>(tracked.position[1].x), static_cast<double>(tracked.position[1].y),
+			         static_cast<double>(tracked.position[1].z));
+		}
+	}
+
+	const vr::ReachPhase was = g_reachOpen.phase;
+	const UInt32 heldBefore = g_reachOpen.target;
+	const vr::ReachOpenVerdict v = vr::StepReachOpen(g_reachOpen, settings, f);
+	if (v.action == vr::ReachAction::Activate) {
+		g_activatedRef = v.ref;
+		g_activatedFrame = g_state.frameCount;
+		game::ActivateByPlayer(v.ref);
+	} else if (v.action == vr::ReachAction::Close) {
+		if (!game::CloseMenus()) {
+			// Left to the player; the reach is done with it either way.
+			g_reachOpen.phase = vr::ReachPhase::Rearm;
+		}
+	}
+	if (v.event != nullptr && g_reachLines > 0) {
+		--g_reachLines;
+		OBVR_LOG("Reach: %08X %s (%s, the %s hand %.2f m off, the target %.2f m off%s%s; top menu 0x%03X) - phase "
+		         "%u -> %u",
+		         v.ref != 0 ? v.ref : heldBefore != 0 ? heldBefore : reached.ref, v.event,
+		         vr::ReachKindName(reached.ref != 0 ? reached.kind : f.kind), reached.left ? "left" : "right",
+		         static_cast<double>(f.candidateMetres), static_cast<double>(f.targetMetres),
+		         f.targetLocked ? ", locked" : "", f.targetGone ? ", gone" : "", top, static_cast<unsigned>(was),
+		         static_cast<unsigned>(g_reachOpen.phase));
+	}
+}
+
 void UpdateHandMode(const Config& config, bool menuIsUp) {
 	StepInputRouting(config);
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
@@ -3483,6 +3612,13 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		StepLeads(config, inPlace);
 	}
 
+	// Opening by reaching: a free hand at a chest, a body or a pocket opens
+	// it, the hand away closes what it opened (vr/ReachOpen.h). Stepped with
+	// a menu up as well - closing is half of it.
+	StepReachOpen(config, active && frame.inWorld && frame.firstPerson && !frame.settingsMenuOpen &&
+	                          !frame.adjustingHands,
+	              menuIsUp);
+
 	// What the laser asked of the cursor on a flat frame, a few times, and
 
 	// the cursor's answer a frame later: whether the hit lands where it
@@ -3995,6 +4131,18 @@ bool g_dialogMenuEpisode = false;
 // A container's menu up, one episode from its opening to its closing (the
 // same shape as the dialogue's): its panel over the container.
 bool g_containerMenuEpisode = false;
+// The lock's minigame up, the same way: with opening by reaching on, it
+// goes over the chest as the container's menu does, the world running
+// (the tester, 2026-10-09: "das Schlossknacken minigame wie das neue menü").
+bool g_lockMenuEpisode = false;
+
+// Whether the menu up is the container's panel over the thing: the
+// container's menu with [Look] ContainerInWorld, or the lock's minigame
+// with that and [Hands] ReachOpens.
+bool ContainerPanelUp(const Config& config) {
+	return config.containerPanel.inWorld &&
+	       (g_containerMenuEpisode || (g_lockMenuEpisode && config.hands.reachOpen.enabled));
+}
 bool g_dressingReportedThisMenu = false;
 UInt32 g_dressingReportsLeft = 8;
 
@@ -4234,7 +4382,8 @@ void OnFrameEnd() {
 
 	// The same shape for the simulation: asked every frame because the INI
 	// is hot reloaded, redirected once, and the answer follows the option.
-	game::ApplyUnpausedMenus(config.tracker.unpausedMenus, config.containerPanel.inWorld);
+	game::ApplyUnpausedMenus(config.tracker.unpausedMenus, config.containerPanel.inWorld,
+	                         config.containerPanel.inWorld && config.hands.reachOpen.enabled);
 
 	// Remembered for this frame's delivery before clearing the guard for the
 	// next one. This is what distinguishes a fresh pause-menu stereo pair from
@@ -4362,7 +4511,16 @@ void OnFrameEnd() {
 	const bool loadingFrame = menuId == game::kMenuIdLoading || game::LoadingThreadActive();
 	g_dialogMenuEpisode = DialogMenuEpisode(
 		g_dialogMenuEpisode, menuIsUp, menuId == game::kMenuIdDialog);
-	g_containerMenuEpisode = DialogMenuEpisode(g_containerMenuEpisode, menuIsUp, menuId == game::kMenuIdContainer);
+	// The container's and the lock's episodes by the menu on top of the stack
+	// as well: ActiveMenuId is the menu under the cursor, and a menu opened by
+	// reaching (or with the cursor off it) never had the cursor on it - its
+	// panel was never placed over it (hand script
+	// reach-open, 2026-10-09).
+	const UInt32 topMenuId = menuIsUp ? game::TopVisibleMenu() : game::kMenuIdNone;
+	g_containerMenuEpisode = DialogMenuEpisode(g_containerMenuEpisode, menuIsUp,
+	                                           menuId == game::kMenuIdContainer || topMenuId == game::kMenuIdContainer);
+	g_lockMenuEpisode = DialogMenuEpisode(g_lockMenuEpisode, menuIsUp,
+	                                      menuId == game::kMenuIdLockPick || topMenuId == game::kMenuIdLockPick);
 	const bool menuFlagChanged = menuIsUp != g_menuTraceWasUp;
 	const bool menuTypeChanged = menuId != game::kMenuIdNone && menuId != g_menuTraceLastId;
 
@@ -4391,7 +4549,7 @@ void OnFrameEnd() {
 	// No shade behind a container's panel over the container: the world runs
 	// behind it and is meant to be seen as it is (the tester, 2026-10-08:
 	// "der orange shader muss weg").
-	const bool shadeWanted = config.tracker.menuShade && !(g_containerMenuEpisode && config.containerPanel.inWorld);
+	const bool shadeWanted = config.tracker.menuShade && !ContainerPanelUp(config);
 	const MenuFrameDressing menuDressing = MenuDressingForFrame(
 		delivery, menuIsUp, liveMenuFrame, menuAge, shadeWanted,
 		config.tracker.menuSingleBorder, g_dialogMenuEpisode);
@@ -7158,7 +7316,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// opened some other way (a script, a pickpocket) keeps its usual place.
 	{
 		static vr::DialogPanelPlacement s_containerPlacement;
-		const bool looting = g_containerMenuEpisode && config.containerPanel.inWorld;
+		const bool looting = ContainerPanelUp(config);
 		const bool placementPending = s_containerPlacement.Pending(looting);
 		const bool menusInRoom = config.tracker.menusInWorld && config.tracker.hudAnchorWorld;
 		NiPoint3 chestCentre{};
@@ -7191,7 +7349,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 					         static_cast<double>(config.containerPanel.raiseMetres));
 				}
 			}
-		} else if (placementPending && !haveChest && g_containerMenuEpisode) {
+		} else if (placementPending && !haveChest && looting) {
 			static UInt32 s_noChestLines = 6;
 			if (s_noChestLines > 0 && menusInRoom) {
 				--s_noChestLines;
@@ -7245,7 +7403,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	                  // The container's panel at its own size while looting, the
 	                  // dialogue's while talking, the menus' own otherwise.
 	                  vr::DialogPanelWidth(vr::DialogPanelWidth(config.tracker.hudWidthMetres,
-	                                                            g_containerMenuEpisode && config.containerPanel.inWorld,
+	                                                            ContainerPanelUp(config),
 	                                                            config.containerPanel.scale),
 	                                       g_dialogMenuEpisode, config.dialogPanel.scale),
 	                  config.tracker.hudAnchorWorld, config.hudProbe);

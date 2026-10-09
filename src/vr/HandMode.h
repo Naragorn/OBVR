@@ -19,6 +19,7 @@
 #include "vr/Teleport.h"
 #include "vr/WalkDirection.h"
 #include "vr/WeaponWeight.h"
+#include "vr/ReachOpen.h"
 
 namespace obvr::vr {
 
@@ -299,6 +300,10 @@ struct HandSettings {
 	// WeaponSwingThrough); off, it only trails.
 	float weaponWeightPercent = 40.0f;
 	bool weaponSwingThrough = true;
+	// Opening by reaching: an open, empty hand at a container, a body or -
+	// sneaking - a person opens it, the hand away closes it ([Hands]
+	// ReachOpens, ReachOpenMetres, ReachCloseMetres; vr/ReachOpen.h).
+	ReachOpenSettings reachOpen;
 	// Run switched on and off by a click of the left stick, instead of held
 	// while the stick is pressed in.
 	bool runToggle = false;

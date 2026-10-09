@@ -1,0 +1,50 @@
+# Opening by reaching ([Hands] ReachOpens, vr/ReachOpen.h): an empty chest
+# (Oblivion.esm's ChestClutterMiddle01Empty, 000086C4) is placed 60 units
+# in front of the player, the open right hand comes down onto it - no button
+# pressed - and its menu opens over it; the hand taken away closes it, and
+# the reach is armed again. Where the chest's lid is is not known to the
+# script, so the hand comes down in steps until it is in the chest (a first
+# run measured where the chest lands: under the player, not 60 units
+# ahead - why is not known; the CS wiki says PlaceAtMe falls back to the
+# caller's own spot when the asked one is unsafe - so the hand goes down at
+# the feet).
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\reach-open.txt
+
+ini Hands Enabled=1
+ini Hands ReachOpens=1
+ini Look ContainerInWorld=1
+console-at ready player.placeatme 000086C4 1 60 0
+
+expect HandScript: finished
+expect reached - activated
+expect its menu opened
+expect Container: the menu's panel on
+expect the hand left - closed
+expect the hand is away - armed again
+expect top menu Container
+reject HandScript: WARNING
+reject Reach: the close-all-menus function
+reject another menu came
+
+wait 10
+mark ready
+wait 4
+head pitch -45
+right pos 0.05 -0.40 -0.40
+wait 1
+mark above
+right pos 0.05 -1.30 -0.05
+wait 0.5
+right pos 0.05 -1.45 -0.05
+wait 0.5
+right pos 0.05 -1.58 -0.05
+wait 0.5
+right pos 0.05 -1.68 -0.05
+wait 0.5
+right pos 0.05 -1.76 -0.05
+wait 2
+mark opened
+right pos 0.30 -0.30 -0.10
+wait 2
+mark closed
+wait 1

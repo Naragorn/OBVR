@@ -19,7 +19,7 @@ namespace obvr::game {
 // once, the first time the option is on, and the answer follows the option
 // from then on, so switching it off in the INI restores vanilla answers
 // without touching code again.
-void ApplyUnpausedMenus(bool wanted, bool containerWanted = false);
+void ApplyUnpausedMenus(bool wanted, bool containerWanted = false, bool lockWanted = false);
 
 // The id at the top of the interface manager's menu stack
 // (GetTopVisibleMenuID), kMenuIdNone with none - unlike ActiveMenuId, which

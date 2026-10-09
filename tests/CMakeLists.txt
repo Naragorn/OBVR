@@ -1387,3 +1387,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME weapon_weight COMMAND weapon_weight_test)
+
+add_executable(reach_open_test ReachOpenTest.cpp)
+
+target_include_directories(reach_open_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(reach_open_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME reach_open COMMAND reach_open_test)

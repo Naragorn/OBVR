@@ -12,6 +12,7 @@ namespace {
 
 bool g_enabled = false;
 bool g_containerEnabled = false;  // [Look] ContainerInWorld: the container's menu alone
+bool g_lockEnabled = false;       // [Hands] ReachOpens: the lock's minigame too
 bool g_installTried = false;
 UInt32 g_sitesRedirected = 0;
 
@@ -39,11 +40,11 @@ UInt32 TopVisibleMenuId() {
 // option off the answer is vanilla's own.
 int __cdecl WorldPauseForMenu() {
 	const bool menuMode = IsMenuMode();
-	const bool asking = g_enabled || g_containerEnabled;
+	const bool asking = g_enabled || g_containerEnabled || g_lockEnabled;
 	const UInt32 observed = menuMode && asking ? TopVisibleMenuId() : kMenuIdNone;
 	const UInt32 top = StablePauseMenuId(menuMode, observed, g_rememberedTop);
 	g_rememberedTop = top;
-	const bool paused = WorldPausesForMenu(menuMode, g_enabled, top, g_containerEnabled);
+	const bool paused = WorldPausesForMenu(menuMode, g_enabled, top, g_containerEnabled, g_lockEnabled);
 	if (menuMode && asking &&
 	    (!g_lastAnswerLogged || paused != g_lastPaused || top != g_lastTop)) {
 		g_lastAnswerLogged = true;
@@ -143,19 +144,22 @@ void InstallOnce() {
 
 }  // namespace
 
-void ApplyUnpausedMenus(bool wanted, bool containerWanted) {
-	if ((wanted || containerWanted) && !g_installTried) {
+void ApplyUnpausedMenus(bool wanted, bool containerWanted, bool lockWanted) {
+	if ((wanted || containerWanted || lockWanted) && !g_installTried) {
 		InstallOnce();
 	}
 	const bool enabled = wanted && g_sitesRedirected != 0;
 	const bool containerEnabled = containerWanted && g_sitesRedirected != 0;
-	if (enabled != g_enabled || containerEnabled != g_containerEnabled) {
+	const bool lockEnabled = lockWanted && g_sitesRedirected != 0;
+	if (enabled != g_enabled || containerEnabled != g_containerEnabled || lockEnabled != g_lockEnabled) {
 		g_enabled = enabled;
 		g_containerEnabled = containerEnabled;
+		g_lockEnabled = lockEnabled;
 		g_lastAnswerLogged = false;
 		if (g_installTried) {
-			OBVR_LOG("Menu pause: unpaused menus are now %s, the container's menu %s", enabled ? "on" : "off",
-			         containerEnabled ? "runs the world on its own" : "as the option says");
+			OBVR_LOG("Menu pause: unpaused menus are now %s, the container's menu %s, the lock's minigame %s",
+			         enabled ? "on" : "off", containerEnabled ? "runs the world on its own" : "as the option says",
+			         lockEnabled ? "runs the world on its own" : "pauses as vanilla");
 		}
 	}
 }

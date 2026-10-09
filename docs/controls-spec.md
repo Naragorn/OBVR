@@ -1843,3 +1843,69 @@ der ingame weight wert der waffe in die gewichtung mit einfliesst".
   first six swings with a lag.
 - Tests: `weapon_weight_test` and `TestWeaponWeightInMode` in
   `hand_mode_test`; 123 pass. Not seen in the headset.
+
+### 4.31 Opening by reaching: chests, bodies, locks and pockets (built 2026-10-09)
+
+The tester: "fang an. alles hinter einem feature flag. default an. Eine
+offene, leere Hand nah am Container, aber auch nicht kurz gehalten, ich
+muss mich nur mit der hand nähern. Verschlossene Container auch hier wenn
+ich mich näher kommt dann das Schlossknacken minigame wie das neue menü.
+wenn das bestanden ist das neue menü. stimmt dann bei taschendiebstahl wir
+schauen mal." Feasibility in docs/container-touch-spec.md.
+
+- `[Hands] ReachOpens=1` (settings "Open by reaching"), `ReachOpenMetres`
+  (0.10; "Reach to open (m)"), `ReachCloseMetres` (0.45; "Away to close
+  (m)", kept beyond the open one by `vr::ReachCloseMetresFor`).
+- **Opening**: a free hand (`vr::HandFreeToOpen`: tracked, grip open, not
+  a fist, holding nothing, no weapon or fists drawn) within the open
+  distance of a container (base form 0x17), a body (a dead Character or
+  Creature) or - with the player sneaking - a living one not in combat
+  (`game::FindReachTarget`, the player's cell's references) activates it
+  at once, no dwell: `TESObjectREFR::Activate(player, 0, 0, 1)` as the A
+  button ends in (0x004DD260, `game::ActivateByPlayer`). Not while the
+  stick walks the player (passing by opens nothing), not with a menu up,
+  and not when an item the same hand is at is nearer than the container
+  (`vr::ItemGoesFirst`: the bottle on the desk is taken, the desk stays
+  shut).
+- **The distance**: a container's, to its model's box in its own frame
+  (`vr::DistanceToBox`; the vertices read the way NearbyItems reads them,
+  checked against their bound) - a chest's bound sphere reaches 0.66 m
+  from its middle; an actor's, to its "Bip01" bones less 8 units of flesh
+  (`vr::DistanceToBones`); the bound at 0.6 of its radius when neither
+  reads (said in the log).
+- **What comes of it** (`vr::StepReachOpen`, phases Idle, Opening, Open,
+  Lockpicking, Rearm): the ContainerMenu - its panel over the thing as for
+  A (`g_activatedRef`), the world running; the LockPickMenu for a locked
+  chest - over the chest too, the world running (`WorldPausesForMenu`'s
+  `lockRuns`, `ContainerPanelUp`), no shade; when the lock gives with the
+  hand still there, the chest is activated again and its menu comes, or
+  the game's own opening is taken as open; any other menu (a
+  conversation, a message, an arrest) is left to the game; nothing for 30
+  frames (a key needed, no picks) is left too.
+- **Closing**: the hand (any tracked one, free or not) beyond the close
+  distance closes the container's menu or the lock's minigame the reach
+  opened - the engine's close-all-menus (0x00579770, verified by its first
+  twelve bytes; `game::CloseMenus`) - never under the quantity popup,
+  never a menu the reach did not open. Then the reach waits for the hand
+  to leave before the same thing opens again (closed with B while the
+  hand is still there: not reopened).
+- **Episodes by the top of the stack**: the container's and the lock's
+  menu episodes now also look at `TopVisibleMenu`, not only at
+  ActiveMenuId (the menu under the cursor): a menu opened by reaching
+  never had the cursor on it, and its panel was not placed (hand script
+  reach-open, first runs).
+- Log: "Reach: <ref> reached - activated / its menu opened / the hand left
+  - closed / the hand is away - armed again ..." with the hand's and the
+  target's distances and the top menu; at a hand script's mark a state
+  line (free hands, weapon, grips, fists, moving, the nearest thing within
+  2 m and its bound).
+- Tests: `reach_open_test` (every phase and its exits, the distances, the
+  hand and kind rules), `menu_pause_policy_test` (the lock's switch).
+  Hand script `reach-open.txt`: PASS 2026-10-09 (an empty chest placed by
+  the console - it landed under the player, not 60 units ahead - the open
+  hand brought down onto it: activated, its menu up with the world
+  running, the panel over it, the hand away: closed, armed again).
+- **Not exercised yet**: the lock (`game::RefIsLocked` reads ExtraLock as
+  xOBSE lays it out, vtable 0x00A357B8 checked - not read in a run), the
+  minigame over the chest with the world running, the reopen after a
+  picked lock, a body, a pocket. Headset test open.

@@ -100,6 +100,7 @@ add_library(OBVR SHARED
 	src/game/Shove.cpp
 	src/game/GrabNearBody.cpp
 	src/game/NearbyItems.cpp
+	src/game/ReachTargets.cpp
 	src/game/QuickKeys.cpp
 	src/game/ItemIcons.cpp
 	src/game/QuickKeyPages.cpp
