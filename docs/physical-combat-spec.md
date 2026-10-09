@@ -203,3 +203,103 @@ The tester asked whether the carried weapon could get body collisions. Read here
 - How strong the lag should be at each weight (tuning in the headset: settings per weight class, or one "weapon weight" factor).
 - Whether the drawn hand should lag with the weapon (B&S) or only the weapon should turn around the hand. Both are feasible. The hand lagging is truer to B&S; the weapon alone keeps the hand on the controller.
 - Where exactly in the hit handler the damage can be scaled (B).
+
+## 6. Weight as one slider: the proposal of 2026-10-09 (not built)
+
+The tester (2026-10-08): "wie würden wir nun den waffen ein schwere gefühl
+geben ähnlich zu blade & sorcery ... vorschlag? und stärke muss per
+prozent regler einstellbar sein 1-100%". Section A above is the mechanism;
+this is the shape it should take, with the knob he asked for.
+
+### What is built on, read in the repo (2026-10-09)
+
+- The weapon hand is pinned to the controller every frame
+  (`PinHandBone`, game/HandBones.cpp): the forearm is placed so the hand
+  bone lands on the controller; the "Weapon" node hangs under the hand
+  bone and goes with it. The two-hand grip (`StepTwoHands`, CameraHook)
+  and the adjustable hand (`PinAdjustableHand`) decide the hand's pose
+  first; the pin writes it.
+- The strike by motion tests the blade's capsule along the hand's swing
+  (`g_hand.swingActive`, `game::MotionStrike`); the swing is the HAND's
+  speed (vr/HandInput.h, `StepSwing`), the blade follows.
+- The weapon's Havok body (`HandBodySlot::Weapon`, game/HandBodies.cpp) is
+  keyframed to the drawn weapon node each frame: wherever the node is
+  drawn, the body is.
+- The weapon's weight is the form's (TESObjectWEAP, its TESWeightForm), as
+  the item rows show it; iron dagger 3, longsword 24, claymore 36,
+  warhammer 42 (the table in section 2).
+
+### The feel, in one sentence
+
+The weapon does not sit on the controller; it is pulled after it by a
+spring whose stiffness falls with the weapon's weight, so a dagger is on
+the hand and a claymore trails a fast swing by a hand's breadth and swings
+through at the end - and one slider, **Weapon weight 1-100 %**, scales
+how much.
+
+### The design
+
+1. **A lagging pose for the weapon hand.** Each frame the wanted hand
+   pose is the controller's (as now). The DRAWN pose is a critically
+   damped spring following the wanted one, position and rotation apart:
+   `drawn += (wanted - drawn) * share`, `share = dt / (tc + dt)`, with
+   the time constant `tc = tcMax * weightFactor * strength`:
+   - `weightFactor = clamp((weight - 3) / 40, 0, 1)` - a dagger 0, a
+     warhammer 1 (the table's spread);
+   - `strength` is the slider, 0.01-1.00 (`[Hands] WeaponWeight`, 1-100 %,
+     default 40 %);
+   - `tcMax` 0.12 s: at 100 % a warhammer lags a 4 m/s swing by ~0.5 m
+     without the cap below; at 40 % by ~0.2 m.
+   Two hands on the grip (4.10): `tc` × 0.4 - a claymore in two hands
+   follows nearly like a sword in one.
+2. **A cap on the gap**, so a slow hand never reads as lag: the drawn
+   hand is never more than `capMetres` (0.25 m at 100 %, scaled by
+   strength) from the controller, and never more than 35 degrees off its
+   heading; beyond the cap it is clamped to the cap. B&S has the same cap
+   in its joint limits.
+3. **Swing-through**: when the hand stops, the drawn weapon carries on to
+   the cap and comes back - the spring does it on its own, nothing to add.
+4. **The strike takes the drawn blade.** `MotionStrike` is fed the drawn
+   weapon's capsule and speed, not the hand's: a hit lands where the
+   weapon is seen, and a claymore swung too fast arrives late and softer
+   (its drawn tip speed is the lagged one).
+5. **The Havok body follows the drawn node** as it does now; nothing to
+   change.
+6. **The swing's thresholds per weight** (section B): the power swing's
+   length × (1 + weightFactor × 0.5) and the swish's speed likewise - a
+   warhammer wants a longer, fuller swing. Optional, after 1-4.
+
+### What it does not do
+
+- The hand stays on the controller for everything but the weapon: the
+  reach, the ring, the laser, the grab are the controller's. Only the
+  drawn hand/weapon pair lags. (Section 5's open question, decided: the
+  drawn hand lags WITH the weapon, as in B&S, so the grip is seen in the
+  hand - but the controller's own place drives everything else.)
+- No damage scaling by momentum yet (section B's unknown); the weight
+  changes WHEN and WHERE the hit lands, not how hard.
+- Bows and staffs: no lag (the bow is aimed; a lagging bow would miss).
+  Fists: none.
+
+### The slider
+
+- `[Hands] WeaponWeight=40` (1-100), settings "Weapon weight (%)", hot
+  reloaded. 1 % is as now (on the controller); 100 % is B&S's heaviest
+  feel. Nothing else to tune in the INI; `tcMax` and the cap are code
+  constants scaled by it.
+
+### Tests and evidence
+
+- The spring as a pure function (vr/WeaponWeight.h): the step response
+  per weight and strength, the cap, the two-hand factor, a NaN weight,
+  dt 0.
+- The log, once per draw: "Weapon weight: <name> <weight>, time constant
+  n ms at n %, cap n m" and, limited, the largest gap of a swing.
+- The headset judges the feel; the harness can only show the gap.
+
+### Order and size
+
+A day's work for 1-5 (the spring, the cap, the strike fed the drawn
+blade, the slider, the tests); 6 an hour after. Built on the
+`hand-tracked-mode` line as everything else; off at 1 % by setting, so a
+tester who dislikes it loses nothing.

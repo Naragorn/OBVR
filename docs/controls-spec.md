@@ -1741,7 +1741,9 @@ unpaused (neue setting mit default on). ähnlich wie die fallout mods".
   shape: `g_containerMenuEpisode`), the thing activate was last pressed on
   (`g_activatedRef`, within the last 180 world frames) gives its bound; the
   menus' room anchor is set the menus' distance short of a point the raise
-  over the bound's top, along the level line from the head, heading at it
+  (0.15 m) over the bound's CENTRE - not its top: the bound is a sphere
+  round the diagonal, a chest's 0.66 m, and over that the panel "schwebt"
+  (the tester, 2026-10-08) - along the level line from the head, heading at it
   (`vr::ContainerAnchor`, dialog_panel_test) - so the panel, which hangs
   that distance ahead of its anchor, lands over the chest, facing the
   head, at the container scale of the menus' width. Needs the menus in
@@ -1756,3 +1758,48 @@ unpaused (neue setting mit default on). ähnlich wie die fallout mods".
 - The laser works the panel wherever it hangs, as on every menu. Not seen
   in the headset. Open: a body looted from close by puts the panel low
   over the corpse; the raise is the knob.
+
+### 4.29 The tester's round of 0bbd454 (2026-10-08, 21:18) - read 2026-10-09
+
+"1) joa geht nun. slap sounds kommen manchmal nicht oder abgehackt ...
+aber es ist okay 2) jap das geht. nur kam dann das Esc menü nicht musste
+es mit B herholen 3) ja geht. etwas den wert verringern though 4) geht wie
+erwartet. die 30cm sollten in den settings einstellbar sein 5) tafel
+schwebt über der kiste ... das das menü wirklich auf dem objekt liegt
+aber ausgerichtet zu meinem sichtfeld. außerdem muss noch der orange
+shader weg."
+
+- **The slap** (1): nine slaps in his log, all through the shove code
+  ("staggered ... in the face ... the mod set off by a grab tap - its
+  noise waited for"); five "the mod's slap sequence started (the player's
+  encumbrance 39 -> 2039)" - the mod's noise - and four "did not start
+  within the tap's watch (39 -> 39) - the mod's noise played by OBVR":
+  the mod refused those (its own checks; a dialogue opened right after
+  most slaps, the slapped one addressing him), and OBVR's noise came
+  0.27 s late. "manchmal nicht oder abgehackt" fits a noise cut by the
+  dialogue menu opening on it; left as is, as he said.
+- **The Esc menu after death** (2): his log has "the death view is held
+  still", then the Pause menu 729 scene calls later; the session before
+  (c392ccb) 720 - the same pattern, and neither log can tell a menu he
+  opened from one the game opened. New line: "Hands: the menu key n s
+  after death - the game had shown no menu of its own by then / had a
+  menu up already", so the next death says whether the game's own load
+  prompt was late or never came. Oblivion.ini holds no death reload time
+  (only bForceReloadOnEssentialCharacterDeath, bTrackAllDeaths).
+- **The swing's values** (3): the rest after a swing 0.25 -> 0.18 s, the
+  twitch length 0.10 -> 0.08 m, the draw's grace 0.6 -> 0.45 s.
+- **The crouch depth** (4): it is in the settings already - Hands,
+  "Crouch depth" (0.1-0.6 m), `[Hands] CrouchDropMetres`.
+- **The container's panel** (5): it hung over the bound's top, and a
+  chest's bound is a sphere round its diagonal (radius 46 units: 0.66 m
+  over the middle, 0.35 m raise on top): "schwebt über der kiste". Now
+  over the bound's centre plus the raise (0.15 m by default, -0.5 to 1 in
+  the settings), facing the head as before - on the thing, as the ring
+  and the hand's row sit on it. And no menu shade behind it: the world
+  runs there and is meant to be seen ("der orange shader muss weg"). The
+  switch he asked for is the "Container over the chest" row (Screen),
+  `[Look] ContainerInWorld`.
+- **Weapon weight**: a proposal, not built - docs/physical-combat-spec.md
+  section 6: the drawn hand and weapon pulled after the controller by a
+  spring whose time constant grows with the weapon's weight, capped, the
+  strike fed the drawn blade, one slider `[Hands] WeaponWeight` 1-100 %.

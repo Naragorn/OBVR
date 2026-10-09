@@ -125,7 +125,7 @@ inline bool DialogAnchor(const openvr::HmdMatrix34& head, float npcX, float npcY
 struct ContainerPanelSettings {
 	bool inWorld = true;        // the panel over the container, the world running behind it
 	float scale = 0.6f;         // the panel's width while looting, times the menus' own
-	float raiseMetres = 0.35f;  // the panel's middle this far over the container's top
+	float raiseMetres = 0.15f;  // the panel's middle this far over the container's middle (its bound's centre)
 };
 
 // The room anchor that puts the panel on a container: the panel hangs the

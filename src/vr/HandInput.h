@@ -275,9 +275,11 @@ inline float PowerMetresFor(PowerDirection d, const GestureThresholds& t) {
 // swing ... 0.03 m long").
 enum class SwingVerdict { None, Light, Heavy };
 
+// The rest and the length eased a little after the first headset round
+// (the tester, 2026-10-08: "ja geht. etwas den wert verringern though").
 inline constexpr float kSwingEndSeconds = 0.06f;
-inline constexpr float kSwingRestSeconds = 0.25f;
-inline constexpr float kSwingMinMetres = 0.10f;
+inline constexpr float kSwingRestSeconds = 0.18f;
+inline constexpr float kSwingMinMetres = 0.08f;
 
 struct SwingDetector {
 	bool swinging = false;
@@ -345,7 +347,7 @@ inline SwingVerdict StepSwing(SwingDetector& d, float speed, float dtSeconds, co
 // ... 0.08 m long" at once). So for kDrawGraceSeconds from the frame a melee
 // weapon comes into the hand no swing is taken: the detectors are kept
 // idle. Answers whether the grace is running.
-inline constexpr float kDrawGraceSeconds = 0.6f;
+inline constexpr float kDrawGraceSeconds = 0.45f;  // 0.6 at first; eased with the swing's rest
 
 struct DrawGraceState {
 	bool known = false;  // a first frame seen: a weapon in the hand from the start is no draw

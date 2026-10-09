@@ -3591,6 +3591,23 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			OBVR_LOG("Hands: jump sent (right stick flicked up)");
 		}
 		jumpWasSent = controls.jump;
+		// The menu key after a death: whether the game had shown a menu of
+		// its own by then (the tester, 2026-10-08: "das Esc menü kam nicht,
+		// musste es mit B herholen" - his logs cannot tell a menu he opened
+		// from one the game opened).
+		{
+			static bool s_menuWasSent = false;
+			static float s_deadSeconds = 0.0f;
+			static UInt32 s_deathMenuLines = 8;
+			const bool dead = game::PlayerIsDead();
+			s_deadSeconds = dead ? s_deadSeconds + g_deltaSeconds : 0.0f;
+			if (controls.menu && !s_menuWasSent && dead && s_deathMenuLines > 0) {
+				--s_deathMenuLines;
+				OBVR_LOG("Hands: the menu key %.1f s after death - the game %s", static_cast<double>(s_deadSeconds),
+				         menuIsUp ? "had a menu up already" : "had shown no menu of its own by then");
+			}
+			s_menuWasSent = controls.menu;
+		}
 		game::ApplyHandControls(controls, config.handKeys, config.hands.turnSpeed);
 		g_handControlsHeld = true;
 		if ((g_hand.laserHit || g_hand.pokeHover) &&
@@ -4283,8 +4300,12 @@ void OnFrameEnd() {
 
 	const UInt32 menuAge = menuIsUp ? g_presentedFrame - g_menuOpenedFrame
 	                                : kMenuDressingWindowFrames + 1;
+	// No shade behind a container's panel over the container: the world runs
+	// behind it and is meant to be seen as it is (the tester, 2026-10-08:
+	// "der orange shader muss weg").
+	const bool shadeWanted = config.tracker.menuShade && !(g_containerMenuEpisode && config.containerPanel.inWorld);
 	const MenuFrameDressing menuDressing = MenuDressingForFrame(
-		delivery, menuIsUp, liveMenuFrame, menuAge, config.tracker.menuShade,
+		delivery, menuIsUp, liveMenuFrame, menuAge, shadeWanted,
 		config.tracker.menuSingleBorder, g_dialogMenuEpisode);
 	const UInt32 menuShadeColor = menuDressing.shade
 	                                  ? render::ComposeShadeColor(
@@ -7054,7 +7075,12 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		if (vr::DialogRecentreDue(true, placementPending, menusInRoom, haveChest) && g_cyclopeanCameraWorldValid &&
 		    handHudFrame.haveHead) {
 			const float perMetre = config.tracker.unitsPerMetre;
-			const NiPoint3 over = chestCentre + NiPoint3{0.0f, 0.0f, chestRadius + config.containerPanel.raiseMetres * perMetre};
+			// Over the thing's middle, not its bound's top: the bound is a
+			// sphere round the diagonal (a chest's 46 units reached 0.66 m
+			// over its middle), and the panel "schwebt über der kiste" (the
+			// tester, 2026-10-08); on the thing is what he wants, as the ring
+			// and the hand's row sit on it.
+			const NiPoint3 over = chestCentre + NiPoint3{0.0f, 0.0f, config.containerPanel.raiseMetres * perMetre};
 			const NiPoint3 overTracking = vr::WorldPointInTracking(
 				handHudFrame.head, g_cyclopeanCameraWorldTransform.rot, g_cyclopeanCameraWorldTransform.pos, over, perMetre);
 			vr::openvr::HmdMatrix34 anchor{};
@@ -7065,8 +7091,8 @@ void MaybeSubmitOverlays(bool worldFrame) {
 				static UInt32 s_containerLines = 12;
 				if (s_containerLines > 0) {
 					--s_containerLines;
-					OBVR_LOG("Container: the menu's panel over %08X at %.1f %.1f %.1f (bound radius %.0f, the panel's "
-					         "middle %.2f m over its top), the world running behind it",
+					OBVR_LOG("Container: the menu's panel on %08X at %.1f %.1f %.1f (bound radius %.0f, the panel's "
+					         "middle %.2f m over the thing's middle), the world running behind it",
 					         g_activatedRef, static_cast<double>(over.x), static_cast<double>(over.y),
 					         static_cast<double>(over.z), static_cast<double>(chestRadius),
 					         static_cast<double>(config.containerPanel.raiseMetres));

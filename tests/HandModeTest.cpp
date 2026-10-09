@@ -71,9 +71,8 @@ void TestSpeedAndSwing() {
 
 	// The rest after a swing: the hand's way back starts none.
 	Check(StepSwing(d, 2.0f, dt, t) == SwingVerdict::None && !d.swinging, "fast again at once: the rest, no swing");
-	Check(StepSwing(d, 2.0f, dt, t) == SwingVerdict::None && !d.swinging, "0.2 s: still the rest");
 	Check(StepSwing(d, 2.0f, dt, t) == SwingVerdict::None && !d.swinging && d.restSeconds <= 0.0f,
-	      "0.3 s: the rest is over, this frame still none");
+	      "0.2 s: the rest ran out this frame, none yet");
 	// A power attack: the same speed, a longer swing (2026-09-29).
 	Check(StepSwing(d, 2.0f, dt, t) == SwingVerdict::None && d.swinging, "a second swing starts at the same speed");
 	Check(StepSwing(d, 2.0f, dt, t) == SwingVerdict::None && !SwingIsPower(d, t), "0.4 m: not yet a power attack");
@@ -113,7 +112,7 @@ void TestSpeedAndSwing() {
 	std::printf("The draw's grace\n");
 	DrawGraceState g;
 	Check(!StepDrawGrace(g, false, 0.1f), "nothing in the hand: no grace");
-	Check(StepDrawGrace(g, true, 0.1f) && g.left > 0.5f, "a weapon comes into the hand: the grace starts");
+	Check(StepDrawGrace(g, true, 0.1f) && g.left > 0.4f, "a weapon comes into the hand: the grace starts");
 	DrawGraceState fromStart;
 	Check(!StepDrawGrace(fromStart, true, 0.1f) && !StepDrawGrace(fromStart, true, 0.1f),
 	      "a weapon in the hand from the first frame: no draw, no grace");

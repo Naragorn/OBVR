@@ -476,8 +476,8 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.containerPanel.scale = v; },
 	},
 	{
-		"Screen", "Container panel height", "How far (m) the panel's middle sits over the container's top",
-		ItemKind::Number, 0.0f, 1.0f, 0.05f, 2, false,
+		"Screen", "Container panel height", "How far (m) the panel's middle sits over the container's middle",
+		ItemKind::Number, -0.5f, 1.0f, 0.05f, 2, false,
 		"Look", "ContainerPanelRaiseMetres",
 		+[](const Config& c) { return c.containerPanel.raiseMetres; },
 		+[](Config& c, float v) { c.containerPanel.raiseMetres = v; },
