@@ -13,6 +13,9 @@ switched off.
 **Join the Discord:** https://discord.com/channels/747967102895390741/1547539304786436228 -
 questions, bug reports, screenshots, or just to say hi.
 
+**Want to support OBVR?** Ko-fi, Patreon and crypto are under
+[Supporting the work](#supporting-the-work).
+
 ## What you get
 
 - **Real 3D.** Each eye gets its own picture, so the world has depth.
@@ -174,7 +177,11 @@ after the cause, not the symptom. Everything in the repo is in English.
 ## Supporting the work
 
 OBVR is free and stays free. If it gets you into Cyrodiil and you want to buy a
-coffee for the evenings it took: https://www.patreon.com/naragorn
+coffee for the evenings it took:
+
+- **Ko-fi:** https://ko-fi.com/somadb (somadb is a different project I work on,
+  but I confirm this Ko-fi link goes to me, the one who made OBVR.)
+- **Patreon:** https://www.patreon.com/naragorn
 
 Patrons get new builds of this and future VR mods early, with testing notes, and on
 higher tiers a vote on which game gets the VR treatment next. Every build still
