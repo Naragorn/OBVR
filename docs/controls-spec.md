@@ -2097,7 +2097,8 @@ langsam gehen, so wie in blade & sorcery. (neue settings, default an)
 kämpfe in vr müssen entschleunigt werden."
 
 - `[Hands] SlowApproach=1` ("Enemies walk near you"), `SlowApproachMetres`
-  (10; "Walk within (m)", 2-50).
+  (5; "Walk within (m)", 2-50; 10 at first - the tester, having played it,
+  2026-10-10: "Walk within (m) muss per default auf 5m").
 - **How** (game/SlowApproach.h): an actor's movement flags (HighProcess
   +0x1FC; xOBSE: Walk 0x100, Run 0x200) are set by the AI through two of
   HighProcess's own virtuals, read in the binary - vtable +0x2C4

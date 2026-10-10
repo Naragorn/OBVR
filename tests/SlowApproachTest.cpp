@@ -57,9 +57,10 @@ int main() {
 
 	std::printf("The radius\n");
 	Check(SlowApproachUnits(10.0f, 70.0f) == 700.0f, "10 m: 700 units");
-	Check(SlowApproachUnits(1.0f, 70.0f) == 700.0f, "under 2 m: the 10 m asked for");
-	Check(SlowApproachUnits(80.0f, 70.0f) == 700.0f, "over 50 m: the same");
-	Check(SlowApproachUnits(nan, 70.0f) == 700.0f, "not a number: the same");
+	Check(SlowApproachUnits(1.0f, 70.0f) == 350.0f, "under 2 m: the default 5 m");
+	Check(SlowApproachUnits(80.0f, 70.0f) == 350.0f, "over 50 m: the same");
+	Check(SlowApproachUnits(nan, 70.0f) == 350.0f, "not a number: the same");
+	Check(SlowApproachUnits(5.0f, 70.0f) == 350.0f, "the default 5 m: 350 units");
 	Check(SlowApproachUnits(5.0f, 0.0f) == 350.0f, "no scale: 70 units a metre");
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);

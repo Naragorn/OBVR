@@ -543,7 +543,7 @@ Ways on (not decided, see the tester):
 ## 12. The slow approach (built 2026-10-09)
 
 Fighters run up as in vanilla and walk once within `[Hands]
-SlowApproachMetres` (10) of the player - the movement-flag setters of the
+SlowApproachMetres` (5; 10 at first) of the player - the movement-flag setters of the
 high process rerouted (game/SlowApproach.h; controls-spec 4.33), harness
 PASS. With `CombatReach` 85 (section 11) they then walk the last metres
 and stand 1.2 m off to strike, which the tester felt as "die wollen einen
@@ -553,3 +553,36 @@ blade.
 The same setters hold a fighter still while the off hand holds them
 (physical-combat-spec section 8), and the parry's forced block stops the
 blows of one held by the head, the neck or the weapon arm.
+
+## 13. Open (the tester, 2026-10-10, for later): the blade against shields and the other blades
+
+The tester: "notiere für später waffen kollisionen auch mit schild. also
+eigene waffe kollidiert mit eigenem schwert und gegnerischen
+schwert/schild." Nothing built; what each part means and what exists:
+
+- **The player's blade against the player's own shield.** Read as the own
+  *shield* ("eigenem schwert" in the note - Oblivion gives the player one
+  weapon, so there is no second sword of one's own to meet; to confirm
+  with the tester). Today the drawn blade passes through the shield on the
+  left arm: the contact step (section 9) casts against the Havok world, and
+  the player's own shield is in no layer the blade's rays meet (section 4,
+  "Opponents' weapons and shields are not in the Havok world either" - nor
+  is the player's). The shield's ball exists already (`ShieldBall` on
+  "Bip01 L ForearmTwist", the parry's); a blade capsule against that ball,
+  as a stopper in `SweepBlade` with the left arm's pose, is the way.
+- **The player's blade against an opponent's blade.** Today blades meeting
+  during their attack are a parry (section 11): the blow is blocked, but
+  the player's blade passes through theirs. Physically stopping on it
+  means their blade (`BladeFoe`: `a`..`b`, the frame before's too) as a
+  stopper in the same sweep - a segment-segment cast (`SegmentSegmentDistance`
+  exists), with the slide and the let-go of section 9. Their blade moves,
+  so a rest on it is a rest on a moving thing; the parry's 4-unit reach
+  would stay the trigger for the block.
+- **The player's blade against an opponent's shield.** Section 4 F: their
+  shield's ball or box from their "Bip01 L ForearmTwist" node's bound
+  (`CollectBladeBodies` reads their bones already), our blade stopping at
+  it, and a blow that meets it no hit. Still open since the spec was
+  written.
+- Order proposed: their shield first (it also fixes a strike landing
+  through a shield, a real fairness bug), then their blade, then the own
+  shield.

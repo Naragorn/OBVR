@@ -48,9 +48,10 @@ inline bool SlowApproachNear(bool wasSlow, bool inCombat, float distanceUnits, f
 }
 
 // The radius in game units from the setting in metres: 2-50 m; anything
-// else (or not a number) the 10 m the tester asked for.
+// else (or not a number) the default 5 m (the tester asked for 10 on
+// 2026-10-09 and, having played it, for 5 the next day).
 inline float SlowApproachUnits(float metres, float unitsPerMetre) {
-	const float m = metres >= 2.0f && metres <= 50.0f ? metres : 10.0f;
+	const float m = metres >= 2.0f && metres <= 50.0f ? metres : 5.0f;
 	return m * (unitsPerMetre > 0.0f ? unitsPerMetre : 70.0f);
 }
 

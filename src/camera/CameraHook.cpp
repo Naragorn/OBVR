@@ -999,9 +999,13 @@ void StepGrapple(const Config& config, bool inPlace, float dt) {
 	const game::GrappleVerdict v = game::StepGrapple(g_grapple, g, config.hands.shove, in);
 	void* const actor = reinterpret_cast<void*>(v.actor);
 	// A grip closed that held nobody: why, and where the nearest fighter's
-	// body stood from the hand - the hand script's sweep is tuned on it.
-	if (closing && !v.started && !v.refused && g.grabs && g_grappleLines > 0) {
-		--g_grappleLines;
+	// body stood from the hand - the hand script's sweep is tuned on it. Not
+	// for a grip on the weapon's handle (two hands on it, controls-spec
+	// 4.10): seven of the tester's eight lines on 2026-10-10 were that, and
+	// they took the budget the real grabs' lines share. A budget of its own.
+	static UInt32 s_missLines = 24;
+	if (closing && !v.started && !v.refused && g.grabs && !g_leftGripOnHandle && s_missLines > 0) {
+		--s_missLines;
 		float nearest = -1.0f;
 		UInt32 nearestActor = 0;
 		game::BodyPart nearestPart = game::BodyPart::Column;

@@ -336,7 +336,7 @@ struct HandSettings {
 	// metres - a slower fight, as in Blade & Sorcery ([Hands] SlowApproach,
 	// SlowApproachMetres; game/SlowApproach.h).
 	bool slowApproach = true;
-	float slowApproachMetres = 10.0f;
+	float slowApproachMetres = 5.0f;  // the tester, 2026-10-10: "muss per default auf 5m"
 	// The off hand in a fight: it strikes with a weapon drawn, and its grip
 	// holds a fighter ([Hands] OffHandStrikes, OffHandGrabs, GrabHoldSeconds,
 	// GrabFatigue; game/GrappleLogic.h).
