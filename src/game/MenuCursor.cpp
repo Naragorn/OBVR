@@ -26,20 +26,38 @@ float g_wantedY = 0.0f;
 UInt32 g_placed = 0;
 UInt32 g_lines = 6;
 
+// The pixel written last, and the engine's own cursor (EngineMenuCursor).
+bool g_wrote = false;
+float g_writtenX = 0.0f;
+float g_writtenY = 0.0f;
+bool g_engineKnown = false;
+float g_engineX = 0.0f;
+float g_engineY = 0.0f;
+
 UInt32 __fastcall HookedFindTile(void* self, void* edx, UInt32 arg) {
 	auto* const manager = *reinterpret_cast<UInt8* const*>(addr::kInterfaceManagerPointer);
-	if (g_wanted && manager != nullptr && self == manager) {
+	if (manager != nullptr && self == manager) {
 		auto* const x = reinterpret_cast<float*>(manager + addr::kInterfaceCursorXOffset);
 		auto* const y = reinterpret_cast<float*>(manager + addr::kInterfaceCursorYOffset);
-		if (g_lines > 0) {
-			--g_lines;
-			OBVR_LOG("Menu cursor: placed at %.0f,%.0f before the tile search (the engine's own stood at %.0f,%.0f)",
-			         static_cast<double>(g_wantedX), static_cast<double>(g_wantedY), static_cast<double>(*x),
-			         static_cast<double>(*y));
+		if (CursorReadIsEngines(g_wrote, g_writtenX, g_writtenY, *x, *y)) {
+			g_engineKnown = true;
+			g_engineX = *x;
+			g_engineY = *y;
 		}
-		*x = g_wantedX;
-		*y = g_wantedY;
-		++g_placed;
+		if (g_wanted) {
+			if (g_lines > 0) {
+				--g_lines;
+				OBVR_LOG("Menu cursor: placed at %.0f,%.0f before the tile search (the engine's own at %.0f,%.0f)",
+				         static_cast<double>(g_wantedX), static_cast<double>(g_wantedY),
+				         static_cast<double>(g_engineX), static_cast<double>(g_engineY));
+			}
+			*x = g_wantedX;
+			*y = g_wantedY;
+			g_wrote = true;
+			g_writtenX = g_wantedX;
+			g_writtenY = g_wantedY;
+			++g_placed;
+		}
 	}
 	return g_original(self, edx, arg);
 }
@@ -94,6 +112,15 @@ void SetMenuCursorWanted(bool wanted, float x, float y) {
 	g_wanted = wanted && finite && g_original != nullptr;
 	g_wantedX = x;
 	g_wantedY = y;
+}
+
+bool EngineMenuCursor(float& x, float& y) {
+	if (!g_engineKnown) {
+		return false;
+	}
+	x = g_engineX;
+	y = g_engineY;
+	return true;
 }
 
 }  // namespace obvr::game

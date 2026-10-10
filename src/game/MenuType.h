@@ -119,6 +119,11 @@ bool ActiveTileName(char* out, UInt32 size);
 // (the menu haptics).
 UInt32 ActiveTile();
 
+// The map menu's drag, for a hand script's mark: where its drag last read
+// the engine's own cursor, and the world map's pan (MenuType.cpp has the
+// addresses). False unless the map menu is the active menu.
+bool MapMenuPan(float& dragX, float& dragY, float& panX, float& panY);
+
 // HUDReticle is a persistent tile, independent of normal menu ownership. The
 // game can therefore leave its sneak eye visible while any menu draws. The
 // player pointer is deliberately not part of this decision: after a save has

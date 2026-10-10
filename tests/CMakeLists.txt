@@ -1457,3 +1457,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME ref_fingerprint COMMAND ref_fingerprint_test)
+
+add_executable(menu_cursor_test MenuCursorTest.cpp)
+
+target_include_directories(menu_cursor_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(menu_cursor_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME menu_cursor COMMAND menu_cursor_test)

@@ -884,11 +884,23 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 	float pressY = 0.0f;
 	float pressHeight = f.layerPixelsHeight;
 
-	// Where the cursor goes: placed at the pixel (laserCursorDirect) with a
-	// dead band against the hand's tremor and frozen while a button press
-	// runs, or walked there by mouse steps as before. The finger's tip is
-	// never eased either way.
-	const bool pressRunning = m_buttonPress.pressing;
+	// Where the cursor goes: the beam's pixel with a dead band against the
+	// hand's tremor, placed there before the engine's tile search
+	// (laserCursorDirect) - and the engine's own cursor walked after it by
+	// mouse steps either way (f.cursorX is that one), since a drag - a
+	// slider, a scroll bar's marker, the map - moves with the engine's own
+	// cursor and nothing else (the tester, 2026-10-10: "slider kann man nicht
+	// ziehen. sidebar scrolls auch nicht. die map im Tab menü auch nicht").
+	// A press running holds the point where the trigger was pulled: the
+	// button's on a menu of buttons, and the touch screen's until it turns
+	// into a hold - the drag then starts on the slider's marker, not a
+	// threshold's width beside it - or while it scrolls, the notches going to
+	// the list it began on. While the hold drags nothing is written: the
+	// engine's own cursor leads the drag and the hover with it. The finger's
+	// tip is never eased or held.
+	const bool pressRunning = m_buttonPress.pressing || m_press.phase == LaserPressPhase::Pressed ||
+	                          m_press.phase == LaserPressPhase::Scrolling;
+	const bool dragging = m_press.phase == LaserPressPhase::Holding;
 	const auto placeCursor = [&](float px, float py, float layerHeight, bool finger) {
 		if (!finger) {
 			if (!pressRunning) {
@@ -899,16 +911,13 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 				py = m_cursorHold.y;
 			}
 		}
-		if (s.laserCursorDirect) {
+		r.cursorDx = CursorStep(f.cursorX, px, finger ? 1.0f : s.laserGain, finger ? 4096.0f : s.laserMaxStep);
+		r.cursorDy = CursorStep(f.cursorY, py, finger ? 1.0f : s.laserGain, finger ? 4096.0f : s.laserMaxStep);
+		if (s.laserCursorDirect && !dragging) {
 			r.cursorWanted = true;
 			r.cursorWantedX = px;
 			r.cursorWantedY = py;
-			r.cursorDx = 0;
-			r.cursorDy = 0;
-			return;
 		}
-		r.cursorDx = CursorStep(f.cursorX, px, finger ? 1.0f : s.laserGain, finger ? 4096.0f : s.laserMaxStep);
-		r.cursorDy = CursorStep(f.cursorY, py, finger ? 1.0f : s.laserGain, finger ? 4096.0f : s.laserMaxStep);
 	};
 
 	// The cursor on the quad, in tracking space. The pointing hand's finger
@@ -1017,6 +1026,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 		                                               pressX, pressY, pressHeight, f.dtSeconds,
 		                                               f.cursorOnScrollBar || f.menuIsDragSurface);
 		r.controls.menuClick = press.mouseDown || m_dropClickNow;
+		r.menuDragging = m_press.phase == LaserPressPhase::Holding;
 		dragWheel = press.wheel;
 		m_buttonPress = ButtonPressState{};
 	} else {

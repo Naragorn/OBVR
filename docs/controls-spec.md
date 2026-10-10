@@ -2247,7 +2247,8 @@ um". Items 1, 2, 3, 5 and 7 of it, nothing seen in the headset yet:
   no dependence on the window's focus - the 2026-10-07 class of "the
   cursor stayed at 0,0" cannot happen for the hover any more (the click
   still goes through the mouse button and its route). The mouse steps are
-  not sent while a pixel is placed; 0 restores the old steering. Logged
+  not sent while a pixel is placed (until 4.37: they are again, for the
+  drags); 0 restores the old steering. Logged
   "Menu cursor: the tile search at 00581390 takes the laser's pixel as the
   cursor" and, the first six times, "Menu cursor: placed at x,y before
   the tile search (the engine's own stood at a,b)".
@@ -2284,3 +2285,62 @@ um". Items 1, 2, 3, 5 and 7 of it, nothing seen in the headset yet:
   is and take the click on the pull; an in-game list still scrolls by the
   trigger's drag; the flat picture reads at a comfortable depth and the
   dot sits on it; the log's "Menu cursor:" lines.
+
+### 4.37 Drags with the cursor placed: the engine's own cursor leads them (fixed 2026-10-10, harness PASS)
+
+The tester, on 4.36: "super fühlt sich besser an, aber: slider kann man
+nicht ziehen. sidebar scrolls auch nicht. die map im Tab menü auch nicht."
+
+- **Why** (read in Oblivion.exe): a drag never looks at the two floats the
+  laser writes. While the left button is held the interface update calls
+  slot +0x20 of the pressed tile's menu every frame (0x0058341A, the tile
+  at InterfaceManager +0x98, its menu at +0x9C); the press itself went to
+  slot +0x08. The map's pair (MapMenu, vtable 0x00A6CC9C by its RTTI:
+  0x005B68F0 and 0x005B69B0) stores the cursor on the press and on every
+  drag frame adds its move since to the world map's pan traits
+  0xFB8/0xFB9 - read from the manager's +0x20/+0x28, the cursor sprite's
+  own translation. Only the cursor update 0x0057E7C0 moves that, from the
+  mouse's own deltas (0x00403190 axes 1 and 2), and only then derives
+  +0x2C/+0x34 and sets the moved flag +0xB9. 4.36 sent no mouse steps
+  while it placed the pixel, so the engine's own cursor stood still and
+  every drag moved by nothing.
+- **And the search**: the tile search runs only while +0xB9 is set
+  (`je 005833FC` at 0x005823FD). The harness's control run (the 4.36 code,
+  the map opened with F4) never reached it: no "placed at" line, the
+  active menu "none", the laser dead on the map. In the tester's session
+  the flag was set (his log has the pixel placed from the first menu on),
+  so 4.36 worked there for everything but the drags; what set it there is
+  not known - one writer is the manager's reset at 0x0058043E, another the
+  cursor update itself.
+- **Now** (vr/HandMode.cpp `PointAtMenu`, game/MenuCursor):
+  - The mouse steps go out again in the placed mode too, reckoned from
+    the engine's own cursor: taken in the search's entry before the write,
+    whenever the floats hold something other than the pixel written last
+    (`game::EngineMenuCursor`, `CursorReadIsEngines`, menu_cursor_test).
+    The engine's own cursor follows the beam, the search runs, the pixel
+    is placed as before.
+  - While the touch-screen press holds the button (a sideways drag, a
+    scroll bar, the map) nothing is written: the engine's own cursor -
+    walked after the beam - leads the drag and the hover with it
+    (`HandModeResult::menuDragging`).
+  - While the press runs and has not become a hold, or while it scrolls,
+    the point stays where the trigger was pulled (as the button press's
+    did): the button goes down on the slider's marker, not the drag's 2 %
+    beside it, and the wheel's notches go to the list the drag began on.
+  - hand_mode_test `TestLaserDragDirect`: the slider, the scroll bar, the
+    map, the list, and the same with the steering mode.
+- **Proof** (`tools/hand-scripts/laser-drag.txt`, harness PASS): the map
+  opened with F4, the trigger pulled on "map_world_map" and the hand turned:
+  "the engine's own cursor went from 1323,961 to 1680,1349, the map's pan
+  from 2037.7,1657.4 to 1886.7,1493.4". The control run on the old code
+  did not even reach the search. The game window's screenshots kept the
+  map where it was - the monitor's copy of the menu is not redrawn - so the
+  pan is read from the map menu itself (`game::MapMenuPan`).
+- Not run in the harness: a slider and a list's scroll bar (the save has
+  two weapons, no list long enough to scroll; a slider needs the options
+  menu or the quantity popup). Both go through the same per-frame call to
+  the menu's slot +0x20 with the button held; their own slot +0x20 was not
+  read.
+- Logged, the first twelve times: "Hands: a drag held in the X menu - the
+  engine's own cursor at a,b, the beam at c,d" and "Hands: the drag let go
+  - the engine's own cursor went from a,b to c,d" (on the map with its pan).

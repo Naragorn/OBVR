@@ -16,6 +16,22 @@ namespace {
 // drift apart.
 constexpr UInt32 kActiveMenuOffset = 0x9C;
 
+// The map menu's drag (MapMenu, vtable 0x00A6CC9C by its RTTI): the press
+// (slot +0x08, 0x005B68F0) stores the cursor at +0x88/+0x8C from the
+// InterfaceManager's own cursor (+0x20/+0x28, the sprite's translation);
+// each frame the button stays down the interface update (0x0058341A) calls
+// slot +0x20 (0x005B69B0), which adds the cursor's move since to the world
+// map tile's (+0x58) traits 0xFB8/0xFB9 and stores the cursor again. The
+// trait read is Tile's own (0x00588BD0: thiscall, the trait's id, the float
+// on the FPU stack, ret 4; a walk of the tile's sorted value list, 0 for a
+// trait it lacks).
+constexpr UInt32 kMapMenuDragXOffset = 0x88;
+constexpr UInt32 kMapMenuDragYOffset = 0x8C;
+constexpr UInt32 kMapMenuWorldMapOffset = 0x58;
+constexpr UInt32 kMapPanXTrait = 0xFB8;
+constexpr UInt32 kMapPanYTrait = 0xFB9;
+constexpr UInt32 kTileGetFloat = 0x00588BD0;
+
 }  // namespace
 
 bool InterfaceCursorRaw(float& x, float& y) {
@@ -344,6 +360,33 @@ UInt32 ActiveTile() {
 	}
 	const UInt32 tile = *reinterpret_cast<const UInt32*>(manager + addr::kInterfaceActiveTileOffset);
 	return mem::LooksLikeObjectAddress(tile) ? tile : 0;
+}
+
+}  // namespace obvr::game
+
+namespace obvr::game {
+
+bool MapMenuPan(float& dragX, float& dragY, float& panX, float& panY) {
+	const auto* const manager = *reinterpret_cast<const UInt8* const*>(addr::kInterfaceManagerPointer);
+	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(manager))) {
+		return false;
+	}
+	const auto* const menu = *reinterpret_cast<const UInt8* const*>(manager + kActiveMenuOffset);
+	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(menu)) ||
+	    *reinterpret_cast<const UInt32*>(menu + addr::kMenuIdOffset) != kMenuIdMap) {
+		return false;
+	}
+	dragX = *reinterpret_cast<const float*>(menu + kMapMenuDragXOffset);
+	dragY = *reinterpret_cast<const float*>(menu + kMapMenuDragYOffset);
+	void* const map = *reinterpret_cast<void* const*>(menu + kMapMenuWorldMapOffset);
+	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(map))) {
+		return false;
+	}
+	using GetFloatFn = float(__fastcall*)(void* tile, void* edx, UInt32 trait);
+	const auto getFloat = reinterpret_cast<GetFloatFn>(kTileGetFloat);
+	panX = getFloat(map, nullptr, kMapPanXTrait);
+	panY = getFloat(map, nullptr, kMapPanYTrait);
+	return true;
 }
 
 }  // namespace obvr::game

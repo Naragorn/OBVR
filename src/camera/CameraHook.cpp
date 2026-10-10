@@ -2947,6 +2947,15 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.unitsPerMetre = config.tracker.unitsPerMetre;
 	g_hudLayer.ShownPixels(frame.layerPixelsWidth, frame.layerPixelsHeight);
 	frame.cursorValid = game::InterfaceCursorPosition(frame.cursorX, frame.cursorY);
+	// With the laser's pixel written for the tile search (game/MenuCursor.h)
+	// the two floats hold that pixel; the mouse steps walk the engine's own
+	// cursor, which a drag moves with - they are reckoned from where it is.
+	float engineCursorX = 0.0f;
+	float engineCursorY = 0.0f;
+	if (frame.cursorValid && game::EngineMenuCursor(engineCursorX, engineCursorY)) {
+		frame.cursorX = engineCursorX;
+		frame.cursorY = engineCursorY;
+	}
 	if (menuIsUp) {
 		char tileName[48];
 		frame.cursorOnScrollBar = game::CursorOverScrollBar(tileName, sizeof(tileName));
@@ -3086,6 +3095,49 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// tile search (game/MenuCursor.h) - on a game menu only.
 	game::SetMenuCursorWanted(menuIsUp && g_hand.cursorWanted && !frame.settingsMenuOpen, g_hand.cursorWantedX,
 	                          g_hand.cursorWantedY);
+	// A drag on a menu, the first several times: where the engine's own
+	// cursor - the one the drag follows - was as it began and as it ended.
+	{
+		static bool s_dragWas = false;
+		static UInt32 s_dragLines = 12;
+		static float s_dragFromX = 0.0f;
+		static float s_dragFromY = 0.0f;
+		// On the map, its pan as well: what the drag did.
+		static bool s_dragOnMap = false;
+		static float s_panFromX = 0.0f;
+		static float s_panFromY = 0.0f;
+		if (g_hand.menuDragging != s_dragWas && s_dragLines > 0) {
+			--s_dragLines;
+			float dragX = 0.0f;
+			float dragY = 0.0f;
+			float panX = 0.0f;
+			float panY = 0.0f;
+			const bool onMap = game::MapMenuPan(dragX, dragY, panX, panY);
+			if (g_hand.menuDragging) {
+				s_dragFromX = frame.cursorX;
+				s_dragFromY = frame.cursorY;
+				s_dragOnMap = onMap;
+				s_panFromX = panX;
+				s_panFromY = panY;
+				OBVR_LOG("Hands: a drag held in the %s menu - the engine's own cursor at %.0f,%.0f, the beam at %.0f,%.0f",
+				         game::MenuIdName(game::ActiveMenuId()), static_cast<double>(frame.cursorX),
+				         static_cast<double>(frame.cursorY), static_cast<double>(g_hand.laserPixelX),
+				         static_cast<double>(g_hand.laserPixelY));
+			} else if (s_dragOnMap && onMap) {
+				OBVR_LOG("Hands: the drag let go - the engine's own cursor went from %.0f,%.0f to %.0f,%.0f, the map's "
+				         "pan from %.1f,%.1f to %.1f,%.1f",
+				         static_cast<double>(s_dragFromX), static_cast<double>(s_dragFromY),
+				         static_cast<double>(frame.cursorX), static_cast<double>(frame.cursorY),
+				         static_cast<double>(s_panFromX), static_cast<double>(s_panFromY), static_cast<double>(panX),
+				         static_cast<double>(panY));
+			} else {
+				OBVR_LOG("Hands: the drag let go - the engine's own cursor went from %.0f,%.0f to %.0f,%.0f",
+				         static_cast<double>(s_dragFromX), static_cast<double>(s_dragFromY),
+				         static_cast<double>(frame.cursorX), static_cast<double>(frame.cursorY));
+			}
+		}
+		s_dragWas = g_hand.menuDragging;
+	}
 	// The yield's keys (vr/Yield.h): block held over its frames, activate
 	// down for the last of them, the pick on the enemy meanwhile.
 	if (g_yieldFramesLeft > 0) {
@@ -3338,6 +3390,21 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		         static_cast<double>(g_hand.laserPixelX), static_cast<double>(g_hand.laserPixelY),
 		         frame.cursorValid ? 1 : 0, static_cast<double>(frame.cursorX),
 		         static_cast<double>(frame.cursorY), game::MenuIdName(game::TopVisibleMenu()));
+		if (menuIsUp) {
+			// What the beam is on, by the engine's own active tile: a script
+			// aims at a menu's part by this.
+			char underCursor[48];
+			const bool bar = game::CursorOverScrollBar(underCursor, sizeof(underCursor));
+			OBVR_LOG("HandScript: the tile under the cursor \"%s\"%s", underCursor, bar ? " (a scroll bar)" : "");
+			float dragX = 0.0f;
+			float dragY = 0.0f;
+			float panX = 0.0f;
+			float panY = 0.0f;
+			if (game::MapMenuPan(dragX, dragY, panX, panY)) {
+				OBVR_LOG("HandScript: the map's drag point %.0f,%.0f, its pan %.1f,%.1f", static_cast<double>(dragX),
+				         static_cast<double>(dragY), static_cast<double>(panX), static_cast<double>(panY));
+			}
+		}
 		// What the hands could take and what they hold: the grab and the stow
 		// scenarios read whether an item was found at all.
 		const NiPoint3 camera =

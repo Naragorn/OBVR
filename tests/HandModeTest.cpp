@@ -1136,13 +1136,16 @@ void TestLaserCursorDirect() {
 	// The default: the cursor placed, the touch screen on menus with lists.
 	Check(settings.laserCursorDirect && settings.laserDragScroll, "placed and the touch screen by default");
 
-	// On the big quad: the pixel the beam meets is the cursor's, no step sent.
+	// On the big quad: the pixel the beam meets is the cursor's, and the
+	// engine's own cursor (400,300 here) is walked after it by steps as well -
+	// a drag moves with that one (TestLaserDragDirect).
 	HandModeFrame frame = BigQuadFrame();
 	HandMode mode;
 	HandModeResult r = mode.Update(frame, settings);
 	Check(r.laserHit && r.cursorWanted && Near(r.cursorWantedX, 500.0f, 0.5f) && Near(r.cursorWantedY, 400.0f, 0.5f),
 	      "the beam's pixel is where the cursor is to be placed");
-	Check(r.cursorDx == 0 && r.cursorDy == 0, "and no mouse step goes out");
+	Check(r.cursorDx >= 49 && r.cursorDx <= 50 && r.cursorDy >= 49 && r.cursorDy <= 50,
+	      "and the engine's own cursor walks half the way there (the pixel's float rounding either side)");
 
 	// A tremor within the band (0.15 % of this layer's 600: under a pixel)
 	// keeps the placed point; a move takes the new one.
@@ -1197,7 +1200,9 @@ void TestLaserCursorDirect() {
 	HandMode cinema;
 	r = cinema.Update(flat, settings);
 	Check(r.laserHit && Near(r.laserLengthMetres, 1.0f, 0.01f), "the beam ends at the picture's depth");
-	Check(r.cursorWanted && r.cursorDx == 0, "and places the cursor");
+	Check(r.cursorWanted && r.cursorDx == CursorStep(flat.cursorX, r.cursorWantedX, settings.laserGain,
+	                                                 settings.laserMaxStep),
+	      "and places the cursor, the engine's own walked after it");
 	flat.flatDepthMetres = 0.0f;
 	r = cinema.Update(flat, settings);
 	Check(Near(r.laserLengthMetres, 2.0f, 0.01f), "no depth set: the plane two metres out, as before");
@@ -1207,6 +1212,110 @@ void TestLaserCursorDirect() {
 	HandMode steered;
 	r = steered.Update(BigQuadFrame(), settings);
 	Check(!r.cursorWanted && r.cursorDx >= 49 && r.cursorDx <= 50, "LaserCursorDirect=0: mouse steps again");
+}
+
+void TestLaserDragDirect() {
+	std::printf("Drags with the cursor placed: the engine's own cursor leads them\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.laserPitchDegrees = 0.0f;
+	settings.laserYawDegrees = 0.0f;
+	settings.laserOriginMetres = 0.0f;
+	settings.enabled = true;
+	// The beam meets the 800x600 layer at 500,400; the engine's own cursor
+	// has been walked there already. The drag starts 2 % of 600 = 12 pixels
+	// from the pull; a wheel notch is 24.
+	HandModeFrame start = BigQuadFrame();
+	start.dtSeconds = 1.0f / 90.0f;
+	start.cursorX = 500.0f;
+	start.cursorY = 400.0f;
+
+	// A slider: pulled on its marker, dragged sideways.
+	{
+		HandModeFrame frame = start;
+		HandMode mode;
+		HandModeResult r = mode.Update(frame, settings);
+		Check(r.cursorWanted && Near(r.cursorWantedX, 500.0f, 0.5f) && r.cursorDx == 0 && r.cursorDy == 0,
+		      "pointed at the marker: placed, the engine's own there already");
+		frame.right.trigger = 1.0f;
+		r = mode.Update(frame, settings);
+		Check(!r.controls.menuClick && r.cursorWanted && Near(r.cursorWantedX, 500.0f, 0.5f),
+		      "pulled: no click yet, the cursor on the marker");
+		frame.right.position.x += 0.01f;  // ten pixels right, under the drag's start
+		r = mode.Update(frame, settings);
+		Check(!r.controls.menuClick && Near(r.cursorWantedX, 500.0f, 0.5f) && r.cursorDx == 0,
+		      "a wobble while pressed: the point stays where the trigger was pulled, written and walked");
+		frame.right.position.x += 0.02f;  // thirty pixels right of the pull
+		r = mode.Update(frame, settings);
+		Check(r.controls.menuClick && r.cursorWanted && Near(r.cursorWantedX, 500.0f, 0.5f) && r.cursorDx == 0,
+		      "past the drag's start sideways: the button goes down where it was pulled - on the marker, not "
+		      "thirty pixels beside it");
+		Check(r.menuDragging, "and the press is a drag from here");
+		r = mode.Update(frame, settings);
+		Check(r.controls.menuClick && !r.cursorWanted && r.menuDragging,
+		      "held: nothing written, the engine's own cursor leads the drag");
+		Check(r.cursorDx == 15 && r.cursorDy == 0, "and walks after the beam by steps, half the thirty pixels");
+		frame.cursorX = 515.0f;  // the engine's own followed
+		r = mode.Update(frame, settings);
+		Check(r.controls.menuClick && !r.cursorWanted && r.cursorDx == 7, "still held, still walking after it");
+		frame.right.trigger = 0.0f;
+		r = mode.Update(frame, settings);
+		Check(!r.controls.menuClick && !r.cursorWanted && !r.menuDragging,
+		      "let go: the button comes up, no click of its own, no drag");
+		r = mode.Update(frame, settings);
+		Check(r.cursorWanted && Near(r.cursorWantedX, 530.0f, 0.5f), "then the beam's pixel is placed again");
+	}
+
+	// A scroll bar's marker - and the map, one surface: the button is held
+	// from the pull, at the beam's pixel, and the drag follows the beam.
+	for (int which = 0; which < 2; ++which) {
+		HandModeFrame frame = start;
+		frame.cursorOnScrollBar = which == 0;
+		frame.menuIsDragSurface = which == 1;
+		HandMode mode;
+		mode.Update(frame, settings);
+		frame.right.trigger = 1.0f;
+		HandModeResult r = mode.Update(frame, settings);
+		Check(r.controls.menuClick && r.cursorWanted && Near(r.cursorWantedY, 400.0f, 0.5f),
+		      which == 0 ? "pulled on a scroll bar: held at once, at the beam's pixel"
+		                 : "pulled on the map: held at once, at the beam's pixel");
+		frame.right.position.y -= 0.05f;  // fifty pixels down
+		r = mode.Update(frame, settings);
+		Check(r.controls.menuClick && !r.cursorWanted && r.cursorDy == 25 && r.cursorDx == 0,
+		      which == 0 ? "dragged down the bar: nothing written, the engine's own walked after the beam"
+		                 : "the map dragged: nothing written, the engine's own walked after the beam");
+	}
+
+	// A list dragged up and down: the notches go to the list the drag began on.
+	{
+		HandModeFrame frame = start;
+		HandMode mode;
+		mode.Update(frame, settings);
+		frame.right.trigger = 1.0f;
+		mode.Update(frame, settings);
+		frame.right.position.y -= 0.1f;  // a hundred pixels down
+		HandModeResult r = mode.Update(frame, settings);
+		Check(r.menuScroll == 4 && !r.controls.menuClick, "dragged a hundred pixels down: four notches, no click");
+		Check(r.cursorWanted && Near(r.cursorWantedY, 400.0f, 0.5f) && r.cursorDy == 0,
+		      "the cursor kept where the drag began, on the list");
+	}
+
+	// Steered by mouse steps alone (LaserCursorDirect=0): the same press, the
+	// steps towards the held point, then after the beam.
+	{
+		HandSettings steering = settings;
+		steering.laserCursorDirect = false;
+		HandModeFrame frame = start;
+		HandMode mode;
+		mode.Update(frame, steering);
+		frame.right.trigger = 1.0f;
+		mode.Update(frame, steering);
+		frame.right.position.x += 0.03f;  // thirty pixels right
+		HandModeResult r = mode.Update(frame, steering);
+		Check(r.controls.menuClick && !r.cursorWanted && r.cursorDx == 0,
+		      "steering: the button goes down with the cursor still on the marker");
+		r = mode.Update(frame, steering);
+		Check(r.controls.menuClick && !r.cursorWanted && r.cursorDx == 15, "and the drag walks after the beam");
+	}
 }
 
 void TestMainMenuLaser() {
@@ -2817,6 +2926,7 @@ int main() {
 	TestMenusOnly();
 	TestMainMenuLaser();
 	TestLaserCursorDirect();
+	TestLaserDragDirect();
 	TestLaserOnOwnPanel();
 	TestSneakTap();
 	TestCrouchSneak();

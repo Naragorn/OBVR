@@ -614,6 +614,10 @@ struct HandModeResult {
 	bool cursorWanted = false;
 	float cursorWantedX = 0.0f;
 	float cursorWantedY = 0.0f;
+	// The laser's touch-screen press is a hold: the button held for a drag
+	// (a slider, a scroll bar's marker, the map), the engine's own cursor
+	// leading it - nothing placed meanwhile.
+	bool menuDragging = false;
 
 	// The drawn beam: from which hand, and how long - to where it meets the
 	// quad, or a default length when it points past it.
