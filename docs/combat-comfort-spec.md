@@ -331,6 +331,61 @@ verify this from code; a headset test with each switched off would settle it.
   while dead, until the load menu opens; the game kept drawing its HUD for
   seconds (`camera::HudHiddenForDeath`).
 
+## 4. Open (the tester, 2026-10-10, for later): combat made VR-ready - slower attacks, fewer attackers at once
+
+The tester: "combat vr ready machen: gegner angriff tempo bei % slider in
+settings verringern können. dann wird die animation verlangsamt, sodass
+blocken und kampf in vr einfacher ist. und auch die schnelligkeit/
+häufigkeit mit der die gegner angreifen. und neue option: immer nur N
+gegner darf beim nahkampf/oder immer gleichzeitig angreifen, sodass vr
+player nicht reizüberflutet werden, n einstellbar 1-5 default 1."
+
+Three settings, nothing built:
+
+1. **Their attack's tempo, a % slider** (proposed `[Hands] EnemyAttackSpeed`,
+   100 = the game's own): the attacker's attack animation plays slower, so
+   the windup is long enough to see and to block or parry - the blade a VR
+   player has to meet with their own (weapon-collision-spec section 11).
+2. **How often they attack**: the time between one attack and the next, and
+   the chance an attack is chosen at all.
+3. **N at a time** (proposed `[Hands] MeleeAttackersAtOnce`, 1-5, default
+   1; or "all", as vanilla): only N of those fighting the player in melee
+   may be attacking at any moment; the rest hold off until one is done -
+   no flood of blows from every side.
+
+What OBVR has to build on (read in the repo): a game setting held at
+runtime and given back (`CombatReach`, fCombatDistance); the movement
+setters of each fighter's high process (`SlowApproach`, `HoldStill`);
+the hit handler's block hooks (`Parry`); and each fighter's process
+action, read every frame (`ActionOf`, `IsAttackAction`, game/BladeBodies,
+game/ParryLogic.h) - so who is attacking right now is known.
+
+Candidates, none researched:
+
+- **The tempo.** Oblivion plays an attack animation at a rate set from the
+  weapon's speed (the WEAP record's Speed; the setting names
+  `fMediumWeaponSpeedMax` and `fLargeWeaponSpeedMax` are in Oblivion.exe's
+  strings). Where the engine sets an attacking actor's animation rate is not
+  read; slowing only their attack sequences there (never the player's) is
+  the way. A whole-actor time scale would slow their walk and turn too.
+- **How often.** Setting names in Oblivion.exe's strings: the combat
+  style defaults `iAIDefaultAttackChance`, `fAIDefaultAttackNoAttackMult`,
+  `fAIDefaultAttackDuringAttackMult`, `fAIDefaultAttackDuringBlockMult`,
+  `iAIDefaultPowerAttackChance`, and `fPowerAttackDelay`,
+  `fCombatAdvanceNormalAttackChance`, `fCombatForwardAttackChance`. Their
+  exact meaning is not read; most NPCs carry their own combat style record
+  (CSTY), which these defaults may not reach. A runtime setting like
+  CombatReach's where one applies; the combat style's own values otherwise.
+- **N at a time.** The binary has `iNumberActorsInCombatPlayer` - by its
+  name how many actors may fight the player at once (meaning not verified;
+  that would be all-or-nothing per actor, not per blow). The finer gate is
+  OBVR's own: with every fighter's action known, an attack that would make
+  N+1 is held back - the attack's start refused, or the fighter kept at the
+  edge of their reach with the movement setters (as `SlowApproach` does)
+  until a slot is free. Where the AI decides to attack is not located.
+- Order proposed: N at a time first (the largest comfort, and OBVR already
+  sees every attacker), then the tempo, then how often.
+
 ## Test reminders
 
 - With the switch on: fights with power attacks show no lurch back. The log
