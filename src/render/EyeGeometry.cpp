@@ -352,4 +352,36 @@ FlatFit FitFlatPicture(const EyeProjection& leftEye, const EyeProjection& rightE
 	return fit;
 }
 
+SInt32 FlatParallaxPixels(float ipdMetres, float depthMetres, const EyeProjection& eye, UInt32 textureWidth) {
+	if (!(ipdMetres > 0.0f) || !(depthMetres > 0.0f) || textureWidth == 0) {
+		return 0;
+	}
+	const float tanRange = eye.right - eye.left;
+	if (!(tanRange > 0.0f)) {
+		return 0;
+	}
+	const float tanPerPixel = tanRange / static_cast<float>(textureWidth);
+	const float shiftTan = 0.5f * ipdMetres / depthMetres;
+	const float pixels = shiftTan / tanPerPixel;
+	return static_cast<SInt32>(pixels + 0.5f);
+}
+
+SInt32 FlatShiftThatFits(SInt32 leftAxisX, SInt32 rightAxisX, SInt32 flatWidth, UInt32 textureWidth,
+                         SInt32 wantedShift) {
+	if (wantedShift <= 0 || flatWidth <= 0 || textureWidth == 0) {
+		return 0;
+	}
+	// The left eye's picture ends at axis + half the width + the shift,
+	// which must stay inside the texture; the right eye's starts at axis -
+	// half the width - the shift, which must stay at or past 0.
+	const SInt32 half = flatWidth / 2;
+	const SInt32 leftRoom = static_cast<SInt32>(textureWidth) - (leftAxisX + half);
+	const SInt32 rightRoom = rightAxisX - half;
+	SInt32 room = leftRoom < rightRoom ? leftRoom : rightRoom;
+	if (room < 0) {
+		room = 0;
+	}
+	return wantedShift < room ? wantedShift : room;
+}
+
 }  // namespace obvr::render

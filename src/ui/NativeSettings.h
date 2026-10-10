@@ -124,7 +124,7 @@ bool SettingRelevantIn(SettingsMode mode, const SettingDefinition& definition);
 const char* SettingsModeName(SettingsMode mode);
 constexpr UInt32 kNativeMaxSections = 32;
 bool SettingShownIn(SettingsView view, const SettingDefinition& definition, const Config& config);
-constexpr UInt32 kNativeMaxRows = 256;
+constexpr UInt32 kNativeMaxRows = 384;
 
 // The native presentation uses the SAME definitions, bounds and formatters
 // as the original menu. Decisions propose edits; the host saves before applying.

@@ -2212,3 +2212,58 @@ with no menu mode at all) as the picture.
 - Open: the tester's two notes of 2026-10-09 for the reached menus - the
   hand not to vanish while the panel is up, and the panel touch-sensitive
   (docs/container-touch-spec.md section 6).
+
+### 4.36 The laser as the cursor: placed, not steered (built 2026-10-10, headset open)
+
+The tester: "wie kann man das hauptmenü noch verbessern damit die buttons
+gut mit dem laserpointer funktionieren. bisher wirkt das nicht sehr
+robust" - the analysis is docs/main-menu-laser-analysis.md; "setzt das
+um". Items 1, 2, 3, 5 and 7 of it, nothing seen in the headset yet:
+
+- **The cursor is written, not walked** (`[Hands] LaserCursorDirect=1`,
+  "Laser places the cursor"; game/MenuCursor.h). The engine's tile search
+  (0x00581390, the one that decides the hover highlight and what a click
+  activates, called once an interface update) is detoured at its entry:
+  with a laser or a finger on a game menu this frame, the two floats it
+  reads as the cursor (InterfaceManager +0x2C/+0x34) are set to the beam's
+  own pixel right before it runs. No gain, no step cap, no mouse route and
+  no dependence on the window's focus - the 2026-10-07 class of "the
+  cursor stayed at 0,0" cannot happen for the hover any more (the click
+  still goes through the mouse button and its route). The mouse steps are
+  not sent while a pixel is placed; 0 restores the old steering. Logged
+  "Menu cursor: the tile search at 00581390 takes the laser's pixel as the
+  cursor" and, the first six times, "Menu cursor: placed at x,y before
+  the tile search (the engine's own stood at a,b)".
+- **A button, not a touch screen, where there are only buttons**
+  (`game::MenuTakesTouchPress`, menu_type_test): on the main menu, the
+  pause menu, a message box, the level-up, the credits and training the
+  trigger's pull with the beam on the menu puts the mouse button down and
+  holds it 0.12 s (`vr::StepButtonPress`, hand_input_test; the ready-weapon
+  tap's lesson), the beam's wobble changes nothing, the trigger has to
+  come up before the next; the cursor is frozen for the press. Everything
+  with a list, a slider or a page to drag keeps the touch-screen press
+  (the click on the release, a drag that scrolls, 4.4's neighbour).
+- **The flat picture at a depth** (`[Render] FlatDepthMetres=2.0`,
+  "Flat picture depth (m)"; render/EyeMirror): each eye's copy of the main
+  menu, a loading screen or the cinema screen is moved towards the nose by
+  the parallax of a point that far ahead (`FlatParallaxPixels`,
+  `FlatShiftThatFits`, eye_geometry_test; about 13 pixels an eye on this
+  headset's numbers), so the eyes fuse it where the laser's plane and its
+  dot are, instead of at infinity with the dot two metres nearer. The
+  laser's plane takes the same depth. 0 is the old infinity. Takes effect
+  when the eye copies are made - at the start and again as the camera
+  frustum arrives.
+- **A dead band** on the laser's pixel (`vr::CursorHold`, 0.15 % of the
+  layer's height, three or four pixels): a tremor smaller than that keeps
+  the cursor where it is, a larger move takes the new point whole.
+- **The flat picture is never taken away from under a laser on it**
+  (`StepFlatFollow` with `pointing`, flat_follow_test): the follow's
+  second starts over once the beam leaves.
+- Not built: the direct tile click (item 4 - with the cursor placed, the
+  engine's own click path lands on the same tile), one cursor route (6; the
+  click's mouse button still goes by the window's state), a main-menu hand
+  script (8; the runner loads the save first).
+- To check in the headset: the main menu's buttons light where the beam
+  is and take the click on the pull; an in-game list still scrolls by the
+  trigger's drag; the flat picture reads at a comfortable depth and the
+  dot sits on it; the log's "Menu cursor:" lines.

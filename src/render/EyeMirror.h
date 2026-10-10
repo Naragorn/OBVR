@@ -52,10 +52,15 @@ public:
 	// VK_IMAGE_USAGE_SAMPLED_BIT, SteamVR requires it, and usage is settled
 	// when an image is created. A surface from CreateRenderTarget would be
 	// perfectly good to draw into and impossible to submit.
+	// `ipdMetres` and `flatDepthMetres`: a flat picture shown at that depth
+	// rather than at infinity - each eye's copy moved towards the nose by
+	// the parallax (EyeGeometry.h, FlatParallaxPixels); 0 for either keeps
+	// it at infinity as before.
 	bool Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeight,
 	            const EyeProjection& leftEye, const EyeProjection& rightEye,
 	            float gameFovDegrees, bool gameFovIsFor4x3, float cameraTanHalfWidth,
-	            float cameraTanHalfHeight, float menuScale, float menuAspect);
+	            float cameraTanHalfHeight, float menuScale, float menuAspect, float ipdMetres = 0.0f,
+	            float flatDepthMetres = 0.0f);
 
 	void Destroy();
 

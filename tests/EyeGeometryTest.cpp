@@ -508,6 +508,38 @@ void TestPlacePictureRefusals() {
 	CheckNear(noEye.uMax - noEye.uMin, 1.0f, 0.0001f, "and an eye that sees nothing wide");
 }
 
+void TestFlatDepth() {
+	std::printf("A flat picture at a depth: the parallax and the room for it\n");
+	using obvr::render::EyeProjection;
+	using obvr::render::FlatParallaxPixels;
+	using obvr::render::FlatShiftThatFits;
+	// An eye 2000 pixels wide over a tangent range of 2.4: 833 pixels per
+	// tangent unit. Half an IPD of 64 mm over 2 m is tan 0.016: 13 pixels.
+	EyeProjection eye;
+	eye.left = -1.2f;
+	eye.right = 1.2f;
+	Check(FlatParallaxPixels(0.064f, 2.0f, eye, 2000) == 13, "64 mm at 2 m on 833 px/tan: 13 pixels");
+	Check(FlatParallaxPixels(0.064f, 1.0f, eye, 2000) == 27, "at 1 m: twice that, 27");
+	Check(FlatParallaxPixels(0.064f, 0.0f, eye, 2000) == 0, "no depth: none (infinity)");
+	Check(FlatParallaxPixels(0.0f, 2.0f, eye, 2000) == 0, "no IPD read: none");
+	Check(FlatParallaxPixels(0.064f, 2.0f, eye, 0) == 0, "no texture: none");
+	EyeProjection flat;
+	flat.left = 1.0f;
+	flat.right = 1.0f;
+	Check(FlatParallaxPixels(0.064f, 2.0f, flat, 2000) == 0, "no tangent range: none");
+
+	// Both eyes have room: the left eye's picture ends at 1240 + 60 = 1300 of
+	// 2000, the right eye's starts at 760 - 60 = 700.
+	Check(FlatShiftThatFits(1240, 760, 1000, 2000, 13) == 13, "13 pixels wanted with room to spare: 13");
+	Check(FlatShiftThatFits(1240, 760, 1480, 2000, 13) == 13, "a picture leaving exactly 20 pixels: 13");
+	Check(FlatShiftThatFits(1240, 760, 1490, 2000, 13) == 13, "15 pixels of room: 13");
+	Check(FlatShiftThatFits(1240, 760, 1500, 2000, 13) == 10, "10 pixels of room: cut to 10");
+	Check(FlatShiftThatFits(1240, 760, 1520, 2000, 13) == 0, "no room: none");
+	Check(FlatShiftThatFits(1240, 760, 1600, 2000, 13) == 0, "a picture already past the edge: none, never negative");
+	Check(FlatShiftThatFits(1240, 760, 1000, 2000, 0) == 0, "nothing wanted: nothing");
+	Check(FlatShiftThatFits(1240, 760, 0, 2000, 13) == 0, "no picture: nothing");
+}
+
 void TestFitFlatPicture() {
 	std::printf("Fitting a flat picture around both eyes' view axes\n");
 
@@ -628,6 +660,8 @@ int main() {
 	TestContentBounds();
 	std::printf("\n");
 	TestInterpupillaryDistance();
+	std::printf("\n");
+	TestFlatDepth();
 	std::printf("\n");
 	TestPlacePicture();
 	std::printf("\n");

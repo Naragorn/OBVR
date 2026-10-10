@@ -437,6 +437,7 @@ void TestGamepadPlanner() {
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
 	settings.laserDragScroll = false;  // these check the click on the pull; see TestLaserPress
+	settings.laserCursorDirect = false;  // and the cursor walked by mouse steps; see TestLaserCursorDirect
 	settings.enabled = false;
 	HandModeFrame frame;
 	frame.headValid = true;
@@ -486,6 +487,7 @@ void TestStrikeByMotion() {
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
 	settings.laserDragScroll = false;  // these check the click on the pull; see TestLaserPress
+	settings.laserCursorDirect = false;  // and the cursor walked by mouse steps; see TestLaserCursorDirect
 	settings.enabled = true;
 	HandModeFrame frame;
 	frame.headValid = true;
@@ -799,6 +801,7 @@ void TestMenuHandAndSettingsMenu() {
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
 	settings.laserDragScroll = false;  // these check the click on the pull; see TestLaserPress
+	settings.laserCursorDirect = false;  // and the cursor walked by mouse steps; see TestLaserCursorDirect
 	settings.enabled = true;
 	settings.wristMenu = true;  // off by default; this is the wrist's own test
 	settings.wristHud = true;
@@ -885,6 +888,7 @@ void TestLaserOnBigQuad() {
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
 	settings.laserDragScroll = false;  // these check the click on the pull; see TestLaserPress
+	settings.laserCursorDirect = false;  // and the cursor walked by mouse steps; see TestLaserCursorDirect
 	settings.enabled = true;
 	HandModeFrame frame = BigQuadFrame();
 	HandMode mode;
@@ -960,6 +964,7 @@ void TestMenusOnly() {
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
 	settings.laserDragScroll = false;  // these check the click on the pull; see TestLaserPress
+	settings.laserCursorDirect = false;  // and the cursor walked by mouse steps; see TestLaserCursorDirect
 	settings.enabled = false;
 	HandModeFrame frame = BigQuadFrame();
 	frame.menusOnly = true;
@@ -1047,6 +1052,7 @@ void TestHandPoses() {
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
 	settings.laserDragScroll = false;  // these check the click on the pull; see TestLaserPress
+	settings.laserCursorDirect = false;  // and the cursor walked by mouse steps; see TestLaserCursorDirect
 	settings.enabled = true;
 	HandModeFrame frame;
 	frame.headValid = true;
@@ -1120,6 +1126,89 @@ HandModeFrame MainMenuFrame() {
 	return frame;
 }
 
+void TestLaserCursorDirect() {
+	std::printf("The laser places the cursor, the trigger is a button where there are only buttons\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.laserPitchDegrees = 0.0f;
+	settings.laserYawDegrees = 0.0f;
+	settings.laserOriginMetres = 0.0f;
+	settings.enabled = true;
+	// The default: the cursor placed, the touch screen on menus with lists.
+	Check(settings.laserCursorDirect && settings.laserDragScroll, "placed and the touch screen by default");
+
+	// On the big quad: the pixel the beam meets is the cursor's, no step sent.
+	HandModeFrame frame = BigQuadFrame();
+	HandMode mode;
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.laserHit && r.cursorWanted && Near(r.cursorWantedX, 500.0f, 0.5f) && Near(r.cursorWantedY, 400.0f, 0.5f),
+	      "the beam's pixel is where the cursor is to be placed");
+	Check(r.cursorDx == 0 && r.cursorDy == 0, "and no mouse step goes out");
+
+	// A tremor within the band (0.15 % of this layer's 600: under a pixel)
+	// keeps the placed point; a move takes the new one.
+	frame.right.position = NiPoint3{0.1005f, -0.1f, 0.0f};  // half a layer pixel right
+	r = mode.Update(frame, settings);
+	Check(r.cursorWanted && Near(r.cursorWantedX, 500.0f, 0.5f), "half a pixel's tremor: the cursor stays");
+	frame.right.position = NiPoint3{0.15f, -0.1f, 0.0f};  // fifty pixels right
+	r = mode.Update(frame, settings);
+	Check(r.cursorWanted && Near(r.cursorWantedX, 550.0f, 0.5f), "a move of fifty: the new pixel whole");
+
+	// A menu with lists (the touch screen): the trigger's pull is no click,
+	// the release is.
+	frame.right.position = NiPoint3{0.1f, -0.1f, 0.0f};
+	frame.menuTakesTouchPress = true;
+	frame.right.trigger = 1.0f;
+	r = mode.Update(frame, settings);
+	Check(!r.controls.menuClick, "on a list menu the pull is not yet a click");
+	frame.right.trigger = 0.0f;
+	r = mode.Update(frame, settings);
+	Check(r.controls.menuClick, "the release is");
+	r = mode.Update(frame, settings);
+	Check(!r.controls.menuClick, "and up again");
+
+	// The main menu (buttons only): the pull clicks, held a moment, the
+	// cursor frozen meanwhile; the trigger must come up for the next.
+	frame.menuTakesTouchPress = false;
+	frame.dtSeconds = 1.0f / 90.0f;
+	frame.right.trigger = 1.0f;
+	r = mode.Update(frame, settings);
+	Check(r.controls.menuClick, "on the main menu the pull clicks at once");
+	frame.right.position = NiPoint3{0.15f, -0.1f, 0.0f};  // the hand wobbles fifty pixels during the press
+	r = mode.Update(frame, settings);
+	Check(r.controls.menuClick && Near(r.cursorWantedX, 500.0f, 0.5f),
+	      "held down the next frame, the cursor frozen where it was pulled");
+	int held = 2;
+	while (mode.Update(frame, settings).controls.menuClick) {
+		++held;
+	}
+	Check(held >= 10 && held <= 12, "up after about 0.12 s");
+	Check(mode.Update(frame, settings).cursorWantedX > 540.0f, "then the cursor follows the beam again");
+	r = mode.Update(frame, settings);
+	Check(!r.controls.menuClick, "the trigger still pulled: no second click");
+	frame.right.trigger = 0.0f;
+	mode.Update(frame, settings);
+	frame.right.trigger = 1.0f;
+	Check(mode.Update(frame, settings).controls.menuClick, "released and pulled: the next click");
+
+	// On the main menu's picture the plane is the setting's depth.
+	HandModeFrame flat = MainMenuFrame();
+	flat.flatDepthMetres = 1.0f;
+	flat.right.position = NiPoint3{0.3f, 0.0f, 0.0f};
+	HandMode cinema;
+	r = cinema.Update(flat, settings);
+	Check(r.laserHit && Near(r.laserLengthMetres, 1.0f, 0.01f), "the beam ends at the picture's depth");
+	Check(r.cursorWanted && r.cursorDx == 0, "and places the cursor");
+	flat.flatDepthMetres = 0.0f;
+	r = cinema.Update(flat, settings);
+	Check(Near(r.laserLengthMetres, 2.0f, 0.01f), "no depth set: the plane two metres out, as before");
+
+	// Switched off: the old steering, no placement.
+	settings.laserCursorDirect = false;
+	HandMode steered;
+	r = steered.Update(BigQuadFrame(), settings);
+	Check(!r.cursorWanted && r.cursorDx >= 49 && r.cursorDx <= 50, "LaserCursorDirect=0: mouse steps again");
+}
+
 void TestMainMenuLaser() {
 	std::printf("The laser on the main menu's cinema screen, and the hand that holds it\n");
 	HandSettings settings = WithoutLaserOffset();
@@ -1127,6 +1216,7 @@ void TestMainMenuLaser() {
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
 	settings.laserDragScroll = false;  // these check the click on the pull; see TestLaserPress
+	settings.laserCursorDirect = false;  // and the cursor walked by mouse steps; see TestLaserCursorDirect
 	settings.enabled = false;
 	settings.laserGain = 1.0f;
 	settings.laserMaxStep = 4096.0f;
@@ -1237,6 +1327,7 @@ void TestLaserOnOwnPanel() {
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
 	settings.laserDragScroll = false;  // these check the click on the pull; see TestLaserPress
+	settings.laserCursorDirect = false;  // and the cursor walked by mouse steps; see TestLaserCursorDirect
 	settings.enabled = false;
 	HandModeFrame frame = MainMenuFrame();
 	frame.settingsMenuOpen = true;
@@ -1343,6 +1434,7 @@ void TestGrabHand() {
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
 	settings.laserDragScroll = false;  // these check the click on the pull; see TestLaserPress
+	settings.laserCursorDirect = false;  // and the cursor walked by mouse steps; see TestLaserCursorDirect
 	settings.enabled = true;
 	HandModeFrame frame;
 	frame.headValid = true;
@@ -1619,6 +1711,7 @@ void TestLeftButtonsInHandMode() {
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
 	settings.laserDragScroll = false;  // these check the click on the pull; see TestLaserPress
+	settings.laserCursorDirect = false;  // and the cursor walked by mouse steps; see TestLaserCursorDirect
 	settings.enabled = true;
 	HandModeFrame frame;
 	frame.headValid = true;
@@ -2723,6 +2816,7 @@ int main() {
 	TestLaserOnBigQuad();
 	TestMenusOnly();
 	TestMainMenuLaser();
+	TestLaserCursorDirect();
 	TestLaserOnOwnPanel();
 	TestSneakTap();
 	TestCrouchSneak();

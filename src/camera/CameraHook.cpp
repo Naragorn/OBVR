@@ -53,6 +53,7 @@
 #include "core/Watchdog.h"
 #include "game/MenuMode.h"
 #include "game/NativeMenuPrototype.h"
+#include "game/MenuCursor.h"
 #include "game/MenuType.h"
 #include "game/AimAtSource.h"
 #include "game/PlayerAim.h"
@@ -2683,6 +2684,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			g_handControlsHeld = false;
 		}
 		game::SetPlayerWalksUnderMenu(false);
+		game::SetMenuCursorWanted(false, 0.0f, 0.0f);
 		g_hudLayer.ClearWristPlacement();
 		game::HideFirstPersonNodes(false, "");
 		game::RestoreHandBoneScales();
@@ -2795,6 +2797,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.dtSeconds = dt;
 	frame.menuMode = menuIsUp;
 	frame.restMenuUp = menuIsUp && game::TopVisibleMenu() == game::kMenuIdSleepWait;
+	// The trigger as a finger (lists, sliders) or as a button (the main
+	// menu, a message box) on the menu on top (game::MenuTakesTouchPress);
+	// and where the flat picture is shown, for the laser's plane.
+	frame.menuTakesTouchPress = !menuIsUp || game::MenuTakesTouchPress(game::TopVisibleMenu());
+	frame.flatDepthMetres = config.tracker.flatDepthMetres;
 	// A container's menu the reach opened (StepReachOpen): the sticks walk
 	// and turn the player under it.
 	frame.walkUnderMenu = active && menuIsUp && g_reachOpen.phase == vr::ReachPhase::Open &&
@@ -3036,6 +3043,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// sticks move the player (game/MenuPause.h); the laser's cursor and
 	// click wait meanwhile.
 	game::SetPlayerWalksUnderMenu(active && g_hand.walkingUnderMenu);
+	// The laser's pixel as the game's cursor, written before the engine's
+	// tile search (game/MenuCursor.h) - on a game menu only.
+	game::SetMenuCursorWanted(menuIsUp && g_hand.cursorWanted && !frame.settingsMenuOpen, g_hand.cursorWantedX,
+	                          g_hand.cursorWantedY);
 	// The yield's keys (vr/Yield.h): block held over its frames, activate
 	// down for the last of them, the pick on the enemy meanwhile.
 	if (g_yieldFramesLeft > 0) {
@@ -4207,11 +4218,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			}
 		} else if (g_hand.laserHit) {
 			--g_flatLaserLinesLeft;
-			OBVR_LOG("Hands: flat laser hit pixel %.0f,%.0f - cursor at %.0f,%.0f, step %d,%d "
-			         "(controls %s)",
-			         static_cast<double>(g_hand.laserPixelX),
-			         static_cast<double>(g_hand.laserPixelY), static_cast<double>(frame.cursorX),
-			         static_cast<double>(frame.cursorY), g_hand.cursorDx, g_hand.cursorDy,
+			OBVR_LOG("Hands: flat laser hit pixel %.0f,%.0f - cursor at %.0f,%.0f, %s (controls %s)",
+			         static_cast<double>(g_hand.laserPixelX), static_cast<double>(g_hand.laserPixelY),
+			         static_cast<double>(frame.cursorX), static_cast<double>(frame.cursorY),
+			         g_hand.cursorWanted ? "placed there before the tile search" : "stepped by mouse moves",
 			         g_hand.controlsActive ? "active" : "INACTIVE - nothing is sent");
 		}
 	}
@@ -5383,7 +5393,8 @@ void OnFrameEnd() {
 		if (g_headsetRenderer.FlatAnchor(anchor) && g_headTracker.GetBackendForFrame().GetRenderPoseMatrix(head)) {
 			const float apart = vr::HeadingApartDegrees(anchor, head);
 			const float moved = std::sqrt(vr::PoseDistanceSq(anchor, head));
-			if (vr::StepFlatFollow(s_follow, apart, moved, dt, follow)) {
+			// Never taken away from under a laser that is on it.
+			if (vr::StepFlatFollow(s_follow, apart, moved, dt, follow, g_hand.laserHit)) {
 				g_headsetRenderer.ResetFlatAnchor();
 				if (s_followLines > 0) {
 					--s_followLines;
@@ -10066,6 +10077,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	request.cameraTanHalfHeight = g_state.cameraTanHalfHeight;
 	request.menuScale = config.tracker.menuScale;
 	request.menuAspect = config.tracker.menuAspect;
+	request.flatDepthMetres = config.tracker.flatDepthMetres;
 
 	if (!g_frameOpen) {
 		// BeginFrame declined at the top of this pass: rendering is off, the
@@ -10273,6 +10285,9 @@ bool Install() {
 		// viewport, so highlight and click answer in the drawn space. Logs its
 		// own outcome; inert while belief and frame agree.
 		render::InstallCursorPickHook();
+		// And the laser as the cursor itself: its pixel written where the
+		// search reads the cursor (game/MenuCursor.h).
+		game::InstallMenuCursorHook();
 	}
 
 	// Oblivion's frame size, set where it is decided.

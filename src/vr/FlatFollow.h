@@ -28,10 +28,13 @@ struct FlatFollowState {
 };
 
 // Whether to take a fresh anchor this frame. headingApartDegrees and
-// movedMetres are the head's now against the anchor's.
+// movedMetres are the head's now against the anchor's. `pointing`: a laser
+// is on the picture - it is never taken away from under the hand then,
+// and the time away starts over once the beam leaves it
+// (docs/main-menu-laser-analysis.md, 7).
 inline bool StepFlatFollow(FlatFollowState& s, float headingApartDegrees, float movedMetres, float dtSeconds,
-                           const FlatFollowSettings& settings) {
-	if (!(settings.followDegrees > 0.0f)) {
+                           const FlatFollowSettings& settings, bool pointing = false) {
+	if (!(settings.followDegrees > 0.0f) || pointing) {
 		s.awaySeconds = 0.0f;
 		return false;
 	}

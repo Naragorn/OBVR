@@ -405,6 +405,11 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadAnchorIsWorld("Render", "HudAnchor", config.tracker.hudAnchorWorld, path);
 	config.tracker.flatFollowDegrees =
 		ReadFloat("Render", "FlatFollowDegrees", config.tracker.flatFollowDegrees, path);
+	config.tracker.flatDepthMetres =
+		ReadFloat("Render", "FlatDepthMetres", config.tracker.flatDepthMetres, path);
+	if (!(config.tracker.flatDepthMetres >= 0.0f && config.tracker.flatDepthMetres <= 50.0f)) {
+		config.tracker.flatDepthMetres = 2.0f;
+	}
 	config.tracker.menuShade =
 		ReadBool("Render", "MenuShade", config.tracker.menuShade, path);
 	config.tracker.menuShadeColorRgb =
@@ -881,6 +886,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.closeBareWrists = ReadBool("Hands", "CloseBareWrists", h.closeBareWrists, path);
 		h.laserGain = ReadFloat("Hands", "LaserGain", h.laserGain, path);
 		h.laserMaxStep = ReadFloat("Hands", "LaserMaxStep", h.laserMaxStep, path);
+		h.laserCursorDirect = ReadBool("Hands", "LaserCursorDirect", h.laserCursorDirect, path);
 		h.stickDeadZone = ReadFloat("Hands", "StickDeadZone", h.stickDeadZone, path);
 		h.turnSpeed = ReadFloat("Hands", "TurnSpeed", h.turnSpeed, path);
 		h.vrKeyboard = ReadBool("Hands", "VrKeyboard", h.vrKeyboard, path);

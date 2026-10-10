@@ -235,6 +235,21 @@ FlatFit FitFlatPicture(const EyeProjection& leftEye, const EyeProjection& rightE
                        UInt32 textureWidth, UInt32 textureHeight, SInt32 wantedWidth,
                        SInt32 wantedHeight);
 
+// A flat picture at a depth rather than at infinity: each eye's copy moved
+// towards the nose by the pixels a point `depthMetres` straight ahead
+// parts the two eyes' views by - half the interpupillary distance over the
+// depth, in tangent, over this eye's tangents per pixel. 0 for no depth
+// (infinity, as before), an IPD or a depth that is not positive, or no
+// tangent range. The laser's stand-in plane at the same depth then IS the
+// picture (docs/main-menu-laser-analysis.md, 3).
+SInt32 FlatParallaxPixels(float ipdMetres, float depthMetres, const EyeProjection& eye, UInt32 textureWidth);
+
+// How much of a wanted shift towards the nose both eyes have room for: the
+// left eye's picture moves right, the right eye's left, and neither may
+// leave its texture. The shift that fits, at most the one wanted.
+SInt32 FlatShiftThatFits(SInt32 leftAxisX, SInt32 rightAxisX, SInt32 flatWidth, UInt32 textureWidth,
+                         SInt32 wantedShift);
+
 // The distance between the two eyes, in metres.
 //
 // The interpupillary distance, and the number every stereo pair is built on.

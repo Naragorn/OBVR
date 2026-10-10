@@ -78,9 +78,14 @@ struct HandSettings {
 	bool closeBareWrists = true;
 
 	// The laser cursor: how much of the remaining distance the game's cursor
-	// is walked per frame, and the largest step.
+	// is walked per frame, and the largest step - the way it is steered by
+	// mouse steps when the cursor is not placed directly.
 	float laserGain = 0.5f;
 	float laserMaxStep = 60.0f;
+	// The laser places the game's cursor itself, before the engine's tile
+	// search reads it (game/MenuCursor.h), instead of steering it by mouse
+	// steps ([Hands] LaserCursorDirect).
+	bool laserCursorDirect = true;
 
 	// The sticks: dead zone, and mouse pixels per frame at full deflection
 	// for the turn.
@@ -443,8 +448,14 @@ struct HandModeFrame {
 	// the head or in the room - in tracking space, for the laser.
 	MenuQuad menuQuad;
 	// The cinema screen, when the frame is a flat one - the main menu, a
-	// loading screen, a film - for the laser when there is no quad.
+	// loading screen, a film - for the laser when there is no quad; and the
+	// depth it is shown at ([Render] FlatDepthMetres), where the laser's
+	// stand-in plane goes.
 	FlatPicture flat;
+	float flatDepthMetres = 2.0f;
+	// Whether the menu on top takes the trigger as a finger on a touch
+	// screen (lists, sliders) or as a button (game::MenuTakesTouchPress).
+	bool menuTakesTouchPress = true;
 	// OBVR's own panel - the settings menu or the walkthrough - while it is
 	// open, in tracking space, with the pixels it is painted on: for the
 	// laser to put its highlight on the row it points at.
@@ -598,6 +609,11 @@ struct HandModeResult {
 	bool pokePress = false;  // rising edge: one click
 	int cursorDx = 0;
 	int cursorDy = 0;
+	// The pixel the cursor is to be placed at this frame (laserCursorDirect:
+	// written before the engine's tile search), or none.
+	bool cursorWanted = false;
+	float cursorWantedX = 0.0f;
+	float cursorWantedY = 0.0f;
 
 	// The drawn beam: from which hand, and how long - to where it meets the
 	// quad, or a default length when it points past it.
@@ -788,6 +804,8 @@ private:
 	DropPressState m_drop;
 	bool m_dropClickNow = false;  // this frame carries the drop's click
 	LaserPressState m_press;
+	ButtonPressState m_buttonPress;
+	CursorHoldState m_cursorHold;
 	RepeatState m_scrollUp;
 	RepeatState m_scrollDown;
 	StickChordState m_sticks;

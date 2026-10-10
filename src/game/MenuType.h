@@ -143,6 +143,20 @@ bool LoadingThreadActive();
 // table can be checked without a game to read from.
 const char* MenuIdName(UInt32 id);
 
+// Whether the laser's trigger works a menu like a finger on a touch screen
+// (vr::StepLaserPress: the click on the release, a drag that scrolls a list
+// or pulls a slider) or like a button (vr::StepButtonPress: the click on
+// the pull, held a moment, never a drag). Menus that are buttons and
+// nothing else - the main menu, the pause menu, a message box, the level-up
+// and the credits, training - take the button; everything with a list, a
+// slider or a page to drag (the inventory, a container, the options, the
+// quantity's slider, the dialogue's topics, the map, the lockpick ...)
+// keeps the touch screen. Pure, menu_type_test.
+constexpr bool MenuTakesTouchPress(UInt32 id) {
+	return id != kMenuIdMain && id != kMenuIdPause && id != kMenuIdMessage && id != kMenuIdLevelUp &&
+	       id != kMenuIdCredits && id != kMenuIdTraining;
+}
+
 // Where the game's menu cursor is, in the pixels of the screen-size copy the
 // 2D lays out in (the believed size), y down. Read from the two floats the
 // engine's own tile search takes (kInterfaceCursorXOffset,

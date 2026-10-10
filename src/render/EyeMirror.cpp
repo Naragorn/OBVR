@@ -114,7 +114,8 @@ bool EyeMirror::CreateOne(void* gameDevice, int index) {
 bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeight,
                        const EyeProjection& leftEye, const EyeProjection& rightEye,
                        float gameFovDegrees, bool gameFovIsFor4x3, float cameraTanHalfWidth,
-                       float cameraTanHalfHeight, float menuScale, float menuAspect) {
+                       float cameraTanHalfHeight, float menuScale, float menuAspect, float ipdMetres,
+                       float flatDepthMetres) {
 	Destroy();
 
 	if (gameDevice == nullptr || textureWidth == 0 || textureHeight == 0) {
@@ -369,6 +370,23 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 		flatHeight = fit.height;
 	}
 
+	// A depth for the flat picture ([Render] FlatDepthMetres): each eye's
+	// copy moved towards the nose by the parallax of a point that far ahead
+	// - the left eye's right, the right eye's left - as far as both textures
+	// have room for. The same shift in both, so the picture stays one size
+	// and one shape; only where the eyes fuse it changes: from infinity to
+	// where the laser's plane and its dot are (docs/main-menu-laser-
+	// analysis.md, 3). 0 keeps infinity.
+	const SInt32 parallaxWanted = FlatParallaxPixels(ipdMetres, flatDepthMetres, leftEye, m_width);
+	const SInt32 parallax = FlatShiftThatFits(ViewAxisX(leftEye, m_width), ViewAxisX(rightEye, m_width),
+	                                          flatWidth, m_width, parallaxWanted);
+	if (parallaxWanted > 0) {
+		OBVR_LOG("Mirror: the flat picture is shown %.1f m away - each eye's copy %d pixels towards the nose "
+		         "(%d wanted for an IPD of %.1f mm)",
+		         static_cast<double>(flatDepthMetres), parallax, parallaxWanted,
+		         static_cast<double>(ipdMetres * 1000.0f));
+	}
+
 	for (int index = 0; index < 2; ++index) {
 		Eye& eye = m_eye[index];
 		const EyeProjection& projection = index == 0 ? leftEye : rightEye;
@@ -384,8 +402,9 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 		//
 		// Same offset from each eye's own axis means the same direction from
 		// both eyes, which is what infinity is - and where a cinema screen
-		// sits, which is why it reads as one.
-		const SInt32 axisX = ViewAxisX(projection, m_width);
+		// sits, which is why it reads as one. The parallax above moves it in
+		// from there, by the same amount for both.
+		const SInt32 axisX = ViewAxisX(projection, m_width) + (index == 0 ? parallax : -parallax);
 		const SInt32 axisY = ViewAxisY(projection, m_height);
 
 		eye.flatDestination.left = axisX - flatWidth / 2;

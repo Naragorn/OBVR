@@ -100,6 +100,8 @@ void HandMode::Reset() {
 	m_drop = DropPressState{};
 	m_dropClickNow = false;
 	m_press = LaserPressState{};
+	m_buttonPress = ButtonPressState{};
+	m_cursorHold = CursorHoldState{};
 	m_scrollUp = RepeatState{};
 	m_scrollDown = RepeatState{};
 	m_sticks = StickChordState{};
@@ -882,6 +884,33 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 	float pressY = 0.0f;
 	float pressHeight = f.layerPixelsHeight;
 
+	// Where the cursor goes: placed at the pixel (laserCursorDirect) with a
+	// dead band against the hand's tremor and frozen while a button press
+	// runs, or walked there by mouse steps as before. The finger's tip is
+	// never eased either way.
+	const bool pressRunning = m_buttonPress.pressing;
+	const auto placeCursor = [&](float px, float py, float layerHeight, bool finger) {
+		if (!finger) {
+			if (!pressRunning) {
+				CursorHold(m_cursorHold, px, py, kCursorHoldShare * layerHeight);
+			}
+			if (m_cursorHold.valid) {
+				px = m_cursorHold.x;
+				py = m_cursorHold.y;
+			}
+		}
+		if (s.laserCursorDirect) {
+			r.cursorWanted = true;
+			r.cursorWantedX = px;
+			r.cursorWantedY = py;
+			r.cursorDx = 0;
+			r.cursorDy = 0;
+			return;
+		}
+		r.cursorDx = CursorStep(f.cursorX, px, finger ? 1.0f : s.laserGain, finger ? 4096.0f : s.laserMaxStep);
+		r.cursorDy = CursorStep(f.cursorY, py, finger ? 1.0f : s.laserGain, finger ? 4096.0f : s.laserMaxStep);
+	};
+
 	// The cursor on the quad, in tracking space. The pointing hand's finger
 	// tip pressing the quad comes first - it is the click, and while it
 	// hovers the cursor sits under it; otherwise the hand's ray is a laser
@@ -905,8 +934,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 			r.controls.menuClick = r.controls.menuClick || poke.held;
 			// Straight under the tip, no easing: a finger on a button must not
 			// find the cursor still on its way there.
-			r.cursorDx = CursorStep(f.cursorX, sample.pixelX, 1.0f, 4096.0f);
-			r.cursorDy = CursorStep(f.cursorY, sample.pixelY, 1.0f, 4096.0f);
+			placeCursor(sample.pixelX, sample.pixelY, f.layerPixelsHeight, true);
 			r.laserLengthMetres = s.pokeTipForward;
 		} else {
 			const LaserHit hit =
@@ -920,8 +948,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 				r.laserHit = true;
 				r.laserPixelX = hit.pixelX;
 				r.laserPixelY = hit.pixelY;
-				r.cursorDx = CursorStep(f.cursorX, hit.pixelX, s.laserGain, s.laserMaxStep);
-				r.cursorDy = CursorStep(f.cursorY, hit.pixelY, s.laserGain, s.laserMaxStep);
+				placeCursor(hit.pixelX, hit.pixelY, f.layerPixelsHeight, false);
 				// The way to the quad along the ray: the plane's distance over
 				// the ray's share of the normal.
 				const NiPoint3 normal = Cross(quad.right, quad.up);
@@ -947,8 +974,10 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 			TrackingRotate(pointHand->orientation,
 			               LaserOffsetLocal(s.laserOffsetRightMetres, s.laserOffsetUpMetres, !pointRight)) +
 			pointing * s.laserOriginMetres;
-		const FlatLaserHit hit = LaserOnFlatPicture(origin, pointing, f.headPosition,
-		                                            f.flat, kFlatLaserPlaneMetres);
+		// The picture is shown at [Render] FlatDepthMetres (0: at infinity,
+		// and the plane the old two metres out).
+		const float plane = f.flatDepthMetres > 0.0f ? f.flatDepthMetres : kFlatLaserPlaneMetres;
+		const FlatLaserHit hit = LaserOnFlatPicture(origin, pointing, f.headPosition, f.flat, plane);
 		laserPath = true;
 		pressHit = hit.hit;
 		pressX = hit.pixelX;
@@ -958,21 +987,30 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 			r.laserHit = true;
 			r.laserPixelX = hit.pixelX;
 			r.laserPixelY = hit.pixelY;
-			r.cursorDx = CursorStep(f.cursorX, hit.pixelX, s.laserGain, s.laserMaxStep);
-			r.cursorDy = CursorStep(f.cursorY, hit.pixelY, s.laserGain, s.laserMaxStep);
+			placeCursor(hit.pixelX, hit.pixelY, f.flat.pixelHeight, false);
 			r.laserLengthMetres = hit.lengthMetres;
 		}
 	} else {
 		m_poke = PokeState{};
+	}
+	if (!r.laserHit && !r.pokeHover) {
+		m_cursorHold = CursorHoldState{};
 	}
 
 	// The trigger on the laser as a finger on a touch screen - see
 	// StepLaserPress: a click on the release, a drag that scrolls, a sideways
 	// drag that holds. The trigger's own level (after the hand switch's
 	// block) is what it steps on; the finger and a frame with no target keep
-	// the plain held click.
+	// the plain held click. On a menu that is buttons and nothing else
+	// (game::MenuTakesTouchPress false: the main menu, a message box) the
+	// trigger is a button instead - StepButtonPress: the click on the pull,
+	// held a moment, no drag.
 	int dragWheel = 0;
-	if (s.laserDragScroll && laserPath) {
+	if (laserPath && !f.menuTakesTouchPress) {
+		const bool pull = r.controls.menuClick && !m_dropClickNow;
+		r.controls.menuClick = StepButtonPress(m_buttonPress, pull, pressHit, f.dtSeconds) || m_dropClickNow;
+		m_press = LaserPressState{};
+	} else if (s.laserDragScroll && laserPath) {
 		// The drop's own click goes past the touch-screen press: stepped as a
 		// trigger it would come a frame later, as a click on the release.
 		const LaserPressVerdict press = StepLaserPress(m_press, r.controls.menuClick && !m_dropClickNow, pressHit,
@@ -980,8 +1018,10 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 		                                               f.cursorOnScrollBar || f.menuIsDragSurface);
 		r.controls.menuClick = press.mouseDown || m_dropClickNow;
 		dragWheel = press.wheel;
+		m_buttonPress = ButtonPressState{};
 	} else {
 		m_press = LaserPressState{};
+		m_buttonPress = ButtonPressState{};
 	}
 
 	// Either stick as the mouse wheel: a notch on the flick, then repeats

@@ -822,6 +822,33 @@ inline LaserHit LaserOnQuad(const NiPoint3& rayOrigin, const NiPoint3& rayDirect
 	return hit;
 }
 
+// A dead band on the laser's pixel: a wanted point within `bandPixels` of
+// the one held keeps the held one, so a hand's tremor does not walk the
+// cursor back and forth over a button's edge (docs/main-menu-laser-
+// analysis.md, 5). Any larger move takes the new point whole - no lag.
+struct CursorHoldState {
+	bool valid = false;
+	float x = 0.0f;
+	float y = 0.0f;
+};
+
+inline void CursorHold(CursorHoldState& s, float wantedX, float wantedY, float bandPixels) {
+	if (s.valid) {
+		const float dx = wantedX - s.x;
+		const float dy = wantedY - s.y;
+		if (dx * dx + dy * dy <= bandPixels * bandPixels) {
+			return;
+		}
+	}
+	s.valid = true;
+	s.x = wantedX;
+	s.y = wantedY;
+}
+
+// The dead band as a share of the layer's height: 0.15 % is three or four
+// pixels on the believed 2266.
+inline constexpr float kCursorHoldShare = 0.0015f;
+
 // The mouse step that walks the game's cursor towards the laser's pixel:
 // a share of the remaining distance, capped, so an unknown cursor speed
 // converges instead of overshooting.
@@ -1286,6 +1313,47 @@ inline LaserPressVerdict StepLaserPress(LaserPressState& s, bool triggerDown, bo
 		s.lastY = y;
 	}
 	return v;
+}
+
+// ---------------------------------------------------------- Button press
+//
+// The trigger on a menu that is buttons and nothing else (the main menu, a
+// message box; game::MenuTakesTouchPress says which): a click like a
+// mouse button's, not like a finger's - on the trigger's pull, with the
+// beam on the menu, the mouse button goes down and stays down for
+// kButtonPressSeconds, then comes up; the beam moving meanwhile changes
+// nothing, and the trigger has to come up before the next. Pulled with the
+// beam off the menu: nothing, until it is pulled again on it. A press that
+// is too short for the game's once-a-frame read of the mouse was the
+// ready-weapon tap's lesson (kTapHoldSeconds); a drag that swallows the
+// click was the touch screen's (docs/main-menu-laser-analysis.md, 2).
+
+constexpr float kButtonPressSeconds = 0.12f;
+
+struct ButtonPressState {
+	bool triggerWas = false;
+	bool pressing = false;
+	float heldFor = 0.0f;
+};
+
+// Answers whether the mouse button is down this frame.
+inline bool StepButtonPress(ButtonPressState& s, bool triggerDown, bool hit, float dtSeconds) {
+	const bool pulled = triggerDown && !s.triggerWas;
+	s.triggerWas = triggerDown;
+	if (s.pressing) {
+		s.heldFor += dtSeconds > 0.0f ? dtSeconds : 0.0f;
+		if (s.heldFor >= kButtonPressSeconds) {
+			s.pressing = false;
+			return false;
+		}
+		return true;
+	}
+	if (pulled && hit) {
+		s.pressing = true;
+		s.heldFor = 0.0f;
+		return true;
+	}
+	return false;
 }
 
 // ------------------------------------------------------------ Tap holds

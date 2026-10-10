@@ -69,6 +69,24 @@ int main() {
 			}
 		}
 	}
+	{
+		using obvr::game::MenuTakesTouchPress;
+		std::printf("Which menus take the trigger as a finger, which as a button\n");
+		Check(!MenuTakesTouchPress(obvr::game::kMenuIdMain), "the main menu: a button");
+		Check(!MenuTakesTouchPress(obvr::game::kMenuIdPause), "the pause menu: a button");
+		Check(!MenuTakesTouchPress(obvr::game::kMenuIdMessage), "a message box: a button");
+		Check(!MenuTakesTouchPress(obvr::game::kMenuIdLevelUp), "the level-up: a button");
+		Check(!MenuTakesTouchPress(obvr::game::kMenuIdCredits), "the credits: a button");
+		Check(!MenuTakesTouchPress(obvr::game::kMenuIdTraining), "training: a button");
+		Check(MenuTakesTouchPress(obvr::game::kMenuIdInventory), "the inventory's list: the touch screen");
+		Check(MenuTakesTouchPress(obvr::game::kMenuIdContainer), "a container's list: the touch screen");
+		Check(MenuTakesTouchPress(obvr::game::kMenuIdOptions), "the options' sliders: the touch screen");
+		Check(MenuTakesTouchPress(obvr::game::kMenuIdQuantity), "the quantity's slider: the touch screen");
+		Check(MenuTakesTouchPress(obvr::game::kMenuIdDialog), "the dialogue's topics: the touch screen");
+		Check(MenuTakesTouchPress(obvr::game::kMenuIdMap), "the map, dragged: the touch screen");
+		Check(MenuTakesTouchPress(obvr::game::kMenuIdLockPick), "the lockpick: the touch screen, as before");
+		Check(MenuTakesTouchPress(obvr::game::kMenuIdNone), "no menu read: the touch screen, as before");
+	}
 	using obvr::game::MenuIdName;
 
 	std::printf("The menu each id names\n");

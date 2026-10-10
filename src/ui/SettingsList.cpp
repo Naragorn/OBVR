@@ -483,6 +483,15 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.containerPanel.raiseMetres = v; },
 	},
 	{
+		"Screen", "Flat picture depth (m)",
+		"How far away the main menu, loading screens and the cinema screen are shown; 0 is infinity. Takes effect as "
+		"the eye copies are remade",
+		ItemKind::Number, 0.0f, 10.0f, 0.5f, 1, false,
+		"Render", "FlatDepthMetres",
+		+[](const Config& c) { return c.tracker.flatDepthMetres; },
+		+[](Config& c, float v) { c.tracker.flatDepthMetres = v; },
+	},
+	{
 		"Screen", "Menu shade", "The vanilla brown wash behind a menu",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Render", "MenuShade",
@@ -1062,6 +1071,14 @@ const SettingDefinition kSettings[] = {
 		"Hands", "LaserDot",
 		+[](const Config& c) { return c.hands.laserDot ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.laserDot = v != 0.0f; },
+	},
+	{
+		"Hands", "Laser places the cursor",
+		"The game's menu cursor is put exactly where the laser points, before the menu looks; off: walked there by mouse steps",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "LaserCursorDirect",
+		+[](const Config& c) { return c.hands.laserCursorDirect ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.laserCursorDirect = v != 0.0f; },
 	},
 	{
 		"Hands", "Left-handed", "The controllers swap roles: weapon, attack and swing on the left",

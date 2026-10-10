@@ -322,6 +322,10 @@ struct TrackerSettings {
 	// metre, for a second (vr/FlatFollow.h). 0 keeps it where it appeared
 	// until the recenter.
 	float flatFollowDegrees = 30.0f;
+	// The depth the flat picture is shown at, metres (render/EyeMirror: each
+	// eye's copy moved by the parallax), and where the laser's plane for it
+	// goes. 0 shows it at infinity, as before.
+	float flatDepthMetres = 2.0f;
 
 	// The dressing the held world pair wears while a pause menu is up - the
 	// frames where Oblivion stops redrawing the world, which is also what

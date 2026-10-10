@@ -114,6 +114,16 @@ bool HeadsetRenderer::BeginFrame(vr::OpenVRBackend& backend) {
 	if (!backend.IsSceneApplication()) {
 		return false;
 	}
+	// The eyes' distance, once, for the flat picture's depth (EyeMirror).
+	if (m_ipdMetres <= 0.0f) {
+		NiPoint3 leftEye{0.0f, 0.0f, 0.0f};
+		NiPoint3 rightEye{0.0f, 0.0f, 0.0f};
+		if (backend.GetEyeOffset(vr::openvr::kEyeLeft, leftEye) &&
+		    backend.GetEyeOffset(vr::openvr::kEyeRight, rightEye)) {
+			const float ipd = InterpupillaryDistance(leftEye, rightEye);
+			m_ipdMetres = IsPlausibleIpd(ipd) ? ipd : 0.0f;
+		}
+	}
 	if (!m_textures.IsReady()) {
 		if (m_setupAttempted) {
 			return false;
@@ -373,7 +383,7 @@ void HeadsetRenderer::EnsureMirror(const FrameRequest& request) {
 		                                 m_leftEye, m_rightEye, request.gameFovDegrees,
 		                                 request.gameFovIsFor4x3, request.cameraTanHalfWidth,
 		                                 request.cameraTanHalfHeight, request.menuScale,
-		                                 request.menuAspect);
+		                                 request.menuAspect, m_ipdMetres, request.flatDepthMetres);
 		m_mirrorUsedCamera = haveCamera;
 		OBVR_LOG("Render: the eye copies are %s",
 		         m_mirrorUsable ? "ready, one picture owned per eye"

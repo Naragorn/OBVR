@@ -187,12 +187,76 @@ void TestFlatLaser() {
 	      "and the old forward now points along the picture: no hit");
 }
 
+void TestButtonPress() {
+	std::printf("The trigger as a button on a menu without lists\n");
+	using obvr::vr::ButtonPressState;
+	using obvr::vr::StepButtonPress;
+	using obvr::vr::kButtonPressSeconds;
+	const float dt = 1.0f / 90.0f;
+	ButtonPressState s;
+	Check(!StepButtonPress(s, false, true, dt), "nothing pulled: nothing");
+	Check(StepButtonPress(s, true, true, dt), "pulled on a button: the mouse button goes down at once");
+	Check(StepButtonPress(s, true, false, dt), "the beam leaves the menu meanwhile: still down");
+	int down = 2;
+	while (StepButtonPress(s, true, true, dt)) {
+		++down;
+	}
+	Check(down >= 10 && down <= 12, "held about 0.12 s (ten or eleven frames at 90 Hz), then up");
+	Check(!StepButtonPress(s, true, true, dt), "the trigger kept pulled: no second press");
+	Check(!StepButtonPress(s, false, true, dt), "let go: nothing");
+	Check(StepButtonPress(s, true, true, dt), "pulled again: a new press");
+	ButtonPressState miss;
+	Check(!StepButtonPress(miss, true, false, dt), "pulled with the beam off the menu: nothing");
+	Check(!StepButtonPress(miss, true, true, dt), "and the beam coming onto it while still pulled: nothing");
+	Check(!StepButtonPress(miss, false, true, dt) && StepButtonPress(miss, true, true, dt),
+	      "released and pulled on it: the press");
+	ButtonPressState quick;
+	Check(StepButtonPress(quick, true, true, dt), "a pull");
+	Check(StepButtonPress(quick, false, true, dt), "released after one frame: the button stays down");
+	int more = 0;
+	while (StepButtonPress(quick, false, true, dt)) {
+		++more;
+	}
+	Check(more >= 8, "for the rest of the moment, so the game's once-a-frame read cannot miss it");
+	ButtonPressState noTime;
+	Check(StepButtonPress(noTime, true, true, 0.0f), "a pull with no time passing: down");
+	Check(StepButtonPress(noTime, true, true, 0.0f), "and down still, nothing counted");
+	Check(StepButtonPress(noTime, true, true, kButtonPressSeconds * 0.5f) &&
+	          !StepButtonPress(noTime, true, true, kButtonPressSeconds * 0.5f),
+	      "two long frames: up after the moment");
+}
+
+void TestCursorHold() {
+	std::printf("The dead band on the laser's pixel\n");
+	using obvr::vr::CursorHold;
+	using obvr::vr::CursorHoldState;
+	CursorHoldState s;
+	CursorHold(s, 100.0f, 200.0f, 4.0f);
+	Check(s.valid && Near(s.x, 100.0f) && Near(s.y, 200.0f), "the first point is taken");
+	CursorHold(s, 102.0f, 202.0f, 4.0f);
+	Check(Near(s.x, 100.0f) && Near(s.y, 200.0f), "a tremor within the band: held");
+	CursorHold(s, 104.0f, 200.0f, 4.0f);
+	Check(Near(s.x, 100.0f), "exactly the band away: held");
+	CursorHold(s, 105.0f, 200.0f, 4.0f);
+	Check(Near(s.x, 105.0f) && Near(s.y, 200.0f), "past it: the new point whole, no lag");
+	CursorHold(s, 900.0f, 50.0f, 4.0f);
+	Check(Near(s.x, 900.0f) && Near(s.y, 50.0f), "a jump: taken at once");
+	CursorHoldState none;
+	CursorHold(none, 10.0f, 10.0f, 0.0f);
+	CursorHold(none, 10.5f, 10.0f, 0.0f);
+	Check(Near(none.x, 10.5f), "no band: every point taken");
+	Check(Near(obvr::vr::kCursorHoldShare * 2266.0f, 3.4f) || obvr::vr::kCursorHoldShare * 2266.0f > 3.0f,
+	      "the share is a few pixels on the believed height");
+}
+
 int main() {
 	TestButtons();
 	TestShortestTurn();
 	TestPoses();
 	TestRepeat();
 	TestFlatLaser();
+	TestButtonPress();
+	TestCursorHold();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

@@ -55,6 +55,17 @@ void TestFollow() {
 	}
 	Check(anchors == 2, "two seconds turned away with nothing re-anchored meanwhile: once a second");
 	Check(!StepFlatFollow(once, 45.0f, 0.0f, 0.0f, settings), "no time passing: nothing");
+
+	std::printf("A laser on the picture\n");
+	FlatFollowState pointed;
+	bool took = false;
+	for (int i = 0; i < 270; ++i) {
+		took = StepFlatFollow(pointed, 60.0f, 1.0f, dt, settings, true) || took;
+	}
+	Check(!took, "turned far away for three seconds, pointing at it: never taken away from under the hand");
+	Check(pointed.awaySeconds == 0.0f, "and the time away stands at nothing");
+	Check(!Hold(pointed, 60.0f, 1.0f, 0.9f, settings), "the beam gone, still away: the second starts over");
+	Check(Hold(pointed, 60.0f, 1.0f, 0.2f, settings), "and runs out: a fresh anchor");
 }
 
 }  // namespace

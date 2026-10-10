@@ -1,4 +1,4 @@
-# The laser on the main menu's buttons: why it is not robust, and what would make it so (analysis 2026-10-10, nothing built)
+# The laser on the main menu's buttons: why it is not robust, and what would make it so (analysis 2026-10-10; items 1, 2, 3, 5 and 7 built the same day - controls-spec 4.36)
 
 The tester: "wie kann man das hauptmenü noch verbessern damit die buttons
 gut mit dem laserpointer funktionieren. bisher wirkt das nicht sehr

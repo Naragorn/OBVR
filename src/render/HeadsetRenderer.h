@@ -130,6 +130,10 @@ public:
 		// The shape a flat picture is given, width over height. 0 keeps the
 		// frame's own.
 		float menuAspect = 1.7778f;
+
+		// The depth a flat picture is shown at, metres: each eye's copy moved
+		// by the parallax (EyeMirror). 0 keeps it at infinity.
+		float flatDepthMetres = 2.0f;
 	};
 
 	// The frame in two halves, so the picture can be submitted after the game
@@ -323,6 +327,9 @@ private:
 	// image with nothing to correct rides the head instead of staying put.
 	vr::openvr::HmdMatrix34 m_flatPose = {};
 	bool m_flatPoseValid = false;
+	// The eyes' distance, read from the headset once (0 until it is), for
+	// the flat picture's depth.
+	float m_ipdMetres = 0.0f;
 
 	// The last answer the anchor read gave, so a run reports the change rather
 	// than the state. See the call site: a recenter that drops the anchor but
