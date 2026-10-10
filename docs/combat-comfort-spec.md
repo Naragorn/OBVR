@@ -386,6 +386,38 @@ Candidates, none researched:
 - Order proposed: N at a time first (the largest comfort, and OBVR already
   sees every attacker), then the tempo, then how often.
 
+**The ring (the tester, the same day, for later):** "neues feature hinter
+toggle, default an: gegner umkreisen den spieler auf einer distanz und geben
+ihm x meter abstand (default 5m). einstellbar 0=off bis 10m. aus diesem
+kreis an gegner greift dann immer nur die anzahl an die der spieler in der
+anderen setting angegeben hat. ähnlich zu blade&sorcery." Nothing built.
+
+4. **Fighters circle at a distance** (proposed `[Hands] CombatRing=1` and
+   `CombatRingMetres` 5, 0 = off, up to 10): those fighting the player who
+   are not attacking right now keep about that distance and walk round the
+   player rather than closing in; out of that ring, only as many as setting
+   3 allows (N, default 1) step in to attack, and go back out to the ring
+   when their attack is done. The B&S picture: a loose circle, one or two
+   engaging, the rest waiting at the edge.
+- How it could go, on what exists (not researched in the engine): the
+  ring is setting 3's gate plus a place to wait. A waiting fighter's
+  movement goes through the same two setters `SlowApproach` and `HoldStill`
+  already reroute (HighProcess vtable +0x2C4/+0x2C8; xOBSE's flags:
+  forward 0x1, backward 0x2, left 0x4, right 0x8): inside the ring the
+  forward step becomes a step back, at the ring a step to the left or the
+  right - a strafe, which the AI's own turn to face its target (combat
+  keeps it facing the player) makes a walk round the player. Who waits and
+  who attacks is OBVR's own choice each frame (nearest first, a turn each
+  after an attack ends), with every fighter's action read as the parry
+  reads it. Their attack itself still has to be held back while they wait
+  (setting 3's open question: where the AI starts an attack). With the
+  slow approach at 5 m too, they walk the last metres to the ring.
+- To watch for: a ring larger than the room (indoors, a corridor) - the
+  ring gives way to walls by the character controller's own collision, but
+  a fighter stuck in a doorway may never get a turn; ranged fighters and
+  casters keep their own distance and are not ring members; creatures
+  circle the same way (their flags are the same process's).
+
 ## Test reminders
 
 - With the switch on: fights with power attacks show no lurch back. The log
