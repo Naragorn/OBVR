@@ -1447,3 +1447,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME grapple COMMAND grapple_test)
+
+add_executable(ref_fingerprint_test RefFingerprintTest.cpp)
+
+target_include_directories(ref_fingerprint_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(ref_fingerprint_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME ref_fingerprint COMMAND ref_fingerprint_test)

@@ -1758,6 +1758,22 @@ unpaused (neue setting mit default on). ähnlich wie die fallout mods".
 - The laser works the panel wherever it hangs, as on every menu. Not seen
   in the headset. Open: a body looted from close by puts the panel low
   over the corpse; the raise is the knob.
+- **The crash of 2026-10-10** (fixed the same day): the tester dropped a
+  weapon in the inventory and the game crashed in OBVR
+  (CobbCrashLogger: EIP OBVR+0x71BAF, `game::RefWorldBound`, `movq
+  xmm0,[edx+20h]` with edx 0x3F800000). The bound was read every frame for
+  the 180 frames after an activation, whatever menu was up - and the thing
+  activated was a weapon picked up: deleted as it went into the
+  inventory, its memory handed to the next allocation (the drop's), so the
+  node pointer read through the old address was a float, 1.0. Now the
+  bound is read only while the panel waits to be placed
+  (`DialogRecentreDue` wants nothing else), and only while the address
+  still holds what was activated - the same vtable and form id, neither
+  deleted nor disabled (`game::RefFingerprint`, ref_fingerprint_test). The
+  same check guards the other references remembered across frames: the
+  reach's target and the next one of a switch (4.31, 4.35: one gone is
+  "gone" and never activated), and a thrown thing in flight (picked up
+  again: no longer followed).
 
 ### 4.29 The tester's round of 0bbd454 (2026-10-08, 21:18) - read 2026-10-09
 

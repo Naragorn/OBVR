@@ -399,6 +399,29 @@ bool NearestVertexOf(UInt32 ref, const NiPoint3& hand, NiPoint3& out, float& dis
 	return true;
 }
 
+RefFingerprint TakeRefFingerprint(UInt32 ref) {
+	RefFingerprint fp;
+	if (!LooksLikeObject(ref)) {
+		return fp;
+	}
+	const UInt32 vtable = Read(ref);
+	if (!LooksLikeGameVtable(vtable)) {
+		return fp;
+	}
+	fp.ref = ref;
+	fp.vtable = vtable;
+	fp.formId = Read(ref + addr::kFormIdOffset);
+	return fp;
+}
+
+bool RefStillThere(const RefFingerprint& fp) {
+	if (fp.ref == 0 || !LooksLikeObject(fp.ref)) {
+		return false;
+	}
+	return RefFingerprintMatches(fp, Read(fp.ref), Read(fp.ref + addr::kFormIdOffset),
+	                             Read(fp.ref + kFormFlagsOffset));
+}
+
 bool RefWorldBound(UInt32 ref, NiPoint3& centre, float& radius) {
 	if (!LooksLikeObject(ref)) {
 		return false;

@@ -3,6 +3,7 @@
 #include "core/MathFns.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "game/RefFingerprint.h"
 
 namespace obvr {
 struct NiAVObject;

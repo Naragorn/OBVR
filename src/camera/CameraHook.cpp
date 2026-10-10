@@ -1116,11 +1116,15 @@ void StepGrapple(const Config& config, bool inPlace, float dt) {
 // throw's speed is followed; passing through someone's body fast enough it
 // staggers them or knocks them down - the shove's effects, once per throw.
 game::ThrowFlight g_throwFlight;
+// What the thrown thing was as it left the hand (game/RefFingerprint.h): one
+// picked up again in flight is deleted, and its memory can be another's.
+game::RefFingerprint g_throwPrint;
 
 void StepThrowHits(const Config& config, float dt, bool inWorld) {
 	const UInt32 thrown = game::TakeJustThrown();
 	if (thrown != 0 && config.hands.throwHit.enabled) {
 		game::StartThrowFlight(g_throwFlight, thrown);
+		g_throwPrint = game::TakeRefFingerprint(thrown);
 		static UInt32 s_throwLines = 8;
 		if (s_throwLines > 0) {
 			--s_throwLines;
@@ -1128,6 +1132,10 @@ void StepThrowHits(const Config& config, float dt, bool inWorld) {
 		}
 	}
 	if (g_throwFlight.ref == 0) {
+		return;
+	}
+	if (!game::RefStillThere(g_throwPrint)) {
+		g_throwFlight = game::ThrowFlight{};
 		return;
 	}
 	const UInt32 node = inWorld ? *reinterpret_cast<const UInt32*>(g_throwFlight.ref + addr::kRefNiNodeOffset) : 0;
@@ -1763,8 +1771,12 @@ UInt32 g_stowLinesLeft = 40;
 bool g_activateWasWithheld = false;
 // What the laser was on as activate was last pressed, and the frame: a
 // container menu opening soon after is that thing's, and its panel goes
-// over it (vr/DialogPanel.h, ContainerAnchor).
+// over it (vr/DialogPanel.h, ContainerAnchor). Remembered with its
+// fingerprint (game/RefFingerprint.h): an item activated is taken and
+// deleted, and its memory reused - read through the old pointer it crashed
+// the game on 2026-10-10.
 UInt32 g_activatedRef = 0;
+game::RefFingerprint g_activatedPrint;
 UInt32 g_activatedFrame = 0;
 inline constexpr UInt32 kActivatedRecentFrames = 180;
 UInt32 g_activateWithheldLinesLeft = 12;
@@ -2497,6 +2509,11 @@ void StepWeaponContact(const Config& config, bool inPlace, float dt) {
 // reach opened. The container's panel then goes over the thing as for A
 // (g_activatedRef), the lock's minigame too.
 vr::ReachOpenState g_reachOpen;
+// What the target and the next one were the frame they were reached, live
+// then (game/RefFingerprint.h): a body or a chest can be deleted while the
+// reach still holds it, and its memory be another's.
+game::RefFingerprint g_reachPrint;
+game::RefFingerprint g_reachNextPrint;
 UInt32 g_reachLines = 60;
 
 void StepReachOpen(const Config& config, bool handsInWorld, bool menuIsUp) {
@@ -2564,8 +2581,11 @@ void StepReachOpen(const Config& config, bool handsInWorld, bool menuIsUp) {
 		                                g_nearItem.distance / perMetre, f.candidateMetres);
 	}
 
-	// The target held, measured from any tracked hand.
-	if (g_reachOpen.target != 0) {
+	// The target held, measured from any tracked hand - while it is still the
+	// thing reached; otherwise it is gone and never read again.
+	if (g_reachOpen.target != 0 && !game::RefStillThere(g_reachPrint)) {
+		f.targetGone = true;
+	} else if (g_reachOpen.target != 0) {
 		float units = 0.0f;
 		bool gone = false;
 		f.targetKnown = cameraKnown && game::ReachDistanceTo(g_reachOpen.target, tracked, units, gone);
@@ -2621,11 +2641,26 @@ void StepReachOpen(const Config& config, bool handsInWorld, bool menuIsUp) {
 
 	const vr::ReachPhase was = g_reachOpen.phase;
 	const UInt32 heldBefore = g_reachOpen.target;
+	const UInt32 nextBefore = g_reachOpen.next;
 	const vr::ReachOpenVerdict v = vr::StepReachOpen(g_reachOpen, settings, f);
+	// A new target is this frame's candidate (live now), or the next one
+	// reached during a switch, printed the frame it was reached.
+	if (g_reachOpen.target != heldBefore) {
+		g_reachPrint = nextBefore != 0 && g_reachOpen.target == nextBefore ? g_reachNextPrint
+		                                                                   : game::TakeRefFingerprint(g_reachOpen.target);
+	}
+	if (g_reachOpen.next != nextBefore) {
+		g_reachNextPrint = game::TakeRefFingerprint(g_reachOpen.next);
+	}
 	if (v.action == vr::ReachAction::Activate) {
-		g_activatedRef = v.ref;
-		g_activatedFrame = g_state.frameCount;
-		game::ActivateByPlayer(v.ref);
+		// v.ref is the target. One gone since it was reached (the other one
+		// of a switch) is not activated: no menu comes, and the reach re-arms.
+		if (game::RefStillThere(g_reachPrint)) {
+			g_activatedRef = v.ref;
+			g_activatedPrint = g_reachPrint;
+			g_activatedFrame = g_state.frameCount;
+			game::ActivateByPlayer(v.ref);
+		}
 	} else if (v.action == vr::ReachAction::Close) {
 		if (!game::CloseMenus()) {
 			// Left to the player; the reach is done with it either way.
@@ -3162,6 +3197,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			const game::CrosshairTarget target = game::ReadCrosshairTarget();
 			if (target.haveRef) {
 				g_activatedRef = target.refAddress;
+				g_activatedPrint = game::TakeRefFingerprint(target.refAddress);
 				g_activatedFrame = g_state.frameCount;
 			}
 			bool isBook = false;
@@ -7918,7 +7954,11 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		NiPoint3 chestCentre{};
 		float chestRadius = 0.0f;
 		const bool recent = g_activatedRef != 0 && g_state.frameCount - g_activatedFrame <= kActivatedRecentFrames;
-		const bool haveChest = recent && game::RefWorldBound(g_activatedRef, chestCentre, chestRadius);
+		// Read only while a panel waits to be placed (DialogRecentreDue wants
+		// nothing else), and only while the thing is still the one activated:
+		// a taken item is deleted and its memory reused (RefFingerprint.h).
+		const bool haveChest = placementPending && recent && game::RefStillThere(g_activatedPrint) &&
+		                       game::RefWorldBound(g_activatedRef, chestCentre, chestRadius);
 		if (vr::DialogRecentreDue(true, placementPending, menusInRoom, haveChest) && g_cyclopeanCameraWorldValid &&
 		    handHudFrame.haveHead) {
 			const float perMetre = config.tracker.unitsPerMetre;
@@ -7953,8 +7993,8 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			static UInt32 s_noChestLines = 6;
 			if (s_noChestLines > 0 && menusInRoom) {
 				--s_noChestLines;
-				OBVR_LOG("Container: the menu opened with nothing activated in the last %u frames (last %08X, %u frames "
-				         "ago) - its panel stays where menus open",
+				OBVR_LOG("Container: the menu opened with nothing activated in the last %u frames, or that thing gone "
+				         "(last %08X, %u frames ago) - its panel stays where menus open",
 				         kActivatedRecentFrames, g_activatedRef, g_state.frameCount - g_activatedFrame);
 				s_containerPlacement.placed = true;  // not asked again this episode
 			}
