@@ -960,8 +960,15 @@ inline FlatLaserHit LaserOnFlatPicture(const NiPoint3& rayOrigin, const NiPoint3
 	    flat.pixelWidth <= 0.0f || flat.pixelHeight <= 0.0f || planeDistanceMetres <= 0.0f) {
 		return hit;
 	}
-	// The stand-in plane, ahead of the anchor and facing it.
-	const NiPoint3 planeCentre = flat.centre + flat.forward * planeDistanceMetres;
+	// The stand-in plane, ahead of the HEAD along the anchor's forward. The
+	// picture's direction stays where it was anchored, but it is drawn into
+	// the eye images - it goes wherever the head goes, always this far ahead
+	// of it. A plane ahead of the anchor's own position put the beam's end a
+	// metre short after a step forward, and the pixel the head saw it against
+	// slid by the hand's distance from the head: the main menu's buttons
+	// stopped taking the laser (the tester, 2026-10-10: "wenn ich ... einen m
+	// vor gehe"), since the anchor is no longer moved while the laser points.
+	const NiPoint3 planeCentre = headPosition + flat.forward * planeDistanceMetres;
 	const float along = Dot(rayDirection, flat.forward);
 	if (along <= 0.0001f) {
 		return hit;  // pointing away from the picture, or along it

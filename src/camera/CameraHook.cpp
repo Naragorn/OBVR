@@ -3396,6 +3396,15 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		         static_cast<double>(g_hand.laserPixelX), static_cast<double>(g_hand.laserPixelY),
 		         frame.cursorValid ? 1 : 0, static_cast<double>(frame.cursorX),
 		         static_cast<double>(frame.cursorY), game::MenuIdName(game::TopVisibleMenu()));
+		if (frame.flat.valid) {
+			OBVR_LOG("HandScript: the flat picture anchored at %.2f %.2f %.2f facing %.2f %.2f %.2f, %.2f by %.2f "
+			         "(tangents), the plane %.2f m",
+			         static_cast<double>(frame.flat.centre.x), static_cast<double>(frame.flat.centre.y),
+			         static_cast<double>(frame.flat.centre.z), static_cast<double>(frame.flat.forward.x),
+			         static_cast<double>(frame.flat.forward.y), static_cast<double>(frame.flat.forward.z),
+			         static_cast<double>(frame.flat.tanHalfWidth), static_cast<double>(frame.flat.tanHalfHeight),
+			         static_cast<double>(frame.flatDepthMetres));
+		}
 		if (menuIsUp) {
 			// What the beam is on, by the engine's own active tile: a script
 			// aims at a menu's part by this.

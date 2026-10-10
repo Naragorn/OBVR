@@ -185,6 +185,19 @@ void TestFlatLaser() {
 	      "a turned anchor: its forward is still the centre");
 	Check(!LaserOnFlatPicture(head, ahead, head, turned, 2.0f).hit,
 	      "and the old forward now points along the picture: no hit");
+
+	// A step forward with the anchor left behind (the tester, 2026-10-10:
+	// "wenn ich ... einen m vor gehe"): the picture goes with the head, so the
+	// plane is two metres ahead of the head, and a hand held out to the right
+	// lands where it did before the step.
+	const NiPoint3 stepped{0.0f, 0.0f, -1.0f};
+	hit = LaserOnFlatPicture(NiPoint3{0.3f, 0.0f, -1.0f}, ahead, stepped, flat, 2.0f);
+	Check(hit.hit && Near(hit.lengthMetres, 2.0f) && Near(hit.pixelX, 800.0f + 0.3f * 800.0f),
+	      "a metre forward: the same pixel for the same hand, the beam two metres long");
+	hit = LaserOnFlatPicture(NiPoint3{0.0f, 0.0f, -1.0f}, ahead, stepped, flat, 2.0f);
+	Check(hit.hit && Near(hit.pixelX, 800.0f) && Near(hit.pixelY, 550.0f), "and from the eyes still dead centre");
+	hit = LaserOnFlatPicture(NiPoint3{0.0f, 0.0f, -2.0f}, ahead, NiPoint3{0.0f, 0.0f, 0.4f}, flat, 2.0f);
+	Check(!hit.hit, "a hand more than the plane's distance ahead of the head: beyond it, no hit");
 }
 
 void TestButtonPress() {

@@ -2412,3 +2412,27 @@ ist es nicht mehr klickbar im hauptmenü".
   that (`pause-near` probe, 2026-10-10). The main menu (a flat picture) has
   no finger and was not changed.
 - Not seen in the headset.
+
+### 4.40 The main menu's laser after a step (fixed 2026-10-10)
+
+The tester: on the main menu at the game's start "gehen buttons nicht mehr
+wenn ich nicht ganz im fokus bin, zb einem m vor gehe".
+
+- The flat picture (the main menu, loading screens) is drawn into the eye
+  images: its direction stays where it was anchored, but it goes wherever
+  the head goes, `FlatDepthMetres` ahead of it. `LaserOnFlatPicture` put its
+  stand-in plane that far ahead of the ANCHOR's position. Since 4.36 the
+  anchor is no longer taken along while the laser is on the picture
+  (`StepFlatFollow` with `pointing`), so after a step forward the plane stood
+  a metre short of the picture the eyes saw, and the pixel the head saw the
+  beam's end against slid by the hand's distance from the head - the
+  buttons stopped taking the beam. Before 4.36 the follow re-anchored the
+  picture after a step, which hid the same error.
+- Now the plane stands that far ahead of the HEAD, along the anchor's
+  forward (hand_input_test: a metre forward, the same pixel for the same
+  hand, the beam still two metres long).
+- Not run in the harness: the runner starts from a save, and the main menu
+  reached by quitting from the Pause menu is shown on the room's quad, not
+  as the flat picture (`mainmenu-step` probe, 2026-10-10; the hand script's
+  marks now log the flat picture's anchor when there is one). Not seen in
+  the headset.
