@@ -58,6 +58,24 @@ void TestOrders() {
 	      "forward and left: only back");
 }
 
+void TestSteps() {
+	std::printf("the waiting fighters' steps\n");
+	const CombatRingSettings s = FiveMetres();
+	float ox = 0.0f;
+	float oy = 0.0f;
+	Check(RingStepOffset(100.0f, 0.0f, RingOrder::Back, true, s, 0.1f, ox, oy) && ox > 9.9f && ox < 10.1f && oy == 0.0f,
+	      "back: straight away from the player, 100 units a second");
+	Check(RingStepOffset(0.0f, 350.0f, RingOrder::Circle, true, s, 0.1f, ox, oy) && ox < -9.9f && oy > -0.1f && oy < 0.1f,
+	      "on the ring, round to the left: along the tangent");
+	Check(RingStepOffset(0.0f, 350.0f, RingOrder::Circle, false, s, 0.1f, ox, oy) && ox > 9.9f, "to the right: the other way");
+	Check(RingStepOffset(0.0f, 320.0f, RingOrder::Circle, true, s, 0.1f, ox, oy) && oy > 4.9f && oy < 5.1f,
+	      "inside the line: pulled out, half a step at most");
+	Check(!RingStepOffset(100.0f, 0.0f, RingOrder::Free, true, s, 0.1f, ox, oy) && ox == 0.0f, "free: no step");
+	Check(!RingStepOffset(100.0f, 0.0f, RingOrder::Back, true, s, 0.0f, ox, oy), "no time: no step");
+	Check(!RingStepOffset(100.0f, 0.0f, RingOrder::Back, true, s, 0.5f, ox, oy), "a long stall: no jump");
+	Check(!RingStepOffset(0.5f, 0.0f, RingOrder::Back, true, s, 0.1f, ox, oy), "on the player: no direction, no step");
+}
+
 void TestTurns() {
 	std::printf("the turns, one at a time\n");
 	const CombatRingSettings s = FiveMetres();
@@ -76,10 +94,10 @@ void TestTurns() {
 	f[1].attacking = true;
 	v = StepCombatRing(state, s, f, 3, kDt);
 	Check(v.turnsEnded == 0 && RingOrderOf(state, 0xB) == RingOrder::Free, "mid-blow: B keeps the turn");
-	// A waiting one that attacks finishes its blow.
+	// A waiting one that attacks is still kept off.
 	f[0].attacking = true;
 	v = StepCombatRing(state, s, f, 3, kDt);
-	Check(RingOrderOf(state, 0xA) == RingOrder::Free, "a waiting one mid-blow is left to finish it");
+	Check(RingOrderOf(state, 0xA) == RingOrder::Back, "a waiting one mid-blow still backs off");
 	f[0].attacking = false;
 	// B's blow through: its turn ends, the longest waiting (A and C equal:
 	// the nearer, A) steps in.
@@ -163,6 +181,7 @@ void TestTableFull() {
 int main() {
 	TestSettings();
 	TestOrders();
+	TestSteps();
 	TestTurns();
 	TestAlone();
 	TestTwoAtOnce();

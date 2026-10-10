@@ -444,18 +444,25 @@ angreifen"):**
   the band a walk to the side (half left, half right by the actor's
   address), which the AI's own turn to its target makes a walk round the
   player; beyond it as the game has them (the slow approach walks them in).
-  Through the slow approach's two rerouted setters (`SetRingLegs`) and
-  written once a frame; the one held by the off hand stands whatever the
-  ring wants. Their attack itself is not refused: kept outside the reach
-  (CombatReach 85 units against a 3.5 m ring) no blow of theirs lands.
+  The flags go through the slow approach's two rerouted setters
+  (`SetRingLegs`) and give the legs their walk; they do NOT move an NPC the
+  AI wants elsewhere (harness, the first run: a fighter given a walk
+  backwards stood at 1.9 m for five seconds). The step itself is the ring's:
+  each frame a waiting fighter is placed 100 units a second away, or round
+  the player with a pull to the ring's line (`RingStepOffset`,
+  `game::PlaceActorAt`, the off hand's drag). A waiting fighter is kept off
+  even mid-blow; the one held by the off hand stands whatever the ring
+  wants. Their attack itself is not refused: kept outside the reach no blow
+  of theirs lands.
 - Logged: "Combat ring: n fighting the player - t with a turn, w waiting at
   r m (...)" on every change, the first forty; at a hand script's mark a
   state line per member.
-- **Not yet proven in the game**: whether a backward or sideways flag moves
-  an NPC the AI wants forward (the walk flag is proven by the slow approach;
-  directions are not). `tools/hand-scripts/combat-ring.txt` (three bandits,
-  a 3 m ring) is written and waits for the game to be free. Ranged fighters
-  and casters are members too (they keep their own distance anyway).
+- **Harness PASS** (`tools/hand-scripts/combat-ring.txt`, three bandits, a
+  3 m ring, 2026-10-10): one with the turn at 0.5-2.4 m, the two waiting
+  held at 3.0 m going round (order 2), one sent back walking out 1.8 -> 2.2
+  -> 3.0 m; the turn passed six times in 25 s. To watch in the headset:
+  whether the placed steps look like walking, and walls (a placement is not
+  stopped by them). Ranged fighters and casters are members too.
   Items 1 and 2 (tempo, frequency) are not built.
 
 ## Test reminders

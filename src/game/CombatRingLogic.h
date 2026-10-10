@@ -23,6 +23,7 @@
 // Pure: the decisions here, the engine side in game/CombatRing.cpp;
 // combat_ring_test.
 
+#include "core/MathFns.h"
 #include "core/Types.h"
 
 namespace obvr::game {
@@ -87,6 +88,45 @@ inline UInt16 RingFlags(UInt16 flags, RingOrder order, bool circleLeft) {
 	const UInt16 rest = static_cast<UInt16>(flags & ~(kMoveDirections | kMoveRun));
 	const UInt16 step = order == RingOrder::Back ? kMoveBackward : (circleLeft ? kMoveLeft : kMoveRight);
 	return static_cast<UInt16>(rest | step | kMoveWalk);
+}
+
+// The step a waiting fighter is moved this frame, across the ground, from
+// where it stands relative to the player (rx, ry, game units): straight away
+// for Back, round the player for Circle (with a pull back to the ring's
+// line), at the ring's walk. The flags alone do not move an NPC the AI wants
+// elsewhere - measured in the harness (2026-10-10): a fighter given a walk
+// backwards stood at 1.9 m for five seconds - so the step is the ring's own,
+// placed as the off hand's drag is (game::PlaceActorAt); the flags give the
+// legs their walk.
+inline constexpr float kRingWalkUnitsPerSecond = 100.0f;  // about 1.4 m a second
+
+inline bool RingStepOffset(float rx, float ry, RingOrder order, bool circleLeft, const CombatRingSettings& s,
+                           float dtSeconds, float& ox, float& oy) {
+	ox = 0.0f;
+	oy = 0.0f;
+	const float distance2 = rx * rx + ry * ry;
+	if (order == RingOrder::Free || !(dtSeconds > 0.0f) || dtSeconds > 0.25f || !(distance2 > 1.0f)) {
+		return false;
+	}
+	const float distance = math::Sqrt(distance2);
+	const float ux = rx / distance;  // away from the player
+	const float uy = ry / distance;
+	const float step = kRingWalkUnitsPerSecond * dtSeconds;
+	if (order == RingOrder::Back) {
+		ox = ux * step;
+		oy = uy * step;
+		return true;
+	}
+	// Round the player: the tangent (left turns counter-clockwise seen from
+	// above), and a pull towards the ring's line, at most half a step.
+	const float tx = circleLeft ? -uy : uy;
+	const float ty = circleLeft ? ux : -ux;
+	float pull = (s.ringUnits - distance) * 0.5f;
+	const float half = step * 0.5f;
+	pull = pull > half ? half : pull < -half ? -half : pull;
+	ox = tx * step + ux * pull;
+	oy = ty * step + uy * pull;
+	return true;
 }
 
 // --------------------------------------------------------------- The turns
@@ -170,7 +210,9 @@ inline RingVerdict StepCombatRing(RingState& state, const CombatRingSettings& s,
 		} else {
 			m->waitingSeconds += dt;
 		}
-		m->order = fighter.attacking ? RingOrder::Free : WaitingOrder(fighter.distanceUnits, s);
+		// A waiting one is kept off even mid-blow: the harness saw the waiting
+		// swing again and again at 1.3-2.5 m (2026-10-10), never backing off.
+		m->order = WaitingOrder(fighter.distanceUnits, s);
 		m->wasAttacking = fighter.attacking;
 	}
 	// The gone forgotten.

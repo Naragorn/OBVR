@@ -7,6 +7,7 @@
 #include "game/GameAddresses.h"
 #include "game/NiMath.h"
 #include "game/ParryLogic.h"
+#include "game/PlayerTeleport.h"
 #include "game/SlowApproach.h"
 
 namespace obvr::game {
@@ -127,6 +128,14 @@ void StepCombatRing(const CombatRingSettings& settings, float dtSeconds, bool lo
 		legs[legCount].order = static_cast<UInt8>(order);
 		// Half go round one way, half the other: the circle spreads.
 		legs[legCount].left = ((seen[i].actor >> 4) & 1) != 0;
+		// The step itself: the flags only give the legs their walk.
+		const auto* const ap = reinterpret_cast<const float*>(seen[i].actor + addr::kRefPositionOffset);
+		float ox = 0.0f;
+		float oy = 0.0f;
+		if (RingStepOffset(ap[0] - playerAt.x, ap[1] - playerAt.y, order, legs[legCount].left, settings, dtSeconds, ox,
+		                   oy)) {
+			PlaceActorAt(reinterpret_cast<void*>(seen[i].actor), NiPoint3{ap[0] + ox, ap[1] + oy, ap[2]});
+		}
 		++legCount;
 	}
 	SetRingLegs(legs, legCount);
@@ -144,9 +153,16 @@ void StepCombatRing(const CombatRingSettings& settings, float dtSeconds, bool lo
 	if (logState) {
 		for (UInt32 i = 0; i < g_ring.count; ++i) {
 			const RingMember& m = g_ring.member[i];
-			OBVR_LOG("Combat ring: state - %08X %.1f m off, %s, order %u, attacking %d, %.1f s in turn, %.1f s waiting",
+			UInt32 flags = 0;
+			for (UInt32 k = 0; k < count; ++k) {
+				if (seen[k].actor == m.actor) {
+					flags = *reinterpret_cast<const UInt16*>(seen[k].process + addr::kProcessMovementFlagsOffset);
+				}
+			}
+			OBVR_LOG("Combat ring: state - %08X %.1f m off, %s, order %u, flags %04X, attacking %d, %.1f s in turn, "
+			         "%.1f s waiting",
 			         m.actor, static_cast<double>(m.distanceUnits / 70.0f), m.turn ? "its turn" : "waits",
-			         static_cast<unsigned>(m.order), m.wasAttacking ? 1 : 0, static_cast<double>(m.turnSeconds),
+			         static_cast<unsigned>(m.order), flags, m.wasAttacking ? 1 : 0, static_cast<double>(m.turnSeconds),
 			         static_cast<double>(m.waitingSeconds));
 		}
 	}
