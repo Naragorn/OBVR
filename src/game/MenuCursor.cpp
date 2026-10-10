@@ -4,6 +4,7 @@
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
+#include "game/MenuType.h"
 
 namespace obvr::game {
 namespace {
@@ -34,6 +35,50 @@ bool g_engineKnown = false;
 float g_engineX = 0.0f;
 float g_engineY = 0.0f;
 
+// The press's knob search (MenuCursor.h, the knob snap).
+bool g_snapArmed = false;
+bool g_snapDecided = false;
+bool g_snapFound = false;
+float g_snapStep = 0.0f;
+float g_snapDx = 0.0f;
+float g_snapDy = 0.0f;
+UInt32 g_snapLines = 12;
+
+// Tried once, at the press's start: when the beam's pixel finds a slider's
+// part other than its knob, the rings round it are searched for the knob -
+// the engine's own search at each point - and the nearest found is kept.
+void DecideKnobSnap(void* self, void* edx, UInt32 arg, float* x, float* y) {
+	g_snapDecided = true;
+	g_snapFound = false;
+	const char* const first = TileNameOf(g_original(self, edx, arg));
+	if (!IsScrollPartName(first)) {
+		return;
+	}
+	float dx = 0.0f;
+	float dy = 0.0f;
+	for (UInt32 i = 0; KnobProbeOffset(i, g_snapStep, dx, dy); ++i) {
+		*x = g_wantedX + dx;
+		*y = g_wantedY + dy;
+		const char* const name = TileNameOf(g_original(self, edx, arg));
+		if (IsScrollKnobName(name)) {
+			g_snapFound = true;
+			g_snapDx = dx;
+			g_snapDy = dy;
+			if (g_snapLines > 0) {
+				--g_snapLines;
+				OBVR_LOG("Menu cursor: a press on \"%s\" takes the knob \"%s\" %.0f,%.0f pixels off the beam", first,
+				         name, static_cast<double>(dx), static_cast<double>(dy));
+			}
+			return;
+		}
+	}
+	if (g_snapLines > 0) {
+		--g_snapLines;
+		OBVR_LOG("Menu cursor: a press on \"%s\" - no knob within %.0f pixels", first,
+		         static_cast<double>(g_snapStep * kKnobProbeRings));
+	}
+}
+
 UInt32 __fastcall HookedFindTile(void* self, void* edx, UInt32 arg) {
 	auto* const manager = *reinterpret_cast<UInt8* const*>(addr::kInterfaceManagerPointer);
 	if (manager != nullptr && self == manager) {
@@ -43,6 +88,22 @@ UInt32 __fastcall HookedFindTile(void* self, void* edx, UInt32 arg) {
 			g_engineKnown = true;
 			g_engineX = *x;
 			g_engineY = *y;
+		}
+		if (g_wanted && g_snapArmed && !g_snapDecided) {
+			*x = g_wantedX;
+			*y = g_wantedY;
+			DecideKnobSnap(self, edx, arg, x, y);
+			// This frame's search at the knob; later frames the hand mode's
+			// pixel carries the offset (MenuCursorKnobOffset).
+			const float snapX = g_wantedX + (g_snapFound ? g_snapDx : 0.0f);
+			const float snapY = g_wantedY + (g_snapFound ? g_snapDy : 0.0f);
+			*x = snapX;
+			*y = snapY;
+			g_wrote = true;
+			g_writtenX = snapX;
+			g_writtenY = snapY;
+			++g_placed;
+			return g_original(self, edx, arg);
 		}
 		if (g_wanted) {
 			if (g_lines > 0) {
@@ -112,6 +173,28 @@ void SetMenuCursorWanted(bool wanted, float x, float y) {
 	g_wanted = wanted && finite && g_original != nullptr;
 	g_wantedX = x;
 	g_wantedY = y;
+}
+
+void SetMenuCursorKnobSnap(bool armed, float stepPixels) {
+	if (!armed) {
+		g_snapArmed = false;
+		g_snapDecided = false;
+		g_snapFound = false;
+		return;
+	}
+	if (!g_snapArmed) {
+		g_snapStep = stepPixels;
+	}
+	g_snapArmed = true;
+}
+
+bool MenuCursorKnobOffset(float& dx, float& dy) {
+	if (!g_snapArmed || !g_snapFound) {
+		return false;
+	}
+	dx = g_snapDx;
+	dy = g_snapDy;
+	return true;
 }
 
 bool EngineMenuCursor(float& x, float& y) {

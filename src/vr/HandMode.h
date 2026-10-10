@@ -479,15 +479,21 @@ struct HandModeFrame {
 	float layerPixelsWidth = 0.0f;
 	float layerPixelsHeight = 0.0f;
 	bool cursorValid = false;
-	// Whether the tile under the game's cursor is a scroll bar's: pulled there,
-	// the laser holds the button at once so the marker can be dragged.
-	bool cursorOnScrollBar = false;
 	// The menu is one surface dragged with the button held - the map: a pull
 	// holds the button at once, as on a scroll bar, so the map pans with the
 	// beam in every direction. Before, an up-and-down drag turned into wheel
 	// notches (the map's zoom) and only a sideways one held the button, so the
 	// map moved only now and then (2026-09-26).
 	bool menuIsDragSurface = false;
+	// The tile under the cursor is a slider's or scroll bar's knob (its name
+	// ends in "scroll_marker"): a pull there holds the button at once - the
+	// knob is the only part a drag moves.
+	bool cursorOnScrollKnob = false;
+	// The running press's knob, found round the beam at its start
+	// (game::MenuCursorKnobOffset): the press goes there.
+	bool knobSnapValid = false;
+	float knobSnapDx = 0.0f;
+	float knobSnapDy = 0.0f;
 	float cursorX = 0.0f;
 	float cursorY = 0.0f;
 	// Whether a teleport may be aimed now: in the world, no menu, no move
@@ -618,6 +624,10 @@ struct HandModeResult {
 	// (a slider, a scroll bar's marker, the map), the engine's own cursor
 	// leading it - nothing placed meanwhile.
 	bool menuDragging = false;
+	// A laser press runs on a menu (pulled, scrolling or held): the knob
+	// search is armed with this ring step, in cursor pixels.
+	bool menuPressRunning = false;
+	float knobProbeStep = 0.0f;
 
 	// The drawn beam: from which hand, and how long - to where it meets the
 	// quad, or a default length when it points past it.

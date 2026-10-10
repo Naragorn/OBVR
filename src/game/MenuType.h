@@ -119,10 +119,20 @@ bool ActiveTileName(char* out, UInt32 size);
 // (the menu haptics).
 UInt32 ActiveTile();
 
+// A tile's name, when it reads like one; null otherwise.
+const char* TileNameOf(UInt32 tile);
+
 // The map menu's drag, for a hand script's mark: where its drag last read
 // the engine's own cursor, and the world map's pan (MenuType.cpp has the
 // addresses). False unless the map menu is the active menu.
 bool MapMenuPan(float& dragX, float& dragY, float& panX, float& panY);
+
+// The tile under the cursor's traits (id, float value), up to `capacity`,
+// for a hand script's mark; the count read.
+UInt32 ActiveTileTraits(UInt32* ids, float* values, UInt32 capacity, UInt32 up = 0);
+
+// The active menu's vtable and raw id, for a hand script's mark.
+bool ActiveMenuRaw(UInt32& vtable, UInt32& id);
 
 // HUDReticle is a persistent tile, independent of normal menu ownership. The
 // game can therefore leave its sneak eye visible while any menu draws. The

@@ -2373,3 +2373,42 @@ click starts a new, empty edit. Whether the click that ends the editing
 came from the trigger still held as the keyboard closed (the controllers
 are gone from OBVR while SteamVR's keyboard is up: "right controller not
 tracked" in his log right after each opening) was not told apart.
+
+### 4.39 Sliders by their knob, and the trigger near a menu (fixed 2026-10-10, harness PASS)
+
+The tester, on 4.37: "slide gehen nicht ... wenn ich ans menü rangehe dann
+ist es nicht mehr klickbar im hauptmenü".
+
+- **The slider** (read in Oblivion.exe and measured in the harness): the
+  options pages' drag handler (slot +0x20 - GameplayMenu, vtable 0x00A6BD0C,
+  0x005A3460) moves a slider only for the pressed tile with id 2 (trait
+  0xFA8): the knob, "horizontal_scroll_marker", 39 layout units wide. The
+  wide "gameplay_difficulty_slider_marker" under it is the track (id -1),
+  and the bar's sides and arrows are -1 too. Every pull in his log landed on
+  the track, 20-40 pixels under the knob; a harness drag pressed on the knob
+  moved it (x 0 -> 292, value -1 -> 0.6), one pressed 20 pixels under it
+  moved nothing - on the 4.37 build and in the old steering mode alike. So
+  it was never the drag: the knob is a small target.
+- **The knob snap** (game/MenuCursor `DecideKnobSnap`, menu_cursor_test): a
+  laser press whose first tile is a slider's or scroll bar's part other than
+  the knob (`IsScrollPartName`) tries the engine's own tile search at rings
+  round the beam - four rings 1 % of the layer's height apart, eight points
+  each, up and down first (`KnobProbeOffset`) - and takes the first knob
+  (`IsScrollKnobName`, a name ending in "scroll_marker"). The press and its
+  drag carry that offset (`HandModeFrame::knobSnap*`); the knob under the
+  press holds the button at once (`StepLaserPress`: a Pressed press over a
+  knob becomes a hold). Logged "Menu cursor: a press on "..." takes the knob
+  "..." dx,dy pixels off the beam" or "- no knob within n pixels".
+  `tools/hand-scripts/slider-knob.txt`: the pull 20 pixels under the knob
+  takes it 23 pixels up, the drag moves it (x 3.6 -> 292.4).
+- **Near the menu** (hand_mode_test `TestNearMenuLaser`): with the tip within
+  10 cm of the panel the finger took the cursor (the poke's hover, 4.4's
+  neighbour), so a pull aimed with the laser clicked under the finger. Now
+  the finger presses only while it is out - the trigger under 0.2 and, with
+  the skeleton, the index not curled (`FingerPokes`); a pulled trigger is
+  always the laser's. A hand pushed through the panel still reaches nothing
+  (the beam starts behind it).
+- The Pause menu's buttons take the laser's click at every distance short of
+  that (`pause-near` probe, 2026-10-10). The main menu (a flat picture) has
+  no finger and was not changed.
+- Not seen in the headset.

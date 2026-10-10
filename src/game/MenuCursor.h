@@ -56,4 +56,92 @@ inline bool CursorReadIsEngines(bool wroteBefore, float lastX, float lastY, floa
 	return onAScreen && (!wroteBefore || readX != lastX || readY != lastY);
 }
 
+// ------------------------------------------------------------ The knob snap
+//
+// A slider is dragged by its knob alone (read 2026-10-10: the options menus'
+// drag handler, slot +0x20 - GameplayMenu's 0x005A3460 - acts only for the
+// pressed tile whose id, trait 0xFA8, is the knob's 2; the knob is the
+// "horizontal_scroll_marker", 39 layout units wide). Pressed anywhere else
+// on the slider - its track "gameplay_difficulty_slider_marker" (id -1), the
+// bar's "horizontal_scroll_leftside/rightside" - the drag moves nothing.
+// The tester's pulls all landed on the track, 40 pixels under a knob a
+// harness pull on it moved (2026-10-10: "slide gehen nicht"). So a press
+// that starts on a slider's or scroll bar's part other than the knob looks
+// for the knob around the beam - the engine's own tile search tried at
+// rings of points round it - and takes it when one is that near.
+
+// Ends with "scroll_marker": a slider's or scroll bar's knob.
+inline bool IsScrollKnobName(const char* name) {
+	if (name == nullptr) {
+		return false;
+	}
+	const char* const tail = "scroll_marker";
+	UInt32 length = 0;
+	while (name[length] != '\0') {
+		++length;
+	}
+	constexpr UInt32 kTail = 13;
+	if (length < kTail) {
+		return false;
+	}
+	for (UInt32 i = 0; i < kTail; ++i) {
+		const char c = name[length - kTail + i];
+		if ((c >= 'A' && c <= 'Z' ? static_cast<char>(c + ('a' - 'A')) : c) != tail[i]) {
+			return false;
+		}
+	}
+	return true;
+}
+
+inline bool NameContains(const char* name, const char* part) {
+	if (name == nullptr) {
+		return false;
+	}
+	for (const char* at = name; *at != '\0'; ++at) {
+		const char* a = at;
+		const char* b = part;
+		while (*b != '\0' && *a != '\0' && ((*a >= 'A' && *a <= 'Z') ? *a + ('a' - 'A') : *a) == *b) {
+			++a;
+			++b;
+		}
+		if (*b == '\0') {
+			return true;
+		}
+	}
+	return false;
+}
+
+// A slider's or scroll bar's part that is not its knob: where a press looks
+// for the knob.
+inline bool IsScrollPartName(const char* name) {
+	return (NameContains(name, "scroll") || NameContains(name, "slider")) && !IsScrollKnobName(name);
+}
+
+// The points tried round the beam: rings `step` pixels apart, eight points
+// each - straight up and down first (the tester's misses were under the
+// knob), then sideways, then the diagonals. False past the last.
+inline constexpr UInt32 kKnobProbeRings = 4;
+inline constexpr UInt32 kKnobProbePoints = kKnobProbeRings * 8;
+inline constexpr float kKnobProbeShare = 0.01f;  // of the layer's height, a ring's step
+
+inline bool KnobProbeOffset(UInt32 i, float step, float& dx, float& dy) {
+	if (i >= kKnobProbePoints || !(step > 0.0f)) {
+		return false;
+	}
+	static constexpr float kDirections[8][2] = {{0.0f, -1.0f},     {0.0f, 1.0f},     {-1.0f, 0.0f},
+	                                            {1.0f, 0.0f},      {-0.7071f, -0.7071f}, {0.7071f, -0.7071f},
+	                                            {-0.7071f, 0.7071f}, {0.7071f, 0.7071f}};
+	const float radius = step * static_cast<float>(i / 8 + 1);
+	dx = kDirections[i % 8][0] * radius;
+	dy = kDirections[i % 8][1] * radius;
+	return true;
+}
+
+// The press's knob search: armed while a laser press runs on a menu (with the
+// probe ring's step in cursor pixels), decided once at its start inside the
+// search's entry. MenuCursorKnobOffset gives what it found, for the rest of
+// the press; nothing while unarmed.
+void SetMenuCursorKnobSnap(bool armed, float stepPixels);
+bool MenuCursorKnobOffset(float& dx, float& dy);
+
 }  // namespace obvr::game

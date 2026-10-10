@@ -2,6 +2,7 @@
 
 #include "core/MathFns.h"
 #include "core/Rotation.h"
+#include "game/MenuCursor.h"
 #include "vr/HeadOffset.h"
 
 namespace obvr::vr {
@@ -910,6 +911,12 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 				px = m_cursorHold.x;
 				py = m_cursorHold.y;
 			}
+			// A press that found a slider's knob near the beam goes there, and
+			// its drag keeps the same offset (game/MenuCursor.h, the knob snap).
+			if ((pressRunning || dragging) && f.knobSnapValid) {
+				px += f.knobSnapDx;
+				py += f.knobSnapDy;
+			}
 		}
 		r.cursorDx = CursorStep(f.cursorX, px, finger ? 1.0f : s.laserGain, finger ? 4096.0f : s.laserMaxStep);
 		r.cursorDy = CursorStep(f.cursorY, py, finger ? 1.0f : s.laserGain, finger ? 4096.0f : s.laserMaxStep);
@@ -936,7 +943,16 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 		const NiPoint3 tip = pointHand->position + pointing * s.pokeTipForward;
 		const PokeSample sample = PokeOnQuad(tip, quad.centre, quad.right, quad.up, quad.width,
 		                                     quad.height, f.layerPixelsWidth, f.layerPixelsHeight);
-		const PokeVerdict poke = StepPoke(m_poke, sample, s.poke);
+		// The finger presses only while it is out: with the trigger pulled (or
+		// the index curled round it) the laser decides, however near the menu
+		// the hand is (the tester, 2026-10-10: near the menu it was "nicht mehr
+		// klickbar" - the cursor sat under the finger's tip, not the beam).
+		PokeVerdict poke;
+		if (FingerPokes(*pointHand)) {
+			poke = StepPoke(m_poke, sample, s.poke);
+		} else {
+			m_poke = PokeState{};
+		}
 		if (poke.hover) {
 			r.pokeHover = true;
 			r.pokePress = poke.press;
@@ -1024,9 +1040,11 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 		// trigger it would come a frame later, as a click on the release.
 		const LaserPressVerdict press = StepLaserPress(m_press, r.controls.menuClick && !m_dropClickNow, pressHit,
 		                                               pressX, pressY, pressHeight, f.dtSeconds,
-		                                               f.cursorOnScrollBar || f.menuIsDragSurface);
+		                                               f.cursorOnScrollKnob || f.menuIsDragSurface);
 		r.controls.menuClick = press.mouseDown || m_dropClickNow;
 		r.menuDragging = m_press.phase == LaserPressPhase::Holding;
+		r.menuPressRunning = m_press.phase != LaserPressPhase::Idle;
+		r.knobProbeStep = game::kKnobProbeShare * pressHeight;
 		dragWheel = press.wheel;
 		m_buttonPress = ButtonPressState{};
 	} else {

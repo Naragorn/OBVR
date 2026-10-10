@@ -1062,6 +1062,19 @@ inline PokeSample PokeOnQuad(const NiPoint3& tip, const NiPoint3& quadCentre,
 // so a finger resting on the surface does not chatter. A tip pushed
 // through the quad by more than `through` is a hand behind the panel, not
 // a press.
+// Whether the pointing hand's finger is out to press a menu: the trigger
+// released, and - when the skeleton gives the fingers - the index finger not
+// curled. A pulled trigger is the laser's click, never the finger's.
+inline constexpr float kFingerOutTriggerMax = 0.2f;
+inline constexpr float kFingerOutCurlMax = 0.5f;
+
+inline bool FingerPokes(const HandPose& hand) {
+	if (!(hand.trigger < kFingerOutTriggerMax)) {
+		return false;
+	}
+	return !hand.curlValid || hand.curl[1] < kFingerOutCurlMax;
+}
+
 struct PokeThresholds {
 	float hover = 0.10f;
 	float press = 0.015f;
@@ -1278,6 +1291,13 @@ inline LaserPressVerdict StepLaserPress(LaserPressState& s, bool triggerDown, bo
 		break;
 	case LaserPressPhase::Pressed: {
 		if (!hit) {
+			break;
+		}
+		if (onScrollBar) {
+			// The knob found under the press after it began (the knob snap,
+			// game/MenuCursor.h): held from here, as a pull on it would be.
+			s.phase = LaserPressPhase::Holding;
+			v.mouseDown = true;
 			break;
 		}
 		const float dx = x - s.startX;

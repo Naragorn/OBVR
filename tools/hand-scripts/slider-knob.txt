@@ -1,0 +1,53 @@
+# A slider dragged by a press on its track just under the knob (controls-spec
+# 4.39): the knob snap finds "horizontal_scroll_marker" round the beam and the
+# drag moves it (its x, trait FAD, and value, 2852, at the marks).
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\slider-knob.txt
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+
+expect HandScript: finished
+expect takes the knob "horizontal_scroll_marker"
+reject HandScript: WARNING
+
+wait 12
+right pos 0.15 -0.25 -0.35
+right rot 53 5 0
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+right trigger 1
+wait 0.3
+right trigger 0
+wait 1.5
+right rot 59 5 0
+wait 0.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 1.5
+right rot 67.6 10 0
+wait 0.5
+mark before
+right trigger 1
+wait 0.3
+mark pulled
+right rot 68 8 0
+wait 0.05
+right rot 68 6 0
+wait 0.05
+right rot 68 3 0
+wait 0.05
+right rot 68 0 0
+wait 0.05
+right rot 68 -3 0
+wait 0.05
+right rot 68 -8 0
+wait 0.5
+mark dragged
+right trigger 0
+wait 0.5
+mark released
+right rot 67.6 10 0
+wait 0.5
+mark back

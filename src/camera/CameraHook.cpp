@@ -2958,7 +2958,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 	if (menuIsUp) {
 		char tileName[48];
-		frame.cursorOnScrollBar = game::CursorOverScrollBar(tileName, sizeof(tileName));
+		game::CursorOverScrollBar(tileName, sizeof(tileName));
+		frame.cursorOnScrollKnob = game::IsScrollKnobName(tileName);
+		frame.knobSnapValid = game::MenuCursorKnobOffset(frame.knobSnapDx, frame.knobSnapDy);
 		frame.menuIsDragSurface = game::ActiveMenuId() == game::kMenuIdMap ||
 		                          game::TopVisibleMenu() == game::kMenuIdMap;
 		// Which tile a pull lands on, the first several times: the scroll bar
@@ -2972,8 +2974,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			--pullLinesLeft;
 			OBVR_LOG("Hands: pulled over tile \"%s\" in the %s menu - %s", tileName,
 			         game::MenuIdName(game::ActiveMenuId()),
-			         frame.cursorOnScrollBar ? "a scroll bar, the button is held"
-			                                 : "not a scroll bar");
+			         frame.cursorOnScrollKnob ? "a slider's or scroll bar's knob, the button is held"
+			                                 : "not a knob");
 		}
 		wasPulled = pulled;
 	}
@@ -3095,6 +3097,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// tile search (game/MenuCursor.h) - on a game menu only.
 	game::SetMenuCursorWanted(menuIsUp && g_hand.cursorWanted && !frame.settingsMenuOpen, g_hand.cursorWantedX,
 	                          g_hand.cursorWantedY);
+	// A laser press on a slider looks for its knob round the beam
+	// (game/MenuCursor.h, the knob snap).
+	game::SetMenuCursorKnobSnap(menuIsUp && g_hand.menuPressRunning && !frame.settingsMenuOpen,
+	                            g_hand.knobProbeStep);
 	// A drag on a menu, the first several times: where the engine's own
 	// cursor - the one the drag follows - was as it began and as it ended.
 	{
@@ -3396,6 +3402,23 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			char underCursor[48];
 			const bool bar = game::CursorOverScrollBar(underCursor, sizeof(underCursor));
 			OBVR_LOG("HandScript: the tile under the cursor \"%s\"%s", underCursor, bar ? " (a scroll bar)" : "");
+			UInt32 menuVtable = 0;
+			UInt32 menuRawId = 0;
+			if (game::ActiveMenuRaw(menuVtable, menuRawId)) {
+				OBVR_LOG("HandScript: the active menu's vtable %08X, id %X", menuVtable, menuRawId);
+			}
+			for (UInt32 up = 0; up < 3; ++up) {
+				UInt32 traitIds[48];
+				float traitValues[48];
+				const UInt32 traits = game::ActiveTileTraits(traitIds, traitValues, 48, up);
+				char traitLine[48 * 20] = {};
+				UInt32 at = 0;
+				for (UInt32 i = 0; i < traits && at + 24 < sizeof(traitLine); ++i) {
+					at += static_cast<UInt32>(std::snprintf(traitLine + at, sizeof(traitLine) - at, " %X=%.1f",
+					                                        traitIds[i], static_cast<double>(traitValues[i])));
+				}
+				OBVR_LOG("HandScript: its traits (%u up):%s", up, traitLine);
+			}
 			float dragX = 0.0f;
 			float dragY = 0.0f;
 			float panX = 0.0f;

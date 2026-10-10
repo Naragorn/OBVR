@@ -288,6 +288,10 @@ bool HasScroll(const char* name) {
 
 }  // namespace
 
+const char* TileNameOf(UInt32 tile) {
+	return mem::LooksLikeObjectAddress(tile) ? TileName(reinterpret_cast<const UInt8*>(tile)) : nullptr;
+}
+
 bool CursorOverScrollBar(char* nameOut, UInt32 nameSize) {
 	if (nameOut != nullptr && nameSize > 0) {
 		nameOut[0] = '\0';
@@ -386,6 +390,54 @@ bool MapMenuPan(float& dragX, float& dragY, float& panX, float& panY) {
 	const auto getFloat = reinterpret_cast<GetFloatFn>(kTileGetFloat);
 	panX = getFloat(map, nullptr, kMapPanXTrait);
 	panY = getFloat(map, nullptr, kMapPanYTrait);
+	return true;
+}
+
+}  // namespace obvr::game
+
+namespace obvr::game {
+
+UInt32 ActiveTileTraits(UInt32* ids, float* values, UInt32 capacity, UInt32 up) {
+	UInt32 tile = ActiveTile();
+	for (UInt32 i = 0; i < up && tile != 0; ++i) {
+		const UInt32 parent = *reinterpret_cast<const UInt32*>(tile + addr::kTileParentOffset);
+		tile = mem::LooksLikeObjectAddress(parent) ? parent : 0;
+	}
+	if (tile == 0) {
+		return 0;
+	}
+	// The tile's value list (as Tile's own trait read walks it, 0x00588BD0):
+	// a linked list at +0x18, each node's value at +8 with its id a word at
+	// +0x18 and its float at +4.
+	UInt32 node = *reinterpret_cast<const UInt32*>(tile + 0x18);
+	UInt32 count = 0;
+	for (UInt32 walked = 0; mem::LooksLikeObjectAddress(node) && walked < 256 && count < capacity; ++walked) {
+		const UInt32 value = *reinterpret_cast<const UInt32*>(node + 8);
+		if (mem::LooksLikeObjectAddress(value)) {
+			ids[count] = *reinterpret_cast<const UInt16*>(value + 0x18);
+			values[count] = *reinterpret_cast<const float*>(value + 4);
+			++count;
+		}
+		node = *reinterpret_cast<const UInt32*>(node);
+	}
+	return count;
+}
+
+}  // namespace obvr::game
+
+namespace obvr::game {
+
+bool ActiveMenuRaw(UInt32& vtable, UInt32& id) {
+	const auto* const manager = *reinterpret_cast<const UInt8* const*>(addr::kInterfaceManagerPointer);
+	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(manager))) {
+		return false;
+	}
+	const UInt32 menu = *reinterpret_cast<const UInt32*>(manager + kActiveMenuOffset);
+	if (!mem::LooksLikeObjectAddress(menu)) {
+		return false;
+	}
+	vtable = *reinterpret_cast<const UInt32*>(menu);
+	id = *reinterpret_cast<const UInt32*>(menu + addr::kMenuIdOffset);
 	return true;
 }
 

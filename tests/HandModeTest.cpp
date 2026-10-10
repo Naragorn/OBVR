@@ -713,6 +713,21 @@ void TestPoke() {
 	state = PokeState{};
 	v = StepPoke(state, sample(0.0f, 0.0f, -1.03f), t);
 	Check(v.press && v.held, "arriving already three centimetres through still presses");
+
+	// The finger presses only while it is out (FingerPokes).
+	HandPose hand;
+	Check(FingerPokes(hand), "trigger released, no skeleton: the finger is out");
+	hand.trigger = 0.25f;
+	Check(!FingerPokes(hand), "the trigger touched past 0.2: the laser's");
+	hand.trigger = 0.0f;
+	hand.curlValid = true;
+	hand.curl[1] = 0.8f;
+	Check(!FingerPokes(hand), "the index curled round the trigger: the laser's");
+	hand.curl[1] = 0.1f;
+	Check(FingerPokes(hand), "the index out: the finger's");
+	hand.curl[0] = 1.0f;
+	hand.curl[2] = 1.0f;
+	Check(FingerPokes(hand), "the other fingers curled (pointing): still the finger's");
 }
 
 void TestStickChord() {
@@ -1214,6 +1229,24 @@ void TestLaserCursorDirect() {
 	Check(!r.cursorWanted && r.cursorDx >= 49 && r.cursorDx <= 50, "LaserCursorDirect=0: mouse steps again");
 }
 
+void TestNearMenuLaser() {
+	std::printf("Near the menu the pulled trigger is the laser's, not the finger's\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.laserPitchDegrees = 0.0f;
+	settings.laserYawDegrees = 0.0f;
+	settings.laserOriginMetres = 0.0f;
+	settings.enabled = true;
+	HandModeFrame frame = BigQuadFrame();  // the quad a metre ahead
+	frame.right.position = NiPoint3{0.1f, -0.1f, -0.85f};  // the tip 7 cm before it: within hover
+	HandMode mode;
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.pokeHover && !r.laserHit, "the finger out, near: the finger hovers");
+	frame.right.trigger = 1.0f;
+	r = mode.Update(frame, settings);
+	Check(!r.pokeHover && r.laserHit && Near(r.cursorWantedX, 500.0f, 0.5f),
+	      "the trigger pulled: the laser's pixel, and its press");
+}
+
 void TestLaserDragDirect() {
 	std::printf("Drags with the cursor placed: the engine's own cursor leads them\n");
 	HandSettings settings = WithoutLaserOffset();
@@ -1269,7 +1302,7 @@ void TestLaserDragDirect() {
 	// from the pull, at the beam's pixel, and the drag follows the beam.
 	for (int which = 0; which < 2; ++which) {
 		HandModeFrame frame = start;
-		frame.cursorOnScrollBar = which == 0;
+		frame.cursorOnScrollKnob = which == 0;
 		frame.menuIsDragSurface = which == 1;
 		HandMode mode;
 		mode.Update(frame, settings);
@@ -1297,6 +1330,33 @@ void TestLaserDragDirect() {
 		Check(r.menuScroll == 4 && !r.controls.menuClick, "dragged a hundred pixels down: four notches, no click");
 		Check(r.cursorWanted && Near(r.cursorWantedY, 400.0f, 0.5f) && r.cursorDy == 0,
 		      "the cursor kept where the drag began, on the list");
+	}
+
+	// A press on the slider's track with its knob found near the beam (the
+	// knob snap): the press goes to the knob and holds the button there.
+	{
+		HandModeFrame frame = start;
+		HandMode mode;
+		mode.Update(frame, settings);
+		frame.right.trigger = 1.0f;
+		HandModeResult r = mode.Update(frame, settings);
+		Check(!r.controls.menuClick && r.menuPressRunning && r.knobProbeStep > 5.9f && r.knobProbeStep < 6.1f,
+		      "pulled on the track: no click yet, the knob search armed (1 % of 600 a ring)");
+		frame.knobSnapValid = true;
+		frame.knobSnapDx = 0.0f;
+		frame.knobSnapDy = -40.0f;
+		frame.cursorOnScrollKnob = true;  // the hover went to the knob
+		frame.cursorY = 360.0f;           // and the engine's own cursor with it
+		r = mode.Update(frame, settings);
+		Check(r.controls.menuClick && Near(r.cursorWantedY, 360.0f, 0.5f),
+		      "the knob found 40 pixels up: the button goes down on it");
+		frame.right.position.x += 0.03f;
+		r = mode.Update(frame, settings);
+		Check(r.controls.menuClick && r.menuDragging && !r.cursorWanted && r.cursorDy == 0 && r.cursorDx == 15,
+		      "dragged: the engine's own cursor walked after the beam at the knob's height");
+		frame.right.trigger = 0.0f;
+		r = mode.Update(frame, settings);
+		Check(!r.controls.menuClick && !r.menuPressRunning, "let go: up, the search disarmed");
 	}
 
 	// Steered by mouse steps alone (LaserCursorDirect=0): the same press, the
@@ -2927,6 +2987,7 @@ int main() {
 	TestMainMenuLaser();
 	TestLaserCursorDirect();
 	TestLaserDragDirect();
+	TestNearMenuLaser();
 	TestLaserOnOwnPanel();
 	TestSneakTap();
 	TestCrouchSneak();
