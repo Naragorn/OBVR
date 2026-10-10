@@ -337,6 +337,13 @@ struct HandSettings {
 	// SlowApproachMetres; game/SlowApproach.h).
 	bool slowApproach = true;
 	float slowApproachMetres = 5.0f;  // the tester, 2026-10-10: "muss per default auf 5m"
+	// The fighters' ring: those fighting the player wait this far off and walk
+	// round, and only so many have a turn to fight at once ([Hands]
+	// CombatRing, CombatRingMetres 0 off to 10, MeleeAttackersAtOnce 1-5;
+	// game/CombatRingLogic.h; the tester, 2026-10-10).
+	bool combatRing = true;
+	float combatRingMetres = 5.0f;
+	int meleeAttackersAtOnce = 1;
 	// The off hand in a fight: it strikes with a weapon drawn, and its grip
 	// holds a fighter ([Hands] OffHandStrikes, OffHandGrabs, GrabHoldSeconds,
 	// GrabFatigue; game/GrappleLogic.h).

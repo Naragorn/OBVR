@@ -1,0 +1,38 @@
+# The fighters' ring ([Hands] CombatRing, game/CombatRing.h, combat-comfort-
+# spec 4): three melee bandits (00069AD1, attacks on sight) placed by an
+# untouchable player (tgm). One has the turn and comes in; the other two wait
+# at the ring - kept 3 m off here (CombatRingMetres=3, a room's size) - and
+# walk round the player. The state lines at each mark give each one's
+# distance, turn or waiting, and order (0 free, 1 back, 2 round); after the
+# first blows the turn passes ("turn(s) ended").
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\combat-ring.txt
+
+ini Hands Enabled=1
+ini Hands CombatRing=1
+ini Hands CombatRingMetres=3
+ini Hands MeleeAttackersAtOnce=1
+console-at ready player.placeatme 00069AD1 3
+console-at ready tgm
+
+expect HandScript: finished
+expect Combat ring: 3 fighting the player - 1 with a turn, 2 waiting
+expect turn(s) ended
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 10
+mark fight1
+wait 3
+mark fight2
+wait 3
+mark fight3
+wait 3
+mark fight4
+wait 3
+mark fight5
+wait 3
+mark fight6

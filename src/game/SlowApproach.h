@@ -83,6 +83,16 @@ void InstallSlowApproach();
 // one held still (HoldStill) is kept standing either way.
 void StepSlowApproach(bool enabled, float radiusUnits, float dtSeconds, bool logState);
 
+// The fighters waiting at the ring (game/CombatRing.h): their process and
+// the flags' rewrite (CombatRingLogic.h RingFlags), applied in the two
+// setters and once a frame. Replaced whole each frame; count 0 clears.
+struct RingLegs {
+	UInt32 process = 0;
+	UInt8 order = 0;  // RingOrder
+	bool left = false;
+};
+void SetRingLegs(const RingLegs* legs, UInt32 count);
+
 // The actor whose legs are held (0: nobody); their process's flags are
 // stood still through the same two setters, and once a frame.
 void HoldStill(UInt32 actor);

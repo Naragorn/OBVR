@@ -1467,3 +1467,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME menu_cursor COMMAND menu_cursor_test)
+
+add_executable(combat_ring_test CombatRingTest.cpp)
+
+target_include_directories(combat_ring_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(combat_ring_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME combat_ring COMMAND combat_ring_test)

@@ -5,6 +5,7 @@
 #include "core/MathFns.h"
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
+#include "game/CombatRingLogic.h"
 #include "game/NiMath.h"
 
 namespace obvr::game {
@@ -40,6 +41,26 @@ Kept g_kept[kKeptMax];
 UInt32 g_keptCount = 0;
 UInt32 g_lines = 24;
 UInt32 g_turned = 0;  // runs turned to walks, for the log
+
+// The fighters waiting at the ring (SetRingLegs).
+constexpr UInt32 kRingLegsMax = 16;
+RingLegs g_ringLegs[kRingLegsMax];
+UInt32 g_ringLegsCount = 0;
+
+const RingLegs* RingLegsOf(const void* process) {
+	const UInt32 p = reinterpret_cast<UInt32>(process);
+	for (UInt32 i = 0; i < g_ringLegsCount; ++i) {
+		if (g_ringLegs[i].process == p) {
+			return &g_ringLegs[i];
+		}
+	}
+	return nullptr;
+}
+
+UInt16 RingRewrite(const void* process, UInt16 flags) {
+	const RingLegs* const legs = RingLegsOf(process);
+	return legs != nullptr ? RingFlags(flags, static_cast<RingOrder>(legs->order), legs->left) : flags;
+}
 
 // The process of the one held still (HoldStill), 0 nobody; and its actor.
 UInt32 g_heldProcess = 0;
@@ -77,6 +98,15 @@ void __fastcall OnSetFlag(void* process, void* edx, UInt32 flag, UInt32 on) {
 		flag = WalkInsteadOfRun(static_cast<UInt16>(flag));
 		++g_turned;
 	}
+	if ((on & 0xFF) != 0 && RingLegsOf(process) != nullptr) {
+		// A waiting fighter: the whole flag word set to the ring's through the
+		// game's own word setter (a single flag cannot say "this direction and
+		// no other").
+		const UInt16 word =
+			*reinterpret_cast<const UInt16*>(reinterpret_cast<UInt32>(process) + addr::kProcessMovementFlagsOffset);
+		reinterpret_cast<SetFlagsFn>(kSetFlags)(process, edx, RingRewrite(process, static_cast<UInt16>(word | flag)));
+		return;
+	}
 	reinterpret_cast<SetFlagFn>(kSetFlag)(process, edx, flag, on);
 }
 
@@ -87,6 +117,7 @@ void __fastcall OnSetFlags(void* process, void* edx, UInt32 flags) {
 		flags = (flags & 0xFFFF0000u) | WalkInsteadOfRun(static_cast<UInt16>(flags));
 		++g_turned;
 	}
+	flags = (flags & 0xFFFF0000u) | RingRewrite(process, static_cast<UInt16>(flags));
 	reinterpret_cast<SetFlagsFn>(kSetFlags)(process, edx, flags);
 }
 
@@ -234,6 +265,26 @@ void StepSlowApproach(bool enabled, float radiusUnits, float dtSeconds, bool log
 			*flags = WalkInsteadOfRun(*flags);
 			++g_turned;
 		}
+	}
+}
+
+}  // namespace obvr::game
+
+namespace obvr::game {
+
+void SetRingLegs(const RingLegs* legs, UInt32 count) {
+	g_ringLegsCount = 0;
+	if (!g_installed) {
+		return;
+	}
+	for (UInt32 i = 0; i < count && g_ringLegsCount < kRingLegsMax; ++i) {
+		if (legs[i].process == 0 || legs[i].process == g_heldProcess) {
+			continue;  // the one held stands, whatever the ring wants
+		}
+		g_ringLegs[g_ringLegsCount++] = legs[i];
+		// Set now as well, for flags the AI set before and does not set again.
+		UInt16* const flags = reinterpret_cast<UInt16*>(legs[i].process + addr::kProcessMovementFlagsOffset);
+		*flags = RingRewrite(reinterpret_cast<const void*>(legs[i].process), *flags);
 	}
 }
 

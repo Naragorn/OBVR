@@ -418,6 +418,46 @@ anderen setting angegeben hat. ähnlich zu blade&sorcery." Nothing built.
   casters keep their own distance and are not ring members; creatures
   circle the same way (their flags are the same process's).
 
+**Built 2026-10-10 (items 3 and 4; the tester: "bau als nächstes das combat
+Feature mit der umkreisung von gegnern und dass nur n gegner gleichzeitig
+angreifen"):**
+
+- `[Hands] CombatRing=1`, `CombatRingMetres=5` (0 off, up to 10),
+  `MeleeAttackersAtOnce=1` (1-5); settings rows "Fighters' ring", "Ring
+  distance (m)", "Attackers at once".
+- **Who is in it** (game/CombatRing.cpp): each frame the process manager's
+  high list - a Character or Creature in combat (Actor vtable +0x334) whose
+  combat target is the player (Actor vtable +0x338, 0x005E0AF0, the combat
+  controller's target; xOBSE GameObjects.h `GetCombatTarget`, the next
+  virtual after `IsInCombat`; the slot read in both vtables, the function
+  disassembled), with its distance across the ground and whether its process
+  action is an attack (the parry's `IsAttackAction`).
+- **The turns** (game/CombatRingLogic.h, combat_ring_test): N have a turn
+  and fight as the game has them. A turn ends when its blow is through, or
+  after 8 s without one - only while somebody waits, never mid-blow; the
+  longest waiting (the nearest among equals) steps in. One alone keeps its
+  turn. A waiting fighter mid-blow is left to finish it. Members gone from
+  the list (dead, fled, out of combat) are forgotten; past 16, the rest are
+  left to the game.
+- **The waiting's legs** (`WaitingOrder`, `RingFlags`): inside the ring
+  less its band (0.7 m, at most a third of the ring) a walk backwards; in
+  the band a walk to the side (half left, half right by the actor's
+  address), which the AI's own turn to its target makes a walk round the
+  player; beyond it as the game has them (the slow approach walks them in).
+  Through the slow approach's two rerouted setters (`SetRingLegs`) and
+  written once a frame; the one held by the off hand stands whatever the
+  ring wants. Their attack itself is not refused: kept outside the reach
+  (CombatReach 85 units against a 3.5 m ring) no blow of theirs lands.
+- Logged: "Combat ring: n fighting the player - t with a turn, w waiting at
+  r m (...)" on every change, the first forty; at a hand script's mark a
+  state line per member.
+- **Not yet proven in the game**: whether a backward or sideways flag moves
+  an NPC the AI wants forward (the walk flag is proven by the slow approach;
+  directions are not). `tools/hand-scripts/combat-ring.txt` (three bandits,
+  a 3 m ring) is written and waits for the game to be free. Ranged fighters
+  and casters are members too (they keep their own distance anyway).
+  Items 1 and 2 (tempo, frequency) are not built.
+
 ## Test reminders
 
 - With the switch on: fights with power attacks show no lurch back. The log

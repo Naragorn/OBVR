@@ -99,6 +99,7 @@ add_library(OBVR SHARED
 	src/game/Parry.cpp
 	src/game/CombatReach.cpp
 	src/game/SlowApproach.cpp
+	src/game/CombatRing.cpp
 	src/game/HandBodies.cpp
 	src/game/GameSound.cpp
 	src/game/PlayerCapsule.cpp

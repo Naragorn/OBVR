@@ -80,6 +80,7 @@
 #include "game/Parry.h"
 #include "game/CombatReach.h"
 #include "game/SlowApproach.h"
+#include "game/CombatRing.h"
 #include "game/Insult.h"
 #include "vr/MenuHaptics.h"
 #include "vr/VrKeyboard.h"
@@ -2712,6 +2713,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	game::StepSlowApproach(active && config.hands.slowApproach,
 	                       game::SlowApproachUnits(config.hands.slowApproachMetres, config.tracker.unitsPerMetre), dt,
 	                       test::HandScriptMarkedThisFrame());
+	// Those fighting the player wait at a ring, so many at once have a turn
+	// (game/CombatRing.h); their legs go through the slow approach's setters.
+	game::StepCombatRing(game::CombatRingFrom(active && config.hands.combatRing, config.hands.combatRingMetres,
+	                                          config.hands.meleeAttackersAtOnce, config.tracker.unitsPerMetre),
+	                     dt, test::HandScriptMarkedThisFrame());
 	if (!active && !menusOnly) {
 		if (test::HandScriptMarkedThisFrame()) {
 			OBVR_LOG("HandScript: state - the hand mode is not running (Hands.Enabled %d, "
