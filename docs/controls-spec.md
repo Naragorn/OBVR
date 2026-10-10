@@ -2344,3 +2344,32 @@ nicht ziehen. sidebar scrolls auch nicht. die map im Tab menü auch nicht."
 - Logged, the first twelve times: "Hands: a drag held in the X menu - the
   engine's own cursor at a,b, the beam at c,d" and "Hands: the drag let go
   - the engine's own cursor went from a,b to c,d" (on the map with its pan).
+
+### 4.38 The race menu's name empties on the next click: vanilla (read 2026-10-10)
+
+The tester: "bei textfeldern ... man kann eingeben mit dem vr keyboard aber
+wenn man dann accept drückt, und man erneut auf das textfeld drückt,
+verschwindet der text den man vorher eingegeben hat. ist das vanilla
+behaviour?" His log has it in the race menu (`race_name`): the keyboard
+opened, letters typed, Done; opened again on the next click, Done with
+nothing typed.
+
+It is the game's own (read in Oblivion.exe): RaceSexMenu (vtable
+0x00A6D38C by its RTTI) handles a click in 0x005CC200. A click while the
+name is being edited ends the editing and keeps the text (0x0057DD90 with
+0, then 0x005C30C0 writes it to the name tile and the player's name). A
+click on the name (id 0x0A) while it is not being edited calls 0x005C2730,
+which sets the name editor's text to "" (0x0057FF20 with 0x00A2F7EC, an
+empty string) and only then starts the editing (0x0057DD90 with 1) - the
+only place in the race menu where the name's editing starts. So every new
+edit of the name begins empty, with a mouse as with the laser. Left as it
+is, as he said.
+
+Not changed, for later if it bothers: Done in the naming menus types no
+Enter (4.14), so the game's editing is still running after it;
+a click on the name then ends the editing (the text stays) while OBVR opens
+the keyboard again - and what is typed then goes nowhere until the next
+click starts a new, empty edit. Whether the click that ends the editing
+came from the trigger still held as the keyboard closed (the controllers
+are gone from OBVR while SteamVR's keyboard is up: "right controller not
+tracked" in his log right after each opening) was not told apart.
