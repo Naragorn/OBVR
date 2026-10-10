@@ -21,6 +21,14 @@ namespace obvr::game {
 // without touching code again.
 void ApplyUnpausedMenus(bool wanted, bool containerWanted = false, bool lockWanted = false);
 
+// The sticks walk the player under a container's menu opened by reaching
+// (vr/ReachOpen.h): the update step's one site that gates the player's
+// controls (addr::kPlayerControlsIsMenuModeSite) answers "no menu" while
+// this is set and the container's menu is on top (MenuPausePolicy.h,
+// PlayerControlsRunUnderMenu). The site is redirected the first time it is
+// asked for; vanilla's answer otherwise.
+void SetPlayerWalksUnderMenu(bool walking);
+
 // The id at the top of the interface manager's menu stack
 // (GetTopVisibleMenuID), kMenuIdNone with none - unlike ActiveMenuId, which
 // is the menu under the mouse and empties whenever the cursor is off it.

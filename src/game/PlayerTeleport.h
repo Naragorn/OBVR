@@ -78,6 +78,12 @@ bool ReadPlayerFeet(NiPoint3& out);
 // Puts the player at a position, the way SetPos does.
 bool PlacePlayerAt(const NiPoint3& at);
 
+// Puts any actor there the same way (its controller placed too, its node
+// updated): the off hand's drag of a held fighter (game/GrappleLogic.h).
+// False for an address that is no object or a position that is not a
+// number.
+bool PlaceActorAt(void* actor, const NiPoint3& at);
+
 // Fatigue now and at most; false when the player cannot be read.
 bool ReadPlayerFatigue(float& now, float& base);
 

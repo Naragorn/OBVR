@@ -20,6 +20,9 @@ ParryLedger g_ledger;
 // whose blow the cone took as parried (consumed by the share).
 bool g_forced = false;
 UInt32 g_parriedBlow = 0;
+BlowStop g_blowStop;
+// The one the off hand holds by a part that stops their blows (SetHeldFoe).
+UInt32 g_heldFoe = 0;
 // The frame's picture for the blow log: the player's blade, the eyes, the
 // blades near.
 bool g_haveBlade = false;
@@ -67,7 +70,8 @@ UInt8 __fastcall OnBlockingCheck(void* target, void* /*edx*/) {
 	const UInt8 engine = reinterpret_cast<BlockingFn>(kBlockingCheck)(target, nullptr);
 	const bool isPlayer = reinterpret_cast<UInt32>(target) == Player();
 	g_parriedBlow = 0;
-	g_forced = g_enabled && ForceBlockForParry(isPlayer, engine != 0, g_ledger.count > 0);
+	g_forced = g_installed &&
+	           ForceBlockForParry(isPlayer, engine != 0, AnyBlowStopped(g_enabled, g_ledger.count, g_heldFoe));
 	if (isPlayer) {
 		LogBlow(engine != 0, g_forced);
 	}
@@ -76,13 +80,15 @@ UInt8 __fastcall OnBlockingCheck(void* target, void* /*edx*/) {
 
 float __cdecl OnBlockShare(UInt32 block, UInt32 luck, float factor, UInt32 flagA, UInt32 flagB) {
 	const float engine = reinterpret_cast<ShareFn>(kBlockShare)(block, luck, factor, flagA, flagB);
-	const bool parried = g_parriedBlow != 0;
-	const float share = ParriedShare(parried, g_stopsAll, engine);
-	if (parried && g_parryLines > 0) {
+	const bool stopped = g_parriedBlow != 0;
+	const float share = stopped ? StoppedShare(g_blowStop, g_stopsAll, engine) : engine;
+	if (stopped && g_parryLines > 0) {
 		--g_parryLines;
-		OBVR_LOG("Parry: %08X's blow parried - blocked %.2f of it (the engine's own share %.2f, Block %u)",
-		         g_parriedBlow, static_cast<double>(share), static_cast<double>(engine), block);
+		OBVR_LOG("Parry: %08X's blow %s - blocked %.2f of it (the engine's own share %.2f, Block %u)", g_parriedBlow,
+		         g_blowStop.held ? "stopped, held by the player's hand" : "parried", static_cast<double>(share),
+		         static_cast<double>(engine), block);
 	}
+	g_blowStop = BlowStop{};
 	g_parriedBlow = 0;
 	g_forced = false;
 	return share;
@@ -183,15 +189,19 @@ ParryEvent StepParry(const ParryFrame& f) {
 }
 
 ParryCone ParryConeFor(UInt32 target, UInt32 attacker) {
-	if (!g_enabled) {
+	if (!g_installed || (!g_enabled && g_heldFoe == 0)) {
 		return ParryCone::Original;
 	}
 	const bool isPlayer = target == Player();
-	const ParryCone verdict = ConeForParry(isPlayer, g_ledger.Has(attacker), g_forced);
+	const BlowStop stop = BlowStopFor(g_enabled, g_ledger.Has(attacker), g_heldFoe, attacker);
+	const ParryCone verdict = ConeForParry(isPlayer, stop.parried || stop.held, g_forced);
 	if (verdict == ParryCone::Blocked) {
 		g_parriedBlow = attacker;
-		g_ledger.Take(attacker);
-		g_owed += g_fatigue;
+		g_blowStop = stop;
+		if (stop.parried) {
+			g_ledger.Take(attacker);
+			g_owed += g_fatigue;
+		}
 	} else if (verdict == ParryCone::NotBlocked && g_parryLines > 0) {
 		--g_parryLines;
 		OBVR_LOG("Parry: a blow from %08X under a block forced for another's parry - it lands", attacker);
@@ -205,10 +215,16 @@ float TakeParryFatigue() {
 	return owed;
 }
 
+void SetHeldFoe(UInt32 actor) {
+	g_heldFoe = actor;
+}
+
 void ForgetParries() {
 	g_ledger = ParryLedger{};
 	g_forced = false;
 	g_parriedBlow = 0;
+	g_blowStop = BlowStop{};
+	g_heldFoe = 0;
 	g_haveBlade = false;
 }
 

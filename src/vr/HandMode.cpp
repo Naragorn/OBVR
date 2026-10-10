@@ -593,6 +593,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		m_reachArmed = false;
 	}
 	in.menuMode = f.menuMode;
+	in.walkUnderMenu = f.menuMode && f.walkUnderMenu;
 	if (f.menuMode) {
 		const bool wasRight = m_pointRight;
 		StepPointerHand(f, in.rightTrigger, in.leftTrigger);
@@ -607,6 +608,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	in.pointRight = m_pointRight;
 	in.leftHanded = false;  // the roles are swapped before the frame (AssignHandRoles)
 	r.controls = PlanHandControls(in, s.stickDeadZone);
+	r.walkingUnderMenu = in.walkUnderMenu && SticksMovePlayer(r.controls);
 	// With the bow by hand, the draw is the arrow's pull, not the trigger.
 	if (bowDrawn && s.archery.enabled) {
 		r.controls.attack = r.archery.attackHeld;
@@ -984,10 +986,13 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 
 	// Either stick as the mouse wheel: a notch on the flick, then repeats
 	// while it is held. In a menu the right stick turns nothing, so it is
-	// free for this as well.
-	const bool up = (f.left.valid && f.left.thumbY >= s.stickDeadZone) ||
+	// free for this as well. Under a container's menu opened by reaching the
+	// left stick walks instead (PlanHandControls), and the right one keeps
+	// the wheel.
+	const bool leftScrolls = f.left.valid && !f.walkUnderMenu;
+	const bool up = (leftScrolls && f.left.thumbY >= s.stickDeadZone) ||
 	                (f.right.valid && f.right.thumbY >= s.stickDeadZone);
-	const bool down = (f.left.valid && f.left.thumbY <= -s.stickDeadZone) ||
+	const bool down = (leftScrolls && f.left.thumbY <= -s.stickDeadZone) ||
 	                  (f.right.valid && f.right.thumbY <= -s.stickDeadZone);
 	if (StepRepeat(m_scrollUp, up, f.dtSeconds, s.scrollFirstDelaySeconds, s.scrollIntervalSeconds)) {
 		r.menuScroll = 1;

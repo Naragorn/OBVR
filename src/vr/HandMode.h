@@ -2,6 +2,7 @@
 
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "game/GrappleLogic.h"
 #include "game/LeadLogic.h"
 #include "game/ThrowLogic.h"
 #include "game/ShoveLogic.h"
@@ -326,6 +327,15 @@ struct HandSettings {
 	// within reach of the player's blade ([Hands] CombatReach, 0 the game's own
 	// 128; game/CombatReach.h).
 	float combatReach = 85.0f;
+	// Fighters run to the player as in vanilla, and walk once within this many
+	// metres - a slower fight, as in Blade & Sorcery ([Hands] SlowApproach,
+	// SlowApproachMetres; game/SlowApproach.h).
+	bool slowApproach = true;
+	float slowApproachMetres = 10.0f;
+	// The off hand in a fight: it strikes with a weapon drawn, and its grip
+	// holds a fighter ([Hands] OffHandStrikes, OffHandGrabs, GrabHoldSeconds,
+	// GrabFatigue; game/GrappleLogic.h).
+	game::GrappleSettings grapple;
 	// Opening by reaching: an open, empty hand at a container, a body or -
 	// sneaking - a person opens it, the hand away closes it ([Hands]
 	// ReachOpens, ReachOpenMetres, ReachCloseMetres; vr/ReachOpen.h).
@@ -370,6 +380,9 @@ struct HandModeFrame {
 	// Rest key, as T does, not with Escape, which opened the pause menu over
 	// it (2026-09-27).
 	bool restMenuUp = false;
+	// A container's menu opened by reaching is on top (vr/ReachOpen.h): the
+	// left stick walks and the right one turns under it, as in the world.
+	bool walkUnderMenu = false;
 	bool settingsMenuOpen = false;  // OBVR's own menu: the sticks steer it, nothing else fires
 	bool firstPerson = true;
 	bool meleeInHand = false;  // a drawn blade, blunt weapon or bare fists: swung, not shot
@@ -565,6 +578,10 @@ struct HandModeResult {
 	// (false releases everything).
 	bool controlsActive = false;
 	HandControlsWanted controls;
+	// The sticks move the player under a container's menu opened by reaching
+	// (HandModeFrame::walkUnderMenu): the player's controls are to run, and
+	// the laser's cursor is left where it is.
+	bool walkingUnderMenu = false;
 
 	// The wrists: device-to-overlay transforms for the HUD and the menu, and
 	// which hand carries the menu.

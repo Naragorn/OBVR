@@ -24,9 +24,10 @@ namespace obvr::vr {
 // lock's - a conversation, a message, an arrest stay as the game put them.
 
 struct ReachOpenSettings {
-	bool enabled = true;         // [Hands] ReachOpens
-	float openMetres = 0.10f;    // [Hands] ReachOpenMetres: a free hand this near opens
-	float closeMetres = 0.45f;   // [Hands] ReachCloseMetres: the hand this far away closes
+	bool enabled = true;           // [Hands] ReachOpens
+	float openMetres = 0.10f;      // [Hands] ReachOpenMetres: a free hand this near opens
+	float closeMetres = 0.45f;     // [Hands] ReachCloseMetres: the hand this far away closes
+	float walkAwayMetres = 1.5f;   // [Hands] ReachWalkAwayMetres: the player this far away closes
 };
 
 // The close distance as used: beyond the open one, or the hand could never
@@ -37,6 +38,38 @@ inline float ReachCloseMetresFor(float openMetres, float closeMetres) {
 		return closeMetres;
 	}
 	return (openMetres > 0.0f ? openMetres : 0.0f) + 0.2f;
+}
+
+// The walk-away distance as used: beyond the hand's close distance (a body
+// is never nearer a thing than the hand that reached it), else that plus a
+// metre.
+inline float ReachWalkAwayMetresFor(float closeMetres, float walkAwayMetres) {
+	if (walkAwayMetres > closeMetres) {
+		return walkAwayMetres;
+	}
+	return (closeMetres > 0.0f ? closeMetres : 0.0f) + 1.0f;
+}
+
+// Walking with the menu up (the tester, 2026-10-09: "es muss möglich sein
+// weiterhin sich normal zu bewegen mit stick links bei den neuen offenen
+// menüs, wenn ich zu weit weg gehe schließt es sich automatisch"): once the
+// player has walked - the stick, or the feet this far from where they
+// stood at the open - the hand's leaving no longer closes the menu; the
+// player's own distance does, at ReachWalkAwayMetres. Before any walk, the
+// hand taken away closes it as it did ("hand weg -> menü weg").
+inline constexpr float kReachWalkedMetres = 0.35f;
+
+inline bool ReachWalked(bool moving, bool feetKnown, const NiPoint3& feetAtOpenMetres, bool feetValid,
+                        const NiPoint3& feetMetres) {
+	if (moving) {
+		return true;
+	}
+	if (!feetKnown || !feetValid) {
+		return false;
+	}
+	const float dx = feetMetres.x - feetAtOpenMetres.x;
+	const float dy = feetMetres.y - feetAtOpenMetres.y;
+	return dx * dx + dy * dy > kReachWalkedMetres * kReachWalkedMetres;
 }
 
 // What is reached for.
@@ -109,6 +142,7 @@ enum class ReachPhase : UInt8 {
 	Open,         // the container's menu, opened by the reach, is up
 	Lockpicking,  // the lock's minigame, opened by the reach, is up
 	Rearm,        // done with this one: the hand has to leave it first
+	Switching,    // closed for another the hand reached; waiting to open that one
 };
 
 constexpr UInt32 kReachOpenWaitFrames = 30;  // for the menu to come after the activation
@@ -116,7 +150,13 @@ constexpr UInt32 kReachOpenWaitFrames = 30;  // for the menu to come after the a
 struct ReachOpenState {
 	ReachPhase phase = ReachPhase::Idle;
 	UInt32 target = 0;  // the reference reached for
-	UInt32 waited = 0;  // frames in Opening
+	UInt32 waited = 0;  // frames in Opening or Switching
+	UInt32 next = 0;    // the other thing reached, to open after the switch
+	// Whether the player has walked since the open (ReachWalked), and where
+	// the feet stood then.
+	bool walked = false;
+	bool feetKnown = false;
+	NiPoint3 feetAtOpenMetres{0.0f, 0.0f, 0.0f};
 };
 
 struct ReachOpenFrame {
@@ -129,7 +169,8 @@ struct ReachOpenFrame {
 	bool moving = false;          // the stick walks the player: passing by opens nothing
 	// The nearest thing a free hand is at this frame (0: none), its kind,
 	// whether its kind may be opened (ReachKindAllowed), its distance, and
-	// whether an item goes first (ItemGoesFirst).
+	// whether an item goes first (ItemGoesFirst). With a menu up: another
+	// thing the hand reaches, to switch to.
 	UInt32 candidate = 0;
 	ReachKind kind = ReachKind::None;
 	bool candidateAllowed = false;
@@ -139,11 +180,16 @@ struct ReachOpenFrame {
 	// not, and whether it is locked. `targetKnown` false: it could not be
 	// measured this frame (no camera on a menu's closing frame, say) - then
 	// nothing is decided on its distance. `targetGone`: the reference is no
-	// more (disabled, deleted, out of the cell).
+	// more (disabled, deleted, out of the cell). `targetFeetMetres`: the
+	// player's own distance from it, across the ground (with targetKnown).
 	bool targetKnown = false;
 	bool targetGone = false;
 	float targetMetres = 0.0f;
+	float targetFeetMetres = 0.0f;
 	bool targetLocked = false;
+	// Where the player stands, in metres (any origin), for ReachWalked.
+	bool feetValid = false;
+	NiPoint3 feetMetres{0.0f, 0.0f, 0.0f};
 };
 
 enum class ReachAction : UInt8 {
@@ -169,6 +215,10 @@ inline ReachOpenVerdict StepReachOpen(ReachOpenState& s, const ReachOpenSettings
 		return v;
 	}
 	const bool handLeft = f.targetKnown && f.targetMetres > settings.closeMetres;
+	const bool walkedAway = f.targetKnown && f.targetFeetMetres > settings.walkAwayMetres;
+	// A free hand at another thing that may open, with this one's menu up.
+	const bool reachesAnother = f.candidate != 0 && f.candidate != s.target && f.candidateAllowed && !f.itemFirst &&
+	                            !f.moving && f.candidateMetres <= settings.openMetres;
 	switch (s.phase) {
 	case ReachPhase::Idle:
 		if (!f.active || f.menuUp || f.moving || f.candidate == 0 || !f.candidateAllowed || f.itemFirst ||
@@ -178,6 +228,9 @@ inline ReachOpenVerdict StepReachOpen(ReachOpenState& s, const ReachOpenSettings
 		s.phase = ReachPhase::Opening;
 		s.target = f.candidate;
 		s.waited = 0;
+		s.walked = false;
+		s.feetKnown = f.feetValid;
+		s.feetAtOpenMetres = f.feetMetres;
 		v.action = ReachAction::Activate;
 		v.ref = f.candidate;
 		v.event = "reached - activated";
@@ -221,12 +274,60 @@ inline ReachOpenVerdict StepReachOpen(ReachOpenState& s, const ReachOpenSettings
 			v.event = "another menu went over it (a conversation, an arrest) - left to the game";
 			return v;
 		}
-		if (handLeft) {
+		if (!s.walked && ReachWalked(f.moving, s.feetKnown, s.feetAtOpenMetres, f.feetValid, f.feetMetres)) {
+			s.walked = true;
+			v.event = "the player walks with it open - now only walking away closes it";
+			// And nothing else this frame: a hand far from a chest after a
+			// walk is the walk's doing.
+			return v;
+		}
+		if (walkedAway) {
+			s.phase = ReachPhase::Rearm;
+			v.action = ReachAction::Close;
+			v.ref = s.target;
+			v.event = "walked away - closed";
+			return v;
+		}
+		if (!s.walked && handLeft) {
 			s.phase = ReachPhase::Rearm;
 			v.action = ReachAction::Close;
 			v.ref = s.target;
 			v.event = "the hand left - closed";
+			return v;
 		}
+		if (reachesAnother) {
+			s.phase = ReachPhase::Switching;
+			s.next = f.candidate;
+			s.waited = 0;
+			v.action = ReachAction::Close;
+			v.ref = s.target;
+			v.event = "a hand at another - closed for it";
+		}
+		return v;
+
+	case ReachPhase::Switching:
+		if (f.menuUp) {
+			if (++s.waited > kReachOpenWaitFrames) {
+				s.phase = ReachPhase::Rearm;
+				v.event = "its menu did not close for the switch - left to the player";
+			}
+			return v;
+		}
+		if (!f.active || s.next == 0) {
+			s = ReachOpenState{};
+			v.event = "closed for another, but the hands are away - armed again";
+			return v;
+		}
+		s.phase = ReachPhase::Opening;
+		s.target = s.next;
+		s.next = 0;
+		s.waited = 0;
+		s.walked = false;
+		s.feetKnown = f.feetValid;
+		s.feetAtOpenMetres = f.feetMetres;
+		v.action = ReachAction::Activate;
+		v.ref = s.target;
+		v.event = "the other one reached - activated";
 		return v;
 
 	case ReachPhase::Lockpicking:

@@ -192,3 +192,49 @@ panel and the pickpocket are the work.
   panel.
 - Weeks, not days; worth it only if route A's measured stall cannot be
   hidden or the stacking risk in D cannot be closed.
+
+## 6. Open (the tester, 2026-10-09, for later): the hand stays, the panel is touched
+
+The tester, after the menus opened by reaching (controls-spec 4.31): "die
+neuen menüs bei annäherung. machen wir die noch so dass die hand des
+players nicht verschwindet und touch sensitive." Two asks, nothing built:
+
+- **The hand stays.** While a panel opened by reaching is up, the player's
+  hand is not to vanish: the hand that reached is still seen at the chest,
+  as in the world. Why it goes today is not read: the panel is an engine
+  menu, and the hand mode's menu path (`menusOnly`, the laser) takes over
+  while a menu is open. To find first: which step hides the hands (the
+  first-person hide, the hand bodies, or the hand model's own draw) for a
+  ContainerMenu with the world running.
+- **Touch.** The panel's buttons pressed by the finger, the way a touch
+  screen works, besides the laser. The poke on the wrist's quad exists
+  already (`vr::PokeOnQuad`, `PokeThresholds` in vr/HandInput.h: hover
+  puts the cursor under the tip, a touch within `press` clicks once, out
+  past `release` before the next); the container panel would take the same
+  test against its own quad (its anchor and scale from 4.28). Section 2's
+  C (the panel tight on the object) belongs with it.
+
+## 7. Walking with it open, and switching (built 2026-10-10)
+
+The tester (2026-10-09): "es muss möglich sein weiterhin sich normal zu
+bewegen mit stick links bei den neuen offenen menüs, wenn ich zu weit weg
+gehe schließt es sich automatisch. und ich kann zwischen container und
+deren menüs wechseln ohne probleme indem ich meine hand dem jeweiligen
+container annähere", pointing at Loot Menu (Nexus 48027, by Ersh: a
+Fallout-4-style container panel for Oblivion that never enters menu mode
+- the model for section 5's own-UI route, if route A ever runs out).
+
+Section 2 F said the player's controls stay gated and need not change;
+they do now, on route A: the one IsMenuMode site that gates the player's
+update (0x0040DC61) answers "no menu" while the sticks move the player
+under a container's menu the reach opened, with the laser's cursor and
+click held back in those frames (they would reach the player's input as a
+turn and an attack). The close is by the player's distance once they have
+walked (`ReachWalkAwayMetres`, 1.5 m), by the hand's leaving before; a
+free hand at another container switches. Controls-spec 4.35 has it all,
+with the tests and the hand script.
+
+Open from it: whether anything in the player's update misbehaves under a
+menu (the first frames of the walk; the engine's own crosshair and HUD
+run then), and the cursor drifting across the panel while the right stick
+turns the player (the laser puts it back when the stick rests).

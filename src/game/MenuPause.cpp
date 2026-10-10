@@ -56,7 +56,30 @@ int __cdecl WorldPauseForMenu() {
 	return paused ? 1 : 0;
 }
 
-bool RedirectForeignHook(UInt32 hook) {
+// The player's controls gate (addr::kPlayerControlsIsMenuModeSite): "no
+// menu" only while the sticks walk the player under the container's menu
+// (SetPlayerWalksUnderMenu). Logged on each change of answer.
+bool g_walksUnderMenu = false;
+bool g_controlsSiteTried = false;
+bool g_controlsSiteRedirected = false;
+bool g_controlsLastRan = false;
+
+int __cdecl PlayerControlsPauseForMenu() {
+	const bool menuMode = IsMenuMode();
+	const UInt32 top = menuMode ? TopVisibleMenuId() : kMenuIdNone;
+	const bool run = PlayerControlsRunUnderMenu(menuMode, g_walksUnderMenu, top);
+	if (menuMode && run != g_controlsLastRan) {
+		g_controlsLastRan = run;
+		OBVR_LOG("Menu pause: the player's controls %s under menu %s (0x%03X)",
+		         run ? "run - the sticks walk" : "are gated again as vanilla", MenuIdName(top), top);
+	}
+	if (!menuMode) {
+		g_controlsLastRan = false;
+	}
+	return run ? 0 : 1;
+}
+
+bool RedirectForeignHook(UInt32 hook, UInt32 target) {
 	// Preserve the foreign jump at the game site. Search its short entry stub
 	// for the call it makes to IsMenuMode (directly or through the seven-byte
 	// import thunk used by ConsoleCommands), and redirect only that call.
@@ -75,7 +98,6 @@ bool RedirectForeignHook(UInt32 hook) {
 			continue;
 		}
 
-		const UInt32 target = reinterpret_cast<UInt32>(&WorldPauseForMenu);
 		const UInt32 rel = target - (callAddress + 5);
 		const UInt8 displacement[4] = {
 			static_cast<UInt8>(rel), static_cast<UInt8>(rel >> 8),
@@ -94,11 +116,11 @@ bool RedirectForeignHook(UInt32 hook) {
 // Points one `call IsMenuMode` at the policy. Verified first: the site has
 // to be a relative call whose target is IsMenuMode, or something else is
 // there and the site is left alone and named in the log.
-bool RedirectSite(UInt32 site) {
+bool RedirectSite(UInt32 site, UInt32 target) {
 	const auto* bytes = reinterpret_cast<const UInt8*>(site);
 	mem::RelativeBranch branch;
 	if (mem::DecodeRelativeBranch(bytes, site, branch) && branch.isJump &&
-	    RedirectForeignHook(branch.target)) {
+	    RedirectForeignHook(branch.target, target)) {
 		return true;
 	}
 	if (!mem::DecodeRelativeBranch(bytes, site, branch) || !branch.isCall ||
@@ -109,7 +131,6 @@ bool RedirectSite(UInt32 site) {
 		mem::ReportForeignCode("Menu pause", site);
 		return false;
 	}
-	const UInt32 target = reinterpret_cast<UInt32>(&WorldPauseForMenu);
 	const UInt32 rel = target - (site + 5);
 	const UInt8 displacement[4] = {
 		static_cast<UInt8>(rel), static_cast<UInt8>(rel >> 8), static_cast<UInt8>(rel >> 16),
@@ -132,7 +153,7 @@ void InstallOnce() {
 	constexpr UInt32 kSiteCount =
 		sizeof(addr::kUpdateStepIsMenuModeSites) / sizeof(addr::kUpdateStepIsMenuModeSites[0]);
 	for (UInt32 i = 0; i < kSiteCount; ++i) {
-		if (RedirectSite(addr::kUpdateStepIsMenuModeSites[i])) {
+		if (RedirectSite(addr::kUpdateStepIsMenuModeSites[i], reinterpret_cast<UInt32>(&WorldPauseForMenu))) {
 			++g_sitesRedirected;
 		}
 	}
@@ -162,6 +183,18 @@ void ApplyUnpausedMenus(bool wanted, bool containerWanted, bool lockWanted) {
 			         lockEnabled ? "runs the world on its own" : "pauses as vanilla");
 		}
 	}
+}
+
+void SetPlayerWalksUnderMenu(bool walking) {
+	if (walking && !g_controlsSiteTried) {
+		g_controlsSiteTried = true;
+		g_controlsSiteRedirected =
+			RedirectSite(addr::kPlayerControlsIsMenuModeSite, reinterpret_cast<UInt32>(&PlayerControlsPauseForMenu));
+		OBVR_LOG("Menu pause: the player's controls gate (%08X) %s", addr::kPlayerControlsIsMenuModeSite,
+		         g_controlsSiteRedirected ? "now asks OBVR - the sticks walk under a container's menu opened by reaching"
+		                                  : "keeps its vanilla answer - no walking under a menu");
+	}
+	g_walksUnderMenu = walking && g_controlsSiteRedirected;
 }
 
 UInt32 TopVisibleMenu() { return TopVisibleMenuId(); }

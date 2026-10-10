@@ -697,10 +697,18 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.parryStopsAll = ReadBool("Hands", "ParryStopsAll", h.parryStopsAll, path);
 		h.parryFatigue = ReadFloat("Hands", "ParryFatigue", h.parryFatigue, path);
 		h.combatReach = ReadFloat("Hands", "CombatReach", h.combatReach, path);
+		h.slowApproach = ReadBool("Hands", "SlowApproach", h.slowApproach, path);
+		h.slowApproachMetres = ReadFloat("Hands", "SlowApproachMetres", h.slowApproachMetres, path);
+		h.grapple.strikes = ReadBool("Hands", "OffHandStrikes", h.grapple.strikes, path);
+		h.grapple.grabs = ReadBool("Hands", "OffHandGrabs", h.grapple.grabs, path);
+		h.grapple.holdSeconds = ReadFloat("Hands", "GrabHoldSeconds", h.grapple.holdSeconds, path);
+		h.grapple.fatigue = ReadFloat("Hands", "GrabFatigue", h.grapple.fatigue, path);
 		h.reachOpen.enabled = ReadBool("Hands", "ReachOpens", h.reachOpen.enabled, path);
 		h.reachOpen.openMetres = ReadFloat("Hands", "ReachOpenMetres", h.reachOpen.openMetres, path);
 		h.reachOpen.closeMetres = ReadFloat("Hands", "ReachCloseMetres", h.reachOpen.closeMetres, path);
 		h.reachOpen.closeMetres = vr::ReachCloseMetresFor(h.reachOpen.openMetres, h.reachOpen.closeMetres);
+		h.reachOpen.walkAwayMetres = ReadFloat("Hands", "ReachWalkAwayMetres", h.reachOpen.walkAwayMetres, path);
+		h.reachOpen.walkAwayMetres = vr::ReachWalkAwayMetresFor(h.reachOpen.closeMetres, h.reachOpen.walkAwayMetres);
 		h.runToggle = ReadBool("Hands", "RunToggle", h.runToggle, path);
 		if (!h.laserBeam && !h.laserDot) {
 			// The laser needs something to show; the settings menu refuses this

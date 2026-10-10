@@ -1427,3 +1427,23 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME combat_reach COMMAND combat_reach_test)
+
+add_executable(slow_approach_test SlowApproachTest.cpp)
+
+target_include_directories(slow_approach_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(slow_approach_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME slow_approach COMMAND slow_approach_test)
+
+add_executable(grapple_test GrappleTest.cpp)
+
+target_include_directories(grapple_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(grapple_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME grapple COMMAND grapple_test)

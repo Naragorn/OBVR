@@ -138,6 +138,36 @@ void TestHitHandler() {
 	      "the cost: as set, nothing for one out of reason");
 }
 
+void TestHeld() {
+	std::printf("Someone held by the off hand\n");
+	const UInt32 held = 0x1000;
+	const UInt32 other = 0x2000;
+	BlowStop s = BlowStopFor(true, false, held, held);
+	Check(s.held && !s.parried, "the one held strikes: stopped as held");
+	s = BlowStopFor(false, false, held, held);
+	Check(s.held && !s.parried, "held with the parries off or no weapon drawn: still stopped");
+	s = BlowStopFor(true, true, held, held);
+	Check(s.held && !s.parried, "held and in a parry's window too: held (nothing owed for a parry)");
+	s = BlowStopFor(true, true, held, other);
+	Check(!s.held && s.parried, "another, parried, while someone is held: parried");
+	s = BlowStopFor(false, true, held, other);
+	Check(!s.held && !s.parried, "another in a window with the parries off: not stopped");
+	s = BlowStopFor(true, false, 0, other);
+	Check(!s.held && !s.parried, "nobody held, nobody parried: not stopped");
+	Check(AnyBlowStopped(true, 1, 0), "a parry in its window: a block forced");
+	Check(!AnyBlowStopped(false, 1, 0), "a window left over with the parries off: nothing forced");
+	Check(AnyBlowStopped(false, 0, held), "someone held, the parries off: a block forced");
+	Check(!AnyBlowStopped(true, 0, 0), "nothing at all: nothing forced");
+	BlowStop h;
+	h.held = true;
+	BlowStop p;
+	p.parried = true;
+	Check(Near(StoppedShare(h, false, 0.25f), 1.0f), "held: all of the blow, ParryStopsAll off or not");
+	Check(Near(StoppedShare(p, true, 0.25f), 1.0f), "parried with ParryStopsAll: all of it");
+	Check(Near(StoppedShare(p, false, 0.25f), 0.25f), "parried without: the engine's share");
+	Check(Near(StoppedShare(BlowStop{}, true, 0.25f), 0.25f), "neither: the engine's share");
+}
+
 }  // namespace
 
 int main() {
@@ -147,6 +177,7 @@ int main() {
 	TestShield();
 	TestLedger();
 	TestHitHandler();
+	TestHeld();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

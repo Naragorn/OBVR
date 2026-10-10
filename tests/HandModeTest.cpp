@@ -209,6 +209,48 @@ void TestPlanner() {
 	w = PlanHandControls(rest, 0.4f);
 	Check(!w.wait && !w.escape, "and nothing without the press");
 
+	std::printf("Under a container's menu opened by reaching\n");
+	HandFrameInput under;
+	under.rightValid = true;
+	under.leftValid = true;
+	under.menuMode = true;
+	under.leftThumbY = 1.0f;
+	under.rightThumbX = 0.6f;
+	under.rightTrigger = true;
+	w = PlanHandControls(under, 0.4f);
+	Check(!w.move.forward && Near(w.turn, 0.0f) && w.menuClick,
+	      "in any other menu the sticks move nothing and the trigger clicks");
+	under.walkUnderMenu = true;
+	w = PlanHandControls(under, 0.4f);
+	Check(w.move.forward && Near(w.turn, 0.6f), "under it the left stick walks and the right one turns");
+	Check(!w.menuClick, "and no click goes out while they do - it would be an attack");
+	Check(SticksMovePlayer(w), "the sticks move the player");
+	under.leftThumbY = 0.0f;
+	under.rightThumbX = 0.0f;
+	w = PlanHandControls(under, 0.4f);
+	Check(!w.move.forward && !SticksMovePlayer(w) && w.menuClick, "the sticks still: the trigger clicks again");
+	under.leftStickHeld = true;
+	under.leftThumbY = 0.3f;
+	w = PlanHandControls(under, 0.4f);
+	Check(w.run && !w.move.forward, "the stick pressed in runs; a push under the dead zone walks nowhere");
+	under.leftValid = false;
+	under.leftThumbY = 1.0f;
+	w = PlanHandControls(under, 0.4f);
+	Check(!w.move.forward && !w.run, "not from an untracked left hand");
+	HandFrameInput turnOnly;
+	turnOnly.rightValid = true;
+	turnOnly.leftValid = true;
+	turnOnly.menuMode = true;
+	turnOnly.walkUnderMenu = true;
+	turnOnly.rightThumbX = -0.5f;
+	turnOnly.leftTrigger = true;
+	turnOnly.pointRight = false;
+	w = PlanHandControls(turnOnly, 0.4f);
+	Check(Near(w.turn, -0.5f) && !w.menuClick, "turning alone holds the left hand's click back too");
+	turnOnly.rightThumbX = 0.05f;
+	w = PlanHandControls(turnOnly, 0.4f);
+	Check(!SticksMovePlayer(w) && w.menuClick, "a right stick within its slack moves nobody");
+
 	HandFrameInput left;
 	left.rightValid = true;
 	left.leftValid = true;

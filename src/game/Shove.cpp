@@ -85,8 +85,56 @@ bool VerifyShoveAddresses() {
 	return g_verified;
 }
 
+bool StaggerActor(void* actor) {
+	if (!g_verified || !LooksLikeObject(reinterpret_cast<UInt32>(actor))) {
+		return false;
+	}
+	using StaggerFn = void(__thiscall*)(void* actor);
+	reinterpret_cast<StaggerFn>(kStaggerStart)(actor);
+	return true;
+}
+
+bool PushActorBy(void* actor, const NiPoint3& distance, float seconds) {
+	if (!g_verified || !LooksLikeObject(reinterpret_cast<UInt32>(actor)) || !(seconds > 0.0f)) {
+		return false;
+	}
+	using ProxyOfFn = void*(__thiscall*)(void* actor);
+	void* const proxy = reinterpret_cast<ProxyOfFn>(kCharacterProxyOf)(actor);
+	if (!LooksLikeObject(reinterpret_cast<UInt32>(proxy))) {
+		return false;
+	}
+	using PushFn = void(__thiscall*)(void* proxy, const NiPoint3* distance, float seconds);
+	reinterpret_cast<PushFn>(kProxyKnockback)(proxy, &distance, seconds);
+	return true;
+}
+
+bool ActorStanding(void* actor) {
+	const UInt32 a = reinterpret_cast<UInt32>(actor);
+	const UInt32 actorVtable = LooksLikeObject(a) ? Read(a) : 0;
+	if (actorVtable != addr::kVtblCharacter && actorVtable != addr::kVtblCreature) {
+		return false;
+	}
+	// Alive (the actor's IsDead, as leading by the hand asks it).
+	const UInt32 isDead = Read(actorVtable + addr::kActorVtableIsDeadOffset);
+	using DeadFn = bool(__thiscall*)(void* actor, UInt32 unk);
+	if (!LooksLikeObject(isDead) || reinterpret_cast<DeadFn>(isDead)(actor, 0)) {
+		return false;
+	}
+	const UInt32 process = Read(a + kActorProcessOffset);
+	const UInt32 vtable = LooksLikeObject(process) ? Read(process) : 0;
+	const UInt32 levelFn = LooksLikeObject(vtable) ? Read(vtable + kProcessLevelSlot) : 0;
+	if (!LooksLikeObject(levelFn)) {
+		return false;
+	}
+	using LevelFn = UInt32(__thiscall*)(void* process);
+	if (reinterpret_cast<LevelFn>(levelFn)(reinterpret_cast<void*>(process)) != 0) {
+		return false;
+	}
+	return *reinterpret_cast<const UInt8*>(process + kProcessKnockedState) == 0;
+}
+
 bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const NiPoint3& centre,
-                const ShoveSettings& settings, bool byHand) {
+                const ShoveSettings& settings, bool byHand, bool punch) {
 	const UInt32 a = reinterpret_cast<UInt32>(actor);
 	const UInt32 player = Read(addr::kPlayerPointer);
 	if (!g_verified || kind == ShoveKind::None || !LooksLikeObject(a) || !LooksLikeObject(player)) {
@@ -98,7 +146,8 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 	// SOUN form; the script lines with its form id answered 0), and the mod
 	// set off on top by a grab tap with the pick on them, which the camera
 	// pass reads (TakeSlapGrabTap) - whatever its own sequence then adds.
-	const bool inTheFace = byHand && SlapInTheFace(fromWorld.z, centre.z);
+	// A fist in the face is a punch, never a slap.
+	const bool inTheFace = byHand && !punch && SlapInTheFace(fromWorld.z, centre.z);
 	const UInt8 modIndex = PutItInItsPlaceIndex();
 	// The mod's part only with the mod on (ShoveLogic.h, SlapModOn: its
 	// master switch and its slap feature, both from its INI).

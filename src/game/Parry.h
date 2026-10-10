@@ -55,7 +55,12 @@ ParryCone ParryConeFor(UInt32 target, UInt32 attacker);
 // caller in its frame, not inside the hit handler.
 float TakeParryFatigue();
 
-// Nobody parried (the mode off, a load).
+// The one the player's off hand holds by a part that stops their blows
+// (GrappleLogic.h, GrappleStopsBlows), 0 nobody: their blows at the player
+// are blocked whole (ParryLogic.h, BlowStopFor).
+void SetHeldFoe(UInt32 actor);
+
+// Nobody parried or held (the mode off, a load).
 void ForgetParries();
 
 }  // namespace obvr::game

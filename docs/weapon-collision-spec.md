@@ -539,3 +539,17 @@ Ways on (not decided, see the tester):
   reach 85 units rather than 128 - nearer the 67 the sword is drawn.
 - Not measured: creatures (their bites reach by the same setting), and how
   NPCs fighting each other look at 85.
+
+## 12. The slow approach (built 2026-10-09)
+
+Fighters run up as in vanilla and walk once within `[Hands]
+SlowApproachMetres` (10) of the player - the movement-flag setters of the
+high process rerouted (game/SlowApproach.h; controls-spec 4.33), harness
+PASS. With `CombatReach` 85 (section 11) they then walk the last metres
+and stand 1.2 m off to strike, which the tester felt as "die wollen einen
+wrestlen" - the reach is the knob, 85 being what lets a parry meet their
+blade.
+
+The same setters hold a fighter still while the off hand holds them
+(physical-combat-spec section 8), and the parry's forced block stops the
+blows of one held by the head, the neck or the weapon arm.

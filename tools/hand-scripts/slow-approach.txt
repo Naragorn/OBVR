@@ -1,0 +1,65 @@
+# Fighters walk near the player ([Hands] SlowApproach, game/SlowApproach.h):
+# a melee bandit (00069AD1, attacks on sight) is placed by an untouchable
+# player (tgm) and comes at them. Then the player turns round and walks
+# off for six seconds, and the bandit follows. The radius is the setting's
+# smallest, 2 m (the default is 10), so that a bandit following a walking
+# player passes both ways: within 2 m its run is turned to a walk - "is
+# near - walks" - and past 3 m (the radius and a metre's slack) it runs as
+# it will - "is no longer near - runs as it will". Each line and the state
+# line at each mark give its movement flags and the speed it is seen to
+# move across the ground: a walk and a run must differ there.
+# (The first run, 2026-10-09, with 10 m: the bandit walked within it -
+# flags 0101, 398 runs turned - and the scripted player only walks, so the
+# bandit never fell past 11 m.)
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\slow-approach.txt
+
+ini Hands Enabled=1
+ini Hands SlowApproach=1
+ini Hands SlowApproachMetres=2
+ini Hands WalkDirection=head
+console-at ready player.placeatme 00069AD1 1
+console-at ready tgm
+
+expect HandScript: finished
+expect Slow approach: HighProcess's movement flag setters rerouted
+expect is near - walks
+expect is no longer near - runs as it will
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 12
+mark fight1
+wait 2
+mark fight2
+head yaw 180
+wait 0.5
+left stick 0 1
+wait 1
+mark running1
+wait 1
+mark running2
+wait 1
+mark running3
+wait 1
+mark running4
+wait 1
+mark running5
+wait 1
+left stick 0 0
+mark stopped
+wait 1
+mark away1
+wait 1
+mark away2
+wait 2
+mark back1
+wait 3
+mark back2
+head yaw 0
+wait 2
+mark back3
+wait 1

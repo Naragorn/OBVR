@@ -19,6 +19,17 @@ void Check(bool condition, const char* what) {
 	}
 }
 
+void TestPlayerControls() {
+	std::printf("The player's controls under a menu\n");
+	Check(PlayerControlsRunUnderMenu(true, true, kMenuIdContainer), "the sticks walk under a container's menu: run");
+	Check(!PlayerControlsRunUnderMenu(true, false, kMenuIdContainer), "the sticks still: gated as vanilla");
+	Check(!PlayerControlsRunUnderMenu(true, true, kMenuIdInventory), "walking wanted under the inventory: gated");
+	Check(!PlayerControlsRunUnderMenu(true, true, kMenuIdLockPick), "under the lock's minigame: gated");
+	Check(!PlayerControlsRunUnderMenu(true, true, kMenuIdNone), "a stack that reads empty: gated");
+	Check(PlayerControlsRunUnderMenu(false, false, kMenuIdNone), "outside menu mode: run, as they do");
+	Check(PlayerControlsRunUnderMenu(false, true, kMenuIdContainer), "outside menu mode whatever is asked");
+}
+
 void TestWhichMenusRun() {
 	std::printf("Which menus keep the world running\n");
 
@@ -114,6 +125,7 @@ void TestStableMenuId() {
 int main() {
 	TestWhichMenusRun();
 	TestAnswer();
+	TestPlayerControls();
 	TestForeignHookThunk();
 	TestStableMenuId();
 

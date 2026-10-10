@@ -626,6 +626,9 @@ struct HandFrameInput {
 	bool meleeByMotion = false;    // a swung weapon strikes by motion: the trigger does not attack
 	bool meleeInHand = false;      // a melee weapon or bare fists drawn: the trigger never attacks
 	bool menuMode = false;
+	// In a menu: it is a container's menu opened by reaching, under which
+	// the sticks still move the player (PlanHandControls).
+	bool walkUnderMenu = false;
 	bool pointRight = true;        // in a menu: which hand holds the pointer, and so the click
 	bool leftHanded = false;       // activate on the left A rather than the right
 	// The weapons are drawn by reaching ([Hands] Holsters): the right stick's
@@ -695,6 +698,12 @@ inline DropPressVerdict StepDropPress(DropPressState& s, bool pressed) {
 // the quick menu. The left A does nothing in the world: it never takes an
 // object - the grips do that. The left grip only grabs: one that grabbed and
 // activated at once would take the object it was meant to hold.
+// Whether the sticks move the player this frame: the left stick walking or
+// the right stick turning.
+inline bool SticksMovePlayer(const HandControlsWanted& c) {
+	return c.move.forward || c.move.back || c.move.left || c.move.right || c.turn > 0.1f || c.turn < -0.1f;
+}
+
 inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stickDeadZone) {
 	HandControlsWanted out;
 	if (in.menuMode) {
@@ -710,6 +719,25 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 			out.wait = in.rightMenuButton;
 		} else {
 			out.escape = in.rightMenuButton;
+		}
+		// Under a container's menu opened by reaching (vr/ReachOpen.h) the
+		// left stick walks and the right one turns, as in the world (the
+		// tester, 2026-10-09: "es muss möglich sein weiterhin sich normal zu
+		// bewegen mit stick links bei den neuen offenen menüs"): the
+		// player's own controls run then (game/MenuPause.h), and a click
+		// would reach them as an attack, so none is sent while the sticks
+		// move the player.
+		if (in.walkUnderMenu) {
+			if (in.leftValid) {
+				out.move = StickToDirections(in.leftThumbX, in.leftThumbY, stickDeadZone);
+				out.run = out.run || in.leftStickHeld;
+			}
+			if (in.rightValid) {
+				out.turn = in.rightThumbX;
+			}
+			if (SticksMovePlayer(out)) {
+				out.menuClick = false;
+			}
 		}
 		return out;
 	}

@@ -388,12 +388,31 @@ inline bool SegmentEntersCapsule(const NiPoint3& from, const NiPoint3& to, const
 	return true;
 }
 
-// A capsule on the bones of someone living: which actor it belongs to.
+// Which part of a person a capsule is: the off hand's grab holds a part
+// (GrappleLogic.h). The column is a body read without its bones.
+enum class BodyPart : UInt8 { Column, Head, Neck, Torso, LeftArm, RightArm, LeftLeg, RightLeg };
+
+inline const char* BodyPartName(BodyPart p) {
+	switch (p) {
+	case BodyPart::Head: return "head";
+	case BodyPart::Neck: return "neck";
+	case BodyPart::Torso: return "torso";
+	case BodyPart::LeftArm: return "left arm";
+	case BodyPart::RightArm: return "right arm";
+	case BodyPart::LeftLeg: return "left leg";
+	case BodyPart::RightLeg: return "right leg";
+	default: return "body";
+	}
+}
+
+// A capsule on the bones of someone living: which actor it belongs to, and
+// which part of them it is.
 struct BladeBodyCapsule {
 	NiPoint3 a{0.0f, 0.0f, 0.0f};
 	NiPoint3 b{0.0f, 0.0f, 0.0f};
 	float radius = 0.0f;
 	UInt32 actor = 0;
+	BodyPart part = BodyPart::Column;
 };
 
 inline constexpr UInt32 kBladeBodyCapsulesMax = 128;
@@ -402,7 +421,7 @@ struct BladeBodies {
 	UInt32 count = 0;
 	BladeBodyCapsule cap[kBladeBodyCapsulesMax];
 
-	bool Add(const NiPoint3& a, const NiPoint3& b, float radius, UInt32 actor) {
+	bool Add(const NiPoint3& a, const NiPoint3& b, float radius, UInt32 actor, BodyPart part = BodyPart::Column) {
 		if (count >= kBladeBodyCapsulesMax || !(radius > 0.0f)) {
 			return false;
 		}
@@ -410,6 +429,7 @@ struct BladeBodies {
 		cap[count].b = b;
 		cap[count].radius = radius;
 		cap[count].actor = actor;
+		cap[count].part = part;
 		++count;
 		return true;
 	}
@@ -464,8 +484,8 @@ inline UInt32 BodyCapsulesFromBones(const NiPoint3* bones, const bool* have, flo
 	}
 	const float k = scale > 0.0f && scale < 20.0f ? scale : 1.0f;
 	UInt32 added = 0;
-	auto link = [&](UInt32 from, UInt32 to, float radius) {
-		if (have[from] && have[to] && out.Add(bones[from], bones[to], radius * k, actor)) {
+	auto link = [&](UInt32 from, UInt32 to, float radius, BodyPart part) {
+		if (have[from] && have[to] && out.Add(bones[from], bones[to], radius * k, actor, part)) {
 			++added;
 		}
 	};
@@ -478,22 +498,23 @@ inline UInt32 BodyCapsulesFromBones(const NiPoint3* bones, const bool* have, flo
 				up = d * (1.0f / l);
 			}
 		}
-		if (out.Add(bones[kBoneHead], bones[kBoneHead] + up * (kBladeHeadAbove * k), kBladeHeadRadius * k, actor)) {
+		if (out.Add(bones[kBoneHead], bones[kBoneHead] + up * (kBladeHeadAbove * k), kBladeHeadRadius * k, actor,
+		            BodyPart::Head)) {
 			++added;
 		}
 	}
-	link(kBoneNeck, kBoneHead, kBladeNeckRadius);
-	link(kBoneSpine2, kBoneNeck, kBladeTorsoRadius);
-	link(kBoneSpine, kBoneSpine2, kBladeTorsoRadius);
-	link(kBonePelvis, kBoneSpine, kBladeTorsoRadius);
-	link(kBoneLUpperArm, kBoneLForearm, kBladeUpperArmRadius);
-	link(kBoneLForearm, kBoneLHand, kBladeForearmRadius);
-	link(kBoneRUpperArm, kBoneRForearm, kBladeUpperArmRadius);
-	link(kBoneRForearm, kBoneRHand, kBladeForearmRadius);
-	link(kBoneLThigh, kBoneLCalf, kBladeThighRadius);
-	link(kBoneLCalf, kBoneLFoot, kBladeCalfRadius);
-	link(kBoneRThigh, kBoneRCalf, kBladeThighRadius);
-	link(kBoneRCalf, kBoneRFoot, kBladeCalfRadius);
+	link(kBoneNeck, kBoneHead, kBladeNeckRadius, BodyPart::Neck);
+	link(kBoneSpine2, kBoneNeck, kBladeTorsoRadius, BodyPart::Torso);
+	link(kBoneSpine, kBoneSpine2, kBladeTorsoRadius, BodyPart::Torso);
+	link(kBonePelvis, kBoneSpine, kBladeTorsoRadius, BodyPart::Torso);
+	link(kBoneLUpperArm, kBoneLForearm, kBladeUpperArmRadius, BodyPart::LeftArm);
+	link(kBoneLForearm, kBoneLHand, kBladeForearmRadius, BodyPart::LeftArm);
+	link(kBoneRUpperArm, kBoneRForearm, kBladeUpperArmRadius, BodyPart::RightArm);
+	link(kBoneRForearm, kBoneRHand, kBladeForearmRadius, BodyPart::RightArm);
+	link(kBoneLThigh, kBoneLCalf, kBladeThighRadius, BodyPart::LeftLeg);
+	link(kBoneLCalf, kBoneLFoot, kBladeCalfRadius, BodyPart::LeftLeg);
+	link(kBoneRThigh, kBoneRCalf, kBladeThighRadius, BodyPart::RightLeg);
+	link(kBoneRCalf, kBoneRFoot, kBladeCalfRadius, BodyPart::RightLeg);
 	return added;
 }
 

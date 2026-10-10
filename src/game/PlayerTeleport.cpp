@@ -174,7 +174,12 @@ bool ReadPlayerFeet(NiPoint3& out) {
 
 bool PlacePlayerAt(const NiPoint3& at) {
 	const UInt32 player = Player();
-	if (player == 0 || !(at.x == at.x && at.y == at.y && at.z == at.z)) {
+	return player != 0 && PlaceActorAt(reinterpret_cast<void*>(player), at);
+}
+
+bool PlaceActorAt(void* actor, const NiPoint3& at) {
+	const UInt32 player = reinterpret_cast<UInt32>(actor);
+	if (!LooksLikeObject(player) || !(at.x == at.x && at.y == at.y && at.z == at.z)) {
 		return false;
 	}
 	using SetPosFn = void(__thiscall*)(void* ref, float x, float y, float z);

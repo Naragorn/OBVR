@@ -78,6 +78,7 @@
 #include "game/BladeBodies.h"
 #include "game/Parry.h"
 #include "game/CombatReach.h"
+#include "game/SlowApproach.h"
 #include "game/Insult.h"
 #include "vr/MenuHaptics.h"
 #include "vr/VrKeyboard.h"
@@ -849,19 +850,29 @@ vr::HolsterFitState g_holsterFit;
 bool g_rightBodyFist = false;
 bool g_leftBodyFist = false;
 
+// Oblivion.esm's hand-to-hand hit (SOUN WPNHitHandX, read 2026-10-09 with
+// the other weapon sounds): the off hand's punch.
+constexpr UInt32 kSoundFormHitHand = 0x0000C3CA;
+
 // The shove (game/ShoveLogic.h, game/Shove.h): each tracked hand, open and
 // not gripping, moving fast towards a living actor it is at, with the
 // weapons away. The actor is pushed away from a point behind the hand along
-// its motion.
+// its motion. With a blade or blunt weapon drawn the off hand strikes the
+// same way, a fist as well (game/GrappleLogic.h, OffHandStrikeFor).
 game::ShoveCooldown g_shoveCooldown;
 
 void StepShoves(const Config& config, float dt) {
 	game::StepShoveCooldown(g_shoveCooldown, dt);
 	const game::ShoveSettings& settings = config.hands.shove;
-	if (!settings.enabled || !g_cyclopeanCameraWorldValid) {
+	if ((!settings.enabled && !config.hands.grapple.strikes) || !g_cyclopeanCameraWorldValid) {
 		return;
 	}
 	const bool weaponDrawn = game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
+	// A blade or a blunt weapon in the weapon hand (not the fists, a bow or a
+	// staff): the off hand is free to strike.
+	SInt32 weaponType = -1;
+	const bool meleeWeaponDrawn =
+		weaponDrawn && game::MeleeInHand(&weaponType) && weaponType >= 0 && weaponType <= 3;
 	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
 	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
 	for (int side = 0; side < 2; ++side) {
@@ -885,7 +896,15 @@ void StepShoves(const Config& config, float dt) {
 		// (m/s): into the world by the camera's rotation.
 		const NiPoint3 velocity = camRot * (right ? g_hand.rightVelocity : g_hand.leftVelocity);
 		hand.towardsSpeed = game::SpeedTowards(velocity, at, centre);
-		const game::ShoveKind kind = game::ShoveFor(settings, weaponDrawn, hand);
+		game::ShoveKind kind = settings.enabled ? game::ShoveFor(settings, weaponDrawn, hand) : game::ShoveKind::None;
+		// The off hand with a weapon drawn (the left: the roles are swapped for
+		// a left-handed player before this): a fist punches, an open hand
+		// shoves or slaps as it does with the weapons away.
+		bool offHandStrike = false;
+		if (kind == game::ShoveKind::None && !right) {
+			kind = game::OffHandStrikeFor(config.hands.grapple, settings, meleeWeaponDrawn, !g_leftGripOnHandle, hand);
+			offHandStrike = kind != game::ShoveKind::None;
+		}
 		if (kind == game::ShoveKind::None) {
 			// A hand fast enough at someone and refused: why, for the log (the
 			// tester, 2026-10-08: "slappen geht gar nicht mehr" - his log of
@@ -910,12 +929,181 @@ void StepShoves(const Config& config, float dt) {
 		if (across > 0.001f) {
 			from = at - NiPoint3{velocity.x / across, velocity.y / across, 0.0f} * 30.0f;
 		}
-		if (game::ShoveActor(actor, kind, from, centre, settings)) {
+		const bool punch = offHandStrike && !hand.open;
+		if (game::ShoveActor(actor, kind, from, centre, settings, true, punch)) {
 			game::StartShoveCooldown(g_shoveCooldown, actor, settings.cooldownSeconds);
-			OBVR_LOG("Shove: the %s hand at %.1f m/s towards %08X - %s", right ? "right" : "left",
+			if (punch) {
+				game::PlaySoundFormAt(kSoundFormHitHand, reinterpret_cast<UInt32>(actor), at);
+			}
+			if (offHandStrike) {
+				g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(false, g_handRolesSwapped), 0.05f, 150.0f,
+				                                         1.0f);
+			}
+			OBVR_LOG("Shove: the %s hand at %.1f m/s towards %08X - %s%s", right ? "right" : "left",
 			         static_cast<double>(hand.towardsSpeed), reinterpret_cast<UInt32>(actor),
-			         kind == game::ShoveKind::Hard ? "hard" : "light");
+			         kind == game::ShoveKind::Hard ? "hard" : "light",
+			         offHandStrike ? (punch ? " (the off hand's punch, a weapon drawn)" : " (the off hand, a weapon drawn)")
+			                       : "");
 		}
+	}
+}
+
+// The off hand's grab of a fighter (game/GrappleLogic.h): the grip closed at
+// someone fighting holds them - staggered, their legs held (game::HoldStill),
+// placed where the hand wants them each frame (game::PlaceActorAt),
+// and held by the head, the neck or the weapon arm their blows stopped
+// (game::SetHeldFoe); let go at speed they are thrown as a shove throws.
+game::GrappleState g_grapple;
+game::BladeBodies g_grappleBodies;
+NiPoint3 g_grappleStartAt{0.0f, 0.0f, 0.0f};  // where they stood at the grab, for the log
+float g_grappleDragged = 0.0f;                // units the hand has moved them, for the log
+float g_grappleLogSeconds = 0.0f;
+UInt32 g_grappleLines = 60;
+
+void EndGrapple() {
+	if (g_grapple.actor != 0) {
+		game::HoldStill(0);
+		game::SetHeldFoe(0);
+	}
+	g_grapple = game::GrappleState{};
+}
+
+void StepGrapple(const Config& config, bool inPlace, float dt) {
+	const game::GrappleSettings& g = config.hands.grapple;
+	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
+	game::GrappleInput in;
+	// The off hand free: not on a two-hander's handle, no shield on its arm.
+	in.allowed = inPlace && !g_leftGripOnHandle && !game::PlayerWearsShield();
+	in.handValid = g_hand.leftHandValid && g_cyclopeanCameraWorldValid;
+	in.grip = g_hand.leftGripDown;
+	in.hand = camPos + camRot * g_hand.leftHandOffsetUnits;
+	in.handVelocity = camRot * g_hand.leftVelocity;
+	in.dtSeconds = dt;
+	const bool closing = in.grip && !g_grapple.gripWas;
+	if (g_grapple.actor == 0 && closing && g.grabs && in.allowed && in.handValid) {
+		game::CollectBladeBodies(in.hand, 60.0f, g_grappleBodies);
+		in.take = game::GrappleTakeAt(g_grappleBodies, in.hand, game::kGrappleReachUnits);
+		if (in.take.found) {
+			void* const a = reinterpret_cast<void*>(in.take.actor);
+			in.takeFights = game::ActorStanding(a) && game::ActorInCombat(a) && game::ActorPosition(a, &in.takeAt);
+		}
+	}
+	if (g_grapple.actor != 0) {
+		void* const a = reinterpret_cast<void*>(g_grapple.actor);
+		const NiPoint3 player = camPos;
+		in.heldReadable = game::ActorStanding(a) && game::ActorPosition(a, &in.heldAt) &&
+		                  (in.heldAt - player).LengthSquared() < 400.0f * 400.0f;
+	}
+	const game::GrappleVerdict v = game::StepGrapple(g_grapple, g, config.hands.shove, in);
+	void* const actor = reinterpret_cast<void*>(v.actor);
+	// A grip closed that held nobody: why, and where the nearest fighter's
+	// body stood from the hand - the hand script's sweep is tuned on it.
+	if (closing && !v.started && !v.refused && g.grabs && g_grappleLines > 0) {
+		--g_grappleLines;
+		float nearest = -1.0f;
+		UInt32 nearestActor = 0;
+		game::BodyPart nearestPart = game::BodyPart::Column;
+		for (UInt32 i = 0; i < g_grappleBodies.count; ++i) {
+			const game::BladeBodyCapsule& c = g_grappleBodies.cap[i];
+			const float gap = game::PointSegmentDistance(in.hand, c.a, c.b) - c.radius;
+			if (nearest < 0.0f || gap < nearest) {
+				nearest = gap;
+				nearestActor = c.actor;
+				nearestPart = c.part;
+			}
+		}
+		NiPoint3 theirs{0.0f, 0.0f, 0.0f};
+		const bool theirsKnown = nearestActor != 0 && game::ActorPosition(reinterpret_cast<void*>(nearestActor), &theirs);
+		const NiMatrix33 back = vr::Transposed(camRot);
+		const NiPoint3 theirOffset = theirsKnown ? back * (theirs - camPos) : NiPoint3{0.0f, 0.0f, 0.0f};
+		OBVR_LOG("Grapple: the left grip closed and held nobody - allowed %d (in place %d, on a handle %d, shield %d), "
+		         "hand tracked %d, %u capsules near; the nearest %.1f units off the hand (%08X's %s); the hand at "
+		         "%.0f %.0f %.0f from the camera, their feet at %.0f %.0f %.0f",
+		         in.allowed ? 1 : 0, inPlace ? 1 : 0, g_leftGripOnHandle ? 1 : 0, game::PlayerWearsShield() ? 1 : 0,
+		         in.handValid ? 1 : 0, g_grappleBodies.count, static_cast<double>(nearest), nearestActor,
+		         game::BodyPartName(nearestPart), static_cast<double>(g_hand.leftHandOffsetUnits.x),
+		         static_cast<double>(g_hand.leftHandOffsetUnits.y), static_cast<double>(g_hand.leftHandOffsetUnits.z),
+		         static_cast<double>(theirOffset.x), static_cast<double>(theirOffset.y),
+		         static_cast<double>(theirOffset.z));
+	}
+	if (v.refused) {
+		if (g_grappleLines > 0) {
+			--g_grappleLines;
+			OBVR_LOG("Grapple: the off hand's grip closed at %08X's %s, %.1f units off it - not fighting (or down), "
+			         "not held",
+			         v.actor, game::BodyPartName(v.part), static_cast<double>(in.take.gap));
+		}
+		return;
+	}
+	if (v.started) {
+		const bool stopsBlows = game::GrappleStopsBlows(v.part);
+		game::StaggerActor(actor);
+		game::HoldStill(v.actor);
+		game::SetHeldFoe(stopsBlows ? v.actor : 0);
+		const float fatigue = g.fatigue > 0.0f && g.fatigue < 1000.0f ? g.fatigue : 0.0f;
+		if (fatigue > 0.0f) {
+			game::SpendPlayerFatigue(fatigue);
+		}
+		g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(false, g_handRolesSwapped), 0.06f, 120.0f, 1.0f);
+		g_grappleStartAt = in.takeAt;
+		g_grappleDragged = 0.0f;
+		g_grappleLogSeconds = 0.0f;
+		if (g_grappleLines > 0) {
+			--g_grappleLines;
+			OBVR_LOG("Grapple: the off hand holds %08X by the %s (%.1f units off it) - staggered, its legs held, its "
+			         "blows %s; the player's fatigue -%.0f",
+			         v.actor, game::BodyPartName(v.part), static_cast<double>(in.take.gap),
+			         stopsBlows ? "stopped" : "free (held by the body, not the head, the neck or the weapon arm)",
+			         static_cast<double>(fatigue));
+		}
+		return;
+	}
+	if (v.actor == 0) {
+		return;
+	}
+	if (v.end == game::GrappleEnd::None) {
+		// Held: placed where the hand wants them, at most 2 m/s of the way
+		// (GrappleLogic.h; game::PlaceActorAt, SetPos's own sequence).
+		const float step = math::Sqrt(v.drag.LengthSquared());
+		if (step > 0.01f && game::PlaceActorAt(actor, in.heldAt + v.drag)) {
+			g_grappleDragged += step;
+		}
+		g_grappleLogSeconds += dt;
+		// Every second, at a mark, and five times a second through the
+		// first second (the drag's working, for the log).
+		const bool early = v.seconds < 1.0f && g_grappleLogSeconds >= 0.2f;
+		if ((g_grappleLogSeconds >= 1.0f || early || test::HandScriptMarkedThisFrame()) && g_grappleLines > 0) {
+			g_grappleLogSeconds = 0.0f;
+			--g_grappleLines;
+			const NiPoint3 off = in.heldAt - g_grappleStartAt;
+			OBVR_LOG("Grapple: holding %08X %.1f s - %.1f units from where the hand wants them, moved %.0f units by "
+			         "the hand so far, %.0f units across the ground from where it was taken",
+			         v.actor, static_cast<double>(v.seconds), static_cast<double>(v.gap),
+			         static_cast<double>(g_grappleDragged), static_cast<double>(math::Sqrt(off.x * off.x + off.y * off.y)));
+		}
+		return;
+	}
+	// Let go, thrown, broken free, lost or gone.
+	game::HoldStill(0);
+	game::SetHeldFoe(0);
+	bool thrown = false;
+	if (v.end == game::GrappleEnd::Thrown || v.end == game::GrappleEnd::ThrownDown) {
+		const NiPoint3 centre{in.heldAt.x, in.heldAt.y, in.heldAt.z + 60.0f};
+		const game::ShoveKind kind = v.end == game::GrappleEnd::ThrownDown ? game::ShoveKind::Hard : game::ShoveKind::Light;
+		thrown = game::ShoveActor(actor, kind, game::GrappleThrowFrom(centre, v.direction), centre, config.hands.shove,
+		                          false);
+		game::StartShoveCooldown(g_shoveCooldown, actor, config.hands.shove.cooldownSeconds);
+	}
+	if (g_grappleLines > 0) {
+		--g_grappleLines;
+		OBVR_LOG("Grapple: %08X %s - the hand at %.1f m/s across the ground, held %.1f s, moved %.0f units by the "
+		         "hand%s",
+		         v.actor, game::GrappleEndName(v.end), static_cast<double>(v.speed),
+		         static_cast<double>(v.seconds), static_cast<double>(g_grappleDragged),
+		         (v.end == game::GrappleEnd::Thrown || v.end == game::GrappleEnd::ThrownDown) && !thrown
+		             ? " (the throw refused by the shove)"
+		             : "");
 	}
 }
 
@@ -2309,6 +2497,7 @@ UInt32 g_reachLines = 60;
 void StepReachOpen(const Config& config, bool handsInWorld, bool menuIsUp) {
 	vr::ReachOpenSettings settings = config.hands.reachOpen;
 	settings.closeMetres = vr::ReachCloseMetresFor(settings.openMetres, settings.closeMetres);
+	settings.walkAwayMetres = vr::ReachWalkAwayMetresFor(settings.closeMetres, settings.walkAwayMetres);
 	const float perMetre = config.tracker.unitsPerMetre;
 	const bool cameraKnown = g_cyclopeanCameraWorldValid;
 
@@ -2349,11 +2538,18 @@ void StepReachOpen(const Config& config, bool handsInWorld, bool menuIsUp) {
 	}
 
 	// The nearest thing a free hand is at - only looked for while it could
-	// be opened.
+	// be opened: nothing open, or this one's menu up and a hand at another
+	// (the switch).
 	game::ReachTarget reached;
-	if (settings.enabled && f.active && !menuIsUp && g_reachOpen.phase == vr::ReachPhase::Idle && !f.moving) {
+	const bool couldOpen = g_reachOpen.phase == vr::ReachPhase::Idle && !menuIsUp;
+	const bool couldSwitch = g_reachOpen.phase == vr::ReachPhase::Open && f.containerOnTop;
+	if (settings.enabled && f.active && (couldOpen || couldSwitch) && !f.moving) {
 		reached = game::FindReachTarget(freeHands, settings.openMetres * perMetre, game::IsPlayerSneaking());
 	}
+	// Where the player stands, for the walk with the menu up.
+	NiPoint3 feet{0.0f, 0.0f, 0.0f};
+	f.feetValid = game::ReadPlayerFeet(feet);
+	f.feetMetres = feet * (1.0f / perMetre);
 	if (reached.ref != 0) {
 		f.candidate = reached.ref;
 		f.kind = reached.kind;
@@ -2371,6 +2567,20 @@ void StepReachOpen(const Config& config, bool handsInWorld, bool menuIsUp) {
 		f.targetGone = gone;
 		f.targetMetres = units / perMetre;
 		f.targetLocked = !gone && game::RefIsLocked(g_reachOpen.target);
+		// The player's own distance from it, across the ground: the feet
+		// lifted to the thing's height, measured to its shape as a hand is.
+		NiPoint3 centre{0.0f, 0.0f, 0.0f};
+		float radius = 0.0f;
+		if (f.targetKnown && f.feetValid && game::RefWorldBound(g_reachOpen.target, centre, radius)) {
+			game::ReachHands standing;
+			standing.position[0] = NiPoint3{feet.x, feet.y, centre.z};
+			standing.valid[0] = true;
+			float feetUnits = 0.0f;
+			bool feetGone = false;
+			if (game::ReachDistanceTo(g_reachOpen.target, standing, feetUnits, feetGone)) {
+				f.targetFeetMetres = feetUnits / perMetre;
+			}
+		}
 	}
 
 	// A hand script's mark: what the reach sees, opened or not - the nearest
@@ -2378,10 +2588,13 @@ void StepReachOpen(const Config& config, bool handsInWorld, bool menuIsUp) {
 	if (test::HandScriptMarkedThisFrame()) {
 		const game::ReachTarget around =
 			cameraKnown ? game::FindReachTarget(tracked, 2.0f * perMetre, true) : game::ReachTarget{};
-		OBVR_LOG("Reach: state - %s, phase %u target %08X; free hands right %d left %d (weapon readied %d, grips "
+		OBVR_LOG("Reach: state - %s, phase %u target %08X (the hand %.2f m off it, the feet %.2f m, walked %d, "
+		         "walking under its menu %d); free hands right %d left %d (weapon readied %d, grips "
 		         "%d/%d, fists %d/%d, holding %d, moving %d, hands in the world %d, camera %d); nearest within 2 m "
 		         "%08X a %s %.2f m off the %s hand",
 		         settings.enabled ? "on" : "off", static_cast<unsigned>(g_reachOpen.phase), g_reachOpen.target,
+		         static_cast<double>(f.targetMetres), static_cast<double>(f.targetFeetMetres),
+		         g_reachOpen.walked ? 1 : 0, g_hand.walkingUnderMenu ? 1 : 0,
 		         freeHands.valid[0] ? 1 : 0, freeHands.valid[1] ? 1 : 0,
 		         game::ReadPlayerWeaponState() == game::WeaponState::Drawn ? 1 : 0, g_hand.rightGripDown ? 1 : 0,
 		         g_hand.leftGripDown ? 1 : 0, g_rightBodyFist ? 1 : 0, g_leftBodyFist ? 1 : 0,
@@ -2416,13 +2629,13 @@ void StepReachOpen(const Config& config, bool handsInWorld, bool menuIsUp) {
 	}
 	if (v.event != nullptr && g_reachLines > 0) {
 		--g_reachLines;
-		OBVR_LOG("Reach: %08X %s (%s, the %s hand %.2f m off, the target %.2f m off%s%s; top menu 0x%03X) - phase "
-		         "%u -> %u",
+		OBVR_LOG("Reach: %08X %s (%s, the %s hand %.2f m off, the target %.2f m off the hand and %.2f m off the "
+		         "feet%s%s; top menu 0x%03X) - phase %u -> %u",
 		         v.ref != 0 ? v.ref : heldBefore != 0 ? heldBefore : reached.ref, v.event,
 		         vr::ReachKindName(reached.ref != 0 ? reached.kind : f.kind), reached.left ? "left" : "right",
 		         static_cast<double>(f.candidateMetres), static_cast<double>(f.targetMetres),
-		         f.targetLocked ? ", locked" : "", f.targetGone ? ", gone" : "", top, static_cast<unsigned>(was),
-		         static_cast<unsigned>(g_reachOpen.phase));
+		         static_cast<double>(f.targetFeetMetres), f.targetLocked ? ", locked" : "",
+		         f.targetGone ? ", gone" : "", top, static_cast<unsigned>(was), static_cast<unsigned>(g_reachOpen.phase));
 	}
 }
 
@@ -2455,6 +2668,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// Fighters come within reach of a blade held in VR (game/CombatReach.h);
 	// the game's own reach back with the mode off.
 	game::StepCombatReach(active, config.hands.combatReach);
+	// Fighters near the player walk (game/SlowApproach.h).
+	game::StepSlowApproach(active && config.hands.slowApproach,
+	                       game::SlowApproachUnits(config.hands.slowApproachMetres, config.tracker.unitsPerMetre), dt,
+	                       test::HandScriptMarkedThisFrame());
 	if (!active && !menusOnly) {
 		if (test::HandScriptMarkedThisFrame()) {
 			OBVR_LOG("HandScript: state - the hand mode is not running (Hands.Enabled %d, "
@@ -2465,6 +2682,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			game::ReleaseHandControls(config.handKeys);
 			g_handControlsHeld = false;
 		}
+		game::SetPlayerWalksUnderMenu(false);
 		g_hudLayer.ClearWristPlacement();
 		game::HideFirstPersonNodes(false, "");
 		game::RestoreHandBoneScales();
@@ -2480,6 +2698,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_bladeThrough = false;
 		g_bladeOutValid = false;
 		game::ForgetBladeBodies();
+		EndGrapple();
 		game::ForgetParries();
 		g_hand = vr::HandModeResult{};
 		g_reachIconShown = false;
@@ -2576,6 +2795,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.dtSeconds = dt;
 	frame.menuMode = menuIsUp;
 	frame.restMenuUp = menuIsUp && game::TopVisibleMenu() == game::kMenuIdSleepWait;
+	// A container's menu the reach opened (StepReachOpen): the sticks walk
+	// and turn the player under it.
+	frame.walkUnderMenu = active && menuIsUp && g_reachOpen.phase == vr::ReachPhase::Open &&
+	                      game::TopVisibleMenu() == game::kMenuIdContainer;
 	frame.settingsMenuOpen = g_settingsMenu.IsOpen() || g_onboarding.IsOpen();
 	frame.firstPerson = !ReadIsThirdPerson();
 	frame.meleeHeld = active && game::MeleeInHand(nullptr);
@@ -2809,6 +3032,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	UpdateInsult(config, frame, active && !menuIsUp && frame.inWorld && !frame.settingsMenuOpen, dt);
 	UpdateYield(config, frame, active && !menuIsUp && frame.inWorld && !frame.settingsMenuOpen, dt);
 	g_hand = g_handMode.Update(frame, config.hands);
+	// The player's own controls run under the container's menu while the
+	// sticks move the player (game/MenuPause.h); the laser's cursor and
+	// click wait meanwhile.
+	game::SetPlayerWalksUnderMenu(active && g_hand.walkingUnderMenu);
 	// The yield's keys (vr/Yield.h): block held over its frames, activate
 	// down for the last of them, the pick on the enemy meanwhile.
 	if (g_yieldFramesLeft > 0) {
@@ -3195,7 +3422,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// The grab by reach (vr::StepGrabReach): the grip arms it, the pick runs
 	// through the hand, and the key goes down once what it found is within
 	// reach of that hand - measured from the camera the hands are pinned to.
-	const bool gripHeld = active && !menuIsUp && g_hand.grabWanted;
+	// Not while the off hand holds a fighter (StepGrapple): that grip is
+	// theirs.
+	const bool gripHeld =
+		active && !menuIsUp && g_hand.grabWanted && !(g_grapple.actor != 0 && g_hand.grabWithLeftHand);
 	bool inReach = false;
 	UInt32 reachRef = 0;
 	if (gripHeld && g_grabReachPick && g_cyclopeanCameraWorldValid) {
@@ -3948,6 +4178,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			StepShoves(config, g_deltaSeconds);
 		}
 		StepLeads(config, inPlace);
+		StepGrapple(config, inPlace, g_deltaSeconds);
 	}
 
 	// Opening by reaching: a free hand at a chest, a body or a pocket opens
@@ -4172,7 +4403,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 		game::ApplyHandControls(controls, config.handKeys, config.hands.turnSpeed);
 		g_handControlsHeld = true;
-		if ((g_hand.laserHit || g_hand.pokeHover) &&
+		// Not while the sticks walk the player under a reached container's
+		// menu: the player's input runs then and would take the cursor's
+		// steps as a turn of the body.
+		if ((g_hand.laserHit || g_hand.pokeHover) && !g_hand.walkingUnderMenu &&
 		    (g_hand.cursorDx != 0 || g_hand.cursorDy != 0)) {
 			game::MoveMouseBy(g_hand.cursorDx, g_hand.cursorDy);
 			// Whether the steps arrive: the engine's cursor read the same
@@ -9397,7 +9631,8 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		const bool walking = walk.forward || walk.back || walk.left || walk.right;
 		if (readPlayer &&
 		    vr::WalkSteerWanted(config.fullVrMode, g_headTracker.IsHeadsetConnected(), !isThirdPerson,
-		                        game::IsMenuMode(), walking, aimTurnsBody || g_aimYawPending)) {
+		                        game::IsMenuMode() && !g_hand.walkingUnderMenu, walking,
+		                        aimTurnsBody || g_aimYawPending)) {
 			vr::WalkYaws yaws;
 			Heading headTurn{};
 			yaws.headValid = HeadingOf(g_headTracker.GetCameraRotation(), headTurn);
@@ -9963,6 +10198,7 @@ bool Install() {
 	game::InstallHitShader();
 	game::InstallBlockCone();
 	game::InstallParry();
+	game::InstallSlowApproach();
 	game::InstallPlayerLookAt();
 	game::InstallWorldPickHook();
 	// The controllers' way into a game behind another window; logs its own

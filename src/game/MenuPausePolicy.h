@@ -71,6 +71,20 @@ inline bool WorldPausesForMenu(bool menuMode, bool unpausedMenus, UInt32 topMenu
 	return !MenuKeepsWorldRunning(topMenuId);
 }
 
+// Whether the player's own controls run under the menu on top (the update
+// step's site kPlayerControlsIsMenuModeSite answers "no menu"): only while
+// the sticks walk the player (`walkWanted`, from the hand mode) and the
+// menu on top is a container's - the one the reach opens (vr/ReachOpen.h;
+// the tester, 2026-10-09: "es muss möglich sein weiterhin sich normal zu
+// bewegen mit stick links bei den neuen offenen menüs"). Outside menu mode
+// the controls run as they do.
+inline bool PlayerControlsRunUnderMenu(bool menuMode, bool walkWanted, UInt32 topMenuId) {
+	if (!menuMode) {
+		return true;
+	}
+	return walkWanted && topMenuId == kMenuIdContainer;
+}
+
 // GetTopVisibleMenuID can briefly return none while the F1-F4 stack remains
 // open. Keep the last observed menu for that one menu-mode episode so the
 // seven subsystem checks cannot alternate between running and paused answers.

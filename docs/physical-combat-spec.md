@@ -472,3 +472,42 @@ Bringing Strength into the lag is a design choice, not a port.
 - Each needs its own INI switch (default to be decided) and pure, tested
   factors next to `WeaponLagFor` in vr/WeaponWeight.h; the log line per
   draw would carry the factors.
+
+## 8. The off hand: strikes and grabs (built 2026-10-09/10, headset open)
+
+The tester (2026-10-09): "man kann mit der off hand gegner packen oder
+hauen wie in blade & sorcery" - and, asked whether to note it for later,
+"ne starte jetzt". B&S lets the free hand punch and grab an enemy by a
+limb or the neck (held, they stop fighting; thrown by the hand's speed).
+
+Built as game/GrappleLogic.h (pure, grapple_test) on what section 6 and
+weapon-collision-spec sections 10-12 already had - the capsules on the
+fighters' bones (now each a named part), the shove's blow, the movement
+setters, the parry's forced block:
+
+- **The strike**: with a blade or a blunt weapon drawn, the off hand -
+  grip loose, not on a two-hander's handle - driven at the shove's speeds
+  into someone staggers and pushes them or knocks them down; a fist is a
+  punch (the hand-to-hand hit sound, never a slap). `[Hands]
+  OffHandStrikes`.
+- **The grab**: the grip closed within 6 units of a fighter's capsule holds
+  them by that part: staggered, their legs held (no step, no run), dragged
+  by the hand - placed where it wants them each frame, SetPos's way, at up
+  to 2 m/s; the character proxy's knockback did not move them - and, held by
+  the head, the neck or the weapon arm - their blows at the player blocked
+  whole. Let go fast they are thrown as a shove throws (staggered or
+  knocked down along the hand); they break free after `GrabHoldSeconds`
+  (4); a hand 40 units from where it wants them loses them. `[Hands]
+  OffHandGrabs`, `GrabFatigue` (15).
+- Decisions taken without the tester: only fighters can be grabbed (the
+  lead by the hand keeps everyone else); the weapon arm is the right one
+  (Oblivion's actors draw in the right hand); a shield on the player's
+  left arm, or a two-hander's handle in the left grip, makes the off hand
+  not free.
+- Hand script `grapple.txt` PASS 2026-10-10 (controls-spec 4.34 has the
+  numbers and what the first runs taught).
+- Open: the headset (the drag's feel, the hold's length, the throw), creatures (their capsules are the
+  bound's column; a wolf held by "the column" stops its blows not at all),
+  and a held one's own hands - a bandit held by the torso still swings.
+
+Controls-spec 4.34 has the controls and the log lines.

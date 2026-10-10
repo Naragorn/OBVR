@@ -1,0 +1,89 @@
+# Walking with a reached menu open, and switching between containers
+# (vr/ReachOpen.h; [Hands] ReachOpens, ReachWalkAwayMetres; the tester,
+# 2026-10-09: "es muss möglich sein weiterhin sich normal zu bewegen mit
+# stick links bei den neuen offenen menüs, wenn ich zu weit weg gehe
+# schließt es sich automatisch. und ich kann zwischen container und deren
+# menüs wechseln ... indem ich meine hand dem jeweiligen container
+# annähere"). An empty chest (000086C4) is placed at the player's feet
+# (PlaceAtMe lands it there, see reach-open.txt), the player walks a metre
+# on and a second one is placed at the new feet. The right hand comes down
+# onto the second chest: its menu opens. With it up the left stick walks
+# the player back the metre - the player's controls run under the menu
+# (the gate at 0040DC61) and the menu stays, the feet move - and the hand
+# comes down onto the first chest: the switch closes the second's menu and
+# opens the first's. Then the player walks on past ReachWalkAwayMetres: the
+# menu closes by itself. The console takes its line for some seconds after
+# a mark and eats the stick's keys meanwhile, so the walks wait 8 s.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\reach-walk.txt
+
+ini Hands Enabled=1
+ini Hands ReachOpens=1
+ini Hands ReachWalkAwayMetres=1.5
+ini Hands WalkDirection=head
+ini Look ContainerInWorld=1
+console-at ready player.placeatme 000086C4 1 60 0
+console-at placed2 player.placeatme 000086C4 1 60 0
+
+expect HandScript: finished
+expect reached - activated
+expect its menu opened
+expect Menu pause: the player's controls run - the sticks walk
+expect the player walks with it open
+expect a hand at another - closed for it
+expect the other one reached - activated
+expect walked away - closed
+reject HandScript: WARNING
+reject Reach: the close-all-menus function
+
+wait 10
+mark ready
+wait 8
+left stick 0 1
+wait 0.7
+left stick 0 0
+wait 1
+mark placed2
+wait 8
+head pitch -45
+right pos 0.05 -0.40 -0.40
+wait 1
+mark above
+right pos 0.05 -1.30 -0.05
+wait 0.5
+right pos 0.05 -1.45 -0.05
+wait 0.5
+right pos 0.05 -1.58 -0.05
+wait 0.5
+right pos 0.05 -1.68 -0.05
+wait 0.5
+right pos 0.05 -1.76 -0.05
+wait 2
+mark opened
+left stick 0 -1
+wait 0.25
+right pos 0.30 -0.60 -0.30
+wait 0.2
+mark walking
+wait 0.3
+left stick 0 0
+wait 1
+mark walkedback
+right pos 0.05 -1.30 -0.05
+wait 0.5
+right pos 0.05 -1.45 -0.05
+wait 0.5
+right pos 0.05 -1.58 -0.05
+wait 0.5
+right pos 0.05 -1.68 -0.05
+wait 0.5
+right pos 0.05 -1.76 -0.05
+wait 2
+mark switched
+left stick 0 -1
+wait 0.25
+right pos 0.30 -0.60 -0.30
+wait 1.4
+left stick 0 0
+wait 1
+mark away
+wait 1

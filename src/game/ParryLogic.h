@@ -230,4 +230,33 @@ inline float ParryFatigueCost(float setting) {
 	return setting > 0.0f && setting < 1000.0f ? setting : 0.0f;
 }
 
+// Someone the player's off hand holds by the head, the neck or the weapon
+// arm (GrappleLogic.h, GrappleStopsBlows): their blows do not land - the
+// same forced block and cone as a parry, with or without a weapon drawn or
+// the parries on, and all of the blow stopped whatever ParryStopsAll says.
+// Held, nothing is owed in fatigue for it either: the grab paid.
+struct BlowStop {
+	bool parried = false;  // within a parry's window (the parry on)
+	bool held = false;     // held by a part that stops their blows
+};
+
+inline BlowStop BlowStopFor(bool parriesOn, bool attackerParried, UInt32 heldFoe, UInt32 attacker) {
+	BlowStop s;
+	s.held = heldFoe != 0 && attacker == heldFoe;
+	s.parried = !s.held && parriesOn && attackerParried;
+	return s;
+}
+
+// Whether anything stops a blow at the player this time: a parry in its
+// window, or someone held.
+inline bool AnyBlowStopped(bool parriesOn, UInt32 parriedCount, UInt32 heldFoe) {
+	return (parriesOn && parriedCount > 0) || heldFoe != 0;
+}
+
+// The share blocked of a blow that was stopped: a held one's all of it, a
+// parried one's by ParriedShare.
+inline float StoppedShare(const BlowStop& s, bool stopsAll, float engineShare) {
+	return s.held ? 1.0f : ParriedShare(s.parried, stopsAll, engineShare);
+}
+
 }  // namespace obvr::game

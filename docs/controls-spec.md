@@ -2088,3 +2088,127 @@ fast swing passes, and the measuring; bodies, parries and shields follow.
   someone": the blade never entered the capsules, so no hit-stop. The
   strike's sphere is far wider than the body; taking the hit from the
   capsules is the open step that would make the two agree.
+
+### 4.33 Fighters walk near you (built 2026-10-09, harness PASS)
+
+The tester: "baue es dass gegner zwar wie vanilla zum player rennen
+dürfen, aber sobald sie im umkreis von 10 metern sind dürfen sie nur noch
+langsam gehen, so wie in blade & sorcery. (neue settings, default an)
+kämpfe in vr müssen entschleunigt werden."
+
+- `[Hands] SlowApproach=1` ("Enemies walk near you"), `SlowApproachMetres`
+  (10; "Walk within (m)", 2-50).
+- **How** (game/SlowApproach.h): an actor's movement flags (HighProcess
+  +0x1FC; xOBSE: Walk 0x100, Run 0x200) are set by the AI through two of
+  HighProcess's own virtuals, read in the binary - vtable +0x2C4
+  (0x00A71AD8 -> 0x00631B90, SetMovementFlag(flag, on)) and +0x2C8
+  (0x00A71ADC -> 0x00631B50, SetMovementFlags(flags)). Both entries are
+  rerouted; for an actor in combat (Actor vtable +0x334) within the radius
+  of the player a run asked for becomes a walk - the game's own walking
+  legs and walking speed - and a flag already set is turned once a frame.
+  A metre of slack on the way out, so one at the edge does not flicker.
+  Beyond it, and for everyone not fighting, nothing changes; the player is
+  never touched.
+- Log: "Slow approach: <actor> is near - walks - ... moving N units/s",
+  "... is no longer near - runs as it will"; a state line at a hand
+  script's mark with the flags and the speed seen.
+- Tests: `slow_approach_test` (the flag turn, who walks and the slack, the
+  speed seen, the radius). Hand script `slow-approach.txt`: PASS 2026-10-09
+  with the radius at 2 m (the scripted player only walks, so the bandit
+  never fell past 11 m in the first run): the bandit walked within it
+  (flags 0101, "moving 58-104 units/s"), ran again past 3 m ("0201 (run 1),
+  moving 357 units/s"), and walked again when near.
+- The tester's round of f76558f: "parade geht, wände geht, npcs geht";
+  "gegner kommen jetzt sehr nah ran, die wollen einen wrestlen" - that is
+  `CombatReach` 85 (4.32: they strike from 1.3 m instead of 2 m so a parry
+  can reach their blade), and now they walk the last metres; "Combat reach
+  (units)" is the knob (100 is 1.4 m, 0 the game's own 2 m).
+
+### 4.34 The off hand strikes and grabs, as in Blade & Sorcery (built 2026-10-09/10, headset open)
+
+The tester: "man kann mit der off hand gegner packen oder hauen wie in
+blade & sorcery" - "ne starte jetzt". game/GrappleLogic.h (grapple_test),
+the off hand being the one without the weapon (the left; the right for a
+left-handed player, the roles swapped before anything here sees them).
+
+- **The strike** (`[Hands] OffHandStrikes=1`, "Off hand strikes"): with a
+  blade or a blunt weapon drawn the off hand, its grip loose and not on a
+  two-hander's handle, driven fast into someone is the shove's blow
+  (4.12): from ShoveSpeed they stagger and are pushed, from ShoveHardSpeed
+  knocked down - a fist (a punch: the hand-to-hand hit WPNHitHandX
+  0000C3CA, a pulse, never a slap) or an open hand alike. With the weapons
+  away the hands are the shove's and the fists' already, so nothing there
+  changes. Logged "Shove: the left hand at n m/s towards <ref> - light
+  (the off hand's punch, a weapon drawn)".
+- **The grab** (`OffHandGrabs=1`, "Off hand grabs fighters";
+  `GrabHoldSeconds` 4, "Held for (s)"; `GrabFatigue` 15): the off hand's
+  grip closed within 6 units of one of the capsules on a fighter's bones
+  (4.32's capsules, each now named: head, neck, torso, arms, legs) holds
+  them: they stagger, their legs are held still (the same two movement
+  setters as 4.33: no step, no run, the turn kept), the hand drags them
+  across the ground (placed where it wants them each frame, SetPos's own
+  way, at most 2 m/s - the character proxy's knockback did not move them,
+  harness 2026-10-10), and held by the head, the neck or the weapon arm (the
+  right) their blows at the player do not land - the parry's forced block
+  and cone (4.32), all of the blow, nothing owed for a parry. Let go with
+  the hand moving at ShoveSpeed they are thrown - staggered and pushed
+  along it; at ShoveHardSpeed knocked down along it. They break free after
+  GrabHoldSeconds; a hand dragged 40 units from where it wants them (they
+  are stuck) loses them; dead, knocked down, out of reach or the mode off
+  ends it. The grip on someone not fighting is refused (leading by the
+  hand, 4.12's neighbour, keeps those) and said once. The grab by reach
+  (the Z key) is kept off that grip while someone is held.
+- Hand script `grapple.txt`: PASS 2026-10-10 on the fifth run (docs/hand-script-harness.md):
+  held by the torso, the legs held, kept within 0.3-12 units of the hand
+  for 0.8 s against the stagger and the AI, thrown down at the open. The
+  first runs taught two things: the bandit stands to the scripted player's
+  left and behind (the grid was ahead), and the character proxy's knockback
+  does not move a held actor (a frame's push: nothing; re-issued over 0.3 s:
+  a few units while the stagger carried them off) - so the drag places them
+  (game::PlaceActorAt). Not seen in the headset. What to watch: how the
+  drag feels (a placed actor, not a pushed one), whether a held bandit
+  still swings (held by the torso or a leg they do), and the punch.
+
+### 4.35 Walking with a reached menu open, and switching containers (built 2026-10-10)
+
+The tester: "es muss möglich sein weiterhin sich normal zu bewegen mit
+stick links bei den neuen offenen menüs, wenn ich zu weit weg gehe
+schließt es sich automatisch. und ich kann zwischen container und deren
+menüs wechseln ohne probleme indem ich meine hand dem jeweiligen container
+annähere" - with Loot Menu (Nexus 48027, a Fallout-4-style container panel
+with no menu mode at all) as the picture.
+
+- **The engine's gate.** The update step asks IsMenuMode once more at
+  0x0040DC61 to choose between the player's own update (vtable +0x228, its
+  input and walk in it) and a short menu-mode one (0x0065E900, which only
+  stops an animation group) - the site deliberately left alone by the
+  unpaused menus (GameAddresses.h). It is now redirected the first time it
+  is wanted (`game::SetPlayerWalksUnderMenu`) and answers "no menu" only
+  while the sticks move the player under a container's menu the reach
+  opened (`PlayerControlsRunUnderMenu`, menu_pause_policy_test; logged
+  "Menu pause: the player's controls run - the sticks walk under menu
+  Container"). In those frames the laser's cursor steps and the click are
+  held back - the player's input would take them as a turn and an attack
+  (`PlanHandControls` with `walkUnderMenu`, hand_mode_test; the left
+  stick walks and runs, the right turns, the right stick alone keeps the
+  wheel). The walk-direction steer runs under it too.
+- **Closing** (vr/ReachOpen.h, reach_open_test): once the player has
+  walked with the menu up - the stick, or the feet 35 cm from where they
+  stood at the open - the hand's leaving no longer closes it ("the player
+  walks with it open - now only walking away closes it"); the player's own
+  distance from the container does, `[Hands] ReachWalkAwayMetres` (1.5;
+  "Walk away to close (m)"), measured from the feet lifted to the thing's
+  height to its shape. Before any walk the hand away closes it as before
+  ("hand weg -> menü weg", 4.31).
+- **Switching**: a free hand within ReachOpenMetres of another container
+  while one's menu is up closes it for the other (phase Switching) and
+  activates the other once the menu is down ("a hand at another - closed
+  for it", "the other one reached - activated"); if the menu never closes
+  (30 frames) it is left to the player.
+- Hand script `reach-walk.txt`: two chests a metre apart (the second placed
+  after a walk), the second opened by reaching, the player walking back
+  with it open, the hand onto the first (the switch), then walking off (the
+  walk-away close). docs/hand-script-harness.md has its result.
+- Open: the tester's two notes of 2026-10-09 for the reached menus - the
+  hand not to vanish while the panel is up, and the panel touch-sensitive
+  (docs/container-touch-spec.md section 6).

@@ -31,9 +31,23 @@ bool VerifyShoveAddresses();
 
 // Shoves `actor` (from LivingActorAt): the stagger or the knockback away
 // from `fromWorld`, the fatigue, the disposition. False when refused (not
-// verified, no process, already down).
+// verified, no process, already down). `punch`: a fist (the off hand's
+// strike, GrappleLogic.h) - never a slap in the face.
 bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const NiPoint3& centre,
-                const ShoveSettings& settings, bool byHand = true);
+                const ShoveSettings& settings, bool byHand = true, bool punch = false);
+
+// The stagger alone (the one a heavy hit starts; it guards itself). False
+// when the shove's functions are not the ones read.
+bool StaggerActor(void* actor);
+
+// Moves `actor` by `distance` (game units) over `seconds` through its
+// character proxy - the hit's knockback, as the light shove pushes - with
+// its collision. False when not verified or no proxy.
+bool PushActorBy(void* actor, const NiPoint3& distance, float seconds);
+
+// A living Character or Creature in a high process, not knocked down:
+// someone a hand can hold.
+bool ActorStanding(void* actor);
 
 // Put it in its Place - Enhanced Grabbing's load index when it is loaded
 // (its slap noise and its slapped idle token found in the game's form table

@@ -767,6 +767,29 @@ inline constexpr UInt32 kUpdateStepIsMenuModeSites[] = {
 	0x00663176,  // scripts, in the script runner rather than the update step
 };
 
+// The one that gates the player's controls, read in the disassembly
+// (2026-10-10):
+//
+//   0040DC61  E8 FA B2 16 00       call 00578F60          ; IsMenuMode
+//   0040DC66  84 C0                test al,al
+//   0040DC68  8B 0D C4 33 B3 00    mov  ecx,[00B333C4]    ; the player
+//   0040DC6E  74 0A                je   0040DC7A
+//   0040DC70  E8 8B 0C 25 00       call 0065E900          ; in a menu: a short one that
+//   0040DC75  E9 D9 00 00 00       jmp  0040DD53          ;   only stops an animation group
+//   0040DC7A  8B 11                mov  edx,[ecx]
+//   0040DC7C  8B 82 54 01 00 00    mov  eax,[edx+154]     ; else: the player's 3D ...
+//   0040DC82  FF D0                call eax
+//   ...
+//   0040DC96  8B 82 28 02 00 00    mov  eax,[edx+228]     ; ... and its update with the
+//   0040DC9C  51 D9 1C 24 FF D0    push; fstp [esp]; call ;   frame time: its input, its walk
+//
+// So "no menu" there runs the player's own update, input and all. OBVR
+// answers "no menu" at this one site only while the sticks walk the player
+// under a container's menu opened by reaching (game/MenuPause.h,
+// SetPlayerWalksUnderMenu), and sends no click or cursor step in those
+// frames, which the player's input would take as an attack and a turn.
+inline constexpr UInt32 kPlayerControlsIsMenuModeSite = 0x0040DC61;
+
 // InterfaceManager::GetTopVisibleMenuID - the id at the top of the active
 // menu stack, or 0 with none. xOBSE names it (GameAPI.cpp, ThisStdCall on
 // 0x0057CF60) and NorthernUI has the same address as GetTopmostMenuID; the
