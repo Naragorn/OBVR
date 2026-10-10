@@ -1932,7 +1932,7 @@ on a landed hit. This is phases 1 to 3 of that spec - walls, the clutter a
 fast swing passes, and the measuring; bodies, parries and shields follow.
 
 - `[Hands] WeaponStopsAtWalls=1` (settings "Weapon stops at walls"),
-  `WeaponLetGoMetres` (0.30; "Weapon lets go at (m)"), `WeaponLetGoDegrees`
+  `WeaponLetGoMetres` (0.60, 0.30 until 2026-10-10 - the tester: "das waffen stoppen bei 0,3 ist generell zu früh"; "Weapon lets go at (m)"), `WeaponLetGoDegrees`
   (45, INI only); `game::BladeContactSettingsFor` holds them to 0.05-2 m
   and 5-180 degrees.
 - **The step** (`game::StepBladeContact`, game/BladeContactLogic.h): the

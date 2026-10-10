@@ -352,6 +352,9 @@ void TestLetGo() {
 	BoxWorld w;
 	AddWallAhead(w);
 	BladeContactSettings set;
+	// The cap these flows were laid out at: 0.30 m, 21 units (the default is
+	// 0.60 m since 2026-10-10; its own flows are further down).
+	set.letGoUnits = 21.0f;
 	BladeContactState s;
 	StepBladeContact(s, set, FrameFor(At(0, -20, 0)), w);
 	BladeContactVerdict v = StepBladeContact(s, set, FrameFor(At(0, 20, 0)), w);
@@ -373,6 +376,16 @@ void TestLetGo() {
 	v = StepBladeContact(o, set, FrameFor(At(0, -18, 0)), door);
 	Check(v.event == BladeContactEvent::LetGo && v.through,
 	      "a door swung across the blade where it was and where it goes: nowhere to hold it, let go");
+
+	// At the default cap, 0.60 m (42 units; the tester, 2026-10-10: 0.30
+	// "ist generell zu früh"), the same push still holds.
+	const BladeContactSettings defaults;
+	BladeContactState d;
+	StepBladeContact(d, defaults, FrameFor(At(0, -20, 0)), w);
+	v = StepBladeContact(d, defaults, FrameFor(At(0, 20, 0)), w);
+	Check(v.held && !v.through && v.event != BladeContactEvent::LetGo, "the default 0.60 m: 31 units past, still held");
+	v = StepBladeContact(d, defaults, FrameFor(At(0, 35, 0)), w);
+	Check(v.event == BladeContactEvent::LetGo && v.through, "46 units past: let go");
 
 	set.letGoUnits = 5.0f;
 	BladeContactState n;
@@ -588,6 +601,7 @@ void TestLiving() {
 	std::printf("The step: the living\n");
 	BoxWorld none;
 	BladeContactSettings set;
+	set.letGoUnits = 21.0f;  // the cap these flows were laid out at (0.30 m)
 	const BladeBodies person = PersonAhead();
 	BladeContactState s;
 	StepBladeContact(s, set, LivingFrame(At(0, -30, 0), &person, false), none);
@@ -692,7 +706,10 @@ void TestSettings() {
 	s = BladeContactSettingsFor(false, 0.30f, 45.0f, 70.0f);
 	Check(!s.enabled, "off stays off");
 	s = BladeContactSettingsFor(true, kNaN, kNaN, 70.0f);
-	Check(Near(s.letGoUnits, 21.0f) && Near(s.letGoRadians, kPi / 4.0f), "not numbers: the defaults");
+	Check(Near(s.letGoUnits, 42.0f) && Near(s.letGoRadians, kPi / 4.0f), "not numbers: the defaults, 0.60 m and 45 degrees");
+	Check(Near(BladeContactSettings{}.letGoUnits, 42.0f), "the plain default: 0.60 m, 42 units");
+	s = BladeContactSettingsFor(true, 0.60f, 45.0f, 70.0f);
+	Check(Near(s.letGoUnits, 42.0f), "0.60 m: 42 units");
 	s = BladeContactSettingsFor(true, 0.0f, 1.0f, 70.0f);
 	Check(Near(s.letGoUnits, 3.5f) && Near(s.letGoRadians, 5.0f * kPi / 180.0f), "too small: 0.05 m and 5 degrees");
 	s = BladeContactSettingsFor(true, 9.0f, 400.0f, 70.0f);

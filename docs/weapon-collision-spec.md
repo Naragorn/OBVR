@@ -342,7 +342,7 @@ hinter einem feature flag"):
 - `[Hands] WeaponStopsAtWalls` (A, and B's kick with it), default 1.
 - `WeaponStopsAtBodies` (C), default 1.
 - `WeaponParries` (E, F), default 1 once measured.
-- `ParryStopsAll` (decision 3: on), `WeaponLetGoMetres` (0.30),
+- `ParryStopsAll` (decision 3: on), `WeaponLetGoMetres` (0.30; 0.60 since 2026-10-10, the tester: "bei 0,3 ist generell zu früh"),
   `WeaponLetGoDegrees` (45), `ContactHaptics` (strength, 0 off).
 
 ## 6. Phases and acceptance

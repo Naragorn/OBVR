@@ -772,7 +772,7 @@ inline BladePose SlideTarget(const BladePose& at, const BladePose& wanted, const
 
 struct BladeContactSettings {
 	bool enabled = true;          // [Hands] WeaponStopsAtWalls
-	float letGoUnits = 21.0f;     // WeaponLetGoMetres, in game units (0.30 m)
+	float letGoUnits = 42.0f;     // WeaponLetGoMetres, in game units (0.60 m; 0.30 until 2026-10-10)
 	float letGoRadians = 0.7853982f;  // WeaponLetGoDegrees (45)
 };
 
@@ -784,7 +784,7 @@ inline BladeContactSettings BladeContactSettingsFor(bool enabled, float letGoMet
                                                     float unitsPerMetre) {
 	BladeContactSettings s;
 	s.enabled = enabled;
-	float metres = letGoMetres == letGoMetres ? letGoMetres : 0.30f;
+	float metres = letGoMetres == letGoMetres ? letGoMetres : 0.60f;
 	metres = metres < 0.05f ? 0.05f : (metres > 2.0f ? 2.0f : metres);
 	float degrees = letGoDegrees == letGoDegrees ? letGoDegrees : 45.0f;
 	degrees = degrees < 5.0f ? 5.0f : (degrees > 180.0f ? 180.0f : degrees);

@@ -10,13 +10,16 @@
 # behind the player, once standing, twice lying), the blade comes to rest on
 # them and, turned on 45 degrees, goes into them; then the same two circles
 # fast, swings - it goes into them, they are passed, the hit-stop runs. The
-# "Contact: people" lines give their capsules.
+# "Contact: people" lines give their capsules. WeaponLetGoMetres is held at
+# the 0.30 the scenario was made with (the default is 0.60 since
+# 2026-10-10): the circles press the blade about 21 units into them.
 # Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\blade-body.txt
 
 ini Hands Enabled=1
 ini Hands Holsters=1
 ini Hands WeaponStopsAtWalls=1
 ini Hands WeaponStopsAtBodies=1
+ini Hands WeaponLetGoMetres=0.30
 ini Hands WeaponHitStop=1
 ini Hands PushPeople=0
 console-at ready player.placeatme 0001C45B 1 120 0

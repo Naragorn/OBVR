@@ -312,7 +312,7 @@ struct HandSettings {
 	// WeaponStopsAtWalls, WeaponLetGoMetres, WeaponLetGoDegrees;
 	// game/BladeContactLogic.h).
 	bool weaponStopsAtWalls = true;
-	float weaponLetGoMetres = 0.30f;
+	float weaponLetGoMetres = 0.60f;  // the tester, 2026-10-10: 0.30 "ist generell zu früh"
 	float weaponLetGoDegrees = 45.0f;
 	// The living as well: held there slowly the blade rests on a person, a
 	// swing goes into them and through ([Hands] WeaponStopsAtBodies); and the
