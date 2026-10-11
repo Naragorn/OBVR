@@ -154,23 +154,44 @@ struct Config {
 	// [Body]: the player's own body shown in first person - the third-person
 	// skeleton unhidden and stood under the headset, its head and the
 	// animated arms collapsed for the draw (PlayerBody.cpp, after Enhanced
-	// Camera). The first-person arms and weapon stay. Built 2026-09-07 and
-	// not yet seen in a headset; Visible=0 is the way out.
+	// Camera). The first-person arms and weapon stay. Built 2026-09-07; the
+	// body IK on top of it 2026-10-11 (BodyIk.h). Visible=0 is the way out.
 	struct BodySettings {
-		// OFF by default since the first headset run (2026-09-07): with it on
-		// the view lurched on every look, cause not yet found - see
-		// docs/vr-modding/open-questions-and-known-issues.md.
-		bool visible = false;
+		// On since the body IK (2026-10-11, the tester: "mach als nächstes das
+		// ik vom body"). Off from the first headset run (2026-09-07), whose
+		// lurch on every look was found elsewhere the same day - a vertical look
+		// doubled by BlockVerticalLook=0 under AimAtSource, fixed in 2b5ec02
+		// (docs/vr-modding/open-questions-and-known-issues.md).
+		bool visible = true;
 		bool hideHead = true;
 		bool hideArms = true;
-		// The eyes relative to Bip01 Head in game units: forward and up.
-		// Enhanced Camera's 14 and 6.
-		float eyeForward = 14.0f;
+		// The body IK (game/BodyIk.h, BodyIkLogic.h): the arms reach the
+		// pinned hands, the body turns with the head, the knees bend for a
+		// crouch. IK switches all three; each part has its own switch too.
+		bool ik = true;
+		bool ikArms = true;
+		bool ikTorso = true;
+		bool ikLegs = true;
+		// The head's free turn before it drags the torso, and how long a held
+		// turn takes to bring it round (BodyIkLogic.h TorsoYawFrom).
+		float torsoFollowDegrees = 40.0f;
+		float torsoFollowSeconds = 1.0f;
+		// How much longer an arm may grow to reach its hand: 1 none, at most 1.5.
+		float armStretch = 1.15f;
+		// The eyes relative to Bip01 Head in game units: forward and up. 5.6
+		// forward is the Oculus SDK neck model's 0.0805 m (ANSUR-88 averages);
+		// Enhanced Camera's 14 was made for a monitor camera and put the
+		// shoulders 12 cm behind the player's. 6 up is the game's own eye
+		// height above the head bone.
+		float eyeForward = 5.6f;
 		float eyeUp = 6.0f;
 		// The two POV-switch branches Enhanced Camera NOPs so the body is
 		// there after a load in first person. Applied at start when the body
 		// is on; a restart is needed for a change to take.
 		bool povSwitchPatch = true;
+		// Debug.BodyTreeProbe: the third-person tree logged once when the
+		// body is shown - every node, and the arm chain's local transforms.
+		bool treeProbe = false;
 	};
 	BodySettings body;
 

@@ -1,0 +1,986 @@
+#include "game/BodyIk.h"
+
+#include <cstdio>
+
+#include "core/AddressSpace.h"
+#include "core/Log.h"
+#include "core/MathFns.h"
+#include "core/Rotation.h"
+#include "game/BonePin.h"
+#include "game/FirstPersonArms.h"
+#include "game/FirstPersonHide.h"
+#include "game/GameCamera.h"
+#include "game/GameTypes.h"
+
+namespace obvr::game {
+namespace {
+
+bool LooksLikeObject(const void* pointer) { return mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(pointer)); }
+
+constexpr UInt16 kHiddenBit = 0x0001;
+const NiPoint3 kUp{0.0f, 0.0f, 1.0f};
+
+// The bones, in the order a walk of the third-person tree is asked for them.
+enum : UInt32 {
+	kRoot = 0,
+	kSpine,
+	kSpine1,
+	kSpine2,
+	kArmRight,                    // clavicle, upper arm and its twist, forearm and its twist, hand
+	kArmLeft = kArmRight + 6,
+	kLegRight = kArmLeft + 6,     // thigh, calf, foot
+	kLegLeft = kLegRight + 3,
+	kBodyBones = kLegLeft + 3,
+};
+enum : UInt32 { kClavicle = 0, kUpper, kUpperTwist, kFore, kForeTwist, kHand, kArmParts };
+enum : UInt32 { kThigh = 0, kCalf, kFoot };
+
+const char* const kBodyNames[kBodyBones] = {
+	"Bip01",
+	"Bip01 Spine",
+	"Bip01 Spine1",
+	"Bip01 Spine2",
+	"Bip01 R Clavicle",
+	"Bip01 R UpperArm",
+	"Bip01 R UpperArmTwist",
+	"Bip01 R Forearm",
+	"Bip01 R ForearmTwist",
+	"Bip01 R Hand",
+	"Bip01 L Clavicle",
+	"Bip01 L UpperArm",
+	"Bip01 L UpperArmTwist",
+	"Bip01 L Forearm",
+	"Bip01 L ForearmTwist",
+	"Bip01 L Hand",
+	"Bip01 R Thigh",
+	"Bip01 R Calf",
+	"Bip01 R Foot",
+	"Bip01 L Thigh",
+	"Bip01 L Calf",
+	"Bip01 L Foot",
+};
+
+// The first-person arm bones carry the same names: the arms' twelve.
+constexpr UInt32 kFpBones = 2 * kArmParts;
+const char* const* const kFpNames = &kBodyNames[kArmRight];
+
+// ------------------------------------------------------------ The booking
+
+struct BoneWrite {
+	NiAVObject* node = nullptr;
+	NiTransform base{};   // the local transform before this frame's write
+	NiTransform wrote{};  // what was written
+	bool held = false;    // written this frame (or last, until begun again)
+};
+
+bool SameTransform(const NiTransform& a, const NiTransform& b) {
+	for (int r = 0; r < 3; ++r) {
+		for (int c = 0; c < 3; ++c) {
+			if (a.rot.data[r][c] != b.rot.data[r][c]) {
+				return false;
+			}
+		}
+	}
+	return a.pos.x == b.pos.x && a.pos.y == b.pos.y && a.pos.z == b.pos.z && a.scale == b.scale;
+}
+
+// Before a bone is read: what it held before last frame's write goes back
+// if it still holds that write; then its base is what it has now. `kept`
+// counts the bones the engine left, `renewed` the ones it wrote again.
+bool BeginWrite(BoneWrite& w, NiAVObject* node, UInt32& kept, UInt32& renewed) {
+	bool restored = false;
+	if (w.held && w.node == node && node != nullptr) {
+		if (SameTransform(node->localTransform, w.wrote)) {
+			node->localTransform = w.base;
+			restored = true;
+			++kept;
+		} else {
+			++renewed;
+		}
+	}
+	w.held = false;
+	w.node = node;
+	if (node != nullptr) {
+		w.base = node->localTransform;
+	}
+	return restored;
+}
+
+void WriteLocal(BoneWrite& w, const NiTransform& local) {
+	if (w.node == nullptr) {
+		return;
+	}
+	w.node->localTransform = local;
+	w.wrote = local;
+	w.held = true;
+}
+
+// Given back for good: only the node recorded, found again in the tree the
+// engine has now, and only if it still holds the write.
+bool ReleaseWrite(BoneWrite& w, NiAVObject* nodeNow) {
+	bool restored = false;
+	if (w.held && w.node != nullptr && w.node == nodeNow && SameTransform(nodeNow->localTransform, w.wrote)) {
+		nodeNow->localTransform = w.base;
+		restored = true;
+	}
+	w = BoneWrite{};
+	return restored;
+}
+
+// The rotation and position a world pose needs under a parent whose world
+// pose is given; the bone's own scale kept.
+NiTransform LocalFor(const NiTransform& current, const NiMatrix33& parentRot, const NiPoint3& parentPos,
+                     float parentScale, const NiMatrix33& rot, const NiPoint3& pos) {
+	const BonePose local = LocalUnderParent(parentRot, parentPos, parentScale, BonePose{rot, pos});
+	NiTransform t = current;
+	t.rot = local.rot;
+	t.pos = local.pos;
+	return t;
+}
+
+// Collapses a node for this frame's draw (PlayerBody.cpp's, Enhanced
+// Camera's): its world at scale zero, its local scale given back.
+void CollapseForThisDraw(NiAVObject* node) {
+	const float saved = node->localTransform.scale;
+	node->localTransform.scale = 0.0f;
+	UpdateNodeTransforms(node);
+	node->localTransform.scale = saved;
+}
+
+const char* SafeName(const NiAVObject* node) {
+	if (!LooksLikeObject(node) || !LooksLikeObject(node->name)) {
+		return "";
+	}
+	for (UInt32 at = 0; at < 64; ++at) {
+		const char c = node->name[at];
+		if (c == '\0') {
+			return node->name;
+		}
+		if (c < 0x20 || c > 0x7E) {
+			return "";
+		}
+	}
+	return "";
+}
+
+bool StartsWith(const char* text, const char* prefix) {
+	for (; *prefix != '\0'; ++text, ++prefix) {
+		if (*text != *prefix) {
+			return false;
+		}
+	}
+	return true;
+}
+
+bool Is(const char* a, const char* b) {
+	for (; *a != '\0' && *a == *b; ++a, ++b) {
+	}
+	return *a == *b;
+}
+
+float YawOfRotation(const NiMatrix33& rot, float fallback) {
+	Heading h;
+	return HeadingOf(rot, h) ? math::Atan2(h.sine, h.cosine) : fallback;
+}
+
+// ------------------------------------------------------------ The frame
+
+struct ArmStats {
+	bool follows = false;
+	bool reached = false;
+	float shortUnits = 0.0f;
+	float stretch = 1.0f;
+	float clavicleDegrees = 0.0f;
+	float upperUnits = 0.0f;
+	float foreUnits = 0.0f;
+	NiPoint3 shoulder{0.0f, 0.0f, 0.0f};
+	NiPoint3 elbow{0.0f, 0.0f, 0.0f};
+	NiPoint3 wrist{0.0f, 0.0f, 0.0f};
+	NiPoint3 target{0.0f, 0.0f, 0.0f};
+	float upperRollDegrees = 0.0f;
+	float foreTwistDegrees = 0.0f;
+	NiPoint3 handAxis{0.0f, 0.0f, 0.0f};  // the hand bone's +x, wrist to fingers
+	NiPoint3 pole{0.0f, 0.0f, 0.0f};      // where the elbow was sent
+	float fpOffUnits = 0.0f;    // the first-person arm bones read back against the body's, at most
+	float fpOffDegrees = 0.0f;
+	bool elbowMoved = false;    // the pole's elbow was in the torso and was moved round
+	UInt32 carried = 0;         // things on the forearm's twist carried with the hand (the shield)
+	float carriedOffUnits = 0.0f;  // and how far they were carried off where the forearm would have them
+	const char* why = "";  // when it does not follow
+};
+
+struct Frame {
+	bool valid = false;  // BeginBodyIk found the skeleton this frame
+	NiAVObject* root = nullptr;
+	NiAVObject* bone[kBodyBones] = {};
+	float bodyYaw = 0.0f;         // the body's world yaw, HeadingOf's sense
+	bool torsoTurned = false;
+	float torsoOffHead = 0.0f;    // radians
+	float chestCorrection = 0.0f;
+	float lowered = 0.0f;
+	float feetLift = 0.0f;
+	ArmStats arm[2];
+};
+
+Frame g_frame;
+BoneWrite g_body[kBodyBones];
+BoneWrite g_fp[kFpBones];
+// What hangs on a first-person forearm's twist bone (the shield), carried
+// with the hand (BodyIkLogic.h, "The shield"): a side's four at most.
+constexpr UInt32 kCarriedMax = 4;
+BoneWrite g_carried[2][kCarriedMax];
+NiAVObject* g_fpBone[kFpBones] = {};
+TorsoYawState g_torso;
+
+// One line per thing worth saying once.
+bool g_bonesReported = false;
+bool g_keptReported = false;
+bool g_fpKeptReported = false;
+bool g_torsoReported = false;
+bool g_legsReported = false;
+bool g_armReported[2] = {false, false};
+bool g_whyReported[2] = {false, false};
+bool g_swappedReported = false;
+UInt32 g_hideLines = 10;
+
+void ReportKept(const char* what, UInt32 kept, UInt32 renewed, const bool* restored, NiAVObject* const* nodes,
+                UInt32 count, bool& reported) {
+	if (reported || kept + renewed == 0) {
+		return;
+	}
+	reported = true;
+	char names[256] = "";
+	UInt32 at = 0;
+	for (UInt32 i = 0; i < count && at < sizeof(names) - 40; ++i) {
+		if (restored[i] && nodes[i] != nullptr) {
+			const char* const n = SafeName(nodes[i]);
+			for (UInt32 k = 0; n[k] != '\0' && at < sizeof(names) - 4; ++k) {
+				names[at++] = n[k];
+			}
+			names[at++] = ',';
+			names[at++] = ' ';
+			names[at] = '\0';
+		}
+	}
+	OBVR_LOG("Body IK: of the %u %s bones written last frame, %u still held the writes - the engine left them, put back "
+	         "to the animation's pose (%s...) - and %u were the animation's again",
+	         kept + renewed, what, kept, names, renewed);
+}
+
+// ------------------------------------------------------------ The hides
+//
+// While an arm follows its hand the body's own hands would sit inside the
+// first-person ones (the same mesh, other fingers), and what they hold
+// would be there twice: the body's hand models ("Hand  (<form>)"), whatever
+// hangs on a hand bone that is not a bone itself (the "Weapon" and "Torch"
+// nodes, a bow), and whatever hangs on a forearm's twist bone (the shield)
+// are hidden - the engine's own hidden bit, set only on nodes this code
+// found shown, cleared only on those.
+constexpr UInt32 kMaxHidden = 24;
+NiAVObject* g_hidden[kMaxHidden] = {};
+UInt32 g_hiddenCount = 0;
+NiAVObject* g_hiddenRoot = nullptr;
+
+int HiddenIndex(const NiAVObject* node) {
+	for (UInt32 i = 0; i < g_hiddenCount; ++i) {
+		if (g_hidden[i] == node) {
+			return static_cast<int>(i);
+		}
+	}
+	return -1;
+}
+
+bool HiddenOnArm(const char* name, const char* parentName) {
+	if (StartsWith(name, "Hand  (")) {
+		return true;
+	}
+	if ((Is(parentName, "Bip01 R Hand") || Is(parentName, "Bip01 L Hand")) && !StartsWith(name, "Bip01")) {
+		return true;
+	}
+	return Is(parentName, "Bip01 L ForearmTwist") || Is(parentName, "Bip01 R ForearmTwist");
+}
+
+void HideWalk(NiAVObject* node, const char* parentName, UInt32 depth, bool* keep) {
+	if (!LooksLikeObject(node) || depth > 40) {
+		return;
+	}
+	const char* const name = SafeName(node);
+	const int at = HiddenIndex(node);
+	if (HiddenOnArm(name, parentName)) {
+		if (at >= 0) {
+			keep[at] = true;
+		} else if ((node->flags & kHiddenBit) == 0 && g_hiddenCount < kMaxHidden) {
+			node->flags = static_cast<UInt16>(node->flags | kHiddenBit);
+			keep[g_hiddenCount] = true;
+			g_hidden[g_hiddenCount++] = node;
+			if (g_hideLines > 0) {
+				--g_hideLines;
+				OBVR_LOG("Body IK: the body's \"%s\" (on \"%s\") hidden while an arm follows its hand - the "
+				         "first-person hand and what it holds are the ones seen",
+				         name, parentName);
+			}
+		}
+		return;
+	}
+	if (at >= 0) {
+		node->flags = static_cast<UInt16>(node->flags & ~kHiddenBit);  // no longer one of them: shown, forgotten
+	}
+	UInt32 count = 0;
+	NiAVObject* const* const children = NodeChildren(node, count);
+	for (UInt32 i = 0; i < count; ++i) {
+		HideWalk(children[i], name, depth + 1, keep);
+	}
+}
+
+void ShowWalk(NiAVObject* node, UInt32 depth) {
+	if (!LooksLikeObject(node) || depth > 40) {
+		return;
+	}
+	if (HiddenIndex(node) >= 0) {
+		node->flags = static_cast<UInt16>(node->flags & ~kHiddenBit);
+	}
+	UInt32 count = 0;
+	NiAVObject* const* const children = NodeChildren(node, count);
+	for (UInt32 i = 0; i < count; ++i) {
+		ShowWalk(children[i], depth + 1);
+	}
+}
+
+void ReleaseHides(NiAVObject* rootNow) {
+	if (g_hiddenCount > 0 && rootNow != nullptr && rootNow == g_hiddenRoot && LooksLikeObject(rootNow)) {
+		ShowWalk(rootNow, 0);
+	}
+	g_hiddenCount = 0;
+	g_hiddenRoot = nullptr;
+}
+
+void StepHides(NiAVObject* root) {
+	if (root != g_hiddenRoot) {
+		g_hiddenCount = 0;  // a new tree: what was hidden went with the old one
+		g_hiddenRoot = root;
+	}
+	bool keep[kMaxHidden] = {};
+	HideWalk(root, "", 0, keep);
+	UInt32 kept = 0;
+	for (UInt32 i = 0; i < g_hiddenCount; ++i) {
+		if (keep[i]) {
+			g_hidden[kept++] = g_hidden[i];
+		}
+	}
+	g_hiddenCount = kept;
+}
+
+// ------------------------------------------------------------ The arms
+
+// The first-person arm laid onto the body's: the clavicle, the upper arm and
+// the forearm with their twist bones at the body's own world poses, the hand
+// at its pin. The hand's mesh is skinned to the forearm and its twist as
+// well (BonePin.h, "Bare wrists"; its wrist edge the body's "Arms" edge, the
+// same eleven vertices with the same weights - ArmStump.h), so with the same
+// bones at the same places the cuff meets the body's sleeve or skin exactly.
+void AlignFirstPersonArm(UInt32 side, const NiMatrix33& handRot, const NiPoint3& handPos) {
+	NiAVObject* const* const body = &g_frame.bone[side == 0 ? kArmRight : kArmLeft];
+	NiAVObject* const* const fp = &g_fpBone[side * kArmParts];
+	BoneWrite* const writes = &g_fp[side * kArmParts];
+	// The twist bone where the pins left it, before it is laid onto the
+	// body's: what hangs on it keeps that place (BodyIkLogic.h, "The shield").
+	NiAVObject* const twist = fp[kForeTwist];
+	const NiTransform twistBefore = twist != nullptr ? twist->worldTransform : NiTransform{};
+	struct Want {
+		NiMatrix33 rot;
+		NiPoint3 pos;
+		float scale;
+		bool set;
+	} want[kArmParts] = {};
+	NiAVObject* top = nullptr;
+	for (UInt32 part = 0; part < kArmParts; ++part) {
+		NiAVObject* const node = fp[part];
+		if (node == nullptr || !LooksLikeObject(node->parent)) {
+			continue;
+		}
+		const NiAVObject* const parent = node->parent;
+		NiMatrix33 parentRot = parent->worldTransform.rot;
+		NiPoint3 parentPos = parent->worldTransform.pos;
+		float parentScale = parent->worldTransform.scale;
+		for (UInt32 q = 0; q < part; ++q) {
+			if (fp[q] == parent && want[q].set) {
+				parentRot = want[q].rot;
+				parentPos = want[q].pos;
+				parentScale = want[q].scale;
+			}
+		}
+		Want& w = want[part];
+		if (part == kHand) {
+			w.rot = handRot;
+			w.pos = handPos;
+			w.scale = node->worldTransform.scale;  // the hand keeps its size
+		} else {
+			if (body[part] == nullptr) {
+				continue;
+			}
+			w.rot = body[part]->worldTransform.rot;
+			w.pos = body[part]->worldTransform.pos;
+			w.scale = body[part]->worldTransform.scale;
+		}
+		const float divisor = parentScale > 0.0f ? parentScale : 1.0f;
+		NiTransform local;
+		local.rot = ik::Transposed(parentRot) * w.rot;
+		local.pos = (ik::Transposed(parentRot) * (w.pos - parentPos)) * (1.0f / divisor);
+		local.scale = w.scale / divisor;
+		WriteLocal(writes[part], local);
+		w.set = true;
+		if (top == nullptr) {
+			top = node;
+		}
+	}
+	if (top != nullptr) {
+		UpdateNodeTransforms(top);
+	}
+	ArmStats& stats = g_frame.arm[side];
+	// What hangs on the twist: carried with the hand where the pins held it.
+	stats.carried = 0;
+	stats.carriedOffUnits = 0.0f;
+	if (twist != nullptr && want[kForeTwist].set) {
+		UInt32 count = 0;
+		NiAVObject* const* const children = NodeChildren(twist, count);
+		for (UInt32 i = 0; i < count && stats.carried < kCarriedMax; ++i) {
+			NiAVObject* const child = children[i];
+			if (!LooksLikeObject(child)) {
+				continue;
+			}
+			// Its own local transform is the base: RestoreFirstPersonArmWrites
+			// put last frame's carry back before the pins.
+			BoneWrite& w = g_carried[side][stats.carried];
+			w = BoneWrite{};
+			w.node = child;
+			w.base = child->localTransform;
+			const NiPoint3 wasAt = twist->worldTransform.pos + twist->worldTransform.rot *
+			                                                     (child->localTransform.pos * twist->worldTransform.scale);
+			WriteLocal(w, CarriedLocal(twistBefore, twist->worldTransform, w.base));
+			UpdateNodeTransforms(child);
+			const float off = ik::Length(child->worldTransform.pos - wasAt);
+			stats.carriedOffUnits = off > stats.carriedOffUnits ? off : stats.carriedOffUnits;
+			++stats.carried;
+		}
+	}
+	// Read back: how far each first-person bone ended from where it was
+	// sent, after the engine's update - the log's word on the seam.
+	stats.fpOffUnits = 0.0f;
+	stats.fpOffDegrees = 0.0f;
+	for (UInt32 part = 0; part < kArmParts; ++part) {
+		if (fp[part] == nullptr || !want[part].set) {
+			continue;
+		}
+		const float off = ik::Length(fp[part]->worldTransform.pos - want[part].pos);
+		const float along = ik::Dot(ik::Column(fp[part]->worldTransform.rot, 0), ik::Column(want[part].rot, 0));
+		const float degrees = ik::Acos(along) * math::kRadiansToDegrees;
+		stats.fpOffUnits = off > stats.fpOffUnits ? off : stats.fpOffUnits;
+		stats.fpOffDegrees = degrees > stats.fpOffDegrees ? degrees : stats.fpOffDegrees;
+	}
+}
+
+// The torso the elbows are kept out of, from this frame's animated bones
+// (put back and turned with the body, no arm written yet): between the
+// shoulder joints, half their width, their height and the thighs'.
+TorsoKeepOut TorsoOfFrame() {
+	TorsoKeepOut t;
+	t.right = NiPoint3{math::Cos(g_frame.bodyYaw), math::Sin(g_frame.bodyYaw), 0.0f};
+	t.forward = NiPoint3{-t.right.y, t.right.x, 0.0f};
+	const NiAVObject* const left = g_frame.bone[kArmLeft + kUpper];
+	const NiAVObject* const right = g_frame.bone[kArmRight + kUpper];
+	if (left == nullptr || right == nullptr) {
+		t.shoulderLateral = 0.0f;  // nothing to keep out of: no elbow is inside a torso of no width
+		t.shoulderZ = -1.0e9f;
+		return t;
+	}
+	const NiPoint3& l = left->worldTransform.pos;
+	const NiPoint3& r = right->worldTransform.pos;
+	t.mid = (l + r) * 0.5f;
+	const float dx = r.x - l.x;
+	const float dy = r.y - l.y;
+	t.shoulderLateral = 0.5f * math::Sqrt(dx * dx + dy * dy);
+	t.shoulderZ = t.mid.z;
+	const NiAVObject* const leftThigh = g_frame.bone[kLegLeft + kThigh];
+	const NiAVObject* const rightThigh = g_frame.bone[kLegRight + kThigh];
+	t.pelvisZ = leftThigh != nullptr && rightThigh != nullptr
+	                ? 0.5f * (leftThigh->worldTransform.pos.z + rightThigh->worldTransform.pos.z)
+	                : t.shoulderZ - 37.0f;
+	return t;
+}
+
+bool SolveArm(UInt32 side, const BodyArmsFrame& f, const TorsoKeepOut& torso) {
+	ArmStats& stats = g_frame.arm[side];
+	const UInt32 base = side == 0 ? kArmRight : kArmLeft;
+	NiAVObject* const clavicle = g_frame.bone[base + kClavicle];
+	NiAVObject* const upper = g_frame.bone[base + kUpper];
+	NiAVObject* const upperTwist = g_frame.bone[base + kUpperTwist];
+	NiAVObject* const fore = g_frame.bone[base + kFore];
+	NiAVObject* const foreTwist = g_frame.bone[base + kForeTwist];
+	NiAVObject* const hand = g_frame.bone[base + kHand];
+	NiAVObject* const fpHand = g_fpBone[side * kArmParts + kHand];
+	if (clavicle == nullptr || upper == nullptr || fore == nullptr || hand == nullptr ||
+	    !LooksLikeObject(clavicle->parent)) {
+		stats.why = "the body's arm bones are not all there";
+		return false;
+	}
+	if (fpHand == nullptr) {
+		stats.why = "no first-person hand bone to reach";
+		return false;
+	}
+	const NiMatrix33 targetRot = fpHand->worldTransform.rot;
+	const NiPoint3 target = fpHand->worldTransform.pos;
+	const float sideSign = side == 0 ? 1.0f : -1.0f;
+	const NiPoint3 right{math::Cos(g_frame.bodyYaw), math::Sin(g_frame.bodyYaw), 0.0f};
+	const NiPoint3 forward{-right.y, right.x, 0.0f};
+	// The animation's bone lengths (the bones were put back to its pose).
+	const float upperUnits = ik::Length(fore->worldTransform.pos - upper->worldTransform.pos);
+	const float foreUnits = ik::Length(hand->worldTransform.pos - fore->worldTransform.pos);
+	if (!(upperUnits > 1.0f) || !(foreUnits > 1.0f)) {
+		stats.why = "the arm's bones read no length";
+		return false;
+	}
+	// The clavicle towards a far or high hand; the shoulder joint goes with it.
+	const ClavicleTurn turn = TurnClavicle(clavicle->worldTransform.pos, ik::Column(clavicle->worldTransform.rot, 0),
+	                                       upper->worldTransform.pos, target, upperUnits + foreUnits, kUp);
+	const NiMatrix33 clavicleRot =
+		turn.angle > 0.0f ? ik::TurnAbout(turn.axis, turn.angle) * clavicle->worldTransform.rot : clavicle->worldTransform.rot;
+	const NiPoint3 shoulder =
+		clavicle->worldTransform.pos + clavicleRot * (upper->localTransform.pos * clavicle->worldTransform.scale);
+	const NiAVObject* const clavicleParent = clavicle->parent;
+	// The two bones.
+	LimbInput in;
+	in.root = shoulder;
+	in.upperLength = upperUnits;
+	in.lowerLength = foreUnits;
+	in.target = target;
+	in.pole = ElbowPole(sideSign, right, forward, kUp, shoulder, target, ik::Column(targetRot, 0), foreUnits);
+	// And never in the torso (BodyIkLogic.h, ElbowClearOfTorso).
+	bool elbowMoved = false;
+	in.pole = ElbowClearOfTorso(in, sideSign, torso, elbowMoved);
+	stats.elbowMoved = elbowMoved;
+	in.maxStretch = f.ik.armStretch;
+	const LimbSolve s = SolveLimb(in);
+	if (!s.valid) {
+		stats.why = "no solve (the hand on the shoulder, or a number that is none)";
+		return false;
+	}
+	// The twists: half the upper arm's change of roll taken back by its twist
+	// bone, half the hand's change of roll given to the forearm's.
+	const float upperRoll = TwistAboutX(ik::Transposed(upper->worldTransform.rot) * s.upperRot);
+	const float upperHalf = HalfRoll(0.0f, upperRoll);
+	const float foreHalf =
+		HalfRoll(TwistAboutX(hand->localTransform.rot), TwistAboutX(ik::Transposed(s.lowerRot) * targetRot));
+	// Written, parent first.
+	NiTransform clavicleLocal = clavicle->localTransform;
+	clavicleLocal.rot = ik::Transposed(clavicleParent->worldTransform.rot) * clavicleRot;
+	WriteLocal(g_body[base + kClavicle], clavicleLocal);
+	WriteLocal(g_body[base + kUpper], LocalFor(upper->localTransform, clavicleRot, clavicle->worldTransform.pos,
+	                                           clavicle->worldTransform.scale, s.upperRot, shoulder));
+	if (upperTwist != nullptr && upperTwist->parent == upper) {
+		NiTransform t = upperTwist->localTransform;
+		t.rot = TurnAboutX(-upperHalf) * t.rot;
+		WriteLocal(g_body[base + kUpperTwist], t);
+	}
+	WriteLocal(g_body[base + kFore],
+	           LocalFor(fore->localTransform, s.upperRot, shoulder, upper->worldTransform.scale, s.lowerRot, s.joint));
+	if (foreTwist != nullptr && foreTwist->parent == fore) {
+		NiTransform t = foreTwist->localTransform;
+		t.rot = TurnAboutX(foreHalf) * t.rot;
+		WriteLocal(g_body[base + kForeTwist], t);
+	}
+	WriteLocal(g_body[base + kHand],
+	           LocalFor(hand->localTransform, s.lowerRot, s.joint, fore->worldTransform.scale, targetRot, s.end));
+	UpdateNodeTransforms(clavicle);
+	AlignFirstPersonArm(side, targetRot, target);
+
+	stats.follows = true;
+	stats.reached = s.reached;
+	stats.shortUnits = s.shortUnits;
+	stats.stretch = s.stretch;
+	stats.clavicleDegrees = turn.angle * math::kRadiansToDegrees;
+	stats.upperUnits = upperUnits;
+	stats.foreUnits = foreUnits;
+	stats.shoulder = shoulder;
+	stats.elbow = s.joint;
+	stats.wrist = hand->worldTransform.pos;
+	stats.target = target;
+	stats.upperRollDegrees = upperRoll * math::kRadiansToDegrees;
+	stats.foreTwistDegrees = foreHalf * math::kRadiansToDegrees;
+	stats.handAxis = ik::Column(targetRot, 0);
+	stats.pole = in.pole;
+	if (!g_armReported[side]) {
+		g_armReported[side] = true;
+		OBVR_LOG("Body IK: the %s arm follows its hand - the body's upper arm %.1f and forearm %.1f units, the "
+		         "clavicle turned %.1f degrees towards it, the elbow at %.1f %.1f %.1f, the wrist at %.1f %.1f %.1f "
+		         "for the hand at %.1f %.1f %.1f (%s, grown x%.2f); the first-person arm laid onto it",
+		         side == 0 ? "right" : "left", static_cast<double>(upperUnits), static_cast<double>(foreUnits),
+		         static_cast<double>(stats.clavicleDegrees), static_cast<double>(s.joint.x),
+		         static_cast<double>(s.joint.y), static_cast<double>(s.joint.z), static_cast<double>(stats.wrist.x),
+		         static_cast<double>(stats.wrist.y), static_cast<double>(stats.wrist.z), static_cast<double>(target.x),
+		         static_cast<double>(target.y), static_cast<double>(target.z), s.reached ? "reached" : "short of it",
+		         static_cast<double>(s.stretch));
+		// The rig as the solver takes it: the forearm turned about z only
+		// under the upper arm, folding towards -y.
+		const NiMatrix33 local = fore->localTransform.rot;
+		OBVR_LOG("Body IK: the %s forearm under its upper arm now - rows [%.3f %.3f %.3f] [%.3f %.3f %.3f] "
+		         "[%.3f %.3f %.3f] (a turn about z alone, %.1f degrees)",
+		         side == 0 ? "right" : "left", static_cast<double>(local.data[0][0]), static_cast<double>(local.data[0][1]),
+		         static_cast<double>(local.data[0][2]), static_cast<double>(local.data[1][0]),
+		         static_cast<double>(local.data[1][1]), static_cast<double>(local.data[1][2]),
+		         static_cast<double>(local.data[2][0]), static_cast<double>(local.data[2][1]),
+		         static_cast<double>(local.data[2][2]),
+		         static_cast<double>(math::Atan2(local.data[1][0], local.data[0][0]) * math::kRadiansToDegrees));
+	}
+	return true;
+}
+
+void LogArm(const char* sideName, const ArmStats& a, char* out, UInt32 size) {
+	if (!a.follows) {
+		std::snprintf(out, size, "the %s arm left to the body (%s)", sideName, a.why);
+		return;
+	}
+	const float off = ik::Length(a.wrist - a.target);
+	if (a.reached) {
+		std::snprintf(out, size,
+		              "the %s arm reaches its hand (the wrist %.2f units off it, grown x%.2f) - shoulder %.1f %.1f %.1f, "
+		              "elbow %.1f %.1f %.1f, hand %.1f %.1f %.1f (its axis %.2f %.2f %.2f, the elbow sent %.2f %.2f %.2f%s), "
+		              "the clavicle turned %.1f, the upper arm rolled %.1f (its twist bone half), the forearm's twist "
+		              "%.1f degrees; the first-person arm on it within %.2f units, %.1f degrees; %u thing(s) on its forearm carried "
+		              "with the hand, %.1f units off where the forearm would have them",
+		              sideName, static_cast<double>(off), static_cast<double>(a.stretch),
+		              static_cast<double>(a.shoulder.x), static_cast<double>(a.shoulder.y),
+		              static_cast<double>(a.shoulder.z), static_cast<double>(a.elbow.x), static_cast<double>(a.elbow.y),
+		              static_cast<double>(a.elbow.z), static_cast<double>(a.target.x), static_cast<double>(a.target.y),
+		              static_cast<double>(a.target.z), static_cast<double>(a.handAxis.x),
+		              static_cast<double>(a.handAxis.y), static_cast<double>(a.handAxis.z), static_cast<double>(a.pole.x),
+		              static_cast<double>(a.pole.y), static_cast<double>(a.pole.z),
+		              a.elbowMoved ? ", moved out of the torso" : "", static_cast<double>(a.clavicleDegrees),
+		              static_cast<double>(a.upperRollDegrees), static_cast<double>(a.foreTwistDegrees),
+		              static_cast<double>(a.fpOffUnits), static_cast<double>(a.fpOffDegrees), a.carried,
+		              static_cast<double>(a.carriedOffUnits));
+	} else {
+		std::snprintf(out, size,
+		              "the %s arm falls short of its hand by %.1f units (grown x%.2f) - shoulder %.1f %.1f %.1f, elbow "
+		              "%.1f %.1f %.1f, hand %.1f %.1f %.1f, the clavicle turned %.1f",
+		              sideName, static_cast<double>(a.shortUnits), static_cast<double>(a.stretch),
+		              static_cast<double>(a.shoulder.x), static_cast<double>(a.shoulder.y),
+		              static_cast<double>(a.shoulder.z), static_cast<double>(a.elbow.x), static_cast<double>(a.elbow.y),
+		              static_cast<double>(a.elbow.z), static_cast<double>(a.target.x), static_cast<double>(a.target.y),
+		              static_cast<double>(a.target.z), static_cast<double>(a.clavicleDegrees));
+	}
+}
+
+}  // namespace
+
+bool BeginBodyIk(NiAVObject* root) {
+	g_frame = Frame{};
+	if (!LooksLikeObject(root)) {
+		return false;
+	}
+	g_frame.root = root;
+	const UInt32 found = FindNodesNamed(root, kBodyNames, kBodyBones, g_frame.bone);
+	if (!g_bonesReported) {
+		g_bonesReported = true;
+		char missing[192] = "";
+		UInt32 at = 0;
+		for (UInt32 i = 0; i < kBodyBones && at < sizeof(missing) - 32; ++i) {
+			if (g_frame.bone[i] == nullptr) {
+				for (UInt32 k = 0; kBodyNames[i][k] != '\0' && at < sizeof(missing) - 4; ++k) {
+					missing[at++] = kBodyNames[i][k];
+				}
+				missing[at++] = ';';
+				missing[at++] = ' ';
+				missing[at] = '\0';
+			}
+		}
+		OBVR_LOG("Body IK: the third-person skeleton - %u of %u bones found%s%s", found, kBodyBones,
+		         found < kBodyBones ? ", missing: " : "", missing);
+	}
+	UInt32 kept = 0;
+	UInt32 renewed = 0;
+	bool restored = false;
+	bool restoredBone[kBodyBones] = {};
+	for (UInt32 i = 0; i < kBodyBones; ++i) {
+		restoredBone[i] = BeginWrite(g_body[i], g_frame.bone[i], kept, renewed);
+		restored = restoredBone[i] || restored;
+	}
+	ReportKept("body", kept, renewed, restoredBone, g_frame.bone, kBodyBones, g_keptReported);
+	if (restored && g_frame.bone[kRoot] != nullptr) {
+		UpdateNodeTransforms(g_frame.bone[kRoot]);
+	}
+	g_frame.valid = g_frame.bone[kRoot] != nullptr;
+	if (g_frame.valid) {
+		g_frame.bodyYaw = YawOfRotation(g_frame.bone[kRoot]->worldTransform.rot, 0.0f);
+	}
+	return g_frame.valid;
+}
+
+float StepBodyTorso(const BodyIkSettings& s, bool headValid, float headWorldYaw, float headTrackingYaw,
+                    float dtSeconds) {
+	NiAVObject* const skeleton = g_frame.bone[kRoot];
+	if (!g_frame.valid || skeleton == nullptr) {
+		return 0.0f;
+	}
+	const float rootYaw = YawOfRotation(skeleton->worldTransform.rot, 0.0f);
+	if (!s.torso || !headValid || !LooksLikeObject(skeleton->parent)) {
+		g_torso = TorsoYawState{};
+		g_frame.bodyYaw = rootYaw;
+		return rootYaw;
+	}
+	const float offHead = StepTorsoYaw(g_torso, headTrackingYaw, dtSeconds, s.torsoYaw);
+	const float wanted = math::WrapAngle(headWorldYaw + offHead);
+	const float turn = math::WrapAngle(wanted - rootYaw);
+	NiTransform local = skeleton->localTransform;
+	local.rot = ik::Transposed(skeleton->parent->worldTransform.rot) * (ik::TurnAbout(kUp, turn) * skeleton->worldTransform.rot);
+	WriteLocal(g_body[kRoot], local);
+	UpdateNodeTransforms(skeleton);
+	g_frame.bodyYaw = wanted;
+	g_frame.torsoTurned = true;
+	g_frame.torsoOffHead = offHead;
+	// The chest's own twist out, a third on each spine bone.
+	NiAVObject* const leftShoulder = g_frame.bone[kArmLeft + kUpper];
+	NiAVObject* const rightShoulder = g_frame.bone[kArmRight + kUpper];
+	float chestYaw = 0.0f;
+	if (leftShoulder != nullptr && rightShoulder != nullptr &&
+	    ChestYaw(leftShoulder->worldTransform.pos, rightShoulder->worldTransform.pos, chestYaw)) {
+		const float correction = ChestCorrection(wanted, chestYaw);
+		const UInt32 spines[3] = {kSpine, kSpine1, kSpine2};
+		UInt32 present = 0;
+		for (UInt32 b : spines) {
+			present += g_frame.bone[b] != nullptr && LooksLikeObject(g_frame.bone[b]->parent) ? 1u : 0u;
+		}
+		if (present > 0 && correction != 0.0f) {
+			const float share = correction / static_cast<float>(present);
+			for (UInt32 b : spines) {
+				NiAVObject* const bone = g_frame.bone[b];
+				if (bone == nullptr || !LooksLikeObject(bone->parent)) {
+					continue;
+				}
+				NiTransform t = bone->localTransform;
+				t.rot = ik::Transposed(bone->parent->worldTransform.rot) * (ik::TurnAbout(kUp, share) * bone->worldTransform.rot);
+				WriteLocal(g_body[b], t);
+				UpdateNodeTransforms(bone);
+			}
+		}
+		g_frame.chestCorrection = correction;
+	}
+	if (!g_torsoReported) {
+		g_torsoReported = true;
+		OBVR_LOG("Body IK: the body turns with the head - %.1f degrees off it now (free %.0f either way, followed "
+		         "over %.1f s); the chest's own twist of %.1f degrees taken out over the spine",
+		         static_cast<double>(offHead * math::kRadiansToDegrees),
+		         static_cast<double>(s.torsoYaw.freeRadians * math::kRadiansToDegrees),
+		         static_cast<double>(s.torsoYaw.followSeconds),
+		         static_cast<double>(g_frame.chestCorrection * math::kRadiansToDegrees));
+	}
+	return wanted;
+}
+
+void WriteBodyRootPosition(const NiPoint3& localPos) {
+	NiAVObject* const skeleton = g_frame.bone[kRoot];
+	if (!g_frame.valid || skeleton == nullptr) {
+		return;
+	}
+	NiTransform local = skeleton->localTransform;
+	local.pos = localPos;
+	WriteLocal(g_body[kRoot], local);
+}
+
+float StepBodyLegs(const BodyIkSettings& s, float loweredUnits) {
+	g_frame.lowered = loweredUnits;
+	if (!g_frame.valid || !s.legs) {
+		return 0.0f;
+	}
+	const float lift = FeetLiftUnits(loweredUnits);
+	g_frame.feetLift = lift;
+	if (!(lift > 0.0f)) {
+		return 0.0f;
+	}
+	const NiPoint3 right{math::Cos(g_frame.bodyYaw), math::Sin(g_frame.bodyYaw), 0.0f};
+	const NiPoint3 forward{-right.y, right.x, 0.0f};
+	UInt32 legs = 0;
+	for (UInt32 side = 0; side < 2; ++side) {
+		const UInt32 base = side == 0 ? kLegRight : kLegLeft;
+		NiAVObject* const thigh = g_frame.bone[base + kThigh];
+		NiAVObject* const calf = g_frame.bone[base + kCalf];
+		NiAVObject* const foot = g_frame.bone[base + kFoot];
+		if (thigh == nullptr || calf == nullptr || foot == nullptr || !LooksLikeObject(thigh->parent)) {
+			continue;
+		}
+		LimbInput in;
+		in.root = thigh->worldTransform.pos;
+		in.upperLength = ik::Length(calf->worldTransform.pos - thigh->worldTransform.pos);
+		in.lowerLength = ik::Length(foot->worldTransform.pos - calf->worldTransform.pos);
+		in.target = foot->worldTransform.pos + kUp * lift;
+		in.pole = KneePole(side == 0 ? 1.0f : -1.0f, right, forward);
+		const LimbSolve leg = SolveLimb(in);
+		if (!leg.valid) {
+			continue;
+		}
+		const NiMatrix33 footRot = foot->worldTransform.rot;  // the foot keeps its angle to the ground
+		NiTransform t = thigh->localTransform;
+		t.rot = ik::Transposed(thigh->parent->worldTransform.rot) * leg.upperRot;
+		WriteLocal(g_body[base + kThigh], t);
+		WriteLocal(g_body[base + kCalf], LocalFor(calf->localTransform, leg.upperRot, thigh->worldTransform.pos,
+		                                          thigh->worldTransform.scale, leg.lowerRot, leg.joint));
+		WriteLocal(g_body[base + kFoot],
+		           LocalFor(foot->localTransform, leg.lowerRot, leg.joint, calf->worldTransform.scale, footRot, leg.end));
+		UpdateNodeTransforms(thigh);
+		++legs;
+	}
+	if (!g_legsReported && legs > 0) {
+		g_legsReported = true;
+		OBVR_LOG("Body IK: the body let down %.1f units to put its eyes at the headset - the feet lifted back %.1f, "
+		         "%u knee(s) bent",
+		         static_cast<double>(loweredUnits), static_cast<double>(lift), legs);
+	}
+	return lift;
+}
+
+UInt32 StepBodyArms(const BodyArmsFrame& f) {
+	if (!g_frame.valid || g_frame.root == nullptr) {
+		return 0;
+	}
+	const TorsoKeepOut torso = TorsoOfFrame();
+	UInt32 following = 0;
+	for (UInt32 side = 0; side < 2; ++side) {
+		ArmStats& stats = g_frame.arm[side];
+		const bool pinned = side == 0 ? f.rightPinned : f.leftPinned;
+		bool follows = ArmFollowsHand(f.ik.arms, true, pinned, f.rolesSwapped);
+		if (!follows) {
+			stats.why = !f.ik.arms         ? "the arms part off"
+			            : f.rolesSwapped   ? "left-handed: the hands on each other's controllers"
+			                               : "its hand not pinned this frame";
+			if (f.ik.arms && f.rolesSwapped && !g_swappedReported) {
+				g_swappedReported = true;
+				OBVR_LOG("Body IK: left-handed play puts the right hand's bone on the left controller - the body's "
+				         "arms are left to the body (HideArms) rather than reach across the chest");
+			}
+		} else {
+			follows = SolveArm(side, f, torso);
+		}
+		if (follows) {
+			following |= 1u << side;
+		} else {
+			if (!g_whyReported[side] && f.ik.arms) {
+				g_whyReported[side] = true;
+				OBVR_LOG("Body IK: the %s arm left to the body - %s", side == 0 ? "right" : "left", stats.why);
+			}
+			NiAVObject* const clavicle = g_frame.bone[(side == 0 ? kArmRight : kArmLeft) + kClavicle];
+			if (f.hideArms && clavicle != nullptr) {
+				CollapseForThisDraw(clavicle);
+			}
+		}
+	}
+	if (following != 0) {
+		StepHides(g_frame.root);
+		// The arms carried out of the bound the engine worked out from the
+		// animation: kept in view round the camera, the way the first-person
+		// hands are (KeepFirstPersonNodesInView) - arm's reach and the body
+		// under it, 130 units.
+		KeepNodesInView(g_frame.root, "UpperBody, Arms", f.cameraWorld, 130.0f);
+	} else {
+		ReleaseHides(g_frame.root);
+	}
+	if (f.logState) {
+		// Three lines: a log line holds 1024 characters (core/Log.cpp).
+		OBVR_LOG("Body IK: at the mark - the body %s (%.1f degrees off the head, the chest's twist %.1f taken out), "
+		         "let down %.1f units, the feet lifted %.1f; %u node(s) hidden",
+		         g_frame.torsoTurned ? "turned with the head" : "as the game turns it",
+		         static_cast<double>(g_frame.torsoOffHead * math::kRadiansToDegrees),
+		         static_cast<double>(g_frame.chestCorrection * math::kRadiansToDegrees),
+		         static_cast<double>(g_frame.lowered), static_cast<double>(g_frame.feetLift), g_hiddenCount);
+		char arm[760];
+		LogArm("right", g_frame.arm[0], arm, sizeof(arm));
+		OBVR_LOG("Body IK: at the mark - %s", arm);
+		LogArm("left", g_frame.arm[1], arm, sizeof(arm));
+		OBVR_LOG("Body IK: at the mark - %s", arm);
+	}
+	g_frame.valid = false;  // the frame's bones are not trusted past it
+	return following;
+}
+
+bool BodyIkHolds() {
+	bool held = g_hiddenCount > 0;
+	for (UInt32 i = 0; i < kBodyBones && !held; ++i) {
+		held = g_body[i].held;
+	}
+	return held;
+}
+
+void ReleaseBodyIk(NiAVObject* rootNow) {
+	g_frame = Frame{};
+	g_torso = TorsoYawState{};
+	if (!BodyIkHolds()) {
+		return;
+	}
+	NiAVObject* now[kBodyBones] = {};
+	if (LooksLikeObject(rootNow)) {
+		FindNodesNamed(rootNow, kBodyNames, kBodyBones, now);
+	}
+	bool restored = false;
+	for (UInt32 i = 0; i < kBodyBones; ++i) {
+		if (g_body[i].held) {
+			restored = ReleaseWrite(g_body[i], now[i]) || restored;
+		}
+	}
+	if (restored && now[kRoot] != nullptr) {
+		UpdateNodeTransforms(now[kRoot]);
+	}
+	ReleaseHides(rootNow);
+}
+
+void RestoreFirstPersonArmWrites(bool lookUp) {
+	bool held = false;
+	for (UInt32 i = 0; i < kFpBones && !held; ++i) {
+		held = g_fp[i].held;
+	}
+	for (UInt32 side = 0; side < 2 && !held; ++side) {
+		for (UInt32 k = 0; k < kCarriedMax && !held; ++k) {
+			held = g_carried[side][k].held;
+		}
+	}
+	if (!held && !lookUp) {
+		for (UInt32 i = 0; i < kFpBones; ++i) {
+			g_fpBone[i] = nullptr;
+		}
+		return;
+	}
+	NiAVObject* const fpRoot = FirstPersonArmsNode();
+	if (fpRoot != nullptr) {
+		FindNodesNamed(fpRoot, kFpNames, kFpBones, g_fpBone);
+	} else {
+		for (UInt32 i = 0; i < kFpBones; ++i) {
+			g_fpBone[i] = nullptr;
+		}
+	}
+	UInt32 kept = 0;
+	UInt32 renewed = 0;
+	bool restored = false;
+	bool restoredBone[kFpBones] = {};
+	for (UInt32 i = 0; i < kFpBones; ++i) {
+		restoredBone[i] = BeginWrite(g_fp[i], g_fpBone[i], kept, renewed);
+		restored = restoredBone[i] || restored;
+	}
+	ReportKept("first-person arm", kept, renewed, restoredBone, g_fpBone, kFpBones, g_fpKeptReported);
+	// What was carried on a twist bone, put back where it still holds the
+	// carry - and only if it still hangs there (a shield taken off is gone).
+	for (UInt32 side = 0; side < 2; ++side) {
+		NiAVObject* const twist = g_fpBone[side * kArmParts + kForeTwist];
+		UInt32 count = 0;
+		NiAVObject* const* const children = twist != nullptr ? NodeChildren(twist, count) : nullptr;
+		for (UInt32 k = 0; k < kCarriedMax; ++k) {
+			BoneWrite& w = g_carried[side][k];
+			NiAVObject* now = nullptr;
+			for (UInt32 i = 0; i < count && w.held; ++i) {
+				now = children[i] == w.node ? w.node : now;
+			}
+			restored = ReleaseWrite(w, now) || restored;
+		}
+	}
+	if (restored && fpRoot != nullptr) {
+		UpdateNodeTransforms(fpRoot);
+	}
+}
+
+}  // namespace obvr::game

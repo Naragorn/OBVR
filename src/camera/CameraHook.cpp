@@ -5235,6 +5235,51 @@ bool g_bodyWanted = false;
 NiAVObject* g_bodyCameraNode = nullptr;
 NiPoint3 g_bodyFirstEyeStep{0.0f, 0.0f, 0.0f};
 NiTransform g_cyclopeanCameraLocalTransform{};
+// Whether ShowPlayerBody stood the body under the headset this frame - the
+// body IK's arms are decided after the pins on that (game/BodyIk.h).
+bool g_bodyShownThisFrame = false;
+// What the body and its IK cost: the time in ShowPlayerBody and the arms'
+// step, summed over the frames the body was shown, logged at a hand
+// script's mark.
+double g_bodyCostSeconds = 0.0;
+UInt32 g_bodyCostFrames = 0;
+
+// The body IK's parts from [Body]: IK switches all three.
+game::BodyIkSettings BodyIkSettingsFrom(const Config::BodySettings& body) {
+	game::BodyIkSettings s;
+	s.arms = body.ik && body.ikArms;
+	s.torso = body.ik && body.ikTorso;
+	s.legs = body.ik && body.ikLegs;
+	s.torsoYaw = game::TorsoYawFrom(body.torsoFollowDegrees, body.torsoFollowSeconds);
+	s.armStretch = body.armStretch;
+	return s;
+}
+
+// The body's arms, once a frame after the pins (or without them): each to
+// its hand pinned this frame, the others collapsed with HideArms.
+UInt32 StepBodyArmsAfterPins(bool pinsRan, const NiPoint3& cameraWorld) {
+	static const long long ticksPerSecond = ReadPerformanceFrequency();
+	const long long before = ReadPerformanceCounter();
+	struct Cost {
+		long long before;
+		long long perSecond;
+		~Cost() {
+			if (g_bodyShownThisFrame && perSecond > 0) {
+				g_bodyCostSeconds += static_cast<double>(ReadPerformanceCounter() - before) / static_cast<double>(perSecond);
+			}
+		}
+	} cost{before, ticksPerSecond};
+	const Config& config = GetConfig();
+	game::BodyArmsFrame arms;
+	arms.ik = BodyIkSettingsFrom(config.body);
+	arms.hideArms = config.body.hideArms;
+	arms.rightPinned = pinsRan && game::HandPinnedThisFrame(true);
+	arms.leftPinned = pinsRan && game::HandPinnedThisFrame(false);
+	arms.rolesSwapped = g_handRolesSwapped;
+	arms.cameraWorld = cameraWorld;
+	arms.logState = test::HandScriptMarkedThisFrame();
+	return game::StepBodyArms(arms);
+}
 
 // The body's share as the ARMS' BASE has it, which is one frame behind the
 // heading itself.
@@ -7138,6 +7183,24 @@ void BeforeFirstScenePass() {
 	// not the first-person Camera01 that the hand mode carries with the arms.
 	game::SetPlayerLookAtEyes(g_headTracker.IsHeadsetConnected(), g_cyclopeanCameraWorldValid,
 	                          g_cyclopeanCameraWorldTransform.pos);
+	// At a hand script's mark: where the eyes are and which way they look, as
+	// the picture is about to be built, beside the player's own angles - so a
+	// run's pictures can be read against numbers (the body's first harness
+	// run, 2026-10-11, looked at the floor with the head level).
+	if (test::HandScriptMarkedThisFrame() && g_cyclopeanCameraWorldValid) {
+		const NiPoint3 forward = ForwardOf(g_cyclopeanCameraWorldTransform.rot);
+		game::PlayerRotation rotation{};
+		const bool haveRotation = game::ReadPlayerRotation(rotation);
+		OBVR_LOG("Camera: at the mark - the eyes at %.1f %.1f %.1f look along %.3f %.3f %.3f (pitch %.1f degrees, "
+		         "positive up, heading %.1f); the player's rotX %.4f rotZ %.4f%s",
+		         static_cast<double>(g_cyclopeanCameraWorldTransform.pos.x),
+		         static_cast<double>(g_cyclopeanCameraWorldTransform.pos.y),
+		         static_cast<double>(g_cyclopeanCameraWorldTransform.pos.z), static_cast<double>(forward.x),
+		         static_cast<double>(forward.y), static_cast<double>(forward.z),
+		         static_cast<double>(math::Asin(forward.z) * math::kRadiansToDegrees),
+		         static_cast<double>(math::Atan2(forward.x, forward.y) * math::kRadiansToDegrees),
+		         static_cast<double>(rotation.pitch), static_cast<double>(rotation.yaw), haveRotation ? "" : " (unread)");
+	}
 	// The other end of the same frame, and the one measurement left worth
 	// taking. The camera pass logs what the two halves SHOULD be; this logs
 	// what they are at the moment the picture is built - in particular whether
@@ -7163,6 +7226,7 @@ void BeforeFirstScenePass() {
 	// menu question is asked again here because the camera pass does not run
 	// on menu frames, and a decision from before the menu opened would stand
 	// the body under a camera the dialogue has since moved.
+	g_bodyShownThisFrame = false;
 	{
 		const Config::BodySettings& body = GetConfig().body;
 		const bool wanted = g_bodyWanted && body.visible && !game::IsMenuMode() &&
@@ -7174,11 +7238,42 @@ void BeforeFirstScenePass() {
 			frame.eyeOffsetUnits = NiPoint3{0.0f, body.eyeForward, body.eyeUp};
 			frame.hideHead = body.hideHead;
 			frame.hideArms = body.hideArms;
-			game::ShowPlayerBody(frame);
+			frame.treeProbe = body.treeProbe;
+			frame.ik = BodyIkSettingsFrom(body);
+			// The head's yaw in the world (the cyclopean camera just taken) and
+			// in the headset's tracking space (from the recenter), for the torso.
+			Heading worldHead;
+			Heading trackedHead;
+			frame.headYawValid = g_cyclopeanCameraWorldValid && g_headTracker.IsHeadsetConnected() &&
+			                     HeadingOf(g_cyclopeanCameraWorldTransform.rot, worldHead) &&
+			                     HeadingOf(g_headTracker.GetCameraRotation(), trackedHead);
+			if (frame.headYawValid) {
+				frame.headWorldYaw = math::Atan2(worldHead.sine, worldHead.cosine);
+				frame.headTrackingYaw = math::Atan2(trackedHead.sine, trackedHead.cosine);
+			}
+			frame.dtSeconds = g_deltaSeconds;
+			static const long long ticksPerSecond = ReadPerformanceFrequency();
+			const long long before = ReadPerformanceCounter();
+			g_bodyShownThisFrame = game::ShowPlayerBody(frame);
+			if (g_bodyShownThisFrame && ticksPerSecond > 0) {
+				g_bodyCostSeconds +=
+					static_cast<double>(ReadPerformanceCounter() - before) / static_cast<double>(ticksPerSecond);
+				++g_bodyCostFrames;
+			}
+			if (test::HandScriptMarkedThisFrame() && g_bodyCostFrames > 0) {
+				OBVR_LOG("Body: %u frames shown since the last mark - %.3f ms a frame on average for the body and its IK "
+				         "(its placement and its arms)",
+				         g_bodyCostFrames, 1000.0 * g_bodyCostSeconds / static_cast<double>(g_bodyCostFrames));
+				g_bodyCostSeconds = 0.0;
+				g_bodyCostFrames = 0;
+			}
 		} else {
 			game::ReleasePlayerBody(ReadIsThirdPerson());
 		}
 	}
+	const bool bodyArmsMayFollow = g_bodyShownThisFrame && GetConfig().body.ik && GetConfig().body.ikArms;
+	bool bodyArmsStepped = false;
+	UInt32 bodyArmsFollowing = 0;
 
 	g_bowShotValid = false;
 	g_bowLimbValid = false;
@@ -7194,6 +7289,11 @@ void BeforeFirstScenePass() {
 		         handsAwayNow ? "away" : "shown", pinHands ? 1 : 0);
 	}
 	if (pinHands) {
+		// The pins of this frame start here; the first-person arm bones the
+		// body IK laid onto the body's last frame are put back first, since
+		// the pins read the hand's own local transform (game/BodyIk.h).
+		game::BeginHandPins();
+		game::RestoreFirstPersonArmWrites(bodyArmsMayFollow);
 		game::PlaceFirstPersonArms(g_hand.armsRotation, g_hand.armsOffsetUnits);
 		// After the arms, so the bones' parents carry this frame's placement:
 		// the hand bones go where the controllers are, animation or not.
@@ -7208,8 +7308,9 @@ void BeforeFirstScenePass() {
 			// Adjusting: from the INI switch or the guided window (game::HandAdjust).
 			const bool adjusting = hands.adjustHands || game::HandAdjustActive();
 			// A bare hand's wrist closed (BonePin.h, "Bare wrists") - not with the
-			// forearm stump, which needs the forearm its own length.
-			game::SetBareWristTaper(hands.closeBareWrists && !g_stumpShown);
+			// forearm stump, which needs the forearm its own length, and not
+			// with the body's arm reaching the hand: its forearm meets the cuff.
+			game::SetBareWristTaper(hands.closeBareWrists && !g_stumpShown && !bodyArmsMayFollow);
 			// Two hands on a two-hander: the weapon hand turned along the line
 			// between the hands, the left hand kept on the handle.
 			HoldWeaponAtRest();
@@ -7357,6 +7458,20 @@ void BeforeFirstScenePass() {
 			}
 			game::NoteHandAdjustFrame(rightCommitted, leftCommitted,
 			                          g_hand.rightGripDown || g_hand.leftGripDown, g_deltaSeconds);
+			// The body's arms onto the hands just pinned, and the first-person
+			// arm laid onto the body's (game/BodyIk.h) - after everything that
+			// places a hand, before anything reads a forearm.
+			bodyArmsFollowing = StepBodyArmsAfterPins(true, cameraPos);
+			bodyArmsStepped = true;
+			// The body's arm closes the bare hand's wrist: no flat lid over it.
+			// The lid seals the opening with the depth test off
+			// (BackfacePass.h, "the sealed opening") and was drawn over the arm
+			// (harness 2026-10-11, body-ik: a dark octagon on each wrist). Both
+			// hands are one mesh and one draw, so with either arm reaching its
+			// hand the inside is the darkened one, which keeps the depth test.
+			if (bodyArmsFollowing != 0) {
+				render::SetFirstPersonBackfaces(hands.closedHands, hands.closedHandsBrightness, false);
+			}
 			// The hands are where the controllers are, not where the animation
 			// would have them: their bounds follow, so the engine does not cull
 			// a hand in view by an arm swung out of it. Arm's reach around the
@@ -7373,16 +7488,19 @@ void BeforeFirstScenePass() {
 				         armShapes, skinShapes, sleeves ? "a bare hand gets the sleeve's stump" : "a bare hand gets the lid");
 				g_stumpSleevesLogged = sleeves ? 1 : 0;
 			}
+			// Neither with the body's arm reaching the hand: the arm is there.
 			g_stumpShown = game::StepForearmStumps(
-				game::StumpWanted(game::FirstPersonHandsBare(), sleeves, g_stumpHandsAway));
-			// A glove's cuff ends at the elbow (game/ArmStump.h).
-			game::StepGloveElbows(!game::FirstPersonHandsBare());
+				game::StumpWanted(game::FirstPersonHandsBare(), sleeves, g_stumpHandsAway) && bodyArmsFollowing == 0);
+			// A glove's cuff ends at the elbow (game/ArmStump.h) - or, laid onto
+			// the body's arm, follows the body's upper arm.
+			game::StepGloveElbows(!game::FirstPersonHandsBare() && bodyArmsFollowing == 0);
 			g_stumpStepped = true;
 			if (g_stumpShown) {
 				game::KeepFirstPersonNodesInView("Arms", cameraPos, 100.0f);
 			}
 		}
 	} else if (g_weaponTurnWanted) {
+		game::RestoreFirstPersonArmWrites(false);
 		game::StepHandFingers(true, GetConfig().hands.rightHandBone, game::FingerPose::Animation, 0.0f, nullptr);
 		game::StepHandFingers(false, GetConfig().hands.leftHandBone, game::FingerPose::Animation, 0.0f, nullptr);
 		game::StepHeldObject(false, false, game::HeldHand{}, false, NiPoint3{0.0f, 0.0f, 0.0f});
@@ -7390,10 +7508,16 @@ void BeforeFirstScenePass() {
 	} else {
 		// Third person, a menu, or switched off. Put the arms back rather than
 		// leaving them holding a turn nothing is going to update.
+		game::RestoreFirstPersonArmWrites(false);
 		game::StepHandFingers(true, GetConfig().hands.rightHandBone, game::FingerPose::Animation, 0.0f, nullptr);
 		game::StepHandFingers(false, GetConfig().hands.leftHandBone, game::FingerPose::Animation, 0.0f, nullptr);
 		game::StepHeldObject(false, false, game::HeldHand{}, false, NiPoint3{0.0f, 0.0f, 0.0f});
 		game::ReleaseFirstPersonArms();
+	}
+	// The body's arms on a frame without the pins: collapsed with HideArms
+	// where the body is shown (game/BodyIk.h), nothing when it is not.
+	if (!bodyArmsStepped) {
+		bodyArmsFollowing = StepBodyArmsAfterPins(false, g_cyclopeanCameraWorldTransform.pos);
 	}
 	// The bow's arrow and string given back on any frame the pins did not
 	// place them.

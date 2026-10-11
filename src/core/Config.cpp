@@ -657,6 +657,19 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		b.eyeForward = ReadFloat("Body", "EyeForward", b.eyeForward, path);
 		b.eyeUp = ReadFloat("Body", "EyeUp", b.eyeUp, path);
 		b.povSwitchPatch = ReadBool("Body", "PovSwitchPatch", b.povSwitchPatch, path);
+		b.treeProbe = ReadBool("Debug", "BodyTreeProbe", b.treeProbe, path);
+		b.ik = ReadBool("Body", "IK", b.ik, path);
+		b.ikArms = ReadBool("Body", "IKArms", b.ikArms, path);
+		b.ikTorso = ReadBool("Body", "IKTorso", b.ikTorso, path);
+		b.ikLegs = ReadBool("Body", "IKLegs", b.ikLegs, path);
+		b.torsoFollowDegrees = ReadFloat("Body", "TorsoFollowDegrees", b.torsoFollowDegrees, path);
+		b.torsoFollowSeconds = ReadFloat("Body", "TorsoFollowSeconds", b.torsoFollowSeconds, path);
+		b.armStretch = ReadFloat("Body", "ArmStretch", b.armStretch, path);
+		if (!(b.armStretch >= 1.0f)) {
+			b.armStretch = 1.0f;
+		} else if (b.armStretch > 1.5f) {
+			b.armStretch = 1.5f;
+		}
 	}
 	{
 		vr::HandSettings& h = config.hands;

@@ -2129,7 +2129,10 @@ and FEAR2VR, cited above.
   camera's ancestry log showed the camera under `WorldRoot`, not under the skeleton, and
   the live INI had `[Look] BlockVerticalLook=0` written into it by laser clicks in OBVR's
   menu - with `AimAtSource=1` that doubles the pitch. `BlockVerticalLook` is now forced on
-  under `AimAtSource` (`2b5ec02`). The body has not been in a headset since.
+  under `AimAtSource` (`2b5ec02`). The body has not been in a headset since. Since
+  2026-10-11 it is on by default with the body IK on top (`docs/player-body-spec.md`:
+  the arms reach the pinned hands, the body turns with the head, the knees bend for a
+  crouch), harness-tested, its headset run open.
 - **The commits of 2026-09-23 were reviewed on 2026-09-25**, before any of them had been
   in a headset. What was kept, changed or taken out:
   - *Room-scale locomotion* (`5b04417`) replaced the head tracker's offset with its own,

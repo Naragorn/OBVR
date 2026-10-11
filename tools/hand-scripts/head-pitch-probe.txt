@@ -1,0 +1,32 @@
+# The synthetic head's pitch against the picture (the harness, 2026-10-11:
+# the body probe's pictures did not match the camera's logged pitch - a
+# level camera showed the floor, -80 the ceiling). The head is pitched and
+# held for six seconds before each mark, so neither easing nor the runner's
+# reaction time can be the difference; the "Camera: at the mark" line gives
+# the camera's own pitch at each mark, the picture is read against it.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\head-pitch-probe.txt
+
+ini Hands Enabled=1
+
+expect HandScript: finished
+expect Camera: at the mark
+reject HandScript: WARNING
+
+wait 12
+right pos 0.25 -0.30 -0.35
+left pos -0.25 -0.30 -0.35
+head pitch -60
+wait 6
+mark down60
+head pitch 0
+wait 6
+mark level
+head pitch 40
+wait 6
+mark up40
+head pitch -85
+wait 6
+mark down85
+head pitch 0
+wait 3
+mark end

@@ -241,7 +241,7 @@ UInt32 TreeSignature(const UInt8* node, UInt32 depth, UInt32 signature) {
 	return signature;
 }
 
-void ProbeNode(const UInt8* node, UInt32 depth) {
+void ProbeNode(const UInt8* node, UInt32 depth, const char* label) {
 	if (g_probeLinesLeft == 0 || !LooksLikeObject(node)) {
 		return;
 	}
@@ -256,7 +256,7 @@ void ProbeNode(const UInt8* node, UInt32 depth) {
 	                                      "            "};
 	const float* const world =
 		reinterpret_cast<const float*>(node + addr::kNodeWorldTranslateOffset);
-	OBVR_LOG("First person tree: %2u %s%s \"%s\" flags=%04X children=%u at %08X world %.1f %.1f %.1f",
+	OBVR_LOG("%s: %2u %s%s \"%s\" flags=%04X children=%u at %08X world %.1f %.1f %.1f", label,
 	         depth, kIndent[depth < 6 ? depth : 6], className, NameOf(node),
 	         *reinterpret_cast<const UInt16*>(node + addr::kNiFlagsOffset), count,
 	         reinterpret_cast<UInt32>(node), static_cast<double>(world[0]),
@@ -267,12 +267,20 @@ void ProbeNode(const UInt8* node, UInt32 depth) {
 	UInt8* const* const children = ChildrenOf(node, count);
 	for (UInt32 at = 0; at < count; ++at) {
 		if (LooksLikeObject(children[at])) {
-			ProbeNode(children[at], depth + 1);
+			ProbeNode(children[at], depth + 1, label);
 		}
 	}
 }
 
 }  // namespace
+
+void ProbeNodeTree(const NiAVObject* root, const char* label, UInt32 maxLines) {
+	if (!LooksLikeObject(root) || label == nullptr) {
+		return;
+	}
+	g_probeLinesLeft = maxLines;
+	ProbeNode(reinterpret_cast<const UInt8*>(root), 0, label);
+}
 
 void ReleaseHiddenFirstPersonNodes() {
 	NiAVObject* const root = FirstPersonArmsNode();
@@ -442,6 +450,63 @@ UInt32 g_keepReportsLeft = 2;
 
 }  // namespace
 
+UInt32 KeepNodesInView(NiAVObject* root, const char* list, const NiPoint3& centre, float radius) {
+	if (!LooksLikeObject(root) || list == nullptr || ListIsEmpty(list)) {
+		return 0;
+	}
+	UInt8* chain[kMaxFindDepth + 2]{};
+	const float point[3] = {centre.x, centre.y, centre.z};
+	return KeepMatchingInView(reinterpret_cast<UInt8*>(root), list, point, radius, chain, 0);
+}
+
+NiAVObject* const* NodeChildren(const NiAVObject* node, UInt32& count) {
+	count = 0;
+	const UInt8* const bytes = reinterpret_cast<const UInt8*>(node);
+	if (!LooksLikeObject(bytes) || !ClassIsNode(ClassNameOf(bytes))) {
+		return nullptr;
+	}
+	return reinterpret_cast<NiAVObject* const*>(ChildrenOf(bytes, count));
+}
+
+namespace {
+
+void FindNamedInto(UInt8* node, const char* const* names, UInt32 count, NiAVObject** out, UInt32& found,
+                   UInt32 depth) {
+	if (!LooksLikeObject(node) || found >= count) {
+		return;
+	}
+	const char* const name = NameOf(node);
+	for (UInt32 i = 0; i < count; ++i) {
+		if (out[i] == nullptr && NameInList(name, names[i])) {
+			out[i] = reinterpret_cast<NiAVObject*>(node);
+			++found;
+			break;
+		}
+	}
+	if (depth >= kMaxFindDepth || !ClassIsNode(ClassNameOf(node))) {
+		return;
+	}
+	UInt32 children = 0;
+	UInt8* const* const list = ChildrenOf(node, children);
+	for (UInt32 at = 0; at < children && found < count; ++at) {
+		FindNamedInto(list[at], names, count, out, found, depth + 1);
+	}
+}
+
+}  // namespace
+
+UInt32 FindNodesNamed(NiAVObject* under, const char* const* names, UInt32 count, NiAVObject** out) {
+	if (out == nullptr || names == nullptr) {
+		return 0;
+	}
+	for (UInt32 i = 0; i < count; ++i) {
+		out[i] = nullptr;
+	}
+	UInt32 found = 0;
+	FindNamedInto(reinterpret_cast<UInt8*>(under), names, count, out, found, 0);
+	return found;
+}
+
 UInt32 KeepFirstPersonNodesInView(const char* list, const NiPoint3& centre, float radius) {
 	NiAVObject* const root = FirstPersonArmsNode();
 	if (root == nullptr || list == nullptr || ListIsEmpty(list)) {
@@ -480,7 +545,7 @@ void ProbeFirstPersonTree() {
 	g_probeLinesLeft = 400;
 	OBVR_LOG("First person tree: root %08X, shape %08X - class, name, flags (bit 0 hidden), "
 	         "children, world position", reinterpret_cast<UInt32>(root), signature);
-	ProbeNode(g_probedRoot, 0);
+	ProbeNode(g_probedRoot, 0, "First person tree");
 }
 
 const char* NiClassNameOf(const void* object) {

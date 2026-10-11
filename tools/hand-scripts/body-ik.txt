@@ -1,0 +1,108 @@
+# The body IK ([Body] IK; game/BodyIk.h, game/BodyIkLogic.h; the tester,
+# 2026-10-11: "mach als nächstes das ik vom body"): the body shown under
+# the headset, its arms bent to the pinned hands, turned with the head, its
+# knees bent for a crouch. The hands are held out in front, raised, across
+# the chest and 1.2 m out to the side (past the arm's reach, grown or
+# not); the head goes 45 cm down (a crouch) and turns 70 degrees in steps
+# (a turn, not a recenter). The controllers are pitched up the way a held
+# Index controller is when the hand is level (its pointing axis about 50
+# degrees above the knuckles; "pointing ahead" put the scripted hand 54
+# degrees fingers-down, the first runs' "its axis 0.04 0.59 -0.81"). The
+# "Body IK: at the mark" lines give each arm's wrist against its hand, the
+# shoulder, the elbow, the hand's axis and where the elbow was sent, and how
+# far the first-person arm ended from the body's; the body's yaw against
+# the head's and the feet's lift. The eye dumps ("dump-*-eyes.png") show
+# the arms reaching the hands. The game window's picture is not the
+# headset's (head-pitch-probe.txt).
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\body-ik.txt
+
+ini Hands Enabled=1
+ini Body Visible=1
+ini Body IK=1
+ini Body IKArms=1
+ini Body IKTorso=1
+ini Body IKLegs=1
+ini Body EyeForward=5.6
+
+expect HandScript: finished
+expect Body IK: the third-person skeleton - 22 of 22 bones found
+expect Body IK: the right arm follows its hand
+expect Body IK: the left arm follows its hand
+expect the right arm reaches its hand
+expect the left arm reaches its hand
+expect the right arm falls short of its hand
+expect Body IK: the body turns with the head
+expect the feet lifted back
+reject HandScript: WARNING
+reject Body IK: the right arm left to the body
+reject Body IK: the left arm left to the body
+
+wait 12
+right pos 0.25 -0.30 -0.35
+right rot 50 0 0
+left pos -0.25 -0.30 -0.35
+left rot 50 0 0
+head pitch -45
+wait 2
+mark front
+dump
+wait 1
+right pos 0.30 0.20 -0.15
+right rot 80 0 0
+left pos -0.12 0.15 -0.45
+left rot 60 0 0
+wait 2
+mark raised
+dump
+wait 1
+right pos -0.15 -0.15 -0.25
+right rot 30 70 0
+left pos -0.30 -0.45 -0.05
+left rot 50 0 0
+wait 2
+mark across
+dump
+head pitch -20
+wait 2
+mark across-level
+dump
+wait 1
+head pitch -45
+right pos 1.20 -0.20 -0.10
+right rot 30 -70 0
+left pos -0.25 -0.30 -0.35
+wait 2
+mark far
+dump
+wait 1
+right pos 0.25 -0.30 -0.35
+right rot 50 0 0
+head pos 0 1.15 0
+head pitch -60
+wait 2
+mark crouch
+dump
+wait 1
+head pos 0 1.6 0
+head pitch -30
+wait 1
+head yaw 10
+wait 0.05
+head yaw 20
+wait 0.05
+head yaw 30
+wait 0.05
+head yaw 40
+wait 0.05
+head yaw 50
+wait 0.05
+head yaw 60
+wait 0.05
+head yaw 70
+wait 0.1
+mark turning
+wait 3
+mark turned
+dump
+wait 1
+mark end

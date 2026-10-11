@@ -35,6 +35,11 @@ struct HandBone {
 HandBone g_hands[2];
 UInt32 g_missingReportsLeft = 4;
 
+// The pins of this frame (BeginHandPins): the frame's number, and the one
+// each hand was last written in.
+UInt32 g_pinFrame = 0;
+UInt32 g_pinnedIn[2] = {0, 0};
+
 const char* NameOf(const NiAVObject* node) {
 	const char* const name = node->name;
 	if (!LooksLikeObject(name)) {
@@ -247,6 +252,7 @@ bool PinHandBone(bool rightHand, const char* boneName, const NiMatrix33& relativ
 	parent->localTransform.rot = local.rot;
 	parent->localTransform.pos = local.pos;
 	UpdateNodeTransforms(parent);
+	g_pinnedIn[rightHand ? 0 : 1] = g_pinFrame;
 
 	if (!hand.reported) {
 		hand.reported = true;
@@ -260,6 +266,19 @@ bool PinHandBone(bool rightHand, const char* boneName, const NiMatrix33& relativ
 		         static_cast<double>(cameraPos.z));
 	}
 	return true;
+}
+
+void BeginHandPins() {
+	++g_pinFrame;
+	if (g_pinFrame == 0) {
+		g_pinFrame = 1;  // never the "not yet" of g_pinnedIn
+		g_pinnedIn[0] = 0;
+		g_pinnedIn[1] = 0;
+	}
+}
+
+bool HandPinnedThisFrame(bool rightHand) {
+	return g_pinFrame != 0 && g_pinnedIn[rightHand ? 0 : 1] == g_pinFrame;
 }
 
 bool ReadHandBoneWorld(bool rightHand, NiMatrix33& rot, NiPoint3& pos) {

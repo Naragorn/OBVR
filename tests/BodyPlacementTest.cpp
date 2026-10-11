@@ -92,6 +92,25 @@ void TestTurnedBody() {
 	      "any rotation: the eyes still land on the camera");
 }
 
+void TestEyesFollowHeadYaw() {
+	std::printf("The eyes in front of the head the way the head faces\n");
+	// The torso faces +y; the head looks 40 degrees to the left of it.
+	BodyRootInput in = Standing();
+	in.eyesFollowHeadYaw = true;
+	in.headYawRot = obvr::EulerToMatrix(0.0f, 0.0f, 40.0f);
+	const NiPoint3 wanted = BodyRootWorldWanted(in);
+	const NiPoint3 eyes = wanted + (in.headWorld - in.rootWorld) + in.headYawRot * in.eyeOffsetUnits;
+	Check(NearPoint(eyes, in.cameraWorld), "the eyes land on the camera along the head's yaw");
+	const NiPoint3 alongBody = BodyRootWorldWanted(Standing());
+	Check(!NearPoint(wanted, alongBody, 0.5f), "and not where the body's facing would put them");
+	in.headYawRot = NiMatrix33::Identity();
+	Check(NearPoint(BodyRootWorldWanted(in), alongBody), "the head facing the body's way: the same place");
+	// Off: the root's rotation carries the offset, whatever the head's yaw.
+	in.eyesFollowHeadYaw = false;
+	in.headYawRot = obvr::EulerToMatrix(0.0f, 0.0f, 70.0f);
+	Check(NearPoint(BodyRootWorldWanted(in), alongBody), "off: the head's yaw is not read");
+}
+
 void TestScaledBody() {
 	std::printf("A scaled body\n");
 	BodyRootInput in = Standing();
@@ -181,6 +200,8 @@ int main() {
 	TestUprightBody();
 	std::printf("\n");
 	TestTurnedBody();
+	std::printf("\n");
+	TestEyesFollowHeadYaw();
 	std::printf("\n");
 	TestScaledBody();
 	std::printf("\n");

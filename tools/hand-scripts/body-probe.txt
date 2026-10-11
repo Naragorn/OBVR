@@ -1,0 +1,49 @@
+# The visible body measured ([Body] Visible, game/PlayerBody.cpp;
+# Debug.BodyTreeProbe): the third-person skeleton shown in first person
+# with its arms kept, the head looking down at it, the hands held out in
+# front. The log gets the whole third-person tree ("Body tree:") and the arm
+# chain's local transforms ("Body bones:"), for the arm solver's design; the
+# eye dumps ("dump-*-eyes.png", the two eyes as OBVR submitted them) show
+# whether the body draws under the headset. The game window's picture is
+# the monitor's, not the headset's: with the head pitched it showed the
+# ceiling for a camera logged at -60 degrees (head-pitch-probe.txt,
+# 2026-10-11), so the body is read from the dumps.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\body-probe.txt
+
+ini Hands Enabled=1
+ini Body Visible=1
+ini Body HideArms=0
+ini Debug BodyTreeProbe=1
+
+expect HandScript: finished
+expect Body: the third-person skeleton
+expect Body tree:
+expect Body bones: "Bip01 R Forearm"
+reject HandScript: WARNING
+
+wait 12
+right pos 0.25 -0.30 -0.35
+left pos -0.25 -0.30 -0.35
+wait 1
+mark level
+dump
+wait 2
+head pitch -60
+wait 2
+mark down
+dump
+wait 2
+right pos 0.40 0.00 -0.30
+left pos -0.40 0.00 -0.30
+wait 2
+mark wide
+dump
+wait 2
+head pitch -80
+wait 2
+mark feet
+dump
+wait 2
+head pitch 0
+wait 1
+mark end

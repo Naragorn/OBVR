@@ -113,6 +113,7 @@ add_library(OBVR SHARED
 	src/game/ItemIcons.cpp
 	src/game/QuickKeyPages.cpp
 	src/game/ArmStump.cpp
+	src/game/BodyIk.cpp
 	src/game/TakeItem.cpp
 	src/game/WeaponDrawSpeed.cpp
 	src/game/BowDrawSound.cpp

@@ -1,0 +1,113 @@
+# The body IK with a shield ([Body] IK; game/BodyIkLogic.h "The shield"):
+# the Arena Iron Shield (000733ED) worn and a longsword drawn by the
+# holster, the body's arms following the hands. The shield hangs on the
+# first-person forearm's twist bone, which the IK lays onto the body's
+# forearm; the shield itself is carried with the hand where the pins held
+# it, as it is held by its grip. The left hand is held out in front, raised
+# as for a block, brought in close, and lowered to the floor and pressed on
+# - the shield-wall test of the contact step (HandContactLogic.h), now with
+# the body's arm on it: the shield's disc in the hand's frame is the one
+# read without the IK, it rests on the floor and lets go past the cap as it
+# did without the IK.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\body-ik-shield.txt
+
+ini Hands Enabled=1
+ini Hands BodyCollision=1
+ini Hands Holsters=1
+ini Hands HandsStopAtWalls=1
+ini Hands WeaponStopsAtWalls=1
+ini Hands WeaponLetGoMetres=0.30
+ini Body Visible=1
+ini Body IK=1
+ini Body IKArms=1
+console-at ready player.additem 000733ED 1
+console-at ready player.equipitem 000733ED
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+
+expect HandScript: finished
+expect Hands: a shield worn
+expect Contact: the shield's shape
+expect Contact: the shield met body
+expect Contact: the shield let go
+expect Contact: the shield free again
+expect Body IK: the left arm follows its hand
+expect the left arm reaches its hand
+expect 1 thing(s) on its forearm carried with the hand
+expect the right arm reaches its hand
+reject HandScript: WARNING
+reject Body IK: the left arm left to the body
+reject Body IK: the right arm left to the body
+
+wait 12
+left rot 0 0 0
+left pos -0.20 -0.40 -0.30
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 22
+mark worn
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+head pitch -40
+left pos -0.25 -0.25 -0.40
+left rot 40 0 0
+right pos 0.25 -0.30 -0.35
+right rot 50 0 0
+wait 2
+mark held
+dump
+left pos -0.15 0.05 -0.40
+left rot 70 20 0
+wait 2
+mark block
+dump
+left pos -0.12 -0.20 -0.18
+left rot 30 30 0
+wait 2
+mark close
+dump
+head pitch 0
+left rot 0 0 0
+left pos -0.20 -0.40 -0.30
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+left pos -0.20 -0.70 -0.30
+wait 1
+mark down
+left pos -0.20 -0.90 -0.30
+wait 0.5
+mark lower1
+left pos -0.20 -1.05 -0.30
+wait 0.5
+mark lower2
+left pos -0.20 -1.20 -0.30
+wait 0.5
+mark lower3
+left pos -0.20 -1.35 -0.30
+wait 0.5
+mark lower4
+left pos -0.20 -1.50 -0.30
+wait 0.5
+mark lower5
+left pos -0.20 -1.65 -0.30
+wait 0.5
+mark lower6
+left pos -0.20 -1.80 -0.30
+wait 0.5
+mark lower7
+left pos -0.20 -2.10 -0.30
+wait 0.5
+mark deep
+left pos -0.20 -0.40 -0.30
+wait 1.5
+mark free
+wait 1

@@ -1488,6 +1488,16 @@ endif()
 
 add_test(NAME combat_ring COMMAND combat_ring_test)
 
+add_executable(body_ik_test BodyIkTest.cpp)
+
+target_include_directories(body_ik_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(body_ik_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME body_ik COMMAND body_ik_test)
+
 add_executable(attack_tempo_test AttackTempoTest.cpp)
 
 target_include_directories(attack_tempo_test PRIVATE ../src)

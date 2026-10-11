@@ -2,8 +2,12 @@
 
 #include "core/AddressSpace.h"
 #include "core/Log.h"
+#include "core/MathFns.h"
 #include "core/Memory.h"
+#include "core/Rotation.h"
+#include "game/BodyIk.h"
 #include "game/BodyPlacement.h"
+#include "game/FirstPersonHide.h"
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
@@ -146,6 +150,52 @@ void CollapseForThisDraw(NiAVObject* node) {
 	node->localTransform.scale = saved;
 }
 
+// Debug.BodyTreeProbe: the whole third-person tree once per skeleton, and
+// the bones an arm solver would write - each one's local transform under
+// its parent (the bone's length is its child's local position, its axes
+// the rows of its rotation) and its world position, as the animation left
+// them this frame.
+const NiAVObject* g_probedRoot = nullptr;
+
+void ProbeBodyTree(NiAVObject* root) {
+	if (root == g_probedRoot) {
+		return;
+	}
+	g_probedRoot = root;
+	ProbeNodeTree(root, "Body tree", 400);
+	static const char* const kBones[] = {
+		"Bip01",           "Bip01 Pelvis",       "Bip01 Spine",         "Bip01 Spine1",
+		"Bip01 Spine2",    "Bip01 Neck",         "Bip01 Head",          "Bip01 L Clavicle",
+		"Bip01 L UpperArm", "Bip01 L UpperArmTwist", "Bip01 L Forearm",  "Bip01 L ForearmTwist",
+		"Bip01 L Hand",    "Bip01 R Clavicle",   "Bip01 R UpperArm",    "Bip01 R UpperArmTwist",
+		"Bip01 R Forearm", "Bip01 R ForearmTwist", "Bip01 R Hand",      "Bip01 L Thigh",
+		"Bip01 L Calf",    "Bip01 L Foot",       "Bip01 R Thigh",       "Bip01 R Calf",
+		"Bip01 R Foot",
+	};
+	for (const char* name : kBones) {
+		bool missing = false;
+		NiAVObject* const bone = NamedNode(root, name, missing);
+		if (bone == nullptr) {
+			OBVR_LOG("Body bones: \"%s\" - not under the skeleton", name);
+			continue;
+		}
+		const NiTransform& l = bone->localTransform;
+		const NiTransform& w = bone->worldTransform;
+		const NiAVObject* const parent = bone->parent;
+		OBVR_LOG("Body bones: \"%s\" under \"%s\" - local pos %.2f %.2f %.2f scale %.3f, rot rows [%.3f %.3f %.3f] "
+		         "[%.3f %.3f %.3f] [%.3f %.3f %.3f]; world %.1f %.1f %.1f scale %.3f",
+		         name, LooksLikeObject(parent) && NameLooksReal(parent->name) ? parent->name : "?",
+		         static_cast<double>(l.pos.x), static_cast<double>(l.pos.y), static_cast<double>(l.pos.z),
+		         static_cast<double>(l.scale), static_cast<double>(l.rot.data[0][0]),
+		         static_cast<double>(l.rot.data[0][1]), static_cast<double>(l.rot.data[0][2]),
+		         static_cast<double>(l.rot.data[1][0]), static_cast<double>(l.rot.data[1][1]),
+		         static_cast<double>(l.rot.data[1][2]), static_cast<double>(l.rot.data[2][0]),
+		         static_cast<double>(l.rot.data[2][1]), static_cast<double>(l.rot.data[2][2]),
+		         static_cast<double>(w.pos.x), static_cast<double>(w.pos.y), static_cast<double>(w.pos.z),
+		         static_cast<double>(w.scale));
+	}
+}
+
 }  // namespace
 
 bool ShowPlayerBody(const BodyFrame& frame) {
@@ -166,6 +216,15 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 	if (head == nullptr) {
 		return false;
 	}
+
+	// The body IK (game/BodyIk.h) first puts back what it wrote last frame
+	// where the engine left it, then turns the body with the head - both
+	// before anything below reads the head's place.
+	const bool ik = BeginBodyIk(root);
+	if (ik) {
+		StepBodyTorso(frame.ik, frame.headYawValid, frame.headWorldYaw, frame.headTrackingYaw, frame.dtSeconds);
+	}
+	float lowered = 0.0f;
 
 	// Stand the skeleton where the head lands under the headset. The
 	// SKELETON, not the player's root node: the camera hangs under that root
@@ -195,8 +254,22 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 		in.parentRot = parent->worldTransform.rot;
 		in.parentPos = parent->worldTransform.pos;
 		in.parentScale = parent->worldTransform.scale;
-		skeleton->localTransform.pos = BodyRootLocalPos(in);
+		// The torso following the head: the eyes in front of the head bone the
+		// way the head faces, not the body (BodyPlacement.h).
+		if (ik && frame.ik.torso && frame.headYawValid) {
+			in.eyesFollowHeadYaw = true;
+			in.headYawRot =
+				RotationFromHeading(Heading{math::Cos(frame.headWorldYaw), math::Sin(frame.headWorldYaw)});
+		}
+		const float zBefore = skeleton->worldTransform.pos.z;
+		const NiPoint3 local = BodyRootLocalPos(in);
+		if (ik) {
+			WriteBodyRootPosition(local);
+		} else {
+			skeleton->localTransform.pos = local;
+		}
 		UpdateNodeTransforms(skeleton);
+		lowered = zBefore - skeleton->worldTransform.pos.z;
 		if (!g_reported.skeletonMoved) {
 			g_reported.skeletonMoved = true;
 			OBVR_LOG("Body: \"%s\" at %08X under \"%s\" is what moves under the headset; the "
@@ -206,12 +279,23 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 		}
 	}
 
+	// The knees, for a body let down below its legs' own height.
+	if (ik) {
+		StepBodyLegs(frame.ik, lowered);
+	}
+
+	if (frame.treeProbe) {
+		ProbeBodyTree(root);
+	}
+
 	// The head and the animated arms are collapsed AFTER the move, so the
-	// zero-scale world transforms are the ones the draw sees.
+	// zero-scale world transforms are the ones the draw sees. With the IK
+	// running, the arms are decided after the pins (StepBodyArms): each one
+	// that follows its hand stays, the others collapse there.
 	if (frame.hideHead) {
 		CollapseForThisDraw(head);
 	}
-	if (frame.hideArms) {
+	if (frame.hideArms && !ik) {
 		if (NiAVObject* const left = NamedNode(root, kLeftClavicleName, g_reported.leftClavicle)) {
 			CollapseForThisDraw(left);
 		}
@@ -225,16 +309,22 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 		g_reported.shown = true;
 		OBVR_LOG("Body: the third-person skeleton \"%s\" at %08X is shown in first person, "
 		         "stood under the headset each frame (eyes %.1f forward, %.1f up "
-		         "from %s), head %s, clavicles %s",
+		         "from %s), head %s, clavicles %s; the IK %s (arms %d, torso %d, legs %d)",
 		         root->name, reinterpret_cast<UInt32>(root),
 		         static_cast<double>(frame.eyeOffsetUnits.y),
 		         static_cast<double>(frame.eyeOffsetUnits.z), kHeadName,
-		         frame.hideHead ? "collapsed" : "kept", frame.hideArms ? "collapsed" : "kept");
+		         frame.hideHead ? "collapsed" : "kept",
+		         ik ? "decided after the pins" : (frame.hideArms ? "collapsed" : "kept"),
+		         ik ? "running" : "not running", frame.ik.arms ? 1 : 0, frame.ik.torso ? 1 : 0,
+		         frame.ik.legs ? 1 : 0);
 	}
 	return true;
 }
 
 void ReleasePlayerBody(bool isThirdPerson) {
+	// The IK's writes and hides given back first, while the root they were
+	// made under is still the one looked for.
+	ReleaseBodyIk(BodyIkHolds() ? ThirdPersonRoot() : nullptr);
 	if (g_unhiddenRoot == nullptr) {
 		return;
 	}

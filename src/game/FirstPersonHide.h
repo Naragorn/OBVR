@@ -57,6 +57,11 @@ void ReleaseHiddenFirstPersonNodes();
 // a weapon sheathed), up to 24 reports. For Debug.FirstPersonTreeProbe.
 void ProbeFirstPersonTree();
 
+// Logs any tree the same way, once per call: every node's class, name,
+// flags, child count and world position, each line headed by `label`, at
+// most maxLines of them. For the third-person body (Debug.BodyTreeProbe).
+void ProbeNodeTree(const NiAVObject* root, const char* label, UInt32 maxLines);
+
 // For the pinned hands: the engine culls a shape by the world bound it
 // computed from the animation, and a hand the controller holds in view
 // could be thrown away because the animated arm had swung out of it - the
@@ -72,5 +77,22 @@ UInt32 KeepFirstPersonNodesInView(const char* list, const NiPoint3& centre, floa
 // a node that keeps children.
 const char* NiClassNameOf(const void* object);
 bool NiClassIsNode(const char* className);
+
+// The children of a scene node - a class that keeps children - and their
+// count; null and 0 for geometry, or anything that does not read as a node.
+// Null entries are normal: the array has holes.
+NiAVObject* const* NodeChildren(const NiAVObject* node, UInt32& count);
+
+// One walk of the tree under `under`, itself included: for each of `names`,
+// the first node carrying it (NameInList's match - case aside, "Name:N" as
+// Name), or null. Answers how many were found. For the third-person
+// skeleton's bones, a frame's worth at a time (game/BodyIk.cpp).
+UInt32 FindNodesNamed(NiAVObject* under, const char* const* names, UInt32 count, NiAVObject** out);
+
+// KeepFirstPersonNodesInView for any tree: the nodes under `root` named in
+// the list, and every node above each up to `root`, get a world bound round
+// `centre` at least `radius` wide. For the body's arms, which the IK carries
+// out of the bound the engine worked out from the animation.
+UInt32 KeepNodesInView(NiAVObject* root, const char* list, const NiPoint3& centre, float radius);
 
 }  // namespace obvr::game

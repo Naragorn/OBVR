@@ -1,5 +1,6 @@
 #pragma once
 
+#include "game/BodyIk.h"
 #include "game/NiMath.h"
 
 namespace obvr::game {
@@ -23,7 +24,21 @@ struct BodyFrame {
 	// The eyes relative to Bip01 Head, in the root's axes: forward and up.
 	NiPoint3 eyeOffsetUnits{0.0f, 14.0f, 6.0f};
 	bool hideHead = true;
+	// The animated arms collapsed. With the body IK running the arms are
+	// decided after the pins instead (StepBodyArms: an arm that follows its
+	// hand is not collapsed); this applies only when the IK cannot run.
 	bool hideArms = true;
+	// Debug.BodyTreeProbe: the tree and the arm chain's transforms logged
+	// once per skeleton, before anything is collapsed.
+	bool treeProbe = false;
+	// The body IK (game/BodyIk.h): its parts, and the head's yaw in the
+	// world (the camera's, HeadingOf's sense) and in the headset's tracking
+	// space (from the recenter), for the torso.
+	BodyIkSettings ik;
+	bool headYawValid = false;
+	float headWorldYaw = 0.0f;
+	float headTrackingYaw = 0.0f;
+	float dtSeconds = 0.0f;
 };
 
 // Shows and places the body for this frame. False when the skeleton could

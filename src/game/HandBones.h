@@ -57,4 +57,10 @@ void ForgetHandBones();
 // False before the bone has been found and written.
 bool ReadHandBoneWorld(bool rightHand, NiMatrix33& rot, NiPoint3& pos);
 
+// The pins of one frame: BeginHandPins before them, and afterwards whether
+// PinHandBone wrote that hand since - the body's arm follows only a hand
+// placed this frame (game/BodyIk.h).
+void BeginHandPins();
+bool HandPinnedThisFrame(bool rightHand);
+
 }  // namespace obvr::game
