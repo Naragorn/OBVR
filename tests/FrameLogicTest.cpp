@@ -1425,8 +1425,13 @@ void TestCrosshairTooltipPolicy() {
 			          DeathBodyAhead(facingNorth, 0.0f).LengthSquared() == 0.0f,
 			      "no heading, or switched off (0): the body where it falls");
 			using obvr::camera::HudHiddenForDeath;
+			using obvr::camera::HudOverlayShown;
 			Check(HudHiddenForDeath(true, true, false), "dead: the HUD and crosshair go");
 			Check(!HudHiddenForDeath(true, true, true), "dead, the load menu open: it shows");
+			Check(HudOverlayShown(true, false, false), "a world frame, alive, nothing loading: the 2D layer shows");
+			Check(!HudOverlayShown(false, false, false), "not a world frame: hidden");
+			Check(!HudOverlayShown(true, true, false), "hidden for death: hidden");
+			Check(!HudOverlayShown(true, false, true), "a world frame while the game loads: hidden - no black frame");
 			Check(!HudHiddenForDeath(true, false, false) && !HudHiddenForDeath(false, true, false),
 			      "alive, or switched off: as before");
 			DeathViewState stepped;

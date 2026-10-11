@@ -518,6 +518,160 @@ inline UInt32 BodyCapsulesFromBones(const NiPoint3* bones, const bool* have, flo
 	return added;
 }
 
+// ------------------------------------------------------------- the stoppers
+//
+// Shapes of OBVR's own that hold the blade or a hand whatever its speed
+// (the tester, 2026-10-11: "schild kollidieren nicht mit schwert. hand nicht
+// mit waffe"): the worn shield as a disc, the drawn blade as a capsule for
+// the free hand, the foes' blades as capsules and their shields as discs.
+// Pressed past the cap they are passed as a person is - through the ledger,
+// by their id - not "through" a wall: a blade crossed by the shield arm still
+// strikes. The ids: the own things fixed numbers no actor's address is (the
+// addresses are 4-aligned), a foe's blade or shield its address with a low
+// bit set, so the ledger tells them from the foe's body.
+inline constexpr UInt32 kStopperOwnShield = 0xFFFFFFF1u;
+inline constexpr UInt32 kStopperOwnBlade = 0xFFFFFFF2u;
+inline constexpr UInt32 kStopperFoeBladeBit = 1u;
+inline constexpr UInt32 kStopperFoeShieldBit = 2u;
+
+inline UInt32 FoeBladeId(UInt32 actor) { return actor | kStopperFoeBladeBit; }
+inline UInt32 FoeShieldId(UInt32 actor) { return actor | kStopperFoeShieldBit; }
+
+inline bool IsStopperId(UInt32 id) {
+	return id == kStopperOwnShield || id == kStopperOwnBlade || (id & 3u) != 0;
+}
+
+// A solid disc: the points within `radius` of the axis through `centre`
+// along the unit `normal`, and within `halfThick` of its plane.
+struct BladeDisc {
+	NiPoint3 centre{0.0f, 0.0f, 0.0f};
+	NiPoint3 normal{0.0f, 0.0f, 1.0f};
+	float radius = 0.0f;
+	float halfThick = 0.0f;
+	UInt32 id = 0;
+};
+
+inline constexpr UInt32 kBladeDiscsMax = 8;
+
+struct BladeDiscs {
+	UInt32 count = 0;
+	BladeDisc disc[kBladeDiscsMax];
+
+	bool Add(const NiPoint3& centre, const NiPoint3& normal, float radius, float halfThick, UInt32 id) {
+		const float n2 = normal.LengthSquared();
+		if (count >= kBladeDiscsMax || !(radius > 0.0f) || !(halfThick > 0.0f) || !(n2 > 0.81f && n2 < 1.21f)) {
+			return false;
+		}
+		disc[count].centre = centre;
+		disc[count].normal = normal * (1.0f / math::Sqrt(n2));
+		disc[count].radius = radius;
+		disc[count].halfThick = halfThick;
+		disc[count].id = id;
+		++count;
+		return true;
+	}
+};
+
+// The distance from p to the solid disc (0 inside it).
+inline float PointDiscDistance(const NiPoint3& p, const BladeDisc& d) {
+	const NiPoint3 off = p - d.centre;
+	const float along = DotOf3(off, d.normal);
+	const NiPoint3 radial = off - d.normal * along;
+	const float r = math::Sqrt(radial.LengthSquared());
+	const float cr = r > d.radius ? d.radius : r;
+	const float ca = along > d.halfThick ? d.halfThick : (along < -d.halfThick ? -d.halfThick : along);
+	const NiPoint3 q = d.centre + d.normal * ca + (r > 1e-6f ? radial * (cr / r) : NiPoint3{0.0f, 0.0f, 0.0f});
+	return math::Sqrt((p - q).LengthSquared());
+}
+
+// The distance from the segment a-b to the disc: the nearest of nine points
+// along it (a crossing of a shield 12 units thick cannot slip between them).
+inline constexpr UInt32 kDiscSamples = 9;
+
+inline float SegmentDiscDistance(const NiPoint3& a, const NiPoint3& b, const BladeDisc& d) {
+	float best = -1.0f;
+	for (UInt32 i = 0; i < kDiscSamples; ++i) {
+		const float s = static_cast<float>(i) / static_cast<float>(kDiscSamples - 1);
+		const float dist = PointDiscDistance(a + (b - a) * s, d);
+		best = best < 0.0f || dist < best ? dist : best;
+	}
+	return best;
+}
+
+inline bool SegmentTouchesDisc(const NiPoint3& a, const NiPoint3& b, const BladeDisc& d) {
+	return SegmentDiscDistance(a, b, d) <= 0.01f;
+}
+
+// Where the segment from -> to first enters the disc: the slab of its
+// thickness met with the cylinder of its radius. `inside` when `from` is in
+// it already (fraction 0). The normal: the face entered, or the rim's
+// outward direction there.
+inline bool SegmentEntersDisc(const NiPoint3& from, const NiPoint3& to, const BladeDisc& d, float& fraction,
+                              NiPoint3& normal, bool& inside) {
+	inside = false;
+	if (!(d.radius > 0.0f) || !(d.halfThick > 0.0f)) {
+		return false;
+	}
+	const NiPoint3 o = from - d.centre;
+	const NiPoint3 dir = to - from;
+	const float oa = DotOf3(o, d.normal);
+	const float da = DotOf3(dir, d.normal);
+	const NiPoint3 oRadial = o - d.normal * oa;
+	const NiPoint3 dRadial = dir - d.normal * da;
+	const float r2 = oRadial.LengthSquared();
+	if (oa <= d.halfThick && oa >= -d.halfThick && r2 <= d.radius * d.radius) {
+		inside = true;
+		fraction = 0.0f;
+		normal = d.normal;
+		return true;
+	}
+	if (!(dir.LengthSquared() > 1e-12f)) {
+		return false;
+	}
+	const float big = 1e30f;
+	float slabIn = -big;
+	float slabOut = big;
+	if (da > 1e-9f || da < -1e-9f) {
+		const float t1 = (-d.halfThick - oa) / da;
+		const float t2 = (d.halfThick - oa) / da;
+		slabIn = t1 < t2 ? t1 : t2;
+		slabOut = t1 < t2 ? t2 : t1;
+	} else if (oa > d.halfThick || oa < -d.halfThick) {
+		return false;
+	}
+	float cylIn = -big;
+	float cylOut = big;
+	const float qa = dRadial.LengthSquared();
+	const float qb = DotOf3(oRadial, dRadial);
+	const float qc = r2 - d.radius * d.radius;
+	if (qa > 1e-12f) {
+		const float h = qb * qb - qa * qc;
+		if (h < 0.0f) {
+			return false;
+		}
+		const float s = math::Sqrt(h);
+		cylIn = (-qb - s) / qa;
+		cylOut = (-qb + s) / qa;
+	} else if (qc > 0.0f) {
+		return false;
+	}
+	const float enter = slabIn > cylIn ? slabIn : cylIn;
+	const float leave = slabOut < cylOut ? slabOut : cylOut;
+	if (enter > leave || enter < 0.0f || enter > 1.0f) {
+		return false;
+	}
+	fraction = enter;
+	if (slabIn >= cylIn) {
+		normal = d.normal * (oa > 0.0f ? 1.0f : -1.0f);
+	} else {
+		const NiPoint3 p = o + dir * enter;
+		const NiPoint3 radial = p - d.normal * DotOf3(p, d.normal);
+		const float rl = math::Sqrt(radial.LengthSquared());
+		normal = rl > 1e-6f ? radial * (1.0f / rl) : d.normal;
+	}
+	return true;
+}
+
 // A body without the bones: an upright column of its bound - the shove's
 // reach (game::HandAtBody: half the radius wide, the radius up and down),
 // a little narrower.
@@ -573,21 +727,35 @@ struct BladePassLedger {
 	}
 
 	// The same for a shape of several segments (a shield's two spokes):
-	// touching any of them is touching.
+	// touching any of them is touching. The stoppers (capsules by their id)
+	// and the discs count as the bodies do.
 	void StepSegments(const NiPoint3* from, const NiPoint3* to, UInt32 segments, const BladeBodies* bodies,
-	                  float dtSeconds) {
+	                  float dtSeconds, const BladeBodies* stoppers = nullptr, const BladeDiscs* discs = nullptr) {
 		UInt32 kept = 0;
 		for (UInt32 i = 0; i < count; ++i) {
 			bool seen = false;
 			bool touching = false;
-			for (UInt32 c = 0; bodies != nullptr && c < bodies->count; ++c) {
-				const BladeBodyCapsule& cap = bodies->cap[c];
-				if (cap.actor != actor[i]) {
+			const BladeBodies* lists[2] = {bodies, stoppers};
+			for (const BladeBodies* list : lists) {
+				for (UInt32 c = 0; list != nullptr && c < list->count; ++c) {
+					const BladeBodyCapsule& cap = list->cap[c];
+					if (cap.actor != actor[i]) {
+						continue;
+					}
+					seen = true;
+					for (UInt32 k = 0; k < segments && !touching; ++k) {
+						touching = SegmentSegmentDistance(from[k], to[k], cap.a, cap.b) <= cap.radius;
+					}
+				}
+			}
+			for (UInt32 c = 0; discs != nullptr && c < discs->count; ++c) {
+				const BladeDisc& d = discs->disc[c];
+				if (d.id != actor[i]) {
 					continue;
 				}
 				seen = true;
 				for (UInt32 k = 0; k < segments && !touching; ++k) {
-					touching = SegmentSegmentDistance(from[k], to[k], cap.a, cap.b) <= cap.radius;
+					touching = SegmentTouchesDisc(from[k], to[k], d);
 				}
 			}
 			float t = touching ? 0.0f : clear[i] + (dtSeconds > 0.0f ? dtSeconds : 0.0f);
@@ -616,11 +784,15 @@ struct BladeSweep {
 };
 
 // What the living are to this sweep: their capsules, those passed, and
-// whether the blade swings (then it goes into them and passes them).
+// whether the blade swings (then it goes into them and passes them). And the
+// stoppers: capsules and discs that hold the blade at any speed, passed only
+// once it was pressed past the cap into them (the ledger, by their id).
 struct BladeLiving {
 	const BladeBodies* bodies = nullptr;
 	BladePassLedger* passed = nullptr;
 	bool swinging = false;
+	const BladeBodies* stoppers = nullptr;
+	const BladeDiscs* discs = nullptr;
 };
 
 // The blade's points from where they were to where they would be, the
@@ -661,6 +833,53 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 		NiPoint3 point = h.point;
 		UInt32 body = h.body;
 		UInt32 actor = 0;
+		// A shape of OBVR's own met on this point's way: a person (a swing
+		// goes into them and passes them) or a stopper (held at any speed);
+		// one the point is inside already is passed either way. The
+		// stoppers and the discs go first, so that a person behind one the
+		// point is held at (their blade, your shield) is not reached - the
+		// swing stops short of them.
+		auto take = [&](float f, const NiPoint3& n, bool inside, UInt32 id, bool passable) {
+			const float at = f * reach;
+			if (inside || (passable && living.swinging)) {
+				const bool reached = inside || (at <= length && (atUnits < 0.0f || at <= atUnits));
+				if (reached && living.passed != nullptr && living.passed->Add(id) && !inside && passable) {
+					best.entered = true;
+				}
+				return;
+			}
+			if (atUnits < 0.0f || at < atUnits) {
+				atUnits = at;
+				normal = n;
+				point = a + dir * at;
+				body = 0;
+				actor = id;
+			}
+		};
+		for (UInt32 c = 0; living.stoppers != nullptr && c < living.stoppers->count; ++c) {
+			const BladeBodyCapsule& cap = living.stoppers->cap[c];
+			if (living.passed != nullptr && living.passed->Has(cap.actor)) {
+				continue;
+			}
+			float f = 1.0f;
+			NiPoint3 n;
+			bool inside = false;
+			if (SegmentEntersCapsule(a, end, cap.a, cap.b, cap.radius, f, n, inside)) {
+				take(f, n, inside, cap.actor, false);
+			}
+		}
+		for (UInt32 c = 0; living.discs != nullptr && c < living.discs->count; ++c) {
+			const BladeDisc& d = living.discs->disc[c];
+			if (living.passed != nullptr && living.passed->Has(d.id)) {
+				continue;
+			}
+			float f = 1.0f;
+			NiPoint3 n;
+			bool inside = false;
+			if (SegmentEntersDisc(a, end, d, f, n, inside)) {
+				take(f, n, inside, d.id, false);
+			}
+		}
 		for (UInt32 c = 0; living.bodies != nullptr && c < living.bodies->count; ++c) {
 			const BladeBodyCapsule& cap = living.bodies->cap[c];
 			if (living.passed != nullptr && living.passed->Has(cap.actor)) {
@@ -669,24 +888,8 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 			float f = 1.0f;
 			NiPoint3 n;
 			bool inside = false;
-			if (!SegmentEntersCapsule(a, end, cap.a, cap.b, cap.radius, f, n, inside)) {
-				continue;
-			}
-			const float at = f * reach;
-			if (inside || living.swinging) {
-				// Inside already, or a swing into them within this move: passed.
-				if ((inside || at <= length) && living.passed != nullptr && living.passed->Add(cap.actor) &&
-				    !inside) {
-					best.entered = true;
-				}
-				continue;
-			}
-			if (atUnits < 0.0f || at < atUnits) {
-				atUnits = at;
-				normal = n;
-				point = a + dir * at;
-				body = 0;
-				actor = cap.actor;
+			if (SegmentEntersCapsule(a, end, cap.a, cap.b, cap.radius, f, n, inside)) {
+				take(f, n, inside, cap.actor, true);
 			}
 		}
 		if (!(atUnits >= 0.0f)) {
@@ -721,13 +924,22 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 // arm or a leg between two of the swept points, which the points' ways
 // missed. 0 for none, or while it swings.
 inline UInt32 PersonAcross(const BladePose& pose, const BodySpan& span, const BladeLiving& living) {
-	if (living.bodies == nullptr || living.swinging) {
-		return 0;
-	}
 	const NiPoint3 guard = BladePointAt(pose, span, 0.0f);
 	const NiPoint3 tip = BladePointAt(pose, span, 1.0f);
-	for (UInt32 c = 0; c < living.bodies->count; ++c) {
-		const BladeBodyCapsule& cap = living.bodies->cap[c];
+	if (living.bodies != nullptr && !living.swinging) {
+		for (UInt32 c = 0; c < living.bodies->count; ++c) {
+			const BladeBodyCapsule& cap = living.bodies->cap[c];
+			if (living.passed != nullptr && living.passed->Has(cap.actor)) {
+				continue;
+			}
+			if (SegmentSegmentDistance(guard, tip, cap.a, cap.b) <= cap.radius) {
+				return cap.actor;
+			}
+		}
+	}
+	// A stopper, swinging or not.
+	for (UInt32 c = 0; living.stoppers != nullptr && c < living.stoppers->count; ++c) {
+		const BladeBodyCapsule& cap = living.stoppers->cap[c];
 		if (living.passed != nullptr && living.passed->Has(cap.actor)) {
 			continue;
 		}
@@ -735,21 +947,40 @@ inline UInt32 PersonAcross(const BladePose& pose, const BodySpan& span, const Bl
 			return cap.actor;
 		}
 	}
+	for (UInt32 c = 0; living.discs != nullptr && c < living.discs->count; ++c) {
+		const BladeDisc& d = living.discs->disc[c];
+		if (living.passed != nullptr && living.passed->Has(d.id)) {
+			continue;
+		}
+		if (SegmentTouchesDisc(guard, tip, d)) {
+			return d.id;
+		}
+	}
 	return 0;
 }
 
 // The living the blade at this pose lies in: passed (someone walked into a
-// blade held still, or it was taken up in them).
+// blade held still, or it was taken up in them). The stoppers it lies in
+// the same way (the shield arm swung across the blade).
 inline void PassThoseItIsIn(const BladePose& pose, const BodySpan& span, const BladeLiving& living) {
-	if (living.bodies == nullptr || living.passed == nullptr) {
+	if (living.passed == nullptr) {
 		return;
 	}
 	const NiPoint3 guard = BladePointAt(pose, span, 0.0f);
 	const NiPoint3 tip = BladePointAt(pose, span, 1.0f);
-	for (UInt32 c = 0; c < living.bodies->count; ++c) {
-		const BladeBodyCapsule& cap = living.bodies->cap[c];
-		if (SegmentSegmentDistance(guard, tip, cap.a, cap.b) <= cap.radius) {
-			living.passed->Add(cap.actor);
+	const BladeBodies* lists[2] = {living.bodies, living.stoppers};
+	for (const BladeBodies* list : lists) {
+		for (UInt32 c = 0; list != nullptr && c < list->count; ++c) {
+			const BladeBodyCapsule& cap = list->cap[c];
+			if (SegmentSegmentDistance(guard, tip, cap.a, cap.b) <= cap.radius) {
+				living.passed->Add(cap.actor);
+			}
+		}
+	}
+	for (UInt32 c = 0; living.discs != nullptr && c < living.discs->count; ++c) {
+		const BladeDisc& d = living.discs->disc[c];
+		if (SegmentTouchesDisc(guard, tip, d)) {
+			living.passed->Add(d.id);
 		}
 	}
 }
@@ -843,6 +1074,9 @@ struct BladeContactFrame {
 	// blade swings - the strike's own swing - and goes into them.
 	const BladeBodies* bodies = nullptr;
 	bool swinging = false;
+	// The stoppers (the shields, the blades): held at any speed.
+	const BladeBodies* stoppers = nullptr;
+	const BladeDiscs* discs = nullptr;
 	// The hit-stop (HitStopShare): the share of its way the blade goes this
 	// frame; 1 all of it.
 	float followShare = 1.0f;
@@ -950,7 +1184,7 @@ inline void StepShapePassed(BladePassLedger& passed, const BladePose& pose, cons
 		from[i] = BladePointAt(pose, *spans[i], 0.0f);
 		to[i] = BladePointAt(pose, *spans[i], 1.0f);
 	}
-	passed.StepSegments(from, to, n, f.bodies, f.dtSeconds);
+	passed.StepSegments(from, to, n, f.bodies, f.dtSeconds, f.stoppers, f.discs);
 }
 
 template <class World>
@@ -962,7 +1196,7 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 		s = BladeContactState{};
 		return v;
 	}
-	const BladeLiving living{f.bodies, &s.passed, f.swinging};
+	const BladeLiving living{f.bodies, &s.passed, f.swinging, f.stoppers, f.discs};
 	if (!s.have || f.jumped) {
 		const bool inside = ShapeInside(world, f.wanted, f) || ShapeBehind(world, f.wanted, f);
 		s.have = true;

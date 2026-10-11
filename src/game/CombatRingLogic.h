@@ -12,9 +12,10 @@
 // theirs can land: inside the ring their step forward becomes a step back,
 // at the ring a step to the side (combat keeps them facing the player, so a
 // side step walks them round the player), beyond it they walk in as they
-// will. A turn ends after an attack (once the blow is through) or after a
-// spell of not attacking at all, when somebody else is waiting; the one who
-// has waited longest steps in next.
+// will. A turn ends after an attack (once the blow is through - a blow is
+// an attack sequence animating, not the process's lingering action) or
+// after a spell of not attacking at all, when somebody else is waiting; the
+// one who has waited longest steps in next.
 //
 // The movement goes through the same flags and setters as the slow approach
 // (game/SlowApproach.h; xOBSE GameProcess.h's movement flags: forward 0x1,
@@ -42,15 +43,24 @@ struct CombatRingSettings {
 	UInt32 attackersAtOnce = 1;        // 1-5
 	float bandUnits = 50.0f;           // the ring's width either side: no back-and-forth at its edge
 	float turnSeconds = 6.0f;          // a turn lasts at least this long (the tester: "zu wenig zeit zum angreifen")
+	float turnMaxSeconds = 12.0f;      // and at most this: each turn's length is drawn between the two
 	float idleTurnSeconds = 10.0f;     // a turn without an attack ends after this, when others wait
+	bool byLevel = true;               // the next turn to the lowest level waiting, the strongest last
 };
 
-// The settings from the INI's: metres 0 (off) to 10, attackers 1-5.
+// The settings from the INI's: metres 0 (off) to 10, attackers 1-5, a turn
+// 2-30 s at least and at most that to 60 s (the tester, 2026-10-11: "random
+// time ... von random(5s, 15s)"); the order by level (the tester: "erstmal
+// kommen nur alle low levels an und dann die high levels").
 inline CombatRingSettings CombatRingFrom(bool enabled, float metres, int attackers, float unitsPerMetre,
-                                         float turnSeconds = 6.0f) {
+                                         float turnSeconds = 6.0f, float turnMaxSeconds = 12.0f, bool byLevel = true) {
 	CombatRingSettings s;
 	s.turnSeconds = turnSeconds >= 2.0f && turnSeconds <= 30.0f ? turnSeconds : 6.0f;
-	s.idleTurnSeconds = s.turnSeconds > 10.0f ? s.turnSeconds : 10.0f;
+	const float longest = turnMaxSeconds == turnMaxSeconds ? (turnMaxSeconds > 60.0f ? 60.0f : turnMaxSeconds)
+	                                                       : (s.turnSeconds > 12.0f ? s.turnSeconds : 12.0f);
+	s.turnMaxSeconds = longest < s.turnSeconds ? s.turnSeconds : longest;
+	s.idleTurnSeconds = s.turnMaxSeconds > 10.0f ? s.turnMaxSeconds : 10.0f;
+	s.byLevel = byLevel;
 	const float perMetre = unitsPerMetre > 0.0f ? unitsPerMetre : 70.0f;
 	const float m = metres == metres ? (metres > 10.0f ? 10.0f : metres) : 0.0f;
 	s.enabled = enabled && m > 0.0f;
@@ -84,13 +94,20 @@ inline RingOrder WaitingOrder(float distanceUnits, const CombatRingSettings& s) 
 }
 
 // The flags the game asked for, as the order wants them: a step back or to
-// the side at a walk; nothing else touched. `circleLeft` picks the side.
+// the side at a walk; nothing else touched. `circleLeft` is the ring's
+// sense, counter-clockwise seen from above (RingStepOffset), and the legs
+// face the player: that is a step to the actor's RIGHT, and the ring's
+// right a step to its left. With the sides the other way round (until
+// 2026-10-11) the legs walked against the placed step - the harness had
+// them going round the wrong way at 20 units a second, the legs' walk less
+// the step, and standing at a wall the probe never saw, the step pointing
+// away from it.
 inline UInt16 RingFlags(UInt16 flags, RingOrder order, bool circleLeft) {
 	if (order == RingOrder::Free) {
 		return flags;
 	}
 	const UInt16 rest = static_cast<UInt16>(flags & ~(kMoveDirections | kMoveRun));
-	const UInt16 step = order == RingOrder::Back ? kMoveBackward : (circleLeft ? kMoveLeft : kMoveRight);
+	const UInt16 step = order == RingOrder::Back ? kMoveBackward : (circleLeft ? kMoveRight : kMoveLeft);
 	return static_cast<UInt16>(rest | step | kMoveWalk);
 }
 
@@ -140,6 +157,83 @@ inline bool RingStepOffset(float rx, float ry, RingOrder order, bool circleLeft,
 	return true;
 }
 
+// The legs walk as well (RingFlags): what they did since the step before
+// is measured - the actor's position against where that step left them
+// (RingLegsWalked) - and only the shortfall along the wanted step is
+// placed. So the legs' own walk, with the game's collision, carries the
+// fighter where it is enough, nothing moves faster than the ring's walk,
+// and against legs walking the wrong way (the AI's own step towards the
+// player) up to twice the step is placed. The walk is unknown for a first
+// step and after a frame without one (RingOrder::Free): the whole step then.
+inline bool RingStepShortfall(float ox, float oy, bool walkedKnown, float ex, float ey, float& sx, float& sy) {
+	sx = 0.0f;
+	sy = 0.0f;
+	const float length = math::Sqrt(ox * ox + oy * oy);
+	if (!(length > 1e-3f)) {
+		return false;
+	}
+	const float ux = ox / length;
+	const float uy = oy / length;
+	const float along = walkedKnown ? ex * ux + ey * uy : 0.0f;
+	float remainder = length - along;
+	if (remainder > 2.0f * length) {
+		remainder = 2.0f * length;
+	}
+	if (!(remainder > 1e-3f)) {
+		return false;
+	}
+	sx = ux * remainder;
+	sy = uy * remainder;
+	return true;
+}
+
+// ------------------------------------------------------------ The step probed
+//
+// A step is placed, not walked, so the world has to be asked first (the
+// tester, 2026-10-11: "teilweise pusht du die gegner in oder auf wände oder
+// zäune"): a ray at knee height and one at chest height along the step and
+// the body's half width past it, each stopped by anything fixed (a wall, a
+// fence, a tree; clutter and the living are passed), and the ground under
+// the new spot against the ground under the old - a stair's step is
+// climbed, a fence's top or a ledge is not. game/CombatRing.cpp asks the
+// world; this decides.
+struct RingStepProbe {
+	bool blockedLow = false;   // something fixed at knee height along the step
+	bool blockedHigh = false;  // at chest height
+	bool groundFound = true;   // ground under both spots
+	float riseUnits = 0.0f;    // the ground under the new spot above the old
+};
+
+inline constexpr float kRingProbeLowUnits = 30.0f;    // knee height above the feet
+inline constexpr float kRingProbeHighUnits = 95.0f;   // chest
+inline constexpr float kRingProbeAheadUnits = 22.0f;  // the body's half width past the step
+inline constexpr float kRingGroundUpUnits = 60.0f;    // the ground is looked for from this far up
+inline constexpr float kRingGroundDownUnits = 90.0f;  // to this far down
+inline constexpr float kRingStepRiseMaxUnits = 24.0f; // a stair's step; a fence's top is more
+
+inline bool RingStepClear(const RingStepProbe& p) {
+	return !p.blockedLow && !p.blockedHigh && p.groundFound && p.riseUnits == p.riseUnits &&
+	       p.riseUnits <= kRingStepRiseMaxUnits && p.riseUnits >= -kRingStepRiseMaxUnits;
+}
+
+inline const char* RingStepRefusal(const RingStepProbe& p) {
+	if (p.blockedLow) {
+		return "something fixed at knee height";
+	}
+	if (p.blockedHigh) {
+		return "something fixed at chest height";
+	}
+	if (!p.groundFound) {
+		return "no ground there";
+	}
+	return p.riseUnits > 0.0f ? "a rise too high (a fence, a ledge)" : "a drop too deep";
+}
+
+// A refused step round the player turns the walk round the other way (a
+// wall or a fence beside the ring); not again within this long, so one
+// blocked both ways stands rather than flickers.
+inline constexpr float kRingFlipCooldownSeconds = 1.0f;
+
 // --------------------------------------------------------------- The turns
 
 inline constexpr UInt32 kRingMembersMax = 16;
@@ -148,7 +242,14 @@ inline constexpr UInt32 kRingMembersMax = 16;
 struct RingFighter {
 	UInt32 actor = 0;
 	float distanceUnits = 0.0f;
-	bool attacking = false;  // their process's action an attack (ParryLogic.h IsAttackAction)
+	// A blow of theirs in the air: an attack sequence animating
+	// (game/AttackTempo.cpp AttackSwinging). Not the process's action - that
+	// stays "attack" across a whole chain of blows (the harness, 2026-10-11:
+	// one action of 12.7 s over 11 swings), and read from it the "never
+	// mid-blow" below held turns of 6 s open for 15, and showed the waiting
+	// "attacking" at 3 m for half a minute.
+	bool attacking = false;
+	UInt16 level = 0;        // the actor's level (LeveledLevel), for the order by level
 };
 
 struct RingMember {
@@ -157,11 +258,109 @@ struct RingMember {
 	bool wasAttacking = false;
 	bool attacked = false;       // an attack in this turn
 	float turnSeconds = 0.0f;    // in this turn
+	float turnLength = 6.0f;     // this turn lasts at least this long (drawn when it was given)
 	float waitingSeconds = 0.0f; // since the turn ended (or since they came)
 	bool seen = false;           // in this frame's list
 	float distanceUnits = 0.0f;
+	UInt16 level = 0;
 	RingOrder order = RingOrder::Free;
+	bool sideSet = false;        // which way round they walk, once chosen
+	bool circleLeft = false;
+	float flipCooldown = 0.0f;   // seconds until the side may be turned again
+	float refusedQuiet = 0.0f;   // seconds until a refused step of theirs is logged again
+	bool placedKnown = false;    // where the step before left them (the legs' walk since is measured against it)
+	float placedX = 0.0f;
+	float placedY = 0.0f;
+	UInt32 stepsPlaced = 0;      // since the last state line, for the log
+	UInt32 stepsRefused = 0;
+	float legsUnits = 0.0f;      // the legs' own walk along the wanted steps since the last state line
+	float placedUnits = 0.0f;    // and what the ring placed
+	float steppedSeconds = 0.0f; // the time with a step wanted, for the rates
 };
+
+// The legs' walk since the step before: the actor's position now against
+// where that step left them. Unknown for a first step, and after a frame
+// without one.
+inline bool RingLegsWalked(const RingMember& m, float x, float y, float& ex, float& ey) {
+	ex = m.placedKnown ? x - m.placedX : 0.0f;
+	ey = m.placedKnown ? y - m.placedY : 0.0f;
+	return m.placedKnown;
+}
+
+// Where this frame's step left them (placed, or left where they stand), and
+// the books for the state line: the legs' walk along the wanted step, what
+// was placed, the time.
+inline void RingStepTaken(RingMember& m, float leftAtX, float leftAtY, float legsAlong, float placedUnits,
+                          float dtSeconds) {
+	m.placedKnown = true;
+	m.placedX = leftAtX;
+	m.placedY = leftAtY;
+	m.legsUnits += legsAlong;
+	m.placedUnits += placedUnits;
+	m.steppedSeconds += dtSeconds > 0.0f ? dtSeconds : 0.0f;
+}
+
+// A frame without a step of the ring's (their turn, or walking in): the
+// walk since is not the legs' alone.
+inline void RingStepNone(RingMember& m) { m.placedKnown = false; }
+
+// An actor's level as the game plays it: the base form's level, or with the
+// "PC level offset" flag the player's level plus it, held between the
+// base's min and max (0 for no bound). xOBSE GameForms.h TESActorBaseData:
+// level 00E "absolute level, or level offset if PCLevelOffset flag set",
+// minLevel 010, maxLevel 012.
+inline UInt16 LeveledLevel(SInt16 level, bool pcOffset, UInt16 minLevel, UInt16 maxLevel, SInt32 playerLevel) {
+	if (!pcOffset) {
+		return level < 0 ? 0 : static_cast<UInt16>(level);
+	}
+	SInt32 l = playerLevel + level;
+	if (minLevel > 0 && l < minLevel) {
+		l = minLevel;
+	}
+	if (maxLevel > 0 && l > maxLevel) {
+		l = maxLevel;
+	}
+	return l < 1 ? 1 : static_cast<UInt16>(l);
+}
+
+// A turn's length: between the shortest and the longest by `draw` (0..1,
+// the caller's random number; not a number: the middle).
+inline float TurnLengthFor(const CombatRingSettings& s, float draw) {
+	const float d = draw == draw ? (draw < 0.0f ? 0.0f : (draw > 1.0f ? 1.0f : draw)) : 0.5f;
+	return s.turnSeconds + (s.turnMaxSeconds - s.turnSeconds) * d;
+}
+
+// One waiting this long goes next whatever their level: the strict order by
+// level would hold the strongest back for the whole fight while weaker ones
+// that never die take turn after turn (the tester asked for the weak ones
+// first; this is the safety behind it).
+inline constexpr float kRingStarvedSeconds = 60.0f;
+
+// Whether `m` goes before `best` for the next turn: the starved first, then
+// the rested before one whose turn just ended (rested: waited at least a
+// turn's shortest length - else a lone weak fighter would take every turn
+// while a strong one watches, since it is the lowest level again the moment
+// its turn ends), then (by level) the lowest level, then the longest
+// waiting, then the nearest.
+inline bool RingGoesBefore(const RingMember& m, const RingMember& best, bool byLevel, float restSeconds) {
+	const bool mStarved = m.waitingSeconds >= kRingStarvedSeconds;
+	const bool bStarved = best.waitingSeconds >= kRingStarvedSeconds;
+	if (mStarved != bStarved) {
+		return mStarved;
+	}
+	const bool mRested = m.waitingSeconds >= restSeconds;
+	const bool bRested = best.waitingSeconds >= restSeconds;
+	if (mRested != bRested) {
+		return mRested;
+	}
+	if (byLevel && !mStarved && m.level != best.level) {
+		return m.level < best.level;
+	}
+	if (m.waitingSeconds != best.waitingSeconds) {
+		return m.waitingSeconds > best.waitingSeconds;
+	}
+	return m.distanceUnits < best.distanceUnits;
+}
 
 struct RingState {
 	UInt32 count = 0;
@@ -178,9 +377,10 @@ struct RingVerdict {
 
 // One frame: `fighters` are those fighting the player now. Members gone
 // from the list are forgotten; new ones wait; turns end and are given as
-// above. Off: everybody Free and forgotten.
+// above, each turn given this frame a length drawn by `draw` (0..1, the
+// caller's random number). Off: everybody Free and forgotten.
 inline RingVerdict StepCombatRing(RingState& state, const CombatRingSettings& s, const RingFighter* fighters,
-                                  UInt32 fighterCount, float dtSeconds) {
+                                  UInt32 fighterCount, float dtSeconds, float draw = 0.5f) {
 	RingVerdict v;
 	if (!s.enabled || s.ringUnits <= 0.0f) {
 		state = RingState{};
@@ -188,7 +388,10 @@ inline RingVerdict StepCombatRing(RingState& state, const CombatRingSettings& s,
 	}
 	const float dt = dtSeconds > 0.0f && dtSeconds < 0.25f ? dtSeconds : 0.0f;
 	for (UInt32 i = 0; i < state.count; ++i) {
-		state.member[i].seen = false;
+		RingMember& m = state.member[i];
+		m.seen = false;
+		m.flipCooldown = m.flipCooldown > dt ? m.flipCooldown - dt : 0.0f;
+		m.refusedQuiet = m.refusedQuiet > dt ? m.refusedQuiet - dt : 0.0f;
 	}
 	// Who is here: the known updated, the new added waiting.
 	for (UInt32 f = 0; f < fighterCount; ++f) {
@@ -213,6 +416,7 @@ inline RingVerdict StepCombatRing(RingState& state, const CombatRingSettings& s,
 		}
 		m->seen = true;
 		m->distanceUnits = fighter.distanceUnits;
+		m->level = fighter.level;
 		if (m->turn) {
 			m->turnSeconds += dt;
 			if (fighter.attacking) {
@@ -246,7 +450,7 @@ inline RingVerdict StepCombatRing(RingState& state, const CombatRingSettings& s,
 		if (!m.turn || m.wasAttacking) {
 			continue;
 		}
-		const bool done = m.turnSeconds >= s.turnSeconds && (m.attacked || m.turnSeconds >= s.idleTurnSeconds);
+		const bool done = m.turnSeconds >= m.turnLength && (m.attacked || m.turnSeconds >= s.idleTurnSeconds);
 		if (done) {
 			m.turn = false;
 			m.attacked = false;
@@ -256,7 +460,10 @@ inline RingVerdict StepCombatRing(RingState& state, const CombatRingSettings& s,
 			++v.turnsEnded;
 		}
 	}
-	// Free turns to the longest waiting (the nearest first among equals).
+	// Free turns: the starved first, then by level the lowest, then the
+	// longest waiting, the nearest among equals (RingGoesBefore). Each turn
+	// given its own length, the draws of one frame spread apart.
+	UInt32 given = 0;
 	while (turns < s.attackersAtOnce) {
 		RingMember* next = nullptr;
 		for (UInt32 i = 0; i < state.count; ++i) {
@@ -264,17 +471,20 @@ inline RingVerdict StepCombatRing(RingState& state, const CombatRingSettings& s,
 			if (m.turn) {
 				continue;
 			}
-			if (next == nullptr || m.waitingSeconds > next->waitingSeconds ||
-			    (m.waitingSeconds == next->waitingSeconds && m.distanceUnits < next->distanceUnits)) {
+			if (next == nullptr || RingGoesBefore(m, *next, s.byLevel, s.turnSeconds)) {
 				next = &m;
 			}
 		}
 		if (next == nullptr) {
 			break;
 		}
+		float spread = draw + 0.618034f * static_cast<float>(given);
+		spread = spread - static_cast<float>(static_cast<int>(spread));
 		next->turn = true;
 		next->attacked = false;
 		next->turnSeconds = 0.0f;
+		next->turnLength = TurnLengthFor(s, spread);
+		++given;
 		++turns;
 		++v.turnsGiven;
 	}
@@ -301,6 +511,56 @@ inline RingOrder RingOrderOf(const RingState& state, UInt32 actor) {
 		}
 	}
 	return RingOrder::Free;
+}
+
+inline RingMember* RingMemberOf(RingState& state, UInt32 actor) {
+	for (UInt32 i = 0; i < state.count; ++i) {
+		if (state.member[i].actor == actor) {
+			return &state.member[i];
+		}
+	}
+	return nullptr;
+}
+
+// Which way round an actor walks: as chosen before, or `initial` the first
+// time (the caller spreads the fighters half and half).
+inline bool RingCircleLeft(RingState& state, UInt32 actor, bool initial) {
+	RingMember* const m = RingMemberOf(state, actor);
+	if (m == nullptr) {
+		return initial;
+	}
+	if (!m->sideSet) {
+		m->sideSet = true;
+		m->circleLeft = initial;
+	}
+	return m->circleLeft;
+}
+
+// A step round the player refused by the world: the walk turns round the
+// other way, once per cooldown. Answers whether it turned.
+inline bool RingStepRefused(RingState& state, UInt32 actor) {
+	RingMember* const m = RingMemberOf(state, actor);
+	if (m == nullptr || m->flipCooldown > 0.0f) {
+		return false;
+	}
+	m->sideSet = true;
+	m->circleLeft = !m->circleLeft;
+	m->flipCooldown = kRingFlipCooldownSeconds;
+	return true;
+}
+
+// Whether a refused step of this actor's is logged now: once a second per
+// actor (a fighter against a wall is refused every frame - the first run's
+// forty lines went on one in a second, 2026-10-11).
+inline constexpr float kRingRefusalLogSeconds = 1.0f;
+
+inline bool RingRefusalLogged(RingState& state, UInt32 actor) {
+	RingMember* const m = RingMemberOf(state, actor);
+	if (m == nullptr || m->refusedQuiet > 0.0f) {
+		return false;
+	}
+	m->refusedQuiet = kRingRefusalLogSeconds;
+	return true;
 }
 
 }  // namespace obvr::game

@@ -5,6 +5,8 @@
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
+#include "game/HandContactLogic.h"
+#include "game/ShieldShape.h"
 
 namespace obvr::game {
 namespace {
@@ -66,7 +68,19 @@ struct Kept {
 	NiPoint3 bladeA{0.0f, 0.0f, 0.0f};
 	NiPoint3 bladeB{0.0f, 0.0f, 0.0f};
 	UInt32 lastFrame = 0;
+	// The twist bone a shield hangs on, and the shield's disc read from the
+	// model under it (game/ShieldShape, in the bone's own frame) - read again
+	// when the bone's bound changes (a shield put on or taken off) or every
+	// so often (HandContactLogic.h, ShieldDiscStale).
+	const NiAVObject* twist = nullptr;
+	bool discTried = false;
+	bool discHave = false;
+	UInt32 discFrame = 0;
+	float discBound = 0.0f;
+	ShieldDisc disc;
 };
+
+constexpr const char* kTwistBoneName = "Bip01 L ForearmTwist";
 
 bool IsWeaponNode(const NiAVObject* node) {
 	if (!LooksLikeObject(reinterpret_cast<UInt32>(node))) {
@@ -137,6 +151,9 @@ Kept& KeptFor(UInt32 actor, UInt32 root) {
 		auto* const weapon = static_cast<const NiAVObject*>(
 			reinterpret_cast<GetObjectFn>(getObject)(reinterpret_cast<void*>(root), nullptr, "Weapon"));
 		k.weapon = IsWeaponNode(weapon) ? weapon : nullptr;
+		auto* const twist = static_cast<const NiAVObject*>(
+			reinterpret_cast<GetObjectFn>(getObject)(reinterpret_cast<void*>(root), nullptr, kTwistBoneName));
+		k.twist = IsBone(twist) ? twist : nullptr;
 	}
 	if (g_readLines > 0) {
 		--g_readLines;
@@ -215,15 +232,51 @@ UInt32 CollectBladeBodies(const NiPoint3& around, float withinUnits, BladeBodies
 			                   NiPoint3{k.weapon->worldTransform.rot.data[0][1], k.weapon->worldTransform.rot.data[1][1],
 			                            k.weapon->worldTransform.rot.data[2][1]},
 			                   k.weapon->worldBound.center, k.weapon->worldBound.radius, bladeA, bladeB);
-		if (blade && foes != nullptr && foes->count < kBladeFoesMax) {
+		// Their shield, when one hangs on the twist bone: its disc, in the
+		// world. A bare bone has nothing under it to read; a bound that
+		// changes is a shield put on or taken off.
+		bool shield = false;
+		BladeDisc shieldWorld;
+		if (foes != nullptr && k.twist != nullptr && IsBone(k.twist)) {
+			const float twistBound = k.twist->worldBound.radius;
+			const UInt32 twistAddress = reinterpret_cast<UInt32>(k.twist);
+			if (ShieldDiscStale(k.discTried, twistAddress, twistAddress, k.discBound, twistBound, g_frame - k.discFrame)) {
+				const char* why = "";
+				const bool had = k.discHave;
+				k.discHave = ReadShieldDisc(k.twist, k.twist->worldTransform.rot, k.twist->worldTransform.pos, k.disc, &why);
+				k.discTried = true;
+				k.discFrame = g_frame;
+				k.discBound = twistBound;
+				static UInt32 s_shieldLines = 8;
+				if (k.discHave && !had && s_shieldLines > 0) {
+					--s_shieldLines;
+					OBVR_LOG("Contact: %08X's shield read - %u vertices, spokes %.1f and %.1f units, %.1f thick (the bound "
+					         "%.1f round)",
+					         actor, k.disc.vertices, static_cast<double>(k.disc.half[0]), static_cast<double>(k.disc.half[1]),
+					         static_cast<double>(k.disc.half[2] * 2.0f), static_cast<double>(twistBound));
+				}
+			}
+			if (k.discHave) {
+				shieldWorld = ShieldDiscInWorld(k.disc, k.twist->worldTransform.rot, k.twist->worldTransform.pos,
+				                                FoeShieldId(actor));
+				shield = true;
+			}
+		}
+		if ((blade || shield) && foes != nullptr && foes->count < kBladeFoesMax) {
 			BladeFoe& f = foes->foe[foes->count++];
 			f.actor = actor;
 			f.action = ActionOf(actor);
+			f.bladeValid = blade;
 			f.a = bladeA;
 			f.b = bladeB;
-			f.haveLast = k.haveBlade;
-			f.lastA = k.haveBlade ? k.bladeA : bladeA;
-			f.lastB = k.haveBlade ? k.bladeB : bladeB;
+			f.haveLast = blade && k.haveBlade;
+			f.lastA = blade && k.haveBlade ? k.bladeA : bladeA;
+			f.lastB = blade && k.haveBlade ? k.bladeB : bladeB;
+			f.shieldValid = shield;
+			f.shieldCentre = shieldWorld.centre;
+			f.shieldNormal = shieldWorld.normal;
+			f.shieldRadius = shieldWorld.radius;
+			f.shieldHalfThick = shieldWorld.halfThick;
 		}
 		k.haveBlade = blade;
 		k.bladeA = bladeA;

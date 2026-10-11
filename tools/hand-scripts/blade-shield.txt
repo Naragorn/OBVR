@@ -1,0 +1,113 @@
+# The drawn blade stops at the own shield (the stoppers of
+# game/BladeContactLogic.h; the tester, 2026-10-11: "schild kollidieren
+# nicht mit schwert"): the Arena Iron Shield (000733ED) on the left arm,
+# held out in front at chest height, and a longsword drawn by the holster
+# in the right hand, pointed ahead. The right hand is moved slowly across
+# from right to left, so the blade meets the shield's face side on: it rests
+# on the shield ("rests on your shield"), pressed on past WeaponLetGoMetres
+# (0.30) it goes through and the shield is passed, pulled back it is free
+# and holds again. The "Contact: disc 0 (your shield)" line at each mark
+# gives the disc the blade is held at.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\blade-shield.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands WeaponStopsAtWalls=1
+ini Hands HandsStopAtWalls=1
+ini Hands WeaponLetGoMetres=0.30
+console-at ready player.additem 000733ED 1
+console-at ready player.equipitem 000733ED
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+
+expect HandScript: finished
+expect Hands: a shield worn
+expect Hands: ready weapon done
+expect Contact: the shield's shape
+expect Contact: disc 0 (your shield)
+expect Contact: the blade rests on your shield
+expect Contact: pressed on into your shield
+reject HandScript: WARNING
+
+wait 12
+left rot 0 0 0
+left pos -0.10 -0.35 -0.40
+right rot 0 0 0
+right pos 0.35 -0.40 -0.30
+wait 1
+mark ready
+wait 22
+mark worn
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.35 -0.40 -0.35
+wait 3
+mark drawn
+right pos 0.30 -0.40 -0.35
+wait 0.4
+right pos 0.25 -0.40 -0.35
+wait 0.4
+right pos 0.20 -0.40 -0.35
+wait 0.4
+right pos 0.15 -0.40 -0.35
+wait 0.4
+right pos 0.10 -0.40 -0.35
+wait 0.4
+right pos 0.05 -0.40 -0.35
+wait 0.4
+mark across1
+right pos 0.00 -0.40 -0.35
+wait 0.4
+right pos -0.05 -0.40 -0.35
+wait 0.4
+right pos -0.10 -0.40 -0.35
+wait 0.4
+right pos -0.15 -0.40 -0.35
+wait 0.4
+mark across2
+right pos -0.20 -0.40 -0.35
+wait 0.4
+right pos -0.25 -0.40 -0.35
+wait 0.4
+right pos -0.30 -0.40 -0.35
+wait 0.4
+right pos -0.35 -0.40 -0.35
+wait 0.4
+right pos -0.40 -0.40 -0.35
+wait 0.4
+right pos -0.45 -0.40 -0.35
+wait 0.4
+mark across3
+right pos -0.50 -0.40 -0.35
+wait 0.4
+right pos -0.55 -0.40 -0.35
+wait 0.4
+right pos -0.60 -0.40 -0.35
+wait 0.4
+mark deep
+right pos 0.35 -0.40 -0.35
+wait 1.5
+mark back
+right pos 0.30 -0.40 -0.35
+wait 0.4
+right pos 0.25 -0.40 -0.35
+wait 0.4
+right pos 0.20 -0.40 -0.35
+wait 0.4
+right pos 0.15 -0.40 -0.35
+wait 0.4
+right pos 0.10 -0.40 -0.35
+wait 0.4
+right pos 0.05 -0.40 -0.35
+wait 0.4
+right pos 0.00 -0.40 -0.35
+wait 0.4
+right pos -0.05 -0.40 -0.35
+wait 0.4
+right pos -0.10 -0.40 -0.35
+wait 0.4
+mark again
+wait 1

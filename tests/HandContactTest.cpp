@@ -325,6 +325,42 @@ void TestDisc() {
 	ShieldBallSpan(NiPoint3{1.0f, 2.0f, 3.0f}, 0.0f, ball, margin);
 	Check(!ball.valid, "no radius: no ball");
 
+	// The disc in the world, for the stoppers: carried by a hand pose, round
+	// at the longer spoke, half its thickness and a little (never under the
+	// blade's margin).
+	ShieldDisc kite;
+	kite.valid = true;
+	kite.centre = NiPoint3{0.0f, 10.0f, 0.0f};
+	kite.axis[0] = NiPoint3{1.0f, 0.0f, 0.0f};
+	kite.axis[1] = NiPoint3{0.0f, 1.0f, 0.0f};
+	kite.axis[2] = NiPoint3{0.0f, 0.0f, 1.0f};
+	kite.half[0] = 17.0f;
+	kite.half[1] = 22.0f;
+	kite.half[2] = 6.0f;
+	const BladeDisc inWorld = ShieldDiscInWorld(kite, RotationAbout(NiPoint3{1.0f, 0.0f, 0.0f}, kPi / 2.0f),
+	                                            NiPoint3{100.0f, 0.0f, 0.0f}, kStopperOwnShield);
+	Check(Near(inWorld.centre.x, 100.0f) && Near(inWorld.centre.y, 0.0f) && Near(inWorld.centre.z, 10.0f),
+	      "the centre carried out by the hand (a quarter turn about x takes y to z)");
+	Check(Near(inWorld.normal.y, -1.0f, 0.01f), "the normal turned with it");
+	Check(Near(inWorld.radius, 22.0f) && Near(inWorld.halfThick, 6.5f) && inWorld.id == kStopperOwnShield,
+	      "the longer spoke, half the thickness and a little");
+	kite.half[2] = 0.2f;
+	Check(Near(ShieldDiscInWorld(kite, NiMatrix33::Identity(), NiPoint3{0, 0, 0}, 1).halfThick, kBladeContactMarginUnits),
+	      "paper thin: the blade's margin at least");
+	// The drawn blade as a stopper for the free hand.
+	BladeBodies stoppers;
+	BodySpan blade;
+	blade.valid = true;
+	blade.a = NiPoint3{0.0f, 0.0f, 0.0f};
+	blade.b = NiPoint3{0.0f, 60.0f, 0.0f};
+	BladePose drawn;
+	drawn.pos = NiPoint3{5.0f, 5.0f, 5.0f};
+	Check(AddOwnBladeStopper(drawn, blade, stoppers) && stoppers.count == 1 && stoppers.cap[0].actor == kStopperOwnBlade &&
+	          Near(stoppers.cap[0].b.y, 65.0f) && Near(stoppers.cap[0].radius, kOwnBladeStopRadiusUnits),
+	      "the blade's capsule at its drawn pose");
+	BodySpan noBlade;
+	Check(!AddOwnBladeStopper(drawn, noBlade, stoppers) && stoppers.count == 1, "no span read: none");
+
 	Check(ShieldDiscStale(false, 1, 1, 20.0f, 20.0f, 0), "none kept: read");
 	Check(!ShieldDiscStale(true, 1, 1, 20.0f, 20.2f, 10), "the same node and bound, young: kept");
 	Check(ShieldDiscStale(true, 1, 2, 20.0f, 20.0f, 10), "another node: read again");

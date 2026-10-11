@@ -160,7 +160,7 @@ ParryEvent StepParry(const ParryFrame& f) {
 	}
 	for (UInt32 i = 0; i < g_foes.count; ++i) {
 		const BladeFoe& foe = g_foes.foe[i];
-		if (!IsAttackAction(foe.action)) {
+		if (!IsAttackAction(foe.action) || !foe.bladeValid) {
 			continue;
 		}
 		float share = 0.0f;

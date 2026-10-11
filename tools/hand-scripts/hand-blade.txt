@@ -1,0 +1,83 @@
+# The free hand stops at the own drawn blade (the stoppers of
+# game/BladeContactLogic.h; the tester, 2026-10-11: "hand nicht mit
+# waffe"): a longsword drawn by the holster in the right hand, held still
+# pointing ahead; the left hand, pointing ahead as well, is lowered onto the
+# blade from above in 5 cm steps, halfway along it: it rests on the blade
+# ("rests on your blade"), pressed on past WeaponLetGoMetres (0.30) it goes
+# through and the blade is passed, raised again it is free. The "Contact:
+# hands" line at each mark gives the hands' stoppers.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\hand-blade.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands WeaponStopsAtWalls=1
+ini Hands HandsStopAtWalls=1
+ini Hands WeaponLetGoMetres=0.30
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect stoppers 0+0 and 1+0 (capsules+discs)
+expect Contact: the left hand rests on your blade
+expect Contact: the left hand pressed on into your blade
+reject HandScript: WARNING
+
+wait 12
+left rot 0 0 0
+left pos -0.30 -0.40 -0.30
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 16
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+left pos 0.20 -0.05 -0.80
+wait 1
+mark above
+left pos 0.20 -0.10 -0.80
+wait 0.4
+left pos 0.20 -0.15 -0.80
+wait 0.4
+left pos 0.20 -0.20 -0.80
+wait 0.4
+left pos 0.20 -0.25 -0.80
+wait 0.4
+left pos 0.20 -0.30 -0.80
+wait 0.4
+mark near
+left pos 0.20 -0.35 -0.80
+wait 0.4
+left pos 0.20 -0.40 -0.80
+wait 0.4
+left pos 0.20 -0.45 -0.80
+wait 0.4
+left pos 0.20 -0.50 -0.80
+wait 0.4
+mark on
+left pos 0.20 -0.55 -0.80
+wait 0.4
+left pos 0.20 -0.60 -0.80
+wait 0.4
+left pos 0.20 -0.65 -0.80
+wait 0.4
+left pos 0.20 -0.70 -0.80
+wait 0.4
+left pos 0.20 -0.75 -0.80
+wait 0.4
+left pos 0.20 -0.80 -0.80
+wait 0.4
+mark pressed
+left pos 0.20 -0.05 -0.80
+wait 1.5
+mark raised
+left pos -0.30 -0.40 -0.30
+wait 1
+mark end

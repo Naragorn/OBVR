@@ -61,14 +61,22 @@ inline bool TheirBladeFromNode(const NiPoint3& attach, const NiPoint3& axis, con
 }
 
 // Someone with a blade near the player's: theirs now and the frame before.
+// Or with a shield on the arm (its disc in the world, read as the player's
+// own is - game/ShieldShape): a foe is listed with either.
 struct BladeFoe {
 	UInt32 actor = 0;
 	SInt32 action = addr::kActionNone;
+	bool bladeValid = true;
 	NiPoint3 a{0.0f, 0.0f, 0.0f};
 	NiPoint3 b{0.0f, 0.0f, 0.0f};
 	bool haveLast = false;
 	NiPoint3 lastA{0.0f, 0.0f, 0.0f};
 	NiPoint3 lastB{0.0f, 0.0f, 0.0f};
+	bool shieldValid = false;
+	NiPoint3 shieldCentre{0.0f, 0.0f, 0.0f};
+	NiPoint3 shieldNormal{0.0f, 0.0f, 1.0f};
+	float shieldRadius = 0.0f;
+	float shieldHalfThick = 0.0f;
 };
 
 inline constexpr UInt32 kBladeFoesMax = 8;
@@ -77,6 +85,30 @@ struct BladeFoes {
 	UInt32 count = 0;
 	BladeFoe foe[kBladeFoesMax];
 };
+
+// The foes' blades and shields as stoppers for the player's blade and hands
+// (BladeContactLogic.h, the stoppers): each blade a capsule a little wider
+// than the blade's own body, each shield its disc, by the foe's ids. Answers
+// how many were added.
+inline constexpr float kFoeBladeStopRadiusUnits = 2.5f;
+
+inline UInt32 AddFoeStoppers(const BladeFoes& foes, BladeBodies& stoppers, BladeDiscs& discs) {
+	UInt32 added = 0;
+	for (UInt32 i = 0; i < foes.count; ++i) {
+		const BladeFoe& f = foes.foe[i];
+		if (f.actor == 0) {
+			continue;
+		}
+		if (f.bladeValid && stoppers.Add(f.a, f.b, kFoeBladeStopRadiusUnits, FoeBladeId(f.actor))) {
+			++added;
+		}
+		if (f.shieldValid &&
+		    discs.Add(f.shieldCentre, f.shieldNormal, f.shieldRadius, f.shieldHalfThick, FoeShieldId(f.actor))) {
+			++added;
+		}
+	}
+	return added;
+}
 
 // Two blades meet within this: the player's blade's half-width and theirs.
 inline constexpr float kParryReachUnits = 4.0f;

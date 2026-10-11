@@ -1245,6 +1245,22 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.combatRingTurnSeconds = v; },
 	},
 	{
+		"Hands", "Turn length at most (s)",
+		"Each turn lasts a random time between the turn length and this",
+		ItemKind::Number, 2.0f, 60.0f, 1.0f, 0, false,
+		"Hands", "CombatRingTurnMaxSeconds",
+		+[](const Config& c) { return c.hands.combatRingTurnMaxSeconds; },
+		+[](Config& c, float v) { c.hands.combatRingTurnMaxSeconds = v; },
+	},
+	{
+		"Hands", "Weakest fight first",
+		"The next turn goes to the lowest-level fighter waiting; the strongest come last (off: who waited longest)",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "CombatRingByLevel",
+		+[](const Config& c) { return c.hands.combatRingByLevel ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.combatRingByLevel = v != 0.0f; },
+	},
+	{
 		"Hands", "Attack tempo (%)",
 		"How fast the attacks of those fighting you play, per cent of the game's own: slower, their wind-up "
 		"can be seen and met",

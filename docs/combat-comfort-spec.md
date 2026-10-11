@@ -528,6 +528,120 @@ speed und häufigkeit in der spec"):**
   of that fighter alone (its walk is not slowed) or stutters; whether the
   hit lands when the blade arrives; bows (AttackBow is slowed too); and
   whether 75 is the right default - the tester asked for a slider.
+- **The tester's round (2026-10-11):** "angriffs speed geht! und häufigkeit
+  wohl auch aber will mehr testen."
+
+**Built 2026-10-11 (the ring, after the tester's round): the steps probed,
+turns of a random length, the weakest first.**
+
+The tester: "gegner umkreisen einen: ja das geht aber teilweise pusht du die
+gegner in oder auf wände oder zäune. das muss besser gehen." and "gegner
+bekommen turns: vll können wir hier auch random time geben von random(5s,
+15s) oder? was würdest du hier vorschlagen? und auch ob es eine hierarchie
+gibt? also erstmal kommen nur alle low levels an und dann die high levels.
+schlag auch hier was vor."
+
+- **The steps probed** (`RingStepProbe`, `RingStepClear`,
+  game/CombatRingLogic.h; `ProbeRingStep` in game/CombatRing.cpp): a step
+  is placed, not walked, so before a waiting fighter is placed the world is
+  asked - the blade's own ray pick (layer 23), as the blade's step asks it:
+  a ray at knee height (30 units above the feet) and one at chest height
+  (95) along the step and the body's half width (22 units) past it, each
+  stopped by anything fixed (`ContactKindOf`: fixed and keyframed bodies -
+  walls, fences, trees, doors; clutter and the living are passed), and the
+  ground under the new spot against the ground under the old (a ray from
+  60 units above the feet to 90 below): a rise or drop over 24 units (a
+  fence's top, a ledge) refuses the step, a stair's step is climbed (the
+  placement carries the rise). A refused step round the player turns that
+  fighter round the other way (`RingStepRefused`, once a second at most:
+  one blocked both ways stands); a refused step back is simply not taken.
+  Four picks a waiting fighter a frame.
+- **The legs' side, and only the shortfall placed** (found by the probe's
+  first harness runs, 2026-10-11): the ring's "left" is counter-clockwise
+  seen from above, and the legs face the player - so it is a step to the
+  actor's RIGHT. The flags had it the other way round, and the legs' own
+  walk (the strafe flags DO move an NPC, unlike the walk backwards - the
+  AI's step towards the player cancels that one) carried the waiting
+  against the placed step: they went round the wrong way at 20 units a
+  second (the legs' 85 less the step's 65), and at a wall they stood,
+  pushed into it by the legs, while the probe looked the other way along
+  the placed step and refused nothing. Now `RingFlags` gives the legs the
+  ring's sense, and the step is a shortfall: what the legs did since the
+  step before is measured (`RingLegsWalked`: the position against where the
+  last step left them) and only the rest of the wanted step along its
+  direction is placed (`RingStepShortfall`; the whole step when the walk is
+  unknown - a first step, a frame without one; up to twice the step against
+  legs walking the wrong way). Measured (ring-wall, three runs): going round
+  the legs walk 67-88 units a second along the step and the ring adds 0-12
+  (the pull to the line); sent back the legs walk 54 against and the ring
+  places up to 130. The state line gives both rates.
+- **A blow in the air is the attack sequence, not the action**
+  (`AttackSwinging`, game/AttackTempo.cpp): the "never mid-blow" rule and
+  "an attack in this turn" read the process's action at first - which
+  stays "attack" across a whole chain of blows (the harness: one action of
+  12.7 s over 11 swings, waiting fighters "attacking" at 3 m for half a
+  minute), so turns of 6 s ran 15 and one of 13.6 s ran 22.8. Now a blow is
+  an attack sequence animating in one of the actor's five slots, as the
+  tempo's watch reads them each frame (one frame behind the ring's step):
+  turns end within a swing of their length (11.5 of 11.6, 9.3 of 8.0, 4.9
+  of 5.5).
+- **Seen, not changed**: the waiting swing at the air from 2.4-3.2 m (the
+  swings logged by the tempo are theirs while they wait) - the AI's
+  decision, not range-gated by the ring; harmless, since they cannot reach.
+  A proposal for later: a waiting member's attack chance to 0 through the
+  tempo's multiplier hook, so only those with a turn swing. And "no ground
+  there" refused a step once or twice a run in the hall's middle (x 160-350,
+  y -720..-780 of the harness hall); the spot is not identified, the
+  fighter turned round and walked on.
+- **Turns of a random length** (`CombatRingTurnMaxSeconds`, 12; settings
+  "Turn length at most (s)", 2-60): each turn given is drawn a length
+  between `CombatRingTurnSeconds` and it (`TurnLengthFor`, a linear
+  congruential draw a frame, two turns given in one frame spread apart);
+  the idle end (no attack) stays at 10 s or the longest turn, whichever is
+  more. The tester's "random(5s, 15s)" is `CombatRingTurnSeconds=5`,
+  `CombatRingTurnMaxSeconds=15`; the defaults 6-12 keep the old 6 as the
+  shortest.
+- **The weakest first** (`CombatRingByLevel=1`; "Weakest fight first"): the
+  next turn goes to the lowest-level fighter waiting (`RingGoesBefore`),
+  ties to the longest waiting, then the nearest; off, the longest waiting
+  first as before. One whose turn just ended rests a turn's shortest
+  length before it is chosen again (found in the unit test: the lowest
+  level is the lowest again the moment its turn ends, so a lone weak
+  fighter took every turn while the boss watched) - two or more weak ones
+  take turns among themselves and the boss waits; one weak one and a boss
+  alternate. The level is the game's (`LeveledLevel`: the base form's
+  level, or with the PC-level-offset flag the player's level plus it, held
+  between the base's min and max - xOBSE's TESActorBaseData at +0x24 of
+  the base form: flags +0x04, level +0x0E, min +0x10, max +0x12). A
+  starvation cap: one waiting a whole minute (`kRingStarvedSeconds`, 60)
+  steps in whatever its level, so a boss is not held back for a fight in
+  which the weak ones never die. **The proposal, and why**: strict by level
+  as asked, with the cap as the safety; an alternative not built would
+  weigh level and waiting time together (a boss waiting twice as long as a
+  mook goes first) - softer, but the tester asked for the hierarchy.
+- Logged: "Combat ring: ... given this frame <actor> (level n, s s); at
+  once n, the weakest first", "Combat ring: <actor>'s step round refused -
+  something fixed at knee height (rise 0 units); it goes round the other
+  way"; at a mark "Combat ring: the walls - +x n, -x n, +y n, -y n units
+  from the player" (the nearest fixed thing in the four directions, 0 none
+  within 3000) and the state line with each one's level, position, side,
+  turn length, and since the last mark the steps placed and refused and
+  the legs' and the ring's units a second.
+- Tests: `combat_ring_test` (the settings' bounds, the draw, the level with
+  and without the offset and its bounds, the order by level, the starvation
+  cap, by level off, two lengths from one draw; the probe's every refusal,
+  the side kept and turned, the cooldown; the legs' side; the shortfall -
+  the walk unknown, walked, half walked, across, against and capped, a
+  diagonal, no step, no number; the walk measured from the step before,
+  the books, unknown after a frame without a step).
+- **Harness PASS** (`tools/hand-scripts/ring-wall.txt`, three bandits, a 3 m
+  ring, turns 5-15 s, the player walking ahead to the hall's far wall and
+  standing 14 units from it, 2026-10-11, three runs of the final build):
+  "step round refused - something fixed at knee height ... it goes round
+  the other way" for all three at the wall, 0-2 refusals a fighter in 5 s,
+  every fighter's position on the player's side of the wall (y -546 and
+  below against the wall's -518); turns drawn 5.5-11.6 s and ended within
+  a swing of their length; see docs/hand-script-harness.md.
 
 ## Test reminders
 

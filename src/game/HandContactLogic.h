@@ -365,6 +365,34 @@ inline void ShieldBallSpan(const NiPoint3& centreLocal, float ballRadius, BodySp
 	marginUnits = ballRadius;
 }
 
+// The disc in the world, as the stoppers take it (BladeContactLogic.h,
+// BladeDisc): the hand's (or the twist bone's) pose carries it out of its
+// frame; round, the longer spoke's size - a kite shield's short sides stop a
+// blade a little early rather than let it through; half its thickness and
+// a little, never under the blade's own margin.
+inline BladeDisc ShieldDiscInWorld(const ShieldDisc& d, const NiMatrix33& rot, const NiPoint3& pos, UInt32 id) {
+	BladeDisc out;
+	out.centre = pos + rot * d.centre;
+	out.normal = rot * d.axis[2];
+	out.radius = d.half[0] > d.half[1] ? d.half[0] : d.half[1];
+	const float half = d.half[2] + 0.5f;
+	out.halfThick = half < kBladeContactMarginUnits ? kBladeContactMarginUnits : half;
+	out.id = id;
+	return out;
+}
+
+// The drawn blade as a stopper for the free hand: its span at the pose it
+// is drawn, a capsule a little wider than its own body.
+inline constexpr float kOwnBladeStopRadiusUnits = 2.5f;
+
+inline bool AddOwnBladeStopper(const BladePose& drawn, const BodySpan& span, BladeBodies& out) {
+	if (!span.valid) {
+		return false;
+	}
+	return out.Add(BladePointAt(drawn, span, 0.0f), BladePointAt(drawn, span, 1.0f), kOwnBladeStopRadiusUnits,
+	               kStopperOwnBlade);
+}
+
 // Whether the disc kept is still the shield worn: read again when the
 // node or its bound change, or every so often.
 inline constexpr UInt32 kShieldDiscReadFrames = 90;

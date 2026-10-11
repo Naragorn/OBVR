@@ -170,7 +170,52 @@ void TestHeld() {
 
 }  // namespace
 
+void TestFoeStoppers() {
+	std::printf("The foes' blades and shields as stoppers\n");
+	BladeFoes foes;
+	foes.count = 3;
+	foes.foe[0].actor = 0x1A000000;
+	foes.foe[0].bladeValid = true;
+	foes.foe[0].a = NiPoint3{0, 0, 0};
+	foes.foe[0].b = NiPoint3{0, 60, 0};
+	foes.foe[0].shieldValid = true;
+	foes.foe[0].shieldCentre = NiPoint3{10, 10, 10};
+	foes.foe[0].shieldNormal = NiPoint3{0, 1, 0};
+	foes.foe[0].shieldRadius = 20.0f;
+	foes.foe[0].shieldHalfThick = 6.0f;
+	foes.foe[1].actor = 0x1B000000;
+	foes.foe[1].bladeValid = false;  // a shield alone
+	foes.foe[1].shieldValid = true;
+	foes.foe[1].shieldCentre = NiPoint3{0, 0, 0};
+	foes.foe[1].shieldNormal = NiPoint3{1, 0, 0};
+	foes.foe[1].shieldRadius = 15.0f;
+	foes.foe[1].shieldHalfThick = 4.0f;
+	foes.foe[2].actor = 0;  // nobody
+	foes.foe[2].bladeValid = true;
+	BladeBodies stoppers;
+	BladeDiscs discs;
+	Check(AddFoeStoppers(foes, stoppers, discs) == 3, "a blade and two shields added, nobody's skipped");
+	Check(stoppers.count == 1 && stoppers.cap[0].actor == FoeBladeId(0x1A000000) &&
+	          Near(stoppers.cap[0].radius, kFoeBladeStopRadiusUnits) && Near(stoppers.cap[0].b.y, 60.0f),
+	      "the blade's capsule by the foe's blade id");
+	Check(discs.count == 2 && discs.disc[0].id == FoeShieldId(0x1A000000) && discs.disc[1].id == FoeShieldId(0x1B000000) &&
+	          Near(discs.disc[1].radius, 15.0f) && Near(discs.disc[1].halfThick, 4.0f),
+	      "the shields' discs by the foes' shield ids");
+	BladeFoes none;
+	Check(AddFoeStoppers(none, stoppers, discs) == 0 && stoppers.count == 1, "no foes: nothing added");
+	BladeFoes bad;
+	bad.count = 1;
+	bad.foe[0].actor = 0x1C000000;
+	bad.foe[0].bladeValid = false;
+	bad.foe[0].shieldValid = true;
+	bad.foe[0].shieldNormal = NiPoint3{0, 0, 0};
+	bad.foe[0].shieldRadius = 15.0f;
+	bad.foe[0].shieldHalfThick = 4.0f;
+	Check(AddFoeStoppers(bad, stoppers, discs) == 0 && discs.count == 2, "a shield with no normal: refused");
+}
+
 int main() {
+	TestFoeStoppers();
 	TestActions();
 	TestTheirBlade();
 	TestMeet();

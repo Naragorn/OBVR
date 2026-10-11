@@ -359,6 +359,12 @@ struct HandSettings {
 	float combatRingMetres = 5.0f;
 	int meleeAttackersAtOnce = 1;
 	float combatRingTurnSeconds = 6.0f;  // how long a turn lasts at least, 2-30 s
+	// And at most: each turn's length is drawn between the two (the tester,
+	// 2026-10-11: "random(5s, 15s)"); and the order of turns by level - the
+	// weakest first, the strongest last (CombatRingTurnMaxSeconds,
+	// CombatRingByLevel; game/CombatRingLogic.h).
+	float combatRingTurnMaxSeconds = 12.0f;
+	bool combatRingByLevel = true;
 	// Enemy attacks slower and rarer: the attack animations of those fighting
 	// the player play at EnemyAttackSpeed per cent of the game's own (20-200),
 	// and EnemyAttackFrequency per cent (10-200) scales their chance to

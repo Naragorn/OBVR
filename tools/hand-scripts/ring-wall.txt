@@ -1,0 +1,68 @@
+# The ring's steps probed against the world ([Hands] CombatRing,
+# game/CombatRingLogic.h "The step probed"; the tester, 2026-10-11:
+# "teilweise pusht du die gegner in oder auf wände oder zäune"): three melee
+# bandits (00069AD1) at an untouchable player (tgm), the ring at 3 m; the
+# player walks straight ahead with the left stick for 25 s, until the hall's
+# far wall stops him (the first runs strafed into a pillar 1.7 m to the
+# right, whose foot the 3 m circle never touched), and stands there, so the
+# waiting fighters' circle crosses the wall. A step round into the wall is
+# refused and the fighter turns round the other way ("step round refused ...
+# it goes round the other way"); nobody is placed into it. The state lines
+# at each mark give each fighter's position, side, level, steps placed and
+# refused, the legs' and the ring's units a second along the wanted step
+# (the legs carry the circle at 67-88, the ring places the shortfall), and
+# the turns' drawn lengths ("level N, S s"); the "walls" line the nearest
+# fixed thing in the four directions. The first runs found the legs' sides
+# the wrong way round (the waiting went round against the placed step and
+# stood at the wall unrefused) and the turns held open by the lingering
+# attack action - both in docs/combat-comfort-spec.md.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\ring-wall.txt
+
+ini Hands Enabled=1
+ini Hands CombatRing=1
+ini Hands CombatRingMetres=3
+ini Hands MeleeAttackersAtOnce=1
+ini Hands CombatRingTurnSeconds=5
+ini Hands CombatRingTurnMaxSeconds=15
+ini Hands CombatRingByLevel=1
+console-at ready player.placeatme 00069AD1 3
+console-at ready tgm
+
+expect HandScript: finished
+expect Combat ring: 3 fighting the player - 1 with a turn, 2 waiting
+expect step round refused
+expect it goes round the other way
+expect the weakest first
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 10
+mark fight1
+left stick 0 1
+wait 5
+mark walk1
+wait 5
+mark walk2
+wait 5
+mark walk3
+wait 5
+mark walk4
+wait 5
+mark walk5
+left stick 0 0
+wait 5
+mark wall1
+wait 5
+mark wall2
+wait 5
+mark wall3
+wait 5
+mark wall4
+wait 5
+mark wall5
+wait 5
+mark wall6

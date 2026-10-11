@@ -638,6 +638,44 @@ here what differs from the design and what was measured.
   ms a frame), `shield-wall.txt` PASS 2026-10-11 (sword and shield: the
   blade's step had the right hand, the shield's rim met the floor, pressed
   on 12 units, let go at 22.7, free again).
-- **Open**: the hand against the player's own blade, the shield against the
-  blade (section 13), opponents' shields and blades as stoppers, the torch
-  and the staff as shapes; the headset's judgement of the feel.
+- **Open**: the torch and the staff as shapes; the headset's judgement of
+  the feel.
+
+## 15. Built: the stoppers - the shield at the blade, the blade at the hand, the foes' blades and shields (2026-10-11)
+
+The tester, after playing 287bcd1: "schild kollidieren nicht mit schwert.
+hand nicht mit waffe." Section 13's three parts and section 4 F's "theirs",
+built on one mechanism: `BladeLiving::stoppers` (capsules) and `::discs`
+(game/BladeContactLogic.h) are shapes of OBVR's own the sweep holds the
+blade or a hand at whatever its speed - the living are passed by a swing,
+these never - and that are passed only once pressed past the cap, through
+the same ledger by an id of their own, so the blade keeps striking (a shield
+arm swung across the blade does not disarm a swing). controls-spec 4.32 has
+the details. What was measured and what differs from the design:
+
+- **A disc, not a ball**, for the own shield and the foes' (the ball of the
+  parry would hold a blade a hand's length short of a shield it faces): the
+  read disc (section 14) carried by the left hand's pose - for a foe by
+  their twist bone's own transform, their model read the same way
+  (`ReadShieldDisc` on "Bip01 L ForearmTwist", once per bound change or 90
+  frames). Round at the longer spoke: a kite shield's short sides stop a
+  blade a little early rather than let it through.
+- **The foes' blades** are the parry's own list (`BladeFoes`), 2.5 units
+  round, so a parry and a stop happen on the same contact: the parry's
+  4-unit reach is met while the blade is held 2.5 + 1.5 units off theirs.
+  Their blade moves; the blade rests on a moving thing and is carried a
+  little - not judged in the headset.
+- **The foes' shields** stop the blade whether or not they are blocking; a
+  blow that meets the shield never reaches the body (4 F's "physically
+  right, and a change from today"). The strike by motion's sphere test is
+  still the hit test: a swing held at a shield has its hand go on, and the
+  sphere test is on the DRAWN blade, which is held - so the blow does not
+  land through the shield unless the hand goes past the cap.
+- **The sweep's order** (found by the unit test, 2026-10-11): each swept
+  point meets the stoppers and the discs first, then the living - a person
+  behind a stopper the point is held at (their blade, your shield) is not
+  reached, so a swing stopped at a foe's blade does not pass (hit) the body
+  behind it. Before, the living were taken in the same pass whatever held
+  the point short of them.
+- **Open**: the torch and the staff as shapes (they pass through); the
+  headset's judgement.

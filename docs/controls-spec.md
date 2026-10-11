@@ -2197,6 +2197,61 @@ Same für alle anderen Waffen mit der freien Hand."
   short). Headset test open: whether a hand on a table or a wall feels
   right, whether the shield's rim stops where it is seen, and whether 1.3
   m/s is the right speed to go through people.
+- **The tester's round of 287bcd1 (2026-10-11)**: "hands in menüs sind da";
+  the hand and the shield did not meet the own weapon - see the stoppers
+  below.
+
+**The stoppers: the blade at the shield, the hand at the blade, the foes'
+blades and shields (built 2026-10-11; spec section 14):**
+
+The tester: "schild kollidieren nicht mit schwert. hand nicht mit waffe."
+
+- **What** (`BladeLiving::stoppers` and `::discs`, game/BladeContactLogic.h):
+  shapes of OBVR's own the blade and the hands are held at whatever their
+  speed - a swing stops at them as at a wall. The own shield on the left
+  arm as its disc (`ShieldDiscInWorld`: the read disc carried by the left
+  hand's pose, round at the longer spoke, half its thickness and a little;
+  the bound's ball until the model is read); the drawn blade as a capsule
+  2.5 units round for the hand that does not hold it (`AddOwnBladeStopper`);
+  the foes' blades (BladeFoes, 2.5 round) and their shields (their
+  "Bip01 L ForearmTwist" node's model read as the player's is,
+  `BladeBodies.cpp`; `AddFoeStoppers`, ParryLogic.h). The blade's step takes
+  the shield and the foes'; each hand's step the blade (the off hand), the
+  shield (the weapon hand with nothing drawn) and the foes'.
+- **How they hold**: a disc is a new shape of the sweep (`SegmentEntersDisc`:
+  the slab of its thickness met with the cylinder of its radius, the face
+  or the rim entered; `SegmentTouchesDisc` samples nine points of the
+  segment). Pressed past the cap (`WeaponLetGoMetres`) a stopper is passed
+  as a person is - through the ledger, by its id (`kStopperOwnShield`,
+  `kStopperOwnBlade`, a foe's address with bit 1 or 2 set) - and the blade
+  goes on striking; it is held again once out of it for 0.22 s. A pose
+  across a stopper (the shield arm swung across the blade) is not taken,
+  and a blade taken up inside one is passed, not "through". A swing into a
+  foe's blade is held by it; their body behind it is not reached (the sweep
+  meets the stoppers and the discs before the living, and a person past
+  the point where it is held is left alone).
+- **Felt and heard**: the pulse by the speed into it; from 1.5 m/s the
+  shield's block sound on a shield (WPNBlockShieldLightX), the blade's or
+  the blunt's on a blade (WPNBlockBladeX / WPNBlockBluntX); on a person only
+  the light pulse, as before.
+- Switches: the own shield and blade with `WeaponStopsAtWalls` /
+  `HandsStopAtWalls`; the foes' with `WeaponStopsAtBodies` /
+  `HandsStopAtBodies`. The parry is unchanged: its foes are the same list,
+  with a foe listed for a shield alone (`bladeValid`) skipped by it.
+- Log: "Contact: the blade rests on your shield / your blade / <actor>'s
+  blade / <actor>'s shield ...", "... pressed on into your shield ...";
+  "Contact: <actor>'s shield read - n vertices, spokes ..." once per foe;
+  at a mark "stoppers n capsules and n discs" and "Contact: disc 0 (your
+  shield) - centre ..., normal ..., round, thick"; the hands' mark line
+  "stoppers a+b and c+d (capsules+discs)".
+- Tests: `blade_contact_test` (the disc's geometry and every way in, the
+  ids; the step held by a disc at any speed, no hit-stop, pressed past and
+  passed - not through - and held again, a capsule stopper against a swing,
+  the body behind it, across a thin stopper, taken up inside one, the
+  ledger with discs, no stoppers), `hand_contact_test` (the disc in the
+  world, the blade's capsule), `parry_test` (the foes' stoppers).
+- **Harness**: `blade-shield.txt` and `hand-blade.txt` (see
+  docs/hand-script-harness.md for the results).
 
 ### 4.33 Fighters walk near you (built 2026-10-09, harness PASS)
 
@@ -2572,3 +2627,25 @@ ESC Optionen Menü erhalten bleiben und nicht ausgeblendet werden".
   conversation, a container with its quantity box, the empty read, the
   setting off); `hand_mode_test` (the arms placed in a menu with the setting
   on, not with it off).
+
+### 4.42 No black HUD frame while a game loads (fixed 2026-10-11)
+
+The tester: "beim spielladen ist kurz das hud als schwarzer rahmen zu sehen,
+vll können wir den entfernen."
+
+- **What it was** (the tester's log of 2026-10-11): a loading screen is a
+  flat picture (cinema delivery, the 2D layer's overlay hidden), but the
+  first stereo world frames after a load - the cell loaded, the loading
+  menu still on the interface manager's stack - captured the loading
+  menu's 2D into the layer and showed it on the overlay ("Hud: live" came
+  while "menu Loading" was still the top): the loading menu's frame on a
+  black ground, hanging 1.2 m in front of the eyes until the menu closed.
+- **Now** (`camera::HudOverlayShown`): the 2D layer's overlay and the hand
+  HUD are hidden on any frame while the game loads - the loading menu on
+  top of the stack, or the loading thread active - and shown again once
+  the menu is gone. Logged once per load: "Hud: a world frame while the
+  game loads - the 2D layer and the hand HUD stay hidden".
+- Tests: `frame_logic_test` (shown on a world frame alive and not loading;
+  hidden off a world frame, for death, while loading). Harness: in the
+  `hands-in-menus` run of 2026-10-11 the line came between "menu Loading"
+  and "menu none", and "Hud: live" only after. Headset: open.

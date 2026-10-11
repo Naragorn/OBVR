@@ -2231,6 +2231,43 @@ UInt32 g_bladeCostLines = 6;
 // went into someone (the hit-stop's count; kHitStopFrames: none running).
 game::BladeBodies g_bladeBodies;
 game::BladeFoes g_bladeFoes;
+// The stoppers the blade is held at whatever its speed (BladeContactLogic.h,
+// the stoppers; the tester, 2026-10-11: "schild kollidieren nicht mit
+// schwert"): the own shield's disc, the foes' blades and shields.
+game::BladeBodies g_bladeStoppers;
+game::BladeDiscs g_bladeDiscs;
+// The worn shield's disc (game/ShieldShape, read by the hands' step in the
+// left hand's frame), kept while it is the same node and bound.
+game::ShieldDisc g_shieldDisc;
+bool g_shieldDiscHave = false;
+UInt32 g_shieldDiscNode = 0;
+float g_shieldDiscBound = 0.0f;
+UInt32 g_shieldDiscAge = 0;
+bool g_shieldDiscSaid = false;
+
+// A stopper's name for the log, or the actor's address.
+const char* ContactName(UInt32 id, char* out, UInt32 size) {
+	if (id == game::kStopperOwnShield) {
+		std::snprintf(out, size, "your shield");
+	} else if (id == game::kStopperOwnBlade) {
+		std::snprintf(out, size, "your blade");
+	} else if ((id & game::kStopperFoeBladeBit) != 0) {
+		std::snprintf(out, size, "%08X's blade", id & ~3u);
+	} else if ((id & game::kStopperFoeShieldBit) != 0) {
+		std::snprintf(out, size, "%08X's shield", id & ~3u);
+	} else {
+		std::snprintf(out, size, "%08X", id);
+	}
+	return out;
+}
+
+// The clash of a blade on a stopper, by what it met.
+UInt32 StopperSound(UInt32 id, bool blunt) {
+	if (id == game::kStopperOwnShield || (id & game::kStopperFoeShieldBit) != 0) {
+		return 0x0000C3D0u;  // WPNBlockShieldLightX
+	}
+	return blunt ? 0x0000C3CCu : 0x0000C3CBu;  // WPNBlockBluntX, WPNBlockBladeX
+}
 UInt32 g_bladeHitStopFrames = game::kHitStopFrames;
 // The person the blade rested on the frame before (0 none): a new one is said.
 UInt32 g_bladeRestActor = 0;
@@ -2306,15 +2343,40 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	UInt32 peopleNear = 0;
 	if (people || parries) {
 		// Their blades reach further than the bodies: a sword's length more.
+		// The foes - their blades and shields - for the parry and as stoppers.
 		const float bladeUnits = span.valid ? math::Sqrt((span.b - span.a).LengthSquared()) : 100.0f;
-		peopleNear = game::CollectBladeBodies(f.wanted.pos, bladeUnits + (parries ? 100.0f : 30.0f), g_bladeBodies,
-		                                      parries ? &g_bladeFoes : nullptr);
+		peopleNear = game::CollectBladeBodies(f.wanted.pos, bladeUnits + 100.0f, g_bladeBodies, &g_bladeFoes);
 		if (people) {
 			f.bodies = &g_bladeBodies;
 		}
-	}
-	if (!parries) {
+	} else {
 		g_bladeFoes.count = 0;
+	}
+	// The stoppers: the own shield on the left arm (its disc, or its ball
+	// until the model is read - game/ShieldShape), the foes' blades and
+	// shields; held at any speed (BladeContactLogic.h).
+	g_bladeStoppers.count = 0;
+	g_bladeDiscs.count = 0;
+	if (f.active && settings.enabled) {
+		if (game::PlayerWearsShield() && g_hand.leftHandValid) {
+			const NiMatrix33 leftRot = camRot * g_hand.leftHandRotation;
+			const NiPoint3 leftPos = camPos + camRot * g_hand.leftHandOffsetUnits;
+			if (g_shieldDiscHave) {
+				const game::BladeDisc d = game::ShieldDiscInWorld(g_shieldDisc, leftRot, leftPos, game::kStopperOwnShield);
+				g_bladeDiscs.Add(d.centre, d.normal, d.radius, d.halfThick, d.id);
+			} else {
+				const NiAVObject* const twist = game::FindFirstPersonNode("Bip01 L ForearmTwist");
+				float ball = 0.0f;
+				if (twist != nullptr && game::ShieldBall(true, twist->worldBound.radius, ball)) {
+					g_bladeStoppers.Add(twist->worldBound.center, twist->worldBound.center, ball, game::kStopperOwnShield);
+				}
+			}
+		}
+		if (people) {
+			game::AddFoeStoppers(g_bladeFoes, g_bladeStoppers, g_bladeDiscs);
+		}
+		f.stoppers = &g_bladeStoppers;
+		f.discs = &g_bladeDiscs;
 	}
 	f.swinging = g_hand.swingActive && g_hand.swingTravelledMetres >= vr::kSwingMinMetres;
 	f.followShare = config.hands.weaponHitStop ? game::HitStopShare(g_bladeHitStopFrames) : 1.0f;
@@ -2349,7 +2411,7 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		p.guard = span.valid ? game::BladePointAt(v.pose, span, 0.0f) : v.pose.pos;
 		p.tip = span.valid ? game::BladePointAt(v.pose, span, 1.0f) : v.pose.pos;
 		p.eye = camPos;
-		p.foes = &g_bladeFoes;
+		p.foes = parries ? &g_bladeFoes : nullptr;
 		p.dtSeconds = dt;
 		// The shield, worn on the left forearm: its node's bound as a ball.
 		if (parries) {
@@ -2396,8 +2458,16 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.04f, 160.0f, 0.7f);
 	}
 	if (restsOnNew) {
+		// A shield or a blade met hard clashes; a person is only felt.
+		const bool stopper = game::IsStopperId(restingOn);
 		g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.03f, 180.0f,
-		                                         game::kBladeTouchMinAmplitude);
+		                                         stopper ? game::BladeTouchAmplitude(v.contact.speedIn)
+		                                                 : game::kBladeTouchMinAmplitude);
+		if (stopper && game::BladeKnockSounds(v.contact.speedIn, g_bladeSinceSound)) {
+			g_bladeSinceSound = 0.0f;
+			game::PlaySoundFormAt(StopperSound(restingOn, blunt), *reinterpret_cast<const UInt32*>(addr::kPlayerPointer),
+			                      v.contact.point);
+		}
 	}
 	if (v.event == game::BladeContactEvent::Touched && !onPerson) {
 		g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.03f, 180.0f,
@@ -2423,20 +2493,22 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		         peopleNear, static_cast<double>(game::kBladePassClearSeconds),
 		         config.hands.weaponHitStop ? "; the hit-stop slows it" : "");
 	}
+	char who[48];
 	if (restsOnNew && g_bladeLines > 0) {
 		--g_bladeLines;
-		OBVR_LOG("Contact: the blade rests on %08X at %.0f %.0f %.0f - its point %.2f of the way to the tip, "
-		         "%.2f m/s into them; held %.1f units from the hand",
-		         v.contact.actor, static_cast<double>(v.contact.point.x), static_cast<double>(v.contact.point.y),
-		         static_cast<double>(v.contact.point.z), static_cast<double>(v.contact.along),
-		         static_cast<double>(v.contact.speedIn / config.tracker.unitsPerMetre), static_cast<double>(v.gapUnits));
+		OBVR_LOG("Contact: the blade rests on %s at %.0f %.0f %.0f - its point %.2f of the way to the tip, "
+		         "%.2f m/s into it; held %.1f units from the hand",
+		         ContactName(v.contact.actor, who, sizeof(who)), static_cast<double>(v.contact.point.x),
+		         static_cast<double>(v.contact.point.y), static_cast<double>(v.contact.point.z),
+		         static_cast<double>(v.contact.along), static_cast<double>(v.contact.speedIn / config.tracker.unitsPerMetre),
+		         static_cast<double>(v.gapUnits));
 	}
 	if (v.event != game::BladeContactEvent::None && !(v.event == game::BladeContactEvent::Touched && onPerson) &&
 	    g_bladeLines > 0) {
 		--g_bladeLines;
 		if (v.event == game::BladeContactEvent::LetGo && !v.through) {
-			OBVR_LOG("Contact: pressed on into %08X - %.1f units from where it rested; it goes into them, passed",
-			         v.contact.actor, static_cast<double>(v.gapUnits));
+			OBVR_LOG("Contact: pressed on into %s - %.1f units from where it rested; it goes into it, passed",
+			         ContactName(v.contact.actor, who, sizeof(who)), static_cast<double>(v.gapUnits));
 		} else if (v.event == game::BladeContactEvent::Touched && v.contact.hit) {
 			OBVR_LOG("Contact: the blade met body %08X (layer %u, motion %u) at %.0f %.0f %.0f - its point %.2f of "
 			         "the way to the tip, %.2f m/s into it; held %.1f units and %.0f degrees from the hand%s",
@@ -2496,9 +2568,18 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		         static_cast<double>(v.gapRadians * math::kRadiansToDegrees), static_cast<double>(wantedTip.x),
 		         static_cast<double>(wantedTip.y), static_cast<double>(wantedTip.z), static_cast<double>(drawnTip.x),
 		         static_cast<double>(drawnTip.y), static_cast<double>(drawnTip.z), world.casts);
-		OBVR_LOG("Contact: people - %u near (%u capsules), %u passed, resting on %08X, swinging %d, hit-stop frame %u",
+		OBVR_LOG("Contact: people - %u near (%u capsules), %u passed, resting on %08X, swinging %d, hit-stop frame %u; "
+		         "stoppers %u capsules and %u discs",
 		         peopleNear, people ? g_bladeBodies.count : 0u, g_bladeContact.passed.count,
-		         v.held && v.contact.actor != 0 ? v.contact.actor : 0u, f.swinging ? 1 : 0, g_bladeHitStopFrames);
+		         v.held && v.contact.actor != 0 ? v.contact.actor : 0u, f.swinging ? 1 : 0, g_bladeHitStopFrames,
+		         g_bladeStoppers.count, g_bladeDiscs.count);
+		for (UInt32 c = 0; c < g_bladeDiscs.count && c < 2; ++c) {
+			const game::BladeDisc& d = g_bladeDiscs.disc[c];
+			OBVR_LOG("Contact: disc %u (%s) - centre %.0f %.0f %.0f, normal %.2f %.2f %.2f, %.1f round, %.1f thick", c,
+			         ContactName(d.id, who, sizeof(who)), static_cast<double>(d.centre.x), static_cast<double>(d.centre.y),
+			         static_cast<double>(d.centre.z), static_cast<double>(d.normal.x), static_cast<double>(d.normal.y),
+			         static_cast<double>(d.normal.z), static_cast<double>(d.radius), static_cast<double>(d.halfThick * 2.0f));
+		}
 		for (UInt32 i = 0; i < g_bladeFoes.count && i < 3; ++i) {
 			const game::BladeFoe& foe = g_bladeFoes.foe[i];
 			const float toOurs = span.valid ? game::SegmentSegmentDistance(foe.a, foe.b, game::BladePointAt(v.pose, span, 0.0f),
@@ -2549,17 +2630,17 @@ struct HandContactSide {
 	UInt32 restActor = 0;  // the person it rested on the frame before
 	UInt32 scrapeFrames = 0;
 	float sinceSound = 10.0f;
-	UInt32 lines = 30;
+	UInt32 lines = 60;
+	UInt32 announceLines = 24;  // "meets the world now", apart: a hand freed often spent the lines (2026-10-11)
 };
 HandContactSide g_handContact[2];  // the weapon hand, the off hand
 game::BladeBodies g_handBodies;
-// The worn shield's disc, kept while it is the same node and bound.
-game::ShieldDisc g_shieldDisc;
-bool g_shieldDiscHave = false;
-UInt32 g_shieldDiscNode = 0;
-float g_shieldDiscBound = 0.0f;
-UInt32 g_shieldDiscAge = 0;
-bool g_shieldDiscSaid = false;
+// The foes near the hands (their blades and shields), and each hand's
+// stoppers: the drawn blade for the hand that does not hold it, the shield
+// for the hand that does not carry it, the foes' blades and shields.
+game::BladeFoes g_handFoes;
+game::BladeBodies g_handStoppers[2];
+game::BladeDiscs g_handDiscs[2];
 bool g_handCameraValid = false;
 NiMatrix33 g_handCameraRot = NiMatrix33::Identity();
 NiPoint3 g_handCameraPos{0.0f, 0.0f, 0.0f};
@@ -2635,7 +2716,9 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 	const bool people = anyShape && settings.enabled && config.hands.handsStopAtBodies;
 	UInt32 peopleNear = 0;
 	if (people) {
-		peopleNear = game::CollectBladeBodies(camPos, 130.0f, g_handBodies, nullptr);
+		peopleNear = game::CollectBladeBodies(camPos, 130.0f, g_handBodies, &g_handFoes);
+	} else {
+		g_handFoes.count = 0;
 	}
 
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
@@ -2735,6 +2818,41 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 		if (people) {
 			f.bodies = &g_handBodies;
 		}
+		// The stoppers this hand is held at whatever its speed: the drawn blade
+		// for the hand that does not hold it (the tester, 2026-10-11: "hand
+		// nicht mit waffe"), the shield for the hand that does not carry it,
+		// the foes' blades and shields.
+		game::BladeBodies& stoppers = g_handStoppers[side];
+		game::BladeDiscs& discs = g_handDiscs[side];
+		stoppers.count = 0;
+		discs.count = 0;
+		if (shape != game::HandShape::None && settings.enabled) {
+			if (bladeHasWeaponHand && !right) {
+				game::BladePose drawn;
+				drawn.rot = camRot * g_hand.weaponHandRotation;
+				drawn.pos = camPos + camRot * g_hand.weaponHandOffsetUnits;
+				game::AddOwnBladeStopper(drawn, g_bladeSpan.span, stoppers);
+			}
+			if (right && shieldWorn && g_hand.leftHandValid) {
+				const NiMatrix33 leftRot = camRot * g_hand.leftHandRotation;
+				const NiPoint3 leftPos = camPos + camRot * g_hand.leftHandOffsetUnits;
+				if (g_shieldDiscHave) {
+					const game::BladeDisc d = game::ShieldDiscInWorld(g_shieldDisc, leftRot, leftPos, game::kStopperOwnShield);
+					discs.Add(d.centre, d.normal, d.radius, d.halfThick, d.id);
+				} else {
+					const NiAVObject* const twist = game::FindFirstPersonNode("Bip01 L ForearmTwist");
+					float ball = 0.0f;
+					if (twist != nullptr && game::ShieldBall(true, twist->worldBound.radius, ball)) {
+						stoppers.Add(twist->worldBound.center, twist->worldBound.center, ball, game::kStopperOwnShield);
+					}
+				}
+			}
+			if (people) {
+				game::AddFoeStoppers(g_handFoes, stoppers, discs);
+			}
+			f.stoppers = &stoppers;
+			f.discs = &discs;
+		}
 		// A hand fast enough for a shove, or a fist's swing, goes through
 		// people; SteamVR's velocity is relative to the head's frame, in the
 		// game's axes (m/s), judged over the last tenth of a second
@@ -2775,8 +2893,8 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 			h.scrapeFrames = 0;
 			continue;
 		}
-		if (announce && h.lines > 0) {
-			--h.lines;
+		if (announce && h.announceLines > 0) {
+			--h.announceLines;
 			OBVR_LOG("Contact: the %s meets the world now (%s)%s", name,
 			         key == game::kSpanKeyHand         ? "the hand's span from its bones"
 			         : key == game::kSpanKeyShieldDisc ? "the shield's disc"
@@ -2824,21 +2942,22 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 			         "for %.2f s",
 			         name, peopleNear, static_cast<double>(game::kBladePassClearSeconds));
 		}
+		char who[48];
 		if (restsOnNew && h.lines > 0) {
 			--h.lines;
-			OBVR_LOG("Contact: the %s rests on %08X at %.0f %.0f %.0f - %.2f m/s into them; held %.1f units from the "
+			OBVR_LOG("Contact: the %s rests on %s at %.0f %.0f %.0f - %.2f m/s into it; held %.1f units from the "
 			         "controller",
-			         name, v.contact.actor, static_cast<double>(v.contact.point.x), static_cast<double>(v.contact.point.y),
-			         static_cast<double>(v.contact.point.z),
+			         name, ContactName(v.contact.actor, who, sizeof(who)), static_cast<double>(v.contact.point.x),
+			         static_cast<double>(v.contact.point.y), static_cast<double>(v.contact.point.z),
 			         static_cast<double>(v.contact.speedIn / config.tracker.unitsPerMetre), static_cast<double>(v.gapUnits));
 		}
 		if (v.event != game::BladeContactEvent::None && !(v.event == game::BladeContactEvent::Touched && onPerson) &&
 		    h.lines > 0) {
 			--h.lines;
 			if (v.event == game::BladeContactEvent::LetGo && !v.through) {
-				OBVR_LOG("Contact: the %s pressed on into %08X - %.1f units from where it rested; it goes into them, "
+				OBVR_LOG("Contact: the %s pressed on into %s - %.1f units from where it rested; it goes into it, "
 				         "passed",
-				         name, v.contact.actor, static_cast<double>(v.gapUnits));
+				         name, ContactName(v.contact.actor, who, sizeof(who)), static_cast<double>(v.gapUnits));
 			} else if (v.event == game::BladeContactEvent::Touched && v.contact.hit) {
 				OBVR_LOG("Contact: the %s met body %08X (layer %u, motion %u) at %.0f %.0f %.0f - its point %.2f of "
 				         "the way along, %.2f m/s into it; held %.1f units and %.0f degrees from the controller%s",
@@ -2911,9 +3030,11 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 			         static_cast<double>(wanted.x), static_cast<double>(wanted.y), static_cast<double>(wanted.z),
 			         static_cast<double>(tip.x), static_cast<double>(tip.y), static_cast<double>(tip.z));
 		}
-		OBVR_LOG("Contact: hands - %u near (%u capsules), %u rays this frame; passed %u and %u", peopleNear,
-		         people ? g_handBodies.count : 0u, world.casts, g_handContact[0].state.passed.count,
-		         g_handContact[1].state.passed.count);
+		OBVR_LOG("Contact: hands - %u near (%u capsules), %u rays this frame; passed %u and %u; stoppers %u+%u and %u+%u "
+		         "(capsules+discs)",
+		         peopleNear, people ? g_handBodies.count : 0u, world.casts, g_handContact[0].state.passed.count,
+		         g_handContact[1].state.passed.count, g_handStoppers[0].count, g_handDiscs[0].count,
+		         g_handStoppers[1].count, g_handDiscs[1].count);
 		for (UInt32 c = 0; people && c < g_handBodies.count && c < 3; ++c) {
 			const game::BladeBodyCapsule& cap = g_handBodies.cap[c];
 			OBVR_LOG("Contact: hands' capsule %u of %08X - %.0f %.0f %.0f to %.0f %.0f %.0f, %.1f round", c, cap.actor,
@@ -3150,7 +3271,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// (game/CombatRing.h); their legs go through the slow approach's setters.
 	game::StepCombatRing(game::CombatRingFrom(active && config.hands.combatRing, config.hands.combatRingMetres,
 	                                          config.hands.meleeAttackersAtOnce, config.tracker.unitsPerMetre,
-	                                          config.hands.combatRingTurnSeconds),
+	                                          config.hands.combatRingTurnSeconds, config.hands.combatRingTurnMaxSeconds,
+	                                          config.hands.combatRingByLevel),
 	                     dt, test::HandScriptMarkedThisFrame());
 	// Their attacks slower and rarer (game/AttackTempo.h): the attack
 	// sequences of those fighting the player followed, the melee decision's
@@ -7933,6 +8055,21 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// (HudHiddenForDeath) - the game keeps drawing its HUD for seconds.
 	const bool hiddenForDeath = HudHiddenForDeath(config.look.hideHudWhenDead,
 	                                              game::PlayerIsDead(), game::IsMenuMode());
+	// And while a game loads (HudOverlayShown): the loading menu's 2D,
+	// captured into the layer on the first world frames after a load, hung
+	// as a black frame.
+	const bool loading = game::LoadingThreadActive() ||
+	                     (game::IsMenuMode() && game::TopVisibleMenu() == game::kMenuIdLoading);
+	const bool overlayShown = HudOverlayShown(worldFrame, hiddenForDeath, loading);
+	{
+		static bool s_loadingHid = false;
+		static UInt32 s_loadingLines = 12;
+		if (loading && worldFrame && !s_loadingHid && s_loadingLines > 0) {
+			--s_loadingLines;
+			OBVR_LOG("Hud: a world frame while the game loads - the 2D layer and the hand HUD stay hidden");
+		}
+		s_loadingHid = loading && worldFrame;
+	}
 
 	// The crosshair first, and outside the HUD's two gates on purpose: it is
 	// not drawn by the interface pass, so whether that pass is redirected has
@@ -8482,7 +8619,8 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			placements[e].widthMetres = quads[e].widthMetres;
 			placements[e].alpha = quads[e].alpha;
 		}
-		g_handHudLayer.Submit(backend, render::GetGameDevice(), handHudActive && !hiddenForDeath, placements);
+		g_handHudLayer.Submit(backend, render::GetGameDevice(), handHudActive && !hiddenForDeath && !loading,
+		                      placements);
 
 		// SetDialogCamera supplies the actual actor, including NPC-initiated
 		// greetings. Never infer the speaker from an unrelated hand pick.
@@ -8629,7 +8767,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		return;
 	}
 	g_hudLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
-	                  worldFrame && !hiddenForDeath, config.tracker.hudDistanceMetres,
+	                  overlayShown, config.tracker.hudDistanceMetres,
 	                  // The container's panel at its own size while looting, the
 	                  // dialogue's while talking, the menus' own otherwise.
 	                  vr::DialogPanelWidth(vr::DialogPanelWidth(config.tracker.hudWidthMetres,

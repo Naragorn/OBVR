@@ -761,6 +761,16 @@ inline bool HudHiddenForDeath(bool hideWhenDead, bool dead, bool menuIsUp) {
 	return hideWhenDead && dead && !menuIsUp;
 }
 
+// Whether the 2D layer's overlay and the hand HUD are shown: on a world
+// frame, not while dead with the switch on, and not while a game loads -
+// the first stereo frames after a load still have the loading menu on the
+// stack, and its 2D captured into the layer hung in front of the eyes as a
+// black frame (the tester, 2026-10-11: "beim spielladen ist kurz das hud als
+// schwarzer rahmen zu sehen").
+inline bool HudOverlayShown(bool worldFrame, bool hiddenForDeath, bool loading) {
+	return worldFrame && !hiddenForDeath && !loading;
+}
+
 // After StepDeathView on the same frame: while the view is held, the base
 // rotation and the vertical offset it is built on stay those of the last
 // living frame too. Writes the ones to use into rot and vertical.

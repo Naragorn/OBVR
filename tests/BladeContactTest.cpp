@@ -814,6 +814,160 @@ void TestShape() {
 	Check(!v.held && v.enteredBody && rest.passed.Has(11), "swung on: through them, passed");
 }
 
+void TestDiscs() {
+	std::printf("A disc: the geometry\n");
+	BladeDiscs discs;
+	Check(discs.Add(NiPoint3{0, 0, 0}, NiPoint3{0, 1, 0}, 20.0f, 3.0f, 7) && discs.count == 1, "a disc added");
+	Check(!discs.Add(NiPoint3{0, 0, 0}, NiPoint3{0, 1, 0}, 0.0f, 3.0f, 7), "no radius: refused");
+	Check(!discs.Add(NiPoint3{0, 0, 0}, NiPoint3{0, 1, 0}, 20.0f, 0.0f, 7), "no thickness: refused");
+	Check(!discs.Add(NiPoint3{0, 0, 0}, NiPoint3{0, 3, 0}, 20.0f, 3.0f, 7), "a normal of no unit length: refused");
+	for (UInt32 i = 0; i < kBladeDiscsMax; ++i) {
+		discs.Add(NiPoint3{0, 0, 0}, NiPoint3{0, 1, 0}, 20.0f, 3.0f, 8 + i);
+	}
+	Check(discs.count == kBladeDiscsMax, "never more than the room for them");
+	// A disc facing +y at the origin, 20 round, 3 thick each way.
+	const BladeDisc d = discs.disc[0];
+	Check(Near(PointDiscDistance(NiPoint3{0, 0, 0}, d), 0.0f), "the centre: inside, 0");
+	Check(Near(PointDiscDistance(NiPoint3{0, 10, 0}, d), 7.0f), "10 out along the normal: 7 from the face");
+	Check(Near(PointDiscDistance(NiPoint3{30, 0, 0}, d), 10.0f), "30 out across: 10 from the rim");
+	Check(Near(PointDiscDistance(NiPoint3{24, 6, 0}, d), 5.0f), "past the rim and the face: the corner, 5");
+	Check(Near(SegmentDiscDistance(NiPoint3{-40, 10, 0}, NiPoint3{40, 10, 0}, d), 7.0f), "a segment 10 over the face: 7");
+	Check(SegmentTouchesDisc(NiPoint3{0, -30, 0}, NiPoint3{0, 30, 0}, d), "a segment through it: touching");
+	Check(!SegmentTouchesDisc(NiPoint3{25, -30, 0}, NiPoint3{25, 30, 0}, d), "a segment past the rim: not");
+
+	float f = -1.0f;
+	NiPoint3 n;
+	bool inside = true;
+	Check(SegmentEntersDisc(NiPoint3{0, -30, 0}, NiPoint3{0, 30, 0}, d, f, n, inside) && !inside && Near(f, 27.0f / 60.0f) &&
+	          Near(n.y, -1.0f),
+	      "face on from -y: enters at the face, the normal towards the ray");
+	Check(SegmentEntersDisc(NiPoint3{0, 30, 0}, NiPoint3{0, -30, 0}, d, f, n, inside) && Near(f, 27.0f / 60.0f) &&
+	          Near(n.y, 1.0f),
+	      "face on from +y: the other face");
+	Check(SegmentEntersDisc(NiPoint3{-40, 0, 0}, NiPoint3{40, 0, 0}, d, f, n, inside) && Near(f, 20.0f / 80.0f) &&
+	          Near(n.x, -1.0f),
+	      "edge on: enters at the rim, the normal outward");
+	Check(!SegmentEntersDisc(NiPoint3{-40, 10, 0}, NiPoint3{40, 10, 0}, d, f, n, inside), "10 over the face: misses");
+	Check(!SegmentEntersDisc(NiPoint3{25, -30, 0}, NiPoint3{25, 30, 0}, d, f, n, inside), "past the rim: misses");
+	Check(SegmentEntersDisc(NiPoint3{0, 1, 0}, NiPoint3{0, 30, 0}, d, f, n, inside) && inside && f == 0.0f,
+	      "starting in it: inside");
+	Check(!SegmentEntersDisc(NiPoint3{0, -30, 0}, NiPoint3{0, -10, 0}, d, f, n, inside), "stopping short: nothing");
+	Check(!SegmentEntersDisc(NiPoint3{0, -30, 0}, NiPoint3{0, -30, 0}, d, f, n, inside), "no length outside: nothing");
+	Check(SegmentEntersDisc(NiPoint3{-40, 2, 0}, NiPoint3{40, 2, 0}, d, f, n, inside) && Near(f, 20.0f / 80.0f),
+	      "edge on within the thickness: the rim");
+	Check(!SegmentEntersDisc(NiPoint3{-40, 0, 0}, NiPoint3{-30, 0, 0}, d, f, n, inside), "along the plane, short: nothing");
+	// A slanted entry through the face corner.
+	Check(SegmentEntersDisc(NiPoint3{-30, -20, 0}, NiPoint3{10, 20, 0}, d, f, n, inside) && f > 0.4f && f < 0.5f,
+	      "slanting in: enters between the face and the rim");
+	BladeDisc none;
+	Check(!SegmentEntersDisc(NiPoint3{0, -30, 0}, NiPoint3{0, 30, 0}, none, f, n, inside), "an empty disc: nothing");
+	Check(IsStopperId(kStopperOwnShield) && IsStopperId(kStopperOwnBlade) && IsStopperId(FoeBladeId(0x1A000000)) &&
+	          IsStopperId(FoeShieldId(0x1A000000)) && !IsStopperId(0x1A000000) && !IsStopperId(0),
+	      "the stoppers' ids are told from actors' addresses");
+	Check(FoeBladeId(0x1A000000) != FoeShieldId(0x1A000000) && (FoeBladeId(0x1A000000) & ~3u) == 0x1A000000,
+	      "a foe's blade and shield are two ids, both naming the foe");
+}
+
+void TestStoppers() {
+	std::printf("The step: the stoppers\n");
+	BoxWorld none;
+	BladeContactSettings set;
+	set.letGoUnits = 21.0f;
+	// The own shield: a disc 20 round and 3 thick each way, facing the blade
+	// (its normal -y, at y 45), as a stopper.
+	BladeDiscs shield;
+	shield.Add(NiPoint3{0, 45, 0}, NiPoint3{0, -1, 0}, 20.0f, 3.0f, kStopperOwnShield);
+	// The disc's near face is at y 42 (45 less the 3 of its thickness).
+	BladeContactFrame f = FrameFor(At(0, -30, 0));
+	f.discs = &shield;
+	BladeContactState s;
+	StepBladeContact(s, set, f, none);
+	f.wanted = At(0, -10, 0);
+	BladeContactVerdict v = StepBladeContact(s, set, f, none);
+	Check(v.held && v.contact.actor == kStopperOwnShield && v.contact.body == 0, "the blade onto the shield: held by it");
+	Check(Near(BladePointAt(v.pose, Blade(), 1.0f).y, 42.0f - 1.5f), "the tip the margin short of its face");
+	f.swinging = true;
+	f.wanted = At(0, -5, 0);
+	v = StepBladeContact(s, set, f, none);
+	Check(v.held && v.contact.actor == kStopperOwnShield && !v.enteredBody,
+	      "swung at the shield: held all the same, no hit-stop");
+	f.wanted = At(0, 10, 0);
+	v = StepBladeContact(s, set, f, none);
+	Check(v.event == BladeContactEvent::LetGo && !v.through && s.passed.Has(kStopperOwnShield),
+	      "pressed on past the cap: passed, the blade still strikes (not through)");
+	f.swinging = false;
+	f.wanted = At(0, 12, 0);
+	v = StepBladeContact(s, set, f, none);
+	Check(!v.held && Near(v.pose.pos.y, 12.0f), "and stays through it, unheld");
+	for (int i = 0; i < 30; ++i) {
+		v = StepBladeContact(s, set, f = [&] { BladeContactFrame g = FrameFor(At(0, -40, 0)); g.discs = &shield; return g; }(), none);
+	}
+	Check(!s.passed.Has(kStopperOwnShield), "out of it for a third of a second: no longer passed");
+	f.wanted = At(0, -10, 0);
+	v = StepBladeContact(s, set, f, none);
+	Check(v.held && v.contact.actor == kStopperOwnShield, "and held by the shield again");
+
+	// A capsule stopper (a foe's blade) across the way at y 40, their body
+	// behind it at y 60 (its face at 50): a swing is held at the blade and
+	// never reaches the body.
+	BladeBodies theirs;
+	theirs.Add(NiPoint3{-30, 40, 0}, NiPoint3{30, 40, 0}, 2.5f, FoeBladeId(0x1A000000));
+	BladeBodies person;
+	person.Add(NiPoint3{0, 60, -60}, NiPoint3{0, 60, 60}, 10.0f, 0x1A000000);
+	BladeContactFrame g = FrameFor(At(0, -30, 0));
+	g.stoppers = &theirs;
+	g.bodies = &person;
+	g.swinging = true;
+	BladeContactState t;
+	StepBladeContact(t, set, g, none);
+	g.wanted = At(0, -10, 0);
+	v = StepBladeContact(t, set, g, none);
+	Check(v.held && v.contact.actor == FoeBladeId(0x1A000000), "a swing into their blade: held by it");
+	Check(Near(BladePointAt(v.pose, Blade(), 1.0f).y, 37.5f - 1.5f), "the tip short of their blade's capsule");
+	Check(!t.passed.Has(0x1A000000), "their body behind it not reached: not passed");
+	// The blade across a stopper where it would end: not taken.
+	BladeBodies post;
+	post.Add(NiPoint3{5, 20, -30}, NiPoint3{5, 20, 30}, 2.0f, kStopperOwnBlade);
+	BladeContactFrame p = FrameFor(At(-5, 0, 0));
+	p.stoppers = &post;
+	p.swinging = true;
+	BladeContactState ps;
+	StepBladeContact(ps, set, p, none);
+	p.wanted = At(5, 0, 0);
+	v = StepBladeContact(ps, set, p, none);
+	Check(v.held && Near(v.pose.pos.x, -5.0f) && v.contact.actor == kStopperOwnBlade,
+	      "swung across a thin stopper between two points: held where it was");
+	// Taken up with a stopper across it: passed, not through.
+	BladeContactState in;
+	v = StepBladeContact(in, set, p, none);
+	Check(in.passed.Has(kStopperOwnBlade) && !v.through, "taken up across it: passed, not through");
+	// The ledger: a disc keeps its id while touched.
+	BladePassLedger l;
+	l.Add(kStopperOwnShield);
+	const NiPoint3 from = NiPoint3{0, 30, 0};
+	const NiPoint3 to = NiPoint3{0, 60, 0};
+	for (int i = 0; i < 30; ++i) {
+		l.StepSegments(&from, &to, 1, nullptr, 0.05f, nullptr, &shield);
+	}
+	Check(l.Has(kStopperOwnShield), "the blade through the disc: kept passed");
+	const NiPoint3 away = NiPoint3{0, -60, 0};
+	const NiPoint3 awayTo = NiPoint3{0, -30, 0};
+	for (int i = 0; i < 30; ++i) {
+		l.StepSegments(&away, &awayTo, 1, nullptr, 0.05f, nullptr, &shield);
+	}
+	Check(!l.Has(kStopperOwnShield), "out of it: let go of");
+	l.Add(kStopperOwnShield);
+	l.StepSegments(&from, &to, 1, nullptr, 0.05f, nullptr, nullptr);
+	Check(!l.Has(kStopperOwnShield), "the disc gone from the lists: let go of at once");
+	// Off: no stoppers given, the blade goes where it is wanted.
+	BladeContactState off;
+	BladeContactFrame o = FrameFor(At(0, -30, 0));
+	StepBladeContact(off, set, o, none);
+	o.wanted = At(0, -20, 0);
+	v = StepBladeContact(off, set, o, none);
+	Check(!v.held, "no stoppers: nothing holds it");
+}
+
 void TestFeel() {
 	std::printf("The touch felt and heard\n");
 	Check(Near(BladeTouchAmplitude(0.0f), kBladeTouchMinAmplitude), "no speed: the lightest pulse");
@@ -845,6 +999,8 @@ int main() {
 	TestHitStop();
 	TestSettings();
 	TestShape();
+	TestDiscs();
+	TestStoppers();
 	TestFeel();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);

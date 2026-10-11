@@ -418,6 +418,21 @@ void InstallAttackTempo() {
 	}
 }
 
+bool AttackSwinging(UInt32 actor) {
+	for (UInt32 i = 0; i < g_watchedCount; ++i) {
+		if (g_watched[i].actor != actor) {
+			continue;
+		}
+		for (UInt32 s = 0; s < kAnimDataSequenceCount; ++s) {
+			if (g_watched[i].slotSequence[s] != 0) {
+				return true;
+			}
+		}
+		return false;
+	}
+	return false;
+}
+
 void StepAttackTempo(const AttackTempoSettings& settings, bool logState) {
 	g_settings = settings;
 	if (g_getCombatStyle == nullptr) {

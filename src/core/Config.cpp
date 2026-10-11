@@ -711,6 +711,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.combatRingMetres = ReadFloat("Hands", "CombatRingMetres", h.combatRingMetres, path);
 		h.meleeAttackersAtOnce = static_cast<int>(ReadUInt("Hands", "MeleeAttackersAtOnce", static_cast<UInt32>(h.meleeAttackersAtOnce), path));
 		h.combatRingTurnSeconds = ReadFloat("Hands", "CombatRingTurnSeconds", h.combatRingTurnSeconds, path);
+		h.combatRingTurnMaxSeconds = ReadFloat("Hands", "CombatRingTurnMaxSeconds", h.combatRingTurnMaxSeconds, path);
+		h.combatRingByLevel = ReadBool("Hands", "CombatRingByLevel", h.combatRingByLevel, path);
 		h.enemyAttackSpeed = ReadFloat("Hands", "EnemyAttackSpeed", h.enemyAttackSpeed, path);
 		h.enemyAttackFrequency = ReadFloat("Hands", "EnemyAttackFrequency", h.enemyAttackFrequency, path);
 		h.grapple.strikes = ReadBool("Hands", "OffHandStrikes", h.grapple.strikes, path);
