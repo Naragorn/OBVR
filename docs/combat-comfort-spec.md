@@ -448,8 +448,10 @@ angreifen"):**
   (`SetRingLegs`) and give the legs their walk; they do NOT move an NPC the
   AI wants elsewhere (harness, the first run: a fighter given a walk
   backwards stood at 1.9 m for five seconds). The step itself is the ring's:
-  each frame a waiting fighter is placed 100 units a second away, or round
-  the player with a pull to the ring's line (`RingStepOffset`,
+  each frame a waiting fighter is placed away from the player - 65 units a
+  second at the band, up to twice that deep inside, where the AI's own
+  step towards the player otherwise cancels it - or round the player at 65
+  with a pull to the ring's line (`RingStepOffset`,
   `game::PlaceActorAt`, the off hand's drag). A waiting fighter is kept off
   even mid-blow; the one held by the off hand stands whatever the ring
   wants. Their attack itself is not refused: kept outside the reach no blow
@@ -457,6 +459,12 @@ angreifen"):**
 - Logged: "Combat ring: n fighting the player - t with a turn, w waiting at
   r m (...)" on every change, the first forty; at a hand script's mark a
   state line per member.
+- **The tester, 2026-10-10:** "sieht wie gehen aus vll etwas zu schnell.
+  jeder npc kriegt evtl zu wenig zeit zum angreifen. eher hektisch." Now
+  the walk 65 units a second (was 100), and a turn lasts at least
+  `[Hands] CombatRingTurnSeconds` (6 s, 2-30; settings "Turn length (s)")
+  before a blow ends it, 10 s at most without one. Harness (2026-10-11):
+  turns of 6-9 s, the one stepping out walked 1.4 -> 3.0 m in 3 s.
 - **Harness PASS** (`tools/hand-scripts/combat-ring.txt`, three bandits, a
   3 m ring, 2026-10-10): one with the turn at 0.5-2.4 m, the two waiting
   held at 3.0 m going round (order 2), one sent back walking out 1.8 -> 2.2

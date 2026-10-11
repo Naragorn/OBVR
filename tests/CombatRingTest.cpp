@@ -27,6 +27,9 @@ void TestSettings() {
 	CombatRingSettings s = CombatRingFrom(true, 5.0f, 1, 70.0f);
 	Check(s.enabled && s.ringUnits == 350.0f && s.attackersAtOnce == 1 && s.bandUnits == 49.0f,
 	      "5 m, 1 at once: 350 units, a 0.7 m band");
+	Check(s.turnSeconds == 6.0f && s.idleTurnSeconds == 10.0f, "a turn: 6 s at least, 10 s idle");
+	Check(CombatRingFrom(true, 5.0f, 1, 70.0f, 15.0f).idleTurnSeconds == 15.0f, "a 15 s turn: idle no shorter");
+	Check(CombatRingFrom(true, 5.0f, 1, 70.0f, 1.0f).turnSeconds == 6.0f, "1 s, out of range: the default");
 	Check(!CombatRingFrom(true, 0.0f, 1, 70.0f).enabled, "0 m: off");
 	Check(!CombatRingFrom(false, 5.0f, 1, 70.0f).enabled, "the switch off: off");
 	Check(CombatRingFrom(true, 15.0f, 1, 70.0f).ringUnits == 700.0f, "past 10 m: 10");
@@ -63,12 +66,16 @@ void TestSteps() {
 	const CombatRingSettings s = FiveMetres();
 	float ox = 0.0f;
 	float oy = 0.0f;
-	Check(RingStepOffset(100.0f, 0.0f, RingOrder::Back, true, s, 0.1f, ox, oy) && ox > 9.9f && ox < 10.1f && oy == 0.0f,
-	      "back: straight away from the player, 100 units a second");
-	Check(RingStepOffset(0.0f, 350.0f, RingOrder::Circle, true, s, 0.1f, ox, oy) && ox < -9.9f && oy > -0.1f && oy < 0.1f,
+	Check(RingStepOffset(100.0f, 0.0f, RingOrder::Back, true, s, 0.1f, ox, oy) && ox > 12.9f && ox < 13.1f && oy == 0.0f,
+	      "deep inside, back: straight away, twice the walk");
+	Check(RingStepOffset(300.0f, 0.0f, RingOrder::Back, true, s, 0.1f, ox, oy) && ox > 6.5f && ox < 6.6f,
+	      "back at the band's inner edge: the walk, 65 units a second");
+	Check(RingStepOffset(200.0f, 0.0f, RingOrder::Back, true, s, 0.1f, ox, oy) && ox > 10.2f && ox < 10.3f,
+	      "back, halfway in: between");
+	Check(RingStepOffset(0.0f, 350.0f, RingOrder::Circle, true, s, 0.1f, ox, oy) && ox < -6.4f && oy > -0.1f && oy < 0.1f,
 	      "on the ring, round to the left: along the tangent");
-	Check(RingStepOffset(0.0f, 350.0f, RingOrder::Circle, false, s, 0.1f, ox, oy) && ox > 9.9f, "to the right: the other way");
-	Check(RingStepOffset(0.0f, 320.0f, RingOrder::Circle, true, s, 0.1f, ox, oy) && oy > 4.9f && oy < 5.1f,
+	Check(RingStepOffset(0.0f, 350.0f, RingOrder::Circle, false, s, 0.1f, ox, oy) && ox > 6.4f, "to the right: the other way");
+	Check(RingStepOffset(0.0f, 320.0f, RingOrder::Circle, true, s, 0.1f, ox, oy) && oy > 3.2f && oy < 3.3f,
 	      "inside the line: pulled out, half a step at most");
 	Check(!RingStepOffset(100.0f, 0.0f, RingOrder::Free, true, s, 0.1f, ox, oy) && ox == 0.0f, "free: no step");
 	Check(!RingStepOffset(100.0f, 0.0f, RingOrder::Back, true, s, 0.0f, ox, oy), "no time: no step");
@@ -99,19 +106,31 @@ void TestTurns() {
 	v = StepCombatRing(state, s, f, 3, kDt);
 	Check(RingOrderOf(state, 0xA) == RingOrder::Back, "a waiting one mid-blow still backs off");
 	f[0].attacking = false;
-	// B's blow through: its turn ends, the longest waiting (A and C equal:
-	// the nearer, A) steps in.
+	// B's blow through early: the turn lasts its 6 s first.
 	f[1].attacking = false;
 	v = StepCombatRing(state, s, f, 3, kDt);
-	Check(v.turnsEnded == 1 && v.turnsGiven == 1 && v.turns == 1, "the blow through: a turn ends, one is given");
+	Check(v.turnsEnded == 0 && RingOrderOf(state, 0xB) == RingOrder::Free,
+	      "the blow through after a few frames: B keeps the turn (6 s at least)");
+	// Past 6 s, the blow behind it: its turn ends, the longest waiting (A and C
+	// equal: the nearer, A) steps in.
+	UInt32 ended = 0;
+	for (int i = 0; i < 6 * 90 && ended == 0; ++i) {
+		v = StepCombatRing(state, s, f, 3, kDt);
+		ended = v.turnsEnded;
+	}
+	Check(ended == 1 && v.turnsGiven == 1 && v.turns == 1, "6 s in, the blow behind it: a turn ends, one is given");
 	Check(RingOrderOf(state, 0xA) == RingOrder::Free, "A, waited as long as C and nearer, steps in");
 	Check(RingOrderOf(state, 0xB) == RingOrder::Back, "B waits now, inside the ring: back");
-	// A's turn without a blow: after 8 s it gives way to C, who waited longest.
-	for (int i = 0; i < 8 * 90 + 2; ++i) {
+	// A's turn without a blow: at 9 s still A's, after 10 s C's, who waited longest.
+	for (int i = 0; i < 9 * 90; ++i) {
+		v = StepCombatRing(state, s, f, 3, kDt);
+	}
+	Check(RingOrderOf(state, 0xA) == RingOrder::Free, "9 s without a blow: still A's turn");
+	for (int i = 0; i < 90 + 2; ++i) {
 		v = StepCombatRing(state, s, f, 3, kDt);
 	}
 	Check(RingOrderOf(state, 0xC) == RingOrder::Free && RingOrderOf(state, 0xA) != RingOrder::Free,
-	      "8 s without a blow: the turn passes to C, who waited longest");
+	      "10 s without a blow: the turn passes to C, who waited longest");
 }
 
 void TestAlone() {

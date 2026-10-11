@@ -1213,6 +1213,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.meleeAttackersAtOnce = static_cast<int>(v + 0.5f); },
 	},
 	{
+		"Hands", "Turn length (s)",
+		"How long a fighter who steps in has at least, before the next one's turn",
+		ItemKind::Number, 2.0f, 30.0f, 1.0f, 0, false,
+		"Hands", "CombatRingTurnSeconds",
+		+[](const Config& c) { return c.hands.combatRingTurnSeconds; },
+		+[](Config& c, float v) { c.hands.combatRingTurnSeconds = v; },
+	},
+	{
 		"Hands", "Off hand strikes",
 		"With a weapon drawn, the free hand punched or driven fast into someone staggers them, or knocks them down",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,

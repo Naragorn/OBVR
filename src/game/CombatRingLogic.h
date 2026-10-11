@@ -41,12 +41,16 @@ struct CombatRingSettings {
 	float ringUnits = 350.0f;          // 5 m at 70 units a metre
 	UInt32 attackersAtOnce = 1;        // 1-5
 	float bandUnits = 50.0f;           // the ring's width either side: no back-and-forth at its edge
-	float idleTurnSeconds = 8.0f;      // a turn without an attack ends after this, when others wait
+	float turnSeconds = 6.0f;          // a turn lasts at least this long (the tester: "zu wenig zeit zum angreifen")
+	float idleTurnSeconds = 10.0f;     // a turn without an attack ends after this, when others wait
 };
 
 // The settings from the INI's: metres 0 (off) to 10, attackers 1-5.
-inline CombatRingSettings CombatRingFrom(bool enabled, float metres, int attackers, float unitsPerMetre) {
+inline CombatRingSettings CombatRingFrom(bool enabled, float metres, int attackers, float unitsPerMetre,
+                                         float turnSeconds = 6.0f) {
 	CombatRingSettings s;
+	s.turnSeconds = turnSeconds >= 2.0f && turnSeconds <= 30.0f ? turnSeconds : 6.0f;
+	s.idleTurnSeconds = s.turnSeconds > 10.0f ? s.turnSeconds : 10.0f;
 	const float perMetre = unitsPerMetre > 0.0f ? unitsPerMetre : 70.0f;
 	const float m = metres == metres ? (metres > 10.0f ? 10.0f : metres) : 0.0f;
 	s.enabled = enabled && m > 0.0f;
@@ -98,7 +102,7 @@ inline UInt16 RingFlags(UInt16 flags, RingOrder order, bool circleLeft) {
 // backwards stood at 1.9 m for five seconds - so the step is the ring's own,
 // placed as the off hand's drag is (game::PlaceActorAt); the flags give the
 // legs their walk.
-inline constexpr float kRingWalkUnitsPerSecond = 100.0f;  // about 1.4 m a second
+inline constexpr float kRingWalkUnitsPerSecond = 65.0f;  // under a metre a second (100 looked hurried, the tester 2026-10-10)
 
 inline bool RingStepOffset(float rx, float ry, RingOrder order, bool circleLeft, const CombatRingSettings& s,
                            float dtSeconds, float& ox, float& oy) {
@@ -113,8 +117,15 @@ inline bool RingStepOffset(float rx, float ry, RingOrder order, bool circleLeft,
 	const float uy = ry / distance;
 	const float step = kRingWalkUnitsPerSecond * dtSeconds;
 	if (order == RingOrder::Back) {
-		ox = ux * step;
-		oy = uy * step;
+		// Deep inside the walk is not enough: the AI's own step towards the
+		// player cancelled it (harness, 2026-10-11: one waited at 0.6 m for nine
+		// seconds). Up to twice the walk the deeper inside, the walk at the band.
+		const float inside = s.ringUnits - s.bandUnits - distance;
+		const float depth = inside > 0.0f && s.ringUnits > 0.0f ? inside / s.ringUnits : 0.0f;
+		const float back = step * (1.0f + (depth > 1.0f ? 1.0f : depth) * 2.0f);
+		const float capped = back > step * 2.0f ? step * 2.0f : back;
+		ox = ux * capped;
+		oy = uy * capped;
 		return true;
 	}
 	// Round the player: the tangent (left turns counter-clockwise seen from
@@ -235,7 +246,7 @@ inline RingVerdict StepCombatRing(RingState& state, const CombatRingSettings& s,
 		if (!m.turn || m.wasAttacking) {
 			continue;
 		}
-		const bool done = m.attacked || m.turnSeconds >= s.idleTurnSeconds;
+		const bool done = m.turnSeconds >= s.turnSeconds && (m.attacked || m.turnSeconds >= s.idleTurnSeconds);
 		if (done) {
 			m.turn = false;
 			m.attacked = false;

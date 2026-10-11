@@ -2716,7 +2716,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// Those fighting the player wait at a ring, so many at once have a turn
 	// (game/CombatRing.h); their legs go through the slow approach's setters.
 	game::StepCombatRing(game::CombatRingFrom(active && config.hands.combatRing, config.hands.combatRingMetres,
-	                                          config.hands.meleeAttackersAtOnce, config.tracker.unitsPerMetre),
+	                                          config.hands.meleeAttackersAtOnce, config.tracker.unitsPerMetre,
+	                                          config.hands.combatRingTurnSeconds),
 	                     dt, test::HandScriptMarkedThisFrame());
 	if (!active && !menusOnly) {
 		if (test::HandScriptMarkedThisFrame()) {

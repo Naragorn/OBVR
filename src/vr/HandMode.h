@@ -344,6 +344,7 @@ struct HandSettings {
 	bool combatRing = true;
 	float combatRingMetres = 5.0f;
 	int meleeAttackersAtOnce = 1;
+	float combatRingTurnSeconds = 6.0f;  // how long a turn lasts at least, 2-30 s
 	// The off hand in a fight: it strikes with a weapon drawn, and its grip
 	// holds a fighter ([Hands] OffHandStrikes, OffHandGrabs, GrabHoldSeconds,
 	// GrabFatigue; game/GrappleLogic.h).
