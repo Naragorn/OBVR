@@ -1,5 +1,6 @@
 #include "game/MenuPause.h"
 
+#include "core/AddressSpace.h"
 #include "core/BranchDecode.h"
 #include "core/Log.h"
 #include "core/Memory.h"
@@ -198,5 +199,23 @@ void SetPlayerWalksUnderMenu(bool walking) {
 }
 
 UInt32 TopVisibleMenu() { return TopVisibleMenuId(); }
+
+UInt32 MenuStackEntries(UInt32* out, UInt32 capacity) {
+	const UInt8* const manager = *reinterpret_cast<const UInt8* const*>(addr::kInterfaceManagerPointer);
+	if (manager == nullptr || out == nullptr || !mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(manager))) {
+		return 0;
+	}
+	UInt32 count = 0;
+	for (UInt32 i = 0; i < addr::kInterfaceMenuStackSlots && count < capacity; ++i) {
+		const UInt32 id =
+			*reinterpret_cast<const UInt32*>(manager + addr::kInterfaceMenuStackOffset + i * sizeof(UInt32));
+		const bool menu = id == kMenuIdBigFour || (id >= kMenuIdFirst && id <= kMenuIdLast);
+		if (!menu) {
+			break;
+		}
+		out[count++] = id;
+	}
+	return count;
+}
 
 }  // namespace obvr::game

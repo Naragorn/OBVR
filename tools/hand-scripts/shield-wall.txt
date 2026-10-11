@@ -1,0 +1,81 @@
+# The worn shield stops at walls ([Hands] HandsStopAtWalls,
+# game/HandContactLogic.h, game/ShieldShape.cpp): a shield is put on the
+# left arm and a longsword drawn by the holster - sword and shield, the case
+# the tester asked for first. The shield's disc is read from its model
+# ("Contact: the shield's shape"), then the left arm is lowered step by step
+# until the shield's rim meets the floor; pressed on it stays there while the
+# controller goes lower; pressed more than WeaponLetGoMetres (0.30) past it,
+# it lets go and passes through; raised again, it is free again. The
+# "Contact: the left hand" state line at each mark gives the controller and
+# the drawn end of the disc's first spoke.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\shield-wall.txt
+
+ini Hands Enabled=1
+ini Hands BodyCollision=1
+ini Hands Holsters=1
+ini Hands HandsStopAtWalls=1
+ini Hands WeaponStopsAtWalls=1
+ini Hands WeaponLetGoMetres=0.30
+console-at ready player.additem 000733ED 1
+console-at ready player.equipitem 000733ED
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+
+expect HandScript: finished
+expect Hands: a shield worn
+expect Hands: ready weapon done
+expect Contact: the shield's shape
+expect Contact: the shield meets the world now
+expect Contact: the shield met body
+expect Contact: the shield let go
+expect Contact: the shield free again
+reject HandScript: WARNING
+
+wait 12
+left rot 0 0 0
+left pos -0.20 -0.40 -0.30
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 22
+mark worn
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+left pos -0.20 -0.70 -0.30
+wait 1
+mark down
+left pos -0.20 -0.90 -0.30
+wait 0.5
+mark lower1
+left pos -0.20 -1.05 -0.30
+wait 0.5
+mark lower2
+left pos -0.20 -1.20 -0.30
+wait 0.5
+mark lower3
+left pos -0.20 -1.35 -0.30
+wait 0.5
+mark lower4
+left pos -0.20 -1.50 -0.30
+wait 0.5
+mark lower5
+left pos -0.20 -1.65 -0.30
+wait 0.5
+mark lower6
+left pos -0.20 -1.80 -0.30
+wait 0.5
+mark lower7
+left pos -0.20 -2.10 -0.30
+wait 0.5
+mark deep
+left pos -0.20 -0.40 -0.30
+wait 1.5
+mark free
+wait 1

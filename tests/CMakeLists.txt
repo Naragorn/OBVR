@@ -1408,6 +1408,16 @@ endif()
 
 add_test(NAME blade_contact COMMAND blade_contact_test)
 
+add_executable(hand_contact_test HandContactTest.cpp)
+
+target_include_directories(hand_contact_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(hand_contact_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME hand_contact COMMAND hand_contact_test)
+
 add_executable(parry_test ParryTest.cpp)
 
 target_include_directories(parry_test PRIVATE ../src)

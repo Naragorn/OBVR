@@ -569,6 +569,13 @@ struct BladePassLedger {
 	// time, and is let go of after kBladePassClearSeconds; one in no
 	// capsule of this frame (gone, dead, too far) at once.
 	void Step(const NiPoint3& guard, const NiPoint3& tip, const BladeBodies* bodies, float dtSeconds) {
+		StepSegments(&guard, &tip, 1, bodies, dtSeconds);
+	}
+
+	// The same for a shape of several segments (a shield's two spokes):
+	// touching any of them is touching.
+	void StepSegments(const NiPoint3* from, const NiPoint3* to, UInt32 segments, const BladeBodies* bodies,
+	                  float dtSeconds) {
 		UInt32 kept = 0;
 		for (UInt32 i = 0; i < count; ++i) {
 			bool seen = false;
@@ -579,7 +586,9 @@ struct BladePassLedger {
 					continue;
 				}
 				seen = true;
-				touching = touching || SegmentSegmentDistance(guard, tip, cap.a, cap.b) <= cap.radius;
+				for (UInt32 k = 0; k < segments && !touching; ++k) {
+					touching = SegmentSegmentDistance(from[k], to[k], cap.a, cap.b) <= cap.radius;
+				}
 			}
 			float t = touching ? 0.0f : clear[i] + (dtSeconds > 0.0f ? dtSeconds : 0.0f);
 			if (!seen || t >= kBladePassClearSeconds) {
@@ -620,12 +629,16 @@ struct BladeLiving {
 // left nearer a surface than the margin - a ray that began on a face could
 // not see it. Movable things passed are kicked with the speed of the point
 // that passed them (none without a time); the living a swing goes into, and
-// any a point is already inside, are passed.
+// any a point is already inside, are passed. The margin is the blade's own
+// half-width unless the caller's shape has another (a hand's, a shield's);
+// a span of no length (a ball's centre) is one point, swept once.
 template <class World>
 BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, const BodySpan& span, float dtSeconds,
-                      BladeKicks* kicks, const BladeLiving& living = BladeLiving{}) {
+                      BladeKicks* kicks, const BladeLiving& living = BladeLiving{},
+                      float margin = kBladeContactMarginUnits) {
 	BladeSweep best;
-	for (UInt32 i = 0; i < kBladeSweepPoints; ++i) {
+	const bool onePoint = (span.b - span.a).LengthSquared() < 1e-6f;
+	for (UInt32 i = 0; i < (onePoint ? 1u : kBladeSweepPoints); ++i) {
 		const float s = kBladeSweepAt[i];
 		const NiPoint3 a = BladePointAt(from, span, s);
 		const NiPoint3 b = BladePointAt(to, span, s);
@@ -635,7 +648,7 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 			continue;
 		}
 		const NiPoint3 dir = way * (1.0f / length);
-		const float reach = length + kBladeContactMarginUnits;
+		const float reach = length + margin;
 		const NiPoint3 end = a + dir * reach;
 		const NiPoint3 velocity = dtSeconds > 0.0f ? way * (1.0f / dtSeconds) : NiPoint3{0.0f, 0.0f, 0.0f};
 		const BladeRayHit h = FirstStopper(world, a, end, [&](const BladeRayHit& m) {
@@ -691,7 +704,7 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 		}
 		best.hit = true;
 		best.fraction = fraction;
-		const float back = (atUnits - kBladeContactMarginUnits) / length;
+		const float back = (atUnits - margin) / length;
 		best.safeFraction = back > 0.0f ? (back < 1.0f ? back : 1.0f) : 0.0f;
 		best.along = s;
 		best.point = point;
@@ -814,6 +827,13 @@ struct BladeContactFrame {
 	bool active = false;  // a melee weapon drawn, in the world, the hand tracked
 	BladePose wanted;     // where the weight spring draws it
 	BodySpan span;        // the blade in the grip's frame
+	// A second span of the same shape, when it has one: a shield's other
+	// spoke (HandContactLogic.h). Both are swept, and the first contact of
+	// either holds the shape.
+	BodySpan span2;
+	// How far short of a surface the shape is held: the blade's half-width,
+	// a hand's, half a shield's thickness.
+	float marginUnits = kBladeContactMarginUnits;
 	// The camera jumped (a teleport, a snap turn, a load): nothing is swept
 	// across the jump.
 	bool jumped = false;
@@ -841,6 +861,98 @@ struct BladeContactVerdict {
 	BladeKicks kicks;
 };
 
+// ---------------------------------------------------------------- the shape
+//
+// What the step sweeps is one span - the blade, a hand - or two, a shield's
+// spokes (HandContactLogic.h). Each of these asks every span the frame
+// carries and answers for the shape as a whole.
+
+inline UInt32 ShapeSpans(const BladeContactFrame& f, const BodySpan* out[2]) {
+	UInt32 n = 0;
+	if (f.span.valid) {
+		out[n++] = &f.span;
+	}
+	if (f.span2.valid) {
+		out[n++] = &f.span2;
+	}
+	return n;
+}
+
+// The earliest contact of any span; a swing into someone by either enters.
+template <class World>
+BladeSweep SweepShape(World& world, const BladePose& from, const BladePose& to, const BladeContactFrame& f,
+                      BladeKicks* kicks, const BladeLiving& living) {
+	const BodySpan* spans[2];
+	const UInt32 n = ShapeSpans(f, spans);
+	BladeSweep best;
+	bool entered = false;
+	for (UInt32 i = 0; i < n; ++i) {
+		const BladeSweep s = SweepBlade(world, from, to, *spans[i], f.dtSeconds, kicks, living, f.marginUnits);
+		entered = entered || s.entered;
+		if (s.hit && (!best.hit || s.fraction < best.fraction)) {
+			best = s;
+		}
+	}
+	best.entered = entered;
+	return best;
+}
+
+template <class World>
+bool ShapeInside(World& world, const BladePose& pose, const BladeContactFrame& f) {
+	const BodySpan* spans[2];
+	const UInt32 n = ShapeSpans(f, spans);
+	for (UInt32 i = 0; i < n; ++i) {
+		if (BladeInside(world, pose, *spans[i])) {
+			return true;
+		}
+	}
+	return false;
+}
+
+template <class World>
+bool ShapeBehind(World& world, const BladePose& pose, const BladeContactFrame& f) {
+	const BodySpan* spans[2];
+	const UInt32 n = ShapeSpans(f, spans);
+	for (UInt32 i = 0; i < n; ++i) {
+		if (BladeBehind(world, f.eye, pose, *spans[i])) {
+			return true;
+		}
+	}
+	return false;
+}
+
+inline UInt32 ShapeAcross(const BladePose& pose, const BladeContactFrame& f, const BladeLiving& living) {
+	const BodySpan* spans[2];
+	const UInt32 n = ShapeSpans(f, spans);
+	for (UInt32 i = 0; i < n; ++i) {
+		const UInt32 across = PersonAcross(pose, *spans[i], living);
+		if (across != 0) {
+			return across;
+		}
+	}
+	return 0;
+}
+
+inline void ShapePassThoseItIsIn(const BladePose& pose, const BladeContactFrame& f, const BladeLiving& living) {
+	const BodySpan* spans[2];
+	const UInt32 n = ShapeSpans(f, spans);
+	for (UInt32 i = 0; i < n; ++i) {
+		PassThoseItIsIn(pose, *spans[i], living);
+	}
+}
+
+inline void StepShapePassed(BladePassLedger& passed, const BladePose& pose, const BladeContactFrame& f) {
+	const BodySpan* spans[2];
+	const UInt32 n = ShapeSpans(f, spans);
+	NiPoint3 from[2];
+	NiPoint3 to[2];
+	for (UInt32 i = 0; i < n; ++i) {
+		from[i] = BladePointAt(pose, *spans[i], 0.0f);
+		to[i] = BladePointAt(pose, *spans[i], 1.0f);
+	}
+	passed.StepSegments(from, to, n, f.bodies, f.dtSeconds);
+}
+
 template <class World>
 BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSettings& set,
                                      const BladeContactFrame& f, World& world) {
@@ -852,12 +964,12 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 	}
 	const BladeLiving living{f.bodies, &s.passed, f.swinging};
 	if (!s.have || f.jumped) {
-		const bool inside = BladeInside(world, f.wanted, f.span) || BladeBehind(world, f.eye, f.wanted, f.span);
+		const bool inside = ShapeInside(world, f.wanted, f) || ShapeBehind(world, f.wanted, f);
 		s.have = true;
 		s.pose = f.wanted;
 		s.through = inside;
 		s.touching = false;
-		PassThoseItIsIn(f.wanted, f.span, living);
+		ShapePassThoseItIsIn(f.wanted, f, living);
 		v.through = inside;
 		v.event = inside ? BladeContactEvent::StartedInside : BladeContactEvent::None;
 		return v;
@@ -865,24 +977,23 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 	if (s.through) {
 		s.pose = f.wanted;
 		s.touching = false;
-		PassThoseItIsIn(f.wanted, f.span, living);
-		if (!BladeInside(world, f.wanted, f.span) && !BladeBehind(world, f.eye, f.wanted, f.span)) {
+		ShapePassThoseItIsIn(f.wanted, f, living);
+		if (!ShapeInside(world, f.wanted, f) && !ShapeBehind(world, f.wanted, f)) {
 			s.through = false;
 			v.event = BladeContactEvent::Rearmed;
 		}
 		v.through = s.through;
-		s.passed.Step(BladePointAt(f.wanted, f.span, 0.0f), BladePointAt(f.wanted, f.span, 1.0f), f.bodies,
-		              f.dtSeconds);
+		StepShapePassed(s.passed, f.wanted, f);
 		return v;
 	}
 
 	const BladePose start = s.pose;
 	// Someone who walked into the blade where it rests is passed, not pushed
 	// against.
-	PassThoseItIsIn(start, f.span, living);
+	ShapePassThoseItIsIn(start, f, living);
 	const bool slowed = f.followShare >= 0.0f && f.followShare < 1.0f;
 	const BladePose target = slowed ? PoseBetween(start, f.wanted, f.followShare) : f.wanted;
-	const BladeSweep first = SweepBlade(world, start, target, f.span, f.dtSeconds, &v.kicks, living);
+	const BladeSweep first = SweepShape(world, start, target, f, &v.kicks, living);
 	v.enteredBody = first.entered;
 	// Where it goes, the first of these not across something along its
 	// length: a post between two points, or the points' straight ways cutting
@@ -898,7 +1009,7 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 		v.contact = first;
 		const BladePose stop = PoseBetween(start, target, first.safeFraction);
 		const BladePose slid = SlideTarget(stop, target, first.normal);
-		const BladeSweep second = SweepBlade(world, stop, slid, f.span, f.dtSeconds, nullptr, living);
+		const BladeSweep second = SweepShape(world, stop, slid, f, nullptr, living);
 		v.enteredBody = v.enteredBody || second.entered;
 		if (second.hit) {
 			// What it slid into holds it now: the floor it scraped along led it
@@ -912,12 +1023,12 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 	bool placed = false;
 	BladePose pose = start;
 	for (UInt32 i = 0; i < count && !placed; ++i) {
-		if (BladeInside(world, candidates[i], f.span)) {
+		if (ShapeInside(world, candidates[i], f)) {
 			continue;
 		}
 		// Across someone held slowly (a limb between two points): not taken
 		// either, and they are what holds it.
-		const UInt32 across = PersonAcross(candidates[i], f.span, living);
+		const UInt32 across = ShapeAcross(candidates[i], f, living);
 		if (across != 0) {
 			if (!v.contact.hit) {
 				v.contact.hit = true;
@@ -950,8 +1061,7 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 		v.held = false;
 		v.through = s.through;
 		v.event = BladeContactEvent::LetGo;
-		s.passed.Step(BladePointAt(f.wanted, f.span, 0.0f), BladePointAt(f.wanted, f.span, 1.0f), f.bodies,
-		              f.dtSeconds);
+		StepShapePassed(s.passed, f.wanted, f);
 		return v;
 	}
 	v.pose = pose;
@@ -962,7 +1072,7 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 	}
 	s.touching = held;
 	s.pose = pose;
-	s.passed.Step(BladePointAt(pose, f.span, 0.0f), BladePointAt(pose, f.span, 1.0f), f.bodies, f.dtSeconds);
+	StepShapePassed(s.passed, pose, f);
 	return v;
 }
 

@@ -2105,6 +2105,99 @@ fast swing passes, and the measuring; bodies, parries and shields follow.
   strike's sphere is far wider than the body; taking the hit from the
   capsules is the open step that would make the two agree.
 
+**The hands and the shield (built 2026-10-11; spec section 14):**
+
+The tester: "Gib nun einhand Waffe und Schild oder freier Hand Kollisionen.
+Same für alle anderen Waffen mit der freien Hand."
+
+- `[Hands] HandsStopAtWalls=1` ("Hands stop at walls") and
+  `HandsStopAtBodies=1` ("Hands rest on people"); the weapon's
+  `WeaponLetGoMetres` and `WeaponLetGoDegrees` are the hands' caps too.
+- **Which hand** (`game::FreeHandShape`, game/HandContactLogic.h): every
+  hand the weapon is not drawn in - the off hand with a one-hander, a
+  two-hander (when it is off the handle), a staff, and both hands with
+  nothing drawn or the fists up. The off hand with a shield on its arm is
+  met as the shield. Left to what they hold: the weapon hand with a swung
+  weapon drawn (the blade's own step), both hands with a bow drawn, a hand
+  on a two-hander's handle or about to take it, a hand round a held object,
+  one leading someone, one holding a fighter. A staff or a torch in the
+  hand passes through: only the hand is swept.
+- **The step** (`StepHandContacts`, CameraHook.cpp, right after the
+  weapon's): the weapon's own `StepBladeContact`, run per hand with the
+  hand's span from its drawn bones - the wrist to the fingertips, the one
+  its Havok body has (`HandSpanFromBones` on "Bip01 L/R Hand" and "Finger2",
+  read against the pose the bones were pinned to the frame before) - held
+  2.5 units (its capsule's radius) short of a surface. Walls, the floor and
+  furniture hold the hand; the slide, the let-go past the cap, the pass
+  through until free, the jump of the camera: all as the weapon's. The
+  living (`CollectBladeBodies` round the eyes, 130 units, once a frame for
+  both hands): held slowly the hand rests on them; at the shove's speed
+  (`ShoveSpeed`, 1.3 m/s - the speed that shoves or slaps them anyway) or in
+  a fist's swing it goes through and they are passed (`HandSwinging`).
+- **Written back** into the hand's pose - `leftHandRotation` and
+  `leftHandOffsetUnits`, or for the weapon hand `weaponHand*` and
+  `rightHand*` (the same thing with nothing drawn) - before the strike, the
+  push, the Havok body, the shove, the grab and the pin read it, so the hand
+  is seen where it stopped. The pick, the laser and the reach run earlier in
+  the frame on the controller's own pose, as they do for the weapon. A fist
+  that went through a wall strikes nothing until it is free again.
+- **The shield** (`ShieldDisc`, game/ShieldShape.cpp): read from the shield
+  model's vertices under "Bip01 L ForearmTwist" into the hand's frame - the
+  principal axes of their scatter (Jacobi on the 3x3 covariance): the two
+  directions of most spread are the disc's spokes, the least its normal; a
+  second pass measures the reach along each. The step sweeps the two spokes
+  end to end (`BladeContactFrame::span2`) and holds the disc half its
+  thickness and a little short of a surface (1.5 to 4 units: a boss would
+  hold the rim far off). Only a shield's size and flatness is taken (spokes
+  6-60 units, the thickness under 0.6 of the short spoke); a model that
+  cannot be read leaves the bound's ball (`ShieldBall`) to stand in, swept
+  as one point with the radius as its margin - too early face-on, said in
+  the log. The disc is read again when the node or its bound change, or
+  every 90 frames. Measured on the Arena Iron Shield: 695 vertices, spokes
+  20.9 units, 13.1 thick (the boss and the handle), the normal 0.95 -0.11
+  0.29 in the hand's frame.
+- **Felt and heard**: a pulse on that hand at each touch by its speed, a
+  light one while it scrapes; the shield's knock from 1.5 m/s
+  (WPNBlockShieldLightX), a hand's touch no sound.
+- Log: "Contact: the left hand meets the world now (the hand's span from
+  its bones)" / "the shield meets the world now (the shield's disc)";
+  "Contact: the shield's shape - n vertices, its centre ..., spokes ...,
+  thick; its normal ..."; "Contact: the <left hand|right hand|shield> met
+  body <b> (layer, motion) at ... - its point 0..1 of the way along, m/s
+  into it; held n units and d degrees from the controller"; "... let go -
+  ..."; "... free again"; "... rests on <actor>"; "Contact: a fast <hand>
+  went into someone"; "Contact: n frames with a hand or the shield met -
+  rays a frame, ms a frame"; at a hand script's mark a state line per hand
+  and "Contact: hands - n near (capsules), rays this frame".
+- Tests: `hand_contact_test` (which hand, the swinging speed, Jacobi, the
+  disc from a synthetic shield's vertices and what is refused, the spans and
+  the margin, the ball, when it is read again, a hand and a disc lowered
+  onto a floor flat and upright, the ball swept once);
+  `blade_contact_test` (the sweep's margin, a one-point span, a shape of
+  two spans at a wall ahead and to the side, across a post, taken up across
+  it, the ledger with two segments, the second span on someone and through
+  them).
+- **Harness**: `hand-wall.txt` PASS 2026-10-11 - nothing drawn, the left
+  hand pointed down and lowered: "the left hand met body 188401C0 (layer 1,
+  motion 7)" at -256 with the fingertips held at -253 while the controller
+  went to -288, "let go - 31.8 units (at most 21.0)", "free again" raised;
+  then the right hand the same (met, let go at 33.2, free again); 2.0-2.9
+  rays and 0.011 ms a frame. `shield-wall.txt` PASS 2026-10-11 - the Arena
+  Iron Shield (000733ED) on the arm and a longsword drawn by the holster:
+  the blade's step took the right hand ("state - active 1, the blade 67.2
+  units"), the left met the floor as the shield's disc ("the shield met
+  body 181CA4F0 (layer 1, motion 7) at -256 - its point 0.00 of the way
+  along", the rim, held 1.6 units from the controller), was pressed on
+  (gap 12.2), "let go - 22.7 units (at most 21.0)", "free again";
+  2.0-3.7 rays and 0.005-0.012 ms a frame. The "13 m/s into it" of both
+  runs is the harness's step (15 cm in one frame), not a swing.
+- **Not exercised yet**: a wall (only the floor), a two-hander's free hand
+  and a staff, the torch hand, the fists' through-gate, the grab with the
+  hand resting on someone (the reach stays 6 units, the hand rests 2.5
+  short). Headset test open: whether a hand on a table or a wall feels
+  right, whether the shield's rim stops where it is seen, and whether 1.3
+  m/s is the right speed to go through people.
+
 ### 4.33 Fighters walk near you (built 2026-10-09, harness PASS)
 
 The tester: "baue es dass gegner zwar wie vanilla zum player rennen
@@ -2436,3 +2529,46 @@ wenn ich nicht ganz im fokus bin, zb einem m vor gehe".
   as the flat picture (`mainmenu-step` probe, 2026-10-10; the hand script's
   marks now log the flat picture's anchor when there is one). Not seen in
   the headset.
+
+### 4.41 The hands stay in the game's menus (built 2026-10-11)
+
+The tester, 2026-10-11: "mach es sodass Hände in game in allen Menüs außer
+ESC Optionen Menü erhalten bleiben und nicht ausgeblendet werden".
+
+- Before: every menu, and a conversation from its first frame, took the
+  hands away - "Hand,Weapon,Torch,Bip01 L ForearmTwist" hidden
+  (`ComposeHandsHideList` with `handsAway`), and the pins stood down, since
+  the camera pass that decides `g_handArmsWanted` does not run while the
+  simulation is paused and the hands would have hung where the controllers
+  last put them (2026-09-25).
+- Now `[Hands] HandsInMenus=1` ("Hands stay in menus"): the hands stay -
+  pinned to the controllers and drawn as in the world - over the inventory,
+  the magic, map and stats pages, a container, a book, the quantity and
+  magic popups, the lockpick, sleeping, a message box, a level-up and a
+  conversation. They go only for the Esc menu and what opens from it (the
+  options, saving, loading, a quit box over it), the main menu, a loading
+  screen and the credits (`camera::MenuTakesTheHands`). The decision reads
+  every entry of the interface manager's menu stack
+  (`game::MenuStackEntries`, the ten slots GetTopVisibleMenuID scans), not
+  the top alone, so the options or a message box over the Esc menu still
+  find it beneath them (`camera::HandsAwayForMenus`). An empty stack read
+  in menu mode keeps the hands. Off, every menu takes them as before.
+- **How**: `HandsAwayNow` decides at Present (UpdateHandMode) and again at
+  the render (`BeforeFirstScenePass`, for the first frame of a menu); the
+  hide list and the forearm stump follow it. In a menu frame the render
+  pins the hands itself when they stay (`pinHands`: Full VR, first person,
+  the headset on, the arms valid) - the camera pass does not run there - and
+  HandMode now gives the arms' placement in menus too (`armsValid`), so the
+  arms are placed first and the hands under them as in the world. Where the
+  camera pass does run under a menu (UnpausedMenus, the container panel),
+  `g_handArmsWanted` keeps the arms placed while the hands stay
+  (`g_handsStayInMenu`).
+- Log: "Hands: menu <name> (0x...) - the hands stay - pinned and drawn as in
+  the world" / "- the hands go", "Hands: no menu - the hands as in the
+  world"; at a hand script's mark "Hands: at the mark - menu <0|1> (<name>),
+  the hands <shown|away>, pinned <0|1>".
+- Tests: `frame_logic_test` (which menus take the hands, the stack with the
+  Esc menu beneath the options or a quit box, a message box in the world, a
+  conversation, a container with its quantity box, the empty read, the
+  setting off); `hand_mode_test` (the arms placed in a menu with the setting
+  on, not with it off).

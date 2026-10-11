@@ -77,7 +77,9 @@
 #include "game/ReachTargets.h"
 #include "game/BladeContact.h"
 #include "game/BladeBodies.h"
+#include "game/HandContactLogic.h"
 #include "game/Parry.h"
+#include "game/ShieldShape.h"
 #include "game/CombatReach.h"
 #include "game/SlowApproach.h"
 #include "game/CombatRing.h"
@@ -292,6 +294,15 @@ bool g_grabKeyDown = false;
 // The conversation approach is on (game::StepDialogApproach), as last decided
 // at Present - read again before the next world render.
 bool g_handsAwayForDialog = false;
+// A menu is up and the hands stay in it ([Hands] HandsInMenus,
+// camera::HandsAwayForMenus): pinned and drawn as in the world, as last
+// decided at Present; the camera pass keeps the arms placed for it.
+bool g_handsStayInMenu = false;
+UInt32 g_handsMenuLines = 60;
+bool g_handsMenuLogged = false;
+bool g_handsMenuWasUp = false;
+bool g_handsMenuWasAway = false;
+UInt32 g_handsMenuLastTop = 0;
 // The forearm stump (game/ArmStump.h): in place after the last pins, stepped
 // this frame, and the hands away (menus, dialogue) as Present last decided.
 bool g_stumpShown = false;
@@ -2243,7 +2254,10 @@ const char* BladeEventName(game::BladeContactEvent e) {
 	}
 }
 
-void StepWeaponContact(const Config& config, bool inPlace, float dt) {
+// Answers whether the blade's step had the weapon hand this frame (a swung
+// weapon drawn): then the hands' step (StepHandContacts) leaves that hand
+// to it.
+bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	SInt32 weaponType = -1;
 	const bool drawn = inPlace && g_hand.rightHandValid && g_cyclopeanCameraWorldValid &&
 	                   game::MeleeInHand(&weaponType) && game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
@@ -2503,6 +2517,411 @@ void StepWeaponContact(const Config& config, bool inPlace, float dt) {
 			         static_cast<double>(cap.radius));
 		}
 	}
+	return drawn;
+}
+
+// The free hand and the worn shield stop at walls and rest on people as the
+// drawn weapon does ([Hands] HandsStopAtWalls, HandsStopAtBodies;
+// game/HandContactLogic.h; docs/weapon-collision-spec.md, section 14; the
+// tester, 2026-10-11: "Gib nun einhand Waffe und Schild oder freier Hand
+// Kollisionen. Same für alle anderen Waffen mit der freien Hand"). The
+// blade's own step, run for each hand the weapon is not drawn in - with the
+// hand's span from its drawn bones, or the shield's disc on the off hand's
+// arm - and written back into that hand's pose before the strike, the push,
+// the Havok body and the pin read it. The weapon's let-go caps are the
+// hands' too.
+struct HandContactSide {
+	game::BladeContactState state;
+	game::BladeSpanCache span;
+	game::BladeSpanCache span2;
+	float marginUnits = game::kHandContactMarginUnits;
+	// The pose written the frame before, relative to the camera: what the
+	// bones were pinned to, which the hand's span is read against.
+	bool outValid = false;
+	NiMatrix33 outRotation = NiMatrix33::Identity();
+	NiPoint3 outOffset{0.0f, 0.0f, 0.0f};
+	game::HandShape shape = game::HandShape::None;
+	UInt32 key = game::kSpanKeyNone;  // which span it sweeps with, for the log
+	NiPoint3 wantedPos{0.0f, 0.0f, 0.0f};  // where the controller put it this frame, for the log
+	game::HandTravel travel;  // the hand's speed over the last tenth of a second
+	float speed = 0.0f;       // as judged this frame, m/s
+	bool through = false;  // it went through a wall: the fist strikes nothing until it is free
+	UInt32 restActor = 0;  // the person it rested on the frame before
+	UInt32 scrapeFrames = 0;
+	float sinceSound = 10.0f;
+	UInt32 lines = 30;
+};
+HandContactSide g_handContact[2];  // the weapon hand, the off hand
+game::BladeBodies g_handBodies;
+// The worn shield's disc, kept while it is the same node and bound.
+game::ShieldDisc g_shieldDisc;
+bool g_shieldDiscHave = false;
+UInt32 g_shieldDiscNode = 0;
+float g_shieldDiscBound = 0.0f;
+UInt32 g_shieldDiscAge = 0;
+bool g_shieldDiscSaid = false;
+bool g_handCameraValid = false;
+NiMatrix33 g_handCameraRot = NiMatrix33::Identity();
+NiPoint3 g_handCameraPos{0.0f, 0.0f, 0.0f};
+UInt32 g_handCostFrames = 0;
+UInt32 g_handCostCasts = 0;
+double g_handCostSeconds = 0.0;
+UInt32 g_handCostLines = 6;
+
+void ResetHandContacts() {
+	for (HandContactSide& h : g_handContact) {
+		h.state = game::BladeContactState{};
+		h.span = game::BladeSpanCache{};
+		h.span2 = game::BladeSpanCache{};
+		h.outValid = false;
+		h.shape = game::HandShape::None;
+		h.key = game::kSpanKeyNone;
+		h.travel.Clear();
+		h.speed = 0.0f;
+		h.through = false;
+		h.restActor = 0;
+	}
+	g_shieldDiscHave = false;
+	g_shieldDiscNode = 0;
+	g_shieldDiscSaid = false;
+	g_handCameraValid = false;
+}
+
+const char* HandContactName(int side, game::HandShape shape) {
+	if (shape == game::HandShape::Shield) {
+		return "shield";
+	}
+	return side == 0 ? "right hand" : "left hand";
+}
+
+void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHand, float dt) {
+	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
+	const bool cameraValid = g_cyclopeanCameraWorldValid;
+	const bool jumped =
+		g_handCameraValid && cameraValid && game::CameraJumped(g_handCameraRot, g_handCameraPos, camRot, camPos);
+	g_handCameraValid = cameraValid;
+	g_handCameraRot = camRot;
+	g_handCameraPos = camPos;
+	const game::BladeContactSettings settings =
+		game::BladeContactSettingsFor(config.hands.handsStopAtWalls, config.hands.weaponLetGoMetres,
+		                              config.hands.weaponLetGoDegrees, config.tracker.unitsPerMetre);
+
+	// Which hand meets the world as what this frame (game::FreeHandShape).
+	SInt32 weaponType = -1;
+	const bool weaponDrawn = game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
+	const bool bowDrawn = weaponDrawn && game::EquippedWeaponForm(&weaponType) != nullptr &&
+	                      vr::KindOfWeaponType(weaponType) == vr::EquippedKind::Bow;
+	const bool holding = game::PlayerHoldsGrab();
+	const bool shieldWorn = inPlace && game::PlayerWearsShield();
+	game::HandShape shapes[2];
+	for (int side = 0; side < 2; ++side) {
+		const bool right = side == 0;
+		game::FreeHandFrame ff;
+		ff.valid = inPlace && cameraValid && (right ? g_hand.rightHandValid : g_hand.leftHandValid);
+		ff.weaponHand = right;
+		ff.meleeDrawn = bladeHasWeaponHand;
+		ff.bowDrawn = bowDrawn;
+		ff.onHandle = !right && g_leftGripOnHandle;
+		ff.holdsObject = holding && g_hand.grabWithLeftHand == !right;
+		ff.leads = g_lead.actor != nullptr && g_lead.right == right;
+		ff.grapples = !right && g_grapple.actor != 0;
+		ff.shieldWorn = !right && shieldWorn;
+		shapes[side] = game::FreeHandShape(ff);
+	}
+	const bool anyShape = shapes[0] != game::HandShape::None || shapes[1] != game::HandShape::None;
+	// The living near the hands, once for both: within an arm's reach of the
+	// eyes and a little.
+	const bool people = anyShape && settings.enabled && config.hands.handsStopAtBodies;
+	UInt32 peopleNear = 0;
+	if (people) {
+		peopleNear = game::CollectBladeBodies(camPos, 130.0f, g_handBodies, nullptr);
+	}
+
+	static const long long ticksPerSecond = ReadPerformanceFrequency();
+	const long long before = ReadPerformanceCounter();
+	game::HavokBladeWorld world;
+	bool stepped = false;
+	for (int side = 0; side < 2; ++side) {
+		HandContactSide& h = g_handContact[side];
+		const bool right = side == 0;
+		const game::HandShape shape = shapes[side];
+		const char* const name = HandContactName(side, shape);
+		NiMatrix33& handRot = right ? g_hand.weaponHandRotation : g_hand.leftHandRotation;
+		NiPoint3& handOffset = right ? g_hand.weaponHandOffsetUnits : g_hand.leftHandOffsetUnits;
+
+		// The shape in the hand's frame, read from the drawn bones against
+		// the pose they were pinned to: this camera and the pose written the
+		// frame before.
+		game::BodySpan measured;
+		game::BodySpan measured2;
+		float margin = game::kHandContactMarginUnits;
+		UInt32 key = game::kSpanKeyNone;
+		if (shape != game::HandShape::None && h.outValid) {
+			const NiMatrix33 r = camRot * h.outRotation;
+			const NiPoint3 p = camPos + camRot * h.outOffset;
+			if (shape == game::HandShape::Hand) {
+				key = game::kSpanKeyHand;
+				const NiAVObject* const wrist = game::FindFirstPersonNode(right ? "Bip01 R Hand" : "Bip01 L Hand");
+				const NiAVObject* const knuckle =
+					game::FindFirstPersonNode(right ? "Bip01 R Finger2" : "Bip01 L Finger2");
+				if (wrist != nullptr && knuckle != nullptr) {
+					measured = game::HandSpanFromBones(game::ToBodyFrame(r, p, wrist->worldTransform.pos),
+					                                   game::ToBodyFrame(r, p, knuckle->worldTransform.pos));
+				}
+			} else {
+				const NiAVObject* const node = game::FindFirstPersonNode("Bip01 L ForearmTwist");
+				if (node != nullptr) {
+					const UInt32 nodeAddress = reinterpret_cast<UInt32>(node);
+					const float bound = node->worldBound.radius;
+					if (game::ShieldDiscStale(g_shieldDiscHave, g_shieldDiscNode, nodeAddress, g_shieldDiscBound, bound,
+					                          g_shieldDiscAge)) {
+						const char* why = "";
+						const bool wasHave = g_shieldDiscHave;
+						g_shieldDiscHave = game::ReadShieldDisc(node, r, p, g_shieldDisc, &why);
+						g_shieldDiscNode = nodeAddress;
+						g_shieldDiscBound = bound;
+						g_shieldDiscAge = 0;
+						if (!g_shieldDiscSaid || (g_shieldDiscHave != wasHave)) {
+							g_shieldDiscSaid = true;
+							if (g_shieldDiscHave) {
+								OBVR_LOG("Contact: the shield's shape - %u vertices, its centre %.1f %.1f %.1f in the hand's "
+								         "frame, spokes %.1f and %.1f units, %.1f thick; its normal %.2f %.2f %.2f (the "
+								         "bound %.1f round)",
+								         g_shieldDisc.vertices, static_cast<double>(g_shieldDisc.centre.x),
+								         static_cast<double>(g_shieldDisc.centre.y), static_cast<double>(g_shieldDisc.centre.z),
+								         static_cast<double>(g_shieldDisc.half[0]), static_cast<double>(g_shieldDisc.half[1]),
+								         static_cast<double>(g_shieldDisc.half[2] * 2.0f),
+								         static_cast<double>(g_shieldDisc.axis[2].x), static_cast<double>(g_shieldDisc.axis[2].y),
+								         static_cast<double>(g_shieldDisc.axis[2].z), static_cast<double>(bound));
+							} else {
+								OBVR_LOG("Contact: the shield's shape could not be read (%s) - its bound's ball, %.1f round, "
+								         "stands in",
+								         why, static_cast<double>(bound * 0.8f));
+							}
+						}
+					} else {
+						++g_shieldDiscAge;
+					}
+					if (g_shieldDiscHave) {
+						key = game::kSpanKeyShieldDisc;
+						game::ShieldDiscSpans(g_shieldDisc, measured, measured2, margin);
+					} else {
+						float ball = 0.0f;
+						if (game::ShieldBall(true, bound, ball)) {
+							key = game::kSpanKeyShieldBall;
+							game::ShieldBallSpan(game::ToBodyFrame(r, p, node->worldBound.center), ball, measured, margin);
+						}
+					}
+				}
+			}
+		}
+		const game::BodySpan& span = game::StepBladeSpanCache(h.span, key, measured);
+		const game::BodySpan& span2 = game::StepBladeSpanCache(h.span2, key, measured2);
+		if (key != game::kSpanKeyNone) {
+			h.marginUnits = margin;
+		}
+
+		game::BladeContactFrame f;
+		f.active = shape != game::HandShape::None;
+		f.wanted.rot = camRot * handRot;
+		f.wanted.pos = camPos + camRot * handOffset;
+		f.span = span;
+		f.span2 = span2;
+		f.marginUnits = h.marginUnits;
+		f.eye = camPos;
+		f.dtSeconds = dt;
+		f.jumped = jumped;
+		if (people) {
+			f.bodies = &g_handBodies;
+		}
+		// A hand fast enough for a shove, or a fist's swing, goes through
+		// people; SteamVR's velocity is relative to the head's frame, in the
+		// game's axes (m/s), judged over the last tenth of a second
+		// (game::HandTravel) so one frame's jump does not count.
+		const NiPoint3 velocity = right ? g_hand.rightVelocity : g_hand.leftVelocity;
+		h.travel.Add(dt, math::Sqrt(velocity.LengthSquared()));
+		h.speed = h.travel.MeanSpeed(game::kHandSpeedWindowSeconds);
+		// A fist's swing only with the fists up and the hits by motion on: the
+		// swing detector itself runs for any hand, and a scripted hand's step
+		// (5 cm in a frame) starts one (the harness, 2026-10-11).
+		const bool fistSwing = right ? (g_hand.strikeByMotion && g_hand.swingActive &&
+		                                g_hand.swingTravelledMetres >= vr::kSwingMinMetres)
+		                             : (g_hand.leftStrikeByMotion && g_hand.leftSwingActive);
+		f.swinging = game::HandSwinging(h.speed, config.hands.shove.speed, fistSwing);
+		f.followShare = 1.0f;
+		h.wantedPos = f.wanted.pos;
+		const game::BladeContactVerdict v = game::StepBladeContact(h.state, settings, f, world);
+		stepped = stepped || (f.active && settings.enabled && span.valid);
+		if (v.apart) {
+			const NiMatrix33 back = vr::Transposed(camRot);
+			handRot = back * v.pose.rot;
+			handOffset = back * (v.pose.pos - camPos);
+			if (right) {
+				// Nothing lags the weapon hand while no weapon is drawn: the
+				// controller's own pose and the drawn one are the same thing.
+				g_hand.rightHandRotation = handRot;
+				g_hand.rightHandOffsetUnits = handOffset;
+				g_bladeOutRotation = handRot;
+				g_bladeOutOffset = handOffset;
+			}
+		}
+		const bool announce = (shape != h.shape || key != h.key) && key != game::kSpanKeyNone;
+		h.shape = shape;
+		h.key = key;
+		h.through = v.through;
+		if (shape == game::HandShape::None) {
+			h.restActor = 0;
+			h.scrapeFrames = 0;
+			continue;
+		}
+		if (announce && h.lines > 0) {
+			--h.lines;
+			OBVR_LOG("Contact: the %s meets the world now (%s)%s", name,
+			         key == game::kSpanKeyHand         ? "the hand's span from its bones"
+			         : key == game::kSpanKeyShieldDisc ? "the shield's disc"
+			                                           : "the shield's ball",
+			         settings.enabled ? "" : " - the setting is off, it passes through");
+		}
+		game::KickBladeKicks(v.kicks);
+
+		// Felt and heard: a pulse on that hand's controller at each touch by
+		// its speed into the surface, a soft one now and then while it scrapes
+		// along; a shield knocked hard on something sounds, a hand does not.
+		h.sinceSound += dt;
+		const bool onPerson = v.contact.hit && v.contact.actor != 0;
+		const UInt32 restingOn = v.held && onPerson ? v.contact.actor : 0u;
+		const bool restsOnNew = restingOn != 0 && restingOn != h.restActor;
+		h.restActor = restingOn;
+		const bool device = right;
+		if (v.enteredBody) {
+			g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(device, g_handRolesSwapped), 0.03f, 160.0f, 0.5f);
+		}
+		if (restsOnNew) {
+			g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(device, g_handRolesSwapped), 0.03f, 180.0f,
+			                                         game::kBladeTouchMinAmplitude);
+		}
+		if (v.event == game::BladeContactEvent::Touched && !onPerson) {
+			g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(device, g_handRolesSwapped), 0.03f, 180.0f,
+			                                         game::BladeTouchAmplitude(v.contact.speedIn));
+			if (shape == game::HandShape::Shield && game::BladeKnockSounds(v.contact.speedIn, h.sinceSound)) {
+				h.sinceSound = 0.0f;
+				game::PlaySoundFormAt(kSoundFormBlockShield, *reinterpret_cast<const UInt32*>(addr::kPlayerPointer),
+				                      v.contact.point);
+			}
+			h.scrapeFrames = 0;
+		} else if (v.held && v.contact.hit) {
+			if (++h.scrapeFrames >= 8) {
+				h.scrapeFrames = 0;
+				g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(device, g_handRolesSwapped), 0.01f, 120.0f,
+				                                         game::kBladeTouchMinAmplitude);
+			}
+		}
+
+		if (v.enteredBody && h.lines > 0) {
+			--h.lines;
+			OBVR_LOG("Contact: a fast %s went into someone (%u near) - they are passed until it has been out of them "
+			         "for %.2f s",
+			         name, peopleNear, static_cast<double>(game::kBladePassClearSeconds));
+		}
+		if (restsOnNew && h.lines > 0) {
+			--h.lines;
+			OBVR_LOG("Contact: the %s rests on %08X at %.0f %.0f %.0f - %.2f m/s into them; held %.1f units from the "
+			         "controller",
+			         name, v.contact.actor, static_cast<double>(v.contact.point.x), static_cast<double>(v.contact.point.y),
+			         static_cast<double>(v.contact.point.z),
+			         static_cast<double>(v.contact.speedIn / config.tracker.unitsPerMetre), static_cast<double>(v.gapUnits));
+		}
+		if (v.event != game::BladeContactEvent::None && !(v.event == game::BladeContactEvent::Touched && onPerson) &&
+		    h.lines > 0) {
+			--h.lines;
+			if (v.event == game::BladeContactEvent::LetGo && !v.through) {
+				OBVR_LOG("Contact: the %s pressed on into %08X - %.1f units from where it rested; it goes into them, "
+				         "passed",
+				         name, v.contact.actor, static_cast<double>(v.gapUnits));
+			} else if (v.event == game::BladeContactEvent::Touched && v.contact.hit) {
+				OBVR_LOG("Contact: the %s met body %08X (layer %u, motion %u) at %.0f %.0f %.0f - its point %.2f of "
+				         "the way along, %.2f m/s into it; held %.1f units and %.0f degrees from the controller%s",
+				         name, v.contact.body, world.lastLayer, world.lastMotion, static_cast<double>(v.contact.point.x),
+				         static_cast<double>(v.contact.point.y), static_cast<double>(v.contact.point.z),
+				         static_cast<double>(v.contact.along),
+				         static_cast<double>(v.contact.speedIn / config.tracker.unitsPerMetre),
+				         static_cast<double>(v.gapUnits), static_cast<double>(v.gapRadians * math::kRadiansToDegrees),
+				         game::BladeKnockSounds(v.contact.speedIn, 1.0f) ? " - a knock" : "");
+			} else if (v.event == game::BladeContactEvent::Touched) {
+				OBVR_LOG("Contact: the %s would end across something between its points - held where it was", name);
+			} else if (v.event == game::BladeContactEvent::LetGo) {
+				OBVR_LOG("Contact: the %s let go - %.1f units and %.0f degrees from where it was held (at most %.1f and "
+				         "%.0f); it passes through until it is free",
+				         name, static_cast<double>(v.gapUnits), static_cast<double>(v.gapRadians * math::kRadiansToDegrees),
+				         static_cast<double>(settings.letGoUnits),
+				         static_cast<double>(settings.letGoRadians * math::kRadiansToDegrees));
+			} else if (v.event == game::BladeContactEvent::Rearmed) {
+				OBVR_LOG("Contact: the %s free again - it stops at walls again", name);
+			} else {
+				OBVR_LOG("Contact: the %s taken up inside something - it passes through until it is free", name);
+			}
+		}
+	}
+	const long long after = ReadPerformanceCounter();
+
+	// The poses the bones are pinned to this frame, for the next frame's
+	// reading of the spans.
+	for (int side = 0; side < 2; ++side) {
+		HandContactSide& h = g_handContact[side];
+		const bool right = side == 0;
+		h.outValid = inPlace && cameraValid && (right ? g_hand.rightHandValid : g_hand.leftHandValid);
+		h.outRotation = right ? g_hand.weaponHandRotation : g_hand.leftHandRotation;
+		h.outOffset = right ? g_hand.weaponHandOffsetUnits : g_hand.leftHandOffsetUnits;
+	}
+	if (stepped) {
+		++g_handCostFrames;
+		g_handCostCasts += world.casts;
+		g_handCostSeconds += ticksPerSecond > 0 ? static_cast<double>(after - before) / static_cast<double>(ticksPerSecond)
+		                                        : 0.0;
+		if (g_handCostFrames >= 600) {
+			if (g_handCostLines > 0) {
+				--g_handCostLines;
+				OBVR_LOG("Contact: %u frames with a hand or the shield met - %.1f rays a frame, %.3f ms a frame on average",
+				         g_handCostFrames, static_cast<double>(g_handCostCasts) / g_handCostFrames,
+				         g_handCostSeconds * 1000.0 / g_handCostFrames);
+			}
+			g_handCostFrames = 0;
+			g_handCostCasts = 0;
+			g_handCostSeconds = 0.0;
+		}
+	}
+	if (test::HandScriptMarkedThisFrame()) {
+		for (int side = 0; side < 2; ++side) {
+			const HandContactSide& h = g_handContact[side];
+			const bool right = side == 0;
+			const game::BodySpan& span = h.span.span;
+			game::BladePose drawn;
+			drawn.rot = camRot * (right ? g_hand.weaponHandRotation : g_hand.leftHandRotation);
+			drawn.pos = camPos + camRot * (right ? g_hand.weaponHandOffsetUnits : g_hand.leftHandOffsetUnits);
+			const NiPoint3 tip = span.valid ? game::BladePointAt(drawn, span, 1.0f) : drawn.pos;
+			const NiPoint3 wanted = h.wantedPos;
+			OBVR_LOG("Contact: %s - %s (setting %d), span %s %.1f units, margin %.1f, held %d, through %d, gap %.1f "
+			         "units, %.2f m/s; the controller %.0f %.0f %.0f, the drawn tip %.0f %.0f %.0f",
+			         right ? "the right hand" : "the left hand", game::HandShapeName(h.shape), settings.enabled ? 1 : 0,
+			         span.valid ? "read" : "none",
+			         span.valid ? static_cast<double>(math::Sqrt((span.b - span.a).LengthSquared())) : 0.0,
+			         static_cast<double>(h.marginUnits), h.state.touching ? 1 : 0, h.through ? 1 : 0,
+			         static_cast<double>(math::Sqrt((drawn.pos - wanted).LengthSquared())), static_cast<double>(h.speed),
+			         static_cast<double>(wanted.x), static_cast<double>(wanted.y), static_cast<double>(wanted.z),
+			         static_cast<double>(tip.x), static_cast<double>(tip.y), static_cast<double>(tip.z));
+		}
+		OBVR_LOG("Contact: hands - %u near (%u capsules), %u rays this frame; passed %u and %u", peopleNear,
+		         people ? g_handBodies.count : 0u, world.casts, g_handContact[0].state.passed.count,
+		         g_handContact[1].state.passed.count);
+		for (UInt32 c = 0; people && c < g_handBodies.count && c < 3; ++c) {
+			const game::BladeBodyCapsule& cap = g_handBodies.cap[c];
+			OBVR_LOG("Contact: hands' capsule %u of %08X - %.0f %.0f %.0f to %.0f %.0f %.0f, %.1f round", c, cap.actor,
+			         static_cast<double>(cap.a.x), static_cast<double>(cap.a.y), static_cast<double>(cap.a.z),
+			         static_cast<double>(cap.b.x), static_cast<double>(cap.b.y), static_cast<double>(cap.b.z),
+			         static_cast<double>(cap.radius));
+		}
+	}
 }
 
 // Opening by reaching ([Hands] ReachOpens, vr/ReachOpen.h, game/ReachTargets.h):
@@ -2681,6 +3100,19 @@ void StepReachOpen(const Config& config, bool handsInWorld, bool menuIsUp) {
 	}
 }
 
+// Whether the hands go - hidden, not pinned - for what is up now: with
+// HandsInMenus the Esc menu and its kin take them, found anywhere in the
+// interface manager's stack (camera::HandsAwayForMenus); with it off any
+// menu, and the conversation's approach, as before 2026-10-11.
+bool HandsAwayNow(const Config& config, bool menuMode, bool dialogue) {
+	if (!config.hands.handsInMenus) {
+		return menuMode || dialogue;
+	}
+	UInt32 stack[game::kMenuStackEntries];
+	const UInt32 count = menuMode ? game::MenuStackEntries(stack, game::kMenuStackEntries) : 0;
+	return HandsAwayForMenus(true, menuMode, stack, count);
+}
+
 void UpdateHandMode(const Config& config, bool menuIsUp) {
 	StepInputRouting(config);
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
@@ -2752,6 +3184,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_bladeContact = game::BladeContactState{};
 		g_bladeThrough = false;
 		g_bladeOutValid = false;
+		ResetHandContacts();
 		game::ForgetBladeBodies();
 		EndGrapple();
 		game::ForgetParries();
@@ -2806,8 +3239,31 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		static game::DialogApproachState s_approach;
 		g_handsAwayForDialog =
 			game::StepDialogApproach(s_approach, game::TakeDialogCameraCall(), menuIsUp);
-		const bool handsAway = g_handsAwayForDialog || menuIsUp;
+		// Or they stay: in the game's own menus, with HandsInMenus (the tester,
+		// 2026-10-11), pinned and drawn as in the world; only the Esc menu and
+		// its kin take them (HandsAwayNow).
+		const bool handsAway = HandsAwayNow(config, menuIsUp, g_handsAwayForDialog);
+		g_handsStayInMenu = menuIsUp && !handsAway;
 		g_stumpHandsAway = handsAway;
+		{
+			const UInt32 top = menuIsUp ? game::TopVisibleMenu() : game::kMenuIdNone;
+			const bool changed = !g_handsMenuLogged || menuIsUp != g_handsMenuWasUp || handsAway != g_handsMenuWasAway ||
+			                     (menuIsUp && top != g_handsMenuLastTop);
+			if (changed && g_handsMenuLines > 0) {
+				--g_handsMenuLines;
+				if (menuIsUp) {
+					OBVR_LOG("Hands: menu %s (0x%03X) - the hands %s", game::MenuIdName(top), top,
+					         handsAway ? "go" : "stay - pinned and drawn as in the world");
+				} else if (g_handsMenuLogged) {
+					OBVR_LOG("Hands: no menu - the hands as in the world%s",
+					         handsAway ? " (away for the conversation)" : "");
+				}
+			}
+			g_handsMenuLogged = true;
+			g_handsMenuWasUp = menuIsUp;
+			g_handsMenuWasAway = handsAway;
+			g_handsMenuLastTop = top;
+		}
 		// The sheaths: a weapon's scabbard is its own node, "Scb", which the
 		// engine hangs on the skeleton's side-weapon bone (cs.uesp.net,
 		// NifSkope Comprehensive Guide, "Scabbards"), and a sheathed weapon
@@ -4100,11 +4556,14 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 
 	// The drawn weapon held where it meets a wall (game/BladeContactLogic.h),
-	// before the strike, the push and the Havok body read the drawn pose.
-	StepWeaponContact(config,
-	                  active && !menuIsUp && frame.inWorld && frame.firstPerson && !frame.adjustingHands &&
-	                      !config.hands.adjustHands,
-	                  dt);
+	// before the strike, the push and the Havok body read the drawn pose; then
+	// the free hand and the shield the same way (game/HandContactLogic.h).
+	{
+		const bool contactsInPlace = active && !menuIsUp && frame.inWorld && frame.firstPerson &&
+		                             !frame.adjustingHands && !config.hands.adjustHands;
+		const bool bladeHasWeaponHand = StepWeaponContact(config, contactsInPlace, dt);
+		StepHandContacts(config, contactsInPlace, bladeHasWeaponHand, dt);
+	}
 
 	// The strike by motion: while the right hand is swinging a drawn melee
 	// weapon, the blade is tested against the bodies near the player and each
@@ -4112,9 +4571,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// swing, heavy when the swing has been fast enough. Not in a menu, not in
 	// third person (no hand pose there), and only while the hand is tracked -
 	// and not with a blade that went through a wall until it is back out
-	// (g_bladeThrough: the tester chose "let go" over "stuck", 2026-10-09).
+	// (g_bladeThrough: the tester chose "let go" over "stuck", 2026-10-09),
+	// nor a fist that did.
 	if (active && g_hand.strikeByMotion && g_hand.swingActive && g_hand.swingTravelledMetres >= vr::kSwingMinMetres &&
-	    g_hand.rightHandValid && !menuIsUp && !g_bladeThrough) {
+	    g_hand.rightHandValid && !menuIsUp && !g_bladeThrough && !g_handContact[0].through) {
 		game::MotionStrike strike;
 		strike.swingSerial = g_hand.swingSerial;
 		strike.heavy = g_hand.swingHeavy;
@@ -4166,8 +4626,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			game::StrikeByMotion(strike);
 		}
 	}
-	// The left fist, the same way: with the fists up both hands punch.
-	if (active && g_hand.leftStrikeByMotion && g_hand.leftSwingActive && g_hand.leftHandValid && !menuIsUp) {
+	// The left fist, the same way: with the fists up both hands punch - not
+	// one that went through a wall until it is back out.
+	if (active && g_hand.leftStrikeByMotion && g_hand.leftSwingActive && g_hand.leftHandValid && !menuIsUp &&
+	    !g_handContact[1].through) {
 		game::MotionStrike strike;
 		strike.hand = 1;
 		strike.swingSerial = g_hand.leftSwingSerial;
@@ -6532,8 +6994,12 @@ void BeforeFirstScenePass() {
 	// is drawn, and a book or a dialogue opened with a weapon drawn showed the
 	// hands for that one frame (2026-09-25). Present decides the same again
 	// and keeps it; this only moves the first frame earlier.
-	if (GetConfig().fullVrMode && !ReadIsThirdPerson() &&
-	    (game::IsMenuMode() || game::DialogCameraCallPending() || g_handsAwayForDialog)) {
+	// Unless they stay in this menu (HandsInMenus, HandsAwayNow): then they
+	// are pinned below as in the world.
+	const bool menuNow = game::IsMenuMode();
+	const bool handsAwayNow =
+		HandsAwayNow(GetConfig(), menuNow, game::DialogCameraCallPending() || g_handsAwayForDialog);
+	if (GetConfig().fullVrMode && !ReadIsThirdPerson() && handsAwayNow) {
 		// The same list Present builds with the hands away. A shorter one here
 		// un-hid the drawn weapon every frame (HideFirstPersonNodes shows again
 		// what is no longer listed), so it floated through the conversation.
@@ -6594,7 +7060,18 @@ void BeforeFirstScenePass() {
 
 	g_bowShotValid = false;
 	g_bowLimbValid = false;
-	if (g_handArmsWanted) {
+	// In a menu the camera pass, which decides g_handArmsWanted, does not run
+	// (the simulation is paused), so the decision is made here: the hands are
+	// pinned in a menu they stay in, and not in one that takes them.
+	const bool pinInMenu = GetConfig().fullVrMode && !ReadIsThirdPerson() && !handsAwayNow &&
+	                       g_headTracker.IsHeadsetConnected() && g_hand.armsValid;
+	const bool pinHands = menuNow ? pinInMenu : g_handArmsWanted;
+	if (test::HandScriptMarkedThisFrame()) {
+		const UInt32 top = menuNow ? game::TopVisibleMenu() : game::kMenuIdNone;
+		OBVR_LOG("Hands: at the mark - menu %d (%s), the hands %s, pinned %d", menuNow ? 1 : 0, game::MenuIdName(top),
+		         handsAwayNow ? "away" : "shown", pinHands ? 1 : 0);
+	}
+	if (pinHands) {
 		game::PlaceFirstPersonArms(g_hand.armsRotation, g_hand.armsOffsetUnits);
 		// After the arms, so the bones' parents carry this frame's placement:
 		// the hand bones go where the controllers are, animation or not.
@@ -9868,8 +10345,10 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// the head. Pitch and position of the hand are the next rungs, see
 	// docs/hand-tracked-mode.md. Reported on change of tracking so a run
 	// says when the controller was seen and when it was lost.
+	// And in a menu the hands stay in (HandsInMenus): the world runs on behind
+	// some of them, and this pass with it.
 	g_handArmsWanted = readPlayer && !isThirdPerson && config.fullVrMode &&
-	                   g_headTracker.IsHeadsetConnected() && !game::IsMenuMode() &&
+	                   g_headTracker.IsHeadsetConnected() && (!game::IsMenuMode() || g_handsStayInMenu) &&
 	                   g_hand.armsValid;
 	if (!g_handArmsWanted && readPlayer && !isThirdPerson && config.aimFollowsGaze &&
 	    config.aimWeaponFollowsGaze && g_headTracker.IsHeadsetConnected() &&

@@ -718,6 +718,102 @@ void TestSettings() {
 	Check(Near(s.letGoUnits, 35.0f), "no scale: 70 units a metre");
 }
 
+void TestShape() {
+	std::printf("A shape of two spans, and another margin\n");
+	BoxWorld w;
+	AddWallAhead(w);
+	// The sweep's margin as the caller has it: a hand's 2.5 holds the point
+	// a unit further off than the blade's 1.5.
+	BladeSweep s = SweepBlade(w, At(0, -20, 0), At(0, 0, 0), Blade(), 0.01f, nullptr, BladeLiving{}, 2.5f);
+	Check(s.hit && Near(s.safeFraction, 0.5f - 2.5f / 20.0f), "a wider margin: held further short");
+	// A span of no length is one point: swept once.
+	BodySpan point;
+	point.valid = true;
+	point.a = NiPoint3{0.0f, 50.0f, 0.0f};
+	point.b = point.a;
+	w.casts = 0;
+	s = SweepBlade(w, At(0, -20, 0), At(0, 0, 0), point, 0.01f, nullptr, BladeLiving{}, 10.0f);
+	Check(s.hit && w.casts == 1 && Near(s.safeFraction, 0.5f), "a point with a 10-unit margin: one ray, held 10 short");
+
+	// Two spans: a blade along y and a cross-piece along x at its guard. The
+	// wall ahead is met by the blade; a wall to the side by the cross-piece.
+	BodySpan cross;
+	cross.valid = true;
+	cross.a = NiPoint3{-30.0f, 0.0f, 0.0f};
+	cross.b = NiPoint3{30.0f, 0.0f, 0.0f};
+	BladeContactSettings set;
+	BladeContactFrame f = FrameFor(At(0, -20, 0));
+	f.span2 = cross;
+	BladeContactState st;
+	StepBladeContact(st, set, f, w);
+	f.wanted = At(0, 0, 0);
+	BladeContactVerdict v = StepBladeContact(st, set, f, w);
+	Check(v.held && Near(v.pose.pos.y, -11.5f), "pushed ahead: the blade's tip holds the shape");
+	BoxWorld side;
+	side.Add(NiPoint3{40.0f, -200.0f, -200.0f}, NiPoint3{50.0f, 200.0f, 200.0f}, ContactKind::Fixed, 2);
+	BladeContactState sd;
+	f = FrameFor(At(0, -20, 0));
+	f.span2 = cross;
+	StepBladeContact(sd, set, f, side);
+	f.wanted = At(20, -20, 0);
+	v = StepBladeContact(sd, set, f, side);
+	Check(v.held && Near(v.pose.pos.x, 8.5f) && v.contact.body == 2, "pushed sideways: the cross-piece's end holds it");
+	BladeContactState one;
+	f = FrameFor(At(0, -20, 0));
+	StepBladeContact(one, set, f, side);
+	f.wanted = At(20, -20, 0);
+	v = StepBladeContact(one, set, f, side);
+	Check(!v.held && Near(v.pose.pos.x, 20.0f), "the blade alone: nothing to the side to meet");
+	// Across a post with the second span - one standing between two of its
+	// swept points, from above the cross-piece upwards: not taken.
+	BoxWorld post;
+	post.Add(NiPoint3{5.0f, -22.0f, 5.0f}, NiPoint3{7.0f, -18.0f, 50.0f}, ContactKind::Fixed, 4);
+	BladeContactState across;
+	f = FrameFor(At(0, -20, 0));
+	f.span2 = cross;
+	StepBladeContact(across, set, f, post);
+	f.wanted = At(0, -20, 10);
+	v = StepBladeContact(across, set, f, post);
+	Check(v.held && Near(v.pose.pos.z, 0.0f), "the cross-piece would end across a post: held where it was");
+	BladeContactState taken;
+	f = FrameFor(At(0, -20, 10));
+	f.span2 = cross;
+	v = StepBladeContact(taken, set, f, post);
+	Check(v.through && v.event == BladeContactEvent::StartedInside, "taken up with the cross-piece across it: through");
+
+	// The ledger with two segments: touching with either keeps them passed.
+	BladePassLedger l;
+	BladeBodies bodies;
+	bodies.Add(NiPoint3{40.0f, 0.0f, -50.0f}, NiPoint3{40.0f, 0.0f, 50.0f}, 10.0f, 5);
+	l.Add(5);
+	const NiPoint3 from[2] = {NiPoint3{-5.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 0.0f}};
+	const NiPoint3 to[2] = {NiPoint3{5.0f, 0.0f, 0.0f}, NiPoint3{35.0f, 0.0f, 0.0f}};
+	for (int i = 0; i < 30; ++i) {
+		l.StepSegments(from, to, 2, &bodies, 0.05f);
+	}
+	Check(l.Has(5), "the second segment in them: kept");
+	for (int i = 0; i < 30; ++i) {
+		l.StepSegments(from, to, 1, &bodies, 0.05f);
+	}
+	Check(!l.Has(5), "the first alone, out of them: let go of");
+	// The living met with the second span: rests on them.
+	BoxWorld none;
+	BladeBodies person;
+	person.Add(NiPoint3{45.0f, -20.0f, -60.0f}, NiPoint3{45.0f, -20.0f, 60.0f}, 10.0f, 11);
+	BladeContactState rest;
+	f = FrameFor(At(0, -20, 0));
+	f.span2 = cross;
+	f.bodies = &person;
+	StepBladeContact(rest, set, f, none);
+	f.wanted = At(20, -20, 0);
+	v = StepBladeContact(rest, set, f, none);
+	Check(v.held && v.contact.actor == 11 && Near(v.pose.pos.x, 3.5f), "the cross-piece onto someone: rests on them");
+	f.swinging = true;
+	f.wanted = At(30, -20, 0);
+	v = StepBladeContact(rest, set, f, none);
+	Check(!v.held && v.enteredBody && rest.passed.Has(11), "swung on: through them, passed");
+}
+
 void TestFeel() {
 	std::printf("The touch felt and heard\n");
 	Check(Near(BladeTouchAmplitude(0.0f), kBladeTouchMinAmplitude), "no speed: the lightest pulse");
@@ -748,6 +844,7 @@ int main() {
 	TestLiving();
 	TestHitStop();
 	TestSettings();
+	TestShape();
 	TestFeel();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);

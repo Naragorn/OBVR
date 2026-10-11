@@ -319,7 +319,8 @@ them; the sweep lets the blade go on.
   combat-comfort-spec ("a block counts only when the blades meet") built
   on contacts instead of an angle.
 - Our shield against walls: the same contact step can run for the left
-  hand's shield, later.
+  hand's shield, later. **Built 2026-10-11 (section 14), and the free hand
+  with it.**
 
 ### G. Arrows and spells (L, unknown)
 
@@ -585,4 +586,58 @@ schwert/schild." Nothing built; what each part means and what exists:
   written.
 - Order proposed: their shield first (it also fixes a strike landing
   through a shield, a real fairness bug), then their blade, then the own
-  shield.
+  shield. (Still open after section 14: that section is the hands and the
+  own shield against the WORLD, not the blade against the own shield.)
+
+## 14. Built: the free hand and the worn shield at walls and on people (2026-10-11)
+
+The tester, 2026-10-11: "Gib nun einhand Waffe und Schild oder freier Hand
+Kollisionen. Same für alle anderen Waffen mit der freien Hand." Read as:
+with a one-hander, the shield on the other arm - or that hand, bare - meets
+the world as the weapon does; with every other weapon, the free hand does.
+Sections 4 F ("our shield against walls") and 4 H ("the hands at walls")
+of the design, built on the same step. controls-spec 4.32 has the details;
+here what differs from the design and what was measured.
+
+- **One step, three shapes** (`game/HandContactLogic.h`, `StepHandContacts`
+  in CameraHook.cpp): `StepBladeContact` is run for each hand the weapon is
+  not drawn in, with the hand's span (the wrist to the fingertips, as its
+  Havok body has it) or - with a shield on the off hand's arm - the shield's
+  disc as two spokes (`BladeContactFrame::span2`, a second span the whole
+  step sweeps alongside the first) and the shape's own margin
+  (`marginUnits`: a hand 2.5, the disc half its thickness, 1.5 to 4). The
+  settings `[Hands] HandsStopAtWalls` and `HandsStopAtBodies`; the let-go
+  caps are the weapon's.
+- **Who is free** (`FreeHandShape`): the off hand with a one-hander, a
+  two-hander off its handle, a staff; both hands with nothing drawn or the
+  fists up. Not: the weapon hand with a swung weapon drawn (the blade's),
+  either hand with a bow drawn, a hand on a handle, round a held object,
+  leading someone, holding a fighter. The staff and the torch themselves
+  are not swept (only the hand is) - open, like their blades and shields.
+- **Through people** at the shove's speed (1.3 m/s) or in a fist's swing;
+  below it the hand rests on them (decision 2 carried over). The shove, the
+  slap and the grab are untouched: they run on the same hand pose after
+  the step - a hand resting on someone is within the grab's 6 units.
+- **The shield's disc from its vertices**, not the bound's ball: the ball
+  (the parry's `ShieldBall`) would hold a shield facing a wall a hand's
+  length short of it. The vertices under "Bip01 L ForearmTwist" are read
+  into the hand's frame; the principal axes of their scatter give the plane
+  (the normal is the least spread) and a second pass the reach along each
+  spoke. Measured on the Arena Iron Shield: 695 vertices, spokes 20.9 units
+  (the bound 21.0 round), 13.1 units thick over boss and handle - so the
+  margin is capped at 4 units rather than 7.5. A model that cannot be read
+  falls back to the ball, swept as one point, and says so.
+- **Not written back into anything but the hand's pose**: the shove, the
+  grab, the fist's strike, the push, the Havok hand body and the pin take
+  the hand where it stopped; the pick, the laser and the reach, which run
+  earlier in the frame, take the controller's own pose (as for the weapon).
+  A fist that went through a wall strikes nothing until it is free.
+- **Harness** (docs/hand-script-harness.md): `hand-wall.txt` PASS
+  2026-10-11 (both hands met the floor, held 3 units above it, let go at
+  31.8 and 33.2 units past the 21-unit cap, free again; 2-3 rays and 0.011
+  ms a frame), `shield-wall.txt` PASS 2026-10-11 (sword and shield: the
+  blade's step had the right hand, the shield's rim met the floor, pressed
+  on 12 units, let go at 22.7, free again).
+- **Open**: the hand against the player's own blade, the shield against the
+  blade (section 13), opponents' shields and blades as stoppers, the torch
+  and the staff as shapes; the headset's judgement of the feel.

@@ -34,4 +34,12 @@ void SetPlayerWalksUnderMenu(bool walking);
 // is the menu under the mouse and empties whenever the cursor is off it.
 UInt32 TopVisibleMenu();
 
+// The whole stack, from the bottom up, as GetTopVisibleMenuID reads its ten
+// slots (addr::kInterfaceMenuStackOffset): the ids into `out`, stopping at
+// the first empty slot or one that is no menu id. Answers how many were
+// read, 0 with no manager - for the hands, which stay in some menus and not
+// others (camera/FrameLogic.h, HandsAwayForMenus).
+inline constexpr UInt32 kMenuStackEntries = 10;
+UInt32 MenuStackEntries(UInt32* out, UInt32 capacity);
+
 }  // namespace obvr::game

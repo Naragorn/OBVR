@@ -180,7 +180,9 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 				r.rightThumb[joint] = f.right.thumb[joint];
 			}
 		}
-		if (f.firstPerson && !f.menuMode) {
+		// The arms in menus too when the hands stay in them (HandsInMenus):
+		// the pins place the arms first and the hands under them.
+		if (f.firstPerson && (!f.menuMode || s.handsInMenus)) {
 			r.armsValid = true;
 			if (s.armsFollowPitch) {
 				r.armsRotation = relativeMatrix;

@@ -127,6 +127,13 @@ bool NearestVertexOf(UInt32 ref, const NiPoint3& hand, NiPoint3& out, float& dis
 bool AxialExtentOf(const NiAVObject* root, const NiPoint3& origin, const NiPoint3& dir, float& low, float& high,
                    const float* band = nullptr, NiPoint3* bandCentre = nullptr, UInt32* bandVertices = nullptr);
 
+// Every vertex of the model under `root`, in the world, handed to
+// `take(context, world)` - the hidden nodes left out, as the other walks
+// here leave them. False when a geometry's read fails VertexInBound or no
+// vertex was found (the shield's disc, game/ShieldShape).
+typedef void (*VertexTaker)(void* context, const NiPoint3& world);
+bool ForEachWorldVertex(const NiAVObject* root, VertexTaker take, void* context);
+
 // A reference's 3D bound in the world. False when its node cannot be read.
 bool RefWorldBound(UInt32 ref, NiPoint3& centre, float& radius);
 

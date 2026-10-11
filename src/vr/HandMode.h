@@ -320,6 +320,20 @@ struct HandSettings {
 	// ([Hands] WeaponHitStop).
 	bool weaponStopsAtBodies = true;
 	bool weaponHitStop = true;
+	// The free hand and the worn shield the same way: the hand the weapon is
+	// not drawn in - both with nothing drawn - stops at walls and rests on
+	// people, a fast hand goes through; the shield on the off hand's arm is
+	// met as its disc ([Hands] HandsStopAtWalls, HandsStopAtBodies;
+	// game/HandContactLogic.h; the tester, 2026-10-11). The weapon's let-go
+	// caps are theirs too.
+	bool handsStopAtWalls = true;
+	bool handsStopAtBodies = true;
+	// The hands stay in the game's menus - pinned and drawn over the
+	// inventory, a container, the map, a book, a dialogue - and go only for
+	// the Esc menu and what opens from it ([Hands] HandsInMenus;
+	// camera/FrameLogic.h, HandsAwayForMenus; the tester, 2026-10-11). Off:
+	// every menu takes them, as before.
+	bool handsInMenus = true;
 	// The parry: the drawn blade meeting an attacker's during their attack
 	// blocks their blow by the engine's own path, all of it with
 	// ParryStopsAll, for ParryFatigue fatigue ([Hands] WeaponParries,

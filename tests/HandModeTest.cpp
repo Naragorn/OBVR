@@ -1093,7 +1093,11 @@ void TestHandPoses() {
 	Check(r.leftHandValid && Near(r.leftHandOffsetUnits.x, -21.0f) &&
 	          Near(r.leftHandOffsetUnits.y, 28.0f),
 	      "the left hand too, and in a menu as well");
-	Check(!r.armsValid, "while the arms placement stays off in a menu");
+	Check(r.armsValid, "and the arms placed in a menu, since the hands stay in menus (HandsInMenus)");
+	settings.handsInMenus = false;
+	r = mode.Update(frame, settings);
+	Check(!r.armsValid, "with that off, the arms placement stays off in a menu");
+	settings.handsInMenus = true;
 
 	frame.firstPerson = false;
 	r = mode.Update(frame, settings);

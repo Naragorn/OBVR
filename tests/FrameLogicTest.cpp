@@ -1267,6 +1267,43 @@ void TestCrosshairTooltipPolicy() {
 	}
 
 	{
+		using obvr::camera::HandsAwayForMenus;
+		using obvr::camera::MenuTakesTheHands;
+		using namespace obvr::game;
+		Check(MenuTakesTheHands(kMenuIdPause) && MenuTakesTheHands(kMenuIdOptions) && MenuTakesTheHands(kMenuIdSave) &&
+		          MenuTakesTheHands(kMenuIdLoad) && MenuTakesTheHands(kMenuIdMain) && MenuTakesTheHands(kMenuIdLoading) &&
+		          MenuTakesTheHands(kMenuIdCredits),
+		      "the Esc menu, its options, saving, loading, the main menu, a loading screen and the credits take the hands");
+		Check(!MenuTakesTheHands(kMenuIdInventory) && !MenuTakesTheHands(kMenuIdBigFour) &&
+		          !MenuTakesTheHands(kMenuIdContainer) && !MenuTakesTheHands(kMenuIdDialog) &&
+		          !MenuTakesTheHands(kMenuIdMap) && !MenuTakesTheHands(kMenuIdBook) && !MenuTakesTheHands(kMenuIdMessage) &&
+		          !MenuTakesTheHands(kMenuIdLockPick) && !MenuTakesTheHands(kMenuIdSleepWait) &&
+		          !MenuTakesTheHands(kMenuIdLevelUp) && !MenuTakesTheHands(kMenuIdPersuasion) &&
+		          !MenuTakesTheHands(kMenuIdNone),
+		      "the game's own menus keep them");
+		const UInt32 inventory[] = {kMenuIdBigFour, kMenuIdInventory};
+		Check(!HandsAwayForMenus(true, true, inventory, 2), "the inventory: the hands stay");
+		Check(!HandsAwayForMenus(true, false, inventory, 2), "no menu mode: never away, whatever the stack says");
+		Check(HandsAwayForMenus(false, true, inventory, 2), "the setting off: any menu takes them");
+		Check(!HandsAwayForMenus(false, false, inventory, 2), "and off, out of menus: not away");
+		const UInt32 pause[] = {kMenuIdPause};
+		Check(HandsAwayForMenus(true, true, pause, 1), "the Esc menu: away");
+		const UInt32 options[] = {kMenuIdPause, kMenuIdOptions};
+		Check(HandsAwayForMenus(true, true, options, 2), "the options over it: away");
+		const UInt32 quit[] = {kMenuIdPause, kMenuIdMessage};
+		Check(HandsAwayForMenus(true, true, quit, 2), "a quit box over the Esc menu: away - the Esc menu is beneath it");
+		const UInt32 box[] = {kMenuIdMessage};
+		Check(!HandsAwayForMenus(true, true, box, 1), "a message box in the world: the hands stay");
+		const UInt32 talk[] = {kMenuIdDialog};
+		Check(!HandsAwayForMenus(true, true, talk, 1), "a conversation: they stay");
+		const UInt32 chest[] = {kMenuIdContainer, kMenuIdQuantity};
+		Check(!HandsAwayForMenus(true, true, chest, 2), "a container and its quantity box: they stay");
+		Check(!HandsAwayForMenus(true, true, nullptr, 0), "menu mode with an empty stack read: they stay");
+		const UInt32 main[] = {kMenuIdMain};
+		Check(HandsAwayForMenus(true, true, main, 1), "the main menu: away");
+	}
+
+	{
 		using obvr::camera::ComposeHandsHideList;
 		char list[128];
 		Check(ComposeHandsHideList(list, sizeof(list), true, "Arms", true, true, false) &&

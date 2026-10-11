@@ -290,7 +290,77 @@ void SpanTree(const NiAVObject* object, UInt32 depth, AxialSpan& span) {
 	}
 }
 
+// Every vertex of a model, in the world (ForEachWorldVertex).
+struct VertexWalk {
+	VertexTaker take = nullptr;
+	void* context = nullptr;
+	UInt32 vertices = 0;
+	bool refused = false;
+};
+
+void WalkGeometry(const NiAVObject* geometry, VertexWalk& walk) {
+	const UInt32 data = Read(reinterpret_cast<UInt32>(geometry) + kGeometryDataOffset);
+	if (!LooksLikeObject(data)) {
+		return;
+	}
+	const UInt32 count = *reinterpret_cast<const UInt16*>(data + kGeometryVertexCountOffset);
+	const NiPoint3 boundCentre = *reinterpret_cast<const NiPoint3*>(data + kGeometryBoundOffset);
+	const float boundRadius = *reinterpret_cast<const float*>(data + kGeometryBoundOffset + 12);
+	const UInt32 vertices = Read(data + kGeometryVerticesOffset);
+	if (count == 0 || count > kMaxVerticesPerGeometry || !LooksLikeObject(vertices) ||
+	    !LooksLikeObject(vertices + (count - 1) * sizeof(NiPoint3))) {
+		return;
+	}
+	const auto* v = reinterpret_cast<const NiPoint3*>(vertices);
+	const NiTransform& world = geometry->worldTransform;
+	const float scale = world.scale > 0.0f ? world.scale : 1.0f;
+	for (UInt32 i = 0; i < count; ++i) {
+		if (!VertexInBound(v[i], boundCentre, boundRadius)) {
+			walk.refused = true;
+			return;
+		}
+		walk.take(walk.context, world.pos + world.rot * (v[i] * scale));
+		++walk.vertices;
+	}
+}
+
+void WalkTree(const NiAVObject* object, UInt32 depth, VertexWalk& walk) {
+	if (depth > kMaxDepth || walk.refused || (object->flags & kNiHiddenFlag) != 0) {
+		return;
+	}
+	const char* const name = NiClassNameOf(object);
+	if (NiClassIsNode(name)) {
+		const UInt32 address = reinterpret_cast<UInt32>(object);
+		const UInt32 children = Read(address + addr::kNiChildrenOffset);
+		const UInt16 count = *reinterpret_cast<const UInt16*>(address + addr::kNiChildCountOffset);
+		if (!LooksLikeObject(children) || count > 512) {
+			return;
+		}
+		for (UInt16 i = 0; i < count; ++i) {
+			const UInt32 child = Read(children + i * 4u);
+			if (LooksLikeObject(child)) {
+				WalkTree(reinterpret_cast<const NiAVObject*>(child), depth + 1, walk);
+			}
+		}
+		return;
+	}
+	if (ContainsText(name, "Tri")) {
+		WalkGeometry(object, walk);
+	}
+}
+
 }  // namespace
+
+bool ForEachWorldVertex(const NiAVObject* root, VertexTaker take, void* context) {
+	if (root == nullptr || take == nullptr || !LooksLikeObject(reinterpret_cast<UInt32>(root))) {
+		return false;
+	}
+	VertexWalk walk;
+	walk.take = take;
+	walk.context = context;
+	WalkTree(root, 0, walk);
+	return !walk.refused && walk.vertices > 0;
+}
 
 bool AxialExtentOf(const NiAVObject* root, const NiPoint3& origin, const NiPoint3& dir, float& low, float& high,
                    const float* band, NiPoint3* bandCentre, UInt32* bandVertices) {

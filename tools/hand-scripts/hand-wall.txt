@@ -1,0 +1,99 @@
+# The free hand stops at walls ([Hands] HandsStopAtWalls,
+# game/HandContactLogic.h): with nothing drawn both hands are free. The left
+# hand, pointed down, is lowered step by step until its fingertips meet the
+# floor - the one fixed surface the harness cell surely has under the
+# player. Pressed on, it stays on the floor while the controller goes lower;
+# pressed more than WeaponLetGoMetres (0.30) past it, it lets go and passes
+# through; raised and level again, it is free again. Then the right hand the
+# same way. The "Contact: the left hand" and "the right hand" state lines at
+# each mark give the controller and the drawn fingertips.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\hand-wall.txt
+
+ini Hands Enabled=1
+ini Hands BodyCollision=1
+ini Hands HandsStopAtWalls=1
+ini Hands WeaponLetGoMetres=0.30
+
+expect HandScript: finished
+expect Contact: the left hand meets the world now (the hand's span from its bones)
+expect Contact: the left hand met body
+expect Contact: the left hand let go
+expect Contact: the left hand free again
+expect Contact: the right hand meets the world now (the hand's span from its bones)
+expect Contact: the right hand met body
+expect Contact: the right hand let go
+expect Contact: the right hand free again
+reject HandScript: WARNING
+
+wait 10
+left rot 0 0 0
+left pos -0.20 -0.40 -0.30
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 2
+mark ready
+left rot -80 0 0
+left pos -0.20 -0.60 -0.30
+wait 1
+mark down
+left pos -0.20 -0.90 -0.30
+wait 0.5
+mark lower1
+left pos -0.20 -1.10 -0.30
+wait 0.5
+mark lower2
+left pos -0.20 -1.25 -0.30
+wait 0.5
+mark lower3
+left pos -0.20 -1.40 -0.30
+wait 0.5
+mark lower4
+left pos -0.20 -1.55 -0.30
+wait 0.5
+mark lower5
+left pos -0.20 -1.70 -0.30
+wait 0.5
+mark lower6
+left pos -0.20 -1.85 -0.30
+wait 0.5
+mark lower7
+left pos -0.20 -2.10 -0.30
+wait 0.5
+mark deep
+left rot 0 0 0
+left pos -0.20 -0.40 -0.30
+wait 1.5
+mark free
+right rot -80 0 0
+right pos 0.20 -0.60 -0.30
+wait 1
+mark rdown
+right pos 0.20 -0.90 -0.30
+wait 0.5
+mark rlower1
+right pos 0.20 -1.10 -0.30
+wait 0.5
+mark rlower2
+right pos 0.20 -1.25 -0.30
+wait 0.5
+mark rlower3
+right pos 0.20 -1.40 -0.30
+wait 0.5
+mark rlower4
+right pos 0.20 -1.55 -0.30
+wait 0.5
+mark rlower5
+right pos 0.20 -1.70 -0.30
+wait 0.5
+mark rlower6
+right pos 0.20 -1.85 -0.30
+wait 0.5
+mark rlower7
+right pos 0.20 -2.10 -0.30
+wait 0.5
+mark rdeep
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1.5
+mark rfree
+wait 1

@@ -2,6 +2,7 @@
 
 #include "core/MathFns.h"
 #include "core/Types.h"
+#include "game/MenuType.h"
 #include "game/NiMath.h"
 
 namespace obvr::camera {
@@ -661,6 +662,50 @@ inline bool ComposeHandsHideList(char* out, UInt32 capacity, bool hideArms, cons
 	}
 	out[at] = '\0';
 	return fits;
+}
+
+// The hands stay in the game's menus ([Hands] HandsInMenus; the tester,
+// 2026-10-11: "Hände in game in allen Menüs außer ESC Optionen Menü
+// erhalten bleiben und nicht ausgeblendet werden"): pinned to the
+// controllers and drawn over the inventory, a container, the map, a book, a
+// dialogue - and away for the Esc menu and what opens from it (the options,
+// saving and loading, a message box over it), the main menu, a loading
+// screen and the credits, which are not the game. Every entry of the
+// interface manager's stack is asked, not the top alone: the options or a
+// quit box over the Esc menu still have it beneath them.
+inline bool MenuTakesTheHands(UInt32 menuId) {
+	switch (menuId) {
+	case game::kMenuIdPause:
+	case game::kMenuIdOptions:
+	case game::kMenuIdSave:
+	case game::kMenuIdLoad:
+	case game::kMenuIdMain:
+	case game::kMenuIdLoading:
+	case game::kMenuIdCredits:
+		return true;
+	default:
+		return false;
+	}
+}
+
+// Whether the hands go (hidden, not pinned) for the menus open now. With
+// the setting off every menu takes them, as before 2026-10-11; with it on,
+// only one of the above anywhere in the stack. An empty stack read in menu
+// mode (GetTopVisibleMenuID can briefly read none while the F1-F4 stack is
+// open) keeps them.
+inline bool HandsAwayForMenus(bool handsInMenus, bool menuMode, const UInt32* stack, UInt32 count) {
+	if (!menuMode) {
+		return false;
+	}
+	if (!handsInMenus) {
+		return true;
+	}
+	for (UInt32 i = 0; stack != nullptr && i < count; ++i) {
+		if (MenuTakesTheHands(stack[i])) {
+			return true;
+		}
+	}
+	return false;
 }
 
 // The death view held still: the game's death camera sinks and drifts, which
