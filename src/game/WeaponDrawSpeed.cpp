@@ -89,19 +89,17 @@ void Collect(UInt32 animData, bool fireKeys, WeaponDrawSpeedReport& report) {
 }
 
 // The sequence's own time at an anim-data clock, as the anim update computes
-// it for its key window (0x0049F4A0: the offset added and scaled by
-// Gamebryo, 0 when not playing).
-constexpr UInt32 kSequenceTimeAt = 0x0049F4A0;
-// TESAnimGroup's key handler (0x0051AF70, thiscall on the group, ret 10h):
-// (actor, from, to, sequence) - the keys after `from` up to `to`; the Equip
-// and Unequip sounds are its kinds 9 and 10 (0x0051B38D, 0x0051B39A), the
-// weapon's attach is not among them.
-constexpr UInt32 kGroupHandleKeys = 0x0051AF70;
-
+// it for its key window (addr::kSequenceTimeAt: the offset added and scaled
+// by Gamebryo, 0 when not playing).
 float SequenceTime(UInt32 sequence, float clock) {
 	using TimeFn = float(__fastcall*)(UInt32 self, void* edx, float clock);
-	return reinterpret_cast<TimeFn>(kSequenceTimeAt)(sequence, nullptr, clock);
+	return reinterpret_cast<TimeFn>(addr::kSequenceTimeAt)(sequence, nullptr, clock);
 }
+
+// TESAnimGroup's key handler (addr::kAnimGroupHandleKeys, thiscall on the
+// group, ret 10h): (actor, from, to, sequence) - the keys after `from` up to
+// `to`; the Equip and Unequip sounds are its kinds 9 and 10 (0x0051B38D,
+// 0x0051B39A), the weapon's attach is not among them.
 
 void FireKeys(const Followed& f, float from, float to) {
 	if (!(to > from) || !f.fireKeys) {
@@ -113,7 +111,7 @@ void FireKeys(const Followed& f, float from, float to) {
 		return;
 	}
 	using KeysFn = void(__fastcall*)(UInt32 self, void* edx, UInt32 actor, float from, float to, UInt32 sequence);
-	reinterpret_cast<KeysFn>(kGroupHandleKeys)(group, nullptr, player, from, to, f.sequence);
+	reinterpret_cast<KeysFn>(addr::kAnimGroupHandleKeys)(group, nullptr, player, from, to, f.sequence);
 	// Which spans were fired, per draw: whether a sequence's sound key fell in
 	// one (the tester, 2026-09-30: the bow and the staff are drawn silently).
 	static UInt32 s_lines = 16;

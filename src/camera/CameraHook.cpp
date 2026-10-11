@@ -81,6 +81,7 @@
 #include "game/CombatReach.h"
 #include "game/SlowApproach.h"
 #include "game/CombatRing.h"
+#include "game/AttackTempo.h"
 #include "game/Insult.h"
 #include "vr/MenuHaptics.h"
 #include "vr/VrKeyboard.h"
@@ -2719,6 +2720,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	                                          config.hands.meleeAttackersAtOnce, config.tracker.unitsPerMetre,
 	                                          config.hands.combatRingTurnSeconds),
 	                     dt, test::HandScriptMarkedThisFrame());
+	// Their attacks slower and rarer (game/AttackTempo.h): the attack
+	// sequences of those fighting the player followed, the melee decision's
+	// chance and hold scaled.
+	game::StepAttackTempo(
+		game::AttackTempoFrom(active, config.hands.enemyAttackSpeed, config.hands.enemyAttackFrequency),
+		test::HandScriptMarkedThisFrame());
 	if (!active && !menusOnly) {
 		if (test::HandScriptMarkedThisFrame()) {
 			OBVR_LOG("HandScript: state - the hand mode is not running (Hands.Enabled %d, "
@@ -10361,6 +10368,7 @@ bool Install() {
 	game::InstallBlockCone();
 	game::InstallParry();
 	game::InstallSlowApproach();
+	game::InstallAttackTempo();
 	game::InstallPlayerLookAt();
 	game::InstallWorldPickHook();
 	// The controllers' way into a game behind another window; logs its own

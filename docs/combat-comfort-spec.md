@@ -471,7 +471,63 @@ angreifen"):**
   -> 3.0 m; the turn passed six times in 25 s. To watch in the headset:
   whether the placed steps look like walking, and walls (a placement is not
   stopped by them). Ranged fighters and casters are members too.
-  Items 1 and 2 (tempo, frequency) are not built.
+
+**Built 2026-10-11 (items 1 and 2; the tester: "mach nun das mit dem attack
+speed und häufigkeit in der spec"):**
+
+- `[Hands] EnemyAttackSpeed=75` (20-200) and `EnemyAttackFrequency=100`
+  (10-200), per cent of the game's own; settings rows "Attack tempo (%)",
+  "Attack frequency (%)". Only those fighting the player (combat target the
+  player, the ring's reading); game/AttackTempoLogic.h, game/AttackTempo.cpp,
+  attack_tempo_test.
+- **The tempo.** Each attack sequence (groups 19 AttackBow to 26
+  AttackRightPower, in any of the actor's five slots) is followed while it
+  plays, and its offset (NiControllerSequence +0x48, the draw speed's
+  reading) moved each frame so its time runs `speed` times what the engine
+  would run it: pose, keys - the blow's hit among them - and the group's end
+  all come that much later, in their order. Read in the harness: at the
+  game's own speed an attack sequence's time runs at the weapon's speed
+  (0.7, 0.9, 1.1 of the clock for the bandit's weapons; its frequency at
+  +0x28 reads 1 throughout, so the engine adds the weapon's speed to the
+  offset the same way - a plain half step taken back gave 0.4, not 0.45, of
+  the clock at a weapon's 0.9), so the step taken back is scaled by that
+  rate, measured over the first frame followed before the offset is touched.
+  The engine fires a sequence's keys over the window from its time at the
+  clock before the step to its time after, both read with the offset as it
+  is then (0x00476F4D, 0x00477A4B), so an offset moved back would make a
+  key fire twice: the one call that fires them (0x00477AB1 ->
+  TESAnimGroup's handler 0x0051AF70) goes through a wrapper that starts a
+  followed sequence's window where its last one ended.
+- **The frequency.** The melee decisions (0x006189E0, 0x00620290; 0x0061E5A0
+  too) roll against the attack chance the combat style computes
+  (0x00546800: chance plus bonuses and skill modifier, times the style's
+  "attack while under attack" or "attack not under attack" multiplier -
+  the CS wiki's Combat Style page; TESCombatStyle's vtable 0x00A407F4),
+  and a decision to hold draws a hold timer (0x00546B20, between the
+  style's min and max, 0.5-1.5 s by default) before the next. The two
+  multipliers' getters (0x004AA0B0, 0x004AA130) are detoured to return
+  theirs times the setting, and the two hold draws' call sites (0x00619176,
+  0x00620BFB) to draw theirs divided by it - in scope only: each decision
+  fetches the style through Actor::GetCombatStyle (0x005E0F50) right
+  before, which is detoured to say whether that actor fights the player.
+- **Harness PASS** (`tools/hand-scripts/attack-tempo.txt`,
+  `attack-frequency.txt`, the control `attack-tempo-vanilla.txt`; one
+  bandit at an untouchable player, the ring off, 2026-10-11):
+  - the control: the bandit's swings' time ran x0.90 of the clock (its
+    weapon), 66 and 32 swings in two minutes of marks, holds of 0.5-1.5 s
+    drawn as they are;
+  - tempo 50: every swing's time ran x0.35 of the clock at a weapon's
+    0.70 - "x0.50 read back"; a power attack of 1.47 s of animation took
+    4.18 s;
+  - frequency 50: 33 swings in the minute the control had 66, every hold
+    doubled (1.1-3.0 s) - "(x2.00)" - 12 holds drawn, 12 attack actions.
+  Logged: "Attack tempo: ..." on install, per attack followed, per swing of
+  anyone fighting the player (its animation's run against the clock), per
+  hold drawn in scope; at a hand script's mark a state line.
+- To watch in the headset: whether a slowed attack looks like slow motion
+  of that fighter alone (its walk is not slowed) or stutters; whether the
+  hit lands when the blade arrives; bows (AttackBow is slowed too); and
+  whether 75 is the right default - the tester asked for a slider.
 
 ## Test reminders
 

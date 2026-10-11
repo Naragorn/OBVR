@@ -1477,3 +1477,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME combat_ring COMMAND combat_ring_test)
+
+add_executable(attack_tempo_test AttackTempoTest.cpp)
+
+target_include_directories(attack_tempo_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(attack_tempo_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME attack_tempo COMMAND attack_tempo_test)

@@ -345,6 +345,14 @@ struct HandSettings {
 	float combatRingMetres = 5.0f;
 	int meleeAttackersAtOnce = 1;
 	float combatRingTurnSeconds = 6.0f;  // how long a turn lasts at least, 2-30 s
+	// Enemy attacks slower and rarer: the attack animations of those fighting
+	// the player play at EnemyAttackSpeed per cent of the game's own (20-200),
+	// and EnemyAttackFrequency per cent (10-200) scales their chance to
+	// attack, with the hold between their melee decisions scaled the other
+	// way ([Hands] EnemyAttackSpeed, EnemyAttackFrequency; game/AttackTempo.h;
+	// the tester, 2026-10-10). 100 is the game's own.
+	float enemyAttackSpeed = 75.0f;
+	float enemyAttackFrequency = 100.0f;
 	// The off hand in a fight: it strikes with a weapon drawn, and its grip
 	// holds a fighter ([Hands] OffHandStrikes, OffHandGrabs, GrabHoldSeconds,
 	// GrabFatigue; game/GrappleLogic.h).

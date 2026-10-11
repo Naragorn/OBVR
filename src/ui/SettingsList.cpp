@@ -1221,6 +1221,24 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.combatRingTurnSeconds = v; },
 	},
 	{
+		"Hands", "Attack tempo (%)",
+		"How fast the attacks of those fighting you play, per cent of the game's own: slower, their wind-up "
+		"can be seen and met",
+		ItemKind::Number, 20.0f, 200.0f, 5.0f, 0, false,
+		"Hands", "EnemyAttackSpeed",
+		+[](const Config& c) { return c.hands.enemyAttackSpeed; },
+		+[](Config& c, float v) { c.hands.enemyAttackSpeed = v; },
+	},
+	{
+		"Hands", "Attack frequency (%)",
+		"How often those fighting you choose to attack, per cent of the game's own: the chance of an attack, "
+		"and the pause between their decisions the other way",
+		ItemKind::Number, 10.0f, 200.0f, 5.0f, 0, false,
+		"Hands", "EnemyAttackFrequency",
+		+[](const Config& c) { return c.hands.enemyAttackFrequency; },
+		+[](Config& c, float v) { c.hands.enemyAttackFrequency = v; },
+	},
+	{
 		"Hands", "Off hand strikes",
 		"With a weapon drawn, the free hand punched or driven fast into someone staggers them, or knocks them down",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,

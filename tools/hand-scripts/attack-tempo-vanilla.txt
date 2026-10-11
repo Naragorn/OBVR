@@ -1,0 +1,39 @@
+# The control for attack-tempo.txt and attack-frequency.txt: the same bandit
+# at the game's own speed and frequency (both 100): nothing followed, no
+# hold scaled, so the log's attack actions - how long each lasts, how many
+# begin in the minute of marks - and hold draws are the game's own to
+# compare against.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\attack-tempo-vanilla.txt
+
+ini Hands Enabled=1
+ini Hands CombatRing=0
+ini Hands EnemyAttackSpeed=100
+ini Hands EnemyAttackFrequency=100
+console-at ready player.placeatme 00069AD1 1
+console-at ready tgm
+
+expect HandScript: finished
+expect Attack tempo: state - speed x1.00, chance x1.00, hold x1.00 (off); 0 followed now, 0 attacks followed, 0 holds drawn
+expect attack action lasted
+expect swings begun
+expect (x1.00)
+reject followed from
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 10
+mark fight1
+wait 10
+mark fight2
+wait 10
+mark fight3
+wait 10
+mark fight4
+wait 10
+mark fight5
+wait 10
+mark fight6

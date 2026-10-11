@@ -1,0 +1,41 @@
+# Enemy attacks at half speed ([Hands] EnemyAttackSpeed=50, game/AttackTempo.h,
+# combat-comfort-spec 4 item 1): one melee bandit (00069AD1) at an
+# untouchable player (tgm), the ring off so it attacks as it will. Each of
+# its attack sequences is followed while it plays; when it ends the log says
+# how much of its animation ran in how much of the clock, against the
+# sequence's own rate (the weapon's speed, 0.8-1.2 for the bandit's weapons,
+# read over the first frame followed) - "x0.50 read back" - and the state
+# lines at the marks list what is followed and how fast the swings seen ran
+# in all. At the game's own speed (attack-tempo-vanilla.txt) the swings'
+# time runs at the weapon's speed; here at half of it.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\attack-tempo.txt
+
+ini Hands Enabled=1
+ini Hands CombatRing=0
+ini Hands EnemyAttackSpeed=50
+ini Hands EnemyAttackFrequency=100
+console-at ready player.placeatme 00069AD1 1
+console-at ready tgm
+
+expect HandScript: finished
+expect Attack tempo: the anim update's key firing - the call at 00477AB1
+expect followed from
+expect x0.50 asked, x0.50 read back
+expect attack action lasted
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 10
+mark fight1
+wait 5
+mark fight2
+wait 5
+mark fight3
+wait 5
+mark fight4
+wait 5
+mark fight5

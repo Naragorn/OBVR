@@ -1458,6 +1458,55 @@ inline constexpr UInt32 kCombatDistanceSetting = 0x00B36F20;
 inline constexpr UInt32 kActorProcessManager = 0x00B3BD00;
 inline constexpr UInt32 kActorListByLevel = 0x00673A50;
 
+// Animation time and keys (game/WeaponDrawSpeed.cpp, game/AttackTempo.cpp;
+// read 2026-09-28 and 2026-10-11 with dumpbin).
+//
+// A sequence's own time at an anim-data clock, as the actor's anim update
+// (0x00476E90..0x004774C3, `clock += step` at 0x00476F97) computes it for
+// its key window: 0x0049F4A0 adds the sequence's offset (+0x48) to the
+// clock and has Gamebryo scale it (0x006C5FC0); 0 when the sequence's
+// state (+0x44) is not 1, 2 or 3. The window's start is read before the
+// clock's step (0x00476F4D), its end after (0x00477A4B), both with the
+// offset as it is then, and the keys between go through TESAnimGroup's key
+// handler 0x0051AF70 - thiscall on the group, (actor, from, to, sequence),
+// ret 10h - from the one call at 0x00477AB1 (`E8 BA 34 0A 00`; no other
+// `call 0051AF70` in the image).
+inline constexpr UInt32 kSequenceTimeAt = 0x0049F4A0;
+inline constexpr UInt32 kAnimGroupHandleKeys = 0x0051AF70;
+inline constexpr UInt32 kCallAnimGroupHandleKeys = 0x00477AB1;
+
+// The melee decision's attack chance and hold (game/AttackTempo.cpp; read
+// 2026-10-11 with dumpbin; the CS wiki's Combat Style page for the names).
+//
+// TESCombatStyle (xOBSE GameForms.h; its vtable 0x00A407F4, the getters
+// +0x10C attack chance, +0x13C/+0x140 hold timer min/max) has one getter
+// per advanced setting, each reading the record's own (+0x94 -> the
+// ExtraSettings) or the game's default: 0x004AA0B0 the "attack while under
+// attack" multiplier (ExtraSettings +0x40, default fAIDefaultAttackDuring-
+// AttackMult at 0x00B35718, 0.75), 0x004AA130 the "attack not under attack"
+// multiplier (+0x44, fAIDefaultAttackNoAttackMult, 1.0). Both begin
+// `push ecx; push esi; mov esi,ecx; mov eax,[esi]` and call the style's
+// HasAdvancedData (+0x16C). The attack chance 0x00546800 (cdecl: style,
+// ..., under attack, ..., blocking; ret with `add esp,20h` at its callers)
+// adds the chance's bonuses and skill modifier, then multiplies by one of
+// the two (0x005468C7 / 0x005468CE), and by the during-block one when the
+// target blocks; the melee decisions 0x006189E0 and 0x00620290 (thiscall,
+// ret 4; `this`+0x3C the actor) and 0x0061E5A0 (ret 8) call it. A decision
+// to hold draws its timer with 0x00546B20 (cdecl, a random float between
+// two) from the style's hold min and max - 0x00619176 and 0x00620BFB,
+// `E8 A5 D9 F2 FF` and `E8 20 5F F2 FF`; the defaults fAIDefaultHoldMinTime
+// 0.5 and fAIDefaultHoldMaxTime 1.5 (0x00A3D65C, 0x00A35AA4). Each decision
+// fetches the style through Actor::GetCombatStyle 0x005E0F50 (thiscall,
+// `push ebx; push esi; mov esi,ecx; mov eax,[esi]`) right before the chance
+// call and right before the hold draw (0x00618C4B -> 0x00618C51, 0x00619145
+// -> 0x00619176), which is where the actor is known.
+inline constexpr UInt32 kCombatStyleAttackUnderAttackMult = 0x004AA0B0;
+inline constexpr UInt32 kCombatStyleAttackNotUnderAttackMult = 0x004AA130;
+inline constexpr UInt32 kActorGetCombatStyle = 0x005E0F50;
+inline constexpr UInt32 kRandomBetween = 0x00546B20;
+inline constexpr UInt32 kCallHoldTimerDrawA = 0x00619176;
+inline constexpr UInt32 kCallHoldTimerDrawB = 0x00620BFB;
+
 // NiAVObject::worldBound - centre and radius of the sphere round the
 // model, at +0x20, before the local transform at +0x30 this project has
 // been writing to for weeks (GameTypes.h). Read only, to decide whether a
