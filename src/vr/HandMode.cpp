@@ -619,7 +619,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		r.controls.attack = r.archery.attackHeld;
 	}
 	r.controls.readyWeapon =
-		r.controls.readyWeapon || r.holster.readyClick || r.fist.readyClick;
+		r.controls.readyWeapon || r.holster.readyClick || r.fist.readyClick || f.readyWeaponClick;
 	r.controls.run = StepRunToggle(m_runLatched, s.runToggle, in.leftStickClick, r.controls.run);
 	HoldTaps(r.controls, f, r);
 	if (!f.menuMode && cr.valid) {

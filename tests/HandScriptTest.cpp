@@ -124,6 +124,19 @@ void TestParseErrors() {
 	Check(FailsOnLine("head\n") == 1, "head without a field");
 	Check(FailsOnLine("head roll 3\n") == 1, "an unknown head field");
 	Check(FailsOnLine("head real 1\n") == 1, "head real takes nothing");
+	Check(FailsOnLine("head face\n") == 1, "head face takes on or off");
+	{
+		HandScript face;
+		ScriptParseError error;
+		Check(ParseHandScript("head face 1\nwait 1\nhead yaw 10\n", face, error) && face.steps[0].op == ScriptOp::Head &&
+		          face.steps[0].head == HeadField::Face && face.steps[0].values[0] == 1.0f,
+		      "head face 1 parses");
+		ScriptHead head;
+		ApplyHeadField(head, face.steps[0]);
+		Check(head.faceFighter && head.synthetic, "applied: the head faces the fighter");
+		ApplyHeadField(head, face.steps[2]);
+		Check(!head.faceFighter && head.yaw == 10.0f, "a yaw set after it ends the facing");
+	}
 	Check(FailsOnLine("head yaw left\n") == 1, "a head value that is not a number");
 	Check(FailsOnLine("mark\n") == 1, "mark without a name");
 	Check(FailsOnLine("mark two words\n") == 1, "a mark name with a space");

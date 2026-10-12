@@ -1044,6 +1044,54 @@ The tester's asks of 2026-10-07, all in one round:
   this way, and the yield would have to be called in the engine directly
   (the activate-while-blocking branch; not located yet). The button route
   of 2026-09-29 (raised hand and A) yielded with the weapon drawn.
+  **Hardened (the tester, 2026-10-12: "teilweise kann es noch passieren
+  dass ich ein yield event bekomme obwohl ich nur waffen oder hände
+  schwinge. die mit offenen handflächen zum gegner (egal ob mit oder ohne
+  waffe oder schild) und beide hände leicht nach rechts und links wippen
+  für ein paar sekunden - geste, muss etwas mehr gehärtet werden damit es
+  nicht einfach so im combat passiert").** The first version counted
+  sideways reversals alone - of either hand, at any speed, in any pose -
+  and the tester's logs of 2026-10-11 show the rocking "complete" twenty
+  times a session from ordinary hand movement, held back only by "no one
+  in combat ahead" or the weapon in hand. Now (`vr/Yield.h`, yield_test):
+  - the weapon in hand or away is no longer a gate. The engine's yield is
+    block and activate, and its block needs a weapon or the fists up: with
+    nothing readied, activate on the attacker opened their pockets (the
+    harness, 2026-10-12: "Container (0x3F0)" on the bandit right after
+    "activate goes down ... the player's action -1" - which answers the
+    open question above: the key route cannot yield with the weapons
+    sheathed). So with the weapons away the fists are raised first (the
+    ready-weapon click, followed until the game shows them up, `YieldDrive`
+    in CameraHook.cpp), the block and activate follow, and the fists raised
+    for it are lowered again after ("Yield: the fists raised first ...",
+    "the fists are up after n s", "done - the fists raised for it are
+    lowered again"). The pick's target follows the attacker while the
+    block is held (one walking on in those 20 frames put the crosshair on
+    nobody, harness run 4). The tester's earlier "yield klappte paarmal,
+    wurde aber vom npc rejected" with the weapon sheathed was, by this,
+    the pocket menu or the talk refusal, not a yield - unverified;
+  - each hand has to be tracked and open (as before), held up before the
+    eyes (no lower than 50 cm under them, ahead of them) with its fingers
+    up (the pinned hand bone's knuckle direction at least 12 degrees above
+    level - the palms out), not swinging (the hand mode's swing, and for a
+    second after it), and slower than 0.9 m/s over the last 0.1 s;
+  - a stroke longer than 30 cm is a sweep, not a rock; a reversal within
+    0.12 s of the last is a tremor's and one after more than 1.2 s a
+    drift's, neither counted;
+  - four reversals within 3 s, at least two from each hand and at least a
+    second from the first to the last, are the yield; a gesture complete
+    within the 3 s cooldown is dropped, not kept to fire the moment the
+    cooldown ends (the unit test found it firing with the hands at rest).
+  Any gate failing resets the count. The log's "the hands rocked, but no
+  yield - <reasons>" now names these (too fast, too low, not ahead,
+  fingers not up, swinging, a stroke too long, one hand alone, over in
+  under a second), with the curls, the knuckles' rise and the hands'
+  height under the eyes; a hand script's mark logs the count and the
+  last reset. Harness `yield.txt`: a bandit attacking an untouchable
+  player, the gesture with the hands empty (the yield), fast sideways
+  swings of both open hands (no yield, "too fast"), the sword drawn and
+  the gesture again (the yield). The pose numbers (50 cm, 12 degrees,
+  0.9 m/s) are this round's first guess, to be set from the headset.
 - **The trigger never attacks with a melee weapon or the fists in hand**
   (the tester: "powerattacks mit trigger verbieten nun für alle waffen und
   ohne waffen"): `HandFrameInput::meleeInHand`, set whether or not the hits

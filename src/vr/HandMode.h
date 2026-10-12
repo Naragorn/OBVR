@@ -428,6 +428,10 @@ struct HandModeFrame {
 	bool firstPerson = true;
 	bool meleeInHand = false;  // a drawn blade, blunt weapon or bare fists: swung, not shot
 	bool meleeHeld = false;    // the same, whether or not the hits by motion are on: the trigger never attacks
+	// A click of the ready-weapon control from outside the hand mode this
+	// frame, followed by StepReadyWeapon like the stick's: the yield raising
+	// the fists for the engine's block (vr/Yield.h), and lowering them after.
+	bool readyWeaponClick = false;
 	// A shield on the left arm: only then does the raised left hand block.
 	bool shieldEquipped = false;
 	// The mode is off but the controllers still steer menus (ControllerMenus).

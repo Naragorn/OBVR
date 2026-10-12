@@ -26,6 +26,12 @@ bool HandScriptDrivesHands();
 // the state a picture is taken of.
 bool HandScriptMarkedThisFrame();
 
+// `head face 1`: whether the synthetic head's yaw is to be turned each
+// frame to face the nearest fighter, and the turn itself (degrees, positive
+// to the left - the script's own yaw), applied by the camera hook.
+bool HandScriptHeadFacesFighter();
+void TurnHandScriptHead(float degreesLeft);
+
 // The last mark's name ("" before the first), for pictures saved at it.
 const char* HandScriptMarkName();
 

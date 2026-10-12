@@ -27,6 +27,9 @@
 //                                    synthetic head 1.6 m up looking ahead: a
 //                                    sleeping headset gives no valid pose
 //                                    (2026-09-27, "head 0" in the state line)
+//   head face <0|1>                  the synthetic head's yaw turned each frame
+//                                    to the nearest actor in combat with the
+//                                    player (a head yaw ends it)
 //   mark <name>                      a log line the runner takes a
 //                                    screenshot on
 //   dump                             SteamVR's CompositorDumpImages
@@ -90,6 +93,11 @@ struct ScriptHead {
 	float yaw = 0.0f;
 	float pitch = 0.0f;
 	NiPoint3 position{0.0f, 1.6f, 0.0f};
+	// `head face 1`: the yaw turned each frame to face the nearest actor in
+	// combat with the player (the camera hook turns it; a fighter circling
+	// the scripted player would otherwise leave the head's cone - the yield
+	// scenario, 2026-10-12). `head yaw` sets the yaw once and ends it.
+	bool faceFighter = false;
 };
 
 // Where the hands start: low in front, as they hang holding controllers.
@@ -135,6 +143,7 @@ enum class HeadField : UInt8 {
 	Pitch,
 	Pos,
 	Real,
+	Face,
 };
 
 struct ScriptStep {
@@ -307,6 +316,9 @@ inline bool ParseHandScript(const std::string& text, HandScript& out, ScriptPars
 				count = 3;
 			} else if (t[1] == "real") {
 				step.head = HeadField::Real;
+			} else if (t[1] == "face") {
+				step.head = HeadField::Face;
+				count = 1;
 			} else {
 				return fail("unknown head field");
 			}
@@ -512,6 +524,7 @@ inline void ApplyHeadField(ScriptHead& head, const ScriptStep& s) {
 	case HeadField::Yaw:
 		head.synthetic = true;
 		head.yaw = s.values[0];
+		head.faceFighter = false;
 		break;
 	case HeadField::Pitch:
 		head.synthetic = true;
@@ -523,6 +536,11 @@ inline void ApplyHeadField(ScriptHead& head, const ScriptStep& s) {
 		break;
 	case HeadField::Real:
 		head.synthetic = false;
+		head.faceFighter = false;
+		break;
+	case HeadField::Face:
+		head.synthetic = true;
+		head.faceFighter = s.values[0] != 0.0f;
 		break;
 	}
 }

@@ -143,6 +143,19 @@ bool HandScriptDrivesHands() { return g_loaded && g_started; }
 
 bool HandScriptMarkedThisFrame() { return g_markedThisFrame; }
 
+bool HandScriptHeadFacesFighter() { return HandScriptDrivesHands() && g_run.pose.head.synthetic && g_run.pose.head.faceFighter; }
+
+void TurnHandScriptHead(float degreesLeft) {
+	float yaw = g_run.pose.head.yaw + degreesLeft;
+	while (yaw > 180.0f) {
+		yaw -= 360.0f;
+	}
+	while (yaw < -180.0f) {
+		yaw += 360.0f;
+	}
+	g_run.pose.head.yaw = yaw;
+}
+
 const char* HandScriptMarkName() { return g_markName; }
 
 void ScriptedHands(const vr::Quaternion& headOrientation, const NiPoint3& headPosition,

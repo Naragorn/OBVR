@@ -1562,15 +1562,36 @@ void StepVrKeyboard(const Config& config) {
 	}
 	g_menuClickEdge = false;
 }
-UInt32 g_yieldFramesLeft = 0;
+// The yield carried out once the gesture is complete (vr/Yield.h): the
+// engine's own yield is block and activate together, and its block needs a
+// weapon or the fists in hand - with nothing readied, activate on the
+// attacker opened their pockets instead (the harness, 2026-10-12: "Container
+// (0x3F0)" on the bandit right after "activate goes down ... the player's
+// action -1"). So with the weapons away the fists are raised first (the
+// ready-weapon click, followed until the game shows them up), then block is
+// held 30 frames with activate down from the 10th to the 16th of them, once
+// the block has stood (8 frames with activate down right away did not yield
+// in the headset, 2026-10-07), and the fists raised for it are lowered
+// again after.
+enum class YieldPhase : UInt8 { None, Readying, Blocking };
+struct YieldDrive {
+	YieldPhase phase = YieldPhase::None;
+	UInt32 framesLeft = 0;       // Blocking: frames of block left
+	float readySeconds = 0.0f;   // Readying: waited so far
+	bool raisedFists = false;    // the fists were raised for this yield
+	bool clickWanted = false;    // the ready-weapon click for the next hand mode step
+};
+YieldDrive g_yieldDrive;
 NiPoint3 g_yieldTarget{0.0f, 0.0f, 0.0f};
+// The attacker yielded to, whose bound the pick's target follows while the
+// block is held - one walking on in the 20 frames before activate put the
+// crosshair on nobody (the harness, 2026-10-12, "the crosshair on 00000000").
+UInt32 g_yieldActor = 0;
 UInt32 g_yieldLines = 20;
-// Block held 30 frames; activate down from the 10th to the 16th of them,
-// once the block has stood (8 frames with activate down right away did not
-// yield in the headset, 2026-10-07).
 inline constexpr UInt32 kYieldHoldFrames = 30;
 inline constexpr UInt32 kYieldActivateFrom = 20;  // frames left when activate goes down
 inline constexpr UInt32 kYieldActivateTo = 14;    // ... and comes up
+inline constexpr float kYieldReadySeconds = 3.0f;  // the fists given up on after this
 // The mod's slap by a grab tap (game/Shove.h, TakeSlapGrabTap): the frames
 // the grab is held with the pick on the slapped one.
 UInt32 g_slapTapFrames = 0;
@@ -1655,11 +1676,34 @@ NiPoint3 g_slapTapTarget{0.0f, 0.0f, 0.0f};
 inline constexpr float kYieldEnemyUnits = 420.0f;   // 6 m
 inline constexpr float kYieldEnemyCos = 0.866f;     // 30 degrees from the head's forward
 
+// A hand script's `head face 1`: the synthetic head turned to face the
+// nearest actor in combat within 10 m, every frame - a fighter circling the
+// scripted player stays before the head.
+void FaceFighterForHandScript() {
+	if (!test::HandScriptHeadFacesFighter() || !g_cyclopeanCameraWorldValid) {
+		return;
+	}
+	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+	const NiPoint3 forward{camRot.data[0][1], camRot.data[1][1], camRot.data[2][1]};
+	NiPoint3 centre{};
+	void* const actor = game::ActorUnderRay(g_cyclopeanCameraWorldTransform.pos, forward, 700.0f, -1.0f, &centre);
+	if (actor == nullptr || !game::ActorInCombat(actor)) {
+		return;
+	}
+	// The way to them in the camera's own frame (x right, y ahead): the
+	// angle to the right, turned left by it.
+	const NiPoint3 local = InverseRotation(camRot) * (centre - g_cyclopeanCameraWorldTransform.pos);
+	if (!(local.x * local.x + local.y * local.y > 1.0f)) {
+		return;
+	}
+	test::TurnHandScriptHead(-math::Atan2(local.x, local.y) * math::kRadiansToDegrees);
+}
+
 void UpdateYield(const Config& config, const vr::HandModeFrame& frame, bool active, float dt) {
-	const bool weaponAway = !frame.meleeHeld;
 	NiPoint3 enemy{};
 	bool enemyAhead = false;
 	void* ahead = nullptr;  // whoever is under the head ray, in combat or not
+	FaceFighterForHandScript();
 	if (active && g_cyclopeanCameraWorldValid) {
 		const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
 		const NiPoint3 forward{camRot.data[0][1], camRot.data[1][1], camRot.data[2][1]};
@@ -1667,37 +1711,83 @@ void UpdateYield(const Config& config, const vr::HandModeFrame& frame, bool acti
 		                            &enemy);
 		enemyAhead = ahead != nullptr && game::ActorInCombat(ahead);
 	}
-	// A hand is open by its middle, ring and little fingers (vr::YieldHandCurl).
-	const float rightCurl = g_hand.rightCurlValid ? vr::YieldHandCurl(g_hand.rightCurl) : 1.0f;
-	const float leftCurl = g_hand.leftCurlValid ? vr::YieldHandCurl(g_hand.leftCurl) : 1.0f;
-	const bool allowed = active && vr::YieldAllowed(weaponAway, frame.right.valid && g_hand.rightHandValid,
-	                                                frame.left.valid && g_hand.leftHandValid, rightCurl, leftCurl,
-	                                                enemyAhead);
-	// Each hand's sideways position, outward from the body positive: the
-	// camera-relative offset's x (the camera's x axis points right).
+	if (!active) {
+		g_yield = vr::YieldState{};
+		g_yieldShadow = vr::YieldState{};
+		return;
+	}
+	// Each hand as the gesture reads it (vr/Yield.h): open by its middle,
+	// ring and little fingers (vr::YieldHandCurl); its place relative to the
+	// head in metres - the camera-relative offset (x right, y ahead, z up),
+	// the x outward from the body for either hand; its knuckles' direction
+	// (the pinned hand bone's +x in the world, as the last frame drew it);
+	// and the hand mode's swing. The weapon in hand or away is no gate
+	// (the tester, 2026-10-12: "egal ob mit oder ohne waffe oder schild").
 	const float perMetre = config.tracker.unitsPerMetre > 0.0f ? config.tracker.unitsPerMetre : 1.0f;
-	const float lateral[2] = {g_hand.rightHandOffsetUnits.x / perMetre, -g_hand.leftHandOffsetUnits.x / perMetre};
+	vr::YieldInput in;
+	in.dt = dt;
+	in.enemyAhead = enemyAhead;
+	for (int side = 0; side < 2; ++side) {
+		const bool right = side == 0;
+		vr::YieldHandInput& h = in.hand[side];
+		h.tracked = right ? (frame.right.valid && g_hand.rightHandValid) : (frame.left.valid && g_hand.leftHandValid);
+		h.curl = right ? (g_hand.rightCurlValid ? vr::YieldHandCurl(g_hand.rightCurl) : 1.0f)
+		               : (g_hand.leftCurlValid ? vr::YieldHandCurl(g_hand.leftCurl) : 1.0f);
+		const NiPoint3& off = right ? g_hand.rightHandOffsetUnits : g_hand.leftHandOffsetUnits;
+		h.position = NiPoint3{(right ? off.x : -off.x) / perMetre, off.y / perMetre, off.z / perMetre};
+		h.swinging = right ? g_hand.swingActive : g_hand.leftSwingActive;
+		NiMatrix33 boneRot{};
+		NiPoint3 bonePos{};
+		h.knucklesUp = game::ReadHandBoneWorld(right, boneRot, bonePos) ? boneRot.data[2][0] : 1.0f;
+	}
 	// The rocking watched on its own as well: when it completes while the
-	// gesture is not allowed, the log says what stood in the way
-	// (vr::YieldBlockedBy) - the tester's "yield ging nicht" came with no
-	// yield line at all, 2026-10-07.
-	if (vr::StepYield(g_yieldShadow, active, lateral, dt) && !allowed && g_yieldLines > 0) {
+	// gesture did not count, the log says what stood in the way - the
+	// tester's "yield ging nicht" came with no yield line at all, 2026-10-07.
+	const bool rocked = vr::StepYield(g_yieldShadow, vr::YieldRockingAlone(in));
+	const bool fired = vr::StepYield(g_yield, in);
+	if (rocked && !fired && g_yieldLines > 0) {
 		--g_yieldLines;
-		char why[160] = {};
-		vr::YieldBlockedBy(weaponAway, frame.right.valid && g_hand.rightHandValid,
-		                   frame.left.valid && g_hand.leftHandValid, rightCurl, leftCurl, enemyAhead, why, sizeof(why));
-		OBVR_LOG("Yield: the hands rocked, but no yield - %s (hand curls %.2f/%.2f; under the head: %08X, in combat %d)",
-		         why, static_cast<double>(rightCurl), static_cast<double>(leftCurl),
+		char why[240] = {};
+		vr::YieldReasons(g_yield.lastReset | g_yield.waiting, why, sizeof(why));
+		OBVR_LOG("Yield: the hands rocked, but no yield - %s (hand curls %.2f/%.2f, knuckles up %.2f/%.2f, under the "
+		         "eyes %.2f/%.2f m; under the head: %08X, in combat %d)",
+		         why, static_cast<double>(in.hand[0].curl), static_cast<double>(in.hand[1].curl),
+		         static_cast<double>(in.hand[0].knucklesUp), static_cast<double>(in.hand[1].knucklesUp),
+		         static_cast<double>(-in.hand[0].position.z), static_cast<double>(-in.hand[1].position.z),
 		         reinterpret_cast<UInt32>(ahead), ahead != nullptr && game::ActorInCombat(ahead) ? 1 : 0);
 	}
-	if (vr::StepYield(g_yield, allowed, lateral, dt)) {
-		g_yieldFramesLeft = kYieldHoldFrames;
+	if (test::HandScriptMarkedThisFrame()) {
+		char why[240] = {};
+		vr::YieldReasons(g_yield.lastReset | g_yield.waiting, why, sizeof(why));
+		OBVR_LOG("Yield: at the mark - reversals %u (right %u, left %u), the last reset by: %s; hand curls %.2f/%.2f, "
+		         "knuckles up %.2f/%.2f, under the eyes %.2f/%.2f m, ahead %.2f/%.2f m; under the head: %08X, in combat %d",
+		         g_yield.reversals, g_yield.hand[0].reversals, g_yield.hand[1].reversals, why,
+		         static_cast<double>(in.hand[0].curl), static_cast<double>(in.hand[1].curl),
+		         static_cast<double>(in.hand[0].knucklesUp), static_cast<double>(in.hand[1].knucklesUp),
+		         static_cast<double>(-in.hand[0].position.z), static_cast<double>(-in.hand[1].position.z),
+		         static_cast<double>(in.hand[0].position.y), static_cast<double>(in.hand[1].position.y),
+		         reinterpret_cast<UInt32>(ahead), enemyAhead ? 1 : 0);
+	}
+	if (fired) {
 		g_yieldTarget = enemy;
+		g_yieldActor = reinterpret_cast<UInt32>(ahead);
+		const bool readied = game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
+		g_yieldDrive = YieldDrive{};
+		if (readied) {
+			g_yieldDrive.phase = YieldPhase::Blocking;
+			g_yieldDrive.framesLeft = kYieldHoldFrames;
+		} else {
+			g_yieldDrive.phase = YieldPhase::Readying;
+			g_yieldDrive.raisedFists = true;
+			g_yieldDrive.clickWanted = true;
+		}
 		if (g_yieldLines > 0) {
 			--g_yieldLines;
-			OBVR_LOG("Yield: the open hands rocked at someone in combat - block held and activate pressed on them "
-			         "at %.0f %.0f %.0f",
-			         static_cast<double>(enemy.x), static_cast<double>(enemy.y), static_cast<double>(enemy.z));
+			OBVR_LOG("Yield: the open hands rocked at someone in combat - %s, then block held and activate pressed on "
+			         "them at %.0f %.0f %.0f (%s)",
+			         readied ? "the weapon or the fists already up" : "the fists raised first for the engine's block",
+			         static_cast<double>(enemy.x), static_cast<double>(enemy.y), static_cast<double>(enemy.z),
+			         frame.meleeHeld ? "a weapon in hand" : (readied ? "the fists up" : "the hands empty"));
 		}
 	}
 }
@@ -3441,6 +3531,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.firstPerson = !ReadIsThirdPerson();
 	frame.meleeHeld = active && game::MeleeInHand(nullptr);
 	frame.meleeInHand = frame.meleeHeld && config.hands.motionHits;
+	// The yield's ready-weapon click (YieldDrive), one frame.
+	frame.readyWeaponClick = active && g_yieldDrive.clickWanted;
+	g_yieldDrive.clickWanted = false;
 	frame.shieldEquipped = active && game::PlayerWearsShield();
 	frame.menusOnly = menusOnly;
 	frame.inWorld = game::PlayerInWorld();
@@ -3736,13 +3829,41 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 		s_dragWas = g_hand.menuDragging;
 	}
-	// The yield's keys (vr/Yield.h): block held over its frames, activate
-	// down for the last of them, the pick on the enemy meanwhile.
-	if (g_yieldFramesLeft > 0) {
+	// The yield carried out (YieldDrive): the fists raised first where
+	// nothing is readied, then block held over its frames with activate down
+	// for some of them, the pick on the enemy meanwhile, and the fists
+	// lowered again after.
+	if (g_yieldDrive.phase == YieldPhase::Readying) {
+		g_yieldDrive.readySeconds += g_deltaSeconds;
+		const bool up = game::ReadPlayerWeaponState() == game::WeaponState::Drawn &&
+		                game::ReadPlayerAction() != vr::kPlayerActionEquipWeapon;
+		if (up) {
+			g_yieldDrive.phase = YieldPhase::Blocking;
+			g_yieldDrive.framesLeft = kYieldHoldFrames;
+			if (g_yieldLines > 0) {
+				--g_yieldLines;
+				OBVR_LOG("Yield: the fists are up after %.2f s - block held now", static_cast<double>(g_yieldDrive.readySeconds));
+			}
+		} else if (g_yieldDrive.readySeconds > kYieldReadySeconds) {
+			g_yieldDrive = YieldDrive{};
+			if (g_yieldLines > 0) {
+				--g_yieldLines;
+				OBVR_LOG("Yield: given up - the fists did not come up within %.1f s (weapon state %d, action %d)",
+				         static_cast<double>(kYieldReadySeconds), static_cast<int>(game::ReadPlayerWeaponState()),
+				         game::ReadPlayerAction());
+			}
+		}
+	} else if (g_yieldDrive.phase == YieldPhase::Blocking) {
 		g_hand.controls.block = true;
-		if (g_yieldFramesLeft <= kYieldActivateFrom && g_yieldFramesLeft > kYieldActivateTo) {
+		// The pick's target where the attacker is now.
+		NiPoint3 centre{};
+		float radius = 0.0f;
+		if (mem::LooksLikeObjectAddress(g_yieldActor) && game::RefWorldBound(g_yieldActor, centre, radius)) {
+			g_yieldTarget = centre;
+		}
+		if (g_yieldDrive.framesLeft <= kYieldActivateFrom && g_yieldDrive.framesLeft > kYieldActivateTo) {
 			g_hand.controls.activate = true;
-			if (g_yieldFramesLeft == kYieldActivateFrom && g_yieldLines > 0) {
+			if (g_yieldDrive.framesLeft == kYieldActivateFrom && g_yieldLines > 0) {
 				// What the engine makes of the block by then, and whom the
 				// pick has: the yield needs the player blocking and the
 				// attacker under the crosshair (UESP Oblivion:Controls).
@@ -3754,7 +3875,15 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				         target.haveRef ? target.refAddress : 0u);
 			}
 		}
-		--g_yieldFramesLeft;
+		if (--g_yieldDrive.framesLeft == 0) {
+			const bool lower = g_yieldDrive.raisedFists;
+			g_yieldDrive = YieldDrive{};
+			g_yieldDrive.clickWanted = lower;  // the fists raised for it lowered again
+			if (lower && g_yieldLines > 0) {
+				--g_yieldLines;
+				OBVR_LOG("Yield: done - the fists raised for it are lowered again");
+			}
+		}
 	}
 	// The mod's slap: a grab tap with the pick on the slapped one - the pick
 	// there first, the grab down after (ShoveLogic.h, SlapGrabTapPressed).
@@ -9835,8 +9964,8 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		const bool heldRay = config.fullVrMode && g_headTracker.IsHeadsetConnected() && heldRef != 0 &&
 		                     (heldLeft ? g_hand.leftHandValid : g_hand.rightHandValid) &&
 		                     game::RefWorldBound(heldRef, heldCentre, heldRadius);
-		if ((g_yieldFramesLeft > 0 || g_slapTapFrames > 0 || g_slapTapPressed) && config.fullVrMode &&
-		    g_headTracker.IsHeadsetConnected()) {
+		if ((g_yieldDrive.phase == YieldPhase::Blocking || g_slapTapFrames > 0 || g_slapTapPressed) &&
+		    config.fullVrMode && g_headTracker.IsHeadsetConnected()) {
 			// The yield (vr/Yield.h): the pick from the head at the enemy, so
 			// activate with block held is vanilla's yield to them. The mod's
 			// slap the same way: the pick on the slapped one for the grab tap.
