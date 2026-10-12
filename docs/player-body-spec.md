@@ -484,20 +484,24 @@ with pyffi, the view check of BodyView, the harness's dumps of the day):
   lid for the trunk (four openings; a ray in through the neck and out
   through the waist crosses no wall).
 
-**Open.** Not seen in a headset; not run in the harness (the tester was
-playing). body-look-wrist runs with the default near plane now and its
-view check has to say "down the body" at 65 and 85 degrees still - with
-more of the chest in the green. A crouch with the head bowed not tried.
+**Seen in the headset** the same evening (2026-10-12, the build of
+fd9ec72): "jo nun geht IK wie erwartet! GJ" - the look down as expected,
+the chest in view. Not said: whether the distant land flickers for the
+nearer plane; not run in the harness (the tester was playing).
+body-look-wrist runs with the default near plane now and its view check
+has to say "down the body" at 65 and 85 degrees still - with more of the
+chest in the green. A crouch with the head bowed not tried.
 
 ### Open
 
-- The chest in view: built with the near plane at 4 (above); the headset
-  has to say whether the distant land flickers for it, and how much chest
-  shows.
+- The chest in view: built with the near plane at 4 (above) and confirmed
+  in the headset ("geht IK wie erwartet"); whether the distant land
+  flickers for the nearer plane is not reported on yet.
 - Why the rest roll differs between the arms (61-82 against -103 to -113,
   not mirrored): the hands' grip on the controllers, or the solve's frame -
   not looked into. It changes nothing seen now that the roll is spread.
 - A crouch with the head bowed - the body let down and stepped back at
   once - not tried in the harness.
 - Seen in a headset 2026-10-12 evening: the look down no longer looks into
-  the body (the tester). The wrists turned: not reported on.
+  the body, and with the near plane at 4 the IK "wie erwartet" (the
+  tester). The wrists turned: not reported on.
