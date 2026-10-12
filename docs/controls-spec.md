@@ -2786,3 +2786,29 @@ vll können wir den entfernen."
   hidden off a world frame, for death, while loading). Harness: in the
   `hands-in-menus` run of 2026-10-11 the line came between "menu Loading"
   and "menu none", and "Hud: live" only after. Headset: open.
+
+### 4.43 Open bug: no drop from the inventory with the left A (the tester, 2026-10-12 night)
+
+- **Reported:** "kann im inventar nicht mehr items droppen mit links A" - on
+  the builds of the evening of 2026-10-12 (f652753 and fd9ec72 deployed;
+  which of the day's builds first showed it is not known). The drop by the
+  left A over an item in the inventory worked on 2026-09-27
+  (`inventory-drop.txt`, PASS: Shift held, a click under the cursor, one
+  item dropped) and the tester has used it since.
+- **Where it lives:** vr/HandInput.h `StepDropPress` (Shift down, the click
+  down, the click up, Shift up, a frame each); HandMode.cpp carries the
+  click as `m_dropClickNow` past the laser's own press logic (lines
+  1039-1048). Nothing of today's changes touched src/vr; today's changes
+  near it: the pick's hold and settles (f652753: `ReadCrosshairTarget`
+  answers no reference while the engine's slot holds no live one;
+  `StepPickHold` lets a gone item go), the near plane (fd9ec72), and the
+  menu-hands work of 2026-10-11 (4.41: the hands stay in the game's menus,
+  the Esc menu excepted).
+- **To find out first:** whether the drop's key events reach the game at
+  all (the "Hands: click sent to the Inventory menu" line and
+  `StepDropPress`'s phases in the log of his run), whether the left A is
+  read in the inventory now that the hands stay in menus (4.41 changed what
+  the controllers do in menus), and whether the drop needs the laser's hit
+  on the item while the hand HUD or the pick's hold intervene. Rerun
+  `inventory-drop.txt` on the current build before reading code.
+- Not looked into on the night; noted for the morning.
