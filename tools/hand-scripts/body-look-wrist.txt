@@ -7,10 +7,18 @@
 # headless body stays out of the view: eye dumps with the hands hanging at
 # 45, 65 and 85 degrees down. Then both hands held ahead at the chest and
 # turned half round about the way they point - the thumbs down, the palms
-# out - and the elbows swing with the roll (BodyIkLogic.h, ElbowSwivelFor):
-# the "Body IK: at the mark" lines give each arm's roll on the forearm before
-# the swing, the swing, and what is left for the twist bones; an eye dump
-# with the head lowered to see the wrists.
+# out: the "Body IK: at the mark" lines give how far each hand rolled on its
+# forearm and how the roll is spread over the forearm and its twist bone
+# (BodyIkLogic.h, ForearmRolls); an eye dump with the head lowered to see the
+# wrists.
+#
+# Debug.BodyView measures the view at every mark (game/BodyView.h): each
+# eye's rays cast at the body's shapes as they are about to be drawn, how
+# much of the view is the trunk from outside and how much its inside - the
+# open collar, a cut by the near plane - and a picture of the rays
+# (OBVR-BodyView-<mark>.png: green the trunk from outside, red its inside).
+# Looked down 65 and 85 degrees, the trunk has to be seen from outside; at no
+# mark may a ray meet its inside, nor may a shape go unread.
 # Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\body-look-wrist.txt
 
 ini Hands Enabled=1
@@ -19,15 +27,23 @@ ini Body IK=1
 ini Body IKArms=1
 ini Body IKTorso=1
 ini Body IKLegs=1
+ini Debug BodyView=1
 
 expect HandScript: finished
 expect Body IK: the third-person skeleton - 27 of 27 bones found
 expect Body IK: the right arm follows its hand
 expect Body IK: the left arm follows its hand
 expect Body: stepped back
+expect Body view: down the body at "down65"
+expect Body view: down the body at "down85"
 reject HandScript: WARNING
 reject Body IK: the right arm left to the body
 reject Body IK: the left arm left to the body
+reject Body view: into the body
+reject Body view: left out
+reject Body view: not measured
+reject Body view: the trunk nowhere in view at "down65"
+reject Body view: the trunk nowhere in view at "down85"
 
 wait 12
 # Hanging at the sides, the fingers down.

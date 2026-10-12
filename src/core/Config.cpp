@@ -659,6 +659,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		b.povSwitchPatch = ReadBool("Body", "PovSwitchPatch", b.povSwitchPatch, path);
 		b.treeProbe = ReadBool("Debug", "BodyTreeProbe", b.treeProbe, path);
 		b.traceFrames = ReadUInt("Debug", "BodyTrace", b.traceFrames, path);
+		b.viewCheck = ReadBool("Debug", "BodyView", b.viewCheck, path);
 		b.ik = ReadBool("Body", "IK", b.ik, path);
 		b.ikArms = ReadBool("Body", "IKArms", b.ikArms, path);
 		b.ikTorso = ReadBool("Body", "IKTorso", b.ikTorso, path);

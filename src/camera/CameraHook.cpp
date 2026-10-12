@@ -42,6 +42,7 @@
 #include "game/Shove.h"
 #include "game/ThirdPersonAimVisual.h"
 #include "game/BodyPlacement.h"
+#include "game/BodyView.h"
 #include "game/PlayerBody.h"
 #include "game/WorldPickHook.h"
 #include "core/AddressSpace.h"
@@ -7713,6 +7714,19 @@ void BeforeFirstScenePass() {
 	// where the body is shown (game/BodyIk.h), nothing when it is not.
 	if (!bodyArmsStepped) {
 		bodyArmsFollowing = StepBodyArmsAfterPins(false, g_cyclopeanCameraWorldTransform.pos);
+	}
+	// Debug.BodyView, at a hand script's mark: what each eye sees of the body
+	// (game/BodyView.h) - after the arms, the last of the body's writes before
+	// the draw.
+	if (g_bodyShownThisFrame && GetConfig().body.viewCheck && test::HandScriptMarkedThisFrame() &&
+	    g_cyclopeanCameraWorldValid) {
+		game::BodyViewFrame view;
+		view.cyclopean = g_cyclopeanCameraWorldTransform.pos;
+		view.rotation = g_cyclopeanCameraWorldTransform.rot;
+		view.firstEyeStep = g_bodyFirstEyeStep;
+		view.firstIsLeft = FirstPassDrawsLeftEye(GetConfig().swapEyeOrder);
+		view.mark = test::HandScriptMarkName();
+		game::MeasureBodyView(view);
 	}
 	// The bow's arrow and string given back on any frame the pins did not
 	// place them.

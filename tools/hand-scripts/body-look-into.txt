@@ -1,0 +1,46 @@
+# The control for Debug.BodyView (game/BodyView.h): that the view check finds
+# a view into the body when there is one, so that body-look-wrist's silence
+# about it means something. The eyes put 20 units in front of the head bone
+# and 17 below it in the head's own axes ([Body] EyeForward=20, EyeUp=-17):
+# with the head bowed 85 degrees that is about 20 units below the head bone
+# and 2 in front of it once the body has stepped back - inside the chest -
+# and at 65 degrees about 25 below and 1 in front. Looking down from there,
+# the rays run down the inside of the trunk and meet it from behind; the
+# check has to say "into the body" at both marks.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\body-look-into.txt
+
+ini Hands Enabled=1
+ini Body Visible=1
+ini Body IK=1
+ini Body IKArms=1
+ini Body IKTorso=1
+ini Body IKLegs=1
+ini Body EyeForward=20
+ini Body EyeUp=-17
+ini Debug BodyView=1
+
+expect HandScript: finished
+expect Body: stepped back
+expect Body view: into the body at "down65"
+expect Body view: into the body at "down85"
+reject HandScript: WARNING
+reject Body view: left out
+reject Body view: not measured
+
+wait 12
+# Hanging at the sides, the fingers down - as in body-look-wrist.
+right pos 0.22 -0.58 -0.02
+right rot -40 0 0
+left pos -0.22 -0.58 -0.02
+left rot -40 0 0
+head pitch -65
+wait 1.5
+mark down65
+wait 3
+dump
+head pitch -85
+wait 1.5
+mark down85
+wait 3
+dump
+mark end

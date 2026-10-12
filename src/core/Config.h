@@ -196,6 +196,11 @@ struct Config {
 		// of the shown body (BodyIk.cpp, "The trace"; tools/body-trace.ps1
 		// reads the frame-to-frame differences out of them). 0 is off.
 		UInt32 traceFrames = 0;
+		// Debug.BodyView: at each hand script's mark, each eye's rays cast at
+		// the shown body - how much of the view is the trunk from outside, how
+		// much its inside ("Body view:" lines, game/BodyView.h) - and their
+		// picture saved beside Oblivion.exe. A few milliseconds a mark.
+		bool viewCheck = false;
 	};
 	BodySettings body;
 

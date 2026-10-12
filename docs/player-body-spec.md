@@ -391,6 +391,34 @@ handgelenk zu sehr. ruckeln nun weg!"
   the chest, since which way round a half turn went is not known from one
   frame. Kept for later, with the rest roll taken out first.
 
+### The view measured: Debug.BodyView
+
+The tester asked whether the harness measures the view down the body, not
+into it (2026-10-12). Until then it did not: "Body: stepped back" said the
+step back ran, and whether the collar showed was read off the eye dumps by
+eye. Now `Debug.BodyView` (`game/BodyView.h`, `BodyViewLogic.h`) casts each
+eye's rays at the body at every mark of a hand script - the body's shapes
+skinned on the CPU as the draw skins them, the camera's frustum and near
+plane - and says how much of each view is the trunk from outside and how
+much its inside, with a picture of the rays (docs/hand-script-harness.md,
+"What the pictures cannot show"). `body-look-wrist` expects "down the body"
+at 65 and 85 degrees and rejects "into the body" at every mark;
+`body-look-into` is its control, the eyes put inside the chest
+(`EyeForward=20`, `EyeUp=-17`), where the check has to say "into the body".
+
+- **Checked against the game** (2026-10-12, the headset's display off, so
+  the monitor's view was the camera's and no step back ran): the rays'
+  outline of the body at 85 degrees down matched the game window's shot,
+  and that view came out "into the body" on 3.1 % of it - UpperBody 2.6 %,
+  the collapsed face 0.4 % - the collar round 2 showed; at 65 degrees the
+  inside began 5.4 degrees below the view's bottom edge.
+- **The body read** (the harness's character, a body replacer's meshes:
+  UpperBody:0 463 vertices, UpperBody:1 with a NiStencilProperty, Arms,
+  LowerBody:0 and :1, Hand, Foot, FaceGenFace, FaceGenHair): nine shapes,
+  every vertex's weights adding up to one, every shape wound outward by its
+  normals (FaceGenHair 1292 of 1302 triangles, UpperBody:1 715 of 718, the
+  rest all), 10 570 triangles, about 4 ms a mark.
+
 ### Open
 
 - Why the rest roll differs between the arms (61-82 against -103 to -113,

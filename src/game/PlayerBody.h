@@ -52,6 +52,11 @@ struct BodyFrame {
 // not be reached; the log says why, once.
 bool ShowPlayerBody(const BodyFrame& frame);
 
+// The third-person root ShowPlayerBody stands under the headset, found and
+// checked the same way; null when it cannot be read. For what the eyes see
+// of the body (BodyView.h).
+NiAVObject* PlayerBodyRoot();
+
 // Puts the engine's hidden bit back on the third-person root if this code
 // took it off - only while the player is still in first person, where the
 // engine wants it hidden; in third person the engine shows the body itself

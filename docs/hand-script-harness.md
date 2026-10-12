@@ -162,6 +162,37 @@ Rules worth knowing:
   carried the body), 1.45 as the walk began (its lean) and 44 the frame
   the sneak animation began: what the tester felt as "ruckelt und zuckelt
   ... alles auf einmal" (docs/player-body-spec.md, round 2).
+- **Whether a look sees into the body is measured, not judged by eye.**
+  `ini Debug BodyView=1` casts each eye's rays at the shown body at every
+  mark (`game/BodyView.h`, the arithmetic in `BodyViewLogic.h`): the
+  body's NiTriShapes as the draw is about to use them - their vertices
+  skinned on the CPU the way the draw skins them, each triangle's outside
+  told by the shape's own normals - against the camera's frustum, the near
+  plane included. Each ray is classified by the nearest triangle it meets:
+  the trunk (its bone the pelvis, the spine, the neck, the head or a
+  clavicle) or a limb, from outside or from inside; a shape with a
+  NiStencilProperty is taken as drawn from both sides, its back a surface.
+  The lines: "Body view: shape ..." once per skeleton (vertices,
+  triangles, every vertex weighing one, the winding), "Body view: at
+  "<mark>", the left/right eye ..." with the shares, and a verdict - "down
+  the body at", "into the body at" (a ray of either eye on the trunk's
+  inside) or "the trunk nowhere in view at" (under half a percent of both
+  views) - with how far below the view's bottom edge the trunk's inside
+  begins (24 rows over 20 degrees below it). The picture
+  `OBVR-BodyView-<mark>.png` shows the rays: green the trunk from outside,
+  blue a limb, red the trunk's inside, orange a limb's, the rows below the
+  view under a grey line. Checked against the game: on 2026-10-12, run
+  without the headset (the monitor's view is then the camera's), the
+  picture's outline of the body at 85 degrees down matched the game window's
+  shot (the shoulders' two humps at 0.42 and 0.60 of the width against
+  0.41 and 0.58, the top at 0.34 of the height against 0.36), and the
+  view without the step back (no headset, no neck pivot) came out "into the
+  body" on 3.1 % of it - the collar, as round 2's dumps showed. Two engine
+  facts found on the way: NiSkinData's per-bone weight count is a UInt16
+  followed by two uncleared bytes (xOBSE declares a UInt32; LowerBody read
+  0xBEA10081 for 129), and `mem::LooksLikeObjectAddress` wants an aligned
+  word, so the end of a block is checked at its last word. About 4 ms a
+  mark for 9 shapes and 10 570 triangles.
 
 ## Scenarios
 
@@ -220,4 +251,5 @@ Rules worth knowing:
 | `tools/hand-scripts/body-ik-smooth.txt` | the body IK's smoothness (Debug.BodyTrace, `tools\body-trace.ps1`): the hands hanging, held out at the reach's edge, the right one before the chest at the torso's keep-out and slid an inch at a time across it; the player walking; the head pitched in steps; a crouch (which asks for the game's sneak) | PASS 2026-10-12 (run 4 of the day, round 2): frame to frame, with the hands still the body 0.014 units against the headset, walking 0.017, the walk's start 0.017, the sneak animation's first frame 0.03, the trunk held at every frame after 0.5 s, the feet solved down 3.4-4.1 while walking and up 22-31 for the crouch, every bone write through the draw ("held 27/27"). Run 1 (the build of 835f15a): 0.30 walking, 1.45 at the walk's start, 44 at the sneak's first frame - the finding of the round. Run 2 found the feet solved to the animation's own spot while the placement stands the body 8 units forward of it (the legs angled back; carried since). Also seen: the game's sneak lowers the camera 21.7 units and 12.7 back in one frame on top of the headset's crouch, and the camera stands 2.5 units higher at 60 degrees down than level, one frame behind the headset (docs/player-body-spec.md, round 2) |
 | `tools/hand-scripts/offhand-punch.txt` | the off hand's punch with a little finger that never reads (vr/FingersRead.h): a beggar frozen 60 units ahead, a longsword drawn, the left hand closed with `left little 0` and driven into the beggar's chest | PASS 2026-10-12: "the left hand's fist goes by 3 fingers - one never read (... little never ...)", "made a fist (curls 1.00 1.00 1.00 0.00)", "the left hand at 54.4 m/s ... - hard (the off hand's punch, a weapon drawn)", the beggar knocked down; the second blow, open, met nobody |
 | `tools/hand-scripts/ring-walk.txt` | the fighters' ring walking and holding still in a pause (CombatRingLogic.h, "The legs walk; the ring only adds to a walk"; game::WorldPausedForMenus): three bandits, a 3 m ring, four marks fighting, the Esc menu for four seconds, three marks after | PASS 2026-10-12: the waiting walking round by their legs (legs group 5/6), the legs 46-86 units a second and the ring 1-34, steps held 0-21 a mark; in the Esc menu "paused - <actor> at x y" the same to the tenth at both marks; after it the ring went on |
-| `tools/hand-scripts/body-look-wrist.txt` | round 3 of the body IK: eye dumps at 45, 65 and 85 degrees down with the hands hanging (the body stepped back, BodyLookDownShift, always on; "Body: stepped back" expected), then both hands ahead turned 30 degrees a tenth of a second to 180 and on to 210 (ForearmRollsFor) | PASS 2026-10-12 (run 3 of the day): no open collar at any of the three looks; the hands' roll followed the whole way (right 61.5 -> -190.7 -> -205.9, left -102.8 -> -173.9 -> -160.2), the forearm a third, the twist two thirds; the eye dumps show the wrists full. Runs 1-2 (the elbow swung with the roll, since taken out): the left elbow swung 36 degrees with the hands at rest, and with the hands turned half round in one step (run 2) both elbows across the chest. A one-off sweep with the then-setting LookDownBack at 16 (65, 75, 85 and 89 degrees) found the shift has to grow with the look: at 85 no ring, at 65 the torso out of sight; the setting and the sweep went the same day |
+| `tools/hand-scripts/body-look-wrist.txt` | round 3 of the body IK: eye dumps at 45, 65 and 85 degrees down with the hands hanging (the body stepped back, BodyLookDownShift, always on; "Body: stepped back" expected), then both hands ahead turned 30 degrees a tenth of a second to 180 and on to 210 (ForearmRollsFor); since the evening of 2026-10-12 with `Debug BodyView=1`: "Body view: down the body" expected at 65 and 85 degrees, "into the body", "left out" and "not measured" rejected at every mark | PASS 2026-10-12 (run 3 of the day), before the view check; with it run four times the same evening without the headset's display (SteamVR's "Monitor not found", so no neck pivot and no step back): the check read "into the body" at 85 degrees on 3.1 % of each view - the collar - and "down the body" at 65, every shape read; the PASS with the headset is open. Earlier that day: no open collar at any of the three looks; the hands' roll followed the whole way (right 61.5 -> -190.7 -> -205.9, left -102.8 -> -173.9 -> -160.2), the forearm a third, the twist two thirds; the eye dumps show the wrists full. Runs 1-2 (the elbow swung with the roll, since taken out): the left elbow swung 36 degrees with the hands at rest, and with the hands turned half round in one step (run 2) both elbows across the chest. A one-off sweep with the then-setting LookDownBack at 16 (65, 75, 85 and 89 degrees) found the shift has to grow with the look: at 85 no ring, at 65 the torso out of sight; the setting and the sweep went the same day |
+| `tools/hand-scripts/body-look-into.txt` | the control for Debug.BodyView: the eyes put inside the chest (`[Body] EyeForward=20`, `EyeUp=-17`), the head bowed 65 and 85 degrees - the check has to say "into the body" at both marks, or body-look-wrist's silence about it means nothing | written 2026-10-12, not run (the headset's display was off that evening) |

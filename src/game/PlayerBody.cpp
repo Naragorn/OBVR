@@ -353,6 +353,8 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 	return true;
 }
 
+NiAVObject* PlayerBodyRoot() { return ThirdPersonRoot(); }
+
 void ReleasePlayerBody(bool isThirdPerson) {
 	// The IK's writes and hides given back first, while the root they were
 	// made under is still the one looked for.
