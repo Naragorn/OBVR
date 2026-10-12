@@ -419,11 +419,66 @@ at 65 and 85 degrees and rejects "into the body" at every mark;
   normals (FaceGenHair 1292 of 1302 triangles, UpperBody:1 715 of 718, the
   rest all), 10 570 triangles, about 4 ms a mark.
 
+### The chest in view (the tester, 2026-10-12 evening - asked, not built)
+
+In the headset the tester confirmed the look down: "ja schaue nicht mehr in
+den körper hinein! das ist schonmal gut" - and asked for more: "hatte mir
+aber irgendwie erhofft auch die brust des player chars schauen zu können
+und nicht nur auf den unterkörper wenn ich nach unten schaue. ist das
+möglich?"
+
+What is in the way, measured:
+
+- **The step back.** At 85 degrees down the body stands 17 units behind
+  where the neck pivot alone would put it, so the collar ring is behind the
+  eyes - and the chest with it: the view check at 85 degrees (BodyView,
+  the harness's character) holds the belly and the belt, 26 % of the view
+  the trunk from outside, the chest's front above the view's top edge.
+  Without the step back the eyes sit at the collar: the ring's centre is
+  2.5 units below the head bone in its own axes (pyffi, upperbody.nif), the
+  eyes 5.6 forward and 6 up of the bone, so bowed 85 degrees they are
+  about 3 units below the ring's plane and 6.5 forward of its centre -
+  inside the chest, and the check reads "into the body" (3.1 % of the
+  view).
+- **The near plane.** The camera's near plane is 10 units (14 cm):
+  whatever is nearer is cut away, and that is the collar, the neck and
+  where a chin would be, at every look. A real chin-down view shows the
+  chest because the chin hides the neck's hole; here nothing can, so the
+  collar has to be closed or kept behind the eyes.
+- The eye offsets are no knob for it: bowed, `EyeUp` runs along the way
+  the face looks and acts as a step back, `EyeForward` raises the body
+  towards the eyes.
+
+What would show the chest, in the order to try:
+
+1. **A cap over the collar ring, drawn by OBVR**: a fan over the ring's 32
+   vertices, skinned each frame as BodyView already skins them (the loop
+   with the highest centre of the shape weighted to the neck), one flat
+   skin colour (the lid's shader of BackfacePass.h, the texture's average),
+   depth-tested with the world, drawn after the body in both eye passes.
+   With the ring closed the step back can shrink to what keeps the cap
+   beyond the near plane - about 9 units at 85 degrees instead of 17 - and
+   the chest's front from the lower pectorals down comes under the view's
+   top edge. The upper chest stays within the near plane whatever is done.
+   BodyView measures the gain (the trunk's share from outside, no inside).
+2. **The near plane lowered** for the world passes (10 to 3 or 4 units):
+   the cap, the upper chest and the hands near the face would stop being
+   cut. The depth buffer (24 bits, the far plane 283840) allows it; every
+   pass that reads the frustum (water, shadows, the culling) has to be
+   checked - untested.
+3. **Not the hand's stencil lid** (the sealed opening): the trunk has four
+   openings - the neck, the waist, the two arms - and a ray in through the
+   neck and out through the waist crosses no wall, so the parity finds no
+   lid where the legs show through.
+
 ### Open
 
+- The chest in view: see above - a cap over the collar, then a smaller
+  step back; proposed, not built.
 - Why the rest roll differs between the arms (61-82 against -103 to -113,
   not mirrored): the hands' grip on the controllers, or the solve's frame -
   not looked into. It changes nothing seen now that the roll is spread.
 - A crouch with the head bowed - the body let down and stepped back at
   once - not tried in the harness.
-- Not seen in a headset.
+- Seen in a headset 2026-10-12 evening: the look down no longer looks into
+  the body (the tester). The wrists turned: not reported on.
