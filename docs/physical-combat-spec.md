@@ -467,8 +467,12 @@ Bringing Strength into the lag is a design choice, not a port.
 
 - Not vanilla behaviour; a Fortify Strength potion or a fatigue drain
   would change the swing's feel in the middle of a fight.
-- OBVR does not read the player's actor values yet (Strength, Fatigue and
-  its base) - the read path is not looked up and not verified.
+- OBVR reads the player's fatigue and its base since the teleport's cost
+  (`game::ReadPlayerFatigue`, game/PlayerTeleport.h); Strength is not read
+  yet - that path is not looked up and not verified.
+- The hard end of idea 2 - at low fatigue the arms exhausted instead of the
+  collapse, with the breath, the same for paralysis - is the tester's
+  proposal of 2026-10-12 in docs/combat-comfort-spec.md section 2.
 - Each needs its own INI switch (default to be decided) and pure, tested
   factors next to `WeaponLagFor` in vr/WeaponWeight.h; the log line per
   draw would carry the factors.
