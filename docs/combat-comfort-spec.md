@@ -825,8 +825,12 @@ das wirkt unrealistisch, die sollten eig gehen"):
   a unit; out of it the ring went on and the turns passed. Seen, not
   looked into: in the first mark after the pause one waiting fighter had
   gone 455 units in 1.2 s (its legs "697 units a second", the ring placing
-  27) - a run of its own, not the ring's step. Not seen in the headset:
-  whether the drift out on a sideways walk reads as walking.
+  27) - a run of its own, not the ring's step.
+- **Seen in the headset** (the tester, 2026-10-12 evening, the build of
+  d465faf and later): "auch bewegst du npcs nicht mehr im esc oder pause
+  menü. und sie gehen nun nach hinten statt zu levitaten" - the pause
+  holds, and the waiting walk instead of sliding. Not said: whether the
+  drift out on a sideways walk reads as walking.
 
 ## Test reminders
 

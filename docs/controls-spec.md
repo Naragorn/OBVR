@@ -1857,8 +1857,9 @@ unpaused (neue setting mit default on). ähnlich wie die fallout mods".
   reach's target and the next one of a switch (4.31, 4.35: one gone is
   "gone" and never activated), and a thrown thing in flight (picked up
   again: no longer followed).
-- **The crash of 2026-10-12** (fixed the same evening, headset open): the
-  tester pressed A on a Steel Shield lying in the world - TakeOnlyByHand
+- **The crash of 2026-10-12** (fixed the same evening; the tester took the
+  shield from the floor once more that night on the fixed build - "kein
+  crash"): the tester pressed A on a Steel Shield lying in the world - TakeOnlyByHand
   off, so the game's own Activate took it - and the game crashed in OBVR
   (CobbCrashLogger: EIP OBVR+0x808AB, `game::RefBaseFormType`, from
   `UpdateHandMode` at Present; esi the shield's reference 1C8A325C, eax
