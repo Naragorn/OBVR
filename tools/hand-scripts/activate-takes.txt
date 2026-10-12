@@ -3,6 +3,14 @@
 # as vanilla's activate does - so what kept it on the floor there was the
 # option, and the A was aimed at the sword. No mark before the press: the
 # only items lines are from after it, and none may find the sword.
+#
+# This is the path of the crash of 2026-10-12 (a Steel Shield taken from the
+# floor with A, the game crashed in OBVR): the pick's hold had the sword and
+# kept it through its grace after the game deleted it, and the ring's settle
+# read its base form through the old address. The hold has to let the taken
+# thing go the frame it is gone from the cell ("Pick: ... is gone from the
+# cell"), and nothing may read through it (CameraHook.cpp SettledRef,
+# game/PickHold.h).
 # Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\activate-takes.txt
 
 ini Hands Enabled=1
@@ -13,6 +21,7 @@ console player.drop 00000C0C 1
 
 expect HandScript: finished
 expect HandScript: mark after_activate
+expect is gone from the cell (taken, deleted or hidden) - let go at once
 reject HandScript: WARNING
 reject Hands: activate kept from the game
 reject HandScript: items - near a hand 1

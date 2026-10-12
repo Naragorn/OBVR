@@ -16,6 +16,7 @@ void Check(bool condition, const char* what) {
 using obvr::game::LooksLikeGameVtable;
 using obvr::game::RefFingerprint;
 using obvr::game::RefFingerprintMatches;
+using obvr::game::RefLooksLive;
 
 // A reference as TakeRefFingerprint takes it: a vtable inside the game's
 // image (Character's, game/GameAddresses.h kVtblCharacter), a dynamic form id.
@@ -82,6 +83,19 @@ void TestGameImage() {
 	Check(!LooksLikeGameVtable(0x80000000), "a pointer over 2 GB (large address aware): no");
 }
 
+void TestLooksLive() {
+	std::printf("a reference nobody remembered (the engine's crosshair slot): live or not\n");
+	Check(RefLooksLive(kVtable, 0), "the game's vtable, no flags: live");
+	Check(RefLooksLive(kVtable, 0x400 | 0x10000), "other flags: live");
+	Check(!RefLooksLive(kVtable, 0x20), "deleted: not");
+	Check(!RefLooksLive(kVtable, 0x800), "disabled: not");
+	// The crash of 2026-10-12: a float's bytes where the shield's reference
+	// had been.
+	Check(!RefLooksLive(0x3F7E0010, 0), "a float where the vtable was: not");
+	Check(!RefLooksLive(0, 0), "null: not");
+	Check(!RefLooksLive(0x1D6A9000, 0), "a heap pointer where the vtable was: not");
+}
+
 }  // namespace
 
 int main() {
@@ -89,6 +103,7 @@ int main() {
 	TestGone();
 	TestEmptyFingerprint();
 	TestGameImage();
+	TestLooksLive();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

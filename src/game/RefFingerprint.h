@@ -41,6 +41,16 @@ inline bool RefFingerprintMatches(const RefFingerprint& was, UInt32 vtableNow, U
 	       (flagsNow & kRefGoneFlags) == 0;
 }
 
+// Whether what is read at an address nobody remembered - the engine's own
+// crosshair slot - is a live reference at all: its first word one of the
+// game's vtables, its flags neither deleted nor disabled. A reference taken
+// into the inventory is deleted and its memory reused; the bytes of a float
+// where the vtable was (the crash of 2026-10-12, 0x3F7E0010 where a base
+// form pointer had been) are not a reference. Pure, ref_fingerprint_test.
+inline bool RefLooksLive(UInt32 vtableNow, UInt32 flagsNow) {
+	return LooksLikeGameVtable(vtableNow) && (flagsNow & kRefGoneFlags) == 0;
+}
+
 // Takes the fingerprint of a reference that is live now (a crosshair target,
 // a reference just activated); an empty one (ref 0) for an address that is no
 // object or whose vtable is not the game's.

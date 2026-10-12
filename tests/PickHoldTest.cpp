@@ -155,6 +155,47 @@ void TestGrace() {
 	Check(!t.held.valid, "gone with nothing else in reach: nothing held");
 }
 
+void TestGone() {
+	std::printf("The held item gone from the cell\n");
+	const NearItem none;
+	const NearItem a = Item(0xA, false, 1, 10.0f);
+	const NearItem b = Item(0xB, false, 5, 40.0f);
+	const NearItem byHand[2] = {none, none};
+	// Taken with Activate: deleted, not met by the cell's walk. No grace.
+	PickHoldState s;
+	Frame(s, a, none, none, 0.011f);
+	NearItem got = StepPickHold(s, b, byHand, 0.011f, false);
+	Check(got.ref == 0xB && s.held.ref == 0xB && Near(s.missingSeconds, 0.0f),
+	      "gone, with B the best: B taken at once, no grace");
+	PickHoldState t;
+	Frame(t, a, none, none, 0.011f);
+	got = StepPickHold(t, none, byHand, 0.011f, false);
+	Check(!got.valid && !t.held.valid, "gone, nothing else in reach: nothing held, at once");
+	// A challenge under way is forgotten with it.
+	PickHoldState u;
+	Frame(u, a, none, none, 0.011f);
+	Frame(u, Item(0xB, false, 1, 4.0f), a, none, 0.10f);
+	Check(u.held.ref == 0xA && u.challenger == 0xB, "B challenging A");
+	StepPickHold(u, Item(0xC, false, 5, 40.0f), byHand, 0.011f, false);
+	Check(u.held.ref == 0xC && u.challenger == 0 && Near(u.challengeSeconds, 0.0f),
+	      "A gone: C taken, B's challenge forgotten");
+	// Still there (the walk met it) and merely not reached for: the grace as before.
+	PickHoldState v;
+	Frame(v, a, none, none, 0.011f);
+	got = StepPickHold(v, b, byHand, 0.05f, true);
+	Check(got.ref == 0xA, "still there, not reached for: kept through the grace");
+	// Nothing held: the flag changes nothing.
+	PickHoldState w;
+	got = StepPickHold(w, a, byHand, 0.011f, false);
+	Check(got.ref == 0xA, "nothing held before: the best taken, whatever the flag says");
+
+	std::printf("Whether the kept item is still there, after the walk\n");
+	Check(KeepAliveVerdict(false, true, false), "nothing kept: alive (nothing to lose)");
+	Check(KeepAliveVerdict(true, false, false), "the walk did not finish: no evidence, alive");
+	Check(KeepAliveVerdict(true, true, true), "walked to the end and met: alive");
+	Check(!KeepAliveVerdict(true, true, false), "walked to the end and not met: gone");
+}
+
 void TestHand() {
 	std::printf("The hand\n");
 	PickHoldState s;
@@ -260,6 +301,21 @@ void TestShownSettle() {
 	Check(StepRefSettle(s, 0xC, 0.011f) == 0xC, "and the next thing at once");
 	Check(StepRefSettle(s, 0xD, 0.011f, 0xD) == 0xD, "the pick's own item: at once, no settle");
 	Check(StepRefSettle(s, 0xE, 0.011f, 0xD) == 0xD, "another than the pick's: the settle as before");
+
+	std::printf("The thing shown gone (its fingerprint failed)\n");
+	RefSettleState g;
+	StepRefSettle(g, 0xA, 0.011f);
+	Check(StepRefSettle(g, 0xB, 0.011f, 0, kShownSettleSeconds, true) == 0xB,
+	      "A gone, B wanted: B at once, no settle on a thing that is not there");
+	StepRefSettle(g, 0xB, 0.011f);
+	Check(StepRefSettle(g, 0xB, 0.011f, 0, kShownSettleSeconds, true) == 0 && g.shown == 0 && g.wanted == 0,
+	      "B gone and still named as wanted (the engine's slot a frame late): nothing shown, nothing wanted");
+	StepRefSettle(g, 0xC, 0.011f);
+	Check(StepRefSettle(g, 0, 0.011f, 0xC, kShownSettleSeconds, true) == 0,
+	      "C gone and still the pick's trusted one: nothing shown");
+	Check(StepRefSettle(g, 0xD, 0.011f, 0, kShownSettleSeconds, true) == 0xD, "nothing shown and 'gone': the next thing at once");
+	StepRefSettle(g, 0xE, 0.011f);
+	Check(StepRefSettle(g, 0xE, 0.011f, 0, kShownSettleSeconds, false) == 0xD, "D not gone: the settle as before, D shown on");
 }
 
 void TestNpcTakesPick() {
@@ -337,6 +393,7 @@ int main() {
 	TestTakeAndStay();
 	TestChallenge();
 	TestGrace();
+	TestGone();
 	TestHand();
 	TestAnchor();
 	TestShownSettle();

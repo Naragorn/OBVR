@@ -59,11 +59,21 @@ inline bool RanksClearlyBetter(UInt8 aClass, float aKey, UInt8 bClass, float bKe
 
 // One frame. `best` is the frame's best-ranked item (FindNearestItem);
 // `heldByHand[0]` (right) and `[1]` (left) are the held item's own ranks this
-// frame, by hand (invalid where that hand does not reach for it). Returns
-// the item the pick is on now, invalid for none.
-inline NearItem StepPickHold(PickHoldState& s, const NearItem& best, const NearItem heldByHand[2], float dt) {
-	if (!s.held.valid) {
-		// Nothing held: the best is taken at once.
+// frame, by hand (invalid where that hand does not reach for it); `heldAlive`
+// is whether the held item is still an item of the cell at all
+// (FindNearestItem's keepAlive). Returns the item the pick is on now,
+// invalid for none.
+//
+// A held item that is gone - deleted as it went into the inventory with
+// Activate (the tester, 2026-10-12: a shield taken from the floor) - is let
+// go at once, not kept through the grace: the grace is for a hand at the
+// edge of its reach, and a reference whose memory may already be another's
+// must not be the pick's for a single frame more (CobbCrashLogger 2026-10-12:
+// RefBaseFormType read a float where the base form pointer had been).
+inline NearItem StepPickHold(PickHoldState& s, const NearItem& best, const NearItem heldByHand[2], float dt,
+                             bool heldAlive = true) {
+	if (!s.held.valid || !heldAlive) {
+		// Nothing held, or what was held is gone: the best is taken at once.
 		s = PickHoldState{};
 		s.held = best;
 		return s.held;
@@ -147,8 +157,22 @@ struct RefSettleState {
 	float seconds = 0.0f;
 };
 
+// `shownGone`: the thing shown is no longer there (its fingerprint failed,
+// RefFingerprint.h) - it is dropped at once, and that address is nothing
+// this frame wherever it appears, as `wanted` or as `trusted`: the engine's
+// crosshair slot or the pick may still name it for a frame.
 inline UInt32 StepRefSettle(RefSettleState& s, UInt32 wanted, float dt, UInt32 trusted = 0,
-                            float settleSeconds = kShownSettleSeconds) {
+                            float settleSeconds = kShownSettleSeconds, bool shownGone = false) {
+	if (shownGone && s.shown != 0) {
+		const UInt32 gone = s.shown;
+		s.shown = 0;
+		if (wanted == gone) {
+			wanted = 0;
+		}
+		if (trusted == gone) {
+			trusted = 0;
+		}
+	}
 	if (wanted != s.wanted) {
 		s.wanted = wanted;
 		s.seconds = 0.0f;

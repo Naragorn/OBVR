@@ -3,6 +3,7 @@
 #include "core/AddressSpace.h"
 #include "game/GameAddresses.h"
 #include "game/MenuType.h"
+#include "game/RefFingerprint.h"
 
 namespace obvr::game {
 namespace {
@@ -25,6 +26,9 @@ bool LooksLikeObject(const void* pointer) {
 	const UInt32 address = reinterpret_cast<UInt32>(pointer);
 	return mem::LooksLikeObjectAddress(address);
 }
+
+// TESForm's flags, as NearbyItems.cpp and ReachTargets.cpp read them.
+constexpr UInt32 kFormFlagsOffset = 0x08;
 
 // Whether three floats look like a position in Oblivion's world.
 //
@@ -120,6 +124,15 @@ CrosshairTarget ReadCrosshairTarget() {
 		return target;
 	}
 	target.refAddress = reinterpret_cast<UInt32>(ref);
+
+	// A live reference, or nothing: whether the engine clears this slot the
+	// frame it deletes the thing under it (an item taken with Activate) is
+	// not known, and everything that reads through this address - its base
+	// form, its node - would take another allocation's bytes for a reference
+	// (RefFingerprint.h, the crashes of 2026-10-10 and 2026-10-12).
+	if (!RefLooksLive(*reinterpret_cast<const UInt32*>(ref), *reinterpret_cast<const UInt32*>(ref + kFormFlagsOffset))) {
+		return target;
+	}
 
 	const auto* const position = reinterpret_cast<const float*>(ref + addr::kRefPositionOffset);
 	const NiPoint3 read{position[0], position[1], position[2]};

@@ -238,6 +238,11 @@ struct NearItem {
 	// How it was reached for (PickRank) and the key within that: lower wins.
 	UInt8 rankClass = 0xFF;
 	float rankKey = 0.0f;
+	// The reference as it was when found (RefFingerprint.h): the pick holds
+	// an item across frames, and an item can be deleted between them - taken
+	// with Activate, 2026-10-12 - so whoever reads through `ref` later asks
+	// RefStillThere(print) first.
+	RefFingerprint print;
 };
 
 // How the laser misses an item: the angle, in radians, from the laser to the
@@ -395,9 +400,25 @@ inline NearItem RankItemForHand(const SearchHand& hand, bool isLeft, UInt32 ref,
 // an invalid one. `except` is left out (the one already held). With `keep`
 // (0 none), that item's own ranks this frame go to `keptByHand` ([0] the
 // right hand, [1] the left; invalid where the hand does not reach for it) -
-// what the pick's hold needs to know whether to stay on it.
+// what the pick's hold needs to know whether to stay on it - and
+// `keepAlive` says whether the kept item is still an item of the cell at
+// all (KeepAliveVerdict): false only when the whole cell was walked and it
+// was not met as a live, shown item - deleted (an item taken with Activate,
+// 2026-10-12), disabled, hidden or gone from the cell. The hold lets such a
+// thing go at once rather than keep it through its grace: its memory may
+// already be another's.
 NearItem FindNearestItem(const SearchHand& right, const SearchHand& left, float reachUnits,
-                         float alwaysUnits, UInt32 except, UInt32 keep = 0, NearItem* keptByHand = nullptr);
+                         float alwaysUnits, UInt32 except, UInt32 keep = 0, NearItem* keptByHand = nullptr,
+                         bool* keepAlive = nullptr);
+
+// Whether the kept item counts as still there after a walk of the cell:
+// yes when nothing was asked to be kept or the walk did not finish (a cell
+// with more references than a frame walks, a player or cell that did not
+// read - no evidence either way), else only when the walk met it. Pure,
+// pick_hold_test.
+inline bool KeepAliveVerdict(bool keepAsked, bool walkComplete, bool seen) {
+	return !keepAsked || !walkComplete || seen;
+}
 
 }  // namespace obvr::game
 

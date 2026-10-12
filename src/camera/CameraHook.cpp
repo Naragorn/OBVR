@@ -242,8 +242,26 @@ game::AnchorState g_aimAnchor;
 // the ease, the quad's hover built from it.
 game::AnchorState g_hoverAnchor;
 NiPoint3 g_rowWanted{0.0f, 0.0f, 0.0f};
-game::RefSettleState g_ringSettle;
-game::RefSettleState g_rowSettle;
+// A settled reference (game/PickHold.h) with the fingerprint of what it
+// shows: the thing shown can be deleted while the settle keeps it - an item
+// taken with Activate is, and its memory reused - and is dropped before
+// anything reads through it again (game/RefFingerprint.h; the crash of
+// 2026-10-12, a shield taken from the floor).
+struct SettledRef {
+	game::RefSettleState settle;
+	game::RefFingerprint print;
+
+	UInt32 Step(UInt32 wanted, float dt, UInt32 trusted) {
+		const bool gone = settle.shown != 0 && !game::RefStillThere(print);
+		const UInt32 shown = game::StepRefSettle(settle, wanted, dt, trusted, game::kShownSettleSeconds, gone);
+		if (shown != print.ref) {
+			print = game::TakeRefFingerprint(shown);
+		}
+		return shown;
+	}
+};
+SettledRef g_ringSettle;
+SettledRef g_rowSettle;
 UInt32 g_pickLines = 40;
 vr::openvr::HmdMatrix34 g_reachIconPose{};
 // The cyclopean camera, snapshotted in the camera pass (see there); declared
@@ -4192,7 +4210,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		         "units); "
 		         "eyes %.0f %.0f %.0f, right hand %.0f %.0f %.0f; held %08X, the crosshair on %08X; blocking %d, block "
 		         "key %d, attack key %d, player action %d",
-		         g_nearItem.valid ? 1 : 0, g_nearItem.ref, game::RefBaseFormType(g_nearItem.ref),
+		         g_nearItem.valid ? 1 : 0, g_nearItem.ref,
+		         game::RefStillThere(g_nearItem.print) ? game::RefBaseFormType(g_nearItem.ref) : 0u,
 		         static_cast<double>(g_nearItem.distance), g_nearItem.left ? "left" : "right",
 		         anyItem.ref,
 		         mem::LooksLikeObjectAddress(anyItem.ref)
@@ -4258,14 +4277,21 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		// Whether the laser picks items at all ([Hands] LaserPicksItems).
 		game::g_laserPicksItems = config.hands.laserPicksItems;
 		game::NearItem keptByHand[2];
+		// Whether the held item is still an item of the cell: one taken with
+		// Activate is deleted, and the hold lets it go at once (PickHold.h).
+		bool heldAlive = true;
 		const game::NearItem best = game::FindNearestItem(
 			hand(false, g_hand.rightHandValid && (!gripping || !g_hand.grabWithLeftHand)),
 			hand(true, g_hand.leftHandValid && (!gripping || g_hand.grabWithLeftHand)), reach,
 			config.hands.grabReachMetres * config.tracker.unitsPerMetre, 0,
-			g_pickHold.held.valid ? g_pickHold.held.ref : 0, keptByHand);
+			g_pickHold.held.valid ? g_pickHold.held.ref : 0, keptByHand, &heldAlive);
 		const UInt32 before = g_pickHold.held.valid ? g_pickHold.held.ref : 0;
 		const bool beforeLeft = g_pickHold.held.left;
-		g_nearItem = game::StepPickHold(g_pickHold, best, keptByHand, dt);
+		if (before != 0 && !heldAlive && g_pickLines > 0) {
+			--g_pickLines;
+			OBVR_LOG("Pick: %08X is gone from the cell (taken, deleted or hidden) - let go at once", before);
+		}
+		g_nearItem = game::StepPickHold(g_pickHold, best, keptByHand, dt, heldAlive);
 		// An NPC under the pick hand's laser takes the pick from the items
 		// (game::NpcTakesPick): the pick runs along the laser, Activate talks.
 		{
@@ -4498,8 +4524,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			// sein") - what the grip takes is the pick's own, not the ring's
 			// drawn place.
 			const UInt32 wantedRef = target.haveRef ? target.refAddress : 0;
-			const UInt32 shownRef =
-				game::StepRefSettle(g_ringSettle, wantedRef, dt, g_nearItem.valid ? g_nearItem.ref : 0);
+			const UInt32 shownRef = g_ringSettle.Step(wantedRef, dt, g_nearItem.valid ? g_nearItem.ref : 0);
 			if (shownRef != wantedRef && g_ringAnchor.valid && g_ringAnchor.ref == shownRef) {
 				hit = g_ringAnchor.point;
 			}
@@ -8821,8 +8846,8 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			// On the thing the pick has settled on (game/PickHold.h), under
 			// its own middle for a small thing, eased - so the text neither
 			// shakes with the ray's hit nor jumps to a thing the ray crossed.
-			const UInt32 shownRef = game::StepRefSettle(g_rowSettle, haveHit ? target.refAddress : 0, g_deltaSeconds,
-			                                            g_nearItem.valid ? g_nearItem.ref : 0);
+			const UInt32 shownRef =
+				g_rowSettle.Step(haveHit ? target.refAddress : 0, g_deltaSeconds, g_nearItem.valid ? g_nearItem.ref : 0);
 			// The row stays hidden while the thing it would show is not the one
 			// the pick is on and no anchor of its own is known: placed at the
 			// other thing's hit it stood "mittig oder in der luft für paar
@@ -10013,7 +10038,9 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		const bool pickLeft = g_hand.pickWithLeftHand;
 		const bool handRay = config.fullVrMode && g_headTracker.IsHeadsetConnected() &&
 		                     (pickLeft ? g_hand.leftHandValid : g_hand.rightHandValid);
-		const bool nearRay = handRay && g_nearItem.valid;
+		// Still the thing it was when found: the pick is from last frame, and
+		// an item taken with Activate since is deleted (RefFingerprint.h).
+		const bool nearRay = handRay && g_nearItem.valid && game::RefStillThere(g_nearItem.print);
 		const bool reachRay = config.fullVrMode && g_headTracker.IsHeadsetConnected() &&
 		                      g_grabReachPick &&
 		                      (g_hand.grabWithLeftHand ? g_hand.leftHandValid : g_hand.rightHandValid);

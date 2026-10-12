@@ -516,11 +516,15 @@ UInt8 RefBaseFormType(UInt32 ref) {
 }
 
 NearItem FindNearestItem(const SearchHand& right, const SearchHand& left, float reachUnits,
-                         float alwaysUnits, UInt32 except, UInt32 keep, NearItem* keptByHand) {
+                         float alwaysUnits, UInt32 except, UInt32 keep, NearItem* keptByHand, bool* keepAlive) {
 	NearItem best;
 	if (keptByHand != nullptr) {
 		keptByHand[0] = NearItem{};
 		keptByHand[1] = NearItem{};
+	}
+	// No evidence either way until the cell has been walked to its end.
+	if (keepAlive != nullptr) {
+		*keepAlive = true;
 	}
 	const UInt32 player = Read(addr::kPlayerPointer);
 	if (!LooksLikeObject(player) || !(right.valid || left.valid)) {
@@ -530,6 +534,7 @@ NearItem FindNearestItem(const SearchHand& right, const SearchHand& left, float 
 	if (!LooksLikeObject(cell)) {
 		return best;
 	}
+	bool keepSeen = false;
 	// The first entry is inline in the cell; the rest are linked.
 	UInt32 entry = cell + kCellObjectListOffset;
 	for (UInt32 walked = 0; entry != 0 && walked < kMaxRefsPerFrame; ++walked) {
@@ -575,11 +580,28 @@ NearItem FindNearestItem(const SearchHand& right, const SearchHand& left, float 
 		}
 		ConsiderNearItem(best, ref, node->worldBound.center, node->worldBound.radius, right, left,
 		                 reachUnits, alwaysUnits, distances);
-		if (keptByHand != nullptr && ref == keep) {
-			keptByHand[0] = RankItemForHand(right, false, ref, node->worldBound.center, node->worldBound.radius,
-			                                reachUnits, alwaysUnits, distances[0]);
-			keptByHand[1] = RankItemForHand(left, true, ref, node->worldBound.center, node->worldBound.radius,
-			                                reachUnits, alwaysUnits, distances[1]);
+		if (ref == keep) {
+			keepSeen = true;
+			if (keptByHand != nullptr) {
+				keptByHand[0] = RankItemForHand(right, false, ref, node->worldBound.center, node->worldBound.radius,
+				                                reachUnits, alwaysUnits, distances[0]);
+				keptByHand[1] = RankItemForHand(left, true, ref, node->worldBound.center, node->worldBound.radius,
+				                                reachUnits, alwaysUnits, distances[1]);
+			}
+		}
+	}
+	// The walk ended with the list, not with the frame's budget.
+	if (keepAlive != nullptr) {
+		*keepAlive = KeepAliveVerdict(keep != 0, entry == 0, keepSeen);
+	}
+	// Each item found with the reference as it is now, for whoever reads
+	// through it on a later frame.
+	if (best.valid) {
+		best.print = TakeRefFingerprint(best.ref);
+	}
+	for (UInt32 side = 0; keptByHand != nullptr && side < 2; ++side) {
+		if (keptByHand[side].valid) {
+			keptByHand[side].print = TakeRefFingerprint(keptByHand[side].ref);
 		}
 	}
 	return best;

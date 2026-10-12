@@ -1857,6 +1857,34 @@ unpaused (neue setting mit default on). ähnlich wie die fallout mods".
   reach's target and the next one of a switch (4.31, 4.35: one gone is
   "gone" and never activated), and a thrown thing in flight (picked up
   again: no longer followed).
+- **The crash of 2026-10-12** (fixed the same evening, headset open): the
+  tester pressed A on a Steel Shield lying in the world - TakeOnlyByHand
+  off, so the game's own Activate took it - and the game crashed in OBVR
+  (CobbCrashLogger: EIP OBVR+0x808AB, `game::RefBaseFormType`, from
+  `UpdateHandMode` at Present; esi the shield's reference 1C8A325C, eax
+  0x3F7E0010 - a float where its base form pointer had been). The same
+  class as 2026-10-10, two holders further on: the pick's hold
+  (game/PickHold.h, 2026-10-06) kept the held item through its 0.15 s grace
+  once no hand reached for it - and the cell's walk no longer met the
+  deleted shield, which to the hold looked like "not reached for" - and the
+  ring's settle (`StepRefSettle`) kept the thing it showed 0.08 s more;
+  the engine deleted the reference the frame it took the shield and its
+  memory went to the next allocation. Three things changed. `FindNearestItem`
+  says whether the held item was met in the cell at all (`keepAlive`,
+  `KeepAliveVerdict`: gone only after a complete walk did not meet it) and
+  the hold lets a gone one go at once ("Pick: ... is gone from the cell -
+  let go at once"). The settles for the ring and the info row carry the
+  fingerprint of what they show and drop it the frame it fails
+  (`SettledRef`; a gone thing is nothing that frame even where the engine's
+  slot or the pick still name it). And the engine's crosshair slot is taken
+  for a reference only while what is there is one (`RefLooksLive`: a game
+  vtable, neither deleted nor disabled) - whether the engine clears that
+  slot itself the frame it deletes a thing is not known. Every item the pick
+  finds now carries its fingerprint (`NearItem::print`), asked before the
+  aim's ray and the harness's items line read through it. pick_hold_test
+  and ref_fingerprint_test cover the new flows; `activate-takes.txt` is the
+  crash's own path (the hand on a dropped sword, A pressed; PASS 2026-09-27,
+  before the hold existed) and expects the "gone" line now - to be rerun.
 
 ### 4.29 The tester's round of 0bbd454 (2026-10-08, 21:18) - read 2026-10-09
 
