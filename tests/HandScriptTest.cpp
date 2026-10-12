@@ -316,6 +316,37 @@ void TestPose() {
 	head.yaw = 90.0f;
 	const NiPoint3 f = vr::ToMatrix(ScriptHeadOrientation(head)) * NiPoint3{0.0f, 0.0f, -1.0f};
 	Check(Near(f.x, -1.0f) && Near(f.z, 0.0f), "a synthetic head's yaw turns it left");
+
+	// The eyes swing about the neck (ScriptHeadPosition): level, the head's
+	// position is the eyes; nodded down, the eyes go down and a little
+	// forward; turned, sideways - the neck 8 cm behind them stays put.
+	ScriptHead level;
+	level.position = NiPoint3{0.1f, 1.6f, 0.2f};
+	const NiPoint3 eyesLevel = ScriptHeadPosition(level);
+	Check(Near(eyesLevel.x, 0.1f) && Near(eyesLevel.y, 1.6f) && Near(eyesLevel.z, 0.2f), "the head level: its position is the eyes");
+	ScriptHead down = level;
+	down.pitch = -45.0f;
+	const NiPoint3 eyesDown = ScriptHeadPosition(down);
+	Check(eyesDown.y < 1.6f - 0.07f && eyesDown.y > 1.6f - 0.09f, "nodded 45 degrees down: the eyes about 8 cm lower");
+	Check(eyesDown.z < 0.2f - 0.02f && eyesDown.z > 0.2f - 0.04f, "and about 3 cm further forward");
+	Check(Near(eyesDown.x, 0.1f), "not sideways");
+	ScriptHead straightDown = level;
+	straightDown.pitch = -90.0f;
+	const NiPoint3 eyesStraightDown = ScriptHeadPosition(straightDown);
+	Check(eyesStraightDown.y < 1.6f - 0.15f, "looking straight down: the eyes 15 cm lower, below the neck's level");
+	ScriptHead turned = level;
+	turned.yaw = 90.0f;
+	const NiPoint3 eyesTurned = ScriptHeadPosition(turned);
+	Check(eyesTurned.x < 0.1f - 0.07f && eyesTurned.z > 0.2f + 0.07f && Near(eyesTurned.y, 1.6f),
+	      "turned left: the eyes swung left and back about the neck, their height kept");
+	// The neck itself stays put: the eyes less their offset, turned with the head, is the same point.
+	const NiPoint3 neckOffset{0.0f, kScriptNeckToEyeUpMetres, -kScriptNeckToEyeForwardMetres};
+	const NiPoint3 neckLevel = eyesLevel - vr::ToMatrix(ScriptHeadOrientation(level)) * neckOffset;
+	const NiPoint3 neckDown = eyesDown - vr::ToMatrix(ScriptHeadOrientation(down)) * neckOffset;
+	const NiPoint3 neckTurned = eyesTurned - vr::ToMatrix(ScriptHeadOrientation(turned)) * neckOffset;
+	Check(Near(neckLevel.x, neckDown.x) && Near(neckLevel.y, neckDown.y) && Near(neckLevel.z, neckDown.z) &&
+	          Near(neckLevel.x, neckTurned.x) && Near(neckLevel.y, neckTurned.y) && Near(neckLevel.z, neckTurned.z),
+	      "the neck under every pose: one point");
 }
 
 }  // namespace

@@ -398,7 +398,7 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.body.ikArms = v != 0.0f; },
 	},
 	{
-		"Body", "Turns with your head", "The body follows where you look: a glance leaves it, a held look brings it round",
+		"Body", "Turns with your head", "The body stands steady under your head and follows where you look: a glance leaves it, a held look brings it round",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Body", "IKTorso",
 		+[](const Config& c) { return c.body.ikTorso ? 1.0f : 0.0f; },

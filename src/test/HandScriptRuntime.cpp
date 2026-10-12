@@ -147,8 +147,13 @@ const char* HandScriptMarkName() { return g_markName; }
 
 void ScriptedHands(const vr::Quaternion& headOrientation, const NiPoint3& headPosition,
                    vr::HandPose& right, vr::HandPose& left) {
-	right = ScriptedHandPose(g_run.pose.right, headOrientation, headPosition);
-	left = ScriptedHandPose(g_run.pose.left, headOrientation, headPosition);
+	// The hands hang from the body, not from the eyes: with the script's
+	// own head they are placed from its level eyes (`head pos`), which do
+	// not swing with a nod (ScriptHeadPosition); with the real headset
+	// driving the head, from where it is.
+	const NiPoint3 anchor = g_run.pose.head.synthetic ? g_run.pose.head.position : headPosition;
+	right = ScriptedHandPose(g_run.pose.right, headOrientation, anchor);
+	left = ScriptedHandPose(g_run.pose.left, headOrientation, anchor);
 	// The velocity SteamVR would report, from where the scripted hand was a
 	// frame ago - what a throw takes its speed from (a `pos` line moves the
 	// hand in one frame: a throw at the speed of that jump).
@@ -169,7 +174,7 @@ bool HandScriptHeadActive() { return HandScriptDrivesHands() && g_run.pose.head.
 
 void GetHandScriptHeadPose(vr::Quaternion& orientation, NiPoint3& position) {
 	orientation = ScriptHeadOrientation(g_run.pose.head);
-	position = g_run.pose.head.position;
+	position = ScriptHeadPosition(g_run.pose.head);
 }
 
 void GetHandScriptHeadPoseMatrix(vr::openvr::HmdMatrix34& matrix) {

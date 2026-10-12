@@ -138,7 +138,7 @@ the engine rewrote all of them every frame ("0 still held the writes").
 
 ### Logged
 
-"Body IK: the third-person skeleton - 22 of 22 bones found", "the right
+"Body IK: the third-person skeleton - 27 of 27 bones found", "the right
 arm follows its hand - ...", "the body turns with the head - ...", "the body
 let down n units ... the feet lifted back ...", "the body's "Weapon" (on
 "Bip01 R Hand") hidden ..."; at a hand script's mark one line for the body
@@ -166,12 +166,155 @@ pictures.
   floor and pressed on), `head-pitch-probe.txt` (the game window against
   the camera) - results in docs/hand-script-harness.md.
 
+## Round 2 (2026-10-12): the view down the body, the body steady
+
+The tester's first headset run of the IK: "wenn ich runter schaue sehe ich
+in die körpermitte hinein statt am körper herunter. view muss wohl weiter
+nach vorne um am körper herab zu sehen statt von oben durch die wirbelsäule
+zu gucken. außerdem ruckelt und zuckelt der körper und alles auf einmal.
+keine flüssige erfahrung!" - and, a little later, "die ellenbogen wechseln
+zu schnell beim drehen des handgelenks. die arme wirken auch noch irgendwie
+alien haft." The asked-for references, the Max Payne 2 VR mod (evilSheep;
+betotron's: "Max's body follows with a delay") and the Titanfall 2 VR mod
+(CircuitLord, "Fullbody IK"), publish no source and no write-up of their IK
+(their repositories and pages read 2026-10-12), so nothing could be taken
+from them; the one open arm IK of that kind, VRArmIK (dabeschte, MIT, the
+Unity code of Parger's thesis), was read for how it treats the hand's
+rotation: as a small correction to a position-based elbow, eased over
+0.08 s (`rotateElbowWithHandDelay`), with a note that its forward term
+makes "horrible jumps" at other weights.
+
+### What was wrong, measured
+
+`Debug.BodyTrace` (new: one "Body trace:" line a frame, read by
+`tools/body-trace.ps1` as frame-to-frame differences between a hand
+script's marks; harness `body-ik-smooth.txt`) on the build of 835f15a:
+
+- **The body moved with the animation.** The body is stood so the head
+  bone's eyes land on the headset, and the head bone's offset from the
+  root was taken as the animation left it each frame - so every pose moved
+  the whole body under the still headset: the walk bobbed it 3.2 units a
+  step and leaned it 6 back as it began; the sneak (a crouch in the room
+  asks for it) dropped the animation's head 40 units in one frame, and the
+  body jumped 44 units with it. A real walk bobs the eyes with the body; a
+  headset does not bob, so the body may not either.
+- **The view into the chest.** The eyes were put in front of the head bone
+  along the head's YAW alone; a look down took the headset down and
+  forward and the body followed it, so the camera looked into the chest
+  from above instead of down the front of a body that stays put.
+- **The elbow flipped.** The hand's hint for the elbow (the forearm
+  straight behind the wrist along the knuckles) was made unit even when
+  the knuckles pointed nearly along the arm - a sliver across the line, and
+  a small turn of the wrist swung the sliver through zero: the elbow to the
+  other side. The torso keep-out searched in whole steps of 10 degrees,
+  alternating sides: an elbow at the chest popped between steps.
+- **The elbow at arm's length twitched.** The cosine rule's slope runs to
+  infinity at the straight arm (68 degrees of elbow a unit in the last
+  tenth of a percent, 16 at 2 % short): the head's own sway under the
+  shoulder and the controller's tremor moved the elbow by degrees.
+- With the inputs standing still the body did not move from one frame to
+  the next (0.01 units, 0.01 degrees), and every bone write survived the
+  draw ("held 16/16 fp 12/12"): the engine does not rewrite the skeleton
+  between the write and the draw. So the stutter was not a race.
+
+### What was built
+
+- **The neck's pivot** (`BodyRootInput::eyesFollowHead`, `headRot`): the
+  eyes are put in front of the head bone the way the HEAD faces, pitch and
+  roll included - the headset's whole rotation. A look down swings the eyes
+  down and forward about the head bone and the body stays where it is; the
+  camera orbits the neck, as a head nods on its neck. The head bone is the
+  pivot: it sits at the skull's base, 8 cm behind and 8.5 cm below the eyes,
+  where the Oculus neck model puts the pivot (8.05 cm, 7.5 cm).
+- **The trunk held steady** (`StepTrunk`, BodyIkLogic.h "The trunk"): the
+  chain from the root to the head - `Bip01 NonAccum`, the pelvis, the three
+  spine bones, the neck, `Neck1`, the head - is held at one pose instead of
+  the animation's: the standing idle's, taken once the player has stood
+  idle for half a second (not sneaking, no action, no step asked of the
+  legs - `PlayerStandsIdle`; and the head's offset reads as a standing one,
+  `HeadOffsetStands`), once per skeleton. From then on no animation moves
+  the body under the headset. The legs keep the animation; each foot is
+  solved back to where the animation put it on the ground
+  (`FootSolveWanted`: sunk by more than 3 units, floating by more than a
+  quarter, or off sideways) - a body let down for a crouch bends its
+  knees, a trunk held higher than the walk's lowered pelvis straightens
+  them. Under "Turns with your head" (IKTorso), which already owns the
+  trunk's yaw.
+- **The elbow**: the hand's hint weighs what it has across the arm's line
+  (in forearm lengths) instead of being made unit - a hand pointing along
+  the arm says nothing about the elbow, and the body's habit (down, a
+  little out and back) decides; the pole is eased from last frame's over
+  50 ms (`EasedDirection`, `EaseShare`, after VRArmIK's 80 ms); the torso
+  keep-out keeps the elbow 2 units clear of the box, finds the crossing to
+  a sixty-fourth of a step, and keeps the way round it went last frame
+  while the other is not 30 degrees shorter (`ElbowClear`,
+  `kElbowSideHoldRadians`). The two rolls (the upper arm's, the hand's
+  against the forearm) are continued the short way from last frame's
+  (`UnwrapAngle`, `HalfOfRoll`), so a roll past a half turn no longer flips
+  a twist bone round by 150 degrees.
+- **The reach softened** (`SoftReach`, `kLimbSoftShare` 0.08): from 92 % of
+  the arm's length the distance solved with saturates towards the length,
+  the bones grown to land the hand (the zone's own 3 % allowed whatever
+  ArmStretch says), so the elbow's slope never exceeds 8 degrees a unit
+  and at the full length the elbow keeps 28 degrees of bend. The legs are
+  solved exactly (their targets are the animation's own feet).
+- Log: "Body IK: the trunk's pose taken from the standing idle after n s -
+  the head x y z from the root"; the mark line says "the trunk held at the
+  standing pose" or "the animation's"; `Debug.BodyTrace=N` writes the trace.
+- The harness's synthetic head now nods and turns about a neck 8 cm behind
+  and 7.5 cm below its eyes (`ScriptHeadPosition`, the same Oculus numbers),
+  as a real headset moves, its hands placed from the level eyes; before, a
+  head pitched in place and the body under it rose with the eye offset.
+
+### Measured after (`body-ik-smooth.txt`, 2026-10-12, four runs)
+
+Frame to frame, the body against the headset: with the hands held still
+0.014 units (as before), walking 0.017 (was 0.30 - the bob), the walk's
+first steps 0.017 (was 1.45 - the lean), the frame the sneak animation
+began 0.03 (was 44); the trunk held at every frame after the first half
+second; the feet solved down 3.4-4.1 units while walking (the trunk held
+above the walk's lowered pelvis) and up 22-31 for the crouch; the elbow's
+direction within 0.3 degrees a frame with a hand slid an inch at a time
+across the chest, and never "moved out of the torso" in a step. The eye
+dumps show the arms hanging, reaching and crossed, the body looked down at
+from in front of its chest. `body-ik.txt` and `body-ik-shield.txt` PASS
+again (the wrist 0.00 off its hand, the shield carried, the far hand short
+by 20.6 grown x1.15, the turn -35.7 then -1.8).
+
+### Found on the way, not built
+
+- **The game's sneak lowers the view 30 cm on top of the headset's own
+  crouch** (the harness trace: the camera 21.7 units lower and 12.7
+  further back the frame the sneak began, after the 31.5 the crouch had
+  taken it down): the engine's first-person camera sits lower while
+  sneaking, and OBVR adds the headset's room offset to it. A crouch in the
+  room that asks for the sneak (controls-spec 4.27) therefore drops the
+  view twice, in one frame. The fix would hold the engine's camera at its
+  standing height above the feet while Full VR sneaks (the headset already
+  measures the crouch), as a setting - whether a stick-toggled sneak
+  should still lower the view is the tester's call.
+- **The camera moves with the pitch on its own** (the trace, runs 3 and 4):
+  with the headset's own motion taken out (the script's head pitched in
+  place, run 3) the camera stood 2.5 units higher at 60 degrees down than
+  level, and in run 4 that share arrived one frame after the headset's
+  (0.4 units at a 10 degree step). The engine's first-person camera, or
+  OBVR's own arc corrections - not read. The body follows the camera, as
+  it must (the camera is what is seen), so it rises those 2.5 units with
+  a look down - a slow slide, not a jerk; the view itself shifts against
+  the world by the same. A camera item, for Full VR: the headset's motion
+  is the truth, the engine's share should be taken out.
+
 ### Open
 
-- Not seen in a headset.
+- Not seen in a headset since round 2.
+- The trunk's pose is the unarmed idle's, taken once: a save loaded while
+  sneaking or fighting keeps the animation's trunk until the player has
+  stood idle for half a second ("the animation's" at the mark).
 - Leaning forward bends no spine: the body still slides under the head.
 - Robes that carry the hands in the upper body cannot hide the body's
   hands; they sit inside the first-person ones.
 - Left-handed play keeps the body's own arms.
 - Menus, dialogue and third person leave the body to the engine (the body
   goes in a menu that keeps the hands).
+- Swimming lays the animation's body flat; the held trunk stands upright
+  in it.

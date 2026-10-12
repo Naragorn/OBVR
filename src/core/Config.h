@@ -192,6 +192,10 @@ struct Config {
 		// Debug.BodyTreeProbe: the third-person tree logged once when the
 		// body is shown - every node, and the arm chain's local transforms.
 		bool treeProbe = false;
+		// Debug.BodyTrace: one "Body trace:" line a frame for this many frames
+		// of the shown body (BodyIk.cpp, "The trace"; tools/body-trace.ps1
+		// reads the frame-to-frame differences out of them). 0 is off.
+		UInt32 traceFrames = 0;
 	};
 	BodySettings body;
 

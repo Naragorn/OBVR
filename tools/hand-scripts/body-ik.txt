@@ -25,14 +25,15 @@ ini Body IKLegs=1
 ini Body EyeForward=5.6
 
 expect HandScript: finished
-expect Body IK: the third-person skeleton - 22 of 22 bones found
+expect Body IK: the third-person skeleton - 27 of 27 bones found
 expect Body IK: the right arm follows its hand
 expect Body IK: the left arm follows its hand
 expect the right arm reaches its hand
 expect the left arm reaches its hand
 expect the right arm falls short of its hand
 expect Body IK: the body turns with the head
-expect the feet lifted back
+expect the feet put back
+expect Body IK: the trunk's pose taken from the standing idle
 reject HandScript: WARNING
 reject Body IK: the right arm left to the body
 reject Body IK: the left arm left to the body

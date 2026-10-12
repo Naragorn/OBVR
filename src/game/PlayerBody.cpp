@@ -222,7 +222,13 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 	// before anything below reads the head's place.
 	const bool ik = BeginBodyIk(root);
 	if (ik) {
-		StepBodyTorso(frame.ik, frame.headYawValid, frame.headWorldYaw, frame.headTrackingYaw, frame.dtSeconds);
+		BodyTorsoFrame torso;
+		torso.headValid = frame.headYawValid;
+		torso.headWorldYaw = frame.headWorldYaw;
+		torso.headTrackingYaw = frame.headTrackingYaw;
+		torso.dtSeconds = frame.dtSeconds;
+		torso.standsIdle = frame.standsIdle;
+		StepBodyTorso(frame.ik, torso);
 	}
 	float lowered = 0.0f;
 
@@ -254,12 +260,11 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 		in.parentRot = parent->worldTransform.rot;
 		in.parentPos = parent->worldTransform.pos;
 		in.parentScale = parent->worldTransform.scale;
-		// The torso following the head: the eyes in front of the head bone the
-		// way the head faces, not the body (BodyPlacement.h).
-		if (ik && frame.ik.torso && frame.headYawValid) {
-			in.eyesFollowHeadYaw = true;
-			in.headYawRot =
-				RotationFromHeading(Heading{math::Cos(frame.headWorldYaw), math::Sin(frame.headWorldYaw)});
+		// The eyes in front of the head bone the way the HEAD faces, pitch and
+		// all - the head bone the neck's pivot (BodyPlacement.h).
+		if (frame.headRotValid) {
+			in.eyesFollowHead = true;
+			in.headRot = frame.headRot;
 		}
 		const float zBefore = skeleton->worldTransform.pos.z;
 		const NiPoint3 local = BodyRootLocalPos(in);
@@ -270,6 +275,13 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 		}
 		UpdateNodeTransforms(skeleton);
 		lowered = zBefore - skeleton->worldTransform.pos.z;
+		BodyPlacementTrace trace;
+		trace.cameraWorld = in.cameraWorld;
+		trace.parentWorld = in.parentPos;
+		trace.headOffsetRaw = in.headWorld - in.rootWorld;
+		trace.headOffsetUsed = trace.headOffsetRaw;
+		trace.lowered = lowered;
+		NoteBodyPlacement(trace);
 		if (!g_reported.skeletonMoved) {
 			g_reported.skeletonMoved = true;
 			OBVR_LOG("Body: \"%s\" at %08X under \"%s\" is what moves under the headset; the "

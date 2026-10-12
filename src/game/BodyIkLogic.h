@@ -144,6 +144,34 @@ inline float YawOf(float x, float y) { return math::Atan2(y, x); }
 // that the limb points straight at it and ends short. A target closer than
 // the bones can fold leaves the limb folded as far as it goes. The joint is
 // never quite straight (0.1 % short), so its hinge stays defined.
+//
+// The last share of the reach is softened (SoftReach): with the end at the
+// limb's full length the joint would be straight, and there its angle
+// swings degrees for a millimetre of the end - the cosine rule's slope runs
+// to infinity at the straight limb (worked out for the body's arm, 21.85
+// and 14.78 units: 68 degrees of elbow a unit in the last tenth of a
+// percent, 16 at 2 % short, 8 at 8 %, 5 at 20 %) - so the head's own sway
+// under the shoulder and the controller's tremor made a hand held out at
+// arm's length twitch at the elbow (the tester, 2026-10-12: "zuckelt").
+// From (1 - kLimbSoftShare) of the length on, the distance solved with
+// saturates towards the length, d' = L - sL exp(-(d - (1 - s)L) / sL), and
+// the bones are grown by d / d' so the end still lands on the target: the
+// stretch curve of VRIK's kind in one number. With s = 0.08 the slope never
+// exceeds its value at the zone's start, 8 degrees a unit; at the full
+// length the elbow keeps 28 degrees of bend and the bones have grown 3 %
+// (the zone's own growth, allowed whatever maxStretch says), a tenth past
+// it 16 degrees and 11 % (with maxStretch allowing it).
+inline constexpr float kLimbSoftShare = 0.08f;
+
+inline float SoftReach(float d, float length, float share = kLimbSoftShare) {
+	const float soft = length * share;
+	const float start = length - soft;
+	if (!(soft > 0.0f) || !(d > start) || !ik::Finite(soft)) {
+		return d;
+	}
+	return length - soft * math::Exp(-(d - start) / soft);
+}
+
 struct LimbInput {
 	NiPoint3 root{0.0f, 0.0f, 0.0f};
 	float upperLength = 0.0f;
@@ -151,6 +179,10 @@ struct LimbInput {
 	NiPoint3 target{0.0f, 0.0f, 0.0f};
 	NiPoint3 pole{0.0f, 0.0f, -1.0f};
 	float maxStretch = 1.0f;
+	// The softened share of the reach (SoftReach); 0 solves the triangle
+	// exactly - the legs, whose targets are the animation's own feet and
+	// tremble no more than it does.
+	float softShare = kLimbSoftShare;
 };
 
 struct LimbSolve {
@@ -179,18 +211,26 @@ inline LimbSolve SolveLimb(const LimbInput& in) {
 		return s;  // the target on the root: no direction to reach in
 	}
 	const float d = Length(toTarget);
-	const float reach = (in.upperLength + in.lowerLength) * kLimbStraightShare;
+	// The reach softened, and the growth that lands the end on the target
+	// all the same (a triangle grown keeps its angles).
+	const float dSoft = SoftReach(d, in.upperLength + in.lowerLength, in.softShare);
 	float k = 1.0f;
-	if (d > reach) {
-		const float most = in.maxStretch > 1.0f && Finite(in.maxStretch) ? in.maxStretch : 1.0f;
-		k = Clamp(d / reach, 1.0f, most);
+	if (d > dSoft) {
+		// The soft zone's own growth - what lands the end at the full length,
+		// 1 / (1 - s/e) - is always allowed, or a hand at arm's length would
+		// be missed by that much with no growth allowed; past it the limit.
+		float most = in.maxStretch > 1.0f && Finite(in.maxStretch) ? in.maxStretch : 1.0f;
+		const float softMost =
+			in.softShare > 0.0f && Finite(in.softShare) ? 1.0f / (1.0f - in.softShare * 0.36788f) : 1.0f;
+		most = most > softMost ? most : softMost;
+		k = Clamp(d / dSoft, 1.0f, most);
 	}
 	const float a = in.upperLength * k;
 	const float b = in.lowerLength * k;
 	const float maxD = (a + b) * kLimbStraightShare;
 	const float folded = a > b ? a - b : b - a;
 	const float minD = folded + 0.001f * (a + b);
-	const float dc = Clamp(d, minD, maxD);
+	const float dc = Clamp(dSoft * k, minD, maxD);
 	// The bend plane: the pole's part across the line, or - a pole on the
 	// line - any direction across it.
 	NiPoint3 v;
@@ -230,9 +270,13 @@ inline LimbSolve SolveLimb(const LimbInput& in) {
 // little out and back. And the hand: the forearm runs on behind the wrist
 // along the hand's own axis (a Bip01 hand bone runs along its +x, wrist to
 // fingers), so the elbow is where the forearm would be with the wrist
-// straight. Each taken across the shoulder-wrist line and the two
-// averaged; either alone when the other has no direction across the line.
-// `side` is +1 for the right arm, -1 for the left.
+// straight. Each taken across the shoulder-wrist line and the two added,
+// each weighing what it has across the line (the hand's in forearm
+// lengths): a hand pointing along the arm says nothing about the elbow, and
+// a direction made unit out of a sliver across the line swung with every
+// tremor of the hand (the first version, 2026-10-11). The sum made unit;
+// down when neither has anything across the line. `side` is +1 for the
+// right arm, -1 for the left.
 inline constexpr float kElbowOut = 0.45f;
 inline constexpr float kElbowBack = 0.35f;
 inline constexpr float kElbowHandShare = 0.5f;
@@ -247,20 +291,41 @@ inline NiPoint3 ElbowPole(float side, const NiPoint3& right, const NiPoint3& for
 	}
 	const NiPoint3 body = right * (kElbowOut * side) - forward * kElbowBack - up;
 	const NiPoint3 hint = (wrist - handAlong * forearmLength) - shoulder;
-	NiPoint3 bodyAcross;
-	NiPoint3 hintAcross;
-	const bool haveBody = Unit(body - u * Dot(body, u), bodyAcross, 1e-3f);
-	const bool haveHint = Unit(hint - u * Dot(hint, u), hintAcross, 1e-3f);
-	if (haveBody && haveHint) {
-		return hintAcross * kElbowHandShare + bodyAcross * (1.0f - kElbowHandShare);
+	const NiPoint3 bodyAcross = body - u * Dot(body, u);
+	const NiPoint3 hintAcross =
+		(hint - u * Dot(hint, u)) * (forearmLength > 1e-3f && Finite(forearmLength) ? 1.0f / forearmLength : 0.0f);
+	NiPoint3 pole;
+	if (!Unit(bodyAcross * (1.0f - kElbowHandShare) + hintAcross * kElbowHandShare, pole, 1e-3f)) {
+		return up * -1.0f;
 	}
-	if (haveHint) {
-		return hintAcross;
+	return pole;
+}
+
+// A direction eased towards another by `share` of the way: the two blended
+// and the blend made unit; opposite directions, whose blend has no length,
+// take the new one whole. The elbow's pole is eased so (kElbowEaseSeconds):
+// the guess above and the torso's keep-out below move it in small steps
+// where the hand's own motion is smooth, and the elbow swings instead of
+// twitching; the hand itself is never eased.
+inline constexpr float kElbowEaseSeconds = 0.05f;
+
+inline NiPoint3 EasedDirection(const NiPoint3& last, const NiPoint3& wanted, float share) {
+	const float s = ik::Clamp(share, 0.0f, 1.0f);
+	NiPoint3 out;
+	if (ik::Finite(last) && ik::Unit(last * (1.0f - s) + wanted * s, out, 1e-3f)) {
+		return out;
 	}
-	if (haveBody) {
-		return bodyAcross;
+	return wanted;
+}
+
+// The share of the way to go in one frame for a first-order ease with the
+// time constant `tauSeconds`: all of it with no time or no constant, or
+// after a stall of a second and more.
+inline float EaseShare(float dtSeconds, float tauSeconds) {
+	if (!(dtSeconds > 0.0f) || !(dtSeconds < 1.0f) || !(tauSeconds > 0.0f)) {
+		return 1.0f;
 	}
-	return up * -1.0f;
+	return 1.0f - math::Exp(-dtSeconds / tauSeconds);
 }
 
 // Never in the torso. The hand's hint can send the elbow there: a right hand
@@ -275,12 +340,18 @@ inline NiPoint3 ElbowPole(float side, const NiPoint3& right, const NiPoint3& for
 // taken for one inwards). So the rule here is the place itself: the elbow
 // may not be in the torso - between the torso's back and a little in front
 // of the shoulders' plane, inwards of a shoulder by more than
-// kTorsoInsideUnits, between the pelvis and just above the shoulders. If the
-// elbow the pole gives is there, the joint's circle round the
-// shoulder-wrist line is searched from it both ways, kElbowSearchStep at a
-// time, for the nearest place that is not. In the body's own measure (the
-// probe of 2026-10-11): the shoulder joints 10.4 units either side of the
-// middle, the spine bones in their plane, the pelvis 37 below them.
+// kTorsoInsideUnits, between the pelvis and just above the shoulders - and
+// kept kElbowClearUnits clear of it. If the elbow the pole gives is not that
+// clear, the joint's circle round the shoulder-wrist line is searched from
+// it both ways, kElbowSearchStep at a time, for the first place that is, and
+// the crossing refined between the last step short of it and that one, so
+// the turn grows and shrinks with the hand instead of jumping a step (the
+// first version took whole steps of 10 degrees: at the chest the elbow
+// popped with every crossing, 2026-10-12); the way round it went last
+// frame is kept while the other way is not kElbowSideHoldRadians shorter.
+// In the body's own measure (the probe of 2026-10-11): the shoulder joints
+// 10.4 units either side of the middle, the spine bones in their plane, the
+// pelvis 37 below them.
 struct TorsoKeepOut {
 	NiPoint3 mid{0.0f, 0.0f, 0.0f};      // between the two shoulder joints
 	NiPoint3 right{1.0f, 0.0f, 0.0f};    // the body's right, across the ground
@@ -295,44 +366,105 @@ inline constexpr float kTorsoFrontUnits = 2.0f;   // in front of it the chest's 
 inline constexpr float kTorsoInsideUnits = 3.0f;  // an elbow this far inwards of its shoulder is in the side
 inline constexpr float kTorsoAboveUnits = 10.0f;  // the shoulders' caps and the trapezius above them
 inline constexpr float kElbowSearchStep = 10.0f * math::kDegreesToRadians;
+inline constexpr float kElbowClearUnits = 2.0f;
+inline constexpr float kElbowSideHoldRadians = 30.0f * math::kDegreesToRadians;
 
-inline bool ElbowInsideTorso(const NiPoint3& elbow, float side, const TorsoKeepOut& t) {
+// How far an elbow is outside the torso's box: positive the distance past
+// its nearest face (the largest excess over any one bound), negative the
+// depth inside to the nearest face. Continuous across the faces.
+inline float TorsoClearance(const NiPoint3& elbow, float side, const TorsoKeepOut& t) {
 	const NiPoint3 d = elbow - t.mid;
 	const float lateral = side * ik::Dot(d, t.right);  // out on its own side positive
 	const float depth = ik::Dot(d, t.forward);
-	return depth > -kTorsoBackUnits && depth < kTorsoFrontUnits && lateral < t.shoulderLateral - kTorsoInsideUnits &&
-	       elbow.z > t.pelvisZ && elbow.z < t.shoulderZ + kTorsoAboveUnits;
+	float c = lateral - (t.shoulderLateral - kTorsoInsideUnits);
+	const float others[4] = {-kTorsoBackUnits - depth, depth - kTorsoFrontUnits, t.pelvisZ - elbow.z,
+	                         elbow.z - (t.shoulderZ + kTorsoAboveUnits)};
+	for (const float o : others) {
+		c = o > c ? o : c;
+	}
+	return c;
 }
 
-// The limb's pole moved off the torso where it has to be: answers the pole
-// to solve with, and whether it was moved. A limb that does not solve, or
-// one whose every elbow is in the torso (the hand inside it), keeps its own.
-inline NiPoint3 ElbowClearOfTorso(const LimbInput& limb, float side, const TorsoKeepOut& t, bool& moved) {
+inline bool ElbowInsideTorso(const NiPoint3& elbow, float side, const TorsoKeepOut& t) {
+	return TorsoClearance(elbow, side, t) < 0.0f;
+}
+
+// The limb's pole moved off the torso where it has to be: the pole to solve
+// with, whether it was moved, which way round (+1 or -1) and how far. A
+// limb that does not solve, or one whose every elbow is in the torso (the
+// hand inside it), keeps its own. `preferSign` is the way it went last
+// frame (0 for none).
+struct ElbowClear {
+	NiPoint3 pole{0.0f, 0.0f, -1.0f};
+	bool moved = false;
+	float sign = 0.0f;
+	float angle = 0.0f;
+};
+
+inline ElbowClear ElbowClearOfTorso(const LimbInput& limb, float side, const TorsoKeepOut& t, float preferSign) {
 	using namespace ik;
-	moved = false;
+	ElbowClear r;
+	r.pole = limb.pole;
 	const LimbSolve first = SolveLimb(limb);
-	if (!first.valid || !ElbowInsideTorso(first.joint, side, t)) {
-		return limb.pole;
+	if (!first.valid || TorsoClearance(first.joint, side, t) >= kElbowClearUnits) {
+		return r;
 	}
 	NiPoint3 u;
 	NiPoint3 p;
 	if (!Unit(first.end - limb.root, u, 1e-3f) || !Unit(first.joint - limb.root - u * Dot(first.joint - limb.root, u), p)) {
-		return limb.pole;
+		return r;
 	}
 	const NiPoint3 q = Cross(u, p);
 	LimbInput tried = limb;
-	for (int step = 1; step * kElbowSearchStep <= math::kPi + 1e-4f; ++step) {
-		for (int sign = 1; sign >= -1; sign -= 2) {
-			const float angle = static_cast<float>(sign * step) * kElbowSearchStep;
-			tried.pole = p * math::Cos(angle) + q * math::Sin(angle);
-			const LimbSolve s = SolveLimb(tried);
-			if (s.valid && !ElbowInsideTorso(s.joint, side, t)) {
-				moved = true;
-				return tried.pole;
+	// The elbow's clearance with the pole turned `angle` round the line.
+	const auto clearanceAt = [&](float angle) {
+		tried.pole = p * math::Cos(angle) + q * math::Sin(angle);
+		const LimbSolve s = SolveLimb(tried);
+		return s.valid ? TorsoClearance(s.joint, side, t) : -1.0e9f;
+	};
+	// Each way round: the first step past the clearance, then the crossing
+	// between the step short of it and that one, to a sixty-fourth of a step.
+	float found[2] = {-1.0f, -1.0f};
+	for (int way = 0; way < 2; ++way) {
+		const float sign = way == 0 ? 1.0f : -1.0f;
+		float below = 0.0f;
+		for (int step = 1; static_cast<float>(step) * kElbowSearchStep <= math::kPi + 1e-4f; ++step) {
+			const float at = static_cast<float>(step) * kElbowSearchStep;
+			if (clearanceAt(sign * at) >= kElbowClearUnits) {
+				float lo = below;
+				float hi = at;
+				for (int i = 0; i < 6; ++i) {
+					const float mid = 0.5f * (lo + hi);
+					if (clearanceAt(sign * mid) >= kElbowClearUnits) {
+						hi = mid;
+					} else {
+						lo = mid;
+					}
+				}
+				found[way] = hi;
+				break;
 			}
+			below = at;
 		}
 	}
-	return limb.pole;
+	if (found[0] < 0.0f && found[1] < 0.0f) {
+		return r;
+	}
+	int pick = 0;
+	if (found[0] < 0.0f) {
+		pick = 1;
+	} else if (found[1] >= 0.0f) {
+		pick = found[0] <= found[1] ? 0 : 1;
+		const int preferred = preferSign > 0.0f ? 0 : (preferSign < 0.0f ? 1 : -1);
+		if (preferred >= 0 && preferred != pick && found[preferred] - found[pick] < kElbowSideHoldRadians) {
+			pick = preferred;
+		}
+	}
+	r.sign = pick == 0 ? 1.0f : -1.0f;
+	r.angle = found[pick];
+	r.pole = p * math::Cos(r.sign * r.angle) + q * math::Sin(r.sign * r.angle);
+	r.moved = true;
+	return r;
 }
 
 // ------------------------------------------------------------ The shield
@@ -461,6 +593,13 @@ inline float HalfRoll(float before, float after) {
 	return 0.5f * ik::Clamp(change, -kTwistMostRadians, kTwistMostRadians);
 }
 
+// An angle continued from last frame's: the step from it taken the shorter
+// way round, so a roll that runs on past a half turn keeps counting up
+// (held within a half turn and a bit by the caller's clamp) instead of
+// flipping to the other side - a twist bone swung round by 150 degrees in
+// one frame.
+inline float UnwrapAngle(float last, float raw) { return last + math::WrapAngle(raw - last); }
+
 // ------------------------------------------------------------ The torso
 //
 // The body faces where the player does. Nothing tracks the chest, so it is
@@ -561,9 +700,81 @@ inline float FeetLiftUnits(float loweredUnits, float freeUnits = kFeetFreeUnits)
 	return loweredUnits > freeUnits && ik::Finite(loweredUnits) ? loweredUnits - freeUnits : 0.0f;
 }
 
+// Whether a foot is solved back to where the animation put it: `delta` is
+// that place less where the foot is now (the body let down, its trunk held
+// higher or lower than the animation's). Sunk into the floor by no more than
+// the free units it is left (the floor hides it); floating above by more
+// than a quarter unit, sunk further, or off sideways by more than half a
+// unit, it is solved.
+inline bool FootSolveWanted(const NiPoint3& delta, float freeBelow = kFeetFreeUnits) {
+	if (!ik::Finite(delta)) {
+		return false;
+	}
+	return delta.z > freeBelow || delta.z < -0.25f || delta.x * delta.x + delta.y * delta.y > 0.25f;
+}
+
+// Half a roll, held within kTwistMostRadians either way - for a roll
+// continued from frame to frame (UnwrapAngle), which may stand past a half
+// turn.
+inline float HalfOfRoll(float roll) { return 0.5f * ik::Clamp(roll, -kTwistMostRadians, kTwistMostRadians); }
+
+// The roll memory held within a half turn and a bit past the clamp, so a
+// controller spun round and round does not run it away: the next unwrap
+// still takes the short step from it.
+inline constexpr float kRollMemoryMostRadians = kTwistMostRadians + 0.5f;
+
+inline float HoldRollMemory(float roll) { return ik::Clamp(roll, -kRollMemoryMostRadians, kRollMemoryMostRadians); }
+
 // Which way a knee points: forward, a little out.
 inline NiPoint3 KneePole(float side, const NiPoint3& right, const NiPoint3& forward) {
 	return forward + right * (0.15f * side);
+}
+
+// ------------------------------------------------------------ The trunk
+//
+// The body stands steady under the head: the chain from the skeleton's root
+// to the head (NonAccum, pelvis, the three spine bones, the neck, the head)
+// is held at one pose - the standing idle's, taken once - instead of the
+// animation's. The body is stood so its head's eyes land on the headset, and
+// with the animation's own chain every pose moved the whole body under the
+// still headset: the walk bobbed it 3 units a step and leaned it 6 back, the
+// sneak dropped its head 40 units in one frame and the body jumped 44 with
+// it (the harness, 2026-10-12; the tester: "ruckelt und zuckelt ... alles
+// auf einmal"). A real walk bobs the eyes with the body; a headset does not
+// bob, so the body may not either (VRIK's way round: the pelvis hangs from
+// the head target). The legs keep the animation; their feet are solved back
+// to where it put them on the ground (the knees).
+//
+// The pose is taken from a frame the player stands idle: not sneaking, no
+// action, no step asked of the legs (the movement flags' four direction
+// bits; xOBSE GameProcess.h: forward 0x1, backward 0x2, left 0x4, right
+// 0x8), held for kStandingSettleSeconds so a landing or a blend is not
+// taken - and the head's offset from the root has to read as a standing
+// one.
+inline constexpr UInt16 kMovementStepBits = 0x000F;
+inline constexpr float kStandingSettleSeconds = 0.5f;
+
+inline bool PlayerStandsIdle(bool sneaking, SInt32 action, UInt16 movementFlags, SInt32 actionNone) {
+	return !sneaking && action == actionNone && (movementFlags & kMovementStepBits) == 0;
+}
+
+// Whether a head offset from the root (the root's own axes, scale one) is a
+// standing one: the head 95 to 130 units up (the idle's 112), within 12
+// units of the root across the ground.
+inline bool HeadOffsetStands(const NiPoint3& headFromRoot) {
+	return ik::Finite(headFromRoot) && headFromRoot.z > 95.0f && headFromRoot.z < 130.0f &&
+	       headFromRoot.x * headFromRoot.x + headFromRoot.y * headFromRoot.y < 144.0f;
+}
+
+// Seconds the player has stood idle, carried from frame to frame: zero the
+// moment the stance breaks. Answers whether the pose may be taken now.
+inline bool StandingSettled(float& standingSeconds, bool standsIdle, float dtSeconds) {
+	if (!standsIdle || !(dtSeconds >= 0.0f) || !(dtSeconds < 1.0f)) {
+		standingSeconds = 0.0f;
+		return false;
+	}
+	standingSeconds += dtSeconds;
+	return standingSeconds >= kStandingSettleSeconds;
 }
 
 // ------------------------------------------------------------ The gates

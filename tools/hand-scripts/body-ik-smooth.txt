@@ -1,0 +1,122 @@
+# The body IK's smoothness (the tester, 2026-10-12: "ruckelt und zuckelt der
+# körper und alles auf einmal. keine flüssige erfahrung!"): Debug.BodyTrace
+# logs the body every frame - while the inputs stand still (the hands
+# hanging at about the arm's length, held out at the reach's edge, the right
+# one before the chest at the torso's keep-out), while that hand slides an
+# inch at a time, while the player walks (the walk animation under the
+# pinned body), while the head pitches in steps and while it crouches.
+# tools\body-trace.ps1 reads the frame-to-frame differences out of the
+# run's log: with the inputs still, nothing of the body may move from one
+# frame to the next. The eye dumps show the body looked down at.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\body-ik-smooth.txt
+
+ini Hands Enabled=1
+ini Body Visible=1
+ini Body IK=1
+ini Body IKArms=1
+ini Body IKTorso=1
+ini Body IKLegs=1
+ini Debug BodyTrace=4000
+
+expect HandScript: finished
+expect Body IK: the third-person skeleton - 27 of 27 bones found
+expect Body IK: the right arm follows its hand
+expect Body IK: the left arm follows its hand
+expect Body trace: f=1000
+expect Body IK: the trunk's pose taken from the standing idle
+reject HandScript: WARNING
+reject Body IK: the right arm left to the body
+reject Body IK: the left arm left to the body
+moved walk walked 60
+
+wait 12
+# Hanging at the sides, the fingers down, at about the arm's length: the
+# zone where the elbow's angle is most sensitive to the hand's distance.
+right pos 0.22 -0.58 -0.02
+right rot -40 0 0
+left pos -0.22 -0.58 -0.02
+left rot -40 0 0
+head pitch -65
+wait 1.5
+mark hang
+wait 3
+dump
+# Held out ahead at the reach's edge (the shoulder about 20 cm below and
+# 18 cm beside the eyes: about 50 cm from it, the body's arm 52).
+right pos 0.25 -0.25 -0.50
+right rot 50 0 0
+left pos -0.25 -0.25 -0.50
+left rot 50 0 0
+wait 1.5
+mark reach
+wait 3
+dump
+# The right hand before the chest, the fingers left: at the torso's keep-out.
+right pos -0.05 -0.30 -0.22
+right rot 30 70 0
+wait 1.5
+mark chest
+wait 3
+# And slid an inch at a time across it.
+mark slide
+right pos -0.06 -0.30 -0.22
+wait 0.3
+right pos -0.07 -0.30 -0.22
+wait 0.3
+right pos -0.08 -0.30 -0.22
+wait 0.3
+right pos -0.09 -0.30 -0.22
+wait 0.3
+right pos -0.10 -0.30 -0.22
+wait 0.3
+right pos -0.11 -0.30 -0.22
+wait 0.3
+right pos -0.12 -0.30 -0.22
+wait 0.3
+right pos -0.13 -0.30 -0.22
+wait 0.3
+mark slid
+# Walking with the hands hanging: the walk animation under the pinned body.
+right pos 0.22 -0.58 -0.02
+right rot -40 0 0
+head pitch -60
+wait 1
+left stick 0 1
+wait 0.5
+mark walk
+wait 3
+mark walked
+left stick 0 0
+wait 1
+# The head pitched in steps, level to down and back.
+mark pitch
+head pitch -50
+wait 0.3
+head pitch -40
+wait 0.3
+head pitch -30
+wait 0.3
+head pitch -20
+wait 0.3
+head pitch -10
+wait 0.3
+head pitch 0
+wait 0.3
+head pitch -10
+wait 0.3
+head pitch -20
+wait 0.3
+head pitch -40
+wait 0.3
+head pitch -60
+wait 1
+dump
+# A crouch, held.
+head pos 0 1.15 0
+wait 1.5
+mark crouch
+wait 3
+dump
+head pos 0 1.6 0
+wait 1
+mark end

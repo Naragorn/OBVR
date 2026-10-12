@@ -157,6 +157,14 @@ bool IsPlayerSneaking() {
 	return (flags & addr::kMovementFlagSneaking) != 0;
 }
 
+UInt16 ReadPlayerMovementFlags() {
+	const auto* const process = PlayerProcessOrNull();
+	if (process == nullptr) {
+		return 0;
+	}
+	return *reinterpret_cast<const UInt16*>(process + addr::kProcessMovementFlagsOffset);
+}
+
 SInt32 ReadPlayerAction() {
 	const auto* const process = PlayerProcessOrNull();
 	if (process == nullptr) {

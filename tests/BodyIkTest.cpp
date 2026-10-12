@@ -1,9 +1,12 @@
 // Checks the body IK's decisions (game/BodyIkLogic.h): the two-bone limb
 // against the rig's own hinge, reachable, too far (grown, then short), too
-// near, and with nothing to go by; the elbow's hint for the poses an arm
-// takes; the clavicle's share and turn; the twist split; the torso after the
-// head, its free turn, its follow, its fresh start; the chest's yaw and its
-// correction; the knees' lift; the gate of an arm.
+// near, and with nothing to go by, and its softened reach; the elbow's hint
+// for the poses an arm takes and its fade along the arm, its ease, the rolls
+// continued; the torso keep-out, its refined turn and the way round kept;
+// the clavicle's share and turn; the twist split; the torso after the head,
+// its free turn, its follow, its fresh start; the chest's yaw and its
+// correction; the knees' lift and the feet put back; the trunk's pose (the
+// idle stance, its settle, a standing head offset); the gate of an arm.
 
 #include <cstdio>
 #include <limits>
@@ -101,27 +104,93 @@ void TestLimbReach() {
 void TestLimbFar() {
 	std::printf("the limb, its end out of reach\n");
 	const NiPoint3 pole{0.0f, 0.0f, -1.0f};
-	const float reach = (kUpper + kLower) * kLimbStraightShare;
+	const float length = kUpper + kLower;
+	// Past the length the softened reach saturates towards it: the end lands
+	// as far as that goes, the bones grown only the soft zone's own 3 %.
+	const float soft40 = SoftReach(40.0f, length);
+	const float softGrowth = 1.0f / (1.0f - kLimbSoftShare * 0.36788f);
 	const LimbSolve none = SolveLimb(Arm(NiPoint3{40.0f, 0.0f, 0.0f}, pole));
-	Check(none.valid && !none.reached && none.stretch == 1.0f, "nothing to grow: short");
-	Check(NearPoint(none.end, NiPoint3{reach, 0.0f, 0.0f}, 0.02f),
-	      "the end straight towards it, as far as the bones go (0.1 % short of straight)");
-	Check(Near(none.shortUnits, 40.0f - reach, 0.02f), "short by the rest");
+	Check(none.valid && !none.reached && Near(none.stretch, softGrowth, 1e-4f),
+	      "no growth allowed: grown the soft zone's own 3 % all the same, short");
+	Check(soft40 < length && soft40 > 0.98f * length, "(the softened reach of 40: just short of the length)");
+	Check(NearPoint(none.end, NiPoint3{soft40 * softGrowth, 0.0f, 0.0f}, 0.02f),
+	      "the end towards it, as far as the softened reach grown goes");
+	Check(Near(none.shortUnits, 40.0f - soft40 * softGrowth, 0.02f), "short by the rest");
+	float angle = 0.0f;
+	Check(PureZ(none.upperRot, none.lowerRot, angle) && angle < -10.0f * kDeg && angle > -25.0f * kDeg,
+	      "the elbow keeps its bend there (10-25 degrees), not locked straight");
 	const LimbSolve grown = SolveLimb(Arm(NiPoint3{40.0f, 0.0f, 0.0f}, pole, 1.15f));
-	Check(grown.valid && grown.reached && Near(grown.stretch, 40.0f / reach, 1e-3f),
-	      "allowed to grow 15 %: grown just enough, reached");
+	Check(grown.valid && grown.reached && Near(grown.stretch, 40.0f / soft40, 1e-3f),
+	      "allowed to grow 15 %: grown just enough to land the end, reached");
 	Check(Near(Distance(grown.joint, NiPoint3{0, 0, 0}), kUpper * grown.stretch, 0.01f), "the upper bone grown");
 	const LimbSolve tooFar = SolveLimb(Arm(NiPoint3{50.0f, 0.0f, 0.0f}, pole, 1.15f));
 	Check(tooFar.valid && !tooFar.reached && Near(tooFar.stretch, 1.15f, 1e-4f),
 	      "past what growing allows: grown all it may, still short");
-	Check(Near(tooFar.shortUnits, 50.0f - (kUpper + kLower) * 1.15f * kLimbStraightShare, 0.02f), "short by the rest");
-	float angle = 0.0f;
+	Check(Near(tooFar.shortUnits, 50.0f - length * 1.15f * kLimbStraightShare, 0.02f), "short by the rest");
 	Check(PureZ(tooFar.upperRot, tooFar.lowerRot, angle) && angle <= 0.0f, "straight, the hinge still defined");
 	const LimbSolve shrink = SolveLimb(Arm(NiPoint3{40.0f, 0.0f, 0.0f}, pole, 0.5f));
-	Check(shrink.valid && shrink.stretch == 1.0f && !shrink.reached, "a growth below 1: none");
+	Check(shrink.valid && Near(shrink.stretch, softGrowth, 1e-4f) && !shrink.reached,
+	      "a growth below 1: the soft zone's own only");
 	const LimbSolve nanStretch =
 		SolveLimb(Arm(NiPoint3{40.0f, 0.0f, 0.0f}, pole, std::numeric_limits<float>::quiet_NaN()));
-	Check(nanStretch.valid && nanStretch.stretch == 1.0f, "a growth of no number: none");
+	Check(nanStretch.valid && Near(nanStretch.stretch, softGrowth, 1e-4f), "a growth of no number: the soft zone's own only");
+	// Solved exactly (no soft share): the old straight reach, nothing grown.
+	LimbInput exact = Arm(NiPoint3{40.0f, 0.0f, 0.0f}, pole);
+	exact.softShare = 0.0f;
+	const LimbSolve straight = SolveLimb(exact);
+	Check(straight.stretch == 1.0f && NearPoint(straight.end, NiPoint3{length * kLimbStraightShare, 0.0f, 0.0f}, 0.02f),
+	      "no soft share: nothing grown, the end straight towards it, 0.1 % short of straight");
+}
+
+void TestSoftReach() {
+	std::printf("the softened reach\n");
+	const float length = kUpper + kLower;
+	const float start = length * (1.0f - kLimbSoftShare);
+	Check(SoftReach(20.0f, length) == 20.0f, "well within the reach: as it is");
+	Check(Near(SoftReach(start, length), start, 1e-4f), "at the zone's start: the same (no step)");
+	Check(SoftReach(start + 0.5f, length) < start + 0.5f && SoftReach(start + 0.5f, length) > start + 0.45f,
+	      "just past it: a little less, the slope near one");
+	const float atLength = SoftReach(length, length);
+	Check(atLength < length && atLength > 0.96f * length, "at the full length: about 3 % short of it");
+	Check(SoftReach(2.0f * length, length) < length && SoftReach(2.0f * length, length) > atLength,
+	      "far past it: never the length, still more than at the length");
+	Check(SoftReach(40.0f, length, 0.0f) == 40.0f, "no share: as it is");
+	Check(SoftReach(40.0f, length, std::numeric_limits<float>::quiet_NaN()) == 40.0f, "a share of no number: as it is");
+	// The slope: the elbow's angle against the end's distance, in the body's
+	// arm, never steeper than at the zone's start - a controller's tremor
+	// at arm's length does not twitch the elbow.
+	float worst = 0.0f;
+	float atStart = 0.0f;
+	for (int i = 0; i < 60; ++i) {
+		const float d = start - 1.0f + static_cast<float>(i) * 0.1f;
+		const LimbInput a = Arm(NiPoint3{d, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, -1.0f}, 1.15f);
+		const LimbInput b = Arm(NiPoint3{d + 0.05f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, -1.0f}, 1.15f);
+		float angleA = 0.0f;
+		float angleB = 0.0f;
+		const LimbSolve sa = SolveLimb(a);
+		const LimbSolve sb = SolveLimb(b);
+		PureZ(sa.upperRot, sa.lowerRot, angleA);
+		PureZ(sb.upperRot, sb.lowerRot, angleB);
+		const float slope = (angleB > angleA ? angleB - angleA : angleA - angleB) / 0.05f / kDeg;
+		worst = slope > worst ? slope : worst;
+		if (i == 10) {
+			atStart = slope;
+		}
+	}
+	Check(worst < 9.0f && atStart > 6.0f, "the elbow's slope at most 9 degrees a unit, about 8 at the zone's start");
+	// And the same arm solved exactly: 40 degrees a unit and more at the end.
+	LimbInput a = Arm(NiPoint3{length * 0.9985f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, -1.0f});
+	LimbInput b = Arm(NiPoint3{length * 0.9985f + 0.02f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, -1.0f});
+	a.softShare = 0.0f;
+	b.softShare = 0.0f;
+	float angleA = 0.0f;
+	float angleB = 0.0f;
+	const LimbSolve sa = SolveLimb(a);
+	const LimbSolve sb = SolveLimb(b);
+	PureZ(sa.upperRot, sa.lowerRot, angleA);
+	PureZ(sb.upperRot, sb.lowerRot, angleB);
+	const float exactSlope = (angleA > angleB ? angleA - angleB : angleB - angleA) / 0.02f / kDeg;
+	Check(exactSlope > 40.0f, "(solved exactly, the last tenth of a percent: over 40 degrees a unit)");
 }
 
 void TestLimbNear() {
@@ -171,11 +240,19 @@ void TestLimbOnTheRig() {
 	in.lowerLength = Distance(wrist, elbow);
 	in.target = wrist;
 	in.pole = elbow - shoulder;
+	in.softShare = 0.0f;
 	const LimbSolve s = SolveLimb(in);
 	float angle = 0.0f;
-	Check(s.valid && s.reached && NearPoint(s.joint, elbow, 0.05f), "the animation's elbow found again");
+	Check(s.valid && s.reached && NearPoint(s.joint, elbow, 0.05f), "the animation's elbow found again (solved exactly)");
 	Check(PureZ(s.upperRot, s.lowerRot, angle) && Near(angle, -32.5f * kDeg, 0.6f * kDeg),
 	      "the forearm folded -32.5 degrees about the upper arm's z, as the probe read it");
+	// The same hanging arm, 96 % of the reach, with the reach softened: the
+	// elbow a little more bent, the bones grown a little, the wrist reached.
+	in.softShare = kLimbSoftShare;
+	const LimbSolve soft = SolveLimb(in);
+	Check(soft.valid && soft.reached && soft.stretch > 1.0f && soft.stretch < 1.03f &&
+	          PureZ(soft.upperRot, soft.lowerRot, angle) && angle < -32.5f * kDeg && angle > -50.0f * kDeg,
+	      "softened: the wrist reached, the bones grown under 3 %, the elbow bent more");
 	// The left leg, its foot lifted 20 units: the knee goes forward.
 	const NiPoint3 hip{249.4f, -1679.6f, -191.6f};
 	const NiPoint3 knee{247.9f, -1674.6f, -224.9f};
@@ -216,8 +293,7 @@ LimbSolve ArmTo(float side, const NiPoint3& shoulder, const NiPoint3& wrist, con
 	in.target = wrist;
 	in.pole = ElbowPole(side, kRight, kForward, kUp, shoulder, wrist, handAlong, kLower);
 	in.maxStretch = 1.15f;
-	bool moved = false;
-	in.pole = ElbowClearOfTorso(in, side, torso, moved);
+	in.pole = ElbowClearOfTorso(in, side, torso, 0.0f).pole;
 	return SolveLimb(in);
 }
 
@@ -293,6 +369,69 @@ void TestElbow() {
 	const NiPoint3 both = ElbowPole(1.0f, NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 0.0f}, kUp,
 	                                NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, -30.0f}, kUp, 30.0f);
 	Check(NearPoint(both, NiPoint3{0.0f, 0.0f, -1.0f}), "both on the line: straight down");
+	// The hand's hint fades as the hand comes to point along the arm: a hand
+	// held out ahead, its fingers turned 5 degrees off the arm's line one way
+	// and the other, moves the elbow a few degrees, not from one side to the
+	// other (the first version made the sliver across the line unit, and the
+	// elbow flipped: the tester, 2026-10-12, "die ellenbogen wechseln zu
+	// schnell beim drehen des handgelenks").
+	const NiPoint3 held{10.0f, 30.0f, -5.0f};
+	NiPoint3 along;
+	ik::Unit(held - rightShoulder, along);
+	const NiPoint3 sideways = ik::Cross(along, kUp);  // across the arm
+	NiPoint3 aLittleRight;
+	NiPoint3 aLittleLeft;
+	ik::Unit(along + sideways * 0.09f, aLittleRight);
+	ik::Unit(along - sideways * 0.09f, aLittleLeft);
+	const NiPoint3 poleRight = ElbowPole(1.0f, kRight, kForward, kUp, rightShoulder, held, aLittleRight, kLower);
+	const NiPoint3 poleLeft = ElbowPole(1.0f, kRight, kForward, kUp, rightShoulder, held, aLittleLeft, kLower);
+	const float swing = ik::Acos(ik::Dot(poleRight, poleLeft)) / kDeg;
+	Check(swing < 12.0f, "the fingers 5 degrees either side of the arm's line: the elbow's direction within 12 degrees");
+	Check(poleRight.z < -0.6f && poleLeft.z < -0.6f, "and down, the body's way, both times");
+	// Turned well across (90 degrees), the hand's hint counts in full.
+	const NiPoint3 poleAcross = ElbowPole(1.0f, kRight, kForward, kUp, rightShoulder, held, sideways, kLower);
+	Check(ik::Acos(ik::Dot(poleAcross, poleRight)) / kDeg > 20.0f, "the fingers turned right across the arm: the elbow sent well round");
+}
+
+void TestEase() {
+	std::printf("the elbow's ease\n");
+	const NiPoint3 down{0.0f, 0.0f, -1.0f};
+	const NiPoint3 out{1.0f, 0.0f, 0.0f};
+	Check(NearPoint(EasedDirection(down, out, 0.0f), down), "no share: where it was");
+	Check(NearPoint(EasedDirection(down, out, 1.0f), out), "the whole share: the new direction");
+	const NiPoint3 half = EasedDirection(down, out, 0.5f);
+	Check(Near(ik::Length(half), 1.0f, 1e-4f) && Near(half.x, -half.z, 1e-4f) && half.x > 0.5f, "half: between, unit");
+	Check(NearPoint(EasedDirection(down, down * -1.0f, 0.5f), down * -1.0f), "opposite directions: the new one whole");
+	Check(NearPoint(EasedDirection(down, out, 2.0f), out) && NearPoint(EasedDirection(down, out, -1.0f), down),
+	      "a share past 0..1 held to it");
+	const float nan = std::numeric_limits<float>::quiet_NaN();
+	Check(NearPoint(EasedDirection(NiPoint3{nan, 0.0f, 0.0f}, out, 0.5f), out), "a last direction of no number: the new one");
+	Check(EaseShare(0.0f, 0.05f) == 1.0f && EaseShare(-1.0f, 0.05f) == 1.0f, "no time, or time run backwards: all of the way");
+	Check(EaseShare(1.0f / 90.0f, 0.0f) == 1.0f, "no time constant: all of the way");
+	Check(EaseShare(2.0f, 0.05f) == 1.0f, "a frame of seconds: all of the way");
+	const float share = EaseShare(1.0f / 90.0f, 0.05f);
+	Check(share > 0.18f && share < 0.22f, "a 90 Hz frame against 50 ms: a fifth of the way");
+	Check(EaseShare(1.0f / 90.0f, nan) == 1.0f, "a constant of no number: all of the way");
+}
+
+void TestRollMemory() {
+	std::printf("the rolls continued\n");
+	const float pi = obvr::math::kPi;
+	Check(Near(UnwrapAngle(3.0f, -3.0f), 3.0f + obvr::math::WrapAngle(-6.0f), 1e-5f),
+	      "from 3.0 to -3.0: the short step on past the half turn, 3.28");
+	Check(Near(UnwrapAngle(0.2f, 0.5f), 0.5f, 1e-6f), "a small step: the new angle");
+	Check(Near(UnwrapAngle(-3.0f, 3.0f), -3.0f + obvr::math::WrapAngle(6.0f), 1e-5f), "and the other way round: -3.28");
+	Check(Near(HalfOfRoll(1.0f), 0.5f, 1e-6f), "half a roll");
+	Check(Near(HalfOfRoll(3.1f), 0.5f * kTwistMostRadians, 1e-5f) && Near(HalfOfRoll(-3.1f), -0.5f * kTwistMostRadians, 1e-5f),
+	      "past 150 degrees: held there, either way");
+	Check(Near(HoldRollMemory(1.0f), 1.0f, 1e-6f), "a roll within the memory's hold: kept");
+	Check(Near(HoldRollMemory(10.0f), kRollMemoryMostRadians, 1e-5f) && Near(HoldRollMemory(-10.0f), -kRollMemoryMostRadians, 1e-5f),
+	      "spun round and round: held a bit past the clamp, not run away");
+	Check(kRollMemoryMostRadians > kTwistMostRadians && kRollMemoryMostRadians < pi + 1.0f,
+	      "(the memory's hold past the clamp, short of a turn)");
+	// A roll continued from the hold comes straight back.
+	const float held = HoldRollMemory(10.0f);
+	Check(UnwrapAngle(held, obvr::math::WrapAngle(held) - 0.3f) < held, "rolled back from the hold: the memory falls at once");
 }
 
 void TestTorsoKeepOut() {
@@ -311,6 +450,12 @@ void TestTorsoKeepOut() {
 	Check(ElbowInsideTorso(NiPoint3{5.0f, 0.0f, -10.0f}, -1.0f, t), "the left arm's elbow across on the right: inside");
 	Check(!ElbowInsideTorso(NiPoint3{-12.0f, 0.0f, -10.0f}, -1.0f, t), "the left arm's out past its shoulder: outside");
 
+	// The clearance: how far outside, continuous across the faces.
+	Check(Near(TorsoClearance(NiPoint3{12.0f, 0.0f, -10.0f}, 1.0f, t), 5.0f, 1e-4f), "2 past the shoulder: 5 clear of the side (3 inwards is the side)");
+	Check(Near(TorsoClearance(NiPoint3{5.0f, 4.0f, -10.0f}, 1.0f, t), 2.0f, 1e-4f), "4 before the chest: 2 clear of its front");
+	Check(Near(TorsoClearance(NiPoint3{5.0f, 0.0f, -10.0f}, 1.0f, t), -2.0f, 1e-4f), "5 in from the shoulder: 2 inside (the nearest face)");
+	Check(TorsoClearance(NiPoint3{5.0f, 0.0f, -40.0f}, 1.0f, t) > 0.0f, "below the pelvis: outside");
+
 	// A limb whose elbow is outside: the pole as it was.
 	LimbInput fine;
 	fine.root = NiPoint3{10.0f, 0.0f, 0.0f};
@@ -318,24 +463,34 @@ void TestTorsoKeepOut() {
 	fine.lowerLength = kLower;
 	fine.target = NiPoint3{15.0f, 25.0f, -12.0f};
 	fine.pole = NiPoint3{0.4f, -0.3f, -1.0f};
-	bool moved = true;
-	const NiPoint3 kept = ElbowClearOfTorso(fine, 1.0f, t, moved);
-	Check(!moved && NearPoint(kept, fine.pole), "the elbow outside already: the pole kept");
-	// A pole that sends it inside: moved round to the nearest place outside.
+	const ElbowClear kept = ElbowClearOfTorso(fine, 1.0f, t, 0.0f);
+	Check(!kept.moved && NearPoint(kept.pole, fine.pole) && kept.sign == 0.0f, "the elbow outside already: the pole kept");
+	// A pole that sends it inside: moved round to the nearest place outside,
+	// and clear of it by the margin.
 	LimbInput bad = fine;
 	bad.target = NiPoint3{-8.0f, 10.0f, 6.0f};
 	bad.pole = NiPoint3{-0.3f, -0.6f, -0.3f};
 	const LimbSolve before = SolveLimb(bad);
 	Check(before.valid && ElbowInsideTorso(before.joint, 1.0f, t), "(the set-up: that pole puts the elbow in the chest)");
-	bad.pole = ElbowClearOfTorso(bad, 1.0f, t, moved);
+	const ElbowClear cleared = ElbowClearOfTorso(bad, 1.0f, t, 0.0f);
+	bad.pole = cleared.pole;
 	const LimbSolve after = SolveLimb(bad);
-	Check(moved && after.valid && after.reached && !ElbowInsideTorso(after.joint, 1.0f, t),
-	      "moved round: the hand still reached, the elbow outside");
+	Check(cleared.moved && after.valid && after.reached && TorsoClearance(after.joint, 1.0f, t) >= kElbowClearUnits - 0.01f,
+	      "moved round: the hand still reached, the elbow outside by the margin");
+	Check(cleared.angle > 0.0f && cleared.angle < 3.0f && (cleared.sign == 1.0f || cleared.sign == -1.0f),
+	      "the turn and its way round answered");
+	// Refined, not stepped: the hand moved a little moves the elbow a little.
+	LimbInput near = bad;
+	near.pole = NiPoint3{-0.3f, -0.6f, -0.3f};
+	near.target = bad.target + NiPoint3{0.3f, 0.0f, 0.0f};
+	const ElbowClear nearby = ElbowClearOfTorso(near, 1.0f, t, 0.0f);
+	Check(nearby.moved && nearby.sign == cleared.sign && Near(nearby.angle, cleared.angle, 3.0f * kDeg),
+	      "the hand 0.3 units over: the turn within 3 degrees of before (no 10 degree step)");
 	// Nothing to solve: the pole as it was.
 	LimbInput none = fine;
 	none.target = none.root;
-	const NiPoint3 same = ElbowClearOfTorso(none, 1.0f, t, moved);
-	Check(!moved && NearPoint(same, fine.pole), "no solve: the pole kept");
+	const ElbowClear same = ElbowClearOfTorso(none, 1.0f, t, 0.0f);
+	Check(!same.moved && NearPoint(same.pole, fine.pole), "no solve: the pole kept");
 	// Every elbow inside (the whole circle within the torso's depth, its
 	// width and height made huge): the pole kept, not moved.
 	TorsoKeepOut everywhere = t;
@@ -348,8 +503,51 @@ void TestTorsoKeepOut() {
 	along.lowerLength = kLower;
 	along.target = NiPoint3{0.0f, 5.0f, 0.0f};
 	along.pole = NiPoint3{0.0f, 0.0f, -1.0f};
-	const NiPoint3 stuck = ElbowClearOfTorso(along, 1.0f, everywhere, moved);
-	Check(!moved && NearPoint(stuck, along.pole), "every elbow inside: the pole kept");
+	const ElbowClear stuck = ElbowClearOfTorso(along, 1.0f, everywhere, 0.0f);
+	Check(!stuck.moved && NearPoint(stuck.pole, along.pole), "every elbow inside: the pole kept");
+
+	// The way round kept: the right hand low before the chest, the pole sent
+	// straight inwards - the elbow in the side, a way out forward (the chest's
+	// front) and one back, a few degrees apart.
+	LimbInput side;
+	side.root = NiPoint3{10.0f, 0.0f, 0.0f};
+	side.upperLength = kUpper;
+	side.lowerLength = kLower;
+	side.target = NiPoint3{10.0f, -2.0f, -20.0f};
+	side.pole = NiPoint3{-1.0f, 0.0f, 0.0f};
+	const LimbSolve inSide = SolveLimb(side);
+	Check(inSide.valid && ElbowInsideTorso(inSide.joint, 1.0f, t), "(the set-up: the elbow in the side)");
+	const ElbowClear shorter = ElbowClearOfTorso(side, 1.0f, t, 0.0f);
+	const ElbowClear other = ElbowClearOfTorso(side, 1.0f, t, -shorter.sign);
+	const ElbowClear kept2 = ElbowClearOfTorso(side, 1.0f, t, shorter.sign);
+	Check(shorter.moved && other.moved && kept2.moved, "moved round every time");
+	Check(shorter.angle > 10.0f * kDeg && shorter.angle < 60.0f * kDeg && other.angle >= shorter.angle,
+	      "the shorter way first (10-60 degrees round)");
+	Check(other.sign == -shorter.sign && other.angle - shorter.angle < kElbowSideHoldRadians,
+	      "the way it went last frame kept while the other is not 30 degrees shorter");
+	Check(kept2.sign == shorter.sign && Near(kept2.angle, shorter.angle, 1e-5f), "preferred the shorter: the shorter");
+	// A way preferred that is far longer: the shorter wins. The torso's back
+	// pushed far back: the way back round is far longer than the way forward.
+	TorsoKeepOut deep = t;
+	deep.forward = NiPoint3{0.0f, 1.0f, 0.0f};
+	LimbInput sideDeep = side;
+	sideDeep.target = NiPoint3{10.0f, -1.0f, -20.0f};
+	const ElbowClear deepShort = ElbowClearOfTorso(sideDeep, 1.0f, deep, 0.0f);
+	bool longerFound = false;
+	float longerAngle = 0.0f;
+	{
+		// The other way's own angle: asked for with a huge hold, it is given.
+		const ElbowClear longer = ElbowClearOfTorso(sideDeep, 1.0f, deep, -deepShort.sign);
+		longerFound = longer.moved;
+		longerAngle = longer.angle;
+	}
+	Check(deepShort.moved && longerFound, "(both ways found)");
+	if (longerAngle - deepShort.angle >= kElbowSideHoldRadians) {
+		Check(ElbowClearOfTorso(sideDeep, 1.0f, deep, -deepShort.sign).sign == deepShort.sign,
+		      "the other way 30 degrees longer: the shorter wins over the preference");
+	} else {
+		Check(true, "(the two ways within 30 degrees here: the hold case above covers it)");
+	}
 }
 
 // A point through a transform, the engine's way.
@@ -547,6 +745,51 @@ void TestKnees() {
 	Check(NearPoint(KneePole(-1.0f, kRight, kForward), NiPoint3{-0.15f, 1.0f, 0.0f}), "the left one out the other way");
 }
 
+void TestFeet() {
+	std::printf("the feet put back\n");
+	Check(!FootSolveWanted(NiPoint3{0.0f, 0.0f, 2.0f}), "sunk 2 units into the floor: left (the floor hides it)");
+	Check(!FootSolveWanted(NiPoint3{0.0f, 0.0f, 3.0f}), "sunk 3: still left");
+	Check(FootSolveWanted(NiPoint3{0.0f, 0.0f, 10.0f}), "sunk 10 (a crouch): solved back up");
+	Check(FootSolveWanted(NiPoint3{0.0f, 0.0f, -1.0f}), "floating a unit above: solved down");
+	Check(!FootSolveWanted(NiPoint3{0.0f, 0.0f, -0.2f}), "a fifth of a unit above: left");
+	Check(FootSolveWanted(NiPoint3{0.6f, 0.0f, 0.0f}), "off sideways by more than half a unit: solved");
+	Check(!FootSolveWanted(NiPoint3{0.3f, 0.3f, 0.0f}), "off sideways by less: left");
+	Check(FootSolveWanted(NiPoint3{0.0f, 0.0f, 1.0f}, 0.0f), "no free units: a unit sunk is solved");
+	Check(!FootSolveWanted(NiPoint3{std::numeric_limits<float>::quiet_NaN(), 0.0f, 0.0f}), "no number: left");
+}
+
+void TestTrunk() {
+	std::printf("the trunk's pose\n");
+	const SInt32 none = -1;
+	Check(PlayerStandsIdle(false, none, 0x0000, none), "not sneaking, no action, no step: idle");
+	Check(PlayerStandsIdle(false, none, 0x0100, none), "the walk flag alone (no direction): idle");
+	Check(!PlayerStandsIdle(true, none, 0x0000, none), "sneaking: not");
+	Check(!PlayerStandsIdle(false, 2, 0x0000, none), "an action: not");
+	Check(!PlayerStandsIdle(false, none, 0x0001, none), "stepping forward: not");
+	Check(!PlayerStandsIdle(false, none, 0x0008, none), "stepping right: not");
+	Check(HeadOffsetStands(NiPoint3{0.5f, -1.1f, 112.4f}), "the idle's head offset: standing");
+	Check(!HeadOffsetStands(NiPoint3{0.3f, 17.4f, 72.5f}), "the sneak's (72 up, 17 forward): not");
+	Check(!HeadOffsetStands(NiPoint3{0.0f, 0.0f, 140.0f}), "140 up: not");
+	Check(!HeadOffsetStands(NiPoint3{0.0f, 13.0f, 112.0f}), "13 forward: not");
+	Check(!HeadOffsetStands(NiPoint3{std::numeric_limits<float>::quiet_NaN(), 0.0f, 112.0f}), "no number: not");
+	float seconds = 0.0f;
+	const float dt = 1.0f / 90.0f;
+	bool settled = false;
+	for (int i = 0; i < 30; ++i) {
+		settled = StandingSettled(seconds, true, dt);
+	}
+	Check(!settled && seconds > 0.3f && seconds < 0.34f, "a third of a second idle: not yet settled");
+	for (int i = 0; i < 20; ++i) {
+		settled = StandingSettled(seconds, true, dt);
+	}
+	Check(settled && seconds >= kStandingSettleSeconds, "over half a second: settled");
+	Check(!StandingSettled(seconds, false, dt) && seconds == 0.0f, "a step: the count starts over");
+	seconds = 1.0f;
+	Check(!StandingSettled(seconds, true, 2.0f) && seconds == 0.0f, "a frame of seconds: over, afresh");
+	seconds = 1.0f;
+	Check(!StandingSettled(seconds, true, std::numeric_limits<float>::quiet_NaN()) && seconds == 0.0f, "no time: over, afresh");
+}
+
 void TestGate() {
 	std::printf("the gate of an arm\n");
 	Check(ArmFollowsHand(true, true, true, false), "on, shown, pinned, own sides: follows");
@@ -561,10 +804,13 @@ void TestGate() {
 int main() {
 	TestLimbReach();
 	TestLimbFar();
+	TestSoftReach();
 	TestLimbNear();
 	TestLimbNothing();
 	TestLimbOnTheRig();
 	TestElbow();
+	TestEase();
+	TestRollMemory();
 	TestTorsoKeepOut();
 	TestCarried();
 	TestClavicle();
@@ -572,6 +818,8 @@ int main() {
 	TestTorso();
 	TestChest();
 	TestKnees();
+	TestFeet();
+	TestTrunk();
 	TestGate();
 	if (g_failures == 0) {
 		std::printf("all checks passed\n");

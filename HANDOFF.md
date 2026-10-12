@@ -2129,10 +2129,18 @@ and FEAR2VR, cited above.
   camera's ancestry log showed the camera under `WorldRoot`, not under the skeleton, and
   the live INI had `[Look] BlockVerticalLook=0` written into it by laser clicks in OBVR's
   menu - with `AimAtSource=1` that doubles the pitch. `BlockVerticalLook` is now forced on
-  under `AimAtSource` (`2b5ec02`). The body has not been in a headset since. Since
-  2026-10-11 it is on by default with the body IK on top (`docs/player-body-spec.md`:
-  the arms reach the pinned hands, the body turns with the head, the knees bend for a
-  crouch), harness-tested, its headset run open.
+  under `AimAtSource` (`2b5ec02`). Since 2026-10-11 it is on by default with the body
+  IK on top (`docs/player-body-spec.md`: the arms reach the pinned hands, the body turns
+  with the head, the knees bend for a crouch). Its first headset run (2026-10-12) found the
+  view looking into the chest and the body jerking: the eyes were put in front of the head
+  bone along the head's yaw alone, and the head bone's offset from the root was the
+  animation's each frame, so every pose moved the body under the still headset (the walk's
+  bob, the sneak's 44-unit drop - measured with the new `Debug.BodyTrace` and
+  `tools/body-trace.ps1`). Round 2 turns the eye offset with the headset's whole rotation
+  (the head bone the neck's pivot) and holds the trunk at the standing idle's pose, the
+  feet solved back to the ground; the elbow's direction is eased, kept its way round the
+  torso, and the last 8 % of the reach softened. Harness-measured still; the second
+  headset run open.
 - **The commits of 2026-09-23 were reviewed on 2026-09-25**, before any of them had been
   in a headset. What was kept, changed or taken out:
   - *Room-scale locomotion* (`5b04417`) replaced the head tracker's offset with its own,

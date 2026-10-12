@@ -120,6 +120,10 @@ WeaponState ReadPlayerWeaponState();
 // an eye should be.
 bool IsPlayerSneaking();
 
+// The player's movement flags as they are (the same word IsPlayerSneaking
+// reads: the direction bits, walk, run, sneak), 0 when they cannot be read.
+UInt16 ReadPlayerMovementFlags();
+
 // Whether the shot is still in hand - the arrow on the string, the swing not
 // yet landed.
 //

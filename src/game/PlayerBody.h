@@ -38,6 +38,13 @@ struct BodyFrame {
 	bool headYawValid = false;
 	float headWorldYaw = 0.0f;
 	float headTrackingYaw = 0.0f;
+	// The headset's whole rotation in the world (the cyclopean camera's):
+	// the eyes are put in front of the head bone the way it faces, pitch
+	// included, so the head bone is the neck's pivot (BodyPlacement.h).
+	bool headRotValid = false;
+	NiMatrix33 headRot = NiMatrix33::Identity();
+	// PlayerStandsIdle this frame, for the trunk's pose (BodyIk.h).
+	bool standsIdle = false;
 	float dtSeconds = 0.0f;
 };
 

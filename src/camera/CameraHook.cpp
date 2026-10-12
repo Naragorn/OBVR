@@ -5277,7 +5277,14 @@ UInt32 StepBodyArmsAfterPins(bool pinsRan, const NiPoint3& cameraWorld) {
 	arms.leftPinned = pinsRan && game::HandPinnedThisFrame(false);
 	arms.rolesSwapped = g_handRolesSwapped;
 	arms.cameraWorld = cameraWorld;
+	arms.dtSeconds = g_deltaSeconds;
 	arms.logState = test::HandScriptMarkedThisFrame();
+	// Debug.BodyTrace: the first N frames the body is shown, numbered.
+	static UInt32 s_traced = 0;
+	arms.trace = g_bodyShownThisFrame && s_traced < config.body.traceFrames;
+	if (arms.trace) {
+		arms.traceFrame = s_traced++;
+	}
 	return game::StepBodyArms(arms);
 }
 
@@ -7251,6 +7258,14 @@ void BeforeFirstScenePass() {
 				frame.headWorldYaw = math::Atan2(worldHead.sine, worldHead.cosine);
 				frame.headTrackingYaw = math::Atan2(trackedHead.sine, trackedHead.cosine);
 			}
+			// The whole rotation, for the neck's pivot; and whether the player
+			// stands idle, for the trunk's pose (game/BodyIkLogic.h).
+			frame.headRotValid = g_cyclopeanCameraWorldValid && g_headTracker.IsHeadsetConnected();
+			if (frame.headRotValid) {
+				frame.headRot = g_cyclopeanCameraWorldTransform.rot;
+			}
+			frame.standsIdle = game::PlayerStandsIdle(game::IsPlayerSneaking(), game::ReadPlayerAction(),
+			                                          game::ReadPlayerMovementFlags(), addr::kActionNone);
 			frame.dtSeconds = g_deltaSeconds;
 			static const long long ticksPerSecond = ReadPerformanceFrequency();
 			const long long before = ReadPerformanceCounter();
@@ -7585,7 +7600,11 @@ void BeforeFirstScenePass() {
 	}
 }
 
-void AfterWorldRender() { game::RestoreDeadPlayerBody(); }
+void AfterWorldRender() {
+	game::RestoreDeadPlayerBody();
+	// The body IK's writes through the draw, for its trace.
+	game::NoteBodyRenderDone();
+}
 
 bool ScenePassWanted() {
 	// The same menu question, asked of the same source, as the delivery

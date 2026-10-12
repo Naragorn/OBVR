@@ -39,13 +39,18 @@ struct BodyRootInput {
 	// and in game units at scale one: forward (y) and up (z). Enhanced
 	// Camera ships 14 forward and 6 up.
 	NiPoint3 eyeOffsetUnits{0.0f, 14.0f, 6.0f};
-	// With the torso following the head (game/BodyIkLogic.h), the body faces
-	// where the torso does and the head may look up to 40 degrees past it:
-	// the eyes are then in front of the head bone the way the HEAD faces,
-	// not the body. `headYawRot` is the head's yaw alone (no pitch, no
-	// roll), used for the eye offset in place of the root's rotation.
-	bool eyesFollowHeadYaw = false;
-	NiMatrix33 headYawRot = NiMatrix33::Identity();
+	// The eyes in front of the head bone the way the HEAD faces, not the
+	// body: `headRot` is the headset's whole rotation in the world (the
+	// camera's - its column 1 forward, column 2 up), pitch and roll included.
+	// The head bone is then the neck's pivot: a look down swings the eyes
+	// forward and down about it and the body stays put, the way a head nods
+	// on its neck. With the yaw alone (the first version, 2026-10-11) the
+	// body went forward and down with the headset, and a look down looked
+	// into the chest from above instead of down the front of the body (the
+	// tester, 2026-10-12: "sehe ich in die körpermitte hinein statt am körper
+	// herunter").
+	bool eyesFollowHead = false;
+	NiMatrix33 headRot = NiMatrix33::Identity();
 	// The root's parent, whose space the root's local transform is written in.
 	NiMatrix33 parentRot = NiMatrix33::Identity();
 	NiPoint3 parentPos{0.0f, 0.0f, 0.0f};
@@ -57,7 +62,7 @@ struct BodyRootInput {
 // scale, back again by the head's offset from the root.
 inline NiPoint3 BodyRootWorldWanted(const BodyRootInput& in) {
 	const float scale = in.rootWorldScale > 0.0f ? in.rootWorldScale : 1.0f;
-	const NiMatrix33& offsetRot = in.eyesFollowHeadYaw ? in.headYawRot : in.rootWorldRot;
+	const NiMatrix33& offsetRot = in.eyesFollowHead ? in.headRot : in.rootWorldRot;
 	const NiPoint3 eyesFromHead = offsetRot * (in.eyeOffsetUnits * scale);
 	const NiPoint3 headFromRoot = in.headWorld - in.rootWorld;
 	return in.cameraWorld - eyesFromHead - headFromRoot;

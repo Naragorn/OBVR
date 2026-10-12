@@ -92,23 +92,45 @@ void TestTurnedBody() {
 	      "any rotation: the eyes still land on the camera");
 }
 
-void TestEyesFollowHeadYaw() {
+void TestEyesFollowHead() {
 	std::printf("The eyes in front of the head the way the head faces\n");
 	// The torso faces +y; the head looks 40 degrees to the left of it.
 	BodyRootInput in = Standing();
-	in.eyesFollowHeadYaw = true;
-	in.headYawRot = obvr::EulerToMatrix(0.0f, 0.0f, 40.0f);
+	in.eyesFollowHead = true;
+	in.headRot = obvr::EulerToMatrix(0.0f, 0.0f, 40.0f);
 	const NiPoint3 wanted = BodyRootWorldWanted(in);
-	const NiPoint3 eyes = wanted + (in.headWorld - in.rootWorld) + in.headYawRot * in.eyeOffsetUnits;
+	const NiPoint3 eyes = wanted + (in.headWorld - in.rootWorld) + in.headRot * in.eyeOffsetUnits;
 	Check(NearPoint(eyes, in.cameraWorld), "the eyes land on the camera along the head's yaw");
 	const NiPoint3 alongBody = BodyRootWorldWanted(Standing());
 	Check(!NearPoint(wanted, alongBody, 0.5f), "and not where the body's facing would put them");
-	in.headYawRot = NiMatrix33::Identity();
+	in.headRot = NiMatrix33::Identity();
 	Check(NearPoint(BodyRootWorldWanted(in), alongBody), "the head facing the body's way: the same place");
-	// Off: the root's rotation carries the offset, whatever the head's yaw.
-	in.eyesFollowHeadYaw = false;
-	in.headYawRot = obvr::EulerToMatrix(0.0f, 0.0f, 70.0f);
-	Check(NearPoint(BodyRootWorldWanted(in), alongBody), "off: the head's yaw is not read");
+	// The neck's pivot, with the eyes where the game has them (5.6 forward,
+	// 6 up from the head bone): the head looking 60 degrees down. The eyes
+	// swing down and a little forward about the head bone (the 6 up swings
+	// forward more than the 5.6 forward swings back), so the root stands
+	// higher and a little further back than with the head level - the body
+	// does not follow the headset down, the camera orbits the neck.
+	in.eyeOffsetUnits = NiPoint3{0.0f, 5.6f, 6.0f};
+	const NiPoint3 levelRoot = BodyRootWorldWanted(in);
+	in.headRot = obvr::EulerToMatrix(-60.0f, 0.0f, 0.0f);
+	const NiPoint3 forward = obvr::ForwardOf(in.headRot);
+	Check(forward.z < -0.8f && forward.y > 0.4f, "(the set-up: that rotation looks down ahead)");
+	const NiPoint3 down = BodyRootWorldWanted(in);
+	Check(NearPoint(down + (in.headWorld - in.rootWorld) + in.headRot * in.eyeOffsetUnits, in.cameraWorld),
+	      "looking down: the eyes still land on the camera");
+	Check(down.z > levelRoot.z + 7.0f, "the root stands 7 units higher: the eyes went down about the neck, the body did not");
+	Check(down.y < levelRoot.y - 2.0f, "and 2 further back: the eyes went forward about it");
+	// Looking up: the eyes swing back (and a little up) about the neck - the
+	// root forward, a little lower.
+	in.headRot = obvr::EulerToMatrix(60.0f, 0.0f, 0.0f);
+	const NiPoint3 up = BodyRootWorldWanted(in);
+	Check(up.y > levelRoot.y + 7.0f && up.z < levelRoot.z - 1.0f, "looking up: the root 7 forward, a little lower");
+	in.eyeOffsetUnits = NiPoint3{0.0f, 14.0f, 6.0f};
+	// Off: the root's rotation carries the offset, whatever the head does.
+	in.eyesFollowHead = false;
+	in.headRot = obvr::EulerToMatrix(-60.0f, 0.0f, 70.0f);
+	Check(NearPoint(BodyRootWorldWanted(in), alongBody), "off: the head's rotation is not read");
 }
 
 void TestScaledBody() {
@@ -201,7 +223,7 @@ int main() {
 	std::printf("\n");
 	TestTurnedBody();
 	std::printf("\n");
-	TestEyesFollowHeadYaw();
+	TestEyesFollowHead();
 	std::printf("\n");
 	TestScaledBody();
 	std::printf("\n");

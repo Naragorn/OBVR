@@ -33,6 +33,23 @@ inline vr::Quaternion ScriptHeadOrientation(const ScriptHead& head) {
 	return ScriptRotation(head.pitch, head.yaw, 0.0f);
 }
 
+// The eyes swing about the neck: a head nods and turns on a pivot 8.05 cm
+// behind and 7.5 cm below the eyes (the Oculus SDK's neck model, ANSUR-88
+// averages - the numbers the body's own eye offset is built on,
+// game/BodyPlacement.h), so a real headset moves as it pitches. The script's
+// `head pos` is the eyes with the head level; pitched or turned, the eyes
+// are carried round that pivot - before this (2026-10-12) a scripted head
+// pitched in place, and the body under it rose 5 units for a 45 degree
+// look down, which no real head does.
+inline constexpr float kScriptNeckToEyeUpMetres = 0.075f;
+inline constexpr float kScriptNeckToEyeForwardMetres = 0.0805f;
+
+inline NiPoint3 ScriptHeadPosition(const ScriptHead& head) {
+	const NiPoint3 eyesFromNeck{0.0f, kScriptNeckToEyeUpMetres, -kScriptNeckToEyeForwardMetres};
+	const NiPoint3 swung = vr::ToMatrix(ScriptHeadOrientation(head)) * eyesFromNeck;
+	return head.position + swung - eyesFromNeck;
+}
+
 // The controller as ReadHand gives it: tracked, placed from the head, with
 // the action path's bits and axes. The velocity stays zero - a scripted hand
 // jumps from place to place, and a jump taken for a speed would be a swing.

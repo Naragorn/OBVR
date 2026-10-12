@@ -39,19 +39,32 @@ bool BeginBodyIk(NiAVObject* root);
 
 // The torso: the root turned so the body faces the head's yaw in the world
 // plus the torso's yaw relative to the head (StepTorsoYaw, kept in the
-// headset's tracking space), then the chest's own twist taken out over the
-// three spine bones. Answers the body's world yaw, HeadingOf's sense - the
-// root's own when the torso part is off or the head unread.
-float StepBodyTorso(const BodyIkSettings& s, bool headValid, float headWorldYaw, float headTrackingYaw,
-                    float dtSeconds);
+// headset's tracking space); the trunk - the chain from the root to the head
+// - held at the standing idle's pose, taken once the player has stood idle
+// for half a second (BodyIkLogic.h, "The trunk"), so no animation moves the
+// body under the headset; then the chest's own twist taken out over the
+// three spine bones. The feet are noted where the animation put them,
+// before the trunk is held, for the legs. Answers the body's world yaw,
+// HeadingOf's sense - the root's own when the torso part is off or the head
+// unread.
+struct BodyTorsoFrame {
+	bool headValid = false;
+	float headWorldYaw = 0.0f;
+	float headTrackingYaw = 0.0f;
+	float dtSeconds = 0.0f;
+	bool standsIdle = false;  // PlayerStandsIdle this frame, for taking the trunk's pose
+};
+float StepBodyTorso(const BodyIkSettings& s, const BodyTorsoFrame& t);
 
 // The root's local position as the placement wants it (BodyRootLocalPos),
 // written through the same booking.
 void WriteBodyRootPosition(const NiPoint3& localPos);
 
 // The knees: the body was let down `loweredUnits` to put its eyes at the
-// headset; the feet are lifted back (FeetLiftUnits) by bending each leg.
-// Answers the lift.
+// headset, and its trunk held where the animation had it lower or higher;
+// each foot is solved back to where the animation put it on the ground
+// (FootSolveWanted), by bending or straightening the leg. Answers the
+// larger lift.
 float StepBodyLegs(const BodyIkSettings& s, float loweredUnits);
 
 // After the pins, once a frame: each arm to its hand where it follows
@@ -67,11 +80,31 @@ struct BodyArmsFrame {
 	bool leftPinned = false;
 	bool rolesSwapped = false;  // left-handed: the hands on each other's controllers
 	NiPoint3 cameraWorld{0.0f, 0.0f, 0.0f};
+	float dtSeconds = 0.0f;     // for the elbow's ease
 	bool logState = false;      // a hand script's mark: the state line
+	// Debug.BodyTrace: this frame's "Body trace:" line, numbered.
+	bool trace = false;
+	UInt32 traceFrame = 0;
 };
 
 // Answers which arms follow: bit 0 the right, bit 1 the left.
 UInt32 StepBodyArms(const BodyArmsFrame& f);
+
+// What the body's placement had this frame, for the trace (PlayerBody.cpp
+// notes it; the arms' step writes the line).
+struct BodyPlacementTrace {
+	NiPoint3 cameraWorld{0.0f, 0.0f, 0.0f};
+	NiPoint3 parentWorld{0.0f, 0.0f, 0.0f};    // the skeleton's parent ("Player"), as the engine has it
+	NiPoint3 headOffsetRaw{0.0f, 0.0f, 0.0f};  // the head bone from the root, as the animation left it
+	NiPoint3 headOffsetUsed{0.0f, 0.0f, 0.0f};  // and as the placement took it
+	float lowered = 0.0f;
+};
+void NoteBodyPlacement(const BodyPlacementTrace& t);
+
+// After the world is drawn: how many of this frame's writes the engine left
+// through the draw - the trace's "held" count. A bone the engine rewrote
+// between the write and the draw never showed the write.
+void NoteBodyRenderDone();
 
 // For a frame the body is not shown: every bone written put back where it
 // still holds the write, under the body root the engine has now (none: only
