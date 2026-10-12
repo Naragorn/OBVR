@@ -18,6 +18,9 @@
 //   right|left a|b|click|trackpad <0|1>
 //   right|left present <0|1>         whether the controller is tracked
 //   right|left curl <0..1>           all fingers' curl (the fist)
+//   right|left little <0..1>         the little finger's curl on its own (a
+//                                    sensor that never reads, the tester's
+//                                    left controller); negative follows curl
 //   right|left thumb <b> <m> <t>     the thumb joint by joint (0..1 each), as the
 //                                    full skeleton gives it; a negative first
 //                                    value goes back to the curl alone
@@ -80,6 +83,7 @@ struct ScriptHand {
 	float stickX = 0.0f;
 	float stickY = 0.0f;
 	float curl = 0.0f;
+	float little = -1.0f;  // the little finger's own curl; negative: as `curl`
 	bool thumbJoints = false;
 	float thumb[3] = {0.0f, 0.0f, 0.0f};
 	bool a = false;
@@ -136,6 +140,7 @@ enum class HandField : UInt8 {
 	Present,
 	Curl,
 	Thumb,
+	Little,
 };
 
 enum class HeadField : UInt8 {
@@ -229,6 +234,7 @@ constexpr FieldName kHandFields[] = {
 	{"b", HandField::B, 1},             {"click", HandField::Click, 1},
 	{"trackpad", HandField::Trackpad, 1}, {"present", HandField::Present, 1},
 	{"curl", HandField::Curl, 1},     {"thumb", HandField::Thumb, 3},
+	{"little", HandField::Little, 1},
 };
 
 }  // namespace detail
@@ -515,6 +521,9 @@ inline void ApplyHandField(ScriptHand& hand, const ScriptStep& s) {
 		for (int j = 0; j < 3; ++j) {
 			hand.thumb[j] = v[j];
 		}
+		break;
+	case HandField::Little:
+		hand.little = v[0];
 		break;
 	}
 }

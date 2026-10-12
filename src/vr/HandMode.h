@@ -854,6 +854,9 @@ private:
 	ArrowAimKept m_lastArrow;
 	ArrowAimHold m_arrowHold;
 	FistState m_fist;
+	// The weapon hand's fingers that have read (vr/FingersRead.h), for the
+	// fist; kept across Reset - a dead sensor stays dead.
+	FingersRead m_fistFingersRead;
 	ButtonEdge m_dropEdge;
 	DropPressState m_drop;
 	bool m_dropClickNow = false;  // this frame carries the drop's click

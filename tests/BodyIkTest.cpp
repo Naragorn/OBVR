@@ -434,6 +434,43 @@ void TestRollMemory() {
 	Check(UnwrapAngle(held, obvr::math::WrapAngle(held) - 0.3f) < held, "rolled back from the hold: the memory falls at once");
 }
 
+// The hand's roll spread over the forearm, its twist bone and the hand (the
+// tester, 2026-10-12: the wrist pinched with the hands turned thumb down, the
+// palms out).
+void TestForearmRolls() {
+	std::printf("the forearm's roll spread\n");
+	const float deg = obvr::math::kDegreesToRadians;
+	const ForearmRolls r90 = ForearmRollsFor(90.0f * deg);
+	Check(Near(r90.forearm, 30.0f * deg, 1e-4f) && Near(r90.twist, 60.0f * deg, 1e-4f), "90 degrees: 30 and 60");
+	const ForearmRolls rNeg = ForearmRollsFor(-120.0f * deg);
+	Check(Near(rNeg.forearm, -40.0f * deg, 1e-4f) && Near(rNeg.twist, -80.0f * deg, 1e-4f), "and the other way");
+	const ForearmRolls r200 = ForearmRollsFor(200.0f * deg);
+	Check(Near(r200.forearm, 200.0f / 3.0f * deg, 1e-4f) && Near(r200.twist, 400.0f / 3.0f * deg, 1e-4f),
+	      "past a half turn (the left hand's rest at -110 and a half turn more): still followed, not held at 150");
+	const ForearmRolls rFar = ForearmRollsFor(400.0f * deg);
+	Check(Near(rFar.forearm, kForeRollMostRadians / 3.0f, 1e-4f) &&
+	          Near(rFar.twist, kForeRollMostRadians * 2.0f / 3.0f, 1e-4f),
+	      "past three quarters of a turn: held there");
+	const ForearmRolls rNan = ForearmRollsFor(std::numeric_limits<float>::quiet_NaN());
+	Check(rNan.forearm == 0.0f && rNan.twist == 0.0f, "no number: none");
+	Check(ForearmRollsFor(0.0f).forearm == 0.0f && ForearmRollsFor(0.0f).twist == 0.0f, "no roll: none");
+	// No ring of the skin across more than a third: neighbours a third apart.
+	const ForearmRolls half = ForearmRollsFor(180.0f * deg);
+	Check(Near(half.twist - half.forearm, 60.0f * deg, 1e-4f) && Near(180.0f * deg - half.twist, 60.0f * deg, 1e-4f),
+	      "a half turn: the forearm, its twist and the hand 60 degrees apart each");
+	// The memory: past the range a little, not run away.
+	Check(Near(HoldForeRollMemory(4.0f), 4.0f, 1e-6f), "a roll within the hold: kept");
+	Check(Near(HoldForeRollMemory(20.0f), kForeRollMemoryMostRadians, 1e-5f) &&
+	          Near(HoldForeRollMemory(-20.0f), -kForeRollMemoryMostRadians, 1e-5f),
+	      "spun round and round: held a bit past the range");
+	// A roll continued the short way past a half turn keeps counting.
+	float roll = -110.0f * deg;
+	for (int step = 0; step < 9; ++step) {
+		roll = HoldForeRollMemory(UnwrapAngle(roll, obvr::math::WrapAngle(roll - 20.0f * deg)));
+	}
+	Check(Near(roll, -290.0f * deg, 1e-3f), "from -110 turned on 20 degrees at a time to -290: followed the whole way");
+}
+
 void TestTorsoKeepOut() {
 	std::printf("the elbow kept out of the torso\n");
 	const TorsoKeepOut t = KeepOutBody();
@@ -811,6 +848,7 @@ int main() {
 	TestElbow();
 	TestEase();
 	TestRollMemory();
+	TestForearmRolls();
 	TestTorsoKeepOut();
 	TestCarried();
 	TestClavicle();

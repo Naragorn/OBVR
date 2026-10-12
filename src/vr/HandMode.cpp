@@ -295,6 +295,8 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		fin.equipped = f.equipped;
 		fin.seen = f.weaponSeen;
 		fin.dt = f.dtSeconds;
+		NoteFingerCurls(m_fistFingersRead, fin.curlValid, fin.curl);
+		fin.read = &m_fistFingersRead;
 		r.fist = StepFist(m_fist, fin, s.fist);
 	}
 	// A weapon just readied: its draw is no swing (HandInput.h, StepDrawGrace)

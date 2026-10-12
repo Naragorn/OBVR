@@ -860,9 +860,14 @@ UInt32 g_holsterLinesLeft = 30;
 // The guided fit of the weapon places (vr::StepHolsterFit), asked for by the
 // settings row or a hand script, with its instruction panel.
 vr::HolsterFitState g_holsterFit;
-// Whether each hand is a fist, for its Havok body (game::HandBodyFist).
+// Whether each hand is a fist, for its Havok body and the off hand's blow
+// (game::HandBodyFist), and which fingers each hand's sensors have read.
 bool g_rightBodyFist = false;
 bool g_leftBodyFist = false;
+vr::FingersRead g_rightFingersRead;
+vr::FingersRead g_leftFingersRead;
+bool g_fingerLeftOutLogged[2] = {false, false};
+UInt32 g_fistChangeLines = 40;
 
 // Oblivion.esm's hand-to-hand hit (SOUN WPNHitHandX, read 2026-10-09 with
 // the other weapon sounds): the off hand's punch.
@@ -1587,7 +1592,9 @@ NiPoint3 g_yieldTarget{0.0f, 0.0f, 0.0f};
 // block is held - one walking on in the 20 frames before activate put the
 // crosshair on nobody (the harness, 2026-10-12, "the crosshair on 00000000").
 UInt32 g_yieldActor = 0;
-UInt32 g_yieldLines = 20;
+UInt32 g_yieldLines = 40;           // the yields and their block and activate
+UInt32 g_yieldRockLines = 40;       // "rocked, but no yield" with the player fighting
+UInt32 g_yieldRockQuietLines = 4;   // ... and with nobody fighting the player
 inline constexpr UInt32 kYieldHoldFrames = 30;
 inline constexpr UInt32 kYieldActivateFrom = 20;  // frames left when activate goes down
 inline constexpr UInt32 kYieldActivateTo = 14;    // ... and comes up
@@ -1719,9 +1726,9 @@ void UpdateYield(const Config& config, const vr::HandModeFrame& frame, bool acti
 	// Each hand as the gesture reads it (vr/Yield.h): open by its middle,
 	// ring and little fingers (vr::YieldHandCurl); its place relative to the
 	// head in metres - the camera-relative offset (x right, y ahead, z up),
-	// the x outward from the body for either hand; its knuckles' direction
-	// (the pinned hand bone's +x in the world, as the last frame drew it);
-	// and the hand mode's swing. The weapon in hand or away is no gate
+	// the x outward from the body for either hand; its palm's share to the
+	// front (vr::YieldPalmAhead, the controller's side the fingers close
+	// over); and the hand mode's swing. The weapon in hand or away is no gate
 	// (the tester, 2026-10-12: "egal ob mit oder ohne waffe oder schild").
 	const float perMetre = config.tracker.unitsPerMetre > 0.0f ? config.tracker.unitsPerMetre : 1.0f;
 	vr::YieldInput in;
@@ -1736,34 +1743,43 @@ void UpdateYield(const Config& config, const vr::HandModeFrame& frame, bool acti
 		const NiPoint3& off = right ? g_hand.rightHandOffsetUnits : g_hand.leftHandOffsetUnits;
 		h.position = NiPoint3{(right ? off.x : -off.x) / perMetre, off.y / perMetre, off.z / perMetre};
 		h.swinging = right ? g_hand.swingActive : g_hand.leftSwingActive;
-		NiMatrix33 boneRot{};
-		NiPoint3 bonePos{};
-		h.knucklesUp = game::ReadHandBoneWorld(right, boneRot, bonePos) ? boneRot.data[2][0] : 1.0f;
+		h.palmAhead = vr::YieldPalmAhead(right ? g_hand.rightHandRotation : g_hand.leftHandRotation, right);
 	}
 	// The rocking watched on its own as well: when it completes while the
 	// gesture did not count, the log says what stood in the way - the
 	// tester's "yield ging nicht" came with no yield line at all, 2026-10-07.
+	// Outside a fight only the first few: the tester's run of 2026-10-12
+	// spent all twenty lines on rockings before his first fight, and the
+	// fights after logged nothing at all.
 	const bool rocked = vr::StepYield(g_yieldShadow, vr::YieldRockingAlone(in));
 	const bool fired = vr::StepYield(g_yield, in);
-	if (rocked && !fired && g_yieldLines > 0) {
-		--g_yieldLines;
+	// Fighting: the player in combat, someone in combat before the head, or
+	// the ring counting those fighting the player - the harness's bandit
+	// attacked an untouchable player whose own combat state read "not
+	// fighting" (2026-10-12).
+	const bool fighting = game::PlayerInCombat() || enemyAhead || game::CombatRingFighting() > 0;
+	UInt32& rockLines = fighting ? g_yieldRockLines : g_yieldRockQuietLines;
+	if (rocked && !fired && rockLines > 0) {
+		--rockLines;
 		char why[240] = {};
 		vr::YieldReasons(g_yield.lastReset | g_yield.waiting, why, sizeof(why));
-		OBVR_LOG("Yield: the hands rocked, but no yield - %s (hand curls %.2f/%.2f, knuckles up %.2f/%.2f, under the "
-		         "eyes %.2f/%.2f m; under the head: %08X, in combat %d)",
+		OBVR_LOG("Yield: the hands rocked, but no yield - %s (hand curls %.2f/%.2f, palms to the front %.2f/%.2f, "
+		         "under the eyes %.2f/%.2f m; under the head: %08X, in combat %d; the player %s)",
 		         why, static_cast<double>(in.hand[0].curl), static_cast<double>(in.hand[1].curl),
-		         static_cast<double>(in.hand[0].knucklesUp), static_cast<double>(in.hand[1].knucklesUp),
+		         static_cast<double>(in.hand[0].palmAhead), static_cast<double>(in.hand[1].palmAhead),
 		         static_cast<double>(-in.hand[0].position.z), static_cast<double>(-in.hand[1].position.z),
-		         reinterpret_cast<UInt32>(ahead), ahead != nullptr && game::ActorInCombat(ahead) ? 1 : 0);
+		         reinterpret_cast<UInt32>(ahead), ahead != nullptr && game::ActorInCombat(ahead) ? 1 : 0,
+		         fighting ? "fighting" : "not fighting");
 	}
 	if (test::HandScriptMarkedThisFrame()) {
 		char why[240] = {};
 		vr::YieldReasons(g_yield.lastReset | g_yield.waiting, why, sizeof(why));
 		OBVR_LOG("Yield: at the mark - reversals %u (right %u, left %u), the last reset by: %s; hand curls %.2f/%.2f, "
-		         "knuckles up %.2f/%.2f, under the eyes %.2f/%.2f m, ahead %.2f/%.2f m; under the head: %08X, in combat %d",
+		         "palms to the front %.2f/%.2f, under the eyes %.2f/%.2f m, ahead %.2f/%.2f m; under the head: %08X, in "
+		         "combat %d",
 		         g_yield.reversals, g_yield.hand[0].reversals, g_yield.hand[1].reversals, why,
 		         static_cast<double>(in.hand[0].curl), static_cast<double>(in.hand[1].curl),
-		         static_cast<double>(in.hand[0].knucklesUp), static_cast<double>(in.hand[1].knucklesUp),
+		         static_cast<double>(in.hand[0].palmAhead), static_cast<double>(in.hand[1].palmAhead),
 		         static_cast<double>(-in.hand[0].position.z), static_cast<double>(-in.hand[1].position.z),
 		         static_cast<double>(in.hand[0].position.y), static_cast<double>(in.hand[1].position.y),
 		         reinterpret_cast<UInt32>(ahead), enemyAhead ? 1 : 0);
@@ -3359,11 +3375,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	                       test::HandScriptMarkedThisFrame());
 	// Those fighting the player wait at a ring, so many at once have a turn
 	// (game/CombatRing.h); their legs go through the slow approach's setters.
+	// Nothing of it while the world is paused behind a menu.
 	game::StepCombatRing(game::CombatRingFrom(active && config.hands.combatRing, config.hands.combatRingMetres,
 	                                          config.hands.meleeAttackersAtOnce, config.tracker.unitsPerMetre,
 	                                          config.hands.combatRingTurnSeconds, config.hands.combatRingTurnMaxSeconds,
 	                                          config.hands.combatRingByLevel),
-	                     dt, test::HandScriptMarkedThisFrame());
+	                     dt, test::HandScriptMarkedThisFrame(), game::WorldPausedForMenus());
 	// Their attacks slower and rarer (game/AttackTempo.h): the attack
 	// sequences of those fighting the player followed, the melee decision's
 	// chance and hold scaled.
@@ -4967,6 +4984,44 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				push.segment[other] = game::HandSegment(grip, forward);
 			}
 		}
+		// Whether each hand is a fist - for its body (no pushing people with a
+		// fist) and for the off hand's blow (a fist punches, an open hand
+		// slaps). Every frame, the bodies on or off: decided inside their
+		// block until 2026-10-12, it never changed with BodyCollision off. A
+		// finger whose sensor has never read is left out (vr/FingersRead.h:
+		// the tester's left little finger read 0.00 all that day's run).
+		vr::NoteFingerCurls(g_rightFingersRead, g_hand.rightCurlValid, g_hand.rightCurl);
+		vr::NoteFingerCurls(g_leftFingersRead, g_hand.leftCurlValid, g_hand.leftCurl);
+		{
+			const float closeCurl = config.hands.fist.closeCurl;
+			const float openLimit = vr::FistOpenLimit(config.hands.fist);
+			const bool wasLeftFist = g_leftBodyFist;
+			g_rightBodyFist = game::HandBodyFist(g_rightBodyFist, g_hand.rightCurlValid, g_hand.rightCurl, closeCurl,
+			                                     openLimit, &g_rightFingersRead);
+			g_leftBodyFist = game::HandBodyFist(g_leftBodyFist, g_hand.leftCurlValid, g_hand.leftCurl, closeCurl,
+			                                    openLimit, &g_leftFingersRead);
+			for (int side = 0; side < 2; ++side) {
+				const vr::FingersRead& read = side == 0 ? g_rightFingersRead : g_leftFingersRead;
+				bool& said = g_fingerLeftOutLogged[side];
+				if (!said && vr::FistFingerCount(&read) < 4) {
+					said = true;
+					OBVR_LOG("Hands: the %s hand's fist goes by %d fingers - one never read (index %s, middle %s, ring "
+					         "%s, little %s; the highest curls %.2f %.2f %.2f %.2f)",
+					         side == 0 ? "right" : "left", vr::FistFingerCount(&read),
+					         vr::FingerHasRead(read, 1) ? "read" : "never", vr::FingerHasRead(read, 2) ? "read" : "never",
+					         vr::FingerHasRead(read, 3) ? "read" : "never", vr::FingerHasRead(read, 4) ? "read" : "never",
+					         static_cast<double>(read.most[1]), static_cast<double>(read.most[2]),
+					         static_cast<double>(read.most[3]), static_cast<double>(read.most[4]));
+				}
+			}
+			if (g_leftBodyFist != wasLeftFist && g_fistChangeLines > 0) {
+				--g_fistChangeLines;
+				OBVR_LOG("Hands: the left hand %s (curls %.2f %.2f %.2f %.2f, index to little)",
+				         g_leftBodyFist ? "made a fist" : "opened", static_cast<double>(g_hand.leftCurl[1]),
+				         static_cast<double>(g_hand.leftCurl[2]), static_cast<double>(g_hand.leftCurl[3]),
+				         static_cast<double>(g_hand.leftCurl[4]));
+			}
+		}
 		// The hands and the drawn melee weapon as Havok bodies
 		// (game/HandBodies.h); the rays below then only cover what has none.
 		game::HandBodyFrame bodies;
@@ -5025,10 +5080,6 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			}
 			// People are pushed out of combat only, and not by a hand made a fist
 			// (game::HandBodyPushesActors; the tester, 2026-09-29).
-			const float closeCurl = config.hands.fist.closeCurl;
-			const float openLimit = vr::FistOpenLimit(config.hands.fist);
-			g_rightBodyFist = game::HandBodyFist(g_rightBodyFist, g_hand.rightCurlValid, g_hand.rightCurl, closeCurl, openLimit);
-			g_leftBodyFist = game::HandBodyFist(g_leftBodyFist, g_hand.leftCurlValid, g_hand.leftCurl, closeCurl, openLimit);
 			const bool inCombat = game::PlayerInCombat();
 			bodies.pushesActors[static_cast<int>(game::HandBodySlot::RightHand)] =
 				game::HandBodyPushesActors(config.hands.pushPeople, true, inCombat, g_rightBodyFist);
@@ -7372,6 +7423,7 @@ void BeforeFirstScenePass() {
 			frame.cameraWorld = game::CyclopeanCamera(g_bodyCameraNode->worldTransform.pos,
 			                                          g_bodyFirstEyeStep);
 			frame.eyeOffsetUnits = NiPoint3{0.0f, body.eyeForward, body.eyeUp};
+			frame.lookDownBackUnits = body.lookDownBack;
 			frame.hideHead = body.hideHead;
 			frame.hideArms = body.hideArms;
 			frame.treeProbe = body.treeProbe;

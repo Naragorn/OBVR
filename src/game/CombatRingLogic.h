@@ -8,12 +8,14 @@
 // ... n einstellbar 1-5 default 1").
 //
 // Of those fighting the player, N have a turn: they fight as the game has
-// them. The others wait at the ring - kept out of reach, so no blow of
-// theirs can land: inside the ring their step forward becomes a step back,
-// at the ring a step to the side (combat keeps them facing the player, so a
-// side step walks them round the player), beyond it they walk in as they
-// will. A turn ends after an attack (once the blow is through - a blow is
-// an attack sequence animating, not the process's lingering action) or
+// them. The others wait at the ring: inside it and at it their step becomes
+// a step to the side (combat keeps them facing the player, so a side step
+// walks them round the player), and the ring adds a drift outwards inside
+// it and a pull to its line at it, only while their legs walk (since
+// 2026-10-12, "The legs walk; the ring only adds to a walk" below); beyond
+// it they walk in as they will. A turn ends after an attack (once the blow
+// is through - a blow is an attack sequence animating, not the process's
+// lingering action) or
 // after a spell of not attacking at all, when somebody else is waiting; the
 // one who has waited longest steps in next.
 //
@@ -93,97 +95,110 @@ inline RingOrder WaitingOrder(float distanceUnits, const CombatRingSettings& s) 
 	return RingOrder::Free;
 }
 
-// The flags the game asked for, as the order wants them: a step back or to
-// the side at a walk; nothing else touched. `circleLeft` is the ring's
-// sense, counter-clockwise seen from above (RingStepOffset), and the legs
-// face the player: that is a step to the actor's RIGHT, and the ring's
-// right a step to its left. With the sides the other way round (until
-// 2026-10-11) the legs walked against the placed step - the harness had
-// them going round the wrong way at 20 units a second, the legs' walk less
-// the step, and standing at a wall the probe never saw, the step pointing
-// away from it.
+// The legs walk; the ring only adds to a walk (the tester, 2026-10-12: "in
+// pausen menüs scheints du die gegner weiter zu pushen ... du pusht die
+// gegner auch weg wenn sie eig stehen oder? das wirkt unrealistisch, die
+// sollten eig gehen").
+//
+// Until then the ring placed each waiting fighter's whole step the legs
+// fell short of, and inside the ring that was most of it: the walk
+// backwards does not move an NPC the AI wants near the player (harness,
+// 2026-10-10: one given it stood at 1.9 m for five seconds; ring-wall,
+// 2026-10-11: sent back, the actor moved 54 units a second TOWARDS the player
+// while the ring placed up to 130 a second away) - a fighter slid backwards
+// across the ground while it stood or walked at the player. The walk to
+// the side does move them: going round, the legs carried them 67-88 units a
+// second and the ring added 0-12 (ring-wall's state lines).
+//
+// So now every waiting fighter's legs walk to the side - round the player,
+// at the ring and inside it alike (RingFlags) - and the ring places only the
+// step's radial part: inside, a drift outwards (kRingDriftUnitsPerSecond),
+// so the walk round spirals out; at the ring, the pull to its line. And it
+// places that only while the legs play a walk whose way does not fight it
+// (RingMayPlace, from the walk group animating in the actor's slots): legs
+// standing, striking, staggering get nothing placed, and nothing is slid
+// away from the player while its legs walk at him.
+//
+// The flags the game asked for, as the order wants them: a step to the side
+// at a walk; nothing else touched. `circleLeft` is the ring's sense,
+// counter-clockwise seen from above (RingTangentStep), and the legs face
+// the player: that is a step to the actor's RIGHT, and the ring's right a
+// step to its left. With the sides the other way round (until 2026-10-11)
+// the legs walked against the placed step - the harness had them going round
+// the wrong way at 20 units a second.
 inline UInt16 RingFlags(UInt16 flags, RingOrder order, bool circleLeft) {
 	if (order == RingOrder::Free) {
 		return flags;
 	}
 	const UInt16 rest = static_cast<UInt16>(flags & ~(kMoveDirections | kMoveRun));
-	const UInt16 step = order == RingOrder::Back ? kMoveBackward : (circleLeft ? kMoveRight : kMoveLeft);
+	const UInt16 step = circleLeft ? kMoveRight : kMoveLeft;
 	return static_cast<UInt16>(rest | step | kMoveWalk);
 }
 
-// The step a waiting fighter is moved this frame, across the ground, from
-// where it stands relative to the player (rx, ry, game units): straight away
-// for Back, round the player for Circle (with a pull back to the ring's
-// line), at the ring's walk. The flags alone do not move an NPC the AI wants
-// elsewhere - measured in the harness (2026-10-10): a fighter given a walk
-// backwards stood at 1.9 m for five seconds - so the step is the ring's own,
-// placed as the off hand's drag is (game::PlaceActorAt); the flags give the
-// legs their walk.
 inline constexpr float kRingWalkUnitsPerSecond = 65.0f;  // under a metre a second (100 looked hurried, the tester 2026-10-10)
+inline constexpr float kRingDriftUnitsPerSecond = 40.0f; // inside the ring, outwards while the legs walk round
 
-inline bool RingStepOffset(float rx, float ry, RingOrder order, bool circleLeft, const CombatRingSettings& s,
-                           float dtSeconds, float& ox, float& oy) {
+// The legs' walk round the player this frame, a walk's step along the
+// tangent from where the fighter stands relative to the player (rx, ry, game
+// units): what the side step's flags ask of the legs. Not placed - asked of
+// the world (ProbeRingStep), so a wall beside the ring turns the walk round
+// (RingStepRefused) before the legs walk into it.
+inline bool RingTangentStep(float rx, float ry, bool circleLeft, float dtSeconds, float& ox, float& oy) {
 	ox = 0.0f;
 	oy = 0.0f;
 	const float distance2 = rx * rx + ry * ry;
-	if (order == RingOrder::Free || !(dtSeconds > 0.0f) || dtSeconds > 0.25f || !(distance2 > 1.0f)) {
+	if (!(dtSeconds > 0.0f) || dtSeconds > 0.25f || !(distance2 > 1.0f)) {
 		return false;
 	}
 	const float distance = math::Sqrt(distance2);
 	const float ux = rx / distance;  // away from the player
 	const float uy = ry / distance;
 	const float step = kRingWalkUnitsPerSecond * dtSeconds;
-	if (order == RingOrder::Back) {
-		// Deep inside the walk is not enough: the AI's own step towards the
-		// player cancelled it (harness, 2026-10-11: one waited at 0.6 m for nine
-		// seconds). Up to twice the walk the deeper inside, the walk at the band.
-		const float inside = s.ringUnits - s.bandUnits - distance;
-		const float depth = inside > 0.0f && s.ringUnits > 0.0f ? inside / s.ringUnits : 0.0f;
-		const float back = step * (1.0f + (depth > 1.0f ? 1.0f : depth) * 2.0f);
-		const float capped = back > step * 2.0f ? step * 2.0f : back;
-		ox = ux * capped;
-		oy = uy * capped;
-		return true;
-	}
-	// Round the player: the tangent (left turns counter-clockwise seen from
-	// above), and a pull towards the ring's line, at most half a step.
-	const float tx = circleLeft ? -uy : uy;
-	const float ty = circleLeft ? ux : -ux;
-	float pull = (s.ringUnits - distance) * 0.5f;
-	const float half = step * 0.5f;
-	pull = pull > half ? half : pull < -half ? -half : pull;
-	ox = tx * step + ux * pull;
-	oy = ty * step + uy * pull;
+	// Left turns counter-clockwise seen from above.
+	ox = (circleLeft ? -uy : uy) * step;
+	oy = (circleLeft ? ux : -ux) * step;
 	return true;
 }
 
-// The legs walk as well (RingFlags): what they did since the step before
-// is measured - the actor's position against where that step left them
-// (RingLegsWalked) - and only the shortfall along the wanted step is
-// placed. So the legs' own walk, with the game's collision, carries the
-// fighter where it is enough, nothing moves faster than the ring's walk,
-// and against legs walking the wrong way (the AI's own step towards the
-// player) up to twice the step is placed. The walk is unknown for a first
-// step and after a frame without one (RingOrder::Free): the whole step then.
-inline bool RingStepShortfall(float ox, float oy, bool walkedKnown, float ex, float ey, float& sx, float& sy) {
-	sx = 0.0f;
-	sy = 0.0f;
-	const float length = math::Sqrt(ox * ox + oy * oy);
-	if (!(length > 1e-3f)) {
+// The ring's own step this frame, along the line from the player (units,
+// positive away from them): inside the ring a drift outwards, at the ring
+// the pull to its line - half the way there, at most half a walk's step.
+// Free, no time, a long stall, or a fighter on the player: none.
+inline float RingRadialStep(float distanceUnits, RingOrder order, const CombatRingSettings& s, float dtSeconds) {
+	if (order == RingOrder::Free || !(dtSeconds > 0.0f) || dtSeconds > 0.25f || !(distanceUnits > 1.0f)) {
+		return 0.0f;
+	}
+	if (order == RingOrder::Back) {
+		return kRingDriftUnitsPerSecond * dtSeconds;
+	}
+	const float half = kRingWalkUnitsPerSecond * dtSeconds * 0.5f;
+	const float pull = (s.ringUnits - distanceUnits) * 0.5f;
+	return pull > half ? half : (pull < -half ? -half : pull);
+}
+
+// The walk animating in an actor's slots, as TESAnimGroup codes (the
+// TESReloaded framework's Oblivion Game.h, AnimGroup: Forward 3, Backward 4,
+// Left 5, Right 6, FastForward 7, FastBackward 8, FastLeft 9, FastRight 10 -
+// the same list the attack watch takes 19-26 from). kRingLegsStill: none.
+inline constexpr UInt8 kRingLegsStill = 0xFF;
+inline bool RingLegsWalking(UInt8 group) { return group >= 3 && group <= 10; }
+inline bool RingLegsForward(UInt8 group) { return group == 3 || group == 7; }
+inline bool RingLegsBackward(UInt8 group) { return group == 4 || group == 8; }
+
+// Whether the ring may place its radial step on legs walking `group`: only
+// on legs that walk, and not against them - nothing slid away from the player
+// while the legs walk at him (a fighter faces the player in combat, so their
+// forward is inwards), nor pulled in while they walk back.
+inline bool RingMayPlace(UInt8 group, float outwardUnits) {
+	if (!RingLegsWalking(group) || !(outwardUnits == outwardUnits) || outwardUnits == 0.0f) {
 		return false;
 	}
-	const float ux = ox / length;
-	const float uy = oy / length;
-	const float along = walkedKnown ? ex * ux + ey * uy : 0.0f;
-	float remainder = length - along;
-	if (remainder > 2.0f * length) {
-		remainder = 2.0f * length;
-	}
-	if (!(remainder > 1e-3f)) {
+	if (outwardUnits > 0.0f && RingLegsForward(group)) {
 		return false;
 	}
-	sx = ux * remainder;
-	sy = uy * remainder;
+	if (outwardUnits < 0.0f && RingLegsBackward(group)) {
+		return false;
+	}
 	return true;
 }
 
@@ -273,9 +288,11 @@ struct RingMember {
 	float placedY = 0.0f;
 	UInt32 stepsPlaced = 0;      // since the last state line, for the log
 	UInt32 stepsRefused = 0;
-	float legsUnits = 0.0f;      // the legs' own walk along the wanted steps since the last state line
+	UInt32 stepsHeld = 0;        // ring steps not placed: the legs not walking, or walking against it
+	float legsUnits = 0.0f;      // the legs' own walk (its length) since the last state line
 	float placedUnits = 0.0f;    // and what the ring placed
 	float steppedSeconds = 0.0f; // the time with a step wanted, for the rates
+	UInt8 legsGroup = 0xFF;      // the walk animating in their slots this frame (kRingLegsStill: none)
 };
 
 // The legs' walk since the step before: the actor's position now against
@@ -288,14 +305,14 @@ inline bool RingLegsWalked(const RingMember& m, float x, float y, float& ex, flo
 }
 
 // Where this frame's step left them (placed, or left where they stand), and
-// the books for the state line: the legs' walk along the wanted step, what
-// was placed, the time.
-inline void RingStepTaken(RingMember& m, float leftAtX, float leftAtY, float legsAlong, float placedUnits,
+// the books for the state line: the legs' own walk since the step before
+// (its length), what was placed, the time.
+inline void RingStepTaken(RingMember& m, float leftAtX, float leftAtY, float legsUnits, float placedUnits,
                           float dtSeconds) {
 	m.placedKnown = true;
 	m.placedX = leftAtX;
 	m.placedY = leftAtY;
-	m.legsUnits += legsAlong;
+	m.legsUnits += legsUnits == legsUnits && legsUnits > 0.0f ? legsUnits : 0.0f;
 	m.placedUnits += placedUnits;
 	m.steppedSeconds += dtSeconds > 0.0f ? dtSeconds : 0.0f;
 }

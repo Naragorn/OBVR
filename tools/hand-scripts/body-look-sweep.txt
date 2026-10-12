@@ -1,0 +1,46 @@
+# The body looked down at with the body taken back further ([Body]
+# LookDownBack 16): eye dumps at 65, 75, 85 and 89 degrees down, the hands
+# hanging - which looks show the open collar of the headless body, and how
+# far behind the body stands where none does (BodyPlacement.h,
+# BodyLookDownShift). A sweep for the setting's default, 2026-10-12.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\body-look-sweep.txt
+
+ini Hands Enabled=1
+ini Body Visible=1
+ini Body IK=1
+ini Body IKArms=1
+ini Body IKTorso=1
+ini Body IKLegs=1
+ini Body LookDownBack=16
+
+expect HandScript: finished
+expect Body IK: the third-person skeleton - 27 of 27 bones found
+expect LookDownBack=16.0
+reject HandScript: WARNING
+
+wait 12
+right pos 0.22 -0.58 -0.02
+right rot -40 0 0
+left pos -0.22 -0.58 -0.02
+left rot -40 0 0
+head pitch -65
+wait 1.5
+mark down65
+wait 3
+dump
+head pitch -75
+wait 1.5
+mark down75
+wait 3
+dump
+head pitch -85
+wait 1.5
+mark down85
+wait 3
+dump
+head pitch -89
+wait 1.5
+mark down89
+wait 3
+dump
+mark end

@@ -4,6 +4,7 @@
 #include "core/Types.h"
 #include "game/GrabPhysics.h"
 #include "game/NiMath.h"
+#include "vr/FingersRead.h"
 
 namespace obvr::game {
 
@@ -51,19 +52,19 @@ inline UInt32 FilterLayer(UInt32 filter) { return filter & 0x3F; }
 // layer; the filter change reaches Havok through the wrapper's vtable +0x80
 // (0x008B0060: hkWorld::updateCollisionFilterOnEntity, 0x0089B630), as
 // the engine's own setters 0x0089F4D0 and 0x0089F520 do.
-// Whether a hand is a fist, for its body: the four fingers (the thumb left
-// out, as vr::StepFist does) all past closeCurl; one stays a fist until they
-// are all below openLimit. No curls: no fist.
-inline bool HandBodyFist(bool wasFist, bool curlValid, const float* curl, float closeCurl, float openLimit) {
+// Whether a hand is a fist, for its body and for the off hand's blow (a fist
+// punches, an open hand slaps): the four fingers (the thumb left out, as
+// vr::StepFist does) all past closeCurl; one stays a fist until they are all
+// below openLimit. A finger whose sensor has never read is left out
+// (vr/FingersRead.h). No curls: no fist.
+inline bool HandBodyFist(bool wasFist, bool curlValid, const float* curl, float closeCurl, float openLimit,
+                         const vr::FingersRead* read = nullptr) {
 	if (!curlValid || curl == nullptr) {
 		return false;
 	}
-	float lowest = curl[1];
-	float highest = curl[1];
-	for (int finger = 2; finger < 5; ++finger) {
-		lowest = curl[finger] < lowest ? curl[finger] : lowest;
-		highest = curl[finger] > highest ? curl[finger] : highest;
-	}
+	float lowest = 0.0f;
+	float highest = 0.0f;
+	vr::FistCurlSpan(curl, read, lowest, highest);
 	return wasFist ? !(highest <= openLimit) : lowest >= closeCurl;
 }
 

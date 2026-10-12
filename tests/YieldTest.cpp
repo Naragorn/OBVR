@@ -1,11 +1,12 @@
 // Checks the yield by gesture (vr/Yield.h): the gates of a hand (tracked,
-// open, up before the eyes, fingers up, not swinging nor fast), the enemy
+// open, up before the eyes, the palm to the front, not swinging nor fast), the enemy
 // ahead; the rocking - both hands, strokes of a rock's size, not a tremor,
 // not over in a second, within the window, the cooldown; the speed over its
 // window; the rocking alone for the log; the reasons' text.
 
 #include <cstdio>
 #include <cstring>
+#include <limits>
 
 #include "vr/Yield.h"
 
@@ -25,13 +26,13 @@ void Check(bool condition, const char* what) {
 
 constexpr float kDt = 1.0f / 90.0f;
 
-// A hand held up before the eyes, open, fingers up: the gesture's pose.
+// A hand held up before the eyes, open, the palm to the front: the gesture's pose.
 YieldHandInput Pose(float lateral) {
 	YieldHandInput h;
 	h.tracked = true;
 	h.curl = 0.2f;
 	h.position = NiPoint3{lateral, 0.3f, -0.25f};
-	h.knucklesUp = 0.8f;
+	h.palmAhead = 0.9f;
 	h.swinging = false;
 	return h;
 }
@@ -159,7 +160,11 @@ int main() {
 		{"a hand closed (curl 0.75)", [](YieldHandInput& h) { h.curl = 0.75f; }, kYieldRightClosed},
 		{"a hand 60 cm under the eyes", [](YieldHandInput& h) { h.position.z = -0.6f; }, kYieldRightLow},
 		{"a hand behind the eyes", [](YieldHandInput& h) { h.position.y = -0.1f; }, kYieldRightBehind},
-		{"a hand's fingers level", [](YieldHandInput& h) { h.knucklesUp = 0.1f; }, kYieldRightFingersDown},
+		{"a palm turned to the side (0.3 of it to the front)", [](YieldHandInput& h) { h.palmAhead = 0.3f; },
+		 kYieldRightPalmAway},
+		{"a palm turned to the face", [](YieldHandInput& h) { h.palmAhead = -0.9f; }, kYieldRightPalmAway},
+		{"a palm that is no number",
+		 [](YieldHandInput& h) { h.palmAhead = std::numeric_limits<float>::quiet_NaN(); }, kYieldRightPalmAway},
 		{"a hand swinging", [](YieldHandInput& h) { h.swinging = true; }, kYieldRightSwinging},
 	};
 	for (const Gate& g : gates) {
@@ -194,10 +199,33 @@ int main() {
 		YieldInput in = Frame(0.0f, 0.0f);
 		in.hand[0].position.z = -0.45f;
 		in.hand[0].position.y = 0.1f;
-		in.hand[0].knucklesUp = 0.25f;
+		in.hand[0].palmAhead = 0.5f;
 		in.hand[0].curl = 0.69f;
 		StepYield(s, in);
-		Check(s.lastReset == 0 && s.hand[0].tracking, "45 cm under the eyes, 10 cm ahead, fingers 15 degrees up, curl 0.69: in");
+		Check(s.lastReset == 0 && s.hand[0].tracking,
+		      "45 cm under the eyes, 10 cm ahead, the palm 60 degrees off the front, curl 0.69: in");
+	}
+	{
+		// The palm from the controller's rotation relative to the head, in the
+		// game's axes (x right, y ahead, z up): the right palm is the
+		// controller's -x, the left its +x.
+		NiMatrix33 m{};
+		const auto set = [&m](const NiPoint3& x, const NiPoint3& y, const NiPoint3& z) {
+			m.data[0][0] = x.x, m.data[1][0] = x.y, m.data[2][0] = x.z;
+			m.data[0][1] = y.x, m.data[1][1] = y.y, m.data[2][1] = y.z;
+			m.data[0][2] = z.x, m.data[1][2] = z.y, m.data[2][2] = z.z;
+		};
+		// Held as a handle is, pointing ahead: the right palm faces left.
+		set(NiPoint3{1.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 1.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 1.0f});
+		Check(YieldPalmAhead(m, true) == 0.0f && YieldPalmAhead(m, false) == 0.0f,
+		      "the controllers held as handles, pointing ahead: neither palm to the front");
+		// Pointing up, its x turned to the back: the right palm faces the front.
+		set(NiPoint3{0.0f, -1.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 1.0f}, NiPoint3{1.0f, 0.0f, 0.0f});
+		Check(YieldPalmAhead(m, true) == 1.0f, "the right controller up, its x to the back: the right palm to the front");
+		Check(YieldPalmAhead(m, false) == -1.0f, "the same turn on the left hand: the left palm to the face");
+		// Pointing up, its x to the front: the left palm faces the front.
+		set(NiPoint3{0.0f, 1.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 1.0f}, NiPoint3{-1.0f, 0.0f, 0.0f});
+		Check(YieldPalmAhead(m, false) == 1.0f, "the left controller up, its x to the front: the left palm to the front");
 	}
 	{
 		// A weapon in hand changes nothing here: the input has no weapon.

@@ -725,6 +725,73 @@ inline constexpr float kRollMemoryMostRadians = kTwistMostRadians + 0.5f;
 
 inline float HoldRollMemory(float roll) { return ik::Clamp(roll, -kRollMemoryMostRadians, kRollMemoryMostRadians); }
 
+// The forearm's roll spread (the tester, 2026-10-12: "arme wirken super, nur
+// wenn ich die hände voll drehe sodass die senkrecht nach aussen schauen
+// (also linke hand daumen runter handfläche nach links, rechts vice versa)
+// dann verkleinert sich das handgelenk zu sehr").
+//
+// The hand's roll on the forearm (the controller's hand against the solved
+// forearm, less the animation's own hand on its forearm) is spread over the
+// three places the skin blends it: the forearm bone itself (the elbow's skin,
+// blended upper arm to forearm), its twist bone (the forearm's skin, blended
+// forearm to twist up the forearm) and the hand (the wrist's ring, blended
+// forearm, twist and hand). Read from the game's own meshes
+// (meshes\characters\_male\upperbody.nif "Arms" and hand.nif, pyffi,
+// 2026-10-12, the weights along the right arm in the bind pose): the elbow
+// 0.42 upper arm and 0.51 forearm; the forearm's middle 0.46 forearm and 0.54
+// twist; the wrist's ring 0.17 forearm, 0.41 twist and 0.41 hand. The
+// forearm's twist bone sits at the elbow and is a gradient up the forearm,
+// not a wrist bone.
+//
+// Linear blend skinning pinches a vertex blended between bones turned apart.
+// Until 2026-10-12 the forearm took none of the roll, its twist bone half of
+// it held to 75 degrees, the hand the whole: at a roll of 180 degrees the
+// wrist's ring kept 0.48 of its width (0.17 at 0, 0.41 at 90 and 0.41 at 180
+// degrees, summed as turns), and past 150 the twist bone stood while the hand
+// went on - the pinch the tester saw. Now the forearm takes kForearmRollShare,
+// its twist bone kForeTwistRollShare (in the world: its local turn is the
+// difference), the hand the whole, all of it up to kForeRollMostRadians
+// either way: at 180 degrees the elbow keeps 0.87 of its width, the forearm
+// 0.87 and the wrist's ring 0.74 (the weights above, derived, not measured on
+// screen; the harness's eye dumps show the wrists full).
+//
+// The roll the harness measured at rest is not 0 - the right hand 65 to 74
+// degrees, the left -108 to -113, the controllers held pointing ahead
+// (body-look-wrist, 2026-10-12) - so the range is wide enough for a half turn
+// from rest either way. Also tried that day and left out: the elbow swung
+// round the shoulder-wrist line by the roll past 60 degrees (VRArmIK's
+// rotateElbowWithHandRight, github.com/dabeschte/VRArmIK): at rest the left
+// arm's -110 already swung its elbow 36 degrees, and a hand turned half round
+// in one step swung both elbows across the chest - the way round a half turn
+// is not known from one frame. docs/player-body-spec.md, round 3.
+inline constexpr float kForearmRollShare = 1.0f / 3.0f;
+inline constexpr float kForeTwistRollShare = 2.0f / 3.0f;
+inline constexpr float kForeRollMostRadians = 270.0f * math::kDegreesToRadians;
+
+struct ForearmRolls {
+	float forearm = 0.0f;  // the forearm bone about its own length, in the world
+	float twist = 0.0f;    // its twist bone, in the world
+};
+
+inline ForearmRolls ForearmRollsFor(float roll) {
+	ForearmRolls r;
+	if (!(roll == roll)) {
+		return r;
+	}
+	const float held = ik::Clamp(roll, -kForeRollMostRadians, kForeRollMostRadians);
+	r.forearm = held * kForearmRollShare;
+	r.twist = held * kForeTwistRollShare;
+	return r;
+}
+
+// The forearm roll's memory held a little past that range, as the upper
+// arm's is past its own (HoldRollMemory).
+inline constexpr float kForeRollMemoryMostRadians = kForeRollMostRadians + 0.5f;
+
+inline float HoldForeRollMemory(float roll) {
+	return ik::Clamp(roll, -kForeRollMemoryMostRadians, kForeRollMemoryMostRadians);
+}
+
 // Which way a knee points: forward, a little out.
 inline NiPoint3 KneePole(float side, const NiPoint3& right, const NiPoint3& forward) {
 	return forward + right * (0.15f * side);

@@ -12,6 +12,11 @@ namespace obvr::game {
 // whether they are attacking (the process action, as the parry reads it);
 // the turns are stepped, and the waiting ones' legs handed to the movement
 // setters (game/SlowApproach.h SetRingLegs). Off: nobody's legs touched.
-void StepCombatRing(const CombatRingSettings& settings, float dtSeconds, bool logState);
+// `worldPaused` (game::WorldPausedForMenus): nothing steps and nothing is
+// placed, the turns' clocks stand, the legs keep what they were given.
+void StepCombatRing(const CombatRingSettings& settings, float dtSeconds, bool logState, bool worldPaused);
+
+// How many fought the player at the ring's last step (0 with the ring off).
+UInt32 CombatRingFighting();
 
 }  // namespace obvr::game

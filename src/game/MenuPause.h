@@ -42,4 +42,12 @@ UInt32 TopVisibleMenu();
 inline constexpr UInt32 kMenuStackEntries = 10;
 UInt32 MenuStackEntries(UInt32* out, UInt32 capacity);
 
+// Whether the world is paused behind the menus now - the answer the update
+// step's redirected sites get (MenuPausePolicy.h, WorldPausesForMenu): no
+// outside menu mode; in it vanilla's pause, unless the menu on top keeps
+// the world running (UnpausedMenus, the container's and the lock's own).
+// Not logged, nothing remembered: for what OBVR itself moves in the world
+// each frame (the fighters' ring, game/CombatRing.h).
+bool WorldPausedForMenus();
+
 }  // namespace obvr::game

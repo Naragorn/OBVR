@@ -32,8 +32,8 @@ namespace obvr::vr {
 // kYieldMaxSpeed (its travel over the last kYieldSpeedWindowSeconds), a
 // stroke longer than a rock, a hand swinging (the hand mode's swing, and
 // kYieldSwingHoldSeconds after it), a hand hanging lower than
-// kYieldBelowHeadMetres under the eyes or behind them, or its fingers not
-// up (the knuckles' direction kYieldKnucklesUp above level) resets the
+// kYieldBelowHeadMetres under the eyes or behind them, or its palm not
+// turned to the front (kYieldPalmAhead) resets the
 // gesture; a reversal within kYieldReversalGapSeconds of the last is a
 // tremor's and one after more than kYieldStrokeMaxSeconds a drift's,
 // neither counted; one hand rocking alone, or four reversals in under a
@@ -41,6 +41,20 @@ namespace obvr::vr {
 // needs a weapon or the fists up, so with nothing readied the caller raises
 // the fists first (CameraHook.cpp, YieldDrive - activate without a block
 // opened the attacker's pockets in the harness).
+//
+// The palm, not the fingers (2026-10-12, the tester's run: "yield geht nun
+// gar nicht mehr wenn ich es als geste mache"). The first hardening asked
+// for the fingers up - the pinned hand bone's knuckles 12 degrees above
+// level - and of the thirteen rockings his log caught with both hands open
+// and high enough, twelve failed it on one hand or both (the knuckles'
+// share up 0.12, 0.09, 0.11 and -0.05, -0.16 and -0.03 ...): how a hand is held
+// open round an Index controller does not lift the bone's knuckles. What
+// he described both times is the palm turned to the attacker; that is the
+// gate now: each palm - the controller's side the fingers close over, as
+// the hand HUD and the item pick read it - turned to the front, its share
+// along the head's forward at least kYieldPalmAhead (60 degrees off it at
+// most). A fist's knuckles, a blade's grip, a shield's strap and a slap's
+// sideways palm all face elsewhere.
 inline constexpr float kYieldStrokeMinMetres = 0.04f;
 inline constexpr float kYieldStrokeMaxMetres = 0.30f;
 inline constexpr UInt32 kYieldReversals = 4;          // two out-and-in cycles over both hands
@@ -56,17 +70,18 @@ inline constexpr float kYieldSpeedWindowSeconds = 0.1f;
 inline constexpr float kYieldSwingHoldSeconds = 1.0f;
 inline constexpr float kYieldBelowHeadMetres = 0.5f;  // a hand no lower than this under the eyes
 inline constexpr float kYieldAheadMetres = 0.05f;     // and in front of them
-inline constexpr float kYieldKnucklesUp = 0.2f;       // the knuckles' direction, its share up (sine)
+inline constexpr float kYieldPalmAhead = 0.5f;        // the palm's share along the head's forward (cosine)
 
 // One hand this frame. `position` is the hand relative to the head in
 // metres: x outward from the body (positive for both hands), y ahead, z
-// up. `knucklesUp` is the up component of the hand's knuckle direction
-// (the hand bone's +x in the world); `swinging` the hand mode's swing.
+// up. `palmAhead` is the share of the palm's direction along the head's
+// forward (1: the palm straight to the front, 0: to the side, -1: to the
+// face; YieldPalmAhead); `swinging` the hand mode's swing.
 struct YieldHandInput {
 	bool tracked = false;
 	float curl = 1.0f;
 	NiPoint3 position{0.0f, 0.0f, 0.0f};
-	float knucklesUp = 1.0f;
+	float palmAhead = 1.0f;
 	bool swinging = false;
 };
 
@@ -91,8 +106,8 @@ enum : UInt32 {
 	kYieldLeftLow = 1u << 6,
 	kYieldRightBehind = 1u << 7,
 	kYieldLeftBehind = 1u << 8,
-	kYieldRightFingersDown = 1u << 9,
-	kYieldLeftFingersDown = 1u << 10,
+	kYieldRightPalmAway = 1u << 9,
+	kYieldLeftPalmAway = 1u << 10,
 	kYieldRightSwinging = 1u << 11,
 	kYieldLeftSwinging = 1u << 12,
 	kYieldRightFast = 1u << 13,
@@ -176,8 +191,8 @@ inline UInt32 YieldHandGates(YieldHandTrack& h, const YieldHandInput& in, bool r
 	if (!(in.position.y > kYieldAheadMetres)) {
 		bits |= right ? kYieldRightBehind : kYieldLeftBehind;
 	}
-	if (!(in.knucklesUp > kYieldKnucklesUp)) {
-		bits |= right ? kYieldRightFingersDown : kYieldLeftFingersDown;
+	if (!(in.palmAhead >= kYieldPalmAhead)) {
+		bits |= right ? kYieldRightPalmAway : kYieldLeftPalmAway;
 	}
 	if (in.swinging) {
 		h.swingHold = kYieldSwingHoldSeconds;
@@ -319,6 +334,17 @@ inline float YieldHandCurl(const float curl[5]) {
 	return most;
 }
 
+// The palm's share along the head's forward, -1 to 1, from the controller's
+// rotation relative to the head in the game's axes (x right, y ahead, z up;
+// HandModeResult's hand rotation): the palm is the controller's side the
+// fingers close over - its -x on the right hand, +x on the left - as the hand
+// HUD (vr/HandHud.h, PalmNormal) and the item pick read it; the tester sees
+// the hand HUD on the palm he turns to his face, so the sides hold.
+inline float YieldPalmAhead(const NiMatrix33& controllerRelative, bool rightHand) {
+	const float side = rightHand ? -1.0f : 1.0f;
+	return controllerRelative.data[1][0] * side;
+}
+
 // The same frame with every gate open - the rocking alone, for the log's
 // "the hands rocked, but no yield".
 inline YieldInput YieldRockingAlone(const YieldInput& in) {
@@ -344,8 +370,8 @@ inline UInt32 YieldReasons(UInt32 bits, char* out, UInt32 size) {
 		{kYieldLeftLow, "the left hand too low"},
 		{kYieldRightBehind, "the right hand not ahead"},
 		{kYieldLeftBehind, "the left hand not ahead"},
-		{kYieldRightFingersDown, "the right hand's fingers not up"},
-		{kYieldLeftFingersDown, "the left hand's fingers not up"},
+		{kYieldRightPalmAway, "the right palm not to the front"},
+		{kYieldLeftPalmAway, "the left palm not to the front"},
 		{kYieldRightSwinging, "the right hand swinging"},
 		{kYieldLeftSwinging, "the left hand swinging"},
 		{kYieldRightFast, "the right hand too fast"},

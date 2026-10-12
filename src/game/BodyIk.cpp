@@ -214,7 +214,9 @@ struct ArmStats {
 	NiPoint3 wrist{0.0f, 0.0f, 0.0f};
 	NiPoint3 target{0.0f, 0.0f, 0.0f};
 	float upperRollDegrees = 0.0f;
-	float foreTwistDegrees = 0.0f;
+	float foreTwistDegrees = 0.0f;   // the forearm's twist bone, its roll in the world (ForearmRollsFor)
+	float forearmRollDegrees = 0.0f;  // the forearm bone about its own length
+	float handRollDegrees = 0.0f;    // the hand's roll on the forearm, continued
 	NiPoint3 handAxis{0.0f, 0.0f, 0.0f};  // the hand bone's +x, wrist to fingers
 	NiPoint3 pole{0.0f, 0.0f, 0.0f};      // where the elbow was sent
 	float fpOffUnits = 0.0f;    // the first-person arm bones read back against the body's, at most
@@ -279,7 +281,7 @@ struct ArmMemory {
 	NiPoint3 pole{0.0f, 0.0f, -1.0f};
 	float sideSign = 0.0f;
 	float upperRoll = 0.0f;
-	float foreRoll = 0.0f;
+	float foreRoll = 0.0f;  // the hand's roll on the forearm, continued (HoldForeRollMemory)
 };
 ArmMemory g_armMemory[2];
 // What hangs on a first-person forearm's twist bone (the shield), carried
@@ -644,22 +646,26 @@ bool SolveArm(UInt32 side, const BodyArmsFrame& f, const TorsoKeepOut& torso) {
 		stats.why = "no solve (the hand on the shoulder, or a number that is none)";
 		return false;
 	}
-	// The twists: half the upper arm's roll taken back by its twist bone,
-	// half the hand's roll relative to the forearm given to the forearm's -
-	// each continued the short way from last frame's (UnwrapAngle), so a
-	// roll past a half turn does not flip the twist bone round.
+	// The twists: half the upper arm's roll taken back by its twist bone; the
+	// hand's roll on the forearm spread over the forearm, its twist bone and
+	// the hand (ForearmRollsFor) - each continued the short way from last
+	// frame's (UnwrapAngle), so a roll past a half turn does not flip a twist
+	// bone round, and the hand's roll followed up to three quarters of a turn
+	// either way (HoldForeRollMemory).
 	const float upperRollRaw = TwistAboutX(ik::Transposed(upper->worldTransform.rot) * s.upperRot);
-	const float foreRollRaw =
-		math::WrapAngle(TwistAboutX(ik::Transposed(s.lowerRot) * targetRot) - TwistAboutX(hand->localTransform.rot));
 	const float upperRoll = memory.valid ? UnwrapAngle(memory.upperRoll, upperRollRaw) : upperRollRaw;
+	const float foreRollRaw = math::WrapAngle(TwistAboutX(ik::Transposed(s.lowerRot) * targetRot) -
+	                                          TwistAboutX(hand->localTransform.rot));
 	const float foreRoll = memory.valid ? UnwrapAngle(memory.foreRoll, foreRollRaw) : foreRollRaw;
 	memory.valid = true;
 	memory.pole = easedPole;
 	memory.sideSign = clear.moved ? clear.sign : 0.0f;
 	memory.upperRoll = HoldRollMemory(upperRoll);
-	memory.foreRoll = HoldRollMemory(foreRoll);
+	memory.foreRoll = HoldForeRollMemory(foreRoll);
 	const float upperHalf = HalfOfRoll(upperRoll);
-	const float foreHalf = HalfOfRoll(foreRoll);
+	const ForearmRolls rolls = ForearmRollsFor(foreRoll);
+	const NiMatrix33 foreRot = s.lowerRot * TurnAboutX(rolls.forearm);
+	stats.handRollDegrees = foreRoll * math::kRadiansToDegrees;
 	// Written, parent first.
 	NiTransform clavicleLocal = clavicle->localTransform;
 	clavicleLocal.rot = ik::Transposed(clavicleParent->worldTransform.rot) * clavicleRot;
@@ -672,14 +678,16 @@ bool SolveArm(UInt32 side, const BodyArmsFrame& f, const TorsoKeepOut& torso) {
 		WriteLocal(g_body[base + kUpperTwist], t);
 	}
 	WriteLocal(g_body[base + kFore],
-	           LocalFor(fore->localTransform, s.upperRot, shoulder, upper->worldTransform.scale, s.lowerRot, s.joint));
+	           LocalFor(fore->localTransform, s.upperRot, shoulder, upper->worldTransform.scale, foreRot, s.joint));
 	if (foreTwist != nullptr && foreTwist->parent == fore) {
+		// Its local turn the difference: on the rolled forearm, its own roll
+		// in the world comes out at its share.
 		NiTransform t = foreTwist->localTransform;
-		t.rot = TurnAboutX(foreHalf) * t.rot;
+		t.rot = TurnAboutX(rolls.twist - rolls.forearm) * t.rot;
 		WriteLocal(g_body[base + kForeTwist], t);
 	}
 	WriteLocal(g_body[base + kHand],
-	           LocalFor(hand->localTransform, s.lowerRot, s.joint, fore->worldTransform.scale, targetRot, s.end));
+	           LocalFor(hand->localTransform, foreRot, s.joint, fore->worldTransform.scale, targetRot, s.end));
 	UpdateNodeTransforms(clavicle);
 	AlignFirstPersonArm(side, targetRot, target);
 
@@ -695,7 +703,8 @@ bool SolveArm(UInt32 side, const BodyArmsFrame& f, const TorsoKeepOut& torso) {
 	stats.wrist = hand->worldTransform.pos;
 	stats.target = target;
 	stats.upperRollDegrees = upperRoll * math::kRadiansToDegrees;
-	stats.foreTwistDegrees = foreHalf * math::kRadiansToDegrees;
+	stats.foreTwistDegrees = rolls.twist * math::kRadiansToDegrees;
+	stats.forearmRollDegrees = rolls.forearm * math::kRadiansToDegrees;
 	stats.handAxis = ik::Column(targetRot, 0);
 	stats.pole = in.pole;
 	stats.reachRatio = ik::Length(target - shoulder) / (upperUnits + foreUnits);
@@ -739,9 +748,10 @@ void LogArm(const char* sideName, const ArmStats& a, char* out, UInt32 size) {
 		std::snprintf(out, size,
 		              "the %s arm reaches its hand (the wrist %.2f units off it, grown x%.2f) - shoulder %.1f %.1f %.1f, "
 		              "elbow %.1f %.1f %.1f, hand %.1f %.1f %.1f (its axis %.2f %.2f %.2f, the elbow sent %.2f %.2f %.2f%s), "
-		              "the clavicle turned %.1f, the upper arm rolled %.1f (its twist bone half), the forearm's twist "
-		              "%.1f degrees; the first-person arm on it within %.2f units, %.1f degrees; %u thing(s) on its forearm carried "
-		              "with the hand, %.1f units off where the forearm would have them",
+		              "the clavicle turned %.1f, the upper arm rolled %.1f (its twist bone half), the hand rolled %.1f on "
+		              "the forearm - the forearm rolled %.1f, its twist %.1f degrees; the first-person arm on it "
+		              "within %.2f units, %.1f degrees; %u thing(s) on its forearm carried with the hand, %.1f units "
+		              "off where the forearm would have them",
 		              sideName, static_cast<double>(off), static_cast<double>(a.stretch),
 		              static_cast<double>(a.shoulder.x), static_cast<double>(a.shoulder.y),
 		              static_cast<double>(a.shoulder.z), static_cast<double>(a.elbow.x), static_cast<double>(a.elbow.y),
@@ -750,9 +760,10 @@ void LogArm(const char* sideName, const ArmStats& a, char* out, UInt32 size) {
 		              static_cast<double>(a.handAxis.y), static_cast<double>(a.handAxis.z), static_cast<double>(a.pole.x),
 		              static_cast<double>(a.pole.y), static_cast<double>(a.pole.z),
 		              a.elbowMoved ? ", moved out of the torso" : "", static_cast<double>(a.clavicleDegrees),
-		              static_cast<double>(a.upperRollDegrees), static_cast<double>(a.foreTwistDegrees),
-		              static_cast<double>(a.fpOffUnits), static_cast<double>(a.fpOffDegrees), a.carried,
-		              static_cast<double>(a.carriedOffUnits));
+		              static_cast<double>(a.upperRollDegrees), static_cast<double>(a.handRollDegrees),
+		              static_cast<double>(a.forearmRollDegrees), static_cast<double>(a.foreTwistDegrees),
+		              static_cast<double>(a.fpOffUnits),
+		              static_cast<double>(a.fpOffDegrees), a.carried, static_cast<double>(a.carriedOffUnits));
 	} else {
 		std::snprintf(out, size,
 		              "the %s arm falls short of its hand by %.1f units (grown x%.2f) - shoulder %.1f %.1f %.1f, elbow "
@@ -1074,7 +1085,7 @@ UInt32 StepBodyArms(const BodyArmsFrame& f) {
 		         static_cast<double>(g_frame.chestCorrection * math::kRadiansToDegrees),
 		         g_frame.trunkHeld ? "held at the standing pose" : "the animation's",
 		         static_cast<double>(g_frame.lowered), static_cast<double>(g_frame.feetLift), g_hiddenCount);
-		char arm[760];
+		char arm[1024];
 		LogArm("right", g_frame.arm[0], arm, sizeof(arm));
 		OBVR_LOG("Body IK: at the mark - %s", arm);
 		LogArm("left", g_frame.arm[1], arm, sizeof(arm));

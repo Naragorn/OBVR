@@ -18,7 +18,9 @@
 //
 // A fist is the four fingers all past closeCurl; the hand counts as open
 // again only once they are all below openCurl, so a hand between the two
-// keeps what it was. Either change has to hold for holdSeconds.
+// keeps what it was. Either change has to hold for holdSeconds. A finger
+// whose sensor has never read is left out (vr/FingersRead.h; the tester's
+// left little finger, 2026-10-12).
 //
 // The close limit is a row in the settings ("Fist at", the tester,
 // 2026-09-28: a hand whose little finger reads low never made a fist). The
@@ -32,6 +34,7 @@
 // Pure, covered by fist_test.
 
 #include "core/Types.h"
+#include "vr/FingersRead.h"
 #include "vr/HandInput.h"
 #include "vr/Holster.h"
 
@@ -74,6 +77,9 @@ struct FistInput {
 	EquippedKind equipped = EquippedKind::Nothing;
 	WeaponSeen seen = WeaponSeen::Unknown;
 	float dt = 0.0f;
+	// The fingers this hand's sensors have read (vr/FingersRead.h): one that
+	// never has is left out. Null: all four count.
+	const FingersRead* read = nullptr;
 };
 
 struct FistVerdict {
@@ -107,12 +113,9 @@ inline FistVerdict StepFist(FistState& s, const FistInput& in, const FistSetting
 		}
 	}
 
-	float lowest = in.curl[1];
-	float highest = in.curl[1];
-	for (int finger = 2; finger < 5; ++finger) {
-		lowest = in.curl[finger] < lowest ? in.curl[finger] : lowest;
-		highest = in.curl[finger] > highest ? in.curl[finger] : highest;
-	}
+	float lowest = 0.0f;
+	float highest = 0.0f;
+	FistCurlSpan(in.curl, in.read, lowest, highest);
 	if (in.busy) {
 		s.timer = 0.0f;
 		v.closed = s.closed;

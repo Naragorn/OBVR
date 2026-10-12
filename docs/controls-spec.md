@@ -1092,6 +1092,32 @@ The tester's asks of 2026-10-07, all in one round:
   swings of both open hands (no yield, "too fast"), the sword drawn and
   the gesture again (the yield). The pose numbers (50 cm, 12 degrees,
   0.9 m/s) are this round's first guess, to be set from the headset.
+  **The palm, not the fingers (the tester, 2026-10-12: "yield geht nun gar
+  nicht mehr wenn ich es als geste mache").** His log: all twenty "rocked,
+  but no yield" lines came before his first fight (the log budget spent,
+  the fights after logged nothing - neither a refusal nor a yield), and of
+  the thirteen rockings with both hands open and high enough, twelve failed
+  the fingers-up gate on a hand (the knuckles' share up 0.12, 0.09, 0.11,
+  -0.05, -0.16 ...; 0.2 needed): how a hand is held open round an Index
+  controller does not lift the bone's knuckles. What happened in the fights
+  is not in the log. Now:
+  - the gate is the palm turned to the front, the way he describes the
+    gesture: each palm - the controller's side the fingers close over, its
+    -x on the right hand and +x on the left, as the hand HUD and the item
+    pick read it - at least half along the head's forward (within 60
+    degrees of it; `vr::YieldPalmAhead`, `kYieldPalmAhead`). A fist's
+    knuckles, a blade's grip, a shield's strap and a slap's sideways palm
+    face elsewhere. The log names it "the right palm not to the front" and
+    gives "palms to the front r/l";
+  - the log's budgets apart: "rocked, but no yield" 40 lines while
+    fighting (the player in combat, someone in combat before the head, or
+    the ring counting fighters), 4 outside a fight; the yields and their
+    block and activate their own 40.
+  - Harness `yield.txt` with the hands turned palms forward (right rot 90 0
+    90, left rot 90 0 -90): PASS 2026-10-12 - the hands empty: "palms to the
+    front 1.00/1.00", the fists raised, block, "activate goes down ... the
+    player's action 6, the crosshair on" the bandit; fast swings: "the right
+    hand swinging, the left hand swinging"; the sword drawn: the yield again.
 - **The trigger never attacks with a melee weapon or the fists in hand**
   (the tester: "powerattacks mit trigger verbieten nun für alle waffen und
   ohne waffen"): `HandFrameInput::meleeInHand`, set whether or not the hits
@@ -2390,6 +2416,31 @@ left-handed player, the roles swapped before anything here sees them).
   (game::PlaceActorAt). Not seen in the headset. What to watch: how the
   drag feels (a placed actor, not a pushed one), whether a held bandit
   still swings (held by the torso or a leg they do), and the punch.
+- **The punch with a little finger that never reads (the tester,
+  2026-10-12: "gegner mit linker hand slappen geht (cool!) aber mit faust
+  hauen nicht (mein linker controller da geht der kleine finger nicht zu
+  krümmen für die faust)").** His log: the left little finger read 0.00 in
+  all 52 curl lines of the run while the left middle and ring closed to
+  1.00 (the right little finger reached 1.00). A fist needs all four
+  fingers past the close limit, so the left hand was never one and every
+  blow was a slap; no "Fist at" setting helps a sensor stuck at 0. Now a
+  finger whose sensor has never gone past 0.1 since the start is left out
+  of the fist, closing and opening, as long as three of the four have read
+  (`vr/FingersRead.h`; `game::HandBodyFist` and `vr::StepFist`); a working
+  finger reads the first time it closes and from then on counts again, so
+  the pointing hand and the middle finger stay no fist. Logged once "Hands:
+  the left hand's fist goes by 3 fingers - one never read (index read,
+  middle read, ring read, little never; ...)", and "the left hand made a
+  fist" / "opened" with the curls. The fist decision also moved out of the
+  hand bodies' block: with `BodyCollision=0` it was never made, and the
+  off hand never punched. Harness `offhand-punch.txt` (a longsword drawn, a
+  beggar frozen ahead, the left hand closed with `left little 0` and driven
+  into them): PASS 2026-10-12 - "fist goes by 3 fingers", "made a fist
+  (curls 1.00 1.00 1.00 0.00)", "the left hand at 54.4 m/s towards ... -
+  hard (the off hand's punch, a weapon drawn)", the beggar knocked down.
+  The script's second blow, the hand open, met nobody (the beggar lay
+  where the punch put them), so the open hand's slap was not tried again
+  here; it is the slap of 4.12, unchanged.
 
 ### 4.35 Walking with a reached menu open, and switching containers (built 2026-10-10)
 

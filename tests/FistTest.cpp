@@ -213,11 +213,100 @@ void TestLimits() {
 	}
 }
 
+// A finger whose sensor never reads (vr/FingersRead.h; the tester's left
+// little finger read 0.00 all his run of 2026-10-12, the middle and ring 1.00).
+void TestFingersRead() {
+	std::printf("A finger that never reads\n");
+	const FistSettings settings;
+	{
+		FingersRead read;
+		Check(FistFingerCount(&read) == 4 && FistFingerCount(nullptr) == 4,
+		      "nothing read yet, or no record: the fist by all four");
+		const float idle[5] = {0.0f, 0.05f, 0.08f, 0.1f, 0.0f};
+		NoteFingerCurls(read, true, idle);
+		Check(!FingerHasRead(read, 1) && !FingerHasRead(read, 3), "curls up to 0.1: not read yet");
+		const float none[5] = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
+		NoteFingerCurls(read, false, none);
+		Check(read.most[1] == 0.05f, "a frame without curls notes nothing");
+		const float deadLittle[5] = {0.2f, 0.64f, 1.0f, 1.0f, 0.0f};
+		NoteFingerCurls(read, true, deadLittle);
+		Check(FingerHasRead(read, 1) && FingerHasRead(read, 2) && FingerHasRead(read, 3) && !FingerHasRead(read, 4),
+		      "index, middle and ring read, the little finger not");
+		Check(FistFingerCount(&read) == 3, "the fist by the three that read");
+		Check(!FingerHasRead(read, -1) && !FingerHasRead(read, 5), "no finger out of the five");
+		float lowest = 0.0f;
+		float highest = 0.0f;
+		const float closed[5] = {0.2f, 0.95f, 1.0f, 1.0f, 0.0f};
+		FistCurlSpan(closed, &read, lowest, highest);
+		Check(lowest == 0.95f && highest == 1.0f, "the span leaves the little finger out");
+		FistCurlSpan(closed, nullptr, lowest, highest);
+		Check(lowest == 0.0f && highest == 1.0f, "without the record all four count, the little finger's 0 too");
+	}
+	{
+		// The tester's hand: the fist made, held, opened.
+		FingersRead read;
+		FistState s;
+		FistInput open = Hand(0.1f);
+		open.curl[4] = 0.0f;
+		open.read = &read;
+		NoteFingerCurls(read, true, open.curl);
+		FistVerdict v = Hold(s, open, 5, settings);
+		Check(!v.closed, "open, nothing read past 0.1: open");
+		FistInput fist = Hand(0.95f);
+		fist.curl[4] = 0.0f;
+		fist.read = &read;
+		NoteFingerCurls(read, true, fist.curl);
+		v = Hold(s, fist, 5, settings);
+		Check(v.closed && v.changed && v.readyClick, "three fingers closed, the dead little finger at 0: a fist");
+		FistInput opened = Hand(0.1f);
+		opened.curl[4] = 0.0f;
+		opened.read = &read;
+		v = Hold(s, opened, 5, settings);
+		Check(!v.closed && v.changed, "opened again: open");
+	}
+	{
+		// A working hand: the little finger reads once it closes, and from
+		// then on the fist needs it.
+		FingersRead read;
+		FistState s;
+		FistInput three = Hand(0.95f);
+		three.curl[4] = 0.05f;
+		three.read = &read;
+		NoteFingerCurls(read, true, three.curl);
+		FistVerdict v = Hold(s, three, 5, settings);
+		Check(v.closed, "the little finger not read yet: three closed make a fist (the first fist's moment)");
+		FistState s2;
+		FistInput all = Hand(0.95f);
+		all.read = &read;
+		NoteFingerCurls(read, true, all.curl);
+		Check(FistFingerCount(&read) == 4, "it closed once: read, all four count");
+		FistInput littleOut = Hand(0.95f);
+		littleOut.curl[4] = 0.2f;
+		littleOut.read = &read;
+		v = Hold(s2, littleOut, 5, settings);
+		Check(!v.closed, "then the little finger out is no fist again");
+		FistInput middleFinger = Hand(0.95f);
+		middleFinger.curl[2] = 0.1f;
+		middleFinger.read = &read;
+		FistState s3;
+		v = Hold(s3, middleFinger, 5, settings);
+		Check(!v.closed, "the middle finger up: no fist");
+	}
+	{
+		// Two fingers dead: fewer than three read, so all four count.
+		FingersRead read;
+		const float twoDead[5] = {0.2f, 0.0f, 1.0f, 1.0f, 0.0f};
+		NoteFingerCurls(read, true, twoDead);
+		Check(FistFingerCount(&read) == 4, "two of four read: all four count (no fist from two fingers)");
+	}
+}
+
 }  // namespace
 
 int main() {
 	TestFist();
 	TestLimits();
+	TestFingersRead();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

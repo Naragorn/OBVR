@@ -781,6 +781,53 @@ schlag auch hier was vor."
   below against the wall's -518); turns drawn 5.5-11.6 s and ended within
   a swing of their length; see docs/hand-script-harness.md.
 
+**Built 2026-10-12: the ring holds still in a pause, and its fighters walk**
+(the tester, after his first fights with the ring: "gegner ring: in pausen
+menüs scheints du die gegner weiter zu pushen obwohl eig pause sein soll und
+nix passieren soll. du pusht die gegner auch weg wenn sie eig stehen oder?
+das wirkt unrealistisch, die sollten eig gehen"):
+
+- **The pause.** The ring stepped every frame the camera ran, menus
+  included, and behind the Esc menu no leg walked - so the whole step was
+  "the legs' shortfall" and was placed: the waiting slid across the ground
+  with the game stopped (his log: the Esc menu and a message box during the
+  fight). Now nothing of the ring runs while the world is paused behind a
+  menu (`game::WorldPausedForMenus`, MenuPause.h: the same answer the update
+  step's redirected sites get - vanilla's pause, unless the menu on top
+  keeps the world running, as the container's panel does): no step, no
+  placement, the turns' clocks stand. Logged "Combat ring: the world paused
+  behind a menu - n fighter(s) held where they stand".
+- **The slide.** Inside the ring the waiting were sent back with the walk
+  backwards, which does not move an NPC the AI wants near (2026-10-10, -11:
+  one stood at 1.9 m; sent back, the actor moved 54 units a second TOWARDS
+  the player while the ring placed up to 130 a second away) - a fighter slid
+  backwards across the ground while it stood or walked at the player. Now
+  (CombatRingLogic.h, "The legs walk; the ring only adds to a walk"):
+  - every waiting fighter's legs walk to the side - round the player - at
+    the ring and inside it alike (`RingFlags`; the walk to the side does move
+    them, 67-88 units a second in ring-wall's runs);
+  - the ring places only the radial part: inside, a drift outwards of 40
+    units a second, so the walk round spirals out; at the ring, the pull to
+    its line (`RingRadialStep`);
+  - and only onto legs that walk, and not against them (`RingMayPlace`, the
+    walk group animating in the actor's five slots, TESAnimGroup Forward 3
+    to FastRight 10 - read as the attack watch reads its attack groups):
+    standing, striking or staggering legs get nothing placed, and nothing
+    is slid away from the player while its legs walk at him;
+  - the walk round is asked of the world at knee height before the legs take
+    it: a wall or a fence turns it round (`RingStepRefused`), as before.
+- **Harness PASS** (`tools/hand-scripts/ring-walk.txt`, three bandits, a 3
+  m ring, 2026-10-12): the waiting walking round with their legs (legs
+  group 5 or 6, flags 0104 / 0108), the legs 46-86 units a second and the
+  ring placing 1-34 (the drift, the pull to the line), steps held 0-21 a
+  mark (legs not walking); in the Esc menu "paused - <actor> at x y" at
+  both marks three seconds apart, every position the same to the tenth of
+  a unit; out of it the ring went on and the turns passed. Seen, not
+  looked into: in the first mark after the pause one waiting fighter had
+  gone 455 units in 1.2 s (its legs "697 units a second", the ring placing
+  27) - a run of its own, not the ring's step. Not seen in the headset:
+  whether the drift out on a sideways walk reads as walking.
+
 ## Test reminders
 
 - With the switch on: fights with power attacks show no lurch back. The log

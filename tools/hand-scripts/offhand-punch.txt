@@ -1,0 +1,78 @@
+# The off hand's punch with a little finger that never reads (the tester,
+# 2026-10-12: "gegner mit linker hand slappen geht (cool!) aber mit faust
+# hauen nicht (mein linker controller da geht der kleine finger nicht zu
+# krümmen für die faust)"; his log: the left little finger 0.00 in all 52
+# curl lines, the middle and ring 1.00). vr/FingersRead.h: a finger whose
+# sensor has never read is left out of the fist. A beggar is placed 60
+# units ahead and frozen (tai), a longsword drawn by the holster; the left
+# hand closes with its little finger held at 0 (`left little 0`), and is
+# driven in one step into the beggar's chest - a punch, not a slap (the punch
+# knocks them down; the second blow, the hand open, then meets nobody).
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\offhand-punch.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands OffHandStrikes=1
+ini Hands OffHandGrabs=0
+ini Hands TwoHandOneHanders=0
+ini Hands PushPeople=0
+console-at ready player.placeatme 0001C45B 1 60 0
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+console-at ready tai
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect little never; the highest curls
+expect Hands: the left hand made a fist
+count 1 (the off hand's punch, a weapon drawn)
+reject HandScript: WARNING
+
+wait 12
+right rot 0 0 0
+left rot 0 0 0
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 26
+mark placed
+# The sword drawn from the hip, held low and to the right, out of the way.
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.45 -0.85 -0.20
+wait 3
+mark drawn
+# The left hand: open first (the fingers read 0 - nothing read yet), then
+# closed with the little finger held at 0, held there a second.
+left curl 0
+wait 0.5
+left curl 1
+left little 0
+wait 1.2
+mark fist
+# Pulled back beside the chest, then driven in one frame 60 cm forward into
+# the beggar's chest (the beggar stands about 0.85 m ahead).
+left pos -0.10 -0.35 -0.15
+wait 0.4
+left pos -0.05 -0.35 -0.80
+wait 0.1
+mark punched
+left pos -0.20 -0.40 -0.20
+wait 2.5
+# The same with the hand open: no punch.
+left curl 0
+left little -1
+wait 1.0
+mark open
+left pos -0.10 -0.35 -0.15
+wait 0.4
+left pos -0.05 -0.35 -0.80
+wait 0.1
+mark slapped
+left pos -0.20 -0.40 -0.20
+wait 1.5
+mark end

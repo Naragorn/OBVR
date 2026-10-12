@@ -200,6 +200,15 @@ void SetPlayerWalksUnderMenu(bool walking) {
 
 UInt32 TopVisibleMenu() { return TopVisibleMenuId(); }
 
+bool WorldPausedForMenus() {
+	const bool menuMode = IsMenuMode();
+	if (!menuMode) {
+		return false;
+	}
+	const UInt32 top = StablePauseMenuId(menuMode, TopVisibleMenuId(), g_rememberedTop);
+	return WorldPausesForMenu(menuMode, g_enabled, top, g_containerEnabled, g_lockEnabled);
+}
+
 UInt32 MenuStackEntries(UInt32* out, UInt32 capacity) {
 	const UInt8* const manager = *reinterpret_cast<const UInt8* const*>(addr::kInterfaceManagerPointer);
 	if (manager == nullptr || out == nullptr || !mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(manager))) {

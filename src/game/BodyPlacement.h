@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/MathFns.h"
 #include "core/Rotation.h"
 #include "game/NiMath.h"
 
@@ -51,21 +52,80 @@ struct BodyRootInput {
 	// herunter").
 	bool eyesFollowHead = false;
 	NiMatrix33 headRot = NiMatrix33::Identity();
+	// The body stepped back under a bowed head, up to this many units at
+	// scale one (LookDownBack, BodyLookDownShift): with eyesFollowHead only.
+	float lookDownBackUnits = 0.0f;
 	// The root's parent, whose space the root's local transform is written in.
 	NiMatrix33 parentRot = NiMatrix33::Identity();
 	NiPoint3 parentPos{0.0f, 0.0f, 0.0f};
 	float parentScale = 1.0f;
 };
 
+// The body steps back under a bowed head (the tester, 2026-10-12, after the
+// neck pivot: "nach unten schauen: ich sehe immernoch in den körper rein").
+// The head is not drawn - its bone is collapsed, and the neck went with the
+// head's mesh - so the body's collar is an open ring around the neck bone,
+// and a look down saw down into it: the harness's eye dump at 65 degrees
+// down (body-ik-smooth, 2026-10-12) shows the ring's inside at the bottom of
+// the picture. A real chin hides that place; nothing here does. So as the
+// head bows the body is taken back along the way the face looks, until the
+// ring is behind the bottom of the view. The steeper the look, the further
+// the bottom of the view reaches back under the eyes, so the further back
+// the ring has to be: the share grows with the square of the look down past
+// kLookDownStartDegrees, all of it looking straight down. Measured with the
+// harness's eye dumps (body-look-wrist, body-look-sweep, 2026-10-12): 8 units
+// back hid the ring at 65 degrees down but not at 85, 16 hid it at 85 - and at
+// 65 put the whole torso out of sight; the square of the way from 20 to 90
+// degrees times 20 gives 8.3 at 65 and 17.2 at 85. The way back is from the
+// headset's own up axis: bowed, it leans the way the face looks, and its lean
+// is the sine of the look down's cosine - so it is well defined exactly where
+// it is needed, looking straight down, where the forward's level part runs out.
+inline constexpr float kLookDownStartDegrees = 20.0f;
+
+inline float BodyLookDownShare(const NiMatrix33& headRot) {
+	const float sine = -headRot.data[2][1];  // the forward's z, down positive: the sine of the look down
+	if (!(sine > -1.5f && sine < 1.5f)) {
+		return 0.0f;
+	}
+	const float s = sine > 1.0f ? 1.0f : sine;
+	const float down = math::Atan2(s, math::Sqrt(1.0f - s * s > 0.0f ? 1.0f - s * s : 0.0f)) * math::kRadiansToDegrees;
+	if (!(down > kLookDownStartDegrees)) {
+		return 0.0f;
+	}
+	const float t = (down - kLookDownStartDegrees) / (90.0f - kLookDownStartDegrees);
+	return t >= 1.0f ? 1.0f : t * t;
+}
+
+// The shift taken off the root, in the world: the share of `units` along the
+// way the face looks, level (the head's up axis's level part) - the body
+// stands that far behind where it would. Nothing when it has no level part.
+inline NiPoint3 BodyLookDownShift(const NiMatrix33& headRot, float units) {
+	const float share = BodyLookDownShare(headRot);
+	if (!(share > 0.0f) || !(units > 0.0f)) {
+		return NiPoint3{0.0f, 0.0f, 0.0f};
+	}
+	const float ux = headRot.data[0][2];
+	const float uy = headRot.data[1][2];
+	const float level = math::Sqrt(ux * ux + uy * uy);
+	if (!(level > 1e-4f)) {
+		return NiPoint3{0.0f, 0.0f, 0.0f};
+	}
+	const float k = units * share / level;
+	return NiPoint3{ux * k, uy * k, 0.0f};
+}
+
 // Where the root has to stand in the world for the eyes to land on the camera:
 // the camera, back by the eye offset carried through the root's rotation and
-// scale, back again by the head's offset from the root.
+// scale, back again by the head's offset from the root - and back under a
+// bowed head (BodyLookDownShift).
 inline NiPoint3 BodyRootWorldWanted(const BodyRootInput& in) {
 	const float scale = in.rootWorldScale > 0.0f ? in.rootWorldScale : 1.0f;
 	const NiMatrix33& offsetRot = in.eyesFollowHead ? in.headRot : in.rootWorldRot;
 	const NiPoint3 eyesFromHead = offsetRot * (in.eyeOffsetUnits * scale);
 	const NiPoint3 headFromRoot = in.headWorld - in.rootWorld;
-	return in.cameraWorld - eyesFromHead - headFromRoot;
+	const NiPoint3 back =
+		in.eyesFollowHead ? BodyLookDownShift(in.headRot, in.lookDownBackUnits * scale) : NiPoint3{0.0f, 0.0f, 0.0f};
+	return in.cameraWorld - eyesFromHead - headFromRoot - back;
 }
 
 // The local position to write into the root for it to stand there: the

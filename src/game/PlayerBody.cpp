@@ -265,6 +265,7 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 		if (frame.headRotValid) {
 			in.eyesFollowHead = true;
 			in.headRot = frame.headRot;
+			in.lookDownBackUnits = frame.lookDownBackUnits;
 		}
 		const float zBefore = skeleton->worldTransform.pos.z;
 		const NiPoint3 local = BodyRootLocalPos(in);

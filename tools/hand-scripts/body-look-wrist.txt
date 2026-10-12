@@ -1,0 +1,97 @@
+# The body looked down at, and the hands turned thumb down (the tester,
+# 2026-10-12: "nach unten schauen: ich sehe immernoch in den körper rein" and
+# "wenn ich die hände voll drehe sodass die senkrecht nach aussen schauen
+# (also linke hand daumen runter handfläche nach links, rechts vice versa)
+# dann verkleinert sich das handgelenk zu sehr"). The body steps back under a
+# bowed head ([Body] LookDownBack, BodyPlacement.h) so the open collar of the
+# headless body stays out of the view: eye dumps with the hands hanging at
+# 45, 65 and 85 degrees down. Then both hands held ahead at the chest and
+# turned half round about the way they point - the thumbs down, the palms
+# out - and the elbows swing with the roll (BodyIkLogic.h, ElbowSwivelFor):
+# the "Body IK: at the mark" lines give each arm's roll on the forearm before
+# the swing, the swing, and what is left for the twist bones; an eye dump
+# with the head lowered to see the wrists.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\body-look-wrist.txt
+
+ini Hands Enabled=1
+ini Body Visible=1
+ini Body IK=1
+ini Body IKArms=1
+ini Body IKTorso=1
+ini Body IKLegs=1
+
+expect HandScript: finished
+expect Body IK: the third-person skeleton - 27 of 27 bones found
+expect Body IK: the right arm follows its hand
+expect Body IK: the left arm follows its hand
+expect LookDownBack=20.0
+reject HandScript: WARNING
+reject Body IK: the right arm left to the body
+reject Body IK: the left arm left to the body
+
+wait 12
+# Hanging at the sides, the fingers down.
+right pos 0.22 -0.58 -0.02
+right rot -40 0 0
+left pos -0.22 -0.58 -0.02
+left rot -40 0 0
+head pitch -45
+wait 1.5
+mark down45
+wait 3
+dump
+head pitch -65
+wait 1.5
+mark down65
+wait 3
+dump
+head pitch -85
+wait 1.5
+mark down85
+wait 3
+dump
+# Held ahead at the chest, pointing ahead as a handle is held: the thumbs up,
+# the palms in - the arm as it comes.
+head pitch -50
+right pos 0.18 -0.35 -0.35
+right rot 0 0 0
+left pos -0.18 -0.35 -0.35
+left rot 0 0 0
+wait 1.5
+mark handles
+wait 3
+dump
+# Turned half round about the way they point, 30 degrees a tenth of a second,
+# the thumbs inwards (a positive roll on the right, negative on the left: the
+# script's roll is about the controller's back axis) - the thumbs down, the
+# palms out.
+right rot 0 0 30
+left rot 0 0 -30
+wait 0.1
+right rot 0 0 60
+left rot 0 0 -60
+wait 0.1
+right rot 0 0 90
+left rot 0 0 -90
+wait 0.1
+right rot 0 0 120
+left rot 0 0 -120
+wait 0.1
+right rot 0 0 150
+left rot 0 0 -150
+wait 0.1
+right rot 0 0 180
+left rot 0 0 -180
+wait 0.1
+wait 1.4
+mark thumbsdown
+wait 3
+dump
+# And on to 210 degrees, as far as a wrist goes with the shoulder's help.
+right rot 0 0 210
+left rot 0 0 -210
+wait 1.5
+mark turnedfar
+wait 3
+dump
+mark end

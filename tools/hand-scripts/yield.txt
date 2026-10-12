@@ -4,8 +4,10 @@
 # sekunden - geste, muss etwas mehr gehärtet werden damit es nicht einfach so
 # im combat passiert"): a melee bandit (00069AD1) attacks an untouchable
 # player (tgm). First with the hands empty: both hands held up before the
-# chest with the fingers up (rot 115: the knuckles about 65 degrees above
-# level) and rocked together 8 cm left and right, 1 cm every 0.05 s (0.2
+# chest with the palms to the front (right rot 90 0 90, left rot 90 0 -90:
+# the controllers pointing up, the side the fingers close over - the palm,
+# the right's -x and the left's +x - turned forward; since 2026-10-12 the
+# palm is the gate, not the fingers up) and rocked together 8 cm left and right, 1 cm every 0.05 s (0.2
 # m/s), three strokes - the yield, block held and activate pressed on the
 # bandit. Then fast sideways swings of both open hands at the same height
 # (40 cm in one step, metres a second): no yield, "too fast" at the mark.
@@ -48,9 +50,9 @@ mark placed
 head face 1
 # The gesture with the hands empty.
 right pos 0.22 -0.20 -0.35
-right rot 115 0 0
+right rot 90 0 90
 left pos -0.22 -0.20 -0.35
-left rot 115 0 0
+left rot 90 0 -90
 wait 0.6
 right pos 0.23 -0.20 -0.35
 left pos -0.21 -0.20 -0.35
@@ -245,13 +247,13 @@ right grip 1
 wait 0.2
 right grip 0
 right pos 0.22 -0.20 -0.35
-right rot 115 0 0
+right rot 90 0 90
 wait 2
 mark drawn
 right pos 0.22 -0.20 -0.35
-right rot 115 0 0
+right rot 90 0 90
 left pos -0.22 -0.20 -0.35
-left rot 115 0 0
+left rot 90 0 -90
 wait 0.6
 right pos 0.23 -0.20 -0.35
 left pos -0.21 -0.20 -0.35

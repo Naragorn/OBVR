@@ -252,6 +252,13 @@ void TestStepping() {
 	Check(t.pose.right.thumbJoints && Near(t.pose.right.thumb[0], 0.2f) && Near(t.pose.right.thumb[2], 0.8f),
 	      "thumb gives the joints, base to tip");
 	Check(!t.pose.left.thumbJoints, "a negative first value: back to the curl alone");
+
+	HandScript littles;
+	Parses("left curl 1\nleft little 0\nright little -1\n", littles);
+	HandScriptRun lr;
+	StepHandScript(littles, lr, 0.0f, ev);
+	Check(Near(lr.pose.left.curl, 1.0f) && Near(lr.pose.left.little, 0.0f), "little gives the little finger its own curl");
+	Check(lr.pose.right.little < 0.0f, "a negative one: as the curl again");
 }
 
 void TestPose() {
@@ -280,6 +287,10 @@ void TestPose() {
 	hand.curl = 0.9f;
 	p = ScriptedHandPose(hand, vr::Quaternion::Identity(), headPos);
 	Check(Near(p.curl[1], 0.9f) && Near(p.curl[4], 0.9f), "curl closes every finger");
+	hand.little = 0.0f;
+	p = ScriptedHandPose(hand, vr::Quaternion::Identity(), headPos);
+	Check(Near(p.curl[3], 0.9f) && Near(p.curl[4], 0.0f), "a little finger of its own stays open while the rest close");
+	hand.little = -1.0f;
 	Check(!p.thumbValid, "no thumb joints unless the script gives them");
 	hand.thumbJoints = true;
 	hand.thumb[0] = 0.3f;

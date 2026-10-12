@@ -318,3 +318,81 @@ by 20.6 grown x1.15, the turn -35.7 then -1.8).
   goes in a menu that keeps the hands).
 - Swimming lays the animation's body flat; the held trunk stands upright
   in it.
+
+## Round 3 (2026-10-12): the open collar, the wrist
+
+The tester, after round 2: "IK: nach unten schauen: ich sehe immernoch in
+den körper rein. arme wirken super, nur wenn ich die hände voll drehe
+sodass die senkrecht nach aussen schauen (also linke hand daumen runter
+handfläche nach links, rechts vice versa) dann verkleinert sich das
+handgelenk zu sehr. ruckeln nun weg!"
+
+### Looking down: the open collar
+
+- **What was seen.** Round 2's own eye dump at 65 degrees down
+  (`body-ik-smooth`, 2026-10-12) shows it: at the bottom of the picture the
+  collar of the body as an open ring, and its inside. The head bone is
+  collapsed for the draw (Enhanced Camera's way, `PlayerBody.cpp`), the
+  head's mesh with it, and the neck went with the head - so nothing closes
+  the body at the neck. The Bip01 chain measured in the body probe: the head
+  bone 6.3 units above the neck bone, the clavicles at the neck bone's
+  height. A real chin hides that place; nothing here does.
+- **Built.** The body steps back under a bowed head, along the way the face
+  looks (`BodyLookDownShift`, BodyPlacement.h; `[Body] LookDownBack`,
+  settings "Back when looking down", default 20, 0-30): nothing above 20
+  degrees down, then the square of the way from 20 to 90 degrees times the
+  setting - 8.3 units at 65 degrees, 17.2 at 85, 20 straight down. The way
+  back is the headset's up axis's level part, so it is defined looking
+  straight down, where the forward's level part runs out.
+- **Measured** (eye dumps, `body-look-wrist` and `body-look-sweep`): 8 units
+  hid the ring at 65 degrees but not at 85; 16 hid it at 85, and at 65 put
+  the whole torso out of view - so the shift grows with the look, not
+  linearly. With the curve: at 45 degrees the floor and the hands; at 65 the
+  feet, the legs and the belt below; at 85 the belly, the belt and the legs
+  from above; no ring at any of them.
+- **The cost.** The shoulders are that far behind the headset looking
+  down, so the arms reach forward to the hands - unseen in the dumps, to
+  feel in the headset. 0 turns it off.
+
+### The wrist turned: the roll spread
+
+- **What was wrong.** The hand's roll on the forearm (the controller's hand
+  against the solved forearm, less the animation's own) went half to the
+  forearm's twist bone, held to 75 degrees, the whole to the hand, none to
+  the forearm. Read from the game's meshes (pyffi on
+  `meshes\characters\_male\upperbody.nif` "Arms" and `hand.nif`, the right
+  arm in its bind pose): the twist bone sits at the elbow and weights the
+  forearm's skin as a gradient up to the wrist (0.07 by the elbow, 0.74 near
+  the wrist); the wrist's ring is blended forearm 0.17, twist 0.41, hand
+  0.41. At a roll of 180 degrees that ring, its weights turned 0, 90 and 180
+  degrees, kept 0.48 of its width (linear blend skinning), and past 150 the
+  twist bone stood while the hand went on.
+- **Built** (`ForearmRollsFor`, BodyIkLogic.h): the roll spread evenly - the
+  forearm bone a third, its twist bone two thirds, the hand the whole, up to
+  270 degrees either way (the memory held a little past it,
+  `HoldForeRollMemory`). At 180 degrees the elbow keeps 0.87 of its width,
+  the forearm 0.87, the wrist's ring 0.74 (derived from the weights).
+- **Measured** (`body-look-wrist`, the controllers turned 30 degrees a tenth
+  of a second to 180 and on to 210): the roll followed the whole way, no
+  flip (the right hand 61.5 -> -190.7 -> -205.9, the left -102.8 -> -173.9
+  -> -160.2); the eye dumps show both wrists full, the forearms as they
+  should be.
+- **Tried and left out: the elbow swung with the roll.** VRArmIK
+  (github.com/dabeschte/VRArmIK, MIT, `rotateElbowWithHandRight`) turns the
+  elbow about the shoulder-wrist line by the roll past an offset. Built the
+  same way first (the roll past 60 degrees, three quarters of it, at most
+  90), it failed in the harness twice: the roll at rest is not 0 - the
+  right hand 61-82 degrees, the left -103 to -113, the controllers held
+  pointing ahead - so the left elbow swung 36 degrees with the hands at
+  rest; and a hand turned half round in one step swung both elbows across
+  the chest, since which way round a half turn went is not known from one
+  frame. Kept for later, with the rest roll taken out first.
+
+### Open
+
+- Why the rest roll differs between the arms (61-82 against -103 to -113,
+  not mirrored): the hands' grip on the controllers, or the solve's frame -
+  not looked into. It changes nothing seen now that the roll is spread.
+- A crouch with the head bowed - the body let down and stepped back at
+  once - not tried in the harness.
+- Not seen in a headset.

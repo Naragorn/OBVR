@@ -1,0 +1,60 @@
+# The fighters' ring walks and holds still in a pause (the tester,
+# 2026-10-12: "gegner ring: in pausen menüs scheints du die gegner weiter zu
+# pushen obwohl eig pause sein soll und nix passieren soll. du pusht die
+# gegner auch weg wenn sie eig stehen oder? das wirkt unrealistisch, die
+# sollten eig gehen"). Three melee bandits (00069AD1) at an untouchable
+# player (tgm), a 3 m ring, one at a time. The waiting walk round the
+# player by their own legs and the ring adds only the radial drift, and only
+# to legs that walk (CombatRingLogic.h, "The legs walk; the ring only adds to
+# a walk"): the state lines at the marks give each one's legs group (5/6/9/10
+# a walk to the side, 255 standing), the ring's steps placed and held, and
+# the legs' and the ring's units a second. Then the Esc menu for four
+# seconds: "Combat ring: paused - <actor> at x y" at both marks inside it,
+# the same places, nothing placed; out again, the ring goes on.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\ring-walk.txt
+
+ini Hands Enabled=1
+ini Hands CombatRing=1
+ini Hands CombatRingMetres=3
+ini Hands MeleeAttackersAtOnce=1
+console-at ready player.placeatme 00069AD1 3
+console-at ready tgm
+
+expect HandScript: finished
+expect Combat ring: 3 fighting the player - 1 with a turn, 2 waiting
+expect Combat ring: the world paused behind a menu
+expect Combat ring: paused -
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 10
+mark fight1
+wait 3
+mark fight2
+wait 3
+mark fight3
+wait 3
+mark fight4
+# The Esc menu: the world pauses.
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 1
+mark paused1
+wait 3
+mark paused2
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 1
+mark back1
+wait 3
+mark back2
+wait 3
+mark back3
+wait 3
+mark end

@@ -141,6 +141,15 @@ void TestPushingPeople() {
 	Check(!HandBodyFist(true, true, open, 0.9f, 0.75f), "all below the open limit: open again");
 	Check(!HandBodyFist(true, false, fist, 0.9f, 0.75f) && !HandBodyFist(false, true, nullptr, 0.9f, 0.75f),
 	      "no curls: no fist");
+	// The tester's left hand, 2026-10-12: the little finger's sensor never reads.
+	const float deadLittle[5] = {0.2f, 0.95f, 1.0f, 1.0f, 0.0f};
+	const float deadLittleOpen[5] = {0.2f, 0.1f, 0.1f, 0.2f, 0.0f};
+	vr::FingersRead read;
+	vr::NoteFingerCurls(read, true, deadLittle);
+	Check(!HandBodyFist(false, true, deadLittle, 0.9f, 0.75f), "the little finger at 0, no record: no fist (as before)");
+	Check(HandBodyFist(false, true, deadLittle, 0.9f, 0.75f, &read),
+	      "the little finger never read: the other three closed are a fist - the off hand punches");
+	Check(!HandBodyFist(true, true, deadLittleOpen, 0.9f, 0.75f, &read), "and opened by the three: open");
 }
 
 void TestCapsules() {

@@ -453,6 +453,13 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return c.body.eyeUp; },
 		+[](Config& c, float v) { c.body.eyeUp = v; },
 	},
+	{
+		"Body", "Back when looking down", "Units the body steps back as you look down, so the open collar stays out of view",
+		ItemKind::Number, 0.0f, 30.0f, 1.0f, 0, false,
+		"Body", "LookDownBack",
+		+[](const Config& c) { return c.body.lookDownBack; },
+		+[](Config& c, float v) { c.body.lookDownBack = v; },
+	},
 
 	// ---- Screen and menus --------------------------------------------------
 	{

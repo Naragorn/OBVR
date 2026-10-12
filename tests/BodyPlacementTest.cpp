@@ -216,10 +216,77 @@ void TestGate() {
 	Check(true, "all eight gate combinations agree: on, first person, no menu");
 }
 
+// The body back under a bowed head (the tester, 2026-10-12: "nach unten
+// schauen: ich sehe immernoch in den körper rein").
+void TestLookDownBack() {
+	std::printf("The body back under a bowed head\n");
+	using obvr::game::BodyLookDownShare;
+	using obvr::game::BodyLookDownShift;
+	Check(BodyLookDownShare(NiMatrix33::Identity()) == 0.0f, "level: nothing");
+	Check(BodyLookDownShare(obvr::EulerToMatrix(-15.0f, 0.0f, 0.0f)) == 0.0f, "15 degrees down: nothing yet");
+	// The square of the way from 20 to 90 degrees down: 8.3 of 20 at 65, 17.2
+	// at 85 - what the harness's eye dumps needed (8 hid the collar at 65,
+	// 16 at 85).
+	const float at65 = BodyLookDownShare(obvr::EulerToMatrix(-65.0f, 0.0f, 0.0f));
+	Check(Near(at65 * 20.0f, 8.27f, 0.05f), "65 degrees down: 8.3 of 20");
+	const float at85 = BodyLookDownShare(obvr::EulerToMatrix(-85.0f, 0.0f, 0.0f));
+	Check(Near(at85 * 20.0f, 17.24f, 0.05f), "85 degrees down: 17.2 of 20");
+	const float early = BodyLookDownShare(obvr::EulerToMatrix(-25.0f, 0.0f, 0.0f));
+	Check(early > 0.0f && early < 0.01f, "just past the start: a little, eased in");
+	Check(Near(BodyLookDownShare(obvr::EulerToMatrix(-90.0f, 0.0f, 0.0f)), 1.0f, 0.001f), "straight down: all of it");
+	Check(BodyLookDownShare(obvr::EulerToMatrix(60.0f, 0.0f, 0.0f)) == 0.0f, "looking up: nothing");
+	NiMatrix33 broken = NiMatrix33::Identity();
+	broken.data[2][1] = -7.0f;
+	Check(BodyLookDownShare(broken) == 0.0f, "a rotation that is none: nothing");
+	// The shift: along the way the face looks, level - the body that far behind.
+	const NiMatrix33 bowedAhead = obvr::EulerToMatrix(-80.0f, 0.0f, 0.0f);
+	const NiPoint3 forward = obvr::ForwardOf(bowedAhead);
+	const float shareAt80 = BodyLookDownShare(bowedAhead);
+	const NiPoint3 shift = BodyLookDownShift(bowedAhead, 8.0f);
+	const float shiftLength = 8.0f * shareAt80;
+	Check(Near(shift.z, 0.0f) && Near(shift.x * shift.x + shift.y * shift.y, shiftLength * shiftLength, 0.01f) &&
+	          shift.x * forward.x + shift.y * forward.y > 0.0f,
+	      "80 degrees down: the share of 8 units along the way the face looks, level");
+	const NiMatrix33 bowedTurned = obvr::EulerToMatrix(-80.0f, 0.0f, 90.0f);
+	const NiPoint3 turnedForward = obvr::ForwardOf(bowedTurned);
+	const NiPoint3 turnedShift = BodyLookDownShift(bowedTurned, 8.0f);
+	Check(turnedShift.x * turnedForward.x + turnedShift.y * turnedForward.y > shiftLength * 0.17f &&
+	          Near(turnedShift.x * turnedShift.x + turnedShift.y * turnedShift.y, shiftLength * shiftLength, 0.01f),
+	      "turned 90 degrees: the shift turned with the face");
+	Check(NearPoint(BodyLookDownShift(bowedAhead, 0.0f), NiPoint3{0.0f, 0.0f, 0.0f}) &&
+	          NearPoint(BodyLookDownShift(bowedAhead, -3.0f), NiPoint3{0.0f, 0.0f, 0.0f}),
+	      "no units, or fewer than none: no shift");
+	Check(NearPoint(BodyLookDownShift(NiMatrix33::Identity(), 8.0f), NiPoint3{0.0f, 0.0f, 0.0f}), "level: no shift");
+	// In the placement: the root that far behind, the eyes still on the camera
+	// less the shift; only with the head's rotation followed.
+	BodyRootInput in = Standing();
+	in.eyesFollowHead = true;
+	in.eyeOffsetUnits = NiPoint3{0.0f, 5.6f, 6.0f};
+	in.headRot = bowedAhead;
+	const NiPoint3 without = BodyRootWorldWanted(in);
+	in.lookDownBackUnits = 8.0f;
+	const NiPoint3 with = BodyRootWorldWanted(in);
+	Check(NearPoint(without - with, shift), "LookDownBack 8 at 80 degrees down: the root that share of 8 units behind");
+	in.rootWorldScale = 2.0f;
+	const NiPoint3 scaledWithout = [&] {
+		BodyRootInput s = in;
+		s.lookDownBackUnits = 0.0f;
+		return BodyRootWorldWanted(s);
+	}();
+	Check(NearPoint(scaledWithout - BodyRootWorldWanted(in), shift * 2.0f), "a body at scale two: twice as far");
+	in.rootWorldScale = 1.0f;
+	in.eyesFollowHead = false;
+	const NiPoint3 offWith = BodyRootWorldWanted(in);
+	in.lookDownBackUnits = 0.0f;
+	Check(NearPoint(offWith, BodyRootWorldWanted(in)), "the head's rotation not followed: no shift");
+}
+
 }  // namespace
 
 int main() {
 	TestUprightBody();
+	std::printf("\n");
+	TestLookDownBack();
 	std::printf("\n");
 	TestTurnedBody();
 	std::printf("\n");

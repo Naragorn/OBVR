@@ -61,15 +61,19 @@ void TestOrders() {
 
 	const UInt16 runForward = kMoveForward | kMoveRun | 0x1000;
 	Check(RingFlags(runForward, RingOrder::Free, true) == runForward, "Free: untouched");
-	Check(RingFlags(runForward, RingOrder::Back, true) == (kMoveBackward | kMoveWalk | 0x1000),
-	      "back: a walk backwards, other bits kept");
+	// The walk backwards does not move an NPC the AI wants near (2026-10-10,
+	// -11); the walk to the side does. Inside the ring too, the legs step to
+	// the side (since 2026-10-12).
+	Check(RingFlags(runForward, RingOrder::Back, true) == (kMoveRight | kMoveWalk | 0x1000),
+	      "inside the ring, round its left: a walk to the side as well, other bits kept");
+	Check(RingFlags(kMoveForward | kMoveLeft, RingOrder::Back, false) == (kMoveLeft | kMoveWalk),
+	      "inside, round its right, the AI asking forward and left: only the side step");
 	// The ring's left is counter-clockwise seen from above; the legs face
 	// the player, so that is a step to the actor's right.
 	Check(RingFlags(runForward, RingOrder::Circle, true) == (kMoveRight | kMoveWalk | 0x1000),
 	      "round the ring's left: the legs step to their right");
 	Check(RingFlags(0, RingOrder::Circle, false) == (kMoveLeft | kMoveWalk), "standing, round the ring's right: their left");
-	Check(RingFlags(kMoveForward | kMoveLeft, RingOrder::Back, false) == (kMoveBackward | kMoveWalk),
-	      "forward and left: only back");
+	Check((RingFlags(runForward, RingOrder::Back, true) & kMoveBackward) == 0, "never the walk backwards any more");
 }
 
 void TestSteps() {
@@ -77,63 +81,65 @@ void TestSteps() {
 	const CombatRingSettings s = FiveMetres();
 	float ox = 0.0f;
 	float oy = 0.0f;
-	Check(RingStepOffset(100.0f, 0.0f, RingOrder::Back, true, s, 0.1f, ox, oy) && ox > 12.9f && ox < 13.1f && oy == 0.0f,
-	      "deep inside, back: straight away, twice the walk");
-	Check(RingStepOffset(300.0f, 0.0f, RingOrder::Back, true, s, 0.1f, ox, oy) && ox > 6.5f && ox < 6.6f,
-	      "back at the band's inner edge: the walk, 65 units a second");
-	Check(RingStepOffset(200.0f, 0.0f, RingOrder::Back, true, s, 0.1f, ox, oy) && ox > 10.2f && ox < 10.3f,
-	      "back, halfway in: between");
-	Check(RingStepOffset(0.0f, 350.0f, RingOrder::Circle, true, s, 0.1f, ox, oy) && ox < -6.4f && oy > -0.1f && oy < 0.1f,
-	      "on the ring, round to the left: along the tangent");
-	Check(RingStepOffset(0.0f, 350.0f, RingOrder::Circle, false, s, 0.1f, ox, oy) && ox > 6.4f, "to the right: the other way");
-	Check(RingStepOffset(0.0f, 320.0f, RingOrder::Circle, true, s, 0.1f, ox, oy) && oy > 3.2f && oy < 3.3f,
-	      "inside the line: pulled out, half a step at most");
-	Check(!RingStepOffset(100.0f, 0.0f, RingOrder::Free, true, s, 0.1f, ox, oy) && ox == 0.0f, "free: no step");
-	Check(!RingStepOffset(100.0f, 0.0f, RingOrder::Back, true, s, 0.0f, ox, oy), "no time: no step");
-	Check(!RingStepOffset(100.0f, 0.0f, RingOrder::Back, true, s, 0.5f, ox, oy), "a long stall: no jump");
-	Check(!RingStepOffset(0.5f, 0.0f, RingOrder::Back, true, s, 0.1f, ox, oy), "on the player: no direction, no step");
+	// The walk round: the legs', a walk's step along the tangent.
+	Check(RingTangentStep(0.0f, 350.0f, true, 0.1f, ox, oy) && Near(ox, -6.5f) && Near(oy, 0.0f),
+	      "north of the player, round to the left: west, 65 units a second");
+	Check(RingTangentStep(0.0f, 350.0f, false, 0.1f, ox, oy) && Near(ox, 6.5f), "round to the right: east");
+	Check(RingTangentStep(100.0f, 0.0f, true, 0.1f, ox, oy) && Near(ox, 0.0f) && Near(oy, 6.5f),
+	      "east of the player, round to the left: north");
+	Check(!RingTangentStep(100.0f, 0.0f, true, 0.0f, ox, oy) && ox == 0.0f, "no time: no walk asked");
+	Check(!RingTangentStep(100.0f, 0.0f, true, 0.5f, ox, oy), "a long stall: none");
+	Check(!RingTangentStep(0.5f, 0.0f, true, 0.1f, ox, oy), "on the player: no direction, none");
+	// The ring's own step, along the line from the player.
+	Check(Near(RingRadialStep(100.0f, RingOrder::Back, s, 0.1f), 4.0f), "inside: a drift out, 40 units a second");
+	Check(Near(RingRadialStep(300.0f, RingOrder::Back, s, 0.1f), 4.0f), "inside at the band's edge: the same drift");
+	Check(Near(RingRadialStep(320.0f, RingOrder::Circle, s, 0.1f), 3.25f), "in the band, inside the line: out, half a step");
+	Check(Near(RingRadialStep(395.0f, RingOrder::Circle, s, 0.1f), -3.25f), "outside the line: in, half a step");
+	Check(Near(RingRadialStep(351.0f, RingOrder::Circle, s, 0.1f), -0.5f), "a unit off the line: half of it");
+	Check(RingRadialStep(350.0f, RingOrder::Circle, s, 0.1f) == 0.0f, "on the line: nothing");
+	Check(RingRadialStep(100.0f, RingOrder::Free, s, 0.1f) == 0.0f, "free: nothing");
+	Check(RingRadialStep(100.0f, RingOrder::Back, s, 0.0f) == 0.0f && RingRadialStep(100.0f, RingOrder::Back, s, 0.5f) == 0.0f,
+	      "no time, or a long stall: nothing");
+	Check(RingRadialStep(0.5f, RingOrder::Back, s, 0.1f) == 0.0f, "on the player: nothing");
 }
 
-void TestShortfall() {
-	std::printf("the legs' walk measured, the shortfall placed\n");
-	float sx = 0.0f;
-	float sy = 0.0f;
-	// A first step: the legs' walk unknown, the whole step placed.
-	Check(RingStepShortfall(6.5f, 0.0f, false, 99.0f, 99.0f, sx, sy) && Near(sx, 6.5f) && sy == 0.0f,
-	      "the walk unknown: the whole step");
-	// The legs did it all (and more): nothing placed.
-	Check(!RingStepShortfall(6.5f, 0.0f, true, 7.0f, 0.0f, sx, sy) && sx == 0.0f && sy == 0.0f,
-	      "the legs walked the step: nothing placed");
-	Check(!RingStepShortfall(6.5f, 0.0f, true, 6.5f, 0.0f, sx, sy), "exactly the step: nothing");
-	// Half way: the other half.
-	Check(RingStepShortfall(6.5f, 0.0f, true, 3.25f, 0.0f, sx, sy) && Near(sx, 3.25f), "half the step walked: half placed");
-	// Across the step: counts for nothing along it.
-	Check(RingStepShortfall(6.5f, 0.0f, true, 0.0f, 5.0f, sx, sy) && Near(sx, 6.5f) && sy == 0.0f,
-	      "walked across it: the whole step along it, nothing across");
-	// Against it: made up, at most twice the step.
-	Check(RingStepShortfall(6.5f, 0.0f, true, -3.0f, 0.0f, sx, sy) && Near(sx, 9.5f), "walked 3 against it: the step and 3");
-	Check(RingStepShortfall(6.5f, 0.0f, true, -40.0f, 0.0f, sx, sy) && Near(sx, 13.0f), "far against it: twice the step at most");
-	// A diagonal step keeps its direction.
-	Check(RingStepShortfall(3.0f, 4.0f, true, 0.6f, 0.8f, sx, sy) && Near(sx, 2.4f) && Near(sy, 3.2f),
-	      "a diagonal step, a fifth walked: four fifths along it");
-	// No step wanted, or nothing sane: nothing placed.
-	Check(!RingStepShortfall(0.0f, 0.0f, true, 1.0f, 0.0f, sx, sy), "no step: nothing");
+void TestLegs() {
+	std::printf("only walking legs get a step\n");
+	// The walk groups (TESAnimGroup: Forward 3, Backward 4, Left 5, Right 6,
+	// Fast* 7-10).
+	Check(!RingLegsWalking(kRingLegsStill) && !RingLegsWalking(0) && !RingLegsWalking(2) && !RingLegsWalking(11) &&
+	          !RingLegsWalking(21),
+	      "still, idle, a special idle, a dodge, a blow: no walk");
+	Check(RingLegsWalking(3) && RingLegsWalking(6) && RingLegsWalking(10), "forward, right, fast right: a walk");
+	// Standing: nothing placed - the tester's "du pusht die gegner auch weg
+	// wenn sie eig stehen".
+	Check(!RingMayPlace(kRingLegsStill, 4.0f) && !RingMayPlace(0, -3.0f) && !RingMayPlace(21, 4.0f),
+	      "legs standing, idle or striking: no step placed, out or in");
+	// Walking to the side or back: the drift out goes with it.
+	Check(RingMayPlace(5, 4.0f) && RingMayPlace(6, 4.0f) && RingMayPlace(9, 4.0f) && RingMayPlace(4, 4.0f),
+	      "legs walking to the side or back: the drift out placed");
+	// Walking at the player: not slid away from him (a moonwalk).
+	Check(!RingMayPlace(3, 4.0f) && !RingMayPlace(7, 4.0f), "legs walking forward: no drift out");
+	Check(RingMayPlace(3, -3.0f), "legs walking forward: the pull in goes with them");
+	Check(!RingMayPlace(4, -3.0f) && !RingMayPlace(8, -3.0f), "legs walking back: no pull in");
+	Check(!RingMayPlace(5, 0.0f), "no step: nothing");
 	const float nan = std::numeric_limits<float>::quiet_NaN();
-	Check(!RingStepShortfall(6.5f, 0.0f, true, nan, 0.0f, sx, sy) && sx == 0.0f, "a walk of no number: nothing placed");
+	Check(!RingMayPlace(5, nan), "a step of no number: nothing");
 
-	// The walk measured from where the step before left them; unknown at
-	// first and after a frame without a step.
+	// The legs' own walk measured from where the step before left them;
+	// unknown at first and after a frame without a step.
 	RingMember m;
 	float ex = 0.0f;
 	float ey = 0.0f;
-	Check(!RingLegsWalked(m, 10.0f, 20.0f, ex, ey) && ex == 0.0f && ey == 0.0f, "nothing placed yet: the walk unknown");
-	RingStepTaken(m, 10.0f, 20.0f, 0.0f, 6.5f, 0.0111f);
-	Check(RingLegsWalked(m, 13.0f, 21.0f, ex, ey) && Near(ex, 3.0f) && Near(ey, 1.0f), "the next frame: the legs' walk since");
-	RingStepTaken(m, 13.0f, 21.0f, 3.0f, 0.0f, 0.0111f);
-	Check(Near(m.legsUnits, 3.0f) && Near(m.placedUnits, 6.5f) && m.steppedSeconds > 0.022f && m.steppedSeconds < 0.0223f,
+	Check(!RingLegsWalked(m, 10.0f, 20.0f, ex, ey) && ex == 0.0f && ey == 0.0f, "nothing stepped yet: the walk unknown");
+	RingStepTaken(m, 10.0f, 20.0f, 0.0f, 4.0f, 0.0111f);
+	Check(RingLegsWalked(m, 13.0f, 24.0f, ex, ey) && Near(ex, 3.0f) && Near(ey, 4.0f), "the next frame: the legs' walk since");
+	RingStepTaken(m, 13.0f, 24.0f, 5.0f, 0.0f, 0.0111f);
+	Check(Near(m.legsUnits, 5.0f) && Near(m.placedUnits, 4.0f) && m.steppedSeconds > 0.022f && m.steppedSeconds < 0.0223f,
 	      "the books: the legs' walk, the placed, the time");
-	RingStepTaken(m, 13.0f, 21.0f, 0.0f, 0.0f, -1.0f);
-	Check(m.steppedSeconds > 0.022f && m.steppedSeconds < 0.0223f, "no time counted backwards");
+	RingStepTaken(m, 13.0f, 24.0f, nan, 0.0f, -1.0f);
+	Check(Near(m.legsUnits, 5.0f) && m.steppedSeconds > 0.022f && m.steppedSeconds < 0.0223f,
+	      "a walk of no number, no time counted backwards: the books as they were");
 	RingStepNone(m);
 	Check(!RingLegsWalked(m, 14.0f, 21.0f, ex, ey), "after a frame without a step: unknown again");
 }
@@ -419,7 +425,7 @@ int main() {
 	TestSettings();
 	TestOrders();
 	TestSteps();
-	TestShortfall();
+	TestLegs();
 	TestTurns();
 	TestAlone();
 	TestTwoAtOnce();

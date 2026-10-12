@@ -514,4 +514,71 @@ setters, the parry's forced block:
   bound's column; a wolf held by "the column" stops its blows not at all),
   and a held one's own hands - a bandit held by the torso still swings.
 
+### Proposal (the tester, 2026-10-12): the grab and the throw as a ragdoll - nothing built
+
+The tester: "gegner greifen und werfen, wie könnten wir das verbessern also
+mit ragdoll irgendwie".
+
+**Today [R]:** the one held stands - staggered, the legs held, placed where
+the hand wants them each frame (`game::PlaceActorAt`, at most 2 m/s), and
+thrown as the shove throws (staggered or knocked down along the hand). A
+puppet slid across the ground, its legs still: the drag has no weight and the
+throw no flight.
+
+**What the engine has for it [R, the repo's own reading]:**
+
+- The knockdown (`0x00654420`, the process vtable's +0x2F0; game/PlayerStagger.h):
+  puts the actor into the knock state ("Explode Lead In", process+0x11C =
+  2), turns its ragdoll on (`0x0088D070`) and pushes it with an impulse from
+  a source point (`0x005364B0`). The engine's own get-up follows when the
+  knock state ends.
+- The dead, the knocked down and the ragdolled have their bones on the
+  BIPED layer (8) as rigid bodies (section F above).
+- The grab by reach (the engine's Z grab, which the grip drives) holds one
+  rigid body of what it picked by a spring - "only works on a single part of
+  a model's skeleton at a single time" (cs.uesp.net/wiki/Talk:FGrabPower) -
+  and a dead body is grabbed with the grip today (holding-objects-spec).
+- OBVR's throw: the held body activated and given the palm's speed
+  (`hkMotion::setLinearVelocity`, game/GrabPhysics.h).
+- The weapon already pushes ragdolls (section F).
+
+**The proposal [D]:**
+
+1. A fighter grabbed by the torso, a leg or an arm goes down into its
+   ragdoll: the engine's knockdown with no push (the source at the hand,
+   force 0) - its own knock state, so the get-up, the AI's recovery and the
+   crime stay the engine's.
+2. The part under the hand is held by the engine's grab spring, as a corpse
+   is: the body hangs from the hand and swings, its feet drag, its weight is
+   Havok's mass - a heavy one drags slower than a light one.
+3. Let go: OBVR's throw - the palm's speed on the held part; the rest of the
+   body follows through the ragdoll's joints. A throw at a wall stops at the
+   wall.
+4. While held the knock state is kept (knocked again before it ends, the
+   force 0), so nobody stands up out of the hand; let go, the engine's own
+   get-up after its own time.
+5. The neck and the head stay the standing hold of today - B&S's choke: the
+   one held stands, staggered, and their blows do not land.
+
+**Unknown, and how to settle it:**
+
+- Whether the grab takes a living actor's ragdolled part at all (the grab
+  ray's filter, `0x0066DAAC`, and what it refuses: not read). Settled by a
+  harness run: a bandit knocked down by the console's `PushActorAway` at
+  force 0, the grip closed at its torso, the log's grabbed reference and
+  body.
+- Whether the knock state's end pulls a held ragdoll out of the spring
+  (the get-up's blend), and its length (the fKnockdown settings: not read).
+- What the AI does while knocked and held (its combat state, its target).
+- Creatures without a ragdoll (a wolf, a will-o'-the-wisp): today's
+  standing hold for them.
+- Put it in its Place - Enhanced Grabbing, on the tester's list, has a grab
+  of NPCs of its own (its quest's `sNPCGrab` count, read for the slap,
+  controls-spec 4.12); how it holds them - a ragdoll or not: could not
+  verify (its release thread, gamesas.com/post859633, did not load).
+
+**Order:** the harness run above first (does the grab take a knocked-down
+fighter's part); then 1-3 behind a switch next to `OffHandGrabs`; 4 once
+the get-up's timing is read; 5 stays as it is.
+
 Controls-spec 4.34 has the controls and the log lines.
