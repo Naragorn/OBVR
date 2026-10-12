@@ -251,8 +251,50 @@ verify this from code; a headset test with each switched off would settle it.
 
 - **Recoil when the player's own blow is blocked** (0x005F4F00): not
   touched. Whether it jolts the view is to be tested.
-- **Knockdown**: not touched. The player falls as a ragdoll. The death view
-  (`DeathViewStill`) shows how a held view would handle a fall.
+- **Knockdown**: built 2026-10-05 as `[Look] NoPlayerKnockdown` (dd51528;
+  settings: Comfort, "No knockdown", default on): the one knockdown function
+  (0x00654420, the process vtable's slot +0x2F0 in the high and the
+  middle-high process - a hit's knockdown roll, a magic explosion, the
+  script's PushActorAway) is rerouted in both slots and does nothing for the
+  player; the damage still lands (game/PlayerStagger.h). The fatigue
+  knock-out (0x006545E0, a collapse, not a throw) is left alone.
+  - **Open bug (the tester, 2026-10-12):** "paar mal recht selten haben npc
+    meinen player in die luft oder auf den boden gehauen, sodass auf 3rd
+    person forced wurde und whl durch obvr auf 1st und dass dann in loop bis
+    player aufstand. sollten wir whl wegpatchen wenn die option an ist in
+    obvr." Two things in it:
+    1. *A throw got through.* The tester's live INI has no
+       `NoPlayerKnockdown` line, so the default (on) applies - derived from
+       Config.cpp, not seen in a log. What the log of such a fight settles:
+       "Comfort: the high process's knockdown rerouted at 00A71B04" at the
+       start says the patch is in (a slot held by another plugin logs
+       "knockdowns are left to the game" instead); "Comfort: a knockdown of
+       the player was skipped ... from <address>" at the blow says the throw
+       went through the patched function and was refused - then the fall
+       came from elsewhere. Candidates the option does not cover: the
+       fatigue knock-out (the player's fatigue at zero from the blows, a
+       vanilla collapse that also puts the player on the ground), the other
+       callers of the Havok push 0x008907A0 listed below (not examined),
+       paralysis (not researched). Which it was: **could not verify**
+       without the log.
+    2. *The view flickered between third and first person until the player
+       stood up.* The game shows the fall in third person; Full VR puts the
+       player back into first person on every frame it finds them in third
+       (`HandModeForcesFirstPerson`, camera/FrameLogic.h, `[Hands]
+       ForceFirstPerson=1`, through the game's own ToggleCamera) unless a
+       menu is up or the player is dead. A knock state the game holds in
+       third person is fought each frame; the log shows "Hands: the player
+       was in third person - put back into first" repeated. The death got
+       its exception for exactly this (the 2026-09-25 log, CameraHook.cpp
+       at the call); the knock state has none.
+    - **Proposed, nothing built (the tester asked for the note only):**
+      (a) the fall treated as the death is: no forcing of first person
+      while the player is in the knock state (process+0x11C, which the
+      knockdown function sets to 2, "Explode Lead In") or in the fatigue
+      collapse, the view held still there as `DeathViewStill` holds it;
+      (b) the fatigue knock-out under the same option, or its own, once a
+      log shows it was that; (c) with the log's "from <address>", the
+      uncovered path rerouted as the three known ones are.
 - **Other stagger paths** that avoid 0x005F4FD0 (a script's `PlayGroup`,
   for example): not traced.
 - **Other callers of 0x008907A0** (0x005ED575, 0x00604D4B, 0x00654500,
@@ -651,3 +693,10 @@ schlag auch hier was vor."
 - With the switch off: the vanilla stagger and knockback are back.
 - Anything that still jolts (recoil, knockdown, spells) goes into the list
   above.
+- A blow that still throws you into the air or onto the ground (seen
+  rarely, 2026-10-12): send the log. Wanted in it: "the high process's
+  knockdown rerouted" at the start, and at the blow "a knockdown of the
+  player was skipped ... from <address>" or nothing - nothing means a path
+  the option does not cover (section 2, Open). The flicker between third
+  and first person until you stand is "Hands: the player was in third
+  person - put back into first", repeated.

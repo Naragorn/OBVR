@@ -526,7 +526,10 @@ checked by tests and the harness as far as said; **none seen in the headset**.
 6. **Thrown through the air.** `[Look] NoPlayerKnockdown=1` (menu "No
    knockdown"): the knockdown (0x00654420, the process vtable +0x2F0, from a
    hit's knockdown roll, a magic explosion, PushActorAway) skips the player.
-   Log: "the high process's knockdown rerouted". Not seen in a fight.
+   Log: "the high process's knockdown rerouted". Seen 2026-10-12: rarely a
+   blow still throws the player, and the view flickers between third and
+   first person until they stand - docs/combat-comfort-spec.md section 2,
+   Open.
 7. **Stuck at doors.** No log, no tester to ask. Open: walk through a door
    in the harness with `BodyCollision` on and off; if only on, the hand and
    weapon bodies catch the frame.
