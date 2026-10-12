@@ -1105,7 +1105,16 @@ The tester's asks of 2026-10-07, all in one round:
   first SetOverlayTexture (~100 ms), so every hand HUD overlay is handed the
   atlas once, hidden, on the first submit after a load
   (`HandHudLayer::m_warmed`).
-
+- **Open bug (2026-10-12): the take needs a firm grip.** The tester: "bisher
+  braucht es ein festes grip bis die sich an der waffe einklinkt. das soll
+  auch mit weniger druck möglich sein sodass man nicht "press" machen muss
+  sondern einfach nur druck." The take is the grip's click, and on the Index
+  the shipped binding clicks at a force of 0.3 (assets/input/knuckles.json,
+  `click_activate_threshold`); the force itself is not read on the action
+  path. Wanted: a force action with OBVR's own, lower threshold for the take -
+  docs/free-weapons-spec.md section 4.1, with the rest of the tester's
+  free-weapons wishes of that day (the weapon hand unlocked, world weapons
+  equipped by their handle, half-swording) in section 4.
 ### 4.11 The bow by hand, as in Blade & Sorcery (built 2026-09-30)
 
 The tester: "Pfeil und Bogen wie in blade and sorcery. Linke hand hat ja bereits den Bogen. Jetzt muss rechte noch auf rechter schulter den Pfeil bekommen und an den bogen führen. Beim loslassen Schuss. Zielen im groben mit links mit dem bogen, im feinen mit rechts dem Pfeil. Crosshair muss voll sichtbar sein wenn Optionen dafür an ist und man zielt damit."

@@ -2,7 +2,7 @@
 
 The tester, 2026-09-30: "recherchier jz mal und erstelle eine spec ob es möglich wäre waffen komplett unlocked zu machen. soll heissen ich sehe in der spielwelt eine waffe nehme sie am griff auf -> sie ist ausgerüstet im hintergrund ... ich kann sie mit links und oder rechts beliebig anfassen wie ich will und zuschlagen wie ich will. wenn ich die waffe loslasse fällt sie einfach auf den boden. sogar mit half swording oder so. alles was nicht griff ist zählt dann als schadensfläche. wenn ich sie in den slot stecke (zB schulter rechts) ist sie dort geholstered. also Blade&Sorcery style. machbarkeitsstudie erstmal."
 
-**Status: feasibility study only. Nothing here is built.** It builds on `docs/physical-combat-spec.md` (the B&S research of the same day) and does not repeat it. The new parts are:
+**Status: feasibility study (2026-09-30); wanted by the tester since 2026-10-12, see section 4. Nothing here is built.** It builds on `docs/physical-combat-spec.md` (the B&S research of the same day) and does not repeat it. The new parts are:
 - releasing a weapon drops it;
 - holster slots for picked-up weapons;
 - the damage surface as "everything but the handle".
@@ -136,3 +136,48 @@ Proposed order, each piece testable on its own:
 6. Damage by kind (edge, flat, pommel), once a place to scale the damage is found.
 
 Research not done for this study: disassembly of the drop and equip paths, NPC reactions, and a live check of the Weapon node's per-frame ownership. deepwiki could not be reached (connection timeout).
+
+## 4. Wanted by the tester (2026-10-12) - to build, nothing built yet
+
+The tester, 2026-10-12: "wir müssen noch die linke hand am waffengreiffen verbessern. bisher braucht es ein festes grip bis die sich an der waffe einklinkt. das soll auch mit weniger druck möglich sein sodass man nicht "press" machen muss sondern einfach nur druck. außerdem waffe rechte hand ist wenn option an ist (default an) nicht mehr locked an der waffe. sodass man die jederzeit werfen oder droppen kann. andere wafffen am boden oder so rüstet man automatisch aus wenn man die am handle zu sich nimmt. also wie in blade and sorcery. und man kann waffen auch half sword mässig halten usw."
+
+Four requirements, each against what exists today [R] and what this study found (section 2). The legend of the study applies.
+
+### 4.1 The second hand takes the handle by the grip's force, not by a click
+
+- **Today [R]:** the take is the grip's click: `vr::TwoHandTakes` with `leftGripClosedNow` (CameraHook.cpp:7042), and `vr::GripDown` reads the grip's pressed bit (HandInput.h:58). With the action manifest installed - the live path once the action set loads (OpenVRBackend.cpp:1061) - that bit is the boolean action `/actions/obvr/in/left_grip` (assets/input/actions.json:12), and the shipped Index binding makes it from the force sensor: `"force_input": "force"`, the click at a force of 0.3, released at 0.2 (assets/input/knuckles.json:21 and :27, `click_activate_threshold` / `click_deactivate_threshold`). That 0.3 is the "festes grip". Whether the tester's SteamVR runs the shipped binding or one edited in its binding UI cannot be read here.
+- **The force itself is not read on that path [R]:** `HandPose::gripForce` is filled from the legacy controller state only (`state.axis[2].x`, OpenVRBackend.cpp:1156); the action path never sets it (`ReadControls` zeroes it, ControllerActions.h:222, and `ApplyActionControls` copies the buttons, the trigger and the sticks, ControllerActions.h:288-298). Its only use, the hand HUD's "open hand" when no curl reads (CameraHook.cpp:8856), and the "Hands: ... grip=" log line (CameraHook.cpp:3728) see 0 there.
+- **Wanted:** the hand near the handle takes it at a light squeeze - pressure, not a press.
+- **Two ways [D]:**
+  1. Lower the binding's thresholds in knuckles.json. One line, but it lowers every grip: the grabs, the holsters, the bow's draw by grip (HandMode.cpp:471), the stow. Not recommended on its own.
+  2. A vector1 action for the grip's force, read into `gripForce` on the action path, and the take decided by OBVR with its own thresholds: take at `TwoHandTakeForce` (a setting; a first guess 0.10-0.15, to be set from the log), hold while the force stays above a lower release value (hysteresis, as the binding's 0.3/0.2 does), the click as the fallback where no force reads (`gripForce` 0). The Index offers the force on `/input/grip` [R, the binding above]; what the Touch and other controllers offer there (a pull value, no force sensor) is to be checked in SteamVR's binding UI [G]. The fingers' curl from the skeleton (`SkeletalSummary`, read today) could stand in on a controller without a force sensor [G].
+- **Open:** what force a light squeeze reports on the Index (measure: log `gripForce` each frame while the hand is near the handle - the mask line logs it only when a button changes); whether the preshape's range (controls-spec 4.10, from 18 units) is the right "near enough" for the lower threshold, so that the shaping and the take are one motion.
+- **Tests:** two_hand_test for the thresholds, the hysteresis and the fallback to the click; ControllerActionsTest for the new action; ControllerActionAssetsTest.py for the binding files.
+
+### 4.2 The weapon hand's weapon is not locked - an option, default on
+
+- **Today [R]:** the drawn weapon hangs on the Weapon node under the right hand bone (section 2.2); nothing lets it go but the sheathe at a holster (controls-spec 4.1) and the inventory. The weapon hand's grip away from a holster is the grab (HandInput.h:775), at the hip the holster's.
+- **Wanted:** with the option on, the weapon is held only while the weapon hand's grip holds it. Opening the grip lets it go: it falls where the hand was, or flies with the hand's speed (section 2.5: unequip, drop with the velocity; the drop call's address is still to be found). Blade & Sorcery's grip. Option off: today's locked weapon.
+- **Implied, to confirm with the tester [D]:** the grip is then held through the whole fight. A grip read open for less than `TwoHandReleaseSeconds` (0.12 s, the flicker guard of controls-spec 4.10) must not drop it; with 4.1's force action the drop can ask for the force to stay under a low value that long. The sheathe by reaching stays the other way to put the weapon away.
+- **What goes with it [R, D]:** the blade's stoppers and contacts (controls-spec 4.32 and the sections after it) and the weight spring (physical-combat-spec section 6) act on the weapon hand's pin; a thrown weapon leaves them. The strike (0x005FEBF0) needs the equipped weapon: a thrown weapon hits as a thrown object does (ThrowLogic: a stagger from 4 m/s, down from 7 m/s), not with its own damage - section 2.4's limit.
+- **Open:** the drop call (section 2.5); how long the hand is without a weapon after the unequip; the dropped weapon's ownership and the NPC reaction; what the empty weapon hand does next (the fists ready, or nothing).
+
+### 4.3 A weapon in the world, taken at its handle, is equipped
+
+- **Today [R]:** a weapon ref grabbed by hand is a held object (GrabPhysics / HeldObject, docs/holding-objects-spec.md); it is equipped from the inventory, the quick menu or a holster's remembered weapon; the stow at the body puts a held thing into the inventory (controls-spec, the stow).
+- **Wanted:** closing the grip on the handle of a weapon lying or standing in the world takes it into the inventory, equips it, and draws it into the hand at once, held where it was grabbed (sections 2.1 and 2.2). Blade & Sorcery's way. Grabbed off the handle, on the blade: a held object as today, or refused - the tester's choice; B&S holds it anywhere.
+- **Pieces [D]:** the handle test on a world ref (its model's axial extent, `game::AxialExtentOf`, measured today for the drawn weapon only - the ref's own node instead); take, equip and draw as one flow with the draw at `WeaponDrawSpeed` (section 2.1); the hand's hold at the grabbed point (section 2.2, the Weapon node's transform). With 4.2 on, the hand that lets go drops it again - a weapon can be picked up, looked at, and dropped.
+- **Risks (section 2.1):** the stack `EquipItem` picks; the theft rules through Activate; the frames without a weapon.
+
+### 4.4 Half-swording, and holds anywhere on the weapon
+
+- **Today [R]:** the second hand takes a handle below the weapon hand only (`vr::TwoHandTakes`: above the right hand is the blade; a staff's shaft is the exception); the weapon's pose against the weapon hand is the animation's.
+- **Wanted:** both hands anywhere on the weapon, the blade included - the left hand on the blade for a half-sword thrust, the right hand moved along the handle, a mace held by its head. Section 2.2's "4.10 extended to a second hand anywhere", and the weapon posed against the hands where they hold it.
+- **Open:** the damage of a half-sword thrust (per-surface damage is blocked, section 2.4: the strike takes no location); the own blade against the own hand - the stoppers stop the free hand at the own blade today (controls-spec, "the blade stops at your shield and the free hand at your blade", ae95ed7), and a hand that holds the blade has to pass that stopper.
+
+### 4.5 Order
+
+1. 4.1, the force take: small, on its own, the first thing to feel.
+2. Section 3's step 1: grab from the world by the handle = equipped (4.3).
+3. Section 3's step 2: let go = it falls (4.2), after the drop call research.
+4. Section 3's step 3: held where grabbed, the second hand anywhere, half-swording (4.4).
