@@ -46,6 +46,10 @@ struct BodyFrame {
 	// PlayerStandsIdle this frame, for the trunk's pose (BodyIk.h).
 	bool standsIdle = false;
 	float dtSeconds = 0.0f;
+	// The camera's near plane the frame is drawn with, in units: how far the
+	// body steps back under a bowed head follows it (BodyPlacement.h,
+	// LookDownBackUnitsFor). 0 when unknown: the game's own is assumed.
+	float cameraNearUnits = 0.0f;
 };
 
 // Shows and places the body for this frame. False when the skeleton could

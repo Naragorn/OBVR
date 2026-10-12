@@ -419,62 +419,81 @@ at 65 and 85 degrees and rejects "into the body" at every mark;
   normals (FaceGenHair 1292 of 1302 triangles, UpperBody:1 715 of 718, the
   rest all), 10 570 triangles, about 4 ms a mark.
 
-### The chest in view (the tester, 2026-10-12 evening - asked, not built)
+### The chest in view (the tester, 2026-10-12 evening - built the same evening, headset open)
 
 In the headset the tester confirmed the look down: "ja schaue nicht mehr in
 den körper hinein! das ist schonmal gut" - and asked for more: "hatte mir
-aber irgendwie erhofft auch die brust des player chars schauen zu können
+aber irgendwie erhofft auch die brust des player chars schauen zuu können
 und nicht nur auf den unterkörper wenn ich nach unten schaue. ist das
-möglich?"
+möglich?" The first answer was a cap over the collar ring, and he asked for
+it ("ja bau die kappe"). Measured before building, the cap turned out to be
+useless; what is built instead is below.
 
-What is in the way, measured:
+**What is actually seen, measured** (`upperbody.nif` and `skeleton.nif` read
+with pyffi, the view check of BodyView, the harness's dumps of the day):
 
-- **The step back.** At 85 degrees down the body stands 17 units behind
-  where the neck pivot alone would put it, so the collar ring is behind the
-  eyes - and the chest with it: the view check at 85 degrees (BodyView,
-  the harness's character) holds the belly and the belt, 26 % of the view
-  the trunk from outside, the chest's front above the view's top edge.
-  Without the step back the eyes sit at the collar: the ring's centre is
-  2.5 units below the head bone in its own axes (pyffi, upperbody.nif), the
-  eyes 5.6 forward and 6 up of the bone, so bowed 85 degrees they are
-  about 3 units below the ring's plane and 6.5 forward of its centre -
-  inside the chest, and the check reads "into the body" (3.1 % of the
-  view).
-- **The near plane.** The camera's near plane is 10 units (14 cm):
-  whatever is nearer is cut away, and that is the collar, the neck and
-  where a chin would be, at every look. A real chin-down view shows the
-  chest because the chin hides the neck's hole; here nothing can, so the
-  collar has to be closed or kept behind the eyes.
-- The eye offsets are no knob for it: bowed, `EyeUp` runs along the way
-  the face looks and acts as a step back, `EyeForward` raises the body
-  towards the eyes.
+- The eyes under a bowed head are not above the collar - they are on the
+  chest. The head bone stands 2.5 units above the collar ring's centre; the
+  eyes sit 5.6 units in front of it and 6 above (`EyeForward`, `EyeUp`)
+  and swing with the head. Bowed 65 degrees they are 7.8 units in front of
+  the head bone and 2.5 below it - at the ring's own height, 4 units in
+  front of the neck; bowed 85 they are 6.5 in front and 5 below, where the
+  chest's front is 6.6 (the chest's front runs from 4.9 units before the
+  head bone 5 below it to 10.5 at the pectorals 17 below, and 9-10 on down
+  to the belly). So the eyes stand on the skin, and below them the chest
+  bulges 3-4 units further forward than the eyes.
+- The camera's near plane is 10 units (14 cm): nothing nearer the eyes is
+  drawn. The chest's wall right under the eyes is nearer, so it is cut
+  away, and through the cut the inside shows - the floor through a
+  one-sided body, a shirt's inside where a shirt is two-sided (the harness
+  character's UpperBody:1 carries a NiStencilProperty). That is the "ring"
+  the dumps of round 3 showed: BodyView, run without the headset, found the
+  trunk's inside on 3.1 % of the view at 85 degrees, in the middle of the
+  body's green, exactly where the cut wall is.
+- The collar ring itself is behind and above the eyes at every bow (at 85
+  degrees 6.5 units behind, 2.6 above) and never in view. A cap over it
+  would never be seen; the step back of round 3 did not hide a ring but the
+  cut.
 
-What would show the chest, in the order to try:
+**Built: a nearer near plane, and the step back scaled to it.**
 
-1. **A cap over the collar ring, drawn by OBVR**: a fan over the ring's 32
-   vertices, skinned each frame as BodyView already skins them (the loop
-   with the highest centre of the shape weighted to the neck), one flat
-   skin colour (the lid's shader of BackfacePass.h, the texture's average),
-   depth-tested with the world, drawn after the body in both eye passes.
-   With the ring closed the step back can shrink to what keeps the cap
-   beyond the near plane - about 9 units at 85 degrees instead of 17 - and
-   the chest's front from the lower pectorals down comes under the view's
-   top edge. The upper chest stays within the near plane whatever is done.
-   BodyView measures the gain (the trunk's share from outside, no inside).
-2. **The near plane lowered** for the world passes (10 to 3 or 4 units):
-   the cap, the upper chest and the hands near the face would stop being
-   cut. The depth buffer (24 bits, the far plane 283840) allows it; every
-   pass that reads the frustum (water, shadows, the culling) has to be
-   checked - untested.
-3. **Not the hand's stencil lid** (the sealed opening): the trunk has four
-   openings - the neck, the waist, the two arms - and a ray in through the
-   neck and out through the waist crosses no wall, so the parity finds no
-   lid where the legs show through.
+- `[Body] NearPlane` (default 4 units, 0 for the game's own) is written into
+  the game's camera every frame beside the field of view
+  (`game::SetFrustumNear`, game_camera_test; CameraHook.cpp, the frustum
+  block). The log says "Camera: the near plane is 4.0 units (the game's own
+  10.0 ...)" the first frames and whenever it changes. With it the chest's
+  wall is cut only within 4 units of the eyes.
+- The step back follows the near plane: twice it at most, looking straight
+  down (`LookDownBackUnitsFor`, body_placement_test) - 20 at the game's 10,
+  as measured in round 3; 8 at 4, so 6.9 at 85 degrees and 3.3 at 65. Worked
+  through on the measured profile with the headset's 44 degrees under the
+  look: at 85 degrees the cut wall lies below the view's bottom edge from 5
+  units of step back on, and the chest is in view from 9.5 units below the
+  head bone - the collarbones - instead of from 22 (the belly) as with the
+  20; at 65 degrees from 8.5 units below instead of 15. The "Body: stepped
+  back" line names the near plane it was computed for.
+- The cost, stated in the INI: depth precision far away. A 24-bit depth
+  buffer tells surfaces apart by about z^2/(n * 2^24) units at depth z: at
+  10 the game's own, at 4 the far surfaces fight about 2.5 times sooner (6
+  units apart at 300 m instead of 2.4). Whether that shows on the distant
+  land is the headset's to say; NearPlane=0 puts everything back as it was,
+  the 20 units of step back included.
+- Not changed: the eye offsets (bowed, `EyeUp` runs the way the face looks
+  and acts as a step back, `EyeForward` raises the body towards the eyes),
+  the neck pivot. Not built: the cap (useless, above), the hand's stencil
+  lid for the trunk (four openings; a ray in through the neck and out
+  through the waist crosses no wall).
+
+**Open.** Not seen in a headset; not run in the harness (the tester was
+playing). body-look-wrist runs with the default near plane now and its
+view check has to say "down the body" at 65 and 85 degrees still - with
+more of the chest in the green. A crouch with the head bowed not tried.
 
 ### Open
 
-- The chest in view: see above - a cap over the collar, then a smaller
-  step back; proposed, not built.
+- The chest in view: built with the near plane at 4 (above); the headset
+  has to say whether the distant land flickers for it, and how much chest
+  shows.
 - Why the rest roll differs between the arms (61-82 against -103 to -113,
   not mirrored): the hands' grip on the controllers, or the solve's frame -
   not looked into. It changes nothing seen now that the roll is spread.

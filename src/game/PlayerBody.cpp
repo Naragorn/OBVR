@@ -263,11 +263,12 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 		in.parentScale = parent->worldTransform.scale;
 		// The eyes in front of the head bone the way the HEAD faces, pitch and
 		// all - the head bone the neck's pivot - and the body stepped back
-		// under a bowed head, always (BodyPlacement.h, BodyLookDownShift).
+		// under a bowed head, always, as far as the camera's near plane asks
+		// (BodyPlacement.h, BodyLookDownShift, LookDownBackUnitsFor).
 		if (frame.headRotValid) {
 			in.eyesFollowHead = true;
 			in.headRot = frame.headRot;
-			in.lookDownBackUnits = kLookDownBackUnits;
+			in.lookDownBackUnits = LookDownBackUnitsFor(frame.cameraNearUnits);
 		}
 		const float zBefore = skeleton->worldTransform.pos.z;
 		const NiPoint3 local = BodyRootLocalPos(in);
@@ -302,11 +303,12 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 				g_reported.steppedBack = true;
 				const float sine = -in.headRot.data[2][1];
 				const float s = sine > 1.0f ? 1.0f : (sine < -1.0f ? -1.0f : sine);
-				OBVR_LOG("Body: stepped back %.1f units under a head bowed %.0f degrees - the open collar out of "
-				         "view (at most %.0f looking straight down)",
+				OBVR_LOG("Body: stepped back %.1f units under a head bowed %.0f degrees - the near plane's cut of "
+				         "the chest out of view (at most %.0f looking straight down, for a near plane of %.1f)",
 				         static_cast<double>(units),
 				         static_cast<double>(math::Atan2(s, math::Sqrt(1.0f - s * s)) * math::kRadiansToDegrees),
-				         static_cast<double>(in.lookDownBackUnits * scale));
+				         static_cast<double>(in.lookDownBackUnits * scale),
+				         static_cast<double>(frame.cameraNearUnits > 0.0f ? frame.cameraNearUnits : 10.0f));
 			}
 		}
 	}

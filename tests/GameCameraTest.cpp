@@ -137,6 +137,27 @@ void TestLayout() {
 }
 
 
+void TestSetFrustumNear() {
+	std::printf("Overwriting the near plane\n");
+	using obvr::game::SetFrustumNear;
+	obvr::game::NiFrustum frustum = MeasuredFrustum();
+	const obvr::game::NiFrustum before = frustum;
+	Check(SetFrustumNear(frustum, 4.0f) && frustum.n == 4.0f, "4 units: taken");
+	Check(frustum.l == before.l && frustum.r == before.r && frustum.t == before.t && frustum.b == before.b &&
+	          frustum.f == before.f,
+	      "the edges and the far plane untouched");
+	Check(SetFrustumNear(frustum, 10.0f) && frustum.n == 10.0f, "back to the game's 10: taken");
+	Check(!SetFrustumNear(frustum, 0.0f) && frustum.n == 10.0f, "0: refused, nothing changed");
+	Check(!SetFrustumNear(frustum, -3.0f) && frustum.n == 10.0f, "below zero: refused");
+	Check(!SetFrustumNear(frustum, frustum.f) && frustum.n == 10.0f, "at the far plane: refused");
+	Check(!SetFrustumNear(frustum, frustum.f * 2.0f) && frustum.n == 10.0f, "past the far plane: refused");
+	const float nan = 0.0f / 0.0f * 0.0f;
+	Check(!SetFrustumNear(frustum, nan) && frustum.n == 10.0f, "not a number: refused");
+	obvr::game::NiFrustum noFar = frustum;
+	noFar.f = 0.0f;
+	Check(!SetFrustumNear(noFar, 4.0f) && noFar.n == 10.0f, "a frustum with no far plane: refused");
+}
+
 void TestSetFrustumFov() {
 	std::printf("Overwriting the field of view\n");
 
@@ -197,6 +218,8 @@ int main() {
 	TestLayout();
 	std::printf("\n");
 	TestSetFrustumFov();
+	std::printf("\n");
+	TestSetFrustumNear();
 
 	std::printf("\n");
 	if (g_failures == 0) {

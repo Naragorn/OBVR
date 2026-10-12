@@ -103,6 +103,14 @@ void SetFrustumFov(NiFrustum& frustum, float fovDegrees) {
 	frustum.b *= scaleY;
 }
 
+bool SetFrustumNear(NiFrustum& frustum, float nearUnits) {
+	if (!(nearUnits > 0.0f) || !(nearUnits < frustum.f)) {
+		return false;
+	}
+	frustum.n = nearUnits;
+	return true;
+}
+
 void SetFrustumTangents(NiFrustum& frustum, float tanHalfWidth, float tanHalfHeight) {
 	if (!(tanHalfWidth > 0.0f) || !(tanHalfHeight > 0.0f)) {
 		return;

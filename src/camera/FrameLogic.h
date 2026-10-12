@@ -60,6 +60,10 @@ struct State {
 	// Present runs - and the placement wants the one that matches fDefaultFOV.
 	float cameraTanHalfWidth = 0.0f;
 	float cameraTanHalfHeight = 0.0f;
+	// The camera's near plane as the frame is drawn with it, in units: the
+	// game's own, or [Body] NearPlane once written. 0 before a frustum was
+	// read.
+	float cameraNearUnits = 0.0f;
 
 	// Records this frame's point of view and reports what changed. The caller
 	// logs; keeping the log out of here is what makes it testable.

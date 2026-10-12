@@ -64,27 +64,56 @@ struct BodyRootInput {
 
 // The body steps back under a bowed head (the tester, 2026-10-12, after the
 // neck pivot: "nach unten schauen: ich sehe immernoch in den körper rein").
-// The head is not drawn - its bone is collapsed, and the neck went with the
-// head's mesh - so the body's collar is an open ring around the neck bone,
-// and a look down saw down into it: the harness's eye dump at 65 degrees
-// down (body-ik-smooth, 2026-10-12) shows the ring's inside at the bottom of
-// the picture. A real chin hides that place; nothing here does. So as the
-// head bows the body is taken back along the way the face looks, until the
-// ring is behind the bottom of the view. The steeper the look, the further
-// the bottom of the view reaches back under the eyes, so the further back
-// the ring has to be: the share grows with the square of the look down past
+// What was seen was taken for the open collar ring at first (the head is
+// collapsed for the draw, so the neck ends in a ring); measured the same
+// evening (BodyView, the mesh read with pyffi) it is the camera's near plane:
+// the eyes bowed 85 degrees stand on the chest's own surface, and the chest's
+// wall nearer than the near plane is cut from the picture - a hole into the
+// body, with whatever is two-sided inside (a shirt) or the floor showing
+// through it. The ring itself is behind and above the eyes at every bow and
+// never in view. A real chin and a real neck would keep the eyes off the
+// chest; nothing here does. So as the head bows the body is taken back along
+// the way the face looks, until the cut stretch of the wall lies below the
+// bottom of the view. The steeper the look, the further the bottom of the
+// view reaches back under the eyes, so the further back the body has to be:
+// the share grows with the square of the look down past
 // kLookDownStartDegrees, all of it looking straight down. Measured with the
-// harness's eye dumps (body-look-wrist and a sweep, 2026-10-12): 8 units back
-// hid the ring at 65 degrees down but not at 85, 16 hid it at 85 - and at 65
-// put the whole torso out of sight; the square of the way from 20 to 90
-// degrees times kLookDownBackUnits gives 8.3 at 65 and 17.2 at 85. Always on,
-// no setting (the tester, 2026-10-12: "kann als einstellung weg. muss nämlich
-// immer an sein"). The way back is from the headset's own up axis: bowed, it
-// leans the way the face looks, and its lean is the sine of the look down's
-// cosine - so it is well defined exactly where it is needed, looking straight
-// down, where the forward's level part runs out.
+// harness's eye dumps (body-look-wrist and a sweep, 2026-10-12, the game's
+// near plane of 10): 8 units back left the hole at 85 degrees, 16 closed it -
+// and at 65 put the whole torso out of sight; the square of the way from 20
+// to 90 degrees times 20 gives 8.3 at 65 and 17.2 at 85. How many units at
+// most follows the near plane (LookDownBackUnitsFor): a nearer plane cuts
+// less wall, so the body need not go as far, and the chest comes into view.
+// Always on, no setting (the tester, 2026-10-12: "kann als einstellung weg.
+// muss nämlich immer an sein"). The way back is from the headset's own up
+// axis: bowed, it leans the way the face looks, and its lean is the sine of
+// the look down's cosine - so it is well defined exactly where it is needed,
+// looking straight down, where the forward's level part runs out.
 inline constexpr float kLookDownStartDegrees = 20.0f;
-inline constexpr float kLookDownBackUnits = 20.0f;  // looking straight down, at scale one
+inline constexpr float kLookDownBackUnits = 20.0f;  // looking straight down, at scale one, at the game's near plane
+
+// How far back, looking straight down, for a camera near plane of
+// `nearUnits`: twice the near plane - 20 at the game's own 10, 8 at
+// [Body] NearPlane's default 4. What the step back is for is the near
+// plane's cut: the chest's wall closer to the eyes than the near plane is
+// not drawn, and the body is taken back until no cut wall is in view. The
+// eyes bowed 85 degrees sit 6.5 units in front of the head bone and 5 below
+// it, on the chest's own surface (upperbody.nif read with pyffi, 2026-10-12:
+// the chest's front 6.6 units before the head bone 7 below it, 10.5 at the
+// pectorals 17 below), so the wall within the near plane runs down from
+// there and the body has to go back until that stretch lies below the view's
+// bottom edge (the headset's 44 degrees under the look): about 11 units with
+// the game's near plane, about 6 with one of 4 - twice the near plane holds
+// a clothed body's extra inch in reserve, and at 10 it is the 20 measured
+// with the eye dumps. A near plane that is no usable number keeps the 20.
+inline constexpr float kLookDownBackPerNearUnit = 2.0f;
+
+inline float LookDownBackUnitsFor(float nearUnits) {
+	if (!(nearUnits > 0.0f) || !(nearUnits < 1000.0f)) {
+		return kLookDownBackUnits;
+	}
+	return kLookDownBackPerNearUnit * nearUnits;
+}
 
 inline float BodyLookDownShare(const NiMatrix33& headRot) {
 	const float sine = -headRot.data[2][1];  // the forward's z, down positive: the sine of the look down

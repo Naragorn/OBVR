@@ -7473,6 +7473,9 @@ void BeforeFirstScenePass() {
 			frame.standsIdle = game::PlayerStandsIdle(game::IsPlayerSneaking(), game::ReadPlayerAction(),
 			                                          game::ReadPlayerMovementFlags(), addr::kActionNone);
 			frame.dtSeconds = g_deltaSeconds;
+			// The near plane the frame is drawn with, for the step back under
+			// a bowed head (BodyPlacement.h, LookDownBackUnitsFor).
+			frame.cameraNearUnits = g_state.cameraNearUnits;
 			static const long long ticksPerSecond = ReadPerformanceFrequency();
 			const long long before = ReadPerformanceCounter();
 			g_bodyShownThisFrame = game::ShowPlayerBody(frame);
@@ -9643,6 +9646,46 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 						OBVR_LOG("Camera: the field of view override could not be written");
 					}
 				}
+			}
+
+			// The near plane, [Body] NearPlane (game/GameCamera.h SetFrustumNear):
+			// nearer than the game's own, so the chest's wall under bowed eyes
+			// is drawn rather than cut, and the body steps back less looking
+			// down (game/BodyPlacement.h LookDownBackUnitsFor). Written on its
+			// own, whatever the field of view did above. The game's own is
+			// remembered the first time, for the log and for a setting of 0.
+			static float s_gameNear = 0.0f;
+			static float s_nearWritten = -1.0f;
+			if (s_gameNear == 0.0f && frustum.n > 0.0f &&
+			    (frustum.n != s_nearWritten || s_nearWritten < 0.0f)) {
+				s_gameNear = frustum.n;
+			}
+			const float wantedNear = GetConfig().body.nearPlaneUnits;
+			if (wantedNear > 0.0f && frustum.n != wantedNear) {
+				if (!game::SetFrustumNear(frustum, wantedNear) || !game::WriteGameCameraFrustum(frustum)) {
+					static bool s_nearRefused = false;
+					if (!s_nearRefused) {
+						s_nearRefused = true;
+						OBVR_LOG("Camera: the near plane of %.1f units could not be written (the far plane %.0f) - the "
+						         "game's own %.1f stays",
+						         static_cast<double>(wantedNear), static_cast<double>(frustum.f),
+						         static_cast<double>(frustum.n));
+					}
+				}
+			}
+			if (frustum.n > 0.0f && frustum.n != s_nearWritten) {
+				s_nearWritten = frustum.n;
+				static UInt32 s_nearLines = 6;
+				if (s_nearLines > 0) {
+					--s_nearLines;
+					OBVR_LOG("Camera: the near plane is %.1f units (the game's own %.1f; [Body] NearPlane %.1f, 0 for the "
+					         "game's) - the body steps back up to %.1f units looking straight down",
+					         static_cast<double>(frustum.n), static_cast<double>(s_gameNear),
+					         static_cast<double>(wantedNear), static_cast<double>(game::LookDownBackUnitsFor(frustum.n)));
+				}
+			}
+			if (frustum.n > 0.0f) {
+				g_state.cameraNearUnits = frustum.n;
 			}
 
 			// Kept for the placement. Absolute values, because which edge

@@ -185,6 +185,14 @@ struct Config {
 		// height above the head bone.
 		float eyeForward = 5.6f;
 		float eyeUp = 6.0f;
+		// The camera's near plane in units, written into the game's camera
+		// every frame; 0 leaves the game's own (10). Nearer, the chest's wall
+		// under bowed eyes is not cut from the picture, and the body need
+		// not step as far back to hide the cut - the chest comes into view
+		// looking down (the tester, 2026-10-12: "auch die brust ... sehen").
+		// The cost is depth precision far away (game/GameCamera.h,
+		// SetFrustumNear).
+		float nearPlaneUnits = 4.0f;
 		// The two POV-switch branches Enhanced Camera NOPs so the body is
 		// there after a load in first person. Applied at start when the body
 		// is on; a restart is needed for a change to take.

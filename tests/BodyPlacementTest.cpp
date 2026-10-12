@@ -257,6 +257,17 @@ void TestLookDownBack() {
 	          NearPoint(BodyLookDownShift(bowedAhead, -3.0f), NiPoint3{0.0f, 0.0f, 0.0f}),
 	      "no units, or fewer than none: no shift");
 	Check(NearPoint(BodyLookDownShift(NiMatrix33::Identity(), 8.0f), NiPoint3{0.0f, 0.0f, 0.0f}), "level: no shift");
+	// How far at most, from the camera's near plane: twice it.
+	using obvr::game::LookDownBackUnitsFor;
+	Check(Near(LookDownBackUnitsFor(10.0f), 20.0f), "the game's near plane of 10: the 20 measured");
+	Check(Near(LookDownBackUnitsFor(4.0f), 8.0f), "a near plane of 4 ([Body] NearPlane's default): 8");
+	Check(Near(LookDownBackUnitsFor(4.0f) * at85, 6.9f, 0.05f) && Near(LookDownBackUnitsFor(4.0f) * at65, 3.3f, 0.05f),
+	      "with it: 6.9 at 85 degrees down, 3.3 at 65");
+	Check(Near(LookDownBackUnitsFor(0.0f), 20.0f) && Near(LookDownBackUnitsFor(-2.0f), 20.0f),
+	      "no near plane known, or none: the 20");
+	const float nan = 0.0f / 0.0f * 0.0f;
+	Check(Near(LookDownBackUnitsFor(nan), 20.0f) && Near(LookDownBackUnitsFor(1.0e6f), 20.0f),
+	      "not a number, or absurd: the 20");
 	// In the placement: the root that far behind, the eyes still on the camera
 	// less the shift; only with the head's rotation followed.
 	BodyRootInput in = Standing();

@@ -148,6 +148,18 @@ void SetFrustumFov(NiFrustum& frustum, float fovDegrees);
 // Signs are preserved per edge, so whichever convention the engine had is kept.
 void SetFrustumTangents(NiFrustum& frustum, float tanHalfWidth, float tanHalfHeight);
 
+// Sets the near plane, in units: [Body] NearPlane. The game's own is 10
+// (Oblivion.ini fNearDistance, read as n=10 on this machine), and whatever
+// is nearer the eyes than that is cut from the picture - with the player's
+// body shown and the head bowed, that cut the chest's wall right under the
+// eyes and opened the body (docs/player-body-spec.md, "The chest in view").
+// A nearer plane costs depth precision far away: a 24-bit depth buffer tells
+// two surfaces apart by about z^2/(n * 2^24) units at depth z, so at 4 units
+// the far mountains fight 2.5 times sooner than at 10. Refused, and the
+// frustum left alone, for a near plane that is not a positive number or that
+// reaches the far plane. True when taken.
+bool SetFrustumNear(NiFrustum& frustum, float nearUnits);
+
 // Reads it. False when the scene graph or the camera is null, which is normal
 // before the game has built a world.
 bool ReadGameCameraFrustum(NiFrustum& out);

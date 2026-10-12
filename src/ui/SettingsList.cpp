@@ -453,6 +453,13 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return c.body.eyeUp; },
 		+[](Config& c, float v) { c.body.eyeUp = v; },
 	},
+	{
+		"Body", "Near plane", "Units from the eyes where the picture begins; nearer shows more chest looking down, 0 is the game's 10",
+		ItemKind::Number, 0.0f, 10.0f, 0.5f, 1, false,
+		"Body", "NearPlane",
+		+[](const Config& c) { return c.body.nearPlaneUnits; },
+		+[](Config& c, float v) { c.body.nearPlaneUnits = v; },
+	},
 
 	// ---- Screen and menus --------------------------------------------------
 	{
