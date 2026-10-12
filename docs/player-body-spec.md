@@ -338,21 +338,24 @@ handgelenk zu sehr. ruckeln nun weg!"
   bone 6.3 units above the neck bone, the clavicles at the neck bone's
   height. A real chin hides that place; nothing here does.
 - **Built.** The body steps back under a bowed head, along the way the face
-  looks (`BodyLookDownShift`, BodyPlacement.h; `[Body] LookDownBack`,
-  settings "Back when looking down", default 20, 0-30): nothing above 20
-  degrees down, then the square of the way from 20 to 90 degrees times the
-  setting - 8.3 units at 65 degrees, 17.2 at 85, 20 straight down. The way
-  back is the headset's up axis's level part, so it is defined looking
-  straight down, where the forward's level part runs out.
-- **Measured** (eye dumps, `body-look-wrist` and `body-look-sweep`): 8 units
-  hid the ring at 65 degrees but not at 85; 16 hid it at 85, and at 65 put
-  the whole torso out of view - so the shift grows with the look, not
-  linearly. With the curve: at 45 degrees the floor and the hands; at 65 the
-  feet, the legs and the belt below; at 85 the belly, the belt and the legs
-  from above; no ring at any of them.
+  looks (`BodyLookDownShift`, BodyPlacement.h; `kLookDownBackUnits` 20):
+  nothing above 20 degrees down, then the square of the way from 20 to 90
+  degrees times 20 units - 8.3 units at 65 degrees, 17.2 at 85, 20 straight
+  down. The way back is the headset's up axis's level part, so it is
+  defined looking straight down, where the forward's level part runs out.
+  Always on, no setting: it was `[Body] LookDownBack` for a day, and the
+  tester took it out ("kann als einstellung weg. muss nämlich immer an
+  sein"). Logged once "Body: stepped back n units under a head bowed d
+  degrees - the open collar out of view".
+- **Measured** (eye dumps, `body-look-wrist` and a one-off sweep with the
+  then-setting at 16): 8 units hid the ring at 65 degrees but not at 85; 16
+  hid it at 85, and at 65 put the whole torso out of view - so the shift
+  grows with the look, not linearly. With the curve: at 45 degrees the floor
+  and the hands; at 65 the feet, the legs and the belt below; at 85 the
+  belly, the belt and the legs from above; no ring at any of them.
 - **The cost.** The shoulders are that far behind the headset looking
   down, so the arms reach forward to the hands - unseen in the dumps, to
-  feel in the headset. 0 turns it off.
+  feel in the headset.
 
 ### The wrist turned: the roll spread
 

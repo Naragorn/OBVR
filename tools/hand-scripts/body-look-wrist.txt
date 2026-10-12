@@ -3,7 +3,7 @@
 # "wenn ich die hände voll drehe sodass die senkrecht nach aussen schauen
 # (also linke hand daumen runter handfläche nach links, rechts vice versa)
 # dann verkleinert sich das handgelenk zu sehr"). The body steps back under a
-# bowed head ([Body] LookDownBack, BodyPlacement.h) so the open collar of the
+# bowed head (always, BodyPlacement.h BodyLookDownShift) so the open collar of the
 # headless body stays out of the view: eye dumps with the hands hanging at
 # 45, 65 and 85 degrees down. Then both hands held ahead at the chest and
 # turned half round about the way they point - the thumbs down, the palms
@@ -24,7 +24,7 @@ expect HandScript: finished
 expect Body IK: the third-person skeleton - 27 of 27 bones found
 expect Body IK: the right arm follows its hand
 expect Body IK: the left arm follows its hand
-expect LookDownBack=20.0
+expect Body: stepped back
 reject HandScript: WARNING
 reject Body IK: the right arm left to the body
 reject Body IK: the left arm left to the body

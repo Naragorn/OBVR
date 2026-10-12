@@ -7423,7 +7423,6 @@ void BeforeFirstScenePass() {
 			frame.cameraWorld = game::CyclopeanCamera(g_bodyCameraNode->worldTransform.pos,
 			                                          g_bodyFirstEyeStep);
 			frame.eyeOffsetUnits = NiPoint3{0.0f, body.eyeForward, body.eyeUp};
-			frame.lookDownBackUnits = body.lookDownBack;
 			frame.hideHead = body.hideHead;
 			frame.hideArms = body.hideArms;
 			frame.treeProbe = body.treeProbe;

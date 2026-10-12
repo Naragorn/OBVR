@@ -185,13 +185,6 @@ struct Config {
 		// height above the head bone.
 		float eyeForward = 5.6f;
 		float eyeUp = 6.0f;
-		// The body stepped back under a bowed head, this many units looking
-		// straight down (nothing above 20 degrees down, growing with the
-		// square of the look down past it: 8.3 at 65 degrees, 17.2 at 85 for
-		// 20; BodyPlacement.h, BodyLookDownShift): the open collar of a body
-		// without its head is out of the view looking down. 0 off, held to
-		// 0-30.
-		float lookDownBack = 20.0f;
 		// The two POV-switch branches Enhanced Camera NOPs so the body is
 		// there after a load in first person. Applied at start when the body
 		// is on; a restart is needed for a change to take.

@@ -23,9 +23,6 @@ struct BodyFrame {
 	NiPoint3 cameraWorld{0.0f, 0.0f, 0.0f};
 	// The eyes relative to Bip01 Head, in the root's axes: forward and up.
 	NiPoint3 eyeOffsetUnits{0.0f, 14.0f, 6.0f};
-	// The body stepped back under a bowed head, at most this far ([Body]
-	// LookDownBack; BodyPlacement.h, BodyLookDownShift).
-	float lookDownBackUnits = 0.0f;
 	bool hideHead = true;
 	// The animated arms collapsed. With the body IK running the arms are
 	// decided after the pins instead (StepBodyArms: an arm that follows its

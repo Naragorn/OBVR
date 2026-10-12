@@ -53,7 +53,8 @@ struct BodyRootInput {
 	bool eyesFollowHead = false;
 	NiMatrix33 headRot = NiMatrix33::Identity();
 	// The body stepped back under a bowed head, up to this many units at
-	// scale one (LookDownBack, BodyLookDownShift): with eyesFollowHead only.
+	// scale one (BodyLookDownShift; kLookDownBackUnits in play): with
+	// eyesFollowHead only.
 	float lookDownBackUnits = 0.0f;
 	// The root's parent, whose space the root's local transform is written in.
 	NiMatrix33 parentRot = NiMatrix33::Identity();
@@ -73,14 +74,17 @@ struct BodyRootInput {
 // the bottom of the view reaches back under the eyes, so the further back
 // the ring has to be: the share grows with the square of the look down past
 // kLookDownStartDegrees, all of it looking straight down. Measured with the
-// harness's eye dumps (body-look-wrist, body-look-sweep, 2026-10-12): 8 units
-// back hid the ring at 65 degrees down but not at 85, 16 hid it at 85 - and at
-// 65 put the whole torso out of sight; the square of the way from 20 to 90
-// degrees times 20 gives 8.3 at 65 and 17.2 at 85. The way back is from the
-// headset's own up axis: bowed, it leans the way the face looks, and its lean
-// is the sine of the look down's cosine - so it is well defined exactly where
-// it is needed, looking straight down, where the forward's level part runs out.
+// harness's eye dumps (body-look-wrist and a sweep, 2026-10-12): 8 units back
+// hid the ring at 65 degrees down but not at 85, 16 hid it at 85 - and at 65
+// put the whole torso out of sight; the square of the way from 20 to 90
+// degrees times kLookDownBackUnits gives 8.3 at 65 and 17.2 at 85. Always on,
+// no setting (the tester, 2026-10-12: "kann als einstellung weg. muss nämlich
+// immer an sein"). The way back is from the headset's own up axis: bowed, it
+// leans the way the face looks, and its lean is the sine of the look down's
+// cosine - so it is well defined exactly where it is needed, looking straight
+// down, where the forward's level part runs out.
 inline constexpr float kLookDownStartDegrees = 20.0f;
+inline constexpr float kLookDownBackUnits = 20.0f;  // looking straight down, at scale one
 
 inline float BodyLookDownShare(const NiMatrix33& headRot) {
 	const float sine = -headRot.data[2][1];  // the forward's z, down positive: the sine of the look down

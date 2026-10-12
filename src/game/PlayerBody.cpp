@@ -66,6 +66,7 @@ struct Reported {
 	bool head = false;
 	bool skeleton = false;
 	bool skeletonMoved = false;
+	bool steppedBack = false;
 	bool leftClavicle = false;
 	bool rightClavicle = false;
 	bool parent = false;
@@ -261,11 +262,12 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 		in.parentPos = parent->worldTransform.pos;
 		in.parentScale = parent->worldTransform.scale;
 		// The eyes in front of the head bone the way the HEAD faces, pitch and
-		// all - the head bone the neck's pivot (BodyPlacement.h).
+		// all - the head bone the neck's pivot - and the body stepped back
+		// under a bowed head, always (BodyPlacement.h, BodyLookDownShift).
 		if (frame.headRotValid) {
 			in.eyesFollowHead = true;
 			in.headRot = frame.headRot;
-			in.lookDownBackUnits = frame.lookDownBackUnits;
+			in.lookDownBackUnits = kLookDownBackUnits;
 		}
 		const float zBefore = skeleton->worldTransform.pos.z;
 		const NiPoint3 local = BodyRootLocalPos(in);
@@ -289,6 +291,23 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 			         "player root \"%s\" stays where the engine puts it",
 			         skeleton->name, reinterpret_cast<UInt32>(skeleton),
 			         NameLooksReal(parent->name) ? parent->name : "?", root->name);
+		}
+		// Said once, the first time a look down takes the body back past
+		// half its way: that the step back runs, and how far.
+		if (in.eyesFollowHead && !g_reported.steppedBack) {
+			const float scale = in.rootWorldScale > 0.0f ? in.rootWorldScale : 1.0f;
+			const NiPoint3 back = BodyLookDownShift(in.headRot, in.lookDownBackUnits * scale);
+			const float units = math::Sqrt(back.x * back.x + back.y * back.y);
+			if (units > in.lookDownBackUnits * scale * 0.5f) {
+				g_reported.steppedBack = true;
+				const float sine = -in.headRot.data[2][1];
+				const float s = sine > 1.0f ? 1.0f : (sine < -1.0f ? -1.0f : sine);
+				OBVR_LOG("Body: stepped back %.1f units under a head bowed %.0f degrees - the open collar out of "
+				         "view (at most %.0f looking straight down)",
+				         static_cast<double>(units),
+				         static_cast<double>(math::Atan2(s, math::Sqrt(1.0f - s * s)) * math::kRadiansToDegrees),
+				         static_cast<double>(in.lookDownBackUnits * scale));
+			}
 		}
 	}
 
