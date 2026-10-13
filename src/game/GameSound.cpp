@@ -27,6 +27,12 @@ constexpr UInt32 kGameFree = 0x00401F20;     // cdecl(p)
 constexpr UInt32 kPlaceSound = 0x006B7360;   // thiscall(sound, float x, float y, float z)
 constexpr UInt32 kAttachSound = 0x006AC3E0;  // thiscall(system, soundId, ref)
 constexpr UInt32 kSoundFlagsPlaced = 0x102;
+// The sound's volume, 0 to 1: thiscall(sound, float), ret 4 - the system's
+// 0x006ABA20 with the sound's id, which looks the playing sound up and
+// applies it (0x006B6F20: kept at +0x3C, clamped, times the master and
+// the effects volume, then on the buffer - nothing when the buffer is not
+// there yet, so after the start).
+constexpr UInt32 kSetSoundVolume = 0x006B7280;
 constexpr UInt32 kPlayLanding = 0x006B1900;  // cdecl(actor, material)
 constexpr UInt32 kLandingCall = 0x005FDA0F;  // mov edx,[ebx+214h]; push edx; push esi
 constexpr UInt32 kLookupFormById = 0x0046B250;  // xOBSE GameAPI.cpp, cdecl, as HandBones.cpp
@@ -38,7 +44,7 @@ constexpr UInt8 kFormTypeSound = 10;
 
 struct Expected {
 	UInt32 address;
-	UInt8 bytes[8];
+	UInt8 bytes[16];
 	UInt32 size;
 	const char* name;
 };
@@ -46,6 +52,8 @@ struct Expected {
 const Expected kExpected[] = {
 	{kMakeSound, {0x6A, 0xFF, 0x68, 0x7A, 0x65, 0x9C, 0x00}, 7, "the sound maker"},
 	{kStartSound, {0x8B, 0xC1, 0x8B, 0x0D, 0x14, 0xC2, 0xB3, 0x00}, 8, "the sound start"},
+	{kSetSoundVolume, {0x8B, 0xC1, 0x8B, 0x0D, 0x14, 0xC2, 0xB3, 0x00, 0x85, 0xC9, 0x74, 0x13, 0xD9, 0x44, 0x24, 0x04},
+	 16, "the sound volume"},
 	{kHandOverSound, {0xA1, 0x98, 0x3A, 0xB3, 0x00, 0x85, 0xC0}, 7, "the sound hand-over"},
 	{kGameFree, {0x8B, 0x44, 0x24, 0x04, 0x85, 0xC0}, 6, "the game's free"},
 	{kPlaceSound, {0x8B, 0xC1, 0x8B, 0x0D, 0x14, 0xC2, 0xB3, 0x00}, 8, "the sound placing"},
@@ -97,6 +105,38 @@ bool PlaySoundForm(UInt32 formId) {
 		return false;
 	}
 	reinterpret_cast<StartFn>(kStartSound)(sound, 0);
+	reinterpret_cast<HandOverFn>(kHandOverSound)(sound);
+	reinterpret_cast<FreeFn>(kGameFree)(sound);
+	return true;
+}
+
+bool PlaySoundFormVolume(UInt32 formId, float volume) {
+	if (!g_verified) {
+		return false;
+	}
+	using LookupFn = const UInt8*(__cdecl*)(UInt32 id);
+	const UInt8* const form = reinterpret_cast<LookupFn>(kLookupFormById)(formId);
+	if (!LooksLikeObject(reinterpret_cast<UInt32>(form)) || form[addr::kFormTypeOffset] != kFormTypeSound) {
+		return false;
+	}
+	const UInt32 globals = Read(kOsGlobalsPointer);
+	const UInt32 system = LooksLikeObject(globals) ? Read(globals + kOsGlobalsSoundOffset) : 0;
+	if (!LooksLikeObject(system)) {
+		return false;
+	}
+	using MakeFn = void*(__thiscall*)(void* system, UInt32 formId, UInt32 flags, UInt32 unused);
+	using StartFn = void(__thiscall*)(void* sound, UInt32 unused);
+	using VolumeFn = void(__thiscall*)(void* sound, float volume);
+	using HandOverFn = void(__thiscall*)(void* sound);
+	using FreeFn = void(__cdecl*)(void* p);
+	void* const sound =
+		reinterpret_cast<MakeFn>(kMakeSound)(reinterpret_cast<void*>(system), formId, kSoundFlagsUnplaced, 0);
+	if (sound == nullptr) {
+		return false;
+	}
+	const float v = volume == volume ? (volume < 0.0f ? 0.0f : (volume > 1.0f ? 1.0f : volume)) : 1.0f;
+	reinterpret_cast<StartFn>(kStartSound)(sound, 0);
+	reinterpret_cast<VolumeFn>(kSetSoundVolume)(sound, v);
 	reinterpret_cast<HandOverFn>(kHandOverSound)(sound);
 	reinterpret_cast<FreeFn>(kGameFree)(sound);
 	return true;
@@ -166,15 +206,5 @@ bool PlayPluginWave(const char* fileName) {
 	}
 	return PlaySoundA(path, nullptr, SND_FILENAME | SND_ASYNC | SND_NODEFAULT) != 0;
 }
-
-bool PlayPluginWaveLoop(const char* fileName) {
-	char path[512];
-	if (fileName == nullptr || !platform::BuildPluginPath(fileName, path, sizeof(path))) {
-		return false;
-	}
-	return PlaySoundA(path, nullptr, SND_FILENAME | SND_ASYNC | SND_NODEFAULT | SND_LOOP) != 0;
-}
-
-void StopPluginWave() { PlaySoundA(nullptr, nullptr, 0); }
 
 }  // namespace obvr::game

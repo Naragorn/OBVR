@@ -95,6 +95,10 @@ bool PlayerParalyzed();
 // getter as the paralysis); -1 when nothing reads.
 SInt32 PlayerStrength();
 
+// The player's sex as the game's GetIsSex reads it: 1 female, 0 male, -1
+// when the base form is no NPC or nothing reads.
+SInt32 PlayerSex();
+
 // The player's encumbrance as the game counts it now (actor value 11, the
 // weight carried with every script's modAV on it); false when the player
 // cannot be read.

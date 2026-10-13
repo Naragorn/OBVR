@@ -2,6 +2,7 @@
 
 #include "core/AddressSpace.h"
 #include "core/Log.h"
+#include "core/Memory.h"
 #include "game/GameAddresses.h"
 #include "game/GrabPhysics.h"
 
@@ -236,6 +237,31 @@ bool PlayerParalyzed() {
 	}
 	using GetIntFn = SInt32(__thiscall*)(void* actor, UInt32 av);
 	return reinterpret_cast<GetIntFn>(getInt)(reinterpret_cast<void*>(player), 0x30u) != 0;
+}
+
+// The player's sex, as the script's GetIsSex reads it (its eval 0x004F6FC0,
+// read 2026-10-13): the reference's base form (vtable +0x170), an NPC form
+// (type 0x23), then 0x00519D20 thiscall(npc) - the flags byte at +0x28 and
+// 1 (female); -1 for no NPC.
+constexpr UInt32 kGetBaseFormSlot = 0x170;
+constexpr UInt32 kNpcSex = 0x00519D20;
+constexpr UInt8 kNpcSexBytes[] = {0x80, 0x79, 0x04, 0x23, 0x75, 0x08, 0x0F, 0xB6, 0x41, 0x28, 0x83, 0xE0, 0x01, 0xC3};
+constexpr UInt8 kFormTypeNpc = 0x23;
+
+SInt32 PlayerSex() {
+	static const bool verified = mem::Verify(kNpcSex, kNpcSexBytes, sizeof(kNpcSexBytes));
+	const UInt32 player = Player();
+	const UInt32 getBase = player != 0 ? Slot(player, kGetBaseFormSlot) : 0;
+	if (!verified || getBase == 0) {
+		return -1;
+	}
+	using BaseFn = const UInt8*(__thiscall*)(void* ref);
+	const UInt8* const form = reinterpret_cast<BaseFn>(getBase)(reinterpret_cast<void*>(player));
+	if (!LooksLikeObject(reinterpret_cast<UInt32>(form)) || form[addr::kFormTypeOffset] != kFormTypeNpc) {
+		return -1;
+	}
+	using SexFn = SInt32(__thiscall*)(const void* npc);
+	return reinterpret_cast<SexFn>(kNpcSex)(form);
 }
 
 SInt32 PlayerStrength() {

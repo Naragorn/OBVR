@@ -2,13 +2,15 @@
 # game/PlayerStagger.h): a longsword drawn by the holster. First the paralysis:
 # the console sets the Paralysis actor value, the fall is skipped ("Comfort:
 # the player's paralysis fall was skipped"), the exhaustion begins by it
-# ("Exhaustion: begun ... paralysed 1"), the breath loops, the hand swings
-# slowly so the state lines show the weapon lagging; the value cleared, over.
-# Then the fatigue: the console forces it to -100 (ForceActorValue - a
-# modifier, the base kept; the game has no DamageActorValue, the first run
-# found) - below 0, where the game would put them on the ground: the knock
-# state step is skipped ("fatigue collapse was skipped"), the exhaustion
-# begins, the gasp and the breath play; forced back to the base, over. The
+# ("Exhaustion: begun ... paralysed 1"), the game's own gasp plays and the
+# pants after it ("the gasp - the game's NPCHumanGasp...", "a pant - ..."),
+# the hand swings slowly so the state lines show the weapon lagging; the
+# value cleared, over. Then the fatigue: the console forces it to -100
+# (ForceActorValue - a modifier, the base kept; the game has no
+# DamageActorValue, the first run found) - below 0, where the game would put
+# them on the ground: the knock state step is skipped ("fatigue collapse was
+# skipped"), the exhaustion begins, the gasp and the pants play; forced back
+# to the base, over. The
 # fatigue comes LAST because the tutorial quest's "Your Fatigue is low"
 # message box (Oblivion.esm; the harness save still has the quest) pauses the
 # world - the engine's actor update, and with it the knock state step, stand
@@ -33,11 +35,11 @@ expect HandScript: finished
 expect Hands: ready weapon done
 expect Comfort: the player's fatigue collapse was skipped
 expect Exhaustion: begun
-expect the breath, looped
+expect Exhaustion: the gasp - the game's NPCHumanGasp
+expect Exhaustion: a pant - the game's NPCHumanGasp
 expect Exhaustion: over
 expect Comfort: the player's paralysis fall was skipped
 expect paralysed 1
-expect the breath stopped
 reject HandScript: WARNING
 reject could not be played
 

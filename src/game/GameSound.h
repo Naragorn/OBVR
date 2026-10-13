@@ -29,6 +29,13 @@ bool VerifyGameSoundAddresses();
 // no sound form or the game makes no sound of it.
 bool PlaySoundForm(UInt32 formId);
 
+// The same at a volume of its own, 0 to 1 (under the game's own sliders):
+// set once the sound has started (0x006B7280 thiscall(sound, float), the
+// system's 0x006ABA20 - which keeps it at the sound's +0x3C and applies it
+// through 0x006B6F20, clamped to 0..1, times the master and the effects
+// volume; read 2026-10-13). The exhaustion's gasps and pants.
+bool PlaySoundFormVolume(UInt32 formId, float volume);
+
 // The same placed in the world at `at` and on the reference `ref` (a 3D
 // sound at an actor), as the script command PlaySound3D does it. False on
 // the same terms.
@@ -42,12 +49,5 @@ bool PlayPlayerLandingSound();
 // not placed in the world. False when the path cannot be built or winmm
 // refuses (no such file).
 bool PlayPluginWave(const char* fileName);
-
-// The same wave looped until StopPluginWave (or another wave of ours: winmm
-// plays one at a time) - the breath while exhausted (game/ExhaustionLogic.h).
-bool PlayPluginWaveLoop(const char* fileName);
-
-// Stops whatever wave of ours plays, looped or not.
-void StopPluginWave();
 
 }  // namespace obvr::game

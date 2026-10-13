@@ -12,17 +12,8 @@ required), mixed 2026-10-07:
 Both onsets aligned 8 ms in, 0.5 s long, normalised to 0.95 of full scale,
 an 80 ms fade out, 16-bit mono 48 kHz.
 
-breath.wav - the hard breathing while exhausted (game/ExhaustionLogic.h),
-looped. One CC0 recording by Joseph Sardin, BigSoundBank (released under
-CC0, public domain equivalent: free to copy, edit and redistribute, no
-attribution required), taken 2026-10-13: "Breathless Man", sound number
-1103 (https://bigsoundbank.com/breathless-man-s1103.html, "a man out of
-breath after a few sports exercises, can be looped"), 24 s, 16-bit mono
-48 kHz; normalised to 0.45 of full scale (a breath in the head, not a
-shout), a 40 ms fade in and out at the loop's seam.
-
-gasp.wav - the gasp the moment a fall was spared. One CC0 recording by
-Dorian Clair, BigSoundBank (CC0 as above), taken 2026-10-13: "Cry of Pain",
-sound number 2361 (https://bigsoundbank.com/cry-of-pain-s2361.html, "argh
-of a man"), 0.6 s, 24-bit mono 48 kHz, converted to 16-bit, normalised to
-0.7 of full scale, a 20 ms fade in and out.
+The exhaustion's gasps and pants (game/ExhaustionLogic.h) are the game's
+own sounds, NPCHumanGaspMale and NPCHumanGaspFemale, played through its
+sound system - nothing shipped for them (the waves of 2026-10-13 morning,
+breath.wav and gasp.wav, were taken out the same day: "so nah wie möglich
+an vanilla").

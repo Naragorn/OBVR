@@ -3724,31 +3724,32 @@ void StepExhaustion(const Config& config, float dt) {
 	const game::ExhaustionVerdict v = game::StepExhaustion(g_exhaustion, g, known, now, base, paralyzed, dt);
 	g_exhaustionEase = v.ease;
 	g_exhaustionFactor = v.factor;
-	// The gasp: the moment a fall was spared, while exhausted (the state
-	// begins the same frame the fatigue reads below 0 or the paralysis is on).
-	const game::BreathCue cue =
-		game::StepBreath(g_breath, g.sounds, g_exhaustion.exhausted, skipBegan && g_exhaustion.exhausted, dt);
-	bool played = true;
-	const char* cueName = "";
-	switch (cue) {
-	case game::BreathCue::Gasp:
-		played = game::PlayPluginWave(game::kGaspWave);
-		cueName = "the gasp";
-		break;
-	case game::BreathCue::Loop:
-		played = game::PlayPluginWaveLoop(game::kBreathWave);
-		cueName = "the breath, looped";
-		break;
-	case game::BreathCue::Stop:
-		game::StopPluginWave();
-		cueName = "the breath stopped";
-		break;
-	default:
-		break;
-	}
-	if (cue != game::BreathCue::None && g_exhaustionLines > 0) {
-		--g_exhaustionLines;
-		OBVR_LOG("Exhaustion: %s%s", cueName, played ? "" : " - could not be played (the wave missing next to OBVR.dll?)");
+	// The breath (ExhaustionLogic.h, paced as Realistic Fatigue paces its
+	// panting): the game's own gasp by the player's sex - at full volume the
+	// moment a fall was spared (the state begins the same frame the fatigue
+	// reads below 0 or the paralysis is on), and as the pants every few
+	// heartbeats, louder the more fatigue is missing.
+	const bool shareKnown = known && base > 0.0f;
+	const float missing = game::ExhaustionMissing(shareKnown, v.share, paralyzed);
+	const game::BreathVerdict breath = game::StepBreath(g_breath, g.sounds, g_exhaustion.exhausted,
+	                                                    skipBegan && g_exhaustion.exhausted, missing, dt);
+	if (breath.cue != game::BreathCue::None) {
+		const SInt32 sex = game::PlayerSex();
+		const UInt32 form = sex == 1 ? game::kSoundFormGaspFemale : game::kSoundFormGaspMale;
+		const bool played = game::PlaySoundFormVolume(form, breath.volume);
+		const bool gasp = breath.cue == game::BreathCue::Gasp;
+		// The gasp always; of the pants the first two of a spell, then every tenth.
+		const bool say = gasp || g_breath.pants <= 2 || g_breath.pants % 10 == 0;
+		if (say && g_exhaustionLines > 0) {
+			--g_exhaustionLines;
+			OBVR_LOG("Exhaustion: %s - the game's %s (%08X) at %.0f%% volume%s; a pant every %.1f s with %.0f%% of "
+			         "the fatigue missing (%u pants, %u gasps this spell)",
+			         gasp ? "the gasp" : "a pant", sex == 1 ? "NPCHumanGaspFemale" : "NPCHumanGaspMale", form,
+			         static_cast<double>(breath.volume * 100.0f),
+			         played ? "" : " - could not be played (no such sound form, or the sound system not read)",
+			         static_cast<double>(breath.interval), static_cast<double>(missing * 100.0f), g_breath.pants,
+			         g_breath.gasps);
+		}
 	}
 	if (v.began && g_exhaustionLines > 0) {
 		--g_exhaustionLines;
@@ -3774,12 +3775,12 @@ void StepExhaustion(const Config& config, float dt) {
 		g_exhaustionLogSeconds = 0.0f;
 		--g_exhaustionLines;
 		OBVR_LOG("Exhaustion: at the %s - %s, ease %.2f, factor x%.2f, fatigue %.0f of %.0f (%.0f%%), paralysed %d, "
-		         "the weapon %s, %.2f m / %.0f degrees behind the hand",
+		         "the weapon %s, %.2f m / %.0f degrees behind the hand; %u pants, %u gasps this spell",
 		         due ? "two seconds" : "mark", g_exhaustion.exhausted ? "exhausted" : "fresh",
 		         static_cast<double>(v.ease), static_cast<double>(v.factor), static_cast<double>(now),
 		         static_cast<double>(base), static_cast<double>(v.share * 100.0f), paralyzed ? 1 : 0,
 		         g_hand.weaponLagging ? "lagging" : "on the hand", static_cast<double>(g_hand.weaponGapMetres),
-		         static_cast<double>(g_hand.weaponGapDegrees));
+		         static_cast<double>(g_hand.weaponGapDegrees), g_breath.pants, g_breath.gasps);
 	}
 }
 

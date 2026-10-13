@@ -376,18 +376,39 @@ weapon_weight_test), game/GameSound.h (the waves):
    strike's speed, and the game's own formula halves the damage at no
    fatigue. The fists have no spring and are not changed (open: a threshold
    of their own).
-4. **The breath and the gasp.** While exhausted a looped wave (OBVR_Sounds/
-   breath.wav: BigSoundBank's "Breathless Man", CC0, 24 s, at 0.45 of full
-   scale), through winmm as the slap is (`PlayPluginWaveLoop`, SND_LOOP);
-   the moment a fall was spared a one-shot first (gasp.wav: "Cry of Pain",
-   CC0, 0.6 s) and the loop a second after it - winmm plays one of ours at a
-   time (`StepBreath`, exhaustion_test). Recovered, or the sounds off: the
-   loop stopped. assets/sounds/README.txt has the sources.
+4. **The gasps (the tester, 2026-10-13 noon: "die schnaufer und keuchen
+   gefallen mir nicht, wie machen andere mods das? ... so nah wie möglich an
+   vanilla").** The morning's waves (a breathing loop and a cry, CC0, through
+   winmm) are out. Vanilla has no breathing for low fatigue, only the
+   collapse; its human gasps - the sound forms NPCHumanGaspMale (000C80ED)
+   and NPCHumanGaspFemale (000C80EC), the folders sound/fx/npc/human/gasp/
+   male and /female of four files each (1.0 to 2.4 s), one picked by the
+   engine each play - are the nearest it has, so they are what plays, by the
+   player's sex (`game::PlayerSex`: the reference's base form through vtable
+   +0x170, an NPC's flags byte at +0x28 and 1, as the script's GetIsSex
+   reads it at 0x004F6FC0 / 0x00519D20), through the game's own sound
+   system with a volume of its own (`game::PlaySoundFormVolume`: 0x006B7280
+   thiscall(sound, float) after the start, the system's 0x006ABA20 keeping
+   it at the sound's +0x3C and applying it under the master and the effects
+   sliders, 0x006B6F20). Paced as Realistic Fatigue (abo, Nexus 10925; its
+   readme) paces its panting: a heartbeat every 1.0 to 0.333 s by the
+   fatigue missing (its blurInterval = 1 - 0.6666 * level^2), a pant every
+   four beats (pantInterval = 4 * blurInterval: 4 s with nothing missing,
+   2.5 s at a quarter left, 1.33 s at none), louder the more is missing
+   (pantLevel = level^2, never under 0.25); paralysed counts as all of it
+   missing. The moment a fall was spared: one gasp at full volume, the
+   pants a whole interval after it; a spell begun without a fall: the first
+   pant half a second in (`ExhaustionMissing`, `HeartbeatSeconds`,
+   `PantIntervalSeconds`, `PantVolume`, `StepBreath`, exhaustion_test).
+   Recovered, or the sounds off: nothing more (the gasps are one-shots).
 5. Logged "Exhaustion: begun - fatigue n of n (n%), paralysed 0, a fall
    spared; the weapon's weight x4.0 over 0.5 s", "Exhaustion: over after n s
-   ...", each cue ("the gasp", "the breath, looped", "the breath stopped"),
-   and at a hand script's marks and every two seconds exhausted the state
-   with the weapon's gap behind the hand.
+   ...", "the gasp - the game's NPCHumanGaspFemale (000C80EC) at 100%
+   volume; a pant every 1.3 s with 100% of the fatigue missing (0 pants, 1
+   gasps this spell)", the first two pants of a spell and then every tenth
+   ("a pant - ..."), and at a hand script's marks and every two seconds
+   exhausted the state with the weapon's gap behind the hand and the
+   spell's counts.
 
 **Harness `exhaustion.txt`, PASS 2026-10-13 (the fourth run; a longsword
 drawn, the console's `setav paralysis 1` / `0`, then `forceav fatigue -100` /
@@ -406,12 +427,22 @@ are its commands); and at low fatigue the tutorial quest's "Your Fatigue is
 low" message box (Oblivion.esm; the harness save still has the quest) pauses
 the world, so the knock state step never runs under it - neither Enter nor
 Space closes it from the script - which is why the fatigue comes last.
+**With the game's gasps, PASS 2026-10-13 15:48 (the same script):** the
+paralysis - "the gasp - the game's NPCHumanGaspFemale (000C80EC) at 100%
+volume; a pant every 1.3 s with 100% of the fatigue missing (0 pants, 1
+gasps this spell)" (the harness character is a woman), "a pant ... (1
+pants, 1 gasps)", "(2 pants ...)", "over after 5.6 s"; the fatigue -
+"begun - fatigue -100 of 145 (-69%)", the gasp, the pants, "over after 9.8
+s"; no "could not be played".
 
 **Open:** the headset - whether x4 is "kaum schwingen" or too much (the
-slider), the breath's level, and whether a paralysed player who stays on
-their feet can still walk (the engine's own paralysis blocks the spells; the
-legs were the fall's) - the tester's call whether to hold the legs too. The
-knockdown's open bug above keeps its (a) and (c).
+slider), whether the game's gasps every 1.3 to 2.5 s read as panting or as
+being startled (a pant could take the quieter of the four files, or the
+drowning gasps' kin; nothing else human is in the game's sounds), and
+whether a paralysed player who stays on their feet can still walk (the
+engine's own paralysis blocks the spells; the legs were the fall's) - the
+tester's call whether to hold the legs too. The knockdown's open bug above
+keeps its (a) and (c).
 
 ### All the proposals, including those not built
 

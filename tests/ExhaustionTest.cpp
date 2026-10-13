@@ -2,7 +2,7 @@
 // the settings as used, when the player's knock state step is skipped, every
 // flow of the state - begun by low fatigue or the paralysis, held through the
 // hysteresis, over when recovered and not paralysed, eased in and out, off
-// mid-state - and the breath's cues.
+// mid-state - and the breath: its pacing and its cues.
 
 #include <cmath>
 #include <cstdio>
@@ -164,33 +164,96 @@ void TestStateFlows() {
 	Check(Near(v.ease, 0.0f), "a negative dt: as 0");
 }
 
+void TestBreathRules() {
+	std::printf("The breath's pacing\n");
+	Check(Near(ExhaustionMissing(true, 0.12f, false), 0.88f) && Near(ExhaustionMissing(true, 0.0f, false), 1.0f),
+	      "the fatigue missing: one less the share");
+	Check(Near(ExhaustionMissing(true, -0.7f, false), 1.0f) && Near(ExhaustionMissing(true, 1.5f, false), 0.0f),
+	      "below 0 all of it, above the base none");
+	Check(Near(ExhaustionMissing(true, 0.9f, true), 1.0f), "paralysed: all of it, whatever the fatigue");
+	Check(Near(ExhaustionMissing(false, 0.5f, false), 1.0f) && Near(ExhaustionMissing(true, kNaN, false), 1.0f),
+	      "the share unknown or not a number: all of it");
+	Check(Near(HeartbeatSeconds(0.0f), 1.0f) && Near(HeartbeatSeconds(1.0f), 0.3334f) &&
+	          Near(HeartbeatSeconds(0.5f), 1.0f - 0.6666f * 0.25f),
+	      "the heartbeat: a second at rest, a third at everything missing (Realistic Fatigue's curve)");
+	Check(Near(HeartbeatSeconds(2.0f), 0.3334f) && Near(HeartbeatSeconds(-1.0f), 1.0f), "missing clamped to 0..1");
+	Check(Near(PantIntervalSeconds(1.0f), 4.0f * 0.3334f) && Near(PantIntervalSeconds(0.75f), 4.0f * (1.0f - 0.6666f * 0.5625f)),
+	      "a pant every four beats: 1.33 s at nothing left, 2.5 s at a quarter");
+	Check(Near(PantVolume(1.0f), 1.0f) && Near(PantVolume(0.75f), 0.5625f) && Near(PantVolume(0.88f), 0.7744f),
+	      "the volume the missing share squared");
+	Check(Near(PantVolume(0.1f), kPantLeastVolume) && Near(PantVolume(0.0f), kPantLeastVolume),
+	      "never under the least volume");
+}
+
 void TestBreath() {
 	std::printf("The breath\n");
 	BreathState b;
-	Check(StepBreath(b, true, false, false, 0.02f) == BreathCue::None && !b.playing, "fresh, nothing plays: nothing");
-	Check(StepBreath(b, true, true, false, 0.02f) == BreathCue::Loop && b.playing && b.looping,
-	      "exhausted without a fall: the breath at once");
-	Check(StepBreath(b, true, true, false, 0.02f) == BreathCue::None, "the next frame: nothing more");
-	Check(StepBreath(b, true, false, false, 0.02f) == BreathCue::Stop && !b.playing, "recovered: stopped");
-	Check(StepBreath(b, true, false, false, 0.02f) == BreathCue::None, "and nothing after");
+	BreathVerdict v = StepBreath(b, true, false, false, 1.0f, 0.02f);
+	Check(v.cue == BreathCue::None && !b.on, "fresh, not exhausted: nothing");
+	// Exhausted without a fall, everything missing: the first pant half a
+	// second in, then one every 1.33 s, at full volume.
+	v = StepBreath(b, true, true, false, 1.0f, 0.02f);
+	Check(v.cue == BreathCue::None && b.on && Near(v.interval, 1.3336f), "the spell begun: the interval named, no pant yet");
+	int frames = 1;
+	while (v.cue != BreathCue::Pant && frames < 400) {
+		v = StepBreath(b, true, true, false, 1.0f, 0.02f);
+		++frames;
+	}
+	Check(v.cue == BreathCue::Pant && Near(v.volume, 1.0f) && b.pants == 1 && Near(frames * 0.02f, 0.5f, 0.03f),
+	      "half a second in: the first pant, full volume");
+	v = StepBreath(b, true, true, false, 1.0f, 0.02f);
+	frames = 1;
+	while (v.cue != BreathCue::Pant && frames < 400) {
+		v = StepBreath(b, true, true, false, 1.0f, 0.02f);
+		++frames;
+	}
+	Check(v.cue == BreathCue::Pant && b.pants == 2 && Near(frames * 0.02f, 1.34f, 0.03f),
+	      "the second pant 1.33 s after the first");
+	// A quarter of the fatigue left: slower and quieter.
+	v = StepBreath(b, true, true, false, 0.75f, 0.02f);
+	Check(v.cue == BreathCue::None && Near(v.interval, 2.5f, 0.01f), "a quarter left: a pant every 2.5 s");
+	frames = 1;
+	while (v.cue != BreathCue::Pant && frames < 400) {
+		v = StepBreath(b, true, true, false, 0.75f, 0.02f);
+		++frames;
+	}
+	Check(v.cue == BreathCue::Pant && Near(frames * 0.02f, 2.5f, 0.03f) && Near(v.volume, 0.5625f),
+	      "and it comes at 2.5 s, at 56% volume");
+	// Over: the spell ends, nothing to stop.
+	v = StepBreath(b, true, false, false, 0.75f, 0.02f);
+	Check(v.cue == BreathCue::None && !b.on && b.pants == 0, "recovered: the spell over, the counts cleared");
 
+	// A fall spared: the gasp at once, full volume; the pants a whole
+	// interval later.
 	b = BreathState{};
-	Check(StepBreath(b, true, true, true, 0.02f) == BreathCue::Gasp && b.playing && !b.looping,
-	      "a fall spared: the gasp");
-	Check(StepBreath(b, true, true, false, 0.5f) == BreathCue::None, "half a second in: nothing yet");
-	Check(StepBreath(b, true, true, false, 0.5f) == BreathCue::Loop && b.looping, "a second after the gasp: the breath");
-	Check(StepBreath(b, true, true, true, 0.02f) == BreathCue::Gasp && !b.looping, "another fall spared: the gasp again");
-	Check(StepBreath(b, true, false, false, 0.02f) == BreathCue::Stop, "recovered before the breath came back: stopped");
+	v = StepBreath(b, true, true, true, 1.0f, 0.02f);
+	Check(v.cue == BreathCue::Gasp && Near(v.volume, 1.0f) && b.gasps == 1 && b.on, "a fall spared: the gasp");
+	frames = 0;
+	v = StepBreath(b, true, true, false, 1.0f, 0.02f);
+	++frames;
+	while (v.cue != BreathCue::Pant && frames < 400) {
+		v = StepBreath(b, true, true, false, 1.0f, 0.02f);
+		++frames;
+	}
+	Check(v.cue == BreathCue::Pant && Near(frames * 0.02f, 1.34f, 0.03f), "the first pant a whole interval after the gasp");
+	v = StepBreath(b, true, true, true, 1.0f, 0.02f);
+	Check(v.cue == BreathCue::Gasp && b.gasps == 2 && Near(b.sincePant, 0.0f), "another fall spared: the gasp again, the pants wait anew");
 
+	// Sounds off: nothing, and a spell cut short.
 	b = BreathState{};
-	Check(StepBreath(b, false, true, true, 0.02f) == BreathCue::None && !b.playing, "sounds off: nothing, ever");
-	StepBreath(b, true, true, false, 0.02f);
-	Check(StepBreath(b, false, true, false, 0.02f) == BreathCue::Stop, "sounds switched off mid-breath: stopped");
-	Check(StepBreath(b, false, true, false, 0.02f) == BreathCue::None, "and nothing after");
+	v = StepBreath(b, false, true, true, 1.0f, 0.02f);
+	Check(v.cue == BreathCue::None && !b.on, "sounds off: not even the gasp");
+	StepBreath(b, true, true, false, 1.0f, 0.02f);
+	v = StepBreath(b, false, true, false, 1.0f, 0.02f);
+	Check(v.cue == BreathCue::None && !b.on, "sounds switched off mid-spell: the spell over");
 
+	// No time: nothing comes due.
 	b = BreathState{};
-	StepBreath(b, true, true, true, 0.02f);
-	Check(StepBreath(b, true, true, false, 0.0f) == BreathCue::None, "no time: the gasp's wait does not pass");
+	StepBreath(b, true, true, false, 1.0f, 0.02f);
+	for (int i = 0; i < 100; ++i) {
+		v = StepBreath(b, true, true, false, 1.0f, 0.0f);
+	}
+	Check(v.cue == BreathCue::None && b.pants == 0, "frames without time: no pant comes due");
 }
 
 }  // namespace
@@ -198,6 +261,7 @@ void TestBreath() {
 int main() {
 	TestRules();
 	TestStateFlows();
+	TestBreathRules();
 	TestBreath();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);

@@ -174,7 +174,8 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.look.exhaustion.weight = v; },
 	},
 	{
-		"Comfort", "Exhaustion sounds", "The hard breathing while exhausted, and the gasp when a fall was spared",
+		"Comfort", "Exhaustion sounds",
+		"The game's own gasps while exhausted: one when a fall was spared, then panting every few heartbeats",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Look", "ExhaustionSounds",
 		+[](const Config& c) { return c.look.exhaustion.sounds ? 1.0f : 0.0f; },
