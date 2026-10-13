@@ -43,4 +43,11 @@ bool PlayPlayerLandingSound();
 // refuses (no such file).
 bool PlayPluginWave(const char* fileName);
 
+// The same wave looped until StopPluginWave (or another wave of ours: winmm
+// plays one at a time) - the breath while exhausted (game/ExhaustionLogic.h).
+bool PlayPluginWaveLoop(const char* fileName);
+
+// Stops whatever wave of ours plays, looped or not.
+void StopPluginWave();
+
 }  // namespace obvr::game

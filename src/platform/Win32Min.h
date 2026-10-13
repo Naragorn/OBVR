@@ -179,6 +179,7 @@ OBVR_IMPORT DWORD OBVR_STDCALL GetCurrentProcessId();
 OBVR_IMPORT BOOL OBVR_STDCALL PlaySoundA(const char* sound, HMODULE module, DWORD flags);
 #define SND_ASYNC 0x0001
 #define SND_NODEFAULT 0x0002
+#define SND_LOOP 0x0008
 #define SND_FILENAME 0x00020000
 
 // For the hand-tracked mode: the controllers drive the game through the

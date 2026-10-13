@@ -62,8 +62,32 @@ inline bool SkipForPlayer(bool enabled, UInt32 actor, UInt32 player) {
 	return enabled && player != 0 && actor == player;
 }
 
+// Exhaustion instead of the collapse and the paralysis fall ([Look]
+// Exhaustion; game/ExhaustionLogic.h). Read in Oblivion.exe 1.2.0.416,
+// 2026-10-13: the knock state's step, 0x006545E0 - thiscall(process,
+// actor), ret 4, the process vtable's slot +0x2F4 right after the knockdown's
+// (0x00A71B08 high, 0x00A72978 middle-high; no direct calls) - runs every
+// frame and, with the state 0 and the actor not dead, begins the fatigue
+// collapse when the fatigue (GetActorValue_F 0xA, 0x005E0A60) is below 0 -
+// state 4, the controller pushed, no ragdoll - or the paralysis fall when
+// actor value 0x30 is set (0x005E17E0): state 3, the ragdoll on. Both lie
+// (state 3) until the fatigue is 0 or more and the paralysis gone, then the
+// get-up (5, 6). Both slots are rerouted to OBVR's own: for the player, with
+// the setting on, the step is SKIPPED on the frames it would begin either
+// (CollapseSkipped: state 0 and the condition met) and run otherwise - a
+// knockdown under way, the lying and the get-up keep their course; everyone
+// else goes to the original. The frames skipped are counted for the camera
+// pass (TakeCollapseSkips: the gasp, the log).
+inline constexpr UInt32 kKnockStateStep = 0x006545E0;
+inline constexpr UInt32 kKnockStepSlotHighProcess = 0x00A71B08;
+inline constexpr UInt32 kKnockStepSlotMiddleHighProcess = 0x00A72978;
+
 void InstallPlayerStagger();
 void SetNoPlayerStagger(bool enabled);
 void SetNoPlayerKnockdown(bool enabled);
+void SetExhaustion(bool enabled);
+// How many frames the player's collapse or fall was skipped since the last
+// call.
+UInt32 TakeCollapseSkips();
 
 }  // namespace obvr::game

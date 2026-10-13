@@ -167,4 +167,14 @@ bool PlayPluginWave(const char* fileName) {
 	return PlaySoundA(path, nullptr, SND_FILENAME | SND_ASYNC | SND_NODEFAULT) != 0;
 }
 
+bool PlayPluginWaveLoop(const char* fileName) {
+	char path[512];
+	if (fileName == nullptr || !platform::BuildPluginPath(fileName, path, sizeof(path))) {
+		return false;
+	}
+	return PlaySoundA(path, nullptr, SND_FILENAME | SND_ASYNC | SND_NODEFAULT | SND_LOOP) != 0;
+}
+
+void StopPluginWave() { PlaySoundA(nullptr, nullptr, 0); }
+
 }  // namespace obvr::game

@@ -3621,6 +3621,93 @@ bool HandsAwayNow(const Config& config, bool menuMode, bool dialogue) {
 	return HandsAwayForMenus(true, menuMode, stack, count);
 }
 
+// Exhaustion instead of the collapse and the paralysis fall
+// (game/ExhaustionLogic.h; the tester, 2026-10-12): the player's fatigue
+// and paralysis read each frame, the state stepped, the drawn weapon's lag
+// made heavier through the hand mode's frame (g_exhaustionEase, -Factor),
+// the breath looped and the gasp played (game/GameSound.h) - the frames the
+// knock state step was skipped for the player come from game/PlayerStagger
+// (TakeCollapseSkips).
+game::ExhaustionState g_exhaustion;
+game::BreathState g_breath;
+float g_exhaustionEase = 0.0f;
+float g_exhaustionFactor = 1.0f;
+bool g_collapseWasSkipping = false;
+float g_exhaustionLogSeconds = 0.0f;
+UInt32 g_exhaustionLines = 40;
+
+void StepExhaustion(const Config& config, float dt) {
+	const game::ExhaustionSettings& g = config.look.exhaustion;
+	game::SetExhaustion(g.enabled);
+	float now = 0.0f;
+	float base = 0.0f;
+	const bool known = game::ReadPlayerFatigue(now, base);
+	const bool paralyzed = game::PlayerParalyzed();
+	const UInt32 skips = game::TakeCollapseSkips();
+	const bool skipBegan = skips > 0 && !g_collapseWasSkipping;
+	g_collapseWasSkipping = skips > 0;
+	const game::ExhaustionVerdict v = game::StepExhaustion(g_exhaustion, g, known, now, base, paralyzed, dt);
+	g_exhaustionEase = v.ease;
+	g_exhaustionFactor = v.factor;
+	// The gasp: the moment a fall was spared, while exhausted (the state
+	// begins the same frame the fatigue reads below 0 or the paralysis is on).
+	const game::BreathCue cue =
+		game::StepBreath(g_breath, g.sounds, g_exhaustion.exhausted, skipBegan && g_exhaustion.exhausted, dt);
+	bool played = true;
+	const char* cueName = "";
+	switch (cue) {
+	case game::BreathCue::Gasp:
+		played = game::PlayPluginWave(game::kGaspWave);
+		cueName = "the gasp";
+		break;
+	case game::BreathCue::Loop:
+		played = game::PlayPluginWaveLoop(game::kBreathWave);
+		cueName = "the breath, looped";
+		break;
+	case game::BreathCue::Stop:
+		game::StopPluginWave();
+		cueName = "the breath stopped";
+		break;
+	default:
+		break;
+	}
+	if (cue != game::BreathCue::None && g_exhaustionLines > 0) {
+		--g_exhaustionLines;
+		OBVR_LOG("Exhaustion: %s%s", cueName, played ? "" : " - could not be played (the wave missing next to OBVR.dll?)");
+	}
+	if (v.began && g_exhaustionLines > 0) {
+		--g_exhaustionLines;
+		OBVR_LOG("Exhaustion: begun - fatigue %.0f of %.0f (%.0f%%), paralysed %d%s; the weapon's weight x%.1f over "
+		         "%.1f s",
+		         static_cast<double>(now), static_cast<double>(base), static_cast<double>(v.share * 100.0f),
+		         paralyzed ? 1 : 0, skipBegan ? ", a fall spared" : "",
+		         static_cast<double>(game::ExhaustionWeightFactor(g.weight)), static_cast<double>(game::kExhaustionInSeconds));
+	}
+	if (v.ended && g_exhaustionLines > 0) {
+		--g_exhaustionLines;
+		OBVR_LOG("Exhaustion: over after %.1f s - fatigue %.0f of %.0f (%.0f%%), paralysed %d; the weight eases back "
+		         "over %.1f s",
+		         static_cast<double>(v.seconds), static_cast<double>(now), static_cast<double>(base),
+		         static_cast<double>(v.share * 100.0f), paralyzed ? 1 : 0,
+		         static_cast<double>(game::kExhaustionOutSeconds));
+	}
+	// The state at a hand script's mark, and every two seconds while
+	// exhausted: the weapon's lag as the hand mode reports it.
+	g_exhaustionLogSeconds += dt;
+	const bool due = g_exhaustion.exhausted && g_exhaustionLogSeconds >= 2.0f;
+	if ((test::HandScriptMarkedThisFrame() || due) && g_exhaustionLines > 0) {
+		g_exhaustionLogSeconds = 0.0f;
+		--g_exhaustionLines;
+		OBVR_LOG("Exhaustion: at the %s - %s, ease %.2f, factor x%.2f, fatigue %.0f of %.0f (%.0f%%), paralysed %d, "
+		         "the weapon %s, %.2f m / %.0f degrees behind the hand",
+		         due ? "two seconds" : "mark", g_exhaustion.exhausted ? "exhausted" : "fresh",
+		         static_cast<double>(v.ease), static_cast<double>(v.factor), static_cast<double>(now),
+		         static_cast<double>(base), static_cast<double>(v.share * 100.0f), paralyzed ? 1 : 0,
+		         g_hand.weaponLagging ? "lagging" : "on the hand", static_cast<double>(g_hand.weaponGapMetres),
+		         static_cast<double>(g_hand.weaponGapDegrees));
+	}
+}
+
 void UpdateHandMode(const Config& config, bool menuIsUp) {
 	StepInputRouting(config);
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
@@ -3861,6 +3948,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		// weapon's own - not the fists', which have no form, not a staff's,
 		// which is not swung by its weight, not a bow's, which is aimed.
 		// Logged once per draw, with the lag it makes at the slider's setting.
+		// Exhausted, the lag is made heavier (StepExhaustion above).
+		frame.exhaustionEase = g_exhaustionEase;
+		frame.exhaustionFactor = g_exhaustionFactor;
 		static const UInt8* s_weighed = nullptr;
 		float weight = 0.0f;
 		const bool weighed = frame.meleeHeld && weaponForm != nullptr && !vr::IsStaffWeaponType(weaponType) &&
@@ -6191,6 +6281,7 @@ void OnPresent() {
 	game::SetNoPlayerKnockdown(config.look.noPlayerKnockdown);
 	game::SetEquipWhileActing(config.fullVrMode);
 	game::SetNoHitBlur(config.look.noHitBlur);
+	StepExhaustion(config, g_deltaSeconds);
 	UpdateHandMode(config, game::IsMenuMode());
 	StepVrKeyboard(config);
 	HoldSlapFacing();

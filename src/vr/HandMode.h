@@ -462,6 +462,11 @@ struct HandModeFrame {
 	// the fists, a bow, a staff, or nothing drawn. The weapon's lag is set by
 	// it (vr/WeaponWeight.h).
 	float weaponWeight = 0.0f;
+	// Exhausted (game/ExhaustionLogic.h): how far in, 0 to 1, and the
+	// weapon's lag factor at full - the lag is made heavier by them
+	// (vr::WeaponLagExhausted).
+	float exhaustionEase = 0.0f;
+	float exhaustionFactor = 1.0f;
 	// The player holds an object (the grab): a fist round it is not a fist.
 	bool holdingObject = false;
 	// The left grip holds a weapon's handle, or is about to (vr/TwoHandLogic.h):

@@ -292,9 +292,9 @@ verify this from code; a headset test with each switched off would settle it.
       while the player is in the knock state (process+0x11C, which the
       knockdown function sets to 2, "Explode Lead In") or in the fatigue
       collapse, the view held still there as `DeathViewStill` holds it;
-      (b) the fatigue knock-out under the same option, or its own, once a
-      log shows it was that - or, the tester's wish of the same day,
-      exhaustion instead of the fall (the proposal below); (c) with the
+      (b) BUILT 2026-10-13 as the exhaustion instead of the fall (the
+      section below): the fatigue collapse and the paralysis fall are
+      spared for the player under [Look] Exhaustion; (c) with the
       log's "from <address>", the uncovered path rerouted as the three
       known ones are.
 - **Other stagger paths** that avoid 0x005F4FD0 (a script's `PlayGroup`,
@@ -303,100 +303,116 @@ verify this from code; a headset test with each switched off would settle it.
   0x00892A42): not examined. A spell's force or an explosion may push the
   player through them.
 
-### Proposed (the tester, 2026-10-12): exhaustion instead of the collapse, and instead of the paralysis fall - nothing built
+### Exhaustion instead of the collapse, and instead of the paralysis fall (the tester, 2026-10-12; built 2026-10-13, headset open)
 
 The tester: "default an, neuer toggle: wenn fatigue low geht gibts statt
 knockdown werden die waffen super schwer wie in walking dead saints n
 sinners. man kann damit kaum schwingen. und der player keucht und es gibt
 einen sound. selbes für paralyse."
 
-**What vanilla does (read 2026-10-12):**
+**What vanilla does [R, read 2026-10-12 and 2026-10-13]:**
 
 - Fatigue: "if your character suffers a spell or a hand-to-hand attack that
   lowers fatigue below 0 ... they will collapse on the ground until the
   Fatigue exceeds zero", and "melee damage is severely reduced when fatigue
   is at zero": `Damage x ((Fatigue / MaxFatigue) + 1) / 2` (UESP,
-  Oblivion:Fatigue). No sound goes with it (the page names none). In the
-  engine the collapse is the fatigue knock-out 0x006545E0 (game/PlayerStagger.h:
-  "a collapse, not a throw"), which `NoPlayerKnockdown` leaves alone; its
-  callers are not read.
+  Oblivion:Fatigue). No sound goes with it.
 - Paralyze: "immobilizes the target for D seconds", the target "usually
-  falls down" and is "out of action for a couple of additional seconds
-  while they get back to their feet"; for the player "the view will shift
-  to third-person and you get to watch yourself fall down", the inventory
-  still opens, "you can't cast spells" (UESP, Oblivion:Paralyze). The
-  effect is actor value 0x30 (section 1, the block's first condition,
-  vtable +0x1A0 = 0x005E17E0). Which function puts the player down and the
-  view into third person: not read.
+  falls down"; for the player "the view will shift to third-person and you
+  get to watch yourself fall down", the inventory still opens, "you can't
+  cast spells" (UESP, Oblivion:Paralyze). The effect is actor value 0x30.
+- **Both falls come from one function, the knock state's step**
+  `0x006545E0` - thiscall(process, actor), the process vtable's slot +0x2F4
+  (0x00A71B08 high, 0x00A72978 middle-high; right after the knockdown's
+  +0x2F0), no direct calls - which runs every frame. With the knock state
+  (process+0x11C) 0 and the actor not dead: the fatigue through
+  GetActorValue_F 0xA (`0x005E0A60`) below 0, or the paralysis through
+  `0x005E17E0` (GetActorValue 0x30 != 0), or the actor's DeadState (+0xB0)
+  6, enters the fall: paralysed, state 3 with the ragdoll on (`0x0088D070`);
+  else state 4, a push through the controller (`0x008AB440`) and an
+  animation. State 4 passes into 3 once the blend is through (the shared
+  lead-in at `0x00654803`); state 3 lies until the fatigue is 0 or more and
+  the paralysis gone, then the get-up (5, 6; the same as the knockdown's).
+  `PlayerStagger.h` earlier called this function "the fatigue knock-out";
+  it is the whole state machine.
 - The reference, The Walking Dead: Saints & Sinners: stamina drains with
   sprinting, climbing and melee, and players describe the character "so
   winded that swinging a bat more than a couple of times becomes a problem"
-  (Road to VR's review, roadtovr.com/the-walking-dead-saints-sinners-review-vr;
-  Quest and Steam comments). The exact rule of its heavy arms: no developer
-  statement found - that part rests on player comments.
+  (Road to VR's review). The exact rule of its heavy arms rests on player
+  comments.
 
-**The design:**
+**Built [R]:** `[Look] Exhaustion=1` (Comfort, "Exhaustion, not collapse"),
+`ExhaustionBelowPercent` (12, "Exhausted below (%)"),
+`ExhaustionAbovePercent` (25, "Recovered above (%)"), `ExhaustionWeight` (4,
+"Exhausted weapon weight (x)"), `ExhaustionSounds` (1, "Exhaustion
+sounds"); game/ExhaustionLogic.h (the decisions, exhaustion_test),
+game/PlayerStagger (the reroute), vr/WeaponWeight.h (the heavy arms,
+weapon_weight_test), game/GameSound.h (the waves):
 
-- One toggle, settings Comfort, default on - the name to be decided
-  (`[Look] ExhaustionInsteadOfCollapse` as a working title). Two triggers,
-  one state:
-  1. **Fatigue low.** The knock-out 0x006545E0 rerouted for the player as
-     the knockdown is (the same pattern: the player with the toggle on does
-     nothing, everyone else goes to the original). The player stays on their
-     feet. The exhausted state begins under a threshold of the maximum
-     (10-15 %, settable - the tester said "low", not zero) and ends above a
-     higher one (hysteresis, so the threshold does not flicker; vanilla
-     regenerates fatigue, so it ends by itself).
-  2. **Paralysis.** The effect stays the game's (actor value 0x30 above 0:
-     no spells, the duration as cast); only the fall is replaced by the
-     exhausted state for the effect's duration. Whether the player can still
-     swing weakly or is held altogether is the tester's choice; "kaum
-     schwingen" reads as barely, not never.
-- **The heavy arms.** The weight spring of physical-combat-spec section 6
-  (`vr::WeaponLagFor`) scaled by an exhaustion factor: the time constant and
-  both caps multiplied, by 4 at the start (a first guess for the headset),
-  eased in over about 0.5 s and out over 1-2 s as the state ends. The
-  swing-through's second order keeps its damping. Section 7's idea 2 (the lag
-  by `2 / (Fatigue / MaxFatigue + 1)`) is the continuous version of this;
-  this is its hard end. Derived, not measured: with the weapon lagging the
-  controller fourfold the swings by motion seldom reach the strike's speed,
-  so the blows go weak by themselves, and the game's own formula already
-  halves the damage at zero fatigue - nothing else needs scaling. The fists
-  have no spring: either they get one for the state, or the fists' swing
-  threshold rises - open.
-- **The breath and the sound.** A looped breathing wave while the state
-  holds, OBVR's own (assets/sounds, shipped as OBVR_Sounds/, played through
-  winmm as the slap is, `PlaySoundA` with SND_ASYNC - a loop is SND_LOOP, the
-  stop a PlaySound of nothing; game/GameSound.h), a CC0 recording to be found
-  as the slap's were (BigSoundBank). And a one-shot at the moment the fall
-  was replaced - a gasp or a thud - because the tester asked for both ("der
-  player keucht und es gibt einen sound"). Not placed in the world: the
-  player's own breath, heard in the head. Vanilla has no fatigue sound to
-  reuse.
-- **Visible, later:** the snap turn's vignette exists
-  (`SnapTurnVignetteRadius`); a pulse of it with the breath would be the
-  Saints & Sinners picture. Optional, not part of the first build.
-- **Reads before building:** where 0x006545E0 is called (the fatigue update
-  that finds the value at or below zero, presumably - not read) and whether
-  the engine would call it again the next frame once the reroute returns
-  without a fall (then the reroute must also settle the retry: the state the
-  knock-out sets without the fall, or the fatigue held at a minimum);
-  the paralysis fall's function and its third-person switch; the fatigue
-  read exists (`game::ReadPlayerFatigue(now, base)`, game/PlayerTeleport.h,
-  the teleport's cost) - section 7's "OBVR does not read the player's actor
-  values yet" is out of date for fatigue.
-- **Tests:** the exhaustion factor as a pure function (fatigue and its
-  maximum, the two thresholds, the ease, the paralysis flag - the factor),
-  next to `WeaponLagFor`; the breath's start and stop as a state machine;
-  the reroute's decision as `SkipForPlayer` is. Harness: a drawn weapon, the
-  console's `player.setav fatigue 0` (or the value damaged in a fight): the
-  log says the collapse was skipped, the factor 4, the breath started; the
-  value restored: the factor back, the breath stopped. Paralysis in the
-  harness: a paralyze effect cast on the player - the way (a scroll, a
-  console spell) to be found.
-- **Order:** after the knockdown open bug above has a log (the same reroute
-  pattern serves both), and after section 6's weight has been judged in the
-  headset, since the factor multiplies it.
+1. **The fall spared.** Both step slots are rerouted to OBVR's own, the
+   knockdown's pattern: for the player, with the setting on, the step is
+   SKIPPED on a frame it would begin a fall - the knock state 0 and the
+   fatigue below 0 or the paralysis set (`CollapseSkipped`) - and run on
+   every other (a knockdown under way, the lying and the get-up keep their
+   course; NoPlayerKnockdown off still knocks the player down); everyone
+   else goes to the original. The player stays on their feet; the fatigue
+   and the paralysis themselves stay the game's - no spells while paralysed,
+   the weak blows at no fatigue. The DeadState 6 trigger is left to the
+   engine (not read: what it is). Logged once per episode "Comfort: the
+   player's fatigue collapse was skipped (Look.Exhaustion) - fatigue n,
+   paralysed 0, knock state 0; they stay on their feet, exhausted" (or
+   "paralysis fall").
+2. **The state.** Exhausted under 12 % of the base fatigue (the
+   GetActorValue_F readers the teleport's cost uses) or while paralysed;
+   over above 25 % and not paralysed (hysteresis: vanilla regenerates
+   fatigue, so it ends by itself); eased in over 0.5 s, out over 1.5 s.
+   Off mid-state: over at once.
+3. **The heavy arms** (`vr::WeaponLagExhausted`): section 6's lag with its
+   time constant from a floor of 80 ms - a dagger that never lagged lags
+   now - times the factor, and the caps times it, bounded at half a metre
+   and ninety degrees, blended in by the ease. A longsword at the 40 %
+   slider: 25 ms and 0.1 m become 320 ms and 0.4 m at x4 - a hand at 1 m/s
+   trails the weapon 0.32 m behind it, the swings by motion seldom reach the
+   strike's speed, and the game's own formula halves the damage at no
+   fatigue. The fists have no spring and are not changed (open: a threshold
+   of their own).
+4. **The breath and the gasp.** While exhausted a looped wave (OBVR_Sounds/
+   breath.wav: BigSoundBank's "Breathless Man", CC0, 24 s, at 0.45 of full
+   scale), through winmm as the slap is (`PlayPluginWaveLoop`, SND_LOOP);
+   the moment a fall was spared a one-shot first (gasp.wav: "Cry of Pain",
+   CC0, 0.6 s) and the loop a second after it - winmm plays one of ours at a
+   time (`StepBreath`, exhaustion_test). Recovered, or the sounds off: the
+   loop stopped. assets/sounds/README.txt has the sources.
+5. Logged "Exhaustion: begun - fatigue n of n (n%), paralysed 0, a fall
+   spared; the weapon's weight x4.0 over 0.5 s", "Exhaustion: over after n s
+   ...", each cue ("the gasp", "the breath, looped", "the breath stopped"),
+   and at a hand script's marks and every two seconds exhausted the state
+   with the weapon's gap behind the hand.
+
+**Harness `exhaustion.txt`, PASS 2026-10-13 (the fourth run; a longsword
+drawn, the console's `setav paralysis 1` / `0`, then `forceav fatigue -100` /
+`145`):** the paralysis - "Comfort: the player's paralysis fall was skipped
+(Look.Exhaustion) - fatigue 145.0, paralysed 1, knock state 0; they stay on
+their feet, exhausted", "Exhaustion: begun - fatigue 145 of 145 (100%),
+paralysed 1; the weapon's weight x4.0 over 0.5 s", "the gasp", "the breath,
+looped", the slow swings "up to 0.22, 0.33, 0.29 m from the hand" (0.12 m
+fresh, the cap x4 would allow 0.5), at the mark "ease 1.00, factor x4.00 ...
+the weapon lagging, 0.09 m behind the hand", cleared "the breath stopped",
+"over after 5.5 s"; the fatigue - "fatigue collapse was skipped ... fatigue
+-99.9", "begun - fatigue -100 of 145 (-69%)", the gasp and the breath, "0.25
+m behind the hand" at a two-second line, forced back "over after 10.1 s". The
+three runs before taught: the game has no `damageav` (ModAV, SetAV, ForceAV
+are its commands); and at low fatigue the tutorial quest's "Your Fatigue is
+low" message box (Oblivion.esm; the harness save still has the quest) pauses
+the world, so the knock state step never runs under it - neither Enter nor
+Space closes it from the script - which is why the fatigue comes last.
+
+**Open:** the headset - whether x4 is "kaum schwingen" or too much (the
+slider), the breath's level, and whether a paralysed player who stays on
+their feet can still walk (the engine's own paralysis blocks the spells; the
+legs were the fall's) - the tester's call whether to hold the legs too. The
+knockdown's open bug above keeps its (a) and (c).
+
 ### All the proposals, including those not built
 
 1. **No stagger and no knockback for the player** (built, default on). It is

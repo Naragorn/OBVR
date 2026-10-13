@@ -144,6 +144,43 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.look.noPlayerKnockdown = v != 0.0f; },
 	},
 	{
+		"Comfort", "Exhaustion, not collapse",
+		"Out of fatigue, or paralysed, you stay on your feet: your weapon turns heavy and you breathe hard instead "
+		"of falling to the ground",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "Exhaustion",
+		+[](const Config& c) { return c.look.exhaustion.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.look.exhaustion.enabled = v != 0.0f; },
+	},
+	{
+		"Comfort", "Exhausted below (%)", "Fatigue under this share of your maximum exhausts you",
+		ItemKind::Number, 1.0f, 50.0f, 1.0f, 0, false,
+		"Look", "ExhaustionBelowPercent",
+		+[](const Config& c) { return c.look.exhaustion.belowPercent; },
+		+[](Config& c, float v) { c.look.exhaustion.belowPercent = v; },
+	},
+	{
+		"Comfort", "Recovered above (%)", "Fatigue back over this share of your maximum ends the exhaustion",
+		ItemKind::Number, 1.0f, 90.0f, 1.0f, 0, false,
+		"Look", "ExhaustionAbovePercent",
+		+[](const Config& c) { return c.look.exhaustion.abovePercent; },
+		+[](Config& c, float v) { c.look.exhaustion.abovePercent = v; },
+	},
+	{
+		"Comfort", "Exhausted weapon weight (x)", "How many times heavier the weapon trails your hand while exhausted",
+		ItemKind::Number, 1.0f, 10.0f, 0.5f, 1, false,
+		"Look", "ExhaustionWeight",
+		+[](const Config& c) { return c.look.exhaustion.weight; },
+		+[](Config& c, float v) { c.look.exhaustion.weight = v; },
+	},
+	{
+		"Comfort", "Exhaustion sounds", "The hard breathing while exhausted, and the gasp when a fall was spared",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "ExhaustionSounds",
+		+[](const Config& c) { return c.look.exhaustion.sounds ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.look.exhaustion.sounds = v != 0.0f; },
+	},
+	{
 		"Comfort", "No hit blur", "Hits never blur or shake your view",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Look", "NoHitBlur",

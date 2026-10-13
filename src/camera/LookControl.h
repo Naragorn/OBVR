@@ -2,6 +2,7 @@
 
 #include "core/Smoothing.h"
 #include "core/Types.h"
+#include "game/ExhaustionLogic.h"
 #include "game/NiMath.h"
 
 namespace obvr::camera {
@@ -130,6 +131,9 @@ struct LookSettings {
 	bool noPlayerStagger = true;
 	// The player never knocked down and thrown (game/PlayerStagger.h).
 	bool noPlayerKnockdown = true;
+	// Exhaustion instead of the fatigue collapse and the paralysis fall
+	// ([Look] Exhaustion and its edges; game/ExhaustionLogic.h).
+	game::ExhaustionSettings exhaustion;
 	// The hit blur (Oblivion's GethitShader) skipped for the player (game/HitShader.h).
 	bool noHitBlur = true;  // the tester, 2026-09-29: "ja machen wir!"
 	// The player's block counts towards where the headset looks, not where the

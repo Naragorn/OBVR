@@ -115,6 +115,39 @@ inline WeaponLagTuning WeaponLagFor(float weight, float percent, bool twoHanded,
 	return t;
 }
 
+// Exhausted (game/ExhaustionLogic.h): the lag made heavier by `factor` at
+// full, blended in by `ease` (0 to 1). The time constant from a floor - a
+// dagger that never lagged lags now, "super schwer" is every weapon - times
+// the factor; the caps times it too, bounded so the weapon never trails
+// further than half a metre or ninety degrees. Nothing changes at ease 0 or
+// a factor of 1 or less.
+constexpr float kExhaustedFloorTimeConstant = 0.08f;  // s, before the factor
+constexpr float kExhaustedCapMetresMax = 0.5f;
+constexpr float kExhaustedCapDegreesMax = 90.0f;
+
+inline WeaponLagTuning WeaponLagExhausted(const WeaponLagTuning& t, float ease, float factor) {
+	const float e = ease > 1.0f ? 1.0f : ease > 0.0f ? ease : 0.0f;
+	if (!(e > 0.0f) || !(factor > 1.0f)) {
+		return t;
+	}
+	WeaponLagTuning out = t;
+	const float base = t.timeConstantSeconds > kExhaustedFloorTimeConstant ? t.timeConstantSeconds
+	                                                                        : kExhaustedFloorTimeConstant;
+	out.timeConstantSeconds = t.timeConstantSeconds + (base * factor - t.timeConstantSeconds) * e;
+	float capMetres = t.capMetres * factor;
+	if (capMetres > kExhaustedCapMetresMax) {
+		capMetres = kExhaustedCapMetresMax;
+	}
+	float capRadians = t.capRadians * factor;
+	const float capRadiansMax = kExhaustedCapDegreesMax * math::kDegreesToRadians;
+	if (capRadians > capRadiansMax) {
+		capRadians = capRadiansMax;
+	}
+	out.capMetres = t.capMetres + (capMetres - t.capMetres) * e;
+	out.capRadians = t.capRadians + (capRadians - t.capRadians) * e;
+	return out;
+}
+
 inline float DotOf(const NiPoint3& a, const NiPoint3& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
 
 inline float QuaternionDot(const Quaternion& a, const Quaternion& b) {

@@ -2,9 +2,11 @@
 
 #include <intrin.h>
 
+#include "core/AddressSpace.h"
 #include "core/AroundCall.h"
 #include "core/Log.h"
 #include "core/Memory.h"
+#include "game/ExhaustionLogic.h"
 #include "game/GameAddresses.h"
 
 namespace obvr::game {
@@ -87,6 +89,88 @@ void RerouteSlot(UInt32 slot, const char* what) {
 	OBVR_LOG("Comfort: the %s's knockdown rerouted at %08X", what, slot);
 }
 
+// The knock state's step (PlayerStagger.h, the exhaustion): the player's
+// skipped on the frames it would begin the collapse or the paralysis fall.
+bool g_exhaustionEnabled = true;
+UInt32 g_collapseSkips = 0;
+bool g_collapseSkipping = false;
+UInt32 g_collapseLines = 20;
+constexpr UInt32 kProcessKnockedState = 0x11C;  // HighProcess, one byte
+constexpr UInt32 kGetActorValueSlot = 0x284;     // int, current
+constexpr UInt32 kGetActorValueFSlot = 0x288;    // float, current
+constexpr UInt32 kAvFatigue = 0x0A;
+constexpr UInt32 kAvParalysis = 0x30;
+
+UInt32 ActorSlot(void* actor, UInt32 offset) {
+	const UInt32 a = reinterpret_cast<UInt32>(actor);
+	const UInt32 vtable = mem::LooksLikeObjectAddress(a) ? *reinterpret_cast<const UInt32*>(a) : 0;
+	return mem::LooksLikeObjectAddress(vtable) ? *reinterpret_cast<const UInt32*>(vtable + offset) : 0;
+}
+
+float ActorFatigue(void* actor) {
+	const UInt32 slot = ActorSlot(actor, kGetActorValueFSlot);
+	if (slot == 0) {
+		return 0.0f;
+	}
+	using GetFloatFn = float(__thiscall*)(void* actor, UInt32 av);
+	return reinterpret_cast<GetFloatFn>(slot)(actor, kAvFatigue);
+}
+
+bool ActorParalyzed(void* actor) {
+	const UInt32 slot = ActorSlot(actor, kGetActorValueSlot);
+	if (slot == 0) {
+		return false;
+	}
+	using GetIntFn = SInt32(__thiscall*)(void* actor, UInt32 av);
+	return reinterpret_cast<GetIntFn>(slot)(actor, kAvParalysis) != 0;
+}
+
+using KnockStateStepFn = void(__thiscall*)(void* process, void* actor);
+
+// Reached through the process's vtable: the process in ecx, one stack
+// argument the callee clears - a fastcall with it after edx does the same.
+void __fastcall OnKnockStateStep(void* process, void* /*edx*/, void* actor) {
+	const UInt32 player = Player();
+	if (player != 0 && reinterpret_cast<UInt32>(actor) == player && mem::LooksLikeObjectAddress(player)) {
+		const SInt32 knock = *reinterpret_cast<const UInt8*>(reinterpret_cast<UInt32>(process) + kProcessKnockedState);
+		const float fatigue = ActorFatigue(actor);
+		const bool paralyzed = ActorParalyzed(actor);
+		if (CollapseSkipped(g_exhaustionEnabled, true, knock, fatigue, paralyzed)) {
+			++g_collapseSkips;
+			if (!g_collapseSkipping && g_collapseLines > 0) {
+				--g_collapseLines;
+				OBVR_LOG("Comfort: the player's %s was skipped (Look.Exhaustion) - fatigue %.1f, paralysed %d, knock "
+				         "state %d; they stay on their feet, exhausted",
+				         fatigue < 0.0f ? "fatigue collapse" : "paralysis fall", static_cast<double>(fatigue),
+				         paralyzed ? 1 : 0, knock);
+			}
+			g_collapseSkipping = true;
+			return;
+		}
+		g_collapseSkipping = false;
+	}
+	reinterpret_cast<KnockStateStepFn>(kKnockStateStep)(process, actor);
+}
+
+void RerouteStepSlot(UInt32 slot, const char* what) {
+	static const UInt8 kStart[9] = {0x83, 0xEC, 0x2C, 0x55, 0x56, 0x8B, 0x74, 0x24, 0x38};
+	const UInt32 held = *reinterpret_cast<const UInt32*>(slot);
+	if (held != kKnockStateStep || !mem::Verify(kKnockStateStep, kStart, sizeof(kStart))) {
+		OBVR_LOG("Comfort: the %s's knock state step slot at %08X holds %08X, not %08X - the collapse and the "
+		         "paralysis fall are left to the game",
+		         what, slot, held, kKnockStateStep);
+		mem::ReportForeignCode("Comfort", slot);
+		return;
+	}
+	const UInt32 replacement = reinterpret_cast<UInt32>(&OnKnockStateStep);
+	if (!mem::SafeWrite(slot, &replacement, sizeof(replacement))) {
+		OBVR_LOG("Comfort: could not reroute the %s's knock state step slot at %08X", what, slot);
+		return;
+	}
+	OBVR_LOG("Comfort: the %s's knock state step rerouted at %08X (the exhaustion instead of the collapse)", what,
+	         slot);
+}
+
 void Reroute(UInt32 callSite, UInt32 original, UInt32 replacement, const char* what) {
 	const UInt32 displacement = mem::CallRelativeDisplacement(callSite, original);
 	const UInt8 expected[5] = {0xE8, static_cast<UInt8>(displacement & 0xFF),
@@ -118,10 +202,20 @@ void InstallPlayerStagger() {
 	        "a hit's knockback");
 	RerouteSlot(kKnockSlotHighProcess, "high process");
 	RerouteSlot(kKnockSlotMiddleHighProcess, "middle-high process");
+	RerouteStepSlot(kKnockStepSlotHighProcess, "high process");
+	RerouteStepSlot(kKnockStepSlotMiddleHighProcess, "middle-high process");
 }
 
 void SetNoPlayerStagger(bool enabled) { g_enabled = enabled; }
 
 void SetNoPlayerKnockdown(bool enabled) { g_knockdownEnabled = enabled; }
+
+void SetExhaustion(bool enabled) { g_exhaustionEnabled = enabled; }
+
+UInt32 TakeCollapseSkips() {
+	const UInt32 skips = g_collapseSkips;
+	g_collapseSkips = 0;
+	return skips;
+}
 
 }  // namespace obvr::game

@@ -1480,6 +1480,16 @@ endif()
 
 add_test(NAME enemy_health COMMAND enemy_health_test)
 
+add_executable(exhaustion_test ExhaustionTest.cpp)
+
+target_include_directories(exhaustion_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(exhaustion_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME exhaustion COMMAND exhaustion_test)
+
 add_executable(ref_fingerprint_test RefFingerprintTest.cpp)
 
 target_include_directories(ref_fingerprint_test PRIVATE ../src)

@@ -287,6 +287,39 @@ void IntegrateFrame(float& x, float& v, float from, float to, float omega, float
 	v = static_cast<float>(pv);
 }
 
+void TestExhausted() {
+	std::printf("The lag exhausted\n");
+	const WeaponLagTuning sword = WeaponLagFor(24.0f, 40.0f, false, true);  // tc 25 ms, caps 0.1 m / 14 degrees
+	WeaponLagTuning t = WeaponLagExhausted(sword, 0.0f, 4.0f);
+	Check(Near(t.timeConstantSeconds, sword.timeConstantSeconds) && Near(t.capMetres, sword.capMetres) &&
+	          Near(t.capRadians, sword.capRadians) && t.swingThrough,
+	      "ease 0: the lag as it is");
+	t = WeaponLagExhausted(sword, 1.0f, 1.0f);
+	Check(Near(t.timeConstantSeconds, sword.timeConstantSeconds), "a factor of 1: as it is");
+	t = WeaponLagExhausted(sword, 1.0f, 4.0f);
+	Check(Near(t.timeConstantSeconds, 0.32f), "a longsword at 40 %, fully exhausted x4: 320 ms (the floor 80 ms times 4)");
+	Check(Near(t.capMetres, 0.4f) && Near(t.capRadians, 56.0f * 3.14159265f / 180.0f, 1e-2f),
+	      "its caps times 4: 0.4 m, 56 degrees");
+	t = WeaponLagExhausted(sword, 0.5f, 4.0f);
+	Check(Near(t.timeConstantSeconds, sword.timeConstantSeconds + (0.32f - sword.timeConstantSeconds) * 0.5f),
+	      "half eased: halfway");
+	const WeaponLagTuning dagger = WeaponLagFor(3.0f, 40.0f, false, true);  // no lag at all
+	t = WeaponLagExhausted(dagger, 1.0f, 4.0f);
+	Check(Near(dagger.timeConstantSeconds, 0.0f) && Near(t.timeConstantSeconds, 0.32f),
+	      "a dagger that never lagged lags exhausted: the floor times 4");
+	const WeaponLagTuning hammer = WeaponLagFor(42.0f, 100.0f, false, true);  // tc 117 ms, caps 0.25 m / 35 degrees
+	t = WeaponLagExhausted(hammer, 1.0f, 10.0f);
+	Check(Near(t.timeConstantSeconds, hammer.timeConstantSeconds * 10.0f, 1e-3f) && Near(t.capMetres, 0.5f) &&
+	          Near(t.capRadians, 90.0f * 3.14159265f / 180.0f, 1e-3f),
+	      "a warhammer at 100 % x10: the caps bounded at half a metre and ninety degrees");
+	t = WeaponLagExhausted(sword, 2.0f, 4.0f);
+	Check(Near(t.timeConstantSeconds, 0.32f), "an ease over 1: as 1");
+	t = WeaponLagExhausted(sword, std::numeric_limits<float>::quiet_NaN(), 4.0f);
+	Check(Near(t.timeConstantSeconds, sword.timeConstantSeconds), "an ease that is not a number: as 0");
+	t = WeaponLagExhausted(sword, 1.0f, std::numeric_limits<float>::quiet_NaN());
+	Check(Near(t.timeConstantSeconds, sword.timeConstantSeconds), "a factor that is not a number: as it is");
+}
+
 void TestSwingThrough() {
 	std::printf("The swing-through\n");
 	const Quaternion identity = Quaternion::Identity();
@@ -528,6 +561,7 @@ int main() {
 	TestStep();
 	TestRotation();
 	TestSwingThrough();
+	TestExhausted();
 	if (g_failures != 0) {
 		std::printf("%d failure(s)\n", g_failures);
 		return 1;

@@ -1,0 +1,84 @@
+# Exhaustion instead of the collapse ([Look] Exhaustion, game/ExhaustionLogic.h,
+# game/PlayerStagger.h): a longsword drawn by the holster. First the paralysis:
+# the console sets the Paralysis actor value, the fall is skipped ("Comfort:
+# the player's paralysis fall was skipped"), the exhaustion begins by it
+# ("Exhaustion: begun ... paralysed 1"), the breath loops, the hand swings
+# slowly so the state lines show the weapon lagging; the value cleared, over.
+# Then the fatigue: the console forces it to -100 (ForceActorValue - a
+# modifier, the base kept; the game has no DamageActorValue, the first run
+# found) - below 0, where the game would put them on the ground: the knock
+# state step is skipped ("fatigue collapse was skipped"), the exhaustion
+# begins, the gasp and the breath play; forced back to the base, over. The
+# fatigue comes LAST because the tutorial quest's "Your Fatigue is low"
+# message box (Oblivion.esm; the harness save still has the quest) pauses the
+# world - the engine's actor update, and with it the knock state step, stand
+# still under it (the second run), and neither Enter nor Space closes it (the
+# third). The marks' state lines carry the ease, the factor and the weapon's
+# gap behind the hand.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\exhaustion.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Look Exhaustion=1
+ini Look ExhaustionSounds=1
+ini Look ExhaustionWeight=4
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+console-at drawn player.setav paralysis 1
+console-at paralysed player.setav paralysis 0
+console-at recovered player.forceav fatigue -100
+console-at low player.forceav fatigue 145
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect Comfort: the player's fatigue collapse was skipped
+expect Exhaustion: begun
+expect the breath, looped
+expect Exhaustion: over
+expect Comfort: the player's paralysis fall was skipped
+expect paralysed 1
+expect the breath stopped
+reject HandScript: WARNING
+reject could not be played
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 12
+mark placed
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 2
+mark drawn
+wait 8
+right pos 0.45 -0.40 -0.30
+wait 0.4
+right pos 0.00 -0.40 -0.30
+wait 0.4
+right pos 0.45 -0.40 -0.30
+wait 0.4
+right pos 0.00 -0.40 -0.30
+wait 0.4
+mark paralysed
+wait 8
+mark recovered
+wait 8
+right pos 0.45 -0.40 -0.30
+wait 0.4
+right pos 0.00 -0.40 -0.30
+wait 0.4
+right pos 0.45 -0.40 -0.30
+wait 0.4
+right pos 0.00 -0.40 -0.30
+wait 0.4
+mark low
+wait 8
+mark end
+wait 1

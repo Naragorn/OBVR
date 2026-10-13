@@ -603,6 +603,13 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Look", "NoPlayerStagger", config.look.noPlayerStagger, path);
 	config.look.noPlayerKnockdown =
 		ReadBool("Look", "NoPlayerKnockdown", config.look.noPlayerKnockdown, path);
+	config.look.exhaustion.enabled = ReadBool("Look", "Exhaustion", config.look.exhaustion.enabled, path);
+	config.look.exhaustion.belowPercent =
+		ReadFloat("Look", "ExhaustionBelowPercent", config.look.exhaustion.belowPercent, path);
+	config.look.exhaustion.abovePercent =
+		ReadFloat("Look", "ExhaustionAbovePercent", config.look.exhaustion.abovePercent, path);
+	config.look.exhaustion.weight = ReadFloat("Look", "ExhaustionWeight", config.look.exhaustion.weight, path);
+	config.look.exhaustion.sounds = ReadBool("Look", "ExhaustionSounds", config.look.exhaustion.sounds, path);
 	config.look.noHitBlur = ReadBool("Look", "NoHitBlur", config.look.noHitBlur, path);
 	config.look.blockFacesView = ReadBool("Look", "BlockFacesView", config.look.blockFacesView, path);
 	config.look.snapTurnDeadZone =

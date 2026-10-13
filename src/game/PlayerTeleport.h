@@ -87,6 +87,10 @@ bool PlaceActorAt(void* actor, const NiPoint3& at);
 // Fatigue now and at most; false when the player cannot be read.
 bool ReadPlayerFatigue(float& now, float& base);
 
+// Whether the player is paralysed: actor value 0x30 (Paralysis) above 0,
+// as the engine's own check asks it (0x005E17E0; game/PlayerStagger.h).
+bool PlayerParalyzed();
+
 // The player's encumbrance as the game counts it now (actor value 11, the
 // weight carried with every script's modAV on it); false when the player
 // cannot be read.
