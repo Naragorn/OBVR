@@ -403,9 +403,9 @@ void Refilter(Body& b, bool pushesActors, int slot) {
 
 UInt32 HandBodyPhysicsSteps() { return Read(kPlannerStepCount); }
 
-bool HavokWorldBoxOf(UInt32 node, NiPoint3& low, NiPoint3& high) {
+UInt32 HavokBodyOfNode(UInt32 node) {
 	if (!g_verified || !LooksLikeObject(node)) {
-		return false;
+		return 0;
 	}
 	// Only bodies of the class the hands' own are: without one of ours to
 	// compare with, nothing is read.
@@ -417,13 +417,21 @@ bool HavokWorldBoxOf(UInt32 node, NiPoint3& low, NiPoint3& high) {
 		}
 	}
 	if (knownBody == 0) {
-		return false;
+		return 0;
 	}
 	using CollisionOfFn = UInt32(__cdecl*)(UInt32 node);
 	const UInt32 collision = reinterpret_cast<CollisionOfFn>(kCollisionObjectOf)(node);
 	const UInt32 wrapper = LooksLikeObject(collision) ? Read(collision + kCollisionObjectBodyOffset) : 0;
 	const UInt32 body = LooksLikeObject(wrapper) ? Read(wrapper + kWrapperObjOffset) : 0;
 	if (!LooksLikeObject(body) || Read(body) != Read(knownBody)) {
+		return 0;
+	}
+	return body;
+}
+
+bool HavokWorldBoxOf(UInt32 node, NiPoint3& low, NiPoint3& high) {
+	const UInt32 body = HavokBodyOfNode(node);
+	if (body == 0) {
 		return false;
 	}
 	const UInt32 shape = Read(body + kBodyShapeOffset);

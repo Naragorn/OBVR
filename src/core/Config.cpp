@@ -738,6 +738,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.grapple.grabs = ReadBool("Hands", "OffHandGrabs", h.grapple.grabs, path);
 		h.grapple.holdSeconds = ReadFloat("Hands", "GrabHoldSeconds", h.grapple.holdSeconds, path);
 		h.grapple.fatigue = ReadFloat("Hands", "GrabFatigue", h.grapple.fatigue, path);
+		h.grapple.ragdoll = ReadBool("Hands", "GrabRagdoll", h.grapple.ragdoll, path);
+		h.grapple.throwStrength = ReadFloat("Hands", "GrabThrowStrength", h.grapple.throwStrength, path);
 		h.reachOpen.enabled = ReadBool("Hands", "ReachOpens", h.reachOpen.enabled, path);
 		h.reachOpen.openMetres = ReadFloat("Hands", "ReachOpenMetres", h.reachOpen.openMetres, path);
 		h.reachOpen.closeMetres = ReadFloat("Hands", "ReachCloseMetres", h.reachOpen.closeMetres, path);

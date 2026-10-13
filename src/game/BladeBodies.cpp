@@ -302,4 +302,16 @@ void ForgetBladeBodies() {
 	}
 }
 
+const NiAVObject* BladeBoneNode(UInt32 actor, UInt32 bone) {
+	if (actor == 0 || bone >= kBladeBoneCount) {
+		return nullptr;
+	}
+	for (const Kept& k : g_kept) {
+		if (k.actor == actor) {
+			return k.bone[bone] != nullptr && IsBone(k.bone[bone]) ? k.bone[bone] : nullptr;
+		}
+	}
+	return nullptr;
+}
+
 }  // namespace obvr::game

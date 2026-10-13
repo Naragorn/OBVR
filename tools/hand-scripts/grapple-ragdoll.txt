@@ -1,0 +1,1145 @@
+# The off hand's ragdoll grab ([Hands] GrabRagdoll; game/GrappleLogic.h,
+# game/RagdollHold.h): grapple.txt's scene and grid - a melee bandit
+# (00069AD1) attacks an untouchable player (tgm) who has a longsword drawn
+# by the holster and held low and to the right; the left hand works a grid
+# to the player's left, closing its grip at each spot, sliding 30 cm
+# towards the player over three quarters of a second, then jumping back as
+# the grip opens. With GrabRagdoll=1 a grip on the bandit's torso, an arm
+# or a leg knocks it down into its ragdoll by the engine's own knockdown
+# with no push ("Grapple: the off hand takes ... knocked down into its
+# ragdoll"), the part's Havok body is driven to the hand ("Grapple:
+# holding ... as a ragdoll ... the body n units from the hand"), the knock
+# state's changes are logged with their times (2 the lead-in, 1 down, 5-6
+# the get-up; the engine's clock is stamped anew while it lies, so the
+# get-up waits), and the jump back throws the held part with the hand's
+# speed ("the held part sent off at"). A grip on the bandit lying knocked
+# down takes it as it lies. A grip on the head or the neck is the standing
+# hold of grapple.txt. OffHandStrikes and TwoHandOneHanders off as there;
+# GrabHoldSeconds 6. Three sweeps of the grid.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\grapple-ragdoll.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands OffHandGrabs=1
+ini Hands GrabRagdoll=1
+ini Hands GrabThrowStrength=1.5
+ini Hands OffHandStrikes=0
+ini Hands TwoHandOneHanders=0
+ini Hands GrabHoldSeconds=6
+ini Hands CombatReach=85
+ini Hands SlowApproach=1
+console-at ready player.placeatme 00069AD1 1
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+console-at ready tgm
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect Grapple: the off hand takes
+expect knocked down into its ragdoll
+expect Grapple: holding
+expect as a ragdoll
+expect knock state
+expect the held part sent off at
+reject HandScript: WARNING
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 22
+mark placed
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.55 -0.90 -0.30
+wait 2
+mark drawn
+left pos -0.90 -0.55 0.00
+left grip 1
+wait 0.1
+left pos -0.80 -0.55 0.00
+wait 0.25
+left pos -0.70 -0.55 0.00
+wait 0.25
+left pos -0.60 -0.55 0.00
+wait 0.25
+left pos -0.90 -0.55 0.00
+left grip 0
+wait 0.1
+left pos -0.90 -0.55 -0.30
+left grip 1
+wait 0.1
+left pos -0.80 -0.55 -0.30
+wait 0.25
+left pos -0.70 -0.55 -0.30
+wait 0.25
+left pos -0.60 -0.55 -0.30
+wait 0.25
+left pos -0.90 -0.55 -0.30
+left grip 0
+wait 0.1
+left pos -0.90 -0.55 0.30
+left grip 1
+wait 0.1
+left pos -0.80 -0.55 0.30
+wait 0.25
+left pos -0.70 -0.55 0.30
+wait 0.25
+left pos -0.60 -0.55 0.30
+wait 0.25
+left pos -0.90 -0.55 0.30
+left grip 0
+wait 0.1
+left pos -0.90 -0.55 -0.60
+left grip 1
+wait 0.1
+left pos -0.80 -0.55 -0.60
+wait 0.25
+left pos -0.70 -0.55 -0.60
+wait 0.25
+left pos -0.60 -0.55 -0.60
+wait 0.25
+left pos -0.90 -0.55 -0.60
+left grip 0
+wait 0.1
+left pos -0.90 -0.55 0.60
+left grip 1
+wait 0.1
+left pos -0.80 -0.55 0.60
+wait 0.25
+left pos -0.70 -0.55 0.60
+wait 0.25
+left pos -0.60 -0.55 0.60
+wait 0.25
+left pos -0.90 -0.55 0.60
+left grip 0
+wait 0.1
+left pos -0.90 -0.55 0.90
+left grip 1
+wait 0.1
+left pos -0.80 -0.55 0.90
+wait 0.25
+left pos -0.70 -0.55 0.90
+wait 0.25
+left pos -0.60 -0.55 0.90
+wait 0.25
+left pos -0.90 -0.55 0.90
+left grip 0
+wait 0.1
+left pos -1.20 -0.55 0.00
+left grip 1
+wait 0.1
+left pos -1.10 -0.55 0.00
+wait 0.25
+left pos -1.00 -0.55 0.00
+wait 0.25
+left pos -0.90 -0.55 0.00
+wait 0.25
+left pos -1.20 -0.55 0.00
+left grip 0
+wait 0.1
+left pos -1.20 -0.55 -0.30
+left grip 1
+wait 0.1
+left pos -1.10 -0.55 -0.30
+wait 0.25
+left pos -1.00 -0.55 -0.30
+wait 0.25
+left pos -0.90 -0.55 -0.30
+wait 0.25
+left pos -1.20 -0.55 -0.30
+left grip 0
+wait 0.1
+left pos -1.20 -0.55 0.30
+left grip 1
+wait 0.1
+left pos -1.10 -0.55 0.30
+wait 0.25
+left pos -1.00 -0.55 0.30
+wait 0.25
+left pos -0.90 -0.55 0.30
+wait 0.25
+left pos -1.20 -0.55 0.30
+left grip 0
+wait 0.1
+left pos -1.20 -0.55 -0.60
+left grip 1
+wait 0.1
+left pos -1.10 -0.55 -0.60
+wait 0.25
+left pos -1.00 -0.55 -0.60
+wait 0.25
+left pos -0.90 -0.55 -0.60
+wait 0.25
+left pos -1.20 -0.55 -0.60
+left grip 0
+wait 0.1
+left pos -1.20 -0.55 0.60
+left grip 1
+wait 0.1
+left pos -1.10 -0.55 0.60
+wait 0.25
+left pos -1.00 -0.55 0.60
+wait 0.25
+left pos -0.90 -0.55 0.60
+wait 0.25
+left pos -1.20 -0.55 0.60
+left grip 0
+wait 0.1
+left pos -1.20 -0.55 0.90
+left grip 1
+wait 0.1
+left pos -1.10 -0.55 0.90
+wait 0.25
+left pos -1.00 -0.55 0.90
+wait 0.25
+left pos -0.90 -0.55 0.90
+wait 0.25
+left pos -1.20 -0.55 0.90
+left grip 0
+wait 0.1
+left pos -0.60 -0.55 0.00
+left grip 1
+wait 0.1
+left pos -0.50 -0.55 0.00
+wait 0.25
+left pos -0.40 -0.55 0.00
+wait 0.25
+left pos -0.30 -0.55 0.00
+wait 0.25
+left pos -0.60 -0.55 0.00
+left grip 0
+wait 0.1
+left pos -0.60 -0.55 -0.30
+left grip 1
+wait 0.1
+left pos -0.50 -0.55 -0.30
+wait 0.25
+left pos -0.40 -0.55 -0.30
+wait 0.25
+left pos -0.30 -0.55 -0.30
+wait 0.25
+left pos -0.60 -0.55 -0.30
+left grip 0
+wait 0.1
+left pos -0.60 -0.55 0.30
+left grip 1
+wait 0.1
+left pos -0.50 -0.55 0.30
+wait 0.25
+left pos -0.40 -0.55 0.30
+wait 0.25
+left pos -0.30 -0.55 0.30
+wait 0.25
+left pos -0.60 -0.55 0.30
+left grip 0
+wait 0.1
+left pos -0.60 -0.55 -0.60
+left grip 1
+wait 0.1
+left pos -0.50 -0.55 -0.60
+wait 0.25
+left pos -0.40 -0.55 -0.60
+wait 0.25
+left pos -0.30 -0.55 -0.60
+wait 0.25
+left pos -0.60 -0.55 -0.60
+left grip 0
+wait 0.1
+left pos -0.60 -0.55 0.60
+left grip 1
+wait 0.1
+left pos -0.50 -0.55 0.60
+wait 0.25
+left pos -0.40 -0.55 0.60
+wait 0.25
+left pos -0.30 -0.55 0.60
+wait 0.25
+left pos -0.60 -0.55 0.60
+left grip 0
+wait 0.1
+left pos -0.60 -0.55 0.90
+left grip 1
+wait 0.1
+left pos -0.50 -0.55 0.90
+wait 0.25
+left pos -0.40 -0.55 0.90
+wait 0.25
+left pos -0.30 -0.55 0.90
+wait 0.25
+left pos -0.60 -0.55 0.90
+left grip 0
+wait 0.1
+left pos -1.50 -0.55 0.00
+left grip 1
+wait 0.1
+left pos -1.40 -0.55 0.00
+wait 0.25
+left pos -1.30 -0.55 0.00
+wait 0.25
+left pos -1.20 -0.55 0.00
+wait 0.25
+left pos -1.50 -0.55 0.00
+left grip 0
+wait 0.1
+left pos -1.50 -0.55 -0.30
+left grip 1
+wait 0.1
+left pos -1.40 -0.55 -0.30
+wait 0.25
+left pos -1.30 -0.55 -0.30
+wait 0.25
+left pos -1.20 -0.55 -0.30
+wait 0.25
+left pos -1.50 -0.55 -0.30
+left grip 0
+wait 0.1
+left pos -1.50 -0.55 0.30
+left grip 1
+wait 0.1
+left pos -1.40 -0.55 0.30
+wait 0.25
+left pos -1.30 -0.55 0.30
+wait 0.25
+left pos -1.20 -0.55 0.30
+wait 0.25
+left pos -1.50 -0.55 0.30
+left grip 0
+wait 0.1
+left pos -1.50 -0.55 -0.60
+left grip 1
+wait 0.1
+left pos -1.40 -0.55 -0.60
+wait 0.25
+left pos -1.30 -0.55 -0.60
+wait 0.25
+left pos -1.20 -0.55 -0.60
+wait 0.25
+left pos -1.50 -0.55 -0.60
+left grip 0
+wait 0.1
+left pos -1.50 -0.55 0.60
+left grip 1
+wait 0.1
+left pos -1.40 -0.55 0.60
+wait 0.25
+left pos -1.30 -0.55 0.60
+wait 0.25
+left pos -1.20 -0.55 0.60
+wait 0.25
+left pos -1.50 -0.55 0.60
+left grip 0
+wait 0.1
+left pos -1.50 -0.55 0.90
+left grip 1
+wait 0.1
+left pos -1.40 -0.55 0.90
+wait 0.25
+left pos -1.30 -0.55 0.90
+wait 0.25
+left pos -1.20 -0.55 0.90
+wait 0.25
+left pos -1.50 -0.55 0.90
+left grip 0
+wait 0.1
+left pos -1.80 -0.55 0.00
+left grip 1
+wait 0.1
+left pos -1.70 -0.55 0.00
+wait 0.25
+left pos -1.60 -0.55 0.00
+wait 0.25
+left pos -1.50 -0.55 0.00
+wait 0.25
+left pos -1.80 -0.55 0.00
+left grip 0
+wait 0.1
+left pos -1.80 -0.55 -0.30
+left grip 1
+wait 0.1
+left pos -1.70 -0.55 -0.30
+wait 0.25
+left pos -1.60 -0.55 -0.30
+wait 0.25
+left pos -1.50 -0.55 -0.30
+wait 0.25
+left pos -1.80 -0.55 -0.30
+left grip 0
+wait 0.1
+left pos -1.80 -0.55 0.30
+left grip 1
+wait 0.1
+left pos -1.70 -0.55 0.30
+wait 0.25
+left pos -1.60 -0.55 0.30
+wait 0.25
+left pos -1.50 -0.55 0.30
+wait 0.25
+left pos -1.80 -0.55 0.30
+left grip 0
+wait 0.1
+left pos -1.80 -0.55 -0.60
+left grip 1
+wait 0.1
+left pos -1.70 -0.55 -0.60
+wait 0.25
+left pos -1.60 -0.55 -0.60
+wait 0.25
+left pos -1.50 -0.55 -0.60
+wait 0.25
+left pos -1.80 -0.55 -0.60
+left grip 0
+wait 0.1
+left pos -1.80 -0.55 0.60
+left grip 1
+wait 0.1
+left pos -1.70 -0.55 0.60
+wait 0.25
+left pos -1.60 -0.55 0.60
+wait 0.25
+left pos -1.50 -0.55 0.60
+wait 0.25
+left pos -1.80 -0.55 0.60
+left grip 0
+wait 0.1
+left pos -1.80 -0.55 0.90
+left grip 1
+wait 0.1
+left pos -1.70 -0.55 0.90
+wait 0.25
+left pos -1.60 -0.55 0.90
+wait 0.25
+left pos -1.50 -0.55 0.90
+wait 0.25
+left pos -1.80 -0.55 0.90
+left grip 0
+wait 0.1
+mark sweep1
+left pos -0.90 -0.55 0.00
+left grip 1
+wait 0.1
+left pos -0.80 -0.55 0.00
+wait 0.25
+left pos -0.70 -0.55 0.00
+wait 0.25
+left pos -0.60 -0.55 0.00
+wait 0.25
+left pos -0.90 -0.55 0.00
+left grip 0
+wait 0.1
+left pos -0.90 -0.55 -0.30
+left grip 1
+wait 0.1
+left pos -0.80 -0.55 -0.30
+wait 0.25
+left pos -0.70 -0.55 -0.30
+wait 0.25
+left pos -0.60 -0.55 -0.30
+wait 0.25
+left pos -0.90 -0.55 -0.30
+left grip 0
+wait 0.1
+left pos -0.90 -0.55 0.30
+left grip 1
+wait 0.1
+left pos -0.80 -0.55 0.30
+wait 0.25
+left pos -0.70 -0.55 0.30
+wait 0.25
+left pos -0.60 -0.55 0.30
+wait 0.25
+left pos -0.90 -0.55 0.30
+left grip 0
+wait 0.1
+left pos -0.90 -0.55 -0.60
+left grip 1
+wait 0.1
+left pos -0.80 -0.55 -0.60
+wait 0.25
+left pos -0.70 -0.55 -0.60
+wait 0.25
+left pos -0.60 -0.55 -0.60
+wait 0.25
+left pos -0.90 -0.55 -0.60
+left grip 0
+wait 0.1
+left pos -0.90 -0.55 0.60
+left grip 1
+wait 0.1
+left pos -0.80 -0.55 0.60
+wait 0.25
+left pos -0.70 -0.55 0.60
+wait 0.25
+left pos -0.60 -0.55 0.60
+wait 0.25
+left pos -0.90 -0.55 0.60
+left grip 0
+wait 0.1
+left pos -0.90 -0.55 0.90
+left grip 1
+wait 0.1
+left pos -0.80 -0.55 0.90
+wait 0.25
+left pos -0.70 -0.55 0.90
+wait 0.25
+left pos -0.60 -0.55 0.90
+wait 0.25
+left pos -0.90 -0.55 0.90
+left grip 0
+wait 0.1
+left pos -1.20 -0.55 0.00
+left grip 1
+wait 0.1
+left pos -1.10 -0.55 0.00
+wait 0.25
+left pos -1.00 -0.55 0.00
+wait 0.25
+left pos -0.90 -0.55 0.00
+wait 0.25
+left pos -1.20 -0.55 0.00
+left grip 0
+wait 0.1
+left pos -1.20 -0.55 -0.30
+left grip 1
+wait 0.1
+left pos -1.10 -0.55 -0.30
+wait 0.25
+left pos -1.00 -0.55 -0.30
+wait 0.25
+left pos -0.90 -0.55 -0.30
+wait 0.25
+left pos -1.20 -0.55 -0.30
+left grip 0
+wait 0.1
+left pos -1.20 -0.55 0.30
+left grip 1
+wait 0.1
+left pos -1.10 -0.55 0.30
+wait 0.25
+left pos -1.00 -0.55 0.30
+wait 0.25
+left pos -0.90 -0.55 0.30
+wait 0.25
+left pos -1.20 -0.55 0.30
+left grip 0
+wait 0.1
+left pos -1.20 -0.55 -0.60
+left grip 1
+wait 0.1
+left pos -1.10 -0.55 -0.60
+wait 0.25
+left pos -1.00 -0.55 -0.60
+wait 0.25
+left pos -0.90 -0.55 -0.60
+wait 0.25
+left pos -1.20 -0.55 -0.60
+left grip 0
+wait 0.1
+left pos -1.20 -0.55 0.60
+left grip 1
+wait 0.1
+left pos -1.10 -0.55 0.60
+wait 0.25
+left pos -1.00 -0.55 0.60
+wait 0.25
+left pos -0.90 -0.55 0.60
+wait 0.25
+left pos -1.20 -0.55 0.60
+left grip 0
+wait 0.1
+left pos -1.20 -0.55 0.90
+left grip 1
+wait 0.1
+left pos -1.10 -0.55 0.90
+wait 0.25
+left pos -1.00 -0.55 0.90
+wait 0.25
+left pos -0.90 -0.55 0.90
+wait 0.25
+left pos -1.20 -0.55 0.90
+left grip 0
+wait 0.1
+left pos -0.60 -0.55 0.00
+left grip 1
+wait 0.1
+left pos -0.50 -0.55 0.00
+wait 0.25
+left pos -0.40 -0.55 0.00
+wait 0.25
+left pos -0.30 -0.55 0.00
+wait 0.25
+left pos -0.60 -0.55 0.00
+left grip 0
+wait 0.1
+left pos -0.60 -0.55 -0.30
+left grip 1
+wait 0.1
+left pos -0.50 -0.55 -0.30
+wait 0.25
+left pos -0.40 -0.55 -0.30
+wait 0.25
+left pos -0.30 -0.55 -0.30
+wait 0.25
+left pos -0.60 -0.55 -0.30
+left grip 0
+wait 0.1
+left pos -0.60 -0.55 0.30
+left grip 1
+wait 0.1
+left pos -0.50 -0.55 0.30
+wait 0.25
+left pos -0.40 -0.55 0.30
+wait 0.25
+left pos -0.30 -0.55 0.30
+wait 0.25
+left pos -0.60 -0.55 0.30
+left grip 0
+wait 0.1
+left pos -0.60 -0.55 -0.60
+left grip 1
+wait 0.1
+left pos -0.50 -0.55 -0.60
+wait 0.25
+left pos -0.40 -0.55 -0.60
+wait 0.25
+left pos -0.30 -0.55 -0.60
+wait 0.25
+left pos -0.60 -0.55 -0.60
+left grip 0
+wait 0.1
+left pos -0.60 -0.55 0.60
+left grip 1
+wait 0.1
+left pos -0.50 -0.55 0.60
+wait 0.25
+left pos -0.40 -0.55 0.60
+wait 0.25
+left pos -0.30 -0.55 0.60
+wait 0.25
+left pos -0.60 -0.55 0.60
+left grip 0
+wait 0.1
+left pos -0.60 -0.55 0.90
+left grip 1
+wait 0.1
+left pos -0.50 -0.55 0.90
+wait 0.25
+left pos -0.40 -0.55 0.90
+wait 0.25
+left pos -0.30 -0.55 0.90
+wait 0.25
+left pos -0.60 -0.55 0.90
+left grip 0
+wait 0.1
+left pos -1.50 -0.55 0.00
+left grip 1
+wait 0.1
+left pos -1.40 -0.55 0.00
+wait 0.25
+left pos -1.30 -0.55 0.00
+wait 0.25
+left pos -1.20 -0.55 0.00
+wait 0.25
+left pos -1.50 -0.55 0.00
+left grip 0
+wait 0.1
+left pos -1.50 -0.55 -0.30
+left grip 1
+wait 0.1
+left pos -1.40 -0.55 -0.30
+wait 0.25
+left pos -1.30 -0.55 -0.30
+wait 0.25
+left pos -1.20 -0.55 -0.30
+wait 0.25
+left pos -1.50 -0.55 -0.30
+left grip 0
+wait 0.1
+left pos -1.50 -0.55 0.30
+left grip 1
+wait 0.1
+left pos -1.40 -0.55 0.30
+wait 0.25
+left pos -1.30 -0.55 0.30
+wait 0.25
+left pos -1.20 -0.55 0.30
+wait 0.25
+left pos -1.50 -0.55 0.30
+left grip 0
+wait 0.1
+left pos -1.50 -0.55 -0.60
+left grip 1
+wait 0.1
+left pos -1.40 -0.55 -0.60
+wait 0.25
+left pos -1.30 -0.55 -0.60
+wait 0.25
+left pos -1.20 -0.55 -0.60
+wait 0.25
+left pos -1.50 -0.55 -0.60
+left grip 0
+wait 0.1
+left pos -1.50 -0.55 0.60
+left grip 1
+wait 0.1
+left pos -1.40 -0.55 0.60
+wait 0.25
+left pos -1.30 -0.55 0.60
+wait 0.25
+left pos -1.20 -0.55 0.60
+wait 0.25
+left pos -1.50 -0.55 0.60
+left grip 0
+wait 0.1
+left pos -1.50 -0.55 0.90
+left grip 1
+wait 0.1
+left pos -1.40 -0.55 0.90
+wait 0.25
+left pos -1.30 -0.55 0.90
+wait 0.25
+left pos -1.20 -0.55 0.90
+wait 0.25
+left pos -1.50 -0.55 0.90
+left grip 0
+wait 0.1
+left pos -1.80 -0.55 0.00
+left grip 1
+wait 0.1
+left pos -1.70 -0.55 0.00
+wait 0.25
+left pos -1.60 -0.55 0.00
+wait 0.25
+left pos -1.50 -0.55 0.00
+wait 0.25
+left pos -1.80 -0.55 0.00
+left grip 0
+wait 0.1
+left pos -1.80 -0.55 -0.30
+left grip 1
+wait 0.1
+left pos -1.70 -0.55 -0.30
+wait 0.25
+left pos -1.60 -0.55 -0.30
+wait 0.25
+left pos -1.50 -0.55 -0.30
+wait 0.25
+left pos -1.80 -0.55 -0.30
+left grip 0
+wait 0.1
+left pos -1.80 -0.55 0.30
+left grip 1
+wait 0.1
+left pos -1.70 -0.55 0.30
+wait 0.25
+left pos -1.60 -0.55 0.30
+wait 0.25
+left pos -1.50 -0.55 0.30
+wait 0.25
+left pos -1.80 -0.55 0.30
+left grip 0
+wait 0.1
+left pos -1.80 -0.55 -0.60
+left grip 1
+wait 0.1
+left pos -1.70 -0.55 -0.60
+wait 0.25
+left pos -1.60 -0.55 -0.60
+wait 0.25
+left pos -1.50 -0.55 -0.60
+wait 0.25
+left pos -1.80 -0.55 -0.60
+left grip 0
+wait 0.1
+left pos -1.80 -0.55 0.60
+left grip 1
+wait 0.1
+left pos -1.70 -0.55 0.60
+wait 0.25
+left pos -1.60 -0.55 0.60
+wait 0.25
+left pos -1.50 -0.55 0.60
+wait 0.25
+left pos -1.80 -0.55 0.60
+left grip 0
+wait 0.1
+left pos -1.80 -0.55 0.90
+left grip 1
+wait 0.1
+left pos -1.70 -0.55 0.90
+wait 0.25
+left pos -1.60 -0.55 0.90
+wait 0.25
+left pos -1.50 -0.55 0.90
+wait 0.25
+left pos -1.80 -0.55 0.90
+left grip 0
+wait 0.1
+mark sweep2
+left pos -0.90 -0.55 0.00
+left grip 1
+wait 0.1
+left pos -0.80 -0.55 0.00
+wait 0.25
+left pos -0.70 -0.55 0.00
+wait 0.25
+left pos -0.60 -0.55 0.00
+wait 0.25
+left pos -0.90 -0.55 0.00
+left grip 0
+wait 0.1
+left pos -0.90 -0.55 -0.30
+left grip 1
+wait 0.1
+left pos -0.80 -0.55 -0.30
+wait 0.25
+left pos -0.70 -0.55 -0.30
+wait 0.25
+left pos -0.60 -0.55 -0.30
+wait 0.25
+left pos -0.90 -0.55 -0.30
+left grip 0
+wait 0.1
+left pos -0.90 -0.55 0.30
+left grip 1
+wait 0.1
+left pos -0.80 -0.55 0.30
+wait 0.25
+left pos -0.70 -0.55 0.30
+wait 0.25
+left pos -0.60 -0.55 0.30
+wait 0.25
+left pos -0.90 -0.55 0.30
+left grip 0
+wait 0.1
+left pos -0.90 -0.55 -0.60
+left grip 1
+wait 0.1
+left pos -0.80 -0.55 -0.60
+wait 0.25
+left pos -0.70 -0.55 -0.60
+wait 0.25
+left pos -0.60 -0.55 -0.60
+wait 0.25
+left pos -0.90 -0.55 -0.60
+left grip 0
+wait 0.1
+left pos -0.90 -0.55 0.60
+left grip 1
+wait 0.1
+left pos -0.80 -0.55 0.60
+wait 0.25
+left pos -0.70 -0.55 0.60
+wait 0.25
+left pos -0.60 -0.55 0.60
+wait 0.25
+left pos -0.90 -0.55 0.60
+left grip 0
+wait 0.1
+left pos -0.90 -0.55 0.90
+left grip 1
+wait 0.1
+left pos -0.80 -0.55 0.90
+wait 0.25
+left pos -0.70 -0.55 0.90
+wait 0.25
+left pos -0.60 -0.55 0.90
+wait 0.25
+left pos -0.90 -0.55 0.90
+left grip 0
+wait 0.1
+left pos -1.20 -0.55 0.00
+left grip 1
+wait 0.1
+left pos -1.10 -0.55 0.00
+wait 0.25
+left pos -1.00 -0.55 0.00
+wait 0.25
+left pos -0.90 -0.55 0.00
+wait 0.25
+left pos -1.20 -0.55 0.00
+left grip 0
+wait 0.1
+left pos -1.20 -0.55 -0.30
+left grip 1
+wait 0.1
+left pos -1.10 -0.55 -0.30
+wait 0.25
+left pos -1.00 -0.55 -0.30
+wait 0.25
+left pos -0.90 -0.55 -0.30
+wait 0.25
+left pos -1.20 -0.55 -0.30
+left grip 0
+wait 0.1
+left pos -1.20 -0.55 0.30
+left grip 1
+wait 0.1
+left pos -1.10 -0.55 0.30
+wait 0.25
+left pos -1.00 -0.55 0.30
+wait 0.25
+left pos -0.90 -0.55 0.30
+wait 0.25
+left pos -1.20 -0.55 0.30
+left grip 0
+wait 0.1
+left pos -1.20 -0.55 -0.60
+left grip 1
+wait 0.1
+left pos -1.10 -0.55 -0.60
+wait 0.25
+left pos -1.00 -0.55 -0.60
+wait 0.25
+left pos -0.90 -0.55 -0.60
+wait 0.25
+left pos -1.20 -0.55 -0.60
+left grip 0
+wait 0.1
+left pos -1.20 -0.55 0.60
+left grip 1
+wait 0.1
+left pos -1.10 -0.55 0.60
+wait 0.25
+left pos -1.00 -0.55 0.60
+wait 0.25
+left pos -0.90 -0.55 0.60
+wait 0.25
+left pos -1.20 -0.55 0.60
+left grip 0
+wait 0.1
+left pos -1.20 -0.55 0.90
+left grip 1
+wait 0.1
+left pos -1.10 -0.55 0.90
+wait 0.25
+left pos -1.00 -0.55 0.90
+wait 0.25
+left pos -0.90 -0.55 0.90
+wait 0.25
+left pos -1.20 -0.55 0.90
+left grip 0
+wait 0.1
+left pos -0.60 -0.55 0.00
+left grip 1
+wait 0.1
+left pos -0.50 -0.55 0.00
+wait 0.25
+left pos -0.40 -0.55 0.00
+wait 0.25
+left pos -0.30 -0.55 0.00
+wait 0.25
+left pos -0.60 -0.55 0.00
+left grip 0
+wait 0.1
+left pos -0.60 -0.55 -0.30
+left grip 1
+wait 0.1
+left pos -0.50 -0.55 -0.30
+wait 0.25
+left pos -0.40 -0.55 -0.30
+wait 0.25
+left pos -0.30 -0.55 -0.30
+wait 0.25
+left pos -0.60 -0.55 -0.30
+left grip 0
+wait 0.1
+left pos -0.60 -0.55 0.30
+left grip 1
+wait 0.1
+left pos -0.50 -0.55 0.30
+wait 0.25
+left pos -0.40 -0.55 0.30
+wait 0.25
+left pos -0.30 -0.55 0.30
+wait 0.25
+left pos -0.60 -0.55 0.30
+left grip 0
+wait 0.1
+left pos -0.60 -0.55 -0.60
+left grip 1
+wait 0.1
+left pos -0.50 -0.55 -0.60
+wait 0.25
+left pos -0.40 -0.55 -0.60
+wait 0.25
+left pos -0.30 -0.55 -0.60
+wait 0.25
+left pos -0.60 -0.55 -0.60
+left grip 0
+wait 0.1
+left pos -0.60 -0.55 0.60
+left grip 1
+wait 0.1
+left pos -0.50 -0.55 0.60
+wait 0.25
+left pos -0.40 -0.55 0.60
+wait 0.25
+left pos -0.30 -0.55 0.60
+wait 0.25
+left pos -0.60 -0.55 0.60
+left grip 0
+wait 0.1
+left pos -0.60 -0.55 0.90
+left grip 1
+wait 0.1
+left pos -0.50 -0.55 0.90
+wait 0.25
+left pos -0.40 -0.55 0.90
+wait 0.25
+left pos -0.30 -0.55 0.90
+wait 0.25
+left pos -0.60 -0.55 0.90
+left grip 0
+wait 0.1
+left pos -1.50 -0.55 0.00
+left grip 1
+wait 0.1
+left pos -1.40 -0.55 0.00
+wait 0.25
+left pos -1.30 -0.55 0.00
+wait 0.25
+left pos -1.20 -0.55 0.00
+wait 0.25
+left pos -1.50 -0.55 0.00
+left grip 0
+wait 0.1
+left pos -1.50 -0.55 -0.30
+left grip 1
+wait 0.1
+left pos -1.40 -0.55 -0.30
+wait 0.25
+left pos -1.30 -0.55 -0.30
+wait 0.25
+left pos -1.20 -0.55 -0.30
+wait 0.25
+left pos -1.50 -0.55 -0.30
+left grip 0
+wait 0.1
+left pos -1.50 -0.55 0.30
+left grip 1
+wait 0.1
+left pos -1.40 -0.55 0.30
+wait 0.25
+left pos -1.30 -0.55 0.30
+wait 0.25
+left pos -1.20 -0.55 0.30
+wait 0.25
+left pos -1.50 -0.55 0.30
+left grip 0
+wait 0.1
+left pos -1.50 -0.55 -0.60
+left grip 1
+wait 0.1
+left pos -1.40 -0.55 -0.60
+wait 0.25
+left pos -1.30 -0.55 -0.60
+wait 0.25
+left pos -1.20 -0.55 -0.60
+wait 0.25
+left pos -1.50 -0.55 -0.60
+left grip 0
+wait 0.1
+left pos -1.50 -0.55 0.60
+left grip 1
+wait 0.1
+left pos -1.40 -0.55 0.60
+wait 0.25
+left pos -1.30 -0.55 0.60
+wait 0.25
+left pos -1.20 -0.55 0.60
+wait 0.25
+left pos -1.50 -0.55 0.60
+left grip 0
+wait 0.1
+left pos -1.50 -0.55 0.90
+left grip 1
+wait 0.1
+left pos -1.40 -0.55 0.90
+wait 0.25
+left pos -1.30 -0.55 0.90
+wait 0.25
+left pos -1.20 -0.55 0.90
+wait 0.25
+left pos -1.50 -0.55 0.90
+left grip 0
+wait 0.1
+left pos -1.80 -0.55 0.00
+left grip 1
+wait 0.1
+left pos -1.70 -0.55 0.00
+wait 0.25
+left pos -1.60 -0.55 0.00
+wait 0.25
+left pos -1.50 -0.55 0.00
+wait 0.25
+left pos -1.80 -0.55 0.00
+left grip 0
+wait 0.1
+left pos -1.80 -0.55 -0.30
+left grip 1
+wait 0.1
+left pos -1.70 -0.55 -0.30
+wait 0.25
+left pos -1.60 -0.55 -0.30
+wait 0.25
+left pos -1.50 -0.55 -0.30
+wait 0.25
+left pos -1.80 -0.55 -0.30
+left grip 0
+wait 0.1
+left pos -1.80 -0.55 0.30
+left grip 1
+wait 0.1
+left pos -1.70 -0.55 0.30
+wait 0.25
+left pos -1.60 -0.55 0.30
+wait 0.25
+left pos -1.50 -0.55 0.30
+wait 0.25
+left pos -1.80 -0.55 0.30
+left grip 0
+wait 0.1
+left pos -1.80 -0.55 -0.60
+left grip 1
+wait 0.1
+left pos -1.70 -0.55 -0.60
+wait 0.25
+left pos -1.60 -0.55 -0.60
+wait 0.25
+left pos -1.50 -0.55 -0.60
+wait 0.25
+left pos -1.80 -0.55 -0.60
+left grip 0
+wait 0.1
+left pos -1.80 -0.55 0.60
+left grip 1
+wait 0.1
+left pos -1.70 -0.55 0.60
+wait 0.25
+left pos -1.60 -0.55 0.60
+wait 0.25
+left pos -1.50 -0.55 0.60
+wait 0.25
+left pos -1.80 -0.55 0.60
+left grip 0
+wait 0.1
+left pos -1.80 -0.55 0.90
+left grip 1
+wait 0.1
+left pos -1.70 -0.55 0.90
+wait 0.25
+left pos -1.60 -0.55 0.90
+wait 0.25
+left pos -1.50 -0.55 0.90
+wait 0.25
+left pos -1.80 -0.55 0.90
+left grip 0
+wait 0.1
+mark sweep3
+wait 1

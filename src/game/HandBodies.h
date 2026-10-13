@@ -84,4 +84,11 @@ UInt32 HandBodyPhysicsSteps();
 // when it has none, or it is no rigid body of the hands' own class.
 bool HavokWorldBoxOf(UInt32 node, NiPoint3& low, NiPoint3& high);
 
+// The hkRigidBody under a node's collision object (the getter 0x0047FAC0
+// walks the RTTI parents, so a skeleton's bhkBlendCollisionObject passes;
+// the wrapper at +0x10, the hk body at its +0x08), when it is of the class
+// the hands' own bodies are; 0 otherwise, and 0 before the hands' bodies
+// exist to compare with.
+UInt32 HavokBodyOfNode(UInt32 node);
+
 }  // namespace obvr::game

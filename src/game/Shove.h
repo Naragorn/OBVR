@@ -49,6 +49,33 @@ bool PushActorBy(void* actor, const NiPoint3& distance, float seconds);
 // someone a hand can hold.
 bool ActorStanding(void* actor);
 
+// Alive and in a high process, whatever their knock state (ActorStanding is
+// this with the knock state 0).
+bool ActorAliveInHighProcess(void* actor);
+
+// Their knock state (HighProcess +0x11C, one byte; GrappleLogic.h's
+// KnockStateDown has the values read): -1 when they are dead or have no
+// high process.
+SInt32 ActorKnockState(void* actor);
+
+// The engine's knockdown (0x00654420) with `force` from `fromWorld` - 0
+// takes them down into their ragdoll where they stand, with no push: the
+// impulse (0x005364B0) is the force times the direction. False when
+// refused - not verified, no high process, already down - or when the
+// engine took the ragdoll-less way (a push through the proxy, the knock
+// state left 0: its vtable +0x278 answered no ragdoll).
+bool KnockActorDown(void* actor, const NiPoint3& fromWorld, float force);
+
+// The process's time stamped anew: the process vtable's +0x20
+// (0x00643640, on the high and the middle-high process alike) writes the
+// game hour into LowProcess::curHour (+0x14) and the packed date into
+// +0x18 (xOBSE GameProcess.h). The knockdown stamps it (0x00654548) and
+// the knock state's step (0x006545E0) measures the get-up from it: 2.4 s,
+// or 5.4 with the body's root lifted 16 units off the proxy (read
+// 2026-10-13; GrappleLogic.h, kKnockGetUpSeconds). Stamped again, the
+// get-up waits anew. False when the slot does not hold the function read.
+bool StampProcessTime(void* actor);
+
 // Put it in its Place - Enhanced Grabbing's load index when it is loaded
 // (its slap noise and its slapped idle token found in the game's form table
 // under that index), 0 when it is not. Read once; a slap in the face then

@@ -39,6 +39,7 @@
 #include "game/EngineInput.h"
 #include "game/HandControls.h"
 #include "game/MeleeHits.h"
+#include "game/RagdollHold.h"
 #include "game/Shove.h"
 #include "game/ThirdPersonAimVisual.h"
 #include "game/BodyPlacement.h"
@@ -987,23 +988,54 @@ void StepShoves(const Config& config, float dt) {
 }
 
 // The off hand's grab of a fighter (game/GrappleLogic.h): the grip closed at
-// someone fighting holds them - staggered, their legs held (game::HoldStill),
-// placed where the hand wants them each frame (game::PlaceActorAt),
-// and held by the head, the neck or the weapon arm their blows stopped
-// (game::SetHeldFoe); let go at speed they are thrown as a shove throws.
+// someone fighting holds them. The standing hold: staggered, their legs
+// held (game::HoldStill), placed where the hand wants them each frame
+// (game::PlaceActorAt), and held by the head, the neck or the weapon arm
+// their blows stopped (game::SetHeldFoe); let go at speed they are thrown
+// as a shove throws. The ragdoll hold ([Hands] GrabRagdoll; the torso, an
+// arm or a leg): knocked down into their ragdoll by the engine's own
+// knockdown with no push (game::KnockActorDown), the part's Havok body
+// driven to the hand each frame (game/RagdollHold.h), the engine's get-up
+// clock stamped anew while they lie (game::StampProcessTime); let go fast
+// the held part is sent off with the hand's speed.
 game::GrappleState g_grapple;
 game::BladeBodies g_grappleBodies;
+game::RagdollPart g_grappleRagdoll;           // the ragdoll hold's body
+SInt32 g_grappleKnockState = -1;              // the held one's knock state last seen, for the changes' log
+float g_grappleKnockSeconds = 0.0f;           // seconds since the ragdoll hold began (the state's changes timed on it)
+float g_grappleStampSeconds = 0.0f;           // since the engine's time stamp was last set anew
+UInt32 g_grappleStamps = 0;                   // how often, this hold
+UInt32 g_grappleDriveRefused = 0;             // frames the drive refused, this hold
+UInt32 g_grappleMotionType = 0;               // the held body's motion type last read
+NiPoint3 g_grappleBodyLast{0.0f, 0.0f, 0.0f};  // the held body's centre the frame before
+bool g_grappleBodyHaveLast = false;
 NiPoint3 g_grappleStartAt{0.0f, 0.0f, 0.0f};  // where they stood at the grab, for the log
 float g_grappleDragged = 0.0f;                // units the hand has moved them, for the log
 float g_grappleLogSeconds = 0.0f;
 UInt32 g_grappleLines = 60;
 
 void EndGrapple() {
-	if (g_grapple.actor != 0) {
+	if (g_grapple.actor != 0 && g_grapple.hold == game::GrappleHold::Standing) {
 		game::HoldStill(0);
 		game::SetHeldFoe(0);
 	}
 	g_grapple = game::GrappleState{};
+	g_grappleRagdoll = game::RagdollPart{};
+}
+
+// The ragdoll hold's log of the knock state: each change, timed from the
+// hold's start (GrappleLogic.h, KnockStateDown, has the values).
+void NoteGrappleKnockState(UInt32 actor, SInt32 state) {
+	if (state == g_grappleKnockState) {
+		return;
+	}
+	if (g_grappleLines > 0) {
+		--g_grappleLines;
+		OBVR_LOG("Grapple: %08X's knock state %d -> %d after %.2f s (0 standing, 2 the lead-in, 1 down, 5-6 the "
+		         "get-up)",
+		         actor, g_grappleKnockState, state, static_cast<double>(g_grappleKnockSeconds));
+	}
+	g_grappleKnockState = state;
 }
 
 void StepGrapple(const Config& config, bool inPlace, float dt) {
@@ -1019,19 +1051,36 @@ void StepGrapple(const Config& config, bool inPlace, float dt) {
 	in.handVelocity = camRot * g_hand.leftVelocity;
 	in.dtSeconds = dt;
 	const bool closing = in.grip && !g_grapple.gripWas;
+	game::RagdollPart takePart;
+	const char* takeWhy = "";
 	if (g_grapple.actor == 0 && closing && g.grabs && in.allowed && in.handValid) {
 		game::CollectBladeBodies(in.hand, 60.0f, g_grappleBodies);
 		in.take = game::GrappleTakeAt(g_grappleBodies, in.hand, game::kGrappleReachUnits);
 		if (in.take.found) {
 			void* const a = reinterpret_cast<void*>(in.take.actor);
-			in.takeFights = game::ActorStanding(a) && game::ActorInCombat(a) && game::ActorPosition(a, &in.takeAt);
+			const SInt32 knock = game::ActorKnockState(a);
+			in.takeStanding = knock == 0;
+			in.takeDown = game::KnockStateDown(knock);
+			in.takeFights = knock >= 0 && game::ActorInCombat(a) && game::ActorPosition(a, &in.takeAt);
+			in.takeBody = g.ragdoll && game::GrapplePartRagdolls(in.take.part) &&
+			              game::FindRagdollPart(in.take.actor, in.take.part, in.hand, takePart, &takeWhy);
 		}
 	}
 	if (g_grapple.actor != 0) {
 		void* const a = reinterpret_cast<void*>(g_grapple.actor);
 		const NiPoint3 player = camPos;
-		in.heldReadable = game::ActorStanding(a) && game::ActorPosition(a, &in.heldAt) &&
-		                  (in.heldAt - player).LengthSquared() < 400.0f * 400.0f;
+		if (g_grapple.hold == game::GrappleHold::Ragdoll) {
+			g_grappleKnockSeconds += dt;
+			g_grappleStampSeconds += dt;
+			in.heldKnockState = game::ActorKnockState(a);
+			in.heldBodyValid = game::ReadRagdollPart(g_grappleRagdoll, in.heldBodyAt, g_grappleMotionType);
+			in.heldReadable = in.heldKnockState >= 0 && game::ActorPosition(a, &in.heldAt) &&
+			                  (in.heldAt - player).LengthSquared() < 400.0f * 400.0f;
+			NoteGrappleKnockState(g_grapple.actor, in.heldKnockState);
+		} else {
+			in.heldReadable = game::ActorStanding(a) && game::ActorPosition(a, &in.heldAt) &&
+			                  (in.heldAt - player).LengthSquared() < 400.0f * 400.0f;
+		}
 	}
 	const game::GrappleVerdict v = game::StepGrapple(g_grapple, g, config.hands.shove, in);
 	void* const actor = reinterpret_cast<void*>(v.actor);
@@ -1072,18 +1121,68 @@ void StepGrapple(const Config& config, bool inPlace, float dt) {
 	if (v.refused) {
 		if (g_grappleLines > 0) {
 			--g_grappleLines;
-			OBVR_LOG("Grapple: the off hand's grip closed at %08X's %s, %.1f units off it - not fighting (or down), "
-			         "not held",
-			         v.actor, game::BodyPartName(v.part), static_cast<double>(in.take.gap));
+			OBVR_LOG("Grapple: the off hand's grip closed at %08X's %s, %.1f units off it - %s, not held",
+			         v.actor, game::BodyPartName(v.part), static_cast<double>(in.take.gap),
+			         !in.takeFights                         ? "not fighting (or dead, or no high process)"
+			         : v.hold == game::GrappleHold::Ragdoll ? "getting up (neither standing nor down)"
+			                                                : "down (the standing hold takes nobody down)");
 		}
 		return;
 	}
 	if (v.started) {
+		const float fatigue = g.fatigue > 0.0f && g.fatigue < 1000.0f ? g.fatigue : 0.0f;
+		if (v.hold == game::GrappleHold::Ragdoll) {
+			// Standing, they go down first - the engine's knockdown with no
+			// push, from the hand; already down, they are taken as they lie.
+			const bool knocked = v.knock ? game::KnockActorDown(actor, in.hand, 0.0f) : true;
+			if (!knocked) {
+				game::GrappleHoldDowngrade(g_grapple);
+				if (g_grappleLines > 0) {
+					--g_grappleLines;
+					OBVR_LOG("Grapple: the engine refused to knock %08X down for the ragdoll hold (no high process, "
+					         "already down, or no ragdoll - a push through the proxy instead) - the standing hold instead",
+					         v.actor);
+				}
+			} else {
+				g_grappleRagdoll = takePart;
+				g_grappleKnockState = -1;
+				g_grappleKnockSeconds = 0.0f;
+				g_grappleStampSeconds = 0.0f;
+				g_grappleStamps = 0;
+				g_grappleDriveRefused = 0;
+				g_grappleMotionType = 0;
+				g_grappleBodyHaveLast = false;
+				g_grappleStartAt = in.takeAt;
+				g_grappleDragged = 0.0f;
+				g_grappleLogSeconds = 0.0f;
+				if (fatigue > 0.0f) {
+					game::SpendPlayerFatigue(fatigue);
+				}
+				g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(false, g_handRolesSwapped), 0.08f, 120.0f,
+				                                         1.0f);
+				const SInt32 knock = game::ActorKnockState(actor);
+				if (g_grappleLines > 0) {
+					--g_grappleLines;
+					OBVR_LOG("Grapple: the off hand takes %08X by the %s (%.1f units off it) - %s (knock state %d); the "
+					         "%s bone's body %08X is held by the hand; the player's fatigue -%.0f",
+					         v.actor, game::BodyPartName(v.part), static_cast<double>(in.take.gap),
+					         v.knock ? "knocked down into its ragdoll by the engine's knockdown, no push"
+					                 : "already down - taken as it lies",
+					         knock, game::BladeBoneName(takePart.bone), takePart.body, static_cast<double>(fatigue));
+				}
+				NoteGrappleKnockState(v.actor, knock);
+				return;
+			}
+		} else if (g.ragdoll && game::GrapplePartRagdolls(v.part) && g_grappleLines > 0) {
+			// The ragdoll hold wanted and not taken: why (the body not found).
+			--g_grappleLines;
+			OBVR_LOG("Grapple: no ragdoll hold on %08X's %s - %s; the standing hold instead", v.actor,
+			         game::BodyPartName(v.part), takeWhy[0] != '\0' ? takeWhy : "no Havok body found");
+		}
 		const bool stopsBlows = game::GrappleStopsBlows(v.part);
 		game::StaggerActor(actor);
 		game::HoldStill(v.actor);
 		game::SetHeldFoe(stopsBlows ? v.actor : 0);
-		const float fatigue = g.fatigue > 0.0f && g.fatigue < 1000.0f ? g.fatigue : 0.0f;
 		if (fatigue > 0.0f) {
 			game::SpendPlayerFatigue(fatigue);
 		}
@@ -1105,17 +1204,56 @@ void StepGrapple(const Config& config, bool inPlace, float dt) {
 		return;
 	}
 	if (v.end == game::GrappleEnd::None) {
-		// Held: placed where the hand wants them, at most 2 m/s of the way
-		// (GrappleLogic.h; game::PlaceActorAt, SetPos's own sequence).
-		const float step = math::Sqrt(v.drag.LengthSquared());
-		if (step > 0.01f && game::PlaceActorAt(actor, in.heldAt + v.drag)) {
-			g_grappleDragged += step;
-		}
 		g_grappleLogSeconds += dt;
 		// Every second, at a mark, and five times a second through the
 		// first second (the drag's working, for the log).
 		const bool early = v.seconds < 1.0f && g_grappleLogSeconds >= 0.2f;
-		if ((g_grappleLogSeconds >= 1.0f || early || test::HandScriptMarkedThisFrame()) && g_grappleLines > 0) {
+		const bool say = g_grappleLogSeconds >= 1.0f || early || test::HandScriptMarkedThisFrame();
+		if (v.hold == game::GrappleHold::Ragdoll) {
+			// Held: the part's body driven to the hand (RagdollHold.h), the
+			// engine's get-up clock stamped anew while they lie.
+			float speedUnits = 0.0f;
+			const char* why = "";
+			if (game::DriveRagdollPart(g_grappleRagdoll, v.driveTo, dt, &speedUnits, &why)) {
+				if (g_grappleBodyHaveLast) {
+					g_grappleDragged += math::Sqrt((in.heldBodyAt - g_grappleBodyLast).LengthSquared());
+				}
+			} else {
+				if (g_grappleDriveRefused == 0 && g_grappleLines > 0) {
+					--g_grappleLines;
+					OBVR_LOG("Grapple: %08X's %s body is not driven - %s (motion type %u, knock state %d)", v.actor,
+					         game::BladeBoneName(g_grappleRagdoll.bone), why, g_grappleMotionType, in.heldKnockState);
+				}
+				++g_grappleDriveRefused;
+			}
+			g_grappleBodyLast = in.heldBodyAt;
+			g_grappleBodyHaveLast = true;
+			if (game::KnockRestampDue(in.heldKnockState, g_grappleStampSeconds)) {
+				g_grappleStampSeconds = 0.0f;
+				if (game::StampProcessTime(actor)) {
+					++g_grappleStamps;
+				}
+			}
+			if (say && g_grappleLines > 0) {
+				g_grappleLogSeconds = 0.0f;
+				--g_grappleLines;
+				OBVR_LOG("Grapple: holding %08X's %s as a ragdoll %.1f s - the body %.1f units from the hand, driven at "
+				         "%.1f m/s (motion type %u), moved %.0f units so far, knock state %d, the engine's clock stamped "
+				         "anew %u times, the drive refused %u frames",
+				         v.actor, game::BodyPartName(v.part), static_cast<double>(v.seconds), static_cast<double>(v.gap),
+				         static_cast<double>(speedUnits / config.tracker.unitsPerMetre), g_grappleMotionType,
+				         static_cast<double>(g_grappleDragged), in.heldKnockState, g_grappleStamps,
+				         g_grappleDriveRefused);
+			}
+			return;
+		}
+		// Held standing: placed where the hand wants them, at most 2 m/s of
+		// the way (GrappleLogic.h; game::PlaceActorAt, SetPos's own sequence).
+		const float step = math::Sqrt(v.drag.LengthSquared());
+		if (step > 0.01f && game::PlaceActorAt(actor, in.heldAt + v.drag)) {
+			g_grappleDragged += step;
+		}
+		if (say && g_grappleLines > 0) {
 			g_grappleLogSeconds = 0.0f;
 			--g_grappleLines;
 			const NiPoint3 off = in.heldAt - g_grappleStartAt;
@@ -1126,7 +1264,35 @@ void StepGrapple(const Config& config, bool inPlace, float dt) {
 		}
 		return;
 	}
-	// Let go, thrown, broken free, lost or gone.
+	// Let go, thrown, broken free, lost, gone or stood up.
+	if (v.hold == game::GrappleHold::Ragdoll) {
+		bool thrown = false;
+		float unitsPerSecond = 0.0f;
+		if (v.end == game::GrappleEnd::Thrown) {
+			const NiPoint3 velocity = v.throwVelocity * config.tracker.unitsPerMetre;
+			unitsPerSecond = math::Sqrt(velocity.LengthSquared());
+			thrown = game::ThrowRagdollPart(g_grappleRagdoll, velocity);
+		}
+		if (g_grappleLines > 0) {
+			--g_grappleLines;
+			OBVR_LOG("Grapple: %08X %s - the hand at %.1f m/s, held %.1f s as a ragdoll by the %s, the body moved %.0f "
+			         "units, knock state %d%s%s",
+			         v.actor, v.end == game::GrappleEnd::Thrown ? "thrown" : game::GrappleEndName(v.end),
+			         static_cast<double>(v.speed), static_cast<double>(v.seconds),
+			         game::BodyPartName(v.part), static_cast<double>(g_grappleDragged), in.heldKnockState,
+			         thrown ? " - the held part sent off at " : "",
+			         thrown                                 ? ""
+			         : v.end == game::GrappleEnd::Thrown    ? " (the throw refused - the body did not read)"
+			                                                : "");
+			if (thrown) {
+				OBVR_LOG("Grapple: ... %.0f units/s (%.1f m/s, the hand's %.1f times %.2f)", static_cast<double>(unitsPerSecond),
+				         static_cast<double>(unitsPerSecond / config.tracker.unitsPerMetre), static_cast<double>(v.speed),
+				         static_cast<double>(game::GrappleThrowStrength(g.throwStrength)));
+			}
+		}
+		g_grappleRagdoll = game::RagdollPart{};
+		return;
+	}
 	game::HoldStill(0);
 	game::SetHeldFoe(0);
 	bool thrown = false;

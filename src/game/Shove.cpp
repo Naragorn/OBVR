@@ -108,29 +108,76 @@ bool PushActorBy(void* actor, const NiPoint3& distance, float seconds) {
 	return true;
 }
 
-bool ActorStanding(void* actor) {
+namespace {
+
+// Their process when they are alive (a Character or a Creature whose IsDead
+// answers no, as leading by the hand asks it) and it is a high one (level
+// 0); 0 otherwise.
+UInt32 HighProcessOf(void* actor) {
 	const UInt32 a = reinterpret_cast<UInt32>(actor);
 	const UInt32 actorVtable = LooksLikeObject(a) ? Read(a) : 0;
 	if (actorVtable != addr::kVtblCharacter && actorVtable != addr::kVtblCreature) {
-		return false;
+		return 0;
 	}
-	// Alive (the actor's IsDead, as leading by the hand asks it).
 	const UInt32 isDead = Read(actorVtable + addr::kActorVtableIsDeadOffset);
 	using DeadFn = bool(__thiscall*)(void* actor, UInt32 unk);
 	if (!LooksLikeObject(isDead) || reinterpret_cast<DeadFn>(isDead)(actor, 0)) {
-		return false;
+		return 0;
 	}
 	const UInt32 process = Read(a + kActorProcessOffset);
 	const UInt32 vtable = LooksLikeObject(process) ? Read(process) : 0;
 	const UInt32 levelFn = LooksLikeObject(vtable) ? Read(vtable + kProcessLevelSlot) : 0;
 	if (!LooksLikeObject(levelFn)) {
-		return false;
+		return 0;
 	}
 	using LevelFn = UInt32(__thiscall*)(void* process);
-	if (reinterpret_cast<LevelFn>(levelFn)(reinterpret_cast<void*>(process)) != 0) {
+	return reinterpret_cast<LevelFn>(levelFn)(reinterpret_cast<void*>(process)) == 0 ? process : 0;
+}
+
+UInt8 KnockStateOf(UInt32 process) { return *reinterpret_cast<const UInt8*>(process + kProcessKnockedState); }
+
+// The process's time stamp (Shove.h, StampProcessTime).
+constexpr UInt32 kProcessStampSlot = 0x20;
+constexpr UInt32 kProcessStampTime = 0x00643640;
+constexpr UInt8 kProcessStampBytes[] = {0x53, 0x56, 0x57, 0x8B, 0xF9, 0xB9, 0xE0, 0x32, 0xB3, 0x00};
+
+}  // namespace
+
+bool ActorAliveInHighProcess(void* actor) { return HighProcessOf(actor) != 0; }
+
+SInt32 ActorKnockState(void* actor) {
+	const UInt32 process = HighProcessOf(actor);
+	return process != 0 ? static_cast<SInt32>(KnockStateOf(process)) : -1;
+}
+
+bool ActorStanding(void* actor) { return ActorKnockState(actor) == 0; }
+
+bool KnockActorDown(void* actor, const NiPoint3& fromWorld, float force) {
+	if (!g_verified) {
 		return false;
 	}
-	return *reinterpret_cast<const UInt8*>(process + kProcessKnockedState) == 0;
+	const UInt32 process = HighProcessOf(actor);
+	if (process == 0 || KnockStateOf(process) != 0) {
+		return false;
+	}
+	using KnockFn = void(__thiscall*)(void* process, void* actor, float x, float y, float z, float force);
+	reinterpret_cast<KnockFn>(kKnockback)(reinterpret_cast<void*>(process), actor, fromWorld.x, fromWorld.y,
+	                                      fromWorld.z, force);
+	return KnockStateOf(process) != 0;
+}
+
+bool StampProcessTime(void* actor) {
+	const UInt32 process = HighProcessOf(actor);
+	if (process == 0) {
+		return false;
+	}
+	const UInt32 slot = Read(Read(process) + kProcessStampSlot);
+	if (slot != kProcessStampTime || !mem::Verify(kProcessStampTime, kProcessStampBytes, sizeof(kProcessStampBytes))) {
+		return false;
+	}
+	using StampFn = void(__thiscall*)(void* process);
+	reinterpret_cast<StampFn>(slot)(reinterpret_cast<void*>(process));
+	return true;
 }
 
 bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const NiPoint3& centre,

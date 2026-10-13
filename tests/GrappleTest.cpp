@@ -371,6 +371,249 @@ void TestLetGoFlows() {
 	Check(!v.started && st.actor == 0, "the grip kept closed after a loss: not taken again until it closes anew");
 }
 
+// ------------------------------------------------------------ the ragdoll
+
+GrappleInput TakingRagdoll(BodyPart part = BodyPart::Torso, bool standing = true, bool down = false,
+                           bool body = true) {
+	GrappleInput in = Taking();
+	in.take.part = part;
+	in.takeStanding = standing;
+	in.takeDown = down;
+	in.takeBody = body;
+	return in;
+}
+
+GrappleInput HoldingRagdoll(const NiPoint3& hand, const NiPoint3& bodyAt, SInt32 knock = 1) {
+	GrappleInput in = Ready(true);
+	in.hand = hand;
+	in.heldReadable = true;
+	in.heldAt = NiPoint3{100.0f, 0.0f, 0.0f};
+	in.heldKnockState = knock;
+	in.heldBodyValid = true;
+	in.heldBodyAt = bodyAt;
+	return in;
+}
+
+void TestRagdollRules() {
+	std::printf("The ragdoll hold's rules\n");
+	const GrappleSettings g;
+	Check(g.ragdoll && Near(g.throwStrength, 1.5f), "the defaults: on, the throw 1.5 times the hand");
+	Check(GrappleHoldFor(g, BodyPart::Torso, true) == GrappleHold::Ragdoll, "the torso: the ragdoll hold");
+	Check(GrappleHoldFor(g, BodyPart::LeftArm, true) == GrappleHold::Ragdoll &&
+	          GrappleHoldFor(g, BodyPart::RightArm, true) == GrappleHold::Ragdoll,
+	      "the arms: the ragdoll hold");
+	Check(GrappleHoldFor(g, BodyPart::LeftLeg, true) == GrappleHold::Ragdoll &&
+	          GrappleHoldFor(g, BodyPart::RightLeg, true) == GrappleHold::Ragdoll,
+	      "the legs: the ragdoll hold");
+	Check(GrappleHoldFor(g, BodyPart::Head, true) == GrappleHold::Standing, "the head: standing (the choke)");
+	Check(GrappleHoldFor(g, BodyPart::Neck, true) == GrappleHold::Standing, "the neck: standing");
+	Check(GrappleHoldFor(g, BodyPart::Column, true) == GrappleHold::Standing, "the column (a creature): standing");
+	Check(GrappleHoldFor(g, BodyPart::Torso, false) == GrappleHold::Standing, "no Havok body found: standing");
+	GrappleSettings off;
+	off.ragdoll = false;
+	Check(GrappleHoldFor(off, BodyPart::Torso, true) == GrappleHold::Standing, "GrabRagdoll=0: standing");
+	Check(!GrapplePartRagdolls(BodyPart::Head) && !GrapplePartRagdolls(BodyPart::Neck) &&
+	          !GrapplePartRagdolls(BodyPart::Column),
+	      "the parts the ragdoll never takes");
+	Check(GrapplePartRagdolls(BodyPart::Torso) && GrapplePartRagdolls(BodyPart::LeftArm) &&
+	          GrapplePartRagdolls(BodyPart::RightLeg),
+	      "the parts it takes");
+	Check(KnockStateDown(1) && KnockStateDown(2) && KnockStateDown(3) && KnockStateDown(4), "down: 1 to 4");
+	Check(!KnockStateDown(0) && !KnockStateDown(5) && !KnockStateDown(6) && !KnockStateDown(-1),
+	      "not down: standing, the get-up, unreadable");
+	Check(KnockStateGettingUp(5) && KnockStateGettingUp(6), "getting up: 5 and 6");
+	Check(!KnockStateGettingUp(0) && !KnockStateGettingUp(1) && !KnockStateGettingUp(2) && !KnockStateGettingUp(-1),
+	      "not getting up otherwise");
+	Check(KnockRestampDue(1, 0.5f), "lying 0.5 s since the stamp: stamped anew");
+	Check(!KnockRestampDue(1, 0.49f), "lying, too soon: not yet");
+	Check(!KnockRestampDue(2, 1.0f), "the lead-in: the engine stamps itself");
+	Check(!KnockRestampDue(5, 1.0f) && !KnockRestampDue(0, 1.0f) && !KnockRestampDue(-1, 1.0f),
+	      "getting up, standing, unreadable: never");
+	Check(Near(GrappleThrowStrength(2.0f), 2.0f) && Near(GrappleThrowStrength(0.0f), 0.0f) &&
+	          Near(GrappleThrowStrength(5.0f), 5.0f),
+	      "the throw strength as set, 0 to 5");
+	Check(Near(GrappleThrowStrength(-1.0f), 1.5f) && Near(GrappleThrowStrength(6.0f), 1.5f) &&
+	          Near(GrappleThrowStrength(kNaN), 1.5f),
+	      "out of range or not a number: the default");
+	Check(GrappleHoldName(GrappleHold::Ragdoll)[0] == 'r' && GrappleHoldName(GrappleHold::Standing)[0] == 's',
+	      "the hold names");
+	Check(GrappleEndName(GrappleEnd::StoodUp)[0] == 's', "the stood-up end's name");
+	GrappleState st;
+	st.hold = GrappleHold::Ragdoll;
+	GrappleHoldDowngrade(st);
+	Check(st.hold == GrappleHold::Standing, "the downgrade: the standing hold");
+}
+
+void TestRagdollTakeFlows() {
+	std::printf("Taking hold as a ragdoll\n");
+	const GrappleSettings g;
+	const ShoveSettings s;
+	GrappleState st;
+	GrappleVerdict v = StepGrapple(st, g, s, TakingRagdoll());
+	Check(v.started && v.hold == GrappleHold::Ragdoll && v.knock, "a standing fighter by the torso: taken, knocked down");
+	Check(st.actor == 0xA && st.hold == GrappleHold::Ragdoll && st.part == BodyPart::Torso, "the state: the ragdoll hold");
+
+	st = GrappleState{};
+	v = StepGrapple(st, g, s, TakingRagdoll(BodyPart::LeftLeg, false, true));
+	Check(v.started && v.hold == GrappleHold::Ragdoll && !v.knock, "one lying knocked down, by a leg: taken as they lie, no knockdown");
+
+	st = GrappleState{};
+	v = StepGrapple(st, g, s, TakingRagdoll(BodyPart::Torso, false, false));
+	Check(!v.started && v.refused && v.hold == GrappleHold::Ragdoll && st.actor == 0, "one getting up: refused");
+
+	st = GrappleState{};
+	GrappleInput in = TakingRagdoll();
+	in.takeFights = false;
+	v = StepGrapple(st, g, s, in);
+	Check(!v.started && v.refused && st.actor == 0, "not fighting: refused, ragdoll or not");
+
+	st = GrappleState{};
+	v = StepGrapple(st, g, s, TakingRagdoll(BodyPart::Head));
+	Check(v.started && v.hold == GrappleHold::Standing && !v.knock && st.hold == GrappleHold::Standing,
+	      "by the head: the standing hold, no knockdown");
+
+	st = GrappleState{};
+	v = StepGrapple(st, g, s, TakingRagdoll(BodyPart::Torso, true, false, false));
+	Check(v.started && v.hold == GrappleHold::Standing && !v.knock, "by the torso with no body found: standing");
+
+	st = GrappleState{};
+	GrappleSettings off;
+	off.ragdoll = false;
+	v = StepGrapple(st, off, s, TakingRagdoll());
+	Check(v.started && v.hold == GrappleHold::Standing && !v.knock, "GrabRagdoll=0: the standing hold");
+
+	st = GrappleState{};
+	v = StepGrapple(st, g, s, TakingRagdoll(BodyPart::Head, false, true));
+	Check(!v.started && v.refused && v.hold == GrappleHold::Standing, "the standing hold at one lying down: refused");
+
+	st = GrappleState{};
+	v = StepGrapple(st, off, s, TakingRagdoll(BodyPart::Torso, false, true));
+	Check(!v.started && v.refused, "GrabRagdoll=0 at one lying down: refused (as before)");
+}
+
+void TestRagdollHoldFlows() {
+	std::printf("Holding a ragdoll\n");
+	const GrappleSettings g;
+	const ShoveSettings s;
+	GrappleState st;
+	StepGrapple(st, g, s, TakingRagdoll());
+	const NiPoint3 hand{60.0f, 0.0f, 100.0f};
+	GrappleVerdict v = StepGrapple(st, g, s, HoldingRagdoll(hand, NiPoint3{63.0f, 4.0f, 100.0f}));
+	Check(v.actor == 0xA && v.end == GrappleEnd::None && v.hold == GrappleHold::Ragdoll, "held");
+	Check(Near(v.driveTo.x, 60.0f) && Near(v.driveTo.y, 0.0f) && Near(v.driveTo.z, 100.0f),
+	      "the body is driven to the hand");
+	Check(Near(v.gap, 5.0f), "the gap: the body from the hand, in the air");
+	Check(Near(v.drag.x, 0.0f) && Near(v.drag.y, 0.0f), "no placing of the actor");
+	Check(Near(v.seconds, 0.02f), "the time counted");
+
+	v = StepGrapple(st, g, s, HoldingRagdoll(hand, NiPoint3{60.0f, 0.0f, 100.0f}, 2));
+	Check(v.end == GrappleEnd::None, "the lead-in (state 2) is down: held");
+	v = StepGrapple(st, g, s, HoldingRagdoll(hand, NiPoint3{60.0f, 0.0f, 100.0f}, 3));
+	Check(v.end == GrappleEnd::None, "state 3 is down: held");
+
+	v = StepGrapple(st, g, s, HoldingRagdoll(hand, NiPoint3{60.0f, 0.0f, 141.0f}));
+	Check(v.end == GrappleEnd::Lost && st.actor == 0 && st.hold == GrappleHold::Standing,
+	      "the body 41 units from the hand (up): lost, the state cleared");
+
+	st = GrappleState{};
+	StepGrapple(st, g, s, TakingRagdoll());
+	v = StepGrapple(st, g, s, HoldingRagdoll(hand, hand, 5));
+	Check(v.end == GrappleEnd::StoodUp && st.actor == 0, "the get-up (state 5): stood up");
+	st = GrappleState{};
+	StepGrapple(st, g, s, TakingRagdoll());
+	v = StepGrapple(st, g, s, HoldingRagdoll(hand, hand, 0));
+	Check(v.end == GrappleEnd::StoodUp, "standing again (state 0): stood up");
+	st = GrappleState{};
+	StepGrapple(st, g, s, TakingRagdoll());
+	v = StepGrapple(st, g, s, HoldingRagdoll(hand, hand, 6));
+	Check(v.end == GrappleEnd::StoodUp, "the get-up's end (state 6): stood up");
+
+	st = GrappleState{};
+	StepGrapple(st, g, s, TakingRagdoll());
+	GrappleInput in = HoldingRagdoll(hand, hand);
+	in.dtSeconds = 4.0f;
+	v = StepGrapple(st, g, s, in);
+	Check(v.end == GrappleEnd::BrokeFree && Near(v.seconds, 4.0f), "GrabHoldSeconds over: broke free");
+	st = GrappleState{};
+	StepGrapple(st, g, s, TakingRagdoll());
+	in = HoldingRagdoll(hand, hand, 5);
+	in.dtSeconds = 4.0f;
+	v = StepGrapple(st, g, s, in);
+	Check(v.end == GrappleEnd::StoodUp, "the get-up and the time over at once: stood up");
+
+	st = GrappleState{};
+	StepGrapple(st, g, s, TakingRagdoll());
+	in = HoldingRagdoll(hand, hand);
+	in.heldBodyValid = false;
+	v = StepGrapple(st, g, s, in);
+	Check(v.end == GrappleEnd::Gone, "the body no longer reads: gone");
+	st = GrappleState{};
+	StepGrapple(st, g, s, TakingRagdoll());
+	in = HoldingRagdoll(hand, hand);
+	in.heldReadable = false;
+	v = StepGrapple(st, g, s, in);
+	Check(v.end == GrappleEnd::Gone, "the actor dead or far: gone");
+	st = GrappleState{};
+	StepGrapple(st, g, s, TakingRagdoll());
+	GrappleSettings off;
+	off.grabs = false;
+	v = StepGrapple(st, off, s, HoldingRagdoll(hand, hand));
+	Check(v.end == GrappleEnd::Gone, "OffHandGrabs off mid-hold: gone");
+}
+
+void TestRagdollLetGoFlows() {
+	std::printf("Letting go of a ragdoll\n");
+	const GrappleSettings g;
+	const ShoveSettings s;  // ShoveSpeed 1.3
+	const NiPoint3 hand{60.0f, 0.0f, 100.0f};
+	GrappleState st;
+	StepGrapple(st, g, s, TakingRagdoll());
+	GrappleInput in = HoldingRagdoll(hand, hand);
+	in.grip = false;
+	in.handVelocity = NiPoint3{0.0f, 0.0f, 2.0f};
+	GrappleVerdict v = StepGrapple(st, g, s, in);
+	Check(v.end == GrappleEnd::Thrown && Near(v.speed, 2.0f), "opened at 2 m/s straight up: thrown (the speed in the air counts)");
+	Check(Near(v.throwVelocity.x, 0.0f) && Near(v.throwVelocity.y, 0.0f) && Near(v.throwVelocity.z, 3.0f),
+	      "the held part at the hand's speed times 1.5");
+	Check(Near(v.direction.z, 1.0f), "the direction: up");
+	Check(st.actor == 0 && st.hold == GrappleHold::Standing, "the state cleared");
+
+	st = GrappleState{};
+	StepGrapple(st, g, s, TakingRagdoll());
+	in.handVelocity = NiPoint3{1.0f, 0.0f, 0.0f};
+	v = StepGrapple(st, g, s, in);
+	Check(v.end == GrappleEnd::LetGo && Near(v.throwVelocity.LengthSquared(), 0.0f), "opened at 1 m/s: let go, they drop");
+
+	st = GrappleState{};
+	StepGrapple(st, g, s, TakingRagdoll());
+	in.handVelocity = NiPoint3{0.0f, 0.0f, 0.0f};
+	v = StepGrapple(st, g, s, in);
+	Check(v.end == GrappleEnd::LetGo && Near(v.direction.LengthSquared(), 0.0f), "the hand still: let go, no direction");
+
+	st = GrappleState{};
+	StepGrapple(st, g, s, TakingRagdoll());
+	in.handVelocity = NiPoint3{3.0f, 0.0f, 0.0f};
+	GrappleSettings noThrow;
+	noThrow.throwStrength = 0.0f;
+	v = StepGrapple(st, noThrow, s, in);
+	Check(v.end == GrappleEnd::LetGo, "GrabThrowStrength=0 at 3 m/s: let go, not thrown (the body's own motion left alone)");
+
+	st = GrappleState{};
+	StepGrapple(st, g, s, TakingRagdoll());
+	in.handVelocity = NiPoint3{4.0f, 0.0f, 0.0f};
+	v = StepGrapple(st, g, s, in);
+	Check(v.end == GrappleEnd::Thrown && Near(v.throwVelocity.x, 6.0f), "a hard throw along the ground: thrown, never 'thrown down' (they are down)");
+
+	// The standing hold's release is unchanged: across the ground.
+	st = GrappleState{};
+	StepGrapple(st, g, s, TakingRagdoll(BodyPart::Head));
+	GrappleInput standing = Holding(hand, NiPoint3{100.0f, 0.0f, 0.0f});
+	standing.grip = false;
+	standing.handVelocity = NiPoint3{0.0f, 0.0f, 5.0f};
+	v = StepGrapple(st, g, s, standing);
+	Check(v.end == GrappleEnd::LetGo && Near(v.speed, 0.0f), "the standing hold opened with the hand going up: let go (across the ground counts)");
+}
+
 }  // namespace
 
 int main() {
@@ -381,6 +624,10 @@ int main() {
 	TestTakeFlows();
 	TestHoldFlows();
 	TestLetGoFlows();
+	TestRagdollRules();
+	TestRagdollTakeFlows();
+	TestRagdollHoldFlows();
+	TestRagdollLetGoFlows();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

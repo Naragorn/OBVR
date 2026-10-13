@@ -1360,6 +1360,23 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.grapple.holdSeconds = v; },
 	},
 	{
+		"Hands", "Grab takes them down",
+		"Grabbed by the torso, an arm or a leg a fighter falls into their ragdoll and hangs from the hand; let go "
+		"fast they fly. Off, they stay standing. The head and the neck always hold them standing",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "GrabRagdoll",
+		+[](const Config& c) { return c.hands.grapple.ragdoll ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.grapple.ragdoll = v != 0.0f; },
+	},
+	{
+		"Hands", "Grab throw strength",
+		"A fighter held in their ragdoll and let go fast flies with the hand's speed times this; 0 drops them",
+		ItemKind::Number, 0.0f, 5.0f, 0.25f, 2, false,
+		"Hands", "GrabThrowStrength",
+		+[](const Config& c) { return c.hands.grapple.throwStrength; },
+		+[](Config& c, float v) { c.hands.grapple.throwStrength = v; },
+	},
+	{
 		"Hands", "Open by reaching",
 		"An open, empty hand at a chest, a body or - sneaking - a pocket opens it; the hand away closes it",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,

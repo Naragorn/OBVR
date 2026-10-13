@@ -2401,7 +2401,7 @@ kämpfe in vr müssen entschleunigt werden."
   can reach their blade), and now they walk the last metres; "Combat reach
   (units)" is the knob (100 is 1.4 m, 0 the game's own 2 m).
 
-### 4.34 The off hand strikes and grabs, as in Blade & Sorcery (built 2026-10-09/10, headset open)
+### 4.34 The off hand strikes and grabs, as in Blade & Sorcery (built 2026-10-09/10, the ragdoll hold 2026-10-13, headset open)
 
 The tester: "man kann mit der off hand gegner packen oder hauen wie in
 blade & sorcery" - "ne starte jetzt". game/GrappleLogic.h (grapple_test),
@@ -2470,6 +2470,38 @@ left-handed player, the roles swapped before anything here sees them).
   The script's second blow, the hand open, met nobody (the beggar lay
   where the punch put them), so the open hand's slap was not tried again
   here; it is the slap of 4.12, unchanged.
+
+- **The ragdoll hold (`[Hands] GrabRagdoll=1`, "Grab takes them down";
+  `GrabThrowStrength` 1.5, "Grab throw strength"; built 2026-10-13, the
+  tester: "npc ragdoll halten und mit kraft wegschubsen oder sogar auf dem
+  boden zu schubsen mit linker hand während des kampfes").** The off hand's
+  grip closed on a fighter's torso, an arm or a leg knocks them down into
+  their ragdoll - the engine's own knockdown, no push - and holds the part
+  under the hand: its Havok body is driven to the hand each frame, the rest
+  of them hangs from it (game/RagdollHold.h; physical-combat-spec section 8
+  has the engine's side). One already lying knocked down is taken as they
+  lie. Let go with the hand moving at ShoveSpeed - in any direction - the
+  held part flies with the hand's speed times GrabThrowStrength: away, up,
+  or shoved along the ground; a slow hand, or the strength 0, drops them.
+  While held the engine is kept from standing them up (its get-up clock is
+  stamped anew every half second); the hold ends when it stands them up
+  anyway ("stood up"), after GrabHoldSeconds, with the body 40 units from
+  the hand, or with them dead or gone. The head and the neck keep the
+  standing hold above (the choke), as do creatures and a part without a
+  Havok body on its bones. The player's fatigue as for the standing hold.
+  Logged "Grapple: the off hand takes <ref> by the <part> (n units off it)
+  - knocked down into its ragdoll by the engine's knockdown, no push (knock
+  state 2); the <bone> bone's body <id> is held by the hand" (or "already
+  down - taken as it lies"), each change of the knock state with its time
+  ("knock state 2 -> 1 after 0.01 s"), "Grapple: holding <ref>'s <part> as
+  a ragdoll n s - the body n units from the hand, driven at n m/s (motion
+  type 4), moved n units so far, knock state 1, the engine's clock stamped
+  anew n times, the drive refused 0 frames", and at the end "Grapple: <ref>
+  thrown - the hand at n m/s, held n s as a ragdoll by the <part> ... the
+  held part sent off at" with the units a second on the next line.
+  Harness `grapple-ragdoll.txt` PASS 2026-10-13 (docs/hand-script-harness.md):
+  two holds, by the left arm and the torso, the body 1-5 units from the hand
+  through 0.8 s, thrown at 40 m/s; the bandit stood up between them.
 
 ### 4.35 Walking with a reached menu open, and switching containers (built 2026-10-10)
 

@@ -21,6 +21,19 @@
 //   Let go at speed they are thrown - knocked down or staggered by the
 //   hand's speed, as a shove; they break free after GrabHoldSeconds, and a
 //   hand dragged far from them (they are stuck on something) loses them.
+// - The ragdoll hold (the tester, 2026-10-12/13: "gegner greifen und werfen
+//   ... mit ragdoll irgendwie", "npc ragdoll halten und mit kraft
+//   wegschubsen oder sogar auf dem boden zu schubsen"). Grabbed by the
+//   torso, an arm or a leg they go down into their ragdoll - the engine's
+//   own knockdown with no push - and the part under the hand is held: its
+//   Havok body driven to the hand each frame (game/RagdollHold), the rest
+//   of them hanging from it through the ragdoll's joints. One already
+//   lying knocked down is taken as they lie. Let go fast the held part is
+//   thrown with the hand's speed times GrabThrowStrength - away, or along
+//   the ground; let go slow they drop. The hold ends when the engine's
+//   get-up takes them, after GrabHoldSeconds, with the body too far from
+//   the hand, or with them dead or gone. The head and the neck keep the
+//   standing hold (B&S's choke). [Hands] GrabRagdoll.
 //
 // Pure, covered by grapple_test.
 
@@ -33,11 +46,19 @@
 namespace obvr::game {
 
 struct GrappleSettings {
-	bool strikes = true;       // [Hands] OffHandStrikes
-	bool grabs = true;         // [Hands] OffHandGrabs
-	float holdSeconds = 4.0f;  // [Hands] GrabHoldSeconds: then they break free
-	float fatigue = 15.0f;     // [Hands] GrabFatigue, spent at the grab (the light shove's)
+	bool strikes = true;         // [Hands] OffHandStrikes
+	bool grabs = true;           // [Hands] OffHandGrabs
+	float holdSeconds = 4.0f;    // [Hands] GrabHoldSeconds: then they break free
+	float fatigue = 15.0f;       // [Hands] GrabFatigue, spent at the grab (the light shove's)
+	bool ragdoll = true;         // [Hands] GrabRagdoll: the torso, an arm or a leg grabbed takes them down into the ragdoll
+	float throwStrength = 1.5f;  // [Hands] GrabThrowStrength: the hand's speed times this on the held part, let go
 };
+
+// GrabThrowStrength as used: 0 (no throw, they drop) to 5; anything else
+// the default 1.5.
+inline float GrappleThrowStrength(float setting) {
+	return setting >= 0.0f && setting <= 5.0f ? setting : 1.5f;
+}
 
 // The hand this far outside a capsule still takes hold (about 9 cm; the
 // capsules are thin on the arms).
@@ -110,11 +131,12 @@ inline bool GrappleStopsBlows(BodyPart part) {
 enum class GrappleEnd : UInt8 {
 	None,
 	LetGo,       // the grip opened, the hand slow
-	Thrown,      // opened at ShoveSpeed: staggered and pushed along the hand's motion
+	Thrown,      // opened at ShoveSpeed: staggered and pushed along the hand's motion (a ragdoll: the held part sent off)
 	ThrownDown,  // opened at ShoveHardSpeed: knocked down along it
 	BrokeFree,   // held GrabHoldSeconds
 	Lost,        // the hand dragged too far from them
 	Gone,        // dead, unreadable, the mode or the setting off, the hand busy
+	StoodUp,     // a ragdoll hold: the engine's get-up took them (or they were never down)
 };
 
 inline const char* GrappleEndName(GrappleEnd e) {
@@ -125,8 +147,64 @@ inline const char* GrappleEndName(GrappleEnd e) {
 	case GrappleEnd::BrokeFree: return "broke free";
 	case GrappleEnd::Lost: return "lost - the hand too far from them";
 	case GrappleEnd::Gone: return "gone - dead, out of reach, or the hand busy";
+	case GrappleEnd::StoodUp: return "stood up - the engine's get-up took them";
 	default: return "held";
 	}
+}
+
+// --------------------------------------------------------- the ragdoll hold
+//
+// docs/physical-combat-spec.md, section 8's proposal, built 2026-10-13.
+
+enum class GrappleHold : UInt8 {
+	Standing,  // staggered, the legs held, placed where the hand wants them
+	Ragdoll,   // knocked down into the ragdoll, the held part's body driven to the hand
+};
+
+inline const char* GrappleHoldName(GrappleHold h) { return h == GrappleHold::Ragdoll ? "ragdoll" : "standing"; }
+
+// The parts a ragdoll hold takes: the torso, the arms, the legs. The head
+// and the neck stay the standing hold - B&S's choke, the one held upright
+// and their blows stopped; the column (a creature read without the bones)
+// the standing hold too - a creature may have no ragdoll.
+inline bool GrapplePartRagdolls(BodyPart part) {
+	return part == BodyPart::Torso || part == BodyPart::LeftArm || part == BodyPart::RightArm ||
+	       part == BodyPart::LeftLeg || part == BodyPart::RightLeg;
+}
+
+// Which hold a grab takes: the ragdoll with the setting on, a part it takes
+// and a Havok body found on the part's bone (`bodyFound`); the standing hold
+// otherwise.
+inline GrappleHold GrappleHoldFor(const GrappleSettings& g, BodyPart part, bool bodyFound) {
+	return g.ragdoll && bodyFound && GrapplePartRagdolls(part) ? GrappleHold::Ragdoll : GrappleHold::Standing;
+}
+
+// The engine's knock state (HighProcess +0x11C; its step 0x006545E0, read
+// 2026-10-13): 0 standing; 2 the knockdown's lead-in, the ragdoll on; 1 down
+// - the get-up comes 2.4 s after the process's time stamp, or 5.4 s with the
+// body's root ("Bip01 NonAccum") more than 16 units off its proxy; 3 and 4
+// the collapse's and the ragdoll-less knock's own; 5 the get-up animation
+// (the ragdoll still on); 6 its end. Down: 1 to 4. Getting up: 5 and 6.
+inline bool KnockStateDown(SInt32 state) { return state >= 1 && state <= 4; }
+inline bool KnockStateGettingUp(SInt32 state) { return state == 5 || state == 6; }
+
+// The engine's get-up clock: seconds after the process's time stamp, and the
+// lift of the body's root above the proxy that stretches the shorter wait
+// to the longer one (the constants at 0x00A72D40 and 0x00A72D38 times the
+// timescale - real seconds whatever the timescale - and 0x005F0270's 16).
+inline constexpr float kKnockGetUpSeconds = 2.4f;
+inline constexpr float kKnockGetUpLiftedSeconds = 5.4f;
+inline constexpr float kKnockGetUpLiftUnits = 16.0f;
+
+// Whether the hold stamps the process's time anew this frame, so the
+// engine's get-up waits from now: only while they lie (state 1; in the
+// lead-in the engine stamps itself, and a get-up under way is left alone),
+// and only every so often - the stamp is the engine's own call, made each
+// time the knockdown is.
+inline constexpr float kKnockRestampSeconds = 0.5f;
+
+inline bool KnockRestampDue(SInt32 state, float sinceLastStamp) {
+	return state == 1 && sinceLastStamp >= kKnockRestampSeconds;
 }
 
 // The grip opened: how they leave the hand, by its speed across the ground
@@ -145,13 +223,18 @@ inline constexpr float kGrappleTakeGraceSeconds = 0.3f;
 struct GrappleState {
 	UInt32 actor = 0;  // held, 0 nobody
 	BodyPart part = BodyPart::Column;
+	GrappleHold hold = GrappleHold::Standing;
 	float seconds = 0.0f;
 	// Where they stood from the hand at the grab, across the ground: the
-	// hand keeps them there.
+	// hand keeps them there (the standing hold).
 	NiPoint3 offset{0.0f, 0.0f, 0.0f};
 	bool gripWas = false;
 	float closedFor = 0.0f;  // seconds the grip has been closed; past the grace after an end
 };
+
+// A ragdoll hold whose knockdown the engine refused: the standing hold
+// instead, from the same grab.
+inline void GrappleHoldDowngrade(GrappleState& s) { s.hold = GrappleHold::Standing; }
 
 struct GrappleInput {
 	// [Hands] OffHandGrabs is in the settings; this is the rest: Full VR in
@@ -161,28 +244,45 @@ struct GrappleInput {
 	bool grip = false;                         // the off hand's grip down
 	NiPoint3 hand{0.0f, 0.0f, 0.0f};           // the off hand, world
 	NiPoint3 handVelocity{0.0f, 0.0f, 0.0f};   // m/s, world
-	// When the grip closes: what the hand is at, whether they are fighting,
-	// and where they stand.
+	// When the grip closes: what the hand is at, whether they are fighting
+	// (alive, in combat, in a high process), and where they stand.
 	GrappleTake take;
 	bool takeFights = false;
 	NiPoint3 takeAt{0.0f, 0.0f, 0.0f};
-	// The one held, this frame: alive, standing, near; where they stand.
+	// For the ragdoll hold, at the take: whether they stand (knock state 0,
+	// so they are knocked down first) or already lie knocked down (taken as
+	// they lie), and whether a Havok body was found on the part's bone. One
+	// neither standing nor down (getting up) is refused.
+	bool takeStanding = true;
+	bool takeDown = false;
+	bool takeBody = false;
+	// The one held, this frame: alive, near, and - the standing hold -
+	// standing; where they stand.
 	bool heldReadable = false;
 	NiPoint3 heldAt{0.0f, 0.0f, 0.0f};
+	// The one held as a ragdoll, this frame: their knock state, and their
+	// held part's body - whether it still reads, and where its centre is.
+	SInt32 heldKnockState = 0;
+	bool heldBodyValid = false;
+	NiPoint3 heldBodyAt{0.0f, 0.0f, 0.0f};
 	float dtSeconds = 0.0f;
 };
 
 struct GrappleVerdict {
 	bool started = false;
-	bool refused = false;  // the grip closed at someone not fighting
+	bool refused = false;  // the grip closed at someone not fighting (or down, for the standing hold)
 	GrappleEnd end = GrappleEnd::None;
 	UInt32 actor = 0;
 	BodyPart part = BodyPart::Column;
-	NiPoint3 drag{0.0f, 0.0f, 0.0f};       // units across the ground to move them this frame
-	float gap = 0.0f;                      // units across the ground from where the hand wants them
+	GrappleHold hold = GrappleHold::Standing;
+	bool knock = false;                    // a ragdoll start: knock them down first (the engine's, no push, from the hand)
+	NiPoint3 drag{0.0f, 0.0f, 0.0f};       // standing, held: units across the ground to move them this frame
+	NiPoint3 driveTo{0.0f, 0.0f, 0.0f};    // ragdoll, held: where the hand wants the held part's body, world
+	float gap = 0.0f;                      // units from where the hand wants them (across the ground; a ragdoll: the body from the hand)
 	float seconds = 0.0f;                  // how long they have been held, at an end the whole hold
-	float speed = 0.0f;                    // the hand across the ground at the end, m/s
-	NiPoint3 direction{0.0f, 0.0f, 0.0f};  // the hand's motion across the ground then, a unit
+	float speed = 0.0f;                    // the hand at the end, m/s (across the ground; a ragdoll: in the air)
+	NiPoint3 direction{0.0f, 0.0f, 0.0f};  // the hand's motion then, a unit
+	NiPoint3 throwVelocity{0.0f, 0.0f, 0.0f};  // ragdoll, thrown: the held part's new velocity, m/s
 };
 
 inline GrappleVerdict StepGrapple(GrappleState& s, const GrappleSettings& g, const ShoveSettings& shove,
@@ -197,16 +297,51 @@ inline GrappleVerdict StepGrapple(GrappleState& s, const GrappleSettings& g, con
 	if (s.actor != 0) {
 		v.actor = s.actor;
 		v.part = s.part;
+		v.hold = s.hold;
 		if (!g.grabs || !in.allowed || !in.handValid || !in.heldReadable) {
 			v.end = GrappleEnd::Gone;
 		} else if (!in.grip) {
-			const float across =
-				math::Sqrt(in.handVelocity.x * in.handVelocity.x + in.handVelocity.y * in.handVelocity.y);
-			v.speed = across;
-			if (across > 1e-4f) {
-				v.direction = NiPoint3{in.handVelocity.x / across, in.handVelocity.y / across, 0.0f};
+			if (s.hold == GrappleHold::Ragdoll) {
+				// The held part leaves the hand with the hand's speed, in the
+				// air: away, up, or along the ground as the hand went.
+				const float speed = math::Sqrt(in.handVelocity.LengthSquared());
+				v.speed = speed;
+				if (speed > 1e-4f) {
+					v.direction = in.handVelocity * (1.0f / speed);
+				}
+				// GrabThrowStrength 0: no throw, they drop (the body's own
+				// motion left alone, not set to nothing).
+				const float strength = GrappleThrowStrength(g.throwStrength);
+				v.end = speed >= shove.speed && strength > 0.0f ? GrappleEnd::Thrown : GrappleEnd::LetGo;
+				if (v.end == GrappleEnd::Thrown) {
+					v.throwVelocity = in.handVelocity * strength;
+				}
+			} else {
+				const float across =
+					math::Sqrt(in.handVelocity.x * in.handVelocity.x + in.handVelocity.y * in.handVelocity.y);
+				v.speed = across;
+				if (across > 1e-4f) {
+					v.direction = NiPoint3{in.handVelocity.x / across, in.handVelocity.y / across, 0.0f};
+				}
+				v.end = GrappleReleaseFor(shove, across);
 			}
-			v.end = GrappleReleaseFor(shove, across);
+		} else if (s.hold == GrappleHold::Ragdoll) {
+			s.seconds += dt;
+			if (!KnockStateDown(in.heldKnockState)) {
+				v.end = GrappleEnd::StoodUp;
+			} else if (s.seconds >= GrappleHoldSeconds(g.holdSeconds)) {
+				v.end = GrappleEnd::BrokeFree;
+			} else if (!in.heldBodyValid) {
+				v.end = GrappleEnd::Gone;
+			} else {
+				const float gap = math::Sqrt((in.hand - in.heldBodyAt).LengthSquared());
+				v.gap = gap;
+				if (gap > kGrappleLoseUnits) {
+					v.end = GrappleEnd::Lost;
+				} else {
+					v.driveTo = in.hand;
+				}
+			}
 		} else {
 			s.seconds += dt;
 			const NiPoint3 d{in.hand.x + s.offset.x - in.heldAt.x, in.hand.y + s.offset.y - in.heldAt.y, 0.0f};
@@ -225,6 +360,7 @@ inline GrappleVerdict StepGrapple(GrappleState& s, const GrappleSettings& g, con
 		if (v.end != GrappleEnd::None) {
 			s.actor = 0;
 			s.seconds = 0.0f;
+			s.hold = GrappleHold::Standing;
 			// The next hold wants the grip closed anew.
 			s.closedFor = kGrappleTakeGraceSeconds + 1.0f;
 		}
@@ -235,15 +371,21 @@ inline GrappleVerdict StepGrapple(GrappleState& s, const GrappleSettings& g, con
 	}
 	v.actor = in.take.actor;
 	v.part = in.take.part;
-	if (!in.takeFights) {
+	v.hold = GrappleHoldFor(g, in.take.part, in.takeBody);
+	// Nobody not fighting; the standing hold takes nobody down, the ragdoll
+	// hold nobody getting up.
+	const bool takes = v.hold == GrappleHold::Ragdoll ? in.takeStanding || in.takeDown : in.takeStanding;
+	if (!in.takeFights || !takes) {
 		v.refused = true;
 		return v;
 	}
 	s.actor = in.take.actor;
 	s.part = in.take.part;
+	s.hold = v.hold;
 	s.seconds = 0.0f;
 	s.offset = NiPoint3{in.takeAt.x - in.hand.x, in.takeAt.y - in.hand.y, 0.0f};
 	v.started = true;
+	v.knock = v.hold == GrappleHold::Ragdoll && in.takeStanding;
 	return v;
 }
 

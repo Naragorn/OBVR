@@ -5,6 +5,10 @@
 #include "game/ParryLogic.h"
 #include "game/NiMath.h"
 
+namespace obvr {
+struct NiAVObject;
+}
+
 namespace obvr::game {
 
 // The living near the blade as capsules on their drawn bones
@@ -23,5 +27,10 @@ UInt32 CollectBladeBodies(const NiPoint3& around, float withinUnits, BladeBodies
 
 // Forgets the bones kept (the mode off): a load builds new skeletons.
 void ForgetBladeBodies();
+
+// One of the bones kept for an actor (BladeBone), as the last collect left
+// it; null when the actor was not collected, the bone not read, or it no
+// longer reads as a bone. For the ragdoll hold (game/RagdollHold.h).
+const NiAVObject* BladeBoneNode(UInt32 actor, UInt32 bone);
 
 }  // namespace obvr::game
