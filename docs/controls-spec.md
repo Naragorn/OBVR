@@ -2514,8 +2514,11 @@ left-handed player, the roles swapped before anything here sees them).
   pull on <ref> - the <bone> body's mass n, the ragdoll n in n bodies
   (Havok's masses), gravity n; Strength n, GrabWeight xn: a budget of n,
   which lifts n (0: no limit)", and the holding line carries "pulled at n
-  m/s^2 (n of n changes cut to the budget)". The harness rerun with the
-  weight is open; not seen in the headset.
+  m/s^2 (n of n changes cut to the budget)". Harness `grapple-ragdoll.txt`
+  PASS 2026-10-13 15:54 with the weight (physical-combat-spec section 8 has
+  the numbers: a Strength-25 character's budget lifts 75 of the ragdoll's
+  530, the held arm 20 to 31 units behind the hand, every change cut, the
+  throw as before); not seen in the headset.
 
 ### 4.35 Walking with a reached menu open, and switching containers (built 2026-10-10)
 

@@ -505,3 +505,15 @@ chest in the green. A crouch with the head bowed not tried.
 - Seen in a headset 2026-10-12 evening: the look down no longer looks into
   the body, and with the near plane at 4 the IK "wie erwartet" (the
   tester). The wrists turned: not reported on.
+- **Open bug (the tester, 2026-10-13 afternoon): "die armgelenke
+  verkleinern sich noch zu sehr beim drehen der controller nach aussen"** -
+  the wrists (and the elbows?) still pinch too much when the controllers
+  are turned outwards (supination: the palms up and out). The roll spread
+  above (`ForearmRollsFor`: the forearm a third, its twist bone two thirds,
+  up to 270 degrees) was measured for the turn inwards (`body-look-wrist`
+  turns to 180 and 210 one way); the outward turn's rest roll is not 0 (61
+  to 82 degrees on the right, see above), so an outward turn may run the
+  twist past where the weights hold the ring open. To do: a harness sweep
+  turning outwards with the eye dumps and Debug.BodyView's wrist width,
+  then either a lower share on the hand for that side or the elbow swung
+  with the roll (VRArmIK's way, tried and left out above). Not built.

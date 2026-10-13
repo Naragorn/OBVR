@@ -639,13 +639,28 @@ and is dragged. The throw is unchanged (the velocity set outright).
   first run with the weight will say; `kGrabLiftMassAtHundred` is to be set
   on what it says and on the headset (a Strength-50 character should drag a
   bandit along the ground and lift an arm, not the torso).
-- **Harness:** `grapple-ragdoll.txt` now sets GrabWeight=1 and expects the
-  pull line and the budget's count; its rerun with the weight is open (the
-  run of 2026-10-13 13:18 ended before the script started - the tester's
-  own game session; the harness waits for the game to be free).
+- **Harness:** `grapple-ragdoll.txt` sets GrabWeight=1 and expects the pull
+  line and the budget's count: PASS 2026-10-13 15:54 (the run of 13:18
+  ended before the script started, the tester's own session; the one of
+  15:50 quit to the main menu at the drawn mark - a Pause menu, a Message
+  box, the game gone - with nobody at the keyboard known, not seen again):
+  "the pull on 1D274CF0 - the Bip01 R UpperArm body's mass 40.0, the
+  ragdoll 530 in 16 bodies (Havok's masses), gravity 73.6; Strength 25,
+  GrabWeight x1.00: a budget of 5518, which lifts 75" - so the masses are
+  skeleton.nif's as they are, the world's gravity is 73.6 Havok units a
+  second squared (not 9.8: the engine sets its own), and the harness
+  character's Strength of 25 lifts an arm (40) but not the body (530);
+  "holding ... right arm as a ragdoll 0.2 s - the body 19.7 units from the
+  hand, driven at 0.5 m/s, pulled at 13.8 m/s^2 (19 of 19 changes cut to the
+  budget)", 20 to 31 units behind through 0.8 s (every change cut: the
+  hand's 0.4 m/s steps outrun a 13.8 m/s^2 pull with the ragdoll hanging
+  on; the hold was never lost at 40), "thrown - the hand at 27.8 m/s ...
+  sent off at 2915 units/s (41.7 m/s)", a second hold by the left arm. The
+  harness's Strength 25 is the low end; at 50 the pull doubles.
 
-**Open:** the headset - how the drag feels with the weight (the hold as
-first built, with no limit: a 40 kg forearm on a 15 m/s drive), whether the
+**Open:** the headset - how the drag feels with the weight (a Strength-25
+hand sees the arm 0.3 to 0.45 m behind it; too heavy, GrabWeight under 1,
+or `kGrabLiftMassAtHundred` up from 300), whether the
 thrown body flies or slides, and how long a hold should last
 (GrabHoldSeconds counts for the ragdoll hold too; the stamp keeps the
 engine from standing them up before it). The AI while held (its combat
