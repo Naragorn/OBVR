@@ -718,6 +718,18 @@ inline constexpr UInt32 kInputCurrentKeysOffset = 0x18F4;   // UInt8[256], DIK-i
 inline constexpr UInt32 kInputMouseStateOffset = 0x1B20;    // lX, lY, lZ
 inline constexpr UInt32 kInputMouseButtonsOffset = 0x1B2C;  // UInt8[8]
 
+// OSInputGlobals' reader of the keyboard's buffered events (read 2026-10-13):
+// a thiscall taking a pointer for the key, it asks the keyboard device
+// (this+0x28) for one DIDEVICEOBJECTDATA (GetDeviceData, vtable +0x28, size
+// 0x14, count 1, flags 0) and answers 0 for none, 1 for a key down and 2
+// for a key up, with the DIK code (dwOfs) written through the pointer. The
+// interface manager drains it each frame (0x005834B9) and keeps the Shift,
+// Ctrl and Alt modifiers from what it answers (0x0057F7A0, bits of its
+// +0x118); a text field takes its letters from it. Its entry's seven bytes:
+// sub esp,18h; cmp dword ptr [ecx+28h],0 - whole instructions, nothing
+// relative (the je after them is not taken along).
+inline constexpr UInt32 kInputNextKeyEvent = 0x00403C90;
+
 // Whether a menu is up: the main menu, a loading screen, an inventory, the
 // ESC menu, a dialogue. A function rather than a flag, and nullary.
 //

@@ -15,7 +15,16 @@ using obvr::game::ClearEngineOverlay;
 using obvr::game::EngineButtonsHeld;
 using obvr::game::EngineInputOverlay;
 using obvr::game::EngineInputTarget;
+using obvr::game::EngineKeyEvent;
+using obvr::game::EngineKeyEventAnswer;
+using obvr::game::EngineKeyEvents;
 using obvr::game::EngineKeysHeld;
+using obvr::game::kEngineKeyEventCapacity;
+using obvr::game::kEngineKeyEventDown;
+using obvr::game::kEngineKeyEventUp;
+using obvr::game::PopEngineKeyEvent;
+using obvr::game::QueueEngineKeyEvent;
+using obvr::game::ReleaseEngineOverlay;
 using obvr::game::EngineTargetFor;
 using obvr::game::EngineTargetHeld;
 using obvr::game::HoldEngineTarget;
@@ -230,6 +239,60 @@ void TestApply() {
 	Check(axes[0] == 0 && axes[1] == 0 && axes[2] == 0, "the next poll: no movement twice");
 }
 
+void TestKeyEvents() {
+	std::printf("The keys' events beside their state\n");
+	EngineInputOverlay o;
+	EngineKeyEvents q;
+	EngineKeyEvent e;
+	const EngineInputTarget shift = EngineTargetFor(0x10, 0);
+	const EngineInputTarget left = EngineTargetFor(0x01, 0);
+	Check(!PopEngineKeyEvent(q, e), "nothing queued at first");
+	HoldEngineTarget(o, q, shift, true);
+	Check(EngineTargetHeld(o, shift) && q.count == 1, "Shift down: held, and one event queued");
+	HoldEngineTarget(o, q, shift, true);
+	Check(q.count == 1, "held again: no second down - a keyboard repeats none");
+	HoldEngineTarget(o, q, left, true);
+	Check(q.count == 1 && EngineTargetHeld(o, left), "a mouse button: held, no event - the game reads it from the state");
+	HoldEngineTarget(o, q, shift, false);
+	Check(!EngineTargetHeld(o, shift) && q.count == 2, "Shift up: let go, the up queued");
+	HoldEngineTarget(o, q, shift, false);
+	Check(q.count == 2, "up again: nothing");
+	Check(PopEngineKeyEvent(q, e) && e.key == 0x2A && e.down && EngineKeyEventAnswer(e) == kEngineKeyEventDown,
+	      "the first out: Left Shift's DIK 2A down, the reader's 1");
+	Check(PopEngineKeyEvent(q, e) && e.key == 0x2A && !e.down && EngineKeyEventAnswer(e) == kEngineKeyEventUp,
+	      "then its up, the reader's 2");
+	Check(!PopEngineKeyEvent(q, e) && q.count == 0, "then nothing");
+	// A key without a target queues nothing.
+	HoldEngineTarget(o, q, EngineTargetFor(0xE8, 0), true);
+	Check(q.count == 0, "a key without a target: no event");
+	// Letting everything go: an up for each key held, none for the buttons.
+	HoldEngineTarget(o, q, EngineTargetFor('W', 0), true);
+	HoldEngineTarget(o, q, shift, true);
+	while (PopEngineKeyEvent(q, e)) {
+	}
+	ReleaseEngineOverlay(o, q);
+	Check(EngineKeysHeld(o) == 0 && EngineButtonsHeld(o) == 0, "released: nothing held");
+	UInt32 ups = 0;
+	bool allUp = true;
+	while (PopEngineKeyEvent(q, e)) {
+		++ups;
+		allUp = allUp && !e.down;
+	}
+	Check(ups == 2 && allUp, "two ups queued for W and Shift, none for the button");
+	// Past the capacity the oldest goes.
+	EngineKeyEvents full;
+	for (UInt32 i = 0; i < kEngineKeyEventCapacity + 3; ++i) {
+		QueueEngineKeyEvent(full, static_cast<UInt8>(i), true);
+	}
+	Check(full.count == kEngineKeyEventCapacity && full.dropped == 3, "three past the capacity: three dropped");
+	Check(PopEngineKeyEvent(full, e) && e.key == 3, "the oldest kept is the fourth queued");
+	UInt32 drained = 1;
+	while (PopEngineKeyEvent(full, e)) {
+		++drained;
+	}
+	Check(drained == kEngineKeyEventCapacity && e.key == kEngineKeyEventCapacity + 2, "the rest in order to the last");
+}
+
 }  // namespace
 
 int main() {
@@ -240,6 +303,7 @@ int main() {
 	TestTargets();
 	TestHolds();
 	TestApply();
+	TestKeyEvents();
 	std::printf(g_failures == 0 ? "All input route checks passed\n" : "%d input route check(s) FAILED\n",
 	            g_failures);
 	return g_failures == 0 ? 0 : 1;

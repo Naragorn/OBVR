@@ -1,0 +1,47 @@
+# The inventory's drop with the game's window behind another one - the way
+# the tester plays (his log of 2026-10-12: "Input: the game's window is
+# behind another window - the controllers go straight into the game's
+# input"), where the controllers' keys go through the engine's own input
+# state (game/EngineInput.h) instead of Windows. inventory-drop.txt proves
+# the drop with the game in front (the Windows route); the tester's "kann im
+# inventar nicht mehr items droppen mit links A" (2026-10-12 night) is with
+# the game behind. Same steps: the inventory opened, the right hand pointing
+# at the first rows, the left A pressed once; another window put in front at
+# the inventory_later mark, so the press goes through the engine's input.
+# The drop's proof is the items line at "held": a dropped sword is a new
+# reference with a dynamic form id, nearest to the eyes ("form FF0...").
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\inventory-drop-background.txt
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+console player.additem 00000C0C 3
+background-at inventory_later
+
+expect HandScript: finished
+expect Input: the game's window is behind another window
+expect Hands: click sent to the Inventory menu
+reject HandScript: WARNING
+
+wait 12
+right pos 0.15 -0.25 -0.35
+right rot 62 29 0
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark inventory
+wait 2
+mark inventory_later
+wait 2
+mark behind
+left a 1
+wait 1.5
+mark held
+left a 0
+wait 1.5
+mark after_drop
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark closed

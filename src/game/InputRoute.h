@@ -141,6 +141,93 @@ inline bool EngineTargetHeld(const EngineInputOverlay& overlay, const EngineInpu
 
 inline void ClearEngineOverlay(EngineInputOverlay& overlay) { overlay = EngineInputOverlay{}; }
 
+// The keys' events, beside their state. The game reads the keyboard two
+// ways: its state (GetDeviceState into CurrentKeyState, what the controls
+// and the overlay above answer) and its buffered EVENTS (GetDeviceData, one
+// at a time, through OSInputGlobals' reader at addr::kInputNextKeyEvent) -
+// the interface manager keeps the Shift, Ctrl and Alt modifiers from those
+// events alone (0x0057F7A0: a down sets a bit of its +0x118, an up clears
+// it), and a text field takes its letters from them. With the game behind
+// another window the keyboard device is not acquired and yields no events,
+// so a Shift held only in the state was never a modifier: the inventory's
+// drop (Shift and a click, vr::StepDropPress) came through as a plain
+// click - the item equipped instead of dropped (the tester, 2026-10-12:
+// "kann im inventar nicht mehr items droppen mit links A"; the harness
+// drops with the game in front, where Windows feeds the events). So every
+// change of a key's held state queues an event, and the reader's detour
+// hands the queue out before the device's own.
+struct EngineKeyEvent {
+	UInt8 key = 0;      // the DIK code, the index into CurrentKeyState
+	bool down = false;
+};
+
+inline constexpr UInt32 kEngineKeyEventCapacity = 64;
+
+struct EngineKeyEvents {
+	EngineKeyEvent events[kEngineKeyEventCapacity] = {};
+	UInt32 head = 0;   // the next to hand out
+	UInt32 count = 0;
+	UInt32 dropped = 0;  // queued past the capacity: the oldest went
+};
+
+inline void QueueEngineKeyEvent(EngineKeyEvents& q, UInt8 key, bool down) {
+	if (q.count == kEngineKeyEventCapacity) {
+		q.head = (q.head + 1) % kEngineKeyEventCapacity;
+		--q.count;
+		++q.dropped;
+	}
+	EngineKeyEvent& e = q.events[(q.head + q.count) % kEngineKeyEventCapacity];
+	e.key = key;
+	e.down = down;
+	++q.count;
+}
+
+inline bool PopEngineKeyEvent(EngineKeyEvents& q, EngineKeyEvent& out) {
+	if (q.count == 0) {
+		return false;
+	}
+	out = q.events[q.head];
+	q.head = (q.head + 1) % kEngineKeyEventCapacity;
+	--q.count;
+	return true;
+}
+
+// Holds or lets go of a target in the overlay and, for a key whose held
+// state changes by it, queues the event - a key already held, or already
+// up, queues nothing, as a keyboard repeats no down and no up. Mouse
+// buttons have no events: the game reads them from the state alone.
+inline void HoldEngineTarget(EngineInputOverlay& overlay, EngineKeyEvents& events, const EngineInputTarget& target,
+                             bool down) {
+	if (target.kind == EngineInputTarget::Kind::Key) {
+		const bool held = overlay.keys[target.index] != 0;
+		if (held != down) {
+			QueueEngineKeyEvent(events, target.index, down);
+		}
+	}
+	HoldEngineTarget(overlay, target, down);
+}
+
+// Lets go of everything held: an up event for each key down, then the
+// overlay cleared. The events stay queued for the reader to hand out, so
+// the game sees the keys released the way it saw them pressed.
+inline void ReleaseEngineOverlay(EngineInputOverlay& overlay, EngineKeyEvents& events) {
+	for (UInt32 i = 0; i < 256; ++i) {
+		if (overlay.keys[i] != 0) {
+			QueueEngineKeyEvent(events, static_cast<UInt8>(i), false);
+		}
+	}
+	ClearEngineOverlay(overlay);
+}
+
+// What the game's reader answers (0x00403C90, read 2026-10-13): 0 for no
+// event, 1 for a key down, 2 for a key up, the DIK code written to its
+// out-pointer.
+inline constexpr int kEngineKeyEventNone = 0;
+inline constexpr int kEngineKeyEventDown = 1;
+inline constexpr int kEngineKeyEventUp = 2;
+
+inline int EngineKeyEventAnswer(const EngineKeyEvent& e) { return e.down ? kEngineKeyEventDown : kEngineKeyEventUp; }
+
 // How much of the overlay is held, for the log.
 inline UInt32 EngineKeysHeld(const EngineInputOverlay& overlay) {
 	UInt32 n = 0;

@@ -15,22 +15,34 @@ namespace {
 // The tail's first nine bytes in 1.2.0.416 (addr::kInputPollTail): push esi;
 // xor eax,eax; lea edx,[ecx+1B58h]. Verified before patching.
 constexpr UInt8 kEntryBytes[] = {0x56, 0x33, 0xC0, 0x8D, 0x91, 0x58, 0x1B, 0x00, 0x00};
+// The key event reader's first seven (addr::kInputNextKeyEvent): sub
+// esp,18h; cmp dword ptr [ecx+28h],0.
+constexpr UInt8 kNextKeyEntryBytes[] = {0x83, 0xEC, 0x18, 0x83, 0x79, 0x28, 0x00};
 
 // thiscall with no arguments and a plain ret: __fastcall with the one
 // pointer in ecx mirrors it.
 using PollTailFn = void(__fastcall*)(void* input);
 PollTailFn g_original = nullptr;
+// thiscall with one stack argument (the key's out-pointer), ret 4: __fastcall
+// with the this in ecx, edx unused, mirrors it.
+using NextKeyEventFn = int(__fastcall*)(void* input, void* unusedEdx, UInt32* key);
+NextKeyEventFn g_originalNextKey = nullptr;
 
 // The poll and the hand controls both run on the game's thread (the frame
 // function and the Present hook); the lock costs nothing there and keeps
 // the overlay whole should that ever change.
 std::atomic_flag g_lock = ATOMIC_FLAG_INIT;
 EngineInputOverlay g_overlay;
+// The keys' down and up events for the game's reader (InputRoute.h,
+// EngineKeyEvents): the interface manager's modifiers and the text fields
+// take those, not the state.
+EngineKeyEvents g_events;
 bool g_active = false;
 // The first poll of each activation that delivered something, logged.
 bool g_deliveryLogged = false;
 UInt32 g_deliveryLines = 12;
 bool g_unmappedLogged = false;
+UInt32 g_eventLines = 12;
 
 struct Guard {
 	Guard() {
@@ -86,6 +98,81 @@ void __fastcall HookedPollTail(void* input) {
 	g_original(input);
 }
 
+// The game's reader of the keyboard's buffered events: the controllers'
+// key events first, one a call, then the device's own. The queue is handed
+// out whether or not the route is still the engine's - what went down
+// through it comes up through it.
+int __fastcall HookedNextKeyEvent(void* input, void* unusedEdx, UInt32* key) {
+	EngineKeyEvent event;
+	bool have = false;
+	{
+		Guard guard;
+		have = PopEngineKeyEvent(g_events, event);
+	}
+	if (have) {
+		if (key != nullptr) {
+			*key = event.key;
+		}
+		if (g_eventLines > 0) {
+			--g_eventLines;
+			OBVR_LOG("Input: the game's key events took the controllers' %s of DIK %02X", event.down ? "down" : "up",
+			         event.key);
+		}
+		return EngineKeyEventAnswer(event);
+	}
+	return g_originalNextKey(input, unusedEdx, key);
+}
+
+// The second detour, at the event reader: without it the engine route's
+// keys are state alone, which the interface manager's modifiers and the
+// text fields never read (InputRoute.h, EngineKeyEvents).
+bool InstallNextKeyEventHook() {
+	if (g_originalNextKey != nullptr) {
+		return true;
+	}
+	if (!mem::Verify(addr::kInputNextKeyEvent, kNextKeyEntryBytes, sizeof(kNextKeyEntryBytes))) {
+		OBVR_LOG("Input: bytes at %08X differ - the controllers' keys reach the game's state while it is behind "
+		         "another window, but not its key events: no Shift for the inventory's drop, no letters for a text "
+		         "field",
+		         addr::kInputNextKeyEvent);
+		mem::ReportForeignCode("Input", addr::kInputNextKeyEvent);
+		return false;
+	}
+	constexpr UInt32 kTrampolineCapacity = 16;
+	auto* trampoline = static_cast<UInt8*>(mem::AllocExecutable(kTrampolineCapacity));
+	if (trampoline == nullptr) {
+		OBVR_LOG("Input: no executable memory for the key events' trampoline");
+		return false;
+	}
+	const UInt32 trampolineAddress = reinterpret_cast<UInt32>(trampoline);
+	const UInt32 trampolineSize =
+		mem::BuildEntryTrampoline(trampoline, kTrampolineCapacity, trampolineAddress, addr::kInputNextKeyEvent,
+		                          kNextKeyEntryBytes, sizeof(kNextKeyEntryBytes));
+	if (trampolineSize == 0) {
+		OBVR_LOG("Input: the key events' trampoline does not fit");
+		return false;
+	}
+	UInt8 patch[sizeof(kNextKeyEntryBytes)];
+	const UInt32 patchSize = mem::BuildEntryPatch(patch, sizeof(patch), addr::kInputNextKeyEvent,
+	                                              reinterpret_cast<UInt32>(&HookedNextKeyEvent),
+	                                              sizeof(kNextKeyEntryBytes));
+	if (patchSize != sizeof(patch)) {
+		OBVR_LOG("Input: the key events' patch has unexpected length %u", patchSize);
+		return false;
+	}
+	g_originalNextKey = reinterpret_cast<NextKeyEventFn>(trampoline);
+	if (!mem::SafeWrite(addr::kInputNextKeyEvent, patch, patchSize)) {
+		g_originalNextKey = nullptr;
+		OBVR_LOG("Input: SafeWrite to %08X failed - the controllers' key events cannot reach the game",
+		         addr::kInputNextKeyEvent);
+		return false;
+	}
+	OBVR_LOG("Input: the key event reader at %08X hands out the controllers' key downs and ups first, for the "
+	         "menus' Shift and the text fields, trampoline at %08X",
+	         addr::kInputNextKeyEvent, trampolineAddress);
+	return true;
+}
+
 }  // namespace
 
 bool InstallEngineInputHook() {
@@ -138,6 +225,10 @@ bool InstallEngineInputHook() {
 	OBVR_LOG("Input: the poll's tail at %08X takes the controllers' keys while the game is behind "
 	         "another window, trampoline at %08X (thread %u)",
 	         addr::kInputPollTail, trampolineAddress, static_cast<UInt32>(GetCurrentThreadId()));
+	// The events beside the state. Its failure is logged and leaves the
+	// state's route in place: keys and clicks work as before, the modifiers
+	// and the letters do not.
+	InstallNextKeyEventHook();
 	return true;
 }
 
@@ -146,7 +237,7 @@ bool EngineInputHookInstalled() { return g_original != nullptr; }
 void SetEngineInputActive(bool active) {
 	Guard guard;
 	if (!active) {
-		ClearEngineOverlay(g_overlay);
+		ReleaseEngineOverlay(g_overlay, g_events);
 	} else if (!g_active) {
 		g_deliveryLogged = false;
 	}
@@ -164,7 +255,7 @@ void EngineHoldKey(UInt32 virtualKey, bool down) {
 		return;
 	}
 	Guard guard;
-	HoldEngineTarget(g_overlay, target, down);
+	HoldEngineTarget(g_overlay, g_events, target, down);
 }
 
 bool EngineHoldsKey(UInt32 virtualKey) {
@@ -191,7 +282,7 @@ void EngineScrollWheel(SInt32 delta) {
 
 void EngineReleaseAll() {
 	Guard guard;
-	ClearEngineOverlay(g_overlay);
+	ReleaseEngineOverlay(g_overlay, g_events);
 }
 
 bool GameWindowInFront() {

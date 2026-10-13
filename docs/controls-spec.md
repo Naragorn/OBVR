@@ -2787,28 +2787,53 @@ vll können wir den entfernen."
   `hands-in-menus` run of 2026-10-11 the line came between "menu Loading"
   and "menu none", and "Hud: live" only after. Headset: open.
 
-### 4.43 Open bug: no drop from the inventory with the left A (the tester, 2026-10-12 night)
+### 4.43 No drop from the inventory with the left A behind another window (the tester, 2026-10-12 night; fixed 2026-10-13, unproven in the game)
 
 - **Reported:** "kann im inventar nicht mehr items droppen mit links A" - on
-  the builds of the evening of 2026-10-12 (f652753 and fd9ec72 deployed;
-  which of the day's builds first showed it is not known). The drop by the
-  left A over an item in the inventory worked on 2026-09-27
-  (`inventory-drop.txt`, PASS: Shift held, a click under the cursor, one
-  item dropped) and the tester has used it since.
-- **Where it lives:** vr/HandInput.h `StepDropPress` (Shift down, the click
-  down, the click up, Shift up, a frame each); HandMode.cpp carries the
-  click as `m_dropClickNow` past the laser's own press logic (lines
-  1039-1048). Nothing of today's changes touched src/vr; today's changes
-  near it: the pick's hold and settles (f652753: `ReadCrosshairTarget`
-  answers no reference while the engine's slot holds no live one;
-  `StepPickHold` lets a gone item go), the near plane (fd9ec72), and the
-  menu-hands work of 2026-10-11 (4.41: the hands stay in the game's menus,
-  the Esc menu excepted).
-- **To find out first:** whether the drop's key events reach the game at
-  all (the "Hands: click sent to the Inventory menu" line and
-  `StepDropPress`'s phases in the log of his run), whether the left A is
-  read in the inventory now that the hands stay in menus (4.41 changed what
-  the controllers do in menus), and whether the drop needs the laser's hit
-  on the item while the hand HUD or the pick's hold intervene. Rerun
-  `inventory-drop.txt` on the current build before reading code.
-- Not looked into on the night; noted for the morning.
+  the builds of the evening of 2026-10-12. The drop by the left A over an
+  item in the inventory worked on 2026-09-27 (`inventory-drop.txt`, PASS:
+  Shift held, a click under the cursor, one item dropped).
+- **Found 2026-10-13.** The harness reran `inventory-drop.txt` on the build
+  of fd9ec72 and the drop worked: the items line at "held" names a new
+  weapon reference with a dynamic form id 102 units from the eyes, the
+  dropped sword. The difference to the tester's game is the window in
+  front: his log says "Input: the game's window is behind another window -
+  the controllers go straight into the game's input" before the inventory
+  rounds, so his keys went through the engine route (4.36's background
+  input of 2026-10-09), while the harness's drop went through Windows with
+  the game in front. His log also holds three clicks on "Steel_Longsword"
+  with the triggers at 0.00 - the drop's own clicks, the left A - and after
+  each the sword's scabbard hidden: the item EQUIPPED, as a plain click
+  does.
+- **Why, read in Oblivion.exe 1.2.0.416:** the engine reads the keyboard
+  two ways. Its state (GetDeviceState into CurrentKeyState, +0x18F4 of
+  OSInputGlobals) is what the controls answer, and what the engine route
+  writes. Its buffered EVENTS (GetDeviceData, one at a time, through the
+  reader at 0x00403C90: 1 for a down, 2 for an up, the DIK code through a
+  pointer) are what the interface manager drains each frame (0x005834B9)
+  and keeps its modifiers from (0x0057F7A0: Left or Right Shift down sets
+  bit 2 of its +0x118, up clears it; Ctrl bit 1, Alt bit 0) - and
+  `InventoryMenu::HandleClick` (0x005ABBC0, the vtable's third entry) takes
+  the item click for a drop by that bit (0x005ABD80: `[manager+118h] >> 2 &
+  1`). With the game behind another window the keyboard device is not
+  acquired and yields no events, so a Shift held in the state alone was
+  never a modifier, and the click was a plain click. (The flag 0xB3B43D
+  tested first in HandleClick is the quick-key wheel's, menu 0x416, not the
+  drop's; and the game imports no GetKeyState.)
+- **Fixed:** a second detour at the reader (`addr::kInputNextKeyEvent`,
+  game/EngineInput.cpp): every change of a key's held state through the
+  engine route queues an event (`EngineKeyEvents`, InputRoute.h - a down
+  once, an up once, none for the mouse buttons, which the game reads from
+  the state), the reader hands the queue out before the device's own, and
+  letting everything go (the route changing, the hand mode off) queues an
+  up for each key held. The same events carry a text field's letters, so
+  the VR keyboard's typing is expected to reach a field with the game
+  behind another window now - not tried. input_route_test covers the
+  queue; the detour's install is logged ("Input: the key event reader at
+  00403C90 hands out ...") and refused with a log line when the bytes
+  differ.
+- **Open:** not run in the game (no game starts on 2026-10-13); the
+  scenario for it is `inventory-drop-background.txt` (its one run that
+  morning was spoiled by the runner's console text, see the harness doc).
+  The tester's headset is the proof: the left A in the inventory with the
+  game behind another window.

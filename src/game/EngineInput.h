@@ -12,6 +12,12 @@ namespace obvr::game {
 // the game, the double-click pass and xOBSE (its HoldKey, DisableKey and
 // OnKeyEvent run after it) all see them the way they see a real key. Only
 // while active: the rest of the time the detour passes straight through.
+// A second detour, at the keyboard's event reader (addr::kInputNextKeyEvent),
+// hands out a down and an up event for every key the controllers press
+// and release: the interface manager keeps its Shift, Ctrl and Alt from
+// those events, not from the state - the inventory's drop by the left A
+// (Shift and a click) was a plain click through the state alone (the
+// tester, 2026-10-12) - and a text field takes its letters from them.
 
 // Installs the detour; logs its outcome. False when the bytes are not the
 // ones this was built for - another mod at the same entry - and then the
