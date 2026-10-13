@@ -324,10 +324,19 @@ the laser - a fight is not fought by pointing. Instead OBVR's own bars,
   overlay up, shown n s").
 
 Hand script `enemy-health.txt` (two bandits at an untouchable player, the
-state at marks, then `killall` for the linger): written 2026-10-13, not run -
-the tester asked for no game starts that morning ("game net starten") as
-its first run was launching; it was stopped before the save loaded. To be
-run: the bars' lines, the overlays up, the bars going after the kill.
+state at marks, then `killall` for the linger): PASS 2026-10-13 on its first
+whole run (the one before was stopped as SteamVR started, at the tester's
+word): "a bar over 1B9EC538 - 100% health, 1.7 m away, above the head bone
+(bar 1 of 8)", the second at 2.2 m; at the three marks of the fight both
+"the overlay up", 0.35 m wide at 1.8 to 3.1 m, shown 2.5 to 10.6 s; after
+the kill "1B9EC538's bar went (dead or no longer fighting, 2 s after)" for
+both. Not seen in the run: a bar sinking (the untouchable player never
+struck, so the health stayed at 100% and each bar was painted once - the
+repaint is enemy_health_test's), the empty bar at a mark (the kill and the
+two seconds fell between the marks), and the game's own bar: no "the
+game's own bar ... came up" line, so the engine never had HUDReticle's
+root sized through the fight - with the laser ahead and no pick on the
+bandits, which is also how the tester fights.
 
 **Open bug (2026-09-29): the enemy health bar is not shown - closed
 2026-10-13 by the bars above.** The tester: "wir müssen den healthbar von gegnern rendern ... das ist afaik ein vanilla feature".
@@ -337,7 +346,8 @@ run: the bars' lines, the overlays up, the bars going after the kill.
   square's lift and erase, `SetHudReticleEnabled` on the title screen, the
   wrapped HUDReticle update) are moot now: the game's bar is hidden on
   purpose and the fighters carry their own. Whether the engine ever has the
-  root up in VR is what the hide's own line will say on the first run.
+  root up in VR: not in the harness run of 2026-10-13 (no pick on the
+  fighters); the hide's own line will say so the first time it does.
 
 **The crosshair quad off the laser (2026-10-07).** The tester: "die
 tooltips vom laserpointer ausschneiden und stattdessen wie beim heben von
