@@ -123,6 +123,17 @@ const SettingDefinition* SettingDefinitions();
 const SettingDefinition* FindSetting(const char* iniSection, const char* iniKey);
 UInt32 SettingDefinitionCount();
 
+// Whether a category is one of the hands' headings: "Hands" itself or one of
+// its sub-headings - "Hands: grabbing", "Hands: physics", "Hands: melee",
+// "Hands: bow", "Hands: people", "Hands: enemies", "Hands: reaching",
+// "Hands: laser", "Hands: menus", "Hands: holsters", "Hands: moving" (the
+// tester, 2026-10-13: the one Hands heading had 134 rows in the order they
+// were built; now by topic). The INI section stays [Hands] for all of them:
+// the heading is what the menu shows, iniSection what the file holds. What
+// the native menu's mode filter asks (NativeSettings.cpp), and the table's
+// test. Null and "HandHud" are not.
+bool CategoryUnderHands(const char* category);
+
 // One row, filled in from the configuration as it stands.
 //
 // A definition with no Read gives an item at its minimum rather than reading

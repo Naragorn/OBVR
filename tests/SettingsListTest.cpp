@@ -45,6 +45,7 @@ bool TextIs(const char* a, const char* b) {
 
 using obvr::Config;
 using obvr::ui::ApplySetting;
+using obvr::ui::CategoryUnderHands;
 using obvr::ui::FindSetting;
 using obvr::ui::ItemFor;
 using obvr::ui::ItemKind;
@@ -307,6 +308,63 @@ void TestCategoriesAreGrouped() {
 	Check(scattered == nullptr, "each category appears as one run of rows");
 }
 
+void TestHandsHeadings() {
+	std::printf("The Hands rows sit under the Hands headings\n");
+
+	// The rule itself: "Hands" and "Hands: <topic>", nothing that merely
+	// starts the same way.
+	Check(CategoryUnderHands("Hands"), "\"Hands\" is under Hands");
+	Check(CategoryUnderHands("Hands: grabbing"), "\"Hands: grabbing\" is under Hands");
+	Check(!CategoryUnderHands("HandHud"), "\"HandHud\" is not");
+	Check(!CategoryUnderHands("Handsome"), "\"Handsome\" is not");
+	Check(!CategoryUnderHands("Hands:grabbing"), "\"Hands:grabbing\" (no space) is not");
+	Check(!CategoryUnderHands("Hand"), "\"Hand\" is not");
+	Check(!CategoryUnderHands(""), "an empty category is not");
+	Check(!CategoryUnderHands(nullptr), "no category is not");
+
+	const SettingDefinition* const settings = SettingDefinitions();
+	const UInt32 count = SettingDefinitionCount();
+
+	// Every row of the [Hands] section sits under a Hands heading, except the
+	// mode switch, which has its own heading.
+	UInt32 strays = 0;
+	UInt32 underHands = 0;
+	UInt32 headings = 0;
+	bool inRun = false;
+	bool runEnded = false;
+	bool scattered = false;
+	for (UInt32 at = 0; at < count; ++at) {
+		const SettingDefinition& one = settings[at];
+		const bool under = CategoryUnderHands(one.category);
+		if (TextIs(one.iniSection, "Hands") && !under && !TextIs(one.category, "Mode")) {
+			std::printf("        row %u (%s) is a [Hands] row under \"%s\"\n", at, one.iniKey, one.category);
+			++strays;
+		}
+		if (under) {
+			++underHands;
+			if (at == 0 || !TextIs(settings[at - 1].category, one.category)) {
+				++headings;
+			}
+			if (runEnded) {
+				scattered = true;
+			}
+			inRun = true;
+		} else if (inRun) {
+			runEnded = true;
+		}
+	}
+	Check(strays == 0, "every [Hands] row is under a Hands heading (the mode switch aside)");
+	Check(underHands >= 100, "the Hands headings hold the hands' rows");
+	Check(headings >= 10, "the Hands rows are split into headings by topic");
+	Check(!scattered, "the Hands headings stand together");
+	Check(FindSetting("Hands", "GrabReachMetres") != nullptr &&
+	          TextIs(FindSetting("Hands", "GrabReachMetres")->category, "Hands: grabbing"),
+	      "the grab's reach sits under \"Hands: grabbing\"");
+	Check(FindSetting("Hands", "ControllerMenus") != nullptr &&
+	          TextIs(FindSetting("Hands", "ControllerMenus")->category, "Hands"),
+	      "the controllers' menu row stays under \"Hands\" itself (VR View's)");
+}
+
 void TestItemsAreBuilt() {
 	std::printf("A row becomes a menu item\n");
 
@@ -548,6 +606,7 @@ int main() {
 	TestValuesAsWrittenToIni();
 	std::printf("\n");
 	TestCategoriesAreGrouped();
+	TestHandsHeadings();
 	std::printf("\n");
 	TestItemsAreBuilt();
 	std::printf("\n");

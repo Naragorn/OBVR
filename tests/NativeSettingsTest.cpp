@@ -474,6 +474,12 @@ void TestModes() {
  const auto* holsters=find("Hands","Holsters");
  Check(holsters && SettingRelevantIn(SettingsMode::FullVr,*holsters) && !SettingRelevantIn(SettingsMode::VrView,*holsters),
        "the hands' rows only in the Full VR Port");
+ // The Hands sub-headings' rows (2026-10-13) are the hands' rows too.
+ const auto* grab=find("Hands","GrabReachMetres");
+ Check(grab && std::strcmp(grab->category,"Hands")!=0 && CategoryUnderHands(grab->category),
+       "the grab's reach sits under a Hands sub-heading");
+ Check(grab && SettingRelevantIn(SettingsMode::FullVr,*grab) && !SettingRelevantIn(SettingsMode::VrView,*grab),
+       "a sub-heading's row only in the Full VR Port");
  const auto* gamepad=find("Hands","GamepadLayout");
  const auto* menus=find("Hands","ControllerMenus");
  Check(gamepad && menus && SettingRelevantIn(SettingsMode::VrView,*gamepad) && !SettingRelevantIn(SettingsMode::FullVr,*gamepad) &&
@@ -500,6 +506,12 @@ void TestModes() {
  Check(menu.InOverview() && menu.First()==0,"a mode change starts at the list");
  Check(HasSection(menu,c,"Teleport") && HasSection(menu,c,"Hands") && !HasSection(menu,c,"Aiming"),
        "Full VR Port: teleport and hands, no head aiming");
+ Check(HasSection(menu,c,"Hands: grabbing") && HasSection(menu,c,"Hands: moving"),
+       "Full VR Port: the Hands sub-headings are sections of their own");
+ menu.SetMode(SettingsMode::VrView,c);
+ Check(HasSection(menu,c,"Hands") && !HasSection(menu,c,"Hands: grabbing") && !HasSection(menu,c,"Hands: moving"),
+       "VR View: Hands itself (the controller rows), none of its sub-headings");
+ menu.SetMode(SettingsMode::FullVr,c);
  // Inside Hands in VR View only its two controller rows (the switch has its own section).
  menu.SetMode(SettingsMode::VrView,c);
  UInt32 k=0; bool opened=false;

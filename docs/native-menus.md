@@ -184,3 +184,24 @@ rather than as menus of their own. The flat view (`All`) and the comfort page
 are unchanged. Covered by `TestSections` in NativeSettingsTest; the list was
 seen in the game through `tools/hand-scripts/settings-sections.txt` (Full VR)
 and `settings-sections-vr-view.txt` (VR View).
+
+**The Hands headings (2026-10-13).** The one "Hands" heading had grown to
+134 rows in the order they were built; the tester asked for sub-categories.
+A category is only the string a row carries (SettingDefinition::category;
+the headset's menu draws a heading when it changes, this menu lists each
+once), and the INI section is a field of its own, so the split is a
+regrouping of the table alone: "Hands" keeps the basics (the hands on the
+controllers, their fit, left-handed, the controller rows), and eleven
+sub-headings take the rest - "Hands: grabbing", "Hands: physics", "Hands:
+melee", "Hands: bow", "Hands: people", "Hands: enemies", "Hands: reaching",
+"Hands: laser", "Hands: menus", "Hands: holsters", "Hands: moving". Every
+row still writes to `[Hands]`. `ui::CategoryUnderHands` tells the mode
+filter (SettingRelevantIn) which headings are the hands' - "Hands" or
+"Hands: <topic>", never "HandHud" - so the sub-headings are the Full VR
+Port's as the rows were, and VR View keeps "Hands" with its two controller
+rows. The table's test holds every `[Hands]` row (the mode switch aside)
+under one of them and the headings together in one run; the sections list
+now has 25 entries of its 32. Seen in the game through
+`settings-sections.txt` (PASS 2026-10-13): the Full VR Port's list runs to
+four pages, its second "Hands", "Hands: grabbing", "Hands: physics", "Hands:
+melee", "Hands: bow", "Hands: people", "Hands: enemies".

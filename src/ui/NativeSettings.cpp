@@ -25,8 +25,9 @@ bool SettingRelevantIn(SettingsMode mode,const SettingDefinition& d) {
  // With Full VR off the controllers can still drive the menus, or play as a
  // gamepad: VR View's.
  if (Key(d,"Hands","ControllerMenus") || Key(d,"Hands","GamepadLayout")) return !full;
- // Everything else under Hands, and the teleport: the Full VR Port's.
- if (Same(d.category,"Hands") || Same(d.category,"Teleport")) return full;
+ // Everything else under Hands - its heading and its sub-headings - and the
+ // teleport: the Full VR Port's.
+ if (CategoryUnderHands(d.category) || Same(d.category,"Teleport")) return full;
  // Looking and aiming by the head, and the body under the headset: VR View's
  // (in Full VR the hands aim and the arms are the controllers).
  if (Same(d.category,"Looking") || Same(d.category,"Aiming") || Same(d.category,"Body"))
