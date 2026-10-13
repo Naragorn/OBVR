@@ -220,4 +220,32 @@ inline EnemyHealthVerdict StepEnemyHealthBars(EnemyHealthState& s, const EnemyHe
 	return v;
 }
 
+// ------------------------------------------- the game's own bar, its frames
+// The tester (2026-10-13): "statt unserem eigenen balken den von vanilla
+// rendern über den gegnern". HUDReticle's enemy health is a model, not an
+// image: hud_reticle.xml's <nif> "hudreticle_enemy_health" loads
+// meshes/menus/enemy health bar/health_bar01.nif (read 2026-10-13 with
+// pyffi) - one quad, 128 by 32 units, with a NiFlipController on its
+// texturing property holding 40 textures,
+// textures/menus/misc/sequence_dds/000001..000040.dds (128 by 32, DXT5, no
+// mipmaps): a golden arc, the widest in the first (79 of 128 columns) and a
+// stub in the last (11) - the first is full health, the last empty; the
+// HUD runs them through its sequence "Health_Bar" (42 float keys, one a
+// frame at 30 a second) from the tile's user traits. OBVR reads the frames
+// off those textures (game/EnemyHealthModel.h) and paints the one for the
+// fraction on each bar's overlay (ui/EnemyHealthPainter.h).
+
+// The frame for a fraction of health: 0 the fullest, frames - 1 the
+// emptiest, the nearest in between. Not a number counts as full.
+inline UInt32 EnemyHealthFrameIndex(float fraction, UInt32 frames) {
+	if (frames < 2) {
+		return 0;
+	}
+	float f = fraction == fraction ? fraction : 1.0f;
+	f = f < 0.0f ? 0.0f : (f > 1.0f ? 1.0f : f);
+	const float last = static_cast<float>(frames - 1);
+	const UInt32 index = static_cast<UInt32>((1.0f - f) * last + 0.5f);
+	return index > frames - 1 ? frames - 1 : index;
+}
+
 }  // namespace obvr::game

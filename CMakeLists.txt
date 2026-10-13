@@ -104,6 +104,7 @@ add_library(OBVR SHARED
 	src/game/CombatRing.cpp
 	src/game/AttackTempo.cpp
 	src/game/EnemyHealth.cpp
+	src/game/EnemyHealthModel.cpp
 	src/game/HandBodies.cpp
 	src/game/GameSound.cpp
 	src/game/PlayerCapsule.cpp

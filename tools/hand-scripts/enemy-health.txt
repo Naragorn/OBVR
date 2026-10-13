@@ -1,11 +1,18 @@
 # The enemy health bars over the fighters ([HandHud] EnemyHealthBars,
-# game/EnemyHealthLogic.h, game/EnemyHealth.h): two melee bandits (00069AD1)
-# attack an untouchable player (tgm) who stands still; each gets a bar of
-# its own above its head ("Enemy health: a bar over ... above the head
-# bone"), the state at every mark says how full, how far and whether the
-# overlay is up; at fight3 the console kills them all (killall), so the bars
-# go empty, linger two seconds and go ("bar went"). The game's own bar,
-# when the engine has it up, is logged as hidden ("the game's own bar").
+# game/EnemyHealthLogic.h, game/EnemyHealth.h, game/EnemyHealthModel.h): two
+# melee bandits (00069AD1) attack an untouchable player (tgm) who stands
+# still; each gets a bar of its own above its head ("Enemy health: a bar
+# over ... above the head bone") - the game's own bar's frames, found under
+# HUDReticle's enemy health tile ("the game's own bar model found") and read
+# off the game's textures ("read off the game's texture"), on OBVR's
+# overlays; the state at every mark says how full, how far and which frame
+# is up; at fight3 the console kills them all (killall), so the bars go
+# empty, linger two seconds and go ("bar went"). OBVR's own painted bar is
+# the fallback and must not show. The synthetic head faces the
+# nearest fighter (head face 1), pitched up 25 degrees so the bar above a
+# close bandit's head is in the frame, and the eyes are dumped at the fight
+# marks (dump-*-eyes.png), so the arc over the head can be seen - the
+# monitor's picture is the game's own camera, not the headset's.
 # Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\enemy-health.txt
 
 ini Hands Enabled=1
@@ -17,24 +24,35 @@ console-at ready tgm
 console-at fight3 killall
 
 expect HandScript: finished
+expect Enemy health: the game's own bar model found
+expect Enemy health: the bars are the game's own frames
+expect read off the game's texture
 expect Enemy health: a bar over
 expect above the head bone
 expect Enemy health: at the mark - bar 1 over
 expect Enemy health: at the mark - bar 2 over
-expect the overlay up
+expect the overlay up (the game's own frame
 expect bar went
 reject HandScript: WARNING
 reject the overlay NOT up
+reject could not be read off the game's texture
+reject OBVR's own bar
+reject the bars are OBVR's own
 
 wait 12
 right pos 0.20 -0.40 -0.30
 left pos -0.20 -0.40 -0.30
 wait 1
 mark ready
-wait 10
+wait 1
+head pitch 25
+head face 1
+wait 9
 mark fight1
+dump
 wait 4
 mark fight2
+dump
 wait 4
 mark fight3
 wait 8

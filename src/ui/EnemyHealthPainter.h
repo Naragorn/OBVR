@@ -5,18 +5,24 @@
 
 namespace obvr::ui {
 
-// A fighter's health bar over their head (game/EnemyHealthLogic.h): a dark
-// translucent bed with a thin gold frame - Oblivion's parchment gold, the
-// quick menu's - and a red fill as wide as the health left. Nothing else on
-// it: a bar, not a tooltip.
+// A fighter's health bar over their head (game/EnemyHealthLogic.h): the
+// game's own frame when one is given (game/EnemyHealthModel.h - the golden
+// arc, read off the game's texture, scaled onto the canvas), else OBVR's
+// own: a dark translucent bed with a thin gold frame - Oblivion's parchment
+// gold, the quick menu's - and a red fill as wide as the health left.
+// Nothing else on it: a bar, not a tooltip.
 struct EnemyHealthView {
-	float fraction = 1.0f;  // 0 to 1
+	float fraction = 1.0f;                   // 0 to 1
+	const render::Pixel* frame = nullptr;    // the game's frame, in the canvas's order; null for OBVR's own bar
+	UInt32 frameWidth = 0;
+	UInt32 frameHeight = 0;
 };
 
 // The canvas is kEnemyHealthCanvasWidth by kEnemyHealthCanvasHeight pixels
-// (8:1); the overlay keeps the shape at whatever width it hangs.
+// (4:1, the game's frames' shape); the overlay keeps the shape at whatever
+// width it hangs.
 inline constexpr UInt32 kEnemyHealthCanvasWidth = 256;
-inline constexpr UInt32 kEnemyHealthCanvasHeight = 32;
+inline constexpr UInt32 kEnemyHealthCanvasHeight = 64;
 // The frame's thickness and the bed's inset, pixels.
 inline constexpr SInt32 kEnemyHealthFrame = 2;
 inline constexpr SInt32 kEnemyHealthInset = 4;
@@ -30,6 +36,15 @@ inline SInt32 EnemyHealthFillPixels(float fraction, SInt32 innerWidth) {
 	const float f = fraction > 1.0f ? 1.0f : fraction;
 	const SInt32 pixels = static_cast<SInt32>(f * static_cast<float>(innerWidth) + 0.5f);
 	return pixels < 1 ? 1 : pixels;
+}
+
+// The canvas pixel's source in a frame scaled to the canvas: the nearest.
+inline UInt32 FrameSource(UInt32 canvasAt, UInt32 canvasSize, UInt32 frameSize) {
+	if (canvasSize == 0 || frameSize == 0) {
+		return 0;
+	}
+	const UInt32 at = (canvasAt * frameSize) / canvasSize;
+	return at < frameSize ? at : frameSize - 1;
 }
 
 void PaintEnemyHealth(Canvas& canvas, const EnemyHealthView& view);

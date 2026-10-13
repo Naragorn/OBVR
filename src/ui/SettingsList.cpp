@@ -1816,8 +1816,8 @@ const SettingDefinition kSettings[] = {
 	},
 	{
 		"HUD", "Enemy health over them",
-		"Every fighter attacking you carries a health bar above their head in the world; the game's own bar at the "
-		"crosshair is hidden",
+		"Every fighter attacking you carries the game's own health bar (its golden arc) above their head in the "
+		"world; the one at the crosshair is hidden",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"HandHud", "EnemyHealthBars",
 		+[](const Config& c) { return c.hands.enemyHealth.enabled ? 1.0f : 0.0f; },
@@ -1831,7 +1831,9 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.enemyHealth.rangeMetres = v; },
 	},
 	{
-		"HUD", "Enemy health bar width (m)", "How wide a bar is in the world up close; far off it keeps a minimum size",
+		"HUD", "Enemy health bar width (m)",
+		"How wide the bar is in the world up close (the arc takes about two thirds of it); far off it keeps a "
+		"minimum size",
 		ItemKind::Number, 0.1f, 2.0f, 0.05f, 2, false,
 		"HandHud", "EnemyHealthWidthMetres",
 		+[](const Config& c) { return c.hands.enemyHealth.widthMetres; },

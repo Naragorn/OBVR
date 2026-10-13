@@ -21,6 +21,18 @@ void PaintEnemyHealth(Canvas& canvas, const EnemyHealthView& view) {
 	canvas.Fill(kClear);
 	const SInt32 w = static_cast<SInt32>(canvas.Width());
 	const SInt32 h = static_cast<SInt32>(canvas.Height());
+	if (view.frame != nullptr && view.frameWidth > 0 && view.frameHeight > 0) {
+		// The game's frame, scaled to the canvas pixel by pixel (the nearest
+		// of the frame's), its own alpha kept.
+		for (SInt32 y = 0; y < h; ++y) {
+			const UInt32 sy = FrameSource(static_cast<UInt32>(y), canvas.Height(), view.frameHeight);
+			for (SInt32 x = 0; x < w; ++x) {
+				const UInt32 sx = FrameSource(static_cast<UInt32>(x), canvas.Width(), view.frameWidth);
+				canvas.SetPixel(x, y, view.frame[sy * view.frameWidth + sx]);
+			}
+		}
+		return;
+	}
 	canvas.FillRect(0, 0, w, h, kBed);
 	canvas.DrawFrame(0, 0, w, h, kEnemyHealthFrame, kGold);
 	const SInt32 innerX = kEnemyHealthInset;

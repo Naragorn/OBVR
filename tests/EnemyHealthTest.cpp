@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "game/EnemyHealthLogic.h"
+#include "ui/DxtDecode.h"
 #include "ui/EnemyHealthPainter.h"
 
 namespace {
@@ -223,7 +224,94 @@ void TestPainter() {
 
 }  // namespace
 
+// The game's own frames: the frame for a fraction, the DXT5 decoding, the
+// frame scaled onto the canvas.
+void TestFrames() {
+	std::printf("The game's own frames\n");
+	Check(EnemyHealthFrameIndex(1.0f, 40) == 0 && EnemyHealthFrameIndex(0.0f, 40) == 39, "full the first frame, empty the last");
+	Check(EnemyHealthFrameIndex(0.5f, 40) == 20 && EnemyHealthFrameIndex(0.75f, 40) == 10 &&
+	          EnemyHealthFrameIndex(0.99f, 40) == 0 && EnemyHealthFrameIndex(0.97f, 40) == 1,
+	      "in between the nearest frame");
+	Check(EnemyHealthFrameIndex(1.5f, 40) == 0 && EnemyHealthFrameIndex(-1.0f, 40) == 39 &&
+	          EnemyHealthFrameIndex(kNaN, 40) == 0,
+	      "out of range clamped, not a number full");
+	Check(EnemyHealthFrameIndex(0.3f, 1) == 0 && EnemyHealthFrameIndex(0.3f, 0) == 0, "fewer than two frames: the first");
+
+	// A DXT5 block: alphas 255 and 0 (the eight-step table), the colours
+	// pure red (0xF800) and pure blue (0x001F) with their two mixes; the
+	// alpha indices all 0 but the last pixel's (7 = alpha 0 under a0 > a1 ...
+	// the eighth entry is a1 itself here: 255 -> (7-6)*255/7 = 36 at index 7);
+	// the colour indices 0, 1, 2, 3 across the first row, then 0.
+	UInt8 block[16] = {};
+	block[0] = 255;
+	block[1] = 0;
+	// alpha index 7 for pixel 15: bits 45..47 of the 48-bit field -> byte 7 (bits 40..47), its top three bits.
+	block[7] = 0xE0;
+	block[8] = 0x00;
+	block[9] = 0xF8;  // c0 = 0xF800 red
+	block[10] = 0x1F;
+	block[11] = 0x00;  // c1 = 0x001F blue
+	block[12] = 0xE4;  // pixels 0..3: indices 0, 1, 2, 3 (binary 11 10 01 00)
+	obvr::render::Pixel px[16];
+	obvr::ui::DecodeDxt5Block(block, px);
+	// The canvas's order: red in .b, blue in .r.
+	Check(px[0].b == 255 && px[0].g == 0 && px[0].r == 0 && px[0].a == 255, "pixel 0: red (in the canvas's order), opaque");
+	Check(px[1].r == 255 && px[1].b == 0 && px[1].a == 255, "pixel 1: blue");
+	Check(px[2].b == 170 && px[2].r == 85 && px[2].g == 0, "pixel 2: two thirds red, a third blue");
+	Check(px[3].b == 85 && px[3].r == 170, "pixel 3: a third red, two thirds blue");
+	Check(px[4].b == 255 && px[4].a == 255, "pixel 4: red again (index 0)");
+	Check(px[15].a == 36, "pixel 15: the alpha table's last entry under a0 > a1");
+	// a0 <= a1: the six-step table with 0 and 255 at the end.
+	block[0] = 0;
+	block[1] = 100;
+	block[7] = 0xE0;  // pixel 15 index 7 -> 255
+	block[6] = 0x18;  // pixel 14: bits 42..44 -> index 6 -> 0 ... (0x18 = bits 43,44 of byte 6 = bits 43,44 -> index 6 = 110b)
+	obvr::ui::DecodeDxt5Block(block, px);
+	Check(px[15].a == 255 && px[0].a == 0, "a0 <= a1: index 7 is 255, index 0 the first endpoint 0");
+	Check(px[14].a == 0, "a0 <= a1: index 6 is 0");
+	// A whole picture: 8 by 4 of one block twice, the pitch 16.
+	UInt8 picture[32];
+	for (int i = 0; i < 16; ++i) {
+		picture[i] = block[i];
+		picture[16 + i] = block[i];
+	}
+	std::vector<obvr::render::Pixel> out(8 * 4);
+	Check(obvr::ui::DecodeDxt5(picture, 8, 4, 32, out.data()), "an 8 by 4 picture decodes");
+	Check(out[0].b == 255 && out[4].b == 255 && out[5].r == 255, "both blocks in place");
+	Check(!obvr::ui::DecodeDxt5(picture, 6, 4, 32, out.data()) && !obvr::ui::DecodeDxt5(nullptr, 8, 4, 32, out.data()),
+	      "a width not a multiple of 4, or nothing: refused");
+	const UInt8 argb[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+	obvr::render::Pixel two[2];
+	Check(obvr::ui::CopyA8R8G8B8(argb, 2, 1, 8, two) && two[0].r == 1 && two[0].a == 4 && two[1].r == 5,
+	      "A8R8G8B8 copied byte for byte");
+
+	// The frame scaled onto the canvas: a 2 by 1 frame, red then blue, on a
+	// 256 by 64 canvas: the left half red, the right half blue, alpha kept.
+	Check(obvr::ui::FrameSource(0, 256, 2) == 0 && obvr::ui::FrameSource(127, 256, 2) == 0 &&
+	          obvr::ui::FrameSource(128, 256, 2) == 1 && obvr::ui::FrameSource(255, 256, 2) == 1,
+	      "the nearest source column");
+	Check(obvr::ui::FrameSource(10, 0, 2) == 0 && obvr::ui::FrameSource(10, 256, 0) == 0, "no size: the first");
+	obvr::render::Pixel frame[2] = {obvr::ui::SwapRedAndBlue(obvr::render::Pixel{255, 0, 0, 200}),
+	                                obvr::ui::SwapRedAndBlue(obvr::render::Pixel{0, 0, 255, 100})};
+	std::vector<obvr::render::Pixel> pixels(obvr::ui::kEnemyHealthCanvasWidth * obvr::ui::kEnemyHealthCanvasHeight);
+	obvr::ui::Canvas canvas(pixels.data(), obvr::ui::kEnemyHealthCanvasWidth, obvr::ui::kEnemyHealthCanvasHeight);
+	obvr::ui::EnemyHealthView view;
+	view.fraction = 0.1f;
+	view.frame = frame;
+	view.frameWidth = 2;
+	view.frameHeight = 1;
+	obvr::ui::PaintEnemyHealthFor(canvas, &view);
+	const obvr::render::Pixel l = canvas.GetPixel(10, 30);
+	const obvr::render::Pixel r = canvas.GetPixel(250, 30);
+	Check(l.b == 255 && l.r == 0 && l.a == 200, "the left of the canvas the frame's red, its alpha kept");
+	Check(r.r == 255 && r.b == 0 && r.a == 100, "the right the frame's blue");
+	view.frame = nullptr;
+	obvr::ui::PaintEnemyHealthFor(canvas, &view);
+	Check(canvas.GetPixel(0, 0).g > 150, "without a frame OBVR's own bar (the gold corner)");
+}
+
 int main() {
+	TestFrames();
 	TestRules();
 	TestBarFlows();
 	TestSlots();

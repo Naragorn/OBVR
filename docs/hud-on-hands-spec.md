@@ -299,8 +299,10 @@ the laser - a fight is not fought by pointing. Instead OBVR's own bars,
 - **What:** their health now over their base (GetActorValue_F, vtable
   +0x288, actor value 8; GetBaseActorValue 0x005F1910 - the fatigue's
   readers), as a fraction; painted anew when it moved a 128th
-  (`ui/EnemyHealthPainter.h`: a dark bed, the quick menu's gold frame, a red
-  fill as wide as the health, 256 by 32).
+  (`ui/EnemyHealthPainter.h`, 256 by 64): since 2026-10-13 afternoon the
+  game's own frame for it (the golden arc, below), and only without the
+  game's frames OBVR's own bar - a dark bed, the quick menu's gold frame, a
+  red fill as wide as the health.
 - **Where:** 14 units above the head bone ("Bip01 Head", through the bones
   BladeBodies keeps, read on demand - `game::ActorBoneNode`), or 136 above
   the feet without it, both times the skeleton's scale; one CanvasOverlay a
@@ -323,20 +325,86 @@ the laser - a fight is not fought by pointing. Instead OBVR's own bars,
   mark - bar 1 over <ref>: n% (painted n times), n m away, n m wide, the
   overlay up, shown n s").
 
+**The game's own bar, frame for frame (the tester, 2026-10-13 noon: "ist
+es möglich statt unserem eigenen balken den von vanilla zu rendern über
+den gegnern" - "mach A"; built the same afternoon).** The game's enemy
+health is a model, not an image: hud_reticle.xml's `<nif>`
+hudreticle_enemy_health loads `meshes/menus/enemy health bar/
+health_bar01.nif` (read with pyffi): one quad, 128 by 32, with a
+NiFlipController on its texturing property holding 40 textures,
+`textures/menus/misc/sequence_dds/000001..000040.dds` (128 by 32, DXT5, no
+mipmaps) - a golden arc, the widest in the first frame (79 of 128 columns)
+and a stub in the last (11): full health to none; the HUD runs them by its
+sequence "Health_Bar" from the tile's user traits. Now
+(`game/EnemyHealthModel.h`) the geometry is found under HUDReticle's enemy
+health tile (`kHudAuxRootPointer`, its render node at +0x24, the first
+geometry with a NiFlipController on its NiTexturingProperty - the classes
+told by their vtables, 0x00A7DB5C and 0x00A7A33C), the controller's
+textures (its NiTArray at +0x44, the count at +0x4A) are the frames, and
+each frame's pixels are read off the game's own Direct3D texture the first
+time a bar wants it (NiTexture's renderer data at +0x24, the
+IDirect3DTexture9 among its first dwords - at +0x50 - told by the vtable a
+texture OBVR makes shares; level 0 locked read-only, the DXT5 blocks
+decoded by `ui/DxtDecode.h`, enemy_health_test) and kept; the painter
+scales the frame for the fraction (`EnemyHealthFrameIndex`: 0 full, 39
+empty, the nearest) onto the overlay with the frame's own transparency. A
+UI mod's bar comes along: whatever model and textures the HUD loaded are
+what is read. Without the game's frames (none found, the texture not
+lockable, a format OBVR does not decode) the bar is OBVR's own, said once.
+
+- **Why not the model itself in the world (route A as first tried).** The
+  geometry was cloned under each fighter's scene root (NiObject::Clone, the
+  bow's way), placed through its local transform, given render states from
+  the HUD's own geometry and a fresh BSShaderPPLightingProperty the
+  engine's way (0x004ED1B0's recipe: 0xF0 bytes from the game's heap, the
+  constructor 0x007D94B0, NiAVObject::AttachProperty 0x00405680, the
+  set-up vtable +0x58 = 0x007DA220) - six harness rounds, and the world's
+  renderer drew the quad every time but never with its texture: a black box
+  round the arc without a shader property (the texture used, its alpha
+  not), a white one with it, a grey one lit. The set-up logs it: "TEXTURE
+  ERROR : texture does not contain mipmaps & will not be used" (the format
+  at 0x00A8F4A0, the check of the texture's mip count at 0x007DA8B8) - the
+  world's lighting shader refuses a texture without mipmaps, and the
+  frames have none. The HUD draws them through its own path, which does
+  not mind. So the frames are read and painted instead; the clone work is
+  in the history (commit 57f2f36's follow-ups), not in the tree. Read on
+  the way, for later: NiGeometry's property state at +0xAC and effect state
+  at +0xB0, built by vtable +0x6C (UpdatePropertiesDownward, 0x00722B30)
+  and +0x70 (UpdateEffectsDownward, 0x00722C00) - a geometry made outside
+  the loader has none and the renderer crashes on it at 0x00780848;
+  NiPropertyState's ten slots from +0x08; the shader property's flags at
+  +0x1C (0x100 set by the set-up when the state's alpha property blends,
+  0x2 skinned, 0x3000 for the engine's own quads), its texture arrays at
+  +0xBC (diffuse) and +0xC0 (normal maps, looked up as "<name>_n.dds").
+- Hand script `enemy-health.txt` PASS 2026-10-13 15:46 and 15:53 (the
+  synthetic head faces the nearest fighter, pitched up; the first bar's
+  painted picture saved at the marks as OBVR-EnemyHealth-<mark>.bmp beside
+  Oblivion.exe, the runner takes it): "the game's own bar model found -
+  geometry 18324EE8 "health:0" (NiTriStrips) ... its flip controller
+  carries 40 textures, the frames", "frame 1 of 40 read off the game's
+  texture 1601D870 ("textures\menus\misc\sequence_dds\000001.dds") - 128x32
+  pixels, the picture opaque from column 26 to 104" (the offline decode's
+  26..104 exactly), frame 40 "opaque from column 59 to 69", both bars "the
+  overlay up (the game's own frame 1 of 40)" at the marks, "bar went" for
+  both; the saved picture is the golden arc on nothing. SteamVR's dumps do
+  not carry overlays, so the picture file is the proof of the painting;
+  the overlay's place and turn are the bars' as before.
+
 Hand script `enemy-health.txt` (two bandits at an untouchable player, the
 state at marks, then `killall` for the linger): PASS 2026-10-13 on its first
-whole run (the one before was stopped as SteamVR started, at the tester's
-word): "a bar over 1B9EC538 - 100% health, 1.7 m away, above the head bone
-(bar 1 of 8)", the second at 2.2 m; at the three marks of the fight both
-"the overlay up", 0.35 m wide at 1.8 to 3.1 m, shown 2.5 to 10.6 s; after
-the kill "1B9EC538's bar went (dead or no longer fighting, 2 s after)" for
-both. Not seen in the run: a bar sinking (the untouchable player never
-struck, so the health stayed at 100% and each bar was painted once - the
-repaint is enemy_health_test's), the empty bar at a mark (the kill and the
-two seconds fell between the marks), and the game's own bar: no "the
-game's own bar ... came up" line, so the engine never had HUDReticle's
-root sized through the fight - with the laser ahead and no pick on the
-bandits, which is also how the tester fights.
+whole run, with OBVR's own bars then (the one before was stopped as
+SteamVR started, at the tester's word): "a bar over 1B9EC538 - 100% health,
+1.7 m away, above the head bone (bar 1 of 8)", the second at 2.2 m; at the
+three marks of the fight both "the overlay up", 0.35 m wide at 1.8 to 3.1
+m, shown 2.5 to 10.6 s; after the kill "1B9EC538's bar went (dead or no
+longer fighting, 2 s after)" for both. Not seen in the run: a bar sinking
+(the untouchable player never struck, so the health stayed at 100% and
+each bar was painted once - the repaint is enemy_health_test's), the empty
+bar at a mark (the kill and the two seconds fell between the marks), and
+the game's own bar: no "the game's own bar ... came up" line, so the
+engine never had HUDReticle's root sized through the fight - with the
+laser ahead and no pick on the bandits, which is also how the tester
+fights.
 
 **Open bug (2026-09-29): the enemy health bar is not shown - closed
 2026-10-13 by the bars above.** The tester: "wir müssen den healthbar von gegnern rendern ... das ist afaik ein vanilla feature".

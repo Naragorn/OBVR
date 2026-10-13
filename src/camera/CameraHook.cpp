@@ -40,6 +40,7 @@
 #include "game/HandControls.h"
 #include "game/MeleeHits.h"
 #include "game/EnemyHealth.h"
+#include "game/EnemyHealthModel.h"
 #include "game/RagdollHold.h"
 #include "game/Shove.h"
 #include "game/ThirdPersonAimVisual.h"
@@ -2117,6 +2118,12 @@ ui::CanvasOverlay g_enemyHealthLayers[game::kEnemyHealthBarsMax] = {
 	{"obvr.enemyhealth7", "OBVR Enemy Health 7", ui::kEnemyHealthCanvasWidth, ui::kEnemyHealthCanvasHeight},
 };
 static_assert(game::kEnemyHealthBarsMax == 8, "one overlay per bar above");
+// The game's own bar's frames on the overlays (game/EnemyHealthModel.h; the
+// tester, 2026-10-13: "statt unserem eigenen balken den von vanilla rendern
+// über den gegnern"): the painter's own bar is the fallback when the game's
+// frames are not to be had.
+bool g_enemyHealthRouteKnown = false;
+bool g_enemyHealthFramesRoute = false;
 UInt32 g_enemyHealthLines = 60;
 
 void StepEnemyHealthBars(const Config& config, vr::OpenVRBackend& backend, bool haveHead,
@@ -2129,6 +2136,20 @@ void StepEnemyHealthBars(const Config& config, vr::OpenVRBackend& backend, bool 
 			layer.Hide(backend);
 		}
 		return;
+	}
+	const char* routeWhy = "";
+	game::EnemyHealthFramesInfo framesInfo;
+	const bool framesRoute = game::EnemyHealthFramesAvailable(&framesInfo, &routeWhy);
+	if (!g_enemyHealthRouteKnown || framesRoute != g_enemyHealthFramesRoute) {
+		g_enemyHealthRouteKnown = true;
+		g_enemyHealthFramesRoute = framesRoute;
+		if (g_enemyHealthLines > 0) {
+			--g_enemyHealthLines;
+			OBVR_LOG("Enemy health: the bars are %s%s%s",
+			         framesRoute ? "the game's own frames, read off its bar model's textures ("
+			                     : "OBVR's own bars (the game's frames are not to be had - ",
+			         framesRoute ? "" : routeWhy, framesRoute ? "" : ")");
+		}
 	}
 	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
 	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
@@ -2174,20 +2195,45 @@ void StepEnemyHealthBars(const Config& config, vr::OpenVRBackend& backend, bool 
 			g_enemyHealthLayers[i].Hide(backend);
 			continue;
 		}
-		const NiPoint3 at =
-			vr::WorldPointInTracking(head, camRot, camPos, b.at, config.tracker.unitsPerMetre);
 		const float width = game::EnemyHealthBarWidth(game::EnemyHealthWidthMetres(settings.widthMetres), b.metres);
+		// The game's own frame for the fraction on the overlay; OBVR's own
+		// bar when it is not to be had.
 		ui::EnemyHealthView view;
 		view.fraction = b.fraction;
+		UInt32 frame = 0;
+		const char* frameWhy = "";
+		if (framesRoute) {
+			frame = game::EnemyHealthFrameIndex(b.fraction, framesInfo.frames);
+			view.frame = game::EnemyHealthFrame(frame, &view.frameWidth, &view.frameHeight, &frameWhy);
+		}
+		const NiPoint3 at = vr::WorldPointInTracking(head, camRot, camPos, b.at, config.tracker.unitsPerMetre);
 		g_enemyHealthLayers[i].Show(backend, render::GetGameDevice(), StowSpotPose(at, eyes), width, b.revision,
 		                            ui::PaintEnemyHealthFor, &view);
 		if (marked && g_enemyHealthLines > 0) {
 			--g_enemyHealthLines;
+			char picture[96];
+			if (view.frame != nullptr) {
+				std::snprintf(picture, sizeof(picture), "the game's own frame %u of %u", frame + 1, framesInfo.frames);
+			} else {
+				std::snprintf(picture, sizeof(picture), "OBVR's own bar%s%s", framesRoute ? " - " : "",
+				              framesRoute ? frameWhy : "");
+			}
+			// The first bar's picture as painted, for the harness (the
+			// overlays are not in SteamVR's dumps): OBVR-EnemyHealth-<mark>.bmp
+			// beside Oblivion.exe, as the body view's picture is.
+			if (i == 0) {
+				char name[96];
+				char path[512];
+				std::snprintf(name, sizeof(name), "OBVR-EnemyHealth-%s.bmp", test::HandScriptMarkName());
+				if (platform::BuildGamePath(name, path, sizeof(path))) {
+					g_enemyHealthLayers[i].SaveBmp(path);
+				}
+			}
 			OBVR_LOG("Enemy health: at the mark - bar %u over %08X: %.0f%% (painted %u times), %.1f m away, %.2f m "
-			         "wide, %s, shown %.1f s%s",
+			         "wide, %s (%s), shown %.1f s%s",
 			         i + 1, b.actor, static_cast<double>(b.fraction * 100.0f), b.revision,
 			         static_cast<double>(b.metres), static_cast<double>(width),
-			         g_enemyHealthLayers[i].IsVisible() ? "the overlay up" : "the overlay NOT up",
+			         g_enemyHealthLayers[i].IsVisible() ? "the overlay up" : "the overlay NOT up", picture,
 			         static_cast<double>(b.seconds), b.linger > 0.0f ? " (lingering)" : "");
 		}
 	}
