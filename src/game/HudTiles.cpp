@@ -263,6 +263,15 @@ UInt32 ReadHudTiles(UInt32 menuId, vr::HudTile* out, UInt32 capacity) {
 	return c.count;
 }
 
+UInt32 ReadTilesUnderRoot(const void* root, vr::HudTile* out, UInt32 capacity) {
+	if (out == nullptr || capacity == 0 || !LooksLikeObject(root)) {
+		return 0;
+	}
+	Collect c{out, capacity};
+	CollectTile(c, static_cast<const UInt8*>(root), -1, 0);
+	return c.count;
+}
+
 namespace {
 
 // InterfaceManager::menuRoot, from xOBSE's obse/GameAPI.h ("Tile *

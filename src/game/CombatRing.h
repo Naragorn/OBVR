@@ -19,4 +19,10 @@ void StepCombatRing(const CombatRingSettings& settings, float dtSeconds, bool lo
 // How many fought the player at the ring's last step (0 with the ring off).
 UInt32 CombatRingFighting();
 
+// Whether this actor fights the player: in combat (Actor vtable +0x334, as
+// the slow approach asks) with the player as the combat target (+0x338,
+// 0x005E0AF0). False when either slot does not read. The ring's own test,
+// for the health bars too (game/EnemyHealth.h).
+bool ActorFightsPlayer(UInt32 actor, UInt32 player);
+
 }  // namespace obvr::game

@@ -39,6 +39,7 @@
 #include "game/EngineInput.h"
 #include "game/HandControls.h"
 #include "game/MeleeHits.h"
+#include "game/EnemyHealth.h"
 #include "game/RagdollHold.h"
 #include "game/Shove.h"
 #include "game/ThirdPersonAimVisual.h"
@@ -122,6 +123,7 @@
 #include "ui/SettingsMenu.h"
 #include "ui/SettingsMenuLayer.h"
 #include "ui/QuickMenuPainter.h"
+#include "ui/EnemyHealthPainter.h"
 #include "ui/StowSpotPainter.h"
 #include "ui/GuidePanel.h"
 #include "render/InterfaceRenderHook.h"
@@ -2068,6 +2070,100 @@ vr::openvr::HmdMatrix34 StowSpotPose(const NiPoint3& at, const NiPoint3& eyes) {
 	pose.m[2][3] = at.z;
 	return pose;
 }
+// The enemy health bars over the fighters (game/EnemyHealthLogic.h; the
+// tester, 2026-10-13: "Gegner-Lebensbalken über dem NPC in der Welt. nicht
+// mehr am crosshair. default an"): one overlay per bar, painted anew as the
+// health moves (ui/EnemyHealthPainter.h), hung above the fighter's head and
+// turned to the eyes, upright (StowSpotPose). The game's own bar at the
+// crosshair is hidden meanwhile (game::SetEnemyHealthTileHidden).
+game::EnemyHealthState g_enemyHealth;
+ui::CanvasOverlay g_enemyHealthLayers[game::kEnemyHealthBarsMax] = {
+	{"obvr.enemyhealth0", "OBVR Enemy Health 0", ui::kEnemyHealthCanvasWidth, ui::kEnemyHealthCanvasHeight},
+	{"obvr.enemyhealth1", "OBVR Enemy Health 1", ui::kEnemyHealthCanvasWidth, ui::kEnemyHealthCanvasHeight},
+	{"obvr.enemyhealth2", "OBVR Enemy Health 2", ui::kEnemyHealthCanvasWidth, ui::kEnemyHealthCanvasHeight},
+	{"obvr.enemyhealth3", "OBVR Enemy Health 3", ui::kEnemyHealthCanvasWidth, ui::kEnemyHealthCanvasHeight},
+	{"obvr.enemyhealth4", "OBVR Enemy Health 4", ui::kEnemyHealthCanvasWidth, ui::kEnemyHealthCanvasHeight},
+	{"obvr.enemyhealth5", "OBVR Enemy Health 5", ui::kEnemyHealthCanvasWidth, ui::kEnemyHealthCanvasHeight},
+	{"obvr.enemyhealth6", "OBVR Enemy Health 6", ui::kEnemyHealthCanvasWidth, ui::kEnemyHealthCanvasHeight},
+	{"obvr.enemyhealth7", "OBVR Enemy Health 7", ui::kEnemyHealthCanvasWidth, ui::kEnemyHealthCanvasHeight},
+};
+static_assert(game::kEnemyHealthBarsMax == 8, "one overlay per bar above");
+UInt32 g_enemyHealthLines = 60;
+
+void StepEnemyHealthBars(const Config& config, vr::OpenVRBackend& backend, bool haveHead,
+                         const vr::openvr::HmdMatrix34& head, bool visible, float dt) {
+	const game::EnemyHealthSettings& settings = config.hands.enemyHealth;
+	game::SetEnemyHealthTileHidden(settings.enabled);
+	const bool on = settings.enabled && visible && haveHead && g_cyclopeanCameraWorldValid;
+	if (!on) {
+		for (ui::CanvasOverlay& layer : g_enemyHealthLayers) {
+			layer.Hide(backend);
+		}
+		return;
+	}
+	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
+	UInt32 keep[game::kEnemyHealthBarsMax];
+	UInt32 was[game::kEnemyHealthBarsMax];
+	UInt32 keepCount = 0;
+	for (UInt32 i = 0; i < game::kEnemyHealthBarsMax; ++i) {
+		was[i] = g_enemyHealth.bar[i].actor;
+		if (was[i] != 0) {
+			keep[keepCount++] = was[i];
+		}
+	}
+	game::EnemyHealthSeen seen[24];
+	const UInt32 seenCount =
+		game::ReadFightersHealth(camPos, config.tracker.unitsPerMetre, game::EnemyHealthRangeMetres(settings.rangeMetres),
+		                         keep, keepCount, seen, 24);
+	const game::EnemyHealthVerdict v = game::StepEnemyHealthBars(g_enemyHealth, seen, seenCount, dt);
+	(void)v;
+	const NiPoint3 eyes{head.m[0][3], head.m[1][3], head.m[2][3]};
+	const bool marked = test::HandScriptMarkedThisFrame();
+	for (UInt32 i = 0; i < game::kEnemyHealthBarsMax; ++i) {
+		const game::EnemyHealthBar& b = g_enemyHealth.bar[i];
+		if (b.actor != was[i] && g_enemyHealthLines > 0) {
+			--g_enemyHealthLines;
+			if (b.actor != 0) {
+				const game::EnemyHealthSeen* s = nullptr;
+				for (UInt32 k = 0; k < seenCount; ++k) {
+					if (seen[k].actor == b.actor) {
+						s = &seen[k];
+						break;
+					}
+				}
+				OBVR_LOG("Enemy health: a bar over %08X - %.0f%% health, %.1f m away, above %s (bar %u of %u)", b.actor,
+				         static_cast<double>(b.fraction * 100.0f), static_cast<double>(b.metres),
+				         s != nullptr && s->haveHead ? "the head bone" : "the feet (no head bone read)", i + 1,
+				         static_cast<UInt32>(game::kEnemyHealthBarsMax));
+			} else {
+				OBVR_LOG("Enemy health: %08X's bar went (dead or no longer fighting, %.0f s after)", was[i],
+				         static_cast<double>(game::kEnemyHealthLingerSeconds));
+			}
+		}
+		if (b.actor == 0) {
+			g_enemyHealthLayers[i].Hide(backend);
+			continue;
+		}
+		const NiPoint3 at =
+			vr::WorldPointInTracking(head, camRot, camPos, b.at, config.tracker.unitsPerMetre);
+		const float width = game::EnemyHealthBarWidth(game::EnemyHealthWidthMetres(settings.widthMetres), b.metres);
+		ui::EnemyHealthView view;
+		view.fraction = b.fraction;
+		g_enemyHealthLayers[i].Show(backend, render::GetGameDevice(), StowSpotPose(at, eyes), width, b.revision,
+		                            ui::PaintEnemyHealthFor, &view);
+		if (marked && g_enemyHealthLines > 0) {
+			--g_enemyHealthLines;
+			OBVR_LOG("Enemy health: at the mark - bar %u over %08X: %.0f%% (painted %u times), %.1f m away, %.2f m "
+			         "wide, %s, shown %.1f s%s",
+			         i + 1, b.actor, static_cast<double>(b.fraction * 100.0f), b.revision,
+			         static_cast<double>(b.metres), static_cast<double>(width),
+			         g_enemyHealthLayers[i].IsVisible() ? "the overlay up" : "the overlay NOT up",
+			         static_cast<double>(b.seconds), b.linger > 0.0f ? " (lingering)" : "");
+		}
+	}
+}
+
 bool g_stowWasAtBody = false;
 UInt32 g_stowLinesLeft = 40;
 // The activate button kept from the game over a loose item
@@ -9152,6 +9248,10 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		}
 		g_handHudLayer.Submit(backend, render::GetGameDevice(), handHudActive && !hiddenForDeath && !loading,
 		                      placements);
+		// The enemy health bars over the fighters, every frame: hidden with
+		// the HUD (a menu, a load, dead), shown in the world.
+		StepEnemyHealthBars(config, backend, handHudFrame.haveHead, handHudFrame.head,
+		                    worldFrame && !visibility.menuIsUp && !hiddenForDeath && !loading, g_deltaSeconds);
 
 		// SetDialogCamera supplies the actual actor, including NPC-initiated
 		// greetings. Never infer the speaker from an unrelated hand pick.

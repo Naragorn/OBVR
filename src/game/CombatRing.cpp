@@ -257,15 +257,7 @@ void StepCombatRing(const CombatRingSettings& settings, float dtSeconds, bool lo
 			continue;
 		}
 		const UInt32 process = HighProcessOf(actor);
-		const UInt32 combatFn = Slot(actor, kIsInCombatSlot);
-		const UInt32 targetFn = Slot(actor, kCombatTargetSlot);
-		if (process == 0 || combatFn == 0 || targetFn == 0) {
-			continue;
-		}
-		using CombatFn = UInt8(__fastcall*)(void* actor, void* edx, UInt32 unk);
-		using TargetFn = UInt32(__fastcall*)(void* actor, void* edx);
-		if ((reinterpret_cast<CombatFn>(combatFn)(reinterpret_cast<void*>(actor), nullptr, 1) & 1) == 0 ||
-		    reinterpret_cast<TargetFn>(targetFn)(reinterpret_cast<void*>(actor), nullptr) != player) {
+		if (process == 0 || !ActorFightsPlayer(actor, player)) {
 			continue;
 		}
 		const auto* const ap = reinterpret_cast<const float*>(actor + addr::kRefPositionOffset);
@@ -468,5 +460,17 @@ void StepCombatRing(const CombatRingSettings& settings, float dtSeconds, bool lo
 }
 
 UInt32 CombatRingFighting() { return g_ring.count; }
+
+bool ActorFightsPlayer(UInt32 actor, UInt32 player) {
+	const UInt32 combatFn = Slot(actor, kIsInCombatSlot);
+	const UInt32 targetFn = Slot(actor, kCombatTargetSlot);
+	if (combatFn == 0 || targetFn == 0) {
+		return false;
+	}
+	using CombatFn = UInt8(__fastcall*)(void* actor, void* edx, UInt32 unk);
+	using TargetFn = UInt32(__fastcall*)(void* actor, void* edx);
+	return (reinterpret_cast<CombatFn>(combatFn)(reinterpret_cast<void*>(actor), nullptr, 1) & 1) != 0 &&
+	       reinterpret_cast<TargetFn>(targetFn)(reinterpret_cast<void*>(actor), nullptr) == player;
+}
 
 }  // namespace obvr::game

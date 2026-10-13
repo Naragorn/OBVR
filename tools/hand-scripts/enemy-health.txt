@@ -1,0 +1,44 @@
+# The enemy health bars over the fighters ([HandHud] EnemyHealthBars,
+# game/EnemyHealthLogic.h, game/EnemyHealth.h): two melee bandits (00069AD1)
+# attack an untouchable player (tgm) who stands still; each gets a bar of
+# its own above its head ("Enemy health: a bar over ... above the head
+# bone"), the state at every mark says how full, how far and whether the
+# overlay is up; at fight3 the console kills them all (killall), so the bars
+# go empty, linger two seconds and go ("bar went"). The game's own bar,
+# when the engine has it up, is logged as hidden ("the game's own bar").
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\enemy-health.txt
+
+ini Hands Enabled=1
+ini HandHud EnemyHealthBars=1
+ini HandHud EnemyHealthMetres=25
+ini Hands CombatReach=85
+console-at ready player.placeatme 00069AD1 2
+console-at ready tgm
+console-at fight3 killall
+
+expect HandScript: finished
+expect Enemy health: a bar over
+expect above the head bone
+expect Enemy health: at the mark - bar 1 over
+expect Enemy health: at the mark - bar 2 over
+expect the overlay up
+expect bar went
+reject HandScript: WARNING
+reject the overlay NOT up
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 10
+mark fight1
+wait 4
+mark fight2
+wait 4
+mark fight3
+wait 8
+mark dead1
+wait 3
+mark dead2
+wait 1

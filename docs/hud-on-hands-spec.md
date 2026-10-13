@@ -280,22 +280,64 @@ scaled with the distance. The Info element now leaves that tile out
 (`vr::kHudInfoActionIcon`, hand_hud_test): the icon is the ring's, the text
 the row's. Not seen in the headset.
 
-**The enemy health bar over the NPC (asked 2026-10-07, not built).** The
-plan: lift HUDReticle's `hudreticle_enemy_health` (the aux root,
-`kHudAuxRootPointer`) as a HUD element of its own and hang it above the
-crosshair target's bound (a Target-like place, above rather than under),
-at the Info row's scale. First the probe below has to run in a fight with
-the headset asleep: the harness cannot script a fight while a live
-headset moves the synthetic head.
+**The enemy health bars over the fighters (asked 2026-10-07, built
+2026-10-13; the tester: "Gegner-Lebensbalken über dem NPC in der Welt. nicht
+mehr am crosshair. default an").** Not the plan above (HUDReticle's tile
+lifted as a hand-HUD element over the crosshair target): a lifted tile is
+one bar for the one fighter the pick is on, and in the headset the pick is
+the laser - a fight is not fought by pointing. Instead OBVR's own bars,
+`[HandHud] EnemyHealthBars=1` (HUD, "Enemy health over them"),
+`EnemyHealthMetres` (25, "Enemy health range (m)") and
+`EnemyHealthWidthMetres` (0.35, "Enemy health bar width (m)"), both modes:
 
-**Open bug (2026-09-29): the enemy health bar is not shown.** The tester: "wir müssen den healthbar von gegnern rendern ... das ist afaik ein vanilla feature".
+- **Who:** every Character or Creature in the process manager's high list
+  whose combat target is the player (the combat ring's own test,
+  `game::ActorFightsPlayer`: Actor vtable +0x334 in combat, +0x338 the
+  target), alive, within the range of the eyes - up to eight, the nearest
+  first (`game/EnemyHealthLogic.h`, enemy_health_test; `game/EnemyHealth.h`
+  reads them).
+- **What:** their health now over their base (GetActorValue_F, vtable
+  +0x288, actor value 8; GetBaseActorValue 0x005F1910 - the fatigue's
+  readers), as a fraction; painted anew when it moved a 128th
+  (`ui/EnemyHealthPainter.h`: a dark bed, the quick menu's gold frame, a red
+  fill as wide as the health, 256 by 32).
+- **Where:** 14 units above the head bone ("Bip01 Head", through the bones
+  BladeBodies keeps, read on demand - `game::ActorBoneNode`), or 136 above
+  the feet without it, both times the skeleton's scale; one CanvasOverlay a
+  bar (the stow spot's kind), turned to the eyes and upright
+  (`StowSpotPose`), the set width or wider so it keeps about 3.4 degrees far
+  off (`EnemyHealthBarWidth`).
+- **When:** with the HUD - hidden in menus, while a game loads, when dead.
+  A bar lingers two seconds after its fighter dies (empty) or stops
+  fighting, then goes; a corpse never gets one.
+- **The game's own bar:** while the setting is on, HUDReticle's third
+  persistent root (`kHudAuxRootPointer`, the enemy health) has its visible
+  trait written false after every HUDReticle update the crosshair tooltip's
+  hook wraps (`game::SetEnemyHealthTileHidden`, game/WorldPickHook.cpp) -
+  so it never rides the crosshair quad. Each time the engine has it up (the
+  root sized before the write) a line says so, with its tiles: the open
+  bug below asked whether the game shows it in VR at all.
+- Logged "Enemy health: a bar over <ref> - n% health, n m away, above the
+  head bone (bar 1 of 8)", "<ref>'s bar went (dead or no longer fighting, 2
+  s after)", and at a hand script's marks the state of every bar ("at the
+  mark - bar 1 over <ref>: n% (painted n times), n m away, n m wide, the
+  overlay up, shown n s").
+
+Hand script `enemy-health.txt` (two bandits at an untouchable player, the
+state at marks, then `killall` for the linger): written 2026-10-13, not run -
+the tester asked for no game starts that morning ("game net starten") as
+its first run was launching; it was stopped before the save loaded. To be
+run: the bars' lines, the overlays up, the bars going after the kill.
+
+**Open bug (2026-09-29): the enemy health bar is not shown - closed
+2026-10-13 by the bars above.** The tester: "wir müssen den healthbar von gegnern rendern ... das ist afaik ein vanilla feature".
 - It is vanilla: HUDReticle's `hudreticle_enemy_health`, drawn under the crosshair while a fight target is set.
 - The step 1 probe found it as the third persistent HUD root, `kHudAuxRootPointer` 0x00B3B358 (x −1, y −20, visible 1 = hidden when idle, file "Enemy He…").
-- Why it is missing in VR is not known yet. Candidates, none checked:
-  - It lies outside the square `CrosshairLayer::TakeFromHud` lifts (`CrosshairSourceShare`, a centred square), and is then erased from the flat HUD with the rest of the centre, or left in the flat panel behind the crosshair's depth.
-  - `SetHudReticleEnabled` hides the aux root on the title screen and does not show it again.
-  - The HUDReticle update that OBVR wraps (0x00582251) skips it.
-- To do: run the tile probe during a fight (the aux root's visible and alpha, its rectangle) and a capture dump. Then lift it as a hand-HUD element (a `HudElement` of its own, default right hand or under the crosshair), or keep it with the crosshair quad.
+- Why it was missing in VR was never settled; the candidates (the crosshair
+  square's lift and erase, `SetHudReticleEnabled` on the title screen, the
+  wrapped HUDReticle update) are moot now: the game's bar is hidden on
+  purpose and the fighters carry their own. Whether the engine ever has the
+  root up in VR is what the hide's own line will say on the first run.
 
 **The crosshair quad off the laser (2026-10-07).** The tester: "die
 tooltips vom laserpointer ausschneiden und stattdessen wie beim heben von

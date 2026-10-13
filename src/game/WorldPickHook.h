@@ -24,4 +24,13 @@ void SetWorldPickDirection(const NiPoint3& direction, bool valid);
 // needs the replacement too once the ray is not the head's.
 void SetWorldPickHandRay(const NiPoint3& origin, const NiPoint3& direction, bool valid);
 
+// While on, the game's own enemy health bar - HUDReticle's third persistent
+// root (GameAddresses.h, kHudAuxRootPointer), drawn at the crosshair - is
+// hidden after every HUDReticle update the hook above wraps (its visible
+// trait set to 1, false), so it does not ride the crosshair quad while the
+// bars over the fighters show (game/EnemyHealthLogic.h). The first time the
+// game shows it, its tiles are logged once. Off, the engine's own writes
+// stand (it shows the bar again when its fight target next changes).
+void SetEnemyHealthTileHidden(bool hidden);
+
 }  // namespace obvr::game

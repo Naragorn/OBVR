@@ -2,6 +2,7 @@
 
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "game/EnemyHealthLogic.h"
 #include "game/GrappleLogic.h"
 #include "game/LeadLogic.h"
 #include "game/ThrowLogic.h"
@@ -217,6 +218,9 @@ struct HandSettings {
 	ArcherySettings archery;
 	// The HUD on the hands and the compass in the sky ([HandHud], vr/HandHud.h).
 	HandHudSettings handHud;
+	// The enemy health bars over the fighters ([HandHud] EnemyHealthBars,
+	// EnemyHealthMetres, EnemyHealthWidthMetres; game/EnemyHealthLogic.h).
+	game::EnemyHealthSettings enemyHealth;
 	// How far each finger link bends while the hand holds something, degrees
 	// (game::HandGrip); negative bends the other way, 0 leaves the hand open.
 	float gripCurlDegrees = 45.0f;

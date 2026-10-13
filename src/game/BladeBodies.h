@@ -33,4 +33,9 @@ void ForgetBladeBodies();
 // longer reads as a bone. For the ragdoll hold (game/RagdollHold.h).
 const NiAVObject* BladeBoneNode(UInt32 actor, UInt32 bone);
 
+// The same bone for an actor whose root is known, read now when the actor
+// or the root is new to the kept ones (the collect's own reading, by name).
+// For the health bars over the fighters (game/EnemyHealth.h).
+const NiAVObject* ActorBoneNode(UInt32 actor, UInt32 root, UInt32 bone);
+
 }  // namespace obvr::game

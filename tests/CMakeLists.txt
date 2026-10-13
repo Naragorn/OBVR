@@ -1465,6 +1465,21 @@ endif()
 
 add_test(NAME grapple COMMAND grapple_test)
 
+add_executable(enemy_health_test
+	EnemyHealthTest.cpp
+	../src/ui/EnemyHealthPainter.cpp
+	../src/ui/MenuCanvas.cpp
+	../src/ui/MenuFont.cpp
+)
+
+target_include_directories(enemy_health_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(enemy_health_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME enemy_health COMMAND enemy_health_test)
+
 add_executable(ref_fingerprint_test RefFingerprintTest.cpp)
 
 target_include_directories(ref_fingerprint_test PRIVATE ../src)

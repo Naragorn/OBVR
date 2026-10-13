@@ -7,6 +7,7 @@
 #include "core/Memory.h"
 #include "game/CrosshairTarget.h"
 #include "game/GameAddresses.h"
+#include "game/HudTiles.h"
 #include "game/WorldPickTrampoline.h"
 
 namespace obvr::game {
@@ -51,7 +52,55 @@ bool SaneDirection(const NiPoint3& direction) {
 
 using HudReticleUpdateFn = void(__cdecl*)();
 
-extern "C" void __cdecl OBVR_UpdateHudReticleForThirdPerson() {
+namespace {
+
+bool g_hideEnemyHealthTile = false;
+bool g_enemyHealthTileWasShown = false;
+UInt32 g_enemyHealthTileLines = 6;
+
+// The game's own enemy health bar hidden after the engine's update
+// (WorldPickHook.h, SetEnemyHealthTileHidden): the aux root's visible trait
+// written false through the same Tile::UpdateFloat the HUD code uses. Each
+// time the engine has it up (its root sized and visible before the write),
+// a line - whether the game shows it in VR at all was an open question
+// (docs/hud-on-hands-spec.md).
+void HideEnemyHealthTileAfterUpdate() {
+	if (!g_hideEnemyHealthTile) {
+		g_enemyHealthTileWasShown = false;
+		return;
+	}
+	void* const auxRoot = *reinterpret_cast<void* const*>(addr::kHudAuxRootPointer);
+	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(auxRoot))) {
+		return;
+	}
+	vr::HudTile tiles[8];
+	const UInt32 count = ReadTilesUnderRoot(auxRoot, tiles, 8);
+	const bool shown = count > 0 && tiles[0].hasSize;
+	if (shown != g_enemyHealthTileWasShown) {
+		g_enemyHealthTileWasShown = shown;
+		if (g_enemyHealthTileLines > 0) {
+			--g_enemyHealthTileLines;
+			OBVR_LOG("Enemy health: the game's own bar (HUDReticle's root \"%s\", %u tile(s)) %s - %s",
+			         count > 0 ? tiles[0].name : "?", count,
+			         shown ? "came up: visible and sized" : "is down again",
+			         shown ? "hidden under the crosshair, the bars over the fighters show instead"
+			               : "nothing to hide");
+			if (shown) {
+				for (UInt32 i = 0; i < count; ++i) {
+					OBVR_LOG("Enemy health: ... tile %u \"%s\" parent %d at %.0f,%.0f %.0fx%.0f%s alpha %.0f", i,
+					         tiles[i].name, tiles[i].parent, static_cast<double>(tiles[i].x),
+					         static_cast<double>(tiles[i].y), static_cast<double>(tiles[i].width),
+					         static_cast<double>(tiles[i].height), tiles[i].hasSize ? "" : " (no size or hidden)",
+					         static_cast<double>(tiles[i].alpha));
+				}
+			}
+		}
+	}
+	using UpdateFloatFn = void(__thiscall*)(void* self, UInt32 trait, float value);
+	reinterpret_cast<UpdateFloatFn>(addr::kTileUpdateFloat)(auxRoot, 0x00000FA1u, 1.0f);
+}
+
+void UpdateHudReticle() {
 	auto original = reinterpret_cast<HudReticleUpdateFn>(addr::kHudReticleUpdate);
 	const UInt32 playerAddress = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
 	if (!mem::LooksLikeObjectAddress(playerAddress)) {
@@ -79,6 +128,15 @@ extern "C" void __cdecl OBVR_UpdateHudReticleForThirdPerson() {
 		         "HUDReticle opacity update");
 	}
 }
+
+}  // namespace
+
+extern "C" void __cdecl OBVR_UpdateHudReticleForThirdPerson() {
+	UpdateHudReticle();
+	HideEnemyHealthTileAfterUpdate();
+}
+
+void SetEnemyHealthTileHidden(bool hidden) { g_hideEnemyHealthTile = hidden; }
 
 void SetWorldPickDirection(const NiPoint3& direction, bool valid) {
 	g_direction = direction;

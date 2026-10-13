@@ -302,6 +302,14 @@ void ForgetBladeBodies() {
 	}
 }
 
+const NiAVObject* ActorBoneNode(UInt32 actor, UInt32 root, UInt32 bone) {
+	if (actor == 0 || !LooksLikeObject(root) || bone >= kBladeBoneCount) {
+		return nullptr;
+	}
+	const Kept& k = KeptFor(actor, root);
+	return k.bone[bone] != nullptr && IsBone(k.bone[bone]) ? k.bone[bone] : nullptr;
+}
+
 const NiAVObject* BladeBoneNode(UInt32 actor, UInt32 bone) {
 	if (actor == 0 || bone >= kBladeBoneCount) {
 		return nullptr;

@@ -36,6 +36,7 @@ add_library(OBVR SHARED
 	src/ui/SettingsList.cpp
 	src/ui/SettingsMenuLayer.cpp
 	src/ui/CanvasOverlay.cpp
+	src/ui/EnemyHealthPainter.cpp
 	src/ui/QuickMenuPainter.cpp
 	src/ui/StowSpotPainter.cpp
 	src/ui/GuidePanel.cpp
@@ -102,6 +103,7 @@ add_library(OBVR SHARED
 	src/game/SlowApproach.cpp
 	src/game/CombatRing.cpp
 	src/game/AttackTempo.cpp
+	src/game/EnemyHealth.cpp
 	src/game/HandBodies.cpp
 	src/game/GameSound.cpp
 	src/game/PlayerCapsule.cpp

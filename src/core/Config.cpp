@@ -866,6 +866,10 @@ void ReadRuntimeValues(Config& config, const char* path) {
 				std::snprintf(key, sizeof(key), "%sSize", vr::kHudElementKeys[e]);
 				hh.element[e].size = ReadFloat("HandHud", key, hh.element[e].size, path);
 			}
+			h.enemyHealth.enabled = ReadBool("HandHud", "EnemyHealthBars", h.enemyHealth.enabled, path);
+			h.enemyHealth.rangeMetres = ReadFloat("HandHud", "EnemyHealthMetres", h.enemyHealth.rangeMetres, path);
+			h.enemyHealth.widthMetres =
+				ReadFloat("HandHud", "EnemyHealthWidthMetres", h.enemyHealth.widthMetres, path);
 			hh.panelUp = ReadFloat("HandHud", "PanelUp", hh.panelUp, path);
 			hh.panelBack = ReadFloat("HandHud", "PanelBack", hh.panelBack, path);
 			hh.panelTiltDegrees = ReadFloat("HandHud", "PanelTiltDegrees", hh.panelTiltDegrees, path);

@@ -39,4 +39,9 @@ UInt32 ReadMenuRootTiles(const char* menuName, vr::HudTile* out, UInt32 capacity
 // tiles read, 0 when the menu is not loaded; stops at `capacity`.
 UInt32 ReadHudTiles(UInt32 menuId, vr::HudTile* out, UInt32 capacity);
 
+// The same for the tree under a tile pointer of one's own - the persistent
+// HUD roots (GameAddresses.h, kHudAuxRootPointer: the enemy health bar's).
+// 0 when the pointer is no object.
+UInt32 ReadTilesUnderRoot(const void* root, vr::HudTile* out, UInt32 capacity);
+
 }  // namespace obvr::game

@@ -1768,6 +1768,29 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return c.hands.handHud.panelTiltDegrees; },
 		+[](Config& c, float v) { c.hands.handHud.panelTiltDegrees = v; },
 	},
+	{
+		"HUD", "Enemy health over them",
+		"Every fighter attacking you carries a health bar above their head in the world; the game's own bar at the "
+		"crosshair is hidden",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"HandHud", "EnemyHealthBars",
+		+[](const Config& c) { return c.hands.enemyHealth.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.enemyHealth.enabled = v != 0.0f; },
+	},
+	{
+		"HUD", "Enemy health range (m)", "Fighters farther away than this get no bar",
+		ItemKind::Number, 1.0f, 100.0f, 1.0f, 0, false,
+		"HandHud", "EnemyHealthMetres",
+		+[](const Config& c) { return c.hands.enemyHealth.rangeMetres; },
+		+[](Config& c, float v) { c.hands.enemyHealth.rangeMetres = v; },
+	},
+	{
+		"HUD", "Enemy health bar width (m)", "How wide a bar is in the world up close; far off it keeps a minimum size",
+		ItemKind::Number, 0.1f, 2.0f, 0.05f, 2, false,
+		"HandHud", "EnemyHealthWidthMetres",
+		+[](const Config& c) { return c.hands.enemyHealth.widthMetres; },
+		+[](Config& c, float v) { c.hands.enemyHealth.widthMetres = v; },
+	},
 	// ---- Teleport (Full VR) --------------------------------------------------
 	{
 		"Teleport", "Teleport", "Full VR: hold the right stick up, aim the arc, let go",
