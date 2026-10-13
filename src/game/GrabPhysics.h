@@ -45,6 +45,18 @@ inline constexpr UInt32 kBodyMotionOffset = 0x50;
 inline constexpr UInt32 kMotionSetLinearVelocitySlot = 0x54;
 inline constexpr UInt32 kPlayerCollisionGroupFallback = 9;
 inline constexpr float kHavokPerUnit = 0.142877f;
+// The motion's mass inverse (read 2026-10-13): hkMotion::setMassInv,
+// 0x008EAC60 (the box motion's vtable 0x00A9AF38 at +0x24; setMass at +0x20,
+// 0x008EAA90, divides 1 by the mass and calls it), stores the inverse at
+// motion+0xC0 and again at +0xFC (the w of the inertia inverse, +0xF0, which
+// the box and sphere motions of 0x100 bytes carry; the keyframed motion of
+// 0xF0 bytes does not). The body's world: hkRigidBody+0x08 (null when not in
+// one); its gravity at world+0x20 - the constructor 0x0089A230 copies the
+// cinfo's (+0x10; the default's -9.8 is the immediate at 0x008A9529) there
+// at 0x0089A472. Havok units a second squared.
+inline constexpr UInt32 kMotionMassInvOffset = 0xC0;
+inline constexpr UInt32 kBodyWorldOffset = 0x08;
+inline constexpr UInt32 kWorldGravityOffset = 0x20;
 
 inline UInt32 FilterGroup(UInt32 filter) { return filter >> 16; }
 

@@ -614,9 +614,71 @@ void TestRagdollLetGoFlows() {
 	Check(v.end == GrappleEnd::LetGo && Near(v.speed, 0.0f), "the standing hold opened with the hand going up: let go (across the ground counts)");
 }
 
+// The weight: GrabWeight as used, the pull's budget from the Strength, the
+// weight and the gravity, what it lifts, and the velocity the drive sets
+// under it - every flow of PullLimitedVelocity and the step test.
+void TestPull() {
+	std::printf("The weight\n");
+	Check(Near(GrappleWeight(1.0f), 1.0f) && Near(GrappleWeight(0.0f), 0.0f) && Near(GrappleWeight(5.0f), 5.0f) &&
+	          Near(GrappleWeight(2.5f), 2.5f),
+	      "GrabWeight 0 to 5 as set");
+	Check(Near(GrappleWeight(-1.0f), 1.0f) && Near(GrappleWeight(6.0f), 1.0f) && Near(GrappleWeight(kNaN), 1.0f),
+	      "out of range or not a number: 1");
+	Check(Near(GrapplePullBudget(100.0f, 1.0f, 9.8f), 2940.0f, 0.1f), "Strength 100, weight 1, gravity 9.8: 300 lifted");
+	Check(Near(GrapplePullBudget(50.0f, 1.0f, 9.8f), 1470.0f, 0.1f), "Strength 50: half");
+	Check(Near(GrapplePullBudget(5.0f, 1.0f, 9.8f), 294.0f, 0.1f) && Near(GrapplePullBudget(-1.0f, 1.0f, 9.8f), 294.0f, 0.1f) &&
+	          Near(GrapplePullBudget(kNaN, 1.0f, 9.8f), 294.0f, 0.1f),
+	      "Strength under 10, or unread: as 10");
+	Check(Near(GrapplePullBudget(300.0f, 1.0f, 9.8f), 5880.0f, 0.1f), "Strength over 200: as 200");
+	Check(Near(GrapplePullBudget(100.0f, 2.0f, 9.8f), 1470.0f, 0.1f), "weight 2: half the budget (twice as heavy)");
+	Check(Near(GrapplePullBudget(100.0f, 0.0f, 9.8f), 0.0f), "weight 0: no budget (no limit)");
+	Check(Near(GrapplePullBudget(100.0f, kNaN, 9.8f), 2940.0f, 0.1f), "weight not a number: as 1");
+	Check(Near(GrapplePullBudget(100.0f, 1.0f, 0.0f), 2940.0f, 0.1f) && Near(GrapplePullBudget(100.0f, 1.0f, kNaN), 2940.0f, 0.1f) &&
+	          Near(GrapplePullBudget(100.0f, 1.0f, 5000.0f), 2940.0f, 0.1f),
+	      "gravity unread, not a number or absurd: Havok's 9.8");
+	Check(Near(GrapplePullBudget(100.0f, 1.0f, 98.0f), 29400.0f, 1.0f), "gravity 98: ten times the budget, the same lift");
+	Check(Near(GrappleLiftMass(2940.0f, 9.8f), 300.0f, 0.1f), "the lift: the budget over the gravity");
+	Check(Near(GrappleLiftMass(0.0f, 9.8f), 0.0f) && Near(GrappleLiftMass(2940.0f, 0.0f), 0.0f),
+	      "no budget or no gravity: no lift to name");
+
+	const NiPoint3 still{0.0f, 0.0f, 0.0f};
+	const NiPoint3 last{3.0f, 0.0f, 0.0f};
+	const float massInv = 1.0f / 30.0f;  // a forearm
+	const float budget = 2940.0f;
+	const float step = 1.0f / 60.0f;
+	PullVerdict v = PullLimitedVelocity(still, NiPoint3{1.0f, 0.0f, 0.0f}, massInv, budget, step, false, last);
+	Check(Near(v.velocity.x, 3.0f) && !v.injected && !v.capped, "Havok has not stepped: the velocity set last again, nothing given");
+	v = PullLimitedVelocity(still, NiPoint3{1.0f, 0.0f, 0.0f}, massInv, budget, step, true, last);
+	Check(Near(v.velocity.x, 1.0f) && v.injected && !v.capped && Near(v.accel, 60.0f),
+	      "a change within the budget (1 of 1.63 Havok units a second): the wanted velocity, its change named");
+	v = PullLimitedVelocity(still, NiPoint3{10.0f, 0.0f, 0.0f}, massInv, budget, step, true, last);
+	Check(Near(v.velocity.x, 1.633f, 1e-3f) && v.capped && Near(v.accel, 98.0f, 0.1f),
+	      "a change over the budget: cut to it along the wanted change, the acceleration the budget's");
+	v = PullLimitedVelocity(NiPoint3{0.0f, 0.0f, -2.0f}, NiPoint3{0.0f, 0.0f, 2.0f}, massInv, budget, step, true, last);
+	Check(Near(v.velocity.z, -2.0f + 1.633f, 1e-3f) && v.capped, "falling, wanted up: the cut change from the velocity it has");
+	v = PullLimitedVelocity(still, NiPoint3{10.0f, 0.0f, 0.0f}, massInv, 0.0f, step, true, last);
+	Check(Near(v.velocity.x, 10.0f) && !v.capped && v.injected, "no budget: the wanted velocity whole");
+	v = PullLimitedVelocity(still, NiPoint3{10.0f, 0.0f, 0.0f}, 0.0f, budget, step, true, last);
+	Check(Near(v.velocity.x, 10.0f) && !v.capped, "the mass unread: the wanted velocity whole");
+	v = PullLimitedVelocity(still, NiPoint3{10.0f, 0.0f, 0.0f}, massInv, budget, 0.0f, true, last);
+	Check(Near(v.velocity.x, 10.0f) && !v.capped, "no time since the last change: the wanted velocity whole");
+	v = PullLimitedVelocity(still, NiPoint3{10.0f, 0.0f, 0.0f}, massInv, kNaN, step, true, last);
+	Check(Near(v.velocity.x, 10.0f) && !v.capped, "a budget not a number: no cap");
+	v = PullLimitedVelocity(NiPoint3{10.0f, 0.0f, 0.0f}, NiPoint3{10.0f, 0.0f, 0.0f}, massInv, budget, step, true, last);
+	Check(Near(v.velocity.x, 10.0f) && !v.capped && Near(v.accel, 0.0f), "already at the wanted velocity: no change");
+	v = PullLimitedVelocity(still, NiPoint3{10.0f, 0.0f, 0.0f}, massInv, budget, 2.0f * step, true, last);
+	Check(Near(v.velocity.x, 3.267f, 1e-3f) && v.capped, "two steps' worth of time: twice the change");
+
+	Check(!VelocityStillTheSet(false, last, last), "nothing set yet: Havok counts as stepped");
+	Check(VelocityStillTheSet(true, last, last), "the velocity read back exactly the one set: not stepped");
+	Check(!VelocityStillTheSet(true, NiPoint3{3.0f, 0.0f, -0.1f}, last), "changed by a step: stepped");
+	Check(!VelocityStillTheSet(true, still, still), "nothing set and nothing read back: stepped (a body at rest)");
+}
+
 }  // namespace
 
 int main() {
+	TestPull();
 	TestStrike();
 	TestTake();
 	TestParts();

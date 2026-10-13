@@ -596,12 +596,60 @@ from state 0 again). Not seen in the run: a grip on the lying body (the
 grid runs at head height), a hold ended by the engine's get-up, the
 standing-hold fallback.
 
-**Open:** the headset - how the drag feels with a 40 kg forearm on a 15
-m/s drive, whether the thrown body flies or slides, and how long a hold
-should last (GrabHoldSeconds counts for the ragdoll hold too; the stamp
-keeps the engine from standing them up before it). The AI while held (its
-combat state) is the engine's knockdown's own and was not read. The ragdoll
-hold on creatures: their parts are the bound's column, so the standing
-hold.
+**The weight (the tester, 2026-10-13, the hold seen in the headset: "ja
+geht geben wir den gehaltenen gegnern noch gewicht"; built the same day,
+`[Hands] GrabWeight` 1, "Grab weight (x)", harness rerun open).** The
+drive above gave the held body the velocity that closes the gap whatever
+it took - an unlimited force, so a forearm snapped to the hand and the
+whole ragdoll came along as if it weighed nothing. Now (GrappleLogic.h
+`PullLimitedVelocity`, grapple_test; RagdollHold's drive) the change of the
+body's velocity is cut to a budget over the body's mass inverse, once per
+Havok step: the budget is a force in Havok's terms, from the player's
+Strength (10 to 200 counted) - at 100 it lifts `kGrabLiftMassAtHundred`
+(300) of the ragdoll's mass units against the world's gravity, at 50 half
+that - divided by GrabWeight (2: twice as heavy; 0: no limit, the hold as
+first built). Havok's joints carry the rest of the body on the held part
+and its gravity pulls it down, so a heavy chain lags behind a fast hand and
+sags under a still one, and one the budget cannot lift stays on the ground
+and is dragged. The throw is unchanged (the velocity set outright).
+- **Read [R]:** the mass inverse is at motion+0xC0 - hkMotion::setMassInv
+  (`0x008EAC60`, the box motion's vtable `0x00A9AF38` at +0x24; setMass at
+  +0x20, `0x008EAA90`, divides 1 by the mass and calls it) stores it there
+  and again at +0xFC, the w of the inertia inverse at +0xF0 that the box and
+  sphere motions of 0x100 bytes carry (the keyframed motion is 0xF0 bytes).
+  The body's velocity reads at motion+0xD0 (GrabPhysics.h). The world's
+  gravity: hkRigidBody+0x08 is the hkWorld, its gravity at +0x20 - the
+  constructor `0x0089A230` copies the cinfo's (+0x10) there at `0x0089A472`;
+  the cinfo's default constructor writes Havok's -9.8 (the only -9.8 in the
+  image, the immediate at `0x008A9529`). Whether the engine sets another is
+  read from the world at the take and logged.
+- **Once per Havok step:** the velocity set is read back the next frame;
+  exactly the one set means Havok has not stepped in between, and the same
+  velocity goes again with no new change (the budget's time is the time
+  since the last change given, so a 60 Hz world under a 90 Hz hold gets the
+  budget per step, not per frame). A set of nothing is never "still the
+  same": a body at rest on the ground reads back nothing after a step too,
+  and a hand moving off would never get it going.
+- **The masses and the pull are logged at the take** ("Grapple: the pull on
+  <ref> - the <bone> body's mass n, the ragdoll n in n bodies (Havok's
+  masses), gravity n; Strength n, GrabWeight xn: a budget of n, which lifts
+  n (0: no limit)") and the state line carries "pulled at n m/s^2 (n of n
+  changes cut to the budget)". The masses in Havok's terms are skeleton.nif's
+  (a forearm 30, the body about 530) unless the engine scales them - the
+  first run with the weight will say; `kGrabLiftMassAtHundred` is to be set
+  on what it says and on the headset (a Strength-50 character should drag a
+  bandit along the ground and lift an arm, not the torso).
+- **Harness:** `grapple-ragdoll.txt` now sets GrabWeight=1 and expects the
+  pull line and the budget's count; its rerun with the weight is open (the
+  run of 2026-10-13 13:18 ended before the script started - the tester's
+  own game session; the harness waits for the game to be free).
+
+**Open:** the headset - how the drag feels with the weight (the hold as
+first built, with no limit: a 40 kg forearm on a 15 m/s drive), whether the
+thrown body flies or slides, and how long a hold should last
+(GrabHoldSeconds counts for the ragdoll hold too; the stamp keeps the
+engine from standing them up before it). The AI while held (its combat
+state) is the engine's knockdown's own and was not read. The ragdoll hold
+on creatures: their parts are the bound's column, so the standing hold.
 
 Controls-spec 4.34 has the controls and the log lines.

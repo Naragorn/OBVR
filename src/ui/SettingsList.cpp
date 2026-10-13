@@ -1238,6 +1238,15 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return c.hands.grapple.throwStrength; },
 		+[](Config& c, float v) { c.hands.grapple.throwStrength = v; },
 	},
+	{
+		"Hands: people", "Grab weight (x)",
+		"How heavy a fighter held in their ragdoll is: your Strength pulls against their Havok masses, so they lag "
+		"behind the hand and sag under it, and one too heavy to lift is dragged. 0 is weightless, 2 twice as heavy",
+		ItemKind::Number, 0.0f, 5.0f, 0.25f, 2, false,
+		"Hands", "GrabWeight",
+		+[](const Config& c) { return c.hands.grapple.weight; },
+		+[](Config& c, float v) { c.hands.grapple.weight = v; },
+	},
 	// ---- Hands: enemies
 	{
 		"Hands: enemies", "Combat reach (units)",

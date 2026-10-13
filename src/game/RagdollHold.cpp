@@ -5,6 +5,7 @@
 #include "game/BladeBodies.h"
 #include "game/GameTypes.h"
 #include "game/GrabPhysics.h"
+#include "game/GrappleLogic.h"
 #include "game/HandBodies.h"
 
 namespace obvr::game {
@@ -52,6 +53,23 @@ UInt32 MotionOf(UInt32 body, UInt32* typeOut) {
 	using TypeFn = UInt32(__thiscall*)(void* motion);
 	*typeOut = reinterpret_cast<TypeFn>(typeSlot)(reinterpret_cast<void*>(motion)) & 0xFF;
 	return motion;
+}
+
+// The motion's mass inverse (+0xC0) when it is a number above 0; else 0.
+float MassInvOf(UInt32 motion) {
+	const float inv = *reinterpret_cast<const float*>(motion + kMotionMassInvOffset);
+	return inv > 0.0f && inv < 1.0e6f ? inv : 0.0f;
+}
+
+// The world's gravity along z as a positive number (hkRigidBody +0x08 the
+// hkWorld, its gravity at +0x20), 0 when nothing reads or it points up.
+float GravityOf(UInt32 body) {
+	const UInt32 world = Read(body + kBodyWorldOffset);
+	if (!LooksLikeObject(world)) {
+		return 0.0f;
+	}
+	const float gz = *reinterpret_cast<const float*>(world + kWorldGravityOffset + 8);
+	return gz < 0.0f && gz > -10000.0f ? -gz : 0.0f;
 }
 
 // The body still the one taken: the bone's collision object still leads to
@@ -133,9 +151,53 @@ bool ReadRagdollPart(const RagdollPart& p, NiPoint3& centre, UInt32& motionType)
 	return true;
 }
 
-bool DriveRagdollPart(const RagdollPart& p, const NiPoint3& target, float dtSeconds, float* speedUnitsOut,
-                      const char** why) {
-	*speedUnitsOut = 0.0f;
+bool ReadRagdollMass(const RagdollPart& p, float* mass, float* gravity) {
+	*mass = 0.0f;
+	*gravity = 0.0f;
+	if (!PartStillThere(p)) {
+		return false;
+	}
+	UInt32 type = 0;
+	const UInt32 motion = MotionOf(p.body, &type);
+	if (motion == 0) {
+		return false;
+	}
+	const float inv = MassInvOf(motion);
+	*mass = inv > 0.0f ? 1.0f / inv : 0.0f;
+	*gravity = GravityOf(p.body);
+	return true;
+}
+
+float RagdollMassOf(UInt32 actor, UInt32* bodies) {
+	*bodies = 0;
+	float sum = 0.0f;
+	for (UInt32 bone = 0; bone < kBladeBoneCount; ++bone) {
+		const NiAVObject* const node = BladeBoneNode(actor, bone);
+		if (node == nullptr) {
+			continue;
+		}
+		const UInt32 body = HavokBodyOfNode(reinterpret_cast<UInt32>(node));
+		if (body == 0) {
+			continue;
+		}
+		UInt32 type = 0;
+		const UInt32 motion = MotionOf(body, &type);
+		if (motion == 0) {
+			continue;
+		}
+		const float inv = MassInvOf(motion);
+		if (inv <= 0.0f) {
+			continue;
+		}
+		sum += 1.0f / inv;
+		++*bodies;
+	}
+	return sum;
+}
+
+bool DriveRagdollPart(const RagdollPart& p, const NiPoint3& target, float dtSeconds, float pullBudget,
+                      RagdollDrive& drive, RagdollDriveReport& out, const char** why) {
+	out = RagdollDriveReport{};
 	if (!PartStillThere(p)) {
 		*why = "the body no longer reads";
 		return false;
@@ -154,13 +216,31 @@ bool DriveRagdollPart(const RagdollPart& p, const NiPoint3& target, float dtSeco
 	}
 	const float* const at = reinterpret_cast<const float*>(motion + kMotionTranslationOffset);
 	const NiPoint3 current{at[0], at[1], at[2]};
-	const NiPoint3 havokTarget = target * kHavokPerUnit;
-	const NiPoint3 v = DriveLinearVelocity(current, havokTarget, dtSeconds);
-	if (!SetBodyVelocity(p.body, motion, v)) {
+	const float* const vel = reinterpret_cast<const float*>(motion + kMotionLinearVelocityOffset);
+	const NiPoint3 now{vel[0], vel[1], vel[2]};
+	const NiPoint3 wanted = DriveLinearVelocity(current, target * kHavokPerUnit, dtSeconds);
+	drive.sinceInjected += dtSeconds > 0.0f ? dtSeconds : 0.0f;
+	const bool stepped = !VelocityStillTheSet(drive.haveLast, now, drive.lastSet);
+	out.massInv = MassInvOf(motion);
+	const PullVerdict pull =
+		PullLimitedVelocity(now, wanted, out.massInv, pullBudget, drive.sinceInjected, stepped, drive.lastSet);
+	if (!SetBodyVelocity(p.body, motion, pull.velocity)) {
 		*why = "the motion's velocity setter does not read";
 		return false;
 	}
-	*speedUnitsOut = math::Sqrt(v.LengthSquared()) / kHavokPerUnit;
+	drive.lastSet = pull.velocity;
+	drive.haveLast = true;
+	if (pull.injected) {
+		drive.sinceInjected = 0.0f;
+		++drive.injected;
+		if (pull.capped) {
+			++drive.capped;
+		}
+	}
+	out.speedUnits = math::Sqrt(pull.velocity.LengthSquared()) / kHavokPerUnit;
+	out.accel = pull.accel;
+	out.injected = pull.injected;
+	out.capped = pull.capped;
 	*why = "";
 	return true;
 }

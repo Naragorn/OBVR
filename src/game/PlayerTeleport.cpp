@@ -238,6 +238,16 @@ bool PlayerParalyzed() {
 	return reinterpret_cast<GetIntFn>(getInt)(reinterpret_cast<void*>(player), 0x30u) != 0;
 }
 
+SInt32 PlayerStrength() {
+	const UInt32 player = Player();
+	const UInt32 getInt = player != 0 ? Slot(player, kGetActorValueSlot) : 0;
+	if (getInt == 0) {
+		return -1;
+	}
+	using GetIntFn = SInt32(__thiscall*)(void* actor, UInt32 av);
+	return reinterpret_cast<GetIntFn>(getInt)(reinterpret_cast<void*>(player), 0u);
+}
+
 bool ReadPlayerEncumbrance(float& now) {
 	const UInt32 player = Player();
 	const UInt32 getInt = player != 0 ? Slot(player, kGetActorValueSlot) : 0;

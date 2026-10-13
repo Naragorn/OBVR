@@ -19,14 +19,35 @@ namespace obvr::game {
 // HandBodies' HavokBodyOfNode reads it - and drives it to the hand each
 // frame the way a held object is driven (GrabPhysics.h, DriveLinearVelocity:
 // activated, its linear velocity set), the rest of the body hanging from it
-// through the ragdoll's joints. Let go fast, the same body is sent off with
-// the hand's speed (the throw). Nothing here decides; GrappleLogic.h does.
+// through the ragdoll's joints. Since the weight (GrappleLogic.h,
+// PullLimitedVelocity) the change of the body's velocity is cut to the
+// pull's budget over the body's mass inverse (the motion's +0xC0), once per
+// Havok step, so the body lags and sags with its mass. Let go fast, the
+// same body is sent off with the hand's speed (the throw). Nothing here
+// decides; GrappleLogic.h does.
 
 struct RagdollPart {
 	UInt32 actor = 0;
 	UInt32 bone = 0;  // BladeBone
 	UInt32 node = 0;  // the bone's NiNode
 	UInt32 body = 0;  // its hkRigidBody
+};
+
+// The drive's own memory across the frames of a hold.
+struct RagdollDrive {
+	NiPoint3 lastSet{0.0f, 0.0f, 0.0f};  // the velocity set last, Havok units a second
+	bool haveLast = false;
+	float sinceInjected = 0.0f;  // seconds since a change was last given (the budget's time)
+	UInt32 injected = 0;         // the changes given, this hold
+	UInt32 capped = 0;           // of them, cut to the budget
+};
+
+struct RagdollDriveReport {
+	float speedUnits = 0.0f;  // the velocity set, game units a second
+	float massInv = 0.0f;     // the body's, Havok (0: did not read)
+	float accel = 0.0f;       // the change given, Havok units a second squared
+	bool injected = false;
+	bool capped = false;
 };
 
 // The part's bone nearest the hand that carries a Havok body. `why` names
@@ -39,12 +60,22 @@ bool FindRagdollPart(UInt32 actor, BodyPart part, const NiPoint3& hand, RagdollP
 // the bone's body is no longer the one taken, or nothing reads.
 bool ReadRagdollPart(const RagdollPart& p, NiPoint3& centre, UInt32& motionType);
 
+// The held body's mass (1 over the motion's mass inverse; 0 when it does
+// not read) and its world's gravity along z as a positive number (0 when
+// nothing reads). False when the body does not read at all.
+bool ReadRagdollMass(const RagdollPart& p, float* mass, float* gravity);
+
+// The masses of the bodies on all the actor's kept bones, summed (the
+// ragdoll's whole mass, as far as the bones go), and how many bodies read.
+float RagdollMassOf(UInt32 actor, UInt32* bodies);
+
 // The body driven to `target` (game units) this frame: activated and given
-// the velocity that closes the gap (DriveLinearVelocity, capped at 15 m/s).
-// False, and `why`, when it cannot be driven (keyframed, fixed, unreadable).
-// `speedUnitsOut`: the velocity given, game units a second.
-bool DriveRagdollPart(const RagdollPart& p, const NiPoint3& target, float dtSeconds, float* speedUnitsOut,
-                      const char** why);
+// the velocity that closes the gap (DriveLinearVelocity, capped at 15 m/s),
+// the change from the velocity read back cut to `pullBudget` over the
+// body's mass inverse once per Havok step (0: no limit). False, and `why`,
+// when it cannot be driven (keyframed, fixed, unreadable).
+bool DriveRagdollPart(const RagdollPart& p, const NiPoint3& target, float dtSeconds, float pullBudget,
+                      RagdollDrive& drive, RagdollDriveReport& out, const char** why);
 
 // The body sent off at `velocityUnits` (game units a second): activated, its
 // linear velocity set. False when nothing reads.

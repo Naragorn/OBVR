@@ -91,6 +91,10 @@ bool ReadPlayerFatigue(float& now, float& base);
 // as the engine's own check asks it (0x005E17E0; game/PlayerStagger.h).
 bool PlayerParalyzed();
 
+// The player's Strength now (actor value 0, with its modifiers; the same
+// getter as the paralysis); -1 when nothing reads.
+SInt32 PlayerStrength();
+
 // The player's encumbrance as the game counts it now (actor value 11, the
 // weight carried with every script's modAV on it); false when the player
 // cannot be read.

@@ -23,6 +23,7 @@ ini Hands Holsters=1
 ini Hands OffHandGrabs=1
 ini Hands GrabRagdoll=1
 ini Hands GrabThrowStrength=1.5
+ini Hands GrabWeight=1
 ini Hands OffHandStrikes=0
 ini Hands TwoHandOneHanders=0
 ini Hands GrabHoldSeconds=6
@@ -39,6 +40,8 @@ expect Grapple: the off hand takes
 expect knocked down into its ragdoll
 expect Grapple: holding
 expect as a ragdoll
+expect Grapple: the pull on
+expect cut to the budget
 expect knock state
 expect the held part sent off at
 reject HandScript: WARNING

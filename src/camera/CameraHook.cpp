@@ -1009,6 +1009,13 @@ float g_grappleStampSeconds = 0.0f;           // since the engine's time stamp w
 UInt32 g_grappleStamps = 0;                   // how often, this hold
 UInt32 g_grappleDriveRefused = 0;             // frames the drive refused, this hold
 UInt32 g_grappleMotionType = 0;               // the held body's motion type last read
+game::RagdollDrive g_grappleDrive;            // the drive's memory: the velocity set last, the changes given and cut
+float g_grapplePull = 0.0f;                   // the pull's budget this hold (GrapplePullBudget; 0 no limit)
+float g_grapplePartMass = 0.0f;               // the held body's mass, Havok's (0 unread)
+float g_grappleMass = 0.0f;                   // the ragdoll's mass over its kept bones
+UInt32 g_grappleMassBodies = 0;
+float g_grappleGravity = 0.0f;                // the world's gravity at the take, Havok units a second squared
+SInt32 g_grappleStrength = -1;                // the player's Strength at the take
 NiPoint3 g_grappleBodyLast{0.0f, 0.0f, 0.0f};  // the held body's centre the frame before
 bool g_grappleBodyHaveLast = false;
 NiPoint3 g_grappleStartAt{0.0f, 0.0f, 0.0f};  // where they stood at the grab, for the log
@@ -1154,9 +1161,17 @@ void StepGrapple(const Config& config, bool inPlace, float dt) {
 				g_grappleDriveRefused = 0;
 				g_grappleMotionType = 0;
 				g_grappleBodyHaveLast = false;
+				g_grappleDrive = game::RagdollDrive{};
 				g_grappleStartAt = in.takeAt;
 				g_grappleDragged = 0.0f;
 				g_grappleLogSeconds = 0.0f;
+				// The weight: the pull's budget from the player's Strength
+				// against the ragdoll's Havok masses (GrappleLogic.h).
+				game::ReadRagdollMass(takePart, &g_grapplePartMass, &g_grappleGravity);
+				g_grappleMass = game::RagdollMassOf(v.actor, &g_grappleMassBodies);
+				g_grappleStrength = game::PlayerStrength();
+				g_grapplePull =
+					game::GrapplePullBudget(static_cast<float>(g_grappleStrength), g.weight, g_grappleGravity);
 				if (fatigue > 0.0f) {
 					game::SpendPlayerFatigue(fatigue);
 				}
@@ -1171,6 +1186,17 @@ void StepGrapple(const Config& config, bool inPlace, float dt) {
 					         v.knock ? "knocked down into its ragdoll by the engine's knockdown, no push"
 					                 : "already down - taken as it lies",
 					         knock, game::BladeBoneName(takePart.bone), takePart.body, static_cast<double>(fatigue));
+				}
+				if (g_grappleLines > 0) {
+					--g_grappleLines;
+					OBVR_LOG("Grapple: the pull on %08X - the %s body's mass %.1f, the ragdoll %.0f in %u bodies (Havok's "
+					         "masses), gravity %.1f; Strength %d, GrabWeight x%.2f: a budget of %.0f, which lifts %.0f "
+					         "(0: no limit)",
+					         v.actor, game::BladeBoneName(takePart.bone), static_cast<double>(g_grapplePartMass),
+					         static_cast<double>(g_grappleMass), g_grappleMassBodies, static_cast<double>(g_grappleGravity),
+					         g_grappleStrength, static_cast<double>(game::GrappleWeight(g.weight)),
+					         static_cast<double>(g_grapplePull),
+					         static_cast<double>(game::GrappleLiftMass(g_grapplePull, g_grappleGravity)));
 				}
 				NoteGrappleKnockState(v.actor, knock);
 				return;
@@ -1214,9 +1240,9 @@ void StepGrapple(const Config& config, bool inPlace, float dt) {
 		if (v.hold == game::GrappleHold::Ragdoll) {
 			// Held: the part's body driven to the hand (RagdollHold.h), the
 			// engine's get-up clock stamped anew while they lie.
-			float speedUnits = 0.0f;
+			game::RagdollDriveReport drive;
 			const char* why = "";
-			if (game::DriveRagdollPart(g_grappleRagdoll, v.driveTo, dt, &speedUnits, &why)) {
+			if (game::DriveRagdollPart(g_grappleRagdoll, v.driveTo, dt, g_grapplePull, g_grappleDrive, drive, &why)) {
 				if (g_grappleBodyHaveLast) {
 					g_grappleDragged += math::Sqrt((in.heldBodyAt - g_grappleBodyLast).LengthSquared());
 				}
@@ -1239,13 +1265,16 @@ void StepGrapple(const Config& config, bool inPlace, float dt) {
 			if (say && g_grappleLines > 0) {
 				g_grappleLogSeconds = 0.0f;
 				--g_grappleLines;
+				const float havokPerMetre = config.tracker.unitsPerMetre * game::kHavokPerUnit;
 				OBVR_LOG("Grapple: holding %08X's %s as a ragdoll %.1f s - the body %.1f units from the hand, driven at "
-				         "%.1f m/s (motion type %u), moved %.0f units so far, knock state %d, the engine's clock stamped "
-				         "anew %u times, the drive refused %u frames",
+				         "%.1f m/s (motion type %u), pulled at %.1f m/s^2 (%u of %u changes cut to the budget), moved "
+				         "%.0f units so far, knock state %d, the engine's clock stamped anew %u times, the drive refused "
+				         "%u frames",
 				         v.actor, game::BodyPartName(v.part), static_cast<double>(v.seconds), static_cast<double>(v.gap),
-				         static_cast<double>(speedUnits / config.tracker.unitsPerMetre), g_grappleMotionType,
-				         static_cast<double>(g_grappleDragged), in.heldKnockState, g_grappleStamps,
-				         g_grappleDriveRefused);
+				         static_cast<double>(drive.speedUnits / config.tracker.unitsPerMetre), g_grappleMotionType,
+				         static_cast<double>(havokPerMetre > 0.0f ? drive.accel / havokPerMetre : 0.0f),
+				         g_grappleDrive.capped, g_grappleDrive.injected, static_cast<double>(g_grappleDragged),
+				         in.heldKnockState, g_grappleStamps, g_grappleDriveRefused);
 			}
 			return;
 		}

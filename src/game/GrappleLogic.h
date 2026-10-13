@@ -52,12 +52,116 @@ struct GrappleSettings {
 	float fatigue = 15.0f;       // [Hands] GrabFatigue, spent at the grab (the light shove's)
 	bool ragdoll = true;         // [Hands] GrabRagdoll: the torso, an arm or a leg grabbed takes them down into the ragdoll
 	float throwStrength = 1.5f;  // [Hands] GrabThrowStrength: the hand's speed times this on the held part, let go
+	float weight = 1.0f;         // [Hands] GrabWeight: the held ragdoll's mass against the hand's pull; 0 weightless
 };
 
 // GrabThrowStrength as used: 0 (no throw, they drop) to 5; anything else
 // the default 1.5.
 inline float GrappleThrowStrength(float setting) {
 	return setting >= 0.0f && setting <= 5.0f ? setting : 1.5f;
+}
+
+// ------------------------------------------------------- the ragdoll's weight
+// The tester (2026-10-13, the ragdoll hold seen in the headset): "geben wir
+// den gehaltenen gegnern noch gewicht". The held part's body is no longer
+// given the velocity that closes the gap whatever it takes (an unlimited
+// force): the change of its velocity each Havok step is cut to a budget -
+// a force, in the ragdoll's own mass units (skeleton.nif's bhkRigidBodies: a
+// hand 15, a forearm 30, an upper arm 40, the whole body about 530) times
+// Havok units a second squared - over the body's mass inverse. Havok's
+// joints carry the rest of the body on the held part and its gravity pulls
+// it down, so a heavy chain lags behind the hand and sags under it, and one
+// the budget cannot lift stays on the ground and is dragged. The budget
+// comes from the player's Strength: at 100 it lifts kGrabLiftMassAtHundred
+// against the world's gravity, at 50 half that; GrabWeight divides it (2:
+// twice as heavy), 0 is no limit (the hold as first built).
+
+// GrabWeight as used: 0 (weightless) to 5; anything else 1.
+inline float GrappleWeight(float setting) {
+	return setting >= 0.0f && setting <= 5.0f ? setting : 1.0f;
+}
+
+inline constexpr float kGrabLiftMassAtHundred = 300.0f;
+inline constexpr float kGrabGravityFallback = 9.8f;
+inline constexpr float kGrabStrengthLeast = 10.0f;
+inline constexpr float kGrabStrengthMost = 200.0f;
+
+// The pull's budget - a force in Havok's terms (mass times Havok units a
+// second squared) - from the player's Strength (counted from 10 to 200),
+// GrabWeight and the world's gravity (a positive number; not one, or 0:
+// Havok's own 9.8). 0 with the weight 0: no limit.
+inline float GrapplePullBudget(float strength, float weight, float gravityHavok) {
+	const float w = GrappleWeight(weight);
+	if (!(w > 0.0f)) {
+		return 0.0f;
+	}
+	float s = strength >= kGrabStrengthLeast ? strength : kGrabStrengthLeast;
+	if (s > kGrabStrengthMost) {
+		s = kGrabStrengthMost;
+	}
+	const float g = gravityHavok > 0.01f && gravityHavok < 1000.0f ? gravityHavok : kGrabGravityFallback;
+	return kGrabLiftMassAtHundred * g * (s / 100.0f) / w;
+}
+
+// What the budget lifts, in the ragdoll's mass units: the budget over the
+// gravity; 0 for no limit or no gravity.
+inline float GrappleLiftMass(float budget, float gravityHavok) {
+	return budget > 0.0f && gravityHavok > 0.01f ? budget / gravityHavok : 0.0f;
+}
+
+struct PullVerdict {
+	NiPoint3 velocity{0.0f, 0.0f, 0.0f};  // the velocity to set, Havok units a second
+	bool injected = true;                 // false: Havok has not stepped since the last set - the same velocity again
+	bool capped = false;                  // the change wanted was cut to the budget
+	float accel = 0.0f;                   // the change given over the time, Havok units a second squared
+};
+
+// The velocity to set on the held body. `now` is the body's velocity read
+// back, `wanted` the drive's own (the gap closed in a frame), `massInv` the
+// body's, `budget` the pull's (0: no limit), `seconds` the time since the
+// last change was given. The change is given once per Havok step: with the
+// body's velocity still exactly the one set last (`stepped` false), Havok
+// has not stepped, and the same velocity goes again - except after a set of
+// nothing, which a body at rest on the ground reads back whether Havok
+// stepped or not. A body whose mass does not read, a frame without time or
+// no budget: the wanted velocity, no cap.
+inline PullVerdict PullLimitedVelocity(const NiPoint3& now, const NiPoint3& wanted, float massInv, float budget,
+                                       float seconds, bool stepped, const NiPoint3& lastSet) {
+	PullVerdict v;
+	if (!stepped) {
+		v.velocity = lastSet;
+		v.injected = false;
+		return v;
+	}
+	v.velocity = wanted;
+	if (!(budget > 0.0f) || !(massInv > 0.0f) || !(seconds > 0.0f)) {
+		return v;
+	}
+	const NiPoint3 d = wanted - now;
+	const float change = math::Sqrt(d.LengthSquared());
+	const float most = budget * massInv * seconds;
+	v.accel = change / seconds;
+	if (change > most && change > 0.0f) {
+		v.velocity = now + d * (most / change);
+		v.capped = true;
+		v.accel = budget * massInv;
+	}
+	return v;
+}
+
+// Whether the velocity read back is still exactly the one set - then Havok
+// has not stepped in between (PullLimitedVelocity's `stepped` is the
+// opposite). A set of nothing is never "still the same": a body at rest on
+// the ground reads back nothing after a step too, and the hold must not
+// stick to it.
+inline bool VelocityStillTheSet(bool haveLast, const NiPoint3& now, const NiPoint3& lastSet) {
+	if (!haveLast) {
+		return false;
+	}
+	if (lastSet.x == 0.0f && lastSet.y == 0.0f && lastSet.z == 0.0f) {
+		return false;
+	}
+	return now.x == lastSet.x && now.y == lastSet.y && now.z == lastSet.z;
 }
 
 // The hand this far outside a capsule still takes hold (about 9 cm; the

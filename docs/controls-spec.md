@@ -2502,6 +2502,20 @@ left-handed player, the roles swapped before anything here sees them).
   Harness `grapple-ragdoll.txt` PASS 2026-10-13 (docs/hand-script-harness.md):
   two holds, by the left arm and the torso, the body 1-5 units from the hand
   through 0.8 s, thrown at 40 m/s; the bandit stood up between them.
+- **The weight (`GrabWeight` 1, "Grab weight (x)"; built 2026-10-13 after
+  the tester had the hold in the headset: "ja geht geben wir den gehaltenen
+  gegnern noch gewicht").** The held part is no longer snapped to the hand:
+  the change of its velocity each Havok step is cut to a pull from the
+  player's Strength against the part's Havok mass (physical-combat-spec
+  section 8 has the budget and the engine's side), so the body lags behind
+  a fast hand, sags under a still one, and one too heavy to lift stays on
+  the ground and is dragged; the throw is as before. 0 is weightless (the
+  hold as first built), 2 twice as heavy. Logged at the take "Grapple: the
+  pull on <ref> - the <bone> body's mass n, the ragdoll n in n bodies
+  (Havok's masses), gravity n; Strength n, GrabWeight xn: a budget of n,
+  which lifts n (0: no limit)", and the holding line carries "pulled at n
+  m/s^2 (n of n changes cut to the budget)". The harness rerun with the
+  weight is open; not seen in the headset.
 
 ### 4.35 Walking with a reached menu open, and switching containers (built 2026-10-10)
 
