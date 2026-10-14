@@ -128,6 +128,48 @@ has not built since the DLL took `<atomic>`, `<vector>` and `<string>` on board
 (2026-09-23 and 2026-09-27): on 2026-10-14, 106 of 145 translation units failed on a
 missing header. The route above replaces it.
 
+## Switching between Windows and Linux
+
+Since 2026-10-14 both systems work on the same state, with the Windows files as the
+originals and Linux pointing at them through symbolic links on the mounted Windows
+partition (Linux follows the links; Wine sees ordinary files):
+
+- **The live `OBVR.ini`.** The Linux game folder's `Data/OBSE/Plugins/OBVR.ini` is a link to
+  the Windows game folder's. A setting changed in the menu lands in the one file either
+  way: Wine's `WritePrivateProfileString` rewrites the file in place with
+  `CreateFileW(CREATE_ALWAYS)`, which follows the link and keeps it (Wine's
+  `dlls/kernel32/profile.c`, `PROFILE_FlushFile`).
+- **`dxvk.conf`.** The Linux game folder's is a link to the Windows game folder's; Proton's
+  DXVK reads it there ("Found config file: dxvk.conf" and both settings in the Proton
+  log). It does not take the gplasync options: Proton's DXVK is not that build.
+- **The saves.** The Proton prefix's `Documents/My Games/Oblivion/Saves` is a link to the
+  Windows user's `Saves` folder, so the xOBSE co-saves (`.obse`) travel too; Steam Cloud
+  carries only the `.ess` files. `Oblivion.ini` stays per system - the Windows one has
+  four content mods and other settings.
+- **The source.** One checkout on the shared partition; the build directories are per
+  system (`build/` with MSVC, `build-linux-clangcl/` with clang-cl).
+
+Building and deploying on Linux:
+
+```
+tools/build-linux.sh            # build OBVR.dll with clang-cl, deploy it and the map
+tools/build-linux.sh --test     # the unit tests first
+tools/build-linux.sh --assets   # the menus, the input manifest and the sounds too
+```
+
+It deploys nothing when the build fails (the game folder keeps its DLL, and it says so)
+or while Oblivion runs. The Windows game folder keeps whatever was last built there: after
+working on Linux, build on Windows once before playing there.
+
+The links need the Windows partition mounted; without it the game finds neither its
+settings nor its saves. Until 2026-10-14 udisks mounted it on demand. Since then
+`/etc/fstab` mounts both Windows partitions where udisks did, by UUID, `ntfs3` with
+`windows_names` (no file names Windows cannot open), `nofail` (a missing disk does not
+stop the boot) and `x-systemd.automount` (mounted at the first access); `findmnt
+--verify` reports no errors or warnings, and systemd generated the automount units. The
+first boot with them is still to come. Windows must not hibernate while Linux writes to
+its partition; there is no `hiberfil.sys` on it, so fast startup is off.
+
 ## The game under Proton (gate 2): runs, first run 2026-10-14
 
 Gate 1 came first: on 2026-10-14 the tester confirmed that SteamVR runs games on the

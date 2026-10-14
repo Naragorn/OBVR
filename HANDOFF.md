@@ -588,6 +588,9 @@ cmake -S . -B build-linux-clangcl -G Ninja -DCMAKE_BUILD_TYPE=Release --toolchai
 cmake --build build-linux-clangcl
 ```
 
+`tools/build-linux.sh` builds and deploys in one step (`docs/linux.md`, "Switching
+between Windows and Linux").
+
 The older SDK-free verification build (`cmake/toolchain-linux-nosdk.cmake`, no C++
 standard library) has not built since the DLL took `<atomic>`, `<vector>` and `<string>`
 on board in September 2026.
