@@ -1666,7 +1666,8 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.handHud.enabled = v != 0.0f; },
 	},
 	{
-		"HUD", "Show when looked at", "A hand's HUD shows only while you look at it, palm to your face",
+		"HUD", "Show when looked at",
+		"Off: always shown, on the back of your hand. On: only while you look at it, palm to your face",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"HandHud", "ShowOnLook",
 		+[](const Config& c) { return c.hands.handHud.showOnLook ? 1.0f : 0.0f; },

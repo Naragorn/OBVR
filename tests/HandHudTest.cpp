@@ -426,6 +426,7 @@ void TestLook() {
 	      "moved on its own face: 2 cm right, 3 cm down, as the eyes see it");
 
 	HandHudSettings s;
+	s.showOnLook = true;  // the look, the default until 2026-10-14
 	HandHudFrame f;
 	f.leftValid = f.rightValid = f.haveHead = true;
 	f.head = head;
@@ -459,6 +460,49 @@ void TestLook() {
 	f.hand[0].valid = false;
 	PlaceHandHud(s, f, q);
 	Check(!q[0].shown, "the hand lost: hidden");
+}
+
+// Always shown, the default since 2026-10-14 (the tester: "mach dass die huds
+// an den Händen standardmäßig immer sichtbar sind und sich nicht
+// ausblenden"): the watch on the back of each hand, in full, whether a hand
+// is looked at or not. ShowOnLook brings the look back as it was.
+void TestShownAlways() {
+	std::printf("Shown always, the default\n");
+	HandHudSettings s;
+	Check(!s.showOnLook, "the default: always shown, no look needed");
+	const openvr::HmdMatrix34 head = HeadLooking(0.0f);
+	HandHudFrame f;
+	f.leftValid = f.rightValid = f.haveHead = true;
+	f.head = head;
+	f.rect[0] = UiRect{87, 847, 286, 927, true};   // bars, on the left hand
+	f.rect[2] = UiRect{312, 847, 384, 927, true};  // weapon, on the right
+	// Neither hand looked at: both low, their palms sideways, nothing faded in.
+	f.hand[0] = Controller(-0.2f, 1.2f, -0.3f, 1.0f, 0.0f);
+	f.hand[1] = Controller(0.2f, 1.2f, -0.3f, 1.0f, 0.0f);
+	HandHudQuad q[kHudElementCount];
+	PlaceHandHud(s, f, q);
+	Check(q[0].shown && Near(q[0].alpha, 1.0f) && q[2].shown && Near(q[2].alpha, 1.0f),
+	      "not looked at, nothing faded in: both hands' HUD shown in full");
+	Check(q[0].onDevice && !q[0].rightHand && q[2].onDevice && q[2].rightHand, "each hung on its own controller");
+	const openvr::HmdMatrix34 watch = AlongOwnXY(HandPanelTransform(s.panelUp, s.panelBack, s.panelTiltDegrees, 0.0f),
+	                                             s.offsetRightMetres, s.offsetUpMetres);
+	Check(Near(q[2].pose.m[0][3], watch.m[0][3]) && Near(q[2].pose.m[1][3], watch.m[1][3]) &&
+	          Near(q[2].pose.m[2][3], watch.m[2][3]),
+	      "on the back of the hand, like a watch");
+
+	// Without ShowOnLook a look does not count: nothing waits for one, and
+	// the log does not claim one.
+	const HandLook facing = Controller(0.0f, 1.6f, -0.4f, 0.0f, 1.0f);  // the left palm to the face
+	Check(!HandHudLookedAt(s, true, true, facing, false, head), "the palm to the face: no look counted");
+
+	HandHudSettings look = s;
+	look.showOnLook = true;
+	Check(HandHudLookedAt(look, true, true, facing, false, head), "ShowOnLook on: the palm to the face is a look");
+	Check(!HandHudLookedAt(look, false, true, facing, false, head), "the hand HUD not up (a menu, a load): no look");
+	Check(!HandHudLookedAt(look, true, false, facing, false, head), "no head pose: no look");
+	Check(!HandHudLookedAt(look, true, true, f.hand[0], false, head), "the hand low, its palm sideways: no look");
+	PlaceHandHud(look, f, q);
+	Check(!q[0].shown && !q[2].shown, "ShowOnLook on, nothing faded in: hidden, as before");
 }
 
 }  // namespace
@@ -571,6 +615,7 @@ int main() {
 	TestText();
 	TestViewAnchor();
 	TestLook();
+	TestShownAlways();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

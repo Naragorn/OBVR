@@ -251,7 +251,9 @@ Every element has its own place, opacity and size. The settings are in `[HandHud
 
 **Headset (2026-09-29):** "ja HUD geht alles habe es getestet." The settings are not tried yet.
 
-**Shown on a look (2026-09-29, the tester: "man muss die hand mit vr anschauen und die hand zum gesicht drehen quasi mit offener hand").** A hand's HUD fades in over 0.15 s only while three things hold:
+**Shown always, the default since 2026-10-14 (the tester: "mach dass die huds an den Händen standardmäßig immer sichtbar sind und sich nicht ausblenden. Eine Einstellung default off kann das dann wider so einstellen wie bisher.").** `[HandHud] ShowOnLook` now defaults to 0: each hand's HUD sits on the back of the hand like a watch (`Panel*`) at its full opacity and never fades. `ShowOnLook=1` ("Show when looked at" in the settings menu, off by default) brings the look below back as it was. The look's decision is `vr::HandHudLookedAt`: without ShowOnLook no look counts, so nothing fades and the log's "is looked at" lines stay away (hand_hud_test, "Shown always, the default"). It still hides with the rest of the HUD: in menus, while a game loads, and after death. The tester's live INI has no `ShowOnLook` line, so it takes the new default. Harness 2026-10-14 on Linux, the controllers off: `hand-hud-always.txt` PASS (the default, each palm turned to the face: the hand HUD up at the marks, no look counted), and `hand-hud-look.txt` PASS as the control (`ShowOnLook=1`, the same moves: the left hand looked at and then not, the right hand looked at). The quads on the hands need the controllers' device indices, so the harness does not show them. Headset: open.
+
+**Shown on a look (`ShowOnLook=1`; the default from 2026-09-29 to 2026-10-14; the tester: "man muss die hand mit vr anschauen und die hand zum gesicht drehen quasi mit offener hand").** A hand's HUD fades in over 0.15 s only while three things hold:
 - the hand is within `LookGazeDegrees` (35) of the head's forward;
 - its palm is within `LookPalmDegrees` (55) of facing the eyes;
 - the hand is not a fist (finger curl < 0.6, or the grip's squeeze without curls).
@@ -260,7 +262,7 @@ While shown, the HUD hangs `PalmLiftMetres` (0.06) off the palm, facing the eyes
 
 The palm's side is **assumed** to be the controller's +x on the left hand and −x on the right, from OpenVR's controller axes. The headset has not confirmed it. If the HUD shows with the back of the hand instead, that is the sign to flip.
 
-**Open (the tester, 2026-10-13 night: "linke hand muss hud auch zeigen
+**Open, with `ShowOnLook=1` only since 2026-10-14 (the tester, 2026-10-13 night: "linke hand muss hud auch zeigen
 wenn faust geballt aber angewinkelt dass hud eig sehbar wäre").** The left
 hand's HUD should come up on a look with the fist closed too, when the hand
 is turned so the HUD would be seen. Today the third condition (not a fist)
@@ -273,7 +275,7 @@ the guard holds (`r.blocking`) or a swing runs on that hand. Not built; the
 tester's call whether a HUD in the guard is bearable or the guard has to
 win.
 
-`tools/hand-scripts/hand-hud-look.txt` covers it, but it has not run yet: the tester was playing.
+`tools/hand-scripts/hand-hud-look.txt` covers the look; its first run was 2026-10-14, PASS (see "Shown always" above).
 
 **Reworked (2026-10-06; headset verification pending):** the crosshair cache has been removed. `DialogCameraShim` copies the actual actor position from `SetDialogCamera` before either the POV switch or vanilla zoom runs. This also supplies a target for NPC-initiated greetings. The panel places once per conversation, retrying if the first frame has no valid head/camera pose. Side and size settings remain unchanged. `DialogFocus` clears the copied position on explicit end, menu exit, or cancelled approach. The camera observer stays installed with zoom on; a zoom setting change takes effect for the next conversation so its original exit cleanup is retained. `dialog_panel` and `dialog_camera_hook` exercise the placement policy and engine-facing wiring without running Oblivion.
 

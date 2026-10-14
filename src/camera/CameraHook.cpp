@@ -9377,7 +9377,8 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			handHudFrame.viewAnchorValid[row] = s_viewAnchor[row].valid;
 			handHudFrame.viewAnchor[row] = s_viewAnchor[row].head;
 		}
-		// Looking at a hand, palm to the face: its HUD fades in.
+		// Looking at a hand, palm to the face: its HUD fades in - with
+		// ShowOnLook only; shown always (the default), no look counts.
 		for (UInt32 side = 0; side < 2; ++side) {
 			const vr::HandPose& pose = g_hudHandPose[side];
 			vr::HandLook& look = handHudFrame.hand[side];
@@ -9404,9 +9405,8 @@ void MaybeSubmitOverlays(bool worldFrame) {
 				const bool armed = side == 1 && game::MeleeInHand(&weaponType);
 				look.open = curl < 0.6f || armed;
 			}
-			const bool lookedAt = handHudActive && handHudFrame.haveHead &&
-			                      vr::PalmFacesEyes(look, side == 1, handHudFrame.head, handHud.lookGazeDegrees,
-			                                        handHud.lookPalmDegrees);
+			const bool lookedAt = vr::HandHudLookedAt(handHud, handHudActive, handHudFrame.haveHead, look, side == 1,
+			                                          handHudFrame.head);
 			g_hudHandAlpha[side] = vr::StepHandFade(g_hudHandAlpha[side], lookedAt, g_deltaSeconds,
 			                                        handHud.lookFadeSeconds);
 			handHudFrame.handAlpha[side] = g_hudHandAlpha[side];

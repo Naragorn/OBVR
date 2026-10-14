@@ -138,8 +138,11 @@ struct HandHudSettings {
 	// When a hand's HUD shows: always (on the back of the hand, as a watch),
 	// or only while you look at the hand with its palm turned to your face
 	// (the tester, 2026-09-29: "man muss die hand mit vr anschauen und die
-	// hand zum gesicht drehen quasi mit offener hand"). Look is the default.
-	bool showOnLook = true;
+	// hand zum gesicht drehen quasi mit offener hand"). Always is the default
+	// since 2026-10-14 (the tester: "mach dass die huds an den Händen
+	// standardmäßig immer sichtbar sind und sich nicht ausblenden"); the
+	// look was the default before.
+	bool showOnLook = false;
 	// The hand within this many degrees of where the head looks, and the
 	// palm within this many degrees of facing the eyes.
 	float lookGazeDegrees = 35.0f;
@@ -225,6 +228,15 @@ inline float StepHandFade(float alpha, bool lookedAt, float dt, float seconds) {
 	}
 	alpha -= step;
 	return alpha < target ? target : alpha;
+}
+
+// Whether a hand's HUD counts as looked at this frame, for its fade: only
+// with showOnLook, while the hand HUD is up and the head is known. Shown
+// always (showOnLook off), nothing waits for a look and the log claims none.
+inline bool HandHudLookedAt(const HandHudSettings& s, bool hudUp, bool haveHead, const HandLook& hand, bool rightHand,
+                            const openvr::HmdMatrix34& head) {
+	return s.showOnLook && hudUp && haveHead &&
+	       PalmFacesEyes(hand, rightHand, head, s.lookGazeDegrees, s.lookPalmDegrees);
 }
 
 // The panel over the palm, facing the eyes: `lift` metres off the palm, its x
