@@ -16,6 +16,10 @@
 //
 // Pure, covered by enemy_health_test.
 
+#include <cstdio>
+#include <cstring>
+
+#include "core/AddressSpace.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
 
@@ -254,6 +258,104 @@ inline UInt32 EnemyHealthFrameIndex(float fraction, UInt32 frames) {
 	const float last = static_cast<float>(frames - 1);
 	const UInt32 index = static_cast<UInt32>((1.0f - f) * last + 0.5f);
 	return index > frames - 1 ? frames - 1 : index;
+}
+
+// ------------------------------- a frame's Direct3D texture, by its address
+// Where a NiSourceTexture keeps its IDirect3DTexture9 (Oblivion.exe
+// 1.2.0.416, read 2026-10-14): its renderer data at +0x24 - the shader
+// property's set-up reads it there (0x007DA8A9) - is a
+// NiDX9SourceTextureData (vtable 0x00A883C4), and that class's slot +0x24
+// (0x007609C0) takes the Direct3D texture, asks it for its level count
+// (kept at +0x5C), its type and each level's size (the first at +0x54 and
+// +0x58), copies the pixel format to +0x0C and keeps the texture at +0x50
+// (0x00760A7B). The probe of 2026-10-13 found it there at run time.
+//
+// Nothing else in the renderer data is followed. The pixel format's
+// D3DFORMAT lies at +0x18, for these frames the four characters "DXT5",
+// 0x35545844: four-aligned and inside mem::LooksLikeObjectAddress's range, a
+// pointer by its looks only. The scan that came before followed every dword
+// from +0x04 on and met it before the texture; Windows read through it
+// unharmed from 2026-10-13 on, the address happening to be readable there,
+// and under Proton on 2026-10-14 nothing was mapped at it and the game went
+// down with the session's first enemy bar (docs/hud-on-hands-spec.md).
+inline constexpr UInt32 kTextureRendererDataOffset = 0x24;
+inline constexpr UInt32 kRendererDataD3DTextureOffset = 0x50;
+
+enum class D3DTextureResult : UInt8 {
+	Found,
+	NoVtable,        // IDirect3DTexture9's vtable unknown, nothing to tell it by
+	NoRendererData,  // no texture object, or it has no renderer data
+	NoTexture,       // nothing that looks like an object at +0x50
+	OtherObject,     // an object at +0x50 whose vtable is not the texture's
+};
+
+struct D3DTextureLookup {
+	D3DTextureResult result = D3DTextureResult::NoRendererData;
+	UInt32 texture = 0;       // the IDirect3DTexture9, when found
+	UInt32 rendererData = 0;  // the renderer data, once read
+};
+
+// The IDirect3DTexture9 behind a NiSourceTexture: the renderer data's +0x50,
+// taken when its first dword is `textureVtable`, the vtable every
+// IDirect3DTexture9 of the game's device shares. `read(address)` reads one
+// dword of the game's memory; it is asked for the renderer data, the dword at
+// +0x50 and that object's vtable, each only once what led to it looks like an
+// object, and for nothing else.
+template <typename ReadFn>
+D3DTextureLookup LookUpD3DTexture(UInt32 texture, UInt32 textureVtable, ReadFn read) {
+	D3DTextureLookup r;
+	if (textureVtable == 0) {
+		r.result = D3DTextureResult::NoVtable;
+		return r;
+	}
+	if (!mem::LooksLikeObjectAddress(texture)) {
+		return r;
+	}
+	r.rendererData = read(texture + kTextureRendererDataOffset);
+	if (!mem::LooksLikeObjectAddress(r.rendererData)) {
+		r.rendererData = 0;
+		return r;
+	}
+	const UInt32 candidate = read(r.rendererData + kRendererDataD3DTextureOffset);
+	if (!mem::LooksLikeObjectAddress(candidate)) {
+		r.result = D3DTextureResult::NoTexture;
+		return r;
+	}
+	if (read(candidate) != textureVtable) {
+		r.result = D3DTextureResult::OtherObject;
+		return r;
+	}
+	r.result = D3DTextureResult::Found;
+	r.texture = candidate;
+	return r;
+}
+
+// The probe's line when no texture was found: "<what> <address>: +00=...
+// +04=..." with the dwords as they are - none of them followed, for a format
+// or a size can look like a pointer. As many dwords as fit whole; always
+// terminated. Returns the dwords written.
+inline UInt32 FormatProbeDwords(char* out, UInt32 size, const char* what, UInt32 address, const UInt32* dwords,
+                                UInt32 count) {
+	if (out == nullptr || size == 0) {
+		return 0;
+	}
+	const int label = std::snprintf(out, size, "%s %08X:", what, address);
+	if (label < 0 || static_cast<UInt32>(label) >= size) {
+		return 0;
+	}
+	UInt32 at = static_cast<UInt32>(label);
+	UInt32 written = 0;
+	for (UInt32 i = 0; i < count; ++i) {
+		char entry[24];
+		const int n = std::snprintf(entry, sizeof(entry), " +%02X=%08X", i * 4u, dwords[i]);
+		if (n < 0 || at + static_cast<UInt32>(n) >= size) {
+			break;
+		}
+		std::memcpy(out + at, entry, static_cast<size_t>(n) + 1);
+		at += static_cast<UInt32>(n);
+		++written;
+	}
+	return written;
 }
 
 }  // namespace obvr::game

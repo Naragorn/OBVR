@@ -33,18 +33,12 @@ constexpr UInt32 kControllerOffset = 0x0C;
 // 2026-10-13.
 constexpr UInt32 kFlipTexturesOffset = 0x44;
 constexpr UInt32 kFlipTextureCountOffset = 0x4A;
-// NiTexture: its renderer data at +0x24 (the shader property's set-up asks
-// it for its mipmap count there, 0x007DA8A9) and, a NiSourceTexture, its
-// file name at +0x34 ("textures\menus\misc\sequence_dds\000001.dds"); the
-// Direct3D texture is one of the renderer data's first dwords (+0x50 in the
-// probe of 2026-10-13, the format's four characters at +0x18, the width and
-// the height at +0x54 and +0x58), told by its vtable - the one every
-// IDirect3DTexture9 of the game's device shares, read off a texture OBVR
-// makes itself.
-constexpr UInt32 kTextureRendererDataOffset = 0x24;
+// NiSourceTexture: its file name at +0x34
+// ("textures\menus\misc\sequence_dds\000001.dds"). Its renderer data and the
+// Direct3D texture in that: LookUpD3DTexture (game/EnemyHealthLogic.h), told
+// by the vtable every IDirect3DTexture9 of the game's device shares, read off
+// a texture OBVR makes itself.
 constexpr UInt32 kTextureFileNameOffset = 0x34;
-constexpr UInt32 kRendererDataScanFrom = 0x04;
-constexpr UInt32 kRendererDataScanTo = 0x60;
 constexpr UInt32 kFramesMost = 64;
 constexpr UInt32 kFrameSideMost = 1024;
 constexpr UInt32 kWalkMost = 64;
@@ -179,50 +173,47 @@ UInt32 TextureVtable() {
 	return g_textureVtable;
 }
 
-// The Direct3D texture behind the game's NiSourceTexture: the dword of its
-// renderer data that points at an object with IDirect3DTexture9's vtable.
+// The Direct3D texture behind the game's NiSourceTexture
+// (LookUpD3DTexture): the renderer data's +0x50, told by IDirect3DTexture9's
+// vtable. Nothing else in the renderer data is followed.
 UInt32 D3DTextureOf(UInt32 texture, const char** why) {
 	const UInt32 vtable = TextureVtable();
-	if (vtable == 0) {
+	const D3DTextureLookup found = LookUpD3DTexture(texture, vtable, Read);
+	switch (found.result) {
+	case D3DTextureResult::Found:
+		return found.texture;
+	case D3DTextureResult::NoVtable:
 		*why = "IDirect3DTexture9's vtable could not be read (no texture to be made)";
 		return 0;
-	}
-	const UInt32 data = Read(texture + kTextureRendererDataOffset);
-	if (!LooksLikeObject(data)) {
+	case D3DTextureResult::NoRendererData:
 		*why = "the texture has no renderer data";
 		return 0;
+	case D3DTextureResult::NoTexture:
+		*why = "the renderer data holds no Direct3D texture at +0x50";
+		break;
+	case D3DTextureResult::OtherObject:
+		*why = "the renderer data's +0x50 is not an IDirect3DTexture9";
+		break;
 	}
-	for (UInt32 offset = kRendererDataScanFrom; offset <= kRendererDataScanTo; offset += 4) {
-		const UInt32 p = Read(data + offset);
-		if (LooksLikeObject(p) && Read(p) == vtable) {
-			return p;
-		}
-	}
-	// The probe, once: the texture's and its renderer data's first dwords,
-	// each pointer's own first dword beside it, against the vtable wanted.
+	// The probe, once: the texture's and its renderer data's first dwords as
+	// they are. None is followed - a format or a size can look like a pointer.
 	static bool s_probed = false;
 	if (!s_probed && g_lines > 0) {
 		s_probed = true;
 		--g_lines;
-		char line[640];
-		UInt32 at = 0;
-		at += static_cast<UInt32>(std::snprintf(line + at, sizeof(line) - at, "texture %08X:", texture));
-		for (UInt32 offset = 0; offset <= 0x3C && at < sizeof(line) - 40; offset += 4) {
-			const UInt32 v = Read(texture + offset);
-			at += static_cast<UInt32>(std::snprintf(line + at, sizeof(line) - at, " +%02X=%08X%s%08X", offset, v,
-			                                        LooksLikeObject(v) ? ">" : "", LooksLikeObject(v) ? Read(v) : 0u));
+		UInt32 dwords[24];
+		char line[400];
+		for (UInt32 i = 0; i < 16; ++i) {
+			dwords[i] = Read(texture + i * 4);
 		}
+		FormatProbeDwords(line, sizeof(line), "texture", texture, dwords, 16);
 		OBVR_LOG("Enemy health: the probe (IDirect3DTexture9's vtable %08X) - %s", vtable, line);
-		at = 0;
-		at += static_cast<UInt32>(std::snprintf(line + at, sizeof(line) - at, "renderer data %08X:", data));
-		for (UInt32 offset = 0; offset <= 0x5C && at < sizeof(line) - 40; offset += 4) {
-			const UInt32 v = Read(data + offset);
-			at += static_cast<UInt32>(std::snprintf(line + at, sizeof(line) - at, " +%02X=%08X%s%08X", offset, v,
-			                                        LooksLikeObject(v) ? ">" : "", LooksLikeObject(v) ? Read(v) : 0u));
+		for (UInt32 i = 0; i < 24; ++i) {
+			dwords[i] = Read(found.rendererData + i * 4);
 		}
+		FormatProbeDwords(line, sizeof(line), "renderer data", found.rendererData, dwords, 24);
 		OBVR_LOG("Enemy health: the probe - %s", line);
 	}
-	*why = "no Direct3D texture among the renderer data's first dwords";
 	return 0;
 }
 

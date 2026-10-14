@@ -3,10 +3,13 @@
 // is painted anew, and every flow of StepEnemyHealthBars - a fighter's bar
 // begun, kept, lingering after death or the end of the fight, let go, the
 // nearest first into the slots, none past the slots. And the painter
-// (ui/EnemyHealthPainter.h): the fill as wide as the health.
+// (ui/EnemyHealthPainter.h): the fill as wide as the health. And every flow
+// of the lookup of a frame's Direct3D texture, which reads nothing but the
+// three dwords it names (the crash of 2026-10-14), and the probe's line.
 
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <limits>
 #include <vector>
 
@@ -328,12 +331,138 @@ void TestFrames() {
 	Check(canvas.GetPixel(0, 0).g > 150, "without a frame OBVR's own bar (the gold corner)");
 }
 
+// The game's memory as the lookup sees it: a few dwords at known addresses,
+// every read recorded. A read of any other address is one the lookup must
+// not make - under Proton such an address need not be mapped.
+struct FakeMemory {
+	struct Cell {
+		UInt32 address;
+		UInt32 value;
+	};
+	std::vector<Cell> cells;
+	std::vector<UInt32> reads;
+	bool strayRead = false;
+
+	void Set(UInt32 address, UInt32 value) {
+		for (Cell& c : cells) {
+			if (c.address == address) {
+				c.value = value;
+				return;
+			}
+		}
+		cells.push_back({address, value});
+	}
+	UInt32 Read(UInt32 address) {
+		reads.push_back(address);
+		for (const Cell& c : cells) {
+			if (c.address == address) {
+				return c.value;
+			}
+		}
+		strayRead = true;
+		return 0;
+	}
+	bool WasRead(UInt32 address) const {
+		for (UInt32 a : reads) {
+			if (a == address) {
+				return true;
+			}
+		}
+		return false;
+	}
+};
+
+void TestTextureLookup() {
+	std::printf("The frame's Direct3D texture\n");
+	// The values of the crash of 2026-10-14 where it had them: the renderer
+	// data in ebx, IDirect3DTexture9's vtable in esi, "DXT5" at +0x18.
+	constexpr UInt32 kTexture = 0x18D3A000;  // a NiSourceTexture
+	constexpr UInt32 kData = 0x1832EC10;     // its renderer data
+	constexpr UInt32 kD3D = 0x2A10F0A0;      // the IDirect3DTexture9
+	constexpr UInt32 kVtable = 0x7925E258;   // IDirect3DTexture9's vtable
+	constexpr UInt32 kDxt5 = 0x35545844;     // the pixel format's D3DFORMAT, "DXT5"
+	auto game = [&](FakeMemory& m) {
+		m.Set(kTexture + 0x24, kData);
+		m.Set(kData + 0x18, kDxt5);
+		m.Set(kData + 0x50, kD3D);
+		m.Set(kD3D, kVtable);
+	};
+
+	{
+		FakeMemory m;
+		game(m);
+		const D3DTextureLookup r = LookUpD3DTexture(kTexture, kVtable, [&m](UInt32 a) { return m.Read(a); });
+		Check(r.result == D3DTextureResult::Found && r.texture == kD3D && r.rendererData == kData,
+		      "found: the renderer data's +0x50, told by its vtable");
+		Check(m.reads.size() == 3 && m.WasRead(kTexture + 0x24) && m.WasRead(kData + 0x50) && m.WasRead(kD3D) &&
+		          !m.strayRead,
+		      "three reads: the renderer data, its +0x50, that object's vtable");
+		Check(!m.WasRead(kData + 0x18) && !m.WasRead(kDxt5),
+		      "the format at +0x18 neither read nor followed (the crash of 2026-10-14)");
+	}
+	{
+		FakeMemory m;
+		game(m);
+		const D3DTextureLookup r = LookUpD3DTexture(kTexture, 0, [&m](UInt32 a) { return m.Read(a); });
+		Check(r.result == D3DTextureResult::NoVtable && r.texture == 0 && m.reads.empty(),
+		      "no vtable to tell the texture by: nothing read");
+	}
+	{
+		FakeMemory m;
+		game(m);
+		const D3DTextureLookup r = LookUpD3DTexture(0x00000080, kVtable, [&m](UInt32 a) { return m.Read(a); });
+		Check(r.result == D3DTextureResult::NoRendererData && r.texture == 0 && m.reads.empty(),
+		      "no texture object: nothing read");
+	}
+	{
+		FakeMemory m;
+		game(m);
+		m.Set(kTexture + 0x24, 0);
+		const D3DTextureLookup r = LookUpD3DTexture(kTexture, kVtable, [&m](UInt32 a) { return m.Read(a); });
+		Check(r.result == D3DTextureResult::NoRendererData && r.texture == 0 && m.reads.size() == 1 && !m.strayRead,
+		      "no renderer data: one read, nothing followed");
+	}
+	{
+		FakeMemory m;
+		game(m);
+		m.Set(kData + 0x50, 0);
+		const D3DTextureLookup r = LookUpD3DTexture(kTexture, kVtable, [&m](UInt32 a) { return m.Read(a); });
+		Check(r.result == D3DTextureResult::NoTexture && r.texture == 0 && r.rendererData == kData &&
+		          m.reads.size() == 2 && !m.strayRead,
+		      "no Direct3D texture yet at +0x50: two reads, the renderer data kept for the probe");
+	}
+	{
+		FakeMemory m;
+		game(m);
+		m.Set(kD3D, kVtable + 0x100);
+		const D3DTextureLookup r = LookUpD3DTexture(kTexture, kVtable, [&m](UInt32 a) { return m.Read(a); });
+		Check(r.result == D3DTextureResult::OtherObject && r.texture == 0 && m.reads.size() == 3 && !m.strayRead,
+		      "another object at +0x50 (a cube texture's vtable): refused after its vtable");
+	}
+
+	std::printf("The probe's line\n");
+	const UInt32 dwords[4] = {0x00A883C4, kTexture, 0x00000080, kDxt5};
+	char line[128];
+	Check(FormatProbeDwords(line, sizeof(line), "renderer data", kData, dwords, 4) == 4 &&
+	          std::strcmp(line, "renderer data 1832EC10: +00=00A883C4 +04=18D3A000 +08=00000080 +0C=35545844") == 0,
+	      "the dwords as they are, none followed");
+	char shortLine[40];
+	Check(FormatProbeDwords(shortLine, sizeof(shortLine), "renderer data", kData, dwords, 4) == 1 &&
+	          std::strcmp(shortLine, "renderer data 1832EC10: +00=00A883C4") == 0,
+	      "a short buffer: the dwords that fit whole, terminated");
+	char tiny[8];
+	Check(FormatProbeDwords(tiny, sizeof(tiny), "renderer data", kData, dwords, 4) == 0 && std::strlen(tiny) < sizeof(tiny),
+	      "no room for the label: nothing but the cut label, terminated");
+	Check(FormatProbeDwords(nullptr, 0, "renderer data", kData, dwords, 4) == 0, "no buffer: nothing");
+}
+
 int main() {
 	TestFrames();
 	TestRules();
 	TestBarFlows();
 	TestSlots();
 	TestPainter();
+	TestTextureLookup();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

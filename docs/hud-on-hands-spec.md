@@ -361,8 +361,9 @@ told by their vtables, 0x00A7DB5C and 0x00A7A33C), the controller's
 textures (its NiTArray at +0x44, the count at +0x4A) are the frames, and
 each frame's pixels are read off the game's own Direct3D texture the first
 time a bar wants it (NiTexture's renderer data at +0x24, the
-IDirect3DTexture9 among its first dwords - at +0x50 - told by the vtable a
-texture OBVR makes shares; level 0 locked read-only, the DXT5 blocks
+IDirect3DTexture9 at its +0x50 - `LookUpD3DTexture`, since 2026-10-14 the
+only dword it follows - told by the vtable a texture OBVR makes shares;
+level 0 locked read-only, the DXT5 blocks
 decoded by `ui/DxtDecode.h`, enemy_health_test) and kept; the painter
 scales the frame for the fraction (`EnemyHealthFrameIndex`: 0 full, 39
 empty, the nearest) onto the overlay with the frame's own transparency. A
@@ -444,6 +445,47 @@ fights.
   purpose and the fighters carry their own. Whether the engine ever has the
   root up in VR: not in the harness run of 2026-10-13 (no pick on the
   fighters); the hide's own line will say so the first time it does.
+
+**Open bug (2026-10-14): the session's first enemy bar crashes the game
+under Proton - fixed the same day, the headset run open.** The tester, in the first run under Linux: "crash als ich
+den middlefinger geste zu einem npoc gemacht habe".
+- The gesture only started the fight ("Insult: the left hand's middle
+  finger at 191E4FAC - their disposition -30", then "in combat 1"). The
+  log's last line is the session's first "Enemy health: a bar over
+  191E4FAC ... (bar 1 of 8)"; the frames are read off the game's textures
+  the first time a bar wants them, and that read crashed.
+- Cobb Crash Logger: an access violation at OBVR.dll+0x7FB65, which the map
+  of the build of 2026-10-14 09:08 puts at `D3DTextureOf` +0x105, `cmp
+  [edx], esi`: edx 0x35545844 - the four characters "DXT5" - is the dword
+  at +0x18 (ecx) of the renderer data (ebx 0x1832EC10), followed as a
+  pointer.
+- The cause: the scan from +0x04 to +0x60 follows every dword that
+  `mem::LooksLikeObjectAddress` accepts. The format's FourCC at +0x18 is
+  four-aligned and inside that range, and the scan meets it before the
+  texture at +0x50. Windows read through it for every frame without a fault
+  (the run of 2026-10-13 read all 40 frames), so the address was readable
+  there; under Wine nothing was mapped at it. The probe that logs when no
+  dword matches follows the same values and has the same fault.
+- The fix (built 2026-10-14, the first DLL built on Linux, with clang-cl):
+  `LookUpD3DTexture` in `game/EnemyHealthLogic.h` takes the texture from
+  +0x50 alone and accepts it by its vtable; it reads the renderer data, the
+  dword at +0x50 and that object's vtable and nothing else. The probe prints
+  the dwords as they are (`FormatProbeDwords`). enemy_health_test covers
+  every flow: found, no vtable, no texture object, no renderer data, nothing
+  at +0x50, another object there - each with the reads it may make, the
+  format at +0x18 never among them - and the probe's line, whole, cut and
+  without room.
+- +0x50 confirmed in Oblivion.exe: NiDX9SourceTextureData (vtable
+  0x00A883C4) takes the Direct3D texture in its slot +0x24 (0x007609C0),
+  asks it for its level count (kept at +0x5C, what the shader property's
+  set-up reads through slot +0x10, 0x00625D30), its type (3, a texture)
+  and each level's size (the first at +0x54 and +0x58), copies the pixel
+  format to +0x0C and keeps the texture at +0x50 (0x00760A7B). xOBSE's
+  `NiDX9TextureData` (`obse/obse/NiRenderer.h`) agrees: the 0x44-byte pixel
+  format from +0x0C, its dword at +0x0C - +0x18 overall - set to -1 at
+  first, an unnamed dword at +0x50.
+- Not run: the harness, whose runner does not exist on Linux yet
+  (`docs/linux.md`, gate 3); `enemy-health.txt` is the scenario for it.
 
 **The crosshair quad off the laser (2026-10-07).** The tester: "die
 tooltips vom laserpointer ausschneiden und stattdessen wie beim heben von
