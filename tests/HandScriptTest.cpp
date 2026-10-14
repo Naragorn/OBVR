@@ -1,10 +1,16 @@
 // Checks the hand script: reading it, walking it on the frames' clock, and
-// the controller state a scripted hand becomes.
+// the controller state a scripted hand becomes. And the runner's work OBVR
+// does itself (test/HandScriptConsole.h): every flow of the console lines it
+// hands to the game one a frame, and of loading the run's save from the main
+// menu.
 
 #include <cmath>
 #include <cstdio>
+#include <string>
+#include <vector>
 
 #include "test/HandScript.h"
+#include "test/HandScriptConsole.h"
 #include "test/HandScriptPose.h"
 
 using namespace obvr;
@@ -373,6 +379,113 @@ void TestPose() {
 	      "the neck under every pose: one point");
 }
 
+void TestConsoleLines() {
+	std::printf("The console lines OBVR runs itself\n");
+	Check(ExpandScriptConsoleLine("player.equipitem {weapon} 1", 0x00000C0D, 0) == "player.equipitem 00000C0D 1",
+	      "{weapon}: the equipped weapon's form ID, eight hex digits");
+	Check(ExpandScriptConsoleLine("{near}.activate player", 0, 0xFF000A3B) == "FF000A3B.activate player",
+	      "{near}: the item nearest the eyes");
+	Check(ExpandScriptConsoleLine("{near} {near} {weapon}", 0xA, 0xB) == "0000000B 0000000B 0000000A",
+	      "every occurrence replaced");
+	Check(ExpandScriptConsoleLine("tgm", 0xA, 0xB) == "tgm", "a line without either: as written");
+
+	HandScript script;
+	Check(Parses("console player.additem 00000C0D 1\n"
+	             "console player.equipitem {weapon} 1\n"
+	             "console-at grabbed {near}.disable\n"
+	             "console-at other tgm\n"
+	             "console-at grabbed player.drop {weapon} 1\n"
+	             "wait 1\nmark grabbed\n",
+	             script),
+	      "a script with console and console-at lines parses");
+
+	ScriptConsoleFeed feed;
+	QueueStartConsoleLines(script, feed);
+	Check(feed.lines.size() == 2 && feed.lines[0] == "player.additem 00000C0D 1", "the start: the console lines, in order");
+	std::vector<std::string> ran;
+	auto take = [&ran](const std::string& line) {
+		ran.push_back(line);
+		return true;
+	};
+	const float frame = 1.0f / 60.0f;
+	ScriptConsoleStep step;
+	for (int i = 0; i < 3; ++i) {
+		step = StepScriptConsoleFeed(feed, 1.0f, 0x12345678, 0, take);
+	}
+	Check(!step.handed && !step.dropped && ran.empty(), "the start's lines wait while the world settles: three seconds, none");
+	step = StepScriptConsoleFeed(feed, 1.0f, 0x12345678, 0, take);
+	Check(step.handed && step.line == "player.additem 00000C0D 1" && ran.size() == 1,
+	      "at the settle time the first line, one in a frame");
+	step = StepScriptConsoleFeed(feed, frame, 0x12345678, 0, take);
+	Check(step.handed && step.line == "player.equipitem 12345678 1", "the next frame the next, {weapon} filled in");
+	step = StepScriptConsoleFeed(feed, frame, 0x12345678, 0, take);
+	Check(!step.handed && !step.dropped && ran.size() == 2, "nothing left: nothing handed over");
+
+	Check(QueueConsoleLinesAt(script, "grabbed", feed) == 2, "the mark's console-at lines queued, the other mark's not");
+	step = StepScriptConsoleFeed(feed, frame, 0x12345678, 0x00ABCDEF, take);
+	Check(!step.handed && ran.size() == 2, "held the mark's own frame: the items line comes later in it");
+	step = StepScriptConsoleFeed(feed, frame, 0x12345678, 0x00ABCDEF, take);
+	Check(!step.handed, "and the frame after, for the items line to be written");
+	step = StepScriptConsoleFeed(feed, frame, 0x12345678, 0x00ABCDEF, take);
+	Check(step.handed && step.line == "00ABCDEF.disable", "then {near} from the mark's items line - no settle time at a mark");
+	step = StepScriptConsoleFeed(feed, frame, 0x12345678, 0x00ABCDEF, take);
+	Check(step.handed && step.line == "player.drop 12345678 1", "then the mark's second line");
+	Check(QueueConsoleLinesAt(script, "nowhere", feed) == 0, "a mark without console-at lines queues none");
+	HandScript marksOnly;
+	Parses("console-at a tgm\nwait 1\nmark a\n", marksOnly);
+	ScriptConsoleFeed noStart;
+	QueueStartConsoleLines(marksOnly, noStart);
+	Check(noStart.lines.empty() && noStart.holdSeconds == 0.0f, "no start lines: no settle time for the marks' lines");
+
+	ScriptConsoleFeed busy;
+	busy.lines.push_back("tgm");
+	UInt32 asked = 0;
+	auto refuse = [&asked](const std::string&) {
+		++asked;
+		return false;
+	};
+	step = StepScriptConsoleFeed(busy, frame, 0, 0, refuse);
+	Check(!step.handed && !step.dropped && busy.next == 0 && asked == 1, "refused (the console's queue full): kept");
+	for (UInt32 i = 1; i < kScriptConsoleRefusalsMost; ++i) {
+		step = StepScriptConsoleFeed(busy, frame, 0, 0, refuse);
+	}
+	Check(step.dropped && !step.handed && busy.next == 1 && asked == kScriptConsoleRefusalsMost,
+	      "refused frame after frame: given up after the limit");
+
+	ScriptConsoleFeed tooLong;
+	tooLong.lines.push_back(std::string(kScriptConsoleLineMost + 1, 'x'));
+	tooLong.lines.push_back("tgm");
+	ran.clear();
+	step = StepScriptConsoleFeed(tooLong, frame, 0, 0, take);
+	Check(step.dropped && !step.handed && ran.empty() && tooLong.next == 1,
+	      "longer than the console takes: given up without asking");
+	step = StepScriptConsoleFeed(tooLong, frame, 0, 0, take);
+	Check(step.handed && step.line == "tgm", "and the next line goes on");
+	ScriptConsoleFeed fits;
+	fits.lines.push_back(std::string(kScriptConsoleLineMost, 'x'));
+	step = StepScriptConsoleFeed(fits, frame, 0, 0, take);
+	Check(step.handed, "exactly as long as the console takes: handed over");
+}
+
+void TestSaveLoad() {
+	std::printf("The run's save, loaded from the main menu\n");
+	ScriptSaveLoad s;
+	Check(!StepScriptSaveLoad(s, false, true, 5.0f), "no save named: never");
+	Check(!StepScriptSaveLoad(s, true, false, 5.0f) && s.mainMenuSeconds == 0.0f, "not in the main menu: never");
+	Check(!StepScriptSaveLoad(s, true, true, 1.0f), "the main menu up a second: not yet");
+	Check(StepScriptSaveLoad(s, true, true, 1.0f) && s.asked == 1, "up two seconds: asked for");
+	Check(!StepScriptSaveLoad(s, true, true, 1.0f), "asked once: not again at once");
+	Check(!StepScriptSaveLoad(s, true, false, 0.1f) && s.mainMenuSeconds == 0.0f,
+	      "the main menu gone (the load under way): the clock starts over");
+	ScriptSaveLoad stuck;
+	StepScriptSaveLoad(stuck, true, true, kScriptLoadAfterSeconds);
+	Check(!StepScriptSaveLoad(stuck, true, true, kScriptLoadRetrySeconds - 0.5f), "still in the main menu: not yet again");
+	Check(StepScriptSaveLoad(stuck, true, true, 1.0f) && stuck.asked == 2, "still there after the retry time: asked again");
+	StepScriptSaveLoad(stuck, true, true, kScriptLoadRetrySeconds);
+	Check(stuck.asked == kScriptLoadAsksMost, "asked a third time");
+	Check(!StepScriptSaveLoad(stuck, true, true, 100.0f), "after the last ask: never again");
+}
+
 }  // namespace
 
 int main() {
@@ -380,6 +493,8 @@ int main() {
 	TestParseErrors();
 	TestStepping();
 	TestPose();
+	TestConsoleLines();
+	TestSaveLoad();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

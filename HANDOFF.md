@@ -947,6 +947,10 @@ Each of these cost one failed attempt:
 - **Steam's launch pipeline** occasionally hangs at `ProcessingShaderCache` waiting for a
   GUI answer.
 
+Since 2026-10-14 the hand script harness runs under Proton without any of the input
+above: `tools/hand-script-run.py` lets OBVR load the save and run the console lines
+itself (`[Debug] HandScriptLoad`, `HandScriptConsole`; `docs/linux.md`, gate 3).
+
 ---
 
 ## 13. Next step: 0.0.5, pictures in the headset

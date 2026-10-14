@@ -2231,10 +2231,21 @@ void StepEnemyHealthBars(const Config& config, vr::OpenVRBackend& backend, bool 
 					g_enemyHealthLayers[i].SaveBmp(path);
 				}
 			}
+			// Where it hangs at the mark: a fighter placed a frame ago has no
+			// head bone to read yet, and its first line says the feet (the
+			// harness's DLL-run console lines, 2026-10-14).
+			bool headRead = false;
+			for (UInt32 k = 0; k < seenCount; ++k) {
+				if (seen[k].actor == b.actor) {
+					headRead = seen[k].haveHead;
+					break;
+				}
+			}
 			OBVR_LOG("Enemy health: at the mark - bar %u over %08X: %.0f%% (painted %u times), %.1f m away, %.2f m "
-			         "wide, %s (%s), shown %.1f s%s",
+			         "wide, %.2f m above %s, %s (%s), shown %.1f s%s",
 			         i + 1, b.actor, static_cast<double>(b.fraction * 100.0f), b.revision,
-			         static_cast<double>(b.metres), static_cast<double>(width),
+			         static_cast<double>(b.metres), static_cast<double>(width), static_cast<double>(aboveMetres),
+			         headRead ? "the head bone" : "the head's height over the feet (no head bone read)",
 			         g_enemyHealthLayers[i].IsVisible() ? "the overlay up" : "the overlay NOT up", picture,
 			         static_cast<double>(b.seconds), b.linger > 0.0f ? " (lingering)" : "");
 		}
@@ -3803,6 +3814,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// The hand script's clock ([Debug] HandScript, test/HandScript.h), ahead
 	// of everything that reads the controllers.
 	test::StepHandScriptFrame(dt, game::PlayerInWorld(), menuIsUp,
+	                          menuIsUp && game::TopVisibleMenu() == game::kMenuIdMain,
 	                          g_headTracker.GetBackendForFrame());
 
 	// The whole mode, or - with it off - the controllers on the menus alone:
@@ -4633,6 +4645,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		eyes.position = camera;
 		const game::NearItem anyItem =
 			game::FindNearestItem(eyes, game::SearchHand{}, 2000.0f, 2000.0f, 0);
+		// For the mark's console-at lines run from inside ({near}).
+		test::NoteHandScriptNearestForm(mem::LooksLikeObjectAddress(anyItem.ref)
+		                                    ? *reinterpret_cast<const UInt32*>(anyItem.ref + addr::kFormIdOffset)
+		                                    : 0u);
 		const NiPoint3 hand = g_cyclopeanCameraWorldTransform.pos +
 		                      g_cyclopeanCameraWorldTransform.rot * g_hand.rightHandOffsetUnits;
 		OBVR_LOG("HandScript: items - near a hand %d (ref %08X type %02X, %.0f units from the %s "

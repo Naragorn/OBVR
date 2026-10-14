@@ -17,7 +17,13 @@ namespace obvr::test {
 // with no menu up, then walked once a frame from UpdateHandMode. While it
 // runs, the controllers are the script's and - when the script says so - the
 // head is too. Developer-only; with the key empty nothing here does anything.
-void StepHandScriptFrame(float dt, bool inWorld, bool menuUp, const vr::OpenVRBackend& backend);
+// `mainMenuUp`: the main menu is the menu on top - where [Debug]
+// HandScriptLoad loads the run's save (test/HandScriptConsole.h).
+void StepHandScriptFrame(float dt, bool inWorld, bool menuUp, bool mainMenuUp, const vr::OpenVRBackend& backend);
+
+// The form ID of the item nearest the eyes, as the mark's "HandScript: items"
+// line gives it: what {near} becomes in the console-at lines OBVR runs itself.
+void NoteHandScriptNearestForm(UInt32 formId);
 
 // Whether the script has the controllers this frame.
 bool HandScriptDrivesHands();

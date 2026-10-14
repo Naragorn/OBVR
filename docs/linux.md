@@ -184,17 +184,43 @@ tried worked. Two findings:
   a pointer went unnoticed on Windows, where the address happened to be readable, and
   faulted under Wine.
 
-## The harness (gate 3): not started
+## The harness (gate 3): runs, since 2026-10-14
 
-The game side of the harness (the script file, the synthetic head and controllers, the
-marks, the compositor dumps) lives in `OBVR.dll` and travels. The runner,
-`tools/hand-script-run.ps1`, is Windows: `keybd_event` for the console, window focus,
-`PrintWindow` screenshots, the SteamVR start, the SteamVR screenshot folder, process
-handling. A Linux runner has to respect what `HANDOFF.md` section 12 recorded: the game
-ignores `xdotool`; `ydotool` works, but only with real focus (`ydotoold` runs here and
-the user is in `input`); synthetic clicks do not arrive in the main menu; `proton run`
-alone aborts silently, so the route goes through the Steam Linux Runtime. Whether
-SteamVR on Linux writes the compositor dumps to the same place is unverified.
+`tools/hand-script-run.py` runs the hand script scenarios under Proton
+(`docs/hand-script-harness.md`, "On Linux, under Proton"). It sidesteps every input
+pitfall `HANDOFF.md` section 12 recorded by typing nothing into the game: OBVR loads the
+harness save from the main menu itself (`[Debug] HandScriptLoad`) and hands the
+scenario's console lines to the game through xOBSE's console interface (`[Debug]
+HandScriptConsole`, `src/test/HandScriptConsole.h`). The runner starts the game through
+Steam, follows `OBVR.log`, takes the game window's picture from its X11 window with
+ImageMagick, and checks the log exactly as the Windows runner does; its pure part
+(`tools/hand_script_runner.py`) is covered by `hand_script_runner` in the tests.
+
+The first runs, 2026-10-14: `load-only`, `walk-direction` (head turn and stick),
+`hand-shapes` (two `console` lines from inside), `hit-blur-on` (a `console-at` line) and
+`stereo-view` (three `dump` lines) passed; the game window's pictures show the world with
+the HUD. SteamVR on Linux wrote no files for `dump` - three requests in `stereo-view`,
+no picture anywhere under the home folder or `/tmp`, nothing in the compositor's log;
+why, I could not verify. `enemy-health` passed its bar checks with the new height, but
+in two of three runs only one of the two bandits it places fought, so its "bar 2" lines
+were missing; on Windows it passed with both. `activate-takes` failed: the hand never
+reached the dropped dagger. The dagger lay where it lay in the Windows PASS runs of
+2026-09-28 and 2026-09-30 (252 -1585 -252), but the player stood about 85 units further
+back (the eyes at y -1751 against -1666) - the harness save was written again on
+2026-10-01 16:10 (its header's save time), after the last of those runs, so the scenario
+predates the save it runs on; not a Linux matter. The console lines now wait four seconds
+after the start, as the Windows runner's typing did; the dagger lay in the same place
+either way.
+
+A sweep of all scenarios, started the same afternoon, was stopped by the tester after five
+("ein paa grün das reicht mir als nachweis"): `armour-sheath-probe` passed;
+`activate-takes` failed as above; `arrow-stab` missed "Hands: the arrow in the hand met";
+`attack-frequency` ended with the game gone after a message box and the pause menu came
+up, which the stop may have been; `attack-tempo` was the run interrupted. Not looked
+into. The interrupted run's cleanup found the game not yet started (Steam begins a
+launch a few seconds after the request) and the game came up after it with the player's
+configuration; the runner now waits up to 30 seconds for a launch it asked for before it
+gives up on it.
 
 ## Analysis tooling
 
@@ -217,10 +243,14 @@ SteamVR on Linux writes the compositor dumps to the same place is unverified.
 
 - A Node LTS for REA's doctor, or live with the warning.
 - The enemy bar crash: fixed and built with clang-cl on 2026-10-14
-  (`docs/hud-on-hands-spec.md`); the run in the headset is open.
+  (`docs/hud-on-hands-spec.md`). The tester's run that afternoon had bars over four
+  fighters, the frames read and no crash; the bars' height lowered to 0.25 m since.
 - The stutter under Proton (gate 2 above).
 - MoreHeap under Proton: start once with the override and look for `MoreHeap.log` and a
   `native` load line.
 - The Windows `Oblivion.ini` and the content mods for the Linux installation: the
   tester's decision.
-- Gate 3 as above.
+- Gate 3: a sweep of every scenario under the Linux runner, when the tester wants it;
+  the scenarios older than the harness save of 2026-10-01; `dump` pictures on Linux;
+  whether `tools/hand-script-run.ps1` should hand its console lines to OBVR too (it would
+  lose the two open console bugs of `docs/hand-script-harness.md`), to be tried on Windows.

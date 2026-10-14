@@ -6,11 +6,13 @@
 
 #include "core/Config.h"
 #include "core/Log.h"
+#include "game/ConsoleLine.h"
 #include "game/KeyScanCodes.h"
 #include "game/MeleeHits.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
 #include "test/HandScript.h"
+#include "test/HandScriptConsole.h"
 #include "test/HandScriptPose.h"
 #include "vr/OpenVRBackend.h"
 
@@ -26,6 +28,43 @@ float g_clock = 0.0f;
 bool g_markedThisFrame = false;
 char g_markName[64] = "";
 char g_action[64] = "";
+// The runner's work done from inside (test/HandScriptConsole.h).
+ScriptConsoleFeed g_consoleFeed;
+ScriptSaveLoad g_saveLoad;
+UInt32 g_weaponForm = 0;
+UInt32 g_nearForm = 0;
+
+// [Debug] HandScriptLoad: "load <save>" for the main menu's console, once
+// it has stood a moment (StepScriptSaveLoad).
+void StepSaveLoad(float dt, bool mainMenuUp) {
+	const char* save = GetConfig().handScriptLoad;
+	if (!StepScriptSaveLoad(g_saveLoad, save[0] != '\0', mainMenuUp, dt)) {
+		return;
+	}
+	char line[96];
+	std::snprintf(line, sizeof(line), "load %s", save);
+	const bool taken = game::RequestConsoleLine(line);
+	OBVR_LOG("HandScript: asked the main menu's console for \"%s\" (ask %u of %u, %s)", line, g_saveLoad.asked,
+	         kScriptLoadAsksMost, taken ? "taken" : "refused");
+}
+
+// [Debug] HandScriptConsole: one queued console line a frame to the game.
+void StepConsoleFeed(float dt) {
+	if (!GetConfig().handScriptConsole) {
+		return;
+	}
+	const ScriptConsoleStep step =
+		StepScriptConsoleFeed(g_consoleFeed, dt, g_weaponForm, g_nearForm,
+		                      [](const std::string& line) { return game::RequestConsoleLine(line.c_str()); });
+	if (step.handed) {
+		OBVR_LOG("HandScript: console \"%s\" handed to the game (t=%.2f s)", step.line.c_str(),
+		         static_cast<double>(g_clock));
+	} else if (step.dropped) {
+		OBVR_LOG("HandScript: console \"%s\" given up - %s", step.line.c_str(),
+		         step.line.size() > kScriptConsoleLineMost ? "longer than the console takes"
+		                                                  : "the console refused it frame after frame");
+	}
+}
 
 bool ReadWholeFile(const char* path, std::string& out) {
 	FILE* file = nullptr;
@@ -53,6 +92,10 @@ void LoadIfNamed() {
 	g_started = false;
 	g_run = HandScriptRun{};
 	g_clock = 0.0f;
+	g_consoleFeed = ScriptConsoleFeed{};
+	g_saveLoad = ScriptSaveLoad{};
+	g_weaponForm = 0;
+	g_nearForm = 0;
 	char path[512];
 	std::string text;
 	if (!platform::BuildPluginPath(name, path, sizeof(path)) || !ReadWholeFile(path, text)) {
@@ -72,26 +115,38 @@ void LoadIfNamed() {
 
 }  // namespace
 
-void StepHandScriptFrame(float dt, bool inWorld, bool menuUp, const vr::OpenVRBackend& backend) {
+void NoteHandScriptNearestForm(UInt32 formId) { g_nearForm = formId; }
+
+void StepHandScriptFrame(float dt, bool inWorld, bool menuUp, bool mainMenuUp, const vr::OpenVRBackend& backend) {
 	g_markedThisFrame = false;
 	LoadIfNamed();
 	if (!g_loaded) {
 		return;
 	}
 	if (!g_started) {
+		StepSaveLoad(dt, mainMenuUp && !inWorld);
 		if (!inWorld || menuUp) {
 			return;
 		}
 		g_started = true;
+		g_weaponForm = game::EquippedWeaponFormId();
 		// The weapon's form ID, for a scenario's console lines ({weapon}).
 		OBVR_LOG("HandScript: started - equipped weapon form %08X, Hands %d, teleport %d noise %d, "
 		         "holsters %d, fists %d, quick menu %d",
-		         game::EquippedWeaponFormId(), GetConfig().fullVrMode ? 1 : 0,
+		         g_weaponForm, GetConfig().fullVrMode ? 1 : 0,
 		         GetConfig().hands.teleport.enabled ? 1 : 0,
 		         GetConfig().hands.teleport.makesNoise ? 1 : 0, GetConfig().hands.holster.enabled ? 1 : 0,
 		         GetConfig().hands.fist.enabled ? 1 : 0, GetConfig().hands.quickMenu.enabled ? 1 : 0);
+		if (GetConfig().handScriptConsole) {
+			QueueStartConsoleLines(g_script, g_consoleFeed);
+			OBVR_LOG("HandScript: OBVR runs the script's console lines itself (HandScriptConsole) - %u at the start, "
+			         "%u at marks",
+			         static_cast<UInt32>(g_script.console.size()), static_cast<UInt32>(g_script.consoleAt.size()));
+		}
 		dt = 0.0f;
 	}
+	// Ahead of the finished check: a last mark's lines still go out.
+	StepConsoleFeed(dt);
 	if (g_run.finished) {
 		return;
 	}
@@ -102,6 +157,9 @@ void StepHandScriptFrame(float dt, bool inWorld, bool menuUp, const vr::OpenVRBa
 		if (said->op == ScriptOp::Mark) {
 			g_markedThisFrame = true;
 			strncpy_s(g_markName, said->text.c_str(), _TRUNCATE);
+			if (GetConfig().handScriptConsole) {
+				QueueConsoleLinesAt(g_script, said->text, g_consoleFeed);
+			}
 		}
 		OBVR_LOG("HandScript: %s %s (t=%.2f s, line %u)",
 		         said->op == ScriptOp::Mark ? "mark" : "log", said->text.c_str(),

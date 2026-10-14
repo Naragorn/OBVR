@@ -47,7 +47,11 @@
 //   ini <Section> <Key>=<Value>      for the runner: written to OBVR-test.ini
 //   console <command>                for the runner: typed into the console once
 //                                    the script runs; {weapon} is the equipped
-//                                    weapon's form ID
+//                                    weapon's form ID. With [Debug]
+//                                    HandScriptConsole=1 OBVR hands it to the
+//                                    game itself (test/HandScriptConsole.h)
+//   console-at <mark> <command>      the same once that mark is written;
+//                                    {near} is the item nearest the eyes
 //   expect <text> / reject <text>    read by the runner, not by OBVR: the
 //                                    log must (must not) contain the text
 //   background-at <mark>             for the runner: a window of another

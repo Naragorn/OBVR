@@ -235,6 +235,13 @@ struct Config {
 	// OBVR.dll. Empty is off. In [Debug], normally set by
 	// tools/hand-script-run.ps1 through OBVR-test.ini.
 	char handScript[128] = "";
+	// The runner's work done by OBVR itself (test/HandScriptConsole.h), set by
+	// the Linux runner (tools/hand-script-run.py) through OBVR-test.ini:
+	// [Debug] HandScriptConsole=1 hands the script's `console` and
+	// `console-at` lines to the game's console from inside; HandScriptLoad
+	// names the save OBVR loads from the main menu for the run.
+	bool handScriptConsole = false;
+	char handScriptLoad[64] = "";
 
 	// Measures which rectangle of the frame the 2D actually lands in, every
 	// couple of seconds while it is on: the bounding box of the non-black

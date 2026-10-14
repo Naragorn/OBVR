@@ -36,6 +36,49 @@ A run takes about a minute. Its results go to
 
 The runner exits 1 on FAIL.
 
+### On Linux, under Proton (since 2026-10-14)
+
+```
+python3 tools/hand-script-run.py tools/hand-scripts/teleport.txt
+```
+
+Needs Steam and SteamVR running (the headset may sleep) and Oblivion not
+running; it starts the game through Steam (`steam://rungameid/22330`), with
+the launch options Steam keeps for the game. The results go to the same
+`artifacts/hand-script/<scenario>/<time>/` with the same `summary.md`.
+
+It types nothing into the game. On Windows the runner presses Continue in the
+main menu and types the `console` lines by scan code; under Proton that
+depends on window focus and the desktop's input tools (`HANDOFF.md` section
+12), so the Linux runner hands both to OBVR through `OBVR-test.ini`
+(`src/test/HandScriptConsole.h`):
+- `[Debug] HandScriptLoad=OBVRHarness`: OBVR asks the main menu's console for
+  `load OBVRHarness` once the main menu has stood two seconds ("HandScript:
+  asked the main menu's console for ..."), and again after ten seconds if it
+  still stands, three times at most.
+- `[Debug] HandScriptConsole=1`: OBVR hands the script's `console` lines to
+  the game four seconds of game time after the script has started (handed
+  over in the first frames after the load, they ran before the world had
+  settled; the Windows runner's typing took about that long), and its
+  `console-at` lines once their mark is written (two frames later, for
+  `{near}`), one line a frame, through xOBSE's console interface
+  ("HandScript: console ... handed to the game").
+  No console window opens, so the two open bugs above about console lines do
+  not arise, and the lines run at once instead of over seconds of typing.
+
+The rest as on Windows, with these differences:
+- **Pictures** of the game's window come from its X11 window (Wine's, through
+  XWayland) with ImageMagick's `import`. SteamVR on Linux wrote no files for
+  `dump` (2026-10-14: three requests in `stereo-view`, no picture anywhere
+  under the home folder or `/tmp`, nothing in the compositor's log); the
+  summary says so under "Notes".
+- **The background part** puts a small Tk window in front with `xdotool`.
+- **The `-Save autosave` scenarios** (`load-only`, `race-menu`,
+  `race-menu-handsoff`) run with `--save`; the Linux prefix's autosave needs
+  four content mods that are not installed there.
+- **`make-harness-save.txt`** is not for this runner: it would write the
+  harness save from whatever the main menu continues.
+
 ## What the runner does to the installation
 
 - **It never touches `OBVR.ini`.**
