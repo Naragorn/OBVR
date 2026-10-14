@@ -393,7 +393,11 @@ lockable, a format OBVR does not decode) the bar is OBVR's own, said once.
   NiPropertyState's ten slots from +0x08; the shader property's flags at
   +0x1C (0x100 set by the set-up when the state's alpha property blends,
   0x2 skinned, 0x3000 for the engine's own quads), its texture arrays at
-  +0xBC (diffuse) and +0xC0 (normal maps, looked up as "<name>_n.dds").
+  +0xBC (diffuse) and +0xC0 (normal maps, looked up as "<name>_n.dds");
+  NiMaterialProperty's colours as floats - ambient at +0x1C, diffuse +0x28,
+  specular +0x34, emissive +0x40, the shine at +0x4C, the alpha at +0x50
+  (told by the skin's material against upperbody.nif's values, after a
+  first guess of +0x18 read nonsense).
 - Hand script `enemy-health.txt` PASS 2026-10-13 15:46 and 15:53 (the
   synthetic head faces the nearest fighter, pitched up; the first bar's
   painted picture saved at the marks as OBVR-EnemyHealth-<mark>.bmp beside

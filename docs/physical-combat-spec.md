@@ -529,7 +529,10 @@ decisions, grapple_test), game/RagdollHold.h (the Havok side), game/Shove.h
 1. A fighter grabbed by the torso, an arm or a leg goes down into their
    ragdoll: the engine's own knockdown (`0x00654420`) with the source at the
    hand and force 0 - the impulse (`0x005364B0`) is the force times the
-   direction from the source, so nothing pushes them; the knock state, the
+   direction from the source (times a factor by the body's collision layer
+   from the table at 0x00B11760, times 0.25 x the motion's damping at +0xC8
+   + 0.75 - so it hardly depends on the mass), so nothing pushes them; the
+   knock state, the
    get-up, the AI's recovery and the crime stay the engine's. A knockdown
    the engine refuses (no high process, already down) or takes the
    ragdoll-less way (its vtable +0x278 says no ragdoll: a push through the

@@ -422,8 +422,9 @@ the weapon lagging, 0.09 m behind the hand", cleared "the breath stopped",
 "over after 5.5 s"; the fatigue - "fatigue collapse was skipped ... fatigue
 -99.9", "begun - fatigue -100 of 145 (-69%)", the gasp and the breath, "0.25
 m behind the hand" at a two-second line, forced back "over after 10.1 s". The
-three runs before taught: the game has no `damageav` (ModAV, SetAV, ForceAV
-are its commands); and at low fatigue the tutorial quest's "Your Fatigue is
+three runs before taught: the game has no `damageav` and no `restoreav`
+(ModAV, SetAV, ForceAV are its commands); and at low fatigue the tutorial
+quest's "Your Fatigue is
 low" message box (Oblivion.esm; the harness save still has the quest) pauses
 the world, so the knock state step never runs under it - neither Enter nor
 Space closes it from the script - which is why the fatigue comes last.
