@@ -30,7 +30,8 @@ struct ExhaustionSettings {
 	bool enabled = true;         // [Look] Exhaustion
 	float belowPercent = 12.0f;  // [Look] ExhaustionBelowPercent: exhausted under this share of the base fatigue
 	float abovePercent = 25.0f;  // [Look] ExhaustionAbovePercent: recovered above this
-	float weight = 4.0f;         // [Look] ExhaustionWeight: the weapon's lag times this, at full
+	float weight = 2.5f;         // [Look] ExhaustionWeight: the weapon's lag times this, at full (the
+	                             // tester, 2026-10-13: at x4 "attacken sind verboten", x2.5 "wirkt ok")
 	bool sounds = true;          // [Look] ExhaustionSounds: the breath and the gasp
 };
 
@@ -46,9 +47,9 @@ inline float ExhaustionAboveShare(float belowShare, float percent) {
 	const float share = percent >= 1.0f && percent <= 90.0f ? percent * 0.01f : 0.25f;
 	return share > belowShare ? share : belowShare + 0.1f;
 }
-// The weight factor 1 to 10, else 4.
+// The weight factor 1 to 10, else 2.5.
 inline float ExhaustionWeightFactor(float setting) {
-	return setting >= 1.0f && setting <= 10.0f ? setting : 4.0f;
+	return setting >= 1.0f && setting <= 10.0f ? setting : 2.5f;
 }
 
 // Whether the player's knock state step is skipped this frame - the step

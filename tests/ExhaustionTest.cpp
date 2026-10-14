@@ -30,8 +30,8 @@ const float kNaN = std::numeric_limits<float>::quiet_NaN();
 void TestRules() {
 	std::printf("The rules\n");
 	const ExhaustionSettings g;
-	Check(g.enabled && Near(g.belowPercent, 12.0f) && Near(g.abovePercent, 25.0f) && Near(g.weight, 4.0f) && g.sounds,
-	      "the defaults: on, 12 %, 25 %, x4, sounds");
+	Check(g.enabled && Near(g.belowPercent, 12.0f) && Near(g.abovePercent, 25.0f) && Near(g.weight, 2.5f) && g.sounds,
+	      "the defaults: on, 12 %, 25 %, x2.5, sounds");
 	Check(Near(ExhaustionBelowShare(12.0f), 0.12f) && Near(ExhaustionBelowShare(1.0f), 0.01f) &&
 	          Near(ExhaustionBelowShare(50.0f), 0.5f),
 	      "the lower edge as set, 1 to 50 %");
@@ -47,9 +47,9 @@ void TestRules() {
 	Check(Near(ExhaustionWeightFactor(4.0f), 4.0f) && Near(ExhaustionWeightFactor(1.0f), 1.0f) &&
 	          Near(ExhaustionWeightFactor(10.0f), 10.0f),
 	      "the weight factor as set, 1 to 10");
-	Check(Near(ExhaustionWeightFactor(0.5f), 4.0f) && Near(ExhaustionWeightFactor(11.0f), 4.0f) &&
-	          Near(ExhaustionWeightFactor(kNaN), 4.0f),
-	      "out of range or not a number: 4");
+	Check(Near(ExhaustionWeightFactor(0.5f), 2.5f) && Near(ExhaustionWeightFactor(11.0f), 2.5f) &&
+	          Near(ExhaustionWeightFactor(kNaN), 2.5f),
+	      "out of range or not a number: 2.5");
 
 	Check(CollapseSkipped(true, true, 0, -1.0f, false), "the player standing, fatigue below 0: skipped");
 	Check(CollapseSkipped(true, true, 0, 50.0f, true), "the player standing, paralysed: skipped");
@@ -77,12 +77,12 @@ void TestStateFlows() {
 	      "half the fatigue: fresh, the factor 1");
 	v = Step(s, g, 23.0f, 200.0f, false);
 	Check(v.began && s.exhausted && !s.byParalysis, "under 12 %: begun, by the fatigue");
-	Check(Near(v.ease, 0.04f) && Near(v.factor, 1.12f), "eased in a frame's worth (0.02 of 0.5 s): the factor 1.12");
+	Check(Near(v.ease, 0.04f) && Near(v.factor, 1.06f), "eased in a frame's worth (0.02 of 0.5 s): the factor 1.06");
 	for (int i = 0; i < 30; ++i) {
 		v = Step(s, g, 23.0f, 200.0f, false);
 	}
-	Check(!v.began && Near(v.ease, 1.0f) && Near(v.factor, 4.0f) && Near(s.seconds, 0.62f),
-	      "half a second later: fully in, the factor 4, the time counted");
+	Check(!v.began && Near(v.ease, 1.0f) && Near(v.factor, 2.5f) && Near(s.seconds, 0.62f),
+	      "half a second later: fully in, the factor 2.5, the time counted");
 	v = Step(s, g, 40.0f, 200.0f, false);
 	Check(!v.ended && s.exhausted, "back to 20 %: still exhausted (under the upper edge)");
 	v = Step(s, g, 50.0f, 200.0f, false);
@@ -91,7 +91,7 @@ void TestStateFlows() {
 	// 33 frames of 0.02 s held (the frame it ends on is not counted).
 	Check(v.ended && !s.exhausted && Near(s.seconds, 0.0f) && Near(v.seconds, 0.66f),
 	      "over 25 %: over, the verdict with the whole time held (the state cleared)");
-	Check(Near(v.ease, 1.0f - 0.02f / 1.5f) && v.factor < 4.0f, "easing out: a frame's worth of 1.5 s");
+	Check(Near(v.ease, 1.0f - 0.02f / 1.5f) && v.factor < 2.5f, "easing out: a frame's worth of 1.5 s");
 	for (int i = 0; i < 100; ++i) {
 		v = Step(s, g, 52.0f, 200.0f, false);
 	}

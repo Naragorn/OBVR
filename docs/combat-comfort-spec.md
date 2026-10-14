@@ -343,8 +343,8 @@ einen sound. selbes für paralyse."
 
 **Built [R]:** `[Look] Exhaustion=1` (Comfort, "Exhaustion, not collapse"),
 `ExhaustionBelowPercent` (12, "Exhausted below (%)"),
-`ExhaustionAbovePercent` (25, "Recovered above (%)"), `ExhaustionWeight` (4,
-"Exhausted weapon weight (x)"), `ExhaustionSounds` (1, "Exhaustion
+`ExhaustionAbovePercent` (25, "Recovered above (%)"), `ExhaustionWeight` (2.5
+since 2026-10-14, 4 before, "Exhausted weapon weight (x)"), `ExhaustionSounds` (1, "Exhaustion
 sounds"); game/ExhaustionLogic.h (the decisions, exhaustion_test),
 game/PlayerStagger (the reroute), vr/WeaponWeight.h (the heavy arms,
 weapon_weight_test), game/GameSound.h (the waves):
@@ -371,11 +371,11 @@ weapon_weight_test), game/GameSound.h (the waves):
    time constant from a floor of 80 ms - a dagger that never lagged lags
    now - times the factor, and the caps times it, bounded at half a metre
    and ninety degrees, blended in by the ease. A longsword at the 40 %
-   slider: 25 ms and 0.1 m become 320 ms and 0.4 m at x4 - a hand at 1 m/s
-   trails the weapon 0.32 m behind it, the swings by motion seldom reach the
-   strike's speed, and the game's own formula halves the damage at no
-   fatigue. The fists have no spring and are not changed (open: a threshold
-   of their own).
+   slider: 25 ms and 0.1 m become 200 ms and 0.25 m at x2.5 (320 ms and 0.4
+   m at the first x4) - a hand at 1 m/s trails the weapon 0.2 m behind it,
+   the swings by motion seldom reach the strike's speed, and the game's own
+   formula halves the damage at no fatigue. The fists have no spring and
+   are not changed (open: a threshold of their own).
 4. **The gasps (the tester, 2026-10-13 noon: "die schnaufer und keuchen
    gefallen mir nicht, wie machen andere mods das? ... so nah wie möglich an
    vanilla").** The morning's waves (a breathing loop and a cry, CC0, through
@@ -402,7 +402,7 @@ weapon_weight_test), game/GameSound.h (the waves):
    `PantIntervalSeconds`, `PantVolume`, `StepBreath`, exhaustion_test).
    Recovered, or the sounds off: nothing more (the gasps are one-shots).
 5. Logged "Exhaustion: begun - fatigue n of n (n%), paralysed 0, a fall
-   spared; the weapon's weight x4.0 over 0.5 s", "Exhaustion: over after n s
+   spared; the weapon's weight x2.5 over 0.5 s", "Exhaustion: over after n s
    ...", "the gasp - the game's NPCHumanGaspFemale (000C80EC) at 100%
    volume; a pant every 1.3 s with 100% of the fatigue missing (0 pants, 1
    gasps this spell)", the first two pants of a spell and then every tenth
@@ -435,14 +435,30 @@ pants, 1 gasps)", "(2 pants ...)", "over after 5.6 s"; the fatigue -
 "begun - fatigue -100 of 145 (-69%)", the gasp, the pants, "over after 9.8
 s"; no "could not be played".
 
-**Open:** the headset - whether x4 is "kaum schwingen" or too much (the
-slider), whether the game's gasps every 1.3 to 2.5 s read as panting or as
-being startled (a pant could take the quieter of the four files, or the
-drowning gasps' kin; nothing else human is in the game's sounds), and
-whether a paralysed player who stays on their feet can still walk (the
-engine's own paralysis blocks the spells; the legs were the fall's) - the
-tester's call whether to hold the legs too. The knockdown's open bug above
-keeps its (a) and (c).
+**Headset (2026-10-13 evening): "erschöpfung: passt aber: attacken sind
+verboten und statt 4x nur noch 2.5x gewicht: wirkt ok".** Read as: at x4
+the weapon trails so far that attacking is as good as forbidden, so x2.5
+is the default since 2026-10-14 (the tester's INI has no key for it, so
+the default is what plays). The tester's log of that evening: two spells
+of 19 and 11 s at x4, begun at 10 and 9 % by teleport jumps, the weapon
+"up to 0.37 m and 70 degrees from the hand" in a swing and 0.01 to 0.15 m
+behind it at the two-second lines, the pants every 1.5 to 2.2 s at 69 to
+95 % volume (the gasps: "passt"); no fighter in reach during either spell,
+so no strike was tried under it - the swing is still detected from the
+controller, the hit test runs on the trailing blade. The engine's hit
+handler 0x005FEBF0 reads the fatigue (actor value 10) only for its debug
+line "%.20s hits %.20s for %.1f/%.1f %s damage!" (Ghidra, 2026-10-14);
+whether the engine refuses an attack at low fatigue somewhere else was not
+looked for.
+
+**Open:** the headset - whether the game's gasps every 1.3 to 2.5 s read as
+panting or as being startled (a pant could take the quieter of the four
+files, or the drowning gasps' kin; nothing else human is in the game's
+sounds), whether a strike lands under x2.5 (a fight while exhausted has
+not been had), and whether a paralysed player who stays on their feet can
+still walk (the engine's own paralysis blocks the spells; the legs were the
+fall's) - the tester's call whether to hold the legs too. The knockdown's
+open bug above keeps its (a) and (c).
 
 ### All the proposals, including those not built
 
