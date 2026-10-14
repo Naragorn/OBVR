@@ -101,6 +101,24 @@ animation charges is not charged. Not verified that nothing is charged.
 fFatigueAttack... family) and the call that applies it, so the same cost is
 taken from the player's Fatigue actor value per strike.
 
+**Built 2026-10-14 (the tester: "ausdauer, nehme an selbe formel wie
+vanilla").** Read in the executable: the attack update 0x005FCAB0 charges an
+attack right after its AttackHandling call through 0x005E4010 - the cost
+0x00547560 = (fFatigueAttackWeaponMult x weight + fFatigueAttackWeaponBase)
+x fPowerAttackFatiguePenalty on a power attack, the weapon's weight at
++0x7C, none for the fists, bows and staffs skipped - and 0x005E07D0 takes it
+off the fatigue. The strike by motion calls AttackHandling directly and never
+reached that update, so nothing was charged. Now every swing that may strike
+by motion is charged once as it ends, hit or miss, through the same two
+engine functions (`game::SwingFatigueFor`, melee_hit_test;
+`game::ChargeSwingFatigue`): the weapon hand with its weapon's weight, the
+other hand as a fist. `[Hands] SwingFatigue` (default on, settings menu
+"Swings cost fatigue"). Harness `swing-fatigue.txt` PASS: a longsword
+(weight 20) costs 9 a light swing and 45 a power swing, so the game's live
+base is 7 and the penalty 5 - the executable's own default base is 8, the
+7 presumably comes from Oblivion.esm (not read). Moving the hand fast with
+the weapon drawn is a swing and costs too, as its swish says. Headset open.
+
 ## 4. A held object collides with the world
 
 **Wanted (2026-09-26).** An object in the hand collides with other objects

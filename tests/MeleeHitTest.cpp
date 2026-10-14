@@ -193,6 +193,27 @@ void TestArrowThrust() {
 
 }  // namespace
 
+void TestSwingFatigue() {
+	std::printf("The fatigue a swing costs\n");
+	using obvr::game::SwingFatigueFor;
+	const auto light = SwingFatigueFor(true, true, true, false, true, false, true, 30.0f);
+	Check(light.due && !light.power && light.weight == 30.0f, "a light swing that ended: charged, with the weapon's weight");
+	const auto heavy = SwingFatigueFor(true, true, true, true, true, false, true, 30.0f);
+	Check(heavy.due && heavy.power, "a power swing: charged as a power attack");
+	Check(!SwingFatigueFor(false, true, true, false, true, false, true, 30.0f).due, "SwingFatigue off: nothing");
+	Check(!SwingFatigueFor(true, false, true, false, true, false, true, 30.0f).due,
+	      "no strike by motion: the engine's own attack charges it, not twice");
+	Check(!SwingFatigueFor(true, true, false, false, true, false, true, 30.0f).due, "no swing ended this frame: nothing");
+	Check(!SwingFatigueFor(true, true, true, false, false, false, true, 30.0f).due, "behind a menu: nothing");
+	const auto fist = SwingFatigueFor(true, true, true, false, true, true, true, 30.0f);
+	Check(fist.due && fist.weight == 0.0f, "a fist: charged with no weight, as vanilla's hand-to-hand");
+	Check(SwingFatigueFor(true, true, true, false, true, false, false, 30.0f).weight == 0.0f,
+	      "a weight that could not be read: none");
+	volatile float zero = 0.0f;
+	Check(SwingFatigueFor(true, true, true, false, true, false, true, zero / zero).weight == 0.0f, "not a number: none");
+	Check(SwingFatigueFor(true, true, true, false, true, false, true, -3.0f).weight == 0.0f, "negative: none");
+}
+
 int main() {
 	TestBladeInWorld();
 	TestSegmentDistance();
@@ -204,6 +225,7 @@ int main() {
 	TestArrowBlade();
 	TestSwish();
 	TestHeldStrike();
+	TestSwingFatigue();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

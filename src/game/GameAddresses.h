@@ -1393,6 +1393,18 @@ inline constexpr UInt32 kRefParentCellOffset = 0x40;
 //     `ret 0Ch` at 0x006005E7, and passing the target makes the engine
 //     apply a hit to it without looking for one.
 inline constexpr UInt32 kAttackHandling = 0x005FEBF0;
+
+// The fatigue an attack costs, as the attack update 0x005FCAB0 charges it
+// right after its AttackHandling call (0x005FCDB5 calls 0x005E4010 with the
+// power flag): 0x00547560, cdecl float(float weight, bool power) =
+// (fFatigueAttackWeaponMult 0x00B36FE0 x weight + fFatigueAttackWeaponBase
+// 0x00B36FD8) x fPowerAttackFatiguePenalty 0x00B36FE8 on a power attack;
+// 0x005E07D0, thiscall(actor, float change) with `ret 4`, applies the
+// negated cost to the actor's fatigue (actor value 10) through the
+// actor's +0x2A4 virtual. Read from the executable 2026-10-14
+// (objdump; the settings' initialisers at 0x009E96C0..0x009E9740 name them).
+inline constexpr UInt32 kAttackFatigueCost = 0x00547560;
+inline constexpr UInt32 kActorChangeFatigue = 0x005E07D0;
 inline constexpr UInt32 kVtblPlayerCharacter = 0x00A73A0C;
 inline constexpr UInt32 kVtblCharacter = 0x00A6FC9C;
 inline constexpr UInt32 kVtblCreature = 0x00A710F4;

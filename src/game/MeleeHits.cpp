@@ -280,6 +280,38 @@ UInt8* EquippedWeaponForm(SInt32* type) {
 	return weapon;
 }
 
+bool ChargeSwingFatigue(float weight, bool power, float* cost) {
+	*cost = 0.0f;
+	// The two functions' first bytes as read (0x00547560: cmp byte [esp+8],0;
+	// fld [fFatigueAttackWeaponMult]; 0x005E07D0: push ecx; fldz; push esi;
+	// fcomp [esp+0Ch]) - another build or another plugin's patch is not called.
+	static const UInt8 kCostBytes[] = {0x80, 0x7C, 0x24, 0x08, 0x00, 0xD9, 0x05, 0xE0, 0x6F, 0xB3, 0x00};
+	static const UInt8 kChangeBytes[] = {0x51, 0xD9, 0xEE, 0x56, 0xD8, 0x5C, 0x24, 0x0C};
+	static const bool s_verified = mem::Verify(addr::kAttackFatigueCost, kCostBytes, sizeof(kCostBytes)) &&
+	                               mem::Verify(addr::kActorChangeFatigue, kChangeBytes, sizeof(kChangeBytes));
+	static bool s_refusalSaid = false;
+	if (!s_verified) {
+		if (!s_refusalSaid) {
+			s_refusalSaid = true;
+			OBVR_LOG("Fatigue: the engine's attack cost functions are not as read, so swings cost no fatigue");
+		}
+		return false;
+	}
+	UInt8* const player = PlayerOrNull();
+	if (player == nullptr) {
+		return false;
+	}
+	using CostFn = float(__cdecl*)(float weight, UInt32 power);
+	using ChangeFn = void(__fastcall*)(void* actor, void* edx, float change);
+	const float charged = reinterpret_cast<CostFn>(addr::kAttackFatigueCost)(weight, power ? 1u : 0u);
+	if (!(charged > 0.0f)) {
+		return false;
+	}
+	reinterpret_cast<ChangeFn>(addr::kActorChangeFatigue)(player, nullptr, -charged);
+	*cost = charged;
+	return true;
+}
+
 bool WeaponWeightOf(const UInt8* weapon, float* weight) {
 	if (weapon == nullptr) {
 		return false;

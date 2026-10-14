@@ -706,6 +706,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.gestures.bowNeedsReachBack =
 			ReadBool("Hands", "BowNeedsReachBack", h.gestures.bowNeedsReachBack, path);
 		h.motionHits = ReadBool("Hands", "MotionHits", h.motionHits, path);
+		h.swingFatigue = ReadBool("Hands", "SwingFatigue", h.swingFatigue, path);
 		h.controllerMenus = ReadBool("Hands", "ControllerMenus", h.controllerMenus, path);
 		h.gamepadLayout = ReadBool("Hands", "GamepadLayout", h.gamepadLayout, path);
 		h.laserBeam = ReadBool("Hands", "LaserBeam", h.laserBeam, path);

@@ -5419,6 +5419,43 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		                        vr::PowerAttackGroup(g_hand.leftPowerDirection), 1);
 	}
 
+	// Each swing that may strike by motion costs fatigue once it ends, as
+	// vanilla's attack does (game::SwingFatigueFor): the weapon hand with its
+	// weapon's weight, the other hand as a fist.
+	for (UInt32 hand = 0; hand < 2; ++hand) {
+		const bool weaponHand = hand == 0;
+		const vr::SwingVerdict verdict = weaponHand ? g_hand.swing : g_hand.leftSwing;
+		if (verdict == vr::SwingVerdict::None) {
+			continue;
+		}
+		SInt32 weaponType = -1;
+		UInt8* const weapon = weaponHand ? game::EquippedWeaponForm(&weaponType) : nullptr;
+		float weight = 0.0f;
+		const bool weightKnown = weapon != nullptr && game::WeaponWeightOf(weapon, &weight);
+		const game::SwingFatigue charge = game::SwingFatigueFor(
+			config.hands.swingFatigue, weaponHand ? g_hand.strikeByMotion : g_hand.leftStrikeByMotion, true,
+			verdict == vr::SwingVerdict::Heavy, active && !menuIsUp, weapon == nullptr, weightKnown, weight);
+		if (!charge.due) {
+			continue;
+		}
+		float before = 0.0f;
+		float base = 0.0f;
+		const bool readBefore = game::ReadPlayerFatigue(before, base);
+		float cost = 0.0f;
+		const bool charged = game::ChargeSwingFatigue(charge.weight, charge.power, &cost);
+		float after = 0.0f;
+		const bool readAfter = game::ReadPlayerFatigue(after, base);
+		static UInt32 s_fatigueLines = 20;
+		if (s_fatigueLines > 0) {
+			--s_fatigueLines;
+			OBVR_LOG("Fatigue: a %s %s swing cost %.2f (weight %.1f)%s; fatigue %.1f -> %.1f",
+			         weaponHand ? (weapon != nullptr ? "weapon" : "right-fist") : "left-fist",
+			         charge.power ? "power" : "light", static_cast<double>(cost), static_cast<double>(charge.weight),
+			         charged ? "" : " - NOT charged", readBefore ? static_cast<double>(before) : -1.0,
+			         readAfter ? static_cast<double>(after) : -1.0);
+		}
+	}
+
 	// The weapon and the hands push what they meet (game/WorldPush.h): the
 	// weapon hand's blade while a melee weapon is drawn, else the hand; the
 	// other hand always. In the world only, in first person, not in a menu.

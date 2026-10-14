@@ -196,6 +196,34 @@ inline bool SwishDue(bool strikeByMotion, bool swingActive, UInt32 serial, UInt3
 	return strikeByMotion && swingActive && serial != lastSwished;
 }
 
+// The fatigue a swing costs, as vanilla charges an attack (the tester,
+// 2026-10-14: "ausdauer, nehme an selbe formel wie vanilla"). Vanilla charges
+// it in the attack update 0x005FCAB0, right after the attack, through
+// 0x005E4010: (fFatigueAttackWeaponBase + fFatigueAttackWeaponMult x the
+// weapon's weight) x fPowerAttackFatiguePenalty on a power attack
+// (0x00547560), no weight for the fists, bows and staffs not at all, taken
+// off the fatigue by 0x005E07D0. A strike by motion calls AttackHandling
+// directly and never reaches that update, so nothing was charged. Now each
+// swing that may strike by motion is charged once, when it ends with a
+// verdict (a twitch has none) - struck or not, as vanilla charges a miss:
+// the weapon hand with its weapon's weight, a fist with none. Without the
+// strike by motion the swing presses the attack control and the engine
+// charges it itself.
+struct SwingFatigue {
+	bool due = false;
+	bool power = false;
+	float weight = 0.0f;
+};
+
+inline SwingFatigue SwingFatigueFor(bool enabled, bool strikeByMotion, bool swingEnded, bool heavy, bool inWorld,
+                                    bool fist, bool weightKnown, float weight) {
+	SwingFatigue out;
+	out.due = enabled && strikeByMotion && swingEnded && inWorld;
+	out.power = heavy;
+	out.weight = !fist && weightKnown && weight > 0.0f && weight < 1.0e6f ? weight : 0.0f;
+	return out;
+}
+
 }  // namespace obvr::game
 
 namespace obvr::game {

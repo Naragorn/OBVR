@@ -65,6 +65,13 @@ UInt8* EquippedWeaponForm(SInt32* type);
 // that cannot be a weight - not a number, negative, a thousand or more.
 bool WeaponWeightOf(const UInt8* weapon, float* weight);
 
+// Takes a swing's fatigue off the player with the engine's own cost and
+// change functions (addr::kAttackFatigueCost, addr::kActorChangeFatigue;
+// game::SwingFatigueFor decides when and with which weight). `cost` gets
+// what was charged. False when the player or the two functions are not as
+// read.
+bool ChargeSwingFatigue(float weight, bool power, float* cost);
+
 // The weapon base form equipped on the player, as the game's EquipItem
 // command does it (addr::kActorEquipItem with no extra data, count 1). For
 // the holster gestures' weapon swap. False when the player or the form

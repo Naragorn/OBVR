@@ -1,0 +1,274 @@
+# Swings cost fatigue as vanilla's attacks do ([Hands] SwingFatigue,
+# game::SwingFatigueFor, game::ChargeSwingFatigue): a longsword is drawn by
+# the holster and swung through the air twice - a light swing of 30 cm and a
+# power swing of 1.3 m, both at about 3.75 m/s - and each is charged once as
+# it ends, by the engine's own cost (0x00547560) and fatigue change
+# (0x005E07D0): "Fatigue: a weapon light swing cost ..." and "... power
+# swing ...", with the fatigue before and after. The world has no one in it
+# to strike: vanilla charges a miss as well. The hand goes to each start
+# slowly (0.2 m/s, under the swing speed): any swing with the weapon drawn
+# is an attack and costs, as its swish says.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/swing-fatigue.txt
+#      or:  tools\hand-script-run.ps1 -Script tools\hand-scripts\swing-fatigue.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands MotionHits=1
+ini Hands SwingFatigue=1
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+
+expect HandScript: finished
+expect Hands: ready weapon done
+count 1 Fatigue: a weapon light swing cost
+count 1 Fatigue: a weapon power swing cost
+reject NOT charged
+reject HandScript: WARNING
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 8
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.00 -0.45 -0.35
+mark drawn
+wait 3
+right pos -0.007 -0.443 -0.352
+wait 0.05
+right pos -0.015 -0.435 -0.355
+wait 0.05
+right pos -0.022 -0.427 -0.357
+wait 0.05
+right pos -0.030 -0.420 -0.360
+wait 0.05
+right pos -0.037 -0.412 -0.362
+wait 0.05
+right pos -0.045 -0.405 -0.365
+wait 0.05
+right pos -0.053 -0.398 -0.367
+wait 0.05
+right pos -0.060 -0.390 -0.370
+wait 0.05
+right pos -0.067 -0.383 -0.372
+wait 0.05
+right pos -0.075 -0.375 -0.375
+wait 0.05
+right pos -0.082 -0.367 -0.378
+wait 0.05
+right pos -0.090 -0.360 -0.380
+wait 0.05
+right pos -0.098 -0.353 -0.383
+wait 0.05
+right pos -0.105 -0.345 -0.385
+wait 0.05
+right pos -0.113 -0.338 -0.388
+wait 0.05
+right pos -0.120 -0.330 -0.390
+wait 0.05
+right pos -0.128 -0.323 -0.393
+wait 0.05
+right pos -0.135 -0.315 -0.395
+wait 0.05
+right pos -0.143 -0.307 -0.398
+wait 0.05
+right pos -0.150 -0.300 -0.400
+wait 0.05
+wait 1
+mark light
+right pos -0.10 -0.30 -0.40
+wait 0.01
+right pos -0.05 -0.30 -0.40
+wait 0.01
+right pos 0.00 -0.30 -0.40
+wait 0.01
+right pos 0.05 -0.30 -0.40
+wait 0.01
+right pos 0.10 -0.30 -0.40
+wait 0.01
+right pos 0.15 -0.30 -0.40
+wait 0.01
+wait 2
+mark light_done
+right pos 0.137 -0.300 -0.400
+wait 0.05
+right pos 0.123 -0.300 -0.400
+wait 0.05
+right pos 0.110 -0.300 -0.400
+wait 0.05
+right pos 0.097 -0.300 -0.400
+wait 0.05
+right pos 0.083 -0.300 -0.400
+wait 0.05
+right pos 0.070 -0.300 -0.400
+wait 0.05
+right pos 0.057 -0.300 -0.400
+wait 0.05
+right pos 0.043 -0.300 -0.400
+wait 0.05
+right pos 0.030 -0.300 -0.400
+wait 0.05
+right pos 0.017 -0.300 -0.400
+wait 0.05
+right pos 0.003 -0.300 -0.400
+wait 0.05
+right pos -0.010 -0.300 -0.400
+wait 0.05
+right pos -0.023 -0.300 -0.400
+wait 0.05
+right pos -0.037 -0.300 -0.400
+wait 0.05
+right pos -0.050 -0.300 -0.400
+wait 0.05
+right pos -0.063 -0.300 -0.400
+wait 0.05
+right pos -0.077 -0.300 -0.400
+wait 0.05
+right pos -0.090 -0.300 -0.400
+wait 0.05
+right pos -0.103 -0.300 -0.400
+wait 0.05
+right pos -0.117 -0.300 -0.400
+wait 0.05
+right pos -0.130 -0.300 -0.400
+wait 0.05
+right pos -0.143 -0.300 -0.400
+wait 0.05
+right pos -0.157 -0.300 -0.400
+wait 0.05
+right pos -0.170 -0.300 -0.400
+wait 0.05
+right pos -0.183 -0.300 -0.400
+wait 0.05
+right pos -0.197 -0.300 -0.400
+wait 0.05
+right pos -0.210 -0.300 -0.400
+wait 0.05
+right pos -0.223 -0.300 -0.400
+wait 0.05
+right pos -0.237 -0.300 -0.400
+wait 0.05
+right pos -0.250 -0.300 -0.400
+wait 0.05
+right pos -0.263 -0.300 -0.400
+wait 0.05
+right pos -0.277 -0.300 -0.400
+wait 0.05
+right pos -0.290 -0.300 -0.400
+wait 0.05
+right pos -0.303 -0.300 -0.400
+wait 0.05
+right pos -0.317 -0.300 -0.400
+wait 0.05
+right pos -0.330 -0.300 -0.400
+wait 0.05
+right pos -0.343 -0.300 -0.400
+wait 0.05
+right pos -0.357 -0.300 -0.400
+wait 0.05
+right pos -0.370 -0.300 -0.400
+wait 0.05
+right pos -0.383 -0.300 -0.400
+wait 0.05
+right pos -0.397 -0.300 -0.400
+wait 0.05
+right pos -0.410 -0.300 -0.400
+wait 0.05
+right pos -0.423 -0.300 -0.400
+wait 0.05
+right pos -0.437 -0.300 -0.400
+wait 0.05
+right pos -0.450 -0.300 -0.400
+wait 0.05
+right pos -0.463 -0.300 -0.400
+wait 0.05
+right pos -0.477 -0.300 -0.400
+wait 0.05
+right pos -0.490 -0.300 -0.400
+wait 0.05
+right pos -0.503 -0.300 -0.400
+wait 0.05
+right pos -0.517 -0.300 -0.400
+wait 0.05
+right pos -0.530 -0.300 -0.400
+wait 0.05
+right pos -0.543 -0.300 -0.400
+wait 0.05
+right pos -0.557 -0.300 -0.400
+wait 0.05
+right pos -0.570 -0.300 -0.400
+wait 0.05
+right pos -0.583 -0.300 -0.400
+wait 0.05
+right pos -0.597 -0.300 -0.400
+wait 0.05
+right pos -0.610 -0.300 -0.400
+wait 0.05
+right pos -0.623 -0.300 -0.400
+wait 0.05
+right pos -0.637 -0.300 -0.400
+wait 0.05
+right pos -0.650 -0.300 -0.400
+wait 0.05
+wait 2
+mark power
+right pos -0.60 -0.30 -0.40
+wait 0.01
+right pos -0.55 -0.30 -0.40
+wait 0.01
+right pos -0.50 -0.30 -0.40
+wait 0.01
+right pos -0.45 -0.30 -0.40
+wait 0.01
+right pos -0.40 -0.30 -0.40
+wait 0.01
+right pos -0.35 -0.30 -0.40
+wait 0.01
+right pos -0.30 -0.30 -0.40
+wait 0.01
+right pos -0.25 -0.30 -0.40
+wait 0.01
+right pos -0.20 -0.30 -0.40
+wait 0.01
+right pos -0.15 -0.30 -0.40
+wait 0.01
+right pos -0.10 -0.30 -0.40
+wait 0.01
+right pos -0.05 -0.30 -0.40
+wait 0.01
+right pos -0.00 -0.30 -0.40
+wait 0.01
+right pos 0.05 -0.30 -0.40
+wait 0.01
+right pos 0.10 -0.30 -0.40
+wait 0.01
+right pos 0.15 -0.30 -0.40
+wait 0.01
+right pos 0.20 -0.30 -0.40
+wait 0.01
+right pos 0.25 -0.30 -0.40
+wait 0.01
+right pos 0.30 -0.30 -0.40
+wait 0.01
+right pos 0.35 -0.30 -0.40
+wait 0.01
+right pos 0.40 -0.30 -0.40
+wait 0.01
+right pos 0.45 -0.30 -0.40
+wait 0.01
+right pos 0.50 -0.30 -0.40
+wait 0.01
+right pos 0.55 -0.30 -0.40
+wait 0.01
+right pos 0.60 -0.30 -0.40
+wait 0.01
+right pos 0.65 -0.30 -0.40
+wait 0.01
+wait 2
+mark power_done
+wait 1
