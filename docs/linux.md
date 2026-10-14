@@ -22,9 +22,9 @@ built and tested OBVR until 2026-10-14.
   `/usr/share/steam/compatibilitytools.d`) and `GE-Proton11-5` (user). Steam Linux
   Runtimes present: `SteamLinuxRuntime`, `_4`, `_sniper`, `_soldier`.
 - Toolchain: clang, lld and llvm 23.1.1 (`lld-link` and `llvm-dlltool` included), GCC
-  16.2.1 as the default `c++`, CMake 4.4.4, GNU make 4.4.1. **Ninja is not installed**,
-  so the commands below use the default Makefile generator. 32-bit userland for native
-  32-bit builds: `lib32-glibc`, `lib32-gcc-libs`.
+  16.2.1 as the default `c++`, CMake 4.4.4, Ninja 1.13.2 (installed 2026-10-14; the
+  first builds of the day ran on the Makefile generator, with the same result), GNU make
+  4.4.1. 32-bit userland for native 32-bit builds: `lib32-glibc`, `lib32-gcc-libs`.
 - Python 3.14.8, Node 25.8.1, OpenJDK 27 as the system Java.
 
 ## Building
@@ -32,7 +32,7 @@ built and tested OBVR until 2026-10-14.
 ### The tests: clang, 32-bit
 
 ```
-cmake -S tests -B build-linux-tests -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_FLAGS=-m32
+cmake -S tests -B build-linux-tests -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_FLAGS=-m32
 cmake --build build-linux-tests
 ctest --test-dir build-linux-tests --output-on-failure
 ```
@@ -171,7 +171,6 @@ SteamVR on Linux writes the compositor dumps to the same place is unverified.
 
 ## Open items
 
-- Install Ninja; the documented commands use it.
 - A Node LTS for REA's doctor, or live with the warning.
 - Decide the DLL build route (above).
 - Gate 1, the headset: SteamVR was running on this machine during the session of
