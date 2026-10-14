@@ -61,10 +61,11 @@ turns it on anyway. Please say so if you report a bug from it.
   the headset. Take the newest entry on that page, the zip.
 - **SteamVR** and a headset it runs. Meta headsets (Quest via Link, Air Link,
   Virtual Desktop or Steam Link, Rift) work like any other SteamVR game.
-- Windows 10 or 11.
+- Windows 10 or 11, or Linux with Steam's Proton - see [On Linux](#on-linux-steam-proton).
 
-Tested so far on one setup: Dream Air headset, Valve Index controllers, RTX 4090,
-Windows 11. Everything else is exactly what your reports are for.
+Tested so far: Dream Air headset, Valve Index controllers, RTX 4090, Windows 11 -
+and on Linux a Bigscreen Beyond with the same controllers and card, CachyOS and
+Proton-CachyOS. Everything else is exactly what your reports are for.
 
 ## Installing
 
@@ -94,6 +95,23 @@ Windows 11. Everything else is exactly what your reports are for.
 **Tip - start it from the VR library:** in Steam, **Games > Add a Non-Steam Game to
 My Library...**, pick `obse_loader.exe` from your Oblivion folder. Now it shows up in
 your library and you can start it right from SteamVR's game list, headset on.
+
+### On Linux (Steam Proton)
+
+OBVR runs under Proton too. Tested with Proton-CachyOS, other Proton builds not
+yet. Same mod, just a few steps differ:
+
+1. **xOBSE:** same files as above into the Oblivion folder. Then let Steam's Play
+   button start it: rename `OblivionLauncher.exe` to `OblivionLauncher.exe.vanilla`
+   and put a copy of `obse_loader.exe` there as `OblivionLauncher.exe`.
+   Proton-CachyOS does this swap on its own when it finds `obse_loader.exe`.
+2. **DXVK:** skip the `d3d9.dll`, Proton brings its own DXVK. The `dxvk.conf`
+   with `dxvk.enableMemoryDefrag = False` still goes next to `Oblivion.exe` -
+   Proton's DXVK reads it.
+3. **OBVR and MenuQue:** exactly as above.
+4. Start SteamVR, then hit **Play** in Steam.
+
+Heads-up: right now it stutters more under Linux than on Windows. We're on it.
 
 **Mod Organizer 2:** just install the OBVR zip as a normal mod. OBVR itself doesn't
 need Root Builder (xOBSE's own files in the game folder do).
