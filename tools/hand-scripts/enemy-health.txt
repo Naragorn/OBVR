@@ -28,7 +28,7 @@ expect Enemy health: the game's own bar model found
 expect Enemy health: the bars are the game's own frames
 expect read off the game's texture
 expect Enemy health: a bar over
-expect above the head bone
+expect 0.32 m above the head bone
 expect Enemy health: at the mark - bar 1 over
 expect Enemy health: at the mark - bar 2 over
 expect the overlay up (the game's own frame

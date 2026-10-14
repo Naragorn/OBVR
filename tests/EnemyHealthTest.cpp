@@ -72,16 +72,34 @@ void TestRules() {
 	Check(Near(EnemyHealthFraction(30.0f, kNaN), 1.0f), "base not a number, health left: full");
 	const NiPoint3 head{10.0f, 20.0f, 120.0f};
 	const NiPoint3 feet{10.0f, 20.0f, 0.0f};
-	NiPoint3 at = EnemyHealthBarPoint(true, head, feet, 1.0f);
-	Check(Near(at.x, 10.0f) && Near(at.y, 20.0f) && Near(at.z, 134.0f), "with the head bone: 14 units above it");
-	at = EnemyHealthBarPoint(false, head, feet, 1.0f);
-	Check(Near(at.z, 136.0f), "without: 136 units above the feet");
-	at = EnemyHealthBarPoint(true, head, feet, 1.5f);
-	Check(Near(at.z, 141.0f), "a scaled skeleton: the height above scaled");
-	at = EnemyHealthBarPoint(false, head, feet, 0.0f);
+	NiPoint3 at = EnemyHealthBarPoint(true, head, feet, 1.0f, 14.0f);
+	Check(Near(at.x, 10.0f) && Near(at.y, 20.0f) && Near(at.z, 134.0f), "with the head bone: the raise above it");
+	at = EnemyHealthBarPoint(false, head, feet, 1.0f, 14.0f);
+	Check(Near(at.z, 136.0f), "without: the head's 122 units above the feet and the raise");
+	at = EnemyHealthBarPoint(true, head, feet, 1.5f, 14.0f);
+	Check(Near(at.z, 141.0f), "a scaled skeleton: the raise scaled");
+	at = EnemyHealthBarPoint(false, head, feet, 1.5f, 14.0f);
+	Check(Near(at.z, 204.0f), "a scaled skeleton without the bone: the height and the raise scaled");
+	at = EnemyHealthBarPoint(false, head, feet, 0.0f, 14.0f);
 	Check(Near(at.z, 136.0f), "a scale of 0: taken as 1");
-	at = EnemyHealthBarPoint(false, head, feet, 50.0f);
+	at = EnemyHealthBarPoint(false, head, feet, 50.0f, 14.0f);
 	Check(Near(at.z, 136.0f), "a scale of 50: taken as 1");
+	at = EnemyHealthBarPoint(true, head, feet, 1.0f, 22.4f);
+	Check(Near(at.z, 142.4f), "the default raise (0.32 m, 22.4 units): above the bone");
+	at = EnemyHealthBarPoint(true, head, feet, 1.0f, 0.0f);
+	Check(Near(at.z, 120.0f), "no raise: on the bone");
+	at = EnemyHealthBarPoint(true, head, feet, 1.0f, kNaN);
+	Check(Near(at.z, 120.0f), "a raise that is not a number: on the bone");
+	at = EnemyHealthBarPoint(true, head, feet, 1.0f, -5.0f);
+	Check(Near(at.z, 120.0f), "a negative raise: on the bone");
+	at = EnemyHealthBarPoint(false, head, feet, 1.0f, 1000.0f);
+	Check(Near(at.z, 122.0f), "an absurd raise without the bone: the head's height only");
+	Check(Near(EnemyHealthAboveMetres(0.32f), 0.32f) && Near(EnemyHealthAboveMetres(0.05f), 0.05f) &&
+	          Near(EnemyHealthAboveMetres(1.0f), 1.0f),
+	      "the raise as set, 0.05 to 1 m");
+	Check(Near(EnemyHealthAboveMetres(0.01f), 0.32f) && Near(EnemyHealthAboveMetres(1.5f), 0.32f) &&
+	          Near(EnemyHealthAboveMetres(kNaN), 0.32f),
+	      "out of range or not a number: 0.32 m");
 	Check(!EnemyHealthRepaintDue(0.5f, 0.5f), "the same fraction: no repaint");
 	Check(!EnemyHealthRepaintDue(0.5f, 0.503f), "a hair's move: no repaint");
 	Check(EnemyHealthRepaintDue(0.5f, 0.49f), "a 128th's move: repaint");

@@ -1840,6 +1840,13 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return c.hands.enemyHealth.widthMetres; },
 		+[](Config& c, float v) { c.hands.enemyHealth.widthMetres = v; },
 	},
+	{
+		"HUD", "Enemy health height (m)", "How far above the fighter's head bone the bar's centre hangs",
+		ItemKind::Number, 0.05f, 1.0f, 0.05f, 2, false,
+		"HandHud", "EnemyHealthAboveMetres",
+		+[](const Config& c) { return c.hands.enemyHealth.aboveMetres; },
+		+[](Config& c, float v) { c.hands.enemyHealth.aboveMetres = v; },
+	},
 	// ---- Teleport (Full VR) --------------------------------------------------
 	{
 		"Teleport", "Teleport", "Full VR: hold the right stick up, aim the arc, let go",

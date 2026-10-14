@@ -25,17 +25,17 @@ struct EnemyHealthSettings {
 	bool enabled = true;         // [HandHud] EnemyHealthBars
 	float rangeMetres = 25.0f;   // [HandHud] EnemyHealthMetres: farther than this, no bar
 	float widthMetres = 0.35f;   // [HandHud] EnemyHealthWidthMetres: the bar's width in the world, near
+	float aboveMetres = 0.32f;   // [HandHud] EnemyHealthAboveMetres: the bar's centre this far above the head bone
 };
 
 // How many bars at once; the nearest fighters get them.
 inline constexpr UInt32 kEnemyHealthBarsMax = 8;
 // A bar stays this long after its fighter dies or stops fighting.
 inline constexpr float kEnemyHealthLingerSeconds = 2.0f;
-// Above the head bone, game units (about 20 cm): clear of the hair and a
-// helmet. Without the head bone: the feet plus a person's height, times the
-// skeleton's scale.
-inline constexpr float kEnemyHealthAboveHeadUnits = 14.0f;
-inline constexpr float kEnemyHealthAboveFeetUnits = 136.0f;
+// The head bone's height over the feet, game units, for an actor whose
+// skeleton cannot be read: the bar hangs above that as it hangs above the
+// bone.
+inline constexpr float kEnemyHealthHeadAboveFeetUnits = 122.0f;
 // The bar never narrower than this share of its distance (about 3.4
 // degrees), so a far bar still reads.
 inline constexpr float kEnemyHealthMinWidthPerMetre = 0.06f;
@@ -43,12 +43,16 @@ inline constexpr float kEnemyHealthMinWidthPerMetre = 0.06f;
 inline constexpr float kEnemyHealthRepaintStep = 1.0f / 128.0f;
 
 // The settings as used: the range 1 to 100 m, else 25; the width 0.1 to 2 m,
-// else 0.35.
+// else 0.35; the raise above the head bone 0.05 to 1 m, else 0.32 (the
+// tester, 2026-10-13: the bars 0.2 m above the bone "müssen bischen höher").
 inline float EnemyHealthRangeMetres(float setting) {
 	return setting >= 1.0f && setting <= 100.0f ? setting : 25.0f;
 }
 inline float EnemyHealthWidthMetres(float setting) {
 	return setting >= 0.1f && setting <= 2.0f ? setting : 0.35f;
+}
+inline float EnemyHealthAboveMetres(float setting) {
+	return setting >= 0.05f && setting <= 1.0f ? setting : 0.32f;
 }
 
 // The bar's width in the world at this distance: the set width, or wider so
@@ -71,14 +75,18 @@ inline float EnemyHealthFraction(float now, float base) {
 	return f > 1.0f ? 1.0f : f;
 }
 
-// Where the bar hangs: above the head bone when it was read, else above
-// the feet by a person's height, scaled.
-inline NiPoint3 EnemyHealthBarPoint(bool haveHead, const NiPoint3& head, const NiPoint3& feet, float scale) {
+// Where the bar hangs: `aboveUnits` (the raise in game units) above the head
+// bone when it was read, else above the feet by the head's height and the
+// same raise; both scaled by the skeleton's scale. A raise that is not a
+// number, negative or absurd puts the bar on the bone.
+inline NiPoint3 EnemyHealthBarPoint(bool haveHead, const NiPoint3& head, const NiPoint3& feet, float scale,
+                                    float aboveUnits) {
 	const float k = scale > 0.0f && scale < 20.0f ? scale : 1.0f;
+	const float up = aboveUnits >= 0.0f && aboveUnits < 1000.0f ? aboveUnits : 0.0f;
 	if (haveHead) {
-		return NiPoint3{head.x, head.y, head.z + kEnemyHealthAboveHeadUnits * k};
+		return NiPoint3{head.x, head.y, head.z + up * k};
 	}
-	return NiPoint3{feet.x, feet.y, feet.z + kEnemyHealthAboveFeetUnits * k};
+	return NiPoint3{feet.x, feet.y, feet.z + (kEnemyHealthHeadAboveFeetUnits + up) * k};
 }
 
 // Whether a new fraction wants the bar painted anew.

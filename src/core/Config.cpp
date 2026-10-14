@@ -878,6 +878,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 			h.enemyHealth.rangeMetres = ReadFloat("HandHud", "EnemyHealthMetres", h.enemyHealth.rangeMetres, path);
 			h.enemyHealth.widthMetres =
 				ReadFloat("HandHud", "EnemyHealthWidthMetres", h.enemyHealth.widthMetres, path);
+			h.enemyHealth.aboveMetres =
+				ReadFloat("HandHud", "EnemyHealthAboveMetres", h.enemyHealth.aboveMetres, path);
 			hh.panelUp = ReadFloat("HandHud", "PanelUp", hh.panelUp, path);
 			hh.panelBack = ReadFloat("HandHud", "PanelBack", hh.panelBack, path);
 			hh.panelTiltDegrees = ReadFloat("HandHud", "PanelTiltDegrees", hh.panelTiltDegrees, path);

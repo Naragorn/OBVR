@@ -260,6 +260,19 @@ While shown, the HUD hangs `PalmLiftMetres` (0.06) off the palm, facing the eyes
 
 The palm's side is **assumed** to be the controller's +x on the left hand and −x on the right, from OpenVR's controller axes. The headset has not confirmed it. If the HUD shows with the back of the hand instead, that is the sign to flip.
 
+**Open (the tester, 2026-10-13 night: "linke hand muss hud auch zeigen
+wenn faust geballt aber angewinkelt dass hud eig sehbar wäre").** The left
+hand's HUD should come up on a look with the fist closed too, when the hand
+is turned so the HUD would be seen. Today the third condition (not a fist)
+blocks it on both hands; only the right hand with a drawn melee weapon
+counts as open (2026-10-07). The catch: a fist guard - both fists raised
+before the face, `IsFistGuard` - holds the palms towards the eyes as well,
+so the fist condition dropped on the left hand brings the HUD up in every
+guard. A way round it: the look without the fist condition, but not while
+the guard holds (`r.blocking`) or a swing runs on that hand. Not built; the
+tester's call whether a HUD in the guard is bearable or the guard has to
+win.
+
 `tools/hand-scripts/hand-hud-look.txt` covers it, but it has not run yet: the tester was playing.
 
 **Reworked (2026-10-06; headset verification pending):** the crosshair cache has been removed. `DialogCameraShim` copies the actual actor position from `SetDialogCamera` before either the POV switch or vanilla zoom runs. This also supplies a target for NPC-initiated greetings. The panel places once per conversation, retrying if the first frame has no valid head/camera pose. Side and size settings remain unchanged. `DialogFocus` clears the copied position on explicit end, menu exit, or cancelled approach. The camera observer stays installed with zoom on; a zoom setting change takes effect for the next conversation so its original exit cleanup is retained. `dialog_panel` and `dialog_camera_hook` exercise the placement policy and engine-facing wiring without running Oblivion.
@@ -303,10 +316,15 @@ the laser - a fight is not fought by pointing. Instead OBVR's own bars,
   game's own frame for it (the golden arc, below), and only without the
   game's frames OBVR's own bar - a dark bed, the quick menu's gold frame, a
   red fill as wide as the health.
-- **Where:** 14 units above the head bone ("Bip01 Head", through the bones
-  BladeBodies keeps, read on demand - `game::ActorBoneNode`), or 136 above
-  the feet without it, both times the skeleton's scale; one CanvasOverlay a
-  bar (the stow spot's kind), turned to the eyes and upright
+- **Where:** `EnemyHealthAboveMetres` (0.32, "Enemy health height (m)";
+  14 units, 0.2 m, until 2026-10-14 - the tester, 2026-10-13 evening:
+  "balken müssen bischen höher wie in vanilla") above the head bone ("Bip01
+  Head", through the bones BladeBodies keeps, read on demand -
+  `game::ActorBoneNode`), or above the feet by the head's height (122
+  units) and the same raise without it, both times the skeleton's scale
+  (`EnemyHealthBarPoint`; the log line says it: "0.32 m above the head
+  bone"); one CanvasOverlay a bar (the stow spot's kind), turned to the
+  eyes and upright
   (`StowSpotPose`), the set width or wider so it keeps about 3.4 degrees far
   off (`EnemyHealthBarWidth`).
 - **When:** with the HUD - hidden in menus, while a game loads, when dead.
@@ -389,6 +407,12 @@ lockable, a format OBVR does not decode) the bar is OBVR's own, said once.
   both; the saved picture is the golden arc on nothing. SteamVR's dumps do
   not carry overlays, so the picture file is the proof of the painting;
   the overlay's place and turn are the bars' as before.
+- **Headset (2026-10-13 evening): "balken: passt!"** - the game's arc over
+  the fighters, confirmed. And "balken müssen bischen höher wie in
+  vanilla": the raise above the head bone is a setting since 2026-10-14,
+  `EnemyHealthAboveMetres`, 0.32 m by default (0.2 m before - the bar's
+  lower edge sat a hand's width over the skull); harness
+  `enemy-health.txt` rerun with it: see the harness table.
 
 Hand script `enemy-health.txt` (two bandits at an untouchable player, the
 state at marks, then `killall` for the linger): PASS 2026-10-13 on its first

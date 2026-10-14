@@ -13,10 +13,10 @@ namespace obvr::game {
 // actor in `keep` (the bars' own, kept for the linger) whatever they do:
 // their health now against their base (GetActorValue_F, vtable +0x288, actor
 // value 8, and GetBaseActorValue 0x005F1910, as the fatigue is read), and
-// the bar's point above their head bone ("Bip01 Head" through the bones
-// BladeBodies keeps for them) or above their feet (EnemyHealthBarPoint).
-// Answers how many were read; stops at `capacity`.
-UInt32 ReadFightersHealth(const NiPoint3& eyes, float unitsPerMetre, float rangeMetres, const UInt32* keep,
-                          UInt32 keepCount, EnemyHealthSeen* out, UInt32 capacity);
+// the bar's point `aboveUnits` above their head bone ("Bip01 Head" through
+// the bones BladeBodies keeps for them) or above their feet
+// (EnemyHealthBarPoint). Answers how many were read; stops at `capacity`.
+UInt32 ReadFightersHealth(const NiPoint3& eyes, float unitsPerMetre, float rangeMetres, float aboveUnits,
+                          const UInt32* keep, UInt32 keepCount, EnemyHealthSeen* out, UInt32 capacity);
 
 }  // namespace obvr::game

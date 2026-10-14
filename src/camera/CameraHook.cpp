@@ -2163,9 +2163,10 @@ void StepEnemyHealthBars(const Config& config, vr::OpenVRBackend& backend, bool 
 		}
 	}
 	game::EnemyHealthSeen seen[24];
+	const float aboveMetres = game::EnemyHealthAboveMetres(settings.aboveMetres);
 	const UInt32 seenCount =
 		game::ReadFightersHealth(camPos, config.tracker.unitsPerMetre, game::EnemyHealthRangeMetres(settings.rangeMetres),
-		                         keep, keepCount, seen, 24);
+		                         aboveMetres * config.tracker.unitsPerMetre, keep, keepCount, seen, 24);
 	const game::EnemyHealthVerdict v = game::StepEnemyHealthBars(g_enemyHealth, seen, seenCount, dt);
 	(void)v;
 	const NiPoint3 eyes{head.m[0][3], head.m[1][3], head.m[2][3]};
@@ -2182,10 +2183,11 @@ void StepEnemyHealthBars(const Config& config, vr::OpenVRBackend& backend, bool 
 						break;
 					}
 				}
-				OBVR_LOG("Enemy health: a bar over %08X - %.0f%% health, %.1f m away, above %s (bar %u of %u)", b.actor,
-				         static_cast<double>(b.fraction * 100.0f), static_cast<double>(b.metres),
-				         s != nullptr && s->haveHead ? "the head bone" : "the feet (no head bone read)", i + 1,
-				         static_cast<UInt32>(game::kEnemyHealthBarsMax));
+				OBVR_LOG("Enemy health: a bar over %08X - %.0f%% health, %.1f m away, %.2f m above %s (bar %u of %u)",
+				         b.actor, static_cast<double>(b.fraction * 100.0f), static_cast<double>(b.metres),
+				         static_cast<double>(aboveMetres),
+				         s != nullptr && s->haveHead ? "the head bone" : "the head's height over the feet (no head bone read)",
+				         i + 1, static_cast<UInt32>(game::kEnemyHealthBarsMax));
 			} else {
 				OBVR_LOG("Enemy health: %08X's bar went (dead or no longer fighting, %.0f s after)", was[i],
 				         static_cast<double>(game::kEnemyHealthLingerSeconds));

@@ -63,9 +63,9 @@ bool ReadHealth(UInt32 actor, float& now, float& base) {
 	return now == now;
 }
 
-// The bar's point for an actor: above the head bone when the skeleton reads,
-// else above the feet.
-NiPoint3 BarPointOf(UInt32 actor, bool& haveHead) {
+// The bar's point for an actor: `aboveUnits` above the head bone when the
+// skeleton reads, else above the feet.
+NiPoint3 BarPointOf(UInt32 actor, float aboveUnits, bool& haveHead) {
 	haveHead = false;
 	const auto* const feet = reinterpret_cast<const float*>(actor + addr::kRefPositionOffset);
 	const NiPoint3 feetAt{feet[0], feet[1], feet[2]};
@@ -85,7 +85,7 @@ NiPoint3 BarPointOf(UInt32 actor, bool& haveHead) {
 			}
 		}
 	}
-	return EnemyHealthBarPoint(haveHead, head, feetAt, scale);
+	return EnemyHealthBarPoint(haveHead, head, feetAt, scale, aboveUnits);
 }
 
 bool InKeep(UInt32 actor, const UInt32* keep, UInt32 keepCount) {
@@ -99,8 +99,8 @@ bool InKeep(UInt32 actor, const UInt32* keep, UInt32 keepCount) {
 
 }  // namespace
 
-UInt32 ReadFightersHealth(const NiPoint3& eyes, float unitsPerMetre, float rangeMetres, const UInt32* keep,
-                          UInt32 keepCount, EnemyHealthSeen* out, UInt32 capacity) {
+UInt32 ReadFightersHealth(const NiPoint3& eyes, float unitsPerMetre, float rangeMetres, float aboveUnits,
+                          const UInt32* keep, UInt32 keepCount, EnemyHealthSeen* out, UInt32 capacity) {
 	const UInt32 player = Read(addr::kPlayerPointer);
 	if (!LooksLikeObject(player) || out == nullptr || capacity == 0) {
 		return 0;
@@ -143,7 +143,7 @@ UInt32 ReadFightersHealth(const NiPoint3& eyes, float unitsPerMetre, float range
 		s.fraction = dead ? 0.0f : haveHealth ? EnemyHealthFraction(now, base) : 1.0f;
 		s.metres = metres;
 		bool haveHead = false;
-		s.at = BarPointOf(actor, haveHead);
+		s.at = BarPointOf(actor, aboveUnits, haveHead);
 		s.haveHead = haveHead;
 	}
 	return count;
