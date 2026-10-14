@@ -78,6 +78,21 @@ The rest as on Windows, with these differences:
   four content mods that are not installed there.
 - **`make-harness-save.txt`** is not for this runner: it would write the
   harness save from whatever the main menu continues.
+- **Measurements.** The summary's "Measured" carries SteamVR's frame summary
+  for the run (presented, dropped and reprojected frames, which the compositor
+  writes to `vrcompositor.txt` when the game leaves it). An OBVR profiler
+  capture written during the run (`[Performance]`) is moved into the run
+  folder and analysed with `tools/analyze-performance.py`
+  (`OBVR-performance-N-report/report.md`). `perf-walk.txt` is the scenario for
+  that.
+- **`--direct`** starts the game past Steam: through the Steam Linux Runtime
+  and Proton (`proton waitforexitandrun OblivionLauncher.exe`, from the game
+  folder), with MoreHeap's DLL override and without `PROTON_LOG`. `--env
+  KEY=VALUE`, repeatable, adds to its environment, for example `--env
+  "DXVK_CONFIG=d3d9.presentInterval = 0"`; without `--direct` the runner
+  refuses it, since a start through Steam takes Steam's launch options. The
+  start line goes to `launch.txt`, Proton's output to `proton.log`, both in the
+  run folder.
 
 ## What the runner does to the installation
 

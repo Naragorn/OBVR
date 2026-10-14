@@ -19,6 +19,7 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import PureWindowsPath
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -173,6 +174,48 @@ def evaluate(scenario: Scenario, lines: Sequence[str]) -> Tuple[List[str], List[
             if kind == "still" and d > limit:
                 problems.append(f"still {a} {b}: {d:.1f} units, wanted at most {limit:.1f}")
     return problems, measured
+
+
+_COMPOSITOR_TOTAL = re.compile(
+    r"^(\w{3} \w{3} \d{1,2} \d{4} \d{2}:\d{2}:\d{2}\.\d+) \[Info\] - Total\.+\s+(\d+) presents\.\s+"
+    r"(\d+) dropped\.\s+(\d+) reprojected")
+
+
+def compositor_time(stamp: str) -> datetime:
+    """A vrcompositor.txt time stamp, e.g. "Wed Oct 14 2026 14:03:51.467338"."""
+    return datetime.strptime(stamp, "%a %b %d %Y %H:%M:%S.%f")
+
+
+def compositor_summary(lines: Sequence[str], since: datetime) -> Optional[Tuple[int, int, int]]:
+    """SteamVR's frame summary for the last app that left the compositor since
+    `since`: (presented, dropped, reprojected), or None. The compositor writes
+    it when the app disconnects."""
+    found = None
+    for line in lines:
+        m = _COMPOSITOR_TOTAL.match(line)
+        if m and compositor_time(m.group(1)) >= since:
+            found = (int(m.group(2)), int(m.group(3)), int(m.group(4)))
+    return found
+
+
+def compositor_line(totals: Tuple[int, int, int]) -> str:
+    presented, dropped, reprojected = totals
+    share = 100.0 * reprojected / presented if presented else 0.0
+    return (f"SteamVR: {presented} frames presented, {dropped} dropped, {reprojected} reprojected "
+            f"({share:.1f} %)")
+
+
+def env_problem(direct: bool, pairs: Sequence[str]) -> Optional[str]:
+    """Why the runner's --env lines cannot be taken, or None: they only reach a
+    --direct start (a start through Steam takes Steam's launch options), and
+    each is KEY=VALUE with a key."""
+    if pairs and not direct:
+        return "--env only reaches a --direct start; a start through Steam takes Steam's launch options"
+    for pair in pairs:
+        key, sep, _ = pair.partition("=")
+        if not sep or not key.strip():
+            return f"--env {pair!r}: not KEY=VALUE"
+    return None
 
 
 def summary(scenario: str, verdict: str, run_dir: str, marks: Sequence[str],

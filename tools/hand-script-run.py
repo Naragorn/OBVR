@@ -43,6 +43,10 @@ GAME_DIR = STEAM / "steamapps/common/Oblivion"
 SAVES_DIR = (STEAM / f"steamapps/compatdata/{APP_ID}/pfx/drive_c/users/steamuser/Documents/My Games/"
              "Oblivion/Saves")
 STEAMVR_DIR = STEAM / "steamapps/common/SteamVR"
+# The direct start, past Steam and its launch options (HANDOFF.md section 8):
+# the Steam Linux Runtime's entry point with Proton inside it.
+SLR_ENTRY = STEAM / "steamapps/common/SteamLinuxRuntime_4/_v2-entry-point"
+PROTON = Path("/usr/share/steam/compatibilitytools.d/proton-cachyos-slr/proton")
 OLD_SAVE_TIME = datetime(2000, 1, 1).timestamp()
 
 # A window of a process of its own in front of the game, for "background-at":
@@ -163,7 +167,14 @@ class Run:
         self.thief_window: Optional[str] = None
         self.started_at = time.time()
         self.launched_at: Optional[float] = None
+        self.direct: Optional[subprocess.Popen] = None
         self.capture_said = False
+
+    def launch_alive(self) -> bool:
+        """The launch still running: our own direct start, or Steam's."""
+        if self.direct is not None:
+            return self.direct.poll() is None
+        return steam_launch_alive()
 
     # --- pictures -------------------------------------------------------
     def shot(self, name: str) -> None:
@@ -273,7 +284,7 @@ class Run:
                     self.shot("main-menu")
             if any(what in l for l in lines):
                 return True
-            if what != "OBVR ready" and game_pid() is None and not steam_launch_alive():
+            if what != "OBVR ready" and game_pid() is None and not self.launch_alive():
                 raise RuntimeError(f"the game ended before \"{what}\"")
         return False
 
@@ -288,10 +299,13 @@ class Run:
         self.log.unlink(missing_ok=True)
         self.started_at = time.time()
 
-        say("Starting the game through Steam...")
         self.launched_at = time.time()
-        subprocess.Popen(["steam", f"steam://rungameid/{APP_ID}"], stdout=subprocess.DEVNULL,
-                         stderr=subprocess.DEVNULL, start_new_session=True)
+        if self.args.direct:
+            self.start_direct()
+        else:
+            say("Starting the game through Steam...")
+            subprocess.Popen(["steam", f"steam://rungameid/{APP_ID}"], stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL, start_new_session=True)
         if not self.wait_for("OBVR ready", self.args.start_timeout):
             raise RuntimeError(f"no 'OBVR ready' line within {self.args.start_timeout} s")
         pid = game_pid()
@@ -331,6 +345,56 @@ class Run:
         self.problems += problems
         self.measured += measured
 
+    def start_direct(self) -> None:
+        """The game through the Steam Linux Runtime and Proton, past Steam's launch
+        options: the environment is the runner's own, plus --env. MoreHeap's
+        version.dll is taken native as Steam's options take it."""
+        env = dict(os.environ)
+        env.pop("PROTON_LOG", None)
+        env.update({
+            "STEAM_COMPAT_DATA_PATH": str(STEAM / f"steamapps/compatdata/{APP_ID}"),
+            "STEAM_COMPAT_CLIENT_INSTALL_PATH": str(STEAM),
+            "SteamAppId": APP_ID,
+            "SteamGameId": APP_ID,
+            "WINEDLLOVERRIDES": "version=n,b",
+        })
+        for pair in self.args.env:
+            key, _, value = pair.partition("=")
+            env[key] = value
+        command = [str(SLR_ENTRY), "--verb=waitforexitandrun", "--", str(PROTON), "waitforexitandrun",
+                   str(self.game_dir / "OblivionLauncher.exe")]
+        (self.run_dir / "launch.txt").write_text(
+            "direct start\n" + " ".join(command) + "\n" + "\n".join(
+                f"{k}={env[k]}" for k in sorted(env) if k.startswith(("STEAM_COMPAT", "Steam", "WINE", "DXVK",
+                                                                       "PROTON", "VKD3D"))) + "\n",
+            encoding="utf-8")
+        say("Starting the game directly, past Steam's launch options: " + " ".join(self.args.env or ["(no extra env)"]))
+        output = open(self.run_dir / "proton.log", "wb")
+        # From the game folder, as Steam starts it: the OBSE loader looks for
+        # Oblivion.exe beside itself in the working directory ("Couldn't find
+        # Oblivion.exe", 2026-10-14), and DXVK reads dxvk.conf from there.
+        self.direct = subprocess.Popen(command, env=env, cwd=str(self.game_dir), stdout=output,
+                                       stderr=subprocess.STDOUT, start_new_session=True)
+
+    def bring_measurements(self) -> None:
+        """SteamVR's frame summary for the run (written when the game leaves the
+        compositor) and OBVR's profiler captures, moved in and analysed."""
+        time.sleep(2.0)
+        totals = logic.compositor_summary(read_log(STEAM / "logs/vrcompositor.txt"),
+                                          datetime.fromtimestamp(self.started_at))
+        if totals is not None:
+            self.measured.append(logic.compositor_line(totals))
+        for capture in sorted(self.game_dir.glob("OBVR-performance-*")):
+            if not capture.is_dir() or capture.stat().st_mtime < self.started_at:
+                continue
+            target = self.run_dir / capture.name
+            shutil.move(str(capture), str(target))
+            report = self.run_dir / f"{capture.name}-report"
+            code, out = run_quiet([sys.executable, str(self.root / "tools/analyze-performance.py"), str(target),
+                                   "--output", str(report)], timeout=180.0)
+            self.notes.append(f"profiler capture {capture.name}: " +
+                              (f"{report.name}/report.md" if code == 0 else f"analysis failed: {out[:200]}"))
+
     def close_game(self) -> None:
         # A run interrupted right after the launch: the game may still be on
         # its way up, and would run on with nobody to close it - and Steam
@@ -340,7 +404,7 @@ class Run:
         if self.launched_at is not None:
             deadline = time.time() + 90
             while game_pid() is None and time.time() < deadline:
-                if not steam_launch_alive() and time.time() - self.launched_at > 30:
+                if not self.launch_alive() and time.time() - self.launched_at > 30:
                     break
                 time.sleep(1.0)
         pid = game_pid()
@@ -358,9 +422,9 @@ class Run:
                     time.sleep(0.5)
                 if game_pid() != pid:
                     break
-        # Steam's launch ends after the game; the next run cannot start before.
+        # The launch ends after the game; the next run cannot start before.
         deadline = time.time() + 60
-        while time.time() < deadline and steam_launch_alive():
+        while time.time() < deadline and self.launch_alive():
             time.sleep(1.0)
 
     def clean_up(self) -> None:
@@ -368,6 +432,7 @@ class Run:
             self.thief.terminate()
         if not self.args.keep_game_open:
             self.close_game()
+            self.bring_measurements()
         # The harness save stays the oldest there is, so the player's own
         # Continue never lands in it.
         for ext in ("ess", "obse"):
@@ -431,7 +496,15 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     # "continue" or empty: none named (the game stays in the main menu).
     p.add_argument("--save", default="OBVRHarness")
     p.add_argument("--keep-game-open", action="store_true")
-    return p.parse_args(argv)
+    # Past Steam and its launch options, with this environment on top
+    # (repeatable KEY=VALUE, e.g. DXVK_HUD=fps,frametimes,gpuload,compiler).
+    p.add_argument("--direct", action="store_true")
+    p.add_argument("--env", action="append", default=[], metavar="KEY=VALUE")
+    args = p.parse_args(argv)
+    problem = logic.env_problem(args.direct, args.env)
+    if problem is not None:
+        p.error(problem)
+    return args
 
 
 if __name__ == "__main__":

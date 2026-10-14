@@ -159,6 +159,44 @@ class Verdict(unittest.TestCase):
         self.assertEqual(problems, ["moved a c: no player line at mark c"])
 
 
+class CompositorSummary(unittest.TestCase):
+    LOG = [
+        "Wed Oct 14 2026 13:03:15.889940 [Info] - Total.................. 10413 presents.  361 dropped. 4932 reprojected",
+        "Wed Oct 14 2026 14:12:31.123456 [Info] - Total.................. 37184 presents.   35 dropped.  631 reprojected",
+        "Wed Oct 14 2026 14:12:31.123500 [Info] - Total dropped frames: 720923",
+        "Wed Oct 14 2026 14:18:34.000001 [Info] - Total..................  1611 presents.  557 dropped.  629 reprojected",
+    ]
+
+    def test_the_last_summary_since_the_run_began(self):
+        since = r.compositor_time("Wed Oct 14 2026 14:00:00.000000")
+        self.assertEqual(r.compositor_summary(self.LOG, since), (1611, 557, 629))
+
+    def test_none_since(self):
+        since = r.compositor_time("Wed Oct 14 2026 15:00:00.000000")
+        self.assertIsNone(r.compositor_summary(self.LOG, since))
+
+    def test_the_line_as_measured(self):
+        self.assertEqual(r.compositor_line((1611, 557, 629)),
+                         "SteamVR: 1611 frames presented, 557 dropped, 629 reprojected (39.0 %)")
+
+
+class DirectEnvironment(unittest.TestCase):
+    def test_none_given(self):
+        self.assertIsNone(r.env_problem(False, []))
+        self.assertIsNone(r.env_problem(True, []))
+
+    def test_only_a_direct_start_takes_them(self):
+        self.assertEqual(
+            r.env_problem(False, ["DXVK_HUD=fps"]),
+            "--env only reaches a --direct start; a start through Steam takes Steam's launch options")
+
+    def test_key_value_pairs(self):
+        self.assertIsNone(r.env_problem(True, ["DXVK_HUD=fps", "DXVK_CONFIG=d3d9.presentInterval = 0"]))
+        self.assertIsNone(r.env_problem(True, ["EMPTY="]))
+        self.assertEqual(r.env_problem(True, ["DXVK_HUD"]), "--env 'DXVK_HUD': not KEY=VALUE")
+        self.assertEqual(r.env_problem(True, ["=fps"]), "--env '=fps': not KEY=VALUE")
+
+
 class Summary(unittest.TestCase):
     def test_pass_and_fail(self):
         text = r.summary("teleport", "PASS", "/runs/x", ["a", "b"], [], [])
