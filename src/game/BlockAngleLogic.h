@@ -1,5 +1,7 @@
 #pragma once
 
+#include <limits>
+
 #include "core/MathFns.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
@@ -86,7 +88,7 @@ inline float LineAngleDegrees(const NiPoint3& a, const NiPoint3& b) {
 	const float dot = BlockDot(a, b);
 	const float cross = math::Sqrt(BlockCross(a, b).LengthSquared());
 	if (!(a.LengthSquared() > 0.0f) || !(b.LengthSquared() > 0.0f)) {
-		return 0.0f / 0.0f;
+		return std::numeric_limits<float>::quiet_NaN();  // MSVC refuses a constant 0/0 (C2124)
 	}
 	return math::Atan2(cross, dot < 0.0f ? -dot : dot) * math::kRadiansToDegrees;
 }
