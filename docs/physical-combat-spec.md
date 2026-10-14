@@ -513,6 +513,19 @@ setters, the parry's forced block:
 - Open: the headset (the drag's feel, the hold's length, the throw), creatures (their capsules are the
   bound's column; a wolf held by "the column" stops its blows not at all),
   and a held one's own hands - a bandit held by the torso still swings.
+- **Open bug (the tester, 2026-10-14 evening): "linke faust trifft nicht:
+  erwartet wäre wie ein slap nur ohne slap sound dafür schlag sound."** With
+  the fists up, the left fist's punch lands nothing in his play. Expected: as
+  the slap (the shove's blow by the hand's speed, section 6 of
+  docs/hand-weapon-collision-spec.md) with the hand-to-hand hit sound
+  instead of the slap's. What the code claims: the left fist swings by motion
+  (`leftStrikeByMotion`, "Hands: a left-fist ... swing") and the off hand's
+  strike above ("a fist is a punch") - his session's log has no left-fist
+  line at all, which proves little: the swing lines share one budget with
+  the right hand's (`g_handSwingLinesLeft`), spent early. To find out first:
+  whether the left swing is detected at all with the fists up (a log line of
+  its own), then whether `StrikeByMotion` for hand 1 reaches a body. Not
+  built ("nichts coden!").
 
 ### The grab and the throw as a ragdoll (the tester, 2026-10-12; built 2026-10-13, harness PASS, headset open)
 
@@ -671,3 +684,31 @@ state) is the engine's knockdown's own and was not read. The ragdoll hold
 on creatures: their parts are the bound's column, so the standing hold.
 
 Controls-spec 4.34 has the controls and the log lines.
+
+## 9. Stabs that stick, and hit locations (the tester, 2026-10-14; nothing built)
+
+The tester, after the evening's play: "stabs in den gegner wo die waffe im
+gegner hängen bleibt wären cool wie in blade and sorcery. treffer
+locations/locational dmg wie in B&S." Noted for later ("nichts coden!"):
+
+- **A stab that sticks.** In B&S a thrust into a body penetrates and the
+  blade stays in until pulled out, the body dragged with it. Here the blade
+  already meets the living (weapon-collision-spec section 10: the capsules on
+  their bones, the hit-stop, a swing passes through) and a thrust is a power
+  attack of its own (`PowerThrustMetres`). The piece missing: a thrust that
+  enters a capsule along the blade's own axis holds the blade there - the
+  weapon pinned to the body's part (the ragdoll hold's drive, section 8, on
+  the blade instead of the hand) until the hand pulls back along the axis -
+  and the fighter staggered or held while it is in. What the engine does
+  with a target that is "held" by a blade (its animation, its AI) is
+  unknown; the ragdoll hold's findings (knock states, the standing clock)
+  are the nearest reading. Unmeasured; a design to write before any code.
+- **Hit locations.** B&S scales damage by the part struck (head, neck, limbs)
+  and dismembers. Oblivion has no locational damage: `AttackHandling`
+  (0x005FEBF0) takes a target, not a point. OBVR knows the part the blade
+  met (`BodyCapsulesFromBones`, each capsule a named bone), so a factor by
+  part could scale the damage before the hit is handed over - the way the
+  power attack's direction is handed over (next-up 2, the attack group) -
+  or the hit's damage could be reread and adjusted after. No dismemberment:
+  the models are not cut. Not designed yet.
+

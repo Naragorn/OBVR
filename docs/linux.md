@@ -318,9 +318,11 @@ analyses the profiler's capture in the run folder.
   | D | default, `MonitorVsync=0` | 0.6 % of 9,956 | 12 | 0.007 / 0.018 ms |
   | E | `MonitorVsync=1` | 37.5 % of 9,312 | 670 | 2.33 / 13.22 ms |
 
-  The tester's own session the same evening (20:13 to 20:17, the headset on):
-  9,320 presents, 82 dropped, 207 reprojected - 2.2 %, against 47 % on the first
-  run of the day. The change reaches Windows as well, where it is unmeasured.
+  The tester's own sessions the same evening (the headset on): 20:13 to 20:17
+  9,320 presents, 82 dropped, 207 reprojected - 2.2 %; 20:17 to 20:36 38,105
+  presents, 155 dropped, 390 reprojected - 1.0 %; against 47 % on the first run
+  of the day. The tester: "ruckel ist gefixed". The change reaches Windows as
+  well, where it is unmeasured.
 - **OBVR's GPU timings** read 0 for every interval under Proton; not looked into.
 - Run B ended nine seconds after its last mark, through the pause menu and its quit
   message, the pattern `attack-frequency` showed in the sweep; what sent it, I could not

@@ -417,8 +417,10 @@ rolls on the forearms swung with the controllers - the right hand 49, 12, 36,
 rest, the left -11 to -92 and back - large jumps within a quarter second, as
 of controllers just picked up. Nothing in the numbers names a shrink; the roll
 spread (ForearmRollsFor) narrows the wrist's ring only towards a half turn.
-What the tester saw and for how long, with the hands held still, is still to
-be matched against these lines.
+His second start (20:17) the same: the arm within 0.7 degrees throughout, the
+right hand's roll -72, -68, -48, 23, 62, -35, -90, -14, 31 over the first
+2.1 s. What the tester saw and for how long, with the hands held still, is
+still to be matched against these lines.
 
 ### The view measured: Debug.BodyView
 

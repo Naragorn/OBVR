@@ -679,3 +679,33 @@ the details. What was measured and what differs from the design:
   the point short of them.
 - **Open**: the torch and the staff as shapes (they pass through); the
   headset's judgement.
+
+## 16. Open (the tester, 2026-10-14 evening): collisions he misses
+
+After the evening's play, noted for later ("nichts coden!"), each against
+what the code claims:
+
+- **"kollisionen mit gegnern fehlen beim schlagen."** Section 10 built the
+  living as capsules the blade meets, with the hit-stop (`WeaponStopsAtBodies`,
+  default on; a swing passes through, a slow blade rests on them). What the
+  tester misses when he strikes is not read yet: whether the hit-stop is too
+  short to feel (`kHitStopFrames`), whether a fast swing passing through is
+  what he means by "no collision", or whether the capsules miss the body
+  parts he hits. His sessions' logs carry "Hands: struck" lines for every
+  blow that landed and no contact lines to compare against; to be looked at
+  with him in the headset, with the blade's step's trace on.
+- **"kollisionen mit linker hand fehlt."** Section 14 built the free hand
+  against walls and people (`HandsStopAtWalls`, `HandsStopAtBodies`, a hand
+  held there slowly rests on a person, a fast hand goes through). The left
+  hand striking goes through by design; what he expects of it - the
+  punch's stop, the slap's - is the same question as the left fist that does
+  not hit (physical-combat-spec section 8, open bug).
+- **"kollision mit eigenem körper fehlt."** Nothing of OBVR's own stops the
+  hands or the blade at the player's own body: the IK body's capsules
+  (BodyIk's bones, player-body-spec) are not among the stoppers of section
+  15, and the Havok world has the player's character controller only as a
+  capsule the hands' layer no longer collides with (section 9, layer 23).
+  A proposal: the own body's trunk and legs as capsules on its bones, as the
+  foes' are, as stoppers for the free hand and the blade - held, never
+  passed - so a hand cannot be put into one's own chest. Unmeasured.
+

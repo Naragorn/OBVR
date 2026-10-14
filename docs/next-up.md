@@ -59,7 +59,21 @@ engine's own yes, the rule judges the guard the frame left
   the level guard read 56 (through), 61, 88, 83 and 61 degrees between the
   blades; at the upright guard 64 to 67 (blocked) - the engine's cone said
   "3 to 10 degrees off the view, blocked" for each. The shield is unit-tested
-  only (no shield in the harness save); headset open for both.
+  only (no shield in the harness save).
+- **Headset (the tester, 2026-10-14 evening): "blocken auch [geht] aber die
+  höhe der kreuzenden waffen scheinen egal zu sein. notiere dir das noch
+  anpassen wie es erwartet wäre."** His two sessions: 9 blows at the weapon
+  guard, 27 and 42 degrees through, 70 to 84 blocked. **Open bug:** the rule
+  reads the angle between the two blade *lines* only - where the attacker's
+  blade passes, above or below or beside the player's, does not enter, so a
+  blade held high "crosses" a cut at the belly. Expected: the blades have to
+  meet - the attacker's blade near the player's at the blow (the
+  segment-to-segment distance, as the parry's `BladesMeet` reads it over a
+  frame, here at the hit's moment, within a reach to be measured first: the
+  "Block angle" line would carry the distance, the harness `block-angle.txt`
+  a third phase with the guard held over the head); for the shield the blade
+  within the disc's radius plus that reach. A setting (`BlockReachUnits`).
+  Not built (the tester: "nichts coden!").
 
 ## 2. Directional power attacks
 
@@ -142,7 +156,9 @@ by motion is charged once as it ends, hit or miss, through the same two
 engine functions (`game::SwingFatigueFor`, melee_hit_test;
 `game::ChargeSwingFatigue`): the weapon hand with its weapon's weight, the
 other hand as a fist. Always on: the setting it had first was removed the
-same day (the tester: "muss immer an sein"). Harness `swing-fatigue.txt` PASS: a longsword
+same day (the tester: "muss immer an sein"). Headset 2026-10-14 evening: "ausdauer
+beim angriff geht wie erwartet" (38 swings charged over his two sessions, 9.4 a light swing with a
+weight-24 weapon). Harness `swing-fatigue.txt` PASS: a longsword
 (weight 20) costs 9 a light swing and 45 a power swing, so the game's live
 base is 7 and the penalty 5 - the executable's own default base is 8, the
 7 presumably comes from Oblivion.esm (not read). Moving the hand fast with
