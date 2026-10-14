@@ -80,6 +80,12 @@ struct TrackedDevicePose {
 // masks take their natural eight-byte alignment: 4 bytes of packet number,
 // 4 of padding, 16 of masks, five axes of 8 - 64 bytes, and that size is
 // what GetControllerState is told.
+//
+// The eight is spelled out because it is Windows' rule, not every host's: a
+// 32-bit Linux build of the tests (i386 System V) aligns a 64-bit integer to
+// four, which would shrink the struct to 60 and fail the check below. The
+// layout OBVR has to match is the runtime's on Windows, so it is pinned here
+// rather than left to whichever ABI compiles the file.
 struct VRControllerAxis {
 	float x;
 	float y;
@@ -87,8 +93,8 @@ struct VRControllerAxis {
 
 struct VRControllerState {
 	UInt32 packetNumber;
-	UInt64 buttonPressed;
-	UInt64 buttonTouched;
+	alignas(8) UInt64 buttonPressed;
+	alignas(8) UInt64 buttonTouched;
 	VRControllerAxis axis[5];
 };
 

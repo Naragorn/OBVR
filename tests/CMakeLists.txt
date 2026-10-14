@@ -4,14 +4,38 @@ cmake_minimum_required(VERSION 3.20)
 #
 # OBVR.dll is compiled for 32-bit Windows, while the tests run natively on the
 # development machine. Doing both in one CMake run would mean driving two
-# toolchains at once. The building blocks under test are pure byte generation
-# and do not depend on the target architecture.
+# toolchains at once.
 #
-#   cmake -B build-tests tests
+# Natively, but 32-bit: the tests check the layouts of the mirrored Windows,
+# Direct3D and OpenVR structures, and those hold for the pointer size the DLL
+# is built for. On Windows that is -A Win32 or a vcvars32 shell; on Linux it
+# is clang with -m32. GCC is out, because it does not know the __stdcall and
+# __cdecl keyword spelling the mirrored interfaces are declared with. The
+# tests that go through Win32 itself (file writing, module paths, virtual
+# memory) stay behind WIN32 so that the rest still runs on Linux; see
+# docs/linux.md.
+#
+#   cmake -B build-tests tests                                            (Windows, vcvars32)
+#   cmake -B build-tests tests -A Win32                                   (Windows, VS generator)
+#   cmake -B build-tests tests -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_FLAGS=-m32   (Linux)
 #   cmake --build build-tests
 #   ctest --test-dir build-tests --output-on-failure
 
 project(OBVRTests LANGUAGES CXX)
+
+if(NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
+	message(FATAL_ERROR
+		"The OBVR tests must be built 32-bit, found: ${CMAKE_SIZEOF_VOID_P}*8 bit.\n"
+		"MSVC:  cmake -B build-tests tests -A Win32 (or configure from a vcvars32 shell)\n"
+		"Linux: cmake -B build-tests tests -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_FLAGS=-m32")
+endif()
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+	message(FATAL_ERROR
+		"GCC cannot build the OBVR tests: the mirrored Windows interfaces are declared "
+		"with the __stdcall and __cdecl keywords, which GCC only knows as attributes.\n"
+		"Use clang: cmake -B build-tests tests -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_FLAGS=-m32")
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -320,20 +344,24 @@ endif()
 
 add_test(NAME eye_geometry COMMAND eye_geometry_test)
 
-add_executable(game_device_test
-	GameDeviceTest.cpp
-	../src/render/GameDevice.cpp
-	../src/core/Log.cpp
-	../src/platform/PluginPath.cpp
-)
+# Links Log and PluginPath, which write and look up files through Win32, so
+# Windows only.
+if(WIN32)
+	add_executable(game_device_test
+		GameDeviceTest.cpp
+		../src/render/GameDevice.cpp
+		../src/core/Log.cpp
+		../src/platform/PluginPath.cpp
+	)
 
-target_include_directories(game_device_test PRIVATE ../src)
+	target_include_directories(game_device_test PRIVATE ../src)
 
-if(NOT MSVC)
-	target_compile_options(game_device_test PRIVATE -Wall -Wextra)
+	if(NOT MSVC)
+		target_compile_options(game_device_test PRIVATE -Wall -Wextra)
+	endif()
+
+	add_test(NAME game_device COMMAND game_device_test)
 endif()
-
-add_test(NAME game_device COMMAND game_device_test)
 
 add_executable(dxvk_interop_test
 	DxvkInteropTest.cpp
@@ -398,20 +426,23 @@ add_test(NAME bone_rebase COMMAND bone_rebase_test)
 # The name table is pure. ActiveMenuId, in the same file, reads Oblivion's
 # memory through fixed addresses and stays untested - it links here and is
 # never called, which is the same arrangement the other game-side files have.
-add_executable(menu_type_test
-	MenuTypeTest.cpp
-	../src/game/MenuType.cpp
-	../src/core/Log.cpp
-	../src/platform/PluginPath.cpp
-)
+# Links Log and PluginPath as game_device_test does, so Windows only.
+if(WIN32)
+	add_executable(menu_type_test
+		MenuTypeTest.cpp
+		../src/game/MenuType.cpp
+		../src/core/Log.cpp
+		../src/platform/PluginPath.cpp
+	)
 
-target_include_directories(menu_type_test PRIVATE ../src)
+	target_include_directories(menu_type_test PRIVATE ../src)
 
-if(NOT MSVC)
-	target_compile_options(menu_type_test PRIVATE -Wall -Wextra)
+	if(NOT MSVC)
+		target_compile_options(menu_type_test PRIVATE -Wall -Wextra)
+	endif()
+
+	add_test(NAME menu_type COMMAND menu_type_test)
 endif()
-
-add_test(NAME menu_type COMMAND menu_type_test)
 
 add_executable(menu_shade_test
 	MenuShadeTest.cpp
@@ -471,18 +502,22 @@ if(WIN32)
 	add_test(NAME present_hook COMMAND present_hook_test)
 endif()
 
-add_executable(layout_probe_test
-	LayoutProbeTest.cpp
-	../src/render/LayoutProbe.cpp
-)
+# LayoutProbe writes its dump through CreateFileA and WriteFile, so Windows
+# only.
+if(WIN32)
+	add_executable(layout_probe_test
+		LayoutProbeTest.cpp
+		../src/render/LayoutProbe.cpp
+	)
 
-target_include_directories(layout_probe_test PRIVATE ../src)
+	target_include_directories(layout_probe_test PRIVATE ../src)
 
-if(NOT MSVC)
-	target_compile_options(layout_probe_test PRIVATE -Wall -Wextra)
+	if(NOT MSVC)
+		target_compile_options(layout_probe_test PRIVATE -Wall -Wextra)
+	endif()
+
+	add_test(NAME layout_probe COMMAND layout_probe_test)
 endif()
-
-add_test(NAME layout_probe COMMAND layout_probe_test)
 
 add_executable(game_camera_test
 	GameCameraTest.cpp
@@ -942,22 +977,26 @@ add_executable(vr_menu_input_test VRMenuInputTest.cpp)
 target_include_directories(vr_menu_input_test PRIVATE ../src)
 add_test(NAME vr_menu_input COMMAND vr_menu_input_test)
 
-add_executable(vr_menu_bridge_test VRMenuBridgeTest.cpp)
-	target_sources(vr_menu_bridge_test PRIVATE
-		../src/game/VRMenuBridge.cpp
-		../src/game/VRMenuIntentStub.cpp
-		../src/core/EntryDetour.cpp
-		../src/core/AroundCall.cpp
-		../src/core/CodeWriter.cpp
-		../src/core/Memory.cpp
-		../src/core/Log.cpp
-		../src/platform/PluginPath.cpp
-	)
-target_include_directories(vr_menu_bridge_test PRIVATE ../src)
-if(NOT MSVC)
-	target_compile_options(vr_menu_bridge_test PRIVATE -Wall -Wextra)
+# Compiles VRMenuBridge (GetAsyncKeyState, _ReturnAddress) and Memory
+# (VirtualProtect), so Windows only.
+if(WIN32)
+	add_executable(vr_menu_bridge_test VRMenuBridgeTest.cpp)
+		target_sources(vr_menu_bridge_test PRIVATE
+			../src/game/VRMenuBridge.cpp
+			../src/game/VRMenuIntentStub.cpp
+			../src/core/EntryDetour.cpp
+			../src/core/AroundCall.cpp
+			../src/core/CodeWriter.cpp
+			../src/core/Memory.cpp
+			../src/core/Log.cpp
+			../src/platform/PluginPath.cpp
+		)
+	target_include_directories(vr_menu_bridge_test PRIVATE ../src)
+	if(NOT MSVC)
+		target_compile_options(vr_menu_bridge_test PRIVATE -Wall -Wextra)
+	endif()
+	add_test(NAME vr_menu_bridge COMMAND vr_menu_bridge_test)
 endif()
-add_test(NAME vr_menu_bridge COMMAND vr_menu_bridge_test)
 
 add_executable(update_notice_test
 	UpdateNoticeTest.cpp
@@ -1084,15 +1123,19 @@ endif()
 
 add_test(NAME icon COMMAND icon_test)
 
-add_executable(quick_key_pages_test QuickKeyPagesTest.cpp)
+# QuickKeyPages.h carries the OBSE plugin interface, which is declared on
+# platform/Win32Min.h and with it <windows.h>, so Windows only.
+if(WIN32)
+	add_executable(quick_key_pages_test QuickKeyPagesTest.cpp)
 
-target_include_directories(quick_key_pages_test PRIVATE ../src)
+	target_include_directories(quick_key_pages_test PRIVATE ../src)
 
-if(NOT MSVC)
-	target_compile_options(quick_key_pages_test PRIVATE -Wall -Wextra)
+	if(NOT MSVC)
+		target_compile_options(quick_key_pages_test PRIVATE -Wall -Wextra)
+	endif()
+
+	add_test(NAME quick_key_pages COMMAND quick_key_pages_test)
 endif()
-
-add_test(NAME quick_key_pages COMMAND quick_key_pages_test)
 
 add_executable(arm_stump_test ArmStumpTest.cpp)
 

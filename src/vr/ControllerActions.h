@@ -13,9 +13,13 @@ namespace input {
 // These are the natural Windows layouts from openvr_capi.h's IVRInput_011
 // interface. The action API is loaded dynamically because OBVR must still
 // start when SteamVR is absent.
+//
+// The handle's eight-byte alignment is pinned for the same reason as in
+// OpenVRTypes.h's VRControllerState: a 32-bit Linux build of the tests would
+// align it to four, and the sizes checked below would come out 20 and 40.
 struct DigitalData {
 	bool active;
-	UInt64 origin;
+	alignas(8) UInt64 origin;
 	bool state;
 	bool changed;
 	float time;
@@ -23,7 +27,7 @@ struct DigitalData {
 
 struct AnalogData {
 	bool active;
-	UInt64 origin;
+	alignas(8) UInt64 origin;
 	float x;
 	float y;
 	float z;
