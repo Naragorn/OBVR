@@ -257,10 +257,6 @@ struct HandSettings {
 	// this many game units (see MeleeHit.h). Off, swings press the attack
 	// control and the engine's animation decides the hit.
 	bool motionHits = true;
-	// Each swing that may strike by motion costs fatigue as vanilla's attack
-	// does, power swings more (game::SwingFatigueFor). Without the strike by
-	// motion the engine charges its own attack.
-	bool swingFatigue = true;
 	float hitBoundFactor = 0.7f;
 	float hitPadUnits = 8.0f;
 

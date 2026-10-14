@@ -1,4 +1,4 @@
-# Swings cost fatigue as vanilla's attacks do ([Hands] SwingFatigue,
+# Swings cost fatigue as vanilla's attacks do (always on,
 # game::SwingFatigueFor, game::ChargeSwingFatigue): a longsword is drawn by
 # the holster and swung through the air twice - a light swing of 30 cm and a
 # power swing of 1.3 m, both at about 3.75 m/s - and each is charged once as
@@ -14,7 +14,6 @@
 ini Hands Enabled=1
 ini Hands Holsters=1
 ini Hands MotionHits=1
-ini Hands SwingFatigue=1
 console-at ready player.additem 00000C0C 1
 console-at ready player.equipitem 00000C0C
 

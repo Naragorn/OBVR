@@ -5433,7 +5433,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		float weight = 0.0f;
 		const bool weightKnown = weapon != nullptr && game::WeaponWeightOf(weapon, &weight);
 		const game::SwingFatigue charge = game::SwingFatigueFor(
-			config.hands.swingFatigue, weaponHand ? g_hand.strikeByMotion : g_hand.leftStrikeByMotion, true,
+			weaponHand ? g_hand.strikeByMotion : g_hand.leftStrikeByMotion, true,
 			verdict == vr::SwingVerdict::Heavy, active && !menuIsUp, weapon == nullptr, weightKnown, weight);
 		if (!charge.due) {
 			continue;

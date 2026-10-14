@@ -999,13 +999,6 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.motionHits = v != 0.0f; },
 	},
 	{
-		"Hands: melee", "Swings cost fatigue", "Each swing costs fatigue as an attack does in the game, a power swing more",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Hands", "SwingFatigue",
-		+[](const Config& c) { return c.hands.swingFatigue ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.hands.swingFatigue = v != 0.0f; },
-	},
-	{
 		"Hands: melee", "Swing speed", "How fast the hand must move (m/s) for a swing: only then it strikes and swishes",
 		ItemKind::Number, 0.5f, 5.0f, 0.1f, 1, false,
 		"Hands", "SwingLight",

@@ -208,17 +208,18 @@ inline bool SwishDue(bool strikeByMotion, bool swingActive, UInt32 serial, UInt3
 // verdict (a twitch has none) - struck or not, as vanilla charges a miss:
 // the weapon hand with its weapon's weight, a fist with none. Without the
 // strike by motion the swing presses the attack control and the engine
-// charges it itself.
+// charges it itself. Always on, no setting (the tester, 2026-10-14: "muss
+// immer an sein").
 struct SwingFatigue {
 	bool due = false;
 	bool power = false;
 	float weight = 0.0f;
 };
 
-inline SwingFatigue SwingFatigueFor(bool enabled, bool strikeByMotion, bool swingEnded, bool heavy, bool inWorld,
-                                    bool fist, bool weightKnown, float weight) {
+inline SwingFatigue SwingFatigueFor(bool strikeByMotion, bool swingEnded, bool heavy, bool inWorld, bool fist,
+                                    bool weightKnown, float weight) {
 	SwingFatigue out;
-	out.due = enabled && strikeByMotion && swingEnded && inWorld;
+	out.due = strikeByMotion && swingEnded && inWorld;
 	out.power = heavy;
 	out.weight = !fist && weightKnown && weight > 0.0f && weight < 1.0e6f ? weight : 0.0f;
 	return out;

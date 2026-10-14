@@ -112,8 +112,8 @@ reached that update, so nothing was charged. Now every swing that may strike
 by motion is charged once as it ends, hit or miss, through the same two
 engine functions (`game::SwingFatigueFor`, melee_hit_test;
 `game::ChargeSwingFatigue`): the weapon hand with its weapon's weight, the
-other hand as a fist. `[Hands] SwingFatigue` (default on, settings menu
-"Swings cost fatigue"). Harness `swing-fatigue.txt` PASS: a longsword
+other hand as a fist. Always on: the setting it had first was removed the
+same day (the tester: "muss immer an sein"). Harness `swing-fatigue.txt` PASS: a longsword
 (weight 20) costs 9 a light swing and 45 a power swing, so the game's live
 base is 7 and the penalty 5 - the executable's own default base is 8, the
 7 presumably comes from Oblivion.esm (not read). Moving the hand fast with
