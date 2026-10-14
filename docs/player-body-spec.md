@@ -410,6 +410,16 @@ taken up, `StepStartTrace`, body_ik_test): the hand's roll on its forearm,
 the forearm's and the twist bone's, and how far the first-person arm sits
 off - a start of the tester's shows what changes in those seconds.
 
+The tester's first start with the trace (2026-10-14, 20:13): the first-person
+arm lay on the body's within 0.00 units and 1.3 degrees at every step; the
+rolls on the forearms swung with the controllers - the right hand 49, 12, 36,
+0, 64, -4, -96, -15, 46, 40 degrees over the first 3.3 s and 55 to 5 over the
+rest, the left -11 to -92 and back - large jumps within a quarter second, as
+of controllers just picked up. Nothing in the numbers names a shrink; the roll
+spread (ForearmRollsFor) narrows the wrist's ring only towards a half turn.
+What the tester saw and for how long, with the hands held still, is still to
+be matched against these lines.
+
 ### The view measured: Debug.BodyView
 
 The tester asked whether the harness measures the view down the body, not
