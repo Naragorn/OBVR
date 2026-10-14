@@ -83,10 +83,19 @@ engine's own yes, the rule judges the guard the frame left
   (`block-angle.txt`, the level guard at chest height, CombatReach 85)
   logged the attacker's blade 16 to 37 units from the player's at nine blows
   ("Parry: a blow at the player ... from ours"), so 40 keeps every one of
-  those and refuses a guard a hand's height above the blow. Not measured
-  yet: the harness's third phase (the guard held 55 cm over the eyes,
-  expected through by the distance) and the headset - the tester: "keine
-  harnesses oder game starten. machen wir wenn du das hast".
+  those and refuses a guard a hand's height above the blow.
+- **Measured the same night.** Harness `block-angle.txt` PASS (Windows,
+  2026-10-14 21:52, the three phases; degrees between the blades / units
+  apart): the level guard 83/27, 80/37, 58/14 (through by the angle), 89/5,
+  64/15; the upright guard 63/10, 64/19, 67/30, all blocked; the guard 55 cm
+  over the eyes 65/65, 88/84, 87/64, 79/86, 86/44, 62/66, 62/66 "THROUGH,
+  the blow passes the guard" and 46/77 by the angle - every blow at the high
+  guard through, as predicted. The tester's own session just before it
+  (21:39 to 21:49, the same build): "wirkt gut soweit" - 15 blows at the
+  weapon guard, 5 to 55 units apart, blocked at 66 to 90 degrees, through at
+  33 to 59; every through by the angle, so the reach took none of his
+  blocks away (the one blow 55 units off was through by its 49 degrees
+  anyway). The shield is not tested ("schild nicht getestet").
 
 ## 2. Directional power attacks
 

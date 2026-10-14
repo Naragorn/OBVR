@@ -322,7 +322,12 @@ analyses the profiler's capture in the run folder.
   9,320 presents, 82 dropped, 207 reprojected - 2.2 %; 20:17 to 20:36 38,105
   presents, 155 dropped, 390 reprojected - 1.0 %; against 47 % on the first run
   of the day. The tester: "ruckel ist gefixed". The change reaches Windows as
-  well, where it is unmeasured.
+  well: the tester's Windows session of 2026-10-14, 21:39 to 21:49 (the log
+  says "the device gets 80000000 - the monitor window presents at once"),
+  52,783 presents, 0 dropped, 7,186 reprojected - 13.6 % at 90 Hz, against
+  the 17 % of 2026-10-13 above (the tester: "vsync geht wohl auch"). So the
+  monitor's vsync was a part of Windows' reprojection, not the whole of it;
+  what the rest is, is not measured (the profiler's `interop_lock` would say).
 - **OBVR's GPU timings** read 0 for every interval under Proton; not looked into.
 - Run B ended nine seconds after its last mark, through the pause menu and its quit
   message, the pattern `attack-frequency` showed in the sweep; what sent it, I could not
@@ -351,8 +356,9 @@ analyses the profiler's capture in the run folder.
 - The enemy bar crash: fixed and built with clang-cl on 2026-10-14
   (`docs/hud-on-hands-spec.md`). The tester's run that afternoon had bars over four
   fighters, the frames read and no crash; the bars' height lowered to 0.25 m since.
-- The stutter under Proton: fixed ("The stutter" above); the headset and a Windows
-  measurement are open. OBVR's GPU timings under Proton.
+- The stutter under Proton: fixed ("The stutter" above), the headset's word and the
+  Windows measurement (13.6 % against 17 %) in. Open: where Windows' remaining
+  13.6 % comes from. OBVR's GPU timings under Proton.
 - MoreHeap under Proton: start once with the override and look for `MoreHeap.log` and a
   `native` load line.
 - The Windows `Oblivion.ini` and the content mods for the Linux installation: the

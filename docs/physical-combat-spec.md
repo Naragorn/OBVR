@@ -522,10 +522,27 @@ setters, the parry's forced block:
   (`leftStrikeByMotion`, "Hands: a left-fist ... swing") and the off hand's
   strike above ("a fist is a punch") - his session's log has no left-fist
   line at all, which proves little: the swing lines share one budget with
-  the right hand's (`g_handSwingLinesLeft`), spent early. To find out first:
-  whether the left swing is detected at all with the fists up (a log line of
-  its own), then whether `StrikeByMotion` for hand 1 reaches a body. Not
-  built ("nichts coden!").
+  the right hand's (`g_handSwingLinesLeft`), spent early. Not built ("nichts
+  coden!"). **The cause with a weapon drawn, read in his Windows session of
+  2026-10-14 (21:39 to 21:49, the longsword in the right hand; the tester
+  again: "linke faust sollte auch wie ein slap wirken nur ohne slap sound
+  sondern mit schlag sound"):** "Shove: the left hand at 1.6 m/s towards
+  192D0E68 refused - the weapon or the fists are readied; the grip is held".
+  The off hand's strike refuses a held grip (`OffHandStrikeFor`,
+  `hand.gripHeld` - written so a grab is not also a punch), and a fist on the
+  Index squeezes the grip. The four "the left grip closed and held nobody -
+  ... the nearest 7.4 / 10.7 / 8.6 / 13.7 units off the hand (the torso)"
+  lines of the session are, by this, his punches: the grip closed, the grab
+  found nobody within its 6 units, and nothing else ran. The open hand did
+  land: "the left hand at 1.5 m/s towards 192D0E68 - light (the off hand, a
+  weapon drawn)" twice. With the fists readied (the weapons away) one "a
+  left power swing, 5.3 m/s at its fastest, 1.90 m long" is in the log and
+  no strike line for it - that budget is still shared with the right hand's.
+  Proposal: a grip closed on nobody within reach falls through to the strike
+  when the hand is at the shove's speed towards someone - the punch with the
+  hand-to-hand hit sound (as this section's fist already means), hard from
+  ShoveHardSpeed as the slap's knockdown is; and the left swing's lines on a
+  budget of their own. Not built.
 
 ### The grab and the throw as a ragdoll (the tester, 2026-10-12; built 2026-10-13, harness PASS, headset open)
 
@@ -682,6 +699,34 @@ thrown body flies or slides, and how long a hold should last
 engine from standing them up before it). The AI while held (its combat
 state) is the engine's knockdown's own and was not read. The ragdoll hold
 on creatures: their parts are the bound's column, so the standing hold.
+
+**Open bug (the tester, 2026-10-14 night): "grab mit linker hand sollte
+grabben und werfen lassen. bisher sinken die nur in sich zusammen."** His
+Windows session of 21:39 to 21:49 (Strength 25, GrabWeight 1 - "a budget of
+5518, which lifts 75" of the ragdoll's 530): five ragdoll holds of one
+bandit, four by the torso and one by the left arm, each knocked down into
+the ragdoll as designed. Then the held body fell behind the hand - 21 units
+at 0.2 s, 39 at 0.4, 40 at 0.6, every velocity change cut to the budget
+("18 of 18", "38 of 38", "56 of 56") - and four of the five holds ended
+"lost - the hand too far from them" after 0.3 to 0.6 s (`kGrappleLoseUnits`
+40); the fifth was "thrown" with the hand at 2.0 m/s, the part sent off at
+3.1 m/s. So what he sees is the knockdown and a body that cannot follow the
+hand and is dropped within half a second: no drag, no throw. Four more grips
+closed 7.4 to 13.7 units from the torso's capsule held nobody
+(`kGrappleReachUnits` 6). And the loss line's "the hand at 0.0 m/s" is no
+measurement: the ragdoll hold's loss sets no speed (GrappleLogic.h, the
+`Lost` branch; only the standing hold's release reads the hand across the
+ground), so a hand pulling away fast loses them where it should throw them.
+Ways on, not decided, nothing built:
+- A. No loss while the ragdoll is held: the body hangs at the budget's end
+  and is dragged, as B&S drags a heavy body, and only the grip opening ends
+  the hold - a fast hand then throws, a slow one drops.
+- B. The loss as a let-go at the hand's speed over the last 0.1 s, so a hand
+  that outruns the body throws it.
+- C. A stronger pull: GrabWeight under 1 by default, or
+  `kGrabLiftMassAtHundred` above 300, so a Strength-25 hand drags the torso
+  instead of losing it.
+- D. The take's reach widened from 6 units (his four misses at 7 to 14).
 
 Controls-spec 4.34 has the controls and the log lines.
 

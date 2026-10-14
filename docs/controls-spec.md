@@ -1118,6 +1118,34 @@ The tester's asks of 2026-10-07, all in one round:
     front 1.00/1.00", the fists raised, block, "activate goes down ... the
     player's action 6, the crosshair on" the bandit; fast swings: "the right
     hand swinging, the left hand swinging"; the sword drawn: the yield again.
+  **Open bug (the tester, 2026-10-14 night): "yield gingen gar nicht mit der
+  geste."** His session of 21:39 to 21:49 (Windows, the block reach build):
+  44 "the hands rocked, but no yield" lines and no yield. What stood in the
+  way, counted over the 44: the left palm not to the front 44 (its share
+  -0.80 to 0.27, never near the 0.5 asked), the right hand closed 37 (curl
+  1.00 - the longsword in that hand, the fingers round the grip), the right
+  palm not to the front 35, too fast 17, swinging 16, the left hand too low
+  12, the left hand closed 11, the right hand too low 9, no one in combat
+  ahead 8. The one line with every other gate open (in combat, the right
+  hand open at 0.44 and its palm 0.63 to the front, both hands 0.37 and
+  0.15 m under the eyes, nothing swinging) failed on the left palm alone, at
+  -0.12; where the right palm read 0.77 to 0.89 the left read -0.80, -0.48,
+  -0.32 and 0.26. Two things to settle, nothing built:
+  - *The left palm's side as read.* `vr::YieldPalmAhead` takes the
+    controller's x axis from the hand's rotation relative to the head
+    (`HandMode.cpp`, the same conjugate-and-convert for both hands), +x on
+    the left, as the hand HUD's `PalmNormal` does on the OpenVR pose - the
+    sides agree in the code, and the harness cannot tell them apart (its
+    left roll of -90 was chosen to satisfy the code, "palms to the front
+    1.00/1.00"). What a real left hand reads when he turns its palm to an
+    enemy is unmeasured: a debug trace of both palms' shares every half
+    second while both hands are up and open, done once on purpose, would
+    settle whether the side or his pose is the cause.
+  - *The weapon hand counts as closed.* The gesture allows a weapon in hand
+    but still wants that hand open, and a hand holding a sword keeps its
+    fingers round the grip (1.00 in 37 of 44). The HUD's look already treats
+    the weapon hand as open (`MeleeInHand`, above); the yield should do the
+    same, or leave the weapon hand's curl out of the gate.
 - **The trigger never attacks with a melee weapon or the fists in hand**
   (the tester: "powerattacks mit trigger verbieten nun für alle waffen und
   ohne waffen"): `HandFrameInput::meleeInHand`, set whether or not the hits
