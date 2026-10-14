@@ -575,21 +575,22 @@ Result: `build/Release/OBVR.dll`.
 The static runtime is preset (`MultiThreaded`) so that no redistributable has to sit next
 to Oblivion.
 
-### Linux without the Windows SDK — verification build
+### Linux — clang-cl against Microsoft's headers and libraries
 
-Confirms that everything compiles and links cleanly into a 32-bit Windows DLL, without a
-Windows machine and without an SDK download. Possible because only `kernel32` and `msvcrt`
-are needed and the import libraries are generated from `.def` files with `llvm-dlltool`.
-
-Requires `clang`, `lld`, `llvm`, `cmake`, `ninja`.
+Since 2026-10-14 the real DLL builds on Linux: clang-cl and lld-link against Microsoft's C
+runtime, C++ standard library and Windows SDK, fetched by xwin into `~/tools/xwin`. The
+same ABI, runtime and build definition as the MSVC build; releases stay with MSVC (CI).
+Setup, flags and the comparison with the Windows build: `docs/linux.md` and the top of
+`cmake/toolchain-linux-clang-cl.cmake`.
 
 ```
-cmake -B build --toolchain cmake/toolchain-linux-nosdk.cmake -G Ninja
-cmake --build build
+cmake -S . -B build-linux-clangcl -G Ninja -DCMAKE_BUILD_TYPE=Release --toolchain cmake/toolchain-linux-clang-cl.cmake
+cmake --build build-linux-clangcl
 ```
 
-Builds without the C++ standard library and without exceptions. A verification
-environment, not a comfortable one.
+The older SDK-free verification build (`cmake/toolchain-linux-nosdk.cmake`, no C++
+standard library) has not built since the DLL took `<atomic>`, `<vector>` and `<string>`
+on board in September 2026.
 
 ### Tests (native, on any platform)
 

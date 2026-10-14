@@ -1,5 +1,9 @@
 # Verification build on Linux, without the Windows SDK and without MSVC.
 #
+# DOES NOT BUILD since the DLL took the C++ standard library on board
+# (<atomic>, <vector>, <string>; September 2026). The Linux build is
+# cmake/toolchain-linux-clang-cl.cmake (docs/linux.md).
+#
 # Purpose: confirm that OBVR compiles and links cleanly into a 32-bit Windows
 # DLL, without needing a Windows machine or a multi-gigabyte SDK download.
 # That is possible because OBVR needs nothing beyond kernel32 and msvcrt, and

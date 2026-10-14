@@ -79,66 +79,110 @@ The 14 tests that run only on Windows: `config`, `crosshair_cache`,
 `menu_type`, `openvr_backend`, `plugin_path`, `present_hook`, `quick_key_pages`,
 `ui_screen_size`, `vr_menu_bridge`. CI runs all 139 on Windows.
 
-### The DLL: the SDK-free cross build no longer builds
+### The DLL: clang-cl against Microsoft's headers and libraries (since 2026-10-14)
 
-`cmake/toolchain-linux-nosdk.cmake` compiles OBVR with clang for
-`i686-pc-windows-msvc` without the Windows SDK, without the C runtime headers and
-without a C++ standard library (`-nostdinc++`), on the premise, true in August 2026,
-that OBVR needs nothing beyond kernel32 and msvcrt. The code has since taken the
-standard library on board: `<atomic>`, `<new>` and `<cstdint>` arrived with `3b883d9`
-(2026-09-23), `<vector>` and `<string>` with `008e70a` (2026-09-27), `<limits>` with
-`fb3ef31` (2026-10-01), and `<cstddef>`, `<cstdio>`, `<cstring>` and `<cmath>` are
-included directly in dozens of files rather than through the `OBVR_NO_WINSDK` switch
-that `core/MathFns.h` shows. On 2026-10-14 the toolchain configured and generated the
-import libraries, and then 106 of the 145 translation units failed on a missing header
-(67 `<cstddef>`, 12 `<cstdio>`, 12 `<atomic>`, 5 `<cmath>`, 3 `<cstring>`, 2
-`<vector>`, 2 `<new>`, 1 `<cstdlib>`).
+`cmake/toolchain-linux-clang-cl.cmake` builds the real `OBVR.dll` on Linux: clang-cl and
+lld-link against Microsoft's C runtime, C++ standard library and Windows SDK, which
+[xwin](https://github.com/Jake-Shadle/xwin) (0.10.0, from `cargo install xwin --locked`)
+fetches from Microsoft and lays out as a winsysroot under `~/tools/xwin`: the C runtime
+of Visual Studio 17.14 (14.44, the toolset the Windows build links with; its `OBVR.dll`
+names linker 14.44) and the Windows SDK 10.0.26100, for x86 only. The tester accepted
+Microsoft's licence for them on 2026-10-14; the files are not redistributable and stay
+out of the repository. Setup and build, also at the top of the toolchain file:
 
-There is no minimal fix: a freestanding build has no `std::atomic`, `std::vector` or
-`std::string`, and taking them back out of the DLL would be feature work for the sake of
-a verification build. The ways forward, none taken yet:
+```
+xwin --accept-license --arch x86 --cache-dir ~/tools/xwin-cache splat --use-winsysroot-style --preserve-ms-arch-notation --output ~/tools/xwin
+cmake -S . -B build-linux-clangcl -G Ninja -DCMAKE_BUILD_TYPE=Release --toolchain cmake/toolchain-linux-clang-cl.cmake
+cmake --build build-linux-clangcl
+```
 
-1. **clang-cl with the MSVC headers and libraries**, fetched by
-   [xwin](https://github.com/Jake-Shadle/xwin) (Apache-2.0/MIT; it downloads the
-   Microsoft CRT and Windows SDK and asks the user to accept Microsoft's licence). The
-   same ABI and runtime as the Windows build, so the result would be the real DLL rather
-   than a verification artefact; no root needed; a download in the hundreds of
-   megabytes.
-2. **MinGW-w64** (`clang --target=i686-w64-mingw32` or the mingw GCC). A different C and
-   C++ runtime linked statically, the `_MSC_VER` branches (`core/AtomicFlag.h`,
-   `game/HandAdjust.cpp`, `game/VRMenuBridge.cpp`, `game/VRMenuIntentStub.cpp`) taking
-   their so far untested `#else` side, `<intrin.h>` from mingw rather than MSVC; root
-   for the packages.
-3. **Drop the cross build** and take the DLL from Windows or from CI
-   (`.github/workflows/build.yml` keeps `build/Release/OBVR.dll` for every push).
+What the toolchain sets, and why:
 
-Until one is chosen, the DLL that runs under Proton is the one Windows built. On
-2026-10-14 that was `build/OBVR.dll` of 1,339,392 bytes, byte-identical in size to the
-one deployed in the Windows game folder.
+- Nothing for the build definition itself: CMake sets `MSVC` for a compiler that takes
+  cl's command line, so the MSVC branch of `CMakeLists.txt` applies as on Windows
+  (`/W4 /permissive-`, the static runtime, the linker map), and `OBVR_NO_WINSDK` stays
+  off, so the code takes the same branches as the Windows build.
+- `-fms-compatibility-version=19.44`: without a cl.exe to ask, clang-cl announces 19.33.
+- `CMAKE_TRY_COMPILE_CONFIGURATION Release`: xwin leaves Microsoft's debug runtime out,
+  and CMake's compiler check failed on `msvcrtd.lib` until it built in Release.
+- `/manifest:no`: CMake would otherwise run mt over the DLL. The Windows build carries
+  link.exe's default manifest (trustInfo at asInvoker, no dependencies); this build
+  carries none.
 
-## The game under Proton (gate 2): not started
+The first build, 2026-10-14: 153 steps in about four seconds, no error, 11 warnings -
+unused variables, functions and fields and one pointer cast MSVC allows, code MSVC's
+`/W4` does not flag; left as they are. Against the Windows build of the same sources:
+the same exports (`OBSEPlugin_Load`, `OBSEPlugin_Query`), the same imported DLLs
+(`KERNEL32`, `USER32`, `WINMM`, no runtime DLL), a TLS directory in both; 1,516,032
+bytes against 1,339,392, and no `.rsrc` (the manifest). The one MSVC inline-assembly
+function, `LeafCall` in `render/LeafFacingHook.cpp`, comes out as the instructions its
+source spells.
 
-State of the Linux installation on 2026-10-14, before anything was changed:
+Releases stay with MSVC: `.github/workflows/build.yml` builds the DLL on every push to
+`main` and keeps it as an artifact. Clang optimises differently, so the DLL tested here
+is not byte-identical with a release; before a release the CI artifact gets one run in
+the headset.
 
-- Oblivion 1.2.0.416 from Steam; xOBSE 22.13 installed on 2026-08-25 with the loader
-  swap from `HANDOFF.md` section 8 (`OblivionLauncher.exe` is `obse_loader.exe`, the
-  original kept as `OblivionLauncher.exe.vanilla`).
-- `Data/OBSE/Plugins` holds one `OBVR.dll` of 17 KB from 2026-08-25 and nothing else; an
-  `OBVR.ini` of the same age sits in the game folder, where the plugin stopped looking
-  for it long ago. No `d3d9.dll`, which is right: Proton brings its own DXVK.
-- The saves in the prefix (`compatdata/22330/pfx/drive_c/users/steamuser/Documents/My
-  Games/Oblivion/Saves`) include `OBVRHarness.ess`, the save the harness loads, but not
-  the `.obse` co-save that lies beside it on Windows.
+The older `cmake/toolchain-linux-nosdk.cmake` builds without a C++ standard library and
+has not built since the DLL took `<atomic>`, `<vector>` and `<string>` on board
+(2026-09-23 and 2026-09-27): on 2026-10-14, 106 of 145 translation units failed on a
+missing header. The route above replaces it.
 
-To do, in this order: copy the current `OBVR.dll`, the live `OBVR.ini` from the Windows
-game folder (not the repository's), `OBVR_Input`, `OBVR_Sounds` and the x86
-`openvr_api.dll` into `Data/OBSE/Plugins`; bring the `.obse` co-saves; start through
-Steam with SteamVR running; read `OBVR.log` for the `Render: back buffer image=` line
-and the OpenVR initialisation lines. The question nobody has tested: OBVR hands DXVK's
-Vulkan images to the compositor (`src/render/DxvkInterop.h`); under Proton, Valve's own
-DXVK and `openvr_api_dxvk.dll` sit in between, and Proton's `vrclient` for 32-bit
-processes is what carries OpenVR there. If no picture reaches the headset, read Proton's
-`vrclient` and DXVK sources before changing anything.
+## The game under Proton (gate 2): runs, first run 2026-10-14
+
+Gate 1 came first: on 2026-10-14 the tester confirmed that SteamVR runs games on the
+Bigscreen Beyond. The compositor drives it at 75 Hz with 3562x3562 recommended per eye
+(the Windows side: 90 Hz, 4030x3383).
+
+What the Linux installation got on 2026-10-14, every copy checked by SHA-256 against its
+source:
+
+- `Data/OBSE/Plugins`: `OBVR.dll` from `build/` (the Windows build of 09:08), the live
+  `OBVR.ini` from the Windows game folder (not the repository's), `OBVR_Input`,
+  `OBVR_Sounds`, `openvr_api.dll` with its licence, and every other OBSE plugin of the
+  Windows installation with its INI files, MenuQue's subfolder included. Left behind:
+  `shadeMe.dll.nah` (off on Windows too), logs, caches, the linker map and an INI
+  backup. Every INI is byte-identical to its Windows twin.
+- `Data/Menus`: OBVR's five XML files, which the Linux installation lacked.
+- The game folder: `dxvk.conf` and MoreHeap (`Version.dll`, `MoreHeap.ini` with 512 MB
+  for the game and the editor) from Windows. Still no `d3d9.dll`.
+- The prefix: the `.obse` co-save beside every save; Steam Cloud had carried only the
+  `.ess` files.
+- Not copied: the Windows `Oblivion.ini` (the prefix's differs in 98 lines, among them
+  `iMultiSample` 0 against 8 and HDR on against off) and the Windows installation's four
+  content mods.
+
+What Proton (`proton-cachyos-slr`, `cachyos-11.0-20261005-slr`, Wine 11.0) does, read
+from its `proton` script and from the run's logs:
+
+- It forces large-address awareness (`forcelgadd` is on unless switched off), so the
+  unpatched `Oblivion.exe` here gets what the patched header gives the Windows copy.
+- It loads Wine's own `version.dll` instead of MoreHeap's. Wine 11.0 takes a builtin over
+  a native DLL beside the executable unless the builtin is flagged to prefer native, and
+  Proton's `version.dll` is not; Wine's newer heuristic that prefers a native DLL by its
+  version resource came after 11.0. The run's `+loaddll` line names `VERSION.dll` in the
+  game folder and says `builtin`, and no `MoreHeap.log` was written. The documented way
+  is the launch option `WINEDLLOVERRIDES="version=n,b" %command%`; Steam's console log
+  shows the first run started without it, so it is untested.
+- Its DXVK (v3.1.1-47) found `dxvk.conf` ("Found config file: dxvk.conf") and uses
+  graphics pipeline libraries. It is not the gplasync build the Windows side runs.
+- Its 32-bit `vrclient` carries OpenVR: OBVR connected through `IVRSystem_026` and
+  `IVRCompositor_029`, took the back buffer's Vulkan image as on Windows (`Render: back
+  buffer image=... 3560x3560 format=44`), and SteamVR loaded the action manifest from the
+  path OBVR handed it, translated to `file:///home/nadi/.../OBVR_Input/actions.json`,
+  together with the Knuckles bindings.
+
+The first run, 13:00 to 13:03: a picture in the headset, and every feature the tester
+tried worked. Two findings:
+
+- Stutter. The compositor's summary of the session: 10,413 presents, 361 dropped and
+  4,932 reprojected, about 47 % at 75 Hz. The Windows session that ended on 2026-10-13 at
+  21:34: 40,825 presents, 3 dropped and 6,864 reprojected, about 17 % at 90 Hz. Not
+  investigated yet.
+- A crash when the session's first enemy health bar read its frames: the open bug of
+  2026-10-14 in `docs/hud-on-hands-spec.md`. A read through a value that only looks like
+  a pointer went unnoticed on Windows, where the address happened to be readable, and
+  faulted under Wine.
 
 ## The harness (gate 3): not started
 
@@ -172,9 +216,11 @@ SteamVR on Linux writes the compositor dumps to the same place is unverified.
 ## Open items
 
 - A Node LTS for REA's doctor, or live with the warning.
-- Decide the DLL build route (above).
-- Gate 1, the headset: SteamVR was running on this machine during the session of
-  2026-10-14 (`vrserver`, `vrcompositor`, `vrmonitor`); whether the headset shows a
-  picture was not checked from here. `HANDOFF.md` section 11 describes the 2026-08-25
-  state, in which starting SteamVR took the desktop down.
-- Gates 2 and 3 as above.
+- The enemy bar crash: fixed and built with clang-cl on 2026-10-14
+  (`docs/hud-on-hands-spec.md`); the run in the headset is open.
+- The stutter under Proton (gate 2 above).
+- MoreHeap under Proton: start once with the override and look for `MoreHeap.log` and a
+  `native` load line.
+- The Windows `Oblivion.ini` and the content mods for the Linux installation: the
+  tester's decision.
+- Gate 3 as above.

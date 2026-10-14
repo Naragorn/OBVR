@@ -8,7 +8,7 @@ if(NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
 	message(FATAL_ERROR
 		"OBVR must be built for x86 (32 bit), found: ${CMAKE_SIZEOF_VOID_P}*8 bit.\n"
 		"MSVC:  cmake -A Win32 ...\n"
-		"Linux: cmake --toolchain cmake/toolchain-linux-nosdk.cmake ...")
+		"Linux: cmake --toolchain cmake/toolchain-linux-clang-cl.cmake ...")
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
