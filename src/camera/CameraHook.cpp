@@ -10799,11 +10799,14 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 				guard.shieldValid = true;
 				guard.shieldCentre = d.centre;
 				guard.shieldNormal = d.normal;
+				guard.shieldRadius = d.radius;
+				guard.shieldHalfThick = d.halfThick;
 			}
 			game::BlockAngleSettings angle;
 			angle.enabled = GetConfig().hands.blockByAngle;
 			angle.bladeDegrees = GetConfig().hands.blockBladeDegrees;
 			angle.shieldDegrees = GetConfig().hands.blockShieldDegrees;
+			angle.reachUnits = GetConfig().hands.blockReachUnits;
 			game::SetBlockGuard(guard, angle);
 		}
 		pose.pitch = gazePitch;

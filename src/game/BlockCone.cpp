@@ -1,5 +1,7 @@
 #include "game/BlockCone.h"
 
+#include <cstdio>
+
 #include "camera/FrameLogic.h"
 #include "core/AroundCall.h"
 #include "core/Log.h"
@@ -41,7 +43,14 @@ bool AngleKeepsBlock(void* attacker) {
 	const BlockAngleVerdict v = BlockAngleFor(g_angle, g_guard, blow);
 	if (g_angleLinesLeft > 0) {
 		--g_angleLinesLeft;
-		OBVR_LOG("Block angle: a blow from %08X at the %s - %s%s, %.0f degrees (%s %.0f) - %s",
+		const float reach = BlockReachUnits(g_angle.reachUnits, BlockAngleSettings{}.reachUnits);
+		char reachText[32];
+		if (reach > 0.0f) {
+			std::snprintf(reachText, sizeof(reachText), "at most %.0f", static_cast<double>(reach));
+		} else {
+			std::snprintf(reachText, sizeof(reachText), "not asked");
+		}
+		OBVR_LOG("Block angle: a blow from %08X at the %s - %s%s, %.0f degrees (%s %.0f), %.0f units off (%s) - %s",
 		         reinterpret_cast<UInt32>(attacker), BlockWithName(g_guard.with), v.why,
 		         placed ? (blow.bladeValid ? ", their blade read" : ", no blade on them") : ", not an actor",
 		         static_cast<double>(v.degrees),
@@ -49,9 +58,11 @@ bool AngleKeepsBlock(void* attacker) {
 		         static_cast<double>(g_guard.with == BlockWith::Shield
 		                                 ? BlockSlackDegrees(g_angle.shieldDegrees, BlockAngleSettings{}.shieldDegrees)
 		                                 : 90.0f - BlockSlackDegrees(g_angle.bladeDegrees, BlockAngleSettings{}.bladeDegrees)),
+		         static_cast<double>(v.units), reachText,
 		         v.verdict == BlockAngle::Blocked ? "blocked"
-		         : v.verdict == BlockAngle::Through ? "THROUGH, the guard stands wrong"
-		                                            : "left to the game");
+		         : v.verdict == BlockAngle::Through
+		             ? (v.across ? "THROUGH, the blow passes the guard" : "THROUGH, the guard stands wrong")
+		             : "left to the game");
 	}
 	return v.verdict != BlockAngle::Through;
 }

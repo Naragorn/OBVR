@@ -1057,6 +1057,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.blockShieldDegrees = v; },
 	},
 	{
+		"Hands: melee", "Block: reach (units)",
+		"How near their blade has to pass your blade or shield at the blow to be blocked (70 a metre); 0 asks no distance",
+		ItemKind::Number, 0.0f, 150.0f, 5.0f, 0, false,
+		"Hands", "BlockReachUnits",
+		+[](const Config& c) { return c.hands.blockReachUnits; },
+		+[](Config& c, float v) { c.hands.blockReachUnits = v; },
+	},
+	{
 		"Hands: melee", "Two hands on two-handers", "Close the left grip on the handle to hold it with both hands",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "TwoHandGrip",

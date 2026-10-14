@@ -1,13 +1,18 @@
-# The block's angle ([Hands] BlockByAngle, game/BlockAngleLogic.h, the veto
-# in game/BlockCone): a melee bandit (00069AD1) attacks an untouchable player
-# (tgm - the hit handler still runs), the head facing it (head face 1), a
-# longsword drawn by the holster and raised as a guard - first level across
-# the body, then upright - each held half a minute. Every blow the engine
-# would block is judged at the blow: "Block angle: a blow from ... at the
-# weapon - the blades, N degrees (at least 60) - blocked / THROUGH"; the
-# state lines at the marks show the player blocking (the guard holds with
-# the blade either way, since the rule decides at the blow). Which verdicts
-# come depends on the bandit's swings; the run shows the angles read.
+# The block's angle and reach ([Hands] BlockByAngle, BlockReachUnits;
+# game/BlockAngleLogic.h, the veto in game/BlockCone): a melee bandit
+# (00069AD1) attacks an untouchable player (tgm - the hit handler still
+# runs), the head facing it (head face 1), a longsword drawn by the holster
+# and raised as a guard - first level across the body, then upright, then
+# level again but held high over the head - each held half a minute. Every
+# blow the engine would block is judged at the blow: "Block angle: a blow
+# from ... at the weapon - the blades, N degrees (at least 60), M units off
+# (at most 40) - blocked / THROUGH, the guard stands wrong / THROUGH, the
+# blow passes the guard"; the state lines at the marks show the player
+# blocking (the guard holds with the blade either way, since the rule
+# decides at the blow). Which verdicts come depends on the bandit's swings;
+# the run shows the angles and distances read. At the level guard the
+# blades passed 16 to 37 units apart (2026-10-14); the high guard is
+# expected to let blows through by the distance.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/block-angle.txt
 #      or:  tools\hand-script-run.ps1 -Script tools\hand-scripts\block-angle.txt
 
@@ -17,6 +22,7 @@ ini Hands WeaponStopsAtBodies=1
 ini Hands CombatReach=85
 ini Hands BlockByAngle=1
 ini Hands BlockBladeDegrees=30
+ini Hands BlockReachUnits=40
 console-at ready player.placeatme 00069AD1 1
 console-at ready player.additem 00000C0C 1
 console-at ready player.equipitem 00000C0C
@@ -27,6 +33,8 @@ expect Hands: ready weapon done
 expect Block: the block cone rerouted
 expect Block angle: a blow from
 expect at the weapon - the blades
+expect units off (at most 40)
+expect THROUGH, the blow passes the guard
 expect blocking 1, block key 1
 reject not an actor
 reject HandScript: WARNING
@@ -56,4 +64,10 @@ wait 3
 mark guard_upright
 wait 25
 mark upright_done
+right pos 0.10 0.55 -0.40
+right rot 0 90 0
+wait 3
+mark guard_high
+wait 25
+mark high_done
 wait 1

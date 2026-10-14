@@ -63,17 +63,30 @@ engine's own yes, the rule judges the guard the frame left
 - **Headset (the tester, 2026-10-14 evening): "blocken auch [geht] aber die
   höhe der kreuzenden waffen scheinen egal zu sein. notiere dir das noch
   anpassen wie es erwartet wäre."** His two sessions: 9 blows at the weapon
-  guard, 27 and 42 degrees through, 70 to 84 blocked. **Open bug:** the rule
-  reads the angle between the two blade *lines* only - where the attacker's
-  blade passes, above or below or beside the player's, does not enter, so a
-  blade held high "crosses" a cut at the belly. Expected: the blades have to
-  meet - the attacker's blade near the player's at the blow (the
-  segment-to-segment distance, as the parry's `BladesMeet` reads it over a
-  frame, here at the hit's moment, within a reach to be measured first: the
-  "Block angle" line would carry the distance, the harness `block-angle.txt`
-  a third phase with the guard held over the head); for the shield the blade
-  within the disc's radius plus that reach. A setting (`BlockReachUnits`).
-  Not built (the tester: "nichts coden!").
+  guard, 27 and 42 degrees through, 70 to 84 blocked. The rule read the
+  angle between the two blade *lines* only - where the attacker's blade
+  passed, above or below or beside the player's, did not enter, so a blade
+  held high "crossed" a cut at the belly.
+- **Built the same night (the tester: "die Höhe der kreuzenden Klingen ist
+  nicht mehr egal. same für: Distanz der Klingen am Schlag"): the blades
+  have to meet.** With the angle, the attacker's blade has to pass within
+  `[Hands] BlockReachUnits` (40, 0.57 m) of the player's at the blow - the
+  segment-to-segment distance, as the parry's `BladesMeet` reads it, here at
+  the hit's moment (`BlockAngleVerdict::units` and `met`, block_angle_test);
+  at the shield their blade's distance to the disc, its radius and thickness
+  counted (`SegmentDiscDistance`); without a blade on the attacker their
+  skeleton's bound, a ball, to the blade or the disc. 0 asks no distance.
+  The "Block angle" line carries the distance ("37 units off (at most 40)")
+  and names the part that failed ("THROUGH, the guard stands wrong" for the
+  angle, "THROUGH, the blow passes the guard" for the distance); a settings
+  row "Block: reach (units)". The 40: the harness run of 2026-10-14 20:11
+  (`block-angle.txt`, the level guard at chest height, CombatReach 85)
+  logged the attacker's blade 16 to 37 units from the player's at nine blows
+  ("Parry: a blow at the player ... from ours"), so 40 keeps every one of
+  those and refuses a guard a hand's height above the blow. Not measured
+  yet: the harness's third phase (the guard held 55 cm over the eyes,
+  expected through by the distance) and the headset - the tester: "keine
+  harnesses oder game starten. machen wir wenn du das hast".
 
 ## 2. Directional power attacks
 

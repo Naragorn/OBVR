@@ -99,7 +99,11 @@ against a weapon. A blocked blow is never fully stopped: at most `fBlockMax`
     (`[Hands] BlockByAngle`, `game/BlockAngleLogic.h`, docs/next-up.md 1):
     the weapon blocks a blade crossing it within 30 degrees of a right angle,
     the shield a blow its face is turned to within 70; the fists and the bow
-    as before.
+    as before. Since the same night the blades have to meet as well: their
+    blade within `BlockReachUnits` (40) of the player's blade or shield at
+    the blow, so a guard held high does not block a cut at the belly (the
+    tester, in the headset: the height of the crossing blades did not
+    matter).
   - The veto sits at that place: 0x006131D0 is one call with one boolean
     result (0x005FF83E), rerouted by `game/BlockCone` since the gaze cone,
     and the angle rule answers after the engine's own yes.

@@ -322,6 +322,7 @@ bool ReadBlockBlow(UInt32 attacker, BlockBlow& out) {
 	if (bound.radius > 0.0f && bound.radius < 4096.0f) {
 		out.centreValid = true;
 		out.centre = bound.center;
+		out.centreRadius = bound.radius;
 	}
 	const Kept& k = KeptFor(attacker, root);
 	out.bladeValid =

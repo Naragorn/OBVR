@@ -348,12 +348,16 @@ struct HandSettings {
 	float parryFatigue = 10.0f;
 	// The block's angle: a raised weapon blocks only a blade crossing it near
 	// a right angle (within blockBladeDegrees of it), a shield only a blow its
-	// face is turned to (within blockShieldDegrees); the weapon guard is then
-	// any raised blade not pointing ahead ([Hands] BlockByAngle,
-	// BlockBladeDegrees, BlockShieldDegrees; game/BlockAngleLogic.h).
+	// face is turned to (within blockShieldDegrees), and either only a blow
+	// that comes within blockReachUnits of it at the blow (0 asks no
+	// distance), so a guard held high does not block a cut at the belly; the
+	// weapon guard is then any raised blade not pointing ahead ([Hands]
+	// BlockByAngle, BlockBladeDegrees, BlockShieldDegrees, BlockReachUnits;
+	// game/BlockAngleLogic.h).
 	bool blockByAngle = true;
 	float blockBladeDegrees = 30.0f;
 	float blockShieldDegrees = 70.0f;
+	float blockReachUnits = 40.0f;
 	// How close fighters come before they strike, game units: the game setting
 	// fCombatDistance held at this while Full VR runs, so a blow is struck
 	// within reach of the player's blade ([Hands] CombatReach, 0 the game's own
