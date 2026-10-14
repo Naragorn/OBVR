@@ -87,8 +87,8 @@ void TestRules() {
 	Check(Near(at.z, 136.0f), "a scale of 0: taken as 1");
 	at = EnemyHealthBarPoint(false, head, feet, 50.0f, 14.0f);
 	Check(Near(at.z, 136.0f), "a scale of 50: taken as 1");
-	at = EnemyHealthBarPoint(true, head, feet, 1.0f, 22.4f);
-	Check(Near(at.z, 142.4f), "the default raise (0.32 m, 22.4 units): above the bone");
+	at = EnemyHealthBarPoint(true, head, feet, 1.0f, EnemyHealthSettings{}.aboveMetres * 70.0f);
+	Check(Near(at.z, 137.5f), "the default raise (0.25 m, 17.5 units): above the bone");
 	at = EnemyHealthBarPoint(true, head, feet, 1.0f, 0.0f);
 	Check(Near(at.z, 120.0f), "no raise: on the bone");
 	at = EnemyHealthBarPoint(true, head, feet, 1.0f, kNaN);
@@ -100,9 +100,9 @@ void TestRules() {
 	Check(Near(EnemyHealthAboveMetres(0.32f), 0.32f) && Near(EnemyHealthAboveMetres(0.05f), 0.05f) &&
 	          Near(EnemyHealthAboveMetres(1.0f), 1.0f),
 	      "the raise as set, 0.05 to 1 m");
-	Check(Near(EnemyHealthAboveMetres(0.01f), 0.32f) && Near(EnemyHealthAboveMetres(1.5f), 0.32f) &&
-	          Near(EnemyHealthAboveMetres(kNaN), 0.32f),
-	      "out of range or not a number: 0.32 m");
+	Check(Near(EnemyHealthAboveMetres(0.01f), 0.25f) && Near(EnemyHealthAboveMetres(1.5f), 0.25f) &&
+	          Near(EnemyHealthAboveMetres(kNaN), 0.25f),
+	      "out of range or not a number: the default, 0.25 m");
 	Check(!EnemyHealthRepaintDue(0.5f, 0.5f), "the same fraction: no repaint");
 	Check(!EnemyHealthRepaintDue(0.5f, 0.503f), "a hair's move: no repaint");
 	Check(EnemyHealthRepaintDue(0.5f, 0.49f), "a 128th's move: repaint");

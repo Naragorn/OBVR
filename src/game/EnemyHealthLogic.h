@@ -29,7 +29,7 @@ struct EnemyHealthSettings {
 	bool enabled = true;         // [HandHud] EnemyHealthBars
 	float rangeMetres = 25.0f;   // [HandHud] EnemyHealthMetres: farther than this, no bar
 	float widthMetres = 0.35f;   // [HandHud] EnemyHealthWidthMetres: the bar's width in the world, near
-	float aboveMetres = 0.32f;   // [HandHud] EnemyHealthAboveMetres: the bar's centre this far above the head bone
+	float aboveMetres = 0.25f;   // [HandHud] EnemyHealthAboveMetres: the bar's centre this far above the head bone
 };
 
 // How many bars at once; the nearest fighters get them.
@@ -47,8 +47,9 @@ inline constexpr float kEnemyHealthMinWidthPerMetre = 0.06f;
 inline constexpr float kEnemyHealthRepaintStep = 1.0f / 128.0f;
 
 // The settings as used: the range 1 to 100 m, else 25; the width 0.1 to 2 m,
-// else 0.35; the raise above the head bone 0.05 to 1 m, else 0.32 (the
-// tester, 2026-10-13: the bars 0.2 m above the bone "müssen bischen höher").
+// else 0.35; the raise above the head bone 0.05 to 1 m, else 0.25 (the
+// tester, 2026-10-13: the bars 0.2 m above the bone "müssen bischen höher";
+// 2026-10-14, at 0.32 m: "die npc healtbars müssen noch etwas runter").
 inline float EnemyHealthRangeMetres(float setting) {
 	return setting >= 1.0f && setting <= 100.0f ? setting : 25.0f;
 }
@@ -56,7 +57,7 @@ inline float EnemyHealthWidthMetres(float setting) {
 	return setting >= 0.1f && setting <= 2.0f ? setting : 0.35f;
 }
 inline float EnemyHealthAboveMetres(float setting) {
-	return setting >= 0.05f && setting <= 1.0f ? setting : 0.32f;
+	return setting >= 0.05f && setting <= 1.0f ? setting : 0.25f;
 }
 
 // The bar's width in the world at this distance: the set width, or wider so

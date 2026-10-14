@@ -316,13 +316,15 @@ the laser - a fight is not fought by pointing. Instead OBVR's own bars,
   game's own frame for it (the golden arc, below), and only without the
   game's frames OBVR's own bar - a dark bed, the quick menu's gold frame, a
   red fill as wide as the health.
-- **Where:** `EnemyHealthAboveMetres` (0.32, "Enemy health height (m)";
+- **Where:** `EnemyHealthAboveMetres` (0.25, "Enemy health height (m)";
   14 units, 0.2 m, until 2026-10-14 - the tester, 2026-10-13 evening:
-  "balken müssen bischen höher wie in vanilla") above the head bone ("Bip01
+  "balken müssen bischen höher wie in vanilla" - then 0.32 m until the
+  tester's next run the same day, in the headset under Linux: "die npc
+  healtbars müssen noch etwas runter") above the head bone ("Bip01
   Head", through the bones BladeBodies keeps, read on demand -
   `game::ActorBoneNode`), or above the feet by the head's height (122
   units) and the same raise without it, both times the skeleton's scale
-  (`EnemyHealthBarPoint`; the log line says it: "0.32 m above the head
+  (`EnemyHealthBarPoint`; the log line says it: "0.25 m above the head
   bone"); one CanvasOverlay a bar (the stow spot's kind), turned to the
   eyes and upright
   (`StowSpotPose`), the set width or wider so it keeps about 3.4 degrees far
@@ -417,7 +419,9 @@ lockable, a format OBVR does not decode) the bar is OBVR's own, said once.
   vanilla": the raise above the head bone is a setting since 2026-10-14,
   `EnemyHealthAboveMetres`, 0.32 m by default (0.2 m before - the bar's
   lower edge sat a hand's width over the skull); harness
-  `enemy-health.txt` rerun with it: see the harness table.
+  `enemy-health.txt` rerun with it: see the harness table. The same day,
+  after a fight under Linux: "die npc healtbars müssen noch etwas runter" -
+  0.25 m by default since; the headset run with it is open.
 
 Hand script `enemy-health.txt` (two bandits at an untouchable player, the
 state at marks, then `killall` for the linger): PASS 2026-10-13 on its first
