@@ -9,12 +9,18 @@
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
 #include "render/CreateDeviceGuard.h"
+#include "render/PresentInterval.h"
 
 namespace obvr::render {
 namespace {
 
 UInt32 g_wantedWidth = 0;
 UInt32 g_wantedHeight = 0;
+
+// SetMonitorPresent's: whether OBVR drives the headset, and whether
+// MonitorVsync keeps the game's own vsync on the monitor window.
+bool g_drivesHeadset = false;
+bool g_keepMonitorVsync = false;
 
 d3d9::Direct3DCreate9Fn g_originalCreate9 = nullptr;
 d3d9::CreateDeviceFn g_originalCreateDevice = nullptr;
@@ -189,7 +195,14 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 		}
 	}
 
-	const bool anythingChanged = sizeChanged || parameters->windowed != asTheGameAskedFor.windowed;
+	// The monitor window's vsync, in the same parameters: while OBVR drives
+	// the headset the window presents at once, so the VR frame never waits
+	// for the monitor (PresentInterval.h, docs/linux.md "The stutter").
+	parameters->presentationInterval = MonitorPresentInterval(asTheGameAskedFor.presentationInterval,
+	                                                          g_drivesHeadset, g_keepMonitorVsync);
+
+	const bool anythingChanged = sizeChanged || parameters->windowed != asTheGameAskedFor.windowed ||
+	                             parameters->presentationInterval != asTheGameAskedFor.presentationInterval;
 
 	if (g_reportsLeft > 0) {
 		--g_reportsLeft;
@@ -198,6 +211,12 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 		         asTheGameAskedFor.windowed != 0 ? "windowed" : "fullscreen",
 		         parameters->backBufferWidth, parameters->backBufferHeight,
 		         parameters->windowed != 0 ? "windowed" : "fullscreen");
+		OBVR_LOG("Present interval: the game asked for %08X, the device gets %08X - %s",
+		         asTheGameAskedFor.presentationInterval, parameters->presentationInterval,
+		         MonitorPresentsAtOnce(g_drivesHeadset, g_keepMonitorVsync)
+		             ? "the monitor window presents at once, so the headset's frame never waits for the monitor"
+		         : g_drivesHeadset ? "MonitorVsync=1 keeps the game's own vsync on the monitor window"
+		                           : "no headset to drive, so the game keeps its own");
 	}
 
 	// The D3D9Ex probe: with an IDirect3D9Ex factory in hand, the device is
@@ -270,10 +289,14 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 
 	if (g_fallbacksLeft > 0) {
 		--g_fallbacksLeft;
-		OBVR_LOG("Resolution: %ux%u was refused (0x%08X), so the game has its own %ux%u "
-		         "back and %s",
-		         g_wantedWidth, g_wantedHeight, static_cast<UInt32>(result),
-		         asTheGameAskedFor.backBufferWidth, asTheGameAskedFor.backBufferHeight,
+		OBVR_LOG("Resolution: OBVR's parameters (%ux%u, present interval %08X) were refused "
+		         "(0x%08X), so the game has its own %ux%u and interval %08X back and %s",
+		         g_wantedWidth != 0 ? g_wantedWidth : asTheGameAskedFor.backBufferWidth,
+		         g_wantedHeight != 0 ? g_wantedHeight : asTheGameAskedFor.backBufferHeight,
+		         MonitorPresentInterval(asTheGameAskedFor.presentationInterval, g_drivesHeadset,
+		                                g_keepMonitorVsync),
+		         static_cast<UInt32>(result), asTheGameAskedFor.backBufferWidth,
+		         asTheGameAskedFor.backBufferHeight, asTheGameAskedFor.presentationInterval,
 		         second >= 0 ? "started" : "could not make a device either way");
 	}
 
@@ -503,6 +526,11 @@ bool ReplaceCachedCreate9() {
 void SetWantedResolution(UInt32 width, UInt32 height) {
 	g_wantedWidth = width;
 	g_wantedHeight = height;
+}
+
+void SetMonitorPresent(bool drivesHeadset, bool keepMonitorVsync) {
+	g_drivesHeadset = drivesHeadset;
+	g_keepMonitorVsync = keepMonitorVsync;
 }
 
 bool InstallResolutionHook() {

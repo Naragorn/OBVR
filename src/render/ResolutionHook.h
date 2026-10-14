@@ -54,6 +54,13 @@ namespace obvr::render {
 // the device is made and that may be very soon afterwards.
 void SetWantedResolution(UInt32 width, UInt32 height);
 
+// And the monitor window's present interval, set in the same parameters:
+// whether OBVR drives the headset (holds the compositor) and whether
+// MonitorVsync keeps the game's own vsync. Driving it, the window presents
+// at once (render/PresentInterval.h). Called before the hooks go in, as the
+// size is.
+void SetMonitorPresent(bool drivesHeadset, bool keepMonitorVsync);
+
 // Puts the first hook in place. False when Oblivion does not import
 // Direct3DCreate9 by name, or the table cannot be written.
 bool InstallResolutionHook();

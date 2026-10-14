@@ -111,7 +111,7 @@ yet. Same mod, just a few steps differ:
 3. **OBVR and MenuQue:** exactly as above.
 4. Start SteamVR, then hit **Play** in Steam.
 
-Heads-up: right now it stutters more under Linux than on Windows. We're on it.
+The Linux stutter is fixed: OBVR no longer waits for your monitor while you play in VR. If you want vsync on the monitor back, set `MonitorVsync=1` in `[Render]`.
 
 **Mod Organizer 2:** just install the OBVR zip as a normal mod. OBVR itself doesn't
 need Root Builder (xOBSE's own files in the game folder do).

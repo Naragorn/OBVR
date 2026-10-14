@@ -1,0 +1,54 @@
+# A performance capture in the harness save's hall: standing, looking around,
+# walking there and back, then standing still - with OBVR's profiler on
+# ([Performance], docs/performance-profiling.md). The capture starts with the
+# game and stops itself after CaptureSeconds, inside the script's long last
+# wait, so its export is written before the run ends; the runner moves the
+# OBVR-performance-N folder into the run and analyses it
+# (tools/analyze-performance.py). Started on 2026-10-14 to find out why the
+# game stutters under Proton (docs/linux.md).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/perf-walk.txt
+#      or:  tools\hand-script-run.ps1 -Script tools\hand-scripts\perf-walk.txt
+
+ini Hands Enabled=1
+ini Performance Enabled=1
+ini Performance GpuTiming=1
+ini Performance CaptureSeconds=120
+ini Performance MaxRecords=262144
+
+expect HandScript: finished
+expect Present interval: the game asked for 00000001, the device gets 80000000
+expect Performance: capture 1 started
+expect Performance: D3D9 timestamp timing enabled
+expect Performance: export
+reject Performance: export partial
+reject HandScript: WARNING
+
+wait 10
+mark settled
+head yaw 60
+wait 4
+head yaw -60
+wait 4
+head yaw 0
+head pitch -30
+wait 4
+head pitch 0
+wait 2
+mark looked
+left stick 0 1
+wait 8
+left stick 0 0
+wait 1
+mark walked
+head yaw 180
+wait 2
+left stick 0 1
+wait 8
+left stick 0 0
+head yaw 0
+wait 2
+mark back
+wait 30
+mark still
+wait 50
+mark done

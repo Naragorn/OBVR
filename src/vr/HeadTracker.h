@@ -242,6 +242,14 @@ struct TrackerSettings {
 	UInt32 renderHeight = 0;
 	bool setRenderSize = false;
 
+	// Whether the monitor window keeps the game's own vsync while OBVR
+	// drives the headset. Off, the window presents at once and SteamVR alone
+	// paces the frame: with vsync, DXVK holds the Vulkan queue through the
+	// wait for the monitor, and OBVR waits for that queue several times a
+	// frame to hand its pictures to SteamVR (render/PresentInterval.h). Set
+	// where the device is made, so it takes effect at the next game start.
+	bool monitorVsync = false;
+
 	// Whether the working copy of the screen size - the pair the whole 2D
 	// reads, found by disassembly - is raised to the frame's real size at
 	// CreateDevice time, so menus, films and the mouse live in one

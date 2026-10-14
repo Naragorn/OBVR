@@ -1249,6 +1249,18 @@ endif()
 
 add_test(NAME hand_hud COMMAND hand_hud_test)
 
+# The monitor window's present interval while OBVR drives the headset
+# (render/PresentInterval.h): pure, so it builds everywhere.
+add_executable(present_interval_test PresentIntervalTest.cpp)
+
+target_include_directories(present_interval_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(present_interval_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME present_interval COMMAND present_interval_test)
+
 add_executable(dialog_panel_test DialogPanelTest.cpp)
 
 target_include_directories(dialog_panel_test PRIVATE ../src)

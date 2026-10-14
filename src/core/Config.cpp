@@ -379,6 +379,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadFloat("Render", "MenuAspect", config.tracker.menuAspect, path);
 	config.tracker.setRenderSize =
 		ReadBool("Render", "SetGameResolution", config.tracker.setRenderSize, path);
+	config.tracker.monitorVsync =
+		ReadBool("Render", "MonitorVsync", config.tracker.monitorVsync, path);
 	config.tracker.renderWidth =
 		ReadUInt("Render", "GameResolutionWidth", config.tracker.renderWidth, path);
 	config.tracker.renderHeight =

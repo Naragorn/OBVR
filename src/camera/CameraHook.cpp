@@ -134,6 +134,7 @@
 #include "render/LayoutProbe.h"
 #include "render/MenuShade.h"
 #include "render/PresentHook.h"
+#include "render/PresentInterval.h"
 #include "render/ResolutionHook.h"
 #include "render/SceneRenderHook.h"
 #include "perf/Profiler.h"
@@ -11929,11 +11930,13 @@ bool Install() {
 	// time - a detour past the place the decision is made, costing two
 	// restarts and editing a file that belongs to the user. The device
 	// creation is where the size actually lives, so that is where this is now.
+	UInt32 width = 0;
+	UInt32 height = 0;
 	if (!GetConfig().tracker.setRenderSize) {
 		OBVR_LOG("Config: SetGameResolution is off, so the frame is the game's own size");
 	} else {
-		UInt32 width = GetConfig().tracker.renderWidth;
-		UInt32 height = GetConfig().tracker.renderHeight;
+		width = GetConfig().tracker.renderWidth;
+		height = GetConfig().tracker.renderHeight;
 
 		if (width == 0 || height == 0) {
 			// Whatever the headset asks for. That figure already accounts for
@@ -11949,14 +11952,36 @@ bool Install() {
 
 		if (width != 0 && height != 0) {
 			render::SetWantedResolution(width, height);
-			if (render::InstallResolutionHook()) {
+		}
+	}
+	const bool wantsSize = width != 0 && height != 0;
+
+	// And the monitor window's vsync, in the same parameters: while OBVR
+	// holds the compositor the window presents at once, so the headset's
+	// frame never waits for the monitor (render/PresentInterval.h,
+	// docs/linux.md "The stutter").
+	const bool drivesHeadset = g_headTracker.IsRenderingToHeadset();
+	const bool keepMonitorVsync = GetConfig().tracker.monitorVsync;
+	render::SetMonitorPresent(drivesHeadset, keepMonitorVsync);
+	const bool presentsAtOnce = render::MonitorPresentsAtOnce(drivesHeadset, keepMonitorVsync);
+	if (drivesHeadset && keepMonitorVsync) {
+		OBVR_LOG("Config: MonitorVsync=1, so the monitor window keeps the game's own vsync");
+	}
+
+	if (wantsSize || presentsAtOnce) {
+		if (render::InstallResolutionHook()) {
+			if (wantsSize) {
 				OBVR_LOG("Config: the frame will be created at %ux%u", width, height);
-			} else {
-				// Not a silent fallback. The reason has already been logged by
-				// whichever of the two routes was tried; this says what it cost.
-				OBVR_LOG("Config: neither way into Direct3DCreate9 was open, so the "
-				         "frame stays at the game's own size");
 			}
+			if (presentsAtOnce) {
+				OBVR_LOG("Config: the monitor window will present without vsync while OBVR drives the "
+				         "headset");
+			}
+		} else {
+			// Not a silent fallback. The reason has already been logged by
+			// whichever of the two routes was tried; this says what it cost.
+			OBVR_LOG("Config: neither way into Direct3DCreate9 was open, so the frame stays at the "
+			         "game's own size and the monitor window keeps the game's vsync");
 		}
 	}
 

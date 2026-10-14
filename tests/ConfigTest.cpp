@@ -502,6 +502,8 @@ void TestLookRanges() {
 	      "with no INI at all, rendering stays off rather than claiming the scene");
 	CheckNear(untouched.tracker.eyeSeparationScale, 1.0f,
 	          "and the eye separation scale defaults to the geometric truth of 1");
+	Check(!untouched.tracker.monitorVsync,
+	      "the monitor window drops the game's vsync while OBVR drives the headset by default");
 
 	// The crosshair defaults, as they have stood since 0.1.1: the depth
 	// crosshair on, in third person as well, and in both views only while it
@@ -518,9 +520,10 @@ void TestLookRanges() {
 	LoadFrom("ConfigTestSplitRange.ini",
 	         "[Look]\nVerticalLookUpRange=40.0\nVerticalLookDownRange=140.0\n"
 	         "[Head]\nHeadMovementScale=1.5\n"
-	         "[Render]\nEnabled=1\nEyeSeparationScale=1.25\n",
+	         "[Render]\nEnabled=1\nEyeSeparationScale=1.25\nMonitorVsync=1\n",
 	         split);
 	Check(split.tracker.renderToHeadset, "and can be switched on from the [Render] section");
+	Check(split.tracker.monitorVsync, "MonitorVsync=1 keeps the game's vsync, read from [Render]");
 	CheckNear(split.tracker.eyeSeparationScale, 1.25f,
 	          "EyeSeparationScale is read from the [Render] section");
 	CheckNear(split.look.verticalLookUpRange, 40.0f, "the up range is read on its own");

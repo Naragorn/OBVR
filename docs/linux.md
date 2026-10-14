@@ -152,14 +152,19 @@ partition (Linux follows the links; Wine sees ordinary files):
 Building and deploying on Linux:
 
 ```
-tools/build-linux.sh            # build OBVR.dll with clang-cl, deploy it and the map
-tools/build-linux.sh --test     # the unit tests first
-tools/build-linux.sh --assets   # the menus, the input manifest and the sounds too
+tools/build-linux.sh              # build OBVR.dll with clang-cl, deploy it and the map
+tools/build-linux.sh --test       # the unit tests first
+tools/build-linux.sh --assets     # the menus, the input manifest and the sounds too
+tools/build-linux.sh --linux-only # the Linux game folder alone
 ```
 
-It deploys nothing when the build fails (the game folder keeps its DLL, and it says so)
-or while Oblivion runs. The Windows game folder keeps whatever was last built there: after
-working on Linux, build on Windows once before playing there.
+Since 2026-10-14 it deploys to both game folders, the Linux one and the Windows
+installation's on its partition (`OBVR_WINDOWS_GAME_DIR`, by default
+`/run/media/$USER/Programs/Steam/steamapps/common/Oblivion`), so the two never run
+different builds (the tester: "deployen immer both nach win und linux"). The clang-cl
+DLL links the C runtime statically and imports only `KERNEL32`, `USER32` and `WINMM`, so
+it loads on Windows as it does under Proton. It deploys nothing when the build fails, a
+game folder is missing, or Oblivion runs, and says so.
 
 The links need the Windows partition mounted; without it the game finds neither its
 settings nor its saves. Until 2026-10-14 udisks mounted it on demand. Since then
@@ -219,8 +224,8 @@ tried worked. Two findings:
 
 - Stutter. The compositor's summary of the session: 10,413 presents, 361 dropped and
   4,932 reprojected, about 47 % at 75 Hz. The Windows session that ended on 2026-10-13 at
-  21:34: 40,825 presents, 3 dropped and 6,864 reprojected, about 17 % at 90 Hz. Not
-  investigated yet.
+  21:34: 40,825 presents, 3 dropped and 6,864 reprojected, about 17 % at 90 Hz. The
+  cause, found the same afternoon: the monitor window's vsync, "The stutter" below.
 - A crash when the session's first enemy health bar read its frames: the open bug of
   2026-10-14 in `docs/hud-on-hands-spec.md`. A read through a value that only looks like
   a pointer went unnoticed on Windows, where the address happened to be readable, and
@@ -264,6 +269,61 @@ launch a few seconds after the request) and the game came up after it with the p
 configuration; the runner now waits up to 30 seconds for a launch it asked for before it
 gives up on it.
 
+## The stutter: the monitor window's vsync (found 2026-10-14)
+
+Other VR games under Proton on the same machine that day reprojected little (Blade &
+Sorcery 7.5 %, Subnautica 3 to 6 %), with the compositor at realtime priority and
+asynchronous reprojection on, so the machine and SteamVR were not the suspects. The
+harness measured the game instead: `tools/hand-scripts/perf-walk.txt`, two minutes in
+the harness save's hall (looking around, walking there and back, standing), with OBVR's
+profiler on. The runner puts SteamVR's frame summary for the run under "Measured" and
+analyses the profiler's capture in the run folder.
+
+| Run | Start | Reprojected | Dropped | `interop_lock` mean / p95 | `begin_frame` median |
+|---|---|---:|---:|---:|---:|
+| A | Steam, `PROTON_LOG=1` | 36.5 % of 9,478 | 531 | 2.50 / 13.24 ms | 13.04 ms |
+| B | direct, no `PROTON_LOG` | 37.3 % of 6,673 | 410 | 2.32 / 13.02 ms | 12.75 ms |
+| C | direct, `DXVK_CONFIG=d3d9.presentInterval = 0` | 1.3 % of 9,905 | 70 | 0.026 / 0.053 ms | 9.59 ms |
+
+- **The cause: the game's own window waits for the monitor.** `Oblivion.ini` has
+  `iPresentInterval=1`, the game's vsync and its default, so DXVK presents the monitor
+  window in FIFO mode at the monitors' 59.91 Hz. DXVK presents from its submission thread
+  while it holds the queue's mutex, and `LockSubmissionQueue` first waits for that thread
+  to finish what is queued, then takes the same mutex (DXVK's master branch, read
+  2026-10-14, Proton ships v3.1.1: `submitCmdLists` and `lockDeviceQueue` in
+  `src/dxvk/dxvk_queue.cpp`, `lockSubmission` in `src/dxvk/dxvk_device.h`,
+  `src/d3d9/d3d9_interop.cpp`). OBVR takes that lock about five times a frame to hand its
+  Vulkan images to SteamVR. A lock waited 2.3 to 2.5 ms on average and 13 ms at p95: about 11 to 12 ms of
+  every 13.3 ms frame at 75 Hz. With the monitor's vsync off (run C) a lock takes 0.03 ms,
+  the frame waits on SteamVR's pose call instead (`poses_wait` median 9.5 ms, 0.15 ms
+  before), and reprojection fell from 37 % to 1.3 %.
+- **Not gplasync.** Proton's DXVK is not the gplasync build, and run C ran the same DXVK
+  as runs A and B.
+- **Not Proton's logging.** `PROTON_LOG=1` made no measurable difference (runs A and B).
+- **Windows** has `iPresentInterval=1` as well and runs DXVK, the gplasync build, with the
+  same lock. Whether part of its 17 % at 90 Hz comes from the same wait, I could not
+  verify; a run there with and without the setting would tell.
+- **The fix, built 2026-10-14.** While OBVR drives the headset, its `CreateDevice` hook
+  (`src/render/ResolutionHook.cpp`) gives the game's device the immediate present
+  interval (`render/PresentInterval.h`), so the monitor window no longer waits for the
+  monitor and SteamVR alone paces the frame. It changes the parameters, not the INI
+  setting, which the engine writes back. `[Render] MonitorVsync=1` keeps the game's own
+  interval. Without a headset nothing changes. Like the eye size it is set at device
+  creation only; a device reset by the game would take both back, and DXVK logged no
+  reset besides the creation in the runs of 2026-10-14. Harness, through Steam with the
+  same launch options as runs A and B:
+
+  | Run | Setting | Reprojected | Dropped | `interop_lock` mean / p95 |
+  |---|---|---:|---:|---:|
+  | D | default, `MonitorVsync=0` | 0.6 % of 9,956 | 12 | 0.007 / 0.018 ms |
+  | E | `MonitorVsync=1` | 37.5 % of 9,312 | 670 | 2.33 / 13.22 ms |
+
+  The change reaches Windows as well, where it is unmeasured.
+- **OBVR's GPU timings** read 0 for every interval under Proton; not looked into.
+- Run B ended nine seconds after its last mark, through the pause menu and its quit
+  message, the pattern `attack-frequency` showed in the sweep; what sent it, I could not
+  verify. Its numbers up to that point are in the table.
+
 ## Analysis tooling
 
 - **REA** (`rea-agents@6.4.0`) is registered as a user-scope MCP server with the Ghidra
@@ -287,7 +347,8 @@ gives up on it.
 - The enemy bar crash: fixed and built with clang-cl on 2026-10-14
   (`docs/hud-on-hands-spec.md`). The tester's run that afternoon had bars over four
   fighters, the frames read and no crash; the bars' height lowered to 0.25 m since.
-- The stutter under Proton (gate 2 above).
+- The stutter under Proton: fixed ("The stutter" above); the headset and a Windows
+  measurement are open. OBVR's GPU timings under Proton.
 - MoreHeap under Proton: start once with the override and look for `MoreHeap.log` and a
   `native` load line.
 - The Windows `Oblivion.ini` and the content mods for the Linux installation: the
