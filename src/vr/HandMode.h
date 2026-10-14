@@ -2,6 +2,7 @@
 
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "game/BlockAngleLogic.h"
 #include "game/EnemyHealthLogic.h"
 #include "game/GrappleLogic.h"
 #include "game/LeadLogic.h"
@@ -345,6 +346,14 @@ struct HandSettings {
 	bool weaponParries = true;
 	bool parryStopsAll = true;
 	float parryFatigue = 10.0f;
+	// The block's angle: a raised weapon blocks only a blade crossing it near
+	// a right angle (within blockBladeDegrees of it), a shield only a blow its
+	// face is turned to (within blockShieldDegrees); the weapon guard is then
+	// any raised blade not pointing ahead ([Hands] BlockByAngle,
+	// BlockBladeDegrees, BlockShieldDegrees; game/BlockAngleLogic.h).
+	bool blockByAngle = true;
+	float blockBladeDegrees = 30.0f;
+	float blockShieldDegrees = 70.0f;
 	// How close fighters come before they strike, game units: the game setting
 	// fCombatDistance held at this while Full VR runs, so a blow is struck
 	// within reach of the player's blade ([Hands] CombatReach, 0 the game's own
@@ -770,8 +779,9 @@ struct HandModeResult {
 	// The ready-weapon click's progress this frame.
 	ReadyWeaponVerdict ready;
 
-	// For the log.
+	// For the log, and for the block's angle rule: what the block is.
 	bool blocking = false;
+	game::BlockWith blockWith = game::BlockWith::None;
 	bool bowGuard = false;  // the block is the bow held upright
 	bool fistGuard = false;  // the block is both fists raised
 	bool reachBack = false;

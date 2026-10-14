@@ -257,19 +257,27 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	// 2026-09-29: "linke hand heben wenn kein schild equiped, darf nicht als
 	// block zählen").
 	r.blocking = LeftHandBlocks(f.left.valid && !f.menuMode && IsBlockGesture(leftRelative, s.gestures), f.shieldEquipped);
-	// Or the weapon raised across the body (IsWeaponGuard), with the weapon
-	// drawn - fists included.
+	r.blockWith = r.blocking ? game::BlockWith::Shield : game::BlockWith::None;
+	// Or the weapon raised across the body (IsWeaponGuard; with the block's
+	// angle rule any raised blade not pointing ahead), with the weapon drawn
+	// - fists included.
 	if (!r.blocking && !f.menuMode && f.right.valid && r.rightHandValid &&
 	    f.weaponSeen == WeaponSeen::Drawn) {
 		const NiPoint3 blade{r.rightHandRotation.data[0][1], r.rightHandRotation.data[1][1],
 		                     r.rightHandRotation.data[2][1]};
-		r.blocking = IsWeaponGuard(rightRelative, blade, m_swing.swinging, s.gestures);
+		r.blocking = IsWeaponGuard(rightRelative, blade, m_swing.swinging, s.gestures, s.blockByAngle);
+		if (r.blocking) {
+			r.blockWith = game::BlockWith::Weapon;
+		}
 	}
 	// Or, with the fists up, both raised in front (IsFistGuard).
 	if (!r.blocking && !f.menuMode && f.right.valid && f.left.valid && f.equipped == EquippedKind::Nothing &&
 	    f.weaponSeen == WeaponSeen::Drawn) {
 		r.blocking = IsFistGuard(rightRelative, leftRelative, m_swing.swinging, m_leftSwing.swinging, s.gestures);
 		r.fistGuard = r.blocking;
+		if (r.blocking) {
+			r.blockWith = game::BlockWith::Fists;
+		}
 	}
 	r.reachBack = f.right.valid && IsReachBackGesture(rightRelative, s.gestures);
 
@@ -497,6 +505,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		// (vr::IsBowGuard) - none in the hand either.
 		if (bowDrawn && s.archery.enabled) {
 			r.blocking = false;
+			r.blockWith = game::BlockWith::None;
 			// Always: vanilla blocks with a bow (the tester, 2026-10-01: "das ist
 			// vanilla funktionalität daher immer drin").
 			if (cl.valid && f.bowLimbValid && !f.menuMode) {
@@ -506,6 +515,9 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 				r.blocking = length > 1e-4f && IsBowGuard(leftRelative, limb.y / length, arrowOut, s.gestures);
 			}
 			r.bowGuard = r.blocking;
+			if (r.blocking) {
+				r.blockWith = game::BlockWith::Bow;
+			}
 		}
 		if (s.archery.takeWithTrigger) {
 			in.rightTrigger = in.rightTrigger && !r.archery.claimsGrip;

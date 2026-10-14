@@ -302,6 +302,37 @@ void ForgetBladeBodies() {
 	}
 }
 
+bool ReadBlockBlow(UInt32 attacker, BlockBlow& out) {
+	out = BlockBlow{};
+	const UInt32 player = Read(addr::kPlayerPointer);
+	if (!IsLivingActor(attacker, player)) {
+		return false;
+	}
+	const UInt32 getNode = Slot(attacker, addr::kActorVtableGetNiNodeOffset);
+	if (getNode == 0) {
+		return false;
+	}
+	const UInt32 root =
+		reinterpret_cast<UInt32>(reinterpret_cast<NodeFn>(getNode)(reinterpret_cast<void*>(attacker), nullptr));
+	if (!LooksLikeObject(root)) {
+		return false;
+	}
+	const auto* const rootNode = reinterpret_cast<const NiAVObject*>(root);
+	const NiBound bound = rootNode->worldBound;
+	if (bound.radius > 0.0f && bound.radius < 4096.0f) {
+		out.centreValid = true;
+		out.centre = bound.center;
+	}
+	const Kept& k = KeptFor(attacker, root);
+	out.bladeValid =
+		k.weapon != nullptr && IsWeaponNode(k.weapon) &&
+		TheirBladeFromNode(k.weapon->worldTransform.pos,
+		                   NiPoint3{k.weapon->worldTransform.rot.data[0][1], k.weapon->worldTransform.rot.data[1][1],
+		                            k.weapon->worldTransform.rot.data[2][1]},
+		                   k.weapon->worldBound.center, k.weapon->worldBound.radius, out.bladeA, out.bladeB);
+	return true;
+}
+
 const NiAVObject* ActorBoneNode(UInt32 actor, UInt32 root, UInt32 bone) {
 	if (actor == 0 || !LooksLikeObject(root) || bone >= kBladeBoneCount) {
 		return nullptr;

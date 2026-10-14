@@ -1,0 +1,59 @@
+# The block's angle ([Hands] BlockByAngle, game/BlockAngleLogic.h, the veto
+# in game/BlockCone): a melee bandit (00069AD1) attacks an untouchable player
+# (tgm - the hit handler still runs), the head facing it (head face 1), a
+# longsword drawn by the holster and raised as a guard - first level across
+# the body, then upright - each held half a minute. Every blow the engine
+# would block is judged at the blow: "Block angle: a blow from ... at the
+# weapon - the blades, N degrees (at least 60) - blocked / THROUGH"; the
+# state lines at the marks show the player blocking (the guard holds with
+# the blade either way, since the rule decides at the blow). Which verdicts
+# come depends on the bandit's swings; the run shows the angles read.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/block-angle.txt
+#      or:  tools\hand-script-run.ps1 -Script tools\hand-scripts\block-angle.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands WeaponStopsAtBodies=1
+ini Hands CombatReach=85
+ini Hands BlockByAngle=1
+ini Hands BlockBladeDegrees=30
+console-at ready player.placeatme 00069AD1 1
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+console-at ready tgm
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect Block: the block cone rerouted
+expect Block angle: a blow from
+expect at the weapon - the blades
+expect blocking 1, block key 1
+reject not an actor
+reject HandScript: WARNING
+
+wait 12
+wait 1
+mark ready
+wait 20
+head face 1
+mark placed
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.00 -0.45 -0.35
+wait 2
+mark drawn
+right pos 0.10 -0.15 -0.40
+right rot 0 90 0
+wait 3
+mark guard_level
+wait 25
+mark level_done
+right rot 90 0 0
+wait 3
+mark guard_upright
+wait 25
+mark upright_done
+wait 1

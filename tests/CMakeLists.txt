@@ -1492,6 +1492,17 @@ endif()
 
 add_test(NAME parry COMMAND parry_test)
 
+# The block's angle rule (game/BlockAngleLogic.h): pure, so it builds everywhere.
+add_executable(block_angle_test BlockAngleTest.cpp)
+
+target_include_directories(block_angle_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(block_angle_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME block_angle COMMAND block_angle_test)
+
 add_executable(combat_reach_test CombatReachTest.cpp)
 
 target_include_directories(combat_reach_test PRIVATE ../src)

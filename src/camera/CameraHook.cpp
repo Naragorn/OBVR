@@ -2716,6 +2716,12 @@ game::BladeDiscs g_bladeDiscs;
 // left hand's frame), kept while it is the same node and bound.
 game::ShieldDisc g_shieldDisc;
 bool g_shieldDiscHave = false;
+// The player's blade in the world as the blade's step last read it, for the
+// block's angle rule (game/BlockAngleLogic.h; fed to game/BlockCone with
+// the guard once a frame).
+bool g_blockBladeValid = false;
+NiPoint3 g_blockBladeA{0.0f, 0.0f, 0.0f};
+NiPoint3 g_blockBladeB{0.0f, 0.0f, 0.0f};
 UInt32 g_shieldDiscNode = 0;
 float g_shieldDiscBound = 0.0f;
 UInt32 g_shieldDiscAge = 0;
@@ -2776,6 +2782,7 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	                   game::MeleeInHand(&weaponType) && game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
 	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
 	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
+	g_blockBladeValid = false;
 
 	// The blade in the grip's frame, read from the drawn weapon node against
 	// the pose its bones were pinned to: this camera and the pose written
@@ -2889,6 +2896,9 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		p.eye = camPos;
 		p.foes = parries ? &g_bladeFoes : nullptr;
 		p.dtSeconds = dt;
+		g_blockBladeValid = drawn && p.bladeValid;
+		g_blockBladeA = p.guard;
+		g_blockBladeB = p.tip;
 		// The shield, worn on the left forearm: its node's bound as a ball.
 		if (parries) {
 			const NiAVObject* const shield = game::FindFirstPersonNode("Bip01 L ForearmTwist");
@@ -10771,6 +10781,31 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		// The block looks along the head, never the hand.
 		game::SetBlockCone(GetConfig().look.blockFacesView, readPlayer && g_headTracker.IsHeadsetConnected(),
 		                   pose.headYaw);
+		// And the guard it is: what the player blocks with, where the blade
+		// stands (the blade's step), and the shield's face (its disc in the
+		// left hand's frame, taken into the world) - for the block's angle
+		// rule at the blow (game/BlockAngleLogic.h).
+		{
+			game::BlockGuard guard;
+			guard.with = g_hand.blocking ? g_hand.blockWith : game::BlockWith::None;
+			guard.bladeValid = g_blockBladeValid;
+			guard.bladeA = g_blockBladeA;
+			guard.bladeB = g_blockBladeB;
+			if (g_shieldDiscHave && g_hand.leftHandValid && g_cyclopeanCameraWorldValid && game::PlayerWearsShield()) {
+				const NiMatrix33 leftRot = g_cyclopeanCameraWorldTransform.rot * g_hand.leftHandRotation;
+				const NiPoint3 leftPos =
+					g_cyclopeanCameraWorldTransform.pos + g_cyclopeanCameraWorldTransform.rot * g_hand.leftHandOffsetUnits;
+				const game::BladeDisc d = game::ShieldDiscInWorld(g_shieldDisc, leftRot, leftPos, game::kStopperOwnShield);
+				guard.shieldValid = true;
+				guard.shieldCentre = d.centre;
+				guard.shieldNormal = d.normal;
+			}
+			game::BlockAngleSettings angle;
+			angle.enabled = GetConfig().hands.blockByAngle;
+			angle.bladeDegrees = GetConfig().hands.blockBladeDegrees;
+			angle.shieldDegrees = GetConfig().hands.blockShieldDegrees;
+			game::SetBlockGuard(guard, angle);
+		}
 		pose.pitch = gazePitch;
 		// The hand-tracked mode: the shot goes along the right hand instead
 		// of the gaze - its heading as the head's plus the hand's turn from

@@ -2,6 +2,7 @@
 
 #include "core/Types.h"
 #include "game/BladeContactLogic.h"
+#include "game/BlockAngleLogic.h"
 #include "game/ParryLogic.h"
 #include "game/NiMath.h"
 
@@ -27,6 +28,12 @@ UInt32 CollectBladeBodies(const NiPoint3& around, float withinUnits, BladeBodies
 
 // Forgets the bones kept (the mode off): a load builds new skeletons.
 void ForgetBladeBodies();
+
+// The blow an attacker brings, read now (game/BlockAngleLogic.h): their
+// blade from their "Weapon" node as the collect reads it, and their centre
+// from their skeleton's bound. False when `attacker` is no living character
+// or creature (an arrow, the player) or has no skeleton; `out` then empty.
+bool ReadBlockBlow(UInt32 attacker, BlockBlow& out);
 
 // One of the bones kept for an actor (BladeBone), as the last collect left
 // it; null when the actor was not collected, the bone not read, or it no

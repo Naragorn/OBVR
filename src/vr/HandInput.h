@@ -185,16 +185,27 @@ inline bool IsBlockGesture(const NiPoint3& leftHandRelative, const GestureThresh
 constexpr float kGuardMinUp = -0.20f;       // no lower than 20 cm below the eyes
 constexpr float kGuardMinAcross = 0.70f;    // the blade at least this far sideways
 constexpr float kGuardMaxTilt = 0.50f;      // and at most this far up or down
+// With the block's angle rule (game/BlockAngleLogic.h; `anyAcross`) the blow
+// decides whether the blade stands right to it, so the pose asks only that
+// the blade not point along the view, as a thrust does: upright or level or
+// anything between is a guard (the tester, 2026-10-14).
+constexpr float kGuardMaxAlong = 0.70f;
 
 inline bool IsWeaponGuard(const NiPoint3& weaponHandRelative, const NiPoint3& bladeDirection,
-                          bool swinging, const GestureThresholds& t) {
+                          bool swinging, const GestureThresholds& t, bool anyAcross = false) {
 	if (swinging) {
 		return false;
 	}
+	if (weaponHandRelative.z < kGuardMinUp || weaponHandRelative.y < t.blockMinForward) {
+		return false;
+	}
+	if (anyAcross) {
+		const float along = bladeDirection.y < 0.0f ? -bladeDirection.y : bladeDirection.y;
+		return along <= kGuardMaxAlong;
+	}
 	const float across = bladeDirection.x < 0.0f ? -bladeDirection.x : bladeDirection.x;
 	const float tilt = bladeDirection.z < 0.0f ? -bladeDirection.z : bladeDirection.z;
-	return weaponHandRelative.z >= kGuardMinUp && weaponHandRelative.y >= t.blockMinForward &&
-	       across >= kGuardMinAcross && tilt <= kGuardMaxTilt;
+	return across >= kGuardMinAcross && tilt <= kGuardMaxTilt;
 }
 
 // The fists' guard: with the fists up (hand to hand), both hands raised in

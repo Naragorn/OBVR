@@ -32,6 +32,35 @@ Shields always block when raised (the left-hand gesture, unchanged).
   - That check is one call with a yes or no answer at 0x005FF83E, the place
     for a veto per blow.
 
+**Built 2026-10-14 (the tester: "ja auch für schild aber dann wesentlich
+großzügiger"; "gibt es hier angriffswinkel?").** The veto sits in the block
+cone's reroute of that call (`game/BlockCone`, `AngleKeepsBlock`): with the
+engine's own yes, the rule judges the guard the frame left
+(`game::BlockAngleFor`, `game/BlockAngleLogic.h`, block_angle_test):
+- *The weapon*: the player's blade (the blade's step's span, in the world)
+  and the attacker's (their `Weapon` node read at the blow,
+  `game::ReadBlockBlow`) have to cross within `BlockBladeDegrees` (30) of a
+  right angle; without a blade on the attacker, the player's blade across the
+  line to the attacker's centre (their skeleton's bound). The guard pose is
+  then any raised blade not pointing along the view (`IsWeaponGuard`,
+  `anyAcross`): upright against a sideways slash, level against a chop -
+  before, only the level blade across the body was a guard, and a horizontal
+  slash could never have crossed it.
+- *The shield*: the disc's face (its normal, either side) within
+  `BlockShieldDegrees` (70) of the line to the attacker's blade, or to their
+  centre without one.
+- The rule only takes blocks away; the engine's cone (35 degrees, along the
+  view with BlockFacesView) stays underneath. The fists' and the bow's
+  guards, a block the engine has on its own, a guard it cannot read (no
+  span, no disc) and an attacker that is no character or creature (an
+  arrow) are the engine's as before. `[Hands] BlockByAngle` (default on),
+  settings "Block by angle", "Block: blade slack", "Block: shield slack".
+- Harness `block-angle.txt` PASS (Linux, 2026-10-14): a bandit's blows at
+  the level guard read 56 (through), 61, 88, 83 and 61 degrees between the
+  blades; at the upright guard 64 to 67 (blocked) - the engine's cone said
+  "3 to 10 degrees off the view, blocked" for each. The shield is unit-tested
+  only (no shield in the harness save); headset open for both.
+
 ## 2. Directional power attacks
 
 **Wanted.** A heavy swing performs the power attack of its direction -

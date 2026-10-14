@@ -2367,6 +2367,15 @@ void TestWeaponGuard() {
 	      "the blade upright: no guard");
 	Check(IsWeaponGuard(raised, NiPoint3{0.8f, 0.2f, -0.45f}, false, t),
 	      "either way across, a little tilted: a guard");
+	// With the block's angle rule the blow decides whether the blade stands
+	// right (game/BlockAngleLogic.h): the guard pose then only wants the
+	// blade not pointing along the view, so an upright blade is a guard too.
+	Check(IsWeaponGuard(raised, NiPoint3{0.6f, 0.0f, 0.8f}, false, t, true), "with the angle rule, upright: a guard");
+	Check(IsWeaponGuard(raised, across, false, t, true), "across as well");
+	Check(!IsWeaponGuard(raised, NiPoint3{0.1f, 0.99f, 0.0f}, false, t, true),
+	      "pointing ahead, as when thrusting: still no guard");
+	Check(!IsWeaponGuard(raised, NiPoint3{0.6f, 0.0f, 0.8f}, true, t, true), "nor while swinging");
+	Check(!IsWeaponGuard(NiPoint3{0.1f, 0.35f, -0.4f}, NiPoint3{0.6f, 0.0f, 0.8f}, false, t, true), "nor held low");
 
 	HandSettings settings = WithoutLaserOffset();
 	settings.enabled = true;
@@ -2384,10 +2393,20 @@ void TestWeaponGuard() {
 	HandMode mode;
 	HandModeResult r = mode.Update(frame, settings);
 	Check(r.blocking, "in the mode: the drawn weapon held across blocks");
+	Check(r.blockWith == obvr::game::BlockWith::Weapon, "and the block is the weapon's");
+	{
+		// The left hand raised with a shield on it wins: the shield's block.
+		HandModeFrame shielded = frame;
+		shielded.shieldEquipped = true;
+		shielded.left.position = NiPoint3{-0.2f, -0.1f, -0.35f};
+		HandMode withShield;
+		const HandModeResult sr = withShield.Update(shielded, settings);
+		Check(sr.blocking && sr.blockWith == obvr::game::BlockWith::Shield, "the left hand raised with a shield: the shield's");
+	}
 	frame.weaponSeen = WeaponSeen::Sheathed;
 	HandMode sheathed;
 	r = sheathed.Update(frame, settings);
-	Check(!r.blocking, "sheathed: the same hand does not block");
+	Check(!r.blocking && r.blockWith == obvr::game::BlockWith::None, "sheathed: the same hand does not block");
 }
 
 void TestWorldLaser() {

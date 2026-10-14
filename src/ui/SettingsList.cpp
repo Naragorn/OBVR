@@ -1035,6 +1035,28 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.weaponParries = v != 0.0f; },
 	},
 	{
+		"Hands: melee", "Block by angle",
+		"A raised weapon blocks only a blade crossing yours, a shield only a blow its face is turned to",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "BlockByAngle",
+		+[](const Config& c) { return c.hands.blockByAngle ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.blockByAngle = v != 0.0f; },
+	},
+	{
+		"Hands: melee", "Block: blade slack", "How far off a right angle the blades may cross and still block, degrees",
+		ItemKind::Number, 5.0f, 90.0f, 5.0f, 0, false,
+		"Hands", "BlockBladeDegrees",
+		+[](const Config& c) { return c.hands.blockBladeDegrees; },
+		+[](Config& c, float v) { c.hands.blockBladeDegrees = v; },
+	},
+	{
+		"Hands: melee", "Block: shield slack", "How far the shield's face may turn away from the blow and still block, degrees",
+		ItemKind::Number, 10.0f, 90.0f, 5.0f, 0, false,
+		"Hands", "BlockShieldDegrees",
+		+[](const Config& c) { return c.hands.blockShieldDegrees; },
+		+[](Config& c, float v) { c.hands.blockShieldDegrees = v; },
+	},
+	{
 		"Hands: melee", "Two hands on two-handers", "Close the left grip on the handle to hold it with both hands",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "TwoHandGrip",

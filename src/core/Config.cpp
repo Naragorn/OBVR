@@ -734,6 +734,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.weaponParries = ReadBool("Hands", "WeaponParries", h.weaponParries, path);
 		h.parryStopsAll = ReadBool("Hands", "ParryStopsAll", h.parryStopsAll, path);
 		h.parryFatigue = ReadFloat("Hands", "ParryFatigue", h.parryFatigue, path);
+		h.blockByAngle = ReadBool("Hands", "BlockByAngle", h.blockByAngle, path);
+		h.blockBladeDegrees = ReadFloat("Hands", "BlockBladeDegrees", h.blockBladeDegrees, path);
+		h.blockShieldDegrees = ReadFloat("Hands", "BlockShieldDegrees", h.blockShieldDegrees, path);
 		h.combatReach = ReadFloat("Hands", "CombatReach", h.combatReach, path);
 		h.slowApproach = ReadBool("Hands", "SlowApproach", h.slowApproach, path);
 		h.slowApproachMetres = ReadFloat("Hands", "SlowApproachMetres", h.slowApproachMetres, path);

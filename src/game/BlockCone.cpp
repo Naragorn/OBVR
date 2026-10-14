@@ -4,6 +4,7 @@
 #include "core/AroundCall.h"
 #include "core/Log.h"
 #include "core/Memory.h"
+#include "game/BladeBodies.h"
 #include "game/GameAddresses.h"
 #include "game/Parry.h"
 #include "game/PlayerAim.h"
@@ -15,6 +16,45 @@ bool g_enabled = true;
 bool g_haveGaze = false;
 float g_headYaw = 0.0f;
 UInt32 g_linesLeft = 12;
+BlockGuard g_guard;
+BlockAngleSettings g_angle;
+UInt32 g_angleLinesLeft = 30;
+
+const char* BlockWithName(BlockWith with) {
+	switch (with) {
+	case BlockWith::Shield: return "shield";
+	case BlockWith::Weapon: return "weapon";
+	case BlockWith::Fists: return "fists";
+	case BlockWith::Bow: return "bow";
+	default: return "no guard";
+	}
+}
+
+// The angle rule's say on a blow the engine would block: the attacker's
+// blade read now, the guard as the frame left it. True keeps the block.
+bool AngleKeepsBlock(void* attacker) {
+	if (!g_angle.enabled || g_guard.with == BlockWith::None) {
+		return true;
+	}
+	BlockBlow blow;
+	const bool placed = ReadBlockBlow(reinterpret_cast<UInt32>(attacker), blow);
+	const BlockAngleVerdict v = BlockAngleFor(g_angle, g_guard, blow);
+	if (g_angleLinesLeft > 0) {
+		--g_angleLinesLeft;
+		OBVR_LOG("Block angle: a blow from %08X at the %s - %s%s, %.0f degrees (%s %.0f) - %s",
+		         reinterpret_cast<UInt32>(attacker), BlockWithName(g_guard.with), v.why,
+		         placed ? (blow.bladeValid ? ", their blade read" : ", no blade on them") : ", not an actor",
+		         static_cast<double>(v.degrees),
+		         g_guard.with == BlockWith::Shield ? "at most" : "at least",
+		         static_cast<double>(g_guard.with == BlockWith::Shield
+		                                 ? BlockSlackDegrees(g_angle.shieldDegrees, BlockAngleSettings{}.shieldDegrees)
+		                                 : 90.0f - BlockSlackDegrees(g_angle.bladeDegrees, BlockAngleSettings{}.bladeDegrees)),
+		         v.verdict == BlockAngle::Blocked ? "blocked"
+		         : v.verdict == BlockAngle::Through ? "THROUGH, the guard stands wrong"
+		                                            : "left to the game");
+	}
+	return v.verdict != BlockAngle::Through;
+}
 
 using ConeFn = bool(__cdecl*)(void* target, void* attacker, float* angleOut);
 
@@ -34,8 +74,10 @@ bool __cdecl OnBlockCone(void* target, void* attacker, float* angleOut) {
 	if (parry == ParryCone::NotBlocked) {
 		return false;
 	}
+	const bool isPlayer = Player() != 0 && reinterpret_cast<UInt32>(target) == Player();
 	if (!BlockConeUsesGaze(g_enabled, reinterpret_cast<UInt32>(target), Player(), g_haveGaze)) {
-		return original(target, attacker, angleOut);
+		const bool verdict = original(target, attacker, angleOut);
+		return verdict && (!isPlayer || AngleKeepsBlock(attacker));
 	}
 	PlayerRotation saved{};
 	if (!ReadPlayerRotation(saved)) {
@@ -57,7 +99,7 @@ bool __cdecl OnBlockCone(void* target, void* attacker, float* angleOut) {
 		         static_cast<double>(gazeAngle), verdict ? "blocked" : "outside the cone",
 		         static_cast<double>(bodyAngle), bodyVerdict ? "would have blocked" : "would have missed");
 	}
-	return verdict;
+	return verdict && AngleKeepsBlock(attacker);
 }
 
 }  // namespace
@@ -88,6 +130,11 @@ void SetBlockCone(bool enabled, bool haveGaze, float headYaw) {
 	g_enabled = enabled;
 	g_haveGaze = haveGaze;
 	g_headYaw = headYaw;
+}
+
+void SetBlockGuard(const BlockGuard& guard, const BlockAngleSettings& settings) {
+	g_guard = guard;
+	g_angle = settings;
 }
 
 }  // namespace obvr::game

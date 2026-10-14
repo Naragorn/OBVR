@@ -94,11 +94,15 @@ against a weapon. A blocked blow is never fully stopped: at most `fBlockMax`
   heading. With the walking direction decoupled from the view, the body may
   not face where the player looks. A guard raised towards an attacker at the
   side can still fail.
-  - The 90-degree blade check (proposal A) would be a second, stricter
-    condition on top of this cone.
-  - The veto belongs at the same place. 0x006131D0 is one call with one
-    boolean result (0x005FF83E), a clean hook point for "blocked only if the
-    blades cross".
+  - The 90-degree blade check (proposal A) is a second, stricter condition on
+    top of this cone - built 2026-10-14 as the block's angle rule
+    (`[Hands] BlockByAngle`, `game/BlockAngleLogic.h`, docs/next-up.md 1):
+    the weapon blocks a blade crossing it within 30 degrees of a right angle,
+    the shield a blow its face is turned to within 70; the fists and the bow
+    as before.
+  - The veto sits at that place: 0x006131D0 is one call with one boolean
+    result (0x005FF83E), rerouted by `game/BlockCone` since the gaze cone,
+    and the angle rule answers after the engine's own yes.
 - NPCs blocking OBVR's motion strikes go through the same code. A strike into
   an NPC that is in the Block action and facing the player makes the
   **player** recoil (0x005F4F00 on the attacker). This is the open recoil
