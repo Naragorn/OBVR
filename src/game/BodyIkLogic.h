@@ -792,6 +792,31 @@ inline float HoldForeRollMemory(float roll) {
 	return ik::Clamp(roll, -kForeRollMemoryMostRadians, kForeRollMemoryMostRadians);
 }
 
+// The arms traced over the first seconds the IK runs after a load (the
+// tester, 2026-10-14: the wrists "verdreht und verkleinert beim
+// spielstart. erst nach paar sekunden sehen die normal aus"; the harness,
+// its hands held still from the start, saw rolls steady from the first
+// mark): every kStartTraceEverySeconds for kStartTraceSeconds, the arm
+// lines as at a mark, so a player's own start shows what changes.
+inline constexpr float kStartTraceSeconds = 8.0f;
+inline constexpr float kStartTraceEverySeconds = 0.25f;
+
+struct StartTrace {
+	float elapsed = 0.0f;
+	float nextAt = 0.0f;
+};
+
+inline bool StepStartTrace(StartTrace& s, float dtSeconds) {
+	if (dtSeconds > 0.0f && dtSeconds < 1.0e6f) {
+		s.elapsed += dtSeconds;
+	}
+	if (s.elapsed > kStartTraceSeconds || s.elapsed < s.nextAt) {
+		return false;
+	}
+	s.nextAt = s.elapsed + kStartTraceEverySeconds;
+	return true;
+}
+
 // Which way a knee points: forward, a little out.
 inline NiPoint3 KneePole(float side, const NiPoint3& right, const NiPoint3& forward) {
 	return forward + right * (0.15f * side);

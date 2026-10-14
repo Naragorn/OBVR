@@ -838,7 +838,29 @@ void TestGate() {
 
 }  // namespace
 
+void TestStartTrace() {
+	std::printf("The arms traced over the first seconds after a load\n");
+	StartTrace s;
+	Check(StepStartTrace(s, 0.0f), "the first frame the arms follow: traced");
+	Check(!StepStartTrace(s, 0.1f), "a tenth later: not yet");
+	Check(StepStartTrace(s, 0.2f), "a quarter second on: traced again");
+	bool any = false;
+	for (int i = 0; i < 100; ++i) {
+		any = StepStartTrace(s, 0.1f) || any;
+	}
+	Check(!StepStartTrace(s, 0.25f) && !StepStartTrace(s, 0.25f), "past the trace's seconds: quiet");
+	Check(any, "and traced on the way");
+	StartTrace back;
+	StepStartTrace(back, 0.0f);
+	Check(!StepStartTrace(back, -1.0f), "a step back in time: not counted");
+	StartTrace nan;
+	volatile float zero = 0.0f;
+	StepStartTrace(nan, 0.0f);
+	Check(!StepStartTrace(nan, zero / zero), "a time step that is no number: not counted");
+}
+
 int main() {
+	TestStartTrace();
 	TestLimbReach();
 	TestLimbFar();
 	TestSoftReach();

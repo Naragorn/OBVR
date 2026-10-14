@@ -284,6 +284,11 @@ struct ArmMemory {
 	float foreRoll = 0.0f;  // the hand's roll on the forearm, continued (HoldForeRollMemory)
 };
 ArmMemory g_armMemory[2];
+// The arms traced over the first seconds after a load (StepStartTrace) -
+// the session's first start and the next three times the body is taken up
+// again (a load, a menu, third person), so menus do not fill the log.
+StartTrace g_startTrace;
+UInt32 g_startTracesLeft = 3;
 // What hangs on a first-person forearm's twist bone (the shield), carried
 // with the hand (BodyIkLogic.h, "The shield"): a side's four at most.
 constexpr UInt32 kCarriedMax = 4;
@@ -1076,6 +1081,14 @@ UInt32 StepBodyArms(const BodyArmsFrame& f) {
 	} else {
 		ReleaseHides(g_frame.root);
 	}
+	// The first seconds after a load, the arms as at a mark (StepStartTrace).
+	if (following != 0 && StepStartTrace(g_startTrace, f.dtSeconds)) {
+		char arm[1024];
+		for (UInt32 side = 0; side < 2; ++side) {
+			LogArm(side == 0 ? "right" : "left", g_frame.arm[side], arm, sizeof(arm));
+			OBVR_LOG("Body IK: %.2f s after the load - %s", static_cast<double>(g_startTrace.elapsed), arm);
+		}
+	}
 	if (f.logState) {
 		// Three lines: a log line holds 1024 characters (core/Log.cpp).
 		OBVR_LOG("Body IK: at the mark - the body %s (%.1f degrees off the head, the chest's twist %.1f taken out), "
@@ -1160,6 +1173,12 @@ void ReleaseBodyIk(NiAVObject* rootNow) {
 	g_standingSeconds = 0.0f;
 	g_armMemory[0] = ArmMemory{};
 	g_armMemory[1] = ArmMemory{};
+	g_startTrace = StartTrace{};
+	if (g_startTracesLeft > 0) {
+		--g_startTracesLeft;
+	} else {
+		g_startTrace.elapsed = kStartTraceSeconds + 1.0f;  // traced enough
+	}
 	if (!BodyIkHolds()) {
 		return;
 	}

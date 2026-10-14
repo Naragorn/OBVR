@@ -1,0 +1,42 @@
+# The wrists in the first seconds after a load (the tester, 2026-10-14: "die
+# sind auch verdreht und verkleinert beim spielstart. erst nach paar sekunden
+# sehen die normal aus"): the hands held still at the chest from the start,
+# marks at short steps after the script starts - the "Body IK: at the mark"
+# lines give each hand's roll on its forearm and how far the first-person arm
+# sits off it, to see what changes over the first seconds.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/body-wrist-start.txt
+
+ini Hands Enabled=1
+ini Body Visible=1
+ini Body IK=1
+ini Body IKArms=1
+
+expect HandScript: finished
+expect s after the load - the right arm
+expect s after the load - the left arm
+reject HandScript: WARNING
+
+right pos 0.20 -0.35 -0.35
+left pos -0.20 -0.35 -0.35
+mark t0
+wait 0.1
+mark t01
+wait 0.2
+mark t03
+wait 0.3
+mark t06
+wait 0.4
+mark t1
+wait 0.5
+mark t15
+wait 0.5
+mark t2
+wait 1
+mark t3
+wait 2
+mark t5
+wait 3
+mark t8
+wait 4
+mark t12
+wait 1

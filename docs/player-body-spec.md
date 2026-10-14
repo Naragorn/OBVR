@@ -391,6 +391,25 @@ handgelenk zu sehr. ruckeln nun weg!"
   the chest, since which way round a half turn went is not known from one
   frame. Kept for later, with the rest roll taken out first.
 
+### Open bug (the tester, 2026-10-14): the wrists at the game's start
+
+"die sind auch verdreht und verkleinert beim speilstart. erst nach paar
+sekunden sehen die normal aus" - next to the open wrist shrink when the
+controllers turn outward (Task #110). The harness did not see it:
+`body-wrist-start.txt`, the hands held still at the chest from the start,
+gave the same rolls from the first mark on (the right hand 67.6 to 68.1
+degrees on its forearm, the left -107.2 to -107.5, the first-person arm 0.00
+units off) - but its hands are the script's from the first frame, and the
+tester's are the controllers'. The tester's own log of that afternoon shows
+the first world frames in third person ("the player was in third person -
+put back into first") and the hand bones measured thousands of units off the
+grip in the first frame. Not decided from that. Since 2026-10-14 the IK logs
+both arms every 0.25 s for the first 8 s after a load ("Body IK: 1.25 s after
+the load - ..."; the session's start and the next three times the body is
+taken up, `StepStartTrace`, body_ik_test): the hand's roll on its forearm,
+the forearm's and the twist bone's, and how far the first-person arm sits
+off - a start of the tester's shows what changes in those seconds.
+
 ### The view measured: Debug.BodyView
 
 The tester asked whether the harness measures the view down the body, not
