@@ -49,15 +49,6 @@ constexpr const char* kStandingIcon[] = {
 constexpr UInt32 kSeatedRows = sizeof(kSeatedIcon) / sizeof(kSeatedIcon[0]);
 constexpr UInt32 kStandingRows = sizeof(kStandingIcon) / sizeof(kStandingIcon[0]);
 
-}  // namespace
-
-// The standing experience is not working as intended yet, so the walkthrough
-// shows it and refuses it (see StandingUnderConstruction in the header).
-constexpr bool kStandingUnderConstruction = true;
-bool StandingUnderConstruction() { return kStandingUnderConstruction; }
-
-namespace {
-
 constexpr OnboardingRow kWelcome[] = {
 	{OnboardingRowKind::Text, "Welcome to OBVR: Oblivion in your headset.", "", "", "",
 	 OnboardingAction::None, nullptr, 0},
@@ -66,9 +57,9 @@ constexpr OnboardingRow kWelcome[] = {
 	{OnboardingRowKind::Choice, "Seated Experience", "Keyboard, mouse or gamepad. Oblivion in VR.",
 	 "Hands", "Enabled", OnboardingAction::ChooseSeated, kSeatedIcon, kSeatedRows},
 	{OnboardingRowKind::Choice, "Standing Experience",
-	 "Under construction: not working as intended yet, cannot be chosen here.", "Hands",
+	 "Beta: motion controllers, standing or seated. Playable, rough edges, please report.", "Hands",
 	 "Enabled", OnboardingAction::ChooseStanding, kStandingIcon, kStandingRows},
-	{OnboardingRowKind::Text, "Standing (motion controllers) is under construction and stays off.",
+	{OnboardingRowKind::Text, "Standing (motion controllers) is in beta: it works, with rough edges.",
 	 "", "", "", OnboardingAction::None, nullptr, 0},
 };
 
@@ -77,9 +68,9 @@ constexpr OnboardingRow kControls[] = {
 	 "", "", OnboardingAction::None, nullptr, 0},
 	{OnboardingRowKind::Text, "The arrow keys steer OBVR's menus.", "", "", "",
 	 OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Text, "Standing (motion controllers) is under construction: off here.", "",
-	 "", "", OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Text, "OBVR.ini and the settings menu can switch it on, at your own risk.",
+	{OnboardingRowKind::Text, "Standing: grip at your left hip to draw the weapon, raise a hand to block.",
+	 "", "", "", OnboardingAction::None, nullptr, 0},
+	{OnboardingRowKind::Text, "Hold both stick buttons three seconds to recenter; click both for the settings.",
 	 "", "", "", OnboardingAction::None, nullptr, 0},
 	{OnboardingRowKind::Text, "Recenter view is the first row of the settings menu.", "", "",
 	 "", OnboardingAction::None, nullptr, 0},
@@ -94,7 +85,7 @@ constexpr OnboardingRow kControls[] = {
 constexpr OnboardingRow kComfort[] = {
 	{OnboardingRowKind::Text, "Turning left and right stays with the mouse or the stick.", "",
 	 "", "", OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Text, "Smooth turning eases it; snap turning is planned.", "", "", "",
+	{OnboardingRowKind::Text, "Smooth turning eases it, snap turning steps it; both are in the settings.", "", "", "",
 	 OnboardingAction::None, nullptr, 0},
 	{OnboardingRowKind::Setting, "", "", "Look", "SmoothTurning", OnboardingAction::None, nullptr,
 	 0},
@@ -258,14 +249,9 @@ const SettingDefinition* OnboardingMenu::Apply(MenuAction action, Config& config
 
 	const OnboardingRow& row = page.rows[m_state.selected];
 	if (row.kind == OnboardingRowKind::Choice) {
-		// The standing experience is under construction: the row is shown so
-		// the shape is known, but pressing it neither switches the mode on
-		// nor turns the page. The INI and the settings menu remain the way
-		// in for whoever wants to try it regardless.
-		if (row.action == OnboardingAction::ChooseStanding && kStandingUnderConstruction) {
-			return nullptr;
-		}
-		// The choice writes the mode through the settings table - the same
+		// Either choice is taken (the standing one too, since 2026-10-15: in
+		// beta, as the native tile has had it since 2026-09-27). The choice
+		// writes the mode through the settings table - the same
 		// key the settings menu changes - and goes on to the next page. The
 		// definition is answered so the caller saves it, even when the mode
 		// was already the one chosen: the file then says what was confirmed.

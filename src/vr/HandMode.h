@@ -693,6 +693,9 @@ struct HandModeResult {
 	// (false releases everything).
 	bool controlsActive = false;
 	HandControlsWanted controls;
+	// The right stick's button held past the hold (vr::StepStickHold): the
+	// quick menu's ring is held open by it, as by the right trackpad.
+	bool ringByStick = false;
 	// The sticks move the player under a container's menu opened by reaching
 	// (HandModeFrame::walkUnderMenu): the player's controls are to run, and
 	// the laser's cursor is left where it is.
@@ -930,6 +933,7 @@ private:
 	RepeatState m_scrollUp;
 	RepeatState m_scrollDown;
 	StickChordState m_sticks;
+	StickHoldState m_rightStickHold;
 	StickNavState m_navRight;
 	StickNavState m_navLeft;
 	PokeState m_poke;

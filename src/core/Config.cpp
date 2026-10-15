@@ -977,6 +977,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		qm.tapSeconds = ReadFloat("Hands", "QuickMenuTapSeconds", qm.tapSeconds, path);
 		qm.ringMetres = ReadFloat("Hands", "QuickMenuRingMetres", qm.ringMetres, path);
 		qm.icons = ReadBool("Hands", "QuickMenuIcons", qm.icons, path);
+		qm.stickHoldSeconds =
+			ReadFloat("Hands", "QuickMenuStickHoldSeconds", qm.stickHoldSeconds, path);
 		qm.pages = vr::QuickMenuPageCount(static_cast<int>(
 			ReadFloat("Hands", "QuickMenuPages", static_cast<float>(qm.pages), path) + 0.5f));
 

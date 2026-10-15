@@ -117,9 +117,46 @@ A hint is one `GuidePanelText` on a `CanvasOverlay` (the holster-fit layer's sha
 
 ## 4. Open
 
-- **Open bug (2026-10-12):** the overlay walkthrough refuses Full VR while the native onboarding accepts it (Onboarding.cpp:56 against NativeOnboarding.h:40). Without MenuQue a player cannot choose Full VR on the first start at all and is told it cannot be chosen.
-- **Open bug (2026-10-12):** README.md:8-11, :40-41 and OBVR.ini:1609 describe Full VR as switched off and never tested in a headset. Both are wrong since 2026-09-27.
-- **Open bug (2026-10-12):** the overlay walkthrough says "snap turning is planned" (Onboarding.cpp:97); it exists.
+- **Fixed 2026-10-15 (3.1, "one truth"):** the overlay walkthrough accepts Full VR as the native tile does (`kStandingUnderConstruction` and `StandingUnderConstruction()` are gone, onboarding_test follows); its texts say "beta" and name the hip draw, the block and the stick chord; "snap turning is planned" is gone. README, docs/nexus-description.bbcode, the INI's [Hands] header, the native tile's words, docs/native-menus.md, the test-report form and docs/hand-tracked-mode.md (the body, the swish) say the same thing: **Beta**, playable, tested on one setup, rough edges - and the beta build is handed out on Discord only (see 5).
 - **Not verified:** whether the vanilla tutorial messages in the prison intro show keyboard names in Full VR. Derived from the absence of any rewriting code; to settle: a new game in Full VR, the first "Press ..." message read.
 - **Not verified:** docs/next-up.md "New games": the walkthrough and the hand guides around the intro and the character creation have not been tested in a headset.
 - **Decision for the tester:** the status word ("Experimental" proposed), and whether the first-start chain (3.2) may run before any game is loaded - it asks for the controllers in the main menu, which `ControllerMenus=1` already gives.
+
+## 5. The tester's decisions of 2026-10-15, towards the Discord beta
+
+Asked what still had to be built for a beta release to the Discord testers, and
+answered: "teste machen wir nach der beta runde lol. also ein vermerk in nexus
+comment section vll zum discord channel für die hand tracking beta. für quest
+hotkey button wird der rechte stick button long pressed. quest button gibts
+nicht. das controller schema muss irgendwo dokumentiert sein. am besten im obvr
+setting menü und in docs und readme. [...] wichtig ist mir nur das auf nexus
+und gothub kein download möglich ist der beta nur in discord. joa gehen wir die
+defaults durch. ja den discord post brauchen wir. stimmt wir brauchen die
+erststart kette, bei jedem start whl und pflicht beim new game dungeon."
+
+- **Headset tests after the beta round:** what is built now goes to the
+  testers on unit tests and the harness alone.
+- **The beta is Discord-only.** No GitHub release, no tag, nothing on Nexus;
+  the public texts say so (4). Note for him: the CI keeps the DLL of every
+  push as a workflow artifact (build.yml, "Keep the DLL"), which any
+  signed-in GitHub user can download from the Actions page - if that counts
+  as a download, the upload step goes (small).
+- **A note in the Nexus comments** pointing to the Discord channel for the
+  hand-tracking beta: the text is in docs/discord-hand-tracking-beta.md.
+- **Quest: the hotkey ring by the right stick's button held** - built, see
+  docs/controls-spec.md 4.4. There is no journal key on the Touch.
+- **The controls documented** in the settings menu, the docs and the README:
+  the README's table (Controls in Full VR) is written; the settings menu's
+  card (Help, "Show the controls") is section 3.2's step 5, built with the
+  first-start chain.
+- **The first-start chain (3.2)** is wanted - at every start, probably, and
+  mandatory in the new game's dungeon. The decision this leaves: the chain's
+  main-menu steps (recenter, which hand, the controls card, comfort) can run at
+  every start and be skipped; the in-world steps (the hands' fit, the weapon
+  places) run once the player stands in the world. "Mandatory in the new
+  game's dungeon" needs the engine to tell a new game from a load - the first
+  cell's form ID, or the game's own new-game path - which is not read yet.
+- **The defaults** are to be gone through together: his live INI differs from
+  the shipped values in snap turning (on, no vignette, 12 degrees a step
+  against off, vignette, 6), the grab's reach (0.10 m against 0.3) and the
+  hands' own fit; nothing changed yet.

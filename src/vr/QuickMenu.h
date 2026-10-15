@@ -59,6 +59,12 @@ struct QuickMenuSettings {
 	float assignLeadSeconds = 0.20f;
 	float assignClickSeconds = 0.08f;
 	float assignTailSeconds = 0.15f;
+	// How long the right stick's button is held before the ring opens by it
+	// (vr::StepStickHold) - the way on a controller without a trackpad (the
+	// Oculus Touch), and open to the Index beside its trackpad. Longer than
+	// the stick chord's window (kStickChordWindowSeconds), so a chord that
+	// forms late cannot have opened the ring first.
+	float stickHoldSeconds = 0.4f;
 };
 
 // Where a hotkey being set stands.

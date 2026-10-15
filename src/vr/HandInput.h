@@ -1209,6 +1209,69 @@ inline StickChordVerdict StepStickChord(StickChordState& s, bool rightDown, bool
 	return v;
 }
 
+// ------------------------------------------------- The stick held: the ring
+//
+// The right stick's button held past the hold is the quick menu's, as the
+// right trackpad held is (the tester, 2026-10-15: "für quest hotkey button
+// wird der rechte stick button long pressed" - the Oculus Touch has no
+// trackpad; on every controller alike). From the hold on the press belongs
+// to the ring: its release uses the slot the hand is on and is no click of
+// the stick (no Rest menu, no ready weapon). A press the chord took (both
+// sticks together) is never the ring's, nor one made while the ring is not
+// allowed; a press let go before the hold is the click it always was, which
+// the chord decides. Pure, covered by hand_mode_test.
+
+struct StickHoldState {
+	bool down = false;
+	float seconds = 0.0f;
+	bool held = false;     // the hold reached in this press
+	bool blocked = false;  // this press is not the ring's
+};
+
+struct StickHoldVerdict {
+	bool held = false;         // level: the ring's, from the hold until the release
+	bool reached = false;      // the frame the hold was reached
+	bool longRelease = false;  // the release of a press that was the ring's: no click
+};
+
+inline StickHoldVerdict StepStickHold(StickHoldState& s, bool down, bool allowed,
+                                      float holdSeconds, float dtSeconds) {
+	StickHoldVerdict v;
+	if (down && !s.down) {
+		s.seconds = 0.0f;
+		s.held = false;
+		s.blocked = false;
+	}
+	if (down) {
+		if (!allowed) {
+			// The chord formed, or the ring is off: this press is not the
+			// ring's, whatever it was until now - the chord's own verdict
+			// decides its release.
+			s.blocked = true;
+			s.held = false;
+		}
+		if (!s.blocked) {
+			if (!s.held) {
+				if (dtSeconds > 0.0f) {
+					s.seconds += dtSeconds;
+				}
+				if (s.seconds >= holdSeconds) {
+					s.held = true;
+					v.reached = true;
+				}
+			}
+			v.held = s.held;
+		}
+	} else if (s.down) {
+		v.longRelease = s.held;
+		s.held = false;
+		s.blocked = false;
+		s.seconds = 0.0f;
+	}
+	s.down = down;
+	return v;
+}
+
 // ------------------------------------------------------ Laser drag-scroll
 //
 // The laser's trigger the way a finger works a touch screen: pulled and let

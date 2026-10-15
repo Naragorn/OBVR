@@ -45,7 +45,7 @@ body:
         - label: Aiming a bow or a spell with the head
         - label: Third person
         - label: OBVR's settings menu (Insert)
-        - label: The standing experience (under construction)
+        - label: Full VR with motion controllers (beta)
 
   - type: textarea
     id: notes

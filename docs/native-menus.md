@@ -20,9 +20,10 @@ pass, and a package inspection contains the DLL, INI, licence and all three menu
 assets. A fresh in-game run of this exact restored build is still required before
 release acceptance.
 
-Full VR remains visible in onboarding as **Under construction**, but its XML tile
-is not targetable and the lifecycle logic independently refuses its button ID.
-Only Keyboard/Gamepad + VR can complete onboarding on current main.
+Full VR was shown in onboarding as **Under construction** then, its tile not
+targetable. Superseded: the native tile has accepted Full VR since 2026-09-27
+(NativeOnboarding.h), the overlay walkthrough since 2026-10-15; the status word
+is "Beta".
 
 ## Controller regression correction — 2026-09-11
 

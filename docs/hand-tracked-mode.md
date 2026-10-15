@@ -123,8 +123,9 @@ body's centre and the bound radius the decision used. Strikes that land too easi
 smaller factor; swings through a body that do nothing want a larger one, or a check of the
 hand's yaw calibration, since the blade follows the controller's forward.
 
-Not built: the swing's sound and the fatigue an attack costs (both tied to the animation),
-and NPCs block less, since they read the player's attack animation to decide when.
+Built since: the swing's swish and the power attack's grunt, and the fatigue a swing costs
+(docs/controls-spec.md 4.4's open bugs, `swing-fatigue.txt`). Not examined: whether NPCs
+block less, since they read the player's attack animation to decide when.
 
 ## Rung 6 - the shield: raised is blocking
 
@@ -257,8 +258,9 @@ runs with the hand's direction and a distance of ..." once.
 
 ## Rung 10 - the body
 
-Not built. In first person the arms are the body. Third person keeps the head-tracked
-behaviour with the hand-tracked mode on.
+Built 2026-10-11 to 2026-10-12 (docs/player-body-spec.md): the body IK - the arms follow
+the controllers, the torso the head, the body steps back when the player looks down.
+Third person keeps the head-tracked behaviour with the hand-tracked mode on.
 
 ## Locomotion and the rest
 

@@ -730,6 +730,163 @@ void TestPoke() {
 	Check(FingerPokes(hand), "the other fingers curled (pointing): still the finger's");
 }
 
+void TestStickHold() {
+	std::printf("The stick held: the ring\n");
+	// A short press is never the ring's: no hold, and its release is left to
+	// the chord (longRelease false).
+	StickHoldState s;
+	StickHoldVerdict v = StepStickHold(s, true, true, 0.4f, 0.1f);
+	Check(!v.held && !v.reached && !v.longRelease, "0.1 s down: not the ring's yet");
+	v = StepStickHold(s, false, true, 0.4f, 0.1f);
+	Check(!v.held && !v.longRelease, "let go short: the click it always was");
+	// Held past the hold: the ring's, once reached, until the release.
+	int reached = 0;
+	bool heldAt30 = false;
+	for (int i = 0; i < 50; ++i) {  // 0.5 s
+		v = StepStickHold(s, true, true, 0.4f, 0.01f);
+		reached += v.reached ? 1 : 0;
+		if (i == 30) {
+			heldAt30 = v.held;
+		}
+	}
+	Check(!heldAt30, "0.31 s held: not yet");
+	Check(v.held && reached == 1, "0.5 s held: the ring's, the hold reached once");
+	v = StepStickHold(s, false, true, 0.4f, 0.01f);
+	Check(!v.held && v.longRelease, "its release is the ring's: no click");
+	v = StepStickHold(s, false, true, 0.4f, 0.01f);
+	Check(!v.longRelease, "and only on that frame");
+	// A press the chord took: never the ring's, however long.
+	StickHoldState c;
+	StepStickHold(c, true, true, 0.4f, 0.01f);
+	bool everHeld = false;
+	for (int i = 0; i < 60; ++i) {
+		v = StepStickHold(c, true, false, 0.4f, 0.01f);
+		everHeld = everHeld || v.held;
+	}
+	Check(!everHeld, "the chord formed: no ring in this press");
+	v = StepStickHold(c, false, true, 0.4f, 0.01f);
+	Check(!v.longRelease, "its release is the chord's, not the ring's");
+	// Allowed again on the next press, which starts clean.
+	for (int i = 0; i < 45; ++i) {
+		v = StepStickHold(c, true, true, 0.4f, 0.01f);
+	}
+	Check(v.held, "the next press is the ring's again");
+	// The hold reached, then the ring taken away (switched off, or the chord
+	// late): the press is no longer the ring's, and the release no ring's.
+	v = StepStickHold(c, true, false, 0.4f, 0.01f);
+	Check(!v.held, "not allowed any more: the ring's hold is dropped");
+	v = StepStickHold(c, false, true, 0.4f, 0.01f);
+	Check(!v.longRelease, "and its release is the stick's own");
+	// No time passing: no progress; a hold of 0 is the ring's at once.
+	StickHoldState z;
+	for (int i = 0; i < 100; ++i) {
+		v = StepStickHold(z, true, true, 0.4f, 0.0f);
+	}
+	Check(!v.held, "without time the hold is never reached");
+	StickHoldState at;
+	v = StepStickHold(at, true, true, 0.0f, 0.0f);
+	Check(v.held && v.reached, "a hold of 0: the ring's as the button goes down");
+	v = StepStickHold(at, false, true, 0.0f, 0.0f);
+	Check(v.longRelease, "and let go, the ring's release");
+}
+
+void TestRestMenuKey() {
+	std::printf("The Rest menu's own key through the mode\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.enabled = true;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.dtSeconds = 0.01f;
+	frame.right.valid = true;
+	frame.menuMode = true;
+	frame.restMenuUp = true;
+	HandMode mode;
+	mode.Update(frame, settings);
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexB;
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.controls.wait && !r.controls.escape, "the Rest menu up: the right B is its own key, not Escape");
+	frame.right.buttonsPressed = 0;
+	for (int i = 0; i < 30; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	frame.restMenuUp = false;
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexB;
+	r = mode.Update(frame, settings);
+	Check(r.controls.escape && !r.controls.wait, "another menu up: the right B is Escape");
+}
+
+void TestRingByStick() {
+	std::printf("The ring by the stick, through the mode\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.enabled = true;
+	settings.holster.enabled = true;  // the right stick's click is the Rest menu
+	settings.quickMenu.stickHoldSeconds = 0.4f;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.dtSeconds = 0.01f;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	HandMode mode;
+	HandModeResult r = mode.Update(frame, settings);
+	Check(!r.ringByStick, "nothing pressed: no ring");
+	// A short click: the Rest menu's key on the release, no ring.
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	r = mode.Update(frame, settings);
+	r = mode.Update(frame, settings);
+	Check(!r.ringByStick && !r.controls.wait, "a click waits for its release, the ring stays shut");
+	frame.right.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(r.controls.wait && !r.ringByStick, "released short: the Rest menu's key");
+	for (int i = 0; i < 20; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	// Held half a second: the ring's; its release opens no Rest menu.
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	bool ringAt20 = false;
+	for (int i = 0; i < 50; ++i) {
+		r = mode.Update(frame, settings);
+		if (i == 20) {
+			ringAt20 = r.ringByStick;
+		}
+	}
+	Check(!ringAt20, "0.21 s held: not the ring's yet");
+	Check(r.ringByStick && !r.controls.wait, "0.5 s held: the ring is held open, no Rest menu");
+	frame.right.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(!r.ringByStick && !r.controls.wait, "let go: the ring closes and the Rest menu stays shut");
+	for (int i = 0; i < 20; ++i) {
+		r = mode.Update(frame, settings);
+		Check(!r.controls.wait, "and no Rest menu key follows");
+	}
+	// Both sticks within the chord's window: OBVR's menu on the release,
+	// never the ring, however long they are held.
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	r = mode.Update(frame, settings);
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	bool ringInChord = false;
+	for (int i = 0; i < 60; ++i) {
+		r = mode.Update(frame, settings);
+		ringInChord = ringInChord || r.ringByStick;
+	}
+	Check(!ringInChord, "both sticks held: no ring");
+	frame.right.buttonsPressed = 0;
+	frame.left.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(r.settingsMenuToggle && !r.ringByStick && !r.controls.wait, "their release: OBVR's menu, as before");
+	// The ring switched off: a long press is the click it always was.
+	settings.quickMenu.enabled = false;
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	bool ringOff = false;
+	for (int i = 0; i < 60; ++i) {
+		r = mode.Update(frame, settings);
+		ringOff = ringOff || r.ringByStick;
+	}
+	Check(!ringOff, "the ring off: no ring by the stick");
+	frame.right.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(r.controls.wait, "and the long press's release is the Rest menu's key");
+}
+
 void TestStickChord() {
 	std::printf("Stick chord\n");
 	StickChordState s;
@@ -3000,6 +3157,9 @@ int main() {
 	TestLaser();
 	TestPoke();
 	TestStickChord();
+	TestStickHold();
+	TestRingByStick();
+	TestRestMenuKey();
 	TestStickNav();
 	TestMenuHandAndSettingsMenu();
 	TestHandPoses();

@@ -57,7 +57,7 @@
     <green>45</green><blue>25</blue><alpha>255</alpha>
    </text>
    <text name="description">
-    <font>3</font><string>Experimental. Starts in first person. Left B: inventory.</string>
+    <font>3</font><string>Beta: playable, rough edges. Motion controllers: draw, swing, block, grab, teleport.</string>
     <x>10</x><y>70</y><wrapwidth>282</wrapwidth><depth>7</depth>
     <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
    </text>

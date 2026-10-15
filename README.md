@@ -7,8 +7,9 @@ tracking, your menus and HUD in the headset. (Not for the Remastered edition.)
 
 **Status: early test build (0.2.x).** Sit down, grab your mouse, keyboard or
 gamepad and you're in Cyrodiil - that part works and is what this release is for.
-Playing standing with motion controllers is being built right now and is still
-switched off.
+Playing standing with motion controllers (Full VR) is in a closed beta: that build
+is handed out in the Discord channel only and is not in the download here or on
+Nexus yet.
 
 **Join the Discord:** https://discord.com/channels/747967102895390741/1547539304786436228 -
 questions, bug reports, screenshots, or just to say hi.
@@ -32,14 +33,36 @@ questions, bug reports, screenshots, or just to say hi.
 - **Comfort options** like smooth turning.
 - Works with or without the 4GB patch, and with Mod Organizer 2.
 
-## Coming next: standing with motion controllers
+## Full VR: standing with motion controllers (beta on Discord)
 
-The big one. Swords in your hand, swings that actually hit, block with your shield,
-grab and throw things, hold a two-hander with both hands, shove people, lead NPCs by
-the hand, your HUD on your hands, and more. A lot of it is already built and being
-tested. It is **not ready yet** and stays off - the welcome walkthrough shows it
-but won't let you pick it. If you're brave, `[Hands] Enabled=1` in `OBVR.ini`
-turns it on anyway. Please say so if you report a bug from it.
+The big one. Swords in your hand, swings that hit where the blade touches, block
+with your shield or your blade, grab and throw things, hold a two-hander with both
+hands, shove people, lead NPCs by the hand, your HUD on your wrist, and more. It is
+built and playable, tested on one setup so far, with rough edges. The beta build is
+handed out in the **Discord channel** linked above; it is not in the download here
+or on Nexus yet. In the beta build the first start asks which way you want to play.
+In the public download Full VR stays off (`[Hands] Enabled` in `OBVR.ini`).
+
+### Controls in Full VR
+
+Right-handed layout; `[Hands] LeftHanded=1` swaps the hands. Index and Quest
+controllers have their own bindings, other controllers are untested. The same
+card is in the game: settings menu, Help, "Show the controls".
+
+| | Weapon hand (right) | Other hand (left) |
+| --- | --- | --- |
+| Trigger | bow: draw while held, loose on release | cast the spell |
+| Grip | at your left hip: draw or sheathe a one-hander; over your right shoulder: a two-hander or staff; on an item: hold it, let go mid-swing to throw | grab or hold an item; behind your left shoulder: draw the bow |
+| Swing | a drawn weapon hits where the blade touches; a long, fast swing is a power attack | a fist punches |
+| Raise the hand | - | shield on the arm: block. Palm forward, both hands up and still: yield |
+| A | activate what the laser points at | in the inventory: drop the item under the cursor |
+| B | pause menu (Escape) | the Tab menus; they hang on this wrist, the other hand's laser clicks |
+| Stick | turn; held up: aim a teleport, let go to go; flick up: jump; flick down: sneak | walk; pressed in: run |
+| Stick button | short click: the rest menu. Held: the hotkey ring - move the hand to a slot, let go (Quest's way; Index can hold the trackpad instead) | - |
+| Trackpad (Index) | held: the hotkey ring | click: the journal |
+| Both stick buttons | clicked together: OBVR's settings. Held three seconds: recenter | |
+
+Make a fist (or squeeze the grip hard) to raise your fists; crouch to sneak.
 
 ## Known issues
 
@@ -119,9 +142,9 @@ need Root Builder (xOBSE's own files in the game folder do).
 **Uninstalling:** delete `dxvk.conf` from your Oblivion folder (and `d3d9.dll`
 too, if you don't use DXVK for anything else), then `OBVR.dll`, `OBVR.ini`, `OBVR-LICENSE.txt`,
 `OBVR-crosshair.cache`, `openvr_api.dll`, `openvr_api-LICENSE.txt` and the
-`OBVR_Input` folder from `Data/OBSE/Plugins/`, plus `OBVR_Onboarding.xml` and
-`OBVR_Settings.xml` from `Data/Menus/Generic/` and the `Data/Menus/Prefabs/OBVR/`
-folder. OBVR doesn't touch your saves. Want to rule OBVR out quickly? Set
+`OBVR_Input` folder from `Data/OBSE/Plugins/`, plus `OBVR_Onboarding.xml`,
+`OBVR_Settings.xml`, `OBVR_Update.xml` and `OBVR_AdjustHands.xml` from
+`Data/Menus/Generic/` and the `Data/Menus/Prefabs/OBVR/` folder. OBVR doesn't touch your saves. Want to rule OBVR out quickly? Set
 `[Camera] HookEnabled=0` in `OBVR.ini`.
 
 ## Settings
@@ -139,7 +162,7 @@ A few worth knowing:
 | `[Render] Menus` | `world` menus float in front of you, `cinema` on a flat screen |
 | `[Head] RecenterKey` | the recenter key, `Delete` (`Entf`) by default |
 | `[Look] *` | turning, aiming and comfort options |
-| `[Hands] Enabled` | standing with motion controllers - not ready yet, off |
+| `[Hands] Enabled` | Full VR, standing with motion controllers - the beta build asks on the first start; off in the public download |
 
 ## Found a bug?
 

@@ -486,6 +486,36 @@ in the headset yet.
 - **Not tried in the headset yet**: how 10 cm to a slot feels, and whether
   the ring at the hand is easy to read.
 
+- **The stick's button held opens the ring too (built 2026-10-15; the tester:
+  "für quest hotkey button wird der rechte stick button long pressed. quest
+  button gibts nicht").** The Oculus Touch binding
+  (assets/input/oculus_touch.json) has no trackpad: 16 of the manifest's 18
+  actions are bound, the two trackpad actions are not, so a Quest had neither
+  the ring nor the journal key. Now the right stick's button held past
+  `[Hands] QuickMenuStickHoldSeconds` (0.4; the settings row "Quick menu: stick
+  hold") is the ring's on every controller (`vr::StepStickHold` in
+  vr/HandInput.h, `HandModeResult::ringByStick`, OR-ed into the ring's pad in
+  CameraHook's `UpdateQuickMenu`): from the hold on the press belongs to the
+  ring, its release uses the slot the hand is on and is no click of the stick -
+  no Rest menu, no ready weapon. A press the chord took (both sticks within a
+  quarter second) or one made with the ring switched off is never the ring's,
+  and a short click stays what it was. The hold is longer than the chord's
+  window on purpose. The journal key (F1, the left trackpad's click on the
+  Index) still has no Touch binding; the tester wants that press to become a
+  spell ring (4.44). Tests: hand_mode_test, the hold's flows and the mode's
+  (short click, the hold, the chord, the ring off). Harness
+  `quick-menu-stick.txt` PASS (Linux, 2026-10-15): the ring opened at 0.9 s of
+  hold with the save's slot 3 ("3 Iron Longsword"), "hotkey 3 used" on the
+  release and no Rest menu after it; a short click then opened the Rest menu
+  (SleepWait), and the right B closed it.
+- **Fixed on the way (2026-10-15): the right B in the Rest menu opened the
+  pause menu over it.** The frame's `restMenuUp` reached the plan only on the
+  menus-only path; Full VR's `Step` never handed it on, so `PlanHandControls`
+  sent Escape instead of the Rest menu's own key (T). One line in
+  HandMode.cpp; hand_mode_test "The Rest menu's own key through the mode"; the
+  harness run above closed the menu with the right B ("menu 0" at
+  `rest_closed`).
+
 ### 4.5 Setting a hotkey from the inventory or the magic menu (built 2026-09-27)
 
 - **Vanilla on the PC.** Open the inventory or the magic menu, hold a number
@@ -528,6 +558,19 @@ in the headset yet.
     the monitor mirror; whether it shows in the headset is not checked.
 - **Not checked:** spells from the magic menu. The magic menu's click path
   is the same kind of check (0x5B39BC), but no scenario opens that menu yet.
+- **Open bug (the tester, 2026-10-15): "hotkeys im inventar belegen geht
+  nicht mehr da laserpointer sich wegbewegt vom item wenn man die
+  entsprechende slot besetzen will."** Noted, not built ("notiere"). The cause,
+  read from the code: the ring's `holdsCursor` only zeroes the mouse steps
+  (`g_hand.cursorDx/Dy` in CameraHook's `UpdateQuickMenu`), but since
+  2026-10-10 the cursor is also placed directly before the engine's tile search
+  (4.36, `LaserCursorDirect`, default on: `HandModeResult::cursorWanted/X/Y`,
+  HandMode.cpp `placeCursor`), and that placement is not held - so while the
+  ring is up the cursor follows the laser to the slot, and the click lands
+  beside the item. The fix is small: with `holdsCursor` the direct placement
+  is dropped for the frame (or kept at the pixel of the frame the ring
+  opened), as the mouse steps are. The proof is `quick-menu-assign.txt`, which
+  passed 2026-09-27 before the direct cursor and has not been rerun since.
 
 ### 4.6 Stowing at the body, and taking only by hand (built 2026-09-27)
 
@@ -2975,3 +3018,20 @@ vll können wir den entfernen."
   morning was spoiled by the runner's console text, see the harness doc).
   The tester's headset is the proof: the left A in the inventory with the
   game behind another window.
+
+### 4.44 A spell ring on the other hand (the tester, 2026-10-15; not built)
+
+"neue hotkey für linken controller. linker stick press nicht mehr quests
+sondern eine zauberbuch als hotkey wie wir das schon rechts haben." Wanted:
+the other hand's press opens a ring of spells, chosen and used as the hotkey
+ring is (4.4), in place of the journal (F1). Which press: the message says the
+left stick's button - held, as the right's opens the hotkey ring; on the Index
+the left trackpad's click is the journal today, so it may be meant as well (to
+ask). Open: which spells fill the slots (the eight hotkeys hold spells already;
+a ring of its own needs its own list - the player's known spells by school, or
+a page the co-save keeps, as the hotkey pages are), and whether a spell can be
+made the active one without the magic menu (the menu's click path 0x5B39BC,
+or the engine's equip-spell call). The left stick pressed in is the run key
+today; a hold past the ring's time has to leave running alone. Cost: medium -
+the ring's painter, the hold (`vr::StepStickHold`) and the hand are there; new
+are the spell list, the equip without the menu, and a scenario.

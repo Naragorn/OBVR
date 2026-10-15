@@ -1,0 +1,56 @@
+# The quick menu by the right stick's button held (docs/controls-spec.md 4.4;
+# the tester, 2026-10-15: "für quest hotkey button wird der rechte stick
+# button long pressed" - the Oculus Touch has no trackpad). The button held
+# past QuickMenuStickHoldSeconds (0.4): the ring opens at the hand, the hand
+# moved right lights slot 3, letting go there uses it - and that release is
+# the ring's, so no Rest menu opens on it. Last, a short click: the Rest menu
+# (SleepWait), as before, and no ring; the right B cancels it with its own key
+# (a menu still up at the last mark would count SleepWait twice).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/quick-menu-stick.txt
+
+ini Hands Enabled=1
+ini Hands QuickMenu=1
+console player.additem 00000C0C 1
+console SetHotkeyItem 3 00000C0C
+
+expect HandScript: finished
+count 1 QuickMenu: opened at the hand
+expect the quick menu's picture saved as OBVR-QuickMenu-ring_open.bmp
+expect the quick menu's picture saved as OBVR-QuickMenu-slot3_lit.bmp
+count 1 Hands: at the mark - menu 1 (SleepWait)
+count 1 Hands: menu SleepWait (0x3F4)
+reject Hands: menu Pause (0x3F5)
+reject HandScript: WARNING
+
+# Time for the runner to type the console lines and the console to close.
+wait 16
+mark standing
+right pos 0.15 -0.30 -0.35
+wait 0.3
+# Held: the ring.
+right click 1
+wait 0.9
+mark ring_open
+# Right of where it opened: slot 3.
+right pos 0.23 -0.30 -0.35
+wait 0.4
+mark slot3_lit
+right click 0
+wait 1.5
+mark after_use
+# A short click: the Rest menu (the stick's click fires on its release).
+right pos 0.15 -0.30 -0.35
+wait 0.3
+right click 1
+wait 0.12
+right click 0
+wait 1.5
+mark rest_menu
+# The right B cancels the Rest menu with its own key (T) - not Escape, which
+# would open the pause menu over it.
+right b 1
+wait 0.2
+right b 0
+wait 1.5
+mark rest_closed
+wait 1

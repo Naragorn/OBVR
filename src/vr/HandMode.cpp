@@ -406,6 +406,14 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	// The sticks' clicks: both together is OBVR's own menu, one alone fires on
 	// its release.
 	const StickChordVerdict sticks = StepChord(f, r);
+	// The right stick's button held past the hold is the quick menu's
+	// (vr::StepStickHold): the ring opens by it, as by the right trackpad,
+	// and its release is the ring's, not the stick's click. Not a press the
+	// chord took, and never with the ring switched off.
+	const StickHoldVerdict stickHold = StepStickHold(
+		m_rightStickHold, f.right.valid && StickClickDown(f.right.buttonsPressed),
+		s.quickMenu.enabled && !m_sticks.chorded, s.quickMenu.stickHoldSeconds, f.dtSeconds);
+	r.ringByStick = stickHold.held;
 
 	// OBVR's own menu open: the sticks are its arrow keys, either hand's, and
 	// nothing reaches the game - a stick that scrolls the menu must not walk
@@ -558,9 +566,13 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		m_rightMenu, cr.valid && ButtonBDown(cr.buttonsPressed));
 	in.leftMenuButton = StepRisingEdge(
 		m_leftMenu, cl.valid && ButtonBDown(cl.buttonsPressed));
-	in.rightStickClick = sticks.rightClick;
+	in.rightStickClick = sticks.rightClick && !stickHold.longRelease;
 	in.leftStickClick = sticks.leftClick;
 	in.stickClickWaits = s.holster.enabled;
+	// The Rest menu on top: the right B cancels it with its own key (T), not
+	// with Escape, which opened the pause menu over it (found by the harness
+	// 2026-10-15: only the menus-only path handed the flag on).
+	in.restMenuUp = f.restMenuUp;
 	in.leftTrackpadClick = StepRisingEdge(
 		m_leftTrackpad, cl.valid && TrackpadClickDown(cl.buttonsPressed));
 	in.leftStickHeld = cl.valid && StickClickDown(cl.buttonsPressed);
