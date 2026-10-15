@@ -4,10 +4,14 @@
 
 #include "core/AddressSpace.h"
 #include "core/AroundCall.h"
+#include "core/CodeWriter.h"
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/ExhaustionLogic.h"
 #include "game/GameAddresses.h"
+#include "game/NiMath.h"
+
+#include <cmath>
 
 namespace obvr::game {
 namespace {
@@ -17,6 +21,13 @@ bool g_knockdownEnabled = true;
 bool g_staggerReported = false;
 bool g_knockbackReported = false;
 UInt32 g_knockdownLines = 20;
+// The player's hits on others ([Hands] EnemyKnockback; HitKnockbackLogic.h).
+HitKnockbackSettings g_enemyKnockback;
+bool g_motionHitActive = false;
+bool g_motionHitPower = false;
+bool g_powerFlagChecked = false;
+float g_hitShare = 1.0f;  // what the proxy call decided for the push that follows it
+UInt32 g_enemyKnockbackLines = 24;
 
 UInt32 Player() { return *reinterpret_cast<const UInt32*>(addr::kPlayerPointer); }
 
@@ -37,15 +48,89 @@ void __fastcall OnStagger(void* actor, void* /*edx*/) {
 	reinterpret_cast<ActorVoidFn>(kStaggerStart)(actor);
 }
 
+// The player's own knockback skipped, as the setting says.
+bool PlayerKnockbackSkipped(void* actor) {
+	if (!SkipForPlayer(g_enabled, reinterpret_cast<UInt32>(actor), Player())) {
+		return false;
+	}
+	if (!g_knockbackReported) {
+		g_knockbackReported = true;
+		OBVR_LOG("Comfort: a hit's knockback of the player was skipped (Look.NoPlayerStagger)");
+	}
+	return true;
+}
+
+// Reached by `call` with the target in ecx and nothing on the stack - the
+// fallback when the stub below could not be made: the player's own skip
+// alone.
 void* __fastcall OnKnockbackProxy(void* actor, void* /*edx*/) {
-	if (SkipForPlayer(g_enabled, reinterpret_cast<UInt32>(actor), Player())) {
-		if (!g_knockbackReported) {
-			g_knockbackReported = true;
-			OBVR_LOG("Comfort: a hit's knockback of the player was skipped (Look.NoPlayerStagger)");
-		}
+	g_hitShare = 1.0f;
+	if (PlayerKnockbackSkipped(actor)) {
 		return nullptr;
 	}
 	return reinterpret_cast<ActorPointerFn>(kCharacterProxyOf)(actor);
+}
+
+// Reached through the stub (InstallPlayerStagger): the target in ecx as the
+// engine's call had it, the attacker - the hit handler's this, edi - in edx,
+// and the handler's power attack flag pushed from its frame, which this
+// callee takes off. Answers the proxy, or none when this hit is to push
+// nobody, and leaves the share for OnHitKnockbackPush.
+void* __fastcall OnHitKnockbackProxy(void* actor, void* attacker, UInt32 powerFlag) {
+	g_hitShare = 1.0f;
+	if (PlayerKnockbackSkipped(actor)) {
+		return nullptr;
+	}
+	const bool handlerPower = (powerFlag & 0xFFu) != 0;
+	// A strike by motion knows itself whether it is a power attack: taken
+	// over the handler's flag, which is checked against it once.
+	const bool power = g_motionHitActive ? g_motionHitPower : handlerPower;
+	if (g_motionHitActive && !g_powerFlagChecked) {
+		g_powerFlagChecked = true;
+		OBVR_LOG("Comfort: the hit handler's power flag read %u for a %s strike by motion - %s", powerFlag & 0xFFu,
+		         g_motionHitPower ? "power" : "light",
+		         handlerPower == g_motionHitPower ? "the stack reading agrees" : "THE STACK READING DISAGREES");
+	}
+	const UInt32 player = Player();
+	const bool byPlayer = player != 0 && reinterpret_cast<UInt32>(attacker) == player;
+	const float share =
+		HitKnockbackShare(g_enemyKnockback, byPlayer, reinterpret_cast<UInt32>(actor) == player, power);
+	if (share <= 0.0f) {
+		if (g_enemyKnockbackLines > 0) {
+			--g_enemyKnockbackLines;
+			OBVR_LOG("Comfort: the knockback of %08X by the player's %s hit is skipped (Hands.EnemyKnockback %.0f %%, "
+			         "power only %d)",
+			         reinterpret_cast<UInt32>(actor), power ? "power" : "light",
+			         static_cast<double>(g_enemyKnockback.percent), g_enemyKnockback.powerOnly ? 1 : 0);
+		}
+		return nullptr;
+	}
+	g_hitShare = share;
+	return reinterpret_cast<ActorPointerFn>(kCharacterProxyOf)(actor);
+}
+
+using ProxyPushFn = void(__thiscall*)(void* proxy, const NiPoint3* distance, float seconds);
+
+// Reached by `call` with the proxy in ecx and two stack arguments the callee
+// clears (ret 8): a fastcall with them after edx does the same. The push's
+// distance scaled by the share the proxy call left.
+void __fastcall OnHitKnockbackPush(void* proxy, void* /*edx*/, const NiPoint3* distance, float seconds) {
+	const float share = g_hitShare;
+	g_hitShare = 1.0f;
+	if (share >= 1.0f || distance == nullptr) {
+		reinterpret_cast<ProxyPushFn>(kProxyKnockbackPush)(proxy, distance, seconds);
+		return;
+	}
+	const NiPoint3 scaled{distance->x * share, distance->y * share, distance->z * share};
+	if (g_enemyKnockbackLines > 0) {
+		--g_enemyKnockbackLines;
+		OBVR_LOG("Comfort: the knockback of the player's hit scaled to %.2f (Hands.EnemyKnockback %.0f %%): %.1f units "
+		         "instead of %.1f over %.2f s",
+		         static_cast<double>(share), static_cast<double>(g_enemyKnockback.percent),
+		         std::sqrt(static_cast<double>(scaled.LengthSquared())),
+		         std::sqrt(static_cast<double>(distance->LengthSquared())), static_cast<double>(seconds));
+	}
+	reinterpret_cast<ProxyPushFn>(kProxyKnockbackPush)(proxy, &scaled, seconds);
 }
 
 using KnockActorAwayFn = void(__thiscall*)(void* process, void* actor, float x, float y, float z, float force);
@@ -198,8 +283,31 @@ void InstallPlayerStagger() {
 	const UInt32 onStagger = reinterpret_cast<UInt32>(&OnStagger);
 	Reroute(kCallStaggerFromHit, kStaggerStart, onStagger, "the stagger from a hit");
 	Reroute(kCallStaggerFromReach, kStaggerStart, onStagger, "the stagger from a reach search");
-	Reroute(kCallKnockbackProxy, kCharacterProxyOf, reinterpret_cast<UInt32>(&OnKnockbackProxy),
-	        "a hit's knockback");
+	// The proxy call through a stub that hands the attacker and the power
+	// flag along (PlayerStagger.h, the push): `mov edx, edi; push dword
+	// [esp+1E8h]; call OnHitKnockbackProxy; ret` - the callee takes the
+	// pushed flag off, the ret goes back to the hit handler. Without the
+	// stub, the player's own skip alone.
+	UInt32 knockbackTarget = reinterpret_cast<UInt32>(&OnKnockbackProxy);
+	if (UInt8* const stub = static_cast<UInt8*>(mem::AllocExecutable(32))) {
+		mem::CodeWriter code(stub, 32, reinterpret_cast<UInt32>(stub));
+		static const UInt8 kMoveEdxEdi[] = {0x8B, 0xD7};
+		static const UInt8 kPushPowerFlag[] = {0xFF, 0xB4, 0x24, 0xE8, 0x01, 0x00, 0x00};
+		code.Bytes(kMoveEdxEdi, sizeof(kMoveEdxEdi));
+		code.Bytes(kPushPowerFlag, sizeof(kPushPowerFlag));
+		code.CallRelative(reinterpret_cast<UInt32>(&OnHitKnockbackProxy));
+		code.Byte(0xC3);
+		if (!code.Overflowed()) {
+			knockbackTarget = reinterpret_cast<UInt32>(stub);
+		} else {
+			OBVR_LOG("Comfort: the knockback stub overflowed its buffer - the player's own skip alone");
+		}
+	} else {
+		OBVR_LOG("Comfort: no memory for the knockback stub - the player's own skip alone");
+	}
+	Reroute(kCallKnockbackProxy, kCharacterProxyOf, knockbackTarget, "a hit's knockback");
+	Reroute(kCallKnockbackPush, kProxyKnockbackPush, reinterpret_cast<UInt32>(&OnHitKnockbackPush),
+	        "a hit's knockback push");
 	RerouteSlot(kKnockSlotHighProcess, "high process");
 	RerouteSlot(kKnockSlotMiddleHighProcess, "middle-high process");
 	RerouteStepSlot(kKnockStepSlotHighProcess, "high process");
@@ -211,6 +319,13 @@ void SetNoPlayerStagger(bool enabled) { g_enabled = enabled; }
 void SetNoPlayerKnockdown(bool enabled) { g_knockdownEnabled = enabled; }
 
 void SetExhaustion(bool enabled) { g_exhaustionEnabled = enabled; }
+
+void SetEnemyKnockback(const HitKnockbackSettings& settings) { g_enemyKnockback = settings; }
+
+void SetMotionHit(bool active, bool powerAttack) {
+	g_motionHitActive = active;
+	g_motionHitPower = powerAttack;
+}
 
 UInt32 TakeCollapseSkips() {
 	const UInt32 skips = g_collapseSkips;

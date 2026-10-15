@@ -33,6 +33,9 @@ expect skeleton read
 expect Contact: people - 1 near
 expect Contact: a swing is held by
 expect Hands: the blade met
+expect held until the hand comes back
+expect Comfort: the knockback of
+reject Contact: pressed on into
 reject Contact: a swing went into someone
 reject HandScript: WARNING
 

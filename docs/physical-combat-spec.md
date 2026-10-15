@@ -775,3 +775,12 @@ locations/locational dmg wie in B&S." Noted for later ("nichts coden!"):
   or the hit's damage could be reread and adjusted after. No dismemberment:
   the models are not cut. Not designed yet.
 
+## 10. The target: Blade & Sorcery's combat, rebuilt (the tester, 2026-10-15)
+
+"neues zielbild: nachbau vom B&S combat in OBVR." The list of what B&S does
+and where OBVR stands is weapon-collision-spec section 18 (the bodies stop
+the blade and the fist: built; the knockback of the player's hits: off by
+default, scalable; penetration, hit locations, the own body: open;
+dismemberment: not planned). What B&S does, read on its SDK wiki, is in
+weapon-collision-spec 17.1. The open items of sections 8 and 9 here are
+steps towards it; each gets its cost stated when proposed.

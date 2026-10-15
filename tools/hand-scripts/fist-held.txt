@@ -10,7 +10,8 @@
 # WeaponLetGoMetres) while it lands as the off hand's blow ("Shove: the left
 # hand at N m/s towards ... (the off hand's punch, a weapon drawn)") - hard
 # at this speed, so they are knocked down and the next two punches find
-# nobody. A fast hand never goes through them unheld.
+# nobody. A fast hand never goes through them unheld; the hand is held for
+# good (BodyLetGoMetres 0), the controller comes back.
 # `ini Debug ContactTrace=400` writes the step frame by frame ("Contact: trace").
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/fist-held.txt
 

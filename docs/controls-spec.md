@@ -2200,9 +2200,12 @@ the tester: "mach es wie in blade and sorcery"):**
   `PunchesStopAtBodies=1` ("Punches stop at people"): the living hold the
   weapon and the free hand at any speed, as the stoppers of section 15 do
   - a swing is held at the person it meets instead of going into them, a
-  punch, a slap or any hand at the shove's speed is held too - and only
-  pressed on past `WeaponLetGoMetres` does the shape go into them (passed,
-  the blade still striking). The hit stays the strike by motion's and the
+  punch, a slap or any hand at the shove's speed is held too - for good by
+  default (`[Hands] BodyLetGoMetres=0`, "Lets go at people (m)": Blade &
+  Sorcery's "block" - the hand comes back, the shape comes free), or into
+  them once the hand is `BodyLetGoMetres` past where they hold it (passed,
+  the blade still striking) when that is set; walls and the stoppers keep
+  `WeaponLetGoMetres`. The hit stays the strike by motion's and the
   shove's own; both read the controller, not the held pose, so the blow
   lands as before. Off, the old way: a swing or a fast hand goes through,
   the hit-stop slows the swing (`BladeLiving::hold`,
@@ -2216,8 +2219,17 @@ the tester: "mach es wie in blade and sorcery"):**
 - `[Debug] ContactTrace=N`: N lines "Contact: trace - ..." per step while
   people are near and the shape swings, is held or goes in (the tip from
   and to, drawn where, held by, entered, event, gap, through, passed).
-- Harness `blade-held.txt` and `fist-held.txt` PASS 2026-10-15
-  (docs/hand-script-harness.md).
+- `[Hands] EnemyKnockback=0` ("Hits push enemies (%)") and
+  `EnemyKnockbackPowerOnly=0` ("Only power attacks push"): the game's own
+  knockback on the player's hits - every landed blow shoves the one hit
+  through their Havok proxy, 19 units from a light sword hit - kept at this
+  share (0 none, as a B&S body stays; 100 the game's own), or only for power
+  attacks. game/HitKnockbackLogic.h, PlayerStagger.cpp (the proxy call
+  through a stub with the attacker and the power flag, the push call scaled);
+  spec section 17.3. Hits on the player stay `[Look] NoPlayerStagger`'s.
+- Harness `blade-held.txt` and `fist-held.txt` PASS 2026-10-15 on the
+  morning's build (docs/hand-script-harness.md); with the cap and the
+  knockback of the afternoon not run yet ("ohne spiel starts").
 
 **The parry (built 2026-10-09; spec section 4 E, decision 3):**
 

@@ -904,6 +904,17 @@ das wirkt unrealistisch, die sollten eig gehen"):
   holds, and the waiting walk instead of sliding. Not said: whether the
   drift out on a sideways walk reads as walking.
 
+**Built 2026-10-15: the knockback of the player's own hits.** The game
+shoves whoever the player hits through their Havok proxy on every landed
+blow (fKnockback*; a light sword hit moved a frozen beggar 19 units in the
+harness, out of the next blow's reach - weapon-collision-spec 17.3). The
+tester: "gegner wegschieben mit schlägen ... wäre ein fehler." `[Hands]
+EnemyKnockback` (per cent of the game's push, default 0) and
+`EnemyKnockbackPowerOnly` (light hits push nobody); settings rows "Hits push
+enemies (%)", "Only power attacks push" under Hands: enemies. The player's
+own knockback stays `[Look] NoPlayerStagger`'s business, other fighters'
+hits the game's own. Not run in the game yet.
+
 ## Test reminders
 
 - With the switch on: fights with power attacks show no lurch back. The log

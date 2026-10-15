@@ -1472,6 +1472,16 @@ endif()
 
 add_test(NAME blade_contact COMMAND blade_contact_test)
 
+add_executable(hit_knockback_test HitKnockbackTest.cpp)
+
+target_include_directories(hit_knockback_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(hit_knockback_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME hit_knockback COMMAND hit_knockback_test)
+
 add_executable(hand_contact_test HandContactTest.cpp)
 
 target_include_directories(hand_contact_test PRIVATE ../src)

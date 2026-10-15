@@ -847,7 +847,67 @@ is closed.
   its own (28 m/s) - with the beggar in reach it was held by him before the
   scenario began; a jump of 0.37 m to a slash's start is one too and knocked
   him back before the first slash. The scenarios now move there slowly.
-- **Open:** the headset's judgement of the feel; a cap for people of its own
-  (the walls' 0.6 m is long for a chest; B&S never lets a slash through a
-  torso); the edge's sinking; a push on the person held (B&S's `addForce`),
-  today only the engine's stagger on the hit.
+- **The cap at people, of its own (the tester, 2026-10-15: "bau die eigene
+  grenze für personen, default 0 wie B&S block"):** `[Hands] BodyLetGoMetres`
+  ("Lets go at people (m)"), default 0 - a person holds the weapon or the
+  hand for good, however far or how turned the controller goes, until it
+  comes back and the shape comes free; set, the shape goes into them past
+  that distance (passed, still striking), as walls let go at
+  `WeaponLetGoMetres`. `BladeContactSettings::bodyLetGoUnits`; the let-go
+  check asks who holds: a wall or a stopper keeps the weapon's cap (and its
+  angle cap), a person theirs. Unit flows: held 86 units on, turned 69
+  degrees, free when the hand comes back, resting slowly for good, the wall
+  and the stopper still letting go; a four-aligned test id, since an odd id
+  reads as a foe's stopper.
+- **The knockback of the player's hits (the tester, 2026-10-15:
+  "problematisch wird auch ob wir dann gegner wegschieben mit schlägen. das
+  wäre ein fehler", then "bau mal alle vier optionen mit toggle"):** what
+  moved the beggar 19 units a blow was the engine's own hit knockback
+  through the Havok character proxy (PlayerStagger.h), not the hold. `[Hands]
+  EnemyKnockback` ("Hits push enemies (%)", default 0: none, as a B&S body
+  stays where it stands; 100 the game's own; between, the push's vector
+  scaled) and `EnemyKnockbackPowerOnly` ("Only power attacks push", default
+  0). game/HitKnockbackLogic.h (`HitKnockbackShare`, hit_knockback_test: 17
+  flows), PlayerStagger.cpp: the proxy call 0x0060008A now runs through a
+  stub that hands the attacker (the handler's `this`, edi) and the power flag
+  (the handler's first argument, [esp+0x1E4] of a frame esp never leaves)
+  along; a hit to push nobody answers no proxy, one to push less leaves its
+  share for the push call 0x006000AF, rerouted to scale the distance. A
+  strike by motion hands its own power flag over (`SetMotionHit`) and the
+  handler's reading is checked against it once ("Comfort: the hit handler's
+  power flag read ... agrees"). Hits on the player stay NoPlayerStagger's,
+  other fighters' hits the game's own. **Not run in the game yet** (the
+  tester, 2026-10-15: "ohne spiel starts, geht grad nicht"): the stack
+  reading is verified in the disassembly only; the first motion hit's log
+  line will say whether it agrees.
+- **Open:** the headset's judgement of the feel; the edge's sinking; a push
+  on the person held (B&S's `addForce`, now that the engine's is off by
+  default - a stumble of their own); the harness runs below.
+- **Harness, pending** (no game starts on 2026-10-15 afternoon):
+  `blade-held.txt` now expects "held until the hand comes back" and
+  "Comfort: the knockback of" and rejects "pressed on into" (the defaults:
+  the beggar stays, every slash held); `blade-held-cap.txt` (BodyLetGoMetres
+  0.30, EnemyKnockback 100) expects "pressed on into" - the old way;
+  `fist-held.txt` unchanged. All three to run before the headset.
+
+## 18. The target: Blade & Sorcery's combat, rebuilt (the tester, 2026-10-15)
+
+"neues zielbild: nachbau vom B&S combat in OBVR." Section 17.1 has what B&S
+does; this is where OBVR stands against it, element by element, to steer
+what comes next. physical-combat-spec section 10 carries the same list for
+the body and the hands.
+
+| B&S element | OBVR | Status |
+|---|---|---|
+| A body stops the blade and the fist, the controller goes on | the living hold swings and fast hands (17), held for good by default (`BodyLetGoMetres` 0) | built, headset open |
+| The hand follows the controller through a capped spring; a stuck weapon: block or drop | the held pose written back, the hand drawn where it stopped; no spring, no drop | built, as a hold |
+| The collision is the blow, damage by impact velocity | the strike by motion (the bound's sphere, the swing's speed for light or power), the shove by the hand's speed | built; no velocity curve |
+| Impulse on the part hit, the body stays | the engine's knockback off by default (`EnemyKnockback` 0), scalable; no impulse on the part | built as off; a stumble open |
+| A slash sinks its edge in and slides out | held the half-width short of the capsule; the slide along it | partly |
+| Penetration: a thrust goes in and sticks | nothing | open (physical-combat-spec 9) |
+| Dismemberment | nothing; the models are not cut | not planned |
+| Hit locations, damage by part | nothing; the part is known (`BodyPart`) | open (physical-combat-spec 9) |
+| Blades and shields meet: a parry stops the blow | the parry (11), the stoppers (15), the block by angle and reach | built |
+| The hands and the weapon against the own body | nothing (16) | open |
+| Weapon weight and inertia | `WeaponWeight`, the swing-through spring | built |
+| Grabbing a fighter, throwing, the ragdoll hold | the grapple, the ragdoll grab (physical-combat-spec 8) | built, the weight open |

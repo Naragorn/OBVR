@@ -943,6 +943,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.weaponLetGoMetres = v; },
 	},
 	{
+		"Hands: physics", "Lets go at people (m)",
+		"How far the hand may go past where a person holds the weapon or the hand before it goes into them; 0 holds for good, as Blade & Sorcery does",
+		ItemKind::Number, 0.00f, 1.00f, 0.05f, 2, false,
+		"Hands", "BodyLetGoMetres",
+		+[](const Config& c) { return c.hands.bodyLetGoMetres; },
+		+[](Config& c, float v) { c.hands.bodyLetGoMetres = v; },
+	},
+	{
 		"Hands: physics", "Weapon rests on people",
 		"Held there slowly the weapon rests on a person; a swing is held at them or goes in, by the next setting",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
@@ -1302,6 +1310,22 @@ const SettingDefinition kSettings[] = {
 		"Hands", "CombatReach",
 		+[](const Config& c) { return c.hands.combatReach; },
 		+[](Config& c, float v) { c.hands.combatReach = v; },
+	},
+	{
+		"Hands: enemies", "Hits push enemies (%)",
+		"How far your hits shove the one you hit, as a share of the game's own knockback: 100 the game's, 0 they stay where they stand, as in Blade & Sorcery",
+		ItemKind::Number, 0.0f, 100.0f, 10.0f, 0, false,
+		"Hands", "EnemyKnockback",
+		+[](const Config& c) { return c.hands.enemyKnockbackPercent; },
+		+[](Config& c, float v) { c.hands.enemyKnockbackPercent = v; },
+	},
+	{
+		"Hands: enemies", "Only power attacks push",
+		"A light hit shoves nobody; a power attack pushes by the share above",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "EnemyKnockbackPowerOnly",
+		+[](const Config& c) { return c.hands.enemyKnockbackPowerOnly ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.enemyKnockbackPowerOnly = v != 0.0f; },
 	},
 	{
 		"Hands: enemies", "Enemies walk near you",

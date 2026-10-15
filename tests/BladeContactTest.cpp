@@ -602,6 +602,7 @@ void TestLiving() {
 	BoxWorld none;
 	BladeContactSettings set;
 	set.letGoUnits = 21.0f;  // the cap these flows were laid out at (0.30 m)
+	set.bodyLetGoUnits = 21.0f;  // and the cap at people the same (0 since 2026-10-15: held for good)
 	const BladeBodies person = PersonAhead();
 	BladeContactState s;
 	StepBladeContact(s, set, LivingFrame(At(0, -30, 0), &person, false), none);
@@ -686,6 +687,7 @@ void TestLivingHold() {
 	BoxWorld none;
 	BladeContactSettings set;
 	set.letGoUnits = 21.0f;
+	set.bodyLetGoUnits = 21.0f;  // the cap at people set: pressed on past it the blade goes in
 	const BladeBodies person = PersonAhead();
 	auto hold = [&](const BladePose& wanted, bool swinging) {
 		BladeContactFrame f = LivingFrame(wanted, &person, swinging);
@@ -795,6 +797,56 @@ void TestLivingHold() {
 	v = StepBladeContact(n, set, hold(At(0, -11, 0), true), wall);
 	Check(v.held && v.contact.actor == 11 && v.contact.body == 0 && !n.passed.Has(11),
 	      "a swing at someone before a wall: they hold it, the wall behind is not reached");
+
+	// The cap at people 0 (the default): held for good, however far or how
+	// turned the hand goes, until it comes back - Blade & Sorcery's "block".
+	// The person's id four-aligned as an actor's address is: an odd id reads
+	// as a foe's stopper (FoeBladeId), which keeps the weapon's cap.
+	const BladeBodies aligned = PersonAhead(0x1000);
+	auto holdA = [&](const BladePose& wanted, bool swinging) {
+		BladeContactFrame f = LivingFrame(wanted, &aligned, swinging);
+		f.bodiesHold = true;
+		return f;
+	};
+	BladeContactSettings never;
+	never.letGoUnits = 21.0f;
+	Check(Near(never.bodyLetGoUnits, 0.0f), "the plain default: no cap at people");
+	BladeContactState k;
+	StepBladeContact(k, never, holdA(At(0, -30, 0), true), none);
+	v = StepBladeContact(k, never, holdA(At(0, -20, 0), true), none);
+	Check(v.held && v.contact.actor == 0x1000, "a swing held by someone");
+	v = StepBladeContact(k, never, holdA(At(0, 60, 0), true), none);
+	Check(v.held && v.contact.actor == 0x1000 && Near(v.gapUnits, 86.5f) && !k.passed.Has(0x1000) &&
+	          v.event != BladeContactEvent::LetGo,
+	      "the hand 86 units on: still held, not gone in");
+	v = StepBladeContact(k, never, holdA(TurnedAt(0, 60, 0, 1.2f), true), none);
+	Check(v.held && !k.passed.Has(0x1000) && v.event != BladeContactEvent::LetGo, "turned 69 degrees as well: still held");
+	v = StepBladeContact(k, never, holdA(At(0, -40, 0), true), none);
+	Check(!v.held && Near(v.pose.pos.y, -40.0f) && !k.passed.Has(0x1000),
+	      "the hand back short of them: the blade comes free");
+	// Slowly the same: it rests on them for good.
+	BladeContactState m;
+	StepBladeContact(m, never, holdA(At(0, -30, 0), false), none);
+	StepBladeContact(m, never, holdA(At(0, -20, 0), false), none);
+	v = StepBladeContact(m, never, holdA(At(0, 30, 0), false), none);
+	Check(v.held && v.contact.actor == 0x1000 && !m.passed.Has(0x1000), "pressed on slowly 56 units: still resting on them");
+	// A wall's cap stays the weapon's, and a stopper's too.
+	BoxWorld wallOnly;
+	AddWallAhead(wallOnly);
+	BladeContactState wl;
+	StepBladeContact(wl, never, FrameFor(At(0, -30, 0)), wallOnly);
+	v = StepBladeContact(wl, never, FrameFor(At(0, 20, 0)), wallOnly);
+	Check(v.event == BladeContactEvent::LetGo && v.through, "a wall still lets go past the weapon's cap");
+	BladeDiscs shield;
+	shield.Add(NiPoint3{0, 45, 0}, NiPoint3{0, -1, 0}, 20.0f, 3.0f, kStopperOwnShield);
+	BladeContactFrame sf = FrameFor(At(0, -30, 0));
+	sf.discs = &shield;
+	BladeContactState st;
+	StepBladeContact(st, never, sf, none);
+	sf.wanted = At(0, 10, 0);
+	v = StepBladeContact(st, never, sf, none);
+	Check(v.event == BladeContactEvent::LetGo && st.passed.Has(kStopperOwnShield),
+	      "a stopper still lets go past the weapon's cap");
 }
 
 void TestHitStop() {
@@ -836,6 +888,16 @@ void TestSettings() {
 	Check(Near(s.letGoUnits, 140.0f) && Near(s.letGoRadians, kPi), "too large: 2 m and 180 degrees");
 	s = BladeContactSettingsFor(true, 0.5f, 45.0f, 0.0f);
 	Check(Near(s.letGoUnits, 35.0f), "no scale: 70 units a metre");
+	Check(Near(s.bodyLetGoUnits, 0.0f), "the cap at people unasked: none");
+	Check(Near(BladeContactSettings{}.bodyLetGoUnits, 0.0f), "the plain default at people: none, held for good");
+	s = BladeContactSettingsFor(true, 0.60f, 45.0f, 70.0f, 0.30f);
+	Check(Near(s.bodyLetGoUnits, 21.0f), "0.30 m at people: 21 units");
+	s = BladeContactSettingsFor(true, 0.60f, 45.0f, 70.0f, kNaN);
+	Check(Near(s.bodyLetGoUnits, 0.0f), "not a number at people: none");
+	s = BladeContactSettingsFor(true, 0.60f, 45.0f, 70.0f, -1.0f);
+	Check(Near(s.bodyLetGoUnits, 0.0f), "under 0 at people: none");
+	s = BladeContactSettingsFor(true, 0.60f, 45.0f, 70.0f, 9.0f);
+	Check(Near(s.bodyLetGoUnits, 140.0f), "too large at people: 2 m");
 }
 
 void TestShape() {

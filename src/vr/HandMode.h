@@ -319,6 +319,12 @@ struct HandSettings {
 	bool weaponStopsAtWalls = true;
 	float weaponLetGoMetres = 0.60f;  // the tester, 2026-10-10: 0.30 "ist generell zu früh"
 	float weaponLetGoDegrees = 45.0f;
+	// The cap at people, of its own: how far the hand may go past where a
+	// person holds the weapon or the hand before it goes into them ([Hands]
+	// BodyLetGoMetres); 0 holds for good, as Blade & Sorcery's "block" does -
+	// the hand comes back, the blade comes free (the tester, 2026-10-15:
+	// "bau die eigene grenze für personen, default 0 wie B&S block").
+	float bodyLetGoMetres = 0.0f;
 	// The living as well: held there slowly the blade rests on a person, a
 	// swing goes into them and through ([Hands] WeaponStopsAtBodies); and the
 	// hit-stop, the blade slowed for a few frames once a swing goes in
@@ -406,6 +412,14 @@ struct HandSettings {
 	// the tester, 2026-10-10). 100 is the game's own.
 	float enemyAttackSpeed = 75.0f;
 	float enemyAttackFrequency = 100.0f;
+	// Your hits and the game's knockback: every landed hit shoves the one hit
+	// through their Havok proxy ([Hands] EnemyKnockback, per cent of the
+	// game's own push - 0 none, they stay where they stand as in Blade &
+	// Sorcery; EnemyKnockbackPowerOnly, light hits pushing nobody;
+	// game/HitKnockbackLogic.h; the tester, 2026-10-15: "gegner wegschieben
+	// mit schlägen ... wäre ein fehler", "bau mal alle vier optionen").
+	float enemyKnockbackPercent = 0.0f;
+	bool enemyKnockbackPowerOnly = false;
 	// The off hand in a fight: it strikes with a weapon drawn, and its grip
 	// holds a fighter ([Hands] OffHandStrikes, OffHandGrabs, GrabHoldSeconds,
 	// GrabFatigue; game/GrappleLogic.h).

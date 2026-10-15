@@ -2825,7 +2825,8 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	g_bladeCameraPos = camPos;
 	const game::BladeContactSettings settings =
 		game::BladeContactSettingsFor(config.hands.weaponStopsAtWalls, config.hands.weaponLetGoMetres,
-		                              config.hands.weaponLetGoDegrees, config.tracker.unitsPerMetre);
+		                              config.hands.weaponLetGoDegrees, config.tracker.unitsPerMetre,
+		                              config.hands.bodyLetGoMetres);
 	// The living near the blade (game/BladeBodies.h), and the swing that
 	// goes into them: the strike's own swing.
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
@@ -2989,10 +2990,15 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		}
 		if (swingHeld && g_bladeLines > 0) {
 			--g_bladeLines;
-			OBVR_LOG("Contact: a swing is held by %08X at %.1f m/s (%u near) - pressed on %.0f units past them the blade "
-			         "goes in",
-			         restingOn, static_cast<double>(v.contact.speedIn / config.tracker.unitsPerMetre), peopleNear,
-			         static_cast<double>(settings.letGoUnits));
+			const double speed = static_cast<double>(v.contact.speedIn / config.tracker.unitsPerMetre);
+			if (settings.bodyLetGoUnits > 0.0f) {
+				OBVR_LOG("Contact: a swing is held by %08X at %.1f m/s (%u near) - pressed on %.0f units past them the "
+				         "blade goes in",
+				         restingOn, speed, peopleNear, static_cast<double>(settings.bodyLetGoUnits));
+			} else {
+				OBVR_LOG("Contact: a swing is held by %08X at %.1f m/s (%u near) - held until the hand comes back",
+				         restingOn, speed, peopleNear);
+			}
 		}
 	}
 	if (v.event == game::BladeContactEvent::Touched && !onPerson) {
@@ -3212,7 +3218,8 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 	g_handCameraPos = camPos;
 	const game::BladeContactSettings settings =
 		game::BladeContactSettingsFor(config.hands.handsStopAtWalls, config.hands.weaponLetGoMetres,
-		                              config.hands.weaponLetGoDegrees, config.tracker.unitsPerMetre);
+		                              config.hands.weaponLetGoDegrees, config.tracker.unitsPerMetre,
+		                              config.hands.bodyLetGoMetres);
 
 	// Which hand meets the world as what this frame (game::FreeHandShape).
 	SInt32 weaponType = -1;
@@ -3472,9 +3479,15 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 			                                                  : game::kBladeTouchMinAmplitude);
 			if (fastHeld && h.lines > 0) {
 				--h.lines;
-				OBVR_LOG("Contact: a fast %s is held by %08X at %.1f m/s (%u near) - pressed on %.0f units past them it "
-				         "goes in",
-				         name, restingOn, static_cast<double>(h.speed), peopleNear, static_cast<double>(settings.letGoUnits));
+				if (settings.bodyLetGoUnits > 0.0f) {
+					OBVR_LOG("Contact: a fast %s is held by %08X at %.1f m/s (%u near) - pressed on %.0f units past them "
+					         "it goes in",
+					         name, restingOn, static_cast<double>(h.speed), peopleNear,
+					         static_cast<double>(settings.bodyLetGoUnits));
+				} else {
+					OBVR_LOG("Contact: a fast %s is held by %08X at %.1f m/s (%u near) - held until the hand comes back",
+					         name, restingOn, static_cast<double>(h.speed), peopleNear);
+				}
 			}
 		}
 		if (v.event == game::BladeContactEvent::Touched && !onPerson) {
@@ -6496,6 +6509,8 @@ void OnPresent() {
 	const bool menuIsUp = config.tracker.showMenus && game::IsMenuMode();
 	game::SetNoPlayerStagger(config.look.noPlayerStagger);
 	game::SetNoPlayerKnockdown(config.look.noPlayerKnockdown);
+	game::SetEnemyKnockback(
+		game::HitKnockbackSettings{config.hands.enemyKnockbackPercent, config.hands.enemyKnockbackPowerOnly});
 	game::SetEquipWhileActing(config.fullVrMode);
 	game::SetNoHitBlur(config.look.noHitBlur);
 	StepExhaustion(config, g_deltaSeconds);

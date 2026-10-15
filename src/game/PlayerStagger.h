@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Types.h"
+#include "game/HitKnockbackLogic.h"
 
 namespace obvr::game {
 
@@ -33,6 +34,21 @@ inline constexpr UInt32 kCallStaggerFromHit = 0x0060051E;
 inline constexpr UInt32 kCallStaggerFromReach = 0x005FCCC8;
 inline constexpr UInt32 kCharacterProxyOf = 0x0065A2C0;
 inline constexpr UInt32 kCallKnockbackProxy = 0x0060008A;
+// The push itself: at 0x006000AF `call 008907A0` - thiscall(proxy, const
+// NiPoint3* distance in game units, float seconds), ret 8 (Shove.cpp uses
+// it for the shove). Read 2026-10-15 for the player's hits on others
+// ([Hands] EnemyKnockback; game/HitKnockbackLogic.h): the hit handler keeps
+// its `this`, the attacker, in edi from 0x005FEC3B (`mov edi, ecx`) to the
+// epilogue's `pop edi` at 0x006005CF; its first argument, the power attack
+// flag, lies at [esp+0x1E4] of a frame esp never leaves (read as a byte at
+// 0x005FF434 and 0x005FF4C5; the locals at [esp+0x20..0xA0] right before
+// 0x0060008A, and the push's vector built at [esp+0x98] is handed over as
+// [esp+0x9C] after one push). So a stub at the proxy call hands the attacker
+// (edi) and the flag ([esp+0x1E8] once the call pushed its return) to
+// OnHitKnockbackProxy with the target in ecx, and the call at 0x006000AF is
+// rerouted to scale the vector by the share that proxy call decided.
+inline constexpr UInt32 kCallKnockbackPush = 0x006000AF;
+inline constexpr UInt32 kProxyKnockbackPush = 0x008907A0;
 
 // The player never knocked down and thrown through the air ([Look]
 // NoPlayerKnockdown; the tester, 2026-10-05, of a beta tester's report: "andere
@@ -86,6 +102,13 @@ void InstallPlayerStagger();
 void SetNoPlayerStagger(bool enabled);
 void SetNoPlayerKnockdown(bool enabled);
 void SetExhaustion(bool enabled);
+// The player's hits on others: how much of the game's knockback they keep
+// ([Hands] EnemyKnockback, EnemyKnockbackPowerOnly).
+void SetEnemyKnockback(const HitKnockbackSettings& settings);
+// A strike by motion is handing its hit to the engine (MeleeHits.cpp): the
+// knockback takes the power flag from here while it is, and checks the
+// handler's own reading against it once.
+void SetMotionHit(bool active, bool powerAttack);
 // How many frames the player's collapse or fall was skipped since the last
 // call.
 UInt32 TakeCollapseSkips();

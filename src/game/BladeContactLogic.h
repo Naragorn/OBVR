@@ -1027,23 +1027,33 @@ struct BladeContactSettings {
 	bool enabled = true;          // [Hands] WeaponStopsAtWalls
 	float letGoUnits = 42.0f;     // WeaponLetGoMetres, in game units (0.60 m; 0.30 until 2026-10-10)
 	float letGoRadians = 0.7853982f;  // WeaponLetGoDegrees (45)
+	// The cap at a person, of its own ([Hands] BodyLetGoMetres): how far the
+	// hand may go past where someone holds the shape before it goes into
+	// them (passed, still striking). 0 never: held for good, as Blade &
+	// Sorcery's "block" holds a stuck weapon, until the hand comes back (the
+	// tester, 2026-10-15). The angle cap goes with it - none while a person
+	// holds and this is 0. Walls and the stoppers keep the weapon's cap.
+	float bodyLetGoUnits = 0.0f;
 };
 
 // The settings as the step uses them, from the INI's: a cap that is not a
 // number is the default, and one out of reason is held to 0.05..2 m and
-// 5..180 degrees; game units by the tracker's own scale (70 a metre when it
-// has none).
+// 5..180 degrees (the cap at people to 0..2 m, 0 for none); game units by
+// the tracker's own scale (70 a metre when it has none).
 inline BladeContactSettings BladeContactSettingsFor(bool enabled, float letGoMetres, float letGoDegrees,
-                                                    float unitsPerMetre) {
+                                                    float unitsPerMetre, float bodyLetGoMetres = 0.0f) {
 	BladeContactSettings s;
 	s.enabled = enabled;
 	float metres = letGoMetres == letGoMetres ? letGoMetres : 0.60f;
 	metres = metres < 0.05f ? 0.05f : (metres > 2.0f ? 2.0f : metres);
 	float degrees = letGoDegrees == letGoDegrees ? letGoDegrees : 45.0f;
 	degrees = degrees < 5.0f ? 5.0f : (degrees > 180.0f ? 180.0f : degrees);
+	float body = bodyLetGoMetres == bodyLetGoMetres ? bodyLetGoMetres : 0.0f;
+	body = body < 0.0f ? 0.0f : (body > 2.0f ? 2.0f : body);
 	const float perMetre = unitsPerMetre > 0.0f ? unitsPerMetre : 70.0f;
 	s.letGoUnits = metres * perMetre;
 	s.letGoRadians = degrees * 0.017453293f;
+	s.bodyLetGoUnits = body * perMetre;
 	return s;
 }
 
@@ -1292,7 +1302,13 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 	const NiPoint3 gap = pose.pos - f.wanted.pos;
 	v.gapUnits = math::Sqrt(gap.LengthSquared());
 	v.gapRadians = AngleBetweenRotations(pose.rot, f.wanted.rot);
-	if (!placed || (held && (v.gapUnits > set.letGoUnits || v.gapRadians > set.letGoRadians))) {
+	// The cap: a wall's or a stopper's is the weapon's; a person's is their
+	// own (bodyLetGoUnits), and none at all when that is 0 - held until the
+	// hand comes back.
+	const bool byPerson = held && v.contact.hit && v.contact.actor != 0 && !IsStopperId(v.contact.actor);
+	const bool capped = !byPerson || set.bodyLetGoUnits > 0.0f;
+	const float capUnits = byPerson ? set.bodyLetGoUnits : set.letGoUnits;
+	if (!placed || (held && capped && (v.gapUnits > capUnits || v.gapRadians > set.letGoRadians))) {
 		// Let go. Pressed on into someone, the blade goes into them and they
 		// are passed; anything else it went through, and it strikes nothing
 		// until it is free.

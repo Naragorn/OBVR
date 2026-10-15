@@ -10,6 +10,7 @@
 #include "game/GameTypes.h"
 #include "game/MeleeHit.h"
 #include "game/PlayerAim.h"
+#include "game/PlayerStagger.h"
 #include "game/ShoveLogic.h"
 
 namespace obvr::game {
@@ -233,7 +234,11 @@ void ApplyStrike(UInt8* player, void* actor, bool heavy, UInt8 group, UInt32 ser
 			*groupWord = groupWritten;
 		}
 	}
+	// The knockback's reroute (PlayerStagger.cpp) reads the strike's own
+	// power flag while the hit is handed over.
+	SetMotionHit(true, heavy);
 	reinterpret_cast<AttackHandlingFn>(addr::kAttackHandling)(player, nullptr, heavy ? 1u : 0u, nullptr, actor);
+	SetMotionHit(false, false);
 	if (groupWord != nullptr && *groupWord == groupWritten) {
 		*groupWord = groupBefore;
 	}

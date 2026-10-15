@@ -726,6 +726,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.weaponStopsAtWalls = ReadBool("Hands", "WeaponStopsAtWalls", h.weaponStopsAtWalls, path);
 		h.weaponLetGoMetres = ReadFloat("Hands", "WeaponLetGoMetres", h.weaponLetGoMetres, path);
 		h.weaponLetGoDegrees = ReadFloat("Hands", "WeaponLetGoDegrees", h.weaponLetGoDegrees, path);
+		h.bodyLetGoMetres = ReadFloat("Hands", "BodyLetGoMetres", h.bodyLetGoMetres, path);
 		h.weaponStopsAtBodies = ReadBool("Hands", "WeaponStopsAtBodies", h.weaponStopsAtBodies, path);
 		h.weaponHitStop = ReadBool("Hands", "WeaponHitStop", h.weaponHitStop, path);
 		h.handsStopAtWalls = ReadBool("Hands", "HandsStopAtWalls", h.handsStopAtWalls, path);
@@ -752,6 +753,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.combatRingByLevel = ReadBool("Hands", "CombatRingByLevel", h.combatRingByLevel, path);
 		h.enemyAttackSpeed = ReadFloat("Hands", "EnemyAttackSpeed", h.enemyAttackSpeed, path);
 		h.enemyAttackFrequency = ReadFloat("Hands", "EnemyAttackFrequency", h.enemyAttackFrequency, path);
+		h.enemyKnockbackPercent = ReadFloat("Hands", "EnemyKnockback", h.enemyKnockbackPercent, path);
+		h.enemyKnockbackPowerOnly = ReadBool("Hands", "EnemyKnockbackPowerOnly", h.enemyKnockbackPowerOnly, path);
 		h.grapple.strikes = ReadBool("Hands", "OffHandStrikes", h.grapple.strikes, path);
 		h.grapple.grabs = ReadBool("Hands", "OffHandGrabs", h.grapple.grabs, path);
 		h.grapple.holdSeconds = ReadFloat("Hands", "GrabHoldSeconds", h.grapple.holdSeconds, path);
