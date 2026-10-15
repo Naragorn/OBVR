@@ -51,8 +51,16 @@ void TestStrike() {
 	      "no blade or blunt weapon drawn: the hands' own (shove, fists)");
 	Check(OffHandStrikeFor(g, s, true, false, Hand(3.5f)) == ShoveKind::None, "the off hand on a two-hander: nothing");
 	Check(OffHandStrikeFor(g, s, true, true, Hand(3.5f, false)) == ShoveKind::None, "the hand not tracked: nothing");
-	Check(OffHandStrikeFor(g, s, true, true, Hand(3.5f, true, true)) == ShoveKind::None,
-	      "the grip held (it holds someone): nothing");
+	// A fist squeezes the grip (the Index): the grip held is no refusal of
+	// itself (the tester, 2026-10-14: "linke faust trifft nicht") - only a
+	// hand that holds someone, or whose grip is closing this frame (a grab,
+	// not a punch).
+	Check(OffHandStrikeFor(g, s, true, true, Hand(3.5f, true, true)) == ShoveKind::Hard,
+	      "the grip held on nobody - a fist: the punch, hard");
+	Check(OffHandStrikeFor(g, s, true, true, Hand(2.0f, true, true), true) == ShoveKind::None,
+	      "the hand holds someone: nothing");
+	Check(OffHandStrikeFor(g, s, true, true, Hand(2.0f, true, true), false, true) == ShoveKind::None,
+	      "the grip closing this frame - a grab: nothing");
 	GrappleSettings off;
 	off.strikes = false;
 	Check(OffHandStrikeFor(off, s, true, true, Hand(3.5f)) == ShoveKind::None, "OffHandStrikes=0: nothing");

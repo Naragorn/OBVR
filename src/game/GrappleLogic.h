@@ -186,10 +186,15 @@ inline float GrappleHoldSeconds(float setting) {
 // The off hand's strike with a weapon drawn: the shove's thresholds, a fist
 // or an open hand alike. None without a blade or blunt weapon drawn (the
 // fists and the weapons away are the hands' own already), with the hand
-// busy (its grip held, on a two-hander's handle), or too slow.
+// busy (holding someone, on a two-hander's handle), with its grip closing
+// this frame (a grab, not a punch), or too slow. The grip held of itself is
+// no refusal: a fist on the Index squeezes it, and so no punch ever landed
+// (the tester, 2026-10-14: "linke faust trifft nicht"; his log: "refused -
+// ... the grip is held", then "the left grip closed and held nobody").
 inline ShoveKind OffHandStrikeFor(const GrappleSettings& g, const ShoveSettings& shove, bool meleeWeaponDrawn,
-                                  bool offHandFree, const ShoveHand& hand) {
-	if (!g.strikes || !meleeWeaponDrawn || !offHandFree || !hand.valid || hand.gripHeld) {
+                                  bool offHandFree, const ShoveHand& hand, bool holdsSomeone = false,
+                                  bool gripClosing = false) {
+	if (!g.strikes || !meleeWeaponDrawn || !offHandFree || !hand.valid || holdsSomeone || gripClosing) {
 		return ShoveKind::None;
 	}
 	if (!(hand.towardsSpeed >= shove.speed)) {

@@ -1,0 +1,331 @@
+# The off hand's punch with a weapon drawn (game/GrappleLogic.h,
+# OffHandStrikeFor; the tester, 2026-10-14: "linke faust trifft nicht:
+# erwartet wäre wie ein slap nur ohne slap sound dafür schlag sound"): a
+# melee bandit (00069AD1) attacks an untouchable player (tgm) who faces it
+# (head face 1), a longsword drawn by the holster; the left hand, closed to a
+# fist with the grip squeezed as the Index reads a fist, punches straight
+# ahead at about 4 m/s again and again at three heights. Before 2026-10-15
+# the squeezed grip refused the punch ("refused - ... the grip is held");
+# now it lands as the shove's blow with the hand-to-hand hit sound: "Shove:
+# the left hand at N m/s towards ... (the off hand's punch, a weapon drawn)".
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/left-punch.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands OffHandStrikes=1
+ini Hands OffHandGrabs=1
+ini Hands CombatReach=85
+ini Hands CombatRing=0
+console-at ready player.placeatme 00069AD1 1
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+console-at ready tgm
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect the off hand's punch, a weapon drawn
+reject the grip is held
+reject HandScript: WARNING
+
+wait 12
+wait 1
+mark ready
+wait 20
+head face 1
+mark placed
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.45 -0.30
+wait 2
+mark drawn
+left curl 1
+left grip 1
+wait 1
+mark fist
+left pos -0.10 -0.30 -0.245
+wait 0.01
+left pos -0.10 -0.30 -0.290
+wait 0.01
+left pos -0.10 -0.30 -0.335
+wait 0.01
+left pos -0.10 -0.30 -0.380
+wait 0.01
+left pos -0.10 -0.30 -0.425
+wait 0.01
+left pos -0.10 -0.30 -0.470
+wait 0.01
+left pos -0.10 -0.30 -0.515
+wait 0.01
+left pos -0.10 -0.30 -0.560
+wait 0.01
+left pos -0.10 -0.30 -0.605
+wait 0.01
+left pos -0.10 -0.30 -0.650
+wait 0.01
+left pos -0.10 -0.30 -0.695
+wait 0.01
+left pos -0.10 -0.30 -0.740
+wait 0.01
+left pos -0.10 -0.30 -0.785
+wait 0.01
+left pos -0.10 -0.30 -0.830
+wait 0.01
+left pos -0.10 -0.30 -0.875
+wait 0.01
+left pos -0.10 -0.30 -0.920
+wait 0.01
+wait 0.3
+left pos -0.10 -0.30 -0.20
+wait 0.7
+left pos -0.10 -0.45 -0.245
+wait 0.01
+left pos -0.10 -0.45 -0.290
+wait 0.01
+left pos -0.10 -0.45 -0.335
+wait 0.01
+left pos -0.10 -0.45 -0.380
+wait 0.01
+left pos -0.10 -0.45 -0.425
+wait 0.01
+left pos -0.10 -0.45 -0.470
+wait 0.01
+left pos -0.10 -0.45 -0.515
+wait 0.01
+left pos -0.10 -0.45 -0.560
+wait 0.01
+left pos -0.10 -0.45 -0.605
+wait 0.01
+left pos -0.10 -0.45 -0.650
+wait 0.01
+left pos -0.10 -0.45 -0.695
+wait 0.01
+left pos -0.10 -0.45 -0.740
+wait 0.01
+left pos -0.10 -0.45 -0.785
+wait 0.01
+left pos -0.10 -0.45 -0.830
+wait 0.01
+left pos -0.10 -0.45 -0.875
+wait 0.01
+left pos -0.10 -0.45 -0.920
+wait 0.01
+wait 0.3
+left pos -0.10 -0.45 -0.20
+wait 0.7
+left pos -0.10 -0.20 -0.245
+wait 0.01
+left pos -0.10 -0.20 -0.290
+wait 0.01
+left pos -0.10 -0.20 -0.335
+wait 0.01
+left pos -0.10 -0.20 -0.380
+wait 0.01
+left pos -0.10 -0.20 -0.425
+wait 0.01
+left pos -0.10 -0.20 -0.470
+wait 0.01
+left pos -0.10 -0.20 -0.515
+wait 0.01
+left pos -0.10 -0.20 -0.560
+wait 0.01
+left pos -0.10 -0.20 -0.605
+wait 0.01
+left pos -0.10 -0.20 -0.650
+wait 0.01
+left pos -0.10 -0.20 -0.695
+wait 0.01
+left pos -0.10 -0.20 -0.740
+wait 0.01
+left pos -0.10 -0.20 -0.785
+wait 0.01
+left pos -0.10 -0.20 -0.830
+wait 0.01
+left pos -0.10 -0.20 -0.875
+wait 0.01
+left pos -0.10 -0.20 -0.920
+wait 0.01
+wait 0.3
+left pos -0.10 -0.20 -0.20
+wait 0.7
+mark punches3
+left pos -0.10 -0.35 -0.245
+wait 0.01
+left pos -0.10 -0.35 -0.290
+wait 0.01
+left pos -0.10 -0.35 -0.335
+wait 0.01
+left pos -0.10 -0.35 -0.380
+wait 0.01
+left pos -0.10 -0.35 -0.425
+wait 0.01
+left pos -0.10 -0.35 -0.470
+wait 0.01
+left pos -0.10 -0.35 -0.515
+wait 0.01
+left pos -0.10 -0.35 -0.560
+wait 0.01
+left pos -0.10 -0.35 -0.605
+wait 0.01
+left pos -0.10 -0.35 -0.650
+wait 0.01
+left pos -0.10 -0.35 -0.695
+wait 0.01
+left pos -0.10 -0.35 -0.740
+wait 0.01
+left pos -0.10 -0.35 -0.785
+wait 0.01
+left pos -0.10 -0.35 -0.830
+wait 0.01
+left pos -0.10 -0.35 -0.875
+wait 0.01
+left pos -0.10 -0.35 -0.920
+wait 0.01
+wait 0.3
+left pos -0.10 -0.35 -0.20
+wait 0.7
+left pos -0.10 -0.50 -0.245
+wait 0.01
+left pos -0.10 -0.50 -0.290
+wait 0.01
+left pos -0.10 -0.50 -0.335
+wait 0.01
+left pos -0.10 -0.50 -0.380
+wait 0.01
+left pos -0.10 -0.50 -0.425
+wait 0.01
+left pos -0.10 -0.50 -0.470
+wait 0.01
+left pos -0.10 -0.50 -0.515
+wait 0.01
+left pos -0.10 -0.50 -0.560
+wait 0.01
+left pos -0.10 -0.50 -0.605
+wait 0.01
+left pos -0.10 -0.50 -0.650
+wait 0.01
+left pos -0.10 -0.50 -0.695
+wait 0.01
+left pos -0.10 -0.50 -0.740
+wait 0.01
+left pos -0.10 -0.50 -0.785
+wait 0.01
+left pos -0.10 -0.50 -0.830
+wait 0.01
+left pos -0.10 -0.50 -0.875
+wait 0.01
+left pos -0.10 -0.50 -0.920
+wait 0.01
+wait 0.3
+left pos -0.10 -0.50 -0.20
+wait 0.7
+left pos -0.10 -0.30 -0.245
+wait 0.01
+left pos -0.10 -0.30 -0.290
+wait 0.01
+left pos -0.10 -0.30 -0.335
+wait 0.01
+left pos -0.10 -0.30 -0.380
+wait 0.01
+left pos -0.10 -0.30 -0.425
+wait 0.01
+left pos -0.10 -0.30 -0.470
+wait 0.01
+left pos -0.10 -0.30 -0.515
+wait 0.01
+left pos -0.10 -0.30 -0.560
+wait 0.01
+left pos -0.10 -0.30 -0.605
+wait 0.01
+left pos -0.10 -0.30 -0.650
+wait 0.01
+left pos -0.10 -0.30 -0.695
+wait 0.01
+left pos -0.10 -0.30 -0.740
+wait 0.01
+left pos -0.10 -0.30 -0.785
+wait 0.01
+left pos -0.10 -0.30 -0.830
+wait 0.01
+left pos -0.10 -0.30 -0.875
+wait 0.01
+left pos -0.10 -0.30 -0.920
+wait 0.01
+wait 0.3
+left pos -0.10 -0.30 -0.20
+wait 0.7
+mark punches6
+left pos -0.10 -0.40 -0.245
+wait 0.01
+left pos -0.10 -0.40 -0.290
+wait 0.01
+left pos -0.10 -0.40 -0.335
+wait 0.01
+left pos -0.10 -0.40 -0.380
+wait 0.01
+left pos -0.10 -0.40 -0.425
+wait 0.01
+left pos -0.10 -0.40 -0.470
+wait 0.01
+left pos -0.10 -0.40 -0.515
+wait 0.01
+left pos -0.10 -0.40 -0.560
+wait 0.01
+left pos -0.10 -0.40 -0.605
+wait 0.01
+left pos -0.10 -0.40 -0.650
+wait 0.01
+left pos -0.10 -0.40 -0.695
+wait 0.01
+left pos -0.10 -0.40 -0.740
+wait 0.01
+left pos -0.10 -0.40 -0.785
+wait 0.01
+left pos -0.10 -0.40 -0.830
+wait 0.01
+left pos -0.10 -0.40 -0.875
+wait 0.01
+left pos -0.10 -0.40 -0.920
+wait 0.01
+wait 0.3
+left pos -0.10 -0.40 -0.20
+wait 0.7
+left pos -0.10 -0.25 -0.245
+wait 0.01
+left pos -0.10 -0.25 -0.290
+wait 0.01
+left pos -0.10 -0.25 -0.335
+wait 0.01
+left pos -0.10 -0.25 -0.380
+wait 0.01
+left pos -0.10 -0.25 -0.425
+wait 0.01
+left pos -0.10 -0.25 -0.470
+wait 0.01
+left pos -0.10 -0.25 -0.515
+wait 0.01
+left pos -0.10 -0.25 -0.560
+wait 0.01
+left pos -0.10 -0.25 -0.605
+wait 0.01
+left pos -0.10 -0.25 -0.650
+wait 0.01
+left pos -0.10 -0.25 -0.695
+wait 0.01
+left pos -0.10 -0.25 -0.740
+wait 0.01
+left pos -0.10 -0.25 -0.785
+wait 0.01
+left pos -0.10 -0.25 -0.830
+wait 0.01
+left pos -0.10 -0.25 -0.875
+wait 0.01
+left pos -0.10 -0.25 -0.920
+wait 0.01
+wait 0.3
+left pos -0.10 -0.25 -0.20
+wait 0.7
+mark done
+wait 1

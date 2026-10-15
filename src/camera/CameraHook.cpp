@@ -903,6 +903,9 @@ constexpr UInt32 kSoundFormHitHand = 0x0000C3CA;
 // its motion. With a blade or blunt weapon drawn the off hand strikes the
 // same way, a fist as well (game/GrappleLogic.h, OffHandStrikeFor).
 game::ShoveCooldown g_shoveCooldown;
+// The off hand's grab, defined with its step below: the punch asks whether
+// the hand holds someone and whether the grip is closing this frame.
+extern game::GrappleState g_grapple;
 
 void StepShoves(const Config& config, float dt) {
 	game::StepShoveCooldown(g_shoveCooldown, dt);
@@ -945,7 +948,11 @@ void StepShoves(const Config& config, float dt) {
 		// shoves or slaps as it does with the weapons away.
 		bool offHandStrike = false;
 		if (kind == game::ShoveKind::None && !right) {
-			kind = game::OffHandStrikeFor(config.hands.grapple, settings, meleeWeaponDrawn, !g_leftGripOnHandle, hand);
+			// A fist squeezes the grip; the grab (StepGrapple, after this) takes
+			// the grip's closing frame, the punch the rest.
+			const bool gripClosing = g_hand.leftGripDown && !g_grapple.gripWas;
+			kind = game::OffHandStrikeFor(config.hands.grapple, settings, meleeWeaponDrawn, !g_leftGripOnHandle, hand,
+			                              g_grapple.actor != 0, gripClosing);
 			offHandStrike = kind != game::ShoveKind::None;
 		}
 		if (kind == game::ShoveKind::None) {
@@ -959,11 +966,13 @@ void StepShoves(const Config& config, float dt) {
 			if (hand.towardsSpeed >= settings.speed && s_refusedQuiet <= 0.0f && s_refusedLines > 0) {
 				--s_refusedLines;
 				s_refusedQuiet = 1.0f;
-				OBVR_LOG("Shove: the %s hand at %.1f m/s towards %08X refused - %s%s%s(a shove or a slap wants the "
-				         "weapons away, an open hand and the grip loose)",
+				OBVR_LOG("Shove: the %s hand at %.1f m/s towards %08X refused - %s%s%s%s(a shove or a slap wants the "
+				         "weapons away, an open hand and the grip loose; the off hand's punch a blade or blunt weapon "
+				         "drawn and nobody held)",
 				         right ? "right" : "left", static_cast<double>(hand.towardsSpeed),
 				         reinterpret_cast<UInt32>(actor), weaponDrawn ? "the weapon or the fists are readied; " : "",
-				         !hand.open ? "the hand is a fist; " : "", hand.gripHeld ? "the grip is held; " : "");
+				         !hand.open ? "the hand is a fist; " : "", hand.gripHeld ? "the grip is held; " : "",
+				         !right && g_grapple.actor != 0 ? "the hand holds someone; " : "");
 			}
 			continue;
 		}
@@ -5411,8 +5420,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				game::PlayPowerAttackGrunt();
 			}
 		}
-		if (g_hand.leftSwing != vr::SwingVerdict::None && g_hand.leftStrikeByMotion && g_handSwingLinesLeft > 0) {
-			--g_handSwingLinesLeft;
+		// On a budget of its own: the right hand's swings spent the shared one
+		// before the first left-fist line (the tester's session, 2026-10-14).
+		static UInt32 s_leftSwingLines = 40;
+		if (g_hand.leftSwing != vr::SwingVerdict::None && g_hand.leftStrikeByMotion && s_leftSwingLines > 0) {
+			--s_leftSwingLines;
 			OBVR_LOG("Hands: a left-fist %s%s swing",
 			         g_hand.leftSwing == vr::SwingVerdict::Heavy ? vr::PowerDirectionName(g_hand.leftPowerDirection)
 			                                                     : "",

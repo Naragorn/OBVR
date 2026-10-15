@@ -542,7 +542,25 @@ setters, the parry's forced block:
   when the hand is at the shove's speed towards someone - the punch with the
   hand-to-hand hit sound (as this section's fist already means), hard from
   ShoveHardSpeed as the slap's knockdown is; and the left swing's lines on a
-  budget of their own. Not built.
+  budget of their own.
+  **Built 2026-10-15 (the tester: "ok dann geh an: linke faust"):**
+  `OffHandStrikeFor` no longer refuses a held grip; it refuses a hand that
+  holds someone (`g_grapple.actor`) and a grip closing this frame - the
+  grab's frame, since the grab's step runs after the shove's and takes the
+  closing edge (grapple_test, three flows). The punch is the shove's blow by
+  the hand's speed with the hand-to-hand hit sound, as before for a fist
+  with the grip loose. The refusal line names "the hand holds someone" now.
+  The left-fist swing lines have a budget of 40 of their own. Harness
+  `left-punch.txt` PASS (Linux): a longsword drawn, the left fist with the
+  grip squeezed punching ahead at a bandit - "the left hand at 6.7 m/s
+  towards ... - hard (the off hand's punch, a weapon drawn)", a second at
+  3.4 m/s, no refusal. **With the fists up** the left fist strikes by motion
+  as the code claimed: harness `left-fist.txt` PASS, a frozen beggar met on
+  every lap - "the blade met ... swing 2147483650, held to the swing's end",
+  "struck ... light attack ... health 26.0 -> 25.0", then two power swings
+  (25.0 -> 22.4 -> 19.8); the hand's reach 57 units past the fist. What the
+  tester saw with the fists up is not reproduced by that; the headset decides
+  (the lines now have their own budget, so his log will say).
 
 ### The grab and the throw as a ragdoll (the tester, 2026-10-12; built 2026-10-13, harness PASS, headset open)
 
