@@ -913,7 +913,9 @@ EnemyKnockback` (per cent of the game's push, default 0) and
 `EnemyKnockbackPowerOnly` (light hits push nobody); settings rows "Hits push
 enemies (%)", "Only power attacks push" under Hands: enemies. The player's
 own knockback stays `[Look] NoPlayerStagger`'s business, other fighters'
-hits the game's own. Not run in the game yet.
+hits the game's own. Harness blade-held PASS 2026-10-15: at 0 % the beggar
+stood at the same spot through four strikes; blade-held-cap at 100 %: 19
+units back a hit, the game's own.
 
 ## Test reminders
 

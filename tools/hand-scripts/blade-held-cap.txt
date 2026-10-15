@@ -39,10 +39,11 @@ expect skeleton read
 expect Contact: people - 1 near
 expect Contact: a swing is held by
 expect Hands: the blade met
-expect held until the hand comes back
-expect Comfort: the knockback of
-reject Contact: pressed on into
+expect pressed on 21 units past them the blade goes in
 expect Contact: pressed on into
+expect the stack reading agrees
+reject held until the hand comes back
+reject Comfort: the knockback of
 reject Contact: a swing went into someone
 reject HandScript: WARNING
 

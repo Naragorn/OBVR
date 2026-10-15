@@ -2227,9 +2227,9 @@ the tester: "mach es wie in blade and sorcery"):**
   attacks. game/HitKnockbackLogic.h, PlayerStagger.cpp (the proxy call
   through a stub with the attacker and the power flag, the push call scaled);
   spec section 17.3. Hits on the player stay `[Look] NoPlayerStagger`'s.
-- Harness `blade-held.txt` and `fist-held.txt` PASS 2026-10-15 on the
-  morning's build (docs/hand-script-harness.md); with the cap and the
-  knockback of the afternoon not run yet ("ohne spiel starts").
+- Harness `blade-held.txt` (the defaults: held for good, the knockback
+  off), `blade-held-cap.txt` (0.30 m, the game's knockback) and
+  `fist-held.txt` PASS 2026-10-15 afternoon (docs/hand-script-harness.md).
 
 **The parry (built 2026-10-09; spec section 4 E, decision 3):**
 

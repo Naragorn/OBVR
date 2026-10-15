@@ -876,19 +876,28 @@ is closed.
   strike by motion hands its own power flag over (`SetMotionHit`) and the
   handler's reading is checked against it once ("Comfort: the hit handler's
   power flag read ... agrees"). Hits on the player stay NoPlayerStagger's,
-  other fighters' hits the game's own. **Not run in the game yet** (the
-  tester, 2026-10-15: "ohne spiel starts, geht grad nicht"): the stack
-  reading is verified in the disassembly only; the first motion hit's log
-  line will say whether it agrees.
+  other fighters' hits the game's own. **Run 2026-10-15 afternoon:** the
+  first motion hit's line read "the hit handler's power flag read 0 for a
+  light strike by motion - the stack reading agrees" in every scenario; at
+  0 % the knockback was skipped at every hit (the beggar stood at the same
+  spot through four strikes, 26.0 to 22.2 health), at 100 % kept (19 units
+  back a hit, as before).
 - **Open:** the headset's judgement of the feel; the edge's sinking; a push
   on the person held (B&S's `addForce`, now that the engine's is off by
   default - a stumble of their own); the harness runs below.
-- **Harness, pending** (no game starts on 2026-10-15 afternoon):
-  `blade-held.txt` now expects "held until the hand comes back" and
-  "Comfort: the knockback of" and rejects "pressed on into" (the defaults:
-  the beggar stays, every slash held); `blade-held-cap.txt` (BodyLetGoMetres
-  0.30, EnemyKnockback 100) expects "pressed on into" - the old way;
-  `fist-held.txt` unchanged. All three to run before the headset.
+- **Harness** (docs/hand-script-harness.md), all PASS 2026-10-15 afternoon:
+  `blade-held.txt` with the defaults (held for good, the knockback off) -
+  the beggar stood at the same spot through four slashes, every strike
+  landed, "held until the hand comes back", nothing pressed into them; at
+  slash 3 no new hold was logged because the blade was still held from
+  slash 2, stuck on their far side while the hand came back round - the
+  hold for good as designed. `blade-held-cap.txt` (BodyLetGoMetres 0.30,
+  EnemyKnockback 100) - the old way: pressed on 21.0, 21.4 and 24.0 units
+  the blade went into them, each hit moved them 19 units (a first run
+  failed on the script's own contradictory expectations, inherited from
+  blade-held). `fist-held.txt` - the punch held 2.8 units from the
+  controller at 4.3 m/s for good, landed hard at 6.7 m/s (the knockdown is
+  the shove's own, untouched by EnemyKnockback).
 
 ## 18. The target: Blade & Sorcery's combat, rebuilt (the tester, 2026-10-15)
 
