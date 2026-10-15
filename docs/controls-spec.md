@@ -2193,6 +2193,32 @@ fast swing passes, and the measuring; bodies, parries and shields follow.
   4.4 rays and 0.008 ms a frame. `blade-wall.txt` PASS again on the same
   build.
 
+**The living hold a swing and a punch (built 2026-10-15; spec section 17,
+the tester: "mach es wie in blade and sorcery"):**
+
+- `[Hands] SwingsStopAtBodies=1` ("Swings stop at people") and
+  `PunchesStopAtBodies=1` ("Punches stop at people"): the living hold the
+  weapon and the free hand at any speed, as the stoppers of section 15 do
+  - a swing is held at the person it meets instead of going into them, a
+  punch, a slap or any hand at the shove's speed is held too - and only
+  pressed on past `WeaponLetGoMetres` does the shape go into them (passed,
+  the blade still striking). The hit stays the strike by motion's and the
+  shove's own; both read the controller, not the held pose, so the blow
+  lands as before. Off, the old way: a swing or a fast hand goes through,
+  the hit-stop slows the swing (`BladeLiving::hold`,
+  `BladeContactFrame::bodiesHold`; blade_contact_test "the living hold a
+  swing"). In B&S the body's colliders stop the weapon's and the hand's
+  rigid bodies while spring-damper drives with a force cap pull them after
+  the controller; the collision is the blow (spec section 17.1).
+- Felt by the speed into them (a slow rest stays the light pulse); log
+  "Contact: a swing is held by <actor> at N m/s ...", "Contact: a fast
+  <hand> is held by <actor> ...".
+- `[Debug] ContactTrace=N`: N lines "Contact: trace - ..." per step while
+  people are near and the shape swings, is held or goes in (the tip from
+  and to, drawn where, held by, entered, event, gap, through, passed).
+- Harness `blade-held.txt` and `fist-held.txt` PASS 2026-10-15
+  (docs/hand-script-harness.md).
+
 **The parry (built 2026-10-09; spec section 4 E, decision 3):**
 
 - `[Hands] WeaponParries=1` ("Weapon parries"), `ParryStopsAll=1`,

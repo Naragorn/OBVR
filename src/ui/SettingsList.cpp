@@ -944,7 +944,7 @@ const SettingDefinition kSettings[] = {
 	},
 	{
 		"Hands: physics", "Weapon rests on people",
-		"Held there slowly the weapon rests on a person; a swing goes into them, hits and through",
+		"Held there slowly the weapon rests on a person; a swing is held at them or goes in, by the next setting",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "WeaponStopsAtBodies",
 		+[](const Config& c) { return c.hands.weaponStopsAtBodies ? 1.0f : 0.0f; },
@@ -959,6 +959,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.weaponHitStop = v != 0.0f; },
 	},
 	{
+		"Hands: physics", "Swings stop at people",
+		"A swing is held at the person it meets, as in Blade & Sorcery; pressed on past the let-go cap it goes in",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "SwingsStopAtBodies",
+		+[](const Config& c) { return c.hands.swingsStopAtBodies ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.swingsStopAtBodies = v != 0.0f; },
+	},
+	{
 		"Hands: physics", "Hands stop at walls",
 		"Your free hand and your shield stop at walls, floors and furniture as the weapon does; pushed too far they let go",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
@@ -968,11 +976,19 @@ const SettingDefinition kSettings[] = {
 	},
 	{
 		"Hands: physics", "Hands rest on people",
-		"Held there slowly the free hand or the shield rests on a person; a fast hand goes through",
+		"Held there slowly the free hand or the shield rests on a person; a fast hand is held or goes through, by the next setting",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "HandsStopAtBodies",
 		+[](const Config& c) { return c.hands.handsStopAtBodies ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.handsStopAtBodies = v != 0.0f; },
+	},
+	{
+		"Hands: physics", "Punches stop at people",
+		"A punch, a slap or any fast hand is held at the person it meets and its blow still lands; pressed on past the let-go cap it goes in",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "PunchesStopAtBodies",
+		+[](const Config& c) { return c.hands.punchesStopAtBodies ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.punchesStopAtBodies = v != 0.0f; },
 	},
 	{
 		"Hands: physics", "Weapon weight (%)",

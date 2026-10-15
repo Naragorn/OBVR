@@ -784,15 +784,22 @@ struct BladeSweep {
 };
 
 // What the living are to this sweep: their capsules, those passed, and
-// whether the blade swings (then it goes into them and passes them). And the
-// stoppers: capsules and discs that hold the blade at any speed, passed only
-// once it was pressed past the cap into them (the ledger, by their id).
+// whether the blade swings (then it goes into them and passes them - unless
+// they hold). And the stoppers: capsules and discs that hold the blade at
+// any speed, passed only once it was pressed past the cap into them (the
+// ledger, by their id).
 struct BladeLiving {
 	const BladeBodies* bodies = nullptr;
 	BladePassLedger* passed = nullptr;
 	bool swinging = false;
 	const BladeBodies* stoppers = nullptr;
 	const BladeDiscs* discs = nullptr;
+	// The living hold the shape at any speed, as the stoppers do: a swing is
+	// held at them, and only pressed on past the cap does it go in (the
+	// tester, 2026-10-15: "mach es wie in blade and sorcery" - there the
+	// body's colliders stop the blade and the fist; docs/weapon-collision-spec
+	// section 17). Off, a swing goes into them and passes them.
+	bool hold = false;
 };
 
 // The blade's points from where they were to where they would be, the
@@ -800,8 +807,9 @@ struct BladeLiving {
 // Each point's ray reaches the margin past its end, so a point is never
 // left nearer a surface than the margin - a ray that began on a face could
 // not see it. Movable things passed are kicked with the speed of the point
-// that passed them (none without a time); the living a swing goes into, and
-// any a point is already inside, are passed. The margin is the blade's own
+// that passed them (none without a time); the living a swing goes into
+// (unless they hold), and any a point is already inside, are passed. The
+// margin is the blade's own
 // half-width unless the caller's shape has another (a hand's, a shield's);
 // a span of no length (a ball's centre) is one point, swept once.
 template <class World>
@@ -889,7 +897,7 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 			NiPoint3 n;
 			bool inside = false;
 			if (SegmentEntersCapsule(a, end, cap.a, cap.b, cap.radius, f, n, inside)) {
-				take(f, n, inside, cap.actor, true);
+				take(f, n, inside, cap.actor, !living.hold);
 			}
 		}
 		if (!(atUnits >= 0.0f)) {
@@ -920,13 +928,14 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 	return best;
 }
 
-// Someone not passed the blade at this pose lies across - held slowly: an
-// arm or a leg between two of the swept points, which the points' ways
-// missed. 0 for none, or while it swings.
+// Someone not passed the blade at this pose lies across - held slowly, or
+// at any speed when the living hold: an arm or a leg between two of the
+// swept points, which the points' ways missed. 0 for none, or while it
+// swings and they do not hold.
 inline UInt32 PersonAcross(const BladePose& pose, const BodySpan& span, const BladeLiving& living) {
 	const NiPoint3 guard = BladePointAt(pose, span, 0.0f);
 	const NiPoint3 tip = BladePointAt(pose, span, 1.0f);
-	if (living.bodies != nullptr && !living.swinging) {
+	if (living.bodies != nullptr && (!living.swinging || living.hold)) {
 		for (UInt32 c = 0; c < living.bodies->count; ++c) {
 			const BladeBodyCapsule& cap = living.bodies->cap[c];
 			if (living.passed != nullptr && living.passed->Has(cap.actor)) {
@@ -1074,6 +1083,9 @@ struct BladeContactFrame {
 	// blade swings - the strike's own swing - and goes into them.
 	const BladeBodies* bodies = nullptr;
 	bool swinging = false;
+	// The living hold the shape at any speed (BladeLiving::hold): a swing is
+	// held at the person it meets rather than going into them.
+	bool bodiesHold = false;
 	// The stoppers (the shields, the blades): held at any speed.
 	const BladeBodies* stoppers = nullptr;
 	const BladeDiscs* discs = nullptr;
@@ -1196,7 +1208,7 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 		s = BladeContactState{};
 		return v;
 	}
-	const BladeLiving living{f.bodies, &s.passed, f.swinging, f.stoppers, f.discs};
+	const BladeLiving living{f.bodies, &s.passed, f.swinging, f.stoppers, f.discs, f.bodiesHold};
 	if (!s.have || f.jumped) {
 		const bool inside = ShapeInside(world, f.wanted, f) || ShapeBehind(world, f.wanted, f);
 		s.have = true;

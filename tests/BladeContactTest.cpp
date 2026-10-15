@@ -677,6 +677,126 @@ void TestLiving() {
 	Check(thr.through && thr.passed.Has(11), "taken up across a wall and in someone: through, and they passed");
 }
 
+// The living hold the shape at any speed (BladeContactFrame::bodiesHold; the
+// tester, 2026-10-15: "mach es wie in blade and sorcery" - the body stops the
+// blade and the fist): a swing is held at them as a slow blade is, and only
+// pressed on past the cap does it go in.
+void TestLivingHold() {
+	std::printf("The step: the living hold a swing\n");
+	BoxWorld none;
+	BladeContactSettings set;
+	set.letGoUnits = 21.0f;
+	const BladeBodies person = PersonAhead();
+	auto hold = [&](const BladePose& wanted, bool swinging) {
+		BladeContactFrame f = LivingFrame(wanted, &person, swinging);
+		f.bodiesHold = true;
+		return f;
+	};
+	Check(!BladeLiving{}.hold && !BladeContactFrame{}.bodiesHold, "off unless asked: the logic's own default");
+
+	BladeContactState s;
+	StepBladeContact(s, set, hold(At(0, -30, 0), true), none);
+	BladeContactVerdict v = StepBladeContact(s, set, hold(At(0, -20, 0), true), none);
+	Check(v.held && v.apart && v.event == BladeContactEvent::Touched && v.contact.actor == 11 && v.contact.body == 0,
+	      "a swing into someone: held by them, a touch");
+	Check(!v.enteredBody && !s.passed.Has(11), "not gone into them, not passed - no hit-stop");
+	Check(Near(BladePointAt(v.pose, Blade(), 1.0f).y, 33.5f), "the tip 1.5 units short of their body");
+	v = StepBladeContact(s, set, hold(At(0, -10, 0), true), none);
+	Check(v.held && v.contact.actor == 11 && Near(v.gapUnits, 16.5f) && !s.passed.Has(11),
+	      "swung on within the cap: still held, the hand ahead of the blade");
+	v = StepBladeContact(s, set, hold(At(0, 10, 0), true), none);
+	Check(v.event == BladeContactEvent::LetGo && !v.through && s.passed.Has(11),
+	      "pressed on past the cap: it goes into them, passed, not through");
+	v = StepBladeContact(s, set, hold(At(0, 12, 0), true), none);
+	Check(!v.held && !v.through && !v.enteredBody && Near(v.pose.pos.y, 12.0f), "and stays in them, unheld");
+	for (int i = 0; i < 30; ++i) {
+		v = StepBladeContact(s, set, hold(At(0, -40, 0), false), none);
+	}
+	Check(!s.passed.Has(11), "out of them for a third of a second: no longer passed");
+	StepBladeContact(s, set, hold(At(0, -30, 0), true), none);
+	v = StepBladeContact(s, set, hold(At(0, -20, 0), true), none);
+	Check(v.held && v.contact.actor == 11 && !s.passed.Has(11), "and the next swing is held again");
+
+	// Slowly, the same as without the hold: it rests on them.
+	BladeContactState r;
+	StepBladeContact(r, set, hold(At(0, -30, 0), false), none);
+	v = StepBladeContact(r, set, hold(At(0, -20, 0), false), none);
+	Check(v.held && v.contact.actor == 11 && v.event == BladeContactEvent::Touched, "held slowly: rests on them as before");
+
+	// Someone the swinging blade finds itself in (they walked into it):
+	// passed, as before - not pushed against.
+	BladeContactState w;
+	StepBladeContact(w, set, hold(At(0, -30, 0), true), none);
+	BladeBodies walkedIn;
+	walkedIn.Add(NiPoint3{0, 10, -60}, NiPoint3{0, 10, 60}, 10.0f, 12);
+	BladeContactFrame in = LivingFrame(At(0, -29, 0), &walkedIn, true);
+	in.bodiesHold = true;
+	v = StepBladeContact(w, set, in, none);
+	Check(!v.held && w.passed.Has(12), "someone walked into the swinging blade: passed, not pushed against");
+
+	// A thin arm between two swept points, swung across: held where it was;
+	// without the hold a swing finds nothing there and goes on.
+	BladeBodies arm;
+	arm.Add(NiPoint3{5, 20, -30}, NiPoint3{5, 20, 30}, 2.0f, 13);
+	BladeContactState a;
+	BladeContactFrame p = LivingFrame(At(-5, 0, 0), &arm, true);
+	p.bodiesHold = true;
+	StepBladeContact(a, set, p, none);
+	p.wanted = At(5, 0, 0);
+	v = StepBladeContact(a, set, p, none);
+	Check(v.held && Near(v.pose.pos.x, -5.0f) && v.contact.actor == 13,
+	      "swung across a thin arm between two points: held where it was");
+	BladeContactState b;
+	BladeContactFrame q = LivingFrame(At(-5, 0, 0), &arm, true);
+	StepBladeContact(b, set, q, none);
+	q.wanted = At(5, 0, 0);
+	v = StepBladeContact(b, set, q, none);
+	Check(!v.held && Near(v.pose.pos.x, 5.0f), "without the hold the swing goes on past it");
+
+	// Their blade before their body: the stopper holds the swing short of them.
+	BladeBodies theirs;
+	theirs.Add(NiPoint3{-30, 40, 0}, NiPoint3{30, 40, 0}, 2.5f, FoeBladeId(0x1A000000));
+	BladeBodies body;
+	body.Add(NiPoint3{0, 60, -60}, NiPoint3{0, 60, 60}, 10.0f, 0x1A000000);
+	BladeContactFrame g = LivingFrame(At(0, -30, 0), &body, true);
+	g.bodiesHold = true;
+	g.stoppers = &theirs;
+	BladeContactState t;
+	StepBladeContact(t, set, g, none);
+	g.wanted = At(0, -10, 0);
+	v = StepBladeContact(t, set, g, none);
+	Check(v.held && v.contact.actor == FoeBladeId(0x1A000000) && !t.passed.Has(0x1A000000),
+	      "a swing into their blade: held by it, their body behind untouched");
+
+	// The second span (a shield's other spoke) swung onto someone: held too.
+	BodySpan cross;
+	cross.valid = true;
+	cross.a = NiPoint3{-30.0f, 0.0f, 0.0f};
+	cross.b = NiPoint3{30.0f, 0.0f, 0.0f};
+	BladeBodies beside;
+	beside.Add(NiPoint3{45.0f, -20.0f, -60.0f}, NiPoint3{45.0f, -20.0f, 60.0f}, 10.0f, 14);
+	BladeContactState c;
+	BladeContactFrame f = FrameFor(At(0, -20, 0));
+	f.span2 = cross;
+	f.bodies = &beside;
+	f.bodiesHold = true;
+	f.swinging = true;
+	StepBladeContact(c, set, f, none);
+	f.wanted = At(20, -20, 0);  // 16.5 units ahead of where it is held: within the cap
+	v = StepBladeContact(c, set, f, none);
+	Check(v.held && v.contact.actor == 14 && Near(v.pose.pos.x, 3.5f) && !c.passed.Has(14),
+	      "the cross-piece swung onto someone: held by them");
+
+	// A wall behind someone: they hold the swing, the wall is not reached.
+	BoxWorld wall;
+	AddWallAhead(wall);
+	BladeContactState n;
+	StepBladeContact(n, set, hold(At(0, -30, 0), true), wall);
+	v = StepBladeContact(n, set, hold(At(0, -11, 0), true), wall);
+	Check(v.held && v.contact.actor == 11 && v.contact.body == 0 && !n.passed.Has(11),
+	      "a swing at someone before a wall: they hold it, the wall behind is not reached");
+}
+
 void TestHitStop() {
 	std::printf("The hit-stop\n");
 	Check(Near(HitStopShare(0), 0.25f) && Near(HitStopShare(2), 0.25f) && Near(HitStopShare(3), 0.5f) &&
@@ -996,6 +1116,7 @@ int main() {
 	TestBodyCapsules();
 	TestPassLedger();
 	TestLiving();
+	TestLivingHold();
 	TestHitStop();
 	TestSettings();
 	TestShape();

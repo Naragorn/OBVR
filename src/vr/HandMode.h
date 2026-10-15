@@ -333,6 +333,22 @@ struct HandSettings {
 	// caps are theirs too.
 	bool handsStopAtWalls = true;
 	bool handsStopAtBodies = true;
+	// The living hold a swing and a fast hand as they hold a slow one (the
+	// tester, 2026-10-15: "mach es wie in blade and sorcery" - there the
+	// body's colliders stop the blade and the fist; weapon-collision-spec
+	// section 17): a swing is held at the person it meets and only pressed
+	// on past the let-go cap goes in; a punch, a slap or any hand at the
+	// shove's speed is held at them while its blow still lands ([Hands]
+	// SwingsStopAtBodies, PunchesStopAtBodies; game/BladeContactLogic.h,
+	// BladeLiving::hold). Off: a swing or a fast hand goes through them and
+	// they are passed, the hit-stop slowing the swing.
+	bool swingsStopAtBodies = true;
+	bool punchesStopAtBodies = true;
+	// [Debug] ContactTrace: this many log lines of the weapon's and the hands'
+	// contact step, frame by frame, while people are near and the shape
+	// swings, is held or goes into someone - where the tip went, what held
+	// it, who was passed. 0 off.
+	UInt32 contactTraceLines = 0;
 	// The hands stay in the game's menus - pinned and drawn over the
 	// inventory, a container, the map, a book, a dialogue - and go only for
 	// the Esc menu and what opens from it ([Hands] HandsInMenus;

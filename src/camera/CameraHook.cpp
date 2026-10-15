@@ -2871,13 +2871,34 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		f.discs = &g_bladeDiscs;
 	}
 	f.swinging = g_hand.swingActive && g_hand.swingTravelledMetres >= vr::kSwingMinMetres;
+	// The living hold a swing ([Hands] SwingsStopAtBodies; BladeLiving::hold).
+	f.bodiesHold = people && config.hands.swingsStopAtBodies;
 	f.followShare = config.hands.weaponHitStop ? game::HitStopShare(g_bladeHitStopFrames) : 1.0f;
 	if (g_bladeHitStopFrames < game::kHitStopFrames) {
 		++g_bladeHitStopFrames;
 	}
 	game::HavokBladeWorld world;
+	const game::BladePose traceFrom = g_bladeContact.pose;
 	const game::BladeContactVerdict v = game::StepBladeContact(g_bladeContact, settings, f, world);
 	const long long after = ReadPerformanceCounter();
+	// [Debug] ContactTrace: the step frame by frame while people are near and
+	// the blade swings, is held or goes into someone.
+	static UInt32 s_traceLeft = config.hands.contactTraceLines;
+	if (s_traceLeft > 0 && peopleNear > 0 &&
+	    (f.swinging || v.held || v.enteredBody || v.event != game::BladeContactEvent::None)) {
+		--s_traceLeft;
+		const NiPoint3 fromTip = game::BladePointAt(traceFrom, span, 1.0f);
+		const NiPoint3 toTip = game::BladePointAt(f.wanted, span, 1.0f);
+		const NiPoint3 drawnTip = game::BladePointAt(v.pose, span, 1.0f);
+		OBVR_LOG("Contact: trace - swing %d hold %d, %u capsules; the tip %.0f %.0f %.0f -> %.0f %.0f %.0f, drawn %.0f "
+		         "%.0f %.0f; held %d by %08X (body %u), entered %d, event %d, gap %.1f, through %d, passed %u",
+		         f.swinging ? 1 : 0, f.bodiesHold ? 1 : 0, g_bladeBodies.count, static_cast<double>(fromTip.x),
+		         static_cast<double>(fromTip.y), static_cast<double>(fromTip.z), static_cast<double>(toTip.x),
+		         static_cast<double>(toTip.y), static_cast<double>(toTip.z), static_cast<double>(drawnTip.x),
+		         static_cast<double>(drawnTip.y), static_cast<double>(drawnTip.z), v.held ? 1 : 0, v.contact.actor,
+		         v.contact.body, v.enteredBody ? 1 : 0, static_cast<int>(v.event), static_cast<double>(v.gapUnits),
+		         v.through ? 1 : 0, g_bladeContact.passed.count);
+	}
 	if (v.enteredBody) {
 		g_bladeHitStopFrames = 0;
 	}
@@ -2953,15 +2974,25 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.04f, 160.0f, 0.7f);
 	}
 	if (restsOnNew) {
-		// A shield or a blade met hard clashes; a person is only felt.
+		// A shield or a blade met hard clashes; a person is only felt - a
+		// swing held by them by its speed (SwingsStopAtBodies), a blade laid
+		// on them lightly. The hit's own sound is the strike's.
 		const bool stopper = game::IsStopperId(restingOn);
+		const bool swingHeld = !stopper && f.swinging && f.bodiesHold;
 		g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.03f, 180.0f,
-		                                         stopper ? game::BladeTouchAmplitude(v.contact.speedIn)
-		                                                 : game::kBladeTouchMinAmplitude);
+		                                         stopper || swingHeld ? game::BladeTouchAmplitude(v.contact.speedIn)
+		                                                              : game::kBladeTouchMinAmplitude);
 		if (stopper && game::BladeKnockSounds(v.contact.speedIn, g_bladeSinceSound)) {
 			g_bladeSinceSound = 0.0f;
 			game::PlaySoundFormAt(StopperSound(restingOn, blunt), *reinterpret_cast<const UInt32*>(addr::kPlayerPointer),
 			                      v.contact.point);
+		}
+		if (swingHeld && g_bladeLines > 0) {
+			--g_bladeLines;
+			OBVR_LOG("Contact: a swing is held by %08X at %.1f m/s (%u near) - pressed on %.0f units past them the blade "
+			         "goes in",
+			         restingOn, static_cast<double>(v.contact.speedIn / config.tracker.unitsPerMetre), peopleNear,
+			         static_cast<double>(settings.letGoUnits));
 		}
 	}
 	if (v.event == game::BladeContactEvent::Touched && !onPerson) {
@@ -3362,10 +3393,32 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 		                                g_hand.swingTravelledMetres >= vr::kSwingMinMetres)
 		                             : (g_hand.leftStrikeByMotion && g_hand.leftSwingActive);
 		f.swinging = game::HandSwinging(h.speed, config.hands.shove.speed, fistSwing);
+		// The living hold a fast hand ([Hands] PunchesStopAtBodies; BladeLiving::hold).
+		f.bodiesHold = people && config.hands.punchesStopAtBodies;
 		f.followShare = 1.0f;
 		h.wantedPos = f.wanted.pos;
+		const game::BladePose traceFrom = h.state.pose;
 		const game::BladeContactVerdict v = game::StepBladeContact(h.state, settings, f, world);
 		stepped = stepped || (f.active && settings.enabled && span.valid);
+		// [Debug] ContactTrace, for the hands: the step frame by frame while
+		// people are near and the hand is fast, held or goes into someone.
+		static UInt32 s_handTraceLeft = config.hands.contactTraceLines;
+		if (s_handTraceLeft > 0 && peopleNear > 0 && shape != game::HandShape::None &&
+		    (f.swinging || v.held || v.enteredBody || v.event != game::BladeContactEvent::None)) {
+			--s_handTraceLeft;
+			const NiPoint3 fromTip = game::BladePointAt(traceFrom, span, 1.0f);
+			const NiPoint3 toTip = game::BladePointAt(f.wanted, span, 1.0f);
+			const NiPoint3 drawnTip = game::BladePointAt(v.pose, span, 1.0f);
+			OBVR_LOG("Contact: trace - the %s, fast %d hold %d, %u capsules; the tip %.0f %.0f %.0f -> %.0f %.0f %.0f, "
+			         "drawn %.0f %.0f %.0f; held %d by %08X (body %u), entered %d, event %d, gap %.1f, through %d, "
+			         "passed %u",
+			         name, f.swinging ? 1 : 0, f.bodiesHold ? 1 : 0, g_handBodies.count, static_cast<double>(fromTip.x),
+			         static_cast<double>(fromTip.y), static_cast<double>(fromTip.z), static_cast<double>(toTip.x),
+			         static_cast<double>(toTip.y), static_cast<double>(toTip.z), static_cast<double>(drawnTip.x),
+			         static_cast<double>(drawnTip.y), static_cast<double>(drawnTip.z), v.held ? 1 : 0, v.contact.actor,
+			         v.contact.body, v.enteredBody ? 1 : 0, static_cast<int>(v.event), static_cast<double>(v.gapUnits),
+			         v.through ? 1 : 0, h.state.passed.count);
+		}
 		if (v.apart) {
 			const NiMatrix33 back = vr::Transposed(camRot);
 			handRot = back * v.pose.rot;
@@ -3411,8 +3464,18 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 			g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(device, g_handRolesSwapped), 0.03f, 160.0f, 0.5f);
 		}
 		if (restsOnNew) {
+			// A fast hand held by someone is felt by its speed
+			// (PunchesStopAtBodies); a hand laid on them lightly.
+			const bool fastHeld = f.swinging && f.bodiesHold && !game::IsStopperId(restingOn);
 			g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(device, g_handRolesSwapped), 0.03f, 180.0f,
-			                                         game::kBladeTouchMinAmplitude);
+			                                         fastHeld ? game::BladeTouchAmplitude(v.contact.speedIn)
+			                                                  : game::kBladeTouchMinAmplitude);
+			if (fastHeld && h.lines > 0) {
+				--h.lines;
+				OBVR_LOG("Contact: a fast %s is held by %08X at %.1f m/s (%u near) - pressed on %.0f units past them it "
+				         "goes in",
+				         name, restingOn, static_cast<double>(h.speed), peopleNear, static_cast<double>(settings.letGoUnits));
+			}
 		}
 		if (v.event == game::BladeContactEvent::Touched && !onPerson) {
 			g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(device, g_handRolesSwapped), 0.03f, 180.0f,

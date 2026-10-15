@@ -694,12 +694,16 @@ what the code claims:
   parts he hits. His sessions' logs carry "Hands: struck" lines for every
   blow that landed and no contact lines to compare against; to be looked at
   with him in the headset, with the blade's step's trace on.
+  **Built 2026-10-15 (section 17):** the living hold a swing, as Blade &
+  Sorcery's bodies stop a blade.
 - **"kollisionen mit linker hand fehlt."** Section 14 built the free hand
   against walls and people (`HandsStopAtWalls`, `HandsStopAtBodies`, a hand
   held there slowly rests on a person, a fast hand goes through). The left
   hand striking goes through by design; what he expects of it - the
   punch's stop, the slap's - is the same question as the left fist that does
   not hit (physical-combat-spec section 8, open bug).
+  **Built 2026-10-15 (section 17):** the living hold a fast hand too, the
+  blow still landing.
 - **"kollision mit eigenem körper fehlt."** Nothing of OBVR's own stops the
   hands or the blade at the player's own body: the IK body's capsules
   (BodyIk's bones, player-body-spec) are not among the stoppers of section
@@ -709,3 +713,141 @@ what the code claims:
   foes' are, as stoppers for the free hand and the blade - held, never
   passed - so a hand cannot be put into one's own chest. Unmeasured.
 
+## 17. Built: the living hold a swing and a punch, as Blade & Sorcery's bodies do (2026-10-15)
+
+The tester, 2026-10-15: "ok wir bauen: Linke Hand + Gegner beim Schlagen.
+mach es wie in blade and sorcery. analysier erstmal wie die es da machen be4
+du startest." Section 16's first two items.
+
+### 17.1 How Blade & Sorcery does it (read 2026-10-15)
+
+Read on the official SDK wiki (kospy.github.io/BasSDK: the pages Damager,
+Damagers (JSON), Collider Groups, Items - Best Practices, Item, Ragdoll,
+Ragdoll Part, Ragdoll Hand) and in the developer's replies on the Steam forum
+(The Baron, 2019). DeepWiki has no index of KospY/BasSDK; Context7
+(/kospy/bassdk) carries the JSON overview only; the game's code (ThunderRoad)
+is closed.
+
+- **Everything is a rigid body in PhysX.** An item is a Rigidbody with the
+  JSON's mass and drag and primitive colliders - "Even vanilla weapons in
+  Blade and Sorcery use capsule colliders for all bladed weapons" (Items -
+  Best Practices). A creature is a Ragdoll of Ragdoll Parts: each "requires
+  a Rigidbody and CollisionHandler on the same gameObject" with a Collider
+  Group of simple shapes, a mass (`ragdolledMass`, `handledMass`) and a
+  CharacterJoint to its parent part; the hands are parts too (Ragdoll Hand:
+  a touch collider, a palm collider, a simplified collider, finger
+  colliders).
+- **The hand follows the controller through spring-damper drives with a
+  force cap.** The Ragdoll's `playerArmPositionSpring`,
+  `playerArmPositionDamper`, `playerArmMaxPositionForce` and the rotation
+  triple ("the spring strength applied to the ragdoll's arms when they are
+  controlled by a player", "the maximum position force for player-controlled
+  arms"); the options book exposes them - a player: "There is for positional
+  and rotation, each a damper and a spring. The spring is a spring between
+  your physical hand and your VR hand"; the developer: "people can change
+  the physics spring and damper settings to make the 'weight'", and "the
+  weapons are not 1:1 with real life in order to solve the impact issue". So
+  a hand or a held weapon that meets a body is stopped by the collision
+  while the controller goes on: the capped force cannot push it through,
+  and the visible hand stays with the weapon.
+- **The blow is the collision itself.** A Damager (blunt, slash or pierce,
+  one per collider group) reads the impact: `velocityDamageCurve` turns the
+  impact velocity into damage, impacts under `minSelfVelocity` are ignored,
+  the effect scales between `intensityMinVelocity` and
+  `intensityMaxVelocity`, `addForce` pushes the part hit (with ragdoll
+  multipliers), `hitDelayByCollider` keeps one collider from counting twice.
+  A slash sinks its edge in to `penetrationDepth` ("from center to the edge
+  of the blade") along `penetrationLength` (the blade's) and may slide out
+  (`penetrationAllowSlide`); a pierce goes in to its depth; blunt has
+  neither. A body is passed only by dismemberment
+  (`dismembermentMinVelocity`, parts with `sliceAllowed`) - or entered by
+  penetration, the stab of physical-combat-spec section 9.
+- **When the controller runs away from a blocked weapon** the player
+  chooses: the "stuck object behavior" `block` or `drop` (the developer,
+  2019: "set the stuck object behavior to 'block' and not 'drop'") - the
+  hand stays with the weapon, or lets go of it.
+- **Not read, so not claimed:** the drives' default values; whether the
+  hands collide with the player's own ragdoll (the Ragdoll has
+  `allowSelfDamage` for its own parts; the pages say nothing of the player's
+  hands against the player's body); the code of the collision handling. I
+  could not verify these.
+
+### 17.2 What is the same here, and what is not
+
+- **The capsules on the bones are the ragdoll parts' colliders, the sweep
+  is the collision, the hold is the body stopping the rigid body.** The
+  living become what the stoppers (section 15) already were: held at any
+  speed. The hand is not physical here, so the force cap and the
+  `block`/`drop` choice have one stand-in, decision 1 of section 8: pressed
+  on past `WeaponLetGoMetres` (0.6 m) the blade or the hand goes INTO the
+  person - they are passed, the blade still strikes (not "through" as at a
+  wall), and the stab's path stays open.
+- **The blow stays the engine's.** The strike by motion (the bound's sphere,
+  0.7 of its radius plus 8 units) for the weapon; the shove, the slap and
+  the punch by the controller's speed for the hand (read from SteamVR's
+  velocity, so a hand held at a body still reads its speed). B&S's velocity
+  curves and `addForce` have no counterpart; the engine's own damage and
+  stagger apply.
+- **No sinking of the edge** (B&S's slash depth): the blade is held its
+  half-width (1.5 units) short of the capsule's surface, the hand 2.5. **No
+  dismemberment, no penetration** (physical-combat-spec section 9, open).
+- **Off** (`SwingsStopAtBodies=0`, `PunchesStopAtBodies=0`) everything is
+  as before: a swing or a fast hand goes into them and passes them, the
+  hit-stop slowing the swing.
+
+### 17.3 Built
+
+- `BladeLiving::hold`, `BladeContactFrame::bodiesHold`
+  (game/BladeContactLogic.h): with the flag the living are taken like the
+  stoppers - `SweepBlade` does not pass them for a swing, `PersonAcross`
+  refuses a pose across them while swinging too. Everything else of the
+  step is unchanged: the margin, the slide, the let-go past the cap INTO
+  them, the ledger (passed until out of them for 0.22 s), someone who walks
+  into the blade or whom the blade starts inside is passed.
+- `[Hands] SwingsStopAtBodies=1` ("Swings stop at people") for the weapon's
+  step, `PunchesStopAtBodies=1` ("Punches stop at people") for the hands';
+  `WeaponStopsAtBodies` and `HandsStopAtBodies` stay the switches for
+  meeting people at all.
+- CameraHook: a swing held by someone is felt by its speed
+  (`BladeTouchAmplitude`, as a stopper is; a blade laid on someone slowly
+  stays the light pulse) and logged "Contact: a swing is held by <actor> at
+  N m/s (n near) - pressed on N units past them the blade goes in"; a fast
+  hand "Contact: a fast <hand> is held by <actor> ..."; the "rests on" line
+  follows with the point.
+- `[Debug] ContactTrace=N` (default 0): N lines of "Contact: trace - ..."
+  for the weapon's and the hands' step, frame by frame while people are
+  near and the shape swings, is held or goes in - the tip from and to,
+  where it was drawn, held by whom (or which body), entered, event, gap,
+  through, passed. Written for the harness runs below; it found both
+  scenarios' faults.
+- Tests: `blade_contact_test`, "The step: the living hold a swing" - 16
+  flows: the default off; a swing held, not passed, no hit-stop, the tip the
+  margin short; swung on within the cap; pressed past the cap into them,
+  staying in unheld, cleared after a third of a second, held again; the slow
+  rest unchanged; someone walked into it passed; a thin arm between two
+  points held (without the hold the swing goes on); their blade before their
+  body; the cross-piece (span2); a wall behind them not reached.
+- **Harness** (docs/hand-script-harness.md): `blade-held.txt` PASS
+  2026-10-15 - a beggar 70 units ahead, frozen, a longsword drawn and
+  brought slowly level to 45 cm out; four slashes across them at 4.5 m/s:
+  the first two held by them (at the guard's end at the slash's start, then
+  at the tip at 4.1 m/s), each strike landed ("the blade met", "struck"),
+  the hand going on took the blade into them at 42.4 and 43.3 units
+  ("pressed on into"); the strikes' stagger moved the beggar 19 units back
+  each time, so the last two slashes reached him no more (the strike needs
+  the bound only, the hold the capsule). `fist-held.txt` PASS 2026-10-15 - a
+  beggar 75 units ahead, a longsword drawn, the left fist with the grip
+  squeezed punched 85 cm at 4.5 m/s: held by them 0.2 units from the
+  controller at 4.3 m/s while the punch landed hard (3.5 m/s, "the off
+  hand's punch, a weapon drawn") and knocked them down; the fingertips
+  trail the controller by 4 units, so a punch 72 cm long fell 1 unit short
+  of their chest in the run before. `left-punch.txt` PASS again (5.7 m/s,
+  hard; the moving bandit's capsules not touched).
+- **Found on the way:** a hand's jump to the holster and back is a swing of
+  its own (28 m/s) - with the beggar in reach it was held by him before the
+  scenario began; a jump of 0.37 m to a slash's start is one too and knocked
+  him back before the first slash. The scenarios now move there slowly.
+- **Open:** the headset's judgement of the feel; a cap for people of its own
+  (the walls' 0.6 m is long for a chest; B&S never lets a slash through a
+  torso); the edge's sinking; a push on the person held (B&S's `addForce`),
+  today only the engine's stagger on the hit.
