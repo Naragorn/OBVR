@@ -1037,6 +1037,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.hitBoundFactor = v; },
 	},
 	{
+		"Hands: melee", "Hits need the touch",
+		"A swing or a punch hits only where the blade or the fist touches the body, as in Blade & Sorcery; off, the game's generous reach",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "MotionHitsByTouch",
+		+[](const Config& c) { return c.hands.hitsByTouch ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.hitsByTouch = v != 0.0f; },
+	},
+	{
 		"Hands: melee", "Power swing length", "How far (m) a swing must travel to be a power attack - the same speed, a longer swing",
 		ItemKind::Number, 0.2f, 2.0f, 0.05f, 2, false,
 		"Hands", "PowerSwingMetres",
@@ -1122,6 +1130,14 @@ const SettingDefinition kSettings[] = {
 		"Hands", "FistCloseCurl",
 		+[](const Config& c) { return c.hands.fist.closeCurl; },
 		+[](Config& c, float v) { c.hands.fist.closeCurl = v; },
+	},
+	{
+		"Hands: melee", "Fist by grip (force)",
+		"A grip squeezed this hard is a fist as well, for a controller whose fingers do not read; 0 off",
+		ItemKind::Number, 0.0f, 1.0f, 0.1f, 1, false,
+		"Hands", "FistGripForce",
+		+[](const Config& c) { return c.hands.fist.gripForce; },
+		+[](Config& c, float v) { c.hands.fist.gripForce = v; },
 	},
 	// ---- Hands: bow
 	{

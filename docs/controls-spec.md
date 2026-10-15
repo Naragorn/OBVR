@@ -2231,6 +2231,29 @@ the tester: "mach es wie in blade and sorcery"):**
   off), `blade-held-cap.txt` (0.30 m, the game's knockback) and
   `fist-held.txt` PASS 2026-10-15 afternoon (docs/hand-script-harness.md).
 
+**The hit by touch, the shallow band, the fist by the grip (built 2026-10-15;
+spec section 19):**
+
+- `[Hands] MotionHitsByTouch=1` ("Hits need the touch"): the strike by
+  motion lands only where the drawn blade's own span (a fist: 12 units of
+  itself) comes within 4 units (a fist 6.5) of one of the actor's capsules
+  the contact steps collected this frame; an actor with no capsule in the
+  list is not hit; no list, or off: the bound's ball (`HitBoundFactor`,
+  `HitPadUnits`) as before. Log "Hands: the blade touched ...".
+- The shallow band (`kBladeShallowUnits` 3, at most half a capsule's
+  radius): a shape only just inside a person - their idle moved the capsule
+  over it - is held at them, not passed. Log "Contact: <actor> walked into
+  the blade where it was ..." whenever a person is passed by lying in.
+- `[Hands] FistGripForce=0.6` ("Fist by grip (force)"): a grip squeezed
+  this hard is a fist as well, for a controller whose fingers do not read;
+  released 0.15 below. Log "Hands: the <side> hand's fist by the grip's
+  force ...".
+- The grab: a hand that outruns the held body at the shove's speed throws
+  it instead of losing it; the pull four times stronger; the take's reach
+  14 units (spec, physical-combat-spec 8).
+- Harness left-fist, blade-held, fist-held, grapple-ragdoll PASS
+  2026-10-15 afternoon.
+
 **The parry (built 2026-10-09; spec section 4 E, decision 3):**
 
 - `[Hands] WeaponParries=1` ("Weapon parries"), `ParryStopsAll=1`,

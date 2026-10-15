@@ -669,6 +669,8 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	r.controlsActive = f.right.valid || f.left.valid;
 	r.rightGripDown = f.right.valid && GripDown(f.right.buttonsPressed);
 	r.leftGripDown = f.left.valid && GripDown(f.left.buttonsPressed);
+	r.rightGripForce = f.right.valid ? f.right.gripForce : 0.0f;
+	r.leftGripForce = f.left.valid ? f.left.gripForce : 0.0f;
 	// Adjusting the hands: a closed grip holds the hand, it does not grab.
 	if (s.adjustHands || f.adjustingHands) {
 		r.controls.grab = false;

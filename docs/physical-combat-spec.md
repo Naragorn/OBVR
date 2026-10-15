@@ -735,7 +735,10 @@ closed 7.4 to 13.7 units from the torso's capsule held nobody
 measurement: the ragdoll hold's loss sets no speed (GrappleLogic.h, the
 `Lost` branch; only the standing hold's release reads the hand across the
 ground), so a hand pulling away fast loses them where it should throw them.
-Ways on, not decided, nothing built:
+Ways on; B, C and D built 2026-10-15 (weapon-collision-spec 19: the loss as
+a throw at the shove's speed, `kGrabLiftMassAtHundred` 1200, the reach 14;
+grapple-ragdoll PASS, the torso still 25 to 38 units behind the hand), A
+open:
 - A. No loss while the ragdoll is held: the body hangs at the budget's end
   and is dragged, as B&S drags a heavy body, and only the grip opening ends
   the hold - a fast hand then throws, a slow one drops.

@@ -88,6 +88,12 @@ bool UnequipWeapon();
 // strike uses for its targets). False when the player cannot be read.
 bool PlayerIsDead();
 
+struct BladeBodies;
+
+// The fist's own blade for the hit by touch: this far from the hand along
+// its pointing axis - the fist itself, not the hand-to-hand reach.
+inline constexpr float kFistTouchUnits = 12.0f;
+
 struct MotionStrike {
 	UInt32 swingSerial = 0;  // the swing this frame belongs to
 	bool heavy = false;      // a power attack
@@ -103,6 +109,21 @@ struct MotionStrike {
 	// of the bound's radius, plus this many units.
 	float boundFactor = 0.7f;
 	float padUnits = 8.0f;
+	// The hit by touch ([Hands] MotionHitsByTouch): the blade has to come
+	// within touchUnits of one of the actor's capsules (BladeContactLogic.h,
+	// the living, as the contact steps collected them this frame) instead of
+	// the bound's ball; an actor with no capsule in the list is not hit. No
+	// list, an empty one or the setting off: the bound's ball as before. A
+	// fist tests kFistTouchUnits of itself, with half the hand's width more.
+	const BladeBodies* capsules = nullptr;
+	bool byTouch = false;
+	float touchUnits = 4.0f;
+	// The drawn blade's own span in the world (the contact step's: the
+	// weapon's geometry, 25 degrees off the hand's pointing axis on a
+	// longsword), for the touch; without it the blade along the hand's axis.
+	bool touchSpanValid = false;
+	NiPoint3 touchBase{0.0f, 0.0f, 0.0f};
+	NiPoint3 touchTip{0.0f, 0.0f, 0.0f};
 	// The attack animation group the engine reads the strike as (vr::
 	// PowerAttackGroup, kAnimGroupAttackLight); 0 leaves what is there.
 	UInt8 attackGroup = 0;

@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <limits>
 
 #include "game/HandBodyLogic.h"
 
@@ -150,6 +151,29 @@ void TestPushingPeople() {
 	Check(HandBodyFist(false, true, deadLittle, 0.9f, 0.75f, &read),
 	      "the little finger never read: the other three closed are a fist - the off hand punches");
 	Check(!HandBodyFist(true, true, deadLittleOpen, 0.9f, 0.75f, &read), "and opened by the three: open");
+	// The tester's left hand, 2026-10-15: three fingers never read, one half
+	// curled - the fist comes from the grip's force.
+	const float deadThree[5] = {0.17f, 0.5f, 0.0f, 0.01f, 0.0f};
+	vr::FingersRead three;
+	vr::NoteFingerCurls(three, true, deadThree);
+	Check(!HandBodyFist(false, true, deadThree, 0.9f, 0.75f, &three),
+	      "three fingers never read, one half curled: no fist by the fingers");
+	Check(HandBodyFist(false, true, deadThree, 0.9f, 0.75f, &three, 0.7f, 0.6f),
+	      "the grip squeezed to 0.7 with 0.6 asked: a fist");
+	Check(!HandBodyFist(false, true, deadThree, 0.9f, 0.75f, &three, 0.5f, 0.6f), "squeezed to 0.5: not yet");
+	Check(HandBodyFist(true, true, deadThree, 0.9f, 0.75f, &three, 0.5f, 0.6f),
+	      "a fist stays one down to 0.15 below the force asked");
+	Check(!HandBodyFist(true, true, deadThree, 0.9f, 0.75f, &three, 0.44f, 0.6f), "and opens below that");
+	Check(!HandBodyFist(false, true, deadThree, 0.9f, 0.75f, &three, 0.9f, 0.0f),
+	      "FistGripForce 0: the grip never counts");
+	Check(HandBodyFist(false, false, nullptr, 0.9f, 0.75f, nullptr, 0.8f, 0.6f),
+	      "no curls at all: the grip alone makes the fist");
+	Check(HandBodyFist(false, true, fist, 0.9f, 0.75f, nullptr, 0.0f, 0.6f),
+	      "the fingers closed with the grip loose: a fist as before");
+	Check(HandBodyFist(true, true, open, 0.9f, 0.75f, nullptr, 0.9f, 0.6f),
+	      "the fingers opened with the grip still squeezed: a fist still");
+	Check(!HandBodyFist(false, true, deadThree, 0.9f, 0.75f, &three, std::numeric_limits<float>::quiet_NaN(), 0.6f),
+	      "a force that is not a number: nothing from the grip");
 }
 
 void TestCapsules() {

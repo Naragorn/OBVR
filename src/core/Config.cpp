@@ -778,6 +778,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		}
 		h.hitBoundFactor = ReadFloat("Hands", "HitBoundFactor", h.hitBoundFactor, path);
 		h.hitPadUnits = ReadFloat("Hands", "HitPadUnits", h.hitPadUnits, path);
+		h.hitsByTouch = ReadBool("Hands", "MotionHitsByTouch", h.hitsByTouch, path);
 		h.restHandRight = ReadFloat("Hands", "RestHandRight", h.restHandRight, path);
 		h.restHandForward = ReadFloat("Hands", "RestHandForward", h.restHandForward, path);
 		h.restHandUp = ReadFloat("Hands", "RestHandUp", h.restHandUp, path);
@@ -1015,6 +1016,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		fs.enabled = ReadBool("Hands", "Fists", fs.enabled, path);
 		fs.closeCurl = ReadFloat("Hands", "FistCloseCurl", fs.closeCurl, path);
 		fs.openCurl = ReadFloat("Hands", "FistOpenCurl", fs.openCurl, path);
+		fs.gripForce = ReadFloat("Hands", "FistGripForce", fs.gripForce, path);
 		fs.holdSeconds = ReadFloat("Hands", "FistHoldSeconds", fs.holdSeconds, path);
 
 		h.weaponDrawSpeed = ReadFloat("Hands", "WeaponDrawSpeed", h.weaponDrawSpeed, path);

@@ -81,7 +81,11 @@ inline float GrappleWeight(float setting) {
 	return setting >= 0.0f && setting <= 5.0f ? setting : 1.0f;
 }
 
-inline constexpr float kGrabLiftMassAtHundred = 300.0f;
+// 300 until 2026-10-15: a Strength-25 hand's pull (a budget of 5518 against
+// a 530-mass ragdoll, 15 of 15 changes cut) left the torso 25 units behind
+// the hand and lost it within half a second (the tester: "gegner sackt in
+// sich zusammen"). Four times that now; GrabWeight tunes it from the INI.
+inline constexpr float kGrabLiftMassAtHundred = 1200.0f;
 inline constexpr float kGrabGravityFallback = 9.8f;
 inline constexpr float kGrabStrengthLeast = 10.0f;
 inline constexpr float kGrabStrengthMost = 200.0f;
@@ -166,7 +170,9 @@ inline bool VelocityStillTheSet(bool haveLast, const NiPoint3& now, const NiPoin
 
 // The hand this far outside a capsule still takes hold (about 9 cm; the
 // capsules are thin on the arms).
-inline constexpr float kGrappleReachUnits = 6.0f;
+// 6 until 2026-10-15: the tester's grips closed 7.4 to 13.7 units from the
+// torso's capsule and held nobody.
+inline constexpr float kGrappleReachUnits = 14.0f;
 // The hand this far across the ground from where it wants them: lost.
 inline constexpr float kGrappleLoseUnits = 40.0f;
 // The drag: each frame they are placed where the hand wants them (SetPos's
@@ -446,7 +452,22 @@ inline GrappleVerdict StepGrapple(GrappleState& s, const GrappleSettings& g, con
 				const float gap = math::Sqrt((in.hand - in.heldBodyAt).LengthSquared());
 				v.gap = gap;
 				if (gap > kGrappleLoseUnits) {
-					v.end = GrappleEnd::Lost;
+					// Outrun by the hand: a fast hand throws them as the grip
+					// opening would, a slow one loses them (the loss read no
+					// speed until 2026-10-15, so a pull-away dropped them
+					// where it should have thrown).
+					const float speed = math::Sqrt(in.handVelocity.LengthSquared());
+					const float strength = GrappleThrowStrength(g.throwStrength);
+					v.speed = speed;
+					if (speed > 1e-4f) {
+						v.direction = in.handVelocity * (1.0f / speed);
+					}
+					if (speed >= shove.speed && strength > 0.0f) {
+						v.end = GrappleEnd::Thrown;
+						v.throwVelocity = in.handVelocity * strength;
+					} else {
+						v.end = GrappleEnd::Lost;
+					}
 				} else {
 					v.driveTo = in.hand;
 				}
@@ -459,7 +480,16 @@ inline GrappleVerdict StepGrapple(GrappleState& s, const GrappleSettings& g, con
 			if (s.seconds >= GrappleHoldSeconds(g.holdSeconds)) {
 				v.end = GrappleEnd::BrokeFree;
 			} else if (gap > kGrappleLoseUnits) {
-				v.end = GrappleEnd::Lost;
+				// Outrun across the ground: a fast hand throws or knocks them
+				// down as the grip opening would, a slow one loses them.
+				const float across =
+					math::Sqrt(in.handVelocity.x * in.handVelocity.x + in.handVelocity.y * in.handVelocity.y);
+				v.speed = across;
+				if (across > 1e-4f) {
+					v.direction = NiPoint3{in.handVelocity.x / across, in.handVelocity.y / across, 0.0f};
+				}
+				const GrappleEnd byHand = GrappleReleaseFor(shove, across);
+				v.end = byHand == GrappleEnd::LetGo ? GrappleEnd::Lost : byHand;
 			} else {
 				const float most = kGrappleDragUnitsPerSecond * dt;
 				v.drag = gap > most && gap > 0.0f ? d * (most / gap) : d;

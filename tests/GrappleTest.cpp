@@ -89,10 +89,10 @@ void TestTake() {
 	Check(t.found && t.part == BodyPart::Head, "over the head ball: the head");
 	t = GrappleTakeAt(b, NiPoint3{100.0f, -24.0f, 80.0f}, kGrappleReachUnits);
 	Check(t.found && t.part == BodyPart::RightArm, "at the arm, nearer it than the chest: the right arm");
-	t = GrappleTakeAt(b, NiPoint3{82.0f, 0.0f, 70.0f}, kGrappleReachUnits);
-	Check(!t.found, "8 units off the chest: out of reach, not taken");
-	t = GrappleTakeAt(b, NiPoint3{84.0f, 0.0f, 70.0f}, kGrappleReachUnits);
-	Check(t.found && Near(t.gap, 6.0f), "exactly 6 units off: taken");
+	t = GrappleTakeAt(b, NiPoint3{74.0f, 0.0f, 70.0f}, kGrappleReachUnits);
+	Check(!t.found, "16 units off the chest: out of reach, not taken (the reach 14 since 2026-10-15)");
+	t = GrappleTakeAt(b, NiPoint3{76.0f, 0.0f, 70.0f}, kGrappleReachUnits);
+	Check(t.found && Near(t.gap, 14.0f), "exactly 14 units off: taken");
 	t = GrappleTakeAt(b, NiPoint3{277.0f, 0.0f, 60.0f}, kGrappleReachUnits);
 	Check(t.found && t.actor == 0xB && t.part == BodyPart::Column, "one read without bones: their column");
 	t = GrappleTakeAt(b, NiPoint3{200.0f, 0.0f, 60.0f}, kGrappleReachUnits);
@@ -294,6 +294,26 @@ void TestHoldFlows() {
 	in = Holding(NiPoint3{10.0f, 0.0f, 100.0f}, NiPoint3{100.0f, 0.0f, 0.0f});
 	v = StepGrapple(st, g, s, in);
 	Check(v.end == GrappleEnd::Lost && v.actor == 0xA && st.actor == 0, "the hand 50 units from where it wants them: lost");
+	// Outrun by a fast hand (2026-10-15): thrown as the grip opening would.
+	{
+		GrappleState fast;
+		StepGrapple(fast, g, s, Taking());
+		GrappleInput away = Holding(NiPoint3{10.0f, 0.0f, 100.0f}, NiPoint3{100.0f, 0.0f, 0.0f});
+		away.handVelocity = NiPoint3{-2.0f, 0.0f, 0.0f};
+		v = StepGrapple(fast, g, s, away);
+		Check(v.end == GrappleEnd::Thrown && Near(v.speed, 2.0f) && Near(v.direction.x, -1.0f) && fast.actor == 0,
+		      "the hand 50 units off at 2 m/s across: thrown, not lost");
+		GrappleState faster;
+		StepGrapple(faster, g, s, Taking());
+		away.handVelocity = NiPoint3{-4.0f, 0.0f, 0.0f};
+		v = StepGrapple(faster, g, s, away);
+		Check(v.end == GrappleEnd::ThrownDown, "at 4 m/s: knocked down");
+		GrappleState up;
+		StepGrapple(up, g, s, Taking());
+		away.handVelocity = NiPoint3{0.0f, 0.0f, 3.0f};
+		v = StepGrapple(up, g, s, away);
+		Check(v.end == GrappleEnd::Lost, "a hand fast upward only: across the ground slow, lost as before");
+	}
 
 	st = GrappleState{};
 	StepGrapple(st, g, s, Taking());
@@ -522,6 +542,20 @@ void TestRagdollHoldFlows() {
 	v = StepGrapple(st, g, s, HoldingRagdoll(hand, NiPoint3{60.0f, 0.0f, 141.0f}));
 	Check(v.end == GrappleEnd::Lost && st.actor == 0 && st.hold == GrappleHold::Standing,
 	      "the body 41 units from the hand (up): lost, the state cleared");
+	// Outrun by a fast hand (2026-10-15): thrown as the grip opening would.
+	st = GrappleState{};
+	StepGrapple(st, g, s, TakingRagdoll());
+	GrappleInput away = HoldingRagdoll(hand, NiPoint3{60.0f, 0.0f, 141.0f});
+	away.handVelocity = NiPoint3{0.0f, 0.0f, -3.0f};
+	v = StepGrapple(st, g, s, away);
+	Check(v.end == GrappleEnd::Thrown && Near(v.speed, 3.0f) &&
+	          Near(v.throwVelocity.z, -3.0f * GrappleThrowStrength(g.throwStrength)) && st.actor == 0,
+	      "the body 41 units off with the hand at 3 m/s: thrown with the hand's speed, not lost");
+	st = GrappleState{};
+	StepGrapple(st, g, s, TakingRagdoll());
+	away.handVelocity = NiPoint3{0.0f, 0.0f, -1.0f};
+	v = StepGrapple(st, g, s, away);
+	Check(v.end == GrappleEnd::Lost, "at 1 m/s: lost as before");
 
 	st = GrappleState{};
 	StepGrapple(st, g, s, TakingRagdoll());
@@ -632,27 +666,27 @@ void TestPull() {
 	      "GrabWeight 0 to 5 as set");
 	Check(Near(GrappleWeight(-1.0f), 1.0f) && Near(GrappleWeight(6.0f), 1.0f) && Near(GrappleWeight(kNaN), 1.0f),
 	      "out of range or not a number: 1");
-	Check(Near(GrapplePullBudget(100.0f, 1.0f, 9.8f), 2940.0f, 0.1f), "Strength 100, weight 1, gravity 9.8: 300 lifted");
-	Check(Near(GrapplePullBudget(50.0f, 1.0f, 9.8f), 1470.0f, 0.1f), "Strength 50: half");
-	Check(Near(GrapplePullBudget(5.0f, 1.0f, 9.8f), 294.0f, 0.1f) && Near(GrapplePullBudget(-1.0f, 1.0f, 9.8f), 294.0f, 0.1f) &&
-	          Near(GrapplePullBudget(kNaN, 1.0f, 9.8f), 294.0f, 0.1f),
+	Check(Near(GrapplePullBudget(100.0f, 1.0f, 9.8f), 11760.0f, 0.1f), "Strength 100, weight 1, gravity 9.8: 1200 lifted (300 until 2026-10-15)");
+	Check(Near(GrapplePullBudget(50.0f, 1.0f, 9.8f), 5880.0f, 0.1f), "Strength 50: half");
+	Check(Near(GrapplePullBudget(5.0f, 1.0f, 9.8f), 1176.0f, 0.1f) && Near(GrapplePullBudget(-1.0f, 1.0f, 9.8f), 1176.0f, 0.1f) &&
+	          Near(GrapplePullBudget(kNaN, 1.0f, 9.8f), 1176.0f, 0.1f),
 	      "Strength under 10, or unread: as 10");
-	Check(Near(GrapplePullBudget(300.0f, 1.0f, 9.8f), 5880.0f, 0.1f), "Strength over 200: as 200");
-	Check(Near(GrapplePullBudget(100.0f, 2.0f, 9.8f), 1470.0f, 0.1f), "weight 2: half the budget (twice as heavy)");
+	Check(Near(GrapplePullBudget(300.0f, 1.0f, 9.8f), 23520.0f, 0.1f), "Strength over 200: as 200");
+	Check(Near(GrapplePullBudget(100.0f, 2.0f, 9.8f), 5880.0f, 0.1f), "weight 2: half the budget (twice as heavy)");
 	Check(Near(GrapplePullBudget(100.0f, 0.0f, 9.8f), 0.0f), "weight 0: no budget (no limit)");
-	Check(Near(GrapplePullBudget(100.0f, kNaN, 9.8f), 2940.0f, 0.1f), "weight not a number: as 1");
-	Check(Near(GrapplePullBudget(100.0f, 1.0f, 0.0f), 2940.0f, 0.1f) && Near(GrapplePullBudget(100.0f, 1.0f, kNaN), 2940.0f, 0.1f) &&
-	          Near(GrapplePullBudget(100.0f, 1.0f, 5000.0f), 2940.0f, 0.1f),
+	Check(Near(GrapplePullBudget(100.0f, kNaN, 9.8f), 11760.0f, 0.1f), "weight not a number: as 1");
+	Check(Near(GrapplePullBudget(100.0f, 1.0f, 0.0f), 11760.0f, 0.1f) && Near(GrapplePullBudget(100.0f, 1.0f, kNaN), 11760.0f, 0.1f) &&
+	          Near(GrapplePullBudget(100.0f, 1.0f, 5000.0f), 11760.0f, 0.1f),
 	      "gravity unread, not a number or absurd: Havok's 9.8");
-	Check(Near(GrapplePullBudget(100.0f, 1.0f, 98.0f), 29400.0f, 1.0f), "gravity 98: ten times the budget, the same lift");
-	Check(Near(GrappleLiftMass(2940.0f, 9.8f), 300.0f, 0.1f), "the lift: the budget over the gravity");
-	Check(Near(GrappleLiftMass(0.0f, 9.8f), 0.0f) && Near(GrappleLiftMass(2940.0f, 0.0f), 0.0f),
+	Check(Near(GrapplePullBudget(100.0f, 1.0f, 98.0f), 117600.0f, 1.0f), "gravity 98: ten times the budget, the same lift");
+	Check(Near(GrappleLiftMass(11760.0f, 9.8f), 1200.0f, 0.1f), "the lift: the budget over the gravity");
+	Check(Near(GrappleLiftMass(0.0f, 9.8f), 0.0f) && Near(GrappleLiftMass(11760.0f, 0.0f), 0.0f),
 	      "no budget or no gravity: no lift to name");
 
 	const NiPoint3 still{0.0f, 0.0f, 0.0f};
 	const NiPoint3 last{3.0f, 0.0f, 0.0f};
 	const float massInv = 1.0f / 30.0f;  // a forearm
-	const float budget = 2940.0f;
+	const float budget = 2940.0f;  // any budget: the drive's own flows, not the Strength's
 	const float step = 1.0f / 60.0f;
 	PullVerdict v = PullLimitedVelocity(still, NiPoint3{1.0f, 0.0f, 0.0f}, massInv, budget, step, false, last);
 	Check(Near(v.velocity.x, 3.0f) && !v.injected && !v.capped, "Havok has not stepped: the velocity set last again, nothing given");

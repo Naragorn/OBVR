@@ -260,6 +260,12 @@ struct HandSettings {
 	bool motionHits = true;
 	float hitBoundFactor = 0.7f;
 	float hitPadUnits = 8.0f;
+	// The hit by touch ([Hands] MotionHitsByTouch): the blade or the fist has
+	// to come within a few units of one of the actor's capsules (the
+	// contact steps' living) rather than the bound's ball - the ball read
+	// hits a metre off a big fighter (the tester, 2026-10-15). With no
+	// capsules collected (the contact settings off) the ball as before.
+	bool hitsByTouch = true;
 
 	// Menus with the controllers even while the mode is off: a laser from a
 	// hand onto whichever quad shows the game's menus, the trigger clicks,
@@ -763,6 +769,11 @@ struct HandModeResult {
 	// the hand whose grip is closed.
 	bool rightGripDown = false;
 	bool leftGripDown = false;
+	// Each grip's force, 0..1 (an Index's rAxis[2].x; 0 elsewhere): a fist
+	// squeezes it, so it counts as a fist where the fingers cannot be read
+	// ([Hands] FistGripForce; game::HandBodyFist).
+	float rightGripForce = 0.0f;
+	float leftGripForce = 0.0f;
 	// The left trigger as pulled, before a handle takes it
 	// (HandModeFrame::leftTriggerOnHandle): what slides the hand on it.
 	bool leftTriggerDown = false;

@@ -278,6 +278,34 @@ inline float PointSegmentDistance(const NiPoint3& p, const NiPoint3& a, const Ni
 	return math::Sqrt((p - q).LengthSquared());
 }
 
+// How deep in a person's capsule a shape may lie and still be held at them
+// rather than passed. The shape is held 1.5 units short of a person, and a
+// standing person's idle - breathing, swaying - moves their capsules a unit
+// or two a frame: a blade resting on them woke up inside them and, until
+// 2026-10-15, passed them and went through (the tester: "manchmal auch
+// direkt durch den körper"; the harness: a frozen beggar's torso closed over
+// the held blade, "walked into the blade where it was"). Deeper than the
+// band the shape was taken up in them, or they walked into it: passed as
+// before. The band is at most half the radius, so a thin limb crossed
+// through its axis still counts as crossed (PersonAcross).
+inline constexpr float kBladeShallowUnits = 3.0f;
+
+inline float ShallowBand(float radius) {
+	const float half = radius * 0.5f;
+	return half < kBladeShallowUnits ? half : kBladeShallowUnits;
+}
+
+// A point inside a capsule: how deep (0 at the surface, more inside), and
+// the normal out of it at the point (up when the point lies on the axis).
+inline float CapsuleDepthAt(const NiPoint3& p, const NiPoint3& a, const NiPoint3& b, float radius,
+                            NiPoint3& outNormal) {
+	const NiPoint3 q = a + (b - a) * ShareOnSegment(p, a, b);
+	const NiPoint3 off = p - q;
+	const float d = math::Sqrt(off.LengthSquared());
+	outNormal = d > 1e-4f ? off * (1.0f / d) : NiPoint3{0.0f, 0.0f, 1.0f};
+	return radius - d;
+}
+
 // The distance between two segments (Ericson, Real-Time Collision
 // Detection, 5.1.9: the closest points, clamped to both).
 inline float SegmentSegmentDistance(const NiPoint3& p1, const NiPoint3& q1, const NiPoint3& p2, const NiPoint3& q2) {
@@ -516,6 +544,29 @@ inline UInt32 BodyCapsulesFromBones(const NiPoint3* bones, const bool* have, flo
 	link(kBoneRThigh, kBoneRCalf, kBladeThighRadius, BodyPart::RightLeg);
 	link(kBoneRCalf, kBoneRFoot, kBladeCalfRadius, BodyPart::RightLeg);
 	return added;
+}
+
+// Whether a blade or a fist touches an actor: within `marginUnits` of one of
+// their capsules in `bodies` - the strike by motion's hit by touch ([Hands]
+// MotionHitsByTouch; the tester, 2026-10-15: "manchmal auch direkt durch den
+// körper", with the engine's bound reading hits a metre off a big fighter).
+// Answers 1 touched, 0 missed, -1 when the actor has no capsule in the list
+// (not collected: too far off, or the list is another step's).
+inline int CapsulesTouched(const BladeBodies& bodies, UInt32 actor, const NiPoint3& a, const NiPoint3& b,
+                           float marginUnits) {
+	int found = -1;
+	const float margin = marginUnits > 0.0f ? marginUnits : 0.0f;
+	for (UInt32 c = 0; c < bodies.count; ++c) {
+		const BladeBodyCapsule& cap = bodies.cap[c];
+		if (cap.actor != actor) {
+			continue;
+		}
+		found = 0;
+		if (SegmentSegmentDistance(a, b, cap.a, cap.b) <= cap.radius + margin) {
+			return 1;
+		}
+	}
+	return found;
 }
 
 // ------------------------------------------------------------- the stoppers
@@ -864,17 +915,30 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 				actor = id;
 			}
 		};
+		// A point already in a capsule, but only just (ShallowBand): held
+		// where it is, the normal out of the capsule - not passed.
+		auto takeCapsule = [&](const BladeBodyCapsule& cap, bool passable) {
+			float f = 1.0f;
+			NiPoint3 n;
+			bool inside = false;
+			if (!SegmentEntersCapsule(a, end, cap.a, cap.b, cap.radius, f, n, inside)) {
+				return;
+			}
+			if (inside) {
+				NiPoint3 out;
+				if (CapsuleDepthAt(a, cap.a, cap.b, cap.radius, out) <= ShallowBand(cap.radius)) {
+					take(0.0f, out, false, cap.actor, passable);
+					return;
+				}
+			}
+			take(f, n, inside, cap.actor, passable);
+		};
 		for (UInt32 c = 0; living.stoppers != nullptr && c < living.stoppers->count; ++c) {
 			const BladeBodyCapsule& cap = living.stoppers->cap[c];
 			if (living.passed != nullptr && living.passed->Has(cap.actor)) {
 				continue;
 			}
-			float f = 1.0f;
-			NiPoint3 n;
-			bool inside = false;
-			if (SegmentEntersCapsule(a, end, cap.a, cap.b, cap.radius, f, n, inside)) {
-				take(f, n, inside, cap.actor, false);
-			}
+			takeCapsule(cap, false);
 		}
 		for (UInt32 c = 0; living.discs != nullptr && c < living.discs->count; ++c) {
 			const BladeDisc& d = living.discs->disc[c];
@@ -893,12 +957,7 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 			if (living.passed != nullptr && living.passed->Has(cap.actor)) {
 				continue;
 			}
-			float f = 1.0f;
-			NiPoint3 n;
-			bool inside = false;
-			if (SegmentEntersCapsule(a, end, cap.a, cap.b, cap.radius, f, n, inside)) {
-				take(f, n, inside, cap.actor, !living.hold);
-			}
+			takeCapsule(cap, !living.hold);
 		}
 		if (!(atUnits >= 0.0f)) {
 			continue;
@@ -935,13 +994,15 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 inline UInt32 PersonAcross(const BladePose& pose, const BodySpan& span, const BladeLiving& living) {
 	const NiPoint3 guard = BladePointAt(pose, span, 0.0f);
 	const NiPoint3 tip = BladePointAt(pose, span, 1.0f);
+	// Only just inside (ShallowBand) is not across: the pose is taken and the
+	// sweep holds the shape where it is.
 	if (living.bodies != nullptr && (!living.swinging || living.hold)) {
 		for (UInt32 c = 0; c < living.bodies->count; ++c) {
 			const BladeBodyCapsule& cap = living.bodies->cap[c];
 			if (living.passed != nullptr && living.passed->Has(cap.actor)) {
 				continue;
 			}
-			if (SegmentSegmentDistance(guard, tip, cap.a, cap.b) <= cap.radius) {
+			if (SegmentSegmentDistance(guard, tip, cap.a, cap.b) < cap.radius - ShallowBand(cap.radius)) {
 				return cap.actor;
 			}
 		}
@@ -952,7 +1013,7 @@ inline UInt32 PersonAcross(const BladePose& pose, const BodySpan& span, const Bl
 		if (living.passed != nullptr && living.passed->Has(cap.actor)) {
 			continue;
 		}
-		if (SegmentSegmentDistance(guard, tip, cap.a, cap.b) <= cap.radius) {
+		if (SegmentSegmentDistance(guard, tip, cap.a, cap.b) < cap.radius - ShallowBand(cap.radius)) {
 			return cap.actor;
 		}
 	}
@@ -977,11 +1038,13 @@ inline void PassThoseItIsIn(const BladePose& pose, const BodySpan& span, const B
 	}
 	const NiPoint3 guard = BladePointAt(pose, span, 0.0f);
 	const NiPoint3 tip = BladePointAt(pose, span, 1.0f);
+	// Deeper than the shallow band only: a shape just inside someone is held
+	// at them (SweepBlade, PersonAcross), not passed.
 	const BladeBodies* lists[2] = {living.bodies, living.stoppers};
 	for (const BladeBodies* list : lists) {
 		for (UInt32 c = 0; list != nullptr && c < list->count; ++c) {
 			const BladeBodyCapsule& cap = list->cap[c];
-			if (SegmentSegmentDistance(guard, tip, cap.a, cap.b) <= cap.radius) {
+			if (SegmentSegmentDistance(guard, tip, cap.a, cap.b) < cap.radius - ShallowBand(cap.radius)) {
 				living.passed->Add(cap.actor);
 			}
 		}

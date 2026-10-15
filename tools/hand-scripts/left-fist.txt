@@ -1,9 +1,12 @@
 # The left fist strikes (the tester, 2026-10-14: "linke faust trifft
 # nicht"): the weapons taken off and the fists raised by the weapon hand's
 # fist (vr/Fist.h), a beggar (0001C45B) placed and frozen (tai), and the left
-# fist swung round the player at chest height at about 4 m/s, a lap each way
-# - the fist's strike by motion (MeleeHits.cpp, hand 1) reaches a hand's
-# reach past the fist, so the beggar is met wherever PlaceAtMe put them.
+# fist swung round the player at chest height at about 4 m/s, a lap each way.
+# Since 2026-10-15 the hit needs the touch (MotionHitsByTouch): the fist's own
+# 12 units have to come within a few units of the beggar's capsules, so they
+# stand 55 units ahead (about 52 after the placement), the lap's front
+# crossing their torso - until then the fist's reach of 57 units met them from
+# 100 units.
 # "Hands: the blade met ... swing 21474836nn" is the left hand's (its serials
 # start at 0x80000000); a power swing is struck at once, a light one at the
 # swing's end ("Hands: struck").
@@ -16,7 +19,7 @@ ini Hands HandsStopAtBodies=1
 console player.unequipitem 00000C0C
 console player.unequipitem 00025231
 console player.unequipitem 000229B3
-console-at ready player.placeatme 0001C45B 1 100 0
+console-at ready player.placeatme 0001C45B 1 55 0
 console-at ready tai
 
 expect HandScript: finished

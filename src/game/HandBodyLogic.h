@@ -57,15 +57,28 @@ inline UInt32 FilterLayer(UInt32 filter) { return filter & 0x3F; }
 // vr::StepFist does) all past closeCurl; one stays a fist until they are all
 // below openLimit. A finger whose sensor has never read is left out
 // (vr/FingersRead.h). No curls: no fist.
+// A grip squeezed to `fistGripForce` or more is a fist as well (0: the grip
+// never counts), and stays one until the force drops kFistGripRelease below
+// that - the tester's left Index reads three of four fingers at 0
+// (2026-10-15), so a fist there can only come from the grip. A force that is
+// not a number counts for nothing.
+inline constexpr float kFistGripRelease = 0.15f;
+
 inline bool HandBodyFist(bool wasFist, bool curlValid, const float* curl, float closeCurl, float openLimit,
-                         const vr::FingersRead* read = nullptr) {
+                         const vr::FingersRead* read = nullptr, float gripForce = 0.0f,
+                         float fistGripForce = 0.0f) {
+	bool byGrip = false;
+	if (fistGripForce > 0.0f && gripForce == gripForce) {
+		byGrip = wasFist ? gripForce > fistGripForce - kFistGripRelease : gripForce >= fistGripForce;
+	}
 	if (!curlValid || curl == nullptr) {
-		return false;
+		return byGrip;
 	}
 	float lowest = 0.0f;
 	float highest = 0.0f;
 	vr::FistCurlSpan(curl, read, lowest, highest);
-	return wasFist ? !(highest <= openLimit) : lowest >= closeCurl;
+	const bool byFingers = wasFist ? !(highest <= openLimit) : lowest >= closeCurl;
+	return byFingers || byGrip;
 }
 
 // Whether a body pushes people: only with [Hands] PushPeople on (the tester,

@@ -46,6 +46,10 @@ struct FistSettings {
 	bool enabled = true;
 	float closeCurl = 0.90f;
 	float openCurl = 0.35f;
+	// [Hands] FistGripForce: a grip squeezed this hard (0..1) is a fist as
+	// well - for a controller whose fingers do not read (the tester's left
+	// Index, 2026-10-15: three fingers at 0, so no fist ever came). 0 off.
+	float gripForce = 0.6f;
 	float holdSeconds = 0.25f;
 	// How long a weapon being taken off may take to leave the slot before
 	// the fists are given up.

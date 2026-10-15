@@ -908,9 +908,9 @@ the body and the hands.
 
 | B&S element | OBVR | Status |
 |---|---|---|
-| A body stops the blade and the fist, the controller goes on | the living hold swings and fast hands (17), held for good by default (`BodyLetGoMetres` 0) | built, headset open |
+| A body stops the blade and the fist, the controller goes on | the living hold swings and fast hands (17), held for good by default (`BodyLetGoMetres` 0), the shallow band (19) | built, headset open |
 | The hand follows the controller through a capped spring; a stuck weapon: block or drop | the held pose written back, the hand drawn where it stopped; no spring, no drop | built, as a hold |
-| The collision is the blow, damage by impact velocity | the strike by motion (the bound's sphere, the swing's speed for light or power), the shove by the hand's speed | built; no velocity curve |
+| The collision is the blow, damage by impact velocity | the strike by motion by touch of the capsules (19), light or power by the swing's speed; the shove by the hand's speed | built; no velocity curve |
 | Impulse on the part hit, the body stays | the engine's knockback off by default (`EnemyKnockback` 0), scalable; no impulse on the part | built as off; a stumble open |
 | A slash sinks its edge in and slides out | held the half-width short of the capsule; the slide along it | partly |
 | Penetration: a thrust goes in and sticks | nothing | open (physical-combat-spec 9) |
@@ -920,3 +920,117 @@ the body and the hands.
 | The hands and the weapon against the own body | nothing (16) | open |
 | Weapon weight and inertia | `WeaponWeight`, the swing-through spring | built |
 | Grabbing a fighter, throwing, the ragdoll hold | the grapple, the ragdoll grab (physical-combat-spec 8) | built, the weight open |
+
+## 19. Built: the tester's headset notes of 2026-10-15 - through the body, the fist, the grab
+
+The tester, after a session on the morning's build (his OBVR.log of 11:31):
+"1. ja geht aber manchmal auch direkt durch den körper... 2, same 3. nein
+linker pinky trackt nicht daher kam keine faust. griff: gegner sackt in sich
+zusammen 4. 100 oder 0 nix passiert, ist whl ok so" - then "Ja 1 + 2 + 3 + 4
+knockback sollte schon gehen wenn das an ist."
+
+### 19.1 Read in his log
+
+- 20 "the blade met" lines, 12 with a hold within eight lines, 8 without -
+  the blade 29 to 79 units from the fighter's bound centre at those. No
+  "went into someone", no "pressed on into": the hold never passed anyone
+  by its own rules. The fighter's bound radius read 87 to 116, so the
+  strike's ball (0.7 of it plus 8) landed hits with the blade up to 1.1 m
+  from his centre - swings through the air beside him took health.
+- The left hand's only finger line: index 0.50, middle 0.00, ring 0.01,
+  little 0.00, SteamVR's own animation 0.13 to 0.18 for the three. Three of
+  four fingers never read, and the fist's rule leaves fingers out only
+  when at least three have read - so all four counted and no fist came;
+  all seven of his left blows were the open hand's.
+- The grab: the known picture of section 8 of physical-combat-spec - the
+  take knocked the fighter into his ragdoll, the pull's budget cut every
+  change, the body 25 to 27 units behind the hand, lost after 0.3 s.
+- The knockback: at 100 % he had "Only power attacks push" on, so his
+  light hits were skipped there too ("skipped (Hands.EnemyKnockback 100 %,
+  power only 1)"); his one power attack pushed, unlogged. The comparison
+  was confounded, not the mechanism.
+
+### 19.2 Built
+
+- **The fist by the grip's force** (`[Hands] FistGripForce=0.6`, "Fist by
+  grip (force)"; `game::HandBodyFist` with the grip force and the setting,
+  `kFistGripRelease` 0.15 of hysteresis; HandMode carries each grip's
+  force, an Index's rAxis[2].x). A grip squeezed to the force is a fist
+  whatever the fingers say, and stays one until the force drops 0.15 below;
+  the fingers' rule is unchanged beside it. Logged a few times per hand
+  when the grip alone made the fist ("Hands: the left hand's fist by the
+  grip's force ..."). hand_body_test: ten flows. Not provable in the
+  harness (the synthetic controller has no grip force): the tester's next
+  session.
+- **The hit by touch** (`[Hands] MotionHitsByTouch=1`, "Hits need the
+  touch"): a swing or a punch hits only where the blade or the fist comes
+  within `touchUnits` (4; a fist 6.5) of one of the actor's capsules - the
+  list the contact steps collected this frame (`MotionStrike::capsules`,
+  the weapon's or the hands'), `game::CapsulesTouched` on the drawn blade's
+  OWN span (the weapon's geometry at the drawn hand, as the contact step
+  held it - a longsword's axis is 25 degrees off the hand's pointing axis,
+  so the strike's blade along that axis missed a capsule the held weapon
+  touched) or, for a fist, `kFistTouchUnits` (12) of itself. An actor with
+  no capsule in the list is not hit (logged a few times); no list at all
+  (the contact settings off) or the setting off: the bound's ball as
+  before. Log "Hands: the blade touched <actor> - the hit by touch, within
+  N units of a capsule (the drawn blade's own span)".
+- **The shallow band** (`kBladeShallowUnits` 3, at most half a capsule's
+  radius; `ShallowBand`, `CapsuleDepthAt`): a shape only just inside a
+  person is held at them, not passed - in the sweep (a point starting in a
+  capsule within the band is held where it is, the normal out of the
+  capsule), in `PersonAcross` (across only past the band) and in the
+  lying-in pass (passed only past the band). Found by the walked-into log
+  on the harness's frozen beggar: his idle moved the torso's capsule over
+  the blade held 1.5 units short of it, and the blade passed him. The
+  thin-limb protection stays: a blade through a 2-unit arm's axis is 2
+  deep, past the arm's band of 1. blade_contact_test "the shallow band".
+- **The walked-into log**: "Contact: <actor> walked into the blade where it
+  was (n near) - passed until ..." whenever the ledger grows without a swing
+  going in, a let-go, a start inside or a blade through a wall; the hands
+  the same. The stoppers' ids are left out.
+- **The grab** (physical-combat-spec 8, ways B, C and D): the loss as a
+  throw - a hand that outruns the body at the shove's speed throws it (the
+  ragdoll: with the hand's velocity times GrabThrowStrength; standing: as
+  the grip opening would, thrown or knocked down), a slow one loses it as
+  before; `kGrabLiftMassAtHundred` 300 to 1200 (a Strength-25 hand's budget
+  5518 to 22073, lifting 75 to 300 of a 530-mass ragdoll); `kGrappleReachUnits`
+  6 to 14 (his misses were at 7.4 to 13.7). grapple_test: the flows and
+  the constants.
+- **The knockback kept whole** logged ("Comfort: the knockback of <actor>
+  by the player's light hit kept whole (Hands.EnemyKnockback 100 %)") so a
+  100 % run reads in the log.
+- **Diagnosis**: the live INI carries `[Debug] ContactTrace=4000` for his
+  next session.
+
+### 19.3 Harness (2026-10-15 afternoon, Linux)
+
+- `left-fist.txt` PASS - the beggar 55 units ahead now (the fist has to
+  touch): three laps, three hits by touch ("the fist touched ... within 4.0
+  units of a capsule"), light 26.0 to 25.1 and two power strikes to 20.4,
+  the beggar standing where he was (the knockback off).
+- `blade-held.txt` PASS - four slashes, four hits by touch on the drawn
+  span (the blade 28 units from the centre at each, against 35 to 56 by the
+  ball before), four holds, the knockback skipped at each, the beggar
+  standing where he was; a first run with the touch on the hand's axis hit
+  nothing - the weapon's 25-degree offset.
+- `fist-held.txt` PASS - the punch held 2.8 units from the controller at 4.6
+  m/s, landed hard.
+- `grapple-ragdoll.txt` PASS - two takes, the torso at -2.5 units and the
+  right arm at 10.1 (past the old reach of 6); the pull's budget 22073
+  lifting 300; the torso 25 to 38 units from the hand over 0.8 s (the loss
+  at 40 - close), the arm 3.5 to 18; both let go by the jump back as throws
+  at 22.7 m/s; no loss.
+- `left-punch.txt` PASS - four punches at the moving bandit, 3.4 to 6.7 m/s,
+  all hard. `blade-held-cap.txt` from the morning not run again on this
+  build.
+
+### 19.4 Open
+
+- The headset's judgement of all of it; the first "fist by the grip's
+  force" lines with his force values (the 0.6 is a guess, the row tunes it).
+- The torso's lag in the ragdoll hold (25 to 38 units of the 40 that lose
+  it): way A of physical-combat-spec 8 - no loss while held, the body
+  dragged - or a lower GrabWeight.
+- The capsules' radii against the meshes (10 units of torso), still
+  unmeasured.

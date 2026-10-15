@@ -849,6 +849,72 @@ void TestLivingHold() {
 	      "a stopper still lets go past the weapon's cap");
 }
 
+// The shallow band (2026-10-15): a shape only just inside a person - their
+// capsule moved into it as they breathe - is held at them, not passed.
+void TestShallow() {
+	std::printf("The shallow band: barely inside someone\n");
+	Check(Near(ShallowBand(10.0f), 3.0f) && Near(ShallowBand(4.0f), 2.0f) && Near(ShallowBand(2.0f), 1.0f),
+	      "the band: 3 units, or half a thin capsule's radius");
+	NiPoint3 n;
+	Check(Near(CapsuleDepthAt(NiPoint3{0, 37, 0}, NiPoint3{0, 45, -60}, NiPoint3{0, 45, 60}, 10.0f, n), 2.0f) &&
+	          Near(n.y, -1.0f),
+	      "2 units into the face of a column at y 45: depth 2, the normal out towards -y");
+	Check(Near(CapsuleDepthAt(NiPoint3{0, 45, 0}, NiPoint3{0, 45, -60}, NiPoint3{0, 45, 60}, 10.0f, n), 10.0f) &&
+	          Near(n.z, 1.0f),
+	      "on the axis: the whole radius deep, the normal up");
+
+	BoxWorld none;
+	BladeContactSettings set;
+	set.letGoUnits = 21.0f;
+	// A blade resting on someone (the tip 1.5 short of their face at y 35);
+	// then their capsule comes 3 units nearer: the tip is 1.5 units inside.
+	const BladeBodies person = PersonAhead(0x2000);
+	BladeBodies nearer;
+	nearer.Add(NiPoint3{0, 42, -60}, NiPoint3{0, 42, 60}, 10.0f, 0x2000);
+	BladeContactState s;
+	StepBladeContact(s, set, LivingFrame(At(0, -30, 0), &person, false), none);
+	BladeContactVerdict v = StepBladeContact(s, set, LivingFrame(At(0, -20, 0), &person, false), none);
+	Check(v.held && v.contact.actor == 0x2000 && Near(BladePointAt(v.pose, Blade(), 1.0f).y, 33.5f), "resting on them");
+	v = StepBladeContact(s, set, LivingFrame(At(0, -20, 0), &nearer, false), none);
+	Check(v.held && v.contact.actor == 0x2000 && !s.passed.Has(0x2000),
+	      "their capsule 3 units nearer, the tip 1.5 inside: still held by them, not passed");
+	Check(Near(BladePointAt(v.pose, Blade(), 1.0f).y, 33.5f, 0.1f), "and held where it was");
+	v = StepBladeContact(s, set, LivingFrame(At(0, -20, 0), &person, false), none);
+	Check(v.held && !s.passed.Has(0x2000), "the capsule back where it was: held still");
+	// Deeper: their capsule 8 units nearer, the tip 6.5 inside - taken up in
+	// them, passed as before.
+	BladeBodies deep;
+	deep.Add(NiPoint3{0, 37, -60}, NiPoint3{0, 37, 60}, 10.0f, 0x2000);
+	v = StepBladeContact(s, set, LivingFrame(At(0, -20, 0), &deep, false), none);
+	Check(!v.held && s.passed.Has(0x2000), "their capsule 8 units nearer, the tip 6.5 inside: passed, as walked into");
+	// The same while a swing is held (the hold): still held, not passed.
+	BladeContactState h;
+	auto hold = [&](const BladeBodies* b) {
+		BladeContactFrame f = LivingFrame(At(0, -20, 0), b, true);
+		f.bodiesHold = true;
+		return f;
+	};
+	StepBladeContact(h, set, [&] { BladeContactFrame f = LivingFrame(At(0, -30, 0), &person, true); f.bodiesHold = true; return f; }(), none);
+	v = StepBladeContact(h, set, hold(&person), none);
+	Check(v.held && v.contact.actor == 0x2000, "a swing held by them");
+	v = StepBladeContact(h, set, hold(&nearer), none);
+	Check(v.held && v.contact.actor == 0x2000 && !h.passed.Has(0x2000), "breathing into the held swing: still held, not passed");
+	// A thin arm crossed through its axis is still across (the band is half
+	// its radius): held where it was, not taken.
+	BladeBodies arm;
+	arm.Add(NiPoint3{5, 20, -30}, NiPoint3{5, 20, 30}, 2.0f, 0x2004);
+	BladeContactFrame p = LivingFrame(At(-5, 0, 0), &arm, false);
+	BladeContactState a;
+	StepBladeContact(a, set, p, none);
+	p.wanted = At(5, 0, 0);
+	v = StepBladeContact(a, set, p, none);
+	Check(v.held && Near(v.pose.pos.x, -5.0f) && v.contact.actor == 0x2004,
+	      "slowly across a thin arm's axis between two points: held where it was, as before");
+	const BladeLiving living{&arm, nullptr, false, nullptr, nullptr, false};
+	Check(PersonAcross(At(5, 0, 0), Blade(), living) == 0x2004, "the blade through the arm's axis: across");
+	Check(PersonAcross(At(6.5f, 0, 0), Blade(), living) == 0, "1.5 units off its axis, half a unit into the flesh: not across");
+}
+
 void TestHitStop() {
 	std::printf("The hit-stop\n");
 	Check(Near(HitStopShare(0), 0.25f) && Near(HitStopShare(2), 0.25f) && Near(HitStopShare(3), 0.5f) &&
@@ -1179,6 +1245,7 @@ int main() {
 	TestPassLedger();
 	TestLiving();
 	TestLivingHold();
+	TestShallow();
 	TestHitStop();
 	TestSettings();
 	TestShape();

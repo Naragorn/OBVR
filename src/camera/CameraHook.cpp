@@ -2880,8 +2880,22 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	}
 	game::HavokBladeWorld world;
 	const game::BladePose traceFrom = g_bladeContact.pose;
+	const UInt32 passedBefore = g_bladeContact.passed.count;
 	const game::BladeContactVerdict v = game::StepBladeContact(g_bladeContact, settings, f, world);
 	const long long after = ReadPerformanceCounter();
+	// Someone who walked into the blade where it was is passed - the ledger
+	// grew with no swing going in and no let-go: said, as the one way a held
+	// blade goes through a person (the tester, 2026-10-15: "manchmal auch
+	// direkt durch den körper").
+	if (g_bladeContact.passed.count > passedBefore && !v.enteredBody && !v.through &&
+	    v.event != game::BladeContactEvent::LetGo && v.event != game::BladeContactEvent::StartedInside &&
+	    !game::IsStopperId(g_bladeContact.passed.actor[g_bladeContact.passed.count - 1]) && g_bladeLines > 0) {
+		--g_bladeLines;
+		OBVR_LOG("Contact: %08X walked into the blade where it was (%u near) - passed until the blade has been out "
+		         "of them for %.2f s",
+		         g_bladeContact.passed.actor[g_bladeContact.passed.count - 1], peopleNear,
+		         static_cast<double>(game::kBladePassClearSeconds));
+	}
 	// [Debug] ContactTrace: the step frame by frame while people are near and
 	// the blade swings, is held or goes into someone.
 	static UInt32 s_traceLeft = config.hands.contactTraceLines;
@@ -3405,8 +3419,19 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 		f.followShare = 1.0f;
 		h.wantedPos = f.wanted.pos;
 		const game::BladePose traceFrom = h.state.pose;
+		const UInt32 passedBefore = h.state.passed.count;
 		const game::BladeContactVerdict v = game::StepBladeContact(h.state, settings, f, world);
 		stepped = stepped || (f.active && settings.enabled && span.valid);
+		if (h.state.passed.count > passedBefore && !v.enteredBody && !v.through &&
+		    v.event != game::BladeContactEvent::LetGo && v.event != game::BladeContactEvent::StartedInside &&
+		    shape != game::HandShape::None &&
+		    !game::IsStopperId(h.state.passed.actor[h.state.passed.count - 1]) && h.lines > 0) {
+			--h.lines;
+			OBVR_LOG("Contact: %08X walked into the %s where it was (%u near) - passed until it has been out of them "
+			         "for %.2f s",
+			         h.state.passed.actor[h.state.passed.count - 1], name, peopleNear,
+			         static_cast<double>(game::kBladePassClearSeconds));
+		}
 		// [Debug] ContactTrace, for the hands: the step frame by frame while
 		// people are near and the hand is fast, held or goes into someone.
 		static UInt32 s_handTraceLeft = config.hands.contactTraceLines;
@@ -5425,6 +5450,21 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		strike.cameraPosition = g_cyclopeanCameraWorldTransform.pos;
 		strike.boundFactor = config.hands.hitBoundFactor;
 		strike.padUnits = config.hands.hitPadUnits;
+		// The hit by touch against the capsules the weapon's step collected
+		// this frame (none with a bare fist: the hands' step's then).
+		strike.byTouch = config.hands.hitsByTouch;
+		strike.capsules = g_bladeBodies.count > 0 ? &g_bladeBodies : &g_handBodies;
+		// The drawn blade's own span for the touch - the weapon's geometry at
+		// the drawn hand, as the contact step held it.
+		if (g_bladeSpan.span.valid) {
+			game::BladePose drawn;
+			drawn.rot = g_cyclopeanCameraWorldTransform.rot * g_hand.weaponHandRotation;
+			drawn.pos = g_cyclopeanCameraWorldTransform.pos +
+			            g_cyclopeanCameraWorldTransform.rot * g_hand.weaponHandOffsetUnits;
+			strike.touchSpanValid = true;
+			strike.touchBase = game::BladePointAt(drawn, g_bladeSpan.span, 0.0f);
+			strike.touchTip = game::BladePointAt(drawn, g_bladeSpan.span, 1.0f);
+		}
 		game::StrikeByMotion(strike);
 	}
 	// The arrow in the drawing hand, with the bow drawn, stabs the same way
@@ -5479,6 +5519,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		strike.cameraPosition = g_cyclopeanCameraWorldTransform.pos;
 		strike.boundFactor = config.hands.hitBoundFactor;
 		strike.padUnits = config.hands.hitPadUnits;
+		strike.byTouch = config.hands.hitsByTouch;
+		strike.capsules = &g_handBodies;
 		game::StrikeByMotion(strike);
 	}
 	{
@@ -5604,10 +5646,37 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			const float closeCurl = config.hands.fist.closeCurl;
 			const float openLimit = vr::FistOpenLimit(config.hands.fist);
 			const bool wasLeftFist = g_leftBodyFist;
+			const bool wasRightFist = g_rightBodyFist;
 			g_rightBodyFist = game::HandBodyFist(g_rightBodyFist, g_hand.rightCurlValid, g_hand.rightCurl, closeCurl,
-			                                     openLimit, &g_rightFingersRead);
+			                                     openLimit, &g_rightFingersRead, g_hand.rightGripForce,
+			                                     config.hands.fist.gripForce);
 			g_leftBodyFist = game::HandBodyFist(g_leftBodyFist, g_hand.leftCurlValid, g_hand.leftCurl, closeCurl,
-			                                    openLimit, &g_leftFingersRead);
+			                                    openLimit, &g_leftFingersRead, g_hand.leftGripForce,
+			                                    config.hands.fist.gripForce);
+			// A fist the grip's force made, the fingers reading open: said a
+			// few times per hand, with the force, for the threshold's tuning.
+			for (int side = 0; side < 2; ++side) {
+				const bool fist = side == 0 ? g_rightBodyFist : g_leftBodyFist;
+				const bool was = side == 0 ? wasRightFist : wasLeftFist;
+				static UInt32 s_gripFistLines[2] = {6, 6};
+				if (!fist || was || s_gripFistLines[side] == 0) {
+					continue;
+				}
+				const float* curl = side == 0 ? g_hand.rightCurl : g_hand.leftCurl;
+				float lowest = 0.0f;
+				float highest = 0.0f;
+				vr::FistCurlSpan(curl, side == 0 ? &g_rightFingersRead : &g_leftFingersRead, lowest, highest);
+				if (lowest >= closeCurl) {
+					continue;  // the fingers made it
+				}
+				--s_gripFistLines[side];
+				OBVR_LOG("Hands: the %s hand's fist by the grip's force %.2f (FistGripForce %.2f; the fingers' lowest "
+				         "curl %.2f, the close limit %.2f)",
+				         side == 0 ? "right" : "left",
+				         static_cast<double>(side == 0 ? g_hand.rightGripForce : g_hand.leftGripForce),
+				         static_cast<double>(config.hands.fist.gripForce), static_cast<double>(lowest),
+				         static_cast<double>(closeCurl));
+			}
 			for (int side = 0; side < 2; ++side) {
 				const vr::FingersRead& read = side == 0 ? g_rightFingersRead : g_leftFingersRead;
 				bool& said = g_fingerLeftOutLogged[side];

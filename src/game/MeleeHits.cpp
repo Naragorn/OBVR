@@ -6,6 +6,7 @@
 #include "core/AddressSpace.h"
 #include "core/Log.h"
 #include "core/Memory.h"
+#include "game/BladeContactLogic.h"
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
 #include "game/MeleeHit.h"
@@ -253,16 +254,16 @@ void ApplyStrike(UInt8* player, void* actor, bool heavy, UInt8 group, UInt32 ser
 
 // Bodies met before their swing was a power attack, held to its end
 // (MeleeHit.h, SettleHeldStrike).
-struct HeldBody {
+struct HeldStrikeBody {
 	UInt32 hand = 0;
 	void* actor = nullptr;
 	UInt32 serial = 0;
 };
 constexpr UInt32 kMaxHeldBodies = 8;
-HeldBody g_held[kMaxHeldBodies];
+HeldStrikeBody g_held[kMaxHeldBodies];
 
 void HoldStrike(void* actor, UInt32 serial, UInt32 hand) {
-	for (HeldBody& h : g_held) {
+	for (HeldStrikeBody& h : g_held) {
 		if (h.actor == nullptr) {
 			h.actor = actor;
 			h.serial = serial;
@@ -585,11 +586,50 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 				}
 			}
 		}
-		if (!BladeStrikes(blade, bound.center, bound.radius, strike.boundFactor, strike.padUnits)) {
+		// The hit by touch: the blade (a fist: its own short blade) within
+		// touchUnits of one of the actor's capsules - or, with no list, the
+		// bound's ball as before.
+		const bool byTouch = strike.byTouch && strike.capsules != nullptr && strike.capsules->count > 0;
+		int touched = -2;  // the bound's ball decided
+		const float touchMargin = strike.touchUnits + (weapon == nullptr ? 2.5f : 0.0f);
+		if (byTouch) {
+			Blade touch = blade;
+			if (weapon == nullptr) {
+				const NiPoint3 way = blade.tip - blade.base;
+				const float length = math::Sqrt(way.LengthSquared());
+				touch.tip = length > 1e-3f ? blade.base + way * (kFistTouchUnits / length) : blade.base;
+			} else if (strike.touchSpanValid) {
+				touch.base = strike.touchBase;
+				touch.tip = strike.touchTip;
+			}
+			touched = CapsulesTouched(*strike.capsules, reinterpret_cast<UInt32>(actor), touch.base, touch.tip,
+			                          touchMargin);
+			if (touched != 1) {
+				static UInt32 s_noCapsuleLines = 8;
+				if (touched < 0 && s_noCapsuleLines > 0 &&
+				    BladeStrikes(blade, bound.center, bound.radius, strike.boundFactor, strike.padUnits)) {
+					--s_noCapsuleLines;
+					OBVR_LOG("Hands: %08X within the bound's reach of the %s but with no capsules in the list - not "
+					         "hit (the hit by touch)",
+					         reinterpret_cast<UInt32>(actor), weapon == nullptr ? "fist" : "blade");
+				}
+				continue;
+			}
+		} else if (!BladeStrikes(blade, bound.center, bound.radius, strike.boundFactor, strike.padUnits)) {
 			continue;
 		}
 		if (!LedgerAdmits(g_ledger[strike.hand & 1u], strike.swingSerial, actor)) {
 			continue;
+		}
+		if (touched == 1) {
+			static UInt32 s_touchLines = 20;
+			if (s_touchLines > 0) {
+				--s_touchLines;
+				OBVR_LOG("Hands: the %s touched %08X - the hit by touch, within %.1f units of a capsule%s",
+				         weapon == nullptr ? "fist" : "blade", reinterpret_cast<UInt32>(actor),
+				         static_cast<double>(touchMargin),
+				         weapon != nullptr && strike.touchSpanValid ? " (the drawn blade's own span)" : "");
+			}
 		}
 		++struck;
 		s_missStruck = true;
@@ -636,7 +676,7 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 void SettleHeldStrikes(UInt32 currentSerial, bool swingActive, bool swingPower, bool endedPower, UInt8 powerGroup,
                        UInt32 hand) {
 	UInt8* const player = PlayerOrNull();
-	for (HeldBody& h : g_held) {
+	for (HeldStrikeBody& h : g_held) {
 		if (h.actor == nullptr || h.hand != (hand & 1u)) {
 			continue;
 		}
@@ -649,7 +689,7 @@ void SettleHeldStrikes(UInt32 currentSerial, bool swingActive, bool swingPower, 
 			const bool power = verdict == HeldStrike::Power;
 			ApplyStrike(player, h.actor, power, power ? powerGroup : kAnimGroupLightStrike, h.serial);
 		}
-		h = HeldBody{};
+		h = HeldStrikeBody{};
 	}
 }
 

@@ -106,6 +106,12 @@ void* __fastcall OnHitKnockbackProxy(void* actor, void* attacker, UInt32 powerFl
 		return nullptr;
 	}
 	g_hitShare = share;
+	if (byPlayer && share >= 1.0f && g_enemyKnockbackLines > 0) {
+		--g_enemyKnockbackLines;
+		OBVR_LOG("Comfort: the knockback of %08X by the player's %s hit kept whole (Hands.EnemyKnockback %.0f %%)",
+		         reinterpret_cast<UInt32>(actor), power ? "power" : "light",
+		         static_cast<double>(g_enemyKnockback.percent));
+	}
 	return reinterpret_cast<ActorPointerFn>(kCharacterProxyOf)(actor);
 }
 
