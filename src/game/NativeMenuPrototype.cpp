@@ -18,6 +18,9 @@
 #include "vr/StowPlace.h"
 #include "ui/NativeSettings.h"
 #include "core/UpdateNotice.h"
+#include "ui/NativeControlsCard.h"
+#include "ui/FirstStart.h"
+#include "test/HandScriptRuntime.h"
 #include "platform/UpdateFetch.h"
 #include "vr/HandInput.h"
 
@@ -32,6 +35,21 @@ bool g_checked=false, g_showOnboarding=false, g_saveFailed=false;
 bool g_comfortPending=false;
 // "Adjust hands" was chosen: the settings menu closes, the guide opens after.
 bool g_closeForAdjust=false;
+// The controls card (ui/NativeControlsCard.h) is up.
+bool g_cardOpen=false;
+// The first start's chain (ui/FirstStart.h): which page, whether its window
+// is up, whether the recenter has fired, which page of the card.
+struct FirstStartChain {
+ bool active=false;
+ bool windowUp=false;
+ bool recentred=false;
+ ui::FirstStartPage page=ui::FirstStartPage::Recenter;
+ ui::ControlsCardPage cardPage=ui::ControlsCardPage::WeaponHand;
+};
+FirstStartChain g_chain;
+// The chain ran in the world (a hand script's ask): its comfort page opens
+// there, not only over the main menu.
+bool g_comfortInWorld=false;
 const char* g_refusal=nullptr; // why the last change was refused, shown in the help line
 void* g_ourRoot=nullptr;
 AtomicFlag g_available, g_suppressLegacy, g_settingsOpen, g_toggleRequested, g_recenterRequested;
@@ -115,7 +133,9 @@ class OnboardingPort final: public ui::NativeMenuPort {
   if (SaveSetting("Onboarding","ShowAtStart","0")) GetConfig().onboardingShowAtStart=false;
   GetConfig().fullVrMode=fullVR;
   GetConfig().hands.enabled=fullVR;
-  g_comfortPending=fullVR;
+  // The comfort page follows - as the start guide's last page while the
+  // guide is on (ui/FirstStart.h), by itself otherwise.
+  g_comfortPending=fullVR && !GetConfig().onboardingStartGuide;
   OBVR_LOG("Native onboarding: %s selected and saved",fullVR ? "Full VR" : "Keyboard/Gamepad + VR");
   return true;
  }
@@ -137,6 +157,11 @@ class SettingWriter final: public ui::NativeSettingWriter {
   game::RequestStowPlaceWindow();
   g_closeForAdjust=true;
   OBVR_LOG("Native settings: Place the stow spot - the menu closes and its window opens");
+ }
+ void ShowControls() override {
+  game::RequestControlsCard();
+  g_closeForAdjust=true;
+  OBVR_LOG("Native settings: Show the controls - the menu closes and the card opens");
  }
 };
 
@@ -296,6 +321,35 @@ bool RefreshSettings() {
  ok=CachedText(23,"user1",g_refusal ? g_refusal : g_saveFailed ? "Could not save OBVR.ini. The setting was not changed. Check file permissions and try again." : help) && ok;
  return ok;
 }
+// The controls card's page onto its window (ui::ControlsCardFor): the title,
+// the twelve lines, the two button labels.
+bool FillControlsCard(ui::ControlsCardPage page) {
+ const ui::ControlsCardText text=ui::ControlsCardFor(page,GetConfig().hands.leftHanded);
+ bool ok=Text("user0",text.title);
+ for (UInt32 i=0;i<ui::kControlsCardLines;++i) {
+  char trait[32];
+  ok=ui::ControlsCardLineTrait(i,trait,sizeof(trait)) && Text(trait,text.lines[i]) && ok;
+ }
+ ok=Text("user2",text.primary) && ok;
+ ok=Text("user3",text.secondary) && ok;
+ OBVR_LOG("Native menus: controls card - %s%s",text.title,ok ? "" : " (a UI update command failed)");
+ return ok;
+}
+// A first-start page's words onto the adjust-hands window
+// (ui::FirstStartTextFor): the title, the text, the three button labels, the
+// third button shown only where it is a choice.
+bool FillFirstStart(ui::FirstStartPage page,bool recentred) {
+ const ui::FirstStartText t=ui::FirstStartTextFor(page,recentred);
+ bool ok=Text("user0",t.title);
+ ok=Text("user1",t.message) && ok;
+ ok=Text("user2",t.primary) && ok;
+ ok=Text("user3",t.secondary) && ok;
+ ok=Text("user4",t.reset) && ok;
+ ok=Number("parchment\\reset\\target",ui::kXmlBool[t.resetShown ? 1 : 0]) && ok;
+ ok=Number("parchment\\reset\\alpha",t.resetShown ? 255 : 0) && ok;
+ OBVR_LOG("Native menus: first start - %s%s",t.title,ok ? "" : " (a UI update command failed)");
+ return ok;
+}
 void FinishSettings() {
  g_settingsOpen.Set(false); g_ourRoot=nullptr;
  // The comfort page is a one-off; Insert opens the whole menu again.
@@ -316,6 +370,19 @@ void Tick() {
  }
  if (!g_available.Get()) return;
  const UInt32 top=TopMenu();
+ // A hand script's doors (test/HandScript.h "action"): "controls-card" asks
+ // for the card, "first-start" begins the chain in the world - the script
+ // itself runs only in the world with no menu up, so neither may open by
+ // itself before it (controls-card.txt, first-start.txt).
+ static bool s_chainInWorld=false;
+ if (test::TakeHandScriptAction("controls-card")) {
+  game::RequestControlsCard();
+  OBVR_LOG("Native menus: a hand script asks for the controls card");
+ }
+ if (test::TakeHandScriptAction("first-start")) {
+  s_chainInWorld=true;
+  OBVR_LOG("Native menus: a hand script asks for the first start's guide in the world");
+ }
  const bool toggleKey=vr::StepRisingEdge(g_insertEdge,Down(GetConfig().settingsMenuKey));
  const bool toggle=g_toggleRequested.Take() || toggleKey;
  const bool escape=vr::StepRisingEdge(g_escapeEdge,Down(0x1B));
@@ -371,7 +438,107 @@ void Tick() {
   if (g_onboarding.State()==ui::NativeState::Done) g_ourRoot=nullptr;
   if (g_onboarding.State()==ui::NativeState::Open) return;
  }
- switch (ui::StepComfortPage(g_comfortPending,root!=nullptr,top==kMenuIdMain)) {
+ // The first start's chain (ui/FirstStart.h): Recenter, Which hand, the
+ // controls card, then the comfort page - at every start with Full VR and
+ // [Onboarding] StartGuide on, in the main menu (a hand script's "action
+ // first-start": once in the world, the harness's door). Each page can
+ // be skipped, Esc ends the chain; a hand script presses the buttons with
+ // "action menu-primary", "menu-secondary" and "menu-reset".
+ {
+  static bool s_ran=false;
+  // The chain's place: the main menu, or the world for a hand script's run -
+  // asked for, or already running there.
+  const bool placeInFront=(s_chainInWorld || (g_chain.active && g_comfortInWorld)) ? (top==0 && PlayerInWorld())
+                                                                              : top==kMenuIdMain;
+  const bool tileBusy=g_showOnboarding && g_onboarding.State()!=ui::NativeState::Done &&
+   g_onboarding.State()!=ui::NativeState::Failed;
+  // A hand script's ask counts as the guide on and not yet run (its run's
+  // INI keeps the guide off, so the chain cannot stand in front of the main
+  // menu's console that loads the save).
+  if (!g_chain.active && ui::FirstStartDue(GetConfig().fullVrMode,GetConfig().onboardingStartGuide || s_chainInWorld,
+      placeInFront,root!=nullptr,g_comfortPending || g_settingsOpen.Get() || g_cardOpen || tileBusy,
+      s_ran && !s_chainInWorld)) {
+   s_ran=true;
+   g_comfortInWorld=s_chainInWorld;  // the comfort page opens where the chain ran
+   s_chainInWorld=false;
+   g_chain=FirstStartChain{};
+   g_chain.active=true;
+   OBVR_LOG("Native menus: the first start's guide begins");
+  }
+  if (g_chain.active) {
+   if (g_chain.page==ui::FirstStartPage::Comfort) {
+    g_chain.active=false;
+    g_comfortPending=true;
+    OBVR_LOG("Native menus: the first start's guide ends with the comfort page");
+   } else if (!g_chain.windowUp) {
+    if (root) return;  // the page before is still closing
+    if (!placeInFront) {
+     g_chain.active=false;
+     OBVR_LOG("Native menus: the first start's guide stops - its place is no longer in front");
+     return;
+    }
+    const char* const xml=ui::FirstStartWindow(g_chain.page);
+    if (!xml || !AssetExists(xml)) {
+     OBVR_LOG("Native menus: first start - %s missing, the page is skipped",xml ? xml : "the window");
+     g_chain.page=ui::FirstStartNext(g_chain.page);
+     return;
+    }
+    int stale=-1; g_poll(&stale);
+    const bool card=g_chain.page==ui::FirstStartPage::Controls;
+    const bool executed=Run(card ? "ShowGenericMenu \"OBVR_Controls.xml\" 9600"
+                                 : "ShowGenericMenu \"OBVR_AdjustHands.xml\" 9500");
+    g_chain.windowUp=executed && GenericRoot();
+    if (g_chain.windowUp) {
+     g_ourRoot=GenericRoot();
+     if (card) {
+      g_chain.cardPage=ui::ControlsCardPage::WeaponHand;
+      FillControlsCard(g_chain.cardPage);
+     } else {
+      if (g_chain.page==ui::FirstStartPage::Recenter) game::TakeRecentredNote();  // an older recenter is not this page's
+      FillFirstStart(g_chain.page,g_chain.recentred);
+     }
+    }
+    OBVR_LOG("Native menus: first start - page open executed=%d",executed);
+    return;
+   } else {
+    if (!root || foreign) {
+     g_chain.active=false; g_chain.windowUp=false; g_ourRoot=nullptr;
+     OBVR_LOG("Native menus: first start - the page was closed from outside, the guide ends");
+     return;
+    }
+    if (g_chain.page==ui::FirstStartPage::Recenter && !g_chain.recentred && game::TakeRecentredNote()) {
+     g_chain.recentred=true;
+     FillFirstStart(g_chain.page,true);
+    }
+    int button=-1;
+    if (top==kMenuIdGeneric && !g_poll(&button)) button=-1;
+    const bool card=g_chain.page==ui::FirstStartPage::Controls;
+    if (test::TakeHandScriptAction("menu-primary")) button=card ? ui::kControlsCardPrimary : ui::kAdjustHandsPrimary;
+    if (test::TakeHandScriptAction("menu-secondary")) button=card ? ui::kControlsCardSecondary : ui::kAdjustHandsSecondary;
+    if (test::TakeHandScriptAction("menu-reset")) button=ui::kAdjustHandsReset;
+    const ui::FirstStartChoice choice=ui::ChooseFirstStart(g_chain.page,button);
+    if (choice==ui::FirstStartChoice::None) return;
+    if (choice==ui::FirstStartChoice::Turn) {
+     g_chain.cardPage=ui::ControlsCardTurned(g_chain.cardPage);
+     FillControlsCard(g_chain.cardPage);
+     return;
+    }
+    if (choice==ui::FirstStartChoice::Right || choice==ui::FirstStartChoice::Left) {
+     const bool left=choice==ui::FirstStartChoice::Left;
+     const bool saved=SaveSetting("Hands","LeftHanded",left ? "1" : "0");
+     if (saved) GetConfig().hands.leftHanded=left;
+     OBVR_LOG("Native menus: first start - %s-handed %s",left ? "left" : "right",saved ? "saved" : "could not be saved");
+    }
+    OBVR_LOG("Native menus: first start - page done (button %d)",button);
+    Run("ClickMenuButton \"parchment\\close\" 1011");
+    g_chain.windowUp=false; g_ourRoot=nullptr;
+    g_chain.page=ui::FirstStartNext(g_chain.page);
+    return;
+   }
+  }
+ }
+ switch (ui::StepComfortPage(g_comfortPending,root!=nullptr,
+                             top==kMenuIdMain || (g_comfortInWorld && top==0 && PlayerInWorld()))) {
  case ui::ComfortPageStep::None: break;
  case ui::ComfortPageStep::Wait: return;
  case ui::ComfortPageStep::Skip:
@@ -405,7 +572,8 @@ void Tick() {
    const bool fitted=h.handsAdjusted || h.rightHandGripX!=0.0f || h.rightHandGripY!=0.0f ||
     h.rightHandGripZ!=0.0f || h.leftHandGripX!=0.0f || h.leftHandGripY!=0.0f || h.leftHandGripZ!=0.0f;
    if (ui::FirstHandFitDue(GetConfig().fullVrMode,fitted,PlayerInWorld() && top==0,s_firstOffered,
-                           s_open || s_guidePending || s_finishPending || game::HandAdjustActive())) {
+                           s_open || s_guidePending || s_finishPending || game::HandAdjustActive() ||
+                           g_chain.active || g_cardOpen)) {
     s_firstOffered=true; s_firstFit=true; s_guidePending=true;
     OBVR_LOG("Native menus: the hands have never been fitted - the guide opens by itself");
    }
@@ -518,6 +686,54 @@ void Tick() {
    return;
   }
  }
+ // The controls card (ui/NativeControlsCard.h): from the settings row "Show
+ // the controls", the first start or a hand script's action - the Full VR
+ // layout on two pages by role, in the main menu or in the world. Next and
+ // Back turn the page, Close (or Esc, from outside) ends it.
+ {
+  static bool s_pending=false;
+  static ui::ControlsCardPage s_page=ui::ControlsCardPage::WeaponHand;
+  if (game::TakeControlsCardRequest()) s_pending=true;
+  if (g_cardOpen) {
+   if (!root || foreign) {
+    g_cardOpen=false; g_ourRoot=nullptr;
+    OBVR_LOG("Native menus: controls card closed from outside");
+    return;
+   }
+   int button=-1;
+   if (top==kMenuIdGeneric && !g_poll(&button)) button=-1;
+   if (test::TakeHandScriptAction("menu-primary")) button=ui::kControlsCardPrimary;
+   if (test::TakeHandScriptAction("menu-secondary")) button=ui::kControlsCardSecondary;
+   const ui::ControlsCardChoice choice=ui::ChooseControlsCard(button);
+   if (choice==ui::ControlsCardChoice::None) return;
+   if (choice==ui::ControlsCardChoice::Close) {
+    g_cardOpen=false; g_ourRoot=nullptr;
+    Run("ClickMenuButton \"parchment\\close\" 1011");
+    OBVR_LOG("Native menus: controls card closed");
+    return;
+   }
+   s_page=ui::ControlsCardTurned(s_page);
+   FillControlsCard(s_page);
+   return;
+  }
+  if (s_pending && !root && (top==kMenuIdMain || (top==0 && PlayerInWorld()))) {
+   s_pending=false;
+   if (!AssetExists("Data\\Menus\\Generic\\OBVR_Controls.xml")) {
+    OBVR_LOG("Native menus: OBVR_Controls.xml missing - no controls card");
+    return;
+   }
+   int stale=-1; g_poll(&stale);
+   const bool executed=Run("ShowGenericMenu \"OBVR_Controls.xml\" 9600");
+   g_cardOpen=executed && GenericRoot();
+   if (g_cardOpen) {
+    g_ourRoot=GenericRoot();
+    s_page=ui::ControlsCardPage::WeaponHand;
+    FillControlsCard(s_page);
+   }
+   OBVR_LOG("Native menus: controls card - open executed=%d",executed);
+   return;
+  }
+ }
  // The update notice (ui::StepUpdateWindow): a native window in the main
 
  // menu, the answer from GitHub or Debug.ForceUpdateNotice behind it.
@@ -528,7 +744,7 @@ void Tick() {
   const bool newer=platform::LatestReleaseTag(tag,sizeof(tag)) &&
                    update::IsNewerVersion(tag,OBVR_VERSION_STRING);
   const bool known=(newer || GetConfig().forceUpdateNotice) && !s_assetMissing;
-  const bool busy=g_comfortPending || g_settingsOpen.Get() ||
+  const bool busy=g_comfortPending || g_settingsOpen.Get() || g_cardOpen || g_chain.active ||
    (g_showOnboarding && g_onboarding.State()!=ui::NativeState::Done &&
     g_onboarding.State()!=ui::NativeState::Failed);
   if (known && !s_assetChecked) {

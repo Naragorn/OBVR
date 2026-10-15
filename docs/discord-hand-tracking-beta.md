@@ -43,9 +43,11 @@ texts: simple, short, friendly.
 >    replaces `OBVR.dll`, `OBVR.ini` and the menu XML files. Keep a copy of
 >    your old `OBVR.ini` if you tuned it.
 > 3. Start SteamVR, then the game with `obse_loader.exe`. The first start asks
->    which way you want to play: pick **Full VR**. Then: adjust your hands when
->    the game offers it (hold a grip, move the controller into the hand, let
->    go), and recenter with both stick buttons held three seconds.
+>    which way you want to play: pick **Full VR**. A short guide follows:
+>    recenter (both stick buttons held three seconds), your weapon hand, the
+>    controls card, the comfort settings. Once you stand in the game, adjust
+>    your hands when it offers it (hold a grip, move the controller into the
+>    hand, let go).
 >
 > **Controls**: the table in the README, section "Controls in Full VR" -
 > https://github.com/Naragorn/OBVR#controls-in-full-vr - and in the game under

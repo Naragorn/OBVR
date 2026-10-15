@@ -66,6 +66,13 @@ class TestIni(unittest.TestCase):
         )
         self.assertEqual(lines[hands + 1], "Enabled=1")
 
+    def test_the_start_guide_is_off_unless_the_scenario_turns_it_on(self):
+        off = r.build_test_ini(r.parse_scenario("wait 1\n"), "OBVRHarness").splitlines()
+        self.assertEqual(off[off.index("[Onboarding]") + 1], "StartGuide=0")
+        on = r.build_test_ini(r.parse_scenario("ini Onboarding StartGuide=1\nwait 1\n"), "OBVRHarness")
+        self.assertIn("StartGuide=1", on)
+        self.assertNotIn("StartGuide=0", on)
+
     def test_continue_or_no_save_loads_nothing(self):
         for save in ("", "continue"):
             text = r.build_test_ini(r.parse_scenario("wait 1\n"), save)

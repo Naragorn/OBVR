@@ -87,6 +87,11 @@ def build_test_ini(scenario: Scenario, save: str) -> str:
         "Debug": [f"HandScript={SCRIPT_TARGET}", "HandScriptConsole=1"]}
     if save and save != "continue":
         sections["Debug"].append(f"HandScriptLoad={save}")
+    # The start guide (OBVR.ini [Onboarding] StartGuide, a chain of pages in the
+    # main menu) would stand in front of the main menu's console that loads the
+    # run's save: off for every run unless the scenario says otherwise.
+    if not any(line.startswith("StartGuide=") for line in scenario.ini.get("Onboarding", [])):
+        sections["Onboarding"] = ["StartGuide=0"]
     for section, lines in scenario.ini.items():
         sections.setdefault(section, []).extend(lines)
     out = ["; Written by tools/hand-script-run.py for one run and deleted after it."]

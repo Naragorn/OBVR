@@ -24,6 +24,15 @@ bool TakeHolsterFitRequest();
 // placing and says whether it is on.
 void RequestStowPlaceWindow();
 bool TakeStowPlaceWindowRequest();
+// The controls card (ui/NativeControlsCard.h): asked for from the settings
+// row "Show the controls", the first start, or a hand script's action; the
+// native menus open it in the main menu or in the world.
+void RequestControlsCard();
+bool TakeControlsCardRequest();
+// A recenter happened (the key, the stick chord, the settings row): noted by
+// the camera hook, taken by the first start's recenter page (ui/FirstStart.h).
+void NoteRecentred();
+bool TakeRecentredNote();
 void SendStowPlaceCommand(int command);  // a vr::StowPlaceCommand
 int TakeStowPlaceCommand();
 void NoteStowPlaceActive(bool active);

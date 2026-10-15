@@ -15,6 +15,8 @@ AtomicFlag g_holsterFitRequested;
 AtomicFlag g_finishRequested;
 AtomicFlag g_active;
 AtomicFlag g_stowWindowRequested;
+AtomicFlag g_controlsCardRequested;
+AtomicFlag g_recentred;
 AtomicFlag g_stowPlaceActive;
 volatile long g_stowCommand = 0;  // a vr::StowPlaceCommand, 0 for none
 ui::HandAdjustSession g_session;  // stepped only in the frame
@@ -27,6 +29,10 @@ void RequestHolsterFit() { g_holsterFitRequested.Set(true); }
 bool TakeHolsterFitRequest() { return g_holsterFitRequested.Take(); }
 void RequestStowPlaceWindow() { g_stowWindowRequested.Set(true); }
 bool TakeStowPlaceWindowRequest() { return g_stowWindowRequested.Take(); }
+void RequestControlsCard() { g_controlsCardRequested.Set(true); }
+bool TakeControlsCardRequest() { return g_controlsCardRequested.Take(); }
+void NoteRecentred() { g_recentred.Set(true); }
+bool TakeRecentredNote() { return g_recentred.Take(); }
 void SendStowPlaceCommand(int command) {
 #if defined(_MSC_VER)
 	_InterlockedExchange(&g_stowCommand, command);

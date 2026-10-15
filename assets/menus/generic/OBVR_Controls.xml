@@ -1,0 +1,111 @@
+<!-- OBVR's controls card: the Full VR layout on two pages, by role (the
+     weapon hand, the other hand). The words are OBVR's (user0 title, the
+     twelve lines line0..line11, user2 and user3 the button labels); the
+     buttons report 9601 (Next / Back) and 9602 (Close), and the hidden 9600
+     is the closing ID OBVR clicks once it has acted on a choice. -->
+<menu name="OBVRControls">
+ <class> &GenericMenu; </class>
+ <stackingtype> &no_click_past; </stackingtype>
+ <locus> &true; </locus>
+ <visible> &true; </visible>
+ <alpha> 255 </alpha>
+ <explorefade> 0 </explorefade>
+ <user0> Controls </user0>
+ <user2> Next </user2>
+ <user3> Close </user3>
+ <rect name="parchment">
+  <include src="generic_background.xml" />
+  <user0> 760 </user0>
+  <user1> 630 </user1>
+  <depth> 15 </depth>
+  <x><copy src="screen()" trait="width"/><sub src="me()" trait="width"/><div>2</div></x>
+  <y><copy src="screen()" trait="height"/><sub src="me()" trait="height"/><div>2</div></y>
+  <text name="title">
+   <font> 1 </font><string><copy src="OBVRControls" trait="user0"/></string>
+   <x> 36 </x><y> 22 </y><depth> 3 </depth>
+   <red> 70 </red><green> 45 </green><blue> 25 </blue><alpha>255</alpha>
+  </text>
+  <text name="line0">
+   <font>3</font><string> </string>
+   <x>36</x><y>80</y><wrapwidth>688</wrapwidth><depth>3</depth>
+   <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
+  </text>
+  <text name="line1">
+   <font>3</font><string> </string>
+   <x>36</x><y>118</y><wrapwidth>688</wrapwidth><depth>3</depth>
+   <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
+  </text>
+  <text name="line2">
+   <font>3</font><string> </string>
+   <x>36</x><y>156</y><wrapwidth>688</wrapwidth><depth>3</depth>
+   <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
+  </text>
+  <text name="line3">
+   <font>3</font><string> </string>
+   <x>36</x><y>194</y><wrapwidth>688</wrapwidth><depth>3</depth>
+   <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
+  </text>
+  <text name="line4">
+   <font>3</font><string> </string>
+   <x>36</x><y>232</y><wrapwidth>688</wrapwidth><depth>3</depth>
+   <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
+  </text>
+  <text name="line5">
+   <font>3</font><string> </string>
+   <x>36</x><y>270</y><wrapwidth>688</wrapwidth><depth>3</depth>
+   <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
+  </text>
+  <text name="line6">
+   <font>3</font><string> </string>
+   <x>36</x><y>308</y><wrapwidth>688</wrapwidth><depth>3</depth>
+   <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
+  </text>
+  <text name="line7">
+   <font>3</font><string> </string>
+   <x>36</x><y>346</y><wrapwidth>688</wrapwidth><depth>3</depth>
+   <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
+  </text>
+  <text name="line8">
+   <font>3</font><string> </string>
+   <x>36</x><y>384</y><wrapwidth>688</wrapwidth><depth>3</depth>
+   <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
+  </text>
+  <text name="line9">
+   <font>3</font><string> </string>
+   <x>36</x><y>422</y><wrapwidth>688</wrapwidth><depth>3</depth>
+   <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
+  </text>
+  <text name="line10">
+   <font>3</font><string> </string>
+   <x>36</x><y>460</y><wrapwidth>688</wrapwidth><depth>3</depth>
+   <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
+  </text>
+  <text name="line11">
+   <font>3</font><string> </string>
+   <x>36</x><y>498</y><wrapwidth>688</wrapwidth><depth>3</depth>
+   <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
+  </text>
+  <rect name="primary">
+   <id>9601</id><target>&true;</target><locus>&true;</locus>
+   <x>36</x><y>560</y><width>200</width><height>45</height><depth>4</depth>
+   <include src="OBVR/button_highlight.xml" />
+   <text name="label">
+    <font>3</font><string><copy src="OBVRControls" trait="user2"/></string><x>12</x><y>8</y><wrapwidth>176</wrapwidth><depth>7</depth>
+    <red>70</red><green>45</green><blue>25</blue><alpha>255</alpha>
+   </text>
+  </rect>
+  <rect name="secondary">
+   <id>9602</id><target>&true;</target><locus>&true;</locus>
+   <x>524</x><y>560</y><width>200</width><height>45</height><depth>4</depth>
+   <include src="OBVR/button_highlight.xml" />
+   <text name="label">
+    <font>3</font><string><copy src="OBVRControls" trait="user3"/></string><x>12</x><y>8</y><wrapwidth>176</wrapwidth><depth>7</depth>
+    <red>70</red><green>45</green><blue>25</blue><alpha>255</alpha>
+   </text>
+  </rect>
+  <rect name="close">
+   <id>9600</id><target>&true;</target><locus>&false;</locus>
+   <x>0</x><y>0</y><width>1</width><height>1</height><depth>1</depth><alpha>0</alpha>
+  </rect>
+ </rect>
+</menu>

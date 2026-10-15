@@ -40,8 +40,10 @@ with your shield or your blade, grab and throw things, hold a two-hander with bo
 hands, shove people, lead NPCs by the hand, your HUD on your wrist, and more. It is
 built and playable, tested on one setup so far, with rough edges. The beta build is
 handed out in the **Discord channel** linked above; it is not in the download here
-or on Nexus yet. In the beta build the first start asks which way you want to play.
-In the public download Full VR stays off (`[Hands] Enabled` in `OBVR.ini`).
+or on Nexus yet. In the beta build the first start asks which way you want to play,
+then a short guide walks you through recentering, your weapon hand, the controls and
+the comfort settings. In the public download Full VR stays off (`[Hands] Enabled` in
+`OBVR.ini`).
 
 ### Controls in Full VR
 
@@ -143,8 +145,9 @@ need Root Builder (xOBSE's own files in the game folder do).
 too, if you don't use DXVK for anything else), then `OBVR.dll`, `OBVR.ini`, `OBVR-LICENSE.txt`,
 `OBVR-crosshair.cache`, `openvr_api.dll`, `openvr_api-LICENSE.txt` and the
 `OBVR_Input` folder from `Data/OBSE/Plugins/`, plus `OBVR_Onboarding.xml`,
-`OBVR_Settings.xml`, `OBVR_Update.xml` and `OBVR_AdjustHands.xml` from
-`Data/Menus/Generic/` and the `Data/Menus/Prefabs/OBVR/` folder. OBVR doesn't touch your saves. Want to rule OBVR out quickly? Set
+`OBVR_Settings.xml`, `OBVR_Update.xml`, `OBVR_AdjustHands.xml` and
+`OBVR_Controls.xml` from `Data/Menus/Generic/` and the `Data/Menus/Prefabs/OBVR/`
+folder. OBVR doesn't touch your saves. Want to rule OBVR out quickly? Set
 `[Camera] HookEnabled=0` in `OBVR.ini`.
 
 ## Settings

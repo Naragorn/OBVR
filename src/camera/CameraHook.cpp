@@ -9813,6 +9813,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 // hook to have done so. See the single poll at the top of OnFrameEnd.
 void DoRecenter(const char* where) {
 	g_headTracker.Recenter();
+	game::NoteRecentred();  // the first start's recenter page (ui/FirstStart.h)
 	++g_recenterSerial;
 
 	// A HUD hanging in the room is brought back in front of the wearer by the

@@ -9,6 +9,14 @@ docs/hand-tracked-mode.md).
 
 ## 1. The layout today
 
+Told to the player since 2026-10-15 in three places that have to be kept the
+same by hand: README.md "Controls in Full VR" (a table, Index and Quest), the
+settings menu's Help row "Show the controls" (ui/NativeControlsCard.h, two
+pages by role: the weapon hand, the other hand) and the first start's chain,
+which shows that card (ui/FirstStart.h, docs/onboarding-spec.md 3.2). The
+Oculus Touch has no trackpad: there the hotkey ring is the right stick's
+button held (4.4) and there is no journal key.
+
 Everything reaches the game as the keys and mouse buttons the player has bound
 (`game::ApplyHandControls`), so the game's own key map stays the authority. The
 decisions live in `vr::PlanHandControls` and `vr::StepTeleportStick`; every

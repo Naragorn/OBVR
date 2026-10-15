@@ -38,6 +38,9 @@ bool SettingShownIn(SettingsView view,const SettingDefinition& d,const Config& c
  if (view==SettingsView::All || view==SettingsView::Sections) return true;
  const bool snap=c.look.snapTurning;
  if (Key(d,"Hands","LeftHanded") || Key(d,"Look","SnapTurning")) return true;
+ // The comfort page ends the start guide: the switch for the guide is here
+ // too, so it can be turned off where it ends (ui/FirstStart.h).
+ if (Key(d,"Onboarding","StartGuide")) return true;
  if (Key(d,"Look","SnapTurnAngle") || Key(d,"Look","SnapTurnInstant") ||
      Key(d,"Look","SnapTurnVignette")) return snap;
  // Easing speed means nothing to an instant snap.
@@ -208,6 +211,7 @@ NativeEditResult CommitNativeEdit(const NativeSettingEdit& edit,Config& config,N
   if (edit.definition->action==SettingAction::AdjustHands) writer.AdjustHands();
   if (edit.definition->action==SettingAction::FitHolsters) writer.FitHolsters();
   if (edit.definition->action==SettingAction::PlaceStowSpot) writer.PlaceStowSpot();
+  if (edit.definition->action==SettingAction::ShowControls) writer.ShowControls();
   return NativeEditResult::Action;
  }
  if (SettingEditRefusal(*edit.definition,config,edit.value)) return NativeEditResult::Refused;

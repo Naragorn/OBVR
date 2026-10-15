@@ -193,6 +193,8 @@ struct NativeSettingWriter {
  // in the world (2026-09-27: the row did nothing in the native menu).
  virtual void FitHolsters() {}
  virtual void PlaceStowSpot() {}
+ // The "Show the controls" row: the settings menu closes and the card opens.
+ virtual void ShowControls() {}
 };
 enum class NativeEditResult { None, Saved, Action, SaveFailed, Refused };
 NativeEditResult CommitNativeEdit(const NativeSettingEdit&, Config&, NativeSettingWriter&);

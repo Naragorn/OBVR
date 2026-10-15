@@ -11,6 +11,7 @@
 #   Menus/Generic/OBVR_Settings.xml
 #   Menus/Generic/OBVR_Update.xml
 #   Menus/Generic/OBVR_AdjustHands.xml
+#   Menus/Generic/OBVR_Controls.xml
 #   Menus/Prefabs/OBVR/button_highlight.xml
 #   OBSE/Plugins/OBVR.ini
 #   OBSE/Plugins/OBVR-LICENSE.txt   (the GPL-3.0, which travels with every copy)

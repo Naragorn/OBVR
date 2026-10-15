@@ -77,6 +77,7 @@ Today: tile, then the Comfort view. Proposed, each step one native page, each sk
 - The guides in 3 and 4 already hand their finish back (`TakeHandAdjustFinishRequest`); the chain continues on it.
 - Nothing in the chain should start a game. All of it runs in the main menu, where the native menus already work; the hand guides need the hands tracked, which they are in the main menu with `ControllerMenus` on.
 - **Test:** the step logic as a pure function (`StepFirstStart(pending, genericRoot, mainMenuOnTop, guideFinished)`), every path: skip, finish, the main menu going away mid-chain, a failed save.
+- **Built 2026-10-15 (ui/FirstStart.h, the host in NativeMenuPrototype.cpp; the tester: "wir brauchen die erststart kette, bei jedem start whl und pflicht beim new game dungeon").** Four of the six steps, in this order: **Recenter** (the adjust-hands window with its own words; the page sees the recenter - `game::NoteRecentred` from `DoRecenter`, taken by the page - and says "Recentred"; Next or Skip), **Which hand** (Right, Left or Skip; Right and Left write `[Hands] LeftHanded`), **the controls card** (its own window, two pages by role, Next/Back turn, Close goes on) and **Comfort** (the existing view; the "Start guide" switch is on it too, so the chain can be turned off where it ends). At every start with Full VR and `[Onboarding] StartGuide` (default on) in the main menu, once per start, nothing else of OBVR's on the way; choosing Full VR in the walkthrough starts it the same way (the comfort page alone follows only with the guide off). Esc ends the chain; a page whose XML is missing is skipped. Steps 3 and 4 of the proposal (the hands' fit, the weapon places) are not in the chain: the hands' fit offers itself the first time the player stands in the world (`FirstHandFitDue`, as before, now held back while the chain or the card is up), the weapon places stay a settings row. The pure parts (`FirstStartDue`, `FirstStartNext`, `ChooseFirstStart`, `FirstStartTextFor`, `FirstStartWindow`) are covered in native_settings_test; the harness drives the pages with the script actions `menu-primary`, `menu-secondary` and `menu-reset` (`first-start.txt`, begun in the world by the script's `action first-start`), and the runner writes `[Onboarding] StartGuide=0` into every run's OBVR-test.ini unless the scenario says otherwise, so the chain never stands in front of the main menu's console. Harness `first-start.txt` PASS and `controls-card.txt` PASS (Linux, 2026-10-15; five runs to get there: a window of OBVR's must not open before the script runs, Escape over a generic menu opens the pause menu on top instead of closing it, and the chain's place has to be kept across its pages). **Not built: "mandatory in the new game's dungeon"** - it needs the engine to tell a new game from a load (the first cell's form ID, or the game's own new-game path), not read yet; the chain can be skipped everywhere for now.
 
 ### 3.3 Hints in the world, the first few times
 
@@ -146,16 +147,19 @@ erststart kette, bei jedem start whl und pflicht beim new game dungeon."
 - **Quest: the hotkey ring by the right stick's button held** - built, see
   docs/controls-spec.md 4.4. There is no journal key on the Touch.
 - **The controls documented** in the settings menu, the docs and the README:
-  the README's table (Controls in Full VR) is written; the settings menu's
-  card (Help, "Show the controls") is section 3.2's step 5, built with the
-  first-start chain.
-- **The first-start chain (3.2)** is wanted - at every start, probably, and
-  mandatory in the new game's dungeon. The decision this leaves: the chain's
-  main-menu steps (recenter, which hand, the controls card, comfort) can run at
-  every start and be skipped; the in-world steps (the hands' fit, the weapon
-  places) run once the player stands in the world. "Mandatory in the new
-  game's dungeon" needs the engine to tell a new game from a load - the first
-  cell's form ID, or the game's own new-game path - which is not read yet.
+  the README's table (Controls in Full VR), docs/controls-spec.md section 1,
+  and the settings menu's card - Help, "Show the controls"
+  (ui/NativeControlsCard.h, OBVR_Controls.xml: two pages by role, Next/Back,
+  Close; the hand script's `action controls-card` is the harness's door, `controls-card.txt`).
+  Built 2026-10-15. The card's words and the README's table have to be kept the
+  same by hand.
+- **The first-start chain (3.2)** - built 2026-10-15 as far as the main menu
+  allows (see 3.2's "Built"): recenter, which hand, the controls card, comfort,
+  at every start, skippable, `[Onboarding] StartGuide`. "Mandatory in the new
+  game's dungeon" is open: the engine has to tell a new game from a load - the
+  first cell's form ID, or the game's own new-game path - which is not read
+  yet. Cost once that is known: small for the trigger, medium if the pages are
+  to refuse Skip and Esc there.
 - **The defaults** are to be gone through together: his live INI differs from
   the shipped values in snap turning (on, no vignette, 12 degrees a step
   against off, vignette, 6), the grab's reach (0.10 m against 0.3) and the

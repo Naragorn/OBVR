@@ -53,6 +53,7 @@ enum class SettingAction {
 	AdjustHands,  // opens the guided window for fitting the hands to the controllers
 	FitHolsters,  // the guided fit of the weapon places to the body (vr::StepHolsterFit)
 	PlaceStowSpot,  // the window in which the stow ring is moved on the body (vr::StepStowPlace)
+	ShowControls,  // the Full VR controls card, two pages by hand (ui/NativeControlsCard.h)
 };
 
 struct SettingDefinition {

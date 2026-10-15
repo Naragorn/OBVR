@@ -133,6 +133,9 @@ struct Config {
 	// its own last page ("do not show again"), from the settings menu, or
 	// here.
 	bool onboardingShowAtStart = true;
+	// [Onboarding] StartGuide: in Full VR, the short guide at every start -
+	// recenter, which hand, the controls card, comfort (ui/FirstStart.h).
+	bool onboardingStartGuide = true;
 
 	// Startup-only native MenuQue menus. When disabled, unavailable, or an
 	// unsupported MenuQue binary is found, the existing OBVR overlays remain.

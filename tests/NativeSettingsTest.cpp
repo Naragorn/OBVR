@@ -2,6 +2,8 @@
 #include <cstring>
 #include <cstdlib>
 #include <initializer_list>
+#include "ui/FirstStart.h"
+#include "ui/NativeControlsCard.h"
 #include "ui/NativeHandAdjust.h"
 #include "ui/NativeSettings.h"
 #include "core/AtomicFlag.h"
@@ -24,9 +26,11 @@ struct Writer:NativeSettingWriter {
  void AdjustHands() override { ++adjusts; }
  void FitHolsters() override { ++fits; }
  void PlaceStowSpot() override { ++places; }
+ void ShowControls() override { ++shows; }
  int adjusts=0;
  int fits=0;
  int places=0;
+ int shows=0;
 };
 
 float ChangedFromDefault(const SettingDefinition& definition, float canonical) {
@@ -192,7 +196,7 @@ void TestResetSelected() {
  }
 
  Check(visited==SettingDefinitionCount(),"reset test visits every definition across pages");
- Check(editable+4==visited,"reset test includes the four action rows' refusal paths");
+ Check(editable+5==visited,"reset test includes the five action rows' refusal paths");
  Check(refusedAtDefault==editable,"every editable definition refuses reset at default");
 }
 
@@ -229,6 +233,7 @@ void TestComfortView() {
    Check(all,"the whole menu shows every row");
    bool expected=false;
    if(!std::strcmp(d.iniKey,"LeftHanded") || !std::strcmp(d.iniKey,"SnapTurning")) expected=true;
+   else if(!std::strcmp(d.iniSection,"Onboarding") && !std::strcmp(d.iniKey,"StartGuide")) expected=true;  // the guide ends here
    else if(!std::strcmp(d.iniKey,"SnapTurnAngle") || !std::strcmp(d.iniKey,"SnapTurnInstant") ||
            !std::strcmp(d.iniKey,"SnapTurnVignette")) expected=snap;
    else if(!std::strcmp(d.iniKey,"SnapTurnSpeed")) expected=snap && !instant;
@@ -237,7 +242,7 @@ void TestComfortView() {
    Check(comfort==expected,"a comfort row shows exactly when the row it follows is on");
    shown+=comfort;
   }
-  const unsigned want=2+(snap ? 3+(instant?0:1)+(vignette?2:0) : 0);
+  const unsigned want=3+(snap ? 3+(instant?0:1)+(vignette?2:0) : 0);
   Check(shown==want,"the comfort page's row count for each combination");
  }
  // A section that matches but a key that does not, and the other way round.
@@ -247,11 +252,12 @@ void TestComfortView() {
  fake.iniSection="Look"; fake.iniKey="LeftHanded";
  Check(!SettingShownIn(SettingsView::Comfort,fake,c),"the right key in the wrong section is not it");
 
- // Snap off: two rows, one page, left-handed and snap turning in table order.
+ // Snap off: three rows, one page - snap turning, left-handed and the start
+ // guide's switch in table order.
  Config off; off.look.snapTurning=false;
  NativeSettings menu; menu.SetView(SettingsView::Comfort,off);
  Check(menu.View()==SettingsView::Comfort && menu.Pages()==1 && menu.First()==0,"snap off is one page");
- Check(SameKeys(menu,off,{"SnapTurning","LeftHanded"}),"snap off offers snap turning and left-handed");
+ Check(SameKeys(menu,off,{"SnapTurning","LeftHanded","StartGuide"}),"snap off offers snap turning, left-handed and the start guide");
  Check(std::strcmp(SettingDefinitions()[menu.Selected()].iniKey,"SnapTurning")==0,"the first row starts selected");
  Check(!NativePagingShown(menu.Pages()) && NativePagingShown(2) && !NativePagingShown(0),
        "one page hides Previous and Next; two show them");
@@ -266,17 +272,18 @@ void TestComfortView() {
  menu.Sync(off);
  // The defaults: instant on, vignette on - no speed row.
  Check(SameKeys(menu,off,{"SnapTurning","SnapTurnAngle","SnapTurnInstant","SnapTurnVignette",
-                          "SnapTurnVignetteRadius","SnapTurnVignetteStrength","LeftHanded"}),
+                          "SnapTurnVignetteRadius","SnapTurnVignetteStrength","LeftHanded","StartGuide"}),
        "snap on offers the follow-ups in table order");
  Check(!std::strcmp(SettingDefinitions()[menu.Selected()].iniKey,"SnapTurning"),"the edited row stays selected");
 
- // Everything on and eased: eight rows, two pages; the last row on page two.
+ // Everything on and eased: nine rows, two pages; the last two rows on page two.
  Config full; full.look.snapTurning=true; full.look.snapTurnInstant=false; full.look.snapTurnVignette=true;
  NativeSettings paged; paged.SetView(SettingsView::Comfort,full);
- Check(paged.Pages()==2,"eight rows need two pages");
+ Check(paged.Pages()==2,"nine rows need two pages");
  paged.Click(kNativeNext,full);
- Check(paged.First()==7 && paged.Row(0) && !std::strcmp(paged.Row(0)->iniKey,"LeftHanded") && !paged.Row(1),
-       "the second page holds the last row");
+ Check(paged.First()==7 && paged.Row(0) && !std::strcmp(paged.Row(0)->iniKey,"LeftHanded") &&
+       paged.Row(1) && !std::strcmp(paged.Row(1)->iniKey,"StartGuide") && !paged.Row(2),
+       "the second page holds the last two rows");
  Check(!std::strcmp(SettingDefinitions()[paged.Selected()].iniKey,"LeftHanded"),"paging selects the page's first row");
  // On page two when snap goes off: the page vanishes, the menu comes back
  // to the last page there is, and the still-shown selection stays.
@@ -306,6 +313,117 @@ void TestComfortView() {
  paged.SetView(SettingsView::All,full);
  Check(paged.View()==SettingsView::All && paged.First()==0 && paged.Selected()==0 &&
        paged.Pages()==(SettingDefinitionCount()+kNativeSettingsRows-1)/kNativeSettingsRows,"the whole menu again");
+}
+
+void TestFirstStart() {
+ std::printf("The first start's chain: when, the pages, their buttons and words\n");
+ using namespace obvr::ui;
+ for(unsigned mask=0;mask<64;++mask) {
+  const bool full=mask&1, guide=mask&2, place=mask&4, rootUp=mask&8, busy=mask&16, ran=mask&32;
+  Check(FirstStartDue(full,guide,place,rootUp,busy,ran)==(full && guide && place && !rootUp && !busy && !ran),
+        "the chain begins with Full VR and the guide on, its place in front, no generic menu, nothing busy, not yet this start");
+ }
+ Check(FirstStartNext(FirstStartPage::Recenter)==FirstStartPage::WhichHand &&
+       FirstStartNext(FirstStartPage::WhichHand)==FirstStartPage::Controls &&
+       FirstStartNext(FirstStartPage::Controls)==FirstStartPage::Comfort &&
+       FirstStartNext(FirstStartPage::Comfort)==FirstStartPage::Done &&
+       FirstStartNext(FirstStartPage::Done)==FirstStartPage::Done,"recenter, which hand, the controls, comfort, done");
+ Check(ChooseFirstStart(FirstStartPage::Recenter,kAdjustHandsPrimary)==FirstStartChoice::Next &&
+       ChooseFirstStart(FirstStartPage::Recenter,kAdjustHandsSecondary)==FirstStartChoice::Next &&
+       ChooseFirstStart(FirstStartPage::Recenter,kAdjustHandsReset)==FirstStartChoice::None &&
+       ChooseFirstStart(FirstStartPage::Recenter,-1)==FirstStartChoice::None &&
+       ChooseFirstStart(FirstStartPage::Recenter,kControlsCardPrimary)==FirstStartChoice::None,
+       "the recenter page: Next or Skip go on, its hidden third button and the card's buttons are nothing");
+ Check(ChooseFirstStart(FirstStartPage::WhichHand,kAdjustHandsPrimary)==FirstStartChoice::Right &&
+       ChooseFirstStart(FirstStartPage::WhichHand,kAdjustHandsSecondary)==FirstStartChoice::Left &&
+       ChooseFirstStart(FirstStartPage::WhichHand,kAdjustHandsReset)==FirstStartChoice::Next &&
+       ChooseFirstStart(FirstStartPage::WhichHand,kAdjustHandsClose)==FirstStartChoice::None,
+       "which hand: Right, Left, or Skip; the hidden close is nothing");
+ Check(ChooseFirstStart(FirstStartPage::Controls,kControlsCardPrimary)==FirstStartChoice::Turn &&
+       ChooseFirstStart(FirstStartPage::Controls,kControlsCardSecondary)==FirstStartChoice::Next &&
+       ChooseFirstStart(FirstStartPage::Controls,kAdjustHandsPrimary)==FirstStartChoice::None &&
+       ChooseFirstStart(FirstStartPage::Controls,-1)==FirstStartChoice::None,
+       "the card: Next and Back turn its page, Close goes on, the other window's buttons are nothing");
+ Check(ChooseFirstStart(FirstStartPage::Comfort,kAdjustHandsPrimary)==FirstStartChoice::None &&
+       ChooseFirstStart(FirstStartPage::Done,kControlsCardPrimary)==FirstStartChoice::None,"comfort and done take no button");
+ const FirstStartText before=FirstStartTextFor(FirstStartPage::Recenter,false);
+ const FirstStartText after=FirstStartTextFor(FirstStartPage::Recenter,true);
+ Check(std::strstr(before.title,"Recenter")!=nullptr && std::strstr(before.message,"three seconds")!=nullptr &&
+       std::strcmp(before.primary,"Next")==0 && std::strcmp(before.secondary,"Skip")==0 && !before.resetShown,
+       "the recenter page asks for the chord, Next or Skip, no third button");
+ Check(std::strcmp(after.title,"Recentred")==0 && std::strcmp(after.message,before.message)!=0 &&
+       std::strcmp(after.primary,"Next")==0,"recentred: the page says so and goes on with Next");
+ const FirstStartText hand=FirstStartTextFor(FirstStartPage::WhichHand,false);
+ Check(std::strstr(hand.title,"Which hand")!=nullptr && std::strcmp(hand.primary,"Right")==0 &&
+       std::strcmp(hand.secondary,"Left")==0 && std::strcmp(hand.reset,"Skip")==0 && hand.resetShown,
+       "which hand: Right, Left and a shown Skip");
+ Check(std::strcmp(FirstStartTextFor(FirstStartPage::WhichHand,true).title,hand.title)==0,"the recenter changes only its own page");
+ Check(FirstStartWindow(FirstStartPage::Recenter)!=nullptr &&
+       std::strcmp(FirstStartWindow(FirstStartPage::Recenter),FirstStartWindow(FirstStartPage::WhichHand))==0 &&
+       std::strstr(FirstStartWindow(FirstStartPage::Controls),"OBVR_Controls.xml")!=nullptr &&
+       FirstStartWindow(FirstStartPage::Comfort)==nullptr && FirstStartWindow(FirstStartPage::Done)==nullptr,
+       "two pages share the adjust-hands window, the card has its own, comfort and done have none");
+ // The guide's switch is on the comfort page, where the chain ends.
+ obvr::Config config;
+ bool shown=false;
+ for (unsigned i=0;i<SettingDefinitionCount();++i) {
+  const SettingDefinition& d=SettingDefinitions()[i];
+  if (std::strcmp(d.iniSection,"Onboarding")==0 && std::strcmp(d.iniKey,"StartGuide")==0)
+   shown=SettingShownIn(SettingsView::Comfort,d,config);
+ }
+ Check(shown,"the Start guide row is on the comfort page");
+}
+
+void TestControlsCard() {
+ std::printf("The controls card: its pages, buttons and the settings row\n");
+ using namespace obvr::ui;
+ for (int leftHanded=0;leftHanded<2;++leftHanded) {
+  const ControlsCardText weapon=ControlsCardFor(ControlsCardPage::WeaponHand,leftHanded!=0);
+  const ControlsCardText other=ControlsCardFor(ControlsCardPage::OtherHand,leftHanded!=0);
+  Check(std::strstr(weapon.title,"weapon hand")!=nullptr && std::strstr(other.title,"other hand")!=nullptr,
+        "each page is titled by its hand's role");
+  Check(std::strstr(weapon.title,leftHanded ? "(left)" : "(right)")!=nullptr &&
+        std::strstr(other.title,leftHanded ? "(right)" : "(left)")!=nullptr,
+        "the title names the side the role is on, swapped for a left-hander");
+  bool filled=true;
+  for (UInt32 i=0;i<kControlsCardLines;++i) {
+   filled=filled && weapon.lines[i] && weapon.lines[i][0] && other.lines[i] && other.lines[i][0] &&
+          std::strlen(weapon.lines[i])<=72 && std::strlen(other.lines[i])<=72;
+  }
+  Check(filled,"twelve lines a page, none empty, none past the card's width");
+  Check(std::strcmp(weapon.primary,"Next")==0 && std::strcmp(other.primary,"Back")==0 &&
+        std::strcmp(weapon.secondary,"Close")==0 && std::strcmp(other.secondary,"Close")==0,
+        "Next on the first page, Back on the second, Close on both");
+ }
+ Check(ChooseControlsCard(kControlsCardPrimary)==ControlsCardChoice::Turn &&
+       ChooseControlsCard(kControlsCardSecondary)==ControlsCardChoice::Close &&
+       ChooseControlsCard(kControlsCardClose)==ControlsCardChoice::None &&
+       ChooseControlsCard(-1)==ControlsCardChoice::None && ChooseControlsCard(9501)==ControlsCardChoice::None,
+       "the primary button turns, the secondary closes, anything else is nothing");
+ Check(ControlsCardTurned(ControlsCardPage::WeaponHand)==ControlsCardPage::OtherHand &&
+       ControlsCardTurned(ControlsCardPage::OtherHand)==ControlsCardPage::WeaponHand,"the pages turn into each other");
+ char trait[32];
+ Check(ControlsCardLineTrait(0,trait,sizeof(trait)) && std::strcmp(trait,"parchment\\line0\\string")==0,"the first line's trait");
+ Check(ControlsCardLineTrait(11,trait,sizeof(trait)) && std::strcmp(trait,"parchment\\line11\\string")==0,"the last line's trait");
+ Check(!ControlsCardLineTrait(12,trait,sizeof(trait)) && !ControlsCardLineTrait(0,trait,8) &&
+       !ControlsCardLineTrait(0,nullptr,sizeof(trait)),"past the card, a short buffer, no buffer: refused");
+
+ obvr::Config config; NativeSettings menu; Writer writer;
+ bool fired=false;
+ for(unsigned page=0;page<menu.Pages() && !fired;++page) {
+  for(unsigned slot=0;slot<7;++slot) {
+   const auto* d=menu.Row(slot);
+   if(d && d->action==SettingAction::ShowControls) {
+    const auto edit=menu.Click(kNativeRowBase+static_cast<int>(slot)*3+2,config);
+    Check(CommitNativeEdit(edit,config,writer)==NativeEditResult::Action && writer.shows==1 &&
+          writer.adjusts==0 && writer.recenters==0 && writer.saves==0,"the Show the controls row hands over to the card, saves nothing");
+    fired=true;
+    break;
+   }
+  }
+  if(!fired) menu.Click(kNativeNext,config);
+ }
+ Check(fired,"the Show the controls row is in the menu");
 }
 
 void TestHandAdjust() {
@@ -727,6 +845,8 @@ int main() {
  TestComfortPageStep();
  TestUpdateWindow();
  TestHandAdjust();
+ TestControlsCard();
+ TestFirstStart();
  // Exhaust the lifecycle input combinations, including foreign/covered menus.
  for(unsigned mask=0;mask<512;++mask) {
   bool opened=mask&1,root=mask&2,foreign=mask&4,foreground=mask&8;

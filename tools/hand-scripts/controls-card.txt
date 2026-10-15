@@ -1,0 +1,38 @@
+# The controls card (ui/NativeControlsCard.h; the tester, 2026-10-15: "das
+# controller schema muss irgendwo dokumentiert sein. am besten im obvr setting
+# menü"): the script asks for it ("action controls-card") once it runs in the
+# world - the first page, the weapon hand; Next turns to the other hand's
+# page, Back turns back, Close ends it. The pages' words are the settings
+# row's. A window of OBVR's cannot open before the script runs: the script
+# starts only in the world with no menu up. (Escape over a generic menu opens
+# the game's pause menu on top of it, so Close is the way out - seen 15:38.)
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/controls-card.txt
+
+ini Hands Enabled=1
+
+expect HandScript: finished
+expect Native menus: a hand script asks for the controls card
+expect Native menus: controls card - open executed=1
+count 2 Native menus: controls card - Controls: the weapon hand (right)
+expect Native menus: controls card - Controls: the other hand (left)
+expect Hands: at the mark - menu 1 (Generic)
+expect Native menus: controls card closed
+reject a UI update command failed
+reject OBVR_Controls.xml missing
+reject closed from outside
+reject HandScript: WARNING
+
+wait 16
+action controls-card
+wait 1.5
+mark card_open
+action menu-primary
+wait 1.0
+mark card_other_hand
+action menu-primary
+wait 1.0
+mark card_weapon_hand_again
+action menu-secondary
+wait 1.5
+mark card_done
+wait 1

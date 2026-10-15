@@ -655,6 +655,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.fullVrMode = ReadBool("Hands", "Enabled", config.fullVrMode, path);
 	config.onboardingShowAtStart =
 		ReadBool("Onboarding", "ShowAtStart", config.onboardingShowAtStart, path);
+	config.onboardingStartGuide =
+		ReadBool("Onboarding", "StartGuide", config.onboardingStartGuide, path);
 	config.nativeOnboardingPrototype =
 		ReadBool("Onboarding", "NativePrototype", config.nativeOnboardingPrototype, path);
 	config.checkForUpdates = ReadBool("Updates", "CheckForUpdates", config.checkForUpdates, path);

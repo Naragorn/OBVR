@@ -2063,6 +2063,21 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.teleport.holdSeconds = v; },
 	},
 	{
+		"Help", "Show the controls", "Full VR: the controls card, the weapon hand and the other hand, by role",
+		ItemKind::Action, 0.0f, 0.0f, 0.0f, 0, false,
+		"", "",
+		+[](const Config&) { return 0.0f; },
+		+[](Config&, float) {},
+		"", "", SettingAction::ShowControls,
+	},
+	{
+		"Help", "Start guide", "Full VR: the short guide at every start - recenter, which hand, the controls, comfort",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Onboarding", "StartGuide",
+		+[](const Config& c) { return c.onboardingStartGuide ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.onboardingStartGuide = v != 0.0f; },
+	},
+	{
 		"Help", "Introduction at start", "Show the first-start walkthrough again next time",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Onboarding", "ShowAtStart",

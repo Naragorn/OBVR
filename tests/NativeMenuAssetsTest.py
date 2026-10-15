@@ -8,6 +8,16 @@ def parse(path):
 base=ROOT/'assets/menus'
 onboarding=parse(base/'generic/OBVR_Onboarding.xml')
 settings=parse(base/'generic/OBVR_Settings.xml')
+controls=parse(base/'generic/OBVR_Controls.xml')
+assert sorted(int(x.text) for x in controls.iter('id'))==[9600,9601,9602]
+assert controls.find('.//rect[@name="close"]/id').text=='9600'
+for i in range(12):
+    assert controls.find(f'.//text[@name="line{i}"]/string') is not None, f'line{i} missing'
+for txt in controls.iter('text'):
+    for channel in ['red','green','blue']:
+        trait=txt.find(channel)
+        assert trait is not None and len(trait)==0, 'Text color must never change on hover'
+print('Controls card: IDs 9600-9602, twelve lines, steady colours verified')
 assert sorted(int(x.text) for x in onboarding.iter('id'))==[9101,9102]
 assert '(OBVR)' in onboarding.find('.//text[@name="title"]/string').text
 assert 'Decide later' not in (base/'generic/OBVR_Onboarding.xml').read_text()
