@@ -15,12 +15,12 @@ texts: simple, short, friendly.
 
 ## The Discord post
 
-> **OBVR Full VR - beta 1**
+> **OBVR Full VR - beta 1** (OBVR-0.3.0-beta1.zip, attached)
 >
 > This is the first build of Full VR for testing: play Oblivion standing (or
 > seated) with motion controllers. It is playable and has rough edges. Tested
-> so far on one setup only (Valve Index controllers), so your reports are the
-> point of this.
+> so far on one setup only (Valve Index controllers, Windows 11 and Linux with
+> Proton), so your reports are the point of this. The log says "OBVR 0.3.0".
 >
 > **What is in it**
 > - Draw your weapon by reaching to your hip (two-handers over the shoulder,
@@ -41,7 +41,9 @@ texts: simple, short, friendly.
 >    MenuQue, Steam overlay off): https://github.com/Naragorn/OBVR#installing
 > 2. Unzip the beta zip from this channel into Oblivion's `Data` folder. It
 >    replaces `OBVR.dll`, `OBVR.ini` and the menu XML files. Keep a copy of
->    your old `OBVR.ini` if you tuned it.
+>    your old `OBVR.ini` if you tuned it. The new INI starts with Full VR on,
+>    snap turning on (eased, with a vignette) and a short grab reach; all of
+>    it is in the settings menu (Insert) and in the INI.
 > 3. Start SteamVR, then the game with `obse_loader.exe`. The first start asks
 >    which way you want to play: pick **Full VR**. A short guide follows:
 >    recenter (both stick buttons held three seconds), your weapon hand, the
@@ -60,8 +62,9 @@ texts: simple, short, friendly.
 > - Quest controllers are untested by us. Index is what we play.
 > - New game: the face editor shows as a flat picture, and the name is typed
 >   on the keyboard.
-> - Setting a hotkey from the inventory with the ring does not work right now
->   (the laser moves off the item).
+> - The hotkey ring: on the Index hold the trackpad, on the Quest click the
+>   stick and click again on a slot. Setting a hotkey from the inventory with
+>   the ring is fixed in this build but was not yet seen in a headset.
 > - The yield gesture (both palms forward) is unreliable. The bow's block
 >   flickers.
 > - Rarely a hit still throws you down and the view flickers until you stand.

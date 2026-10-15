@@ -160,7 +160,17 @@ erststart kette, bei jedem start whl und pflicht beim new game dungeon."
   first cell's form ID, or the game's own new-game path - which is not read
   yet. Cost once that is known: small for the trigger, medium if the pages are
   to refuse Skip and Esc there.
-- **The defaults** are to be gone through together: his live INI differs from
-  the shipped values in snap turning (on, no vignette, 12 degrees a step
-  against off, vignette, 6), the grab's reach (0.10 m against 0.3) and the
-  hands' own fit; nothing changed yet.
+- **The defaults, decided the same evening (the tester: "snap turning 1,
+  snap instant 0, speed 12, vignette 1, grab reach 0,1, hands 1, contacttrace
+  0"):** OBVR.ini ships SnapTurning=1, SnapTurnInstant=0, SnapTurnSpeed=12,
+  SnapTurnVignette=1, GrabReachMetres=0.1, [Hands] Enabled=1 (the first start
+  asks anyway), ContactTrace=0. The code's own defaults are unchanged; an INI
+  without those keys keeps the old values.
+- **The CI artifact is gone** ("ja kannste machen"): build.yml no longer
+  keeps the DLL of a push, so nothing of a push can be downloaded from GitHub.
+- **The beta zip:** the version is 0.3.0 (CMakeLists.txt; no tag, no GitHub
+  release - the update check reads only the latest full release, so nobody is
+  told of it), the archive is made on Linux by `tools/package-release.py
+  --tag=-beta1` from the clang-cl build the tester plays, `dist/OBVR-0.3.0-beta1.zip`
+  with the map beside it; the layout is package-release.ps1's. The post and
+  the Nexus comment are in docs/discord-hand-tracking-beta.md.

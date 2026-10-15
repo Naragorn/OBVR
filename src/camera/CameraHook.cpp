@@ -2383,9 +2383,13 @@ void UpdateQuickMenu(const Config& config, vr::OpenVRBackend& backend, bool allo
 	g_hand.controls.menuClick = g_hand.controls.menuClick || v.click;
 	if (v.holdsCursor) {
 		// The click has to land on what the laser was on when the trackpad
-		// went down, not where the hand has moved the laser to reach a slot.
+		// went down, not where the hand has moved the laser to reach a slot:
+		// neither the mouse steps nor the direct placement (LaserCursorDirect,
+		// which walked the cursor to the slot since 2026-10-10 - the tester,
+		// 2026-10-15: "laserpointer sich wegbewegt vom item").
 		g_hand.cursorDx = 0;
 		g_hand.cursorDy = 0;
+		g_hand.cursorWanted = false;
 	}
 	if (v.highlighted != g_quickMenuView.highlighted || v.assigning != g_quickMenuView.assigning) {
 		g_quickMenuView.highlighted = v.highlighted;

@@ -594,6 +594,11 @@ in the headset yet.
   is dropped for the frame (or kept at the pixel of the frame the ring
   opened), as the mouse steps are. The proof is `quick-menu-assign.txt`, which
   passed 2026-09-27 before the direct cursor and has not been rerun since.
+  **Built the same evening (the tester: "ja mach"):** with `holdsCursor` the
+  direct placement is dropped for the frame too (`g_hand.cursorWanted=false`
+  in `UpdateQuickMenu`), so the engine's cursor stays on the item while the
+  ring is up. Harness `quick-menu-assign.txt`: the rerun is pending - SteamVR
+  was off when it was due.
 
 ### 4.6 Stowing at the body, and taking only by hand (built 2026-09-27)
 

@@ -42,12 +42,5 @@ jobs:
       - name: Run the tests
         run: ctest --test-dir build-tests -C Release --output-on-failure
 
-      - name: Keep the DLL
-        uses: actions/upload-artifact@v4
-        with:
-          name: OBVR-${{ github.sha }}
-          path: |
-            build/Release/OBVR.dll
-            build/Release/OBVR.map
-            OBVR.ini
-          if-no-files-found: error
+      # No artifact: the DLL of a push is not a download (the beta goes out on
+      # Discord only; the tester, 2026-10-15).

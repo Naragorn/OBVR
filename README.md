@@ -217,7 +217,8 @@ ctest --test-dir build-tests --output-on-failure
 On Linux the tests build with clang in 32-bit mode; `docs/linux.md` has the
 command and what else the Linux side can and cannot do yet.
 
-`tools/package-release.ps1` builds the release zip. Pull requests are welcome;
+`tools/package-release.ps1` builds the release zip on Windows, `tools/package-release.py`
+on Linux. Pull requests are welcome;
 two house rules: every game address needs two independent sources, and fixes go
 after the cause, not the symptom. Everything in the repo is in English.
 
