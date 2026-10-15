@@ -950,6 +950,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.laserGain = ReadFloat("Hands", "LaserGain", h.laserGain, path);
 		h.laserMaxStep = ReadFloat("Hands", "LaserMaxStep", h.laserMaxStep, path);
 		h.laserCursorDirect = ReadBool("Hands", "LaserCursorDirect", h.laserCursorDirect, path);
+		h.stickHoldSeconds = ReadFloat("Hands", "StickHoldSeconds", h.stickHoldSeconds, path);
 		h.stickDeadZone = ReadFloat("Hands", "StickDeadZone", h.stickDeadZone, path);
 		h.turnSpeed = ReadFloat("Hands", "TurnSpeed", h.turnSpeed, path);
 		h.vrKeyboard = ReadBool("Hands", "VrKeyboard", h.vrKeyboard, path);
@@ -979,8 +980,6 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		qm.tapSeconds = ReadFloat("Hands", "QuickMenuTapSeconds", qm.tapSeconds, path);
 		qm.ringMetres = ReadFloat("Hands", "QuickMenuRingMetres", qm.ringMetres, path);
 		qm.icons = ReadBool("Hands", "QuickMenuIcons", qm.icons, path);
-		qm.stickHoldSeconds =
-			ReadFloat("Hands", "QuickMenuStickHoldSeconds", qm.stickHoldSeconds, path);
 		qm.pages = vr::QuickMenuPageCount(static_cast<int>(
 			ReadFloat("Hands", "QuickMenuPages", static_cast<float>(qm.pages), path) + 0.5f));
 

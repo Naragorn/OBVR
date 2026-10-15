@@ -516,6 +516,21 @@ in the headset yet.
   hold with the save's slot 3 ("3 Iron Longsword"), "hotkey 3 used" on the
   release and no Rest menu after it; a short click then opened the Rest menu
   (SleepWait), and the right B closed it.
+- **Swapped the same evening (the tester: "vertauschen wir auf quest rechter
+  stick halten -> warte menü. kurz quickmenü. links same mit halten -> quest
+  menü").** The right stick's *short* click is the ring's tap: the ring opens
+  latched (`QuickMenuInput::tap`, `QuickMenuState::latched`), the hand moves
+  to a slot, the next click is the release (in the middle: closed); the trigger
+  turns pages meanwhile. The right stick *held* past `[Hands] StickHoldSeconds`
+  (0.4, row "Stick hold"; moved out of the quick menu's settings) is the Rest
+  menu's key at the moment the hold is reached (ready weapon with the holsters
+  off), its release nothing. The left stick stays the walk's and the run's
+  alone (the tester, right after: "linker stick muss frei bleiben auf quest
+  für laufen! jaja dann links nur laufen"); a journal key exists on the Index's
+  left trackpad only. quick_menu_test (the latch: tap opens, tap uses, tap in
+  the middle closes, not allowed unlatches, the trackpad beside it),
+  hand_mode_test (the right stick through the mode). Harness
+  `quick-menu-stick.txt` rewritten and PASS (Linux).
 - **Fixed on the way (2026-10-15): the right B in the Rest menu opened the
   pause menu over it.** The frame's `restMenuUp` reached the plan only on the
   menus-only path; Full VR's `Step` never handed it on, so `PlanHandControls`

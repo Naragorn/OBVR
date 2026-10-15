@@ -31,6 +31,72 @@ NiPoint3 AtAngle(float degrees, float metres) {
 	return NiPoint3{metres * std::sin(a), metres * std::cos(a), 0.0f};
 }
 
+void TestLatch() {
+	std::printf("The stick's tap: the ring latched open\n");
+	QuickMenuSettings settings;
+	QuickMenuState s;
+	QuickMenuInput in;
+	in.allowed = true;
+	in.filled[2] = true;
+	in.hand = NiPoint3{0.0f, 0.0f, 0.0f};
+	in.dt = 0.01f;
+	QuickMenuVerdict v = StepQuickMenu(s, in, settings);
+	Check(!v.visible, "nothing pressed: no ring");
+	in.tap = true;
+	v = StepQuickMenu(s, in, settings);
+	in.tap = false;
+	Check(v.opened && v.visible && s.latched, "a tap opens the ring and latches it");
+	v = StepQuickMenu(s, in, settings);
+	Check(v.visible && v.used < 0, "it stays up with nothing pressed");
+	in.hand = NiPoint3{0.1f, 0.0f, 0.0f};  // slot 3, to the right
+	v = StepQuickMenu(s, in, settings);
+	Check(v.visible && v.highlighted == 2, "the hand moved: slot 3 lit");
+	in.tap = true;
+	v = StepQuickMenu(s, in, settings);
+	in.tap = false;
+	Check(!v.visible && v.used == 2 && v.key == 3 && !s.latched, "the next tap lets go: slot 3 used");
+	for (int i = 0; i < 20; ++i) {
+		v = StepQuickMenu(s, in, settings);
+	}
+	Check(v.key == 0 && !v.visible, "the key runs out, the ring stays shut");
+	// A tap and a tap in the middle: closed without a hotkey.
+	in.hand = NiPoint3{0.0f, 0.0f, 0.0f};
+	in.tap = true;
+	StepQuickMenu(s, in, settings);
+	in.tap = false;
+	in.hand = NiPoint3{0.01f, 0.0f, 0.0f};
+	StepQuickMenu(s, in, settings);
+	in.tap = true;
+	v = StepQuickMenu(s, in, settings);
+	in.tap = false;
+	Check(v.cancelled && v.used < 0 && !s.open, "a tap in the middle closes it, nothing used");
+	// Not allowed any more while latched: the latch goes with the ring.
+	in.tap = true;
+	StepQuickMenu(s, in, settings);
+	in.tap = false;
+	in.allowed = false;
+	v = StepQuickMenu(s, in, settings);
+	Check(v.cancelled && !s.latched && !s.open, "a menu came: the ring and its latch go");
+	in.allowed = true;
+	v = StepQuickMenu(s, in, settings);
+	Check(!v.visible, "and it does not come back by itself");
+	// The trackpad beside it: held opens, let go uses, as before; a tap while
+	// the trackpad holds the ring does not latch it.
+	in.pad = true;
+	in.hand = NiPoint3{0.0f, 0.0f, 0.0f};
+	v = StepQuickMenu(s, in, settings);
+	Check(v.opened, "the trackpad held opens the ring");
+	in.tap = true;
+	v = StepQuickMenu(s, in, settings);
+	in.tap = false;
+	Check(v.visible && !s.latched, "a tap meanwhile latches nothing");
+	in.hand = NiPoint3{0.1f, 0.0f, 0.0f};
+	StepQuickMenu(s, in, settings);
+	in.pad = false;
+	v = StepQuickMenu(s, in, settings);
+	Check(v.used == 2, "let go of the trackpad: slot 3 used");
+}
+
 void TestSlots() {
 	std::printf("Which slot an offset chooses\n");
 	Check(QuickSlotAt(NiPoint3{0.01f, 0.01f, 0.0f}, kRight, kUp, 0.04f) == -1, "inside the dead zone: none");
@@ -343,6 +409,7 @@ int main() {
 	TestSlots();
 	TestLevelRight();
 	TestFlows();
+	TestLatch();
 	TestAssign();
 	TestPages();
 	if (g_failures != 0) {

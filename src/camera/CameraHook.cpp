@@ -2316,11 +2316,11 @@ vr::openvr::HmdMatrix34 QuickMenuPose(const vr::QuickMenuState& s) {
 void UpdateQuickMenu(const Config& config, vr::OpenVRBackend& backend, bool allowed, bool assign,
                      const vr::HandModeFrame& frame, float dt) {
 	vr::QuickMenuInput in;
-	// The right trackpad held, or the right stick's button held past its hold
-	// (vr::StepStickHold, the hand mode's ringByStick) - the Oculus Touch has
-	// no trackpad.
-	in.pad = (frame.right.valid && vr::TrackpadClickDown(frame.right.buttonsPressed)) ||
-	         g_hand.ringByStick;
+	// The right trackpad held, or the right stick's short click as the tap
+	// that latches the ring open (vr::StepStickHold, the hand mode's ringTap)
+	// - the Oculus Touch has no trackpad.
+	in.pad = frame.right.valid && vr::TrackpadClickDown(frame.right.buttonsPressed);
+	in.tap = g_hand.ringTap;
 	in.allowed = allowed;
 	in.assign = assign;
 	in.hand = frame.right.position;

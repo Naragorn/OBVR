@@ -51,8 +51,9 @@ texts: simple, short, friendly.
 >
 > **Controls**: the table in the README, section "Controls in Full VR" -
 > https://github.com/Naragorn/OBVR#controls-in-full-vr - and in the game under
-> Insert > Help > Show the controls. Quest: hold the right stick's button for
-> the hotkey ring (there is no trackpad). Left-handed: `[Hands] LeftHanded=1`
+> Insert > Help > Show the controls. Quest: click the right stick's button for
+> the hotkey ring, click again on a slot; hold it for the rest menu (there is
+> no trackpad, and no journal key - use the Tab menus). Left-handed: `[Hands] LeftHanded=1`
 > or the settings row.
 >
 > **Known rough edges** (you do not need to report these):

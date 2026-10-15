@@ -45,7 +45,7 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded) 
 			"B: the pause menu (Escape).",
 			"Stick: turn. Held up: aim a teleport, let go to go. Flick up: jump.",
 			"Stick flicked down: sneak. Crouching sneaks too.",
-			"Stick button short: rest menu. Held: the hotkey ring, move, let go.",
+			"Click the stick: the hotkey ring - move, click again. Held: rest menu.",
 			"Index: the trackpad held opens the ring too. Trigger: next page.",
 			"Make a fist, or squeeze the grip hard: raise your fists.",
 		};

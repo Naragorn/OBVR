@@ -816,11 +816,11 @@ void TestRestMenuKey() {
 }
 
 void TestRingByStick() {
-	std::printf("The ring by the stick, through the mode\n");
+	std::printf("The sticks' buttons through the mode: short and held\n");
 	HandSettings settings = WithoutLaserOffset();
 	settings.enabled = true;
-	settings.holster.enabled = true;  // the right stick's click is the Rest menu
-	settings.quickMenu.stickHoldSeconds = 0.4f;
+	settings.holster.enabled = true;  // the right stick's hold is the Rest menu
+	settings.stickHoldSeconds = 0.4f;
 	HandModeFrame frame;
 	frame.headValid = true;
 	frame.dtSeconds = 0.01f;
@@ -828,63 +828,63 @@ void TestRingByStick() {
 	frame.left.valid = true;
 	HandMode mode;
 	HandModeResult r = mode.Update(frame, settings);
-	Check(!r.ringByStick, "nothing pressed: no ring");
-	// A short click: the Rest menu's key on the release, no ring.
+	Check(!r.ringTap && !r.controls.wait, "nothing pressed: no tap, no Rest menu");
+	// A short right click: the ring's tap on the release, no Rest menu.
 	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
 	r = mode.Update(frame, settings);
 	r = mode.Update(frame, settings);
-	Check(!r.ringByStick && !r.controls.wait, "a click waits for its release, the ring stays shut");
+	Check(!r.ringTap && !r.controls.wait, "a click waits for its release");
 	frame.right.buttonsPressed = 0;
 	r = mode.Update(frame, settings);
-	Check(r.controls.wait && !r.ringByStick, "released short: the Rest menu's key");
-	for (int i = 0; i < 20; ++i) {
-		r = mode.Update(frame, settings);
-	}
-	// Held half a second: the ring's; its release opens no Rest menu.
+	Check(r.ringTap && !r.controls.wait, "released short: the ring's tap, no Rest menu");
+	r = mode.Update(frame, settings);
+	Check(!r.ringTap, "the tap is one frame");
+	// Held: the Rest menu the moment the hold is reached, nothing on release.
 	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
-	bool ringAt20 = false;
-	for (int i = 0; i < 50; ++i) {
+	int waits = 0;
+	bool tapped = false;
+	for (int i = 0; i < 60; ++i) {
 		r = mode.Update(frame, settings);
-		if (i == 20) {
-			ringAt20 = r.ringByStick;
-		}
+		waits += r.controls.wait ? 1 : 0;
+		tapped = tapped || r.ringTap;
 	}
-	Check(!ringAt20, "0.21 s held: not the ring's yet");
-	Check(r.ringByStick && !r.controls.wait, "0.5 s held: the ring is held open, no Rest menu");
+	Check(waits > 0 && !tapped, "0.6 s held: the Rest menu's key, no tap");
 	frame.right.buttonsPressed = 0;
 	r = mode.Update(frame, settings);
-	Check(!r.ringByStick && !r.controls.wait, "let go: the ring closes and the Rest menu stays shut");
-	for (int i = 0; i < 20; ++i) {
+	Check(!r.ringTap, "its release is no tap");
+	for (int i = 0; i < 30; ++i) {
 		r = mode.Update(frame, settings);
-		Check(!r.controls.wait, "and no Rest menu key follows");
 	}
-	// Both sticks within the chord's window: OBVR's menu on the release,
-	// never the ring, however long they are held.
+	Check(!r.controls.wait, "and the key is up again");
+	// Both sticks within the chord's window: OBVR's menu on the release, no tap, no Rest menu.
 	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
 	r = mode.Update(frame, settings);
 	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
-	bool ringInChord = false;
+	bool anyWait = false;
+	bool anyJournal = false;
 	for (int i = 0; i < 60; ++i) {
 		r = mode.Update(frame, settings);
-		ringInChord = ringInChord || r.ringByStick;
+		anyWait = anyWait || r.controls.wait;
+		anyJournal = anyJournal || r.controls.quickMenu;
 	}
-	Check(!ringInChord, "both sticks held: no ring");
 	frame.right.buttonsPressed = 0;
 	frame.left.buttonsPressed = 0;
 	r = mode.Update(frame, settings);
-	Check(r.settingsMenuToggle && !r.ringByStick && !r.controls.wait, "their release: OBVR's menu, as before");
-	// The ring switched off: a long press is the click it always was.
-	settings.quickMenu.enabled = false;
-	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
-	bool ringOff = false;
+	Check(r.settingsMenuToggle && !r.ringTap && !anyWait && !anyJournal && !r.controls.quickMenu,
+	      "the chord: OBVR's menu alone, no journal key from the left");
+	for (int i = 0; i < 30; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	// The left stick pressed in: the run, nothing else, however long.
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	bool anyLeftKey = false;
 	for (int i = 0; i < 60; ++i) {
 		r = mode.Update(frame, settings);
-		ringOff = ringOff || r.ringByStick;
+		anyLeftKey = anyLeftKey || r.controls.quickMenu || r.controls.wait;
 	}
-	Check(!ringOff, "the ring off: no ring by the stick");
-	frame.right.buttonsPressed = 0;
-	r = mode.Update(frame, settings);
-	Check(r.controls.wait, "and the long press's release is the Rest menu's key");
+	Check(r.controls.run && !anyLeftKey, "0.6 s held: the run key and nothing else - the left stick is the walk's");
+	frame.left.buttonsPressed = 0;
+	frame.left.thumbY = 0.0f;
 }
 
 void TestStickChord() {
@@ -2072,8 +2072,18 @@ void TestLeftButtonsInHandMode() {
 	Check(!r.settingsMenuToggle, "a right click half a second into running is not OBVR's menu");
 	frame.right.buttonsPressed = 0;
 	r = mode.Update(frame, settings);
-	Check(r.controls.wait && !r.controls.readyWeapon,
-	      "on release it opens the Rest menu - the weapons are drawn by reaching");
+	Check(r.ringTap && !r.controls.wait && !r.controls.readyWeapon,
+	      "released short: the quick menu's tap, not the Rest menu (the swap of 2026-10-15)");
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	bool waited = false;
+	for (int i = 0; i < 50; ++i) {
+		r = mode.Update(frame, settings);
+		waited = waited || r.controls.wait;
+	}
+	Check(waited && !r.controls.readyWeapon,
+	      "held half a second: the Rest menu - the weapons are drawn by reaching");
+	frame.right.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
 	frame.left.buttonsPressed = 0;
 	r = mode.Update(frame, settings);
 	Check(!r.controls.run && !r.controls.sneak, "let go: walking again, nothing else");

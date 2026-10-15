@@ -92,6 +92,12 @@ struct HandSettings {
 	// The sticks: dead zone, and mouse pixels per frame at full deflection
 	// for the turn.
 	float stickDeadZone = 0.4f;
+	// How long the right stick's button is held before the hold counts
+	// (vr::StepStickHold): the hold is the Rest menu (ready weapon with the
+	// holsters off), a shorter press the quick menu's click. The left stick
+	// is the walk's and the run's alone. Longer than the stick chord's window
+	// (kStickChordWindowSeconds), so a chord that forms late is not a hold.
+	float stickHoldSeconds = 0.4f;
 	float turnSpeed = 12.0f;
 	// Which way the left stick walks (vr/WalkDirection.h).
 	WalkDirection walkDirection = kWalkDirectionDefault;
@@ -693,9 +699,9 @@ struct HandModeResult {
 	// (false releases everything).
 	bool controlsActive = false;
 	HandControlsWanted controls;
-	// The right stick's button held past the hold (vr::StepStickHold): the
-	// quick menu's ring is held open by it, as by the right trackpad.
-	bool ringByStick = false;
+	// The right stick's button clicked short (vr::StepStickHold): the quick
+	// menu's tap - the ring opens latched, the next tap lets go of it.
+	bool ringTap = false;
 	// The sticks move the player under a container's menu opened by reaching
 	// (HandModeFrame::walkUnderMenu): the player's controls are to run, and
 	// the laser's cursor is left where it is.

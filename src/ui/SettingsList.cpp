@@ -1653,7 +1653,7 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.vrKeyboard = v != 0.0f; },
 	},
 	{
-		"Hands: menus", "Quick menu", "Full VR: hold the right trackpad or the right stick's button, move to a hotkey, let go",
+		"Hands: menus", "Quick menu", "Full VR: hold the right trackpad, move to a hotkey, let go; or click the right stick, move, click again",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "QuickMenu",
 		+[](const Config& c) { return c.hands.quickMenu.enabled ? 1.0f : 0.0f; },
@@ -1667,11 +1667,11 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.quickMenu.pages = vr::QuickMenuPageCount(static_cast<int>(v + 0.5f)); },
 	},
 	{
-		"Hands: menus", "Quick menu: stick hold", "Seconds the right stick's button is held before the ring opens by it (Quest: the way; Index: beside the trackpad)",
+		"Hands: menus", "Stick hold", "Seconds the right stick's button is held for the rest menu; a shorter click is the quick menu",
 		ItemKind::Number, 0.3f, 2.0f, 0.1f, 1, false,
-		"Hands", "QuickMenuStickHoldSeconds",
-		+[](const Config& c) { return c.hands.quickMenu.stickHoldSeconds; },
-		+[](Config& c, float v) { c.hands.quickMenu.stickHoldSeconds = v; },
+		"Hands", "StickHoldSeconds",
+		+[](const Config& c) { return c.hands.stickHoldSeconds; },
+		+[](Config& c, float v) { c.hands.stickHoldSeconds = v; },
 	},
 	// ---- Hands: holsters
 	{

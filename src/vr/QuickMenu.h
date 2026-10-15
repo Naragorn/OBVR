@@ -3,7 +3,9 @@
 // The quick menu on the right trackpad (docs/controls-spec.md 4.4): the
 // eight hotkeys on a ring that opens where the hand is, chosen by moving the
 // hand towards one - the way Half-Life: Alyx's hand menu is used - and used
-// by letting go of the trackpad. Full VR only.
+// by letting go of the trackpad. On a controller without a trackpad (the
+// Oculus Touch) the right stick's short click opens it latched and the next
+// click lets go. Full VR only.
 //
 // The hotkey is used the way the game's own number key uses it: the key of
 // its slot is tapped (Oblivion.ini [Controls] Quick1..Quick8, 1-8 by
@@ -59,12 +61,6 @@ struct QuickMenuSettings {
 	float assignLeadSeconds = 0.20f;
 	float assignClickSeconds = 0.08f;
 	float assignTailSeconds = 0.15f;
-	// How long the right stick's button is held before the ring opens by it
-	// (vr::StepStickHold) - the way on a controller without a trackpad (the
-	// Oculus Touch), and open to the Index beside its trackpad. Longer than
-	// the stick chord's window (kStickChordWindowSeconds), so a chord that
-	// forms late cannot have opened the ring first.
-	float stickHoldSeconds = 0.4f;
 };
 
 // Where a hotkey being set stands.
@@ -81,6 +77,9 @@ struct QuickMenuState {
 	float tapLeft = 0.0f;
 	bool padWas = false;
 	bool triggerWas = false;
+	// Opened by the stick's short click (QuickMenuInput::tap): held open
+	// until the next click, which is the release.
+	bool latched = false;
 	AssignPhase assignPhase = AssignPhase::Idle;
 	int assignSlot = -1;
 	float assignClock = 0.0f;  // time in the current phase
@@ -88,6 +87,10 @@ struct QuickMenuState {
 
 struct QuickMenuInput {
 	bool pad = false;      // the right trackpad clicked, as it is now
+	// The right stick's button clicked short (the tester, 2026-10-15: "kurz
+	// quickmenü" - the Oculus Touch has no trackpad): the ring opens and
+	// stays up, the hand moves to a slot, the next click lets go of it.
+	bool tap = false;
 	// Full VR on, and either in the world with no menu up, or in the
 	// inventory or the magic menu (then `assign`).
 	bool allowed = false;
@@ -223,9 +226,20 @@ inline QuickMenuVerdict StepQuickMenu(QuickMenuState& s, const QuickMenuInput& i
 		}
 	}
 	StepAssign(s, in, settings, v);
-	const bool press = in.pad && !s.padWas;
-	s.padWas = in.pad;
+	// The stick's click: a tap on a shut ring latches it open, a tap on a
+	// latched ring is its release this frame.
+	if (in.tap) {
+		if (s.open && s.latched) {
+			s.latched = false;
+		} else if (!s.open) {
+			s.latched = true;
+		}
+	}
+	const bool pad = in.pad || s.latched;
+	const bool press = pad && !s.padWas;
+	s.padWas = pad;
 	if (!settings.enabled || !in.allowed || (s.open && s.assigning != in.assign)) {
+		s.latched = false;
 		if (s.open) {
 			s.open = false;
 			s.highlighted = -1;
@@ -249,7 +263,7 @@ inline QuickMenuVerdict StepQuickMenu(QuickMenuState& s, const QuickMenuInput& i
 	v.assigning = s.assigning;
 	const bool pull = in.trigger && !s.triggerWas;
 	s.triggerWas = in.trigger;
-	if (in.pad) {
+	if (pad) {
 		// The trigger turns the page while the ring is up; the frame the
 		// ring opened on turns nothing, whatever the trigger was doing.
 		v.turnPage = pull && !v.opened && QuickMenuPageCount(settings.pages) > 1;

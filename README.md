@@ -60,8 +60,8 @@ card is in the game: settings menu, Help, "Show the controls".
 | A | activate what the laser points at | in the inventory: drop the item under the cursor |
 | B | pause menu (Escape) | the Tab menus; they hang on this wrist, the other hand's laser clicks |
 | Stick | turn; held up: aim a teleport, let go to go; flick up: jump; flick down: sneak | walk; pressed in: run |
-| Stick button | short click: the rest menu. Held: the hotkey ring - move the hand to a slot, let go (Quest's way; Index can hold the trackpad instead) | - |
-| Trackpad (Index) | held: the hotkey ring | click: the journal |
+| Stick button | short click: the hotkey ring - move the hand to a slot, click again (in the middle: close). Held: the rest menu | pressed in: run |
+| Trackpad (Index) | held: the hotkey ring, let go on a slot | click: the journal |
 | Both stick buttons | clicked together: OBVR's settings. Held three seconds: recenter | |
 
 Make a fist (or squeeze the grip hard) to raise your fists; crouch to sneak.
