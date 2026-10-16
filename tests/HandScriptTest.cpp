@@ -484,6 +484,25 @@ void TestSaveLoad() {
 	StepScriptSaveLoad(stuck, true, true, kScriptLoadRetrySeconds);
 	Check(stuck.asked == kScriptLoadAsksMost, "asked a third time");
 	Check(!StepScriptSaveLoad(stuck, true, true, 100.0f), "after the last ask: never again");
+
+	// console-menu lines: handed to the main menu's console before the load.
+	HandScript menu;
+	ScriptParseError err;
+	Check(ParseHandScript("console-menu SetRaceScale HighElf 0 1.1\nconsole-menu SetRaceScale HighElf 1 1.1\nwait 1\n", menu,
+	                      err) &&
+	          menu.consoleMenu.size() == 2 && menu.consoleMenu[1] == "SetRaceScale HighElf 1 1.1",
+	      "console-menu lines parse, for the main menu");
+	Check(FailsOnLine("console-menu\n") == 1, "console-menu without a command");
+	ScriptSaveLoad menuLoad;
+	Check(ScriptMenuLinesDue(menuLoad, true, true, 0, 6) == 0, "menu lines: none before the menu has stood two seconds");
+	Check(!StepScriptSaveLoad(menuLoad, true, true, 2.5f, true), "with menu lines left the load waits");
+	Check(ScriptMenuLinesDue(menuLoad, true, true, 0, 6) == 4, "then four a frame");
+	Check(ScriptMenuLinesDue(menuLoad, true, true, 4, 6) == 2, "the rest in the next");
+	Check(ScriptMenuLinesDue(menuLoad, true, true, 6, 6) == 0, "all handed: none");
+	Check(ScriptMenuLinesDue(menuLoad, false, true, 0, 6) == 0 && ScriptMenuLinesDue(menuLoad, true, false, 0, 6) == 0,
+	      "no save, or no main menu: none");
+	Check(StepScriptSaveLoad(menuLoad, true, true, 0.1f, false) && menuLoad.asked == 1,
+	      "all handed: the load asked for");
 }
 
 }  // namespace

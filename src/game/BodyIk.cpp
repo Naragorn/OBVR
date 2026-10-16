@@ -504,9 +504,11 @@ void AlignFirstPersonArm(UInt32 side, const NiMatrix33& handRot, const NiPoint3&
 			w.scale = body[part]->worldTransform.scale;
 		}
 		const float divisor = parentScale > 0.0f ? parentScale : 1.0f;
+		// The true inverse: the parent's matrix may carry a race's height.
+		const NiMatrix33 inverseParent = InverseMatrix(parentRot);
 		NiTransform local;
-		local.rot = ik::Transposed(parentRot) * w.rot;
-		local.pos = (ik::Transposed(parentRot) * (w.pos - parentPos)) * (1.0f / divisor);
+		local.rot = inverseParent * w.rot;
+		local.pos = (inverseParent * (w.pos - parentPos)) * (1.0f / divisor);
 		local.scale = w.scale / divisor;
 		WriteLocal(writes[part], local);
 		w.set = true;
@@ -664,7 +666,7 @@ bool SolveArm(UInt32 side, const BodyArmsFrame& f, const TorsoKeepOut& torso) {
 	// frame's (UnwrapAngle), so a roll past a half turn does not flip a twist
 	// bone round, and the hand's roll followed up to three quarters of a turn
 	// either way (HoldForeRollMemory).
-	const float upperRollRaw = TwistAboutX(ik::Transposed(upper->worldTransform.rot) * s.upperRot);
+	const float upperRollRaw = TwistAboutX(InverseMatrix(upper->worldTransform.rot) * s.upperRot);
 	const float upperRoll = memory.valid ? UnwrapAngle(memory.upperRoll, upperRollRaw) : upperRollRaw;
 	const float foreRollRaw = math::WrapAngle(TwistAboutX(ik::Transposed(s.lowerRot) * targetRot) -
 	                                          TwistAboutX(hand->localTransform.rot));
@@ -680,7 +682,7 @@ bool SolveArm(UInt32 side, const BodyArmsFrame& f, const TorsoKeepOut& torso) {
 	stats.handRollDegrees = foreRoll * math::kRadiansToDegrees;
 	// Written, parent first.
 	NiTransform clavicleLocal = clavicle->localTransform;
-	clavicleLocal.rot = ik::Transposed(clavicleParent->worldTransform.rot) * clavicleRot;
+	clavicleLocal.rot = InverseMatrix(clavicleParent->worldTransform.rot) * clavicleRot;
 	WriteLocal(g_body[base + kClavicle], clavicleLocal);
 	WriteLocal(g_body[base + kUpper], LocalFor(upper->localTransform, clavicleRot, clavicle->worldTransform.pos,
 	                                           clavicle->worldTransform.scale, s.upperRot, shoulder));
@@ -888,7 +890,7 @@ void StepTrunk(bool standsIdle, float dtSeconds) {
 		const bool settled = StandingSettled(g_standingSeconds, standsIdle, dtSeconds);
 		const float scale = skeleton->worldTransform.scale > 0.0f ? skeleton->worldTransform.scale : 1.0f;
 		const NiPoint3 headFromRoot =
-			(ik::Transposed(skeleton->worldTransform.rot) * (head->worldTransform.pos - skeleton->worldTransform.pos)) *
+			(InverseMatrix(skeleton->worldTransform.rot) * (head->worldTransform.pos - skeleton->worldTransform.pos)) *
 			(1.0f / scale);
 		if (!settled || !HeadOffsetStands(headFromRoot)) {
 			return;
@@ -930,7 +932,10 @@ float StepBodyTorso(const BodyIkSettings& s, const BodyTorsoFrame& t) {
 	const float wanted = math::WrapAngle(t.headWorldYaw + offHead);
 	const float turn = math::WrapAngle(wanted - rootYaw);
 	NiTransform local = skeleton->localTransform;
-	local.rot = ik::Transposed(skeleton->parent->worldTransform.rot) * (ik::TurnAbout(kUp, turn) * skeleton->worldTransform.rot);
+	// The true inverse of the parent's matrix: an Altmer's carries the race's
+	// height, and a transpose of that squared the scale into the root and every
+	// bone below it (2026-10-16).
+	local.rot = InverseMatrix(skeleton->parent->worldTransform.rot) * (ik::TurnAbout(kUp, turn) * skeleton->worldTransform.rot);
 	WriteLocal(g_body[kRoot], local);
 	UpdateNodeTransforms(skeleton);
 	g_frame.bodyYaw = wanted;
@@ -960,7 +965,7 @@ float StepBodyTorso(const BodyIkSettings& s, const BodyTorsoFrame& t) {
 				}
 				NiTransform spine = bone->localTransform;
 				spine.rot =
-					ik::Transposed(bone->parent->worldTransform.rot) * (ik::TurnAbout(kUp, share) * bone->worldTransform.rot);
+					InverseMatrix(bone->parent->worldTransform.rot) * (ik::TurnAbout(kUp, share) * bone->worldTransform.rot);
 				WriteLocal(g_body[b], spine);
 				UpdateNodeTransforms(bone);
 			}
@@ -1041,7 +1046,7 @@ float StepBodyLegs(const BodyIkSettings& s, float loweredUnits) {
 		}
 		const NiMatrix33 footRot = foot->worldTransform.rot;  // the foot keeps its angle to the ground
 		NiTransform t = thigh->localTransform;
-		t.rot = ik::Transposed(thigh->parent->worldTransform.rot) * leg.upperRot;
+		t.rot = InverseMatrix(thigh->parent->worldTransform.rot) * leg.upperRot;
 		WriteLocal(g_body[base + kThigh], t);
 		WriteLocal(g_body[base + kCalf], LocalFor(calf->localTransform, leg.upperRot, thigh->worldTransform.pos,
 		                                          thigh->worldTransform.scale, leg.lowerRot, leg.joint));

@@ -664,3 +664,46 @@ rotation carry a scale. The write goes through `BodyRootLocalPos`, which
 inverts the parent's rotation by its transpose; a rotation with a scaled
 column has no such inverse, and a tenth of error there is not 2170 times - so
 the dry run is the next fact to read.
+
+### The cause (2026-10-16, the same day): a race's height is a scale in the player node's rotation matrix
+
+The reporting user plays an Altmer and runs no mods. Oblivion's Altmer are
+1.10 tall (the race's height), and his log's "columns 1.00 1.00 1.10" is
+where the engine keeps that: a scale of the third column of the player
+node's rotation matrix, not in the node's scale field. Our tester's
+character and the harness character are races of height 1.00, so their
+matrices are rotations and nothing of this ever showed.
+
+OBVR took the transpose for the inverse of every engine matrix it derived a
+local from - `InverseRotation` (core/Rotation.cpp, "rotation matrices are
+orthonormal, so transpose is their inverse"), and `ik::Transposed` in the
+body IK for the root's turn, the spine's twist, the clavicle, the thigh and
+the first-person arm laid onto the body. The transpose of a scaled matrix
+is not its inverse: a local written as `transpose(parent) * target` keeps
+the scale, the engine's update multiplies it in again, and where the target
+itself carries the parent's scale (the root turned: `transpose(parent) *
+(turn * root)`) it is squared at every bone written down the chain. 1.1
+squared nine times down to the wrist is what the log showed: the body let
+down 55423 units, the arm bones 2170 times long, the wrist at 5.9e17, the
+hands at not-a-number. Half the races have a height off 1.00 (Nord, Orc,
+Altmer, Argonian, Redguard), so this was waiting for most testers.
+
+**Built (beta 4):** `InverseMatrix` (game/NiMath.h) - the adjugate over the
+determinant, the transpose only for a matrix too close to singular to invert
+(a node collapsed to scale zero). `InverseRotation` is that now, and every
+`ik::Transposed` that stood for an inverse of an engine matrix in game/BodyIk.cpp
+and `CarriedLocal` is `InverseMatrix`. Tests: rotation_test (a rotation's
+inverse its transpose; a race's height cancelled from both sides; a sheared
+matrix; a flat one's fallback), bone_pin_test (the hand under a parent with
+the height), body_placement_test (the root under such a parent), body_ik_test
+(the shield carried under one). Harness: `body-ik-tall.txt` sets every race's
+scale to 1.10 at the main menu before the save loads (the new `console-menu`
+line, test/HandScriptConsole.h) and runs body-ik.txt's moves on the taller
+body, expecting "columns 1.00 1.00 1.10" and every check sane - but the
+race's scale set at the main menu did not reach the player built from the
+save (run 1: every line taken and run, the body still 1.00 and 112.4), so
+the scenario waits for a save of an Altmer in the world (`--save
+OBVRHarnessTall`). body-ik.txt on the usual body PASS with the new inverse;
+the reporting user's own run of beta 4 is the proof on a tall race until
+then. The guards of beta 2 and 3 stay as they are, for the next skeleton
+that reads like no body.

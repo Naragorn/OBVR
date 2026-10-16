@@ -176,8 +176,29 @@ struct ScriptSaveLoad {
 	UInt32 asked = 0;
 };
 
-// Whether to ask for the load in this frame.
-inline bool StepScriptSaveLoad(ScriptSaveLoad& s, bool haveSave, bool mainMenuUp, float dt) {
+// The script's `console-menu` lines go to the main menu's console before the
+// load, up to kScriptMenuLinesPerFrame a frame (the console's queue takes four
+// a frame), once the menu has stood kScriptLoadAfterSeconds; the load waits
+// until all of them are handed. For what has to stand before the player's
+// model is built - a race's scale (SetRaceScale) for one: the scale sits in
+// the player node's matrix from the model's build on, so a line after the
+// load changes nothing seen.
+inline constexpr UInt32 kScriptMenuLinesPerFrame = 4;
+
+// How many of the menu lines to hand this frame.
+inline UInt32 ScriptMenuLinesDue(const ScriptSaveLoad& s, bool haveSave, bool mainMenuUp, size_t handed,
+                                 size_t total) {
+	if (!haveSave || !mainMenuUp || handed >= total || s.mainMenuSeconds < kScriptLoadAfterSeconds) {
+		return 0;
+	}
+	const size_t left = total - handed;
+	return left < kScriptMenuLinesPerFrame ? static_cast<UInt32>(left) : kScriptMenuLinesPerFrame;
+}
+
+// Whether to ask for the load in this frame. `menuLinesLeft`: the script's
+// console-menu lines not all handed yet - the clock runs, the ask waits.
+inline bool StepScriptSaveLoad(ScriptSaveLoad& s, bool haveSave, bool mainMenuUp, float dt,
+                               bool menuLinesLeft = false) {
 	if (!haveSave) {
 		return false;
 	}
@@ -186,7 +207,7 @@ inline bool StepScriptSaveLoad(ScriptSaveLoad& s, bool haveSave, bool mainMenuUp
 		return false;
 	}
 	s.mainMenuSeconds += dt;
-	if (s.asked >= kScriptLoadAsksMost) {
+	if (s.asked >= kScriptLoadAsksMost || menuLinesLeft) {
 		return false;
 	}
 	const float due = kScriptLoadAfterSeconds + kScriptLoadRetrySeconds * static_cast<float>(s.asked);

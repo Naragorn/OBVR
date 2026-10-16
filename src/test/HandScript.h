@@ -44,6 +44,11 @@
 //                                    row would fire it (holster_fit)
 //   count <n> <text>                 for the runner: the log holds the text
 //                                    exactly n times
+//   console-menu <command>           handed to the main menu's console before
+//                                    the run's save is loaded, four a frame
+//                                    (test/HandScriptConsole.h): what has to
+//                                    stand before the player's model is built,
+//                                    a race's scale for one
 //   ini <Section> <Key>=<Value>      for the runner: written to OBVR-test.ini
 //   console <command>                for the runner: typed into the console once
 //                                    the script runs; {weapon} is the equipped
@@ -172,6 +177,7 @@ struct HandScript {
 	std::vector<std::string> ini;  // "Section Key=Value", for the runner
 	std::vector<std::string> console;  // console commands, for the runner
 	std::vector<std::string> consoleAt;  // "<mark> <command>", for the runner
+	std::vector<std::string> consoleMenu;  // handed to the main menu's console before the load
 	std::vector<std::string> counts;   // "n text", for the runner
 	std::vector<std::string> backgroundAt;  // marks, for the runner
 	std::vector<std::string> walkChecks;    // "moved|still|turned a b n", for the runner
@@ -388,6 +394,15 @@ inline bool ParseHandScript(const std::string& text, HandScript& out, ScriptPars
 				return fail("console needs a command");
 			}
 			out.console.push_back(rest);
+			continue;
+		} else if (word == "console-menu") {
+			// console-menu <command>: handed to the main menu's console before
+			// the save is loaded (test/HandScriptConsole.h).
+			const std::string rest = detail::Rest(line, word);
+			if (rest.empty()) {
+				return fail("console-menu needs a command");
+			}
+			out.consoleMenu.push_back(rest);
 			continue;
 		} else if (word == "console-at") {
 			// console-at <mark> <command>: typed by the runner when that mark

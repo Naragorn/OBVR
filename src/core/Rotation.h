@@ -17,8 +17,12 @@ namespace obvr {
 // the reference for the quaternion route.
 NiMatrix33 EulerToMatrix(float degreesX, float degreesY, float degreesZ);
 
-// The opposite of an orthonormal rotation. Exposed because the head needs the
-// exact rotation left after Spine2's share, including combined pitch and yaw.
+// The inverse of a rotation - or of whatever matrix an engine node holds in
+// its rotation's place: since 2026-10-16 the true inverse (game/NiMath.h,
+// InverseMatrix), because Oblivion lays a race's height into the player
+// node's rotation matrix, and a transpose taken for that scale's inverse tore
+// a tester's skeleton apart. Exposed because the head needs the exact
+// rotation left after Spine2's share, including combined pitch and yaw.
 NiMatrix33 InverseRotation(const NiMatrix33& rotation);
 
 // Expresses the same physical correction in another coordinate space.

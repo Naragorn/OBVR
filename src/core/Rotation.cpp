@@ -38,13 +38,10 @@ NiMatrix33 EulerToMatrix(float degreesX, float degreesY, float degreesZ) {
 }
 
 NiMatrix33 InverseRotation(const NiMatrix33& value) {
-	NiMatrix33 result{};
-	for (int row = 0; row < 3; ++row) {
-		for (int col = 0; col < 3; ++col) {
-			result.data[row][col] = value.data[col][row];
-		}
-	}
-	return result;
+	// The true inverse, not the transpose: the matrices this meets are not
+	// all rotations (game/NiMath.h, InverseMatrix - a race's height lives in
+	// the player node's rotation matrix). For a rotation the two are one.
+	return InverseMatrix(value);
 }
 
 NiMatrix33 RebaseRotation(const NiMatrix33& correction,

@@ -172,6 +172,15 @@ void TestParent() {
 	      "parent * local reproduces the wanted world position");
 	Check(NearPoint(EyesFromRoot(in, RootWorldFromLocal(in, local)), in.cameraWorld),
 	      "and the eyes land on the camera through the parent");
+	// An Altmer's parent: the race's height as a scale in the rotation's third
+	// column (2026-10-16). The root must still stand where the eyes meet the
+	// camera - the transpose taken for the inverse put it 55423 units down.
+	for (int row = 0; row < 3; ++row) {
+		in.parentRot.data[row][2] *= 1.1f;
+	}
+	const NiPoint3 tallLocal = BodyRootLocalPos(in);
+	Check(NearPoint(RootWorldFromLocal(in, tallLocal), BodyRootWorldWanted(in)),
+	      "a parent carrying a race's height: parent * local is still the wanted position");
 
 	in.parentScale = 0.0f;
 	const NiPoint3 localNoScale = BodyRootLocalPos(in);

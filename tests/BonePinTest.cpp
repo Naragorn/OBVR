@@ -134,6 +134,16 @@ void TestLocalUnderParent() {
 	const BonePose plain = LocalUnderParent(NiMatrix33::Identity(), NiPoint3{0, 0, 0}, 1.0f, wanted);
 	Check(NearMatrix(plain.rot, wanted.rot) && NearPoint(plain.pos, wanted.pos),
 	      "under an identity parent the local is the world");
+
+	// A parent whose rotation carries a race's height (an Altmer's player
+	// node: the third column 1.10 long): the hand still lands where wanted.
+	NiMatrix33 tall = parentRot;
+	for (int row = 0; row < 3; ++row) {
+		tall.data[row][2] *= 1.1f;
+	}
+	const BonePose underTall = LocalUnderParent(tall, parentPos, 1.0f, wanted);
+	Check(NearMatrix(tall * underTall.rot, wanted.rot) && NearPoint(parentPos + tall * underTall.pos, wanted.pos),
+	      "a parent carrying a race's height: the world pose is still the wanted one");
 }
 
 void TestCalibration() {

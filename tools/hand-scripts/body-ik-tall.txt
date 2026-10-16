@@ -1,0 +1,134 @@
+# The body IK on a race with height (the beta report of 2026-10-16: an Altmer,
+# whose race height of 1.10 Oblivion lays into the player node's rotation
+# matrix as a scale of the third column; the transposes taken for inverses of
+# that matrix tore his skeleton 2170 times apart within a frame and pushed
+# his hands off the controllers). Every race's scale is set to 1.10 at the
+# main menu before the save loads (console-menu), so the harness character
+# stands a tenth taller whatever race it is; then body-ik.txt's moves. The
+# three "Body check" lines must read the taller body sane ("columns 1.00 1.00
+# 1.10", the head about 124 units), every arm must follow and nothing may be
+# left to the body.
+# Run 1 (2026-10-16, beta 4): every SetRaceScale line was taken and run at the
+# main menu, and the loaded player still read columns 1.00 and the head 112.4 -
+# the race's scale set there does not reach the player built from a save. The
+# scenario therefore needs a save of a tall race: an Altmer standing in the
+# world in first person, saved as OBVRHarnessTall.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/body-ik-tall.txt --save OBVRHarnessTall
+
+ini Hands Enabled=1
+ini Body Visible=1
+ini Body IK=1
+ini Body IKArms=1
+ini Body IKTorso=1
+ini Body IKLegs=1
+ini Body EyeForward=5.6
+console-menu SetRaceScale Argonian 0 1.1
+console-menu SetRaceScale Argonian 1 1.1
+console-menu SetRaceScale Breton 0 1.1
+console-menu SetRaceScale Breton 1 1.1
+console-menu SetRaceScale DarkElf 0 1.1
+console-menu SetRaceScale DarkElf 1 1.1
+console-menu SetRaceScale HighElf 0 1.1
+console-menu SetRaceScale HighElf 1 1.1
+console-menu SetRaceScale Imperial 0 1.1
+console-menu SetRaceScale Imperial 1 1.1
+console-menu SetRaceScale Khajiit 0 1.1
+console-menu SetRaceScale Khajiit 1 1.1
+console-menu SetRaceScale Nord 0 1.1
+console-menu SetRaceScale Nord 1 1.1
+console-menu SetRaceScale Orc 0 1.1
+console-menu SetRaceScale Orc 1 1.1
+console-menu SetRaceScale Redguard 0 1.1
+console-menu SetRaceScale Redguard 1 1.1
+console-menu SetRaceScale WoodElf 0 1.1
+console-menu SetRaceScale WoodElf 1 1.1
+
+expect HandScript: finished
+expect Body IK: the third-person skeleton - 27 of 27 bones found
+expect Body IK: the right arm follows its hand
+expect Body IK: the left arm follows its hand
+expect the right arm reaches its hand
+expect the left arm reaches its hand
+expect the right arm falls short of its hand
+expect Body IK: the body turns with the head
+expect the feet put back
+expect Body IK: the trunk's pose taken from the standing idle
+expect Body check:
+expect columns 1.00 1.00 1.10
+reject longer than any arm's
+expect Body check after the engine's own update of Bip01, nothing written
+expect Body check after the placement
+reject the body is left hidden
+reject HandScript: WARNING
+reject Body IK: the right arm left to the body
+reject Body IK: the left arm left to the body
+
+wait 12
+right pos 0.25 -0.30 -0.35
+right rot 50 0 0
+left pos -0.25 -0.30 -0.35
+left rot 50 0 0
+head pitch -45
+wait 2
+mark front
+dump
+wait 1
+right pos 0.30 0.20 -0.15
+right rot 80 0 0
+left pos -0.12 0.15 -0.45
+left rot 60 0 0
+wait 2
+mark raised
+dump
+wait 1
+right pos -0.15 -0.15 -0.25
+right rot 30 70 0
+left pos -0.30 -0.45 -0.05
+left rot 50 0 0
+wait 2
+mark across
+dump
+head pitch -20
+wait 2
+mark across-level
+dump
+wait 1
+head pitch -45
+right pos 1.20 -0.20 -0.10
+right rot 30 -70 0
+left pos -0.25 -0.30 -0.35
+wait 2
+mark far
+dump
+wait 1
+right pos 0.25 -0.30 -0.35
+right rot 50 0 0
+head pos 0 1.15 0
+head pitch -60
+wait 2
+mark crouch
+dump
+wait 1
+head pos 0 1.6 0
+head pitch -30
+wait 1
+head yaw 10
+wait 0.05
+head yaw 20
+wait 0.05
+head yaw 30
+wait 0.05
+head yaw 40
+wait 0.05
+head yaw 50
+wait 0.05
+head yaw 60
+wait 0.05
+head yaw 70
+wait 0.1
+mark turning
+wait 3
+mark turned
+dump
+wait 1
+mark end

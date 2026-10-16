@@ -38,7 +38,20 @@ UInt32 g_nearForm = 0;
 // it has stood a moment (StepScriptSaveLoad).
 void StepSaveLoad(float dt, bool mainMenuUp) {
 	const char* save = GetConfig().handScriptLoad;
-	if (!StepScriptSaveLoad(g_saveLoad, save[0] != '\0', mainMenuUp, dt)) {
+	const bool haveSave = save[0] != '\0';
+	// The script's console-menu lines first, four a frame, then the load.
+	static size_t s_menuHanded = 0;
+	const size_t menuTotal = g_loaded ? g_script.consoleMenu.size() : 0;
+	const bool ask = StepScriptSaveLoad(g_saveLoad, haveSave, mainMenuUp, dt, s_menuHanded < menuTotal);
+	const UInt32 due = ScriptMenuLinesDue(g_saveLoad, haveSave, mainMenuUp, s_menuHanded, menuTotal);
+	for (UInt32 i = 0; i < due; ++i) {
+		const std::string& menuLine = g_script.consoleMenu[s_menuHanded++];
+		const bool menuTaken = game::RequestConsoleLine(menuLine.c_str());
+		OBVR_LOG("HandScript: asked the main menu's console for \"%s\" before the load (%u of %u, %s)",
+		         menuLine.c_str(), static_cast<UInt32>(s_menuHanded), static_cast<UInt32>(menuTotal),
+		         menuTaken ? "taken" : "refused");
+	}
+	if (!ask) {
 		return;
 	}
 	char line[96];

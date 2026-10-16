@@ -493,7 +493,7 @@ inline NiTransform CarriedLocal(const NiTransform& oldParentWorld, const NiTrans
 	world.scale = oldParentWorld.scale * childLocal.scale;
 	// Taken back under the new parent.
 	const float scale = newParentWorld.scale > 0.0f ? newParentWorld.scale : 1.0f;
-	const NiMatrix33 inverse = ik::Transposed(newParentWorld.rot);
+	const NiMatrix33 inverse = InverseMatrix(newParentWorld.rot);  // not the transpose: a race's height sits in these matrices
 	NiTransform local;
 	local.rot = inverse * world.rot;
 	local.pos = (inverse * (world.pos - newParentWorld.pos)) * (1.0f / scale);

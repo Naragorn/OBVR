@@ -626,6 +626,15 @@ void TestCarried() {
 	Check(NearPoint(Through(scaledBefore, corner), Through(scaledAfter, corner), 1e-3f) &&
 	          Near(scaledAfter.scale, scaledBefore.scale, 1e-4f),
 	      "parents of other sizes: still where it was, its world size kept");
+	// A new parent whose rotation carries a race's height (the third column
+	// 1.10 long): every point of the child still where it was.
+	obvr::NiTransform tallParent = newParent;
+	for (int row = 0; row < 3; ++row) {
+		tallParent.rot.data[row][2] *= 1.1f;
+	}
+	const obvr::NiTransform underTall = Compose(tallParent, CarriedLocal(oldParent, tallParent, child));
+	Check(NearPoint(Through(scaledBefore, corner), Through(underTall, corner), 1e-3f),
+	      "a parent carrying a race's height: still where it was");
 	// A new parent of no size is taken as size one, not a division by zero.
 	newParent.scale = 0.0f;
 	const obvr::NiTransform zero = CarriedLocal(oldParent, newParent, child);

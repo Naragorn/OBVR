@@ -273,7 +273,43 @@ void TestForwardAxis() {
 
 }  // namespace
 
+// The inverse of what an engine node holds in its rotation's place: a race's
+// height is a scale in the player node's matrix (an Altmer's third column
+// 1.10 long, 2026-10-16), and the transpose is no inverse of that.
+void TestInverseOfAnyMatrix() {
+	std::printf("The inverse of a matrix that is not a rotation\n");
+	using obvr::EulerToMatrix;
+	using obvr::InverseMatrix;
+	using obvr::InverseRotation;
+	using obvr::NiMatrix33;
+	const NiMatrix33 rotation = EulerToMatrix(12.0f, -30.0f, 75.0f);
+	CheckMatrixNear(InverseRotation(rotation), Transposed(rotation), "a rotation's inverse is its transpose");
+	NiMatrix33 tall = rotation;
+	for (int row = 0; row < 3; ++row) {
+		tall.data[row][2] *= 1.1f;
+	}
+	CheckMatrixNear(tall * InverseRotation(tall), NiMatrix33::Identity(), "a race's height in the matrix: the inverse cancels it");
+	CheckMatrixNear(InverseRotation(tall) * tall, NiMatrix33::Identity(), "from the other side as well");
+	NiMatrix33 sheared = rotation;
+	sheared.data[0][1] += 0.3f;
+	sheared.data[2][0] -= 0.2f;
+	CheckMatrixNear(sheared * InverseMatrix(sheared), NiMatrix33::Identity(), "a sheared matrix: still its inverse");
+	NiMatrix33 flat{};
+	flat.data[0][0] = 1.0f;
+	flat.data[1][1] = 1.0f;
+	const NiMatrix33 fallback = InverseMatrix(flat);
+	bool finite = true;
+	for (int row = 0; row < 3; ++row) {
+		for (int col = 0; col < 3; ++col) {
+			finite = finite && fallback.data[row][col] == fallback.data[row][col];
+		}
+	}
+	CheckMatrixNear(fallback, Transposed(flat), "a matrix with no inverse (a node collapsed flat) gets its transpose");
+	CheckNear(finite ? 1.0f : 0.0f, 1.0f, "and no number that is none");
+}
+
 int main() {
+	TestInverseOfAnyMatrix();
 	std::printf("OBVR rotation test\n\n");
 
 	TestMatrixArithmetic();
