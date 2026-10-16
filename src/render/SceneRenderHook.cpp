@@ -539,6 +539,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	SetBonePassMode(BonePassMode::Capture);
 	BeginLeafAudit(false);
 	BeginCullingCapture();
+	PrepareWorldViewport("the first eye's render");
 	g_original(self, unusedEdx, renderedTexture);
 	PauseCullingCapture();
 	SetBonePassMode(BonePassMode::Off);
@@ -599,6 +600,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	SetBonePassMode(BonePassMode::Replace);
 	BeginLeafAudit(true);
 	BeginCullingReplay();
+	PrepareWorldViewport("the second eye's render");
 	g_original(self, unusedEdx, renderedTexture);
 	SetBonePassMode(BonePassMode::Off);
 	EndCullingSync(g_sceneCall);

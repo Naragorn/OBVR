@@ -80,6 +80,16 @@ InterfaceViewportAction DecideInterfaceViewport(UInt32 viewportX, UInt32 viewpor
 	return InterfaceViewportAction::Shrink;
 }
 
+bool WorldViewportLeftShrunk(UInt32 viewportX, UInt32 viewportY, UInt32 viewportWidth,
+                             UInt32 viewportHeight, UInt32 frameWidth, UInt32 frameHeight,
+                             UInt32 believedWidth, UInt32 believedHeight) {
+	if (believedWidth == frameWidth && believedHeight == frameHeight) {
+		return false;
+	}
+	return viewportX == 0 && viewportY == 0 && viewportWidth == believedWidth &&
+	       viewportHeight == believedHeight;
+}
+
 bool UiScreenSizeFollowsFrame(bool enabled, UInt32 askedWidth, UInt32 askedHeight,
                               UInt32 newWidth, UInt32 newHeight) {
 	const UInt32 readWidth = *reinterpret_cast<const UInt32*>(addr::kUiScreenWidthCopy);

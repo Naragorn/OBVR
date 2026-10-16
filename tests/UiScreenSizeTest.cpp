@@ -114,6 +114,18 @@ void TestInterfaceViewport() {
 	Check(DecideInterfaceViewport(0, 100, 4028, 3380, 4028, 3380, 4028, 2266) ==
 	          InterfaceViewportAction::LeaveAlone,
 	      "an offset viewport passes through even at frame size");
+
+	std::printf("When a world render starts in the pass's rectangle\n");
+	using obvr::render::WorldViewportLeftShrunk;
+	Check(WorldViewportLeftShrunk(0, 0, 4028, 2266, 4028, 3380, 4028, 2266),
+	      "the believed rectangle left by the 2D pass: the world needs the frame back");
+	Check(!WorldViewportLeftShrunk(0, 0, 4028, 3380, 4028, 3380, 4028, 2266),
+	      "already the full frame: nothing to do");
+	Check(!WorldViewportLeftShrunk(0, 0, 4028, 3380, 4028, 3380, 4028, 3380),
+	      "a belief equal to the frame: never");
+	Check(!WorldViewportLeftShrunk(100, 200, 640, 480, 4028, 3380, 4028, 2266) &&
+	          !WorldViewportLeftShrunk(0, 100, 4028, 2266, 4028, 3380, 4028, 2266),
+	      "any other viewport is the render's own");
 }
 
 }  // namespace

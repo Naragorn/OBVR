@@ -105,4 +105,13 @@ InterfaceViewportAction DecideInterfaceViewport(UInt32 viewportX, UInt32 viewpor
                                                 UInt32 frameWidth, UInt32 frameHeight,
                                                 UInt32 believedWidth, UInt32 believedHeight);
 
+// Whether a world render is about to start in the believed rectangle the
+// 2D pass left behind: exactly (0, 0, believed size) while the belief is not
+// the frame. The world is drawn into the whole frame - the eyes see all of
+// it - and a viewport left shrunk by the pass before it cuts the world to
+// the believed rows (indoors, 2026-09-26: "nur ein oberes Bild").
+bool WorldViewportLeftShrunk(UInt32 viewportX, UInt32 viewportY, UInt32 viewportWidth,
+                             UInt32 viewportHeight, UInt32 frameWidth, UInt32 frameHeight,
+                             UInt32 believedWidth, UInt32 believedHeight);
+
 }  // namespace obvr::render
