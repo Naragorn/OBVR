@@ -1,0 +1,59 @@
+# The spell ring on the other hand (docs/controls-spec.md 4.44; the tester,
+# 2026-10-15: "linker stick press nicht mehr quests sondern eine zauberbuch
+# als hotkey wie wir das schon rechts haben"): a short click of the left
+# stick opens the player's spellbook on the ring, latched; the hand moved up
+# lights slot 1, the next click makes that spell the active one. Then the
+# left stick held past StickHoldSeconds: the run, and no ring on its release.
+# Flare (000A97DF, "All players start with this spell", UESP) is added by the
+# console so the book is never empty whatever the save's character knows;
+# the harness character has it already, with Heal Minor Wounds and the
+# Lover's Kiss power, so the ring shows the three in the order of the names.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/spell-ring.txt
+
+ini Hands Enabled=1
+ini Hands SpellRing=1
+console player.addspell 000A97DF
+
+expect HandScript: finished
+count 1 SpellRing: opened at the other hand
+expect the spell ring's picture saved as OBVR-SpellRing-ring_open.bmp
+expect the spell ring's picture saved as OBVR-SpellRing-slot1_lit.bmp
+expect 3 spell(s) known, page 1 of 1: 1 Flare, 2 Heal Minor Wounds, 3 Lover's Kiss, 4 -
+expect SpellRing: slot 1 used (Flare
+expect the engine took it; the active spell now Flare
+reject SpellRing: closed without a spell
+reject SpellRing: the player's base form could not be read
+reject QuickMenu: opened at the hand
+reject Hands: menu SleepWait
+reject HandScript: WARNING
+
+# Time for the runner to type the console lines and the console to close.
+wait 16
+mark standing
+left pos -0.15 -0.30 -0.35
+wait 0.3
+# A short click: the ring, latched.
+left click 1
+wait 0.12
+left click 0
+wait 0.6
+mark ring_open
+# Up from where it opened: slot 1.
+left pos -0.15 -0.22 -0.35
+wait 0.4
+mark slot1_lit
+# The next click lets go: slot 1's spell made the active one.
+left click 1
+wait 0.12
+left click 0
+wait 1.5
+mark after_use
+# Held: the run, and its release opens no ring.
+left pos -0.15 -0.30 -0.35
+wait 0.3
+left click 1
+wait 0.9
+left click 0
+wait 1.0
+mark after_hold
+wait 1

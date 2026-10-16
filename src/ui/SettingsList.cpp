@@ -1667,7 +1667,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.quickMenu.pages = vr::QuickMenuPageCount(static_cast<int>(v + 0.5f)); },
 	},
 	{
-		"Hands: menus", "Stick hold", "Seconds the right stick's button is held for the rest menu; a shorter click is the quick menu",
+		"Hands: menus", "Spell ring", "Full VR: click the other stick, move to a spell, click again - the spells you know, eight a page, the trigger turns them",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "SpellRing",
+		+[](const Config& c) { return c.hands.spellRing ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.spellRing = v != 0.0f; },
+	},
+	{
+		"Hands: menus", "Stick hold", "Seconds a stick's button is held: the right for the rest menu, the left for the run; a shorter click is a ring",
 		ItemKind::Number, 0.3f, 2.0f, 0.1f, 1, false,
 		"Hands", "StickHoldSeconds",
 		+[](const Config& c) { return c.hands.stickHoldSeconds; },

@@ -94,8 +94,9 @@ struct HandSettings {
 	float stickDeadZone = 0.4f;
 	// How long the right stick's button is held before the hold counts
 	// (vr::StepStickHold): the hold is the Rest menu (ready weapon with the
-	// holsters off), a shorter press the quick menu's click. The left stick
-	// is the walk's and the run's alone. Longer than the stick chord's window
+	// holsters off), a shorter press the quick menu's click. The left stick's
+	// hold stays the run's, its short click the spell ring's (spellRing).
+	// Longer than the stick chord's window
 	// (kStickChordWindowSeconds), so a chord that forms late is not a hold.
 	float stickHoldSeconds = 0.4f;
 	float turnSpeed = 12.0f;
@@ -450,6 +451,12 @@ struct HandSettings {
 	float scrollIntervalSeconds = 0.12f;
 	// The quick menu on the right trackpad ([Hands] QuickMenu, vr::QuickMenu).
 	QuickMenuSettings quickMenu;
+	// The spell ring on the other hand (vr/SpellRing.h; docs/controls-spec.md
+	// 4.44): the other stick's short click opens the player's spellbook on
+	// the quick menu's ring, the next click makes the chosen spell the active
+	// one, the other trigger turns its pages. The stick held past
+	// stickHoldSeconds stays the run's.
+	bool spellRing = true;
 
 	// Drawing by reaching: the sword from the left hip, the bow from the left
 	// shoulder ([Hands] Holsters, vr::Holster).
@@ -702,6 +709,9 @@ struct HandModeResult {
 	// The right stick's button clicked short (vr::StepStickHold): the quick
 	// menu's tap - the ring opens latched, the next tap lets go of it.
 	bool ringTap = false;
+	// The other stick's button clicked short: the spell ring's tap, the same
+	// way (HandSettings::spellRing).
+	bool spellRingTap = false;
 	// The sticks move the player under a container's menu opened by reaching
 	// (HandModeFrame::walkUnderMenu): the player's controls are to run, and
 	// the laser's cursor is left where it is.
@@ -940,6 +950,7 @@ private:
 	RepeatState m_scrollDown;
 	StickChordState m_sticks;
 	StickHoldState m_rightStickHold;
+	StickHoldState m_leftStickHold;
 	StickNavState m_navRight;
 	StickNavState m_navLeft;
 	PokeState m_poke;

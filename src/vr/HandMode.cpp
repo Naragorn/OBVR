@@ -416,6 +416,17 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		m_rightStickHold, f.right.valid && StickClickDown(f.right.buttonsPressed),
 		!m_sticks.chorded, s.stickHoldSeconds, f.dtSeconds);
 	r.ringTap = sticks.rightClick && !stickHold.longRelease;
+	// The other stick the same way for the spell ring (the tester, 2026-10-15:
+	// "linker stick press nicht mehr quests sondern eine zauberbuch als
+	// hotkey wie wir das schon rechts haben"): its short click the ring's
+	// tap, its hold the run's as before - held, the run control is down from
+	// the press on; toggled, the hold reached switches it. With the ring off
+	// the click is what it was.
+	const StickHoldVerdict leftHold = StepStickHold(
+		m_leftStickHold, f.left.valid && StickClickDown(f.left.buttonsPressed),
+		!m_sticks.chorded && s.spellRing, s.stickHoldSeconds, f.dtSeconds);
+	r.spellRingTap = s.spellRing && sticks.leftClick && !leftHold.longRelease;
+	const bool runToggleClick = s.spellRing ? leftHold.reached : sticks.leftClick;
 
 	// OBVR's own menu open: the sticks are its arrow keys, either hand's, and
 	// nothing reaches the game - a stick that scrolls the menu must not walk
@@ -650,7 +661,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	}
 	r.controls.readyWeapon =
 		r.controls.readyWeapon || r.holster.readyClick || r.fist.readyClick || f.readyWeaponClick;
-	r.controls.run = StepRunToggle(m_runLatched, s.runToggle, in.leftStickClick, r.controls.run);
+	r.controls.run = StepRunToggle(m_runLatched, s.runToggle, runToggleClick, r.controls.run);
 	HoldTaps(r.controls, f, r);
 	if (!f.menuMode && cr.valid) {
 		r.controls.sneak = StepSneakTap(m_sneak, s.sneakHold, r.controls.sneak, m_rightFlick.down,

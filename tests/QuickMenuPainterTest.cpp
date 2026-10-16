@@ -189,6 +189,69 @@ void TestPageDots() {
 	          canvas.GetPixel(c - kQuickMenuDotSpacing / 2, y).a > 0,
 	      "two pages: centred about the middle");
 	Check(canvas.GetPixel(c, c + 30).a == 0, "the dots stand above the middle, clear of the words under it");
+	// Ten pages, the spell ring's most: the row stays clear of the side
+	// slots' boxes (slot 3's box begins half a box width short of the ring).
+	view.pageCount = 10;
+	view.page = 9;
+	PaintQuickMenu(canvas, view);
+	const SInt32 lastDot = c + 9 * kQuickMenuDotSpacing / 2;
+	Check(Same(canvas.GetPixel(lastDot, y), gold), "ten pages: the tenth dot drawn");
+	Check(lastDot + kQuickMenuDotRadius < c + kQuickMenuRingPixels - kQuickMenuBoxWidth / 2,
+	      "and the row ends before slot 3's box");
+}
+
+void TestSpellRingMarks() {
+	std::printf("The spell ring's marks\n");
+	std::vector<render::Pixel> pixels(kQuickMenuCanvas * kQuickMenuCanvas);
+	Canvas canvas(pixels.data(), kQuickMenuCanvas, kQuickMenuCanvas);
+	const SInt32 c = static_cast<SInt32>(kQuickMenuCanvas) / 2;
+	const render::Pixel gold = SwapRedAndBlue(render::Pixel{222, 190, 140, 255});
+	QuickMenuView view;
+	for (int i = 0; i < 8; ++i) {
+		view.filled[i] = i < 3;
+		std::snprintf(view.names[i], sizeof(view.names[i]), "Spell %d", i + 1);
+	}
+	// Slot 1 at the top: the dot's place at its box's top right.
+	const SInt32 dotX = c + kQuickMenuBoxWidth / 2 - kQuickMenuActiveInset;
+	const SInt32 dotY = c - kQuickMenuRingPixels - kQuickMenuBoxHeight / 2 + kQuickMenuActiveInset;
+	PaintQuickMenu(canvas, view);
+	Check(!Same(canvas.GetPixel(dotX, dotY), gold), "no active spell: no dot");
+	view.active = 0;
+	PaintQuickMenu(canvas, view);
+	Check(Same(canvas.GetPixel(dotX, dotY), gold), "slot 1 active: a gold dot at its corner");
+	Check(canvas.GetPixel(dotX, dotY + 2 * kQuickMenuActiveRadius + 2).a == 215, "and the panel under it");
+	view.highlighted = 0;
+	PaintQuickMenu(canvas, view);
+	const render::Pixel dark = SwapRedAndBlue(render::Pixel{30, 22, 14, 255});
+	Check(Same(canvas.GetPixel(dotX, dotY), dark), "the active slot lit: the dot dark on the gold");
+	view.highlighted = -1;
+	view.active = 5;
+	PaintQuickMenu(canvas, view);
+	Check(!Same(canvas.GetPixel(dotX, dotY), gold), "another slot active: slot 1 without the dot");
+	// Slot 6 is empty: no dot on an empty slot even if named active.
+	float u = 0.0f;
+	float v = 0.0f;
+	vr::QuickSlotCentre(5, static_cast<float>(kQuickMenuRingPixels), u, v);
+	const SInt32 emptyDotX = c + static_cast<SInt32>(u) + kQuickMenuBoxWidth / 2 - kQuickMenuActiveInset;
+	const SInt32 emptyDotY = c - static_cast<SInt32>(v) - kQuickMenuBoxHeight / 2 + kQuickMenuActiveInset;
+	Check(!Same(canvas.GetPixel(emptyDotX, emptyDotY), gold), "an empty slot gets no dot");
+	// The title under the middle, where "Set hotkey" goes when setting.
+	bool ink = false;
+	for (SInt32 yy = c + 24; yy < c + 24 + 20 && !ink; ++yy) {
+		for (SInt32 x = c - 80; x < c + 80; ++x) {
+			ink = ink || Same(canvas.GetPixel(x, yy), gold);
+		}
+	}
+	Check(!ink, "no title: nothing under the middle");
+	std::snprintf(view.title, sizeof(view.title), "Spells");
+	PaintQuickMenu(canvas, view);
+	ink = false;
+	for (SInt32 yy = c + 24; yy < c + 24 + 20 && !ink; ++yy) {
+		for (SInt32 x = c - 80; x < c + 80; ++x) {
+			ink = ink || Same(canvas.GetPixel(x, yy), gold);
+		}
+	}
+	Check(ink, "\"Spells\" written under the middle");
 }
 
 void TestStowSpot() {
@@ -219,6 +282,7 @@ int main() {
 	TestPaint();
 	TestIcons();
 	TestPageDots();
+	TestSpellRingMarks();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

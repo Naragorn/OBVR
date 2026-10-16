@@ -22,7 +22,18 @@ struct QuickMenuView {
 	// shown filled. One page draws no dots.
 	int page = 0;
 	int pageCount = 1;
+	// The spell ring (vr/SpellRing.h): the slot of the spell that is active
+	// now, marked with a gold dot at its corner; -1 marks none.
+	int active = -1;
+	// Words under the middle while nothing is being set ("Spells" on the
+	// spell ring); empty, nothing.
+	char title[16] = "";
 };
+
+// The active mark: its radius and how far in from the box's top right
+// corner it stands.
+inline constexpr SInt32 kQuickMenuActiveRadius = 6;
+inline constexpr SInt32 kQuickMenuActiveInset = 14;
 
 // The page dots: their radius, the distance between their centres, and how
 // far above the middle their row stands.

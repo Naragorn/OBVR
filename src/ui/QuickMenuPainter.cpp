@@ -99,9 +99,10 @@ void PaintQuickMenu(Canvas& canvas, const QuickMenuView& view) {
 			}
 		}
 	}
-	if (view.assigning) {
-		const SInt32 width = static_cast<SInt32>(TextWidth(kQuickMenuAssignLabel)) * kNameScale;
-		canvas.DrawText(centre - width / 2, centre + 24, kQuickMenuAssignLabel, kNameScale, kGold);
+	const char* const underMiddle = view.assigning ? kQuickMenuAssignLabel : view.title;
+	if (underMiddle[0] != '\0') {
+		const SInt32 width = static_cast<SInt32>(TextWidth(underMiddle)) * kNameScale;
+		canvas.DrawText(centre - width / 2, centre + 24, underMiddle, kNameScale, kGold);
 	}
 	const UInt32 perLine =
 		static_cast<UInt32>((kBoxWidth - 2 * kPad) / (static_cast<SInt32>(kGlyphAdvance) * kNameScale));
@@ -123,6 +124,12 @@ void PaintQuickMenu(Canvas& canvas, const QuickMenuView& view) {
 		if (filled) {
 			canvas.BlendImage(x + (kBoxWidth - kIcon) / 2, y + kIconTop, view.icons[slot], kQuickMenuIconSide,
 			                  kQuickMenuIconSide);
+		}
+		if (filled && view.active == slot) {
+			// The active spell: a dot at the box's top right, dark on the lit
+			// gold, gold on the panel.
+			FillDot(canvas, x + kBoxWidth - kQuickMenuActiveInset, y + kQuickMenuActiveInset,
+			        kQuickMenuActiveRadius, lit ? kTextDark : kGold);
 		}
 		char first[40];
 		char second[40];

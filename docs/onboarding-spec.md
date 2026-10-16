@@ -98,6 +98,27 @@ A hint is one `GuidePanelText` on a `CanvasOverlay` (the holster-fit layer's sha
 
 ### 3.4 Vanilla's prompts in Full VR
 
+- **Decided 2026-10-16 (the tester: "wir werden versuchen die tutorial cards
+  im new game dungeon deren texte zu ersetzen ... mit unseren vr controls").**
+  The tutorial cards of the new game's dungeon - the prison intro's messages
+  that name the keyboard, mouse and gamepad controls - are to say OBVR's VR
+  controls instead. Two routes, neither researched yet:
+  - **The DLL alone (try first):** catch the message's text where the engine
+    builds it or where the MessageMenu (0x3E9) is given it, and swap it from
+    a table by role - no plugin in the load order, one zip as now. Cost:
+    small to medium once the place is found; the research is the unknown
+    (REA over the message path from the quest script's Message command to
+    the menu's text tile), and a new game in Full VR is the test, in the
+    harness through a save at the dungeon's first message.
+  - **An ESP:** override the tutorial quest's scripts with the texts changed
+    (the messages are compiled script text in Oblivion.esm). Cost: medium -
+    the Construction Set or a script compiler, a plugin to ship and to keep
+    in the load order, conflicts with mods that touch the same quest; sure
+    to work, since it is what the game reads anyway. Taken if the DLL route
+    cannot catch the text.
+  - Either way the words come from one table that the controls card
+    (ui/NativeControlsCard.h) and the README's table are kept to.
+
 - **Research first:** where the engine substitutes the key name into a message. Candidates: the "%s" in the tutorial quest messages is filled by the control map's key name (UESP: the tutorial messages name the bound key), so the function that turns a control index into a key name is the place. Not found yet; nothing is known about its address.
 - Then: with the mode on, answer the controller's name for the control the mode presses (`game::ApplyHandControls` knows which key stands for which role): "Forward" becomes "left stick", "Activate" "A on the weapon hand", "Ready weapon" "reach to your hip".
 - The in-menu prompts ("Press E to take") follow from the same place if it is the one.

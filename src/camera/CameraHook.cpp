@@ -97,6 +97,7 @@
 #include "game/ItemIcons.h"
 #include "game/ArmStump.h"
 #include "game/QuickKeyPages.h"
+#include "game/SpellBook.h"
 #include "game/TeleportNoise.h"
 #include "game/GameSound.h"
 #include "platform/PluginPath.h"
@@ -124,6 +125,7 @@
 #include "ui/SettingsMenu.h"
 #include "ui/SettingsMenuLayer.h"
 #include "ui/QuickMenuPainter.h"
+#include "vr/SpellRing.h"
 #include "ui/EnemyHealthPainter.h"
 #include "ui/StowSpotPainter.h"
 #include "ui/GuidePanel.h"
@@ -1678,6 +1680,8 @@ bool g_holsterFitWasLeftB = false;
 bool g_holsterFitWasRightB = false;
 
 vr::QuickMenuState g_quickMenu;
+// The spell ring on the other hand: the same state machine, its own state.
+vr::QuickMenuState g_spellRing;
 
 // Stowing a held item at the body (vr::StepStow).
 vr::StowState g_stow;
@@ -2292,6 +2296,26 @@ UInt32 g_quickMenuRevision = 1;
 vr::openvr::HmdMatrix34 g_quickMenuPose{};
 UInt32 g_quickMenuLinesLeft = 30;
 
+// The spell ring on the other hand (vr/SpellRing.h, game/SpellBook.h,
+// docs/controls-spec.md 4.44): the quick menu's ring with the player's
+// spellbook on it, at the other hand, opened latched by that stick's short
+// click (the hand mode's spellRingTap), the next click making the chosen
+// spell the active one; the other trigger turns its pages of eight.
+ui::CanvasOverlay g_spellRingLayer("obvr.spellring", "OBVR Spell Ring", ui::kQuickMenuCanvas,
+                                   ui::kQuickMenuCanvas);
+ui::QuickMenuView g_spellRingView;
+char g_spellRingIconPaths[vr::kSpellRingSlots][128] = {};
+vr::SpellBook g_spellBook;
+int g_spellRingPage = 0;
+// The other hand's trigger as read, and whether the ring keeps it.
+bool g_spellRingTrigger = false;
+bool g_spellRingKeepsTrigger = false;
+UInt32 g_spellRingRevision = 1;
+vr::openvr::HmdMatrix34 g_spellRingPose{};
+UInt32 g_spellRingLinesLeft = 30;
+vr::MenuHapticState g_spellRingHaptic;
+static_assert(vr::kSpellRingSlots == vr::kQuickSlots, "the spell ring is the quick menu's ring");
+
 // The ring upright where the hand opened it, facing the head: its right the
 // ring's right, its up tracking up, its face towards the eyes; a few
 // centimetres ahead of the hand so the controller does not hide the middle.
@@ -2463,6 +2487,159 @@ void UpdateQuickMenu(const Config& config, vr::OpenVRBackend& backend, bool allo
 		std::snprintf(name, sizeof(name), "OBVR-QuickMenu-%s.bmp", test::HandScriptMarkName());
 		if (platform::BuildGamePath(name, path, sizeof(path)) && g_quickMenuLayer.SaveBmp(path)) {
 			OBVR_LOG("HandScript: the quick menu's picture saved as %s", name);
+		}
+	}
+}
+
+// The spell ring's view for the page shown: the spells' names and icons,
+// the active spell's mark, the page dots. The revision moves when anything
+// the picture shows has changed.
+void RefreshSpellRingView(const Config& config, int highlighted) {
+	const int pageCount = vr::SpellRingPageCount(g_spellBook.count);
+	bool changed = false;
+	for (int i = 0; i < vr::kSpellRingSlots; ++i) {
+		const int index = vr::SpellRingIndex(g_spellRingPage, i, g_spellBook.count);
+		const bool filled = index >= 0;
+		const char* const name = filled ? g_spellBook.spells[index].name : "";
+		const char* const iconPath = filled && config.hands.quickMenu.icons ? g_spellBook.spells[index].iconPath : "";
+		if (g_spellRingView.filled[i] != filled || std::strcmp(g_spellRingView.names[i], name) != 0 ||
+		    std::strcmp(g_spellRingIconPaths[i], iconPath) != 0) {
+			g_spellRingView.filled[i] = filled;
+			strncpy_s(g_spellRingView.names[i], name, _TRUNCATE);
+			strncpy_s(g_spellRingIconPaths[i], iconPath, _TRUNCATE);
+			changed = true;
+		}
+	}
+	// Asked for every time, as the quick menu's are: the cache keeps what
+	// was asked for last (game/ItemIcons.h).
+	for (int i = 0; i < vr::kSpellRingSlots; ++i) {
+		const render::Pixel* const icon =
+			g_spellRingView.filled[i] && g_spellRingIconPaths[i][0] != '\0' ? game::ItemIcon(g_spellRingIconPaths[i]) : nullptr;
+		if (icon != g_spellRingView.icons[i]) {
+			g_spellRingView.icons[i] = icon;
+			changed = true;
+		}
+	}
+	const int active = vr::SpellRingSlotOf(g_spellBook, g_spellRingPage, game::ActiveSpellForm(g_spellBook));
+	if (g_spellRingView.active != active || g_spellRingView.highlighted != highlighted ||
+	    g_spellRingView.page != g_spellRingPage || g_spellRingView.pageCount != pageCount ||
+	    g_spellRingView.title[0] == '\0') {
+		g_spellRingView.active = active;
+		g_spellRingView.highlighted = highlighted;
+		g_spellRingView.page = g_spellRingPage;
+		g_spellRingView.pageCount = pageCount;
+		strncpy_s(g_spellRingView.title, "Spells", _TRUNCATE);
+		changed = true;
+	}
+	if (changed) {
+		++g_spellRingRevision;
+	}
+}
+
+// The page's spells for the log: "1 Flare, 2 -, ...".
+void DescribeSpellRingPage(char* out, UInt32 size) {
+	out[0] = '\0';
+	for (int i = 0; i < vr::kSpellRingSlots; ++i) {
+		const int index = vr::SpellRingIndex(g_spellRingPage, i, g_spellBook.count);
+		char one[56];
+		std::snprintf(one, sizeof(one), "%s%d %s", i == 0 ? "" : ", ", i + 1,
+		              index >= 0 ? (g_spellBook.spells[index].name[0] != '\0' ? g_spellBook.spells[index].name : "(no name)")
+		                         : "-");
+		strncat_s(out, size, one, _TRUNCATE);
+	}
+}
+
+// `allowed`: Full VR on, in the world, no menu up, the quick menu shut.
+void UpdateSpellRing(const Config& config, vr::OpenVRBackend& backend, bool allowed,
+                     const vr::HandModeFrame& frame, float dt) {
+	vr::QuickMenuInput in;
+	in.tap = g_hand.spellRingTap;
+	in.allowed = allowed;
+	in.hand = frame.left.position;
+	in.headRight = frame.headValid ? vr::ToMatrix(frame.head) * NiPoint3{1.0f, 0.0f, 0.0f}
+	                               : NiPoint3{1.0f, 0.0f, 0.0f};
+	in.dt = dt;
+	in.trigger = g_spellRingTrigger;
+	// The book is read as the ring opens: what it shows is what the player
+	// knows now, in the order of the names.
+	if (in.tap && !g_spellRing.open && allowed && config.hands.spellRing) {
+		UInt32 leftOut = 0;
+		const bool read = game::ReadPlayerSpells(g_spellBook, leftOut);
+		if ((!read || leftOut > 0) && g_spellRingLinesLeft > 0) {
+			--g_spellRingLinesLeft;
+			OBVR_LOG("SpellRing: %s", !read ? "the player's base form could not be read - the ring is empty"
+			                                : "more spells than the ring's ten pages hold");
+			if (leftOut > 0) {
+				OBVR_LOG("SpellRing: %u castable spell(s) past the eightieth left out", leftOut);
+			}
+		}
+	}
+	vr::QuickMenuSettings settings = config.hands.quickMenu;
+	settings.enabled = config.hands.spellRing;
+	const int pageCount = vr::SpellRingPageCount(g_spellBook.count);
+	// The ring's own step reads the page count only as "more than one".
+	settings.pages = pageCount > vr::kQuickMenuMaxPages ? vr::kQuickMenuMaxPages : pageCount;
+	g_spellRingPage = vr::SpellRingPageClamp(g_spellRingPage, pageCount);
+	for (int i = 0; i < vr::kSpellRingSlots; ++i) {
+		in.filled[i] = vr::SpellRingIndex(g_spellRingPage, i, g_spellBook.count) >= 0;
+	}
+	const vr::QuickMenuVerdict v = vr::StepQuickMenu(g_spellRing, in, settings);
+	// The tick at the ring's slots (vr/MenuHaptics.h), in the other hand.
+	MenuPulseOn(false, vr::StepRowHaptic(g_spellRingHaptic, v.visible, v.highlighted, v.used >= 0));
+	if (v.turnPage) {
+		g_spellRingPage = vr::SpellRingNextPage(g_spellRingPage, pageCount);
+	}
+	if (v.opened) {
+		g_spellRingPose = QuickMenuPose(g_spellRing);
+		if (g_spellRingLinesLeft > 0) {
+			--g_spellRingLinesLeft;
+			char list[400];
+			DescribeSpellRingPage(list, sizeof(list));
+			OBVR_LOG("SpellRing: opened at the other hand (%.2f %.2f %.2f) - %d spell(s) known, page %d of %d: %s",
+			         static_cast<double>(g_spellRing.anchor.x), static_cast<double>(g_spellRing.anchor.y),
+			         static_cast<double>(g_spellRing.anchor.z), g_spellBook.count, g_spellRingPage + 1, pageCount,
+			         list);
+			char raw[400];
+			game::DescribeSpellList(raw, sizeof(raw));
+			OBVR_LOG("SpellRing: the list (node:form(id name)/formType/spellType/cost/level) %s", raw);
+		}
+	}
+	if (v.used >= 0) {
+		const int index = vr::SpellRingIndex(g_spellRingPage, v.used, g_spellBook.count);
+		const UInt32 form = index >= 0 ? g_spellBook.spells[index].form : 0;
+		const bool took = form != 0 && game::MakeActiveSpell(form);
+		const UInt32 now = game::ActiveSpellForm(g_spellBook);
+		if (g_spellRingLinesLeft > 0) {
+			--g_spellRingLinesLeft;
+			char nowName[40] = "";
+			for (int i = 0; i < g_spellBook.count; ++i) {
+				if (g_spellBook.spells[i].form == now) {
+					strncpy_s(nowName, g_spellBook.spells[i].name, _TRUNCATE);
+				}
+			}
+			OBVR_LOG("SpellRing: slot %d used (%s, %08X) - %s; the active spell now %s (%08X)", v.used + 1,
+			         index >= 0 ? g_spellBook.spells[index].name : "-", form,
+			         took ? "the engine took it" : "the engine refused it", now != 0 ? nowName : "none", now);
+		}
+	} else if (v.cancelled && g_spellRingLinesLeft > 0) {
+		--g_spellRingLinesLeft;
+		OBVR_LOG("SpellRing: closed without a spell");
+	}
+	if (v.visible) {
+		RefreshSpellRingView(config, v.highlighted);
+		g_spellRingLayer.Show(backend, render::GetGameDevice(), g_spellRingPose,
+		                      ui::QuickMenuWidthMetres(config.hands.quickMenu.ringMetres), g_spellRingRevision,
+		                      ui::PaintQuickMenuFor, &g_spellRingView);
+	} else {
+		g_spellRingLayer.Hide(backend);
+	}
+	// For the test runner: the ring as painted, at each mark it is up for.
+	if (test::HandScriptMarkedThisFrame() && g_spellRingLayer.IsVisible()) {
+		char name[96];
+		char path[512];
+		std::snprintf(name, sizeof(name), "OBVR-SpellRing-%s.bmp", test::HandScriptMarkName());
+		if (platform::BuildGamePath(name, path, sizeof(path)) && g_spellRingLayer.SaveBmp(path)) {
+			OBVR_LOG("HandScript: the spell ring's picture saved as %s", name);
 		}
 	}
 }
@@ -4010,8 +4187,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_pickHold = game::PickHoldState{};
 		g_handMode.Reset();
 		g_quickMenu = vr::QuickMenuState{};
+		g_spellRing = vr::QuickMenuState{};
 		g_stow = vr::StowState{};
 		g_quickMenuLayer.Hide(g_headTracker.GetBackendForFrame());
+		g_spellRingLayer.Hide(g_headTracker.GetBackendForFrame());
 		g_stowSpotLayer.Hide(g_headTracker.GetBackendForFrame());
 		UpdateTeleport(config, g_headTracker.GetBackendForFrame(), false, menuIsUp, dt);
 		return;
@@ -4235,6 +4414,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	g_quickMenuTrigger = frame.right.valid && frame.right.trigger > 0.5f;
 	if (vr::QuickMenuKeepsTrigger(g_quickMenuKeepsTrigger, g_quickMenu.open, g_quickMenuTrigger)) {
 		frame.right.trigger = 0.0f;
+	}
+	// The other hand's trigger likewise for the spell ring's pages.
+	g_spellRingTrigger = frame.left.valid && frame.left.trigger > 0.5f;
+	if (vr::QuickMenuKeepsTrigger(g_spellRingKeepsTrigger, g_spellRing.open, g_spellRingTrigger)) {
+		frame.left.trigger = 0.0f;
 	}
 	frame.unitsPerMetre = config.tracker.unitsPerMetre;
 	g_hudLayer.ShownPixels(frame.layerPixelsWidth, frame.layerPixelsHeight);
@@ -4687,10 +4871,14 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		const UInt32 underCursor = menuIsUp ? game::ActiveMenuId() : game::kMenuIdNone;
 		const bool assign = underCursor == game::kMenuIdInventory ||
 		                    underCursor == game::kMenuIdMagic;
+		// One ring at a time: neither opens while the other is up.
 		UpdateQuickMenu(config, backend,
-		                active && !frame.settingsMenuOpen &&
+		                active && !frame.settingsMenuOpen && !g_spellRing.open &&
 		                    ((!menuIsUp && frame.inWorld) || assign),
 		                assign, frame, dt);
+		UpdateSpellRing(config, backend,
+		                active && !frame.settingsMenuOpen && !g_quickMenu.open && !menuIsUp && frame.inWorld,
+		                frame, dt);
 	}
 	// What a hand script's picture is of ([Debug] HandScript): the state on
 	// the frame of each mark.

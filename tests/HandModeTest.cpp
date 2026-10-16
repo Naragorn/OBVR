@@ -884,7 +884,102 @@ void TestRingByStick() {
 	}
 	Check(r.controls.run && !anyLeftKey, "0.6 s held: the run key and nothing else - the left stick is the walk's");
 	frame.left.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(!r.spellRingTap && !r.ringTap, "the run's release is no tap of either ring");
 	frame.left.thumbY = 0.0f;
+	for (int i = 0; i < 30; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	// A short left click: the spell ring's tap on the release (4.44), the
+	// run key down only while it was pressed.
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	r = mode.Update(frame, settings);
+	r = mode.Update(frame, settings);
+	Check(!r.spellRingTap && r.controls.run, "a left click waits for its release; pressed, it runs");
+	frame.left.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(r.spellRingTap && !r.ringTap && !r.controls.run, "released short: the spell ring's tap, not the hotkey ring's, the run key up");
+	r = mode.Update(frame, settings);
+	Check(!r.spellRingTap, "the tap is one frame");
+	// Both sticks within the chord's window: no spell ring tap either.
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	r = mode.Update(frame, settings);
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	for (int i = 0; i < 10; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	frame.left.buttonsPressed = 0;
+	frame.right.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(r.settingsMenuToggle && !r.spellRingTap && !r.ringTap, "the chord begun on the left: OBVR's menu, no ring's tap");
+	for (int i = 0; i < 30; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	// The spell ring off: the short click is nothing again, the hold the run.
+	settings.spellRing = false;
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	r = mode.Update(frame, settings);
+	frame.left.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(!r.spellRingTap, "the ring off: no tap from a short click");
+	settings.spellRing = true;
+}
+
+void TestRunToggleWithSpellRing() {
+	std::printf("Run toggled with the spell ring on the same button\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.enabled = true;
+	settings.runToggle = true;
+	settings.stickHoldSeconds = 0.4f;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.dtSeconds = 0.01f;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	HandMode mode;
+	HandModeResult r = mode.Update(frame, settings);
+	// A short click is the ring's, not the toggle.
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	r = mode.Update(frame, settings);
+	frame.left.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(r.spellRingTap && !r.controls.run, "toggled: a short click taps the ring and does not switch the run on");
+	for (int i = 0; i < 30; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	Check(!r.controls.run, "and the run stays off");
+	// The hold reached switches the run on; it stays on after the release.
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	bool tapped = false;
+	for (int i = 0; i < 60; ++i) {
+		r = mode.Update(frame, settings);
+		tapped = tapped || r.spellRingTap;
+	}
+	Check(r.controls.run && !tapped, "0.6 s held: the run switched on, no tap");
+	frame.left.buttonsPressed = 0;
+	for (int i = 0; i < 30; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	Check(r.controls.run && !r.spellRingTap, "released: still running, and no tap from the long release");
+	// The next hold switches it off.
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	for (int i = 0; i < 60; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	frame.left.buttonsPressed = 0;
+	for (int i = 0; i < 30; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	Check(!r.controls.run, "the next hold: the run off");
+	// With the ring off, the click toggles as it did.
+	settings.spellRing = false;
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	r = mode.Update(frame, settings);
+	frame.left.buttonsPressed = 0;
+	for (int i = 0; i < 30; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	Check(r.controls.run, "the ring off: a click switches the run on as before");
 }
 
 void TestStickChord() {
@@ -3169,6 +3264,7 @@ int main() {
 	TestStickChord();
 	TestStickHold();
 	TestRingByStick();
+	TestRunToggleWithSpellRing();
 	TestRestMenuKey();
 	TestStickNav();
 	TestMenuHandAndSettingsMenu();

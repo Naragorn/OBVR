@@ -1673,6 +1673,31 @@ inline constexpr UInt32 kListAddTail = 0x005B1E20;
 inline constexpr UInt32 kCheckQuickKeys = 0x005C1900;
 inline constexpr UInt32 kQuickKeysChanged = 0x00B3B43C;
 inline constexpr UInt8 kFormTypeSpell = 0x10;
+
+// The player's spellbook for the spell ring (game/SpellBook.h; xOBSE
+// GameForms.h, GameObjects.cpp, Commands_Player.cpp, read 2026-10-16):
+// - a TESActorBase (the player's base form, kRefBaseFormOffset) carries a
+//   TESSpellList at +0x54 whose first entry is embedded at +0x4: the first
+//   node at +0x58, a node its form at +0 and the next node at +4;
+// - a SpellItem's MagicItem at +0x18 (TESFullName, then the effect list
+//   whose hostile count is the word at +0x30), so its own fields begin at
+//   +0x34: the type (vr::SpellKind), the magicka cost, the mastery level,
+//   the flags. xOBSE's GameForms.h comments SpellItem's members four
+//   bytes later (038, 03C, 040, 044) but sizes MagicItem 0x1C and
+//   MagicItemForm 0x34, which agrees with the game; read in the game on
+//   2026-10-16 (spell-ring.txt): Flare
+//   +0x34 0, +0x38 9, +0x3C 0; the power Lover's Kiss +0x34 2, +0x38 0,
+//   +0x40 0xB; Heal Minor Wounds +0x34 0, +0x38 24 - and +0x30 their
+//   hostile effects, 1, 2 and 0; the next heap object's vtable at +0x44;
+// - PlayerCharacter::GetActiveMagicItem answers the active MagicItem,
+//   PlayerCharacter::SetActiveSpell takes one (the form + 0x18) and answers
+//   a byte, whether it took.
+inline constexpr UInt32 kActorBaseSpellListOffset = 0x58;
+inline constexpr UInt32 kSpellListNodeNextOffset = 0x04;
+inline constexpr UInt32 kSpellTypeOffset = 0x34;
+inline constexpr UInt32 kMagicItemOffset = 0x18;
+inline constexpr UInt32 kPlayerGetActiveMagicItem = 0x0065D4A0;
+inline constexpr UInt32 kPlayerSetActiveSpell = 0x00664700;
 inline constexpr UInt32 kEntryDataFormOffset = 0x08;
 
 // Actor::EquipItem(TESForm* item, UInt32 count, ExtraDataList* xData, UInt32

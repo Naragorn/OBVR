@@ -31,7 +31,7 @@ flow is covered by `hand_mode_test` and `teleport_test`.
 | A | activate (what the right laser points at) | nothing |
 | B (menu button) | Escape | Tab (the menus) |
 | Stick | sideways: turn (smooth or snap); flicked up: jump; held up (0.2 s): teleport aim, released: go; flicked down: sneak | walk; pressed in: run |
-| Stick click | the Rest menu (T: wait, or sleep in a bed) while weapons are drawn by reaching; with `Holsters=0` ready / sheathe the weapon | run (with the stick pressed in) |
+| Stick click | short: the quick menu's ring (4.4); held: the Rest menu (T: wait, or sleep in a bed) while weapons are drawn by reaching, with `Holsters=0` ready / sheathe the weapon | short: the spell ring (4.44); held: run |
 | Trackpad click | held: the quick menu, the ring of the eight hotkeys (4.4, built) | F1: the key the game binds to "Quick Menu" (Oblivion.ini [Controls] `Quick Menu=003BFFFF`; UESP lists F1-F4 as the journal pages) |
 | Gesture | a swing strikes by motion | raised hand: block |
 
@@ -156,7 +156,7 @@ From UESP, Oblivion:Controls.
 
 | Vanilla (PC) | Full VR | |
 |---|---|---|
-| Move, run, jump, sneak | left stick, its click, right stick up, right stick down | built |
+| Move, run, jump, sneak | left stick, its click held, right stick up, right stick down | built |
 | Attack, cast, block | right trigger or a swing, left trigger, raised left hand | built |
 | Ready weapon (F) | right stick click; reaching to the hip or shoulder (4.1, 4.2); a fist with nothing equipped (4.3) | built |
 | Activate, grab | right A, grips | built |
@@ -3056,19 +3056,64 @@ vll können wir den entfernen."
   The tester's headset is the proof: the left A in the inventory with the
   game behind another window.
 
-### 4.44 A spell ring on the other hand (the tester, 2026-10-15; not built)
+### 4.44 A spell ring on the other hand (the tester, 2026-10-15; built 2026-10-16)
 
 "neue hotkey für linken controller. linker stick press nicht mehr quests
 sondern eine zauberbuch als hotkey wie wir das schon rechts haben." Wanted:
 the other hand's press opens a ring of spells, chosen and used as the hotkey
-ring is (4.4), in place of the journal (F1). Which press: the message says the
-left stick's button - held, as the right's opens the hotkey ring; on the Index
-the left trackpad's click is the journal today, so it may be meant as well (to
-ask). Open: which spells fill the slots (the eight hotkeys hold spells already;
-a ring of its own needs its own list - the player's known spells by school, or
-a page the co-save keeps, as the hotkey pages are), and whether a spell can be
-made the active one without the magic menu (the menu's click path 0x5B39BC,
-or the engine's equip-spell call). The left stick pressed in is the run key
-today; a hold past the ring's time has to leave running alone. Cost: medium -
-the ring's painter, the hold (`vr::StepStickHold`) and the hand are there; new
-are the spell list, the equip without the menu, and a scenario.
+ring is (4.4), in place of the journal (F1).
+
+- **Built (2026-10-16).** The other stick's *short* click opens the player's
+  spellbook on the quick menu's ring at that hand, latched, the way the right
+  stick's opens the hotkey ring: the hand moves to a slot, the next click
+  makes that spell the active one - `PlayerCharacter::SetActiveSpell`
+  (0x00664700), what the magic menu's click ends in, handed the SpellItem's
+  MagicItem (the form + 0x18) as OBSE's SetActiveSpell command hands it
+  (xOBSE Commands_Player.cpp) - a click in the middle closes it. The stick
+  *held* past `[Hands] StickHoldSeconds` stays the run: held, the run control
+  is down from the press on (a short click runs for that moment, nothing
+  more); with `[Hands] RunToggle=1` the hold reached switches the run, the
+  click being the ring's now. A press the chord took is neither.
+- **The slots: the spellbook, not a list of its own.** Every spell the player
+  knows that the magic menu would cast - spells, greater and lesser powers;
+  not diseases, not abilities (a SpellItem's type at +0x38) - read from the
+  player's base form's TESSpellList (TESActorBase +0x54, its first node
+  embedded at +0x58; xOBSE GameForms.h, OBSE's GetSpells reads the same) each
+  time the ring opens, in the order of the names (the case left out, the same
+  name by form id), eight a page, up to ten pages (eighty spells; more are
+  left out and logged), the other hand's trigger turning the pages - kept
+  from the rest of the hands while the ring is up, as the quick menu keeps
+  the weapon hand's (`vr::QuickMenuKeepsTrigger`). The page shown is kept
+  between openings. A gold dot at a slot's corner marks the spell that is
+  active now (`GetActiveMagicItem` 0x0065D4A0, matched against the book by
+  its MagicItem); "Spells" stands under the middle. The icons are the game's
+  own (a spell's first effect's, 4.4) and `QuickMenuIcons`, `QuickMenuRingMetres`
+  and `QuickMenuDeadZoneMetres` are shared with the quick menu. `[Hands]
+  SpellRing` (default on; the settings row "Spell ring" under Hands: menus)
+  gives the click back to the run alone.
+- **One ring at a time:** neither ring opens while the other is up; neither
+  opens in a menu (the spell ring sets no hotkeys - the quick menu's 4.5 does
+  that for spells as well).
+- **Where.** `vr/SpellRing.h` (pure: the book, its order, the pages, the
+  active slot; `spell_ring_test`), `game/SpellBook.h` (the engine reads and
+  the two calls), the hand mode's `spellRingTap` and the left stick's hold
+  (`hand_mode_test`: the short click's tap, the hold's run, the chord, the
+  ring off, the toggled run moved to the hold), the painter's active dot and
+  title (`quick_menu_painter_test`, with the ten-page dot row clear of the
+  side slots), `UpdateSpellRing` in CameraHook.cpp over the quick menu's own
+  `StepQuickMenu` with its own state. Log lines "SpellRing: opened at the
+  other hand ... page N of M: 1 Flare, 2 ...", "SpellRing: slot N used (...)
+  - the engine took it; the active spell now ...", "SpellRing: closed without
+  a spell"; budget 30 lines.
+- **Harness** `spell-ring.txt`: Flare added by the console, a short left
+  click, the hand up to slot 1, the next click; then the stick held 0.9 s
+  (the run, no ring on its release). See docs/hand-script-harness.md for the
+  run.
+- **Not tried in the headset yet.** Whether the ring at the left hand reads
+  as well as the right's, and whether the active spell's HUD icon follows the
+  set at once (the engine's own hotkey path for a spell was not read; the
+  harness reads the active spell back through GetActiveMagicItem).
+- **Open.** The Index's left trackpad click is still the journal (F1); the
+  controls card's other-hand page names the spell ring in its place and the
+  README's table keeps the journal row. A spell cast by the trigger right
+  after a set was not timed.

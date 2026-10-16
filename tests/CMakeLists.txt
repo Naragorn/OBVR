@@ -1051,6 +1051,16 @@ endif()
 
 add_test(NAME quick_menu COMMAND quick_menu_test)
 
+add_executable(spell_ring_test SpellRingTest.cpp)
+
+target_include_directories(spell_ring_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(spell_ring_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME spell_ring COMMAND spell_ring_test)
+
 add_executable(quick_menu_painter_test
 	QuickMenuPainterTest.cpp
 	../src/ui/QuickMenuPainter.cpp

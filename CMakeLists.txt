@@ -116,6 +116,7 @@ add_library(OBVR SHARED
 	src/game/QuickKeys.cpp
 	src/game/ItemIcons.cpp
 	src/game/QuickKeyPages.cpp
+	src/game/SpellBook.cpp
 	src/game/ArmStump.cpp
 	src/game/BodyIk.cpp
 	src/game/TakeItem.cpp
