@@ -170,7 +170,11 @@ A hint is one `GuidePanelText` on a `CanvasOverlay` (the holster-fit layer's sha
   The ESP stays the fallback for a text the window never takes that way.
 - **Built 2026-10-16, step 1:** `game/ControlWords.h` detours
   `0x0057C240` (seven entry bytes, cdecl); `ui/ControlPhrase.h` is the
-  table - 29 controls, either hand's words from `[Hands] LeftHanded`; always
+  table - 29 controls, either hand's words from `[Hands] LeftHanded`; the
+  attack's words follow how the bow is shot (`BowWords` from `BowByHand` and
+  `ArrowWithGrip`: "hold the right trigger to grab an arrow and release to
+  shoot", "... grip ...", or "hold the right trigger to draw and let go to
+  shoot" with the trigger draw; the tester, 2026-10-16); always
   run, auto move, change view, quick save and quick load stay the engine's -
   and `control_phrase_test` covers every index with both hands, the five left
   to the engine and the buffer's edges. Wanted each frame while the mode runs
@@ -197,8 +201,10 @@ A hint is one `GuidePanelText` on a `CanvasOverlay` (the holster-fit layer's sha
   `ui/TutorialCards.h`'s nine (stages 10, 15, 22, 26, 36, 56, 76, 78, 94 of
   the English esm, matched whole) is answered with OBVR's words: the mouse
   turn becomes the weapon hand's stick with the teleport, "Shift-click to
-  drop" the other hand's A held, the hotkeys the ring, the bow the weapon
-  hand's trigger held, the containers "or just reach into it". The cards
+  drop" the other hand's A held, the hotkeys the ring, the bow by how it is
+  shot (`BowWords`: the arrow taken over the weapon hand's shoulder by the
+  trigger or the grip, nocked behind the bow, drawn and released; or the
+  trigger draw), the containers "or just reach into it". The cards
   keep vanilla's tokens where a control is named and name no side
   themselves, so step 1 gives either hand its words; another language or a
   mod's text matches nothing and keeps its own. Left as vanilla: the

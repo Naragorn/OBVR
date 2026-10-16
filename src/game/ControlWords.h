@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Types.h"
+#include "ui/ControlPhrase.h"
 
 namespace obvr::game {
 
@@ -26,8 +27,8 @@ namespace obvr::game {
 bool InstallControlWordsHook();
 bool ControlWordsHookInstalled();
 
-// Whether OBVR's words are wanted this frame (the mode on), and which hand
-// holds the weapon.
-void SetControlWordsWanted(bool wanted, bool leftHanded);
+// Whether OBVR's words are wanted this frame (the mode on), which hand
+// holds the weapon, and how the bow is shot (the attack's words follow it).
+void SetControlWordsWanted(bool wanted, bool leftHanded, ui::BowWords bow);
 
 }  // namespace obvr::game

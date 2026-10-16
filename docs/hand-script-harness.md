@@ -97,6 +97,15 @@ The rest as on Windows, with these differences:
   refuses it, since a start through Steam takes Steam's launch options. The
   start line goes to `launch.txt`, Proton's output to `proton.log`, both in the
   run folder.
+  Seen 2026-10-16 evening: twice in a row the start through Steam never
+  reached the game - Steam's console stopped after ProtonFixes' early lines
+  ("Setting up FSR4", "ntsync: up and running"), no game process, no
+  obse_loader.log, and the second request was ignored while the first
+  session stayed open in Steam's compat log ("1 left"); nothing in Steam
+  was downloading. `--direct` ran at once and the scenario passed. The
+  runner's "no 'OBVR ready' line" with the live OBVR.log untouched (its
+  mtime older than the run) is that case; the live log it leaves behind is
+  the player's, put back by the cleanup, not the failed run's.
 
 ## What the runner does to the installation
 

@@ -4153,10 +4153,13 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	game::StepAttackTempo(
 		game::AttackTempoFrom(active, config.hands.enemyAttackSpeed, config.hands.enemyAttackFrequency),
 		test::HandScriptMarkedThisFrame());
-	// The key names in the game's texts ("press W") in the mode's words while
-	// it runs, from the hands' sides (game/ControlWords.h).
-	game::SetControlWordsWanted(active, config.hands.leftHanded);
-	game::SetTutorialCardsWanted(active);
+	// The key names in the game's texts ("push W") and the Tutorial quest's
+	// cards in the mode's words while it runs, from the hands' sides and how
+	// the bow is shot (game/ControlWords.h, game/TutorialCards.h).
+	const ui::BowWords bowWords =
+		ui::BowWordsFor(config.hands.archery.enabled, config.hands.archery.takeWithTrigger);
+	game::SetControlWordsWanted(active, config.hands.leftHanded, bowWords);
+	game::SetTutorialCardsWanted(active, bowWords);
 	if (!active && !menusOnly) {
 		if (test::HandScriptMarkedThisFrame()) {
 			OBVR_LOG("HandScript: state - the hand mode is not running (Hands.Enabled %d, "

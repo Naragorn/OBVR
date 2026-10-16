@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Types.h"
+#include "ui/ControlPhrase.h"
 
 namespace obvr::game {
 
@@ -23,7 +24,8 @@ namespace obvr::game {
 bool InstallTutorialCardsHook();
 bool TutorialCardsHookInstalled();
 
-// Whether OBVR's cards are wanted this frame (the mode on).
-void SetTutorialCardsWanted(bool wanted);
+// Whether OBVR's cards are wanted this frame (the mode on), and how the bow
+// is shot (the bow's card follows it).
+void SetTutorialCardsWanted(bool wanted, ui::BowWords bow);
 
 }  // namespace obvr::game

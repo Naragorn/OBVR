@@ -11,7 +11,7 @@ namespace obvr::ui {
 // The engine keeps its 29 mappable controls in one order (xOBSE
 // GameOSDepend.h, MappableControl): the control map's rows, the 29
 // control-name settings (sUActnForward ... sUActnGrab) and the formatter
-// addr::kControlKeyName that turns a control index into "press W" all count
+// addr::kControlKeyName that turns a control index into "push W" all count
 // the same way. A text that carries "&sUActnForward;" - the Tutorial quest's
 // stage entries in Oblivion.esm, any text the font lays out - gets that
 // formatter's answer spliced in; with the mode on, game/ControlWords.h
@@ -48,6 +48,22 @@ enum ControlIndex : UInt32 {
 	kControlGrab = 28,
 	kControlCount = 29,
 };
+
+// How the bow is shot, which the attack control's words follow (the tester,
+// 2026-10-16: "hold the right trigger to grab an arrow and release to shoot
+// (wenn das arrow graben auf trigger gestellt ist je nach option)"):
+// [Hands] BowByHand=0 - the trigger draws the bow while held and looses on
+// release; BowByHand=1 - the arrow is taken from the quiver by the weapon
+// hand's trigger (ArrowWithGrip=0) or its grip (ArrowWithGrip=1), nocked
+// behind the bow, drawn and released (docs/controls-spec.md 4.2).
+enum class BowWords { TriggerDraws, HandTrigger, HandGrip };
+
+inline BowWords BowWordsFor(bool bowByHand, bool arrowWithTrigger) {
+	if (!bowByHand) {
+		return BowWords::TriggerDraws;
+	}
+	return arrowWithTrigger ? BowWords::HandTrigger : BowWords::HandGrip;
+}
 
 // xOBSE's name of the control, for the log; "?" past the last.
 inline const char* ControlName(UInt32 control) {
@@ -103,7 +119,7 @@ constexpr UInt32 kControlPhraseCapacity = 128;
 // auto move, change view, quick save and quick load have no VR control, so
 // the engine's own answer stands - for one past the last, for no buffer and
 // for one too small.
-inline bool ControlPhrase(UInt32 control, bool leftHanded, char* out, UInt32 capacity) {
+inline bool ControlPhrase(UInt32 control, bool leftHanded, BowWords bow, char* out, UInt32 capacity) {
 	if (out == nullptr || capacity == 0 || control >= kControlCount) {
 		return false;
 	}
@@ -137,7 +153,13 @@ inline bool ControlPhrase(UInt32 control, bool leftHanded, char* out, UInt32 cap
 	case kControlUseEquipped:
 		pieces[0] = "swing the weapon - with a bow, hold the ";
 		pieces[1] = weapon;
-		pieces[2] = " trigger";
+		if (bow == BowWords::TriggerDraws) {
+			pieces[2] = " trigger to draw and let go to shoot";
+		} else if (bow == BowWords::HandTrigger) {
+			pieces[2] = " trigger to grab an arrow and release to shoot";
+		} else {
+			pieces[2] = " grip to grab an arrow and release to shoot";
+		}
 		break;
 	case kControlActivate:
 		pieces[0] = "press A on the ";

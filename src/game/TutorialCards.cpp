@@ -20,6 +20,7 @@ using EntryTextFn = char*(__fastcall*)(void* item, void* edx, void* quest);
 EntryTextFn g_original = nullptr;
 
 bool g_wanted = false;
+ui::BowWords g_bow = ui::BowWords::HandTrigger;
 UInt32 g_lines = 12;
 
 char* __fastcall HookedEntryText(void* item, void* edx, void* quest) {
@@ -27,7 +28,7 @@ char* __fastcall HookedEntryText(void* item, void* edx, void* quest) {
 	if (!g_wanted || text == nullptr) {
 		return text;
 	}
-	const char* card = ui::TutorialCard(text);
+	const char* card = ui::TutorialCard(text, g_bow);
 	if (card == nullptr) {
 		return text;
 	}
@@ -86,6 +87,9 @@ bool InstallTutorialCardsHook() {
 
 bool TutorialCardsHookInstalled() { return g_original != nullptr; }
 
-void SetTutorialCardsWanted(bool wanted) { g_wanted = wanted && g_original != nullptr; }
+void SetTutorialCardsWanted(bool wanted, ui::BowWords bow) {
+	g_wanted = wanted && g_original != nullptr;
+	g_bow = bow;
+}
 
 }  // namespace obvr::game

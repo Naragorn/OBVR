@@ -18,12 +18,14 @@
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/tutorial-cards.txt --save OBVRHarnessTall
 
 ini Hands Enabled=1
+ini Hands BowByHand=1
+ini Hands ArrowWithGrip=0
 console setstage MQ01 28
 
 expect HandScript: finished
 expect Control words: the key-name formatter at 0057C240
 expect Control words: control 8 (DrawSheatheWeapon) answered "reach to your left hip and squeeze the right grip, or make a fist"
-expect Control words: control 4 (UseEquipped) answered "swing the weapon - with a bow, hold the right trigger"
+expect Control words: control 4 (UseEquipped) answered "swing the weapon - with a bow, hold the right trigger to grab an arrow and release to shoot"
 expect Control words: control 6 (Block) answered "raise your left hand with the shield on its arm, or hold the blade across the blow"
 expect Control words: control 7 (Cast) answered "pull the left trigger"
 expect Control words: control 15 (MenuMode) answered "press B on the left controller"
