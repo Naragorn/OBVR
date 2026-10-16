@@ -138,6 +138,7 @@ add_library(OBVR SHARED
 	src/game/BodyView.cpp
 	src/game/MenuType.cpp
 	src/game/MenuCursor.cpp
+	src/game/ControlWords.cpp
 	src/game/HudTiles.cpp
 	src/game/Lead.cpp
 	src/render/HandHudLayer.cpp

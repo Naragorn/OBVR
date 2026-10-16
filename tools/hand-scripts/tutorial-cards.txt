@@ -1,0 +1,49 @@
+# The tutorial cards' key names in Full VR's words (docs/onboarding-spec.md
+# 3.4; the tester, 2026-10-16: "wir werden versuchen die tutorial cards im new
+# game dungeon deren texte zu ersetzen ... mit unseren vr controls"). The
+# Tutorial quest's stage entries carry "&sUActnRdyitem;"-style tokens that
+# the font's layout turns into "press F" through the formatter at 0057C240;
+# detoured (game/ControlWords.h), the mode answers its own phrase. The save is
+# the tester's Altmer in the Imperial Prison cell at the game's start
+# (OBVRHarnessTall): setstage MQ01 28 raises the card "To ready your weapon
+# or fists, ... To attack, ... To block, ..." with three tokens; xOBSE's
+# CloseAllMenus puts it away (a card up holds the next quest update back, a
+# stage the save has passed - 10, the walk - raises none, and Escape over
+# the card opens the Pause menu on top of it: runs 1 and 2 of 2026-10-16),
+# then stage 34 (the cast and the journal) and stage 80 (the sneak). The
+# card is the quest update's Generic menu (0x3F3), "Quest updated -
+# Tutorial".
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/tutorial-cards.txt --save OBVRHarnessTall
+
+ini Hands Enabled=1
+console setstage MQ01 28
+
+expect HandScript: finished
+expect Control words: the key-name formatter at 0057C240
+expect Control words: control 8 (DrawSheatheWeapon) answered "reach to your left hip and squeeze the right grip, or make a fist"
+expect Control words: control 4 (UseEquipped) answered "swing the weapon - with a bow, hold the right trigger"
+expect Control words: control 6 (Block) answered "raise your left hand with the shield on its arm, or hold the blade across the blow"
+expect Control words: control 7 (Cast) answered "pull the left trigger"
+expect Control words: control 15 (MenuMode) answered "press B on the left controller"
+expect Control words: control 9 (Sneak) answered "flick the right stick down, or crouch"
+expect Hands: menu Generic (0x3F3)
+reject Control words: bytes at
+reject HandScript: WARNING
+
+# The console line is handed to the game four seconds in; the card stands
+# soon after. CloseAllMenus puts each card away before the next stage.
+wait 7
+mark card_28
+console-at card_28 CloseAllMenus
+wait 2
+mark closed_28
+console-at closed_28 setstage MQ01 34
+wait 3
+mark card_34
+console-at card_34 CloseAllMenus
+wait 2
+mark closed_34
+console-at closed_34 setstage MQ01 80
+wait 3
+mark card_80
+wait 1

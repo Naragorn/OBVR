@@ -139,13 +139,14 @@ A hint is one `GuidePanelText` on a `CanvasOverlay` (the holster-fit layer's sha
     (`0xB39578`), mouse (`0xB39554`) or joystick (`0xB39930`) name table and
     formats `"%s %s"` with the "press" string at `0xB38F18` - "press W" - or
     the unbound string at `0xB38F20`. The layout splices that into the text.
-  - The box: `ShowMessageBox` `0x00579C10` → `0x005BC8B0` builds the
-    MessageMenu (0x3E9) from `Data\Menus\message_menu.xml` and sets the
-    message as trait 0xFDE (`kTileValue_string`) on the text tile - raw, so
-    the tokens are still in it there (derived from the layout being the
-    expansion point; `LIKELY`). 88 callers; the one in the quest-stage code
-    is `0x00466A65` in `0x00465860` (`LIKELY`, not decompiled; a log line in
-    a detour with `setstage MQ01 10` in the harness settles it).
+  - The card is the quest update's Generic menu (0x3F3: "Quest updated",
+    the quest's icon, name and date, the entry's text, "Continue"), seen in
+    the harness 2026-10-16 - not a MessageMenu, so `ShowMessageBox`
+    `0x00579C10` is not its door. The window is built where the
+    `sQuestUpdatedText` setting (its object at `0xB382D8`) is read:
+    `0x006697A0` (`LIKELY` the quest-update window's builder; it also calls
+    `QueueUIMessage_2`), to be read for step 2's hook. The engine's own
+    word is "push", not "press": "push F", "push L-Button", "push Tab".
 - **The DLL route, two steps:**
   1. **Detour `0x0057C240`** (cost small): with the mode on, answer OBVR's
      phrase for the control index from a pure table (`NameForControl(control,
@@ -157,16 +158,36 @@ A hint is one `GuidePanelText` on a `CanvasOverlay` (the holster-fit layer's sha
      log line and the card's picture. Risk: the Controls options menu, if it
      builds its key column through the same call, shows the VR phrase there
      too - harmless, to be looked at in the picture.
-  2. **Whole cards** (cost small to medium): a detour on `0x00579C10` that
-     matches the message against the known MQ01 entries (the English esm
-     text up to the first token) and hands the engine OBVR's card instead -
+  2. **Whole cards** (cost small to medium): a detour where the quest
+     update's window takes the entry's text (in `0x006697A0`, to be found)
+     that matches it against the known MQ01 entries (the English esm text
+     up to the first token) and hands the window OBVR's card instead -
      for the sentences no token reaches ("The mouse turns you", "Click on the
      fist icon", "Shift-click to drop"). The texts are the work; one table
      shared with the controls card. A non-English esm matches nothing and
      keeps step 1's result. Test: one harness scenario per card by
      `setstage`.
-  The ESP stays the fallback for a text the box never passes through
-  `0x00579C10`.
+  The ESP stays the fallback for a text the window never takes that way.
+- **Built 2026-10-16, step 1:** `game/ControlWords.h` detours
+  `0x0057C240` (seven entry bytes, cdecl); `ui/ControlPhrase.h` is the
+  table - 29 controls, either hand's words from `[Hands] LeftHanded`; always
+  run, auto move, change view, quick save and quick load stay the engine's -
+  and `control_phrase_test` covers every index with both hands, the five left
+  to the engine and the buffer's edges. Wanted each frame while the mode runs
+  (`SetControlWordsWanted` from `UpdateHandMode`); no setting of its own, the
+  words follow the mode. Harness `tools/hand-scripts/tutorial-cards.txt`
+  PASS on the Altmer prison save (OBVRHarnessTall): stage 28's card read "To
+  ready your weapon or fists, reach to your left hip and squeeze the right
+  grip, or make a fist. To attack, swing the weapon - with a bow, hold the
+  right trigger. To block, raise your left hand with the shield on its arm,
+  or hold the blade across the blow.", stage 34 "To cast your selected
+  spell, pull the left trigger. If you want to change spells, press B on the
+  left controller ...", stage 80 "... flick the right stick down, or crouch."
+  Found on the way: a card up holds the next quest update back; Escape over
+  it opens the Pause menu on top of it; xOBSE's `CloseAllMenus` puts it away;
+  a stage the save has passed (10, the walk) raises no card. Open: the
+  headset; whether the Controls options menu shows the phrases in its key
+  column (not looked at).
 - The in-menu prompts ("Press E to take") are not researched: whether the HUD
   builds them through the same tokens is open.
 
@@ -186,7 +207,7 @@ A hint is one `GuidePanelText` on a `CanvasOverlay` (the holster-fit layer's sha
 ## 4. Open
 
 - **Fixed 2026-10-15 (3.1, "one truth"):** the overlay walkthrough accepts Full VR as the native tile does (`kStandingUnderConstruction` and `StandingUnderConstruction()` are gone, onboarding_test follows); its texts say "beta" and name the hip draw, the block and the stick chord; "snap turning is planned" is gone. README, docs/nexus-description.bbcode, the INI's [Hands] header, the native tile's words, docs/native-menus.md, the test-report form and docs/hand-tracked-mode.md (the body, the swish) say the same thing: **Beta**, playable, tested on one setup, rough edges - and the beta build is handed out on Discord only (see 5).
-- **Not verified:** whether the vanilla tutorial messages in the prison intro show keyboard names in Full VR. Derived from the absence of any rewriting code; to settle: a new game in Full VR, the first "Press ..." message read.
+- **Verified 2026-10-16:** the vanilla tutorial cards named the keys in Full VR ("push F", "push L-Button"); since 3.4's step 1 they say the mode's words.
 - **Not verified:** docs/next-up.md "New games": the walkthrough and the hand guides around the intro and the character creation have not been tested in a headset.
 - **Decision for the tester:** the status word ("Experimental" proposed), and whether the first-start chain (3.2) may run before any game is loaded - it asks for the controllers in the main menu, which `ControllerMenus=1` already gives.
 

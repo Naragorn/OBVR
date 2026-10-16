@@ -1751,4 +1751,20 @@ inline constexpr UInt8 kBookCantBeTaken = 0x02;
 inline constexpr UInt8 kFormTypeBook = 0x15;
 inline constexpr UInt32 kFormIdOffset = 0x0C;
 
+// The key name a text's "&sUActnForward;" and its kin become (docs/
+// onboarding-spec.md 3.4, read 2026-10-16 with REA): the font's layout
+// routine 0x00575B40 finds the name among the 29 control-name settings (the
+// array at 0xB399D0, in the control map's order - xOBSE GameOSDepend.h
+// MappableControl, ui/ControlPhrase.h) and calls this with the control's
+// index and a 1024-byte buffer. It reads the control map (OSInputGlobals
+// 0xB33398 +0x20: keyboard +0x1B7E, mouse +0x1B9B, joystick +0x1BB8), takes
+// the button's name from the key (0xB39578), mouse (0xB39554) or joystick
+// (0xB39930) name table and formats "%s %s" with the word at 0xB38F18 -
+// "press W" - or copies the unbound string at 0xB38F20. cdecl, nothing
+// returned. Detoured at its entry by game/ControlWords.h. The Tutorial
+// quest's stage entries (MQ01 in Oblivion.esm) carry these tokens; the card
+// itself is ShowMessageBox 0x00579C10, which hands the raw text to the
+// MessageMenu as trait 0xFDE.
+inline constexpr UInt32 kControlKeyName = 0x0057C240;
+
 }  // namespace obvr::addr

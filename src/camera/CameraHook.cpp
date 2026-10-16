@@ -68,6 +68,7 @@
 #include "game/PlayerLookAt.h"
 #include "game/PlayerTeleport.h"
 #include "game/ControlBindings.h"
+#include "game/ControlWords.h"
 #include "game/GrabPhysics.h"
 #include "game/WorldPush.h"
 #include "game/HandBodies.h"
@@ -4151,6 +4152,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	game::StepAttackTempo(
 		game::AttackTempoFrom(active, config.hands.enemyAttackSpeed, config.hands.enemyAttackFrequency),
 		test::HandScriptMarkedThisFrame());
+	// The key names in the game's texts ("press W") in the mode's words while
+	// it runs, from the hands' sides (game/ControlWords.h).
+	game::SetControlWordsWanted(active, config.hands.leftHanded);
 	if (!active && !menusOnly) {
 		if (test::HandScriptMarkedThisFrame()) {
 			OBVR_LOG("HandScript: state - the hand mode is not running (Hands.Enabled %d, "
@@ -12361,6 +12365,9 @@ bool Install() {
 		// And the laser as the cursor itself: its pixel written where the
 		// search reads the cursor (game/MenuCursor.h).
 		game::InstallMenuCursorHook();
+		// And the key names the game's texts ask for - "press W" - in the
+		// mode's words while it runs (game/ControlWords.h).
+		game::InstallControlWordsHook();
 	}
 
 	// Oblivion's frame size, set where it is decided.

@@ -1627,3 +1627,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME attack_tempo COMMAND attack_tempo_test)
+
+add_executable(control_phrase_test ControlPhraseTest.cpp)
+
+target_include_directories(control_phrase_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(control_phrase_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME control_phrase COMMAND control_phrase_test)
