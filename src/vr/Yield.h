@@ -15,10 +15,10 @@ namespace obvr::vr {
 // etwas mehr gehärtet werden damit es nicht einfach so im combat passiert").
 //
 // Vanilla's yield is block and activate together, facing the attacker
-// (docs/controls-spec.md). The gesture: both hands open, held up before the
-// body with the fingers up (the palms out), an NPC in combat ahead, and
-// both hands rocking sideways - out and in, or left and right together -
-// gently for a second or two. Each hand's sideways position (outward from
+// (docs/controls-spec.md). The gesture: both hands open (or gripping a
+// drawn weapon, its palm to the front), held up before the body, an NPC in
+// combat ahead, and both hands rocking sideways - out and in, or left and
+// right together - gently for a second or two. Each hand's sideways position (outward from
 // the body positive) is watched for reversals of direction after strokes of
 // kYieldStrokeMinMetres to kYieldStrokeMaxMetres; kYieldReversals of them
 // within kYieldWindowSeconds, at least kYieldReversalsEachHand from each
@@ -55,6 +55,30 @@ namespace obvr::vr {
 // along the head's forward at least kYieldPalmAhead (60 degrees off it at
 // most). A fist's knuckles, a blade's grip, a shield's strap and a slap's
 // sideways palm all face elsewhere.
+//
+// The weapon hand's grip, and the open hand's palm (2026-10-16; the
+// tester's session of 2026-10-14 night, "yield gingen gar nicht mit der
+// geste": 44 rockings, no yield). Counted over his 44 "rocked, but no
+// yield" lines: the weapon hand closed 37 times - its curl 1.00, the
+// longsword in it, the fingers round the controller, which no open-hand
+// rule can pass though the gesture allows the weapon; the left palm never
+// within 60 degrees of the front (its share -0.81 to 0.49) while the
+// right's read 0.52 to 0.69 in the rockings that look like his attempts.
+// The side read is not the fault: the fit of his own hands ([Hands]
+// LeftHandRoll 157.6, LeftHandPitch 71.0, LeftHandYaw 65.9 in his INI,
+// written by adjusting the hands on his controllers) turns the left bone's
+// palm axis - its +y, the side the fingers curl to in handtohandidle.kf
+// and the Torch node sits on in skeleton.nif - to the controller's
+// (0.99 -0.05 0.12), its +x, the axis read here; the right's +y to
+// (-0.99 -0.08 -0.10), its -x. So what his open left hand reads for the
+// palm is the pose itself, or the controller turned on its strap in a hand
+// that holds nothing - unsettled, the next session's "Yield: the pose"
+// lines are to tell; the weapon hand's controller, gripped, reads true.
+// Now: a hand holding a drawn weapon (YieldHandInput::holdsWeapon) is not
+// asked to open - its fingers hold the controller - and is the hand whose
+// palm is asked to the front, which keeps a guard's sideways palm out; an
+// open hand is shown by its open fingers, its palm's share read for the
+// log but no gate.
 inline constexpr float kYieldStrokeMinMetres = 0.04f;
 inline constexpr float kYieldStrokeMaxMetres = 0.30f;
 inline constexpr UInt32 kYieldReversals = 4;          // two out-and-in cycles over both hands
@@ -76,13 +100,17 @@ inline constexpr float kYieldPalmAhead = 0.5f;        // the palm's share along 
 // metres: x outward from the body (positive for both hands), y ahead, z
 // up. `palmAhead` is the share of the palm's direction along the head's
 // forward (1: the palm straight to the front, 0: to the side, -1: to the
-// face; YieldPalmAhead); `swinging` the hand mode's swing.
+// face; YieldPalmAhead); `swinging` the hand mode's swing. `holdsWeapon`:
+// a drawn weapon in this hand - a blade, a blunt weapon or a staff in the
+// weapon hand, the bow in the bow hand - whose fingers hold the controller:
+// not asked to open, and the hand whose palm is asked to the front.
 struct YieldHandInput {
 	bool tracked = false;
 	float curl = 1.0f;
 	NiPoint3 position{0.0f, 0.0f, 0.0f};
 	float palmAhead = 1.0f;
 	bool swinging = false;
+	bool holdsWeapon = false;
 };
 
 struct YieldInput {
@@ -182,7 +210,8 @@ inline UInt32 YieldHandGates(YieldHandTrack& h, const YieldHandInput& in, bool r
 	if (!in.tracked) {
 		return right ? kYieldRightNotTracked : kYieldLeftNotTracked;
 	}
-	if (!(in.curl < kYieldOpenCurl)) {
+	// Open by its fingers - unless they hold a drawn weapon's controller.
+	if (!in.holdsWeapon && !(in.curl < kYieldOpenCurl)) {
 		bits |= right ? kYieldRightClosed : kYieldLeftClosed;
 	}
 	if (!(in.position.z > -kYieldBelowHeadMetres)) {
@@ -191,7 +220,10 @@ inline UInt32 YieldHandGates(YieldHandTrack& h, const YieldHandInput& in, bool r
 	if (!(in.position.y > kYieldAheadMetres)) {
 		bits |= right ? kYieldRightBehind : kYieldLeftBehind;
 	}
-	if (!(in.palmAhead >= kYieldPalmAhead)) {
+	// The palm to the front, asked of the hand that grips a weapon: its
+	// controller lies in the palm and reads it true, and a guard's palm faces
+	// sideways. An open hand's palm is read for the log, not gated (2026-10-16).
+	if (in.holdsWeapon && !(in.palmAhead >= kYieldPalmAhead)) {
 		bits |= right ? kYieldRightPalmAway : kYieldLeftPalmAway;
 	}
 	if (in.swinging) {

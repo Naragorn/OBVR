@@ -1,11 +1,13 @@
 // Checks the yield by gesture (vr/Yield.h): the gates of a hand (tracked,
-// open, up before the eyes, the palm to the front, not swinging nor fast), the enemy
-// ahead; the rocking - both hands, strokes of a rock's size, not a tremor,
-// not over in a second, within the window, the cooldown; the speed over its
-// window; the rocking alone for the log; the reasons' text.
+// open - or gripping a drawn weapon, its palm then to the front - up before
+// the eyes, not swinging nor fast), the enemy ahead; the rocking - both
+// hands, strokes of a rock's size, not a tremor, not over in a second,
+// within the window, the cooldown; the speed over its window; the rocking
+// alone for the log; the reasons' text.
 
 #include <cstdio>
 #include <cstring>
+#include <initializer_list>
 #include <limits>
 
 #include "vr/Yield.h"
@@ -78,6 +80,24 @@ void Hold(YieldState& s, int frames) {
 	for (int i = 0; i < frames; ++i) {
 		StepYield(s, Frame(0.0f, 0.0f));
 	}
+}
+
+// The gates' rocking: 8 cm strokes at 0.45 m/s (16 frames a half stroke)
+// for `frames` frames, `spoil` applied to every frame's input. The frame the
+// yield fired on, or -1 - unspoiled it fires once a second of reversals has
+// passed, about frame 113.
+template <typename Spoil>
+int RockSpoiled(YieldState& s, Spoil spoil, int frames = 160) {
+	float x = 0.0f;
+	for (int i = 0; i < frames; ++i) {
+		x += ((i / 16) % 2 == 0 ? 1.0f : -1.0f) * 0.005f;
+		YieldInput in = Frame(x, x);
+		spoil(in);
+		if (StepYield(s, in)) {
+			return i;
+		}
+	}
+	return -1;
 }
 
 }  // namespace
@@ -160,24 +180,93 @@ int main() {
 		{"a hand closed (curl 0.75)", [](YieldHandInput& h) { h.curl = 0.75f; }, kYieldRightClosed},
 		{"a hand 60 cm under the eyes", [](YieldHandInput& h) { h.position.z = -0.6f; }, kYieldRightLow},
 		{"a hand behind the eyes", [](YieldHandInput& h) { h.position.y = -0.1f; }, kYieldRightBehind},
-		{"a palm turned to the side (0.3 of it to the front)", [](YieldHandInput& h) { h.palmAhead = 0.3f; },
+		{"a weapon hand's palm turned to the side (0.3 of it to the front)",
+		 [](YieldHandInput& h) {
+			 h.holdsWeapon = true;
+			 h.curl = 1.0f;
+			 h.palmAhead = 0.3f;
+		 },
 		 kYieldRightPalmAway},
-		{"a palm turned to the face", [](YieldHandInput& h) { h.palmAhead = -0.9f; }, kYieldRightPalmAway},
-		{"a palm that is no number",
-		 [](YieldHandInput& h) { h.palmAhead = std::numeric_limits<float>::quiet_NaN(); }, kYieldRightPalmAway},
+		{"a weapon hand's palm turned to the face",
+		 [](YieldHandInput& h) {
+			 h.holdsWeapon = true;
+			 h.curl = 1.0f;
+			 h.palmAhead = -0.9f;
+		 },
+		 kYieldRightPalmAway},
+		{"a weapon hand's palm that is no number",
+		 [](YieldHandInput& h) {
+			 h.holdsWeapon = true;
+			 h.curl = 1.0f;
+			 h.palmAhead = std::numeric_limits<float>::quiet_NaN();
+		 },
+		 kYieldRightPalmAway},
 		{"a hand swinging", [](YieldHandInput& h) { h.swinging = true; }, kYieldRightSwinging},
 	};
 	for (const Gate& g : gates) {
 		YieldState s;
-		float x = 0.0f;
-		bool fired = false;
-		for (int i = 0; i < 160 && !fired; ++i) {
-			x += ((i / 16) % 2 == 0 ? 1.0f : -1.0f) * 0.005f;
-			YieldInput in = Frame(x, x);
-			g.spoil(in.hand[0]);
-			fired = StepYield(s, in);
+		const int fired = RockSpoiled(s, [&g](YieldInput& in) { g.spoil(in.hand[0]); });
+		Check(fired < 0 && (s.lastReset & g.bit) != 0, g.what);
+	}
+	{
+		YieldState s;
+		Check(RockSpoiled(s, [](YieldInput&) {}) >= 0, "the same rocking unspoiled: the yield");
+	}
+
+	std::printf("The weapon hand and the open hand's palm (2026-10-16)\n");
+	{
+		// A drawn weapon in the right hand: its fingers round the controller
+		// (curl 1.0) are no gate, its palm to the front is.
+		YieldState s;
+		Check(RockSpoiled(s, [](YieldInput& in) {
+			      in.hand[0].holdsWeapon = true;
+			      in.hand[0].curl = 1.0f;
+		      }) >= 0,
+		      "a weapon in the right hand, gripped (curl 1.0), its palm to the front: the yield");
+		YieldState closed;
+		Check(RockSpoiled(closed, [](YieldInput& in) { in.hand[0].curl = 1.0f; }) < 0 &&
+		          (closed.lastReset & kYieldRightClosed) != 0,
+		      "the right hand closed with nothing in it: no yield, named");
+	}
+	{
+		// An open hand's palm is no gate, whichever way it reads.
+		for (float palm : {0.3f, 0.0f, -0.6f, std::numeric_limits<float>::quiet_NaN()}) {
+			YieldState s;
+			Check(RockSpoiled(s, [palm](YieldInput& in) { in.hand[1].palmAhead = palm; }) >= 0,
+			      "the open left hand's palm to the side, sideways, to the face or no number: the yield all the same");
 		}
-		Check(!fired && (s.lastReset & g.bit) != 0, g.what);
+	}
+	{
+		// The bow in the left hand: gripped, and its palm asked.
+		YieldState s;
+		Check(RockSpoiled(s, [](YieldInput& in) {
+			      in.hand[1].holdsWeapon = true;
+			      in.hand[1].curl = 1.0f;
+		      }) >= 0,
+		      "the bow in the left hand, gripped, its palm to the front: the yield");
+		YieldState away;
+		Check(RockSpoiled(away, [](YieldInput& in) {
+			      in.hand[1].holdsWeapon = true;
+			      in.hand[1].curl = 1.0f;
+			      in.hand[1].palmAhead = 0.2f;
+		      }) < 0 &&
+		          (away.lastReset & kYieldLeftPalmAway) != 0 && (away.lastReset & kYieldLeftClosed) == 0,
+		      "the bow hand's palm to the side: no yield, the palm named, not the grip");
+	}
+	{
+		// Both hands gripping (a sword and the bow cannot both be drawn, but
+		// the logic has no say in it): both palms asked.
+		YieldState s;
+		Check(RockSpoiled(s, [](YieldInput& in) {
+			      for (YieldHandInput& h : in.hand) {
+				      h.holdsWeapon = true;
+				      h.curl = 1.0f;
+			      }
+			      in.hand[0].palmAhead = 0.9f;
+			      in.hand[1].palmAhead = 0.4f;
+		      }) < 0 &&
+		          (s.lastReset & kYieldLeftPalmAway) != 0 && (s.lastReset & kYieldRightPalmAway) == 0,
+		      "both hands gripping, the left palm 0.4 to the front: no yield, the left palm named");
 	}
 	{
 		// The swing's hold: a swing one frame, then a second of rocking does
@@ -203,7 +292,18 @@ int main() {
 		in.hand[0].curl = 0.69f;
 		StepYield(s, in);
 		Check(s.lastReset == 0 && s.hand[0].tracking,
-		      "45 cm under the eyes, 10 cm ahead, the palm 60 degrees off the front, curl 0.69: in");
+		      "45 cm under the eyes, 10 cm ahead, curl 0.69 (the palm not asked of an open hand): in");
+		YieldState w;
+		YieldInput armed = Frame(0.0f, 0.0f);
+		armed.hand[0].holdsWeapon = true;
+		armed.hand[0].curl = 1.0f;
+		armed.hand[0].palmAhead = 0.5f;
+		StepYield(w, armed);
+		Check(w.lastReset == 0 && w.hand[0].tracking, "a weapon hand gripped, its palm 60 degrees off the front: in");
+		armed.hand[0].palmAhead = 0.49f;
+		StepYield(w, armed);
+		Check((w.lastReset & kYieldRightPalmAway) != 0 && (w.lastReset & kYieldRightClosed) == 0,
+		      "a weapon hand gripped, its palm 61 degrees off: out, the palm named, not the grip");
 	}
 	{
 		// The palm from the controller's rotation relative to the head, in the
@@ -227,11 +327,6 @@ int main() {
 		set(NiPoint3{0.0f, 1.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 1.0f}, NiPoint3{-1.0f, 0.0f, 0.0f});
 		Check(YieldPalmAhead(m, false) == 1.0f, "the left controller up, its x to the front: the left palm to the front");
 	}
-	{
-		// A weapon in hand changes nothing here: the input has no weapon.
-		Check(true, "(the weapon in hand or away: not a gate of the gesture since 2026-10-12)");
-	}
-
 	std::printf("The speed over its window\n");
 	{
 		YieldSpeedTrack t;

@@ -6,14 +6,21 @@
 # player (tgm). First with the hands empty: both hands held up before the
 # chest with the palms to the front (right rot 90 0 90, left rot 90 0 -90:
 # the controllers pointing up, the side the fingers close over - the palm,
-# the right's -x and the left's +x - turned forward; since 2026-10-12 the
-# palm is the gate, not the fingers up) and rocked together 8 cm left and right, 1 cm every 0.05 s (0.2
-# m/s), three strokes - the yield, block held and activate pressed on the
-# bandit. Then fast sideways swings of both open hands at the same height
-# (40 cm in one step, metres a second): no yield, "too fast" at the mark.
-# Then the longsword drawn by the holster and the same rocking with the
-# weapon in hand: the yield again (the weapon is no gate since 2026-10-12).
+# the right's -x and the left's +x - turned forward) and rocked together
+# 8 cm left and right, 1 cm every 0.05 s (0.2 m/s), four strokes - the
+# yield, block held and activate pressed on the bandit. Then the same with
+# both open palms turned sideways (rot 90 0 0): the yield again - since
+# 2026-10-16 an open hand is shown by its open fingers, its palm not asked
+# (the tester's left palm never read to the front in his headset). Then fast
+# sideways swings of both open hands at the same height (40 cm in one step,
+# metres a second): no yield, "too fast" at the mark. Then the longsword
+# drawn by the holster and the rocking with the weapon in hand, its palm to
+# the front: the yield (the sword hand's closed fingers are no gate since
+# 2026-10-16). Last the sword hand's palm turned sideways (right rot 90 0 0,
+# the blade's grip as in a guard): no yield, "the right palm not to the
+# front" at the mark - the gripping hand's palm is the one asked.
 # Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\yield.txt
+#           python3 tools/hand-script-run.py tools/hand-scripts/yield.txt
 
 ini Hands Enabled=1
 ini Hands Holsters=1
@@ -26,7 +33,7 @@ console-at ready tgm
 
 expect HandScript: finished
 expect Hands: ready weapon done
-count 2 Yield: the open hands rocked at someone in combat
+count 3 Yield: the open hands rocked at someone in combat
 expect the hands empty)
 expect (a weapon in hand)
 expect the fists raised first for the engine's block
@@ -36,6 +43,8 @@ reject menu Container
 expect Yield: activate goes down
 expect the last reset by: the right hand swinging, the left hand swinging
 expect the right hand swinging, the left hand swinging
+expect the last reset by: the right palm not to the front
+expect Yield: the pose - palms to the front
 reject HandScript: WARNING
 
 wait 12
@@ -48,7 +57,7 @@ mark ready
 wait 22
 mark placed
 head face 1
-# The gesture with the hands empty.
+# The gesture with the hands empty, the palms to the front.
 right pos 0.22 -0.20 -0.35
 right rot 90 0 90
 left pos -0.22 -0.20 -0.35
@@ -200,6 +209,158 @@ left pos -0.22 -0.20 -0.35
 wait 0.05
 mark rocked
 wait 2.5
+# The hands empty, both open palms turned sideways: the yield all the same.
+right pos 0.22 -0.20 -0.35
+right rot 90 0 0
+left pos -0.22 -0.20 -0.35
+left rot 90 0 0
+wait 0.6
+right pos 0.23 -0.20 -0.35
+left pos -0.21 -0.20 -0.35
+wait 0.05
+right pos 0.24 -0.20 -0.35
+left pos -0.20 -0.20 -0.35
+wait 0.05
+right pos 0.25 -0.20 -0.35
+left pos -0.19 -0.20 -0.35
+wait 0.05
+right pos 0.26 -0.20 -0.35
+left pos -0.18 -0.20 -0.35
+wait 0.05
+right pos 0.27 -0.20 -0.35
+left pos -0.17 -0.20 -0.35
+wait 0.05
+right pos 0.28 -0.20 -0.35
+left pos -0.16 -0.20 -0.35
+wait 0.05
+right pos 0.29 -0.20 -0.35
+left pos -0.15 -0.20 -0.35
+wait 0.05
+right pos 0.30 -0.20 -0.35
+left pos -0.14 -0.20 -0.35
+wait 0.05
+right pos 0.29 -0.20 -0.35
+left pos -0.15 -0.20 -0.35
+wait 0.05
+right pos 0.28 -0.20 -0.35
+left pos -0.16 -0.20 -0.35
+wait 0.05
+right pos 0.27 -0.20 -0.35
+left pos -0.17 -0.20 -0.35
+wait 0.05
+right pos 0.26 -0.20 -0.35
+left pos -0.18 -0.20 -0.35
+wait 0.05
+right pos 0.25 -0.20 -0.35
+left pos -0.19 -0.20 -0.35
+wait 0.05
+right pos 0.24 -0.20 -0.35
+left pos -0.20 -0.20 -0.35
+wait 0.05
+right pos 0.23 -0.20 -0.35
+left pos -0.21 -0.20 -0.35
+wait 0.05
+right pos 0.22 -0.20 -0.35
+left pos -0.22 -0.20 -0.35
+wait 0.05
+right pos 0.21 -0.20 -0.35
+left pos -0.23 -0.20 -0.35
+wait 0.05
+right pos 0.20 -0.20 -0.35
+left pos -0.24 -0.20 -0.35
+wait 0.05
+right pos 0.19 -0.20 -0.35
+left pos -0.25 -0.20 -0.35
+wait 0.05
+right pos 0.18 -0.20 -0.35
+left pos -0.26 -0.20 -0.35
+wait 0.05
+right pos 0.17 -0.20 -0.35
+left pos -0.27 -0.20 -0.35
+wait 0.05
+right pos 0.16 -0.20 -0.35
+left pos -0.28 -0.20 -0.35
+wait 0.05
+right pos 0.15 -0.20 -0.35
+left pos -0.29 -0.20 -0.35
+wait 0.05
+right pos 0.14 -0.20 -0.35
+left pos -0.30 -0.20 -0.35
+wait 0.05
+right pos 0.15 -0.20 -0.35
+left pos -0.29 -0.20 -0.35
+wait 0.05
+right pos 0.16 -0.20 -0.35
+left pos -0.28 -0.20 -0.35
+wait 0.05
+right pos 0.17 -0.20 -0.35
+left pos -0.27 -0.20 -0.35
+wait 0.05
+right pos 0.18 -0.20 -0.35
+left pos -0.26 -0.20 -0.35
+wait 0.05
+right pos 0.19 -0.20 -0.35
+left pos -0.25 -0.20 -0.35
+wait 0.05
+right pos 0.20 -0.20 -0.35
+left pos -0.24 -0.20 -0.35
+wait 0.05
+right pos 0.21 -0.20 -0.35
+left pos -0.23 -0.20 -0.35
+wait 0.05
+right pos 0.22 -0.20 -0.35
+left pos -0.22 -0.20 -0.35
+wait 0.05
+right pos 0.23 -0.20 -0.35
+left pos -0.21 -0.20 -0.35
+wait 0.05
+right pos 0.24 -0.20 -0.35
+left pos -0.20 -0.20 -0.35
+wait 0.05
+right pos 0.25 -0.20 -0.35
+left pos -0.19 -0.20 -0.35
+wait 0.05
+right pos 0.26 -0.20 -0.35
+left pos -0.18 -0.20 -0.35
+wait 0.05
+right pos 0.27 -0.20 -0.35
+left pos -0.17 -0.20 -0.35
+wait 0.05
+right pos 0.28 -0.20 -0.35
+left pos -0.16 -0.20 -0.35
+wait 0.05
+right pos 0.29 -0.20 -0.35
+left pos -0.15 -0.20 -0.35
+wait 0.05
+right pos 0.30 -0.20 -0.35
+left pos -0.14 -0.20 -0.35
+wait 0.05
+right pos 0.29 -0.20 -0.35
+left pos -0.15 -0.20 -0.35
+wait 0.05
+right pos 0.28 -0.20 -0.35
+left pos -0.16 -0.20 -0.35
+wait 0.05
+right pos 0.27 -0.20 -0.35
+left pos -0.17 -0.20 -0.35
+wait 0.05
+right pos 0.26 -0.20 -0.35
+left pos -0.18 -0.20 -0.35
+wait 0.05
+right pos 0.25 -0.20 -0.35
+left pos -0.19 -0.20 -0.35
+wait 0.05
+right pos 0.24 -0.20 -0.35
+left pos -0.20 -0.20 -0.35
+wait 0.05
+right pos 0.23 -0.20 -0.35
+left pos -0.21 -0.20 -0.35
+wait 0.05
+right pos 0.22 -0.20 -0.35
+left pos -0.22 -0.20 -0.35
+wait 0.05
+mark rocked-sideways
+wait 2.5
 # Fast sideways swings of both open hands at the same height: no yield.
 right pos 0.62 -0.20 -0.35
 left pos 0.18 -0.20 -0.35
@@ -239,7 +400,7 @@ left pos -0.22 -0.20 -0.35
 wait 0.1
 mark swung
 wait 3.5
-# The longsword drawn by the holster (the left hip), then the gesture with it in hand.
+# The longsword drawn by the holster (the left hip).
 right pos -0.18 -0.62 -0.02
 right rot 50 0 0
 wait 0.3
@@ -250,6 +411,7 @@ right pos 0.22 -0.20 -0.35
 right rot 90 0 90
 wait 2
 mark drawn
+# The gesture with the sword in hand, its palm to the front.
 right pos 0.22 -0.20 -0.35
 right rot 90 0 90
 left pos -0.22 -0.20 -0.35
@@ -400,5 +562,157 @@ right pos 0.22 -0.20 -0.35
 left pos -0.22 -0.20 -0.35
 wait 0.05
 mark rocked-armed
+wait 2.5
+# The sword hand's palm turned sideways, as a guard holds it: no yield.
+right pos 0.22 -0.20 -0.35
+right rot 90 0 0
+left pos -0.22 -0.20 -0.35
+left rot 90 0 -90
+wait 0.6
+right pos 0.23 -0.20 -0.35
+left pos -0.21 -0.20 -0.35
+wait 0.05
+right pos 0.24 -0.20 -0.35
+left pos -0.20 -0.20 -0.35
+wait 0.05
+right pos 0.25 -0.20 -0.35
+left pos -0.19 -0.20 -0.35
+wait 0.05
+right pos 0.26 -0.20 -0.35
+left pos -0.18 -0.20 -0.35
+wait 0.05
+right pos 0.27 -0.20 -0.35
+left pos -0.17 -0.20 -0.35
+wait 0.05
+right pos 0.28 -0.20 -0.35
+left pos -0.16 -0.20 -0.35
+wait 0.05
+right pos 0.29 -0.20 -0.35
+left pos -0.15 -0.20 -0.35
+wait 0.05
+right pos 0.30 -0.20 -0.35
+left pos -0.14 -0.20 -0.35
+wait 0.05
+right pos 0.29 -0.20 -0.35
+left pos -0.15 -0.20 -0.35
+wait 0.05
+right pos 0.28 -0.20 -0.35
+left pos -0.16 -0.20 -0.35
+wait 0.05
+right pos 0.27 -0.20 -0.35
+left pos -0.17 -0.20 -0.35
+wait 0.05
+right pos 0.26 -0.20 -0.35
+left pos -0.18 -0.20 -0.35
+wait 0.05
+right pos 0.25 -0.20 -0.35
+left pos -0.19 -0.20 -0.35
+wait 0.05
+right pos 0.24 -0.20 -0.35
+left pos -0.20 -0.20 -0.35
+wait 0.05
+right pos 0.23 -0.20 -0.35
+left pos -0.21 -0.20 -0.35
+wait 0.05
+right pos 0.22 -0.20 -0.35
+left pos -0.22 -0.20 -0.35
+wait 0.05
+right pos 0.21 -0.20 -0.35
+left pos -0.23 -0.20 -0.35
+wait 0.05
+right pos 0.20 -0.20 -0.35
+left pos -0.24 -0.20 -0.35
+wait 0.05
+right pos 0.19 -0.20 -0.35
+left pos -0.25 -0.20 -0.35
+wait 0.05
+right pos 0.18 -0.20 -0.35
+left pos -0.26 -0.20 -0.35
+wait 0.05
+right pos 0.17 -0.20 -0.35
+left pos -0.27 -0.20 -0.35
+wait 0.05
+right pos 0.16 -0.20 -0.35
+left pos -0.28 -0.20 -0.35
+wait 0.05
+right pos 0.15 -0.20 -0.35
+left pos -0.29 -0.20 -0.35
+wait 0.05
+right pos 0.14 -0.20 -0.35
+left pos -0.30 -0.20 -0.35
+wait 0.05
+right pos 0.15 -0.20 -0.35
+left pos -0.29 -0.20 -0.35
+wait 0.05
+right pos 0.16 -0.20 -0.35
+left pos -0.28 -0.20 -0.35
+wait 0.05
+right pos 0.17 -0.20 -0.35
+left pos -0.27 -0.20 -0.35
+wait 0.05
+right pos 0.18 -0.20 -0.35
+left pos -0.26 -0.20 -0.35
+wait 0.05
+right pos 0.19 -0.20 -0.35
+left pos -0.25 -0.20 -0.35
+wait 0.05
+right pos 0.20 -0.20 -0.35
+left pos -0.24 -0.20 -0.35
+wait 0.05
+right pos 0.21 -0.20 -0.35
+left pos -0.23 -0.20 -0.35
+wait 0.05
+right pos 0.22 -0.20 -0.35
+left pos -0.22 -0.20 -0.35
+wait 0.05
+right pos 0.23 -0.20 -0.35
+left pos -0.21 -0.20 -0.35
+wait 0.05
+right pos 0.24 -0.20 -0.35
+left pos -0.20 -0.20 -0.35
+wait 0.05
+right pos 0.25 -0.20 -0.35
+left pos -0.19 -0.20 -0.35
+wait 0.05
+right pos 0.26 -0.20 -0.35
+left pos -0.18 -0.20 -0.35
+wait 0.05
+right pos 0.27 -0.20 -0.35
+left pos -0.17 -0.20 -0.35
+wait 0.05
+right pos 0.28 -0.20 -0.35
+left pos -0.16 -0.20 -0.35
+wait 0.05
+right pos 0.29 -0.20 -0.35
+left pos -0.15 -0.20 -0.35
+wait 0.05
+right pos 0.30 -0.20 -0.35
+left pos -0.14 -0.20 -0.35
+wait 0.05
+right pos 0.29 -0.20 -0.35
+left pos -0.15 -0.20 -0.35
+wait 0.05
+right pos 0.28 -0.20 -0.35
+left pos -0.16 -0.20 -0.35
+wait 0.05
+right pos 0.27 -0.20 -0.35
+left pos -0.17 -0.20 -0.35
+wait 0.05
+right pos 0.26 -0.20 -0.35
+left pos -0.18 -0.20 -0.35
+wait 0.05
+right pos 0.25 -0.20 -0.35
+left pos -0.19 -0.20 -0.35
+wait 0.05
+right pos 0.24 -0.20 -0.35
+left pos -0.20 -0.20 -0.35
+wait 0.05
+right pos 0.23 -0.20 -0.35
+left pos -0.21 -0.20 -0.35
+wait 0.05
+right pos 0.22 -0.20 -0.35
+left pos -0.22 -0.20 -0.35
+wait 0.05
+mark armed-sideways
 wait 2.5
 mark end

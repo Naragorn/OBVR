@@ -61,7 +61,7 @@ card is in the game: settings menu, Help, "Show the controls".
 | Trigger | bow: draw while held, loose on release | cast the spell |
 | Grip | at your left hip: draw or sheathe a one-hander; over your right shoulder: a two-hander or staff; on an item: hold it, let go mid-swing to throw | grab or hold an item; behind your left shoulder: draw the bow |
 | Swing | a drawn weapon hits where the blade touches; a long, fast swing is a power attack | a fist punches |
-| Raise the hand | - | shield on the arm: block. Palm forward, both hands up and still: yield |
+| Raise the hand | - | shield on the arm: block. Both hands up and open, palms to the foe, rocked gently left and right for a second: yield |
 | A | activate what the laser points at | in the inventory: drop the item under the cursor |
 | B | pause menu (Escape) | the Tab menus; they hang on this wrist, the other hand's laser clicks |
 | Stick | turn; held up: aim a teleport, let go to go; flick up: jump; flick down: sneak | walk; pressed in: run |

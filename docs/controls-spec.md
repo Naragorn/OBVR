@@ -1227,6 +1227,52 @@ The tester's asks of 2026-10-07, all in one round:
     fingers round the grip (1.00 in 37 of 44). The HUD's look already treats
     the weapon hand as open (`MeleeInHand`, above); the yield should do the
     same, or leave the weapon hand's curl out of the gate.
+  **Built (2026-10-16, the tester: "wir machen nun: Yield-Geste repariert").**
+  - *The side read is not the fault - settled from his own INI.* The fit of
+    his hands (`[Hands] LeftHandRoll=157.6445`, `LeftHandPitch=71.0317`,
+    `LeftHandYaw=65.8923`; the right -10.2, 53.7, 86.2 - written by adjusting
+    the hands on his controllers, `FitHandToPose`) is the rotation from the
+    bone's axes to the controller's. The Bip01 hand bone's palm is its +y:
+    in `skeleton.nif` the Weapon node hangs 1.37 units along +y of the right
+    hand and the Torch node 1.37 along +y of the left, and in
+    `handtohandidle.kf` (the fists) every fingertip moves to +y of its hand
+    (the index 6.1 units back along the fingers and 4.1 to +y, on either
+    side; read with pyffi, `tools/palm-axes.py`). His
+    calibrations turn that +y to the controller's (0.99 -0.05 0.12) on the
+    left and (-0.99 -0.08 -0.10) on the right: +x and -x, the sides
+    `vr::YieldPalmAhead` reads, within 8 degrees. So the -0.80 to 0.27 his
+    left palm read were the pose of his controller - the hand itself, or the
+    controller turned on its strap in a hand holding nothing - which the
+    code cannot tell apart; the gripped sword hand read true (0.52 to 0.69).
+  - *The gates now:* a hand holding a drawn weapon
+    (`YieldHandInput::holdsWeapon` - a blade, blunt weapon or staff in the
+    weapon hand, the bow in the bow hand, from the equipped weapon's type
+    and `ReadPlayerWeaponState`) is not asked to open, and it is the hand
+    whose palm is asked to the front (its controller lies in the palm; a
+    guard's palm faces sideways). An open hand is shown by its open fingers
+    alone; its palm's share is read for the log, not gated. Either hand's
+    palm sign follows the physical controller whatever role it plays
+    (`right != leftHanded` - before this a left-handed player's weapon hand
+    was read with the right's sign). yield_test: the gripped weapon hand
+    with its palm to the front yields, to the side or the face it does not
+    (named), the open hand's palm any way yields, the bow hand likewise, both
+    gripping both asked, the margins. README and the controls card say the
+    gesture as it is: both hands up and open, palms to the foe, rocked
+    gently left and right.
+  - *For the headset's numbers:* `Yield: the pose - palms to the front r/l,
+    the fingers' share up r/l, under the eyes, ahead, curls; the right hand
+    gripping a weapon / open ...` twice a second while both hands are shown
+    and up before someone in combat, 60 lines a session. The fingers' share
+    is the pinned hand bone's x in the world (`ReadHandBoneWorld`). With
+    these the open hand's reading is settled next session: a left palm that
+    reads to the front when he holds it so says the controller follows the
+    hand, and the open hand's palm could be asked again; one that does not
+    says it cannot be.
+  - Harness `yield.txt` regenerated (`tools/gen-yield-script.py`)
+    with two phases more: the hands empty and both open palms turned
+    sideways (rot 90 0 0) still yield; the sword in hand with its palm turned
+    sideways does not, "the right palm not to the front" at the mark; three
+    yields counted.
 - **The trigger never attacks with a melee weapon or the fists in hand**
   (the tester: "powerattacks mit trigger verbieten nun für alle waffen und
   ohne waffen"): `HandFrameInput::meleeInHand`, set whether or not the hits

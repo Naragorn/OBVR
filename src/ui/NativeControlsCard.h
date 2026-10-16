@@ -60,7 +60,7 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded) 
 		"Trigger: cast your spell.",
 		"Grip: grab or hold an item. Grip behind this shoulder: draw the bow.",
 		"Raise the hand with a shield on the arm: block.",
-		"Both hands up, palms forward, held still: yield to end a fight.",
+		"Both hands up and open, palms out, rocked gently side to side: yield.",
 		"A: in the inventory, drop the item under the cursor.",
 		"B: the Tab menus on this wrist; the other hand's laser clicks them.",
 		"Stick: walk. Held in: run.",

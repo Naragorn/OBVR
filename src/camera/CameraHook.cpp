@@ -1957,26 +1957,40 @@ void UpdateYield(const Config& config, const vr::HandModeFrame& frame, bool acti
 		return;
 	}
 	// Each hand as the gesture reads it (vr/Yield.h): open by its middle,
-	// ring and little fingers (vr::YieldHandCurl); its place relative to the
-	// head in metres - the camera-relative offset (x right, y ahead, z up),
-	// the x outward from the body for either hand; its palm's share to the
-	// front (vr::YieldPalmAhead, the controller's side the fingers close
-	// over); and the hand mode's swing. The weapon in hand or away is no gate
-	// (the tester, 2026-10-12: "egal ob mit oder ohne waffe oder schild").
+	// ring and little fingers (vr::YieldHandCurl) - unless it grips a drawn
+	// weapon (holdsWeapon: a blade, a blunt weapon or a staff in the weapon
+	// hand, the bow in the bow hand; the tester, 2026-10-12: "egal ob mit
+	// oder ohne waffe oder schild", and 2026-10-16: his sword hand's curl of
+	// 1.00 stood in the way 37 times of 44); its place relative to the head
+	// in metres - the camera-relative offset (x right, y ahead, z up), the x
+	// outward from the body for either hand; its palm's share to the front
+	// (vr::YieldPalmAhead, the controller's side the fingers close over - the
+	// physical side, whichever role the hand plays), asked of the gripping
+	// hand; and the hand mode's swing.
 	const float perMetre = config.tracker.unitsPerMetre > 0.0f ? config.tracker.unitsPerMetre : 1.0f;
+	SInt32 weaponType = -1;
+	const bool weaponDrawn = game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
+	const vr::EquippedKind drawnKind = weaponDrawn && game::EquippedWeaponForm(&weaponType) != nullptr
+	                                       ? vr::KindOfWeaponType(weaponType)
+	                                       : vr::EquippedKind::Nothing;
+	const bool weaponHandGrips = drawnKind == vr::EquippedKind::OneHand || drawnKind == vr::EquippedKind::TwoHand;
+	const bool bowHandGrips = drawnKind == vr::EquippedKind::Bow;
 	vr::YieldInput in;
 	in.dt = dt;
 	in.enemyAhead = enemyAhead;
 	for (int side = 0; side < 2; ++side) {
-		const bool right = side == 0;
+		const bool right = side == 0;  // the hand's role: the weapon hand first
+		const bool physicalRight = right != config.hands.leftHanded;
 		vr::YieldHandInput& h = in.hand[side];
 		h.tracked = right ? (frame.right.valid && g_hand.rightHandValid) : (frame.left.valid && g_hand.leftHandValid);
 		h.curl = right ? (g_hand.rightCurlValid ? vr::YieldHandCurl(g_hand.rightCurl) : 1.0f)
 		               : (g_hand.leftCurlValid ? vr::YieldHandCurl(g_hand.leftCurl) : 1.0f);
+		h.holdsWeapon = right ? weaponHandGrips : bowHandGrips;
 		const NiPoint3& off = right ? g_hand.rightHandOffsetUnits : g_hand.leftHandOffsetUnits;
 		h.position = NiPoint3{(right ? off.x : -off.x) / perMetre, off.y / perMetre, off.z / perMetre};
 		h.swinging = right ? g_hand.swingActive : g_hand.leftSwingActive;
-		h.palmAhead = vr::YieldPalmAhead(right ? g_hand.rightHandRotation : g_hand.leftHandRotation, right);
+		h.palmAhead =
+			vr::YieldPalmAhead(right ? g_hand.rightHandRotation : g_hand.leftHandRotation, physicalRight);
 	}
 	// The rocking watched on its own as well: when it completes while the
 	// gesture did not count, the log says what stood in the way - the
@@ -2003,6 +2017,47 @@ void UpdateYield(const Config& config, const vr::HandModeFrame& frame, bool acti
 		         static_cast<double>(-in.hand[0].position.z), static_cast<double>(-in.hand[1].position.z),
 		         reinterpret_cast<UInt32>(ahead), ahead != nullptr && game::ActorInCombat(ahead) ? 1 : 0,
 		         fighting ? "fighting" : "not fighting");
+	}
+	// The pose on its own, twice a second, for the headset's numbers
+	// (2026-10-16, vr/Yield.h): with both hands shown - open, or gripping a
+	// drawn weapon - and up before someone in combat, what each palm reads to
+	// the front and which way the drawn fingers point (the pinned hand bone's
+	// x in the world, its share up). What an open hand's controller reads for
+	// the palm is what the tester's next session has to settle.
+	{
+		static float s_poseClock = 0.5f;
+		static UInt32 s_poseLines = 60;
+		bool posed = in.enemyAhead;
+		for (const vr::YieldHandInput& h : in.hand) {
+			posed = posed && h.tracked && (h.holdsWeapon || h.curl < vr::kYieldOpenCurl) &&
+			        h.position.z > -vr::kYieldBelowHeadMetres && h.position.y > vr::kYieldAheadMetres;
+		}
+		if (!posed) {
+			s_poseClock = 0.5f;  // the first line the moment the pose is taken
+		} else if (s_poseLines > 0) {
+			s_poseClock += dt > 0.0f && dt < 1.0f ? dt : 0.0f;
+			if (s_poseClock >= 0.5f) {
+				s_poseClock = 0.0f;
+				--s_poseLines;
+				float fingersUp[2] = {0.0f, 0.0f};
+				for (int side = 0; side < 2; ++side) {
+					NiMatrix33 rot;
+					NiPoint3 pos;
+					if (game::ReadHandBoneWorld(side == 0, rot, pos)) {
+						fingersUp[side] = rot.data[2][0];  // the bone's x runs along the fingers
+					}
+				}
+				OBVR_LOG("Yield: the pose - palms to the front %.2f/%.2f, the fingers' share up %.2f/%.2f, under the "
+				         "eyes %.2f/%.2f m, ahead %.2f/%.2f m, curls %.2f/%.2f; the right hand %s, the left %s",
+				         static_cast<double>(in.hand[0].palmAhead), static_cast<double>(in.hand[1].palmAhead),
+				         static_cast<double>(fingersUp[0]), static_cast<double>(fingersUp[1]),
+				         static_cast<double>(-in.hand[0].position.z), static_cast<double>(-in.hand[1].position.z),
+				         static_cast<double>(in.hand[0].position.y), static_cast<double>(in.hand[1].position.y),
+				         static_cast<double>(in.hand[0].curl), static_cast<double>(in.hand[1].curl),
+				         in.hand[0].holdsWeapon ? "gripping a weapon" : "open",
+				         in.hand[1].holdsWeapon ? "gripping the bow" : "open");
+			}
+		}
 	}
 	if (test::HandScriptMarkedThisFrame()) {
 		char why[240] = {};
