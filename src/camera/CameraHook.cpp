@@ -69,6 +69,7 @@
 #include "game/PlayerTeleport.h"
 #include "game/ControlBindings.h"
 #include "game/ControlWords.h"
+#include "game/TutorialCards.h"
 #include "game/GrabPhysics.h"
 #include "game/WorldPush.h"
 #include "game/HandBodies.h"
@@ -4155,6 +4156,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// The key names in the game's texts ("press W") in the mode's words while
 	// it runs, from the hands' sides (game/ControlWords.h).
 	game::SetControlWordsWanted(active, config.hands.leftHanded);
+	game::SetTutorialCardsWanted(active);
 	if (!active && !menusOnly) {
 		if (test::HandScriptMarkedThisFrame()) {
 			OBVR_LOG("HandScript: state - the hand mode is not running (Hands.Enabled %d, "
@@ -12368,6 +12370,9 @@ bool Install() {
 		// And the key names the game's texts ask for - "press W" - in the
 		// mode's words while it runs (game/ControlWords.h).
 		game::InstallControlWordsHook();
+		// And the Tutorial quest's cards themselves, where a sentence is
+		// bound to the mouse (game/TutorialCards.h).
+		game::InstallTutorialCardsHook();
 	}
 
 	// Oblivion's frame size, set where it is decided.

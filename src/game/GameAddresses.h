@@ -1767,4 +1767,17 @@ inline constexpr UInt32 kFormIdOffset = 0x0C;
 // MessageMenu as trait 0xFDE.
 inline constexpr UInt32 kControlKeyName = 0x0057C240;
 
+// A quest stage entry's text (docs/onboarding-spec.md 3.4, read 2026-10-16
+// with REA): thiscall on the stage item with the quest as its one argument
+// (ret 4), it opens the quest's record in its file (0x0046B680), walks the
+// subrecords counting QSDT until the item's index (item+0x60) and reads the
+// CNAM after it into the string at 0xB36300, whose characters it answers
+// (nullptr for none; the last item read is kept at 0xB362FC). The quest
+// update's notifier 0x006697A0 hands that text to the card (the Generic
+// menu from quest_added.xml, with the sQuestUpdatedText title at 0xB382D8,
+// the quest's name at quest+0x34 and its icon at quest+0x28; the HUD's
+// short line goes through QueueUIMessage_2). Detoured at its entry by
+// game/TutorialCards.h.
+inline constexpr UInt32 kQuestStageEntryText = 0x0052AF40;
+
 }  // namespace obvr::addr

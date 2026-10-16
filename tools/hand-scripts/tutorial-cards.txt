@@ -12,7 +12,9 @@
 # the card opens the Pause menu on top of it: runs 1 and 2 of 2026-10-16),
 # then stage 34 (the cast and the journal) and stage 80 (the sneak). The
 # card is the quest update's Generic menu (0x3F3), "Quest updated -
-# Tutorial".
+# Tutorial". Then two cards swapped whole (game/TutorialCards.h, step 2):
+# stage 26 ("Shift-click to drop an item") and stage 76 (the hotkeys by a
+# number key), the latter with a token of its own that step 1 answers.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/tutorial-cards.txt --save OBVRHarnessTall
 
 ini Hands Enabled=1
@@ -27,6 +29,11 @@ expect Control words: control 7 (Cast) answered "pull the left trigger"
 expect Control words: control 15 (MenuMode) answered "press B on the left controller"
 expect Control words: control 9 (Sneak) answered "flick the right stick down, or crouch"
 expect Hands: menu Generic (0x3F3)
+expect Tutorial cards: the stage entry reader at 0052AF40
+expect Tutorial card: the entry "Click on an item to equip it. Click agai..." swapped for OBVR's words
+expect Tutorial card: the entry "You can hotkey items and spells from you..." swapped for OBVR's words
+expect Control words: control 17 (QuickMenu) answered "click the right stick"
+reject Tutorial cards: bytes at
 reject Control words: bytes at
 reject HandScript: WARNING
 
@@ -46,4 +53,16 @@ mark closed_34
 console-at closed_34 setstage MQ01 80
 wait 3
 mark card_80
+console-at card_80 CloseAllMenus
+wait 2
+mark closed_80
+console-at closed_80 setstage MQ01 26
+wait 3
+mark card_26
+console-at card_26 CloseAllMenus
+wait 2
+mark closed_26
+console-at closed_26 setstage MQ01 76
+wait 3
+mark card_76
 wait 1

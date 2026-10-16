@@ -188,6 +188,32 @@ A hint is one `GuidePanelText` on a `CanvasOverlay` (the holster-fit layer's sha
   a stage the save has passed (10, the walk) raises no card. Open: the
   headset; whether the Controls options menu shows the phrases in its key
   column (not looked at).
+- **Built 2026-10-16, step 2:** `game/TutorialCards.h` detours the stage
+  entry reader `0x0052AF40` (six entry bytes, thiscall on the stage item
+  with the quest as its argument; it reads the entry's CNAM from the quest's
+  record on demand and answers the text at `0xB36300`) - the quest update's
+  notifier `0x006697A0` hands that text to the card (the Generic menu from
+  `quest_added.xml`), so with the mode on an entry that is one of
+  `ui/TutorialCards.h`'s nine (stages 10, 15, 22, 26, 36, 56, 76, 78, 94 of
+  the English esm, matched whole) is answered with OBVR's words: the mouse
+  turn becomes the weapon hand's stick with the teleport, "Shift-click to
+  drop" the other hand's A held, the hotkeys the ring, the bow the weapon
+  hand's trigger held, the containers "or just reach into it". The cards
+  keep vanilla's tokens where a control is named and name no side
+  themselves, so step 1 gives either hand its words; another language or a
+  mod's text matches nothing and keeps its own. Left as vanilla: the
+  lockpick card (70; whether the pick takes A or the trigger in Full VR is
+  not known), the map and quest-list cards (94's "click" works with the
+  laser as it is), the bars "at the bottom left" (72-74; the HUD hangs on
+  the wrist). `tutorial_cards_test` (every card whole, one character off
+  matches nothing, every token a control with words, no side named).
+  Harness `tutorial-cards.txt` PASS with two more cards: stage 26 read
+  "Click an item with the laser to equip it. Click again to unequip it. To
+  drop an item, hold A on your other hand over it.", stage 76 "... with the
+  laser on the item, click the right stick to open the hotkey ring, move
+  your hand to a slot and click again ..." (the token's "push F1" became
+  "click the right stick"). Open: the headset; the journal's quest pages,
+  if they read entries the same way, show the same words (not looked at).
 - The in-menu prompts ("Press E to take") are not researched: whether the HUD
   builds them through the same tokens is open.
 

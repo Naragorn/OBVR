@@ -60,6 +60,41 @@ inline const char* ControlName(UInt32 control) {
 	return control < kControlCount ? kNames[control] : "?";
 }
 
+// The engine's name of the control's setting - what a text's "&name;"
+// carries (the 29 strings at 0xA62674..0xA62854 of Oblivion.exe, read
+// 2026-10-16); "" past the last.
+inline const char* ControlToken(UInt32 control) {
+	static const char* const kTokens[kControlCount] = {
+		"sUActnForward",   "sUActnBack",      "sUActnSldleft",  "sUActnSldright", "sUActnUse",
+		"sUActnActivate",  "sUActnBlock",     "sUActnCast",     "sUActnRdyitem",  "sUActnCrouch",
+		"sUActnRun",       "sUActnTogglerun", "sUActnAutomove", "sUActnJump",     "sUActnTogglepov",
+		"sUActnMenumode",  "sUActnRestmenu",  "sUActnQuickmenu", "sUActnQuick1",  "sUActnQuick2",
+		"sUActnQuick3",    "sUActnQuick4",    "sUActnQuick5",   "sUActnQuick6",   "sUActnQuick7",
+		"sUActnQuick8",    "sUActnQuicksave", "sUActnQuickload", "sUActnGrab"};
+	return control < kControlCount ? kTokens[control] : "";
+}
+
+// The control a token names, kControlCount for none (the engine's own
+// lookup is a settings map; here the 29 names, case as the engine spells
+// them).
+inline UInt32 ControlIndexOfToken(const char* token) {
+	if (token == nullptr) {
+		return kControlCount;
+	}
+	for (UInt32 control = 0; control < kControlCount; ++control) {
+		const char* a = ControlToken(control);
+		const char* b = token;
+		while (*a != '\0' && *a == *b) {
+			++a;
+			++b;
+		}
+		if (*a == '\0' && *b == '\0') {
+			return control;
+		}
+	}
+	return kControlCount;
+}
+
 // Room enough for the longest phrase with either hand's words.
 constexpr UInt32 kControlPhraseCapacity = 128;
 

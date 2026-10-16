@@ -70,6 +70,7 @@ card is in the game: settings menu, Help, "Show the controls".
 | Both stick buttons | clicked together: OBVR's settings. Held three seconds: recenter | |
 
 Make a fist (or squeeze the grip hard) to raise your fists; crouch to sneak.
+In a new game, the prison tutorial's cards name these controls instead of the keys.
 
 ## Known issues
 

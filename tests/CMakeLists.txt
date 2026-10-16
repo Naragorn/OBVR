@@ -1637,3 +1637,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME control_phrase COMMAND control_phrase_test)
+
+add_executable(tutorial_cards_test TutorialCardsTest.cpp)
+
+target_include_directories(tutorial_cards_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(tutorial_cards_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME tutorial_cards COMMAND tutorial_cards_test)

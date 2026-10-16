@@ -169,6 +169,7 @@ From UESP, Oblivion:Controls.
 | Quick save / load (F5 / F9) | Escape menu | enough |
 | Always run, auto move | - | not needed in VR |
 | Change view (R) | - | Full VR stays in first person |
+| The prison tutorial's cards | the key names in the mode's words, the mouse-bound cards swapped whole (onboarding-spec 3.4) | built 2026-10-16 |
 
 ## 4. The target picture
 
