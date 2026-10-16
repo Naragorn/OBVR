@@ -5,17 +5,22 @@
 Play the original **The Elder Scrolls IV: Oblivion** in real VR. Real 3D, head
 tracking, your menus and HUD in the headset. (Not for the Remastered edition.)
 
-**Status: early test build (0.2.x).** Sit down, grab your mouse, keyboard or
-gamepad and you're in Cyrodiil - that part works and is what this release is for.
-Playing standing with motion controllers (Full VR) is in a closed beta: that build
-is handed out in the Discord channel only and is not in the download here or on
-Nexus yet.
+**Get the latest download:** [Releases](https://github.com/Naragorn/OBVR/releases) -
+the newest one is at the top. **Status: early test build (0.2.x).** Sit down, grab
+your mouse, keyboard or gamepad and you're in Cyrodiil - that part works and is
+what the download here is for.
 
-**Join the Discord:** https://discord.com/channels/747967102895390741/1547539304786436228 -
-questions, bug reports, screenshots, or just to say hi.
+**Full VR beta on Discord.** Standing with motion controllers (swords in your
+hand, blocking, grabbing, teleport) is in a closed beta. The beta build is handed
+out in our Discord channel only, not here yet - join if you want to test it, Index
+or Quest controllers: https://discord.com/channels/747967102895390741/1547539304786436228
+The download here stays the seated version.
 
-**Want to support OBVR?** Ko-fi, Patreon and crypto are under
-[Supporting the work](#supporting-the-work).
+**Join the Discord** (same link) for questions, bug reports, screenshots, or just
+to say hi.
+
+**Want to support OBVR?** Tips go to https://ko-fi.com/somadb (that Ko-fi is mine,
+see [Supporting the work](#supporting-the-work) for Patreon and crypto too).
 
 ## What you get
 
@@ -60,7 +65,7 @@ card is in the game: settings menu, Help, "Show the controls".
 | A | activate what the laser points at | in the inventory: drop the item under the cursor |
 | B | pause menu (Escape) | the Tab menus; they hang on this wrist, the other hand's laser clicks |
 | Stick | turn; held up: aim a teleport, let go to go; flick up: jump; flick down: sneak | walk; pressed in: run |
-| Stick button | short click: the hotkey ring - move the hand to a slot, click again (in the middle: close). Held: the rest menu | pressed in: run |
+| Stick button | short click: the hotkey ring - move the hand to a slot, click again (in the middle: close). Held: the rest menu | short click: the spell ring - the spells you know, click again on one to make it your spell. Held: run |
 | Trackpad (Index) | held: the hotkey ring, let go on a slot | click: the journal |
 | Both stick buttons | clicked together: OBVR's settings. Held three seconds: recenter | |
 
