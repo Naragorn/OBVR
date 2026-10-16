@@ -119,10 +119,56 @@ A hint is one `GuidePanelText` on a `CanvasOverlay` (the holster-fit layer's sha
   - Either way the words come from one table that the controls card
     (ui/NativeControlsCard.h) and the README's table are kept to.
 
-- **Research first:** where the engine substitutes the key name into a message. Candidates: the "%s" in the tutorial quest messages is filled by the control map's key name (UESP: the tutorial messages name the bound key), so the function that turns a control index into a key name is the place. Not found yet; nothing is known about its address.
-- Then: with the mode on, answer the controller's name for the control the mode presses (`game::ApplyHandControls` knows which key stands for which role): "Forward" becomes "left stick", "Activate" "A on the weapon hand", "Ready weapon" "reach to your hip".
-- The in-menu prompts ("Press E to take") follow from the same place if it is the one.
-- **Test:** the name map as a pure function over control index and mode, every control in the table of docs/controls-spec.md section 3.
+- **Researched 2026-10-16 (REA over Oblivion.exe, UESP, Oblivion.esm read
+  directly):**
+  - The cards are the Tutorial quest's stage entries (MQ01, stages 10 to 96;
+    UESP "Oblivion:Tutorial", Journal Entries). The esm carries the raw text,
+    e.g. stage 10's CNAM: `To move forward, &sUActnForward;, &sUActnBack; to
+    move back. To move left, &sUActnSldleft;. To move right, &sUActnSldright;.
+    The mouse turns you. To run, &sUActnRun;.` The console and PC variants are
+    separate entries chosen by their conditions.
+  - The tokens are resolved at text layout, not in the quest: the font's
+    layout routine `0x00575B40` scans a tile string for `&name;`, looks the
+    name up in the settings map (`0xB35574`/`0xB3557C`) and, when the setting
+    is one of the 29 control-name settings (`sUActnForward` ... `sUActnGrab`,
+    engine defaults "Forward", "Back", "SlideLeft" ..., the array at
+    `0xB399D0` in control-index order 0..28 = xOBSE's `kControl_Forward` ...
+    `kControl_Grab`), calls **`0x0057C240(control, char out[1024])`**, which
+    reads the control map (`OSInputGlobals` `0xB33398`+0x20: keyboard +0x1B7E,
+    mouse +0x1B9B, joystick +0x1BB8), takes the button's name from the key
+    (`0xB39578`), mouse (`0xB39554`) or joystick (`0xB39930`) name table and
+    formats `"%s %s"` with the "press" string at `0xB38F18` - "press W" - or
+    the unbound string at `0xB38F20`. The layout splices that into the text.
+  - The box: `ShowMessageBox` `0x00579C10` → `0x005BC8B0` builds the
+    MessageMenu (0x3E9) from `Data\Menus\message_menu.xml` and sets the
+    message as trait 0xFDE (`kTileValue_string`) on the text tile - raw, so
+    the tokens are still in it there (derived from the layout being the
+    expansion point; `LIKELY`). 88 callers; the one in the quest-stage code
+    is `0x00466A65` in `0x00465860` (`LIKELY`, not decompiled; a log line in
+    a detour with `setstage MQ01 10` in the harness settles it).
+- **The DLL route, two steps:**
+  1. **Detour `0x0057C240`** (cost small): with the mode on, answer OBVR's
+     phrase for the control index from a pure table (`NameForControl(control,
+     mode)`, every index covered by a test, the words from docs/controls-spec
+     section 3 and the controls card), and let the engine answer otherwise.
+     Every `&sUActn…;` in every text follows - the cards, any prompt built
+     the same way - and the token names are engine strings, so this holds in
+     every language. Test: the harness with `setstage MQ01 10`, the detour's
+     log line and the card's picture. Risk: the Controls options menu, if it
+     builds its key column through the same call, shows the VR phrase there
+     too - harmless, to be looked at in the picture.
+  2. **Whole cards** (cost small to medium): a detour on `0x00579C10` that
+     matches the message against the known MQ01 entries (the English esm
+     text up to the first token) and hands the engine OBVR's card instead -
+     for the sentences no token reaches ("The mouse turns you", "Click on the
+     fist icon", "Shift-click to drop"). The texts are the work; one table
+     shared with the controls card. A non-English esm matches nothing and
+     keeps step 1's result. Test: one harness scenario per card by
+     `setstage`.
+  The ESP stays the fallback for a text the box never passes through
+  `0x00579C10`.
+- The in-menu prompts ("Press E to take") are not researched: whether the HUD
+  builds them through the same tokens is open.
 
 ### 3.5 A way into the settings
 
