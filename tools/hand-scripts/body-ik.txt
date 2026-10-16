@@ -34,6 +34,8 @@ expect the right arm falls short of its hand
 expect Body IK: the body turns with the head
 expect the feet put back
 expect Body IK: the trunk's pose taken from the standing idle
+expect Body check:
+reject the body is left hidden
 reject HandScript: WARNING
 reject Body IK: the right arm left to the body
 reject Body IK: the left arm left to the body

@@ -37,6 +37,16 @@ struct BodyIkSettings {
 // the skeleton is not there - then the IK does nothing this frame.
 bool BeginBodyIk(NiAVObject* root);
 
+// The body's arm bones as they read this frame, in world units: the upper
+// arm (shoulder to elbow) and the forearm (elbow to wrist), for the
+// skeleton's check (BodyPlacement.h, JudgeSkeleton). False, both left as
+// they were, when the frame or the bones are not there.
+bool ReadBodyArmUnits(UInt32 side, float& upperUnits, float& foreUnits);
+
+// The frame given up after BeginBodyIk: nothing more is written to the
+// skeleton this frame (the placement found it reads like no body).
+void StandDownBodyIk();
+
 // The torso: the root turned so the body faces the head's yaw in the world
 // plus the torso's yaw relative to the head (StepTorsoYaw, kept in the
 // headset's tracking space); the trunk - the chain from the root to the head

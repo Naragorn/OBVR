@@ -197,6 +197,63 @@ void ProbeBodyTree(NiAVObject* root) {
 	}
 }
 
+// The skeleton's reading reported ("Body check:"): once per skeleton when it
+// reads sane, and each time the verdict changes - a handful of lines at most.
+const NiAVObject* g_checkedRoot = nullptr;
+SkeletonVerdict g_checkedVerdict = SkeletonVerdict::Sane;
+bool g_checkedOnce = false;
+UInt32 g_checkLinesLeft = 8;
+
+// The skeleton as it reads this frame, judged before anything is written to
+// it (BodyPlacement.h, JudgeSkeleton; a tester's log of 2026-10-16). False
+// when it reads like no body: then the body is hidden again, the IK stands
+// down for the frame, and the log says what was read.
+bool SkeletonReadsLikeABody(NiAVObject* root, NiAVObject* skeleton, const NiAVObject* head, bool ik) {
+	SkeletonReading r;
+	r.rootScale = skeleton->worldTransform.scale;
+	const NiAVObject* const parent = skeleton->parent;
+	if (LooksLikeObject(parent)) {
+		r.parentScale = parent->worldTransform.scale;
+		const NiMatrix33& m = parent->worldTransform.rot;
+		r.parentColumns =
+		    NiPoint3{ik::Length(ik::Column(m, 0)), ik::Length(ik::Column(m, 1)), ik::Length(ik::Column(m, 2))};
+	}
+	const NiPoint3 headOff = head->worldTransform.pos - skeleton->worldTransform.pos;
+	r.finite = ik::Finite(skeleton->worldTransform.pos) && ik::Finite(head->worldTransform.pos) && ik::Finite(headOff);
+	r.headUnits = ik::Length(headOff);
+	if (ik) {
+		for (UInt32 side = 0; side < 2; ++side) {
+			ReadBodyArmUnits(side, r.upperUnits[side], r.foreUnits[side]);
+		}
+	}
+	const SkeletonVerdict verdict = JudgeSkeleton(r);
+	const bool sane = verdict == SkeletonVerdict::Sane;
+	if ((!g_checkedOnce || root != g_checkedRoot || verdict != g_checkedVerdict) && g_checkLinesLeft > 0) {
+		--g_checkLinesLeft;
+		OBVR_LOG("Body check: Bip01 scale %.3f under a parent of scale %.3f (columns %.2f %.2f %.2f), the head %.1f "
+		         "units from it, the right arm %.1f + %.1f, the left %.1f + %.1f units (0 = not read) - %s%s",
+		         static_cast<double>(r.rootScale), static_cast<double>(r.parentScale),
+		         static_cast<double>(r.parentColumns.x), static_cast<double>(r.parentColumns.y),
+		         static_cast<double>(r.parentColumns.z), static_cast<double>(r.headUnits),
+		         static_cast<double>(r.upperUnits[0]), static_cast<double>(r.foreUnits[0]),
+		         static_cast<double>(r.upperUnits[1]), static_cast<double>(r.foreUnits[1]),
+		         SkeletonVerdictWords(verdict),
+		         sane ? "" : ": the body is left hidden this frame and nothing is written to it");
+	}
+	g_checkedOnce = true;
+	g_checkedRoot = root;
+	g_checkedVerdict = verdict;
+	if (sane) {
+		return true;
+	}
+	StandDownBodyIk();
+	if (g_unhiddenRoot == root) {
+		root->flags = static_cast<UInt16>(root->flags | kHiddenBit);
+		g_unhiddenRoot = nullptr;
+	}
+	return false;
+}
+
 }  // namespace
 
 bool ShowPlayerBody(const BodyFrame& frame) {
@@ -222,6 +279,15 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 	// where the engine left it, then turns the body with the head - both
 	// before anything below reads the head's place.
 	const bool ik = BeginBodyIk(root);
+
+	// The skeleton read for sense before anything is written to it: one that
+	// reads like no body (a tester's log of 2026-10-16, BodyPlacement.h) is
+	// left hidden and nothing below runs.
+	NiAVObject* const skeleton = NamedNode(root, kSkeletonName, g_reported.skeleton);
+	NiAVObject* const parent = skeleton != nullptr ? skeleton->parent : nullptr;
+	if (skeleton != nullptr && !SkeletonReadsLikeABody(root, skeleton, head, ik)) {
+		return false;
+	}
 	if (ik) {
 		BodyTorsoFrame torso;
 		torso.headValid = frame.headYawValid;
@@ -241,8 +307,6 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 	// camera's sibling; moving it moves the body and nothing else. Written
 	// under its parent, as every node write in OBVR is, and propagated with
 	// the engine's own pass so the whole skeleton follows.
-	NiAVObject* const skeleton = NamedNode(root, kSkeletonName, g_reported.skeleton);
-	NiAVObject* const parent = skeleton != nullptr ? skeleton->parent : nullptr;
 	if (skeleton == nullptr || !LooksLikeObject(parent)) {
 		if (skeleton != nullptr && !g_reported.parent) {
 			g_reported.parent = true;

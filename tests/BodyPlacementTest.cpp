@@ -9,6 +9,8 @@
 // number worked out under the same assumptions.
 
 #include <cstdio>
+#include <cstring>
+#include <limits>
 
 #include "core/Rotation.h"
 #include "game/BodyPlacement.h"
@@ -19,6 +21,10 @@ using obvr::game::BodyRootInput;
 using obvr::game::BodyRootLocalPos;
 using obvr::game::BodyRootWorldWanted;
 using obvr::game::CyclopeanCamera;
+using obvr::game::JudgeSkeleton;
+using obvr::game::SkeletonReading;
+using obvr::game::SkeletonVerdict;
+using obvr::game::SkeletonVerdictWords;
 using obvr::game::VisibleBodyWanted;
 
 namespace {
@@ -294,6 +300,93 @@ void TestLookDownBack() {
 
 }  // namespace
 
+// The skeleton read for sense before the body is placed (a tester's log of
+// 2026-10-16: the body's bones tens of thousands of units apart, the arms
+// across the whole view).
+void TestSkeletonJudged() {
+	std::printf("The skeleton read for sense\n");
+	SkeletonReading vanilla;
+	vanilla.headUnits = 112.4f;
+	vanilla.upperUnits[0] = vanilla.upperUnits[1] = 21.85f;
+	vanilla.foreUnits[0] = vanilla.foreUnits[1] = 14.78f;
+	Check(JudgeSkeleton(vanilla) == SkeletonVerdict::Sane, "the measured skeleton at scale one reads sane");
+
+	SkeletonReading crouched = vanilla;
+	crouched.headUnits = 62.0f;
+	Check(JudgeSkeleton(crouched) == SkeletonVerdict::Sane, "a crouch's head height reads sane");
+
+	SkeletonReading half = vanilla;
+	half.rootScale = half.parentScale = 0.5f;
+	half.headUnits = 56.2f;
+	half.upperUnits[0] = half.upperUnits[1] = 10.9f;
+	half.foreUnits[0] = half.foreUnits[1] = 7.4f;
+	Check(JudgeSkeleton(half) == SkeletonVerdict::Sane, "a race at half scale reads sane");
+
+	SkeletonReading twice = vanilla;
+	twice.rootScale = twice.parentScale = 2.0f;
+	twice.headUnits = 224.8f;
+	twice.upperUnits[0] = twice.upperUnits[1] = 43.7f;
+	twice.foreUnits[0] = twice.foreUnits[1] = 29.6f;
+	Check(JudgeSkeleton(twice) == SkeletonVerdict::Sane, "a race at twice the scale reads sane");
+
+	SkeletonReading unread = vanilla;
+	unread.upperUnits[0] = unread.upperUnits[1] = 0.0f;
+	unread.foreUnits[0] = unread.foreUnits[1] = 0.0f;
+	Check(JudgeSkeleton(unread) == SkeletonVerdict::Sane, "arms not read (the IK off) are not judged");
+
+	SkeletonReading tester = vanilla;
+	tester.headUnits = 55536.6f;
+	tester.upperUnits[0] = 47455.8f;
+	tester.upperUnits[1] = 46483.0f;
+	tester.foreUnits[0] = 32058.1f;
+	tester.foreUnits[1] = 29670.0f;
+	Check(JudgeSkeleton(tester) == SkeletonVerdict::HeadOff, "the tester's reading - the head 55k units off - is off");
+
+	SkeletonReading arm = vanilla;
+	arm.upperUnits[1] = 47455.8f;
+	Check(JudgeSkeleton(arm) == SkeletonVerdict::ArmOff, "an upper arm of 47455 units is off");
+	SkeletonReading fore = vanilla;
+	fore.foreUnits[0] = 2.0f;
+	Check(JudgeSkeleton(fore) == SkeletonVerdict::ArmOff, "a forearm of 2 units is off");
+
+	const float nan = std::numeric_limits<float>::quiet_NaN();
+	SkeletonReading noNumber = vanilla;
+	noNumber.headUnits = nan;
+	Check(JudgeSkeleton(noNumber) == SkeletonVerdict::NotFinite, "a head that is no number is not finite");
+	SkeletonReading flagged = vanilla;
+	flagged.finite = false;
+	Check(JudgeSkeleton(flagged) == SkeletonVerdict::NotFinite, "a reading flagged not finite is not finite");
+	SkeletonReading nanArm = vanilla;
+	nanArm.foreUnits[1] = nan;
+	Check(JudgeSkeleton(nanArm) == SkeletonVerdict::NotFinite, "a forearm that is no number is not finite");
+
+	SkeletonReading giant = vanilla;
+	giant.rootScale = 2172.0f;
+	Check(JudgeSkeleton(giant) == SkeletonVerdict::ScaleOff, "a root scale of 2172 is off");
+	SkeletonReading tiny = vanilla;
+	tiny.parentScale = 0.0004f;
+	Check(JudgeSkeleton(tiny) == SkeletonVerdict::ScaleOff, "a parent scale of 0.0004 is off");
+	SkeletonReading none = vanilla;
+	none.rootScale = 0.0f;
+	Check(JudgeSkeleton(none) == SkeletonVerdict::ScaleOff, "a root scale of zero is off");
+
+	SkeletonReading skewed = vanilla;
+	skewed.parentColumns = NiPoint3{2172.0f, 2172.0f, 2172.0f};
+	Check(JudgeSkeleton(skewed) == SkeletonVerdict::ParentSkewed, "a parent whose columns are 2172 long is no rotation");
+	SkeletonReading squashed = vanilla;
+	squashed.parentColumns = NiPoint3{1.0f, 0.5f, 1.0f};
+	Check(JudgeSkeleton(squashed) == SkeletonVerdict::ParentSkewed, "a parent with one column half long is no rotation");
+
+	Check(std::strcmp(SkeletonVerdictWords(SkeletonVerdict::Sane), "sane") == 0, "the sane verdict reads sane");
+	const SkeletonVerdict others[] = {SkeletonVerdict::NotFinite, SkeletonVerdict::ScaleOff,
+	                                  SkeletonVerdict::ParentSkewed, SkeletonVerdict::HeadOff, SkeletonVerdict::ArmOff};
+	bool worded = true;
+	for (const SkeletonVerdict v : others) {
+		worded = worded && SkeletonVerdictWords(v)[0] != '\0' && std::strcmp(SkeletonVerdictWords(v), "sane") != 0;
+	}
+	Check(worded, "every other verdict has words of its own");
+}
+
 int main() {
 	TestUprightBody();
 	std::printf("\n");
@@ -312,6 +405,8 @@ int main() {
 	TestCyclopeanCamera();
 	std::printf("\n");
 	TestGate();
+	std::printf("\n");
+	TestSkeletonJudged();
 
 	std::printf("\n");
 	if (g_failures == 0) {

@@ -2,6 +2,7 @@
 
 #include "core/MathFns.h"
 #include "core/Rotation.h"
+#include "game/BodyIkLogic.h"
 #include "game/NiMath.h"
 
 namespace obvr::game {
@@ -185,6 +186,102 @@ inline NiPoint3 CyclopeanCamera(const NiPoint3& cameraNodeWorld, const NiPoint3&
 // dialogue camera stands somewhere else entirely.
 inline bool VisibleBodyWanted(bool enabled, bool isThirdPerson, bool menuIsUp) {
 	return enabled && !isThirdPerson && !menuIsUp;
+}
+
+// ---------------------------------------------------------- The skeleton read
+//
+// Whether the skeleton reads like a body at all, before anything is written
+// to it. A tester's log (2026-10-16, a Quest 3 over Virtual Desktop, 0.3.0)
+// had the third-person skeleton's bones tens of thousands of units apart
+// from the first frame after a load - "the body's upper arm 47455.8 and
+// forearm 32058.1 units", "the body let down 55424.2 units" - and the body
+// placed and solved on those numbers put its arms across the whole view and
+// left the hands at not-a-number: blue shapes over the world, gone in every
+// menu, where the hands go. What is wrong with that skeleton sits in that
+// game (its skeleton, or the engine's transforms of it) and is not known
+// yet; a body that reads like that is left hidden, nothing is written to
+// it, and the log says what was read ("Body check:").
+//
+// What a body reads at scale one (BodyIkLogic.h, the skeleton measured):
+// the upper arm 21.85 units, the forearm 14.78, the head 112 above Bip01
+// standing, 60 to 80 crouched or sat. The bounds leave room for a race's
+// scale (read off the root and applied) and for any pose, not for a
+// skeleton a thousand times out. Arms not read (the IK off) are not judged.
+struct SkeletonReading {
+	bool finite = true;                        // every number read was one
+	float rootScale = 1.0f;                    // Bip01's world scale
+	float parentScale = 1.0f;                  // its parent's, the player's node
+	NiPoint3 parentColumns{1.0f, 1.0f, 1.0f};  // the lengths of the parent's rotation columns
+	float headUnits = 0.0f;                    // Bip01 Head from Bip01, world units
+	float upperUnits[2] = {0.0f, 0.0f};        // the upper arms, right and left; 0 when not read
+	float foreUnits[2] = {0.0f, 0.0f};         // the forearms
+};
+
+enum class SkeletonVerdict : UInt8 { Sane, NotFinite, ScaleOff, ParentSkewed, HeadOff, ArmOff };
+
+inline constexpr float kSkeletonScaleMin = 0.05f;
+inline constexpr float kSkeletonScaleMax = 20.0f;
+inline constexpr float kSkeletonColumnMin = 0.8f;  // a rotation's columns are unit; a scaled one is no rotation
+inline constexpr float kSkeletonColumnMax = 1.25f;
+inline constexpr float kSkeletonHeadMinUnits = 30.0f;
+inline constexpr float kSkeletonHeadMaxUnits = 300.0f;
+inline constexpr float kSkeletonUpperMinUnits = 5.0f;
+inline constexpr float kSkeletonUpperMaxUnits = 80.0f;
+inline constexpr float kSkeletonForeMinUnits = 4.0f;
+inline constexpr float kSkeletonForeMaxUnits = 60.0f;
+
+inline bool WithinScaled(float value, float minAtOne, float maxAtOne, float scale) {
+	return value >= minAtOne * scale && value <= maxAtOne * scale;
+}
+
+inline SkeletonVerdict JudgeSkeleton(const SkeletonReading& r) {
+	if (!r.finite || !ik::Finite(r.rootScale) || !ik::Finite(r.parentScale) || !ik::Finite(r.parentColumns) ||
+	    !ik::Finite(r.headUnits) || !ik::Finite(r.upperUnits[0]) || !ik::Finite(r.upperUnits[1]) || !ik::Finite(r.foreUnits[0]) ||
+	    !ik::Finite(r.foreUnits[1])) {
+		return SkeletonVerdict::NotFinite;
+	}
+	if (r.rootScale < kSkeletonScaleMin || r.rootScale > kSkeletonScaleMax || r.parentScale < kSkeletonScaleMin ||
+	    r.parentScale > kSkeletonScaleMax) {
+		return SkeletonVerdict::ScaleOff;
+	}
+	const NiPoint3& c = r.parentColumns;
+	if (c.x < kSkeletonColumnMin || c.x > kSkeletonColumnMax || c.y < kSkeletonColumnMin || c.y > kSkeletonColumnMax ||
+	    c.z < kSkeletonColumnMin || c.z > kSkeletonColumnMax) {
+		return SkeletonVerdict::ParentSkewed;
+	}
+	const float s = r.rootScale;
+	if (!WithinScaled(r.headUnits, kSkeletonHeadMinUnits, kSkeletonHeadMaxUnits, s)) {
+		return SkeletonVerdict::HeadOff;
+	}
+	for (UInt32 side = 0; side < 2; ++side) {
+		if (r.upperUnits[side] > 0.0f &&
+		    !WithinScaled(r.upperUnits[side], kSkeletonUpperMinUnits, kSkeletonUpperMaxUnits, s)) {
+			return SkeletonVerdict::ArmOff;
+		}
+		if (r.foreUnits[side] > 0.0f && !WithinScaled(r.foreUnits[side], kSkeletonForeMinUnits, kSkeletonForeMaxUnits, s)) {
+			return SkeletonVerdict::ArmOff;
+		}
+	}
+	return SkeletonVerdict::Sane;
+}
+
+// The verdict's words for the log.
+inline const char* SkeletonVerdictWords(SkeletonVerdict v) {
+	switch (v) {
+		case SkeletonVerdict::Sane:
+			return "sane";
+		case SkeletonVerdict::NotFinite:
+			return "not every number read is one";
+		case SkeletonVerdict::ScaleOff:
+			return "a scale off any body's";
+		case SkeletonVerdict::ParentSkewed:
+			return "the parent's rotation is no rotation";
+		case SkeletonVerdict::HeadOff:
+			return "the head off any body's";
+		case SkeletonVerdict::ArmOff:
+			return "an arm off any body's";
+	}
+	return "?";
 }
 
 }  // namespace obvr::game

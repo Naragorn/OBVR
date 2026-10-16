@@ -548,3 +548,64 @@ chest in the green. A crouch with the head bowed not tried.
   turning outwards with the eye dumps and Debug.BodyView's wrist width,
   then either a lower share on the hand for that side or the elbow swung
   with the roll (VRArmIK's way, tried and left out above). Not built.
+
+## Round 4 (2026-10-16): the skeleton read for sense before the body is placed
+
+Status: **built 2026-10-16 (the guard and the "Body check:" line); the cause
+in the reporting user's game open.**
+
+A report on 0.3.0-beta1 (a Quest 3 over Virtual Desktop, Windows, Full VR):
+"the screen is constantly being obscured by some blue artifacts ... when I
+open my inventory or the menu, the flickering disappears completely and the
+game looks normal. Also the sound in game stutters." His OBVR.log.prev:
+
+- Before the load the scene's bound is a worldspace's (centre -19374 68890
+  16080, radius 371976). On the body's first frame after the load: "Body IK:
+  the body let down 55424.2 units to put its eyes at the headset", "the
+  body's upper arm 47455.8 and forearm 32058.1 units" (the measured skeleton:
+  21.85 and 14.78), "the wrist at 40185479168.0 -33926496256.0
+  591464687976054784.0 for the hand at -2105.1 63035.6 1182.2" - and the
+  next probe of the scene's bound reads centre (5702520832, -19320637440,
+  293162063759409152), radius 293162063759409152. The body's bones stand in
+  the scene graph tens of thousands of units apart, and the arms solved on
+  them run across the whole view. "27 of 27 bones found", "0 still held the
+  writes": the engine re-poses the bones every frame, so the lengths are what
+  its own transforms say, not a leftover write of OBVR's. The ratio to the
+  measured skeleton is the same for both arm bones (about 2170), a scale
+  rather than noise.
+- The hands then read not-a-number: "Measure: right hand - "Bip01 R Hand"
+  ... -nan(ind) units ahead of the grip" (the first-person arm laid onto the
+  body's), later "Body IK: the right arm left to the body - no solve (... a
+  number that is none)" and "forearm stump ... stump ends at (-nan(ind)
+  -nan(ind) -nan(ind))".
+- The session ends in "Watchdog: no frame has ended for 10 seconds - the
+  render thread's last recorded step was "overlays submitted"".
+- In menus the hands go ("Hands: menu Pause (0x3F5) - the hands go") and no
+  arm is solved, which is why the picture is clean there.
+
+The same build on the tester's own Windows and Linux setups reads "upper arm
+21.8 and forearm 14.8 units" and "let down 1.4 units".
+
+**Built:** `JudgeSkeleton` (BodyPlacement.h; body_placement_test: the
+measured skeleton, a crouch, races at half and twice the scale, arms not
+read, the reported reading, every verdict and its words). Before anything is
+written, the skeleton's reading - Bip01's world scale, its parent's scale and
+the lengths of the parent rotation's columns, the head's distance from
+Bip01, the arm bones' lengths - is judged against a body's: scale 0.05 to
+20, columns 0.8 to 1.25, the head 30 to 300 units at scale one, the upper
+arm 5 to 80, the forearm 4 to 60. One that reads like no body is hidden
+again for the frame, the IK stands down (`StandDownBodyIk`), and the log
+says what was read, once per skeleton when sane and whenever the verdict
+changes: "Body check: Bip01 scale 1.000 under a parent of scale 1.000
+(columns 1.00 1.00 1.00), the head 112.4 units from it, the right arm 21.9 +
+14.8, the left 21.9 + 14.8 units (0 = not read) - sane". The harness:
+`body-ik.txt` expects the line and rejects "the body is left hidden".
+
+**Open:** what makes that skeleton read so. Candidates, none read: a
+skeleton or body replacer with scaled bones, a race at a scale the engine
+keeps on a node OBVR reads as the parent, or the engine not placing the
+third-person skeleton in first person in that game at all (the setup OBVR
+patches in at the POV switch may not have run for his load). His next log's
+"Body check:" line names the scale, the columns and the lengths; `[Body]
+Visible=0` is the immediate test for him - no body, no IK, the first-person
+hands and arms as pinned.

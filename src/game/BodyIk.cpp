@@ -826,6 +826,24 @@ bool BeginBodyIk(NiAVObject* root) {
 	return g_frame.valid;
 }
 
+bool ReadBodyArmUnits(UInt32 side, float& upperUnits, float& foreUnits) {
+	if (!g_frame.valid || side > 1) {
+		return false;
+	}
+	const UInt32 base = side == 0 ? kArmRight : kArmLeft;
+	const NiAVObject* const upper = g_frame.bone[base + kUpper];
+	const NiAVObject* const fore = g_frame.bone[base + kFore];
+	const NiAVObject* const hand = g_frame.bone[base + kHand];
+	if (upper == nullptr || fore == nullptr || hand == nullptr) {
+		return false;
+	}
+	upperUnits = ik::Length(fore->worldTransform.pos - upper->worldTransform.pos);
+	foreUnits = ik::Length(hand->worldTransform.pos - fore->worldTransform.pos);
+	return true;
+}
+
+void StandDownBodyIk() { g_frame.valid = false; }
+
 // Where the animation put the feet this frame, turned with the body - noted
 // before the trunk is held and the body moved, for the legs.
 void NoteAnimatedFeet() {
