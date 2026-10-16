@@ -436,9 +436,14 @@ cursor detours. That is the current state; the mouse now clicks where the button
   saw "only an upper image" (2026-09-26). Each eye's world render (the dual pass only;
   a single render may be the flat picture, meant to fill the believed corner) now begins
   with the window closed and the full frame put back if the believed rectangle stands
-  (`render::PrepareWorldViewport`, decision `WorldViewportLeftShrunk`). `LIKELY`: the
-  cause is derived from code and log, not yet seen fixed in the headset; the log says
-  when it acts ("Hud viewport: ... began in the 2D pass's ...").
+  (`render::PrepareWorldViewport`, decision `WorldViewportLeftShrunk`). The log says
+  when it acts ("Hud viewport: ... began in the 2D pass's ..."): a Quest 3 tester's
+  beta logs of 2026-10-16 carry "the first eye's render began in the 2D pass's
+  1764x992 - the full frame put back for the world" and his picture was whole; a Varjo
+  Aero user on 0.2.1 reported the same split (2026-10-15, "the screen splits
+  horizontally" in interiors, frame 5464x4684 against a believed 5464x3073), and the
+  fix went out to the seated release as 0.2.2 (branch release/0.2.2, 2026-10-16).
+  `LIKELY` until the Aero user confirms it in his headset.
 
 ## Foliage, LOD, sky, post-processing
 

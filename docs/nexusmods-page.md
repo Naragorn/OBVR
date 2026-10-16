@@ -16,7 +16,7 @@ stored as; the editor has a BBCode view to paste it into. Keep this file and
 | Name | `OBVR - Oblivion in VR` (Nexus advises against the version in the title) |
 | Category | Utilities (xOBSE and MenuQue live there; "Visuals and Graphics" is the alternative) |
 | Language | English |
-| Version | 0.2.1 (the latest GitHub release; 0.2.2 is the version in the tree, unreleased) |
+| Version | 0.2.2 (the latest GitHub release, 2026-10-16; main carries 0.3.0, the Full VR beta on Discord) |
 | Author | Naragorn |
 | Classification | not adult |
 
@@ -43,6 +43,9 @@ dxvk.conf line.
   Uninstalling and Found-a-bug sections.
 - **Changelog**: one entry per release, from the GitHub releases:
 
+  > 0.2.2: fixed the picture splitting horizontally in interiors on headsets with a tall
+  > frame (a Varjo Aero report); the 32-bit openvr_api.dll now ships in the archive.
+  >
   > 0.2.1: fixed the remaining sneak-eye fragment displayed in the Oblivion main menu.
   >
   > 0.2.0: rendering fixes and MenuQue settings. Fixed foliage orientation and
@@ -70,8 +73,8 @@ dxvk.conf line.
 
 | Field | Value |
 | --- | --- |
-| File name | `OBVR 0.2.1` |
-| File version | 0.2.1 |
+| File name | `OBVR 0.2.2` |
+| File version | 0.2.2 |
 | Latest version | yes |
 | Category | Main Files |
 | Main Vortex file | yes |
@@ -145,7 +148,7 @@ this file.)
 - [ ] Draft created, game Oblivion, category Utilities.
 - [ ] Short description and `docs/nexus-description.bbcode` pasted; preview checked,
       lists and the code line render.
-- [ ] Files: the 0.2.1 release zip uploaded as Main File, version 0.2.1, main Vortex file.
+- [ ] Files: the 0.2.2 release zip uploaded as Main File, version 0.2.2, main Vortex file.
 - [ ] Requirements: xOBSE and MenuQue linked from the Nexus list, DXVK and SteamVR as
       external.
 - [ ] Permissions: own text (GPL-3.0), credits, donations with Patreon.
