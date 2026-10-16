@@ -597,8 +597,17 @@ in the headset yet.
   **Built the same evening (the tester: "ja mach"):** with `holdsCursor` the
   direct placement is dropped for the frame too (`g_hand.cursorWanted=false`
   in `UpdateQuickMenu`), so the engine's cursor stays on the item while the
-  ring is up. Harness `quick-menu-assign.txt`: the rerun is pending - SteamVR
-  was off when it was due.
+  ring is up. Harness `quick-menu-assign.txt`: PASS 2026-10-16 on Linux, the
+  scenario moved to the 2026-10-01 save (slot 5 empty before, the laser on
+  the Iron Longsword row): the placed cursor stayed at 856,587 through the
+  ring, "setting hotkey 5 to what the cursor is on in the Inventory menu
+  (empty until now)", one click on the "Iron_Longsword" tile, "the hotkeys
+  now: ... 5 Iron Longsword", "hotkey 5 used (Iron Longsword)". Seen on the
+  way (open): with the laser on the top row (Elven Long Sword, rot 68) the
+  ring closed "without a hotkey" before the trackpad was let go - the
+  `assign` input (the menu under the cursor) must have left the inventory
+  for a frame there; the cancel path says nothing about why, a reason in
+  that log line would (small).
 
 ### 4.6 Stowing at the body, and taking only by hand (built 2026-09-27)
 
