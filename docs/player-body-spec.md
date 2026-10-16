@@ -699,11 +699,15 @@ the height), body_placement_test (the root under such a parent), body_ik_test
 (the shield carried under one). Harness: `body-ik-tall.txt` sets every race's
 scale to 1.10 at the main menu before the save loads (the new `console-menu`
 line, test/HandScriptConsole.h) and runs body-ik.txt's moves on the taller
-body, expecting "columns 1.00 1.00 1.10" and every check sane - but the
-race's scale set at the main menu did not reach the player built from the
-save (run 1: every line taken and run, the body still 1.00 and 112.4), so
-the scenario waits for a save of an Altmer in the world (`--save
-OBVRHarnessTall`). body-ik.txt on the usual body PASS with the new inverse;
-the reporting user's own run of beta 4 is the proof on a tall race until
-then. The guards of beta 2 and 3 stay as they are, for the next skeleton
-that reads like no body.
+body, expecting "columns 1.00 1.00 1.10" and every check sane. The race's
+scale set at the main menu did not reach the player built from the save (run
+1: every line taken and run, the body still 1.00 and 112.4), so the tester
+made an Altmer save (the Imperial Prison cell, `OBVRHarnessTall`): run 2 PASS -
+the body read exactly the reporting user's numbers before the placement
+(columns 1.00 1.00 1.10, the head 123.7, the right arm 23.9 + 16.2) and
+stayed so after the engine's update and after the placement ("let down 1.8
+units" where his log read 55423), every arm reached, the far hand fell short
+by 15.9 grown x1.15, the trunk held, nothing left to the body. body-ik.txt on
+the usual body PASS with the new inverse, the same numbers as before it. The
+guards of beta 2 and 3 stay as they are, for the next skeleton that reads
+like no body.

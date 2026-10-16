@@ -2,17 +2,14 @@
 # whose race height of 1.10 Oblivion lays into the player node's rotation
 # matrix as a scale of the third column; the transposes taken for inverses of
 # that matrix tore his skeleton 2170 times apart within a frame and pushed
-# his hands off the controllers). Every race's scale is set to 1.10 at the
-# main menu before the save loads (console-menu), so the harness character
-# stands a tenth taller whatever race it is; then body-ik.txt's moves. The
-# three "Body check" lines must read the taller body sane ("columns 1.00 1.00
-# 1.10", the head about 124 units), every arm must follow and nothing may be
-# left to the body.
-# Run 1 (2026-10-16, beta 4): every SetRaceScale line was taken and run at the
-# main menu, and the loaded player still read columns 1.00 and the head 112.4 -
-# the race's scale set there does not reach the player built from a save. The
-# scenario therefore needs a save of a tall race: an Altmer standing in the
-# world in first person, saved as OBVRHarnessTall.
+# his hands off the controllers). The save is the tester's Altmer in the
+# Imperial Prison cell at the game's start (OBVRHarnessTall, 2026-10-16), the
+# moves are body-ik.txt's. The three "Body check" lines must read the taller
+# body sane ("columns 1.00 1.00 1.10", the head about 124 units), every arm
+# must follow and nothing may be left to the body.
+# Run 1 of the day tried setting every race's scale to 1.10 at the main menu
+# instead (console-menu SetRaceScale): taken and run, but the player built
+# from the Imperial save kept 1.00 - the scale does not reach a loaded player.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/body-ik-tall.txt --save OBVRHarnessTall
 
 ini Hands Enabled=1
@@ -22,26 +19,6 @@ ini Body IKArms=1
 ini Body IKTorso=1
 ini Body IKLegs=1
 ini Body EyeForward=5.6
-console-menu SetRaceScale Argonian 0 1.1
-console-menu SetRaceScale Argonian 1 1.1
-console-menu SetRaceScale Breton 0 1.1
-console-menu SetRaceScale Breton 1 1.1
-console-menu SetRaceScale DarkElf 0 1.1
-console-menu SetRaceScale DarkElf 1 1.1
-console-menu SetRaceScale HighElf 0 1.1
-console-menu SetRaceScale HighElf 1 1.1
-console-menu SetRaceScale Imperial 0 1.1
-console-menu SetRaceScale Imperial 1 1.1
-console-menu SetRaceScale Khajiit 0 1.1
-console-menu SetRaceScale Khajiit 1 1.1
-console-menu SetRaceScale Nord 0 1.1
-console-menu SetRaceScale Nord 1 1.1
-console-menu SetRaceScale Orc 0 1.1
-console-menu SetRaceScale Orc 1 1.1
-console-menu SetRaceScale Redguard 0 1.1
-console-menu SetRaceScale Redguard 1 1.1
-console-menu SetRaceScale WoodElf 0 1.1
-console-menu SetRaceScale WoodElf 1 1.1
 
 expect HandScript: finished
 expect Body IK: the third-person skeleton - 27 of 27 bones found
