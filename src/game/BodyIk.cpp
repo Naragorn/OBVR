@@ -6,6 +6,7 @@
 #include "core/Log.h"
 #include "core/MathFns.h"
 #include "core/Rotation.h"
+#include "game/BodyPlacement.h"
 #include "game/BonePin.h"
 #include "game/FirstPersonArms.h"
 #include "game/FirstPersonHide.h"
@@ -617,6 +618,12 @@ bool SolveArm(UInt32 side, const BodyArmsFrame& f, const TorsoKeepOut& torso) {
 	const float foreUnits = ik::Length(hand->worldTransform.pos - fore->worldTransform.pos);
 	if (!(upperUnits > 1.0f) || !(foreUnits > 1.0f)) {
 		stats.why = "the arm's bones read no length";
+		return false;
+	}
+	const NiAVObject* const skeletonRoot = g_frame.bone[kRoot];
+	if (!ArmBonesReadLikeAnArm(upperUnits, foreUnits,
+	                           skeletonRoot != nullptr ? skeletonRoot->worldTransform.scale : 1.0f)) {
+		stats.why = "the arm's bones read longer than any arm's - nothing is laid onto them";
 		return false;
 	}
 	// The clavicle towards a far or high hand; the shoulder joint goes with it.

@@ -609,3 +609,58 @@ patches in at the POV switch may not have run for his load). His next log's
 "Body check:" line names the scale, the columns and the lengths; `[Body]
 Visible=0` is the immediate test for him - no body, no IK, the first-person
 hands and arms as pinned.
+
+### Beta 3 (2026-10-16, after the beta-2 log): the skeleton comes apart in the placement
+
+His beta-2 log turned the picture round. Frame by frame, lines 1543 to 1569:
+"Body check ... the head 123.7 units from it, the right arm 23.9 + 16.2, the
+left 23.8 + 16.0 units - sane" (a body a tenth larger than the measured one;
+its parent's rotation has a third column of length 1.10, where ours reads
+1.00 - something in his game scales the player in that matrix); then "the
+body let down 55423.1 units"; then the solve's "upper arm 47455.8 and forearm
+32058.1 units" in the same frame. The skeleton is sane before the placement
+writes Bip01's position and runs the engine's update of it, and 2170 times
+out after. Later checks alternate between sane and off from frame to frame,
+which is the flicker. `[Body] Visible=0` took the flicker away for him at
+once ("gone absolutely").
+
+The hands followed from it: with the first-person arm laid onto the torn
+body, the first-person hand is written under a torn parent and lands off the
+controller; every guided fit he ran then froze the hand where the IK had
+pushed it, measured that as the hand's place and saved it - his grips grew
+0.23, 0.45, 0.62, 0.85 m over four rounds, so the hands stood "far away"
+even with the body off, until the twelve calibration keys were put back.
+
+**Built:**
+
+- `ArmBonesReadLikeAnArm` (BodyPlacement.h): the solve refuses an arm whose
+  bones read longer than any arm's right before the lay-on ("the arm's bones
+  read longer than any arm's - nothing is laid onto them"), so no
+  first-person arm is laid onto torn bones whatever came before. The bounds
+  tightened to twice the measured skeleton (upper arm 44, forearm 30, head
+  200 units at scale one): his "73.0 + 46.7" and "51.2 + 57.7" had passed
+  the first bounds and were laid onto.
+- The check again after the placement (`SkeletonStillReadsLikeABody`): the
+  reading taken once more after the write and the engine's update, the body
+  let down further than any body's height counted as off; off hides the body
+  for the frame and stands the IK down. Logged once per skeleton and whenever
+  it changes: "Body check after the placement (Bip01 let down 2.3 units): ...".
+- The dry run (once per skeleton, on its first sane frame): the engine's own
+  update of Bip01 with nothing written, the reading taken again and logged
+  ("Body check after the engine's own update of Bip01, nothing written: ...").
+  Off there means the update tears his skeleton by itself; sane there and off
+  after the placement means the write does. His next log decides.
+- `FitReadsLikeAHand` (BonePin.h): a fit whose own grip lies more than 0.35 m
+  from the controller, or carries a number that is none, is refused and not
+  saved ("Hands: the right hand's fit refused - ..."); the hand keeps the fit
+  it had.
+- Tests: body_placement_test (the arm helper, the torn-but-under-the-old-bound
+  case), bone_pin_test (the fit refused). Harness `body-ik.txt` expects the
+  dry-run and the after-placement lines and rejects "the body is left hidden".
+
+**Open:** which of the two, our write of Bip01's local position or the
+engine's update, tears his skeleton, and what in his game makes the parent's
+rotation carry a scale. The write goes through `BodyRootLocalPos`, which
+inverts the parent's rotation by its transpose; a rotation with a scaled
+column has no such inverse, and a tenth of error there is not 2170 times - so
+the dry run is the next fact to read.

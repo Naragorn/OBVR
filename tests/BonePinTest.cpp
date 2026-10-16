@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdio>
 #include <initializer_list>
+#include <limits>
 
 #include "core/Rotation.h"
 #include "game/BonePin.h"
@@ -250,6 +251,24 @@ void TestAdjust() {
 	      "switched off while held: nothing committed");
 }
 
+// A fit that can mean a hand (the tester's fits of 2026-10-16 grew to 0.85 m
+// because the body's IK had pushed the hand away before each one).
+void TestFitRefused() {
+	std::printf("A fit that can mean a hand\n");
+	using obvr::game::FitReadsLikeAHand;
+	using obvr::game::kFitMaxGripMetres;
+	Check(FitReadsLikeAHand(NiPoint3{0.03f, -0.04f, 0.10f}, 0.0f, 0.0f, 90.0f), "a grip a hand's breadth off is a fit");
+	Check(FitReadsLikeAHand(NiPoint3{0.0f, 0.0f, kFitMaxGripMetres}, 180.0f, 0.0f, 90.0f),
+	      "exactly the bound is still a fit");
+	Check(!FitReadsLikeAHand(NiPoint3{-0.200f, 0.395f, -0.629f}, -11.2f, 13.7f, 110.1f),
+	      "the tester's 0.77 m fit is refused");
+	Check(!FitReadsLikeAHand(NiPoint3{0.0f, 0.0f, 0.36f}, 0.0f, 0.0f, 90.0f), "just past the bound is refused");
+	const float nan = std::numeric_limits<float>::quiet_NaN();
+	Check(!FitReadsLikeAHand(NiPoint3{nan, 0.0f, 0.0f}, 0.0f, 0.0f, 90.0f), "a grip that is no number is refused");
+	Check(!FitReadsLikeAHand(NiPoint3{0.0f, 0.0f, 0.0f}, 0.0f, nan, 90.0f), "an angle that is no number is refused");
+	Check(FitReadsLikeAHand(NiPoint3{0.0f, 0.0f, 0.5f}, 0.0f, 0.0f, 0.0f, 0.6f), "a wider bound asked for is honoured");
+}
+
 void TestBareWrist() {
 	std::printf("Bare wrists\n");
 	UInt32 id = 0;
@@ -287,6 +306,7 @@ void TestBareWrist() {
 }
 
 int main() {	TestAdjust();
+	TestFitRefused();
 	TestWorldPose();
 	TestLocalUnderParent();
 	TestPalmCentre();

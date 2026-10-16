@@ -7988,6 +7988,14 @@ bool PinAdjustableHand(bool right, const vr::HandSettings& hands, bool adjusting
 	float newYaw = 0.0f;
 	game::CalibrationAngles(fit.calibration, newRoll, newPitch, newYaw);
 	const NiPoint3 newOwn = fit.gripUnits * (1.0f / perMetre) - sharedGripMetres;
+	if (!game::FitReadsLikeAHand(newOwn, newRoll, newPitch, newYaw)) {
+		OBVR_LOG("Hands: the %s hand's fit refused - it would put the hand %.2f m from the controller's grip, "
+		         "more than %.2f, or a number that is none; the hand keeps the fit it had",
+		         right ? "right" : "left", static_cast<double>(math::Sqrt(newOwn.LengthSquared())),
+		         static_cast<double>(game::kFitMaxGripMetres));
+		game::PinHandBone(right, bone, relativeRot, offsetUnits, calibration, cameraRot, cameraPos, grip);
+		return false;
+	}
 	vr::HandSettings& live = GetConfig().hands;
 	(right ? live.rightHandRoll : live.leftHandRoll) = newRoll;
 	(right ? live.rightHandPitch : live.leftHandPitch) = newPitch;

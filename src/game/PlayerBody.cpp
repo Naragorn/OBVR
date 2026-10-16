@@ -1,5 +1,7 @@
 #include "game/PlayerBody.h"
 
+#include <cstdio>
+
 #include "core/AddressSpace.h"
 #include "core/Log.h"
 #include "core/MathFns.h"
@@ -197,18 +199,18 @@ void ProbeBodyTree(NiAVObject* root) {
 	}
 }
 
-// The skeleton's reading reported ("Body check:"): once per skeleton when it
-// reads sane, and each time the verdict changes - a handful of lines at most.
+// The skeleton's readings reported ("Body check:"): once per skeleton when it
+// reads sane, and each time a verdict changes - some lines at most.
 const NiAVObject* g_checkedRoot = nullptr;
 SkeletonVerdict g_checkedVerdict = SkeletonVerdict::Sane;
 bool g_checkedOnce = false;
-UInt32 g_checkLinesLeft = 8;
+const NiAVObject* g_dryRunRoot = nullptr;
+const NiAVObject* g_afterRoot = nullptr;
+SkeletonVerdict g_afterVerdict = SkeletonVerdict::Sane;
+bool g_afterOnce = false;
+UInt32 g_checkLinesLeft = 24;
 
-// The skeleton as it reads this frame, judged before anything is written to
-// it (BodyPlacement.h, JudgeSkeleton; a tester's log of 2026-10-16). False
-// when it reads like no body: then the body is hidden again, the IK stands
-// down for the frame, and the log says what was read.
-bool SkeletonReadsLikeABody(NiAVObject* root, NiAVObject* skeleton, const NiAVObject* head, bool ik) {
+SkeletonReading ReadSkeleton(const NiAVObject* skeleton, const NiAVObject* head, bool ik) {
 	SkeletonReading r;
 	r.rootScale = skeleton->worldTransform.scale;
 	const NiAVObject* const parent = skeleton->parent;
@@ -226,32 +228,98 @@ bool SkeletonReadsLikeABody(NiAVObject* root, NiAVObject* skeleton, const NiAVOb
 			ReadBodyArmUnits(side, r.upperUnits[side], r.foreUnits[side]);
 		}
 	}
-	const SkeletonVerdict verdict = JudgeSkeleton(r);
-	const bool sane = verdict == SkeletonVerdict::Sane;
-	if ((!g_checkedOnce || root != g_checkedRoot || verdict != g_checkedVerdict) && g_checkLinesLeft > 0) {
-		--g_checkLinesLeft;
-		OBVR_LOG("Body check: Bip01 scale %.3f under a parent of scale %.3f (columns %.2f %.2f %.2f), the head %.1f "
-		         "units from it, the right arm %.1f + %.1f, the left %.1f + %.1f units (0 = not read) - %s%s",
-		         static_cast<double>(r.rootScale), static_cast<double>(r.parentScale),
-		         static_cast<double>(r.parentColumns.x), static_cast<double>(r.parentColumns.y),
-		         static_cast<double>(r.parentColumns.z), static_cast<double>(r.headUnits),
-		         static_cast<double>(r.upperUnits[0]), static_cast<double>(r.foreUnits[0]),
-		         static_cast<double>(r.upperUnits[1]), static_cast<double>(r.foreUnits[1]),
-		         SkeletonVerdictWords(verdict),
-		         sane ? "" : ": the body is left hidden this frame and nothing is written to it");
+	return r;
+}
+
+void LogSkeletonCheck(const char* when, const SkeletonReading& r, SkeletonVerdict verdict) {
+	if (g_checkLinesLeft == 0) {
+		return;
 	}
-	g_checkedOnce = true;
-	g_checkedRoot = root;
-	g_checkedVerdict = verdict;
-	if (sane) {
-		return true;
-	}
+	--g_checkLinesLeft;
+	OBVR_LOG("Body check%s: Bip01 scale %.3f under a parent of scale %.3f (columns %.2f %.2f %.2f), the head %.1f "
+	         "units from it, the right arm %.1f + %.1f, the left %.1f + %.1f units (0 = not read) - %s%s",
+	         when, static_cast<double>(r.rootScale), static_cast<double>(r.parentScale),
+	         static_cast<double>(r.parentColumns.x), static_cast<double>(r.parentColumns.y),
+	         static_cast<double>(r.parentColumns.z), static_cast<double>(r.headUnits),
+	         static_cast<double>(r.upperUnits[0]), static_cast<double>(r.foreUnits[0]),
+	         static_cast<double>(r.upperUnits[1]), static_cast<double>(r.foreUnits[1]),
+	         SkeletonVerdictWords(verdict),
+	         verdict == SkeletonVerdict::Sane ? "" : ": the body is left hidden this frame and the IK stands down");
+}
+
+// The body hidden again for this frame and the IK stood down: nothing more
+// is written to the skeleton.
+void HideBodyForThisFrame(NiAVObject* root) {
 	StandDownBodyIk();
 	if (g_unhiddenRoot == root) {
 		root->flags = static_cast<UInt16>(root->flags | kHiddenBit);
 		g_unhiddenRoot = nullptr;
 	}
-	return false;
+}
+
+// The skeleton as it reads this frame, judged before anything is written to
+// it (BodyPlacement.h, JudgeSkeleton). On a skeleton's first sane frame the
+// engine's own update of Bip01 is run once with nothing written and the
+// reading taken again: a tester's skeleton (2026-10-16) read sane before the
+// placement and 2170 times out after it, in the same frame, and whether the
+// write or the update does that is what the second reading tells. False
+// when either reading is no body's: the body is hidden again, the IK stands
+// down, and the log says what was read.
+bool SkeletonReadsLikeABody(NiAVObject* root, NiAVObject* skeleton, const NiAVObject* head, bool ik) {
+	const SkeletonReading r = ReadSkeleton(skeleton, head, ik);
+	const SkeletonVerdict verdict = JudgeSkeleton(r);
+	if (!g_checkedOnce || root != g_checkedRoot || verdict != g_checkedVerdict) {
+		LogSkeletonCheck("", r, verdict);
+	}
+	g_checkedOnce = true;
+	g_checkedRoot = root;
+	g_checkedVerdict = verdict;
+	if (verdict != SkeletonVerdict::Sane) {
+		HideBodyForThisFrame(root);
+		return false;
+	}
+	if (g_dryRunRoot != root) {
+		g_dryRunRoot = root;
+		UpdateNodeTransforms(skeleton);
+		const SkeletonReading after = ReadSkeleton(skeleton, head, ik);
+		const SkeletonVerdict afterVerdict = JudgeSkeleton(after);
+		LogSkeletonCheck(" after the engine's own update of Bip01, nothing written", after, afterVerdict);
+		if (afterVerdict != SkeletonVerdict::Sane) {
+			HideBodyForThisFrame(root);
+			return false;
+		}
+	}
+	return true;
+}
+
+// The reading again after the placement wrote Bip01's position and ran the
+// engine's update of it - where the tester's skeleton came apart. The body
+// moved further than any body's height is the same verdict. Said once per
+// skeleton and whenever it changes.
+bool SkeletonStillReadsLikeABody(NiAVObject* root, NiAVObject* skeleton, const NiAVObject* head, bool ik,
+                                 float loweredUnits) {
+	const SkeletonReading r = ReadSkeleton(skeleton, head, ik);
+	SkeletonVerdict verdict = JudgeSkeleton(r);
+	const float scale = ik::Finite(r.rootScale) && r.rootScale > 0.0f ? r.rootScale : 1.0f;
+	if (verdict == SkeletonVerdict::Sane &&
+	    (!ik::Finite(loweredUnits) || loweredUnits > kSkeletonHeadMaxUnits * scale ||
+	     loweredUnits < -kSkeletonHeadMaxUnits * scale)) {
+		verdict = SkeletonVerdict::HeadOff;
+	}
+	if (!g_afterOnce || root != g_afterRoot || verdict != g_afterVerdict) {
+		char when[96];
+		std::snprintf(when, sizeof(when), " after the placement (Bip01 let down %.1f units)",
+		              static_cast<double>(loweredUnits));
+		LogSkeletonCheck(when, r, verdict);
+	}
+	g_afterOnce = true;
+	g_afterRoot = root;
+	g_afterVerdict = verdict;
+	if (verdict != SkeletonVerdict::Sane) {
+		HideBodyForThisFrame(root);
+		return false;
+	}
+	return true;
 }
 
 }  // namespace
@@ -343,6 +411,9 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 		}
 		UpdateNodeTransforms(skeleton);
 		lowered = zBefore - skeleton->worldTransform.pos.z;
+		if (!SkeletonStillReadsLikeABody(root, skeleton, head, ik, lowered)) {
+			return false;
+		}
 		BodyPlacementTrace trace;
 		trace.cameraWorld = in.cameraWorld;
 		trace.parentWorld = in.parentPos;

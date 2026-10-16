@@ -21,6 +21,7 @@ using obvr::game::BodyRootInput;
 using obvr::game::BodyRootLocalPos;
 using obvr::game::BodyRootWorldWanted;
 using obvr::game::CyclopeanCamera;
+using obvr::game::ArmBonesReadLikeAnArm;
 using obvr::game::JudgeSkeleton;
 using obvr::game::SkeletonReading;
 using obvr::game::SkeletonVerdict;
@@ -345,6 +346,10 @@ void TestSkeletonJudged() {
 	SkeletonReading arm = vanilla;
 	arm.upperUnits[1] = 47455.8f;
 	Check(JudgeSkeleton(arm) == SkeletonVerdict::ArmOff, "an upper arm of 47455 units is off");
+	SkeletonReading torn = vanilla;
+	torn.upperUnits[0] = 73.0f;
+	torn.foreUnits[0] = 46.7f;
+	Check(JudgeSkeleton(torn) == SkeletonVerdict::ArmOff, "an arm three times the measured one is off");
 	SkeletonReading fore = vanilla;
 	fore.foreUnits[0] = 2.0f;
 	Check(JudgeSkeleton(fore) == SkeletonVerdict::ArmOff, "a forearm of 2 units is off");
@@ -387,6 +392,24 @@ void TestSkeletonJudged() {
 	Check(worded, "every other verdict has words of its own");
 }
 
+// The arm's bones judged right before the solve lays the first-person arm
+// onto them (the tester's beta-2 log: sane before the placement, 47455 and
+// 32058 units after it).
+void TestArmBonesJudged() {
+	std::printf("The arm's bones read for sense before the lay-on\n");
+	Check(ArmBonesReadLikeAnArm(21.85f, 14.78f, 1.0f), "the measured arm at scale one is an arm");
+	Check(ArmBonesReadLikeAnArm(23.9f, 16.2f, 1.0f), "a body a tenth larger is an arm");
+	Check(ArmBonesReadLikeAnArm(43.7f, 29.6f, 2.0f), "a race at twice the scale is an arm");
+	Check(ArmBonesReadLikeAnArm(0.0f, 0.0f, 1.0f), "bones not read are left to the solve's own check");
+	Check(!ArmBonesReadLikeAnArm(47455.8f, 32058.1f, 1.0f), "the tester's torn arm is none");
+	Check(!ArmBonesReadLikeAnArm(73.0f, 46.7f, 1.0f), "three times an arm is none");
+	Check(!ArmBonesReadLikeAnArm(21.85f, 1792.0f, 1.0f), "a forearm of 1792 units is none");
+	const float nan = std::numeric_limits<float>::quiet_NaN();
+	Check(!ArmBonesReadLikeAnArm(nan, 14.78f, 1.0f), "an upper arm that is no number is none");
+	Check(!ArmBonesReadLikeAnArm(21.85f, 14.78f, nan), "a scale that is no number is none");
+	Check(ArmBonesReadLikeAnArm(21.85f, 14.78f, 0.0f), "a scale of zero counts as one");
+}
+
 int main() {
 	TestUprightBody();
 	std::printf("\n");
@@ -407,6 +430,8 @@ int main() {
 	TestGate();
 	std::printf("\n");
 	TestSkeletonJudged();
+	std::printf("\n");
+	TestArmBonesJudged();
 
 	std::printf("\n");
 	if (g_failures == 0) {

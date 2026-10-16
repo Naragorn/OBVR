@@ -224,11 +224,11 @@ inline constexpr float kSkeletonScaleMax = 20.0f;
 inline constexpr float kSkeletonColumnMin = 0.8f;  // a rotation's columns are unit; a scaled one is no rotation
 inline constexpr float kSkeletonColumnMax = 1.25f;
 inline constexpr float kSkeletonHeadMinUnits = 30.0f;
-inline constexpr float kSkeletonHeadMaxUnits = 300.0f;
+inline constexpr float kSkeletonHeadMaxUnits = 200.0f;
 inline constexpr float kSkeletonUpperMinUnits = 5.0f;
-inline constexpr float kSkeletonUpperMaxUnits = 80.0f;
+inline constexpr float kSkeletonUpperMaxUnits = 44.0f;  // twice the measured 21.85 - a tester's 73 was a body already torn
 inline constexpr float kSkeletonForeMinUnits = 4.0f;
-inline constexpr float kSkeletonForeMaxUnits = 60.0f;
+inline constexpr float kSkeletonForeMaxUnits = 30.0f;   // twice the measured 14.78
 
 inline bool WithinScaled(float value, float minAtOne, float maxAtOne, float scale) {
 	return value >= minAtOne * scale && value <= maxAtOne * scale;
@@ -263,6 +263,21 @@ inline SkeletonVerdict JudgeSkeleton(const SkeletonReading& r) {
 		}
 	}
 	return SkeletonVerdict::Sane;
+}
+
+// Whether an arm's two bones, as they read right before the arm is solved
+// and the first-person arm laid onto it, are an arm's at all: the same
+// bounds, with the root's scale. The tester's beta-2 log (2026-10-16) read
+// sane before the body was placed and "47455.8 and 32058.1 units" after it,
+// in the same frame, and the first-person arm was laid onto that - which is
+// what pushed his hands off the controllers. Lengths of 0 are "not read" and
+// the solve's own check takes those.
+inline bool ArmBonesReadLikeAnArm(float upperUnits, float foreUnits, float rootScale) {
+	if (!ik::Finite(upperUnits) || !ik::Finite(foreUnits) || !ik::Finite(rootScale)) {
+		return false;
+	}
+	const float s = rootScale > 0.0f ? rootScale : 1.0f;
+	return upperUnits <= kSkeletonUpperMaxUnits * s && foreUnits <= kSkeletonForeMaxUnits * s;
 }
 
 // The verdict's words for the log.

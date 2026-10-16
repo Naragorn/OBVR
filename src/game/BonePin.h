@@ -207,6 +207,24 @@ inline HandFit FitHandToPose(const NiMatrix33& cameraRot, const NiPoint3& camera
 	return fit;
 }
 
+// A fit that can mean a hand: its own grip within kFitMaxGripMetres of the
+// controller (on top of the shared grip), every angle a number. A tester's
+// fits of 2026-10-16 grew with every round, 0.23, 0.45, 0.62, 0.85 m: the
+// body's IK had pushed the hand off the controller before each one, the fit
+// measured that push as the hand's place and saved it. Such a fit is refused
+// and not saved; the hand keeps the fit it had.
+inline constexpr float kFitMaxGripMetres = 0.35f;
+
+inline bool FitReadsLikeAHand(const NiPoint3& ownGripMetres, float rollDegrees, float pitchDegrees,
+                              float yawDegrees, float maxMetres = kFitMaxGripMetres) {
+	const auto finite = [](float v) { return v == v && v < 3.0e38f && v > -3.0e38f; };
+	if (!finite(ownGripMetres.x) || !finite(ownGripMetres.y) || !finite(ownGripMetres.z) ||
+	    !finite(rollDegrees) || !finite(pitchDegrees) || !finite(yawDegrees) || !finite(maxMetres)) {
+		return false;
+	}
+	return ownGripMetres.LengthSquared() <= maxMetres * maxMetres;
+}
+
 // Adjusting the hands: while the option is on, closing a grip holds that
 // hand still in the world, and opening it commits the fit.
 struct HandAdjustState {
