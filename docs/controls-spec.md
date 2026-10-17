@@ -3256,7 +3256,9 @@ Hands page with Right hand roll 90, yaw 175, Left hand roll 95, Hand forward 15)
   0.17 m ahead and 0.33 m under the eyes, 0.16 m round; with his `HandGripForwardMetres` of -0.23 the
   drawn hand is 23 cm behind the controller, so when the drawn item touches his chest the controller
   is 0.40 m out - outside. Ours. Fix: the zone at the drawn hand (the controller plus the grip
-  offset). Cost: small (stow_test, the harness stow scenario).
+  offset). Cost: small (stow_test, the harness stow scenario). The tester's call (2026-10-17):
+  first point him to the settings - "Place the stow spot" and "Adjust hands" under Hands, and
+  MenuQue for the menus - before anything is built.
 - *sprint and jump stop working, a restart helps, maybe the arms away from the chest*: the gesture
   block holds the engine's block key - the fist guard (fists readied, both hands no lower than 20 cm
   under the eyes and 12 cm ahead, `IsFistGuard`) or the bow guard (the bow upright; tester A's log:
