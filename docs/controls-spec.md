@@ -3199,3 +3199,70 @@ ring is (4.4), in place of the journal (F1).
   controllers' flows; the risk is the harness scenarios built on the stick
   (`quick-menu-stick.txt`, `spell-ring.txt`) needing the override, and the
   journal losing its only key on the Index (the Tab menus' B keeps it).
+
+## Beta reports of 2026-10-17 (two testers, Quest 3 over Virtual Desktop; noted, nothing built)
+
+**Tester A ("yellow landen", 0.3.0 beta 4, Windows, OBSE 21 - not xOBSE 22 as the README asks; his
+OBVR.log and OBVR.log.prev of 2026-10-17 in the tester's Downloads, a 148 s recording of the Imperial
+Substructure at 68 to 71 fps of a 72 Hz target, 45 to 48 ms latency):**
+- *"super shuddery movement"*: the recording's frame rate sits under the headset's; his log has the
+  monitor present without vsync. What OBVR itself costs on Windows is measured only in part (13.6 %
+  reprojection on the developer's machine). Theirs and ours; the `[Performance]` capture and the
+  SteamVR frame timing would settle it. Cost of the measurement: medium.
+- *"cant open doors not sure how to pick up items"*: `[Hands] TakeOnlyByHand` is on by default, so
+  the activate button takes no loose item - the grip holds it and the chest stows it (vr/Stow.h); his
+  log shows two stows ("Stow: the held item is at the body") and "Pick: a door or the like under the
+  laser takes it from the items (the laser's pick, Activate opens)". A door is the laser and A. Ours as
+  words: the controls card says neither; the stow spot ring (`StowSpotVisible`) is off by default.
+  Cost: small (the card's lines, the ring on by default for the beta).
+- *"ui of dead bodies is oftend flipped the wrong way"*: `vr::ContainerAnchor` (DialogPanel.h) takes
+  the panel's right edge from the horizontal part of the line of sight; over a body at the feet that
+  part is a sway of the head, so the edge turns round between frames and the panel shows its back. His
+  log: "its face tilted 58 to 68 degrees" on the corpses. Ours. Fix: the head's own right edge once
+  the line is steeper than about 60 degrees. Cost: small (pure, dialog_panel_test).
+- *"smooth turning is waaaay too slow"*: `[Hands] TurnSpeed` (12) is mouse pixels a frame at full
+  deflection (game/HandControls.h), so the turn rate hangs on the game's mouse sensitivity and the
+  frame rate, and the row is not in the settings menu (only `[Look] TurnSpeed`, the eased turn).
+  Ours. Fix: the row (small); the turn in degrees a second through the camera's yaw as the snap turn
+  does (medium).
+- *"left handed mode inverts hands to face the wrong direction"*: `LeftHanded=1` swaps the
+  controllers' roles as a whole and the pin puts the game's right hand, with the right hand's
+  calibration, on the left controller - a mirror image. Known as a limitation (section 4; the body
+  keeps its own arms). Proper support pins each physical hand as itself and moves the weapon to the
+  other bone: medium to large; not now, play right-handed.
+
+**Tester B (avolpe, Quest 3 over Virtual Desktop, 120 Hz, RTX 5070 Ti; his 15 s clip shows the
+Hands page with Right hand roll 90, yaw 175, Left hand roll 95, Hand forward 15):**
+- *the joystick emulates WASD, no analogue speed*: true - the stick presses the move keys
+  (game/HandControls.h, HandKeyMap) and the direction is continuous only because the body turns to
+  the walk direction (vr/WalkDirection.h); the speed is walk or run. Analogue speed needs the engine's
+  movement speed set each frame from the deflection: medium, unmeasured in the engine.
+- *no pitch row for the hands*: the settings menu carries roll and yaw rows only
+  (ui/SettingsList.cpp); `RightHandPitch`/`LeftHandPitch` exist in the INI, and the fit (Adjust hands:
+  on, close a grip to hold the hand still, move the controller to where the hand should sit, open the
+  grip) writes all three. His Touch numbers: pitch 50 both, `HandGripUpMetres` 0.04,
+  `HandGripForwardMetres` -0.23. Ours. Cost: small (two rows); a Touch preset by controller type: small.
+- *robes and the Shrouded Armor show two sets of hands*: known (player-body-spec: robes that carry the
+  hands in the upper body cannot hide the body's hands, they sit inside the first-person ones).
+  Workaround `[Body] Visible=0`. Fix idea: the body's hand bones shrunk to nothing under such a robe,
+  the way the bare wrist is shrunk (BonePin.h). Cost: small to medium, a robe in the harness.
+- *performance drops with human NPCs in view, not with creatures*: unmeasured. The humanoid-only work
+  is the contact capsules (`HandsStopAtBodies`, `SwingsStopAtBodies`, `PunchesStopAtBodies`,
+  `WeaponStopsAtBodies`), `SlowApproach`, `CombatRing`, the attack tempo, the enemy bars and the NPC
+  look-at. The `[Performance]` capture (docs/performance-profiling.md) names the cost; the toggles
+  find it by halves. Cost to find: medium.
+- *cannot put a held item into the inventory, letting go at the chest drops it*: the stow zone is
+  measured at the controller (`BodyRelative(f.head, f.headPosition, cr.position)` in HandMode.cpp),
+  0.17 m ahead and 0.33 m under the eyes, 0.16 m round; with his `HandGripForwardMetres` of -0.23 the
+  drawn hand is 23 cm behind the controller, so when the drawn item touches his chest the controller
+  is 0.40 m out - outside. Ours. Fix: the zone at the drawn hand (the controller plus the grip
+  offset). Cost: small (stow_test, the harness stow scenario).
+- *sprint and jump stop working, a restart helps, maybe the arms away from the chest*: the gesture
+  block holds the engine's block key - the fist guard (fists readied, both hands no lower than 20 cm
+  under the eyes and 12 cm ahead, `IsFistGuard`) or the bow guard (the bow upright; tester A's log:
+  "the bow is held upright - blocking" 12 times). Blocking walks; whether it also refuses the jump I
+  could not verify (UESP names a dodge jump while blocking at Journeyman Acrobatics). The "until a
+  restart" part is unexplained - a guard that never let go, or a readied weapon he did not notice.
+  His log would show "blocking". Cost: a toggle for the fist guard small; the cause of the latch
+  needs his log.
+
