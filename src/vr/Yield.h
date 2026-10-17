@@ -76,9 +76,9 @@ namespace obvr::vr {
 // lines are to tell; the weapon hand's controller, gripped, reads true.
 // Now: a hand holding a drawn weapon (YieldHandInput::holdsWeapon) is not
 // asked to open - its fingers hold the controller - and is the hand whose
-// palm is asked to the front, which keeps a guard's sideways palm out; an
-// open hand is shown by its open fingers, its palm's share read for the
-// log but no gate.
+// palm is asked to the front (kYieldPalmAhead, set from his sword hand's
+// numbers), which keeps a guard's sideways palm out; an open hand is shown
+// by its open fingers, its palm's share read for the log but no gate.
 inline constexpr float kYieldStrokeMinMetres = 0.04f;
 inline constexpr float kYieldStrokeMaxMetres = 0.30f;
 inline constexpr UInt32 kYieldReversals = 4;          // two out-and-in cycles over both hands
@@ -94,7 +94,13 @@ inline constexpr float kYieldSpeedWindowSeconds = 0.1f;
 inline constexpr float kYieldSwingHoldSeconds = 1.0f;
 inline constexpr float kYieldBelowHeadMetres = 0.5f;  // a hand no lower than this under the eyes
 inline constexpr float kYieldAheadMetres = 0.05f;     // and in front of them
-inline constexpr float kYieldPalmAhead = 0.5f;        // the palm's share along the head's forward (cosine)
+// The gripping hand's palm share along the head's forward (cosine): within
+// 73 degrees. The first guess was 0.5 (60 degrees); the tester's sword hand
+// read 0.31 to 0.46 in a third of his attempts over two sessions
+// (2026-10-14 and 2026-10-16) and 0.62 to 0.96 in the rest, so the cone is
+// set from those numbers. What a guard's palm reads is unmeasured - it faces
+// the side, about 0, by the way a blade is held.
+inline constexpr float kYieldPalmAhead = 0.3f;
 
 // One hand this frame. `position` is the hand relative to the head in
 // metres: x outward from the body (positive for both hands), y ahead, z

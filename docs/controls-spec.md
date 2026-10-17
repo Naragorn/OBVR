@@ -511,7 +511,9 @@ in the headset yet.
   and a short click stays what it was. The hold is longer than the chord's
   window on purpose. The journal key (F1, the left trackpad's click on the
   Index) still has no Touch binding; the tester wants that press to become a
-  spell ring (4.44). Tests: hand_mode_test, the hold's flows and the mode's
+  spell ring (4.44). Since 2026-10-16 he wants the stick clicks to open the
+  rings on a Quest only, the Index's rings on its trackpads alone (the open
+  item at the end of 4.44). Tests: hand_mode_test, the hold's flows and the mode's
   (short click, the hold, the chord, the ring off). Harness
   `quick-menu-stick.txt` PASS (Linux, 2026-10-15): the ring opened at 0.9 s of
   hold with the save's slot 3 ("3 Iron Longsword"), "hotkey 3 used" on the
@@ -1250,7 +1252,14 @@ The tester's asks of 2026-10-07, all in one round:
     and `ReadPlayerWeaponState`) is not asked to open, and it is the hand
     whose palm is asked to the front (its controller lies in the palm; a
     guard's palm faces sideways). An open hand is shown by its open fingers
-    alone; its palm's share is read for the log, not gated. Either hand's
+    alone; its palm's share is read for the log, not gated. The gripping
+    hand's cone is 73 degrees (`kYieldPalmAhead` 0.3, the first guess 0.5):
+    his session of 2026-10-16 evening, on the build before this one, read
+    the same way as the night's - 37 rockings, no yield, the left palm never
+    past 0.38, the sword hand closed 31 times - and over both sessions his
+    sword hand's palm read 0.31 to 0.46 in a third of the attempt-like
+    rockings (the left hand open and high, in combat) and 0.62 to 0.96 in
+    the rest; what a guard's palm reads is unmeasured. Either hand's
     palm sign follows the physical controller whatever role it plays
     (`right != leftHanded` - before this a left-handed player's weapon hand
     was read with the right's sign). yield_test: the gripped weapon hand
@@ -3164,3 +3173,29 @@ ring is (4.4), in place of the journal (F1).
   controls card's other-hand page names the spell ring in its place and the
   README's table keeps the journal row. A spell cast by the trigger right
   after a set was not timed.
+- **Open (the tester, 2026-10-16: "thumbstick drücken öffnet spell menü oder
+  quickmenü NUR auf quest controller. wenn ich index controller habe dann
+  nicht. dort geht beides über linkes oder rechtes trackpad").** Wanted: the
+  stick clicks open the spell ring and the quick menu on a Quest's Touch
+  controllers only, which have no trackpad; on the Index both rings are the
+  trackpads' - the left trackpad's click the spell ring, the right's the
+  quick menu - and the stick clicks there open neither. Today the Index has
+  both: the right trackpad's click is the ring's pad (CameraHook's
+  `UpdateQuickMenu`, `in.pad`, the 2026-09-27 design) and the right stick's
+  short click its tap (4.4, the swap of 2026-10-15); the left stick's click
+  is the spell ring on every controller and the left trackpad's click the
+  journal. Not built ("notiere"). The way: a hand knows whether its
+  controller has a trackpad - the controller type string of the device
+  (`Prop_ControllerType_String`: "knuckles", "oculus_touch", "vive_controller")
+  read once when the hand connects, or whether the two trackpad actions have
+  an origin bound (`IVRInput::GetActionOrigins`); with one, the rings' taps
+  are the trackpads' clicks and the stick clicks are left to the walk, the
+  run, the sneak and the Rest menu's hold; without one, the stick clicks as
+  now. An INI override (`[Hands] RingsOnTrackpad=auto|stick|trackpad`) for
+  the harness, whose scripted controller reports every action bound and
+  would otherwise count as an Index, and for a wand. Cost: small to medium -
+  the ring and spell ring inputs exist and only their source changes, the
+  controller type is one property read, hand_mode_test gets the two
+  controllers' flows; the risk is the harness scenarios built on the stick
+  (`quick-menu-stick.txt`, `spell-ring.txt`) needing the override, and the
+  journal losing its only key on the Index (the Tab menus' B keeps it).

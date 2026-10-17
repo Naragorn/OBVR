@@ -180,11 +180,11 @@ int main() {
 		{"a hand closed (curl 0.75)", [](YieldHandInput& h) { h.curl = 0.75f; }, kYieldRightClosed},
 		{"a hand 60 cm under the eyes", [](YieldHandInput& h) { h.position.z = -0.6f; }, kYieldRightLow},
 		{"a hand behind the eyes", [](YieldHandInput& h) { h.position.y = -0.1f; }, kYieldRightBehind},
-		{"a weapon hand's palm turned to the side (0.3 of it to the front)",
+		{"a weapon hand's palm turned to the side (0.2 of it to the front)",
 		 [](YieldHandInput& h) {
 			 h.holdsWeapon = true;
 			 h.curl = 1.0f;
-			 h.palmAhead = 0.3f;
+			 h.palmAhead = 0.2f;
 		 },
 		 kYieldRightPalmAway},
 		{"a weapon hand's palm turned to the face",
@@ -263,10 +263,10 @@ int main() {
 				      h.curl = 1.0f;
 			      }
 			      in.hand[0].palmAhead = 0.9f;
-			      in.hand[1].palmAhead = 0.4f;
+			      in.hand[1].palmAhead = 0.2f;
 		      }) < 0 &&
 		          (s.lastReset & kYieldLeftPalmAway) != 0 && (s.lastReset & kYieldRightPalmAway) == 0,
-		      "both hands gripping, the left palm 0.4 to the front: no yield, the left palm named");
+		      "both hands gripping, the left palm 0.2 to the front: no yield, the left palm named");
 	}
 	{
 		// The swing's hold: a swing one frame, then a second of rocking does
@@ -297,13 +297,14 @@ int main() {
 		YieldInput armed = Frame(0.0f, 0.0f);
 		armed.hand[0].holdsWeapon = true;
 		armed.hand[0].curl = 1.0f;
-		armed.hand[0].palmAhead = 0.5f;
+		armed.hand[0].palmAhead = 0.3f;
 		StepYield(w, armed);
-		Check(w.lastReset == 0 && w.hand[0].tracking, "a weapon hand gripped, its palm 60 degrees off the front: in");
-		armed.hand[0].palmAhead = 0.49f;
+		Check(w.lastReset == 0 && w.hand[0].tracking,
+		      "a weapon hand gripped, its palm 73 degrees off the front (the tester's 0.31): in");
+		armed.hand[0].palmAhead = 0.29f;
 		StepYield(w, armed);
 		Check((w.lastReset & kYieldRightPalmAway) != 0 && (w.lastReset & kYieldRightClosed) == 0,
-		      "a weapon hand gripped, its palm 61 degrees off: out, the palm named, not the grip");
+		      "a weapon hand gripped, its palm 74 degrees off: out, the palm named, not the grip");
 	}
 	{
 		// The palm from the controller's rotation relative to the head, in the

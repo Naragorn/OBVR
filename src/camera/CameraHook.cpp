@@ -1931,12 +1931,23 @@ void FaceFighterForHandScript() {
 		return;
 	}
 	// The way to them in the camera's own frame (x right, y ahead): the
-	// angle to the right, turned left by it.
+	// angle to the right, turned left by it - at a head's pace, not in one
+	// frame. The scripted hands are placed from the head's heading, so a yaw
+	// that snapped to a bandit stepping sideways moved both hands a few
+	// centimetres in a frame, and the hand mode read that as a swing (the
+	// yield runs of 2026-10-16: "the right hand swinging, the left hand
+	// swinging" in the middle of a 0.2 m/s rocking, the count reset). At
+	// kHandScriptFaceDegreesPerSecond a hand 35 cm ahead moves 0.55 m/s at
+	// most, under the yield's own limit and far under a swing's.
 	const NiPoint3 local = InverseRotation(camRot) * (centre - g_cyclopeanCameraWorldTransform.pos);
 	if (!(local.x * local.x + local.y * local.y > 1.0f)) {
 		return;
 	}
-	test::TurnHandScriptHead(-math::Atan2(local.x, local.y) * math::kRadiansToDegrees);
+	constexpr float kHandScriptFaceDegreesPerSecond = 90.0f;
+	const float wanted = -math::Atan2(local.x, local.y) * math::kRadiansToDegrees;
+	const float dt = g_deltaSeconds > 0.0f && g_deltaSeconds < 1.0f ? g_deltaSeconds : 0.0f;
+	const float most = kHandScriptFaceDegreesPerSecond * dt;
+	test::TurnHandScriptHead(wanted > most ? most : (wanted < -most ? -most : wanted));
 }
 
 void UpdateYield(const Config& config, const vr::HandModeFrame& frame, bool active, float dt) {

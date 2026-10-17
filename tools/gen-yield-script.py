@@ -13,7 +13,7 @@ HEADER = """# The yield by gesture ([Hands]; vr/Yield.h, yield_test; the tester,
 # chest with the palms to the front (right rot 90 0 90, left rot 90 0 -90:
 # the controllers pointing up, the side the fingers close over - the palm,
 # the right's -x and the left's +x - turned forward) and rocked together
-# 8 cm left and right, 1 cm every 0.05 s (0.2 m/s), four strokes - the
+# 8 cm left and right, half a centimetre every 0.025 s (0.2 m/s), four strokes - the
 # yield, block held and activate pressed on the bandit. Then the same with
 # both open palms turned sideways (rot 90 0 0): the yield again - since
 # 2026-10-16 an open hand is shown by its open fingers, its palm not asked
@@ -69,17 +69,22 @@ POSE = "-0.20 -0.35"
 
 
 def pair(r, l):
-    return "right pos %.2f %s\nleft pos %.2f %s\nwait 0.05\n" % (r, POSE, l, POSE)
+    return "right pos %.3f %s\nleft pos %.3f %s\nwait 0.025\n" % (r, POSE, l, POSE)
 
 
 def rocking():
-    """Out 8 cm, in 16, out 16, in 8: four strokes, 1 cm every 0.05 s."""
+    """Out 8 cm, in 16, out 16, in 8: four strokes at 0.2 m/s - half a
+    centimetre every 0.025 s. A scripted hand jumps, and a whole centimetre
+    landing in a short frame read as a swing to the hand mode (2 m/s and
+    more over a 4 ms frame; the run of 2026-10-16 lost the armed yield to
+    "the right hand swinging" twice in one rocking); half the jump needs a
+    frame under 2 ms to read so."""
     out = []
     xs = []
-    xs += [0.22 + 0.01 * i for i in range(1, 9)]      # 0.23 .. 0.30
-    xs += [0.30 - 0.01 * i for i in range(1, 17)]     # 0.29 .. 0.14
-    xs += [0.14 + 0.01 * i for i in range(1, 17)]     # 0.15 .. 0.30
-    xs += [0.30 - 0.01 * i for i in range(1, 9)]      # 0.29 .. 0.22
+    xs += [0.22 + 0.005 * i for i in range(1, 17)]     # 0.225 .. 0.30
+    xs += [0.30 - 0.005 * i for i in range(1, 33)]     # 0.295 .. 0.14
+    xs += [0.14 + 0.005 * i for i in range(1, 33)]     # 0.145 .. 0.30
+    xs += [0.30 - 0.005 * i for i in range(1, 17)]     # 0.295 .. 0.22
     for x in xs:
         out.append(pair(x, -(0.44 - x)))
     return "".join(out)
@@ -87,7 +92,9 @@ def rocking():
 
 def gesture(comment, right_rot, left_rot, mark):
     s = "# %s\n" % comment
-    s += "right pos 0.22 %s\nright rot %s\nleft pos -0.22 %s\nleft rot %s\nwait 0.6\n" % (POSE, right_rot, POSE, left_rot)
+    # 1.2 s before the rocking: the jump into the pose reads as a swing, and
+    # the yield holds for a second after one.
+    s += "right pos 0.22 %s\nright rot %s\nleft pos -0.22 %s\nleft rot %s\nwait 1.2\n" % (POSE, right_rot, POSE, left_rot)
     s += rocking()
     s += "mark %s\nwait 2.5\n" % mark
     return s
