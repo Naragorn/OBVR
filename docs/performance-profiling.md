@@ -152,9 +152,13 @@ Kosten des Versuchs null); den zweiten Pass von Arbeit entlasten, die das erste 
 schon getan hat (Paletten, Kulling) - groß, Engine-Innereien; die Engine-Kosten je NPC
 selbst sind Vanilla.
 
-Nebenbefunde der Läufe: Oblivions Auto-Vanity-Kamera kreist nach 120 s ohne Eingabe um den
-Spieler, die Harness-Skripte setzen `SetNumericINISetting "fAutoVanityModeDelay:Camera"
-100000` (xOBSE); ein eigener Block in OBVR für VR steht aus (klein). Das Bewegen
+Nebenbefunde der Läufe: Oblivions Auto-Vanity-Kamera kreist nach einer Weile ohne Eingabe um
+den Spieler; die Harness-Skripte setzten `SetNumericINISetting "fAutoVanityModeDelay:Camera"
+100000` (xOBSE) - das ist Skyrims Name, Oblivions Setting heißt `fVanityModeAutoDelay`
+(Konstruktor bei 0x009E7E7A, Code-Default 30), die Zeile bewirkte nichts. Seit 2026-10-18 hält
+OBVR die Kamera selbst fern (`game/VanityCamera.h`: die Leerlauf-Uhr der Engine bei 0x00B3BB08
+wird jeden Frame genullt, `[Look] AutoVanityCamera=0`; Harness `vanity-hold.txt` und die
+Kontrolle `vanity-allowed.txt`). Das Bewegen
 persistenter Referenzen per Konsole (`JauffreRef.moveto player 0 180 0`) brachte in
 sieben Läufen niemanden ins Bild, `player.placeatme <Basis-ID> N` tut es; die Basis-IDs
 stehen in den zlib-komprimierten NPC_-Records der esm (Jauffre 00023999, BrotherPiner

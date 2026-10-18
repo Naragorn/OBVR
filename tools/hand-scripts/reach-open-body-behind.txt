@@ -1,0 +1,183 @@
+# A body's menu over a body behind the head's facing, its edge turned round
+# (vr/DialogPanel.h, ContainerAnchor, ContainerEdge::AcrossLineTurned): the
+# level edge across a shallower line of sight points against the head's own
+# right when the body's level direction is behind the head's facing, and the
+# panel would hang upside down to the viewer; it is turned round. As
+# reach-open-body.txt, the bandit 40 units ahead (run 2 of 2026-10-18 reached
+# it there with the line 58 degrees steep), then the head turned round (yaw
+# 180) and tipped 60 degrees down, and the open right hand swept low behind
+# the head's facing (the script's z positive) until it is in the body: the
+# Container line says the edge was turned round to the head's right.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/reach-open-body-behind.txt --direct
+
+ini Hands Enabled=1
+ini Hands ReachOpens=1
+ini Look ContainerInWorld=1
+console-at ready player.placeatme 00069AD1 1 40 0
+console-at ready tgm
+console-at placed killall
+
+expect HandScript: finished
+expect reached - activated (body
+expect Container: the menu's panel on
+expect turned round to the head's right
+reject HandScript: WARNING
+
+wait 10
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 1.5
+mark placed
+wait 4
+head yaw 180
+head pitch -60
+wait 1
+mark turned
+right pos -0.50 -1.35 0.20
+wait 0.25
+right pos -0.25 -1.35 0.20
+wait 0.25
+right pos 0.00 -1.35 0.20
+wait 0.25
+right pos 0.25 -1.35 0.20
+wait 0.25
+right pos 0.50 -1.35 0.20
+wait 0.25
+right pos -0.50 -1.35 0.40
+wait 0.25
+right pos -0.25 -1.35 0.40
+wait 0.25
+right pos 0.00 -1.35 0.40
+wait 0.25
+right pos 0.25 -1.35 0.40
+wait 0.25
+right pos 0.50 -1.35 0.40
+wait 0.25
+right pos -0.50 -1.35 0.60
+wait 0.25
+right pos -0.25 -1.35 0.60
+wait 0.25
+right pos 0.00 -1.35 0.60
+wait 0.25
+right pos 0.25 -1.35 0.60
+wait 0.25
+right pos 0.50 -1.35 0.60
+wait 0.25
+right pos -0.50 -1.35 0.80
+wait 0.25
+right pos -0.25 -1.35 0.80
+wait 0.25
+right pos 0.00 -1.35 0.80
+wait 0.25
+right pos 0.25 -1.35 0.80
+wait 0.25
+right pos 0.50 -1.35 0.80
+wait 0.25
+right pos -0.50 -1.35 1.00
+wait 0.25
+right pos -0.25 -1.35 1.00
+wait 0.25
+right pos 0.00 -1.35 1.00
+wait 0.25
+right pos 0.25 -1.35 1.00
+wait 0.25
+right pos 0.50 -1.35 1.00
+wait 0.25
+right pos -0.50 -1.35 1.20
+wait 0.25
+right pos -0.25 -1.35 1.20
+wait 0.25
+right pos 0.00 -1.35 1.20
+wait 0.25
+right pos 0.25 -1.35 1.20
+wait 0.25
+right pos 0.50 -1.35 1.20
+wait 0.25
+right pos -0.50 -1.35 1.40
+wait 0.25
+right pos -0.25 -1.35 1.40
+wait 0.25
+right pos 0.00 -1.35 1.40
+wait 0.25
+right pos 0.25 -1.35 1.40
+wait 0.25
+right pos 0.50 -1.35 1.40
+wait 0.25
+mark layer135
+right pos -0.50 -1.50 0.20
+wait 0.25
+right pos -0.25 -1.50 0.20
+wait 0.25
+right pos 0.00 -1.50 0.20
+wait 0.25
+right pos 0.25 -1.50 0.20
+wait 0.25
+right pos 0.50 -1.50 0.20
+wait 0.25
+right pos -0.50 -1.50 0.40
+wait 0.25
+right pos -0.25 -1.50 0.40
+wait 0.25
+right pos 0.00 -1.50 0.40
+wait 0.25
+right pos 0.25 -1.50 0.40
+wait 0.25
+right pos 0.50 -1.50 0.40
+wait 0.25
+right pos -0.50 -1.50 0.60
+wait 0.25
+right pos -0.25 -1.50 0.60
+wait 0.25
+right pos 0.00 -1.50 0.60
+wait 0.25
+right pos 0.25 -1.50 0.60
+wait 0.25
+right pos 0.50 -1.50 0.60
+wait 0.25
+right pos -0.50 -1.50 0.80
+wait 0.25
+right pos -0.25 -1.50 0.80
+wait 0.25
+right pos 0.00 -1.50 0.80
+wait 0.25
+right pos 0.25 -1.50 0.80
+wait 0.25
+right pos 0.50 -1.50 0.80
+wait 0.25
+right pos -0.50 -1.50 1.00
+wait 0.25
+right pos -0.25 -1.50 1.00
+wait 0.25
+right pos 0.00 -1.50 1.00
+wait 0.25
+right pos 0.25 -1.50 1.00
+wait 0.25
+right pos 0.50 -1.50 1.00
+wait 0.25
+right pos -0.50 -1.50 1.20
+wait 0.25
+right pos -0.25 -1.50 1.20
+wait 0.25
+right pos 0.00 -1.50 1.20
+wait 0.25
+right pos 0.25 -1.50 1.20
+wait 0.25
+right pos 0.50 -1.50 1.20
+wait 0.25
+right pos -0.50 -1.50 1.40
+wait 0.25
+right pos -0.25 -1.50 1.40
+wait 0.25
+right pos 0.00 -1.50 1.40
+wait 0.25
+right pos 0.25 -1.50 1.40
+wait 0.25
+right pos 0.50 -1.50 1.40
+wait 0.25
+mark layer150
+right pos 0.30 -0.30 0.10
+wait 2
+mark closed
+wait 1

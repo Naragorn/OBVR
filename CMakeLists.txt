@@ -92,6 +92,7 @@ add_library(OBVR SHARED
 	src/game/HeldObject.cpp
 	src/game/PlayerLookAt.cpp
 	src/game/PlayerTeleport.cpp
+	src/game/VanityCamera.cpp
 	src/game/ControlBindings.cpp
 	src/game/GrabPhysics.cpp
 	src/game/WorldPush.cpp

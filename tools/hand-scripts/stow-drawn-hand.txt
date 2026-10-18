@@ -1,0 +1,70 @@
+# Stowing measured at the drawn hand, not the controller (vr/Stow.h,
+# DrawnHandInTracking; a tester, 2026-10-17: "cannot put a held item into the
+# inventory, letting go at the chest drops it" - his hands adjusted to
+# HandGripForwardMetres -0.23, so his drawn hand touched the chest while the
+# controller stood 0.40 m out, outside the 0.16 m round the spot). stow.txt's
+# sword, grabbed the same way; the controller then brought to 0.40 m ahead of
+# the eyes at the chest's height with the hand drawn 0.23 m back from it,
+# and let go there: the item is at the body and goes into the inventory.
+# The spot and the hand's own grip are pinned to the defaults, so the run
+# does not depend on the live INI's fit (run 1 of 2026-10-18 passed on the
+# developer's fit - the hand 0.19 m behind the controller and the spot 0.27 m
+# wide round -0.09 forward, -0.23 up - with the controller 0.50 m from the
+# spot and the drawn hand 0.08 m from it). Measured at the controller, as
+# before the fix, this script reads "away from the body" and drops the sword.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/stow-drawn-hand.txt --direct
+
+ini Hands Enabled=1
+ini Hands StowAtBody=1
+ini Hands HandGripForwardMetres=-0.23
+ini Hands HandGripUpMetres=0.04
+ini Hands RightHandGripX=0
+ini Hands RightHandGripY=0
+ini Hands RightHandGripZ=0
+ini Hands StowRight=0
+ini Hands StowForward=0.17
+ini Hands StowUp=-0.33
+ini Hands StowRadius=0.16
+ini Render MirrorMenusToMonitor=1
+console player.additem 00000C0C 1
+console player.drop 00000C0C 1
+
+expect HandScript: finished
+expect Stow: the held item is at the body (the drawn hand at
+expect Stow: let go at the body - taken (no owner
+reject HandScript: WARNING
+reject Stow: let go at the body - not taken
+reject Stow: let go at the body - refused
+
+wait 10
+head pitch -50
+right pos 0.05 -1.40 -0.80
+right rot -80 0 0
+wait 1
+mark near
+dump
+right grip 1
+wait 1.5
+mark held
+dump
+# To the chest, the head level again: the controller pointing ahead, 0.40 m
+# out and 0.33 m down, so the hand drawn 0.23 m behind it sits at the spot.
+head pitch 0
+right rot 0 0 0
+right pos 0.02 -0.33 -0.40
+wait 1
+mark at_chest
+right grip 0
+wait 1
+mark stowed
+right pos 0.15 -0.25 -0.35
+right rot 62 29 0
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark inventory
+left b 1
+wait 0.2
+left b 0
+wait 1

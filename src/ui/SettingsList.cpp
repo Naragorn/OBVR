@@ -189,6 +189,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.look.noHitBlur = v != 0.0f; },
 	},
 	{
+		"Comfort", "Idle camera orbit", "The game's third-person orbit after a while without input; off in the headset",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "AutoVanityCamera",
+		+[](const Config& c) { return c.look.autoVanityCamera ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.look.autoVanityCamera = v != 0.0f; },
+	},
+	{
 		"Comfort", "Block where you look", "Your block counts towards where you look, not where your body faces",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Look", "BlockFacesView",
@@ -727,6 +734,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.rightHandYaw = v; },
 	},
 	{
+		"Hands", "Right hand pitch", "Tips the right hand up or down about its side axis, degrees",
+		ItemKind::Number, -180.0f, 180.0f, 5.0f, 0, false,
+		"Hands", "RightHandPitch",
+		+[](const Config& c) { return c.hands.rightHandPitch; },
+		+[](Config& c, float v) { c.hands.rightHandPitch = v; },
+	},
+	{
 		"Hands", "Left hand roll", "Turns the left palm about the bone, degrees",
 		ItemKind::Number, -180.0f, 180.0f, 5.0f, 0, false,
 		"Hands", "LeftHandRoll",
@@ -739,6 +753,13 @@ const SettingDefinition kSettings[] = {
 		"Hands", "LeftHandYaw",
 		+[](const Config& c) { return c.hands.leftHandYaw; },
 		+[](Config& c, float v) { c.hands.leftHandYaw = v; },
+	},
+	{
+		"Hands", "Left hand pitch", "Tips the left hand up or down about its side axis, degrees",
+		ItemKind::Number, -180.0f, 180.0f, 5.0f, 0, false,
+		"Hands", "LeftHandPitch",
+		+[](const Config& c) { return c.hands.leftHandPitch; },
+		+[](Config& c, float v) { c.hands.leftHandPitch = v; },
 	},
 	{
 		"Hands", "Adjust hands", "A guided fit of the in-game hands to the controllers you hold",
@@ -1721,6 +1742,13 @@ const SettingDefinition kSettings[] = {
 		"", "", SettingAction::FitHolsters,
 	},
 	// ---- Hands: moving
+	{
+		"Hands: moving", "Stick turn speed", "How fast the right stick turns you: mouse pixels a frame at full deflection",
+		ItemKind::Number, 1.0f, 60.0f, 1.0f, 0, false,
+		"Hands", "TurnSpeed",
+		+[](const Config& c) { return c.hands.turnSpeed; },
+		+[](Config& c, float v) { c.hands.turnSpeed = v; },
+	},
 	{
 		"Hands: moving", "Toggle run", "A left stick click switches running on and off, instead of holding it in",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,

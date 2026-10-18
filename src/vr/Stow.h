@@ -56,10 +56,13 @@ struct StowSettings {
 	float centreUp = -0.33f;  // the chest (the tester, 2026-10-07: "by default in der brust"),
 	                          // still over where items were held in 2026-09-27's log
 	float radius = 0.16f;
-	// The ring drawn while an item is held. Off by default since the tester
-	// placed it where wanted once (vr/StowPlace.h, 2026-09-28): the spot
-	// stows whether it is seen or not.
-	bool spotVisible = false;
+	// The ring drawn while an item is held. Off by default from 2026-09-28,
+	// when the tester had placed it where wanted (vr/StowPlace.h) and knew
+	// the spot; on again since 2026-10-18 for the beta - two testers of
+	// 2026-10-17 let items go at the chest without knowing where the spot
+	// was ("cant open doors not sure how to pick up items", "letting go at
+	// the chest drops it"). The spot stows whether it is seen or not.
+	bool spotVisible = true;
 	// A release this soon after the hand left the zone still stows.
 	float graceSeconds = 0.3f;
 	// How long the engine may take to let go before the take is given up.
@@ -71,6 +74,22 @@ inline bool InStowZone(const NiPoint3& relative, const StowSettings& s) {
 	const float dy = relative.y - s.centreForward;
 	const float dz = relative.z - s.centreUp;
 	return dx * dx + dy * dy + dz * dz <= s.radius * s.radius;
+}
+
+// Where the hand is drawn, in tracking space, from its controller: the
+// controller's tracked origin plus the grip the hand sits at - the shared
+// HandGripForwardMetres and HandGripUpMetres with the hand's own
+// HandGripX/Y/Z, metres along the controller's right, forward and up, the
+// axes BonePin.h moves the hand bone by. The stow zone is measured here
+// since 2026-10-18, not at the controller: a tester (Quest 3, 2026-10-17)
+// had adjusted his hands to HandGripForwardMetres -0.23, so the drawn hand
+// touched his chest while the controller stood 0.40 m out - outside the
+// 0.16 m round the spot - and the item he let go there dropped. OpenVR's
+// controller axes are x right, y up, z back, so the grip's forward is -z
+// and its up is +y (vr::FromOpenXR's change of basis, taken back).
+inline NiPoint3 DrawnHandInTracking(const Quaternion& orientation, const NiPoint3& position,
+                                    const NiPoint3& gripMetres) {
+	return position + Rotate(orientation, NiPoint3{gripMetres.x, gripMetres.z, -gripMetres.y});
 }
 
 struct StowInput {

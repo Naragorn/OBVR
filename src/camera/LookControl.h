@@ -136,6 +136,12 @@ struct LookSettings {
 	game::ExhaustionSettings exhaustion;
 	// The hit blur (Oblivion's GethitShader) skipped for the player (game/HitShader.h).
 	bool noHitBlur = true;  // the tester, 2026-09-29: "ja machen wir!"
+	// The engine's auto vanity camera - third person orbiting the player
+	// after fVanityModeAutoDelay seconds without a key or the mouse. Off:
+	// its idle clock is reset every frame while the headset is there, since
+	// the headset's movement is no input to the engine (game/VanityCamera.h,
+	// 2026-10-18). On: the engine's own behaviour.
+	bool autoVanityCamera = false;
 	// The player's block counts towards where the headset looks, not where the
 	// body faces (game/BlockCone.h).
 	bool blockFacesView = true;

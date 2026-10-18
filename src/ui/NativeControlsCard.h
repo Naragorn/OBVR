@@ -12,8 +12,11 @@ namespace obvr::ui {
 // controls", by the first start, or by a hand script's "action controls-card" (the
 // harness's door). The buttons report these IDs; the hidden 9600 is the
 // closing ID OBVR clicks after acting on a choice. The same words stand in
-// README.md ("Controls in Full VR"); change both. Pure, covered by
-// native_settings_test.
+// README.md ("Controls in Full VR"); change both. The weapon hand's lines
+// name the door and the chest since 2026-10-18 (a tester, 2026-10-17: "cant
+// open doors not sure how to pick up items" - A takes no loose item with
+// TakeOnlyByHand on, the grip holds it and the chest keeps it). Pure,
+// covered by native_settings_test.
 constexpr int kControlsCardClose = 9600;
 constexpr int kControlsCardPrimary = 9601;    // Next, or Back on the second page
 constexpr int kControlsCardSecondary = 9602;  // Close
@@ -40,8 +43,8 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded) 
 			"Grip over this shoulder: draw a two-hander or a staff.",
 			"Swing: the blade hits where it touches. Long and fast: a power attack.",
 			"Trigger: draw the bow while held, loose on release.",
-			"Grip on an item: hold it. Let go mid-swing to throw it.",
-			"A: activate what the laser points at.",
+			"Grip on an item: hold it. Let go at your chest: kept. Mid-swing: thrown.",
+			"A: open a door, talk, use what the laser points at - not pick up.",
 			"B: the pause menu (Escape).",
 			"Stick: turn. Held up: aim a teleport, let go to go. Flick up: jump.",
 			"Stick flicked down: sneak. Crouching sneaks too.",

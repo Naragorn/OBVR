@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstring>
 
+#include "vr/ActionsWatch.h"
 #include "vr/ControllerActions.h"
 
 namespace {
@@ -366,7 +367,74 @@ void TestSetupAndUpdateBoundaries() {
 
 }  // namespace
 
+void TestActionsInactiveWatch() {
+	std::printf("The actions going dead on a hand (vr/ActionsWatch.h)\n");
+	using obvr::vr::ActionsInactiveVerdict;
+	using obvr::vr::ActionsInactiveWatch;
+	using obvr::vr::StepActionsInactive;
+	const float frame = 1.0f / 90.0f;
+	ActionsInactiveWatch w;
+	// Alive: nothing, however long.
+	bool quiet = true;
+	for (int i = 0; i < 2000; ++i) {
+		const ActionsInactiveVerdict v = StepActionsInactive(w, true, true, 0x6F, frame);
+		quiet = quiet && !v.reportInactive && !v.reportBack;
+	}
+	Check(quiet && !w.inactive, "actions alive for 22 s: nothing said");
+	// A blip of two frames: nothing said either way.
+	ActionsInactiveVerdict v = StepActionsInactive(w, true, true, 0, frame);
+	Check(!v.reportInactive && w.inactive, "dead for a frame: counted, not yet said");
+	v = StepActionsInactive(w, true, true, 0, frame);
+	v = StepActionsInactive(w, true, true, 0x6F, frame);
+	Check(!v.reportInactive && !v.reportBack && !w.inactive, "back after two frames: a blip, nothing said");
+	// Dead for a second: said once at the second, not every frame after.
+	int said = 0;
+	float saidAt = 0.0f;
+	for (int i = 0; i < 180; ++i) {
+		v = StepActionsInactive(w, true, true, 0, frame);
+		if (v.reportInactive) {
+			++said;
+			saidAt = v.seconds;
+		}
+	}
+	Check(said == 1 && saidAt >= 1.0f && saidAt < 1.05f, "dead for two seconds: said once, at the first second");
+	// Then every ten seconds: at 11 and 21 over the next twenty.
+	said = 0;
+	for (int i = 0; i < 1800; ++i) {
+		v = StepActionsInactive(w, true, true, 0, frame);
+		if (v.reportInactive) {
+			++said;
+			saidAt = v.seconds;
+		}
+	}
+	Check(said == 2 && saidAt >= 21.0f && saidAt < 21.05f, "dead for twenty seconds more: said at 11 and 21");
+	// Back: said once with the time it took, and the count starts over.
+	v = StepActionsInactive(w, true, true, 0x6F, frame);
+	Check(v.reportBack && v.seconds > 21.9f && v.seconds < 22.1f && !w.inactive && w.seconds == 0.0f,
+	      "back after 22 s: said once with the time, the watch cleared");
+	v = StepActionsInactive(w, true, true, 0x6F, frame);
+	Check(!v.reportBack, "...and not again");
+	// A controller that drops out of tracking while dead: nothing to say,
+	// the mask means nothing untracked.
+	for (int i = 0; i < 100; ++i) {
+		v = StepActionsInactive(w, true, true, 0, frame);
+	}
+	v = StepActionsInactive(w, false, true, 0, frame);
+	Check(!v.reportBack && !v.reportInactive && !w.inactive, "untracked while dead: cleared without a word");
+	// Legacy input carries no mask: never dead.
+	for (int i = 0; i < 200; ++i) {
+		v = StepActionsInactive(w, true, false, 0, frame);
+	}
+	Check(!v.reportInactive && !w.inactive, "legacy input with an empty mask: not dead");
+	// A frame of no time does not count up, and one bit alive is alive.
+	v = StepActionsInactive(w, true, true, 0, 0.0f);
+	Check(w.inactive && w.seconds == 0.0f, "a frame of no time: dead, no time counted");
+	v = StepActionsInactive(w, true, true, 0x08, frame);
+	Check(!w.inactive, "one action alive: not dead");
+}
+
 int main() {
+	TestActionsInactiveWatch();
 	TestUnavailableIsNeutral();
 	TestNormalizedControls();
 	TestFailuresStayNeutral();

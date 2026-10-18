@@ -91,6 +91,8 @@
 #include "game/CombatRing.h"
 #include "game/AttackTempo.h"
 #include "game/Insult.h"
+#include "game/VanityCamera.h"
+#include "vr/ActionsWatch.h"
 #include "vr/MenuHaptics.h"
 #include "vr/VrKeyboard.h"
 #include "vr/Yield.h"
@@ -2839,14 +2841,27 @@ bool UpdateHolsterFit(Config& config, vr::OpenVRBackend& backend, const vr::Hand
 // drags it, and this owns the ring's overlay.
 vr::StowPlaceState g_stowPlace;
 
+// Where a hand is drawn, in tracking space: its controller plus the grip the
+// hand sits at (vr::DrawnHandInTracking) - the shared grip and the hand's
+// own. What the stow zone and the stow spot's placing measure since
+// 2026-10-18; before, the controller, which a tester's grip of 0.23 m back
+// put 0.40 m out while his drawn hand touched the chest.
+NiPoint3 DrawnHandTracking(const vr::HandPose& hand, bool right, const vr::HandSettings& hands) {
+	const NiPoint3 own = right ? NiPoint3{hands.rightHandGripX, hands.rightHandGripY, hands.rightHandGripZ}
+	                           : NiPoint3{hands.leftHandGripX, hands.leftHandGripY, hands.leftHandGripZ};
+	return vr::DrawnHandInTracking(
+		hand.orientation, hand.position,
+		NiPoint3{own.x, own.y + hands.handGripForwardMetres, own.z + hands.handGripUpMetres});
+}
+
 void UpdateStowPlacing(Config& config, vr::OpenVRBackend& backend, const vr::HandModeFrame& frame) {
 	vr::StowPlaceInput in;
 	in.command = static_cast<vr::StowPlaceCommand>(game::TakeStowPlaceCommand());
 	in.rightValid = frame.right.valid && frame.headValid;
 	in.leftValid = frame.left.valid && frame.headValid;
 	if (frame.headValid) {
-		in.right = vr::BodyRelative(frame.head, frame.headPosition, frame.right.position);
-		in.left = vr::BodyRelative(frame.head, frame.headPosition, frame.left.position);
+		in.right = vr::BodyRelative(frame.head, frame.headPosition, DrawnHandTracking(frame.right, true, config.hands));
+		in.left = vr::BodyRelative(frame.head, frame.headPosition, DrawnHandTracking(frame.left, false, config.hands));
 	}
 	in.rightGrip = frame.right.valid && vr::GripDown(frame.right.buttonsPressed);
 	in.leftGrip = frame.left.valid && vr::GripDown(frame.left.buttonsPressed);
@@ -4626,6 +4641,31 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 	}
 
+	// How long a hand's actions stay dead (vr/ActionsWatch.h): the mask 00
+	// a tester's log of 2026-10-17 read four times, on the change alone -
+	// whether his sprint and jump went with it wants the seconds.
+	{
+		static vr::ActionsInactiveWatch s_actionsWatch[2];
+		static UInt32 s_actionsLinesLeft = 40;
+		for (int side = 0; side < 2; ++side) {
+			const vr::HandPose& hand = side == 0 ? frame.right : frame.left;
+			const vr::ActionsInactiveVerdict dead = vr::StepActionsInactive(
+				s_actionsWatch[side], hand.valid, hand.actionInput, hand.actionActiveMask, g_deltaSeconds);
+			if ((dead.reportInactive || dead.reportBack) && s_actionsLinesLeft > 0) {
+				--s_actionsLinesLeft;
+				if (dead.reportInactive) {
+					OBVR_LOG("Hands: the %s hand's actions have been inactive for %.0f s (bound mask 00: SteamVR "
+					         "gives the input to something else - its dashboard, an overlay, the headset put down); "
+					         "its sticks and buttons do nothing meanwhile",
+					         side == 0 ? "right" : "left", static_cast<double>(dead.seconds));
+				} else {
+					OBVR_LOG("Hands: the %s hand's actions are back after %.1f s", side == 0 ? "right" : "left",
+					         static_cast<double>(dead.seconds));
+				}
+			}
+		}
+	}
+
 	if (frame.right.valid != g_rightHandTracked || frame.left.valid != g_leftHandTracked) {
 		g_rightHandTracked = frame.right.valid;
 		g_leftHandTracked = frame.left.valid;
@@ -5279,7 +5319,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		stowIn.heldIsItem = stowIn.heldRef != 0 && game::RefIsItem(stowIn.heldRef, nullptr);
 		stowIn.handValid = holding.valid && frame.headValid;
 		if (stowIn.handValid) {
-			stowIn.handRelative = vr::BodyRelative(frame.head, frame.headPosition, holding.position);
+			// At the drawn hand, not the controller (DrawnHandTracking).
+			stowIn.handRelative = vr::BodyRelative(frame.head, frame.headPosition,
+			                                       DrawnHandTracking(holding, !s_holdLeft, config.hands));
 		}
 		stowIn.dt = g_deltaSeconds;
 		const vr::StowVerdict stow = vr::StepStow(g_stow, stowIn, config.hands.stow);
@@ -5316,7 +5358,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			g_stowWasAtBody = stow.atBody;
 			if (g_stowLinesLeft > 0) {
 				--g_stowLinesLeft;
-				OBVR_LOG("Stow: the held item is %s the body (hand at %.2f right, %.2f forward, "
+				OBVR_LOG("Stow: the held item is %s the body (the drawn hand at %.2f right, %.2f forward, "
 				         "%.2f up)",
 				         stow.atBody ? "at" : "away from",
 				         static_cast<double>(stowIn.handRelative.x),
@@ -10007,22 +10049,24 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			const NiPoint3 overTracking = vr::WorldPointInTracking(
 				handHudFrame.head, g_cyclopeanCameraWorldTransform.rot, g_cyclopeanCameraWorldTransform.pos, over, perMetre);
 			vr::openvr::HmdMatrix34 anchor{};
+			vr::ContainerEdge edge = vr::ContainerEdge::AcrossLine;
 			if (vr::ContainerAnchor(handHudFrame.head, overTracking.x, overTracking.y, overTracking.z,
-			                        config.tracker.hudDistanceMetres, anchor)) {
+			                        config.tracker.hudDistanceMetres, anchor, &edge)) {
 				g_hudLayer.AnchorAt(anchor, true);  // tilted to face the eyes
 				s_containerPlacement.placed = true;
 				static UInt32 s_containerLines = 12;
 				if (s_containerLines > 0) {
 					--s_containerLines;
 					OBVR_LOG("Container: the menu's panel on %08X at %.1f %.1f %.1f (bound radius %.0f, the panel's "
-					         "middle %.2f m over the thing's middle, its face tilted %.0f degrees up to the eyes), the world "
-					         "running behind it",
+					         "middle %.2f m over the thing's middle, its face tilted %.0f degrees up to the eyes, its "
+					         "edge %s), the world running behind it",
 					         g_activatedRef, static_cast<double>(over.x), static_cast<double>(over.y),
 					         static_cast<double>(over.z), static_cast<double>(chestRadius),
 					         static_cast<double>(config.containerPanel.raiseMetres),
 					         static_cast<double>(math::Atan2(anchor.m[1][2], math::Sqrt(anchor.m[0][2] * anchor.m[0][2] +
 					                                                               anchor.m[2][2] * anchor.m[2][2])) *
-					                             math::kRadiansToDegrees));
+					                             math::kRadiansToDegrees),
+					         vr::ContainerEdgeName(edge));
 				}
 			}
 		} else if (placementPending && !haveChest && looting) {
@@ -10609,6 +10653,38 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
 	const float deltaSeconds = g_frameClock.Tick(ReadPerformanceCounter(), ticksPerSecond);
 	g_deltaSeconds = deltaSeconds;
+
+	// The engine's auto vanity camera - the orbit round the player after
+	// fVanityModeAutoDelay seconds without a key or the mouse - held off in
+	// the headset (game/VanityCamera.h): its idle clock reset every frame
+	// unless [Look] AutoVanityCamera asks for the orbit. The headset's own
+	// movement is no input to the engine, so a player standing and looking
+	// round got it (the harness, 2026-10-18). Comes the engine's flag on all
+	// the same, the log says so.
+	{
+		static bool s_vanityReported = false;
+		static bool s_vanityWas = false;
+		static UInt32 s_vanityLinesLeft = 8;
+		const bool held =
+			game::AutoVanityHeldOff(GetConfig().look.autoVanityCamera, g_headTracker.IsHeadsetConnected());
+		if (held) {
+			const bool reset = game::ResetAutoVanityClock();
+			if (!s_vanityReported) {
+				s_vanityReported = true;
+				OBVR_LOG("Camera: the engine's auto vanity camera is held off - its idle clock at %08X %s; [Look] "
+				         "AutoVanityCamera=1 lets it orbit as on a monitor",
+				         addr::kVanityAutoIdleSeconds,
+				         reset ? "reset every frame" : "did not read as seconds and is left alone");
+			}
+		}
+		const bool on = game::EngineVanityModeOn();
+		if (on != s_vanityWas && s_vanityLinesLeft > 0) {
+			--s_vanityLinesLeft;
+			OBVR_LOG("Camera: the engine's vanity camera %s (the flag at %08X)%s", on ? "came on" : "went off",
+			         addr::kVanityModeFlag, held ? " although held off" : "");
+		}
+		s_vanityWas = on;
+	}
 
 	// The compositor first, before anything asks the tracker where the head
 	// is. This blocks until the headset wants the next frame and hands back

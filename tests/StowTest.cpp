@@ -419,11 +419,49 @@ void TestPlace() {
 	Check(!StowRingShown(false, false, true), "the ring off: not shown while holding an item");
 	Check(StowRingShown(false, true, true), "switched on: shown while holding an item");
 	Check(!StowRingShown(false, true, false), "switched on, nothing held: not shown");
-	Check(!defaults.spotVisible, "off by default");
+	Check(defaults.spotVisible, "on by default (since 2026-10-18, for the beta's testers)");
 }
 
-int main() {	TestZone();
+void TestDrawnHand() {
+	std::printf("The drawn hand from its controller\n");
+	const NiPoint3 controller{0.3f, 1.2f, -0.4f};
+	// No grip: the hand is the controller's own place.
+	NiPoint3 at = DrawnHandInTracking(Quaternion::Identity(), controller, NiPoint3{0.0f, 0.0f, 0.0f});
+	Check(NearPoint(at, controller), "no grip: the controller's own place");
+	// The tester's grip, 0.23 m behind the controller along its forward: the
+	// controller pointing ahead (-z), the hand 0.23 m back (+z).
+	at = DrawnHandInTracking(Quaternion::Identity(), controller, NiPoint3{0.0f, -0.23f, 0.0f});
+	Check(NearPoint(at, NiPoint3{0.3f, 1.2f, -0.17f}), "a grip 0.23 m back: the hand behind the controller");
+	// Right and down along the controller's own axes.
+	at = DrawnHandInTracking(Quaternion::Identity(), controller, NiPoint3{0.1f, 0.0f, -0.04f});
+	Check(NearPoint(at, NiPoint3{0.4f, 1.16f, -0.4f}), "a grip right and under: the hand right of and under the controller");
+	// The controller turned a quarter to the left about the up axis: its
+	// forward is -x, so a grip 0.2 m forward puts the hand 0.2 m at -x, and
+	// its up stays up.
+	const Quaternion left = FromAxisAngle(0.0f, 1.0f, 0.0f, 90.0f);
+	at = DrawnHandInTracking(left, controller, NiPoint3{0.0f, 0.2f, 0.05f});
+	Check(NearPoint(at, NiPoint3{0.1f, 1.25f, -0.4f}), "the controller turned left: the grip turns with it");
+	// Pointing down (a quarter about x, the forward -z turned to -y): a grip
+	// forward goes down, the grip's up goes ahead (-z).
+	const Quaternion down = FromAxisAngle(1.0f, 0.0f, 0.0f, -90.0f);
+	at = DrawnHandInTracking(down, controller, NiPoint3{0.0f, 0.2f, 0.05f});
+	Check(NearPoint(at, NiPoint3{0.3f, 1.0f, -0.45f}), "the controller pointing down: the grip's forward goes down, its up ahead");
+	// What a stow then reads: the tester's controller 0.40 m out with the
+	// hand drawn 0.23 m back sits at the chest, in the zone.
+	const StowSettings s;
+	const NiPoint3 eyes{0.0f, 1.6f, 0.0f};
+	const NiPoint3 heldOut{0.02f, 1.6f + s.centreUp, -0.40f};
+	Check(!InStowZone(BodyRelative(Quaternion::Identity(), eyes, heldOut), s),
+	      "the controller 0.40 m out: not in the zone by itself");
+	const NiPoint3 drawn = DrawnHandInTracking(Quaternion::Identity(), heldOut, NiPoint3{0.0f, -0.23f, 0.0f});
+	Check(InStowZone(BodyRelative(Quaternion::Identity(), eyes, drawn), s),
+	      "the hand drawn 0.23 m behind it: at the chest, in the zone");
+}
+
+int main() {
+	TestZone();
 	TestSpotPose();
+	TestDrawnHand();
 	TestFlows();
 	TestActivate();
 	TestPlace();

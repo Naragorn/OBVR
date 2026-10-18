@@ -1,0 +1,193 @@
+# A body's menu over a body under the feet, its edge from the head
+# (vr/DialogPanel.h, ContainerAnchor, ContainerEdge::FromHead; a tester,
+# 2026-10-17: "ui of dead bodies is oftend flipped the wrong way" - over a
+# body at the feet the line of sight is steep and its level part a residual
+# of where the head stands over the body, behind it as often as ahead, and
+# the panel's right edge taken from it turned the panel round). A bandit
+# (00069AD1) is placed ahead of the untouchable player (tgm) and killed a
+# moment later (killall), before it has walked anywhere; the body lies about
+# a metre ahead whatever distance placeatme is given (runs 1 to 3 of
+# 2026-10-18: 100, 40 and 20 units gave 2 m, then 0.8 m twice, the line 56
+# to 58 degrees steep - under the 60 the head's edge takes over at), so the
+# player walks onto it for 0.55 s (run 4: 0.7 s walked 73 units, past the
+# body's middle, and the hands held at the chest met the falling body before
+# the walk - they wait up by the shoulders now); then the head looks 60 degrees down and the
+# open right hand is swept low round the feet in steps until it is in the
+# body (ReachOpens): its menu opens over it, and the Container line says the
+# edge was the head's own right.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/reach-open-body.txt --direct
+
+ini Hands Enabled=1
+ini Hands ReachOpens=1
+ini Look ContainerInWorld=1
+console-at ready player.placeatme 00069AD1 1 20 0
+console-at ready tgm
+console-at placed killall
+
+expect HandScript: finished
+expect reached - activated (body
+expect Container: the menu's panel on
+expect its edge the head's own right
+reject HandScript: WARNING
+reject its edge level across the line of sight
+
+wait 10
+right pos 0.20 -0.10 0.10
+left pos -0.20 -0.10 0.10
+wait 1
+mark ready
+wait 1.5
+mark placed
+wait 4
+left stick 0 1
+wait 0.55
+left stick 0 0
+wait 1.5
+head pitch -60
+mark dead
+right pos -0.50 -1.35 0.60
+wait 0.25
+right pos -0.25 -1.35 0.60
+wait 0.25
+right pos 0.00 -1.35 0.60
+wait 0.25
+right pos 0.25 -1.35 0.60
+wait 0.25
+right pos 0.50 -1.35 0.60
+wait 0.25
+right pos -0.50 -1.35 0.40
+wait 0.25
+right pos -0.25 -1.35 0.40
+wait 0.25
+right pos 0.00 -1.35 0.40
+wait 0.25
+right pos 0.25 -1.35 0.40
+wait 0.25
+right pos 0.50 -1.35 0.40
+wait 0.25
+right pos -0.50 -1.35 0.20
+wait 0.25
+right pos -0.25 -1.35 0.20
+wait 0.25
+right pos 0.00 -1.35 0.20
+wait 0.25
+right pos 0.25 -1.35 0.20
+wait 0.25
+right pos 0.50 -1.35 0.20
+wait 0.25
+right pos -0.50 -1.35 0.00
+wait 0.25
+right pos -0.25 -1.35 0.00
+wait 0.25
+right pos 0.00 -1.35 0.00
+wait 0.25
+right pos 0.25 -1.35 0.00
+wait 0.25
+right pos 0.50 -1.35 0.00
+wait 0.25
+right pos -0.50 -1.35 -0.20
+wait 0.25
+right pos -0.25 -1.35 -0.20
+wait 0.25
+right pos 0.00 -1.35 -0.20
+wait 0.25
+right pos 0.25 -1.35 -0.20
+wait 0.25
+right pos 0.50 -1.35 -0.20
+wait 0.25
+right pos -0.50 -1.35 -0.40
+wait 0.25
+right pos -0.25 -1.35 -0.40
+wait 0.25
+right pos 0.00 -1.35 -0.40
+wait 0.25
+right pos 0.25 -1.35 -0.40
+wait 0.25
+right pos 0.50 -1.35 -0.40
+wait 0.25
+right pos -0.50 -1.35 -0.60
+wait 0.25
+right pos -0.25 -1.35 -0.60
+wait 0.25
+right pos 0.00 -1.35 -0.60
+wait 0.25
+right pos 0.25 -1.35 -0.60
+wait 0.25
+right pos 0.50 -1.35 -0.60
+wait 0.25
+mark layer135
+right pos -0.50 -1.50 0.60
+wait 0.25
+right pos -0.25 -1.50 0.60
+wait 0.25
+right pos 0.00 -1.50 0.60
+wait 0.25
+right pos 0.25 -1.50 0.60
+wait 0.25
+right pos 0.50 -1.50 0.60
+wait 0.25
+right pos -0.50 -1.50 0.40
+wait 0.25
+right pos -0.25 -1.50 0.40
+wait 0.25
+right pos 0.00 -1.50 0.40
+wait 0.25
+right pos 0.25 -1.50 0.40
+wait 0.25
+right pos 0.50 -1.50 0.40
+wait 0.25
+right pos -0.50 -1.50 0.20
+wait 0.25
+right pos -0.25 -1.50 0.20
+wait 0.25
+right pos 0.00 -1.50 0.20
+wait 0.25
+right pos 0.25 -1.50 0.20
+wait 0.25
+right pos 0.50 -1.50 0.20
+wait 0.25
+right pos -0.50 -1.50 0.00
+wait 0.25
+right pos -0.25 -1.50 0.00
+wait 0.25
+right pos 0.00 -1.50 0.00
+wait 0.25
+right pos 0.25 -1.50 0.00
+wait 0.25
+right pos 0.50 -1.50 0.00
+wait 0.25
+right pos -0.50 -1.50 -0.20
+wait 0.25
+right pos -0.25 -1.50 -0.20
+wait 0.25
+right pos 0.00 -1.50 -0.20
+wait 0.25
+right pos 0.25 -1.50 -0.20
+wait 0.25
+right pos 0.50 -1.50 -0.20
+wait 0.25
+right pos -0.50 -1.50 -0.40
+wait 0.25
+right pos -0.25 -1.50 -0.40
+wait 0.25
+right pos 0.00 -1.50 -0.40
+wait 0.25
+right pos 0.25 -1.50 -0.40
+wait 0.25
+right pos 0.50 -1.50 -0.40
+wait 0.25
+right pos -0.50 -1.50 -0.60
+wait 0.25
+right pos -0.25 -1.50 -0.60
+wait 0.25
+right pos 0.00 -1.50 -0.60
+wait 0.25
+right pos 0.25 -1.50 -0.60
+wait 0.25
+right pos 0.50 -1.50 -0.60
+wait 0.25
+mark layer150
+right pos 0.30 -0.30 -0.10
+wait 2
+mark closed
+wait 1

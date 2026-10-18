@@ -613,6 +613,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.look.exhaustion.weight = ReadFloat("Look", "ExhaustionWeight", config.look.exhaustion.weight, path);
 	config.look.exhaustion.sounds = ReadBool("Look", "ExhaustionSounds", config.look.exhaustion.sounds, path);
 	config.look.noHitBlur = ReadBool("Look", "NoHitBlur", config.look.noHitBlur, path);
+	config.look.autoVanityCamera = ReadBool("Look", "AutoVanityCamera", config.look.autoVanityCamera, path);
 	config.look.blockFacesView = ReadBool("Look", "BlockFacesView", config.look.blockFacesView, path);
 	config.look.snapTurnDeadZone =
 		ReadFloat("Look", "SnapTurnDeadZone", config.look.snapTurnDeadZone, path);

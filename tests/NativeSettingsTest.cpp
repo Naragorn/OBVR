@@ -391,6 +391,14 @@ void TestControlsCard() {
           std::strlen(weapon.lines[i])<=72 && std::strlen(other.lines[i])<=72;
   }
   Check(filled,"twelve lines a page, none empty, none past the card's width");
+  bool door=false, chest=false, notPickUp=false;
+  for (UInt32 i=0;i<kControlsCardLines;++i) {
+   door=door || std::strstr(weapon.lines[i],"door")!=nullptr;
+   chest=chest || std::strstr(weapon.lines[i],"chest")!=nullptr;
+   notPickUp=notPickUp || std::strstr(weapon.lines[i],"not pick up")!=nullptr;
+  }
+  Check(door && chest && notPickUp,
+        "the weapon hand's lines say the door is A, the chest keeps a held item, and A picks nothing up (2026-10-17)");
   Check(std::strcmp(weapon.primary,"Next")==0 && std::strcmp(other.primary,"Back")==0 &&
         std::strcmp(weapon.secondary,"Close")==0 && std::strcmp(other.secondary,"Close")==0,
         "Next on the first page, Back on the second, Close on both");

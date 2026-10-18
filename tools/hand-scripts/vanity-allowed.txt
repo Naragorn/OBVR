@@ -1,0 +1,49 @@
+# The control for vanity-hold.txt: [Look] AutoVanityCamera=1 leaves the
+# engine its orbit, so after fVanityModeAutoDelay seconds of standing with no
+# key and no stick (the head turning as a player's does) the engine's vanity
+# flag comes on - the log line's time says the delay. Proves the flag is the
+# right one and the hold-off is what keeps it off.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/vanity-allowed.txt --direct
+
+ini Hands Enabled=1
+ini Look AutoVanityCamera=1
+
+expect HandScript: finished
+expect Camera: the engine's vanity camera came on
+reject HandScript: WARNING
+reject Camera: the engine's auto vanity camera is held off
+
+wait 10
+mark ready
+head yaw 20
+wait 10
+head yaw -20
+wait 10
+head yaw 20
+wait 10
+head yaw -20
+wait 10
+head yaw 20
+wait 10
+head yaw -20
+wait 10
+head yaw 20
+wait 10
+head yaw -20
+wait 10
+head yaw 20
+wait 10
+head yaw -20
+wait 10
+head yaw 20
+wait 10
+head yaw -20
+wait 10
+head yaw 20
+wait 10
+head yaw -20
+wait 10
+head yaw 20
+wait 10
+mark idle150
+wait 1

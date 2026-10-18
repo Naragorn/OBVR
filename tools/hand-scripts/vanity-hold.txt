@@ -1,0 +1,50 @@
+# The engine's auto vanity camera held off in the headset (game/VanityCamera.h,
+# [Look] AutoVanityCamera=0): the player stands for 150 s with no key and no
+# stick, the head turning slowly from side to side as a player's does - no
+# input to the engine - and the engine's vanity flag never comes on (the
+# measuring runs of 2026-10-18 saw the orbit after about two minutes of such
+# standing). vanity-allowed.txt is the control with the orbit allowed.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/vanity-hold.txt --direct
+
+ini Hands Enabled=1
+ini Look AutoVanityCamera=0
+
+expect HandScript: finished
+expect Camera: the engine's auto vanity camera is held off
+reject HandScript: WARNING
+reject Camera: the engine's vanity camera came on
+
+wait 10
+mark ready
+head yaw 20
+wait 10
+head yaw -20
+wait 10
+head yaw 20
+wait 10
+head yaw -20
+wait 10
+head yaw 20
+wait 10
+head yaw -20
+wait 10
+head yaw 20
+wait 10
+head yaw -20
+wait 10
+head yaw 20
+wait 10
+head yaw -20
+wait 10
+head yaw 20
+wait 10
+head yaw -20
+wait 10
+head yaw 20
+wait 10
+head yaw -20
+wait 10
+head yaw 20
+wait 10
+mark idle150
+wait 1

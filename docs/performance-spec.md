@@ -60,6 +60,10 @@ NPCs talking in Jauffre's house, smooth in dialogue) in `docs/controls-spec.md`
   `StartAfterSeconds=90`), to see his numbers rather than this machine's.
 - The interior's own cost (lever 0, so to speak): why the house takes 7 ms a
   pass with 322 draws where the hall takes 0.7 ms with 322.
-- The auto vanity camera circles the player after 120 s without input, in
+- The auto vanity camera circles the player after a while without input, in
   Full VR too (found by these runs; `open-questions-and-known-issues.md`).
-  A block in OBVR is small and separate from this spec.
+  **Built 2026-10-18:** `game/VanityCamera.h` resets the engine's idle clock
+  (the float at 0x00B3BB08, read off the camera update at 0x00673303) every
+  frame while the headset is there, unless `[Look] AutoVanityCamera=1`; the
+  setting the scripts tried to raise, `fAutoVanityModeDelay`, is Skyrim's
+  name - Oblivion's is `fVanityModeAutoDelay` (the console line did nothing).

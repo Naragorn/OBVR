@@ -265,7 +265,8 @@ Third person keeps the head-tracked behaviour with the hand-tracked mode on.
 ## Locomotion and the rest
 
 Built: the left stick walks (WASD with `StickDeadZone`), the right stick turns
-(`TurnSpeed` mouse pixels per frame), the left stick held pressed in runs (`RunKey`), the
+(`TurnSpeed` mouse pixels per frame, the settings row "Stick turn speed" since 2026-10-18 -
+a tester: "smooth turning is waaaay too slow"), the left stick held pressed in runs (`RunKey`), the
 right stick flicked up jumps and held up aims the teleport (since 2026-09-27; the left A
 drops from the inventory)
 and flicked down sneaks, right A activates, either grip grabs,

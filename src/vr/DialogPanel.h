@@ -128,6 +128,36 @@ struct ContainerPanelSettings {
 	float raiseMetres = 0.15f;  // the panel's middle this far over the container's middle (its bound's centre)
 };
 
+// The right edge of a container's panel is level across the line of sight
+// while the line is shallow, and the head's own right once the line is
+// steeper than this (the sine of 60 degrees). Over a body at the feet the
+// line's level part is a residual of where the head stands over the body -
+// behind it as often as ahead - and an edge taken from it turned the panel
+// round, upside down to the viewer (a tester, 2026-10-17: "ui of dead
+// bodies is oftend flipped the wrong way"; his panels sat 41 to 84 degrees
+// steep). What the viewer reads by is the head's right.
+inline constexpr float kContainerSteepSine = 0.866f;
+inline bool ContainerEdgeFromHead(float sinElevation) {
+	return sinElevation > kContainerSteepSine || sinElevation < -kContainerSteepSine;
+}
+
+// Which edge a container's anchor took (ContainerAnchor).
+enum class ContainerEdge : UInt8 {
+	AcrossLine = 0,        // level, across the line of sight
+	AcrossLineTurned = 1,  // the same, turned round: it pointed against the head's right
+	FromHead = 2,          // the head's own right, squared to a steep line
+};
+inline const char* ContainerEdgeName(ContainerEdge edge) {
+	switch (edge) {
+	case ContainerEdge::AcrossLineTurned:
+		return "level across the line of sight, turned round to the head's right";
+	case ContainerEdge::FromHead:
+		return "the head's own right (a steep line)";
+	default:
+		return "level across the line of sight";
+	}
+}
+
 // The room anchor that puts the panel on a container: the panel hangs the
 // menus' distance straight ahead of its anchor (OverlayPoseAhead), so the
 // anchor stands that far back from the target along the line from the
@@ -135,36 +165,87 @@ struct ContainerPanelSettings {
 // target and faces the eyes, leaning back over a chest below them instead
 // of standing upright in the air (the tester, 2026-10-09: "achte noch
 // darauf dass die overlays so geneigt sind dass sie direkt zum headset
-// schauen also nicht in der luft schweben senkrecht"). Its right edge stays
-// level: the tilt is a pitch, never a roll. HudLayer::AnchorAt keeps the
-// tilt when asked to (keepTilt). False, anchor untouched, for a target
-// straight above or below the head (no heading to keep the edge level by),
-// or a place or distance that is no number.
+// schauen also nicht in der luft schweben senkrecht"). Its right edge is
+// level, across the line of sight: the tilt is a pitch, never a roll. An
+// edge that points against the head's own right - the target's level
+// direction behind the head's facing, a body reached beside or behind
+// oneself - is turned round, since the panel would hang upside down to the
+// viewer otherwise; over a steep line (ContainerEdgeFromHead) the edge is
+// the head's own right, levelled and squared to the line, so the panel
+// reads the way the head looks. `edge` says which was taken.
+// HudLayer::AnchorAt keeps the tilt when asked to (keepTilt). False,
+// anchor untouched, for a target at the head itself, a line straight up or
+// down with no head right to take an edge from, or a place or distance
+// that is no number.
 inline bool ContainerAnchor(const openvr::HmdMatrix34& head, float targetX, float targetY, float targetZ,
-                            float distanceMetres, openvr::HmdMatrix34& anchor) {
+                            float distanceMetres, openvr::HmdMatrix34& anchor, ContainerEdge* edge = nullptr) {
 	float fx = targetX - head.m[0][3];
 	float fy = targetY - head.m[1][3];
 	float fz = targetZ - head.m[2][3];
-	const float level = math::Sqrt(fx * fx + fz * fz);
-	if (!(level >= 1e-3f) || !(level < 1.0e7f) || !(distanceMetres >= 0.0f) || !(distanceMetres < 1.0e7f) ||
-	    !(fy == fy) || !(fy > -1.0e7f && fy < 1.0e7f)) {
+	const float len = math::Sqrt(fx * fx + fy * fy + fz * fz);
+	if (!(len >= 1e-3f) || !(len < 1.0e7f) || !(distanceMetres >= 0.0f) || !(distanceMetres < 1.0e7f)) {
 		return false;
 	}
-	const float len = math::Sqrt(fx * fx + fy * fy + fz * fz);
 	fx /= len;
 	fy /= len;
 	fz /= len;
-	// x right: level, across the line of sight (forward x up, normalised).
-	const float rx = -fz / math::Sqrt(fx * fx + fz * fz);
-	const float rz = fx / math::Sqrt(fx * fx + fz * fz);
+	// The head's right, levelled: what the edge is judged by.
+	float hx = head.m[0][0];
+	float hz = head.m[2][0];
+	const float hl = math::Sqrt(hx * hx + hz * hz);
+	const bool haveHeadRight = hl >= 1e-3f && hl < 1.0e7f;
+	if (haveHeadRight) {
+		hx /= hl;
+		hz /= hl;
+	}
+	// x right. Steep: the head's right less its part along the line - what
+	// is left is across the line and nearly level. Else: level, across the
+	// line of sight (forward x up), turned round if it points against the
+	// head's right.
+	float rx = 0.0f;
+	float ry = 0.0f;
+	float rz = 0.0f;
+	ContainerEdge taken = ContainerEdge::AcrossLine;
+	bool haveRight = false;
+	if (haveHeadRight && ContainerEdgeFromHead(fy)) {
+		const float along = hx * fx + hz * fz;
+		rx = hx - fx * along;
+		ry = -fy * along;
+		rz = hz - fz * along;
+		const float rl = math::Sqrt(rx * rx + ry * ry + rz * rz);
+		if (rl >= 1e-3f) {
+			rx /= rl;
+			ry /= rl;
+			rz /= rl;
+			taken = ContainerEdge::FromHead;
+			haveRight = true;
+		}
+	}
+	if (!haveRight) {
+		const float level = math::Sqrt(fx * fx + fz * fz);
+		if (!(level >= 1e-3f)) {
+			return false;
+		}
+		rx = -fz / level;
+		ry = 0.0f;
+		rz = fx / level;
+		if (haveHeadRight && rx * hx + rz * hz < 0.0f) {
+			rx = -rx;
+			rz = -rz;
+			taken = ContainerEdge::AcrossLineTurned;
+		}
+	}
+	if (edge != nullptr) {
+		*edge = taken;
+	}
 	anchor = openvr::HmdMatrix34{};
 	anchor.m[0][0] = rx;
-	anchor.m[1][0] = 0.0f;
+	anchor.m[1][0] = ry;
 	anchor.m[2][0] = rz;
 	// y up: right x forward, so a target below the eyes leans the top away.
-	anchor.m[0][1] = -rz * fy;
+	anchor.m[0][1] = ry * fz - rz * fy;
 	anchor.m[1][1] = rz * fx - rx * fz;
-	anchor.m[2][1] = rx * fy;
+	anchor.m[2][1] = rx * fy - ry * fx;
 	// z back: towards the head.
 	anchor.m[0][2] = -fx;
 	anchor.m[1][2] = -fy;

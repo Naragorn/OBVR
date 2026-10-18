@@ -3200,7 +3200,15 @@ ring is (4.4), in place of the journal (F1).
   (`quick-menu-stick.txt`, `spell-ring.txt`) needing the override, and the
   journal losing its only key on the Index (the Tab menus' B keeps it).
 
-## Beta reports of 2026-10-17 (two testers, Quest 3 over Virtual Desktop; noted, nothing built)
+## Beta reports of 2026-10-17 (two testers, Quest 3 over Virtual Desktop; the small items built 2026-10-18)
+
+What was built on 2026-10-18 from these, each marked **Built** below: the corpse panel's edge
+(`vr::ContainerAnchor`), the stow zone at the drawn hand (`vr::DrawnHandInTracking`), the
+hands' pitch rows and the stick's turn speed row in the settings menu, the controls card's
+door and chest lines with the stow ring on by default, the engine's auto vanity camera held
+off (`game/VanityCamera.h`), and a log line for actions that stay dead
+(`vr/ActionsWatch.h`). Open: the analogue stick speed, the left-handed mirror, a Touch
+preset, the shudder's measurement, the sprint latch's cause.
 
 **Tester A ("yellow landen", 0.3.0 beta 4, Windows, OBSE 21 - not xOBSE 22 as the README asks; his
 OBVR.log and OBVR.log.prev of 2026-10-17 in the tester's Downloads, a 148 s recording of the Imperial
@@ -3214,17 +3222,37 @@ Substructure at 68 to 71 fps of a 72 Hz target, 45 to 48 ms latency):**
   log shows two stows ("Stow: the held item is at the body") and "Pick: a door or the like under the
   laser takes it from the items (the laser's pick, Activate opens)". A door is the laser and A. Ours as
   words: the controls card says neither; the stow spot ring (`StowSpotVisible`) is off by default.
-  Cost: small (the card's lines, the ring on by default for the beta).
+  Cost: small (the card's lines, the ring on by default for the beta). **Built 2026-10-18:** the
+  weapon hand's card says "A: open a door, talk, use what the laser points at - not pick up" and
+  "Grip on an item: hold it. Let go at your chest: kept. Mid-swing: thrown" (ui/NativeControlsCard.h,
+  README's table the same; native_settings_test checks the words), and the stow ring shows while
+  an item is held by default (`StowSpotVisible=1`, vr/Stow.h, the template INI).
 - *"ui of dead bodies is oftend flipped the wrong way"*: `vr::ContainerAnchor` (DialogPanel.h) takes
   the panel's right edge from the horizontal part of the line of sight; over a body at the feet that
   part is a sway of the head, so the edge turns round between frames and the panel shows its back. His
   log: "its face tilted 58 to 68 degrees" on the corpses. Ours. Fix: the head's own right edge once
   the line is steeper than about 60 degrees. Cost: small (pure, dialog_panel_test).
+  **Built 2026-10-18** (`vr::ContainerAnchor`, `ContainerEdge`): two mechanisms, both turning the
+  panel upside down to the viewer, since the geometry allows both and his log (41 to 84 degrees
+  steep, placed over the body's bound centre, which for a ragdoll is where the body's middle
+  lies, not where the hand is) does not say which he saw. Over a line steeper than 60 degrees
+  the edge is the head's own right, levelled and squared to the line (the level part of such a
+  line is a residual of where the head stands over the body). Over a shallower line the edge
+  stays level across the line of sight, but an edge that points against the head's right - the
+  body's level direction behind the head's facing, as when one stands over or beside a corpse
+  and reaches it - is turned round. dialog_panel_test covers both, the chest rule unchanged.
+  The Container log line names the edge taken. Harness: `reach-open-body-behind.txt` PASS
+  (a corpse 0.8 m ahead, the head turned round over it, 46 to 49 degrees: "turned round to the
+  head's right"); `reach-open-body.txt` for the steep case: not produced in five runs (the corpse lies 0.8 m
+  ahead whatever placeatme is asked, a line of 56 to 58 degrees, and walking onto it shoves
+  it) - docs/hand-script-harness.md; the rule is covered by dialog_panel_test. The headset
+  check is open.
 - *"smooth turning is waaaay too slow"*: `[Hands] TurnSpeed` (12) is mouse pixels a frame at full
   deflection (game/HandControls.h), so the turn rate hangs on the game's mouse sensitivity and the
   frame rate, and the row is not in the settings menu (only `[Look] TurnSpeed`, the eased turn).
   Ours. Fix: the row (small); the turn in degrees a second through the camera's yaw as the snap turn
-  does (medium).
+  does (medium). **Built 2026-10-18:** the row "Stick turn speed" under Hands: moving, 1 to 60
+  (settings_list_test). The degrees-a-second turn stays open.
 - *"left handed mode inverts hands to face the wrong direction"*: `LeftHanded=1` swaps the
   controllers' roles as a whole and the pin puts the game's right hand, with the right hand's
   calibration, on the left controller - a mirror image. Known as a limitation (section 4; the body
@@ -3242,10 +3270,15 @@ Hands page with Right hand roll 90, yaw 175, Left hand roll 95, Hand forward 15)
   on, close a grip to hold the hand still, move the controller to where the hand should sit, open the
   grip) writes all three. His Touch numbers: pitch 50 both, `HandGripUpMetres` 0.04,
   `HandGripForwardMetres` -0.23. Ours. Cost: small (two rows); a Touch preset by controller type: small.
+  **Built 2026-10-18:** "Right hand pitch" and "Left hand pitch" beside the roll and yaw rows
+  (settings_list_test). The Touch preset stays open: the controller type is read nowhere yet.
 - *robes and the Shrouded Armor show two sets of hands*: known (player-body-spec: robes that carry the
   hands in the upper body cannot hide the body's hands, they sit inside the first-person ones).
   Workaround `[Body] Visible=0`. Fix idea: the body's hand bones shrunk to nothing under such a robe,
   the way the bare wrist is shrunk (BonePin.h). Cost: small to medium, a robe in the harness.
+  **Fixed 2026-10-18** with the third tester's fingers (below): the suit's hand is a shape named
+  plainly "Hand" under the suit's node, hidden now (`BodyNodeHiddenOnArm`); the Shrouded Armor is
+  cut like the Black Hand Robe.
 - *performance drops with human NPCs in view, not with creatures*: unmeasured. The humanoid-only work
   is the contact capsules (`HandsStopAtBodies`, `SwingsStopAtBodies`, `PunchesStopAtBodies`,
   `WeaponStopsAtBodies`), `SlowApproach`, `CombatRing`, the attack tempo, the enemy bars and the NPC
@@ -3258,7 +3291,12 @@ Hands page with Right hand roll 90, yaw 175, Left hand roll 95, Hand forward 15)
   is 0.40 m out - outside. Ours. Fix: the zone at the drawn hand (the controller plus the grip
   offset). Cost: small (stow_test, the harness stow scenario). The tester's call (2026-10-17):
   first point him to the settings - "Place the stow spot" and "Adjust hands" under Hands, and
-  MenuQue for the menus - before anything is built.
+  MenuQue for the menus - before anything is built. **Built 2026-10-18:** the zone and the
+  ring's placing measure the drawn hand - the controller plus the shared grip and the hand's own
+  (`vr::DrawnHandInTracking`, `DrawnHandTracking` in CameraHook; stow_test) - so the item that
+  touches the chest is at the spot whatever the fit. Harness `stow-drawn-hand.txt` PASS with his
+  -0.23: the controller 0.40 m out, the drawn hand 0.17 m out, "at the body", taken; the same
+  script measured at the controller reads "away from the body" and drops the sword.
 - *sprint and jump stop working, a restart helps, maybe the arms away from the chest*: the gesture
   block holds the engine's block key - the fist guard (fists readied, both hands no lower than 20 cm
   under the eyes and 12 cm ahead, `IsFistGuard`) or the bow guard (the bow upright; tester A's log:
@@ -3266,7 +3304,14 @@ Hands page with Right hand roll 90, yaw 175, Left hand roll 95, Hand forward 15)
   could not verify (UESP names a dodge jump while blocking at Journeyman Acrobatics). The "until a
   restart" part is unexplained - a guard that never let go, or a readied weapon he did not notice.
   His log would show "blocking". Cost: a toggle for the fist guard small; the cause of the latch
-  needs his log.
+  needs his log. **Built 2026-10-18** for the log he will send: a tester's log of 2026-10-17 (OBSE
+  22, the one with `[Performance]` on) read "bound mask 00" four times - every action of the set
+  inactive on both hands, the sticks and buttons dead meanwhile, SteamVR giving the input to
+  something else (its dashboard, an overlay, the headset put down) - and the one line for it was
+  written on the change alone. `vr/ActionsWatch.h` (controller_actions_test) now counts the
+  seconds and the log says "the right hand's actions have been inactive for N s" at one second
+  and every ten after, and "are back after N s" - whether the sprint went with such a stretch
+  will be readable. The fist guard's toggle stays open.
 
 
 ## Beta report of 2026-10-17 (a third tester, artemis, Quest 3; measured 2026-10-18)
@@ -3315,7 +3360,30 @@ log.
   head turn left still dipping 64 units - the remainder is open: the engine's mounted
   first-person camera on a turned head, with the horse itself turning in that run (medium: the
   engine's mounted camera unread, REA on 0x0066C580's callers; the look-at gate tried and
-  reverted, unproven). The camera node stays under WorldRoot on the horse (the ancestry logged
+  reverted, unproven). **Measured further 2026-10-18 afternoon:** not the body - the same ride
+  with `[Body] Visible=0` (`horse-ride-nobody.txt`, with the fix) dips MORE: at the mark with the
+  head 45 degrees left the engine's camera stood 52 units over the horse against 175 ahead, 80
+  units off it sideways, and the horse itself had moved 110 units with no stick input; with the
+  head 45 degrees right the horse's heading had turned 24 degrees (4.368 to 4.794), the camera 53
+  over it; with the head ahead again 175 over it, on its position, whatever the heading. So the
+  dip is the horse moving and turning while the head is turned, and the camera is the engine's
+  own on the moving horse. Read with REA (Ghidra): the engine's camera update is
+  `FUN_0066b710` (0x0066B710..0x0066C1FA). In first person it builds the camera's rotation from
+  the player's heading (vtable +0x1E0) and pitch (0x004A9720), adds the first-person skeleton's
+  own camera node's bob (the node at [0x00B3BB0C]: its local rotation's +0x3C and +0x40 taken as
+  angles times pi/2, unless 0x005E6C10 says no), and takes the camera's POSITION from that node's
+  world position (+0x88), blending it towards a second node [0x00B3BB10] by
+  [0x00B36BD0]*t while a transition runs; third person and the vanity orbit are the other
+  branch. The first-person skeleton's root is what OBVR turns and moves with the hands
+  (game::PlaceFirstPersonArms, the root's rotation = the controller's relative rotation times
+  the base), and its camera node hangs under that root - so on the horse the engine's camera
+  position is wherever OBVR's arms root puts that node, and what steers the horse when the head
+  turns is still unread (OBVR writes the player's yaw only for the aim and the walk steer,
+  neither active; the mounted yaw at +0x61C stayed 0.0000 in every run). Next (medium): log the
+  first-person camera node's world position against the arms root at the riding marks, and read
+  the mounted steering - the sites that touch +0x61C at 0x0065DC10 (a save/restore through
+  0x00B3BB7C), 0x00671CD0 (the per-frame add of the mouse's turn, clamped to +-pi/2 when the
+  process state (vtable +0x36C) is 4) and 0x0066CAFD. The camera node stays under WorldRoot on the horse (the ancestry logged
   at the mount, `CameraLineageChanged`); "Camera: riding at the mark" logs the engine's own
   camera, the player's rotZ and rotX, the mounted yaw (+0x61C), the horse's heading, the bytes
   and the third-person zoom (300 throughout).

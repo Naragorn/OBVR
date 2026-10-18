@@ -17,6 +17,7 @@
 #include <limits>
 
 #include "camera/FrameLogic.h"
+#include "game/VanityCamera.h"
 #include "game/GrabPhysics.h"
 #include "game/HandGrip.h"
 #include "game/HeldObject.h"
@@ -4147,7 +4148,16 @@ void TestThirdPersonAimVisual() {
 }
 
 
+void TestAutoVanity() {
+	std::printf("The engine's auto vanity camera held off (game/VanityCamera.h)\n");
+	Check(obvr::game::AutoVanityHeldOff(false, true), "in the headset, the orbit not asked for: held off");
+	Check(!obvr::game::AutoVanityHeldOff(true, true), "asked for: the engine's orbit");
+	Check(!obvr::game::AutoVanityHeldOff(false, false), "no headset: the engine's own behaviour");
+	Check(!obvr::game::AutoVanityHeldOff(true, false), "no headset, asked for: the engine's own");
+}
+
 int main() {
+	TestAutoVanity();
 	TestNearItems();
 	TestAttachesInHand();
 	TestPlayerLookAt();

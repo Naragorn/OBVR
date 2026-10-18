@@ -363,6 +363,25 @@ void TestHandsHeadings() {
 	Check(FindSetting("Hands", "ControllerMenus") != nullptr &&
 	          TextIs(FindSetting("Hands", "ControllerMenus")->category, "Hands"),
 	      "the controllers' menu row stays under \"Hands\" itself (VR View's)");
+	// The rows two testers of 2026-10-17 missed: the hands' pitch beside
+	// their roll and yaw ("no pitch row for the hands"), and the stick's
+	// turn under moving ("smooth turning is waaaay too slow" - the row was
+	// nowhere, and Comfort's "Turn speed" is the eased turn's).
+	const SettingDefinition* rightPitch = FindSetting("Hands", "RightHandPitch");
+	const SettingDefinition* leftPitch = FindSetting("Hands", "LeftHandPitch");
+	Check(rightPitch != nullptr && leftPitch != nullptr && TextIs(rightPitch->category, "Hands") &&
+	          TextIs(leftPitch->category, "Hands") && TextIs(rightPitch->label, "Right hand pitch") &&
+	          TextIs(leftPitch->label, "Left hand pitch") && rightPitch->kind == ItemKind::Number &&
+	          rightPitch->minimum <= -180.0f && rightPitch->maximum >= 180.0f,
+	      "each hand's pitch has its row under Hands, a number over the whole turn");
+	const SettingDefinition* stickTurn = FindSetting("Hands", "TurnSpeed");
+	const SettingDefinition* easedTurn = FindSetting("Look", "TurnSpeed");
+	Check(stickTurn != nullptr && TextIs(stickTurn->category, "Hands: moving") &&
+	          TextIs(stickTurn->label, "Stick turn speed") && stickTurn->kind == ItemKind::Number &&
+	          stickTurn->minimum <= 1.0f && stickTurn->maximum >= 48.0f,
+	      "the stick's turn speed has its row under moving, up to four times the default");
+	Check(easedTurn != nullptr && !TextIs(easedTurn->label, stickTurn == nullptr ? "" : stickTurn->label),
+	      "the eased turn's row keeps its own name");
 }
 
 void TestItemsAreBuilt() {

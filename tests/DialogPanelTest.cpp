@@ -23,6 +23,14 @@ void Check(bool condition, const char* what) {
 
 bool Near(float a, float b) { return a - b < 1e-3f && b - a < 1e-3f; }
 
+bool TextIs(const char* a, const char* b) {
+	while (*a != '\0' && *b != '\0' && *a == *b) {
+		++a;
+		++b;
+	}
+	return *a == *b;
+}
+
 openvr::HmdMatrix34 Head() {
 	openvr::HmdMatrix34 h{};
 	h.m[0][0] = 1.0f;
@@ -148,9 +156,107 @@ void TestContainerAnchor() {
 	      "a chest to the right: the heading turns to it, the panel on it");
 	Check(ContainerAnchor(head, 0.5f, 1.0f, -2.0f, 0.0f, a) && Near(a.m[2][3], -2.0f) && Near(a.m[1][3], 1.0f),
 	      "no distance: the anchor at the chest");
+	// A body at the feet (the tester, 2026-10-17: "ui of dead bodies is
+	// oftend flipped the wrong way"): the line of sight steep, its level
+	// part a residual. Straight below: placed, by the head's own right.
+	ContainerEdge edge = ContainerEdge::AcrossLine;
+	bool fromHead = false;
+	(void)fromHead;
+	Check(ContainerAnchor(head, 0.5f, 0.2f, 0.0f, 1.2f, a, &edge) && edge == ContainerEdge::FromHead && Near(a.m[0][0], 1.0f) &&
+	          Near(a.m[1][0], 0.0f) && Near(a.m[2][0], 0.0f) && Near(a.m[1][2], 1.0f) && Near(a.m[2][1], -1.0f),
+	      "straight below the head: placed, the edge the head's right, the top where the head looks");
+	// A body whose middle is a hand's breadth behind the head: the old edge
+	// (level, across the line) pointed to the viewer's left and turned the
+	// panel upside down; now the head's right, the top ahead.
+	Check(ContainerAnchor(head, 0.5f, 0.2f, 0.1f, 1.2f, a, &edge) && edge == ContainerEdge::FromHead && a.m[0][0] > 0.99f &&
+	          a.m[2][1] < -0.9f && Near(panelAt(a, 1.2f, 2), 0.1f),
+	      "a body a little behind the head: the edge the head's right, not turned round");
+	Check(ContainerAnchor(head, 0.6f, 0.2f, 0.0f, 1.2f, a, &edge) && edge == ContainerEdge::FromHead && a.m[0][0] > 0.99f &&
+	          a.m[2][1] < -0.9f,
+	      "a body a little to the right: the edge the head's right, not turned a quarter");
+	// The edge squared to the line: a true rotation still.
+	{
+		const float dotRightBack = a.m[0][0] * a.m[0][2] + a.m[1][0] * a.m[1][2] + a.m[2][0] * a.m[2][2];
+		const float dotRightUp = a.m[0][0] * a.m[0][1] + a.m[1][0] * a.m[1][1] + a.m[2][0] * a.m[2][1];
+		const float rightLength = a.m[0][0] * a.m[0][0] + a.m[1][0] * a.m[1][0] + a.m[2][0] * a.m[2][0];
+		Check(Near(dotRightBack, 0.0f) && Near(dotRightUp, 0.0f) && Near(rightLength, 1.0f),
+		      "the head's edge squared to the line and the top: a true rotation");
+	}
+	// The head turned a quarter to the left (facing -x, its right -z): the
+	// panel's edge turns with it and its top points where the head looks.
+	{
+		openvr::HmdMatrix34 turned = head;
+		turned.m[0][0] = 0.0f;
+		turned.m[2][0] = -1.0f;
+		turned.m[0][2] = 1.0f;
+		turned.m[2][2] = 0.0f;
+		Check(ContainerAnchor(turned, 0.5f, 0.2f, 0.0f, 1.2f, a, &edge) && edge == ContainerEdge::FromHead && Near(a.m[2][0], -1.0f) &&
+		          Near(a.m[0][1], -1.0f),
+		      "the head turned left over the body: the edge and the top turn with it");
+		// Rolled 30 degrees: the edge is taken level all the same.
+		openvr::HmdMatrix34 rolled = head;
+		rolled.m[0][0] = 0.866f;
+		rolled.m[1][0] = 0.5f;
+		Check(ContainerAnchor(rolled, 0.5f, 0.2f, 0.0f, 1.2f, a, &edge) && edge == ContainerEdge::FromHead && Near(a.m[0][0], 1.0f) &&
+		          Near(a.m[1][0], 0.0f),
+		      "the head rolled over the body: the edge level all the same");
+		// Over a steep line the head's edge, not the line's: the head
+		// facing ahead, the body 70 degrees down and off to the right.
+		Check(ContainerAnchor(head, 1.0f, 0.2f, 0.0f, 1.2f, a, &edge) && edge == ContainerEdge::FromHead && a.m[0][0] > 0.9f,
+		      "a body 72 degrees down to the right: the edge still the head's");
+		// A shallow line keeps the edge across the line of sight, whichever
+		// way the head looks (the chest rule).
+		Check(ContainerAnchor(turned, 0.5f, 1.0f, -2.0f, 1.2f, a, &edge) && edge == ContainerEdge::AcrossLine && Near(a.m[0][0], 1.0f) &&
+		          Near(a.m[1][0], 0.0f),
+		      "a chest ahead and 19 degrees down with the head turned: the edge across the line, level");
+		// The head's right without a level part (rolled a quarter): the
+		// line's own edge where it has one, a refusal straight below.
+		openvr::HmdMatrix34 sideways = head;
+		sideways.m[0][0] = 0.0f;
+		sideways.m[1][0] = 1.0f;
+		sideways.m[2][0] = 0.0f;
+		Check(ContainerAnchor(sideways, 0.5f, 0.2f, -0.1f, 1.2f, a, &edge) && edge == ContainerEdge::AcrossLine && Near(a.m[1][0], 0.0f),
+		      "a head with no level right: the line's level part is the edge");
+		openvr::HmdMatrix34 kept2 = head;
+		Check(!ContainerAnchor(sideways, 0.5f, 0.2f, 0.0f, 1.2f, kept2) && Near(kept2.m[2][2], 1.0f),
+		      "...and straight below it: nothing to take an edge from, the anchor untouched");
+	}
+	// A body reached beside or behind oneself at a shallower line, the head
+	// looking ahead and down: the level edge across the line pointed
+	// against the head's right, which hung the panel upside down to the
+	// viewer; it is turned round, and the top leans ahead of the viewer.
+	Check(ContainerAnchor(head, 0.5f, 0.6f, 1.0f, 1.2f, a, &edge) && edge == ContainerEdge::AcrossLineTurned &&
+	          Near(a.m[0][0], 1.0f) && Near(a.m[1][0], 0.0f) && a.m[2][1] < 0.0f && Near(panelAt(a, 1.2f, 2), 1.0f),
+	      "a body behind the head at 48 degrees: the edge turned round to the head's right, the panel on it");
+	// Straight to the side the edge is along the line of sight's own
+	// direction, neither with nor against the head's right: left as it is.
+	Check(ContainerAnchor(head, 1.6f, 0.6f, -0.1f, 1.2f, a, &edge) && edge == ContainerEdge::AcrossLine &&
+	          Near(a.m[1][0], 0.0f) && a.m[2][0] > 0.9f,
+	      "a body to the right, a little ahead: across the line, not turned");
+	Check(ContainerAnchor(head, 0.4f, 0.6f, 1.0f, 1.2f, a, &edge) && edge == ContainerEdge::AcrossLineTurned &&
+	          a.m[0][0] > 0.9f,
+	      "a body behind and a little to the left: turned round");
+	{
+		// The same body behind, the head turned round to look at it: not
+		// against the head's right then, nothing turned.
+		openvr::HmdMatrix34 round = head;
+		round.m[0][0] = -1.0f;
+		round.m[2][2] = -1.0f;
+		Check(ContainerAnchor(round, 0.5f, 0.6f, 1.0f, 1.2f, a, &edge) && edge == ContainerEdge::AcrossLine &&
+		          Near(a.m[0][0], -1.0f),
+		      "the head turned round to the body behind: the edge across the line as it is");
+	}
+	Check(TextIs(ContainerEdgeName(ContainerEdge::AcrossLine), "level across the line of sight") &&
+	          TextIs(ContainerEdgeName(ContainerEdge::AcrossLineTurned),
+	                 "level across the line of sight, turned round to the head's right") &&
+	          TextIs(ContainerEdgeName(ContainerEdge::FromHead), "the head's own right (a steep line)"),
+	      "each edge has its name for the log");
+	Check(ContainerEdgeFromHead(0.9f) && ContainerEdgeFromHead(-0.9f) && !ContainerEdgeFromHead(0.85f) &&
+	          !ContainerEdgeFromHead(0.0f) && !ContainerEdgeFromHead(-0.5f),
+	      "the head's edge from 60 degrees steep, down or up");
 	openvr::HmdMatrix34 kept = head;
-	Check(!ContainerAnchor(head, 0.5f, 0.2f, 0.0f, 1.2f, kept) && Near(kept.m[2][2], 1.0f),
-	      "straight below the head: no heading, the anchor untouched");
+	Check(!ContainerAnchor(head, 0.5f, 1.7f, 0.0f, 1.2f, kept) && Near(kept.m[2][2], 1.0f),
+	      "a target at the head itself: no line, the anchor untouched");
 	const float invalid[] = {std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity()};
 	for (float value : invalid) {
 		kept = head;

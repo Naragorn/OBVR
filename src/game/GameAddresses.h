@@ -681,6 +681,29 @@ inline constexpr UInt32 kOblivionVersion_1_2_416 = 0x010201A0;
 inline constexpr UInt32 kIniSettingCollection = 0x00B07BF0;
 inline constexpr UInt32 kIniSettingListOffset = 0x10C;
 
+// The engine's auto vanity camera (read 2026-10-18 off the disassembly of the
+// player's camera update at 0x00673303..0x0067338C): once a frame, unless
+// the vanity flag is already set, the idle clock - a float of seconds at
+// 0x00B3BB08 - is zeroed when the frame had input (a local the function
+// sets from the keys and the mouse) and otherwise grows by the frame's
+// seconds; then the setting fVanityModeAutoDelay (its SettingInfo at
+// 0x00B36B98, the value at +0, built at 0x009E7E7A with the code default 30)
+// is fetched through 0x00403C00 and, with the clock past it, the flags at
+// 0x00B3BB04 (what Enhanced Camera reads as isVanityMode) and 0x00B3BB05 go
+// to 1 and the camera is switched to third person through 0x00664F70 when
+// it was first. Input while the flags are set (0x00673238) zeroes the clock,
+// clears both and switches back. The headset's movement is no input to
+// that local, so a player standing and looking round gets the orbit after
+// the delay: OBVR resets the clock each frame instead (game/VanityCamera.h).
+// Neither the engine's name nor Skyrim's "fAutoVanityModeDelay" is an INI
+// key the console changes: the setting's name is the engine's own,
+// fVanityModeAutoDelay, and a setting written there is persisted to the
+// user's Oblivion.ini by the engine, which is why the clock and not the
+// setting is written.
+inline constexpr UInt32 kVanityAutoIdleSeconds = 0x00B3BB08;
+inline constexpr UInt32 kVanityModeFlag = 0x00B3BB04;
+inline constexpr UInt32 kVanityAutoDelaySetting = 0x00B36B98;
+
 // The per-frame clock. xOBSE's g_timeInfo points at a TimeInfo structure at
 // 0x00B33E90 whose float at +0x0C is the seconds the last frame took - the
 // delta every time-driven update in the frame advances by. The second world

@@ -59,10 +59,10 @@ card is in the game: settings menu, Help, "Show the controls".
 | | Weapon hand (right) | Other hand (left) |
 | --- | --- | --- |
 | Trigger | bow: draw while held, loose on release | cast the spell |
-| Grip | at your left hip: draw or sheathe a one-hander; over your right shoulder: a two-hander or staff; on an item: hold it, let go mid-swing to throw | grab or hold an item; behind your left shoulder: draw the bow |
+| Grip | at your left hip: draw or sheathe a one-hander; over your right shoulder: a two-hander or staff; on an item: hold it - let go at your chest to keep it, mid-swing to throw it | grab or hold an item; behind your left shoulder: draw the bow |
 | Swing | a drawn weapon hits where the blade touches; a long, fast swing is a power attack | a fist punches |
 | Raise the hand | - | shield on the arm: block. Both hands up and open, palms to the foe, rocked gently left and right for a second: yield |
-| A | activate what the laser points at | in the inventory: drop the item under the cursor |
+| A | open a door, talk to someone, use what the laser points at. Loose items are not picked up with A: hold them by the grip and bring them to your chest (the gold ring) | in the inventory: drop the item under the cursor |
 | B | pause menu (Escape) | the Tab menus; they hang on this wrist, the other hand's laser clicks |
 | Stick | turn; held up: aim a teleport, let go to go; flick up: jump; flick down: sneak | walk; pressed in: run |
 | Stick button | short click: the hotkey ring - move the hand to a slot, click again (in the middle: close). Held: the rest menu | short click: the spell ring - the spells you know, click again on one to make it your spell. Held: run |
