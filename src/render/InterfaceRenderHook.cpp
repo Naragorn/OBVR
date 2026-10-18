@@ -1,5 +1,8 @@
 #include "render/InterfaceRenderHook.h"
 
+#include "perf/Profiler.h"
+#include "platform/Win32Min.h"
+
 #include <cstring>
 #include <cstdio>
 #include <intrin.h>
@@ -300,6 +303,7 @@ d3d9::SetVertexDeclarationFn g_originalSetVertexDecl = nullptr;
 d3d9::SetFVFFn g_originalSetFVF = nullptr;
 d3d9::SetVertexShaderFn g_originalSetVertexShader = nullptr;
 d3d9::SetVertexShaderConstantFFn g_originalSetVsConstantF = nullptr;
+UInt64 g_boneLockTicks = 0;  // the bone lock's counter ticks this pass (profiled)
 d3d9::SetPixelShaderFn g_originalSetPixelShader = nullptr;
 d3d9::SetPixelShaderConstantFFn g_originalSetPsConstantF = nullptr;
 bool g_waterPixelShaderActive = false;
@@ -1836,7 +1840,14 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
 	    vector4fCount == 3) {
 		if (BoneUploadBelongsToWorld(g_boneTargetIsMain,
 		                             IsWaterReflectionSubpass())) {
+			// Timed while the profiler captures, summed for the pass's
+			// "bone_lock" span (TakeBoneLockTicks).
+			const bool timed = perf::Profiler::Instance().IsCapturing();
+			const long long before = timed ? ReadPerformanceCounter() : 0;
 			const float* replacement = HandleBoneUpload(startRegister, data);
+			if (timed) {
+				g_boneLockTicks += static_cast<UInt64>(ReadPerformanceCounter() - before);
+			}
 			if (replacement != nullptr) {
 				data = replacement;
 			}
@@ -3047,6 +3058,12 @@ void ArmBetweenTrace() {
 	// startup budget is long spent by the time anyone opens an inventory, so
 	// a menu opening or closing rearms it.
 	g_passTraceLeft = 12;
+}
+
+UInt64 TakeBoneLockTicks() {
+	const UInt64 ticks = g_boneLockTicks;
+	g_boneLockTicks = 0;
+	return ticks;
 }
 
 UInt32 TotalDrawCount() { return g_drawsTotal; }

@@ -147,7 +147,11 @@ Status: UNKNOWN. Priority: medium for the public build.
 ### The vanity and dialogue cameras
 
 Status: partly answered (dialogue: the zoom is cut, the flip kept; the world keeps
-rendering). The vanity (idle) camera: `UNKNOWN`.
+rendering). The vanity (idle) camera: `FOUND 2026-10-18` - after 120 s without
+input (fAutoVanityModeDelay) it circles the player, in Full VR too; it turned every
+harness capture's view before the scripts set the delay through xOBSE's
+SetNumericINISetting. A block in OBVR for VR is open (small: the setting's float, or
+the vanity byte 0x00B3BB04 held at zero).
 
 ## NPCs looking at the hand (fixed 2026-09-26, untested)
 

@@ -79,6 +79,8 @@ private:
 	ProfileSettings m_settings;
 	bool m_configuredEnabled = false;
 	bool m_capturing = false;
+	bool m_startPending = false;  // armed with StartAfterSeconds, not yet begun
+	UInt64 m_startArmedTick = 0;
 	bool m_truncated = false;
 	bool m_stopRequested = false;
 	bool m_stopping = false;

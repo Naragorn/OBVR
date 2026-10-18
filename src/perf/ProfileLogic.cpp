@@ -16,7 +16,13 @@ ProfileSettings NormalizeSettings(ProfileSettings settings) {
 	                              sizeof(FrameRecord) + sizeof(GpuSample);
 	const UInt32 memoryMax = static_cast<UInt32>(kProfilerBufferLimitBytes / bytesPerRecord);
 	if (settings.maxRecords > memoryMax) settings.maxRecords = memoryMax;
+	if (settings.startAfterSeconds > kMaxStartAfterSeconds) settings.startAfterSeconds = kMaxStartAfterSeconds;
 	return settings;
+}
+
+bool CaptureStartDue(UInt64 armedTick, UInt64 nowTick, UInt32 startAfterSeconds, UInt64 frequency) {
+	if (frequency == 0 || nowTick < armedTick) return false;
+	return nowTick - armedTick >= static_cast<UInt64>(startAfterSeconds) * frequency;
 }
 
 bool ElapsedMilliseconds(UInt64 start, UInt64 end, UInt64 frequency, double& milliseconds) {
@@ -68,6 +74,7 @@ const char* EventTypeName(EventType type) {
 		case EventType::SubmitRight: return "submit_right";
 		case EventType::FrameEndCallback: return "frame_end_callback";
 		case EventType::MonitorPresent: return "monitor_present";
+		case EventType::BoneLock: return "bone_lock";
 	}
 	return "unknown";
 }

@@ -27,6 +27,21 @@ void TestSettings() {
 	              (sizeof(CpuEvent) + sizeof(FrameRecord) + sizeof(GpuSample)) <=
 	              kProfilerBufferLimitBytes,
 	      "record capacity is capped by the 32 MiB buffer limit");
+	s.startAfterSeconds = 99999;
+	s = NormalizeSettings(s);
+	Check(s.startAfterSeconds == kMaxStartAfterSeconds, "the start delay is capped at an hour");
+	s.startAfterSeconds = 0;
+	Check(NormalizeSettings(s).startAfterSeconds == 0, "no delay stays no delay");
+}
+
+void TestStartDelay() {
+	using obvr::perf::CaptureStartDue;
+	Check(!CaptureStartDue(1000, 1000 + 59 * 10, 60, 10), "a second short of the delay: not due");
+	Check(CaptureStartDue(1000, 1000 + 60 * 10, 60, 10), "the delay passed to the tick: due");
+	Check(CaptureStartDue(1000, 1000 + 61 * 10, 60, 10), "past the delay: due");
+	Check(CaptureStartDue(1000, 1000, 0, 10), "no delay: due at once");
+	Check(!CaptureStartDue(1000, 900, 0, 10), "a counter behind the arming: never due");
+	Check(!CaptureStartDue(1000, 2000, 1, 0), "no frequency: never due");
 }
 
 void TestTime() {
@@ -55,6 +70,7 @@ void TestPercentiles() {
 int main() {
 	TestSettings();
 	TestTime();
+	TestStartDelay();
 	TestPercentiles();
 	return failures == 0 ? 0 : 1;
 }

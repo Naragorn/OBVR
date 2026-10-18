@@ -101,20 +101,29 @@ Profiler::~Profiler() { Shutdown(); }
 
 void Profiler::Configure(ProfileSettings settings) {
 	settings = NormalizeSettings(settings);
-	const bool captureConfigChanged = m_capturing &&
+	const bool captureConfigChanged = (m_capturing || m_startPending) &&
 		(settings.gpuTiming != m_settings.gpuTiming ||
 		 settings.captureSeconds != m_settings.captureSeconds ||
-		 settings.maxRecords != m_settings.maxRecords);
-	if (captureConfigChanged) StopCapture("config_changed");
+		 settings.maxRecords != m_settings.maxRecords ||
+		 settings.startAfterSeconds != m_settings.startAfterSeconds);
+	if (captureConfigChanged && m_capturing) StopCapture("config_changed");
 	const bool rising = settings.enabled && !m_configuredEnabled;
 	m_configuredEnabled = settings.enabled;
 	m_settings = settings;
 	if (!settings.enabled) {
+		m_startPending = false;
 		if (m_capturing) StopCapture("disabled");
 		return;
 	}
 	if ((rising || captureConfigChanged) && !m_capturing) {
-		if (m_writerBusy.load(std::memory_order_acquire)) {
+		// Armed with a delay, the capture begins from OnPresentBegin once the
+		// seconds have passed (ProfileLogic.h, startAfterSeconds).
+		if (settings.startAfterSeconds > 0) {
+			if (m_qpcFrequency == 0) m_qpcFrequency = static_cast<UInt64>(ReadPerformanceFrequency());
+			m_startPending = true;
+			m_startArmedTick = Tick();
+			OBVR_LOG("Performance: capture armed, it starts in %u seconds", settings.startAfterSeconds);
+		} else if (m_writerBusy.load(std::memory_order_acquire)) {
 			OBVR_LOG("Performance: capture request is busy while the previous export is writing");
 		} else {
 			StartCapture();
@@ -296,7 +305,18 @@ bool Profiler::AppendFrame(const FrameRecord& frame) {
 }
 
 void Profiler::OnPresentBegin(DeliveryMode requested, bool setup) {
-	if (!m_capturing) return;
+	if (!m_capturing) {
+		if (m_startPending &&
+		    CaptureStartDue(m_startArmedTick, Tick(), m_settings.startAfterSeconds, m_qpcFrequency)) {
+			m_startPending = false;
+			if (m_writerBusy.load(std::memory_order_acquire)) {
+				OBVR_LOG("Performance: capture request is busy while the previous export is writing");
+			} else {
+				StartCapture();
+			}
+		}
+		return;
+	}
 	const UInt64 now = Tick();
 	const UInt64 durationTicks = static_cast<UInt64>(m_settings.captureSeconds) * m_qpcFrequency;
 	if (now >= m_captureStartTick && now - m_captureStartTick >= durationTicks) {

@@ -631,6 +631,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	                                             config.performance.captureSeconds, path);
 	config.performance.maxRecords = ReadUInt("Performance", "MaxRecords",
 	                                        config.performance.maxRecords, path);
+	config.performance.startAfterSeconds = ReadUInt("Performance", "StartAfterSeconds",
+	                                               config.performance.startAfterSeconds, path);
 	config.performance = perf::NormalizeSettings(config.performance);
 	config.dualPassProbe = ReadUInt("Debug", "DualPassProbe", config.dualPassProbe, path);
 	config.swapEyeOrder = ReadBool("Debug", "SwapEyeOrder", config.swapEyeOrder, path);

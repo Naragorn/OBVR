@@ -60,6 +60,11 @@ bool LastPerspectiveProjection(float (&out)[4][4]);
 // survives the wrap.
 UInt32 TotalDrawCount();
 
+// The counter ticks the bone lock spent in HandleBoneUpload since the last
+// take, while the profiler captures; zero otherwise. The scene hook marks
+// them as one "bone_lock" span at the end of each pass.
+UInt64 TakeBoneLockTicks();
+
 // The vertex pipeline setters since the process started, on the same terms:
 // read either side of a call, subtract, and the difference is what that call
 // set up. All six wrap at 2^32 and the subtraction survives it.

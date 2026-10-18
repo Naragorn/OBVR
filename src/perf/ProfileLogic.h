@@ -12,17 +12,28 @@ constexpr UInt32 kMaxCaptureSeconds = 300;
 constexpr UInt32 kMinMaxRecords = 1024;
 constexpr UInt32 kMaxMaxRecords = 262144;
 constexpr UInt32 kProfilerBufferLimitBytes = 32u * 1024u * 1024u;
+constexpr UInt32 kMaxStartAfterSeconds = 3600;
 
 struct ProfileSettings {
 	bool enabled = false;
 	bool gpuTiming = false;
 	UInt32 captureSeconds = kDefaultCaptureSeconds;
 	UInt32 maxRecords = kDefaultMaxRecords;
+	// The capture armed by Enabled starts this many seconds later, so a
+	// tester reaches the scene that stutters before the records fill
+	// (2026-10-18: a capture from the game's start ended before the
+	// tester's room). Zero starts at once.
+	UInt32 startAfterSeconds = 0;
 };
 
 // Normalisation is intentionally pure. Config reload and tests use the same
 // rules, so a malformed INI can never create an unbounded frame buffer.
 ProfileSettings NormalizeSettings(ProfileSettings settings);
+
+// Whether an armed capture is due: startAfterSeconds of the counter have
+// passed since armedTick. A zero frequency, or a counter behind the
+// arming, is never due.
+bool CaptureStartDue(UInt64 armedTick, UInt64 nowTick, UInt32 startAfterSeconds, UInt64 frequency);
 
 enum class EventType : UInt8 {
 	Present = 0,
@@ -42,6 +53,10 @@ enum class EventType : UInt8 {
 	SubmitRight,
 	FrameEndCallback,
 	MonitorPresent,
+	// The bone lock's own work inside a scene pass (InterfaceRenderHook.cpp,
+	// HandleBoneUpload), summed over the pass and marked once at its end
+	// (2026-10-18: seven people in the harness hall cost 4.3 ms a pass).
+	BoneLock,
 };
 
 enum class DeliveryMode : UInt8 {

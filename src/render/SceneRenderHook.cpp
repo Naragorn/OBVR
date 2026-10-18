@@ -506,6 +506,13 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 			g_original(self, unusedEdx, renderedTexture);
 			perf::Profiler::Instance().GpuEnd();
 		}
+		{
+			const UInt64 locked = TakeBoneLockTicks();
+			if (locked != 0) {
+				const UInt64 now = static_cast<UInt64>(ReadPerformanceCounter());
+				perf::Profiler::Instance().Mark(perf::EventType::BoneLock, now - locked, now, context);
+			}
+		}
 
 		if (measureThisOne) {
 			--g_engineCostReportsLeft;
@@ -565,6 +572,13 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		PrepareWorldViewport("the first eye's render");
 		g_original(self, unusedEdx, renderedTexture);
 		perf::Profiler::Instance().GpuEnd();
+	}
+	{
+		const UInt64 locked = TakeBoneLockTicks();
+		if (locked != 0) {
+			const UInt64 now = static_cast<UInt64>(ReadPerformanceCounter());
+			perf::Profiler::Instance().Mark(perf::EventType::BoneLock, now - locked, now, firstContext);
+	}
 	}
 	PauseCullingCapture();
 	SetBonePassMode(BonePassMode::Off);
@@ -636,6 +650,13 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		PrepareWorldViewport("the second eye's render");
 		g_original(self, unusedEdx, renderedTexture);
 		perf::Profiler::Instance().GpuEnd();
+	}
+	{
+		const UInt64 locked = TakeBoneLockTicks();
+		if (locked != 0) {
+			const UInt64 now = static_cast<UInt64>(ReadPerformanceCounter());
+			perf::Profiler::Instance().Mark(perf::EventType::BoneLock, now - locked, now, secondContext);
+	}
 	}
 	SetBonePassMode(BonePassMode::Off);
 	EndCullingSync(g_sceneCall);

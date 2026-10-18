@@ -14,7 +14,17 @@ Enabled=1
 GpuTiming=0
 CaptureSeconds=60
 MaxRecords=65536
+StartAfterSeconds=0
 ```
+
+`bone_lock` (seit 2026-10-18) ist die Zeit, die der Bone-Lock in einem Szenen-Pass selbst
+verbraucht (InterfaceRenderHook, HandleBoneUpload), je Pass summiert und am Pass-Ende als
+eine Spanne markiert; ihr Anteil an `scene_pass` sagt, ob Leute im Bild unser Code oder
+die Engine kostet. `StartAfterSeconds` (0 bis 3600, seit 2026-10-18) lässt das per `Enabled=1` scharf
+gestellte Capture erst so viele Sekunden später beginnen - damit ein Tester die Stelle
+erreicht, an der es ruckelt, bevor der 32-MiB-Puffer voll ist (bei 75 Hz reichen die
+Datensätze für etwa 100 Sekunden). Das Log sagt "capture armed, it starts in N
+seconds" und dann "capture 1 started".
 
 OBVR liest die Einstellungen beim Start. Falls `ReloadEveryFrames` aktiv ist, wird
 `Enabled=0` zum Stoppen verwendet; für ein weiteres Capture muss anschließend wieder
@@ -108,3 +118,45 @@ Headset-Frames dürfen nur mit separater SteamVR-Evidenz behauptet werden.
 
 Das Profiling selbst parallelisiert keine Augen. Die vorhandene Dual-Pass-Logik bleibt
 unverändert; eine spätere Render-Parallelisierung wäre ein eigenes Architekturprojekt.
+
+## Gemessen 2026-10-18: Leute im Bild (Harness, Linux/Proton, 75 Hz)
+
+Anlass: ein Quest-3-Tester (120 Hz, RTX 5070 Ti) ruckelt in Jauffres Haus mit zwei
+sprechenden NPCs, besser im Dialog (die Welt pausiert) und kurz, wenn einer wegschaut.
+Szenarien `tools/hand-scripts/perf-people-hall.txt` (die Halle des Harness-Saves, dann
+sieben per `player.placeatme` gesetzte Leute - Jauffre, Piner, Maborel, Eronor, ein
+Legionär - im Ring um den festgehaltenen Spieler) und `perf-jauffre.txt` (Weynon Priorys
+Haus); Auswertung je Phase mit `tools/perf-phases.py <Lauf> <Marken...>`.
+
+| | Halle leer | Halle, 7 Leute | Haus, leer wie voll |
+|---|---:|---:|---:|
+| Frame-Zeit Mittel | 13,33 ms | 13,9 ms | 26,7 ms |
+| scene_pass je Auge | 0,70 ms | 4,3 bis 5,1 ms | 6,9 bis 7,8 ms |
+| poses_wait (Leerlauf vor dem Compositor) | 10,0 ms | 1,5 bis 2,7 ms | 8,6 bis 10,5 ms |
+| Frames über 20 ms | 0 % | 4 bis 6 % | 100 % |
+| Draws je Pass | 322 | 550 bis 660 | 1700 bis 1850 |
+| geskinnte Draws je Pass | 2 | 62 bis 88 | 86 bis 120 |
+| bone_lock je Pass | - | 0,056 ms (max 0,27) | - |
+
+Befund: sieben Leute kosten hier rund 4,3 ms CPU je Augen-Pass, zwei Pässe je Frame,
+etwa 0,6 ms je Person und Auge; der Bone-Lock trägt davon 1 %. Die Zeit liegt im
+Szenen-Render der Engine selbst (ihre Knochenpaletten und Draws je Person, unter DXVK),
+den der Dual-Pass zweimal fährt. OBVRs Arbeit außerhalb der Pässe (frame_end_callback
+0,6 ms) ändert sich nicht. Das Haus kostet schon leer zwei Vsync-Perioden, dort versteckt
+sich jeder Zuschlag unter der Quantisierung; die Halle hat Luft und zeigt ihn.
+
+Daraus folgt für 120 Hz (8,3 ms Budget): zwei bis drei Leute im Bild reichen, um über
+das Budget zu kommen, das passt zum Bericht. Hebel, ungebaut: `Render.Stereo=aer`
+(Alternate Eye Rendering, je Frame ein Auge - halbiert den Pass-Anteil, gibt es schon,
+Kosten des Versuchs null); den zweiten Pass von Arbeit entlasten, die das erste Auge
+schon getan hat (Paletten, Kulling) - groß, Engine-Innereien; die Engine-Kosten je NPC
+selbst sind Vanilla.
+
+Nebenbefunde der Läufe: Oblivions Auto-Vanity-Kamera kreist nach 120 s ohne Eingabe um den
+Spieler, die Harness-Skripte setzen `SetNumericINISetting "fAutoVanityModeDelay:Camera"
+100000` (xOBSE); ein eigener Block in OBVR für VR steht aus (klein). Das Bewegen
+persistenter Referenzen per Konsole (`JauffreRef.moveto player 0 180 0`) brachte in
+sieben Läufen niemanden ins Bild, `player.placeatme <Basis-ID> N` tut es; die Basis-IDs
+stehen in den zlib-komprimierten NPC_-Records der esm (Jauffre 00023999, BrotherPiner
+000223AD, PriorMaborel 000223AB, Eronor 000223AF, ImperialLegionSoldier 0018B118).
+
