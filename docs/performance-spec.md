@@ -58,6 +58,18 @@ NPCs talking in Jauffre's house, smooth in dialogue) in `docs/controls-spec.md`
 
 - The tester's own capture of the house scene (`[Performance] Enabled=1`,
   `StartAfterSeconds=90`), to see his numbers rather than this machine's.
+  **His first capture read 2026-10-18 evening** (OBVR-performance-1.zip, 60 s,
+  2285 frames, no GPU samples): 44 s of a mode the export calls unknown at a
+  flat 30 frames a second (the main menu and the load, most likely), 10 s of
+  a menu at 85 to 90, and only the last 2.3 s in the world (188 dual-pass
+  frames) - the scene he complained about is not in it. Those 188 frames say
+  what a frame costs him though: scene_pass 4.14 ms a pass median, 8.6 ms a
+  frame for both eyes (this machine's hall with seven people: 4.3 to 5.1 a
+  pass), poses_wait and interop_held 1.5 ms mean but 10 ms on every other
+  frame, frames 11 to 13 ms apart with every tenth at 21 to 22 - the engine's
+  own render of the people in view, twice, over the headset's budget, the
+  compositor dropping frames. The lever stands: `Stereo=aer` halves the
+  scene cost; and a capture with `StartAfterSeconds` that reaches the scene.
 - The interior's own cost (lever 0, so to speak): why the house takes 7 ms a
   pass with 322 draws where the hall takes 0.7 ms with 322.
 - The auto vanity camera circles the player after a while without input, in
