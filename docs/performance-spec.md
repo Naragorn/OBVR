@@ -70,6 +70,18 @@ NPCs talking in Jauffre's house, smooth in dialogue) in `docs/controls-spec.md`
   own render of the people in view, twice, over the headset's budget, the
   compositor dropping frames. The lever stands: `Stereo=aer` halves the
   scene cost; and a capture with `StartAfterSeconds` that reaches the scene.
+  **His answer the same evening:** no aer for him; the test ran at 90 Hz
+  (11.1 ms a frame), which his 11 to 13 ms frames miss by a little - the
+  Quest 3 also offers 72 and 80 Hz (Meta's developer table: 72, 80, 90,
+  120), and at 72 (13.9 ms) those frames would fit; the places he names are
+  the siege of Kvatch and the view at the tower in the first Oblivion gate,
+  both far heavier in actors and effects than the house; his machine an RTX
+  5070 Ti, a 9800X3D, 32 GB - the GPU is not the suspect, the engine's
+  single thread drawing everything twice is. GPU times cannot come from the
+  capture under DXVK (`GpuTiming` reads host nanoseconds, docs/performance-
+  profiling.md 2026-10-06); SteamVR's advanced frame timing or fpsVR show
+  them. Asked of him: a capture at Kvatch with `StartAfterSeconds`, and a
+  look at SteamVR's frame timing there to see which side is at the limit.
 - The interior's own cost (lever 0, so to speak): why the house takes 7 ms a
   pass with 322 draws where the hall takes 0.7 ms with 322.
 - The auto vanity camera circles the player after a while without input, in
