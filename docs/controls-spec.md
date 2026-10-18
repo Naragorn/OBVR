@@ -3419,7 +3419,7 @@ log.
   so the gap in his picture is not a node hidden by the body IK. The harness pictures cut
   the paperdoll at the hips, so whether the shins are drawn is still unseen here. Asked of
   him: the same inventory picture with the body switched off ([Body] Visible=0, the row
-  "Body visible" under Body) - the shins back means the body code, still gone means the
+  "Your own body" under Body) - the shins back means the body code, still gone means the
   engine or the mesh - and his log with `[Debug] BodyTreeProbe=1`.
 - *the sun* (2026-10-18 evening: "daylight, especially the sun, is extremely bright ...
   looking directly at the sun is blinding"): new, unmeasured, nothing in OBVR touches the
