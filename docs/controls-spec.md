@@ -3412,9 +3412,15 @@ log.
   F\Shirt.NIF. Read with pyffi: the male shapes are "Arms" (the arm bones to the hands),
   "UpperBody:0" and "UpperBody:2" (the trunk, with the thighs, calves and feet skinned into
   these two), "UpperBody"; the female "Arms", "Upperbody:0/1/2" the same way. No shape
-  named "Hand", so the suit-hand hide is not what takes the shins; what does is open -
-  `finery-paperdoll.txt` (the outfit on, the paperdoll on Tab, Debug.BodyTreeProbe at the
-  marks) is written and waits for a run. He will send the log with the outfit on.
+  named "Hand", so the suit-hand hide is not what takes the shins; what does is open.
+  `finery-paperdoll.txt` ran the same evening on a woman and on a male Altmer (the tester's
+  race and sex): OBVR hides none of the shirt's shapes - every one reads flags 000E in the
+  body tree at every mark, the inventory open as well, only the hand slot's node is hidden -
+  so the gap in his picture is not a node hidden by the body IK. The harness pictures cut
+  the paperdoll at the hips, so whether the shins are drawn is still unseen here. Asked of
+  him: the same inventory picture with the body switched off ([Body] Visible=0, the row
+  "Body visible" under Body) - the shins back means the body code, still gone means the
+  engine or the mesh - and his log with `[Debug] BodyTreeProbe=1`.
 - *the sun* (2026-10-18 evening: "daylight, especially the sun, is extremely bright ...
   looking directly at the sun is blinding"): new, unmeasured, nothing in OBVR touches the
   sun or the HDR; whether it is the launcher's HDR against Bloom, and whether 0.2.2 looked
