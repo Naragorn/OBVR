@@ -1,0 +1,53 @@
+# The Deceiver's Finery and the inventory's paperdoll (a Quest 3 tester,
+# 2026-10-17/18: "Some outfits are not rendered in full detail", his picture
+# of the inventory with the body's legs gone between the hem and the bare
+# feet; the outfit named on 2026-10-18: "The Deceiver's Finery", the Dark
+# Brotherhood's reward of the Bad Medicine quest - DBUpperShirt01 0003489F,
+# BMDT slots 0x0c = upper body and lower body, Clothes\UpperClass\02\M\Shirt.NIF,
+# whose shapes are "Arms" (the arm bones to the hands), "UpperBody:0" and
+# "UpperBody:2" (the trunk with the thighs, calves and feet skinned in) and
+# "UpperBody" - no shape named "Hand", so not the suit-hand hide). The
+# outfit is put on, both hands held up before the face, the inventory opened
+# on Tab for the paperdoll ("finery-inventory"); Debug.BodyTreeProbe logs the
+# body's tree at every mark with each node's hidden flag, so the lines after
+# "finery-hands" say which of the shirt's shapes OBVR hides, if any, and the
+# picture at "finery-inventory" shows the paperdoll's legs.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/finery-paperdoll.txt --run-timeout 240 --direct
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Hands HandsInMenus=1
+ini Render MirrorMenusToMonitor=1
+ini Debug BodyTreeProbe=1
+console-at ready player.additem 0003489F 1
+console-at ready player.equipitem 0003489F
+
+expect HandScript: finished
+expect a world frame while the game loads
+expect Body tree
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 16
+right pos 0.18 -0.05 -0.40
+right rot 70 0 0
+right curl 0.5
+left pos -0.18 -0.05 -0.40
+left rot 70 0 0
+left curl 0.5
+wait 3
+mark finery-hands
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 3
+mark finery-inventory
+head pitch -40
+wait 2
+mark finery-inventory-down
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 2
+mark finery-closed

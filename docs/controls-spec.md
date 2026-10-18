@@ -3406,3 +3406,19 @@ log.
   Black Hand Robe and the Black Robe (`robe-hands.txt`, "robe-inventory", "black-inventory")
   shows a whole body. The fists up are vanilla's hand-to-hand stance for the paperdoll; the
   missing shins are not understood. Needs his item name, whether every time, and the log.
+  **2026-10-18 evening, the item named:** "The Deceiver's Finery", the Dark Brotherhood's
+  reward of the Bad Medicine quest - DBUpperShirt01 to 30 (0003489F..000348A5, levelled),
+  BMDT 0x0c (upper body and lower body in one), Clothes\UpperClass\02\M\Shirt.NIF and
+  F\Shirt.NIF. Read with pyffi: the male shapes are "Arms" (the arm bones to the hands),
+  "UpperBody:0" and "UpperBody:2" (the trunk, with the thighs, calves and feet skinned into
+  these two), "UpperBody"; the female "Arms", "Upperbody:0/1/2" the same way. No shape
+  named "Hand", so the suit-hand hide is not what takes the shins; what does is open -
+  `finery-paperdoll.txt` (the outfit on, the paperdoll on Tab, Debug.BodyTreeProbe at the
+  marks) is written and waits for a run. He will send the log with the outfit on.
+- *the sun* (2026-10-18 evening: "daylight, especially the sun, is extremely bright ...
+  looking directly at the sun is blinding"): new, unmeasured, nothing in OBVR touches the
+  sun or the HDR; whether it is the launcher's HDR against Bloom, and whether 0.2.2 looked
+  the same for him, is asked. Open.
+- *water reflections distorted* (the same message): known and open since the rendering
+  checkpoint of 2026-09-20 (reflections missing and the body displaced in the right eye
+  with live reflections on; docs/rendering-checkpoint-2026-09-20.md). Cost unestimated.
