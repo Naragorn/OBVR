@@ -116,6 +116,25 @@ float PlayerJumpUnits();
 
 bool PlayerInCombat();
 bool PlayerRiding();
+// The horse the player sits on (the actor virtual GetMountedHorse, xOBSE's
+// slot 0x380), 0 on foot.
+UInt32 PlayerMountedHorse();
+// The player's mounted yaw, the float at +0x61C the input handler
+// accumulates instead of rotZ while mounted (GameAddresses.h, the heading
+// virtual 0x0065DA60 adds it to rotZ); 0 when the player cannot be read.
+float PlayerMountedYaw();
+// An actor's heading (rotZ, radians) and position, by its address; false
+// when it does not look like an object.
+bool ReadActorPlacement(UInt32 actor, float& rotZ, NiPoint3& position);
+// The player's two animation bytes Enhanced Camera reads at +0x71C ("Sit
+// Down, Mount Horse, Vampire Feed") and +0x71D ("Sit GetUp, Dismount
+// Horse"), the first in the low byte, the second in the high; 0 when the
+// player cannot be read. Unverified against the engine - logged first.
+UInt16 PlayerSitMountBytes();
+// The game's third-person zoom (the float at 0x00B3BB24 the mount, the
+// dismount and the vampire feed write before switching the view, Enhanced
+// Camera's hooks at 0x0066CED2, 0x0066CF41 and 0x0066CCA0).
+float ThirdPersonZoom();
 
 // While on, the player cannot be hurt (the tgm flag). Turning it off puts
 // back what it was before - a player in god mode stays in it.

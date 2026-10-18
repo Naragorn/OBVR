@@ -354,15 +354,58 @@ bool PlayerInCombat() {
 	return reinterpret_cast<InCombatFn>(slot)(reinterpret_cast<void*>(player), true);
 }
 
-bool PlayerRiding() {
+UInt32 PlayerMountedHorse() {
 	const UInt32 player = Player();
 	const UInt32 slot = player != 0 ? Slot(player, kMountedHorseSlot) : 0;
 	if (slot == 0) {
-		return false;
+		return 0;
 	}
 	using HorseFn = void*(__thiscall*)(void* actor);
-	return reinterpret_cast<HorseFn>(slot)(reinterpret_cast<void*>(player)) != nullptr;
+	return reinterpret_cast<UInt32>(reinterpret_cast<HorseFn>(slot)(reinterpret_cast<void*>(player)));
 }
+
+bool PlayerRiding() { return PlayerMountedHorse() != 0; }
+
+// NorthernUI's PlayerCharacter.h: "rotation angle; probably yaw", the float
+// the mounted input handler accumulates (GameAddresses.h, the heading
+// virtual for the player).
+constexpr UInt32 kPlayerMountedYawOffset = 0x61C;
+
+float PlayerMountedYaw() {
+	const UInt32 player = Player();
+	if (player == 0) {
+		return 0.0f;
+	}
+	return *reinterpret_cast<const float*>(player + kPlayerMountedYawOffset);
+}
+
+// A reference's rotation (rotX, rotY, rotZ in radians) at +0x20, its
+// position at +0x2C (docs/vr-modding/engine-behavior.md; PlayerAim.cpp reads
+// the player's the same way).
+constexpr UInt32 kRefRotationOffset = 0x20;
+
+bool ReadActorPlacement(UInt32 actor, float& rotZ, NiPoint3& position) {
+	if (!mem::LooksLikeObjectAddress(actor)) {
+		return false;
+	}
+	rotZ = *reinterpret_cast<const float*>(actor + kRefRotationOffset + 8);
+	position = *reinterpret_cast<const NiPoint3*>(actor + addr::kRefPositionOffset);
+	return true;
+}
+
+constexpr UInt32 kPlayerSitMountBytesOffset = 0x71C;
+constexpr UInt32 kThirdPersonZoomAddress = 0x00B3BB24;
+
+UInt16 PlayerSitMountBytes() {
+	const UInt32 player = Player();
+	if (player == 0) {
+		return 0;
+	}
+	const UInt8* const bytes = reinterpret_cast<const UInt8*>(player + kPlayerSitMountBytesOffset);
+	return static_cast<UInt16>(bytes[0] | (static_cast<UInt16>(bytes[1]) << 8));
+}
+
+float ThirdPersonZoom() { return *reinterpret_cast<const float*>(kThirdPersonZoomAddress); }
 
 void SetPlayerUntouchable(bool on) {
 	using GetFn = bool(__cdecl*)();

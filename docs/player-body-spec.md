@@ -311,8 +311,14 @@ by 20.6 grown x1.15, the turn -35.7 then -1.8).
   sneaking or fighting keeps the animation's trunk until the player has
   stood idle for half a second ("the animation's" at the mark).
 - Leaning forward bends no spine: the body still slides under the head.
-- Robes that carry the hands in the upper body cannot hide the body's
-  hands; they sit inside the first-person ones.
+- Robes that carry the hands in the upper body (the Black Hand Robe, the
+  Shrouded Armor: slots upper body, lower body, hands, feet in one mesh)
+  showed the body's hands inside the first-person ones with other fingers
+  (a Quest 3 tester, 2026-10-17: "A lot of fingers in some suits"). Fixed
+  2026-10-18: their hand geometry is a NiTriShape named plainly "Hand"
+  under the node "UpperBody  (<form>)", no "Hand  (<form>)" node, and the
+  hides passed it by; BodyNodeHiddenOnArm (BodyIkLogic.h) hides a "Hand"
+  under any slot model's node. Harness robe-hands.txt; headset open.
 - Left-handed play keeps the body's own arms.
 - Menus, dialogue and third person leave the body to the engine (the body
   goes in a menu that keeps the hands).

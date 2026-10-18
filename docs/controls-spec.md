@@ -3268,3 +3268,73 @@ Hands page with Right hand roll 90, yaw 175, Left hand roll 95, Hand forward 15)
   His log would show "blocking". Cost: a toggle for the fist guard small; the cause of the latch
   needs his log.
 
+
+## Beta report of 2026-10-17 (a third tester, artemis, Quest 3; measured 2026-10-18)
+
+The report: "1) A lot of fingers in some suits (looks funny) 2) Every time I get on a horse, I
+end up hovering about two meters above it and start swaying from side to side. Furthermore,
+while riding, if I turn my head to the left, the camera turns to the right, and vice versa.
+3) During every vampire feeding, I just drift away. 4) Some outfits are not rendered in full
+detail (though certainly not all of them)." Three clips and a picture of the inventory, no
+log.
+
+- *the fingers*: reproduced in the harness (`robe-hands.txt`, run 1): the Black Hand Robe
+  (DBBlackHandRobe 000651D2, biped slots upper body, lower body, hands, feet - 0x3c - in one
+  mesh; the Shrouded Armor, DBLeatherCuirass 000347F7, is cut the same) showed the body's
+  gloved hand inside the first-person one with other fingers, the picture at "robe-closed".
+  The cause, read off the body tree (Debug.BodyTreeProbe at the mark): the hand slot's model
+  is a node "Hand  (<form>)" under "Player", which the body IK's hides match; such a suit builds
+  no hand node - its hand geometry is a NiTriShape named plainly "Hand" under the node
+  "UpperBody  (000651D2)" (the nif's shapes: five "UpperBody", "Arms", "Foot", "Hand" with 36
+  bones), and the walk passed it by, two nodes hidden instead of three. Fixed: `BodyNodeHiddenOnArm`
+  (BodyIkLogic.h, body_ik_test) hides a "Hand" under any slot model's node too; the scenario
+  expects the hide line. Cost was small.
+- *the horse*: reproduced in the harness (`horse-ride.txt`, run 5 of 2026-10-18, the mount by
+  the crosshair on the horse and A - the engine's activation ray is the head's, and
+  "0002008C.Activate player" from the console mounts nobody): the engine switches to third
+  person at the mount (Enhanced Camera's source hooks that very switch, its POV02 site
+  0x0066CEEE after the mount zoom at 0x0066CED2; the dismount 0x0066CF5D, the vampire feed
+  0x0066CCBD) and sets the player's byte at +0x71C ("Sit Down, Mount Horse, Vampire Feed" in
+  Enhanced Camera's reading; verified: 1 from the mount's switch, 0 again 116 frames later,
+  when the ENGINE switches back to first person by itself). Full VR put the player back into
+  first person one frame after the engine's switch (`HandModeForcesFirstPerson`), and the
+  mounted first-person camera the engine then built stood 245 units over the horse against 118
+  on foot - the picture at "mounted" looks down on the horse's ears from under the stable's
+  roof, the tester's two metres - and swung 53 to 59 units sideways and back with the head and
+  the horse still (the sway). Not the visible body: `horse-ride-nobody.txt` ([Body] Visible=0)
+  read the same 245 and the same sway. Left to the engine (`horse-ride-third.txt`,
+  ForceFirstPerson=0), its own first person after the animation stood 175 units over the horse
+  and still. The turn's sense: the view's heading follows the head on the horse as on foot (a
+  head 45 degrees left turned the view 45 degrees left in every run); what the tester saw as
+  "turn left, the camera turns right" is the camera's PLACE moving - on a head turn the
+  engine's camera dipped 110 units and swung 90 to 220 units off the horse, the world swinging
+  the other way. Fixed (small): `HandModeForcesFirstPerson` takes the engine's animation (the
+  bytes at +0x71C and +0x71D) and forces nothing while one plays, the engine switches back
+  itself; the final run (`horse-ride.txt`, run 18) reads 175 over the horse, the camera riding
+  on the horse's own position through its walk (no sway), the head turns right clean and the
+  head turn left still dipping 64 units - the remainder is open: the engine's mounted
+  first-person camera on a turned head, with the horse itself turning in that run (medium: the
+  engine's mounted camera unread, REA on 0x0066C580's callers; the look-at gate tried and
+  reverted, unproven). The camera node stays under WorldRoot on the horse (the ancestry logged
+  at the mount, `CameraLineageChanged`); "Camera: riding at the mark" logs the engine's own
+  camera, the player's rotZ and rotX, the mounted yaw (+0x61C), the horse's heading, the bytes
+  and the third-person zoom (300 throughout).
+- *the vampire feed*: not reproduced (a sleeping victim and vampirism are a scenario of their
+  own). What the data says: the feed's idles are third-person animations only
+  (`vampirefeedbedleft.kf`, `...right`, `...bedroll_crawl`, `...bedroll_side` under
+  characters/_male/idleanims; nothing under _1stperson), and the engine forces third person for
+  them the way it does for the mount (Enhanced Camera's POV04 site 0x0066CCBD after the feed
+  zoom at 0x0066CCA0; it reads the feed from the actor virtual at +0x358, which xOBSE names
+  HasVampireFed, and names the feed among the animations of the +0x71C byte). Full VR put the
+  player back into first person at once, so the feed played with a first-person camera the
+  engine had not built for it - the horse's 245 units, and "I just drift away" most likely the
+  same camera carried by the feed animation. The mount's fix covers the feed on Enhanced Camera's
+  word for the byte: no first person forced while the byte is set, the engine's third person for
+  the animation's seconds with OBVR's third-person camera, the engine's own switch back after.
+  Unverified for the feed itself: his next feeding, and its log ("Camera: the player's
+  sit/mount bytes 0001 ... third person" at the feed, the switch back after), will say.
+- *outfits not in full detail*, his inventory picture (a robe, the fists up, bare feet
+  hanging under the hem with nothing between): not reproduced - the harness paperdoll with the
+  Black Hand Robe and the Black Robe (`robe-hands.txt`, "robe-inventory", "black-inventory")
+  shows a whole body. The fists up are vanilla's hand-to-hand stance for the paperdoll; the
+  missing shins are not understood. Needs his item name, whether every time, and the log.

@@ -845,6 +845,26 @@ void TestGate() {
 	Check(!ArmFollowsHand(true, true, true, true), "left-handed, the hands swapped: no");
 }
 
+void TestHides() {
+	std::printf("the body's nodes hidden while an arm follows its hand\n");
+	Check(BodyNodeHiddenOnArm("Hand  (00000907)", "Player"), "the hand slot's model: hidden");
+	Check(BodyNodeHiddenOnArm("Hand  (0001C9BE)", "Player"), "a glove's model: hidden");
+	Check(BodyNodeHiddenOnArm("Hand", "UpperBody  (000651D2)"), "a suit's own Hand shape under its upper body: hidden");
+	Check(BodyNodeHiddenOnArm("Hand", "LowerBody  (000347F7)"), "a Hand shape under any slot's model: hidden");
+	Check(!BodyNodeHiddenOnArm("Hand", "Player"), "a Hand named without a form's node: left");
+	Check(!BodyNodeHiddenOnArm("UpperBody", "UpperBody  (000651D2)"), "the suit's upper body: left");
+	Check(!BodyNodeHiddenOnArm("Arms", "UpperBody  (000651D2)"), "the suit's arms: left");
+	Check(!BodyNodeHiddenOnArm("Foot", "UpperBody  (000651D2)"), "the suit's feet: left");
+	Check(!BodyNodeHiddenOnArm("Handle", "UpperBody  (000651D2)"), "a name that only begins with Hand: left");
+	Check(BodyNodeHiddenOnArm("Weapon", "Bip01 R Hand"), "the weapon node on the right hand bone: hidden");
+	Check(BodyNodeHiddenOnArm("Torch", "Bip01 L Hand"), "the torch node on the left hand bone: hidden");
+	Check(!BodyNodeHiddenOnArm("Bip01 R Finger0", "Bip01 R Hand"), "a finger bone on the hand bone: left");
+	Check(BodyNodeHiddenOnArm("Shield", "Bip01 L ForearmTwist"), "what hangs on the left forearm twist: hidden");
+	Check(BodyNodeHiddenOnArm("Bip01 L Hand", "Bip01 R ForearmTwist"), "anything on the right forearm twist: hidden");
+	Check(!BodyNodeHiddenOnArm("Bip01 L Forearm", "Bip01 L UpperArm"), "a forearm on its upper arm: left");
+	Check(!BodyNodeHiddenOnArm(nullptr, "Player") && !BodyNodeHiddenOnArm("Hand", nullptr), "no name: left");
+}
+
 }  // namespace
 
 void TestStartTrace() {
@@ -890,6 +910,7 @@ int main() {
 	TestFeet();
 	TestTrunk();
 	TestGate();
+	TestHides();
 	if (g_failures == 0) {
 		std::printf("all checks passed\n");
 		return 0;

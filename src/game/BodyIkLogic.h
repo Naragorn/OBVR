@@ -31,6 +31,8 @@
 // Pure, over plain values; game/BodyIk.cpp reads and writes the bones.
 // body_ik_test covers every flow.
 
+#include <cstring>
+
 #include "core/MathFns.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
@@ -878,6 +880,47 @@ inline bool StandingSettled(float& standingSeconds, bool standsIdle, float dtSec
 // own arms for now).
 inline bool ArmFollowsHand(bool armsOn, bool bodyShown, bool handPinned, bool rolesSwapped) {
 	return armsOn && bodyShown && handPinned && !rolesSwapped;
+}
+
+// ------------------------------------------------------------ The hides
+//
+// Which node of the body's tree is hidden while an arm follows its hand - the
+// body's own hands would otherwise sit inside the first-person ones, the same
+// mesh with other fingers, and what they hold would be there twice. By the
+// node's name and its parent's, as the engine builds the tree (Debug.
+// BodyTreeProbe):
+// - the hand slot's model, a node "Hand  (<form>)" under "Player" (the bare
+//   hands 00000907, gloves and gauntlets alike);
+// - a suit that carries the hands in its upper body - the Black Hand Robe and
+//   the Shrouded Armor, biped slots upper body, lower body, hands and feet in
+//   one mesh - builds no hand node: its hand geometry is a NiTriShape named
+//   plainly "Hand" under the upper body's node "UpperBody  (<form>)" (the
+//   harness, 2026-10-18, robe-hands.txt; a Quest 3 tester's "A lot of fingers
+//   in some suits", 2026-10-17). So a "Hand" under any slot model's node, a
+//   name with the "  (" of a form, is hidden too. The first-person skeleton's
+//   "Hand" shapes are in another tree, never walked here;
+// - whatever hangs on a hand bone that is not a bone itself: the "Weapon"
+//   and "Torch" nodes, a bow;
+// - whatever hangs on a forearm's twist bone: the shield.
+inline bool NameHasForm(const char* name) {
+	return name != nullptr && std::strstr(name, "  (") != nullptr;
+}
+
+inline bool BodyNodeHiddenOnArm(const char* name, const char* parentName) {
+	if (name == nullptr || parentName == nullptr) {
+		return false;
+	}
+	if (std::strncmp(name, "Hand  (", 7) == 0) {
+		return true;
+	}
+	if (std::strcmp(name, "Hand") == 0 && NameHasForm(parentName)) {
+		return true;
+	}
+	if ((std::strcmp(parentName, "Bip01 R Hand") == 0 || std::strcmp(parentName, "Bip01 L Hand") == 0) &&
+	    std::strncmp(name, "Bip01", 5) != 0) {
+		return true;
+	}
+	return std::strcmp(parentName, "Bip01 L ForearmTwist") == 0 || std::strcmp(parentName, "Bip01 R ForearmTwist") == 0;
 }
 
 }  // namespace obvr::game

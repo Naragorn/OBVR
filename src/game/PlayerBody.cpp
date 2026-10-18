@@ -13,6 +13,7 @@
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
+#include "test/HandScriptRuntime.h"
 
 namespace obvr::game {
 namespace {
@@ -157,11 +158,13 @@ void CollapseForThisDraw(NiAVObject* node) {
 // the bones an arm solver would write - each one's local transform under
 // its parent (the bone's length is its child's local position, its axes
 // the rows of its rotation) and its world position, as the animation left
-// them this frame.
+// them this frame. At a hand script's mark the tree is logged again, for
+// what an equip changed in it (the shapes of a robe put on by the script's
+// console lines come after the first probe; robe-hands.txt, 2026-10-18).
 const NiAVObject* g_probedRoot = nullptr;
 
 void ProbeBodyTree(NiAVObject* root) {
-	if (root == g_probedRoot) {
+	if (root == g_probedRoot && !test::HandScriptMarkedThisFrame()) {
 		return;
 	}
 	g_probedRoot = root;

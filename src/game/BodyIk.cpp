@@ -371,15 +371,9 @@ int HiddenIndex(const NiAVObject* node) {
 	return -1;
 }
 
-bool HiddenOnArm(const char* name, const char* parentName) {
-	if (StartsWith(name, "Hand  (")) {
-		return true;
-	}
-	if ((Is(parentName, "Bip01 R Hand") || Is(parentName, "Bip01 L Hand")) && !StartsWith(name, "Bip01")) {
-		return true;
-	}
-	return Is(parentName, "Bip01 L ForearmTwist") || Is(parentName, "Bip01 R ForearmTwist");
-}
+// BodyNodeHiddenOnArm (BodyIkLogic.h): the hand slot's model, a suit's own
+// "Hand" shape, what hangs on a hand bone or a forearm twist.
+bool HiddenOnArm(const char* name, const char* parentName) { return BodyNodeHiddenOnArm(name, parentName); }
 
 void HideWalk(NiAVObject* node, const char* parentName, UInt32 depth, bool* keep) {
 	if (!LooksLikeObject(node) || depth > 40) {

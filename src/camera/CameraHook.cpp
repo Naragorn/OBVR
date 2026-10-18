@@ -4283,8 +4283,14 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		// person, the body falling, and forcing first person back showed the
 		// character standing (2026-09-25 log: "switched to third person" at the
 		// death, "put back into first" thirteen lines later).
+		// Nor while the game's own mount, dismount, sit or feed animation
+		// plays in third person (the player's bytes at +0x71C/+0x71D): the
+		// engine switches back by itself when it is over, and a first person
+		// forced a frame after its switch left the mounted camera 245 units
+		// over the horse and swaying (horse-ride.txt, 2026-10-18).
 		if (HandModeForcesFirstPerson(config.hands.forceFirstPerson, menuIsUp,
-		                              ReadIsThirdPerson(), game::PlayerIsDead())) {
+		                              ReadIsThirdPerson(), game::PlayerIsDead(),
+		                              game::PlayerSitMountBytes() != 0)) {
 			auto* const player = *reinterpret_cast<UInt8* const*>(addr::kPlayerPointer);
 			if (mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(player))) {
 				using ToggleCameraFn = void(__fastcall*)(UInt8* self, void* edx, UInt8 firstPerson);
@@ -10370,6 +10376,47 @@ void InstallCastHook() {
 // All registers are saved at this point, so this function may be ordinary
 // C++. It does have to stay fast and free of exceptions though - it runs on
 // every rendered frame.
+// The camera's place in the scene graph, for the body: if a bone of the
+// third-person skeleton is among its ancestors, moving or collapsing that
+// bone moves the view. Logged at the first pass, and again whenever the
+// camera's parent or the player's seat on a horse changes
+// (CameraLineageChanged) - with the camera's own transforms and the player's
+// feet, so a view hanging in the wrong place can be read off the numbers (a
+// tester on a horse, 2026-10-17: "hovering about two meters above it").
+void LogCameraAncestry(const NiAVObject* cameraNode, const char* why) {
+	char chain[256];
+	UInt32 at = 0;
+	const NiAVObject* node = cameraNode;
+	for (int depth = 0; depth < 8 && mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(node)); ++depth) {
+		const char* name = node->name;
+		if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(name))) {
+			name = "?";
+		}
+		for (UInt32 i = 0; name[i] != '\0' && i < 40 && at + 4 < sizeof(chain); ++i) {
+			const char c = name[i];
+			chain[at++] = (c >= 0x20 && c <= 0x7E) ? c : '?';
+		}
+		if (at + 4 < sizeof(chain)) {
+			chain[at++] = ' ';
+			chain[at++] = '<';
+			chain[at++] = ' ';
+		}
+		node = node->parent;
+	}
+	chain[at] = '\0';
+	NiPoint3 feet{0.0f, 0.0f, 0.0f};
+	const bool haveFeet = game::ReadPlayerFeet(feet);
+	const NiPoint3& local = cameraNode->localTransform.pos;
+	const NiPoint3& world = cameraNode->worldTransform.pos;
+	OBVR_LOG("Camera: the camera node's ancestry (child < parent): %s- %s; %s; the camera's local %.1f %.1f %.1f, "
+	         "world %.1f %.1f %.1f scale %.3f, the player's feet %.1f %.1f %.1f%s",
+	         chain, why, game::PlayerRiding() ? "riding" : "on foot", static_cast<double>(local.x),
+	         static_cast<double>(local.y), static_cast<double>(local.z), static_cast<double>(world.x),
+	         static_cast<double>(world.y), static_cast<double>(world.z),
+	         static_cast<double>(cameraNode->worldTransform.scale), static_cast<double>(feet.x),
+	         static_cast<double>(feet.y), static_cast<double>(feet.z), haveFeet ? "" : " (unread)");
+}
+
 extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	if (cameraNode == nullptr) {
 		return;
@@ -10377,37 +10424,21 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 
 	const bool isThirdPerson = ReadIsThirdPerson();
 
+	// The camera's parent and the player's mount as last logged, for
+	// CameraLineageChanged; the lines capped, a horse at a trot would
+	// otherwise fill the log if its camera swapped nodes every frame.
+	static const NiAVObject* s_lineageParent = nullptr;
+	static bool s_lineageRiding = false;
+	static UInt32 s_lineageLinesLeft = 40;
+
 	switch (g_state.ObservePointOfView(isThirdPerson)) {
 	case PovEvent::FirstPass: {
 		OBVR_LOG("Camera: first hook pass, CameraNode=%08X, %s",
 		         reinterpret_cast<UInt32>(cameraNode),
 		         isThirdPerson ? "third person" : "first person");
-		// The camera's place in the scene graph, for the body: if a bone of
-		// the third-person skeleton is among its ancestors, moving or
-		// collapsing that bone moves the view.
-		{
-			char chain[256];
-			UInt32 at = 0;
-			const NiAVObject* node = cameraNode;
-			for (int depth = 0; depth < 8 && mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(node)); ++depth) {
-				const char* name = node->name;
-				if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(name))) {
-					name = "?";
-				}
-				for (UInt32 i = 0; name[i] != '\0' && i < 40 && at + 4 < sizeof(chain); ++i) {
-					const char c = name[i];
-					chain[at++] = (c >= 0x20 && c <= 0x7E) ? c : '?';
-				}
-				if (at + 4 < sizeof(chain)) {
-					chain[at++] = ' ';
-					chain[at++] = '<';
-					chain[at++] = ' ';
-				}
-				node = node->parent;
-			}
-			chain[at] = '\0';
-			OBVR_LOG("Camera: the camera node's ancestry (child < parent): %s", chain);
-		}
+		s_lineageParent = cameraNode->parent;
+		s_lineageRiding = game::PlayerRiding();
+		LogCameraAncestry(cameraNode, "the first pass");
 
 		// The first look at Oblivion's own renderer, and the question 0.1.0
 		// turns on: is Direct3D 9 here being served by DXVK, which hands out
@@ -10511,6 +10542,57 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		break;
 	case PovEvent::Unchanged:
 		break;
+	}
+
+	{
+		const bool riding = game::PlayerRiding();
+		if (s_lineageLinesLeft > 0 &&
+		    CameraLineageChanged(s_lineageParent, cameraNode->parent, s_lineageRiding, riding)) {
+			--s_lineageLinesLeft;
+			LogCameraAncestry(cameraNode, riding != s_lineageRiding
+			                                  ? (riding ? "the player has mounted" : "the player has dismounted")
+			                                  : "the camera's parent changed");
+		}
+		s_lineageParent = cameraNode->parent;
+		s_lineageRiding = riding;
+		// At a hand script's mark on a horse: the engine's own camera before
+		// anything below is added to it, beside the player's heading, the
+		// mounted yaw and the horse's placement - the hover and the turn's
+		// sense are read off these (horse-ride.txt).
+		if (riding && test::HandScriptMarkedThisFrame()) {
+			game::PlayerRotation turned{};
+			const bool haveTurn = game::ReadPlayerRotation(turned);
+			const UInt32 horse = game::PlayerMountedHorse();
+			float horseYaw = 0.0f;
+			NiPoint3 horseAt{0.0f, 0.0f, 0.0f};
+			const bool haveHorse = game::ReadActorPlacement(horse, horseYaw, horseAt);
+			const NiPoint3& local = cameraNode->localTransform.pos;
+			const NiPoint3& world = cameraNode->worldTransform.pos;
+			OBVR_LOG("Camera: riding at the mark - the engine's camera local %.1f %.1f %.1f, world %.1f %.1f %.1f; "
+			         "the player's rotZ %.4f rotX %.4f%s, mounted yaw %.4f; the horse %08X heading %.4f at %.1f %.1f %.1f%s; "
+			         "sit/mount bytes %04X, third-person zoom %.1f",
+			         static_cast<double>(local.x), static_cast<double>(local.y), static_cast<double>(local.z),
+			         static_cast<double>(world.x), static_cast<double>(world.y), static_cast<double>(world.z),
+			         static_cast<double>(turned.yaw), static_cast<double>(turned.pitch), haveTurn ? "" : " (unread)",
+			         static_cast<double>(game::PlayerMountedYaw()), horse, static_cast<double>(horseYaw),
+			         static_cast<double>(horseAt.x), static_cast<double>(horseAt.y), static_cast<double>(horseAt.z),
+			         haveHorse ? "" : " (unread)", game::PlayerSitMountBytes(),
+			         static_cast<double>(game::ThirdPersonZoom()));
+		}
+		// The player's sit/mount/feed bytes as they change, with the zoom and
+		// the view: when the engine's own switches for a mount, a dismount, a
+		// sit or a vampire feed happen against them (unverified bytes, from
+		// Enhanced Camera's source; the lines capped).
+		static UInt16 s_sitMountBytes = 0;
+		static UInt32 s_sitMountLinesLeft = 60;
+		const UInt16 sitMount = game::PlayerSitMountBytes();
+		if (sitMount != s_sitMountBytes && s_sitMountLinesLeft > 0) {
+			--s_sitMountLinesLeft;
+			OBVR_LOG("Camera: the player's sit/mount bytes %04X (were %04X) - %s, %s, third-person zoom %.1f, frame %u",
+			         sitMount, s_sitMountBytes, isThirdPerson ? "third person" : "first person",
+			         riding ? "riding" : "on foot", static_cast<double>(game::ThirdPersonZoom()), g_state.frameCount);
+		}
+		s_sitMountBytes = sitMount;
 	}
 
 	++g_state.frameCount;

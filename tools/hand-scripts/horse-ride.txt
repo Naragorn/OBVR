@@ -1,0 +1,81 @@
+# Full VR on a horse (a Quest 3 tester, 2026-10-17: "Every time I get on a
+# horse, I end up hovering about two meters above it and start swaying from
+# side to side. Furthermore, while riding, if I turn my head to the left, the
+# camera turns to the right, and vice versa"). The harness save's player is
+# moved to Prior Maborel's paint horse at Weynon Priory (WeynonHorsePlayer,
+# 0002008C; player.moveto loads its exterior - "coc WeynonPriory" in the
+# first run of 2026-10-18 dropped the player at 2048 2048 into nothing, the
+# cell named so has no ground there) and mounts it the way a player does:
+# the player is put 100 units south of the paint horse (player.moveto
+# 0002008C 0 -100 0 - "0002008C.moveto player -85 85 0" in the sixth to
+# eighth runs left the horse where it stood, as "JauffreRef.moveto player"
+# left Jauffre in perf-jauffre.txt; "the interface answered 0" for such lines
+# is no refusal, player.placeatme answers 0 and places), the head turned 45
+# degrees right onto it (the player's heading is -45 after the move) and
+# bowed 12 degrees - the engine's activation ray is the head's
+# (SetWorldPickDirection), the crosshair has to rest on the horse - and A
+# pressed once two seconds later, before the horse wanders ("0002008C.Activate player 0/1" from the console ran and
+# mounted nobody - "the interface answered 0" - in those runs). The camera's
+# ancestry is logged at the mount ("Camera: the camera node's ancestry ...
+# the player has mounted") with the camera's transforms against the player's
+# feet; "Camera: at the mark" gives the eyes' place and heading at each mark,
+# so the hover is the eyes' height over the feet, the sway the eyes' place
+# from one mark to the next with the head still, and the turn's sense the
+# heading at yaw-left against yaw-right (the synthetic head turned 45
+# degrees each way). Then the horse walked ahead for five seconds on the
+# left stick. A is not pressed again - on a horse it dismounts. The vanity
+# camera is held off with xOBSE's SetNumericINISetting.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/horse-ride.txt --run-timeout 300 --direct
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+console-at ready player.moveto 0002008C
+console-at ready SetNumericINISetting "fAutoVanityModeDelay:Camera" 100000
+console-at priory player.moveto 0002008C 0 -100 0
+console-at priory player.setangle z 0
+
+expect HandScript: finished
+expect Camera: the camera node's ancestry
+expect the player has mounted
+expect Camera: riding at the mark
+expect a world frame while the game loads
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 30
+mark priory
+wait 12
+head yaw 0
+head pitch -20
+right pos 0.15 -0.35 -0.35
+right rot -5 0 0
+wait 2
+mark aimed
+right a 1
+wait 0.3
+right a 0
+wait 3
+mark pressed
+head pitch 0
+wait 12
+mark mounted
+wait 5
+mark mounted-5
+wait 5
+mark mounted-10
+head yaw 45
+wait 3
+mark yaw-left
+head yaw -45
+wait 3
+mark yaw-right
+head yaw 0
+wait 2
+mark yaw-ahead
+left stick 0 1
+wait 5
+mark riding
+left stick 0 0
+wait 3
+mark stopped

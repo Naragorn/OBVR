@@ -866,11 +866,33 @@ inline UInt32 ShadeForFrame(UInt32 menuShade, bool playerDead, bool deathTint,
 
 // Whether Full VR puts a third-person player back into first person: only with
 // the setting on, out of menus (the game flips to third person for the race
-// menu on purpose), and not once the player has died - the game shows the
-// death in third person, the body falling.
+// menu on purpose), not once the player has died - the game shows the
+// death in third person, the body falling - and not while the game plays one
+// of its own animations in third person: mounting or dismounting a horse,
+// sitting down or getting up, a vampire's feed (the player's bytes at +0x71C
+// and +0x71D, Enhanced Camera's reading; the mount verified in the harness,
+// 2026-10-18: the byte set at the mount's switch and cleared 110 frames
+// later, when the engine itself switched back to first person). Forced back
+// a frame after the engine's switch, the mounted first-person camera stood
+// 245 units over the horse and swayed (a Quest 3 tester's "hovering about
+// two meters above it ... swaying from side to side"); left to the engine
+// until its animation is over, it stood 175 and still.
 inline bool HandModeForcesFirstPerson(bool setting, bool menuIsUp, bool thirdPerson,
-                                      bool playerDead) {
-	return setting && !menuIsUp && thirdPerson && !playerDead;
+                                      bool playerDead, bool engineAnimation = false) {
+	return setting && !menuIsUp && thirdPerson && !playerDead && !engineAnimation;
+}
+
+// Whether the camera node's place in the scene graph, or the player's seat on
+// a horse, changed since the last frame - then the camera's ancestry is logged
+// again. The ancestry is logged once at the first pass, and it says whether a
+// bone the body code moves or collapses stands between the camera and the
+// world; a tester on a horse (2026-10-17: "I end up hovering about two meters
+// above it and start swaying from side to side ... if I turn my head to the
+// left, the camera turns to the right") and the vampire's feed ("I just drift
+// away") are the two places the engine may hang the camera elsewhere.
+inline bool CameraLineageChanged(const void* parentBefore, const void* parentNow, bool ridingBefore,
+                                 bool ridingNow) {
+	return parentBefore != parentNow || ridingBefore != ridingNow;
 }
 
 bool CrosshairCentreCaptureWanted(bool crosshairEnabled, bool haveTarget,

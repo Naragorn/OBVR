@@ -1256,14 +1256,31 @@ void TestCrosshairTooltipPolicy() {
 		      "every reticle, target, tooltip, placement and sneak combination chooses one picture");
 	}
 
-	for (UInt32 mask = 0; mask < 16; ++mask) {
+	for (UInt32 mask = 0; mask < 32; ++mask) {
 		const bool setting = (mask & 1) != 0;
 		const bool menu = (mask & 2) != 0;
 		const bool third = (mask & 4) != 0;
 		const bool dead = (mask & 8) != 0;
-		Check(obvr::camera::HandModeForcesFirstPerson(setting, menu, third, dead) ==
-		          (setting && !menu && third && !dead),
-		      "Full VR forces first person only out of menus, in third person, and alive");
+		const bool animation = (mask & 16) != 0;
+		Check(obvr::camera::HandModeForcesFirstPerson(setting, menu, third, dead, animation) ==
+		          (setting && !menu && third && !dead && !animation),
+		      "Full VR forces first person only out of menus, in third person, alive, and not during the "
+		      "game's own mount, sit or feed animation");
+	}
+	Check(obvr::camera::HandModeForcesFirstPerson(true, false, true, false),
+	      "without the animation named, as before: forced");
+
+	{
+		using obvr::camera::CameraLineageChanged;
+		int a = 0;
+		int b = 0;
+		Check(!CameraLineageChanged(&a, &a, false, false), "the same parent, on foot both frames: nothing to log");
+		Check(!CameraLineageChanged(&a, &a, true, true), "the same parent, riding both frames: nothing to log");
+		Check(CameraLineageChanged(&a, &b, false, false), "another parent under the camera: logged");
+		Check(CameraLineageChanged(&a, &a, false, true), "mounted this frame: logged");
+		Check(CameraLineageChanged(&a, &a, true, false), "dismounted this frame: logged");
+		Check(CameraLineageChanged(&a, &b, false, true), "both at once: logged");
+		Check(CameraLineageChanged(nullptr, &a, false, false), "a parent where there was none: logged");
 	}
 
 	{

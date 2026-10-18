@@ -1,0 +1,72 @@
+# A suit that carries the hands in its upper body, and the inventory's
+# paperdoll (a Quest 3 tester, 2026-10-17: "A lot of fingers in some suits
+# (looks funny)", "Some outfits are not rendered in full detail", his picture
+# of the inventory with a robe on: the body's legs gone between the hem and
+# the bare feet). The Black Hand Robe (DBBlackHandRobe 000651D2; its BMDT
+# slots 0x3c = upper body, lower body, hands, feet in one mesh,
+# Clothes\RobeDarkBrotherhood\M\RobeDarkBrotherhood.NIF) is put on, both
+# hands held up before the face with the fingers half curled - the picture at
+# "robe-hands" shows whether the body's own hands stand inside the
+# first-person ones with other fingers. The first run of 2026-10-18 showed
+# them (the suit's hands are a NiTriShape "Hand" under the node "UpperBody
+# (000651D2)", not a "Hand  (<form>)" node, and the body IK's hides passed
+# it by - two nodes hidden instead of three); since BodyNodeHiddenOnArm
+# (BodyIkLogic.h) hides a "Hand" under any slot model's node, the expect
+# line below. Then the inventory is opened on
+# the Tab key for the paperdoll ("robe-inventory"), closed, and the same with
+# the Black Robe (BlackRobe 00064FE2, slots 0x0c, no hands) for a robe that
+# leaves the hands to the hand slot ("black-hands", "black-inventory").
+# Debug.BodyTreeProbe logs the body's tree again at every mark, so the
+# "Body tree" lines after "robe-hands" carry the robe's shapes as the engine
+# named them - what the body IK's hides would have to match.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/robe-hands.txt --run-timeout 240 --direct
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Hands HandsInMenus=1
+ini Render MirrorMenusToMonitor=1
+ini Debug BodyTreeProbe=1
+console-at ready player.additem 000651D2 1
+console-at ready player.additem 00064FE2 1
+console-at ready player.equipitem 000651D2
+console-at robe-closed player.equipitem 00064FE2
+
+expect HandScript: finished
+expect Body IK: the body's "Hand" (on "UpperBody  (000651D2)") hidden while an arm follows its hand
+expect Body IK: the body's "Hand  (00000907)" (on "Player") hidden while an arm follows its hand
+expect a world frame while the game loads
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 16
+right pos 0.18 -0.05 -0.40
+right rot 70 0 0
+right curl 0.5
+left pos -0.18 -0.05 -0.40
+left rot 70 0 0
+left curl 0.5
+wait 3
+mark robe-hands
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 3
+mark robe-inventory
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 2
+mark robe-closed
+wait 14
+mark black-hands
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 3
+mark black-inventory
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 2
+mark black-closed
