@@ -87,7 +87,8 @@ texts: simple, short, friendly.
 ## The Discord post for beta 5 (2026-10-19)
 
 Packaged 2026-10-19 from eaf578c as dist/OBVR-0.3.0-beta5.zip (tools/package-release.py
---tag=-beta5); not posted yet, Nadi posts it. Beta 4 was the last build in the channel
+--tag=-beta5); posted by Nadi 2026-10-19 evening after his headset round (the people's
+performance "super", torches normal, the horse's two open bugs in controls-spec). Beta 4 was the last build in the channel
 (2026-10-16). Everything below was measured in the harness; what was not yet seen in a
 headset is said so in the specs, not here.
 
@@ -111,9 +112,10 @@ headset is said so in the specs, not here.
 >   controllers, not with the keyboard.
 > - Robes and suits that carry the hands in the body mesh (Black Hand Robe,
 >   Shrouded Armor) no longer show a second pair of hands.
-> - On a horse: no hover, and the view no longer slides sideways when you turn
->   your head. Vampire feeding uses the same mechanic; it should follow, we
->   have not seen it ourselves.
+> - On a horse: no hover, and the jumps of the view are gone. Riding is still
+>   rough: looking left or right while riding does not turn the view, and the
+>   camera moves with the horse more than a headset likes. Known, being worked
+>   on.
 > - The water seam at the horizon when you turn your head is gone.
 > - Stowing a weapon at your chest measures the drawn hand, not the controller,
 >   so it works with any hand offset. The corpse and container panel no longer

@@ -3438,7 +3438,27 @@ log.
   `horse-ride-turnprobe.txt` with all hand physics on - no jump, no shove line, the
   camera within 7 units of its place at every mark and second through the head turns.
   What the view still does on a horse: ride the engine's camera on the horse's spine
-  through its walk, as vanilla does. Headset: open.
+  through its walk, as vanilla does.
+  **In the headset (Nadi, 2026-10-19 evening, the beta 5 build), two open bugs:**
+  (a) **looking right or left while riding does not turn the view** - neither side,
+  during the ride; (b) **the camera moves too much with the horse's motion -
+  "nauseating"**: the engine's mounted camera rides the horse's spine through its walk
+  (the chain of 2026-10-19 midday, Camera01 under ActorParent under Bip02 Spine2), and
+  what passes on a monitor is a bob and sway the headset cannot take. Not measured yet;
+  the shove fix of the afternoon is proven only to have stopped the jumps. Hypothesis
+  for (a), unverified: on the horse the engine takes the view's heading from the mounted
+  yaw at +0x61C (0x00671CD0, the mouse's per-frame add), which OBVR's head yaw never
+  writes - the same path the missing snap turn sits on. Next for (a): one harness run
+  of horse-ride.txt with head turns at the marks, reading the "Camera: riding at the
+  mark" lines (engine camera heading against the head's yaw) - small; then the head's
+  yaw into +0x61C (medium, the mounted steering still unread, and it would also give
+  the snap turn). For (b): the mounted first-person camera placed by OBVR from the
+  horse's root and the head, not from the Camera01 on the spine - the position smoothed
+  or held at the saddle's height, the rotation the head's own - medium: the chain and
+  the anchor are known, PlaceFirstPersonArms is gated off under ActorParent precisely
+  because writes there landed in the engine's camera anchor, so this is the place to
+  write deliberately; risk is the feel (how much bob to keep so the ride still reads as
+  a ride), headset only. Beta 5 went out with the horse line softened to this.
 - *the vampire feed*: not reproduced (a sleeping victim and vampirism are a scenario of their
   own). What the data says: the feed's idles are third-person animations only
   (`vampirefeedbedleft.kf`, `...right`, `...bedroll_crawl`, `...bedroll_side` under
