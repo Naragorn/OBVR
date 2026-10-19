@@ -138,6 +138,42 @@ shares hold, the absolute numbers are about 2.5 times the engine's)
    proven per shader class, a wrong cache is the skinning collapse of
    2026-08 all over again (`obvr-skinning-kollaps-geloest`), and the gain is
    at most the second pass's people share (about 4 ms of the 8.6 here).
+   **Read in the engine, 2026-10-19 evening** (objdump over Oblivion.exe,
+   the sampler's stacks): what the second pass repeats for a person is the
+   engine's stream packing. `0x00763130` (thiscall, six arguments; its
+   object carries the stream and index managers at +0x8AC and +0x8B4 -
+   the renderer, most likely) packs a geometry's vertex streams into the
+   geometry's render record (`+0x24` the stream slots, each with the
+   buffer at `+0x8` and the offset at `+0xC`) through the packer
+   `0x0076FE20`: the lock wrapper `0x00776C90` hands the engine a
+   system-memory staging buffer, the unlock `0x00776D80` memcpys it into
+   the mapped buffer (the `0x00776DC2` of section 0). For geometry
+   flagged static (`data+0x2E & 0xF000 == 0x4000`) with a packed record it
+   returns 1 at once and touches nothing; for volatile geometry (`0x8000`:
+   skinned bodies, morphing faces) it repacks on every call. The record
+   persists and the draw reads it. The packing is 26 to 30 % of a pass with
+   the opening's five (the copier loops under `0x0076F590`, the two
+   memcpys). But the pool-timeline dumps of August show the engine's
+   dynamic rings are small - about 96 KB, `DISCARD` at every wrap, 45 of
+   135 locks a pass - so by the second pass the first pass's bytes are
+   long overwritten: as the rings stand, the second pass cannot take the
+   first's streams. The design that would work: (1) the rings enlarged to
+   hold a frame's volume (3.7 MB a pass, twice) - their creation site is
+   not found yet; (2) a detour on `0x00763130` that in the second pass
+   returns 1 for a record packed in the first pass whose buffers saw no
+   `DISCARD` since (a per-buffer discard generation counted in
+   `HookedVbLock`), else packs as usual; (3) an opt-in check mode that
+   packs in the second pass anyway and compares the bytes with the first
+   pass's, per geometry class, before the skip is trusted (the August
+   fingerprints matched in every sampled scene call, 7 to 48 writes, but
+   only their leading 256 bytes); (4) a kill switch. Cost: large (engine
+   unknowns in the ring manager, a device-reset path for bigger rings, and
+   the harness verification wants a second-eye image the Linux harness
+   does not have today); gain about 0.8 ms a frame with five people at
+   75 Hz (the second pass's packing), more where more people stand.
+   Decision 2026-10-19 evening: beta 5 packaged first with the fingerprint
+   fix (docs/discord-hand-tracking-beta.md); the lever waits for Nadi's
+   call and for the 90 Hz tester's capture with the fixed build.
    Test: the hall scenario's scene_pass per pass with and without.
 3. **The engine's cost per person is vanilla.** Oblivion's own CPU cost for
    a visible NPC is not OBVR's to cut; what remains is the player's: fewer

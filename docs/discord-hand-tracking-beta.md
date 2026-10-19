@@ -83,3 +83,55 @@ texts: simple, short, friendly.
 >   move, did SteamVR still track?
 >
 > Please keep the build in this channel - it is not released yet.
+
+## The Discord post for beta 5 (2026-10-19)
+
+Packaged 2026-10-19 from eaf578c as dist/OBVR-0.3.0-beta5.zip (tools/package-release.py
+--tag=-beta5); not posted yet, Nadi posts it. Beta 4 was the last build in the channel
+(2026-10-16). Everything below was measured in the harness; what was not yet seen in a
+headset is said so in the specs, not here.
+
+> **OBVR Full VR - beta 5** (OBVR-0.3.0-beta5.zip, attached)
+>
+> Beta 4 plus what came out of your reports since. Same install as before: unzip
+> over `Data`, keep your tuned `OBVR.ini` if you have one. The log says
+> "OBVR 0.3.0".
+>
+> **What changed**
+> - People in view cost far less. Most of the frame time with NPCs around was
+>   our own diagnostics reading the mesh data back every frame - that is gone.
+>   The opening dungeon with the Blades and Jauffre's house now fit the frame on
+>   our machine. If you still stutter around people, tell us where and at which
+>   refresh rate.
+> - Frames are paced to the headset's vsync: a quick frame no longer slips ahead
+>   and drops the next one.
+> - Left stick click: the spell ring at your left hand (your spellbook). Holding
+>   the stick still runs. Right stick click: the hotkey ring, as before.
+> - The tutorial cards in the opening dungeon say what to do with the
+>   controllers, not with the keyboard.
+> - Robes and suits that carry the hands in the body mesh (Black Hand Robe,
+>   Shrouded Armor) no longer show a second pair of hands.
+> - On a horse: no hover, and the view no longer slides sideways when you turn
+>   your head. Vampire feeding uses the same mechanic; it should follow, we
+>   have not seen it ourselves.
+> - The water seam at the horizon when you turn your head is gone.
+> - Stowing a weapon at your chest measures the drawn hand, not the controller,
+>   so it works with any hand offset. The corpse and container panel no longer
+>   flips when you look steeply down.
+> - Settings: pitch rows for both hands and a stick-turn speed row; the controls
+>   card names doors, chests and the stow ring.
+> - The camera that starts circling you after idling stays off in VR.
+> - Yield (both palms forward): the weapon hand's grip no longer blocks it; an
+>   open palm counts.
+> - A crash two seconds after the start with some mods (an actor read before its
+>   base form was linked) is fixed.
+>
+> **Still rough**: wrists pinch when you turn the controllers outwards; smooth
+> turn speed follows the mouse sensitivity; the yield still wants both palms
+> squarely forward.
+>
+> **Reports** as before: `OBVR.log` and `OBVR.log.prev`, headset, controllers,
+> GPU, Windows or Linux/Proton, what you did and saw. For stutter: set
+> `[Performance] Enabled=1` and `StartAfterSeconds=60` in OBVR.ini, play the
+> scene for a minute and a half, and attach the `OBVR-performance-1` folder from
+> your Oblivion directory.
