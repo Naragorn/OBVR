@@ -1,0 +1,38 @@
+# A fire placed in the world beside the torch in the hand, in one picture:
+# FireTorchLarge (0002CF89, a light whose model is Fire\FireTorchLarge.nif -
+# the very effect the engine hangs on a held torch's FlameNode1) is placed
+# at the player by the console, Torch02 (0002CF9F) put in the left hand, the
+# hand held before the face, the head still; pictures at four marks two
+# seconds apart. The two flames share the flipbook (a NiFlipController over
+# 20 textures a second): if the placed fire's shape changes from picture to
+# picture while the hand's does not, the engine's world controllers run and
+# only the first-person torch stands still; if neither changes, every flame
+# stands still under OBVR.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/fire-placed.txt --run-timeout 300 --direct
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+console-at ready player.placeatme 0002CF89 1
+console-at ready player.additem 0002CF9F 1
+console-at ready player.equipitem 0002CF9F
+
+expect HandScript: finished
+expect a world frame while the game loads
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 16
+left pos -0.25 -0.30 -0.45
+left rot 0 0 0
+left curl 0.8
+right pos 0.30 -0.40 -0.30
+head pitch -10
+wait 3
+mark fire-1
+wait 2
+mark fire-2
+wait 2
+mark fire-3
+wait 2
+mark fire-4

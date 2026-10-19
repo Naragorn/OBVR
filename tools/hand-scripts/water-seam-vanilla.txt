@@ -1,0 +1,57 @@
+# The control for water-seam.txt: the engine's own reflection from each eye's
+# camera (WaterReflectionMode=0), the same place and the same head turns -
+# what the water looks like without OBVR's stable capture.
+# Water reflections from the Talos Bridge over Lake Rumare (cow Tamriel 1 15 - the cell's centre lies on the bridge's line, y 63424) with the stable
+# capture (WaterReflectionMode=2, the default): a Quest 3 tester's video of
+# 2026-10-18 - across the lake one part of the water reflects the sky and
+# the city, the rest is a flat colour, the two met by a straight seam that
+# stands still in the world while the head turns. The capture camera faces
+# the game's own heading (the pre-headset rotation, see
+# camera::GetHeadIndependentWaterCameraTransforms) with a frustum three
+# times the eye's across - about 76 degrees to each side; water seen past
+# that samples the capture's edge, and past 90 degrees off its axis the
+# capture's plane is behind it. The head is turned round the full circle in
+# steps of 45 degrees, a picture at each: the seam should show once the
+# head looks more than about 76 degrees off the game's heading, if that
+# heading stays put under the turned head.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/water-seam-vanilla.txt --run-timeout 300 --direct
+
+ini Hands Enabled=1
+ini Render WaterReflectionMode=0
+ini Render MirrorMenusToMonitor=1
+console-at ready cow Tamriel 1 15
+
+expect HandScript: finished
+expect a world frame while the game loads
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 20
+head pitch -15
+wait 2
+mark yaw-0
+head yaw 45
+wait 2
+mark yaw-45
+head yaw 90
+wait 2
+mark yaw-90
+head yaw 135
+wait 2
+mark yaw-135
+head yaw 180
+wait 2
+mark yaw-180
+head yaw 225
+wait 2
+mark yaw-225
+head yaw 270
+wait 2
+mark yaw-270
+head yaw 315
+wait 2
+mark yaw-315
+head yaw 0
+wait 2
+mark yaw-back

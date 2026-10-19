@@ -1,0 +1,29 @@
+# A fire in the world against the torch in the hand (torch-flame.txt): the
+# Weye house's fireplace (coc Weye puts the player before it), the head held
+# still, pictures at four marks two seconds apart. The fire's flipbook (the
+# same Fire\FireTorchLarge.nif kind of effect, a NiFlipController over 20
+# textures a second) shows a different frame in each picture when the
+# world's controllers run; the same shape in all four means every flame
+# stands still under OBVR, not only the one in the hand.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/fire-world.txt --run-timeout 300 --direct
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+console-at ready coc Weye
+
+expect HandScript: finished
+expect a world frame while the game loads
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 20
+head pitch -10
+wait 2
+mark fire-1
+wait 2
+mark fire-2
+wait 2
+mark fire-3
+wait 2
+mark fire-4

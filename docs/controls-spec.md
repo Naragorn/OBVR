@@ -3401,6 +3401,13 @@ log.
   the animation's seconds with OBVR's third-person camera, the engine's own switch back after.
   Unverified for the feed itself: his next feeding, and its log ("Camera: the player's
   sit/mount bytes 0001 ... third person" at the feed, the switch back after), will say.
+  **2026-10-18 night, his feed log (beta 4), in the Finery:** the Message menu's button
+  clicked, the menu closed, then "Camera: switched to third person (frame 238)", "switched
+  to first person (frame 239)" and "Hands: the player was in third person - put back into
+  first" one frame later - beta 4 forcing first person a frame after the engine's own
+  switch, exactly the mount's case. Beta 4 has no sit/mount line, so the byte itself is
+  still unread for the feed; what beta 5 does there rests on the feed setting +0x71C as
+  the mount does (Enhanced Camera's reading). His beta 5 feed log will say.
 - *outfits not in full detail*, his inventory picture (a robe, the fists up, bare feet
   hanging under the hem with nothing between): not reproduced - the harness paperdoll with the
   Black Hand Robe and the Black Robe (`robe-hands.txt`, "robe-inventory", "black-inventory")
@@ -3425,6 +3432,52 @@ log.
   looking directly at the sun is blinding"): new, unmeasured, nothing in OBVR touches the
   sun or the HDR; whether it is the launcher's HDR against Bloom, and whether 0.2.2 looked
   the same for him, is asked. Open.
+  **2026-10-18 night:** solved on his side - "disable HDR or Bloom in options". Nothing of
+  OBVR's; worth one line among the README's tips (small).
 - *water reflections distorted* (the same message): known and open since the rendering
   checkpoint of 2026-09-20 (reflections missing and the body displaced in the right eye
   with live reflections on; docs/rendering-checkpoint-2026-09-20.md). Cost unestimated.
+  **2026-10-18 night, his video (Reflections.mp4, 11 s, Lake Rumare from its shore towards
+  the city):** one part of the water reflects the sky and the city, the rest is a flat teal,
+  the two met by a straight seam that stands still in the world while the head turns, a
+  dark or a bright streak fanning out along it. Read against the code: the stable capture
+  (`[Render] WaterReflectionMode=2`, the default) renders the reflection once per stereo
+  pair from a camera that faces the game's own heading - camera::GetHeadIndependentWaterCameraTransforms
+  builds it on g_menuBaseRot, the rotation before the headset's - with the frustum three
+  times the eye's across (about 76 degrees to each side) and 1.5 times up and down
+  (render/WaterReflectionHook.cpp); each eye then samples that one picture through the
+  capture's projective matrix (c13-c16). Water the eye sees past the capture's edge samples
+  the edge column (the streak); past 90 degrees off the capture's axis the projection's w
+  turns negative (the flat colour). In Full VR the heading does not turn with the head, so
+  a look round at a lake brings the seam into the picture, and a steep look down at the
+  near water runs out of the 1.5x rows the same way. **Reproduced 2026-10-19** in the lake
+  under the Talos Bridge (`water-seam.txt`, `cow Tamriel 1 15`): the seam at yaw 225, the
+  bridge tower's reflection as long streaks at 270 and 315; the control with
+  WaterReflectionMode=0 (`water-seam-vanilla.txt`, the engine's own reflection from each
+  eye's camera) shows none of it. Options: (A) the capture turned with the head's yaw each
+  frame, its position left head-independent - the seam gone whichever way one looks; small
+  to medium: one rotation in BuildHeadIndependentWaterCamera and its unit flows, a
+  water-seam run; the risk is the engine's reset-on-move coming back with every head turn,
+  which the head-independence was there to avoid. (B) WaterReflectionMode=0 as the
+  default - no seam, each eye its own reflection, the engine's second reflection render per
+  frame and its resets as the head moves; small, a default and the INI comment. (C) two
+  captures, one per half space, blended at the seam; large. His quick way out, told him:
+  `WaterReflectionMode=0` in OBVR.ini.
+- *the torch's flame* (2026-10-18 night, his second video, 13 s): the flame over the held
+  torch keeps one shape - neither the flipbook (Fire\FireTorchLarge.nif, which the engine
+  hangs on the torch's FlameNode1: a NiFlipController over 20 textures a second on
+  "FireTorchLarge:0") nor its Fire and Sparks particle systems move; the torch's own mesh
+  (Lights\Torch02.NIF) carries only the static FlameCap. **Reproduced 2026-10-19**
+  (`torch-flame.txt`): the same shape in four pictures two seconds apart - and the same with
+  the hand mode off, with one render a frame (Stereo=none) and with the body and the
+  POV-switch patch off, so neither the hands, the dual pass nor the body stop it. Not
+  OBVR's node updates either: NiNode's downward pass (0x0070A0D0, vtable 0x00A7E38C slot
+  0x60) runs UpdatePropertiesAndControllers (0x0047C930) only when Update's second argument
+  is set, and OBVR's kUpdateNodeTransforms passes 0 everywhere (objdump 2026-10-19; xOBSE
+  names the argument updateProperties). Whether a fire of the world animates under OBVR is
+  unanswered (`fire-world.txt` and `fire-placed.txt` had the fire out of the picture,
+  `fire-placed2.txt` was stopped before its pictures). Open. Next: a probe of the flame's
+  controllers at the marks - class, the flags byte at +0x08 (bit 3 active), the last and
+  scaled times at +0x20 and +0x28, the flip index at +0x50 - which says whether their time
+  stands still or they were never started (small); then who calls Update(time, 1) on
+  "Player1stPerson" and with what time, by the caller chain of 0x0047C930 (medium).
