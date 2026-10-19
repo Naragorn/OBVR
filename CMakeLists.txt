@@ -84,6 +84,7 @@ add_library(OBVR SHARED
 	src/game/FirstPersonArms.cpp
 	src/game/FirstPersonHide.cpp
 	src/game/FlameProbe.cpp
+	src/game/HorseTurnProbe.cpp
 	src/game/FirstPersonDepth.cpp
 	src/game/PlayerStagger.cpp
 	src/game/HitShader.cpp

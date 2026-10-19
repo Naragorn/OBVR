@@ -103,6 +103,7 @@
 #include "game/ArmStump.h"
 #include "game/QuickKeyPages.h"
 #include "game/SpellBook.h"
+#include "game/HorseTurnProbe.h"
 #include "game/TeleportNoise.h"
 #include "game/GameSound.h"
 #include "platform/PluginPath.h"
@@ -10627,6 +10628,95 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			         haveHorse ? "" : " (unread)", game::PlayerSitMountBytes(),
 			         static_cast<double>(game::ThirdPersonZoom()));
 		}
+		// On the horse, at the marks and once a second between them: where the
+		// engine's mounted first-person camera takes its position from - the
+		// first-person skeleton's camera node ([0x00B3BB0C], FUN_0066b710 reads
+		// its world translation) under its parents, the arms root OBVR turns
+		// with the hands, the body root, the player's own fields and the
+		// horse - for the view that slides sideways while the head is turned
+		// (Nadi, 2026-10-18; the camera 40-95 units off and under the horse
+		// at the turned-head marks of 2026-10-19 11:13). Bounded.
+		if (riding) {
+			static UInt32 s_horseFlagsLast = 0xFFFFFFFFu;
+			static UInt32 s_horseFlagLines = 120;
+			{
+				const UInt32 horse = game::PlayerMountedHorse();
+				UInt32 flags = 0xFFFFFFFFu;
+				if (mem::LooksLikeObjectAddress(horse)) {
+					const UInt32 process = *reinterpret_cast<const UInt32*>(horse + 0x58);
+					if (mem::LooksLikeObjectAddress(process)) {
+						flags = *reinterpret_cast<const UInt16*>(process + addr::kProcessMovementFlagsOffset);
+					}
+				}
+				if (flags != s_horseFlagsLast && s_horseFlagLines > 0) {
+					--s_horseFlagLines;
+					OBVR_LOG("Camera: riding - the horse's movement flags %04X (were %04X), frame %u", flags, s_horseFlagsLast,
+					         g_state.frameCount);
+					s_horseFlagsLast = flags;
+				}
+			}
+			static float s_ridingClock = 0.0f;
+			static UInt32 s_ridingLines = 160;
+			s_ridingClock += g_deltaSeconds > 0.0f && g_deltaSeconds < 1.0f ? g_deltaSeconds : 0.0f;
+			const bool due = test::HandScriptMarkedThisFrame() || s_ridingClock >= 1.0f;
+			if (due && s_ridingLines > 0) {
+				--s_ridingLines;
+				s_ridingClock = 0.0f;
+				const auto nameOf = [](const NiAVObject* node) -> const char* {
+					if (node == nullptr || !mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(node))) {
+						return "-";
+					}
+					const char* const name = *reinterpret_cast<const char* const*>(
+						reinterpret_cast<const UInt8*>(node) + addr::kNiObjectNameOffset);
+					return mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(name)) && name[0] != '\0' ? name : "(unnamed)";
+				};
+				const NiAVObject* const fpCamera = *reinterpret_cast<NiAVObject* const*>(addr::kFirstPersonCameraNodePointer);
+				const bool fpLooks = mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(fpCamera));
+				const NiAVObject* const fpParent = fpLooks ? fpCamera->parent : nullptr;
+				const NiAVObject* const fpGrand = fpParent != nullptr && mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(fpParent)) ? fpParent->parent : nullptr;
+				NiAVObject* const arms = game::FirstPersonArmsNode();
+				NiAVObject* const bodyRoot = game::PlayerBodyRoot();
+				const UInt32 player = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
+				const float* const at = mem::LooksLikeObjectAddress(player) ? reinterpret_cast<const float*>(player + addr::kRefPositionOffset) : nullptr;
+				const float* const rot = mem::LooksLikeObjectAddress(player) ? reinterpret_cast<const float*>(player + 0x20) : nullptr;
+				const UInt32 horse = game::PlayerMountedHorse();
+				float horseYaw = 0.0f;
+				NiPoint3 horseAt{0.0f, 0.0f, 0.0f};
+				game::ReadActorPlacement(horse, horseYaw, horseAt);
+				// The movement flags of the horse's process and the player's
+				// (HighProcess +0x1FC): what tells the horse to turn or move.
+				const auto flagsOf = [](UInt32 actor) -> UInt32 {
+					if (!mem::LooksLikeObjectAddress(actor)) {
+						return 0xFFFFFFFFu;
+					}
+					const UInt32 process = *reinterpret_cast<const UInt32*>(actor + 0x58);
+					if (!mem::LooksLikeObjectAddress(process)) {
+						return 0xFFFFFFFFu;
+					}
+					return *reinterpret_cast<const UInt16*>(process + addr::kProcessMovementFlagsOffset);
+				};
+				OBVR_LOG("Camera: riding flags (%s) - the horse's process movement flags %04X, the player's %04X",
+				         test::HandScriptMarkedThisFrame() ? test::HandScriptMarkName() : "timer", flagsOf(horse),
+				         flagsOf(player));
+				OBVR_LOG("Camera: riding detail (%s) - fp camera node %08X \"%s\" local %.1f %.1f %.1f world %.1f %.1f %.1f under \"%s\" < \"%s\"; "
+				         "arms root %08X world %.1f %.1f %.1f yaw %.1f deg; body root %08X world %.1f %.1f %.1f; the player at %.1f %.1f %.1f rot %.4f %.4f %.4f; "
+				         "the horse heading %.4f at %.1f %.1f %.1f; the engine's camera world %.1f %.1f %.1f",
+				         test::HandScriptMarkedThisFrame() ? test::HandScriptMarkName() : "timer",
+				         reinterpret_cast<UInt32>(fpCamera), nameOf(fpCamera),
+				         static_cast<double>(fpLooks ? fpCamera->localTransform.pos.x : 0.0f), static_cast<double>(fpLooks ? fpCamera->localTransform.pos.y : 0.0f), static_cast<double>(fpLooks ? fpCamera->localTransform.pos.z : 0.0f),
+				         static_cast<double>(fpLooks ? fpCamera->worldTransform.pos.x : 0.0f), static_cast<double>(fpLooks ? fpCamera->worldTransform.pos.y : 0.0f), static_cast<double>(fpLooks ? fpCamera->worldTransform.pos.z : 0.0f),
+				         nameOf(fpParent), nameOf(fpGrand),
+				         reinterpret_cast<UInt32>(arms),
+				         static_cast<double>(arms != nullptr ? arms->worldTransform.pos.x : 0.0f), static_cast<double>(arms != nullptr ? arms->worldTransform.pos.y : 0.0f), static_cast<double>(arms != nullptr ? arms->worldTransform.pos.z : 0.0f),
+				         static_cast<double>(game::FirstPersonArmsWorldYaw() * 57.2957795f),
+				         reinterpret_cast<UInt32>(bodyRoot),
+				         static_cast<double>(bodyRoot != nullptr ? bodyRoot->worldTransform.pos.x : 0.0f), static_cast<double>(bodyRoot != nullptr ? bodyRoot->worldTransform.pos.y : 0.0f), static_cast<double>(bodyRoot != nullptr ? bodyRoot->worldTransform.pos.z : 0.0f),
+				         static_cast<double>(at != nullptr ? at[0] : 0.0f), static_cast<double>(at != nullptr ? at[1] : 0.0f), static_cast<double>(at != nullptr ? at[2] : 0.0f),
+				         static_cast<double>(rot != nullptr ? rot[0] : 0.0f), static_cast<double>(rot != nullptr ? rot[1] : 0.0f), static_cast<double>(rot != nullptr ? rot[2] : 0.0f),
+				         static_cast<double>(horseYaw), static_cast<double>(horseAt.x), static_cast<double>(horseAt.y), static_cast<double>(horseAt.z),
+				         static_cast<double>(cameraNode->worldTransform.pos.x), static_cast<double>(cameraNode->worldTransform.pos.y), static_cast<double>(cameraNode->worldTransform.pos.z));
+			}
+		}
 		// The player's sit/mount/feed bytes as they change, with the zoom and
 		// the view: when the engine's own switches for a mount, a dismount, a
 		// sit or a vampire feed happen against them (unverified bytes, from
@@ -12523,6 +12613,9 @@ bool Install() {
 	InstallCastHook();
 	game::InstallAimAtSource();
 	game::InstallTeleportNoise();
+	if (GetConfig().horseTurnProbe) {
+		game::InstallHorseTurnProbe();
+	}
 	game::VerifyHandBodyAddresses();
 	game::VerifyGameSoundAddresses();
 	game::VerifyShoveAddresses();

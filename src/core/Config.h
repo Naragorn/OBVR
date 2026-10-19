@@ -319,6 +319,8 @@ struct Config {
 	// under the first-person and the body's Torch nodes with their raw words
 	// (game/FlameProbe.h). In [Debug], off by default.
 	bool flameProbe = false;
+	// Debug.HorseTurnProbe: every turn of the mounted horse with its caller (game/HorseTurnProbe.h).
+	bool horseTurnProbe = false;
 
 	// Points the player where the head is looking, so an arrow leaves along
 	// the gaze instead of along the mouse.

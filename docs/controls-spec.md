@@ -3397,6 +3397,27 @@ log.
   state is 4); OBVR's snap turn writes the player's yaw, which the horse's steering reads
   through another path. Next: the snap turn on the horse as a write of +0x61C, or of the
   horse's heading itself (medium, the mounted steering still unread).
+  **Measured 2026-10-19 midday (horse-ride.txt, twelve runs, the riding detail and flag
+  lines in the log):** (1) on the horse the engine hangs the whole first-person skeleton
+  under the horse's "ActorParent" bone on its spine - the chain read: Camera01 < Bip01
+  NonAccum < Bip01 < BASE Characters\_1stPerson\Skeleton.NIF < Player1stPerson <
+  ActorParent < Bip02 Spine2 - and takes the mounted first-person camera's position from
+  the Camera01 in it; the body's own skeleton ("Bip01" under "Player") is not in that
+  chain. (2) With the head turned 45 degrees and the sticks still, the horse turns in
+  steps of 18-22 degrees a few seconds later (5.498 to 5.106 to 4.772 rad), shifts 30-80
+  units and comes back, with its process's movement flags 0000 throughout - so neither
+  the stick's keys nor the mouse turn it; while it turns, the engine's camera on its spine
+  swings up to 90 units sideways and dips up to 150 (the view that slides). (3) OBVR's
+  placement of the first-person root (PlaceFirstPersonArms) was gated off under
+  ActorParent (`ArmsRootUnderHorse`, FirstPersonArmsLogic.h, its unit flows) - the root
+  then still moved with the horse's bone, so the slide is the horse's turn animation, not
+  OBVR's write; the gate stays, since those writes landed in the engine's camera anchor.
+  (4) Who turns the horse: `[Debug] HorseTurnProbe=1` (game/HorseTurnProbe.h, a detour at
+  the actors' turn-by 0x00659B90 that logs the mounted horse's turns with the caller) is
+  built; with the AI off (`tai`) the horse never turned but the mount never completed
+  either, and four runs with the AI on pressed A at a horse that had wandered off. Next:
+  `tai` at the "mounted" mark, then the head turns (small, one run): the probe's caller
+  names the steering, and no turn at all says the AI does it.
 - *the vampire feed*: not reproduced (a sleeping victim and vampirism are a scenario of their
   own). What the data says: the feed's idles are third-person animations only
   (`vampirefeedbedleft.kf`, `...right`, `...bedroll_crawl`, `...bedroll_side` under

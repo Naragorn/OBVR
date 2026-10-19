@@ -4,6 +4,7 @@
 #include "core/MathFns.h"
 #include "core/Rotation.h"
 #include "core/AddressSpace.h"
+#include "game/FirstPersonArmsLogic.h"
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
 
@@ -189,6 +190,31 @@ bool SamePoint(const NiPoint3& a, const NiPoint3& b) {
 bool PlaceFirstPersonArms(const NiMatrix33& rotation, const NiPoint3& offset) {
 	NiAVObject* const node = FirstPersonArmsNode();
 	if (node == nullptr) {
+		return false;
+	}
+
+	// Under the horse's ActorParent the root is the engine's camera's own
+	// anchor (FirstPersonArmsLogic.h): nothing is written, and what the last
+	// frame wrote is put back first.
+	const char* parentName = nullptr;
+	if (node->parent != nullptr && LooksLikeObject(node->parent)) {
+		const char* const candidate = *reinterpret_cast<const char* const*>(
+			reinterpret_cast<const UInt8*>(node->parent) + addr::kNiObjectNameOffset);
+		if (NameLooksReal(candidate)) {
+			parentName = candidate;
+		}
+	}
+	const bool underHorse = ArmsRootUnderHorse(parentName);
+	static bool s_underHorseReported = false;
+	if (underHorse != s_underHorseReported) {
+		s_underHorseReported = underHorse;
+		OBVR_LOG("First person arms: the root hangs under \"%s\" - %s", parentName != nullptr ? parentName : "(unnamed or none)",
+		         underHorse ? "the horse's ActorParent, the engine's mounted camera rides in this skeleton: left where the "
+		                      "engine's animation puts it"
+		                    : "placed with the hands again");
+	}
+	if (underHorse) {
+		ReleaseFirstPersonArms();
 		return false;
 	}
 
