@@ -189,16 +189,30 @@ inline bool InvertWaterMatrix(const WaterMatrix& input, WaterMatrix& output) {
 	return true;
 }
 
+// The capture camera for the stable water reflection. Its position is the
+// engine's pre-HMD one: the cyclopean transform was read after OBVR applied
+// the HMD offset and first-eye step, and the capture must not move when the
+// wearer leans or shifts the headset. Its rotation follows the head
+// (rotationFollowsHead, [Render] WaterCaptureFollowsHead) or stays the
+// engine's pre-HMD heading. A capture facing the pre-HMD heading runs out of
+// its frustum once the head looks more than about 76 degrees off it: in Full
+// VR the heading does not turn with the head, so a look round at a lake met
+// a straight seam with a flat colour beyond it and the reflections past the
+// frustum's edge drawn as streaks (a Quest 3 tester's video, 2026-10-18,
+// reproduced in the lake under the Talos Bridge 2026-10-19). Turned with the
+// head, the capture faces where the eyes look, as the engine's own
+// reflection camera does.
 inline void BuildHeadIndependentWaterCamera(
  const NiTransform& cyclopeanLocal, const NiTransform& cyclopeanWorld,
  const NiTransform& parentWorld, const NiMatrix33& baseLocalRotation,
- const NiPoint3& baseLocalPosition,
+ const NiPoint3& baseLocalPosition, bool rotationFollowsHead,
  NiTransform& localOut, NiTransform& worldOut) {
- // The cyclopean transform was read after OBVR applied the HMD offset and
- // first-eye step. Keep the engine's pre-HMD local position instead, so the
- // capture camera does not move when the wearer leans or shifts the headset.
- localOut=cyclopeanLocal; localOut.pos=baseLocalPosition; localOut.rot=baseLocalRotation;
- worldOut=cyclopeanWorld; worldOut.rot=parentWorld.rot*baseLocalRotation;
+ localOut=cyclopeanLocal; localOut.pos=baseLocalPosition;
+ worldOut=cyclopeanWorld;
+ if (!rotationFollowsHead) {
+  localOut.rot=baseLocalRotation;
+  worldOut.rot=parentWorld.rot*baseLocalRotation;
+ }
  worldOut.pos=parentWorld.pos + parentWorld.rot*(baseLocalPosition*parentWorld.scale);
  worldOut.scale=parentWorld.scale*localOut.scale;
 }

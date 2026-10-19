@@ -403,6 +403,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		config.waterReflectionMode = static_cast<render::WaterReflectionMode>(waterMode);
 	if (!config.stableWaterReflections)
 		config.waterReflectionMode = render::WaterReflectionMode::Vanilla;
+	config.waterCaptureFollowsHead =
+		ReadBool("Render", "WaterCaptureFollowsHead", config.waterCaptureFollowsHead, path);
 	config.tracker.hudAnchorWorld =
 		ReadAnchorIsWorld("Render", "HudAnchor", config.tracker.hudAnchorWorld, path);
 	config.tracker.flatFollowDegrees =

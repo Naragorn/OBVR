@@ -3476,6 +3476,17 @@ log.
   frame and its resets as the head moves; small, a default and the INI comment. (C) two
   captures, one per half space, blended at the seam; large. His quick way out, told him:
   `WaterReflectionMode=0` in OBVR.ini.
+  **Built 2026-10-19, option A** (`[Render] WaterCaptureFollowsHead=1`, the default): the
+  capture camera takes the head's rotation each frame and keeps the engine's pre-HMD
+  position (render/WaterReprojection.h, BuildHeadIndependentWaterCamera; a unit flow each
+  way). `water-seam.txt` headless, run 10:32: at yaw 225 the bridge and its arch reflected
+  whole across the water, no seam, no flat side; at 270 and 315 the tower and the pier
+  reflected as what they are, no streaks. Against the vanilla control the stable
+  reflection is softer - the 3x/1.5x capture frustum spreads the reflection target over
+  three times the width, which the head-facing capture no longer needs; narrowing it
+  (small: two constants in render/WaterReflectionHook.cpp and a water-seam run) is the
+  next step if the softness shows in the headset. Headset: open. 0 restores the old
+  behaviour for a comparison.
 - *the torch's flame* (2026-10-18 night, his second video, 13 s): the flame over the held
   torch keeps one shape - neither the flipbook (Fire\FireTorchLarge.nif, which the engine
   hangs on the torch's FlameNode1: a NiFlipController over 20 textures a second on

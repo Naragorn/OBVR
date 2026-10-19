@@ -12460,7 +12460,7 @@ bool GetHeadIndependentWaterCameraTransforms(NiTransform& local, NiTransform& wo
 	NiTransform parentWorld{}; parentWorld.rot = NiMatrix33::Identity(); parentWorld.scale = 1.0f;
 	if (g_bodyCameraNode != nullptr && g_bodyCameraNode->parent != nullptr)
 		parentWorld = g_bodyCameraNode->parent->worldTransform;
-	render::BuildHeadIndependentWaterCamera(g_cyclopeanCameraLocalTransform, g_cyclopeanCameraWorldTransform, parentWorld, g_menuBaseRot, g_menuBasePos, local, world);
+	render::BuildHeadIndependentWaterCamera(g_cyclopeanCameraLocalTransform, g_cyclopeanCameraWorldTransform, parentWorld, g_menuBaseRot, g_menuBasePos, GetConfig().waterCaptureFollowsHead, local, world);
 	return true;
 }
 

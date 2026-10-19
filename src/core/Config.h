@@ -226,6 +226,11 @@ struct Config {
 	bool stableWaterReflections = true;
 	render::WaterReflectionMode waterReflectionMode =
 		render::WaterReflectionMode::CyclopeanCapture;
+	// The stable capture's camera turns with the head (its position stays the
+	// engine's pre-HMD one); off, it faces the game's heading, which in Full
+	// VR does not turn with the head - the seam across the lake once the head
+	// looked far off it (render/WaterReprojection.h, BuildHeadIndependentWaterCamera).
+	bool waterCaptureFollowsHead = true;
 
 	// Developer-only water diagnostic controls used by the visual harness.
 	bool vrTestSuite = false;

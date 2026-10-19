@@ -145,7 +145,7 @@ int main() {
 		const NiMatrix33 base=Camera(-0.35f,{}).rot;
 		NiTransform fixedLocal{},fixedWorld{};
 		        const NiPoint3 basePosition{11,12,13};
-        BuildHeadIndependentWaterCamera(local,world,parent,base,basePosition,fixedLocal,fixedWorld);
+        BuildHeadIndependentWaterCamera(local,world,parent,base,basePosition,false,fixedLocal,fixedWorld);
         Check(Near(fixedLocal.pos.x,basePosition.x) && Near(fixedLocal.pos.y,basePosition.y) &&
               Near(fixedLocal.pos.z,basePosition.z),"fixed capture removes the HMD and eye position offset");
         const NiPoint3 expectedWorldPos = parent.pos + parent.rot*(basePosition*parent.scale);
@@ -157,6 +157,21 @@ int main() {
 			Check(Near(fixedWorld.rot.data[row][col],expected.data[row][col]),"fixed world rotation retains body and mouse heading");
 		}
 		Check(Near(fixedWorld.scale,parent.scale*local.scale),"fixed capture preserves composed scale");
+		// The capture turned with the head (the tester's seam of 2026-10-18:
+		// a capture facing the game's heading runs out of its frustum once the
+		// head looks far off it): the head's rotation, the same head-independent
+		// position.
+		NiTransform followLocal{},followWorld{};
+		BuildHeadIndependentWaterCamera(local,world,parent,base,basePosition,true,followLocal,followWorld);
+		for(unsigned row=0;row<3;++row) for(unsigned col=0;col<3;++col) {
+			Check(Near(followLocal.rot.data[row][col],local.rot.data[row][col]),"following local rotation is the head's");
+			Check(Near(followWorld.rot.data[row][col],world.rot.data[row][col]),"following world rotation is the head's");
+		}
+		Check(Near(followLocal.pos.x,basePosition.x) && Near(followLocal.pos.y,basePosition.y) &&
+		      Near(followLocal.pos.z,basePosition.z),"following capture still removes the HMD and eye position offset");
+		Check(Near(followWorld.pos.x,expectedWorldPos.x) && Near(followWorld.pos.y,expectedWorldPos.y) &&
+		      Near(followWorld.pos.z,expectedWorldPos.z),"following capture still composes the pre-HMD position under its parent");
+		Check(Near(followWorld.scale,parent.scale*local.scale),"following capture preserves composed scale");
 	}
 	{
 	{
