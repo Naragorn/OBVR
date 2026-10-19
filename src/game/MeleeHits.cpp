@@ -7,6 +7,7 @@
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/BladeContactLogic.h"
+#include "game/ActorLink.h"
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
 #include "game/MeleeHit.h"
@@ -211,7 +212,11 @@ constexpr UInt32 kActorVtableActorValueF = 0x288;
 constexpr UInt32 kActorValueHealth = 8;
 
 float HealthOf(void* actor) {
-	const UInt32 slot = VirtualAt(actor, kActorVtableActorValueF);
+	const UInt32 a = reinterpret_cast<UInt32>(actor);
+	const bool actorLooks = mem::LooksLikeObjectAddress(a);
+	const bool baseLooks =
+		actorLooks && mem::LooksLikeObjectAddress(*reinterpret_cast<const UInt32*>(a + addr::kRefBaseFormOffset));
+	const UInt32 slot = ActorValuesReadable(actorLooks, baseLooks) ? VirtualAt(actor, kActorVtableActorValueF) : 0;
 	if (slot == 0) {
 		return std::numeric_limits<float>::quiet_NaN();
 	}

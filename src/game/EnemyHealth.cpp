@@ -2,6 +2,7 @@
 
 #include "core/AddressSpace.h"
 #include "core/MathFns.h"
+#include "game/ActorLink.h"
 #include "game/BladeBodies.h"
 #include "game/BladeContactLogic.h"
 #include "game/CombatRing.h"
@@ -51,7 +52,9 @@ bool IsDead(UInt32 actor) {
 
 // Health now and base; false when the value functions do not read.
 bool ReadHealth(UInt32 actor, float& now, float& base) {
-	const UInt32 slot = Slot(actor, kGetActorValueFSlot);
+	const bool actorLooks = LooksLikeObject(actor);
+	const bool baseLooks = actorLooks && LooksLikeObject(Read(actor + addr::kRefBaseFormOffset));
+	const UInt32 slot = ActorValuesReadable(actorLooks, baseLooks) ? Slot(actor, kGetActorValueFSlot) : 0;
 	if (slot == 0) {
 		return false;
 	}

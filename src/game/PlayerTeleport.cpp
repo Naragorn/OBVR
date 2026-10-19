@@ -3,6 +3,7 @@
 #include "core/AddressSpace.h"
 #include "core/Log.h"
 #include "core/Memory.h"
+#include "game/ActorLink.h"
 #include "game/GameAddresses.h"
 #include "game/GrabPhysics.h"
 
@@ -59,6 +60,14 @@ constexpr UInt32 kAvAcrobatics = 0x1A;
 UInt32 Player() {
 	const UInt32 player = Read(addr::kPlayerPointer);
 	return LooksLikeObject(player) ? player : 0;
+}
+
+// The player once linked to its base form - the only player whose actor
+// values may be read or changed (game/ActorLink.h).
+UInt32 LinkedPlayer() {
+	const UInt32 player = Player();
+	const bool baseLooks = player != 0 && LooksLikeObject(Read(player + addr::kRefBaseFormOffset));
+	return ActorValuesReadable(player != 0, baseLooks) ? player : 0;
 }
 
 UInt32 Slot(UInt32 object, UInt32 offset) {
@@ -216,7 +225,7 @@ bool PlaceActorAt(void* actor, const NiPoint3& at) {
 }
 
 bool ReadPlayerFatigue(float& now, float& base) {
-	const UInt32 player = Player();
+	const UInt32 player = LinkedPlayer();
 	const UInt32 slot = player != 0 ? Slot(player, kGetActorValueFSlot) : 0;
 	if (slot == 0) {
 		return false;
@@ -230,7 +239,7 @@ bool ReadPlayerFatigue(float& now, float& base) {
 }
 
 bool PlayerParalyzed() {
-	const UInt32 player = Player();
+	const UInt32 player = LinkedPlayer();
 	const UInt32 getInt = player != 0 ? Slot(player, kGetActorValueSlot) : 0;
 	if (getInt == 0) {
 		return false;
@@ -265,7 +274,7 @@ SInt32 PlayerSex() {
 }
 
 SInt32 PlayerStrength() {
-	const UInt32 player = Player();
+	const UInt32 player = LinkedPlayer();
 	const UInt32 getInt = player != 0 ? Slot(player, kGetActorValueSlot) : 0;
 	if (getInt == 0) {
 		return -1;
@@ -275,7 +284,7 @@ SInt32 PlayerStrength() {
 }
 
 bool ReadPlayerEncumbrance(float& now) {
-	const UInt32 player = Player();
+	const UInt32 player = LinkedPlayer();
 	const UInt32 getInt = player != 0 ? Slot(player, kGetActorValueSlot) : 0;
 	if (getInt == 0) {
 		return false;
@@ -286,7 +295,7 @@ bool ReadPlayerEncumbrance(float& now) {
 }
 
 float PlayerDodgeFatigueCost() {
-	const UInt32 player = Player();
+	const UInt32 player = LinkedPlayer();
 	const UInt32 getInt = player != 0 ? Slot(player, kGetActorValueSlot) : 0;
 	if (getInt == 0) {
 		return 30.0f;  // the formula's value without load, in vanilla
@@ -313,7 +322,7 @@ float PlayerDodgeFatigueCost() {
 }
 
 bool SpendPlayerFatigue(float amount) {
-	const UInt32 player = Player();
+	const UInt32 player = LinkedPlayer();
 	if (player == 0 || !(amount > 0.0f)) {
 		return player != 0;
 	}
@@ -335,7 +344,7 @@ float PlayerJumpUnits() {
 			return apex;
 		}
 	}
-	const UInt32 getInt = Slot(player, kGetActorValueSlot);
+	const UInt32 getInt = LinkedPlayer() != 0 ? Slot(player, kGetActorValueSlot) : 0;
 	if (getInt == 0) {
 		return 64.0f;
 	}

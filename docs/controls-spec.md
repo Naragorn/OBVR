@@ -3515,3 +3515,34 @@ log.
   0.2.2's flat mode), whether fires in the world animate with OBVR, which torch mod if any
   (his flame is the crisp large flame, not the engine's own FireTorchSmall on Torch02), and a
   minute with a torch and FlameProbe=1 in beta 5.
+
+## Beta report of 2026-10-18 (mcgizmoo, Varjo Aero with Index controllers): the beta closes two seconds after the start with his mods
+
+- **What he saw:** "a small window in the top left for 2 seconds then it closes"; the 0.2.2
+  DLL from Nexus starts with the same mods; the beta starts with the game vanilla plus
+  OBVR's requirements. He sent two CobbCrashLogger logs (with and without NorthernUI) and
+  the two OBVR logs of beta 4.
+- **Read 2026-10-19 (measured):** both crash logs are the same fault 5.5 s into the
+  game - EXCEPTION_ACCESS_VIOLATION at Oblivion 0x005EAD78, `Actor::GetBaseAV`, called
+  from `Player::GetActorValue_F` (0x0065E110+0x96), ecx the PlayerCharacter (00000014)
+  with "BaseForm: NULL" and "Not Linked", no cell; the stack could not be walked. Both
+  OBVR logs end in the intro videos ("Menu trace: cinema", "2 flat frames since the last
+  camera pass") after "OBVR ready". The disassembly of GetBaseAV (objdump): it asks the
+  reference for its base form (vtable +0x170), and with none it calls through a null
+  pointer at 0x5EAD78 - the engine's getter has no guard. OBVR's StepExhaustion (the
+  exhaustion instead of the collapse, 2026-10-13) read the player's fatigue through that
+  getter at every Present, from the first flat frame on; 0.2.2 had no such read, which is
+  why it starts for him.
+- **Derived, not measured:** why only with his mods. The player object exists before its
+  base form is linked (the player's NPC record comes with the master file), and OBVR's
+  first Present frames fall into that window; with his plugin list the window is long
+  enough, with a vanilla Data folder it closes before OBVR's first read. His logs show the
+  object and the missing base form, not the loading order.
+- **Fixed 2026-10-19:** no actor value is read or changed on an actor whose base form is
+  not yet an object (game/ActorLink.h, `ActorValuesReadable`, its unit flows): the player's
+  readers in game/PlayerTeleport.cpp (fatigue, paralysis, strength, encumbrance, the dodge
+  cost, the jump height, the fatigue spend), the stagger's readers for the knock state
+  step, the enemy health bars' and the melee hits' health reads. The exhaustion step then
+  reads "unknown" until the player is linked, as it does without a player. Harness:
+  `exhaustion.txt` headless (the readers at work in the world). The intro race itself the
+  harness cannot stage - his next start is the proof.

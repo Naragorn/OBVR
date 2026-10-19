@@ -1130,6 +1130,13 @@ endif()
 
 add_test(NAME flame_probe_logic COMMAND flame_probe_logic_test)
 
+add_executable(actor_link_test ActorLinkTest.cpp)
+target_include_directories(actor_link_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(actor_link_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME actor_link COMMAND actor_link_test)
+
 add_executable(icon_test
 	IconTest.cpp
 	../src/render/DdsImage.cpp

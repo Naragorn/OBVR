@@ -7,6 +7,7 @@
 #include "core/CodeWriter.h"
 #include "core/Log.h"
 #include "core/Memory.h"
+#include "game/ActorLink.h"
 #include "game/ExhaustionLogic.h"
 #include "game/GameAddresses.h"
 #include "game/NiMath.h"
@@ -192,9 +193,17 @@ constexpr UInt32 kGetActorValueFSlot = 0x288;    // float, current
 constexpr UInt32 kAvFatigue = 0x0A;
 constexpr UInt32 kAvParalysis = 0x30;
 
+// An actor value getter's slot, 0 for an actor whose values may not be read
+// yet (game/ActorLink.h: no base form linked).
 UInt32 ActorSlot(void* actor, UInt32 offset) {
 	const UInt32 a = reinterpret_cast<UInt32>(actor);
-	const UInt32 vtable = mem::LooksLikeObjectAddress(a) ? *reinterpret_cast<const UInt32*>(a) : 0;
+	const bool actorLooks = mem::LooksLikeObjectAddress(a);
+	const bool baseLooks =
+		actorLooks && mem::LooksLikeObjectAddress(*reinterpret_cast<const UInt32*>(a + addr::kRefBaseFormOffset));
+	if (!ActorValuesReadable(actorLooks, baseLooks)) {
+		return 0;
+	}
+	const UInt32 vtable = *reinterpret_cast<const UInt32*>(a);
 	return mem::LooksLikeObjectAddress(vtable) ? *reinterpret_cast<const UInt32*>(vtable + offset) : 0;
 }
 
