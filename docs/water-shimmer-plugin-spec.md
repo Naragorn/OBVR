@@ -13,14 +13,11 @@ evening, right after the stable capture started turning with the head
 whole wherever one looks, the high-frequency sparkle on the water surface is
 what remains. No picture or measurement of it exists yet.
 
-What is NOT in any history I can read: an earlier attempt at this in OBVR. The
-current repository has no commit about a water shimmer, flicker, sparkle or
-specular aliasing, and neither has the pre-rewrite bundle
-(OBVR-backup-before-trailer-rewrite.bundle, 257 commits, searched for the same
-words). The water commits of 2026-09-18/20 (1d94a9e, c3e0ddb, 9f11bb4) are the
-stable capture against the reflection resetting with the head - a different
-fault. If an earlier attempt was made, it is somewhere else; what it tried is
-worth knowing before this starts.
+No earlier attempt at this exists (Nadi, 2026-10-19: "wir haben das nie
+angegangen zu fixen, sondern nur die Reprojektion gefixt"). The water commits of
+2026-09-18/20 (1d94a9e, c3e0ddb, 9f11bb4) and of 2026-10-19 (2f6f9b5) are the
+stable capture against the reflection resetting with the head and its seam - a
+different fault, fixed. Nothing here is ruled out yet.
 
 ## What is known of the engine's water
 
@@ -92,8 +89,5 @@ normal map cannot be filtered. C and D are written down to say why not.
 
 ## Open questions
 
-- Which earlier attempt Nadi means ("das haben wir mal lange versucht zu
-  fixen"): not in either history under the words tried; the pointer settles
-  whether a route is already ruled out.
 - Whether the shimmer is the same on the monitor (H4): the first measurement
   run says.

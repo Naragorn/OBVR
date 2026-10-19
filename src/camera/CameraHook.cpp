@@ -10655,6 +10655,41 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 					s_horseFlagsLast = flags;
 				}
 			}
+			// Every frame on which the horse's heading, the player's rotZ or the
+			// mounted yaw moved: which moves first - the horse turned by 11-26
+			// degrees a few seconds after the head turned, with the AI off and
+			// nothing through the actors' turn-by (run 13, 2026-10-19 12:20).
+			{
+				static float s_lastHorseYaw = 0.0f;
+				static float s_lastPlayerYaw = 0.0f;
+				static float s_lastMountedYaw = 0.0f;
+				static UInt32 s_stepLines = 300;
+				const UInt32 horse = game::PlayerMountedHorse();
+				float horseYaw = 0.0f;
+				NiPoint3 horseAt{0.0f, 0.0f, 0.0f};
+				game::PlayerRotation turned{};
+				const bool haveTurn = game::ReadPlayerRotation(turned);
+				const bool haveHorse = game::ReadActorPlacement(horse, horseYaw, horseAt);
+				const float mountedYaw = game::PlayerMountedYaw();
+				const float dHorse = horseYaw - s_lastHorseYaw;
+				const float dPlayer = turned.yaw - s_lastPlayerYaw;
+				const float dMounted = mountedYaw - s_lastMountedYaw;
+				const bool moved = (dHorse > 0.0005f || dHorse < -0.0005f) || (dPlayer > 0.0005f || dPlayer < -0.0005f) ||
+				                   (dMounted > 0.0005f || dMounted < -0.0005f);
+				if (moved && haveTurn && haveHorse && s_stepLines > 0) {
+					--s_stepLines;
+					const NiPoint3 camForward = cameraNode->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f};
+					OBVR_LOG("Camera: riding step frame %u - the player's rotZ %.4f (was %.4f), the horse's heading %.4f (was %.4f), "
+					         "mounted yaw %.4f (was %.4f), the camera's yaw %.4f, the horse at %.1f %.1f",
+					         g_state.frameCount, static_cast<double>(turned.yaw), static_cast<double>(s_lastPlayerYaw),
+					         static_cast<double>(horseYaw), static_cast<double>(s_lastHorseYaw), static_cast<double>(mountedYaw),
+					         static_cast<double>(s_lastMountedYaw), static_cast<double>(math::Atan2(camForward.x, camForward.y)),
+					         static_cast<double>(horseAt.x), static_cast<double>(horseAt.y));
+				}
+				s_lastHorseYaw = horseYaw;
+				s_lastPlayerYaw = turned.yaw;
+				s_lastMountedYaw = mountedYaw;
+			}
 			static float s_ridingClock = 0.0f;
 			static UInt32 s_ridingLines = 160;
 			s_ridingClock += g_deltaSeconds > 0.0f && g_deltaSeconds < 1.0f ? g_deltaSeconds : 0.0f;

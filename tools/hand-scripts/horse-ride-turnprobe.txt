@@ -28,8 +28,9 @@
 # horse-ride.txt with Debug.HorseTurnProbe=1: who turns the horse after the head turns.
 # The press comes 4 s after the move instead of 12: the priory's horse wanders, and
 # three of four runs on 2026-10-19 pressed A at nothing with the longer wait; the
-# fourth still did, so the AI is switched off (tai) at the "mounted" mark, once the mount is complete (with it off
-# at the load the mount never completed, 11:57) - whether the horse's turn after the head's needs the AI is
+# fourth still did, so the AI is switched off (tai) with the move so the horse stands for the aim, on again
+# two seconds before the press (the mount needs it: with it off the mount never completed,
+# 11:57), and off again at the "mounted" mark for the head turns - whether the horse's turn after the head's needs the AI is
 # then part of the answer.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/horse-ride-turnprobe.txt --run-timeout 300 --headless
 
@@ -40,6 +41,8 @@ console-at ready player.moveto 0002008C
 console-at ready SetNumericINISetting "fAutoVanityModeDelay:Camera" 100000
 console-at priory player.moveto 0002008C 0 -100 0
 console-at priory player.setangle z 0
+console-at priory tai
+console-at aimed tai
 console-at mounted tai
 
 expect HandScript: finished
