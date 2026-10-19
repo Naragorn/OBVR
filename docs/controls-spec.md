@@ -3506,8 +3506,10 @@ log.
   reflection is softer - the 3x/1.5x capture frustum spreads the reflection target over
   three times the width, which the head-facing capture no longer needs; narrowing it
   (small: two constants in render/WaterReflectionHook.cpp and a water-seam run) is the
-  next step if the softness shows in the headset. Headset: open. 0 restores the old
-  behaviour for a comparison.
+  next step if the softness shows in the headset. **Headset 2026-10-19 evening (Nadi):
+  "reflections sind nun fixed."** What he saw instead: the waves and the reflections
+  on them flicker - a plugin of its own, docs/water-shimmer-plugin-spec.md. 0 restores
+  the old behaviour for a comparison.
 - *the torch's flame* (2026-10-18 night, his second video, 13 s): the flame over the held
   torch keeps one shape - neither the flipbook (Fire\FireTorchLarge.nif, which the engine
   hangs on the torch's FlameNode1: a NiFlipController over 20 textures a second on
