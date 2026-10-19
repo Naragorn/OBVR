@@ -5,6 +5,9 @@
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
+#include "core/Config.h"
+#include "perf/Profiler.h"
+#include "platform/Win32Min.h"
 #include "render/CullingSync.h"
 
 namespace obvr::render {
@@ -29,6 +32,18 @@ UInt32 g_reused = 0;
 UInt32 g_mismatched = 0;
 UInt32 g_exhausted = 0;
 UInt32 g_dropped = 0;
+// Ticks inside the engine's cull this pass, while a capture runs (taken
+// by the scene render hook as cull_calls).
+UInt64 g_cullTicks = 0;
+
+void CallOriginal(void* self, void* unusedEdx, NiAVObject* camera, NiAVObject* scene, void* visibleSet) {
+	const bool timed = perf::Profiler::Instance().IsCapturing() && GetConfig().performance.callClock;
+	const UInt64 before = timed ? static_cast<UInt64>(ReadPerformanceCounter()) : 0;
+	g_original(self, unusedEdx, camera, scene, visibleSet);
+	if (timed) {
+		g_cullTicks += static_cast<UInt64>(ReadPerformanceCounter()) - before;
+	}
+}
 
 void __fastcall HookedCullingProcess(void* self, void* unusedEdx,
 	                                  NiAVObject* camera, NiAVObject* scene,
@@ -43,7 +58,7 @@ void __fastcall HookedCullingProcess(void* self, void* unusedEdx,
 		// eye camera.
 		const NiPoint3 saved = camera->worldTransform.pos;
 		camera->worldTransform.pos = replacement;
-		g_original(self, unusedEdx, camera, scene, visibleSet);
+		CallOriginal(self, unusedEdx, camera, scene, visibleSet);
 		camera->worldTransform.pos = saved;
 		++g_reused;
 		return;
@@ -56,7 +71,7 @@ void __fastcall HookedCullingProcess(void* self, void* unusedEdx,
 	} else if (result == CullingSyncResult::CaptureFull) {
 		++g_dropped;
 	}
-	g_original(self, unusedEdx, camera, scene, visibleSet);
+	CallOriginal(self, unusedEdx, camera, scene, visibleSet);
 }
 
 }  // namespace
@@ -135,6 +150,12 @@ void BeginCullingReplay() {
 	if (g_original != nullptr) {
 		g_sync.BeginReplay();
 	}
+}
+
+UInt64 TakeCullTicks() {
+	const UInt64 ticks = g_cullTicks;
+	g_cullTicks = 0;
+	return ticks;
 }
 
 void EndCullingSync(UInt32 sceneCall) {

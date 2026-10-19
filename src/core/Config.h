@@ -276,6 +276,14 @@ struct Config {
 	// is what is missing. Square absent: the display path itself is at
 	// fault. Hot reloaded, like the rest of [Debug].
 	bool hudProbe = false;
+	// The dynamic-buffer write fingerprints and vertex peeks of the dual
+	// pass diagnostics (render/InterfaceRenderHook.cpp, HookedVbUnlock):
+	// they read the first 256 bytes of every written range back out of the
+	// mapped buffer, which is write-combined memory, byte by byte - 25 us an
+	// unlock, 135 unlocks a pass with five people in view, 3.6 ms a pass,
+	// 40 % of the pass (the render sampler, 2026-10-19). Off unless the
+	// skinning collapse of 2026-08 is being chased again.
+	bool poolWriteFingerprints = false;
 
 	// Logs the HUD menus' tile trees (names, x, y, width, height, visible,
 	// alpha) and dumps the captured interface beside them: once when the

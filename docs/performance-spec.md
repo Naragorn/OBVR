@@ -1,6 +1,9 @@
 # Performance spec: people in view
 
-Status: measured 2026-10-18 and 2026-10-19, nothing built. The measurements
+Status: measured 2026-10-18 and 2026-10-19; **the cost that was measured
+turned out to be mostly OBVR's own** (section 0, 2026-10-19 evening), and
+with it gone the opening's five people fit 75 Hz under the dual pass.
+The measurements
 and the harness scenarios are in `docs/performance-profiling.md` ("Gemessen
 2026-10-18" and "Gemessen 2026-10-19"); the tester's report (a Quest 3 at
 120 Hz: "stuttering like crazy" with two NPCs talking in Jauffre's house,
@@ -8,7 +11,46 @@ smooth in dialogue) in `docs/controls-spec.md` "Beta reports of 2026-10-17";
 Nadi's own (2026-10-19, the Beyond at 75 Hz): the drop in the opening
 dungeon "sobald die Truppe aus 3 Leuten vor mir steht".
 
-## 1. What is known
+## 0. What the people cost was (2026-10-19 evening)
+
+The render sampler (`[Performance] Sampler=1`, render/RenderSampler.h,
+built for this) put 40 % of a scene pass with the opening's five people
+inside OBVR's `HookedVbUnlock`: the dual-pass diagnostic that fingerprints
+every dynamic-buffer write (`SumLeadingBytes`, the "Dual pool writes" log
+line, the pool timeline's vertex peeks) read the first 256 bytes of each
+written range back out of the mapped buffer - write-combined memory, byte
+by byte, 25 us an unlock, and the engine unlocks 135 dynamic buffers a pass
+with five people in view (6 with nobody): 3.6 ms a pass, 7 ms a frame.
+The code's comment had called it "a cost no frame can feel". A second
+45 % of the sampled pass was the call clock built the same afternoon:
+two counter reads per hooked D3D9 call, twenty thousand a pass, each
+ntdll plus the vDSO under Wine. Both are opt-in now
+(`[Debug] PoolWriteFingerprints`, `[Performance] CallClock`).
+
+Without them, the opening's five people under the dual pass, headless
+75 Hz (perf-dungeon-five.txt, 2026-10-19 16:44):
+
+| | before | after |
+|---|---:|---:|
+| frame | 26.7 ms, 100 % over 20 ms | 13.33 ms, 0.0 % |
+| scene_pass per eye | 7.6 to 8.9 ms | 2.85 ms |
+| idle before the compositor | 9 ms (the wait for the next vsync) | 5.9 ms (room) |
+| SteamVR reprojected over the run | 31 to 32 % | 2.1 % |
+
+The engine's own cost of a person is about 0.43 ms a pass (2.85 ms for
+five against 0.72 empty), not the 1.1 to 1.3 measured in the morning. Of
+a pass with five people the sampler now shows 74 % engine code (a fifth of
+it the memcpy of skinned vertices into the dynamic buffers, 3.7 MB a
+pass), 14 % DXVK, 4 % OBVR. At 90 Hz five people leave about 3 ms, at
+120 Hz about 1 ms. Nadi's drop in the opening is explained and gone on
+this machine; the headset confirms it or not.
+
+Lessons, for the knowledge base: never read mapped buffer memory back in
+a hot path; a counter read under Wine is not free; and a per-pass share
+that "cannot be felt" is measured, not asserted - the sampler is the tool.
+
+## 1. What is known (as measured with the instruments still on - the
+shares hold, the absolute numbers are about 2.5 times the engine's)
 
 - Seven people before the player cost about 4.3 ms of CPU per eye pass on
   the developer's machine (Linux, Proton, 75 Hz): scene_pass 0.70 ms a pass
@@ -24,7 +66,7 @@ dungeon "sobald die Truppe aus 3 Leuten vor mir steht".
   frame still fits (idle 9.5 ms empty, 2.6 ms with them, 0 % dropped while
   they stand, 5 % while they walk up); at 90 Hz the idle would be 0.4 ms, at
   120 Hz the three alone are over the budget.
-- **Nadi's drop reproduced** (2026-10-19, the same cell with the opening's
+- **Nadi's drop reproduced** (2026-10-19 afternoon, with the fingerprints still on; see section 0 for what it was - the same cell with the opening's
   five: the Emperor, three Blades, Valen Dreth): 6.6 ms a pass for the five
   (1.3 ms a person and eye, 118 skinned draws), two passes 15.2 ms - 2 ms
   over the 75 Hz period, so every frame slides to the next vsync: 26.7 ms,
@@ -37,7 +79,11 @@ dungeon "sobald die Truppe aus 3 Leuten vor mir steht".
 - Interiors can be over budget on their own: Weynon Priory's house sits at
   two vsync periods (26.7 ms) with nobody in it, scene_pass 7 ms a pass with
   322 draws; what makes that cell dear is unmeasured (its lights are the
-  first guess).
+  first guess). **Corrected 2026-10-19 evening:** it was the fingerprints
+  too - the "empty" house has 95 skinned draws (its own people behind the
+  player) and as many unlocks a pass; without the instruments the house
+  runs at 13.35 ms with 0.1 % over 20 ms, scene_pass 3.5 ms a pass
+  (perf-jauffre.txt, 16:53).
 
 ## 2. The three levers
 
@@ -75,8 +121,13 @@ dungeon "sobald die Truppe aus 3 Leuten vor mir steht".
    1.1 ms off the second pass; the lever is the engine's eye-independent
    computation, above all the palette build, which needs its engine
    function found and timed first (small to medium), then the second pass
-   taking the first's result (large). The original idea, for the record:
-   the engine's
+   taking the first's result (large). **Evening:** the call clock's own
+   counter reads were most of that "engine between the calls" (section
+   0); without instruments a pass with five people is 2.85 ms, and the
+   second pass's eye-independent work that is left to spare is the 3.7 MB
+   of skinned vertices the engine streams into its dynamic buffers again
+   (a fifth of the pass) - worth it only once a scene is over budget
+   again. The original idea, for the record: the engine's
    scene render repeats per eye the work that does not depend on the eye:
    skinning palettes (the same bones, the same pose), culling (OBVR already
    replays the first eye's culling on the second, `Culling sync`), shadow
@@ -99,13 +150,11 @@ dungeon "sobald die Truppe aus 3 Leuten vor mir steht".
 
 ## 3. Open
 
-- Nadi's drop at the opening: reproduced with the five people of the scene
-  (section 1), CPU-side, the dual pass 2 ms over the 75 Hz period and every
-  frame on the next vsync. What to do about it is the choice between the
-  levers: aer holds the scene today (its pacing in cheap scenes open, below,
-  its feel untested since the dual pass became the default); lever 2 would
-  have to take about 2 ms a frame off the second pass to get this scene
-  under the period, out of its 6.6 ms people share - and more at 90 Hz.
+- Nadi's drop at the opening: reproduced in the afternoon, explained and
+  gone in the evening (section 0) - it was OBVR's own fingerprint reads.
+  Open: the headset's word on it, and the testers' (avolpe's Kvatch at
+  90 Hz on a Quest 3 has a different budget; the per-person cost of
+  0.43 ms a pass gives five people about 3 ms of room there).
 - aer's frame pacing: more dropped frames than dual at less CPU per frame
   (2026-10-19; poses_wait spikes of 21 ms in the empty cell, 12 to 14 % of
   frames in three runs, and under 1 % once people fill the frame - the
@@ -170,7 +219,9 @@ dungeon "sobald die Truppe aus 3 Leuten vor mir steht".
   them. Asked of him: a capture at Kvatch with `StartAfterSeconds`, and a
   look at SteamVR's frame timing there to see which side is at the limit.
 - The interior's own cost (lever 0, so to speak): why the house takes 7 ms a
-  pass with 322 draws where the hall takes 0.7 ms with 322.
+  pass with 322 draws where the hall takes 0.7 ms with 322. **Closed
+  2026-10-19 evening:** the fingerprint reads on the house's 95 skinned
+  draws; 3.5 ms a pass without them, the frame at 13.35 ms.
 - The auto vanity camera circles the player after a while without input, in
   Full VR too (found by these runs; `open-questions-and-known-issues.md`).
   **Built 2026-10-18:** `game/VanityCamera.h` resets the engine's idle clock

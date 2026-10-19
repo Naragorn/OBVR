@@ -1,5 +1,10 @@
 #include "render/InterfaceRenderHook.h"
 
+extern "C" void* _ReturnAddress(void);
+extern "C" void* _AddressOfReturnAddress(void);
+#pragma intrinsic(_ReturnAddress)
+#pragma intrinsic(_AddressOfReturnAddress)
+
 #include "perf/Profiler.h"
 #include "platform/Win32Min.h"
 
@@ -304,6 +309,32 @@ d3d9::SetFVFFn g_originalSetFVF = nullptr;
 d3d9::SetVertexShaderFn g_originalSetVertexShader = nullptr;
 d3d9::SetVertexShaderConstantFFn g_originalSetVsConstantF = nullptr;
 UInt64 g_boneLockTicks = 0;  // the bone lock's counter ticks this pass (profiled)
+
+// A one-shot probe of the engine code behind the bone-row uploads: the
+// engine hands a skinned shape's bones to the shader one call of three
+// rows each (7611 calls a pass with five people in view, 2026-10-19), and
+// whatever computes the rows sits in the caller of those calls. The first
+// three world uploads of a run write their return address and the code
+// words above the frame (a conservative scan, as the hang watchdog's -
+// the release build keeps no frame pointers), so that the per-shape
+// palette function can be found in the disassembly and timed per pass.
+UInt32 g_boneProbeLeft = 3;
+
+void ProbeBoneUploadStack(UInt32 startRegister) {
+	const UInt32 ret = reinterpret_cast<UInt32>(_ReturnAddress());
+	const UInt32* words = reinterpret_cast<const UInt32*>(_AddressOfReturnAddress());
+	char text[640] = {};
+	int n = 0;
+	for (UInt32 i = 1; i < 200 && n < 600; ++i) {
+		const UInt32 w = words[i];
+		if (w >= 0x00401000u && w < 0x00A00000u) {
+			n += std::snprintf(text + n, sizeof(text) - static_cast<size_t>(n), " %08X", w);
+		}
+	}
+	OBVR_LOG("Bone probe: the upload at register %u returns to %08X; code words above the "
+	         "frame (stack order):%s",
+	         startRegister, ret, text);
+}
 
 // The call clock: ticks spent inside the hooked D3D9 calls of the current
 // scene pass, in three buckets, read and cleared at the pass's end
@@ -1883,9 +1914,13 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
 	    vector4fCount == 3) {
 		if (BoneUploadBelongsToWorld(g_boneTargetIsMain,
 		                             IsWaterReflectionSubpass())) {
+			if (g_boneProbeLeft > 0) {
+				--g_boneProbeLeft;
+				ProbeBoneUploadStack(startRegister);
+			}
 			// Timed while the profiler captures, summed for the pass's
 			// "bone_lock" span (TakeBoneLockTicks).
-			const bool timed = perf::Profiler::Instance().IsCapturing();
+			const bool timed = perf::Profiler::Instance().IsCapturing() && GetConfig().performance.callClock;
 			const long long before = timed ? ReadPerformanceCounter() : 0;
 			const float* replacement = HandleBoneUpload(startRegister, data);
 			if (timed) {
@@ -2006,7 +2041,11 @@ SInt32 __stdcall HookedVbLock(void* self, UInt32 offset, UInt32 size, void** dat
 		RecordTimeline('L', nullptr, self, offset, size, flags);
 	}
 	const SInt32 result = g_originalVbLock(self, offset, size, data, flags);
-	if (dynamic && result >= 0 && data != nullptr && *data != nullptr) {
+	// The write fingerprint reads the range back at unlock, out of
+	// write-combined memory: opt-in (Debug.PoolWriteFingerprints) since the
+	// render sampler found it at 40 % of a pass with five people in view.
+	if (dynamic && result >= 0 && data != nullptr && *data != nullptr &&
+	    GetConfig().poolWriteFingerprints) {
 		// Size zero means the whole buffer, whose length this hook does not
 		// know - skipped rather than guessed at.
 		if (size == 0 || !g_openLocks.Begin(self, *data, size)) {
@@ -2028,7 +2067,7 @@ SInt32 __stdcall HookedVbUnlock(void* self) {
 		RecordTimeline('U', nullptr, self, sum, 0, 0);
 		// The peeks land in unlock order, cross-referenced by the same sum
 		// the matching 'U' line carries.
-		PeekVertices(self, sum, data, size);
+		PeekVertices(self, sum, data, size);  // reached only with the fingerprints on
 	}
 	return g_originalVbUnlock(self);
 }
@@ -2045,7 +2084,7 @@ SInt32 __stdcall HookedIbLock(void* self, UInt32 offset, UInt32 size, void** dat
 	}
 	const bool dynamic = g_dynamicIndexBuffers.Contains(self);
 	const SInt32 result = g_originalIbLock(self, offset, size, data, flags);
-	if (dynamic && result >= 0 && data != nullptr && *data != nullptr) {
+	if (GetConfig().poolWriteFingerprints && dynamic && result >= 0 && data != nullptr && *data != nullptr) {
 		if (size == 0 || !g_openIbLocks.Begin(self, *data, size)) {
 			++g_stateCalls.ibWriteSkipped;
 		}

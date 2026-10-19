@@ -442,6 +442,36 @@ The compositor measures the submit 3.2 ms later than OBVR's estimate puts
 it - the wake-up latency between the compositor and the game under Proton,
 which only moves the submit further past the vsync.
 
+### Reading back mapped memory, and counting the cost of counting
+
+Status: measured and fixed 2026-10-19. Scope: any D3D9 hook, any game.
+
+Two of OBVR's own instruments were most of what looked like the engine's
+cost of people in view. The dual-pass diagnostic fingerprinted every
+dynamic-buffer write by summing the first 256 bytes of the range at unlock
+- read back out of the mapped buffer, which is write-combined memory: every
+byte an uncached transaction, 25 us an unlock, and with five people in view
+the engine unlocks 135 dynamic buffers a pass (its skinned vertices, 3.7 MB
+a pass). 3.6 ms a pass, 40 % of it, from a comment that said the window was
+short enough that "no frame can feel" it. Then a call clock that read the
+performance counter twice around each hooked D3D9 call: under Wine a counter
+read is an ntdll call into the vDSO, and twenty thousand of them a pass were
+another 45 %. Both are opt-in now (`[Debug] PoolWriteFingerprints`,
+`[Performance] CallClock`); a pass with five people went from 8.9 ms to
+2.85 ms and the frame from 26.7 ms to 13.33.
+
+The tool that found both is the render sampler (`[Performance] Sampler=1`,
+render/RenderSampler.h): a thread suspends the render thread about every
+millisecond, reads eip and the engine return addresses on its stack, and
+writes them out at the capture's end; tools/perf-samples.py counts them
+per phase, exclusive by eip bin and module, inclusive by frame, and by the
+engine site that called out of the exe. It costs a few percent while it
+runs and nothing otherwise, and unlike a clock on a hot call it cannot
+become the thing it measures. Rules kept from it: never read mapped buffer
+memory back in a hot path; never put a counter read inside a call that
+runs thousands of times a pass; and measure a share before writing that it
+cannot be felt.
+
 ## Render targets and per-eye resources
 
 `CONFIRMED`

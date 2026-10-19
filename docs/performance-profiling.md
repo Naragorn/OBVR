@@ -307,3 +307,40 @@ nicht abhängt - vor allem das Bauen der Knochenpaletten je geskinnter Shape (di
 Pass neu, OBVR sieht nur den fertigen Upload). Nächster Schritt dafür: die Engine-Funktion finden, die
 die Palette je Shape baut (Ghidra/REA), ihre Zeit je Pass messen (ein Hook, eine Uhr - klein bis
 mittel), dann entscheiden, ob der zweite Pass das Ergebnis des ersten übernehmen kann (groß).
+
+### Nachtrag: der Render-Sampler, und was die Leute wirklich kosten (2026-10-19 abends)
+
+`[Performance] Sampler=1` (render/RenderSampler.h): ein Thread hält den Render-Thread etwa
+jede Millisekunde an, liest EIP und die Rücksprungadressen in Oblivion.exe auf seinem Stack
+(wie der Hang-Watchdog) und schreibt am Ende der Capture `OBVR-samples.csv` neben OBVR.log,
+dazu `OBVR-samples-modules.csv` (welches Modul zu welcher 64-KiB-Seite gehört).
+`tools/perf-samples.py <samples> <Lauf> <Marken> --in-pass only` zählt je Phase: wo der EIP
+stand (exklusiv, nach Modul und 256-Byte-Bin), welche Engine-Frames auf dem Stack lagen
+(inklusiv) und von welcher Engine-Stelle aus die EXE verlassen wurde. Szenario
+`perf-dungeon-five-sampled.txt`.
+
+Erster Lauf, fünf Leute, im Pass: 78 % des EIP außerhalb der EXE, davon 43 % in EINEM
+256-Byte-Bin - OBVR.dll+F9200 = `HookedVbUnlock`, aufgerufen vom Unlock-Aufruf der Engine
+(0x00776DC2). Dort las die Dual-Pass-Diagnostik (`SumLeadingBytes`, "Dual pool writes",
+Vertex-Peeks) bei jedem Unlock 256 Bytes aus dem gemappten Puffer: Write-Combined-Speicher,
+byteweise, 25 µs je Unlock, 135 Unlocks je Pass mit fünf Leuten (6 leer): 3,6 ms je Pass.
+Seit diesem Abend opt-in: `[Debug] PoolWriteFingerprints=0`. Zweiter Lauf: 45 % in ntdll
+und der vDSO, aus den gehookten D3D9-Aufrufen heraus - die Aufruf-Uhr vom Nachmittag selbst
+(zwei Zählerstände je Aufruf, zwanzigtausend je Pass; ein Zählerstand ist unter Wine ein
+ntdll-Aufruf). Seitdem `[Performance] CallClock=0` als Standard; die Buckets gibt es nur noch
+auf Wunsch.
+
+Ohne beides, Dual Pass, Eröffnung mit fünf Leuten (16:44): Frame 13,33 ms, 0,0 % über 20 ms,
+scene_pass 2,85 ms je Auge (leer 0,72), Leerlauf 5,9 ms, SteamVR 2,1 % reprojiziert. Vorher:
+26,7 ms, 100 %, 7,6 bis 8,9 ms, 31 %. Eine Person kostet die Engine also rund 0,43 ms je Pass,
+nicht 1,1 bis 1,3. Das Rest-Profil ohne Instrumente: 74 % Engine (davon 22 % das memcpy der
+geskinnten Vertizes in die dynamischen Puffer, 3,7 MB je Pass), 14 % DXVK, 4 % OBVR.
+
+Lehren: gemappten Puffer-Speicher nie zurücklesen; `QueryPerformanceCounter` unter Wine ist
+kein rdtsc; und ein Anteil, der "nicht spürbar" sein soll, wird gemessen - der Sampler ist
+das Werkzeug dafür, die Uhren sind es nicht, wenn sie selbst zehntausendmal je Pass laufen.
+Zahlen aus Captures vor diesem Abend (perf-people-hall, perf-jauffre, die Klingen-Läufe)
+tragen die Fingerprint-Kosten mit; ihre Verhältnisse gelten, ihre Absolutwerte nicht.
+Jauffres Haus neu gemessen (16:53, ohne Instrumente): 13,35 ms, 0,1 % über 20 ms, scene_pass
+3,5 ms je Pass statt 7 bis 8 - der "leere" Innenraum bei zwei Vsync war derselbe Befund (95 geskinnte
+Draws der Hausbewohner hinter dem Spieler, ebenso viele Unlocks).

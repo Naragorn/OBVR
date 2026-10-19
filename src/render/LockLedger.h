@@ -64,7 +64,11 @@ struct LockLedger {
 // Sums the first min(size, cap) bytes of a written range. A window rather
 // than the whole range because the memory under it is write-combined and
 // slow to read back; collapsed vertices corrupt the very first positions,
-// so a short window catches them at a cost no frame can feel.
+// so a short window catches them. The cost is felt all the same: 256
+// byte reads from write-combined memory are 25 us an unlock, and the
+// engine unlocks 135 dynamic buffers a pass with five people in view -
+// 3.6 ms a pass, 40 % of it (the render sampler, 2026-10-19). Hence
+// opt-in, Debug.PoolWriteFingerprints.
 inline UInt32 SumLeadingBytes(const void* data, UInt32 size, UInt32 cap) {
 	const unsigned char* bytes = static_cast<const unsigned char*>(data);
 	const UInt32 limit = size < cap ? size : cap;

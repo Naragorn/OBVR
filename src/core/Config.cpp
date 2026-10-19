@@ -638,10 +638,15 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	                                        config.performance.maxRecords, path);
 	config.performance.startAfterSeconds = ReadUInt("Performance", "StartAfterSeconds",
 	                                               config.performance.startAfterSeconds, path);
+	config.performance.sampler = ReadBool("Performance", "Sampler", config.performance.sampler, path);
+	config.performance.callClock =
+		ReadBool("Performance", "CallClock", config.performance.callClock, path);
 	config.performance = perf::NormalizeSettings(config.performance);
 	config.dualPassProbe = ReadUInt("Debug", "DualPassProbe", config.dualPassProbe, path);
 	config.swapEyeOrder = ReadBool("Debug", "SwapEyeOrder", config.swapEyeOrder, path);
 	config.hudProbe = ReadBool("Debug", "HudProbe", config.hudProbe, path);
+	config.poolWriteFingerprints =
+		ReadBool("Debug", "PoolWriteFingerprints", config.poolWriteFingerprints, path);
 	config.hudTileProbe = ReadBool("Debug", "HudTileProbe", config.hudTileProbe, path);
 	config.aimProbe = ReadBool("Debug", "AimProbe", config.aimProbe, path);
 	config.thirdPersonProbe =

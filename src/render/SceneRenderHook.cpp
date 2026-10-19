@@ -3,6 +3,7 @@
 #include "render/SceneGraphProbe.h"
 
 #include "core/EntryDetour.h"
+#include "core/Config.h"
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "perf/Profiler.h"
@@ -14,6 +15,8 @@
 #include "render/LeafFacingHook.h"
 #include "render/WaterReflectionHook.h"
 #include "render/WaterReprojection.h"
+#include "render/RenderSampler.h"
+#include "render/ShapeRenderClock.h"
 
 namespace obvr::render {
 namespace {
@@ -94,7 +97,11 @@ void MarkCallTicks(const perf::EventContext& context) {
 	UInt64 constants = 0;
 	UInt64 state = 0;
 	TakeCallTicks(draws, constants, state);
-	if (draws == 0 && constants == 0 && state == 0) {
+	UInt64 shapes = 0;
+	UInt32 shapeCalls = 0;
+	TakeShapeRenderTicks(shapes, shapeCalls);
+	const UInt64 cull = TakeCullTicks();
+	if (draws == 0 && constants == 0 && state == 0 && shapes == 0 && cull == 0) {
 		return;
 	}
 	const UInt64 now = static_cast<UInt64>(ReadPerformanceCounter());
@@ -102,6 +109,8 @@ void MarkCallTicks(const perf::EventContext& context) {
 	profiler.Mark(perf::EventType::DrawCalls, now - draws, now, context);
 	profiler.Mark(perf::EventType::VsConstantCalls, now - constants, now, context);
 	profiler.Mark(perf::EventType::StateCalls, now - state, now, context);
+	profiler.Mark(perf::EventType::ShapeRender, now - shapes, now, context);
+	profiler.Mark(perf::EventType::CullCalls, now - cull, now, context);
 }
 
 void TraceFrame(const char* how, UInt32 passesLastFrame, UInt32 drawsLastFrame) {
@@ -521,7 +530,8 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 			                                   GetGameDevice());
 			perf::Profiler::ScopedSpan scene(perf::Profiler::Instance(),
 			                                  perf::EventType::ScenePass, context);
-			SetCallClock(perf::Profiler::Instance().IsCapturing());
+			SetCallClock(perf::Profiler::Instance().IsCapturing() && GetConfig().performance.callClock);
+			NoteRenderThread();
 			g_original(self, unusedEdx, renderedTexture);
 			perf::Profiler::Instance().GpuEnd();
 		}
@@ -590,7 +600,8 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		perf::Profiler::ScopedSpan firstScene(perf::Profiler::Instance(),
 		                                      perf::EventType::ScenePass, firstContext);
 		PrepareWorldViewport("the first eye's render");
-		SetCallClock(perf::Profiler::Instance().IsCapturing());
+		SetCallClock(perf::Profiler::Instance().IsCapturing() && GetConfig().performance.callClock);
+		NoteRenderThread();
 		g_original(self, unusedEdx, renderedTexture);
 		perf::Profiler::Instance().GpuEnd();
 	}
@@ -670,7 +681,8 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		perf::Profiler::ScopedSpan secondScene(perf::Profiler::Instance(),
 		                                       perf::EventType::ScenePass, secondContext);
 		PrepareWorldViewport("the second eye's render");
-		SetCallClock(perf::Profiler::Instance().IsCapturing());
+		SetCallClock(perf::Profiler::Instance().IsCapturing() && GetConfig().performance.callClock);
+		NoteRenderThread();
 		g_original(self, unusedEdx, renderedTexture);
 		perf::Profiler::Instance().GpuEnd();
 	}

@@ -114,6 +114,8 @@ const char* EventTypeName(EventType type) {
 		case EventType::DrawCalls: return "draw_calls";
 		case EventType::VsConstantCalls: return "vs_constant_calls";
 		case EventType::StateCalls: return "state_calls";
+		case EventType::ShapeRender: return "shape_render";
+		case EventType::CullCalls: return "cull_calls";
 	}
 	return "unknown";
 }

@@ -145,6 +145,8 @@
 #include "render/PresentInterval.h"
 #include "render/ResolutionHook.h"
 #include "render/SceneRenderHook.h"
+#include "render/RenderSampler.h"
+#include "render/ShapeRenderClock.h"
 #include "perf/Profiler.h"
 
 namespace obvr::camera {
@@ -12703,6 +12705,10 @@ bool Install() {
 			// Logs its own outcome either way; on failure the mode quietly
 			// renders like mono, and request.dualEyes says so per frame.
 			render::InstallSceneRenderHook(callbacks);
+			// The per-shape clock beside it: shape_render per pass while a
+			// capture runs (render/ShapeRenderClock.h).
+			render::InstallShapeRenderClock();
+			render::StartRenderSampler();
 		}
 	}
 

@@ -15,4 +15,7 @@ void PauseCullingCapture();
 void BeginCullingReplay();
 void EndCullingSync(UInt32 sceneCall);
 
+// Ticks inside the engine's cull since the last take (while a capture runs).
+UInt64 TakeCullTicks();
+
 }  // namespace obvr::render

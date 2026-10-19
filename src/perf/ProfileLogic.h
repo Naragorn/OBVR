@@ -24,6 +24,15 @@ struct ProfileSettings {
 	// (2026-10-18: a capture from the game's start ended before the
 	// tester's room). Zero starts at once.
 	UInt32 startAfterSeconds = 0;
+	// The render sampler beside the capture (render/RenderSampler.h): the
+	// render thread's eip and stack about every millisecond, OBVR-samples.csv.
+	bool sampler = false;
+	// The call clocks inside the capture (draw_calls, vs_constant_calls,
+	// state_calls, shape_render, cull_calls): two counter reads per hooked
+	// call, which under Wine is ntdll and the vDSO each time - about 2.5 ms
+	// a pass with five people in view (the render sampler, 2026-10-19). Off
+	// by default so a capture measures the frame, on for the split.
+	bool callClock = false;
 };
 
 // Normalisation is intentionally pure. Config reload and tests use the same
@@ -73,6 +82,12 @@ enum class EventType : UInt8 {
 	DrawCalls,
 	VsConstantCalls,
 	StateCalls,
+	// The engine's per-shape render (render/ShapeRenderClock.h), summed over
+	// the pass: constant maps, skinning setup, streams and the draw per shape.
+	ShapeRender,
+	// The engine's culling (NiCullingProcess::Process, render/CullingHook.cpp),
+	// summed over the pass.
+	CullCalls,
 };
 
 enum class DeliveryMode : UInt8 {
