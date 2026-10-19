@@ -65,6 +65,13 @@ UInt32 TotalDrawCount();
 // them as one "bone_lock" span at the end of each pass.
 UInt64 TakeBoneLockTicks();
 
+// The call clock (InterfaceRenderHook.cpp, CallClock): ticks spent inside
+// the hooked D3D9 calls since the last take - the draws, the vertex-shader
+// constant uploads, the other hooked setters. Runs only while switched on,
+// which the scene render hook does per pass while a capture runs.
+void SetCallClock(bool on);
+void TakeCallTicks(UInt64& draws, UInt64& constants, UInt64& state);
+
 // The vertex pipeline setters since the process started, on the same terms:
 // read either side of a call, subtract, and the difference is what that call
 // set up. All six wrap at 2^32 and the subtraction survives it.

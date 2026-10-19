@@ -64,7 +64,19 @@ dungeon "sobald die Truppe aus 3 Leuten vor mir steht".
    What stays open for aer is the feel in the headset. Under aer the
    capture has no `scene_pass` spans: the scene render hook is installed
    for `dual` only (camera/CameraHook.cpp).
-2. **The second pass spared what the first already did.** The engine's
+2. **The second pass spared what the first already did.** Measured
+   2026-10-19 evening with the call clock (`draw_calls`, `vs_constant_calls`,
+   `state_calls`; docs/performance-profiling.md "Nachtrag: die Aufruf-Uhr"):
+   of a pass's 8.9 ms with the opening's five, 1.9 ms are inside the D3D9
+   calls OBVR hooks (draws 0.25, vertex constants 1.1, other setters 0.4,
+   bone lock 0.2) and 6.9 ms are the engine between the calls - scene
+   graph, the bone palettes computed per skinned shape, visibility - about
+   1.2 ms a person and pass. So a palette-upload cache would take at most
+   1.1 ms off the second pass; the lever is the engine's eye-independent
+   computation, above all the palette build, which needs its engine
+   function found and timed first (small to medium), then the second pass
+   taking the first's result (large). The original idea, for the record:
+   the engine's
    scene render repeats per eye the work that does not depend on the eye:
    skinning palettes (the same bones, the same pose), culling (OBVR already
    replays the first eye's culling on the second, `Culling sync`), shadow

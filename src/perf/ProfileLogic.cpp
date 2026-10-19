@@ -111,6 +111,9 @@ const char* EventTypeName(EventType type) {
 		case EventType::BoneLock: return "bone_lock";
 		case EventType::SubmitHold: return "submit_hold";
 		case EventType::PacingVsync: return "pacing_vsync";
+		case EventType::DrawCalls: return "draw_calls";
+		case EventType::VsConstantCalls: return "vs_constant_calls";
+		case EventType::StateCalls: return "state_calls";
 	}
 	return "unknown";
 }

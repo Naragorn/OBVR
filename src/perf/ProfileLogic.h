@@ -63,6 +63,16 @@ enum class EventType : UInt8 {
 	// The pacing's estimate of the imminent vsync: from the moment
 	// WaitGetPoses returned (start) to the vsync (end).
 	PacingVsync,
+	// Time inside the hooked D3D9 calls of a scene pass, summed over the pass
+	// and marked at its end like bone_lock (render/InterfaceRenderHook.cpp,
+	// CallClock): the draws, the vertex-shader constant uploads, and the
+	// other setters OBVR hooks (render states, transforms, declarations,
+	// shaders, pixel constants, streams, indices). What a pass spends outside
+	// these is the engine's own work and the calls OBVR does not hook
+	// (textures, sampler states).
+	DrawCalls,
+	VsConstantCalls,
+	StateCalls,
 };
 
 enum class DeliveryMode : UInt8 {

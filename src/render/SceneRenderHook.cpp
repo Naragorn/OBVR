@@ -86,6 +86,24 @@ UInt32 VertexSetupTotal(const StateCallCounts& calls) {
 // pass costs the HUD its draws.
 UInt32 g_sceneCall = 0;
 
+// The call clock's three buckets for the pass that just ended, marked like
+// the bone lock: a span ending now, as long as the ticks inside the calls.
+void MarkCallTicks(const perf::EventContext& context) {
+	SetCallClock(false);
+	UInt64 draws = 0;
+	UInt64 constants = 0;
+	UInt64 state = 0;
+	TakeCallTicks(draws, constants, state);
+	if (draws == 0 && constants == 0 && state == 0) {
+		return;
+	}
+	const UInt64 now = static_cast<UInt64>(ReadPerformanceCounter());
+	perf::Profiler& profiler = perf::Profiler::Instance();
+	profiler.Mark(perf::EventType::DrawCalls, now - draws, now, context);
+	profiler.Mark(perf::EventType::VsConstantCalls, now - constants, now, context);
+	profiler.Mark(perf::EventType::StateCalls, now - state, now, context);
+}
+
 void TraceFrame(const char* how, UInt32 passesLastFrame, UInt32 drawsLastFrame) {
 	if (g_sceneCall <= 150 || g_sceneCall > 500 || g_sceneCall % 10 != 0) {
 		return;
@@ -503,10 +521,12 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 			                                   GetGameDevice());
 			perf::Profiler::ScopedSpan scene(perf::Profiler::Instance(),
 			                                  perf::EventType::ScenePass, context);
+			SetCallClock(perf::Profiler::Instance().IsCapturing());
 			g_original(self, unusedEdx, renderedTexture);
 			perf::Profiler::Instance().GpuEnd();
 		}
 		{
+			MarkCallTicks(context);
 			const UInt64 locked = TakeBoneLockTicks();
 			if (locked != 0) {
 				const UInt64 now = static_cast<UInt64>(ReadPerformanceCounter());
@@ -570,10 +590,12 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		perf::Profiler::ScopedSpan firstScene(perf::Profiler::Instance(),
 		                                      perf::EventType::ScenePass, firstContext);
 		PrepareWorldViewport("the first eye's render");
+		SetCallClock(perf::Profiler::Instance().IsCapturing());
 		g_original(self, unusedEdx, renderedTexture);
 		perf::Profiler::Instance().GpuEnd();
 	}
 	{
+		MarkCallTicks(firstContext);
 		const UInt64 locked = TakeBoneLockTicks();
 		if (locked != 0) {
 			const UInt64 now = static_cast<UInt64>(ReadPerformanceCounter());
@@ -648,10 +670,12 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		perf::Profiler::ScopedSpan secondScene(perf::Profiler::Instance(),
 		                                       perf::EventType::ScenePass, secondContext);
 		PrepareWorldViewport("the second eye's render");
+		SetCallClock(perf::Profiler::Instance().IsCapturing());
 		g_original(self, unusedEdx, renderedTexture);
 		perf::Profiler::Instance().GpuEnd();
 	}
 	{
+		MarkCallTicks(secondContext);
 		const UInt64 locked = TakeBoneLockTicks();
 		if (locked != 0) {
 			const UInt64 now = static_cast<UInt64>(ReadPerformanceCounter());

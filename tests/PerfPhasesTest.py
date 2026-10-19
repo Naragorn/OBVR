@@ -114,6 +114,13 @@ class MarkCallsTest(unittest.TestCase):
         self.assertIsNone(perf_phases.compositor_phase([]))
         self.assertEqual(perf_phases.compositor_cells(None), ("-", "-", "-"))
 
+    def test_extra_events_are_split_from_the_marks(self):
+        self.assertEqual(perf_phases.split_args(["run", "a", "b", "--events", "draw_calls,state_calls", "c"]),
+                         ("run", ["a", "b", "c"], ["draw_calls", "state_calls"]))
+        self.assertEqual(perf_phases.split_args(["run", "a", "b"]), ("run", ["a", "b"], []))
+        self.assertEqual(perf_phases.split_args([]), (None, [], []))
+        self.assertEqual(perf_phases.split_args(["run", "--events"]), ("run", ["--events"], []))
+
     def test_scale_is_one_when_the_marks_are_exact(self):
         self.assertEqual(perf_phases.call_scale(8280, 8293, True), 1.0)
         self.assertAlmostEqual(perf_phases.call_scale(8280, 8293, False), 8280 / 8293.0)

@@ -304,6 +304,34 @@ d3d9::SetFVFFn g_originalSetFVF = nullptr;
 d3d9::SetVertexShaderFn g_originalSetVertexShader = nullptr;
 d3d9::SetVertexShaderConstantFFn g_originalSetVsConstantF = nullptr;
 UInt64 g_boneLockTicks = 0;  // the bone lock's counter ticks this pass (profiled)
+
+// The call clock: ticks spent inside the hooked D3D9 calls of the current
+// scene pass, in three buckets, read and cleared at the pass's end
+// (TakeCallTicks, SceneRenderHook.cpp). On only while a capture runs
+// (SetCallClock): two counter reads a call, nine thousand calls a pass with
+// five people in view, is a third of a millisecond a pass - paid for the
+// measurement, not in play. Each hook's whole body is timed, OBVR's own
+// counting included; that share is the bone lock's 0.056 ms a pass and
+// less, so the buckets are DXVK's time to within that.
+bool g_callClockOn = false;
+UInt64 g_drawCallTicks = 0;
+UInt64 g_constantCallTicks = 0;
+UInt64 g_stateCallTicks = 0;
+
+struct CallClock {
+	UInt64* bucket;
+	UInt64 start;
+	explicit CallClock(UInt64* which)
+		: bucket(g_callClockOn ? which : nullptr),
+		  start(bucket != nullptr ? static_cast<UInt64>(ReadPerformanceCounter()) : 0) {}
+	~CallClock() {
+		if (bucket != nullptr) {
+			*bucket += static_cast<UInt64>(ReadPerformanceCounter()) - start;
+		}
+	}
+	CallClock(const CallClock&) = delete;
+	CallClock& operator=(const CallClock&) = delete;
+};
 d3d9::SetPixelShaderFn g_originalSetPixelShader = nullptr;
 d3d9::SetPixelShaderConstantFFn g_originalSetPsConstantF = nullptr;
 bool g_waterPixelShaderActive = false;
@@ -1089,6 +1117,7 @@ bool TakeAfterPassCursorQuad(void* device, UInt32 type, UInt32 primitiveCount) {
 
 SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex,
                                      UInt32 primitiveCount) {
+	CallClock clock(&g_drawCallTicks);
 	++g_drawsTotal;
 	// No vertex count in this signature; the primitive count still travels.
 	CountSkinnedDraw(startVertex, 0, primitiveCount);
@@ -1574,6 +1603,7 @@ void DrawBackfacesAfter(void* device, UInt32 type, SInt32 baseVertexIndex, UInt3
 SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 baseVertexIndex,
                                             UInt32 minVertexIndex, UInt32 numVertices,
                                             UInt32 startIndex, UInt32 primCount) {
+	CallClock clock(&g_drawCallTicks);
 	++g_drawsTotal;
 	CountSkinnedDraw(static_cast<UInt32>(baseVertexIndex), numVertices, primCount);
 	CountSkinnedDrawAddressing(baseVertexIndex, minVertexIndex, startIndex);
@@ -1606,6 +1636,7 @@ SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 base
 
 SInt32 __stdcall HookedDrawPrimitiveUP(void* self, UInt32 type, UInt32 primitiveCount,
                                        const void* vertexData, UInt32 stride) {
+	CallClock clock(&g_drawCallTicks);
 	++g_drawsTotal;
 	if ((g_redirecting || g_observing) && g_sampleNextDraw) {
 		g_sampleNextDraw = false;
@@ -1630,6 +1661,7 @@ SInt32 __stdcall HookedDrawIndexedPrimitiveUP(void* self, UInt32 type, UInt32 mi
                                               UInt32 numVertices, UInt32 primitiveCount,
                                               const void* indexData, UInt32 indexFormat,
                                               const void* vertexData, UInt32 stride) {
+	CallClock clock(&g_drawCallTicks);
 	++g_drawsTotal;
 	if ((g_redirecting || g_observing) && g_sampleNextDraw) {
 		g_sampleNextDraw = false;
@@ -1670,6 +1702,7 @@ SInt32 __stdcall HookedClear(void* self, UInt32 count, const d3d9::Rect* rects,
 // it draws into the redirect texture with the bit off lands at alpha zero,
 // and an overlay renders alpha zero as nothing at all.
 SInt32 __stdcall HookedSetRenderState(void* self, UInt32 state, UInt32 value) {
+	CallClock clock(&g_stateCallTicks);
 	if (g_redirecting && state == d3d9::kRenderStateColorWriteEnable) {
 		value |= d3d9::kColorWriteAlpha;
 	}
@@ -1691,6 +1724,7 @@ d3d9::Matrix4 g_lastPerspective{};
 bool g_haveLastPerspective = false;
 
 SInt32 __stdcall HookedSetTransform(void* self, UInt32 state, const d3d9::Matrix4* matrix) {
+	CallClock clock(&g_stateCallTicks);
 	++g_stateCalls.transforms;
 	if (state == d3d9::kTransformProjection && matrix != nullptr &&
 	    matrix->m[2][3] > 0.99f && matrix->m[2][3] < 1.01f && matrix->m[3][3] > -0.01f &&
@@ -1702,17 +1736,20 @@ SInt32 __stdcall HookedSetTransform(void* self, UInt32 state, const d3d9::Matrix
 }
 
 SInt32 __stdcall HookedSetVertexDeclaration(void* self, void* declaration) {
+	CallClock clock(&g_stateCallTicks);
 	++g_stateCalls.declarations;
 	g_stateCalls.declarationSum += reinterpret_cast<UInt32>(declaration);
 	return g_originalSetVertexDecl(self, declaration);
 }
 
 SInt32 __stdcall HookedSetFVF(void* self, UInt32 fvf) {
+	CallClock clock(&g_stateCallTicks);
 	++g_stateCalls.fvfs;
 	return g_originalSetFVF(self, fvf);
 }
 
 SInt32 __stdcall HookedSetVertexShader(void* self, void* shader) {
+	CallClock clock(&g_stateCallTicks);
 	++g_stateCalls.vertexShaders;
 	g_stateCalls.vertexShaderSum += reinterpret_cast<UInt32>(shader);
 	const Config& config = GetConfig();
@@ -1723,6 +1760,7 @@ SInt32 __stdcall HookedSetVertexShader(void* self, void* shader) {
 }
 
 SInt32 __stdcall HookedSetPixelShader(void* self, void* shader) {
+	CallClock clock(&g_stateCallTicks);
 	const int waterPixelIndex = WaterPixelShaderIndex(shader);
 	g_waterPixelShaderActive = waterPixelIndex >= 0;
 	static test::WaterShaderDumpLedger dumped;
@@ -1742,6 +1780,7 @@ SInt32 __stdcall HookedSetPixelShader(void* self, void* shader) {
 
 SInt32 __stdcall HookedSetPsConstantF(void* self, UInt32 startRegister, const float* data,
                                      UInt32 vector4fCount) {
+	CallClock clock(&g_stateCallTicks);
 	WaterReflectionConstant replacement;
 	const Config& config = GetConfig();
 	const bool staticColour = config.stableWaterReflections &&
@@ -1778,6 +1817,7 @@ d3d9::SetStreamSourceFn g_originalSetStreamSource = nullptr;
 
 SInt32 __stdcall HookedSetStreamSource(void* self, UInt32 streamNumber, void* streamData,
                                        UInt32 offsetInBytes, UInt32 stride) {
+	CallClock clock(&g_stateCallTicks);
 	++g_stateCalls.streamSources;
 	g_stateCalls.streamSourceSum += reinterpret_cast<UInt32>(streamData);
 	if (streamNumber == 0) {
@@ -1792,6 +1832,7 @@ SInt32 __stdcall HookedSetStreamSource(void* self, UInt32 streamNumber, void* st
 d3d9::SetStreamSourceFreqFn g_originalSetStreamSourceFreq = nullptr;
 
 SInt32 __stdcall HookedSetStreamSourceFreq(void* self, UInt32 streamNumber, UInt32 setting) {
+	CallClock clock(&g_stateCallTicks);
 	++g_stateCalls.streamFreqCalls;
 	return g_originalSetStreamSourceFreq(self, streamNumber, setting);
 }
@@ -1799,6 +1840,7 @@ SInt32 __stdcall HookedSetStreamSourceFreq(void* self, UInt32 streamNumber, UInt
 d3d9::SetIndicesFn g_originalSetIndices = nullptr;
 
 SInt32 __stdcall HookedSetIndices(void* self, void* indexData) {
+	CallClock clock(&g_stateCallTicks);
 	++g_stateCalls.indexBinds;
 	g_stateCalls.indexBindSum += reinterpret_cast<UInt32>(indexData);
 	return g_originalSetIndices(self, indexData);
@@ -1806,6 +1848,7 @@ SInt32 __stdcall HookedSetIndices(void* self, void* indexData) {
 
 SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const float* data,
                                       UInt32 vector4fCount) {
+	CallClock clock(&g_constantCallTicks);
 	++g_stateCalls.constantCalls;
 	g_stateCalls.constantVectors += vector4fCount;
 
@@ -3058,6 +3101,15 @@ void ArmBetweenTrace() {
 	// startup budget is long spent by the time anyone opens an inventory, so
 	// a menu opening or closing rearms it.
 	g_passTraceLeft = 12;
+}
+
+void SetCallClock(bool on) { g_callClockOn = on; }
+
+void TakeCallTicks(UInt64& draws, UInt64& constants, UInt64& state) {
+	draws = g_drawCallTicks;
+	constants = g_constantCallTicks;
+	state = g_stateCallTicks;
+	g_drawCallTicks = g_constantCallTicks = g_stateCallTicks = 0;
 }
 
 UInt64 TakeBoneLockTicks() {

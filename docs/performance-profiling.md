@@ -281,3 +281,29 @@ Klingen stehend 13,33 ms und 0,0 % (unverändert, kein Halt), fünf Leute 26,7 m
 Frame ist zu teuer, keine Frage der Taktung); SteamVR ganzer Lauf 1,7 % reprojiziert (vorher 3,1
 bis 5,6 %). In Menüs und Ladebildschirmen hält die Taktung jeden Frame (billige Frames), das
 kostet dort bis zu 3,5 ms Latenz je Frame und nichts sonst.
+
+### Nachtrag: die Aufruf-Uhr - wo die 8 ms eines Passes mit fünf Leuten liegen (2026-10-19)
+
+`draw_calls`, `vs_constant_calls`, `state_calls` (Ereignisse je Pass, wie `bone_lock`): die Zeit
+INNERHALB der gehookten D3D9-Aufrufe (InterfaceRenderHook.cpp, `CallClock`, nur während einer
+Capture an; zwei Zählerstände je Aufruf, etwa 0,3 ms je Pass Messkosten). Nicht gehookt und damit im
+Rest: SetTexture, SetSamplerState. `tools/perf-phases.py <Lauf> <Marken> --events draw_calls,...`.
+
+| je Augen-Pass, Dual | Zelle leer | fünf Leute |
+|---|---:|---:|
+| scene_pass gesamt | 1,6 ms | 8,8 bis 8,9 ms |
+| in Draw-Aufrufen (240 / 762 Draws) | 0,08 ms | 0,25 ms |
+| in SetVertexShaderConstantF (1931 / 7611 Aufrufe) | 0,26 ms | 1,1 ms |
+| in den übrigen gehookten Settern | 0,14 ms | 0,38 ms |
+| Bone-Lock (OBVR) | 0,04 ms | 0,2 ms |
+| **Rest: Engine zwischen den Aufrufen (+ SetTexture/Sampler)** | **1,1 ms** | **6,9 ms** |
+
+Befund: DXVKs Anteil an einem Pass mit fünf Leuten ist rund 1,9 ms (ein Fünftel), ein Draw kostet in
+DXVK 0,3 µs, ein Konstanten-Upload 0,15 µs. Vier Fünftel des Passes sind die Engine selbst zwischen
+den Aufrufen: je Person und Pass etwa 1,2 ms Szenengraph, Skin-Paletten rechnen, Sichtbarkeit. Ein
+Paletten-Cache für den zweiten Pass (Hebel 2 in der Spec, wie bisher gedacht) spart davon nur die
+1,1 ms Uploads. Was den zweiten Pass wirklich entlasten würde, ist die Engine-Rechnung, die vom Auge
+nicht abhängt - vor allem das Bauen der Knochenpaletten je geskinnter Shape (die Engine rechnet sie je
+Pass neu, OBVR sieht nur den fertigen Upload). Nächster Schritt dafür: die Engine-Funktion finden, die
+die Palette je Shape baut (Ghidra/REA), ihre Zeit je Pass messen (ein Hook, eine Uhr - klein bis
+mittel), dann entscheiden, ob der zweite Pass das Ergebnis des ersten übernehmen kann (groß).

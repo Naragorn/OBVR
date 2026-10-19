@@ -14,6 +14,8 @@ bracketed within a second or two.
 
 Usage: perf-phases.py <run folder> mark1 mark2 [mark3 ...]
        each phase runs from one mark to the next.
+       --events a,b,c  appends a "mean / p95" column per named event type
+                       (any event of cpu_events.csv, e.g. draw_calls).
 """
 import csv
 import math
@@ -117,6 +119,22 @@ def compositor_cells(summary):
             "%.2f / %.2f" % (summary["submit_mean"], summary["submit_p95"]))
 
 
+def split_args(argv):
+    """The run folder, the marks, and the extra event types from the command
+    line: "--events a,b" anywhere after the run folder."""
+    events = []
+    rest = []
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--events" and i + 1 < len(argv):
+            events += [e for e in argv[i + 1].split(",") if e]
+            i += 2
+            continue
+        rest.append(argv[i])
+        i += 1
+    return rest[0] if rest else None, rest[1:], events
+
+
 def call_scale(max_log_call, max_scene, exact):
     """The factor from the log's scene calls to the capture's scene ids:
     one when the marks are exact, else the two counters' overall ratio."""
@@ -142,8 +160,10 @@ def stats(values):
 
 
 def main():
-    run = Path(sys.argv[1])
-    marks = sys.argv[2:]
+    run_arg, marks, extra_events = split_args(sys.argv[1:])
+    if run_arg is None:
+        raise SystemExit(__doc__)
+    run = Path(run_arg)
     captures = sorted(run.glob("OBVR-performance-*"))
     captures = [c for c in captures if c.is_dir()]
     if not captures:
@@ -197,8 +217,9 @@ def main():
         for r in csv.DictReader(open(capture / "compositor.csv", newline="")):
             compositor_by_present.setdefault(int(r["present_id"]), []).append(r)
 
-    print("| Phase | Frames | Frame ms mean | median | p95 | p99 | max | over 20 ms | frame_end_callback mean / p95 | poses_wait mean / p95 | present mean / p95 | scene_pass mean / p95 | compositor: dropped / mis-presented / reprojected | app gpu before submit ms mean / p95 | submit at vsync ms mean / p95 |")
-    print("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+    print("| Phase | Frames | Frame ms mean | median | p95 | p99 | max | over 20 ms | frame_end_callback mean / p95 | poses_wait mean / p95 | present mean / p95 | scene_pass mean / p95 | compositor: dropped / mis-presented / reprojected | app gpu before submit ms mean / p95 | submit at vsync ms mean / p95 |"
+          + "".join(" %s mean / p95 |" % e for e in extra_events))
+    print("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|" + "---:|" * len(extra_events))
     for a, b in zip(marks, marks[1:]):
         if by_tick:
             ids = presents_between_ticks(frames, ticks[a], ticks[b])
@@ -241,7 +262,8 @@ def main():
         print("| %s to %s | %d | %s | %s | %s | %s | %s | %d (%.1f%%) | %s | %s | %s | %s | %s | %s | %s |" % (
             a, b, len(ids), fm[0], fm[1], fm[2], fm[3], fm[4], over,
             100.0 * over / max(1, len(intervals)), two("frame_end_callback"), two("poses_wait"),
-            two("present"), two("scene_pass"), comp[0], comp[1], comp[2]))
+            two("present"), two("scene_pass"), comp[0], comp[1], comp[2])
+            + "".join(" %s |" % two(e) for e in extra_events))
 
 
 if __name__ == "__main__":
