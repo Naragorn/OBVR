@@ -11,6 +11,7 @@
 #include "game/MeleeHits.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
+#include "render/SceneRenderHook.h"
 #include "test/HandScript.h"
 #include "test/HandScriptConsole.h"
 #include "test/HandScriptPose.h"
@@ -174,9 +175,15 @@ void StepHandScriptFrame(float dt, bool inWorld, bool menuUp, bool mainMenuUp, c
 				QueueConsoleLinesAt(g_script, said->text, g_consoleFeed);
 			}
 		}
-		OBVR_LOG("HandScript: %s %s (t=%.2f s, line %u)",
+		// The tick is the clock a profiler capture shares with the log (its
+		// frames' start_tick, the same counter): tools/perf-phases.py cuts
+		// a capture by the marks with it, in any stereo mode. The scene call
+		// stays for reading the mark against the "Dual ... at scene call N"
+		// lines; under aer it is 0 (the scene render hook is not installed).
+		OBVR_LOG("HandScript: %s %s (t=%.2f s, line %u, scene call %u, tick %lld)",
 		         said->op == ScriptOp::Mark ? "mark" : "log", said->text.c_str(),
-		         static_cast<double>(g_clock), said->line);
+		         static_cast<double>(g_clock), said->line, render::CurrentSceneCall(),
+		         ReadPerformanceCounter());
 	}
 	for (const ScriptStep* key : events.keys) {
 		const UInt32 code = static_cast<UInt32>(key->values[0]);

@@ -962,6 +962,8 @@ if(Python3_Interpreter_FOUND)
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/AnalyzePerformanceTest.py)
 	add_test(NAME controller_action_assets
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/ControllerActionAssetsTest.py)
+	add_test(NAME perf_phases
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/PerfPhasesTest.py)
 endif()
 
 add_executable(scroll_menu_test ScrollMenuTest.cpp)

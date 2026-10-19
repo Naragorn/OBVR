@@ -164,3 +164,43 @@ sieben Läufen niemanden ins Bild, `player.placeatme <Basis-ID> N` tut es; die B
 stehen in den zlib-komprimierten NPC_-Records der esm (Jauffre 00023999, BrotherPiner
 000223AD, PriorMaborel 000223AB, Eronor 000223AF, ImperialLegionSoldier 0018B118).
 
+
+## Gemessen 2026-10-19: drei Klingen in der Gefängniszelle, Dual gegen aer (Harness, headless, 75 Hz)
+
+Anlass: Nadi merkt den Drop im Start-Dungeon, "sobald die Truppe aus 3 Leuten vor mir steht".
+Szenarien `tools/hand-scripts/perf-dungeon-dual.txt` und `perf-dungeon-aer.txt`: `coc
+ImperialDungeon01` (die Zelle, in der das Spiel beginnt), 30 s leer, dann Baurus, Glenroy und
+Captain Renault (`player.placeatme 00023F2A / 00023F2B / 0002349F`), die zum Spieler laufen; 8 s
+später `tai`, damit sie stehen bleiben (im ersten Lauf mit KI wanderten sie, 27 bis 72 geskinnte
+Draws je Pass). Danach stabil: 60 geskinnte Draws je Pass (20 je Klinge in Rüstung, ein Mönch der
+Halle hatte etwa 10), 532 Draws je Pass gegen 240 leer.
+
+| Phase, je 15 bis 30 s stehend | Dual: Frame-Mittel | über 20 ms | Leerlauf (poses_wait) | scene_pass je Auge | aer: Frame-Mittel | über 20 ms | Leerlauf |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Zelle leer | 13,40 ms | 0,5 % | 9,5 ms | 1,02 ms | 14,99 ms | 12,3 % | 13,2 ms (p95 21,2) |
+| drei Klingen kommen (8 s) | 14,03 ms | 5,3 % | 2,9 ms | 4,43 ms | 13,44 ms | 0,7 % | 7,5 ms |
+| drei Klingen stehen | 13,33 bis 13,36 ms | 0,0 % | 2,6 ms | 4,29 bis 4,30 ms | 13,42 bis 13,47 ms | 0,6 bis 0,9 % | 8,0 ms |
+| SteamVR, ganzer Lauf | reprojiziert 5,6 % (3,1 % mit KI) | | | | 5,1 % (13,0 % im ersten aer-Lauf) | | |
+
+Befund: drei Klingen kosten 3,3 ms je Augen-Pass, also 1,1 ms je Person und Auge - fast das
+Doppelte eines Mönchs (0,6 ms), die Rüstung hat doppelt so viele Draws. Unter Dual Pass sind das
+6,6 ms je Frame; auf diesem Rechner bei 75 Hz (13,3 ms) passt es noch, der Leerlauf fällt von 9,5
+auf 2,6 ms, und nur in den Sekunden, in denen die drei herankommen, fallen 5 % der Frames auf den
+nächsten Vsync. Bei 90 Hz (11,1 ms) wäre der Leerlauf 0,4 ms, bei 120 Hz weg - dort reicht die
+Truppe allein. aer gibt dem Frame 5,4 ms Leerlauf zurück (8,0 statt 2,6 ms, den ganzen zweiten Pass
+samt Nebenkosten), verliert aber trotzdem mehr Frames als Dual (0,6 bis 0,9 % gegen 0,0 %, und in
+der leeren Zelle 12,3 % mit poses_wait-Spitzen von 21 ms - der Compositor hält den Frame eine
+Periode zurück; Ursache offen, im ersten aer-Lauf stand der ganze Lauf bei 13 % Reprojektion). Für
+Nadis Drop am Beyond (75 Hz) reicht die CPU-Seite dieser Szene nicht als Erklärung: die echte
+Tutorial-Szene hat fünf Leute (Kaiser, drei Klingen, Valen Dreth) und läuft in Nadis Auflösung,
+GPU ungemessen - eine Capture aus Nadis eigener Session (`[Performance] Enabled=1`, in der Zelle)
+ist der nächste Schritt.
+
+Werkzeug: die Mark-Zeile des Hand-Skripts trägt seit diesem Tag den Szenenaufruf und den
+QPC-Tick (`HandScript: mark people (t=80.02 s, line 48, scene call 5791, tick 159837439985)`);
+`tools/perf-phases.py` schneidet die Capture damit exakt und in jedem Stereo-Modus (vorher nur über
+die "Dual draws at scene call"-Herzschlagzeilen, die es unter aer nicht gibt; Test
+`tests/PerfPhasesTest.py`). Unter aer wird der Szenen-Render-Hook nicht installiert
+(camera/CameraHook.cpp, nur für Stereo=dual), die Capture hat dort keine `scene_pass`-Spannen und
+die Frames stehen auf Modus `unknown` - vergleichbar sind Frame-Abstand, Leerlauf und die
+SteamVR-Summe.

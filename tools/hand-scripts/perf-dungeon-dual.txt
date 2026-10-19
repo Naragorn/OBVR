@@ -1,0 +1,65 @@
+# A performance capture in the new game's prison (ImperialDungeon01) with
+# the three Blades of the opening in view, under the dual pass. Nadi,
+# 2026-10-19: "wenn ich im vanilla dungeon teste dann merke ich auch den
+# drop sobald die truppe aus 3 leuten vor mir steht" - the hall measured
+# seven monks at 0.6 ms a person and eye (perf-people-hall.txt); this is
+# the tester's own scene, three people in armour, in the cell the game
+# starts in. Two phases, each watched standing still: the prison empty for
+# 30 s, then Baurus, Glenroy and Captain Renault (copies of their base forms
+# by player.placeatme: 00023F2A, 00023F2B, 0002349F) for 60 s. The player is
+# held in place (tcl and player.setrestrained); the auto vanity camera is
+# held off by OBVR itself since 2026-10-18. The three walk up to the player
+# and drift in and out of view (the first run, AI on: 27 to 72 skinned draws
+# a pass), so their AI is switched off 8 s after they are placed (tai) and
+# they stand where they are, two or three in the view, for the rest - the
+# same picture for the dual and the aer run. The profiler is armed with the
+# game and starts 60 s later; tools/perf-phases.py cuts the capture by the
+# marks, which carry their scene call since 2026-10-19 (no dual heartbeat
+# needed, so the same cut works for perf-dungeon-aer.txt).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/perf-dungeon-dual.txt --run-timeout 420 --headless
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Render Stereo=dual
+ini Performance Enabled=1
+ini Performance GpuTiming=0
+ini Performance StartAfterSeconds=60
+ini Performance CaptureSeconds=95
+ini Performance MaxRecords=262144
+console-at placed coc ImperialDungeon01
+console-at prison tcl
+console-at prison player.setrestrained 1
+console-at prison SetNumericINISetting "fVanityModeAutoDelay:Camera" 100000
+console-at people player.placeatme 00023F2A 1
+console-at people player.placeatme 00023F2B 1
+console-at people player.placeatme 0002349F 1
+console-at people-placed tai
+
+expect HandScript: finished
+expect Performance: capture armed, it starts in 60 seconds
+expect Performance: capture 1 started
+expect Performance: export
+reject menu Container
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 22
+mark placed
+wait 16
+mark prison
+wait 30
+mark empty-watched
+mark people
+wait 8
+mark people-placed
+wait 15
+mark people-15
+wait 15
+mark people-30
+wait 15
+mark people-45
+wait 15
+mark people-watched
+wait 45
+mark done
