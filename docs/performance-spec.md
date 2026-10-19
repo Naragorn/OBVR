@@ -85,7 +85,7 @@ shares hold, the absolute numbers are about 2.5 times the engine's)
   runs at 13.35 ms with 0.1 % over 20 ms, scene_pass 3.5 ms a pass
   (perf-jauffre.txt, 16:53).
 
-## 2. The three levers
+## 2. The levers
 
 1. **Alternate eye rendering** (`Render.Stereo=aer`, exists). Each frame
    renders one eye; the other eye shows its last frame reprojected. Halves
@@ -183,6 +183,59 @@ shares hold, the absolute numbers are about 2.5 times the engine's)
    constant-upload path makes the engine's palette uploads dearer than on
    native D3D9 (the tester plays on Windows, where OBVR recommends DXVK too)
    - a capture on Windows with and without DXVK, medium.
+4. **The automatic aer fallback, per frame** (proposed 2026-10-19 evening,
+   Nadi: "ja das kann so in die spec"). Where the people are, there is no
+   lever on OBVR's side that keeps the dual pass under budget: the limits,
+   linearly from the measured 0.43 ms a person and pass (two passes, the
+   empty dungeon pass 0.72 ms, about 1.7 ms of frame outside the passes;
+   heavier NPCs than the Blades may cost more), are about 11 people at 75 Hz,
+   9 at 90, 6 at 120 in the dungeon, and 7 / 5 / 1 to 2 in Jauffre's house.
+   The stream lever (2) lifts them by about 15 %; aer halves the people's
+   cost a frame and lifts them to about 20 at 90 Hz. Since aer is a fallback
+   by Nadi's word, the fitting form is a fallback by the frame: dual while
+   the frame fits the headset's period, aer as soon as it does not, with a
+   hysteresis (a few frames over budget to switch, many under it to switch
+   back) so it does not flicker, and a log line and an HUD status word so a
+   tester knows which mode he is in. Cost: medium. Both paths exist, but the
+   scene render hook is installed for `dual` only (camera/CameraHook.cpp) and
+   the alternation state lives in the aer path - both would have to be
+   installable and switchable at runtime; the budget comes from the frame
+   time OBVR already measures for the capture. Risk: whether the switch
+   itself is felt in the headset (one eye's rate halves) - unmeasurable, only
+   feelable. Test: the five-people scenario with a forced budget that makes
+   the switch happen, counts of switches, and the capture's long-frame share
+   before and after.
+5. **Compute once, draw for both eyes - the three gradations** (Nadi's
+   question of 2026-10-19 evening: "die Berechnungen nur pro Auge zu machen
+   und dann zu übertragen - eig die beste Lösung?"). What a pass does for a
+   person splits into work that does not depend on the eye and work that is
+   the drawing itself:
+   - *Transfer the eye-independent results* (lever 2 generalised). Done
+     already: the culling (`Culling sync` replays the first eye's visible
+     set) and the bone rows (the bone lock rebases the first pass's rows by
+     the eye delta - the engine still computes them, OBVR only replaces the
+     upload; the matrices are read precomputed at `skin+0x20`, so the
+     per-pass cost is the upload, not the build). Not done: the stream
+     packing (26 to 30 % of a pass, blocked by the 96 KB rings, lever 2).
+     What is left after that - shape traversal, shader and state setup, the
+     constant map, the draw calls (the engine's 46 % and DXVK's 14 % of a
+     pass) - is submission, which D3D9 needs per eye. Ceiling of this
+     gradation: roughly a third of the second pass, a sixth of the people's
+     cost a frame. Measured shares; the ceiling is derived.
+   - *Single-pass stereo* (compute and submit once, the GPU draws both
+     eyes): instancing with an eye index per instance, every vertex shader
+     of the shader packages patched in bytecode to pick the eye's matrix and
+     shift to its half of a shared target, every vertex declaration and
+     every draw given an instance stream, a clip plane per eye, and every
+     special pass (shadows, reflections, the HDR chain, the 2D pass)
+     handled on its own. This is the best solution in principle and the one
+     modern engines take; in Oblivion's D3D9 renderer it is a rewrite of
+     the render path: huge, a project of its own (the OBNG idea), not a
+     lever for OBVR. Unverified beyond the shape of it: no engine code read.
+   - *aer*: compute once a frame, show the other eye's last render
+     reprojected. The only gradation that halves everything, at the price
+     of each eye updating every other frame. Lever 4 makes it a fallback by
+     the frame.
 
 ## 3. Open
 
