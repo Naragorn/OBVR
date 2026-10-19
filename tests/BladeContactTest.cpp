@@ -1062,6 +1062,15 @@ void TestShape() {
 	Check(!v.held && v.enteredBody && rest.passed.Has(11), "swung on: through them, passed");
 }
 
+void TestBodies() {
+	std::printf("the actors taken as bodies\n");
+	Check(ActorMayBeABody(0x1000, 0x2000, 0), "another actor, on foot: a body");
+	Check(ActorMayBeABody(0x1000, 0x2000, 0x3000), "another actor, mounted: a body");
+	Check(!ActorMayBeABody(0x2000, 0x2000, 0), "the player: not");
+	Check(!ActorMayBeABody(0x3000, 0x2000, 0x3000), "the horse the player rides: not");
+	Check(!ActorMayBeABody(0, 0x2000, 0x3000), "no actor: not");
+}
+
 void TestDiscs() {
 	std::printf("A disc: the geometry\n");
 	BladeDiscs discs;
@@ -1249,6 +1258,7 @@ int main() {
 	TestHitStop();
 	TestSettings();
 	TestShape();
+	TestBodies();
 	TestDiscs();
 	TestStoppers();
 	TestFeel();

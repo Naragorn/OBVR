@@ -13,6 +13,7 @@
 #include "game/MeleeHit.h"
 #include "game/PlayerAim.h"
 #include "game/PlayerStagger.h"
+#include "game/PlayerTeleport.h"
 #include "game/ShoveLogic.h"
 
 namespace obvr::game {
@@ -757,6 +758,11 @@ void* LivingActorAt(const NiPoint3& point, float factor, float padUnits, NiPoint
 	if (player == nullptr) {
 		return nullptr;
 	}
+	// Never the horse the player rides (BladeContactLogic.h, ActorMayBeABody):
+	// the hands sit inside it, and the shove knocked it down - "4101A318
+	// knocked down ... taken as a hit, in the face" on the horse the detail
+	// line named (horse-ride.txt, 2026-10-19 12:50).
+	const UInt32 mount = PlayerMountedHorse();
 	auto* const manager = reinterpret_cast<void*>(addr::kActorProcessManager);
 	auto* node = static_cast<ListNode*>(
 		reinterpret_cast<ThisPtrArgFn>(addr::kActorListByLevel)(manager, nullptr, 0));
@@ -768,8 +774,8 @@ void* LivingActorAt(const NiPoint3& point, float factor, float padUnits, NiPoint
 		}
 		void* const actor = node->data;
 		node = node->next;
-		if (actor == nullptr || actor == player || !LooksLikeObject(actor) || !IsActorObject(actor) ||
-		    ActorIsDead(actor)) {
+		if (!ActorMayBeABody(reinterpret_cast<UInt32>(actor), reinterpret_cast<UInt32>(player), mount) ||
+		    !LooksLikeObject(actor) || !IsActorObject(actor) || ActorIsDead(actor)) {
 			continue;
 		}
 		NiBound bound;

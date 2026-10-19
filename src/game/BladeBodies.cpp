@@ -6,6 +6,7 @@
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
 #include "game/HandContactLogic.h"
+#include "game/PlayerTeleport.h"
 #include "game/ShieldShape.h"
 
 namespace obvr::game {
@@ -33,8 +34,8 @@ using NodeFn = void*(__fastcall*)(void* self, void* edx);
 using DeadFn = UInt8(__fastcall*)(void* self, void* edx, UInt32 arg);
 using GetObjectFn = void*(__fastcall*)(void* self, void* edx, const char* name);
 
-bool IsLivingActor(UInt32 actor, UInt32 player) {
-	if (actor == 0 || actor == player || !LooksLikeObject(actor)) {
+bool IsLivingActor(UInt32 actor, UInt32 player, UInt32 mount) {
+	if (!ActorMayBeABody(actor, player, mount) || !LooksLikeObject(actor)) {
 		return false;
 	}
 	const UInt32 vtable = Read(actor);
@@ -191,6 +192,7 @@ UInt32 CollectBladeBodies(const NiPoint3& around, float withinUnits, BladeBodies
 	if (!LooksLikeObject(player)) {
 		return 0;
 	}
+	const UInt32 mount = PlayerMountedHorse();
 	auto* const manager = reinterpret_cast<void*>(addr::kActorProcessManager);
 	auto* node = static_cast<ListNode*>(reinterpret_cast<ListFn>(addr::kActorListByLevel)(manager, nullptr, 0));
 	UInt32 people = 0;
@@ -200,7 +202,7 @@ UInt32 CollectBladeBodies(const NiPoint3& around, float withinUnits, BladeBodies
 		}
 		const UInt32 actor = reinterpret_cast<UInt32>(node->data);
 		node = node->next;
-		if (!IsLivingActor(actor, player)) {
+		if (!IsLivingActor(actor, player, mount)) {
 			continue;
 		}
 		const UInt32 getNode = Slot(actor, addr::kActorVtableGetNiNodeOffset);
@@ -305,7 +307,7 @@ void ForgetBladeBodies() {
 bool ReadBlockBlow(UInt32 attacker, BlockBlow& out) {
 	out = BlockBlow{};
 	const UInt32 player = Read(addr::kPlayerPointer);
-	if (!IsLivingActor(attacker, player)) {
+	if (!IsLivingActor(attacker, player, PlayerMountedHorse())) {
 		return false;
 	}
 	const UInt32 getNode = Slot(attacker, addr::kActorVtableGetNiNodeOffset);

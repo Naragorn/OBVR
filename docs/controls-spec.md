@@ -3418,6 +3418,27 @@ log.
   either, and four runs with the AI on pressed A at a horse that had wandered off. Next:
   `tai` at the "mounted" mark, then the head turns (small, one run): the probe's caller
   names the steering, and no turn at all says the AI does it.
+  **Found and fixed 2026-10-19 afternoon (runs 13-20):** not the engine. The per-frame
+  log of the headings showed the horse's heading and the player's rotZ set to the same
+  new value in the same frame, in jumps of 8 to 34 degrees, the horse's place with them
+  (up to 110 units) - with the AI off after the mount, with nothing through the actors'
+  turn-by (the probe saw no call), with the stick still. With every piece of hand
+  physics off the jumps were gone and the camera stood within 7 units through the head
+  turns; the bisection: the hands' stop at bodies alone, the stops at walls alone and
+  the mount taken out of the bodies' list did not take them away, the shove alone did.
+  The log named it: "Shove: the right hand at 6.5 m/s towards 4101A318 - hard",
+  "4101A318 knocked down ..., taken as a hit, in the face" - the horse the riding line
+  named. The rider's hands sit inside the horse; the shove's search for the living
+  actor at the hand (game::LivingActorAt) found the horse, knocked it down as a hit,
+  and the engine set the horse and its rider down anew - the camera on the horse's
+  spine swinging with it, the hands moving fast with the camera, the next shove. Fix:
+  the horse the player rides is never a body for the hands, the blade, the strikes, the
+  grapple, the lead or the shove (`ActorMayBeABody`, BladeContactLogic.h, its unit
+  flows; game/BladeBodies.cpp and game/MeleeHits.cpp read PlayerMountedHorse). Proof:
+  `horse-ride-turnprobe.txt` with all hand physics on - no jump, no shove line, the
+  camera within 7 units of its place at every mark and second through the head turns.
+  What the view still does on a horse: ride the engine's camera on the horse's spine
+  through its walk, as vanilla does. Headset: open.
 - *the vampire feed*: not reproduced (a sleeping victim and vampirism are a scenario of their
   own). What the data says: the feed's idles are third-person animations only
   (`vampirefeedbedleft.kf`, `...right`, `...bedroll_crawl`, `...bedroll_side` under
