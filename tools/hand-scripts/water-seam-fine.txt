@@ -1,0 +1,93 @@
+# Water reflections from the lake under the Talos Bridge (cow Tamriel 1 15) with the
+# stable capture turned with the head ([Render] WaterCaptureFollowsHead=1, the
+# default since 2026-10-19): water-seam.txt with the head turned round in steps
+# of 15 degrees instead of 45, a picture at each - whether the seam, the flat
+# colour and the streaks stay away at every heading between the coarse marks.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/water-seam-fine.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+console-at ready cow Tamriel 1 15
+
+expect HandScript: finished
+expect a world frame while the game loads
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 20
+head pitch -15
+wait 2
+mark yaw-0
+head yaw 15
+wait 2
+mark yaw-15
+head yaw 30
+wait 2
+mark yaw-30
+head yaw 45
+wait 2
+mark yaw-45
+head yaw 60
+wait 2
+mark yaw-60
+head yaw 75
+wait 2
+mark yaw-75
+head yaw 90
+wait 2
+mark yaw-90
+head yaw 105
+wait 2
+mark yaw-105
+head yaw 120
+wait 2
+mark yaw-120
+head yaw 135
+wait 2
+mark yaw-135
+head yaw 150
+wait 2
+mark yaw-150
+head yaw 165
+wait 2
+mark yaw-165
+head yaw 180
+wait 2
+mark yaw-180
+head yaw 195
+wait 2
+mark yaw-195
+head yaw 210
+wait 2
+mark yaw-210
+head yaw 225
+wait 2
+mark yaw-225
+head yaw 240
+wait 2
+mark yaw-240
+head yaw 255
+wait 2
+mark yaw-255
+head yaw 270
+wait 2
+mark yaw-270
+head yaw 285
+wait 2
+mark yaw-285
+head yaw 300
+wait 2
+mark yaw-300
+head yaw 315
+wait 2
+mark yaw-315
+head yaw 330
+wait 2
+mark yaw-330
+head yaw 345
+wait 2
+mark yaw-345
+head yaw 0
+wait 2
+mark yaw-back

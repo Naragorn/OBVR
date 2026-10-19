@@ -1,0 +1,61 @@
+# Water reflections at the Talos Bridge from another place: the cell south of the bridge's one (cow Tamriel 1 14), with the
+# stable capture turned with the head ([Render] WaterCaptureFollowsHead=1) -
+# water-seam.txt's turns in steps of 30 degrees from where cow puts the player
+# in that cell, whether the seam, the flat colour and the streaks stay away
+# from a second and third viewpoint on the lake.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/water-seam-south.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+console-at ready cow Tamriel 1 14
+
+expect HandScript: finished
+expect a world frame while the game loads
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 20
+head pitch -15
+wait 2
+mark yaw-0
+head yaw 30
+wait 2
+mark yaw-30
+head yaw 60
+wait 2
+mark yaw-60
+head yaw 90
+wait 2
+mark yaw-90
+head yaw 120
+wait 2
+mark yaw-120
+head yaw 150
+wait 2
+mark yaw-150
+head yaw 180
+wait 2
+mark yaw-180
+head yaw 210
+wait 2
+mark yaw-210
+head yaw 240
+wait 2
+mark yaw-240
+head yaw 270
+wait 2
+mark yaw-270
+head yaw 300
+wait 2
+mark yaw-300
+head yaw 330
+wait 2
+mark yaw-330
+head pitch -45
+wait 2
+mark down-345
+head yaw 0
+head pitch -15
+wait 2
+mark yaw-back
