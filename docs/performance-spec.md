@@ -24,6 +24,14 @@ dungeon "sobald die Truppe aus 3 Leuten vor mir steht".
   frame still fits (idle 9.5 ms empty, 2.6 ms with them, 0 % dropped while
   they stand, 5 % while they walk up); at 90 Hz the idle would be 0.4 ms, at
   120 Hz the three alone are over the budget.
+- **Nadi's drop reproduced** (2026-10-19, the same cell with the opening's
+  five: the Emperor, three Blades, Valen Dreth): 6.6 ms a pass for the five
+  (1.3 ms a person and eye, 118 skinned draws), two passes 15.2 ms - 2 ms
+  over the 75 Hz period, so every frame slides to the next vsync: 26.7 ms,
+  100 % of frames, SteamVR reprojecting a third. Under aer the same scene
+  runs at 13.4 ms with 7 ms of idle and under 1 % dropped (4.4 % reprojected
+  over the run). A frame that misses its period by a little loses the whole
+  period: the dual pass has a cliff, not a slope.
 - At 120 Hz (8.3 ms a frame) two or three people reach the budget. A Quest
   user over Virtual Desktop at 72 or 90 Hz has more room, not much.
 - Interiors can be over budget on their own: Weynon Priory's house sits at
@@ -49,6 +57,8 @@ dungeon "sobald die Truppe aus 3 Leuten vor mir steht".
    holding the frame a period - cause open; one aer run stood at 13 %
    reprojection over its whole length, the next at 5.1 %). The headroom is
    real, the frame pacing under aer is not settled, and the feel is untested.
+   **With the opening's five** (same day): dual at 26.7 ms every frame, aer
+   at 13.4 ms - aer is the one lever that holds 75 Hz in that scene today.
    Under aer the capture has no `scene_pass` spans: the scene render hook is
    installed for `dual` only (camera/CameraHook.cpp).
 2. **The second pass spared what the first already did.** The engine's
@@ -74,17 +84,17 @@ dungeon "sobald die Truppe aus 3 Leuten vor mir steht".
 
 ## 3. Open
 
-- Nadi's drop at the three Blades (the Beyond, 75 Hz) is not explained by
-  this machine's capture of the scene: the harness cell with three Blades
-  fits the 75 Hz frame on the CPU side (2026-10-19). What differs: the real
-  opening has five people (the Emperor, three Blades, Valen Dreth), Nadi's
-  render resolution, and the GPU, which the capture cannot time under DXVK.
-  Next: a capture from Nadi's own session in that cell (`[Performance]
-  Enabled=1`, `StartAfterSeconds` so that it reaches the scene), read with
-  `tools/perf-phases.py` by hand marks or with `analyze-performance.py`,
-  and SteamVR's frame timing beside it for the GPU side.
+- Nadi's drop at the opening: reproduced with the five people of the scene
+  (section 1), CPU-side, the dual pass 2 ms over the 75 Hz period and every
+  frame on the next vsync. What to do about it is the choice between the
+  levers: aer holds the scene today (its pacing in cheap scenes open, below,
+  its feel untested since the dual pass became the default); lever 2 would
+  have to take about 2 ms a frame off the second pass to get this scene
+  under the period, out of its 6.6 ms people share - and more at 90 Hz.
 - aer's frame pacing: more dropped frames than dual at less CPU per frame
-  (2026-10-19; poses_wait spikes of 21 ms in the empty cell). Cause open.
+  (2026-10-19; poses_wait spikes of 21 ms in the empty cell, 12 to 14 % of
+  frames in three runs, and under 1 % once people fill the frame - the
+  spikes come when the frame is cheap, not when it is full). Cause open.
   Whether it is the submit of a reprojected eye, the compositor's pacing of
   a frame that arrives early, or the harness's headless gamescope is
   unmeasured; a desktop run and a run with `MonitorVsync` toggled would

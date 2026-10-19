@@ -204,3 +204,24 @@ die "Dual draws at scene call"-Herzschlagzeilen, die es unter aer nicht gibt; Te
 (camera/CameraHook.cpp, nur für Stereo=dual), die Capture hat dort keine `scene_pass`-Spannen und
 die Frames stehen auf Modus `unknown` - vergleichbar sind Frame-Abstand, Leerlauf und die
 SteamVR-Summe.
+
+### Nachtrag: die ganze Eröffnung, fünf Leute (2026-10-19, headless, 75 Hz)
+
+Nadis Wunsch: die echte Szene im Harness. `perf-dungeon-five.txt` und `perf-dungeon-five-aer.txt`:
+dieselbe Zelle, dazu Kaiser Uriel Septim (00023F2E) und Valen Dreth (00025200) - fünf Leute,
+118 geskinnte Draws je Pass (Kaiser im Mantel und Valen zusammen 58), 748 Draws je Pass gegen 240 leer.
+
+| Phase | Dual: Frame-Mittel | über 20 ms | Leerlauf | scene_pass je Auge | aer: Frame-Mittel | über 20 ms | Leerlauf |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Zelle leer | 13,38 ms | 0,4 % | 9,4 ms | 1,04 ms | 15,26 ms | 14,4 % | 13,5 ms (p95 21,2) |
+| fünf kommen (8 s) | 26,01 ms | 94,8 % | 8,5 ms | 7,39 ms | 13,35 ms | 0,0 % | 5,3 ms |
+| fünf stehen (60 s) | 26,71 bis 26,90 ms | 100 % | 9,1 ms | 7,60 bis 7,67 ms | 13,36 bis 13,48 ms | 0,2 bis 0,9 % | 7,0 bis 7,1 ms |
+| SteamVR, ganzer Lauf | reprojiziert 32,3 % | | | | 4,4 % | | |
+
+Befund: das ist Nadis Drop. Fünf Leute kosten 6,6 ms je Augen-Pass (1,3 ms je Person und Auge),
+zwei Pässe sind 15,2 ms - 2 ms über der 75-Hz-Periode, und jeder Frame rutscht auf die nächste:
+26,7 ms, 100 % der Frames, ein Drittel der Frames reprojiziert. Der "Leerlauf" von 9 ms ist dabei
+das Warten auf den übernächsten Vsync, keine Luft. Unter aer läuft dieselbe Szene bei 13,4 ms mit
+7 ms Luft und unter 1 % Drops; nur die leere Zelle zeigt wieder die aer-Aussetzer (14,4 %,
+poses_wait-Spitzen 21 ms), wie in beiden Drei-Klingen-Läufen - sie treten auf, wenn der Frame
+billig ist, nicht wenn er voll ist. Ursache offen, in der Spec als eigener Punkt.

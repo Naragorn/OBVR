@@ -1,0 +1,58 @@
+# The same five people under alternate eye rendering (Render.Stereo=aer),
+# lever 1 of docs/performance-spec.md, against perf-dungeon-five.txt: the three Blades of
+# perf-dungeon-dual.txt plus Emperor Uriel Septim (00023F2E) and Valen Dreth
+# (00025200) - the five people Nadi has before him at the game's start when
+# he feels the drop (2026-10-19, the Beyond at 75 Hz), where the three-Blade
+# run still fit the 75 Hz frame on this machine (idle 2.6 ms). Same shape:
+# the cell empty for 30 s, the five placed at the restrained player, their
+# AI off 8 s later so that they stand, the capture armed with the game and
+# cut by the marks' ticks with tools/perf-phases.py.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/perf-dungeon-five-aer.txt --run-timeout 420 --headless
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Render Stereo=aer
+ini Performance Enabled=1
+ini Performance GpuTiming=0
+ini Performance StartAfterSeconds=60
+ini Performance CaptureSeconds=95
+ini Performance MaxRecords=262144
+console-at placed coc ImperialDungeon01
+console-at prison tcl
+console-at prison player.setrestrained 1
+console-at prison SetNumericINISetting "fVanityModeAutoDelay:Camera" 100000
+console-at people player.placeatme 00023F2A 1
+console-at people player.placeatme 00023F2B 1
+console-at people player.placeatme 0002349F 1
+console-at people player.placeatme 00023F2E 1
+console-at people player.placeatme 00025200 1
+console-at people-placed tai
+
+expect HandScript: finished
+expect Performance: capture armed, it starts in 60 seconds
+expect Performance: capture 1 started
+expect Performance: export
+reject menu Container
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 22
+mark placed
+wait 16
+mark prison
+wait 30
+mark empty-watched
+mark people
+wait 8
+mark people-placed
+wait 15
+mark people-15
+wait 15
+mark people-30
+wait 15
+mark people-45
+wait 15
+mark people-watched
+wait 45
+mark done
