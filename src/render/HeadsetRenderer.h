@@ -258,6 +258,19 @@ private:
 	bool m_poseLockReported = false;
 	bool m_poseLockEverReported = false;
 
+	// The imminent vsync at the moment WaitGetPoses last returned, in OBVR's
+	// ticks: that moment plus the running start the compositor reported for
+	// the last finished frame (render/SubmitPacing.h); vsyncKnown is false
+	// when the compositor gave no usable number.
+	UInt64 m_vsyncTick = 0;
+	bool m_vsyncKnown = false;
+	UInt32 m_submitHolds = 0;
+	UInt32 m_pacingReports = 0;
+	bool m_submitHoldReported = false;
+	// Waits, when the frame is early, until the vsync has passed; before the
+	// first eye of a pair is submitted.
+	void HoldSubmitPastVsync();
+
 	// Whether BeginFrame has waited on the compositor and not yet been paid.
 	// Submit is only meaningful after WaitGetPoses, and Present runs on frames
 	// the camera hook never saw.

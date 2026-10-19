@@ -81,9 +81,11 @@ struct Profiler::WriterJob {
 	CpuEvent* events = nullptr;
 	FrameRecord* frames = nullptr;
 	GpuSample* gpuSamples = nullptr;
+	CompositorTimingRecord* compositorTimings = nullptr;
 	UInt32 eventCount = 0;
 	UInt32 frameCount = 0;
 	UInt32 gpuCount = 0;
+	UInt32 compositorCount = 0;
 	SessionInfo session;
 	ProfileSettings settings;
 	UInt32 gpuPoolFull = 0;
@@ -136,19 +138,26 @@ void Profiler::StartCapture() {
 	m_events = new (std::nothrow) CpuEvent[m_settings.maxRecords];
 	m_frames = new (std::nothrow) FrameRecord[m_settings.maxRecords];
 	m_gpuSamples = new (std::nothrow) GpuSample[m_settings.maxRecords];
-	if (m_events == nullptr || m_frames == nullptr || m_gpuSamples == nullptr) {
+	m_compositorTimings =
+	    new (std::nothrow) CompositorTimingRecord[CompositorTimingCapacity(m_settings.maxRecords)];
+	if (m_events == nullptr || m_frames == nullptr || m_gpuSamples == nullptr ||
+	    m_compositorTimings == nullptr) {
 		delete[] m_events;
 		delete[] m_frames;
 		delete[] m_gpuSamples;
+		delete[] m_compositorTimings;
 		m_events = nullptr;
 		m_frames = nullptr;
 		m_gpuSamples = nullptr;
+		m_compositorTimings = nullptr;
 		OBVR_LOG("Performance: capture refused, memory allocation failed");
 		return;
 	}
 	m_sessionSequence = g_nextSession++;
 	m_generation++;
-	m_eventCount = m_frameCount = m_gpuCount = 0;
+	m_eventCount = m_frameCount = m_gpuCount = m_compositorCount = 0;
+	m_lastCompositorFrameIndex = 0;
+	m_compositorSeen = false;
 	m_gpuPoolFull = m_gpuPending = m_gpuErrors = 0;
 	m_nextEventId = m_nextSampleId = 1;
 	m_previousPresentTick = 0;
@@ -165,8 +174,8 @@ void Profiler::StartCapture() {
 	m_capturing = m_qpcFrequency != 0;
 	if (!m_capturing) {
 		OBVR_LOG("Performance: capture refused, QPC frequency is zero");
-		delete[] m_events; delete[] m_frames; delete[] m_gpuSamples;
-		m_events = nullptr; m_frames = nullptr; m_gpuSamples = nullptr;
+		delete[] m_events; delete[] m_frames; delete[] m_gpuSamples; delete[] m_compositorTimings;
+		m_events = nullptr; m_frames = nullptr; m_gpuSamples = nullptr; m_compositorTimings = nullptr;
 		return;
 	}
 	OBVR_LOG("Performance: capture %llu started for %u seconds (%u records)",
@@ -186,14 +195,16 @@ void Profiler::StopCapture(const char* reason) {
 	WriterJob* job = new (std::nothrow) WriterJob{};
 	if (job == nullptr) {
 		OBVR_LOG("Performance: capture stopped (%s), writer allocation failed", reason);
-		delete[] m_events; delete[] m_frames; delete[] m_gpuSamples;
-		m_events = nullptr; m_frames = nullptr; m_gpuSamples = nullptr;
+		delete[] m_events; delete[] m_frames; delete[] m_gpuSamples; delete[] m_compositorTimings;
+		m_events = nullptr; m_frames = nullptr; m_gpuSamples = nullptr; m_compositorTimings = nullptr;
 		m_capturing = false;
 		m_stopping = false;
 		return;
 	}
 	job->events = m_events; job->frames = m_frames; job->gpuSamples = m_gpuSamples;
+	job->compositorTimings = m_compositorTimings;
 	job->eventCount = m_eventCount; job->frameCount = m_frameCount; job->gpuCount = m_gpuCount;
+	job->compositorCount = m_compositorCount;
 	job->settings = m_settings;
 	job->gpuPoolFull = m_gpuPoolFull; job->gpuPending = m_gpuPending; job->gpuErrors = m_gpuErrors;
 	job->truncatedCapacity = m_truncated;
@@ -225,8 +236,9 @@ void Profiler::StopCapture(const char* reason) {
 		delete[] job->events;
 		delete[] job->frames;
 		delete[] job->gpuSamples;
+		delete[] job->compositorTimings;
 		delete job;
-		m_events = nullptr; m_frames = nullptr; m_gpuSamples = nullptr;
+		m_events = nullptr; m_frames = nullptr; m_gpuSamples = nullptr; m_compositorTimings = nullptr;
 		m_gpuQueries.Shutdown();
 		m_gpuDevice = nullptr;
 		m_gpuOpen = false;
@@ -236,7 +248,7 @@ void Profiler::StopCapture(const char* reason) {
 	}
 	CopyText(job->directory, sizeof(job->directory), sessionPath);
 	job->owner = this;
-	m_events = nullptr; m_frames = nullptr; m_gpuSamples = nullptr;
+	m_events = nullptr; m_frames = nullptr; m_gpuSamples = nullptr; m_compositorTimings = nullptr;
 	m_gpuQueries.Shutdown();
 	m_gpuDevice = nullptr;
 	m_gpuOpen = false;
@@ -251,6 +263,7 @@ void Profiler::StopCapture(const char* reason) {
 		delete[] job->events;
 		delete[] job->frames;
 		delete[] job->gpuSamples;
+		delete[] job->compositorTimings;
 		delete job;
 		m_writerBusy.store(false, std::memory_order_release);
 		return;
@@ -292,6 +305,21 @@ bool Profiler::AppendEvent(const CpuEvent& event) {
 	}
 	m_events[m_eventCount++] = event;
 	return true;
+}
+
+void Profiler::AddCompositorTiming(CompositorTimingRecord record) {
+	if (!m_capturing || m_compositorTimings == nullptr ||
+	    m_compositorCount >= CompositorTimingCapacity(m_settings.maxRecords)) {
+		return;
+	}
+	if (m_compositorSeen && record.frameIndex <= m_lastCompositorFrameIndex) {
+		return;  // read before, or older than one read before
+	}
+	m_compositorSeen = true;
+	m_lastCompositorFrameIndex = record.frameIndex;
+	record.presentId = m_presentId;
+	record.vrFrameId = m_vrFrameId;
+	m_compositorTimings[m_compositorCount++] = record;
 }
 
 bool Profiler::AppendFrame(const FrameRecord& frame) {
@@ -480,6 +508,7 @@ DWORD __stdcall Profiler::WriterThunk(void* parameter) {
 	delete[] job->events;
 	delete[] job->frames;
 	delete[] job->gpuSamples;
+	delete[] job->compositorTimings;
 	delete job;
 	if (owner != nullptr) owner->m_writerBusy.store(false, std::memory_order_release);
 	return 0;
@@ -554,6 +583,25 @@ void Profiler::WriteJob(WriterJob& job) {
 		exportOk = false;
 	}
 
+	if (OpenOutput(job.directory, "compositor.csv", path, sizeof(path), file)) {
+		bool ok = WriteText(file, kCompositorTimingCsvHeader);
+		char line[512] = {};
+		for (UInt32 i = 0; i < job.compositorCount; ++i) {
+			const int n = CompositorTimingCsvLine(line, sizeof(line) - 1, job.compositorTimings[i]);
+			if (n < 0) {
+				ok = false;
+				continue;
+			}
+			line[n] = '\n';
+			line[n + 1] = '\0';
+			ok = WriteText(file, line) && ok;
+		}
+		CloseOutput(file);
+		exportOk = CommitOutput(job.directory, "compositor.csv", path) && ok && exportOk;
+	} else {
+		exportOk = false;
+	}
+
 	if (OpenOutput(job.directory, "manifest.json", path, sizeof(path), file)) {
 		const char* status = exportOk ? (job.truncatedCapacity ? "truncated_capacity" : "complete") : "partial";
 		char text[1280] = {};
@@ -566,6 +614,7 @@ void Profiler::WriteJob(WriterJob& job) {
 		              "  \"event_count\":%u,\n  \"frame_count\":%u,\n"
 		              "  \"gpu_count\":%u,\n  \"gpu_pool_full\":%u,\n"
 		              "  \"gpu_pending\":%u,\n  \"gpu_errors\":%u,\n"
+		              "  \"compositor_count\":%u,\n"
 			              "  \"truncated_capacity\":%s,\n"
 			              "  \"status\":\"%s\",\n  \"stop_reason\":\"%s\",\n"
 			              "  \"runtime_measurement\":true\n}\n",
@@ -576,7 +625,7 @@ void Profiler::WriteJob(WriterJob& job) {
 		              static_cast<unsigned long long>(job.session.endTick),
 		              job.settings.captureSeconds, job.settings.maxRecords,
 		              job.settings.gpuTiming ? "true" : "false", job.eventCount, job.frameCount,
-		              job.gpuCount, job.gpuPoolFull, job.gpuPending, job.gpuErrors,
+		              job.gpuCount, job.gpuPoolFull, job.gpuPending, job.gpuErrors, job.compositorCount,
 		              job.truncatedCapacity ? "true" : "false", status, job.stopReason);
 		const bool ok = WriteText(file, text);
 		CloseOutput(file);

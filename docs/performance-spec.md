@@ -51,16 +51,19 @@ dungeon "sobald die Truppe aus 3 Leuten vor mir steht".
    `aer` against `dual`, and the capture with `StartAfterSeconds`.
    **Measured 2026-10-19** (the prison cell with three Blades, harness,
    75 Hz): aer gives the frame 5.4 ms of idle back (8.0 ms against dual's
-   2.6 ms - the whole second pass with its overheads) and still drops more
-   frames than dual (0.6 to 0.9 % against 0.0 % with the three standing;
-   12.3 % in the empty cell with poses_wait spikes of 21 ms, the compositor
-   holding the frame a period - cause open; one aer run stood at 13 %
-   reprojection over its whole length, the next at 5.1 %). The headroom is
-   real, the frame pacing under aer is not settled, and the feel is untested.
+   2.6 ms - the whole second pass with its overheads) and still dropped
+   more frames than dual (0.6 to 0.9 % against 0.0 % with the three
+   standing; 12 to 50 % in the empty cell with poses_wait spikes of 21 ms).
    **With the opening's five** (same day): dual at 26.7 ms every frame, aer
    at 13.4 ms - aer is the one lever that holds 75 Hz in that scene today.
-   Under aer the capture has no `scene_pass` spans: the scene render hook is
-   installed for `dual` only (camera/CameraHook.cpp).
+   **The empty-cell drops explained and fixed the same evening** (section
+   3, "aer's frame pacing"; `[Render] SubmitPastVsync`, default on): the
+   empty cell under aer now runs at 13.48 ms with 1.1 % of frames over
+   20 ms (was 14 to 50 %), 23 frames dropped by the compositor in 2226
+   (was 325 in 2005), the run's reprojection 3.5 % (was 5.6 to 13 %).
+   What stays open for aer is the feel in the headset. Under aer the
+   capture has no `scene_pass` spans: the scene render hook is installed
+   for `dual` only (camera/CameraHook.cpp).
 2. **The second pass spared what the first already did.** The engine's
    scene render repeats per eye the work that does not depend on the eye:
    skinning palettes (the same bones, the same pose), culling (OBVR already
@@ -94,11 +97,36 @@ dungeon "sobald die Truppe aus 3 Leuten vor mir steht".
 - aer's frame pacing: more dropped frames than dual at less CPU per frame
   (2026-10-19; poses_wait spikes of 21 ms in the empty cell, 12 to 14 % of
   frames in three runs, and under 1 % once people fill the frame - the
-  spikes come when the frame is cheap, not when it is full). Cause open.
-  Whether it is the submit of a reprojected eye, the compositor's pacing of
-  a frame that arrives early, or the harness's headless gamescope is
-  unmeasured; a desktop run and a run with `MonitorVsync` toggled would
-  split it.
+  spikes come when the frame is cheap, not when it is full).
+  **Found and fixed 2026-10-19 evening.** Not gamescope (a desktop run was
+  worse: 50 %, every other frame), not the monitor vsync (`MonitorVsync=1`
+  was worse too: 28 %). The compositor's own frame timing, read into the
+  capture as `compositor.csv` (built for this), showed it: SteamVR wakes
+  the game at "running start", 3.0 to 3.3 ms before a vsync; a cheap aer
+  frame (1.8 ms of work) was submitted 1 to 3 ms *before* that vsync,
+  which the compositor takes as a frame for the vsync just ahead (the
+  low-latency path), while a frame submitted after it is shown a vsync
+  later (the one-frame pipeline). A frame landing right at the vsync
+  flips between the two, and every flip is a mis-presented frame and a
+  dropped one (`numMisPresented` 1, `numDroppedFrames` 1, `numFramePresents`
+  2 on 325 of 2005 frames). With people in view the submit lands 6 ms
+  after the vsync, under dual 0.5 ms after it: both stable. The fix,
+  `render/SubmitPacing.h` with `[Render] SubmitPastVsync=1` (default):
+  a frame finished before the vsync is held until half a millisecond after
+  it - the vsync being the moment WaitGetPoses returned plus the running
+  start the compositor reported for the last finished frame. Measured:
+  the empty cell under aer at 1.1 % over 20 ms (from 14 to 50 %), 23
+  compositor drops in 2226 frames (from 325), the hold 2.6 ms in cheap
+  frames and nothing with people (`submit_hold` in the capture). Two
+  sources for the vsync were tried and discarded first: the frame record
+  in flight (right after WaitGetPoses it is often still the previous
+  frame's) and `GetFrameTimeRemaining` (reads a period at the poses
+  moment; the compositor's frame runs from running start to running
+  start). The lesson for the dual pass: a dual frame finishing early in a
+  cheap room is paced the same way now - the 0.4 % long frames of the
+  empty cell under dual were the same flip: 0.1 % with the pacing, holds of
+  0.5 ms, the three-Blade scene unchanged at 0.0 %, the run's reprojection
+  1.7 % (from 3.1 to 5.6 %).
 - aer is not instrumented: no `scene_pass` span, the frames' mode `unknown`.
   Giving the single-pass render the same span would need the scene render
   hook installed under aer too (today `dual` only). Cost: small to medium;

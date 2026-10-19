@@ -93,6 +93,27 @@ class MarkCallsTest(unittest.TestCase):
         self.assertEqual(perf_phases.presents_between_ticks(frames, 200, 400), [2, 3])
         self.assertEqual(perf_phases.presents_between_ticks(frames, 401, 900), [])
 
+    def test_compositor_phase_sums_what_the_compositor_saw(self):
+        rows = [
+            # 4 is the async flag every frame carries; not a reprojection.
+            {"dropped_frames": "0", "mis_presented": "0", "reprojection_flags": "4",
+             "pre_submit_gpu_ms": "2.0", "new_frame_ready_ms": "-1.0"},
+            # 6 = async + GPU reason: reprojected.
+            {"dropped_frames": "1", "mis_presented": "1", "reprojection_flags": "6",
+             "pre_submit_gpu_ms": "4.0", "new_frame_ready_ms": "3.0"},
+        ]
+        s = perf_phases.compositor_phase(rows)
+        self.assertEqual((s["frames"], s["dropped"], s["mis_presented"], s["reprojected"]), (2, 1, 1, 1))
+        self.assertEqual((s["gpu_mean"], s["gpu_p95"]), (3.0, 4.0))
+        self.assertEqual((s["submit_mean"], s["submit_p95"]), (1.0, 3.0))
+        self.assertEqual(perf_phases.compositor_cells(s), ("1 / 1 / 1", "3.00 / 4.00", "1.00 / 3.00"))
+
+    def test_compositor_phase_without_rows_is_missing(self):
+        # A capture from before compositor.csv, or a compositor that answered
+        # nothing: the cells say so instead of inventing zeros.
+        self.assertIsNone(perf_phases.compositor_phase([]))
+        self.assertEqual(perf_phases.compositor_cells(None), ("-", "-", "-"))
+
     def test_scale_is_one_when_the_marks_are_exact(self):
         self.assertEqual(perf_phases.call_scale(8280, 8293, True), 1.0)
         self.assertAlmostEqual(perf_phases.call_scale(8280, 8293, False), 8280 / 8293.0)

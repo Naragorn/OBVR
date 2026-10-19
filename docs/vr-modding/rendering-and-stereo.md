@@ -396,6 +396,52 @@ cursor detours. That is the current state; the mouse now clicks where the button
 - `Submit` is given no bounds under dual pass: each texture already covers exactly that
   eye's frustum.
 
+### Running start, and why a fast frame must wait for the vsync
+
+Status: measured and fixed 2026-10-19 (`render/SubmitPacing.h`, `[Render]
+SubmitPastVsync`). Scope: every submit path, any stereo mode.
+
+SteamVR's `WaitGetPoses` returns at "running start", 3.0 to 3.3 ms before a
+vsync on this machine (the compositor reports it per frame as
+`Compositor_FrameTiming::m_flNewPosesReadyMs`, negative; 7 ms under load).
+What the compositor does with the frame then depends on which side of that
+vsync the second `Submit` lands: before it, the frame is taken for the vsync
+just ahead - the low-latency path for applications that finish inside the
+running start; after it, the frame is shown a vsync later - the ordinary
+one-frame pipeline. Both are stable on their own. A frame that lands right
+at the vsync flips between them, and every flip costs a frame: the
+compositor shows the previous frame twice (`m_nNumFramePresents` 2,
+`m_nNumDroppedFrames` 1) and counts the new one as mis-presented. Seen with
+alternate eye rendering in an empty cell: 1.8 ms of work a frame, the
+submit 1 to 3 ms before the vsync, every other frame two vsyncs long in
+bursts, 12 to 50 % of the frames depending on the run - and nothing on
+OBVR's side of `WaitGetPoses` to explain it (the wait itself was the 25 ms).
+With people in view (the submit 6 ms after the vsync) and under the dual
+pass (3.5 ms of work, the submit just after it) nothing flipped.
+
+The compositor's own account of each frame is what showed it, read with
+`IVRCompositor::GetFrameTiming` after every `WaitGetPoses` and written to the
+capture as `compositor.csv` (docs/performance-profiling.md): the GPU time
+of the app's render as the compositor measures it - the one GPU timing
+available under DXVK - and the moments of `WaitGetPoses`, the poses and the
+submit relative to the vsync. Read frames one and two back, each index
+once: the latest record is the frame in flight, and when the app misses a
+running start the index steps by two, so the frame reprojected in the gap
+is only ever seen a frame later.
+
+The fix holds a submit that would land before the vsync until half a
+millisecond after it. The vsync is the tick `WaitGetPoses` returned on plus
+the running start the compositor reported for the last finished frame. Two
+sources were wrong first: the record of the frame in flight (right after
+`WaitGetPoses` it is often still the previous frame's - a period back) and
+`GetFrameTimeRemaining` (about one period at the poses moment: the
+compositor's frame runs from running start to running start, it does not
+place the vsync). The hold is 2.6 ms in a cheap frame and nothing in a full
+one; the empty cell under aer went from 14 to 50 % long frames to 1.1 %.
+The compositor measures the submit 3.2 ms later than OBVR's estimate puts
+it - the wake-up latency between the compositor and the game under Proton,
+which only moves the submit further past the vsync.
+
 ## Render targets and per-eye resources
 
 `CONFIRMED`

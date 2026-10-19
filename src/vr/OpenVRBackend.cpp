@@ -715,6 +715,31 @@ bool OpenVRBackend::GetEyeOffset(int eye, NiPoint3& offsetMetres) const {
 	return true;
 }
 
+bool OpenVRBackend::GetFrameTiming(openvr::CompositorFrameTiming& timing, UInt32 framesAgo) {
+	timing = openvr::CompositorFrameTiming{};
+	timing.size = sizeof(openvr::CompositorFrameTiming);
+	if (m_compositor == nullptr) {
+		return false;
+	}
+	auto* table = static_cast<openvr::IVRCompositorFnTable*>(m_compositor);
+	if (table->GetFrameTiming == nullptr) {
+		return false;
+	}
+	const bool filled = table->GetFrameTiming(&timing, framesAgo);
+	// Once, and again on change: a run says whether the compositor answers
+	// at all - a false here with the scene held is the struct size disagreeing
+	// with the running SteamVR, and compositor.csv would stay empty.
+	if (!m_frameTimingLogged || filled != m_frameTimingFilled) {
+		m_frameTimingLogged = true;
+		m_frameTimingFilled = filled;
+		OBVR_LOG("Poses: GetFrameTiming %s (struct %u bytes, frame index %u, %u presents)",
+		         filled ? "answers" : "answers nothing",
+		         static_cast<UInt32>(sizeof(openvr::CompositorFrameTiming)), timing.frameIndex,
+		         timing.numFramePresents);
+	}
+	return filled;
+}
+
 int OpenVRBackend::WaitGetPoses() {
 	m_renderPoseValid = false;
 

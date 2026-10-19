@@ -215,6 +215,14 @@ public:
 	// as motion sickness.
 	int WaitGetPoses();
 
+	// The compositor's own measurement of a finished frame (framesAgo 0 is
+	// the most recent): how often it was shown, whether it was late, the
+	// app's GPU time as the compositor saw it, and the moments of
+	// WaitGetPoses and Submit relative to the frame's vsync. False when the
+	// compositor has nothing (no scene focus, or the struct size disagrees
+	// with the running SteamVR). Read after WaitGetPoses for the profiler.
+	bool GetFrameTiming(openvr::CompositorFrameTiming& timing, UInt32 framesAgo);
+
 	// The pose the last WaitGetPoses handed back - the predicted pose for the
 	// frame about to be drawn, and the one the compositor will reproject
 	// against.
@@ -416,6 +424,8 @@ private:
 	bool m_lastPoseValid = false;
 	bool m_lastDeviceConnected = false;
 	bool m_waitAnswerLogged = false;
+	bool m_frameTimingLogged = false;
+	bool m_frameTimingFilled = false;
 
 	// The same pose as OpenVR gave it, unconverted. Submit wants the matrix
 	// back in its own form, and converting to a quaternion and out again would

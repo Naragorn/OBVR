@@ -249,6 +249,11 @@ struct TrackerSettings {
 	// frame to hand its pictures to SteamVR (render/PresentInterval.h). Set
 	// where the device is made, so it takes effect at the next game start.
 	bool monitorVsync = false;
+	// A frame finished inside the compositor's running start is held until
+	// the vsync has passed (render/SubmitPacing.h), so the frame rate does
+	// not flip between the compositor's two pipelines - alternate eye
+	// rendering in a cheap scene lost every other frame to that (2026-10-19).
+	bool submitPastVsync = true;
 
 	// Whether the working copy of the screen size - the pair the whole 2D
 	// reads, found by disassembly - is raised to the frame's real size at

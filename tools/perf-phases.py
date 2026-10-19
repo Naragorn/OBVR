@@ -79,6 +79,44 @@ def presents_between_ticks(frames, tick_from, tick_to):
                   if tick_from <= int(f["start_tick"]) < tick_to)
 
 
+def compositor_phase(rows):
+    """What the compositor saw of a phase, from its compositor.csv rows (one
+    a frame, since 2026-10-19): frames dropped (the previous frame scanned
+    out again), mis-presented, reprojected (any reprojection flag), the app's
+    GPU time before its second Submit as the compositor measured it, and the
+    moment of that Submit relative to the frame's vsync - negative is before
+    the vsync. None for no rows."""
+    if not rows:
+        return None
+    dropped = sum(int(r["dropped_frames"]) for r in rows)
+    mis = sum(int(r["mis_presented"]) for r in rows)
+    # Reprojected for a reason - CPU 0x01, GPU 0x02, motion smoothing 0x08
+    # (openvr.h VRCompositor_ReprojectionReason_*). 0x04 only says async
+    # reprojection is on and sits on every frame.
+    reprojected = sum(1 for r in rows if int(r["reprojection_flags"]) & 0x0B)
+    gpu = [float(r["pre_submit_gpu_ms"]) for r in rows]
+    submit = [float(r["new_frame_ready_ms"]) for r in rows]
+    return {
+        "frames": len(rows),
+        "dropped": dropped,
+        "mis_presented": mis,
+        "reprojected": reprojected,
+        "gpu_mean": sum(gpu) / len(gpu),
+        "gpu_p95": nearest_rank(gpu, 95),
+        "submit_mean": sum(submit) / len(submit),
+        "submit_p95": nearest_rank(submit, 95),
+    }
+
+
+def compositor_cells(summary):
+    """The three table cells for a phase's compositor summary."""
+    if summary is None:
+        return "-", "-", "-"
+    return ("%d / %d / %d" % (summary["dropped"], summary["mis_presented"], summary["reprojected"]),
+            "%.2f / %.2f" % (summary["gpu_mean"], summary["gpu_p95"]),
+            "%.2f / %.2f" % (summary["submit_mean"], summary["submit_p95"]))
+
+
 def call_scale(max_log_call, max_scene, exact):
     """The factor from the log's scene calls to the capture's scene ids:
     one when the marks are exact, else the two counters' overall ratio."""
@@ -153,9 +191,14 @@ def main():
     events_by_present = {}
     for e in events:
         events_by_present.setdefault(int(e["present_id"]), []).append(e)
+    # The compositor's rows, when the capture has them (compositor.csv).
+    compositor_by_present = {}
+    if (capture / "compositor.csv").exists():
+        for r in csv.DictReader(open(capture / "compositor.csv", newline="")):
+            compositor_by_present.setdefault(int(r["present_id"]), []).append(r)
 
-    print("| Phase | Frames | Frame ms mean | median | p95 | p99 | max | over 20 ms | frame_end_callback mean / p95 | poses_wait mean / p95 | present mean / p95 | scene_pass mean / p95 |")
-    print("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+    print("| Phase | Frames | Frame ms mean | median | p95 | p99 | max | over 20 ms | frame_end_callback mean / p95 | poses_wait mean / p95 | present mean / p95 | scene_pass mean / p95 | compositor: dropped / mis-presented / reprojected | app gpu before submit ms mean / p95 | submit at vsync ms mean / p95 |")
+    print("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
     for a, b in zip(marks, marks[1:]):
         if by_tick:
             ids = presents_between_ticks(frames, ticks[a], ticks[b])
@@ -193,10 +236,12 @@ def main():
                 return "-"
             return "%.2f / %.2f" % (sum(v) / len(v), nearest_rank(v, 95))
 
-        print("| %s to %s | %d | %s | %s | %s | %s | %s | %d (%.1f%%) | %s | %s | %s | %s |" % (
+        comp = compositor_cells(compositor_phase(
+            [r for p in ids for r in compositor_by_present.get(p, [])]))
+        print("| %s to %s | %d | %s | %s | %s | %s | %s | %d (%.1f%%) | %s | %s | %s | %s | %s | %s | %s |" % (
             a, b, len(ids), fm[0], fm[1], fm[2], fm[3], fm[4], over,
             100.0 * over / max(1, len(intervals)), two("frame_end_callback"), two("poses_wait"),
-            two("present"), two("scene_pass")))
+            two("present"), two("scene_pass"), comp[0], comp[1], comp[2]))
 
 
 if __name__ == "__main__":

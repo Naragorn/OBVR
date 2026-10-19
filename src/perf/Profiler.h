@@ -56,6 +56,12 @@ public:
 	void Mark(EventType type, UInt64 startTick, UInt64 endTick,
 	          const EventContext& context = EventContext{});
 
+	// The compositor's account of a finished frame, read after WaitGetPoses
+	// (render/HeadsetRenderer.cpp); kept only while capturing, each compositor
+	// frame index once (a re-read of an index already kept is ignored),
+	// dropped when its buffer is full.
+	void AddCompositorTiming(CompositorTimingRecord record);
+
 	// GPU adapters call this only after a non-blocking query result is ready.
 	void AddGpuSample(const GpuSample& sample);
 	void GpuBegin(EventType type, const EventContext& context, void* device);
@@ -96,12 +102,16 @@ private:
 	UInt32 m_eventCount = 0;
 	UInt32 m_frameCount = 0;
 	UInt32 m_gpuCount = 0;
+	UInt32 m_compositorCount = 0;
+	UInt32 m_lastCompositorFrameIndex = 0;
+	bool m_compositorSeen = false;
 	UInt32 m_gpuPoolFull = 0;
 	UInt32 m_gpuPending = 0;
 	UInt32 m_gpuErrors = 0;
 	CpuEvent* m_events = nullptr;
 	FrameRecord* m_frames = nullptr;
 	GpuSample* m_gpuSamples = nullptr;
+	CompositorTimingRecord* m_compositorTimings = nullptr;
 	GpuQueryMachine m_gpuQueries;
 	void* m_gpuDevice = nullptr;
 	bool m_gpuOpen = false;

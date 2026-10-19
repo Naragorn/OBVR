@@ -3,11 +3,14 @@
 
 #include "camera/FrameLogic.h"
 
+#include "core/Config.h"
 #include "core/Log.h"
 #include "perf/Profiler.h"
+#include "platform/Win32Min.h"
 #include "render/EyeGeometry.h"
 #include "render/GameFrame.h"
 #include "render/InteropBracket.h"
+#include "render/SubmitPacing.h"
 #include "vr/OpenVRBackend.h"
 #include "vr/OpenVRTypes.h"
 
@@ -90,6 +93,42 @@ void LogEyeGeometry(const vr::OpenVRBackend& backend, EyeProjection& outLeft,
 }
 
 }  // namespace
+
+void HeadsetRenderer::HoldSubmitPastVsync() {
+	if (!GetConfig().tracker.submitPastVsync) {
+		return;
+	}
+	const UInt64 frequency = static_cast<UInt64>(ReadPerformanceFrequency());
+	const UInt64 start = static_cast<UInt64>(ReadPerformanceCounter());
+	const UInt64 hold = SubmitHoldTicks(start, m_vsyncTick, m_vsyncKnown, frequency);
+	if (hold == 0) {
+		return;
+	}
+	// Sleep down to the last two milliseconds (Sleep(1) is one to two under
+	// Wine), spin the rest: the hold is one to four milliseconds, in cheap
+	// frames only, and a late submit would cost the frame the hold is for.
+	const UInt64 until = start + hold;
+	const UInt64 twoMs = frequency / 500;
+	UInt64 now = start;
+	while (now < until) {
+		if (until - now > twoMs) {
+			Sleep(1);
+		}
+		now = static_cast<UInt64>(ReadPerformanceCounter());
+	}
+	perf::EventContext context{};
+	context.vrFrameId = perf::Profiler::Instance().CurrentVrFrameId();
+	perf::Profiler::Instance().Mark(perf::EventType::SubmitHold, start, now, context);
+	++m_submitHolds;
+	if (!m_submitHoldReported) {
+		m_submitHoldReported = true;
+		OBVR_LOG("Submit pacing: the frame was ready %.2f ms before the vsync, held %.2f ms so "
+		         "that it lands after it - said once, counted in the capture as submit_hold",
+		         (static_cast<double>(m_vsyncTick) - static_cast<double>(start)) * 1000.0 /
+		             static_cast<double>(frequency),
+		         static_cast<double>(now - start) * 1000.0 / static_cast<double>(frequency));
+	}
+}
 
 bool HeadsetRenderer::BeginFrame(vr::OpenVRBackend& backend) {
 	const UInt64 vrFrameId = perf::Profiler::Instance().BeginVrFrame();
@@ -202,6 +241,77 @@ bool HeadsetRenderer::BeginFrame(vr::OpenVRBackend& backend) {
 		                                perf::EventType::PosesWait, beginContext);
 		waited = backend.WaitGetPoses();
 	}
+	// For the submit pacing: where the imminent vsync is. The compositor hands
+	// the poses out a few milliseconds before a vsync ("running start", 3.0 to
+	// 3.3 ms here, reported as newPosesReadyMs of every finished frame); the
+	// frame finished one back says how far before, OBVR's tick says when.
+	// render/SubmitPacing.h has the two sources tried before this one.
+	m_vsyncKnown = false;
+	if (GetConfig().tracker.submitPastVsync) {
+		const UInt64 posesTick = static_cast<UInt64>(ReadPerformanceCounter());
+		vr::openvr::CompositorFrameTiming finished{};
+		double toVsyncMs = -1.0;
+		if (backend.GetFrameTiming(finished, 1)) {
+			toVsyncMs = MsToVsyncFromRunningStart(finished.newPosesReadyMs);
+		}
+		if (toVsyncMs >= 0.0) {
+			const double frequency = static_cast<double>(ReadPerformanceFrequency());
+			m_vsyncTick = posesTick + static_cast<UInt64>(toVsyncMs * frequency / 1000.0);
+			m_vsyncKnown = true;
+			perf::EventContext pacingContext{};
+			pacingContext.vrFrameId = vrFrameId;
+			perf::Profiler::Instance().Mark(perf::EventType::PacingVsync, posesTick, m_vsyncTick,
+			                                pacingContext);
+		}
+		// The first three frames and then one in 750 (ten seconds at 75 Hz).
+		if (m_pacingReports < 3 || m_pacingReports % 750 == 0) {
+			OBVR_LOG("Submit pacing: the last finished frame had its poses %.2f ms before its "
+			         "vsync, so this one's vsync is %.2f ms away%s (%u holds so far)",
+			         static_cast<double>(-finished.newPosesReadyMs), toVsyncMs,
+			         toVsyncMs >= 0.0 ? "" : " (unknown - no pacing this frame)", m_submitHolds);
+		}
+		++m_pacingReports;
+	}
+	// The compositor's account of the frame just finished, for compositor.csv:
+	// the only GPU timing OBVR has under DXVK, and the frame pacing seen from
+	// the compositor's side (2026-10-19: alternate eye rendering dropped every
+	// other frame in a cheap cell, and nothing on OBVR's side of WaitGetPoses
+	// could say why). Read only while a capture runs - two calls a frame then.
+	//
+	// Two frames back and one frame back, not the latest: the latest is the
+	// frame still in flight (the first capture read it with 0 presents and a
+	// GPU time of -0.55 ms), and when the app misses a running start the
+	// compositor's index steps by two, so the frame it reprojected in the gap
+	// is only ever seen one or two frames later. The profiler keeps each
+	// index once, so the steady state is one finished row a frame.
+	if (perf::Profiler::Instance().IsCapturing()) {
+		for (UInt32 framesAgo = 2; framesAgo > 0; --framesAgo) {
+		vr::openvr::CompositorFrameTiming timing{};
+		if (backend.GetFrameTiming(timing, framesAgo)) {
+			perf::CompositorTimingRecord record{};
+			record.frameIndex = timing.frameIndex;
+			record.numFramePresents = timing.numFramePresents;
+			record.numMisPresented = timing.numMisPresented;
+			record.numDroppedFrames = timing.numDroppedFrames;
+			record.reprojectionFlags = timing.reprojectionFlags;
+			record.systemTimeSeconds = timing.systemTimeInSeconds;
+			record.preSubmitGpuMs = timing.preSubmitGpuMs;
+			record.postSubmitGpuMs = timing.postSubmitGpuMs;
+			record.totalRenderGpuMs = timing.totalRenderGpuMs;
+			record.compositorRenderGpuMs = timing.compositorRenderGpuMs;
+			record.compositorIdleCpuMs = timing.compositorIdleCpuMs;
+			record.clientFrameIntervalMs = timing.clientFrameIntervalMs;
+			record.waitGetPosesCalledMs = timing.waitGetPosesCalledMs;
+			record.newPosesReadyMs = timing.newPosesReadyMs;
+			record.newFrameReadyMs = timing.newFrameReadyMs;
+			record.compositorUpdateStartMs = timing.compositorUpdateStartMs;
+			record.compositorRenderStartMs = timing.compositorRenderStartMs;
+			record.numVSyncsReadyForUse = timing.numVSyncsReadyForUse;
+			record.numVSyncsToFirstView = timing.numVSyncsToFirstView;
+			perf::Profiler::Instance().AddCompositorTiming(record);
+		}
+		}
+	}
 	perf::Profiler::Instance().SetFrameDetails(perf::DeliveryMode::Unknown, vrFrameId,
 	                                           waited, 0xFF, 0xFF, 0xFF);
 	SubmitDecision decision = m_policy.Observe(waited);
@@ -280,6 +390,7 @@ void HeadsetRenderer::EndFrame(const vr::OpenVRBackend& backend, const FrameRequ
 		// The pattern needs no bounds: it is generated per eye at the full
 		// size the headset asked for, so each eye already has its own picture
 		// rather than a share of one.
+		HoldSubmitPastVsync();
 		left = backend.SubmitEye(vr::openvr::kEyeLeft, m_textures.GetTexture(Eye::Left),
 		                         vr::openvr::kTextureTypeDirectX, nullptr);
 		right = backend.SubmitEye(vr::openvr::kEyeRight, m_textures.GetTexture(Eye::Right),
@@ -356,6 +467,7 @@ bool HeadsetRenderer::SubmitMono(const vr::OpenVRBackend& backend, const FrameRe
 	// picture is: the optical axes sit at different places across each eye's
 	// view, so the whole texture in both would put Oblivion's centre somewhere
 	// neither eye is looking.
+	HoldSubmitPastVsync();
 	left = backend.SubmitEye(vr::openvr::kEyeLeft, &data, vr::openvr::kTextureTypeVulkan,
 	                         &m_boundsLeft);
 	right = backend.SubmitEye(vr::openvr::kEyeRight, &data, vr::openvr::kTextureTypeVulkan,
@@ -533,6 +645,7 @@ bool HeadsetRenderer::SubmitDualEyes(const vr::OpenVRBackend& backend,
 
 	// No bounds - each texture already covers exactly its eye's frustum - and
 	// no explicit pose, for the reason above.
+	HoldSubmitPastVsync();
 	left = backend.SubmitEye(vr::openvr::kEyeLeft, &dataLeft, vr::openvr::kTextureTypeVulkan,
 	                         nullptr, nullptr);
 	right = backend.SubmitEye(vr::openvr::kEyeRight, &dataRight,
@@ -578,6 +691,7 @@ bool HeadsetRenderer::SubmitHeldEyes(const vr::OpenVRBackend& backend,
 	// compositor assumes this frame's, finds nothing to correct, and the world
 	// rides the head - the same fault the flat picture had, for the same
 	// reason.
+	HoldSubmitPastVsync();
 	left = backend.SubmitEye(vr::openvr::kEyeLeft, &dataLeft, vr::openvr::kTextureTypeVulkan,
 	                         nullptr, &m_heldPose);
 	right = backend.SubmitEye(vr::openvr::kEyeRight, &dataRight,
@@ -706,6 +820,7 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 			}
 		}
 
+		HoldSubmitPastVsync();
 		left = backend.SubmitEye(vr::openvr::kEyeLeft, &flatLeft,
 		                         vr::openvr::kTextureTypeVulkan, nullptr,
 		                         m_flatPoseValid ? &m_flatPose : nullptr);
@@ -799,6 +914,7 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 	// it at the right angular size, with black around it - so cropping the
 	// texture as well would magnify what has just been carefully made
 	// life-sized.
+	HoldSubmitPastVsync();
 	left = backend.SubmitEye(vr::openvr::kEyeLeft, &dataLeft, vr::openvr::kTextureTypeVulkan,
 	                         nullptr, m_eyePoseValid[0] ? &m_eyePose[0] : nullptr);
 	right = backend.SubmitEye(vr::openvr::kEyeRight, &dataRight,

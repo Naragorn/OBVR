@@ -1,5 +1,7 @@
 #include "perf/ProfileLogic.h"
 
+#include <cstdio>
+
 namespace obvr::perf {
 namespace {
 
@@ -13,11 +15,43 @@ ProfileSettings NormalizeSettings(ProfileSettings settings) {
 	if (settings.maxRecords < kMinMaxRecords) settings.maxRecords = kDefaultMaxRecords;
 	if (settings.maxRecords > kMaxMaxRecords) settings.maxRecords = kMaxMaxRecords;
 	const UInt64 bytesPerRecord = static_cast<UInt64>(sizeof(CpuEvent)) +
-	                              sizeof(FrameRecord) + sizeof(GpuSample);
+	                              sizeof(FrameRecord) + sizeof(GpuSample) +
+	                              (sizeof(CompositorTimingRecord) + kCompositorTimingDivisor - 1) /
+	                                  kCompositorTimingDivisor;
 	const UInt32 memoryMax = static_cast<UInt32>(kProfilerBufferLimitBytes / bytesPerRecord);
 	if (settings.maxRecords > memoryMax) settings.maxRecords = memoryMax;
 	if (settings.startAfterSeconds > kMaxStartAfterSeconds) settings.startAfterSeconds = kMaxStartAfterSeconds;
 	return settings;
+}
+
+UInt32 CompositorTimingCapacity(UInt32 maxRecords) {
+	const UInt32 share = maxRecords / kCompositorTimingDivisor;
+	return share < kMinMaxRecords ? kMinMaxRecords : share;
+}
+
+const char* const kCompositorTimingCsvHeader =
+    "present_id,vr_frame_id,frame_index,num_presents,mis_presented,dropped_frames,"
+    "reprojection_flags,system_time_s,pre_submit_gpu_ms,post_submit_gpu_ms,total_render_gpu_ms,"
+    "compositor_render_gpu_ms,compositor_idle_cpu_ms,client_frame_interval_ms,"
+    "wait_get_poses_called_ms,new_poses_ready_ms,new_frame_ready_ms,compositor_update_start_ms,"
+    "compositor_render_start_ms,vsyncs_ready_for_use,vsyncs_to_first_view\n";
+
+int CompositorTimingCsvLine(char* out, UInt32 size, const CompositorTimingRecord& r) {
+	const int written = std::snprintf(
+	    out, size, "%llu,%llu,%u,%u,%u,%u,%u,%.6f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%u,%u",
+	    static_cast<unsigned long long>(r.presentId), static_cast<unsigned long long>(r.vrFrameId),
+	    r.frameIndex, r.numFramePresents, r.numMisPresented, r.numDroppedFrames,
+	    r.reprojectionFlags, r.systemTimeSeconds, static_cast<double>(r.preSubmitGpuMs),
+	    static_cast<double>(r.postSubmitGpuMs), static_cast<double>(r.totalRenderGpuMs),
+	    static_cast<double>(r.compositorRenderGpuMs), static_cast<double>(r.compositorIdleCpuMs),
+	    static_cast<double>(r.clientFrameIntervalMs), static_cast<double>(r.waitGetPosesCalledMs),
+	    static_cast<double>(r.newPosesReadyMs), static_cast<double>(r.newFrameReadyMs),
+	    static_cast<double>(r.compositorUpdateStartMs), static_cast<double>(r.compositorRenderStartMs),
+	    r.numVSyncsReadyForUse, r.numVSyncsToFirstView);
+	if (written < 0 || static_cast<UInt32>(written) >= size) {
+		return -1;
+	}
+	return written;
 }
 
 bool CaptureStartDue(UInt64 armedTick, UInt64 nowTick, UInt32 startAfterSeconds, UInt64 frequency) {
@@ -75,6 +109,8 @@ const char* EventTypeName(EventType type) {
 		case EventType::FrameEndCallback: return "frame_end_callback";
 		case EventType::MonitorPresent: return "monitor_present";
 		case EventType::BoneLock: return "bone_lock";
+		case EventType::SubmitHold: return "submit_hold";
+		case EventType::PacingVsync: return "pacing_vsync";
 	}
 	return "unknown";
 }

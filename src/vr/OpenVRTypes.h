@@ -75,6 +75,57 @@ struct TrackedDevicePose {
 	bool deviceIsConnected;
 };
 
+// Compositor_FrameTiming (openvr.h, "Provides a single frame's timing
+// information to the app", headers/openvr.h of SteamVR 2.15.6 lines 2151 to
+// 2194, read 2026-10-19). What the compositor measured about one frame:
+// how often it was shown, whether it was late, the GPU time of the app's
+// render as the compositor saw it, and the moments of WaitGetPoses, the
+// poses and the second Submit relative to the frame's vsync
+// (systemTimeInSeconds "aligns with the vsync that running start is
+// relative to"). The profiler writes it to compositor.csv - the only GPU
+// timing OBVR has under DXVK, and the view from the compositor's side of the
+// frame pacing. The header packs these structs to 8; the double sits at
+// offset 24 and the pose's 80 bytes at 96, which the size check below pins.
+struct CompositorFrameTiming {
+	UInt32 size;  // sizeof(CompositorFrameTiming), set by the caller
+	UInt32 frameIndex;
+	UInt32 numFramePresents;  // number of times this frame was presented
+	UInt32 numMisPresented;   // presented on a vsync other than predicted
+	UInt32 numDroppedFrames;  // additional times the previous frame was scanned out
+	UInt32 reprojectionFlags;
+	// alignas: the Windows ABI the DLL is built for aligns a double to 8 on
+	// x86 and openvr.h packs to 8; the unit tests build as 32-bit Linux,
+	// where a double aligns to 4 and the struct would shrink to 188 bytes.
+	// The same layout on both keeps the size check meaningful.
+	alignas(8) double systemTimeInSeconds;
+	float preSubmitGpuMs;          // gpu work between WaitGetPoses and the second Submit
+	float postSubmitGpuMs;         // app gpu work after that (the companion window)
+	float totalRenderGpuMs;        // from the work after present to the end of the compositor's
+	float compositorRenderGpuMs;
+	float compositorRenderCpuMs;
+	float compositorIdleCpuMs;     // time the compositor waited for running start
+	float clientFrameIntervalMs;   // time between calls to WaitGetPoses
+	float presentCallCpuMs;
+	float waitForPresentCpuMs;
+	float submitFrameMs;
+	float waitGetPosesCalledMs;    // the following relative to systemTimeInSeconds
+	float newPosesReadyMs;
+	float newFrameReadyMs;         // the second call to Submit
+	float compositorUpdateStartMs;
+	float compositorUpdateEndMs;
+	float compositorRenderStartMs;
+	TrackedDevicePose hmdPose;     // the pose the app rendered this frame with
+	UInt32 numVSyncsReadyForUse;
+	UInt32 numVSyncsToFirstView;
+	float transferLatencyMs;
+};
+static_assert(sizeof(TrackedDevicePose) == 80, "TrackedDevicePose_t is 80 bytes");
+static_assert(offsetof(CompositorFrameTiming, systemTimeInSeconds) == 24,
+              "the double follows six 32-bit fields");
+static_assert(offsetof(CompositorFrameTiming, hmdPose) == 96, "sixteen floats before the pose");
+static_assert(sizeof(CompositorFrameTiming) == 192,
+              "Compositor_FrameTiming is 192 bytes under pack(8) on x86");
+
 // VRControllerAxis_t and VRControllerState_t (openvr_capi.h). On Windows the
 // state struct sits outside the header's pack(4) regions, so the two 64-bit
 // masks take their natural eight-byte alignment: 4 bytes of packet number,
@@ -518,8 +569,16 @@ struct IVRCompositorFnTable {
 	void* submitWithArrayIndex;
 	void* clearLastSubmittedFrame;
 	void* postPresentHandoff;
-	void* getFrameTiming;
+	// GetFrameTiming (openvr.h IVRCompositor, the eleventh entry, right after
+	// PostPresentHandoff - the order checked against the class of SteamVR
+	// 2.15.6 on 2026-10-19): "Returns true if timing data is filled it. Sets
+	// oldest timing info if nFramesAgo is larger than the stored history."
+	// The caller sets size first.
+	bool(__stdcall* GetFrameTiming)(CompositorFrameTiming* timing, UInt32 framesAgo);
 	void* getFrameTimings;
+	// GetFrameTimeRemaining, untyped: read at the poses moment it answers about
+	// one display period - the compositor's frame runs from running start to
+	// running start - and places no vsync (2026-10-19, render/SubmitPacing.h).
 	void* getFrameTimeRemaining;
 	void* getCumulativeStats;
 	void(__stdcall* FadeToColor)(float seconds, float red, float green, float blue, float alpha,

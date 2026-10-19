@@ -40,6 +40,7 @@ OBVR-performance-1/
   cpu_events.csv
   gpu_samples.csv
   frames.csv
+  compositor.csv
 ```
 
 Ein fehlender Schreibzugriff beendet nur das Profiling; der VR-Renderer läuft weiter.
@@ -62,6 +63,20 @@ keine automatische CPU-/GPU-Bottleneck-Diagnose.
 
 Ein echter Profilerexport trägt `runtime_measurement=true`; das Beispiel unter
 `docs/performance-example` trägt bewusst `false`.
+
+`compositor.csv` (seit 2026-10-19) ist die Sicht des Compositors auf jeden fertigen Frame:
+SteamVRs `Compositor_FrameTiming`, nach jedem WaitGetPoses für die ein und zwei Frames zurück
+liegenden Frames gelesen, jeder Compositor-Frame-Index einmal (vr/OpenVRTypes.h
+`CompositorFrameTiming`, render/HeadsetRenderer.cpp). Spalten: wie oft der Frame gezeigt wurde
+(`num_presents`), ob auf einem anderen Vsync als vorhergesagt (`mis_presented`), wie oft der
+vorige Frame zusätzlich gezeigt wurde (`dropped_frames`), die Reprojektions-Flags (0x04 steht auf
+jedem Frame und heißt nur "async an"; 0x01 CPU, 0x02 GPU, 0x08 Motion Smoothing sind Gründe), die
+GPU-Zeit der App vor dem zweiten Submit aus Sicht des Compositors (`pre_submit_gpu_ms` - die
+einzige GPU-Zeit, die OBVR unter DXVK hat) und die Momente von WaitGetPoses, Posen und zweitem
+Submit relativ zum Vsync des Frames (`wait_get_poses_called_ms`, `new_poses_ready_ms`,
+`new_frame_ready_ms`; negativ = davor). `present_id` ist OBVRs Present beim Lesen, ein bis zwei
+Frames nach dem beschriebenen. `tools/perf-phases.py` zeigt je Phase Drops / Fehl-Präsentationen /
+Reprojektionen mit Grund, die App-GPU-Zeit und den Submit-Zeitpunkt relativ zum Vsync.
 
 `frames.csv` hält zusätzlich den tatsächlichen Pose-Rückgabecode sowie die Rückgaben
 von Submit für linkes und rechtes Auge fest. `-1` bedeutet, dass dieser Aufruf für
@@ -225,3 +240,44 @@ das Warten auf den übernächsten Vsync, keine Luft. Unter aer läuft dieselbe S
 7 ms Luft und unter 1 % Drops; nur die leere Zelle zeigt wieder die aer-Aussetzer (14,4 %,
 poses_wait-Spitzen 21 ms), wie in beiden Drei-Klingen-Läufen - sie treten auf, wenn der Frame
 billig ist, nicht wenn er voll ist. Ursache offen, in der Spec als eigener Punkt.
+
+### Nachtrag: die aer-Aussetzer in billigen Szenen (2026-10-19 abends, gelöst)
+
+Die leere Zelle verlor unter aer in jedem Lauf Frames (12 bis 14 % headless, 50 % auf dem
+Desktop, 28 % mit MonitorVsync=1), mit Leuten im Bild nicht. Der Compositor sagte es
+(compositor.csv, dafür gebaut): SteamVR weckt die App 3,0 bis 3,3 ms vor einem Vsync
+("Running Start"); der billige aer-Frame (1,8 ms Arbeit) wurde 1 bis 3 ms VOR dem Vsync
+eingereicht und galt damit für den Vsync direkt vor ihm (der Niedriglatenz-Pfad), ein nach
+dem Vsync eingereichter für den nächsten (die Ein-Frame-Pipeline). Ein Frame genau auf der
+Kante kippt zwischen beiden, und jeder Kipp kostet einen Frame (`mis_presented` 1,
+`dropped_frames` 1, `num_presents` 2 - 325 von 2005 Frames). Mit fünf Leuten lag der Submit
+6 ms nach dem Vsync, unter Dual 0,5 ms danach: beide stabil.
+
+Fix `[Render] SubmitPastVsync=1` (render/SubmitPacing.h, Standard an): ein vor dem Vsync
+fertiger Frame wartet bis 0,5 ms danach; der Vsync ist der Moment, in dem WaitGetPoses
+zurückkam, plus der Running Start, den der Compositor für den letzten fertigen Frame
+meldet (`new_poses_ready_ms`). Zwei Quellen davor verworfen: das Record des laufenden
+Frames (direkt nach WaitGetPoses oft noch das vorige, eine Periode zurück - kein einziger
+Halt) und `GetFrameTimeRemaining` (liest im Posen-Moment etwa eine Periode; der
+Compositor-Frame läuft von Running Start zu Running Start). Der Halt steht in der Capture
+als `submit_hold`, die Vsync-Schätzung als `pacing_vsync`.
+
+| leere Zelle, aer | vorher | mit SubmitPastVsync |
+|---|---:|---:|
+| Frame-Mittel | 15,0 bis 20,0 ms | 13,48 ms |
+| über 20 ms | 12 bis 50 % | 1,1 % |
+| Compositor: Frames doppelt gezeigt | 325 von 2005 | 23 von 2226 |
+| Halt je Frame | - | 2,59 ms (mit Leuten 0,09 ms) |
+| SteamVR, ganzer Lauf reprojiziert | 5,6 bis 13 % | 3,5 % |
+
+Die Schätzung sitzt: Posen bis geschätzter Vsync 3,01 ms (p5 3,01, p95 3,02), der Submit
+landet 0,50 ms nach dem geschätzten Vsync; der Compositor misst ihn 3,65 ms nach seinem
+(p5 2,81) - die Differenz ist die Weckverzögerung zwischen Compositor und Spiel unter
+Proton, sie schiebt den Submit weiter hinter den Vsync und schadet nicht.
+
+Regression unter Dual mit der Taktung (gleicher Abend): leere Zelle 13,35 ms und 0,1 % über 20 ms
+(vorher 0,4 bis 0,5 %, Halt 0,48 ms - der billige Dual-Frame lag selbst knapp an der Kante), drei
+Klingen stehend 13,33 ms und 0,0 % (unverändert, kein Halt), fünf Leute 26,7 ms wie vorher (der
+Frame ist zu teuer, keine Frage der Taktung); SteamVR ganzer Lauf 1,7 % reprojiziert (vorher 3,1
+bis 5,6 %). In Menüs und Ladebildschirmen hält die Taktung jeden Frame (billige Frames), das
+kostet dort bis zu 3,5 ms Latenz je Frame und nichts sonst.

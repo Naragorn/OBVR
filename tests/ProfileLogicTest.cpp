@@ -24,7 +24,9 @@ void TestSettings() {
 	Check(s.captureSeconds == kMaxCaptureSeconds, "capture duration is capped");
 	Check(s.maxRecords <= kMaxMaxRecords &&
 	          static_cast<UInt64>(s.maxRecords) *
-	              (sizeof(CpuEvent) + sizeof(FrameRecord) + sizeof(GpuSample)) <=
+	              (sizeof(CpuEvent) + sizeof(FrameRecord) + sizeof(GpuSample) +
+	               (sizeof(CompositorTimingRecord) + kCompositorTimingDivisor - 1) /
+	                   kCompositorTimingDivisor) <=
 	              kProfilerBufferLimitBytes,
 	      "record capacity is capped by the 32 MiB buffer limit");
 	s.startAfterSeconds = 99999;
@@ -65,6 +67,33 @@ void TestPercentiles() {
 	      "maximum uses the last rank");
 	Check(!NearestRankPercentile(nullptr, 0, 95.0, result), "empty percentiles are missing");
 }
+void TestCompositorTiming() {
+	using namespace obvr::perf;
+	Check(CompositorTimingCapacity(65536) == 16384, "the compositor buffer is a quarter of the records");
+	Check(CompositorTimingCapacity(1024) == kMinMaxRecords, "and never below the minimum");
+	CompositorTimingRecord r{};
+	r.presentId = 7; r.vrFrameId = 8; r.frameIndex = 1234; r.numFramePresents = 2;
+	r.numMisPresented = 1; r.numDroppedFrames = 1; r.reprojectionFlags = 0x24;
+	r.systemTimeSeconds = 1.5; r.preSubmitGpuMs = 2.25f; r.postSubmitGpuMs = 0.5f;
+	r.totalRenderGpuMs = 4.0f; r.compositorRenderGpuMs = 1.0f; r.compositorIdleCpuMs = 9.0f;
+	r.clientFrameIntervalMs = 13.25f; r.waitGetPosesCalledMs = -2.0f; r.newPosesReadyMs = -1.5f;
+	r.newFrameReadyMs = 0.75f; r.compositorUpdateStartMs = 10.0f; r.compositorRenderStartMs = 11.0f;
+	r.numVSyncsReadyForUse = 1; r.numVSyncsToFirstView = 2;
+	char line[512] = {};
+	const int n = CompositorTimingCsvLine(line, sizeof(line), r);
+	const char* want = "7,8,1234,2,1,1,36,1.500000,2.250,0.500,4.000,1.000,9.000,13.250,-2.000,-1.500,"
+	                   "0.750,10.000,11.000,1,2";
+	bool same = n > 0;
+	for (int i = 0; same && want[i] != '\0'; ++i) same = line[i] == want[i];
+	same = same && n > 0 && line[n] == '\0' && want[n] == '\0';
+	Check(same, "a compositor row writes every field in the header's order");
+	char small[16] = {};
+	Check(CompositorTimingCsvLine(small, sizeof(small), r) < 0, "a buffer too small is refused");
+	const char* h = kCompositorTimingCsvHeader;
+	int commas = 0;
+	for (int i = 0; h[i] != '\0'; ++i) commas += h[i] == ',';
+	Check(commas == 20, "the header names twenty-one columns, as the row writes");
+}
 } // namespace
 
 int main() {
@@ -72,5 +101,6 @@ int main() {
 	TestTime();
 	TestStartDelay();
 	TestPercentiles();
+	TestCompositorTiming();
 	return failures == 0 ? 0 : 1;
 }

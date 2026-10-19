@@ -957,6 +957,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME gpu_queries COMMAND gpu_queries_test)
 
+add_executable(submit_pacing_test SubmitPacingTest.cpp)
+target_include_directories(submit_pacing_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(submit_pacing_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME submit_pacing COMMAND submit_pacing_test)
+
 if(Python3_Interpreter_FOUND)
 	add_test(NAME analyze_performance
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/AnalyzePerformanceTest.py)
