@@ -223,6 +223,56 @@ def env_problem(direct: bool, pairs: Sequence[str]) -> Optional[str]:
     return None
 
 
+def headless_command(game_command: Sequence[str], width: int, height: int) -> List[str]:
+    """The game's launch wrapped in gamescope's headless backend (gamescope 3.16:
+    "--backend headless => use headless backend (no window, no DRM output)"):
+    nothing of the game on the desktop, no keyboard or mouse grabbed, its window
+    inside gamescope's own Xwayland. The nested display is the game's own size
+    (Oblivion.ini's iSize, so its fullscreen mode is found) and refreshes at 144,
+    well over the headset's 90 - the VR frames are paced by SteamVR, not by the
+    nested display."""
+    return (["gamescope", "--backend", "headless", "-W", str(width), "-H", str(height),
+             "-w", str(width), "-h", str(height), "-r", "144", "--"] + list(game_command))
+
+
+def headless_problem(headless: bool, background_at: Sequence[str]) -> Optional[str]:
+    """Why a scenario cannot run headless, or None: a background-at part puts a
+    window of another process in front of the game, which needs the desktop the
+    headless game has no window on."""
+    if headless and background_at:
+        return ("background-at needs the desktop (a window of another process put in front of the game); "
+                "run this scenario without --headless")
+    return None
+
+
+def game_size(ini_lines: Iterable[str]) -> Tuple[int, int]:
+    """Oblivion.ini's iSize W and H (the game's own fullscreen size, which the
+    headless nested display is given); 2560 by 1440 when either is missing or
+    not a number."""
+    found = {}
+    for line in ini_lines:
+        key, sep, value = line.partition("=")
+        key = key.strip().lower()
+        if sep and key in ("isize w", "isize h"):
+            try:
+                found[key] = int(value.strip())
+            except ValueError:
+                pass
+    if "isize w" in found and "isize h" in found:
+        return found["isize w"], found["isize h"]
+    return 2560, 1440
+
+
+def newest_screenshot(files: Iterable[Tuple[str, float]], since: float) -> Optional[str]:
+    """Of gamescope's screenshot files ((path, mtime), /tmp/gamescope_*.avif after a
+    SIGUSR2), the newest written at or after `since`; None when none was."""
+    newest: Optional[Tuple[str, float]] = None
+    for path, written in files:
+        if written >= since and (newest is None or written > newest[1]):
+            newest = (path, written)
+    return newest[0] if newest is not None else None
+
+
 def summary(scenario: str, verdict: str, run_dir: str, marks: Sequence[str],
             measured: Sequence[str], problems: Sequence[str]) -> List[str]:
     """summary.md's lines, as the Windows runner writes them."""

@@ -19,6 +19,13 @@ the run's own log and pictures go to artifacts/hand-script/<scenario>/<time>/.
 Needs: Steam and SteamVR running (the headset may sleep), Oblivion not running.
 
     python3 tools/hand-script-run.py tools/hand-scripts/walk-direction.txt
+
+With --headless the game runs inside gamescope's headless backend: no window
+on the desktop, no keyboard or mouse taken, nothing in the way of whoever is
+working at the monitor; the pictures then come from gamescope's screenshots
+(SIGUSR2, /tmp/gamescope_*.avif). It is a --direct start by nature; a
+background-at scenario (a window of another process in front of the game)
+cannot run headless.
 """
 
 from __future__ import annotations
@@ -42,6 +49,8 @@ APP_ID = "22330"
 GAME_DIR = STEAM / "steamapps/common/Oblivion"
 SAVES_DIR = (STEAM / f"steamapps/compatdata/{APP_ID}/pfx/drive_c/users/steamuser/Documents/My Games/"
              "Oblivion/Saves")
+GAME_INI = SAVES_DIR.parent / "Oblivion.ini"
+SCREENSHOT_DIR = Path("/tmp")
 STEAMVR_DIR = STEAM / "steamapps/common/SteamVR"
 # The direct start, past Steam and its launch options (HANDOFF.md section 8):
 # the Steam Linux Runtime's entry point with Proton inside it.
@@ -169,6 +178,7 @@ class Run:
         self.launched_at: Optional[float] = None
         self.direct: Optional[subprocess.Popen] = None
         self.capture_said = False
+        self.headless = bool(args.headless)
 
     def launch_alive(self) -> bool:
         """The launch still running: our own direct start, or Steam's."""
@@ -181,6 +191,9 @@ class Run:
         self.shot_index += 1
         pid = game_pid()
         if pid is None:
+            return
+        if self.headless:
+            self.gamescope_shot(name)
             return
         if self.window is None:
             self.window = window_of(pid)
@@ -196,8 +209,42 @@ class Run:
             self.capture_said = True
             self.notes.append(f"the game window could not be captured: {out[:200]}")
 
+    def gamescope_shot(self, name: str) -> None:
+        """A picture of the headless game: gamescope writes /tmp/gamescope_<date>.avif
+        on SIGUSR2, the newest one since the request is brought over as PNG."""
+        if self.direct is None or self.direct.poll() is not None:
+            return
+        asked = time.time()
+        try:
+            os.kill(self.direct.pid, signal.SIGUSR2)
+        except ProcessLookupError:
+            return
+        chosen = None
+        deadline = time.time() + 6.0
+        while time.time() < deadline and chosen is None:
+            time.sleep(0.3)
+            files = []
+            for path in SCREENSHOT_DIR.glob("gamescope_*.avif"):
+                try:
+                    files.append((str(path), path.stat().st_mtime))
+                except OSError:
+                    continue
+            chosen = logic.newest_screenshot(files, asked - 1.0)
+        if chosen is None:
+            if not self.capture_said:
+                self.capture_said = True
+                self.notes.append("gamescope wrote no screenshot on SIGUSR2 - no pictures of the headless game")
+            return
+        target = self.run_dir / f"{self.shot_index:02d}-{name}-game.png"
+        time.sleep(0.5)  # the file is still being encoded when it first appears
+        code, out = run_quiet(["magick", chosen, "-resize", f"{self.args.shot_width}x>", str(target)], timeout=60.0)
+        if code != 0 and not self.capture_said:
+            self.capture_said = True
+            self.notes.append(f"gamescope's screenshot could not be converted: {out[:200]}")
+        Path(chosen).unlink(missing_ok=True)
+
     def focus_game(self) -> None:
-        if self.background or self.window is None:
+        if self.headless or self.background or self.window is None:
             return
         if active_window() != self.window:
             activate(self.window)
@@ -290,6 +337,9 @@ class Run:
 
     def execute(self) -> None:
         spec = logic.parse_scenario(self.script.read_text(encoding="utf-8", errors="replace"))
+        problem = logic.headless_problem(self.headless, spec.background_at)
+        if problem is not None:
+            raise RuntimeError(problem)
         self.test_ini.write_text(logic.build_test_ini(spec, self.args.save), encoding="utf-8")
         shutil.copyfile(self.test_ini, self.run_dir / "OBVR-test.ini")
         shutil.copyfile(self.script, self.script_target)
@@ -309,8 +359,12 @@ class Run:
         if not self.wait_for("OBVR ready", self.args.start_timeout):
             raise RuntimeError(f"no 'OBVR ready' line within {self.args.start_timeout} s")
         pid = game_pid()
-        if pid is not None:
+        if pid is not None and not self.headless:
             self.window = window_of(pid)
+        elif pid is not None and window_of(pid) is not None:
+            # Headless, and yet a window of the game on the desktop: said, so a
+            # run that took the monitor after all is not mistaken for a quiet one.
+            self.notes.append("headless, but a window of the game appeared on the desktop after all")
         self.focus_game()
         if not self.wait_for("HandScript: started", self.args.start_timeout):
             raise RuntimeError(f"the script did not start within {self.args.start_timeout} s (no world?)")
@@ -363,12 +417,17 @@ class Run:
             env[key] = value
         command = [str(SLR_ENTRY), "--verb=waitforexitandrun", "--", str(PROTON), "waitforexitandrun",
                    str(self.game_dir / "OblivionLauncher.exe")]
+        if self.headless:
+            width, height = logic.game_size(read_log(GAME_INI))
+            command = logic.headless_command(command, width, height)
         (self.run_dir / "launch.txt").write_text(
-            "direct start\n" + " ".join(command) + "\n" + "\n".join(
+            ("headless start\n" if self.headless else "direct start\n") + " ".join(command) + "\n" + "\n".join(
                 f"{k}={env[k]}" for k in sorted(env) if k.startswith(("STEAM_COMPAT", "Steam", "WINE", "DXVK",
                                                                        "PROTON", "VKD3D"))) + "\n",
             encoding="utf-8")
-        say("Starting the game directly, past Steam's launch options: " + " ".join(self.args.env or ["(no extra env)"]))
+        say(("Starting the game headless (gamescope, nothing on the desktop)" if self.headless
+             else "Starting the game directly") + ", past Steam's launch options: " +
+            " ".join(self.args.env or ["(no extra env)"]))
         output = open(self.run_dir / "proton.log", "wb")
         # From the game folder, as Steam starts it: the OBSE loader looks for
         # Oblivion.exe beside itself in the working directory ("Couldn't find
@@ -426,6 +485,13 @@ class Run:
         deadline = time.time() + 60
         while time.time() < deadline and self.launch_alive():
             time.sleep(1.0)
+        # gamescope ends with its command; one that lingers is ended here.
+        if self.headless and self.direct is not None and self.direct.poll() is None:
+            self.direct.terminate()
+            try:
+                self.direct.wait(timeout=10.0)
+            except subprocess.TimeoutExpired:
+                self.direct.kill()
 
     def clean_up(self) -> None:
         if self.thief is not None and self.thief.poll() is None:
@@ -499,8 +565,13 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     # Past Steam and its launch options, with this environment on top
     # (repeatable KEY=VALUE, e.g. DXVK_HUD=fps,frametimes,gpuload,compiler).
     p.add_argument("--direct", action="store_true")
+    # The game inside gamescope's headless backend: nothing on the desktop, no
+    # input taken; a direct start by nature.
+    p.add_argument("--headless", action="store_true")
     p.add_argument("--env", action="append", default=[], metavar="KEY=VALUE")
     args = p.parse_args(argv)
+    if args.headless:
+        args.direct = True
     problem = logic.env_problem(args.direct, args.env)
     if problem is not None:
         p.error(problem)

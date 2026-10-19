@@ -1,7 +1,8 @@
 """Checks the pure part of the Linux hand script runner (tools/hand_script_runner.py):
 reading a scenario's lines for the runner, the OBVR-test.ini it writes, finding the
 game among the processes, following the marks in the log, and every flow of the
-verdict - expect, reject, count, and the moved, still and turned checks."""
+verdict - expect, reject, count, and the moved, still and turned checks; and the
+headless start (gamescope's command, its refusals, its screenshots)."""
 
 import sys
 import unittest
@@ -202,6 +203,48 @@ class DirectEnvironment(unittest.TestCase):
         self.assertIsNone(r.env_problem(True, ["EMPTY="]))
         self.assertEqual(r.env_problem(True, ["DXVK_HUD"]), "--env 'DXVK_HUD': not KEY=VALUE")
         self.assertEqual(r.env_problem(True, ["=fps"]), "--env '=fps': not KEY=VALUE")
+
+
+class Headless(unittest.TestCase):
+    """--headless: the game inside gamescope's headless backend - nothing on the
+    desktop, no input grabbed, the pictures from gamescope's own screenshots."""
+
+    def test_the_launch_wrapped_in_gamescope(self):
+        self.assertEqual(
+            r.headless_command(["/slr/_v2-entry-point", "--verb=waitforexitandrun", "--", "/p/proton",
+                                "waitforexitandrun", "/g/OblivionLauncher.exe"], 2560, 1440),
+            ["gamescope", "--backend", "headless", "-W", "2560", "-H", "1440", "-w", "2560", "-h", "1440",
+             "-r", "144", "--", "/slr/_v2-entry-point", "--verb=waitforexitandrun", "--", "/p/proton",
+             "waitforexitandrun", "/g/OblivionLauncher.exe"])
+
+    def test_no_problem_without_headless_or_without_a_background_part(self):
+        self.assertIsNone(r.headless_problem(False, ["walking"]))
+        self.assertIsNone(r.headless_problem(True, []))
+
+    def test_a_background_part_needs_the_desktop(self):
+        self.assertEqual(
+            r.headless_problem(True, ["walking"]),
+            "background-at needs the desktop (a window of another process put in front of the game); "
+            "run this scenario without --headless")
+
+    def test_the_games_size_from_its_ini(self):
+        self.assertEqual(r.game_size(["[Display]", "bFull Screen=1", "iSize W=2560", "iSize H=1440"]), (2560, 1440))
+        self.assertEqual(r.game_size(["iSize W = 1920 ", " iSize H=1080"]), (1920, 1080))
+
+    def test_the_default_size_when_the_ini_lacks_it(self):
+        self.assertEqual(r.game_size(["[Display]", "bFull Screen=1"]), (2560, 1440))
+        self.assertEqual(r.game_size(["iSize W=abc", "iSize H=1440"]), (2560, 1440))
+
+    def test_the_newest_screenshot_since_the_request(self):
+        files = [("/tmp/gamescope_a.avif", 100.0), ("/tmp/gamescope_b.avif", 130.0),
+                 ("/tmp/gamescope_c.avif", 120.0)]
+        self.assertEqual(r.newest_screenshot(files, 110.0), "/tmp/gamescope_b.avif")
+        self.assertEqual(r.newest_screenshot(files, 130.0), "/tmp/gamescope_b.avif")
+
+    def test_none_when_nothing_new(self):
+        files = [("/tmp/gamescope_a.avif", 100.0)]
+        self.assertIsNone(r.newest_screenshot(files, 110.0))
+        self.assertIsNone(r.newest_screenshot([], 0.0))
 
 
 class Summary(unittest.TestCase):

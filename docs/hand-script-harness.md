@@ -78,6 +78,20 @@ depends on window focus and the desktop's input tools (`HANDOFF.md` section
   the world (the pictures, the state lines), not off the answer.
 
 The rest as on Windows, with these differences:
+- **`--headless`: the game in the background.** The launch is wrapped in gamescope's
+  headless backend (`gamescope --backend headless -W/-H/-w/-h <Oblivion.ini's iSize> -r 144
+  -- <the direct start>`): the game's window lives in gamescope's own Xwayland, nothing of
+  it on the desktop, no keyboard or mouse taken, so whoever sits at the monitor keeps
+  working while the run goes. A direct start by nature (`--direct` is implied); the
+  pictures come from gamescope's screenshots (SIGUSR2 to gamescope, `/tmp/gamescope_*.avif`,
+  the newest since the request brought over as the mark's PNG); a `background-at` scenario
+  is refused, since its window in front needs the desktop. The headset is unchanged:
+  SteamVR gets the eyes as always.
+  First run 2026-10-19 09:54 (`torch-flame.txt --headless`): PASS, every mark's picture a
+  game view from gamescope's screenshot, no window of the game on the desktop (xdotool found
+  none), SteamVR 4314 frames presented and 6.3 % reprojected against 7.6 % for the same
+  scenario on the desktop the evening before; gamescope, the game and the screenshot files
+  all gone after the run.
 - **Pictures** of the game's window come from its X11 window (Wine's, through
   XWayland) with ImageMagick's `import`. SteamVR on Linux wrote no files for
   `dump` (2026-10-14: three requests in `stereo-view`, no picture anywhere

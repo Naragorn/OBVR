@@ -3387,6 +3387,16 @@ log.
   at the mount, `CameraLineageChanged`); "Camera: riding at the mark" logs the engine's own
   camera, the player's rotZ and rotX, the mounted yaw (+0x61C), the horse's heading, the bytes
   and the third-person zoom (300 throughout).
+  **In the headset (Nadi, 2026-10-18 evening, the build of fc2de59):** the ride works - the
+  third-person mount animation "maybe not quite centred", then first person on the horse.
+  Two things seen on the horse, open: (a) the view slides a little to the left or right
+  (the dip and drift measured above, the horse moving and turning under a turned head);
+  (b) **no snap turn on the horse** - the right stick does nothing, only the left stick
+  turns, and smoothly. Vanilla turns a mounted player's heading by the mouse through the
+  mounted yaw at +0x61C (0x00671CD0, the per-frame add clamped to +-pi/2 while the process
+  state is 4); OBVR's snap turn writes the player's yaw, which the horse's steering reads
+  through another path. Next: the snap turn on the horse as a write of +0x61C, or of the
+  horse's heading itself (medium, the mounted steering still unread).
 - *the vampire feed*: not reproduced (a sleeping victim and vampirism are a scenario of their
   own). What the data says: the feed's idles are third-person animations only
   (`vampirefeedbedleft.kf`, `...right`, `...bedroll_crawl`, `...bedroll_side` under
@@ -3420,6 +3430,9 @@ log.
   "UpperBody:0" and "UpperBody:2" (the trunk, with the thighs, calves and feet skinned into
   these two), "UpperBody"; the female "Arms", "Upperbody:0/1/2" the same way. No shape
   named "Hand", so the suit-hand hide is not what takes the shins; what does is open.
+  **In the headset (Nadi, 2026-10-18 evening):** the Finery on, "nur 10 Finger" - one hand
+  a side, the suit-hand hide (BodyNodeHiddenOnArm) confirmed on this outfit; the shins not
+  looked at.
   `finery-paperdoll.txt` ran the same evening on a woman and on a male Altmer (the tester's
   race and sex): OBVR hides none of the shirt's shapes - every one reads flags 000E in the
   body tree at every mark, the inventory open as well, only the hand slot's node is hidden -
