@@ -3480,17 +3480,27 @@ log.
   torch keeps one shape - neither the flipbook (Fire\FireTorchLarge.nif, which the engine
   hangs on the torch's FlameNode1: a NiFlipController over 20 textures a second on
   "FireTorchLarge:0") nor its Fire and Sparks particle systems move; the torch's own mesh
-  (Lights\Torch02.NIF) carries only the static FlameCap. **Reproduced 2026-10-19**
-  (`torch-flame.txt`): the same shape in four pictures two seconds apart - and the same with
-  the hand mode off, with one render a frame (Stereo=none) and with the body and the
-  POV-switch patch off, so neither the hands, the dual pass nor the body stop it. Not
-  OBVR's node updates either: NiNode's downward pass (0x0070A0D0, vtable 0x00A7E38C slot
+  (Lights\Torch02.NIF) carries only the static FlameCap. **Not reproduced after all:** the
+  harness pictures of 2026-10-19 morning (`torch-flame.txt` and its three controls) showed one
+  flame in every picture because the marks were 2.00 s apart and the flipbook loops in one
+  second - the probe (`torch-flame-probe.txt`, Debug.FlameProbe) shows the engine's
+  Fire\FireTorchSmall.nif on the torch, every controller active and started at the equip,
+  the flip index following the running time (18 at every 2.00 s mark; 11, 19, 6, 14 at marks
+  2.37 s apart). His video is from a 30 fps stream with head motion in every frame, and its
+  flame region changes no more frame to frame than the ground does - so it says "static"
+  without proving it. `torch-flame-fast.txt` (eight marks 0.31 s apart, 2026-10-19 10:14):
+  the index 14, 0, 6, 12, 18, 5, 11, 17 and eight different flames in the eight pictures - the
+  flipbook runs and is drawn here. So the harness does not reproduce his flame. Not OBVR's
+  node updates either: NiNode's downward pass (0x0070A0D0, vtable 0x00A7E38C slot
   0x60) runs UpdatePropertiesAndControllers (0x0047C930) only when Update's second argument
   is set, and OBVR's kUpdateNodeTransforms passes 0 everywhere (objdump 2026-10-19; xOBSE
   names the argument updateProperties). Whether a fire of the world animates under OBVR is
   unanswered (`fire-world.txt` and `fire-placed.txt` had the fire out of the picture,
-  `fire-placed2.txt` was stopped before its pictures). Open. Next: a probe of the flame's
-  controllers at the marks - class, the flags byte at +0x08 (bit 3 active), the last and
-  scaled times at +0x20 and +0x28, the flip index at +0x50 - which says whether their time
-  stands still or they were never started (small); then who calls Update(time, 1) on
-  "Player1stPerson" and with what time, by the caller chain of 0x0047C930 (medium).
+  `fire-placed2.txt` was stopped before its pictures). **Open on his side.** The probe is in
+  (`[Debug] FlameProbe=1`, game/FlameProbe.h): at every hand script mark and, without the
+  harness, every three seconds, the controllers under the first-person Torch and the body's
+  with their raw words, and for the flipbook whether the texturing property holds the
+  texture the index names. Asked of him: whether the flame animates without OBVR (and in
+  0.2.2's flat mode), whether fires in the world animate with OBVR, which torch mod if any
+  (his flame is the crisp large flame, not the engine's own FireTorchSmall on Torch02), and a
+  minute with a torch and FlameProbe=1 in beta 5.

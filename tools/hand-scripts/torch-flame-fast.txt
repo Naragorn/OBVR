@@ -1,0 +1,42 @@
+# torch-flame.txt with the marks 0.31 s apart (eight of them): the flipbook on
+# the flame (20 textures a second, a one-second loop) shows a different frame
+# at every picture if the drawn flame follows its controller - the probe of
+# 2026-10-19 10:08 saw the controller's index change with the time (11, 19, 6,
+# 14 at marks 2.37 s apart) while the four pictures showed one and the same
+# flame; marks a whole number of seconds apart would sample the same frame.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-flame-fast.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+ini Debug FlameProbe=1
+ini Render MirrorMenusToMonitor=1
+console-at ready player.additem 0002CF9F 1
+console-at ready player.equipitem 0002CF9F
+
+expect HandScript: finished
+expect a world frame while the game loads
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 16
+left pos -0.05 -0.30 -0.45
+left rot 0 0 0
+left curl 0.8
+right pos 0.30 -0.40 -0.30
+wait 3
+mark fast-1
+wait 0.31
+mark fast-2
+wait 0.31
+mark fast-3
+wait 0.31
+mark fast-4
+wait 0.31
+mark fast-5
+wait 0.31
+mark fast-6
+wait 0.31
+mark fast-7
+wait 0.31
+mark fast-8
+wait 0.31

@@ -1120,6 +1120,16 @@ endif()
 
 add_test(NAME stow COMMAND stow_test)
 
+add_executable(flame_probe_logic_test FlameProbeLogicTest.cpp)
+
+target_include_directories(flame_probe_logic_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(flame_probe_logic_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME flame_probe_logic COMMAND flame_probe_logic_test)
+
 add_executable(icon_test
 	IconTest.cpp
 	../src/render/DdsImage.cpp

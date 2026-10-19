@@ -310,6 +310,10 @@ struct Config {
 	// What [Hands] HideFirstPersonNodes is written from. In [Debug],
 	// hot-reloadable, off by default.
 	bool firstPersonTreeProbe = false;
+	// At every hand script mark, the time controllers of the torch's flame
+	// under the first-person and the body's Torch nodes with their raw words
+	// (game/FlameProbe.h). In [Debug], off by default.
+	bool flameProbe = false;
 
 	// Points the player where the head is looking, so an arrow leaves along
 	// the gaze instead of along the mouse.

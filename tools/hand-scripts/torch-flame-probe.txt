@@ -1,0 +1,46 @@
+# 2026-10-19 10:15: the marks 2.37 s apart, not 2.00 - the flipbook loops in one
+# second (20 textures), so marks a whole number of seconds apart sample the
+# same frame every time, which is what the four identical pictures of
+# torch-flame.txt were (the probe at 10:06: last time advancing 31.02, 33.01,
+# 35.01, 37.01, the scaled time 0.93 at every mark, the flip index 18).
+# torch-flame.txt with Debug.FlameProbe=1: at every mark the time controllers
+# under the first-person Torch and the body's Torch with their raw words
+# (game/FlameProbe.h) - whether their times move between marks two seconds
+# apart, whether they are active, and whether the body's torch (updated with
+# the world) differs from the first-person one.
+# The torch's flame in the hand mode (a Quest 3 tester's video, 2026-10-18:
+# "torch animation ... doesn't work at all" - the flame's shape the same in
+# every frame of thirteen seconds). Torch02 (0002CF9F, Lights\Torch02.NIF;
+# the engine hangs Fire\FireTorchLarge.nif on its FlameNode1 - a
+# NiFlipController over 20 textures a second, and the Fire and Sparks
+# particle systems) is put in the left hand by the console and the hand held
+# before the face; pictures at four marks two seconds apart. An animating
+# flame shows a different flipbook frame in each picture (one chance in
+# twenty of a repeat); a standing one the same shape in all four.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-flame-probe.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+ini Debug FlameProbe=1
+ini Render MirrorMenusToMonitor=1
+console-at ready player.additem 0002CF9F 1
+console-at ready player.equipitem 0002CF9F
+
+expect HandScript: finished
+expect a world frame while the game loads
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 16
+left pos -0.05 -0.30 -0.45
+left rot 0 0 0
+left curl 0.8
+right pos 0.30 -0.40 -0.30
+wait 3
+mark torch-1
+wait 2.37
+mark torch-2
+wait 2.37
+mark torch-3
+wait 2.37
+mark torch-4

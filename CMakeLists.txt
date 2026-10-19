@@ -83,6 +83,7 @@ add_library(OBVR SHARED
 	src/game/WorldPickTrampoline.cpp
 	src/game/FirstPersonArms.cpp
 	src/game/FirstPersonHide.cpp
+	src/game/FlameProbe.cpp
 	src/game/FirstPersonDepth.cpp
 	src/game/PlayerStagger.cpp
 	src/game/HitShader.cpp

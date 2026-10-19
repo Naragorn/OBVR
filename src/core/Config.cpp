@@ -644,6 +644,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Debug", "ThirdPersonProbe", config.thirdPersonProbe, path);
 	config.firstPersonTreeProbe =
 		ReadBool("Debug", "FirstPersonTreeProbe", config.firstPersonTreeProbe, path);
+	config.flameProbe = ReadBool("Debug", "FlameProbe", config.flameProbe, path);
 	config.menuWorldProbe = ReadBool("Debug", "MenuWorldProbe", config.menuWorldProbe, path);
 	config.nativeMenuLifecycleProbe =
 		ReadBool("Debug", "NativeMenuLifecycleProbe", config.nativeMenuLifecycleProbe, path);

@@ -33,6 +33,7 @@
 #include "game/FirstPersonArms.h"
 #include "game/FirstPersonDepth.h"
 #include "game/FirstPersonHide.h"
+#include "game/FlameProbe.h"
 #include "game/BonePin.h"
 #include "game/HandAdjust.h"
 #include "game/HandBones.h"
@@ -8492,6 +8493,9 @@ void BeforeFirstScenePass() {
 		const UInt32 top = menuNow ? game::TopVisibleMenu() : game::kMenuIdNone;
 		OBVR_LOG("Hands: at the mark - menu %d (%s), the hands %s, pinned %d", menuNow ? 1 : 0, game::MenuIdName(top),
 		         handsAwayNow ? "away" : "shown", pinHands ? 1 : 0);
+		if (GetConfig().flameProbe) {
+			game::ProbeFlames(test::HandScriptMarkName());
+		}
 	}
 	if (pinHands) {
 		// The pins of this frame start here; the first-person arm bones the
@@ -10653,6 +10657,20 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
 	const float deltaSeconds = g_frameClock.Tick(ReadPerformanceCounter(), ticksPerSecond);
 	g_deltaSeconds = deltaSeconds;
+
+	// Debug.FlameProbe without the harness: a probe of the torch's flame every
+	// 3.37 seconds - not a whole number, since the flipbook loops in one second
+	// and probes a whole number of seconds apart would read the same frame
+	// every time - so a tester holding a torch for a minute has the
+	// controllers' words in the log (the marks' probes are at the hands).
+	if (GetConfig().flameProbe) {
+		static float s_flameProbeClock = 0.0f;
+		s_flameProbeClock += deltaSeconds;
+		if (s_flameProbeClock >= 3.37f) {
+			s_flameProbeClock = 0.0f;
+			game::ProbeFlames("timer");
+		}
+	}
 
 	// The engine's auto vanity camera - the orbit round the player after
 	// fVanityModeAutoDelay seconds without a key or the mouse - held off in
