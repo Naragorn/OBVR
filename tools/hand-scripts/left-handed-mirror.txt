@@ -1,30 +1,40 @@
-# Left-handed play with the first-person skeleton drawn mirrored ([Hands]
-# LeftHandMirror=1, the default; a tester, 2026-10-17: "left handed mode
-# inverts hands to face the wrong direction" - the game's right hand, with
-# the right hand's calibration, sat on the left controller). The roles
-# swapped (LeftHanded=1), both controllers held before the face, then raised
-# and turned with the head. At every mark the line "Hands: at the mark - the
-# first-person skeleton mirrored: root determinant -1, ..." must say the
-# root and both hand bones are turned over (determinant -1), each hand bone
-# sitting the grip's length from its own controller's origin (the same
-# length as in the control run left-handed-plain.txt, the mirror off), and
-# Camera01 - the engine's camera anchor inside the skeleton - where the
-# control run has it, the eyes of "Camera: at the mark" too. "Left-handed
-# mirror: a first-person draw culled" says the renderer swapped the cull for
-# the mirrored draws.
+# Left-handed play: the first-person skeleton drawn mirrored (a tester,
+# 2026-10-17: "left handed mode inverts hands to face the wrong direction" -
+# the game's right hand, with the right hand's calibration, sat on the left
+# controller). The roles swapped (LeftHanded=1), both controllers held
+# before the face, then raised and turned with the head. At every mark the
+# line "Hands: at the mark - the first-person skeleton mirrored: root
+# determinant -1, ..." must say the root and both hand bones are turned over
+# (determinant -1), each hand bone sitting the grip's length from its own
+# controller's origin (13.7 and 11.8 units on 2026-10-20, the same as
+# unmirrored), and Camera01 near the eyes; the eyes of "Camera: at the mark"
+# must stand where a right-hander's run has them. "Left-handed mirror: a
+# first-person draw culled" says the renderer swapped the cull for the
+# mirrored draws. The body's arms reach the hands across (the right arm the
+# first-person left hand bone, on the right controller) and the first-person
+# arms are laid onto them through the skins' bind-pose partners: "Body IK:
+# the arm bones' partners for the mirror read from the body's skins", both
+# "Body IK: the ... arm follows its hand" lines, and at the marks "the ... arm
+# reaches its hand (the wrist N units off it ...) ... the first-person arm on
+# it within N units, M degrees" - small numbers mean the cuff meets the
+# sleeve.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/left-handed-mirror.txt --run-timeout 240 --headless
 
 ini Hands Enabled=1
 ini Hands LeftHanded=1
-ini Hands LeftHandMirror=1
 ini Hands HandsInMenus=1
 
 expect HandScript: finished
 expect Hands: at the mark - the first-person skeleton mirrored: root determinant -1
 expect Left-handed mirror: a first-person draw culled
+expect Body IK: the arm bones' partners for the mirror read from the body's skins
+expect Body IK: the right arm follows its hand
+expect Body IK: the left arm follows its hand
 reject HandScript: WARNING
 reject the first-person skeleton mirrored: root determinant 1
 reject the weapon hand's bone determinant 1
+reject Body IK: left-handed play without the mirror
+reject the mirror's bone partners did not read
 
 wait 12
 right pos 0.25 -0.30 -0.40

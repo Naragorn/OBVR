@@ -838,11 +838,16 @@ void TestTrunk() {
 
 void TestGate() {
 	std::printf("the gate of an arm\n");
-	Check(ArmFollowsHand(true, true, true, false), "on, shown, pinned, own sides: follows");
-	Check(!ArmFollowsHand(false, true, true, false), "the arms part off: no");
-	Check(!ArmFollowsHand(true, false, true, false), "the body not shown: no");
-	Check(!ArmFollowsHand(true, true, false, false), "the hand not pinned this frame: no");
-	Check(!ArmFollowsHand(true, true, true, true), "left-handed, the hands swapped: no");
+	Check(ArmFollowsHand(true, true, true, false, false), "on, shown, pinned, own sides: follows");
+	Check(!ArmFollowsHand(false, true, true, false, false), "the arms part off: no");
+	Check(!ArmFollowsHand(true, false, true, false, false), "the body not shown: no");
+	Check(!ArmFollowsHand(true, true, false, false, false), "the hand not pinned this frame: no");
+	Check(!ArmFollowsHand(true, true, true, true, false), "left-handed without the mirror, the hands swapped: no");
+	Check(ArmFollowsHand(true, true, true, true, true), "left-handed with the skeleton mirrored: follows");
+	Check(!ArmFollowsHand(true, true, false, true, true), "mirrored but the hand not pinned: no");
+	Check(FirstPersonSideFor(0, false) == 0 && FirstPersonSideFor(1, false) == 1, "own sides: each arm its own hand");
+	Check(FirstPersonSideFor(0, true) == 1 && FirstPersonSideFor(1, true) == 0,
+	      "mirrored: the right arm the first-person left hand, the left arm the right");
 }
 
 void TestHides() {

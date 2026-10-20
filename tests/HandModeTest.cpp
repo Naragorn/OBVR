@@ -2585,12 +2585,11 @@ void TestArmsRestMirror() {
 	frame.left.valid = true;
 	frame.right.position = NiPoint3{-0.2f, -0.3f, -0.35f};  // the left controller, playing the weapon hand
 	frame.left.position = NiPoint3{0.2f, -0.3f, -0.35f};
-	frame.rolesSwapped = true;
 	settings.leftHanded = true;
-	settings.leftHandMirror = false;
+	frame.rolesSwapped = false;  // the roles not swapped this frame: the rest as a right-hander's
 	HandMode plain;
 	const HandModeResult before = plain.Update(frame, settings);
-	settings.leftHandMirror = true;
+	frame.rolesSwapped = true;  // swapped: the skeleton mirrored, the rest with it
 	HandMode mirrored;
 	const HandModeResult after = mirrored.Update(frame, settings);
 	Check(before.armsValid && after.armsValid, "the arms placed either way");
@@ -2599,11 +2598,7 @@ void TestArmsRestMirror() {
 	           0.01f) &&
 	          Near(after.armsOffsetUnits.y, before.armsOffsetUnits.y) &&
 	          Near(after.armsOffsetUnits.z, before.armsOffsetUnits.z),
-	      "mirrored: the root twice the rest further right, forward and up as before");
-	frame.rolesSwapped = false;
-	HandMode unswapped;
-	const HandModeResult same = unswapped.Update(frame, settings);
-	Check(Near(same.armsOffsetUnits.x, before.armsOffsetUnits.x), "without the swap the mirror does nothing");
+	      "the roles swapped: the root twice the rest further right, forward and up as before");
 }
 
 void TestLeftHandedMirror() {

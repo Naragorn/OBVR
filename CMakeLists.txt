@@ -123,6 +123,7 @@ add_library(OBVR SHARED
 	src/game/SpellBook.cpp
 	src/game/ArmStump.cpp
 	src/game/BodyIk.cpp
+	src/game/BoneMirrorRead.cpp
 	src/game/TakeItem.cpp
 	src/game/WeaponDrawSpeed.cpp
 	src/game/BowDrawSound.cpp

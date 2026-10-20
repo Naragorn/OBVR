@@ -287,6 +287,9 @@ NiTransform g_cyclopeanCameraWorldTransform{};
 bool g_cyclopeanCameraWorldValid = false;
 // Left-handed in Full VR this frame: "right" in g_hand is the left controller.
 bool g_handRolesSwapped = false;
+// The first-person skeleton drawn mirrored this frame (the pins placed it,
+// the roles swapped): the body IK pairs the arms across (game/BodyIk.h).
+bool g_skeletonMirrored = false;
 // The controllers this frame, physically: [0] left, [1] right (the hand
 // script's when it drives them). What the HUD on the hands looks at.
 vr::HandPose g_hudHandPose[2];
@@ -6461,6 +6464,7 @@ UInt32 StepBodyArmsAfterPins(bool pinsRan, const NiPoint3& cameraWorld) {
 	arms.rightPinned = pinsRan && game::HandPinnedThisFrame(true);
 	arms.leftPinned = pinsRan && game::HandPinnedThisFrame(false);
 	arms.rolesSwapped = g_handRolesSwapped;
+	arms.mirrored = pinsRan && g_skeletonMirrored;
 	arms.cameraWorld = cameraWorld;
 	arms.dtSeconds = g_deltaSeconds;
 	arms.logState = test::HandScriptMarkedThisFrame();
@@ -7814,11 +7818,10 @@ void PrepareMenuFrameIfNeeded(bool menuIsUp) {
 UInt32 g_magicNodeLines = 3;
 
 // Whether the first-person skeleton is drawn mirrored this frame: a
-// left-hander's roles swapped and [Hands] LeftHandMirror on (game/BonePin.h
-// "The mirror"). The pins, the arms' root and the renderer's cull all read
-// this one answer.
-bool FirstPersonMirrored(const vr::HandSettings& hands) {
-	return g_handRolesSwapped && hands.leftHandMirror;
+// left-hander's roles swapped (game/BonePin.h "The mirror"). The pins, the
+// arms' root, the body IK and the renderer's cull all read this one answer.
+bool FirstPersonMirrored() {
+	return g_handRolesSwapped;
 }
 
 // At a hand script's mark: whether the skeleton is drawn turned over (the
@@ -8034,7 +8037,7 @@ TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& camera
 	                             (weapon->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f});
 	const NiMatrix33 calibration = game::MirroredCalibration(
 		game::HandCalibration(hands.rightHandRoll, hands.rightHandPitch, hands.rightHandYaw),
-		FirstPersonMirrored(hands));
+		FirstPersonMirrored());
 	// The weapon hand as it is drawn, behind the controller by the weapon's
 	// weight (vr/WeaponWeight.h): the left hand holds the handle where it is
 	// seen.
@@ -8242,7 +8245,7 @@ void PinLeftHandOnHandle(const vr::HandSettings& hands, float weight, float hand
 	}
 	// Where the controller alone would put the hand: its turn is kept on the
 	// handle (vr::LeftHandOnHandle), and the way there starts from it.
-	const bool mirrored = FirstPersonMirrored(hands);
+	const bool mirrored = FirstPersonMirrored();
 	const NiPoint3 grip = game::MirroredGrip(
 		(sharedGripMetres + NiPoint3{hands.leftHandGripX, hands.leftHandGripY, hands.leftHandGripZ}) * perMetre,
 		mirrored);
@@ -8326,7 +8329,7 @@ bool PinAdjustableHand(bool right, const vr::HandSettings& hands, bool adjusting
 	// Left-handed with the mirror (game/BonePin.h "The mirror"): the
 	// calibration and the grip turned over in the controller's frame, so the
 	// bone comes out the mirror image of the right-hander's hand.
-	const bool mirrored = FirstPersonMirrored(hands);
+	const bool mirrored = FirstPersonMirrored();
 	const NiPoint3 grip = game::MirroredGrip((sharedGripMetres + ownGrip) * perMetre, mirrored);
 	const NiMatrix33 calibration = game::MirroredCalibration(game::HandCalibration(roll, pitch, yaw), mirrored);
 	const char* const bone = right ? hands.rightHandBone : hands.leftHandBone;
@@ -8570,7 +8573,8 @@ void BeforeFirstScenePass() {
 	// Left-handed with the mirror: the skeleton's root turned over with the
 	// hands' placement, and the renderer culling the other way for its
 	// draws - only while the pins place it (game/BonePin.h "The mirror").
-	const bool skeletonMirrored = pinHands && FirstPersonMirrored(GetConfig().hands);
+	const bool skeletonMirrored = pinHands && FirstPersonMirrored();
+	g_skeletonMirrored = skeletonMirrored;
 	render::SetFirstPersonMirror(skeletonMirrored);
 	if (pinHands) {
 		// The pins of this frame start here; the first-person arm bones the

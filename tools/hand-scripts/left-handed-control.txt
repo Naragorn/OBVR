@@ -1,0 +1,38 @@
+# The right-handed control for left-handed-mirror.txt: the same poses and
+# marks with LeftHanded=0. By symmetry the body's arms must come out the
+# same - the right arm reaching the right controller with the same shoulder,
+# elbow and hand in "Body IK: at the mark - the right arm reaches its hand",
+# the same hand roll on the forearm - whether the right controller carries
+# the game's right hand (here) or, mirrored, the game's left hand laid onto
+# the body's right arm through the skins' partners (the mirror run). A
+# difference in the rolls would be the bone convention wrong.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/left-handed-control.txt --run-timeout 240 --headless
+
+ini Hands Enabled=1
+ini Hands LeftHanded=0
+ini Hands HandsInMenus=1
+
+expect HandScript: finished
+expect Hands: at the mark - the first-person skeleton as the game has it: root determinant 1
+expect Body IK: the right arm follows its hand
+expect Body IK: the left arm follows its hand
+reject HandScript: WARNING
+reject Left-handed mirror: a first-person draw culled
+
+wait 12
+right pos 0.25 -0.30 -0.40
+left pos -0.25 -0.30 -0.40
+wait 2
+mark rest
+right pos 0.15 -0.10 -0.35
+left pos -0.15 -0.10 -0.35
+right rot -30 0 0
+left rot -30 0 0
+wait 2
+mark raised
+head yaw 40
+wait 2
+mark turned
+head yaw 0
+wait 1
+mark end

@@ -791,13 +791,6 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.leftHanded = v != 0.0f; },
 	},
 	{
-		"Hands", "Left-handed mirror", "The arms drawn mirrored: a left hand holds the weapon. Off: the right hand on the left controller",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Hands", "LeftHandMirror",
-		+[](const Config& c) { return c.hands.leftHandMirror ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.hands.leftHandMirror = v != 0.0f; },
-	},
-	{
 		"Hands", "Controllers in menus", "With the mode off: laser at the menus, sticks in this one",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "ControllerMenus",

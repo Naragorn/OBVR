@@ -1663,6 +1663,13 @@ endif()
 
 add_test(NAME body_ik COMMAND body_ik_test)
 
+add_executable(bone_mirror_test BoneMirrorTest.cpp ../src/core/Rotation.cpp)
+target_include_directories(bone_mirror_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(bone_mirror_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME bone_mirror COMMAND bone_mirror_test)
+
 add_executable(attack_tempo_test AttackTempoTest.cpp)
 
 target_include_directories(attack_tempo_test PRIVATE ../src)

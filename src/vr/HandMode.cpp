@@ -191,7 +191,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 			}
 			if (s.armsFollowPosition) {
 				// Mirrored for a left-hander drawn mirrored (ArmsRestOffset).
-				const NiPoint3 rest = ArmsRestOffset(s, f.rolesSwapped && s.leftHandMirror);
+				const NiPoint3 rest = ArmsRestOffset(s, f.rolesSwapped);
 				r.armsOffsetUnits = (rightRelative - rest) * (f.unitsPerMetre * s.armOffsetScale);
 			}
 		}

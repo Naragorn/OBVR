@@ -7,6 +7,7 @@
 #include "core/MathFns.h"
 #include "core/Rotation.h"
 #include "game/BodyPlacement.h"
+#include "game/BoneMirrorRead.h"
 #include "game/BonePin.h"
 #include "game/FirstPersonArms.h"
 #include "game/FirstPersonHide.h"
@@ -296,6 +297,41 @@ constexpr UInt32 kCarriedMax = 4;
 BoneWrite g_carried[2][kCarriedMax];
 NiAVObject* g_fpBone[kFpBones] = {};
 TorsoYawState g_torso;
+// The arm bones' partners on the other side (BoneMirror.h), for the
+// first-person arms laid onto the body's other arm under the left-handed
+// mirror: read from the body's skins once per body root.
+ArmBonePartnersRead g_partners;
+const NiAVObject* g_partnersRoot = nullptr;
+bool g_partnersTried = false;
+
+// The partners for this body, read on first need. False, with the why in
+// g_partners, when the skins did not give them.
+bool ArmPartnersReady() {
+	if (g_partnersRoot != g_frame.root || !g_partnersTried) {
+		g_partnersRoot = g_frame.root;
+		g_partnersTried = true;
+		const bool ok = ReadArmBonePartners(g_frame.root, &g_frame.bone[kArmRight], g_partners);
+		if (ok) {
+			OBVR_LOG("Body IK: the arm bones' partners for the mirror read from the body's skins (%u of %u shapes "
+			         "skinned, taken from %s) - the first-person arms are laid onto the body's other arm",
+			         g_partners.shapesSkinned, g_partners.shapesWalked, g_partners.shapes);
+		} else {
+			char missing[160] = "";
+			UInt32 at = 0;
+			for (UInt32 i = 0; i < 2 * kArmPartCount && at < sizeof(missing) - 40; ++i) {
+				if (!g_partners.partners.found[i / kArmPartCount][i % kArmPartCount]) {
+					at += static_cast<UInt32>(std::snprintf(missing + at, sizeof(missing) - at, "%s%s",
+					                                        at > 0 ? ", " : "", kBodyNames[kArmRight + i]));
+				}
+			}
+			OBVR_LOG("Body IK: the arm bones' partners for the mirror did not read - %s (%u of %u shapes skinned%s%s); "
+			         "the body's arms are left to the body",
+			         g_partners.why != nullptr ? g_partners.why : "?", g_partners.shapesSkinned,
+			         g_partners.shapesWalked, at > 0 ? "; missing: " : "", missing);
+		}
+	}
+	return g_partners.partners.valid;
+}
 
 // ------------------------------------------------------------ The trace
 //
@@ -453,10 +489,17 @@ void StepHides(NiAVObject* root) {
 // well (BonePin.h, "Bare wrists"; its wrist edge the body's "Arms" edge, the
 // same eleven vertices with the same weights - ArmStump.h), so with the same
 // bones at the same places the cuff meets the body's sleeve or skin exactly.
-void AlignFirstPersonArm(UInt32 side, const NiMatrix33& handRot, const NiPoint3& handPos) {
+//
+// Under the left-handed mirror (BodyIk.h, `mirrored`) the first-person arm
+// of the OTHER side is laid onto this body arm, each bone's world pose
+// carried through the skin's bind-pose partner (BoneMirror.h): the
+// first-person right-arm bones, drawn turned over, land on the body's left
+// arm with their cuff on its sleeve. The hand stays at its pin.
+void AlignFirstPersonArm(UInt32 side, const NiMatrix33& handRot, const NiPoint3& handPos, bool mirrored) {
 	NiAVObject* const* const body = &g_frame.bone[side == 0 ? kArmRight : kArmLeft];
-	NiAVObject* const* const fp = &g_fpBone[side * kArmParts];
-	BoneWrite* const writes = &g_fp[side * kArmParts];
+	const UInt32 fpSide = FirstPersonSideFor(side, mirrored);
+	NiAVObject* const* const fp = &g_fpBone[fpSide * kArmParts];
+	BoneWrite* const writes = &g_fp[fpSide * kArmParts];
 	// The twist bone where the pins left it, before it is laid onto the
 	// body's: what hangs on it keeps that place (BodyIkLogic.h, "The shield").
 	NiAVObject* const twist = fp[kForeTwist];
@@ -493,9 +536,12 @@ void AlignFirstPersonArm(UInt32 side, const NiMatrix33& handRot, const NiPoint3&
 			if (body[part] == nullptr) {
 				continue;
 			}
-			w.rot = body[part]->worldTransform.rot;
-			w.pos = body[part]->worldTransform.pos;
-			w.scale = body[part]->worldTransform.scale;
+			const NiTransform at = mirrored ? PartnerWorld(body[part]->worldTransform,
+			                                               g_partners.partners.toOther[side][part])
+			                                : body[part]->worldTransform;
+			w.rot = at.rot;
+			w.pos = at.pos;
+			w.scale = at.scale;
 		}
 		const float divisor = parentScale > 0.0f ? parentScale : 1.0f;
 		// The true inverse: the parent's matrix may carry a race's height.
@@ -527,7 +573,7 @@ void AlignFirstPersonArm(UInt32 side, const NiMatrix33& handRot, const NiPoint3&
 			}
 			// Its own local transform is the base: RestoreFirstPersonArmWrites
 			// put last frame's carry back before the pins.
-			BoneWrite& w = g_carried[side][stats.carried];
+			BoneWrite& w = g_carried[fpSide][stats.carried];
 			w = BoneWrite{};
 			w.node = child;
 			w.base = child->localTransform;
@@ -594,7 +640,12 @@ bool SolveArm(UInt32 side, const BodyArmsFrame& f, const TorsoKeepOut& torso) {
 	NiAVObject* const fore = g_frame.bone[base + kFore];
 	NiAVObject* const foreTwist = g_frame.bone[base + kForeTwist];
 	NiAVObject* const hand = g_frame.bone[base + kHand];
-	NiAVObject* const fpHand = g_fpBone[side * kArmParts + kHand];
+	// The first-person hand this arm reaches: its own side's, or under the
+	// mirror the other side's bone (on this side's controller), its world
+	// pose carried through the bind-pose partner so the body's own hand bone
+	// gets a proper rotation of its own convention (BoneMirror.h).
+	const UInt32 fpSide = FirstPersonSideFor(side, f.mirrored);
+	NiAVObject* const fpHand = g_fpBone[fpSide * kArmParts + kHand];
 	if (clavicle == nullptr || upper == nullptr || fore == nullptr || hand == nullptr ||
 	    !LooksLikeObject(clavicle->parent)) {
 		stats.why = "the body's arm bones are not all there";
@@ -604,8 +655,11 @@ bool SolveArm(UInt32 side, const BodyArmsFrame& f, const TorsoKeepOut& torso) {
 		stats.why = "no first-person hand bone to reach";
 		return false;
 	}
-	const NiMatrix33 targetRot = fpHand->worldTransform.rot;
-	const NiPoint3 target = fpHand->worldTransform.pos;
+	const NiTransform targetWorld =
+		f.mirrored ? PartnerWorld(fpHand->worldTransform, g_partners.partners.toOther[fpSide][kHand])
+	               : fpHand->worldTransform;
+	const NiMatrix33 targetRot = targetWorld.rot;
+	const NiPoint3 target = targetWorld.pos;
 	const float sideSign = side == 0 ? 1.0f : -1.0f;
 	const NiPoint3 right{math::Cos(g_frame.bodyYaw), math::Sin(g_frame.bodyYaw), 0.0f};
 	const NiPoint3 forward{-right.y, right.x, 0.0f};
@@ -697,7 +751,9 @@ bool SolveArm(UInt32 side, const BodyArmsFrame& f, const TorsoKeepOut& torso) {
 	WriteLocal(g_body[base + kHand],
 	           LocalFor(hand->localTransform, foreRot, s.joint, fore->worldTransform.scale, targetRot, s.end));
 	UpdateNodeTransforms(clavicle);
-	AlignFirstPersonArm(side, targetRot, target);
+	// The first-person hand stays where its pin put it (under the mirror that
+	// is not the body hand's own pose - the other bone's, turned over).
+	AlignFirstPersonArm(side, fpHand->worldTransform.rot, fpHand->worldTransform.pos, f.mirrored);
 
 	stats.follows = true;
 	stats.reached = s.reached;
@@ -1067,16 +1123,21 @@ UInt32 StepBodyArms(const BodyArmsFrame& f) {
 	UInt32 following = 0;
 	for (UInt32 side = 0; side < 2; ++side) {
 		ArmStats& stats = g_frame.arm[side];
-		const bool pinned = side == 0 ? f.rightPinned : f.leftPinned;
-		bool follows = ArmFollowsHand(f.ik.arms, true, pinned, f.rolesSwapped);
-		if (!follows) {
+		// The hand this arm reaches: under the mirror the other side's bone.
+		const bool pinned = FirstPersonSideFor(side, f.mirrored) == 0 ? f.rightPinned : f.leftPinned;
+		bool follows = ArmFollowsHand(f.ik.arms, true, pinned, f.rolesSwapped, f.mirrored);
+		if (follows && f.mirrored && !ArmPartnersReady()) {
+			follows = false;
+			stats.why = "the mirror's bone partners did not read from the body's skins";
+		} else if (!follows) {
 			stats.why = !f.ik.arms         ? "the arms part off"
-			            : f.rolesSwapped   ? "left-handed: the hands on each other's controllers"
+			            : f.rolesSwapped   ? "left-handed without the mirror: the hands on each other's controllers"
 			                               : "its hand not pinned this frame";
 			if (f.ik.arms && f.rolesSwapped && !g_swappedReported) {
 				g_swappedReported = true;
-				OBVR_LOG("Body IK: left-handed play puts the right hand's bone on the left controller - the body's "
-				         "arms are left to the body (HideArms) rather than reach across the chest");
+				OBVR_LOG("Body IK: left-handed play without the mirror puts the right hand's bone on the left "
+				         "controller - the body's arms are left to the body (HideArms) rather than reach across the "
+				         "chest");
 			}
 		} else {
 			follows = SolveArm(side, f, torso);

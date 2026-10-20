@@ -22,8 +22,8 @@
 namespace obvr::game {
 
 // The root's local rotation: the hands' turn on top of the engine's base -
-// and for left-handed play with the mirror on ([Hands] LeftHandMirror,
-// BonePin.h "The mirror") the whole skeleton turned over between the two,
+// and for left-handed play (the skeleton mirrored, BonePin.h "The mirror")
+// the whole skeleton turned over between the two,
 // x to -x in the parent's frame (the camera's on foot, so about the head's
 // own midplane) before the turn: the right arm hangs on the left, the left
 // on the right, and the hands pinned to the real controllers (with their

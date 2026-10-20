@@ -875,11 +875,19 @@ inline bool StandingSettled(float& standingSeconds, bool standsIdle, float dtSec
 //
 // Whether a side's arm follows its hand this frame: the arms part on, the
 // body shown, that hand pinned this frame, and the hands in their own sides
-// (left-handed play puts the right hand's bone on the left controller - the
-// body's right arm would reach across the chest to it; left to the body's
-// own arms for now).
-inline bool ArmFollowsHand(bool armsOn, bool bodyShown, bool handPinned, bool rolesSwapped) {
-	return armsOn && bodyShown && handPinned && !rolesSwapped;
+// - or, left-handed, the first-person skeleton drawn mirrored, so the hand
+// on this side of the body is the other side's bone (BodyIk.h, `mirrored`).
+// Left-handed without the mirror the right hand's bone sits on the left
+// controller and the body's right arm would reach across the chest to it:
+// left to the body's own arms.
+inline bool ArmFollowsHand(bool armsOn, bool bodyShown, bool handPinned, bool rolesSwapped, bool mirrored) {
+	return armsOn && bodyShown && handPinned && (!rolesSwapped || mirrored);
+}
+
+// Which first-person arm a body side pairs with: its own, or the other
+// side's under the mirror.
+inline UInt32 FirstPersonSideFor(UInt32 bodySide, bool mirrored) {
+	return mirrored ? 1u - bodySide : bodySide;
 }
 
 // ------------------------------------------------------------ The hides

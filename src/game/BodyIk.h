@@ -89,6 +89,12 @@ struct BodyArmsFrame {
 	bool rightPinned = false;  // the first-person right hand bone written this frame
 	bool leftPinned = false;
 	bool rolesSwapped = false;  // left-handed: the hands on each other's controllers
+	// Left-handed with the first-person skeleton drawn mirrored (BonePin.h
+	// "The mirror"): each body arm reaches the first-person hand of the
+	// OTHER side (the right arm the "Bip01 L Hand" bone, on the right
+	// controller), and that side's first-person arm is laid onto it through
+	// the skin's bind-pose partners (BoneMirror.h).
+	bool mirrored = false;
 	NiPoint3 cameraWorld{0.0f, 0.0f, 0.0f};
 	float dtSeconds = 0.0f;     // for the elbow's ease
 	bool logState = false;      // a hand script's mark: the state line

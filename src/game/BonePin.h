@@ -227,8 +227,8 @@ inline bool FitReadsLikeAHand(const NiPoint3& ownGripMetres, float rollDegrees, 
 
 // ----------------------------------------------------------- The mirror
 //
-// Left-handed play with the first-person skeleton drawn mirrored ([Hands]
-// LeftHandMirror, left-handed-spec.md section 2.1): a left controller is
+// Left-handed play with the first-person skeleton drawn mirrored
+// (left-handed-spec.md section 2.1): a left controller is
 // the mirror image of a right one, so the right hand's calibration fits it
 // turned over - the calibration and the grip mirrored in the controller's
 // own frame (x to -x). HandBoneWorld with them puts the right hand's bone at
