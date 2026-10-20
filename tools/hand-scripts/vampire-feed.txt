@@ -13,9 +13,10 @@
 # this person? Feed / Talk" (the probe of 11:05). The bow is 29 degrees, the
 # sleeper's bound centre from the eyes (2360 2022 7214 against 2358 1908 7278:
 # 114 units on, 64 down), and A is pressed again at 32 degrees two seconds
-# later: at 35 degrees the ray passed under him once in four runs (11:16, the
-# HUD's info target 22 pixels wide instead of 354 at the aimed mark, no menu);
-# a second A under the open message box does nothing. The laser presses Feed. The
+# later and a third at 35 degrees: at 35 alone the ray passed under him once
+# in four runs (11:16, the HUD's info target 22 pixels wide instead of 354 at
+# the aimed mark, no menu), at 29 and 32 alone once in three (12:40); an A
+# under the open message box does nothing. The laser presses Feed. The
 # box is DRAWN high in the pictures (the head bowed 35 degrees, the flat
 # picture level ahead of it), but the engine lays its tiles out at the frame's
 # centre and hit-tests there: the sweep of 11:14 (vampire-feed-sweep.txt, the
@@ -71,6 +72,12 @@ wait 0.3
 right a 0
 wait 2
 head pitch -32
+wait 1
+right a 1
+wait 0.3
+right a 0
+wait 2
+head pitch -35
 wait 1
 right a 1
 wait 0.3

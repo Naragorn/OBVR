@@ -3601,8 +3601,12 @@ log.
   there") before any engine switch had been measured. Open, Nadi's call: the default (off
   now that the engine's switches are catalogued and hold on their own, or on as a net for
   an unmeasured switch that does not restore), or a narrower rule that only swallows the
-  POV key in Full VR and leaves mods alone (small). Unverified with the force off: the
-  dialogue's own zoom and switch back (the shim, one dialogue scenario - small).
+  POV key in Full VR and leaves mods alone (small). The dialogue with the force off
+  (dialog-noforce.txt, 12:42 - the vampire's box's Talk, the woken sleeper's dialogue, Esc,
+  which opens the Pause menu over it): not one switch, the engine's SetDialogCamera
+  answering "third person=0 - nothing to do" every call, the Dialog menu in first person
+  throughout - the force does nothing for the dialogue either. So the toggle serves none of
+  the engine's own switches, and only fights a third person somebody chose.
 - *outfits not in full detail*, his inventory picture (a robe, the fists up, bare feet
   hanging under the hem with nothing between): not reproduced - the harness paperdoll with the
   Black Hand Robe and the Black Robe (`robe-hands.txt`, "robe-inventory", "black-inventory")

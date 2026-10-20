@@ -1,0 +1,90 @@
+# A dialogue with [Hands] ForceFirstPerson=0 (Nadi, 2026-10-20: whether the
+# first-person force does anything at all): the vampire's box of
+# vampire-feed.txt, but the laser presses Talk (button_2, pitch 50.2 - the
+# sweep of 11:14 found it at 1288,816), the dialogue with the woken sleeper
+# runs for a few seconds, then Esc - which does not close a dialogue but
+# opens the Pause menu over it (12:42; the dialogue's own exit is its
+# Goodbye topic, not pressed here). "Camera: switched to ..." says
+# whether the engine's dialogue zoom moves the view out of first person and
+# back by itself without the force; the mark line and "Camera: at the mark"
+# the view and the eyes before, in and after the dialogue. 12:38: no switch
+# at all - the engine's SetDialogCamera came with "third person=0 - nothing to
+# do" and the dialogue ran and closed in first person (the run's verdict FAIL
+# only on expects copied from the feed; this file's expects are its own).
+# PASS 12:42: no switch, no "put back", the Dialog menu in first person
+# throughout, the Pause menu over it after Esc.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/dialog-noforce.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+ini Hands ForceFirstPerson=0
+ini Hands ReachOpens=0
+console-at ready coc TestVampireInterior
+console-at cell player.addspell 0002C2A5
+console-at cell player.addspell 0002C2B0
+console-at cell player.addspell 0002C2B1
+console-at cell set PCVampire to 4
+console-at cell player.moveto 0003DB9A 0 -110 0
+console-at cell player.setangle z 0
+
+expect HandScript: finished
+expect a world frame while the game loads
+expect the tile under it "button_2"
+expect Menu trace: a menu just changed - Dialog
+expect Dialog: SetDialogCamera
+reject HandScript: WARNING
+reject Camera: switched to third person
+reject Hands: the player was in third person
+
+wait 12
+mark ready
+wait 15
+mark cell
+wait 4
+head yaw 0
+head pitch -29
+wait 2
+mark aimed
+right a 1
+wait 0.3
+right a 0
+wait 2
+head pitch -32
+wait 1
+right a 1
+wait 0.3
+right a 0
+wait 2
+head pitch -35
+wait 1
+right a 1
+wait 0.3
+right a 0
+wait 2
+mark pressed
+right pos 0.15 -0.25 -0.35
+right rot 50.2 5.1 0
+wait 1.5
+mark talk-aim
+right trigger 1
+wait 0.3
+right trigger 0
+wait 3
+mark talking-3
+head yaw 45
+wait 2
+mark talking-left
+head yaw 0
+wait 2
+mark talking-6
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 3
+mark esc-3
+head yaw -45
+wait 2
+mark esc-right
+head yaw 0
+head pitch 0
+wait 2
+mark esc-7
