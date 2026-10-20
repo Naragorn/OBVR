@@ -43,7 +43,9 @@ a pass with five people the sampler now shows 74 % engine code (a fifth of
 it the memcpy of skinned vertices into the dynamic buffers, 3.7 MB a
 pass), 14 % DXVK, 4 % OBVR. At 90 Hz five people leave about 3 ms, at
 120 Hz about 1 ms. Nadi's drop in the opening is explained and gone on
-this machine; the headset confirms it or not.
+this machine. **Confirmed in the headset** (Nadi, 2026-10-19 evening, beta 5:
+"performance nun super") **and by a tester** (Discord, 2026-10-20, beta 5: cities with
+large groups and encampments out in the world "much much more stable").
 
 Lessons, for the knowledge base: never read mapped buffer memory back in
 a hot path; a counter read under Wine is not free; and a per-pass share
