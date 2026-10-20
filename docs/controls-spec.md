@@ -3586,6 +3586,23 @@ log.
   the knock state unread: third and first every three frames, the eyes 230 units off - the
   "view flickers until you stand" of the beta notes). The chair's first-person sitting is
   the engine's: no seated camera of OBVR's own is needed.
+  **With `[Hands] ForceFirstPerson=0` (chair-sit-noforce.txt, fall-third-person-noforce.txt,
+  12:21):** the engine comes back to first person by itself in all four cases - the
+  sit-down (frame 1887), the get-up (2458), the paralysis (1741) and the collapse (2639),
+  no "put back into first" in either run - as it did after the mount, the dismount and the
+  feed. So none of the engine's own switches measured so far needs the force; what the
+  force still does is undo a third person the engine did not start: the player's own POV
+  key (the right stick's click held, the game's R) and a mod's `ToggleFirstPerson` (xOBSE)
+  or tapped POV control for a scripted scene - which it then fights every frame, the old
+  knockdown flicker in another coat. Vanilla's own script animations (`PickIdle`,
+  `PlayGroup`) do not change the view at all (Enhanced Camera's source handles "a special
+  idle playing on the player" in first person, 0x00472EA0). The setting came in with
+  c271455 ("keep the player in first person while the mode is on - the hands are only drawn
+  there") before any engine switch had been measured. Open, Nadi's call: the default (off
+  now that the engine's switches are catalogued and hold on their own, or on as a net for
+  an unmeasured switch that does not restore), or a narrower rule that only swallows the
+  POV key in Full VR and leaves mods alone (small). Unverified with the force off: the
+  dialogue's own zoom and switch back (the shim, one dialogue scenario - small).
 - *outfits not in full detail*, his inventory picture (a robe, the fists up, bare feet
   hanging under the hem with nothing between): not reproduced - the harness paperdoll with the
   Black Hand Robe and the Black Robe (`robe-hands.txt`, "robe-inventory", "black-inventory")

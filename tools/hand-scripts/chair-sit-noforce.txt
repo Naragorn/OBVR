@@ -1,0 +1,61 @@
+# chair-sit.txt with [Hands] ForceFirstPerson=0 (Nadi, 2026-10-20: "was passiert
+# wenn nutzer force 1st aus hat"): whether the engine comes back to first
+# person by itself after the chair when Full VR never forces it, and what the
+# view is left in when it does not. The expects say only what must happen
+# either way; the switches are read off the log.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/chair-sit-noforce.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+ini Hands ForceFirstPerson=0
+ini Hands ReachOpens=0
+console-at ready coc Weye
+console-at house player.moveto 00095BC3 -70 -40 0
+console-at house player.setangle z 60
+
+expect HandScript: finished
+expect a world frame while the game loads
+expect Camera: switched to third person (frame
+expect the engine's third person left alone
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 15
+mark house
+wait 4
+head yaw 0
+head pitch -35
+wait 2
+mark aimed
+right a 1
+wait 0.3
+right a 0
+wait 3
+mark sat-3
+wait 3
+mark sat-6
+head yaw 45
+wait 2
+mark sat-left
+head yaw -45
+wait 2
+mark sat-right
+head yaw 0
+wait 1
+mark sat-ahead
+right a 1
+wait 0.3
+right a 0
+wait 4
+mark stood-4
+left stick 0 1
+wait 0.5
+left stick 0 0
+wait 2
+mark walked
+head yaw 45
+wait 2
+mark stood-left
+head yaw 0
+wait 2
+mark stood-8
