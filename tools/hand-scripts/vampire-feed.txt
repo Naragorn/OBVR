@@ -32,7 +32,8 @@
 # PASS 2026-10-20 11:18: the click on button_1 closed the box, "Camera:
 # switched to third person (frame 2211, sit/mount bytes 0001)" - the feed SETS
 # the byte - the engine's own "switched to first person (frame 2584, sit/mount
-# bytes 0000)" 373 frames (5 s) later and "put back into first" only after it;
+# bytes 0000)" 373 frames (5 s) later (Full VR's own "put back into first"
+# came after it then; the force is gone since 12:50);
 # the eyes after the feed at the bed's side 4 units from their height before,
 # the head's 45-degree turns turning the view 45 degrees each way, the game's
 # own message box of the vampire script up after the feed (the world paused

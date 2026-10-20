@@ -60,11 +60,11 @@ struct HandSettings {
 	float pokeTipForward = 0.08f;
 	PokeThresholds poke;
 
-	// The body: keep the player in first person while the mode is on (the
-	// hands are only drawn there), and hide the named parts of the
-	// first-person model - the arms, whose animation the controllers do not
-	// follow - by the comma-separated list of node names.
-	bool forceFirstPerson = true;
+	// The body: hide the named parts of the first-person model - the arms,
+	// whose animation the controllers do not follow - by the comma-separated
+	// list of node names. (The mode no longer forces first person: the
+	// engine undoes every switch of its own, measured 2026-10-20, and a
+	// third person the player or a mod chose is theirs.)
 	bool hideArms = true;
 	// Hide the sheaths and what hangs in them (the side-weapon, back-weapon and
 	// quiver bones, and any "Scb" scabbard): they rode with the right hand.

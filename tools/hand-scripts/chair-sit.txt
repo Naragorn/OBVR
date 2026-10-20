@@ -2,9 +2,10 @@
 # sit-down (Enhanced Camera's one hook at 0x0066C63D - "chair, fatigue
 # knockout, paralysis") and stays there for the whole of the sitting, back by
 # itself at the get-up. Beta 5 held first person off only while the sit-down
-# byte (+0x71C) was set and would have forced first person once seated; now
-# the sit/sleep state (+0x11D: 3 sitting down, 4 seated, 5 getting up) holds
-# it too (EngineOwnsThirdPerson, camera/FrameLogic.h). Aelwin Merowald's house
+# byte (+0x71C) was set and would have forced first person once seated; on
+# 2026-10-20 the sit/sleep state (+0x11D: 3 sitting down, 4 seated, 5 getting
+# up) held it too, and by 12:50 the force itself was gone - the engine undoes
+# every switch of its own. Aelwin Merowald's house
 # in Weye (coc Weye): the player 70 units behind and 40 beside the chair
 # 00095BC3 (LCChair02L at 210 -2 -42, rotZ 1.05), faced towards it, the head
 # bowed 35 degrees onto it, A sits. Marks seated with head turns, then A
@@ -12,8 +13,8 @@
 # eyes stayed on the chair), the stick walks after. "Hands: the engine's third person
 # left alone - sit/mount bytes ..., sit/sleep state ..., knock state ..."
 # says what held it, "Camera: switched to third/first person (frame N, ...)"
-# the engine's own switches, "put back into first" must not come between
-# them, "Camera: at the mark" the eyes.
+# the engine's own switches (and the only ones, Full VR forces nothing since
+# 2026-10-20), "Camera: at the mark" the eyes.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/chair-sit.txt --run-timeout 300 --headless
 
 ini Hands Enabled=1
@@ -25,7 +26,6 @@ console-at house player.setangle z 60
 expect HandScript: finished
 expect a world frame while the game loads
 expect Camera: switched to third person (frame
-expect the engine's third person left alone
 expect Camera: switched to first person (frame
 reject HandScript: WARNING
 

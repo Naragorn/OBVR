@@ -289,7 +289,9 @@ verify this from code; a headset test with each switched off would settle it.
        stood up.* The game shows the fall in third person; Full VR puts the
        player back into first person on every frame it finds them in third
        (`HandModeForcesFirstPerson`, camera/FrameLogic.h, `[Hands]
-       ForceFirstPerson=1`, through the game's own ToggleCamera) unless a
+       ForceFirstPerson=1`, through the game's own ToggleCamera - the force
+       and the setting were removed on 2026-10-20, the engine undoes every
+       switch of its own) unless a
        menu is up or the player is dead. A knock state the game holds in
        third person is fought each frame; the log shows "Hands: the player
        was in third person - put back into first" repeated. **Fixed

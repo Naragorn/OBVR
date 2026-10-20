@@ -1,22 +1,22 @@
-# A dialogue with [Hands] ForceFirstPerson=0 (Nadi, 2026-10-20: whether the
-# first-person force does anything at all): the vampire's box of
+# A dialogue in Full VR (first run 2026-10-20 with the first-person force
+# off, to see whether the force did anything; it went the same day): the
+# vampire's box of
 # vampire-feed.txt, but the laser presses Talk (button_2, pitch 50.2 - the
 # sweep of 11:14 found it at 1288,816), the dialogue with the woken sleeper
 # runs for a few seconds, then Esc - which does not close a dialogue but
 # opens the Pause menu over it (12:42; the dialogue's own exit is its
 # Goodbye topic, not pressed here). "Camera: switched to ..." says
-# whether the engine's dialogue zoom moves the view out of first person and
-# back by itself without the force; the mark line and "Camera: at the mark"
+# whether the engine's dialogue zoom moves the view out of first person at
+# all; the mark line and "Camera: at the mark"
 # the view and the eyes before, in and after the dialogue. 12:38: no switch
 # at all - the engine's SetDialogCamera came with "third person=0 - nothing to
 # do" and the dialogue ran and closed in first person (the run's verdict FAIL
 # only on expects copied from the feed; this file's expects are its own).
 # PASS 12:42: no switch, no "put back", the Dialog menu in first person
 # throughout, the Pause menu over it after Esc.
-# Run with: python3 tools/hand-script-run.py tools/hand-scripts/dialog-noforce.txt --run-timeout 300 --headless
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/dialog-talk.txt --run-timeout 300 --headless
 
 ini Hands Enabled=1
-ini Hands ForceFirstPerson=0
 ini Hands ReachOpens=0
 console-at ready coc TestVampireInterior
 console-at cell player.addspell 0002C2A5

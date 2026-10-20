@@ -954,7 +954,6 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.poke.press = ReadFloat("Hands", "PokePress", h.poke.press, path);
 		h.poke.release = ReadFloat("Hands", "PokeRelease", h.poke.release, path);
 		h.poke.through = ReadFloat("Hands", "PokeThrough", h.poke.through, path);
-		h.forceFirstPerson = ReadBool("Hands", "ForceFirstPerson", h.forceFirstPerson, path);
 		h.hideArms = ReadBool("Hands", "HideArms", h.hideArms, path);
 		ReadText("Hands", "HideFirstPersonNodes", h.hideNodes, sizeof(h.hideNodes), path);
 		h.hideSheaths = ReadBool("Hands", "HideSheaths", h.hideSheaths, path);

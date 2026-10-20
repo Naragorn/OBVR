@@ -3607,6 +3607,21 @@ log.
   answering "third person=0 - nothing to do" every call, the Dialog menu in first person
   throughout - the force does nothing for the dialogue either. So the toggle serves none of
   the engine's own switches, and only fights a third person somebody chose.
+  **Removed 2026-10-20 (Nadi: "ganz weg"):** `[Hands] ForceFirstPerson`, its Settings row,
+  `HandModeForcesFirstPerson` and `EngineOwnsThirdPerson` with their unit flows, the hold's
+  log line and OBVR's call of the engine's ToggleCamera are gone; the readers of the three
+  states stay for the mark line ("Hands: at the mark - sit/mount bytes, sit/sleep state,
+  knock state, third person"). What this means for mods: a scene a mod shows in third
+  person (xOBSE `ToggleFirstPerson`, a tapped POV control) now stays as the mod left it
+  and the mod switches back itself; vanilla's `PickIdle` and `PlayGroup` on the player
+  never changed the view, and whether such an idle shows in first person against OBVR's
+  body IK (which writes the body's bones every frame) is a different question, unmeasured.
+  The POV key stays the game's: the right stick's click held sends the engine its R, the
+  view goes to third person with OBVR's own third-person camera and no hands (the hands
+  are drawn in first person only), and the same hold brings it back - the player's own
+  escape from any third person a mod leaves behind. The scenarios that had the force off
+  (horse-ride-third.txt, chair-sit-noforce.txt, fall-third-person-noforce.txt) are gone
+  with it, their measurements kept above; dialog-noforce.txt is dialog-talk.txt.
 - *outfits not in full detail*, his inventory picture (a robe, the fists up, bare feet
   hanging under the hem with nothing between): not reproduced - the harness paperdoll with the
   Black Hand Robe and the Black Robe (`robe-hands.txt`, "robe-inventory", "black-inventory")

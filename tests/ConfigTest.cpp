@@ -397,15 +397,14 @@ void TestHandTracking() {
 	          wrists.hands.poke.through == 0.09f,
 	      "and so are the poke's five numbers");
 
-	Check(untouched.hands.forceFirstPerson && untouched.hands.hideArms,
-	      "first person is forced and the arms hidden by default");
+	Check(untouched.hands.hideArms, "the arms are hidden by default");
 	Check(std::strcmp(untouched.hands.hideNodes, "Arms") == 0,
 	      "and the shape to hide is Arms");
 	obvr::Config body;
 	LoadFrom("ConfigTestBody.ini",
-	         "[Hands]\nForceFirstPerson=0\nHideArms=0\nHideFirstPersonNodes=UpperBody, Hand\n",
+	         "[Hands]\nHideArms=0\nHideFirstPersonNodes=UpperBody, Hand\n",
 	         body);
-	Check(!body.hands.forceFirstPerson && !body.hands.hideArms, "both switches are read");
+	Check(!body.hands.hideArms, "the switch is read");
 	Check(std::strcmp(body.hands.hideNodes, "UpperBody, Hand") == 0,
 	      "and the list is read as written");
 	obvr::Config cleared;

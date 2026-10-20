@@ -864,43 +864,6 @@ inline UInt32 ShadeForFrame(UInt32 menuShade, bool playerDead, bool deathTint,
 	return useMenuTone ? (0xFF000000u | (menuToneRgb & 0x00FFFFFFu)) : kDeathGreyShade;
 }
 
-// Whether Full VR puts a third-person player back into first person: only with
-// the setting on, out of menus (the game flips to third person for the race
-// menu on purpose), not once the player has died - the game shows the
-// death in third person, the body falling - and not while the game plays one
-// of its own animations in third person: mounting or dismounting a horse,
-// sitting down or getting up, a vampire's feed (the player's bytes at +0x71C
-// and +0x71D, Enhanced Camera's reading; the mount verified in the harness,
-// 2026-10-18: the byte set at the mount's switch and cleared 110 frames
-// later, when the engine itself switched back to first person). Forced back
-// a frame after the engine's switch, the mounted first-person camera stood
-// 245 units over the horse and swayed (a Quest 3 tester's "hovering about
-// two meters above it ... swaying from side to side"); left to the engine
-// until its animation is over, it stood 175 and still.
-inline bool HandModeForcesFirstPerson(bool setting, bool menuIsUp, bool thirdPerson,
-                                      bool playerDead, bool engineAnimation = false) {
-	return setting && !menuIsUp && thirdPerson && !playerDead && !engineAnimation;
-}
-
-// Whether the third person the engine switched to is its own, to be left
-// alone until it switches back by itself: during one of its animations (the
-// player's bytes at +0x71C and +0x71D - sit down, mount, feed; get up,
-// dismount; the mount and the feed verified in the harness, 2026-10-18 and
-// 2026-10-20), while the player is on furniture or in a bed (the high
-// process's sit/sleep state at +0x11D - Enhanced Camera reads 3 as sitting
-// down, 4 as seated, 5 as getting up, 8 and over as asleep; vanilla sits in
-// third person for the whole of it, Enhanced Camera's own hook at 0x0066C63D
-// names "chair, fatigue knockout, paralysis" as the one switch), and while
-// the player is knocked down or getting up (the knock state at +0x11C: 1 to 4
-// down, 5 and 6 getting up, GrappleLogic.h; -1 when the player has no high
-// process, which is no knock). OBVR's own comfort skips most falls
-// (ExhaustionLogic.h), but those are settings, and a fall the engine does
-// play must not be fought a frame later (Nadi, 2026-10-20). Pure,
-// frame_logic_test.
-inline bool EngineOwnsThirdPerson(UInt16 sitMountBytes, UInt8 sitSleepState, SInt32 knockState) {
-	return sitMountBytes != 0 || sitSleepState != 0 || knockState > 0;
-}
-
 // Whether the camera node's place in the scene graph, or the player's seat on
 // a horse, changed since the last frame - then the camera's ancestry is logged
 // again. The ancestry is logged once at the first pass, and it says whether a

@@ -596,7 +596,6 @@ bool g_handBlocking = false;
 bool g_handReachBack = false;
 UInt32 g_handSwingLinesLeft = 60;
 UInt32 g_handPokeLinesLeft = 20;
-UInt32 g_handPovLinesLeft = 20;
 
 bool ReadIsThirdPerson();
 
@@ -4301,59 +4300,20 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	if (active) {
 		// Once: whether the inventory drop can work with the game's bindings.
 		game::CheckDropBinding(config.handKeys.run);
-		// The hands are only drawn in first person, so the mode keeps the
-		// player there through the game's own switch - the one the dialogue
-		// shim uses. Not while a menu is up: the game flips to third person
-		// for the race menu and the like on purpose, and would be fought
-		// every frame.
-		// Nor when the player has died: the game shows the death in third
-		// person, the body falling, and forcing first person back showed the
-		// character standing (2026-09-25 log: "switched to third person" at the
-		// death, "put back into first" thirteen lines later).
-		// Nor while the third person is the engine's own (EngineOwnsThirdPerson):
-		// its mount, dismount, sit-down, get-up or feed animation (the
-		// player's bytes at +0x71C/+0x71D), the whole of a sitting or a sleep
-		// (the sit/sleep state), a knockdown and the getting up (the knock
-		// state): the engine switches back by itself when it is over, and a
-		// first person forced a frame after its switch left the mounted
-		// camera 245 units over the horse and swaying (horse-ride.txt,
-		// 2026-10-18) and the feed's camera carried off (a tester, 2026-10-18).
-		const UInt16 sitMountBytes = game::PlayerSitMountBytes();
-		const UInt8 sitSleepState = game::PlayerSitSleepState();
-		const SInt32 knockState = game::PlayerKnockState();
-		const bool engineOwnsThirdPerson = EngineOwnsThirdPerson(sitMountBytes, sitSleepState, knockState);
-		{
-			// Said when the hold begins and ends, bounded: what held it.
-			static bool s_wasHeld = false;
-			static UInt32 s_heldLines = 40;
-			const bool held = engineOwnsThirdPerson && ReadIsThirdPerson();
-			if (held != s_wasHeld && s_heldLines > 0) {
-				--s_heldLines;
-				OBVR_LOG("Hands: the engine's third person %s - sit/mount bytes %04X, sit/sleep state %u, knock state %d "
-				         "(frame %u)",
-				         held ? "left alone" : "no longer its own", sitMountBytes, sitSleepState, knockState,
-				         g_state.frameCount);
-			}
-			s_wasHeld = held;
-			// And at a hand script's mark, whatever the state: the three
-			// sources beside the view, for the sit and the fall scenarios.
-			if (test::HandScriptMarkedThisFrame()) {
-				OBVR_LOG("Hands: at the mark - sit/mount bytes %04X, sit/sleep state %u, knock state %d, third person %d",
-				         sitMountBytes, sitSleepState, knockState, ReadIsThirdPerson() ? 1 : 0);
-			}
-		}
-		if (HandModeForcesFirstPerson(config.hands.forceFirstPerson, menuIsUp,
-		                              ReadIsThirdPerson(), game::PlayerIsDead(),
-		                              engineOwnsThirdPerson)) {
-			auto* const player = *reinterpret_cast<UInt8* const*>(addr::kPlayerPointer);
-			if (mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(player))) {
-				using ToggleCameraFn = void(__fastcall*)(UInt8* self, void* edx, UInt8 firstPerson);
-				reinterpret_cast<ToggleCameraFn>(addr::kToggleCamera)(player, nullptr, 1);
-				if (g_handPovLinesLeft > 0) {
-					--g_handPovLinesLeft;
-					OBVR_LOG("Hands: the player was in third person - put back into first");
-				}
-			}
+		// Full VR no longer forces first person (the force of c271455 went on
+		// 2026-10-20): every switch the engine makes to third person on its
+		// own - the mount, the dismount, the vampire's feed, the sit-down and
+		// the get-up, the paralysis fall and the fatigue collapse, the dialogue
+		// - it undoes by itself, measured in the harness with the force off,
+		// and what the force still undid was a third person somebody chose:
+		// the player's POV key or a mod's scripted scene, fought every frame.
+		// At a hand script's mark, the three states the engine's own third
+		// person showed itself by, beside the view - for the sit, fall and
+		// feed scenarios.
+		if (test::HandScriptMarkedThisFrame()) {
+			OBVR_LOG("Hands: at the mark - sit/mount bytes %04X, sit/sleep state %u, knock state %d, third person %d",
+			         game::PlayerSitMountBytes(), game::PlayerSitSleepState(), game::PlayerKnockState(),
+			         ReadIsThirdPerson() ? 1 : 0);
 		}
 
 		if (config.firstPersonTreeProbe) {
@@ -10633,10 +10593,9 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		g_aimChasedOffset = g_aimBodyOffset;
 		g_aimChasedPitch = g_aimPitchOffset;
 
-		// With the player's sit/mount/feed bytes (+0x71C/+0x71D): the engine's
-		// own third person for an animation is left alone while they are set
-		// (HandModeForcesFirstPerson), so whether a feed or a sit sets them is
-		// read off this line (vampire-feed.txt, 2026-10-20).
+		// With the player's sit/mount/feed bytes (+0x71C/+0x71D): whether a
+		// feed or a sit sets them is read off this line (vampire-feed.txt,
+		// 2026-10-20).
 		OBVR_LOG("Camera: switched to %s (frame %u, sit/mount bytes %04X) - tracing the next frames",
 		         isThirdPerson ? "third person" : "first person",
 		         g_state.frameCount, game::PlayerSitMountBytes());

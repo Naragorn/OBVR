@@ -2,10 +2,10 @@
 # Exhaustion=0 - a setting, and a player may turn it off): the paralysis fall
 # and the fatigue collapse switch the engine to third person (Enhanced
 # Camera's hook at 0x0066C63D - "chair, fatigue knockout, paralysis") and the
-# knock state (+0x11C: 1 to 4 down, 5 and 6 getting up) now holds Full VR's
-# first person off until the engine is back on its feet and switches by
-# itself (EngineOwnsThirdPerson, camera/FrameLogic.h; the flicker of 3rd and
-# 1st on a rare knockdown, 2026-10-12, was this fight). The console sets the
+# knock state (+0x11C: 1 to 4 down, 5 and 6 getting up) is read at the marks;
+# the engine is back on its feet and switches by itself (the force that
+# fought it every frame - the flicker of 3rd and 1st on a rare knockdown,
+# 2026-10-12 - went on 2026-10-20). The console sets the
 # Paralysis actor value, eight seconds later clears it; then forces the
 # fatigue to -100 (ForceActorValue) and eight seconds later back. The
 # tutorial quest MQ01 is stopped at the start: its script's "Your Fatigue is
@@ -16,7 +16,7 @@
 # and first person every three frames, the eyes 230 units off.
 # "Hands: the engine's third person left alone - ... knock state N" says what
 # held it, "Camera: switched to third/first person (frame N, ...)" the
-# engine's own switches, "put back into first" must not come between them.
+# engine's own switches, and the only ones since the force went (2026-10-20).
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/fall-third-person.txt --run-timeout 300 --headless
 
 ini Hands Enabled=1
@@ -29,7 +29,6 @@ console-at low player.forceav fatigue 145
 
 expect HandScript: finished
 expect Camera: switched to third person (frame
-expect the engine's third person left alone
 expect Camera: switched to first person (frame
 reject HandScript: WARNING
 reject the player's paralysis fall was skipped
